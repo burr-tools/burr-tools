@@ -11,62 +11,45 @@
     <title-email|andreas_roever@web.de>
   </make-title>
 
-  <prologue>
-
-  This document is the main description for the <name|BurrTools>. It contains
-  all there is to know about this tools.
-
-  After the introduction in the first section the graphical user interface is
-  explained first for users that already know <name|PuzzleSolver3D> and only
-  need some hints about what is different and then for new users in all
-  detail.
-
-  The 4th section will explain what there is to know about the library. This
-  library will enable users that can program a bit C++ to write their own
-  programs that search for puzzles instead of clicking their fingers raw in
-  the GUI. The 5th section will describe some of the used algorithms.
-
-  The final section will detail some of the things that might be interesting
-  to do in the future.
+  \;
 
   <\table-of-contents|toc>
-    <vspace*|1fn><with|font-series|bold|math-font-series|bold|Prologue>
-    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-1><vspace|0.5fn>
-
     <vspace*|1fn><with|font-series|bold|math-font-series|bold|Table of
     contents> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-2><vspace|0.5fn>
+    <pageref|auto-1><vspace|0.5fn>
 
     <vspace*|1fn><with|font-series|bold|math-font-series|bold|1<space|2spc>The
     Program> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-3><vspace|0.5fn>
+    <pageref|auto-2><vspace|0.5fn>
 
     1.1<space|2spc>Introduction <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-4>
+    <pageref|auto-3>
 
     1.2<space|2spc><with|font-shape|small-caps|PuzzleSolver3D> Users
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-5>
+    <pageref|auto-4>
 
     1.3<space|2spc>New Users <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-6>
+    <pageref|auto-5>
 
     <with|par-left|1.5fn|1.3.1<space|2spc>Main Window
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-7>>
+    <pageref|auto-6>>
 
     <with|par-left|1.5fn|1.3.2<space|2spc>Piece Tab
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-9>>
+    <pageref|auto-8>>
 
     <with|par-left|1.5fn|1.3.3<space|2spc>Result Tab
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-11>>
+    <pageref|auto-10>>
 
     <with|par-left|1.5fn|1.3.4<space|2spc>Solve Tab
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-12>>
+    <pageref|auto-11>>
+
+    1.4<space|2spc>Future Plans <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <pageref|auto-12>
 
     <vspace*|1fn><with|font-series|bold|math-font-series|bold|2<space|2spc>The
     Internals> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
@@ -83,32 +66,36 @@
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
     <pageref|auto-16>>
 
-    <with|par-left|1.5fn|2.2.2<space|2spc>Class assembler
+    <with|par-left|1.5fn|2.2.2<space|2spc>Class puzzle
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
     <pageref|auto-17>>
 
-    <with|par-left|1.5fn|2.2.3<space|2spc>Class disassember
+    <with|par-left|1.5fn|2.2.3<space|2spc>Class assembler
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
     <pageref|auto-18>>
 
-    <with|par-left|1.5fn|2.2.4<space|2spc>Example
+    <with|par-left|1.5fn|2.2.4<space|2spc>Class disassember
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
     <pageref|auto-19>>
 
+    <with|par-left|1.5fn|2.2.5<space|2spc>Example
+    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <pageref|auto-20>>
+
     2.3<space|2spc>The Algorithms <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-20>
+    <pageref|auto-21>
 
     <with|par-left|1.5fn|2.3.1<space|2spc>Assembly
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-21>>
+    <pageref|auto-22>>
 
     <with|par-left|1.5fn|2.3.2<space|2spc>Disassembly
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-22>>
+    <pageref|auto-23>>
 
     <vspace*|1fn><with|font-series|bold|math-font-series|bold|Epilogue>
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-23><vspace|0.5fn>
+    <pageref|auto-24><vspace|0.5fn>
   </table-of-contents>
 
   <chapter|The Program>
@@ -353,6 +340,42 @@
   want to shunt piece into a box. The box would hide most of the action that
   is going on inside it.
 
+  <section|Future Plans>
+
+  So, what are my future plans? There are a lot of things that are still
+  missing from the current program. A list of things that might be
+  interesting to implement are the following things:
+
+  <\itemize-dot>
+    <item>Multiple different solution shapes inside one file. This is useful
+    for puzzles like the <name|Soma-cube>.
+
+    <item>Limits to piece placement to enable things like checkered puzzles,
+    where the pieces can not go into all possible places. This could be
+    implemented like in Bill Cuttlers program by using several different
+    solution spaces and cubes that can only go into a few of these solution
+    spaces.
+
+    <item>Include the burr growing into the GUI. This might not happen any
+    time soon but it might be useful.
+
+    <item>Include a possibility to generate images with solutions. Currently
+    you need the program to animate for you.
+
+    <item>Add some special algorithms that are faster for certain kind of
+    puzzles. The current algorithms is quite good for nearly all puzzles, but
+    it's not the fastest.
+
+    <item>The disassembly could use some speedups. Here <name|PuzzleSolver3D>
+    is sometimes much faster (but also sometimes much slower)
+  </itemize-dot>
+
+  I would be very happy to get contributions from other people. After all
+  there are quite a few people out there that have their own puzzle solving
+  programs, maybe they have some nice additions. There is one important thing
+  to keep in mind: the additions have to run on <name|Linux>. So you can not
+  use any proprietary library that is not available for <name|Linux>.
+
   <chapter|The Internals>
 
   <section|The puzzle file format>
@@ -545,41 +568,19 @@
   6 Piece Burr analysis is used. Some optimisations were done that are
   (hopefully) speeding up the whole process.
 
-  <epilogue>
+  <section|Adding to the Library>
 
-  So, what are my future plans? There are a lot of things that are still
-  missing from the current program. A list of things that might be
-  interesting to implement are the following things:
+  There is currently one useful thing besides the normal improvements that
+  might be added to the library: Other puzzle types. The assembly algorithms
+  is so abstract that it can cope with many different types of assembly
+  puzzles, as long as they have some kind of pattern. Currently the assembler
+  only supports puzzles out of cubes but there is nothing that prevents
+  solving puzzle where the base unit is a hexagon. Of course the disassembler
+  can not do work with this kind of puzzles.
 
-  <\itemize-dot>
-    <item>Multiple different solution shapes inside one file. This is useful
-    for puzzles like the <name|Soma-cube>.
-
-    <item>Limits to piece placement to enable things like checkered puzzles,
-    where the pieces can not go into all possible places. This could be
-    implemented like in Bill Cuttlers program by using several different
-    solution spaces and cubes that can only go into a few of these solution
-    spaces.
-
-    <item>Include the burr growing into the GUI. This might not happen any
-    time soon but it might be useful.
-
-    <item>Include a possibility to generate images with solutions. Currently
-    you need the program to animate for you.
-
-    <item>Add some special algorithms that are faster for certain kind of
-    puzzles. The current algorithms is quite good for nearly all puzzles, but
-    it's not the fastest.
-
-    <item>The disassembly could use some speedups. Here <name|PuzzleSolver3D>
-    is sometimes much faster (but also sometimes much slower)
-  </itemize-dot>
-
-  I would be very happy to get contributions from other people. After all
-  there are quite a few people out there that have their own puzzle solving
-  programs, maybe they have some nice additions. There is one important thing
-  to keep in mind: the additions have to run on <name|Linux>. So you can not
-  use any proprietary library that is not available for <name|Linux>.
+  To add other geometries the assembler is split into 2 parts. The dancing
+  link algorithm and the algorithm that prepares the matrix for the dancing
+  link algorithm. This preparation part is called the frontend.
 </body>
 
 <\initial>
@@ -599,31 +600,31 @@
   <\collection>
     <associate||<tuple|1.1|5>>
     <associate|MainWindowImage|<tuple|1.1|6>>
-    <associate|ToolsImage|<tuple|1.2|7>>
-    <associate|auto-1|<tuple|<uninit>|3>>
-    <associate|auto-10|<tuple|1.2|7>>
-    <associate|auto-11|<tuple|1.3.3|7>>
-    <associate|auto-12|<tuple|1.3.4|8>>
+    <associate|ToolsImage|<tuple|1.2|6>>
+    <associate|auto-1|<tuple|<uninit>|4>>
+    <associate|auto-10|<tuple|1.3.3|7>>
+    <associate|auto-11|<tuple|1.3.4|7>>
+    <associate|auto-12|<tuple|1.4|8>>
     <associate|auto-13|<tuple|2|9>>
     <associate|auto-14|<tuple|2.1|9>>
     <associate|auto-15|<tuple|2.2|9>>
     <associate|auto-16|<tuple|2.2.1|9>>
-    <associate|auto-17|<tuple|2.2.2|10>>
+    <associate|auto-17|<tuple|2.2.2|9>>
     <associate|auto-18|<tuple|2.2.3|10>>
     <associate|auto-19|<tuple|2.2.4|10>>
-    <associate|auto-2|<tuple|<uninit>|4>>
+    <associate|auto-2|<tuple|1|5>>
     <associate|auto-20|<tuple|2.2.5|10>>
     <associate|auto-21|<tuple|2.3|10>>
-    <associate|auto-22|<tuple|2.3.1|11>>
-    <associate|auto-23|<tuple|2.3.2|12>>
-    <associate|auto-24|<tuple|2.3.2|?>>
-    <associate|auto-3|<tuple|1|5>>
-    <associate|auto-4|<tuple|1.1|5>>
-    <associate|auto-5|<tuple|1.2|5>>
-    <associate|auto-6|<tuple|1.3|6>>
-    <associate|auto-7|<tuple|1.3.1|6>>
-    <associate|auto-8|<tuple|1.1|6>>
-    <associate|auto-9|<tuple|1.3.2|7>>
+    <associate|auto-22|<tuple|2.3.1|10>>
+    <associate|auto-23|<tuple|2.3.2|11>>
+    <associate|auto-24|<tuple|2.4|12>>
+    <associate|auto-3|<tuple|1.1|5>>
+    <associate|auto-4|<tuple|1.2|5>>
+    <associate|auto-5|<tuple|1.3|6>>
+    <associate|auto-6|<tuple|1.3.1|6>>
+    <associate|auto-7|<tuple|1.1|6>>
+    <associate|auto-8|<tuple|1.3.2|6>>
+    <associate|auto-9|<tuple|1.2|6>>
     <associate|footnote-1|<tuple|1|1>>
   </collection>
 </references>
@@ -631,48 +632,47 @@
 <\auxiliary>
   <\collection>
     <\associate|figure>
-      <tuple|normal|The Main Window<label|MainWindowImage>|<pageref|auto-8>>
+      <tuple|normal|The Main Window<label|MainWindowImage>|<pageref|auto-7>>
 
-      <tuple|normal|The tools<label|ToolsImage>|<pageref|auto-10>>
+      <tuple|normal|The tools<label|ToolsImage>|<pageref|auto-9>>
     </associate>
     <\associate|toc>
-      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|Prologue>
-      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-1><vspace|0.5fn>
-
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|Table
       of contents> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-2><vspace|0.5fn>
+      <pageref|auto-1><vspace|0.5fn>
 
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|1<space|2spc>The
       Program> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-3><vspace|0.5fn>
+      <pageref|auto-2><vspace|0.5fn>
 
       1.1<space|2spc>Introduction <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-4>
+      <pageref|auto-3>
 
       1.2<space|2spc><with|font-shape|<quote|small-caps>|PuzzleSolver3D>
       Users <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-5>
+      <pageref|auto-4>
 
       1.3<space|2spc>New Users <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-6>
+      <pageref|auto-5>
 
       <with|par-left|<quote|1.5fn>|1.3.1<space|2spc>Main Window
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-7>>
+      <pageref|auto-6>>
 
       <with|par-left|<quote|1.5fn>|1.3.2<space|2spc>Piece Tab
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-9>>
+      <pageref|auto-8>>
 
       <with|par-left|<quote|1.5fn>|1.3.3<space|2spc>Result Tab
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-11>>
+      <pageref|auto-10>>
 
       <with|par-left|<quote|1.5fn>|1.3.4<space|2spc>Solve Tab
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-12>>
+      <pageref|auto-11>>
+
+      1.4<space|2spc>Future Plans <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <pageref|auto-12>
 
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>The
       Internals> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
@@ -689,32 +689,36 @@
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <pageref|auto-16>>
 
-      <with|par-left|<quote|1.5fn>|2.2.2<space|2spc>Class assembler
+      <with|par-left|<quote|1.5fn>|2.2.2<space|2spc>Class puzzle
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <pageref|auto-17>>
 
-      <with|par-left|<quote|1.5fn>|2.2.3<space|2spc>Class disassember
+      <with|par-left|<quote|1.5fn>|2.2.3<space|2spc>Class assembler
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <pageref|auto-18>>
 
-      <with|par-left|<quote|1.5fn>|2.2.4<space|2spc>Example
+      <with|par-left|<quote|1.5fn>|2.2.4<space|2spc>Class disassember
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <pageref|auto-19>>
 
+      <with|par-left|<quote|1.5fn>|2.2.5<space|2spc>Example
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <pageref|auto-20>>
+
       2.3<space|2spc>The Algorithms <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-20>
+      <pageref|auto-21>
 
       <with|par-left|<quote|1.5fn>|2.3.1<space|2spc>Assembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-21>>
+      <pageref|auto-22>>
 
       <with|par-left|<quote|1.5fn>|2.3.2<space|2spc>Disassembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-22>>
+      <pageref|auto-23>>
 
-      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|Epilogue>
+      2.4<space|2spc>Adding to the Library
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-23><vspace|0.5fn>
+      <pageref|auto-24>
     </associate>
   </collection>
 </auxiliary>
