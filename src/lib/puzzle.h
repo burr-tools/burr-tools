@@ -138,7 +138,7 @@ public:
   unsigned int addProblem(void);
 
   /* return number of problems */
-  unsigned int problemNumber(void);
+  unsigned int problemNumber(void) const;
 
   /* remove one problem */
   void removeProblem(unsigned int);
@@ -147,7 +147,7 @@ public:
   unsigned int copyProblem(unsigned int);
 
   /* name of a problem */
-  std::string probGetName(unsigned int prob);
+  const std::string & probGetName(unsigned int prob) const;
   void probSetName(unsigned int prob, std::string name);
 
   /* set the shape-id for the result shape this the problem */

@@ -720,7 +720,7 @@ unsigned int puzzle_c::addProblem(void) {
 }
 
 /* return number of problems */
-unsigned int puzzle_c::problemNumber(void) { return problems.size(); }
+unsigned int puzzle_c::problemNumber(void) const { return problems.size(); }
 
 /* remove one problem */
 void puzzle_c::removeProblem(unsigned int idx) {
@@ -845,7 +845,7 @@ void puzzle_c::probSetName(unsigned int prob, std::string name) {
   problems[prob]->name = name;
 }
 
-std::string puzzle_c::probGetName(unsigned int prob) {
+const std::string & puzzle_c::probGetName(unsigned int prob) const {
   return problems[prob]->name;
 }
 
