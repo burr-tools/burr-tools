@@ -1,0 +1,6 @@
+#! /bin/sh
+
+aclocal \
+&& automake-1.7 --gnu \
+&& autoconf
+./configure
