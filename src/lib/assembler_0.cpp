@@ -22,171 +22,7 @@
 #define snprintf _snprintf
 #endif
 
-/* helper function to check if a piece an go at a position */
-static bool pieceFits(const voxel_c * piece, const voxel_c * result, int x, int y, int z) {
-
-  for (int pz = 0; pz < piece->getZ(); pz++)
-    for (int py = 0; py < piece->getY(); py++)
-      for (int px = 0; px < piece->getX(); px++)
-        if ((piece->get(px, py, pz) != VX_EMPTY) &&
-            (result->get(x+px, y+py, z+pz) == VX_EMPTY))
-          return false;
-
-  return true;
-}
-
-/* add a piece to the cache, but only if it is not already there. If it is added return the
- * piece pointer otherwise return null
- */
-static voxel_c * addToCache(voxel_c * cache[24], int * fill, voxel_c * piece) {
-
-  for (int i = 0; i < *fill; i++)
-    if (*cache[i] == *piece) {
-      delete piece;
-      return 0;
-    }
-
-  cache[*fill] = piece;
-  (*fill)++;
-  return piece;
-}
-
-/**
- * this function counts the number of nodes required to acommodate all pieces
- * the title line is missing from the returned number
- */
-static int countNodes(puzzle_c * puz) {
-
-  int nodes = 0;
-
-  voxel_c * result = puz->getResult();
-
-  /* now we insert one shape after another */
-  for (int pc = 0; pc < puz->getShapeNumber(); pc++) {
-
-    int placements = 0;
-
-    /* this array contains all the pieces found so far, this will help us
-     * to not add two times the same piece to the structur */
-    voxel_c * cache[24];
-    int cachefill = 0;
-
-    /* go through all possible rotations of the piece */
-    /* didn't find piece, so it's new shape, add to cache and add to
-     * node structure */
-    /* find all possible translations of piece and add them, if they fit */
-    for (int rot = 0; rot < 24; rot++)
-      if (voxel_c * rotation = addToCache(cache, &cachefill, new voxel_c(puz->getShape(pc), rot)))
-        for (int x = 0; x < result->getX() - rotation->getX() + 1; x++)
-          for (int y = 0; y < result->getY() - rotation->getY() + 1; y++)
-            for (int z = 0; z < result->getZ() - rotation->getZ() + 1; z++)
-              if (pieceFits(rotation, result, x, y, z))
-                placements++;
-
-    nodes += placements * (puz->getShape(pc)->count(VX_FILLED) + 1) * puz->getShapeCount(pc);
-
-    for (int i = 0; i < cachefill; i++) delete cache[i];
-
-    // if one piece has no possible position in the result shape return error
-    if (placements == 0)
-      return -pc;
-  }
-  return nodes;
-}
-
-/**
- * this function prepares the matrix of nodes for the recursive function
- * I've done some additions to knuths algorithm to implement variable
- * voxels (empty spaces in the solution) and multiple instances of the
- * same piece. Empty voxels in the result are done by removing columns
- * from the matrix. This will prevent the algorithm from filling the
- * corresponding voxels. But we need to have the constraints that these
- * columns place on the solution. This is done by adding these columns
- * to the matrix but behind the normal columns. These additional columns
- * wont be searched by the alg if it looks for the next task to achive.
- *
- * Multiple instances of the same piece is handles in a similar way. To
- * prevent finding the same solution again and again with just the
- * pieces swapping places we enumber the pieces and their possible
- * placements and disallow that the position number of piece n is lower
- * than the position number of piece n-1. This can be achived by adding
- * more constraint columns. There need to be one column for each
- *
- * negative result show there is something wrong: the place -result has not
- * possible position inside the result
- */
-void assembler_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari) {
-
-  voxel_c * result = puz->getResult();
-
-  /* this array contains the column in our matrix that corresponds with
-   * the voxel position inside the result. We use this matrix because
-   * the calculation of the exact column depends on the number of FILLED
-   * and VARIABLE voxels and is relatively expensive to calculate
-   * with this lookup I was able to reduce the preparation time
-   * from 5 to 0.5 seconds for TheLostDay puzzle
-   */
-  unsigned int * columns = new unsigned int[result->getXYZ()];
-
-  {
-    int v = 0;
-    int c = 0;
-  
-    for (int i = 0; i < result->getXYZ(); i++) {
-      switch(result->get(i)) {
-      case VX_VARIABLE:
-        voxelindex[varivoxelStart + v] = i;
-        columns[i] = varivoxelStart + v++;
-        break;
-      case VX_FILLED:
-        voxelindex[1 + piecenumber + c] = i;
-        columns[i] = 1 + piecenumber + c++;
-        break;
-      default:
-        columns[i] = 0;
-      }
-    }
-  }
-
-  /* find the symmetry breaker */
-  symmetries_t resultSym = result->selfSymmetries();
-  int symBreakerPiece = -1;
-
-  // we only need to do this, if the result shape has some symmetries */
-  if (resultSym != 1) {
-
-    unsigned int bestFound = 25;
-
-    for (int i = 0; i < puz->getShapeNumber(); i++) {
-
-      symmetries_t multSym = resultSym & puz->getShape(i)->selfSymmetries();
-
-      if ((numSymmetries(multSym) < bestFound) ||
-          (numSymmetries(multSym) == bestFound) && (puz->getShapeCount(i) < puz->getShapeCount(symBreakerPiece))) {
-        bestFound = numSymmetries(multSym);
-        symBreakerPiece = i;
-      }
-    }
-
-    symmetries_t tmp = resultSym & puz->getShape(symBreakerPiece)->selfSymmetries() & ~((symmetries_t)1);
-
-    if (tmp || (puz->getShapeCount(symBreakerPiece) > 1))
-      printf("oops I wont be able to avoid all sorts of symmetries (%llx)\n", tmp);
-
-    resultSym = multiplySymmetries(resultSym, puz->getShape(symBreakerPiece)->selfSymmetries());
-//    printf("sym breaker: %i with symmetries %x removed\n", symBreakerPiece, resultSym);
-//    puz->getPiece(symBreakerPiece)->print('a');
-  }
-
-  /* node 0 is the start node for everything */
-
-  /* even thou the matrix has a column for each result voxel and each piece we leave out
-   * the VARIABLE voxels in the ring list of the header. This is to avoid selecting these
-   * columns for filling. The columns for the VARIABLE voxels are only there to make sure
-   * these voxels are only used once
-   */
-
-  /* nodes 1..n are the columns nodes */
+void assembler_0_c::GenerateFirstRow(int res_filled) {
   for (int i = 0; i < varivoxelStart; i++) {
     right[i] = i+1;
     left[i+1] = i;
@@ -215,100 +51,80 @@ void assembler_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari) {
   right[varivoxelEnd] = varivoxelStart;
 
   /* first free node, we'll start to fill up starting from there */
-  int firstfree = 2 + piecenumber + res_filled;
-  int piece = 0;
-
-  /* now we insert one shape after another */
-  for (int pc = 0; pc < puz->getShapeNumber(); pc++)
-    for (int piececount = 0; piececount < puz->getShapeCount(pc); piececount++, piece++) {
-
-      multiPieceCount[piece] = puz->getShapeCount(pc);
-      multiPieceIndex[piece] = piececount;
-      pieceStart[piece] = firstfree;
-
-      /* this array contains all the pieces found so far, this will help us
-       * to not add two times the same piece to the structur */
-      voxel_c * cache[24];
-      int cachefill = 0;
-  
-      /* go through all possible rotations of the piece
-       * if shape is new to cache, add it to the cache and also
-       * add the shape to the matrix, in all positions that it fits
-       */
-      for (int rot = 0; rot < 24; rot++) {
-        bool skipRotation = ((pc == symBreakerPiece) && (piececount == 0) && symmetrieContainsTransformation(resultSym, rot));
-        if (voxel_c * rotation = addToCache(cache, &cachefill, new voxel_c(puz->getShape(pc), rot))) {
-//          printf("piece %i rot %i node %i\n", piece, rot, firstfree);
-          for (int x = 0; x < result->getX() - rotation->getX() + 1; x++)
-            for (int y = 0; y < result->getY() - rotation->getY() + 1; y++)
-              for (int z = 0; z < result->getZ() - rotation->getZ() + 1; z++)
-                if (pieceFits(rotation, result, x, y, z)) {
-
-                  /* add one line to structure */
-                  int piecenode = firstfree++;
-
-                  if (!skipRotation) {
-                    /* first the node in the pieces column */
-                    left[piecenode] = piecenode;
-                    right[piecenode] = piecenode;
-                    down[piecenode] = piece+1;
-                    up[piecenode] = up[piece+1];
-                    down[up[piece+1]] = piecenode;
-                    up[piece+1] = piecenode;
-
-                    colCount[piecenode] = piece+1;
-                    colCount[piece+1]++;
-                  }
-
-                  /* now add the used cubes of the piece */
-                  for (int pz = 0; pz < rotation->getZ(); pz++)
-                    for (int py = 0; py < rotation->getY(); py++)
-                      for (int px = 0; px < rotation->getX(); px++)
-                        if (rotation->get(px, py, pz) != VX_EMPTY) {
-  
-                          /* add node to this column */
-                          int newnode = firstfree++;
-
-                          if (!skipRotation) {
-
-                            /* lets calc the number of the column the node needs to be added to */
-                            int col = columns[result->getIndex(x+px, y+py, z+pz)];
-    
-                            right[newnode] = piecenode;
-                            left[newnode] = left[piecenode];
-                            right[left[piecenode]] = newnode;
-                            left[piecenode] = newnode;
-      
-                            down[newnode] = col;
-                            up[newnode] = up[col];
-                            down[up[col]] = newnode;
-                            up[col] = newnode;
-      
-                            colCount[newnode] = col;
-                            colCount[col]++;
-                          }
-                        }
-                }
-        }
-      }
-
-      // clear all the objects on the cache
-      for (int i = 0; i < cachefill; i++)  delete cache[i];
-
-//      printf("piece %i has %i placements\n", piece, colCount[piece+1]);
-    }
-
-//  printf("firstfree %i\n", firstfree);
-
-  delete [] columns;
+  firstfree = 2 + piecenumber + res_filled;
 }
 
-assembler_0_c::assembler_0_c(const puzzle_c * p) :
-  rows(0), columns(0), voxelindex(0), assm(0), left(0), right(0), up(0), down(0), colCount(0), searchState(0), nodeF(0),
+void assembler_0_c::AddFillerNode(void ) {
+  firstfree++;
+}
+
+int assembler_0_c::AddPieceNode(int piece) {
+  int piecenode = firstfree++;
+
+  left[piecenode] = piecenode;
+  right[piecenode] = piecenode;
+  down[piecenode] = piece+1;
+  up[piecenode] = up[piece+1];
+  down[up[piece+1]] = piecenode;
+  up[piece+1] = piecenode;
+
+  colCount[piecenode] = piece+1;
+  colCount[piece+1]++;
+
+  return piecenode;
+}
+
+void assembler_0_c::AddVoxelNode(int col, int piecenode) {
+  int newnode = firstfree++;
+
+  right[newnode] = piecenode;
+  left[newnode] = left[piecenode];
+  right[left[piecenode]] = newnode;
+  left[piecenode] = newnode;
+
+  down[newnode] = col;
+  up[newnode] = up[col];
+  down[up[col]] = newnode;
+  up[col] = newnode;
+
+  colCount[newnode] = col;
+  colCount[col]++;
+}
+
+void assembler_0_c::nextPiece(int piece, int count, int number) {
+  multiPieceCount[piece] = count;
+  multiPieceIndex[piece] = number;
+  pieceStart[piece] = firstfree;
+}
+
+assembler_0_c::assembler_0_c() :
+  rows(0), columns(0), left(0), right(0), up(0), down(0), colCount(0), searchState(0), nodeF(0),
   numF(0), pieceF(0), nodeB(0), numB(0), piece(0), pieceStart(0), multiPieceCount(0), multiPieceIndex(0)
 {
+}
 
-  // make a copy of the puzzle, so that we can minimize the pieces
+assembler_0_c::~assembler_0_c() {
+  if (rows) delete [] rows;
+  if (columns) delete [] columns;
+  if (left) delete [] left;
+  if (right) delete [] right;
+  if (up) delete [] up;
+  if (down) delete [] down;
+  if (colCount) delete [] colCount;
+  if (multiPieceCount) delete [] multiPieceCount;
+  if (pieceStart) delete [] pieceStart;
+  if (multiPieceIndex) delete [] multiPieceIndex;
+  if (nodeF) delete [] nodeF;
+  if (numF) delete [] numF;
+  if (pieceF) delete [] pieceF;
+  if (nodeB) delete [] nodeB;
+  if (numB) delete [] numB;
+  if (piece) delete [] piece;
+  if (searchState) delete [] searchState;
+}
+
+void assembler_0_c::createMatrix(const puzzle_c * p) {
+
   puzzle_c puz(p);
 
   /* get and save piecenumber of puzzle */
@@ -348,7 +164,7 @@ assembler_0_c::assembler_0_c(const puzzle_c * p) :
   }
 
   /* count the number of required nodes*/
-  int nodes = countNodes(&puz);
+  unsigned long nodes = countNodes(&puz);
 
   // check, if there is one piece unplacable
   if (nodes <= 0) {
@@ -381,9 +197,6 @@ assembler_0_c::assembler_0_c(const puzzle_c * p) :
   up = new int [nodes];
   down = new int [nodes];
   colCount = new int [nodes];
-  voxelindex = new int[puz.getResult()->getXYZ() + piecenumber+1];
-
-  assm = new voxel_c(puz.getResult()->getX(), puz.getResult()->getY(), puz.getResult()->getZ(), VX_EMPTY);
 
   /* fill the nodes arrays */
   prepare(&puz, res_filled, res_vari);
@@ -395,27 +208,6 @@ assembler_0_c::assembler_0_c(const puzzle_c * p) :
   errorsState = 0;
 }
 
-assembler_0_c::~assembler_0_c() {
-  if (rows) delete [] rows;
-  if (columns) delete [] columns;
-  if (voxelindex) delete [] voxelindex;
-  if (assm) delete assm;
-  if (left) delete [] left;
-  if (right) delete [] right;
-  if (up) delete [] up;
-  if (down) delete [] down;
-  if (colCount) delete [] colCount;
-  if (multiPieceCount) delete [] multiPieceCount;
-  if (pieceStart) delete [] pieceStart;
-  if (multiPieceIndex) delete [] multiPieceIndex;
-  if (nodeF) delete [] nodeF;
-  if (numF) delete [] numF;
-  if (pieceF) delete [] pieceF;
-  if (nodeB) delete [] nodeB;
-  if (numB) delete [] numB;
-  if (piece) delete [] piece;
-  if (searchState) delete [] searchState;
-}
 
 /* remove column from array, and also all the rows, where the column is one */
 void assembler_0_c::cover(register int col)
@@ -736,40 +528,6 @@ void assembler_0_c::reduce(void) {
     branch = 1;
 
   } while (rem_sth);
-}
-
-bool assembler_0_c::solution(void) {
-
-  if (asm_bc) {
-    /* clean voxel space */
-    assm->setAll(VX_EMPTY);
-
-    /* put all the pieces at their places
-     * be going through all the selected rows and finding out
-     * where there is a one in that row and then find the corresponding
-     * voxel space index and place the piece number in there
-     */
-    for (int i = 0; i < piecenumber; i++) {
-      int r = rows[i];
-//      printf("piece %i placement %i\n", piece[i], r - pieceStart[piece[i]]);
-
-      // go over all columns and that columns that
-      // are for result shape will be set inside the result
-      do {
-
-        if (colCount[r] > piecenumber)
-          assm->set(voxelindex[colCount[r]], piece[i]+1);
-
-        r = right[r];
-
-      } while (r != rows[i]);
-    }
-//    printf("\n");
-
-    return asm_bc->assembly(assm);
-  }
-
-  return true;
 }
 
 /* to understand this function you need to first completely understand the

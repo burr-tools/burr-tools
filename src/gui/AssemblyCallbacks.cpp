@@ -40,13 +40,14 @@ void* start_th(void * c)
 }
 
 assemblerThread::assemblerThread(const puzzle_c * puzzle, int solAction, bool reduce) :
-assembler(puzzle),
 doReduce(reduce),
 assemblies(0),
 action(ACT_PREPARATION),
 _solutionAction(solAction),
 _piecenumber(puzzle->getPieces())
-{ }
+{
+  assembler.createMatrix(puzzle);
+}
 
 assemblerThread::~assemblerThread(void) {
 

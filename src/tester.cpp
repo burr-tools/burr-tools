@@ -17,7 +17,7 @@
  */
 
 #include "lib/puzzle.h"
-#include "lib/assembler_0.h"
+#include "lib/assm_0_frontend_0.h"
 #include "lib/disassembler_3.h"
 #include "lib/disassembler_2.h"
 #include "lib/disassembler_1.h"
@@ -225,13 +225,15 @@ void solve(int argv, char* args[]) {
 
   p.print();
 
-  assembler_0_c assm(&p);
+  assembler_0_c * assm = new assm_0_frontend_0_c();
+  assm->createMatrix(&p);
   printf("start reduce\n");
-  assm.reduce();
+  assm->reduce();
   printf("finished reduce\n");
 
-  if (assm.errors()) {
-    printf("%s\n", assm.errors());
+  if (assm->errors()) {
+    printf("%s\n", assm->errors());
+    delete assm;
     return;
   }
 
@@ -239,9 +241,11 @@ void solve(int argv, char* args[]) {
 
   a.count = 0;
 
-  assm.assemble(&a);
+  assm->assemble(&a);
 
-  printf("%i sol found with %i iterations\n", a.count, assm.getIterations());
+  printf("%i sol found with %i iterations\n", a.count, assm->getIterations());
+
+  delete assm;
 
   return;
 }

@@ -49,7 +49,6 @@
  * and all possible placements of these pieces that fill the selected voxel we have
  * to check each possibility if a piece is selected that
  *
-
  */
 class assembler_0_c : public assembler_c {
 
@@ -67,25 +66,7 @@ private:
   int * down;
   int * colCount;
   
-  /* used to collect the data neccessary to construct and for the iterative algorithm
-   * the assembly, it contains the indexes to the selected rows
-   * the columns array contains the indices of the coveres columns
-   * the pos value contains the number of pieces placed
-   */
-  int * rows;
-  int * columns;
-  int pos;
 
-  /* voxelindex is the invers of the function column. it returns
-   * the index (not x, y, z) of a given column in the matrix
-   */
-  int * voxelindex;
-
-  /* the message object that gets called with the solutions as param */
-  assembler_cb * asm_bc;
-
-  /* now this isn't hard to guess, is it? */
-  int piecenumber;
 
   /* used to abbort the searching */
   bool abbort;
@@ -136,17 +117,20 @@ private:
    */
   bool try_cover_row(register int r);
 
-  /* assm is used to contain the assembled puzzle
-   * once an assembly has been found
-   */
-  voxel_c * assm;
-
   /* get's called when a solution is found. this function
    * then assembles the solution inside assm and calles the
    * callback function with assm as parameter
    */
-  bool solution(void);
+  virtual bool solution(void) = 0;
 
+  /* used to collect the data neccessary to construct and for the iterative algorithm
+   * the assembly, it contains the indexes to the selected rows
+   * the columns array contains the indices of the coveres columns
+   * the pos value contains the number of pieces placed
+   */
+  int pos;
+  int *rows;
+  int *columns;
   int *nodeF;
   int *numF;
   int *pieceF;
@@ -156,13 +140,19 @@ private:
   int *searchState;
   void iterativeMultiSearch(void);
 
+  /**
+   * this function counts the number of nodes required to acommodate all pieces
+   * the title line is missing from the returned number
+   */
+  virtual unsigned long countNodes(puzzle_c * puz) = 0;
+
   /* this function creates the matrix for the search function
    * because we need to know how many nodes we need to allocate the
    * arrays with the right size, we add a parameter. if this is true
    * the function will not access the array but only count the number
    * of nodes used. this number is returned
    */
-  void prepare(puzzle_c * puz, int res_filles, int res_vari);
+  virtual void prepare(puzzle_c * puz, int res_filles, int res_vari) = 0;
 
   /* used by reduce to find out if the given position is a dead end
    * and will always lead to non solvable positions
@@ -198,9 +188,6 @@ private:
   /* number of iterations the asseble routine run */
   unsigned long iterations;
 
-  /* first and one after last column for the variable voxels */
-  int varivoxelStart;
-  int varivoxelEnd;
 
   /* the number of holes the assembles piece will have. Holes are
    * voxels in the variable voxel set that are not filled. The other
@@ -208,11 +195,44 @@ private:
    */
   int holes;
 
+  /* the current position inside the matrix
+   */
+  unsigned long firstfree;
+
+  /* first and one after last column for the variable voxels */
+  int varivoxelStart;
+  int varivoxelEnd;
+
+  /* now this isn't hard to guess, is it? */
+  int piecenumber;
+
+  /* the message object that gets called with the solutions as param */
+  assembler_cb * asm_bc;
+
+protected:
+
+  void GenerateFirstRow(int res_filled);
+  void AddFillerNode(void );
+  int AddPieceNode(int piece);
+  void AddVoxelNode(int col, int piecenode);
+  void nextPiece(int piece, int count, int number);
+
+
+  int getRows(int pos) { return rows[pos]; }
+  int getRight(int pos) { return right[pos]; }
+  int getPiece(int pos) { return piece[pos]; }
+  int getColCount(int pos) { return colCount[pos]; }
+  int getVarivoxelStart(void) { return varivoxelStart; }
+  int getPos(void) { return pos; }
+
+  assembler_cb * getCallback(void) { return asm_bc; }
 
 public:
 
-  assembler_0_c(const puzzle_c * puz);
-  ~assembler_0_c();
+  assembler_0_c(void);
+  ~assembler_0_c(void);
+
+  void createMatrix(const puzzle_c * puz);
 
   void reduce(void);
 

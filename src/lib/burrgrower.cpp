@@ -1,7 +1,7 @@
 #include "burrgrower.h"
 
 #include "disassembler_2.h"
-#include "assembler_0.h"
+#include "assm_0_frontend_0.h"
 
 #include <fstream>
 
@@ -11,7 +11,8 @@ puzzleSol_c::puzzleSol_c(puzzle_c * p) {
 
   puzzle = p;
 
-  assembler_0_c *assm = new assembler_0_c(p);
+  assm_0_frontend_0_c *assm = new assm_0_frontend_0_c();
+  assm->createMatrix(p);
 
   solutions = 0;
 

@@ -17,7 +17,7 @@
  */
 
 #include "lib/puzzle.h"
-#include "lib/assembler_0.h"
+#include "lib/assm_0_frontend_0.h"
 #include "lib/disassembler_3.h"
 
 #include <fstream>
@@ -135,24 +135,27 @@ int main(int argv, char* args[]) {
 
   p.print();
 
-  assembler_0_c assm(&p);
+  assembler_0_c *assm = new assm_0_frontend_0_c();
+  assm->createMatrix(&p);
 
   if (reduce) {
     cout << "start reduce\n\n";
-    assm.reduce();
+    assm->reduce();
     cout << "finished reduce\n\n";
   }
 
-  if (assm.errors()) {
-    cout << assm.errors() << endl;
+  if (assm->errors()) {
+    cout << assm->errors() << endl;
+    delete assm;
     return 0;
   }
 
   asm_cb a(p.getPieces());
 
-  assm.assemble(&a);
+  assm->assemble(&a);
 
-  cout << a.Assemblies << " assemblies and " << a.Solutions << " solutions found with " << assm.getIterations() << " iterations\n";
+  cout << a.Assemblies << " assemblies and " << a.Solutions << " solutions found with " << assm->getIterations() << " iterations\n";
+  delete assm;
 
   return 0;
 }

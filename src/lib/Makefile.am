@@ -8,6 +8,7 @@ libburr_a_SOURCES=disassembler.h \
                   disassembly.cpp disassembly.h \
                   assembler.h \
                   assembler_0.cpp assembler_0.h \
+                  assm_0_frontend_0.cpp assm_0_frontend_0.h \
                   puzzle.cpp puzzle.h \
                   voxel.cpp voxel.h \
                   burrgrower.h burrgrower.cpp \

@@ -2,7 +2,7 @@
 #define __ASSEMBLYCALLBACK_H__
 
 #include "../lib/disassembly.h"
-#include "../lib/assembler_0.h"
+#include "../lib/assm_0_frontend_0.h"
 #include "../lib/disassembler_3.h"
 
 //class solutions_c;
@@ -19,7 +19,7 @@ class assemblerThread : public assembler_cb {
   int action;
   int _solutionAction;
 
-  assembler_0_c assembler;
+  assm_0_frontend_0_c assembler;
 
   std::vector<solution> sols;
 
