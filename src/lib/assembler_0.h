@@ -245,7 +245,7 @@ public:
   const char * errors(void);
   virtual float getFinished(void);
   virtual void stop(void) { abbort = true; }
-  virtual bool stopped(void) { return !running; }
+  virtual bool stopped(void) const { return !running; }
   virtual bool getPosition(char * string, int len);
   virtual void setPosition(char * string);
 };

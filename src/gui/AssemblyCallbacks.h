@@ -75,14 +75,14 @@ public:
   void start(void);
   void stop(void);
 
-  bool stopped(void);
+  bool stopped(void) const { return assembler.stopped(); }
 
   float getFinished(void) { return assembler.getFinished(); }
   unsigned long getIterations(void) { return assembler.getIterations(); }
 
-  unsigned long number(void);
-  const voxel_c * getAssm(unsigned long num);
-  const disassembly_c * getDisasm(unsigned long num);
+  unsigned long number(void) const;
+  const assemblyVoxel_c * getAssm(unsigned long num) const;
+  const disassembly_c * getDisasm(unsigned long num) const;
 
   const char * errors(void) { return assembler.errors(); }
 

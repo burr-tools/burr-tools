@@ -154,9 +154,7 @@ void assemblerThread::start(void) {
 
 }
 
-bool assemblerThread::stopped(void) { return assembler.stopped(); }
-
-unsigned long assemblerThread::number(void) { return sols.size(); }
-const voxel_c * assemblerThread::getAssm(unsigned long num) { return sols[num].assembly; }
-const disassembly_c * assemblerThread::getDisasm(unsigned long num) { return sols[num].disassembly; }
+unsigned long assemblerThread::number(void) const { return sols.size(); }
+const assemblyVoxel_c * assemblerThread::getAssm(unsigned long num) const { return sols[num].assembly; }
+const disassembly_c * assemblerThread::getDisasm(unsigned long num) const { return sols[num].disassembly; }
 
