@@ -20,22 +20,18 @@
 #ifndef __ASSEMBLYCALLBACK_H__
 #define __ASSEMBLYCALLBACK_H__
 
-#include "../lib/disassembly.h"
-#include "../lib/assm_0_frontend_0.h"
-#include "../lib/disassembler_3.h"
+#include "../lib/puzzle.h"
+#include "../lib/assembler.h"
 
-/* this class will handle the solving of the puzzle. It will start the background thread
- * pause it, continue the work, save and load it
+/* this class will handle the solving of one problem of the puzzle, it can also
+ * be used to continue an already started solution, so that you can save you results
+ * and continue later on
  */
 class assemblerThread : public assembler_cb {
 
   int assemblies;
   int action;
   int _solutionAction;
-
-  assm_0_frontend_0_c assembler;
-
-  bool reduced;
 
   puzzle_c * puzzle;
   unsigned int prob;
@@ -48,8 +44,8 @@ public:
     SOL_DISASM
   };
 
-  // start the thread
-  assemblerThread(const puzzle_c * puz, int solAction, unsigned int problemNum);
+  // create all the necessary data structures to start the thread later on
+  assemblerThread(puzzle_c * puz, unsigned int problemNum, int solAction);
 
   // stop and exit
   ~assemblerThread(void);
@@ -68,20 +64,18 @@ public:
 
   int currentAction(void) { return action; }
 
+  // let the thread start
   void start(void);
+
+  // try to stop the thread at the next possible position
   void stop(void);
 
-  bool stopped(void) const { return assembler.stopped(); }
-
-  float getFinished(void) { return assembler.getFinished(); }
-  unsigned long getIterations(void) { return assembler.getIterations(); }
-
-  const char * errors(void) { return assembler.errors(); }
+  bool stopped(void) const { return (action == ACT_PAUSING) || (action == ACT_FINISHED); }
 
 #ifdef WIN32
-friend unsigned long __stdcall start_th(void * c);
+  friend unsigned long __stdcall start_th(void * c);
 #else
-friend void* start_th(void * c);
+  friend void* start_th(void * c);
 #endif
 
 };

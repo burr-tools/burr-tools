@@ -280,9 +280,17 @@ public:
 };
 
 
-problem_c::problem_c(problem_c * prob) : result(prob->result), colorConstraints(prob->colorConstraints.getColors()) {
+problem_c::problem_c(problem_c * orig) : result(orig->result), colorConstraints(orig->colorConstraints.getColors()) {
   assm = 0;
-//  colorConstraints
+  name = orig->name;
+  result = orig->result;
+
+  for (int i = 0; i < colorConstraints.getColors(); i++)
+    for (int j = 0; j < colorConstraints.getColors(); j++)
+      colorConstraints.set(i, j, orig->colorConstraints.get(i, j));
+
+  for (int i = 0; i < orig->shapes.size(); i++)
+    shapes.push_back(orig->shapes[i]);
 }
 
 
@@ -384,16 +392,18 @@ puzzle_c::puzzle_c(void) {
 
 
 puzzle_c::puzzle_c(const puzzle_c * orig) {
-/* FIXME
-  for (int i = 0; i < orig->results.size(); i++)
-    results.push_back(new pieceVoxel_c(orig->results[i]));
 
-  for (int i = 0; i < orig->getShapeNumber(); i++) {
-    shapeInfo pi;
-    pi.piece = new pieceVoxel_c(orig->___getShape(i));
-    pi.count = orig->getShapeCount(i);
-    shapes.push_back(pi);
-  }*/
+  for (int i = 0; i < orig->shapes.size(); i++)
+    shapes.push_back(new pieceVoxel_c(orig->shapes[i]));
+
+  for (int i = 0; i < orig->problems.size(); i++)
+    problems.push_back(new problem_c(orig->problems[i]));
+
+  for (int i = 0; i < orig->colors.size(); i++)
+    colors.push_back(orig->colors[i]);
+
+  designer = orig->designer;
+  comment = orig->comment;
 }
 
 
@@ -828,10 +838,12 @@ void puzzle_c::probAddSolution(unsigned int prob, assemblyVoxel_c * voxel, separ
   problems[prob]->solutions.push_back(new solution_c(voxel, tree));
 }
 
-void puzzle_c::removeAllSolutions(unsigned int prob) {
+void puzzle_c::probRemoveAllSolutions(unsigned int prob) {
   assert(prob < problems.size());
   for_each(problems[prob]->solutions.begin(), problems[prob]->solutions.end(), deallocate<solution_c>);
   problems[prob]->solutions.clear();
+  delete problems[prob]->assm;
+  problems[prob]->assm = 0;
 }
 
 unsigned int puzzle_c::probSolutionNumber(unsigned int prob) {
@@ -851,5 +863,20 @@ separation_c * puzzle_c::probGetDisassembly(unsigned int prob, unsigned int sol)
   assert(sol < problems[prob]->solutions.size());
 
   return problems[prob]->solutions[sol]->tree;
+}
+
+void puzzle_c::probSetAssembler(unsigned int prob, assembler_c * assm) {
+  assert(prob < problems.size());
+  problems[prob]->assm = assm;
+}
+
+assembler_c * puzzle_c::probGetAssembler(unsigned int prob) {
+  assert(prob < problems.size());
+  return problems[prob]->assm;
+}
+
+const assembler_c * puzzle_c::probGetAssembler(unsigned int prob) const {
+  assert(prob < problems.size());
+  return problems[prob]->assm;
 }
 

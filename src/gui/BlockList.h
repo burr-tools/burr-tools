@@ -63,6 +63,8 @@ private:
   /* currently selected puzzle */
   unsigned int currentSelect;
 
+  bool locked;
+
 public:
 
   enum {
@@ -70,20 +72,32 @@ public:
     RS_SELECTABLE_LAST
   };
 
-  SelectableList(int x, int y, int w, int h) : BlockList(x, y, w, h), currentSelect(0) { }
+  SelectableList(int x, int y, int w, int h) : BlockList(x, y, w, h), currentSelect(0), locked(false) { }
 
   int getSelection(void) { return currentSelect; }
 
   void setSelection(unsigned int num) {
-    currentSelect = num;
-    redraw();
+    if (currentSelect != num) {
+      currentSelect = num;
+      do_callback(RS_CHANGEDSELECTION);
+      redraw();
+    }
   }
 
   virtual void push(unsigned int block) {
-    currentSelect = block;
-    do_callback(RS_CHANGEDSELECTION);
-    redraw();
+    if (locked)
+      return;
+
+    if (currentSelect != block) {
+      currentSelect = block;
+      do_callback(RS_CHANGEDSELECTION);
+      redraw();
+    }
   }
+
+  // locks the current selected position
+  // mous clicks are ignored
+  void lockPosition(bool lock) { locked = lock; }
 };
 
 class SelectableTextList : public SelectableList {

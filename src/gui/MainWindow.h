@@ -162,13 +162,18 @@ public:
   void cb_SaveAs(void);
   void cb_Quit(void);
 
+  void ReplacePuzzle(puzzle_c * newPuzzle);
+
+
   void show(int argn, char ** argv);
 
-  void activatePiece(int number);
-  void activateProblem(void);
-  void activateSolution(unsigned int num);
+  void activateShape(unsigned int number);
+  void activateProblem(unsigned int prob);
+  void activateSolution(unsigned int prob, unsigned int num);
+  void activateClear(void);
+
+  bool threadStopped(void);
 
   void update(void);
-  void removeAssmThread(void);
 };
 #endif

@@ -25,6 +25,11 @@
 #include <pthread.h>
 #endif
 
+#include "../lib/disassembly.h"
+#include "../lib/assm_0_frontend_0.h"
+#include "../lib/disassembler_3.h"
+
+
 
 #ifdef WIN32
 unsigned long __stdcall start_th(void * c)
@@ -34,41 +39,51 @@ void* start_th(void * c)
 {
   assemblerThread * p = (assemblerThread*)c;
 
-  if (!p->reduced) {
+  assm_0_frontend_0_c * assm;
+
+  if (!p->puzzle->probGetAssembler(p->prob)) {
+    p->action = assemblerThread::ACT_PREPARATION;
+    assm = new assm_0_frontend_0_c();
+    assm->createMatrix(p->puzzle, p->prob);
+    if (assm->errors()) {
+      printf(" error, %s\n", assm->errors());
+      return 0;
+    }
+
     p->action = assemblerThread::ACT_REDUCE;
-    p->assembler.reduce();
-    p->reduced = true;
-  }
+    assm->reduce();
+
+    p->puzzle->probSetAssembler(p->prob, assm);
+
+  } else
+    assm = (assm_0_frontend_0_c*)p->puzzle->probGetAssembler(p->prob);
 
   p->action = assemblerThread::ACT_ASSEMBLING;
-  p->assembler.assemble(p);
+  assm->assemble(p);
 
-  p->action = assemblerThread::ACT_FINISHED;
+  if (assm->getFinished() >= 1)
+    p->action = assemblerThread::ACT_FINISHED;
+  else
+    p->action = assemblerThread::ACT_PAUSING;
 
   return 0;
 }
 
-assemblerThread::assemblerThread(const puzzle_c * puzzle, int solAction, unsigned int problemNum) :
+assemblerThread::assemblerThread(puzzle_c * puz, unsigned int problemNum, int solAction) :
 assemblies(0),
 action(ACT_PREPARATION),
 _solutionAction(solAction),
-reduced(false),
+puzzle(puz),
 prob(problemNum)
 {
-  assembler.createMatrix(puzzle, problemNum);
 }
 
 assemblerThread::~assemblerThread(void) {
 
-  assembler.stop();
+  puzzle->probGetAssembler(prob)->stop();
 
-  struct timespec req, rem;
-
-  while (!assembler.stopped()) {
-    req.tv_sec = 0;
-    req.tv_nsec = 100000;
-    nanosleep (&req, &rem);
-  }
+  while (!puzzle->probGetAssembler(prob)->stopped())
+    usleep(10000);
 }
 
 bool assemblerThread::assembly(assemblyVoxel_c * as) {
@@ -97,17 +112,7 @@ bool assemblerThread::assembly(assemblyVoxel_c * as) {
 }
 
 void assemblerThread::stop(void) {
-  assembler.stop();
-
-  struct timespec req, rem;
-
-  while (!assembler.stopped()) {
-    req.tv_sec = 0;
-    req.tv_nsec = 100000;
-    nanosleep (&req, &rem);
-  }
-
-  action = ACT_PAUSING;
+  puzzle->probGetAssembler(prob)->stop();
 }
 
 void assemblerThread::start(void) {

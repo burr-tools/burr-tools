@@ -186,10 +186,11 @@ public:
 
   void probSetAssembler(unsigned int prob, assembler_c * assm);
   assembler_c * probGetAssembler(unsigned int prob);
+  const assembler_c * probGetAssembler(unsigned int prob) const;
 
   void probAddSolution(unsigned int prob, assemblyVoxel_c * voxel);
   void probAddSolution(unsigned int prob, assemblyVoxel_c * voxel, separation_c * tree);
-  void removeAllSolutions(unsigned int prob);
+  void probRemoveAllSolutions(unsigned int prob);
   unsigned int probSolutionNumber(unsigned int prob);
   assemblyVoxel_c * probGetAssembly(unsigned int prob, unsigned int sol);
   separation_c * probGetDisassembly(unsigned int prob, unsigned int sol);

@@ -31,6 +31,14 @@
 
 static UserInterface * ui;
 
+static char * FileSelection(const char * title) {
+#ifdef HAVE_FLU
+    const char * f = flu_file_chooser(title, "*.puzzle", "");
+#else    
+    const char * f = fl_file_chooser(title, "*.puzzle", "");
+#endif
+}
+
 static void cb_AddColor_stub(Fl_Widget* o, void* v) { ui->cb_AddColor(); }
 void UserInterface::cb_AddColor(void) {
 
@@ -60,53 +68,74 @@ void UserInterface::cb_RemoveColor(void) {
 static void cb_NewShape_stub(Fl_Widget* o, void* v) { ui->cb_NewShape(); }
 void UserInterface::cb_NewShape(void) {
 
-  activatePiece(puzzle->addShape(6, 6, 6));
+  // FIXME, all edit operations should be blocked while solving and should remove all
+  // solutions, when they do exists
+
+  PcSel->setSelection(puzzle->addShape(6, 6, 6));
   changed = true;
 }
 
 
 static void cb_DeleteShape_stub(Fl_Widget* o, void* v) { ui->cb_DeleteShape(); }
 void UserInterface::cb_DeleteShape(void) {
-  if (puzzle->shapeNumber() > 0) {
 
-    int current = PcSel->getSelection();
+  int current = PcSel->getSelection();
+
+  if (current < puzzle->shapeNumber()) {
 
     puzzle->removeShape(current);
 
-    if (current >= puzzle->shapeNumber())
+    while (current >= puzzle->shapeNumber())
       current--;
 
-    activatePiece(current);
+    PcSel->setSelection(current);
 
     changed = true;
-  }
+
+  } else
+
+    fl_message("No shape to delete selected!");
+
 }
 
 
 static void cb_CopyShape_stub(Fl_Widget* o, void* v) { ui->cb_CopyShape(); }
 void UserInterface::cb_CopyShape(void) {
 
-  puzzle->addShape(new pieceVoxel_c(puzzle->getShape(PcSel->getSelection())));
-  activatePiece(puzzle->shapeNumber()-1);
-  changed = true;
+  int current = PcSel->getSelection();
+
+  if (current < puzzle->shapeNumber()) {
+
+    PcSel->setSelection(puzzle->addShape(new pieceVoxel_c(puzzle->getShape(current))));
+    changed = true;
+
+  } else
+
+    fl_message("No shape to copy selected!");
+
+
 }
 
 
 static void cb_TaskSelectionTab_stub(Fl_Widget* o, void* v) { ui->cb_TaskSelectionTab((Fl_Tabs*)o); }
 void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
   if (o->value() == TabPieces) {
-    activatePiece(PcSel->getSelection());
+    activateShape(PcSel->getSelection());
   } else if(o->value() == TabProblems) {
-    activateProblem();
+    if (problemSelector->getSelection() < puzzle->problemNumber())
+      activateProblem(problemSelector->getSelection());
   } else if(o->value() == TabSolve) {
-    if (assmThread)
-      activateSolution(int(SolutionSel->value()));
+    if ((solutionProblem->getSelection() < puzzle->problemNumber()) &&
+        (SolutionSel->value() < puzzle->probSolutionNumber(solutionProblem->getSelection())))
+      activateSolution(solutionProblem->getSelection(), int(SolutionSel->value()));
   }
 }
 
 
 static void cb_TransformPiece_stub(Fl_Widget* o, long v) { ui->cb_TransformPiece(); }
-void UserInterface::cb_TransformPiece(void) { activatePiece(PcSel->getSelection()); }
+void UserInterface::cb_TransformPiece(void) {
+  activateShape(PcSel->getSelection());
+}
 
 
 static void cb_PcSel_stub(Fl_Widget* o, long v) { ui->cb_PcSel(v); }
@@ -114,7 +143,7 @@ void UserInterface::cb_PcSel(long reason) {
 
   switch(reason) {
   case PieceSelector::RS_CHANGEDSELECTION:
-    activatePiece(PcSel->getSelection());
+    activateShape(PcSel->getSelection());
     break;
   }
 }
@@ -303,134 +332,207 @@ void UserInterface::cb_CCSort(bool byResult) {
   colconstrList->SetSortByResult(byResult);
 }
 
-static void cb_TransformResult_stub(Fl_Widget* o, long v) { ui->cb_TransformResult(); }
-
 static void cb_BtnStart_stub(Fl_Widget* o, void* v) { ui->cb_BtnStart(); }
 void UserInterface::cb_BtnStart(void) {
 
-  removeAssmThread();
+  assert(assmThread == 0);
+
+  unsigned int prob = solutionProblem->getSelection();
+
+  puzzle->probRemoveAllSolutions(prob);
+  if (puzzle->probGetAssembler(prob)) {
+    delete puzzle->probGetAssembler(prob);
+    puzzle->probSetAssembler(prob, 0);
+  }
 
   if (SolveDisasm->value() != 0)
-    assmThread = new assemblerThread(puzzle, assemblerThread::SOL_DISASM, solutionProblem->getSelection());
+    assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_DISASM);
   else
-    assmThread = new assemblerThread(puzzle, assemblerThread::SOL_SAVE_ASM, solutionProblem->getSelection());
+    assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_SAVE_ASM);
 
-  if (assmThread->errors()) {
+  assmThread->start();
 
-    fl_alert(assmThread->errors());
-    delete assmThread;
-    assmThread = 0;
+  BtnStart->deactivate();
+  BtnCont->deactivate();
+  BtnStop->activate();
 
-  } else {
-
-    assmThread->start();
-
-    activateSolution(0);
-
-    BtnStart->deactivate();
-    BtnCont->deactivate();
-    BtnStop->activate();
-  }
+  solutionProblem->lockPosition(true);
 }
 
 static void cb_BtnCont_stub(Fl_Widget* o, void* v) { ui->cb_BtnCont(); }
 void UserInterface::cb_BtnCont(void) {
-/*
-  if (assmThread)
-    assmThread->start();
+
+  assert(assmThread == 0);
+
+  unsigned int prob = solutionProblem->getSelection();
+
+  if (SolveDisasm->value() != 0)
+    assmThread = new assemblerThread(puzzle, solutionProblem->getSelection(), assemblerThread::SOL_DISASM);
+  else
+    assmThread = new assemblerThread(puzzle, solutionProblem->getSelection(), assemblerThread::SOL_SAVE_ASM);
+
+  assmThread->start();
 
   BtnStart->deactivate();
   BtnCont->deactivate();
-  BtnStop->activate();*/
+  BtnStop->activate();
+
+  solutionProblem->lockPosition(true);
 }
 
 static void cb_BtnStop_stub(Fl_Widget* o, void* v) { ui->cb_BtnStop(); }
 void UserInterface::cb_BtnStop(void) {
-/*
-  if (assmThread)
-    assmThread->stop();
 
-  BtnStart->activate();
-  BtnCont->activate();
-  BtnStop->deactivate();*/
+  assert(assmThread);
+
+  assmThread->stop();
 }
 
 
 static void cb_SolutionSel_stub(Fl_Widget* o, void* v) { ui->cb_SolutionSel((Fl_Value_Slider*)o); }
-static void cb_SolutionAnim_stub(Fl_Widget* o, void* v) { ui->cb_SolutionAnim((Fl_Value_Slider*)o); }
-
-static void cb_PcVis_stub(Fl_Widget* o, void* v) { ui->cb_PcVis(); }
-
-static void cb_New_stub(Fl_Widget* o, void* v) { ui->cb_New(); }
-static void cb_Load_stub(Fl_Widget* o, void* v) { ui->cb_Load(); }
-static void cb_Save_stub(Fl_Widget* o, void* v) { ui->cb_Save(); }
-static void cb_SaveAs_stub(Fl_Widget* o, void* v) { ui->cb_SaveAs(); }
-static void cb_Quit_stub(Fl_Widget* o, void* v) { ui->cb_Quit(); }
-
-
-
-
-
-
-void UserInterface::cb_TransformResult(void) { /*activateResult(); */}
-
-
-void UserInterface::removeAssmThread(void) {
-
-  if(TaskSelectionTab->value() == TabSolve)
-    activateSolution(-1);
-
-  if (assmThread) {
-    delete assmThread;
-    assmThread = 0;
-  }
-}
-
-
-
-
 void UserInterface::cb_SolutionSel(Fl_Value_Slider* o) {
-//  activateSolution(int(o->value()));
+  activateSolution(solutionProblem->getSelection(), int(o->value()));
 }
 
+static void cb_SolutionAnim_stub(Fl_Widget* o, void* v) { ui->cb_SolutionAnim((Fl_Value_Slider*)o); }
 void UserInterface::cb_SolutionAnim(Fl_Value_Slider* o) {
-#if 0
   o->take_focus();
   if (disassemble) {
     disassemble->setStep(o->value());
     View3D->redraw();
   }
-#endif
 }
 
+
+static void cb_PcVis_stub(Fl_Widget* o, void* v) { ui->cb_PcVis(); }
 void UserInterface::cb_PcVis(void) {
 #if 0
   View3D->redraw();
 #endif
 }
 
+static void cb_New_stub(Fl_Widget* o, void* v) { ui->cb_New(); }
 void UserInterface::cb_New(void) {
-#if 0
-  if (!assmThread || assmThread->stopped()) {
+
+  if (threadStopped()) {
 
     if (changed)
       if (fl_ask("Puzzle changed are you shure?") == 0)
         return;
 
-    if (puzzle)
-      delete puzzle;
-    puzzle = new puzzle_c();
+    ReplacePuzzle(new puzzle_c());
 
     if (fname) {
       delete [] fname;
       fname = 0;
     }
-    PcSel2->setPuzzle(puzzle);
+
     changed = false;
-    activatePiece(0);
+
+    activateShape(0);
   }
-#endif
 }
+
+
+static void cb_Load_stub(Fl_Widget* o, void* v) { ui->cb_Load(); }
+void UserInterface::cb_Load(void) {
+
+  if (threadStopped()) {
+
+    if (changed)
+      if (fl_ask("Puzzle changed are you shure?") == 0)
+        return;
+
+    const char * f = FileSelection("Load Puzzle");
+
+    tryToLoad(f);
+  }
+}
+
+
+static void cb_Save_stub(Fl_Widget* o, void* v) { ui->cb_Save(); }
+void UserInterface::cb_Save(void) {
+
+  if (threadStopped()) {
+
+    if (!fname)
+      cb_SaveAs();
+
+    else {
+      ofstream ostr(fname);
+    
+      if (ostr)
+        ostr << puzzle->save();
+    
+      if (!ostr)
+        fl_alert("puzzle NOT saved!!");
+      else
+        changed = false;
+    }
+  }
+}
+
+
+static void cb_SaveAs_stub(Fl_Widget* o, void* v) { ui->cb_SaveAs(); }
+void UserInterface::cb_SaveAs(void) {
+
+  if (threadStopped()) {
+    const char * f = FileSelection("Save Puzzle as");
+  
+    if (f) {
+  
+      ofstream ostr(f);
+  
+      if (ostr)
+        ostr << puzzle->save();
+  
+      if (!ostr)
+        fl_alert("puzzle NOT saved!!!");
+      else
+        changed = false;
+  
+      if (fname) delete [] fname;
+      fname = new char[strlen(f)+1];
+      strcpy(fname, f);
+  
+      char nm[300];
+      snprintf(nm, 299, "BurrTools - %s", fname);
+      mainWindow->label(nm);
+    }
+  }
+}
+
+
+static void cb_Quit_stub(Fl_Widget* o, void* v) { ui->cb_Quit(); }
+void UserInterface::cb_Quit(void) {
+  if (changed)
+    if (fl_ask("Puzzle changed are you shure?") == 0)
+      return;
+  mainWindow->hide();
+}
+
+
+
+
+
+
+
+bool UserInterface::threadStopped(void) {
+
+  if (assmThread) {
+
+    fl_message("Stop solving process first!");
+    return false;
+  }
+
+  return true;
+}
+
+
+
+
+
+
 
 void UserInterface::tryToLoad(const char * f) {
 
@@ -464,102 +566,38 @@ void UserInterface::tryToLoad(const char * f) {
     snprintf(nm, 299, "BurrTools - %s", fname);
     mainWindow->label(nm);
 
-    delete puzzle;
-    puzzle = newPuzzle;
+    ReplacePuzzle(newPuzzle);
 
-    // inform every body
-    colorSelector->setPuzzle(puzzle);
-    PcSel->setPuzzle(puzzle);
-    pieceEdit->setPuzzle(puzzle, 0);
-    problemSelector->setPuzzle(puzzle);
-    colorAssignmentSelector->setPuzzle(puzzle);
-    colconstrList->setPuzzle(puzzle, 0);
-    problemResult->setPuzzle(puzzle, 0);
-    shapeAssignmentSelector->setPuzzle(puzzle);
-    PiecesCountList->setPuzzle(puzzle, 0);
-    solutionProblem->setPuzzle(puzzle);
-    PcVis->setPuzzle(puzzle, 0);
     TaskSelectionTab->value(TabPieces);
-
 /*
-      activatePiece(0);
+      activateShape(0);
       removeAssmThread();
 */
     changed = false;
   }
 }
 
-void UserInterface::cb_Load(void) {
-  if (!assmThread || assmThread->stopped()) {
 
-    if (changed)
-      if (fl_ask("Puzzle changed are you shure?") == 0)
-        return;
 
-#ifdef HAVE_FLU
-    const char * f = flu_file_chooser("Load Puzzle", "*.puzzle", "");
-#else    
-    const char * f = fl_file_chooser("Load Puzzle", "*.puzzle", "");
-#endif
+void UserInterface::ReplacePuzzle(puzzle_c * NewPuzzle) {
 
-    tryToLoad(f);
-  }
+    // inform everybody
+    colorSelector->setPuzzle(NewPuzzle);
+    PcSel->setPuzzle(NewPuzzle);
+    pieceEdit->setPuzzle(NewPuzzle, 0);
+    problemSelector->setPuzzle(NewPuzzle);
+    colorAssignmentSelector->setPuzzle(NewPuzzle);
+    colconstrList->setPuzzle(NewPuzzle, 0);
+    problemResult->setPuzzle(NewPuzzle, 0);
+    shapeAssignmentSelector->setPuzzle(NewPuzzle);
+    PiecesCountList->setPuzzle(NewPuzzle, 0);
+    solutionProblem->setPuzzle(NewPuzzle);
+    PcVis->setPuzzle(NewPuzzle, 0);
+
+    delete puzzle;
+    puzzle = NewPuzzle;
 }
 
-void UserInterface::cb_Save(void) {
-
-  if (!fname)
-    cb_SaveAs();
-
-  else {
-    ofstream ostr(fname);
-  
-    if (ostr)
-      ostr << puzzle->save();
-  
-    if (!ostr)
-      fl_alert("puzzle NOT saved!!");
-    else
-      changed = false;
-  }
-}
-
-void UserInterface::cb_SaveAs(void) {
-
-#ifdef HAVE_FLU
-  const char * f = flu_file_chooser("Save Puzzle as", "*.puzzle", "");
-#else  
-  const char * f = fl_file_chooser("Save Puzzle as", "*.puzzle", "");
-#endif  
-
-  if (f) {
-
-    ofstream ostr(f);
-
-    if (ostr)
-      ostr << puzzle->save();
-
-    if (!ostr)
-      fl_alert("puzzle NOT saved!!!");
-    else
-      changed = false;
-
-    if (fname) delete [] fname;
-    fname = new char[strlen(f)+1];
-    strcpy(fname, f);
-
-    char nm[300];
-    snprintf(nm, 299, "BurrTools - %s", fname);
-    mainWindow->label(nm);
-  }
-}
-
-void UserInterface::cb_Quit(void) {
-  if (changed)
-    if (fl_ask("Puzzle changed are you shure?") == 0)
-      return;
-  mainWindow->hide();
-}
 
 Fl_Menu_Item UserInterface::menu_MainMenu[] = {
   {"New",     0, cb_New_stub, 0, 0, 0, 0, 14, 56},
@@ -578,9 +616,15 @@ void UserInterface::show(int argn, char ** argv) {
     tryToLoad(argv[1]);
 }
 
-void UserInterface::activatePiece(int number) {
+void UserInterface::activateClear(void) {
+  View3D->setVoxelSpace(0, 0);
+  pieceEdit->clearPuzzle();
+  pieceTools->setVoxelSpace(0);
+}
 
-  if ((number < puzzle->shapeNumber()) && (number >= 0)) {
+void UserInterface::activateShape(unsigned int number) {
+
+  if ((number < puzzle->shapeNumber())) {
 
     pieceVoxel_c * p = puzzle->getShape(number);
 
@@ -598,7 +642,7 @@ void UserInterface::activatePiece(int number) {
   }
 }
 
-void UserInterface::activateProblem(void) {
+void UserInterface::activateProblem(unsigned int prob) {
 #if 0
   pieceVoxel_c * p = puzzle->getResult(0); // FIXME multiple solutions
 
@@ -608,23 +652,24 @@ void UserInterface::activateProblem(void) {
 #endif
 }
 
-void UserInterface::activateSolution(unsigned int num) {
+void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
 
-#if 0
   if (disassemble) {
     delete disassemble;
     disassemble = 0;
   }
 
-  if (assmThread && (assmThread->number() > num)) {
+  if ((prob < puzzle->problemNumber()) && (num < puzzle->probSolutionNumber(prob))) {
 
-    int * pcNum = new int[puzzle->shapeNumber()];
+    unsigned int shapeNumber = puzzle->probShapeNumber(prob);
+
+    int * pcNum = new int[shapeNumber];
 
     int piece = 0;
 
-    for (int i = 0; i < puzzle->shapeNumber(); i++) {
-      pcNum[i] = puzzle->getShapeCount(i);
-      for (int j = 0; j < puzzle->getShapeCount(i); j++) {
+    for (int i = 0; i < shapeNumber; i++) {
+      pcNum[i] = puzzle->probGetShapeCount(prob, i);
+      for (int j = 0; j < pcNum[i]; j++) {
         colors[2*piece] = i;
         colors[2*piece+1] = j;
 
@@ -637,18 +682,18 @@ void UserInterface::activateSolution(unsigned int num) {
       }
     }
 
-    View3D->setVoxelSpace(assmThread->getAssm(num), shifting, visibility, 30, colors);
+    View3D->setVoxelSpace(puzzle->probGetAssembly(prob, num), shifting, visibility, 30, colors);
 
 //    PcVis->setPieceNumber(puzzle->shapeNumber(), pcNum, visibility);
 
-    if (assmThread->getDisasm(num)) {
+    if (puzzle->probGetDisassembly(prob, num)) {
       SolutionAnim->show();
-      SolutionAnim->range(0, assmThread->getDisasm(num)->sumlevel());
+      SolutionAnim->range(0, puzzle->probGetDisassembly(prob, num)->sumMoves());
 
       SolutionsInfo->show();
-      MovesInfo->value(assmThread->getDisasm(num)->sumlevel());
+      MovesInfo->value(puzzle->probGetDisassembly(prob, num)->sumMoves());
 
-      disassemble = new DisasmToMoves(assmThread->getDisasm(num), shifting, piece);
+      disassemble = new DisasmToMoves(puzzle->probGetDisassembly(prob, num), puzzle->probGetAssembly(prob, num), shifting, piece);
       disassemble->setStep(SolutionAnim->value());
     } else {
       SolutionAnim->range(0, 0);
@@ -663,58 +708,46 @@ void UserInterface::activateSolution(unsigned int num) {
     View3D->setVoxelSpace(0, 0);
     SolutionEmpty = true;
 
-    SolutionSel->hide();
     SolutionAnim->hide();
-    SolutionsInfo->hide();
     MovesInfo->hide();
   }
-#endif
 }
 
 void UserInterface::update(void) {
 
-#if 0
   if (assmThread) {
 
-    SolvingProgress->value(100*assmThread->getFinished());
+    unsigned int prob = solutionProblem->getSelection();
+    assembler_c * assm = puzzle->probGetAssembler(prob);
 
-    unsigned long numSol = 0;
+    if (!assm) return;
 
-    if (solutionProblem->getSelection() < puzzle->problemNumber())
-      numSol = puzzle->probSolutionNumber(solutionProblem->getSelection());
+    printf("upd1 %f\n", 100*assm->getFinished());
+    SolvingProgress->value(100*assm->getFinished());
+    printf("upd2\n");
+
+    unsigned long numSol = puzzle->probSolutionNumber(prob);
 
     if (numSol > 0) {
-      SolutionSel->show();
+
+    printf("upd3\n");
       SolutionSel->range(0, numSol-1);
+    printf("upd4\n");
+      SolutionsInfo->value(numSol);
+    printf("upd5\n");
+      OutputSolutions->value(numSol);
+    printf("upd6\n");
+
+      if (SolutionEmpty && (numSol > 0))
+        activateSolution(solutionProblem->getSelection(), 0);
+
     } else {
-      SolutionSel->hide();
       SolutionSel->range(0, 0);
     }
+    printf("upd7\n");
 
-    SolutionsInfo->value(numSol);
-    OutputSolutions->value(numSol);
-//    OutputIterations->value(puzzle->probGetAssembler(solutionProblem->getSelection())->getIterations());
-
-    if (SolutionEmpty && (numSol > 0))
-      activateSolution(0);
-
-    switch(assmThread->currentAction()) {
-    case assemblerThread::ACT_REDUCE:
-    case assemblerThread::ACT_ASSEMBLING:
-    case assemblerThread::ACT_DISASSEMBLING:
-      BtnStart->deactivate();
-      BtnCont->deactivate();
-      BtnStop->activate();
-      break;
-
-    case assemblerThread::ACT_PREPARATION:
-    case assemblerThread::ACT_PAUSING:
-    case assemblerThread::ACT_FINISHED:
-      BtnStart->activate();
-      BtnCont->activate();
-      BtnStop->deactivate();
-      break;
-    }
+    //    OutputIterations->value(puzzle->probGetAssembler(solutionProblem->getSelection())->getIterations());
+//    OutputAssemblies->value(assmThread->getAssemblies());
 
     switch(assmThread->currentAction()) {
     case assemblerThread::ACT_PREPARATION:
@@ -736,22 +769,29 @@ void UserInterface::update(void) {
       OutputActivity->value("finished");
       break;
     }
-/*
-    if (assmThread)
-      OutputAssemblies->value(assmThread->getAssemblies());
-*/
-  } else {
+    printf("upd8\n");
 
-    if (SolvingProgress->value() != 0)
-      SolvingProgress->value(0);
-
-    BtnStart->activate();
-    BtnCont->deactivate();
-    BtnStop->deactivate();
-
-    OutputActivity->value("nothing");
+    switch(assmThread->currentAction()) {
+    case assemblerThread::ACT_PREPARATION:
+    case assemblerThread::ACT_REDUCE:
+    case assemblerThread::ACT_ASSEMBLING:
+    case assemblerThread::ACT_DISASSEMBLING:
+      BtnStart->deactivate();
+      BtnCont->deactivate();
+      BtnStop->activate();
+      break;
+  
+    case assemblerThread::ACT_PAUSING:
+    case assemblerThread::ACT_FINISHED:
+      BtnStart->activate();
+      BtnCont->activate();
+      BtnStop->deactivate();
+      solutionProblem->lockPosition(false);
+      delete assmThread;
+      assmThread = 0;
+      break;
+    }
   }
-#endif
 }
 
 
@@ -1247,8 +1287,9 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     PcVis = new PieceVisibility(x, y, w, lh, puzzle);
     PcVis->tooltip("Change appearance of the pieces between normal, grid and invisible.");
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh, PcVis);
+    shapeGroup->callback(cb_PcVis_stub);
 
-    group->resizable(shapeGroup);
+      group->resizable(shapeGroup);
     group->end();
   }
   tile->end();
@@ -1299,6 +1340,9 @@ UserInterface::UserInterface() {
 
   mainWindow->resizable(mainTile);
 
-  activatePiece(0);
+  if (puzzle->shapeNumber())
+    activateShape(0);
+  else
+    activateClear();
 }
 
