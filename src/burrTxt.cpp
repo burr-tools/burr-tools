@@ -39,7 +39,7 @@ public:
 
   asm_cb(int pnum) : Assemblies(0), Solutions(0), pn(pnum) {}
 
-  bool assembly(assemblyVoxel_c * assm) {
+  bool assembly(assembly_c * a, assemblyVoxel_c * assm) {
 
     Assemblies++;
 

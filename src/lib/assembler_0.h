@@ -25,6 +25,8 @@
 #include "voxel.h"
 #include "puzzle.h"
 
+#include <vector>
+
 /* the order of pieces is mostly unimportant, except for the
  * very first piece. this is added with removed symmetry of the
  * target shape. for this the first piece must not have any symmetry
@@ -213,11 +215,30 @@ private:
    */
   unsigned int reducePiece;
 
+  /* this vector contains the placement (transformation and position) for
+   * a piece in a row
+   */
+  class piecePosition {
+
+  public:
+
+    int x, y, z;
+    unsigned char transformation;
+    unsigned int row;            // first node in this row
+
+    piecePosition(int x_, int y_, int z_, unsigned char transformation_, unsigned int row_) : x(x_), y(y_), z(z_),
+      transformation(transformation_), row(row_) {}
+  };
+  std::vector<piecePosition> piecePositions;
+
+
 protected:
 
   void GenerateFirstRow(int unsigned res_filled);
   void AddFillerNode(void);
   int AddPieceNode(unsigned int piece, unsigned int rot, unsigned int x, unsigned int y, unsigned int z);
+  void getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z);
+
   void AddVoxelNode(unsigned int col, unsigned int piecenode);
   void nextPiece(unsigned int piece, unsigned int count, unsigned int number);
 

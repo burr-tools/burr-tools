@@ -85,7 +85,7 @@ assemblerThread::~assemblerThread(void) {
     usleep(10000);
 }
 
-bool assemblerThread::assembly(assemblyVoxel_c * as) {
+bool assemblerThread::assembly(assembly_c * a, assemblyVoxel_c * as) {
 
   assemblies++;
 

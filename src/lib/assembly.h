@@ -20,6 +20,8 @@
 #ifndef __ASSEMBLY_H__
 #define __ASSEMBLY_H__
 
+#include <vector>
+
 #include <xmlwrapp/node.h>
 
 /* this class contains the assembly for a puzzle
@@ -32,6 +34,9 @@ class assembly_c {
 
   class placement_c {
 
+  public:
+
+    // transformation 0xFF means that the piece is NOT inside the solution
     unsigned char transformation;
 
     int xpos, ypos, zpos;
@@ -39,7 +44,7 @@ class assembly_c {
     placement_c(unsigned char tran, int x, int y, int z) : transformation(tran), xpos(x), ypos(y), zpos(z) {}
   };
 
-  vector<placement_c> placements;
+  std::vector<placement_c> placements;
 
 public:
 
@@ -50,7 +55,11 @@ public:
     placements.push_back(placement_c(tran, x, y, z));
   }
 
-  unsigned int placements(void) { return placements.size(); }
+  void addNonPlacement(void) {
+    placements.push_back(placement_c(0xff, 0, 0, 0));
+  }
+
+  unsigned int placementCount(void) { return placements.size(); }
 
   unsigned char getTransformation(unsigned char num) {
     assert(num < placements.size());
@@ -62,12 +71,12 @@ public:
     return placements[num].xpos;
   }
 
-  int char getY(unsigned char num) {
+  int getY(unsigned char num) {
     assert(num < placements.size());
     return placements[num].ypos;
   }
 
-  int char getZ(unsigned char num) {
+  int getZ(unsigned char num) {
     assert(num < placements.size());
     return placements[num].zpos;
   }

@@ -46,7 +46,7 @@ public:
 
   asm_cb(int pnum) : count(0), pn(pnum) {}
 
-  bool assembly(assemblyVoxel_c * assm) {
+  bool assembly(assembly_c * a, assemblyVoxel_c * assm) {
 
     count++;
 

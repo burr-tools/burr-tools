@@ -257,6 +257,8 @@ assm_0_frontend_0_c::~assm_0_frontend_0_c() {
   if (assm) delete assm;
 }
 
+typedef unsigned int uint32_t;
+
 bool assm_0_frontend_0_c::solution(void) {
 
   if (getCallback()) {
@@ -285,7 +287,38 @@ bool assm_0_frontend_0_c::solution(void) {
       } while (r != getRows(i));
     }
 
-    return getCallback()->assembly(assm);
+
+    // the new version, we do this double and check, if the results are identical, for the moment
+
+    assembly_c * assembly = new assembly_c();
+
+    /* first we need to find the order the piece are in */
+    uint32_t * pieces = new uint32_t[getPiecenumber()];
+
+    /* fill the array with 0xff, so that we can distinguish between
+     * places and unplaces pieces
+     */
+    memset(pieces, 0xff, sizeof(unsigned int) * getPos());
+
+    for (unsigned int i = 0; i < getPos(); i++) {
+      assert(getPiece(i) < getPiecenumber());
+      pieces[getPiece(i)] = i;
+    }
+
+    for (unsigned int i = 0; i < getPiecenumber(); i++)
+      if (pieces[i] > getPos())
+        assembly->addNonPlacement();
+      else {
+        unsigned char tran;
+        int x, y, z;
+
+        getPieceInformation(getRows(i), &tran, &x, &y, &z);
+        assembly->addPlacement(tran, x, y, z);
+      }
+
+    delete [] pieces;
+
+    return getCallback()->assembly(assembly, assm);
   }
 
   return true;

@@ -72,7 +72,24 @@ int assembler_0_c::AddPieceNode(unsigned int piece, unsigned int rot, unsigned i
   colCount[piecenode] = piece+1;
   colCount[piece+1]++;
 
+  piecePositions.push_back(piecePosition(x, y, z, rot, piecenode));
+
   return piecenode;
+}
+
+void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z) {
+
+  for (int i = piecePositions.size()-1; i >= 0; i--)
+    if (piecePositions[i].row < node) {
+      *tran = piecePositions[i].transformation;
+      *x = piecePositions[i].x;
+      *y = piecePositions[i].y;
+      *z = piecePositions[i].z;
+
+      return;
+    }
+
+  assert(0);
 }
 
 void assembler_0_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
