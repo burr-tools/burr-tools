@@ -20,9 +20,12 @@
 #ifndef __ASSEMBLY_H__
 #define __ASSEMBLY_H__
 
-#include <vector>
+#include "voxel.h"
+#include "puzzle.h"
 
 #include <xmlwrapp/node.h>
+
+#include <vector>
 
 /* this class contains the assembly for a puzzle
  * an assembly is a list of trnasformations and

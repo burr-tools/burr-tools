@@ -1,10 +1,10 @@
 #include "assembly.h"
 
-assemblyVoxel_c * assembly::getVoxelSpace(const puzzle_c * puz, unsigned int prob) {
+assemblyVoxel_c * assembly_c::getVoxelSpace(const puzzle_c * puz, unsigned int prob) {
 
-  assembyVoxel_c * res = new assemblyVoxel_c(puz->probGetResultShapeShape()->getX(),
-                                             puz->probGetResultShapeShape()->getY(),
-                                             puz->probGetResultShapeShape()->getZ());
+  assemblyVoxel_c * res = new assemblyVoxel_c(puz->probGetResultShape(prob)->getX(),
+                                              puz->probGetResultShape(prob)->getY(),
+                                              puz->probGetResultShape(prob)->getZ());
 
   unsigned int idx = 0;
 
@@ -16,7 +16,7 @@ assemblyVoxel_c * assembly::getVoxelSpace(const puzzle_c * puz, unsigned int pro
       int dz = placements[idx].zpos;
 
       for (int x = 0; x < p.getX(); x++)
-        for (int y = 0; y < p.getY(), y++)
+        for (int y = 0; y < p.getY(); y++)
           for (int z = 0; z < p.getZ(); z++)
             if (p.getState(x, y, z) == pieceVoxel_c::VX_FILLED) {
 
@@ -28,6 +28,9 @@ assemblyVoxel_c * assembly::getVoxelSpace(const puzzle_c * puz, unsigned int pro
 
       idx++;
     }
+
+  return res;
+
 }
 
 
