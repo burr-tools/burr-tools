@@ -175,21 +175,6 @@ int puzzle_c::getPieces(void) const {
   return erg;
 }
 
-void puzzle_c::makeResultInsideHoly(void) {
-
-  for (int x = 1; x < result->getX()-1; x++)
-    for (int y = 1; y < result->getY()-1; y++)
-      for (int z = 1; z < result->getZ()-1; z++)
-        if (result->getState(x, y, z) != pieceVoxel_c::VX_EMPTY) {
-          if ((result->getState(x-1, y, z) == pieceVoxel_c::VX_EMPTY) || (result->getState(x+1, y, z) == pieceVoxel_c::VX_EMPTY) ||
-              (result->getState(x, y-1, z) == pieceVoxel_c::VX_EMPTY) || (result->getState(x, y+1, z) == pieceVoxel_c::VX_EMPTY) ||
-              (result->getState(x, y, z-1) == pieceVoxel_c::VX_EMPTY) || (result->getState(x, y, z+1) == pieceVoxel_c::VX_EMPTY))
-            result->setState(x, y, z, pieceVoxel_c::VX_FILLED);
-          else
-            result->setState(x, y, z, pieceVoxel_c::VX_VARIABLE);
-        }
-}
-
 void puzzle_c::orthogonalize(void) {
   // for the moment a simple version not looking for rotated pieces
 

@@ -133,7 +133,7 @@ void assembler_0_c::createMatrix(const puzzle_c * p) {
 
   // minimize all pieces
   for (int i = 0; i < puz.getShapeNumber(); i++)
-    puz.getShape(i)->minimize();
+    puz.getShape(i)->minimizePiece();
 
   /* count the filled and variable units */
   int res_vari = puz.getResult()->countState(pieceVoxel_c::VX_VARIABLE);

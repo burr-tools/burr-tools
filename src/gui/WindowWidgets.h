@@ -198,7 +198,8 @@ public:
       case 12: space->mirrorX(); break;
       case 13: space->mirrorY(); break;
       case 14: space->mirrorZ(); break;
-      case 15: space->minimize(); break;
+      case 15: space->minimizePiece(); break;
+      case 16: space->makeInsideHoly(); break;
       }
 
       do_callback();

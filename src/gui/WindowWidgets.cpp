@@ -128,6 +128,7 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h, "Size"
 
 static void cb_ToolTabSize_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()))->cb_size(); }
 static void cb_ToolTabTransform_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()))->cb_transform(v); }
+static void cb_ToolTabTransform2_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()->parent()))->cb_transform(v); }
 
 ToolTab::ToolTab(int x, int y, int w, int h, int type) : Fl_Tabs(x, y, w, h) {
 
@@ -145,9 +146,9 @@ ToolTab::ToolTab(int x, int y, int w, int h, int type) : Fl_Tabs(x, y, w, h) {
   {
     Fl_Group* o = new Fl_Group(x, y+20, w, h-20, "Tools");
     o->hide();
-    new FlatButton(x+5, y+25, w-10, 20, "Minimize", "Minimize the size", cb_ToolTabTransform_stub, 15);
+    new FlatButton(x+5, y+25, w-10, 20, "Minimize", "Minimize the size", cb_ToolTabTransform2_stub, 15);
     if (type == 1)
-      new FlatButton(x+5, y+50, w-10, 20, "Make inside Variable", "Make the inside of the puzzle variable, so that it can contain holes", cb_ToolTabTransform_stub, 16);
+      new FlatButton(x+5, y+50, w-10, 20, "Make inside Variable", "Make the inside of the puzzle variable, so that it can contain holes", cb_ToolTabTransform2_stub, 16);
 
     o->end();
   }

@@ -355,10 +355,16 @@ public:
   void setState(int i, int state) { set(i, (get(i) & ~0x3) | state); }
   void setColor(int i, unsigned int color) { assert(color < 64); set(i, (get(i) & 0x3) | color << 2); }
 
-  void minimize(void) { voxel_c::minimize(VX_EMPTY); }
+  void minimizePiece(void);
 
   unsigned int countState(int state) const;
 
+  /**
+   * this function makes all voxels that are completely surrounded (6 neibor pieces)
+   * variable. This is useful, if you want to make invisible pieces contain holes
+   * it's not flawless, as it leaves pieces along inside holes static on
+   */
+  void makeInsideHoly(void);
 };
 
 /* this voxel space if available to store solutions
@@ -392,7 +398,6 @@ public:
   void setPiece(int i, int num) { assert(num < VX_EMPTY); set(i, num); }
 
   void print(void) const;
-
 };
 
 

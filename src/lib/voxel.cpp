@@ -563,4 +563,47 @@ symmetries_t voxel_c::selfSymmetries(void) const {
   return result;
 }
 
+void pieceVoxel_c::minimizePiece(void) {
+
+  unsigned int x1, x2, y1, y2, z1, z2;
+
+  x1 = y1 = z1 = getXYZ();
+  x2 = y2 = z2 = 0;
+
+  for (int x = 0; x < getX(); x++)
+    for (int y = 0; y < getY(); y++)
+      for (int z = 0; z < getZ(); z++)
+        if (getState(x, y, z) != VX_EMPTY) {
+          if (x < x1) x1 = x;
+          if (x > x2) x2 = x;
+
+          if (y < y1) y1 = y;
+          if (y > y2) y2 = y;
+
+          if (z < z1) z1 = z;
+          if (z > z2) z2 = z;
+        }
+
+  if ((x1 != 0) || (y1 != 0) || (z1 != 0) || (x2 != getX()-1) || (y2 != getY()-1) || (z2 != getZ()-1)) {
+
+    translate(-x1, -y1, -z1, 0);
+    resize(x2-x1+1, y2-y1+1, z2-z1+1, 0);
+  }
+}
+
+
+void pieceVoxel_c::makeInsideHoly(void) {
+
+  for (int x = 1; x < getX()-1; x++)
+    for (int y = 1; y < getY()-1; y++)
+      for (int z = 1; z < getZ()-1; z++)
+        if (getState(x, y, z) != VX_EMPTY) {
+          if ((getState(x-1, y, z) == VX_EMPTY) || (getState(x+1, y, z) == VX_EMPTY) ||
+              (getState(x, y-1, z) == VX_EMPTY) || (getState(x, y+1, z) == VX_EMPTY) ||
+              (getState(x, y, z-1) == VX_EMPTY) || (getState(x, y, z+1) == VX_EMPTY))
+            setState(x, y, z, VX_FILLED);
+          else
+            setState(x, y, z, VX_VARIABLE);
+        }
+}
 

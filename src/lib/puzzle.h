@@ -157,13 +157,6 @@ public:
   void PS3Dsave(std::ostream * str) const;
 
   /**
-   * this function makes all voxels that are completely surrounded (6 neibor pieces)
-   * variable. This is useful, if you want to make invisible pieces contain holes
-   * it's not flawless, as it leaves pieces along inside holes static on
-   */
-  void makeResultInsideHoly(void);
-
-  /**
    * makes each shape appear only once and increase the piece counter for that.
    * this is necessary for the assembler, as it will find multiple
    * solutions if this is not the case
