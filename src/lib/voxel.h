@@ -138,20 +138,33 @@ public:
   /**
    * Get the actual x-size of the space.
    */
-  unsigned int getX() const { return sx; }
+  unsigned int getX(void) const { return sx; }
   /**
    * Get the actual y-size of the space.
    */
-  unsigned int getY() const { return sy; }
+  unsigned int getY(void) const { return sy; }
   /**
    * Get the actual z-size of the space.
    */
-  unsigned int getZ() const { return sz; }
+  unsigned int getZ(void) const { return sz; }
+
+  unsigned int getBiggestDimension(void) const {
+    if (sx > sy)
+      if (sz > sx)
+        return sz;
+      else
+        return sx;
+    else
+      if (sz > sy)
+        return sz;
+      else
+        return sy;
+  }
 
   /**
    * Get the number of voxels
    */
-  unsigned int getXYZ() const { return voxels; }
+  unsigned int getXYZ(void) const { return voxels; }
 
   /**
    * this function returns the index for a given triple of x, y and z

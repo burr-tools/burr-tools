@@ -31,11 +31,11 @@
 
 static UserInterface * ui;
 
-static char * FileSelection(const char * title) {
+static const char * FileSelection(const char * title) {
 #ifdef HAVE_FLU
-    const char * f = flu_file_chooser(title, "*.xmpuzzle", "");
+    return flu_file_chooser(title, "*.xmpuzzle", "");
 #else    
-    const char * f = fl_file_chooser(title, "*.xmpuzzle", "");
+    return fl_file_chooser(title, "*.xmpuzzle", "");
 #endif
 }
 
@@ -79,7 +79,7 @@ void UserInterface::cb_NewShape(void) {
 static void cb_DeleteShape_stub(Fl_Widget* o, void* v) { ui->cb_DeleteShape(); }
 void UserInterface::cb_DeleteShape(void) {
 
-  int current = PcSel->getSelection();
+  unsigned int current = PcSel->getSelection();
 
   if (current < puzzle->shapeNumber()) {
 
@@ -102,7 +102,7 @@ void UserInterface::cb_DeleteShape(void) {
 static void cb_CopyShape_stub(Fl_Widget* o, void* v) { ui->cb_CopyShape(); }
 void UserInterface::cb_CopyShape(void) {
 
-  int current = PcSel->getSelection();
+  unsigned int current = PcSel->getSelection();
 
   if (current < puzzle->shapeNumber()) {
 
@@ -267,7 +267,7 @@ void UserInterface::cb_AddShapeToProblem(void) {
   PiecesCountList->redraw();
 
   // first see, if there is already a the selected shape inside
-  for (int i = 0; i < puzzle->probShapeNumber(prob); i++)
+  for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
     if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
       puzzle->probSetShapeCount(prob, i, puzzle->probGetShapeCount(prob, i) + 1);
       return;
@@ -287,7 +287,7 @@ void UserInterface::cb_RemoveShapeFromProblem(void) {
   unsigned int prob = problemSelector->getSelection();
 
   // first see, find the shape, and only if there is one, we decrement its count out remove it
-  for (int i = 0; i < puzzle->probShapeNumber(prob); i++)
+  for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
     if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
       if (puzzle->probGetShapeCount(prob, i) == 1)
         puzzle->probRemoveShape(prob, i);
@@ -382,19 +382,19 @@ void UserInterface::cb_BtnStart(void) {
 static void cb_BtnCont_stub(Fl_Widget* o, void* v) { ui->cb_BtnCont(); }
 void UserInterface::cb_BtnCont(void) {
 
-  if (solutionProblem->getSelection() >= puzzle->problemNumber()) {
+  unsigned int prob = solutionProblem->getSelection();
+
+  if (prob >= puzzle->problemNumber()) {
     fl_message("First create a problem");
     return;
   }
 
   assert(assmThread == 0);
 
-  unsigned int prob = solutionProblem->getSelection();
-
   if (SolveDisasm->value() != 0)
-    assmThread = new assemblerThread(puzzle, solutionProblem->getSelection(), assemblerThread::SOL_DISASM);
+    assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_DISASM);
   else
-    assmThread = new assemblerThread(puzzle, solutionProblem->getSelection(), assemblerThread::SOL_SAVE_ASM);
+    assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_SAVE_ASM);
 
   assmThread->start();
 
@@ -689,24 +689,18 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
 
     int * pcNum = new int[shapeNumber];
 
-    int piece = 0;
+    unsigned int piece = 0;
 
-    for (int i = 0; i < shapeNumber; i++) {
+    for (unsigned int i = 0; i < shapeNumber; i++) {
       pcNum[i] = puzzle->probGetShapeCount(prob, i);
       for (int j = 0; j < pcNum[i]; j++) {
         colors[2*piece] = i;
         colors[2*piece+1] = j;
 
-        shifting[4*piece] = 0;
-        shifting[4*piece+1] = 0;
-        shifting[4*piece+2] = 0;
-        shifting[4*piece+3] = 1;
-
         piece++;
       }
     }
 
-    View3D->setVoxelSpace(puzzle->probGetAssembly(prob, num), shifting, visibility, 30, colors);
     PcVis->setPuzzle(puzzle, prob);
 
     if (puzzle->probGetDisassembly(prob, num)) {
@@ -718,13 +712,18 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->show();
       MovesInfo->value(puzzle->probGetDisassembly(prob, num)->sumMoves());
 
-      disassemble = new DisasmToMoves(puzzle->probGetDisassembly(prob, num), puzzle->probGetAssembly(prob, num), shifting, piece);
+      disassemble = new DisasmToMoves(puzzle->probGetDisassembly(prob, num),
+                                      2*puzzle->probGetAssembly(prob, num)->getBiggestDimension());
       disassemble->setStep(SolutionAnim->value());
+
+      View3D->setVoxelSpace(puzzle->probGetAssembly(prob, num), disassemble, visibility, 30, colors);
     } else {
       SolutionAnim->range(0, 0);
       SolutionAnim->hide();
       MovesInfo->value(0);
       MovesInfo->hide();
+
+      View3D->setVoxelSpace(puzzle->probGetAssembly(prob, num), 0, visibility, 30, colors);
     }
 
     SolutionEmpty = false;
@@ -1139,8 +1138,6 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     int hw = (w - SZ_GAP)/2;
 
-    int eh = (lh - 2 * SZ_BUTTON_Y - 3 * SZ_GAP) / 2;
-
     new Separator(x, y, w, SZ_SEPARATOR_Y, "Piece assigment", true);
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
@@ -1388,9 +1385,6 @@ UserInterface::UserInterface() {
   puzzle = new puzzle_c();
   changed = false;
 
-  for (int i = 0; i < 100; i++)
-    shifting[i] = 0;
-
   for (int j = 0; j < 33; j++)
     visibility[j] = 0;
 
@@ -1403,7 +1397,7 @@ UserInterface::UserInterface() {
 
   Fl_Tile * mainTile = new Fl_Tile(0, SZ_CONTENT_START_Y, SZ_WINDOW_X, SZ_CONTENT_Y);
   View3D = new View3dGroup(SZ_TOOL_X, SZ_CONTENT_START_Y, SZ_3DAREA_X, SZ_CONTENT_Y);
-  Fl_Group * tabGroup = new Fl_Group(0, SZ_CONTENT_START_Y, SZ_TOOL_X, SZ_CONTENT_Y);
+  new Fl_Group(0, SZ_CONTENT_START_Y, SZ_TOOL_X, SZ_CONTENT_Y);
 
   // this box paints the background behind the tab, because the tabs are partly transparent
   (new Fl_Box(FL_FLAT_BOX, 0, SZ_CONTENT_START_Y, SZ_TOOL_X, SZ_CONTENT_Y, 0))->color(FL_BACKGROUND_COLOR);

@@ -115,7 +115,7 @@ public:
   void addstate(state_c *st);
 
   /* return the number of pieces that are in this separation */
-  int getPieceNumber(void) const { return piecenumber; }
+  unsigned int getPieceNumber(void) const { return piecenumber; }
 
   /* get the number for the num-th piece that is in this separation */
   voxel_type getPieceName(unsigned int num) const {

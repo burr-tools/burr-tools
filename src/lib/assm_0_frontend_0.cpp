@@ -22,9 +22,9 @@
 /* helper function to check if a piece an go at a position */
 static bool pieceFits(const pieceVoxel_c * piece, const pieceVoxel_c * result, const puzzle_c * puz, int x, int y, int z, unsigned int problemNum) {
 
-  for (int pz = 0; pz < piece->getZ(); pz++)
-    for (int py = 0; py < piece->getY(); py++)
-      for (int px = 0; px < piece->getX(); px++)
+  for (unsigned int pz = 0; pz < piece->getZ(); pz++)
+    for (unsigned int py = 0; py < piece->getY(); py++)
+      for (unsigned int px = 0; px < piece->getX(); px++)
         if (
             // the piece can not be place if the result is empty and the piece is fileed at a given voxel
             ((piece->getState(px, py, pz) != pieceVoxel_c::VX_EMPTY) &&
@@ -42,9 +42,9 @@ static bool pieceFits(const pieceVoxel_c * piece, const pieceVoxel_c * result, c
 /* add a piece to the cache, but only if it is not already there. If it is added return the
  * piece pointer otherwise return null
  */
-static pieceVoxel_c * addToCache(pieceVoxel_c * cache[24], int * fill, pieceVoxel_c * piece) {
+static pieceVoxel_c * addToCache(pieceVoxel_c * cache[24], unsigned int * fill, pieceVoxel_c * piece) {
 
-  for (int i = 0; i < *fill; i++)
+  for (unsigned int i = 0; i < *fill; i++)
     if (*cache[i] == *piece) {
       delete piece;
       return 0;
@@ -66,31 +66,31 @@ unsigned long assm_0_frontend_0_c::countNodes(puzzle_c * puz, unsigned int probl
   const pieceVoxel_c * result = puz->probGetResultShape(problemNum);
 
   /* now we insert one shape after another */
-  for (int pc = 0; pc < puz->probShapeNumber(problemNum); pc++) {
+  for (unsigned int pc = 0; pc < puz->probShapeNumber(problemNum); pc++) {
 
     int placements = 0;
 
     /* this array contains all the pieces found so far, this will help us
      * to not add two times the same piece to the structur */
     pieceVoxel_c * cache[24];
-    int cachefill = 0;
+    unsigned int cachefill = 0;
 
     /* go through all possible rotations of the piece */
     /* didn't find piece, so it's new shape, add to cache and add to
      * node structure */
     /* find all possible translations of piece and add them, if they fit */
-    for (int rot = 0; rot < 24; rot++)
+    for (unsigned int rot = 0; rot < 24; rot++)
       if (pieceVoxel_c * rotation = addToCache(cache, &cachefill, new pieceVoxel_c(puz->probGetShapeShape(problemNum, pc), rot)))
-        for (int x = 0; x < result->getX() - rotation->getX() + 1; x++)
-          for (int y = 0; y < result->getY() - rotation->getY() + 1; y++)
-            for (int z = 0; z < result->getZ() - rotation->getZ() + 1; z++)
+        for (unsigned int x = 0; x < result->getX() - rotation->getX() + 1; x++)
+          for (unsigned int y = 0; y < result->getY() - rotation->getY() + 1; y++)
+            for (unsigned int z = 0; z < result->getZ() - rotation->getZ() + 1; z++)
               if (pieceFits(rotation, result, puz, x, y, z, problemNum))
                 placements++;
 
     nodes += placements * (puz->probGetShapeShape(problemNum, pc)->countState(pieceVoxel_c::VX_FILLED) + 1) *
       puz->probGetShapeCount(problemNum, pc);
 
-    for (int i = 0; i < cachefill; i++) delete cache[i];
+    for (unsigned int i = 0; i < cachefill; i++) delete cache[i];
 
     // if one piece has no possible position in the result shape return error
     if (placements == 0)
@@ -136,14 +136,14 @@ void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari, 
   unsigned int piecenumber = puz->probPieceNumber(problemNum);
   voxelindex = new int[result->getXYZ() + piecenumber + 1];
 
-  for (int i = 0; i < result->getXYZ() + piecenumber + 1; i++)
+  for (unsigned int i = 0; i < result->getXYZ() + piecenumber + 1; i++)
     voxelindex[i] = -1;
 
   {
     int v = 0;
     int c = 0;
   
-    for (int i = 0; i < result->getXYZ(); i++) {
+    for (unsigned int i = 0; i < result->getXYZ(); i++) {
       switch(result->getState(i)) {
       case pieceVoxel_c::VX_VARIABLE:
         voxelindex[getVarivoxelStart() + v] = i;
@@ -161,14 +161,14 @@ void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari, 
 
   /* find the symmetry breaker */
   symmetries_t resultSym = result->selfSymmetries();
-  int symBreakerPiece = -1;
+  unsigned int symBreakerPiece = 0xFFFFFFFF;
 
   // we only need to do this, if the result shape has some symmetries */
   if (resultSym != 1) {
 
     unsigned int bestFound = 25;
 
-    for (int i = 0; i < puz->probShapeNumber(problemNum); i++) {
+    for (unsigned int i = 0; i < puz->probShapeNumber(problemNum); i++) {
 
       symmetries_t multSym = resultSym & puz->probGetShapeShape(problemNum, i)->selfSymmetries();
 
@@ -201,39 +201,39 @@ void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari, 
   int piece = 0;
 
   /* now we insert one shape after another */
-  for (int pc = 0; pc < puz->probShapeNumber(problemNum); pc++)
-    for (int piececount = 0; piececount < puz->probGetShapeCount(problemNum, pc); piececount++, piece++) {
+  for (unsigned int pc = 0; pc < puz->probShapeNumber(problemNum); pc++)
+    for (unsigned int piececount = 0; piececount < puz->probGetShapeCount(problemNum, pc); piececount++, piece++) {
 
       nextPiece(piece, puz->probGetShapeCount(problemNum, pc), piececount);
 
       /* this array contains all the pieces found so far, this will help us
        * to not add two times the same piece to the structur */
       pieceVoxel_c * cache[24];
-      int cachefill = 0;
+      unsigned int cachefill = 0;
   
       /* go through all possible rotations of the piece
        * if shape is new to cache, add it to the cache and also
        * add the shape to the matrix, in all positions that it fits
        */
-      for (int rot = 0; rot < 24; rot++) {
+      for (unsigned int rot = 0; rot < 24; rot++) {
         bool skipRotation = ((pc == symBreakerPiece) && (piececount == 0) && symmetrieContainsTransformation(resultSym, rot));
         if (pieceVoxel_c * rotation = addToCache(cache, &cachefill, new pieceVoxel_c(puz->probGetShapeShape(problemNum, pc), rot))) {
-          for (int x = 0; x < result->getX() - rotation->getX() + 1; x++)
-            for (int y = 0; y < result->getY() - rotation->getY() + 1; y++)
-              for (int z = 0; z < result->getZ() - rotation->getZ() + 1; z++)
+          for (unsigned int x = 0; x < result->getX() - rotation->getX() + 1; x++)
+            for (unsigned int y = 0; y < result->getY() - rotation->getY() + 1; y++)
+              for (unsigned int z = 0; z < result->getZ() - rotation->getZ() + 1; z++)
                 if (pieceFits(rotation, result, puz, x, y, z, problemNum)) {
 
                   int piecenode;
 
                   if (!skipRotation)
-                    piecenode = AddPieceNode(piece);
+                    piecenode = AddPieceNode(piece, rot, x, y, z);
                   else
                     AddFillerNode();
 
                   /* now add the used cubes of the piece */
-                  for (int pz = 0; pz < rotation->getZ(); pz++)
-                    for (int py = 0; py < rotation->getY(); py++)
-                      for (int px = 0; px < rotation->getX(); px++)
+                  for (unsigned int pz = 0; pz < rotation->getZ(); pz++)
+                    for (unsigned int py = 0; py < rotation->getY(); py++)
+                      for (unsigned int px = 0; px < rotation->getX(); px++)
                         if (rotation->getState(px, py, pz) != pieceVoxel_c::VX_EMPTY) {
   
                           if (!skipRotation)
@@ -244,7 +244,7 @@ void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari, 
                 }
         }
       }
-      for (int i = 0; i < cachefill; i++)  delete cache[i];
+      for (unsigned int i = 0; i < cachefill; i++)  delete cache[i];
     }
 
   delete [] columns;
@@ -269,7 +269,7 @@ bool assm_0_frontend_0_c::solution(void) {
      * voxel space index and place the piece number in there
      */
     for (int i = 0; i < getPos(); i++) {
-      int r = getRows(i);
+      unsigned int r = getRows(i);
 
       // go over all columns and that columns that
       // are for result shape will be set inside the result

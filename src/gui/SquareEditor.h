@@ -78,7 +78,7 @@ public:
   int getZ(void) { return currentZ; }
 
   // sets the color to use for editing voxels
-  int setColor(unsigned int col) {
+  void setColor(unsigned int col) {
     currentColor = col;
   }
 

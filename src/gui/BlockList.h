@@ -11,10 +11,10 @@ class BlockList : public Fl_Widget {
   /* how many pixels is the whole thing shifted up. This is for
    * scrollbar to allow more pieces than there is size for the widget
    */
-  int shift;
+  unsigned int shift;
 
   /* the hight that the whole drawing had the last time */
-  int lastHight;
+  unsigned int lastHight;
 
   int callbackReason;
 
@@ -39,13 +39,13 @@ public:
 
   BlockList(int x, int y, int w, int h) : Fl_Widget(x, y, w, h), shift(0) {}
 
-  void setShift(int z) {
+  void setShift(unsigned int z) {
     shift = z;
     redraw();
   }
 
   int handle(int event);
-  int calcHeight(void) { return lastHight; }
+  unsigned int calcHeight(void) { return lastHight; }
 
   enum {
     RS_CHANGEDHIGHT,
@@ -74,7 +74,7 @@ public:
 
   SelectableList(int x, int y, int w, int h) : BlockList(x, y, w, h), currentSelect(0), locked(false) { }
 
-  int getSelection(void) { return currentSelect; }
+  unsigned int getSelection(void) { return currentSelect; }
 
   void setSelection(unsigned int num) {
     if (currentSelect != num) {
@@ -236,10 +236,10 @@ class ColorConstraintsEdit : public Fl_Widget {
   /* how many pixels is the whole thing shifted up. This is for
    * scrollbar to allow more pieces than there is size for the widget
    */
-  int shift;
+  unsigned int shift;
 
   /* the hight that the whole drawing had the last time */
-  int lastHight;
+  unsigned int lastHight;
 
   puzzle_c * puzzle;
   unsigned int problem;
@@ -259,22 +259,22 @@ public:
 
   void setPuzzle(puzzle_c *pz, unsigned int prob);
 
-  void setShift(int z) {
+  void setShift(unsigned int z) {
     shift = z;
     redraw();
   }
 
   int handle(int event);
 
-  int calcHeight(void) { return lastHight; }
+  unsigned int calcHeight(void) { return lastHight; }
 
   enum {
     RS_CHANGEDHIGHT,
     RS_LIST_LAST
   };
 
-  int getReason(void) { return RS_CHANGEDHIGHT; }
-  int getSelection(void) { return currentSelect; }
+  unsigned int getReason(void) { return RS_CHANGEDHIGHT; }
+  unsigned int getSelection(void) { return currentSelect; }
   void setSelection(unsigned int num);
 
   void SetSortByResult(bool value) {

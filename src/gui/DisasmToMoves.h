@@ -25,24 +25,56 @@
  */
 #include <../lib/disassembly.h>
 
- 
-class DisasmToMoves {
-
-  const separation_c * tree;
-  const assemblyVoxel_c * assm;
-  float * moves;
-  int piecenumber;
-
-  int doRecursive(const separation_c * tree, int step, float weight, int cx, int cy, int cz, int remove);
+/* this is an abstract class used to give thet piece positions to the voxel
+ * space widget
+ */
+class PiecePositions {
 
 public:
 
-  DisasmToMoves(const separation_c * tr, assemblyVoxel_c * as, float * mv, int piecen) : tree(tr), assm(as), moves(mv), piecenumber(piecen) {}
+  virtual float getX(unsigned int piece) = 0;
+  virtual float getY(unsigned int piece) = 0;
+  virtual float getZ(unsigned int piece) = 0;
+  virtual float getA(unsigned int piece) = 0;
+};
+
+ 
+class DisasmToMoves : public PiecePositions {
+
+  const separation_c * tree;
+  unsigned int size;
+  float * moves;
+  int doRecursive(const separation_c * tree, int step, float weight, int cx, int cy, int cz);
+
+public:
+
+  DisasmToMoves(const separation_c * tr, unsigned int sz) : tree(tr), size(sz) {
+    moves = new float[tr->getPieceNumber()*4];
+  }
+
+  virtual ~DisasmToMoves() { delete [] moves; }
   
   /* sets the moves for the step, if the value is not integer you
    * get a intermediate of the necessary move (for animation)
    */
   void setStep(float step);
+
+  virtual float getX(unsigned int piece) {
+    assert(piece < tree->getPieceNumber());
+    return moves[4*piece+0];
+  }
+  virtual float getY(unsigned int piece) {
+    assert(piece < tree->getPieceNumber());
+    return moves[4*piece+1];
+  }
+  virtual float getZ(unsigned int piece) {
+    assert(piece < tree->getPieceNumber());
+    return moves[4*piece+2];
+  }
+  virtual float getA(unsigned int piece) {
+    assert(piece < tree->getPieceNumber());
+    return moves[4*piece+3];
+  }
 };
 
 #endif

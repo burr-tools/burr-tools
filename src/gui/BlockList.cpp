@@ -8,22 +8,24 @@
 
 void BlockList::draw() {
 
-  int zpos = 0;
-  int maxz = 0;
-  int xpos = 0;
+  unsigned int zpos = 0;
+  unsigned int maxz = 0;
+  unsigned int xpos = 0;
+
+  if ((w() <= 0) || (h() <= 0)) return;
 
   fl_push_clip(x(), y(), w(), h());
 
   fl_color(color());
   fl_rectf(x(), y(), w(), h());
 
-  for (int i = 0; i < blockNumber(); i++) {
+  for (unsigned int i = 0; i < blockNumber(); i++) {
 
     unsigned int wi, hi;
 
     blockSize(i, &wi, &hi);
 
-    if ((xpos > 0) && (xpos + wi > w())) {
+    if ((xpos > 0) && (xpos + wi > (unsigned int)w())) {
       zpos += maxz;
       maxz = 0;
       xpos = 0;
@@ -36,9 +38,9 @@ void BlockList::draw() {
     xpos += wi;
   }
 
-  int scroll = zpos + maxz;
+  unsigned int scroll = zpos + maxz;
 
-  if (scroll > h())
+  if (scroll > (unsigned int)h())
     scroll -= h();
   else
     scroll = 0;
@@ -57,20 +59,22 @@ int BlockList::handle(int event) {
   static int mx, my;
   static int current_block = -1;
 
-  int zpos = 0;
-  int maxz = 0;
-  int xpos = 0;
+  unsigned int zpos = 0;
+  unsigned int maxz = 0;
+  unsigned int xpos = 0;
+
+  if ((w() <= 0) || (h() <= 0)) return 1;
 
   switch (event) {
 
   case FL_PUSH:
     {
-      for (int i = 0; i < blockNumber(); i++) {
+      for (unsigned int i = 0; i < blockNumber(); i++) {
 
         unsigned int wi, hi;
         blockSize(i, &wi, &hi);
     
-        if ((xpos > 0) && (xpos + wi > w())) {
+        if ((xpos > 0) && (xpos + wi > (unsigned int)w())) {
           zpos += maxz;
           maxz = 0;
           xpos = 0;
@@ -78,8 +82,8 @@ int BlockList::handle(int event) {
     
         if (hi > maxz) maxz = hi;
 
-        if ((Fl::event_x() >= x() + xpos) && (Fl::event_x() <= x() + xpos + wi) &&
-            (Fl::event_y() >= y() + zpos - shift) && (Fl::event_y() <= y() + zpos - shift + maxz)) {
+        if ((Fl::event_x() >= x() + (int)xpos) && (Fl::event_x() <= x() + (int)xpos + (int)wi) &&
+            (Fl::event_y() >= y() + (int)zpos - (int)shift) && (Fl::event_y() <= y() + (int)zpos - (int)shift + (int)maxz)) {
           current_block = i;
           push(i);
 
@@ -382,6 +386,8 @@ void ColorConstraintsEdit::draw(void) {
   if (problem >= puzzle->problemNumber())
     return;
 
+  if ((w() <= 0) || (h() <= 0)) return;
+
   unsigned int ypos = 0;
   unsigned char r, g, b;
 
@@ -404,7 +410,7 @@ void ColorConstraintsEdit::draw(void) {
   }
   fl_color(labelcolor());
 
-  for (int c1 = 0; c1 < puzzle->colorNumber(); c1++) {
+  for (unsigned int c1 = 0; c1 < puzzle->colorNumber(); c1++) {
 
     unsigned int cnt = 0;
     unsigned int c2;
@@ -500,7 +506,7 @@ void ColorConstraintsEdit::draw(void) {
     ypos += CC_GROUP_GAP + height;
   }
 
-  if (ypos > h())
+  if (ypos > (unsigned int)h())
     ypos -= h();
   else
     ypos = 0;
@@ -519,13 +525,15 @@ int ColorConstraintsEdit::handle(int event) {
 
   unsigned int ypos = 0;
 
+  if ((w() <= 0) || (h() <= 0)) return 1;
+
   if (event != FL_PUSH)
     return 1;
 
   if (problem >= puzzle->problemNumber())
     return 1;
 
-  for (int c1 = 0; c1 < puzzle->colorNumber(); c1++) {
+  for (unsigned int c1 = 0; c1 < puzzle->colorNumber(); c1++) {
     unsigned int cnt = 0;
     unsigned int c2;
     for (c2 = 0; c2 < puzzle->colorNumber(); c2++)
@@ -543,7 +551,7 @@ int ColorConstraintsEdit::handle(int event) {
 
     ypos += 2*CC_GROUP_GAP + height;
 
-    if (Fl::event_y() < y() + ypos - shift) {
+    if (Fl::event_y() < y() + (int)ypos - (int)shift) {
       currentSelect = c1;
       redraw();
       break;

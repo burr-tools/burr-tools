@@ -233,8 +233,6 @@ View3dGroup::View3dGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
 
 Separator::Separator(int x, int y, int w, int h, const char * label, bool button) : Fl_Group(x, y, w, h) {
 
-  int xs = x;
-
   if (label) {
     int lw, lh;
 
@@ -271,7 +269,7 @@ void ResultViewer::setPuzzle(puzzle_c * p, unsigned int prob) {
 }
 
 void ResultViewer::draw(void) {
-  if (problem >= puzzle->problemNumber() || (puzzle->probGetResult(problem) == -1)) {
+  if (problem >= puzzle->problemNumber()) {
     label("No Result");
     color(bg);
     labelcolor(fl_rgb_color(255, 0, 0));

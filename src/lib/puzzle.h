@@ -129,7 +129,7 @@ public:
   void removeColor(unsigned int idx);
   void changeColor(unsigned int idx, unsigned char r, unsigned char g, unsigned char b);
   void getColor(unsigned int idx, unsigned char * r, unsigned char * g, unsigned char * b);
-  int colorNumber(void);
+  unsigned int colorNumber(void);
 
 
   /**

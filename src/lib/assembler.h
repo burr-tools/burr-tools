@@ -68,7 +68,7 @@ public:
    * it is not necessary for an assembler to implement this function
    */
   virtual void reduce(void) { }
-  virtual int getReducePiece(void) { return 0; }
+  virtual unsigned int getReducePiece(void) { return 0; }
 
 
   /* start the assembly process */
@@ -92,7 +92,7 @@ public:
    *
    * the function shoule only be called when assemble is not running
    */
-  virtual bool getPosition(char * string, int len) { return true; }
+  virtual bool getPosition(char * string, unsigned int len) { return true; }
 
   /* sets the position of the assembly process, so that it continues exacly
    * where it stood, when getPosition was called

@@ -97,9 +97,9 @@ void bitmap_c::add(void) {
   memset(m2, 0, bytes);
 
   if (map) {
-    for (int i = 0; i < colors; i++)
-      for (int j = 0; j < colors; j++) {
-        int idx = j * (colors+1) + i;
+    for (unsigned int i = 0; i < colors; i++)
+      for (unsigned int j = 0; j < colors; j++) {
+        unsigned int idx = j * (colors+1) + i;
     
         if (get(i, j))
           m2[idx >> 3] |= (1 << (idx & 7));
@@ -121,11 +121,11 @@ void bitmap_c::remove(unsigned int col) {
 
   unsigned char *m2 = new unsigned char[((colors-1)*(colors-1) + 7) >> 3];
 
-  for (int i = 0; i < colors-1; i++)
-    for (int j = 0; j < colors-1; j++) {
-      int idx = j * (colors-1) + i;
+  for (unsigned int i = 0; i < colors-1; i++)
+    for (unsigned int j = 0; j < colors-1; j++) {
+      unsigned int idx = j * (colors-1) + i;
 
-      int k, l;
+      unsigned int k, l;
 
       if (i < col) k = i; else k = i+1;
       if (j < col) l = j; else l = j+1;
@@ -147,8 +147,8 @@ xml::node bitmap_c::save(void) const {
 
   char tmp[50];
 
-  for (int pc = 0; pc < colors; pc++)
-    for (int res = 0; res < colors; res++)
+  for (unsigned int pc = 0; pc < colors; pc++)
+    for (unsigned int res = 0; res < colors; res++)
       if (get(pc, res)) {
         xml::node::iterator it = nd.insert(xml::node("pair"));
     
@@ -242,7 +242,7 @@ class problem_c {
 
 public:
 
-  problem_c(unsigned int colors) : result(-1), colorConstraints(colors), assm(0) {}
+  problem_c(unsigned int colors) : result(0xFFFFFFFF), colorConstraints(colors), assm(0) {}
 
   problem_c(const xml::node & node, unsigned int colors);
 
@@ -275,7 +275,7 @@ public:
   std::vector<shape_c> shapes;
 
   // the result shape
-  int result;
+  unsigned int result;
 
   // the found solutions
   std::vector<solution_c*> solutions;
@@ -313,13 +313,12 @@ public:
 problem_c::problem_c(problem_c * orig) : result(orig->result), colorConstraints(orig->colorConstraints.getColors()) {
   assm = 0;
   name = orig->name;
-  result = orig->result;
 
-  for (int i = 0; i < colorConstraints.getColors(); i++)
-    for (int j = 0; j < colorConstraints.getColors(); j++)
+  for (unsigned int i = 0; i < colorConstraints.getColors(); i++)
+    for (unsigned int j = 0; j < colorConstraints.getColors(); j++)
       colorConstraints.set(i, j, orig->colorConstraints.get(i, j));
 
-  for (int i = 0; i < orig->shapes.size(); i++)
+  for (unsigned int i = 0; i < orig->shapes.size(); i++)
     shapes.push_back(orig->shapes[i]);
 }
 
@@ -334,7 +333,7 @@ xml::node problem_c::save(void) const {
 
   it = nd.insert(xml::node("shapes"));
 
-  for (int i = 0; i < shapes.size(); i++) {
+  for (unsigned int i = 0; i < shapes.size(); i++) {
     xml::node::iterator it2 = it->insert(xml::node("shape"));
 
     snprintf(tmp, 50, "%i", shapes[i].shapeId );
@@ -355,14 +354,14 @@ xml::node problem_c::save(void) const {
 
   if (solutions.size()) {
     it = nd.insert(xml::node("solutions"));
-    for (int i = 0; i < solutions.size(); i++)
+    for (unsigned int i = 0; i < solutions.size(); i++)
       it->insert(solutions[i]->save());
   }
 
   return nd;
 }
 
-problem_c::problem_c(const xml::node & node, unsigned int color) : result(-1), colorConstraints(color), assm(0) {
+problem_c::problem_c(const xml::node & node, unsigned int color) : result(0xFFFFFFFF), colorConstraints(color), assm(0) {
 
   assert(node.get_type() == xml::node::type_element);
   assert(strcmp(node.get_name(), "problem") == 0);
@@ -410,11 +409,11 @@ problem_c::problem_c(const xml::node & node, unsigned int color) : result(-1), c
 void problem_c::shapeIdRemoved(unsigned short idx) {
 
   if (result == idx)
-    result = -1;
+    result = 0xFFFFFFFF;
 
   shapes.erase(remove_if(shapes.begin(), shapes.end(), shape_id_removed(idx)), shapes.end());
 
-  for (int i = 0; i < shapes.size(); i++)
+  for (unsigned int i = 0; i < shapes.size(); i++)
     if (shapes[i].shapeId > idx) shapes[i].shapeId--;
 }
 
@@ -427,13 +426,13 @@ puzzle_c::puzzle_c(void) {
 
 puzzle_c::puzzle_c(const puzzle_c * orig) {
 
-  for (int i = 0; i < orig->shapes.size(); i++)
+  for (unsigned int i = 0; i < orig->shapes.size(); i++)
     shapes.push_back(new pieceVoxel_c(orig->shapes[i]));
 
-  for (int i = 0; i < orig->problems.size(); i++)
+  for (unsigned int i = 0; i < orig->problems.size(); i++)
     problems.push_back(new problem_c(orig->problems[i]));
 
-  for (int i = 0; i < orig->colors.size(); i++)
+  for (unsigned int i = 0; i < orig->colors.size(); i++)
     colors.push_back(orig->colors[i]);
 
   designer = orig->designer;
@@ -497,7 +496,7 @@ void puzzle_c::removeColor(unsigned int col) {
 
   // go through all shapes and remove the deleted color
   for (vector<pieceVoxel_c*>::iterator i = shapes.begin(); i != shapes.end(); i++)
-    for (int p = 0; p < (*i)->getXYZ(); p++)
+    for (unsigned int p = 0; p < (*i)->getXYZ(); p++)
       if ((*i)->getState(p) != pieceVoxel_c::VX_EMPTY) {
         if ((*i)->getColor(p) == col)
           (*i)->setColor(p, 0);
@@ -528,7 +527,7 @@ void puzzle_c::getColor(unsigned int idx, unsigned char * r, unsigned char * g, 
   *b = colors[idx].b;
 }
 
-int puzzle_c::colorNumber(void) {
+unsigned int puzzle_c::colorNumber(void) {
   return colors.size();
 }
 
@@ -576,7 +575,7 @@ xml::node puzzle_c::save(void) const {
   xml::node::iterator it;
 
   it = nd.insert(xml::node("colors"));
-  for (int i = 0; i < colors.size(); i++) {
+  for (unsigned int i = 0; i < colors.size(); i++) {
     xml::node::iterator it2 = it->insert(xml::node("color"));
 
     snprintf(tmp, 50, "%i", colors[i].r);
@@ -590,11 +589,11 @@ xml::node puzzle_c::save(void) const {
   }
 
   it = nd.insert(xml::node("shapes"));
-  for (int i = 0; i < shapes.size(); i++)
+  for (unsigned int i = 0; i < shapes.size(); i++)
     it->insert(shapes[i]->save());
 
   it = nd.insert(xml::node("problems"));
-  for (int i = 0; i < problems.size(); i++)
+  for (unsigned int i = 0; i < problems.size(); i++)
     it->insert(problems[i]->save());
 
   if (designer.length())

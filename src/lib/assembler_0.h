@@ -61,13 +61,11 @@ private:
    * colCount is a shared member. it's column for normal nodes and count for
    * column header nodes
    */
-  int * left;
-  int * right;
-  int * up;
-  int * down;
-  int * colCount;
-  
-
+  unsigned int * left;
+  unsigned int * right;
+  unsigned int * up;
+  unsigned int * down;
+  unsigned int * colCount;
 
   /* used to abbort the searching */
   bool abbort;
@@ -76,24 +74,24 @@ private:
   bool running;
 
   /* an array for each piece saying how often this one appears */
-  int *multiPieceCount;
-  int *multiPieceIndex;
+  unsigned int *multiPieceCount;
+  unsigned int *multiPieceIndex;
 
   /* this array contains the index of the first node of the nodes that
    * belong to the piece of the array index given
    */
-  int *pieceStart;
+  unsigned int *pieceStart;
 
   /* cover one column:
    * - remove the column from the column header node list,
    * - remove all rows where the given column is 1
    */
-  void cover(register int col);
+  void cover(register unsigned int col);
 
   /* does the same ar cover but returns
    * false if one of the columns does now contain a 0
    */
-  bool try_cover(register int col, int * columns);
+  bool try_cover(register unsigned int col, unsigned int * columns);
 
   /* uncover the given column
    * this is the exact inverse operation of cover. It requires that the
@@ -104,19 +102,19 @@ private:
    *
    * will result in the same matrix as bevore
    */
-  void uncover(register int col);
+  void uncover(register unsigned int col);
 
   /* 2 helper functions that cover and uncover one
    * selected row
    */
-  void cover_row(register int r);
-  void uncover_row(register int r);
+  void cover_row(register unsigned int r);
+  void uncover_row(register unsigned int r);
 
   /* same as cover row, but using try_cover and abborting
    * as soon as one of the columns does contain a zero
    * and then uncovering all that was already done
    */
-  bool try_cover_row(register int r);
+  bool try_cover_row(register unsigned int r);
 
   /* get's called when a solution is found. this function
    * then assembles the solution inside assm and calles the
@@ -129,16 +127,16 @@ private:
    * the columns array contains the indices of the coveres columns
    * the pos value contains the number of pieces placed
    */
-  int pos;
-  int *rows;
-  int *columns;
-  int *nodeF;
-  int *numF;
-  int *pieceF;
-  int *nodeB;
-  int *numB;
-  int *piece;
-  int *searchState;
+  unsigned int pos;
+  unsigned int *rows;
+  unsigned int *columns;
+  unsigned int *nodeF;
+  unsigned int *numF;
+  unsigned int *pieceF;
+  unsigned int *nodeB;
+  unsigned int *numB;
+  unsigned int *piece;
+  unsigned int *searchState;
   void iterativeMultiSearch(void);
 
   /**
@@ -180,7 +178,7 @@ private:
    *
    * the function returns the accumulated number of placements that were removed
    */
-  bool checkmatrix(int rec, int branch);
+  bool checkmatrix(unsigned int rec, unsigned int branch);
 
   /* internal error state */
   int errorsState;
@@ -201,11 +199,11 @@ private:
   unsigned long firstfree;
 
   /* first and one after last column for the variable voxels */
-  int varivoxelStart;
-  int varivoxelEnd;
+  unsigned int varivoxelStart;
+  unsigned int varivoxelEnd;
 
   /* now this isn't hard to guess, is it? */
-  int piecenumber;
+  unsigned int piecenumber;
 
   /* the message object that gets called with the solutions as param */
   assembler_cb * asm_bc;
@@ -217,18 +215,17 @@ private:
 
 protected:
 
-  void GenerateFirstRow(int res_filled);
-  void AddFillerNode(void );
-  int AddPieceNode(int piece);
-  void AddVoxelNode(int col, int piecenode);
-  void nextPiece(int piece, int count, int number);
+  void GenerateFirstRow(int unsigned res_filled);
+  void AddFillerNode(void);
+  int AddPieceNode(unsigned int piece, unsigned int rot, unsigned int x, unsigned int y, unsigned int z);
+  void AddVoxelNode(unsigned int col, unsigned int piecenode);
+  void nextPiece(unsigned int piece, unsigned int count, unsigned int number);
 
-
-  int getRows(int pos) { return rows[pos]; }
-  int getRight(int pos) { return right[pos]; }
-  int getPiece(int pos) { return piece[pos]; }
-  int getColCount(int pos) { return colCount[pos]; }
-  int getVarivoxelStart(void) { return varivoxelStart; }
+  unsigned int getRows(int pos) { return rows[pos]; }
+  unsigned int getRight(int pos) { return right[pos]; }
+  unsigned int getPiece(int pos) { return piece[pos]; }
+  unsigned int getColCount(int pos) { return colCount[pos]; }
+  unsigned int getVarivoxelStart(void) { return varivoxelStart; }
   int getPos(void) { return pos; }
 
   assembler_cb * getCallback(void) { return asm_bc; }
@@ -241,7 +238,7 @@ public:
   void createMatrix(const puzzle_c * puz, unsigned int problemNum);
 
   void reduce(void);
-  int getReducePiece(void) { return reducePiece; }
+  unsigned int getReducePiece(void) { return reducePiece; }
 
   unsigned long getIterations(void) { return iterations; }
 

@@ -29,9 +29,9 @@
  */
 class assemblerThread : public assembler_cb {
 
-  int assemblies;
-  int action;
-  int _solutionAction;
+  unsigned int assemblies;
+  unsigned int action;
+  unsigned int _solutionAction;
 
   puzzle_c * puzzle;
   unsigned int prob;
@@ -45,10 +45,10 @@ public:
   };
 
   // create all the necessary data structures to start the thread later on
-  assemblerThread(puzzle_c * puz, unsigned int problemNum, int solAction);
+  assemblerThread(puzzle_c * puz, unsigned int problemNum, unsigned int solAction);
 
   // stop and exit
-  ~assemblerThread(void);
+  virtual ~assemblerThread(void);
 
   // the callbacl
   bool assembly(assemblyVoxel_c * assm);
@@ -62,7 +62,7 @@ public:
     ACT_FINISHED
   };
 
-  int currentAction(void) { return action; }
+  unsigned int currentAction(void) { return action; }
 
   // let the thread start
   void start(void);

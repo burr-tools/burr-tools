@@ -23,8 +23,8 @@
 #define snprintf _snprintf
 #endif
 
-void assembler_0_c::GenerateFirstRow(int res_filled) {
-  for (int i = 0; i < varivoxelStart; i++) {
+void assembler_0_c::GenerateFirstRow(unsigned int res_filled) {
+  for (unsigned int i = 0; i < varivoxelStart; i++) {
     right[i] = i+1;
     left[i+1] = i;
     up[i] = i;
@@ -41,7 +41,7 @@ void assembler_0_c::GenerateFirstRow(int res_filled) {
    * are not forced to be filled but otherwise behave
    * like normal columns
    */
-  for (int j = varivoxelStart; j < varivoxelEnd; j++) {
+  for (unsigned int j = varivoxelStart; j < varivoxelEnd; j++) {
     left[j+1] = j;
     right[j] = j+1;
     up[j] = j;
@@ -59,8 +59,8 @@ void assembler_0_c::AddFillerNode(void ) {
   firstfree++;
 }
 
-int assembler_0_c::AddPieceNode(int piece) {
-  int piecenode = firstfree++;
+int assembler_0_c::AddPieceNode(unsigned int piece, unsigned int rot, unsigned int x, unsigned int y, unsigned int z) {
+  unsigned long piecenode = firstfree++;
 
   left[piecenode] = piecenode;
   right[piecenode] = piecenode;
@@ -75,8 +75,8 @@ int assembler_0_c::AddPieceNode(int piece) {
   return piecenode;
 }
 
-void assembler_0_c::AddVoxelNode(int col, int piecenode) {
-  int newnode = firstfree++;
+void assembler_0_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
+  unsigned long newnode = firstfree++;
 
   right[newnode] = piecenode;
   left[newnode] = left[piecenode];
@@ -92,15 +92,16 @@ void assembler_0_c::AddVoxelNode(int col, int piecenode) {
   colCount[col]++;
 }
 
-void assembler_0_c::nextPiece(int piece, int count, int number) {
+void assembler_0_c::nextPiece(unsigned int piece, unsigned int count, unsigned int number) {
   multiPieceCount[piece] = count;
   multiPieceIndex[piece] = number;
   pieceStart[piece] = firstfree;
 }
 
 assembler_0_c::assembler_0_c() :
-  rows(0), columns(0), left(0), right(0), up(0), down(0), colCount(0), searchState(0), nodeF(0),
-  numF(0), pieceF(0), nodeB(0), numB(0), piece(0), pieceStart(0), multiPieceCount(0), multiPieceIndex(0), pos(0)
+  left(0), right(0), up(0), down(0), colCount(0),
+  multiPieceCount(0), multiPieceIndex(0), pieceStart(0),
+  pos(0), rows(0), columns(0), nodeF(0), numF(0), pieceF(0), nodeB(0), numB(0), piece(0), searchState(0)
 {
 }
 
@@ -147,22 +148,24 @@ void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int prob) {
 
   // check if number of filled voxels in result
   // is not bigger than number of voxels in pieces
-  holes = res_filled;
+  int h = res_filled;
 
   for (unsigned int j = 0; j < puz.probShapeNumber(prob); j++)
-    holes -= puz.probGetShapeShape(prob, j)->countState(pieceVoxel_c::VX_FILLED) * puz.probGetShapeCount(prob, j);
+    h -= puz.probGetShapeShape(prob, j)->countState(pieceVoxel_c::VX_FILLED) * puz.probGetShapeCount(prob, j);
 
-  if (holes < 0) {
+  if (h < 0) {
     errorsState = 1;
-    errorsParam = -holes;
+    errorsParam = -h;
     return;
   }
 
-  if (holes > res_vari) {
+  if (h > res_vari) {
     errorsState = 2;
-    errorsParam = holes-res_vari;
+    errorsParam = h-res_vari;
     return;
   }
+
+  holes = h;
 
   /* count the number of required nodes*/
   unsigned long nodes = countNodes(&puz, prob);
@@ -178,31 +181,31 @@ void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int prob) {
   nodes += 2 + piecenumber + res_filled;
 
   /* allocate all the required memory */
-  rows = new int[piecenumber];
-  columns = new int [piecenumber];
-  nodeF = new int [piecenumber];
-  numF = new int [piecenumber];
-  pieceF = new int [piecenumber];
-  nodeB = new int [piecenumber];
-  numB = new int [piecenumber];
-  piece = new int [piecenumber];
-  searchState = new int [piecenumber + 1];
+  rows = new unsigned int[piecenumber];
+  columns = new unsigned int [piecenumber];
+  nodeF = new unsigned int [piecenumber];
+  numF = new unsigned int [piecenumber];
+  pieceF = new unsigned int [piecenumber];
+  nodeB = new unsigned int [piecenumber];
+  numB = new unsigned int [piecenumber];
+  piece = new unsigned int [piecenumber];
+  searchState = new unsigned int [piecenumber + 1];
 
   searchState[0] = 0;
 
-  pieceStart = new int[piecenumber];
-  multiPieceCount = new int[piecenumber];
-  multiPieceIndex = new int[piecenumber];
-  left = new int [nodes];
-  right = new int [nodes];
-  up = new int [nodes];
-  down = new int [nodes];
-  colCount = new int [nodes];
+  pieceStart = new unsigned int[piecenumber];
+  multiPieceCount = new unsigned int[piecenumber];
+  multiPieceIndex = new unsigned int[piecenumber];
+  left = new unsigned int [nodes];
+  right = new unsigned int [nodes];
+  up = new unsigned int [nodes];
+  down = new unsigned int [nodes];
+  colCount = new unsigned int [nodes];
 
   /* fill the nodes arrays */
   prepare(&puz, res_filled, res_vari, prob);
 
-  memset(rows, 0xff, piecenumber * sizeof(int));
+  memset(rows, 0, piecenumber * sizeof(int));
   memset(columns, 0, piecenumber * sizeof(int));
   pos = 0;
   iterations = 0;
@@ -211,10 +214,10 @@ void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int prob) {
 
 
 /* remove column from array, and also all the rows, where the column is one */
-void assembler_0_c::cover(register int col)
+void assembler_0_c::cover(register unsigned int col)
 {
   {
-    register int l, r;
+    register unsigned int l, r;
 
     l = left[col];
     r = right[col];
@@ -223,10 +226,10 @@ void assembler_0_c::cover(register int col)
     right[l] = r;
   }
 
-  register int i = down[col];
+  register unsigned int i = down[col];
   while (i != col) {
 
-    register int j = right[i];
+    register unsigned int j = right[i];
     while (j != i) {
 
       {
@@ -249,10 +252,10 @@ void assembler_0_c::cover(register int col)
 }
 
 /* remove column from array, and also all the rows, where the column is one */
-bool assembler_0_c::try_cover(register int col, int * columns)
+bool assembler_0_c::try_cover(register unsigned int col, unsigned int * columns)
 {
   {
-    register int l, r;
+    register unsigned int l, r;
 
     l = left[col];
     r = right[col];
@@ -263,14 +266,14 @@ bool assembler_0_c::try_cover(register int col, int * columns)
 
   bool result = true;
 
-  register int i = down[col];
+  register unsigned int i = down[col];
   while (i != col) {
 
-    register int j = right[i];
+    register unsigned int j = right[i];
     while (j != i) {
 
       {
-        register int u, d;
+        register unsigned int u, d;
 
         u = up[j];
         d = down[j];
@@ -293,12 +296,12 @@ bool assembler_0_c::try_cover(register int col, int * columns)
   return result;
 }
 
-void assembler_0_c::uncover(register int col) {
+void assembler_0_c::uncover(register unsigned int col) {
 
-  register int i = up[col];
+  register unsigned int i = up[col];
   while (i != col) {
 
-    register int j = left[i];
+    register unsigned int j = left[i];
     while (j != i) {
 
       colCount[colCount[j]]++;
@@ -319,20 +322,20 @@ void assembler_0_c::uncover(register int col) {
 /* remove all the columns from the matrix in which the given
  * row contains ones
  */
-void assembler_0_c::cover_row(register int r) {
-  register int j = right[r];
+void assembler_0_c::cover_row(register unsigned int r) {
+  register unsigned int j = right[r];
   while (j != r) {
     cover(colCount[j]);
     j = right[j];
   }
 }
 
-bool assembler_0_c::try_cover_row(register int r) {
+bool assembler_0_c::try_cover_row(register unsigned int r) {
 
-  int *columns = new int[varivoxelEnd];
+  unsigned int *columns = new unsigned int[varivoxelEnd];
   memset(columns, 0, varivoxelEnd * sizeof(int));
 
-  register int j = right[r];
+  register unsigned int j = right[r];
   while (j != r) {
     columns[colCount[j]] = 1;
     j = right[j];
@@ -365,29 +368,29 @@ bool assembler_0_c::try_cover_row(register int r) {
   return true;
 }
 
-void assembler_0_c::uncover_row(register int r) {
-  register int j = left[r];
+void assembler_0_c::uncover_row(register unsigned int r) {
+  register unsigned int j = left[r];
   while (j != r) {
     uncover(colCount[j]);
     j = left[j];
   }
 }
 
-bool assembler_0_c::checkmatrix(int rec, int branch) {
+bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
 
   /* check the number of holes, if they are larger than allowed return */
-  int j = right[varivoxelEnd];
-  int count = holes;
+  unsigned int j = right[varivoxelEnd];
+  unsigned int count = holes;
   while (j != varivoxelEnd) {
     if (colCount[j] == 0) {
-      count--;
-      if (count < 0)
+      if (!count)
         return true;
+      count--;
     }
     j = right[j];
   }
 
-  int col = right[0];
+  unsigned int col = right[0];
 
   while (col) {
     /* if there is a column that can not be covered
@@ -403,7 +406,7 @@ bool assembler_0_c::checkmatrix(int rec, int branch) {
 
       cover(col);
 
-      int r = down[col];
+      unsigned int r = down[col];
 
       while (r != col) {
 
@@ -435,19 +438,19 @@ bool assembler_0_c::checkmatrix(int rec, int branch) {
 }
 
 void assembler_0_c::reduce(void) {
-  int removed = 0;
+  unsigned int removed = 0;
   bool rem_sth;
-  int iteration = 1;
+  unsigned int iteration = 1;
 
-  int rec = 0;
-  int branch = 0;
+  unsigned int rec = 0;
+  unsigned int branch = 0;
 
   do {
 
     rem_sth = false;
 
     /* check all the pieces */
-    for (int p = 0; p < piecenumber;) {
+    for (unsigned int p = 0; p < piecenumber;) {
 
       reducePiece = p;
 
@@ -464,8 +467,8 @@ void assembler_0_c::reduce(void) {
 
       // go over all the placements of the piece and check, if
       // each for possibility
-      int r = down[p+1];
-      int row = 0;
+      unsigned int r = down[p+1];
+      unsigned int row = 0;
       while (r != p+1) {
 
         // try to do this placement, if the placing goes
@@ -561,8 +564,9 @@ void assembler_0_c::iterativeMultiSearch(void) {
 
   while (!abbort) {
 
-    // we have finished if pos is minus one
-    if (pos == -1)
+    // we have finished if pos negative (or greater than piecenumber because of the
+    // overflow
+    if (pos > piecenumber)
       break;
 
     // check, if all pieces are placed and all voxels are filled
@@ -585,7 +589,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
     cont = false;
     iterations++;
 
-    if (rows[pos] == -1) {
+    if (!rows[pos]) {
 
       // start with a new column
       if (searchState[pos] == 0) {
@@ -602,8 +606,8 @@ void assembler_0_c::iterativeMultiSearch(void) {
          * finally we count the number of holes by checking the variable result voxels
          * that can not be filled any longer. that number must be smaller than the number of holes
          */
-        int c = right[0];
-        int s = colCount[c];
+        unsigned int c = right[0];
+        unsigned int s = colCount[c];
 
         if (s) {
           register int j = right[c];
@@ -628,16 +632,16 @@ void assembler_0_c::iterativeMultiSearch(void) {
         // sometimes this doesnt help much, but it also seems like
         // it doesn't cost a lot of time, so let's keep it in for the moment
         if (s) {
-          int currentHoles = holes;
-          register int j = right[varivoxelEnd];
+          unsigned int currentHoles = holes;
+          register unsigned int j = right[varivoxelEnd];
 
           while (j != varivoxelEnd) {
             if (colCount[j] == 0) {
-              currentHoles--;
-              if (currentHoles < 0) {
+              if (currentHoles == 0) {
                 s = 0;
                 break;
               }
+              currentHoles--;
             }
             j = right[j];
           }
@@ -692,7 +696,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
 
       // found no fitting row, or column with zero count
       if (!cont) {
-        rows[pos] = -1;
+        rows[pos] = 0;
         pos--;
         continue;
       }
@@ -798,7 +802,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
 
       // ok finished this column, uncover it and backtrack
       uncover(columns[pos]);
-      rows[pos] = -1;
+      rows[pos] = 0;
       pos--;
     }
   }
@@ -827,15 +831,15 @@ float assembler_0_c::getFinished(void) {
 
   float erg = 0;
 
-  if (pos == -1)
+  if (pos > piecenumber)
     return 1;
 
   for (int i = pos - 1; i >= 0; i--) {
 
-    int r = rows[i];
-    int l = colCount[columns[i]];
+    unsigned int r = rows[i];
+    unsigned int l = colCount[columns[i]];
 
-    while ((l) && (r != -1) && (r != down[columns[i]])) {
+    while (l && r && (r != down[columns[i]])) {
       erg += 1;
       r = up[r];
       l--;
@@ -860,7 +864,7 @@ bool assembler_0_c::getPosition(char * string, int len) {
     string += i;
   }
 
-  for (int j = 0; j < pos; j++) {
+  for (unsigned int j = 0; j < pos; j++) {
 
     i = snprintf(string, len, "%i %i ", rows[j], columns[j]);
   
@@ -875,7 +879,7 @@ bool assembler_0_c::getPosition(char * string, int len) {
   return true;
 }
 
-static int getInt(char * s, int * i) {
+static unsigned int getInt(char * s, unsigned int * i) {
 
   int p = 0;
   i = 0;
@@ -900,16 +904,17 @@ void assembler_0_c::setPosition(char * string) {
    * on a fresh instance of the class but just in case someone
    * calls setPosition on a already started search we need it
    */
-  while (pos > 0) {
-
-    if (rows[pos] != -1) {
-      uncover_row(rows[pos]);
-      uncover(columns[pos]);
-      rows[pos] = -1;
+  if (pos <= piecenumber)
+    while (pos > 0) {
+  
+      if (rows[pos]) {
+        uncover_row(rows[pos]);
+        uncover(columns[pos]);
+        rows[pos] = 0;
+      }
+  
+      pos--;
     }
-
-    pos--;
-  }
 
   /* get the values from the string. For the moment we assume that
    * the string is correct and contains enough values, if not sad things
@@ -918,25 +923,28 @@ void assembler_0_c::setPosition(char * string) {
    */
   string += getInt(string, &pos);
 
-  for (int i = 0; i < pos; i++) {
-    string += getInt(string, &rows[i]);
-    string += getInt(string, &columns[i]);
-  }
+  if (pos <= piecenumber)
+    for (unsigned int i = 0; i < pos; i++) {
+      string += getInt(string, &rows[i]);
+      string += getInt(string, &columns[i]);
+    }
 
   /* here we need to get the matrix into this exact position as it has been, when we
    * saved the position that means we need to cover all rows and columns in the same
    * order as it happened in the original process
    */
-  int p = 0;
-  while (p < pos) {
+  unsigned int p = 0;
 
-    if (rows[pos] != -1) {
-      cover(columns[p]);
-      cover_row(rows[p]);
+  if (pos <= piecenumber)
+    while (p < pos) {
+  
+      if (rows[pos]) {
+        cover(columns[p]);
+        cover_row(rows[p]);
+      }
+  
+      p++;
     }
-
-    p++;
-  }
 }
 
 

@@ -84,8 +84,8 @@ void SquareEditor::draw() {
   // the color for the squares
   unsigned char r, g, b;
 
-  for (int x = 0; x < space->getX(); x++)
-    for (int y = 0; y < space->getY(); y++) {
+  for (unsigned int x = 0; x < space->getX(); x++)
+    for (unsigned int y = 0; y < space->getY(); y++) {
       if ((x+y+currentZ) & 1) {
         r = int(255*darkPieceColor(pieceColorR(piecenumber)));
         g = int(255*darkPieceColor(pieceColorG(piecenumber)));

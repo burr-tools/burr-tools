@@ -27,6 +27,7 @@
 #include "../lib/voxel.h"
 
 #include "ArcBall.h"
+#include "DisasmToMoves.h"
 
 #include <vector>
 
@@ -67,11 +68,10 @@ private:
   const pieceVoxel_c * pcSpace;
   voxel_type pieceNumber;
 
-  float* shiftArray;
+  PiecePositions * shiftArray;
   char * visArray;
   int arraySize;
   int * colArray;
-
 
   ArcBall_c * arcBall;
 
@@ -114,7 +114,7 @@ public:
    *
    * pieces outside range are normal
    */
-  void setVoxelSpace(const assemblyVoxel_c *sp, float * shArray, char * vArray, int numPieces, int * colors);
+  void setVoxelSpace(const assemblyVoxel_c *sp, PiecePositions * pos, char * vArray, int numPieces, int * colors);
 
 
 public:

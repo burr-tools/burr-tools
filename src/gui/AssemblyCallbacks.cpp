@@ -68,7 +68,7 @@ void* start_th(void * c)
   return 0;
 }
 
-assemblerThread::assemblerThread(puzzle_c * puz, unsigned int problemNum, int solAction) :
+assemblerThread::assemblerThread(puzzle_c * puz, unsigned int problemNum, unsigned int solAction) :
 assemblies(0),
 action(ACT_PREPARATION),
 _solutionAction(solAction),
