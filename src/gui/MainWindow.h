@@ -2,32 +2,29 @@
 
 #ifndef MainWindow_h
 #define MainWindow_h
+
+#include "../lib/puzzle.h"
+#include "AssemblyCallbacks.h"
+#include "DisasmToMoves.h"
+#include "PieceVisibility.h"
+#include "WindowWidgets.h"
+
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Tile.H>
 #include <FL/Fl_Tabs.H>
-#include <FL/Fl_Button.H>
-#include <FL/Fl_Slider.H>
-#include "PieceSelector.h"
-#include <FL/Fl_Roller.H>
 #include <FL/Fl_Value_Output.H>
-#include "SquareEditor.h"
-#include "../lib/puzzle.h"
-#include <FL/Fl_Box.H>
-#include "SquareEditor.h"
 #include <FL/Fl_Check_Button.H>
 #include <FL/Fl_Progress.H>
 #include <FL/Fl_Output.H>
 #include <FL/Fl_Value_Slider.H>
-#include "AssemblyCallbacks.h"
-#include "DisasmToMoves.h"
-#include "PieceVisibility.h"
-#include "VoxelView.h"
 #include <FL/Fl_Menu_Bar.H>
 #include <FL/Fl_File_Chooser.H>
 #include <FL/fl_ask.H>
+
 #include <fstream>
+
 using namespace std;
 
 class VoxelEditGroup;
@@ -63,9 +60,9 @@ class UserInterface {
 
   Fl_Group *TabSolve;
   Fl_Check_Button *SolveDisasm;
-  Fl_Button *BtnStart;
-  Fl_Button *BtnCont;
-  Fl_Button *BtnStop;
+  FlatButton *BtnStart;
+  FlatButton *BtnCont;
+  FlatButton *BtnStop;
   Fl_Progress *SolvingProgress;
   Fl_Value_Output *OutputAssemblies;
   Fl_Value_Output *OutputSolutions;
