@@ -100,7 +100,7 @@ public:
 
   voxel_type getVoxel(assemblyVoxel_c * assm, int x, int y, int z, int piece) const {
     assert(piece < piecenumber);
-    return assm->pieceNumber(x - dx[piece], y - dy[piece], z - dz[piece]);
+    return assm->pieceNumber2(x - dx[piece], y - dy[piece], z - dz[piece]);
   }
 
   int getX(int i) const {

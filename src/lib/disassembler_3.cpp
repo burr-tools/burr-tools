@@ -16,7 +16,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-
 #include "disassembler_3.h"
 
 #include "disassembly.h"
@@ -904,12 +903,12 @@ disassembler_3_c::disassembler_3_c(assemblyVoxel_c * problem, int piecenum) : as
   movement = new int[piecenumber];
   check = new bool[piecenumber];
 
-  bx1 = new unsigned int[piecenumber];
-  bx2 = new unsigned int[piecenumber];
-  by1 = new unsigned int[piecenumber];
-  by2 = new unsigned int[piecenumber];
-  bz1 = new unsigned int[piecenumber];
-  bz2 = new unsigned int[piecenumber];
+  bx1 = new int[piecenumber];
+  bx2 = new int[piecenumber];
+  by1 = new int[piecenumber];
+  by2 = new int[piecenumber];
+  bz1 = new int[piecenumber];
+  bz2 = new int[piecenumber];
 
   for (int i = 0; i < 6; i++)
     bbdepth[i] = new unsigned int*[piecenumber];
