@@ -24,6 +24,8 @@
 
 #include <fstream>
 
+#include <xmlwrapp/xmlwrapp.h>
+
 using namespace std;
 
 bool disassemble;
@@ -124,14 +126,8 @@ int main(int argv, char* args[]) {
     return 1;
   }
 
-  ifstream str(args[filenumber]);
-
-  if (!str) {
-    cout << "oops file " << args[filenumber] << " not opened\n";
-    return 3;
-  }
-
-  puzzle_c p/* FIXME (&str)*/;
+  xml::tree_parser parser(args[filenumber]);
+  puzzle_c p(parser.get_document().get_root_node());
 
   cout << " The puzzle:\n\n";
 
