@@ -568,8 +568,9 @@ void UserInterface::tryToLoad(const char * f) {
       newPuzzle = new puzzle_c(doc.get_root_node());
     }
 
-    catch (...) {
-      printf("Error parsing xml puzzle file, content not right");
+    catch (load_error e) {
+      fl_message(e.getText());
+      cout << e.getNode();
       return;
     }
 

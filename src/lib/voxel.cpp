@@ -561,7 +561,7 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
     throw load_error("piece Voxel with no attribut 'y' encountered", node);
   if (node.get_attributes().find("z") == node.get_attributes().end())
     throw load_error("piece Voxel with no attribut 'z' encountered", node);
-  if (node.get_attributes().find("type") == node.get_attributes().end());
+  if (node.get_attributes().find("type") == node.get_attributes().end())
     throw load_error("piece Voxel with no attribut 'type' encountered", node);
 
   // set to the correct size
@@ -577,7 +577,7 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
 
   if (c) {
 
-    if (type != 0);
+    if (type != 0)
       throw load_error("piece Voxel with type not equal to 0 encountetred", node);
 
     while (*c) {
@@ -707,7 +707,7 @@ assemblyVoxel_c::assemblyVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
     throw load_error("assembly Voxel with no attribut 'y' encountered", node);
   if (node.get_attributes().find("z") == node.get_attributes().end())
     throw load_error("assembly Voxel with no attribut 'z' encountered", node);
-  if (node.get_attributes().find("type") == node.get_attributes().end());
+  if (node.get_attributes().find("type") == node.get_attributes().end())
     throw load_error("assembly Voxel with no attribut 'type' encountered", node);
 
   setOutside(VX_EMPTY);
@@ -726,7 +726,7 @@ assemblyVoxel_c::assemblyVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
 
   if (c) {
 
-    if (type != 1);
+    if (type != 1)
       throw load_error("assembly Voxel with type not equal to 1 encountetred", node);
 
     unsigned int len;
