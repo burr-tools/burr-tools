@@ -31,7 +31,7 @@ puzzleSol_c::puzzleSol_c(puzzle_c * p) {
   puzzle = p;
 
   assm_0_frontend_0_c *assm = new assm_0_frontend_0_c();
-  assm->createMatrix(p);
+  assm->createMatrix(p, 0);
 
   solutions = 0;
 

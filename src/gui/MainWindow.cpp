@@ -364,7 +364,7 @@ void UserInterface::activatePiece(int number) {
 }
 
 void UserInterface::activateResult(void) {
-  pieceVoxel_c * p = puzzle->getResult();
+  pieceVoxel_c * p = puzzle->getResult(0); // FIXME multiple solutions
 
   View3D->setVoxelSpace(p, 255);
   resultEdit->setVoxelSpace(p, 255);

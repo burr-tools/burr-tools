@@ -52,11 +52,11 @@ static pieceVoxel_c * addToCache(pieceVoxel_c * cache[24], int * fill, pieceVoxe
  * this function counts the number of nodes required to acommodate all pieces
  * the title line is missing from the returned number
  */
-unsigned long assm_0_frontend_0_c::countNodes(puzzle_c * puz) {
+unsigned long assm_0_frontend_0_c::countNodes(puzzle_c * puz, unsigned int resultnum) {
 
   unsigned long nodes = 0;
 
-  const pieceVoxel_c * result = puz->getResult();
+  const pieceVoxel_c * result = puz->getResult(resultnum);
 
   /* now we insert one shape after another */
   for (int pc = 0; pc < puz->getShapeNumber(); pc++) {
@@ -113,9 +113,9 @@ unsigned long assm_0_frontend_0_c::countNodes(puzzle_c * puz) {
  * negative result show there is something wrong: the place -result has not
  * possible position inside the result
  */
-void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari) {
+void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari, unsigned int resultnum) {
 
-  pieceVoxel_c * result = puz->getResult();
+  pieceVoxel_c * result = puz->getResult(resultnum);
 
   /* this array contains the column in our matrix that corresponds with
    * the voxel position inside the result. We use this matrix because
@@ -126,9 +126,9 @@ void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari) 
    */
   unsigned int * columns = new unsigned int[result->getXYZ()];
   unsigned int piecenumber = puz->getPieces();
-  voxelindex = new int[puz->getResult()->getXYZ() + piecenumber + 1];
+  voxelindex = new int[result->getXYZ() + piecenumber + 1];
 
-  for (int i = 0; i < puz->getResult()->getXYZ() + piecenumber + 1; i++)
+  for (int i = 0; i < result->getXYZ() + piecenumber + 1; i++)
     voxelindex[i] = -1;
 
   {
@@ -241,7 +241,7 @@ void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari) 
 
   delete [] columns;
 
-  assm = new assemblyVoxel_c(puz->getResult()->getX(), puz->getResult()->getY(), puz->getResult()->getZ(), assemblyVoxel_c::VX_EMPTY);
+  assm = new assemblyVoxel_c(result->getX(), result->getY(), result->getZ(), assemblyVoxel_c::VX_EMPTY);
 }
 
 assm_0_frontend_0_c::~assm_0_frontend_0_c() {

@@ -65,7 +65,7 @@ action(ACT_PREPARATION),
 _solutionAction(solAction),
 _piecenumber(puzzle->getPieces())
 {
-  assembler.createMatrix(puzzle);
+  assembler.createMatrix(puzzle, 0); // FIXME multiple solutions
 }
 
 assemblerThread::~assemblerThread(void) {

@@ -36,8 +36,8 @@ using namespace std;
  */
 puzzle_c::puzzle_c(istream * str) {
 
-  result = new pieceVoxel_c(str);
-  assert(result);
+  results.push_back(new pieceVoxel_c(str));
+  assert(results[0]);
 
   int pieces;
 
@@ -66,7 +66,8 @@ puzzle_c::puzzle_c(istream * str) {
 
 puzzle_c::puzzle_c(const puzzle_c * orig) {
 
-  result = new pieceVoxel_c(orig->result);
+  for (int i = 0; i < orig->results.size(); i++)
+    results.push_back(new pieceVoxel_c(orig->results[i]));
 
   for (int i = 0; i < orig->getShapeNumber(); i++) {
     shapeInfo pi;
@@ -78,7 +79,7 @@ puzzle_c::puzzle_c(const puzzle_c * orig) {
 
 void puzzle_c::save(ostream * str) const {
 
-  result->save(str);
+  results[0]->save(str);
 
   *str << shapes.size() << endl;
 
@@ -107,16 +108,16 @@ void puzzle_c::PS3Dsave(std::ostream * str) const {
     }
   }
 
-  *str << "RESULT " << result->getX() << "," << result->getY() << "," << result->getZ() << std::endl;
-  for (int y = 0; y < result->getY(); y++) {
-    for (int z = 0; z < result->getZ(); z++) {
-      for (int x = 0; x < result->getX(); x++) {
-        if (result->getState(x, y, z) != pieceVoxel_c::VX_EMPTY)
+  *str << "RESULT " << results[0]->getX() << "," << results[0]->getY() << "," << results[0]->getZ() << std::endl;
+  for (int y = 0; y < results[0]->getY(); y++) {
+    for (int z = 0; z < results[0]->getZ(); z++) {
+      for (int x = 0; x < results[0]->getX(); x++) {
+        if (results[0]->getState(x, y, z) != pieceVoxel_c::VX_EMPTY)
           *str << 'A';
         else
           *str << ' ';
       }
-      if (z < result->getZ() - 1)
+      if (z < results[0]->getZ() - 1)
         *str << ",";
     }
     *str << std::endl;
@@ -132,7 +133,7 @@ puzzle_c::~puzzle_c(void) {
 
 void puzzle_c::print(void) {
 
-  result->print('a');
+  results[0]->print('a');
 
   for (unsigned int i = 0; i < shapes.size(); i++)
     shapes[i].piece->print('a');

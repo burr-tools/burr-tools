@@ -124,7 +124,7 @@ assembler_0_c::~assembler_0_c() {
   if (searchState) delete [] searchState;
 }
 
-void assembler_0_c::createMatrix(const puzzle_c * p) {
+void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int resultnum) {
 
   puzzle_c puz(p);
 
@@ -136,8 +136,8 @@ void assembler_0_c::createMatrix(const puzzle_c * p) {
     puz.getShape(i)->minimizePiece();
 
   /* count the filled and variable units */
-  int res_vari = puz.getResult()->countState(pieceVoxel_c::VX_VARIABLE);
-  int res_filled = puz.getResult()->countState(pieceVoxel_c::VX_FILLED) + res_vari;
+  int res_vari = puz.getResult(resultnum)->countState(pieceVoxel_c::VX_VARIABLE);
+  int res_filled = puz.getResult(resultnum)->countState(pieceVoxel_c::VX_FILLED) + res_vari;
 
   varivoxelStart = 1 + piecenumber + res_filled - res_vari;
   varivoxelEnd = 1 + piecenumber + res_filled;
@@ -165,7 +165,7 @@ void assembler_0_c::createMatrix(const puzzle_c * p) {
   }
 
   /* count the number of required nodes*/
-  unsigned long nodes = countNodes(&puz);
+  unsigned long nodes = countNodes(&puz, resultnum);
 
   // check, if there is one piece unplacable
   if (nodes <= 0) {
@@ -200,7 +200,7 @@ void assembler_0_c::createMatrix(const puzzle_c * p) {
   colCount = new int [nodes];
 
   /* fill the nodes arrays */
-  prepare(&puz, res_filled, res_vari);
+  prepare(&puz, res_filled, res_vari, resultnum);
 
   memset(rows, 0xff, piecenumber * sizeof(int));
   memset(columns, 0, piecenumber * sizeof(int));

@@ -57,7 +57,7 @@ private:
   /**
    * The definition of the assembled block.
    */
-  pieceVoxel_c * result;
+  std::vector<pieceVoxel_c*> results;
 
 public:
 
@@ -69,10 +69,9 @@ public:
   puzzle_c(const puzzle_c * orig);
 
   /**
-   * Constructor for empty puzzle, with empty
-   * result and no shapes
+   * Constructor for empty puzzle, with no result and and no shapes
    */
-  puzzle_c(void) : result(new pieceVoxel_c(0, 0, 0)) { }
+  puzzle_c(void) { }
 
   /**
    * Destructor.
@@ -98,10 +97,16 @@ public:
   void removeShape(unsigned int nr);
 
   /**
-   * Returns the result shape
+   * Returns the num-th result shape
    */
-  pieceVoxel_c * getResult(void) { return result; }
-  const pieceVoxel_c * getResult(void) const { return result; }
+  pieceVoxel_c * getResult(int num) {
+    assert(num < results.size());
+    return results[num];
+  }
+  const pieceVoxel_c * getResult(int num) const {
+    assert(num < results.size());
+    return results[num];
+  }
 
   /**
    * Returns the the piece with number \c nr

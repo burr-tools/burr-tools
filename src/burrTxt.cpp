@@ -137,7 +137,7 @@ int main(int argv, char* args[]) {
   p.print();
 
   assembler_0_c *assm = new assm_0_frontend_0_c();
-  assm->createMatrix(&p);
+  assm->createMatrix(&p, 0);
 
   if (reduce) {
     cout << "start reduce\n\n";
