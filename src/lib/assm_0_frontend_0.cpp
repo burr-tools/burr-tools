@@ -270,7 +270,7 @@ bool assm_0_frontend_0_c::solution(void) {
         int vi = voxelindex[getColCount(r)];
 
         if (vi >= 0)
-          assm->set(vi, getPiece(i) + 1);
+          assm->setPiece(vi, getPiece(i));
 
         r = getRight(r);
 

@@ -58,20 +58,12 @@ class VoxelView : public Fl_Widget
 
 private:
 
-  /* function to set the color for one piece with the given number */
-  void setColor(voxel_type piece, int p, float alpha);
-
   /* Draws the voxelspace. */
   void drawVoxelSpace();
 
-  const voxel_c * space;
+  const assemblyVoxel_c * asmSpace;
+  const pieceVoxel_c * pcSpace;
   voxel_type pieceNumber;
-
-  /* defines the mod the widget works in, see drawVoxelSpace */
-  enum {
-    singleMode,
-    multiMode
-  } mode;
 
   float* shiftArray;
   char * visArray;
@@ -99,7 +91,7 @@ public:
   int handle(int event);
 
   /* sets the voxel space and the piecenumber and sets single mode */
-  void setVoxelSpace(const voxel_c *sp, int pn);
+  void setVoxelSpace(const pieceVoxel_c *sp, int pn);
 
   /* sets a new voxel space and the necessary parameters and
    * activates multi mode
@@ -123,7 +115,7 @@ public:
    *
    * pieces outside range are normal
    */
-  void setVoxelSpace(const voxel_c *sp, float * shArray, char * vArray, int numPieces, int * colors);
+  void setVoxelSpace(const assemblyVoxel_c *sp, float * shArray, char * vArray, int numPieces, int * colors);
 
   /* only active in single mode */
   void setMarker(int x, int y, int z) {

@@ -31,7 +31,7 @@ typedef struct pieceTreeNode {
 
   // we have either this one filled, or if it's empty then
   // we have a valid pos, filled and empty pointers;
-  voxel_c *piece;
+  pieceVoxel_c *piece;
 
 } pieceTreeNode;
 
@@ -49,7 +49,7 @@ static void deleteTree(pieceTreeNode *t) {
   }
 }
 
-static bool containsPiece(pieceTreeNode *t, voxel_c *p) {
+static bool containsPiece(pieceTreeNode *t, pieceVoxel_c *p) {
 
   if (!t) return false;
 
@@ -59,14 +59,14 @@ static bool containsPiece(pieceTreeNode *t, voxel_c *p) {
 
   } else {
 
-    if (p->get(t->pos) == VX_EMPTY)
+    if (p->getState(t->pos) == pieceVoxel_c::VX_EMPTY)
       return containsPiece(t->empty, p);
     else
       return containsPiece(t->filled, p);
   }
 }
 
-static pieceTreeNode * addPiece(pieceTreeNode *t, voxel_c *p) {
+static pieceTreeNode * addPiece(pieceTreeNode *t, pieceVoxel_c *p) {
 
   if (!t) {
     t = new pieceTreeNode;
@@ -83,7 +83,7 @@ static pieceTreeNode * addPiece(pieceTreeNode *t, voxel_c *p) {
         pieceTreeNode * e = new pieceTreeNode;
         pieceTreeNode * f = new pieceTreeNode;
 
-        if (p->get(i) == VX_FILLED) {
+        if (p->getState(i) == pieceVoxel_c::VX_FILLED) {
           f->piece = p;
           e->piece = t->piece;
         } else {
@@ -101,7 +101,7 @@ static pieceTreeNode * addPiece(pieceTreeNode *t, voxel_c *p) {
     }
   
   } else {
-      if (p->get(t->pos) == VX_EMPTY)
+      if (p->getState(t->pos) == pieceVoxel_c::VX_EMPTY)
         addPiece(t->empty, p);
       else
         addPiece(t->filled, p);
@@ -111,13 +111,13 @@ static pieceTreeNode * addPiece(pieceTreeNode *t, voxel_c *p) {
   return t;
 }
 
-pieceGenerator_c::pieceGenerator_c (const voxel_c * p) {
+pieceGenerator_c::pieceGenerator_c (const pieceVoxel_c * p) {
 
-  voxel_c * pt = new voxel_c(p);
+  pieceVoxel_c * pt = new pieceVoxel_c(p);
 
   for (int z = 0; z < pt->getXYZ(); z++)
-    if (pt->get(z) == VX_VARIABLE)
-      pt->set(z, VX_EMPTY);
+    if (pt->getState(z) == pieceVoxel_c::VX_VARIABLE)
+      pt->setState(z, pieceVoxel_c::VX_EMPTY);
 
   pieces.push_back(pt);
 
@@ -149,15 +149,16 @@ pieceGenerator_c::pieceGenerator_c (const voxel_c * p) {
       // add in if there is an variable voxel, that is not yet filled
       // but has a filled voxel
       for (int v = 0; v < p->getXYZ(); v++) {
-        if ((p->get(v) == VX_VARIABLE) &&
-            (pieces[i]->get(v) == VX_EMPTY) &&
-            (pieces[i]->neighbour(v, VX_FILLED))) {
+        if ((p->getState(v) == pieceVoxel_c::VX_VARIABLE) &&
+            (pieces[i]->getState(v) == pieceVoxel_c::VX_EMPTY) //&&
+            // FIXME (pieces[i]->neighbour(v, VX_FILLED))
+           ) {
 
           // create a new piece where this voxel is filled
-          voxel_c * ps = new voxel_c(pieces[i]);
-          ps->set(v, VX_FILLED);
+          pieceVoxel_c * ps = new pieceVoxel_c(pieces[i]);
+          ps->setState(v, pieceVoxel_c::VX_FILLED);
 
-          voxel_c sym(ps);
+          pieceVoxel_c sym(ps);
 
           sym.rotatez();
           sym.rotatez();

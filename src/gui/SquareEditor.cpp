@@ -22,7 +22,7 @@
 
 #include <FL/fl_draw.h>
 
-void SquareEditor::setVoxelSpace(voxel_c * newSpace, int piecenum) {
+void SquareEditor::setVoxelSpace(pieceVoxel_c * newSpace, int piecenum) {
 
   space = newSpace;
 
@@ -92,11 +92,11 @@ void SquareEditor::draw() {
         b = int(255*lightPieceColor(pieceColorB(piecenumber)));
       }
 
-      switch(space->get(x, space->getY()-y-1, currentZ)) {
-      case VX_FILLED:
+      switch(space->getState(x, space->getY()-y-1, currentZ)) {
+      case pieceVoxel_c::VX_FILLED:
         fl_rectf(tx+x*s, ty+y*s, s, s, r, g, b);
         break;
-      case VX_VARIABLE:
+      case pieceVoxel_c::VX_VARIABLE:
         fl_rectf(tx+x*s+3, ty+y*s+3, s-5, s-5, r, g, b);
         break;
       }
@@ -156,27 +156,27 @@ int SquareEditor::handle(int event) {
         // the button is pressed
         if (state == 1) {
           if (Fl::event_button() == 1)
-            state = (space->get(x, y, currentZ) == VX_FILLED) ? 2 : 3;
+            state = (space->getState(x, y, currentZ) == pieceVoxel_c::VX_FILLED) ? 2 : 3;
           else
-            state = (space->get(x, y, currentZ) == VX_VARIABLE) ? 2 : 4;
+            state = (space->getState(x, y, currentZ) == pieceVoxel_c::VX_VARIABLE) ? 2 : 4;
         }
   
-        voxel_type vxNew = VX_EMPTY;
+        voxel_type vxNew = pieceVoxel_c::VX_EMPTY;
   
         switch (state) {
         case 2:
-          vxNew = VX_EMPTY;
+          vxNew = pieceVoxel_c::VX_EMPTY;
           break;
         case 3:
-          vxNew = VX_FILLED;
+          vxNew = pieceVoxel_c::VX_FILLED;
           break;
         case 4:
-          vxNew = VX_VARIABLE;
+          vxNew = pieceVoxel_c::VX_VARIABLE;
           break;
         }
   
-        if (space->get(x, y, currentZ) != vxNew) {
-          space->set(x, y, currentZ, vxNew);
+        if (space->getState(x, y, currentZ) != vxNew) {
+          space->setState(x, y, currentZ, vxNew);
           redraw();
           callbackReason = RS_CHANGESQUARE;
           do_callback();

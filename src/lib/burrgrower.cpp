@@ -59,7 +59,7 @@ puzzleSol_c::puzzleSol_c(const puzzleSol_c * p) {
 }
 
 
-bool puzzleSol_c::assembly(voxel_c * assm) {
+bool puzzleSol_c::assembly(assemblyVoxel_c * assm) {
 
   disassembler_2_c d(assm, puzzle->getPieces());
   disassembly_c * da = d.disassemble();
@@ -120,8 +120,8 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
     for (int p = 0; p < base->getShapeNumber(); p++) {
 
       for (int ii = 0; ii < n->getShape(p)->getXYZ(); ii++)
-        if (n->getShape(p)->get(ii) == VX_VARIABLE)
-          n->getShape(p)->set(ii, VX_EMPTY);
+        if (n->getShape(p)->getState(ii) == pieceVoxel_c::VX_VARIABLE)
+          n->getShape(p)->setState(ii, pieceVoxel_c::VX_EMPTY);
     }
 
     puzzleSol_c * ps = new puzzleSol_c(n);
@@ -144,13 +144,13 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
 
       for (int i = 0; i < base->getShapeNumber(); i++)
         for (int z = 0; z < base->getShape(i)->getXYZ(); z++) {
-          if ((base->getShape(i)->get(z) == VX_VARIABLE) &&
-              (currentSet[p]->getPuzzle()->getShape(i)->get(z) == VX_EMPTY) &&
-               currentSet[p]->getPuzzle()->getShape(i)->neighbour(z, VX_FILLED)
+          if ((base->getShape(i)->getState(z) == pieceVoxel_c::VX_VARIABLE) &&
+              (currentSet[p]->getPuzzle()->getShape(i)->getState(z) == pieceVoxel_c::VX_EMPTY) //&&
+               // FIXME currentSet[p]->getPuzzle()->getShape(i)->neighbour(z, VX_FILLED)
              ) {
 
             puzzle_c *n = new puzzle_c(currentSet[p]->getPuzzle());
-            n->getShape(i)->set(z, VX_FILLED);
+            n->getShape(i)->setState(z, pieceVoxel_c::VX_FILLED);
 
             puzzleSol_c * ps = new puzzleSol_c(n);
 
@@ -215,8 +215,8 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
     puzzle_c * ps = new puzzle_c(newSet[pos]->getPuzzle());
 
     for (int ii = 0; ii < base->getShape(piece)->getXYZ(); ii++)
-      if (base->getShape(piece)->get(ii) == VX_VARIABLE)
-        ps->getShape(piece)->set(ii, VX_EMPTY);
+      if (base->getShape(piece)->getState(ii) == pieceVoxel_c::VX_VARIABLE)
+        ps->getShape(piece)->setState(ii, pieceVoxel_c::VX_EMPTY);
 
     newSet.push_back(new puzzleSol_c(ps));
 

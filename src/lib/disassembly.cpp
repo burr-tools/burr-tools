@@ -19,10 +19,10 @@
 
 #include "disassembly.h"
 
-void state_c::print(voxel_c *start, voxel_type * pieces) const {
+void state_c::print(assemblyVoxel_c *start, voxel_type * pieces) const {
 
   for (int i = 0; i < piecenumber; i++)
-    printf("%c(%i; %i; %i), ", 'a'+pieces[i] - 1, dx[i], dy[i], dz[i]);
+    printf("%c(%i; %i; %i), ", 'a'+pieces[i], dx[i], dy[i], dz[i]);
 
   printf("\n");
 
@@ -42,7 +42,7 @@ void state_c::print(voxel_c *start, voxel_type * pieces) const {
               (y1 < start->getY()) &&
               (z1 < start->getZ()))
             if (start->get(x1, y1, z1) == pieces[p]) {
-              printf("%c", 'a' + pieces[p] - 1);
+              printf("%c", 'a' + pieces[p]);
               foundpiece = true;
             }
         }
@@ -59,7 +59,7 @@ void state_c::print(voxel_c *start, voxel_type * pieces) const {
   printf("\n\n");
 }
 
-void separation_c::print(voxel_c * start) const {
+void separation_c::print(assemblyVoxel_c * start) const {
   for (int i = 0; i < moves; i++)
     movements[i]->print(start, pieces);
 

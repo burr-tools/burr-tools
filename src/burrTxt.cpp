@@ -39,7 +39,7 @@ public:
 
   asm_cb(int pnum) : Assemblies(0), Solutions(0), pn(pnum) {}
 
-  bool assembly(voxel_c * assm) {
+  bool assembly(assemblyVoxel_c * assm) {
 
     Assemblies++;
 
@@ -55,7 +55,7 @@ public:
       if (da) {
         Solutions++;
         if (printSolutions)
-          assm->print('a');
+          assm->print();
         printf("level: %i\n", da->firstlevel());
         if (printDisassemble)
           da->print();
@@ -65,7 +65,7 @@ public:
     } else {
 
       if (printSolutions)
-        assm->print('a');
+        assm->print();
     }
 
     return true;

@@ -37,7 +37,7 @@ public:
    * found by an assembler. it get's the found aseembly
    * as parameter
    */
-  virtual bool assembly(voxel_c * assm) = 0;
+  virtual bool assembly(assemblyVoxel_c * assm) = 0;
 };
 
 
@@ -80,7 +80,7 @@ public:
   virtual void stop(void) {}
 
   /* returns true, as soon as the process really has stopped */
-  virtual bool stopped(void) { return false; }
+  virtual bool stopped(void) const { return false; }
 
   /* returns a string, that can be saved inside a textfile stat specifies the
    * exact position where the assembly process stopped

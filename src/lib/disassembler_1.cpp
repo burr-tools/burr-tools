@@ -690,8 +690,9 @@ void disassembler_1_c::calcbounds(void) {
   for (int x = 0; x < assm->getX(); x++)
     for (int y = 0; y < assm->getY(); y++)
       for (int z = 0; z < assm->getZ(); z++) {
-        voxel_type c = assm->get(x, y, z);
-        if (c != VX_EMPTY) {
+        if (!assm->isEmpty(x, y, z)) {
+
+          unsigned int c = assm->pieceNumber(x, y, z);
 
           if (bx1[c] == -1) {
             bx1[c] = bx2[c] = x;
@@ -712,18 +713,18 @@ void disassembler_1_c::calcbounds(void) {
 }
 
 
-disassembler_1_c::disassembler_1_c(voxel_c * problem, int piecenum) : assm(problem), piecenumber(piecenum) {
+disassembler_1_c::disassembler_1_c(assemblyVoxel_c * problem, int piecenum) : assm(problem), piecenumber(piecenum) {
 
   /* allocate the necessary arrays */
   movement = new int[piecenumber];
   check = new bool[piecenumber];
 
-  bx1 = new int[piecenumber+1];
-  bx2 = new int[piecenumber+1];
-  by1 = new int[piecenumber+1];
-  by2 = new int[piecenumber+1];
-  bz1 = new int[piecenumber+1];
-  bz2 = new int[piecenumber+1];
+  bx1 = new int[piecenumber];
+  bx2 = new int[piecenumber];
+  by1 = new int[piecenumber];
+  by2 = new int[piecenumber];
+  bz1 = new int[piecenumber];
+  bz2 = new int[piecenumber];
 
   for (int i = 0; i < 3; i++)
     matrix[i] = new int[piecenumber * piecenumber];

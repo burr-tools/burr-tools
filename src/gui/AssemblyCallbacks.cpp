@@ -31,7 +31,7 @@
  */
 typedef struct solution {
   const disassembly_c * disassembly;
-  const voxel_c * assembly;
+  const assemblyVoxel_c * assembly;
 } solution;
 
 
@@ -93,7 +93,7 @@ assemblerThread::~assemblerThread(void) {
   sols.clear();
 }
 
-bool assemblerThread::assembly(voxel_c * as) {
+bool assemblerThread::assembly(assemblyVoxel_c * as) {
 
   assemblies++;
 
@@ -102,7 +102,7 @@ bool assemblerThread::assembly(voxel_c * as) {
     {
       solution s;
   
-      s.assembly = new voxel_c(as);
+      s.assembly = new assemblyVoxel_c(as);
       s.disassembly = 0;
   
       sols.push_back(s);

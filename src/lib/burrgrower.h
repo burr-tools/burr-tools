@@ -45,7 +45,7 @@ public:
 
   double fitness(void);
 
-  bool assembly(voxel_c * assm);
+  bool assembly(assemblyVoxel_c * assm);
 
   bool nosol(void) { return solutions == 0; }
 

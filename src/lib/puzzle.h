@@ -36,7 +36,7 @@
  * one puzzle piece
  */
 typedef struct {
-  voxel_c * piece;      //!< the shape
+  pieceVoxel_c * piece;      //!< the shape
   unsigned int count;   //!< how often this piece appears
 } shapeInfo;
 
@@ -57,7 +57,7 @@ private:
   /**
    * The definition of the assembled block.
    */
-  voxel_c * result;
+  pieceVoxel_c * result;
 
 public:
 
@@ -72,7 +72,7 @@ public:
    * Constructor for empty puzzle, with empty
    * result and no shapes
    */
-  puzzle_c(void) : result(new voxel_c(0, 0, 0)) { }
+  puzzle_c(void) : result(new pieceVoxel_c(0, 0, 0)) { }
 
   /**
    * Destructor.
@@ -85,7 +85,7 @@ public:
    * The class then takes over ownership of the piece and
    * deletes it whenever apropriate
    */
-  void addShape(voxel_c * p, int nr = 1);
+  void addShape(pieceVoxel_c * p, int nr = 1);
 
   /**
    * Adds an empty piece to the puzzle.
@@ -100,18 +100,18 @@ public:
   /**
    * Returns the result shape
    */
-  voxel_c * getResult(void) { return result; }
-  const voxel_c * getResult(void) const { return result; }
+  pieceVoxel_c * getResult(void) { return result; }
+  const pieceVoxel_c * getResult(void) const { return result; }
 
   /**
    * Returns the the piece with number \c nr
    */
-  voxel_c * getShape(unsigned int nr) {
+  pieceVoxel_c * getShape(unsigned int nr) {
     assert(nr < shapes.size());
     return shapes[nr].piece;
   }
 
-  const voxel_c * getShape(unsigned int nr) const {
+  const pieceVoxel_c * getShape(unsigned int nr) const {
     assert(nr < shapes.size());
     return shapes[nr].piece;
   }

@@ -35,13 +35,13 @@ VoxelView::VoxelView(int x,int y,int w,int h,const char *l)
 #else
   : Fl_Widget(x,y,w,h,l),
 #endif
-  size(10), space(0), mode(singleMode), markerType(false), arcBall(new ArcBall_c(w, h))
+  size(10), asmSpace(0), pcSpace(0), markerType(false), arcBall(new ArcBall_c(w, h))
 {
 };
 
-void VoxelView::setColor(voxel_type piece, int p, float alpha) {
+void setColor(bool multi, unsigned int piece, int p, float alpha, int *colArray) {
 
-  if (mode == multiMode) {
+  if (multi) {
 
     piece <<= 1;
 
@@ -197,7 +197,14 @@ void VoxelView::drawVoxelSpace() {
 /* Draw a colored cube */
   glShadeModel(GL_FLAT);
 
-  if (!space) return;
+  if (!pcSpace && !asmSpace) return;
+
+  const voxel_c *space = 0;
+
+  if (asmSpace)
+    space = asmSpace;
+  else
+    space = pcSpace;
 
   glTranslatef(-space->getX()/2.0, -space->getY()/2.0, -space->getZ()/2.0);
 
@@ -217,7 +224,9 @@ void VoxelView::drawVoxelSpace() {
   for (int x = 0; x < space->getX(); x++)
     for (int y = 0; y < space->getY(); y++)
       for (int z = 0; z < space->getZ(); z++) {
-        voxel_type p = space->get(x, y, z);
+
+        voxel_type p;
+
         enum {
           box,
           grid,
@@ -225,100 +234,113 @@ void VoxelView::drawVoxelSpace() {
           nothing
         } toDraw;
 
-        if (p != VX_EMPTY) {
-          if (mode == multiMode) {
-            setColor(p-1, x+y+z, shiftArray[4*p-1]);
-            glPushMatrix();
-            if (space->get(x, y, z) <= arraySize)
-              glTranslatef(shiftArray[4*p-4], shiftArray[4*p-3], shiftArray[4*p-2]);
+        if (asmSpace) {
+          if (asmSpace->isEmpty(x, y, z))
+            continue;
 
-            switch(visArray[p-1]) {
-            case 0: toDraw = box; break;
-            case 1: toDraw = grid; break;
-            case 2: toDraw = nothing; break;
-            }
-            if (shiftArray[4*p-1] == 0)
-              toDraw = nothing;
-          } else {
-            setColor(pieceNumber, x+y+z, 1);
-            if (p == VX_FILLED)
-              toDraw = box;
-            else
-              toDraw = variable;
+          p = asmSpace->pieceNumber(x, y, z);
+
+          setColor(true, p, x+y+z, shiftArray[4*p+3], colArray);
+
+          glPushMatrix();
+
+          if (asmSpace->pieceNumber(x, y, z) < arraySize)
+            glTranslatef(shiftArray[4*p], shiftArray[4*p+1], shiftArray[4*p+2]);
+
+          switch(visArray[p]) {
+          case 0: toDraw = box; break;
+          case 1: toDraw = grid; break;
+          case 2: toDraw = nothing; break;
           }
 
-          switch (toDraw) {
-          case box:
-            drawBox(space, x, y, z);
-            break;
-          case grid:
-            glDisable(GL_LIGHTING);
-            glBegin(GL_LINES);
+          if (shiftArray[4*p+3] == 0)
+            toDraw = nothing;
 
-            if ((space->get2(x, y-1, z) != p) && (space->get2(x, y, z-1) != p)) { glVertex3f(x  , y  , z  ); glVertex3f(x+1, y  , z  ); }
-            if (((space->get2(x, y-1, z) == p) ^ (space->get2(x, y, z-1) == p)) && (space->get2(x, y-1, z-1) == p)) { glVertex3f(x  , y  , z  ); glVertex3f(x+1, y  , z  ); }
+        } else {
 
-            if ((space->get2(x, y-1, z) != p) && (space->get2(x, y, z+1) != p)) { glVertex3f(x  , y  , z+1); glVertex3f(x+1, y  , z+1); }
-            if (((space->get2(x, y-1, z) == p) ^ (space->get2(x, y, z+1) == p)) && (space->get2(x, y-1, z+1) == p)){ glVertex3f(x  , y  , z+1); glVertex3f(x+1, y  , z+1); }
+          if (pcSpace->getState(x, y, z) == pieceVoxel_c::VX_EMPTY)
+            continue;
 
-            if ((space->get2(x, y+1, z) != p) && (space->get2(x, y, z+1) != p)) { glVertex3f(x  , y+1, z+1); glVertex3f(x+1, y+1, z+1); }
-            if (((space->get2(x, y+1, z) == p) ^ (space->get2(x, y, z+1) == p)) && (space->get2(x, y+1, z+1) == p)) { glVertex3f(x  , y+1, z+1); glVertex3f(x+1, y+1, z+1); }
+          p = pcSpace->getState(x, y, z);
 
-            if ((space->get2(x, y+1, z) != p) && (space->get2(x, y, z-1) != p)) { glVertex3f(x  , y+1, z  ); glVertex3f(x+1, y+1, z  ); }
-            if (((space->get2(x, y+1, z) == p) ^ (space->get2(x, y, z-1) == p)) && (space->get2(x, y+1, z-1) == p)) { glVertex3f(x  , y+1, z  ); glVertex3f(x+1, y+1, z  ); }
+          setColor(false, pieceNumber, x+y+z, 1, colArray);
+          if (p == pieceVoxel_c::VX_FILLED)
+            toDraw = box;
+          else
+            toDraw = variable;
+        }
 
-            if ((space->get2(x-1, y, z) != p) && (space->get2(x, y, z-1) != p)) { glVertex3f(x  , y  , z  ); glVertex3f(x  , y+1, z  ); }
-            if (((space->get2(x-1, y, z) == p) ^ (space->get2(x, y, z-1) == p)) && (space->get2(x-1, y, z-1) == p)) { glVertex3f(x  , y  , z  ); glVertex3f(x  , y+1, z  ); }
+        switch (toDraw) {
+        case box:
+          drawBox(space, x, y, z);
+          break;
+        case grid:
+          glDisable(GL_LIGHTING);
+          glBegin(GL_LINES);
 
-            if ((space->get2(x-1, y, z) != p) && (space->get2(x, y, z+1) != p)) { glVertex3f(x  , y  , z+1); glVertex3f(x  , y+1, z+1); }
-            if (((space->get2(x-1, y, z) == p) ^ (space->get2(x, y, z+1) == p)) && (space->get2(x-1, y, z+1) == p)) { glVertex3f(x  , y  , z+1); glVertex3f(x  , y+1, z+1); }
+          if ((space->get2(x, y-1, z) != p) && (space->get2(x, y, z-1) != p)) { glVertex3f(x  , y  , z  ); glVertex3f(x+1, y  , z  ); }
+          if (((space->get2(x, y-1, z) == p) ^ (space->get2(x, y, z-1) == p)) && (space->get2(x, y-1, z-1) == p)) { glVertex3f(x  , y  , z  ); glVertex3f(x+1, y  , z  ); }
 
-            if ((space->get2(x+1, y, z) != p) && (space->get2(x, y, z+1) != p)) { glVertex3f(x+1, y  , z+1); glVertex3f(x+1, y+1, z+1); }
-            if (((space->get2(x+1, y, z) == p) ^ (space->get2(x, y, z+1) == p)) && (space->get2(x+1, y, z+1) == p)) { glVertex3f(x+1, y  , z+1); glVertex3f(x+1, y+1, z+1); }
+          if ((space->get2(x, y-1, z) != p) && (space->get2(x, y, z+1) != p)) { glVertex3f(x  , y  , z+1); glVertex3f(x+1, y  , z+1); }
+          if (((space->get2(x, y-1, z) == p) ^ (space->get2(x, y, z+1) == p)) && (space->get2(x, y-1, z+1) == p)){ glVertex3f(x  , y  , z+1); glVertex3f(x+1, y  , z+1); }
 
-            if ((space->get2(x+1, y, z) != p) && (space->get2(x, y, z-1) != p)) { glVertex3f(x+1, y  , z  ); glVertex3f(x+1, y+1, z  ); }
-            if (((space->get2(x+1, y, z) == p) ^ (space->get2(x, y, z-1) == p)) && (space->get2(x+1, y, z-1) == p)) { glVertex3f(x+1, y  , z  ); glVertex3f(x+1, y+1, z  ); }
+          if ((space->get2(x, y+1, z) != p) && (space->get2(x, y, z+1) != p)) { glVertex3f(x  , y+1, z+1); glVertex3f(x+1, y+1, z+1); }
+          if (((space->get2(x, y+1, z) == p) ^ (space->get2(x, y, z+1) == p)) && (space->get2(x, y+1, z+1) == p)) { glVertex3f(x  , y+1, z+1); glVertex3f(x+1, y+1, z+1); }
 
-            if ((space->get2(x-1, y, z) != p) && (space->get2(x, y-1, z) != p)) { glVertex3f(x  , y  , z  ); glVertex3f(x  , y  , z+1); }
-            if (((space->get2(x-1, y, z) == p) ^ (space->get2(x, y-1, z) == p)) && (space->get2(x-1, y-1, z) == p)) { glVertex3f(x  , y  , z  ); glVertex3f(x  , y  , z+1); }
+          if ((space->get2(x, y+1, z) != p) && (space->get2(x, y, z-1) != p)) { glVertex3f(x  , y+1, z  ); glVertex3f(x+1, y+1, z  ); }
+          if (((space->get2(x, y+1, z) == p) ^ (space->get2(x, y, z-1) == p)) && (space->get2(x, y+1, z-1) == p)) { glVertex3f(x  , y+1, z  ); glVertex3f(x+1, y+1, z  ); }
 
-            if ((space->get2(x-1, y, z) != p) && (space->get2(x, y+1, z) != p)) { glVertex3f(x  , y+1, z  ); glVertex3f(x  , y+1, z+1); }
-            if (((space->get2(x-1, y, z) == p) ^ (space->get2(x, y+1, z) == p)) && (space->get2(x-1, y+1, z) == p)) { glVertex3f(x  , y+1, z  ); glVertex3f(x  , y+1, z+1); }
+          if ((space->get2(x-1, y, z) != p) && (space->get2(x, y, z-1) != p)) { glVertex3f(x  , y  , z  ); glVertex3f(x  , y+1, z  ); }
+          if (((space->get2(x-1, y, z) == p) ^ (space->get2(x, y, z-1) == p)) && (space->get2(x-1, y, z-1) == p)) { glVertex3f(x  , y  , z  ); glVertex3f(x  , y+1, z  ); }
 
-            if ((space->get2(x+1, y, z) != p) && (space->get2(x, y+1, z) != p)) { glVertex3f(x+1, y+1, z  ); glVertex3f(x+1, y+1, z+1); }
-            if (((space->get2(x+1, y, z) == p) ^ (space->get2(x, y+1, z) == p)) && (space->get2(x+1, y+1, z) == p)) { glVertex3f(x+1, y+1, z  ); glVertex3f(x+1, y+1, z+1); }
+          if ((space->get2(x-1, y, z) != p) && (space->get2(x, y, z+1) != p)) { glVertex3f(x  , y  , z+1); glVertex3f(x  , y+1, z+1); }
+          if (((space->get2(x-1, y, z) == p) ^ (space->get2(x, y, z+1) == p)) && (space->get2(x-1, y, z+1) == p)) { glVertex3f(x  , y  , z+1); glVertex3f(x  , y+1, z+1); }
 
-            if ((space->get2(x+1, y, z) != p) && (space->get2(x, y-1, z) != p)) { glVertex3f(x+1, y  , z  ); glVertex3f(x+1, y  , z+1); }
-            if (((space->get2(x+1, y, z) == p) ^ (space->get2(x, y-1, z) == p)) && (space->get2(x+1, y-1, z) == p)) { glVertex3f(x+1, y  , z  ); glVertex3f(x+1, y  , z+1); }
+          if ((space->get2(x+1, y, z) != p) && (space->get2(x, y, z+1) != p)) { glVertex3f(x+1, y  , z+1); glVertex3f(x+1, y+1, z+1); }
+          if (((space->get2(x+1, y, z) == p) ^ (space->get2(x, y, z+1) == p)) && (space->get2(x+1, y, z+1) == p)) { glVertex3f(x+1, y  , z+1); glVertex3f(x+1, y+1, z+1); }
 
-            glEnd();
-            glEnable(GL_LIGHTING);
-            break;
-          case variable:
-            glBegin(GL_QUADS);
-            glNormal3f( 0.0f, 0.0f, -1.0f);
-            glVertex3f(x+0.2, y+0.2, z+0.2); glVertex3f(x+0.2, y+0.8, z+0.2); glVertex3f(x+0.8, y+0.8, z+0.2); glVertex3f(x+0.8, y+0.2, z+0.2);
-            glNormal3f( -1.0f, 0.0f, 0.0f);
-            glVertex3f(x+0.2, y+0.2, z+0.2); glVertex3f(x+0.2, y+0.2, z+0.8); glVertex3f(x+0.2, y+0.8, z+0.8); glVertex3f(x+0.2, y+0.8, z+0.2);
-            glNormal3f( 1.0f, 0.0f, 0.0f);
-            glVertex3f(x+0.8, y+0.8, z+0.2); glVertex3f(x+0.8, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.2, z+0.8); glVertex3f(x+0.8, y+0.2, z+0.2);
-            glNormal3f( 0.0f, 0.0f, 1.0f);
-            glVertex3f(x+0.2, y+0.2, z+0.8); glVertex3f(x+0.2, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.2, z+0.8);
-            glNormal3f( 0.0f, -1.0f, 0.0f);
-            glVertex3f(x+0.2, y+0.2, z+0.2); glVertex3f(x+0.8, y+0.2, z+0.2); glVertex3f(x+0.8, y+0.2, z+0.8); glVertex3f(x+0.2, y+0.2, z+0.8);
-            glNormal3f( 0.0f, 1.0f, 0.0f);
-            glVertex3f(x+0.2, y+0.8, z+0.2); glVertex3f(x+0.2, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.8, z+0.2);
-            glEnd();
-            break;
-          }
+          if ((space->get2(x+1, y, z) != p) && (space->get2(x, y, z-1) != p)) { glVertex3f(x+1, y  , z  ); glVertex3f(x+1, y+1, z  ); }
+          if (((space->get2(x+1, y, z) == p) ^ (space->get2(x, y, z-1) == p)) && (space->get2(x+1, y, z-1) == p)) { glVertex3f(x+1, y  , z  ); glVertex3f(x+1, y+1, z  ); }
 
-          if (mode == multiMode) {
-            glPopMatrix();
-          }
+          if ((space->get2(x-1, y, z) != p) && (space->get2(x, y-1, z) != p)) { glVertex3f(x  , y  , z  ); glVertex3f(x  , y  , z+1); }
+          if (((space->get2(x-1, y, z) == p) ^ (space->get2(x, y-1, z) == p)) && (space->get2(x-1, y-1, z) == p)) { glVertex3f(x  , y  , z  ); glVertex3f(x  , y  , z+1); }
+
+          if ((space->get2(x-1, y, z) != p) && (space->get2(x, y+1, z) != p)) { glVertex3f(x  , y+1, z  ); glVertex3f(x  , y+1, z+1); }
+          if (((space->get2(x-1, y, z) == p) ^ (space->get2(x, y+1, z) == p)) && (space->get2(x-1, y+1, z) == p)) { glVertex3f(x  , y+1, z  ); glVertex3f(x  , y+1, z+1); }
+
+          if ((space->get2(x+1, y, z) != p) && (space->get2(x, y+1, z) != p)) { glVertex3f(x+1, y+1, z  ); glVertex3f(x+1, y+1, z+1); }
+          if (((space->get2(x+1, y, z) == p) ^ (space->get2(x, y+1, z) == p)) && (space->get2(x+1, y+1, z) == p)) { glVertex3f(x+1, y+1, z  ); glVertex3f(x+1, y+1, z+1); }
+
+          if ((space->get2(x+1, y, z) != p) && (space->get2(x, y-1, z) != p)) { glVertex3f(x+1, y  , z  ); glVertex3f(x+1, y  , z+1); }
+          if (((space->get2(x+1, y, z) == p) ^ (space->get2(x, y-1, z) == p)) && (space->get2(x+1, y-1, z) == p)) { glVertex3f(x+1, y  , z  ); glVertex3f(x+1, y  , z+1); }
+
+          glEnd();
+          glEnable(GL_LIGHTING);
+          break;
+        case variable:
+          glBegin(GL_QUADS);
+          glNormal3f( 0.0f, 0.0f, -1.0f);
+          glVertex3f(x+0.2, y+0.2, z+0.2); glVertex3f(x+0.2, y+0.8, z+0.2); glVertex3f(x+0.8, y+0.8, z+0.2); glVertex3f(x+0.8, y+0.2, z+0.2);
+          glNormal3f( -1.0f, 0.0f, 0.0f);
+          glVertex3f(x+0.2, y+0.2, z+0.2); glVertex3f(x+0.2, y+0.2, z+0.8); glVertex3f(x+0.2, y+0.8, z+0.8); glVertex3f(x+0.2, y+0.8, z+0.2);
+          glNormal3f( 1.0f, 0.0f, 0.0f);
+          glVertex3f(x+0.8, y+0.8, z+0.2); glVertex3f(x+0.8, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.2, z+0.8); glVertex3f(x+0.8, y+0.2, z+0.2);
+          glNormal3f( 0.0f, 0.0f, 1.0f);
+          glVertex3f(x+0.2, y+0.2, z+0.8); glVertex3f(x+0.2, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.2, z+0.8);
+          glNormal3f( 0.0f, -1.0f, 0.0f);
+          glVertex3f(x+0.2, y+0.2, z+0.2); glVertex3f(x+0.8, y+0.2, z+0.2); glVertex3f(x+0.8, y+0.2, z+0.8); glVertex3f(x+0.2, y+0.2, z+0.8);
+          glNormal3f( 0.0f, 1.0f, 0.0f);
+          glVertex3f(x+0.2, y+0.8, z+0.2); glVertex3f(x+0.2, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.8, z+0.2);
+          glEnd();
+          break;
+        }
+
+        if (asmSpace) {
+          glPopMatrix();
         }
       }
 
-  if ((mode == singleMode) && (markerType)) {
+  if ((pcSpace) && (markerType)) {
     glColor4f(0.5, 0.5, 0.5, 0.5);
     glDisable(GL_LIGHTING);
     glBegin(GL_QUADS);
@@ -429,22 +451,22 @@ int VoxelView::handle(int event) {
   return 1;
 }
 
-void VoxelView::setVoxelSpace(const voxel_c *sp, int pn) {
-  space = sp;
+void VoxelView::setVoxelSpace(const pieceVoxel_c *sp, int pn) {
+  pcSpace = sp;
+  asmSpace = 0;
   pieceNumber = pn;
-  mode = singleMode;
   redraw();
 }
 
-void VoxelView::setVoxelSpace(const voxel_c *sp, float * shArray, char * vArray, int numPieces, int * colors) {
-  mode = multiMode;
+void VoxelView::setVoxelSpace(const assemblyVoxel_c *sp, float * shArray, char * vArray, int numPieces, int * colors) {
 
   shiftArray = shArray;
   visArray = vArray;
   arraySize = numPieces;
   colArray = colors;
 
-  space = sp;
+  asmSpace = sp;
+  pcSpace = 0;
 
   redraw();
 }

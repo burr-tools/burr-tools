@@ -76,12 +76,12 @@ voxel_c::voxel_c(istream * str) {
     *str >> c;
 
     switch (c) {
-    case '_': set(j, VX_EMPTY); break;
-    case '#': set(j, VX_FILLED); break;
-    case '+': set(j, VX_VARIABLE); break;
+    case '_': set(j, 0); break;
+    case '#': set(j, 1); break;
+    case '+': set(j, 2); break;
     case '\n':
       while (j < voxels) {
-        set(j, VX_EMPTY);
+        set(j, 0);
         j++;
       }
       return;
@@ -108,8 +108,8 @@ void voxel_c::print(char base) const {
     for (int z = 0; z < sz; z++) {
       printf(" +");
       for (int x = 0; x < sx; x++)
-        if (get(x, y, z) != VX_EMPTY)
-          printf("%c", base + get(x, y, z) - 1);
+        if (get(x, y, z) != 0)
+          printf("%c", base + get(x, y, z)-1);
         else
           printf(" ");
       printf("+");
@@ -120,6 +120,38 @@ void voxel_c::print(char base) const {
   { for (int z = 0; z < sz; z++) {
       printf(" +");
       for (int x = 0; x < sx; x++)
+        printf("-");
+      printf("+");
+    }
+  }
+  printf("\n");
+}
+
+void assemblyVoxel_c::print(void) const {
+  for (int z = 0; z < getZ(); z++) {
+    printf(" +");
+    for (int x = 0; x < getX(); x++)
+      printf("-");
+    printf("+");
+  }
+  printf("\n");
+
+  for (int y = 0; y < getY(); y++) {
+    for (int z = 0; z < getZ(); z++) {
+      printf(" +");
+      for (int x = 0; x < getX(); x++)
+        if (get(x, y, z) != VX_EMPTY)
+          printf("%c", 'a' + get(x, y, z));
+        else
+          printf(" ");
+      printf("+");
+    }
+    printf("\n");
+  }
+
+  { for (int z = 0; z < getZ(); z++) {
+      printf(" +");
+      for (int x = 0; x < getX(); x++)
         printf("-");
       printf("+");
     }
@@ -276,8 +308,16 @@ void voxel_c::resize(int nsx, int nsy, int nsz, voxel_type filler) {
 
 unsigned int voxel_c::count(voxel_type val) const {
   unsigned int count = 0;
-  for (int i = 0; i < voxels; i++)
-    if (space[i] == val)
+  for (int i = 0; i < getXYZ(); i++)
+    if (get(i) == val)
+      count ++;
+  return count;
+}
+
+unsigned int pieceVoxel_c::countState(int state) const {
+  unsigned int count = 0;
+  for (int i = 0; i < getXYZ(); i++)
+    if ((get(i) & 3) == state)
       count ++;
   return count;
 }
@@ -522,4 +562,5 @@ symmetries_t voxel_c::selfSymmetries(void) const {
 
   return result;
 }
+
 

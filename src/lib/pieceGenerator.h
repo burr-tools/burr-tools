@@ -30,9 +30,9 @@
 
 class pieceGenerator_c {
 
-  std::vector<voxel_c *> pieces;
+  std::vector<pieceVoxel_c *> pieces;
 
-  void recGen(voxel_c * p);
+  void recGen(pieceVoxel_c * p);
 
 public:
 
@@ -40,11 +40,11 @@ public:
   // given piece varying the VARIANT voxels inside the
   // piece. The pieces are normal burr pieces for
   // the time being
-  pieceGenerator_c(const voxel_c * piece);
+  pieceGenerator_c(const pieceVoxel_c * piece);
 
   unsigned long pieceNum(void) const { return pieces.size(); }
 
-  const voxel_c * getPiece(unsigned long num) {
+  const pieceVoxel_c * getPiece(unsigned long num) {
     return pieces[num];
   }
 

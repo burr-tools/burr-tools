@@ -44,21 +44,6 @@ typedef unsigned char voxel_type;
 typedef u_int8_t voxel_type;
 #endif
 
-/**
- * this enum defines some values that are used for some of
- * the voxel spaces
- *
- * generally there will be 2 types of usage for voxelspace
- * sone single-piece and one multi-piece. The single piece will
- * use this enum to define a puzzle piece or a solution shape
- * the multi-piece will use the values of the voxels to
- * distinguish between different pieces
- */
-enum {
-  VX_EMPTY,
-  VX_FILLED,
-  VX_VARIABLE
-};
 
 /**
  * this class get's thrown when there is an error on loading from a stream
@@ -104,6 +89,11 @@ private:
    * inside this 1-dimensional structure is \f$ x + sx*(y + sy*z) \f$
    */
   voxel_type * space;
+
+  /**
+   * the value get2 should return for values outside of the space
+   */
+  voxel_type outside;
 
 public:
 
@@ -180,14 +170,19 @@ public:
   }
 
   /**
-   * same as get but returns VX_EMPTY for each voxel outside
+   * sets the value of the outside
+   */
+  void setOutside(voxel_type val) { outside = val; }
+
+  /**
+   * same as get but returns 0 for each voxel outside
    * the space
    */
   voxel_type get2(int x, int y, int z) const {
     if ((x>=0)&&(y>=0)&&(z>=0)&&(x<sx)&&(y<sy)&&(z<sz))
       return space[getIndex(x, y, z)];
     else
-      return VX_EMPTY;
+      return outside;
   }
 
   /**
@@ -314,5 +309,91 @@ public:
    */
   symmetries_t selfSymmetries(void) const;
 };
+
+/* now 2 more specialised voxel spaces */
+
+/* this voxel space saves a piece. The voxels store 2 informations
+ * the state of the voxel: empty, variable and filled and
+ * also a value called color. This value is used to add additional
+ * constraints on the placement of pieces
+ */
+
+class pieceVoxel_c : public voxel_c {
+
+public:
+
+  pieceVoxel_c(int x, int y, int z, voxel_type init = 0) : voxel_c(x, y, z, init) {}
+  pieceVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {}
+  pieceVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {}
+  pieceVoxel_c(std::istream * str) : voxel_c(str) {}
+
+  /**
+   * this enum defines some values that are used for some of
+   * the voxel spaces
+   *
+   * generally there will be 2 types of usage for voxelspace
+   * sone single-piece and one multi-piece. The single piece will
+   * use this enum to define a puzzle piece or a solution shape
+   * the multi-piece will use the values of the voxels to
+   * distinguish between different pieces
+   */
+  enum {
+    VX_EMPTY,
+    VX_FILLED,
+    VX_VARIABLE
+  };
+
+  int getState(int x, int y, int z) const { return get(x, y, z) & 0x3; }
+  int getState2(int x, int y, int z) const { return get2(x, y, z) & 0x3; }
+  int getState(int i) const { return get(i) & 0x3; }
+  unsigned  int getColor(int x, int y, int z) const { return get(x, y, z) >> 2; }
+  unsigned  int getColor2(int x, int y, int z) const { return get2(x, y, z) >> 2; }
+  unsigned  int getColor(int i) const { return get(i) >> 2; }
+
+  void setState(int x, int y, int z, int state) { set(x, y, z, (get(x, y, z) & ~0x3) | state); }
+  void setColor(int x, int y, int z, unsigned int color) { assert(color < 64); set(x, y, z, (get(x, y, z) & 0x3) | color << 2); }
+  void setState(int i, int state) { set(i, (get(i) & ~0x3) | state); }
+  void setColor(int i, unsigned int color) { assert(color < 64); set(i, (get(i) & 0x3) | color << 2); }
+
+  void minimize(void) { voxel_c::minimize(VX_EMPTY); }
+
+  unsigned int countState(int state) const;
+
+};
+
+/* this voxel space if available to store solutions
+ * this is different from the normal space by having a special
+ * state for empty and still the piece numbers start with 0
+ */
+
+class assemblyVoxel_c : public voxel_c {
+
+public:
+
+  enum {
+    VX_EMPTY = 0xff
+  };
+
+  assemblyVoxel_c(int x, int y, int z, voxel_type init = VX_EMPTY) : voxel_c(x, y, z, init) { setOutside(VX_EMPTY); }
+  assemblyVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { setOutside(VX_EMPTY); }
+  assemblyVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { setOutside(VX_EMPTY); }
+  assemblyVoxel_c(std::istream * str) : voxel_c(str) { setOutside(VX_EMPTY); }
+
+  bool isEmpty(int x, int y, int z) const { return get(x, y, z) == VX_EMPTY; }
+  bool isEmpty2(int x, int y, int z) const { return get2(x, y, z) == VX_EMPTY; }
+  bool isEmpty(int i) const { return get(i) == VX_EMPTY; }
+  unsigned int pieceNumber(int x, int y, int z) const { return get(x, y, z); }
+  unsigned int pieceNumber2(int x, int y, int z) const { return get2(x, y, z); }
+  unsigned int pieceNumber(int i) const { return get(i); }
+
+  void clear(int x, int y, int z) { set(x, y, z, VX_EMPTY); }
+  void clear(int i) { set(i, VX_EMPTY); }
+  void setPiece(int x, int y, int z, int num) { assert(num < VX_EMPTY); set(x, y, z, num); }
+  void setPiece(int i, int num) { assert(num < VX_EMPTY); set(i, num); }
+
+  void print(void) const;
+
+};
+
 
 #endif

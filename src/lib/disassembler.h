@@ -98,9 +98,9 @@ public:
     return false;
   }
 
-  voxel_type getVoxel(voxel_c * assm, int x, int y, int z, int piece) const {
+  voxel_type getVoxel(assemblyVoxel_c * assm, int x, int y, int z, int piece) const {
     assert(piece < piecenumber);
-    return assm->get(x - dx[piece], y - dy[piece], z - dz[piece]);
+    return assm->pieceNumber(x - dx[piece], y - dy[piece], z - dz[piece]);
   }
 
   int getX(int i) const {

@@ -107,10 +107,10 @@ int DisasmToMoves::doRecursive(const separation_c * tree, int step, float weight
     if (tree->getRemoved())
       steps = doRecursive(tree->getRemoved(), step - tree->getMoves(), weight, cx+dx, cy+dy, cz+dz, remove/*-3*/);
     else {
-      moves[4*tree->getPieceName(pc)-4] += (dx+cx+((mabs(s->getX(pc))<10000)?(s->getX(pc)):(0))) * weight;
-      moves[4*tree->getPieceName(pc)-3] += (dy+cy+((mabs(s->getY(pc))<10000)?(s->getY(pc)):(0))) * weight;
-      moves[4*tree->getPieceName(pc)-2] += (dz+cz+((mabs(s->getZ(pc))<10000)?(s->getZ(pc)):(0))) * weight;
-      moves[4*tree->getPieceName(pc)-1] += 0 * weight;
+      moves[4*tree->getPieceName(pc)+0] += (dx+cx+((mabs(s->getX(pc))<10000)?(s->getX(pc)):(0))) * weight;
+      moves[4*tree->getPieceName(pc)+1] += (dy+cy+((mabs(s->getY(pc))<10000)?(s->getY(pc)):(0))) * weight;
+      moves[4*tree->getPieceName(pc)+2] += (dz+cz+((mabs(s->getZ(pc))<10000)?(s->getZ(pc)):(0))) * weight;
+      moves[4*tree->getPieceName(pc)+3] += 0 * weight;
 
       steps = 0;
     }
@@ -119,10 +119,10 @@ int DisasmToMoves::doRecursive(const separation_c * tree, int step, float weight
     if (tree->getLeft())
       steps2 = doRecursive(tree->getLeft(), step - tree->getMoves() - steps, weight, cx, cy, cz, remove/*-3*/);
     else {
-      moves[4*tree->getPieceName(pc2)-4] += (cx+s->getX(pc2)) * weight;
-      moves[4*tree->getPieceName(pc2)-3] += (cy+s->getY(pc2)) * weight;
-      moves[4*tree->getPieceName(pc2)-2] += (cz+s->getZ(pc2)) * weight;
-      moves[4*tree->getPieceName(pc2)-1] += 0 * weight;
+      moves[4*tree->getPieceName(pc2)+0] += (cx+s->getX(pc2)) * weight;
+      moves[4*tree->getPieceName(pc2)+1] += (cy+s->getY(pc2)) * weight;
+      moves[4*tree->getPieceName(pc2)+2] += (cz+s->getZ(pc2)) * weight;
+      moves[4*tree->getPieceName(pc2)+3] += 0 * weight;
 
       steps2 = 0;
     }
@@ -134,10 +134,10 @@ int DisasmToMoves::doRecursive(const separation_c * tree, int step, float weight
   const state_c * s = tree->getState(mmax(step, 0));
 
   for (int i = 0; i < tree->getPieceNumber(); i++) {
-    moves[4*tree->getPieceName(i)-4] += (s->getX(i)+cx) * weight;
-    moves[4*tree->getPieceName(i)-3] += (s->getY(i)+cy) * weight;
-    moves[4*tree->getPieceName(i)-2] += (s->getZ(i)+cz) * weight;
-    moves[4*tree->getPieceName(i)-1] += 1 * weight;
+    moves[4*tree->getPieceName(i)+0] += (s->getX(i)+cx) * weight;
+    moves[4*tree->getPieceName(i)+1] += (s->getY(i)+cy) * weight;
+    moves[4*tree->getPieceName(i)+2] += (s->getZ(i)+cz) * weight;
+    moves[4*tree->getPieceName(i)+3] += 1 * weight;
   }
 
   int steps, steps2;

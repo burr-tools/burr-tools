@@ -36,7 +36,7 @@ using namespace std;
  */
 puzzle_c::puzzle_c(istream * str) {
 
-  result = new voxel_c(str);
+  result = new pieceVoxel_c(str);
   assert(result);
 
   int pieces;
@@ -55,7 +55,7 @@ puzzle_c::puzzle_c(istream * str) {
     if ((nr < 0) || (nr > 500))
       throw load_error("too many instances of one piece? probably voxel space not defined correctly");
 
-    voxel_c * pc = new voxel_c(str);
+    pieceVoxel_c * pc = new pieceVoxel_c(str);
     assert(pc);
 
     addShape(pc, nr);
@@ -66,11 +66,11 @@ puzzle_c::puzzle_c(istream * str) {
 
 puzzle_c::puzzle_c(const puzzle_c * orig) {
 
-  result = new voxel_c(orig->result);
+  result = new pieceVoxel_c(orig->result);
 
   for (int i = 0; i < orig->getShapeNumber(); i++) {
     shapeInfo pi;
-    pi.piece = new voxel_c(orig->getShape(i));
+    pi.piece = new pieceVoxel_c(orig->getShape(i));
     pi.count = orig->getShapeCount(i);
     shapes.push_back(pi);
   }
@@ -95,7 +95,7 @@ void puzzle_c::PS3Dsave(std::ostream * str) const {
     for (int y = 0; y < shapes[i].piece->getY(); y++) {
       for (int z = 0; z < shapes[i].piece->getZ(); z++) {
         for (int x = 0; x < shapes[i].piece->getX(); x++) {
-          if (shapes[i].piece->get(x, y, z) != VX_EMPTY)
+          if (shapes[i].piece->getState(x, y, z) != pieceVoxel_c::VX_EMPTY)
             *str << char('A' + i);
           else
             *str << ' ';
@@ -111,7 +111,7 @@ void puzzle_c::PS3Dsave(std::ostream * str) const {
   for (int y = 0; y < result->getY(); y++) {
     for (int z = 0; z < result->getZ(); z++) {
       for (int x = 0; x < result->getX(); x++) {
-        if (result->get(x, y, z) != VX_EMPTY)
+        if (result->getState(x, y, z) != pieceVoxel_c::VX_EMPTY)
           *str << 'A';
         else
           *str << ' ';
@@ -152,7 +152,7 @@ void puzzle_c::removeShape(unsigned int nr) {
   shapes.erase(i);
 }
 
-void puzzle_c::addShape(voxel_c * p, int nr) {
+void puzzle_c::addShape(pieceVoxel_c * p, int nr) {
   shapeInfo i;
   i.piece = p;
   i.count = nr;
@@ -161,7 +161,7 @@ void puzzle_c::addShape(voxel_c * p, int nr) {
 
 void puzzle_c::addShape(int sx, int sy, int sz, int nr) {
   shapeInfo i;
-  i.piece = new voxel_c(sx, sy, sz);
+  i.piece = new pieceVoxel_c(sx, sy, sz);
   i.count = nr;
   shapes.push_back(i);
 }
@@ -180,13 +180,13 @@ void puzzle_c::makeResultInsideHoly(void) {
   for (int x = 1; x < result->getX()-1; x++)
     for (int y = 1; y < result->getY()-1; y++)
       for (int z = 1; z < result->getZ()-1; z++)
-        if (result->get(x, y, z) != VX_EMPTY) {
-          if ((result->get(x-1, y, z) == VX_EMPTY) || (result->get(x+1, y, z) == VX_EMPTY) ||
-              (result->get(x, y-1, z) == VX_EMPTY) || (result->get(x, y+1, z) == VX_EMPTY) ||
-              (result->get(x, y, z-1) == VX_EMPTY) || (result->get(x, y, z+1) == VX_EMPTY))
-            result->set(x, y, z, VX_FILLED);
+        if (result->getState(x, y, z) != pieceVoxel_c::VX_EMPTY) {
+          if ((result->getState(x-1, y, z) == pieceVoxel_c::VX_EMPTY) || (result->getState(x+1, y, z) == pieceVoxel_c::VX_EMPTY) ||
+              (result->getState(x, y-1, z) == pieceVoxel_c::VX_EMPTY) || (result->getState(x, y+1, z) == pieceVoxel_c::VX_EMPTY) ||
+              (result->getState(x, y, z-1) == pieceVoxel_c::VX_EMPTY) || (result->getState(x, y, z+1) == pieceVoxel_c::VX_EMPTY))
+            result->setState(x, y, z, pieceVoxel_c::VX_FILLED);
           else
-            result->set(x, y, z, VX_VARIABLE);
+            result->setState(x, y, z, pieceVoxel_c::VX_VARIABLE);
         }
 }
 

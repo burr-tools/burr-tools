@@ -57,7 +57,7 @@ public:
   ~assemblerThread(void);
 
   // the callbacl
-  bool assembly(voxel_c * assm);
+  bool assembly(assemblyVoxel_c * assm);
 
   enum {
     ACT_PREPARATION,

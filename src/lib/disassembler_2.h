@@ -33,7 +33,7 @@ class disassembler_2_c : public disassembler_c {
 
 private:
 
-  voxel_c * assm;
+  assemblyVoxel_c * assm;
   int piecenumber;
 
   /* bounding box */
@@ -95,7 +95,7 @@ private:
 
 public:
 
-  disassembler_2_c(voxel_c * prob, int piecenum);
+  disassembler_2_c(assemblyVoxel_c * prob, int piecenum);
   ~disassembler_2_c();
 
   /* because we can only have or don't have a disassembly sequence

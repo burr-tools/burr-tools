@@ -89,7 +89,7 @@ void UserInterface::cb_Delete(void) {
 }
 
 void UserInterface::cb_Copy(void) {
-  puzzle->addShape(new voxel_c(puzzle->getShape(activePiece)), 1);
+  puzzle->addShape(new pieceVoxel_c(puzzle->getShape(activePiece)), 1);
   activatePiece(puzzle->getShapeNumber()-1);
   PcSel2->setPuzzle(puzzle);
   changed = true;
@@ -341,7 +341,7 @@ void UserInterface::show(int argn, char ** argv) {
 void UserInterface::activatePiece(int number) {
   if ((number < puzzle->getShapeNumber()) && (number >= 0)) {
 
-    voxel_c * p = puzzle->getShape(number);
+    pieceVoxel_c * p = puzzle->getShape(number);
 
     View3D->setVoxelSpace(p, number);
     pieceEdit->setVoxelSpace(p, number);
@@ -364,7 +364,7 @@ void UserInterface::activatePiece(int number) {
 }
 
 void UserInterface::activateResult(void) {
-  voxel_c * p = puzzle->getResult();
+  pieceVoxel_c * p = puzzle->getResult();
 
   View3D->setVoxelSpace(p, 255);
   resultEdit->setVoxelSpace(p, 255);

@@ -688,8 +688,9 @@ void disassembler_2_c::calcbounds(void) {
   for (int x = 0; x < assm->getX(); x++)
     for (int y = 0; y < assm->getY(); y++)
       for (int z = 0; z < assm->getZ(); z++) {
-        voxel_type c = assm->get(x, y, z);
-        if (c != VX_EMPTY) {
+        if (!assm->isEmpty(x, y, z)) {
+
+          unsigned int c = assm->pieceNumber(x, y, z);
 
           if (bx1[c] == -1) {
             bx1[c] = bx2[c] = x;
@@ -709,7 +710,7 @@ void disassembler_2_c::calcbounds(void) {
       }
 
   /* allocate the memory for the depth arrays */
-  for (int i = 1; i <= piecenumber; i++) {
+  for (int i = 0; i < piecenumber; i++) {
 
     bbdepth[0][i] = new (unsigned int)[(bx2[i]-bx1[i]+1) * (by2[i]-by1[i]+1)];
     bbdepth[1][i] = new (unsigned int)[(bx2[i]-bx1[i]+1) * (by2[i]-by1[i]+1)];
@@ -806,18 +807,18 @@ void disassembler_2_c::calcbounds(void) {
 }
 
 
-disassembler_2_c::disassembler_2_c(voxel_c * problem, int piecenum) : assm(problem), piecenumber(piecenum) {
+disassembler_2_c::disassembler_2_c(assemblyVoxel_c * problem, int piecenum) : assm(problem), piecenumber(piecenum) {
 
   /* allocate the necessary arrays */
   movement = new int[piecenumber];
   check = new bool[piecenumber];
 
-  bx1 = new int[piecenumber+1];
-  bx2 = new int[piecenumber+1];
-  by1 = new int[piecenumber+1];
-  by2 = new int[piecenumber+1];
-  bz1 = new int[piecenumber+1];
-  bz2 = new int[piecenumber+1];
+  bx1 = new int[piecenumber];
+  bx2 = new int[piecenumber];
+  by1 = new int[piecenumber];
+  by2 = new int[piecenumber];
+  bz1 = new int[piecenumber];
+  bz2 = new int[piecenumber];
 
   for (int i = 0; i < 6; i++)
     bbdepth[i] = new (unsigned int*)[piecenumber+1];
@@ -866,7 +867,7 @@ disassembly_c * disassembler_2_c::disassemble(void) {
   voxel_type * pieces = new voxel_type[piecenumber];
 
   for (int i = 0; i < piecenumber; i++)
-    pieces[i] = i+1;
+    pieces[i] = i;
 
   separation_c * dis = disassemble_rec(piecenumber, pieces, start);
 

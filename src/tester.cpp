@@ -44,7 +44,7 @@ public:
 
   asm_cb(int pnum) : count(0), pn(pnum) {}
 
-  bool assembly(voxel_c * assm) {
+  bool assembly(assemblyVoxel_c * assm) {
 
     count++;
 
@@ -64,7 +64,7 @@ public:
     printf(" timing = %f\n", ((double)(clock() - start))/CLOCKS_PER_SEC);
 
     if (da) {
-      assm->print('a');
+      assm->print();
       printf("level: %i\n", da->firstlevel());
 //      da->print();
       delete da;
@@ -155,7 +155,7 @@ void search(voxel_c * piece) {
 
 void findsymmetries(void) {
 
-  voxel_c v(4, 4, 4);
+  pieceVoxel_c v(4, 4, 4);
 
   unsigned int indizes[100];
   unsigned int indizeCount = 0;
@@ -171,8 +171,8 @@ void findsymmetries(void) {
 
   for (int a = 0; a < indizeCount; a++) {
 
-    v.setAll(VX_FILLED);
-    v.set(a, VX_EMPTY);
+// FIXME    v.setAll(VX_FILLED);
+    v.setState(a, pieceVoxel_c::VX_EMPTY);
 
     search(&v);
   }
@@ -182,9 +182,9 @@ void findsymmetries(void) {
   for (int a = 0; a < indizeCount; a++)
     for (int b = a+1; b < indizeCount; b++) {
 
-      v.setAll(VX_FILLED);
-      v.set(a, VX_EMPTY);
-      v.set(b, VX_EMPTY);
+//FIXME      v.setAll(VX_FILLED);
+      v.setState(a, pieceVoxel_c::VX_EMPTY);
+      v.setState(b, pieceVoxel_c::VX_EMPTY);
   
       search(&v);
     }
@@ -200,13 +200,13 @@ void findsymmetries(void) {
             for (int f = e+1; f < indizeCount; f++)
 
         {
-          v.setAll(VX_FILLED);
-          v.set(a, VX_EMPTY);
-          v.set(b, VX_EMPTY);
-          v.set(c, VX_EMPTY);
-          v.set(d, VX_EMPTY);
-          v.set(e, VX_EMPTY);
-          v.set(f, VX_EMPTY);
+// FIXME          v.setAll(VX_FILLED);
+          v.setState(a, pieceVoxel_c::VX_EMPTY);
+          v.setState(b, pieceVoxel_c::VX_EMPTY);
+          v.setState(c, pieceVoxel_c::VX_EMPTY);
+          v.setState(d, pieceVoxel_c::VX_EMPTY);
+          v.setState(e, pieceVoxel_c::VX_EMPTY);
+          v.setState(f, pieceVoxel_c::VX_EMPTY);
 
           search(&v);
         }
@@ -302,8 +302,9 @@ void multTranformationsMatrix(void) {
 
     for (int tr2 = 0; tr2 < 48; tr2++) {
 
-      voxel_c v(3, 3, 3);
-      v.set(1, 1, 1, VX_FILLED); v.set(0, 1, 1, VX_FILLED); v.set(0, 0, 1, VX_FILLED); v.set(0, 0, 0, VX_FILLED);
+      pieceVoxel_c v(3, 3, 3);
+      v.setState(1, 1, 1, pieceVoxel_c::VX_FILLED); v.setState(0, 1, 1, pieceVoxel_c::VX_FILLED);
+      v.setState(0, 0, 1, pieceVoxel_c::VX_FILLED); v.setState(0, 0, 0, pieceVoxel_c::VX_FILLED);
 
       int i;
 
@@ -311,8 +312,9 @@ void multTranformationsMatrix(void) {
       v.transform(tr2);
 
       for (int t = 0; t < 48; t++) {
-        voxel_c w(3, 3, 3);
-        w.set(1, 1, 1, VX_FILLED); w.set(0, 1, 1, VX_FILLED); w.set(0, 0, 1, VX_FILLED); w.set(0, 0, 0, VX_FILLED);
+        pieceVoxel_c w(3, 3, 3);
+        w.setState(1, 1, 1, pieceVoxel_c::VX_FILLED); w.setState(0, 1, 1, pieceVoxel_c::VX_FILLED);
+        w.setState(0, 0, 1, pieceVoxel_c::VX_FILLED); w.setState(0, 0, 0, pieceVoxel_c::VX_FILLED);
 
         w.transform(t);
 

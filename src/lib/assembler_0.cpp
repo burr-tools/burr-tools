@@ -133,11 +133,11 @@ void assembler_0_c::createMatrix(const puzzle_c * p) {
 
   // minimize all pieces
   for (int i = 0; i < puz.getShapeNumber(); i++)
-    puz.getShape(i)->minimize(VX_EMPTY);
+    puz.getShape(i)->minimize();
 
   /* count the filled and variable units */
-  int res_vari = puz.getResult()->count(VX_VARIABLE);
-  int res_filled = puz.getResult()->count(VX_FILLED) + res_vari;
+  int res_vari = puz.getResult()->countState(pieceVoxel_c::VX_VARIABLE);
+  int res_filled = puz.getResult()->countState(pieceVoxel_c::VX_FILLED) + res_vari;
 
   varivoxelStart = 1 + piecenumber + res_filled - res_vari;
   varivoxelEnd = 1 + piecenumber + res_filled;
@@ -150,7 +150,7 @@ void assembler_0_c::createMatrix(const puzzle_c * p) {
   holes = res_filled;
 
   for (int j = 0; j < puz.getShapeNumber(); j++)
-    holes -= puz.getShape(j)->count(VX_FILLED) * puz.getShapeCount(j);
+    holes -= puz.getShape(j)->countState(pieceVoxel_c::VX_FILLED) * puz.getShapeCount(j);
 
   if (holes < 0) {
     errorsState = 1;

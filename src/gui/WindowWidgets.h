@@ -90,7 +90,7 @@ public:
   int getMouseY(void) { return sqedit->getMouseY(); }
   int getMouseZ(void) { return sqedit->getMouseZ(); }
 
-  void setVoxelSpace(voxel_c * v, int num) {
+  void setVoxelSpace(pieceVoxel_c * v, int num) {
     sqedit->setVoxelSpace(v, num);
     if (v) {
       zselect->bounds(0, v->getZ()-1);
@@ -158,13 +158,13 @@ public:
 class ToolTab : public Fl_Tabs {
 
   ChangeSize * changeSize;
-  voxel_c * space;
+  pieceVoxel_c * space;
 
 public:
 
   ToolTab(int x, int y, int w, int h, int type);
 
-  void setVoxelSpace(voxel_c * sp) {
+  void setVoxelSpace(pieceVoxel_c * sp) {
     space = sp;
     if (space)
       changeSize->setXYZ(sp->getX(), sp->getY(), sp->getZ());
@@ -198,7 +198,7 @@ public:
       case 12: space->mirrorX(); break;
       case 13: space->mirrorY(); break;
       case 14: space->mirrorZ(); break;
-      case 15: space->minimize(VX_EMPTY); break;
+      case 15: space->minimize(); break;
       }
 
       do_callback();
@@ -245,8 +245,8 @@ public:
 
   void cb_slider(void) { View3D->setSize(slider->value()); }
 
-  void setVoxelSpace(voxel_c *p, int number) { View3D->setVoxelSpace(p, number); }
-  void setVoxelSpace(const voxel_c * assm, float *shifting, char *visibility, int num, int *colors) {
+  void setVoxelSpace(pieceVoxel_c *p, int number) { View3D->setVoxelSpace(p, number); }
+  void setVoxelSpace(const assemblyVoxel_c * assm, float *shifting, char *visibility, int num, int *colors) {
     View3D->setVoxelSpace(assm, shifting, visibility, num, colors);
   }
 

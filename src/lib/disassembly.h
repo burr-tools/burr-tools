@@ -79,7 +79,7 @@ public:
       (dz[i] > 10000) || (dz[i] < -10000);
   }
 
-  void print(voxel_c * start, voxel_type * pieces) const;
+  void print(assemblyVoxel_c * start, voxel_type * pieces) const;
 
 };
 
@@ -175,7 +175,7 @@ public:
     return pieces[num];
   }
 
-  void print(voxel_c * start) const;
+  void print(assemblyVoxel_c * start) const;
 
 };
 
@@ -192,13 +192,13 @@ private:
   /* this is the assembled puzzle, needed for printing
    * the states graphically
    */
-  voxel_c * start;
+  assemblyVoxel_c * start;
 
 public:
 
-  disassembly_c(voxel_c * st, separation_c *t) {
+  disassembly_c(assemblyVoxel_c * st, separation_c *t) {
     tree = t;
-    start = new voxel_c(st);
+    start = new assemblyVoxel_c(st);
   }
 
   ~disassembly_c() {
@@ -214,7 +214,7 @@ public:
 
   void print(void) const;
 
-  const voxel_c * getStart(void) const { return start; }
+  const assemblyVoxel_c * getStart(void) const { return start; }
 
   const separation_c * getTree(void) const { return tree; }
 };

@@ -38,7 +38,7 @@ class SquareEditor : public Fl_Widget {
 private:
 
   // the current voxel space that is worked on
-  voxel_c * space;
+  pieceVoxel_c * space;
 
   // the current edited layer
   int currentZ;
@@ -71,7 +71,7 @@ public:
 
   // sets the voxel space to edit, the widget doesn't take over the space
   // the voxelspace must not be deleted while this is set here
-  void setVoxelSpace(voxel_c * newSpace, int piecenum);
+  void setVoxelSpace(pieceVoxel_c * newSpace, int piecenum);
 
   // sets the z layer to edit the value is clamped to valid values
   void setZ(int z);

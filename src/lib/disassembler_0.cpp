@@ -583,8 +583,8 @@ void disassembler_0_c::calcbounds(void) {
   for (int x = 0; x < assm->getX(); x++)
     for (int y = 0; y < assm->getY(); y++)
       for (int z = 0; z < assm->getZ(); z++) {
-        voxel_type c = assm->get(x, y, z);
-        if (c != VX_EMPTY) {
+        if (!assm->isEmpty(x, y, z)) {
+          unsigned int c = assm->pieceNumber(x, y, z);
 
           if (bx1[c] == -1) {
             bx1[c] = bx2[c] = x;
@@ -605,7 +605,7 @@ void disassembler_0_c::calcbounds(void) {
 }
 
 
-disassembler_0_c::disassembler_0_c(voxel_c * problem, int piecenum) : assm(problem), piecenumber(piecenum) {
+disassembler_0_c::disassembler_0_c(assemblyVoxel_c * problem, int piecenum) : assm(problem), piecenumber(piecenum) {
 
   /* allocate the necessary arrays */
   movement = new int[piecenumber];
@@ -656,7 +656,7 @@ disassembly_c * disassembler_0_c::disassemble(void) {
   voxel_type * pieces = new voxel_type[piecenumber];
 
   for (int i = 0; i < piecenumber; i++)
-    pieces[i] = i+1;
+    pieces[i] = i;
 
   separation_c * dis = disassemble_rec(piecenumber, pieces, start);
 
