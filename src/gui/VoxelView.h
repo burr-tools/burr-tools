@@ -28,6 +28,8 @@
 
 #include "ArcBall.h"
 
+#include <vector>
+
 /** this class draws a 3d view of a voxel space.
  * there are 2 modes:
  * single piece: here the value of PieceNumber gives the piecenumber
@@ -70,9 +72,6 @@ private:
   int arraySize;
   int * colArray;
 
-  /* the marker position */
-  int mX, mY, mZ;
-  bool markerType;
 
   ArcBall_c * arcBall;
 
@@ -117,6 +116,40 @@ public:
    */
   void setVoxelSpace(const assemblyVoxel_c *sp, float * shArray, char * vArray, int numPieces, int * colors);
 
+
+public:
+  /* ------ new interface -------- */
+
+  void addSpace(const pieceVoxel_c * vx);
+  void clearSpaces(void);
+
+  unsigned int spaceNumber(void);
+
+  void setSpaceColor(unsigned int nr, unsigned char r, unsigned char g, unsigned char b);
+  void setSpacePosition(unsigned int nr, float x, float y, float z);
+
+  typedef enum {
+    normal,          // draw normal cubes with a grate at outer edges
+    gridline,        // draw only the outer edges
+    invisible        // draw nothing
+  } drawingMode;
+
+  typedef enum {
+    pieceColor,
+    paletteColor
+  } colorMode;
+
+  void setDrawingMode(unsigned int nr, drawingMode mode, colorMode color);
+
+  void setScaling(float factor);
+
+  typedef enum {
+    ScaleRotateTranslate,     // for showing problems
+    TranslateRoateScale       // for showing pieces and disassembly
+  } transformationType;
+
+  void setTransformationType(transformationType type);
+
   /* only active in single mode */
   void setMarker(int x, int y, int z) {
     markerType = true;
@@ -126,5 +159,28 @@ public:
   }
 
   void hideMarker(void) { markerType = false; }
+
+private:
+
+  typedef struct {
+
+    unsigned int r, g, b;
+    pieceVoxel_c * shape;
+    drawingMode mode;
+    float x, y, z;
+
+  } shapeInfo;
+
+  float scale;
+
+  /* the marker position */
+  int mX, mY, mZ;
+  bool markerType;
+
+  std::vector<shapeInfo> shapes;
+
+  transformationType trans;
+  colorMode colors;
+
 };
 
