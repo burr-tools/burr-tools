@@ -310,7 +310,37 @@ Fl_Menu_Item UserInterface::menu_MainMenu[] = {
 
 
 void UserInterface::show(int argn, char ** argv) {
-  mainWindow->show(argn, argv);
+  mainWindow->show();
+
+  if (argn == 2) {
+
+    ifstream instr(argv[1]);
+
+    puzzle_c * p2 = new puzzle_c(&instr);
+
+    if (!p2) {
+      fl_alert("Could not load file, maybe not a puzzle?");
+    } else {
+      if (fname) delete [] fname;
+      fname = new char[strlen(argv[1])+1];
+      strcpy(fname, argv[1]);
+
+      char nm[300];
+      snprintf(nm, 299, "BurrTools - %s", fname);
+      mainWindow->label(nm);
+
+      delete puzzle;
+      puzzle = p2;
+
+      activatePiece(0);
+      PcSel2->setPuzzle(puzzle);
+      TaskSelectionTab->value(TabPieces);
+
+      removeAssmThread();
+
+      changed = false;
+    }
+  }
 }
 
 void UserInterface::activatePiece(int number) {
