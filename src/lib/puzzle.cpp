@@ -23,6 +23,67 @@
 
 using namespace std;
 
+puzzle_c::bitmap_c::bitmap_c(unsigned int col) : colors(col) {
+  if (colors)
+    map = new unsigned char[(col*col + 7) >> 3];
+  else
+    map = 0;
+}
+
+void puzzle_c::bitmap_c::add(void) {
+
+  unsigned char *m2 = new unsigned char[((colors+1)*(colors+1) + 7) >> 3];
+
+  if (map) {
+
+    for (int i = 0; i < colors; i++)
+      for (int j = 0; j < colors; j++) {
+        int idx = j * (colors+1) + i;
+    
+        if (get(i, j))
+          m2[idx >> 3] |= (1 << (idx & 7));
+        else
+          m2[idx >> 3] &= ~(1 << (idx & 7));
+      }
+
+    delete [] map;
+  }
+
+  map = m2;
+  colors++;
+}
+
+
+void puzzle_c::bitmap_c::remove(unsigned int col) {
+
+  assert(col < colors);
+
+  unsigned char *m2 = new unsigned char[((colors-1)*(colors-1) + 7) >> 3];
+
+  for (int i = 0; i < colors-1; i++)
+    for (int j = 0; j < colors-1; j++) {
+      int idx = j * (colors-1) + i;
+
+      int k, l;
+
+      if (i < col) k = i; else k = i+1;
+      if (j < col) l = j; else l = j+1;
+  
+      if (get(k, l))
+        m2[idx >> 3] |= (1 << (idx & 7));
+      else
+        m2[idx >> 3] &= ~(1 << (idx & 7));
+    }
+
+  delete [] map;
+
+  map = m2;
+  colors--;
+}
+
+
+
+
 /* load the puzzle from the file
  *
  * the format is quite simple:
@@ -34,7 +95,7 @@ using namespace std;
  * with x the lowest and z the highest dimension. So the formula to get
  * the position of one block is x+xs*(y+ys*z)
  */
-puzzle_c::puzzle_c(istream * str) {
+puzzle_c::puzzle_c(istream * str) : colorConstraints(0) {
 
   results.push_back(new pieceVoxel_c(str));
   assert(results[0]);
@@ -64,7 +125,7 @@ puzzle_c::puzzle_c(istream * str) {
   }
 }
 
-puzzle_c::puzzle_c(const puzzle_c * orig) {
+puzzle_c::puzzle_c(const puzzle_c * orig) : colorConstraints(0) {
 
   for (int i = 0; i < orig->results.size(); i++)
     results.push_back(new pieceVoxel_c(orig->results[i]));
@@ -198,3 +259,54 @@ void puzzle_c::orthogonalize(void) {
       p++;
   }
 }
+
+
+void puzzle_c::addColor(void) {
+
+  colorDef c;
+
+  c.r = rand() & 0xff;
+  c.g = rand() & 0xff;
+  c.b = rand() & 0xff;
+
+  colors.push_back(c);
+
+  colorConstraints.add();
+}
+
+void puzzle_c::removeColor(unsigned int col) {
+
+// FIXME, remove from color definition array
+
+  colorConstraints.remove(col);
+
+}
+
+void puzzle_c::setColor(unsigned int col, unsigned char r, unsigned char g, unsigned char b) {
+
+  assert(col < colors.size());
+
+  colors[col].r = r;
+  colors[col].g = g;
+  colors[col].b = b;
+}
+
+void puzzle_c::allowPlacement(unsigned int pc, unsigned int res) {
+
+  colorConstraints.set(pc, res, true);
+}
+
+void puzzle_c::disallowPlacement(unsigned int pc, unsigned int res) {
+
+  colorConstraints.set(pc, res, false);
+}
+
+bool puzzle_c::placementAllowed(unsigned int pc, unsigned int res) const {
+
+  if (colors.size() == 0)
+    return true;
+
+  return colorConstraints.get(pc, res);
+}
+
+

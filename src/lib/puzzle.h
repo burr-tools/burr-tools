@@ -59,6 +59,72 @@ private:
    */
   std::vector<pieceVoxel_c*> results;
 
+  /**
+   * there can be many colors for contrain the placement of pieces
+   * this are the actual colors used to display them
+   */
+  typedef struct colorDef {
+    unsigned char r, g, b;
+  } colorDef;
+
+  std::vector<colorDef> colors;
+
+  /* the 2d bitmap
+   * the bitmap is always square and alows only for the here necessary modifications
+   */
+  
+  class bitmap_c {
+  
+  private:
+  
+    unsigned char *map;
+    unsigned int colors;
+  
+  public:
+  
+    /* create new bitmap with size rows and columns, all bit are cleared */
+    bitmap_c(unsigned int col);
+  
+    ~bitmap_c(void) { if (map) delete [] map; }
+  
+    /* add a new color at the end */
+    void add(void);
+  
+    /* remove the given color */
+    void remove(unsigned int col);
+  
+    void set(unsigned int pcCol, unsigned int resCol, bool value) {
+  
+      assert(pcCol < colors);
+      assert(resCol < colors);
+  
+      int idx = resCol * colors + pcCol;
+  
+      if (value)
+        map[idx >> 3] |= (1 << (idx & 7));
+      else
+        map[idx >> 3] &= ~(1 << (idx & 7));
+    }
+  
+    bool get(unsigned int pcCol, unsigned int resCol) const {
+      assert(pcCol < colors);
+      assert(resCol < colors);
+  
+      int idx = resCol * colors + pcCol;
+  
+      return (map[idx >> 3] & (1 << (idx & 7)) != 0);
+    }
+  };
+
+
+
+  /**
+   * this array contains the constrains for the colors for each pair of
+   * colors is defines, if it is allowed to place a voxel inside a piece shape
+   * at the result where the corresponding voxel has a certain color
+   */
+  bitmap_c colorConstraints;
+
 public:
 
   /**
@@ -71,7 +137,7 @@ public:
   /**
    * Constructor for empty puzzle, with no result and and no shapes
    */
-  puzzle_c(void) { }
+  puzzle_c(void) : colorConstraints(0) { }
 
   /**
    * Destructor.
@@ -167,6 +233,15 @@ public:
    * solutions if this is not the case
    */
   void orthogonalize(void);
+
+  /* color constrain handling functions */
+
+  void addColor(void);
+  void removeColor(unsigned int col);
+  void setColor(unsigned int col, unsigned char r, unsigned char g, unsigned char b);
+  void allowPlacement(unsigned int pc, unsigned int res);
+  void disallowPlacement(unsigned int pc, unsigned int res);
+  bool placementAllowed(unsigned int pc, unsigned int res) const;
 };
 
 #endif

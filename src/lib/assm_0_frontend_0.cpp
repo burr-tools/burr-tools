@@ -20,13 +20,20 @@
 #include "assm_0_frontend_0.h"
 
 /* helper function to check if a piece an go at a position */
-static bool pieceFits(const pieceVoxel_c * piece, const pieceVoxel_c * result, int x, int y, int z) {
+static bool pieceFits(const pieceVoxel_c * piece, const pieceVoxel_c * result, const puzzle_c * puz, int x, int y, int z) {
 
   for (int pz = 0; pz < piece->getZ(); pz++)
     for (int py = 0; py < piece->getY(); py++)
       for (int px = 0; px < piece->getX(); px++)
-        if ((piece->getState(px, py, pz) != pieceVoxel_c::VX_EMPTY) &&
-            (result->getState(x+px, y+py, z+pz) == pieceVoxel_c::VX_EMPTY))
+        if (
+            // the piece can not be place if the result is empty and the piece is fileed at a given voxel
+            ((piece->getState(px, py, pz) != pieceVoxel_c::VX_EMPTY) &&
+             (result->getState(x+px, y+py, z+pz) == pieceVoxel_c::VX_EMPTY)) ||
+
+            // the piece can also not be placed when the color constraints don't fit
+            !puz->placementAllowed(piece->getColor(px, py, pz), result->getColor(x+px, y+py, z+pz))
+
+           )
           return false;
 
   return true;
@@ -77,7 +84,7 @@ unsigned long assm_0_frontend_0_c::countNodes(puzzle_c * puz, unsigned int resul
         for (int x = 0; x < result->getX() - rotation->getX() + 1; x++)
           for (int y = 0; y < result->getY() - rotation->getY() + 1; y++)
             for (int z = 0; z < result->getZ() - rotation->getZ() + 1; z++)
-              if (pieceFits(rotation, result, x, y, z))
+              if (pieceFits(rotation, result, puz, x, y, z))
                 placements++;
 
     nodes += placements * (puz->getShape(pc)->countState(pieceVoxel_c::VX_FILLED) + 1) * puz->getShapeCount(pc);
@@ -213,7 +220,7 @@ void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari, 
           for (int x = 0; x < result->getX() - rotation->getX() + 1; x++)
             for (int y = 0; y < result->getY() - rotation->getY() + 1; y++)
               for (int z = 0; z < result->getZ() - rotation->getZ() + 1; z++)
-                if (pieceFits(rotation, result, x, y, z)) {
+                if (pieceFits(rotation, result, puz, x, y, z)) {
 
                   int piecenode;
 
