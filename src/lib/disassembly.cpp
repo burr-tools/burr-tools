@@ -99,7 +99,7 @@ xml::node state_c::save(unsigned int piecenumber) const {
 
   it = nd.insert(xml::node("dx"));
 
-  for (int ii = 0; ii < piecenumber; ii++) {
+  for (unsigned int ii = 0; ii < piecenumber; ii++) {
     if (w.length()) w += ' ';
     snprintf(tmp, 49, "%i", dx[ii]);
     w += tmp;
@@ -109,7 +109,7 @@ xml::node state_c::save(unsigned int piecenumber) const {
   w = "";
   it = nd.insert(xml::node("dy"));
 
-  for (int ii = 0; ii < piecenumber; ii++) {
+  for (unsigned int ii = 0; ii < piecenumber; ii++) {
     if (w.length()) w += ' ';
     snprintf(tmp, 49, "%i", dy[ii]);
     w += tmp;
@@ -119,7 +119,7 @@ xml::node state_c::save(unsigned int piecenumber) const {
   w = "";
   it = nd.insert(xml::node("dz"));
 
-  for (int ii = 0; ii < piecenumber; ii++) {
+  for (unsigned int ii = 0; ii < piecenumber; ii++) {
     if (w.length()) w += ' ';
     snprintf(tmp, 49, "%i", dz[ii]);
     w += tmp;
@@ -203,7 +203,7 @@ xml::node separation_c::save(void) const {
 
   std::string cont;
 
-  for (int ii = 0; ii < piecenumber; ii++) {
+  for (unsigned int ii = 0; ii < piecenumber; ii++) {
     snprintf(tmp, 50, "%i", pieces[ii]);
     if (cont.length()) cont += ' ';
     cont += tmp;
@@ -211,7 +211,7 @@ xml::node separation_c::save(void) const {
   it->set_content(cont.c_str());
 
   // now add all the states
-  for (int jj = 0; jj < states.size(); jj++)
+  for (unsigned int jj = 0; jj < states.size(); jj++)
     nd.insert(states[jj]->save(piecenumber));
 
   // finally save the removed and left over part
@@ -279,13 +279,14 @@ separation_c::separation_c(separation_c * r, separation_c * l, unsigned int pn, 
 separation_c::~separation_c() {
   delete removed;
   delete left;
-  for (int i = 0; i < states.size(); i++)
+  for (unsigned int i = 0; i < states.size(); i++)
     delete states[i];
   delete [] pieces;
 }
 
-int separation_c::sumMoves(void) const {
-  int erg = states.size() - 1;
+unsigned int separation_c::sumMoves(void) const {
+  assert(states.size());
+  unsigned int erg = states.size() - 1;
   if (removed)
     erg += removed->sumMoves();
   if (left)

@@ -75,22 +75,22 @@ private:
   /**
    * The x-size of the space.
    */
-  int sx;
+  unsigned int sx;
   /**
    * The y-size of the space.
    */
-  int sy;
+  unsigned int sy;
   /**
    * The z-size of the space.
    */
-  int sz;
+  unsigned int sz;
 
   /**
    * The number of voxel inside the space.
    * voxels is always equal to \f$sx*sy*sz\f$ it's just
    * here to ease things a bit
    */
-  int voxels;
+  unsigned int voxels;
 
   /**
    * The space. It's dynamically allocated on construction
@@ -110,7 +110,7 @@ public:
    * Creates a new voxel space. Its of given size and
    * initializes all values to init.
    */
-  voxel_c(int x, int y, int z, voxel_type init = 0);
+  voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = 0);
 
   /**
    * Copy constructor using reference. Transformation allows to
@@ -138,33 +138,33 @@ public:
   /**
    * Get the actual x-size of the space.
    */
-  int getX() const { return sx; }
+  unsigned int getX() const { return sx; }
   /**
    * Get the actual y-size of the space.
    */
-  int getY() const { return sy; }
+  unsigned int getY() const { return sy; }
   /**
    * Get the actual z-size of the space.
    */
-  int getZ() const { return sz; }
+  unsigned int getZ() const { return sz; }
 
   /**
    * Get the number of voxels
    */
-  int getXYZ() const { return voxels; }
+  unsigned int getXYZ() const { return voxels; }
 
   /**
    * this function returns the index for a given triple of x, y and z
    */
-  int getIndex(int x, int y, int z) const {
-    assert((x>=0)&&(y>=0)&&(z>=0)&&(x<sx)&&(y<sy)&&(z<sz));
+  int getIndex(unsigned int x, unsigned int y, unsigned int z) const {
+    assert((x<sx)&&(y<sy)&&(z<sz));
     return x + sx * (y + sy * z);
   }
 
   /**
    * Get the value of the voxel at position \f$(x; y; z)\f$
    */
-  voxel_type get(int x, int y, int z) const {
+  voxel_type get(unsigned int x, unsigned int y, unsigned int z) const {
     return space[getIndex(x, y, z)];
   }
 
@@ -178,7 +178,7 @@ public:
    * the space
    */
   voxel_type get2(int x, int y, int z) const {
-    if ((x>=0)&&(y>=0)&&(z>=0)&&(x<sx)&&(y<sy)&&(z<sz))
+    if ((x>=0)&&(y>=0)&&(z>=0)&&((long)x<(long)sx)&&((long)y<(long)sy)&&((long)z<(long)sz))
       return space[getIndex(x, y, z)];
     else
       return outside;
@@ -192,7 +192,7 @@ public:
    * go over the 1-dimensional array using a loop up to getXYZ()
    * and this function for access
    */
-  voxel_type get(int p) const {
+  voxel_type get(unsigned int p) const {
     assert((p>=0)&&(p<voxels));
     return space[p];
   }
@@ -201,19 +201,19 @@ public:
    * returns true, if a neighbor of the given
    * voxel has the given value
    */
-  bool neighbour(int p, voxel_type val) const;
+  bool neighbour(unsigned int p, voxel_type val) const;
 
   /**
    * the x, y, z variant of the set function.
    */
-  void set(int x, int y, int z, voxel_type val) {
+  void set(unsigned int x, unsigned int y, unsigned int z, voxel_type val) {
     space[getIndex(x, y, z)] = val;
   }
 
   /**
    * The 1-dimensional variant of the set function.
    */
-  void set(int p, voxel_type val) {
+  void set(unsigned int p, voxel_type val) {
     assert((p>=0)&&(p<voxels));
     space[p] = val;
   }
@@ -273,7 +273,7 @@ public:
    * adding new voxels at the upper end, if the new space
    * is bigger
    */
-  void resize(int nsx, int nsy, int nsz, voxel_type filler);
+  void resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel_type filler);
 
   /** checks the voxelspace for connectedness. It is checked
    * if there is no group of voxels, that is disconnected from
@@ -315,7 +315,7 @@ class pieceVoxel_c : public voxel_c {
 
 public:
 
-  pieceVoxel_c(int x, int y, int z, voxel_type init = 0) : voxel_c(x, y, z, init) {}
+  pieceVoxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = 0) : voxel_c(x, y, z, init) {}
   pieceVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {}
   pieceVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {}
   pieceVoxel_c(const xml::node & node);
@@ -336,17 +336,17 @@ public:
     VX_VARIABLE
   };
 
-  int getState(int x, int y, int z) const { return get(x, y, z) & 0x3; }
+  int getState(unsigned int x, unsigned int y, unsigned int z) const { return get(x, y, z) & 0x3; }
   int getState2(int x, int y, int z) const { return get2(x, y, z) & 0x3; }
-  int getState(int i) const { return get(i) & 0x3; }
-  unsigned int getColor(int x, int y, int z) const { return get(x, y, z) >> 2; }
+  int getState(unsigned int i) const { return get(i) & 0x3; }
+  unsigned int getColor(unsigned int x, unsigned int y, unsigned int z) const { return get(x, y, z) >> 2; }
   unsigned int getColor2(int x, int y, int z) const { return get2(x, y, z) >> 2; }
-  unsigned int getColor(int i) const { return get(i) >> 2; }
+  unsigned int getColor(unsigned int i) const { return get(i) >> 2; }
 
-  void setState(int x, int y, int z, int state) { set(x, y, z, (get(x, y, z) & ~0x3) | state); }
-  void setColor(int x, int y, int z, unsigned int color) { assert(color < 64); set(x, y, z, (get(x, y, z) & 0x3) | color << 2); }
-  void setState(int i, int state) { set(i, (get(i) & ~0x3) | state); }
-  void setColor(int i, unsigned int color) { assert(color < 64); set(i, (get(i) & 0x3) | color << 2); }
+  void setState(unsigned int x, unsigned int y, unsigned int z, int state) { set(x, y, z, (get(x, y, z) & ~0x3) | state); }
+  void setColor(unsigned int x, unsigned int y, unsigned int z, unsigned int color) { assert(color < 64); set(x, y, z, (get(x, y, z) & 0x3) | color << 2); }
+  void setState(unsigned int i, int state) { set(i, (get(i) & ~0x3) | state); }
+  void setColor(unsigned int i, unsigned int color) { assert(color < 64); set(i, (get(i) & 0x3) | color << 2); }
 
   void minimizePiece(void);
 
@@ -376,22 +376,22 @@ public:
     VX_EMPTY = 0xff
   };
 
-  assemblyVoxel_c(int x, int y, int z, voxel_type init = VX_EMPTY) : voxel_c(x, y, z, init) { setOutside(VX_EMPTY); }
+  assemblyVoxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = VX_EMPTY) : voxel_c(x, y, z, init) { setOutside(VX_EMPTY); }
   assemblyVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { setOutside(VX_EMPTY); }
   assemblyVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { setOutside(VX_EMPTY); }
   assemblyVoxel_c(const xml::node & node);
 
-  bool isEmpty(int x, int y, int z) const { return get(x, y, z) == VX_EMPTY; }
+  bool isEmpty(unsigned int x, unsigned int y, unsigned int z) const { return get(x, y, z) == VX_EMPTY; }
   bool isEmpty2(int x, int y, int z) const { return get2(x, y, z) == VX_EMPTY; }
-  bool isEmpty(int i) const { return get(i) == VX_EMPTY; }
-  unsigned int pieceNumber(int x, int y, int z) const { return get(x, y, z); }
+  bool isEmpty(unsigned int i) const { return get(i) == VX_EMPTY; }
+  unsigned int pieceNumber(unsigned int x, unsigned int y, unsigned int z) const { return get(x, y, z); }
   unsigned int pieceNumber2(int x, int y, int z) const { return get2(x, y, z); }
-  unsigned int pieceNumber(int i) const { return get(i); }
+  unsigned int pieceNumber(unsigned int i) const { return get(i); }
 
-  void clear(int x, int y, int z) { set(x, y, z, VX_EMPTY); }
-  void clear(int i) { set(i, VX_EMPTY); }
-  void setPiece(int x, int y, int z, int num) { assert(num < VX_EMPTY); set(x, y, z, num); }
-  void setPiece(int i, int num) { assert(num < VX_EMPTY); set(i, num); }
+  void clear(unsigned int x, unsigned int y, unsigned int z) { set(x, y, z, VX_EMPTY); }
+  void clear(unsigned int i) { set(i, VX_EMPTY); }
+  void setPiece(unsigned int x, unsigned int y, unsigned int z, int num) { assert(num < VX_EMPTY); set(x, y, z, num); }
+  void setPiece(unsigned int i, int num) { assert(num < VX_EMPTY); set(i, num); }
 
   /* used to save to XML */
   xml::node save(void) const;

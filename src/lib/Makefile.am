@@ -1,5 +1,8 @@
 noinst_LIBRARIES=libburr.a
 
+libburr_a_CPPFLAGS=-Wall
+
+
 libburr_a_SOURCES=disassembler.h \
                   disassembler_3.h disassembler_3.cpp \
                   disassembly.cpp disassembly.h \

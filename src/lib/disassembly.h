@@ -85,15 +85,15 @@ public:
   /* return the number of moves that are required to separate the puzzle
    * this number is one smaller than the number of states
    */
-  int getMoves(void) const { return states.size() - 1; }
+  unsigned int getMoves(void) const { return states.size() - 1; }
 
   /* the number of moves to completely disassemble the puzzle, including
    * all sub separations
    */
-  int sumMoves(void) const;
+  unsigned int sumMoves(void) const;
 
   /* get one state from the separation process */
-  const state_c * getState(int num) const {
+  const state_c * getState(unsigned int num) const {
     assert(num < states.size());
     return states[num];
   }

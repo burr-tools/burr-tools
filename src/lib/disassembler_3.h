@@ -51,10 +51,10 @@ class disassembler_3_c : public disassembler_c {
 private:
 
   assemblyVoxel_c * assm;
-  int piecenumber;
+  unsigned int piecenumber;
 
   /* bounding box */
-  int *bx1, *bx2, *by1, *by2, *bz1, *bz2;
+  unsigned int *bx1, *bx2, *by1, *by2, *bz1, *bz2;
 
   /* this array contains the number of empty voxels you cross
    * bevore you hit the first filled one, if you enter the

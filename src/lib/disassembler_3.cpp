@@ -770,17 +770,17 @@ separation_c * disassembler_3_c::disassemble_rec(int piecenumber, voxel_type * p
 
 void disassembler_3_c::calcbounds(void) {
 
-  for (int k = 0; k < piecenumber; k++)
-    bx1[k] = -1;
+  for (unsigned int k = 0; k < piecenumber; k++)
+    bx1[k] = assm->getX();
 
-  for (int x = 0; x < assm->getX(); x++)
-    for (int y = 0; y < assm->getY(); y++)
-      for (int z = 0; z < assm->getZ(); z++) {
+  for (unsigned int x = 0; x < assm->getX(); x++)
+    for (unsigned int y = 0; y < assm->getY(); y++)
+      for (unsigned int z = 0; z < assm->getZ(); z++) {
         if (!assm->isEmpty(x, y, z)) {
 
           unsigned int c = assm->pieceNumber(x, y, z);
 
-          if (bx1[c] == -1) {
+          if (bx1[c] == assm->getX()) {
             bx1[c] = bx2[c] = x;
             by1[c] = by2[c] = y;
             bz1[c] = bz2[c] = z;
@@ -798,7 +798,7 @@ void disassembler_3_c::calcbounds(void) {
       }
 
   /* allocate the memory for the depth arrays */
-  for (int l = 0; l < piecenumber; l++) {
+  for (unsigned int l = 0; l < piecenumber; l++) {
 
     bbdepth[0][l] = new unsigned int[(bx2[l]-bx1[l]+1) * (by2[l]-by1[l]+1)];
     bbdepth[1][l] = new unsigned int[(bx2[l]-bx1[l]+1) * (by2[l]-by1[l]+1)];
@@ -812,13 +812,13 @@ void disassembler_3_c::calcbounds(void) {
 
 
   /* calculate the depth */
-  for (int i = 0; i < piecenumber; i++) {
+  for (unsigned int i = 0; i < piecenumber; i++) {
 
-    { for (int x = bx1[i]; x <= bx2[i]; x++)
-        for (int y = by1[i]; y <= by2[i]; y++) {
+    { for (unsigned int x = bx1[i]; x <= bx2[i]; x++)
+        for (unsigned int y = by1[i]; y <= by2[i]; y++) {
           unsigned int j = 0;
   
-          int z = bz1[i];
+          unsigned int z = bz1[i];
           while (z < bz2[i]) {
             if (assm->pieceNumber(x, y, z) == i)
               break;
@@ -841,11 +841,11 @@ void disassembler_3_c::calcbounds(void) {
         }
     }
 
-    { for (int x = bx1[i]; x <= bx2[i]; x++)
-        for (int z = bz1[i]; z <= bz2[i]; z++) {
+    { for (unsigned int x = bx1[i]; x <= bx2[i]; x++)
+        for (unsigned int z = bz1[i]; z <= bz2[i]; z++) {
           unsigned int j = 0;
   
-          int y = by1[i];
+          unsigned int y = by1[i];
           while (y < by2[i]) {
             if (assm->pieceNumber(x, y, z) == i)
               break;
@@ -868,11 +868,11 @@ void disassembler_3_c::calcbounds(void) {
         }
     }
 
-    { for (int y = by1[i]; y <= by2[i]; y++)
-        for (int z = bz1[i]; z <= bz2[i]; z++) {
+    { for (unsigned int y = by1[i]; y <= by2[i]; y++)
+        for (unsigned int z = bz1[i]; z <= bz2[i]; z++) {
           unsigned int j = 0;
   
-          int x = bx1[i];
+          unsigned int x = bx1[i];
           while (x < bx2[i]) {
             if (assm->pieceNumber(x, y, z) == i)
               break;
@@ -904,12 +904,12 @@ disassembler_3_c::disassembler_3_c(assemblyVoxel_c * problem, int piecenum) : as
   movement = new int[piecenumber];
   check = new bool[piecenumber];
 
-  bx1 = new int[piecenumber];
-  bx2 = new int[piecenumber];
-  by1 = new int[piecenumber];
-  by2 = new int[piecenumber];
-  bz1 = new int[piecenumber];
-  bz2 = new int[piecenumber];
+  bx1 = new unsigned int[piecenumber];
+  bx2 = new unsigned int[piecenumber];
+  by1 = new unsigned int[piecenumber];
+  by2 = new unsigned int[piecenumber];
+  bz1 = new unsigned int[piecenumber];
+  bz2 = new unsigned int[piecenumber];
 
   for (int i = 0; i < 6; i++)
     bbdepth[i] = new unsigned int*[piecenumber];
@@ -923,10 +923,10 @@ disassembler_3_c::disassembler_3_c(assemblyVoxel_c * problem, int piecenum) : as
 disassembler_3_c::~disassembler_3_c() {
   delete [] movement;
   delete [] check;
-  for (int k = 0; k < 3; k++)
+  for (unsigned int k = 0; k < 3; k++)
     delete [] matrix[k];
-  for (int i = 0; i < 6; i++) {
-    for (int j = 0; j < piecenumber; j++)
+  for (unsigned int i = 0; i < 6; i++) {
+    for (unsigned int j = 0; j < piecenumber; j++)
       delete [] bbdepth[i][j];
     delete [] bbdepth[i];
   }
@@ -947,7 +947,7 @@ separation_c * disassembler_3_c::disassemble(void) {
    */
   nodeWithMatrix_c * start = new nodeWithMatrix_c(piecenumber);
 
-  for (int i = 0; i < piecenumber; i++)
+  for (unsigned int i = 0; i < piecenumber; i++)
     start->set(i, 0, 0, 0);
 
   /* create pieces field. this field contains the
@@ -957,7 +957,7 @@ separation_c * disassembler_3_c::disassemble(void) {
    */
   voxel_type * pieces = new voxel_type[piecenumber];
 
-  for (int j = 0; j < piecenumber; j++)
+  for (unsigned int j = 0; j < piecenumber; j++)
     pieces[j] = j;
 
   return disassemble_rec(piecenumber, pieces, start);

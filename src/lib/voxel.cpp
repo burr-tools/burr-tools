@@ -32,7 +32,7 @@
 
 using namespace std;
 
-voxel_c::voxel_c(int x, int y, int z, voxel_type init) : sx(x), sy(y), sz(z), voxels(x*y*z) {
+voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init) : sx(x), sy(y), sz(z), voxels(x*y*z) {
 
   space = new voxel_type[voxels];
   assert(space);
@@ -70,7 +70,7 @@ bool voxel_c::operator ==(const voxel_c & op) const {
   if (sy != op.sy) return false;
   if (sz != op.sz) return false;
 
-  for (int i = 0; i < voxels; i++)
+  for (unsigned int i = 0; i < voxels; i++)
     if (space[i] != op.space[i])
       return false;
 
@@ -86,9 +86,9 @@ void voxel_c::rotatex() {
 
   voxel_type *s = new voxel_type[voxels];
 
-  for (int x = 0; x < sx; x++)
-    for (int y = 0; y < sy; y++)
-      for (int z = 0; z < sz; z++)
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++)
         s[x+sx*(y+sy*z)] = space[x+sx*(z+sz*(sy-y-1))];
 
   delete [] space;
@@ -103,9 +103,9 @@ void voxel_c::rotatey() {
 
   voxel_type *s = new voxel_type[voxels];
 
-  for (int x = 0; x < sx; x++)
-    for (int y = 0; y < sy; y++)
-      for (int z = 0; z < sz; z++)
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++)
         s[x+sx*(y+sy*z)] = space[z+sz*(y+sy*(sx-x-1))];
 
   delete [] space;
@@ -120,9 +120,9 @@ void voxel_c::rotatez() {
 
   voxel_type *s = new voxel_type[voxels];
 
-  for (int x = 0; x < sx; x++)
-    for (int y = 0; y < sy; y++)
-      for (int z = 0; z < sz; z++)
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++)
         s[x+sx*(y+sy*z)] = space[y+sy*((sx-x-1)+sx*z)];
 
   delete [] space;
@@ -131,14 +131,14 @@ void voxel_c::rotatez() {
 
 void voxel_c::minimize(voxel_type val) {
 
-  int x1, x2, y1, y2, z1, z2;
+  unsigned int x1, x2, y1, y2, z1, z2;
 
   x1 = y1 = z1 = sx+sy+sz;
   x2 = y2 = z2 = 0;
 
-  for (int x = 0; x < sx; x++)
-    for (int y = 0; y < sy; y++)
-      for (int z = 0; z < sz; z++)
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++)
         if (get(x, y, z) != val) {
           if (x < x1) x1 = x;
           if (x > x2) x2 = x;
@@ -161,9 +161,9 @@ void voxel_c::minimize(voxel_type val) {
 
     voxel_type * s2 = new voxel_type[(x2-x1+1) * (y2-y1+1) * (z2-z1+1)];
 
-    for (int x = x1; x <= x2; x++)
-      for (int y = y1; y <= y2; y++)
-        for (int z = z1; z <= z2; z++)
+    for (unsigned int x = x1; x <= x2; x++)
+      for (unsigned int y = y1; y <= y2; y++)
+        for (unsigned int z = z1; z <= z2; z++)
           s2[(x-x1) + (x2-x1+1) * ((y-y1) + (y2-y1+1) * (z-z1))] = get(x, y, z);
 
     delete [] space;
@@ -176,17 +176,17 @@ void voxel_c::minimize(voxel_type val) {
   }
 }
 
-void voxel_c::resize(int nsx, int nsy, int nsz, voxel_type filler) {
+void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel_type filler) {
   voxel_type * s2 = new voxel_type[nsx*nsy*nsz];
   memset(s2, filler, nsx*nsy*nsz);
 
-  int mx = (sx < nsx) ? sx : nsx;
-  int my = (sy < nsy) ? sy : nsy;
-  int mz = (sz < nsz) ? sz : nsz;
+  unsigned int mx = (sx < nsx) ? sx : nsx;
+  unsigned int my = (sy < nsy) ? sy : nsy;
+  unsigned int mz = (sz < nsz) ? sz : nsz;
 
-  for (int x = 0; x < mx; x++)
-    for (int y = 0; y < my; y++)
-      for (int z = 0; z < mz; z++)
+  for (unsigned int x = 0; x < mx; x++)
+    for (unsigned int y = 0; y < my; y++)
+      for (unsigned int z = 0; z < mz; z++)
         s2[x + nsx * (y + nsy * z)] = get(x, y, z);
 
   delete [] space;
@@ -200,7 +200,7 @@ void voxel_c::resize(int nsx, int nsy, int nsz, voxel_type filler) {
 
 unsigned int voxel_c::count(voxel_type val) const {
   unsigned int count = 0;
-  for (int i = 0; i < getXYZ(); i++)
+  for (unsigned int i = 0; i < getXYZ(); i++)
     if (get(i) == val)
       count ++;
   return count;
@@ -208,7 +208,7 @@ unsigned int voxel_c::count(voxel_type val) const {
 
 unsigned int pieceVoxel_c::countState(int state) const {
   unsigned int count = 0;
-  for (int i = 0; i < getXYZ(); i++)
+  for (unsigned int i = 0; i < getXYZ(); i++)
     if ((get(i) & 3) == state)
       count ++;
   return count;
@@ -216,9 +216,9 @@ unsigned int pieceVoxel_c::countState(int state) const {
 
 void voxel_c::mirrorX(void) {
 
-  for (int x = 0; x < sx/2; x++)
-    for (int y = 0; y < sy; y++)
-      for (int z = 0; z < sz; z++) {
+  for (unsigned int x = 0; x < sx/2; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++) {
         voxel_type tmp = get(x, y, z);
         set(x, y, z, get(sx-x-1, y, z));
         set(sx-x-1, y, z, tmp);
@@ -227,9 +227,9 @@ void voxel_c::mirrorX(void) {
 }
 
 void voxel_c::mirrorY(void) {
-  for (int x = 0; x < sx; x++)
-    for (int y = 0; y < sy/2; y++)
-      for (int z = 0; z < sz; z++) {
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy/2; y++)
+      for (unsigned int z = 0; z < sz; z++) {
         voxel_type tmp = get(x, y, z);
         set(x, y, z, get(x, sy-y-1, z));
         set(x, sy-y-1, z, tmp);
@@ -237,9 +237,9 @@ void voxel_c::mirrorY(void) {
 }
 
 void voxel_c::mirrorZ(void) {
-  for (int x = 0; x < sx; x++)
-    for (int y = 0; y < sy; y++)
-      for (int z = 0; z < sz/2; z++) {
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz/2; z++) {
         voxel_type tmp = get(x, y, z);
         set(x, y, z, get(x, y, sz-z-1));
         set(x, y, sz-z-1, tmp);
@@ -250,9 +250,9 @@ void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
   voxel_type * s2 = new voxel_type[sx*sy*sz];
   memset(s2, filler, sx*sy*sz);
 
-  for (int x = 0; x < sx; x++)
-    for (int y = 0; y < sy; y++)
-      for (int z = 0; z < sz; z++)
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++)
         if ((x+dx >= 0) && (x+dx < sx) &&
             (y+dy >= 0) && (y+dy < sy) &&
             (z+dz >= 0) && (z+dz < sz))
@@ -275,13 +275,13 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
 
 
   /* initialize tree */
-  for (int i = 0; i < voxels; i++)
+  for (unsigned int i = 0; i < voxels; i++)
     tree[i] = 0;
 
   /* merge all neigboring voxels */
-  for (int x = 1; x < sx; x++)
-    for (int y = 1; y < sy; y++)
-      for (int z = 1; z < sz; z++)
+  for (unsigned int x = 1; x < sx; x++)
+    for (unsigned int y = 1; y < sy; y++)
+      for (unsigned int z = 1; z < sz; z++)
         if ((inverse && (get(x, y, z) != value)) ||
             (!inverse && (get(x, y, z) == value))) {
 
@@ -361,9 +361,9 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
   int root = -1;
 
   /* finally check, if all voxels are in the same set */
-  { for (int x = 1; x < sx; x++)
-      for (int y = 1; y < sy; y++)
-        for (int z = 1; z < sz; z++)
+  { for (unsigned int x = 1; x < sx; x++)
+      for (unsigned int y = 1; y < sy; y++)
+        for (unsigned int z = 1; z < sz; z++)
           if ((inverse && (get(x, y, z) != value)) ||
               (!inverse && (get(x, y, z) == value))) {
             if (root == -1) {
@@ -402,11 +402,11 @@ void voxel_c::copy(const voxel_c * orig) {
   voxels = orig->voxels;
 }
 
-bool voxel_c::neighbour(int p, voxel_type val) const {
+bool voxel_c::neighbour(unsigned int p, voxel_type val) const {
 
-  int x = p % sx;
-  int y = ((p - x) / sx) % sy;
-  int z = (((p - x) / sx) - y) / sy;
+  unsigned int x = p % sx;
+  unsigned int y = ((p - x) / sx) % sy;
+  unsigned int z = (((p - x) / sx) - y) / sy;
 
   assert(x + sx * (y + sy * z) == p);
 
@@ -462,9 +462,9 @@ void pieceVoxel_c::minimizePiece(void) {
   x1 = y1 = z1 = getXYZ();
   x2 = y2 = z2 = 0;
 
-  for (int x = 0; x < getX(); x++)
-    for (int y = 0; y < getY(); y++)
-      for (int z = 0; z < getZ(); z++)
+  for (unsigned int x = 0; x < getX(); x++)
+    for (unsigned int y = 0; y < getY(); y++)
+      for (unsigned int z = 0; z < getZ(); z++)
         if (getState(x, y, z) != VX_EMPTY) {
           if (x < x1) x1 = x;
           if (x > x2) x2 = x;
@@ -486,9 +486,12 @@ void pieceVoxel_c::minimizePiece(void) {
 
 void pieceVoxel_c::makeInsideHoly(void) {
 
-  for (int x = 1; x < getX()-1; x++)
-    for (int y = 1; y < getY()-1; y++)
-      for (int z = 1; z < getZ()-1; z++)
+  if (!getX() || !getY() ||!getZ())
+    return;
+
+  for (unsigned int x = 1; x < getX()-1; x++)
+    for (unsigned int y = 1; y < getY()-1; y++)
+      for (unsigned int z = 1; z < getZ()-1; z++)
         if (getState(x, y, z) != VX_EMPTY) {
           if ((getState(x-1, y, z) == VX_EMPTY) || (getState(x+1, y, z) == VX_EMPTY) ||
               (getState(x, y-1, z) == VX_EMPTY) || (getState(x, y+1, z) == VX_EMPTY) ||
@@ -519,7 +522,7 @@ xml::node pieceVoxel_c::save(void) const {
 
   std::string cont;
 
-  for (int i = 0; i < getXYZ(); i++)
+  for (unsigned int i = 0; i < getXYZ(); i++)
     switch(getState(i)) {
     case VX_EMPTY:
       cont += "_";
@@ -572,7 +575,7 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
   unsigned int type = atoi(node.get_attributes().find("type")->get_value());
 
   const char * c = node.get_content();
-  int idx = -1;
+  unsigned int idx = 0;
   unsigned int color = 0;
 
   if (c) {
@@ -583,15 +586,15 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
     while (*c) {
       switch(*c) {
       case '#':
-        setState(++idx, VX_FILLED);
+        setState(idx++, VX_FILLED);
         color = 0;
         break;
       case '+':
-        setState(++idx, VX_VARIABLE);
+        setState(idx++, VX_VARIABLE);
         color = 0;
         break;
       case '_':
-        setState(++idx, VX_EMPTY);
+        setState(idx++, VX_EMPTY);
         color = 0;
         break;
       case '0': color = color * 10 + 0; break;
@@ -608,11 +611,15 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
         throw load_error("unrecognized character in piece voxel space", node);
       }
 
-      if (idx >= 0)
-        setColor(idx, color);
+      if (idx > 0)
+        setColor(idx-1, color);
 
       c++;
+      if (idx > getXYZ())
+        throw load_error("too many voxels defined in voxelspace", node);
     }
+    if (idx < getXYZ())
+      throw load_error("not enough voxels defined in voxelspace", node);
   }
 }
 
@@ -644,7 +651,7 @@ xml::node assemblyVoxel_c::save(void) const {
    *    the base 52 values
    */
 
-  for (int i = 0; i < getXYZ(); i++) {
+  for (unsigned int i = 0; i < getXYZ(); i++) {
     if (isEmpty(i))
       cont += "_";
     else {
@@ -722,7 +729,6 @@ assemblyVoxel_c::assemblyVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
 
   const char * c = node.get_content();
   int idx = 0;
-  unsigned int color = 0;
 
   if (c) {
 

@@ -132,7 +132,7 @@ void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int prob) {
   piecenumber = puz.probPieceNumber(prob);
 
   // minimize all pieces
-  for (int i = 0; i < puz.probShapeNumber(prob); i++)
+  for (unsigned int i = 0; i < puz.probShapeNumber(prob); i++)
     puz.probGetShapeShape(prob, i)->minimizePiece();
 
   /* count the filled and variable units */
@@ -149,7 +149,7 @@ void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int prob) {
   // is not bigger than number of voxels in pieces
   holes = res_filled;
 
-  for (int j = 0; j < puz.probShapeNumber(prob); j++)
+  for (unsigned int j = 0; j < puz.probShapeNumber(prob); j++)
     holes -= puz.probGetShapeShape(prob, j)->countState(pieceVoxel_c::VX_FILLED) * puz.probGetShapeCount(prob, j);
 
   if (holes < 0) {
@@ -487,7 +487,7 @@ void assembler_0_c::reduce(void) {
 
       uncover(p+1);
 
-      int count = multiPieceCount[p];
+//      int count = multiPieceCount[p];
 
       for (int pc = 0; pc < 1/*count*/; pc++) {
 
