@@ -140,7 +140,11 @@ public:
   /**
    * Constructor for empty puzzle, with no result and and no shapes
    */
-  puzzle_c(void) : colorConstraints(0) { }
+  puzzle_c(void) : colorConstraints(0) {
+
+    results.push_back(new pieceVoxel_c(0, 0, 0));
+
+  }
 
   /**
    * Destructor.
