@@ -196,6 +196,8 @@ public:
 
   solution_c(assemblyVoxel_c * assm, separation_c * t) : assembly(assm), tree(t) {}
 
+  solution_c(const xml::node & node);
+
   /* the assembly contains the pieces so that they
    * do assemble into the result shape */
   assemblyVoxel_c * assembly;
@@ -205,8 +207,36 @@ public:
    */
   separation_c * tree;
 
-  xml::node save(void) const { return xml::node("solution"); }
+  xml::node save(void) const;
 };
+
+solution_c::solution_c(const xml::node & node) {
+  assert(node.get_type() == xml::node::type_element);
+  assert(strcmp(node.get_name(), "solution") == 0);
+  assert(node.find("voxel") != node.end());
+
+  xml::node::const_iterator it;
+
+  it = node.find("voxel");
+  assembly = new assemblyVoxel_c(*it);
+
+  it = node.find("separation");
+  if (it != node.end())
+    tree = new separation_c(*it);
+  else
+    tree = 0;
+}
+
+xml::node solution_c::save(void) const {
+  xml::node nd("solution");
+
+  nd.insert(assembly->save());
+
+  if (tree)
+    nd.insert(tree->save());
+
+  return nd;
+}
 
 class problem_c {
 
@@ -318,16 +348,16 @@ xml::node problem_c::save(void) const {
   snprintf(tmp, 50, "%i", result);
   it->get_attributes().insert("id", tmp);
 
+  nd.insert(colorConstraints.save());
+
+  if (assm)
+    nd.insert(assm->save());
+
   if (solutions.size()) {
     it = nd.insert(xml::node("solutions"));
     for (int i = 0; i < solutions.size(); i++)
       it->insert(solutions[i]->save());
   }
-
-  nd.insert(colorConstraints.save());
-
-  if (assm)
-    nd.insert(assm->save());
 
   return nd;
 }
@@ -366,6 +396,10 @@ problem_c::problem_c(const xml::node & node, unsigned int color) : result(-1), c
 
   it = node.find("solutions");
   if (it != node.end()) {
+    for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
+      if ((i->get_type() == xml::node::type_element) &&
+          (strcmp(i->get_name(), "solution") == 0))
+        solutions.push_back(new solution_c(*i));
   }
 
   it = node.find("bitmap");
@@ -414,17 +448,6 @@ puzzle_c::~puzzle_c(void) {
 
   for (unsigned int i = 0; i < problems.size(); i++)
     delete problems[i];
-}
-
-void puzzle_c::print(void) {
-
-  /* FIXME
-
-  results[0]->print('a');
-
-  for (unsigned int i = 0; i < shapes.size(); i++)
-  shapes[i].piece->print('a');
-  */
 }
 
 void puzzle_c::orthogonalize(void) {

@@ -100,7 +100,7 @@ void assembler_0_c::nextPiece(int piece, int count, int number) {
 
 assembler_0_c::assembler_0_c() :
   rows(0), columns(0), left(0), right(0), up(0), down(0), colCount(0), searchState(0), nodeF(0),
-  numF(0), pieceF(0), nodeB(0), numB(0), piece(0), pieceStart(0), multiPieceCount(0), multiPieceIndex(0)
+  numF(0), pieceF(0), nodeB(0), numB(0), piece(0), pieceStart(0), multiPieceCount(0), multiPieceIndex(0), pos(0)
 {
 }
 
@@ -448,6 +448,8 @@ void assembler_0_c::reduce(void) {
 
     /* check all the pieces */
     for (int p = 0; p < piecenumber;) {
+
+      reducePiece = p;
 
       // place the piece and check, if this leads to some
       // infillable holes or unplacable pieces or whaever
@@ -819,6 +821,10 @@ float assembler_0_c::getFinished(void) {
    * be in an inconsistant state. The thing that will happen is that
    * the value may jump
    */
+
+  if (!rows || !colCount || !columns || !down)
+    return 0;
+
   float erg = 0;
 
   if (pos == -1)

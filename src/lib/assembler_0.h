@@ -210,6 +210,11 @@ private:
   /* the message object that gets called with the solutions as param */
   assembler_cb * asm_bc;
 
+  /* this value contains the piecenumber that the reduce procedure is currently working on
+   * the value is only valid, when reduce is running
+   */
+  unsigned int reducePiece;
+
 protected:
 
   void GenerateFirstRow(int res_filled);
@@ -236,6 +241,7 @@ public:
   void createMatrix(const puzzle_c * puz, unsigned int problemNum);
 
   void reduce(void);
+  int getReducePiece(void) { return reducePiece; }
 
   unsigned long getIterations(void) { return iterations; }
 

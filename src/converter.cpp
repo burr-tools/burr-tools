@@ -19,8 +19,10 @@ public:
     *str >> sx >> sy >> sz;
 
   
-    if ((sx < 0) || (sy < 0) || (sz < 0))
-      throw load_error("wrong size for voxel space");
+    if ((sx < 0) || (sy < 0) || (sz < 0)) {
+      printf("wrong size for voxel space");
+      exit(1);
+    }
 
     resize(sx, sy, sz, VX_EMPTY);
   
@@ -40,7 +42,8 @@ public:
         }
         return;
       default:
-        throw load_error("not allowed character in voxel space definition");
+        printf("not allowed character in voxel space definition");
+        exit(1);
       }
     }
   }
@@ -79,8 +82,10 @@ public:
   
     *str >> pieces;
   
-    if ((pieces < 0) || (pieces > 500))
-      throw load_error("too many pieces in file? probably voxel space not defined correctly");
+    if ((pieces < 0) || (pieces > 500)) {
+      printf("too many pieces in file? probably voxel space not defined correctly");
+      exit(1);
+    }
   
     while (pieces > 0) {
   
@@ -88,8 +93,10 @@ public:
   
       *str >> nr;
   
-      if ((nr < 0) || (nr > 500))
-        throw load_error("too many instances of one piece? probably voxel space not defined correctly");
+      if ((nr < 0) || (nr > 500)) {
+        printf("too many instances of one piece? probably voxel space not defined correctly");
+        exit(1);
+      }
   
       v = new my_voxel_0(str);
       assert(v);

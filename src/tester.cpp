@@ -20,9 +20,9 @@
 #include "lib/puzzle.h"
 #include "lib/assm_0_frontend_0.h"
 #include "lib/disassembler_3.h"
-#include "lib/disassembler_2.h"
-#include "lib/disassembler_1.h"
-#include "lib/disassembler_0.h"
+//#include "lib/disassembler_2.h"
+//#include "lib/disassembler_1.h"
+//#include "lib/disassembler_0.h"
 
 #include "lib/burrgrower.h"
 #include "lib/pieceGenerator.h"
@@ -66,7 +66,7 @@ public:
     printf(" timing = %f\n", ((double)(clock() - start))/CLOCKS_PER_SEC);
 
     if (da) {
-      assm->print();
+//      assm->print();
       printf("level: %i\n", da->getMoves());
 //      da->print();
       delete da;
@@ -128,7 +128,7 @@ unsigned int foundSym[200] = {
 unsigned int syms = 26;
 
 
-void search(voxel_c * piece) {
+void search(pieceVoxel_c * piece) {
 
   unsigned int s = findSelfSymmetry(piece);
   bool found = false;
@@ -149,8 +149,7 @@ void search(voxel_c * piece) {
 
     ofstream o(fn);
 
-    piece->save(&o);
-    o << "0" << endl;
+    o << piece->save();
   }
 }
 

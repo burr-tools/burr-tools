@@ -68,6 +68,8 @@ public:
    * it is not necessary for an assembler to implement this function
    */
   virtual void reduce(void) { }
+  virtual int getReducePiece(void) { return 0; }
+
 
   /* start the assembly process */
   virtual void assemble(assembler_cb * callback) {}

@@ -60,119 +60,9 @@ voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->s
   transform(transformation);
 }
 
-voxel_c::voxel_c(istream * str) {
-
-  *str >> sx >> sy >> sz;
-
-  voxels = sx*sy*sz;
-
-  if ((sx < 0) || (sy < 0) || (sz < 0) || (voxels > 1000000))
-    throw load_error("swong size for voxel space");
-
-  space = new voxel_type[voxels];
-  assert(space);
-
-  char c;
-
-  for (int j = 0; j < voxels; j++) {
-    *str >> c;
-
-    switch (c) {
-    case '_': set(j, 0); break;
-    case '#': set(j, 1); break;
-    case '+': set(j, 2); break;
-    case '\n':
-      while (j < voxels) {
-        set(j, 0);
-        j++;
-      }
-      return;
-    default:
-      throw load_error("not allowed character in voxel space definition");
-    }
-  }
-}
-
 voxel_c::~voxel_c() {
   delete [] space;
 }
-
-void voxel_c::print(char base) const {
-  for (int z = 0; z < sz; z++) {
-    printf(" +");
-    for (int x = 0; x < sx; x++)
-      printf("-");
-    printf("+");
-  }
-  printf("\n");
-
-  for (int y = 0; y < sy; y++) {
-    for (int z = 0; z < sz; z++) {
-      printf(" +");
-      for (int x = 0; x < sx; x++)
-        if (get(x, y, z) != 0)
-          printf("%c", base + get(x, y, z)-1);
-        else
-          printf(" ");
-      printf("+");
-    }
-    printf("\n");
-  }
-
-  { for (int z = 0; z < sz; z++) {
-      printf(" +");
-      for (int x = 0; x < sx; x++)
-        printf("-");
-      printf("+");
-    }
-  }
-  printf("\n");
-}
-
-void assemblyVoxel_c::print(void) const {
-  for (int z = 0; z < getZ(); z++) {
-    printf(" +");
-    for (int x = 0; x < getX(); x++)
-      printf("-");
-    printf("+");
-  }
-  printf("\n");
-
-  for (int y = 0; y < getY(); y++) {
-    for (int z = 0; z < getZ(); z++) {
-      printf(" +");
-      for (int x = 0; x < getX(); x++)
-        if (get(x, y, z) != VX_EMPTY)
-          printf("%c", 'a' + get(x, y, z));
-        else
-          printf(" ");
-      printf("+");
-    }
-    printf("\n");
-  }
-
-  { for (int z = 0; z < getZ(); z++) {
-      printf(" +");
-      for (int x = 0; x < getX(); x++)
-        printf("-");
-      printf("+");
-    }
-  }
-  printf("\n");
-}
-
-void voxel_c::save(ostream * str) const {
-
-  static unsigned char VoxelTranslate[] = "_#+";
-
-  *str << sx << " " << sy << " " << sz << " ";
-
-  for (int j = 0; j < voxels; j++)
-    *str << VoxelTranslate[get(j)];
-
-  *str << endl;
-}
-
 
 bool voxel_c::operator ==(const voxel_c & op) const {
 
@@ -664,17 +554,20 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
   // we must have a real node and the following attributes
   assert(node.get_type() == xml::node::type_element);
   assert(strcmp(node.get_name(), "voxel") == 0);
-  assert(node.get_attributes().find("x") != node.get_attributes().end());
-  assert(node.get_attributes().find("y") != node.get_attributes().end());
-  assert(node.get_attributes().find("z") != node.get_attributes().end());
-  assert(node.get_attributes().find("type") != node.get_attributes().end());
+
+  if (node.get_attributes().find("x") == node.get_attributes().end())
+    throw load_error("piece Voxel with no attribut 'x' encountered", node);
+  if (node.get_attributes().find("y") == node.get_attributes().end())
+    throw load_error("piece Voxel with no attribut 'y' encountered", node);
+  if (node.get_attributes().find("z") == node.get_attributes().end())
+    throw load_error("piece Voxel with no attribut 'z' encountered", node);
+  if (node.get_attributes().find("type") == node.get_attributes().end());
+    throw load_error("piece Voxel with no attribut 'type' encountered", node);
 
   // set to the correct size
   resize(atoi(node.get_attributes().find("x")->get_value()),
          atoi(node.get_attributes().find("y")->get_value()),
          atoi(node.get_attributes().find("z")->get_value()), 0);
-
-  printf("load voxel of size %i %i %i\n", getX(), getY(), getZ());
 
   unsigned int type = atoi(node.get_attributes().find("type")->get_value());
 
@@ -684,7 +577,8 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
 
   if (c) {
 
-    assert(type == 0);
+    if (type != 0);
+      throw load_error("piece Voxel with type not equal to 0 encountetred", node);
 
     while (*c) {
       switch(*c) {
@@ -710,10 +604,172 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
       case '7': color = color * 10 + 7; break;
       case '8': color = color * 10 + 8; break;
       case '9': color = color * 10 + 9; break;
+      default:
+        throw load_error("unrecognized character in piece voxel space", node);
       }
 
       if (idx >= 0)
         setColor(idx, color);
+
+      c++;
+    }
+  }
+}
+
+xml::node assemblyVoxel_c::save(void) const {
+
+  xml::node nd("voxel");
+
+  char tmp[50];
+
+  snprintf(tmp, 50, "%i", getX());
+  nd.get_attributes().insert("x", tmp);
+
+  snprintf(tmp, 50, "%i", getY());
+  nd.get_attributes().insert("y", tmp);
+
+  snprintf(tmp, 50, "%i", getZ());
+  nd.get_attributes().insert("z", tmp);
+
+  // this might allow us to later add another format
+  nd.get_attributes().insert("type", "1");
+
+  std::string cont;
+
+  /* the format is as follows:
+   *  - under line "_" for empty voxels
+   *  - 2* 26 letters corresponding to numbers (first the capital and then the lower case letters
+   *  - assumption that the base 52 numbers have only one digit
+   *  - if they do have more prepend a decimal number corresponding to the number of digits for
+   *    the base 52 values
+   */
+
+  for (int i = 0; i < getXYZ(); i++) {
+    if (isEmpty(i))
+      cont += "_";
+    else {
+      unsigned int val = pieceNumber(i);
+
+      if (val == 0)
+        cont += 'A';
+      else {
+
+        unsigned int tmp2 = val;
+        unsigned int len = 0;
+
+        while (tmp2) {
+          tmp2 /= 52;
+          len ++;
+        }
+
+        if (len > 1) {
+
+          snprintf(tmp, 50, "%i", len);
+          cont += tmp;
+        }
+
+        while (len) {
+          unsigned int len2 = len-1;
+          tmp2 = val;
+          while (len2) {
+            tmp2 /= 52;
+            len2--;
+          }
+
+          tmp2 %= 52;
+
+          if (tmp2 < 26)
+            cont += char('A' + tmp2);
+          else
+            cont += char('a' + (tmp2-26));
+
+          len--;
+        }
+      }
+    }
+  }
+
+  nd.set_content(cont.c_str());
+
+  return nd;
+}
+
+
+assemblyVoxel_c::assemblyVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
+
+  // we must have a real node and the following attributes
+  assert(node.get_type() == xml::node::type_element);
+  assert(strcmp(node.get_name(), "voxel") == 0);
+
+  if (node.get_attributes().find("x") == node.get_attributes().end())
+    throw load_error("assembly Voxel with no attribut 'x' encountered", node);
+  if (node.get_attributes().find("y") == node.get_attributes().end())
+    throw load_error("assembly Voxel with no attribut 'y' encountered", node);
+  if (node.get_attributes().find("z") == node.get_attributes().end())
+    throw load_error("assembly Voxel with no attribut 'z' encountered", node);
+  if (node.get_attributes().find("type") == node.get_attributes().end());
+    throw load_error("assembly Voxel with no attribut 'type' encountered", node);
+
+  setOutside(VX_EMPTY);
+
+  // set to the correct size
+  resize(atoi(node.get_attributes().find("x")->get_value()),
+         atoi(node.get_attributes().find("y")->get_value()),
+         atoi(node.get_attributes().find("z")->get_value()), 0);
+
+  unsigned int type = atoi(node.get_attributes().find("type")->get_value());
+
+
+  const char * c = node.get_content();
+  int idx = 0;
+  unsigned int color = 0;
+
+  if (c) {
+
+    if (type != 1);
+      throw load_error("assembly Voxel with type not equal to 1 encountetred", node);
+
+    unsigned int len;
+    unsigned int val;
+
+    len = 0;
+    val = 0;
+    bool charMode = false;
+
+    while (*c) {
+
+      if (*c == '_') {
+
+        if (charMode)
+          throw load_error("'_' in the middle of a multi digit color name encountered in assembly voxel space", node);
+        clear(idx++);
+
+      } else if (*c >= '0' && *c <= '9') {
+
+        if (charMode)
+          throw load_error("number in the middle of a multi digit color name encountered in assembly voxel space", node);
+        len = len * 10 + *c - '0';
+
+      } else {
+
+        if (*c >= 'A' && *c <= 'Z') {
+          val = val * 52 + *c - 'A';
+          charMode = true;
+        } else if (*c >= 'a' && *c <= 'z') {
+          val = val * 52 + *c - 'a' + 26;
+          charMode = true;
+        } else {
+          throw load_error("unrecognized character in assembly voxel space", node);
+        }
+
+        if (len) len--;
+
+        if (!len) {
+          setPiece(idx++, val);
+          val = 0;
+          charMode = false;
+        }
+      }
 
       c++;
     }

@@ -19,7 +19,7 @@
 
 #include "burrgrower.h"
 
-#include "disassembler_2.h"
+#include "disassembler_3.h"
 #include "assm_0_frontend_0.h"
 
 #include <fstream>

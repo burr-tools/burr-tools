@@ -50,9 +50,13 @@ typedef u_int8_t voxel_type;
 /**
  * this class get's thrown when there is an error on loading from a stream
  */
-class load_error : public std::runtime_error {
+class load_error {
+
+  const xml::node node;
+  const std::string text;
+
 public:
-  load_error(const std::string & arg) : runtime_error(arg) {};
+  load_error(const std::string & arg, const xml::node & nd) : node(nd), text(arg) {};
 };
 
 /**
@@ -118,21 +122,10 @@ public:
   voxel_c(const voxel_c * orig, unsigned int transformation = 0);
 
   /**
-   * load the voxel space from this stream
-   */
-  voxel_c(std::istream * str);
-
-  /**
    * Destructor.
    * Free the space
    */
   ~voxel_c();
-
-  /**
-   * save this voxel space into the given file
-   */
-  void save(std::ostream * str) const;
-
 
   /**
    * make this voxelspace be identical to the one given
@@ -230,12 +223,6 @@ public:
   }
 
   /**
-   * print the space onto the screen.
-   * The value in the space is added to base char
-   */
-  void print(char base = 'a') const;
-
-  /**
    * counts the number of voxels that have the given
    * value
    */
@@ -328,7 +315,6 @@ public:
   pieceVoxel_c(int x, int y, int z, voxel_type init = 0) : voxel_c(x, y, z, init) {}
   pieceVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {}
   pieceVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {}
-  pieceVoxel_c(std::istream * str) : voxel_c(str) {}
   pieceVoxel_c(const xml::node & node);
 
   /**
@@ -371,12 +357,7 @@ public:
   void makeInsideHoly(void);
 
   /* used to save to XML */
-
   xml::node save(void) const;
-  /**
-   * save this voxel space into the given file
-   */
-  void save(std::ostream * str) const { voxel_c::save(str); }
 };
 
 /* this voxel space if available to store solutions
@@ -395,7 +376,7 @@ public:
   assemblyVoxel_c(int x, int y, int z, voxel_type init = VX_EMPTY) : voxel_c(x, y, z, init) { setOutside(VX_EMPTY); }
   assemblyVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { setOutside(VX_EMPTY); }
   assemblyVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { setOutside(VX_EMPTY); }
-  assemblyVoxel_c(std::istream * str) : voxel_c(str) { setOutside(VX_EMPTY); }
+  assemblyVoxel_c(const xml::node & node);
 
   bool isEmpty(int x, int y, int z) const { return get(x, y, z) == VX_EMPTY; }
   bool isEmpty2(int x, int y, int z) const { return get2(x, y, z) == VX_EMPTY; }
@@ -409,8 +390,8 @@ public:
   void setPiece(int x, int y, int z, int num) { assert(num < VX_EMPTY); set(x, y, z, num); }
   void setPiece(int i, int num) { assert(num < VX_EMPTY); set(i, num); }
 
-  void print(void) const;
+  /* used to save to XML */
+  xml::node save(void) const;
 };
-
 
 #endif

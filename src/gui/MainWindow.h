@@ -78,6 +78,9 @@ class UserInterface {
 
   Fl_Group *TabProblems;
 
+  FlatButton *BtnColSrtPc;
+  FlatButton *BtnColSrtRes;
+
   ToolTab * pieceTools;
   ToolTab * resultTools;
 
@@ -161,6 +164,9 @@ public:
   void cb_Save(void);
   void cb_SaveAs(void);
   void cb_Quit(void);
+  void cb_SolProbSel(long reason);
+
+
 
   void ReplacePuzzle(puzzle_c * newPuzzle);
 
@@ -175,5 +181,6 @@ public:
   bool threadStopped(void);
 
   void update(void);
+  void updateSolutionStats(void);
 };
 #endif

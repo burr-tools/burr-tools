@@ -143,6 +143,7 @@ void SelectableTextList::blockSize(unsigned int block, unsigned int *w, unsigned
 
   int wi, hi;
   fl_font(labelfont(), labelsize());
+  wi = 0;
   fl_measure(txt, wi, hi);
   *w = wi + 8;
   *h = hi + 4;
@@ -179,6 +180,7 @@ void TextList::blockSize(unsigned int block, unsigned int *w, unsigned int *h) {
 
   int wi, hi;
   fl_font(labelfont(), labelsize());
+  wi = 0;
   fl_measure(txt, wi, hi);
   *w = wi + 8;
   *h = hi + 4;
@@ -224,7 +226,7 @@ void ColorSelector::getText(unsigned int block, char * text) {
 void PieceSelector::setPuzzle(puzzle_c *pz) {
   assert(pz);
   puzzle = pz;
-  redraw();
+  setSelection(0);
 }
 
 unsigned int PieceSelector::blockNumber(void) {
@@ -244,7 +246,7 @@ void PieceSelector::getColor(unsigned int block, unsigned char *r,  unsigned cha
 void ProblemSelector::setPuzzle(puzzle_c *pz) {
   assert(pz);
   puzzle = pz;
-  redraw();
+  setSelection(0);
 }
 
 unsigned int ProblemSelector::blockNumber(void) {
@@ -319,6 +321,7 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
   g = int(255*pieceColorG(shape, block));
   b = int(255*pieceColorB(shape, block));
 
+  w = 0;
   fl_measure(txt, w, h);
   w += 8;
   h += 4;
@@ -349,6 +352,7 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
 
   int wi, hi;
   fl_font(labelfont(), labelsize());
+  wi = 0;
   fl_measure(txt, wi, hi);
   *w = wi + 8;
   *h = hi + 4;
@@ -385,6 +389,19 @@ void ColorConstraintsEdit::draw(void) {
 
   fl_color(color());
   fl_rectf(x(), y(), w(), h());
+
+  fl_color(fl_darker(color()));
+  if (sortByResult) {
+    fl_rectf(x(),
+             y(),
+             CC_LR_GAP+CC_BLOCK_WIDTH+CC_ARROW_LR+CC_HORIZ_LENGTH/2,
+             h());
+  } else {
+    fl_rectf(x()+w()-(CC_LR_GAP+CC_BLOCK_WIDTH+CC_ARROW_LR+CC_HORIZ_LENGTH/2),
+             y(),
+             CC_LR_GAP+CC_BLOCK_WIDTH+CC_ARROW_LR+CC_HORIZ_LENGTH/2,
+             h());
+  }
   fl_color(labelcolor());
 
   for (int c1 = 0; c1 < puzzle->colorNumber(); c1++) {
@@ -420,10 +437,13 @@ void ColorConstraintsEdit::draw(void) {
 
     if (sortByResult) {
       puzzle->getColor(c1, &r, &g, &b);
+
       fl_rectf(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP, ypos + y()-shift + groupblockshift, CC_BLOCK_WIDTH, groupblockheight, r, g, b);
+      fl_rect(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP, ypos + y()-shift + groupblockshift, CC_BLOCK_WIDTH, groupblockheight);
     } else {
       puzzle->getColor(c1, &r, &g, &b);
       fl_rectf(x()+CC_LR_GAP, ypos + y()-shift + groupblockshift, CC_BLOCK_WIDTH, groupblockheight, r, g, b);
+      fl_rect(x()+CC_LR_GAP, ypos + y()-shift + groupblockshift, CC_BLOCK_WIDTH, groupblockheight);
     }
 
     unsigned int yp1 = ypos + y()-shift;
@@ -436,6 +456,7 @@ void ColorConstraintsEdit::draw(void) {
         if (sortByResult) {
           puzzle->getColor(c2, &r, &g, &b);
           fl_rectf(x()+CC_LR_GAP, yp1, CC_BLOCK_WIDTH, 2*CC_ADD_LENGTH+1, r, g, b);
+          fl_rect(x()+CC_LR_GAP, yp1, CC_BLOCK_WIDTH, 2*CC_ADD_LENGTH+1);
 
           fl_xyline(x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR, yp1 + CC_ADD_LENGTH,
                     x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR + CC_HORIZ_LENGTH);
@@ -455,6 +476,7 @@ void ColorConstraintsEdit::draw(void) {
         } else {
           puzzle->getColor(c2, &r, &g, &b);
           fl_rectf(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP, yp1, CC_BLOCK_WIDTH, 2*CC_ADD_LENGTH+1, r, g, b);
+          fl_rect(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP, yp1, CC_BLOCK_WIDTH, 2*CC_ADD_LENGTH+1);
 
           fl_xyline(x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR, yp2 + CC_ADD_LENGTH,
                     x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR + CC_HORIZ_LENGTH);
@@ -531,13 +553,16 @@ int ColorConstraintsEdit::handle(int event) {
   return 1;
 }
 
-void ColorConstraintsEdit::setPuzzle(puzzle_c *pz, unsigned int prob) {
-  assert(pz);
-  puzzle = pz;
-  problem = prob;
+void ColorConstraintsEdit::setSelection(unsigned int num) {
+  currentSelect = num;
   redraw();
 }
 
 
-
+void ColorConstraintsEdit::setPuzzle(puzzle_c *pz, unsigned int prob) {
+  assert(pz);
+  puzzle = pz;
+  problem = prob;
+  setSelection(0);
+}
 

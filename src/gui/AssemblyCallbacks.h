@@ -72,6 +72,8 @@ public:
 
   bool stopped(void) const { return (action == ACT_PAUSING) || (action == ACT_FINISHED); }
 
+  unsigned int getProblem(void) { return prob; }
+
 #ifdef WIN32
   friend unsigned long __stdcall start_th(void * c);
 #else

@@ -32,7 +32,7 @@ protected:
 
   void do_callback(int reason) {
     callbackReason = reason;
-    Fl_Widget::do_callback();
+    Fl_Widget::do_callback(this, reason);
   }
 
 public:
@@ -255,7 +255,7 @@ protected:
 public:
 
   ColorConstraintsEdit(int x, int y, int w, int h, puzzle_c * p) :
-    Fl_Widget(x, y, w, h), shift(0), puzzle(p), problem(0), sortByResult(false), currentSelect(0) {}
+    Fl_Widget(x, y, w, h), shift(0), lastHight(0), puzzle(p), problem(0), sortByResult(false), currentSelect(0) {}
 
   void setPuzzle(puzzle_c *pz, unsigned int prob);
 
@@ -275,6 +275,7 @@ public:
 
   int getReason(void) { return RS_CHANGEDHIGHT; }
   int getSelection(void) { return currentSelect; }
+  void setSelection(unsigned int num);
 
   void SetSortByResult(bool value) {
     sortByResult = value;

@@ -1,9 +1,6 @@
 noinst_LIBRARIES=libburr.a
 
 libburr_a_SOURCES=disassembler.h \
-                  disassembler_0.h disassembler_0.cpp \
-                  disassembler_1.h disassembler_1.cpp \
-                  disassembler_2.h disassembler_2.cpp \
                   disassembler_3.h disassembler_3.cpp \
                   disassembly.cpp disassembly.h \
                   assembler.h \
@@ -15,4 +12,8 @@ libburr_a_SOURCES=disassembler.h \
                   pieceGenerator.h pieceGenerator.cpp \
                   symmetries.h symmetries.cpp
 
+
+#                  disassembler_0.h disassembler_0.cpp \
+#                  disassembler_1.h disassembler_1.cpp \
+#                  disassembler_2.h disassembler_2.cpp
 

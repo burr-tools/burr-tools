@@ -55,17 +55,17 @@ public:
       if (da) {
         Solutions++;
         if (printSolutions)
-          assm->print();
+//          assm->print();
         printf("level: %i\n", da->getMoves());
         if (printDisassemble)
-          da->print(assm);
+//          da->print(assm);
         delete da;
       }
   
     } else {
 
-      if (printSolutions)
-        assm->print();
+//      if (printSolutions)
+//        assm->print();
     }
 
     return true;
@@ -134,7 +134,7 @@ int main(int argv, char* args[]) {
 
   cout << " The puzzle:\n\n";
 
-  p.print();
+//  p.print();
 
   assembler_0_c *assm = new assm_0_frontend_0_c();
   assm->createMatrix(&p, 0);

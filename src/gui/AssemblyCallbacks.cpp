@@ -44,6 +44,7 @@ void* start_th(void * c)
   if (!p->puzzle->probGetAssembler(p->prob)) {
     p->action = assemblerThread::ACT_PREPARATION;
     assm = new assm_0_frontend_0_c();
+    p->puzzle->probSetAssembler(p->prob, assm);
     assm->createMatrix(p->puzzle, p->prob);
     if (assm->errors()) {
       printf(" error, %s\n", assm->errors());
@@ -52,8 +53,6 @@ void* start_th(void * c)
 
     p->action = assemblerThread::ACT_REDUCE;
     assm->reduce();
-
-    p->puzzle->probSetAssembler(p->prob, assm);
 
   } else
     assm = (assm_0_frontend_0_c*)p->puzzle->probGetAssembler(p->prob);

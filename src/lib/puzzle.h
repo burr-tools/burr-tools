@@ -83,7 +83,7 @@ public:
   puzzle_c(const puzzle_c * orig);
 
   /**
-   * Constructor for empty puzzle, with one empty result and no shapes
+   * Constructor for empty puzzle, no shape, no problem and no colors
    */
   puzzle_c(void);
 
@@ -91,6 +91,10 @@ public:
    * load the puzzle from the XML file
    */
   puzzle_c(const xml::node & node);
+
+  /* used to save to XML */
+  xml::node save(void) const;
+
 
   /**
    * Destructor.
@@ -126,7 +130,6 @@ public:
   void changeColor(unsigned int idx, unsigned char r, unsigned char g, unsigned char b);
   void getColor(unsigned int idx, unsigned char * r, unsigned char * g, unsigned char * b);
   int colorNumber(void);
-
 
 
   /**
@@ -205,12 +208,6 @@ public:
   void setComment(const std::string & comment);
   const std::string & getDesigner(void);
   const std::string & getComment(void);
-
-  /* Print the puzzle to the screen */
-  void print(void);
-
-  /* used to save to XML */
-  xml::node save(void) const;
 
   /**
    * makes each shape appear only once and increase the piece counter for that.
