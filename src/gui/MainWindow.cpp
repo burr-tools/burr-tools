@@ -107,7 +107,6 @@ void UserInterface::cb_pieceEdit(VoxelEditGroup* o) {
   View3D->redraw();
 }
 
-
 void UserInterface::removeAssmThread(void) {
 
   if(TaskSelectionTab->value() == TabSolve)
