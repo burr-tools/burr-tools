@@ -203,6 +203,37 @@ void UserInterface::cb_New(void) {
   }
 }
 
+void UserInterface::tryToLoad(const char * f) {
+  if (f) {
+    ifstream instr(f);
+
+    puzzle_c * p2 = new puzzle_c(&instr);
+
+    if (!p2) {
+      fl_alert("Could not load file, maybe not a puzzle?");
+    } else {
+      if (fname) delete [] fname;
+      fname = new char[strlen(f)+1];
+      strcpy(fname, f);
+
+      char nm[300];
+      snprintf(nm, 299, "BurrTools - %s", fname);
+      mainWindow->label(nm);
+
+      delete puzzle;
+      puzzle = p2;
+
+      activatePiece(0);
+      PcSel2->setPuzzle(puzzle);
+      TaskSelectionTab->value(TabPieces);
+
+      removeAssmThread();
+
+      changed = false;
+    }
+  }
+}
+
 void UserInterface::cb_Load(void) {
   if (!assmThread || assmThread->stopped()) {
 
@@ -214,36 +245,9 @@ void UserInterface::cb_Load(void) {
     const char * f = flu_file_chooser("Load Puzzle", "*.puzzle", "");
 #else    
     const char * f = fl_file_chooser("Load Puzzle", "*.puzzle", "");
-#endif    
+#endif
 
-    if (f) {
-      ifstream instr(f);
-
-      puzzle_c * p2 = new puzzle_c(&instr);
-
-      if (!p2) {
-        fl_alert("Could not load file, maybe not a puzzle?");
-      } else {
-        if (fname) delete [] fname;
-        fname = new char[strlen(f)+1];
-        strcpy(fname, f);
-
-        char nm[300];
-        snprintf(nm, 299, "BurrTools - %s", fname);
-        mainWindow->label(nm);
-
-        delete puzzle;
-        puzzle = p2;
-
-        activatePiece(0);
-        PcSel2->setPuzzle(puzzle);
-        TaskSelectionTab->value(TabPieces);
-
-        removeAssmThread();
-
-        changed = false;
-      }
-    }
+    tryToLoad(f);
   }
 }
 
@@ -312,35 +316,8 @@ Fl_Menu_Item UserInterface::menu_MainMenu[] = {
 void UserInterface::show(int argn, char ** argv) {
   mainWindow->show();
 
-  if (argn == 2) {
-
-    ifstream instr(argv[1]);
-
-    puzzle_c * p2 = new puzzle_c(&instr);
-
-    if (!p2) {
-      fl_alert("Could not load file, maybe not a puzzle?");
-    } else {
-      if (fname) delete [] fname;
-      fname = new char[strlen(argv[1])+1];
-      strcpy(fname, argv[1]);
-
-      char nm[300];
-      snprintf(nm, 299, "BurrTools - %s", fname);
-      mainWindow->label(nm);
-
-      delete puzzle;
-      puzzle = p2;
-
-      activatePiece(0);
-      PcSel2->setPuzzle(puzzle);
-      TaskSelectionTab->value(TabPieces);
-
-      removeAssmThread();
-
-      changed = false;
-    }
-  }
+  if (argn == 2)
+    tryToLoad(argv[1]);
 }
 
 void UserInterface::activatePiece(int number) {

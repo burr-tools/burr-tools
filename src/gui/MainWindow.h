@@ -83,6 +83,8 @@ class UserInterface {
 
   VoxelEditGroup *pieceEdit, *resultEdit;
 
+  void tryToLoad(const char *fname);
+
 public:
   UserInterface();
 
