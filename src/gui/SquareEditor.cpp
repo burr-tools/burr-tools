@@ -133,11 +133,11 @@ int SquareEditor::handle(int event) {
       x /= s;
       y /= s;
 
-      y = space->getY() - y - 1;
-
       // if we are outside the valid range, exit
       if ((x >= space->getX()) || (y >= space->getY()))
         break;
+
+      y = space->getY() - y - 1;
 
       if (event == FL_MOVE) {
 
