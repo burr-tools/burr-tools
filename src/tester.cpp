@@ -62,12 +62,12 @@ public:
     disassembler_3_c d(assm, pn);
 
     clock_t start = clock();
-    disassembly_c * da = d.disassemble();
+    separation_c * da = d.disassemble();
     printf(" timing = %f\n", ((double)(clock() - start))/CLOCKS_PER_SEC);
 
     if (da) {
       assm->print();
-      printf("level: %i\n", da->firstlevel());
+      printf("level: %i\n", da->getMoves());
 //      da->print();
       delete da;
     }
@@ -224,9 +224,9 @@ void solve(int argv, char* args[]) {
     return;
   }
 
-  puzzle_c p(&str);
+  puzzle_c p; /* FIXME &str*/
 
-  p.print();
+//  p.print();
 
   assembler_0_c * assm = new assm_0_frontend_0_c();
   assm->createMatrix(&p, 0);
@@ -240,7 +240,7 @@ void solve(int argv, char* args[]) {
     return;
   }
 
-  asm_cb a(p.getPieces());
+  asm_cb a(p.probPieceNumber(0));
 
   a.count = 0;
 
@@ -266,7 +266,7 @@ void grow(int argv, char* args[]) {
     return;
   }
 
-  puzzle_c p(&str);
+  puzzle_c p/*( FIXME&str)*/;
 
   burrGrower_c grow(&p, 10);
 
@@ -285,7 +285,7 @@ void convert(int argv, char* args[]) {
     return;
   }
 
-  puzzle_c p(&str);
+  puzzle_c p(/* FIXME &str*/);
 
   ofstream ostr(args[2]);
 
@@ -294,7 +294,7 @@ void convert(int argv, char* args[]) {
     return;
   }
   
-  p.PS3Dsave(&ostr);
+//  p.PS3Dsave(&ostr);
 }
 
 void savetoXML(int argv, char* args[]) {
@@ -306,7 +306,7 @@ void savetoXML(int argv, char* args[]) {
     return;
   }
 
-  puzzle_c p(&str);
+  puzzle_c p/* FIXME (&str)*/;
 
   xml::init init;
 

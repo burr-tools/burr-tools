@@ -746,7 +746,7 @@ disassembler_1_c::~disassembler_1_c() {
 }
 
 
-disassembly_c * disassembler_1_c::disassemble(void) {
+separation_c * disassembler_1_c::disassemble(void) {
 
   /* create the first node with the start state
    * here all pieces are at position (0; 0; 0)
@@ -766,11 +766,6 @@ disassembly_c * disassembler_1_c::disassemble(void) {
   for (int i = 0; i < piecenumber; i++)
     pieces[i] = i+1;
 
-  separation_c * dis = disassemble_rec(piecenumber, pieces, start);
-
-  if (dis)
-    return new disassembly_c(assm, dis);
-  else
-    return 0;
+  return disassemble_rec(piecenumber, pieces, start);
 }
 

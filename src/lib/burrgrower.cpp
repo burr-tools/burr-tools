@@ -61,6 +61,7 @@ puzzleSol_c::puzzleSol_c(const puzzleSol_c * p) {
 
 bool puzzleSol_c::assembly(assemblyVoxel_c * assm) {
 
+/*
   disassembler_2_c d(assm, puzzle->getPieces());
   disassembly_c * da = d.disassemble();
 
@@ -81,7 +82,8 @@ bool puzzleSol_c::assembly(assemblyVoxel_c * assm) {
     if (l < minMoves) minMoves = l;
   
     delete da;
-  }
+    }
+*/
 }
 
 
@@ -117,12 +119,12 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
     puzzle_c *n = new puzzle_c(base);
 
     // copy the pieces, here we make all variable shapes empty
-    for (int p = 0; p < base->getShapeNumber(); p++) {
+/*    for (int p = 0; p < base->getShapeNumber(); p++) {
 
-      for (int ii = 0; ii < n->getShape(p)->getXYZ(); ii++)
-        if (n->getShape(p)->getState(ii) == pieceVoxel_c::VX_VARIABLE)
-          n->getShape(p)->setState(ii, pieceVoxel_c::VX_EMPTY);
-    }
+      for (int ii = 0; ii < n->___getShape(p)->getXYZ(); ii++)
+        if (n->___getShape(p)->getState(ii) == pieceVoxel_c::VX_VARIABLE)
+          n->___getShape(p)->setState(ii, pieceVoxel_c::VX_EMPTY);
+    }*/
 
     puzzleSol_c * ps = new puzzleSol_c(n);
 
@@ -142,15 +144,15 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
 
       printf("%i / %i puzzlews grown\n", p, currentSet.size());
 
-      for (int i = 0; i < base->getShapeNumber(); i++)
-        for (int z = 0; z < base->getShape(i)->getXYZ(); z++) {
-          if ((base->getShape(i)->getState(z) == pieceVoxel_c::VX_VARIABLE) &&
-              (currentSet[p]->getPuzzle()->getShape(i)->getState(z) == pieceVoxel_c::VX_EMPTY) //&&
-               // FIXME currentSet[p]->getPuzzle()->getShape(i)->neighbour(z, VX_FILLED)
+/*      for (int i = 0; i < base->getShapeNumber(); i++)
+        for (int z = 0; z < base->___getShape(i)->getXYZ(); z++) {
+          if ((base->___getShape(i)->getState(z) == pieceVoxel_c::VX_VARIABLE) &&
+              (currentSet[p]->getPuzzle()->___getShape(i)->getState(z) == pieceVoxel_c::VX_EMPTY) //&&
+               // FIXME currentSet[p]->getPuzzle()->___getShape(i)->neighbour(z, VX_FILLED)
              ) {
 
             puzzle_c *n = new puzzle_c(currentSet[p]->getPuzzle());
-            n->getShape(i)->setState(z, pieceVoxel_c::VX_FILLED);
+            n->___getShape(i)->setState(z, pieceVoxel_c::VX_FILLED);
 
             puzzleSol_c * ps = new puzzleSol_c(n);
 
@@ -161,7 +163,7 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
               newSet.push_back(ps);
             }
           }
-        }
+        }  */
     }
 
     // merge current_puzzles into new_puzzles;
@@ -210,20 +212,20 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
     printf("simplifying\n");
 
     int pos = (rand() % newSet.size());
-    int piece = (rand() % base->getShapeNumber());
+//    int piece = (rand() % base->getShapeNumber());
 
     puzzle_c * ps = new puzzle_c(newSet[pos]->getPuzzle());
-
-    for (int ii = 0; ii < base->getShape(piece)->getXYZ(); ii++)
-      if (base->getShape(piece)->getState(ii) == pieceVoxel_c::VX_VARIABLE)
-        ps->getShape(piece)->setState(ii, pieceVoxel_c::VX_EMPTY);
+/*
+    for (int ii = 0; ii < base->___getShape(piece)->getXYZ(); ii++)
+      if (base->___getShape(piece)->getState(ii) == pieceVoxel_c::VX_VARIABLE)
+        ps->___getShape(piece)->setState(ii, pieceVoxel_c::VX_EMPTY);
 
     newSet.push_back(new puzzleSol_c(ps));
 
     currentSet.clear();
     for (int i = 0; i < newSet.size(); i++)
       currentSet.push_back(newSet[i]);
-
+*/
     newSet.clear();
   }
 }
@@ -307,7 +309,7 @@ void burrGrower_c::addToLists(puzzleSol_c * pz) {
     char fname[100];
     snprintf(fname, 100, "grow/pz%06i_l%i_m%i.puzzle", num++, pz->numLevel(), pz->numMoves());
     ofstream file(fname);
-    pz->getPuzzle()->save(&file);
+// FIXME    pz->getPuzzle()->save(&file);
 
     printf("unique: ");
     if (unique.size() != 0)

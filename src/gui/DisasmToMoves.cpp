@@ -28,16 +28,16 @@ void DisasmToMoves::setStep(float step) {
     moves[4*i+3] = 0;
   }
 
-  int size = dis->getStart()->getX();
-  if (dis->getStart()->getY() > size) size = dis->getStart()->getY();
-  if (dis->getStart()->getZ() > size) size = dis->getStart()->getZ();
+  int size = assm->getX();
+  if (assm->getY() > size) size = assm->getY();
+  if (assm->getZ() > size) size = assm->getZ();
 
   size = 3 * size / 2;
   
   int s = int(step);
 
-  doRecursive(dis->getTree(), s, 1-step+s, 0, 0, 0, size);
-  doRecursive(dis->getTree(), s+1, step-s, 0, 0, 0, size);
+  doRecursive(tree, s, 1-step+s, 0, 0, 0, size);
+  doRecursive(tree, s+1, step-s, 0, 0, 0, size);
 }
 
 static int mabs(int a) {

@@ -30,7 +30,7 @@
 #include <stdexcept>
 #include <assert.h>
 
-#include <xmlwrapp/xmlwrapp.h>
+#include <xmlwrapp/node.h>
 
 #include "symmetries.h"
 
@@ -329,6 +329,7 @@ public:
   pieceVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {}
   pieceVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {}
   pieceVoxel_c(std::istream * str) : voxel_c(str) {}
+  pieceVoxel_c(const xml::node & node);
 
   /**
    * this enum defines some values that are used for some of
@@ -349,9 +350,9 @@ public:
   int getState(int x, int y, int z) const { return get(x, y, z) & 0x3; }
   int getState2(int x, int y, int z) const { return get2(x, y, z) & 0x3; }
   int getState(int i) const { return get(i) & 0x3; }
-  unsigned  int getColor(int x, int y, int z) const { return get(x, y, z) >> 2; }
-  unsigned  int getColor2(int x, int y, int z) const { return get2(x, y, z) >> 2; }
-  unsigned  int getColor(int i) const { return get(i) >> 2; }
+  unsigned int getColor(int x, int y, int z) const { return get(x, y, z) >> 2; }
+  unsigned int getColor2(int x, int y, int z) const { return get2(x, y, z) >> 2; }
+  unsigned int getColor(int i) const { return get(i) >> 2; }
 
   void setState(int x, int y, int z, int state) { set(x, y, z, (get(x, y, z) & ~0x3) | state); }
   void setColor(int x, int y, int z, unsigned int color) { assert(color < 64); set(x, y, z, (get(x, y, z) & 0x3) | color << 2); }

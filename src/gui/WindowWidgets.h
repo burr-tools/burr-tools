@@ -21,8 +21,8 @@
 #define __WINDOW_WIDGETS_H__
 
 #include "SquareEditor.h"
-#include "PieceSelector.h"
 #include "VoxelView.h"
+#include "BlockList.h"
 
 #include <FL/Fl.H>
 #include <FL/Fl_Button.H>
@@ -32,7 +32,7 @@
 #include <FL/Fl_Value_Output.H>
 #include <FL/Fl_Tabs.H>
 #include <FL/Fl_Box.H>
-
+#include <FL/fl_draw.h>
 
 // my button, the only change it that the box is automatically set to engraved
 class FlatButton : public Fl_Button {
@@ -74,7 +74,7 @@ class VoxelEditGroup : public Fl_Group {
 
 public:
 
-  VoxelEditGroup(int x, int y, int w, int h);
+  VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle);
 
   void cb_Zselect(Fl_Slider* o) {
     sqedit->setZ(int(o->value()));
@@ -90,12 +90,23 @@ public:
   int getMouseY(void) { return sqedit->getMouseY(); }
   int getMouseZ(void) { return sqedit->getMouseZ(); }
 
-  void setVoxelSpace(pieceVoxel_c * v, int num) {
-    sqedit->setVoxelSpace(v, num);
-    if (v) {
-      zselect->bounds(0, v->getZ()-1);
-      zselect->value(sqedit->getZ());
+  void setPuzzle(puzzle_c * puzzle, int num) {
+    sqedit->setPuzzle(puzzle, num);
+    if (puzzle) {
+      pieceVoxel_c * v = puzzle->getShape(num);
+      if (v) {
+        zselect->bounds(0, v->getZ()-1);
+        zselect->value(sqedit->getZ());
+      }
     }
+  }
+
+  void clearPuzzle(void) {
+    sqedit->clearPuzzle();
+  }
+
+  void setColor(unsigned int num) {
+    sqedit->setColor(num);
   }
 
 };
@@ -162,7 +173,7 @@ class ToolTab : public Fl_Tabs {
 
 public:
 
-  ToolTab(int x, int y, int w, int h, int type);
+  ToolTab(int x, int y, int w, int h);
 
   void setVoxelSpace(pieceVoxel_c * sp) {
     space = sp;
@@ -208,30 +219,44 @@ public:
 };
 
 
-// pieceselector group
+class BlockListGroup : public Fl_Group {
 
-class SelectorGroup : public Fl_Group {
-
-  Fl_Slider * PcSelSlider;
-  PieceSelector * PcSel;
+  Fl_Slider * Slider;
+  BlockList * List;
 
 public:
 
-  SelectorGroup(int x, int y, int w, int h);
+  BlockListGroup(int x, int y, int w, int h, BlockList * l);
 
-  void cb_slider(void) { PcSel->setShift((int)PcSelSlider->value()); }
-  void cb_pcsel(void) {
-    if (PcSel->getReason() == PieceSelector::RS_CHANGEDHIGHT)
-      PcSelSlider->range(0, PcSel->calcHeight());
-    else
-      do_callback(this, PcSel->getReason());
+  void cb_slider(void) { List->setShift((int)Slider->value()); }
+  void cb_list(void) {
+    if (List->getReason() == PieceSelector::RS_CHANGEDHIGHT) {
+      Slider->range(0, List->calcHeight());
+      Slider->redraw();
+    } else
+      do_callback(this, List->getReason());
   }
-
-  void setPuzzle(puzzle_c * p) { PcSel->setPuzzle(p); }
-  int getSelectedPiece(void) { return PcSel->getSelectedPiece(); }
-  void setSelectedPiece(int num) { PcSel->setSelectedPiece(num); }
-
 };
+
+class ConstraintsGroup : public Fl_Group {
+
+  Fl_Slider * Slider;
+  ColorConstraintsEdit * List;
+
+public:
+
+  ConstraintsGroup(int x, int y, int w, int h, ColorConstraintsEdit * l);
+
+  void cb_slider(void) { List->setShift((int)Slider->value()); }
+  void cb_list(void) {
+    if (List->getReason() == ColorConstraintsEdit::RS_CHANGEDHIGHT) {
+      Slider->range(0, List->calcHeight());
+      Slider->redraw();
+    } else
+      do_callback(this, List->getReason());
+  }
+};
+
 
 // the groups with the 3d view and the zoom slider
 
@@ -255,6 +280,33 @@ public:
   void hideMarker(void) { View3D->hideMarker(); }
 
   void redraw(void) { View3D->redraw(); }
+};
+
+// a widget to separate 2 groups
+
+class Separator : public Fl_Group {
+
+public:
+
+  Separator(int x, int y, int w, int h, const char * label, bool button);
+};
+
+
+class ResultViewer : public Fl_Box {
+
+private:
+
+  puzzle_c * puzzle;
+  unsigned int problem;
+  Fl_Color bg;
+
+public:
+
+  ResultViewer(int x, int y, int w, int h, puzzle_c * p);
+  void setPuzzle(puzzle_c * p, unsigned int prob);
+//  void setcontent(void);
+  void draw(void);
+
 };
 
 #endif

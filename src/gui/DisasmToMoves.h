@@ -28,7 +28,8 @@
  
 class DisasmToMoves {
 
-  const disassembly_c * dis;
+  const separation_c * tree;
+  const assemblyVoxel_c * assm;
   float * moves;
   int piecenumber;
 
@@ -36,7 +37,7 @@ class DisasmToMoves {
 
 public:
 
-  DisasmToMoves(const disassembly_c * disasm, float * mv, int piecen) : dis(disasm), moves(mv), piecenumber(piecen) {}
+  DisasmToMoves(const separation_c * tr, assemblyVoxel_c * as, float * mv, int piecen) : tree(tr), assm(as), moves(mv), piecenumber(piecen) {}
   
   /* sets the moves for the step, if the value is not integer you
    * get a intermediate of the necessary move (for animation)

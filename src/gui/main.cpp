@@ -23,6 +23,8 @@
 
 #include <time.h>
 
+#include <xmlwrapp/xmlwrapp.h>
+
 class my_Fl : public Fl {
 
 public:
@@ -42,6 +44,8 @@ public:
 };
 
 int main(int argc, char ** argv) {
+
+  xml::init xmlinit;
 
   UserInterface *ui = new UserInterface();
   

@@ -22,17 +22,16 @@
 
 #include <FL/fl_draw.h>
 
-void SquareEditor::setVoxelSpace(pieceVoxel_c * newSpace, int piecenum) {
+void SquareEditor::setPuzzle(puzzle_c * p, unsigned int piecenum) {
 
-  space = newSpace;
+  puzzle = p;
+  piecenumber = piecenum;
 
   // check if the current z value is in valid regions
-  if (space && (space->getZ() <= currentZ))
-    currentZ = space->getZ()-1;
+  if ((piecenum < puzzle->shapeNumber()) && (puzzle->getShape(piecenum)->getZ() <= currentZ))
+    currentZ = puzzle->getShape(piecenum)->getZ() - 1;
 
   if (currentZ < 0) currentZ = 0;
-
-  piecenumber = piecenum;
 
   redraw();
 }
@@ -41,7 +40,7 @@ void SquareEditor::setZ(int z) {
 
   // clamp the value to valid values
   if (z < 0) z = 0;
-  if (z >= space->getZ()) z = space->getZ()-1;
+  if (z >= puzzle->getShape(piecenumber)->getZ()) z = puzzle->getShape(piecenumber)->getZ()-1;
 
   currentZ = z;
   redraw();
@@ -50,15 +49,15 @@ void SquareEditor::setZ(int z) {
 void SquareEditor::calcParameters(int *s, int *tx, int *ty) {
 
   // calculate the size of the squares
-  int sx = (w()-1) / space->getX();
-  int sy = (h()-1) / space->getY();
+  int sx = (w()-1) / puzzle->getShape(piecenumber)->getX();
+  int sy = (h()-1) / puzzle->getShape(piecenumber)->getY();
 
   *s = (sx < sy) ? sx : sy;
 
   if (*s > 20) *s = 20;
 
-  *tx = x() + (w() - space->getX()*(*s) - 1) / 2;
-  *ty = y() + (h() - space->getY()*(*s) - 1) / 2;
+  *tx = x() + (w() - puzzle->getShape(piecenumber)->getX()*(*s) - 1) / 2;
+  *ty = y() + (h() - puzzle->getShape(piecenumber)->getY()*(*s) - 1) / 2;
 }
 
 void SquareEditor::draw() {
@@ -67,8 +66,13 @@ void SquareEditor::draw() {
   fl_color(color());
   fl_rectf(x(), y(), w(), h());
 
+  if (piecenumber >= puzzle->shapeNumber())
+    return;
+
+  pieceVoxel_c * space = puzzle->getShape(piecenumber);
+
   // if there is no voxelspace or the space is of volumn 0 return
-  if (!space || (space->getX() == 0) || (space->getY() == 0) || (space->getZ() == 0))
+  if ((space->getX() == 0) || (space->getY() == 0) || (space->getZ() == 0))
     return;
 
   int s, tx, ty;
@@ -78,7 +82,7 @@ void SquareEditor::draw() {
   fl_color(labelcolor());
 
   // the color for the squares
-  int r, g, b;
+  unsigned char r, g, b;
 
   for (int x = 0; x < space->getX(); x++)
     for (int y = 0; y < space->getY(); y++) {
@@ -100,6 +104,14 @@ void SquareEditor::draw() {
         fl_rectf(tx+x*s+3, ty+y*s+3, s-5, s-5, r, g, b);
         break;
       }
+
+      if ((space->getState(x, space->getY()-y-1, currentZ) != pieceVoxel_c::VX_EMPTY) &&
+          space->getColor(x, space->getY()-y-1, currentZ)) {
+
+        puzzle->getColor(space->getColor(x, space->getY()-y-1, currentZ)-1, &r, &g, &b);
+        fl_rectf(tx+x*s, ty+y*s, s/2, s/2, r, g, b);
+      }
+
       fl_color(labelcolor());
       fl_rect(tx+x*s, ty+y*s, s+1, s+1);
     }
@@ -107,8 +119,13 @@ void SquareEditor::draw() {
 
 int SquareEditor::handle(int event) {
 
+  if (piecenumber >= puzzle->shapeNumber())
+    return 1;
+
+  pieceVoxel_c * space = puzzle->getShape(piecenumber);
+
   // if there is no valid space, we do nothing
-  if (!space || (space->getX() == 0) || (space->getY() == 0) || (space->getZ() == 0))
+  if ((space->getX() == 0) || (space->getY() == 0) || (space->getZ() == 0))
     return 1;
 
   switch(event) {
@@ -177,6 +194,7 @@ int SquareEditor::handle(int event) {
   
         if (space->getState(x, y, currentZ) != vxNew) {
           space->setState(x, y, currentZ, vxNew);
+          space->setColor(x, y, currentZ, currentColor);
           redraw();
           callbackReason = RS_CHANGESQUARE;
           do_callback();

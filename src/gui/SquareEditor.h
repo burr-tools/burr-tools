@@ -23,7 +23,7 @@
 #include <FL/Fl.H>
 #include <FL/Fl_Widget.h>
 
-#include "../lib/voxel.h"
+#include "../lib/puzzle.h"
 
 /**
  * this widget allows to edit voxel spaces. It shows one Z-Layer of the space as a grid
@@ -37,14 +37,13 @@ class SquareEditor : public Fl_Widget {
 
 private:
 
-  // the current voxel space that is worked on
-  pieceVoxel_c * space;
+  puzzle_c * puzzle;
 
   // the current edited layer
   int currentZ;
 
   // the number of the piece, this is used to colorize the squares
-  int piecenumber;
+  unsigned int piecenumber;
 
   // the edit state
   int state;
@@ -61,23 +60,32 @@ private:
 
   int callbackReason;
 
+  // the constraint color to use
+  unsigned int currentColor;
+
 protected:
 
   void draw();
 
 public:
 
-  SquareEditor(int x, int y, int w, int h, const char *label = 0) : Fl_Widget(x, y, w, h, label), space(0), currentZ(0), state(0), mX(-1), mY(-1), mZ(-1), inside(false) {}
-
-  // sets the voxel space to edit, the widget doesn't take over the space
-  // the voxelspace must not be deleted while this is set here
-  void setVoxelSpace(pieceVoxel_c * newSpace, int piecenum);
+  SquareEditor(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), currentZ(0), piecenumber(0), state(0), mX(-1), mY(-1), mZ(-1), inside(false), currentColor(0) {}
 
   // sets the z layer to edit the value is clamped to valid values
   void setZ(int z);
 
   // get the current Z value
   int getZ(void) { return currentZ; }
+
+  // sets the color to use for editing voxels
+  int setColor(unsigned int col) {
+    currentColor = col;
+  }
+
+  // sets the voxel space to edit, the widget doesn't take over the space
+  // the voxelspace must not be deleted while this is set here
+  void setPuzzle(puzzle_c * p, unsigned int piecenum);
+  void clearPuzzle() { piecenumber = puzzle->shapeNumber(); }
 
   int handle(int event);
 

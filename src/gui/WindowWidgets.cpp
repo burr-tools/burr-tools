@@ -18,6 +18,7 @@
 
 
 #include "WindowWidgets.h"
+#include "pieceColor.h"
 
 // some tool widgets, that may be swapped out later into another file
 
@@ -25,7 +26,7 @@
 static void cb_VoxelEditGroupZselect_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup*)v)->cb_Zselect((Fl_Slider*)o); }
 static void cb_VoxelEditGroupSqedit_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup*)v)->cb_Sqedit((SquareEditor*)o); }
 
-VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
+VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle) : Fl_Group(x, y, w, h) {
 
   zselect = new Fl_Slider(x, y, 15, h);
   zselect->tooltip("Select Z Plane");
@@ -45,7 +46,7 @@ VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h
     o->color((Fl_Color)1);
   }
 
-  sqedit = new SquareEditor(x+30, y, w-30, h-10, "The Square Editor");
+  sqedit = new SquareEditor(x+30, y, w-30, h-10, puzzle);
   sqedit->tooltip("Fill and empty cubes");
   sqedit->box(FL_NO_BOX);
   sqedit->callback(cb_VoxelEditGroupSqedit_stub, this);
@@ -53,26 +54,27 @@ VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h
   resizable(sqedit);
 }
 
+#define SZ_BUTTON_Y 20
 
 static void cb_TransformButtons_stub(Fl_Widget* o, long v) { ((TransformButtons*)(o->parent()))->cb_Press(v); }
 
 TransformButtons::TransformButtons(int x, int y, int w, int h) : Fl_Group(x, y, w, h, "Transform") {
 
-  new FlatButton(  5+x,  5+y, 40, 25, "S+X", "Shift up along X",                  cb_TransformButtons_stub,  0,   1);
-  new FlatButton( 45+x,  5+y, 40, 25, "S-X", "Shift down along X",                cb_TransformButtons_stub,  1,   1);
-  new FlatButton(  5+x, 30+y, 40, 25, "S+Y", "Shift up along Y",                  cb_TransformButtons_stub,  2,   2);
-  new FlatButton( 45+x, 30+y, 40, 25, "S-Y", "Shift down along Y",                cb_TransformButtons_stub,  3,   2);
-  new FlatButton(  5+x, 55+y, 40, 25, "S+Z", "Shift up along Z",                  cb_TransformButtons_stub,  4, 237);
-  new FlatButton( 45+x, 55+y, 40, 25, "S-Z", "Shift down along Z",                cb_TransformButtons_stub,  5, 237);
-  new FlatButton( 90+x,  5+y, 40, 25, "R+X", "Rotate clockwise along X-Axis",     cb_TransformButtons_stub,  6,   1);
-  new FlatButton(130+x,  5+y, 40, 25, "R-X", "Rotate anticlockwise along X-Axis", cb_TransformButtons_stub,  7,   1);
-  new FlatButton( 90+x, 30+y, 40, 25, "R+Y", "Rotate clockwise along Y-Axis",     cb_TransformButtons_stub,  8,   2);
-  new FlatButton(130+x, 30+y, 40, 25, "R-Y", "Rotate anticlockwise along Y-Axis", cb_TransformButtons_stub,  9,   2);
-  new FlatButton( 90+x, 55+y, 40, 25, "R+Z", "Rotate clockwise along Z-Axis",     cb_TransformButtons_stub, 10, 237);
-  new FlatButton(130+x, 55+y, 40, 25, "R-Z", "Rotate anticlockwise along Z-Axis", cb_TransformButtons_stub, 11, 237);
-  new FlatButton( 32+x, 85+y, 30, 25, "F X", "Flip along Y-Z Plane",              cb_TransformButtons_stub, 12,   1);
-  new FlatButton( 67+x, 85+y, 30, 25, "F Y", "Flip along X-Z Plane",              cb_TransformButtons_stub, 13,   2);
-  new FlatButton(102+x, 85+y, 30, 25, "F Z", "Flip along X-Y Plane",              cb_TransformButtons_stub, 14, 237);
+  new FlatButton(  5+x,  5+y, 40, SZ_BUTTON_Y, "S+X", "Shift up along X",                  cb_TransformButtons_stub,  0,   1);
+  new FlatButton( 45+x,  5+y, 40, SZ_BUTTON_Y, "S-X", "Shift down along X",                cb_TransformButtons_stub,  1,   1);
+  new FlatButton(  5+x, 30+y, 40, SZ_BUTTON_Y, "S+Y", "Shift up along Y",                  cb_TransformButtons_stub,  2,   2);
+  new FlatButton( 45+x, 30+y, 40, SZ_BUTTON_Y, "S-Y", "Shift down along Y",                cb_TransformButtons_stub,  3,   2);
+  new FlatButton(  5+x, 55+y, 40, SZ_BUTTON_Y, "S+Z", "Shift up along Z",                  cb_TransformButtons_stub,  4, 237);
+  new FlatButton( 45+x, 55+y, 40, SZ_BUTTON_Y, "S-Z", "Shift down along Z",                cb_TransformButtons_stub,  5, 237);
+  new FlatButton( 90+x,  5+y, 40, SZ_BUTTON_Y, "R+X", "Rotate clockwise along X-Axis",     cb_TransformButtons_stub,  6,   1);
+  new FlatButton(130+x,  5+y, 40, SZ_BUTTON_Y, "R-X", "Rotate anticlockwise along X-Axis", cb_TransformButtons_stub,  7,   1);
+  new FlatButton( 90+x, 30+y, 40, SZ_BUTTON_Y, "R+Y", "Rotate clockwise along Y-Axis",     cb_TransformButtons_stub,  8,   2);
+  new FlatButton(130+x, 30+y, 40, SZ_BUTTON_Y, "R-Y", "Rotate anticlockwise along Y-Axis", cb_TransformButtons_stub,  9,   2);
+  new FlatButton( 90+x, 55+y, 40, SZ_BUTTON_Y, "R+Z", "Rotate clockwise along Z-Axis",     cb_TransformButtons_stub, 10, 237);
+  new FlatButton(130+x, 55+y, 40, SZ_BUTTON_Y, "R-Z", "Rotate anticlockwise along Z-Axis", cb_TransformButtons_stub, 11, 237);
+  new FlatButton( 32+x, 85+y, 30, SZ_BUTTON_Y, "F X", "Flip along Y-Z Plane",              cb_TransformButtons_stub, 12,   1);
+  new FlatButton( 67+x, 85+y, 30, SZ_BUTTON_Y, "F Y", "Flip along X-Z Plane",              cb_TransformButtons_stub, 13,   2);
+  new FlatButton(102+x, 85+y, 30, SZ_BUTTON_Y, "F Z", "Flip along X-Y Plane",              cb_TransformButtons_stub, 14, 237);
 }
 
 
@@ -130,7 +132,7 @@ static void cb_ToolTabSize_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent())
 static void cb_ToolTabTransform_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()))->cb_transform(v); }
 static void cb_ToolTabTransform2_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()->parent()))->cb_transform(v); }
 
-ToolTab::ToolTab(int x, int y, int w, int h, int type) : Fl_Tabs(x, y, w, h) {
+ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
 
   {
     Fl_Group* o = changeSize = new ChangeSize(x, y+20, w, h-20);
@@ -147,29 +149,63 @@ ToolTab::ToolTab(int x, int y, int w, int h, int type) : Fl_Tabs(x, y, w, h) {
     Fl_Group* o = new Fl_Group(x, y+20, w, h-20, "Tools");
     o->hide();
     new FlatButton(x+5, y+25, w-10, 20, "Minimize", "Minimize the size", cb_ToolTabTransform2_stub, 15);
-    if (type == 1)
-      new FlatButton(x+5, y+50, w-10, 20, "Make inside Variable", "Make the inside of the puzzle variable, so that it can contain holes", cb_ToolTabTransform2_stub, 16);
-
+    new FlatButton(x+5, y+50, w-10, 20, "Make inside Variable", "Make the inside of the puzzle variable, so that it can contain holes", cb_ToolTabTransform2_stub, 16);
     o->end();
   }
 }
 
+static void cb_BlockListGroupSlider_stub(Fl_Widget* o, void* v) { ((BlockListGroup*)(o->parent()))->cb_slider(); }
+static void cb_BlockListGroupList_stub(Fl_Widget* o, void* v) { ((BlockListGroup*)(o->parent()))->cb_list(); }
 
-static void cb_SelectorGroupSlider_stub(Fl_Widget* o, void* v) { ((SelectorGroup*)(o->parent()))->cb_slider(); }
-static void cb_SelectorGroupPcSel_stub(Fl_Widget* o, void* v) { ((SelectorGroup*)(o->parent()))->cb_pcsel(); }
+BlockListGroup::BlockListGroup(int x, int y, int w, int h, BlockList * l) : Fl_Group(x, y, w, h), List(l) {
 
-SelectorGroup::SelectorGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
+  box(FL_THIN_DOWN_FRAME);
+  x++; y++; w-=2; h-=2;
 
-  PcSelSlider = new Fl_Slider(x+w-15, y, 15, h);
-  PcSelSlider->box(FL_THIN_DOWN_BOX);
-  PcSelSlider->maximum(20);
-  PcSelSlider->callback(cb_SelectorGroupSlider_stub);
+  Slider = new Fl_Slider(x+w-15-1, y-1, 15+2, h+2);
+  Slider->box(FL_THIN_DOWN_BOX);
+  Slider->maximum(0);
+  Slider->callback(cb_BlockListGroupSlider_stub);
 
-  PcSel = new PieceSelector(x, y, w-20, h, "Piece Selector");
-  PcSel->tooltip("Select piece. Change number of instances for one piece by dragging left and right.");
-  PcSel->box(FL_NO_BOX);
-  PcSel->callback(cb_SelectorGroupPcSel_stub);
-  Fl_Group::current()->resizable(PcSel);
+  w-=15;
+
+  Fl_Box * frame = new Fl_Box(x, y, w, h);
+  frame->box(FL_THIN_UP_FRAME);
+  x++; y++; w-=2; h-=2;
+
+  add(List);
+  List->resize(x, y, w, h);
+  List->callback(cb_BlockListGroupList_stub);
+
+  resizable(List);
+  end();
+}
+
+static void cb_ConstraintsGroupSlider_stub(Fl_Widget* o, void* v) { ((ConstraintsGroup*)(o->parent()))->cb_slider(); }
+static void cb_ConstraintsGroupList_stub(Fl_Widget* o, void* v) { ((ConstraintsGroup*)(o->parent()))->cb_list(); }
+
+ConstraintsGroup::ConstraintsGroup(int x, int y, int w, int h, ColorConstraintsEdit * l) : Fl_Group(x, y, w, h), List(l) {
+
+  box(FL_THIN_DOWN_FRAME);
+  x++; y++; w-=2; h-=2;
+
+  Slider = new Fl_Slider(x+w-15-1, y-1, 15+2, h+2);
+  Slider->box(FL_THIN_DOWN_BOX);
+  Slider->maximum(0);
+  Slider->callback(cb_ConstraintsGroupSlider_stub);
+
+  w-=15;
+
+  Fl_Box * frame = new Fl_Box(x, y, w, h);
+  frame->box(FL_THIN_UP_FRAME);
+  x++; y++; w-=2; h-=2;
+
+  add(List);
+  List->resize(x, y, w, h);
+  List->callback(cb_ConstraintsGroupList_stub);
+
+  resizable(List);
+  end();
 }
 
 
@@ -181,7 +217,6 @@ View3dGroup::View3dGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   View3D = new VoxelView(x, y, w-15, h, "3d View");
   View3D->tooltip("Rotate the puzzle by dragging with the mouse.");
   View3D->box(FL_NO_BOX);
-  Fl_Group::current()->resizable(View3D);
 
   slider = new Fl_Slider(x+w-15, y, 15, h);
   slider->tooltip("Zoom view.");
@@ -190,5 +225,78 @@ View3dGroup::View3dGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   slider->step(0.01);
   slider->value(10);
   slider->callback(cb_View3dGroupSlider_stub);
+
+  resizable(View3D);
+  end();
+}
+
+
+Separator::Separator(int x, int y, int w, int h, const char * label, bool button) : Fl_Group(x, y, w, h) {
+
+  int xs = x;
+
+  if (label) {
+    int lw, lh;
+
+    fl_font(labelfont(), labelsize()-4);
+    fl_measure(label, lw, lh);
+    (new Fl_Box(FL_FLAT_BOX, x, y, lw+4, h, label))->labelsize(labelsize()-4);
+
+    x += lw + 6;
+    w -= lw + 6;
+  }
+
+  if (button) {
+    new Fl_Box(FL_THIN_UP_BOX, x+w-8, y+h/2-4, 8, 8, 0);
+    w -= 8;
+  }
+
+  resizable(new Fl_Box(FL_THIN_DOWN_BOX, x, y+h/2-1, w, 2, 0));
+
+  end();
+}
+
+ResultViewer::ResultViewer(int x, int y, int w, int h, puzzle_c * p) : Fl_Box(x, y, w, h), puzzle(p), problem(0) {
+  assert(p);
+  bg = color();
+//  setcontent();
+  box(FL_BORDER_BOX);
+}
+
+void ResultViewer::setPuzzle(puzzle_c * p, unsigned int prob) {
+  puzzle = p;
+  problem = prob;
+  redraw();
+//  setcontent();
+}
+
+void ResultViewer::draw(void) {
+  if (problem >= puzzle->problemNumber() || (puzzle->probGetResult(problem) == -1)) {
+    label("No Result");
+    color(bg);
+    labelcolor(fl_rgb_color(255, 0, 0));
+  } else {
+    static char txt[20];
+
+    unsigned int result = puzzle->probGetResult(problem);
+
+    snprintf(txt, 19, "Result: %i", result);
+
+    unsigned char r, g, b;
+
+    r = (int)(255*pieceColorR(result));
+    g = (int)(255*pieceColorG(result));
+    b = (int)(255*pieceColorB(result));
+
+    color(fl_rgb_color(r, g, b));
+
+    if ((int)3*r + 6*g + 1*b > 1275)
+      labelcolor(fl_rgb_color(0, 0, 0));
+    else
+      labelcolor(fl_rgb_color(255, 255, 255));
+
+    label(txt);
+  }
+  Fl_Box::draw();
 }
 

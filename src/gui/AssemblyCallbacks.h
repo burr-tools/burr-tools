@@ -24,23 +24,21 @@
 #include "../lib/assm_0_frontend_0.h"
 #include "../lib/disassembler_3.h"
 
-//class solutions_c;
-struct solution;
-
 /* this class will handle the solving of the puzzle. It will start the background thread
  * pause it, continue the work, save and load it
  */
 class assemblerThread : public assembler_cb {
 
-  int _piecenumber;
-  bool doReduce;
   int assemblies;
   int action;
   int _solutionAction;
 
   assm_0_frontend_0_c assembler;
 
-  std::vector<solution> sols;
+  bool reduced;
+
+  puzzle_c * puzzle;
+  unsigned int prob;
 
 public:
 
@@ -51,7 +49,7 @@ public:
   };
 
   // start the thread
-  assemblerThread(const puzzle_c * puz, int solAction, bool reduce);
+  assemblerThread(const puzzle_c * puz, int solAction, unsigned int problemNum);
 
   // stop and exit
   ~assemblerThread(void);
@@ -70,8 +68,6 @@ public:
 
   int currentAction(void) { return action; }
 
-  int getAssemblies(void) { return assemblies; }
-
   void start(void);
   void stop(void);
 
@@ -79,10 +75,6 @@ public:
 
   float getFinished(void) { return assembler.getFinished(); }
   unsigned long getIterations(void) { return assembler.getIterations(); }
-
-  unsigned long number(void) const;
-  const assemblyVoxel_c * getAssm(unsigned long num) const;
-  const disassembly_c * getDisasm(unsigned long num) const;
 
   const char * errors(void) { return assembler.errors(); }
 

@@ -28,6 +28,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <xmlwrapp/attributes.h>
+
 using namespace std;
 
 voxel_c::voxel_c(int x, int y, int z, voxel_type init) : sx(x), sy(y), sz(z), voxels(x*y*z) {
@@ -622,39 +624,99 @@ xml::node pieceVoxel_c::save(void) const {
   snprintf(tmp, 50, "%i", getZ());
   nd.get_attributes().insert("z", tmp);
 
-  // there are 2 possible ways to save the space
-  // one where all the colors are 0, this is the old way
-  // of saving and one with colors set
+  // this might allow us to later add another format
+  nd.get_attributes().insert("type", "0");
 
-  bool useColors = false;
+  std::string cont;
 
   for (int i = 0; i < getXYZ(); i++)
-    if (getColor(i) != 0) {
-      useColors = true;
+    switch(getState(i)) {
+    case VX_EMPTY:
+      cont += "_";
+      break;
+    case VX_VARIABLE:
+      cont += "+";
+      if (getColor(i)) {
+        assert(getColor(i) < 100);
+        if (getColor(i) > 9)
+          cont += ('0' + (getColor(i) / 10));
+        cont += ('0' + (getColor(i) % 10));
+      }
+      break;
+    case VX_FILLED:
+      cont += "#";
+      if (getColor(i)) {
+        assert(getColor(i) < 100);
+        if (getColor(i) > 9)
+          cont += ('0' + (getColor(i) / 10));
+        cont += ('0' + (getColor(i) % 10));
+      }
       break;
     }
 
-  if (useColors) {
-
-    nd.get_attributes().insert("type", "1");
-    nd.set_content("#0#0#1#0");
-
-  } else {
-
-    nd.get_attributes().insert("type", "0");
-
-    std::string cont;
-
-    for (int i = 0; i < getXYZ(); i++)
-      switch(getState(i)) {
-      case VX_EMPTY: cont += "_"; break;
-      case VX_VARIABLE: cont += "+"; break;
-      case VX_FILLED: cont += "#"; break;
-      }
-
-    nd.set_content(cont.c_str());
-  }
+  nd.set_content(cont.c_str());
 
   return nd;
+}
+
+pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
+
+  // we must have a real node and the following attributes
+  assert(node.get_type() == xml::node::type_element);
+  assert(strcmp(node.get_name(), "voxel") == 0);
+  assert(node.get_attributes().find("x") != node.get_attributes().end());
+  assert(node.get_attributes().find("y") != node.get_attributes().end());
+  assert(node.get_attributes().find("z") != node.get_attributes().end());
+  assert(node.get_attributes().find("type") != node.get_attributes().end());
+
+  // set to the correct size
+  resize(atoi(node.get_attributes().find("x")->get_value()),
+         atoi(node.get_attributes().find("y")->get_value()),
+         atoi(node.get_attributes().find("z")->get_value()), 0);
+
+  printf("load voxel of size %i %i %i\n", getX(), getY(), getZ());
+
+  unsigned int type = atoi(node.get_attributes().find("type")->get_value());
+
+  const char * c = node.get_content();
+  int idx = -1;
+  unsigned int color = 0;
+
+  if (c) {
+
+    assert(type == 0);
+
+    while (*c) {
+      switch(*c) {
+      case '#':
+        setState(++idx, VX_FILLED);
+        color = 0;
+        break;
+      case '+':
+        setState(++idx, VX_VARIABLE);
+        color = 0;
+        break;
+      case '_':
+        setState(++idx, VX_EMPTY);
+        color = 0;
+        break;
+      case '0': color = color * 10 + 0; break;
+      case '1': color = color * 10 + 1; break;
+      case '2': color = color * 10 + 2; break;
+      case '3': color = color * 10 + 3; break;
+      case '4': color = color * 10 + 4; break;
+      case '5': color = color * 10 + 5; break;
+      case '6': color = color * 10 + 6; break;
+      case '7': color = color * 10 + 7; break;
+      case '8': color = color * 10 + 8; break;
+      case '9': color = color * 10 + 9; break;
+      }
+
+      if (idx >= 0)
+        setColor(idx, color);
+
+      c++;
+    }
+  }
 }
 

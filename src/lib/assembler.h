@@ -23,6 +23,8 @@
 #include "puzzle.h"
 #include "voxel.h"
 
+#include <xmlwrapp/node.h>
+
 /* here we have a callback class, meaning a class that you give
  * as parameter to a function and this function finally calls the
  * method inside this class. I decided to use this approach because
@@ -97,6 +99,13 @@ public:
    * called before calling assemble
    */
   virtual void setPosition(char * string) {}
+
+  /* this function saves the current state of the assembler into an xml node to
+   * write it to an file
+   * this state must be such that the class can restore this state and continue
+   * from there by getting this and the puzzle given to the constructor
+   */
+  xml::node save(void) const { return xml::node("assembler"); }
 
 };
 

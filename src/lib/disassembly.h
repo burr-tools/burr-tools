@@ -179,44 +179,4 @@ public:
 
 };
 
-/* defines an assembly from the assembled position
- * and all the steps necessary to completely disassemble
- */
-class disassembly_c {
-
-private:
-
-  /* the disassembly tree */
-  separation_c * tree;
-
-  /* this is the assembled puzzle, needed for printing
-   * the states graphically
-   */
-  assemblyVoxel_c * start;
-
-public:
-
-  disassembly_c(assemblyVoxel_c * st, separation_c *t) {
-    tree = t;
-    start = new assemblyVoxel_c(st);
-  }
-
-  ~disassembly_c() {
-    delete tree;
-    delete start;
-  }
-
-  /* number of moves bevore the puzzle get's
-   * separated
-   */
-  int firstlevel(void) const { return tree->getMoves(); }
-  int sumlevel(void) const { return tree->sumMoves(); }
-
-  void print(void) const;
-
-  const assemblyVoxel_c * getStart(void) const { return start; }
-
-  const separation_c * getTree(void) const { return tree; }
-};
-
 #endif

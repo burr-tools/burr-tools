@@ -69,6 +69,4 @@ void separation_c::print(assemblyVoxel_c * start) const {
   if (left) left->print(start);
 }
 
-void disassembly_c::print(void) const {
-  tree->print(start);
-}
+

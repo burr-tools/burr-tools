@@ -23,8 +23,8 @@
 #include "../lib/puzzle.h"
 #include "AssemblyCallbacks.h"
 #include "DisasmToMoves.h"
-#include "PieceVisibility.h"
 #include "WindowWidgets.h"
+#include "BlockList.h"
 
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
@@ -47,12 +47,10 @@ using namespace std;
 class VoxelEditGroup;
 class ChangeSize;
 class ToolTab;
-class SelectorGroup;
 class View3dGroup;
 
 class UserInterface {
   puzzle_c * puzzle;
-  int activePiece;
   char * fname;
   float shifting[100];
   char visibility[33];
@@ -68,9 +66,17 @@ class UserInterface {
   Fl_Group *TabPieces;
   Fl_Group *MinSizeSelector;
 
-  SelectorGroup *PcSel2;
+  PieceSelector * PcSel;
+  ProblemSelector * problemSelector;
+  ProblemSelector * solutionProblem;
+  ColorSelector * colorAssignmentSelector;
+  PieceSelector * shapeAssignmentSelector;
+  ResultViewer * problemResult;
+  PiecesList * PiecesCountList;
+  PieceVisibility * PcVis;
+  ColorConstraintsEdit * colconstrList;
 
-  Fl_Group *TabResult;
+  Fl_Group *TabProblems;
 
   ToolTab * pieceTools;
   ToolTab * resultTools;
@@ -88,7 +94,6 @@ class UserInterface {
   Fl_Value_Output *OutputIterations;
   Fl_Value_Slider *SolutionSel;
   Fl_Value_Slider *SolutionAnim;
-  PieceVisibility *PcVis;
   Fl_Value_Output *SolutionsInfo;
   Fl_Value_Output *MovesInfo;
 
@@ -98,25 +103,49 @@ class UserInterface {
   Fl_Menu_Bar *MainMenu;
   static Fl_Menu_Item menu_MainMenu[];
 
+  ColorSelector * colorSelector;
+
   VoxelEditGroup *pieceEdit, *resultEdit;
 
   void tryToLoad(const char *fname);
 
 public:
+  void CreateShapeTab(int x, int y, int w, int h);
+  void CreateProblemTab(int x, int y, int w, int h);
+  void CreateSolveTab(int x, int y, int w, int h);
+
   UserInterface();
+
+  void cb_AddColor(void);
+  void cb_RemoveColor(void);
+
+  void cb_NewShape(void);
+  void cb_DeleteShape(void);
+  void cb_CopyShape(void);
+
+  void cb_NewProblem(void);
+  void cb_DeleteProblem(void);
+  void cb_CopyProblem(void);
+
+  void cb_ShapeToResult(void);
 
   void cb_TaskSelectionTab(Fl_Tabs*);
 
-  void cb_NewPiece(void);
-  void cb_Delete(void);
-  void cb_Copy(void);
+  void cb_AddShapeToProblem(void);
+  void cb_RemoveShapeFromProblem(void);
 
   void cb_PcSel(long reason);
+  void cb_ColSel(long reason);
+  void cb_ProbSel(long reason);
 
   void cb_TransformPiece(void);
   void cb_pieceEdit(VoxelEditGroup* o);
 
   void cb_TransformResult(void);
+
+  void cb_AllowColor(void);
+  void cb_DisallowColor(void);
+  void cb_CCSort(bool byResult);
 
   void cb_BtnStart(void);
   void cb_BtnCont(void);
@@ -134,9 +163,11 @@ public:
   void cb_Quit(void);
 
   void show(int argn, char ** argv);
+
   void activatePiece(int number);
-  void activateResult(void);
+  void activateProblem(void);
   void activateSolution(unsigned int num);
+
   void update(void);
   void removeAssmThread(void);
 };

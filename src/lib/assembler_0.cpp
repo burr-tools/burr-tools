@@ -124,20 +124,20 @@ assembler_0_c::~assembler_0_c() {
   if (searchState) delete [] searchState;
 }
 
-void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int resultnum) {
+void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int prob) {
 
   puzzle_c puz(p);
 
   /* get and save piecenumber of puzzle */
-  piecenumber = puz.getPieces();
+  piecenumber = puz.probPieceNumber(prob);
 
   // minimize all pieces
-  for (int i = 0; i < puz.getShapeNumber(); i++)
-    puz.getShape(i)->minimizePiece();
+  for (int i = 0; i < puz.probShapeNumber(prob); i++)
+    puz.probGetShapeShape(prob, i)->minimizePiece();
 
   /* count the filled and variable units */
-  int res_vari = puz.getResult(resultnum)->countState(pieceVoxel_c::VX_VARIABLE);
-  int res_filled = puz.getResult(resultnum)->countState(pieceVoxel_c::VX_FILLED) + res_vari;
+  int res_vari = puz.probGetResultShape(prob)->countState(pieceVoxel_c::VX_VARIABLE);
+  int res_filled = puz.probGetResultShape(prob)->countState(pieceVoxel_c::VX_FILLED) + res_vari;
 
   varivoxelStart = 1 + piecenumber + res_filled - res_vari;
   varivoxelEnd = 1 + piecenumber + res_filled;
@@ -149,8 +149,8 @@ void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int resultnum) {
   // is not bigger than number of voxels in pieces
   holes = res_filled;
 
-  for (int j = 0; j < puz.getShapeNumber(); j++)
-    holes -= puz.getShape(j)->countState(pieceVoxel_c::VX_FILLED) * puz.getShapeCount(j);
+  for (int j = 0; j < puz.probShapeNumber(prob); j++)
+    holes -= puz.probGetShapeShape(prob, j)->countState(pieceVoxel_c::VX_FILLED) * puz.probGetShapeCount(prob, j);
 
   if (holes < 0) {
     errorsState = 1;
@@ -165,7 +165,7 @@ void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int resultnum) {
   }
 
   /* count the number of required nodes*/
-  unsigned long nodes = countNodes(&puz, resultnum);
+  unsigned long nodes = countNodes(&puz, prob);
 
   // check, if there is one piece unplacable
   if (nodes <= 0) {
@@ -200,7 +200,7 @@ void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int resultnum) {
   colCount = new int [nodes];
 
   /* fill the nodes arrays */
-  prepare(&puz, res_filled, res_vari, resultnum);
+  prepare(&puz, res_filled, res_vari, prob);
 
   memset(rows, 0xff, piecenumber * sizeof(int));
   memset(columns, 0, piecenumber * sizeof(int));

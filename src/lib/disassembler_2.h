@@ -104,7 +104,7 @@ public:
    * you need to take care of freeing the disassembly sequence after
    * doing with it whatever you want
    */
-  disassembly_c * disassemble(void);
+  separation_c * disassemble(void);
 
 };
 

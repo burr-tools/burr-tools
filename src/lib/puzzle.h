@@ -25,46 +25,45 @@
  */
 
 #include "voxel.h"
+#include "disassembly.h"
 
 #include <vector>
 #include <iostream>
 
 #include <assert.h>
 
-#include <xmlwrapp/xmlwrapp.h>
+#include <xmlwrapp/node.h>
 
 
-/**
- * a structure containing the necessary information for
- * one puzzle piece
- */
-typedef struct {
-  pieceVoxel_c * piece;      //!< the shape
-  unsigned int count;   //!< how often this piece appears
-} shapeInfo;
+class problem_c;
+class assembler_c;
 
 /**
  * This class defines the puzzle
- * A puzzle is a collection of pieces and a shape that the
- * pieces should form once they are assembled
+ * A puzzle is a collection of shapes and a set of problems associated
+ * with these shapes
+ * each problem defines a solution shape and a set of pieces (multiple
+ * occurances are possible) that need to be assembles into the given solution
+ * shape
+ * the class also handles the solutions that belong to the problem
  */
 class puzzle_c {
 
 private:
 
   /**
-   * The vector with the piece information.
+   * The vector with the shapes
    */
-  std::vector<shapeInfo> shapes;
+  std::vector<pieceVoxel_c*> shapes;
 
   /**
-   * The definition of the assembled block.
+   * the vector with the problems
    */
-  std::vector<pieceVoxel_c*> results;
+  std::vector<problem_c*> problems;
 
   /**
-   * there can be many colors for contrain the placement of pieces
-   * this are the actual colors used to display them
+   * there can be many colors to contrain the placement of pieces
+   * these are the actual colors used to display them
    */
   typedef struct colorDef {
     unsigned char r, g, b;
@@ -72,79 +71,26 @@ private:
 
   std::vector<colorDef> colors;
 
-  /* the 2d bitmap
-   * the bitmap is always square and alows only for the here necessary modifications
-   */
-  
-  class bitmap_c {
-  
-  private:
-  
-    unsigned char *map;
-    unsigned int colors;
-  
-  public:
-  
-    /* create new bitmap with size rows and columns, all bit are cleared */
-    bitmap_c(unsigned int col);
-  
-    ~bitmap_c(void) { if (map) delete [] map; }
-  
-    /* add a new color at the end */
-    void add(void);
-  
-    /* remove the given color */
-    void remove(unsigned int col);
-  
-    void set(unsigned int pcCol, unsigned int resCol, bool value) {
-  
-      assert(pcCol < colors);
-      assert(resCol < colors);
-  
-      int idx = resCol * colors + pcCol;
-  
-      if (value)
-        map[idx >> 3] |= (1 << (idx & 7));
-      else
-        map[idx >> 3] &= ~(1 << (idx & 7));
-    }
-  
-    bool get(unsigned int pcCol, unsigned int resCol) const {
-      assert(pcCol < colors);
-      assert(resCol < colors);
-  
-      int idx = resCol * colors + pcCol;
-  
-      return (map[idx >> 3] & (1 << (idx & 7)) != 0);
-    }
-  };
-
-
-
-  /**
-   * this array contains the constrains for the colors for each pair of
-   * colors is defines, if it is allowed to place a voxel inside a piece shape
-   * at the result where the corresponding voxel has a certain color
-   */
-  bitmap_c colorConstraints;
+  /* some information about the puzzle */
+  std::string designer;
+  std::string comment;
 
 public:
 
   /**
-   * Load the puzzle from a file
+   * copy constructor
    */
-  puzzle_c(std::istream * str);
-
   puzzle_c(const puzzle_c * orig);
 
   /**
-   * Constructor for empty puzzle, with no result and and no shapes
+   * Constructor for empty puzzle, with one empty result and no shapes
    */
-  puzzle_c(void) : colorConstraints(0) {
+  puzzle_c(void);
 
-    results.push_back(new pieceVoxel_c(0, 0, 0));
-
-  }
+  /**
+   * load the puzzle from the XML file
+   */
+  puzzle_c(const xml::node & node);
 
   /**
    * Destructor.
@@ -153,90 +99,117 @@ public:
   ~puzzle_c(void);
 
   /**
-   * Adds a piece to the puzzle.
-   * The class then takes over ownership of the piece and
-   * deletes it whenever apropriate
+   * add a shape to the puzzle
    */
-  void addShape(pieceVoxel_c * p, int nr = 1);
+  unsigned int addShape(pieceVoxel_c * p);
+
+  /* add empty shape of given size */
+  unsigned int addShape(int sx, int sy, int sz);
+
+  /* return the pointer to voxel space with the id */
+  const pieceVoxel_c * getShape(unsigned int) const;
+  pieceVoxel_c * getShape(unsigned int);
+
+  /* remove the num-th shape
+   * be careful this changes all ids and so all problems must be updated
+   */
+  void removeShape(unsigned int);
+
+  /* return how many shapes there are */
+  unsigned int shapeNumber(void) const;
 
   /**
-   * Adds an empty piece to the puzzle.
+   * handle puzzle colors
    */
-  void addShape(int sx, int sy, int sz, int nr = 1);
+  void addColor(unsigned char r, unsigned char g, unsigned char b);
+  void removeColor(unsigned int idx);
+  void changeColor(unsigned int idx, unsigned char r, unsigned char g, unsigned char b);
+  void getColor(unsigned int idx, unsigned char * r, unsigned char * g, unsigned char * b);
+  int colorNumber(void);
+
+
 
   /**
-   * Removes the the piece with number \c nr
+   * similar functions for problems
    */
-  void removeShape(unsigned int nr);
+  unsigned int addProblem(void);
 
-  /**
-   * Returns the num-th result shape
-   */
-  pieceVoxel_c * getResult(int num) {
-    assert(num < results.size());
-    return results[num];
-  }
-  const pieceVoxel_c * getResult(int num) const {
-    assert(num < results.size());
-    return results[num];
-  }
+  /* return number of problems */
+  unsigned int problemNumber(void);
 
-  /**
-   * Returns the the piece with number \c nr
-   */
-  pieceVoxel_c * getShape(unsigned int nr) {
-    assert(nr < shapes.size());
-    return shapes[nr].piece;
-  }
+  /* remove one problem */
+  void removeProblem(unsigned int);
 
-  const pieceVoxel_c * getShape(unsigned int nr) const {
-    assert(nr < shapes.size());
-    return shapes[nr].piece;
-  }
+  /* create copy of the given problem and add the new problem at the end */
+  unsigned int copyProblem(unsigned int);
 
-  /**
-   * Returns the number of different shapes
-   */
-  int getShapeNumber(void) const { return shapes.size(); }
+  /* name of a problem */
+  std::string probGetName(unsigned int prob);
+  void probSetName(unsigned int prob, std::string name);
 
-  /**
-   * returns the number of times this piece is used
-   * most often this will be one
-   */
-  unsigned int getShapeCount(unsigned int nr) const {
-    assert(nr < shapes.size());
-    return shapes[nr].count;
-  }
+  /* set the shape-id for the result shape this the problem */
+  void probSetResult(unsigned int prob, unsigned int shape);
 
-  void setShapeCount(unsigned int nr, unsigned int count) {
-    assert(nr < shapes.size());
-    assert(count > 0);
-    shapes[nr].count = count;
-  }
+  /* get the id for the result shape */
+  unsigned int probGetResult(unsigned prob) const;
 
-  /**
-   * Returns the number of pieces sum of counts of all shapes
-   */
-  int getPieces(void) const;
+  /* get the result shape voxel space */
+  const pieceVoxel_c * probGetResultShape(unsigned int prob) const;
+  pieceVoxel_c * probGetResultShape(unsigned int prob);
 
-  /**
-   * Print the puzzle to the screen
-   */
+  /* add a shape to the pieces of the problem */
+  void probAddShape(unsigned int prob, unsigned int shape, unsigned int count);
+
+  /* change the instance count for one shape of the problem */
+  void probSetShapeCount(unsigned int prob, unsigned int shapeID, unsigned int count);
+
+  /* remove the shape from the problem */
+  void probRemoveShape(unsigned int prob, unsigned int shapeID);
+
+  /* return the number of shapes in the problem */
+  unsigned int probShapeNumber(unsigned int prob) const;
+
+  /* return the number of pieces in the problem (sum of all counts of all shapes */
+  unsigned int probPieceNumber(unsigned int prob) const;
+
+  /* return the shape id of the given shape (index into the shape array of the puzzle */
+  unsigned int probGetShape(unsigned int prob, unsigned int shapeID) const;
+
+  /* return the voxel of the piece shape */
+  const pieceVoxel_c * probGetShapeShape(unsigned int prob, unsigned int shapeID) const;
+  pieceVoxel_c * probGetShapeShape(unsigned int prob, unsigned int shapeID);
+
+  /* return the instance count for one shape of the problem */
+  unsigned int probGetShapeCount(unsigned int prob, unsigned int shapeID) const;
+
+  /* functions to handle the solver and the solutions */
+
+  void probSetAssembler(unsigned int prob, assembler_c * assm);
+  assembler_c * probGetAssembler(unsigned int prob);
+
+  void probAddSolution(unsigned int prob, assemblyVoxel_c * voxel);
+  void probAddSolution(unsigned int prob, assemblyVoxel_c * voxel, separation_c * tree);
+  void removeAllSolutions(unsigned int prob);
+  unsigned int probSolutionNumber(unsigned int prob);
+  assemblyVoxel_c * probGetAssembly(unsigned int prob, unsigned int sol);
+  separation_c * probGetDisassembly(unsigned int prob, unsigned int sol);
+
+  /* edit the color matrix */
+  void probAllowPlacement(unsigned int prob, unsigned int pc, unsigned int res);
+  void probDisallowPlacement(unsigned int prob, unsigned int pc, unsigned int res);
+  bool probPlacementAllowed(unsigned int prob, unsigned int pc, unsigned int res) const;
+
+  /* some additional information about the puzzle */
+  void setDesigner(const std::string & name);
+  void setComment(const std::string & comment);
+  const std::string & getDesigner(void);
+  const std::string & getComment(void);
+
+  /* Print the puzzle to the screen */
   void print(void);
-
-  /**
-   * save the puzzle inside the stream
-   */
-  void save(std::ostream * str) const;
 
   /* used to save to XML */
   xml::node save(void) const;
-
-
-  /**
-   * save in the format of the PuzzleSolver3D
-   */
-  void PS3Dsave(std::ostream * str) const;
 
   /**
    * makes each shape appear only once and increase the piece counter for that.
@@ -244,15 +217,6 @@ public:
    * solutions if this is not the case
    */
   void orthogonalize(void);
-
-  /* color constrain handling functions */
-
-  void addColor(void);
-  void removeColor(unsigned int col);
-  void setColor(unsigned int col, unsigned char r, unsigned char g, unsigned char b);
-  void allowPlacement(unsigned int pc, unsigned int res);
-  void disallowPlacement(unsigned int pc, unsigned int res);
-  bool placementAllowed(unsigned int pc, unsigned int res) const;
 };
 
 #endif

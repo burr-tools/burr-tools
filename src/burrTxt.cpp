@@ -50,15 +50,15 @@ public:
 
       disassembler_3_c d(assm, pn);
   
-      disassembly_c * da = d.disassemble();
+      separation_c * da = d.disassemble();
   
       if (da) {
         Solutions++;
         if (printSolutions)
           assm->print();
-        printf("level: %i\n", da->firstlevel());
+        printf("level: %i\n", da->getMoves());
         if (printDisassemble)
-          da->print();
+          da->print(assm);
         delete da;
       }
   
@@ -130,7 +130,7 @@ int main(int argv, char* args[]) {
     return 3;
   }
 
-  puzzle_c p(&str);
+  puzzle_c p/* FIXME (&str)*/;
 
   cout << " The puzzle:\n\n";
 
@@ -151,7 +151,7 @@ int main(int argv, char* args[]) {
     return 0;
   }
 
-  asm_cb a(p.getPieces());
+  asm_cb a(p.probPieceNumber(0));
 
   assm->assemble(&a);
 
