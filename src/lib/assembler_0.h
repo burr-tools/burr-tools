@@ -1,5 +1,5 @@
 /* Burr Solver
- * Copyright (C) 2003  Andreas Röver
+ * Copyright (C) 2003-2005  Andreas Röver
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,6 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+
 
 #ifndef __DL_ASSEMBLER_H__
 #define __DL_ASSEMBLER_H__
