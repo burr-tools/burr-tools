@@ -64,19 +64,62 @@ void print(const assemblyVoxel_c * v) {
   printf("\n");
 }
 
+void print(const pieceVoxel_c * v) {
+  for (unsigned int z = 0; z < v->getZ(); z++) {
+    printf(" +");
+    for (unsigned int x = 0; x < v->getX(); x++)
+      printf("-");
+    printf("+");
+  }
+  printf("\n");
+
+  for (unsigned int y = 0; y < v->getY(); y++) {
+    for (unsigned int z = 0; z < v->getZ(); z++) {
+      printf(" +");
+      for (unsigned int x = 0; x < v->getX(); x++)
+        if (v->getState(x, y, z) != pieceVoxel_c::VX_EMPTY)
+          if (v->getState(x, y, z) == pieceVoxel_c::VX_FILLED)
+            printf("#");
+          else
+            printf("+");
+        else
+          printf(" ");
+      printf("+");
+    }
+    printf("\n");
+  }
+
+  { for (unsigned int z = 0; z < v->getZ(); z++) {
+      printf(" +");
+      for (unsigned int x = 0; x < v->getX(); x++)
+        printf("-");
+      printf("+");
+    }
+  }
+  printf("\n");
+}
+
 
 void print(const puzzle_c * p) {
 
   for (unsigned int s = 0; s < p->shapeNumber(); s++) {
     printf("shape %i:\n", s);
-    print((voxel_c*)p->getShape(s), 'a');
+    print(p->getShape(s));
   }
+
+  printf("=======================================================\n");
 
   for (unsigned int pr = 0; pr < p->problemNumber(); pr++) {
     printf("problem %i (%s):\n", pr, p->probGetName(pr).c_str());
+    printf(" result shape: %i\n", p->probGetResult(pr));
 
+    for (unsigned int sh = 0; sh < p->probShapeNumber(pr); sh++)
+      if (p->probGetShapeCount(pr, sh) > 1)
+        printf(" piece shape: %i times shape number %i\n", p->probGetShapeCount(pr, sh), p->probGetShape(pr, sh));
+      else
+        printf(" piece shape: %i\n", p->probGetShape(pr, sh));
 
-    // FIXME
+    printf("-------------------------------------------------------\n");
   }
 }
 
