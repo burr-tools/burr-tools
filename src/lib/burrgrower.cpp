@@ -83,7 +83,8 @@ bool puzzleSol_c::assembly(assembly_c* a,assemblyVoxel_c * assm) {
   
     delete da;
     }
-*/
+    */
+  return false;
 }
 
 
@@ -140,7 +141,7 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
 
   while (true) {
 
-    for (int p = 0; p < currentSet.size(); p++) {
+    for (unsigned int p = 0; p < currentSet.size(); p++) {
 
       printf("%i / %i puzzlews grown\n", p, currentSet.size());
 
@@ -167,7 +168,7 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
     }
 
     // merge current_puzzles into new_puzzles;
-    for (int i = 0; i < currentSet.size(); i++)
+    for (unsigned int i = 0; i < currentSet.size(); i++)
       newSet.push_back(currentSet[i]);
 
 
@@ -201,7 +202,7 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
 
     printf(" left puzzles:\n");
 
-    for (int i = 0; i < newSet.size(); i++) {
+    for (unsigned int i = 0; i < newSet.size(); i++) {
       double f = 80.0/newSet[i]->fitness();
       printf(" f %f\n", f);
     }

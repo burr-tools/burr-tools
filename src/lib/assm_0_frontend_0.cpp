@@ -223,7 +223,7 @@ void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari, 
               for (unsigned int z = 0; z < result->getZ() - rotation->getZ() + 1; z++)
                 if (pieceFits(rotation, result, puz, x, y, z, problemNum)) {
 
-                  int piecenode;
+                  int piecenode = 0;
 
                   if (!skipRotation)
                     piecenode = AddPieceNode(piece, rot, x, y, z);
@@ -270,7 +270,7 @@ bool assm_0_frontend_0_c::solution(void) {
      * where there is a one in that row and then find the corresponding
      * voxel space index and place the piece number in there
      */
-    for (int i = 0; i < getPos(); i++) {
+    for (unsigned int i = 0; i < getPos(); i++) {
       unsigned int r = getRows(i);
 
       // go over all columns and that columns that

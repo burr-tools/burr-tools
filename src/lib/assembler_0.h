@@ -247,9 +247,11 @@ protected:
   unsigned int getPiece(int pos) { return piece[pos]; }
   unsigned int getColCount(int pos) { return colCount[pos]; }
   unsigned int getVarivoxelStart(void) { return varivoxelStart; }
-  int getPos(void) { return pos; }
+  unsigned int getPos(void) { return pos; }
 
   assembler_cb * getCallback(void) { return asm_bc; }
+
+  unsigned int getPiecenumber(void) { return piecenumber; }
 
 public:
 
