@@ -20,6 +20,7 @@
 #include "lib/puzzle.h"
 #include "lib/assm_0_frontend_0.h"
 #include "lib/disassembler_3.h"
+#include "lib/print.h"
 
 #include <fstream>
 
@@ -55,17 +56,17 @@ public:
       if (da) {
         Solutions++;
         if (printSolutions)
-//          assm->print();
+          print(assm);
         printf("level: %i\n", da->getMoves());
         if (printDisassemble)
-//          da->print(assm);
+          print(da, assm);
         delete da;
       }
   
     } else {
 
-//      if (printSolutions)
-//        assm->print();
+      if (printSolutions)
+        print(assm);
     }
 
     return true;
@@ -134,7 +135,7 @@ int main(int argv, char* args[]) {
 
   cout << " The puzzle:\n\n";
 
-//  p.print();
+  print(&p);
 
   assembler_0_c *assm = new assm_0_frontend_0_c();
   assm->createMatrix(&p, 0);

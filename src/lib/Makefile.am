@@ -13,5 +13,6 @@ libburr_a_SOURCES=disassembler.h assembler.h \
                   voxel.cpp voxel.h \
                   burrgrower.h burrgrower.cpp \
                   pieceGenerator.h pieceGenerator.cpp \
-                  symmetries.h symmetries.cpp
+                  symmetries.h symmetries.cpp \
+                  print.h print.cpp
 
