@@ -607,3 +607,54 @@ void pieceVoxel_c::makeInsideHoly(void) {
         }
 }
 
+xml::node pieceVoxel_c::save(void) const {
+
+  xml::node nd("voxel");
+
+  char tmp[50];
+
+  snprintf(tmp, 50, "%i", getX());
+  nd.get_attributes().insert("x", tmp);
+
+  snprintf(tmp, 50, "%i", getY());
+  nd.get_attributes().insert("y", tmp);
+
+  snprintf(tmp, 50, "%i", getZ());
+  nd.get_attributes().insert("z", tmp);
+
+  // there are 2 possible ways to save the space
+  // one where all the colors are 0, this is the old way
+  // of saving and one with colors set
+
+  bool useColors = false;
+
+  for (int i = 0; i < getXYZ(); i++)
+    if (getColor(i) != 0) {
+      useColors = true;
+      break;
+    }
+
+  if (useColors) {
+
+    nd.get_attributes().insert("type", "1");
+    nd.set_content("#0#0#1#0");
+
+  } else {
+
+    nd.get_attributes().insert("type", "0");
+
+    std::string cont;
+
+    for (int i = 0; i < getXYZ(); i++)
+      switch(getState(i)) {
+      case VX_EMPTY: cont += "_"; break;
+      case VX_VARIABLE: cont += "+"; break;
+      case VX_FILLED: cont += "#"; break;
+      }
+
+    nd.set_content(cont.c_str());
+  }
+
+  return nd;
+}
+

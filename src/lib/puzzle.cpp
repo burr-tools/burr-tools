@@ -309,4 +309,58 @@ bool puzzle_c::placementAllowed(unsigned int pc, unsigned int res) const {
   return colorConstraints.get(pc, res);
 }
 
+xml::node puzzle_c::save(void) const {
+
+  xml::node nd("puzzle");
+
+  char tmp[50];
+
+  for (int i = 0; i < shapes.size(); i++) {
+    xml::node::iterator it = nd.insert(xml::node("shape"));
+
+    snprintf(tmp, 50, "%i", shapes[i].count);
+    it->get_attributes().insert("count", tmp);
+    it->insert(shapes[i].piece->save());
+  }
+
+  for (int i = 0; i < results.size(); i++)
+    nd.insert(results[i]->save());
+
+  if (colors.size() > 0) {
+
+    xml::node::iterator it = nd.insert(xml::node("constraints"));
+
+    snprintf(tmp, 50, "%i", colors.size());
+    it->get_attributes().insert("count", tmp);
+
+    for (int i = 0; i < colors.size(); i++) {
+
+      xml::node::iterator it2 = it->insert(xml::node("color"));
+
+      snprintf(tmp, 50, "%i", colors[i].r);
+      it2->get_attributes().insert("red", tmp);
+
+      snprintf(tmp, 50, "%i", colors[i].g);
+      it2->get_attributes().insert("green", tmp);
+
+      snprintf(tmp, 50, "%i", colors[i].b);
+      it2->get_attributes().insert("blue", tmp);
+    }
+
+    for (int i = 0; i < colors.size(); i++)
+      for (int j = 0; j < colors.size(); j++)
+        if (colorConstraints.get(i, j)) {
+
+          xml::node::iterator it2 = it->insert(xml::node("pair"));
+    
+          snprintf(tmp, 50, "%i", i);
+          it2->get_attributes().insert("piece", tmp);
+    
+          snprintf(tmp, 50, "%i", j);
+          it2->get_attributes().insert("result", tmp);
+        }
+  }
+
+  return nd;
+}
 

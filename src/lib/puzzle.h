@@ -31,6 +31,9 @@
 
 #include <assert.h>
 
+#include <xmlwrapp/xmlwrapp.h>
+
+
 /**
  * a structure containing the necessary information for
  * one puzzle piece
@@ -221,6 +224,10 @@ public:
    * save the puzzle inside the stream
    */
   void save(std::ostream * str) const;
+
+  /* used to save to XML */
+  xml::node save(void) const;
+
 
   /**
    * save in the format of the PuzzleSolver3D

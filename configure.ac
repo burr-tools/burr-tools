@@ -30,12 +30,23 @@ fi
 AC_CHECK_PROG(flu_found, flu-config, 1, 0)
 
 if [test $flu_found -eq 1]; then
-  GUI_CPP_ADD=`flu-config --cxxflags --use-gl`
-  GUI_LD_ADD=`flu-config --ldflags --use-gl`
+  GUI_CPP_ADD="$GUI_CPP_ADD `flu-config --cxxflags --use-gl`"
+  GUI_LD_ADD="$GUI_LD_ADD `flu-config --ldflags --use-gl`"
   AC_DEFINE(HAVE_FLU)
 fi
 
+AC_CHECK_PROG(xmlwrapp_found, xmlwrapp-config, 1, 0)
+
+if [test $xmlwrapp_found -eq 1]; then
+  XML_CPP_ADD=`xmlwrapp-config --cxxflags`
+  XML_LD_ADD=`xmlwrapp-config --libs`
+else
+  AC_MSG_WARN([XMLwrapp not found, required for the library])
+fi  
+
 AC_SUBST(GUI_CPP_ADD, $GUI_CPP_ADD)
 AC_SUBST(GUI_LD_ADD, $GUI_LD_ADD)
+AC_SUBST(XML_CPP_ADD, $XML_CPP_ADD)
+AC_SUBST(XML_LD_ADD, $XML_LD_ADD)
 
 AC_OUTPUT

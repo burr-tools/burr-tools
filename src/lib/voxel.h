@@ -30,6 +30,8 @@
 #include <stdexcept>
 #include <assert.h>
 
+#include <xmlwrapp/xmlwrapp.h>
+
 #include "symmetries.h"
 
 /**
@@ -130,6 +132,7 @@ public:
    * save this voxel space into the given file
    */
   void save(std::ostream * str) const;
+
 
   /**
    * make this voxelspace be identical to the one given
@@ -365,6 +368,14 @@ public:
    * it's not flawless, as it leaves pieces along inside holes static on
    */
   void makeInsideHoly(void);
+
+  /* used to save to XML */
+
+  xml::node save(void) const;
+  /**
+   * save this voxel space into the given file
+   */
+  void save(std::ostream * str) const { voxel_c::save(str); }
 };
 
 /* this voxel space if available to store solutions

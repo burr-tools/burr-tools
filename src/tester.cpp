@@ -33,6 +33,8 @@
 
 #include <fstream>
 
+#include <xmlwrapp/xmlwrapp.h>
+
 using namespace std;
 
 class asm_cb : public assembler_cb {
@@ -295,6 +297,27 @@ void convert(int argv, char* args[]) {
   p.PS3Dsave(&ostr);
 }
 
+void savetoXML(int argv, char* args[]) {
+
+  ifstream str(args[1]);
+
+  if (!str) {
+    cout << "oops file not opened\n";
+    return;
+  }
+
+  puzzle_c p(&str);
+
+  xml::init init;
+
+  xml::document xmldoc("burrTools");
+  xml::node &root = xmldoc.get_root_node();
+
+  xml::node::iterator it = root.insert(root.begin(), p.save());
+
+  std::cout << xmldoc;
+}
+
 void multTranformationsMatrix(void) {
 
   for (int tr1 = 0; tr1 < 48; tr1++) {
@@ -332,9 +355,10 @@ int main(int argv, char* args[]) {
 
 //  multTranformationsMatrix();
 
-  grow(argv, args);
+//  grow(argv, args);
 //  solve(argv, agrs);
 //  findsymmetries();
+  savetoXML(argv, args);
 
 //  convert(argv, args);
 }
