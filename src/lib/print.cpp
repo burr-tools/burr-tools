@@ -11,13 +11,13 @@ void print(const voxel_c * v, char base) {
 
   for (unsigned int y = 0; y < v->getY(); y++) {
     for (unsigned int z = 0; z < v->getZ(); z++) {
-      printf(" +");
+      printf(" !");
       for (unsigned int x = 0; x < v->getX(); x++)
         if (v->get(x, y, z) != 0)
           printf("%c", base + v->get(x, y, z)-1);
         else
           printf(" ");
-      printf("+");
+      printf("!");
     }
     printf("\n");
   }
@@ -43,13 +43,13 @@ void print(const assemblyVoxel_c * v) {
 
   for (unsigned int y = 0; y < v->getY(); y++) {
     for (unsigned int z = 0; z < v->getZ(); z++) {
-      printf(" +");
+      printf(" !");
       for (unsigned int x = 0; x < v->getX(); x++)
         if (v->get(x, y, z) != assemblyVoxel_c::VX_EMPTY)
           printf("%c", 'a' + v->get(x, y, z));
         else
           printf(" ");
-      printf("+");
+      printf("!");
     }
     printf("\n");
   }
@@ -75,7 +75,7 @@ void print(const pieceVoxel_c * v) {
 
   for (unsigned int y = 0; y < v->getY(); y++) {
     for (unsigned int z = 0; z < v->getZ(); z++) {
-      printf(" +");
+      printf(" !");
       for (unsigned int x = 0; x < v->getX(); x++)
         if (v->getState(x, y, z) != pieceVoxel_c::VX_EMPTY)
           if (v->getState(x, y, z) == pieceVoxel_c::VX_FILLED)
@@ -84,7 +84,7 @@ void print(const pieceVoxel_c * v) {
             printf("+");
         else
           printf(" ");
-      printf("+");
+      printf("!");
     }
     printf("\n");
   }
