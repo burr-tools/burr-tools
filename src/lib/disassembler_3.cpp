@@ -515,7 +515,7 @@ void disassembler_3_c::init_find(nodeWithMatrix_c * nd, int piecenumber, voxel_t
  * the next thing to do is to check if something can be removed, and finally we look for longer
  * movements in the actual direction
  *
- * FIXME: we should first try to remove a single piece, then to remoe groups of pieces
+ * FIXME: we should first try to remove a single piece, then to remove groups of pieces
  * and then check movement of pieces
  */
 nodeWithMatrix_c * disassembler_3_c::find(nodeWithMatrix_c * searchnode) {
