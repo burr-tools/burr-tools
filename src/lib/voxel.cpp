@@ -32,14 +32,23 @@
 
 using namespace std;
 
-voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(0) {
+voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs) {
 
   space = new voxel_type[voxels];
   assert(space);
 
   memset(space, init, voxels);
 
-  recalcBoundingBox();
+  if (init == 0)
+    bx1 = bx2 = by1 = by2 = bz1 = bz2 = 0;
+  else {
+    bx1 = by1 = bz1 = 0;
+    bx2 = x-1;
+    by2 = y-1;
+    bz2 = z-1;
+  }
+
+  doRecalc = true;
 }
 
 voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx), sy(orig.sy), sz(orig.sz), voxels(orig.voxels) {
@@ -57,6 +66,8 @@ voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx
   bz2 = orig.bz2;
 
   outside = orig.outside;
+
+  doRecalc = true;
 
   transform(transformation);
 }
@@ -77,6 +88,8 @@ voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->s
 
   outside = orig->outside;
 
+  doRecalc = true;
+
   transform(transformation);
 }
 
@@ -85,6 +98,9 @@ voxel_c::~voxel_c() {
 }
 
 void voxel_c::recalcBoundingBox(void) {
+
+  if (!doRecalc)
+    return;
 
   bx1 = by1 = bz1 = sx+sy+sz;
   bx2 = by2 = bz2 = 0;
@@ -137,9 +153,9 @@ void voxel_c::rotatex() {
 
   unsigned int t = by1;
 
-  by1 = sz - 1 - bz2;
+  by1 = sy - 1 - bz2;
   bz2 = by2;
-  by2 = sz - 1 - bz1;
+  by2 = sy - 1 - bz1;
   bz1 = t;
 }
 
@@ -161,9 +177,9 @@ void voxel_c::rotatey() {
 
   unsigned int t = bx1;
 
-  bx1 = sz - 1 - bz2;
+  bx1 = sx - 1 - bz2;
   bz2 = bx2;
-  bx2 = sz - 1 - bz1;
+  bx2 = sx - 1 - bz1;
   bz1 = t;
 }
 
@@ -186,9 +202,9 @@ void voxel_c::rotatez() {
   unsigned int t = by1;
 
   by1 = bx1;
-  bx1 = sy - 1 - by2;
+  bx1 = sx - 1 - by2;
   by2 = bx2;
-  bx2 = sy - 1 - t;
+  bx2 = sx - 1 - t;
 }
 
 void voxel_c::minimize(voxel_type val) {
@@ -282,6 +298,8 @@ unsigned int pieceVoxel_c::countState(int state) const {
 
 void voxel_c::mirrorX(void) {
 
+  doRecalc = false;
+
   for (unsigned int x = 0; x < sx/2; x++)
     for (unsigned int y = 0; y < sy; y++)
       for (unsigned int z = 0; z < sz; z++) {
@@ -290,6 +308,8 @@ void voxel_c::mirrorX(void) {
         set(sx-x-1, y, z, tmp);
       }
 
+  doRecalc = true;
+
   unsigned int t = bx1;
 
   bx1 = sx - 1 - bx2;
@@ -297,6 +317,9 @@ void voxel_c::mirrorX(void) {
 }
 
 void voxel_c::mirrorY(void) {
+
+  doRecalc = false;
+
   for (unsigned int x = 0; x < sx; x++)
     for (unsigned int y = 0; y < sy/2; y++)
       for (unsigned int z = 0; z < sz; z++) {
@@ -305,6 +328,8 @@ void voxel_c::mirrorY(void) {
         set(x, sy-y-1, z, tmp);
       }
 
+  doRecalc = true;
+
   unsigned int t = by1;
 
   by1 = sy - 1 - by2;
@@ -312,6 +337,9 @@ void voxel_c::mirrorY(void) {
 }
 
 void voxel_c::mirrorZ(void) {
+
+  doRecalc = false;
+
   for (unsigned int x = 0; x < sx; x++)
     for (unsigned int y = 0; y < sy; y++)
       for (unsigned int z = 0; z < sz/2; z++) {
@@ -319,6 +347,8 @@ void voxel_c::mirrorZ(void) {
         set(x, y, z, get(x, y, sz-z-1));
         set(x, y, sz-z-1, tmp);
       }
+
+  doRecalc = true;
 
   unsigned int t = bz1;
 
@@ -524,6 +554,7 @@ void voxel_c::transform(unsigned int nr) {
     nr -= 24;
   }
 
+
   for (i = 0; i < rotx(nr); i++) rotatex();
   for (i = 0; i < roty(nr); i++) rotatey();
   for (i = 0; i < rotz(nr); i++) rotatez();
@@ -658,6 +689,8 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
   if (node.get_attributes().find("type") == node.get_attributes().end())
     throw load_error("piece Voxel with no attribut 'type' encountered", node);
 
+  skipRecalcBoundingBox(true);
+
   // set to the correct size
   resize(atoi(node.get_attributes().find("x")->get_value()),
          atoi(node.get_attributes().find("y")->get_value()),
@@ -714,7 +747,7 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
   }
 
   setOutside(VX_EMPTY);
-  recalcBoundingBox();
+  skipRecalcBoundingBox(false);
 }
 
 xml::node assemblyVoxel_c::save(void) const {
@@ -811,6 +844,7 @@ assemblyVoxel_c::assemblyVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
   if (node.get_attributes().find("type") == node.get_attributes().end())
     throw load_error("assembly Voxel with no attribut 'type' encountered", node);
 
+  skipRecalcBoundingBox(true);
   setOutside(VX_EMPTY);
 
   // set to the correct size
@@ -874,6 +908,6 @@ assemblyVoxel_c::assemblyVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
       c++;
     }
   }
-  recalcBoundingBox();
+  skipRecalcBoundingBox(false);
 }
 

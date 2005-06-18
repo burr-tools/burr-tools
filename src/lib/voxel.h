@@ -110,10 +110,22 @@ private:
   unsigned int bx1, bx2;
   unsigned int by1, by2;
   unsigned int bz1, bz2;
+  bool doRecalc;
 
 protected:
 
   void recalcBoundingBox(void);
+
+  void skipRecalcBoundingBox(bool skipit) {
+    if (skipit)
+      doRecalc = false;
+    else {
+      doRecalc = true;
+      recalcBoundingBox();
+    }
+  }
+
+
 
 public:
 
@@ -121,7 +133,7 @@ public:
    * Creates a new voxel space. Its of given size and
    * initializes all values to init.
    */
-  voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = 0);
+  voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = 0, voxel_type outs = 0);
 
   /**
    * Copy constructor using reference. Transformation allows to
@@ -352,15 +364,9 @@ class pieceVoxel_c : public voxel_c {
 
 public:
 
-  pieceVoxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = 0) : voxel_c(x, y, z, init) {
-    setOutside(VX_EMPTY);
-  }
-  pieceVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {
-    setOutside(VX_EMPTY);
-  }
-  pieceVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {
-    setOutside(VX_EMPTY);
-  }
+  pieceVoxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = 0) : voxel_c(x, y, z, init, VX_EMPTY) { }
+  pieceVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { }
+  pieceVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { }
   pieceVoxel_c(const xml::node & node);
 
   /**
@@ -419,9 +425,9 @@ public:
     VX_EMPTY = 0xff
   };
 
-  assemblyVoxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = VX_EMPTY) : voxel_c(x, y, z, init) { setOutside(VX_EMPTY); }
-  assemblyVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { setOutside(VX_EMPTY); }
-  assemblyVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { setOutside(VX_EMPTY); }
+  assemblyVoxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = VX_EMPTY) : voxel_c(x, y, z, init, VX_EMPTY) { }
+  assemblyVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { }
+  assemblyVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { }
   assemblyVoxel_c(const xml::node & node);
 
   bool isEmpty(unsigned int x, unsigned int y, unsigned int z) const { return get(x, y, z) == VX_EMPTY; }
