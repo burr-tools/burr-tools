@@ -38,6 +38,8 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init
   assert(space);
 
   memset(space, init, voxels);
+
+  recalcBoundingBox();
 }
 
 voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx), sy(orig.sy), sz(orig.sz), voxels(orig.voxels) {
@@ -48,6 +50,8 @@ voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx
   memcpy(space, orig.space, voxels);
 
   transform(transformation);
+
+  recalcBoundingBox();
 }
 
 voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->sx), sy(orig->sy), sz(orig->sz), voxels(orig->voxels) {
@@ -58,11 +62,34 @@ voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->s
   memcpy(space, orig->space, voxels);
 
   transform(transformation);
+
+  recalcBoundingBox();
 }
 
 voxel_c::~voxel_c() {
   delete [] space;
 }
+
+void voxel_c::recalcBoundingBox(void) {
+
+  bx1 = by1 = bz1 = sx+sy+sz;
+  bx2 = by2 = bz2 = 0;
+
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++)
+        if (get(x, y, z) != outside) {
+          if (x < bx1) bx1 = x;
+          if (x > bx2) bx2 = x;
+
+          if (y < by1) by1 = y;
+          if (y > by2) by2 = y;
+
+          if (z < bz1) bz1 = z;
+          if (z > bz2) bz2 = z;
+        }
+}
+
 
 bool voxel_c::operator ==(const voxel_c & op) const {
 
@@ -93,6 +120,8 @@ void voxel_c::rotatex() {
 
   delete [] space;
   space = s;
+  // FIXME: optimize
+  recalcBoundingBox();
 }
 
 void voxel_c::rotatey() {
@@ -110,6 +139,8 @@ void voxel_c::rotatey() {
 
   delete [] space;
   space = s;
+  // FIXME: optimize
+  recalcBoundingBox();
 }
 
 void voxel_c::rotatez() {
@@ -127,6 +158,9 @@ void voxel_c::rotatez() {
 
   delete [] space;
   space = s;
+
+  // FIXME: optimize
+  recalcBoundingBox();
 }
 
 void voxel_c::minimize(voxel_type val) {
@@ -173,6 +207,9 @@ void voxel_c::minimize(voxel_type val) {
     sy = y2-y1+1;
     sz = z2-z1+1;
     voxels = sx*sy*sz;
+
+    // FIXME: optimize
+    recalcBoundingBox();
   }
 }
 
@@ -196,6 +233,9 @@ void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel
   sy = nsy;
   sz = nsz;
   voxels = sx*sy*sz;
+
+  // FIXME: optimize
+  recalcBoundingBox();
 }
 
 unsigned int voxel_c::count(voxel_type val) const {
@@ -223,7 +263,8 @@ void voxel_c::mirrorX(void) {
         set(x, y, z, get(sx-x-1, y, z));
         set(sx-x-1, y, z, tmp);
       }
-
+  // FIXME: optimize
+  recalcBoundingBox();
 }
 
 void voxel_c::mirrorY(void) {
@@ -234,6 +275,8 @@ void voxel_c::mirrorY(void) {
         set(x, y, z, get(x, sy-y-1, z));
         set(x, sy-y-1, z, tmp);
       }
+  // FIXME: optimize
+  recalcBoundingBox();
 }
 
 void voxel_c::mirrorZ(void) {
@@ -244,6 +287,8 @@ void voxel_c::mirrorZ(void) {
         set(x, y, z, get(x, y, sz-z-1));
         set(x, y, sz-z-1, tmp);
       }
+  // FIXME: optimize
+  recalcBoundingBox();
 }
 
 void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
@@ -260,6 +305,8 @@ void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
 
   delete [] space;
   space = s2;
+  // FIXME: optimize
+  recalcBoundingBox();
 }
 
 bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
@@ -400,6 +447,13 @@ void voxel_c::copy(const voxel_c * orig) {
   sz = orig->sz;
 
   voxels = orig->voxels;
+
+  bx1 = orig->bx1;
+  bx2 = orig->bx2;
+  by1 = orig->by1;
+  by2 = orig->by2;
+  bz1 = orig->bz1;
+  bz2 = orig->bz2;
 }
 
 bool voxel_c::neighbour(unsigned int p, voxel_type val) const {

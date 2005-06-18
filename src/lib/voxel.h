@@ -104,6 +104,15 @@ private:
    */
   voxel_type outside;
 
+  /**
+   * the voxel space has a bounding box, that encloses a region inside
+   */
+  unsigned int bx1, bx2;
+  unsigned int by1, by2;
+  unsigned int bz1, bz2;
+
+  void recalcBoundingBox(void);
+
 public:
 
   /**
@@ -184,7 +193,10 @@ public:
   /**
    * sets the value of the outside
    */
-  void setOutside(voxel_type val) { outside = val; }
+  void setOutside(voxel_type val) {
+    outside = val;
+    recalcBoundingBox();
+  }
 
   /**
    * same as get but returns 0 for each voxel outside
@@ -221,6 +233,7 @@ public:
    */
   void set(unsigned int x, unsigned int y, unsigned int z, voxel_type val) {
     space[getIndex(x, y, z)] = val;
+    recalcBoundingBox();
   }
 
   /**
@@ -229,6 +242,7 @@ public:
   void set(unsigned int p, voxel_type val) {
     assert((p>=0)&&(p<voxels));
     space[p] = val;
+    recalcBoundingBox();
   }
 
   /**
@@ -236,6 +250,7 @@ public:
    */
   void setAll(voxel_type val) {
     memset(space, val, voxels);
+    recalcBoundingBox();
   }
 
   /**
@@ -272,6 +287,13 @@ public:
    * so that all voxels whose value is not val can be contained.
    */
   void minimize(voxel_type val);
+
+  unsigned int boundX1(void) const { return bx1; }
+  unsigned int boundX2(void) const { return bx2; }
+  unsigned int boundY1(void) const { return by1; }
+  unsigned int boundY2(void) const { return by2; }
+  unsigned int boundZ1(void) const { return bz1; }
+  unsigned int boundZ2(void) const { return bz2; }
 
   /**
    * Comparison of two voxel spaces.
