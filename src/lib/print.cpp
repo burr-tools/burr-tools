@@ -130,19 +130,18 @@ void print(const state_c * s, const assemblyVoxel_c *start, const separation_c *
 
   printf("\n");
 
-  for (int y = 0;  y < 2 * start->getY(); y++) {
-    for (int z = 0; z < 2 * start->getZ(); z++) {
-      for (int x = 0; x < 2 * start->getX(); x++) {
+  for (unsigned int y = 0;  y < 2 * start->getY(); y++) {
+    for (unsigned int z = 0; z < 2 * start->getZ(); z++) {
+      for (unsigned int x = 0; x < 2 * start->getX(); x++) {
 
         bool foundpiece = false;
 
-        for (int p = 0; p < piecenumber; p++) {
-          int x1 = x - s->getX(p) - start->getX()/2;
-          int y1 = y - s->getY(p) - start->getY()/2;
-          int z1 = z - s->getZ(p) - start->getZ()/2;
+        for (unsigned int p = 0; p < piecenumber; p++) {
+          unsigned int x1 = x - s->getX(p) - start->getX()/2;
+          unsigned int y1 = y - s->getY(p) - start->getY()/2;
+          unsigned int z1 = z - s->getZ(p) - start->getZ()/2;
 
-          if ((x1 >= 0) && (y1 >= 0) && (z1 >= 0) &&
-              (x1 < start->getX()) &&
+          if ((x1 < start->getX()) &&
               (y1 < start->getY()) &&
               (z1 < start->getZ()))
             if (start->get(x1, y1, z1) == sep->getPieceName(p)) {
