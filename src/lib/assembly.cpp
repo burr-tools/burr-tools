@@ -10,13 +10,12 @@ assemblyVoxel_c * assembly_c::getVoxelSpace(const puzzle_c * puz, unsigned int p
 
   for (unsigned int pc = 0; pc < puz->probShapeNumber(prob); pc++)
     for (unsigned int inst = 0; inst < puz->probGetShapeCount(prob, pc); inst++) {
+
       pieceVoxel_c p(puz->probGetShapeShape(prob, pc), placements[idx].transformation);
+
       int dx = placements[idx].xpos;
       int dy = placements[idx].ypos;
       int dz = placements[idx].zpos;
-
-//      printf("%i %i %i, t: %i\n", dx, dy, dz, placements[idx].transformation);
-//      print(&p);
 
       for (unsigned int x = 0; x < p.getX(); x++)
         for (unsigned int y = 0; y < p.getY(); y++)

@@ -22,6 +22,8 @@
 /* helper function to check if a piece an go at a position */
 static bool pieceFits(const pieceVoxel_c * piece, const pieceVoxel_c * result, const puzzle_c * puz, int x, int y, int z, unsigned int problemNum) {
 
+//  printf("pf: %i %i %i\n", x, y, z);
+
   for (unsigned int pz = 0; pz < piece->getZ(); pz++)
     for (unsigned int py = 0; py < piece->getY(); py++)
       for (unsigned int px = 0; px < piece->getX(); px++)
