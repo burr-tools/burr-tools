@@ -873,7 +873,14 @@ unsigned int puzzle_c::probSolutionNumber(unsigned int prob) {
   return problems[prob]->solutions.size();
 }
 
-assemblyVoxel_c * puzzle_c::probGetAssembly(unsigned int prob, unsigned int sol) {
+assembly_c * puzzle_c::probGetAssembly(unsigned int prob, unsigned int sol) {
+  assert(prob < problems.size());
+  assert(sol < problems[prob]->solutions.size());
+
+  return problems[prob]->solutions[sol]->assembly;
+}
+
+const assembly_c * puzzle_c::probGetAssembly(unsigned int prob, unsigned int sol) const {
   assert(prob < problems.size());
   assert(sol < problems[prob]->solutions.size());
 
@@ -881,6 +888,13 @@ assemblyVoxel_c * puzzle_c::probGetAssembly(unsigned int prob, unsigned int sol)
 }
 
 separation_c * puzzle_c::probGetDisassembly(unsigned int prob, unsigned int sol) {
+  assert(prob < problems.size());
+  assert(sol < problems[prob]->solutions.size());
+
+  return problems[prob]->solutions[sol]->tree;
+}
+
+const separation_c * puzzle_c::probGetDisassembly(unsigned int prob, unsigned int sol) const {
   assert(prob < problems.size());
   assert(sol < problems[prob]->solutions.size());
 

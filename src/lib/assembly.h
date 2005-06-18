@@ -21,11 +21,12 @@
 #define __ASSEMBLY_H__
 
 #include "voxel.h"
-#include "puzzle.h"
 
 #include <xmlwrapp/node.h>
 
 #include <vector>
+
+class puzzle_c;
 
 /* this class contains the assembly for a puzzle
  * an assembly is a list of trnasformations and
@@ -89,7 +90,7 @@ public:
    * that the placement places all pieces within the result shape.
    * all color information of the pieces is lost
    */
-  assemblyVoxel_c * getVoxelSpace(const puzzle_c * puz, unsigned int prob);
+  assemblyVoxel_c * getVoxelSpace(const puzzle_c * puz, unsigned int prob) const;
 };
 
 

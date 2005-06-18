@@ -198,6 +198,9 @@ public:
   assemblyVoxel_c * probGetAssembly(unsigned int prob, unsigned int sol);
   separation_c * probGetDisassembly(unsigned int prob, unsigned int sol);
 
+  const assembly_c * probGetAssembly(unsigned int prob, unsigned int sol) const;
+  const separation_c * probGetDisassembly(unsigned int prob, unsigned int sol) const;
+
   /* edit the color matrix */
   void probAllowPlacement(unsigned int prob, unsigned int pc, unsigned int res);
   void probDisallowPlacement(unsigned int prob, unsigned int pc, unsigned int res);

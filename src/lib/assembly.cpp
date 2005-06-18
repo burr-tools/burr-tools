@@ -1,6 +1,8 @@
 #include "assembly.h"
 
-assemblyVoxel_c * assembly_c::getVoxelSpace(const puzzle_c * puz, unsigned int prob) {
+#include "puzzle.h"
+
+assemblyVoxel_c * assembly_c::getVoxelSpace(const puzzle_c * puz, unsigned int prob) const {
 
   assemblyVoxel_c * res = new assemblyVoxel_c(puz->probGetResultShape(prob)->getX(),
                                               puz->probGetResultShape(prob)->getY(),
