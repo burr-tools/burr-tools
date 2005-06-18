@@ -29,6 +29,8 @@
 
 #include <xmlwrapp/xmlwrapp.h>
 
+#include "gzstream.h"
+
 static UserInterface * ui;
 
 static const char * FileSelection(const char * title) {
@@ -476,7 +478,7 @@ void UserInterface::cb_Save(void) {
       cb_SaveAs();
 
     else {
-      ofstream ostr(fname);
+      ogzstream ostr(fname);
     
       if (ostr)
         ostr << puzzle->save();
