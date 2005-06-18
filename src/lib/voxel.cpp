@@ -621,6 +621,8 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
     if (idx < getXYZ())
       throw load_error("not enough voxels defined in voxelspace", node);
   }
+
+  setOutside(VX_EMPTY);
 }
 
 xml::node assemblyVoxel_c::save(void) const {

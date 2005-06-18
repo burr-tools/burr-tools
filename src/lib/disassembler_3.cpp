@@ -753,11 +753,12 @@ separation_c * disassembler_3_c::disassemble_rec(int piecenumber, voxel_type * p
       return erg;
     }
 
-    // we have checked all the successors of this node, so we don't need the matrix
-    // any longer
+    /* we have checked all the successors of this node, so we don't need the matrix
+	 * any longer
+	 */
   }
 
-  /* free all the allocated nodes */
+  // free all the allocated nodes
   delete [] pieces;
 
   std::set<nodeWithMatrix_c *, node_ptr_less>::iterator i;

@@ -34,11 +34,6 @@ private:
    */
   int * voxelindex;
 
-  /* assm is used to contain the assembled puzzle
-   * once an assembly has been found
-   */
-  assemblyVoxel_c * assm;
-
   /* get's called when a solution is found. this function
    * then assembles the solution inside assm and calles the
    * callback function with assm as parameter

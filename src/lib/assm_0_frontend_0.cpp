@@ -28,10 +28,10 @@ static bool pieceFits(const pieceVoxel_c * piece, const pieceVoxel_c * result, c
         if (
             // the piece can not be place if the result is empty and the piece is fileed at a given voxel
             ((piece->getState(px, py, pz) != pieceVoxel_c::VX_EMPTY) &&
-             (result->getState(x+px, y+py, z+pz) == pieceVoxel_c::VX_EMPTY)) ||
+             (result->getState2(x+px, y+py, z+pz) == pieceVoxel_c::VX_EMPTY)) ||
 
             // the piece can also not be placed when the color constraints don't fit
-            !puz->probPlacementAllowed(problemNum, piece->getColor(px, py, pz), result->getColor(x+px, y+py, z+pz))
+            !puz->probPlacementAllowed(problemNum, piece->getColor(px, py, pz), result->getColor2(x+px, y+py, z+pz))
 
            )
           return false;
@@ -81,9 +81,9 @@ unsigned long assm_0_frontend_0_c::countNodes(puzzle_c * puz, unsigned int probl
     /* find all possible translations of piece and add them, if they fit */
     for (unsigned int rot = 0; rot < 24; rot++)
       if (pieceVoxel_c * rotation = addToCache(cache, &cachefill, new pieceVoxel_c(puz->probGetShapeShape(problemNum, pc), rot)))
-        for (unsigned int x = 0; x < result->getX() - rotation->getX() + 1; x++)
-          for (unsigned int y = 0; y < result->getY() - rotation->getY() + 1; y++)
-            for (unsigned int z = 0; z < result->getZ() - rotation->getZ() + 1; z++)
+        for (int x = -((int)rotation->getX())+1; x < (int)result->getX()-1; x++)
+          for (int y = -((int)rotation->getY())+1; y < (int)(result->getY())-1; y++)
+            for (int z = -((int)rotation->getZ())+1; z < (int)(result->getZ())-1; z++)
               if (pieceFits(rotation, result, puz, x, y, z, problemNum))
                 placements++;
 
@@ -218,9 +218,9 @@ void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari, 
       for (unsigned int rot = 0; rot < 24; rot++) {
         bool skipRotation = ((pc == symBreakerPiece) && (piececount == 0) && symmetrieContainsTransformation(resultSym, rot));
         if (pieceVoxel_c * rotation = addToCache(cache, &cachefill, new pieceVoxel_c(puz->probGetShapeShape(problemNum, pc), rot))) {
-          for (unsigned int x = 0; x < result->getX() - rotation->getX() + 1; x++)
-            for (unsigned int y = 0; y < result->getY() - rotation->getY() + 1; y++)
-              for (unsigned int z = 0; z < result->getZ() - rotation->getZ() + 1; z++)
+          for (int x = -((int)rotation->getX())+1; x < (int)result->getX()-1; x++)
+            for (int y = -((int)rotation->getY())+1; y < (int)result->getY()-1; y++)
+              for (int z = -((int)rotation->getZ())+1; z < (int)result->getZ()-1; z++)
                 if (pieceFits(rotation, result, puz, x, y, z, problemNum)) {
 
                   int piecenode = 0;
@@ -248,13 +248,10 @@ void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari, 
     }
 
   delete [] columns;
-
-  assm = new assemblyVoxel_c(result->getX(), result->getY(), result->getZ(), assemblyVoxel_c::VX_EMPTY);
 }
 
 assm_0_frontend_0_c::~assm_0_frontend_0_c() {
   if (voxelindex) delete [] voxelindex;
-  if (assm) delete assm;
 }
 
 typedef unsigned int uint32_t;
@@ -262,31 +259,6 @@ typedef unsigned int uint32_t;
 bool assm_0_frontend_0_c::solution(void) {
 
   if (getCallback()) {
-    /* clean voxel space */
-    assm->setAll(assemblyVoxel_c::VX_EMPTY);
-
-    /* put all the pieces at their places
-     * be going through all the selected rows and finding out
-     * where there is a one in that row and then find the corresponding
-     * voxel space index and place the piece number in there
-     */
-    for (unsigned int i = 0; i < getPos(); i++) {
-      unsigned int r = getRows(i);
-
-      // go over all columns and that columns that
-      // are for result shape will be set inside the result
-      do {
-
-        int vi = voxelindex[getColCount(r)];
-
-        if (vi >= 0)
-          assm->setPiece(vi, getPiece(i));
-
-        r = getRight(r);
-
-      } while (r != getRows(i));
-    }
-
 
     // the new version, we do this double and check, if the results are identical, for the moment
 
@@ -312,13 +284,13 @@ bool assm_0_frontend_0_c::solution(void) {
         unsigned char tran;
         int x, y, z;
 
-        getPieceInformation(getRows(i), &tran, &x, &y, &z);
+        getPieceInformation(getRows(pieces[i]), &tran, &x, &y, &z);
         assembly->addPlacement(tran, x, y, z);
       }
 
     delete [] pieces;
 
-    return getCallback()->assembly(assembly, assm);
+    return getCallback()->assembly(assembly);
   }
 
   return true;

@@ -328,9 +328,15 @@ class pieceVoxel_c : public voxel_c {
 
 public:
 
-  pieceVoxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = 0) : voxel_c(x, y, z, init) {}
-  pieceVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {}
-  pieceVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {}
+  pieceVoxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = 0) : voxel_c(x, y, z, init) {
+    setOutside(VX_EMPTY);
+  }
+  pieceVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {
+    setOutside(VX_EMPTY);
+  }
+  pieceVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) {
+    setOutside(VX_EMPTY);
+  }
   pieceVoxel_c(const xml::node & node);
 
   /**

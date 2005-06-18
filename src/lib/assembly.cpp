@@ -15,9 +15,12 @@ assemblyVoxel_c * assembly_c::getVoxelSpace(const puzzle_c * puz, unsigned int p
       int dy = placements[idx].ypos;
       int dz = placements[idx].zpos;
 
-      for (int x = 0; x < p.getX(); x++)
-        for (int y = 0; y < p.getY(); y++)
-          for (int z = 0; z < p.getZ(); z++)
+//      printf("%i %i %i, t: %i\n", dx, dy, dz, placements[idx].transformation);
+//      print(&p);
+
+      for (unsigned int x = 0; x < p.getX(); x++)
+        for (unsigned int y = 0; y < p.getY(); y++)
+          for (unsigned int z = 0; z < p.getZ(); z++)
             if (p.getState(x, y, z) == pieceVoxel_c::VX_FILLED) {
 
               assert(res->isEmpty2(x+dx, y+dy, z+dz));

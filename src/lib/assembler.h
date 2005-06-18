@@ -40,7 +40,7 @@ public:
    * found by an assembler. it get's the found aseembly
    * as parameter
    */
-  virtual bool assembly(assembly_c * a, assemblyVoxel_c * assm) = 0;
+  virtual bool assembly(assembly_c * a) = 0;
 };
 
 

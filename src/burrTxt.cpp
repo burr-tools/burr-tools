@@ -39,10 +39,13 @@ public:
   int Assemblies;
   int Solutions;
   int pn;
+  puzzle_c * puzzle;
+  int prob;
 
-  asm_cb(int pnum) : Assemblies(0), Solutions(0), pn(pnum) {}
+  asm_cb(puzzle_c * p, int pr) : Assemblies(0), Solutions(0), pn(p->probPieceNumber(pr)), puzzle(p), prob(pr) {}
 
-  bool assembly(assembly_c * a, assemblyVoxel_c * assm) {
+  bool assembly(assembly_c * a) {
+
 
     Assemblies++;
 
@@ -50,6 +53,8 @@ public:
       cout << Assemblies << " Assembies found so far\n";
 
     if (disassemble) {
+
+      assemblyVoxel_c * assm = a->getVoxelSpace(puzzle, prob);
 
       disassembler_3_c d(assm, pn);
   
@@ -64,11 +69,16 @@ public:
           print(da, assm);
         delete da;
       }
+
+      delete assm;
   
     } else {
 
-      if (printSolutions)
+      if (printSolutions) {
+        assemblyVoxel_c * assm = a->getVoxelSpace(puzzle, prob);
         print(assm);
+        delete assm;
+      }
     }
 
     return true;
@@ -148,7 +158,7 @@ int main(int argv, char* args[]) {
     return 0;
   }
 
-  asm_cb a(p.probPieceNumber(0));
+  asm_cb a(&p, 0);
 
   assm->assemble(&a);
 

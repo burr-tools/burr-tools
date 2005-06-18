@@ -59,7 +59,7 @@ puzzleSol_c::puzzleSol_c(const puzzleSol_c * p) {
 }
 
 
-bool puzzleSol_c::assembly(assembly_c* a,assemblyVoxel_c * assm) {
+bool puzzleSol_c::assembly(assembly_c* a) {
 
 /*
   disassembler_2_c d(assm, puzzle->getPieces());

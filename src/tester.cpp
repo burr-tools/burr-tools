@@ -46,8 +46,9 @@ public:
 
   asm_cb(int pnum) : count(0), pn(pnum) {}
 
-  bool assembly(assembly_c * a, assemblyVoxel_c * assm) {
+  bool assembly(assembly_c * a) {
 
+#if 0
     count++;
 
     if ((count & 0x3f) == 0)
@@ -58,6 +59,7 @@ public:
     return true;
 
     fflush(stdout);
+
 
     disassembler_3_c d(assm, pn);
 
@@ -73,6 +75,7 @@ public:
     }
 
     return true;
+#endif
   }
 };
 

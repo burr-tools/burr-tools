@@ -85,13 +85,15 @@ assemblerThread::~assemblerThread(void) {
     usleep(10000);
 }
 
-bool assemblerThread::assembly(assembly_c * a, assemblyVoxel_c * as) {
+bool assemblerThread::assembly(assembly_c * a) {
 
   assemblies++;
 
+  assemblyVoxel_c *as = a->getVoxelSpace(puzzle, prob);
+
   switch(_solutionAction) {
   case SOL_SAVE_ASM:
-    puzzle->probAddSolution(prob, new assemblyVoxel_c(as));
+    puzzle->probAddSolution(prob, as);
     break;
 
   case SOL_DISASM:
@@ -102,7 +104,9 @@ bool assemblerThread::assembly(assembly_c * a, assemblyVoxel_c * as) {
       action = ACT_ASSEMBLING;
   
       if (s)
-        puzzle->probAddSolution(prob, new assemblyVoxel_c(as), s);
+        puzzle->probAddSolution(prob, as, s);
+      else
+        delete as;
     }
     break;
   }

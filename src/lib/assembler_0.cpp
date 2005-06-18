@@ -80,7 +80,7 @@ int assembler_0_c::AddPieceNode(unsigned int piece, unsigned int rot, unsigned i
 void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z) {
 
   for (int i = piecePositions.size()-1; i >= 0; i--)
-    if (piecePositions[i].row < node) {
+    if (piecePositions[i].row <= node) {
       *tran = piecePositions[i].transformation;
       *x = piecePositions[i].x;
       *y = piecePositions[i].y;
@@ -150,8 +150,10 @@ void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int prob) {
   piecenumber = puz.probPieceNumber(prob);
 
   // minimize all pieces
+#if 0
   for (unsigned int i = 0; i < puz.probShapeNumber(prob); i++)
     puz.probGetShapeShape(prob, i)->minimizePiece();
+#endif
 
   /* count the filled and variable units */
   int res_vari = puz.probGetResultShape(prob)->countState(pieceVoxel_c::VX_VARIABLE);
