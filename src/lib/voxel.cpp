@@ -32,7 +32,7 @@
 
 using namespace std;
 
-voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init) : sx(x), sy(y), sz(z), voxels(x*y*z) {
+voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(0) {
 
   space = new voxel_type[voxels];
   assert(space);
@@ -49,9 +49,16 @@ voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx
 
   memcpy(space, orig.space, voxels);
 
-  transform(transformation);
+  bx1 = orig.bx1;
+  bx2 = orig.bx2;
+  by1 = orig.by1;
+  by2 = orig.by2;
+  bz1 = orig.bz1;
+  bz2 = orig.bz2;
 
-  recalcBoundingBox();
+  outside = orig.outside;
+
+  transform(transformation);
 }
 
 voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->sx), sy(orig->sy), sz(orig->sz), voxels(orig->voxels) {
@@ -61,9 +68,16 @@ voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->s
 
   memcpy(space, orig->space, voxels);
 
-  transform(transformation);
+  bx1 = orig->bx1;
+  bx2 = orig->bx2;
+  by1 = orig->by1;
+  by2 = orig->by2;
+  bz1 = orig->bz1;
+  bz2 = orig->bz2;
 
-  recalcBoundingBox();
+  outside = orig->outside;
+
+  transform(transformation);
 }
 
 voxel_c::~voxel_c() {
@@ -120,8 +134,13 @@ void voxel_c::rotatex() {
 
   delete [] space;
   space = s;
-  // FIXME: optimize
-  recalcBoundingBox();
+
+  unsigned int t = by1;
+
+  by1 = sz - 1 - bz2;
+  bz2 = by2;
+  by2 = sz - 1 - bz1;
+  bz1 = t;
 }
 
 void voxel_c::rotatey() {
@@ -139,8 +158,13 @@ void voxel_c::rotatey() {
 
   delete [] space;
   space = s;
-  // FIXME: optimize
-  recalcBoundingBox();
+
+  unsigned int t = bx1;
+
+  bx1 = sz - 1 - bz2;
+  bz2 = bx2;
+  bx2 = sz - 1 - bz1;
+  bz1 = t;
 }
 
 void voxel_c::rotatez() {
@@ -159,8 +183,12 @@ void voxel_c::rotatez() {
   delete [] space;
   space = s;
 
-  // FIXME: optimize
-  recalcBoundingBox();
+  unsigned int t = by1;
+
+  by1 = bx1;
+  bx1 = sy - 1 - by2;
+  by2 = bx2;
+  bx2 = sy - 1 - t;
 }
 
 void voxel_c::minimize(voxel_type val) {
@@ -208,7 +236,6 @@ void voxel_c::minimize(voxel_type val) {
     sz = z2-z1+1;
     voxels = sx*sy*sz;
 
-    // FIXME: optimize
     recalcBoundingBox();
   }
 }
@@ -234,7 +261,6 @@ void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel
   sz = nsz;
   voxels = sx*sy*sz;
 
-  // FIXME: optimize
   recalcBoundingBox();
 }
 
@@ -263,8 +289,11 @@ void voxel_c::mirrorX(void) {
         set(x, y, z, get(sx-x-1, y, z));
         set(sx-x-1, y, z, tmp);
       }
-  // FIXME: optimize
-  recalcBoundingBox();
+
+  unsigned int t = bx1;
+
+  bx1 = sx - 1 - bx2;
+  bx2 = sx - 1 - t;
 }
 
 void voxel_c::mirrorY(void) {
@@ -275,8 +304,11 @@ void voxel_c::mirrorY(void) {
         set(x, y, z, get(x, sy-y-1, z));
         set(x, sy-y-1, z, tmp);
       }
-  // FIXME: optimize
-  recalcBoundingBox();
+
+  unsigned int t = by1;
+
+  by1 = sy - 1 - by2;
+  by2 = sy - 1 - t;
 }
 
 void voxel_c::mirrorZ(void) {
@@ -287,8 +319,11 @@ void voxel_c::mirrorZ(void) {
         set(x, y, z, get(x, y, sz-z-1));
         set(x, y, sz-z-1, tmp);
       }
-  // FIXME: optimize
-  recalcBoundingBox();
+
+  unsigned int t = bz1;
+
+  bz1 = sz - 1 - bz2;
+  bz2 = sz - 1 - t;
 }
 
 void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
@@ -305,8 +340,10 @@ void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
 
   delete [] space;
   space = s2;
-  // FIXME: optimize
-  recalcBoundingBox();
+
+  if (dx + bx1 <= 0) bx1 = 0; else if (dx + bx1 >= sx) bx1 = sx-1; else bx1 += dx;
+  if (dy + by1 <= 0) by1 = 0; else if (dy + by1 >= sy) by1 = sy-1; else by1 += dy;
+  if (dz + bz1 <= 0) bz1 = 0; else if (dz + bz1 >= sz) bz1 = sz-1; else bz1 += dz;
 }
 
 bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
@@ -677,6 +714,7 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
   }
 
   setOutside(VX_EMPTY);
+  recalcBoundingBox();
 }
 
 xml::node assemblyVoxel_c::save(void) const {
@@ -836,5 +874,6 @@ assemblyVoxel_c::assemblyVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
       c++;
     }
   }
+  recalcBoundingBox();
 }
 

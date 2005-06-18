@@ -111,6 +111,8 @@ private:
   unsigned int by1, by2;
   unsigned int bz1, bz2;
 
+protected:
+
   void recalcBoundingBox(void);
 
 public:
