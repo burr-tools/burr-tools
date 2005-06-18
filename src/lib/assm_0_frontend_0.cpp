@@ -59,7 +59,7 @@ static pieceVoxel_c * addToCache(pieceVoxel_c * cache[24], unsigned int * fill, 
  * this function counts the number of nodes required to acommodate all pieces
  * the title line is missing from the returned number
  */
-unsigned long assm_0_frontend_0_c::countNodes(puzzle_c * puz, unsigned int problemNum) {
+unsigned long assm_0_frontend_0_c::countNodes(const puzzle_c * puz, unsigned int problemNum) {
 
   unsigned long nodes = 0;
 
@@ -121,9 +121,9 @@ unsigned long assm_0_frontend_0_c::countNodes(puzzle_c * puz, unsigned int probl
  * negative result show there is something wrong: the place -result has not
  * possible position inside the result
  */
-void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari, unsigned int problemNum) {
+void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_vari, unsigned int problemNum) {
 
-  pieceVoxel_c * result = puz->probGetResultShape(problemNum);
+  const pieceVoxel_c * result = puz->probGetResultShape(problemNum);
 
   /* this array contains the column in our matrix that corresponds with
    * the voxel position inside the result. We use this matrix because

@@ -142,22 +142,14 @@ assembler_0_c::~assembler_0_c() {
   if (searchState) delete [] searchState;
 }
 
-void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int prob) {
-
-  puzzle_c puz(p);
+void assembler_0_c::createMatrix(const puzzle_c * puz, unsigned int prob) {
 
   /* get and save piecenumber of puzzle */
-  piecenumber = puz.probPieceNumber(prob);
-
-  // minimize all pieces
-#if 0
-  for (unsigned int i = 0; i < puz.probShapeNumber(prob); i++)
-    puz.probGetShapeShape(prob, i)->minimizePiece();
-#endif
+  piecenumber = puz->probPieceNumber(prob);
 
   /* count the filled and variable units */
-  int res_vari = puz.probGetResultShape(prob)->countState(pieceVoxel_c::VX_VARIABLE);
-  int res_filled = puz.probGetResultShape(prob)->countState(pieceVoxel_c::VX_FILLED) + res_vari;
+  int res_vari = puz->probGetResultShape(prob)->countState(pieceVoxel_c::VX_VARIABLE);
+  int res_filled = puz->probGetResultShape(prob)->countState(pieceVoxel_c::VX_FILLED) + res_vari;
 
   varivoxelStart = 1 + piecenumber + res_filled - res_vari;
   varivoxelEnd = 1 + piecenumber + res_filled;
@@ -169,8 +161,8 @@ void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int prob) {
   // is not bigger than number of voxels in pieces
   int h = res_filled;
 
-  for (unsigned int j = 0; j < puz.probShapeNumber(prob); j++)
-    h -= puz.probGetShapeShape(prob, j)->countState(pieceVoxel_c::VX_FILLED) * puz.probGetShapeCount(prob, j);
+  for (unsigned int j = 0; j < puz->probShapeNumber(prob); j++)
+    h -= puz->probGetShapeShape(prob, j)->countState(pieceVoxel_c::VX_FILLED) * puz->probGetShapeCount(prob, j);
 
   if (h < 0) {
     errorsState = 1;
@@ -187,7 +179,7 @@ void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int prob) {
   holes = h;
 
   /* count the number of required nodes*/
-  unsigned long nodes = countNodes(&puz, prob);
+  unsigned long nodes = countNodes(puz, prob);
 
   // check, if there is one piece unplacable
   if (nodes <= 0) {
@@ -222,7 +214,7 @@ void assembler_0_c::createMatrix(const puzzle_c * p, unsigned int prob) {
   colCount = new unsigned int [nodes];
 
   /* fill the nodes arrays */
-  prepare(&puz, res_filled, res_vari, prob);
+  prepare(puz, res_filled, res_vari, prob);
 
   memset(rows, 0, piecenumber * sizeof(int));
   memset(columns, 0, piecenumber * sizeof(int));

@@ -145,7 +145,7 @@ private:
    * this function counts the number of nodes required to acommodate all pieces
    * the title line is missing from the returned number
    */
-  virtual unsigned long countNodes(puzzle_c * puz, unsigned int problemNum) = 0;
+  virtual unsigned long countNodes(const puzzle_c * puz, unsigned int problemNum) = 0;
 
   /* this function creates the matrix for the search function
    * because we need to know how many nodes we need to allocate the
@@ -153,7 +153,7 @@ private:
    * the function will not access the array but only count the number
    * of nodes used. this number is returned
    */
-  virtual void prepare(puzzle_c * puz, int res_filles, int res_vari, unsigned int problemNum) = 0;
+  virtual void prepare(const puzzle_c * puz, int res_filles, int res_vari, unsigned int problemNum) = 0;
 
   /* used by reduce to find out if the given position is a dead end
    * and will always lead to non solvable positions
