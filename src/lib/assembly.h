@@ -54,6 +54,14 @@ public:
 
   assembly_c(void) {}
 
+  /**
+   * load the assembly from xml file
+   */
+  assembly_c(const xml::node & node);
+
+  /* used to save to XML */
+  xml::node save(void) const;
+
   void addPlacement(unsigned char tran, int x, int y, int z) {
     assert(tran < 24);
     placements.push_back(placement_c(tran, x, y, z));

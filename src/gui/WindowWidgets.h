@@ -272,8 +272,8 @@ public:
   void cb_slider(void) { View3D->setSize(slider->value()); }
 
   void setVoxelSpace(pieceVoxel_c *p, int number) { View3D->setVoxelSpace(p, number); }
-  void setVoxelSpace(const assemblyVoxel_c * assm, PiecePositions *shifting, char *visibility, int num, int *colors) {
-    View3D->setVoxelSpace(assm, shifting, visibility, num, colors);
+  void setVoxelSpace(const puzzle_c * puz, int prob, int sol, PiecePositions *shifting, char *visibility, int num, int *colors) {
+    View3D->setVoxelSpace(puz, prob, sol, shifting, visibility, num, colors);
   }
 
   void setMarker(int x, int y, int z) { View3D->setMarker(x, y, z); }

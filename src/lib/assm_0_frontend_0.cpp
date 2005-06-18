@@ -22,8 +22,6 @@
 /* helper function to check if a piece an go at a position */
 static bool pieceFits(const pieceVoxel_c * piece, const pieceVoxel_c * result, const puzzle_c * puz, int x, int y, int z, unsigned int problemNum) {
 
-//  printf("pf: %i %i %i\n", x, y, z);
-
   for (unsigned int pz = 0; pz < piece->getZ(); pz++)
     for (unsigned int py = 0; py < piece->getY(); py++)
       for (unsigned int px = 0; px < piece->getX(); px++)
@@ -83,9 +81,9 @@ unsigned long assm_0_frontend_0_c::countNodes(puzzle_c * puz, unsigned int probl
     /* find all possible translations of piece and add them, if they fit */
     for (unsigned int rot = 0; rot < 24; rot++)
       if (pieceVoxel_c * rotation = addToCache(cache, &cachefill, new pieceVoxel_c(puz->probGetShapeShape(problemNum, pc), rot)))
-        for (int x = -((int)rotation->getX())+1; x < (int)result->getX()-1; x++)
-          for (int y = -((int)rotation->getY())+1; y < (int)(result->getY())-1; y++)
-            for (int z = -((int)rotation->getZ())+1; z < (int)(result->getZ())-1; z++)
+        for (int x = 1-((int)rotation->getX()); x < (int)result->getX(); x++)
+          for (int y = 1-((int)rotation->getY()); y < (int)(result->getY()); y++)
+            for (int z = 1-((int)rotation->getZ()); z < (int)(result->getZ()); z++)
               if (pieceFits(rotation, result, puz, x, y, z, problemNum))
                 placements++;
 
@@ -220,9 +218,9 @@ void assm_0_frontend_0_c::prepare(puzzle_c * puz, int res_filled, int res_vari, 
       for (unsigned int rot = 0; rot < 24; rot++) {
         bool skipRotation = ((pc == symBreakerPiece) && (piececount == 0) && symmetrieContainsTransformation(resultSym, rot));
         if (pieceVoxel_c * rotation = addToCache(cache, &cachefill, new pieceVoxel_c(puz->probGetShapeShape(problemNum, pc), rot))) {
-          for (int x = -((int)rotation->getX())+1; x < (int)result->getX()-1; x++)
-            for (int y = -((int)rotation->getY())+1; y < (int)result->getY()-1; y++)
-              for (int z = -((int)rotation->getZ())+1; z < (int)result->getZ()-1; z++)
+          for (int x = 1-((int)rotation->getX()); x < (int)result->getX(); x++)
+            for (int y = 1-((int)rotation->getY()); y < (int)result->getY(); y++)
+              for (int z = 1-((int)rotation->getZ()); z < (int)result->getZ(); z++)
                 if (pieceFits(rotation, result, puz, x, y, z, problemNum)) {
 
                   int piecenode = 0;

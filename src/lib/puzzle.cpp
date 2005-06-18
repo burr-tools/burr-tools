@@ -194,13 +194,13 @@ class solution_c {
 
 public:
 
-  solution_c(assemblyVoxel_c * assm, separation_c * t) : assembly(assm), tree(t) {}
+  solution_c(assembly_c * assm, separation_c * t) : assembly(assm), tree(t) {}
 
   solution_c(const xml::node & node);
 
   /* the assembly contains the pieces so that they
    * do assemble into the result shape */
-  assemblyVoxel_c * assembly;
+  assembly_c * assembly;
 
   /* the disassembly tree, only not NULL, if we
    * have disassembleed the puzzle
@@ -213,12 +213,12 @@ public:
 solution_c::solution_c(const xml::node & node) {
   assert(node.get_type() == xml::node::type_element);
   assert(strcmp(node.get_name(), "solution") == 0);
-  assert(node.find("voxel") != node.end());
+  assert(node.find("assembly") != node.end());
 
   xml::node::const_iterator it;
 
-  it = node.find("voxel");
-  assembly = new assemblyVoxel_c(*it);
+  it = node.find("assembly");
+  assembly = new assembly_c(*it);
 
   it = node.find("separation");
   if (it != node.end())
@@ -850,12 +850,12 @@ const std::string & puzzle_c::probGetName(unsigned int prob) const {
 }
 
 
-void puzzle_c::probAddSolution(unsigned int prob, assemblyVoxel_c * voxel) {
+void puzzle_c::probAddSolution(unsigned int prob, assembly_c * voxel) {
   assert(prob < problems.size());
   problems[prob]->solutions.push_back(new solution_c(voxel, 0));
 }
 
-void puzzle_c::probAddSolution(unsigned int prob, assemblyVoxel_c * voxel, separation_c * tree) {
+void puzzle_c::probAddSolution(unsigned int prob, assembly_c * voxel, separation_c * tree) {
   assert(prob < problems.size());
   problems[prob]->solutions.push_back(new solution_c(voxel, tree));
 }

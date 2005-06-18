@@ -455,19 +455,27 @@ int VoxelView::handle(int event) {
 
 void VoxelView::setVoxelSpace(const pieceVoxel_c *sp, int pn) {
   pcSpace = sp;
-  asmSpace = 0;
+
+  if (asmSpace) {
+    delete asmSpace;
+    asmSpace = 0;
+  }
+
   pieceNumber = pn;
   redraw();
 }
 
-void VoxelView::setVoxelSpace(const assemblyVoxel_c *sp, PiecePositions * pos, char * vArray, int numPieces, int * colors) {
+void VoxelView::setVoxelSpace(const puzzle_c * puz, unsigned int prob, unsigned int sol, PiecePositions * pos, char * vArray, int numPieces, int * colors) {
 
   shiftArray = pos;
   visArray = vArray;
   arraySize = numPieces;
   colArray = colors;
 
-  asmSpace = sp;
+  if (asmSpace)
+    delete asmSpace;
+
+  asmSpace = puz->probGetAssembly(prob, sol)->getVoxelSpace(puz, prob);
   pcSpace = 0;
 
   redraw();

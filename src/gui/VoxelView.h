@@ -25,6 +25,7 @@
 #include <FL/Fl_Gl_Window.H>
 
 #include "../lib/voxel.h"
+#include "../lib/puzzle.h"
 
 #include "ArcBall.h"
 #include "DisasmToMoves.h"
@@ -114,7 +115,7 @@ public:
    *
    * pieces outside range are normal
    */
-  void setVoxelSpace(const assemblyVoxel_c *sp, PiecePositions * pos, char * vArray, int numPieces, int * colors);
+  void setVoxelSpace(const puzzle_c * puz, unsigned int prob, unsigned int sol, PiecePositions * pos, char * vArray, int numPieces, int * colors);
 
 
 public:

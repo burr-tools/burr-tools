@@ -89,24 +89,24 @@ bool assemblerThread::assembly(assembly_c * a) {
 
   assemblies++;
 
-  assemblyVoxel_c *as = a->getVoxelSpace(puzzle, prob);
-
   switch(_solutionAction) {
   case SOL_SAVE_ASM:
-    puzzle->probAddSolution(prob, as);
+    puzzle->probAddSolution(prob, a);
     break;
 
   case SOL_DISASM:
     {
       action = ACT_DISASSEMBLING;
+
+      assemblyVoxel_c *as = a->getVoxelSpace(puzzle, prob);
       disassembler_3_c d(as, puzzle->probPieceNumber(prob));
       separation_c * s = d.disassemble();
       action = ACT_ASSEMBLING;
   
       if (s)
-        puzzle->probAddSolution(prob, as, s);
-      else
-        delete as;
+        puzzle->probAddSolution(prob, a, s);
+
+      delete as;
     }
     break;
   }

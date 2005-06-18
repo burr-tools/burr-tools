@@ -713,17 +713,19 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->value(puzzle->probGetDisassembly(prob, num)->sumMoves());
 
       disassemble = new DisasmToMoves(puzzle->probGetDisassembly(prob, num),
-                                      2*puzzle->probGetAssembly(prob, num)->getBiggestDimension());
+                                      2*puzzle->probGetResultShape(prob)->getBiggestDimension());
       disassemble->setStep(SolutionAnim->value());
 
-      View3D->setVoxelSpace(puzzle->probGetAssembly(prob, num), disassemble, visibility, 30, colors);
+      View3D->setVoxelSpace(puzzle, prob, num, disassemble, visibility, 30, colors);
+
     } else {
+
       SolutionAnim->range(0, 0);
       SolutionAnim->hide();
       MovesInfo->value(0);
       MovesInfo->hide();
 
-      View3D->setVoxelSpace(puzzle->probGetAssembly(prob, num), 0, visibility, 30, colors);
+      View3D->setVoxelSpace(puzzle, prob, num, 0, visibility, 30, colors);
     }
 
     SolutionEmpty = false;

@@ -26,6 +26,7 @@
 
 #include "voxel.h"
 #include "disassembly.h"
+#include "assembly.h"
 
 #include <vector>
 #include <iostream>
@@ -191,11 +192,11 @@ public:
   assembler_c * probGetAssembler(unsigned int prob);
   const assembler_c * probGetAssembler(unsigned int prob) const;
 
-  void probAddSolution(unsigned int prob, assemblyVoxel_c * voxel);
-  void probAddSolution(unsigned int prob, assemblyVoxel_c * voxel, separation_c * tree);
+  void probAddSolution(unsigned int prob, assembly_c * voxel);
+  void probAddSolution(unsigned int prob, assembly_c * voxel, separation_c * tree);
   void probRemoveAllSolutions(unsigned int prob);
   unsigned int probSolutionNumber(unsigned int prob);
-  assemblyVoxel_c * probGetAssembly(unsigned int prob, unsigned int sol);
+  assembly_c * probGetAssembly(unsigned int prob, unsigned int sol);
   separation_c * probGetDisassembly(unsigned int prob, unsigned int sol);
 
   const assembly_c * probGetAssembly(unsigned int prob, unsigned int sol) const;
