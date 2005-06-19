@@ -52,7 +52,7 @@ void* start_th(void * c)
     }
 
     p->action = assemblerThread::ACT_REDUCE;
-    assm->reduce();
+//    assm->reduce();
 
   } else
     assm = (assm_0_frontend_0_c*)p->puzzle->probGetAssembler(p->prob);
