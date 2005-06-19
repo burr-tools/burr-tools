@@ -30,7 +30,7 @@
 
 
 VoxelView::VoxelView(int x,int y,int w,int h,const char *l) : Fl_Gl_Window(x,y,w,h,l),
-  markerType(false), arcBall(new ArcBall_c(w, h)), size(10), doUpdates(true)
+  arcBall(new ArcBall_c(w, h)), size(10), markerType(false), doUpdates(true)
 {
 };
 
