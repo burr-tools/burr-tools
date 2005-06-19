@@ -17,13 +17,12 @@
  */
 
 
-#include "ArcBall.h"                    // ArcBall header
+#include "ArcBall.h"
 
-#include <GL/gl.h>                      // Header File For The OpenGL32 Library
-#include <math.h>                       // Needed for sqrtf
+#include <GL/gl.h>  
+#include <math.h>   
 #include <assert.h>
 
-//assuming IEEE-754(GLfloat), which i believe has max precision of 7 bits
 #define Epsilon 1.0e-5
 
 /**
@@ -142,11 +141,6 @@ static void Matrix4fSetRotationFromMatrix3f(GLfloat a[16], const GLfloat m[9])
   a[10] = m[8] * scale;
 }
 
-//Arcball sphere constants:
-//Diameter is       2.0f
-//Radius is         1.0f
-//Radius squared is 1.0f
-
 void ArcBall_c::mapToSphere(GLfloat x, GLfloat y, GLfloat NewVec[3]) const
 {
   GLfloat TempPt[2];
@@ -260,8 +254,8 @@ void ArcBall_c::addTransform(void) {
     GLfloat ThisQuat[4];
 
     getDrag(ThisQuat);                                              // Update End Vector And Get Rotation As Quaternion
-    Matrix3fSetRotationFromQuat4f(ThisRot, ThisQuat);             // Convert Quaternion Into Matrix3fT
-    Matrix3fMulMatrix3f(ThisRot, LastRot);                        // Accumulate Last Rotation Into This One
+    Matrix3fSetRotationFromQuat4f(ThisRot, ThisQuat);               // Convert Quaternion Into Matrix3fT
+    Matrix3fMulMatrix3f(ThisRot, LastRot);                          // Accumulate Last Rotation Into This One
     Matrix4fSetRotationFromMatrix3f(Transform, ThisRot);            // Set Our Final Transform's Rotation From This One
     glMultMatrixf(Transform);                                       // NEW: Apply Dynamic Transform
 
