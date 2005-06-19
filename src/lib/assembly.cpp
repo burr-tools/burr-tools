@@ -57,7 +57,8 @@ assembly_c::assembly_c(const xml::node & node) {
     if (*c == ' ') {
       if (state == 3) {
 
-        assert(trans == 255 || ((trans >= 0) && (trans < 24)));
+        if ((trans != 255) && ((trans < 0) || (trans >= 24)))
+          throw load_error("transformations need to be either 255 or between 0 and 24", node);
 
         placements.push_back(placement_c(trans, x, y, z));
         x = y = z = trans = state = 0;
@@ -66,7 +67,8 @@ assembly_c::assembly_c(const xml::node & node) {
 
     } else {
 
-      assert(*c == '-' || ((*c >= '0') && (*c <= '9')));
+      if ((*c != '-') && ((*c < '0') || (*c > '9')))
+        throw load_error("nun number character found where number is expected", node);
 
       switch(state) {
       case 0:
@@ -123,8 +125,11 @@ assembly_c::assembly_c(const xml::node & node) {
     c++;
   }
 
-  assert(state == 3);
-  assert(trans == 255 || ((trans >= 0) && (trans < 24)));
+  if (state != 3)
+    throw load_error("not the right number of numbers in assembly", node);
+  if ((trans != 255) && ((trans < 0) || (trans >= 24)))
+    throw load_error("transformations need to be either 255 or between 0 and 24", node);
+
   placements.push_back(placement_c(trans, x, y, z));
 }
 
