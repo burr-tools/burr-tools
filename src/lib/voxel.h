@@ -171,6 +171,11 @@ public:
    */
   unsigned int getZ(void) const { return sz; }
 
+  /**
+   * returns the squared diagonal of the space
+   */
+  unsigned int getDiagonal(void) const { return sx*sx + sy*sy + sz*sz; }
+
   unsigned int getBiggestDimension(void) const {
     if (sx > sy)
       if (sz > sx)

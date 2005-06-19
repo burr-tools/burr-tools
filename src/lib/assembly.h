@@ -73,22 +73,22 @@ public:
 
   unsigned int placementCount(void) { return placements.size(); }
 
-  unsigned char getTransformation(unsigned char num) {
+  unsigned char getTransformation(unsigned char num) const {
     assert(num < placements.size());
     return placements[num].transformation;
   }
 
-  int getX(unsigned char num) {
+  int getX(unsigned char num) const {
     assert(num < placements.size());
     return placements[num].xpos;
   }
 
-  int getY(unsigned char num) {
+  int getY(unsigned char num) const {
     assert(num < placements.size());
     return placements[num].ypos;
   }
 
-  int getZ(unsigned char num) {
+  int getZ(unsigned char num) const {
     assert(num < placements.size());
     return placements[num].zpos;
   }
