@@ -19,7 +19,7 @@
 
 #include "DisasmToMoves.h"
 
-DisasmToMoves::DisasmToMoves(const separation_c * tr, unsigned int sz) : tree(tr), size(sz) {
+DisasmToMoves::DisasmToMoves(const separation_c * tr, const assembly_c * a, unsigned int sz) : tree(tr), assm(a), size(sz) {
   moves = new float[tr->getPieceNumber()*4];
 }
 
@@ -47,15 +47,15 @@ void DisasmToMoves::setStep(float step) {
 
 float DisasmToMoves::getX(unsigned int piece) {
   assert(piece < tree->getPieceNumber());
-  return moves[4*piece+0];
+  return moves[4*piece+0] + assm->getX(piece);
 }
 float DisasmToMoves::getY(unsigned int piece) {
   assert(piece < tree->getPieceNumber());
-  return moves[4*piece+1];
+  return moves[4*piece+1] + assm->getY(piece);
 }
 float DisasmToMoves::getZ(unsigned int piece) {
   assert(piece < tree->getPieceNumber());
-  return moves[4*piece+2];
+  return moves[4*piece+2] + assm->getZ(piece);
 }
 float DisasmToMoves::getA(unsigned int piece) {
   assert(piece < tree->getPieceNumber());

@@ -259,7 +259,6 @@ public:
 
 
 // the groups with the 3d view and the zoom slider
-
 class View3dGroup : public Fl_Group {
 
   VoxelView * View3D;
@@ -269,12 +268,13 @@ public:
 
   View3dGroup(int x, int y, int w, int h);
 
-  void cb_slider(void) { View3D->setSize(slider->value()); }
+  void cb_slider(void);
 
-  void setVoxelSpace(pieceVoxel_c *p, int number) { View3D->setVoxelSpace(p, number); }
-  void setVoxelSpace(const puzzle_c * puz, int prob, int sol, PiecePositions *shifting, char *visibility, int num, int *colors) {
-    View3D->setVoxelSpace(puz, prob, sol, shifting, visibility, num, colors);
-  }
+  void showNothing(void) { View3D->clearSpaces(); }
+  void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
+  void showProblem(const puzzle_c * puz, unsigned int probNum);
+  void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum);
+  void updatePositions(PiecePositions *shifting);
 
   void setMarker(int x, int y, int z) { View3D->setMarker(x, y, z); }
   void hideMarker(void) { View3D->hideMarker(); }

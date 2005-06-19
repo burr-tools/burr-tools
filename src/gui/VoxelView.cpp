@@ -30,36 +30,9 @@
 
 
 VoxelView::VoxelView(int x,int y,int w,int h,const char *l) : Fl_Gl_Window(x,y,w,h,l),
-  asmSpace(0), pcSpace(0), markerType(false), arcBall(new ArcBall_c(w, h)), size(10)
+  markerType(false), arcBall(new ArcBall_c(w, h)), size(10), doUpdates(true)
 {
 };
-
-void setColor(bool multi, unsigned int piece, int p, float alpha, int *colArray) {
-
-  if (multi) {
-
-    piece <<= 1;
-
-    // simple method for the beginning
-    if (p & 1)
-      glColor4f(darkPieceColor(pieceColorR(colArray[piece], colArray[piece + 1])),
-                darkPieceColor(pieceColorG(colArray[piece], colArray[piece + 1])),
-                darkPieceColor(pieceColorB(colArray[piece], colArray[piece + 1])), alpha);
-    else
-      glColor4f(lightPieceColor(pieceColorR(colArray[piece], colArray[piece + 1])),
-                lightPieceColor(pieceColorG(colArray[piece], colArray[piece + 1])),
-                lightPieceColor(pieceColorB(colArray[piece], colArray[piece + 1])), alpha);
-  } else
-
-    if (p & 1)
-      glColor4f(pieceColorR(piece) * 0.9,
-                pieceColorG(piece) * 0.9,
-                pieceColorB(piece) * 0.9, alpha);
-    else
-      glColor4f(1-((1-pieceColorR(piece)) * 0.9),
-                1-((1-pieceColorG(piece)) * 0.9),
-                1-((1-pieceColorB(piece)) * 0.9), alpha);
-}
 
 // draws a box with borders depending on the neibor boxes
 static void drawBox(const voxel_c * space, int x, int y, int z) {
@@ -255,121 +228,86 @@ static void drawCube(const voxel_c * space, int x, int y, int z) {
 
 void VoxelView::drawVoxelSpace() {
 
-/* Draw a colored cube */
   glShadeModel(GL_FLAT);
 
-  if (!pcSpace && !asmSpace) return;
+  glScalef(scale, scale, scale);
 
-  const voxel_c *space = 0;
+  for (unsigned int piece = 0; piece < shapes.size(); piece++) {
 
-  if (asmSpace)
-    space = asmSpace;
-  else
-    space = pcSpace;
+    glPushMatrix();
 
-  glTranslatef(space->getX()/-2.0, space->getY()/-2.0, space->getZ()/-2.0);
+    switch(trans) {
+    case ScaleRotateTranslate:
+      glTranslatef(shapes[piece].x, shapes[piece].y, shapes[piece].z);
+      glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
+      arcBall->addTransform();
+      glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
+      break;
+    case TranslateRoateScale:
+      arcBall->addTransform();
+      glTranslatef(shapes[piece].x, shapes[piece].y, shapes[piece].z);
+      glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
+      glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
+      break;
+    case CenterTranslateRoateScale:
+      arcBall->addTransform();
+      glTranslatef(shapes[piece].x, shapes[piece].y, shapes[piece].z);
+      glTranslatef(-centerX, -centerY, -centerZ);
+      glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
+      break;
+    default:
+      break;
+    }
 
-  glDisable(GL_LIGHTING);
-  glDisable(GL_BLEND);
-  glBegin(GL_LINES);
-  glColor3f(1, 0, 0);
-  glVertex3f(-1, -1, -1); glVertex3f(space->getX()+1, -1, -1);
-  glColor3f(0, 1, 0);
-  glVertex3f(-1, -1, -1); glVertex3f(-1, space->getY()+1, -1);
-  glColor3f(0, 0, 1);
-  glVertex3f(-1, -1, -1); glVertex3f(-1, -1, space->getZ()+1);
-  glEnd();
-  glEnable(GL_LIGHTING);
-  glEnable(GL_BLEND);
+    if (_showCoordinateSystem) {
+      glDisable(GL_LIGHTING);
+      glDisable(GL_BLEND);
+      glBegin(GL_LINES);
+      glColor3f(1, 0, 0);
+      glVertex3f(-1, -1, -1); glVertex3f(shapes[piece].shape->getX()+1, -1, -1);
+      glColor3f(0, 1, 0);
+      glVertex3f(-1, -1, -1); glVertex3f(-1, shapes[piece].shape->getY()+1, -1);
+      glColor3f(0, 0, 1);
+      glVertex3f(-1, -1, -1); glVertex3f(-1, -1, shapes[piece].shape->getZ()+1);
+      glEnd();
+      glEnable(GL_LIGHTING);
+      glEnable(GL_BLEND);
+    }
 
-  for (unsigned int x = 0; x < space->getX(); x++)
-    for (unsigned int y = 0; y < space->getY(); y++)
-      for (unsigned int z = 0; z < space->getZ(); z++) {
-
-        voxel_type p;
-
-        enum {
-          box,
-          grid,
-          variable,
-          nothing
-        } toDraw;
-
-        if (asmSpace) {
-          if (asmSpace->isEmpty(x, y, z))
+    for (unsigned int x = 0; x < shapes[piece].shape->getX(); x++)
+      for (unsigned int y = 0; y < shapes[piece].shape->getY(); y++)
+        for (unsigned int z = 0; z < shapes[piece].shape->getZ(); z++) {
+  
+          if (shapes[piece].shape->getState(x, y , z) == pieceVoxel_c::VX_EMPTY)
             continue;
 
-          p = asmSpace->pieceNumber(x, y, z);
+          if (shapes[piece].a == 0)
+            continue;
 
-          if (shiftArray)
-            setColor(true, p, x+y+z, shiftArray->getA(p), colArray);
+          if ((x+y+z) & 1)
+            glColor4f(shapes[piece].r, shapes[piece].g, shapes[piece].b, shapes[piece].a);
           else
-            setColor(true, p, x+y+z, 1, colArray);
+            glColor4f(shapes[piece].r*0.9, shapes[piece].g*0.9, shapes[piece].b*0.9, shapes[piece].a);
 
-          glPushMatrix();
-
-          if ((asmSpace->pieceNumber(x, y, z) < arraySize) && (shiftArray))
-            glTranslatef(shiftArray->getX(p), shiftArray->getY(p), shiftArray->getZ(p));
-
-          switch(visArray[p]) {
-          case 0: toDraw = box; break;
-          case 1: toDraw = grid; break;
-          case 2: toDraw = nothing; break;
+          switch (shapes[piece].mode) {
+          case normal:
+            if (shapes[piece].shape->getState(x, y , z) == pieceVoxel_c::VX_VARIABLE)
+              drawCube(shapes[piece].shape, x, y, z);
+            else
+              drawBox(shapes[piece].shape, x, y, z);
+            break;
+          case gridline:
+            drawFrame(shapes[piece].shape, x, y, z);
+            break;
+          case invisible:
+            break;
           }
-
-          if ((shiftArray) && (shiftArray->getA(p) == 0))
-            toDraw = nothing;
-
-        } else {
-
-          if (pcSpace->getState(x, y, z) == pieceVoxel_c::VX_EMPTY)
-            continue;
-
-          p = pcSpace->getState(x, y, z);
-
-          setColor(false, pieceNumber, x+y+z, 1, colArray);
-          if (p == pieceVoxel_c::VX_FILLED)
-            toDraw = box;
-          else
-            toDraw = variable;
         }
 
-        switch (toDraw) {
-        case box:
-          drawBox(space, x, y, z);
-          break;
-        case grid:
-          drawFrame(space, x, y, z);
-          break;
-        case variable:
-          drawCube(space, x, y, z);
-          break;
-        case nothing:
-          break;
-        }
-
-        if (asmSpace) {
-          glPopMatrix();
-        }
-      }
-
-  if ((pcSpace) && (markerType)) {
-    glColor4f(0.5, 0.5, 0.5, 0.5);
-    glDisable(GL_LIGHTING);
-    glBegin(GL_QUADS);
-
-    glNormal3f( 0.0f, 0.0f, 1.0f);
-    glVertex3f(-1             , -1             , mZ+0.5);
-    glVertex3f(-1             , space->getY()+1, mZ+0.5);
-    glVertex3f(space->getX()+1, space->getY()+1, mZ+0.5);
-    glVertex3f(space->getX()+1, -1             , mZ+0.5);
-    glEnd();
-    glEnable(GL_LIGHTING);
+    glPopMatrix();
   }
 
-};
-
-
+}
 
 static void gluPerspective(double fovy, double aspect, double zNear, double zFar) {
 
@@ -382,6 +320,9 @@ static void gluPerspective(double fovy, double aspect, double zNear, double zFar
 }
 
 void VoxelView::draw() {
+
+  if (!doUpdates)
+    return;
 
   GLfloat LightAmbient[]= { 0.01f, 0.01f, 0.01f, 1.0f };
   GLfloat LightDiffuse[]= { 1.5f, 1.5f, 1.5f, 1.0f };
@@ -420,16 +361,15 @@ void VoxelView::draw() {
     unsigned char r, g, b;
     Fl::get_color(color(), r, g, b);
     glClearColor(r/255.0, g/255.0, b/255.0, 0);
-    //0.94, 0.92, 0.94, 0);
   }
+
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glPushMatrix();
   gluPerspective(5+size, 1.0*w()/h(), 10, 1100);
   glTranslatef(0, 0, -50);
-  arcBall->addTransform();
   drawVoxelSpace();
   glPopMatrix();
-};
+}
 
 int VoxelView::handle(int event) {
 
@@ -453,31 +393,84 @@ int VoxelView::handle(int event) {
   return 1;
 }
 
-void VoxelView::setVoxelSpace(const pieceVoxel_c *sp, int pn) {
-  pcSpace = sp;
+unsigned int VoxelView::addSpace(const pieceVoxel_c * vx) {
+  shapeInfo i;
 
-  if (asmSpace) {
-    delete asmSpace;
-    asmSpace = 0;
-  }
+  i.r = i.g = i.b = 1;
+  i.a = 1;
+  i.shape = vx;
 
-  pieceNumber = pn;
+  i.mode = normal;
+
+  i.x = i.y = i.z = 0;
+  i.scale = 1;
+
+  shapes.push_back(i);
+
+  redraw();
+
+  return shapes.size()-1;
+}
+
+void VoxelView::clearSpaces(void) {
+
+  for (unsigned int i = 0; i < shapes.size(); i++)
+    delete shapes[i].shape;
+
+  shapes.clear();
   redraw();
 }
 
-void VoxelView::setVoxelSpace(const puzzle_c * puz, unsigned int prob, unsigned int sol, PiecePositions * pos, char * vArray, int numPieces, int * colors) {
+unsigned int VoxelView::spaceNumber(void) {
+  return shapes.size();
+}
 
-  shiftArray = pos;
-  visArray = vArray;
-  arraySize = numPieces;
-  colArray = colors;
-
-  if (asmSpace)
-    delete asmSpace;
-
-  asmSpace = puz->probGetAssembly(prob, sol)->getVoxelSpace(puz, prob);
-  pcSpace = 0;
+void VoxelView::setSpaceColor(unsigned int nr, float r, float g, float b, float a) {
+  shapes[nr].r = r;
+  shapes[nr].g = g;
+  shapes[nr].b = b;
+  shapes[nr].a = a;
 
   redraw();
+}
+
+void VoxelView::setSpaceColor(unsigned int nr, float a) {
+  shapes[nr].a = a;
+
+  redraw();
+}
+
+void VoxelView::setSpacePosition(unsigned int nr, float x, float y, float z, float scale) {
+  shapes[nr].x = x;
+  shapes[nr].y = y;
+  shapes[nr].z = z;
+  shapes[nr].scale = scale;
+  redraw();
+}
+
+void VoxelView::setDrawingMode(unsigned int nr, drawingMode mode) {
+  shapes[nr].mode = mode;
+  redraw();
+}
+
+void VoxelView::setColorMode(colorMode color) {
+  colors = color;
+  redraw();
+}
+
+void VoxelView::setScaling(float factor) {
+  scale = factor;
+  redraw();
+}
+
+void VoxelView::setTransformationType(transformationType type) {
+  trans = type;
+  redraw();
+}
+
+void VoxelView::update(bool doIt) {
+  doUpdates = doIt;
+  if (doIt)
+    redraw();
 }
 

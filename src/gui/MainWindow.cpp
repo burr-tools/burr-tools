@@ -182,6 +182,7 @@ void UserInterface::cb_ProbSel(long reason) {
     PiecesCountList->setPuzzle(puzzle, problemSelector->getSelection());
     colconstrList->setPuzzle(puzzle, problemSelector->getSelection());
     problemResult->setPuzzle(puzzle, problemSelector->getSelection());
+    activateProblem(problemSelector->getSelection());
     break;
   }
 }
@@ -214,6 +215,7 @@ void UserInterface::cb_NewProblem(void) {
     puzzle->probSetName(prob, name);
     changed = true;
     problemSelector->redraw();
+    activateProblem(prob);
   }
 }
 
@@ -225,6 +227,7 @@ void UserInterface::cb_DeleteProblem(void) {
     puzzle->removeProblem(problemSelector->getSelection());
     problemSelector->redraw();
     changed = true;
+    activateProblem(problemSelector->getSelection());
   }
 }
 
@@ -239,6 +242,7 @@ void UserInterface::cb_CopyProblem(void) {
 
     problemSelector->redraw();
     changed = true;
+    activateProblem(prob);
   }
 }
 
@@ -252,6 +256,7 @@ void UserInterface::cb_ShapeToResult(void) {
 
   puzzle->probSetResult(problemSelector->getSelection(), shapeAssignmentSelector->getSelection());
   problemResult->setPuzzle(puzzle, problemSelector->getSelection());
+  activateProblem(problemSelector->getSelection());
 
   changed = true;
 }
@@ -277,6 +282,7 @@ void UserInterface::cb_AddShapeToProblem(void) {
     }
 
   puzzle->probAddShape(prob, shapeAssignmentSelector->getSelection(), 1);
+  activateProblem(problemSelector->getSelection());
 }
 
 static void cb_RemoveShapeFromProblem_stub(Fl_Widget* o, void* v) { ui->cb_RemoveShapeFromProblem(); }
@@ -300,6 +306,8 @@ void UserInterface::cb_RemoveShapeFromProblem(void) {
       changed = true;
       PiecesCountList->redraw();
     }
+
+  activateProblem(problemSelector->getSelection());
 }
 
 static void cb_AllowColor_stub(Fl_Widget* o, void* v) { ui->cb_AllowColor(); }
@@ -430,7 +438,7 @@ void UserInterface::cb_SolutionAnim(Fl_Value_Slider* o) {
   o->take_focus();
   if (disassemble) {
     disassemble->setStep(o->value());
-    View3D->redraw();
+    View3D->updatePositions(disassemble);
   }
 }
 
@@ -639,7 +647,7 @@ void UserInterface::show(int argn, char ** argv) {
 }
 
 void UserInterface::activateClear(void) {
-  View3D->setVoxelSpace(0, 0);
+  View3D->showNothing();
   pieceEdit->clearPuzzle();
   pieceTools->setVoxelSpace(0);
 
@@ -652,7 +660,7 @@ void UserInterface::activateShape(unsigned int number) {
 
     pieceVoxel_c * p = puzzle->getShape(number);
 
-    View3D->setVoxelSpace(p, number);
+    View3D->showSingleShape(puzzle, number);
     pieceEdit->setPuzzle(puzzle, number);
     pieceTools->setVoxelSpace(p);
 
@@ -660,7 +668,7 @@ void UserInterface::activateShape(unsigned int number) {
 
   } else {
 
-    View3D->setVoxelSpace(0, 0);
+    View3D->showNothing();
     pieceEdit->clearPuzzle();
     pieceTools->setVoxelSpace(0);
   }
@@ -669,10 +677,12 @@ void UserInterface::activateShape(unsigned int number) {
 }
 
 void UserInterface::activateProblem(unsigned int prob) {
+
+  View3D->showProblem(puzzle, prob);
+
 #if 0
   pieceVoxel_c * p = puzzle->getResult(0); // FIXME multiple solutions
 
-  View3D->setVoxelSpace(p, 255);
   resultEdit->setVoxelSpace(p, 255);
   resultTools->setVoxelSpace(p);
 #endif
@@ -686,8 +696,6 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
     delete disassemble;
     disassemble = 0;
   }
-
-  printf("show\n");
 
   if ((prob < puzzle->problemNumber()) && (num < puzzle->probSolutionNumber(prob))) {
 
@@ -718,11 +726,12 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->show();
       MovesInfo->value(puzzle->probGetDisassembly(prob, num)->sumMoves());
 
-      disassemble = new DisasmToMoves(puzzle->probGetDisassembly(prob, num),
+      disassemble = new DisasmToMoves(puzzle->probGetDisassembly(prob, num), puzzle->probGetAssembly(prob, num),
                                       2*puzzle->probGetResultShape(prob)->getBiggestDimension());
       disassemble->setStep(SolutionAnim->value());
 
-      View3D->setVoxelSpace(puzzle, prob, num, disassemble, visibility, 30, colors);
+      View3D->showAssembly(puzzle, prob, num);
+      View3D->updatePositions(disassemble);
 
     } else {
 
@@ -731,14 +740,14 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->value(0);
       MovesInfo->hide();
 
-      View3D->setVoxelSpace(puzzle, prob, num, 0, visibility, 30, colors);
+      View3D->showAssembly(puzzle, prob, num);
     }
 
     SolutionEmpty = false;
 
   } else {
 
-    View3D->setVoxelSpace(0, 0);
+    View3D->showNothing();
     SolutionEmpty = true;
 
     SolutionAnim->hide();

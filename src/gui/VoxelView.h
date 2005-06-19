@@ -65,15 +65,6 @@ private:
   /* Draws the voxelspace. */
   void drawVoxelSpace();
 
-  const assemblyVoxel_c * asmSpace;
-  const pieceVoxel_c * pcSpace;
-  voxel_type pieceNumber;
-
-  PiecePositions * shiftArray;
-  char * visArray;
-  int arraySize;
-  int * colArray;
-
   ArcBall_c * arcBall;
 
   double size;
@@ -81,6 +72,7 @@ private:
 public:
 
   VoxelView(int x,int y,int w,int h,const char *l=0);
+
   // this value determines the scaling factor used to draw the cube.
   void setSize(double sz) {
     size = sz;
@@ -90,44 +82,14 @@ public:
   void draw();
   int handle(int event);
 
-  /* sets the voxel space and the piecenumber and sets single mode */
-  void setVoxelSpace(const pieceVoxel_c *sp, int pn);
-
-  /* sets a new voxel space and the necessary parameters and
-   * activates multi mode
-   *
-   * the parameters are pointers to arrays. they are read each time
-   * the image is redrawn, so you can change them and the image
-   * will replect that as soon as it is redrawn
-   *
-   * set shiftarray only active in multi mode
-   * this array defines by how much a piece is
-   * shifted in the 3 directions. for the first
-   * piece the first 3 values, the 2nd piece are the next 3 values, ...
-   * numPieces is used for sanity check, it must contain the number
-   * of pieces inside the multi display, so the number of entries
-   * in the array must be numPieces*3
-   * pieces with grater number are supposed to be unshifted
-   *
-   * sets the visibility of each piece, if 0 piece isnormal,
-   * 1 is only outlined
-   * 2 is completely invisible
-   *
-   * pieces outside range are normal
-   */
-  void setVoxelSpace(const puzzle_c * puz, unsigned int prob, unsigned int sol, PiecePositions * pos, char * vArray, int numPieces, int * colors);
-
-
-public:
-  /* ------ new interface -------- */
-
-  void addSpace(const pieceVoxel_c * vx);
+  unsigned int addSpace(const pieceVoxel_c * vx);
   void clearSpaces(void);
 
   unsigned int spaceNumber(void);
 
-  void setSpaceColor(unsigned int nr, unsigned char r, unsigned char g, unsigned char b);
-  void setSpacePosition(unsigned int nr, float x, float y, float z);
+  void setSpaceColor(unsigned int nr, float r, float g, float b, float a);
+  void setSpaceColor(unsigned int nr, float a);
+  void setSpacePosition(unsigned int nr, float x, float y, float z, float scale);
 
   typedef enum {
     normal,          // draw normal cubes with a grate at outer edges
@@ -140,13 +102,15 @@ public:
     paletteColor
   } colorMode;
 
-  void setDrawingMode(unsigned int nr, drawingMode mode, colorMode color);
+  void setDrawingMode(unsigned int nr, drawingMode mode);
+  void setColorMode(colorMode color);
 
   void setScaling(float factor);
 
   typedef enum {
-    ScaleRotateTranslate,     // for showing problems
-    TranslateRoateScale       // for showing pieces and disassembly
+    ScaleRotateTranslate,      // for showing problems
+    TranslateRoateScale,       // for showing pieces
+    CenterTranslateRoateScale  // for showing disassembly
   } transformationType;
 
   void setTransformationType(transformationType type);
@@ -161,14 +125,27 @@ public:
 
   void hideMarker(void) { markerType = false; }
 
+  // if more complex updates are done, this can avoid doing
+  // a screen update each time
+  void update(bool doIt);
+
+  void showCoordinateSystem(bool show) { _showCoordinateSystem = show; redraw(); }
+
+  void setCenter(float x, float y, float z) {
+    centerX = x;
+    centerY = y;
+    centerZ = z;
+    redraw();
+  }
+
 private:
 
   typedef struct {
 
-    unsigned int r, g, b;
-    pieceVoxel_c * shape;
+    float r, g, b, a;
+    const pieceVoxel_c * shape;
     drawingMode mode;
-    float x, y, z;
+    float x, y, z, scale;
 
   } shapeInfo;
 
@@ -183,5 +160,10 @@ private:
   transformationType trans;
   colorMode colors;
 
+  bool _showCoordinateSystem;
+
+  bool doUpdates;
+
+  float centerX, centerY, centerZ;
 };
 

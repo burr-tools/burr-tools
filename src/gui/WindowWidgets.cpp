@@ -211,6 +211,11 @@ ConstraintsGroup::ConstraintsGroup(int x, int y, int w, int h, ColorConstraintsE
 
 static void cb_View3dGroupSlider_stub(Fl_Widget* o, void* v) { ((View3dGroup*)(o->parent()))->cb_slider(); }
 
+void View3dGroup::cb_slider(void) {
+  View3D->setSize(exp(slider->value()));
+}
+
+
 View3dGroup::View3dGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   box(FL_DOWN_BOX);
 
@@ -221,9 +226,10 @@ View3dGroup::View3dGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   slider = new Fl_Slider(x+w-15, y, 15, h);
   slider->tooltip("Zoom view.");
   slider->box(FL_THIN_DOWN_BOX);
-  slider->maximum(50);
+  slider->maximum(5);
+  slider->minimum(-3);
   slider->step(0.01);
-  slider->value(10);
+  slider->value(2);
   slider->callback(cb_View3dGroupSlider_stub);
 
   resizable(View3D);
@@ -299,3 +305,133 @@ void ResultViewer::draw(void) {
   Fl_Box::draw();
 }
 
+
+void View3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
+
+  View3D->update(false);
+
+  View3D->clearSpaces();
+  unsigned int num = View3D->addSpace(new pieceVoxel_c(puz->getShape(shapeNum)));
+
+  View3D->setSpaceColor(num, pieceColorR(shapeNum), pieceColorG(shapeNum), pieceColorB(shapeNum), 255);
+
+  View3D->setTransformationType(VoxelView::TranslateRoateScale);
+  View3D->setScaling(1);
+  View3D->update(true);
+}
+
+void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum) {
+
+  View3D->update(false);
+
+  View3D->clearSpaces();
+
+  // first find out how to arrange the pieces:
+  unsigned int square = 3;
+  while (square * (square-2) < puz->probShapeNumber(probNum)) square++;
+
+  unsigned int num;
+
+  float diagonal = 0;
+
+  // now find a scaling factor, so that all pieces fit into their square
+  if (puz->probGetResultShape(probNum)) {
+
+    if (puz->probGetResultShape(probNum)->getDiagonal() > diagonal)
+      diagonal = puz->probGetResultShape(probNum)->getDiagonal();
+  }
+
+  for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
+    if (puz->probGetShapeShape(probNum, p)->getDiagonal() > diagonal)
+      diagonal = puz->probGetShapeShape(probNum, p)->getDiagonal();
+
+  diagonal = sqrt(diagonal)/1.5;
+
+  // now place the result shape
+  if (puz->probGetResultShape(probNum)) {
+
+    num = View3D->addSpace(new pieceVoxel_c(puz->probGetResultShape(probNum)));
+    View3D->setSpaceColor(num,
+                          pieceColorR(puz->probGetResult(probNum)),
+                          pieceColorG(puz->probGetResult(probNum)),
+                          pieceColorB(puz->probGetResult(probNum)), 255);
+    View3D->setSpacePosition(num,
+                             0.5* (square*diagonal) * (1.0/square - 0.5),
+                             0.5* (square*diagonal) * (0.5 - 1.0/square), -20, 1.0);
+  }
+
+  // and now the shapes
+  int unsigned line = 2;
+  int unsigned col = 0;
+  for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++) {
+    num = View3D->addSpace(new pieceVoxel_c(puz->probGetShapeShape(probNum, p)));
+
+    View3D->setSpaceColor(num,
+                          pieceColorR(puz->probGetShape(probNum, p)),
+                          pieceColorG(puz->probGetShape(probNum, p)),
+                          pieceColorB(puz->probGetShape(probNum, p)), 255);
+
+    View3D->setSpacePosition(num,
+                             0.5* (square*diagonal) * ((col+0.5)/square - 0.5),
+                             0.5* (square*diagonal) * (0.5 - (line+0.5)/square),
+                             -20, 0.5);
+
+    col++;
+    if (col == square) {
+      col = 0;
+      line++;
+    }
+  }
+
+  View3D->setScaling(5);
+  View3D->setTransformationType(VoxelView::ScaleRotateTranslate);
+  View3D->update(true);
+}
+
+void View3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
+  View3D->update(false);
+
+  View3D->clearSpaces();
+
+  unsigned int num;
+
+  const assembly_c * assm = puz->probGetAssembly(probNum, solNum);
+
+  unsigned int piece = 0;
+
+  // and now the shapes
+  for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
+    for (unsigned int q = 0; q < puz->probGetShapeCount(probNum, p); q++) {
+
+      num = View3D->addSpace(new pieceVoxel_c(puz->probGetShapeShape(probNum, p), assm->getTransformation(piece)));
+
+      View3D->setSpacePosition(num, assm->getX(piece), assm->getY(piece), assm->getZ(piece), 1);
+  
+      View3D->setSpaceColor(num,
+                            pieceColorR(puz->probGetShape(probNum, p), q),
+                            pieceColorG(puz->probGetShape(probNum, p), q),
+                            pieceColorB(puz->probGetShape(probNum, p), q), 255);
+
+      piece++;
+    }
+
+  View3D->setScaling(1);
+  View3D->setCenter(puz->probGetResultShape(probNum)->getX()/2,
+                    puz->probGetResultShape(probNum)->getY()/2,
+                    puz->probGetResultShape(probNum)->getZ()/2
+                   );
+  View3D->setTransformationType(VoxelView::CenterTranslateRoateScale);
+  View3D->update(true);
+}
+
+void View3dGroup::updatePositions(PiecePositions *shifting) {
+
+  View3D->update(false);
+
+  for (unsigned int p = 0; p < View3D->spaceNumber(); p++) {
+    View3D->setSpacePosition(p, shifting->getX(p), shifting->getY(p), shifting->getZ(p), 1);
+    View3D->setSpaceColor(p, shifting->getA(p));
+  }
+
+  View3D->update(true);
+}
