@@ -234,6 +234,9 @@ void VoxelView::drawVoxelSpace() {
 
   for (unsigned int piece = 0; piece < shapes.size(); piece++) {
 
+    if (shapes[piece].a == 0)
+      continue;
+
     glPushMatrix();
 
     switch(trans) {
@@ -279,9 +282,6 @@ void VoxelView::drawVoxelSpace() {
         for (unsigned int z = 0; z < shapes[piece].shape->getZ(); z++) {
   
           if (shapes[piece].shape->getState(x, y , z) == pieceVoxel_c::VX_EMPTY)
-            continue;
-
-          if (shapes[piece].a == 0)
             continue;
 
           if ((x+y+z) & 1)
