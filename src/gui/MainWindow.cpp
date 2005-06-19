@@ -444,7 +444,7 @@ void UserInterface::cb_SolutionAnim(Fl_Value_Slider* o) {
 
 static void cb_PcVis_stub(Fl_Widget* o, void* v) { ui->cb_PcVis(); }
 void UserInterface::cb_PcVis(void) {
-  View3D->redraw();
+  View3D->updateVisibility(PcVis);
 }
 
 static void cb_New_stub(Fl_Widget* o, void* v) { ui->cb_New(); }

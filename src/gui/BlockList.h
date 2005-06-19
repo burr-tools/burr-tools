@@ -223,12 +223,25 @@ private:
 
 public:
 
+  enum {
+    RS_CHANGEDSELECTION = RS_LIST_LAST,
+    RS_VISIBILITY_LAST
+  };
+
+
   PieceVisibility(int x, int y, int w, int h, puzzle_c * p);
 
   void setPuzzle(puzzle_c *pz, unsigned int prob);
   unsigned int virtual blockNumber(void);
   void virtual blockDraw(unsigned int block, int x, int y);
   void virtual blockSize(unsigned int block, unsigned int *w, unsigned int *h);
+
+  virtual void push(unsigned int block);
+
+  unsigned char getVisibility(unsigned int piece) {
+    assert(piece < puzzle->probPieceNumber(problem));
+    return visState[piece];
+  }
 };
 
 

@@ -293,9 +293,11 @@ void PiecesList::getColor(unsigned int block, unsigned char *r,  unsigned char *
 
 PieceVisibility::PieceVisibility(int x, int y, int w, int h, puzzle_c * p) : BlockList(x, y, w, h), puzzle(p), problem(0) {
   assert(p);
-  if (p->problemNumber() > 0)
+  if (p->problemNumber() > 0) {
     visState = new unsigned char[p->probPieceNumber(0)];
-  else
+    for (unsigned int i = 0; i < p->probPieceNumber(0); i++)
+      visState[i] = 0;
+  } else
     visState = 0;
 }
 
@@ -313,24 +315,39 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
 
   int shape = 0;
 
-  while (block >= puzzle->probGetShapeCount(problem, shape)) {
-    block -= puzzle->probGetShapeCount(problem, shape);
+  unsigned int subBlock = block;
+
+  while (subBlock >= puzzle->probGetShapeCount(problem, shape)) {
+    subBlock -= puzzle->probGetShapeCount(problem, shape);
     shape++;
   }
   shape = puzzle->probGetShape(problem, shape);
 
-  snprintf(txt, 199, "%i.%i", shape, block);
+  snprintf(txt, 199, "%i.%i", shape, subBlock);
 
-  r = int(255*pieceColorR(shape, block));
-  g = int(255*pieceColorG(shape, block));
-  b = int(255*pieceColorB(shape, block));
+  r = int(255*pieceColorR(shape, subBlock));
+  g = int(255*pieceColorG(shape, subBlock));
+  b = int(255*pieceColorB(shape, subBlock));
 
   w = 0;
   fl_measure(txt, w, h);
   w += 8;
   h += 4;
 
-  fl_rectf(x, y, w, h, r, g, b);
+  switch(visState[block]) {
+  case 0:
+    fl_rectf(x, y, w, h, r, g, b);
+    break;
+  case 1:
+    fl_rectf(x+2, y+2, w-4, h-4, r, g, b);
+    break;
+  case 2:
+    fl_rectf(x, y, w, 2, r, g, b);
+    fl_rectf(x, y+h-2, w, 2, r, g, b);
+    fl_rectf(x, y, 2, h, r, g, b);
+    fl_rectf(x+w-2, y, 2, h, r, g, b);
+    break;
+  }
 
   if ((int)3*r + 6*g + 1*b > 1275)
     fl_color(0, 0, 0);
@@ -367,7 +384,27 @@ void PieceVisibility::setPuzzle(puzzle_c *pz, unsigned int prob) {
   puzzle = pz;
   problem = prob;
   redraw();
+
+  if (visState)
+    delete [] visState;
+
+  visState = new unsigned char[pz->probPieceNumber(prob)];
+
+  for (unsigned int i = 0; i < pz->probPieceNumber(0); i++)
+    visState[i] = 0;
 }
+
+void PieceVisibility::push(unsigned int block) {
+
+  visState[block]++;
+
+  if (visState[block] == 3) visState[block] = 0;
+
+  redraw();
+
+  do_callback(RS_CHANGEDSELECTION);
+}
+
 
 
 #define CC_ADD_LENGTH 10

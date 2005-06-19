@@ -438,3 +438,25 @@ void View3dGroup::updatePositions(PiecePositions *shifting) {
 
   View3D->update(true);
 }
+
+void View3dGroup::updateVisibility(PieceVisibility * pcvis) {
+  View3D->update(false);
+
+  for (unsigned int p = 0; p < View3D->spaceNumber(); p++) {
+
+    switch(pcvis->getVisibility(p)) {
+    case 0:
+      View3D->setDrawingMode(p, VoxelView::normal);
+      break;
+    case 1:
+      View3D->setDrawingMode(p, VoxelView::gridline);
+      break;
+    case 2:
+      View3D->setDrawingMode(p, VoxelView::invisible);
+      break;
+    }
+  }
+
+  View3D->update(true);
+}
+

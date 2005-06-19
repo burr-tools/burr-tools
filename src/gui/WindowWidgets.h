@@ -275,6 +275,7 @@ public:
   void showProblem(const puzzle_c * puz, unsigned int probNum);
   void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum);
   void updatePositions(PiecePositions *shifting);
+  void updateVisibility(PieceVisibility * pcvis);
 
   void setMarker(int x, int y, int z) { View3D->setMarker(x, y, z); }
   void hideMarker(void) { View3D->hideMarker(); }
