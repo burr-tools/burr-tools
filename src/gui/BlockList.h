@@ -98,6 +98,7 @@ public:
   // locks the current selected position
   // mous clicks are ignored
   void lockPosition(bool lock) { locked = lock; }
+
 };
 
 class SelectableTextList : public SelectableList {

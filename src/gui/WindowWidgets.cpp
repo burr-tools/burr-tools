@@ -269,7 +269,8 @@ void ResultViewer::setPuzzle(puzzle_c * p, unsigned int prob) {
 }
 
 void ResultViewer::draw(void) {
-  if (problem >= puzzle->problemNumber()) {
+  if (problem >= puzzle->problemNumber() ||
+      (puzzle->probGetResult(problem) < 0) || (puzzle->probGetResult(problem) > puzzle->shapeNumber())) {
     label("No Result");
     color(bg);
     labelcolor(fl_rgb_color(255, 0, 0));

@@ -74,6 +74,7 @@ void UserInterface::cb_NewShape(void) {
   // solutions, when they do exists
 
   PcSel->setSelection(puzzle->addShape(6, 6, 6));
+  PcSel->redraw();
   changed = true;
 }
 
@@ -359,7 +360,13 @@ static void cb_BtnStart_stub(Fl_Widget* o, void* v) { ui->cb_BtnStart(); }
 void UserInterface::cb_BtnStart(void) {
 
   if (solutionProblem->getSelection() >= puzzle->problemNumber()) {
-    fl_message("First create a problem");
+    fl_message("Create a problem first");
+    return;
+  }
+
+  if ((puzzle->probGetResult(solutionProblem->getSelection()) < 0) ||
+      (puzzle->probGetResult(solutionProblem->getSelection()) > puzzle->shapeNumber())) {
+    fl_message("A result shape must be defined");
     return;
   }
 
@@ -545,12 +552,6 @@ bool UserInterface::threadStopped(void) {
   return true;
 }
 
-
-
-
-
-
-
 void UserInterface::tryToLoad(const char * f) {
 
   if (f) {
@@ -558,7 +559,12 @@ void UserInterface::tryToLoad(const char * f) {
     xml::tree_parser parser(f);
 
     if (!parser) {
-      fl_message("Error parsing xml puzzle file, xml-syntax incorrect");
+
+      char txt[500];
+
+      snprintf(txt, 500, "Error parsing xml puzzle file, xml-syntax incorrect:\n %s", parser.get_error_message().c_str());
+      fl_message(txt);
+
       return;
     }
 
@@ -591,8 +597,6 @@ void UserInterface::tryToLoad(const char * f) {
     changed = false;
   }
 }
-
-
 
 void UserInterface::ReplacePuzzle(puzzle_c * NewPuzzle) {
 
@@ -831,7 +835,7 @@ void UserInterface::updateSolutionStats(void) {
       BtnStop->deactivate();
     }
 
-  } else {
+  } else if (prob < puzzle->problemNumber()) {
 
     assembler_c * assm = puzzle->probGetAssembler(prob);
 
@@ -847,6 +851,12 @@ void UserInterface::updateSolutionStats(void) {
 
     BtnStart->activate();
     BtnCont->activate();
+    BtnStop->deactivate();
+
+  } else {
+
+    BtnStart->deactivate();
+    BtnCont->deactivate();
     BtnStop->deactivate();
   }
 }
@@ -969,6 +979,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
     PcSel = new PieceSelector(x, y, w, lh, puzzle);
+    PcSel->setSelection(0xFFFF);
     Fl_Group * selGroup = new BlockListGroup(x, y, w, lh, PcSel);
     selGroup->callback(cb_PcSel_stub);
 

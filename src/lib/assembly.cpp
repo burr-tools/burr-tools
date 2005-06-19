@@ -59,7 +59,6 @@ assembly_c::assembly_c(const xml::node & node) {
 
         assert(trans == 255 || ((trans >= 0) && (trans < 24)));
 
-        printf("%i %i %i %i\n", x, y, z, trans);
         placements.push_back(placement_c(trans, x, y, z));
         x = y = z = trans = state = 0;
       } else
@@ -126,7 +125,6 @@ assembly_c::assembly_c(const xml::node & node) {
 
   assert(state == 3);
   assert(trans == 255 || ((trans >= 0) && (trans < 24)));
-  printf("%i %i %i %i\n", x, y, z, trans);
   placements.push_back(placement_c(trans, x, y, z));
 }
 
@@ -136,8 +134,6 @@ xml::node assembly_c::save(void) const {
 
   std::string cont;
   char tmp[50];
-
-  printf("save assembly %i\n", placements.size());
 
   for (unsigned int i = 0; i < placements.size(); i++) {
     snprintf(tmp, 50, "%i %i %i %i", placements[i].xpos, placements[i].ypos, placements[i].zpos, placements[i].transformation);
