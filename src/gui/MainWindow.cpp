@@ -121,6 +121,7 @@ void UserInterface::cb_CopyShape(void) {
 
 static void cb_TaskSelectionTab_stub(Fl_Widget* o, void* v) { ui->cb_TaskSelectionTab((Fl_Tabs*)o); }
 void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
+
   if (o->value() == TabPieces) {
     activateShape(PcSel->getSelection());
   } else if(o->value() == TabProblems) {
@@ -601,6 +602,7 @@ void UserInterface::tryToLoad(const char * f) {
     ReplacePuzzle(newPuzzle);
 
     TaskSelectionTab->value(TabPieces);
+    activateShape(PcSel->getSelection());
 
     changed = false;
   }
