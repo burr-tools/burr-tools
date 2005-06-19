@@ -317,6 +317,7 @@ void View3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
 
   View3D->setTransformationType(VoxelView::TranslateRoateScale);
   View3D->setScaling(1);
+  View3D->showCoordinateSystem(true);
   View3D->update(true);
 }
 
@@ -385,6 +386,7 @@ void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum) {
 
   View3D->setScaling(5);
   View3D->setTransformationType(VoxelView::ScaleRotateTranslate);
+  View3D->showCoordinateSystem(false);
   View3D->update(true);
 }
 
@@ -416,11 +418,12 @@ void View3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsig
     }
 
   View3D->setScaling(1);
-  View3D->setCenter(puz->probGetResultShape(probNum)->getX()/2,
-                    puz->probGetResultShape(probNum)->getY()/2,
-                    puz->probGetResultShape(probNum)->getZ()/2
+  View3D->setCenter(0.5*puz->probGetResultShape(probNum)->getX(),
+                    0.5*puz->probGetResultShape(probNum)->getY(),
+                    0.5*puz->probGetResultShape(probNum)->getZ()
                    );
   View3D->setTransformationType(VoxelView::CenterTranslateRoateScale);
+  View3D->showCoordinateSystem(false);
   View3D->update(true);
 }
 
