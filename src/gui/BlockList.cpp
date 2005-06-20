@@ -381,7 +381,7 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
 
   int shape = 0;
 
-  while (block > puzzle->probGetShapeCount(problem, shape)) {
+  while (block >= puzzle->probGetShapeCount(problem, shape)) {
     block -= puzzle->probGetShapeCount(problem, shape);
     shape++;
   }
