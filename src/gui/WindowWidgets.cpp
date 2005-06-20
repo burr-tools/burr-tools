@@ -232,6 +232,8 @@ View3dGroup::View3dGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   slider->value(2);
   slider->callback(cb_View3dGroupSlider_stub);
 
+  cb_slider();
+
   resizable(View3D);
   end();
 }
