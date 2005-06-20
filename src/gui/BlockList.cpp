@@ -406,10 +406,14 @@ void PieceVisibility::setPuzzle(puzzle_c *pz, unsigned int prob) {
   if (visState)
     delete [] visState;
 
-  visState = new unsigned char[pz->probPieceNumber(prob)];
+  visState = 0;
 
-  for (unsigned int i = 0; i < pz->probPieceNumber(0); i++)
-    visState[i] = 0;
+  if (prob < pz->problemNumber() && (pz->probPieceNumber(prob) > 0)) {
+    visState = new unsigned char[pz->probPieceNumber(prob)];
+
+    for (unsigned int i = 0; i < pz->probPieceNumber(prob); i++)
+      visState[i] = 0;
+  }
 }
 
 void PieceVisibility::push(unsigned int block) {

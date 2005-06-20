@@ -90,9 +90,9 @@ public:
   int getMouseY(void) { return sqedit->getMouseY(); }
   int getMouseZ(void) { return sqedit->getMouseZ(); }
 
-  void setPuzzle(puzzle_c * puzzle, int num) {
+  void setPuzzle(puzzle_c * puzzle, unsigned int num) {
     sqedit->setPuzzle(puzzle, num);
-    if (puzzle) {
+    if (puzzle && (num < puzzle->shapeNumber())) {
       pieceVoxel_c * v = puzzle->getShape(num);
       if (v) {
         zselect->bounds(0, v->getZ()-1);
