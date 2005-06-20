@@ -519,6 +519,8 @@ void ColorConstraintsEdit::draw(void) {
           fl_rectf(x()+CC_LR_GAP, yp1, CC_BLOCK_WIDTH, 2*CC_ADD_LENGTH+1, r, g, b);
           fl_rect(x()+CC_LR_GAP, yp1, CC_BLOCK_WIDTH, 2*CC_ADD_LENGTH+1);
 
+          fl_color(labelcolor());
+
           fl_xyline(x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR, yp1 + CC_ADD_LENGTH,
                     x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR + CC_HORIZ_LENGTH);
 
