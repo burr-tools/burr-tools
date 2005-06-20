@@ -154,7 +154,8 @@ public:
   /* set the shape-id for the result shape this the problem */
   void probSetResult(unsigned int prob, unsigned int shape);
 
-  /* get the id for the result shape */
+  /* get the id for the result shape
+   */
   unsigned int probGetResult(unsigned prob) const;
 
   /* get the result shape voxel space */

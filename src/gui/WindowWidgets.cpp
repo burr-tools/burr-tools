@@ -325,6 +325,7 @@ void View3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
 
 void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum) {
 
+
   View3D->update(false);
 
   View3D->clearSpaces();
