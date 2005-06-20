@@ -129,8 +129,8 @@ public:
   void addColor(unsigned char r, unsigned char g, unsigned char b);
   void removeColor(unsigned int idx);
   void changeColor(unsigned int idx, unsigned char r, unsigned char g, unsigned char b);
-  void getColor(unsigned int idx, unsigned char * r, unsigned char * g, unsigned char * b);
-  unsigned int colorNumber(void);
+  void getColor(unsigned int idx, unsigned char * r, unsigned char * g, unsigned char * b) const;
+  unsigned int colorNumber(void) const;
 
 
   /**
@@ -195,7 +195,7 @@ public:
   void probAddSolution(unsigned int prob, assembly_c * voxel);
   void probAddSolution(unsigned int prob, assembly_c * voxel, separation_c * tree);
   void probRemoveAllSolutions(unsigned int prob);
-  unsigned int probSolutionNumber(unsigned int prob);
+  unsigned int probSolutionNumber(unsigned int prob) const;
   assembly_c * probGetAssembly(unsigned int prob, unsigned int sol);
   separation_c * probGetDisassembly(unsigned int prob, unsigned int sol);
 
@@ -210,8 +210,8 @@ public:
   /* some additional information about the puzzle */
   void setDesigner(const std::string & name);
   void setComment(const std::string & comment);
-  const std::string & getDesigner(void);
-  const std::string & getComment(void);
+  const std::string & getDesigner(void) const;
+  const std::string & getComment(void) const;
 
   /**
    * makes each shape appear only once and increase the piece counter for that.

@@ -518,7 +518,7 @@ void puzzle_c::changeColor(unsigned int idx, unsigned char r, unsigned char g, u
   colors[idx].b = b;
 }
 
-void puzzle_c::getColor(unsigned int idx, unsigned char * r, unsigned char * g, unsigned char * b) {
+void puzzle_c::getColor(unsigned int idx, unsigned char * r, unsigned char * g, unsigned char * b) const {
 
   assert(idx < colors.size());
 
@@ -527,7 +527,7 @@ void puzzle_c::getColor(unsigned int idx, unsigned char * r, unsigned char * g, 
   *b = colors[idx].b;
 }
 
-unsigned int puzzle_c::colorNumber(void) {
+unsigned int puzzle_c::colorNumber(void) const {
   return colors.size();
 }
 
@@ -868,7 +868,7 @@ void puzzle_c::probRemoveAllSolutions(unsigned int prob) {
   problems[prob]->assm = 0;
 }
 
-unsigned int puzzle_c::probSolutionNumber(unsigned int prob) {
+unsigned int puzzle_c::probSolutionNumber(unsigned int prob) const {
   assert(prob < problems.size());
   return problems[prob]->solutions.size();
 }
