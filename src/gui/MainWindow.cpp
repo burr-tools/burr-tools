@@ -91,7 +91,7 @@ void UserInterface::cb_DeleteShape(void) {
     while (current >= puzzle->shapeNumber())
       current--;
 
-    PcSel->setSelection(current);
+    activateShape(current);
 
     changed = true;
 
@@ -216,6 +216,7 @@ void UserInterface::cb_NewProblem(void) {
     puzzle->probSetName(prob, name);
     changed = true;
     problemSelector->redraw();
+    PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
     activateProblem(prob);
   }
 }
@@ -279,11 +280,13 @@ void UserInterface::cb_AddShapeToProblem(void) {
   for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
     if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
       puzzle->probSetShapeCount(prob, i, puzzle->probGetShapeCount(prob, i) + 1);
+      PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
       return;
     }
 
   puzzle->probAddShape(prob, shapeAssignmentSelector->getSelection(), 1);
   activateProblem(problemSelector->getSelection());
+  PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
 }
 
 static void cb_RemoveShapeFromProblem_stub(Fl_Widget* o, void* v) { ui->cb_RemoveShapeFromProblem(); }
@@ -306,6 +309,7 @@ void UserInterface::cb_RemoveShapeFromProblem(void) {
 
       changed = true;
       PiecesCountList->redraw();
+      PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
     }
 
   activateProblem(problemSelector->getSelection());
@@ -682,13 +686,6 @@ void UserInterface::activateProblem(unsigned int prob) {
 
   View3D->showProblem(puzzle, prob);
 
-#if 0
-  pieceVoxel_c * p = puzzle->getResult(0); // FIXME multiple solutions
-
-  resultEdit->setVoxelSpace(p, 255);
-  resultTools->setVoxelSpace(p);
-#endif
-
   SolutionEmpty = true;
 }
 
@@ -754,6 +751,9 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
 
     SolutionAnim->hide();
     MovesInfo->hide();
+
+    PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+
   }
 }
 

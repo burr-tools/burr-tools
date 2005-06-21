@@ -401,7 +401,6 @@ void PieceVisibility::setPuzzle(puzzle_c *pz, unsigned int prob) {
   assert(pz);
   puzzle = pz;
   problem = prob;
-  redraw();
 
   if (visState)
     delete [] visState;
@@ -414,6 +413,8 @@ void PieceVisibility::setPuzzle(puzzle_c *pz, unsigned int prob) {
     for (unsigned int i = 0; i < pz->probPieceNumber(prob); i++)
       visState[i] = 0;
   }
+
+  redraw();
 }
 
 void PieceVisibility::push(unsigned int block) {
