@@ -229,13 +229,7 @@ public:
   BlockListGroup(int x, int y, int w, int h, BlockList * l);
 
   void cb_slider(void) { List->setShift((int)Slider->value()); }
-  void cb_list(void) {
-    if (List->getReason() == PieceSelector::RS_CHANGEDHIGHT) {
-      Slider->range(0, List->calcHeight());
-      Slider->redraw();
-    } else
-      do_callback(this, List->getReason());
-  }
+  void cb_list(void);
 };
 
 class ConstraintsGroup : public Fl_Group {
