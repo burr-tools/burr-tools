@@ -35,7 +35,7 @@ VoxelView::VoxelView(int x,int y,int w,int h,const char *l) : Fl_Gl_Window(x,y,w
 };
 
 // draws a box with borders depending on the neibor boxes
-static void drawBox(const voxel_c * space, int x, int y, int z) {
+static void drawBox(const voxel_c * space, int x, int y, int z, float alpha) {
 
 #define EDGELO 0.05f
 #define EDGEHI 0.95f
@@ -106,7 +106,7 @@ static void drawBox(const voxel_c * space, int x, int y, int z) {
     glVertex3f(x+a0, y+1, z+b0); glVertex3f(x+a0, y+1, z+b1); glVertex3f(x+a1, y+1, z+b1); glVertex3f(x+a1, y+1, z+b0);
   }
 
-  glColor4f(0, 0, 0, 1);
+  glColor4f(0, 0, 0, alpha);
 
   if (space->get2(x, y, z-1) != p) {
     glNormal3f( 0.0f, 0.0f, -1.0f);
@@ -162,49 +162,61 @@ static void drawBox(const voxel_c * space, int x, int y, int z) {
 // draws a wireframe box depending on the neibors
 static void drawFrame(const voxel_c * space, int x, int y, int z) {
 
-  glDisable(GL_LIGHTING);
-  glBegin(GL_LINES);
 
   voxel_type p = space->get(x, y, z);
 
-  if ((space->get2(x, y-1, z) != p) && (space->get2(x, y, z-1) != p)) { glVertex3f(x  , y  , z  ); glVertex3f(x+1, y  , z  ); }
-  if (((space->get2(x, y-1, z) == p) ^ (space->get2(x, y, z-1) == p)) && (space->get2(x, y-1, z-1) == p)) { glVertex3f(x  , y  , z  ); glVertex3f(x+1, y  , z  ); }
+  glBegin(GL_QUADS);
 
-  if ((space->get2(x, y-1, z) != p) && (space->get2(x, y, z+1) != p)) { glVertex3f(x  , y  , z+1); glVertex3f(x+1, y  , z+1); }
-  if (((space->get2(x, y-1, z) == p) ^ (space->get2(x, y, z+1) == p)) && (space->get2(x, y-1, z+1) == p)){ glVertex3f(x  , y  , z+1); glVertex3f(x+1, y  , z+1); }
+  if (space->get2(x, y, z-1) != p) {
+    glNormal3f( 0.0f, 0.0f, -1.0f);
 
-  if ((space->get2(x, y+1, z) != p) && (space->get2(x, y, z+1) != p)) { glVertex3f(x  , y+1, z+1); glVertex3f(x+1, y+1, z+1); }
-  if (((space->get2(x, y+1, z) == p) ^ (space->get2(x, y, z+1) == p)) && (space->get2(x, y+1, z+1) == p)) { glVertex3f(x  , y+1, z+1); glVertex3f(x+1, y+1, z+1); }
+    if (space->get2(x-1, y, z) != p) { glVertex3f(x+0, y+0, z); glVertex3f(x+EDGELO, y+0, z); glVertex3f(x+EDGELO, y+1, z); glVertex3f(x+0, y+1, z); }
+    if (space->get2(x+1, y, z) != p) { glVertex3f(x+1, y+0, z); glVertex3f(x+EDGEHI, y+0, z); glVertex3f(x+EDGEHI, y+1, z); glVertex3f(x+1, y+1, z); }
+    if (space->get2(x, y-1, z) != p) { glVertex3f(x+0, y+0, z); glVertex3f(x+0, y+EDGELO, z); glVertex3f(x+1, y+EDGELO, z); glVertex3f(x+1, y+0, z); }
+    if (space->get2(x, y+1, z) != p) { glVertex3f(x+0, y+1, z); glVertex3f(x+0, y+EDGEHI, z); glVertex3f(x+1, y+EDGEHI, z); glVertex3f(x+1, y+1, z); }
+  }
+  if (space->get2(x-1, y, z) != p) {
+    glNormal3f( -1.0f, 0.0f, 0.0f);
 
-  if ((space->get2(x, y+1, z) != p) && (space->get2(x, y, z-1) != p)) { glVertex3f(x  , y+1, z  ); glVertex3f(x+1, y+1, z  ); }
-  if (((space->get2(x, y+1, z) == p) ^ (space->get2(x, y, z-1) == p)) && (space->get2(x, y+1, z-1) == p)) { glVertex3f(x  , y+1, z  ); glVertex3f(x+1, y+1, z  ); }
+    if (space->get2(x, y-1, z) != p) { glVertex3f(x, y+0, z+0); glVertex3f(x, y+EDGELO, z+0); glVertex3f(x, y+EDGELO, z+1); glVertex3f(x, y+0, z+1); }
+    if (space->get2(x, y+1, z) != p) { glVertex3f(x, y+1, z+0); glVertex3f(x, y+1, z+1); glVertex3f(x, y+EDGEHI, z+1); glVertex3f(x, y+EDGEHI, z+0); }
+    if (space->get2(x, y, z-1) != p) { glVertex3f(x, y+0, z+EDGELO); glVertex3f(x, y+0, z+0); glVertex3f(x, y+1, z+0); glVertex3f(x, y+1, z+EDGELO); }
+    if (space->get2(x, y, z+1) != p) { glVertex3f(x, y+0, z+1); glVertex3f(x, y+0, z+EDGEHI); glVertex3f(x, y+1, z+EDGEHI); glVertex3f(x, y+1, z+1); }
+  }
+  if (space->get2(x+1, y, z) != p) {
+    glNormal3f( 1.0f, 0.0f, 0.0f);
 
-  if ((space->get2(x-1, y, z) != p) && (space->get2(x, y, z-1) != p)) { glVertex3f(x  , y  , z  ); glVertex3f(x  , y+1, z  ); }
-  if (((space->get2(x-1, y, z) == p) ^ (space->get2(x, y, z-1) == p)) && (space->get2(x-1, y, z-1) == p)) { glVertex3f(x  , y  , z  ); glVertex3f(x  , y+1, z  ); }
+    if (space->get2(x, y-1, z) != p) { glVertex3f(x+1, y+0, z+0); glVertex3f(x+1, y+0, z+1); glVertex3f(x+1, y+EDGELO, z+1); glVertex3f(x+1, y+EDGELO, z+0); }
+    if (space->get2(x, y+1, z) != p) { glVertex3f(x+1, y+EDGEHI, z+0); glVertex3f(x+1, y+EDGEHI, z+1); glVertex3f(x+1, y+1, z+1); glVertex3f(x+1, y+1, z+0); }
+    if (space->get2(x, y, z-1) != p) { glVertex3f(x+1, y+1, z+EDGELO); glVertex3f(x+1, y+1, z+0); glVertex3f(x+1, y+0, z+0); glVertex3f(x+1, y+0, z+EDGELO); }
+    if (space->get2(x, y, z+1) != p) { glVertex3f(x+1, y+1, z+1); glVertex3f(x+1, y+1, z+EDGEHI); glVertex3f(x+1, y+0, z+EDGEHI); glVertex3f(x+1, y+0, z+1); }
+  }
+  if (space->get2(x, y, z+1) != p) {
+    glNormal3f( 0.0f, 0.0f, 1.0f);
 
-  if ((space->get2(x-1, y, z) != p) && (space->get2(x, y, z+1) != p)) { glVertex3f(x  , y  , z+1); glVertex3f(x  , y+1, z+1); }
-  if (((space->get2(x-1, y, z) == p) ^ (space->get2(x, y, z+1) == p)) && (space->get2(x-1, y, z+1) == p)) { glVertex3f(x  , y  , z+1); glVertex3f(x  , y+1, z+1); }
+    if (space->get2(x-1, y, z) != p) { glVertex3f(x+EDGELO, y+0, z+1); glVertex3f(x+EDGELO, y+1, z+1); glVertex3f(x+0, y+1, z+1); glVertex3f(x+0, y+0, z+1); }
+    if (space->get2(x+1, y, z) != p) { glVertex3f(x+1, y+0, z+1); glVertex3f(x+1, y+1, z+1); glVertex3f(x+EDGEHI, y+1, z+1); glVertex3f(x+EDGEHI, y+0, z+1); }
+    if (space->get2(x, y-1, z) != p) { glVertex3f(x+0, y+EDGELO, z+1); glVertex3f(x+0, y+0, z+1); glVertex3f(x+1, y+0, z+1); glVertex3f(x+1, y+EDGELO, z+1); }
+    if (space->get2(x, y+1, z) != p) { glVertex3f(x+0, y+1, z+1); glVertex3f(x+0, y+EDGEHI, z+1); glVertex3f(x+1, y+EDGEHI, z+1); glVertex3f(x+1, y+1, z+1); }
+  }
+  if (space->get2(x, y-1, z) != p) {
+    glNormal3f( 0.0f, -1.0f, 0.0f);
 
-  if ((space->get2(x+1, y, z) != p) && (space->get2(x, y, z+1) != p)) { glVertex3f(x+1, y  , z+1); glVertex3f(x+1, y+1, z+1); }
-  if (((space->get2(x+1, y, z) == p) ^ (space->get2(x, y, z+1) == p)) && (space->get2(x+1, y, z+1) == p)) { glVertex3f(x+1, y  , z+1); glVertex3f(x+1, y+1, z+1); }
+    if (space->get2(x-1, y, z) != p) { glVertex3f(x+EDGELO, y, z+0); glVertex3f(x+0, y, z+0); glVertex3f(x+0, y, z+1); glVertex3f(x+EDGELO, y, z+1); }
+    if (space->get2(x+1, y, z) != p) { glVertex3f(x+1, y, z+0); glVertex3f(x+EDGEHI, y, z+0); glVertex3f(x+EDGEHI, y, z+1); glVertex3f(x+1, y, z+1); }
+    if (space->get2(x, y, z-1) != p) { glVertex3f(x+0, y, z+EDGELO); glVertex3f(x+1, y, z+EDGELO); glVertex3f(x+1, y, z+0); glVertex3f(x+0, y, z+0); }
+    if (space->get2(x, y, z+1) != p) { glVertex3f(x+0, y, z+1); glVertex3f(x+1, y, z+1); glVertex3f(x+1, y, z+EDGEHI); glVertex3f(x+0, y, z+EDGEHI); }
+  }
+  if (space->get2(x, y+1, z) != p) {
+    glNormal3f( 0.0f, 1.0f, 0.0f);
 
-  if ((space->get2(x+1, y, z) != p) && (space->get2(x, y, z-1) != p)) { glVertex3f(x+1, y  , z  ); glVertex3f(x+1, y+1, z  ); }
-  if (((space->get2(x+1, y, z) == p) ^ (space->get2(x, y, z-1) == p)) && (space->get2(x+1, y, z-1) == p)) { glVertex3f(x+1, y  , z  ); glVertex3f(x+1, y+1, z  ); }
-
-  if ((space->get2(x-1, y, z) != p) && (space->get2(x, y-1, z) != p)) { glVertex3f(x  , y  , z  ); glVertex3f(x  , y  , z+1); }
-  if (((space->get2(x-1, y, z) == p) ^ (space->get2(x, y-1, z) == p)) && (space->get2(x-1, y-1, z) == p)) { glVertex3f(x  , y  , z  ); glVertex3f(x  , y  , z+1); }
-
-  if ((space->get2(x-1, y, z) != p) && (space->get2(x, y+1, z) != p)) { glVertex3f(x  , y+1, z  ); glVertex3f(x  , y+1, z+1); }
-  if (((space->get2(x-1, y, z) == p) ^ (space->get2(x, y+1, z) == p)) && (space->get2(x-1, y+1, z) == p)) { glVertex3f(x  , y+1, z  ); glVertex3f(x  , y+1, z+1); }
-
-  if ((space->get2(x+1, y, z) != p) && (space->get2(x, y+1, z) != p)) { glVertex3f(x+1, y+1, z  ); glVertex3f(x+1, y+1, z+1); }
-  if (((space->get2(x+1, y, z) == p) ^ (space->get2(x, y+1, z) == p)) && (space->get2(x+1, y+1, z) == p)) { glVertex3f(x+1, y+1, z  ); glVertex3f(x+1, y+1, z+1); }
-
-  if ((space->get2(x+1, y, z) != p) && (space->get2(x, y-1, z) != p)) { glVertex3f(x+1, y  , z  ); glVertex3f(x+1, y  , z+1); }
-  if (((space->get2(x+1, y, z) == p) ^ (space->get2(x, y-1, z) == p)) && (space->get2(x+1, y-1, z) == p)) { glVertex3f(x+1, y  , z  ); glVertex3f(x+1, y  , z+1); }
+    if (space->get2(x-1, y, z) != p) { glVertex3f(x+EDGELO, y+1, z+0); glVertex3f(x+EDGELO, y+1, z+1); glVertex3f(x+0, y+1, z+1); glVertex3f(x+0, y+1, z+0); }
+    if (space->get2(x+1, y, z) != p) { glVertex3f(x+1, y+1, z+0); glVertex3f(x+1, y+1, z+1); glVertex3f(x+EDGEHI, y+1, z+1); glVertex3f(x+EDGEHI, y+1, z+0); }
+    if (space->get2(x, y, z-1) != p) { glVertex3f(x+0, y+1, z+EDGELO); glVertex3f(x+0, y+1, z+0); glVertex3f(x+1, y+1, z+0); glVertex3f(x+1, y+1, z+EDGELO); }
+    if (space->get2(x, y, z+1) != p) { glVertex3f(x+0, y+1, z+1); glVertex3f(x+0, y+1, z+EDGEHI); glVertex3f(x+1, y+1, z+EDGEHI); glVertex3f(x+1, y+1, z+1); }
+  }
 
   glEnd();
-  glEnable(GL_LIGHTING);
 }
 
 // draw a bube that is smaller than 1
@@ -294,7 +306,7 @@ void VoxelView::drawVoxelSpace() {
             if (shapes[piece].shape->getState(x, y , z) == pieceVoxel_c::VX_VARIABLE)
               drawCube(shapes[piece].shape, x, y, z);
             else
-              drawBox(shapes[piece].shape, x, y, z);
+              drawBox(shapes[piece].shape, x, y, z, shapes[piece].a);
             break;
           case gridline:
             drawFrame(shapes[piece].shape, x, y, z);
