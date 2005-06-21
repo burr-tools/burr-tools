@@ -199,6 +199,7 @@ void UserInterface::cb_pieceEdit(VoxelEditGroup* o) {
       View3D->hideMarker();
     break;
   case SquareEditor::RS_CHANGESQUARE:
+    View3D->showSingleShape(puzzle, PcSel->getSelection());
     changed = true;
     break;
   }
