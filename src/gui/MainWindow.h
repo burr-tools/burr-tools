@@ -133,6 +133,7 @@ public:
 
   void cb_TaskSelectionTab(Fl_Tabs*);
 
+  void cb_SelectProblemShape(void);
   void cb_AddShapeToProblem(void);
   void cb_RemoveShapeFromProblem(void);
 

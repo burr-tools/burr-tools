@@ -264,6 +264,11 @@ void UserInterface::cb_ShapeToResult(void) {
   changed = true;
 }
 
+static void cb_ShapeSel_stub(Fl_Widget* o, void* v) { ui->cb_SelectProblemShape(); }
+void UserInterface::cb_SelectProblemShape(void) {
+  activateProblem(problemSelector->getSelection());
+}
+
 static void cb_AddShapeToProblem_stub(Fl_Widget* o, void* v) { ui->cb_AddShapeToProblem(); }
 void UserInterface::cb_AddShapeToProblem(void) {
 
@@ -685,7 +690,7 @@ void UserInterface::activateShape(unsigned int number) {
 
 void UserInterface::activateProblem(unsigned int prob) {
 
-  View3D->showProblem(puzzle, prob);
+  View3D->showProblem(puzzle, prob, shapeAssignmentSelector->getSelection());
 
   SolutionEmpty = true;
 }
@@ -1186,6 +1191,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     shapeAssignmentSelector = new PieceSelector(x, y, w, lh-SZ_GAP, puzzle);
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh-SZ_GAP, shapeAssignmentSelector);
+    shapeGroup->callback(cb_ShapeSel_stub);
 
     group->resizable(shapeGroup);
     group->end();

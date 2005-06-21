@@ -266,7 +266,7 @@ public:
 
   void showNothing(void) { View3D->clearSpaces(); }
   void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
-  void showProblem(const puzzle_c * puz, unsigned int probNum);
+  void showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape);
   void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum);
   void updatePositions(PiecePositions *shifting);
   void updateVisibility(PieceVisibility * pcvis);

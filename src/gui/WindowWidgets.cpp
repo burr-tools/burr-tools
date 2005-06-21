@@ -341,8 +341,7 @@ void View3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
   View3D->update(true);
 }
 
-void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum) {
-
+void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape) {
 
   View3D->update(false);
 
@@ -364,6 +363,13 @@ void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum) {
       if (puz->probGetResultShape(probNum)->getDiagonal() > diagonal)
         diagonal = puz->probGetResultShape(probNum)->getDiagonal();
     }
+
+    // check the selected shape
+    if (selShape < puz->shapeNumber()) {
+  
+      if (puz->getShape(selShape)->getDiagonal() > diagonal)
+        diagonal = puz->getShape(selShape)->getDiagonal();
+    }
   
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
       if (puz->probGetShapeShape(probNum, p)->getDiagonal() > diagonal)
@@ -382,6 +388,19 @@ void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum) {
       View3D->setSpacePosition(num,
                                0.5* (square*diagonal) * (1.0/square - 0.5),
                                0.5* (square*diagonal) * (0.5 - 1.0/square), -20, 1.0);
+    }
+
+    // now place the selected shape
+    if (selShape < puz->shapeNumber()) {
+  
+      num = View3D->addSpace(new pieceVoxel_c(puz->getShape(selShape)));
+      View3D->setSpaceColor(num,
+                            pieceColorR(selShape),
+                            pieceColorG(selShape),
+                            pieceColorB(selShape), 255);
+      View3D->setSpacePosition(num,
+                               0.5* (square*diagonal) * (0.5 - 0.5/square),
+                               0.5* (square*diagonal) * (0.5 - 0.5/square), -20, 0.5);
     }
   
     // and now the shapes
