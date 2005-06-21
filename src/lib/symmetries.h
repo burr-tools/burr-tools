@@ -39,7 +39,7 @@ int rotz(unsigned int p);
  * the corresponding bit is set
  */
 #ifdef WIN32
-typedef __int64_t symmetries_t;
+typedef unsigned long long symmetries_t;
 #else
 #include <sys/types.h>
 typedef u_int64_t symmetries_t;

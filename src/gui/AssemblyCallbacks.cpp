@@ -82,7 +82,11 @@ assemblerThread::~assemblerThread(void) {
   puzzle->probGetAssembler(prob)->stop();
 
   while (!puzzle->probGetAssembler(prob)->stopped())
+#ifdef WIN32
+    Sleep(1);
+#else
     usleep(10000);
+#endif
 }
 
 bool assemblerThread::assembly(assembly_c * a) {

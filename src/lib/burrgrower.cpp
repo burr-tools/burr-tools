@@ -186,7 +186,12 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
 
 //      printf(" f %f ", f);
 
-      if (drand48() < f) {
+#ifdef WIN32
+      if (1 < f)
+#else
+      if (drand48() < f)
+#endif
+      {
 //        printf(" removed");
         delete newSet[pos];
         std::vector<puzzleSol_c*>::iterator i = newSet.begin();
