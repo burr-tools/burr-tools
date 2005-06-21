@@ -43,7 +43,7 @@ public:
   void click(GLfloat x, GLfloat y);
 
   // Mouse up
-  void clack(void);
+  void clack(GLfloat x, GLfloat y);
 
   //Mouse drag, calculate rotation
   void drag(GLfloat x, GLfloat y);

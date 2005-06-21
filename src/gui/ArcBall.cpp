@@ -193,9 +193,19 @@ void ArcBall_c::click(GLfloat x, GLfloat y) {
   mouseDown = true;
 }
 
-void ArcBall_c::clack(void) {
+void ArcBall_c::clack(GLfloat x, GLfloat y) {
+
+  mapToSphere(x, y, EnVec);
+
+  GLfloat ThisQuat[4];
+
+  getDrag(ThisQuat);                                              // Update End Vector And Get Rotation As Quaternion
+  Matrix3fSetRotationFromQuat4f(ThisRot, ThisQuat);               // Convert Quaternion Into Matrix3fT
+  Matrix3fMulMatrix3f(ThisRot, LastRot);                          // Accumulate Last Rotation Into This One
+
   for (int i = 0; i < 9; i++)
     LastRot[i] = ThisRot[i];
+
   mouseDown = false;
 }
 
@@ -233,6 +243,7 @@ void ArcBall_c::getDrag(GLfloat NewRot[4]) const
 }
 
 void ArcBall_c::setBounds(GLfloat NewWidth, GLfloat NewHeight) {
+
   assert((NewWidth > 1.0f) && (NewHeight > 1.0f));
 
   //Set adjustment factor for width/height

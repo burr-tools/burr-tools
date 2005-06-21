@@ -398,7 +398,7 @@ int VoxelView::handle(int event) {
     break;
 
   case FL_RELEASE:
-    arcBall->clack();
+    arcBall->clack(Fl::event_x(), Fl::event_y());
     break;
   }
 
