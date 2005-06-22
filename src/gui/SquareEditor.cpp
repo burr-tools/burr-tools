@@ -36,10 +36,9 @@ void SquareEditor::setPuzzle(puzzle_c * p, unsigned int piecenum) {
   redraw();
 }
 
-void SquareEditor::setZ(int z) {
+void SquareEditor::setZ(unsigned int z) {
 
   // clamp the value to valid values
-  if (z < 0) z = 0;
   if (z >= puzzle->getShape(piecenumber)->getZ()) z = puzzle->getShape(piecenumber)->getZ()-1;
 
   currentZ = z;
@@ -141,11 +140,11 @@ int SquareEditor::handle(int event) {
       int s, tx, ty;
       calcParameters(&s, &tx, &ty);
 
-      int x = Fl::event_x() - tx;
-      int y = Fl::event_y() - ty;
-
-      if ((x < 0) || (y < 0))
+      if ((Fl::event_x() < tx) || (Fl::event_y() < ty))
         break;
+
+      unsigned int x = Fl::event_x() - tx;
+      unsigned int y = Fl::event_y() - ty;
 
       x /= s;
       y /= s;

@@ -40,7 +40,7 @@ private:
   puzzle_c * puzzle;
 
   // the current edited layer
-  int currentZ;
+  unsigned int currentZ;
 
   // the number of the piece, this is used to colorize the squares
   unsigned int piecenumber;
@@ -49,7 +49,7 @@ private:
   int state;
 
   // current position of the mouse cursor
-  int mX, mY, mZ;
+  unsigned int mX, mY, mZ;
 
   // is the mouse inside the widget?
   bool inside;
@@ -69,13 +69,13 @@ protected:
 
 public:
 
-  SquareEditor(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), currentZ(0), piecenumber(0), state(0), mX(-1), mY(-1), mZ(-1), inside(false), currentColor(0) {}
+  SquareEditor(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), currentZ(0), piecenumber(0), state(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), inside(false), currentColor(0) {}
 
   // sets the z layer to edit the value is clamped to valid values
-  void setZ(int z);
+  void setZ(unsigned int z);
 
   // get the current Z value
-  int getZ(void) { return currentZ; }
+  unsigned int getZ(void) { return currentZ; }
 
   // sets the color to use for editing voxels
   void setColor(unsigned int col) {
