@@ -88,8 +88,11 @@ void UserInterface::cb_DeleteShape(void) {
 
     puzzle->removeShape(current);
 
-    while (current >= puzzle->shapeNumber())
-      current--;
+    if (puzzle->shapeNumber() == 0)
+      current = 0xFFFF;
+    else
+      while (current >= puzzle->shapeNumber())
+        current--;
 
     activateShape(current);
 

@@ -85,7 +85,10 @@ public:
   // sets the voxel space to edit, the widget doesn't take over the space
   // the voxelspace must not be deleted while this is set here
   void setPuzzle(puzzle_c * p, unsigned int piecenum);
-  void clearPuzzle() { piecenumber = puzzle->shapeNumber(); }
+  void clearPuzzle() {
+    piecenumber = puzzle->shapeNumber();
+    redraw();
+  }
 
   int handle(int event);
 
