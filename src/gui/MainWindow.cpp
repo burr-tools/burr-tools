@@ -93,6 +93,9 @@ void UserInterface::cb_DeleteShape(void) {
 
     activateShape(current);
 
+    PcSel->setSelection(current);
+    PcSel->redraw();
+
     changed = true;
 
   } else
