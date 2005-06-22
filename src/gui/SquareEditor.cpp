@@ -49,8 +49,8 @@ void SquareEditor::setZ(int z) {
 void SquareEditor::calcParameters(int *s, int *tx, int *ty) {
 
   // calculate the size of the squares
-  int sx = (w()-1) / puzzle->getShape(piecenumber)->getX();
-  int sy = (h()-1) / puzzle->getShape(piecenumber)->getY();
+  int sx = (w() > 2) ? (w()-1) / puzzle->getShape(piecenumber)->getX() : 0;
+  int sy = (h() > 2) ? (h()-1) / puzzle->getShape(piecenumber)->getY() : 0;
 
   *s = (sx < sy) ? sx : sy;
 
