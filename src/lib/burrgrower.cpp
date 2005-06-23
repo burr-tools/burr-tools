@@ -31,11 +31,9 @@ puzzleSol_c::puzzleSol_c(puzzle_c * p) {
   puzzle = p;
 
   assm_0_frontend_0_c *assm = new assm_0_frontend_0_c();
-  assm->createMatrix(p, 0);
+  if (assm->createMatrix(p, 0) == assm_0_frontend_0_c::ERR_NONE) {
 
-  solutions = 0;
-
-  if (!assm->errors()) {
+    solutions = 0;
 
     maxLevel = maxMoves = 0;
     minLevel = minMoves = (unsigned long)-1;

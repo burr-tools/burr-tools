@@ -232,15 +232,16 @@ void solve(int argv, char* args[]) {
 
   assembler_0_c * assm = new assm_0_frontend_0_c();
   assm->createMatrix(&p, 0);
-  printf("start reduce\n");
-  assm->reduce();
-  printf("finished reduce\n");
 
-  if (assm->errors()) {
-    printf("%s\n", assm->errors());
+  if (assm->createMatrix(&p, 0) != assm_0_frontend_0_c::ERR_NONE) {
+    printf("errors\n");
     delete assm;
     return;
   }
+
+  printf("start reduce\n");
+  assm->reduce();
+  printf("finished reduce\n");
 
   asm_cb a(p.probPieceNumber(0));
 

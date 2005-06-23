@@ -45,9 +45,13 @@ void* start_th(void * c)
     p->action = assemblerThread::ACT_PREPARATION;
     assm = new assm_0_frontend_0_c();
     p->puzzle->probSetAssembler(p->prob, assm);
-    assm->createMatrix(p->puzzle, p->prob);
-    if (assm->errors()) {
-      printf(" error, %s\n", assm->errors());
+
+    p->errState = assm->createMatrix(p->puzzle, p->prob);
+    if (p->errState != assm_0_frontend_0_c::ERR_NONE) {
+
+      p->errParam = assm->getErrorsParam();
+
+      p->action = assemblerThread::ACT_ERROR;
       return 0;
     }
 

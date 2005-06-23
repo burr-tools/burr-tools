@@ -144,18 +144,23 @@ int main(int argv, char* args[]) {
   print(&p);
 
   assembler_0_c *assm = new assm_0_frontend_0_c();
-  assm->createMatrix(&p, 0);
+
+  switch (assm->createMatrix(&p, 0)) {
+  case assm_0_frontend_0_c::ERR_TOO_MANY_UNITS:
+    printf("%i units too many for the result shape\n", assm->getErrorsParam());
+    return 0;
+  case assm_0_frontend_0_c::ERR_TOO_FEW_UNITS:
+    printf("%i units too few for the result shape\n", assm->getErrorsParam());
+    return 0;
+  case assm_0_frontend_0_c::ERR_CAN_NOT_PLACE:
+    printf("Piece %i can be place nowhere in the result shape\n", assm->getErrorsParam());
+    return 0;
+  }
 
   if (reduce) {
     cout << "start reduce\n\n";
     assm->reduce();
     cout << "finished reduce\n\n";
-  }
-
-  if (assm->errors()) {
-    cout << assm->errors() << endl;
-    delete assm;
-    return 0;
   }
 
   asm_cb a(&p, 0);

@@ -142,7 +142,7 @@ assembler_0_c::~assembler_0_c() {
   if (searchState) delete [] searchState;
 }
 
-void assembler_0_c::createMatrix(const puzzle_c * puz, unsigned int prob) {
+assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsigned int prob) {
 
   /* get and save piecenumber of puzzle */
   piecenumber = puz->probPieceNumber(prob);
@@ -165,15 +165,15 @@ void assembler_0_c::createMatrix(const puzzle_c * puz, unsigned int prob) {
     h -= puz->probGetShapeShape(prob, j)->countState(pieceVoxel_c::VX_FILLED) * puz->probGetShapeCount(prob, j);
 
   if (h < 0) {
-    errorsState = 1;
+    errorsState = ERR_TOO_MANY_UNITS;
     errorsParam = -h;
-    return;
+    return errorsState;
   }
 
   if (h > res_vari) {
-    errorsState = 2;
+    errorsState = ERR_TOO_FEW_UNITS;
     errorsParam = h-res_vari;
-    return;
+    return errorsState;
   }
 
   holes = h;
@@ -183,9 +183,9 @@ void assembler_0_c::createMatrix(const puzzle_c * puz, unsigned int prob) {
 
   // check, if there is one piece unplacable
   if (nodes <= 0) {
-    errorsState = 3;
+    errorsState = ERR_CAN_NOT_PLACE;
     errorsParam = nodes + 1;
-    return;
+    return errorsState;
   }
 
   /* countNode only counts inner node, so add the title row */
@@ -220,7 +220,9 @@ void assembler_0_c::createMatrix(const puzzle_c * puz, unsigned int prob) {
   memset(columns, 0, piecenumber * sizeof(int));
   pos = 0;
   iterations = 0;
-  errorsState = 0;
+
+  errorsState = ERR_NONE;
+  return errorsState;
 }
 
 
@@ -823,7 +825,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
 
 void assembler_0_c::assemble(assembler_cb * callback) {
 
-  if (errorsState == 0) {
+  if (errorsState == ERR_NONE) {
     asm_bc = callback;
     iterativeMultiSearch();
   }
@@ -956,26 +958,5 @@ void assembler_0_c::setPosition(char * string) {
   
       p++;
     }
-}
-
-
-const char * assembler_0_c::errors(void) {
-
-  static char tmp[500];
-
-  switch (errorsState) {
-  case 0: return 0;
-  case 1:
-    snprintf(tmp, 500, "There are %i more cubes than there is space in result!", errorsParam);
-    return tmp;
-  case 2:
-    snprintf(tmp, 500, "There are %i less cubes than we need in result space!", errorsParam);
-    return tmp;
-  case 3:
-    snprintf(tmp, 500, "There is no room for piece %i in the solution shape!", errorsParam);
-    return tmp;
-  }
-
-  return 0;
 }
 

@@ -36,6 +36,9 @@ class assemblerThread : public assembler_cb {
   puzzle_c * puzzle;
   unsigned int prob;
 
+  assembler_c::errState errState;
+  int errParam;
+
 public:
 
   enum {
@@ -59,7 +62,8 @@ public:
     ACT_ASSEMBLING,
     ACT_DISASSEMBLING,
     ACT_PAUSING,
-    ACT_FINISHED
+    ACT_FINISHED,
+    ACT_ERROR
   };
 
   unsigned int currentAction(void) { return action; }
@@ -73,6 +77,9 @@ public:
   bool stopped(void) const { return (action == ACT_PAUSING) || (action == ACT_FINISHED); }
 
   unsigned int getProblem(void) { return prob; }
+  assembler_c::errState getErrorState(void) { return errState; }
+  int getErrorParam(void) { return errParam; }
+
 
 #ifdef WIN32
   friend unsigned long __stdcall start_th(void * c);

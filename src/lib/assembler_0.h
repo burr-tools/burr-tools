@@ -183,7 +183,7 @@ private:
   bool checkmatrix(unsigned int rec, unsigned int branch);
 
   /* internal error state */
-  int errorsState;
+  errState errorsState;
   int errorsParam;
 
   /* number of iterations the asseble routine run */
@@ -258,7 +258,8 @@ public:
   assembler_0_c(void);
   ~assembler_0_c(void);
 
-  void createMatrix(const puzzle_c * puz, unsigned int problemNum);
+
+  errState createMatrix(const puzzle_c * puz, unsigned int problemNum);
 
   void reduce(void);
   unsigned int getReducePiece(void) { return reducePiece; }
@@ -268,7 +269,8 @@ public:
   void assemble(assembler_cb * callback);
 
   /* the functions for the other process requesting information about the searcher */
-  const char * errors(void);
+  int getErrorsParam(void) { return errorsParam; }
+
   virtual float getFinished(void);
   virtual void stop(void) { abbort = true; }
   virtual bool stopped(void) const { return !running; }

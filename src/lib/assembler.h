@@ -51,6 +51,13 @@ class assembler_c {
 
 public:
 
+  typedef enum {
+    ERR_NONE,
+    ERR_TOO_MANY_UNITS,
+    ERR_TOO_FEW_UNITS,
+    ERR_CAN_NOT_PLACE
+  } errState;
+
   /* initialisation */
   assembler_c(void) {}
   virtual ~assembler_c(void) {}
@@ -59,7 +66,7 @@ public:
    * ok, or a pointer to a string, that you should display providing a message
    * why the puzzle is not solvable
    */
-  virtual const char * errors(void) { return 0; }
+  virtual int getErrorsParam(void) { return 0; }
 
   /* the function tries to remove possible piece placements by checking if, after
    * the piece has been placed somewhere, that all the other pieces still can be

@@ -904,6 +904,23 @@ void UserInterface::update(void) {
 
       delete assmThread;
       assmThread = 0;
+
+    } else if (assmThread->currentAction() == assemblerThread::ACT_ERROR) {
+
+      switch(assmThread->getErrorState()) {
+      case assembler_c::ERR_TOO_MANY_UNITS:
+        fl_message("Pieces contain %i units too many", assmThread->getErrorParam());
+        break;
+      case assembler_c::ERR_TOO_FEW_UNITS:
+        fl_message("Pieces contain %i units less than required", assmThread->getErrorParam());
+        break;
+      case assembler_c::ERR_CAN_NOT_PLACE:
+        fl_message("Piece %i can be placed onwhere within the result", assmThread->getErrorParam());
+        break;
+      }
+
+      delete assmThread;
+      assmThread = 0;
     }
 
     // update the window, either when the thread stopped and so the buttons need to
