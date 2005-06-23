@@ -54,6 +54,25 @@ VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle) : 
   resizable(sqedit);
 }
 
+void VoxelEditGroup::setZ(unsigned int val) {
+  if (val > zselect->maximum()) val = (unsigned int)zselect->maximum();
+  zselect->value(val);
+  sqedit->setZ(val);
+}
+
+void VoxelEditGroup::setPuzzle(puzzle_c * puzzle, unsigned int num) {
+  sqedit->setPuzzle(puzzle, num);
+  if (puzzle && (num < puzzle->shapeNumber())) {
+    pieceVoxel_c * v = puzzle->getShape(num);
+    if (v) {
+      zselect->bounds(0, v->getZ()-1);
+      zselect->value(sqedit->getZ());
+    }
+  }
+}
+
+
+
 #define SZ_BUTTON_Y 20
 
 static void cb_TransformButtons_stub(Fl_Widget* o, long v) { ((TransformButtons*)(o->parent()))->cb_Press(v); }

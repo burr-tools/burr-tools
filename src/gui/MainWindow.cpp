@@ -75,6 +75,7 @@ void UserInterface::cb_NewShape(void) {
 
   PcSel->setSelection(puzzle->addShape(6, 6, 6));
   PcSel->redraw();
+  pieceEdit->setZ(0);
   changed = true;
 }
 

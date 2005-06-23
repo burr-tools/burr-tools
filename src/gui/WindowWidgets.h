@@ -80,6 +80,8 @@ public:
     sqedit->setZ(int(o->value()));
   }
 
+  void setZ(unsigned int val);
+
   void cb_Sqedit(SquareEditor* o) { do_callback(); }
 
   int getReason(void) { return sqedit->getReason(); }
@@ -90,16 +92,7 @@ public:
   int getMouseY(void) { return sqedit->getMouseY(); }
   int getMouseZ(void) { return sqedit->getMouseZ(); }
 
-  void setPuzzle(puzzle_c * puzzle, unsigned int num) {
-    sqedit->setPuzzle(puzzle, num);
-    if (puzzle && (num < puzzle->shapeNumber())) {
-      pieceVoxel_c * v = puzzle->getShape(num);
-      if (v) {
-        zselect->bounds(0, v->getZ()-1);
-        zselect->value(sqedit->getZ());
-      }
-    }
-  }
+  void setPuzzle(puzzle_c * puzzle, unsigned int num);
 
   void clearPuzzle(void) {
     sqedit->clearPuzzle();
