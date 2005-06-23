@@ -322,6 +322,14 @@ public:
    */
   bool operator == (const voxel_c & op) const;
 
+  /**
+   * comparison of two voxel spaces.
+   * 2 voxel spaces are identical, if their bounding
+   * boxes have the same size and the voxels within
+   * there boxes is identical
+   */
+  bool identicalInBB(const voxel_c * op) const;
+
   /** resizes the voxelspace, spreserving the lover part
    * of the data, when the new one is smaller and
    * adding new voxels at the upper end, if the new space

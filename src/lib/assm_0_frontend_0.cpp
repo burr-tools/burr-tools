@@ -45,7 +45,7 @@ static bool pieceFits(const pieceVoxel_c * piece, const pieceVoxel_c * result, c
 static pieceVoxel_c * addToCache(pieceVoxel_c * cache[24], unsigned int * fill, pieceVoxel_c * piece) {
 
   for (unsigned int i = 0; i < *fill; i++)
-    if (*cache[i] == *piece) {
+    if (cache[i]->identicalInBB(piece)) {
       delete piece;
       return 0;
     }
