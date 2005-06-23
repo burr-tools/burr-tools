@@ -179,12 +179,12 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   holes = h;
 
   /* count the number of required nodes*/
-  unsigned long nodes = countNodes(puz, prob);
+  long nodes = countNodes(puz, prob);
 
   // check, if there is one piece unplacable
   if (nodes <= 0) {
     errorsState = ERR_CAN_NOT_PLACE;
-    errorsParam = nodes + 1;
+    errorsParam = -nodes;
     return errorsState;
   }
 

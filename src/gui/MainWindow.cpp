@@ -916,7 +916,7 @@ void UserInterface::update(void) {
         fl_message("Pieces contain %i units less than required", assmThread->getErrorParam());
         break;
       case assembler_c::ERR_CAN_NOT_PLACE:
-        fl_message("Piece %i can be placed onwhere within the result", assmThread->getErrorParam());
+        fl_message("Piece %i can be placed nowhere within the result", assmThread->getErrorParam()+1);
         break;
       }
 
