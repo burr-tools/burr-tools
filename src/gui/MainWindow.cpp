@@ -530,9 +530,19 @@ void UserInterface::cb_SaveAs(void) {
     const char * f = FileSelection("Save Puzzle as");
   
     if (f) {
-  
-      ofstream ostr(f);
-  
+
+      char f2[1000];
+
+      // check, if the last characters are ".xmpuzzle"
+      if (strcmp(f + strlen(f) - strlen(".xmpuzzle"), ".xmpuzzle")) {
+        snprintf(f2, 1000, "%s.xmpuzzle", f);
+
+      } else
+
+        snprintf(f2, 1000, "%s", f);
+
+      ogzstream ostr(f2);
+
       if (ostr)
         ostr << puzzle->save();
   
@@ -542,8 +552,8 @@ void UserInterface::cb_SaveAs(void) {
         changed = false;
   
       if (fname) delete [] fname;
-      fname = new char[strlen(f)+1];
-      strcpy(fname, f);
+      fname = new char[strlen(f2)+1];
+      strcpy(fname, f2);
   
       char nm[300];
       snprintf(nm, 299, "BurrTools - %s", fname);
