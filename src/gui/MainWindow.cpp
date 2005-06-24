@@ -644,10 +644,7 @@ void UserInterface::tryToLoad(const char * f) {
 
     if (!parser) {
 
-      char txt[500];
-
-      snprintf(txt, 500, "Error parsing xml puzzle file, xml-syntax incorrect:\n %s", parser.get_error_message().c_str());
-      fl_message(txt);
+      fl_message("Error parsing xml puzzle file, xml-syntax incorrect:\n %s", parser.get_error_message().c_str());
 
       return;
     }
