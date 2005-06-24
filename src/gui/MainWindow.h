@@ -77,17 +77,20 @@ class UserInterface {
 
   Fl_Group *TabProblems;
 
-  FlatButton *BtnColSrtPc;
-  FlatButton *BtnColSrtRes;
 
   ToolTab * pieceTools;
   ToolTab * resultTools;
 
   Fl_Group *TabSolve;
   Fl_Check_Button *SolveDisasm;
-  FlatButton *BtnStart;
-  FlatButton *BtnCont;
-  FlatButton *BtnStop;
+
+  FlatButton *BtnStart, *BtnCont, *BtnStop;
+  FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape;
+  FlatButton *BtnNewColor, *BtnDelColor;
+  FlatButton *BtnNewProb, *BtnDelProb, *BtnCpyProb;
+  FlatButton *BtnColSrtPc, *BtnColSrtRes, *BtnColAdd, *BtnColRem;
+  FlatButton *BtnSetResult, *BtnAddShape, *BtnRemShape;
+
   Fl_Progress *SolvingProgress;
   Fl_Value_Output *OutputAssemblies;
   Fl_Value_Output *OutputSolutions;
@@ -128,6 +131,9 @@ public:
   void cb_NewProblem(void);
   void cb_DeleteProblem(void);
   void cb_CopyProblem(void);
+
+  void cb_ColorAssSel(void);
+  void cb_ColorConstrSel(void);
 
   void cb_ShapeToResult(void);
 
@@ -182,5 +188,6 @@ public:
 
   void update(void);
   void updateSolutionStats(void);
+  void updateInterface(void);
 };
 #endif

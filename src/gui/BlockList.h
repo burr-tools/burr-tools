@@ -280,6 +280,8 @@ class ColorConstraintsEdit : public Fl_Widget {
 
   unsigned int currentSelect;
 
+  int callbackReason;
+
 protected:
 
   void draw(void);
@@ -302,16 +304,22 @@ public:
 
   enum {
     RS_CHANGEDHIGHT,
+    RS_CHANGEDSELECTION,
     RS_LIST_LAST
   };
 
-  unsigned int getReason(void) { return RS_CHANGEDHIGHT; }
+  unsigned int getReason(void) { return callbackReason; }
   unsigned int getSelection(void) { return currentSelect; }
   void setSelection(unsigned int num);
 
   void SetSortByResult(bool value) {
     sortByResult = value;
     redraw();
+  }
+
+  void do_callback(int reason) {
+    callbackReason = reason;
+    Fl_Widget::do_callback(this, reason);
   }
 
   bool GetSortByResult(void) { return sortByResult; }

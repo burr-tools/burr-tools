@@ -577,7 +577,7 @@ void ColorConstraintsEdit::draw(void) {
     lastHight = ypos;
 
     // changed hight
-    do_callback();
+    do_callback(RS_CHANGEDHIGHT);
   }
 
   fl_pop_clip();
@@ -614,8 +614,11 @@ int ColorConstraintsEdit::handle(int event) {
     ypos += 2*CC_GROUP_GAP + height;
 
     if (Fl::event_y() < y() + (int)ypos - (int)shift) {
-      currentSelect = c1;
-      redraw();
+      if (currentSelect != c1) {
+        currentSelect = c1;
+        redraw();
+        do_callback(RS_CHANGEDSELECTION);
+      }
       break;
     }
   }
@@ -631,8 +634,10 @@ void ColorConstraintsEdit::setSelection(unsigned int num) {
 
 void ColorConstraintsEdit::setPuzzle(puzzle_c *pz, unsigned int prob) {
   assert(pz);
-  puzzle = pz;
-  problem = prob;
-  setSelection(0);
+  if ((puzzle != pz) || (problem != prob)) {
+    puzzle = pz;
+    problem = prob;
+    setSelection(0);
+  }
 }
 

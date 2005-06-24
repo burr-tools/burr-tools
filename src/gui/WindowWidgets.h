@@ -235,13 +235,7 @@ public:
   ConstraintsGroup(int x, int y, int w, int h, ColorConstraintsEdit * l);
 
   void cb_slider(void) { List->setShift((int)Slider->value()); }
-  void cb_list(void) {
-    if (List->getReason() == ColorConstraintsEdit::RS_CHANGEDHIGHT) {
-      Slider->range(0, List->calcHeight());
-      Slider->redraw();
-    } else
-      do_callback(this, List->getReason());
-  }
+  void cb_list(void);
 };
 
 

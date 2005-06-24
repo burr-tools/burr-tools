@@ -220,11 +220,28 @@ BlockListGroup::BlockListGroup(int x, int y, int w, int h, BlockList * l) : Fl_G
 
 static void cb_ConstraintsGroupSlider_stub(Fl_Widget* o, void* v) { ((ConstraintsGroup*)(o->parent()))->cb_slider(); }
 static void cb_ConstraintsGroupList_stub(Fl_Widget* o, void* v) { ((ConstraintsGroup*)(o->parent()))->cb_list(); }
+void ConstraintsGroup::cb_list(void) {
+
+  if (List->getReason() == ColorConstraintsEdit::RS_CHANGEDHIGHT) {
+
+    printf("ch to %i\n", List->calcHeight());
+
+    Slider->range(0, List->calcHeight());
+    if (Slider->value() > List->calcHeight())
+      Slider->value(List->calcHeight());
+
+    List->setShift((int)Slider->value());
+
+  } else
+    do_callback(this, List->getReason());
+}
 
 ConstraintsGroup::ConstraintsGroup(int x, int y, int w, int h, ColorConstraintsEdit * l) : Fl_Group(x, y, w, h), List(l) {
 
   box(FL_THIN_DOWN_FRAME);
   x++; y++; w-=2; h-=2;
+
+  add(List);
 
   Slider = new Fl_Slider(x+w-15-1, y-1, 15+2, h+2);
   Slider->box(FL_THIN_DOWN_BOX);
@@ -237,7 +254,6 @@ ConstraintsGroup::ConstraintsGroup(int x, int y, int w, int h, ColorConstraintsE
   frame->box(FL_THIN_UP_FRAME);
   x++; y++; w-=2; h-=2;
 
-  add(List);
   List->resize(x, y, w, h);
   List->callback(cb_ConstraintsGroupList_stub);
 

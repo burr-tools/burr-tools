@@ -48,8 +48,9 @@ void UserInterface::cb_AddColor(void) {
 
   if (fl_color_chooser("New color", r, g, b)) {
     puzzle->addColor(r, g, b);
-    colorSelector->redraw();
+    colorSelector->setSelection(puzzle->colorNumber());
     changed = true;
+    updateInterface();
   }
 }
 
@@ -61,8 +62,8 @@ void UserInterface::cb_RemoveColor(void) {
     fl_message("Can not delete the Neutral color, this color has to be there");
   else {
     puzzle->removeColor(colorSelector->getSelection());
-    colorSelector->redraw();
     changed = true;
+    updateInterface();
   }
 }
 
@@ -74,8 +75,8 @@ void UserInterface::cb_NewShape(void) {
   // solutions, when they do exists
 
   PcSel->setSelection(puzzle->addShape(6, 6, 6));
-  PcSel->redraw();
   pieceEdit->setZ(0);
+  updateInterface();
   changed = true;
 }
 
@@ -98,7 +99,7 @@ void UserInterface::cb_DeleteShape(void) {
     activateShape(current);
 
     PcSel->setSelection(current);
-    PcSel->redraw();
+    updateInterface();
 
     changed = true;
 
@@ -118,6 +119,8 @@ void UserInterface::cb_CopyShape(void) {
 
     PcSel->setSelection(puzzle->addShape(new pieceVoxel_c(puzzle->getShape(current))));
     changed = true;
+
+    updateInterface();
 
   } else
 
@@ -178,6 +181,7 @@ void UserInterface::cb_ColSel(long reason) {
   switch(reason) {
   case PieceSelector::RS_CHANGEDSELECTION:
     pieceEdit->setColor(colorSelector->getSelection());
+    updateInterface();
     break;
   }
 }
@@ -187,9 +191,7 @@ void UserInterface::cb_ProbSel(long reason) {
 
   switch(reason) {
   case PieceSelector::RS_CHANGEDSELECTION:
-    PiecesCountList->setPuzzle(puzzle, problemSelector->getSelection());
-    colconstrList->setPuzzle(puzzle, problemSelector->getSelection());
-    problemResult->setPuzzle(puzzle, problemSelector->getSelection());
+    updateInterface();
     activateProblem(problemSelector->getSelection());
     break;
   }
@@ -220,12 +222,11 @@ void UserInterface::cb_NewProblem(void) {
   const char * name = fl_input("Enter name for the new problem", "Problem");
 
   if (name) {
-    unsigned int prob = puzzle->addProblem();
-    puzzle->probSetName(prob, name);
+    puzzle->probSetName(puzzle->addProblem(), name);
+
     changed = true;
-    problemSelector->redraw();
-    PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
-    activateProblem(prob);
+    updateInterface();
+    activateProblem(problemSelector->getSelection());
   }
 }
 
@@ -235,9 +236,14 @@ void UserInterface::cb_DeleteProblem(void) {
   if (problemSelector->getSelection() < puzzle->problemNumber()) {
 
     puzzle->removeProblem(problemSelector->getSelection());
-    problemSelector->redraw();
+
     changed = true;
-    activateProblem(problemSelector->getSelection());
+    updateInterface();
+
+    if (problemSelector->getSelection() < puzzle->problemNumber())
+      activateProblem(problemSelector->getSelection());
+    else
+      activateClear();
   }
 }
 
@@ -250,11 +256,23 @@ void UserInterface::cb_CopyProblem(void) {
 
     puzzle->probSetName(prob, puzzle->probGetName(prob) + "_cp");
 
-    problemSelector->redraw();
     changed = true;
-    activateProblem(prob);
+    updateInterface();
+    activateProblem(problemSelector->getSelection());
   }
 }
+
+static void cb_ColorAssSel_stub(Fl_Widget* o, void* v) { ui->cb_ColorAssSel(); }
+void UserInterface::cb_ColorAssSel(void) {
+  updateInterface();
+}
+
+static void cb_ColorConstrSel_stub(Fl_Widget* o, void* v) { ui->cb_ColorConstrSel(); }
+void UserInterface::cb_ColorConstrSel(void) {
+  printf("sel\n");
+  updateInterface();
+}
+
 
 static void cb_ShapeToResult_stub(Fl_Widget* o, void* v) { ui->cb_ShapeToResult(); }
 void UserInterface::cb_ShapeToResult(void) {
@@ -273,6 +291,7 @@ void UserInterface::cb_ShapeToResult(void) {
 
 static void cb_ShapeSel_stub(Fl_Widget* o, void* v) { ui->cb_SelectProblemShape(); }
 void UserInterface::cb_SelectProblemShape(void) {
+  updateInterface();
   activateProblem(problemSelector->getSelection());
 }
 
@@ -299,7 +318,7 @@ void UserInterface::cb_AddShapeToProblem(void) {
 
   puzzle->probAddShape(prob, shapeAssignmentSelector->getSelection(), 1);
   activateProblem(problemSelector->getSelection());
-  PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+  updateInterface();
 }
 
 static void cb_RemoveShapeFromProblem_stub(Fl_Widget* o, void* v) { ui->cb_RemoveShapeFromProblem(); }
@@ -344,8 +363,8 @@ void UserInterface::cb_AllowColor(void) {
     puzzle->probAllowPlacement(problemSelector->getSelection(),
                                colconstrList->getSelection()+1,
                                colorAssignmentSelector->getSelection()+1);
-  colconstrList->redraw();
   changed = true;
+  updateInterface();
 }
 
 static void cb_DisallowColor_stub(Fl_Widget* o, void* v) { ui->cb_DisallowColor(); }
@@ -364,8 +383,9 @@ void UserInterface::cb_DisallowColor(void) {
     puzzle->probDisallowPlacement(problemSelector->getSelection(),
                                   colconstrList->getSelection()+1,
                                   colorAssignmentSelector->getSelection()+1);
-  colconstrList->redraw();
+
   changed = true;
+  updateInterface();
 }
 
 static void cb_CCSortByResult_stub(Fl_Widget* o, void* v) { ui->cb_CCSort(1); }
@@ -627,6 +647,7 @@ void UserInterface::tryToLoad(const char * f) {
     mainWindow->label(nm);
 
     ReplacePuzzle(newPuzzle);
+    updateInterface();
 
     TaskSelectionTab->value(TabPieces);
     activateShape(PcSel->getSelection());
@@ -780,19 +801,113 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
   }
 }
 
+void UserInterface::updateInterface(void) {
+
+  PiecesCountList->setPuzzle(puzzle, problemSelector->getSelection());
+  colconstrList->setPuzzle(puzzle, problemSelector->getSelection());
+  problemResult->setPuzzle(puzzle, problemSelector->getSelection());
+  PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+
+  if (colorSelector->getSelection() > 0)
+    BtnDelColor->activate();
+  else
+    BtnDelColor->deactivate();
+
+  if (PcSel->getSelection() < puzzle->shapeNumber()) {
+    BtnCpyShape->activate();
+    BtnDelShape->activate();
+  } else {
+    BtnCpyShape->deactivate();
+    BtnDelShape->deactivate();
+  }
+
+  if (problemSelector->getSelection() < puzzle->problemNumber()) {
+    BtnDelProb->activate();
+    BtnCpyProb->activate();
+  } else {
+    BtnDelProb->deactivate();
+    BtnCpyProb->deactivate();
+  }
+
+  if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
+      (colorAssignmentSelector->getSelection() < puzzle->colorNumber())) {
+    if (colconstrList->GetSortByResult()) {
+      if (puzzle->probPlacementAllowed(problemSelector->getSelection(),
+                                       colorAssignmentSelector->getSelection()+1,
+                                       colconstrList->getSelection()+1)) {
+        BtnColAdd->deactivate();
+        BtnColRem->activate();
+      } else {
+        BtnColAdd->activate();
+        BtnColRem->deactivate();
+      }
+    } else {
+      if (puzzle->probPlacementAllowed(problemSelector->getSelection(),
+                                       colconstrList->getSelection()+1,
+                                       colorAssignmentSelector->getSelection()+1)) {
+        BtnColAdd->deactivate();
+        BtnColRem->activate();
+      } else {
+        BtnColAdd->activate();
+        BtnColRem->deactivate();
+      }
+    }
+  } else {
+    BtnColAdd->deactivate();
+    BtnColRem->deactivate();
+  }
+
+  if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
+      (shapeAssignmentSelector->getSelection() < puzzle->shapeNumber())) {
+    BtnSetResult->activate();
+    BtnAddShape->activate();
+
+    bool found = false;
+
+    for (unsigned int p = 0; p < puzzle->probShapeNumber(problemSelector->getSelection()); p++)
+      if (puzzle->probGetShape(problemSelector->getSelection(), p) == shapeAssignmentSelector->getSelection()) {
+        found = true;
+        break;
+      }
+
+    if (found)
+      BtnRemShape->activate();
+    else
+      BtnRemShape->deactivate();
+
+  } else {
+    BtnSetResult->deactivate();
+    BtnAddShape->deactivate();
+    BtnRemShape->deactivate();
+  }
+
+  updateSolutionStats();
+
+#if 0
+  colorSelector->redraw();
+  problemSelector->redraw();
+  colconstrList->redraw();
+  colorAssignmentSelector->redraw();
+  PcSel->redraw();
+#endif
+
+  mainWindow->redraw();
+}
+
 void UserInterface::updateSolutionStats(void) {
 
   unsigned int prob = solutionProblem->getSelection();
 
-  if (prob < puzzle->problemNumber()) {
+  if (solutionProblem->getSelection() < puzzle->problemNumber()) {
 
-    assembler_c * assm = puzzle->probGetAssembler(prob);
+    assembler_c * assm = puzzle->probGetAssembler(solutionProblem->getSelection());
   
     float finished = (assm) ? assm->getFinished() : 0;
   
     SolvingProgress->value(100*finished);
+    SolvingProgress->show();
   
-    unsigned long numSol = puzzle->probSolutionNumber(prob);
+    unsigned long numSol = puzzle->probSolutionNumber(solutionProblem->getSelection());
   
     if (numSol > 0) {
   
@@ -817,8 +932,12 @@ void UserInterface::updateSolutionStats(void) {
       MovesInfo->hide();
     }
 
-//    OutputIterations->value(puzzle->probGetAssembler(solutionProblem->getSelection())->getIterations());
+
+//    OutputIterations->value(assm->getIterations());
+//    OutputIterations->show();
 //    OutputAssemblies->value(assmThread->getAssemblies());
+//    OutputAssemblies->show();
+
   } else {
 
     SolutionSel->hide();
@@ -826,6 +945,11 @@ void UserInterface::updateSolutionStats(void) {
     OutputSolutions->hide();
     SolutionAnim->hide();
     MovesInfo->hide();
+
+    SolvingProgress->hide();
+
+    OutputIterations->hide();
+    OutputAssemblies->hide();
   }
 
   if (assmThread) {
@@ -858,40 +982,65 @@ void UserInterface::updateSolutionStats(void) {
 
     if (assmThread->getProblem() == solutionProblem->getSelection()) {
 
+      // for the actually solved problem we enable the stop button
       BtnStart->deactivate();
       BtnCont->deactivate();
       BtnStop->activate();
 
     } else {
 
+      // all other problems can do nothing
       BtnStart->deactivate();
       BtnCont->deactivate();
       BtnStop->deactivate();
     }
 
-  } else if (prob < puzzle->problemNumber()) {
-
-    assembler_c * assm = puzzle->probGetAssembler(prob);
-
-    if (!assm)
-      OutputActivity->value("nothing");
-    else {
-
-      if (assm->getFinished() >= 1)
-        OutputActivity->value("finished");
-      else
-        OutputActivity->value("pause");
-    }
-
-    BtnStart->activate();
-    BtnCont->activate();
-    BtnStop->deactivate();
-
   } else {
 
-    BtnStart->deactivate();
-    BtnCont->deactivate();
+    // no thread currently calculating
+
+    // so we can not stop the threas
     BtnStop->deactivate();
+
+    if (prob < puzzle->problemNumber()) {
+
+      // a valid problem is selected
+      assembler_c * assm = puzzle->probGetAssembler(prob);
+
+      if (!assm) {
+
+        // the problem has no assembler engine attatched
+        // so we do nothing and we can not continue
+        OutputActivity->value("nothing");
+        BtnCont->deactivate();
+
+      } else {
+
+        // we hav an assembly engine connected
+        // check if we have finished the calculation
+        if (assm->getFinished() >= 1) {
+          OutputActivity->value("finished");
+          BtnCont->deactivate();
+        } else {
+          OutputActivity->value("pause");
+          BtnCont->activate();
+        }
+      }
+
+      // if we have a result and at least one piece, we can give it a try
+
+      if ((puzzle->probPieceNumber(prob) > 0) &&
+          (puzzle->probGetResult(prob) < puzzle->shapeNumber()))
+        BtnStart->activate();
+      else
+        BtnStart->deactivate();
+
+    } else {
+
+      // no start possible, when no valid problem selected
+      BtnStart->deactivate();
+      BtnCont->deactivate();
+    }
   }
 }
 
@@ -980,12 +1129,14 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     int bw = (w - SZ_GAP) / 2;
     {
       Fl_Group * o = new Fl_Group(x, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      o->resizable(new FlatButton(x          , y, bw, SZ_BUTTON_Y, "Add", "Add another color", cb_AddColor_stub));
+      BtnNewColor = new FlatButton(x          , y, bw, SZ_BUTTON_Y, "Add", "Add another color", cb_AddColor_stub);
+      o->resizable(BtnNewColor);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+bw+SZ_GAP, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      o->resizable(new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Remove", "Remove selected color", cb_RemoveColor_stub));
+      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Remove", "Remove selected color", cb_RemoveColor_stub);
+      o->resizable(BtnDelColor);
       o->end();
     }
     y += SZ_BUTTON_Y + SZ_GAP;
@@ -1013,17 +1164,20 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     int bw = (w - 2*SZ_GAP) / 3;
     {
       Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      o->resizable(new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", "Add another piece", cb_NewShape_stub));
+      BtnNewShape = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", "Add another piece", cb_NewShape_stub);
+      o->resizable(BtnNewShape);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+1*SZ_GAP+1*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      o->resizable(new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Delete", "Delete selected piece", cb_DeleteShape_stub));
+      BtnDelShape = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Delete", "Delete selected piece", cb_DeleteShape_stub);
+      o->resizable(BtnDelShape);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*SZ_GAP+2*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      o->resizable(new FlatButton(x+2*SZ_GAP+2*bw, y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Copy", "Copy selected piece", cb_CopyShape_stub));
+      BtnCpyShape = new FlatButton(x+2*SZ_GAP+2*bw, y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Copy", "Copy selected piece", cb_CopyShape_stub);
+      o->resizable(BtnCpyShape);
       o->end();
     }
     y += SZ_BUTTON_Y + SZ_GAP;
@@ -1112,17 +1266,20 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     int bw = (w - 2*SZ_GAP) / 3;
     {
       Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      o->resizable(new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", "Add another problem", cb_NewProblem_stub));
+      BtnNewProb = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", "Add another problem", cb_NewProblem_stub);
+      o->resizable(BtnNewProb);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+1*SZ_GAP+1*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      o->resizable(new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Delete", "Delete selected problem", cb_DeleteProblem_stub));
+      BtnDelProb = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Delete", "Delete selected problem", cb_DeleteProblem_stub);
+      o->resizable(BtnDelProb);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*SZ_GAP+2*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      o->resizable(new FlatButton(x+2*SZ_GAP+2*bw, y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Copy", "Copy selected problem", cb_CopyProblem_stub));
+      BtnCpyProb = new FlatButton(x+2*SZ_GAP+2*bw, y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Copy", "Copy selected problem", cb_CopyProblem_stub);
+      o->resizable(BtnCpyProb);
       o->end();
     }
     y += SZ_BUTTON_Y + SZ_GAP;
@@ -1151,6 +1308,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     colorAssignmentSelector = new ColorSelector(x, y, w, lh, puzzle, false);
     Fl_Group * colGroup = new BlockListGroup(x, y, w, lh-SZ_GAP, colorAssignmentSelector);
+    colGroup->callback(cb_ColorAssSel_stub);
 
     group->resizable(colGroup);
     group->end();
@@ -1174,8 +1332,8 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
       o->end();
     }
 
-    new FlatButton(x+hw+SZ_GAP     , y, hw/2, SZ_BUTTON_Y, "@-12->", "Add Color", cb_AllowColor_stub);
-    new FlatButton(x+hw+SZ_GAP+hw/2, y, hw/2, SZ_BUTTON_Y, "@-18->", "Add Color", cb_DisallowColor_stub);
+    BtnColAdd = new FlatButton(x+hw+SZ_GAP     , y, hw/2, SZ_BUTTON_Y, "@-12->", "Add Color", cb_AllowColor_stub);
+    BtnColRem = new FlatButton(x+hw+SZ_GAP+hw/2, y, hw/2, SZ_BUTTON_Y, "@-18->", "Add Color", cb_DisallowColor_stub);
 
     {
       Fl_Group * o = new Fl_Group(x+2*hw+SZ_GAP, y, hw+SZ_GAP, SZ_BUTTON_Y);
@@ -1189,6 +1347,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     colconstrList = new ColorConstraintsEdit(x, y, w, lh, puzzle);
     Fl_Group * colGroup = new ConstraintsGroup(x, y, w, lh, colconstrList);
+    colGroup->callback(cb_ColorConstrSel_stub);
 
     group->resizable(colGroup);
     group->end();
@@ -1216,7 +1375,8 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     }
     {
       Fl_Group * o = new Fl_Group(x+hw+SZ_GAP, y, w-hw, SZ_BUTTON_Y);
-      o->resizable(new FlatButton(x+hw+SZ_GAP, y, w-hw-SZ_GAP, SZ_BUTTON_Y, "Set Result", "Set selected shape as result", cb_ShapeToResult_stub));
+      BtnSetResult = new FlatButton(x+hw+SZ_GAP, y, w-hw-SZ_GAP, SZ_BUTTON_Y, "Set Result", "Set selected shape as result", cb_ShapeToResult_stub);
+      o->resizable(BtnSetResult);
       o->end();
     }
 
@@ -1243,12 +1403,14 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     {
       Fl_Group * o = new Fl_Group(x,           y, hw+SZ_GAP, SZ_BUTTON_Y);
-      o->resizable(new FlatButton(x,           y, hw         , SZ_BUTTON_Y, "+1", "Add another one of the selected shape", cb_AddShapeToProblem_stub));
+      BtnAddShape = new FlatButton(x,           y, hw         , SZ_BUTTON_Y, "+1", "Add another one of the selected shape", cb_AddShapeToProblem_stub);
+      o->resizable(BtnAddShape);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+hw+SZ_GAP, y, w-hw, SZ_BUTTON_Y);
-      o->resizable(new FlatButton(x+hw+SZ_GAP, y, w-hw-SZ_GAP, SZ_BUTTON_Y, "-1", "Remove one of the selected shapes", cb_RemoveShapeFromProblem_stub));
+      BtnRemShape = new FlatButton(x+hw+SZ_GAP, y, w-hw-SZ_GAP, SZ_BUTTON_Y, "-1", "Remove one of the selected shapes", cb_RemoveShapeFromProblem_stub);
+      o->resizable(BtnRemShape);
       o->end();
     }
 
@@ -1481,6 +1643,7 @@ UserInterface::UserInterface() {
 
   mainWindow->resizable(mainTile);
 
+  updateInterface();
   activateClear();
 }
 
