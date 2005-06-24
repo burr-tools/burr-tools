@@ -171,6 +171,7 @@ public:
   void cb_Save(void);
   void cb_SaveAs(void);
   void cb_Quit(void);
+  void cb_About(void);
   void cb_SolProbSel(long reason);
 
 

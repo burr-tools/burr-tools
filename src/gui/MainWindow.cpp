@@ -31,6 +31,8 @@
 
 #include "gzstream.h"
 
+#include "../config.h"
+
 static UserInterface * ui;
 
 static const char * FileSelection(const char * title) {
@@ -623,6 +625,21 @@ void UserInterface::cb_Quit(void) {
   mainWindow->hide();
 }
 
+static void cb_About_stub(Fl_Widget* o, void* v) { ui->cb_About(); }
+void UserInterface::cb_About(void) {
+
+  fl_message("This is the GUI for BurrTools version " VERSION "\n"
+             "\n"
+             "BurrTools (c) 2003-2005 by Andreas Röver\n"
+             "\n"
+             "This software is distributed under the GPL\n"
+             "\n"
+             "You should have received a copy of the GNU General Public License\n"
+             "along with this program; if not, write to the Free Software\n"
+             "Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.\n"
+            );
+}
+
 
 
 bool UserInterface::threadStopped(void) {
@@ -708,7 +725,8 @@ Fl_Menu_Item UserInterface::menu_MainMenu[] = {
   {"New",     0, cb_New_stub, 0, 0, 0, 0, 14, 56},
   {"Load",    0, cb_Load_stub, 0, 0, 0, 0, 14, 56},
   {"Save",    0, cb_Save_stub, 0, 0, 0, 0, 14, 56},
-  {"Save as", 0, cb_SaveAs_stub, 0, 128, 0, 0, 14, 56},
+  {"Save as", 0, cb_SaveAs_stub, 0, 0, 0, 0, 14, 56},
+  {"About",   0, cb_About_stub, 0, FL_MENU_DIVIDER, 3, 0, 14, 56},
   {"Quit",    0, cb_Quit_stub, 0, 0, 3, 0, 14, 1},
   {0}
 };
