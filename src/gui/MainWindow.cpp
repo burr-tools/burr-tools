@@ -222,7 +222,11 @@ void UserInterface::cb_NewProblem(void) {
   const char * name = fl_input("Enter name for the new problem", "Problem");
 
   if (name) {
-    puzzle->probSetName(puzzle->addProblem(), name);
+
+    unsigned int prob = puzzle->addProblem();
+    puzzle->probSetName(prob, name);
+
+    problemSelector->setSelection(prob);
 
     changed = true;
     updateInterface();
@@ -238,8 +242,12 @@ void UserInterface::cb_DeleteProblem(void) {
     puzzle->removeProblem(problemSelector->getSelection());
 
     changed = true;
-    updateInterface();
 
+    while ((problemSelector->getSelection() >= puzzle->problemNumber()) &&
+           (problemSelector->getSelection() > 0))
+      problemSelector->setSelection(problemSelector->getSelection()-1);
+
+    updateInterface();
     if (problemSelector->getSelection() < puzzle->problemNumber())
       activateProblem(problemSelector->getSelection());
     else
@@ -252,13 +260,37 @@ void UserInterface::cb_CopyProblem(void) {
 
   if (problemSelector->getSelection() < puzzle->problemNumber()) {
 
-    unsigned int prob = puzzle->copyProblem(problemSelector->getSelection());
+    char pname[50];
+    snprintf(pname, 50, "%s_cp", puzzle->probGetName(problemSelector->getSelection()).c_str());
 
-    puzzle->probSetName(prob, puzzle->probGetName(prob) + "_cp");
+    const char * name = fl_input("Enter name for the copied problem", pname);
 
-    changed = true;
-    updateInterface();
-    activateProblem(problemSelector->getSelection());
+    if (name) {
+      unsigned int prob = puzzle->copyProblem(problemSelector->getSelection());
+      puzzle->probSetName(prob, name);
+      problemSelector->setSelection(prob);
+
+      changed = true;
+      updateInterface();
+      activateProblem(problemSelector->getSelection());
+    }
+  }
+}
+
+static void cb_RenameProblem_stub(Fl_Widget* o, void* v) { ui->cb_RenameProblem(); }
+void UserInterface::cb_RenameProblem(void) {
+
+  if (problemSelector->getSelection() < puzzle->problemNumber()) {
+
+    const char * name = fl_input("Enter name for the copied problem", puzzle->probGetName(problemSelector->getSelection()).c_str());
+
+    if (name) {
+
+      puzzle->probSetName(problemSelector->getSelection(), name);
+      changed = true;
+      updateInterface();
+      activateProblem(problemSelector->getSelection());
+    }
   }
 }
 
@@ -824,9 +856,11 @@ void UserInterface::updateInterface(void) {
   if (problemSelector->getSelection() < puzzle->problemNumber()) {
     BtnDelProb->activate();
     BtnCpyProb->activate();
+    BtnRenProb->activate();
   } else {
     BtnDelProb->deactivate();
     BtnCpyProb->deactivate();
+    BtnRenProb->deactivate();
   }
 
   if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
@@ -1263,7 +1297,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 
-    int bw = (w - 2*SZ_GAP) / 3;
+    int bw = (w - 3*SZ_GAP) / 4;
     {
       Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
       BtnNewProb = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", "Add another problem", cb_NewProblem_stub);
@@ -1272,14 +1306,20 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     }
     {
       Fl_Group * o = new Fl_Group(x+1*SZ_GAP+1*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelProb = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Delete", "Delete selected problem", cb_DeleteProblem_stub);
+      BtnDelProb = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Del", "Delete selected problem", cb_DeleteProblem_stub);
       o->resizable(BtnDelProb);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*SZ_GAP+2*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnCpyProb = new FlatButton(x+2*SZ_GAP+2*bw, y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Copy", "Copy selected problem", cb_CopyProblem_stub);
+      BtnCpyProb = new FlatButton(x+2*SZ_GAP+2*bw, y, bw, SZ_BUTTON_Y, "Copy", "Copy selected problem", cb_CopyProblem_stub);
       o->resizable(BtnCpyProb);
+      o->end();
+    }
+    {
+      Fl_Group * o = new Fl_Group(x+3*SZ_GAP+3*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
+      BtnRenProb = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*SZ_GAP-3*bw, SZ_BUTTON_Y, "Ren", "Rename selected problem", cb_RenameProblem_stub);
+      o->resizable(BtnRenProb);
       o->end();
     }
     y += SZ_BUTTON_Y + SZ_GAP;
