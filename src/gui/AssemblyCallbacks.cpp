@@ -29,8 +29,6 @@
 #include "../lib/assm_0_frontend_0.h"
 #include "../lib/disassembler_3.h"
 
-
-
 #ifdef WIN32
 unsigned long __stdcall start_th(void * c)
 #else
@@ -91,6 +89,7 @@ assemblerThread::~assemblerThread(void) {
 #else
     usleep(10000);
 #endif
+
 }
 
 bool assemblerThread::assembly(assembly_c * a) {

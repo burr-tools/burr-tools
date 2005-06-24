@@ -625,10 +625,6 @@ void UserInterface::cb_Quit(void) {
 
 
 
-
-
-
-
 bool UserInterface::threadStopped(void) {
 
   if (assmThread) {
