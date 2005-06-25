@@ -22,16 +22,16 @@
 /* helper function to check if a piece an go at a position */
 static bool pieceFits(const pieceVoxel_c * piece, const pieceVoxel_c * result, const puzzle_c * puz, int x, int y, int z, unsigned int problemNum) {
 
-  for (unsigned int pz = 0; pz < piece->getZ(); pz++)
-    for (unsigned int py = 0; py < piece->getY(); py++)
-      for (unsigned int px = 0; px < piece->getX(); px++)
+  for (unsigned int pz = piece->boundZ1(); pz <= piece->boundZ2(); pz++)
+    for (unsigned int py = piece->boundY1(); py <= piece->boundY2(); py++)
+      for (unsigned int px = piece->boundX1(); px <= piece->boundX2(); px++)
         if (
             // the piece can not be place if the result is empty and the piece is fileed at a given voxel
             ((piece->getState(px, py, pz) != pieceVoxel_c::VX_EMPTY) &&
-             (result->getState2(x+px, y+py, z+pz) == pieceVoxel_c::VX_EMPTY)) ||
+             (result->getState(x+px, y+py, z+pz) == pieceVoxel_c::VX_EMPTY)) ||
 
             // the piece can also not be placed when the color constraints don't fit
-            !puz->probPlacementAllowed(problemNum, piece->getColor(px, py, pz), result->getColor2(x+px, y+py, z+pz))
+            !puz->probPlacementAllowed(problemNum, piece->getColor(px, py, pz), result->getColor(x+px, y+py, z+pz))
 
            )
           return false;
