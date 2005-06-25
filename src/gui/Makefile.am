@@ -15,6 +15,6 @@ burrGui_SOURCES=VoxelView.cpp VoxelView.h \
                 DisasmToMoves.cpp DisasmToMoves.h \
                 pieceColor.cpp pieceColor.h \
                 AssemblyCallbacks.cpp AssemblyCallbacks.h \
-		gzstream.cpp gzstream.h \
+                gzstream.cpp gzstream.h \
                 main.cpp
 

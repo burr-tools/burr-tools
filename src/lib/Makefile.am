@@ -1,7 +1,9 @@
 noinst_LIBRARIES=libburr.a
 
-libburr_a_CPPFLAGS=-Wall
+XML_CPP_ADD=@XML_CPP_ADD@
+XML_LD_ADD=@XML_LD_ADD@
 
+libburr_a_CPPFLAGS=-Wall $(XML_CPP_ADD)
 
 libburr_a_SOURCES=disassembler.h assembler.h \
                   disassembler_3.h disassembler_3.cpp \
