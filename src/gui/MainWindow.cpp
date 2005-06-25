@@ -329,6 +329,16 @@ void UserInterface::cb_SelectProblemShape(void) {
   activateProblem(problemSelector->getSelection());
 }
 
+static void cb_PiecesClicked_stub(Fl_Widget* o, void* v) { ui->cb_PiecesClicked(); }
+void UserInterface::cb_PiecesClicked(void) {
+
+  shapeAssignmentSelector->setSelection(puzzle->probGetShape(problemSelector->getSelection(), PiecesCountList->getClicked()));
+
+  updateInterface();
+  activateProblem(problemSelector->getSelection());
+}
+
+
 static void cb_AddShapeToProblem_stub(Fl_Widget* o, void* v) { ui->cb_AddShapeToProblem(); }
 void UserInterface::cb_AddShapeToProblem(void) {
 
@@ -1470,6 +1480,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     PiecesCountList = new PiecesList(x, y, w, lh-SZ_GAP, puzzle);
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh, PiecesCountList);
+    shapeGroup->callback(cb_PiecesClicked_stub);
 
     group->resizable(shapeGroup);
     group->end();

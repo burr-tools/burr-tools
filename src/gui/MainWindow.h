@@ -148,6 +148,8 @@ public:
   void cb_ColSel(long reason);
   void cb_ProbSel(long reason);
 
+  void cb_PiecesClicked(void);
+
   void cb_TransformPiece(void);
   void cb_pieceEdit(VoxelEditGroup* o);
 

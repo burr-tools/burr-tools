@@ -221,7 +221,15 @@ private:
   puzzle_c * puzzle;
   unsigned int problem;
 
+  unsigned int clicked;
+
 public:
+
+  enum {
+    RS_CLICKED = RS_LIST_LAST,
+    RS_PIECES_LAST
+  };
+
 
   PiecesList(int x, int y, int w, int h, puzzle_c * p) : TextList(x, y, w, h), puzzle(p), problem(0) { assert(p); }
 
@@ -229,6 +237,14 @@ public:
   unsigned int virtual blockNumber(void);
   void virtual getText(unsigned int block, char * text);
   void virtual getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
+
+  virtual void push(unsigned int block) {
+    clicked = block;
+    do_callback(RS_CLICKED);
+  }
+
+  unsigned int getClicked(void) { return clicked; }
+
 };
 
 class PieceVisibility : public BlockList {
