@@ -1,2 +1,81 @@
+Sat Jun 25 11:19:59 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * reenable the reduce switch
+  
+  ... for now. I really do need to find a reduce function that
+  is always fast...
 
+Sat Jun 25 11:02:28 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * enable the stopping while in preparation
+  
+  you can now press the stop button, while the asdsembler is preparing
+  it will finish the preparation and then return to the user
 
+Sat Jun 25 10:44:48 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * correct bounding box comparison
+
+Sat Jun 25 10:35:18 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use bounding box for piece fitting test -> speedup
+
+Sat Jun 25 10:34:48 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * don't activate solutions on color selection
+
+Sat Jun 25 10:00:11 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add xml flags to library compilation
+
+Sat Jun 25 09:55:26 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * select shape on piece click
+  
+  the right shape get's now selected when you click at one of
+  the pieces in the piece+counter view at the bottom of the problem
+  tab. This improves usability quite a bit
+
+Fri Jun 24 21:34:26 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add about box
+
+Fri Jun 24 21:28:07 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * simplify message call
+
+Fri Jun 24 21:14:12 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * new version
+
+Fri Jun 24 21:12:24 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * line whitespace
+
+Fri Jun 24 21:10:06 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * problem renaming and activation of the new created problems after the creation
+
+Fri Jun 24 20:50:13 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * interface update function
+
+Thu Jun 23 21:35:04 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * get not fitting error messages working
+
+Thu Jun 23 21:19:24 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * set z layer to 0 on new shape
+
+Thu Jun 23 21:11:29 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * new comparison function used to compare voxel space contents within bounding box
+  
+  this new functionality is used when comparing rotations as the old
+  function wouldn't work with not minimized voxel spaces
+
+Thu Jun 23 19:31:11 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * better error interface in the library, use this interface. Burrgui now has message boxes on errors
+
+Thu Jun 23 17:10:58 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * save as compresses now too, also check for extension
+
+Wed Jun 22 18:08:14 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * deleting the last piece resulted in endless loop
+
+Wed Jun 22 17:56:43 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * update, when shapes are deleted
+
+Wed Jun 22 17:14:24 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * get rid of the signed <-> unsigned comparisons
+
+Wed Jun 22 17:05:21 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * when the size was very small the subtraction would overflow and result in a large grid
+
+Tue Jun 21 20:58:31 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  tagged 0.1.2
