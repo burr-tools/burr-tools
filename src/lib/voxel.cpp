@@ -140,9 +140,9 @@ bool voxel_c::identicalInBB(const voxel_c * op) const {
   if (by2-by1 != op->by2-op->by1) return false;
   if (bz2-bz1 != op->bz2-op->bz1) return false;
 
-  for (unsigned int x = bx1; x < bx2; x++)
-    for (unsigned int y = by1; y < by2; y++)
-      for (unsigned int z = bz1; z < bz2; z++)
+  for (unsigned int x = bx1; x <= bx2; x++)
+    for (unsigned int y = by1; y <= by2; y++)
+      for (unsigned int z = bz1; z <= bz2; z++)
         if (get(x, y, z) != op->get(x-bx1+op->bx1, y-by1+op->by1, z-bz1+op->bz1))
           return false;
 
