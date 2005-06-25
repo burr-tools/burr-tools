@@ -184,6 +184,7 @@ void UserInterface::cb_ColSel(long reason) {
   case PieceSelector::RS_CHANGEDSELECTION:
     pieceEdit->setColor(colorSelector->getSelection());
     updateInterface();
+    activateShape(PcSel->getSelection());
     break;
   }
 }
