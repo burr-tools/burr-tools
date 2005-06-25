@@ -53,18 +53,25 @@ void* start_th(void * c)
       return 0;
     }
 
-    p->action = assemblerThread::ACT_REDUCE;
+    if (!p->stopPressed)
+      p->action = assemblerThread::ACT_REDUCE;
+
     assm->reduce();
 
   } else
     assm = (assm_0_frontend_0_c*)p->puzzle->probGetAssembler(p->prob);
 
-  p->action = assemblerThread::ACT_ASSEMBLING;
-  assm->assemble(p);
+  if (!p->stopPressed) {
 
-  if (assm->getFinished() >= 1)
-    p->action = assemblerThread::ACT_FINISHED;
-  else
+    p->action = assemblerThread::ACT_ASSEMBLING;
+    assm->assemble(p);
+  
+    if (assm->getFinished() >= 1)
+      p->action = assemblerThread::ACT_FINISHED;
+    else
+      p->action = assemblerThread::ACT_PAUSING;
+
+  } else
     p->action = assemblerThread::ACT_PAUSING;
 
   return 0;
@@ -122,10 +129,14 @@ bool assemblerThread::assembly(assembly_c * a) {
 }
 
 void assemblerThread::stop(void) {
+  action = ACT_WAIT_TO_STOP;
   puzzle->probGetAssembler(prob)->stop();
+  stopPressed = true;
 }
 
 void assemblerThread::start(void) {
+
+  stopPressed = false;
 
 #ifdef WIN32
   CreateThread(NULL, 0, start_th, this, 0, 0);

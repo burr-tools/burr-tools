@@ -1034,6 +1034,9 @@ void UserInterface::updateSolutionStats(void) {
     case assemblerThread::ACT_FINISHED:
       OutputActivity->value("finished");
       break;
+    case assemblerThread::ACT_WAIT_TO_STOP:
+      OutputActivity->value("please wait");
+      break;
     }
 
     if (assmThread->getProblem() == solutionProblem->getSelection()) {

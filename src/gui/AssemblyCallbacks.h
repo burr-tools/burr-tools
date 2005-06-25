@@ -39,6 +39,8 @@ class assemblerThread : public assembler_cb {
   assembler_c::errState errState;
   int errParam;
 
+  bool stopPressed;
+
 public:
 
   enum {
@@ -63,7 +65,8 @@ public:
     ACT_DISASSEMBLING,
     ACT_PAUSING,
     ACT_FINISHED,
-    ACT_ERROR
+    ACT_ERROR,
+    ACT_WAIT_TO_STOP
   };
 
   unsigned int currentAction(void) { return action; }
