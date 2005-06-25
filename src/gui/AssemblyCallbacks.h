@@ -41,6 +41,8 @@ class assemblerThread : public assembler_cb {
 
   bool stopPressed;
 
+  bool _reduce;
+
 public:
 
   enum {
@@ -50,7 +52,7 @@ public:
   };
 
   // create all the necessary data structures to start the thread later on
-  assemblerThread(puzzle_c * puz, unsigned int problemNum, unsigned int solAction);
+  assemblerThread(puzzle_c * puz, unsigned int problemNum, unsigned int solAction, bool reduce = false);
 
   // stop and exit
   virtual ~assemblerThread(void);

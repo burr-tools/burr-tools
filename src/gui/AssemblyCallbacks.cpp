@@ -53,10 +53,13 @@ void* start_th(void * c)
       return 0;
     }
 
-    if (!p->stopPressed)
-      p->action = assemblerThread::ACT_REDUCE;
+    if (p->_reduce) {
 
-    assm->reduce();
+      if (!p->stopPressed)
+        p->action = assemblerThread::ACT_REDUCE;
+  
+      assm->reduce();
+    }
 
   } else
     assm = (assm_0_frontend_0_c*)p->puzzle->probGetAssembler(p->prob);
@@ -77,12 +80,13 @@ void* start_th(void * c)
   return 0;
 }
 
-assemblerThread::assemblerThread(puzzle_c * puz, unsigned int problemNum, unsigned int solAction) :
+assemblerThread::assemblerThread(puzzle_c * puz, unsigned int problemNum, unsigned int solAction, bool red) :
 assemblies(0),
 action(ACT_PREPARATION),
 _solutionAction(solAction),
 puzzle(puz),
-prob(problemNum)
+prob(problemNum),
+_reduce(red)
 {
 }
 
