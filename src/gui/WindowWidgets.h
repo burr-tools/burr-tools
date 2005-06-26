@@ -39,24 +39,24 @@ class FlatButton : public Fl_Button {
 
 public:
   FlatButton(int x, int y, int w, int h, const char * txt, const char * tt) : Fl_Button(x, y, w, h, txt) {
-    box(FL_ENGRAVED_BOX);
+    box(FL_THIN_UP_BOX);
     tooltip(tt);
   }
 
   FlatButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback* cb) : Fl_Button(x, y, w, h, txt) {
-    box(FL_ENGRAVED_BOX);
+    box(FL_THIN_UP_BOX);
     tooltip(tt);
     callback(cb);
   }
 
   FlatButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback1* cb, long cb_para) : Fl_Button(x, y, w, h, txt) {
-    box(FL_ENGRAVED_BOX);
+    box(FL_THIN_UP_BOX);
     tooltip(tt);
     callback(cb, cb_para);
   }
 
   FlatButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback1* cb, long cb_para, int col) : Fl_Button(x, y, w, h, txt) {
-    box(FL_ENGRAVED_BOX);
+    box(FL_THIN_UP_BOX);
     tooltip(tt);
     callback(cb, cb_para);
     color((Fl_Color)col);
