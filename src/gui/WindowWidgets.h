@@ -32,6 +32,8 @@
 #include <FL/Fl_Value_Output.H>
 #include <FL/Fl_Tabs.H>
 #include <FL/Fl_Box.H>
+#include <FL/Fl_Check_Button.H>
+#include <FL/Fl_Output.H>
 #include <FL/fl_draw.h>
 
 // my button, the only change it that the box is automatically set to engraved
@@ -289,6 +291,24 @@ public:
 //  void setcontent(void);
   void draw(void);
 
+};
+
+// a status line containing text and a button to toggle
+// between colored and normal view
+class StatusLine : public Fl_Group {
+
+private:
+
+  Fl_Check_Button * colors;
+  Fl_Output * text;
+
+public:
+
+  StatusLine(int x, int y, int w, int h);
+
+  void setText(const char * t) { text->value(t); }
+  bool useColors(void) { return colors->value() != 0; }
+  void callback(Fl_Callback* fkt) { colors->callback(fkt); }
 };
 
 #endif
