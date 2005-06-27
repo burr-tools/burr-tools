@@ -254,11 +254,12 @@ public:
   void cb_slider(void);
 
   void showNothing(void) { View3D->clearSpaces(); }
-  void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
-  void showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape);
-  void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum);
+  void showSingleShape(const puzzle_c * puz, unsigned int shapeNum, bool showColors);
+  void showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape, bool showColors);
+  void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum, bool showColors);
   void updatePositions(PiecePositions *shifting);
   void updateVisibility(PieceVisibility * pcvis);
+  void showColors(const puzzle_c * puz, bool show);
 
   void setMarker(int x, int y, int z) { View3D->setMarker(x, y, z); }
   void hideMarker(void) { View3D->hideMarker(); }

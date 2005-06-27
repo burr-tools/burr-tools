@@ -363,7 +363,7 @@ void ResultViewer::draw(void) {
 }
 
 
-void View3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
+void View3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum, bool showColors) {
 
   View3D->update(false);
 
@@ -375,10 +375,11 @@ void View3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
   View3D->setTransformationType(VoxelView::TranslateRoateScale);
   View3D->setScaling(1);
   View3D->showCoordinateSystem(true);
+
   View3D->update(true);
 }
 
-void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape) {
+void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape, bool showColors) {
 
   View3D->update(false);
 
@@ -471,7 +472,27 @@ void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
   View3D->update(true);
 }
 
-void View3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
+void View3dGroup::showColors(const puzzle_c * puz, bool show) {
+  View3D->update(false);
+
+  if (show) {
+
+    View3D->clearPalette();
+    for (unsigned int i = 0; i < puz->colorNumber(); i++) {
+      unsigned char r, g, b;
+      puz->getColor(i, &r, &g, &b);
+      View3D->addPaletteEntry(r/255.0, g/255.0, b/255.0);
+    }
+    View3D->setColorMode(VoxelView::paletteColor);
+
+  } else
+    View3D->setColorMode(VoxelView::pieceColor);
+
+  View3D->update(true);
+}
+
+
+void View3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum, bool showColors) {
   View3D->update(false);
 
   View3D->clearSpaces();

@@ -52,6 +52,7 @@ void UserInterface::cb_AddColor(void) {
     puzzle->addColor(r, g, b);
     colorSelector->setSelection(puzzle->colorNumber());
     changed = true;
+    View3D->showColors(puzzle, Status->useColors());
     updateInterface();
   }
 }
@@ -65,6 +66,7 @@ void UserInterface::cb_RemoveColor(void) {
   else {
     puzzle->removeColor(colorSelector->getSelection());
     changed = true;
+    View3D->showColors(puzzle, Status->useColors());
     updateInterface();
   }
 }
@@ -211,7 +213,7 @@ void UserInterface::cb_pieceEdit(VoxelEditGroup* o) {
       View3D->hideMarker();
     break;
   case SquareEditor::RS_CHANGESQUARE:
-    View3D->showSingleShape(puzzle, PcSel->getSelection());
+    View3D->showSingleShape(puzzle, PcSel->getSelection(), Status->useColors());
     changed = true;
     break;
   }
@@ -530,6 +532,12 @@ void UserInterface::cb_PcVis(void) {
   View3D->updateVisibility(PcVis);
 }
 
+static void cb_Status_stub(Fl_Widget* o, void* v) { ui->cb_Status(); }
+void UserInterface::cb_Status(void) {
+  View3D->showColors(puzzle, Status->useColors());
+}
+
+
 static void cb_New_stub(Fl_Widget* o, void* v) { ui->cb_New(); }
 void UserInterface::cb_New(void) {
 
@@ -766,7 +774,7 @@ void UserInterface::activateShape(unsigned int number) {
 
     pieceVoxel_c * p = puzzle->getShape(number);
 
-    View3D->showSingleShape(puzzle, number);
+    View3D->showSingleShape(puzzle, number, Status->useColors());
     pieceEdit->setPuzzle(puzzle, number);
     pieceTools->setVoxelSpace(p);
 
@@ -784,7 +792,7 @@ void UserInterface::activateShape(unsigned int number) {
 
 void UserInterface::activateProblem(unsigned int prob) {
 
-  View3D->showProblem(puzzle, prob, shapeAssignmentSelector->getSelection());
+  View3D->showProblem(puzzle, prob, shapeAssignmentSelector->getSelection(), Status->useColors());
 
   SolutionEmpty = true;
 }
@@ -829,7 +837,7 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
                                       2*puzzle->probGetResultShape(prob)->getBiggestDimension());
       disassemble->setStep(SolutionAnim->value());
 
-      View3D->showAssembly(puzzle, prob, num);
+      View3D->showAssembly(puzzle, prob, num, Status->useColors());
       View3D->updatePositions(disassemble);
 
     } else {
@@ -839,7 +847,7 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->value(0);
       MovesInfo->hide();
 
-      View3D->showAssembly(puzzle, prob, num);
+      View3D->showAssembly(puzzle, prob, num, Status->useColors());
     }
 
     SolutionEmpty = false;
@@ -1144,11 +1152,12 @@ void UserInterface::update(void) {
 #define SZ_WINDOW_X 540                        // initial size of the window
 #define SZ_WINDOW_Y 488
 #define SZ_MENU_Y 25                           // hight of the menu
+#define SZ_STATUS_Y 25
 #define SZ_TOOL_X 190                          // initial width of the toolbar
 #define SZ_TAB_Y 20                            // hight of the tabs in a tab
 #define SZ_GAP 5                               // gap between elements
 #define SZ_CONTENT_START_Y SZ_MENU_Y           // y start of the content area
-#define SZ_CONTENT_Y (SZ_WINDOW_Y - SZ_MENU_Y) // initial hight of the content of the window
+#define SZ_CONTENT_Y (SZ_WINDOW_Y - SZ_MENU_Y - SZ_STATUS_Y) // initial hight of the content of the window
 #define SZ_3DAREA_X (SZ_WINDOW_X - SZ_TOOL_X)
 #define SZ_BUTTON_Y 20
 #define SZ_TEXT_Y 15
@@ -1697,6 +1706,10 @@ UserInterface::UserInterface() {
 
   MainMenu = new Fl_Menu_Bar(0, 0, SZ_WINDOW_X, SZ_MENU_Y);
   MainMenu->menu(menu_MainMenu);
+  MainMenu->box(FL_THIN_UP_BOX);
+
+  Status = new StatusLine(0, SZ_MENU_Y + SZ_CONTENT_Y, SZ_WINDOW_X, SZ_STATUS_Y);
+  Status->callback(cb_Status_stub);
 
   Fl_Tile * mainTile = new Fl_Tile(0, SZ_CONTENT_START_Y, SZ_WINDOW_X, SZ_CONTENT_Y);
   View3D = new View3dGroup(SZ_TOOL_X, SZ_CONTENT_START_Y, SZ_3DAREA_X, SZ_CONTENT_Y);

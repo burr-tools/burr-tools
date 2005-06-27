@@ -106,6 +106,7 @@ class UserInterface {
 
   Fl_Group *MinSizeTools;
   Fl_Menu_Bar *MainMenu;
+  StatusLine *Status;
   static Fl_Menu_Item menu_MainMenu[];
 
   ColorSelector * colorSelector;
@@ -167,6 +168,8 @@ public:
   void cb_SolutionAnim(Fl_Value_Slider*);
 
   void cb_PcVis(void);
+
+  void cb_Status(void);
 
   void cb_New(void);
   void cb_Load(void);
