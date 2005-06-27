@@ -643,6 +643,8 @@ void UserInterface::cb_About(void) {
              "\n"
              "BurrTools (c) 2003-2005 by Andreas Röver\n"
              "\n"
+             "The latest version is available at burrtools.sourceforge.net\n"
+             "\n"
              "This software is distributed under the GPL\n"
              "\n"
              "You should have received a copy of the GNU General Public License\n"
