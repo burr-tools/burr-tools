@@ -298,6 +298,8 @@ Separator::Separator(int x, int y, int w, int h, const char * label, bool button
     int lw, lh;
 
     fl_font(labelfont(), labelsize()-4);
+
+    lw = lh = 0;
     fl_measure(label, lw, lh);
     (new Fl_Box(FL_FLAT_BOX, x, y, lw+4, h, label))->labelsize(labelsize()-4);
 
