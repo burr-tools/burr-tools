@@ -296,10 +296,23 @@ void VoxelView::drawVoxelSpace() {
           if (shapes[piece].shape->getState(x, y , z) == pieceVoxel_c::VX_EMPTY)
             continue;
 
-          if ((x+y+z) & 1)
-            glColor4f(shapes[piece].r, shapes[piece].g, shapes[piece].b, shapes[piece].a);
-          else
-            glColor4f(shapes[piece].r*0.9, shapes[piece].g*0.9, shapes[piece].b*0.9, shapes[piece].a);
+          switch (colors) {
+          case pieceColor:
+            if ((x+y+z) & 1)
+              glColor4f(shapes[piece].r, shapes[piece].g, shapes[piece].b, shapes[piece].a);
+            else
+              glColor4f(shapes[piece].r*0.9, shapes[piece].g*0.9, shapes[piece].b*0.9, shapes[piece].a);
+            break;
+          case paletteColor:
+            unsigned int color = shapes[piece].shape->getColor(x, y, z);
+            if ((color == 0) || (color - 1 >= palette.size())) {
+              if ((x+y+z) & 1)
+                glColor4f(shapes[piece].r, shapes[piece].g, shapes[piece].b, shapes[piece].a);
+              else
+                glColor4f(shapes[piece].r*0.9, shapes[piece].g*0.9, shapes[piece].b*0.9, shapes[piece].a);
+            } else
+              glColor4f(palette[color-1].r, palette[color-1].g, palette[color-1].b, shapes[piece].a);
+          }
 
           switch (shapes[piece].mode) {
           case normal:
@@ -484,5 +497,16 @@ void VoxelView::update(bool doIt) {
   doUpdates = doIt;
   if (doIt)
     redraw();
+}
+
+void VoxelView::addPaletteEntry(float r, float g, float b) {
+
+  colorInfo ci;
+
+  ci.r = r;
+  ci.g = g;
+  ci.b = b;
+
+  palette.push_back(ci);
 }
 

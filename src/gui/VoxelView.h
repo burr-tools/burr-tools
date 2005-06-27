@@ -138,6 +138,9 @@ public:
     redraw();
   }
 
+  void clearPalette(void) { palette.clear(); }
+  void addPaletteEntry(float r, float g, float b);
+
 private:
 
   typedef struct {
@@ -165,5 +168,12 @@ private:
   bool doUpdates;
 
   float centerX, centerY, centerZ;
+
+
+  typedef struct {
+    float r, g, b;
+  } colorInfo;
+
+  std::vector<colorInfo> palette;
 };
 
