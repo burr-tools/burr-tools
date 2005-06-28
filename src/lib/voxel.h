@@ -405,6 +405,9 @@ public:
   unsigned int getColor2(int x, int y, int z) const { return get2(x, y, z) >> 2; }
   unsigned int getColor(unsigned int i) const { return get(i) >> 2; }
 
+  bool isEmpty(unsigned int x, unsigned int y, unsigned int z) const { return getState(x, y, z) == VX_EMPTY; }
+  bool isEmpty2(int x, int y, int z) const { return getState2(x, y, z) == VX_EMPTY; }
+
   void setState(unsigned int x, unsigned int y, unsigned int z, int state) { set(x, y, z, (get(x, y, z) & ~0x3) | state); }
   void setColor(unsigned int x, unsigned int y, unsigned int z, unsigned int color) { assert(color < 64); set(x, y, z, (get(x, y, z) & 0x3) | color << 2); }
   void setState(unsigned int i, int state) { set(i, (get(i) & ~0x3) | state); }
