@@ -42,7 +42,6 @@ void* start_th(void * c)
   if (!p->puzzle->probGetAssembler(p->prob)) {
     p->action = assemblerThread::ACT_PREPARATION;
     assm = new assm_0_frontend_0_c();
-    p->puzzle->probSetAssembler(p->prob, assm);
 
     p->errState = assm->createMatrix(p->puzzle, p->prob);
     if (p->errState != assm_0_frontend_0_c::ERR_NONE) {
@@ -50,8 +49,12 @@ void* start_th(void * c)
       p->errParam = assm->getErrorsParam();
 
       p->action = assemblerThread::ACT_ERROR;
+
+      delete assm;
       return 0;
     }
+
+    p->puzzle->probSetAssembler(p->prob, assm);
 
     if (p->_reduce) {
 
@@ -92,15 +95,17 @@ _reduce(red)
 
 assemblerThread::~assemblerThread(void) {
 
-  puzzle->probGetAssembler(prob)->stop();
+  if (puzzle->probGetAssembler(prob)) {
 
-  while (!puzzle->probGetAssembler(prob)->stopped())
+    puzzle->probGetAssembler(prob)->stop();
+
+    while (!puzzle->probGetAssembler(prob)->stopped())
 #ifdef WIN32
-    Sleep(1);
+      Sleep(1);
 #else
-    usleep(10000);
+      usleep(10000);
 #endif
-
+  }
 }
 
 bool assemblerThread::assembly(assembly_c * a) {
