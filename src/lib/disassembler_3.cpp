@@ -98,18 +98,15 @@
     for (int d2 = d##d2##1; d2 <= d##d2##2; d2++) {                 \
                                                                     \
       int a1p1, a2p1, a1p2, a2p2;                                   \
-      a1p1 = b##dir##1[p##p1] + searchnode->get##Dir(p1) +                                                                           \
-             bbdepth[bpbs  ][p##p1][d1-searchnode->get##D1(p1)-b##d1##1[p##p1] + (d2-searchnode->get##D2(p1)-b##d2##1[p##p1])*fsf1]; \
-      a2p1 = b##dir##2[p##p1] + searchnode->get##Dir(p1) -                                                                           \
-             bbdepth[bpbs+1][p##p1][d1-searchnode->get##D1(p1)-b##d1##1[p##p1] + (d2-searchnode->get##D2(p1)-b##d2##1[p##p1])*fsf1]; \
-                                                                                                                                     \
-      if (a1p1 > a2p1) continue;                                                                                                     \
-                                                                                                                                     \
-      a1p2 = b##dir##1[p##p2] + searchnode->get##Dir(p2) +                                                                           \
-             bbdepth[bpbs  ][p##p2][d1-searchnode->get##D1(p2)-b##d1##1[p##p2] + (d2-searchnode->get##D2(p2)-b##d2##1[p##p2])*fsf2]; \
-      a2p2 = b##dir##2[p##p2] + searchnode->get##Dir(p2) -                                                                           \
-             bbdepth[bpbs+1][p##p2][d1-searchnode->get##D1(p2)-b##d1##1[p##p2] + (d2-searchnode->get##D2(p2)-b##d2##1[p##p2])*fsf2]; \
-                                                                                                                                     \
+                                                                    \
+      a1p1 = b##dir##1[p##p1] + searchnode->get##Dir(p1);           \
+      a2p1 = b##dir##2[p##p1] + searchnode->get##Dir(p1);           \
+                                                                    \
+      if (a1p1 > a2p1) continue;                                    \
+                                                                    \
+      a1p2 = b##dir##1[p##p2] + searchnode->get##Dir(p2);           \
+      a2p2 = b##dir##2[p##p2] + searchnode->get##Dir(p2);           \
+                                                                    \
       if ((a1p2 > a2p2) || (a1p1 > a2p2))        \
         continue;                                \
                                                  \
@@ -796,105 +793,6 @@ void disassembler_3_c::calcbounds(void) {
           }
         }
       }
-
-  /* allocate the memory for the depth arrays */
-  for (unsigned int l = 0; l < piecenumber; l++) {
-
-    bbdepth[0][l] = new unsigned int[(bx2[l]-bx1[l]+1) * (by2[l]-by1[l]+1)];
-    bbdepth[1][l] = new unsigned int[(bx2[l]-bx1[l]+1) * (by2[l]-by1[l]+1)];
-
-    bbdepth[2][l] = new unsigned int[(bx2[l]-bx1[l]+1) * (bz2[l]-bz1[l]+1)];
-    bbdepth[3][l] = new unsigned int[(bx2[l]-bx1[l]+1) * (bz2[l]-bz1[l]+1)];
-
-    bbdepth[4][l] = new unsigned int[(by2[l]-by1[l]+1) * (bz2[l]-bz1[l]+1)];
-    bbdepth[5][l] = new unsigned int[(by2[l]-by1[l]+1) * (bz2[l]-bz1[l]+1)];
-  }
-
-
-  /* calculate the depth */
-  for (unsigned int i = 0; i < piecenumber; i++) {
-
-    { for (unsigned int x = bx1[i]; x <= bx2[i]; x++)
-        for (unsigned int y = by1[i]; y <= by2[i]; y++) {
-          unsigned int j = 0;
-  
-          unsigned int z = bz1[i];
-          while (z < bz2[i]) {
-            if (assm->pieceNumber(x, y, z) == i)
-              break;
-  
-            z++;
-            j++;
-          }
-          bbdepth[0][i][(x-bx1[i]) + (y-by1[i])*(bx2[i]-bx1[i]+1)] = j;
-  
-          j = 0;
-          z = bz2[i];
-          while (z > bz1[i]) {
-            if (assm->pieceNumber(x, y, z) == i)
-              break;
-  
-            z--;
-            j++;
-          }
-          bbdepth[1][i][(x-bx1[i]) + (y-by1[i])*(bx2[i]-bx1[i]+1)] = j;
-        }
-    }
-
-    { for (unsigned int x = bx1[i]; x <= bx2[i]; x++)
-        for (unsigned int z = bz1[i]; z <= bz2[i]; z++) {
-          unsigned int j = 0;
-  
-          unsigned int y = by1[i];
-          while (y < by2[i]) {
-            if (assm->pieceNumber(x, y, z) == i)
-              break;
-  
-            y++;
-            j++;
-          }
-          bbdepth[2][i][(x-bx1[i]) + (z-bz1[i])*(bx2[i]-bx1[i]+1)] = j;
-  
-          j = 0;
-          y = by2[i];
-          while (y > by1[i]) {
-            if (assm->pieceNumber(x, y, z) == i)
-              break;
-  
-            y--;
-            j++;
-          }
-          bbdepth[3][i][(x-bx1[i]) + (z-bz1[i])*(bx2[i]-bx1[i]+1)] = j;
-        }
-    }
-
-    { for (unsigned int y = by1[i]; y <= by2[i]; y++)
-        for (unsigned int z = bz1[i]; z <= bz2[i]; z++) {
-          unsigned int j = 0;
-  
-          unsigned int x = bx1[i];
-          while (x < bx2[i]) {
-            if (assm->pieceNumber(x, y, z) == i)
-              break;
-  
-            x++;
-            j++;
-          }
-          bbdepth[4][i][(y-by1[i]) + (z-bz1[i])*(by2[i]-by1[i]+1)] = j;
-  
-          j = 0;
-          x = bx2[i];
-          while (x > bx1[i]) {
-            if (assm->pieceNumber(x, y, z) == i)
-              break;
-  
-            x--;
-            j++;
-          }
-          bbdepth[5][i][(y-by1[i]) + (z-bz1[i])*(by2[i]-by1[i]+1)] = j;
-        }
-    }
-  }
 }
 
 
@@ -911,9 +809,6 @@ disassembler_3_c::disassembler_3_c(assemblyVoxel_c * problem, int piecenum) : as
   bz1 = new int[piecenumber];
   bz2 = new int[piecenumber];
 
-  for (int i = 0; i < 6; i++)
-    bbdepth[i] = new unsigned int*[piecenumber];
-
   for (int j = 0; j < 3; j++)
     matrix[j] = new int[piecenumber * piecenumber];
 
@@ -925,11 +820,6 @@ disassembler_3_c::~disassembler_3_c() {
   delete [] check;
   for (unsigned int k = 0; k < 3; k++)
     delete [] matrix[k];
-  for (unsigned int i = 0; i < 6; i++) {
-    for (unsigned int j = 0; j < piecenumber; j++)
-      delete [] bbdepth[i][j];
-    delete [] bbdepth[i];
-  }
 
   delete [] bx1;
   delete [] bx2;

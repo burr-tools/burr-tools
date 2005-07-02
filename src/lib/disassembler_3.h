@@ -56,18 +56,6 @@ private:
   /* bounding box */
   int *bx1, *bx2, *by1, *by2, *bz1, *bz2;
 
-  /* this array contains the number of empty voxels you cross
-   * bevore you hit the first filled one, if you enter the
-   * bounding box of the piec on each voxel on each side
-   * there are 6 sides, each side has a number of voxels
-   *
-   * in case the column is completely empty the value will be
-   * the size of the bounding box in this direction
-   *
-   * the 2nd index is the piecenumber, 3rd index is the voxel position
-   */
-  unsigned int ** bbdepth[6];
-
   /* these variables are used for the routine that looks
    * for the pieces to move find, checkmovement
    */
