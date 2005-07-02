@@ -116,6 +116,8 @@ protected:
 
   void recalcBoundingBox(void);
 
+public:
+
   void skipRecalcBoundingBox(bool skipit) {
     if (skipit)
       doRecalc = false;
@@ -124,8 +126,6 @@ protected:
       recalcBoundingBox();
     }
   }
-
-
 
 public:
 

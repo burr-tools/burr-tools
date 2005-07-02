@@ -26,6 +26,7 @@ assemblyVoxel_c * assembly_c::getVoxelSpace(const puzzle_c * puz, unsigned int p
                                               puz->probGetResultShape(prob)->getY(),
                                               puz->probGetResultShape(prob)->getZ());
 
+  res->skipRecalcBoundingBox(true);
   unsigned int idx = 0;
 
   for (unsigned int pc = 0; pc < puz->probShapeNumber(prob); pc++)
@@ -53,6 +54,7 @@ assemblyVoxel_c * assembly_c::getVoxelSpace(const puzzle_c * puz, unsigned int p
       idx++;
     }
 
+  res->skipRecalcBoundingBox(false);
   return res;
 
 }
