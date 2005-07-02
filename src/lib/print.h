@@ -29,7 +29,7 @@
 
 void print(const assemblyVoxel_c * v);
 void print(const pieceVoxel_c * v);
-void print(const voxel_c * v);
+void print(const voxel_c * v, char base = 'a');
 void print(const puzzle_c * p);
 void print(const state_c * s, const assemblyVoxel_c *start, const separation_c * s, unsigned int piecenumber);
 void print(const separation_c * s, const assemblyVoxel_c * start);
