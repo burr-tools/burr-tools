@@ -283,9 +283,9 @@ public:
    * The voxel space is resized to that it's contents
    * fits into the rotated position
    */
-  void rotatex(void);
-  void rotatey(void);
-  void rotatez(void);
+  void rotatex(int by = 1);
+  void rotatey(int by = 1);
+  void rotatez(int by = 1);
 
   /**
    * shift the space around. Voxels that go over the

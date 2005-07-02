@@ -151,76 +151,246 @@ bool voxel_c::identicalInBB(const voxel_c * op) const {
 
 
 
-void voxel_c::rotatex() {
+void voxel_c::rotatex(int by) {
 
-  int tmp = sy;
-  sy = sz;
-  sz = tmp;
+  by &= 3;
 
-  voxel_type *s = new voxel_type[voxels];
+  switch(by) {
+  case 0:
+    break;
+  case 1:
+    {
+      int tmp = sy;
+      sy = sz;
+      sz = tmp;
 
-  for (unsigned int x = 0; x < sx; x++)
-    for (unsigned int y = 0; y < sy; y++)
-      for (unsigned int z = 0; z < sz; z++)
-        s[x+sx*(y+sy*z)] = space[x+sx*(z+sz*(sy-y-1))];
+      voxel_type *s = new voxel_type[voxels];
 
-  delete [] space;
-  space = s;
+      for (unsigned int x = 0; x < sx; x++)
+        for (unsigned int y = 0; y < sy; y++)
+          for (unsigned int z = 0; z < sz; z++)
+            s[x+sx*(y+sy*z)] = space[x+sx*(z+sz*(sy-y-1))];
+  
+      unsigned int t = by1;
+      by1 = sy - 1 - bz2;
+      bz2 = by2;
+      by2 = sy - 1 - bz1;
+      bz1 = t;
 
-  unsigned int t = by1;
+      delete space;
+      space = s;
+    }
 
-  by1 = sy - 1 - bz2;
-  bz2 = by2;
-  by2 = sy - 1 - bz1;
-  bz1 = t;
+    break;
+  case 2:
+    {
+      voxel_type *s = new voxel_type[voxels];
+
+      for (unsigned int x = 0; x < sx; x++)
+        for (unsigned int y = 0; y < sy; y++)
+          for (unsigned int z = 0; z < sz; z++)
+            s[x+sx*(y+sy*z)] = space[x+sx*((sy-y-1)+sy*(sz-z-1))];
+  
+      unsigned int t = by1;
+      by1 = sy - 1 - by2;
+      by2 = sy - 1 - t;
+
+      t = bz1;
+      bz1 = sz - 1 - bz2;
+      bz2 = sz - 1 - t;
+
+      delete space;
+      space = s;
+    }
+
+    break;
+  case 3:
+    {
+      int tmp = sy;
+      sy = sz;
+      sz = tmp;
+
+      voxel_type *s = new voxel_type[voxels];
+    
+      for (unsigned int x = 0; x < sx; x++)
+        for (unsigned int y = 0; y < sy; y++)
+          for (unsigned int z = 0; z < sz; z++)
+            s[x+sx*(y+sy*z)] = space[x+sx*((sz-z-1)+sz*y)];
+  
+      unsigned int t = by1;
+      by1 = bz1;
+      bz1 = sz - 1 - by2;
+      by2 = bz2;
+      bz2 = sz - 1 - t;
+
+      delete space;
+      space = s;
+    }
+
+    break;
+  }
 }
 
-void voxel_c::rotatey() {
+void voxel_c::rotatey(int by) {
 
-  int tmp = sx;
-  sx = sz;
-  sz = tmp;
+  by &= 3;
 
-  voxel_type *s = new voxel_type[voxels];
+  switch(by) {
+  case 0:
+    break;
+  case 1:
+    {
+      int tmp = sx;
+      sx = sz;
+      sz = tmp;
+    
+      voxel_type *s = new voxel_type[voxels];
+    
+      for (unsigned int x = 0; x < sx; x++)
+        for (unsigned int y = 0; y < sy; y++)
+          for (unsigned int z = 0; z < sz; z++)
+            s[x+sx*(y+sy*z)] = space[z+sz*(y+sy*(sx-x-1))];
+    
+      delete [] space;
+      space = s;
+    
+      unsigned int t = bx1;
+    
+      bx1 = sx - 1 - bz2;
+      bz2 = bx2;
+      bx2 = sx - 1 - bz1;
+      bz1 = t;
+    }
 
-  for (unsigned int x = 0; x < sx; x++)
-    for (unsigned int y = 0; y < sy; y++)
-      for (unsigned int z = 0; z < sz; z++)
-        s[x+sx*(y+sy*z)] = space[z+sz*(y+sy*(sx-x-1))];
+    break;
+  case 2:
+    {
+      voxel_type *s = new voxel_type[voxels];
+    
+      for (unsigned int x = 0; x < sx; x++)
+        for (unsigned int y = 0; y < sy; y++)
+          for (unsigned int z = 0; z < sz; z++)
+            s[x+sx*(y+sy*z)] = space[(sx-x-1)+sx*(y+sy*(sz-z-1))];
+    
+      delete [] space;
+      space = s;
+    
+      unsigned int t = bx1;
+    
+      bx1 = sx - 1 - bx2;
+      bx2 = sx - 1 - t;
 
-  delete [] space;
-  space = s;
+      t = bz1;
+      bz1 = sz - 1 - bz2;
+      bz2 = sz - 1 - t;
+    }
+    break;
+  case 3:
+    {
+      int tmp = sx;
+      sx = sz;
+      sz = tmp;
+    
+      voxel_type *s = new voxel_type[voxels];
+    
+      for (unsigned int x = 0; x < sx; x++)
+        for (unsigned int y = 0; y < sy; y++)
+          for (unsigned int z = 0; z < sz; z++)
+            s[x+sx*(y+sy*z)] = space[(sz-z-1)+sz*(y+sy*x)];
+    
+      delete [] space;
+      space = s;
+    
+      unsigned int t = bx1;
+    
+      bx1 = bz1;
+      bz1 = sz - 1 - bx2;
+      bx2 = bz2;
+      bz2 = sz - 1 - t;
 
-  unsigned int t = bx1;
-
-  bx1 = sx - 1 - bz2;
-  bz2 = bx2;
-  bx2 = sx - 1 - bz1;
-  bz1 = t;
+    }
+    break;
+  }
 }
 
-void voxel_c::rotatez() {
+void voxel_c::rotatez(int by) {
 
-  int tmp = sy;
-  sy = sx;
-  sx = tmp;
+  by &= 3;
 
-  voxel_type *s = new voxel_type[voxels];
+  switch(by) {
+  case 0:
+    break;
+  case 1:
+    {
+      int tmp = sy;
+      sy = sx;
+      sx = tmp;
+    
+      voxel_type *s = new voxel_type[voxels];
+    
+      for (unsigned int x = 0; x < sx; x++)
+        for (unsigned int y = 0; y < sy; y++)
+          for (unsigned int z = 0; z < sz; z++)
+            s[x+sx*(y+sy*z)] = space[y+sy*((sx-x-1)+sx*z)];
+    
+      delete [] space;
+      space = s;
+    
+      unsigned int t = by1;
+    
+      by1 = bx1;
+      bx1 = sx - 1 - by2;
+      by2 = bx2;
+      bx2 = sx - 1 - t;
+    }
+    break;
+  case 2:
+    {
+      voxel_type *s = new voxel_type[voxels];
+    
+      for (unsigned int x = 0; x < sx; x++)
+        for (unsigned int y = 0; y < sy; y++)
+          for (unsigned int z = 0; z < sz; z++)
+            s[x+sx*(y+sy*z)] = space[(sx-x-1)+sx*((sy-y-1)+sy*z)];
+    
+      delete [] space;
+      space = s;
+    
+      unsigned int t = by1;
+    
+      by1 = sy - 1 - by2;
+      by2 = sy - 1 - t;
 
-  for (unsigned int x = 0; x < sx; x++)
-    for (unsigned int y = 0; y < sy; y++)
-      for (unsigned int z = 0; z < sz; z++)
-        s[x+sx*(y+sy*z)] = space[y+sy*((sx-x-1)+sx*z)];
-
-  delete [] space;
-  space = s;
-
-  unsigned int t = by1;
-
-  by1 = bx1;
-  bx1 = sx - 1 - by2;
-  by2 = bx2;
-  bx2 = sx - 1 - t;
+      t = bx1;
+      bx1 = sx - 1 - bx2;
+      bx2 = sx - 1 - t;
+    }
+    break;
+  case 3:
+    {
+      int tmp = sy;
+      sy = sx;
+      sx = tmp;
+    
+      voxel_type *s = new voxel_type[voxels];
+    
+      for (unsigned int x = 0; x < sx; x++)
+        for (unsigned int y = 0; y < sy; y++)
+          for (unsigned int z = 0; z < sz; z++)
+            s[x+sx*(y+sy*z)] = space[(sy-y-1)+sy*(x+sx*z)];
+    
+      delete [] space;
+      space = s;
+    
+      unsigned int t = by1;
+    
+      by1 = sy - 1 - bx2;
+      bx2 = by2;
+      by2 = sy - 1 - bx1;
+      bx1 = t;
+    }
+    break;
+  }
 }
 
 void voxel_c::minimize(voxel_type val) {
@@ -563,17 +733,14 @@ void voxel_c::transform(unsigned int nr) {
 
   assert(nr < 48);
 
-  int i;
-
   if (nr >= 24) {
     mirrorX();
     nr -= 24;
   }
 
-
-  for (i = 0; i < rotx(nr); i++) rotatex();
-  for (i = 0; i < roty(nr); i++) rotatey();
-  for (i = 0; i < rotz(nr); i++) rotatez();
+  rotatex(rotx(nr));
+  rotatey(roty(nr));
+  rotatez(rotz(nr));
 }
 
 symmetries_t voxel_c::selfSymmetries(void) const {

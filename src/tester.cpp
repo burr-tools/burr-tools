@@ -27,6 +27,8 @@
 #include "lib/burrgrower.h"
 #include "lib/pieceGenerator.h"
 
+#include "lib/print.h"
+
 #include "lib/symmetries.h"
 
 #include <time.h>
@@ -354,6 +356,255 @@ void multTranformationsMatrix(void) {
   }
 }
 
+void comparison(voxel_c * a, voxel_c * b) {
+
+  printf("sx: %i %i \n", a->getX(), b->getX());
+  printf("sy: %i %i \n", a->getY(), b->getY());
+  printf("sz: %i %i \n", a->getZ(), b->getZ());
+
+  printf("bx: %i %i %i %i \n", a->boundX1(), a->boundX2(), b->boundX1(), b->boundX2());
+  printf("by: %i %i %i %i \n", a->boundY1(), a->boundY2(), b->boundY1(), b->boundY2());
+  printf("bz: %i %i %i %i \n", a->boundZ1(), a->boundZ2(), b->boundZ1(), b->boundZ2());
+
+  print(a);
+  print(b);
+}
+
+void testNewRots(void) {
+
+  for (int i = 0; i < 1000; i++) {
+
+    voxel_c *a = new voxel_c(16, 8, 4);
+
+    for (int p = 0; p < 10; p++)
+      a->set(rand() % 0x1FF, 1);
+
+    voxel_c *b0 = new voxel_c(a);
+    voxel_c *b1 = new voxel_c(a);
+    voxel_c *b2 = new voxel_c(a);
+    voxel_c *b3 = new voxel_c(a);
+    voxel_c *b4 = new voxel_c(a);
+    b0->rotatex(0);
+    b1->rotatex(1);
+    b2->rotatex(2);
+    b3->rotatex(3);
+    b4->rotatex(4);
+
+    if (!(*a == *b0)
+        || (a->boundX1() != b0->boundX1())
+        || (a->boundX2() != b0->boundX2())
+        || (a->boundY1() != b0->boundY1())
+        || (a->boundY2() != b0->boundY2())
+        || (a->boundZ1() != b0->boundZ1())
+        || (a->boundZ2() != b0->boundZ2())
+       ) comparison(a, b0);
+
+    a->rotatex(1);
+
+    if (!(*a == *b1)
+        || (a->boundX1() != b1->boundX1())
+        || (a->boundX2() != b1->boundX2())
+        || (a->boundY1() != b1->boundY1())
+        || (a->boundY2() != b1->boundY2())
+        || (a->boundZ1() != b1->boundZ1())
+        || (a->boundZ2() != b1->boundZ2())
+       ) comparison(a, b1);
+
+    a->rotatex(1);
+
+    if (!(*a == *b2)
+        || (a->boundX1() != b2->boundX1())
+        || (a->boundX2() != b2->boundX2())
+        || (a->boundY1() != b2->boundY1())
+        || (a->boundY2() != b2->boundY2())
+        || (a->boundZ1() != b2->boundZ1())
+        || (a->boundZ2() != b2->boundZ2())
+       ) comparison(a, b2);
+
+    a->rotatex(1);
+
+    if (!(*a == *b3)
+        || (a->boundX1() != b3->boundX1())
+        || (a->boundX2() != b3->boundX2())
+        || (a->boundY1() != b3->boundY1())
+        || (a->boundY2() != b3->boundY2())
+        || (a->boundZ1() != b3->boundZ1())
+        || (a->boundZ2() != b3->boundZ2())
+       ) comparison(a, b3);
+
+    a->rotatex(1);
+
+    if (!(*a == *b4)
+        || (a->boundX1() != b4->boundX1())
+        || (a->boundX2() != b4->boundX2())
+        || (a->boundY1() != b4->boundY1())
+        || (a->boundY2() != b4->boundY2())
+        || (a->boundZ1() != b4->boundZ1())
+        || (a->boundZ2() != b4->boundZ2())
+       ) comparison(a, b4);
+
+  }
+
+  for (int i = 0; i < 1000; i++) {
+
+    voxel_c *a = new voxel_c(16, 8, 4);
+
+    for (int p = 0; p < 10; p++)
+      a->set(rand() % 0x1FF, 1);
+
+    voxel_c *b0 = new voxel_c(a);
+    voxel_c *b1 = new voxel_c(a);
+    voxel_c *b2 = new voxel_c(a);
+    voxel_c *b3 = new voxel_c(a);
+    voxel_c *b4 = new voxel_c(a);
+    b0->rotatey(0);
+    b1->rotatey(1);
+    b2->rotatey(2);
+    b3->rotatey(3);
+    b4->rotatey(4);
+
+    printf("0\n");
+
+    if (!(*a == *b0)
+        || (a->boundX1() != b0->boundX1())
+        || (a->boundX2() != b0->boundX2())
+        || (a->boundY1() != b0->boundY1())
+        || (a->boundY2() != b0->boundY2())
+        || (a->boundZ1() != b0->boundZ1())
+        || (a->boundZ2() != b0->boundZ2())
+       ) comparison(a, b0);
+
+    a->rotatey(1);
+
+    printf("1\n");
+    if (!(*a == *b1)
+        || (a->boundX1() != b1->boundX1())
+        || (a->boundX2() != b1->boundX2())
+        || (a->boundY1() != b1->boundY1())
+        || (a->boundY2() != b1->boundY2())
+        || (a->boundZ1() != b1->boundZ1())
+        || (a->boundZ2() != b1->boundZ2())
+       ) comparison(a, b1);
+
+    a->rotatey(1);
+
+    printf("2\n");
+    if (!(*a == *b2)
+        || (a->boundX1() != b2->boundX1())
+        || (a->boundX2() != b2->boundX2())
+        || (a->boundY1() != b2->boundY1())
+        || (a->boundY2() != b2->boundY2())
+        || (a->boundZ1() != b2->boundZ1())
+        || (a->boundZ2() != b2->boundZ2())
+       ) comparison(a, b2);
+
+    a->rotatey(1);
+
+    printf("3\n");
+    if (!(*a == *b3)
+        || (a->boundX1() != b3->boundX1())
+        || (a->boundX2() != b3->boundX2())
+        || (a->boundY1() != b3->boundY1())
+        || (a->boundY2() != b3->boundY2())
+        || (a->boundZ1() != b3->boundZ1())
+        || (a->boundZ2() != b3->boundZ2())
+       ) comparison(a, b3);
+
+    a->rotatey(1);
+
+    printf("4\n");
+    if (!(*a == *b4)
+        || (a->boundX1() != b4->boundX1())
+        || (a->boundX2() != b4->boundX2())
+        || (a->boundY1() != b4->boundY1())
+        || (a->boundY2() != b4->boundY2())
+        || (a->boundZ1() != b4->boundZ1())
+        || (a->boundZ2() != b4->boundZ2())
+       ) comparison(a, b4);
+
+  }
+
+
+  for (int i = 0; i < 1000; i++) {
+
+    voxel_c *a = new voxel_c(16, 8, 4);
+
+    for (int p = 0; p < 10; p++)
+      a->set(rand() % 0x1FF, 1);
+
+    voxel_c *b0 = new voxel_c(a);
+    voxel_c *b1 = new voxel_c(a);
+    voxel_c *b2 = new voxel_c(a);
+    voxel_c *b3 = new voxel_c(a);
+    voxel_c *b4 = new voxel_c(a);
+    b0->rotatez(0);
+    b1->rotatez(1);
+    b2->rotatez(2);
+    b3->rotatez(3);
+    b4->rotatez(4);
+
+    printf("0\n");
+
+    if (!(*a == *b0)
+        || (a->boundX1() != b0->boundX1())
+        || (a->boundX2() != b0->boundX2())
+        || (a->boundY1() != b0->boundY1())
+        || (a->boundY2() != b0->boundY2())
+        || (a->boundZ1() != b0->boundZ1())
+        || (a->boundZ2() != b0->boundZ2())
+       ) comparison(a, b0);
+
+    a->rotatez(1);
+
+    printf("1\n");
+    if (!(*a == *b1)
+        || (a->boundX1() != b1->boundX1())
+        || (a->boundX2() != b1->boundX2())
+        || (a->boundY1() != b1->boundY1())
+        || (a->boundY2() != b1->boundY2())
+        || (a->boundZ1() != b1->boundZ1())
+        || (a->boundZ2() != b1->boundZ2())
+       ) comparison(a, b1);
+
+    a->rotatez(1);
+
+    printf("2\n");
+    if (!(*a == *b2)
+        || (a->boundX1() != b2->boundX1())
+        || (a->boundX2() != b2->boundX2())
+        || (a->boundY1() != b2->boundY1())
+        || (a->boundY2() != b2->boundY2())
+        || (a->boundZ1() != b2->boundZ1())
+        || (a->boundZ2() != b2->boundZ2())
+       ) comparison(a, b2);
+
+    a->rotatez(1);
+
+    printf("3\n");
+    if (!(*a == *b3)
+        || (a->boundX1() != b3->boundX1())
+        || (a->boundX2() != b3->boundX2())
+        || (a->boundY1() != b3->boundY1())
+        || (a->boundY2() != b3->boundY2())
+        || (a->boundZ1() != b3->boundZ1())
+        || (a->boundZ2() != b3->boundZ2())
+       ) comparison(a, b3);
+
+    a->rotatez(1);
+
+    printf("4\n");
+    if (!(*a == *b4)
+        || (a->boundX1() != b4->boundX1())
+        || (a->boundX2() != b4->boundX2())
+        || (a->boundY1() != b4->boundY1())
+        || (a->boundY2() != b4->boundY2())
+        || (a->boundZ1() != b4->boundZ1())
+        || (a->boundZ2() != b4->boundZ2())
+       ) comparison(a, b4);
+
+  }
+}
+
 int main(int argv, char* args[]) {
 
 //  multTranformationsMatrix();
@@ -361,7 +612,9 @@ int main(int argv, char* args[]) {
 //  grow(argv, args);
 //  solve(argv, agrs);
 //  findsymmetries();
-  savetoXML(argv, args);
+  //  savetoXML(argv, args);
+
+  testNewRots();
 
 //  convert(argv, args);
 }
