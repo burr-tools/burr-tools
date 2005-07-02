@@ -22,6 +22,8 @@
 
 #include "voxel.h"
 #include "disassembler.h"
+#include "assembly.h"
+#include "puzzle.h"
 
 /* this class is required for the interface to some
  * of the private functions but user of this class doesn't
@@ -71,11 +73,6 @@ private:
    */
   int * matrix[3];
 
-  /* calculate the bounding boxes for the given problem
-   * this function gets called from the constructor
-   */
-  void calcbounds(void);
-
   /* create matrix */
   void prepare(int pn, voxel_type * pieces, nodeWithMatrix_c * searchnode);
   void init_find(nodeWithMatrix_c * nd, int piecenumber, voxel_type * pieces);
@@ -99,7 +96,7 @@ private:
 
 public:
 
-  disassembler_3_c(assemblyVoxel_c * prob, int piecenum);
+  disassembler_3_c(const assembly_c * assembly, const puzzle_c * puz, unsigned int prob);
   ~disassembler_3_c();
 
   /* because we can only have or don't have a disassembly sequence

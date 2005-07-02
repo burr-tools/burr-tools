@@ -751,8 +751,8 @@ separation_c * disassembler_3_c::disassemble_rec(int piecenumber, voxel_type * p
     }
 
     /* we have checked all the successors of this node, so we don't need the matrix
-	 * any longer
-	 */
+     * any longer
+     */
   }
 
   // free all the allocated nodes
@@ -765,38 +765,7 @@ separation_c * disassembler_3_c::disassemble_rec(int piecenumber, voxel_type * p
   return 0;
 }
 
-void disassembler_3_c::calcbounds(void) {
-
-  for (unsigned int k = 0; k < piecenumber; k++)
-    bx1[k] = assm->getX();
-
-  for (unsigned int x = 0; x < assm->getX(); x++)
-    for (unsigned int y = 0; y < assm->getY(); y++)
-      for (unsigned int z = 0; z < assm->getZ(); z++) {
-        if (!assm->isEmpty(x, y, z)) {
-
-          unsigned int c = assm->pieceNumber(x, y, z);
-
-          if (bx1[c] == assm->getX()) {
-            bx1[c] = bx2[c] = x;
-            by1[c] = by2[c] = y;
-            bz1[c] = bz2[c] = z;
-          } else {
-            if (x < bx1[c]) bx1[c] = x;
-            if (x > bx2[c]) bx2[c] = x;
-
-            if (y < by1[c]) by1[c] = y;
-            if (y > by2[c]) by2[c] = y;
-
-            if (z < bz1[c]) bz1[c] = z;
-            if (z > bz2[c]) bz2[c] = z;
-          }
-        }
-      }
-}
-
-
-disassembler_3_c::disassembler_3_c(assemblyVoxel_c * problem, int piecenum) : assm(problem), piecenumber(piecenum) {
+disassembler_3_c::disassembler_3_c(const assembly_c * assembly, const puzzle_c * puz, unsigned int prob) : piecenumber(assembly->placementCount()) {
 
   /* allocate the necessary arrays */
   movement = new int[piecenumber];
@@ -812,7 +781,7 @@ disassembler_3_c::disassembler_3_c(assemblyVoxel_c * problem, int piecenum) : as
   for (int j = 0; j < 3; j++)
     matrix[j] = new int[piecenumber * piecenumber];
 
-  calcbounds();
+  assm = assembly->getVoxelSpace(puz, prob, bx1, bx2, by1, by2, bz1, bz2);
 }
 
 disassembler_3_c::~disassembler_3_c() {
@@ -827,6 +796,8 @@ disassembler_3_c::~disassembler_3_c() {
   delete [] by2;
   delete [] bz1;
   delete [] bz2;
+
+  delete assm;
 }
 
 

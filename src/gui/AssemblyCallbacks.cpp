@@ -121,15 +121,12 @@ bool assemblerThread::assembly(assembly_c * a) {
     {
       action = ACT_DISASSEMBLING;
 
-      assemblyVoxel_c *as = a->getVoxelSpace(puzzle, prob);
-      disassembler_3_c d(as, puzzle->probPieceNumber(prob));
+      disassembler_3_c d(a, puzzle, prob);
       separation_c * s = d.disassemble();
       action = ACT_ASSEMBLING;
   
       if (s)
         puzzle->probAddSolution(prob, a, s);
-
-      delete as;
     }
     break;
   }

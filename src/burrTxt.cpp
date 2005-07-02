@@ -54,23 +54,23 @@ public:
 
     if (disassemble) {
 
-      assemblyVoxel_c * assm = a->getVoxelSpace(puzzle, prob);
+//      assemblyVoxel_c * assm = a->getVoxelSpace(puzzle, prob);
 
-      disassembler_3_c d(assm, pn);
+      disassembler_3_c d(a, puzzle, prob);
   
       separation_c * da = d.disassemble();
   
       if (da) {
         Solutions++;
-        if (printSolutions)
-          print(assm);
+        if (printSolutions) ;
+//          print(assm);
         printf("level: %i\n", da->getMoves());
-        if (printDisassemble)
-          print(da, assm);
+        if (printDisassemble);
+//          print(da, assm);
         delete da;
       }
 
-      delete assm;
+//      delete assm;
   
     } else {
 

@@ -71,7 +71,7 @@ public:
     placements.push_back(placement_c(0xff, 0, 0, 0));
   }
 
-  unsigned int placementCount(void) { return placements.size(); }
+  unsigned int placementCount(void) const { return placements.size(); }
 
   unsigned char getTransformation(unsigned char num) const {
     assert(num < placements.size());
@@ -99,6 +99,8 @@ public:
    * all color information of the pieces is lost
    */
   assemblyVoxel_c * getVoxelSpace(const puzzle_c * puz, unsigned int prob) const;
+
+  assemblyVoxel_c * getVoxelSpace(const puzzle_c * puz, unsigned int prob, int *bx1, int *bx2, int *by1, int *by2, int *bz1, int *bz2) const;
 };
 
 
