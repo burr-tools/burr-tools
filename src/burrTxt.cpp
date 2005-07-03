@@ -82,6 +82,8 @@ public:
       }
     }
 
+    delete a;
+
     return true;
   }
 };

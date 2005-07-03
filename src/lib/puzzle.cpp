@@ -198,6 +198,8 @@ public:
 
   solution_c(const xml::node & node);
 
+  ~solution_c(void);
+
   /* the assembly contains the pieces so that they
    * do assemble into the result shape */
   assembly_c * assembly;
@@ -238,6 +240,14 @@ xml::node solution_c::save(void) const {
   return nd;
 }
 
+solution_c::~solution_c(void) {
+  if (tree)
+    delete tree;
+
+  if (assembly)
+    delete assembly;
+}
+
 class problem_c {
 
 public:
@@ -249,7 +259,13 @@ public:
   // nearly copy constructor, only the problem is copied not the solution
   problem_c(problem_c * prob);
 
-  ~problem_c(void) {}
+  ~problem_c(void) {
+    for (int i = 0; i < solutions.size(); i++)
+      delete solutions[i];
+
+    if (assm)
+      delete assm;
+  }
 
   xml::node save(void) const;
 

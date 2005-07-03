@@ -177,7 +177,7 @@ void voxel_c::rotatex(int by) {
       by2 = sy - 1 - bz1;
       bz1 = t;
 
-      delete space;
+      delete [] space;
       space = s;
     }
 
@@ -199,7 +199,7 @@ void voxel_c::rotatex(int by) {
       bz1 = sz - 1 - bz2;
       bz2 = sz - 1 - t;
 
-      delete space;
+      delete [] space;
       space = s;
     }
 
@@ -223,7 +223,7 @@ void voxel_c::rotatex(int by) {
       by2 = bz2;
       bz2 = sz - 1 - t;
 
-      delete space;
+      delete [] space;
       space = s;
     }
 
