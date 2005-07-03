@@ -20,6 +20,7 @@
 #include "lib/puzzle.h"
 #include "lib/assm_0_frontend_0.h"
 #include "lib/disassembler_3.h"
+#include "lib/disassembler_4.h"
 #include "lib/print.h"
 
 #include <fstream>
@@ -56,7 +57,7 @@ public:
 
 //      assemblyVoxel_c * assm = a->getVoxelSpace(puzzle, prob);
 
-      disassembler_3_c d(a, puzzle, prob);
+      disassembler_4_c d(a, puzzle, prob);
   
       separation_c * da = d.disassemble();
   
