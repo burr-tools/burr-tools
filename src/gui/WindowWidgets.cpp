@@ -575,6 +575,7 @@ StatusLine::StatusLine(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
 
   colors = new Fl_Check_Button(x+w-130, y, 130, h, "Color 3D View");
   colors->box(FL_THIN_UP_BOX);
+  colors->tooltip("Toggle between piece colors and the colors of the color constraints (neutral units will have piece color)");
 
   resizable(text);
 
