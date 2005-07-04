@@ -6,6 +6,9 @@ XML_LD_ADD=@XML_LD_ADD@
 libburr_a_CPPFLAGS=-Wall $(XML_CPP_ADD)
 
 libburr_a_SOURCES=disassembler.h assembler.h \
+                  disassembler_0.h disassembler_0.cpp \
+                  disassembler_1.h disassembler_1.cpp \
+                  disassembler_2.h disassembler_2.cpp \
                   disassembler_3.h disassembler_3.cpp \
                   disassembler_4.h disassembler_4.cpp \
                   disassembly.cpp disassembly.h \
