@@ -82,7 +82,6 @@ class UserInterface {
 
   Fl_Group *TabSolve;
   Fl_Check_Button *SolveDisasm;
-  Fl_Check_Button *ReduceProblem;
 
   FlatButton *BtnStart, *BtnCont, *BtnStop;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape;

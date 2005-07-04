@@ -470,9 +470,9 @@ void UserInterface::cb_BtnStart(void) {
   puzzle->probRemoveAllSolutions(prob);
 
   if (SolveDisasm->value() != 0)
-    assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_DISASM, ReduceProblem->value() != 0);
+    assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_DISASM, 1);
   else
-    assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_SAVE_ASM, ReduceProblem->value() != 0);
+    assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_SAVE_ASM, 1);
 
   assmThread->start();
 
@@ -1523,7 +1523,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
   Fl_Group * tile = new Fl_Tile(x, y, w, h);
 
   // calculate hight of different groups
-  const int paramsFixedHight = SZ_SEPARATOR_Y + 5*SZ_BUTTON_Y + 5*SZ_GAP +  6*SZ_TEXT_Y;
+  const int paramsFixedHight = SZ_SEPARATOR_Y + 4*SZ_BUTTON_Y + 5*SZ_GAP +  6*SZ_TEXT_Y;
   const int solutionsFixedHight = SZ_SEPARATOR_Y + 2*SZ_BUTTON_Y + 2*SZ_GAP + 2*SZ_TEXT_Y;
 
   int hi = h - paramsFixedHight - solutionsFixedHight;
@@ -1557,12 +1557,6 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     lh -= SZ_BUTTON_Y;
 
     (new Fl_Check_Button(x, y, w, SZ_BUTTON_Y, "Just Count"))->tooltip("Don\'t save the solutions, just count the number of them.");
-    y += SZ_BUTTON_Y;
-    lh -= SZ_BUTTON_Y;
-
-    ReduceProblem = new Fl_Check_Button(x, y, w, SZ_BUTTON_Y, "Reduce");
-    ReduceProblem->tooltip("This enables a calculation that normally greatly improves the time the assembly requires, but somtimes this takes ages, so you may want switch this off");
-    ReduceProblem->value(1);
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 

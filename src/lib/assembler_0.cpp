@@ -543,7 +543,7 @@ void assembler_0_c::reduce(void) {
     }
 
     iteration++;
-    rec++;
+    rec = 1;
     branch = 1;
 
   } while (rem_sth);
