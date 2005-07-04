@@ -27,7 +27,7 @@
 
 #include "../lib/disassembly.h"
 #include "../lib/assm_0_frontend_0.h"
-#include "../lib/disassembler_3.h"
+#include "../lib/disassembler_4.h"
 
 #ifdef WIN32
 unsigned long __stdcall start_th(void * c)
@@ -121,7 +121,7 @@ bool assemblerThread::assembly(assembly_c * a) {
     {
       action = ACT_DISASSEMBLING;
 
-      disassembler_3_c d(a, puzzle, prob);
+      disassembler_4_c d(a, puzzle, prob);
       separation_c * s = d.disassemble();
       action = ACT_ASSEMBLING;
   
