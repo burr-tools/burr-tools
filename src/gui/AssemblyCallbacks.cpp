@@ -39,7 +39,16 @@ void* start_th(void * c)
 
   assm_0_frontend_0_c * assm;
 
-  if (!p->puzzle->probGetAssembler(p->prob)) {
+  /* first check, if there is an assembler available with the
+   * problem, if there is one take that
+   */
+  if (p->puzzle->probGetAssembler(p->prob))
+    assm = (assm_0_frontend_0_c*)p->puzzle->probGetAssembler(p->prob);
+
+  else {
+
+    /* otherwise we have to chreate a new one
+     */
     p->action = assemblerThread::ACT_PREPARATION;
     assm = new assm_0_frontend_0_c();
 
@@ -54,8 +63,6 @@ void* start_th(void * c)
       return 0;
     }
 
-    p->puzzle->probSetAssembler(p->prob, assm);
-
     if (p->_reduce) {
 
       if (!p->stopPressed)
@@ -64,17 +71,24 @@ void* start_th(void * c)
       assm->reduce();
     }
 
-  } else
-    assm = (assm_0_frontend_0_c*)p->puzzle->probGetAssembler(p->prob);
+    /* set the assembler to the problem as soon as it is finished
+     * with initialisation, NOT EARLIER as the function
+     * also restores the assembler state to a state that might
+     * be saved within the problem
+     */
+    p->puzzle->probSetAssembler(p->prob, assm);
+
+  }
 
   if (!p->stopPressed) {
 
     p->action = assemblerThread::ACT_ASSEMBLING;
     assm->assemble(p);
   
-    if (assm->getFinished() >= 1)
+    if (assm->getFinished() >= 1) {
       p->action = assemblerThread::ACT_FINISHED;
-    else
+      p->puzzle->probFinishedSolving(p->prob);
+    } else
       p->action = assemblerThread::ACT_PAUSING;
 
   } else
@@ -84,7 +98,6 @@ void* start_th(void * c)
 }
 
 assemblerThread::assemblerThread(puzzle_c * puz, unsigned int problemNum, unsigned int solAction, bool red) :
-assemblies(0),
 action(ACT_PREPARATION),
 _solutionAction(solAction),
 puzzle(puz),
@@ -110,7 +123,7 @@ assemblerThread::~assemblerThread(void) {
 
 bool assemblerThread::assembly(assembly_c * a) {
 
-  assemblies++;
+  puzzle->probIncNumAssemblies(prob);
 
   switch(_solutionAction) {
   case SOL_SAVE_ASM:
@@ -125,8 +138,10 @@ bool assemblerThread::assembly(assembly_c * a) {
       separation_c * s = d.disassemble();
       action = ACT_ASSEMBLING;
   
-      if (s)
+      if (s) {
+        puzzle->probIncNumSolutions(prob);
         puzzle->probAddSolution(prob, a, s);
+      }
     }
     break;
   }

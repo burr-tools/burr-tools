@@ -189,12 +189,39 @@ public:
 
   /* functions to handle the solver and the solutions */
 
+  /* after setting the assembler it will get reset to the state
+   * that was saved earlier on
+   */
   void probSetAssembler(unsigned int prob, assembler_c * assm);
   assembler_c * probGetAssembler(unsigned int prob);
   const assembler_c * probGetAssembler(unsigned int prob) const;
 
+  /**
+   * this state reflecs how far we are with solving this problem
+   */
+  typedef enum {
+    SS_UNSOLVED,    // nothing done yet
+    SS_SOLVING,     // started and not finished in this state assm must contain the assembler
+    SS_SOLVED       // finished, the assembler has been destroyed and all the information is available
+  } SolveState_e;
+
+  SolveState_e probGetSolveState(unsigned int prob) const;
+
+  void probIncNumAssemblies(unsigned int prob);
+  void probIncNumSolutions(unsigned int prob);
+
+  bool probNumAssembliesKnown(unsigned int prob) const;
+  bool probNumSolutionsKnown(unsigned int prob) const;
+
+  unsigned long probGetNumAssemblies(unsigned int prob) const;
+  unsigned long probGetNumSolutions(unsigned int prob) const;
+
   void probAddSolution(unsigned int prob, assembly_c * voxel);
   void probAddSolution(unsigned int prob, assembly_c * voxel, separation_c * tree);
+  void probFinishedSolving(unsigned int prob);
+
+  /* this also removes maybe available old states of the assembler
+   */
   void probRemoveAllSolutions(unsigned int prob);
   unsigned int probSolutionNumber(unsigned int prob) const;
   assembly_c * probGetAssembly(unsigned int prob, unsigned int sol);

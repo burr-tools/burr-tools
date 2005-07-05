@@ -108,14 +108,14 @@ public:
    * the function should only be called when assembly is not running it shoule be
    * called before calling assemble
    */
-  virtual void setPosition(char * string) {}
+  virtual void setPosition(const char * string) {}
 
   /* this function saves the current state of the assembler into an xml node to
    * write it to an file
    * this state must be such that the class can restore this state and continue
    * from there by getting this and the puzzle given to the constructor
    */
-  xml::node save(void) const { return xml::node("assembler"); }
+  virtual xml::node save(void) const { return xml::node("assembler"); }
 
 };
 

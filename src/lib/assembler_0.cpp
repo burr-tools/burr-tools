@@ -864,53 +864,19 @@ float assembler_0_c::getFinished(void) {
   return erg;
 }
 
-bool assembler_0_c::getPosition(char * string, int len) {
+static unsigned int getInt(const char * s, unsigned int * i) {
 
-  int i;
+  char * s2;
 
-  i = snprintf(string, len, "%i ", pos);
+  *i = strtol (s, &s2, 10);
 
-  if (i >= len)
-    return false;
-  else {
-    len -= i;
-    string += i;
-  }
-
-  for (unsigned int j = 0; j < pos; j++) {
-
-    i = snprintf(string, len, "%i %i ", rows[j], columns[j]);
-  
-    if (i >= len)
-      return false;
-    else {
-      len -= i;
-      string += i;
-    }
-  }
-
-  return true;
+  if (s2)
+    return s2-s;
+  else
+    return 500000;
 }
 
-static unsigned int getInt(char * s, unsigned int * i) {
-
-  int p = 0;
-  i = 0;
-
-  while (s[p] && (s[p] != ' ')) {
-
-    *i = *i * 10 + s[p] - '0';
-    p++;
-  }
-
-  while (s[p] && (s[p] == ' ')) {
-    p++;
-  }
-
-  return p;
-}
-
-void assembler_0_c::setPosition(char * string) {
+void assembler_0_c::setPosition(const char * string) {
 
   /* uncover everything and so bring the matrix into starting position
    * this will normally do nothing as this function should only be called
@@ -938,8 +904,36 @@ void assembler_0_c::setPosition(char * string) {
 
   if (pos <= piecenumber)
     for (unsigned int i = 0; i < pos; i++) {
-      string += getInt(string, &rows[i]);
-      string += getInt(string, &columns[i]);
+      while (*string != '(') string++; string++;
+
+      string += getInt(string, &searchState[i]);
+
+      switch(searchState[i]) {
+      case 0:
+        string += getInt(string, &rows[i]);
+        string += getInt(string, &columns[i]);
+        string += getInt(string, &piece[i]);
+        break;
+      case 1:
+        string += getInt(string, &rows[i]);
+        string += getInt(string, &columns[i]);
+        string += getInt(string, &nodeF[i]);
+        string += getInt(string, &numF[i]);
+        string += getInt(string, &piece[i]);
+        break;
+      case 2:
+        string += getInt(string, &rows[i]);
+        string += getInt(string, &columns[i]);
+        string += getInt(string, &nodeF[i]);
+        string += getInt(string, &numF[i]);
+        string += getInt(string, &pieceF[i]);
+        string += getInt(string, &nodeB[i]);
+        string += getInt(string, &numB[i]);
+        string += getInt(string, &piece[i]);
+        break;
+      }
+
+      while (*string != ')') string++; string++;
     }
 
   /* here we need to get the matrix into this exact position as it has been, when we
@@ -959,4 +953,42 @@ void assembler_0_c::setPosition(char * string) {
       p++;
     }
 }
+
+xml::node assembler_0_c::save(void) const {
+
+  xml::node nd("assembler");
+
+  std::string cont;
+
+  char tmp[100];
+
+  snprintf(tmp, 100, "%i ", pos);
+  cont += tmp;
+
+  if (pos <= piecenumber)
+    for (unsigned int j = 0; j < pos; j++) {
+  
+      switch(searchState[j]) {
+      case 0:
+        snprintf(tmp, 100, "(%i %i %i %i)", searchState[j], rows[j], columns[j], piece[j]);
+        break;
+      case 1:
+        snprintf(tmp, 100, "(%i %i %i %i %i %i)", searchState[j], rows[j], columns[j], nodeF[j], numF[j], piece[j]);
+        break;
+      case 2:
+        snprintf(tmp, 100, "(%i %i %i %i %i %i %i %i %i)", searchState[j], rows[j], columns[j], nodeF[j], numF[j], pieceF[j], nodeB[j], numB[j], piece[j]);
+        break;
+      }
+  
+      cont += tmp;
+  
+      if (j < pos-1)
+        cont += " ";
+    }
+
+  nd.set_content(cont.c_str());
+
+  return nd;
+}
+
 

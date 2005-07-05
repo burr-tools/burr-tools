@@ -452,33 +452,9 @@ void UserInterface::cb_CCSort(bool byResult) {
 static void cb_BtnStart_stub(Fl_Widget* o, void* v) { ui->cb_BtnStart(); }
 void UserInterface::cb_BtnStart(void) {
 
-  if (solutionProblem->getSelection() >= puzzle->problemNumber()) {
-    fl_message("Create a problem first");
-    return;
-  }
+  puzzle->probRemoveAllSolutions(solutionProblem->getSelection());
 
-  if ((puzzle->probGetResult(solutionProblem->getSelection()) < 0) ||
-      (puzzle->probGetResult(solutionProblem->getSelection()) > puzzle->shapeNumber())) {
-    fl_message("A result shape must be defined");
-    return;
-  }
-
-  assert(assmThread == 0);
-
-  unsigned int prob = solutionProblem->getSelection();
-
-  puzzle->probRemoveAllSolutions(prob);
-
-  if (SolveDisasm->value() != 0)
-    assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_DISASM, 1);
-  else
-    assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_SAVE_ASM, 1);
-
-  assmThread->start();
-
-  BtnStart->deactivate();
-  BtnCont->deactivate();
-  BtnStop->activate();
+  cb_BtnCont();
 }
 
 static void cb_BtnCont_stub(Fl_Widget* o, void* v) { ui->cb_BtnCont(); }
@@ -488,6 +464,11 @@ void UserInterface::cb_BtnCont(void) {
 
   if (prob >= puzzle->problemNumber()) {
     fl_message("First create a problem");
+    return;
+  }
+
+  if (puzzle->probGetResult(prob) > puzzle->shapeNumber()) {
+    fl_message("A result shape must be defined");
     return;
   }
 
@@ -998,11 +979,15 @@ void UserInterface::updateSolutionStats(void) {
       MovesInfo->hide();
     }
 
-
 //    OutputIterations->value(assm->getIterations());
 //    OutputIterations->show();
-//    OutputAssemblies->value(assmThread->getAssemblies());
-//    OutputAssemblies->show();
+
+    if (puzzle->probNumAssembliesKnown(prob)) {
+      OutputAssemblies->value(puzzle->probGetNumAssemblies(prob));
+      OutputAssemblies->show();
+    } else {
+      OutputAssemblies->hide();
+    }
 
   } else {
 
@@ -1077,30 +1062,23 @@ void UserInterface::updateSolutionStats(void) {
     if (prob < puzzle->problemNumber()) {
 
       // a valid problem is selected
-      assembler_c * assm = puzzle->probGetAssembler(prob);
 
-      if (!assm) {
-
-        // the problem has no assembler engine attatched
-        // so we do nothing and we can not continue
+      switch(puzzle->probGetSolveState(prob)) {
+      case puzzle_c::SS_UNSOLVED:
         OutputActivity->value("nothing");
         BtnCont->deactivate();
-
-      } else {
-
-        // we hav an assembly engine connected
-        // check if we have finished the calculation
-        if (assm->getFinished() >= 1) {
-          OutputActivity->value("finished");
-          BtnCont->deactivate();
-        } else {
-          OutputActivity->value("pause");
-          BtnCont->activate();
-        }
+        break;
+      case puzzle_c::SS_SOLVED:
+        OutputActivity->value("finished");
+        BtnCont->deactivate();
+        break;
+      case puzzle_c::SS_SOLVING:
+        OutputActivity->value("pause");
+        BtnCont->activate();
+        break;
       }
 
       // if we have a result and at least one piece, we can give it a try
-
       if ((puzzle->probPieceNumber(prob) > 0) &&
           (puzzle->probGetResult(prob) < puzzle->shapeNumber()))
         BtnStart->activate();

@@ -260,7 +260,7 @@ public:
   problem_c(problem_c * prob);
 
   ~problem_c(void) {
-    for (int i = 0; i < solutions.size(); i++)
+    for (unsigned int i = 0; i < solutions.size(); i++)
       delete solutions[i];
 
     if (assm)
@@ -323,6 +323,27 @@ public:
    */
   std::string name;
 
+  /**
+   * this state reflecs how far we are with solving this problem
+   */
+  puzzle_c::SolveState_e solveState;
+
+  /**
+   * for this variables 0xFFFFFFFF always stands for unknown and
+   * 0xFFFFFFFE for too much to count
+   *
+   * this is independend of the soluions vector, these are the pure numbers
+   */
+  unsigned long numAssemblies;
+  unsigned long numSolutions;
+
+  /**
+   * we only save the information that the assembler needs to reset it's state
+   * and use this information once the user wants to continue solving the problem
+   * otherwise the loading might take quite a while
+   */
+  std::string assemblerState;
+
 };
 
 
@@ -346,6 +367,19 @@ xml::node problem_c::save(void) const {
   char tmp[50];
 
   xml::node::iterator it;
+
+  snprintf(tmp, 50, "%i", solveState);
+  nd.get_attributes().insert("state", tmp);
+
+  if (numAssemblies != 0xFFFFFFFF) {
+    snprintf(tmp, 50, "%li", numAssemblies);
+    nd.get_attributes().insert("assemblies", tmp);
+  }
+
+  if (numSolutions != 0xFFFFFFFF) {
+    snprintf(tmp, 50, "%li", numSolutions);
+    nd.get_attributes().insert("solutions", tmp);
+  }
 
   it = nd.insert(xml::node("shapes"));
 
@@ -417,9 +451,28 @@ problem_c::problem_c(const xml::node & node, unsigned int color) : result(0xFFFF
         solutions.push_back(new solution_c(*i));
   }
 
+  if (node.get_attributes().find("state") != node.get_attributes().end())
+    solveState = (puzzle_c::SolveState_e)atoi(node.get_attributes().find("state")->get_value());
+  else
+    solveState = puzzle_c::SS_UNSOLVED;
+
+  if (node.get_attributes().find("assemblies") != node.get_attributes().end())
+    numAssemblies = atoi(node.get_attributes().find("assemblies")->get_value());
+  else
+    numAssemblies = 0xFFFFFFFF;
+
+  if (node.get_attributes().find("solutions") != node.get_attributes().end())
+    numSolutions = atoi(node.get_attributes().find("solutions")->get_value());
+  else
+    numSolutions = 0xFFFFFFFF;
+
   it = node.find("bitmap");
   if (it != node.end())
     colorConstraints.load(*it);
+
+  it = node.find("assembler");
+  if (it != node.end())
+    assemblerState = it->get_content();;
 }
 
 void problem_c::shapeIdRemoved(unsigned short idx) {
@@ -868,12 +921,16 @@ const std::string & puzzle_c::probGetName(unsigned int prob) const {
 
 void puzzle_c::probAddSolution(unsigned int prob, assembly_c * voxel) {
   assert(prob < problems.size());
+  assert(problems[prob]->assm);
   problems[prob]->solutions.push_back(new solution_c(voxel, 0));
+  problems[prob]->solveState = SS_SOLVING;
 }
 
 void puzzle_c::probAddSolution(unsigned int prob, assembly_c * voxel, separation_c * tree) {
   assert(prob < problems.size());
+  assert(problems[prob]->assm);
   problems[prob]->solutions.push_back(new solution_c(voxel, tree));
+  problems[prob]->solveState = SS_SOLVING;
 }
 
 void puzzle_c::probRemoveAllSolutions(unsigned int prob) {
@@ -882,6 +939,43 @@ void puzzle_c::probRemoveAllSolutions(unsigned int prob) {
   problems[prob]->solutions.clear();
   delete problems[prob]->assm;
   problems[prob]->assm = 0;
+  problems[prob]->assemblerState = "";
+  problems[prob]->solveState = SS_UNSOLVED;
+  problems[prob]->numAssemblies = 0xFFFFFFFF;
+  problems[prob]->numSolutions = 0xFFFFFFFF;
+}
+
+puzzle_c::SolveState_e puzzle_c::probGetSolveState(unsigned int prob) const {
+  return problems[prob]->solveState;
+}
+
+bool puzzle_c::probNumAssembliesKnown(unsigned int prob) const {
+  return problems[prob]->numAssemblies != 0xFFFFFFFF;
+}
+
+bool puzzle_c::probNumSolutionsKnown(unsigned int prob) const {
+  return problems[prob]->numSolutions != 0xFFFFFFFF;
+}
+
+
+
+unsigned long puzzle_c::probGetNumAssemblies(unsigned int prob) const {
+  return problems[prob]->numAssemblies;
+}
+
+unsigned long puzzle_c::probGetNumSolutions(unsigned int prob) const {
+  return problems[prob]->numSolutions;
+}
+
+void puzzle_c::probIncNumAssemblies(unsigned int prob) {
+  problems[prob]->numAssemblies++;
+}
+void puzzle_c::probIncNumSolutions(unsigned int prob) {
+  problems[prob]->numSolutions++;
+}
+
+void puzzle_c::probFinishedSolving(unsigned int prob) {
+  problems[prob]->solveState = SS_SOLVED;
 }
 
 unsigned int puzzle_c::probSolutionNumber(unsigned int prob) const {
@@ -920,6 +1014,13 @@ const separation_c * puzzle_c::probGetDisassembly(unsigned int prob, unsigned in
 void puzzle_c::probSetAssembler(unsigned int prob, assembler_c * assm) {
   assert(prob < problems.size());
   problems[prob]->assm = assm;
+  if (problems[prob]->assemblerState.length() > 0)
+    assm->setPosition(problems[prob]->assemblerState.c_str());
+  else {
+    problems[prob]->numAssemblies = 0;
+    problems[prob]->numSolutions = 0;
+  }
+  problems[prob]->solveState = SS_SOLVING;
 }
 
 assembler_c * puzzle_c::probGetAssembler(unsigned int prob) {

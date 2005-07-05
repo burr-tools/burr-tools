@@ -29,7 +29,6 @@
  */
 class assemblerThread : public assembler_cb {
 
-  unsigned int assemblies;
   unsigned int action;
   unsigned int _solutionAction;
 
