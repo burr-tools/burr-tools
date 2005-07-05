@@ -34,7 +34,7 @@
 #define MY 0.005f
 
 VoxelView::VoxelView(int x,int y,int w,int h,const char *l) : Fl_Gl_Window(x,y,w,h,l),
-  arcBall(new ArcBall_c(w, h)), size(10), markerType(false), doUpdates(true)
+  arcBall(new ArcBall_c(w, h)), size(10), markerType(false), colors(pieceColor), doUpdates(true)
 {
 };
 

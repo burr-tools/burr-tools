@@ -55,7 +55,7 @@ protected:
 
 public:
 
-  BlockList(int x, int y, int w, int h) : Fl_Widget(x, y, w, h), shift(0) {}
+  BlockList(int x, int y, int w, int h) : Fl_Widget(x, y, w, h), shift(0), lastHight(0xFFFFFFFF) {}
 
   void setShift(unsigned int z) {
     shift = z;
