@@ -964,8 +964,10 @@ void UserInterface::updateSolutionStats(void) {
       SolutionSel->range(0, numSol-1);
       SolutionsInfo->value(numSol);
       OutputSolutions->value(numSol);
-  
-      if (SolutionEmpty && (numSol > 0))
+
+      // if we are in the solve tab and have a valid solution
+      // we can activate that
+      if (SolutionEmpty && (numSol > 0) && (TaskSelectionTab->value() == TabSolve))
         activateSolution(solutionProblem->getSelection(), 0);
   
     } else {
