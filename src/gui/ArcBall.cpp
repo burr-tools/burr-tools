@@ -189,6 +189,7 @@ void ArcBall_c::click(GLfloat x, GLfloat y) {
 
   //Map the point to the sphere
   mapToSphere(x, y, StVec);
+  mapToSphere(x, y, EnVec);
 
   mouseDown = true;
 }
