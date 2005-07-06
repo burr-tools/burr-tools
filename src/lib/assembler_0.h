@@ -231,7 +231,6 @@ private:
   };
   std::vector<piecePosition> piecePositions;
 
-
 protected:
 
   void GenerateFirstRow(int unsigned res_filled);

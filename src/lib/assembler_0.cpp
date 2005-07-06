@@ -876,24 +876,24 @@ static unsigned int getInt(const char * s, unsigned int * i) {
     return 500000;
 }
 
+static unsigned int getLong(const char * s, unsigned long * i) {
+
+  char * s2;
+
+  *i = strtol (s, &s2, 10);
+
+  if (s2)
+    return s2-s;
+  else
+    return 500000;
+}
+
 void assembler_0_c::setPosition(const char * string) {
 
-  /* uncover everything and so bring the matrix into starting position
-   * this will normally do nothing as this function should only be called
-   * on a fresh instance of the class but just in case someone
-   * calls setPosition on a already started search we need it
+  /* we assert that the matrix is in the initial position
+   * otherwise we would have to clean the stack
    */
-  if (pos <= piecenumber)
-    while (pos > 0) {
-  
-      if (rows[pos]) {
-        uncover_row(rows[pos]);
-        uncover(columns[pos]);
-        rows[pos] = 0;
-      }
-  
-      pos--;
-    }
+  assert(pos == 0);
 
   /* get the values from the string. For the moment we assume that
    * the string is correct and contains enough values, if not sad things
@@ -901,9 +901,10 @@ void assembler_0_c::setPosition(const char * string) {
    * FIXME
    */
   string += getInt(string, &pos);
+  string += getLong(string, &iterations);
 
   if (pos <= piecenumber)
-    for (unsigned int i = 0; i < pos; i++) {
+    for (unsigned int i = 0; i <= pos; i++) {
       while (*string != '(') string++; string++;
 
       string += getInt(string, &searchState[i]);
@@ -942,16 +943,18 @@ void assembler_0_c::setPosition(const char * string) {
    */
   unsigned int p = 0;
 
-  if (pos <= piecenumber)
-    while (p < pos) {
-  
-      if (rows[pos]) {
+  if (pos <= piecenumber) {
+
+    while (p <= pos) {
+
+      if ((p < piecenumber) && rows[p]) {
         cover(columns[p]);
         cover_row(rows[p]);
       }
   
       p++;
     }
+  }
 }
 
 xml::node assembler_0_c::save(void) const {
@@ -965,9 +968,12 @@ xml::node assembler_0_c::save(void) const {
   snprintf(tmp, 100, "%i ", pos);
   cont += tmp;
 
+  snprintf(tmp, 100, "%i ", iterations);
+  cont += tmp;
+
   if (pos <= piecenumber)
-    for (unsigned int j = 0; j < pos; j++) {
-  
+    for (unsigned int j = 0; j <= pos; j++) {
+
       switch(searchState[j]) {
       case 0:
         snprintf(tmp, 100, "(%i %i %i %i)", searchState[j], rows[j], columns[j], piece[j]);
@@ -982,7 +988,7 @@ xml::node assembler_0_c::save(void) const {
   
       cont += tmp;
   
-      if (j < pos-1)
+      if (j < pos)
         cont += " ";
     }
 
