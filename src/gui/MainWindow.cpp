@@ -306,7 +306,6 @@ void UserInterface::cb_ColorAssSel(void) {
 
 static void cb_ColorConstrSel_stub(Fl_Widget* o, void* v) { ui->cb_ColorConstrSel(); }
 void UserInterface::cb_ColorConstrSel(void) {
-  printf("sel\n");
   updateInterface();
 }
 

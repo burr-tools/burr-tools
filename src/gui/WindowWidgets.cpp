@@ -224,8 +224,6 @@ void ConstraintsGroup::cb_list(void) {
 
   if (List->getReason() == ColorConstraintsEdit::RS_CHANGEDHIGHT) {
 
-    printf("ch to %i\n", List->calcHeight());
-
     Slider->range(0, List->calcHeight());
     if (Slider->value() > List->calcHeight())
       Slider->value(List->calcHeight());
