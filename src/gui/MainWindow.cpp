@@ -81,6 +81,7 @@ void UserInterface::cb_NewShape(void) {
   PcSel->setSelection(puzzle->addShape(6, 6, 6));
   pieceEdit->setZ(0);
   updateInterface();
+    StatPieceInfo(PcSel->getSelection());
   changed = true;
 }
 
@@ -104,6 +105,7 @@ void UserInterface::cb_DeleteShape(void) {
 
     PcSel->setSelection(current);
     updateInterface();
+    StatPieceInfo(PcSel->getSelection());
 
     changed = true;
 
@@ -125,6 +127,7 @@ void UserInterface::cb_CopyShape(void) {
     changed = true;
 
     updateInterface();
+    StatPieceInfo(PcSel->getSelection());
 
   } else
 
@@ -138,9 +141,12 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
 
   if (o->value() == TabPieces) {
     activateShape(PcSel->getSelection());
+    StatPieceInfo(PcSel->getSelection());
   } else if(o->value() == TabProblems) {
-    if (problemSelector->getSelection() < puzzle->problemNumber())
+    if (problemSelector->getSelection() < puzzle->problemNumber()) {
       activateProblem(problemSelector->getSelection());
+      StatProblemInfo(problemSelector->getSelection());
+    }
   } else if(o->value() == TabSolve) {
     if ((solutionProblem->getSelection() < puzzle->problemNumber()) &&
         (SolutionSel->value() < puzzle->probSolutionNumber(solutionProblem->getSelection()))) {
@@ -163,6 +169,7 @@ void UserInterface::cb_PcSel(long reason) {
   switch(reason) {
   case PieceSelector::RS_CHANGEDSELECTION:
     activateShape(PcSel->getSelection());
+    StatPieceInfo(PcSel->getSelection());
     break;
   }
 }
@@ -198,6 +205,7 @@ void UserInterface::cb_ProbSel(long reason) {
   case PieceSelector::RS_CHANGEDSELECTION:
     updateInterface();
     activateProblem(problemSelector->getSelection());
+    StatProblemInfo(problemSelector->getSelection());
     break;
   }
 }
@@ -214,6 +222,7 @@ void UserInterface::cb_pieceEdit(VoxelEditGroup* o) {
     break;
   case SquareEditor::RS_CHANGESQUARE:
     View3D->showSingleShape(puzzle, PcSel->getSelection(), Status->useColors());
+    StatPieceInfo(PcSel->getSelection());
     changed = true;
     break;
   }
@@ -236,6 +245,7 @@ void UserInterface::cb_NewProblem(void) {
     changed = true;
     updateInterface();
     activateProblem(problemSelector->getSelection());
+    StatProblemInfo(problemSelector->getSelection());
   }
 }
 
@@ -257,6 +267,7 @@ void UserInterface::cb_DeleteProblem(void) {
       activateProblem(problemSelector->getSelection());
     else
       activateClear();
+    StatProblemInfo(problemSelector->getSelection());
   }
 }
 
@@ -278,6 +289,7 @@ void UserInterface::cb_CopyProblem(void) {
       changed = true;
       updateInterface();
       activateProblem(problemSelector->getSelection());
+    StatProblemInfo(problemSelector->getSelection());
     }
   }
 }
@@ -321,6 +333,7 @@ void UserInterface::cb_ShapeToResult(void) {
   puzzle->probSetResult(problemSelector->getSelection(), shapeAssignmentSelector->getSelection());
   problemResult->setPuzzle(puzzle, problemSelector->getSelection());
   activateProblem(problemSelector->getSelection());
+    StatProblemInfo(problemSelector->getSelection());
 
   changed = true;
 }
@@ -359,12 +372,14 @@ void UserInterface::cb_AddShapeToProblem(void) {
     if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
       puzzle->probSetShapeCount(prob, i, puzzle->probGetShapeCount(prob, i) + 1);
       PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+      StatProblemInfo(problemSelector->getSelection());
       return;
     }
 
   puzzle->probAddShape(prob, shapeAssignmentSelector->getSelection(), 1);
   activateProblem(problemSelector->getSelection());
   updateInterface();
+  StatProblemInfo(problemSelector->getSelection());
 }
 
 static void cb_RemoveShapeFromProblem_stub(Fl_Widget* o, void* v) { ui->cb_RemoveShapeFromProblem(); }
@@ -391,6 +406,7 @@ void UserInterface::cb_RemoveShapeFromProblem(void) {
     }
 
   activateProblem(problemSelector->getSelection());
+  StatProblemInfo(problemSelector->getSelection());
 }
 
 static void cb_AllowColor_stub(Fl_Widget* o, void* v) { ui->cb_AllowColor(); }
@@ -639,6 +655,37 @@ void UserInterface::cb_About(void) {
              "along with this program; if not, write to the Free Software\n"
              "Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.\n"
             );
+}
+
+
+void UserInterface::StatPieceInfo(unsigned int pc) {
+
+  if (pc < puzzle->shapeNumber()) {
+    char txt[100];
+    snprintf(txt, 100, "Shape %i has %i fixed and %i variable cubes", pc,
+             puzzle->getShape(pc)->countState(pieceVoxel_c::VX_FILLED),
+             puzzle->getShape(pc)->countState(pieceVoxel_c::VX_VARIABLE));
+    Status->setText(txt);
+  }
+}
+
+void UserInterface::StatProblemInfo(unsigned int pr) {
+
+  if (puzzle->probGetResult(pr) < puzzle->shapeNumber()) {
+
+    char txt[100];
+  
+    unsigned int cnt = 0;
+
+    for (unsigned int i = 0; i < puzzle->probShapeNumber(pr); i++)
+      cnt += puzzle->probGetShapeShape(pr, i)->countState(pieceVoxel_c::VX_FILLED) * puzzle->probGetShapeCount(pr, i);
+  
+    snprintf(txt, 100, "Problem %i result can contain %i - %i cubes, pieces contain %i cubes", pr,
+             puzzle->probGetResultShape(pr)->countState(pieceVoxel_c::VX_FILLED),
+             puzzle->probGetResultShape(pr)->countState(pieceVoxel_c::VX_FILLED) +
+             puzzle->probGetResultShape(pr)->countState(pieceVoxel_c::VX_VARIABLE), cnt);
+    Status->setText(txt);
+  }
 }
 
 

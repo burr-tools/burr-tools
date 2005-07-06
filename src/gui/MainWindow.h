@@ -178,10 +178,10 @@ public:
   void cb_About(void);
   void cb_SolProbSel(long reason);
 
-
+  void StatPieceInfo(unsigned int pc);
+  void StatProblemInfo(unsigned int pr);
 
   void ReplacePuzzle(puzzle_c * newPuzzle);
-
 
   void show(int argn, char ** argv);
 
