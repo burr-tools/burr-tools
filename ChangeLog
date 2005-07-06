@@ -1,3 +1,109 @@
+Wed Jul  6 17:05:30 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * version 0.1.4 update
+
+Wed Jul  6 17:04:45 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * a bit more agressive reduce, let's just hope that this is not too much
+
+Wed Jul  6 17:04:31 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * valgrind fix
+
+Wed Jul  6 17:03:45 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * bugfixes for the assembly state saving
+
+Tue Jul  5 20:38:13 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * valgrind uninitialised memory warnings
+
+Tue Jul  5 17:57:56 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * implement saving of the current solving state
+
+Mon Jul  4 21:41:32 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add tooltip for color toggle in the status line
+
+Mon Jul  4 20:41:51 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * don't try as hard to reduce, remove the switch again from GUI
+
+Mon Jul  4 20:26:44 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * reintroduce all disassemblers and have a switch in burrTxt to select
+
+Mon Jul  4 20:10:36 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use the new disassembler in the GUI
+
+Sun Jul  3 12:49:17 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix memory leaks and inconsisten new [] delete [] calls
+
+Sun Jul  3 12:47:19 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add a new disassembler
+  
+  this diassembler uses a cache to store the movement possibilities for
+  each piece pair and relative position of this pair. The cache is then
+  later on used to faster fill the matrix.
+  
+  This algorithm could be improved by keeping the cache over the period
+  of solving one puzzle. This is escpecially useful when the puzzle has
+  many assemblies (like Easy living)
+  
+  This algorithm speeds up complex puzzles like Pelikan Burr quite a bit
+  (only 50% time left) but slows down puzzles with many simple assemblies
+  as the cache has to be rebuild each time.
+  
+
+Sat Jul  2 20:47:25 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * the rotation function can not rotate by 90, 180 and 270 degree in one step
+
+Sat Jul  2 20:47:03 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * bugfix
+
+Sat Jul  2 20:45:47 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use the bounding boxes of the voxel space to calculate the bounds for the disassembler
+
+Sat Jul  2 20:09:48 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove the depth fields from the disassembler they didn't bring enough for the complexity
+
+Sat Jul  2 20:05:54 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * voxel space creation speedup (huge speedup)
+
+Sat Jul  2 17:09:44 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * missed the gzstream files, they should have been ther for a long time already
+
+Wed Jun 29 06:38:48 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove the visual c files as they don't work anyway and mingw workd out of the box
+
+Tue Jun 28 19:47:12 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * correctly bail out on error
+
+Tue Jun 28 16:31:52 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add the missing lines at the edges, don't draw edges at color contrains changes
+
+Mon Jun 27 21:40:34 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add new status bar at the bottom of window and connect everything
+
+Mon Jun 27 21:39:22 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add widget for status line
+
+Mon Jun 27 21:38:15 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * enable coloration of cubes by constraint color
+
+Mon Jun 27 17:07:46 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * correction for separator text size calculation
+
+Mon Jun 27 17:07:29 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add web adress to about dialog
+
+Mon Jun 27 17:07:01 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * correct colorConstraint drawing under windows
+
+Sun Jun 26 21:53:22 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  tagged 0.1.3
+
+Sun Jun 26 21:52:55 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use thing up boxes for buttons
+
+Sat Jun 25 12:27:47 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * update documentation
+
+Sat Jun 25 12:27:15 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * update changelog
+
 Sat Jun 25 11:19:59 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
   * reenable the reduce switch
   
@@ -79,3 +185,288 @@ Wed Jun 22 17:05:21 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
 
 Tue Jun 21 20:58:31 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
   tagged 0.1.2
+
+Tue Jun 21 20:20:58 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * corrections for mingw
+
+Tue Jun 21 20:11:42 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * show the selected shape in the upper right corner
+
+Tue Jun 21 19:53:51 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add white as color
+
+Tue Jun 21 19:53:27 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * update 3d-view on edit
+
+Tue Jun 21 19:45:05 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * bugfixes: crash when number of pieces was changed, update screen when shape delete
+
+Tue Jun 21 18:51:20 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * consistency between slider and block list
+  
+  the problem is that the size of the block list is only known
+  after is was drawn, so we need to draw the slider after
+  the block list has been drawn and the slider had been updated
+
+Tue Jun 21 18:01:05 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * bugfix for arcball. When nothing was shown at the start and you dragged the mouse the transformation got screwed up resulting in nothing shown
+
+Tue Jun 21 17:14:59 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * wireframe improvements and fade out now includes the black edges
+
+Mon Jun 20 21:56:24 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * next release
+
+Mon Jun 20 21:55:44 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix blocksize for piece visibility
+
+Mon Jun 20 21:52:21 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * check for valid values when setting up the 3d views
+
+Mon Jun 20 21:51:23 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * more const correctness
+
+Mon Jun 20 21:18:39 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix asserts on "new"
+
+Mon Jun 20 16:46:13 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * don't skip when using the zoom slider for the first time
+
+Mon Jun 20 16:43:55 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * windows rectangles set the draw color
+
+Sun Jun 19 21:43:46 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  tagged 0.1.1
+
+Sun Jun 19 21:43:26 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * next release
+
+Sun Jun 19 21:02:08 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * a small optimisation, don't need to do anything, when piece is transparent
+
+Sun Jun 19 20:45:08 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * squash warning
+
+Sun Jun 19 20:44:26 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * activate piece on load so that there is no empty piece on load of a file
+
+Sun Jun 19 20:38:53 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add header, where missing
+
+Sun Jun 19 20:35:24 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * cleanup in arcball files (mainly linebreaks)
+
+Sun Jun 19 20:33:23 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use exceptions instead of asserts for loading
+
+Sun Jun 19 19:36:00 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * enable visibility toggling
+
+Sun Jun 19 17:31:57 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * correct centering of result and cooredinate system for piece view
+
+Sun Jun 19 17:25:08 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * update to the voxel view class
+  
+  the new voxel view class uses multiple voxel spaces
+  to view the complete result instead of one, this will
+  be more flexible for the future: (color constraints
+  in results)
+  I also use the new functionality with the problem viewer
+  right now
+
+Sun Jun 19 17:24:30 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * some small updates (const correctnes and a helper function)
+
+Sun Jun 19 08:41:12 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * misc fixes
+  
+  - remove debug output in lib
+  - reinstanciate display update timer when solving, without it the
+    GUI uses up too much CPU time
+  - fix some crashes and problems
+
+Sat Jun 18 19:22:19 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * avoid bounding box recalculation
+
+Sat Jun 18 19:20:02 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * don't make a copy of the puzzle, this is not needed any longer
+  
+  this was necessary because the old functions required minimzed
+  pices, now this is not necessary any longer
+
+Sat Jun 18 19:19:06 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use gzipped output file
+
+Sat Jun 18 15:03:10 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * optimize the update of the bounding box when transforming (rot and mirror)
+
+Sat Jun 18 14:13:51 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use the bounding box for the preparation
+
+Sat Jun 18 14:02:01 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add an internal bounding box to the voxel space
+
+Sat Jun 18 13:15:36 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use assembly in puzzle solutions instead of the assembly voxel space
+  
+  this saves a bit of space in the xml files, the usage of the assembly
+  will also further go down into the different tasks then now, e.g
+  the voxel space shoule really use the assembly instead of the current
+  assemblyVoxel space.
+
+Sat Jun 18 12:08:49 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * const correctnes
+
+Sat Jun 18 11:24:23 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove some warnings
+
+Sat Jun 18 09:53:11 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * format changes
+
+Sat Jun 18 09:42:52 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * correctly use the new assebly class
+
+Mon May  9 21:59:33 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * better boxes :-)
+
+Mon May  9 21:59:10 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * typo
+
+Mon Mar 28 20:08:05 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * bugfixes
+
+Mon Mar 28 16:33:09 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * improvements for printing
+
+Mon Mar 28 16:32:32 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * correctly load in burrText
+
+Mon Mar 28 16:08:50 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * const correctnes
+
+Mon Mar 28 16:08:26 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * bugfixes in assermby_c class
+
+Mon Mar 28 16:06:53 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * readd printing function in an extra external module
+
+Mon Mar 28 14:24:49 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove some more warnings
+
+Mon Mar 28 14:22:51 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * step 2 of applying assembly result changes
+
+Thu Mar 24 22:24:12 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add assembly class to contain assembled puzzle
+
+Sun Mar 20 21:15:25 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * better commenting, some cleanup
+
+Sun Mar 20 18:37:16 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * more warnings removed, move position fields out of main window in DisassmToMoves class
+
+Wed Mar  9 21:50:17 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove Warnings part 1
+
+Wed Mar  9 21:29:28 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * introduce new interface for voxel viewer
+
+Mon Mar  7 21:05:30 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  tagged 0.1.0
+
+Mon Mar  7 21:04:35 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * correction for error throwing so that is loads again
+
+Sun Mar  6 21:51:27 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * redesign part III
+
+Tue Mar  1 21:44:59 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * Mayor reordering Part II
+  Next part of the reordering, still not much working but
+  we are getting there. The programm now can again solve puzzles
+  and show the solutions
+  
+
+Mon Feb 28 21:19:51 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * Major Restructuring
+  This patch does three major things:
+  - restucture the puzzle oranisation into using problems with
+    each problem using shapes from a puzzle wide defined list
+  - use XML to save the puzzles
+  - allow for color constraints
+
+Sat Jan  1 20:56:47 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * don't crash when mous goes below edit area in square editor
+
+Sat Jan  1 20:46:19 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * allow multiple result shapes part II (small fix)
+
+Sat Jan  1 20:45:02 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add saving to XML
+
+Sat Jan  1 16:57:04 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add color constraints to library (still unused in gui and not saved)
+
+Sat Jan  1 16:11:04 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * allow for multiple result shapes
+
+Sat Jan  1 15:55:16 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * some cleanup
+
+Sat Jan  1 13:13:36 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * specialize the voxel class
+  
+  the voxel class now has 2 subclasses one for each of the uses
+  
+  the assemlbyVoxel class is for assembled puzzles with a special
+  value for empty voxels and the right numbers for the pieces
+  
+  the pieceVoxel contains the state and NEW also a field called color
+  that will be used to constrain piece placement
+
+Sat Jan  1 12:39:23 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add frontend for cube puzzles
+
+Sat Jan  1 11:36:33 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * const correctness
+
+Fri Dec 31 10:09:54 CET 2004  Andreas Röver <roever@users.sourceforge.net>
+  * update copyright header
+
+Sat Dec  4 21:30:28 CET 2004  Andreas Röver <roever@users.sourceforge.net>
+  * Some documentation restructuring and additions
+
+Sat Dec  4 16:49:40 CET 2004  Andreas Röver <roever@users.sourceforge.net>
+  * misc formatting
+
+Sat Dec  4 16:48:38 CET 2004  Andreas Röver <roever@users.sourceforge.net>
+  * Factor out file loading
+
+Sat Dec  4 16:42:40 CET 2004  Andreas Röver <roever@users.sourceforge.net>
+  * Evaluate command line a bit and load a file if given
+
+Sat Dec  4 16:33:22 CET 2004  Andreas Röver <roever@users.sourceforge.net>
+  * remove tabs from Makefile.am
+
+Sat Dec  4 16:32:17 CET 2004  Andreas Röver <roever@users.sourceforge.net>
+  * Move Window Widget Groups into their own file to improve compilation seed
+
+Sat Dec  4 16:17:56 CET 2004  Andreas Röver <roever@users.sourceforge.net>
+  * Split dancing link assembler from matrix creation
+  
+  This should allow to have serveral differen Puzzle piece types.
+  For each type you can write a new frontend to assembler_0_c that
+  handles the creation of the matrix and the generation of the solution
+  
+  currently only one frontend, for cube spaces, is defined
+  
+
+Fri Dec  3 21:20:30 CET 2004  roever@users.sf.net
+  * better bootstrap script
+
+Fri Dec  3 21:03:04 CET 2004  roever@users.sf.net
+  * add doc to distribution
+
+Fri Dec  3 21:00:19 CET 2004  roever@users.sf.net
+  * Initial revision

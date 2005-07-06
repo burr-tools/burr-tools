@@ -1,1 +1,63 @@
+------------- Version 0.1.4 Jul 6 2005
+
+- more agressive reduce, may take a bit longer but still faster than
+the original one that took ages for some puzzles
+
+- valgrind fixes for memory frees and uninitialized memory
+
+- the assembly state can now be saved and resumed so you can top the
+calculation save and resume where you left off the next day
+
+- new disassembly engine that is much faster for complex puzzles but a
+bit slower for simple to disassemble puzzles
+
+- faster disassembler preparation making the disassembling for simple
+problems much faster
+
+- better voxel space drawing, including all edges
+
+- voxel space can now also draw the constraint colors besides the shape
+color
+
+- add toggle button on a status bar to toggle between piece and
+constraint color
+
+- separator text size was sometimes calculates wrong
+
+- add web adress to about dialog
+
+- populate the status line with some information
+
+
+------------- Version 0.1.3 Jun 26 2005
+
+- buttons use up frame now
+
+- doc update
+
+- make it possible to stop while preparing the assembler, you just have
+to wait for it to finish. Bevore that the stop button was ignored while
+in preparation
+
+- piece fit test speedup. This should improve preparation speed
+
+- when selecting a shape in the list that lists the piece and the piece
+count for the current problem, the corresponding piece gets selected
+
+- about box
+
+- problem renaming
+
+- when something is not right with the puzzle a message box appears now
+instad of a hang in the GUI
+
+- set the z-layer of the shape editor to 0 on new shape
+
+- bugfixes
+
+
+------------- Version 0.1.2 Jun 21 2005
+
+old versions
+
 
