@@ -25,9 +25,9 @@
 #include <pthread.h>
 #endif
 
-#include "../lib/disassembly.h"
-#include "../lib/assm_0_frontend_0.h"
-#include "../lib/disassembler_4.h"
+#include "disassembly.h"
+#include "assm_0_frontend_0.h"
+#include "disassembler_4.h"
 
 #ifdef WIN32
 unsigned long __stdcall start_th(void * c)

@@ -21,7 +21,7 @@
 #define MainWindow_h
 
 #include "../lib/puzzle.h"
-#include "AssemblyCallbacks.h"
+#include "../lib/AssemblyCallbacks.h"
 #include "DisasmToMoves.h"
 #include "WindowWidgets.h"
 #include "BlockList.h"

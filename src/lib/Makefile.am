@@ -20,5 +20,6 @@ libburr_a_SOURCES=disassembler.h assembler.h \
                   burrgrower.h burrgrower.cpp \
                   pieceGenerator.h pieceGenerator.cpp \
                   symmetries.h symmetries.cpp \
+                  AssemblyCallbacks.cpp AssemblyCallbacks.h \
                   print.h print.cpp
 
