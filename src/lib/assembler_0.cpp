@@ -19,6 +19,8 @@
 
 #include "assembler_0.h"
 
+#include <xmlwrapp/attributes.h>
+
 #ifdef WIN32
 #define snprintf _snprintf
 #endif
@@ -890,12 +892,16 @@ static unsigned int getLong(const char * s, unsigned long * i) {
     return 500000;
 }
 
-void assembler_0_c::setPosition(const char * string) {
+assembler_c::errState assembler_0_c::setPosition(const char * string, const char * version) {
 
   /* we assert that the matrix is in the initial position
    * otherwise we would have to clean the stack
    */
   assert(pos == 0);
+
+  /* check for te right version */
+  if (strcmp(version, "1.1"))
+    return ERR_CAN_NOT_RESTORE;
 
   /* get the values from the string. For the moment we assume that
    * the string is correct and contains enough values, if not sad things
@@ -957,11 +963,15 @@ void assembler_0_c::setPosition(const char * string) {
       p++;
     }
   }
+
+  return ERR_NONE;
 }
 
 xml::node assembler_0_c::save(void) const {
 
   xml::node nd("assembler");
+
+  nd.get_attributes().insert("version", "1.1");
 
   std::string cont;
 

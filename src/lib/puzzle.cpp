@@ -343,6 +343,11 @@ public:
    * otherwise the loading might take quite a while
    */
   std::string assemblerState;
+  /**
+   * each assembler also saves a version into the node so that it can check, if
+   * the saves state can be resored
+   */
+  std::string assemblerVersion;
 
 };
 
@@ -471,8 +476,10 @@ problem_c::problem_c(const xml::node & node, unsigned int color) : result(0xFFFF
     colorConstraints.load(*it);
 
   it = node.find("assembler");
-  if (it != node.end())
-    assemblerState = it->get_content();;
+  if ((it != node.end()) && (it->get_attributes().find("version") != it->get_attributes().end())) {
+    assemblerState = it->get_content();
+    assemblerVersion = it->get_attributes().find("version")->get_value();
+  }
 }
 
 void problem_c::shapeIdRemoved(unsigned short idx) {
@@ -1011,16 +1018,33 @@ const separation_c * puzzle_c::probGetDisassembly(unsigned int prob, unsigned in
   return problems[prob]->solutions[sol]->tree;
 }
 
-void puzzle_c::probSetAssembler(unsigned int prob, assembler_c * assm) {
+assembler_c::errState puzzle_c::probSetAssembler(unsigned int prob, assembler_c * assm) {
   assert(prob < problems.size());
-  problems[prob]->assm = assm;
-  if (problems[prob]->assemblerState.length() > 0)
-    assm->setPosition(problems[prob]->assemblerState.c_str());
-  else {
+
+  if (problems[prob]->assemblerState.length()) {
+
+    // if we have some assembler position data, try to load that
+    assembler_c::errState err = assm->setPosition(problems[prob]->assemblerState.c_str(), problems[prob]->assemblerVersion.c_str());
+
+    // and remove that data
+    problems[prob]->assemblerState = "";
+
+    // when we could not load, return with error and reset to unsovled
+    if (err != assembler_c::ERR_NONE) {
+      problems[prob]->solveState = SS_UNSOLVED;
+      return err;
+    }
+
+  } else {
+
+    // if no data is available for assemlber restoration reset counters
     problems[prob]->numAssemblies = 0;
     problems[prob]->numSolutions = 0;
   }
+
+  problems[prob]->assm = assm;
   problems[prob]->solveState = SS_SOLVING;
+  return assembler_c::ERR_NONE;
 }
 
 assembler_c * puzzle_c::probGetAssembler(unsigned int prob) {

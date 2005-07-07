@@ -76,8 +76,11 @@ void* start_th(void * c)
      * also restores the assembler state to a state that might
      * be saved within the problem
      */
-    p->puzzle->probSetAssembler(p->prob, assm);
-
+    p->errState = p->puzzle->probSetAssembler(p->prob, assm);
+    if (p->errState != assm_0_frontend_0_c::ERR_NONE) {
+      p->action = assemblerThread::ACT_ERROR;
+      return 0;
+    }
   }
 
   if (!p->stopPressed) {

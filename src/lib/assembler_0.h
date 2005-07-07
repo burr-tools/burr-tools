@@ -273,8 +273,7 @@ public:
   virtual float getFinished(void);
   virtual void stop(void) { abbort = true; }
   virtual bool stopped(void) const { return !running; }
-//  virtual bool getPosition(char * string, int len);
-  virtual void setPosition(const char * string);
+  virtual errState setPosition(const char * string, const char * version);
 
   virtual xml::node save(void) const; 
 

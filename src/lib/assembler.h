@@ -20,7 +20,6 @@
 #ifndef __ASSEMBLER_H__
 #define __ASSEMBLER_H__
 
-#include "puzzle.h"
 #include "voxel.h"
 #include "assembly.h"
 
@@ -55,7 +54,8 @@ public:
     ERR_NONE,
     ERR_TOO_MANY_UNITS,
     ERR_TOO_FEW_UNITS,
-    ERR_CAN_NOT_PLACE
+    ERR_CAN_NOT_PLACE,
+    ERR_CAN_NOT_RESTORE
   } errState;
 
   /* initialisation */
@@ -108,7 +108,7 @@ public:
    * the function should only be called when assembly is not running it shoule be
    * called before calling assemble
    */
-  virtual void setPosition(const char * string) {}
+  virtual errState setPosition(const char * string, const char * version) { return ERR_CAN_NOT_RESTORE; }
 
   /* this function saves the current state of the assembler into an xml node to
    * write it to an file

@@ -27,6 +27,7 @@
 #include "voxel.h"
 #include "disassembly.h"
 #include "assembly.h"
+#include "assembler.h"
 
 #include <vector>
 #include <iostream>
@@ -37,7 +38,6 @@
 
 
 class problem_c;
-class assembler_c;
 
 /**
  * This class defines the puzzle
@@ -192,7 +192,7 @@ public:
   /* after setting the assembler it will get reset to the state
    * that was saved earlier on
    */
-  void probSetAssembler(unsigned int prob, assembler_c * assm);
+  assembler_c::errState probSetAssembler(unsigned int prob, assembler_c * assm);
   assembler_c * probGetAssembler(unsigned int prob);
   const assembler_c * probGetAssembler(unsigned int prob) const;
 

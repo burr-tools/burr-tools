@@ -1169,6 +1169,9 @@ void UserInterface::update(void) {
       case assembler_c::ERR_CAN_NOT_PLACE:
         fl_message("Piece %i can be placed nowhere within the result", assmThread->getErrorParam()+1);
         break;
+      case assembler_c::ERR_CAN_NOT_RESTORE:
+        fl_message("Impossible to restore the saved state, you have to start from the beginning, sorry");
+        break;
       }
 
       delete assmThread;
