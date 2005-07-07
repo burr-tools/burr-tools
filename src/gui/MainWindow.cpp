@@ -907,9 +907,13 @@ void UserInterface::updateInterface(void) {
   if (PcSel->getSelection() < puzzle->shapeNumber()) {
     BtnCpyShape->activate();
     BtnDelShape->activate();
+    pieceTools->activate();
+    pieceEdit->activate();
   } else {
     BtnCpyShape->deactivate();
     BtnDelShape->deactivate();
+    pieceTools->deactivate();
+    pieceEdit->deactivate();
   }
 
   if (problemSelector->getSelection() < puzzle->problemNumber()) {
