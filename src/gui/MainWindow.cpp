@@ -333,7 +333,7 @@ void UserInterface::cb_ShapeToResult(void) {
   puzzle->probSetResult(problemSelector->getSelection(), shapeAssignmentSelector->getSelection());
   problemResult->setPuzzle(puzzle, problemSelector->getSelection());
   activateProblem(problemSelector->getSelection());
-    StatProblemInfo(problemSelector->getSelection());
+  StatProblemInfo(problemSelector->getSelection());
 
   changed = true;
 }
