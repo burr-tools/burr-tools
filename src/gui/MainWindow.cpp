@@ -169,6 +169,7 @@ void UserInterface::cb_PcSel(long reason) {
   switch(reason) {
   case PieceSelector::RS_CHANGEDSELECTION:
     activateShape(PcSel->getSelection());
+    updateInterface();
     StatPieceInfo(PcSel->getSelection());
     break;
   }
@@ -1104,7 +1105,28 @@ void UserInterface::updateSolutionStats(void) {
       BtnStop->deactivate();
     }
 
+    BtnDelProb->deactivate();
+    BtnDelColor->deactivate();
+    BtnDelShape->deactivate();
+
+    if (assmThread->getProblem() == problemSelector->getSelection()) {
+
+      BtnColAdd->deactivate();
+      BtnColRem->deactivate();
+      BtnSetResult->deactivate();
+      BtnAddShape->deactivate();
+      BtnRemShape->deactivate();
+    }
+
+    if (puzzle->probContainsShape(assmThread->getProblem(), PcSel->getSelection())) {
+      pieceTools->deactivate();
+      pieceEdit->lock(true);
+    } else
+      pieceEdit->lock(false);
+
   } else {
+
+    pieceEdit->lock(false);
 
     // no thread currently calculating
 

@@ -893,6 +893,19 @@ unsigned int puzzle_c::probGetShape(unsigned int prob, unsigned int shapeID) con
   return problems[prob]->shapes[shapeID].shapeId;
 }
 
+bool puzzle_c::probContainsShape(unsigned int prob, unsigned int shape) const {
+  assert(prob < problems.size());
+
+  if (problems[prob]->result == shape)
+    return true;
+
+  for (vector<problem_c::shape_c>::iterator i = problems[prob]->shapes.begin(); i != problems[prob]->shapes.end(); i++)
+    if (i->shapeId == shape)
+      return true;
+
+  return false;
+}
+
 const pieceVoxel_c * puzzle_c::probGetShapeShape(unsigned int prob, unsigned int shapeID) const {
   assert(prob < problems.size());
   assert(shapeID < problems[prob]->shapes.size());

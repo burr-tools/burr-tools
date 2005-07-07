@@ -63,13 +63,15 @@ private:
   // the constraint color to use
   unsigned int currentColor;
 
+  bool locked;
+
 protected:
 
   void draw();
 
 public:
 
-  SquareEditor(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), currentZ(0), piecenumber(0), state(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), inside(false), currentColor(0) {}
+  SquareEditor(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), currentZ(0), piecenumber(0), state(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), inside(false), currentColor(0), locked(false) {}
 
   // sets the z layer to edit the value is clamped to valid values
   void setZ(unsigned int z);
@@ -88,6 +90,16 @@ public:
   void clearPuzzle() {
     piecenumber = puzzle->shapeNumber();
     redraw();
+  }
+
+  /* when locked the editor only shows but doesn't alow
+   * to edit
+   */
+  void lock(bool lock) {
+    if (locked ^ lock) {
+      locked = lock;
+      redraw();
+    }
   }
 
   int handle(int event);

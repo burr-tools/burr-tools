@@ -180,6 +180,9 @@ public:
   /* return the shape id of the given shape (index into the shape array of the puzzle */
   unsigned int probGetShape(unsigned int prob, unsigned int shapeID) const;
 
+  /* returns true, if the given shape is in this problem (including result) */
+  bool probContainsShape(unsigned int prob, unsigned int shape) const;
+
   /* return the voxel of the piece shape */
   const pieceVoxel_c * probGetShapeShape(unsigned int prob, unsigned int shapeID) const;
   pieceVoxel_c * probGetShapeShape(unsigned int prob, unsigned int shapeID);

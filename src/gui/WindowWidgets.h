@@ -104,6 +104,10 @@ public:
     sqedit->setColor(num);
   }
 
+  void lock(bool lock) {
+    sqedit->lock(lock);
+  }
+
 };
 
 
