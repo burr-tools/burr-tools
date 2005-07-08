@@ -649,6 +649,17 @@ void UserInterface::cb_Quit(void) {
       return;
 
   delete puzzle;
+
+  if (fname) {
+    delete [] fname;
+    fname = 0;
+  }
+
+  if (disassemble) {
+    delete disassemble;
+    disassemble = 0;
+  }
+
   mainWindow->hide();
 }
 
