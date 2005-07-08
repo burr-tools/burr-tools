@@ -252,7 +252,9 @@ class problem_c {
 
 public:
 
-  problem_c(unsigned int colors) : result(0xFFFFFFFF), colorConstraints(colors), assm(0) {}
+  problem_c(unsigned int colors) : result(0xFFFFFFFF), colorConstraints(colors), assm(0), numAssemblies(0xFFFFFFFF),
+    numSolutions(0xFFFFFFFF)
+  {}
 
   problem_c(const xml::node & node, unsigned int colors);
 

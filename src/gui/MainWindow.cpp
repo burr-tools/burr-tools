@@ -647,6 +647,8 @@ void UserInterface::cb_Quit(void) {
   if (changed)
     if (fl_ask("Puzzle changed are you shure?") == 0)
       return;
+
+  delete puzzle;
   mainWindow->hide();
 }
 
