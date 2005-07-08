@@ -834,22 +834,6 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
 
   if ((prob < puzzle->problemNumber()) && (num < puzzle->probSolutionNumber(prob))) {
 
-    unsigned int shapeNumber = puzzle->probShapeNumber(prob);
-
-    int * pcNum = new int[shapeNumber];
-
-    unsigned int piece = 0;
-
-    for (unsigned int i = 0; i < shapeNumber; i++) {
-      pcNum[i] = puzzle->probGetShapeCount(prob, i);
-      for (int j = 0; j < pcNum[i]; j++) {
-        colors[2*piece] = i;
-        colors[2*piece+1] = j;
-
-        piece++;
-      }
-    }
-
     PcVis->setPuzzle(puzzle, prob);
 
     if (puzzle->probGetDisassembly(prob, num)) {
@@ -1748,9 +1732,6 @@ UserInterface::UserInterface() {
 
   puzzle = new puzzle_c();
   changed = false;
-
-  for (int j = 0; j < 33; j++)
-    visibility[j] = 0;
 
   mainWindow = new Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y);
   mainWindow->label("BurrTools - unknown");

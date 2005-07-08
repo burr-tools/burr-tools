@@ -52,8 +52,6 @@ class View3dGroup;
 class UserInterface {
   puzzle_c * puzzle;
   char * fname;
-  char visibility[33];
-  int colors[66];
   DisasmToMoves * disassemble;
   assemblerThread *assmThread;
   bool SolutionEmpty;
