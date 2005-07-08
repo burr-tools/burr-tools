@@ -64,6 +64,7 @@ void UserInterface::cb_RemoveColor(void) {
   if (colorSelector->getSelection() == 0)
     fl_message("Can not delete the Neutral color, this color has to be there");
   else {
+    changeColor(colorSelector->getSelection());
     puzzle->removeColor(colorSelector->getSelection());
     changed = true;
     View3D->showColors(puzzle, Status->useColors());
@@ -92,6 +93,8 @@ void UserInterface::cb_DeleteShape(void) {
   unsigned int current = PcSel->getSelection();
 
   if (current < puzzle->shapeNumber()) {
+
+    changeShape(current);
 
     puzzle->removeShape(current);
 
@@ -224,6 +227,7 @@ void UserInterface::cb_pieceEdit(VoxelEditGroup* o) {
   case SquareEditor::RS_CHANGESQUARE:
     View3D->showSingleShape(puzzle, PcSel->getSelection(), Status->useColors());
     StatPieceInfo(PcSel->getSelection());
+    changeShape(PcSel->getSelection());
     changed = true;
     break;
   }
@@ -331,6 +335,7 @@ void UserInterface::cb_ShapeToResult(void) {
     return;
   }
 
+  changeProblem(problemSelector->getSelection());
   puzzle->probSetResult(problemSelector->getSelection(), shapeAssignmentSelector->getSelection());
   problemResult->setPuzzle(puzzle, problemSelector->getSelection());
   activateProblem(problemSelector->getSelection());
@@ -367,6 +372,7 @@ void UserInterface::cb_AddShapeToProblem(void) {
 
   changed = true;
   PiecesCountList->redraw();
+  changeProblem(prob);
 
   // first see, if there is already a the selected shape inside
   for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
@@ -392,6 +398,7 @@ void UserInterface::cb_RemoveShapeFromProblem(void) {
   }
 
   unsigned int prob = problemSelector->getSelection();
+  changeProblem(prob);
 
   // first see, find the shape, and only if there is one, we decrement its count out remove it
   for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
@@ -427,6 +434,7 @@ void UserInterface::cb_AllowColor(void) {
                                colconstrList->getSelection()+1,
                                colorAssignmentSelector->getSelection()+1);
   changed = true;
+  changeProblem(problemSelector->getSelection());
   updateInterface();
 }
 
@@ -448,6 +456,7 @@ void UserInterface::cb_DisallowColor(void) {
                                   colorAssignmentSelector->getSelection()+1);
 
   changed = true;
+  changeProblem(problemSelector->getSelection());
   updateInterface();
 }
 
@@ -688,6 +697,27 @@ void UserInterface::StatProblemInfo(unsigned int pr) {
     Status->setText(txt);
   }
 }
+
+void UserInterface::changeColor(unsigned int nr) {
+
+  for (unsigned int i = 0; i < puzzle->shapeNumber(); i++)
+    for (unsigned int j = 0; j < puzzle->getShape(i)->getXYZ(); j++)
+      if (puzzle->getShape(i)->getColor(j) == nr) {
+        changeShape(i);
+        break;
+      }
+}
+
+void UserInterface::changeShape(unsigned int nr) {
+  for (unsigned int i = 0; i < puzzle->problemNumber(); i++)
+    if (puzzle->probContainsShape(i, nr))
+      puzzle->probRemoveAllSolutions(i);
+}
+
+void UserInterface::changeProblem(unsigned int nr) {
+  puzzle->probRemoveAllSolutions(nr);
+}
+
 
 
 

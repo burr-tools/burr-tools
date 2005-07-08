@@ -179,6 +179,10 @@ public:
   void StatPieceInfo(unsigned int pc);
   void StatProblemInfo(unsigned int pr);
 
+  void changeShape(unsigned int nr);
+  void changeProblem(unsigned int nr);
+  void changeColor(unsigned int nr);
+
   void ReplacePuzzle(puzzle_c * newPuzzle);
 
   void show(int argn, char ** argv);
