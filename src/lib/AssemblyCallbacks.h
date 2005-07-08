@@ -78,7 +78,12 @@ public:
   // try to stop the thread at the next possible position
   void stop(void);
 
-  bool stopped(void) const { return (action == ACT_PAUSING) || (action == ACT_FINISHED); }
+  bool stopped(void) const {
+    return ((action == ACT_PAUSING) ||
+            (action == ACT_FINISHED) ||
+            (action == ACT_ERROR)
+           );
+  }
 
   unsigned int getProblem(void) { return prob; }
   assembler_c::errState getErrorState(void) { return errState; }
