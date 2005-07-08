@@ -82,7 +82,7 @@ void UserInterface::cb_NewShape(void) {
   PcSel->setSelection(puzzle->addShape(6, 6, 6));
   pieceEdit->setZ(0);
   updateInterface();
-    StatPieceInfo(PcSel->getSelection());
+  StatPieceInfo(PcSel->getSelection());
   changed = true;
 }
 
@@ -294,7 +294,7 @@ void UserInterface::cb_CopyProblem(void) {
       changed = true;
       updateInterface();
       activateProblem(problemSelector->getSelection());
-    StatProblemInfo(problemSelector->getSelection());
+      StatProblemInfo(problemSelector->getSelection());
     }
   }
 }
