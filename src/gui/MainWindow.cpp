@@ -162,6 +162,7 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
 
 static void cb_TransformPiece_stub(Fl_Widget* o, long v) { ui->cb_TransformPiece(); }
 void UserInterface::cb_TransformPiece(void) {
+  StatPieceInfo(PcSel->getSelection());
   activateShape(PcSel->getSelection());
 }
 
@@ -786,6 +787,7 @@ void UserInterface::tryToLoad(const char * f) {
 
     TaskSelectionTab->value(TabPieces);
     activateShape(PcSel->getSelection());
+    StatPieceInfo(PcSel->getSelection());
 
     changed = false;
   }
