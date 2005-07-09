@@ -562,6 +562,7 @@ void UserInterface::cb_New(void) {
 
     changed = false;
 
+    updateInterface();
     activateShape(0);
   }
 }
@@ -1143,6 +1144,7 @@ void UserInterface::updateSolutionStats(void) {
       BtnSetResult->deactivate();
       BtnAddShape->deactivate();
       BtnRemShape->deactivate();
+
     }
 
     if (puzzle->probContainsShape(assmThread->getProblem(), PcSel->getSelection())) {
