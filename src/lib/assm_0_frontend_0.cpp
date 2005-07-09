@@ -251,7 +251,8 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
 }
 
 assm_0_frontend_0_c::~assm_0_frontend_0_c() {
-  if (voxelindex) delete [] voxelindex;
+  if (voxelindex)
+    delete [] voxelindex;
 }
 
 typedef unsigned int uint32_t;

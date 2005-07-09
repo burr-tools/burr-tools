@@ -51,7 +51,7 @@ private:
 
 public:
 
-  assm_0_frontend_0_c() : assembler_0_c() {}
+  assm_0_frontend_0_c() : assembler_0_c(), voxelindex(0) {}
   ~assm_0_frontend_0_c();
 };
 
