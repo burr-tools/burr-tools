@@ -1047,9 +1047,6 @@ void UserInterface::updateInterface(void) {
       MovesInfo->hide();
     }
 
-//    OutputIterations->value(assm->getIterations());
-//    OutputIterations->show();
-
     if (puzzle->probNumAssembliesKnown(prob)) {
       OutputAssemblies->value(puzzle->probGetNumAssemblies(prob));
       OutputAssemblies->show();
@@ -1183,17 +1180,7 @@ void UserInterface::updateInterface(void) {
     }
   }
 
-
-
-#if 0
-  colorSelector->redraw();
-  problemSelector->redraw();
-  colconstrList->redraw();
-  colorAssignmentSelector->redraw();
-  PcSel->redraw();
-#endif
-
-  mainWindow->redraw();
+  TaskSelectionTab->redraw();
 }
 
 void UserInterface::update(void) {
