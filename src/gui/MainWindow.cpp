@@ -72,6 +72,23 @@ void UserInterface::cb_RemoveColor(void) {
   }
 }
 
+static void cb_ChangeColor_stub(Fl_Widget* o, void* v) { ui->cb_ChangeColor(); }
+void UserInterface::cb_ChangeColor(void) {
+
+  if (colorSelector->getSelection() == 0)
+    fl_message("Can not edit the Neutral color");
+  else {
+    unsigned char r, g, b;
+    puzzle->getColor(colorSelector->getSelection()-1, &r, &g, &b);
+    if (fl_color_chooser("New color", r, g, b)) {
+      puzzle->changeColor(colorSelector->getSelection()-1, r, g, b);
+      changed = true;
+      View3D->showColors(puzzle, Status->useColors());
+      updateInterface();
+    }
+  }
+}
+
 
 static void cb_NewShape_stub(Fl_Widget* o, void* v) { ui->cb_NewShape(); }
 void UserInterface::cb_NewShape(void) {
@@ -936,6 +953,12 @@ void UserInterface::updateInterface(void) {
       BtnDelColor->activate();
     else
       BtnDelColor->deactivate();
+
+    // colors can be changed for all colors except the neutral color
+    if (colorSelector->getSelection() > 0)
+      BtnChnColor->activate();
+    else
+      BtnChnColor->deactivate();
   
     // we can only edit and copy shapes, when something valid is selected
     if (PcSel->getSelection() < puzzle->shapeNumber()) {
@@ -1313,7 +1336,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 
-    int bw = (w - SZ_GAP) / 2;
+    int bw = (w - 2*SZ_GAP) / 3;
     {
       Fl_Group * o = new Fl_Group(x, y, bw+SZ_GAP, SZ_BUTTON_Y);
       BtnNewColor = new FlatButton(x          , y, bw, SZ_BUTTON_Y, "Add", "Add another color", cb_AddColor_stub);
@@ -1322,7 +1345,13 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     }
     {
       Fl_Group * o = new Fl_Group(x+bw+SZ_GAP, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Remove", "Remove selected color", cb_RemoveColor_stub);
+      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Rem", "Remove selected color", cb_RemoveColor_stub);
+      o->resizable(BtnDelColor);
+      o->end();
+    }
+    {
+      Fl_Group * o = new Fl_Group(x+2*(bw+SZ_GAP), y, bw+SZ_GAP, SZ_BUTTON_Y);
+      BtnChnColor = new FlatButton(x+2*(SZ_GAP+bw), y, bw, SZ_BUTTON_Y, "Chn", "Change selected color", cb_ChangeColor_stub);
       o->resizable(BtnDelColor);
       o->end();
     }

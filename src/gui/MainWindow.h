@@ -83,7 +83,7 @@ class UserInterface {
 
   FlatButton *BtnStart, *BtnCont, *BtnStop;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape;
-  FlatButton *BtnNewColor, *BtnDelColor;
+  FlatButton *BtnNewColor, *BtnDelColor, *BtnChnColor;
   FlatButton *BtnNewProb, *BtnDelProb, *BtnCpyProb, *BtnRenProb;
   FlatButton *BtnColSrtPc, *BtnColSrtRes, *BtnColAdd, *BtnColRem;
   FlatButton *BtnSetResult, *BtnAddShape, *BtnRemShape;
@@ -121,6 +121,7 @@ public:
 
   void cb_AddColor(void);
   void cb_RemoveColor(void);
+  void cb_ChangeColor(void);
 
   void cb_NewShape(void);
   void cb_DeleteShape(void);
