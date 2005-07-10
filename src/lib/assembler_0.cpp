@@ -153,6 +153,13 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   int res_vari = puz->probGetResultShape(prob)->countState(pieceVoxel_c::VX_VARIABLE);
   int res_filled = puz->probGetResultShape(prob)->countState(pieceVoxel_c::VX_FILLED) + res_vari;
 
+  for (int i = 0; i < piecenumber; i++)
+    if (puz->probGetShapeShape(prob, i)->countState(pieceVoxel_c::VX_VARIABLE)) {
+      errorsParam = puz->probGetShape(prob, i);
+      errorsState = ERR_PIECE_WITH_VARICUBE;
+      return errorsState;
+    }
+
   varivoxelStart = 1 + piecenumber + res_filled - res_vari;
   varivoxelEnd = 1 + piecenumber + res_filled;
 

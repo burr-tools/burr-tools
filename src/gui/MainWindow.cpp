@@ -1212,6 +1212,8 @@ void UserInterface::update(void) {
 
     } else if (assmThread->currentAction() == assemblerThread::ACT_ERROR) {
 
+      unsigned int selectShape = 0xFFFFFFFF;
+
       switch(assmThread->getErrorState()) {
       case assembler_c::ERR_TOO_MANY_UNITS:
         fl_message("Pieces contain %i units too many", assmThread->getErrorParam());
@@ -1221,10 +1223,23 @@ void UserInterface::update(void) {
         break;
       case assembler_c::ERR_CAN_NOT_PLACE:
         fl_message("Piece %i can be placed nowhere within the result", assmThread->getErrorParam()+1);
+        selectShape = assmThread->getErrorParam()+1;
         break;
       case assembler_c::ERR_CAN_NOT_RESTORE:
         fl_message("Impossible to restore the saved state, you have to start from the beginning, sorry");
         break;
+      case assembler_c::ERR_PIECE_WITH_VARICUBE:
+        fl_message("Shape %i is used as piece and contains variable cubes, that is not allowed", assmThread->getErrorParam());
+        selectShape = assmThread->getErrorParam()+1;
+        break;
+      }
+
+      if (selectShape < puzzle->shapeNumber()) {
+        TaskSelectionTab->value(TabPieces);
+        PcSel->setSelection(assmThread->getErrorParam());
+        activateShape(PcSel->getSelection());
+        updateInterface();
+        StatPieceInfo(PcSel->getSelection());
       }
 
       delete assmThread;

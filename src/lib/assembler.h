@@ -55,7 +55,8 @@ public:
     ERR_TOO_MANY_UNITS,
     ERR_TOO_FEW_UNITS,
     ERR_CAN_NOT_PLACE,
-    ERR_CAN_NOT_RESTORE
+    ERR_CAN_NOT_RESTORE,
+    ERR_PIECE_WITH_VARICUBE
   } errState;
 
   /* initialisation */
