@@ -1,3 +1,81 @@
+Sun Jul 10 18:40:02 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * some gcc 4 fixes
+
+Sun Jul 10 18:30:04 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * sort widged updating by tab and only update the pieces that are in the current tab
+
+Sun Jul 10 17:59:32 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * only redraw the tab, because only widgets in the tab are updated
+
+Sun Jul 10 17:56:53 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * merge updateSolutionStats and updateInterface
+
+Sun Jul 10 17:53:30 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * oops, this is the right way to check the piece shapes for variable voxels
+
+Sun Jul 10 07:48:14 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * stop pressing while in preparation caused segfault because the assembler was not yet set in the puzzle struct
+
+Sun Jul 10 07:47:24 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * check for variable cubes in pieces and error out, also errors that mention one piece jump to that piece
+
+Sat Jul  9 14:03:10 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * some more status line updates
+
+Sat Jul  9 14:02:51 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * uninitialised pointer
+
+Sat Jul  9 09:27:39 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * update interface when pressing new puzzle
+
+Fri Jul  8 21:47:52 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * plug some memory leaks
+
+Fri Jul  8 20:29:16 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * the thread has also stopped on error and not only in pause and finished state
+
+Fri Jul  8 20:29:03 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * valgrind fixes
+
+Fri Jul  8 20:28:49 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * whitespace
+
+Fri Jul  8 20:28:18 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove solutions when editing the puzzle
+
+Fri Jul  8 20:27:41 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove some cruft
+
+Thu Jul  7 21:26:58 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * disable all dangerous editing while solving is in progress
+
+Thu Jul  7 17:18:58 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * whitespace
+
+Thu Jul  7 17:17:16 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add a attribute to the assembler state to make incompatible changes possible, show error message when restoring failed
+
+Thu Jul  7 17:08:43 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * disable voxel edit tools, when there is nothing to edit
+
+Wed Jul  6 21:04:06 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  tagged 0.1.4
+
+Wed Jul  6 18:27:25 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * move assembky callback functions into library
+
+Wed Jul  6 18:04:24 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * changelog and NEWS update
+
+Wed Jul  6 18:02:56 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * populate the status line with some information
+
+Wed Jul  6 17:31:25 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * dont active solution when not in solve tab
+
+Wed Jul  6 17:24:24 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove some debug prints
+
 Wed Jul  6 17:05:30 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
   * version 0.1.4 update
 

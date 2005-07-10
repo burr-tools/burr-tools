@@ -1,3 +1,20 @@
+------------- Version 0.1.5 Jul 10 2005
+
+- no editing of problem while solving
+
+- assembler status in file contains version
+
+- error message, when failed to load
+
+- remove solutions when editing
+
+- variable cubes are not allowed in piece shapes
+
+- memory leaks, uninitialized variables, other misc. valgrind messages
+
+- update interface when solution has anded and reenable everything
+
+
 ------------- Version 0.1.4 Jul 6 2005
 
 - more agressive reduce, may take a bit longer but still faster than

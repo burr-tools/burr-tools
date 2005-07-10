@@ -4,3 +4,5 @@ aclocal \
 && automake-1.9 --gnu --add-missing \
 && autoconf
 ./configure
+
+darcs changes | sed s/\\\\f6/ö/ > ChangeLog
