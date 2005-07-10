@@ -155,7 +155,7 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
         (SolutionSel->value() < puzzle->probSolutionNumber(solutionProblem->getSelection()))) {
       activateSolution(solutionProblem->getSelection(), int(SolutionSel->value()));
     }
-    updateSolutionStats();
+    updateInterface();
   }
 }
 
@@ -185,7 +185,7 @@ void UserInterface::cb_SolProbSel(long reason) {
   switch(reason) {
   case ProblemSelector::RS_CHANGEDSELECTION:
 
-    updateSolutionStats();
+    updateInterface();
     activateSolution(solutionProblem->getSelection(), (int)SolutionSel->value());
     break;
   }
@@ -1009,21 +1009,6 @@ void UserInterface::updateInterface(void) {
     BtnRemShape->deactivate();
   }
 
-  updateSolutionStats();
-
-#if 0
-  colorSelector->redraw();
-  problemSelector->redraw();
-  colconstrList->redraw();
-  colorAssignmentSelector->redraw();
-  PcSel->redraw();
-#endif
-
-  mainWindow->redraw();
-}
-
-void UserInterface::updateSolutionStats(void) {
-
   unsigned int prob = solutionProblem->getSelection();
 
   if (solutionProblem->getSelection() < puzzle->problemNumber()) {
@@ -1197,6 +1182,18 @@ void UserInterface::updateSolutionStats(void) {
       BtnCont->deactivate();
     }
   }
+
+
+
+#if 0
+  colorSelector->redraw();
+  problemSelector->redraw();
+  colconstrList->redraw();
+  colorAssignmentSelector->redraw();
+  PcSel->redraw();
+#endif
+
+  mainWindow->redraw();
 }
 
 void UserInterface::update(void) {
@@ -1249,7 +1246,7 @@ void UserInterface::update(void) {
     // update the window, either when the thread stopped and so the buttons need to
     // be updated, or then the thread works for the currently selected problem
     if (!assmThread || assmThread->getProblem() == solutionProblem->getSelection())
-      updateSolutionStats();
+      updateInterface();
   }
 }
 

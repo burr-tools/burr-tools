@@ -195,7 +195,6 @@ public:
   bool threadStopped(void);
 
   void update(void);
-  void updateSolutionStats(void);
   void updateInterface(void);
 };
 #endif
