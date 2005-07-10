@@ -20,6 +20,8 @@
 #include "WindowWidgets.h"
 #include "pieceColor.h"
 
+#include <math.h>
+
 // some tool widgets, that may be swapped out later into another file
 
 

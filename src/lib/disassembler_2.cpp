@@ -712,14 +712,14 @@ void disassembler_2_c::calcbounds(void) {
   /* allocate the memory for the depth arrays */
   for (int i = 0; i < piecenumber; i++) {
 
-    bbdepth[0][i] = new (unsigned int)[(bx2[i]-bx1[i]+1) * (by2[i]-by1[i]+1)];
-    bbdepth[1][i] = new (unsigned int)[(bx2[i]-bx1[i]+1) * (by2[i]-by1[i]+1)];
+    bbdepth[0][i] = new unsigned int[(bx2[i]-bx1[i]+1) * (by2[i]-by1[i]+1)];
+    bbdepth[1][i] = new unsigned int[(bx2[i]-bx1[i]+1) * (by2[i]-by1[i]+1)];
 
-    bbdepth[2][i] = new (unsigned int)[(bx2[i]-bx1[i]+1) * (bz2[i]-bz1[i]+1)];
-    bbdepth[3][i] = new (unsigned int)[(bx2[i]-bx1[i]+1) * (bz2[i]-bz1[i]+1)];
+    bbdepth[2][i] = new unsigned int[(bx2[i]-bx1[i]+1) * (bz2[i]-bz1[i]+1)];
+    bbdepth[3][i] = new unsigned int[(bx2[i]-bx1[i]+1) * (bz2[i]-bz1[i]+1)];
 
-    bbdepth[4][i] = new (unsigned int)[(by2[i]-by1[i]+1) * (bz2[i]-bz1[i]+1)];
-    bbdepth[5][i] = new (unsigned int)[(by2[i]-by1[i]+1) * (bz2[i]-bz1[i]+1)];
+    bbdepth[4][i] = new unsigned int[(by2[i]-by1[i]+1) * (bz2[i]-bz1[i]+1)];
+    bbdepth[5][i] = new unsigned int[(by2[i]-by1[i]+1) * (bz2[i]-bz1[i]+1)];
   }
 
 
@@ -821,7 +821,7 @@ disassembler_2_c::disassembler_2_c(assemblyVoxel_c * problem, int piecenum) : as
   bz2 = new int[piecenumber];
 
   for (int i = 0; i < 6; i++)
-    bbdepth[i] = new (unsigned int*)[piecenumber+1];
+    bbdepth[i] = new unsigned int* [piecenumber+1];
 
   for (int i = 0; i < 3; i++)
     matrix[i] = new int[piecenumber * piecenumber];
