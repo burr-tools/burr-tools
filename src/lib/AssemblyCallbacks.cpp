@@ -154,7 +154,10 @@ bool assemblerThread::assembly(assembly_c * a) {
 
 void assemblerThread::stop(void) {
   action = ACT_WAIT_TO_STOP;
-  puzzle->probGetAssembler(prob)->stop();
+
+  if (puzzle->probGetAssembler(prob))
+    puzzle->probGetAssembler(prob)->stop();
+
   stopPressed = true;
 }
 
