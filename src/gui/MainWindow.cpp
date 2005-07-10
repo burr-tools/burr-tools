@@ -925,258 +925,287 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
 
 void UserInterface::updateInterface(void) {
 
-  PiecesCountList->setPuzzle(puzzle, problemSelector->getSelection());
-  colconstrList->setPuzzle(puzzle, problemSelector->getSelection());
-  problemResult->setPuzzle(puzzle, problemSelector->getSelection());
-  PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
-
-  if (colorSelector->getSelection() > 0)
-    BtnDelColor->activate();
-  else
-    BtnDelColor->deactivate();
-
-  if (PcSel->getSelection() < puzzle->shapeNumber()) {
-    BtnCpyShape->activate();
-    BtnDelShape->activate();
-    pieceTools->activate();
-    pieceEdit->activate();
-  } else {
-    BtnCpyShape->deactivate();
-    BtnDelShape->deactivate();
-    pieceTools->deactivate();
-    pieceEdit->deactivate();
-  }
-
-  if (problemSelector->getSelection() < puzzle->problemNumber()) {
-    BtnDelProb->activate();
-    BtnCpyProb->activate();
-    BtnRenProb->activate();
-  } else {
-    BtnDelProb->deactivate();
-    BtnCpyProb->deactivate();
-    BtnRenProb->deactivate();
-  }
-
-  if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
-      (colorAssignmentSelector->getSelection() < puzzle->colorNumber())) {
-    if (colconstrList->GetSortByResult()) {
-      if (puzzle->probPlacementAllowed(problemSelector->getSelection(),
-                                       colorAssignmentSelector->getSelection()+1,
-                                       colconstrList->getSelection()+1)) {
-        BtnColAdd->deactivate();
-        BtnColRem->activate();
-      } else {
-        BtnColAdd->activate();
-        BtnColRem->deactivate();
-      }
-    } else {
-      if (puzzle->probPlacementAllowed(problemSelector->getSelection(),
-                                       colconstrList->getSelection()+1,
-                                       colorAssignmentSelector->getSelection()+1)) {
-        BtnColAdd->deactivate();
-        BtnColRem->activate();
-      } else {
-        BtnColAdd->activate();
-        BtnColRem->deactivate();
-      }
-    }
-  } else {
-    BtnColAdd->deactivate();
-    BtnColRem->deactivate();
-  }
-
-  if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
-      (shapeAssignmentSelector->getSelection() < puzzle->shapeNumber())) {
-    BtnSetResult->activate();
-    BtnAddShape->activate();
-
-    bool found = false;
-
-    for (unsigned int p = 0; p < puzzle->probShapeNumber(problemSelector->getSelection()); p++)
-      if (puzzle->probGetShape(problemSelector->getSelection(), p) == shapeAssignmentSelector->getSelection()) {
-        found = true;
-        break;
-      }
-
-    if (found)
-      BtnRemShape->activate();
-    else
-      BtnRemShape->deactivate();
-
-  } else {
-    BtnSetResult->deactivate();
-    BtnAddShape->deactivate();
-    BtnRemShape->deactivate();
-  }
-
   unsigned int prob = solutionProblem->getSelection();
 
-  if (solutionProblem->getSelection() < puzzle->problemNumber()) {
+  if (TaskSelectionTab->value() == TabPieces) {
+    // shapes tab
+  
+    // we can only delete colors, when something valid is selected
+    // and no assembler is running
+    if ((colorSelector->getSelection() > 0) && !assmThread)
+      BtnDelColor->activate();
+    else
+      BtnDelColor->deactivate();
+  
+    // we can only edit and copy shapes, when something valid is selected
+    if (PcSel->getSelection() < puzzle->shapeNumber()) {
+      BtnCpyShape->activate();
+      pieceEdit->activate();
+    } else {
+      BtnCpyShape->deactivate();
+      pieceEdit->deactivate();
+    }
+  
+    // we can only delete shapes, when something valid is selected
+    // and no assembler is running
+    if ((PcSel->getSelection() < puzzle->shapeNumber()) && !assmThread) {
+      BtnDelShape->activate();
+    } else {
+      BtnDelShape->deactivate();
+    }
+  
+    // we can only edit shapes, when something gvalid is selected and
+    // either no assemlber is running or the shape is not in the problem that the assembler works on
+    if ((PcSel->getSelection() < puzzle->shapeNumber()) &&
+        (!assmThread || !puzzle->probContainsShape(assmThread->getProblem(), PcSel->getSelection()))) {
+      pieceTools->activate();
+    } else {
+      pieceTools->deactivate();
+    }
+  
+    // when the current shape is in the assembler we lock the editor, only viewing is possible
+    if (assmThread && (puzzle->probContainsShape(assmThread->getProblem(), PcSel->getSelection())))
+      pieceEdit->lock(true);
+    else
+      pieceEdit->lock(false);
 
-    assembler_c * assm = puzzle->probGetAssembler(solutionProblem->getSelection());
-  
-    float finished = (assm) ? assm->getFinished() : 0;
-  
-    SolvingProgress->value(100*finished);
-    SolvingProgress->show();
-  
-    unsigned long numSol = puzzle->probSolutionNumber(solutionProblem->getSelection());
-  
-    if (numSol > 0) {
-  
-      SolutionSel->show();
-      SolutionsInfo->show();
-      OutputSolutions->show();
-  
-      SolutionSel->range(0, numSol-1);
-      SolutionsInfo->value(numSol);
-      OutputSolutions->value(numSol);
+  } else if (TaskSelectionTab->value() == TabProblems) {
 
-      // if we are in the solve tab and have a valid solution
-      // we can activate that
-      if (SolutionEmpty && (numSol > 0) && (TaskSelectionTab->value() == TabSolve))
-        activateSolution(solutionProblem->getSelection(), 0);
+    // problem tab
+    PiecesCountList->setPuzzle(puzzle, problemSelector->getSelection());
+    colconstrList->setPuzzle(puzzle, problemSelector->getSelection());
+    problemResult->setPuzzle(puzzle, problemSelector->getSelection());
+  
+    // problems can only be renames and copied, when something valid is selected
+    if (problemSelector->getSelection() < puzzle->problemNumber()) {
+      BtnCpyProb->activate();
+      BtnRenProb->activate();
+    } else {
+      BtnCpyProb->deactivate();
+      BtnRenProb->deactivate();
+    }
+  
+    // problems can only be deleted, something valid is selected and the
+    // assembler is not running
+    if ((problemSelector->getSelection() < puzzle->problemNumber()) && !assmThread)
+      BtnDelProb->activate();
+    else
+      BtnDelProb->deactivate();
+  
+    // we can only edit color constraints when a valid problem is selected
+    // the selected color is valid
+    // the assembler is not running or not busy with the selected problem
+    if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
+        (colorAssignmentSelector->getSelection() < puzzle->colorNumber()) &&
+        (!assmThread || (assmThread->getProblem() != problemSelector->getSelection()))) {
+  
+      // check, if the given color is already added
+      if (colconstrList->GetSortByResult()) {
+        if (puzzle->probPlacementAllowed(problemSelector->getSelection(),
+                                         colorAssignmentSelector->getSelection()+1,
+                                         colconstrList->getSelection()+1)) {
+          BtnColAdd->deactivate();
+          BtnColRem->activate();
+        } else {
+          BtnColAdd->activate();
+          BtnColRem->deactivate();
+        }
+      } else {
+        if (puzzle->probPlacementAllowed(problemSelector->getSelection(),
+                                         colconstrList->getSelection()+1,
+                                         colorAssignmentSelector->getSelection()+1)) {
+          BtnColAdd->deactivate();
+          BtnColRem->activate();
+        } else {
+          BtnColAdd->activate();
+          BtnColRem->deactivate();
+        }
+      }
+    } else {
+      BtnColAdd->deactivate();
+      BtnColRem->deactivate();
+    }
+  
+    // we can only change shapes, when a valid problem is selected
+    // a valid shape is selected
+    // the assembler is not running or not busy with out problem
+    if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
+        (shapeAssignmentSelector->getSelection() < puzzle->shapeNumber()) &&
+        (!assmThread || (assmThread->getProblem() == problemSelector->getSelection()))) {
+      BtnSetResult->activate();
+      BtnAddShape->activate();
+  
+      bool found = false;
+  
+      for (unsigned int p = 0; p < puzzle->probShapeNumber(problemSelector->getSelection()); p++)
+        if (puzzle->probGetShape(problemSelector->getSelection(), p) == shapeAssignmentSelector->getSelection()) {
+          found = true;
+          break;
+        }
+  
+      if (found)
+        BtnRemShape->activate();
+      else
+        BtnRemShape->deactivate();
+  
+    } else {
+      BtnSetResult->deactivate();
+      BtnAddShape->deactivate();
+      BtnRemShape->deactivate();
+    }
+
+  } else {
+
+    // solution tab
+    PcVis->setPuzzle(puzzle, prob);
+  
+    if (prob < puzzle->problemNumber()) {
+  
+      assembler_c * assm = puzzle->probGetAssembler(prob);
+    
+      float finished = (assm) ? assm->getFinished() : 0;
+    
+      SolvingProgress->value(100*finished);
+      SolvingProgress->show();
+    
+      unsigned long numSol = puzzle->probSolutionNumber(prob);
+    
+      if (numSol > 0) {
+    
+        SolutionSel->show();
+        SolutionsInfo->show();
+        OutputSolutions->show();
+    
+        SolutionSel->range(0, numSol-1);
+        SolutionsInfo->value(numSol);
+        OutputSolutions->value(numSol);
+  
+        // if we are in the solve tab and have a valid solution
+        // we can activate that
+        if (SolutionEmpty && (numSol > 0) && (TaskSelectionTab->value() == TabSolve))
+          activateSolution(prob, 0);
+    
+      } else {
+    
+        SolutionSel->range(0, 0);
+        SolutionSel->hide();
+        SolutionsInfo->hide();
+        OutputSolutions->hide();
+        SolutionAnim->hide();
+        MovesInfo->hide();
+      }
+  
+      if (puzzle->probNumAssembliesKnown(prob)) {
+        OutputAssemblies->value(puzzle->probGetNumAssemblies(prob));
+        OutputAssemblies->show();
+      } else {
+        OutputAssemblies->hide();
+      }
   
     } else {
   
-      SolutionSel->range(0, 0);
       SolutionSel->hide();
       SolutionsInfo->hide();
       OutputSolutions->hide();
       SolutionAnim->hide();
       MovesInfo->hide();
-    }
-
-    if (puzzle->probNumAssembliesKnown(prob)) {
-      OutputAssemblies->value(puzzle->probGetNumAssemblies(prob));
-      OutputAssemblies->show();
-    } else {
+  
+      SolvingProgress->hide();
+  
+      OutputIterations->hide();
       OutputAssemblies->hide();
     }
-
-  } else {
-
-    SolutionSel->hide();
-    SolutionsInfo->hide();
-    OutputSolutions->hide();
-    SolutionAnim->hide();
-    MovesInfo->hide();
-
-    SolvingProgress->hide();
-
-    OutputIterations->hide();
-    OutputAssemblies->hide();
-  }
-
-  if (assmThread) {
-
-    switch(assmThread->currentAction()) {
-    case assemblerThread::ACT_PREPARATION:
-      OutputActivity->value("prep.");
-      break;
-    case assemblerThread::ACT_REDUCE:
-      if (puzzle->probGetAssembler(prob)) {
-        char tmp[20];
-        snprintf(tmp, 20, "red. %i", puzzle->probGetAssembler(prob)->getReducePiece());
-        OutputActivity->value(tmp);
-      } else
-        OutputActivity->value("red.");
-      break;
-    case assemblerThread::ACT_ASSEMBLING:
-      OutputActivity->value("assm.");
-      break;
-    case assemblerThread::ACT_DISASSEMBLING:
-      OutputActivity->value("disassm.");
-      break;
-    case assemblerThread::ACT_PAUSING:
-      OutputActivity->value("pause");
-      break;
-    case assemblerThread::ACT_FINISHED:
-      OutputActivity->value("finished");
-      break;
-    case assemblerThread::ACT_WAIT_TO_STOP:
-      OutputActivity->value("please wait");
-      break;
-    case assemblerThread::ACT_ERROR:
-      OutputActivity->value("error");
-      break;
-    }
-
-    if (assmThread->getProblem() == solutionProblem->getSelection()) {
-
-      // for the actually solved problem we enable the stop button
-      BtnStart->deactivate();
-      BtnCont->deactivate();
-      BtnStop->activate();
-
-    } else {
-
-      // all other problems can do nothing
-      BtnStart->deactivate();
-      BtnCont->deactivate();
-      BtnStop->deactivate();
-    }
-
-    BtnDelProb->deactivate();
-    BtnDelColor->deactivate();
-    BtnDelShape->deactivate();
-
-    if (assmThread->getProblem() == problemSelector->getSelection()) {
-
-      BtnColAdd->deactivate();
-      BtnColRem->deactivate();
-      BtnSetResult->deactivate();
-      BtnAddShape->deactivate();
-      BtnRemShape->deactivate();
-
-    }
-
-    if (puzzle->probContainsShape(assmThread->getProblem(), PcSel->getSelection())) {
-      pieceTools->deactivate();
-      pieceEdit->lock(true);
-    } else
-      pieceEdit->lock(false);
-
-  } else {
-
-    pieceEdit->lock(false);
-
-    // no thread currently calculating
-
-    // so we can not stop the threas
-    BtnStop->deactivate();
-
-    if (prob < puzzle->problemNumber()) {
-
-      // a valid problem is selected
-
-      switch(puzzle->probGetSolveState(prob)) {
-      case puzzle_c::SS_UNSOLVED:
-        OutputActivity->value("nothing");
-        BtnCont->deactivate();
+  
+    if (assmThread) {
+  
+      switch(assmThread->currentAction()) {
+      case assemblerThread::ACT_PREPARATION:
+        OutputActivity->value("prep.");
         break;
-      case puzzle_c::SS_SOLVED:
-        OutputActivity->value("finished");
-        BtnCont->deactivate();
+      case assemblerThread::ACT_REDUCE:
+        if (puzzle->probGetAssembler(prob)) {
+          char tmp[20];
+          snprintf(tmp, 20, "red. %i", puzzle->probGetAssembler(prob)->getReducePiece());
+          OutputActivity->value(tmp);
+        } else
+          OutputActivity->value("red.");
         break;
-      case puzzle_c::SS_SOLVING:
+      case assemblerThread::ACT_ASSEMBLING:
+        OutputActivity->value("assm.");
+        break;
+      case assemblerThread::ACT_DISASSEMBLING:
+        OutputActivity->value("disassm.");
+        break;
+      case assemblerThread::ACT_PAUSING:
         OutputActivity->value("pause");
-        BtnCont->activate();
+        break;
+      case assemblerThread::ACT_FINISHED:
+        OutputActivity->value("finished");
+        break;
+      case assemblerThread::ACT_WAIT_TO_STOP:
+        OutputActivity->value("please wait");
+        break;
+      case assemblerThread::ACT_ERROR:
+        OutputActivity->value("error");
         break;
       }
-
-      // if we have a result and at least one piece, we can give it a try
-      if ((puzzle->probPieceNumber(prob) > 0) &&
-          (puzzle->probGetResult(prob) < puzzle->shapeNumber()))
-        BtnStart->activate();
-      else
+  
+      if (assmThread->getProblem() == prob) {
+  
+        // for the actually solved problem we enable the stop button
         BtnStart->deactivate();
-
+        BtnCont->deactivate();
+        BtnStop->activate();
+  
+      } else {
+  
+        // all other problems can do nothing
+        BtnStart->deactivate();
+        BtnCont->deactivate();
+        BtnStop->deactivate();
+      }
+  
     } else {
-
-      // no start possible, when no valid problem selected
-      BtnStart->deactivate();
-      BtnCont->deactivate();
+  
+      pieceEdit->lock(false);
+  
+      // no thread currently calculating
+  
+      // so we can not stop the threas
+      BtnStop->deactivate();
+  
+      if (prob < puzzle->problemNumber()) {
+  
+        // a valid problem is selected
+  
+        switch(puzzle->probGetSolveState(prob)) {
+        case puzzle_c::SS_UNSOLVED:
+          OutputActivity->value("nothing");
+          BtnCont->deactivate();
+          break;
+        case puzzle_c::SS_SOLVED:
+          OutputActivity->value("finished");
+          BtnCont->deactivate();
+          break;
+        case puzzle_c::SS_SOLVING:
+          OutputActivity->value("pause");
+          BtnCont->activate();
+          break;
+        }
+  
+        // if we have a result and at least one piece, we can give it a try
+        if ((puzzle->probPieceNumber(prob) > 0) &&
+            (puzzle->probGetResult(prob) < puzzle->shapeNumber()))
+          BtnStart->activate();
+        else
+          BtnStart->deactivate();
+  
+      } else {
+  
+        // no start possible, when no valid problem selected
+        BtnStart->deactivate();
+        BtnCont->deactivate();
+      }
     }
   }
 
