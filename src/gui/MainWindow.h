@@ -98,6 +98,8 @@ class UserInterface {
   Fl_Value_Output *SolutionsInfo;
   Fl_Value_Output *MovesInfo;
 
+  Fl_Output *TimeUsed, *TimeEst;
+
   View3dGroup * View3D;
 
   Fl_Group *MinSizeTools;

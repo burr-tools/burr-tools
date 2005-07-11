@@ -953,6 +953,28 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
   }
 }
 
+const char * timeToString(float time) {
+
+  static char tmp[50];
+
+  if (time < 60)
+    snprintf(tmp, 50, "%i seconds", int(time));
+  else if (time < 60*60)
+    snprintf(tmp, 50, "%i minutes", int(time/60));
+  else if (time < 60*60*24)
+    snprintf(tmp, 50, "%i hours", int(time/(60*60)));
+  else if (time < 60*60*24*365.2422)
+    snprintf(tmp, 50, "%i years", int(time/(60*60*24)));
+  else if (time < 60*60*24*365.2422*100)
+    snprintf(tmp, 50, "%i centuries", int(time/(60*60*24*365.2422)));
+  else if (time < 60*60*24*365.2422*1000)
+    snprintf(tmp, 50, "%i millenia", int(time/(60*60*24*365.2422*1000)));
+  else
+    snprintf(tmp, 50, "eons");
+
+  return tmp;
+}
+
 void UserInterface::updateInterface(void) {
 
   unsigned int prob = solutionProblem->getSelection();
@@ -1094,16 +1116,15 @@ void UserInterface::updateInterface(void) {
 
     // solution tab
     PcVis->setPuzzle(puzzle, prob);
-  
+
+    assembler_c * assm = puzzle->probGetAssembler(prob);
+    float finished = (assm) ? assm->getFinished() : 0;
+
     if (prob < puzzle->problemNumber()) {
-  
-      assembler_c * assm = puzzle->probGetAssembler(prob);
-    
-      float finished = (assm) ? assm->getFinished() : 0;
-    
+
       SolvingProgress->value(100*finished);
       SolvingProgress->show();
-    
+
       unsigned long numSol = puzzle->probSolutionNumber(prob);
     
       if (numSol > 0) {
@@ -1142,6 +1163,7 @@ void UserInterface::updateInterface(void) {
         OutputSolutions->hide();
       }
 
+
     } else {
   
       SolutionSel->hide();
@@ -1152,6 +1174,35 @@ void UserInterface::updateInterface(void) {
   
       SolvingProgress->hide();
       OutputAssemblies->hide();
+    }
+
+    if (assmThread && (assmThread->getProblem() == prob)) {
+
+      unsigned int ut;
+      if (puzzle->probUsedTimeKnown(prob))
+        ut = puzzle->probGetUsedTime(prob) + assmThread->getTime();
+      else
+        ut = assmThread->getTime();
+
+      TimeUsed->value(timeToString(ut));
+      if (finished != 0)
+        TimeEst->value(timeToString(ut/finished-ut));
+      else
+        TimeEst->value("unknown");
+
+      TimeUsed->show();
+      TimeEst->show();
+
+    } else {
+
+      if ((prob < puzzle->problemNumber()) && puzzle->probUsedTimeKnown(prob)) {
+        TimeUsed->value(timeToString(puzzle->probGetUsedTime(prob)));
+        TimeUsed->show();
+      } else {
+        TimeUsed->hide();
+      }
+ 
+      TimeEst->hide();
     }
   
     if (assmThread) {
@@ -1202,9 +1253,9 @@ void UserInterface::updateInterface(void) {
         BtnCont->deactivate();
         BtnStop->deactivate();
       }
-  
+
     } else {
-  
+
       pieceEdit->lock(false);
   
       // no thread currently calculating
@@ -1771,11 +1822,13 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     y += SZ_TEXT_Y;
     lh -= SZ_TEXT_Y;
 
-    (new Fl_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Time used:"))->box(FL_NO_BOX);
+    TimeUsed = new Fl_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Time used:");
+    TimeUsed->box(FL_NO_BOX);
     y += SZ_TEXT_Y;
     lh -= SZ_TEXT_Y;
 
-    (new Fl_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Time left:"))->box(FL_NO_BOX);
+    TimeEst = new Fl_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Time left:");
+    TimeEst->box(FL_NO_BOX);
     y += SZ_TEXT_Y;
     lh -= SZ_TEXT_Y;
 

@@ -351,10 +351,16 @@ public:
    */
   std::string assemblerVersion;
 
+  /**
+   * the time used up to get to the current state in the solving progress (in seconds)
+   */
+  unsigned long usedTime;
 };
 
 
-problem_c::problem_c(problem_c * orig) : result(orig->result), colorConstraints(orig->colorConstraints.getColors()) {
+problem_c::problem_c(problem_c * orig) : result(orig->result), colorConstraints(orig->colorConstraints.getColors()),
+numAssemblies(0xFFFFFFFF), numSolutions(0xFFFFFFFF), usedTime(0xFFFFFFFF)
+{
   assm = 0;
   name = orig->name;
 
@@ -386,6 +392,11 @@ xml::node problem_c::save(void) const {
   if (numSolutions != 0xFFFFFFFF) {
     snprintf(tmp, 50, "%li", numSolutions);
     nd.get_attributes().insert("solutions", tmp);
+  }
+
+  if (usedTime != 0xFFFFFFFF) {
+    snprintf(tmp, 50, "%li", usedTime);
+    nd.get_attributes().insert("time", tmp);
   }
 
   it = nd.insert(xml::node("shapes"));
@@ -472,6 +483,11 @@ problem_c::problem_c(const xml::node & node, unsigned int color) : result(0xFFFF
     numSolutions = atoi(node.get_attributes().find("solutions")->get_value());
   else
     numSolutions = 0xFFFFFFFF;
+
+  if (node.get_attributes().find("time") != node.get_attributes().end())
+    usedTime = atoi(node.get_attributes().find("time")->get_value());
+  else
+    usedTime = 0xFFFFFFFF;
 
   it = node.find("bitmap");
   if (it != node.end())
@@ -965,29 +981,54 @@ void puzzle_c::probRemoveAllSolutions(unsigned int prob) {
   problems[prob]->solveState = SS_UNSOLVED;
   problems[prob]->numAssemblies = 0xFFFFFFFF;
   problems[prob]->numSolutions = 0xFFFFFFFF;
+  problems[prob]->usedTime = 0xFFFFFFFF;
 }
 
 puzzle_c::SolveState_e puzzle_c::probGetSolveState(unsigned int prob) const {
+  assert(prob < problems.size());
   return problems[prob]->solveState;
 }
 
 bool puzzle_c::probNumAssembliesKnown(unsigned int prob) const {
+  assert(prob < problems.size());
   return problems[prob]->numAssemblies != 0xFFFFFFFF;
 }
 
 bool puzzle_c::probNumSolutionsKnown(unsigned int prob) const {
+  assert(prob < problems.size());
   return problems[prob]->numSolutions != 0xFFFFFFFF;
 }
 
 
 
 unsigned long puzzle_c::probGetNumAssemblies(unsigned int prob) const {
+  assert(prob < problems.size());
   return problems[prob]->numAssemblies;
 }
 
 unsigned long puzzle_c::probGetNumSolutions(unsigned int prob) const {
+  assert(prob < problems.size());
   return problems[prob]->numSolutions;
 }
+
+void puzzle_c::probAddTime(unsigned int prob, unsigned long time) {
+  assert(prob < problems.size());
+  if (problems[prob]->usedTime != 0xFFFFFFFF)
+    problems[prob]->usedTime += time;
+  else
+    problems[prob]->usedTime = time;
+}
+
+unsigned long puzzle_c::probGetUsedTime(unsigned int prob) const {
+  assert(prob < problems.size());
+  return problems[prob]->usedTime;
+}
+
+bool puzzle_c::probUsedTimeKnown(unsigned int prob) const {
+  assert(prob < problems.size());
+  return problems[prob]->usedTime != 0xFFFFFFFF;
+}
+
 
 void puzzle_c::probIncNumAssemblies(unsigned int prob) {
   if (problems[prob]->numAssemblies == 0xFFFFFFFF)

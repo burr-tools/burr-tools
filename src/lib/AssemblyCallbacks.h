@@ -42,6 +42,8 @@ class assemblerThread : public assembler_cb {
 
   bool _reduce;
 
+  time_t startTime;
+
 public:
 
   enum {
@@ -89,6 +91,8 @@ public:
   unsigned int getProblem(void) { return prob; }
   assembler_c::errState getErrorState(void) { return errState; }
   int getErrorParam(void) { return errParam; }
+
+  unsigned long getTime(void) { return time(0) - startTime; }
 
 
 #ifdef WIN32

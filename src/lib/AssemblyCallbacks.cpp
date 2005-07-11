@@ -39,6 +39,8 @@ void* start_th(void * c)
 
   assm_0_frontend_0_c * assm;
 
+  p->startTime = time(0);
+
   /* first check, if there is an assembler available with the
    * problem, if there is one take that
    */
@@ -97,6 +99,7 @@ void* start_th(void * c)
   } else
     p->action = assemblerThread::ACT_PAUSING;
 
+  p->puzzle->probAddTime(p->prob, time(0)-p->startTime);
   return 0;
 }
 

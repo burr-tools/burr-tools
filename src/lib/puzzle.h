@@ -244,6 +244,10 @@ public:
   const std::string & getDesigner(void) const;
   const std::string & getComment(void) const;
 
+  void probAddTime(unsigned int prob, unsigned long time);
+  bool probUsedTimeKnown(unsigned int prob) const;
+  unsigned long probGetUsedTime(unsigned int prob) const;
+
   /**
    * makes each shape appear only once and increase the piece counter for that.
    * this is necessary for the assembler, as it will find multiple
