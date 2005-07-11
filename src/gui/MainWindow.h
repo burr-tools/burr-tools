@@ -93,7 +93,6 @@ class UserInterface {
   Fl_Value_Output *OutputSolutions;
   Fl_Output *OutputActivity;
   Fl_Check_Button *ReducePositions;
-  Fl_Value_Output *OutputIterations;
   Fl_Value_Slider *SolutionSel;
   Fl_Value_Slider *SolutionAnim;
   Fl_Value_Output *SolutionsInfo;

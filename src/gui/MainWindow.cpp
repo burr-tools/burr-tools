@@ -1151,8 +1151,6 @@ void UserInterface::updateInterface(void) {
       MovesInfo->hide();
   
       SolvingProgress->hide();
-  
-      OutputIterations->hide();
       OutputAssemblies->hide();
     }
   
@@ -1683,7 +1681,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
   Fl_Group * tile = new Fl_Tile(x, y, w, h);
 
   // calculate hight of different groups
-  const int paramsFixedHight = SZ_SEPARATOR_Y + 4*SZ_BUTTON_Y + 5*SZ_GAP +  6*SZ_TEXT_Y;
+  const int paramsFixedHight = SZ_SEPARATOR_Y + 4*SZ_BUTTON_Y + 4*SZ_GAP +  5*SZ_TEXT_Y;
   const int solutionsFixedHight = SZ_SEPARATOR_Y + 2*SZ_BUTTON_Y + 2*SZ_GAP + 2*SZ_TEXT_Y;
 
   int hi = h - paramsFixedHight - solutionsFixedHight;
@@ -1772,11 +1770,6 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     OutputSolutions->box(FL_FLAT_BOX);
     y += SZ_TEXT_Y;
     lh -= SZ_TEXT_Y;
-
-    OutputIterations = new Fl_Value_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Iterations:");
-    OutputIterations->box(FL_FLAT_BOX);
-    y += SZ_TEXT_Y + SZ_GAP;
-    lh -= SZ_TEXT_Y + SZ_GAP;
 
     (new Fl_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Time used:"))->box(FL_NO_BOX);
     y += SZ_TEXT_Y;
