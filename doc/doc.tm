@@ -1,10 +1,15 @@
-<TeXmacs|WinTeXmacs-1.0.5>
+<TeXmacs|1.0.4>
 
 <style|book>
 
 <\body>
-  <doc-data|<doc-title|BurrTools>|<doc-title|>|<doc-author-data|<author-name|Andreas
-  Röver>|<author-email|andreas_roever@web.de>>|<doc-note|<with-TeXmacs-text>>>
+  <\make-title>
+    <title|BurrTools>
+
+    <author|Andreas Röver>
+
+    <title-email|roever@users.sf.net>
+  </make-title>
 
   \;
 
@@ -97,16 +102,22 @@
 
   <section|Introduction>
 
-  What are <name|BurrTools>? On the first hand they are two programs that
-  assemble and disassemble burr-type puzzles. On is a contains a graphical
-  interface while the other one is just as text program. On the other hand it
-  is a C++ library that may help with the search and design of new puzzles of
-  this type.
+  What are <name|BurrTools>? On the one hand they are a program that assemble
+  and disassemble burr-type puzzles. That program contains a graphical
+  interface that allows creation and change of puzzle definitions and also
+  the solving of the puzzle and the display and animation of the found
+  solutions. On the other hand they are a C++ library that may help with the
+  search and design of new puzzles.
+
+  The program is quite similar to the <name|PuzzleSolver3D>. I have started
+  implementing a program that was nearly identical but over the time it
+  evolved into something a bit more different.
 
   The first section of the document is meant for the people already confident
   with <name|PuzzleSolver3D>. The second section is for the people completely
-  new to this kind of software. And finally some internals of the program are
-  explained.
+  new to this kind of software. And finally some of the internals of the
+  program are explained. This section is probably only interesting for people
+  wanting to use the library for their own puzze design explorations.
 
   But first a little bit to the history of this program. Why another program
   you might ask. There are 2 main and one not so important reasons:
@@ -120,6 +131,9 @@
     interesting things like burr growing in an automated way.
 
     <item>The programs are quite expensive.
+
+    <item><name|PuzzleSolver3D> seems to be abandoned. There hasn't been any
+    update for quite a while.
   </enumerate-numeric>
 
   Anyway, I was not satisfied with the available software. Then the C't, a
@@ -154,12 +168,12 @@
   <\enumerate-numeric>
     <item><name|BurrTools> doesn't handle holes automatically as
     <name|PuzzleSolver3D> does. This may at first sound like a disadvantage
-    but in fact it is an advantage. <name|PuzzleSolver3D> normally teats all
-    cubes of the target shape as cubes that might be filled but don't need to
-    be. Except if you select ``Fill outer limits`` in the solve tab. Cubes
-    that must be filled speed up the search process. The more there are, the
+    but in fact it isn't. <name|PuzzleSolver3D> normally treats all cubes of
+    the target shape as cubes that might be filled but don't need to be.
+    Except if you select ``Fill outer limits`` in the solve tab. Cubes that
+    must be filled speed up the search process. The more there are, the
     faster the assembly will be as there are fewer possibilities.
-    <name|BurrTools> requires for you to exactly specify which cubes in the
+    <name|BurrTools> requires from you to exactly specify which cubes in the
     result shape must be filled and which ones may be empty. This is done by
     either clicking with the left mouse key (must be filled cubes) or the
     right mouse button (may be filled cubes)
@@ -174,12 +188,12 @@
     <item><name|BurrTools> allows you to define multiple problems in one
     file. So you can save all the SomaCube problems within one file
 
-    <item><name|BurrTools> allows to put constrains on the placement of
+    <item><name|BurrTools> allows to put constraints on the placement of
     pieces. This is done by having an additional information attatched to
     each unit cube. I call this information color. You can then exactly
     define which colors in the pieces may go into which colored cubes inside
     the result. If just one of the conditions is not fullfilled the placement
-    is not possible. To make thinks a bit easier there is a ``neutal'' called
+    is not possible. To make things a bit easier there is a ``neutal'' called
     color that may go everywhere or accept every color.
   </enumerate-numeric>
 
@@ -191,9 +205,10 @@
     not limited to a size of 24
 
     <item>There is no limit to the number of placements to the pieces. It
-    wont happen that the program comlains about too many placements. As long
-    as you have enough memory the program will merrily continue working, even
-    if it would take longer than the universe exists to complete the search.
+    wont happen that the program complains about too many placements. As long
+    as your computer has enough memory the program will merrily continue
+    working, even if it would take longer than the universe exists to
+    complete the search.
 
     <item>You can not play with the puzzle. That is a useless feature (in my
     eyes)
@@ -206,17 +221,21 @@
 
     <item>There is no automatic zoom or animated rotation of the 3D view of
     the pieces or solution. Also the animation of the assembly process can
-    not be animated (yet)
+    not be animated (yet?)
 
     <item>The solutions are not sorted by the number of moves required to
     disassemble the puzzle, so the hard solutions may be in the middle and
-    hard to find.
+    hard to find. Although this may change sometime.
   </enumerate-numeric>
+
+  I hope the description of these difference halps you to find out how to use
+  the program. If not you need to read the next chapter anyway.
 
   <section|New Users>
 
-  This chapter is for users that are new to a program like this one. It will
-  describe all aspects of the program in great detail.
+  This chapter is for users that are new to a program like this. It will
+  describe all aspects of the program in a level of detail that I hope is
+  enough.
 
   <subsection|Main Window>
 
@@ -233,6 +252,15 @@
   The menu is relatively simple, just the usual ''New Puzzle'', \R''Load
   Puzzle'', \R''Save'' and \R''Save as'' entries.
 
+  Then there is the status line. It contains a checkbox. With this checkbox
+  you can toggle between 2 different ways to view the pieces. One way shows
+  all cubes of the pieces with their piece color. This color is determined by
+  the number that the shape hat. The very first shape will always be blue.
+  The second way of showing the pieces uses their color constraint color
+  instead of the piece color. All cubes that have a color attatched will have
+  this color on the display. The cubes that have the neutral color attatched
+  will be shown in their piece color. Color constraints are explained below.
+
   The toolbar on the left contain 3 main tabs. Each one of these tabs is
   explained in the following sections.
 
@@ -244,16 +272,26 @@
   the colors and the shapes. <name|BurrTools> differentiates between shapes
   and pieces. There can be several pieces with the same shape. You as the
   user are responsible for not defining the same shape multiple times. If you
-  do you will get multiple solutions.
+  do you will get multiple identical solutions.
 
   So let's start with the tab. At the top the color definition is placed
-  ``Add'' and ``Remove'' add a new color or remove the selected color. Below
-  is the list with the currently defined colors. There is always the
-  ``Neutral'' color. This color can not be removed.
+  ``Add'' and ``Rem'' add a new color or remove the selected color. ''Chn''
+  can be used to change an existing color. Below these buttons is the list
+  with the currently defined colors. There is always the ``Neutral'' color.
+  This color can not be removed.
+
+  The picture shows a red line below the color selector. This line shows
+  lines in the tool bar that can be moved. You just have to place the mouse
+  over this region. It will change to an up-down-arrow and you can drag this
+  line up and down. With this feature you can adapt the tool bar so that is
+  pleases you. If you, for example, don't neet color constraint you can make
+  the color selector very small or even completely invisible. The picture
+  shows all lines where this is possible with red lines. These lines are not
+  visible in the real program.
 
   Below the color definitions is the shape list followd by the shape editior.
-  New adds another shape. \RDelete removes the current shape. \RCopy adds a
-  new shape that is identical to the currently selected one.
+  New adds another shape. \RDelete removes the currently selected shape.
+  \RCopy adds a new shape that is identical to the currently selected one.
 
   Below these 3 buttons is the list with the shapes. You can activate and
   edit a shape by clicking on it.
@@ -261,96 +299,93 @@
   Below the piece selector is another tab with some tools. These tools allow
   you to change the size of the space that is available for the piece
   definition. <name|BurrTools> uses the colours red green and blue to show
-  the 3 axes. All tools that act on one of the axes are coloured accordingly.
-  The 3D view contains three coloured lines that also show the axes. The next
-  tab on the tool tab (see figure <reference|ToolsImage> right column bottom
-  2 parts) contains buttons that allow you to rotate and shift and flip the
-  shape definition inside its space. Finally the button minimise makes the
-  definition space as small as possible. This is useful to make the files on
-  disk a little bit smaller or to have a more centred view of the shape
-  inside the 3D view. The Button ``Make inside variable'' sets all the unit
-  cubes that are completely surrounded by cubes to variable cubes. If you
-  apply this to your result shape the behaviour will be as in
-  <name|PuzzleSolver3D>.
+  the 3 space-dimensions. All tools that act on one of the axes are coloured
+  accordingly. The 3D view contains three coloured lines that also show the
+  axes. The next tab on the tool tab contains buttons that allow you to
+  rotate and shift and flip the shape definition inside its space. Finally
+  the button minimise makes the definition space as small as possible. This
+  is useful to make the files on disk a little bit smaller or to have a more
+  centred view of the shape inside the 3D view. The button ``Make inside
+  variable'' sets all the unit cubes that are completely surrounded by cubes
+  to variable cubes. If you apply this to your result shape the behaviour
+  will be as if you pressed ``fill outer cubes'' in <name|PuzzleSolver3D>.
 
   The last item at the very bottom of this tab is the editor to change the
   shape. It contains a slider at the left that selects the z-plane. You edit
   by clicking into the squares shown. The left mouse button adds normal
   cubes. The right mouse button adds variable cubes. These variable cubes are
-  only useful for result shapes. Clicking on an already filled cube either
-  removes it or replaces it by the other cube type. Each cube changed will
-  get the currently selected color (above in the color section) attatched to
-  it. If this color it not the neutral color it will be visible as a small
-  square in the upper left corner of the squares in the editor. The neutral
-  color will not be visible anywhere.
+  only alowed in shapes that are used for the result. Clicking on an already
+  filled cube either removes it or replaces it by the other cube type. Each
+  cube changed will get the currently selected color (above in the color
+  section) attatched to it. If this color it not the neutral color it will be
+  visible as a small square in the upper left corner of the squares in the
+  editor. The neutral color will not be visible anywhere.
 
-  <twosuperior><subsection|Problem Tab>
+  <subsection|Problem Tab>
 
   In this tab you assemble the problem(s) that you want to create with the
   shapes that you have defined. One problem consists of a result shape, some
   pieces that are supposed to assemble this shape and a list of color
   assignments.
 
-  At the top is the list with your currenlty defined problems and some
-  buttons to chreate new problems, delete them or copy an existing one.
+  At the top is the list with your currently defined problems and some
+  buttons to create new problems, delete them or copy an existing one.
 
   Below is the list with the problems. You can select a problem by clicking
   at it in your list. This problem is then edited.
 
   Below the problem list is the color assignment editor. You can see a list
   with the colors you have defined in the first tab, followed by some buttons
-  folloed by the assignment list. Now this allows for every complex
-  definitions, even thou most of the time very simple 1 to 1 assignments will
-  be used.
+  followed by the assignment list. Now this allows for every complex
+  definitions, even though most of the time very simple 1 to 1 assignments
+  will be used.
 
   In the color assignment list you see the piece colors on the left and the
   result colors on the right connected by some arrows. The list is either
-  sorted by the piece colors showing you then the piece color x can go into
-  the following result colors, or the list is sorted by the result color
-  showing you that piece colors x, y, ..., z can go into result color a. The
-  2 Srt buttons switch between these views.
+  sorted by the piece colors showing you then that the piece color x can go
+  into the cubes of the result that have the color attached that is at the
+  other end of the arrow, or the list is sorted by the result color showing
+  you that piece colors x, y, ..., z can go into result color a. The 2
+  ''Srt'' buttons switch between these views.
 
   The 2 buttons in the middle with the arrows add or remove a color from the
-  currently selected entry in the color assignment list. The color ir always
+  currently selected entry in the color assignment list. The color is always
   added on the side where the multiple colors are.
 
   Finally at the bottom is the shape assignment part. Here you select which
-  shape is supposed to be assembled out of what other shapes. 2 List contain
-  the shapes defined from the shapes tab and a list of the pieces involved in
-  this problem. Above the shapelist is the result.
+  shape is supposed to be assembled out of what other shapes. 2 Lists contain
+  the shapes defined in the shapes tab and a list of the pieces involved in
+  this problem. Above the shape list is the result.
 
-  Between the shape and the piece list are 2 buttons that either add another
-  one of the selected pieces or remove one of it. In the lower list you can
-  see how many of each piece are used for the problem.
+  Between the shape and the piece list are 2 buttons labled ''+1'' and ''-1''
+  that either add another one of the selected shape to the list of pieces or
+  remove one of it. In the lower list you can see how many of each piece are
+  used for the problem. The colored boxes show first the number of the shape
+  and behind the colon the number of times the piece is used.
 
   While editing problems you can see all the involved pieces in the 3D view.
-  In the upper left coener the result is visible. It is drawn in double size.
-  The upper right corner shows the currently selected piece and below these 2
-  pieces are all the pieces visible that are included in the problem.
+  In the upper left corner you can see the result. It is drawn in double
+  size. The upper right corner shows the currently selected piece and below
+  these 2 pieces are all the pieces visible that are included in the problem.
 
   <subsection|Solve Tab>
 
-  Inside this tab (figure <reference|ToolsImage> 3rd column) you can start
-  and stop the solving of a puzzle. But before you start there are a few
-  options that may be useful. First the \Rdisassemble`` switch. If it is set
-  the program tries to disassemble the assemblies found. Only the assemblies
-  that disassemble are added to the list of solutions. Puzzles like the
-  pentominos don't need this option set. It would only slow down the
+  Inside this tab you can start and stop the solving of a puzzle. But before
+  you start there are a few options that may be useful. First the switch
+  labeled ''\Rdisassemble``. If it is set the program tries to disassemble
+  the assemblies found. Only the assemblies that disassemble are added to the
+  list of solutions. Puzzles like the pentominos don't need this option set
+  as all found assemblies are assembable. It would only slow down the
   computations.
 
   Then there is the ''just count'' switch. Press this if you are not
   interested in the solutions themselves but only in the number of them.
 
-  Finally the \Rreduce`` switch. This does some extra work before starting
-  the real assembler process to find placements of pieces that are apparently
-  not possible. I have not found a puzzle where this additional work at the
-  start speeds up the search enough to regain the lost time. But sometimes
-  this takes a lot of time and if you only want to see if there are solutions
-  at all you can skip this part.
-
   The 3 buttons that start the search, continue a search that was stopped and
-  stop a search. The program tries to solv the problem that is selected in
-  the top list.
+  stop a search. The program tries to solve the problem that is selected in
+  the top list. You can even stop the current search. Save the current state
+  and resume solving after a while. If you load the puzzle file you just
+  press continue and the program will continue.
 
   Once a solution has been found it will be displayed in the 3D view. You can
   rotate it as usual.
@@ -362,6 +397,47 @@
   you can toggle between normal view, wire-frame view and invisible mode for
   each piece. This is helpful if you want to shift pieces into a box. The box
   would hide most of the action that is going on inside it.
+
+  The progress meter is only a very rough estimation. It is impossible to
+  make a real guess at how far the problem has been checked.
+
+  Below the progess meter is a line showing the current activity of the
+  program. The following texts are possible:
+
+  <\description-compact>
+    <item*|nothing>This means that the program does not do anything on the
+    problem and also no information is available about past tries to solve
+    the problem
+
+    <item*|prep>This is the first step in solving the problem. The program
+    does some preparation. This step can not be interrupted it has to be
+    finished bevore a stop has eny effect. This step also occures when an
+    already started problem is resumed.
+
+    <item*|red>This step also belongs to the preparation, can neither be
+    interrupted and also occures after resume. Here the program tries to
+    reduce the possible placement of pieces.
+
+    <item*|assm>The program currently tries to find assemblies
+
+    <item*|disassm>The program tries to disassemble a found assembly. This
+    step can not be interrupted. When you press stop here the program will
+    first finish to disassemble the puzzle. But normally this doesn't take
+    long.
+
+    <item*|pause>You have pressed stop and the program has stopped and
+    waiting for you to either continue or start anew or save or whatever
+
+    <item*|finished>Everything has been checked all found solutions are
+    available for access with the sliders below
+
+    <item*|plase wait>You have pressed stop but the program currently does
+    something that can not be interrupted. The program finishes that step and
+    then stops the search for solutions.
+
+    <item*|error>You did something wrong. The program should have displayed
+    an error message. You should edit the puzzle to remove the found problem.
+  </description-compact>
 
   <section|Future Plans>
 
@@ -378,7 +454,7 @@
 
     <item>Add some special algorithms that are faster for certain kind of
     puzzles. The current algorithms is quite good for nearly all puzzles, but
-    it's not the fastest.
+    it's not <em|the> fastest.
 
     <item>The disassembly could use some speedups. Here <name|PuzzleSolver3D>
     is sometimes much faster (but also sometimes much slower)
@@ -391,6 +467,9 @@
   use any proprietary library that is not available for <name|Linux>.
 
   <chapter|The Internals>
+
+  This chapter explains some of the internals. It is still quite incomplete
+  an might even be wrong...
 
   <section|The puzzle file format>
 
@@ -666,86 +745,86 @@
     <\associate|toc>
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|Table
       of contents> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-1><vspace|0.5fn>
+      <pageref|auto-1><vspace|0.5fn>
 
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|1<space|2spc>The
       Program> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-2><vspace|0.5fn>
+      <pageref|auto-2><vspace|0.5fn>
 
       1.1<space|2spc>Introduction <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-3>
+      <pageref|auto-3>
 
       1.2<space|2spc><with|font-shape|<quote|small-caps>|PuzzleSolver3D>
       Users <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-4>
+      <pageref|auto-4>
 
       1.3<space|2spc>New Users <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-5>
+      <pageref|auto-5>
 
       <with|par-left|<quote|1.5fn>|1.3.1<space|2spc>Main Window
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-6>>
+      <pageref|auto-6>>
 
       <with|par-left|<quote|1.5fn>|1.3.2<space|2spc>Piece Tab
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-8>>
+      <pageref|auto-8>>
 
       <with|par-left|<quote|1.5fn>|1.3.3<space|2spc>Problem Tab
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-10>>
+      <pageref|auto-10>>
 
       <with|par-left|<quote|1.5fn>|1.3.4<space|2spc>Solve Tab
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-11>>
+      <pageref|auto-11>>
 
       1.4<space|2spc>Future Plans <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-12>
+      <pageref|auto-12>
 
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>The
       Internals> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-13><vspace|0.5fn>
+      <pageref|auto-13><vspace|0.5fn>
 
       2.1<space|2spc>The puzzle file format
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-14>
+      <pageref|auto-14>
 
       2.2<space|2spc>The Library <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-15>
+      <pageref|auto-15>
 
       <with|par-left|<quote|1.5fn>|2.2.1<space|2spc>Class voxel
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-16>>
+      <pageref|auto-16>>
 
       <with|par-left|<quote|1.5fn>|2.2.2<space|2spc>Class puzzle
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-17>>
+      <pageref|auto-17>>
 
       <with|par-left|<quote|1.5fn>|2.2.3<space|2spc>Class assembler
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-18>>
+      <pageref|auto-18>>
 
       <with|par-left|<quote|1.5fn>|2.2.4<space|2spc>Class disassember
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-19>>
+      <pageref|auto-19>>
 
       <with|par-left|<quote|1.5fn>|2.2.5<space|2spc>Example
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-20>>
+      <pageref|auto-20>>
 
       2.3<space|2spc>The Algorithms <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-21>
+      <pageref|auto-21>
 
       <with|par-left|<quote|1.5fn>|2.3.1<space|2spc>Assembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-22>>
+      <pageref|auto-22>>
 
       <with|par-left|<quote|1.5fn>|2.3.2<space|2spc>Disassembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-23>>
+      <pageref|auto-23>>
 
       2.4<space|2spc>Adding to the Library
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-24>
+      <pageref|auto-24>
     </associate>
   </collection>
 </auxiliary>
