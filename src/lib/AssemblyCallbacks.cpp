@@ -134,6 +134,7 @@ bool assemblerThread::assembly(assembly_c * a) {
     break;
 
   case SOL_DISASM:
+  case SOL_COUNT_DISASM:
     {
       action = ACT_DISASSEMBLING;
 
@@ -143,7 +144,11 @@ bool assemblerThread::assembly(assembly_c * a) {
   
       if (s) {
         puzzle->probIncNumSolutions(prob);
-        puzzle->probAddSolution(prob, a, s);
+
+        if (_solutionAction == SOL_DISASM)
+          puzzle->probAddSolution(prob, a, s);
+        else
+          delete s;
       }
     }
     break;

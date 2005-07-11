@@ -79,7 +79,7 @@ class UserInterface {
   ToolTab * resultTools;
 
   Fl_Group *TabSolve;
-  Fl_Check_Button *SolveDisasm;
+  Fl_Check_Button *SolveDisasm, *JustCount;
 
   FlatButton *BtnStart, *BtnCont, *BtnStop;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape;

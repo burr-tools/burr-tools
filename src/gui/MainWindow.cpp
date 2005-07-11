@@ -519,9 +519,15 @@ void UserInterface::cb_BtnCont(void) {
   assert(assmThread == 0);
 
   if (SolveDisasm->value() != 0)
-    assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_DISASM);
+    if (JustCount->value() != 0)
+      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_COUNT_DISASM);
+    else
+      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_DISASM);
   else
-    assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_SAVE_ASM);
+    if (JustCount->value() != 0)
+      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_COUNT_ASM);
+    else
+      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_SAVE_ASM);
 
   assmThread->start();
 
@@ -1104,11 +1110,9 @@ void UserInterface::updateInterface(void) {
     
         SolutionSel->show();
         SolutionsInfo->show();
-        OutputSolutions->show();
     
         SolutionSel->range(0, numSol-1);
         SolutionsInfo->value(numSol);
-        OutputSolutions->value(numSol);
   
         // if we are in the solve tab and have a valid solution
         // we can activate that
@@ -1120,7 +1124,6 @@ void UserInterface::updateInterface(void) {
         SolutionSel->range(0, 0);
         SolutionSel->hide();
         SolutionsInfo->hide();
-        OutputSolutions->hide();
         SolutionAnim->hide();
         MovesInfo->hide();
       }
@@ -1131,7 +1134,14 @@ void UserInterface::updateInterface(void) {
       } else {
         OutputAssemblies->hide();
       }
-  
+
+      if (puzzle->probNumSolutionsKnown(prob)) {
+        OutputSolutions->value(puzzle->probGetNumSolutions(prob));
+        OutputSolutions->show();
+      } else {
+        OutputSolutions->hide();
+      }
+
     } else {
   
       SolutionSel->hide();
@@ -1706,7 +1716,8 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     y += SZ_BUTTON_Y;
     lh -= SZ_BUTTON_Y;
 
-    (new Fl_Check_Button(x, y, w, SZ_BUTTON_Y, "Just Count"))->tooltip("Don\'t save the solutions, just count the number of them.");
+    JustCount = new Fl_Check_Button(x, y, w, SZ_BUTTON_Y, "Just Count");
+    JustCount->tooltip("Don\'t save the solutions, just count the number of them.");
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 

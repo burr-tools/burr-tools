@@ -990,10 +990,16 @@ unsigned long puzzle_c::probGetNumSolutions(unsigned int prob) const {
 }
 
 void puzzle_c::probIncNumAssemblies(unsigned int prob) {
-  problems[prob]->numAssemblies++;
+  if (problems[prob]->numAssemblies == 0xFFFFFFFF)
+    problems[prob]->numAssemblies = 1;
+  else
+    problems[prob]->numAssemblies++;
 }
 void puzzle_c::probIncNumSolutions(unsigned int prob) {
-  problems[prob]->numSolutions++;
+  if (problems[prob]->numSolutions == 0xFFFFFFFF)
+    problems[prob]->numSolutions = 1;
+  else
+    problems[prob]->numSolutions++;
 }
 
 void puzzle_c::probFinishedSolving(unsigned int prob) {
@@ -1053,8 +1059,8 @@ assembler_c::errState puzzle_c::probSetAssembler(unsigned int prob, assembler_c 
   } else {
 
     // if no data is available for assemlber restoration reset counters
-    problems[prob]->numAssemblies = 0;
-    problems[prob]->numSolutions = 0;
+    problems[prob]->numAssemblies = 0xFFFFFFFF;
+    problems[prob]->numSolutions = 0xFFFFFFFF;
   }
 
   problems[prob]->assm = assm;

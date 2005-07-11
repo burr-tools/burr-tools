@@ -46,6 +46,7 @@ public:
 
   enum {
     SOL_COUNT_ASM,
+    SOL_COUNT_DISASM,
     SOL_SAVE_ASM,
     SOL_DISASM
   };
