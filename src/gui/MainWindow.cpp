@@ -172,8 +172,9 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
         (SolutionSel->value() < puzzle->probSolutionNumber(solutionProblem->getSelection()))) {
       activateSolution(solutionProblem->getSelection(), int(SolutionSel->value()));
     }
-    updateInterface();
   }
+
+  updateInterface();
 }
 
 
