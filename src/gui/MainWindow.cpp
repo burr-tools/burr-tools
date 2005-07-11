@@ -714,21 +714,27 @@ void UserInterface::StatPieceInfo(unsigned int pc) {
 
 void UserInterface::StatProblemInfo(unsigned int pr) {
 
-  if (puzzle->probGetResult(pr) < puzzle->shapeNumber()) {
+  if (pr < puzzle->problemNumber()) {
 
-    char txt[100];
+    if (puzzle->probGetResult(pr) < puzzle->shapeNumber()) {
   
-    unsigned int cnt = 0;
+      char txt[100];
+    
+      unsigned int cnt = 0;
+  
+      for (unsigned int i = 0; i < puzzle->probShapeNumber(pr); i++)
+        cnt += puzzle->probGetShapeShape(pr, i)->countState(pieceVoxel_c::VX_FILLED) * puzzle->probGetShapeCount(pr, i);
+    
+      snprintf(txt, 100, "Problem %i result can contain %i - %i cubes, pieces contain %i cubes", pr,
+               puzzle->probGetResultShape(pr)->countState(pieceVoxel_c::VX_FILLED),
+               puzzle->probGetResultShape(pr)->countState(pieceVoxel_c::VX_FILLED) +
+               puzzle->probGetResultShape(pr)->countState(pieceVoxel_c::VX_VARIABLE), cnt);
+      Status->setText(txt);
+    }
 
-    for (unsigned int i = 0; i < puzzle->probShapeNumber(pr); i++)
-      cnt += puzzle->probGetShapeShape(pr, i)->countState(pieceVoxel_c::VX_FILLED) * puzzle->probGetShapeCount(pr, i);
-  
-    snprintf(txt, 100, "Problem %i result can contain %i - %i cubes, pieces contain %i cubes", pr,
-             puzzle->probGetResultShape(pr)->countState(pieceVoxel_c::VX_FILLED),
-             puzzle->probGetResultShape(pr)->countState(pieceVoxel_c::VX_FILLED) +
-             puzzle->probGetResultShape(pr)->countState(pieceVoxel_c::VX_VARIABLE), cnt);
-    Status->setText(txt);
-  }
+  } else
+
+    Status->setText("");
 }
 
 void UserInterface::changeColor(unsigned int nr) {
