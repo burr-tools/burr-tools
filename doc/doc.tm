@@ -40,62 +40,61 @@
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
     <pageref|auto-8>>
 
-    <with|par-left|1.5fn|1.3.3<space|2spc>Result Tab
-    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-10>>
-
-    <with|par-left|1.5fn|1.3.4<space|2spc>Solve Tab
+    <with|par-left|1.5fn|1.3.3<space|2spc>Problem Tab
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
     <pageref|auto-11>>
 
+    <with|par-left|1.5fn|1.3.4<space|2spc>Solve Tab
+    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <pageref|auto-12>>
+
     1.4<space|2spc>Future Plans <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-12>
+    <pageref|auto-13>
 
     <vspace*|1fn><with|font-series|bold|math-font-series|bold|2<space|2spc>The
     Internals> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-13><vspace|0.5fn>
+    <pageref|auto-14><vspace|0.5fn>
 
     2.1<space|2spc>The puzzle file format
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-14>
+    <pageref|auto-15>
 
     2.2<space|2spc>The Library <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-15>
+    <pageref|auto-16>
 
     <with|par-left|1.5fn|2.2.1<space|2spc>Class voxel
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-16>>
+    <pageref|auto-17>>
 
     <with|par-left|1.5fn|2.2.2<space|2spc>Class puzzle
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-17>>
+    <pageref|auto-18>>
 
     <with|par-left|1.5fn|2.2.3<space|2spc>Class assembler
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-18>>
+    <pageref|auto-19>>
 
     <with|par-left|1.5fn|2.2.4<space|2spc>Class disassember
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-19>>
+    <pageref|auto-20>>
 
     <with|par-left|1.5fn|2.2.5<space|2spc>Example
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-20>>
+    <pageref|auto-21>>
 
     2.3<space|2spc>The Algorithms <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-21>
+    <pageref|auto-22>
 
     <with|par-left|1.5fn|2.3.1<space|2spc>Assembly
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-22>>
+    <pageref|auto-23>>
 
     <with|par-left|1.5fn|2.3.2<space|2spc>Disassembly
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-23>>
+    <pageref|auto-24>>
 
-    <vspace*|1fn><with|font-series|bold|math-font-series|bold|Epilogue>
-    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <pageref|auto-24><vspace|0.5fn>
+    2.4<space|2spc>Adding to the Library <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <pageref|auto-25>
   </table-of-contents>
 
   <chapter|The Program>
@@ -120,7 +119,7 @@
   wanting to use the library for their own puzze design explorations.
 
   But first a little bit to the history of this program. Why another program
-  you might ask. There are 2 main and one not so important reasons:
+  you might ask. There are a few reasons:
 
   <\enumerate-numeric>
     <item>The available programs (<name|PuzzleSolver3D> and
@@ -134,6 +133,9 @@
 
     <item><name|PuzzleSolver3D> seems to be abandoned. There hasn't been any
     update for quite a while.
+
+    <item><name|PuzzleSolver3D> has some ugly limits to the shape sizes and
+    the number of possible placements.
   </enumerate-numeric>
 
   Anyway, I was not satisfied with the available software. Then the C't, a
@@ -160,10 +162,11 @@
 
   <section|<name|PuzzleSolver3D> Users>
 
-  People that know <name|PuzzleSover3D> from André van Kamen should be able
-  to quickly get used to the graphical user interface. For these people is
-  this chapter. It just describes the important differences between
-  <name|PuzzleSolver3D> and <name|BurrTools>. There are a few differences:
+  People that know <name|PuzzleSover3D> written by André van Kamen should be
+  able to quickly get used to the graphical user interface. For these people
+  is this chapter. It just describes the important differences between
+  <name|PuzzleSolver3D> and <name|BurrTools>. There are a few important
+  differences:
 
   <\enumerate-numeric>
     <item><name|BurrTools> doesn't handle holes automatically as
@@ -176,7 +179,11 @@
     <name|BurrTools> requires from you to exactly specify which cubes in the
     result shape must be filled and which ones may be empty. This is done by
     either clicking with the left mouse key (must be filled cubes) or the
-    right mouse button (may be filled cubes)
+    right mouse button (may be filled cubes). There is a tool that helps you
+    with the variable cubes. The button ``make inside variable'' should
+    nearly always do what you expect. Just define you result shape with all
+    cubes fixed and then press ``make inside variable''. The result should
+    normally be what you intend.
 
     <item><name|BurrTools> doesn't automatically find multiple identical
     pieces. You need to specify if there is one piece there more than once.
@@ -186,7 +193,8 @@
     reality, so be careful.
 
     <item><name|BurrTools> allows you to define multiple problems in one
-    file. So you can save all the SomaCube problems within one file
+    file. So you can, for example, save all the SomaCube problems within one
+    file
 
     <item><name|BurrTools> allows to put constraints on the placement of
     pieces. This is done by having an additional information attatched to
@@ -240,7 +248,8 @@
   <subsection|Main Window>
 
   <\float|float|tbh>
-    <big-figure||The Main Window<label|MainWindowImage>>
+    <big-figure|<postscript|mainwin.png|/2|/2||||>|The Main
+    Window<label|MainWindowImage>>
   </float>The main window (see Figure <reference|MainWindowImage>) contains a
   tool bar at the left side and the rest of the window is used for a 3
   dimensional view. By dragging with the mouse you can rotate the object
@@ -267,7 +276,7 @@
   <subsection|Piece Tab>
 
   <\float|float|tbh>
-    <big-figure||The tools<label|ToolsImage>>
+    <big-figure|<postscript|tabs.png|/2|/2||||>|The tools<label|ToolsImage>>
   </float>This tab (See Figure <reference|ToolsImage> left column) defines
   the colors and the shapes. <name|BurrTools> differentiates between shapes
   and pieces. There can be several pieces with the same shape. You as the
@@ -296,19 +305,28 @@
   Below these 3 buttons is the list with the shapes. You can activate and
   edit a shape by clicking on it.
 
-  Below the piece selector is another tab with some tools. These tools allow
-  you to change the size of the space that is available for the piece
-  definition. <name|BurrTools> uses the colours red green and blue to show
-  the 3 space-dimensions. All tools that act on one of the axes are coloured
-  accordingly. The 3D view contains three coloured lines that also show the
-  axes. The next tab on the tool tab contains buttons that allow you to
-  rotate and shift and flip the shape definition inside its space. Finally
-  the button minimise makes the definition space as small as possible. This
-  is useful to make the files on disk a little bit smaller or to have a more
-  centred view of the shape inside the 3D view. The button ``Make inside
-  variable'' sets all the unit cubes that are completely surrounded by cubes
-  to variable cubes. If you apply this to your result shape the behaviour
-  will be as if you pressed ``fill outer cubes'' in <name|PuzzleSolver3D>.
+  <big-figure|<postscript|tools.png|/2|/2||||>|Shape edit
+  tools<label|shapeEditTools>>
+
+  Below the piece selector is another tab with some tools (see figure
+  <reference|shapeEditTools>). These tools allow you to change the size of
+  the space that is available for the piece definition. <name|BurrTools> uses
+  the colours red green and blue to show the 3 space-dimensions. All tools
+  that act on one of the axes are coloured accordingly. The 3D view contains
+  three coloured lines that also show the axes. The first tab on the tool tab
+  (labeled ``Size``) allows you to resize the current shape. The next tab
+  (``Transform``) contains buttons that allow you to rotate (R) and shift (S)
+  and flip (F) the shape definition inside its space. The button ``S+X`` for
+  example shifts the contents up alonw the x-axis. The Button labelled
+  ``R-Y`` rotates the shape along the y-axis against the clock. On the last
+  tab (``Tools``) there are 2 buttons. Minimise makes the definition space as
+  small as possible removing all empty space around the acutal shape
+  definition. This is useful to make the files on disk a little bit smaller
+  or to have a more centred view of the shape inside the 3D view. The button
+  ``Make inside variable'' sets all the unit cubes that are completely
+  surrounded by cubes to variable cubes. If you apply this to your result
+  shape the behaviour will be as if you pressed ``fill outer cubes'' in
+  <name|PuzzleSolver3D>.
 
   The last item at the very bottom of this tab is the editor to change the
   shape. It contains a slider at the left that selects the z-plane. You edit
@@ -705,33 +723,36 @@
 <\references>
   <\collection>
     <associate||<tuple|1.1|5>>
-    <associate|MainWindowImage|<tuple|1.1|6>>
-    <associate|ToolsImage|<tuple|1.2|6>>
+    <associate|MainWindowImage|<tuple|1.1|7>>
+    <associate|ToolsImage|<tuple|1.2|7>>
     <associate|auto-1|<tuple|<uninit>|4>>
-    <associate|auto-10|<tuple|1.3.3|7>>
-    <associate|auto-11|<tuple|1.3.4|7>>
-    <associate|auto-12|<tuple|1.4|8>>
-    <associate|auto-13|<tuple|2|9>>
-    <associate|auto-14|<tuple|2.1|9>>
-    <associate|auto-15|<tuple|2.2|9>>
-    <associate|auto-16|<tuple|2.2.1|9>>
-    <associate|auto-17|<tuple|2.2.2|9>>
-    <associate|auto-18|<tuple|2.2.3|10>>
-    <associate|auto-19|<tuple|2.2.4|10>>
+    <associate|auto-10|<tuple|1.3|8>>
+    <associate|auto-11|<tuple|1.3.3|8>>
+    <associate|auto-12|<tuple|1.3.4|9>>
+    <associate|auto-13|<tuple|1.4|10>>
+    <associate|auto-14|<tuple|2|11>>
+    <associate|auto-15|<tuple|2.1|11>>
+    <associate|auto-16|<tuple|2.2|11>>
+    <associate|auto-17|<tuple|2.2.1|11>>
+    <associate|auto-18|<tuple|2.2.2|12>>
+    <associate|auto-19|<tuple|2.2.3|12>>
     <associate|auto-2|<tuple|1|5>>
-    <associate|auto-20|<tuple|2.2.5|10>>
-    <associate|auto-21|<tuple|2.3|10>>
-    <associate|auto-22|<tuple|2.3.1|10>>
-    <associate|auto-23|<tuple|2.3.2|11>>
-    <associate|auto-24|<tuple|2.4|12>>
+    <associate|auto-20|<tuple|2.2.4|12>>
+    <associate|auto-21|<tuple|2.2.5|12>>
+    <associate|auto-22|<tuple|2.3|12>>
+    <associate|auto-23|<tuple|2.3.1|12>>
+    <associate|auto-24|<tuple|2.3.2|13>>
+    <associate|auto-25|<tuple|2.4|13>>
+    <associate|auto-26|<tuple|2.4|?>>
     <associate|auto-3|<tuple|1.1|5>>
     <associate|auto-4|<tuple|1.2|5>>
     <associate|auto-5|<tuple|1.3|6>>
     <associate|auto-6|<tuple|1.3.1|6>>
-    <associate|auto-7|<tuple|1.1|6>>
-    <associate|auto-8|<tuple|1.3.2|6>>
-    <associate|auto-9|<tuple|1.2|6>>
+    <associate|auto-7|<tuple|1.1|7>>
+    <associate|auto-8|<tuple|1.3.2|7>>
+    <associate|auto-9|<tuple|1.2|7>>
     <associate|footnote-1|<tuple|1|1>>
+    <associate|shapeEditTools|<tuple|1.3|8>>
   </collection>
 </references>
 
@@ -741,6 +762,8 @@
       <tuple|normal|The Main Window<label|MainWindowImage>|<pageref|auto-7>>
 
       <tuple|normal|The tools<label|ToolsImage>|<pageref|auto-9>>
+
+      <tuple|normal|Shape edit tools<label|shapeEditTools>|<pageref|auto-10>>
     </associate>
     <\associate|toc>
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|Table
@@ -771,60 +794,60 @@
 
       <with|par-left|<quote|1.5fn>|1.3.3<space|2spc>Problem Tab
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-10>>
+      <pageref|auto-11>>
 
       <with|par-left|<quote|1.5fn>|1.3.4<space|2spc>Solve Tab
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-11>>
+      <pageref|auto-12>>
 
       1.4<space|2spc>Future Plans <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-12>
+      <pageref|auto-13>
 
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>The
       Internals> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-13><vspace|0.5fn>
+      <pageref|auto-14><vspace|0.5fn>
 
       2.1<space|2spc>The puzzle file format
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-14>
+      <pageref|auto-15>
 
       2.2<space|2spc>The Library <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-15>
+      <pageref|auto-16>
 
       <with|par-left|<quote|1.5fn>|2.2.1<space|2spc>Class voxel
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-16>>
+      <pageref|auto-17>>
 
       <with|par-left|<quote|1.5fn>|2.2.2<space|2spc>Class puzzle
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-17>>
+      <pageref|auto-18>>
 
       <with|par-left|<quote|1.5fn>|2.2.3<space|2spc>Class assembler
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-18>>
+      <pageref|auto-19>>
 
       <with|par-left|<quote|1.5fn>|2.2.4<space|2spc>Class disassember
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-19>>
+      <pageref|auto-20>>
 
       <with|par-left|<quote|1.5fn>|2.2.5<space|2spc>Example
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-20>>
+      <pageref|auto-21>>
 
       2.3<space|2spc>The Algorithms <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-21>
+      <pageref|auto-22>
 
       <with|par-left|<quote|1.5fn>|2.3.1<space|2spc>Assembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-22>>
+      <pageref|auto-23>>
 
       <with|par-left|<quote|1.5fn>|2.3.2<space|2spc>Disassembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-23>>
+      <pageref|auto-24>>
 
       2.4<space|2spc>Adding to the Library
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-24>
+      <pageref|auto-25>
     </associate>
   </collection>
 </auxiliary>
