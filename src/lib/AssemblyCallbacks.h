@@ -76,7 +76,8 @@ public:
   unsigned int currentAction(void) { return action; }
 
   // let the thread start
-  void start(void);
+  // returns true, if everything went well, false otherwise
+  bool start(void);
 
   // try to stop the thread at the next possible position
   void stop(void);

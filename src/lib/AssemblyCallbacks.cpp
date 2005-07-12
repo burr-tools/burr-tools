@@ -169,16 +169,16 @@ void assemblerThread::stop(void) {
   stopPressed = true;
 }
 
-void assemblerThread::start(void) {
+bool assemblerThread::start(void) {
 
   stopPressed = false;
 
 #ifdef WIN32
   DWORD threadID;
-  CreateThread(NULL, 0, start_th, this, 0, &threadID);
+  return CreateThread(NULL, 0, start_th, this, 0, &threadID) != NULL;
 #else
-  pthread_t th; pthread_create(&th, 0, start_th, this);
+  pthread_t th;
+  return pthread_create(&th, 0, start_th, this) == 0;
 #endif
-
 }
 

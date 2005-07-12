@@ -529,11 +529,17 @@ void UserInterface::cb_BtnCont(void) {
     else
       assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_SAVE_ASM);
 
-  assmThread->start();
+  if (!assmThread->start()) {
+    fl_message("Could not start the solving process, the thread creation failed, sorry.");
+    delete assmThread;
+    assmThread = 0;
 
-  BtnStart->deactivate();
-  BtnCont->deactivate();
-  BtnStop->activate();
+  } else {
+
+    BtnStart->deactivate();
+    BtnCont->deactivate();
+    BtnStop->activate();
+  }
 }
 
 static void cb_BtnStop_stub(Fl_Widget* o, void* v) { ui->cb_BtnStop(); }
