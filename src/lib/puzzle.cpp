@@ -202,7 +202,7 @@ public:
 
   solution_c(assembly_c * assm, separation_c * t) : assembly(assm), tree(t) {}
 
-  solution_c(const xml::node & node);
+  solution_c(const xml::node & node, unsigned int pieces);
 
   ~solution_c(void);
 
@@ -218,7 +218,7 @@ public:
   xml::node save(void) const;
 };
 
-solution_c::solution_c(const xml::node & node) {
+solution_c::solution_c(const xml::node & node, unsigned int pieces) {
 
   if ((node.get_type() != xml::node::type_element) ||
       (strcmp(node.get_name(), "solution") != 0))
@@ -230,11 +230,11 @@ solution_c::solution_c(const xml::node & node) {
   xml::node::const_iterator it;
 
   it = node.find("assembly");
-  assembly = new assembly_c(*it);
+  assembly = new assembly_c(*it, pieces);
 
   it = node.find("separation");
   if (it != node.end())
-    tree = new separation_c(*it);
+    tree = new separation_c(*it, pieces);
   else
     tree = 0;
 }
@@ -452,6 +452,8 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
 
   xml::node::const_iterator it;
 
+  unsigned int pieces = 0;
+
   it = node.find("shapes");
   if (it != node.end())
     for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
@@ -467,6 +469,8 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
 
         id = atoi(i->get_attributes().find("id")->get_value());
         cnt = atoi(i->get_attributes().find("count")->get_value());
+
+        pieces += cnt;
 
         if (id >= shape)
           throw load_error("the shape ids must be for valid shapes", *i);
@@ -490,7 +494,7 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
     for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
       if ((i->get_type() == xml::node::type_element) &&
           (strcmp(i->get_name(), "solution") == 0))
-        solutions.push_back(new solution_c(*i));
+        solutions.push_back(new solution_c(*i, pieces));
   }
 
   if (node.get_attributes().find("state") != node.get_attributes().end())

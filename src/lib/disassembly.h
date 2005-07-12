@@ -75,7 +75,7 @@ public:
   separation_c(separation_c * r, separation_c * l, unsigned int pn, voxel_type * pcs);
 
   /* load a separation from an xml node */
-  separation_c(const xml::node & node);
+  separation_c(const xml::node & node, unsigned int pieces);
 
   /* save into an xml node */
   xml::node save(void) const;

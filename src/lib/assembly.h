@@ -57,7 +57,7 @@ public:
   /**
    * load the assembly from xml file
    */
-  assembly_c(const xml::node & node);
+  assembly_c(const xml::node & node, unsigned int pieces);
 
   /* used to save to XML */
   xml::node save(void) const;

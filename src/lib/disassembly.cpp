@@ -245,23 +245,42 @@ xml::node separation_c::save(void) const {
   return nd;
 }
 
-separation_c::separation_c(const xml::node & node) {
+separation_c::separation_c(const xml::node & node, unsigned int pieceCnt) {
 
-  assert(node.get_type() == xml::node::type_element);
-  assert(strcmp(node.get_name(), "separation") == 0);
-  assert(node.find("pieces") != node.end());
-  assert(node.find("state") != node.end());
+  if ((node.get_type() != xml::node::type_element) ||
+      (strcmp(node.get_name(), "separation") != 0))
+    throw load_error("wrong node for separation", node);
+
+  if (node.find("pieces") == node.end())
+    throw load_error("separation needs subnode 'pieces'", node);
+
+  if (node.find("state") == node.end())
+    throw load_error("separation needs subnode 'state'", node);
 
   xml::node::const_iterator it;
 
   // load the pieces array
   it = node.find("pieces");
-  assert(it->get_attributes().find("count") != it->get_attributes().end());
+
+  if (it->get_attributes().find("count") == it->get_attributes().end())
+    throw load_error("pieces node needs a 'count' attribute", *it);
 
   piecenumber = atoi(it->get_attributes().find("count")->get_value());
+
+  if (piecenumber != pieceCnt)
+    throw load_error("the number of pieces in the count array is not as expected", *it);
+
   pieces = new voxel_type[piecenumber];
 
-  getNumbers(it->get_content(), pieces, pieces+piecenumber, false);
+  if (pieces == 0)
+    throw load_error("could not allocate the required memors", *it);
+
+  try {
+    getNumbers(it->get_content(), pieces, pieces+piecenumber, false);
+  }
+  catch (load_error e) {
+    throw load_error(e.getText(), node);
+  }
 
   // get the states
   for (it = node.begin(); it != node.end(); it++) {
@@ -269,6 +288,17 @@ separation_c::separation_c(const xml::node & node) {
         (strcmp(it->get_name(), "state") == 0))
       states.push_back(new state_c(*it, piecenumber));
   }
+
+  unsigned int removedPc = 0, leftPc = 0;
+
+  for (int i = 0; i < pieceCnt; i++)
+    if (states[states.size()-1]->pieceRemoved(i))
+      removedPc++;
+    else
+      leftPc++;
+
+  if ((removedPc == 0) || (leftPc == 0))
+    throw load_error("there need to be pieces in both parts of the tree", node);
 
   // get the left and removed subseparation
   removed = left = 0;
@@ -279,15 +309,21 @@ separation_c::separation_c(const xml::node & node) {
 
       assert(it->get_attributes().find("type") != it->get_attributes().end());
       if (!strcmp(it->get_attributes().find("type")->get_value(), "left")) {
-        assert(!left);
-        left = new separation_c(*it);
+        if (left)
+          throw load_error("more than one left branche in disassembly", node);
+        left = new separation_c(*it, leftPc);
       } else if (!strcmp(it->get_attributes().find("type")->get_value(), "removed")) {
-        assert(!removed);
-        removed = new separation_c(*it);
+        if (removed)
+          throw load_error("more than one removed branche in disassembly", node);
+        removed = new separation_c(*it, removedPc);
       } else
-        assert(0);
+        throw load_error("subnodes most be either left or removed", node);
     }
   }
+
+  if (((removedPc > 1) && (!removed)) ||
+      ((leftPc > 1) && (!left)))
+    throw load_error("there are more than 1 pieces in a subtree but no tree available", node);
 }
 
 separation_c::separation_c(separation_c * r, separation_c * l, unsigned int pn, voxel_type * pcs) : piecenumber(pn), removed(r), left(l) {

@@ -104,7 +104,7 @@ assemblyVoxel_c * assembly_c::getVoxelSpace(const puzzle_c * puz, unsigned int p
   return res;
 }
 
-assembly_c::assembly_c(const xml::node & node) {
+assembly_c::assembly_c(const xml::node & node, unsigned int pieces) {
 
   // we must have a real node and the following attributes
   if ((node.get_type() != xml::node::type_element) ||
@@ -193,10 +193,14 @@ assembly_c::assembly_c(const xml::node & node) {
 
   if (state != 3)
     throw load_error("not the right number of numbers in assembly", node);
+
   if ((trans != 255) && ((trans < 0) || (trans >= 24)))
     throw load_error("transformations need to be either 255 or between 0 and 24", node);
 
   placements.push_back(placement_c(trans, x, y, z));
+
+  if (placements.size() != pieces)
+    throw load_error("not the right number of placements in assembly", node);
 }
 
 xml::node assembly_c::save(void) const {
