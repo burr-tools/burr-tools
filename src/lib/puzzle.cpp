@@ -164,22 +164,28 @@ xml::node bitmap_c::save(void) const {
 
 void bitmap_c::load(const xml::node & node) {
 
-  assert(node.get_type() == xml::node::type_element);
-  assert(strcmp(node.get_name(), "bitmap") == 0);
+  if ((node.get_type() != xml::node::type_element) ||
+      (strcmp(node.get_name(), "bitmap") != 0))
+    throw load_error("not the right node for color constrains", node);
 
   xml::node::const_iterator it;
 
   for (xml::node::const_iterator i = node.begin(); i != node.end(); i++)
     if ((i->get_type() == xml::node::type_element) &&
         (strcmp(i->get_name(), "pair") == 0)) {
-      assert(i->get_attributes().find("piece") != i->get_attributes().end());
-      assert(i->get_attributes().find("result") != i->get_attributes().end());
+
+      if (i->get_attributes().find("piece") == i->get_attributes().end())
+        throw load_error("no attribute 'piece' found in color constraint node", node);
+      if (i->get_attributes().find("result") == i->get_attributes().end())
+        throw load_error("no attribute 'result' found in color constraint node", node);
 
       unsigned int piece = atoi(i->get_attributes().find("piece")->get_value());
       unsigned int result = atoi(i->get_attributes().find("result")->get_value());
 
-      assert(piece < colors);
-      assert(result < colors);
+      if (piece >= colors)
+        throw load_error("piece color too big", node);
+      if (result >= colors)
+        throw load_error("result color too big", node);
 
       set(piece, result, true);
     }
@@ -213,9 +219,13 @@ public:
 };
 
 solution_c::solution_c(const xml::node & node) {
-  assert(node.get_type() == xml::node::type_element);
-  assert(strcmp(node.get_name(), "solution") == 0);
-  assert(node.find("assembly") != node.end());
+
+  if ((node.get_type() != xml::node::type_element) ||
+      (strcmp(node.get_name(), "solution") != 0))
+    throw load_error("wrong node type for solution", node);
+
+  if (node.find("assembly") == node.end())
+    throw load_error("slution does not contain an assembly", node);
 
   xml::node::const_iterator it;
 
@@ -256,7 +266,7 @@ public:
     numSolutions(0xFFFFFFFF)
   {}
 
-  problem_c(const xml::node & node, unsigned int colors);
+  problem_c(const xml::node & node, unsigned int colors, unsigned int shapes);
 
   // nearly copy constructor, only the problem is copied not the solution
   problem_c(problem_c * prob);
@@ -429,13 +439,15 @@ xml::node problem_c::save(void) const {
   return nd;
 }
 
-problem_c::problem_c(const xml::node & node, unsigned int color) : result(0xFFFFFFFF), colorConstraints(color), assm(0) {
+problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int shape) : result(0xFFFFFFFF), colorConstraints(color), assm(0) {
 
-  assert(node.get_type() == xml::node::type_element);
-  assert(strcmp(node.get_name(), "problem") == 0);
-  assert(node.find("result") != node.end());
+  if ((node.get_type() != xml::node::type_element) ||
+      (strcmp(node.get_name(), "problem") != 0))
+    throw load_error("not the right node for the puzzle problem", node);
 
-  assert(node.get_attributes().find("name") != node.get_attributes().end());
+  if (node.get_attributes().find("name") == node.get_attributes().end())
+    throw load_error("problems need to have a 'name' attribute", node);
+
   name = node.get_attributes().find("name")->get_value();
 
   xml::node::const_iterator it;
@@ -446,19 +458,31 @@ problem_c::problem_c(const xml::node & node, unsigned int color) : result(0xFFFF
       if ((i->get_type() == xml::node::type_element) &&
           (strcmp(i->get_name(), "shape") == 0)) {
         unsigned short id, cnt;
-        assert(i->get_attributes().find("id") != i->get_attributes().end());
-        assert(i->get_attributes().find("count") != i->get_attributes().end());
+
+        if (i->get_attributes().find("id") == i->get_attributes().end())
+          throw load_error("a shape node must have an 'idt' attribute", *i);
+
+        if (i->get_attributes().find("count") == i->get_attributes().end())
+          throw load_error("a shape node must have a 'count' attribute", *i);
 
         id = atoi(i->get_attributes().find("id")->get_value());
         cnt = atoi(i->get_attributes().find("count")->get_value());
+
+        if (id >= shape)
+          throw load_error("the shape ids must be for valid shapes", *i);
 
         shapes.push_back(shape_c(id, cnt));
       }
 
   it = node.find("result");
   if (it != node.end()) {
-    assert(it->get_attributes().find("id") != it->get_attributes().end());
+    if (it->get_attributes().find("id") == it->get_attributes().end())
+      throw load_error("the result node must have an 'id' attribute", *it);
+
     result = atoi(it->get_attributes().find("id")->get_value());
+
+    if (result >= shape)
+      throw load_error("the result id must be for a valid shape", *it);
   }
 
   it = node.find("solutions");
@@ -701,10 +725,15 @@ xml::node puzzle_c::save(void) const {
 
 puzzle_c::puzzle_c(const xml::node & node) {
 
-  assert(node.get_type() == xml::node::type_element);
-  assert(strcmp(node.get_name(), "puzzle") == 0);
-  assert(node.get_attributes().find("version") != node.get_attributes().end());
-  assert(atoi(node.get_attributes().find("version")->get_value()) == 1);
+  if ((node.get_type() != xml::node::type_element) ||
+      (strcmp(node.get_name(), "puzzle") != 0))
+    throw load_error("not the right node type for the puzzle", node);
+
+  if (node.get_attributes().find("version") == node.get_attributes().end())
+    throw load_error("puzzle node must have a 'version' attribute", node);
+
+  if (atoi(node.get_attributes().find("version")->get_value()) != 1)
+    throw load_error("puzzle nodes must have version 1", node);
 
   xml::node::const_iterator it;
 
@@ -714,9 +743,14 @@ puzzle_c::puzzle_c(const xml::node & node) {
       if ((i->get_type() == xml::node::type_element) &&
           (strcmp(i->get_name(), "color") == 0)) {
 
-        assert(i->get_attributes().find("red") != i->get_attributes().end());
-        assert(i->get_attributes().find("green") != i->get_attributes().end());
-        assert(i->get_attributes().find("blue") != i->get_attributes().end());
+        if (i->get_attributes().find("red") == i->get_attributes().end())
+          throw load_error("color nodes must have a 'red' attribute", *i);
+
+        if (i->get_attributes().find("green") == i->get_attributes().end())
+          throw load_error("color nodes must have a 'gree' attribute", *i);
+
+        if (i->get_attributes().find("blue") == i->get_attributes().end())
+          throw load_error("color nodes must have a 'blue' attribute", *i);
 
         colorDef c;
 
@@ -741,7 +775,7 @@ puzzle_c::puzzle_c(const xml::node & node) {
     for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
       if ((i->get_type() == xml::node::type_element) &&
           (strcmp(i->get_name(), "problem") == 0))
-        problems.push_back(new problem_c(*i, colors.size()));
+        problems.push_back(new problem_c(*i, colors.size(), shapes.size()));
 
   it = node.find("designer");
   if (it != node.end() && it->get_type() == xml::node::type_text)

@@ -40,7 +40,9 @@ void getNumbers(const char * c, iter start, iter end, bool neg_allowed) {
     if (*c == '-' && neg_allowed) {
 
       // only one - and not number must have been there
-      assert(!negative && !gotNum);
+      if (negative || gotNum)
+        throw load_error("too many '-' signs in disassembly number");
+
       negative = true;
 
     } else if ((*c >= '0') && (*c <= '9')) {
@@ -51,7 +53,10 @@ void getNumbers(const char * c, iter start, iter end, bool neg_allowed) {
     } else if (*c == ' ') {
 
       if (gotNum) {
-        assert(start != end);
+
+        if (start == end)
+          throw load_error("too many numbers in disassembly");
+
         if (negative) val = -val;
         *start = val;
         start++;
@@ -59,11 +64,12 @@ void getNumbers(const char * c, iter start, iter end, bool neg_allowed) {
         gotNum = negative = false;
       }
 
-      assert(!negative);
+      if (negative)
+        throw load_error("only '-' encountered in disassembly");
 
     } else {
 
-      assert(0);
+      throw load_error("not alowed character in disassembly");
 
     }
     c++;
@@ -74,14 +80,18 @@ void getNumbers(const char * c, iter start, iter end, bool neg_allowed) {
    * the list of numbers
    */
   if (gotNum) {
-    assert(start != end);
+
+    if (start == end)
+      throw load_error("too many numbers in disassembly");
+
     if (negative) val = -val;
     *start = val;
     start++;
   }
 
   // check, if we filled the range
-  assert(start == end);
+  if (start != end)
+    throw load_error("too few number in disassembly");
 }
 
 
@@ -131,25 +141,34 @@ xml::node state_c::save(unsigned int piecenumber) const {
 
 state_c::state_c(const xml::node & node, unsigned int pn) {
 
-  assert(node.get_type() == xml::node::type_element);
-  assert(strcmp(node.get_name(), "state") == 0);
-  assert(node.find("dx") != node.end());
-  assert(node.find("dy") != node.end());
-  assert(node.find("dz") != node.end());
+  if ((node.get_type() != xml::node::type_element) ||
+      (strcmp(node.get_name(), "state") != 0))
+    throw load_error("not the right node for disassembly state", node);
+
+  if ((node.find("dx") == node.end()) ||
+      (node.find("dy") == node.end()) ||
+      (node.find("dz") == node.end()))
+    throw load_error("disassembly state needs dx, dy and dz subnode", node);
 
   dx = new int[pn];
   dy = new int[pn];
   dz = new int[pn];
 
-  assert(dx && dy && dz);
+  if (!dx || !dy || !dz)
+    throw load_error("could not allocate memory for disassembly state", node);
 
 #ifndef NDEBUG
   piecenumber = pn;
 #endif
 
-  getNumbers(node.find("dx")->get_content(), dx, dx+pn, true);
-  getNumbers(node.find("dy")->get_content(), dy, dy+pn, true);
-  getNumbers(node.find("dz")->get_content(), dz, dz+pn, true);
+  try {
+    getNumbers(node.find("dx")->get_content(), dx, dx+pn, true);
+    getNumbers(node.find("dy")->get_content(), dy, dy+pn, true);
+    getNumbers(node.find("dz")->get_content(), dz, dz+pn, true);
+  }
+  catch (load_error e) {
+    throw load_error(e.getText(), node);
+  }
 }
 
 state_c::state_c(unsigned int pn)

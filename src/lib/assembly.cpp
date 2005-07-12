@@ -107,8 +107,9 @@ assemblyVoxel_c * assembly_c::getVoxelSpace(const puzzle_c * puz, unsigned int p
 assembly_c::assembly_c(const xml::node & node) {
 
   // we must have a real node and the following attributes
-  assert(node.get_type() == xml::node::type_element);
-  assert(strcmp(node.get_name(), "assembly") == 0);
+  if ((node.get_type() != xml::node::type_element) ||
+      (strcmp(node.get_name(), "assembly") != 0))
+    throw load_error("not the right node for assembly", node);
 
   const char * c = node.get_content();
 

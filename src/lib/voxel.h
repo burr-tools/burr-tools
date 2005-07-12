@@ -58,6 +58,8 @@ class load_error {
 public:
   load_error(const std::string & arg, const xml::node & nd) : node(nd), text(arg) {};
 
+  load_error(const std::string & arg) : text(arg) {};
+
   const char * getText(void) const { return text.c_str(); }
   const xml::node getNode(void) const { return node; }
 };

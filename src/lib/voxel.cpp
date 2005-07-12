@@ -860,8 +860,9 @@ xml::node pieceVoxel_c::save(void) const {
 pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
 
   // we must have a real node and the following attributes
-  assert(node.get_type() == xml::node::type_element);
-  assert(strcmp(node.get_name(), "voxel") == 0);
+  if ((node.get_type() != xml::node::type_element) ||
+      (strcmp(node.get_name(), "voxel") != 0))
+    throw load_error("not the right type of node for a voxel space", node);
 
   if (node.get_attributes().find("x") == node.get_attributes().end())
     throw load_error("piece Voxel with no attribut 'x' encountered", node);
@@ -1015,8 +1016,9 @@ xml::node assemblyVoxel_c::save(void) const {
 assemblyVoxel_c::assemblyVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
 
   // we must have a real node and the following attributes
-  assert(node.get_type() == xml::node::type_element);
-  assert(strcmp(node.get_name(), "voxel") == 0);
+  if ((node.get_type() != xml::node::type_element) ||
+      (strcmp(node.get_name(), "voxel") != 0))
+    throw load_error("not the right type of node for an assemblyVoxel", node);
 
   if (node.get_attributes().find("x") == node.get_attributes().end())
     throw load_error("assembly Voxel with no attribut 'x' encountered", node);
