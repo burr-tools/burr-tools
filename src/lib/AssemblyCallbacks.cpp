@@ -174,7 +174,8 @@ void assemblerThread::start(void) {
   stopPressed = false;
 
 #ifdef WIN32
-  CreateThread(NULL, 0, start_th, this, 0, 0);
+  DWORD threadID;
+  CreateThread(NULL, 0, start_th, this, 0, &threadID);
 #else
   pthread_t th; pthread_create(&th, 0, start_th, this);
 #endif
