@@ -1117,8 +1117,7 @@ void UserInterface::updateInterface(void) {
     // solution tab
     PcVis->setPuzzle(puzzle, prob);
 
-    assembler_c * assm = puzzle->probGetAssembler(prob);
-    float finished = (assm) ? assm->getFinished() : 0;
+    float finished = ((prob < puzzle->problemNumber()) && puzzle->probGetAssembler(prob)) ? puzzle->probGetAssembler(prob)->getFinished() : 0;
 
     if (prob < puzzle->problemNumber()) {
 
