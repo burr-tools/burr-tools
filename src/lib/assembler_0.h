@@ -51,8 +51,33 @@
  * but if we selct a voxel to be filled then the program goes through all pieces
  * and all possible placements of these pieces that fill the selected voxel we have
  * to check each possibility if a piece is selected that
- *
  */
+
+
+/* this class is only a base class containing the functionality for the matrix
+ * the functions in here don't know anything about the meaning of the matrix
+ * for them it mainly consists of a set of one and empty nodes
+ *
+ * for a real puzzle assemlber this class must be dereved from and some functions
+ * need to be overloaded. These are:
+ *
+ * countNodes, prepare and solution
+ *
+ * when a new puzzle has to be solved the user calls createMatrix. This function
+ * does some initialisation and then calls countNodes. You have to return the number
+ * of nodes that you require for your part of the matrix. The createMatrix function
+ * then allocaed enough memory for this and calls prepare. Here you have to fill in
+ * the matrix with your node (including the header.
+ *
+ * When assembling the function in this class calls solution, whenever a solution
+ * is found. It's now your task to transform the gained information into a format
+ * valuable for your interpretation format.
+ *
+ * there is one assumption in the class: empty voxels don't exist. So you have to find
+ * an interpretation for your space that doesn't require empty voxels within the 3d
+ * space of the voxels
+ */
+
 class assembler_0_c : public assembler_c {
 
 private:
@@ -189,7 +214,6 @@ private:
   /* number of iterations the asseble routine run */
   unsigned long iterations;
 
-
   /* the number of holes the assembles piece will have. Holes are
    * voxels in the variable voxel set that are not filled. The other
    * voxels are all filled
@@ -233,14 +257,47 @@ private:
 
 protected:
 
-  void GenerateFirstRow(int unsigned res_filled);
-  void AddFillerNode(void);
-  int AddPieceNode(unsigned int piece, unsigned int rot, unsigned int x, unsigned int y, unsigned int z);
-  void getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z);
+  /* as this is only a backend doing the processing on the matrix, there needs to
+   * be a frontend creating the matrix and evaluating the results. These functions
+   * are helpers for the frontend
+   */
 
-  void AddVoxelNode(unsigned int col, unsigned int piecenode);
+  /* this function creates the first row of the matrix. As the createMatrix function
+   * has already set up some variables you only need to specify the value res_filled that is
+   * given to you as a parameter to the function prepare. You normally call this function
+   * in prepare
+   */
+  void GenerateFirstRow(int unsigned res_filled);
+
+  /* call this whenever you start to add information for a new piece */
   void nextPiece(unsigned int piece, unsigned int count, unsigned int number);
 
+  /* filler nodes are nodes that
+   */
+  void AddFillerNode(void);
+
+  /* this function adds a node to the matrix that belongs to the first columns that represent
+   * the pieces. This is normally the first thing you do, when you start a new line in the matrix
+   * The information you provide is required to restore the exact piece in placement that this
+   * line stands for
+   * the return value is a number that has to be given to the voxel node creation routine
+   * it contains the number of the node that is created with this function
+   */
+  int AddPieceNode(unsigned int piece, unsigned int rot, unsigned int x, unsigned int y, unsigned int z);
+
+  /* this is in a way the inverse of the function above. You give a node number and get
+   * the exact piece and placement the line this node belonges to stands for
+   * this function is used in the solution function to restore the placement of the piece
+   */
+  void getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z);
+
+  /* this adds a normal node that represents a used voxel within the solution
+   * piecenode is the number that you get from AddPieceNode, col is a number
+   * that can be calculated from the x, y and z position of the voxel
+   */
+  void AddVoxelNode(unsigned int col, unsigned int piecenode);
+
+  /* these functions provde access to the cover information for you */
   unsigned int getRows(int pos) { return rows[pos]; }
   unsigned int getRight(int pos) { return right[pos]; }
   unsigned int getPiece(int pos) { return piece[pos]; }
@@ -248,6 +305,10 @@ protected:
   unsigned int getVarivoxelStart(void) { return varivoxelStart; }
   unsigned int getPos(void) { return pos; }
 
+  /* finally after assembling a puzzle and creating something meaningful from the cover
+   * information you need to call the callback of the user, use this function to get the
+   * callback class
+   */
   assembler_cb * getCallback(void) { return asm_bc; }
 
   unsigned int getPiecenumber(void) { return piecenumber; }
@@ -257,26 +318,18 @@ public:
   assembler_0_c(void);
   ~assembler_0_c(void);
 
-
-  errState createMatrix(const puzzle_c * puz, unsigned int problemNum);
-
-  void reduce(void);
-  unsigned int getReducePiece(void) { return reducePiece; }
-
-  unsigned long getIterations(void) { return iterations; }
-
+  /* functions that are overloaded from assembler_c, for comments see there */
+  virtual errState createMatrix(const puzzle_c * puz, unsigned int problemNum);
   void assemble(assembler_cb * callback);
-
-  /* the functions for the other process requesting information about the searcher */
   int getErrorsParam(void) { return errorsParam; }
-
   virtual float getFinished(void);
   virtual void stop(void) { abbort = true; }
   virtual bool stopped(void) const { return !running; }
   virtual errState setPosition(const char * string, const char * version);
-
-  virtual xml::node save(void) const; 
-
+  virtual xml::node save(void) const;
+  virtual void reduce(void);
+  virtual unsigned int getReducePiece(void) { return reducePiece; }
+  virtual unsigned long getIterations(void) { return iterations; }
 };
 
 #endif

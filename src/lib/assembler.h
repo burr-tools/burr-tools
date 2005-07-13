@@ -59,9 +59,12 @@ public:
     ERR_PIECE_WITH_VARICUBE
   } errState;
 
-  /* initialisation */
+  /* initialisation, only the things that can be done quickly */
   assembler_c(void) {}
   virtual ~assembler_c(void) {}
+
+  /* the part of the initialisation that may take a while */
+  virtual errState createMatrix(const puzzle_c * puz, unsigned int problemNum) { return ERR_NONE; }
 
   /* after the constructor call check this function. It return 0 if everything is
    * ok, or a pointer to a string, that you should display providing a message
@@ -77,11 +80,29 @@ public:
    * it is not necessary for an assembler to implement this function
    */
   virtual void reduce(void) { }
+
+  /* because the reduce process can take a long time it is nice to
+   * give some feedback to the user. With this function the user can
+   * get a number to display with the information that the program is
+   * currently reducing. The intended interpretation is that the program
+   * is currently working on the piece with the returned number, but if
+   * you want you can alco return something else
+   */
   virtual unsigned int getReducePiece(void) { return 0; }
 
-
-  /* start the assembly process */
+  /* start the assembly process
+   * it is intended that the assembly process runs in a different thread from
+   * the controlling thread. When this is the case the controlling thread can
+   * call stop to make the assembly thread stop working. It will then return
+   * from this function but can be resumed any time
+   */
   virtual void assemble(assembler_cb * callback) {}
+
+  /* this function returns a number reflecting the complexity of the
+   * puzzle. This could be the number of placements tried, or
+   * some other value
+   */
+  virtual unsigned long getIterations(void) { return 0; }
 
   /* a function that returns the finished percentage in the range
    * between 0 and 1. It must be possible to call this function
@@ -94,14 +115,6 @@ public:
 
   /* returns true, as soon as the process really has stopped */
   virtual bool stopped(void) const { return false; }
-
-  /* returns a string, that can be saved inside a textfile stat specifies the
-   * exact position where the assembly process stopped
-   * returns true, if the string was long enough to save the data
-   *
-   * the function shoule only be called when assemble is not running
-   */
-  virtual bool getPosition(char * string, unsigned int len) { return true; }
 
   /* sets the position of the assembly process, so that it continues exacly
    * where it stood, when getPosition was called
