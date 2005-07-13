@@ -497,6 +497,7 @@ static void cb_BtnStart_stub(Fl_Widget* o, void* v) { ui->cb_BtnStart(); }
 void UserInterface::cb_BtnStart(void) {
 
   puzzle->probRemoveAllSolutions(solutionProblem->getSelection());
+  SolutionEmpty = true;
 
   cb_BtnCont();
 }
