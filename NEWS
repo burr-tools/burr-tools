@@ -1,5 +1,21 @@
 ------------- Version 0.1.5 Jul 10 2005
 
+- add button to change color
+
+- documentation update
+
+- add a lot of comments
+
+- make "just count" work
+
+- enable time display and estimation
+
+- thread fix for win 9x
+
+- load of bad files no longer abborts program but show message
+
+------------- Version 0.1.5 Jul 10 2005
+
 - no editing of problem while solving
 
 - assembler status in file contains version

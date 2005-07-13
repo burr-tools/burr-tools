@@ -1,3 +1,60 @@
+Wed Jul 13 19:57:59 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add pictures for documentation
+
+Wed Jul 13 19:54:18 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * update solution display after pressing start
+
+Wed Jul 13 19:41:50 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * cleanup and lots of comments
+
+Wed Jul 13 19:41:00 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix for problem selecting solution tab with empty gui
+
+Wed Jul 13 19:35:33 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * bugfix and better time output
+
+Tue Jul 12 19:37:37 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * documentation update
+
+Tue Jul 12 18:30:52 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * some more asserts removed from load code, also some more consistency checks
+
+Tue Jul 12 17:29:29 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use exceptions for load errors instead of asserts. Now the user gets an error message when loading fails
+
+Tue Jul 12 16:41:02 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * error message when the thread could not be started
+
+Tue Jul 12 16:31:17 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix for win 9x. They do require a handle pointer for the thread creation
+
+Mon Jul 11 22:10:05 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * enable the time estimation, add some asserts and initialize some values that should always have been
+
+Mon Jul 11 21:10:55 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove the interations display
+
+Mon Jul 11 21:07:06 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * enable "just count" switch
+
+Mon Jul 11 16:59:42 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * we can not display problem info, when the given problem is not valid
+
+Mon Jul 11 16:58:42 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * we now need to update when the tab is toggled, as we only update the visible widgets
+
+Mon Jul 11 16:58:27 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * documentation updates
+
+Sun Jul 10 19:33:52 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add button to change a color
+
+Sun Jul 10 18:41:34 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  tagged 0.1.5
+
+Sun Jul 10 18:41:10 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * relese 0.1.5 preparations
+
 Sun Jul 10 18:40:02 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
   * some gcc 4 fixes
 
