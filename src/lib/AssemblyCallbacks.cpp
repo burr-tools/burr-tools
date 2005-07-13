@@ -39,7 +39,6 @@ void* start_th(void * c)
 
   assm_0_frontend_0_c * assm;
 
-  p->startTime = time(0);
 
   /* first check, if there is an assembler available with the
    * problem, if there is one take that
@@ -172,6 +171,7 @@ void assemblerThread::stop(void) {
 bool assemblerThread::start(void) {
 
   stopPressed = false;
+  startTime = time(0);
 
 #ifdef WIN32
   DWORD threadID;
