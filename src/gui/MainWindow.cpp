@@ -963,20 +963,14 @@ const char * timeToString(float time) {
 
   static char tmp[50];
 
-  if (time < 60)
-    snprintf(tmp, 50, "%i seconds", int(time));
-  else if (time < 60*60)
-    snprintf(tmp, 50, "%i minutes", int(time/60));
-  else if (time < 60*60*24)
-    snprintf(tmp, 50, "%i hours", int(time/(60*60)));
-  else if (time < 60*60*24*365.2422)
-    snprintf(tmp, 50, "%i years", int(time/(60*60*24)));
-  else if (time < 60*60*24*365.2422*100)
-    snprintf(tmp, 50, "%i centuries", int(time/(60*60*24*365.2422)));
-  else if (time < 60*60*24*365.2422*1000)
-    snprintf(tmp, 50, "%i millenia", int(time/(60*60*24*365.2422*1000)));
-  else
-    snprintf(tmp, 50, "eons");
+  if (time < 60)                               snprintf(tmp, 50, "%i seconds",   int(time/(1                     )));
+  else if (time < 60*60)                       snprintf(tmp, 50, "%i minutes",   int(time/(60                    )));
+  else if (time < 60*60*24)                    snprintf(tmp, 50, "%i hours",     int(time/(60*60                 )));
+  else if (time < 60*60*24*30)                 snprintf(tmp, 50, "%i days",      int(time/(60*60*24              )));
+  else if (time < 60*60*24*365.2422)           snprintf(tmp, 50, "%i months",    int(time/(60*60*24*30           )));
+  else if (time < 60*60*24*365.2422*1000)      snprintf(tmp, 50, "%i years",     int(time/(60*60*24*365.2422     )));
+  else if (time < 60*60*24*365.2422*1000*1000) snprintf(tmp, 50, "%i millenia",  int(time/(60*60*24*365.2422*1000)));
+  else                                         snprintf(tmp, 50, "ages");
 
   return tmp;
 }
