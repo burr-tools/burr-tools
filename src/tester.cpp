@@ -271,7 +271,12 @@ void grow(int argv, char* args[]) {
     return;
   }
 
-  puzzle_c p/*( FIXME&str)*/;
+  xml::tree_parser parser(args[1]);
+  puzzle_c p(parser.get_document().get_root_node());
+
+  cout << " The puzzle:\n\n";
+
+  print(&p);
 
   burrGrower_c grow(&p, 10);
 
@@ -609,12 +614,12 @@ int main(int argv, char* args[]) {
 
 //  multTranformationsMatrix();
 
-//  grow(argv, args);
+  grow(argv, args);
 //  solve(argv, agrs);
 //  findsymmetries();
   //  savetoXML(argv, args);
 
-  testNewRots();
+//  testNewRots();
 
 //  convert(argv, args);
 }

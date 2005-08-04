@@ -20,18 +20,20 @@
 #include "burrgrower.h"
 
 #include "disassembler_3.h"
+#include "disassembler_4.h"
 #include "assm_0_frontend_0.h"
 
 #include <fstream>
 
 using namespace std;
 
-puzzleSol_c::puzzleSol_c(puzzle_c * p) {
+puzzleSol_c::puzzleSol_c(puzzle_c * p, unsigned int prob) {
 
   puzzle = p;
+  this->prob = prob;
 
   assm_0_frontend_0_c *assm = new assm_0_frontend_0_c();
-  if (assm->createMatrix(p, 0) == assm_0_frontend_0_c::ERR_NONE) {
+  if (assm->createMatrix(p, prob) == assm_0_frontend_0_c::ERR_NONE) {
 
     solutions = 0;
 
@@ -49,6 +51,7 @@ puzzleSol_c::puzzleSol_c(puzzle_c * p) {
 puzzleSol_c::puzzleSol_c(const puzzleSol_c * p) {
 
   puzzle = new puzzle_c(p->puzzle);
+  prob = p->prob;
   maxLevel = p->maxLevel;
   minLevel = p->minLevel;
   maxMoves = p->maxMoves;
@@ -59,29 +62,28 @@ puzzleSol_c::puzzleSol_c(const puzzleSol_c * p) {
 
 bool puzzleSol_c::assembly(assembly_c* a) {
 
-/*
-  disassembler_2_c d(assm, puzzle->getPieces());
-  disassembly_c * da = d.disassemble();
+
+  disassembler_4_c d(a, puzzle, prob);
+  separation_c * da = d.disassemble();
 
   if (da) {
 
     solutions++;
     if ((solutions % 1000) == 0)
-      printf("%i\n", solutions);
+      printf("%li\n", solutions);
 
-    int l = da->firstlevel();
+    unsigned int l = da->getMoves();
   
     if (l > maxLevel) maxLevel = l;
     if (l < minLevel) minLevel = l;
   
-    l = da->sumlevel();
+    l = da->sumMoves();
   
     if (l > maxMoves) maxMoves = l;
     if (l < minMoves) minMoves = l;
   
     delete da;
-    }
-    */
+  }
   return false;
 }
 
@@ -118,14 +120,13 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
     puzzle_c *n = new puzzle_c(base);
 
     // copy the pieces, here we make all variable shapes empty
-/*    for (int p = 0; p < base->getShapeNumber(); p++) {
+    for (unsigned int p = 0; p < n->probShapeNumber(problem); p++) {
+      for (unsigned int ii = 0; ii < n->probGetShapeShape(problem, p)->getXYZ(); ii++)
+        if (n->probGetShapeShape(problem, p)->getState(ii) == pieceVoxel_c::VX_VARIABLE)
+          n->probGetShapeShape(problem, p)->setState(ii, pieceVoxel_c::VX_EMPTY);
+    }
 
-      for (int ii = 0; ii < n->___getShape(p)->getXYZ(); ii++)
-        if (n->___getShape(p)->getState(ii) == pieceVoxel_c::VX_VARIABLE)
-          n->___getShape(p)->setState(ii, pieceVoxel_c::VX_EMPTY);
-    }*/
-
-    puzzleSol_c * ps = new puzzleSol_c(n);
+    puzzleSol_c * ps = new puzzleSol_c(n, problem);
 
     // if the base already has no solution we don't need to search any longer
     if (ps->nosol()) {
@@ -143,17 +144,17 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
 
       printf("%i / %i puzzlews grown\n", p, currentSet.size());
 
-/*      for (int i = 0; i < base->getShapeNumber(); i++)
-        for (int z = 0; z < base->___getShape(i)->getXYZ(); z++) {
-          if ((base->___getShape(i)->getState(z) == pieceVoxel_c::VX_VARIABLE) &&
-              (currentSet[p]->getPuzzle()->___getShape(i)->getState(z) == pieceVoxel_c::VX_EMPTY) //&&
-               // FIXME currentSet[p]->getPuzzle()->___getShape(i)->neighbour(z, VX_FILLED)
+      for (unsigned int i = 0; i < base->probShapeNumber(problem); i++)
+        for (unsigned int z = 0; z < base->probGetShapeShape(problem, i)->getXYZ(); z++) {
+          if ((base->probGetShapeShape(problem, i)->getState(z) == pieceVoxel_c::VX_VARIABLE) &&
+              (currentSet[p]->getPuzzle()->probGetShapeShape(problem, i)->getState(z) == pieceVoxel_c::VX_EMPTY) &&
+               currentSet[p]->getPuzzle()->probGetShapeShape(problem, i)->neighbour(z, pieceVoxel_c::VX_FILLED)
              ) {
 
             puzzle_c *n = new puzzle_c(currentSet[p]->getPuzzle());
-            n->___getShape(i)->setState(z, pieceVoxel_c::VX_FILLED);
+            n->probGetShapeShape(problem, i)->setState(z, pieceVoxel_c::VX_FILLED);
 
-            puzzleSol_c * ps = new puzzleSol_c(n);
+            puzzleSol_c * ps = new puzzleSol_c(n, problem);
 
             if (ps->nosol()) {
               delete ps;
@@ -162,7 +163,7 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
               newSet.push_back(ps);
             }
           }
-        }  */
+        }
     }
 
     // merge current_puzzles into new_puzzles;
@@ -216,20 +217,20 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
     printf("simplifying\n");
 
     int pos = (rand() % newSet.size());
-//    int piece = (rand() % base->getShapeNumber());
+    int piece = (rand() % base->probShapeNumber(problem));
 
     puzzle_c * ps = new puzzle_c(newSet[pos]->getPuzzle());
-/*
-    for (int ii = 0; ii < base->___getShape(piece)->getXYZ(); ii++)
-      if (base->___getShape(piece)->getState(ii) == pieceVoxel_c::VX_VARIABLE)
-        ps->___getShape(piece)->setState(ii, pieceVoxel_c::VX_EMPTY);
 
-    newSet.push_back(new puzzleSol_c(ps));
+    for (unsigned int ii = 0; ii < base->probGetShapeShape(problem, piece)->getXYZ(); ii++)
+      if (base->probGetShapeShape(problem, piece)->getState(ii) == pieceVoxel_c::VX_VARIABLE)
+        ps->probGetShapeShape(problem, piece)->setState(ii, pieceVoxel_c::VX_EMPTY);
+
+    newSet.push_back(new puzzleSol_c(ps, problem));
 
     currentSet.clear();
-    for (int i = 0; i < newSet.size(); i++)
+    for (unsigned int i = 0; i < newSet.size(); i++)
       currentSet.push_back(newSet[i]);
-*/
+
     newSet.clear();
   }
 }
@@ -311,25 +312,25 @@ void burrGrower_c::addToLists(puzzleSol_c * pz) {
   if (print) {
 
     char fname[100];
-    snprintf(fname, 100, "grow/pz%06i_l%i_m%i.puzzle", num++, pz->numLevel(), pz->numMoves());
+    snprintf(fname, 100, "grow/pz%06i_l%li_m%li.xmpuzzle", num++, pz->numLevel(), pz->numMoves());
     ofstream file(fname);
-// FIXME    pz->getPuzzle()->save(&file);
+    file << pz->getPuzzle()->save();
 
     printf("unique: ");
     if (unique.size() != 0)
-      printf("%i ", unique[0]->numLevel());
+      printf("%li ", unique[0]->numLevel());
     else
       printf("-- ");
   
     printf("level: ");
     if (highLevel.size() != 0)
-      printf("%i(%i) ", highLevel[0]->numLevel(), highLevel[0]->numSolutions());
+      printf("%li(%li) ", highLevel[0]->numLevel(), highLevel[0]->numSolutions());
     else
       printf("-- ");
   
     printf("moves: ");
     if (highMoves.size() != 0)
-      printf("%i(%i) ", highMoves[0]->numMoves(), highMoves[0]->numSolutions());
+      printf("%li(%li) ", highMoves[0]->numMoves(), highMoves[0]->numSolutions());
     else
       printf("-- ");
   
