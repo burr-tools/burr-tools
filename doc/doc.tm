@@ -160,6 +160,10 @@
   All this work has taken over two years to reach the current state, I hope
   it was worth it and you have a lot of fun with the program.
 
+  Finally: I am sorry for all the typos, gramatical errors and poor
+  expression that this document contains. This has never been my strength not
+  even in my mother-tongue.
+
   <section|<name|PuzzleSolver3D> Users>
 
   People that know <name|PuzzleSover3D> written by André van Kamen should be
