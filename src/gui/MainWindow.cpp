@@ -1090,7 +1090,7 @@ void UserInterface::updateInterface(void) {
     // the assembler is not running or not busy with out problem
     if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
         (shapeAssignmentSelector->getSelection() < puzzle->shapeNumber()) &&
-        (!assmThread || (assmThread->getProblem() == problemSelector->getSelection()))) {
+        (!assmThread || (assmThread->getProblem() != problemSelector->getSelection()))) {
       BtnSetResult->activate();
       BtnAddShape->activate();
   
