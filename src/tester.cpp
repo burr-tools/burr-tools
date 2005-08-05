@@ -361,6 +361,29 @@ void multTranformationsMatrix(void) {
   }
 }
 
+
+void inverseTranformationsMatrix(void) {
+
+  pieceVoxel_c v(3, 3, 3);
+  v.setState(1, 1, 1, pieceVoxel_c::VX_FILLED); v.setState(0, 1, 1, pieceVoxel_c::VX_FILLED);
+  v.setState(0, 0, 1, pieceVoxel_c::VX_FILLED); v.setState(0, 0, 0, pieceVoxel_c::VX_FILLED);
+
+  for (int tr = 0; tr < 48; tr++) {
+
+    pieceVoxel_c w(v, tr);
+
+    for (int t = 0; t < 48; t++) {
+
+      pieceVoxel_c x(w, t);
+
+      if (v == x) {
+        printf("%2i, ", t);
+        break;
+      }
+    }
+  }
+}
+
 void comparison(voxel_c * a, voxel_c * b) {
 
   printf("sx: %i %i \n", a->getX(), b->getX());
@@ -613,8 +636,9 @@ void testNewRots(void) {
 int main(int argv, char* args[]) {
 
 //  multTranformationsMatrix();
+  inverseTranformationsMatrix();
 
-  grow(argv, args);
+//  grow(argv, args);
 //  solve(argv, agrs);
 //  findsymmetries();
   //  savetoXML(argv, args);
