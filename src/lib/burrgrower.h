@@ -81,7 +81,7 @@ class burrGrower_c {
 
 public:
 
-  burrGrower_c(const puzzle_c *pz, unsigned int mss) : base(pz), problem(0), maxSetSize(mss) {}
+  burrGrower_c(const puzzle_c *pz, unsigned int mss, unsigned int prob) : base(pz), problem(prob), maxSetSize(mss) {}
 
   void grow(std::vector<puzzleSol_c*> currentSet);
 };

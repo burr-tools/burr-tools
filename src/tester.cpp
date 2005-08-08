@@ -278,7 +278,7 @@ void grow(int argv, char* args[]) {
 
   print(&p);
 
-  burrGrower_c grow(&p, 10);
+  burrGrower_c grow(&p, 10, atoi(args[2]));
 
   std::vector<puzzleSol_c*> v;
 
@@ -636,12 +636,12 @@ void testNewRots(void) {
 int main(int argv, char* args[]) {
 
 //  multTranformationsMatrix();
-  inverseTranformationsMatrix();
+//  inverseTranformationsMatrix();
 
-//  grow(argv, args);
+  grow(argv, args);
 //  solve(argv, agrs);
 //  findsymmetries();
-  //  savetoXML(argv, args);
+//  savetoXML(argv, args);
 
 //  testNewRots();
 
