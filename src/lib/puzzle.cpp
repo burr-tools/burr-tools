@@ -285,10 +285,11 @@ public:
 
   public:
 
-    shape_c(unsigned short id, unsigned short cnt) : shapeId(id), count(cnt) {}
+    shape_c(unsigned short id, unsigned short cnt, unsigned short grp) : shapeId(id), count(cnt), group(grp) {}
 
     unsigned short shapeId;
     unsigned short count;
+    unsigned short group;
   };
 
   class shape_id_removed {
@@ -419,6 +420,11 @@ xml::node problem_c::save(void) const {
 
     snprintf(tmp, 50, "%i", shapes[i].count);
     it2->get_attributes().insert("count", tmp);
+
+    if (shapes[i].group) {
+      snprintf(tmp, 50, "%i", shapes[i].group);
+      it2->get_attributes().insert("group", tmp);
+    }
   }
 
   it = nd.insert(xml::node("result"));
@@ -459,7 +465,7 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
     for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
       if ((i->get_type() == xml::node::type_element) &&
           (strcmp(i->get_name(), "shape") == 0)) {
-        unsigned short id, cnt;
+        unsigned short id, cnt, grp;
 
         if (i->get_attributes().find("id") == i->get_attributes().end())
           throw load_error("a shape node must have an 'idt' attribute", *i);
@@ -470,12 +476,17 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
         id = atoi(i->get_attributes().find("id")->get_value());
         cnt = atoi(i->get_attributes().find("count")->get_value());
 
+        if (i->get_attributes().find("group") != i->get_attributes().end())
+          grp = atoi(i->get_attributes().find("group")->get_value());
+        else
+          grp = 0;
+
         pieces += cnt;
 
         if (id >= shape)
           throw load_error("the shape ids must be for valid shapes", *i);
 
-        shapes.push_back(shape_c(id, cnt));
+        shapes.push_back(shape_c(id, cnt, grp));
       }
 
   it = node.find("result");
@@ -904,7 +915,7 @@ pieceVoxel_c * puzzle_c::probGetResultShape(unsigned int prob) {
 void puzzle_c::probAddShape(unsigned int prob, unsigned int shape, unsigned int count) {
   assert(prob < problems.size());
 
-  problems[prob]->shapes.push_back(problem_c::shape_c(shape, count));
+  problems[prob]->shapes.push_back(problem_c::shape_c(shape, count, 0));
 }
 
 /* change the instance count for one shape of the problem */
@@ -1155,5 +1166,32 @@ assembler_c * puzzle_c::probGetAssembler(unsigned int prob) {
 const assembler_c * puzzle_c::probGetAssembler(unsigned int prob) const {
   assert(prob < problems.size());
   return problems[prob]->assm;
+}
+
+void puzzle_c::probSetShapeGroup(unsigned int prob, unsigned int shapeID, unsigned short group) {
+  assert(prob < problems.size());
+  assert(shapeID < problems[prob]->shapes.size());
+
+  problems[prob]->shapes[shapeID].group = group;
+}
+
+unsigned short puzzle_c::probGetShapeGroup(unsigned int prob, unsigned int shapeID) const {
+  assert(prob < problems.size());
+  assert(shapeID < problems[prob]->shapes.size());
+
+  return problems[prob]->shapes[shapeID].group;
+}
+
+unsigned short puzzle_c::probGetPieceGroup(unsigned int prob, unsigned int shapeID) const {
+  assert(prob < problems.size());
+
+  int i = 0;
+  while (shapeID >= problems[prob]->shapes[i].count) {
+    shapeID -= problems[prob]->shapes[i].count;
+    i++;
+    assert(i < problems[prob]->shapes.size());
+  }
+
+  return problems[prob]->shapes[i].group;
 }
 

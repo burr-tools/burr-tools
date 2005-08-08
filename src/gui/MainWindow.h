@@ -86,7 +86,7 @@ class UserInterface {
   FlatButton *BtnNewColor, *BtnDelColor, *BtnChnColor;
   FlatButton *BtnNewProb, *BtnDelProb, *BtnCpyProb, *BtnRenProb;
   FlatButton *BtnColSrtPc, *BtnColSrtRes, *BtnColAdd, *BtnColRem;
-  FlatButton *BtnSetResult, *BtnAddShape, *BtnRemShape;
+  FlatButton *BtnSetResult, *BtnAddShape, *BtnRemShape, *BtnAddGroup, *BtnSubGroup;
 
   Fl_Progress *SolvingProgress;
   Fl_Value_Output *OutputAssemblies;
@@ -177,6 +177,9 @@ public:
   void cb_Quit(void);
   void cb_About(void);
   void cb_SolProbSel(long reason);
+
+  void cb_IncShapeGroup(void);
+  void cb_DecShapeGroup(void);
 
   void StatPieceInfo(unsigned int pc);
   void StatProblemInfo(unsigned int pr);

@@ -320,10 +320,6 @@ separation_c::separation_c(const xml::node & node, unsigned int pieceCnt) {
         throw load_error("subnodes most be either left or removed", node);
     }
   }
-
-  if (((removedPc > 1) && (!removed)) ||
-      ((leftPc > 1) && (!left)))
-    throw load_error("there are more than 1 pieces in a subtree but no tree available", node);
 }
 
 separation_c::separation_c(separation_c * r, separation_c * l, unsigned int pn, voxel_type * pcs) : piecenumber(pn), removed(r), left(l) {

@@ -248,6 +248,21 @@ public:
   bool probUsedTimeKnown(unsigned int prob) const;
   unsigned long probGetUsedTime(unsigned int prob) const;
 
+  /* these functions can be used to define groups that pieces belong to
+   * this information is used when disassembling the puzzle, if all pieces
+   * left in one clump belong to the same group the disassembler doesn't try
+   * to continue disassembling
+   * group 0 is different, it means that the piece doesn't belong to any
+   * group and must be single
+   * be careful with multiple pieces. They must belong to one group because
+   * it may be that in one constallation they are disassembable and in another
+   * one not. So it is not possible to have single pieces from a multiple times
+   * used piece in different groups
+   */
+  void probSetShapeGroup(unsigned int prob, unsigned int shapeID, unsigned short group);
+  unsigned short probGetShapeGroup(unsigned int prob, unsigned int shapeID) const;
+  unsigned short probGetPieceGroup(unsigned int prob, unsigned int shapeID) const;
+
   /**
    * makes each shape appear only once and increase the piece counter for that.
    * this is necessary for the assembler, as it will find multiple

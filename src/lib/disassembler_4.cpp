@@ -843,6 +843,25 @@ static void create_new_params(node_c * st, node_c ** n, voxel_type ** pn, int pi
   assert(num == part);
 }
 
+unsigned short disassembler_4_c::subProbGroup(node_c * st, voxel_type * pn, bool cond, int piecenumber) {
+
+  unsigned short group = 0;
+
+  for (int i = 0; i < piecenumber; i++)
+    if (st->is_piece_removed(i) == cond) {
+      if (puzzle->probGetPieceGroup(problem, pn[i]) == 0)
+        return 0;
+      else
+        if (group == 0)
+          group = puzzle->probGetPieceGroup(problem, pn[i]);
+        else
+          if (group != puzzle->probGetPieceGroup(problem, pn[i]))
+            return 0;
+    }
+
+  return group;
+}
+
 /* this is a bredth first search function that analyzes the movement of
  * an assembled problem. when the problem falls apart into 2 pieces the function
  * calls itself recursively. It returns null if the problem can not be taken apart
@@ -926,7 +945,7 @@ separation_c * disassembler_4_c::disassemble_rec(int piecenumber, voxel_type * p
       separation_c * left, *remove;
 
       /* check each subproblem, if it's a problem */
-      if (part1 > 1) {
+      if ((part1 > 1) && (subProbGroup(st, pieces, false, piecenumber) == 0)) {
 
         node_c *n;
         voxel_type * pn;
@@ -936,7 +955,7 @@ separation_c * disassembler_4_c::disassemble_rec(int piecenumber, voxel_type * p
       } else
         remove = 0;
 
-      if (part2 > 1) {
+      if ((part2 > 1) && (subProbGroup(st, pieces, true, piecenumber) == 0)) {
 
         node_c *n;
         voxel_type * pn;
@@ -949,7 +968,8 @@ separation_c * disassembler_4_c::disassemble_rec(int piecenumber, voxel_type * p
       /* if poth subproblems are either trivial or solvable, return the
        * result, otherwise return 0
        */
-      if ((remove || (part1 == 1)) && (left || (part2 == 1))) {
+      if ((remove || (part1 == 1) || subProbGroup(st, pieces, false, piecenumber)) &&
+          (left || (part2 == 1) || subProbGroup(st, pieces, true, piecenumber))) {
 
         /* both subproblems are solvable -> construct tree */
         erg = new separation_c(left, remove, piecenumber, pieces);
@@ -1003,7 +1023,7 @@ separation_c * disassembler_4_c::disassemble_rec(int piecenumber, voxel_type * p
   return 0;
 }
 
-disassembler_4_c::disassembler_4_c(const assembly_c * assembly, const puzzle_c * puz, unsigned int prob) : piecenumber(assembly->placementCount()) {
+disassembler_4_c::disassembler_4_c(const assembly_c * assembly, const puzzle_c * puz, unsigned int prob) : piecenumber(assembly->placementCount()), puzzle(puz), problem(prob) {
 
   /* allocate the necessary arrays */
   movement = new int[piecenumber];

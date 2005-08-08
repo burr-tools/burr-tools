@@ -76,6 +76,8 @@ private:
   node_c * find(node_c * searchnode);
   bool checkmovement(void);
 
+  unsigned short disassembler_4_c::subProbGroup(node_c * st, voxel_type * pn, bool cond, int piecenumber);
+
   /* the real disassembly routine. It separates the puzzle into 2 parts
    * and get's called recursively with each subpart to disassemble
    *
@@ -85,6 +87,9 @@ private:
    * subpuzzle puzzle, start defines the starting position of these pieces
    */
   separation_c * disassemble_rec(int piecenumber, voxel_type * pieces, node_c * start);
+
+  const puzzle_c * puzzle;
+  unsigned int problem;
 
 public:
 

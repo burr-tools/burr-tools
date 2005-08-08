@@ -436,6 +436,47 @@ void UserInterface::cb_RemoveShapeFromProblem(void) {
   StatProblemInfo(problemSelector->getSelection());
 }
 
+static void cb_IncShapeGroup_stub(Fl_Widget* o, void* v) { ui->cb_IncShapeGroup(); }
+static void cb_DecShapeGroup_stub(Fl_Widget* o, void* v) { ui->cb_DecShapeGroup(); }
+
+void UserInterface::cb_IncShapeGroup(void) {
+  unsigned int prob = problemSelector->getSelection();
+  changeProblem(prob);
+
+  // first see, find the shape, and only if there is one, we can change the group count
+  for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
+    if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
+      puzzle->probSetShapeGroup(prob, i, puzzle->probGetShapeGroup(prob, i) + 1);
+
+      changed = true;
+      PiecesCountList->redraw();
+      PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+    }
+
+  activateProblem(problemSelector->getSelection());
+  StatProblemInfo(problemSelector->getSelection());
+}
+
+void UserInterface::cb_DecShapeGroup(void) {
+  unsigned int prob = problemSelector->getSelection();
+  changeProblem(prob);
+
+  // first see, find the shape, and only if there is one, we can change the group count
+  for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
+    if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
+      if (puzzle->probGetShapeGroup(prob, i) > 0) {
+        puzzle->probSetShapeGroup(prob, i, puzzle->probGetShapeGroup(prob, i) - 1);
+
+        changed = true;
+        PiecesCountList->redraw();
+        PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+      }
+    }
+
+  activateProblem(problemSelector->getSelection());
+  StatProblemInfo(problemSelector->getSelection());
+}
+
 static void cb_AllowColor_stub(Fl_Widget* o, void* v) { ui->cb_AllowColor(); }
 void UserInterface::cb_AllowColor(void) {
 
@@ -1102,15 +1143,22 @@ void UserInterface::updateInterface(void) {
           break;
         }
   
-      if (found)
+      if (found) {
         BtnRemShape->activate();
-      else
+        BtnAddGroup->activate();
+        BtnSubGroup->activate();
+      } else {
         BtnRemShape->deactivate();
+        BtnAddGroup->deactivate();
+        BtnSubGroup->deactivate();
+      }
   
     } else {
       BtnSetResult->deactivate();
       BtnAddShape->deactivate();
       BtnRemShape->deactivate();
+      BtnAddGroup->deactivate();
+      BtnSubGroup->deactivate();
     }
 
   } else {
@@ -1687,7 +1735,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     Fl_Group* group = new Fl_Group(x, y, w, lh);
     group->box(FL_FLAT_BOX);
 
-    int hw = (w - SZ_GAP)/2;
+    int hw = (w - 3*SZ_GAP)/4;
 
     {
       Fl_Group * o = new Fl_Group(x,           y, hw+SZ_GAP, SZ_BUTTON_Y);
@@ -1696,8 +1744,20 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
       o->end();
     }
     {
-      Fl_Group * o = new Fl_Group(x+hw+SZ_GAP, y, w-hw, SZ_BUTTON_Y);
-      BtnRemShape = new FlatButton(x+hw+SZ_GAP, y, w-hw-SZ_GAP, SZ_BUTTON_Y, "-1", "Remove one of the selected shapes", cb_RemoveShapeFromProblem_stub);
+      Fl_Group * o = new Fl_Group(x+hw+SZ_GAP, y, hw+SZ_GAP, SZ_BUTTON_Y);
+      BtnRemShape = new FlatButton(x+hw+SZ_GAP, y, hw, SZ_BUTTON_Y, "-1", "Remove one of the selected shapes", cb_RemoveShapeFromProblem_stub);
+      o->resizable(BtnRemShape);
+      o->end();
+    }
+    {
+      Fl_Group * o = new Fl_Group(x+2*(hw+SZ_GAP), y, hw+SZ_GAP, SZ_BUTTON_Y);
+      BtnAddGroup = new FlatButton(x+2*(hw+SZ_GAP), y, hw, SZ_BUTTON_Y, "G+1", "Increase the group number of this piece by one", cb_IncShapeGroup_stub);
+      o->resizable(BtnRemShape);
+      o->end();
+    }
+    {
+      Fl_Group * o = new Fl_Group(x+3*(hw+SZ_GAP), y, w-3*hw-2*SZ_GAP, SZ_BUTTON_Y);
+      BtnSubGroup = new FlatButton(x+3*(hw+SZ_GAP), y, w-3*hw-3*SZ_GAP, SZ_BUTTON_Y, "G-1", "Decrease the group number of this piece by one", cb_DecShapeGroup_stub);
       o->resizable(BtnRemShape);
       o->end();
     }
