@@ -427,9 +427,11 @@ xml::node problem_c::save(void) const {
     }
   }
 
-  it = nd.insert(xml::node("result"));
-  snprintf(tmp, 50, "%i", result);
-  it->get_attributes().insert("id", tmp);
+  if (result < shapes.size()) {
+    it = nd.insert(xml::node("result"));
+    snprintf(tmp, 50, "%i", result);
+    it->get_attributes().insert("id", tmp);
+  }
 
   nd.insert(colorConstraints.save());
 
@@ -495,9 +497,6 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
       throw load_error("the result node must have an 'id' attribute", *it);
 
     result = atoi(it->get_attributes().find("id")->get_value());
-
-    if (result >= shape)
-      throw load_error("the result id must be for a valid shape", *it);
   }
 
   it = node.find("solutions");
