@@ -25,6 +25,8 @@
 #include "assembly.h"
 #include "puzzle.h"
 
+class node4_c;
+
 /* idea, have a chache, where the piece pairs with their relative positions
  * are saved and the possible movements are stored
  */
@@ -66,17 +68,17 @@ private:
   movementCache * cache;
 
   /* create matrix */
-  void prepare(int pn, voxel_type * pieces, node_c * searchnode);
-  void init_find(node_c * nd, int piecenumber, voxel_type * pieces);
+  void prepare(int pn, voxel_type * pieces, node4_c * searchnode);
+  void init_find(node4_c * nd, int piecenumber, voxel_type * pieces);
 
   /*
    * find all possible movements of starting from the state given to init_find
    * the functions returns the next possible state or 0 if no other state was found
    */
-  node_c * find(node_c * searchnode);
+  node4_c * find(node4_c * searchnode);
   bool checkmovement(void);
 
-  unsigned short disassembler_4_c::subProbGroup(node_c * st, voxel_type * pn, bool cond, int piecenumber);
+  unsigned short disassembler_4_c::subProbGroup(node4_c * st, voxel_type * pn, bool cond, int piecenumber);
 
   /* the real disassembly routine. It separates the puzzle into 2 parts
    * and get's called recursively with each subpart to disassemble
@@ -86,7 +88,7 @@ private:
    * pieces contains the names of all the pieces that are still inside the
    * subpuzzle puzzle, start defines the starting position of these pieces
    */
-  separation_c * disassemble_rec(int piecenumber, voxel_type * pieces, node_c * start);
+  separation_c * disassemble_rec(int piecenumber, voxel_type * pieces, node4_c * start);
 
   const puzzle_c * puzzle;
   unsigned int problem;

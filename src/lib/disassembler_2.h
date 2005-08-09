@@ -23,6 +23,8 @@
 #include "voxel.h"
 #include "disassembler.h"
 
+class node2_c;
+
 /* this class implements a burr disassembler. the interface is simple:
  * 1) construct the klass with the voxel space of the assembled puzzle,
  *    empty voxels should be 0xff, bieces should be enumerated continuously
@@ -72,15 +74,15 @@ private:
   void calcbounds(void);
 
   /* create matrix */
-  void prepare(int pn, voxel_type * pieces, node_c * searchnode);
+  void prepare(int pn, voxel_type * pieces, node2_c * searchnode);
   void prepare_rec(int pn, int d, int a, int b);
-  void init_find(node_c * nd, int piecenumber, voxel_type * pieces);
+  void init_find(node2_c * nd, int piecenumber, voxel_type * pieces);
 
   /*
    * find all possible movements of starting from the state given to init_find
    * the functions returns the next possible state or 0 if no other state was found
    */
-  node_c * find(node_c * searchnode);
+  node2_c * find(node2_c * searchnode);
   bool checkmovement(void);
 
   /* the real disassembly routine. It separates the puzzle into 2 parts
@@ -91,7 +93,7 @@ private:
    * pieces contains the names of all the pieces that are still inside the
    * subpuzzle puzzle, start defines the starting position of these pieces
    */
-  separation_c * disassemble_rec(int piecenumber, voxel_type * pieces, node_c * start);
+  separation_c * disassemble_rec(int piecenumber, voxel_type * pieces, node2_c * start);
 
 public:
 
