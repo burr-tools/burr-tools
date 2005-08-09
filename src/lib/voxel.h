@@ -409,6 +409,10 @@ public:
 
   bool isEmpty(unsigned int x, unsigned int y, unsigned int z) const { return getState(x, y, z) == VX_EMPTY; }
   bool isEmpty2(int x, int y, int z) const { return getState2(x, y, z) == VX_EMPTY; }
+  bool isFilled(unsigned int x, unsigned int y, unsigned int z) const { return getState(x, y, z) == VX_FILLED; }
+  bool isFilled2(int x, int y, int z) const { return getState2(x, y, z) == VX_FILLED; }
+  bool isVariable(unsigned int x, unsigned int y, unsigned int z) const { return getState(x, y, z) == VX_VARIABLE; }
+  bool isVariable2(int x, int y, int z) const { return getState2(x, y, z) == VX_VARIABLE; }
 
   void setState(unsigned int x, unsigned int y, unsigned int z, int state) { set(x, y, z, (get(x, y, z) & ~0x3) | state); }
   void setColor(unsigned int x, unsigned int y, unsigned int z, unsigned int color) { assert(color < 64); set(x, y, z, (get(x, y, z) & 0x3) | color << 2); }
