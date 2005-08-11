@@ -33,6 +33,8 @@
 
 #include "../config.h"
 
+#include "../lib/ps3dloader.h"
+
 static UserInterface * ui;
 
 static const char * FileSelection(const char * title) {
@@ -40,6 +42,14 @@ static const char * FileSelection(const char * title) {
     return flu_file_chooser(title, "*.xmpuzzle", "");
 #else    
     return fl_file_chooser(title, "*.xmpuzzle", "");
+#endif
+}
+
+static const char * FileSelection2(const char * title) {
+#ifdef HAVE_FLU
+    return flu_file_chooser(title, "*.puz", "");
+#else    
+    return fl_file_chooser(title, "*.puz", "");
 #endif
 }
 
@@ -655,6 +665,44 @@ void UserInterface::cb_Load(void) {
   }
 }
 
+static void cb_Load_Ps3d_stub(Fl_Widget* o, void* v) { ui->cb_Load_Ps3d(); }
+void UserInterface::cb_Load_Ps3d(void) {
+
+  if (threadStopped()) {
+
+    if (changed)
+      if (fl_ask("Puzzle changed are you shure?") == 0)
+        return;
+
+    const char * f = FileSelection2("Load Puzzle");
+
+    std::ifstream in(f);
+
+    puzzle_c * newPuzzle = loadPuzzlerSolver3D(&in);
+    if (!newPuzzle) {
+      fl_alert("Could not load puzzle, sorry!");
+      return;
+    }
+
+    if (fname) delete [] fname;
+    fname = new char[strlen(f)+1];
+    strcpy(fname, f);
+
+    char nm[300];
+    snprintf(nm, 299, "BurrTools - %s", fname);
+    mainWindow->label(nm);
+
+    ReplacePuzzle(newPuzzle);
+    updateInterface();
+
+    TaskSelectionTab->value(TabPieces);
+    activateShape(PcSel->getSelection());
+    StatPieceInfo(PcSel->getSelection());
+
+    changed = false;
+  }
+}
+
 static void cb_Save_stub(Fl_Widget* o, void* v) { ui->cb_Save(); }
 void UserInterface::cb_Save(void) {
 
@@ -897,6 +945,7 @@ void UserInterface::ReplacePuzzle(puzzle_c * NewPuzzle) {
 Fl_Menu_Item UserInterface::menu_MainMenu[] = {
   {"New",     0, cb_New_stub, 0, 0, 0, 0, 14, 56},
   {"Load",    0, cb_Load_stub, 0, 0, 0, 0, 14, 56},
+  {"Import",  0, cb_Load_Ps3d_stub, 0, 0, 0, 0, 14, 56},
   {"Save",    0, cb_Save_stub, 0, 0, 0, 0, 14, 56},
   {"Save as", 0, cb_SaveAs_stub, 0, 0, 0, 0, 14, 56},
   {"About",   0, cb_About_stub, 0, FL_MENU_DIVIDER, 3, 0, 14, 56},

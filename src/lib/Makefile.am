@@ -21,5 +21,6 @@ libburr_a_SOURCES=disassembler.h assembler.h \
                   pieceGenerator.h pieceGenerator.cpp \
                   symmetries.h symmetries.cpp \
                   AssemblyCallbacks.cpp AssemblyCallbacks.h \
-                  print.h print.cpp
+                  print.h print.cpp \
+                  ps3dloader.h ps3dloader.cpp
 

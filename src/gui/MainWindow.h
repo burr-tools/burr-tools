@@ -172,6 +172,7 @@ public:
 
   void cb_New(void);
   void cb_Load(void);
+  void cb_Load_Ps3d(void);
   void cb_Save(void);
   void cb_SaveAs(void);
   void cb_Quit(void);
