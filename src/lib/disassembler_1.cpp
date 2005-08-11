@@ -830,9 +830,9 @@ void disassembler_1_c::calcbounds(void) {
   for (int i = 0; i < piecenumber+1; i++)
     bx1[i] = -1;
 
-  for (int x = 0; x < assm->getX(); x++)
-    for (int y = 0; y < assm->getY(); y++)
-      for (int z = 0; z < assm->getZ(); z++) {
+  for (int x = 0; x < (int)assm->getX(); x++)
+    for (int y = 0; y < (int)assm->getY(); y++)
+      for (int z = 0; z < (int)assm->getZ(); z++) {
         if (!assm->isEmpty(x, y, z)) {
 
           unsigned int c = assm->pieceNumber(x, y, z);

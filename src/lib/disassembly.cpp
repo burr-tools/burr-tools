@@ -291,7 +291,7 @@ separation_c::separation_c(const xml::node & node, unsigned int pieceCnt) {
 
   unsigned int removedPc = 0, leftPc = 0;
 
-  for (int i = 0; i < pieceCnt; i++)
+  for (unsigned int i = 0; i < pieceCnt; i++)
     if (states[states.size()-1]->pieceRemoved(i))
       removedPc++;
     else

@@ -74,7 +74,7 @@ static pieceTreeNode * addPiece(pieceTreeNode *t, pieceVoxel_c *p) {
     t->piece = p;
   } else if (t->piece) {
 
-    for (int i = 0; i < t->piece->getXYZ(); i++) {
+    for (unsigned int i = 0; i < t->piece->getXYZ(); i++) {
 
       voxel_type a = t->piece->get(i);
       voxel_type b = p->get(i);
@@ -115,7 +115,7 @@ pieceGenerator_c::pieceGenerator_c (const pieceVoxel_c * p) {
 
   pieceVoxel_c * pt = new pieceVoxel_c(p);
 
-  for (int z = 0; z < pt->getXYZ(); z++)
+  for (unsigned int z = 0; z < pt->getXYZ(); z++)
     if (pt->getState(z) == pieceVoxel_c::VX_VARIABLE)
       pt->setState(z, pieceVoxel_c::VX_EMPTY);
 
@@ -137,18 +137,18 @@ pieceGenerator_c::pieceGenerator_c (const pieceVoxel_c * p) {
 
     printf("pieces added %i, pieces %i\n", adder, pieces.size());
 
-    int nextStart = pieces.size();
+    unsigned int nextStart = pieces.size();
 
     pieceTreeNode *t = 0;
 
     // go over all pieces with n added voxels
-    for (int i = start; i < nextStart; i++) {
+    for (unsigned int i = start; i < nextStart; i++) {
       if (((i-start) % 10000) == 0)
         printf("%i / %i\n", i-start, nextStart-start);
 
       // add in if there is an variable voxel, that is not yet filled
       // but has a filled voxel
-      for (int v = 0; v < p->getXYZ(); v++) {
+      for (unsigned int v = 0; v < p->getXYZ(); v++) {
         if ((p->getState(v) == pieceVoxel_c::VX_VARIABLE) &&
             (pieces[i]->getState(v) == pieceVoxel_c::VX_EMPTY) //&&
             // FIXME (pieces[i]->neighbour(v, VX_FILLED))

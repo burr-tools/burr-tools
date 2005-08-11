@@ -1184,7 +1184,7 @@ unsigned short puzzle_c::probGetShapeGroup(unsigned int prob, unsigned int shape
 unsigned short puzzle_c::probGetPieceGroup(unsigned int prob, unsigned int shapeID) const {
   assert(prob < problems.size());
 
-  int i = 0;
+  unsigned int i = 0;
   while (shapeID >= problems[prob]->shapes[i].count) {
     shapeID -= problems[prob]->shapes[i].count;
     i++;
