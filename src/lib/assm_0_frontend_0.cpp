@@ -42,7 +42,7 @@ static bool pieceFits(const pieceVoxel_c * piece, const pieceVoxel_c * result, c
 /* add a piece to the cache, but only if it is not already there. If it is added return the
  * piece pointer otherwise return null
  */
-static pieceVoxel_c * addToCache(pieceVoxel_c * cache[24], unsigned int * fill, pieceVoxel_c * piece) {
+static pieceVoxel_c * addToCache(pieceVoxel_c * cache[NUM_TRANSFORMATIONS], unsigned int * fill, pieceVoxel_c * piece) {
 
   for (unsigned int i = 0; i < *fill; i++)
     if (cache[i]->identicalInBB(piece)) {
@@ -72,14 +72,14 @@ unsigned long assm_0_frontend_0_c::countNodes(const puzzle_c * puz, unsigned int
 
     /* this array contains all the pieces found so far, this will help us
      * to not add two times the same piece to the structur */
-    pieceVoxel_c * cache[24];
+    pieceVoxel_c * cache[NUM_TRANSFORMATIONS];
     unsigned int cachefill = 0;
 
     /* go through all possible rotations of the piece */
     /* didn't find piece, so it's new shape, add to cache and add to
      * node structure */
     /* find all possible translations of piece and add them, if they fit */
-    for (unsigned int rot = 0; rot < 24; rot++)
+    for (unsigned int rot = 0; rot < NUM_TRANSFORMATIONS; rot++)
       if (pieceVoxel_c * rotation = addToCache(cache, &cachefill, new pieceVoxel_c(puz->probGetShapeShape(problemNum, pc), rot)))
         for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
           for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
@@ -208,14 +208,14 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
 
       /* this array contains all the pieces found so far, this will help us
        * to not add two times the same piece to the structur */
-      pieceVoxel_c * cache[24];
+      pieceVoxel_c * cache[NUM_TRANSFORMATIONS];
       unsigned int cachefill = 0;
   
       /* go through all possible rotations of the piece
        * if shape is new to cache, add it to the cache and also
        * add the shape to the matrix, in all positions that it fits
        */
-      for (unsigned int rot = 0; rot < 24; rot++) {
+      for (unsigned int rot = 0; rot < NUM_TRANSFORMATIONS; rot++) {
         bool skipRotation = ((pc == symBreakerPiece) && (piececount == 0) && symmetrieContainsTransformation(resultSym, rot));
         if (pieceVoxel_c * rotation = addToCache(cache, &cachefill, new pieceVoxel_c(puz->probGetShapeShape(problemNum, pc), rot))) {
           for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)

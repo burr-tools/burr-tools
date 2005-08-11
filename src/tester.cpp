@@ -83,11 +83,11 @@ public:
 
 static voxel_c * transform(const voxel_c * p, int nr) {
 
-  assert(nr < 24);
+  assert(nr < NUM_TRANSFORMATIONS);
 
-  static int rotx[24] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3 };
-  static int roty[24] = { 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0 };
-  static int rotz[24] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 3, 3, 3, 3 };
+  static int rotx[NUM_TRANSFORMATIONS] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3 };
+  static int roty[NUM_TRANSFORMATIONS] = { 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0 };
+  static int rotz[NUM_TRANSFORMATIONS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 3, 3, 3, 3 };
 
   voxel_c *erg = new voxel_c(*p);
 
@@ -103,7 +103,7 @@ unsigned int findSelfSymmetry(voxel_c * piece) {
 
   unsigned int result = 1;
 
-  for (int i = 1; i < 24; i++) {
+  for (int i = 1; i < NUM_TRANSFORMATIONS; i++) {
 
     voxel_c * rot = transform(piece, i);
 
@@ -330,10 +330,10 @@ void savetoXML(int argv, char* args[]) {
 
 void multTranformationsMatrix(void) {
 
-  for (int tr1 = 0; tr1 < 48; tr1++) {
+  for (int tr1 = 0; tr1 < NUM_TRANSFORMATIONS_MIRROR; tr1++) {
     printf("{");
 
-    for (int tr2 = 0; tr2 < 48; tr2++) {
+    for (int tr2 = 0; tr2 < NUM_TRANSFORMATIONS_MIRROR; tr2++) {
 
       pieceVoxel_c v(3, 3, 3);
       v.setState(1, 1, 1, pieceVoxel_c::VX_FILLED); v.setState(0, 1, 1, pieceVoxel_c::VX_FILLED);
@@ -344,7 +344,7 @@ void multTranformationsMatrix(void) {
       v.transform(tr1);
       v.transform(tr2);
 
-      for (int t = 0; t < 48; t++) {
+      for (int t = 0; t < NUM_TRANSFORMATIONS_MIRROR; t++) {
         pieceVoxel_c w(3, 3, 3);
         w.setState(1, 1, 1, pieceVoxel_c::VX_FILLED); w.setState(0, 1, 1, pieceVoxel_c::VX_FILLED);
         w.setState(0, 0, 1, pieceVoxel_c::VX_FILLED); w.setState(0, 0, 0, pieceVoxel_c::VX_FILLED);
@@ -368,11 +368,11 @@ void inverseTranformationsMatrix(void) {
   v.setState(1, 1, 1, pieceVoxel_c::VX_FILLED); v.setState(0, 1, 1, pieceVoxel_c::VX_FILLED);
   v.setState(0, 0, 1, pieceVoxel_c::VX_FILLED); v.setState(0, 0, 0, pieceVoxel_c::VX_FILLED);
 
-  for (int tr = 0; tr < 48; tr++) {
+  for (int tr = 0; tr < NUM_TRANSFORMATIONS_MIRROR; tr++) {
 
     pieceVoxel_c w(v, tr);
 
-    for (int t = 0; t < 48; t++) {
+    for (int t = 0; t < NUM_TRANSFORMATIONS_MIRROR; t++) {
 
       pieceVoxel_c x(w, t);
 

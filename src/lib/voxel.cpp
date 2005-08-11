@@ -731,11 +731,11 @@ bool voxel_c::neighbour(unsigned int p, voxel_type val) const {
 
 void voxel_c::transform(unsigned int nr) {
 
-  assert(nr < 48);
+  assert(nr < NUM_TRANSFORMATIONS_MIRROR);
 
-  if (nr >= 24) {
+  if (nr >= NUM_TRANSFORMATIONS) {
     mirrorX();
-    nr -= 24;
+    nr -= NUM_TRANSFORMATIONS;
   }
 
   rotatex(rotx(nr));
@@ -747,7 +747,7 @@ symmetries_t voxel_c::selfSymmetries(void) const {
 
   symmetries_t result = 1;
 
-  for (int i = 1; i < 48; i++) {
+  for (int i = 1; i < NUM_TRANSFORMATIONS_MIRROR; i++) {
 
     voxel_c * rot = new voxel_c(this, i);
 

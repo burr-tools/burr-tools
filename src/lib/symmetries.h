@@ -22,6 +22,9 @@
 #ifndef __SYMMETRIES_H__
 #define __SYMMETRIES_H__
 
+#define NUM_TRANSFORMATIONS 24
+#define NUM_TRANSFORMATIONS_MIRROR 48
+
 /* one piece can have 48 symmetries. 24 rotational and another 24 rotational with mirroring.
  * the mirroring is possible to avoid finding mirrored solutions.
  * All the symmetries are enumbered. The first 24 are the not mirrored. the other 24 are

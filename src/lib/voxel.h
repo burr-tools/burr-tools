@@ -354,7 +354,7 @@ public:
   bool connected(char type, bool inverse, voxel_type value) const;
 
   /** all possible rotations of one piece can be generated
-   * using this function by iterating nr from 0 to 24 excluding
+   * using this function by iterating nr from 0 to NUM_TRANSFORMATIONS (24 for cubes) excluding
    */
   void transform(unsigned int nr);
 

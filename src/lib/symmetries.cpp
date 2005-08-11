@@ -21,24 +21,24 @@
 
 #include <assert.h>
 
-static int _rotx[24] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3 };
-static int _roty[24] = { 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0 };
-static int _rotz[24] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 3, 3, 3, 3 };
+static int _rotx[NUM_TRANSFORMATIONS] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3 };
+static int _roty[NUM_TRANSFORMATIONS] = { 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0 };
+static int _rotz[NUM_TRANSFORMATIONS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 3, 3, 3, 3 };
 
 int rotx(unsigned int p) {
-  assert(p < 24);
+  assert(p < NUM_TRANSFORMATIONS);
   return _rotx[p];
 }
 int roty(unsigned int p) {
-  assert(p < 24);
+  assert(p < NUM_TRANSFORMATIONS);
   return _roty[p];
 }
 int rotz(unsigned int p) {
-  assert(p < 24);
+  assert(p < NUM_TRANSFORMATIONS);
   return _rotz[p];
 }
 
-unsigned int transMult[48][48] = {
+unsigned int transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATIONS_MIRROR] = {
   { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47},
   { 1,  2,  3,  0,  5,  6,  7,  4,  9, 10, 11,  8, 13, 14, 15, 12, 17, 18, 19, 16, 21, 22, 23, 20, 25, 26, 27, 24, 29, 30, 31, 28, 33, 34, 35, 32, 37, 38, 39, 36, 41, 42, 43, 40, 45, 46, 47, 44},
   { 2,  3,  0,  1,  6,  7,  4,  5, 10, 11,  8,  9, 14, 15, 12, 13, 18, 19, 16, 17, 22, 23, 20, 21, 26, 27, 24, 25, 30, 31, 28, 29, 34, 35, 32, 33, 38, 39, 36, 37, 42, 43, 40, 41, 46, 47, 44, 45},
@@ -89,31 +89,38 @@ unsigned int transMult[48][48] = {
   {47, 36, 41, 30, 44, 24, 40, 34, 45, 28, 43, 38, 46, 32, 42, 26, 27, 39, 35, 31, 33, 37, 25, 29, 19,  4, 21, 14, 18,  8, 22,  2, 17, 12, 23,  6, 16,  0, 20, 10,  9,  5,  1, 13,  3,  7, 11, 15}
 };
 
+/* this array contains information about which transformation is the inverse of which other transformation
+ */
+unsigned int transInverse[NUM_TRANSFORMATIONS_MIRROR] = {
+    0,  3,  2,  1, 12, 23,  6, 17,  8,  9, 10, 11,  4, 19, 14, 21, 20,  7, 18, 13, 16, 15, 22,  5,
+   24, 27, 26, 25, 28, 43, 38, 45, 32, 33, 34, 35, 36, 47, 30, 41, 40, 39, 46, 29, 44, 31, 42, 37
+};
+
 symmetries_t multiplySymmetries(symmetries_t s1, symmetries_t s2) {
 
   symmetries_t s = 0;
 
   int i, a1, a2;
 
-  for (int pos = 0; pos < 24; pos++)
+  for (int pos = 0; pos < NUM_TRANSFORMATIONS; pos++)
     if ((s & (1 << pos)) == 0) {
 
-      for (a1 = 1; a1 < 48; a1++)
+      for (a1 = 1; a1 < NUM_TRANSFORMATIONS_MIRROR; a1++)
         if (s1 & (((symmetries_t)1) << a1)) {
           i = transMult[pos][a1];
           if (i > pos)
             s |= (((symmetries_t)1) << i);
         }
 
-      for (a2 = 1; a2 < 48; a2++)
+      for (a2 = 1; a2 < NUM_TRANSFORMATIONS_MIRROR; a2++)
         if (s2 & (((symmetries_t)1) << a2)) {
           i = transMult[pos][a2];
           if (i > pos)
             s |= (((symmetries_t)1) << i);
         }
 
-      for (a1 = 1; a1 < 48; a1++)
-        for (a2 = 1; a2 < 48; a2++)
+      for (a1 = 1; a1 < NUM_TRANSFORMATIONS_MIRROR; a1++)
+        for (a2 = 1; a2 < NUM_TRANSFORMATIONS_MIRROR; a2++)
           if ((s1 & (((symmetries_t)1) << a1)) && (s2 & (((symmetries_t)1) << a2))) {
             i = transMult[transMult[pos][a1]][a2];
             if (i > pos)

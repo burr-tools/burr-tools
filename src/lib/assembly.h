@@ -63,7 +63,7 @@ public:
   xml::node save(void) const;
 
   void addPlacement(unsigned char tran, int x, int y, int z) {
-    assert(tran < 24);
+    assert(tran < NUM_TRANSFORMATIONS);
     placements.push_back(placement_c(tran, x, y, z));
   }
 

@@ -123,8 +123,8 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces) {
     if (*c == ' ') {
       if (state == 3) {
 
-        if ((trans != 255) && ((trans < 0) || (trans >= 24)))
-          throw load_error("transformations need to be either 255 or between 0 and 24", node);
+        if ((trans != 255) && ((trans < 0) || (trans >= NUM_TRANSFORMATIONS)))
+          throw load_error("transformations need to be either 255 or between 0 and NUM_TRANSFORMATIONS", node);
 
         placements.push_back(placement_c(trans, x, y, z));
         x = y = z = trans = state = 0;
@@ -194,8 +194,8 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces) {
   if (state != 3)
     throw load_error("not the right number of numbers in assembly", node);
 
-  if ((trans != 255) && ((trans < 0) || (trans >= 24)))
-    throw load_error("transformations need to be either 255 or between 0 and 24", node);
+  if ((trans != 255) && ((trans < 0) || (trans >= NUM_TRANSFORMATIONS)))
+    throw load_error("transformations need to be either 255 or between 0 and NUM_TRANSFORMATIONS", node);
 
   placements.push_back(placement_c(trans, x, y, z));
 
