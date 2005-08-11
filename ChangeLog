@@ -1,3 +1,69 @@
+Thu Aug 11 21:45:01 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove warnings (signed unsigned comparisons)
+
+Thu Aug 11 21:17:53 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * include an inverse transformation array and replace the number of transformations with a constant
+
+Thu Aug 11 19:26:17 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add transformation to the node. This might enable us later on to rotate pieces
+
+Thu Aug 11 18:24:23 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add an import function for puzzle solver files
+
+Tue Aug  9 18:11:08 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * move the node definition into the disassembler files so that each disassembler can have its own
+  
+  this starts to get necessary because we will need to have a different
+  node for the 4th disassembler because it may get rotations included
+  and so it needs a 4th field specifying the rotation
+
+Tue Aug  9 17:20:22 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix for voxel drawing besides variable voxels
+
+Mon Aug  8 21:48:23 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * problems may not yet have a result when they are saved
+
+Mon Aug  8 21:03:30 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * burr grower can select the problem to work with
+
+Mon Aug  8 20:58:59 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * implement piece groups
+  
+  This allows you to put piece into groups that don't need to be
+  taken apart to solve the disassembly of the puzzle. This is required
+  for example for puzzles like "cube in cage" where the cage consists
+  of 3 movable pieces that can not be taken apart.
+  
+  The gui currently alows you to increase the group number.
+  
+  Group number 0 is special, it means that the piece doesn't belong to
+  any group at all and must be single in the disassembled puzzle
+
+Fri Aug  5 12:30:18 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add a function to calculate the inverse transformation
+
+Thu Aug  4 09:47:25 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * get the burr Grower working again
+
+Thu Aug  4 09:46:53 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * problems are NOT editable, when solved
+
+Thu Aug  4 09:46:36 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add paragraph about the errors in the text
+
+Wed Jul 13 20:08:49 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  tagged 0.1.6
+
+Wed Jul 13 20:07:57 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * release 0.1.6 preparations
+
+Wed Jul 13 20:06:26 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * for wrong time display problem
+  
+  sometime the displayed time war way to big this was probably because
+  the time was asked bevore the thread could initialize it, so
+  do this bevore the thread started
+
 Wed Jul 13 19:57:59 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
   * add pictures for documentation
 

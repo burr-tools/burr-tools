@@ -5,4 +5,5 @@ aclocal \
 && autoconf
 ./configure
 
-darcs changes | sed s/\\\\f6/ö/ > ChangeLog
+export DARCS_DONT_ESCAPE_ISPRINT=1
+darcs changes > ChangeLog

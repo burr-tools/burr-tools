@@ -1,4 +1,24 @@
-------------- Version 0.1.5 Jul 10 2005
+------------- Version 0.1.7 Aug 11 2005
+
+- add possibility to load PuzzleSolver3D filed (this can be done
+  with the "Import" entry in the main menu
+
+- add function to make it possible to not completely disassemble
+  the puzzles. This is done by putting pieces into groups. All
+  pieces that are in the same group can stay together and the
+  puzzle is still considered as disassembled.
+    Group 0 is different. All pieces in group 0 need to be
+  taken apart until single. You can set the group for each piece
+  with the G+ and G- buttons in the problem tab
+
+- when puzzles where saved bevore a result shape was defined the
+  program refused to load the file. This works now. Old filed
+  can be loaded as well
+
+- small correction to the 3d view. Cubes besides variable cubes had
+  missing faces
+
+------------- Version 0.1.6 Jul 10 2005
 
 - add button to change color
 
