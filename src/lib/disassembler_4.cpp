@@ -43,10 +43,11 @@ private:
   /* number of pieces this node is handling */
   int piecenumber;
 
-  /* displacement of each piece relative to
-   * the position in the assembly
+  /* the position of the piece inside the cube
+   * and the transformation of that piece
    */
   int *dx, *dy, *dz;
+  unsigned int *trans;
 
 public:
 
@@ -54,12 +55,14 @@ public:
     dx = new int[piecenumber];
     dy = new int[piecenumber];
     dz = new int[piecenumber];
+    trans = new unsigned int[piecenumber];
   }
 
   ~node4_c() {
     delete [] dx;
     delete [] dy;
     delete [] dz;
+    delete [] trans;
   }
 
   /* the comparison operations use "normalized" positions,
@@ -75,6 +78,7 @@ public:
       if (dx[i] - dx[0] != b.dx[i] - b.dx[0]) return false;
       if (dy[i] - dy[0] != b.dy[i] - b.dy[0]) return false;
       if (dz[i] - dz[0] != b.dz[i] - b.dz[0]) return false;
+      // FIXME: transformation is missing
     }
   
     return true;
@@ -94,6 +98,7 @@ public:
   
       if (dz[i] - dz[0] < b.dz[i] - b.dz[0]) return true;
       if (dz[i] - dz[0] > b.dz[i] - b.dz[0]) return false;
+      // FIXME: transformation is missing
     }
   
     return false;
@@ -116,11 +121,16 @@ public:
     assert(i < piecenumber);
     return dz[i];
   }
-  void set(int i, int x, int y, int z) {
+  unsigned int getTrans(int i) const {
+    assert(i < piecenumber);
+    return trans[i];
+  }
+  void set(int i, int x, int y, int z, unsigned int tr) {
     assert(i < piecenumber);
     dx[i] = x;
     dy[i] = y;
     dz[i] = z;
+    trans[i] = tr;
   }
 
   /* check if the given piece is at a position outside
@@ -925,12 +935,12 @@ node4_c * disassembler_4_c::find(node4_c * searchnode) {
         /* create a new state with the pieces moved */
         for (int i = 0; i < next_pn; i++)
           switch(nextdir) {
-          case 0: n->set(i, searchnode->getX(i) + movement[i], searchnode->getY(i), searchnode->getZ(i)); break;
-          case 1: n->set(i, searchnode->getX(i) - movement[i], searchnode->getY(i), searchnode->getZ(i)); break;
-          case 2: n->set(i, searchnode->getX(i), searchnode->getY(i) + movement[i], searchnode->getZ(i)); break;
-          case 3: n->set(i, searchnode->getX(i), searchnode->getY(i) - movement[i], searchnode->getZ(i)); break;
-          case 4: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) + movement[i]); break;
-          case 5: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) - movement[i]); break;
+          case 0: n->set(i, searchnode->getX(i) + movement[i], searchnode->getY(i), searchnode->getZ(i), 0); break;
+          case 1: n->set(i, searchnode->getX(i) - movement[i], searchnode->getY(i), searchnode->getZ(i), 0); break;
+          case 2: n->set(i, searchnode->getX(i), searchnode->getY(i) + movement[i], searchnode->getZ(i), 0); break;
+          case 3: n->set(i, searchnode->getX(i), searchnode->getY(i) - movement[i], searchnode->getZ(i), 0); break;
+          case 4: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) + movement[i], 0); break;
+          case 5: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) - movement[i], 0); break;
           }
 
         if (nextstep == 1)
@@ -982,7 +992,7 @@ static void create_new_params(node4_c * st, node4_c ** n, voxel_type ** pn, int 
       (*n)->set(num,
                 st->getX(i) - dx,
                 st->getY(i) - dy,
-                st->getZ(i) - dz);
+                st->getZ(i) - dz, 0);
       (*pn)[num] = pieces[i];
       num++;
     }
@@ -1220,7 +1230,7 @@ separation_c * disassembler_4_c::disassemble(void) {
   node4_c * start = new node4_c(piecenumber);
 
   for (unsigned int i = 0; i < piecenumber; i++)
-    start->set(i, 0, 0, 0);
+    start->set(i, 0, 0, 0, 0);
 
   /* create pieces field. this field contains the
    * names of all present pieces. because at the start

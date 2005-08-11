@@ -29,6 +29,10 @@ class node4_c;
 
 /* idea, have a chache, where the piece pairs with their relative positions
  * are saved and the possible movements are stored
+ *
+ * this cache could even be persistant between all assemblies for one puzzle
+ * this might give a boost for puzzles that have tons of solutions to analyze for
+ * disassembability
  */
 class movementCache;
 
