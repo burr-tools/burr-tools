@@ -676,30 +676,33 @@ void UserInterface::cb_Load_Ps3d(void) {
 
     const char * f = FileSelection2("Load Puzzle");
 
-    std::ifstream in(f);
+    if (f) {
 
-    puzzle_c * newPuzzle = loadPuzzlerSolver3D(&in);
-    if (!newPuzzle) {
-      fl_alert("Could not load puzzle, sorry!");
-      return;
+      std::ifstream in(f);
+  
+      puzzle_c * newPuzzle = loadPuzzlerSolver3D(&in);
+      if (!newPuzzle) {
+        fl_alert("Could not load puzzle, sorry!");
+        return;
+      }
+  
+      if (fname) delete [] fname;
+      fname = new char[strlen(f)+1];
+      strcpy(fname, f);
+  
+      char nm[300];
+      snprintf(nm, 299, "BurrTools - %s", fname);
+      mainWindow->label(nm);
+  
+      ReplacePuzzle(newPuzzle);
+      updateInterface();
+  
+      TaskSelectionTab->value(TabPieces);
+      activateShape(PcSel->getSelection());
+      StatPieceInfo(PcSel->getSelection());
+  
+      changed = false;
     }
-
-    if (fname) delete [] fname;
-    fname = new char[strlen(f)+1];
-    strcpy(fname, f);
-
-    char nm[300];
-    snprintf(nm, 299, "BurrTools - %s", fname);
-    mainWindow->label(nm);
-
-    ReplacePuzzle(newPuzzle);
-    updateInterface();
-
-    TaskSelectionTab->value(TabPieces);
-    activateShape(PcSel->getSelection());
-    StatPieceInfo(PcSel->getSelection());
-
-    changed = false;
   }
 }
 
