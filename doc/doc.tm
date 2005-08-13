@@ -207,6 +207,11 @@
     the result. If just one of the conditions is not fullfilled the placement
     is not possible. To make things a bit easier there is a ``neutal'' called
     color that may go everywhere or accept every color.
+
+    <item><name|BurrTools> allows you to solve puzzles that are not
+    completely disassembable. For this feature you have to define assign the
+    pieces to groups. All pieces that are within the same group can stay
+    together.
   </enumerate-numeric>
 
   Then there are some other not so mayor things that differ:
@@ -330,18 +335,26 @@
   ``Make inside variable'' sets all the unit cubes that are completely
   surrounded by cubes to variable cubes. If you apply this to your result
   shape the behaviour will be as if you pressed ``fill outer cubes'' in
-  <name|PuzzleSolver3D>.
+  <name|PuzzleSolver3D>. The 3rd button is used when editing, it is explained
+  below
 
   The last item at the very bottom of this tab is the editor to change the
   shape. It contains a slider at the left that selects the z-plane. You edit
-  by clicking into the squares shown. The left mouse button adds normal
-  cubes. The right mouse button adds variable cubes. These variable cubes are
-  only alowed in shapes that are used for the result. Clicking on an already
-  filled cube either removes it or replaces it by the other cube type. Each
-  cube changed will get the currently selected color (above in the color
-  section) attatched to it. If this color it not the neutral color it will be
-  visible as a small square in the upper left corner of the squares in the
-  editor. The neutral color will not be visible anywhere.
+  by clicking and draggin within these squares. The left mouse button adds
+  normal cubes. The right mouse button adds variable cubes. These variable
+  cubes are only alowed in shapes that are used for the result. Clicking on
+  an already filled cube either removes it or replaces it by the other cube
+  type. Each cube changed will get the currently selected color (above in the
+  color section) attatched to it. If this color it not the neutral color it
+  will be visible as a small square in the upper left corner of the squares
+  in the editor. The neutral color will not be visible anywhere. When you
+  drag the mouse you can fill whole rectangles in one go.
+
+  It is also possible to edit the whole stack instead of just the current
+  layer. For this you have to activate the 3rd button in the shape edit tools
+  tab. This is a toggle button. Press it and a yellow lamp will be switched
+  on press it again and it is switched off. Once you switched the lamp on you
+  always edit all z-layers instead of just the active one.
 
   <subsection|Problem Tab>
 
@@ -379,11 +392,36 @@
   the shapes defined in the shapes tab and a list of the pieces involved in
   this problem. Above the shape list is the result.
 
-  Between the shape and the piece list are 2 buttons labled ''+1'' and ''-1''
-  that either add another one of the selected shape to the list of pieces or
-  remove one of it. In the lower list you can see how many of each piece are
-  used for the problem. The colored boxes show first the number of the shape
-  and behind the colon the number of times the piece is used.
+  Between the shape and the piece list are 4 buttons labled ''+1'', ''-1''
+  and ''G+1'' and ''G-1''. The first 2 buttons either add another one of the
+  selected shape to the list of pieces or remove one of it. In the lower list
+  you can see how many of each piece are used for the problem. The colored
+  boxes show first the number of the shape and behind the colon the number of
+  times the piece is used.
+
+  The 2nd 2 buttons allow you to define groups of pieces. With piece groups
+  it is possible to leave pieces together when diassembling the puzzle. An
+  example of a puzzle where this is required is the ``Cube in Cage'' called
+  puzzle. Here you have a cage out of 3 pieces and within the cage you have
+  to assemble a 3x3x3 cube. The cage is built in such a way that the 3 pieces
+  can move, but they don't go apart. This is a problem because normally the
+  disassembler tries to disassemble the puzzle into all its pieces but
+  because this is not possible here is refuses the find solutions.
+
+  Now how does this work. Each piece is within a group. The default group is
+  group number 0. All pieces within this group need to be completely
+  separated from each other for the puzzle to be solved. Because this is the
+  normal case it is not specially marked in the List of pieces below the
+  butons. But with the G+1 and G-1 buttons you can increase the group number.
+  As soon as a piece has a group number differen from 0 that information is
+  displayed in the piece list. Behind the count the group number is appended,
+  e.g ''0: 3, G1'' means that shape 3 is used 3 times and all this 3 pieces
+  are within group 1. Now all pieces that are not in group 0 but in the same
+  group <em|can> stay together. I need to stress the can because, in case
+  they do come apart this might just happen. The disassembly algorithm just
+  stops as soon as it either has a single piece or all pieces inside the
+  currently examined group of pieces are within the same group and that group
+  is not zero.
 
   While editing problems you can see all the involved pieces in the 3D view.
   In the upper left corner you can see the result. It is drawn in double
