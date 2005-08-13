@@ -73,9 +73,6 @@ puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
 
       linenum ++;
       if (linenum >= sy) {
-        if (state == 2)
-          p->getShape(piece)->makeInsideHoly();
-
         state = 0;
       }
 
