@@ -773,6 +773,8 @@ void UserInterface::cb_Quit(void) {
     if (fl_ask("Puzzle changed are you shure?") == 0)
       return;
 
+  mainWindow->hide();
+
   delete puzzle;
 
   if (fname) {
@@ -785,7 +787,6 @@ void UserInterface::cb_Quit(void) {
     disassemble = 0;
   }
 
-  mainWindow->hide();
 }
 
 static void cb_About_stub(Fl_Widget* o, void* v) { ui->cb_About(); }
