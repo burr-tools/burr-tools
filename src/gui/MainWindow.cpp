@@ -190,6 +190,10 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
 
 static void cb_TransformPiece_stub(Fl_Widget* o, long v) { ui->cb_TransformPiece(); }
 void UserInterface::cb_TransformPiece(void) {
+
+  if (pieceTools->editLayersChanged())
+    pieceEdit->editAllLayers(pieceTools->editLayersOn());
+
   StatPieceInfo(PcSel->getSelection());
   activateShape(PcSel->getSelection());
 }

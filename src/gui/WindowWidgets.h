@@ -26,6 +26,7 @@
 
 #include <FL/Fl.H>
 #include <FL/Fl_Button.H>
+#include <FL/Fl_Light_Button.H>
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Slider.H>
 #include <FL/Fl_Roller.H>
@@ -65,7 +66,15 @@ public:
   }
 };
 
+class FlatLightButton : public Fl_Light_Button {
 
+public:
+  FlatLightButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback1* cb, long cb_para) : Fl_Light_Button(x, y, w, h, txt) {
+    box(FL_THIN_UP_BOX);
+    tooltip(tt);
+    callback(cb, cb_para);
+  }
+};
 
 
 // the group for the square editor including the colord marker and the slider for the z axis
@@ -108,6 +117,9 @@ public:
     sqedit->lock(lock);
   }
 
+  void editAllLayers(bool edit) {
+    sqedit->editAllLayers(edit);
+  }
 };
 
 
@@ -169,6 +181,8 @@ class ToolTab : public Fl_Tabs {
 
   ChangeSize * changeSize;
   pieceVoxel_c * space;
+  bool _editLayersChanged;
+  Fl_Light_Button *editLayersButton;
 
 public:
 
@@ -210,11 +224,15 @@ public:
       case 14: space->mirrorZ(); break;
       case 15: space->minimizePiece(); break;
       case 16: space->makeInsideHoly(); break;
+      case 17: _editLayersChanged = true; break;
       }
 
       do_callback();
     }
   }
+
+  bool editLayersChanged(void) { return _editLayersChanged; };
+  bool editLayersOn(void) { return editLayersButton->value() == 1; }
 };
 
 

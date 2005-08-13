@@ -171,6 +171,7 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
     o->hide();
     new FlatButton(x+5, y+25, w-10, 20, "Minimize", "Minimize the size", cb_ToolTabTransform2_stub, 15);
     new FlatButton(x+5, y+50, w-10, 20, "Make inside Variable", "Make the inside of the puzzle variable, so that it can contain holes", cb_ToolTabTransform2_stub, 16);
+    editLayersButton = new FlatLightButton(x+5, y+75, w-10, 20, "Edit all layers", "When this is active all layers are changed instead of just the active one", cb_ToolTabTransform2_stub, 17);
     o->end();
   }
 }

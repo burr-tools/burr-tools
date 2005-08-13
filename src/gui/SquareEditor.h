@@ -65,13 +65,19 @@ private:
 
   bool locked;
 
+  bool _editAllLayers;
+
+  unsigned int startX, startY;
+
 protected:
 
   void draw();
 
+  bool setLayer(unsigned int z, voxel_type v);
+
 public:
 
-  SquareEditor(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), currentZ(0), piecenumber(0), state(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), inside(false), currentColor(0), locked(false) {}
+  SquareEditor(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), currentZ(0), piecenumber(0), state(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), inside(false), currentColor(0), locked(false), _editAllLayers(0) {}
 
   // sets the z layer to edit the value is clamped to valid values
   void setZ(unsigned int z);
@@ -100,6 +106,13 @@ public:
       locked = lock;
       redraw();
     }
+  }
+
+  /* when this is called with true, the edit operation is performed on all
+   * layers (z layers) instead of only the current one
+   */
+  void editAllLayers(bool doIt) {
+    _editAllLayers = doIt;
   }
 
   int handle(int event);
