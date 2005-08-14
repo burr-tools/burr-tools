@@ -140,8 +140,8 @@ bool assemblerThread::assembly(assembly_c * a) {
     {
       action = ACT_DISASSEMBLING;
 
-      disassembler_4_c d(a, puzzle, prob);
-      separation_c * s = d.disassemble();
+      disassembler_4_c d(puzzle, prob);
+      separation_c * s = d.disassemble(a);
       action = ACT_ASSEMBLING;
   
       if (s) {

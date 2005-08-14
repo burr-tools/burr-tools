@@ -62,8 +62,8 @@ puzzleSol_c::puzzleSol_c(const puzzleSol_c * p) {
 bool puzzleSol_c::assembly(assembly_c* a) {
 
 
-  disassembler_4_c d(a, puzzle, prob);
-  separation_c * da = d.disassemble();
+  disassembler_4_c d(puzzle, prob);
+  separation_c * da = d.disassemble(a);
 
   if (da) {
 

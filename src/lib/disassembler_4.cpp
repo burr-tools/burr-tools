@@ -1180,7 +1180,7 @@ separation_c * disassembler_4_c::disassemble_rec(int piecenumber, voxel_type * p
   return 0;
 }
 
-disassembler_4_c::disassembler_4_c(const assembly_c * assembly, const puzzle_c * puz, unsigned int prob) : piecenumber(assembly->placementCount()), puzzle(puz), problem(prob) {
+disassembler_4_c::disassembler_4_c(const puzzle_c * puz, unsigned int prob) : piecenumber(puz->probPieceNumber(prob)), puzzle(puz), problem(prob) {
 
   /* allocate the necessary arrays */
   movement = new int[piecenumber];
@@ -1196,11 +1196,10 @@ disassembler_4_c::disassembler_4_c(const assembly_c * assembly, const puzzle_c *
   for (int j = 0; j < 3; j++)
     matrix[j] = new int[piecenumber * piecenumber];
 
-  assm = assembly->getVoxelSpace(puz, prob, bx1, bx2, by1, by2, bz1, bz2);
-
-  cache = new movementCache(piecenumber, assm->getBiggestDimension());
-
   hit = miss = 0;
+
+  assm = 0;
+  cache = 0;
 }
 
 disassembler_4_c::~disassembler_4_c() {
@@ -1216,13 +1215,18 @@ disassembler_4_c::~disassembler_4_c() {
   delete [] bz1;
   delete [] bz2;
 
-  delete assm;
-
-  delete cache;
+  if (assm) delete assm;
+  if (cache) delete cache;
 }
 
 
-separation_c * disassembler_4_c::disassemble(void) {
+separation_c * disassembler_4_c::disassemble(const assembly_c * assembly) {
+
+  assm = assembly->getVoxelSpace(puzzle, problem, bx1, bx2, by1, by2, bz1, bz2);
+  assert(piecenumber == assembly->placementCount());
+
+  if (!cache)
+    cache = new movementCache(piecenumber, assm->getBiggestDimension());
 
   /* create the first node with the start state
    * here all pieces are at position (0; 0; 0)

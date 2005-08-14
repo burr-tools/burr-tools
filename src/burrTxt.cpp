@@ -92,8 +92,8 @@ public:
         }
       case 4:
         {
-          disassembler_4_c d(a, puzzle, prob);
-          da = d.disassemble();
+          disassembler_4_c d(puzzle, prob);
+          da = d.disassemble(a);
           break;
         }
       }

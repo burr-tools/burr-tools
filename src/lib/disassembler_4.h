@@ -99,7 +99,7 @@ private:
 
 public:
 
-  disassembler_4_c(const assembly_c * assembly, const puzzle_c * puz, unsigned int prob);
+  disassembler_4_c(const puzzle_c * puz, unsigned int prob);
   ~disassembler_4_c();
 
   /* because we can only have or don't have a disassembly sequence
@@ -108,8 +108,7 @@ public:
    * you need to take care of freeing the disassembly sequence after
    * doing with it whatever you want
    */
-  separation_c * disassemble(void);
-
+  separation_c * disassemble(const assembly_c * assembly);
 };
 
 #endif
