@@ -28,6 +28,25 @@
 
 class puzzle_c;
 
+class placement_c {
+
+  // transformation 0xFF means that the piece is NOT inside the solution
+  unsigned char transformation;
+
+  int xpos, ypos, zpos;
+
+public:
+
+  placement_c(unsigned char tran, int x, int y, int z) : transformation(tran), xpos(x), ypos(y), zpos(z) {}
+
+  int getX(void) const { return xpos; }
+  int getY(void) const  { return ypos; }
+  int getZ(void) const  { return zpos; }
+  unsigned char getTransformation(void) const  { return transformation; }
+};
+
+
+
 /* this class contains the assembly for a puzzle
  * an assembly is a list of trnasformations and
  * positions for each piece in the final assembly
@@ -36,17 +55,6 @@ class puzzle_c;
  */
 class assembly_c {
 
-  class placement_c {
-
-  public:
-
-    // transformation 0xFF means that the piece is NOT inside the solution
-    unsigned char transformation;
-
-    int xpos, ypos, zpos;
-
-    placement_c(unsigned char tran, int x, int y, int z) : transformation(tran), xpos(x), ypos(y), zpos(z) {}
-  };
 
   std::vector<placement_c> placements;
 
@@ -75,22 +83,22 @@ public:
 
   unsigned char getTransformation(unsigned char num) const {
     assert(num < placements.size());
-    return placements[num].transformation;
+    return placements[num].getTransformation();
   }
 
   int getX(unsigned char num) const {
     assert(num < placements.size());
-    return placements[num].xpos;
+    return placements[num].getX();
   }
 
   int getY(unsigned char num) const {
     assert(num < placements.size());
-    return placements[num].ypos;
+    return placements[num].getY();
   }
 
   int getZ(unsigned char num) const {
     assert(num < placements.size());
-    return placements[num].zpos;
+    return placements[num].getZ();
   }
 
   /* this creates a voxel space containing the piece numbers in that place

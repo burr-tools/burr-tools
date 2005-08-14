@@ -34,11 +34,11 @@ assemblyVoxel_c * assembly_c::getVoxelSpace(const puzzle_c * puz, unsigned int p
 
       assert(idx < placements.size());
 
-      pieceVoxel_c p(puz->probGetShapeShape(prob, pc), placements[idx].transformation);
+      pieceVoxel_c p(puz->probGetShapeShape(prob, pc), placements[idx].getTransformation());
 
-      int dx = placements[idx].xpos;
-      int dy = placements[idx].ypos;
-      int dz = placements[idx].zpos;
+      int dx = placements[idx].getX();
+      int dy = placements[idx].getY();
+      int dz = placements[idx].getZ();
 
       for (unsigned int x = 0; x < p.getX(); x++)
         for (unsigned int y = 0; y < p.getY(); y++)
@@ -73,11 +73,11 @@ assemblyVoxel_c * assembly_c::getVoxelSpace(const puzzle_c * puz, unsigned int p
 
       assert(idx < placements.size());
 
-      pieceVoxel_c p(puz->probGetShapeShape(prob, pc), placements[idx].transformation);
+      pieceVoxel_c p(puz->probGetShapeShape(prob, pc), placements[idx].getTransformation());
 
-      int dx = placements[idx].xpos;
-      int dy = placements[idx].ypos;
-      int dz = placements[idx].zpos;
+      int dx = placements[idx].getX();
+      int dy = placements[idx].getY();
+      int dz = placements[idx].getZ();
 
       bx1[idx] = p.boundX1() + dx;
       bx2[idx] = p.boundX2() + dx;
@@ -211,7 +211,7 @@ xml::node assembly_c::save(void) const {
   char tmp[50];
 
   for (unsigned int i = 0; i < placements.size(); i++) {
-    snprintf(tmp, 50, "%i %i %i %i", placements[i].xpos, placements[i].ypos, placements[i].zpos, placements[i].transformation);
+    snprintf(tmp, 50, "%i %i %i %i", placements[i].getX(), placements[i].getY(), placements[i].getZ(), placements[i].getTransformation());
 
     cont += tmp;
 
