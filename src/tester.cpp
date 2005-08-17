@@ -19,10 +19,7 @@
 
 #include "lib/puzzle.h"
 #include "lib/assm_0_frontend_0.h"
-#include "lib/disassembler_3.h"
-//#include "lib/disassembler_2.h"
-//#include "lib/disassembler_1.h"
-//#include "lib/disassembler_0.h"
+#include "lib/disassembler_4.h"
 
 #include "lib/burrgrower.h"
 #include "lib/pieceGenerator.h"

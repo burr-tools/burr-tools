@@ -19,10 +19,6 @@
 
 #include "lib/puzzle.h"
 #include "lib/assm_0_frontend_0.h"
-#include "lib/disassembler_0.h"
-#include "lib/disassembler_1.h"
-#include "lib/disassembler_2.h"
-#include "lib/disassembler_3.h"
 #include "lib/disassembler_4.h"
 #include "lib/print.h"
 
@@ -37,8 +33,6 @@ bool printDisassemble;
 bool printSolutions;
 
 disassembler_4_c * d;
-
-unsigned int algorithm;
 
 class asm_cb : public assembler_cb {
 
@@ -62,42 +56,7 @@ public:
 
     if (disassemble) {
 
-      separation_c * da = 0;
-
-      switch(algorithm) {
-      case 0:
-        {
-          assemblyVoxel_c * assm = a->getVoxelSpace(puzzle, prob);
-          disassembler_0_c d(assm, pn);
-          da = d.disassemble();
-          break;
-        }
-      case 1:
-        {
-          assemblyVoxel_c * assm = a->getVoxelSpace(puzzle, prob);
-          disassembler_1_c d(assm, pn);
-          da = d.disassemble();
-          break;
-        }
-      case 2:
-        {
-          assemblyVoxel_c * assm = a->getVoxelSpace(puzzle, prob);
-          disassembler_2_c d(assm, pn);
-          da = d.disassemble();
-          break;
-        }
-      case 3:
-        {
-          disassembler_3_c d(a, puzzle, prob);
-          da = d.disassemble();
-          break;
-        }
-      case 4:
-        {
-          da = d->disassemble(a);
-          break;
-        }
-      }
+      separation_c * da = d->disassemble(a);
 
       if (da) {
         Solutions++;
@@ -134,8 +93,6 @@ void usage(void) {
   cout << "  -p print the disassembly plan\n";
   cout << "  -r reduce the placements bevore starting to solve the puzzle\n";
   cout << "  -s print the assemby\n";
-  cout << "  -a select algorithm\n";
-
 }
 
 int main(int argv, char* args[]) {
@@ -152,8 +109,6 @@ int main(int argv, char* args[]) {
   int filenumber = 0;
   bool reduce = false;
 
-  algorithm = 3;
-
   for(int i = 1; i < argv; i++) {
 
     switch (state) {
@@ -168,10 +123,7 @@ int main(int argv, char* args[]) {
         printSolutions = true;
       else if (strcmp(args[i], "-r") == 0)
         reduce = true;
-      else if (strcmp(args[i], "-a") == 0) {
-        algorithm = atoi(args[i+1]);
-        i++;
-      } else
+      else
         filenumber = i;
 
       break;
