@@ -17,8 +17,8 @@
  */
 
 
-#ifndef __DISASSEMBLER_4_H__
-#define __DISASSEMBLER_4_H__
+#ifndef __DISASSEMBLER_0_H__
+#define __DISASSEMBLER_0_H__
 
 #include "voxel.h"
 #include "disassembler.h"
@@ -34,7 +34,7 @@ class node4_c;
  *    starting from 0
  * 2) call diassemble and evaluate the result
  */
-class disassembler_4_c : public disassembler_c {
+class disassembler_0_c : public disassembler_c {
 
 private:
 
@@ -69,7 +69,7 @@ private:
   node4_c * find(node4_c * searchnode);
   bool checkmovement(void);
 
-  unsigned short disassembler_4_c::subProbGroup(node4_c * st, voxel_type * pn, bool cond, int piecenumber);
+  unsigned short disassembler_0_c::subProbGroup(node4_c * st, voxel_type * pn, bool cond, int piecenumber);
 
   /* the real disassembly routine. It separates the puzzle into 2 parts
    * and get's called recursively with each subpart to disassemble
@@ -86,8 +86,8 @@ private:
 
 public:
 
-  disassembler_4_c(const puzzle_c * puz, unsigned int prob);
-  ~disassembler_4_c();
+  disassembler_0_c(const puzzle_c * puz, unsigned int prob);
+  ~disassembler_0_c();
 
   /* because we can only have or don't have a disassembly sequence
    * we don't need the same complicated callback interface. The function

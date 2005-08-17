@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#include "disassembler_4.h"
+#include "disassembler_0.h"
 
 #include "disassembly.h"
 #include "voxel.h"
@@ -188,7 +188,7 @@ public:
  *    and find the shortest distance the the pirst piece follows
  *    the second and the second piece follows the first
  */
-void disassembler_4_c::prepare(int pn, voxel_type * pieces, node4_c * searchnode) {
+void disassembler_0_c::prepare(int pn, voxel_type * pieces, node4_c * searchnode) {
 
   for (int j = 0; j < pn; j++)
     for (int i = 0; i < pn; i++) {
@@ -240,7 +240,7 @@ void disassembler_4_c::prepare(int pn, voxel_type * pieces, node4_c * searchnode
  * the pieces need to be moved. This prevents the movement of the whole puzzle which
  * is rubbish.
  */
-bool disassembler_4_c::checkmovement(void) {
+bool disassembler_0_c::checkmovement(void) {
 
   for (int i = 0; i < next_pn; i++)
     check[i] = movement[i] != 0;
@@ -308,7 +308,7 @@ bool disassembler_4_c::checkmovement(void) {
   return true;
 }
 
-void disassembler_4_c::init_find(node4_c * nd, int piecenumber, voxel_type * pieces) {
+void disassembler_0_c::init_find(node4_c * nd, int piecenumber, voxel_type * pieces) {
 
   /* when a new search has been started we need to first calculate
    * the movement matrixes, this is a table that contains one 2 dimensional
@@ -340,7 +340,7 @@ void disassembler_4_c::init_find(node4_c * nd, int piecenumber, voxel_type * pie
  * FIXME: we should first try to remove a single piece, then to remove groups of pieces
  * and then check movement of pieces
  */
-node4_c * disassembler_4_c::find(node4_c * searchnode) {
+node4_c * disassembler_0_c::find(node4_c * searchnode) {
 
   while (nextdir < 6) {
 
@@ -431,7 +431,7 @@ static void create_new_params(node4_c * st, node4_c ** n, voxel_type ** pn, int 
   assert(num == part);
 }
 
-unsigned short disassembler_4_c::subProbGroup(node4_c * st, voxel_type * pn, bool cond, int piecenumber) {
+unsigned short disassembler_0_c::subProbGroup(node4_c * st, voxel_type * pn, bool cond, int piecenumber) {
 
   unsigned short group = 0;
 
@@ -466,7 +466,7 @@ unsigned short disassembler_4_c::subProbGroup(node4_c * st, voxel_type * pn, boo
  * the function takes over the ownership of the node and pieces. They are deleted at the end
  * of the function, so you must allocate them with new
  */
-separation_c * disassembler_4_c::disassemble_rec(int piecenumber, voxel_type * pieces, node4_c * start) {
+separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * pieces, node4_c * start) {
 
   std::queue<node4_c *> openlist;
   std::set<node4_c *, node_ptr_less> closed;
@@ -611,7 +611,7 @@ separation_c * disassembler_4_c::disassemble_rec(int piecenumber, voxel_type * p
   return 0;
 }
 
-disassembler_4_c::disassembler_4_c(const puzzle_c * puz, unsigned int prob) : piecenumber(puz->probPieceNumber(prob)), puzzle(puz), problem(prob) {
+disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) : piecenumber(puz->probPieceNumber(prob)), puzzle(puz), problem(prob) {
 
   /* allocate the necessary arrays */
   movement = new int[piecenumber];
@@ -623,7 +623,7 @@ disassembler_4_c::disassembler_4_c(const puzzle_c * puz, unsigned int prob) : pi
   cache = new movementCache(puzzle, problem);
 }
 
-disassembler_4_c::~disassembler_4_c() {
+disassembler_0_c::~disassembler_0_c() {
   delete [] movement;
   delete [] check;
   for (unsigned int k = 0; k < 3; k++)
@@ -633,7 +633,7 @@ disassembler_4_c::~disassembler_4_c() {
 }
 
 
-separation_c * disassembler_4_c::disassemble(const assembly_c * assembly) {
+separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
 
   assert(piecenumber == assembly->placementCount());
 

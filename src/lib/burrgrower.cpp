@@ -19,7 +19,7 @@
 
 #include "burrgrower.h"
 
-#include "disassembler_4.h"
+#include "disassembler_0.h"
 #include "assm_0_frontend_0.h"
 
 #include <fstream>
@@ -62,7 +62,7 @@ puzzleSol_c::puzzleSol_c(const puzzleSol_c * p) {
 bool puzzleSol_c::assembly(assembly_c* a) {
 
 
-  disassembler_4_c d(puzzle, prob);
+  disassembler_0_c d(puzzle, prob);
   separation_c * da = d.disassemble(a);
 
   if (da) {

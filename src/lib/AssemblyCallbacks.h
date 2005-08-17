@@ -22,7 +22,7 @@
 
 #include "puzzle.h"
 #include "assembler.h"
-#include "disassembler_4.h"
+#include "disassembler_0.h"
 
 /* this class will handle the solving of one problem of the puzzle, it can also
  * be used to continue an already started solution, so that you can save you results
@@ -45,7 +45,7 @@ class assemblerThread : public assembler_cb {
 
   time_t startTime;
 
-  disassembler_4_c disassm;
+  disassembler_0_c disassm;
 
 public:
 

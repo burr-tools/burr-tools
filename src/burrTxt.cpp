@@ -19,7 +19,7 @@
 
 #include "lib/puzzle.h"
 #include "lib/assm_0_frontend_0.h"
-#include "lib/disassembler_4.h"
+#include "lib/disassembler_0.h"
 #include "lib/print.h"
 
 #include <fstream>
@@ -32,7 +32,7 @@ bool disassemble;
 bool printDisassemble;
 bool printSolutions;
 
-disassembler_4_c * d;
+disassembler_0_c * d;
 
 class asm_cb : public assembler_cb {
 
@@ -164,7 +164,7 @@ int main(int argv, char* args[]) {
 
   asm_cb a(&p, 0);
 
-  d = new disassembler_4_c(&p, 0);
+  d = new disassembler_0_c(&p, 0);
 
   assm->assemble(&a);
 
