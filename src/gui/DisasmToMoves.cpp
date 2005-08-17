@@ -47,15 +47,15 @@ void DisasmToMoves::setStep(float step) {
 
 float DisasmToMoves::getX(unsigned int piece) {
   assert(piece < tree->getPieceNumber());
-  return moves[4*piece+0] + assm->getX(piece);
+  return moves[4*piece+0];
 }
 float DisasmToMoves::getY(unsigned int piece) {
   assert(piece < tree->getPieceNumber());
-  return moves[4*piece+1] + assm->getY(piece);
+  return moves[4*piece+1];
 }
 float DisasmToMoves::getZ(unsigned int piece) {
   assert(piece < tree->getPieceNumber());
-  return moves[4*piece+2] + assm->getZ(piece);
+  return moves[4*piece+2];
 }
 float DisasmToMoves::getA(unsigned int piece) {
   assert(piece < tree->getPieceNumber());

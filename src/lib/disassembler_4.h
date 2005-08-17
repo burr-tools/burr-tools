@@ -24,18 +24,9 @@
 #include "disassembler.h"
 #include "assembly.h"
 #include "puzzle.h"
+#include "movementcache.h"
 
 class node4_c;
-
-/* idea, have a chache, where the piece pairs with their relative positions
- * are saved and the possible movements are stored
- *
- * this cache could even be persistant between all assemblies for one puzzle
- * this might give a boost for puzzles that have tons of solutions to analyze for
- * disassembability
- */
-class movementCache;
-
 
 /* this class implements a burr disassembler. the interface is simple:
  * 1) construct the klass with the voxel space of the assembled puzzle,
@@ -47,11 +38,7 @@ class disassembler_4_c : public disassembler_c {
 
 private:
 
-  assemblyVoxel_c * assm;
   unsigned int piecenumber;
-
-  /* bounding box */
-  int *bx1, *bx2, *by1, *by2, *bz1, *bz2;
 
   /* these variables are used for the routine that looks
    * for the pieces to move find, checkmovement

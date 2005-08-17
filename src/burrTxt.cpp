@@ -36,6 +36,8 @@ bool disassemble;
 bool printDisassemble;
 bool printSolutions;
 
+disassembler_4_c * d;
+
 unsigned int algorithm;
 
 class asm_cb : public assembler_cb {
@@ -92,8 +94,7 @@ public:
         }
       case 4:
         {
-          disassembler_4_c d(puzzle, prob);
-          da = d.disassemble(a);
+          da = d->disassemble(a);
           break;
         }
       }
@@ -210,6 +211,8 @@ int main(int argv, char* args[]) {
   }
 
   asm_cb a(&p, 0);
+
+  d = new disassembler_4_c(&p, 0);
 
   assm->assemble(&a);
 

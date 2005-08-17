@@ -25,8 +25,6 @@
 #include <set>
 #include <functional>
 
-static int hit, miss;
-
 /* node is used to build the search tree for the breadth first search of the
  * state tree each node contains the position of all the pieces relative
  * to their position in the assembled puzzle
@@ -180,410 +178,6 @@ public:
   }
 };
 
-
-
-
-
-/* a macro to calculate the minimum and maximum
- * of two values in one step
- */
-#define minmax(a, b, min, max) { \
-  if (a > b) {                   \
-    min = b;                     \
-    max = a;                     \
-  } else {                       \
-    min = a;                     \
-    max = b;                     \
-  }                              \
-}
-
-// this macro look backward for the first occurence of the given piece
-#define search_back(run, end, piece)                                                 \
-  while ((run >= end) && (searchnode->getVoxel(assm, x, y, z, piece) != p##piece)) { \
-    run--;                                                                           \
-    value++;                                                                         \
-  }
-
-// this macro looks forward for the first occurence of the given piece
-#define search_forward(run, end, piece)                                              \
-  while ((run <= end) && (searchnode->getVoxel(assm, x, y, z, piece) != p##piece)) { \
-    run++;                                                                           \
-    value++;                                                                         \
-  }
-
-// this macro looks forward for the first occurence of the given piece
-// without caring for the value variable
-#define search_start(run, end, piece)                             \
-  while (run <= end) {                                            \
-    if (searchnode->getVoxel(assm, x, y, z, piece) == p##piece) { \
-      value = 0;                                                  \
-      run++;                                                      \
-      break;                                                      \
-    }                                                             \
-    run++;                                                        \
-  }
-
-// this looks forward for the first occurence of the given piece but stopping
-// as soon as value is bigger than minimum
-#define search_forward_stop(run, end, piece)                      \
-  while ((value < minimum) && (run <= end)) {                     \
-    if (searchnode->getVoxel(assm, x, y, z, piece) == p##piece) { \
-      if (value < minimum) minimum = value;                       \
-      break;                                                      \
-    }                                                             \
-    run++;                                                        \
-    value++;                                                      \
-  }
-
-// the normal search macro looking for the smallest gap between a piece 1
-// voxel and one from piece 1
-#define search_normal(run, end, piece1, piece2)                            \
-  while (run <= end) {                                                     \
-    if (searchnode->getVoxel(assm, x, y, z, piece1) == p##piece1) {        \
-      value = 0;                                                           \
-    } else if (searchnode->getVoxel(assm, x, y, z, piece2) == p##piece2) { \
-      if (value < minimum) minimum = value;                                \
-    } else {                                                               \
-      value++;                                                             \
-    }                                                                      \
-    run++;                                                                 \
-  }
-
-// the whole search process with different, optimized search functions
-// for each of the 6 cases
-#define search(dir, Dir, d1, d2, p1, p2)                              \
-  minimum = 32000;                                                    \
-  int a1p1, a2p1, a1p2, a2p2;                                         \
-                                                                      \
-  a1p1 = b##dir##1[p##p1] + searchnode->get##Dir(p1);                 \
-  a2p1 = b##dir##2[p##p1] + searchnode->get##Dir(p1);                 \
-                                                                      \
-  a1p2 = b##dir##1[p##p2] + searchnode->get##Dir(p2);                 \
-  a2p2 = b##dir##2[p##p2] + searchnode->get##Dir(p2);                 \
-                                                                      \
-  if (a1p1 < a2p2) {                                                  \
-                                                                      \
-    if (a1p2 >= a1p1)                                                 \
-      if (a1p2 <= a2p1)                                               \
-        arrangement = 3;                                              \
-      else                                                            \
-        arrangement = 6;                                              \
-    else                                                              \
-      arrangement = 0;                                                \
-                                                                      \
-    if (a2p2 >= a1p1) {                                               \
-      if (a2p2 <= a2p1)                                               \
-        arrangement += 1;                                             \
-      else                                                            \
-        arrangement += 2;                                             \
-    }                                                                 \
-                                                                      \
-    int tc1, tc2, td1, td2;                                           \
-    minmax(a1p1, a1p2, tc1, td1);                                     \
-    minmax(a2p1, a2p2, td2, tc2);                                     \
-                                                                      \
-    for (int d1 = d##d1##1; d1 <= d##d1##2; d1++)                     \
-      for (int d2 = d##d2##1; d2 <= d##d2##2; d2++) {                 \
-                                                                      \
-        int dir;                                   \
-        switch(arrangement) {                      \
-        case 1:                                    \
-          value = 32000;                           \
-          dir = td1;                               \
-          search_start(dir, td2, p1);              \
-          search_normal(dir, td2, p1, p2);         \
-          break;                                   \
-        case 2:                                    \
-          value = 32000;                           \
-          dir = td1;                               \
-          search_start(dir, td2, p1);              \
-          search_normal(dir, td2, p1, p2);         \
-          search_forward_stop(dir, tc2, p2);       \
-          break;                                   \
-        case 4:                                    \
-          dir = td1-1;                             \
-          value = 0;                               \
-          search_back(dir, tc1, p1);               \
-          if (dir < tc1) value = 32000;            \
-          dir = td1;                               \
-          search_normal(dir, td2, p1, p2);         \
-          break;                                   \
-        case 5:                                    \
-          dir = td1-1;                             \
-          value = 0;                               \
-          search_back(dir, tc1, p1);               \
-          if (dir < tc1) value = 32000;            \
-          dir = td1;                               \
-          search_normal(dir, td2, p1, p2);         \
-          search_forward_stop(dir, tc2, p2);       \
-          break;                                   \
-        case 8:                                    \
-          value = 0;                               \
-                                                   \
-          dir = td2;                               \
-          search_back(dir, tc1, p1);               \
-          if (dir >= tc1) {                        \
-                                                   \
-            dir = td1;                             \
-            search_forward(dir, tc2, p2);          \
-            if (dir <= tc2) {                      \
-                                                   \
-              value += td1 - td2 - 1;              \
-                                                   \
-              if (value < minimum)                 \
-                minimum = value;                   \
-            }                                      \
-          }                                        \
-                                                   \
-          break;                                   \
-        default:                                   \
-          printf("oops\n");                        \
-        }                                          \
-                                                   \
-        if (minimum == 0) {                        \
-          d2 = d##d2##2+1;                         \
-          d1 = d##d1##2+1;                         \
-        }                                          \
-      }                                            \
-  }
-
-inline int shiftAdder(int a, int b) {
-  assert((b < 10000) && (b > -10000));
-
-  if ((a > 10000) || (a < -10000))
-    return a;
-
-  return a+b;
-}
-
-
-class movementCache {
-
-  int ***** values;  // the 3 directions and the 2 pieces
-
-  bool entryExists(unsigned int p1, unsigned int p2, int dx, int dy, int dz) {
-
-    if (!values[p1*pieces+p2]) return false;
-    if (!values[p1*pieces+p2][dx+size]) return false;
-    if (!values[p1*pieces+p2][dx+size][dy+size]) return false;
-    if (!values[p1*pieces+p2][dx+size][dy+size][dz+size]) return false;
-
-    return true;
-  }
-
-  void createEntry(unsigned int p1, unsigned int p2, int dx, int dy, int dz) {
-
-    if (!values[p1*pieces+p2]) {
-      values[p1*pieces+p2] = new int *** [2*size+2];
-      memset(values[p1*pieces+p2], 0, sizeof(int ***) * (2*size+2));
-    }
-
-    if (!values[p1*pieces+p2][dx+size]) {
-      values[p1*pieces+p2][dx+size] = new int ** [2*size+2];
-      memset(values[p1*pieces+p2][dx+size], 0, sizeof(int **) * (2*size+2));
-    }
-
-    if (!values[p1*pieces+p2][dx+size][dy+size]) {
-      values[p1*pieces+p2][dx+size][dy+size] = new int * [2*size+2];
-      memset(values[p1*pieces+p2][dx+size][dy+size], 0, sizeof(int*) * (2*size+2));
-    }
-
-    if (!values[p1*pieces+p2][dx+size][dy+size][dz+size]) {
-      values[p1*pieces+p2][dx+size][dy+size][dz+size] = new int[3];
-      memset(values[p1*pieces+p2][dx+size][dy+size][dz+size], 0, sizeof(int) * 3);
-    }
-  }
-
-  unsigned int pieces;
-  int size;
-
-public:
-
-  // chreate an empty cache
-  movementCache(unsigned int pc, unsigned int sz) : pieces(pc), size(sz) {
-    values = new int **** [pieces*pieces];
-    memset(values, 0, sizeof(int****) * pieces*pieces);
-  }
-
-  ~movementCache() {
-    for (unsigned int i = 0; i < pieces*pieces; i++)
-      if (values[i]) {
-        for (int j = 0; j < 2*size+2; j++)
-          if (values[i][j]) {
-            for (int k = 0; k < 2*size+2; k++)
-              if (values[i][j][k]) {
-                for (int l = 0; l < 2*size+2; l++)
-                  if (values[i][j][k][l])
-                    delete [] values[i][j][k][l];
-                delete [] values[i][j][k];
-              }
-            delete [] values[i][j];
-          }
-        delete [] values[i];
-      }
-
-    delete [] values;
-  }
-
-  /* always means:
-   * when piece1 is fixes how far can the 2nd piece moved into the given direction
-   * (positive direction only) dir is x, y, z (0, 1, 2)
-   * when the 2nd piece is currently ofset by dx, dy, dz relative to piece 1
-   *
-   * this returns a bit mask containing information of which of the 6 values were
-   * available
-   */
-
-  int known(unsigned int p1, unsigned int p2, int dx, int dy, int dz) {
-
-    assert(p1 < pieces);
-    assert(p2 < pieces);
-
-    if (dx < -size) return false;
-    if (dx > size) return false;
-
-    if (dy < -size) return false;
-    if (dy > size) return false;
-
-    if (dz < -size) return false;
-    if (dz > size) return false;
-
-    if (entryExists(p1, p2, dx, dy, dz)) {
-//      printf("simple\n");
-      return 0xFF;
-    }
-
-    int mask = 0;
-
-#if 0
-    {
-      int x;
-
-      x = dx - 1;
-      while (x > -size) {
-        if (entryExists(p1, p2, x, dy, dz)) {
-          if (getValue(p2, p1, 0, -x, -dy, -dz) >= dx-x) {
-            setValue(p1, p2, 0, dx, dy, dz, shiftAdder(getValue(p1, p2, 0, x, dy, dz), dx-x));
-            mask |= 0x01;
-          }
-          break;
-        }
-        x--;
-      }
-
-      if (!(mask & 0x01)) {
-        x = dx + 1;
-  
-        while (x < size) {
-          if (entryExists(p1, p2, x, dy, dz)) {
-            if (getValue(p1, p2, 0, x, dy, dz) >= x-dx) {
-              setValue(p1, p2, 0, dx, dy, dz, shiftAdder(getValue(p1, p2, 0, x, dy, dz), dx-x));
-              mask |= 0x01;
-            }
-            break;
-          }
-          x++;
-        }
-      }
-    }
-
-    {
-      int y;
-
-      y = dy - 1;
-      while (y > -size) {
-        if (entryExists(p1, p2, dx, y, dz)) {
-          if (getValue(p2, p1, 1, -dx, -y, -dz) >= dy-y) {
-            setValue(p1, p2, 1, dx, dy, dz, shiftAdder(getValue(p1, p2, 1, dx, y, dz), dy-y));
-            mask |= 0x02;
-          }
-          break;
-        }
-        y--;
-      }
-
-      if (!(mask & 0x02)) {
-        y = dy + 1;
-  
-        while (y < size) {
-          if (entryExists(p1, p2, dx, y, dz)) {
-            if (getValue(p1, p2, 1, dx, y, dz) >= y-dy) {
-              setValue(p1, p2, 1, dx, dy, dz, shiftAdder(getValue(p1, p2, 1, dx, y, dz), dy-y));
-              mask |= 0x02;
-            }
-            break;
-          }
-          y++;
-        }
-      }
-
-    }
-
-    {
-      int z;
-
-      z = dz - 1;
-      while (z > -size) {
-        if (entryExists(p1, p2, dx, dy, z)) {
-          if (getValue(p2, p1, 2, -dx, -dy, -z) >= dz-z) {
-            setValue(p1, p2, 2, dx, dy, dz, shiftAdder(getValue(p1, p2, 2, dx, dy, z), dz-z));
-            mask |= 0x04;
-          }
-          break;
-        }
-        z--;
-      }
-
-      if (!(mask & 0x04)) {
-        z = dz + 1;
-  
-        while (z < size) {
-          if (entryExists(p1, p2, dx, dy, z)) {
-            if (getValue(p1, p2, 2, dx, dy, z) >= z-dz) {
-              setValue(p1, p2, 2, dx, dy, dz, shiftAdder(getValue(p1, p2, 2, dx, dy, z), dz-z));
-              mask |= 0x04;
-            }
-            break;
-          }
-          z++;
-        }
-      }
-    }
-
-#endif
-    return mask;
-  }
-
-  int getValue(unsigned int p1, unsigned int p2, int dir, int dx, int dy, int dz) {
-    assert(p1 < pieces);
-    assert(p2 < pieces);
-
-    assert(entryExists(p1, p2, dx, dy, dz));
-
-    return values[p1*pieces+p2][dx+size][dy+size][dz+size][dir];
-  }
-
-  void setValue(unsigned int p1, unsigned int p2, int dir, int dx, int dy, int dz, int value) {
-    assert(p1 < pieces);
-    assert(p2 < pieces);
-
-    if (dx < -size) return;
-    if (dx > size)  return;
-
-    if (dy < -size)  return;
-    if (dy > size)  return;
-
-    if (dz < -size)  return;
-    if (dz > size)  return;
-
-    createEntry(p1, p2, dx, dy, dz);
-
-    values[p1*pieces+p2][dx+size][dy+size][dz+size][dir] = value;
-  }
-
-};
-
-
 /* so, this isn't the function as described by Bill but rather a
  * bit optimized. For each pair of 2 different pieces and for
  * each of the three dimensions I do the following:
@@ -596,186 +190,22 @@ public:
  */
 void disassembler_4_c::prepare(int pn, voxel_type * pieces, node4_c * searchnode) {
 
-  for (int l = 0; l < pn; l++)
-    for (int d = 0; d < 3; d++)
-      matrix[d][l + piecenumber * l] = 0;
-
-  for (int i = 0; i < pn-1; i++)
-    for (int j = i + 1; j < pn; j++) {
-
-      voxel_type pi = pieces[i];
-      voxel_type pj = pieces[j];
-
-      /* calc the potential intersection area */
-
-      /* c.. contains the bounding box bounding both pieces
-       * d.. contains the intersection box of the bounding boxes of both pieces
-       */
-      int cx1, cx2, dx1, dx2, cy1, cy2, dy1, dy2, cz1, cz2, dz1, dz2;
-
-      minmax(bx1[pi] + searchnode->getX(i), bx1[pj] + searchnode->getX(j), cx1, dx1);
-      minmax(bx2[pi] + searchnode->getX(i), bx2[pj] + searchnode->getX(j), dx2, cx2);
-
-      minmax(by1[pi] + searchnode->getY(i), by1[pj] + searchnode->getY(j), cy1, dy1);
-      minmax(by2[pi] + searchnode->getY(i), by2[pj] + searchnode->getY(j), dy2, cy2);
-
-      minmax(bz1[pi] + searchnode->getZ(i), bz1[pj] + searchnode->getZ(j), cz1, dz1);
-      minmax(bz2[pi] + searchnode->getZ(i), bz2[pj] + searchnode->getZ(j), dz2, cz2);
-
-      /* there are all in all 6 possible arrangements in the way the pieces can overlap
-       * and for each possible arrangement another way is the most efficient to find the
-       * smallest gap between 2 the 2 selected pieces
-       * so the first thing is to find out in which arrangement the the bounding boxes are
-       *
-       * FIXME possible improvement: instead of using bounding boxes use some kind of array for each
-       * voxel of the bounding box and calc how far the puzzle is away from the bounding box at this
-       * position. This will enable further optimisations for a cost of a little more memory
-       *
-       * there are 6 possible arrangements:
-       *
-       * i 0   -- 1  -- 2  --  4 ---- 5 --  8 --
-       * j   --     --    ----    --     --     --
-       *
-       * the numbering here is for programming reasons. it comes from the arrangement of the
-       * start end ending points to one another. the missing cases are defunct.
-       *
-       * for each case we now write special code trating the not overlapping pieces more
-       * efficient.
-       *
-       * all this code lowers the time to disassemble complex burrs to 2/3rds of the time the above
-       * code takes
-       */
-
-      int known = cache->known(pi, pj,
-                               searchnode->getX(j) - searchnode->getX(i),
-                               searchnode->getY(j) - searchnode->getY(i),
-                               searchnode->getZ(j) - searchnode->getZ(i));
-
-      int arrangement, minimum, value;
-
-      if (known & 0x01) {
-        matrix[0][i + piecenumber * j] = cache->getValue(pi, pj, 0,
-                                                         searchnode->getX(j) - searchnode->getX(i),
-                                                         searchnode->getY(j) - searchnode->getY(i),
-                                                         searchnode->getZ(j) - searchnode->getZ(i)
-                                                        );
-
-        hit++;
-      } else {
-        miss++;
-
-        search(x, X, y, z, i, j);
-        matrix[0][i + piecenumber * j] = minimum;
-        cache->setValue(pi, pj, 0,
-                        searchnode->getX(j) - searchnode->getX(i),
+  for (int j = 0; j < pn; j++)
+    for (int i = 0; i < pn; i++) {
+      if (i != j)
+        cache->getValue(searchnode->getX(j) - searchnode->getX(i),
                         searchnode->getY(j) - searchnode->getY(i),
                         searchnode->getZ(j) - searchnode->getZ(i),
-                        minimum);
-      }
-
-      if (known & 0x10) {
-        matrix[0][j + piecenumber * i] = cache->getValue(pj, pi, 0,
-                                                         searchnode->getX(i) - searchnode->getX(j),
-                                                         searchnode->getY(i) - searchnode->getY(j),
-                                                         searchnode->getZ(i) - searchnode->getZ(j)
-                                                        );
-        hit++;
-      } else {
-        miss++;
-
-        search(x, X, y, z, j, i);
-        matrix[0][j + piecenumber * i] = minimum;
-        cache->setValue(pj, pi, 0,
-                        searchnode->getX(i) - searchnode->getX(j),
-                        searchnode->getY(i) - searchnode->getY(j),
-                        searchnode->getZ(i) - searchnode->getZ(j),
-                        minimum);
-      }
-
-      if (known & 0x02) {
-        matrix[1][i + piecenumber * j] = cache->getValue(pi, pj, 1,
-                                                         searchnode->getX(j) - searchnode->getX(i),
-                                                         searchnode->getY(j) - searchnode->getY(i),
-                                                         searchnode->getZ(j) - searchnode->getZ(i)
-                                                        );
-        hit++;
-      } else {
-        miss++;
-
-        search(y, Y, x, z, i, j);
-        matrix[1][i + piecenumber * j] = minimum;
-        cache->setValue(pi, pj, 1,
-                        searchnode->getX(j) - searchnode->getX(i),
-                        searchnode->getY(j) - searchnode->getY(i),
-                        searchnode->getZ(j) - searchnode->getZ(i),
-                        minimum);
-      }
-
-      if (known & 0x20) {
-        matrix[1][j + piecenumber * i] = cache->getValue(pj, pi, 1,
-                                                         searchnode->getX(i) - searchnode->getX(j),
-                                                         searchnode->getY(i) - searchnode->getY(j),
-                                                         searchnode->getZ(i) - searchnode->getZ(j)
-                                                        );
-        hit++;
-      } else {
-        miss++;
-
-        search(y, Y, x, z, j, i);
-        matrix[1][j + piecenumber * i] = minimum;
-        cache->setValue(pj, pi, 1,
-                        searchnode->getX(i) - searchnode->getX(j),
-                        searchnode->getY(i) - searchnode->getY(j),
-                        searchnode->getZ(i) - searchnode->getZ(j),
-                        minimum);
-      }
-
-      if (known & 0x04) {
-        matrix[2][i + piecenumber * j] = cache->getValue(pi, pj, 2,
-                                                         searchnode->getX(j) - searchnode->getX(i),
-                                                         searchnode->getY(j) - searchnode->getY(i),
-                                                         searchnode->getZ(j) - searchnode->getZ(i)
-                                                        );
-        hit++;
-      } else {
-        miss++;
-
-        search(z, Z, x, y, i, j);
-        matrix[2][i + piecenumber * j] = minimum;
-        cache->setValue(pi, pj, 2,
-                        searchnode->getX(j) - searchnode->getX(i),
-                        searchnode->getY(j) - searchnode->getY(i),
-                        searchnode->getZ(j) - searchnode->getZ(i),
-                        minimum);
-      }
-
-      if (known & 0x40) {
-        matrix[2][j + piecenumber * i] = cache->getValue(pj, pi, 2,
-                                                         searchnode->getX(i) - searchnode->getX(j),
-                                                         searchnode->getY(i) - searchnode->getY(j),
-                                                         searchnode->getZ(i) - searchnode->getZ(j)
-                                                        );
-        hit++;
-      } else {
-        miss++;
-
-        search(z, Z, x, y, j, i);
-        matrix[2][j + piecenumber * i] = minimum;
-        cache->setValue(pj, pi, 2,
-                        searchnode->getX(i) - searchnode->getX(j),
-                        searchnode->getY(i) - searchnode->getY(j),
-                        searchnode->getZ(i) - searchnode->getZ(j),
-                        minimum);
-      }
+                        searchnode->getTrans(i), searchnode->getTrans(j),
+                        pieces[i], pieces[j],
+                        &matrix[0][i + piecenumber * j],
+                        &matrix[1][i + piecenumber * j],
+                        &matrix[2][i + piecenumber * j]);
+      else
+        matrix[0][i + piecenumber * j] = matrix[1][i + piecenumber * j] = matrix[2][i + piecenumber * j] = 0;
     }
 
-  /* second part of Bills algorithm. again a bit different from what he used to
-   * describe it instead of repeatedly going over the array I recursively go down
-   * and check the column and line of the modified field, if they do need adaption.
-   * this prevents us from checking the whole array again if there was only one
-   * cell changed the last time
-   */
-
+  /* second part of Bills algorithm. */
   bool again;
 
   do {
@@ -935,12 +365,12 @@ node4_c * disassembler_4_c::find(node4_c * searchnode) {
         /* create a new state with the pieces moved */
         for (int i = 0; i < next_pn; i++)
           switch(nextdir) {
-          case 0: n->set(i, searchnode->getX(i) + movement[i], searchnode->getY(i), searchnode->getZ(i), 0); break;
-          case 1: n->set(i, searchnode->getX(i) - movement[i], searchnode->getY(i), searchnode->getZ(i), 0); break;
-          case 2: n->set(i, searchnode->getX(i), searchnode->getY(i) + movement[i], searchnode->getZ(i), 0); break;
-          case 3: n->set(i, searchnode->getX(i), searchnode->getY(i) - movement[i], searchnode->getZ(i), 0); break;
-          case 4: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) + movement[i], 0); break;
-          case 5: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) - movement[i], 0); break;
+          case 0: n->set(i, searchnode->getX(i) + movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
+          case 1: n->set(i, searchnode->getX(i) - movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
+          case 2: n->set(i, searchnode->getX(i), searchnode->getY(i) + movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
+          case 3: n->set(i, searchnode->getX(i), searchnode->getY(i) - movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
+          case 4: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) + movement[i], searchnode->getTrans(i)); break;
+          case 5: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) - movement[i], searchnode->getTrans(i)); break;
           }
 
         if (nextstep == 1)
@@ -992,7 +422,8 @@ static void create_new_params(node4_c * st, node4_c ** n, voxel_type ** pn, int 
       (*n)->set(num,
                 st->getX(i) - dx,
                 st->getY(i) - dy,
-                st->getZ(i) - dz, 0);
+                st->getZ(i) - dz,
+                st->getTrans(i));
       (*pn)[num] = pieces[i];
       num++;
     }
@@ -1186,20 +617,10 @@ disassembler_4_c::disassembler_4_c(const puzzle_c * puz, unsigned int prob) : pi
   movement = new int[piecenumber];
   check = new bool[piecenumber];
 
-  bx1 = new int[piecenumber];
-  bx2 = new int[piecenumber];
-  by1 = new int[piecenumber];
-  by2 = new int[piecenumber];
-  bz1 = new int[piecenumber];
-  bz2 = new int[piecenumber];
-
   for (int j = 0; j < 3; j++)
     matrix[j] = new int[piecenumber * piecenumber];
 
-  hit = miss = 0;
-
-  assm = 0;
-  cache = 0;
+  cache = new movementCache(puzzle, problem);
 }
 
 disassembler_4_c::~disassembler_4_c() {
@@ -1208,25 +629,13 @@ disassembler_4_c::~disassembler_4_c() {
   for (unsigned int k = 0; k < 3; k++)
     delete [] matrix[k];
 
-  delete [] bx1;
-  delete [] bx2;
-  delete [] by1;
-  delete [] by2;
-  delete [] bz1;
-  delete [] bz2;
-
-  if (assm) delete assm;
   if (cache) delete cache;
 }
 
 
 separation_c * disassembler_4_c::disassemble(const assembly_c * assembly) {
 
-  assm = assembly->getVoxelSpace(puzzle, problem, bx1, bx2, by1, by2, bz1, bz2);
   assert(piecenumber == assembly->placementCount());
-
-  if (!cache)
-    cache = new movementCache(piecenumber, assm->getBiggestDimension());
 
   /* create the first node with the start state
    * here all pieces are at position (0; 0; 0)
@@ -1234,7 +643,7 @@ separation_c * disassembler_4_c::disassemble(const assembly_c * assembly) {
   node4_c * start = new node4_c(piecenumber);
 
   for (unsigned int i = 0; i < piecenumber; i++)
-    start->set(i, 0, 0, 0, 0);
+    start->set(i, assembly->getX(i), assembly->getY(i), assembly->getZ(i), assembly->getTransformation(i));
 
   /* create pieces field. this field contains the
    * names of all present pieces. because at the start
