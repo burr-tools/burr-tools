@@ -229,7 +229,7 @@ void disassembler_0_c::prepare(int pn, voxel_type * pieces, node4_c * searchnode
  * to distinguish "good" and "bad" moves the function returns true, if less maxPieces
  * have to be moved, this value should not be larger than halve of the pieces in the puzzle
  */
-bool disassembler_0_c::checkmovement(void) {
+bool disassembler_0_c::checkmovement(unsigned int maxPieces) {
 
   for (int i = 0; i < next_pn; i++)
     check[i] = movement[i] != 0;
@@ -240,7 +240,7 @@ bool disassembler_0_c::checkmovement(void) {
    * get's bigger than halve of the pices of the current problem we
    * stop and return that this movement is rubbish
    */
-  int moved_pieces = 1;
+  unsigned int moved_pieces = 1;
   int nd = nextdir >> 1;
 
   if (nextdir & 1) {
@@ -256,7 +256,7 @@ bool disassembler_0_c::checkmovement(void) {
               if (movement[i] - matrix[nd][j + piecenumber * i] > movement[j]) {
                 if (movement[j] == 0) {
                   moved_pieces++;
-                  if (moved_pieces > (next_pn / 2))
+                  if (moved_pieces > maxPieces)
                     return false;
                 }
                 movement[j] = movement[i] - matrix[nd][j + piecenumber * i];
@@ -281,7 +281,7 @@ bool disassembler_0_c::checkmovement(void) {
               if (movement[i] - matrix[nd][i + piecenumber * j] > movement[j]) {
                 if (movement[j] == 0) {
                   moved_pieces++;
-                  if (moved_pieces > (next_pn / 2))
+                  if (moved_pieces > maxPieces)
                     return false;
                 }
                 movement[j] = movement[i] - matrix[nd][i + piecenumber * j];
@@ -347,7 +347,7 @@ node4_c * disassembler_0_c::find(node4_c * searchnode) {
        * our selected piece as far as we want, if this results in more than halve of the
        * pieces beeing moved we don't do this because this would be stupid
        */
-      if (checkmovement()) {
+      if (checkmovement(next_pn/2)) {
 
         node4_c * n = new node4_c(next_pn);
 

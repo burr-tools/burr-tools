@@ -66,7 +66,7 @@ private:
    * the functions returns the next possible state or 0 if no other state was found
    */
   node4_c * find(node4_c * searchnode);
-  bool checkmovement(void);
+  bool checkmovement(unsigned int maxPieces);
 
   unsigned short disassembler_0_c::subProbGroup(node4_c * st, voxel_type * pn, bool cond, int piecenumber);
 
