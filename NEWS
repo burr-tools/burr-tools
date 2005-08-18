@@ -1,5 +1,13 @@
 ------------- Version 0.1.7 Aug 11 2005
 
+- huge speedup for the disassembler for puzzles that have lots of
+  assemblies for EasyLiving for example only 25% of the time is left
+  (time dropped from 24 to 6 seconds) and also for complex puzzles like
+  Pelikan Burr time dropped to 66% (from 5.5 to 3.6 seconds)
+
+- new editing possibilities: drag to fill rectangles and a button that
+  makes your changes not just to the current layer but to all
+
 - add possibility to load PuzzleSolver3D filed (this can be done
   with the "Import" entry in the main menu
 
