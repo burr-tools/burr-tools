@@ -146,10 +146,13 @@ int DisasmToMoves::doRecursive(const separation_c * tree, int step, float weight
     if (tree->getRemoved())
       steps = doRecursive(tree->getRemoved(), step - (int)tree->getMoves(), weight, cx+dx, cy+dy, cz+dz);
     else {
-      moves[4*tree->getPieceName(pc)+0] += weight * (dx+cx+((mabs(s->getX(pc))<10000)?(s->getX(pc)):(0)));
-      moves[4*tree->getPieceName(pc)+1] += weight * (dy+cy+((mabs(s->getY(pc))<10000)?(s->getY(pc)):(0)));
-      moves[4*tree->getPieceName(pc)+2] += weight * (dz+cz+((mabs(s->getZ(pc))<10000)?(s->getZ(pc)):(0)));
-      moves[4*tree->getPieceName(pc)+3] += weight * 0;
+      for (unsigned int p = 0; p < tree->getPieceNumber(); p++)
+        if (s->pieceRemoved(p)) {
+          moves[4*tree->getPieceName(p)+0] += weight * (dx+cx+((mabs(s->getX(p))<10000)?(s->getX(p)):(0)));
+          moves[4*tree->getPieceName(p)+1] += weight * (dy+cy+((mabs(s->getY(p))<10000)?(s->getY(p)):(0)));
+          moves[4*tree->getPieceName(p)+2] += weight * (dz+cz+((mabs(s->getZ(p))<10000)?(s->getZ(p)):(0)));
+          moves[4*tree->getPieceName(p)+3] += weight * 0;
+        }
 
       steps = 0;
     }
@@ -158,10 +161,14 @@ int DisasmToMoves::doRecursive(const separation_c * tree, int step, float weight
     if (tree->getLeft())
       steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, weight, cx, cy, cz);
     else {
-      moves[4*tree->getPieceName(pc2)+0] += weight * (cx+s->getX(pc2));
-      moves[4*tree->getPieceName(pc2)+1] += weight * (cy+s->getY(pc2));
-      moves[4*tree->getPieceName(pc2)+2] += weight * (cz+s->getZ(pc2));
-      moves[4*tree->getPieceName(pc2)+3] += weight * 0 * weight;
+
+      for (unsigned int p = 0; p < tree->getPieceNumber(); p++)
+        if (!s->pieceRemoved(p)) {
+          moves[4*tree->getPieceName(p)+0] += weight * (cx+s->getX(p));
+          moves[4*tree->getPieceName(p)+1] += weight * (cy+s->getY(p));
+          moves[4*tree->getPieceName(p)+2] += weight * (cz+s->getZ(p));
+          moves[4*tree->getPieceName(p)+3] += weight * 0 * weight;
+        }
 
       steps2 = 0;
     }
