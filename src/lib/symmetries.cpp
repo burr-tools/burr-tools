@@ -89,13 +89,6 @@ unsigned int transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATIONS_MIRROR] =
   {47, 36, 41, 30, 44, 24, 40, 34, 45, 28, 43, 38, 46, 32, 42, 26, 27, 39, 35, 31, 33, 37, 25, 29, 19,  4, 21, 14, 18,  8, 22,  2, 17, 12, 23,  6, 16,  0, 20, 10,  9,  5,  1, 13,  3,  7, 11, 15}
 };
 
-/* this array contains information about which transformation is the inverse of which other transformation
- */
-unsigned int transInverse[NUM_TRANSFORMATIONS_MIRROR] = {
-    0,  3,  2,  1, 12, 23,  6, 17,  8,  9, 10, 11,  4, 19, 14, 21, 20,  7, 18, 13, 16, 15, 22,  5,
-   24, 27, 26, 25, 28, 43, 38, 45, 32, 33, 34, 35, 36, 47, 30, 41, 40, 39, 46, 29, 44, 31, 42, 37
-};
-
 symmetries_t multiplySymmetries(symmetries_t s1, symmetries_t s2) {
 
   symmetries_t s = 0;
