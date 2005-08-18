@@ -29,14 +29,14 @@
  * state tree each node contains the position of all the pieces relative
  * to their position in the assembled puzzle
  */
-class node4_c {
+class node0_c {
 
 private:
 
   /* the nodes are used to save the shortest way from the start to each
    * node. So each node saves where the way to the start is
    */
-  node4_c * comefrom;
+  node0_c * comefrom;
 
   /* number of pieces this node is handling */
   int piecenumber;
@@ -49,14 +49,14 @@ private:
 
 public:
 
-  node4_c(int pn) : comefrom(0), piecenumber(pn) {
+  node0_c(int pn) : comefrom(0), piecenumber(pn) {
     dx = new int[piecenumber];
     dy = new int[piecenumber];
     dz = new int[piecenumber];
     trans = new unsigned int[piecenumber];
   }
 
-  ~node4_c() {
+  ~node0_c() {
     delete [] dx;
     delete [] dy;
     delete [] dz;
@@ -70,7 +70,7 @@ public:
    * relativ to each other because all nodes with all pieces
    * shifted by the same mount do are equal
    */
-  bool operator == (const node4_c &b) const {
+  bool operator == (const node0_c &b) const {
   
     for (int i = 1; i < piecenumber; i++) {
       if (dx[i] - dx[0] != b.dx[i] - b.dx[0]) return false;
@@ -85,7 +85,7 @@ public:
   /* this opeartion is required for the container. It brings
    * the nodes into an arbitraty but deterministic order
    */
-  bool operator < (const node4_c &b) const {
+  bool operator < (const node0_c &b) const {
   
     for (int i = 1; i < piecenumber; i++) {
       if (dx[i] - dx[0] < b.dx[i] - b.dx[0]) return true;
@@ -146,11 +146,11 @@ public:
     return false;
   }
 
-  node4_c * getComefrom(void) const {
+  node0_c * getComefrom(void) const {
     return comefrom;
   }
 
-  void setComefrom(node4_c *n) {
+  void setComefrom(node0_c *n) {
     comefrom = n;
   }
 };
@@ -159,11 +159,11 @@ public:
  * operation for the comparison, the standard one would compare the pointers
  * and not the things the pointers point to
  */
-class node_ptr_less : public std::binary_function<node4_c *, node4_c *, bool> {
+class node_ptr_less : public std::binary_function<node0_c *, node0_c *, bool> {
 
 public:
 
-  bool operator()(const node4_c * a, const node4_c * b) const {
+  bool operator()(const node0_c * a, const node0_c * b) const {
     return *a < *b;
   }
 };
@@ -178,7 +178,7 @@ public:
  *    and find the shortest distance the the pirst piece follows
  *    the second and the second piece follows the first
  */
-void disassembler_0_c::prepare(int pn, voxel_type * pieces, node4_c * searchnode) {
+void disassembler_0_c::prepare(int pn, voxel_type * pieces, node0_c * searchnode) {
 
   for (int j = 0; j < pn; j++)
     for (int i = 0; i < pn; i++) {
@@ -297,7 +297,7 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces) {
   return true;
 }
 
-void disassembler_0_c::init_find(node4_c * nd, int piecenumber, voxel_type * pieces) {
+void disassembler_0_c::init_find(node0_c * nd, int piecenumber, voxel_type * pieces) {
 
   /* when a new search has been started we need to first calculate
    * the movement matrixes, this is a table that contains one 2 dimensional
@@ -329,7 +329,7 @@ void disassembler_0_c::init_find(node4_c * nd, int piecenumber, voxel_type * pie
  * FIXME: we should first try to remove a single piece, then to remove groups of pieces
  * and then check movement of pieces
  */
-node4_c * disassembler_0_c::find(node4_c * searchnode) {
+node0_c * disassembler_0_c::find(node0_c * searchnode) {
 
   while (nextdir < 6) {
 
@@ -349,7 +349,7 @@ node4_c * disassembler_0_c::find(node4_c * searchnode) {
        */
       if (checkmovement(next_pn/2)) {
 
-        node4_c * n = new node4_c(next_pn);
+        node0_c * n = new node0_c(next_pn);
 
         /* create a new state with the pieces moved */
         for (int i = 0; i < next_pn; i++)
@@ -389,9 +389,9 @@ node4_c * disassembler_0_c::find(node4_c * searchnode) {
 /* create all the necessary parameters for one of the two possible subproblems
  * our current problems divides into
  */
-static void create_new_params(node4_c * st, node4_c ** n, voxel_type ** pn, int piecenumber, voxel_type * pieces, int part, bool cond) {
+static void create_new_params(node0_c * st, node0_c ** n, voxel_type ** pn, int piecenumber, voxel_type * pieces, int part, bool cond) {
 
-  *n = new node4_c(part);
+  *n = new node0_c(part);
   *pn = new voxel_type[part];
 
   int num = 0;
@@ -420,7 +420,7 @@ static void create_new_params(node4_c * st, node4_c ** n, voxel_type ** pn, int 
   assert(num == part);
 }
 
-unsigned short disassembler_0_c::subProbGroup(node4_c * st, voxel_type * pn, bool cond, int piecenumber) {
+unsigned short disassembler_0_c::subProbGroup(node0_c * st, voxel_type * pn, bool cond, int piecenumber) {
 
   unsigned short group = 0;
 
@@ -452,10 +452,10 @@ unsigned short disassembler_0_c::subProbGroup(node4_c * st, voxel_type * pn, boo
  * the function takes over the ownership of the node and pieces. They are deleted at the end
  * of the function, so you must allocate them with new
  */
-separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * pieces, node4_c * start) {
+separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * pieces, node0_c * start) {
 
-  std::queue<node4_c *> openlist;
-  std::set<node4_c *, node_ptr_less> closed;
+  std::queue<node0_c *> openlist;
+  std::set<node0_c *, node_ptr_less> closed;
 
   closed.insert(start);
   openlist.push(start);
@@ -466,12 +466,12 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
   while (!openlist.empty()) {
 
     /* remove the node from the open list and start examining */
-    node4_c * node = openlist.front();
+    node0_c * node = openlist.front();
     openlist.pop();
 
     init_find(node, piecenumber, pieces);
 
-    node4_c * st;
+    node0_c * st;
 
     while ((st = find(node))) {
 
@@ -521,7 +521,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
       /* check each subproblem, if it's a problem */
       if ((part1 > 1) && (subProbGroup(st, pieces, false, piecenumber) == 0)) {
 
-        node4_c *n;
+        node0_c *n;
         voxel_type * pn;
         create_new_params(st, &n, &pn, piecenumber, pieces, part1, false);
         remove = disassemble_rec(part1, pn, n);
@@ -531,7 +531,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 
       if ((part2 > 1) && (subProbGroup(st, pieces, true, piecenumber) == 0)) {
 
-        node4_c *n;
+        node0_c *n;
         voxel_type * pn;
         create_new_params(st, &n, &pn, piecenumber, pieces, part2, true);
         left = disassemble_rec(part2, pn, n);
@@ -556,7 +556,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 
           erg->addstate(s);
 
-          st = (node4_c*)st->getComefrom();
+          st = (node0_c*)st->getComefrom();
         } while (st);
 
       } else {
@@ -575,7 +575,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 
       delete [] pieces;
     
-      std::set<node4_c *, node_ptr_less>::iterator it;
+      std::set<node0_c *, node_ptr_less>::iterator it;
       for (it = closed.begin(); it != closed.end(); it++)
         delete *it;
 
@@ -590,7 +590,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
   // free all the allocated nodes
   delete [] pieces;
 
-  std::set<node4_c *, node_ptr_less>::iterator i;
+  std::set<node0_c *, node_ptr_less>::iterator i;
   for (i = closed.begin(); i != closed.end(); i++)
     delete *i;
 
@@ -626,7 +626,7 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
   /* create the first node with the start state
    * here all pieces are at position (0; 0; 0)
    */
-  node4_c * start = new node4_c(piecenumber);
+  node0_c * start = new node0_c(piecenumber);
 
   for (unsigned int i = 0; i < piecenumber; i++)
     start->set(i, assembly->getX(i), assembly->getY(i), assembly->getZ(i), assembly->getTransformation(i));

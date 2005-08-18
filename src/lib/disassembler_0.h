@@ -26,7 +26,7 @@
 #include "puzzle.h"
 #include "movementcache.h"
 
-class node4_c;
+class node0_c;
 
 /* this class is a disassembler for the cube space.
  *
@@ -59,16 +59,16 @@ private:
   movementCache * cache;
 
   /* create matrix */
-  void prepare(int pn, voxel_type * pieces, node4_c * searchnode);
-  void init_find(node4_c * nd, int piecenumber, voxel_type * pieces);
+  void prepare(int pn, voxel_type * pieces, node0_c * searchnode);
+  void init_find(node0_c * nd, int piecenumber, voxel_type * pieces);
 
   /* find all possible movements of starting from the state given to init_find
    * the functions returns the next possible state or 0 if no other state was found
    */
-  node4_c * find(node4_c * searchnode);
+  node0_c * find(node0_c * searchnode);
   bool checkmovement(unsigned int maxPieces);
 
-  unsigned short disassembler_0_c::subProbGroup(node4_c * st, voxel_type * pn, bool cond, int piecenumber);
+  unsigned short disassembler_0_c::subProbGroup(node0_c * st, voxel_type * pn, bool cond, int piecenumber);
 
   /* the real disassembly routine. It separates the puzzle into 2 parts
    * and get's called recursively with each subpart to disassemble
@@ -78,7 +78,7 @@ private:
    * pieces contains the names of all the pieces that are still inside the
    * subpuzzle puzzle, start defines the starting position of these pieces
    */
-  separation_c * disassemble_rec(int piecenumber, voxel_type * pieces, node4_c * start);
+  separation_c * disassemble_rec(int piecenumber, voxel_type * pieces, node0_c * start);
 
   const puzzle_c * puzzle;
   unsigned int problem;
