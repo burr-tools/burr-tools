@@ -198,11 +198,11 @@ void disassembler_0_c::prepare(int pn, voxel_type * pieces, node4_c * searchnode
   /* second part of Bills algorithm. */
   bool again;
 
-  do {
-
-    again = false;
-
-    for (int d = 0; d < 3; d++)
+  for (int d = 0; d < 3; d++)
+    do {
+  
+      again = false;
+  
       for (int i = 0; i < pn; i++)
         for (int j = 0; j < pn; j++)
           for (int k = 0; k < pn; k++) {
@@ -212,8 +212,8 @@ void disassembler_0_c::prepare(int pn, voxel_type * pieces, node4_c * searchnode
               again = true;
             }
           }
-
-  } while (again);
+  
+    } while (again);
 }
 
 /*
