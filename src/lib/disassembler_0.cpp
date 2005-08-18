@@ -194,6 +194,9 @@ void disassembler_0_c::prepare(int pn, voxel_type * pieces, node0_c * searchnode
       else
         matrix[0][i + piecenumber * j] = matrix[1][i + piecenumber * j] = matrix[2][i + piecenumber * j] = 0;
     }
+}
+
+void disassembler_0_c::prepare2(int pn) {
 
   /* second part of Bills algorithm. */
   bool again;
@@ -202,16 +205,37 @@ void disassembler_0_c::prepare(int pn, voxel_type * pieces, node0_c * searchnode
     do {
   
       again = false;
+
+      int * pos2 = matrix[d];     // j + piecenumber * k
+      int * pos3 = matrix[d];     // i + piecenumber * k
   
-      for (int i = 0; i < pn; i++)
-        for (int j = 0; j < pn; j++)
-          for (int k = 0; k < pn; k++) {
-            int l = matrix[d][i + piecenumber * j] + matrix[d][j + piecenumber * k];
-            if (matrix[d][i + piecenumber * k] > l) {
-              matrix[d][i + piecenumber * k] = l;
+      for (int k = 0; k < pn; k++) {
+
+        int * pos1 = matrix[d];   // i + piecenumber * j
+
+        for (int j = 0; j < pn; j++) {
+
+          for (int i = 0; i < pn; i++) {
+
+            int l = *pos1 + *pos2;
+
+            if (*pos3 > l) {
+              *pos3 = l;
               again = true;
             }
+
+            pos3++;
+            pos1++;
           }
+
+          pos1 += piecenumber - pn;
+          pos2++;
+          pos3 -= pn;
+        }
+
+        pos2 += piecenumber - pn;
+        pos3 += piecenumber;
+      }
   
     } while (again);
 }
@@ -311,6 +335,7 @@ void disassembler_0_c::init_find(node0_c * nd, int piecenumber, voxel_type * pie
    * "Computer Analysis of All 6 Piece Burrs"
    */
   prepare(piecenumber, pieces, nd);
+  prepare2(piecenumber);
 
   /* first we try to remove the piece completely by specifying
    * a very large distance, if it is possible to move this piece that

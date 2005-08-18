@@ -60,6 +60,7 @@ private:
 
   /* create matrix */
   void prepare(int pn, voxel_type * pieces, node0_c * searchnode);
+  void prepare2(int pn);
   void init_find(node0_c * nd, int piecenumber, voxel_type * pieces);
 
   /* find all possible movements of starting from the state given to init_find
