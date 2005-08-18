@@ -19,7 +19,7 @@
 
 #include "DisasmToMoves.h"
 
-DisasmToMoves::DisasmToMoves(const separation_c * tr, const assembly_c * a, unsigned int sz) : tree(tr), assm(a), size(sz) {
+DisasmToMoves::DisasmToMoves(const separation_c * tr, unsigned int sz) : tree(tr), size(sz) {
   moves = new float[tr->getPieceNumber()*4];
 }
 

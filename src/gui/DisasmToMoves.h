@@ -46,7 +46,6 @@ class DisasmToMoves : public PiecePositions {
 
   /* the disassembly tree */
   const separation_c * tree;
-  const assembly_c * assm;
 
   /* size is used to removed pieces from the puzzle, this value controls
    * how far they are move, when they are removed
@@ -61,7 +60,7 @@ class DisasmToMoves : public PiecePositions {
 
 public:
 
-  DisasmToMoves(const separation_c * tr, const assembly_c * a, unsigned int sz);
+  DisasmToMoves(const separation_c * tr, unsigned int sz);
 
   virtual ~DisasmToMoves();
   

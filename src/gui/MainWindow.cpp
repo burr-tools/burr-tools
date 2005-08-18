@@ -1026,7 +1026,7 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->show();
       MovesInfo->value(puzzle->probGetDisassembly(prob, num)->sumMoves());
 
-      disassemble = new DisasmToMoves(puzzle->probGetDisassembly(prob, num), puzzle->probGetAssembly(prob, num),
+      disassemble = new DisasmToMoves(puzzle->probGetDisassembly(prob, num),
                                       2*puzzle->probGetResultShape(prob)->getBiggestDimension());
       disassemble->setStep(SolutionAnim->value());
 
