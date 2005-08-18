@@ -576,14 +576,14 @@ void UserInterface::cb_BtnCont(void) {
 
   if (SolveDisasm->value() != 0)
     if (JustCount->value() != 0)
-      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_COUNT_DISASM);
+      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_COUNT_DISASM, true);
     else
-      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_DISASM);
+      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_DISASM, true);
   else
     if (JustCount->value() != 0)
-      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_COUNT_ASM);
+      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_COUNT_ASM, true);
     else
-      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_SAVE_ASM);
+      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_SAVE_ASM, true);
 
   if (!assmThread->start()) {
     fl_message("Could not start the solving process, the thread creation failed, sorry.");

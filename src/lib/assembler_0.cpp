@@ -412,6 +412,8 @@ bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
     j = right[j];
   }
 
+  return false;
+
   unsigned int col = right[0];
 
   while (col) {
@@ -550,6 +552,8 @@ void assembler_0_c::reduce(void) {
 
       delete [] rowsToRemove;
     }
+
+    return;
 
     iteration++;
     rec++;
