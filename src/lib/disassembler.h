@@ -26,10 +26,11 @@
 #include <functional>
 
 /* this class implements a burr disassembler. the interface is simple:
- * 1) construct the klass with the voxel space of the assembled puzzle,
- *    empty voxels should be 0xff, bieces should be enumerated continuously
- *    starting from 0
- * 2) call diassemble and evaluate the result
+ * 1) construct the class with whatever parameters the concrete subclass requires
+ * 2) call diassemble for each assembly found and evaluate the result
+ *
+ * some subclasses may be able to handle serveral assemblies, others may only
+ * disassembler one, that depends on the concrete disassembler you use
  */
 class disassembler_c {
 

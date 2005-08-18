@@ -28,11 +28,11 @@
 
 class node4_c;
 
-/* this class implements a burr disassembler. the interface is simple:
- * 1) construct the klass with the voxel space of the assembled puzzle,
- *    empty voxels should be 0xff, bieces should be enumerated continuously
- *    starting from 0
- * 2) call diassemble and evaluate the result
+/* this class is a disassembler for the cube space.
+ *
+ * is is implemented using bill cuttlers algorithm, so please read there
+ * in case you are interested how it works. The comments are written with
+ * the thought that you know his algorithm
  */
 class disassembler_0_c : public disassembler_c {
 
@@ -62,8 +62,7 @@ private:
   void prepare(int pn, voxel_type * pieces, node4_c * searchnode);
   void init_find(node4_c * nd, int piecenumber, voxel_type * pieces);
 
-  /*
-   * find all possible movements of starting from the state given to init_find
+  /* find all possible movements of starting from the state given to init_find
    * the functions returns the next possible state or 0 if no other state was found
    */
   node4_c * find(node4_c * searchnode);
@@ -86,6 +85,10 @@ private:
 
 public:
 
+  /* construct the disassembler for this concrete problem, is can not be
+   * changed, once you done that but you can analyse many assemblies for
+   * disassembability
+   */
   disassembler_0_c(const puzzle_c * puz, unsigned int prob);
   ~disassembler_0_c();
 

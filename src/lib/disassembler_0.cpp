@@ -226,9 +226,8 @@ void disassembler_0_c::prepare(int pn, voxel_type * pieces, node4_c * searchnode
  * in the worst case when no movement in the selected direction is possible all values are
  * set to the same value meaning the whole puzzle is moved
  *
- * to distinguish "good" and "bad" moves the function returns true, if less than halve of
- * the pieces need to be moved. This prevents the movement of the whole puzzle which
- * is rubbish.
+ * to distinguish "good" and "bad" moves the function returns true, if less maxPieces
+ * have to be moved, this value should not be larger than halve of the pieces in the puzzle
  */
 bool disassembler_0_c::checkmovement(void) {
 
@@ -426,16 +425,13 @@ unsigned short disassembler_0_c::subProbGroup(node4_c * st, voxel_type * pn, boo
   unsigned short group = 0;
 
   for (int i = 0; i < piecenumber; i++)
-    if (st->is_piece_removed(i) == cond) {
+    if (st->is_piece_removed(i) == cond)
       if (puzzle->probGetPieceGroup(problem, pn[i]) == 0)
         return 0;
-      else
-        if (group == 0)
-          group = puzzle->probGetPieceGroup(problem, pn[i]);
-        else
-          if (group != puzzle->probGetPieceGroup(problem, pn[i]))
-            return 0;
-    }
+      else if (group == 0)
+        group = puzzle->probGetPieceGroup(problem, pn[i]);
+      else if (group != puzzle->probGetPieceGroup(problem, pn[i]))
+        return 0;
 
   return group;
 }
@@ -619,7 +615,7 @@ disassembler_0_c::~disassembler_0_c() {
   for (unsigned int k = 0; k < 3; k++)
     delete [] matrix[k];
 
-  if (cache) delete cache;
+  delete cache;
 }
 
 
