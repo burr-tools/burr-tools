@@ -102,11 +102,6 @@ public:
     return false;
   }
 
-  voxel_type getVoxel(assemblyVoxel_c * assm, int x, int y, int z, int piece) const {
-    assert(piece < piecenumber);
-    return assm->pieceNumber2(x - dx[piece], y - dy[piece], z - dz[piece]);
-  }
-
   int getX(int i) const {
     assert(i < piecenumber);
     return dx[i];
@@ -158,11 +153,6 @@ public:
   void setComefrom(node4_c *n) {
     comefrom = n;
   }
-
-  int getPiecenumber(void) {
-    return piecenumber;
-  }
-
 };
 
 /* because we save pointers to nodes inside our nodes set, we need a special
