@@ -427,11 +427,9 @@ xml::node problem_c::save(void) const {
     }
   }
 
-  if (result < shapes.size()) {
-    it = nd.insert(xml::node("result"));
-    snprintf(tmp, 50, "%i", result);
-    it->get_attributes().insert("id", tmp);
-  }
+  it = nd.insert(xml::node("result"));
+  snprintf(tmp, 50, "%i", result);
+  it->get_attributes().insert("id", tmp);
 
   nd.insert(colorConstraints.save());
 
