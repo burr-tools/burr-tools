@@ -412,8 +412,6 @@ bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
     j = right[j];
   }
 
-  return false;
-
   unsigned int col = right[0];
 
   while (col) {
@@ -911,7 +909,7 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   assert(pos == 0);
 
   /* check for te right version */
-  if (strcmp(version, "1.1"))
+  if (strcmp(version, "1.2"))
     return ERR_CAN_NOT_RESTORE;
 
   /* get the values from the string. For the moment we assume that
@@ -982,7 +980,7 @@ xml::node assembler_0_c::save(void) const {
 
   xml::node nd("assembler");
 
-  nd.get_attributes().insert("version", "1.1");
+  nd.get_attributes().insert("version", "1.2");
 
   std::string cont;
 
