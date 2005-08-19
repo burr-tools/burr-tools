@@ -1,3 +1,18 @@
+Fri Aug 19 16:51:17 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * more marker functions from the header into the c-file
+
+Fri Aug 19 16:38:19 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix bug that made the program not save the result shape
+  
+  the number of shapes in the problem has nothing to do with
+  the number of shapes in the puzzle
+
+Fri Aug 19 16:37:26 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * some more updates to reduce and also a version update for assembler because of reduce
+
+Thu Aug 18 21:48:58 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * more preparations for 0.1.7
+
 Thu Aug 18 21:37:01 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
   * enable reducer but in a very simple form
 

@@ -1,4 +1,11 @@
-------------- Version 0.1.7 Aug 11 2005
+------------- Version 0.1.7 Aug 19 2005
+
+- last version missed the placement optimisations for pieces
+  resulting in an eternal solving time for some more complex
+  puzzles like Bill Cuttlers SM or Lovley18. This version
+  switches the optimisations back on, that makes some puzzles
+  a bit slower but on the other hand the solving time for some
+  complex puzzles drops down considerable (from years to hours)
 
 - huge speedup for the disassembler for puzzles that have lots of
   assemblies for EasyLiving for example only 25% of the time is left
