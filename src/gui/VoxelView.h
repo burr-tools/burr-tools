@@ -116,14 +116,8 @@ public:
   void setTransformationType(transformationType type);
 
   /* only active in single mode */
-  void setMarker(int x, int y, int z) {
-    markerType = true;
-    mX = x;
-    mY = y;
-    mZ = z;
-  }
-
-  void hideMarker(void) { markerType = false; }
+  void setMarker(int x, int y, int z);
+  void hideMarker(void);
 
   // if more complex updates are done, this can avoid doing
   // a screen update each time

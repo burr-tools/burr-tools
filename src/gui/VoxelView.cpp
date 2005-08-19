@@ -461,3 +461,14 @@ void VoxelView::addPaletteEntry(float r, float g, float b) {
   palette.push_back(ci);
 }
 
+void VoxelView::setMarker(int x, int y, int z) {
+  markerType = true;
+  mX = x;
+  mY = y;
+  mZ = z;
+}
+
+void VoxelView::hideMarker(void) {
+  markerType = false;
+}
+
