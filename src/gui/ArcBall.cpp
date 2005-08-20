@@ -245,11 +245,19 @@ void ArcBall_c::getDrag(GLfloat NewRot[4]) const
 
 void ArcBall_c::setBounds(GLfloat NewWidth, GLfloat NewHeight) {
 
-  assert((NewWidth > 1.0f) && (NewHeight > 1.0f));
 
-  //Set adjustment factor for width/height
-  AdjustWidth  = 1.0f / ((NewWidth  - 1.0f) * 0.5f);
-  AdjustHeight = 1.0f / ((NewHeight - 1.0f) * 0.5f);
+  if ((NewWidth > 1.0f) && (NewHeight > 1.0f)) {
+
+    //Set adjustment factor for width/height
+    AdjustWidth  = 1.0f / ((NewWidth  - 1.0f) * 0.5f);
+    AdjustHeight = 1.0f / ((NewHeight - 1.0f) * 0.5f);
+
+  } else {
+
+    AdjustWidth  = 1.0f;
+    AdjustHeight = 1.0f;
+
+  }
 }
 
 void ArcBall_c::addTransform(void) {
