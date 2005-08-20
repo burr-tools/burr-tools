@@ -351,4 +351,33 @@ void separation_c::addstate(state_c *st) {
   states.push_front(st);
 }
 
+bool separation_c::containsMultiMoves(void) {
+  return (states.size() > 2) ||
+    (left && left->containsMultiMoves()) ||
+    (removed && removed->containsMultiMoves());
+}
+
+int separation_c::movesText(char * txt, int len) {
+  int len2 = snprintf(txt, len, "%i", states.size()-1);
+
+  if (len2+5 > len)
+    return len2;
+
+  if (left && left->containsMultiMoves()) {
+    snprintf(txt+len2, len-len2, ".");
+    len2++;
+    len2 += left->movesText(txt+len2, len-len2);
+  }
+
+  if (len2+5 > len)
+    return len2;
+
+  if (removed && removed->containsMultiMoves()) {
+    snprintf(txt+len2, len-len2, ".");
+    len2++;
+    len2 += removed->movesText(txt+len2, len-len2);
+  }
+
+  return len2;
+}
 

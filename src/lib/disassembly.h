@@ -66,6 +66,8 @@ class separation_c {
    */
   separation_c * removed, *left;
 
+  bool separation_c::containsMultiMoves(void);
+
 public:
 
   /* create a separation with sub separations r and l, pn pieces
@@ -91,6 +93,11 @@ public:
    * all sub separations
    */
   unsigned int sumMoves(void) const;
+
+  /* fill a string with dot separated numbers containing the moves
+   * required to disassemble the puzzle
+   */
+  int movesText(char * txt, int len);
 
   /* get one state from the separation process */
   const state_c * getState(unsigned int num) const {

@@ -1025,7 +1025,12 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
       SolutionsInfo->show();
 
       MovesInfo->show();
-      MovesInfo->value(puzzle->probGetDisassembly(prob, num)->sumMoves());
+
+      char levelText[50];
+      int len = snprintf(levelText, 50, "%i=", puzzle->probGetDisassembly(prob, num)->sumMoves());
+      puzzle->probGetDisassembly(prob, num)->movesText(levelText + len, 50-len);
+
+      MovesInfo->value(levelText);
 
       disassemble = new DisasmToMoves(puzzle->probGetDisassembly(prob, num),
                                       2*puzzle->probGetResultShape(prob)->getBiggestDimension());
@@ -1980,9 +1985,10 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
  
-    MovesInfo = new Fl_Value_Output(x+w/2, y, w/2, SZ_TEXT_Y);
+    MovesInfo = new Fl_Output(x+40, y, w-40, SZ_TEXT_Y);
     MovesInfo->tooltip("Steps for complete disassembly");
     MovesInfo->box(FL_FLAT_BOX);
+    MovesInfo->color(FL_BACKGROUND_COLOR);
     y += SZ_TEXT_Y;
     lh -= SZ_TEXT_Y;
 

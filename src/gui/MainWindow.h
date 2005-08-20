@@ -96,7 +96,7 @@ class UserInterface {
   Fl_Value_Slider *SolutionSel;
   Fl_Value_Slider *SolutionAnim;
   Fl_Value_Output *SolutionsInfo;
-  Fl_Value_Output *MovesInfo;
+  Fl_Output *MovesInfo;
 
   Fl_Output *TimeUsed, *TimeEst;
 
