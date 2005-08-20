@@ -1013,7 +1013,23 @@ void puzzle_c::probAddSolution(unsigned int prob, assembly_c * voxel) {
 void puzzle_c::probAddSolution(unsigned int prob, assembly_c * voxel, separation_c * tree) {
   assert(prob < problems.size());
   assert(problems[prob]->assm);
-  problems[prob]->solutions.push_back(new solution_c(voxel, tree));
+
+  // find the place to insert and insert the new solution so that
+  // they are sorted by the complexity of the disassembly
+
+  unsigned int s = tree->sumMoves();
+  bool ins = false;
+
+  for (unsigned int i = 0; i < problems[prob]->solutions.size(); i++)
+    if (problems[prob]->solutions[i]->tree->sumMoves() > s) {
+      problems[prob]->solutions.insert(problems[prob]->solutions.begin()+i, new solution_c(voxel, tree));
+      ins = true;
+      break;
+    }
+
+  if (!ins)
+    problems[prob]->solutions.push_back(new solution_c(voxel, tree));
+
   problems[prob]->solveState = SS_SOLVING;
 }
 
