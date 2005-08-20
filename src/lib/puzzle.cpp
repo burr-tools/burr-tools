@@ -117,7 +117,7 @@ void bitmap_c::add(void) {
 
 void bitmap_c::remove(unsigned int col) {
 
-  assert(col < colors);
+  assert(col <= colors);
 
   unsigned char *m2 = new unsigned char[((colors-1)*(colors-1) + 7) >> 3];
 
