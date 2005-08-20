@@ -608,6 +608,7 @@ void UserInterface::cb_BtnStop(void) {
 
 static void cb_SolutionSel_stub(Fl_Widget* o, void* v) { ui->cb_SolutionSel((Fl_Value_Slider*)o); }
 void UserInterface::cb_SolutionSel(Fl_Value_Slider* o) {
+  o->take_focus();
   activateSolution(solutionProblem->getSelection(), int(o->value()));
 }
 
