@@ -143,8 +143,6 @@ void SquareEditor::draw() {
       y1 = ty+(space->getY()-mY-1)*s;
     }
 
-    printf("rect %i %i %i %i\n", x1, y1, x2, y2);
-
     fl_color(labelcolor());
     fl_rect(x1-1, y1-1, x2-x1+3, y2-y1+3);
     fl_rect(x1+1, y1+1, x2-x1-1, y2-y1-1);
@@ -288,7 +286,6 @@ int SquareEditor::handle(int event) {
         if (state == 1) {
           startX = mX;
           startY = mY;
-          printf("start\n");
           if (Fl::event_button() == 1)
             state = (space->getState(x, y, currentZ) == pieceVoxel_c::VX_FILLED) ? 2 : 3;
           else
