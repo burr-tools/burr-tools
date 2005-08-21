@@ -116,7 +116,7 @@ public:
   void setTransformationType(transformationType type);
 
   /* only active in single mode */
-  void setMarker(int x, int y, int z);
+  void setMarker(int x1, int y1, int x2, int y2, int z);
   void hideMarker(void);
 
   // if more complex updates are done, this can avoid doing
@@ -149,7 +149,7 @@ private:
   float scale;
 
   /* the marker position */
-  int mX, mY, mZ;
+  int mX1, mY1, mZ, mX2, mY2;
   bool markerType;
 
   std::vector<shapeInfo> shapes;

@@ -275,6 +275,12 @@ int SquareEditor::handle(int event) {
           mX = x;
           mY = y;
           mZ = currentZ;
+
+          if (state == 0) {
+            startX = mX;
+            startY = mY;
+          }
+
           redraw();
           callbackReason = RS_MOUSEMOVE;
           do_callback();

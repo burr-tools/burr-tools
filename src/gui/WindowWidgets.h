@@ -99,8 +99,10 @@ public:
 
   bool getMouse(void) { return sqedit->getMouse(); }
 
-  int getMouseX(void) { return sqedit->getMouseX(); }
-  int getMouseY(void) { return sqedit->getMouseY(); }
+  int getMouseX1(void) { return sqedit->getMouseX1(); }
+  int getMouseY1(void) { return sqedit->getMouseY1(); }
+  int getMouseX2(void) { return sqedit->getMouseX2(); }
+  int getMouseY2(void) { return sqedit->getMouseY2(); }
   int getMouseZ(void) { return sqedit->getMouseZ(); }
 
   void setPuzzle(puzzle_c * puzzle, unsigned int num);
@@ -283,7 +285,7 @@ public:
   void updateVisibility(PieceVisibility * pcvis);
   void showColors(const puzzle_c * puz, bool show);
 
-  void setMarker(int x, int y, int z) { View3D->setMarker(x, y, z); }
+  void setMarker(int x1, int y1, int x2, int y2, int z) { View3D->setMarker(x1, y1, x2, y2, z); }
   void hideMarker(void) { View3D->hideMarker(); }
 
   void redraw(void) { View3D->redraw(); }

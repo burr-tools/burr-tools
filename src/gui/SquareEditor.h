@@ -119,8 +119,10 @@ public:
 
   // get the mouse mosition so that the cursor can be shown in 3d view
   bool getMouse(void) { return inside; }
-  int getMouseX(void) { return mX; }
-  int getMouseY(void) { return mY; }
+  int getMouseX1(void) { return (startX < mX)?(startX):(mX); }
+  int getMouseY1(void) { return (startY < mY)?(startY):(mY); }
+  int getMouseX2(void) { return (startX > mX)?(startX):(mX); }
+  int getMouseY2(void) { return (startY > mY)?(startY):(mY); }
   int getMouseZ(void) { return mZ; }
 
   // find out the reason why this widget called the callback
