@@ -1995,6 +1995,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     SolutionAnim = new Fl_Value_Slider(x, y, w, SZ_BUTTON_Y, "Move");
     SolutionAnim->tooltip("Animate the disassembly.");
     SolutionAnim->type(1);
+    SolutionAnim->step(0.1);
     SolutionAnim->callback(cb_SolutionAnim_stub);
     SolutionAnim->align(FL_ALIGN_TOP_LEFT);
     SolutionAnim->box(FL_THIN_DOWN_BOX);
