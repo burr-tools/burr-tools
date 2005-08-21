@@ -404,46 +404,21 @@ void VoxelView::drawVoxelSpace() {
 
       glColor4f(1, 1, 1, 1);
 
-      drawRect(-1, -1, mZ,
-               shapes[piece].shape->getX()+2, 0, 0,
-               0, shapes[piece].shape->getY()+2, 0, true, 2);
-      drawRect(-1, -1, mZ+1,
-               shapes[piece].shape->getX()+2, 0, 0,
-               0, shapes[piece].shape->getY()+2, 0, true, 2);
-      drawRect(-1, -1, mZ,
-               0, 0, 1,
-               0, shapes[piece].shape->getY()+2, 0, true, 2);
-      drawRect(-1, -1, mZ,
-               shapes[piece].shape->getX()+2, 0, 0,
-               0, 0, 1, true, 2);
-      drawRect(shapes[piece].shape->getX()+1, -1, mZ,
-               0, 0, 1,
-               0, shapes[piece].shape->getY()+2, 0, true, 2);
-      drawRect(-1, shapes[piece].shape->getY()+1, mZ,
-               shapes[piece].shape->getX()+2, 0, 0,
-               0, 0, 1, true, 2);
+      drawRect(-1, -1, mZ, shapes[piece].shape->getX()+2, 0, 0, 0, shapes[piece].shape->getY()+2, 0, true, 2);
+      drawRect(-1, -1, mZ+1, shapes[piece].shape->getX()+2, 0, 0, 0, shapes[piece].shape->getY()+2, 0, true, 2);
+      drawRect(-1, -1, mZ, 0, 0, 1, 0, shapes[piece].shape->getY()+2, 0, true, 2);
+      drawRect(-1, -1, mZ, shapes[piece].shape->getX()+2, 0, 0, 0, 0, 1, true, 2);
+      drawRect(shapes[piece].shape->getX()+1, -1, mZ, 0, 0, 1, 0, shapes[piece].shape->getY()+2, 0, true, 2);
+      drawRect(-1, shapes[piece].shape->getY()+1, mZ, shapes[piece].shape->getX()+2, 0, 0, 0, 0, 1, true, 2);
 
       glColor4f(0, 0, 0, 1);
 
-      drawRect(mX1, mY1, mZ,
-               mX2-mX1, 0, 0,
-               0, mY2-mY1, 0, false, 4);
-
-      drawRect(mX1, mY1, mZ+1,
-               mX2-mX1, 0, 0,
-               0, mY2-mY1, 0, false, 4);
-      drawRect(mX1, mY1, mZ,
-               0, 0, 1,
-               0, mY2-mY1, 0, false, 4);
-      drawRect(mX1, mY1, mZ,
-               mX2-mX1, 0, 0,
-               0, 0, 1, false, 4);
-      drawRect(mX2, mY1, mZ,
-               0, 0, 1,
-               0, mY2-mY1, 0, false, 4);
-      drawRect(mX1, mY2, mZ,
-               mX2-mX1, 0, 0,
-               0, 0, 1, false, 4);
+      drawRect(mX1, mY1, mZ, mX2-mX1, 0, 0, 0, mY2-mY1, 0, false, 4);
+      drawRect(mX1, mY1, mZ+1, mX2-mX1, 0, 0, 0, mY2-mY1, 0, false, 4);
+      drawRect(mX1, mY1, mZ, 0, 0, 1, 0, mY2-mY1, 0, false, 4);
+      drawRect(mX1, mY1, mZ, mX2-mX1, 0, 0, 0, 0, 1, false, 4);
+      drawRect(mX2, mY1, mZ, 0, 0, 1, 0, mY2-mY1, 0, false, 4);
+      drawRect(mX1, mY2, mZ, mX2-mX1, 0, 0, 0, 0, 1, false, 4);
 
       glEnable(GL_LIGHTING);
       glEnable(GL_BLEND);
