@@ -174,17 +174,17 @@ static void drawBox(const pieceVoxel_c * space, int x, int y, int z, float alpha
 static void drawCube(const voxel_c * space, int x, int y, int z) {
   glBegin(GL_QUADS);
   glNormal3f( 0.0f, 0.0f, -1.0f);
-  glVertex3f(x+0.2, y+0.2, z+0.2); glVertex3f(x+0.2, y+0.8, z+0.2); glVertex3f(x+0.8, y+0.8, z+0.2); glVertex3f(x+0.8, y+0.2, z+0.2);
+  glVertex3f(x+0.2, y+0.2, z-0.02); glVertex3f(x+0.2, y+0.8, z-0.02); glVertex3f(x+0.8, y+0.8, z-0.02); glVertex3f(x+0.8, y+0.2, z-0.02);
   glNormal3f( -1.0f, 0.0f, 0.0f);
-  glVertex3f(x+0.2, y+0.2, z+0.2); glVertex3f(x+0.2, y+0.2, z+0.8); glVertex3f(x+0.2, y+0.8, z+0.8); glVertex3f(x+0.2, y+0.8, z+0.2);
+  glVertex3f(x-0.02, y+0.2, z+0.2); glVertex3f(x-0.02, y+0.2, z+0.8); glVertex3f(x-0.02, y+0.8, z+0.8); glVertex3f(x-0.02, y+0.8, z+0.2);
   glNormal3f( 1.0f, 0.0f, 0.0f);
-  glVertex3f(x+0.8, y+0.8, z+0.2); glVertex3f(x+0.8, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.2, z+0.8); glVertex3f(x+0.8, y+0.2, z+0.2);
+  glVertex3f(x+1.02, y+0.8, z+0.2); glVertex3f(x+1.02, y+0.8, z+0.8); glVertex3f(x+1.02, y+0.2, z+0.8); glVertex3f(x+1.02, y+0.2, z+0.2);
   glNormal3f( 0.0f, 0.0f, 1.0f);
-  glVertex3f(x+0.2, y+0.2, z+0.8); glVertex3f(x+0.2, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.2, z+0.8);
+  glVertex3f(x+0.2, y+0.2, z+1.02); glVertex3f(x+0.2, y+0.8, z+1.02); glVertex3f(x+0.8, y+0.8, z+1.02); glVertex3f(x+0.8, y+0.2, z+1.02);
   glNormal3f( 0.0f, -1.0f, 0.0f);
-  glVertex3f(x+0.2, y+0.2, z+0.2); glVertex3f(x+0.8, y+0.2, z+0.2); glVertex3f(x+0.8, y+0.2, z+0.8); glVertex3f(x+0.2, y+0.2, z+0.8);
+  glVertex3f(x+0.2, y-0.02, z+0.2); glVertex3f(x+0.8, y-0.02, z+0.2); glVertex3f(x+0.8, y-0.02, z+0.8); glVertex3f(x+0.2, y-0.02, z+0.8);
   glNormal3f( 0.0f, 1.0f, 0.0f);
-  glVertex3f(x+0.2, y+0.8, z+0.2); glVertex3f(x+0.2, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.8, z+0.8); glVertex3f(x+0.8, y+0.8, z+0.2);
+  glVertex3f(x+0.2, y+1.02, z+0.2); glVertex3f(x+0.2, y+1.02, z+0.8); glVertex3f(x+0.8, y+1.02, z+0.8); glVertex3f(x+0.8, y+1.02, z+0.2);
   glEnd();
 }
 
@@ -383,9 +383,11 @@ void VoxelView::drawVoxelSpace() {
 
           switch (shapes[piece].mode) {
           case normal:
-            if (shapes[piece].shape->getState(x, y , z) == pieceVoxel_c::VX_VARIABLE)
+            if (shapes[piece].shape->getState(x, y , z) == pieceVoxel_c::VX_VARIABLE) {
+              drawBox(shapes[piece].shape, x, y, z, shapes[piece].a);
+              glColor4f(0, 0, 0, shapes[piece].a);
               drawCube(shapes[piece].shape, x, y, z);
-            else
+            } else
               drawBox(shapes[piece].shape, x, y, z, shapes[piece].a);
             break;
           case gridline:
