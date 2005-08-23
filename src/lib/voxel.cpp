@@ -414,6 +414,10 @@ void voxel_c::minimize(voxel_type val) {
           if (z > z2) z2 = z;
         }
 
+  // check for empty cube and do nothing in that case
+  if (x1 > x2)
+    return;
+
   if ((x1 != 0) || (y1 != 0) || (z1 != 0) || (x2 != sx-1) || (y2 != sy-1) || (z2 != sz-1)) {
     if (x1 > x2) {
       sx = sy = sz = 0;
@@ -780,6 +784,10 @@ void pieceVoxel_c::minimizePiece(void) {
           if (z < z1) z1 = z;
           if (z > z2) z2 = z;
         }
+
+  // check for empty cube and do nothing in that case
+  if (x1 > x2)
+    return;
 
   if ((x1 != 0) || (y1 != 0) || (z1 != 0) || (x2 != getX()-1) || (y2 != getY()-1) || (z2 != getZ()-1)) {
 
