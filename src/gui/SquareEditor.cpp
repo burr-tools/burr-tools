@@ -41,8 +41,17 @@ void SquareEditor::setZ(unsigned int z) {
   // clamp the value to valid values
   if (z >= puzzle->getShape(piecenumber)->getZ()) z = puzzle->getShape(piecenumber)->getZ()-1;
 
-  currentZ = z;
-  redraw();
+  if (z != currentZ) {
+
+    currentZ = z;
+    mZ = puzzle->getShape(piecenumber)->getZ()-z-1;
+    startX = mX = startY = mY = -50000;
+    inside = true;
+    redraw();
+    callbackReason = RS_MOUSEMOVE;
+    do_callback();
+  }
+
 }
 
 void SquareEditor::calcParameters(int *s, int *tx, int *ty) {
@@ -98,7 +107,7 @@ void SquareEditor::draw() {
         b = int(255*lightPieceColor(pieceColorB(piecenumber)));
       }
 
-      switch(space->getState(x, space->getY()-y-1, currentZ)) {
+      switch(space->getState(x, space->getY()-y-1, space->getZ()-currentZ-1)) {
       case pieceVoxel_c::VX_FILLED:
         fl_rectf(tx+x*s, ty+y*s, s, s, r, g, b);
         break;
@@ -107,10 +116,10 @@ void SquareEditor::draw() {
         break;
       }
 
-      if ((space->getState(x, space->getY()-y-1, currentZ) != pieceVoxel_c::VX_EMPTY) &&
-          space->getColor(x, space->getY()-y-1, currentZ)) {
+      if ((space->getState(x, space->getY()-y-1, space->getZ()-currentZ-1) != pieceVoxel_c::VX_EMPTY) &&
+          space->getColor(x, space->getY()-y-1, space->getZ()-currentZ-1)) {
 
-        puzzle->getColor(space->getColor(x, space->getY()-y-1, currentZ)-1, &r, &g, &b);
+        puzzle->getColor(space->getColor(x, space->getY()-y-1, space->getZ()-currentZ-1)-1, &r, &g, &b);
         fl_rectf(tx+x*s, ty+y*s, s/2, s/2, r, g, b);
       }
 
@@ -227,7 +236,7 @@ int SquareEditor::handle(int event) {
         for (unsigned int z = 0; z < space->getZ(); z++)
           changed |= setLayer(z, vxNew);
       else
-        changed = setLayer(currentZ, vxNew);
+        changed = setLayer(space->getZ()-currentZ-1, vxNew);
   
       if (changed) {
         redraw();
@@ -271,10 +280,10 @@ int SquareEditor::handle(int event) {
 
         // we move the mouse, if the new position is different from the saved one,
         // do a callback
-        if ((x != mX) || (y != mY) || (currentZ != mZ)) {
+        if ((x != mX) || (y != mY) || (space->getZ()-currentZ-1 != mZ)) {
           mX = x;
           mY = y;
-          mZ = currentZ;
+          mZ = space->getZ()-currentZ-1;
 
           if (state == 0) {
             startX = mX;
@@ -293,9 +302,9 @@ int SquareEditor::handle(int event) {
           startX = mX;
           startY = mY;
           if (Fl::event_button() == 1)
-            state = (space->getState(x, y, currentZ) == pieceVoxel_c::VX_FILLED) ? 2 : 3;
+            state = (space->getState(x, y, space->getZ()-currentZ-1) == pieceVoxel_c::VX_FILLED) ? 2 : 3;
           else
-            state = (space->getState(x, y, currentZ) == pieceVoxel_c::VX_VARIABLE) ? 2 : 4;
+            state = (space->getState(x, y, space->getZ()-currentZ-1) == pieceVoxel_c::VX_VARIABLE) ? 2 : 4;
 
           redraw();
         }
