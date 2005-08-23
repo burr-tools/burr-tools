@@ -177,10 +177,18 @@ public:
   void cb_SaveAs(void);
   void cb_Quit(void);
   void cb_About(void);
+  void cb_Toggle3D(void);
   void cb_SolProbSel(long reason);
 
   void cb_IncShapeGroup(void);
   void cb_DecShapeGroup(void);
+
+  bool is3DViewBig;
+  bool shapeEditorWithBig3DView;
+
+  void Toggle3DView(void);
+  void Big3DView(void);
+  void Small3DView(void);
 
   void StatPieceInfo(unsigned int pc);
   void StatProblemInfo(unsigned int pr);

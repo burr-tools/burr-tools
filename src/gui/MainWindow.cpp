@@ -172,16 +172,22 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
   if (o->value() == TabPieces) {
     activateShape(PcSel->getSelection());
     StatPieceInfo(PcSel->getSelection());
+    if (!shapeEditorWithBig3DView)
+      Small3DView();
+    else
+      Big3DView();
   } else if(o->value() == TabProblems) {
     if (problemSelector->getSelection() < puzzle->problemNumber()) {
       activateProblem(problemSelector->getSelection());
       StatProblemInfo(problemSelector->getSelection());
     }
+    Big3DView();
   } else if(o->value() == TabSolve) {
     if ((solutionProblem->getSelection() < puzzle->problemNumber()) &&
         (SolutionSel->value() < puzzle->probSolutionNumber(solutionProblem->getSelection()))) {
       activateSolution(solutionProblem->getSelection(), int(SolutionSel->value()));
     }
+    Big3DView();
   }
 
   updateInterface();
@@ -794,6 +800,18 @@ void UserInterface::cb_Quit(void) {
 
 }
 
+static void cb_Toggle3D_stub(Fl_Widget* o, void* v) { ui->cb_Toggle3D(); }
+void UserInterface::cb_Toggle3D(void) {
+
+  if (TaskSelectionTab->value() == TabPieces) {
+    shapeEditorWithBig3DView = !shapeEditorWithBig3DView;
+    if (!shapeEditorWithBig3DView)
+      Small3DView();
+    else
+      Big3DView();
+  }
+}
+
 static void cb_About_stub(Fl_Widget* o, void* v) { ui->cb_About(); }
 void UserInterface::cb_About(void) {
 
@@ -952,13 +970,14 @@ void UserInterface::ReplacePuzzle(puzzle_c * NewPuzzle) {
 
 
 Fl_Menu_Item UserInterface::menu_MainMenu[] = {
-  {"New",     0, cb_New_stub, 0, 0, 0, 0, 14, 56},
-  {"Load",    0, cb_Load_stub, 0, 0, 0, 0, 14, 56},
-  {"Import",  0, cb_Load_Ps3d_stub, 0, 0, 0, 0, 14, 56},
-  {"Save",    0, cb_Save_stub, 0, 0, 0, 0, 14, 56},
-  {"Save as", 0, cb_SaveAs_stub, 0, 0, 0, 0, 14, 56},
-  {"About",   0, cb_About_stub, 0, FL_MENU_DIVIDER, 3, 0, 14, 56},
-  {"Quit",    0, cb_Quit_stub, 0, 0, 3, 0, 14, 1},
+  {"New",       0, cb_New_stub, 0, 0, 0, 0, 14, 56},
+  {"Load",      0, cb_Load_stub, 0, 0, 0, 0, 14, 56},
+  {"Import",    0, cb_Load_Ps3d_stub, 0, 0, 0, 0, 14, 56},
+  {"Save",      0, cb_Save_stub, 0, 0, 0, 0, 14, 56},
+  {"Save as",   0, cb_SaveAs_stub, 0, 0, 0, 0, 14, 56},
+  {"Toggle 3D", 0, cb_Toggle3D_stub, 0, 0, 0, 0, 14, 56},
+  {"About",     0, cb_About_stub, 0, FL_MENU_DIVIDER, 3, 0, 14, 56},
+  {"Quit",      0, cb_Quit_stub, 0, 0, 3, 0, 14, 1},
   {0}
 };
 
@@ -1465,6 +1484,47 @@ void UserInterface::update(void) {
       updateInterface();
   }
 }
+
+void UserInterface::Toggle3DView(void)
+{
+  Fl_Group * tmp = pieceEdit->parent();
+  View3D->parent()->add(pieceEdit);
+  tmp->add(View3D);
+
+  int x = pieceEdit->x();
+  int y = pieceEdit->y();
+  int w = pieceEdit->w();
+  int h = pieceEdit->h();
+
+  pieceEdit->resize(View3D->x(), View3D->y(), View3D->w(), View3D->h());
+  View3D->resize(x, y, w, h);
+
+  int v = pieceEdit->visible();
+
+  if (View3D->visible())
+    pieceEdit->show();
+  else
+    pieceEdit->hide();
+
+  if (v)
+    View3D->show();
+  else
+    View3D->hide();
+
+  is3DViewBig = !is3DViewBig;
+
+  mainWindow->redraw();
+}
+
+void UserInterface::Big3DView(void) {
+  if (!is3DViewBig) Toggle3DView();
+  View3D->show();
+}
+void UserInterface::Small3DView(void) {
+  if (is3DViewBig) Toggle3DView();
+  pieceEdit->show();
+}
+
 
 #define SZ_WINDOW_X 540                        // initial size of the window
 #define SZ_WINDOW_Y 488
@@ -2007,7 +2067,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh, PcVis);
     shapeGroup->callback(cb_PcVis_stub);
 
-      group->resizable(shapeGroup);
+    group->resizable(shapeGroup);
     group->end();
   }
   tile->end();
@@ -2055,6 +2115,9 @@ UserInterface::UserInterface() {
   CreateSolveTab(  0, SZ_CONTENT_START_Y+SZ_TAB_Y, SZ_TOOL_X, SZ_CONTENT_Y-SZ_TAB_Y);
 
   mainWindow->resizable(mainTile);
+
+  is3DViewBig = true;
+  shapeEditorWithBig3DView = true;
 
   updateInterface();
   activateClear();

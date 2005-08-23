@@ -289,6 +289,12 @@ public:
   void hideMarker(void) { View3D->hideMarker(); }
 
   void redraw(void) { View3D->redraw(); }
+
+  void hide(void) { Fl_Group::hide(); View3D->hide(); }
+  void show(void) {
+    Fl_Group::show();
+    View3D->show();
+  }
 };
 
 // a widget to separate 2 groups
