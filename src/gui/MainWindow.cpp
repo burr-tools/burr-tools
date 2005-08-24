@@ -1487,6 +1487,8 @@ void UserInterface::update(void) {
 
 void UserInterface::Toggle3DView(void)
 {
+  Fl_Group * group = is3DViewBig ? pieceEdit->parent() : View3D->parent();
+
   Fl_Group * tmp = pieceEdit->parent();
   View3D->parent()->add(pieceEdit);
   tmp->add(View3D);
@@ -1514,10 +1516,25 @@ void UserInterface::Toggle3DView(void)
   is3DViewBig = !is3DViewBig;
 
   mainWindow->redraw();
+
+
+  if (is3DViewBig)
+    group->resizable(pieceEdit);
+  else
+    group->resizable(View3D);
+
 }
 
 void UserInterface::Big3DView(void) {
-  if (!is3DViewBig) Toggle3DView();
+  if (!is3DViewBig) {
+
+    TaskSelectionTab->when(0);
+    Fl_Widget *v = TaskSelectionTab->value();
+    TaskSelectionTab->value(TabPieces);
+    Toggle3DView();
+    TaskSelectionTab->value(v);
+    TaskSelectionTab->when(FL_WHEN_CHANGED);
+  }
   View3D->show();
 }
 void UserInterface::Small3DView(void) {
