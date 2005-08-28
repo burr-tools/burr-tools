@@ -1,3 +1,39 @@
+------------- Version 0.1.8 
+
+- better groupings. It is not possible to assign mutiple groups with
+  a count to each (set of) pieces. The meaning is defined like this.
+  There can be UP TO the specified number of pieces in this group. This
+  is not required, but when needed it is used. This may be useful if
+  you don't know which pieces belong to which group. Say you have
+  a puzzle of n identical pieces and all you know is that it can be
+  disassembled into 2 groups but you don't know how large these groups
+  are. Then you simply assign 2 groups to the pieces and in each
+  of these 2 groups can go n-1 pieces.
+
+- add possibility to swap 3D view and edit grid in the shape edit
+  tab. This gives you a bigger grid to edit bigger puzzles
+
+- reverse meaning of the slider in the grid editor
+
+- fix bug in minimize causing crash when executed on empty shapes
+
+- solution selector can take the focus, so you can use the cursor
+  keys to go through solutions
+
+- sort solutions by number of moves required the completely disassemble
+
+- show the complete number of moves required to disassembler, and the level
+  of the puzzle
+
+- cursor for 3D-View
+
+- Variable cubes are now normal sized cubes with a black square
+
+- remove a color deletion problem
+
+- when the tab was dragged so that the 3D-view became invisible (0 pixel
+  width) the programm abborted
+
 ------------- Version 0.1.7 Aug 19 2005
 
 - last version missed the placement optimisations for pieces
