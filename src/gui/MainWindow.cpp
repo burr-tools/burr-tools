@@ -943,7 +943,7 @@ void UserInterface::tryToLoad(const char * f) {
 
     catch (load_error e) {
       fl_message(e.getText());
-      cout << e.getNode();
+      std::cout << e.getNode();
       return;
     }
 

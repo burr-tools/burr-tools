@@ -42,8 +42,6 @@
 
 #include <fstream>
 
-using namespace std;
-
 class VoxelEditGroup;
 class ChangeSize;
 class ToolTab;
@@ -211,4 +209,5 @@ public:
   void update(void);
   void updateInterface(void);
 };
+
 #endif
