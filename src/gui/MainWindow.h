@@ -47,15 +47,13 @@ class ChangeSize;
 class ToolTab;
 class View3dGroup;
 
-class UserInterface {
+class UserInterface : public Fl_Double_Window {
   puzzle_c * puzzle;
   char * fname;
   DisasmToMoves * disassemble;
   assemblerThread *assmThread;
   bool SolutionEmpty;
   bool changed;
-
-  Fl_Double_Window *mainWindow;
 
   Fl_Tabs *TaskSelectionTab;
   Fl_Group *TabPieces;
@@ -111,13 +109,50 @@ class UserInterface {
 
   void tryToLoad(const char *fname);
 
-public:
   void CreateShapeTab(int x, int y, int w, int h);
   void CreateProblemTab(int x, int y, int w, int h);
   void CreateSolveTab(int x, int y, int w, int h);
 
+
+  bool is3DViewBig;
+  bool shapeEditorWithBig3DView;
+
+  void Toggle3DView(void);
+  void Big3DView(void);
+  void Small3DView(void);
+
+  void StatPieceInfo(unsigned int pc);
+  void StatProblemInfo(unsigned int pr);
+
+  void changeShape(unsigned int nr);
+  void changeProblem(unsigned int nr);
+  void changeColor(unsigned int nr);
+
+  void ReplacePuzzle(puzzle_c * newPuzzle);
+
+  void activateShape(unsigned int number);
+  void activateProblem(unsigned int prob);
+  void activateSolution(unsigned int prob, unsigned int num);
+  void activateClear(void);
+
+  bool threadStopped(void);
+
+  void updateInterface(void);
+
+public:
+
   UserInterface();
 
+  void show(int argn, char ** argv);
+
+  /* update the interface to represent the latest state of
+   * the solving progress, thas works in background
+   */
+  void update(void);
+
+  /* the callback functions, as they are called from normal functions we need
+   * to make them public, even though they should not be used from the outside
+   */
   void cb_AddColor(void);
   void cb_RemoveColor(void);
   void cb_ChangeColor(void);
@@ -180,34 +215,6 @@ public:
 
   void cb_IncShapeGroup(void);
   void cb_DecShapeGroup(void);
-
-  bool is3DViewBig;
-  bool shapeEditorWithBig3DView;
-
-  void Toggle3DView(void);
-  void Big3DView(void);
-  void Small3DView(void);
-
-  void StatPieceInfo(unsigned int pc);
-  void StatProblemInfo(unsigned int pr);
-
-  void changeShape(unsigned int nr);
-  void changeProblem(unsigned int nr);
-  void changeColor(unsigned int nr);
-
-  void ReplacePuzzle(puzzle_c * newPuzzle);
-
-  void show(int argn, char ** argv);
-
-  void activateShape(unsigned int number);
-  void activateProblem(unsigned int prob);
-  void activateSolution(unsigned int prob, unsigned int num);
-  void activateClear(void);
-
-  bool threadStopped(void);
-
-  void update(void);
-  void updateInterface(void);
 };
 
 #endif

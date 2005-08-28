@@ -723,7 +723,7 @@ void UserInterface::cb_Load_Ps3d(void) {
   
       char nm[300];
       snprintf(nm, 299, "BurrTools - %s", fname);
-      mainWindow->label(nm);
+      label(nm);
   
       ReplacePuzzle(newPuzzle);
       updateInterface();
@@ -793,7 +793,7 @@ void UserInterface::cb_SaveAs(void) {
   
       char nm[300];
       snprintf(nm, 299, "BurrTools - %s", fname);
-      mainWindow->label(nm);
+      label(nm);
     }
   }
 }
@@ -804,7 +804,7 @@ void UserInterface::cb_Quit(void) {
     if (fl_ask("Puzzle changed are you shure?") == 0)
       return;
 
-  mainWindow->hide();
+  hide();
 
   delete puzzle;
 
@@ -953,7 +953,7 @@ void UserInterface::tryToLoad(const char * f) {
 
     char nm[300];
     snprintf(nm, 299, "BurrTools - %s", fname);
-    mainWindow->label(nm);
+    label(nm);
 
     ReplacePuzzle(newPuzzle);
     updateInterface();
@@ -1003,7 +1003,7 @@ Fl_Menu_Item UserInterface::menu_MainMenu[] = {
 
 
 void UserInterface::show(int argn, char ** argv) {
-  mainWindow->show();
+  Fl_Double_Window::show();
 
   if (argn == 2)
     tryToLoad(argv[1]);
@@ -1535,7 +1535,7 @@ void UserInterface::Toggle3DView(void)
 
   is3DViewBig = !is3DViewBig;
 
-  mainWindow->redraw();
+  redraw();
 
 
   if (is3DViewBig)
@@ -2113,7 +2113,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
   TabSolve->end();
 }
 
-UserInterface::UserInterface() {
+UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
   ui = this;
 
   assmThread = 0;
@@ -2123,9 +2123,8 @@ UserInterface::UserInterface() {
   puzzle = new puzzle_c();
   changed = false;
 
-  mainWindow = new Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y);
-  mainWindow->label("BurrTools - unknown");
-  mainWindow->user_data((void*)(this));
+  label("BurrTools - unknown");
+  user_data((void*)(this));
 
   MainMenu = new Fl_Menu_Bar(0, 0, SZ_WINDOW_X, SZ_MENU_Y);
   MainMenu->menu(menu_MainMenu);
@@ -2151,7 +2150,7 @@ UserInterface::UserInterface() {
   CreateProblemTab(0, SZ_CONTENT_START_Y+SZ_TAB_Y, SZ_TOOL_X, SZ_CONTENT_Y-SZ_TAB_Y);
   CreateSolveTab(  0, SZ_CONTENT_START_Y+SZ_TAB_Y, SZ_TOOL_X, SZ_CONTENT_Y-SZ_TAB_Y);
 
-  mainWindow->resizable(mainTile);
+  resizable(mainTile);
 
   is3DViewBig = true;
   shapeEditorWithBig3DView = true;
