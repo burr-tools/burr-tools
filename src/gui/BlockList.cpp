@@ -240,9 +240,9 @@ void ColorSelector::getText(unsigned int block, char * text) {
     block++;
 
   if (block == 0)
-    snprintf(text, 20, "Neutral");
+    snprintf(text, 200, "Neutral");
   else
-    snprintf(text, 20, "%i", block);
+    snprintf(text, 200, "%i", block);
 }
 
 void PieceSelector::setPuzzle(puzzle_c *pz) {
@@ -256,7 +256,7 @@ unsigned int PieceSelector::blockNumber(void) {
 }
 
 void PieceSelector::getText(unsigned int block, char * text) {
-  snprintf(text, 20, "%i", block);
+  snprintf(text, 200, "%i", block);
 }
 
 void PieceSelector::getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) {
