@@ -300,10 +300,28 @@ unsigned int PiecesList::blockNumber(void) {
 }
 
 void PiecesList::getText(unsigned int block, char * text) {
-  if (puzzle->probGetShapeGroup(problem, block))
-    snprintf(text, 200, "%i: %i, G%i", puzzle->probGetShape(problem, block), puzzle->probGetShapeCount(problem, block), puzzle->probGetShapeGroup(problem, block));
-  else
-    snprintf(text, 200, "%i: %i", puzzle->probGetShape(problem, block), puzzle->probGetShapeCount(problem, block));
+
+  int txtLen = 200;
+  int len;
+
+  len = snprintf(text, txtLen, "%i", puzzle->probGetShape(problem, block));
+  text += len;
+  txtLen -= len;
+
+  if (puzzle->probGetShapeCount(problem, block) != 1) {
+    len = snprintf(text, txtLen, "(%i)", puzzle->probGetShapeCount(problem, block));
+    text += len;
+    txtLen -= len;
+  }
+
+  for (int i = 0; i < puzzle->probGetShapeGroupNumber(problem, block); i++) {
+    if (puzzle->probGetShapeGroupCount(problem, block, i) != puzzle->probGetShapeCount(problem, block))
+      len = snprintf(text, txtLen, ", G%i(%i)", puzzle->probGetShapeGroup(problem, block, i), puzzle->probGetShapeGroupCount(problem, block, i));
+    else
+      len = snprintf(text, txtLen, ", G%i", puzzle->probGetShapeGroup(problem, block, i));
+    text += len;
+    txtLen -= len;
+  }
 }
 
 void PiecesList::getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) {

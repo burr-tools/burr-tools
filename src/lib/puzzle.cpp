@@ -281,15 +281,34 @@ public:
 
   xml::node save(void) const;
 
+  class group_c {
+
+  public:
+
+    group_c(unsigned short gr, unsigned short cnt) : group(gr), count(cnt) {}
+
+    unsigned short group;
+    unsigned short count;
+  };
+
   class shape_c {
 
   public:
 
-    shape_c(unsigned short id, unsigned short cnt, unsigned short grp) : shapeId(id), count(cnt), group(grp) {}
+    shape_c(unsigned short id, unsigned short cnt, unsigned short grp) : shapeId(id), count(cnt) {
+      groups.push_back(group_c(grp, cnt));
+    }
+
+    shape_c(unsigned short id, unsigned short cnt) : shapeId(id), count(cnt) { }
+
+    void addGroup(unsigned short grp, unsigned short cnt) {
+      groups.push_back(group_c(grp, cnt));
+    }
 
     unsigned short shapeId;
     unsigned short count;
-    unsigned short group;
+
+    vector<group_c> groups;
   };
 
   class shape_id_removed {
@@ -421,9 +440,31 @@ xml::node problem_c::save(void) const {
     snprintf(tmp, 50, "%i", shapes[i].count);
     it2->get_attributes().insert("count", tmp);
 
-    if (shapes[i].group) {
-      snprintf(tmp, 50, "%i", shapes[i].group);
-      it2->get_attributes().insert("group", tmp);
+    if (shapes[i].groups.size() == 0) {
+      // do nothing, we don't need to save anything in this case
+    } else if ((shapes[i].groups.size() == 1) &&
+               (shapes[i].groups[0].count == shapes[i].count)) {
+      // this is the case when all pieces are in the same group
+      // we only need to save the group, if it is not 0,
+      // the loader takes 0 as default anyway
+      if (shapes[i].groups[0].group != 0) {
+        snprintf(tmp, 50, "%i", shapes[i].groups[0].group);
+        it2->get_attributes().insert("group", tmp);
+      }
+
+    } else {
+
+      for (unsigned int j = 0; j < shapes[i].groups.size(); j++)
+        if (shapes[i].groups[j].group != 0) {
+
+          xml::node::iterator it3 = it2->insert(xml::node("group"));
+
+          snprintf(tmp, 50, "%i", shapes[i].groups[j].group);
+          it3->get_attributes().insert("group", tmp);
+      
+          snprintf(tmp, 50, "%i", shapes[i].groups[j].count);
+          it3->get_attributes().insert("count", tmp);
+        }
     }
   }
 
@@ -486,7 +527,36 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
         if (id >= shape)
           throw load_error("the shape ids must be for valid shapes", *i);
 
-        shapes.push_back(shape_c(id, cnt, grp));
+        if (grp)
+          shapes.push_back(shape_c(id, cnt, grp));
+
+        else {
+          /* ok we have 2 ways to specify groups for pieces, either
+           * a group attribute in the tag. Then all pieces are
+           * in the given group, or you specify a list of group
+           * tags inside the tag. Each of the group tag gives a
+           * group and a count
+           */
+          i->get_content();
+
+          shapes.push_back(shape_c(id, cnt));
+
+          for (xml::node::const_iterator i2 = i->begin(); i2 != i->end(); i2++)
+          if ((i2->get_type() == xml::node::type_element) &&
+              (strcmp(i2->get_name(), "group") == 0)) {
+
+            if (i2->get_attributes().find("group") == i2->get_attributes().end())
+              throw load_error("a group node must have a group attribute", *i2);
+
+            if (i2->get_attributes().find("count") == i2->get_attributes().end())
+              throw load_error("a group node must have a count attribute", *i2);
+
+            cnt = atoi(i2->get_attributes().find("count")->get_value());
+            grp = atoi(i2->get_attributes().find("group")->get_value());
+
+            shapes.rbegin()->addGroup(grp, cnt);
+          }
+        }
       }
 
   it = node.find("result");
@@ -1181,30 +1251,46 @@ const assembler_c * puzzle_c::probGetAssembler(unsigned int prob) const {
   return problems[prob]->assm;
 }
 
-void puzzle_c::probSetShapeGroup(unsigned int prob, unsigned int shapeID, unsigned short group) {
+void puzzle_c::probSetShapeGroup(unsigned int prob, unsigned int shapeID, unsigned short group, unsigned short count) {
   assert(prob < problems.size());
   assert(shapeID < problems[prob]->shapes.size());
 
-  problems[prob]->shapes[shapeID].group = group;
+  // not first look, if we already have this group number in our list
+  for (unsigned int i = 0; i < problems[prob]->shapes[shapeID].groups.size(); i++)
+    if (problems[prob]->shapes[shapeID].groups[i].group == group) {
+
+      /* if we change count, change it, if we set count to 0 remove that entry */
+      if (count)
+        problems[prob]->shapes[shapeID].groups[i].count = count;
+      else
+        problems[prob]->shapes[shapeID].groups.erase(problems[prob]->shapes[shapeID].groups.begin()+i);
+      return;
+    }
+
+  // not found add, but only groups not equal to 0
+  if (group)
+    problems[prob]->shapes[shapeID].addGroup(group, count);
 }
 
-unsigned short puzzle_c::probGetShapeGroup(unsigned int prob, unsigned int shapeID) const {
+unsigned short puzzle_c::probGetShapeGroupNumber(unsigned int prob, unsigned int shapeID) const {
+
   assert(prob < problems.size());
   assert(shapeID < problems[prob]->shapes.size());
 
-  return problems[prob]->shapes[shapeID].group;
+  return problems[prob]->shapes[shapeID].groups.size();
 }
 
-unsigned short puzzle_c::probGetPieceGroup(unsigned int prob, unsigned int shapeID) const {
+unsigned short puzzle_c::probGetShapeGroup(unsigned int prob, unsigned int shapeID, unsigned int groupID) const {
   assert(prob < problems.size());
+  assert(shapeID < problems[prob]->shapes.size());
 
-  unsigned int i = 0;
-  while (shapeID >= problems[prob]->shapes[i].count) {
-    shapeID -= problems[prob]->shapes[i].count;
-    i++;
-    assert(i < problems[prob]->shapes.size());
-  }
+  return problems[prob]->shapes[shapeID].groups[groupID].group;
+}
 
-  return problems[prob]->shapes[i].group;
+unsigned short puzzle_c::probGetShapeGroupCount(unsigned int prob, unsigned int shapeID, unsigned int groupID) const {
+  assert(prob < problems.size());
+  assert(shapeID < problems[prob]->shapes.size());
+
+  return problems[prob]->shapes[shapeID].groups[groupID].count;
 }
 

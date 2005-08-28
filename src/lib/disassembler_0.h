@@ -25,6 +25,7 @@
 #include "assembly.h"
 #include "puzzle.h"
 #include "movementcache.h"
+#include "grouping.h"
 
 class node0_c;
 
@@ -58,6 +59,9 @@ private:
   /* this is the cache with the already calculated movements */
   movementCache * cache;
 
+  /* here we can group pieces together */
+  grouping_c * groups;
+
   /* create matrix */
   void prepare(int pn, voxel_type * pieces, node0_c * searchnode);
   void prepare2(int pn);
@@ -69,7 +73,8 @@ private:
   node0_c * find(node0_c * searchnode);
   bool checkmovement(unsigned int maxPieces);
 
-  unsigned short disassembler_0_c::subProbGroup(node0_c * st, voxel_type * pn, bool cond, int piecenumber);
+  unsigned short subProbGroup(node0_c * st, voxel_type * pn, bool cond, int piecenumber);
+  bool subProbGrouping(voxel_type * pn, int piecenumber);
 
   /* the real disassembly routine. It separates the puzzle into 2 parts
    * and get's called recursively with each subpart to disassemble
@@ -83,6 +88,11 @@ private:
 
   const puzzle_c * puzzle;
   unsigned int problem;
+
+  /* this array is used to convert piece number to the corresponding
+   * shape number, as these are needed for the grouping functions
+   */
+  unsigned short * piece2shape;
 
 public:
 

@@ -254,14 +254,16 @@ public:
    * to continue disassembling
    * group 0 is different, it means that the piece doesn't belong to any
    * group and must be single
-   * be careful with multiple pieces. They must belong to one group because
-   * it may be that in one constallation they are disassembable and in another
-   * one not. So it is not possible to have single pieces from a multiple times
-   * used piece in different groups
+   * The problem with this are pieces with the same shape. Each of this piece
+   * can belong into another group. But the assembler doesn't know about this
+   * and will only return one assembly. So the disassembler has to decide
+   * which piece belongs to what group
+   * all the
    */
-  void probSetShapeGroup(unsigned int prob, unsigned int shapeID, unsigned short group);
-  unsigned short probGetShapeGroup(unsigned int prob, unsigned int shapeID) const;
-  unsigned short probGetPieceGroup(unsigned int prob, unsigned int shapeID) const;
+  void probSetShapeGroup(unsigned int prob, unsigned int shapeID, unsigned short group, unsigned short count);
+  unsigned short probGetShapeGroupNumber(unsigned int prob, unsigned int shapeID) const;
+  unsigned short probGetShapeGroup(unsigned int prob, unsigned int shapeID, unsigned int groupID) const;
+  unsigned short probGetShapeGroupCount(unsigned int prob, unsigned int shapeID, unsigned int groupID) const;
 
   /**
    * makes each shape appear only once and increase the piece counter for that.

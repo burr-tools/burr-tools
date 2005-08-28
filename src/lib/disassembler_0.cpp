@@ -451,14 +451,25 @@ unsigned short disassembler_0_c::subProbGroup(node0_c * st, voxel_type * pn, boo
 
   for (int i = 0; i < piecenumber; i++)
     if (st->is_piece_removed(i) == cond)
-      if (puzzle->probGetPieceGroup(problem, pn[i]) == 0)
+      if (puzzle->probGetShapeGroupNumber(problem, piece2shape[pn[i]]) != 1)
         return 0;
       else if (group == 0)
-        group = puzzle->probGetPieceGroup(problem, pn[i]);
-      else if (group != puzzle->probGetPieceGroup(problem, pn[i]))
+        group = puzzle->probGetShapeGroup(problem, piece2shape[pn[i]], 0);
+      else if (group != puzzle->probGetShapeGroup(problem, piece2shape[pn[i]], 0))
         return 0;
 
   return group;
+}
+
+bool disassembler_0_c::subProbGrouping(voxel_type * pn, int piecenumber) {
+
+  groups->newSet();
+
+  for (int i = 0; i < piecenumber; i++)
+    if (!groups->addPieceToSet(piece2shape[pn[i]]))
+      return false;
+
+  return true;
 }
 
 /* this is a bredth first search function that analyzes the movement of
@@ -542,33 +553,53 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
       assert((part1 > 0) && (part2 > 0));
 
       separation_c * left, *remove;
+      bool left_ok = false;
+      bool remove_ok = false;
+      left = remove = 0;
 
-      /* check each subproblem, if it's a problem */
-      if ((part1 > 1) && (subProbGroup(st, pieces, false, piecenumber) == 0)) {
+      /* all right, the following thing come twice, maybe I should
+       * put it into a function, anyways:
+       * if the subproblem to check has only one piece, it's solved
+       * if all the pieces belong to the same group, we can stop
+       * else try to disassemble, if that fails, try to
+       * group the involved pieces into an identical group
+       */
+      if (part1 == 1) {
+        remove_ok = true;
+      } else if (subProbGroup(st, pieces, false, piecenumber)) {
+        remove_ok = true;
+      } else {
 
         node0_c *n;
         voxel_type * pn;
         create_new_params(st, &n, &pn, piecenumber, pieces, part1, false);
         remove = disassemble_rec(part1, pn, n);
 
-      } else
-        remove = 0;
+        remove_ok = remove || subProbGrouping(pn, part1);
 
-      if ((part2 > 1) && (subProbGroup(st, pieces, true, piecenumber) == 0)) {
+        delete [] pn;
+      }
+
+      if (part2 == 1) {
+        left_ok = true;
+      } else if (subProbGroup(st, pieces, true, piecenumber)) {
+        left_ok = true;
+      } else {
 
         node0_c *n;
         voxel_type * pn;
         create_new_params(st, &n, &pn, piecenumber, pieces, part2, true);
         left = disassemble_rec(part2, pn, n);
 
-      } else
-        left = 0;
+        left_ok = left || subProbGrouping(pn, part2);
 
-      /* if poth subproblems are either trivial or solvable, return the
+        delete [] pn;
+      }
+
+      /* if both subproblems are either trivial or solvable, return the
        * result, otherwise return 0
        */
-      if ((remove || (part1 == 1) || subProbGroup(st, pieces, false, piecenumber)) &&
-          (left || (part2 == 1) || subProbGroup(st, pieces, true, piecenumber))) {
+      if (remove_ok && left_ok) {
 
         /* both subproblems are solvable -> construct tree */
         erg = new separation_c(left, remove, piecenumber, pieces);
@@ -598,8 +629,6 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
        * search process
        */
 
-      delete [] pieces;
-    
       std::set<node0_c *, node_ptr_less>::iterator it;
       for (it = closed.begin(); it != closed.end(); it++)
         delete *it;
@@ -613,8 +642,6 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
   }
 
   // free all the allocated nodes
-  delete [] pieces;
-
   std::set<node0_c *, node_ptr_less>::iterator i;
   for (i = closed.begin(); i != closed.end(); i++)
     delete *i;
@@ -632,6 +659,22 @@ disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) : pi
     matrix[j] = new int[piecenumber * piecenumber];
 
   cache = new movementCache(puzzle, problem);
+
+  /* initialize the grouping class */
+  groups = new grouping_c();
+  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++)
+    for (unsigned int j = 0; j < puz->probGetShapeGroupNumber(prob, i); j++)
+      groups->addPieces(puz->probGetShape(prob, i),
+                        puz->probGetShapeGroup(prob, i, j),
+                        puz->probGetShapeGroupCount(prob, i, j));
+
+  /* initialize piece 2 shape transformation */
+  piece2shape = new unsigned short[piecenumber];
+  int p = 0;
+  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++)
+    for (unsigned int j = 0; j < puz->probGetShapeCount(prob, i); j++)
+      piece2shape[p++] = i;
+
 }
 
 disassembler_0_c::~disassembler_0_c() {
@@ -663,9 +706,16 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
    */
   voxel_type * pieces = new voxel_type[piecenumber];
 
+  /* reset the grouping class */
+  groups->reSet();
+
   for (unsigned int j = 0; j < piecenumber; j++)
     pieces[j] = j;
 
-  return disassemble_rec(piecenumber, pieces, start);
+  separation_c * s = disassemble_rec(piecenumber, pieces, start);
+
+  delete [] pieces;
+
+  return s;
 }
 

@@ -460,13 +460,26 @@ static void cb_IncShapeGroup_stub(Fl_Widget* o, void* v) { ui->cb_IncShapeGroup(
 static void cb_DecShapeGroup_stub(Fl_Widget* o, void* v) { ui->cb_DecShapeGroup(); }
 
 void UserInterface::cb_IncShapeGroup(void) {
+
   unsigned int prob = problemSelector->getSelection();
   changeProblem(prob);
 
   // first see, find the shape, and only if there is one, we can change the group count
   for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
     if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
-      puzzle->probSetShapeGroup(prob, i, puzzle->probGetShapeGroup(prob, i) + 1);
+
+      unsigned group;
+
+      if (puzzle->probGetShapeGroupNumber(prob, i)) {
+        group = puzzle->probGetShapeGroup(prob, i, 0);
+        puzzle->probSetShapeGroup(prob, i, group, 0);
+        group++;
+
+      } else
+
+        group = 1;
+
+      puzzle->probSetShapeGroup(prob, i, group, puzzle->probGetShapeCount(prob, i));
 
       changed = true;
       PiecesCountList->redraw();
@@ -478,14 +491,21 @@ void UserInterface::cb_IncShapeGroup(void) {
 }
 
 void UserInterface::cb_DecShapeGroup(void) {
+
   unsigned int prob = problemSelector->getSelection();
   changeProblem(prob);
 
   // first see, find the shape, and only if there is one, we can change the group count
   for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
     if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
-      if (puzzle->probGetShapeGroup(prob, i) > 0) {
-        puzzle->probSetShapeGroup(prob, i, puzzle->probGetShapeGroup(prob, i) - 1);
+
+      unsigned group;
+
+      if (puzzle->probGetShapeGroupNumber(prob, i)) {
+        group = puzzle->probGetShapeGroup(prob, i, 0);
+        puzzle->probSetShapeGroup(prob, i, group, 0);
+        assert(group > 0);
+        puzzle->probSetShapeGroup(prob, i, group-1, puzzle->probGetShapeCount(prob, i));
 
         changed = true;
         PiecesCountList->redraw();
