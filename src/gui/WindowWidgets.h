@@ -58,6 +58,12 @@ public:
     callback(cb, cb_para);
   }
 
+  FlatButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback* cb, void * cb_para) : Fl_Button(x, y, w, h, txt) {
+    box(FL_THIN_UP_BOX);
+    tooltip(tt);
+    callback(cb, cb_para);
+  }
+
   FlatButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback1* cb, long cb_para, int col) : Fl_Button(x, y, w, h, txt) {
     box(FL_THIN_UP_BOX);
     tooltip(tt);
