@@ -25,6 +25,7 @@
 #include "DisasmToMoves.h"
 #include "WindowWidgets.h"
 #include "BlockList.h"
+#include "GroupsEditor.h"
 
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
@@ -48,6 +49,7 @@ class ToolTab;
 class View3dGroup;
 
 class UserInterface : public Fl_Double_Window {
+
   puzzle_c * puzzle;
   char * fname;
   DisasmToMoves * disassemble;
@@ -82,7 +84,7 @@ class UserInterface : public Fl_Double_Window {
   FlatButton *BtnNewColor, *BtnDelColor, *BtnChnColor;
   FlatButton *BtnNewProb, *BtnDelProb, *BtnCpyProb, *BtnRenProb;
   FlatButton *BtnColSrtPc, *BtnColSrtRes, *BtnColAdd, *BtnColRem;
-  FlatButton *BtnSetResult, *BtnAddShape, *BtnRemShape, *BtnAddGroup, *BtnSubGroup;
+  FlatButton *BtnSetResult, *BtnAddShape, *BtnRemShape, *BtnGroup;
 
   Fl_Progress *SolvingProgress;
   Fl_Value_Output *OutputAssemblies;
@@ -106,6 +108,8 @@ class UserInterface : public Fl_Double_Window {
   ColorSelector * colorSelector;
 
   VoxelEditGroup *pieceEdit, *resultEdit;
+
+  groupsEditorWindow * groupEditWin;
 
   void tryToLoad(const char *fname);
 
@@ -213,8 +217,7 @@ public:
   void cb_Toggle3D(void);
   void cb_SolProbSel(long reason);
 
-  void cb_IncShapeGroup(void);
-  void cb_DecShapeGroup(void);
+  void cb_ShapeGroup(void);
 };
 
 #endif

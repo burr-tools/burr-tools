@@ -15,5 +15,7 @@ burrGui_SOURCES=VoxelView.cpp VoxelView.h \
                 DisasmToMoves.cpp DisasmToMoves.h \
                 pieceColor.cpp pieceColor.h \
                 gzstream.cpp gzstream.h \
+                Fl_Table.cpp Fl_Table.h \
+                GroupsEditor.cpp GroupsEditor.h \
                 main.cpp
 

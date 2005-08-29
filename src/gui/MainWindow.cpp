@@ -456,65 +456,28 @@ void UserInterface::cb_RemoveShapeFromProblem(void) {
   StatProblemInfo(problemSelector->getSelection());
 }
 
-static void cb_IncShapeGroup_stub(Fl_Widget* o, void* v) { ui->cb_IncShapeGroup(); }
-static void cb_DecShapeGroup_stub(Fl_Widget* o, void* v) { ui->cb_DecShapeGroup(); }
-
-void UserInterface::cb_IncShapeGroup(void) {
+static void cb_ShapeGroup_stub(Fl_Widget* o, void* v) { ui->cb_ShapeGroup(); }
+void UserInterface::cb_ShapeGroup(void) {
 
   unsigned int prob = problemSelector->getSelection();
-  changeProblem(prob);
 
-  // first see, find the shape, and only if there is one, we can change the group count
-  for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
-    if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
+  assert(groupEditWin == 0);
 
-      unsigned group;
+  groupEditWin = new groupsEditorWindow(puzzle, prob);
 
-      if (puzzle->probGetShapeGroupNumber(prob, i)) {
-        group = puzzle->probGetShapeGroup(prob, i, 0);
-        puzzle->probSetShapeGroup(prob, i, group, 0);
-        group++;
+  groupEditWin->show();
 
-      } else
+  while (groupEditWin->visible())
+    Fl::wait();
 
-        group = 1;
+  delete groupEditWin;
 
-      puzzle->probSetShapeGroup(prob, i, group, puzzle->probGetShapeCount(prob, i));
+  groupEditWin = 0;
 
-      changed = true;
-      PiecesCountList->redraw();
-      PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
-    }
-
-  activateProblem(problemSelector->getSelection());
-  StatProblemInfo(problemSelector->getSelection());
-}
-
-void UserInterface::cb_DecShapeGroup(void) {
-
-  unsigned int prob = problemSelector->getSelection();
-  changeProblem(prob);
-
-  // first see, find the shape, and only if there is one, we can change the group count
-  for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
-    if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
-
-      unsigned group;
-
-      if (puzzle->probGetShapeGroupNumber(prob, i)) {
-        group = puzzle->probGetShapeGroup(prob, i, 0);
-        puzzle->probSetShapeGroup(prob, i, group, 0);
-        assert(group > 0);
-        puzzle->probSetShapeGroup(prob, i, group-1, puzzle->probGetShapeCount(prob, i));
-
-        changed = true;
-        PiecesCountList->redraw();
-        PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
-      }
-    }
-
-  activateProblem(problemSelector->getSelection());
-  StatProblemInfo(problemSelector->getSelection());
+  PiecesCountList->redraw();
+  changed = true;
+  changeProblem(problemSelector->getSelection());
+  updateInterface();
 }
 
 static void cb_AllowColor_stub(Fl_Widget* o, void* v) { ui->cb_AllowColor(); }
@@ -1247,20 +1210,24 @@ void UserInterface::updateInterface(void) {
   
       if (found) {
         BtnRemShape->activate();
-        BtnAddGroup->activate();
-        BtnSubGroup->activate();
       } else {
         BtnRemShape->deactivate();
-        BtnAddGroup->deactivate();
-        BtnSubGroup->deactivate();
       }
   
     } else {
       BtnSetResult->deactivate();
       BtnAddShape->deactivate();
       BtnRemShape->deactivate();
-      BtnAddGroup->deactivate();
-      BtnSubGroup->deactivate();
+    }
+
+    // we can edit the groups, whe we have a problem with at leat one shape and
+    // the assembler is not working on the current problem
+    if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
+        (puzzle->probShapeNumber(problemSelector->getSelection()) > 0) &&
+        (!assmThread || (assmThread->getProblem() != problemSelector->getSelection()))) {
+      BtnGroup->activate();
+    } else {
+      BtnGroup->deactivate();
     }
 
   } else {
@@ -1895,7 +1862,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     Fl_Group* group = new Fl_Group(x, y, w, lh);
     group->box(FL_FLAT_BOX);
 
-    int hw = (w - 3*SZ_GAP)/4;
+    int hw = (w - 2*SZ_GAP)/3;
 
     {
       Fl_Group * o = new Fl_Group(x,           y, hw+SZ_GAP, SZ_BUTTON_Y);
@@ -1911,14 +1878,8 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     }
     {
       Fl_Group * o = new Fl_Group(x+2*(hw+SZ_GAP), y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnAddGroup = new FlatButton(x+2*(hw+SZ_GAP), y, hw, SZ_BUTTON_Y, "G+1", "Increase the group number of this piece by one", cb_IncShapeGroup_stub);
-      o->resizable(BtnRemShape);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+3*(hw+SZ_GAP), y, w-3*hw-2*SZ_GAP, SZ_BUTTON_Y);
-      BtnSubGroup = new FlatButton(x+3*(hw+SZ_GAP), y, w-3*hw-3*SZ_GAP, SZ_BUTTON_Y, "G-1", "Decrease the group number of this piece by one", cb_DecShapeGroup_stub);
-      o->resizable(BtnRemShape);
+      BtnGroup = new FlatButton(x+2*(hw+SZ_GAP), y, hw, SZ_BUTTON_Y, "Grp", "Edit groups", cb_ShapeGroup_stub);
+      o->resizable(BtnGroup);
       o->end();
     }
 
@@ -2157,5 +2118,7 @@ UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
 
   updateInterface();
   activateClear();
+
+  groupEditWin = 0;
 }
 
