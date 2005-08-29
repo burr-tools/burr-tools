@@ -799,16 +799,18 @@ static void cb_About_stub(Fl_Widget* o, void* v) { ui->cb_About(); }
 void UserInterface::cb_About(void) {
 
   fl_message("This is the GUI for BurrTools version " VERSION "\n"
-             "\n"
              "BurrTools (c) 2003-2005 by Andreas Röver\n"
-             "\n"
              "The latest version is available at burrtools.sourceforge.net\n"
              "\n"
              "This software is distributed under the GPL\n"
-             "\n"
              "You should have received a copy of the GNU General Public License\n"
              "along with this program; if not, write to the Free Software\n"
              "Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.\n"
+             "\n"
+             "The program uses\n"
+             "- Fltk, FLU, libZ, libXml2, XmlWrapp\n"
+             "- gzstream by Deepak Bandyopadhyay, Lutz Kettner\n"
+             "- Fl_Table (http://3dsite.com/people/erco/Fl_Table/)\n"
             );
 }
 
