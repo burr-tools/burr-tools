@@ -45,7 +45,8 @@ void SquareEditor::setZ(unsigned int z) {
 
     currentZ = z;
     mZ = puzzle->getShape(piecenumber)->getZ()-z-1;
-    startX = mX = startY = mY = -50000;
+    startX = mX = puzzle->getShape(piecenumber)->getX();
+    startY = mY = puzzle->getShape(piecenumber)->getY();
     inside = true;
     redraw();
     callbackReason = RS_MOUSEMOVE;
@@ -215,7 +216,7 @@ int SquareEditor::handle(int event) {
 
   switch(event) {
   case FL_RELEASE:
-    {
+    if (mX < space->getX()) {
       voxel_type vxNew = pieceVoxel_c::VX_EMPTY;
   
       switch (state) {
@@ -239,20 +240,22 @@ int SquareEditor::handle(int event) {
         changed = setLayer(space->getZ()-currentZ-1, vxNew);
   
       if (changed) {
-        redraw();
         callbackReason = RS_CHANGESQUARE;
         do_callback();
       }
   
-      state = 0;
     }
+    state = 0;
+    redraw();
+
     break;
   case FL_PUSH:
     state = 1;
-    // fallthrou
+    // fallthrough
   case FL_DRAG:
   case FL_MOVE:
     {
+      /* find out where the mouse cursor is */
       int s, tx, ty;
       calcParameters(&s, &tx, &ty);
 
@@ -265,50 +268,55 @@ int SquareEditor::handle(int event) {
       x /= s;
       y /= s;
 
-      // if we are outside the valid range, exit
+      /* if we are outside the valid range, exit, we keep the current
+       * selected area
+       */
       if ((x >= space->getX()) || (y >= space->getY())) {
         inside = false;
-        mX = -1;
+        mX = x;
         break;
       }
 
       y = space->getY() - y - 1;
 
       inside = true;
+      bool doCB = false;
 
-      if ((event == FL_MOVE) || (event == FL_DRAG)) {
+      if (state == 1) {
 
-        // we move the mouse, if the new position is different from the saved one,
-        // do a callback
-        if ((x != mX) || (y != mY) || (space->getZ()-currentZ-1 != mZ)) {
-          mX = x;
-          mY = y;
-          mZ = space->getZ()-currentZ-1;
-
-          if (state == 0) {
-            startX = mX;
-            startY = mY;
-          }
-
-          redraw();
-          callbackReason = RS_MOUSEMOVE;
-          do_callback();
-        }
-      } else {
-  
         // if we just pressed the button find out what to do while
-        // the button is pressed
-        if (state == 1) {
+        // the button is pressed and initialize the drag start point
+        startX = x;
+        startY = y;
+        if (Fl::event_button() == 1)
+          state = (space->getState(x, y, space->getZ()-currentZ-1) == pieceVoxel_c::VX_FILLED) ? 2 : 3;
+        else
+          state = (space->getState(x, y, space->getZ()-currentZ-1) == pieceVoxel_c::VX_VARIABLE) ? 2 : 4;
+
+        doCB = true;
+      }
+
+      // we move the mouse, if the new position is different from the saved one,
+      // do a callback
+      if ((x != mX) || (y != mY) || (space->getZ()-currentZ-1 != mZ)) {
+        mX = x;
+        mY = y;
+        mZ = space->getZ()-currentZ-1;
+
+        if (state == 0) {
           startX = mX;
           startY = mY;
-          if (Fl::event_button() == 1)
-            state = (space->getState(x, y, space->getZ()-currentZ-1) == pieceVoxel_c::VX_FILLED) ? 2 : 3;
-          else
-            state = (space->getState(x, y, space->getZ()-currentZ-1) == pieceVoxel_c::VX_VARIABLE) ? 2 : 4;
-
-          redraw();
         }
+
+        doCB = true;
       }
+
+      if (doCB) {
+        redraw();
+        callbackReason = RS_MOUSEMOVE;
+        do_callback();
+      }
+
       break;
     }
   case FL_LEAVE:
