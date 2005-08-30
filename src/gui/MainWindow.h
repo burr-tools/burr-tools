@@ -74,7 +74,6 @@ class UserInterface : public Fl_Double_Window {
   Fl_Group *TabProblems;
 
   ToolTab * pieceTools;
-  ToolTab * resultTools;
 
   Fl_Group *TabSolve;
   Fl_Check_Button *SolveDisasm, *JustCount;
@@ -107,7 +106,7 @@ class UserInterface : public Fl_Double_Window {
 
   ColorSelector * colorSelector;
 
-  VoxelEditGroup *pieceEdit, *resultEdit;
+  VoxelEditGroup *pieceEdit;
 
   groupsEditorWindow * groupEditWin;
 
