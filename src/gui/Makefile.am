@@ -17,5 +17,6 @@ burrGui_SOURCES=VoxelView.cpp VoxelView.h \
                 gzstream.cpp gzstream.h \
                 Fl_Table.cpp Fl_Table.h \
                 GroupsEditor.cpp GroupsEditor.h \
+                configuration.cpp configuration.h \
                 main.cpp
 

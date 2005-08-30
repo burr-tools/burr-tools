@@ -214,10 +214,13 @@ public:
   void cb_SaveAs(void);
   void cb_Quit(void);
   void cb_About(void);
+  void cb_Config(void);
   void cb_Toggle3D(void);
   void cb_SolProbSel(long reason);
 
   void cb_ShapeGroup(void);
+
+  void activateConfigOptions(void);
 };
 
 #endif

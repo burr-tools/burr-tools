@@ -135,6 +135,12 @@ public:
   void clearPalette(void) { palette.clear(); }
   void addPaletteEntry(float r, float g, float b);
 
+  void useLightning(bool val) {
+    _useLightning = val;
+    invalidate();
+    redraw();
+  }
+
 private:
 
   typedef struct {
@@ -169,5 +175,7 @@ private:
   } colorInfo;
 
   std::vector<colorInfo> palette;
+
+  bool _useLightning;
 };
 

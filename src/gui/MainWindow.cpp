@@ -21,19 +21,22 @@
 
 #include "config.h"
 
+
+#include <xmlwrapp/xmlwrapp.h>
+
+#include "gzstream.h"
+#include "configuration.h"
+
+#include "../config.h"
+
+#include "../lib/ps3dloader.h"
+
 #ifdef HAVE_FLU
 #include <FLU/Flu_File_Chooser.h>
 #endif
 
 #include <FL/Fl_Color_Chooser.H>
-
-#include <xmlwrapp/xmlwrapp.h>
-
-#include "gzstream.h"
-
-#include "../config.h"
-
-#include "../lib/ps3dloader.h"
+#include <FL/Fl_Tooltip.H>
 
 static UserInterface * ui;
 
@@ -783,6 +786,12 @@ void UserInterface::cb_Quit(void) {
 
 }
 
+static void cb_Config_stub(Fl_Widget* o, void* v) { ui->cb_Config(); }
+void UserInterface::cb_Config(void) {
+  config.dialog();
+  activateConfigOptions();
+}
+
 static void cb_Toggle3D_stub(Fl_Widget* o, void* v) { ui->cb_Toggle3D(); }
 void UserInterface::cb_Toggle3D(void) {
 
@@ -961,6 +970,7 @@ Fl_Menu_Item UserInterface::menu_MainMenu[] = {
   {"Save",      0, cb_Save_stub, 0, 0, 0, 0, 14, 56},
   {"Save as",   0, cb_SaveAs_stub, 0, 0, 0, 0, 14, 56},
   {"Toggle 3D", 0, cb_Toggle3D_stub, 0, 0, 0, 0, 14, 56},
+  {"Config",    0, cb_Config_stub, 0, 0, 0, 0, 14, 56},
   {"About",     0, cb_About_stub, 0, FL_MENU_DIVIDER, 3, 0, 14, 56},
   {"Quit",      0, cb_Quit_stub, 0, 0, 3, 0, 14, 1},
   {0}
@@ -2076,6 +2086,16 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
   TabSolve->end();
 }
 
+void UserInterface::activateConfigOptions(void) {
+
+  if (config.useTooltips())
+    Fl_Tooltip::enable();
+  else
+    Fl_Tooltip::disable();
+
+  View3D->useLightning(config.useLightning());
+}
+
 UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
   ui = this;
 
@@ -2122,5 +2142,7 @@ UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
   activateClear();
 
   groupEditWin = 0;
+
+  activateConfigOptions();
 }
 

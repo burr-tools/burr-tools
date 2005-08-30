@@ -342,7 +342,7 @@ void VoxelView::drawVoxelSpace() {
     }
 
     if (_showCoordinateSystem) {
-      glDisable(GL_LIGHTING);
+      if (_useLightning) glDisable(GL_LIGHTING);
       glDisable(GL_BLEND);
       glBegin(GL_LINES);
       glColor3f(1, 0, 0);
@@ -352,7 +352,7 @@ void VoxelView::drawVoxelSpace() {
       glColor3f(0, 0, 1);
       glVertex3f(-1, -1, -1); glVertex3f(-1, -1, shapes[piece].shape->getZ()+1);
       glEnd();
-      glEnable(GL_LIGHTING);
+      if (_useLightning) glEnable(GL_LIGHTING);
       glEnable(GL_BLEND);
     }
 
@@ -399,7 +399,7 @@ void VoxelView::drawVoxelSpace() {
         }
 
     if (markerType) {
-      glDisable(GL_LIGHTING);
+      if (_useLightning) glDisable(GL_LIGHTING);
       glDisable(GL_BLEND);
 
       glColor4f(1, 1, 1, 1);
@@ -420,7 +420,7 @@ void VoxelView::drawVoxelSpace() {
       drawRect(mX2, mY1, mZ, 0, 0, 1, 0, mY2-mY1, 0, false, 4);
       drawRect(mX1, mY2, mZ, mX2-mX1, 0, 0, 0, 0, 1, false, 4);
 
-      glEnable(GL_LIGHTING);
+      if (_useLightning) glEnable(GL_LIGHTING);
       glEnable(GL_BLEND);
     }
 
@@ -456,7 +456,11 @@ void VoxelView::draw() {
     glLoadIdentity();
     glViewport(0,0,w(),h());
 
-    glEnable(GL_LIGHTING);
+    if (_useLightning)
+      glEnable(GL_LIGHTING);
+    else
+      glDisable(GL_LIGHTING);
+
     glEnable(GL_COLOR_MATERIAL);
     glLightfv(GL_LIGHT1, GL_AMBIENT, LightAmbient);
     glLightfv(GL_LIGHT1, GL_DIFFUSE, LightDiffuse);

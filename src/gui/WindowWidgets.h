@@ -293,6 +293,7 @@ public:
 
   void setMarker(int x1, int y1, int x2, int y2, int z) { View3D->setMarker(x1, y1, x2, y2, z); }
   void hideMarker(void) { View3D->hideMarker(); }
+  void useLightning(bool val) { View3D->useLightning(val); }
 
   void redraw(void) { View3D->redraw(); }
 };
