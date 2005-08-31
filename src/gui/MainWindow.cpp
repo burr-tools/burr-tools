@@ -1475,6 +1475,8 @@ void UserInterface::update(void) {
         fl_message("Shape %i is used as piece and contains variable cubes, that is not allowed", assmThread->getErrorParam());
         selectShape = assmThread->getErrorParam()+1;
         break;
+      default:
+        break;
       }
 
       if (selectShape < puzzle->shapeNumber()) {
