@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include "WindowWidgets.h"
+
 #include <FL/Fl_Pack.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Check_Button.H>
@@ -120,7 +122,7 @@ void configuration::parse(FILE * in) {
   }
 }
 
-void configuration::register_entry(char *cnf_name, cnf_type  cnf_typ, void *cnf_var, long maxlen, bool dialog) {
+void configuration::register_entry(char *cnf_name, cnf_type  cnf_typ, void *cnf_var, long maxlen, bool dialog, char * dtext) {
   config_data *t = new config_data;
 
   t->next = first_data;
@@ -131,15 +133,16 @@ void configuration::register_entry(char *cnf_name, cnf_type  cnf_typ, void *cnf_
   t->cnf_var = cnf_var;
   t->maxlen = maxlen;
   t->dialog = dialog;
+  t->dialogText = dtext;
 }
 
-#define CNF_BOOL(a,b) register_entry(a, CT_BOOL, b, 0, false)
-#define CNF_CHAR(a,b,c) register_entry(a, CT_STRING, b, c, false)
-#define CNF_INT(a,b) register_entry(a, CT_INT, b, 0, false)
+#define CNF_BOOL(a,b) register_entry(a, CT_BOOL, b, 0, false, 0)
+#define CNF_CHAR(a,b,c) register_entry(a, CT_STRING, b, c, false, 0)
+#define CNF_INT(a,b) register_entry(a, CT_INT, b, 0, false, 0)
 
-#define CNF_BOOL_D(a,b) register_entry(a, CT_BOOL, b, 0, true)
-#define CNF_CHAR_D(a,b,c) register_entry(a, CT_STRING, b, c, true)
-#define CNF_INT_D(a,b) register_entry(a, CT_INT, b, 0, true)
+#define CNF_BOOL_D(a,b,text) register_entry(a, CT_BOOL, b, 0, true, text)
+#define CNF_CHAR_D(a,b,c,text) register_entry(a, CT_STRING, b, c, true, text)
+#define CNF_INT_D(a,b,text) register_entry(a, CT_INT, b, 0, true, text)
 
 #define SZ_WINDOW_X 540                        // initial size of the window
 #define SZ_WINDOW_Y 488
@@ -157,8 +160,8 @@ configuration::configuration(void) {
 
   first_data = 0;
 
-  CNF_BOOL_D("tooltips",            &i_use_tooltips);
-  CNF_BOOL_D("lightning",           &i_use_lightning);
+  CNF_BOOL_D("tooltips",            &i_use_tooltips, "Use Tooltips");
+  CNF_BOOL_D("lightning",           &i_use_lightning, "Use lights in 3D view");
   CNF_INT("windowposx",           &i_window_pos_x);
   CNF_INT("windowposy",           &i_window_pos_y);
   CNF_INT("windowposw",           &i_window_pos_w);
@@ -213,14 +216,14 @@ configuration::~configuration(void) {
 }
 
 
+static void cb_ConfigDialog_stub(Fl_Widget* o, void* v) { ((Fl_Double_Window*)v)->hide(); }
+
 void configuration::dialog(void) {
 
   Fl_Double_Window * win = new Fl_Double_Window(200, 500);
-  Fl_Pack * pack = new Fl_Pack(0, 0, 200, 500);
-
 
   config_data *t = first_data;
-  int y = 0;
+  int y = 10;
 
   while(t) {
     if (t->dialog) {
@@ -228,7 +231,7 @@ void configuration::dialog(void) {
       switch (t->cnf_typ) {
       case CT_BOOL:
         {
-            Fl_Check_Button *w = new Fl_Check_Button(0, y, 200, 20, t->cnf_name);
+          Fl_Check_Button *w = new Fl_Check_Button(10, y, 180, 20, t->dialogText);
           t->widget = w;
           if (*((bool*)t->cnf_var))
             w->value(1);
@@ -249,8 +252,10 @@ void configuration::dialog(void) {
     t = t->next;
   }
 
-  pack->end();
+  new FlatButton(10, y+10, 180, 20, "Close", "Close window", cb_ConfigDialog_stub, win);
+
   win->end();
+  win->resize(win->x(), win->y(), win->w(), y+40);
 
   win->show();
 

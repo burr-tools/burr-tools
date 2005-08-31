@@ -60,7 +60,7 @@ private:
   } cnf_type;
 
   void parse(FILE *in);
-  void register_entry(char *cnf_name, cnf_type  cnf_typ, void *cnf_var, long maxlen, bool dialog);
+  void register_entry(char *cnf_name, cnf_type  cnf_typ, void *cnf_var, long maxlen, bool dialog, char * dtext);
 
   typedef struct config_data {
     config_data *next;
@@ -69,6 +69,7 @@ private:
     void     *cnf_var;   // pointer to the variable
     long      maxlen;    // maximum length (for strings)
     bool      dialog;    // shall it be visible in the config dialog
+    char *    dialogText;
     void *    widget;    // used in the dialog to save pointer to the widget
   } config_data;
 
