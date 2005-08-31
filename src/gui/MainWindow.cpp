@@ -976,15 +976,17 @@ void UserInterface::ReplacePuzzle(puzzle_c * NewPuzzle) {
 
 
 Fl_Menu_Item UserInterface::menu_MainMenu[] = {
-  {"New",       0, cb_New_stub, 0, 0, 0, 0, 14, 56},
-  {"Load",      0, cb_Load_stub, 0, 0, 0, 0, 14, 56},
-  {"Import",    0, cb_Load_Ps3d_stub, 0, 0, 0, 0, 14, 56},
-  {"Save",      0, cb_Save_stub, 0, 0, 0, 0, 14, 56},
-  {"Save as",   0, cb_SaveAs_stub, 0, 0, 0, 0, 14, 56},
+  { "&File",    0, 0, 0, FL_SUBMENU },
+    {"New",       0, cb_New_stub, 0, 0, 0, 0, 14, 56},
+    {"Load",      0, cb_Load_stub, 0, 0, 0, 0, 14, 56},
+    {"Import",    0, cb_Load_Ps3d_stub, 0, 0, 0, 0, 14, 56},
+    {"Save",      0, cb_Save_stub, 0, 0, 0, 0, 14, 56},
+    {"Save as",   0, cb_SaveAs_stub, 0, FL_MENU_DIVIDER, 0, 0, 14, 56},
+    {"Quit",      0, cb_Quit_stub, 0, 0, 3, 0, 14, 1},
+    { 0 },
   {"Toggle 3D", 0, cb_Toggle3D_stub, 0, 0, 0, 0, 14, 56},
   {"Config",    0, cb_Config_stub, 0, 0, 0, 0, 14, 56},
-  {"About",     0, cb_About_stub, 0, FL_MENU_DIVIDER, 3, 0, 14, 56},
-  {"Quit",      0, cb_Quit_stub, 0, 0, 3, 0, 14, 1},
+  {"About",     0, cb_About_stub, 0, 0, 3, 0, 14, 56},
   {0}
 };
 
@@ -1552,6 +1554,21 @@ void UserInterface::Small3DView(void) {
   if (is3DViewBig) Toggle3DView();
   pieceEdit->show();
 }
+
+int UserInterface::handle(int event) {
+
+  Fl_Double_Window::handle(event);
+
+  switch(event) {
+  case FL_KEYDOWN:
+    switch (Fl::event_key()) {
+    case FL_F+2:
+      cb_Toggle3D();
+      break;
+    }
+  }
+}
+
 
 
 #define SZ_WINDOW_X 540                        // initial size of the window

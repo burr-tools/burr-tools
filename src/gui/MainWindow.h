@@ -144,6 +144,8 @@ public:
   UserInterface();
   virtual ~UserInterface();
 
+  int handle(int event);
+
   void show(int argn, char ** argv);
 
   /* update the interface to represent the latest state of
