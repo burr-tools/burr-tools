@@ -53,5 +53,9 @@ int main(int argc, char ** argv) {
   
   ui->show(argc, argv);
 
-  return my_Fl::run(ui);
+  int res = my_Fl::run(ui);
+
+  delete ui;
+
+  return res;
 }

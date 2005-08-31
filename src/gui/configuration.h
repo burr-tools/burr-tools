@@ -33,10 +33,21 @@ public:
   ~configuration(void);
 
   bool useTooltips(void) { return i_use_tooltips; }
-  void useTooltips(bool val) { i_use_tooltips = val; need_save = true; }
+  void useTooltips(bool val) { i_use_tooltips = val; }
 
   bool useLightning(void) { return i_use_lightning; }
-  void useLightning(bool val) { i_use_lightning = val; need_save = true; }
+  void useLightning(bool val) { i_use_lightning = val; }
+
+  int windowPosX(void) { return i_window_pos_x; }
+  int windowPosY(void) { return i_window_pos_y; }
+  int windowPosW(void) { return i_window_pos_w; }
+  int windowPosH(void) { return i_window_pos_h; }
+  void windowPos(int x, int y, int w, int h) {
+    i_window_pos_x = x;
+    i_window_pos_y = y;
+    i_window_pos_w = w;
+    i_window_pos_h = h;
+  }
 
   void dialog(void);
 
@@ -49,7 +60,7 @@ private:
   } cnf_type;
 
   void parse(FILE *in);
-  void register_entry(char *cnf_name, cnf_type  cnf_typ, void *cnf_var, long maxlen);
+  void register_entry(char *cnf_name, cnf_type  cnf_typ, void *cnf_var, long maxlen, bool dialog);
 
   typedef struct config_data {
     config_data *next;
@@ -66,7 +77,10 @@ private:
   bool i_use_tooltips;
   bool i_use_lightning;
 
-  bool need_save;
+  int i_window_pos_x;
+  int i_window_pos_y;
+  int i_window_pos_w;
+  int i_window_pos_h;
 };
 
 extern configuration config;

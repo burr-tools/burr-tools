@@ -120,7 +120,7 @@ void configuration::parse(FILE * in) {
   }
 }
 
-void configuration::register_entry(char *cnf_name, cnf_type  cnf_typ, void *cnf_var, long maxlen) {
+void configuration::register_entry(char *cnf_name, cnf_type  cnf_typ, void *cnf_var, long maxlen, bool dialog) {
   config_data *t = new config_data;
 
   t->next = first_data;
@@ -130,23 +130,41 @@ void configuration::register_entry(char *cnf_name, cnf_type  cnf_typ, void *cnf_
   t->cnf_typ = cnf_typ;
   t->cnf_var = cnf_var;
   t->maxlen = maxlen;
+  t->dialog = dialog;
 }
 
-#define CNF_BOOL(a,b) register_entry(a, CT_BOOL, b, 0)
-#define CNF_CHAR(a,b,c) register_entry(a, CT_STRING, b, c)
-#define CNF_INT(a,b) register_entry(a, CT_INT, b, 0)
+#define CNF_BOOL(a,b) register_entry(a, CT_BOOL, b, 0, false)
+#define CNF_CHAR(a,b,c) register_entry(a, CT_STRING, b, c, false)
+#define CNF_INT(a,b) register_entry(a, CT_INT, b, 0, false)
+
+#define CNF_BOOL_D(a,b) register_entry(a, CT_BOOL, b, 0, true)
+#define CNF_CHAR_D(a,b,c) register_entry(a, CT_STRING, b, c, true)
+#define CNF_INT_D(a,b) register_entry(a, CT_INT, b, 0, true)
+
+#define SZ_WINDOW_X 540                        // initial size of the window
+#define SZ_WINDOW_Y 488
+
 
 configuration::configuration(void) {
 
   i_use_tooltips = true;
   i_use_lightning = true;
+
+  i_window_pos_x = 30;
+  i_window_pos_y = 30;
+  i_window_pos_w = SZ_WINDOW_X;
+  i_window_pos_h = SZ_WINDOW_Y;
+
   first_data = 0;
 
-  CNF_BOOL("tooltips",            &i_use_tooltips);
-  CNF_BOOL("lightning",           &i_use_lightning);
+  CNF_BOOL_D("tooltips",            &i_use_tooltips);
+  CNF_BOOL_D("lightning",           &i_use_lightning);
+  CNF_INT("windowposx",           &i_window_pos_x);
+  CNF_INT("windowposy",           &i_window_pos_y);
+  CNF_INT("windowposw",           &i_window_pos_w);
+  CNF_INT("windowposh",           &i_window_pos_h);
 
   FILE * f = open_local_config_file();
-  need_save = (f == 0);
   if (f) {
     parse(f);
     fclose(f);
@@ -156,39 +174,36 @@ configuration::configuration(void) {
 
 configuration::~configuration(void) {
 
-  if (need_save) {
+  FILE * f = create_local_config_file();
 
-    FILE * f = create_local_config_file();
-
-    fseek(f, 0, SEEK_SET);
-
-    config_data *t = first_data;
-
-    while(t) {
-      fprintf(f, "%s: ", t->cnf_name);
-
-      switch (t->cnf_typ) {
-      case CT_BOOL:
-        fprintf(f, "%s", (*(bool *)t->cnf_var)?("yes"):("no"));
-        break;
-      case CT_STRING:
-        fprintf(f, "\"%s\"", (char *)(t->cnf_var));
-        break;
-      case CT_INT:
-        fprintf(f, "%i", *(int *)t->cnf_var);
-        break;
-      default: assert(0);
-      }
-
-      fprintf(f, "\n");
-
-      t = t->next;
-    }
-
-    fclose(f);
-  }
+  fseek(f, 0, SEEK_SET);
 
   config_data *t = first_data;
+
+  while(t) {
+    fprintf(f, "%s: ", t->cnf_name);
+
+    switch (t->cnf_typ) {
+    case CT_BOOL:
+      fprintf(f, "%s", (*(bool *)t->cnf_var)?("yes"):("no"));
+      break;
+    case CT_STRING:
+      fprintf(f, "\"%s\"", (char *)(t->cnf_var));
+      break;
+    case CT_INT:
+      fprintf(f, "%i", *(int *)t->cnf_var);
+      break;
+    default: assert(0);
+    }
+
+    fprintf(f, "\n");
+
+    t = t->next;
+  }
+
+  fclose(f);
+
+  t = first_data;
 
   while (t) {
     t = t->next;
@@ -208,25 +223,28 @@ void configuration::dialog(void) {
   int y = 0;
 
   while(t) {
-    switch (t->cnf_typ) {
-    case CT_BOOL:
-      {
-          Fl_Check_Button *w = new Fl_Check_Button(0, y, 200, 20, t->cnf_name);
-        t->widget = w;
-        if (*((bool*)t->cnf_var))
-          w->value(1);
-        else
-          w->value(0);
-      }
-      break;
-    case CT_STRING:
-      break;
-    case CT_INT:
-      break;
-    default: assert(0);
-    }
+    if (t->dialog) {
 
-    y += 20;
+      switch (t->cnf_typ) {
+      case CT_BOOL:
+        {
+            Fl_Check_Button *w = new Fl_Check_Button(0, y, 200, 20, t->cnf_name);
+          t->widget = w;
+          if (*((bool*)t->cnf_var))
+            w->value(1);
+          else
+            w->value(0);
+        }
+        break;
+      case CT_STRING:
+        break;
+      case CT_INT:
+        break;
+      default: assert(0);
+      }
+  
+      y += 20;
+    }
 
     t = t->next;
   }
@@ -242,24 +260,26 @@ void configuration::dialog(void) {
   t = first_data;
 
   while(t) {
-    switch (t->cnf_typ) {
-    case CT_BOOL:
 
-      if (((Fl_Check_Button*)t->widget)->value())
-        *((bool*)t->cnf_var) = true;
-      else
-        *((bool*)t->cnf_var) = false;;
-      break;
-    case CT_STRING:
-      break;
-    case CT_INT:
-      break;
-    default: assert(0);
+    if (t->dialog) {
+
+      switch (t->cnf_typ) {
+      case CT_BOOL:
+  
+        if (((Fl_Check_Button*)t->widget)->value())
+          *((bool*)t->cnf_var) = true;
+        else
+          *((bool*)t->cnf_var) = false;;
+        break;
+      case CT_STRING:
+        break;
+      case CT_INT:
+        break;
+      default: assert(0);
+      }
     }
     t = t->next;
   }
-
-  need_save = true;
 
   delete win;
 }

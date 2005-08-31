@@ -145,6 +145,7 @@ class UserInterface : public Fl_Double_Window {
 public:
 
   UserInterface();
+  virtual ~UserInterface();
 
   void show(int argn, char ** argv);
 

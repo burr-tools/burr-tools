@@ -2135,6 +2135,8 @@ UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
 
   resizable(mainTile);
 
+  resize(config.windowPosX(), config.windowPosY(), config.windowPosW(), config.windowPosH());
+
   is3DViewBig = true;
   shapeEditorWithBig3DView = true;
 
@@ -2146,3 +2148,7 @@ UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
   activateConfigOptions();
 }
 
+UserInterface::~UserInterface() {
+
+  config.windowPos(x(), y(), w(), h());
+}
