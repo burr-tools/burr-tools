@@ -1486,8 +1486,18 @@ void UserInterface::update(void) {
 
 void UserInterface::Toggle3DView(void)
 {
-  Fl_Group * group = is3DViewBig ? pieceEdit->parent() : View3D->parent();
+  // first move the tile so that the widget at the
+  // bottom is visible
+  Fl_Widget * pos = (is3DViewBig)
+    ? (pieceEdit->parent())
+    : (View3D->parent());
+  Fl_Tile * tile = (Fl_Tile *)(pos->parent());
 
+  int ytile = pos->y();
+
+  tile->position(0, ytile, 0, 200);
+
+  // exchange vidget positions
   Fl_Group * tmp = pieceEdit->parent();
   View3D->parent()->add(pieceEdit);
   tmp->add(View3D);
@@ -1497,31 +1507,19 @@ void UserInterface::Toggle3DView(void)
   int w = pieceEdit->w();
   int h = pieceEdit->h();
 
+  // exchange sizes
   pieceEdit->resize(View3D->x(), View3D->y(), View3D->w(), View3D->h());
   View3D->resize(x, y, w, h);
 
-  int v = pieceEdit->visible();
-
-  if (View3D->visible())
-    pieceEdit->show();
-  else
-    pieceEdit->hide();
-
-  if (v)
-    View3D->show();
-  else
-    View3D->hide();
-
   is3DViewBig = !is3DViewBig;
 
-  redraw();
-
-
   if (is3DViewBig)
-    group->resizable(pieceEdit);
+    pieceEdit->parent()->resizable(pieceEdit);
   else
-    group->resizable(View3D);
+    View3D->parent()->resizable(View3D);
 
+  // now move the tile back to its position
+  tile->position(0, 200, 0, ytile);
 }
 
 void UserInterface::Big3DView(void) {
