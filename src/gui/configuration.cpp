@@ -122,7 +122,7 @@ void configuration::parse(FILE * in) {
   }
 }
 
-void configuration::register_entry(char *cnf_name, cnf_type  cnf_typ, void *cnf_var, long maxlen, bool dialog, char * dtext) {
+void configuration::register_entry(char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, char * dtext) {
   config_data *t = new config_data;
 
   t->next = first_data;
