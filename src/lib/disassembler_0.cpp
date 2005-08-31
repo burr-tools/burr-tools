@@ -580,20 +580,24 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
         delete [] pn;
       }
 
-      if (part2 == 1) {
-        left_ok = true;
-      } else if (subProbGroup(st, pieces, true, piecenumber)) {
-        left_ok = true;
-      } else {
+      /* only check the left over part, when the removed part is ok */
+      if (remove_ok) {
 
-        node0_c *n;
-        voxel_type * pn;
-        create_new_params(st, &n, &pn, piecenumber, pieces, part2, true);
-        left = disassemble_rec(part2, pn, n);
-
-        left_ok = left || subProbGrouping(pn, part2);
-
-        delete [] pn;
+        if (part2 == 1) {
+          left_ok = true;
+        } else if (subProbGroup(st, pieces, true, piecenumber)) {
+          left_ok = true;
+        } else {
+  
+          node0_c *n;
+          voxel_type * pn;
+          create_new_params(st, &n, &pn, piecenumber, pieces, part2, true);
+          left = disassemble_rec(part2, pn, n);
+  
+          left_ok = left || subProbGrouping(pn, part2);
+  
+          delete [] pn;
+        }
       }
 
       /* if both subproblems are either trivial or solvable, return the

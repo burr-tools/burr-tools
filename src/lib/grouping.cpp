@@ -28,21 +28,27 @@ void grouping_c::addPieces(unsigned int pc, unsigned int group, unsigned int cou
 
 void grouping_c::reSet(void) {
   sets.clear();
+  failed = false;
 }
 
 
 void grouping_c::newSet(void) {
 
-  struct set s;
+  if (!failed) {
 
-  s.currentGroup = 1;
-
-  sets.push_back(s);
+    struct set s;
+  
+    s.currentGroup = 1;
+  
+    sets.push_back(s);
+  }
 }
 
 
 
 bool grouping_c::addPieceToSet(unsigned int pc) {
+
+  if (failed) return false;
 
   assert(sets.size() > 0);
 
@@ -84,8 +90,10 @@ bool grouping_c::addPieceToSet(unsigned int pc) {
     if (sets[set].currentGroup >= numGroups) {
       sets[set].currentGroup == 0;
 
-      if (set == 0)
+      if (set == 0) {
+        failed = true;
         return false;
+      }
 
       set--;
 

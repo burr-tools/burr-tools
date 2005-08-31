@@ -76,10 +76,12 @@ class grouping_c {
     return i;
   }
 
+  bool failed;
+
 public:
 
 
-  grouping_c(void) : numGroups(0) {}
+  grouping_c(void) : numGroups(0), failed(false) {}
 
 
   /* intialisation:
