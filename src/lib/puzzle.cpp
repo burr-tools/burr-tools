@@ -296,7 +296,8 @@ public:
   public:
 
     shape_c(unsigned short id, unsigned short cnt, unsigned short grp) : shapeId(id), count(cnt) {
-      groups.push_back(group_c(grp, cnt));
+      if (grp)
+        groups.push_back(group_c(grp, cnt));
     }
 
     shape_c(unsigned short id, unsigned short cnt) : shapeId(id), count(cnt) { }
