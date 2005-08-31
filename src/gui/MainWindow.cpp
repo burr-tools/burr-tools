@@ -26,6 +26,7 @@
 
 #include "gzstream.h"
 #include "configuration.h"
+#include "GroupsEditor.h"
 
 #include "../config.h"
 
@@ -464,9 +465,7 @@ void UserInterface::cb_ShapeGroup(void) {
 
   unsigned int prob = problemSelector->getSelection();
 
-  assert(groupEditWin == 0);
-
-  groupEditWin = new groupsEditorWindow(puzzle, prob);
+  groupsEditorWindow * groupEditWin = new groupsEditorWindow(puzzle, prob);
 
   groupEditWin->show();
 
@@ -474,8 +473,6 @@ void UserInterface::cb_ShapeGroup(void) {
     Fl::wait();
 
   delete groupEditWin;
-
-  groupEditWin = 0;
 
   PiecesCountList->redraw();
   changed = true;
@@ -2140,8 +2137,6 @@ UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
 
   updateInterface();
   activateClear();
-
-  groupEditWin = 0;
 
   activateConfigOptions();
 }

@@ -25,7 +25,6 @@
 #include "DisasmToMoves.h"
 #include "WindowWidgets.h"
 #include "BlockList.h"
-#include "GroupsEditor.h"
 
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
@@ -107,8 +106,6 @@ class UserInterface : public Fl_Double_Window {
   ColorSelector * colorSelector;
 
   VoxelEditGroup *pieceEdit;
-
-  groupsEditorWindow * groupEditWin;
 
   void tryToLoad(const char *fname);
 
