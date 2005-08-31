@@ -474,9 +474,24 @@ void UserInterface::cb_ShapeGroup(void) {
 
   delete groupEditWin;
 
+  /* as the user may have reset the counts of one shape to zero, go
+   * through the list and remove entries of zero count */
+
+  unsigned int i = 0;
+  while (i < puzzle->probShapeNumber(prob)) {
+
+    if (puzzle->probGetShapeCount(prob, i))
+      i++;
+    else
+      puzzle->probRemoveShape(prob, i);
+  }
+
   PiecesCountList->redraw();
+  PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
   changed = true;
   changeProblem(problemSelector->getSelection());
+  activateProblem(problemSelector->getSelection());
+  StatProblemInfo(problemSelector->getSelection());
   updateInterface();
 }
 
