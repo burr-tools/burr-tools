@@ -1,3 +1,107 @@
+Wed Aug 31 19:37:25 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix problem with "vanishing" bottom widget in shape editor, problem now: the middle separator may jump
+
+Wed Aug 31 17:34:08 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * improvements for configuration dialog
+
+Wed Aug 31 17:22:39 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * save windows position in config file
+
+Tue Aug 30 22:05:04 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * get rid of 2 unused variables
+
+Tue Aug 30 22:00:57 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add configuration support
+  
+  for the moment a simple configuration, just 2 switches
+  tooltips and the lightning in 3D mode. The configuration
+  class also lacks the other data types except for bool, also
+  the dialog needs some brush up, but it works for now...
+
+Mon Aug 29 18:40:19 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * new constructor for buttons (with pointer)
+
+Mon Aug 29 18:39:43 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * cleanup for grid editor event handling
+
+Mon Aug 29 18:39:15 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * update about box to contain used libs and modules
+
+Mon Aug 29 18:36:22 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add GUI to edit groups properly
+
+Sun Aug 28 12:30:30 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * make UserInterface into a derived window class and not a container for the window
+
+Sun Aug 28 12:20:57 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove using namespace from include file
+
+Sun Aug 28 11:58:49 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * updates to NEWS file
+
+Sun Aug 28 11:50:59 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * the string for the text block list is 200 characters long
+
+Sun Aug 28 11:48:29 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add better grouping of pieces for disassembler
+  
+  now each (set of) piece(s) can belong to several groups and
+  the disassembler will assign groups as it progresses with
+  its task. As soon as it hits a not disassembable set of
+  pieces it looks if they can be assigned groups so that they
+  are all in the same group
+
+Wed Aug 24 16:48:22 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * update to 3D-View Grid-View exchange, more stable
+
+Tue Aug 23 16:16:05 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * first try at a possibility to toggle the grid and 3D view in the shape tab so that the grid has more space
+
+Tue Aug 23 16:07:07 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * minimize on empty voxel spaces caused a crash
+
+Tue Aug 23 16:05:24 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * turn the slider with the square editor around so that is behaves more intuitive
+
+Mon Aug 22 21:24:14 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * now we also don't need to draw the faces joining to variable cubes
+
+Sun Aug 21 21:48:28 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * bigger steps for solution animations
+
+Sun Aug 21 21:31:08 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * reformat cursor code
+
+Sun Aug 21 21:30:21 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * variable cubes are no longer with smaller cube but with a cube with a black square on each face
+
+Sun Aug 21 15:18:47 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add some kind of cursor to the 3D view
+
+Sat Aug 20 21:49:09 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * show both the sum of moves and all the levels of the puzzle above the moves slider
+
+Sat Aug 20 21:11:09 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * sort found solutions by disassembly complexity
+
+Sat Aug 20 20:57:25 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * the solution selector now takes the focus, so you can use the keys to select solutions
+
+Sat Aug 20 20:49:58 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * When you dragged the tab so that the 3D view was 0 width the program crashed, fixed now
+
+Sat Aug 20 20:43:58 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * wrong assert causing abborts when colors were deleted
+
+Sat Aug 20 20:43:35 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove some debug prints left over
+
+Fri Aug 19 16:55:04 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  tagged 0.1.7
+
+Fri Aug 19 16:54:06 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * last release preparations
+
 Fri Aug 19 16:51:17 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
   * more marker functions from the header into the c-file
 

@@ -1,5 +1,9 @@
 ------------- Version 0.1.8 
 
+- configuration file. The position of the window is saved, you can
+  also toggle tooltips and switch off the light in 3D view resulting in
+  a completely even and very light colors for the pieces
+
 - better groupings. It is not possible to assign mutiple groups with
   a count to each (set of) pieces. The meaning is defined like this.
   There can be UP TO the specified number of pieces in this group. This
