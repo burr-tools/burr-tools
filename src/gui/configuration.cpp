@@ -27,54 +27,77 @@
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Check_Button.H>
 #include <FL/Fl.H>
+#include <FL/filename.H>
+
+#ifdef WIN32
+#include <windows.h>
+#include <shlobj.h>
+#include <shellapi.h>
+#include <lmcons.h>
+#else
+#define MAX_PATH 1024
+#endif
+
+#if defined WIN32 && !defined CYGWIN
+#include <direct.h>
+#else
+#include <unistd.h>
+#endif
+
+
 
 // retugns either the home directory or the current
 // directory on system that don't know home dirs
 static char * homedir() {
 
-#if (SYSTEM == SYS_LINUX || SYSTEM == SYS_MACOSX)
+  static char userHome[MAX_PATH];
 
-  return getenv("HOME");
+#ifdef WIN32
+
+
+  HKEY key;
+  DWORD size = MAX_PATH;
+
+  if (RegOpenKeyEx(HKEY_CURRENT_USER,
+                   "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders",
+                   0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
+    userHome[0] = '\0';
+
+  else if (RegQueryValueEx(key, "Personal", 0, 0, (LPBYTE)userHome, &size ) != ERROR_SUCCESS)
+    userHome[0] = '\0';
+
+  else
+    RegCloseKey(key);
+
+  size = strlen(userHome);
+  userHome[size] = '\\';
+  userHome[size+1] = '\0';
+
 
 #else
 
-  return "./";
+  fl_filename_expand( userHome, MAX_PATH, "~/" );
 
 #endif
 
+  return userHome;
 }
 
 
 
 static FILE *create_local_config_file(void) {
 
-#if (SYSTEM == SYS_LINUX || SYSTEM == SYS_MACOSX)
-
   char n[200];
-  snprintf(n, 199, "%s/.burrtools.rc", homedir());
+  snprintf(n, 199, "%s.burrtools.rc", homedir());
   return fopen(n, "w");
-
-#else
-
-  return fopen("burrtools.conf", "w");
-
-#endif
 
 }
 
 static FILE *open_local_config_file(void) {
 
-#if (SYSTEM == SYS_LINUX || SYSTEM == SYS_MACOSX)
-
   char n[200];
-  snprintf(n, 199, "%s/.burrtools.rc", homedir());
+  snprintf(n, 199, "%s.burrtools.rc", homedir());
   return fopen(n, "r");
-
-#else
-
-  return fopen("burrtools.conf", "r");
-
-#endif
 
 }
 
@@ -178,6 +201,8 @@ configuration::configuration(void) {
 configuration::~configuration(void) {
 
   FILE * f = create_local_config_file();
+
+  assert(f);
 
   fseek(f, 0, SEEK_SET);
 
