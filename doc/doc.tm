@@ -1,15 +1,10 @@
-<TeXmacs|1.0.4>
+<TeXmacs|WinTeXmacs-1.0.5>
 
 <style|book>
 
 <\body>
-  <\make-title>
-    <title|BurrTools>
-
-    <author|Andreas Röver>
-
-    <title-email|roever@users.sf.net>
-  </make-title>
+  <doc-data|<doc-title|BurrTools>|<doc-author-data|<author-name|Andreas
+  Röver>|<author-email|roever@users.sf.net>>>
 
   \;
 
@@ -392,41 +387,109 @@
   the shapes defined in the shapes tab and a list of the pieces involved in
   this problem. Above the shape list is the result.
 
-  Between the shape and the piece list are 4 buttons labled ''+1'', ''-1''
-  and ''G+1'' and ''G-1''. The first 2 buttons either add another one of the
-  selected shape to the list of pieces or remove one of it. In the lower list
-  you can see how many of each piece are used for the problem. The colored
-  boxes show first the number of the shape and behind the colon the number of
-  times the piece is used.
+  Between the shape and the piece list are 3 buttons labled ''+1'', ''-1''
+  and ''Grp''. The first 2 buttons either add another one of the selected
+  shape to the list of pieces or remove one of it. In the lower list you can
+  see how many of each piece are used for the problem. The colored boxes show
+  first the number of the shape and behind in braces the number of times the
+  piece is used.
 
-  The 2nd 2 buttons allow you to define groups of pieces. With piece groups
-  it is possible to leave pieces together when diassembling the puzzle. An
+  The 3rd button allows you to define groups of pieces. With piece groups it
+  is possible to leave pieces together when diassembling the puzzle. An
   example of a puzzle where this is required is the ``Cube in Cage'' called
   puzzle. Here you have a cage out of 3 pieces and within the cage you have
   to assemble a 3x3x3 cube. The cage is built in such a way that the 3 pieces
   can move, but they don't go apart. This is a problem because normally the
   disassembler tries to disassemble the puzzle into all its pieces but
-  because this is not possible here is refuses the find solutions.
-
-  Now how does this work. Each piece is within a group. The default group is
-  group number 0. All pieces within this group need to be completely
-  separated from each other for the puzzle to be solved. Because this is the
-  normal case it is not specially marked in the List of pieces below the
-  butons. But with the G+1 and G-1 buttons you can increase the group number.
-  As soon as a piece has a group number differen from 0 that information is
-  displayed in the piece list. Behind the count the group number is appended,
-  e.g ''0: 3, G1'' means that shape 3 is used 3 times and all this 3 pieces
-  are within group 1. Now all pieces that are not in group 0 but in the same
-  group <em|can> stay together. I need to stress the can because, in case
-  they do come apart this might just happen. The disassembly algorithm just
-  stops as soon as it either has a single piece or all pieces inside the
-  currently examined group of pieces are within the same group and that group
-  is not zero.
+  because this is not possible here it normally refuses the find solutions.
+  The exact working is explained below.
 
   While editing problems you can see all the involved pieces in the 3D view.
   In the upper left corner you can see the result. It is drawn in double
   size. The upper right corner shows the currently selected piece and below
   these 2 pieces are all the pieces visible that are included in the problem.
+
+  <subsubsection|Grouping>
+
+  As already said: groups allow you to say to the disassembler that it is OK
+  when it can not separate one piece from another. If the disassembler finds
+  2 or more pieces can not be taken apart it checks if all of the involved
+  pieces are in the same group. If that is the case it rests assured and
+  continues, if the pieces are not in the same group the disassembler abborts
+  its work and says that the assembly can not be disassembled. This is the
+  basic idea, but there is a bit more to it.
+
+  First there is ''Group 0''. All pieces inside this group need to be
+  separated from one another. This group is there so that it is not required
+  to place all the pieces into their own group, when you want to disassemble
+  the puzzle. Pieces are automatically in Group 0 so you don't need to take
+  care of that case.
+
+  Pieces can be in more than one group. If you have for example a puzzle
+  where you know that the piece A either interlocks with piece B or piece C
+  and can not be separated from it, but you don't know to which of the two
+  pieces B or C piece A it attatched you can assign Group 1 and Group 2 to
+  piece A and group 1 to piece B and group 2 to piece C. This way the
+  disassembler finds that both pieces are in group 1 when A and B are
+  inseparable and it finds that both pieces are in group 2 when A and C can
+  not let from each other.
+
+  Pieces with the same shape need to have the same group assignment. That
+  means if you have 3 pieces of shape 1 all 3 either all 3 pieces can be in
+  group 1 or none of them. But you can also say how many of the 3 pieces may
+  be in group 1 <em|maximally>. That means you can say not more than 3 pieces
+  of the 3 <em|may> be in group 1.
+
+  Before we now come to the way this works let me show you how you enter the
+  required information. Once you press the ``Grp'' button in the problem tab
+  a window opens. Here you find a table that has a line for each shape that
+  is in the current problem. The first column contains the shape number, then
+  comes a number that says how many times this shape is in the puzzle. And
+  the following columns all stand for one group. When you first create a
+  puzzle there are just 2 columns but you can add more columns by pressing
+  the ``Add Group'' button (The unused groups at the end of the list will
+  vanish once you close the window). Once you have a group column you can add
+  numbers by clicking into the cells. Colored cells contain numbers not
+  equlal to zero. Cells with a zero are gray and don't have a number inside.
+  The numbers you enter here are the <em|maximal> number of pieces of this
+  shape that <em|may> go into this group.
+
+  Now what does it all come together: The disassembler starts to do its work.
+  For each subproblem it first checks, if there is a unique group assignment
+  for all involved pieces, e.g. all pieces have exactly one group assigned
+  and that group is identical it doesn't even try to disassemble that
+  subproblem. If this is not the case it tries to disassemble. In case of a
+  failure it adds the pieces that are in this subproblem to a list of lists
+  of pieces (oh yes this sounds strange). This is a table, each table entry
+  contains a list of pieces. Once we are done with the disassembler the
+  program comes back to this table and tries to assign a group to each list
+  of pieces that are in the table. It just tries all possibilities. When the
+  sum if pieces that are now in one group is bigger than the one that you
+  have entered in the dialog above this is not a valid group assignment. If
+  the program can find a valid assignment the puzzle is disassembled, if it
+  can not the puzzle is assumed to be not disassembable. An example: assume
+  we have a puzzle that contains (among others) 5 pieces of shape A. 3 of
+  them might go into group 1 and another 2 into group 2. There is also a
+  piece B that might go into group 1 After the disassembler we have the
+  following list of pieces in the table:\ 
+
+  <\enumerate-numeric>
+    <item>AA
+
+    <item>AAB
+  </enumerate-numeric>
+
+  Now the program has to assign group 2 to the first set of pieces and group
+  1 to the 2nd set of pieces. Because otherwise piece B would be in the wrong
+  group, it can only be in group 1. If there would be another piece A in set
+  1 it would not be possible to assign groups because we can only have 2
+  piece A in group 2. But if would be possible to have another piece A in the
+  2nd set.
+
+  I have no idea how useful this might be with puzzles as most of the
+  currently available puzzles require a complete disassemly. But who knows
+  maybe this feature will help in the design of lots of puzzles new and crazy
+  ideas.
 
   <subsection|Solve Tab>
 
@@ -770,21 +833,21 @@
     <associate|auto-1|<tuple|<uninit>|4>>
     <associate|auto-10|<tuple|1.3|8>>
     <associate|auto-11|<tuple|1.3.3|8>>
-    <associate|auto-12|<tuple|1.3.4|9>>
-    <associate|auto-13|<tuple|1.4|10>>
-    <associate|auto-14|<tuple|2|11>>
-    <associate|auto-15|<tuple|2.1|11>>
-    <associate|auto-16|<tuple|2.2|11>>
-    <associate|auto-17|<tuple|2.2.1|11>>
-    <associate|auto-18|<tuple|2.2.2|12>>
-    <associate|auto-19|<tuple|2.2.3|12>>
+    <associate|auto-12|<tuple|1.3.3.1|9>>
+    <associate|auto-13|<tuple|1.3.4|10>>
+    <associate|auto-14|<tuple|1.4|11>>
+    <associate|auto-15|<tuple|2|11>>
+    <associate|auto-16|<tuple|2.1|11>>
+    <associate|auto-17|<tuple|2.2|11>>
+    <associate|auto-18|<tuple|2.2.1|12>>
+    <associate|auto-19|<tuple|2.2.2|12>>
     <associate|auto-2|<tuple|1|5>>
-    <associate|auto-20|<tuple|2.2.4|12>>
-    <associate|auto-21|<tuple|2.2.5|12>>
-    <associate|auto-22|<tuple|2.3|12>>
-    <associate|auto-23|<tuple|2.3.1|12>>
-    <associate|auto-24|<tuple|2.3.2|13>>
-    <associate|auto-25|<tuple|2.4|13>>
+    <associate|auto-20|<tuple|2.2.3|12>>
+    <associate|auto-21|<tuple|2.2.4|12>>
+    <associate|auto-22|<tuple|2.2.5|12>>
+    <associate|auto-23|<tuple|2.3|12>>
+    <associate|auto-24|<tuple|2.3.1|13>>
+    <associate|auto-25|<tuple|2.3.2|13>>
     <associate|auto-26|<tuple|2.4|?>>
     <associate|auto-3|<tuple|1.1|5>>
     <associate|auto-4|<tuple|1.2|5>>
@@ -810,86 +873,86 @@
     <\associate|toc>
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|Table
       of contents> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-1><vspace|0.5fn>
+      <no-break><pageref|auto-1><vspace|0.5fn>
 
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|1<space|2spc>The
       Program> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-2><vspace|0.5fn>
+      <no-break><pageref|auto-2><vspace|0.5fn>
 
       1.1<space|2spc>Introduction <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-3>
+      <no-break><pageref|auto-3>
 
       1.2<space|2spc><with|font-shape|<quote|small-caps>|PuzzleSolver3D>
       Users <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-4>
+      <no-break><pageref|auto-4>
 
       1.3<space|2spc>New Users <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-5>
+      <no-break><pageref|auto-5>
 
       <with|par-left|<quote|1.5fn>|1.3.1<space|2spc>Main Window
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-6>>
+      <no-break><pageref|auto-6>>
 
       <with|par-left|<quote|1.5fn>|1.3.2<space|2spc>Piece Tab
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-8>>
+      <no-break><pageref|auto-8>>
 
       <with|par-left|<quote|1.5fn>|1.3.3<space|2spc>Problem Tab
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-11>>
+      <no-break><pageref|auto-11>>
 
       <with|par-left|<quote|1.5fn>|1.3.4<space|2spc>Solve Tab
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-12>>
+      <no-break><pageref|auto-12>>
 
       1.4<space|2spc>Future Plans <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-13>
+      <no-break><pageref|auto-13>
 
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>The
       Internals> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-14><vspace|0.5fn>
+      <no-break><pageref|auto-14><vspace|0.5fn>
 
       2.1<space|2spc>The puzzle file format
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-15>
+      <no-break><pageref|auto-15>
 
       2.2<space|2spc>The Library <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-16>
+      <no-break><pageref|auto-16>
 
       <with|par-left|<quote|1.5fn>|2.2.1<space|2spc>Class voxel
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-17>>
+      <no-break><pageref|auto-17>>
 
       <with|par-left|<quote|1.5fn>|2.2.2<space|2spc>Class puzzle
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-18>>
+      <no-break><pageref|auto-18>>
 
       <with|par-left|<quote|1.5fn>|2.2.3<space|2spc>Class assembler
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-19>>
+      <no-break><pageref|auto-19>>
 
       <with|par-left|<quote|1.5fn>|2.2.4<space|2spc>Class disassember
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-20>>
+      <no-break><pageref|auto-20>>
 
       <with|par-left|<quote|1.5fn>|2.2.5<space|2spc>Example
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-21>>
+      <no-break><pageref|auto-21>>
 
       2.3<space|2spc>The Algorithms <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-22>
+      <no-break><pageref|auto-22>
 
       <with|par-left|<quote|1.5fn>|2.3.1<space|2spc>Assembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-23>>
+      <no-break><pageref|auto-23>>
 
       <with|par-left|<quote|1.5fn>|2.3.2<space|2spc>Disassembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-24>>
+      <no-break><pageref|auto-24>>
 
       2.4<space|2spc>Adding to the Library
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <pageref|auto-25>
+      <no-break><pageref|auto-25>
     </associate>
   </collection>
 </auxiliary>

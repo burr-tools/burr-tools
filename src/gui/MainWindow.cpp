@@ -1557,10 +1557,9 @@ void UserInterface::Small3DView(void) {
 
 int UserInterface::handle(int event) {
 
-  Fl_Double_Window::handle(event);
-
   switch(event) {
-  case FL_KEYDOWN:
+  case FL_SHORTCUT:
+    printf("%i\n", Fl::event_key());
     switch (Fl::event_key()) {
     case FL_F+2:
       cb_Toggle3D();
