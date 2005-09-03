@@ -60,24 +60,18 @@ public:
 
       if (da) {
         Solutions++;
-        if (printSolutions) ;
-//          print(assm);
+
+        if (printSolutions)
+          print(a, puzzle, prob);
+
         printf("level: %i\n", da->getMoves());
         if (printDisassemble);
-//          print(da, assm);
+          print(da, a, puzzle, prob);
         delete da;
       }
 
-//      delete assm;
-  
-    } else {
-
-      if (printSolutions) {
-        assemblyVoxel_c * assm = a->getVoxelSpace(puzzle, prob);
-        print(assm);
-        delete assm;
-      }
-    }
+    } else if (printSolutions)
+      print(a, puzzle, prob);
 
     delete a;
 

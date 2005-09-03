@@ -434,38 +434,4 @@ public:
   xml::node save(void) const;
 };
 
-/* this voxel space if available to store solutions
- * this is different from the normal space by having a special
- * state for empty and still the piece numbers start with 0
- */
-
-class assemblyVoxel_c : public voxel_c {
-
-public:
-
-  enum {
-    VX_EMPTY = 0xff
-  };
-
-  assemblyVoxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = VX_EMPTY) : voxel_c(x, y, z, init, VX_EMPTY) { }
-  assemblyVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { }
-  assemblyVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { }
-  assemblyVoxel_c(const xml::node & node);
-
-  bool isEmpty(unsigned int x, unsigned int y, unsigned int z) const { return get(x, y, z) == VX_EMPTY; }
-  bool isEmpty2(int x, int y, int z) const { return get2(x, y, z) == VX_EMPTY; }
-  bool isEmpty(unsigned int i) const { return get(i) == VX_EMPTY; }
-  unsigned int pieceNumber(unsigned int x, unsigned int y, unsigned int z) const { return get(x, y, z); }
-  unsigned int pieceNumber2(int x, int y, int z) const { return get2(x, y, z); }
-  unsigned int pieceNumber(unsigned int i) const { return get(i); }
-
-  void clear(unsigned int x, unsigned int y, unsigned int z) { set(x, y, z, VX_EMPTY); }
-  void clear(unsigned int i) { set(i, VX_EMPTY); }
-  void setPiece(unsigned int x, unsigned int y, unsigned int z, int num) { assert(num < VX_EMPTY); set(x, y, z, num); }
-  void setPiece(unsigned int i, int num) { assert(num < VX_EMPTY); set(i, num); }
-
-  /* used to save to XML */
-  xml::node save(void) const;
-};
-
 #endif

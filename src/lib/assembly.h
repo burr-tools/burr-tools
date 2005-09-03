@@ -100,15 +100,6 @@ public:
     assert(num < placements.size());
     return placements[num].getZ();
   }
-
-  /* this creates a voxel space containing the piece numbers in that place
-   * where voxels of the pieces are placed. The function does some assume
-   * that the placement places all pieces within the result shape.
-   * all color information of the pieces is lost
-   */
-  assemblyVoxel_c * getVoxelSpace(const puzzle_c * puz, unsigned int prob) const;
-
-  assemblyVoxel_c * getVoxelSpace(const puzzle_c * puz, unsigned int prob, int *bx1, int *bx2, int *by1, int *by2, int *bz1, int *bz2) const;
 };
 
 

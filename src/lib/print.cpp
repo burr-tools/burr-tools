@@ -51,38 +51,6 @@ void print(const voxel_c * v, char base) {
   printf("\n");
 }
 
-void print(const assemblyVoxel_c * v) {
-  for (unsigned int z = 0; z < v->getZ(); z++) {
-    printf(" +");
-    for (unsigned int x = 0; x < v->getX(); x++)
-      printf("-");
-    printf("+");
-  }
-  printf("\n");
-
-  for (unsigned int y = 0; y < v->getY(); y++) {
-    for (unsigned int z = 0; z < v->getZ(); z++) {
-      printf(" !");
-      for (unsigned int x = 0; x < v->getX(); x++)
-        if (v->get(x, y, z) != assemblyVoxel_c::VX_EMPTY)
-          printf("%c", 'a' + v->get(x, y, z));
-        else
-          printf(" ");
-      printf("!");
-    }
-    printf("\n");
-  }
-
-  { for (unsigned int z = 0; z < v->getZ(); z++) {
-      printf(" +");
-      for (unsigned int x = 0; x < v->getX(); x++)
-        printf("-");
-      printf("+");
-    }
-  }
-  printf("\n");
-}
-
 void print(const pieceVoxel_c * v) {
   for (unsigned int z = 0; z < v->getZ(); z++) {
     printf(" +");
@@ -142,52 +110,167 @@ void print(const puzzle_c * p) {
   }
 }
 
-void print(const state_c * s, const assemblyVoxel_c *start, const separation_c * sep, unsigned int piecenumber) {
+static void print_rec(const separation_c * s, pieceVoxel_c ** pieces, int sx, int sy, int sz, unsigned int * pieceNum) {
 
-  for (unsigned int i = 0; i < piecenumber; i++)
-    printf("%c(%i; %i; %i), ", 'a'+sep->getPieceName(i), s->getX(i), s->getY(i), s->getZ(i));
+  for (unsigned int i = 0; i <= s->getMoves(); i++) {
 
-  printf("\n");
+    const state_c * st = s->getState(i);
 
-  for (unsigned int y = 0;  y < 2 * start->getY(); y++) {
-    for (unsigned int z = 0; z < 2 * start->getZ(); z++) {
-      for (unsigned int x = 0; x < 2 * start->getX(); x++) {
-
-        bool foundpiece = false;
-
-        for (unsigned int p = 0; p < piecenumber; p++) {
-          unsigned int x1 = x - s->getX(p) - start->getX()/2;
-          unsigned int y1 = y - s->getY(p) - start->getY()/2;
-          unsigned int z1 = z - s->getZ(p) - start->getZ()/2;
-
-          if ((x1 < start->getX()) &&
-              (y1 < start->getY()) &&
-              (z1 < start->getZ()))
-            if (start->get(x1, y1, z1) == sep->getPieceName(p)) {
-              printf("%c", 'a' + sep->getPieceName(p));
-              foundpiece = true;
-            }
-        }
-
-        if (!foundpiece) printf(" ");
-      }
-
-      printf(" | ");
+    for (int z = -sz/2; z < sz+sz/2; z++) {
+      printf(" +");
+      for (int x = -sx/2; x < sx+sx/2; x++)
+        printf("-");
+      printf("+");
     }
-
+    printf("\n");
+  
+    for (int y = -sy/2; y < sy+sy/2; y++) {
+      for (int z = -sz/2; z < sz+sz/2; z++) {
+        printf(" !");
+        for (int x = -sx/2; x < sx+sx/2; x++) {
+          char c = ' ';
+  
+          for (unsigned int pc = 0; pc < s->getPieceNumber(); pc++)
+            if (pieces[pc]->isFilled2(x - st->getX(pc),
+                                      y - st->getY(pc),
+                                      z - st->getZ(pc))) {
+              c = 'a' + pieceNum[pc];
+              break;
+            }
+  
+          printf("%c", c);
+        }
+        printf("!");
+      }
+      printf("\n");
+    }
+  
+    { for (int z = -sz/2; z < sz+sz/2; z++) {
+        printf(" +");
+        for (int x = -sx/2; x < sx+sx/2; x++)
+          printf("-");
+        printf("+");
+      }
+    }
     printf("\n");
   }
 
-  printf("\n\n");
-}
-
-void print(const separation_c * s, const assemblyVoxel_c * start) {
-  for (unsigned int i = 0; i <= s->getMoves(); i++)
-    print(s->getState(i), start, s, s->getPieceNumber());
-
   printf(" puzzle separates into  2 parts\n");
 
-  if (s->getRemoved()) print(s->getRemoved(), start);
-  if (s->getLeft()) print(s->getLeft(), start);
+  if (s->getRemoved()) {
+
+    unsigned int * pieceNum2 = new unsigned int [s->getPieceNumber()];
+
+    int pos = 0;
+    for (unsigned int i = 0; i < s->getPieceNumber(); i++)
+      if (s->getState(s->getMoves())->pieceRemoved(i))
+        pieceNum2[pos++] = pieceNum[i];
+
+    print_rec(s->getRemoved(), pieces, sx, sy, sz, pieceNum2);
+
+    delete [] pieceNum2;
+  }
+  if (s->getLeft()) {
+
+    unsigned int * pieceNum2 = new unsigned int [s->getPieceNumber()];
+
+    int pos = 0;
+    for (unsigned int i = 0; i < s->getPieceNumber(); i++)
+      if (!(s->getState(s->getMoves())->pieceRemoved(i)))
+        pieceNum2[pos++] = pieceNum[i];
+
+    print_rec(s->getLeft(), pieces, sx, sy, sz, pieceNum2);
+
+    delete [] pieceNum2;
+  }
+}
+
+
+
+void print(const separation_c * s, const assembly_c * a, const puzzle_c * p, unsigned int prob) {
+
+  const voxel_c * res = p->probGetResultShape(prob);
+
+  pieceVoxel_c ** pieces = new (pieceVoxel_c*)[a->placementCount()];
+
+  unsigned int pc = 0;
+
+  for (unsigned int i = 0; i < p->probShapeNumber(prob); i++)
+    for (unsigned int j = 0; j < p->probGetShapeCount(prob, i); j++) {
+
+      pieces[pc] = new pieceVoxel_c(p->probGetShapeShape(prob, i), a->getTransformation(pc));
+      pc++;
+    }
+
+  unsigned int * pieceNum = new unsigned int [a->placementCount()];
+  for (unsigned int i = 0; i < a->placementCount(); i++)
+    pieceNum[i] = i;
+
+  print_rec(s, pieces, res->getX(), res->getY(), res->getZ(), pieceNum);
+
+  for (unsigned int pc = 0; pc < a->placementCount(); pc++)
+    delete pieces[pc];
+
+  delete [] pieceNum;
+  delete [] pieces;
+}
+
+
+void print(const assembly_c * a, const puzzle_c * p, unsigned int prob) {
+
+  const voxel_c * res = p->probGetResultShape(prob);
+
+
+  pieceVoxel_c ** pieces = new (pieceVoxel_c*)[a->placementCount()];
+
+  unsigned int pc = 0;
+
+  for (unsigned int i = 0; i < p->probShapeNumber(prob); i++)
+    for (unsigned int j = 0; j < p->probGetShapeCount(prob, i); j++) {
+
+      pieces[pc] = new pieceVoxel_c(p->probGetShapeShape(prob, i), a->getTransformation(pc));
+      pc++;
+    }
+
+  for (unsigned int z = 0; z < res->getZ(); z++) {
+    printf(" +");
+    for (unsigned int x = 0; x < res->getX(); x++)
+      printf("-");
+    printf("+");
+  }
+  printf("\n");
+
+  for (unsigned int y = 0; y < res->getY(); y++) {
+    for (unsigned int z = 0; z < res->getZ(); z++) {
+      printf(" !");
+      for (unsigned int x = 0; x < res->getX(); x++) {
+        char c = ' ';
+
+        for (unsigned int pc = 0; pc < a->placementCount(); pc++)
+          if (pieces[pc]->isFilled2(x - a->getX(pc), y - a->getY(pc), z - a->getZ(pc))) {
+            c = 'a' + pc;
+            break;
+          }
+
+        printf("%c", c);
+      }
+      printf("!");
+    }
+    printf("\n");
+  }
+
+  { for (unsigned int z = 0; z < res->getZ(); z++) {
+      printf(" +");
+      for (unsigned int x = 0; x < res->getX(); x++)
+        printf("-");
+      printf("+");
+    }
+  }
+  printf("\n");
+
+  for (unsigned int pc = 0; pc < a->placementCount(); pc++)
+    delete pieces[pc];
+
+  delete [] pieces;
 }
 
