@@ -19,7 +19,6 @@
 
 #include "ArcBall.h"
 
-#include <GL/gl.h>  
 #include <math.h>   
 #include <assert.h>
 
