@@ -368,6 +368,7 @@ void View3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum, b
 
   View3D->update(false);
 
+  View3D->hideMarker();
   View3D->clearSpaces();
   unsigned int num = View3D->addSpace(new pieceVoxel_c(puz->getShape(shapeNum)));
 
@@ -384,6 +385,7 @@ void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
 
   View3D->update(false);
 
+  View3D->hideMarker();
   View3D->clearSpaces();
 
   if (probNum < puz->problemNumber()) {
@@ -496,6 +498,7 @@ void View3dGroup::showColors(const puzzle_c * puz, bool show) {
 void View3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum, bool showColors) {
   View3D->update(false);
 
+  View3D->hideMarker();
   View3D->clearSpaces();
 
   if ((probNum < puz->problemNumber()) &&
