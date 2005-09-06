@@ -1,3 +1,66 @@
+Tue Sep  6 20:17:59 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix some widget exchange issues
+
+Tue Sep  6 19:44:39 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * toggle + and - key shortcut and also have the limits checked
+
+Tue Sep  6 19:40:51 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use a box instead of an output widget for the status line text or it will get the focus and collect keystrokes
+
+Tue Sep  6 19:39:52 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * plus and minus change the layer to edit
+
+Tue Sep  6 19:37:44 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * correct event handling functions
+  
+  we really do need to return 0 when we do not handle the
+  event or else key shorcuts will not arrive
+
+Sat Sep  3 11:34:49 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove assemblyVoxel_c class
+  
+  we don't really need this class any longer. Assenblies are
+  saved in the assembly_c class that saves the position of
+  the pieces. This class was only kept because I've been too
+  laze to rewrite the print routines thats done now
+
+Thu Sep  1 18:25:51 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use the home directory (profile) on windows, too
+
+Thu Sep  1 18:21:25 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * update documentation
+
+Wed Aug 31 21:53:15 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * sort menu into submenu(es) and add first keyboard shortcut
+
+Wed Aug 31 21:32:03 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * whitespace
+
+Wed Aug 31 21:31:48 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove a long standing warning
+
+Wed Aug 31 21:31:26 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * care for user changing the count in the group window
+
+Wed Aug 31 21:21:31 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * the groups edit window doesn't nee to be global
+
+Wed Aug 31 21:15:58 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix for wrong handling of grouping class + optimisation
+  
+  we can sadly not assert that the user will not call the
+  grouping class after it has returned false, so make sure that
+  we do noting but return false once that happened
+  
+  als we don't need to evaluate the 2nd part of the puzzle once
+  the first part turned out to be not disassembable
+
+Wed Aug 31 20:41:46 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * only add a group record when the group is not 0
+
+Wed Aug 31 19:41:24 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * updates of project files
+
 Wed Aug 31 19:37:25 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
   * fix problem with "vanishing" bottom widget in shape editor, problem now: the middle separator may jump
 

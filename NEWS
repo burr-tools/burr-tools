@@ -24,6 +24,8 @@
 - solution selector can take the focus, so you can use the cursor
   keys to go through solutions
 
+- some key-shortcuts: F2 toggles 3d and grid view, + and - change edit layer
+
 - sort solutions by number of moves required the completely disassemble
 
 - show the complete number of moves required to disassembler, and the level
