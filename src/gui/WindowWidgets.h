@@ -98,6 +98,7 @@ public:
   }
 
   void setZ(unsigned int val);
+  int getZ(void) { return sqedit->getZ(); }
 
   void cb_Sqedit(SquareEditor* o) { do_callback(); }
 

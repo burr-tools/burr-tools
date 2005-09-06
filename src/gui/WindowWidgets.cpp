@@ -583,3 +583,4 @@ StatusLine::StatusLine(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   end();
 
 }
+

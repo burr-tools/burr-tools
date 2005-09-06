@@ -1562,11 +1562,16 @@ int UserInterface::handle(int event) {
 
   switch(event) {
   case FL_SHORTCUT:
-    printf("%i\n", Fl::event_key());
     switch (Fl::event_key()) {
     case FL_F+2:
       cb_Toggle3D();
-      break;
+      return 1;
+    case '+':
+      pieceEdit->setZ(pieceEdit->getZ()+1);
+      return 1;
+    case '-':
+      pieceEdit->setZ(pieceEdit->getZ()-1);
+      return 1;
     }
   }
 
