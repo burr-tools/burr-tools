@@ -1566,11 +1566,12 @@ int UserInterface::handle(int event) {
     case FL_F+2:
       cb_Toggle3D();
       return 1;
-    case '+':
+    case '-':
       pieceEdit->setZ(pieceEdit->getZ()+1);
       return 1;
-    case '-':
-      pieceEdit->setZ(pieceEdit->getZ()-1);
+    case '+':
+      if (pieceEdit->getZ() > 0)
+        pieceEdit->setZ(pieceEdit->getZ()-1);
       return 1;
     }
   }
