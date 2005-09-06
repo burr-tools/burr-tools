@@ -1502,6 +1502,12 @@ void UserInterface::update(void) {
 
 void UserInterface::Toggle3DView(void)
 {
+  // select the pieces tab, as exchanging widgets while they are invisible
+  // didn't work. Save the current tab bevore that
+  TaskSelectionTab->when(0);
+  Fl_Widget *v = TaskSelectionTab->value();
+  if (v != TabPieces) TaskSelectionTab->value(TabPieces);
+
   // first move the tile so that the widget at the
   // bottom is visible
   Fl_Widget * pos = (is3DViewBig)
@@ -1536,18 +1542,14 @@ void UserInterface::Toggle3DView(void)
 
   // now move the tile back to its position
   tile->position(0, 200, 0, ytile);
+
+  // restore the old selected tab
+  if (v != TabPieces) TaskSelectionTab->value(v);
+  TaskSelectionTab->when(FL_WHEN_CHANGED);
 }
 
 void UserInterface::Big3DView(void) {
-  if (!is3DViewBig) {
-
-    TaskSelectionTab->when(0);
-    Fl_Widget *v = TaskSelectionTab->value();
-    TaskSelectionTab->value(TabPieces);
-    Toggle3DView();
-    TaskSelectionTab->value(v);
-    TaskSelectionTab->when(FL_WHEN_CHANGED);
-  }
+  if (!is3DViewBig) Toggle3DView();
   View3D->show();
 }
 void UserInterface::Small3DView(void) {
@@ -1725,6 +1727,12 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
     group->resizable(pieceEdit);
     group->end();
+  }
+
+  {
+    Fl_Box * b = new Fl_Box(tile->x(), tile->y(), tile->w(), tile->h()-170);
+    b->hide();
+    tile->resizable(b);
   }
 
   tile->end();
@@ -2174,6 +2182,7 @@ UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
 
   resizable(mainTile);
 
+  size_range(250, 400);
   resize(config.windowPosX(), config.windowPosY(), config.windowPosW(), config.windowPosH());
 
   is3DViewBig = true;
