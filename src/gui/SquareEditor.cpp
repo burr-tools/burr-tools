@@ -203,16 +203,16 @@ bool SquareEditor::setLayer(unsigned int z, voxel_type v) {
 int SquareEditor::handle(int event) {
 
   if (piecenumber >= puzzle->shapeNumber())
-    return 1;
+    return 0;
 
   if (locked)
-    return 1;
+    return 0;
 
   pieceVoxel_c * space = puzzle->getShape(piecenumber);
 
   // if there is no valid space, we do nothing
   if ((space->getX() == 0) || (space->getY() == 0) || (space->getZ() == 0))
-    return 1;
+    return 0;
 
   switch(event) {
   case FL_RELEASE:
@@ -248,7 +248,7 @@ int SquareEditor::handle(int event) {
     state = 0;
     redraw();
 
-    break;
+    return 1;
   case FL_PUSH:
     state = 1;
     // fallthrough
@@ -260,7 +260,7 @@ int SquareEditor::handle(int event) {
       calcParameters(&s, &tx, &ty);
 
       if ((Fl::event_x() < tx) || (Fl::event_y() < ty))
-        break;
+        return 1;
 
       unsigned int x = Fl::event_x() - tx;
       unsigned int y = Fl::event_y() - ty;
@@ -274,7 +274,7 @@ int SquareEditor::handle(int event) {
       if ((x >= space->getX()) || (y >= space->getY())) {
         inside = false;
         mX = x;
-        break;
+        return 1;
       }
 
       y = space->getY() - y - 1;
@@ -316,16 +316,16 @@ int SquareEditor::handle(int event) {
         callbackReason = RS_MOUSEMOVE;
         do_callback();
       }
-
-      break;
     }
+    return 1;
   case FL_LEAVE:
     inside = false;
     callbackReason = RS_MOUSEMOVE;
     do_callback();
+    return 1;
     break;
   }
 
-  return 1;
+  return 0;
 }
 

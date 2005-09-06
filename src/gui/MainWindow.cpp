@@ -1557,6 +1557,9 @@ void UserInterface::Small3DView(void) {
 
 int UserInterface::handle(int event) {
 
+  if (Fl_Double_Window::handle(event))
+    return 1;
+
   switch(event) {
   case FL_SHORTCUT:
     printf("%i\n", Fl::event_key());
@@ -1566,6 +1569,8 @@ int UserInterface::handle(int event) {
       break;
     }
   }
+
+  return 0;
 }
 
 

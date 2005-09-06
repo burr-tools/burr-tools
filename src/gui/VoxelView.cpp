@@ -497,24 +497,25 @@ void VoxelView::draw() {
 
 int VoxelView::handle(int event) {
 
-  Fl_Gl_Window::handle(event);
+  if (Fl_Gl_Window::handle(event))
+    return 1;
 
   switch(event) {
   case FL_PUSH:
     arcBall->click(Fl::event_x(), Fl::event_y());
-    break;
+    return 1;
 
   case FL_DRAG:
     arcBall->drag(Fl::event_x(), Fl::event_y());
     redraw();
-    break;
+    return 1;
 
   case FL_RELEASE:
     arcBall->clack(Fl::event_x(), Fl::event_y());
-    break;
+    return 1;
   }
 
-  return 1;
+  return 0;
 }
 
 unsigned int VoxelView::addSpace(const pieceVoxel_c * vx) {

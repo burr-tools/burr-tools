@@ -81,7 +81,7 @@ int BlockList::handle(int event) {
   unsigned int maxz = 0;
   unsigned int xpos = 0;
 
-  if ((w() <= 0) || (h() <= 0)) return 1;
+  if ((w() <= 0) || (h() <= 0)) return 0;
 
   switch (event) {
 
@@ -115,21 +115,20 @@ int BlockList::handle(int event) {
         xpos += wi;
       }
     }
-
-    break;
+    return 1;
 
   case FL_RELEASE:
     release(current_block);
     state = 0;
     current_block = -1;
-    break;
+    return 1;
 
   case FL_DRAG:
     if (state == 1)
       drag(current_block, Fl::event_x()-mx, Fl::event_y()-my);
-    break;
+    return 1;
   }
-  return 1;
+  return 0;
 }
 
 void SelectableTextList::blockDraw(unsigned int block, int x, int y) {
