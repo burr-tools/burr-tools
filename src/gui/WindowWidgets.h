@@ -333,13 +333,13 @@ class StatusLine : public Fl_Group {
 private:
 
   Fl_Check_Button * colors;
-  Fl_Output * text;
+  Fl_Box * text;
 
 public:
 
   StatusLine(int x, int y, int w, int h);
 
-  void setText(const char * t) { text->value(t); }
+  void setText(const char * t);
   bool useColors(void) { return colors->value() != 0; }
   void callback(Fl_Callback* fkt) { colors->callback(fkt); }
 };

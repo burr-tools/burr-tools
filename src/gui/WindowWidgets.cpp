@@ -570,9 +570,10 @@ void View3dGroup::updateVisibility(PieceVisibility * pcvis) {
 
 StatusLine::StatusLine(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
 
-  text = new Fl_Output(x, y, w - 130, h);
+  text = new Fl_Box(x, y, w - 130, h);
   text->box(FL_THIN_UP_BOX);
   text->color(FL_BACKGROUND_COLOR);
+  text->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
   colors = new Fl_Check_Button(x+w-130, y, 130, h, "Color 3D View");
   colors->box(FL_THIN_UP_BOX);
@@ -581,6 +582,10 @@ StatusLine::StatusLine(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   resizable(text);
 
   end();
+}
 
+void StatusLine::setText(const char * t) {
+
+  text->copy_label(t);
 }
 
