@@ -538,6 +538,46 @@ void View3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsig
   View3D->update(true);
 }
 
+void View3dGroup::showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z) {
+
+  View3D->update(false);
+  View3D->clearSpaces();
+  View3D->hideMarker();
+  View3D->setScaling(1);
+  View3D->setTransformationType(VoxelView::CenterTranslateRoateScale);
+  View3D->showCoordinateSystem(false);
+  View3D->setCenter(0.5*puz->probGetResultShape(probNum)->getX(),
+                    0.5*puz->probGetResultShape(probNum)->getY(),
+                    0.5*puz->probGetResultShape(probNum)->getZ()
+                   );
+
+  int num;
+
+  int shape = 0;
+  unsigned int p = piece;
+  while (p >= puz->probGetShapeCount(probNum, shape)) {
+    p -= puz->probGetShapeCount(probNum, shape);
+    shape++;
+  }
+
+  num = View3D->addSpace(new pieceVoxel_c(puz->probGetShapeShape(probNum, shape), trans));
+  View3D->setSpacePosition(num, x, y, z, 1);
+  View3D->setSpaceColor(num,
+                        pieceColorR(puz->probGetShape(probNum, shape), p),
+                        pieceColorG(puz->probGetShape(probNum, shape), p),
+                        pieceColorB(puz->probGetShape(probNum, shape), p), 255);
+  View3D->setDrawingMode(num, VoxelView::normal);
+
+  num = View3D->addSpace(new pieceVoxel_c(puz->probGetResultShape(probNum)));
+  View3D->setSpaceColor(num,
+                        pieceColorR(puz->probGetResult(probNum)),
+                        pieceColorG(puz->probGetResult(probNum)),
+                        pieceColorB(puz->probGetResult(probNum)), 255);
+  View3D->setDrawingMode(num, VoxelView::gridline);
+
+  View3D->update(true);
+}
+
 void View3dGroup::updatePositions(PiecePositions *shifting) {
 
   View3D->update(false);

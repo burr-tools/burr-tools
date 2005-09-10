@@ -77,7 +77,7 @@ class UserInterface : public Fl_Double_Window {
   Fl_Group *TabSolve;
   Fl_Check_Button *SolveDisasm, *JustCount;
 
-  FlatButton *BtnStart, *BtnCont, *BtnStop;
+  FlatButton *BtnStart, *BtnCont, *BtnStop, *BtnPlacement;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape;
   FlatButton *BtnNewColor, *BtnDelColor, *BtnChnColor;
   FlatButton *BtnNewProb, *BtnDelProb, *BtnCpyProb, *BtnRenProb;
@@ -198,6 +198,7 @@ public:
   void cb_BtnStart(void);
   void cb_BtnCont(void);
   void cb_BtnStop(void);
+  void cb_BtnPlacementBrowser(void);
 
   void cb_SolutionSel(Fl_Value_Slider*);
   void cb_SolutionAnim(Fl_Value_Slider*);

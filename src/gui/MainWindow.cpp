@@ -27,6 +27,7 @@
 #include "gzstream.h"
 #include "configuration.h"
 #include "GroupsEditor.h"
+#include "PlacementBrowser.h"
 
 #include "../config.h"
 
@@ -494,6 +495,22 @@ void UserInterface::cb_ShapeGroup(void) {
   StatProblemInfo(problemSelector->getSelection());
   updateInterface();
 }
+
+static void cb_BtnPlacementBrowser_stub(Fl_Widget* o, void* v) { ui->cb_BtnPlacementBrowser(); }
+void UserInterface::cb_BtnPlacementBrowser(void) {
+
+  unsigned int prob = problemSelector->getSelection();
+
+  PlacementBrowser * plbr = new PlacementBrowser(puzzle, prob);
+
+  plbr->show();
+
+  while (plbr->visible())
+    Fl::wait();
+
+  delete plbr;
+}
+
 
 static void cb_AllowColor_stub(Fl_Widget* o, void* v) { ui->cb_AllowColor(); }
 void UserInterface::cb_AllowColor(void) {
@@ -1972,7 +1989,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
   Fl_Group * tile = new Fl_Tile(x, y, w, h);
 
   // calculate hight of different groups
-  const int paramsFixedHight = SZ_SEPARATOR_Y + 4*SZ_BUTTON_Y + 4*SZ_GAP +  5*SZ_TEXT_Y;
+  const int paramsFixedHight = SZ_SEPARATOR_Y + 5*SZ_BUTTON_Y + 5*SZ_GAP +  5*SZ_TEXT_Y;
   const int solutionsFixedHight = SZ_SEPARATOR_Y + 2*SZ_BUTTON_Y + 2*SZ_GAP + 2*SZ_TEXT_Y;
 
   int hi = h - paramsFixedHight - solutionsFixedHight;
@@ -2034,6 +2051,11 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
       o->resizable(BtnStop);
       o->end();
     }
+
+    y += SZ_BUTTON_Y + SZ_GAP;
+    lh -= SZ_BUTTON_Y + SZ_GAP;
+
+    BtnPlacement = new FlatButton(x, y, w, SZ_BUTTON_Y, "Browse Placements", "Browse the calculated placement of pieces", cb_BtnPlacementBrowser_stub);
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;

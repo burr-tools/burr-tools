@@ -288,6 +288,7 @@ public:
   void showSingleShape(const puzzle_c * puz, unsigned int shapeNum, bool showColors);
   void showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape, bool showColors);
   void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum, bool showColors);
+  void showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z);
   void updatePositions(PiecePositions *shifting);
   void updateVisibility(PieceVisibility * pcvis);
   void showColors(const puzzle_c * puz, bool show);
