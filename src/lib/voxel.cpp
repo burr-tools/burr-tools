@@ -755,7 +755,7 @@ symmetries_t voxel_c::selfSymmetries(void) const {
 
     voxel_c * rot = new voxel_c(this, i);
 
-    if (*rot == *this)
+    if (identicalInBB(rot))
       result |= ((symmetries_t)1 << i);
 
     delete rot;

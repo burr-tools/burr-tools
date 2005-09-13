@@ -159,13 +159,29 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
     }
   }
 
-  /* find the symmetry breaker */
+  /* find the symmetry breaker 
+   * 
+   * ok, what idea is behind this: we try to find as few double solutions as possible
+   * because we don't want to fist search them and later on discard them because they are
+   * double, so what do we do to prevent double solutions?
+   * 
+   * Select one piece and remove rotations from this piece so that we don't even try to
+   * place this piece in all possible positions. But which rotations need to be removed?
+   * This depends on the symmetries that are present in the result and the symmetries
+   * that are present in the piece
+   */
   symmetries_t resultSym = result->selfSymmetries();
   unsigned int symBreakerPiece = 0xFFFFFFFF;
 
-  // we only need to do this, if the result shape has some symmetries */
+  /* so, if we have just the self-symmetry in the result, everything needs to be tried
+   * and not rotations can be removed
+   */
   if (resultSym != 1) {
 
+    /* now we try to find the most "suitable" piece for our rotation removal. What is
+     * suitable? Suitable is the piece shape that has the least common symmetries with
+     * the result and that has the fiewest pieces
+     */
     unsigned int bestFound = 25;
 
     for (unsigned int i = 0; i < puz->probShapeNumber(problemNum); i++) {
@@ -173,7 +189,8 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
       symmetries_t multSym = resultSym & puz->probGetShapeShape(problemNum, i)->selfSymmetries();
 
       if ((numSymmetries(multSym) < bestFound) ||
-          (numSymmetries(multSym) == bestFound) && (puz->probGetShapeCount(problemNum, i) < puz->probGetShapeCount(problemNum, symBreakerPiece))) {
+          (numSymmetries(multSym) == bestFound) && 
+	  (puz->probGetShapeCount(problemNum, i) < puz->probGetShapeCount(problemNum, symBreakerPiece))) {
         bestFound = numSymmetries(multSym);
         symBreakerPiece = i;
       }
@@ -184,6 +201,10 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
     if (tmp || (puz->probGetShapeCount(problemNum, symBreakerPiece) > 1))
       printf("oops I wont be able to avoid all sorts of symmetries (%llx)\n", tmp);
 
+    /* this is the function where the magic goes on. This function returns a symmetry set containing
+     * all symmetries that the selected piece must NOT be placed in. Look at the implementation for
+     * a detailed description of how it works
+     */
     resultSym = multiplySymmetries(resultSym, puz->probGetShapeShape(problemNum, symBreakerPiece)->selfSymmetries());
   }
 
