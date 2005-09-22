@@ -34,12 +34,6 @@ private:
    */
   int * voxelindex;
 
-  /* get's called when a solution is found. this function
-   * then assembles the solution inside assm and calles the
-   * callback function with assm as parameter
-   */
-  bool solution(void);
-
   /* this function creates the matrix for the search function
    * because we need to know how many nodes we need to allocate the
    * arrays with the right size, we add a parameter. if this is true

@@ -77,7 +77,8 @@ unsigned long assm_0_frontend_0_c::countNodes(const puzzle_c * puz, unsigned int
 
     /* go through all possible rotations of the piece */
     /* didn't find piece, so it's new shape, add to cache and add to
-     * node structure */
+     * node structure 
+     */
     /* find all possible translations of piece and add them, if they fit */
     for (unsigned int rot = 0; rot < NUM_TRANSFORMATIONS; rot++)
       if (pieceVoxel_c * rotation = addToCache(cache, &cachefill, new pieceVoxel_c(puz->probGetShapeShape(problemNum, pc), rot)))
@@ -199,7 +200,7 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
     symmetries_t tmp = resultSym & puz->probGetShapeShape(problemNum, symBreakerPiece)->selfSymmetries() & ~((symmetries_t)1);
 
     if (tmp || (puz->probGetShapeCount(problemNum, symBreakerPiece) > 1))
-      printf("oops I wont be able to avoid all sorts of symmetries (%llx)\n", tmp);
+      checkForTransformedAssemblies();
 
     /* this is the function where the magic goes on. This function returns a symmetry set containing
      * all symmetries that the selected piece must NOT be placed in. Look at the implementation for
@@ -274,47 +275,5 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
 assm_0_frontend_0_c::~assm_0_frontend_0_c() {
   if (voxelindex)
     delete [] voxelindex;
-}
-
-typedef unsigned int uint32_t;
-
-bool assm_0_frontend_0_c::solution(void) {
-
-  if (getCallback()) {
-
-    // the new version, we do this double and check, if the results are identical, for the moment
-
-    assembly_c * assembly = new assembly_c();
-
-    /* first we need to find the order the piece are in */
-    uint32_t * pieces = new uint32_t[getPiecenumber()];
-
-    /* fill the array with 0xff, so that we can distinguish between
-     * places and unplaces pieces
-     */
-    memset(pieces, 0xff, sizeof(unsigned int) * getPos());
-
-    for (unsigned int i = 0; i < getPos(); i++) {
-      assert(getPiece(i) < getPiecenumber());
-      pieces[getPiece(i)] = i;
-    }
-
-    for (unsigned int i = 0; i < getPiecenumber(); i++)
-      if (pieces[i] > getPos())
-        assembly->addNonPlacement();
-      else {
-        unsigned char tran;
-        int x, y, z;
-
-        getPieceInformation(getRows(pieces[i]), &tran, &x, &y, &z);
-        assembly->addPlacement(tran, x, y, z);
-      }
-
-    delete [] pieces;
-
-    return getCallback()->assembly(assembly);
-  }
-
-  return true;
 }
 

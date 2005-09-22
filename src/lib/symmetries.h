@@ -59,5 +59,7 @@ unsigned int numSymmetries(symmetries_t s);
  */
 symmetries_t multiplySymmetries(symmetries_t s1, symmetries_t s2);
 
+unsigned char transAdd(unsigned char t1, unsigned char t2);
+
 #endif
 

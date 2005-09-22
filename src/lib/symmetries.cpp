@@ -89,6 +89,16 @@ unsigned int transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATIONS_MIRROR] =
   {47, 36, 41, 30, 44, 24, 40, 34, 45, 28, 43, 38, 46, 32, 42, 26, 27, 39, 35, 31, 33, 37, 25, 29, 19,  4, 21, 14, 18,  8, 22,  2, 17, 12, 23,  6, 16,  0, 20, 10,  9,  5,  1, 13,  3,  7, 11, 15}
 };
 
+unsigned char transAdd(unsigned char t1, unsigned char t2) { return transMult[t1][t2]; }
+
+
+#include <stdio.h>   //TEMP
+
+
+/* this function returns a symmetry class that contains all symmetries that
+ * must not be placed into th result, when the result has symmetry s1 and
+ * the piece to place symmetry s2
+ */
 symmetries_t multiplySymmetries(symmetries_t s1, symmetries_t s2) {
 
   symmetries_t s = 0;

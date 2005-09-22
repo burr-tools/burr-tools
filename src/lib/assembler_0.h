@@ -26,6 +26,7 @@
 #include "puzzle.h"
 
 #include <vector>
+#include <set>
 
 /* the order of pieces is mostly unimportant, except for the
  * very first piece. this is added with removed symmetry of the
@@ -144,10 +145,19 @@ private:
   bool try_cover_row(register unsigned int r);
 
   /* get's called when a solution is found. this function
-   * then assembles the solution inside assm and calles the
-   * callback function with assm as parameter
+   * then assembles the solution and returns an assembly
    */
-  virtual bool solution(void) = 0;
+  assembly_c * getAssembly(void);
+
+  /* this function gets called whenever an assembly was found
+   * when a callback is avaliable it will call getAssembly to 
+   * obtain the assembly for the found solution when the
+   * field avoidTransformedAssemblies is true then the assembly
+   * is checked, if it has been found bevore. The assembly
+   * is normalized in inserted into a set of assemblies for
+   * later reference
+   */
+  void solution(void);
 
   /* used to collect the data neccessary to construct and for the iterative algorithm
    * the assembly, it contains the indexes to the selected rows
@@ -255,6 +265,18 @@ private:
   };
   std::vector<piecePosition> piecePositions;
 
+  /* the members for rotations avoidment
+   */
+  bool avoidTransformedAssemblies;
+
+  /* this set contains all the solutions found up to now but
+   * only when avoidTransformedAssemblies is true
+   * otherwise this is not used
+   * the set must be restored with the already found solutions
+   * on load
+   */
+  std::set<assembly_c*> assemblySet;
+
 protected:
 
   /* as this is only a backend doing the processing on the matrix, there needs to
@@ -312,6 +334,18 @@ protected:
   assembler_cb * getCallback(void) { return asm_bc; }
 
   unsigned int getPiecenumber(void) { return piecenumber; }
+
+  /* call this function if you think that there might be
+   * rotated assemblies found. Here a description of how the whole aspekt of
+   * rotation avoiding is suppoed to work
+   * the frontend is supposed to initialize the assembler so that as few as
+   * possible double assemblies are found by selecting one piece and not placing
+   * this piece in all possible positions. But this will not always work, if
+   * the frontend is are not absolutely certain that it has avoided all possible
+   * rotations it should call this funtion. This will then add an additional check
+   * for each found assembly
+   */
+  void checkForTransformedAssemblies(void);
 
 public:
 

@@ -562,6 +562,70 @@ void assembler_0_c::reduce(void) {
   } while (rem_sth);
 }
 
+assembly_c * assembler_0_c::getAssembly(void) {
+
+  assembly_c * assembly = new assembly_c();
+
+  /* first we need to find the order the piece are in */
+  unsigned int * pieces = new unsigned int[getPiecenumber()];
+
+  /* fill the array with 0xff, so that we can distinguish between
+   * placed and unplaced pieces
+   */
+  memset(pieces, 0xff, sizeof(unsigned int) * getPos());
+
+  for (unsigned int i = 0; i < getPos(); i++) {
+    assert(getPiece(i) < getPiecenumber());
+    pieces[getPiece(i)] = i;
+  }
+
+  for (unsigned int i = 0; i < getPiecenumber(); i++)
+    if (pieces[i] > getPos())
+      assembly->addNonPlacement();
+    else {
+      unsigned char tran;
+      int x, y, z;
+
+      getPieceInformation(getRows(pieces[i]), &tran, &x, &y, &z);
+      assembly->addPlacement(tran, x, y, z);
+    }
+
+  delete [] pieces;
+
+  return assembly;
+}
+
+
+void assembler_0_c::checkForTransformedAssemblies(void) {
+  avoidTransformedAssemblies = true;
+}
+
+
+/* this function handles the assemblies found by the assembler engine
+ */
+void assembler_0_c::solution(void) {
+
+  if (getCallback()) {
+
+    assembly_c * assembly = getAssembly();
+
+    if (avoidTransformedAssemblies) {
+      
+//FIXME      assembly->equalize(puzzle, prob);
+
+      if (assemblySet.find(assembly) != assemblySet.end()) {
+        delete assembly;
+        return;
+
+      } else
+        assemblySet.insert(assembly);
+
+    }
+
+    getCallback()->assembly(assembly);
+  }
+}
+
 /* to understand this function you need to first completely understand the
  * dancing link algorithm.
  * The next thing to know is how this alg. avoids finding the solutions
@@ -603,8 +667,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
     // then the function called then the new value calculated then the new value
     // written. Meanwhile abbort was pressed and abbort was changed. this new value got lost.
     if (!right[0])
-      if (!solution())
-        abbort = true;
+      solution();
 
     // if all pieces are placed we can not go on even if there are
     // more columns that need attention, all of them should be

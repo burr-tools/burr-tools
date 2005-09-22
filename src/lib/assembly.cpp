@@ -17,6 +17,7 @@
  */
 
 #include "assembly.h"
+#include "puzzle.h"
 
 assembly_c::assembly_c(const xml::node & node, unsigned int pieces) {
 
@@ -117,6 +118,13 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces) {
     throw load_error("not the right number of placements in assembly", node);
 }
 
+assembly_c::assembly_c(const assembly_c * orig) {
+
+  for (unsigned int i = 0; i < orig->placements.size(); i++)
+    placements.push_back(placement_c(orig->getTransformation(i), orig->getX(i), orig->getY(i), orig->getZ(i)));
+  
+}
+
 xml::node assembly_c::save(void) const {
 
   xml::node nd("assembly");
@@ -138,5 +146,40 @@ xml::node assembly_c::save(void) const {
   return nd;
 }
 
+void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned int prob) {
+
+  if (!trans) return;
+
+  int p = 0;
+  
+  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
+    for (unsigned int j = 0; j < puz->probGetShapeCount(prob, i); j++) {
+      
+      puz->probGetShapeShape(prob, i)->transformPlacement(trans, puz->probGetResultShape(prob),
+                                                          &placements[p].transformation,
+                                                          &placements[p].xpos,
+                                                          &placements[p].ypos,
+                                                          &placements[p].zpos);
+      p++;
+    }
+
+    /* now we need to sort pieces to that they are sorted by placement */
+  } 
+}
+
+void assembly_c::equalize(const puzzle_c * puz, unsigned int prob) {
+
+  unsigned char best = 0;
+  
+  for (unsigned char t = 1; t < NUM_TRANSFORMATIONS; t++) {
+    assembly_c n(this);
+    n.transform(t, puz, prob);
+    if (n < *this)
+      best = t;
+  }
+
+  if (best)
+    transform(best, puz, prob);
+}
 
 

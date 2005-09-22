@@ -27,25 +27,7 @@
 #include <vector>
 
 class puzzle_c;
-
-class placement_c {
-
-  // transformation 0xFF means that the piece is NOT inside the solution
-  unsigned char transformation;
-
-  int xpos, ypos, zpos;
-
-public:
-
-  placement_c(unsigned char tran, int x, int y, int z) : transformation(tran), xpos(x), ypos(y), zpos(z) {}
-
-  int getX(void) const { return xpos; }
-  int getY(void) const  { return ypos; }
-  int getZ(void) const  { return zpos; }
-  unsigned char getTransformation(void) const  { return transformation; }
-};
-
-
+class placement_c;
 
 /* this class contains the assembly for a puzzle
  * an assembly is a list of trnasformations and
@@ -53,6 +35,46 @@ public:
  *
  * the transformations are the same as defined in the voxel space class
  */
+class placement_c {
+
+public:
+
+  // transformation 0xFF means that the piece is NOT inside the solution
+  unsigned char transformation;
+
+  int xpos, ypos, zpos;
+
+
+  placement_c(unsigned char tran, int x, int y, int z) : transformation(tran), xpos(x), ypos(y), zpos(z) {}
+
+  int getX(void) const { return xpos; }
+  int getY(void) const  { return ypos; }
+  int getZ(void) const  { return zpos; }
+  unsigned char getTransformation(void) const  { return transformation; }
+
+  bool operator == (const placement_c & b) const {
+    return ((transformation == b.transformation) &&
+            (xpos == b.xpos) && (ypos == b.ypos) && (zpos == b.zpos));
+  }
+
+  bool operator < (const placement_c & b) const {
+    if (transformation < b.transformation) return true;
+    if (transformation > b.transformation) return false;
+
+    if (xpos < b.xpos) return true;
+    if (xpos > b.xpos) return false;
+    
+    if (ypos < b.ypos) return true;
+    if (ypos > b.ypos) return false;
+    
+    if (zpos < b.zpos) return true;
+    if (zpos > b.zpos) return false;
+
+    return false;
+  }
+};
+
+
 class assembly_c {
 
 
@@ -61,6 +83,11 @@ class assembly_c {
 public:
 
   assembly_c(void) {}
+
+  /**
+   * copy constructor
+   */
+  assembly_c(const assembly_c * orig);
 
   /**
    * load the assembly from xml file
@@ -100,7 +127,59 @@ public:
     assert(num < placements.size());
     return placements[num].getZ();
   }
+
+  /**
+   * transform the assembly, the problem is that to rotate the
+   * placements we need to know the sizes of the shapes because
+   * the given position is always the corner with the lowest coordinates
+   */
+  void transform(unsigned char trans, const puzzle_c * puz, unsigned int prob);
+
+  /**
+   * this transforms the assemly so that it is lower or equal to all other
+   * transformations of this assembly. This is some kind of normalisation
+   * process on the assembly. All identical assemblies that are just
+   * rotations of one another will result in the same assembly after
+   * this call
+   */
+  void equalize(const puzzle_c * puz, unsigned int prob);
+
+  /* to be able to put assemblies into sets we need to have 2 operators
+   * on assemblies, the == and the < 
+   */
+  bool operator == (const assembly_c & b) const {
+    /* two assemblies are equal if all placements and transformations
+     * of all pieces are identical
+     * Comparisons are only possible, when the two assemblies
+     * have the same number of pieces
+     */
+    assert(placements.size() == b.placements.size());
+    
+    for (unsigned int i = 0; i < placements.size(); i++)
+      if (!(placements[i] == b.placements[i]))
+        return false;
+
+    return true;
+  }
+
+  bool operator < (const assembly_c & b) const {
+    
+    assert(placements.size() == b.placements.size());
+    
+    for (unsigned int i = 0; i < placements.size(); i++) {
+      if (placements[i] < b.placements[i]) return true;
+      /* here it can only be larger or equal, so if it is not
+       * equal it must be larger so return false
+       */
+      if (!(placements[i] == b.placements[i])) return false;
+    }
+
+    return false;
+  }
 };
+
+
+
 
 
 #endif

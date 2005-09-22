@@ -653,7 +653,8 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
   return 0;
 }
 
-disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) : piecenumber(puz->probPieceNumber(prob)), puzzle(puz), problem(prob) {
+disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) : 
+  piecenumber(puz->probPieceNumber(prob)), puzzle(puz), problem(prob) {
 
   /* allocate the necessary arrays */
   movement = new int[piecenumber];

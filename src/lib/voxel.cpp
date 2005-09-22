@@ -32,7 +32,7 @@
 
 using namespace std;
 
-voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs) {
+voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), symmetries(0) {
 
   space = new voxel_type[voxels];
   assert(space);
@@ -51,7 +51,7 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init
   doRecalc = true;
 }
 
-voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx), sy(orig.sy), sz(orig.sz), voxels(orig.voxels) {
+voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx), sy(orig.sy), sz(orig.sz), voxels(orig.voxels), symmetries(0) {
 
   space = new voxel_type[voxels];
   assert(space);
@@ -72,7 +72,7 @@ voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx
   transform(transformation);
 }
 
-voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->sx), sy(orig->sy), sz(orig->sz), voxels(orig->voxels) {
+voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->sx), sy(orig->sy), sz(orig->sz), voxels(orig->voxels), symmetries(0) {
 
   space = new voxel_type[voxels];
   assert(space);
@@ -229,6 +229,7 @@ void voxel_c::rotatex(int by) {
 
     break;
   }
+  symmetries = 0; 
 }
 
 void voxel_c::rotatey(int by) {
@@ -311,6 +312,7 @@ void voxel_c::rotatey(int by) {
     }
     break;
   }
+  symmetries = 0;   
 }
 
 void voxel_c::rotatez(int by) {
@@ -391,6 +393,7 @@ void voxel_c::rotatez(int by) {
     }
     break;
   }
+  symmetries = 0; 
 }
 
 void voxel_c::minimize(voxel_type val) {
@@ -504,6 +507,8 @@ void voxel_c::mirrorX(void) {
 
   bx1 = sx - 1 - bx2;
   bx2 = sx - 1 - t;
+      
+  symmetries = 0;
 }
 
 void voxel_c::mirrorY(void) {
@@ -524,6 +529,8 @@ void voxel_c::mirrorY(void) {
 
   by1 = sy - 1 - by2;
   by2 = sy - 1 - t;
+
+  symmetries = 0;    
 }
 
 void voxel_c::mirrorZ(void) {
@@ -544,6 +551,8 @@ void voxel_c::mirrorZ(void) {
 
   bz1 = sz - 1 - bz2;
   bz2 = sz - 1 - t;
+
+  symmetries = 0; 
 }
 
 void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
@@ -711,6 +720,8 @@ void voxel_c::copy(const voxel_c * orig) {
   by2 = orig->by2;
   bz1 = orig->bz1;
   bz2 = orig->bz2;
+
+  symmetries = orig->symmetries;
 }
 
 bool voxel_c::neighbour(unsigned int p, voxel_type val) const {
@@ -744,24 +755,38 @@ void voxel_c::transform(unsigned int nr) {
 
   rotatex(rotx(nr));
   rotatey(roty(nr));
-  rotatez(rotz(nr));
+  rotatez(rotz(nr));  
 }
 
 symmetries_t voxel_c::selfSymmetries(void) const {
 
-  symmetries_t result = 1;
+  if ((symmetries & 1) == 0) {
 
-  for (int i = 1; i < NUM_TRANSFORMATIONS_MIRROR; i++) {
+    ((voxel_c*)this)->symmetries = 1;
 
-    voxel_c * rot = new voxel_c(this, i);
+    for (int i = 1; i < NUM_TRANSFORMATIONS_MIRROR; i++) {
 
-    if (identicalInBB(rot))
-      result |= ((symmetries_t)1 << i);
+      voxel_c rot(this, i);
 
-    delete rot;
+      if (identicalInBB(&rot))
+	((voxel_c*)this)->symmetries |= ((symmetries_t)1 << i);
+    }
   }
 
-  return result;
+  return symmetries;
+}
+
+unsigned char voxel_c::normalizeTransformation(unsigned char trans) const {
+
+  symmetries_t s = selfSymmetries();
+
+  for (unsigned char t = 0; t < NUM_TRANSFORMATIONS; t++)
+    for (unsigned char t2 = 0; t2 < NUM_TRANSFORMATIONS; t2++) 
+      if (symmetrieContainsTransformation(s, t2))
+	if (transAdd(t, t2) == trans)
+	  return t;
+  
+  return trans;
 }
 
 void pieceVoxel_c::minimizePiece(void) {
@@ -941,4 +966,118 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
   setOutside(VX_EMPTY);
   skipRecalcBoundingBox(false);
 }
+
+
+void voxel_c::transformPlacement(unsigned char trans, const voxel_c * container, 
+    unsigned char * t, int * x, int * y, int * z) const {
+
+  /* first center the piece, right after this transformation
+   * the positions are completely transformation independent
+   * so that we can just remove this values after the transformation
+   */
+  *x = *x*2 + getX(*t) - container->getX();
+  *y = *y*2 + getY(*t) - container->getY();
+  *z = *z*2 + getZ(*t) - container->getZ();
+
+  /* now do the transformation */
+  for (int i = 0; i < rotx(trans); i++) {
+    int tmp = *y;
+    *y = *x;
+    *x = -tmp;
+  }
+  for (int i = 0; i < roty(trans); i++) {
+    int tmp = *z;
+    *z = *x;
+    *x = -tmp;
+  }
+  for (int i = 0; i < rotz(trans); i++) {
+    int tmp = *x;
+    *x = *y;
+    *y = -tmp;
+  }
+    
+  /* add the piece transformations and also find the smallest possible
+   * transformation that results in the same piece
+   */
+  *t = normalizeTransformation(transAdd(*t, trans));
+
+  /* now transform back
+   */
+  *x = (*x - getX(*t) + container->getX(trans))/2;
+  *y = (*y - getY(*t) + container->getY(trans))/2;
+  *z = (*z - getZ(*t) + container->getZ(trans))/2;
+}
+
+unsigned int voxel_c::getX(unsigned char trans) const {
+
+  switch (trans) {
+  case  0:  case  1:  case  2:  case  3:  case  8:  case  9:
+  case 10:  case 11:  case 24:  case 25:  case 26:  case 27:
+  case 32:  case 33:  case 34:  case 35:
+    return getX();
+  
+  case  5:  case  7:  case 13:  case 15:  case 16:  case 18:
+  case 20:  case 22:  case 29:  case 31:  case 37:  case 39:
+  case 40:  case 42:  case 44:  case 46:
+    return getY();
+  
+  case  4:  case  6:  case 12:  case 14:  case 17:  case 19:
+  case 21:  case 23:  case 28:  case 30:  case 36:  case 38:
+  case 41:  case 43:  case 45:  case 47:
+    return getZ();
+  }
+
+  assert(0);
+  return 0;
+}
+
+unsigned int voxel_c::getY(unsigned char trans) const {
+
+  switch (trans) {
+
+  case 16:  case 17:  case 18:  case 19:  case 20:  case 21:
+  case 22:  case 23:  case 40:  case 41:  case 42:  case 43:
+  case 44:  case 45:  case 46:  case 47:
+    return getX();
+
+  case  0:  case  2:  case  4:  case  6:  case  8:  case 10:
+  case 12:  case 14:  case 24:  case 26:  case 28:  case 30:
+  case 32:  case 34:  case 36:  case 38:
+    return getY();
+
+  case  1:  case  3:  case  5:  case  7:  case  9:  case 11:
+  case 13:  case 15:  case 25:  case 27:  case 29:  case 31:
+  case 33:  case 35:  case 37:  case 39:
+    return getZ();
+  }
+
+  assert(0);
+  return 0;
+}
+
+unsigned int voxel_c::getZ(unsigned char trans) const {
+
+  switch (trans) {
+
+  case  4:  case  5:  case  6:  case  7:  case 12:  case 13:
+  case 14:  case 15:  case 28:  case 29:  case 30:  case 31:
+  case 36:  case 37:  case 38:  case 39:
+    return getX();
+
+  case  1:  case  3:  case  9:  case 11:  case 17:  case 19:
+  case 21:  case 23:  case 25:  case 27:  case 33:  case 35:
+  case 41:  case 43:  case 45:  case 47:
+    return getY();
+
+  case  0:  case  2:  case  8:  case 10:  case 16:  case 18:
+  case 20:  case 22:  case 24:  case 26:  case 32:  case 34:
+  case 40:  case 42:  case 44:  case 46:
+    return getZ();
+  }
+
+  assert(0);
+  return 0;
+}
+
+
 

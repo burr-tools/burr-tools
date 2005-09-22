@@ -114,6 +114,13 @@ private:
   unsigned int bz1, bz2;
   bool doRecalc;
 
+  /** 
+   * the self symmetries of this voxel space
+   * this value is only valid when the lowest bit 1 is set
+   * if the bit is not set the symmetries need to be calculated
+   */
+  symmetries_t symmetries;
+
 protected:
 
   void recalcBoundingBox(void);
@@ -173,6 +180,11 @@ public:
    */
   unsigned int getZ(void) const { return sz; }
 
+  /* returns the sizes of a transformed voxel space */
+  unsigned int getX(unsigned char trans) const;
+  unsigned int getY(unsigned char trans) const;
+  unsigned int getZ(unsigned char trans) const;
+
   /**
    * returns the squared diagonal of the space
    */
@@ -217,6 +229,7 @@ public:
   void setOutside(voxel_type val) {
     outside = val;
     recalcBoundingBox();
+    symmetries = 0; 
   }
 
   /**
@@ -255,6 +268,7 @@ public:
   void set(unsigned int x, unsigned int y, unsigned int z, voxel_type val) {
     space[getIndex(x, y, z)] = val;
     recalcBoundingBox();
+    symmetries = 0; 
   }
 
   /**
@@ -264,6 +278,7 @@ public:
     assert((p>=0)&&(p<voxels));
     space[p] = val;
     recalcBoundingBox();
+    symmetries = 0; 
   }
 
   /**
@@ -272,6 +287,7 @@ public:
   void setAll(voxel_type val) {
     memset(space, val, voxels);
     recalcBoundingBox();
+    symmetries = 0; 
   }
 
   /**
@@ -358,6 +374,16 @@ public:
    */
   void transform(unsigned int nr);
 
+  /* transform the placement of the piece:
+   * assuming this piece is placed inside the voxel space container with
+   * t transformed at position x, y, z. The container in untransformed
+   * 
+   * now transform the whole thing by trans. This results in a new position
+   * and transformation for the piece which is put into x, y, z and t
+   */
+  void transformPlacement(unsigned char trans, const voxel_c * container, 
+      unsigned char * t, int * x, int * y, int * z) const;
+
   /**
    * this function returns the self symmetries of this voxel
    * space. The returned value is a bitfiled containing a one
@@ -365,6 +391,12 @@ public:
    * into itself
    */
   symmetries_t selfSymmetries(void) const;
+
+  /**
+   * this function returns the smallest transformation number
+   * that results in an identical shape for this voxel space
+   */
+  unsigned char normalizeTransformation(unsigned char trans) const;
 };
 
 /* now 2 more specialised voxel spaces */
