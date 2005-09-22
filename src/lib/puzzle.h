@@ -55,7 +55,7 @@ private:
   /**
    * The vector with the shapes
    */
-  std::vector<pieceVoxel_c*> shapes;
+  std::vector<voxel_c*> shapes;
 
   /**
    * the vector with the problems
@@ -106,14 +106,14 @@ public:
   /**
    * add a shape to the puzzle
    */
-  unsigned int addShape(pieceVoxel_c * p);
+  unsigned int addShape(voxel_c * p);
 
   /* add empty shape of given size */
   unsigned int addShape(int sx, int sy, int sz);
 
   /* return the pointer to voxel space with the id */
-  const pieceVoxel_c * getShape(unsigned int) const;
-  pieceVoxel_c * getShape(unsigned int);
+  const voxel_c * getShape(unsigned int) const;
+  voxel_c * getShape(unsigned int);
 
   /* remove the num-th shape
    * be careful this changes all ids and so all problems must be updated
@@ -159,8 +159,8 @@ public:
   unsigned int probGetResult(unsigned prob) const;
 
   /* get the result shape voxel space */
-  const pieceVoxel_c * probGetResultShape(unsigned int prob) const;
-  pieceVoxel_c * probGetResultShape(unsigned int prob);
+  const voxel_c * probGetResultShape(unsigned int prob) const;
+  voxel_c * probGetResultShape(unsigned int prob);
 
   /* add a shape to the pieces of the problem */
   void probAddShape(unsigned int prob, unsigned int shape, unsigned int count);
@@ -184,8 +184,8 @@ public:
   bool probContainsShape(unsigned int prob, unsigned int shape) const;
 
   /* return the voxel of the piece shape */
-  const pieceVoxel_c * probGetShapeShape(unsigned int prob, unsigned int shapeID) const;
-  pieceVoxel_c * probGetShapeShape(unsigned int prob, unsigned int shapeID);
+  const voxel_c * probGetShapeShape(unsigned int prob, unsigned int shapeID) const;
+  voxel_c * probGetShapeShape(unsigned int prob, unsigned int shapeID);
 
   /* return the instance count for one shape of the problem */
   unsigned int probGetShapeCount(unsigned int prob, unsigned int shapeID) const;

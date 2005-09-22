@@ -68,7 +68,7 @@ puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
             return 0;
           }
           if (c != ' ')
-            p->getShape(piece)->setState(x, linenum, z, pieceVoxel_c::VX_FILLED);
+            p->getShape(piece)->setState(x, linenum, z, voxel_c::VX_FILLED);
         }
 
       linenum ++;

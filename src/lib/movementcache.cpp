@@ -72,17 +72,17 @@ movementCache::entry * movementCache::calcValues(unsigned char s1, unsigned char
                                                  int dx, int dy, int dz) {
 
   /* first get the shapes, create them when they are not available */
-  const pieceVoxel_c * sh1 = shapes[s1][t1];
+  const voxel_c * sh1 = shapes[s1][t1];
 
   if (!sh1) {
-    sh1 = new pieceVoxel_c(shapes[s1][0], t1);
+    sh1 = new voxel_c(shapes[s1][0], t1);
     shapes[s1][t1] = sh1;
   }
 
-  const pieceVoxel_c * sh2 = shapes[s2][t2];
+  const voxel_c * sh2 = shapes[s2][t2];
 
   if (!sh2) {
-    sh2 = new pieceVoxel_c(shapes[s2][0], t2);
+    sh2 = new voxel_c(shapes[s2][0], t2);
     shapes[s2][t2] = sh2;
   }
 
@@ -204,10 +204,10 @@ movementCache::movementCache(const puzzle_c * puzzle, unsigned int problem) {
    */
   num_shapes = puzzle->probShapeNumber(problem);
 
-  shapes = new const pieceVoxel_c ** [num_shapes];
+  shapes = new const voxel_c ** [num_shapes];
   for (unsigned int s = 0; s < num_shapes; s++) {
-    shapes[s] = new const pieceVoxel_c * [NUM_TRANSFORMATIONS];
-    memset(shapes[s], 0, NUM_TRANSFORMATIONS * sizeof(pieceVoxel_c*));
+    shapes[s] = new const voxel_c * [NUM_TRANSFORMATIONS];
+    memset(shapes[s], 0, NUM_TRANSFORMATIONS * sizeof(voxel_c*));
     shapes[s][0] = puzzle->probGetShapeShape(problem, s);
   }
 

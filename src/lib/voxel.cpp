@@ -481,7 +481,7 @@ unsigned int voxel_c::count(voxel_type val) const {
   return count;
 }
 
-unsigned int pieceVoxel_c::countState(int state) const {
+unsigned int voxel_c::countState(int state) const {
   unsigned int count = 0;
   for (unsigned int i = 0; i < getXYZ(); i++)
     if ((get(i) & 3) == state)
@@ -789,7 +789,7 @@ unsigned char voxel_c::normalizeTransformation(unsigned char trans) const {
   return trans;
 }
 
-void pieceVoxel_c::minimizePiece(void) {
+void voxel_c::minimizePiece(void) {
 
   unsigned int x1, x2, y1, y2, z1, z2;
 
@@ -822,7 +822,7 @@ void pieceVoxel_c::minimizePiece(void) {
 }
 
 
-void pieceVoxel_c::makeInsideHoly(void) {
+void voxel_c::makeInsideHoly(void) {
 
   if (!getX() || !getY() ||!getZ())
     return;
@@ -840,7 +840,7 @@ void pieceVoxel_c::makeInsideHoly(void) {
         }
 }
 
-xml::node pieceVoxel_c::save(void) const {
+xml::node voxel_c::save(void) const {
 
   xml::node nd("voxel");
 
@@ -890,7 +890,7 @@ xml::node pieceVoxel_c::save(void) const {
   return nd;
 }
 
-pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
+voxel_c::voxel_c(const xml::node & node) {
 
   // we must have a real node and the following attributes
   if ((node.get_type() != xml::node::type_element) ||
@@ -909,10 +909,14 @@ pieceVoxel_c::pieceVoxel_c(const xml::node & node) : voxel_c(0, 0, 0, 0) {
   skipRecalcBoundingBox(true);
 
   // set to the correct size
-  resize(atoi(node.get_attributes().find("x")->get_value()),
-         atoi(node.get_attributes().find("y")->get_value()),
-         atoi(node.get_attributes().find("z")->get_value()), 0);
-
+  sx = atoi(node.get_attributes().find("x")->get_value());
+  sy = atoi(node.get_attributes().find("y")->get_value());
+  sz = atoi(node.get_attributes().find("z")->get_value());
+  voxels = sx*sy*sz;
+  
+  space = new voxel_type[voxels];
+  assert(space);
+  
   unsigned int type = atoi(node.get_attributes().find("type")->get_value());
 
   const char * c = node.get_content();

@@ -65,7 +65,7 @@ void VoxelEditGroup::setZ(unsigned int val) {
 void VoxelEditGroup::setPuzzle(puzzle_c * puzzle, unsigned int num) {
   sqedit->setPuzzle(puzzle, num);
   if (puzzle && (num < puzzle->shapeNumber())) {
-    pieceVoxel_c * v = puzzle->getShape(num);
+    voxel_c * v = puzzle->getShape(num);
     if (v) {
       zselect->bounds(0, v->getZ()-1);
       zselect->value(sqedit->getZ());
@@ -370,7 +370,7 @@ void View3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum, b
 
   View3D->hideMarker();
   View3D->clearSpaces();
-  unsigned int num = View3D->addSpace(new pieceVoxel_c(puz->getShape(shapeNum)));
+  unsigned int num = View3D->addSpace(new voxel_c(puz->getShape(shapeNum)));
 
   View3D->setSpaceColor(num, pieceColorR(shapeNum), pieceColorG(shapeNum), pieceColorB(shapeNum), 255);
 
@@ -421,7 +421,7 @@ void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
     // now place the result shape
     if (puz->probGetResult(probNum) < puz->shapeNumber()) {
   
-      num = View3D->addSpace(new pieceVoxel_c(puz->probGetResultShape(probNum)));
+      num = View3D->addSpace(new voxel_c(puz->probGetResultShape(probNum)));
       View3D->setSpaceColor(num,
                             pieceColorR(puz->probGetResult(probNum)),
                             pieceColorG(puz->probGetResult(probNum)),
@@ -434,7 +434,7 @@ void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
     // now place the selected shape
     if (selShape < puz->shapeNumber()) {
   
-      num = View3D->addSpace(new pieceVoxel_c(puz->getShape(selShape)));
+      num = View3D->addSpace(new voxel_c(puz->getShape(selShape)));
       View3D->setSpaceColor(num,
                             pieceColorR(selShape),
                             pieceColorG(selShape),
@@ -448,7 +448,7 @@ void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
     int unsigned line = 2;
     int unsigned col = 0;
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++) {
-      num = View3D->addSpace(new pieceVoxel_c(puz->probGetShapeShape(probNum, p)));
+      num = View3D->addSpace(new voxel_c(puz->probGetShapeShape(probNum, p)));
   
       View3D->setSpaceColor(num,
                             pieceColorR(puz->probGetShape(probNum, p)),
@@ -514,7 +514,7 @@ void View3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsig
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
       for (unsigned int q = 0; q < puz->probGetShapeCount(probNum, p); q++) {
   
-        num = View3D->addSpace(new pieceVoxel_c(puz->probGetShapeShape(probNum, p), assm->getTransformation(piece)));
+        num = View3D->addSpace(new voxel_c(puz->probGetShapeShape(probNum, p), assm->getTransformation(piece)));
   
         View3D->setSpacePosition(num, assm->getX(piece), assm->getY(piece), assm->getZ(piece), 1);
     
@@ -560,7 +560,7 @@ void View3dGroup::showPlacement(const puzzle_c * puz, unsigned int probNum, unsi
     shape++;
   }
 
-  num = View3D->addSpace(new pieceVoxel_c(puz->probGetShapeShape(probNum, shape), trans));
+  num = View3D->addSpace(new voxel_c(puz->probGetShapeShape(probNum, shape), trans));
   View3D->setSpacePosition(num, x, y, z, 1);
   View3D->setSpaceColor(num,
                         pieceColorR(puz->probGetShape(probNum, shape), p),
@@ -568,7 +568,7 @@ void View3dGroup::showPlacement(const puzzle_c * puz, unsigned int probNum, unsi
                         pieceColorB(puz->probGetShape(probNum, shape), p), 255);
   View3D->setDrawingMode(num, VoxelView::normal);
 
-  num = View3D->addSpace(new pieceVoxel_c(puz->probGetResultShape(probNum)));
+  num = View3D->addSpace(new voxel_c(puz->probGetResultShape(probNum)));
   View3D->setSpaceColor(num,
                         pieceColorR(puz->probGetResult(probNum)),
                         pieceColorG(puz->probGetResult(probNum)),

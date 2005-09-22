@@ -82,7 +82,7 @@ public:
   void draw();
   int handle(int event);
 
-  unsigned int addSpace(const pieceVoxel_c * vx);
+  unsigned int addSpace(const voxel_c * vx);
   void clearSpaces(void);
 
   unsigned int spaceNumber(void);
@@ -146,7 +146,7 @@ private:
   typedef struct {
 
     float r, g, b, a;
-    const pieceVoxel_c * shape;
+    const voxel_c * shape;
     drawingMode mode;
     float x, y, z, scale;
 

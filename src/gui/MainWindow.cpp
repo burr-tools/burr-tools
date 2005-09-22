@@ -158,7 +158,7 @@ void UserInterface::cb_CopyShape(void) {
 
   if (current < puzzle->shapeNumber()) {
 
-    PcSel->setSelection(puzzle->addShape(new pieceVoxel_c(puzzle->getShape(current))));
+    PcSel->setSelection(puzzle->addShape(new voxel_c(puzzle->getShape(current))));
     changed = true;
 
     updateInterface();
@@ -858,8 +858,8 @@ void UserInterface::StatPieceInfo(unsigned int pc) {
   if (pc < puzzle->shapeNumber()) {
     char txt[100];
     snprintf(txt, 100, "Shape %i has %i fixed and %i variable cubes", pc,
-             puzzle->getShape(pc)->countState(pieceVoxel_c::VX_FILLED),
-             puzzle->getShape(pc)->countState(pieceVoxel_c::VX_VARIABLE));
+             puzzle->getShape(pc)->countState(voxel_c::VX_FILLED),
+             puzzle->getShape(pc)->countState(voxel_c::VX_VARIABLE));
     Status->setText(txt);
   }
 }
@@ -875,12 +875,12 @@ void UserInterface::StatProblemInfo(unsigned int pr) {
       unsigned int cnt = 0;
   
       for (unsigned int i = 0; i < puzzle->probShapeNumber(pr); i++)
-        cnt += puzzle->probGetShapeShape(pr, i)->countState(pieceVoxel_c::VX_FILLED) * puzzle->probGetShapeCount(pr, i);
+        cnt += puzzle->probGetShapeShape(pr, i)->countState(voxel_c::VX_FILLED) * puzzle->probGetShapeCount(pr, i);
     
       snprintf(txt, 100, "Problem %i result can contain %i - %i cubes, pieces contain %i cubes", pr,
-               puzzle->probGetResultShape(pr)->countState(pieceVoxel_c::VX_FILLED),
-               puzzle->probGetResultShape(pr)->countState(pieceVoxel_c::VX_FILLED) +
-               puzzle->probGetResultShape(pr)->countState(pieceVoxel_c::VX_VARIABLE), cnt);
+               puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
+               puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
+               puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE), cnt);
       Status->setText(txt);
     }
 
@@ -1027,7 +1027,7 @@ void UserInterface::activateShape(unsigned int number) {
 
   if ((number < puzzle->shapeNumber())) {
 
-    pieceVoxel_c * p = puzzle->getShape(number);
+    voxel_c * p = puzzle->getShape(number);
 
     View3D->showSingleShape(puzzle, number, Status->useColors());
     pieceEdit->setPuzzle(puzzle, number);

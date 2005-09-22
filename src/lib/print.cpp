@@ -51,42 +51,6 @@ void print(const voxel_c * v, char base) {
   printf("\n");
 }
 
-void print(const pieceVoxel_c * v) {
-  for (unsigned int z = 0; z < v->getZ(); z++) {
-    printf(" +");
-    for (unsigned int x = 0; x < v->getX(); x++)
-      printf("-");
-    printf("+");
-  }
-  printf("\n");
-
-  for (unsigned int y = 0; y < v->getY(); y++) {
-    for (unsigned int z = 0; z < v->getZ(); z++) {
-      printf(" !");
-      for (unsigned int x = 0; x < v->getX(); x++)
-        if (v->getState(x, y, z) != pieceVoxel_c::VX_EMPTY)
-          if (v->getState(x, y, z) == pieceVoxel_c::VX_FILLED)
-            printf("#");
-          else
-            printf("+");
-        else
-          printf(" ");
-      printf("!");
-    }
-    printf("\n");
-  }
-
-  { for (unsigned int z = 0; z < v->getZ(); z++) {
-      printf(" +");
-      for (unsigned int x = 0; x < v->getX(); x++)
-        printf("-");
-      printf("+");
-    }
-  }
-  printf("\n");
-}
-
-
 void print(const puzzle_c * p) {
 
   for (unsigned int s = 0; s < p->shapeNumber(); s++) {
@@ -110,7 +74,7 @@ void print(const puzzle_c * p) {
   }
 }
 
-static void print_rec(const separation_c * s, pieceVoxel_c ** pieces, int sx, int sy, int sz, unsigned int * pieceNum) {
+static void print_rec(const separation_c * s, voxel_c ** pieces, int sx, int sy, int sz, unsigned int * pieceNum) {
 
   for (unsigned int i = 0; i <= s->getMoves(); i++) {
 
@@ -191,14 +155,14 @@ void print(const separation_c * s, const assembly_c * a, const puzzle_c * p, uns
 
   const voxel_c * res = p->probGetResultShape(prob);
 
-  pieceVoxel_c ** pieces = new (pieceVoxel_c*)[a->placementCount()];
+  voxel_c ** pieces = new (voxel_c*)[a->placementCount()];
 
   unsigned int pc = 0;
 
   for (unsigned int i = 0; i < p->probShapeNumber(prob); i++)
     for (unsigned int j = 0; j < p->probGetShapeCount(prob, i); j++) {
 
-      pieces[pc] = new pieceVoxel_c(p->probGetShapeShape(prob, i), a->getTransformation(pc));
+      pieces[pc] = new voxel_c(p->probGetShapeShape(prob, i), a->getTransformation(pc));
       pc++;
     }
 
@@ -221,14 +185,14 @@ void print(const assembly_c * a, const puzzle_c * p, unsigned int prob) {
   const voxel_c * res = p->probGetResultShape(prob);
 
 
-  pieceVoxel_c ** pieces = new (pieceVoxel_c*)[a->placementCount()];
+  voxel_c ** pieces = new (voxel_c*)[a->placementCount()];
 
   unsigned int pc = 0;
 
   for (unsigned int i = 0; i < p->probShapeNumber(prob); i++)
     for (unsigned int j = 0; j < p->probGetShapeCount(prob, i); j++) {
 
-      pieces[pc] = new pieceVoxel_c(p->probGetShapeShape(prob, i), a->getTransformation(pc));
+      pieces[pc] = new voxel_c(p->probGetShapeShape(prob, i), a->getTransformation(pc));
       pc++;
     }
 

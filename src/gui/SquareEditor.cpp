@@ -78,7 +78,7 @@ void SquareEditor::draw() {
   if (piecenumber >= puzzle->shapeNumber())
     return;
 
-  pieceVoxel_c * space = puzzle->getShape(piecenumber);
+  voxel_c * space = puzzle->getShape(piecenumber);
 
   // if there is no voxelspace or the space is of volumn 0 return
   if ((space->getX() == 0) || (space->getY() == 0) || (space->getZ() == 0))
@@ -109,15 +109,15 @@ void SquareEditor::draw() {
       }
 
       switch(space->getState(x, space->getY()-y-1, space->getZ()-currentZ-1)) {
-      case pieceVoxel_c::VX_FILLED:
+      case voxel_c::VX_FILLED:
         fl_rectf(tx+x*s, ty+y*s, s, s, r, g, b);
         break;
-      case pieceVoxel_c::VX_VARIABLE:
+      case voxel_c::VX_VARIABLE:
         fl_rectf(tx+x*s+3, ty+y*s+3, s-5, s-5, r, g, b);
         break;
       }
 
-      if ((space->getState(x, space->getY()-y-1, space->getZ()-currentZ-1) != pieceVoxel_c::VX_EMPTY) &&
+      if ((space->getState(x, space->getY()-y-1, space->getZ()-currentZ-1) != voxel_c::VX_EMPTY) &&
           space->getColor(x, space->getY()-y-1, space->getZ()-currentZ-1)) {
 
         puzzle->getColor(space->getColor(x, space->getY()-y-1, space->getZ()-currentZ-1)-1, &r, &g, &b);
@@ -162,7 +162,7 @@ void SquareEditor::draw() {
 bool SquareEditor::setLayer(unsigned int z, voxel_type v) {
   int x1, x2, y1, y2;
 
-  pieceVoxel_c * space = puzzle->getShape(piecenumber);
+  voxel_c * space = puzzle->getShape(piecenumber);
 
   if (mX < startX) {
     x1 = mX;
@@ -208,7 +208,7 @@ int SquareEditor::handle(int event) {
   if (locked)
     return 0;
 
-  pieceVoxel_c * space = puzzle->getShape(piecenumber);
+  voxel_c * space = puzzle->getShape(piecenumber);
 
   // if there is no valid space, we do nothing
   if ((space->getX() == 0) || (space->getY() == 0) || (space->getZ() == 0))
@@ -217,17 +217,17 @@ int SquareEditor::handle(int event) {
   switch(event) {
   case FL_RELEASE:
     if (mX < space->getX()) {
-      voxel_type vxNew = pieceVoxel_c::VX_EMPTY;
+      voxel_type vxNew = voxel_c::VX_EMPTY;
   
       switch (state) {
       case 2:
-        vxNew = pieceVoxel_c::VX_EMPTY;
+        vxNew = voxel_c::VX_EMPTY;
         break;
       case 3:
-        vxNew = pieceVoxel_c::VX_FILLED;
+        vxNew = voxel_c::VX_FILLED;
         break;
       case 4:
-        vxNew = pieceVoxel_c::VX_VARIABLE;
+        vxNew = voxel_c::VX_VARIABLE;
         break;
       }
   
@@ -289,9 +289,9 @@ int SquareEditor::handle(int event) {
         startX = x;
         startY = y;
         if (Fl::event_button() == 1)
-          state = (space->getState(x, y, space->getZ()-currentZ-1) == pieceVoxel_c::VX_FILLED) ? 2 : 3;
+          state = (space->getState(x, y, space->getZ()-currentZ-1) == voxel_c::VX_FILLED) ? 2 : 3;
         else
-          state = (space->getState(x, y, space->getZ()-currentZ-1) == pieceVoxel_c::VX_VARIABLE) ? 2 : 4;
+          state = (space->getState(x, y, space->getZ()-currentZ-1) == voxel_c::VX_VARIABLE) ? 2 : 4;
 
         doCB = true;
       }

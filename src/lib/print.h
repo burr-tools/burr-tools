@@ -27,7 +27,6 @@
 #include "puzzle.h"
 #include "disassembly.h"
 
-void print(const pieceVoxel_c * v);
 void print(const voxel_c * v, char base = 'a');
 void print(const puzzle_c * p);
 void print(const assembly_c * a, const puzzle_c * p, unsigned int prob);

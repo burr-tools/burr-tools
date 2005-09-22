@@ -150,11 +150,11 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   piecenumber = puz->probPieceNumber(prob);
 
   /* count the filled and variable units */
-  int res_vari = puz->probGetResultShape(prob)->countState(pieceVoxel_c::VX_VARIABLE);
-  int res_filled = puz->probGetResultShape(prob)->countState(pieceVoxel_c::VX_FILLED) + res_vari;
+  int res_vari = puz->probGetResultShape(prob)->countState(voxel_c::VX_VARIABLE);
+  int res_filled = puz->probGetResultShape(prob)->countState(voxel_c::VX_FILLED) + res_vari;
 
   for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++)
-    if (puz->probGetShapeShape(prob, i)->countState(pieceVoxel_c::VX_VARIABLE)) {
+    if (puz->probGetShapeShape(prob, i)->countState(voxel_c::VX_VARIABLE)) {
       errorsParam = puz->probGetShape(prob, i);
       errorsState = ERR_PIECE_WITH_VARICUBE;
       return errorsState;
@@ -171,7 +171,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   int h = res_filled;
 
   for (unsigned int j = 0; j < puz->probShapeNumber(prob); j++)
-    h -= puz->probGetShapeShape(prob, j)->countState(pieceVoxel_c::VX_FILLED) * puz->probGetShapeCount(prob, j);
+    h -= puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED) * puz->probGetShapeCount(prob, j);
 
   if (h < 0) {
     errorsState = ERR_TOO_MANY_UNITS;

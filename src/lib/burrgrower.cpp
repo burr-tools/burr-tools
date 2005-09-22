@@ -121,8 +121,8 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
     // copy the pieces, here we make all variable shapes empty
     for (unsigned int p = 0; p < n->probShapeNumber(problem); p++) {
       for (unsigned int ii = 0; ii < n->probGetShapeShape(problem, p)->getXYZ(); ii++)
-        if (n->probGetShapeShape(problem, p)->getState(ii) == pieceVoxel_c::VX_VARIABLE)
-          n->probGetShapeShape(problem, p)->setState(ii, pieceVoxel_c::VX_EMPTY);
+        if (n->probGetShapeShape(problem, p)->getState(ii) == voxel_c::VX_VARIABLE)
+          n->probGetShapeShape(problem, p)->setState(ii, voxel_c::VX_EMPTY);
     }
 
     puzzleSol_c * ps = new puzzleSol_c(n, problem);
@@ -145,13 +145,13 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
 
       for (unsigned int i = 0; i < base->probShapeNumber(problem); i++)
         for (unsigned int z = 0; z < base->probGetShapeShape(problem, i)->getXYZ(); z++) {
-          if ((base->probGetShapeShape(problem, i)->getState(z) == pieceVoxel_c::VX_VARIABLE) &&
-              (currentSet[p]->getPuzzle()->probGetShapeShape(problem, i)->getState(z) == pieceVoxel_c::VX_EMPTY) &&
-               currentSet[p]->getPuzzle()->probGetShapeShape(problem, i)->neighbour(z, pieceVoxel_c::VX_FILLED)
+          if ((base->probGetShapeShape(problem, i)->getState(z) == voxel_c::VX_VARIABLE) &&
+              (currentSet[p]->getPuzzle()->probGetShapeShape(problem, i)->getState(z) == voxel_c::VX_EMPTY) &&
+               currentSet[p]->getPuzzle()->probGetShapeShape(problem, i)->neighbour(z, voxel_c::VX_FILLED)
              ) {
 
             puzzle_c *n = new puzzle_c(currentSet[p]->getPuzzle());
-            n->probGetShapeShape(problem, i)->setState(z, pieceVoxel_c::VX_FILLED);
+            n->probGetShapeShape(problem, i)->setState(z, voxel_c::VX_FILLED);
 
             puzzleSol_c * ps = new puzzleSol_c(n, problem);
 
@@ -221,8 +221,8 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
     puzzle_c * ps = new puzzle_c(newSet[pos]->getPuzzle());
 
     for (unsigned int ii = 0; ii < base->probGetShapeShape(problem, piece)->getXYZ(); ii++)
-      if (base->probGetShapeShape(problem, piece)->getState(ii) == pieceVoxel_c::VX_VARIABLE)
-        ps->probGetShapeShape(problem, piece)->setState(ii, pieceVoxel_c::VX_EMPTY);
+      if (base->probGetShapeShape(problem, piece)->getState(ii) == voxel_c::VX_VARIABLE)
+        ps->probGetShapeShape(problem, piece)->setState(ii, voxel_c::VX_EMPTY);
 
     newSet.push_back(new puzzleSol_c(ps, problem));
 

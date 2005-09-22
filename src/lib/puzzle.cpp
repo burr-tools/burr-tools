@@ -628,7 +628,7 @@ puzzle_c::puzzle_c(void) {
 puzzle_c::puzzle_c(const puzzle_c * orig) {
 
   for (unsigned int i = 0; i < orig->shapes.size(); i++)
-    shapes.push_back(new pieceVoxel_c(orig->shapes[i]));
+    shapes.push_back(new voxel_c(orig->shapes[i]));
 
   for (unsigned int i = 0; i < orig->problems.size(); i++)
     problems.push_back(new problem_c(orig->problems[i]));
@@ -696,9 +696,9 @@ void puzzle_c::removeColor(unsigned int col) {
   colors.erase(colors.begin() + (col - 1));
 
   // go through all shapes and remove the deleted color
-  for (vector<pieceVoxel_c*>::iterator i = shapes.begin(); i != shapes.end(); i++)
+  for (vector<voxel_c*>::iterator i = shapes.begin(); i != shapes.end(); i++)
     for (unsigned int p = 0; p < (*i)->getXYZ(); p++)
-      if ((*i)->getState(p) != pieceVoxel_c::VX_EMPTY) {
+      if ((*i)->getState(p) != voxel_c::VX_EMPTY) {
         if ((*i)->getColor(p) == col)
           (*i)->setColor(p, 0);
         else if ((*i)->getColor(p) > col)
@@ -851,7 +851,7 @@ puzzle_c::puzzle_c(const xml::node & node) {
     for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
       if ((i->get_type() == xml::node::type_element) &&
           (strcmp(i->get_name(), "voxel") == 0))
-        shapes.push_back(new pieceVoxel_c(*i));
+        shapes.push_back(new voxel_c(*i));
 
   it = node.find("problems");
   if (it != node.end())
@@ -871,25 +871,25 @@ puzzle_c::puzzle_c(const xml::node & node) {
 
 
 
-unsigned int puzzle_c::addShape(pieceVoxel_c * p) {
+unsigned int puzzle_c::addShape(voxel_c * p) {
   shapes.push_back(p);
   return shapes.size()-1;
 }
 
 /* add empty shape of given size */
 unsigned int puzzle_c::addShape(int sx, int sy, int sz) {
-  shapes.push_back(new pieceVoxel_c(sx, sy, sz, pieceVoxel_c::VX_EMPTY));
+  shapes.push_back(new voxel_c(sx, sy, sz, voxel_c::VX_EMPTY));
   return shapes.size()-1;
 }
 
 /* return the pointer to voxel space with the id */
-const pieceVoxel_c * puzzle_c::getShape(unsigned int idx) const {
+const voxel_c * puzzle_c::getShape(unsigned int idx) const {
   assert(idx < shapes.size());
   return shapes[idx];
 }
 
 
-pieceVoxel_c * puzzle_c::getShape(unsigned int idx) {
+voxel_c * puzzle_c::getShape(unsigned int idx) {
   assert(idx < shapes.size());
   return shapes[idx];
 }
@@ -911,7 +911,7 @@ public:
  * be careful this changes all ids and so all problems must be updated
  */
 void puzzle_c::removeShape(unsigned int idx) {
-  vector<pieceVoxel_c*>::iterator i(shapes.begin()+idx);
+  vector<voxel_c*>::iterator i(shapes.begin()+idx);
   delete *i;
   shapes.erase(i);
 
@@ -965,14 +965,14 @@ unsigned int puzzle_c::probGetResult(unsigned prob) const {
 }
 
 /* get the result shape voxel space */
-const pieceVoxel_c * puzzle_c::probGetResultShape(unsigned int prob) const {
+const voxel_c * puzzle_c::probGetResultShape(unsigned int prob) const {
   assert(prob < problems.size());
   assert(problems[prob]->result < shapes.size());
 
   return shapes[problems[prob]->result];
 }
 
-pieceVoxel_c * puzzle_c::probGetResultShape(unsigned int prob) {
+voxel_c * puzzle_c::probGetResultShape(unsigned int prob) {
   assert(prob < problems.size());
   assert(problems[prob]->result < shapes.size());
 
@@ -1041,7 +1041,7 @@ bool puzzle_c::probContainsShape(unsigned int prob, unsigned int shape) const {
   return false;
 }
 
-const pieceVoxel_c * puzzle_c::probGetShapeShape(unsigned int prob, unsigned int shapeID) const {
+const voxel_c * puzzle_c::probGetShapeShape(unsigned int prob, unsigned int shapeID) const {
   assert(prob < problems.size());
   assert(shapeID < problems[prob]->shapes.size());
   assert(problems[prob]->shapes[shapeID].shapeId < shapes.size());
@@ -1049,7 +1049,7 @@ const pieceVoxel_c * puzzle_c::probGetShapeShape(unsigned int prob, unsigned int
   return shapes[problems[prob]->shapes[shapeID].shapeId];
 }
 
-pieceVoxel_c * puzzle_c::probGetShapeShape(unsigned int prob, unsigned int shapeID) {
+voxel_c * puzzle_c::probGetShapeShape(unsigned int prob, unsigned int shapeID) {
   assert(prob < problems.size());
   assert(shapeID < problems[prob]->shapes.size());
   assert(problems[prob]->shapes[shapeID].shapeId < shapes.size());

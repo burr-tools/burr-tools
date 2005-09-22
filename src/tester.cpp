@@ -130,7 +130,7 @@ unsigned int foundSym[200] = {
 unsigned int syms = 26;
 
 
-void search(pieceVoxel_c * piece) {
+void search(voxel_c * piece) {
 
   unsigned int s = findSelfSymmetry(piece);
   bool found = false;
@@ -158,7 +158,7 @@ void search(pieceVoxel_c * piece) {
 
 void findsymmetries(void) {
 
-  pieceVoxel_c v(4, 4, 4);
+  voxel_c v(4, 4, 4);
 
   unsigned int indizes[100];
   unsigned int indizeCount = 0;
@@ -175,7 +175,7 @@ void findsymmetries(void) {
   for (int a = 0; a < indizeCount; a++) {
 
 // FIXME    v.setAll(VX_FILLED);
-    v.setState(a, pieceVoxel_c::VX_EMPTY);
+    v.setState(a, voxel_c::VX_EMPTY);
 
     search(&v);
   }
@@ -186,8 +186,8 @@ void findsymmetries(void) {
     for (int b = a+1; b < indizeCount; b++) {
 
 //FIXME      v.setAll(VX_FILLED);
-      v.setState(a, pieceVoxel_c::VX_EMPTY);
-      v.setState(b, pieceVoxel_c::VX_EMPTY);
+      v.setState(a, voxel_c::VX_EMPTY);
+      v.setState(b, voxel_c::VX_EMPTY);
   
       search(&v);
     }
@@ -204,12 +204,12 @@ void findsymmetries(void) {
 
         {
 // FIXME          v.setAll(VX_FILLED);
-          v.setState(a, pieceVoxel_c::VX_EMPTY);
-          v.setState(b, pieceVoxel_c::VX_EMPTY);
-          v.setState(c, pieceVoxel_c::VX_EMPTY);
-          v.setState(d, pieceVoxel_c::VX_EMPTY);
-          v.setState(e, pieceVoxel_c::VX_EMPTY);
-          v.setState(f, pieceVoxel_c::VX_EMPTY);
+          v.setState(a, voxel_c::VX_EMPTY);
+          v.setState(b, voxel_c::VX_EMPTY);
+          v.setState(c, voxel_c::VX_EMPTY);
+          v.setState(d, voxel_c::VX_EMPTY);
+          v.setState(e, voxel_c::VX_EMPTY);
+          v.setState(f, voxel_c::VX_EMPTY);
 
           search(&v);
         }
@@ -332,9 +332,9 @@ void multTranformationsMatrix(void) {
 
     for (int tr2 = 0; tr2 < NUM_TRANSFORMATIONS_MIRROR; tr2++) {
 
-      pieceVoxel_c v(3, 3, 3);
-      v.setState(1, 1, 1, pieceVoxel_c::VX_FILLED); v.setState(0, 1, 1, pieceVoxel_c::VX_FILLED);
-      v.setState(0, 0, 1, pieceVoxel_c::VX_FILLED); v.setState(0, 0, 0, pieceVoxel_c::VX_FILLED);
+      voxel_c v(3, 3, 3);
+      v.setState(1, 1, 1, voxel_c::VX_FILLED); v.setState(0, 1, 1, voxel_c::VX_FILLED);
+      v.setState(0, 0, 1, voxel_c::VX_FILLED); v.setState(0, 0, 0, voxel_c::VX_FILLED);
 
       int i;
 
@@ -342,9 +342,9 @@ void multTranformationsMatrix(void) {
       v.transform(tr2);
 
       for (int t = 0; t < NUM_TRANSFORMATIONS_MIRROR; t++) {
-        pieceVoxel_c w(3, 3, 3);
-        w.setState(1, 1, 1, pieceVoxel_c::VX_FILLED); w.setState(0, 1, 1, pieceVoxel_c::VX_FILLED);
-        w.setState(0, 0, 1, pieceVoxel_c::VX_FILLED); w.setState(0, 0, 0, pieceVoxel_c::VX_FILLED);
+        voxel_c w(3, 3, 3);
+        w.setState(1, 1, 1, voxel_c::VX_FILLED); w.setState(0, 1, 1, voxel_c::VX_FILLED);
+        w.setState(0, 0, 1, voxel_c::VX_FILLED); w.setState(0, 0, 0, voxel_c::VX_FILLED);
 
         w.transform(t);
 
@@ -361,17 +361,17 @@ void multTranformationsMatrix(void) {
 
 void inverseTranformationsMatrix(void) {
 
-  pieceVoxel_c v(3, 3, 3);
-  v.setState(1, 1, 1, pieceVoxel_c::VX_FILLED); v.setState(0, 1, 1, pieceVoxel_c::VX_FILLED);
-  v.setState(0, 0, 1, pieceVoxel_c::VX_FILLED); v.setState(0, 0, 0, pieceVoxel_c::VX_FILLED);
+  voxel_c v(3, 3, 3);
+  v.setState(1, 1, 1, voxel_c::VX_FILLED); v.setState(0, 1, 1, voxel_c::VX_FILLED);
+  v.setState(0, 0, 1, voxel_c::VX_FILLED); v.setState(0, 0, 0, voxel_c::VX_FILLED);
 
   for (int tr = 0; tr < NUM_TRANSFORMATIONS_MIRROR; tr++) {
 
-    pieceVoxel_c w(v, tr);
+    voxel_c w(v, tr);
 
     for (int t = 0; t < NUM_TRANSFORMATIONS_MIRROR; t++) {
 
-      pieceVoxel_c x(w, t);
+      voxel_c x(w, t);
 
       if (v == x) {
         printf("%2i, ", t);

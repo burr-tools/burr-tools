@@ -67,7 +67,7 @@ class movementCache {
    * calculated on demand. The entry at the zero-th position are
    * pointers into the puzzle, so we must not free them
    */
-  const pieceVoxel_c *** shapes;
+  const voxel_c *** shapes;
 
   /* the mapping of pieces to shape numbers */
   unsigned int * pieces;

@@ -20,15 +20,15 @@
 #include "assm_0_frontend_0.h"
 
 /* helper function to check if a piece an go at a position */
-static bool pieceFits(const pieceVoxel_c * piece, const pieceVoxel_c * result, const puzzle_c * puz, int x, int y, int z, unsigned int problemNum) {
+static bool pieceFits(const voxel_c * piece, const voxel_c * result, const puzzle_c * puz, int x, int y, int z, unsigned int problemNum) {
 
   for (unsigned int pz = piece->boundZ1(); pz <= piece->boundZ2(); pz++)
     for (unsigned int py = piece->boundY1(); py <= piece->boundY2(); py++)
       for (unsigned int px = piece->boundX1(); px <= piece->boundX2(); px++)
         if (
             // the piece can not be place if the result is empty and the piece is fileed at a given voxel
-            ((piece->getState(px, py, pz) != pieceVoxel_c::VX_EMPTY) &&
-             (result->getState(x+px, y+py, z+pz) == pieceVoxel_c::VX_EMPTY)) ||
+            ((piece->getState(px, py, pz) != voxel_c::VX_EMPTY) &&
+             (result->getState(x+px, y+py, z+pz) == voxel_c::VX_EMPTY)) ||
 
             // the piece can also not be placed when the color constraints don't fit
             !puz->probPlacementAllowed(problemNum, piece->getColor(px, py, pz), result->getColor(x+px, y+py, z+pz))
@@ -42,7 +42,7 @@ static bool pieceFits(const pieceVoxel_c * piece, const pieceVoxel_c * result, c
 /* add a piece to the cache, but only if it is not already there. If it is added return the
  * piece pointer otherwise return null
  */
-static pieceVoxel_c * addToCache(pieceVoxel_c * cache[NUM_TRANSFORMATIONS], unsigned int * fill, pieceVoxel_c * piece) {
+static voxel_c * addToCache(voxel_c * cache[NUM_TRANSFORMATIONS], unsigned int * fill, voxel_c * piece) {
 
   for (unsigned int i = 0; i < *fill; i++)
     if (cache[i]->identicalInBB(piece)) {
@@ -63,7 +63,7 @@ unsigned long assm_0_frontend_0_c::countNodes(const puzzle_c * puz, unsigned int
 
   unsigned long nodes = 0;
 
-  const pieceVoxel_c * result = puz->probGetResultShape(problemNum);
+  const voxel_c * result = puz->probGetResultShape(problemNum);
 
   /* now we insert one shape after another */
   for (unsigned int pc = 0; pc < puz->probShapeNumber(problemNum); pc++) {
@@ -72,7 +72,7 @@ unsigned long assm_0_frontend_0_c::countNodes(const puzzle_c * puz, unsigned int
 
     /* this array contains all the pieces found so far, this will help us
      * to not add two times the same piece to the structur */
-    pieceVoxel_c * cache[NUM_TRANSFORMATIONS];
+    voxel_c * cache[NUM_TRANSFORMATIONS];
     unsigned int cachefill = 0;
 
     /* go through all possible rotations of the piece */
@@ -81,14 +81,14 @@ unsigned long assm_0_frontend_0_c::countNodes(const puzzle_c * puz, unsigned int
      */
     /* find all possible translations of piece and add them, if they fit */
     for (unsigned int rot = 0; rot < NUM_TRANSFORMATIONS; rot++)
-      if (pieceVoxel_c * rotation = addToCache(cache, &cachefill, new pieceVoxel_c(puz->probGetShapeShape(problemNum, pc), rot)))
+      if (voxel_c * rotation = addToCache(cache, &cachefill, new voxel_c(puz->probGetShapeShape(problemNum, pc), rot)))
         for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
           for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
             for (int z = (int)result->boundZ1()-(int)rotation->boundZ1(); z <= (int)result->boundZ2()-(int)rotation->boundZ2(); z++)
               if (pieceFits(rotation, result, puz, x, y, z, problemNum))
                 placements++;
 
-    nodes += placements * (puz->probGetShapeShape(problemNum, pc)->countState(pieceVoxel_c::VX_FILLED) + 1) *
+    nodes += placements * (puz->probGetShapeShape(problemNum, pc)->countState(voxel_c::VX_FILLED) + 1) *
       puz->probGetShapeCount(problemNum, pc);
 
     for (unsigned int i = 0; i < cachefill; i++) delete cache[i];
@@ -124,7 +124,7 @@ unsigned long assm_0_frontend_0_c::countNodes(const puzzle_c * puz, unsigned int
  */
 void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_vari, unsigned int problemNum) {
 
-  const pieceVoxel_c * result = puz->probGetResultShape(problemNum);
+  const voxel_c * result = puz->probGetResultShape(problemNum);
 
   /* this array contains the column in our matrix that corresponds with
    * the voxel position inside the result. We use this matrix because
@@ -146,11 +146,11 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
   
     for (unsigned int i = 0; i < result->getXYZ(); i++) {
       switch(result->getState(i)) {
-      case pieceVoxel_c::VX_VARIABLE:
+      case voxel_c::VX_VARIABLE:
         voxelindex[getVarivoxelStart() + v] = i;
         columns[i] = getVarivoxelStart() + v++;
         break;
-      case pieceVoxel_c::VX_FILLED:
+      case voxel_c::VX_FILLED:
         voxelindex[1 + piecenumber + c] = i;
         columns[i] = 1 + piecenumber + c++;
         break;
@@ -230,7 +230,7 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
 
       /* this array contains all the pieces found so far, this will help us
        * to not add two times the same piece to the structur */
-      pieceVoxel_c * cache[NUM_TRANSFORMATIONS];
+      voxel_c * cache[NUM_TRANSFORMATIONS];
       unsigned int cachefill = 0;
   
       /* go through all possible rotations of the piece
@@ -239,7 +239,7 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
        */
       for (unsigned int rot = 0; rot < NUM_TRANSFORMATIONS; rot++) {
         bool skipRotation = ((pc == symBreakerPiece) && (piececount == 0) && symmetrieContainsTransformation(resultSym, rot));
-        if (pieceVoxel_c * rotation = addToCache(cache, &cachefill, new pieceVoxel_c(puz->probGetShapeShape(problemNum, pc), rot))) {
+        if (voxel_c * rotation = addToCache(cache, &cachefill, new voxel_c(puz->probGetShapeShape(problemNum, pc), rot))) {
           for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
             for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
               for (int z = (int)result->boundZ1()-(int)rotation->boundZ1(); z <= (int)result->boundZ2()-(int)rotation->boundZ2(); z++)
@@ -256,7 +256,7 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
                   for (unsigned int pz = 0; pz < rotation->getZ(); pz++)
                     for (unsigned int py = 0; py < rotation->getY(); py++)
                       for (unsigned int px = 0; px < rotation->getX(); px++)
-                        if (rotation->getState(px, py, pz) != pieceVoxel_c::VX_EMPTY) {
+                        if (rotation->getState(px, py, pz) != voxel_c::VX_EMPTY) {
   
                           if (!skipRotation)
                             AddVoxelNode(columns[result->getIndex(x+px, y+py, z+pz)], piecenode);

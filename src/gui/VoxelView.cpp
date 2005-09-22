@@ -43,7 +43,7 @@ VoxelView::VoxelView(int x,int y,int w,int h,const char *l) : Fl_Gl_Window(x,y,w
 };
 
 // draws a wireframe box depending on the neibors
-static void drawFrame(const pieceVoxel_c * space, int x, int y, int z) {
+static void drawFrame(const voxel_c * space, int x, int y, int z) {
 
   glBegin(GL_QUADS);
 
@@ -100,7 +100,7 @@ static void drawFrame(const pieceVoxel_c * space, int x, int y, int z) {
 }
 
 // draws a box with borders depending on the neibor boxes
-static void drawBox(const pieceVoxel_c * space, int x, int y, int z, float alpha) {
+static void drawBox(const voxel_c * space, int x, int y, int z, float alpha) {
 
   GLfloat a0, b0, a1, b1;
 
@@ -387,7 +387,7 @@ void VoxelView::drawVoxelSpace() {
 
           switch (shapes[piece].mode) {
           case normal:
-            if (shapes[piece].shape->getState(x, y , z) == pieceVoxel_c::VX_VARIABLE) {
+            if (shapes[piece].shape->getState(x, y , z) == voxel_c::VX_VARIABLE) {
               drawBox(shapes[piece].shape, x, y, z, shapes[piece].a);
               glColor4f(0, 0, 0, shapes[piece].a);
               drawCube(shapes[piece].shape, x, y, z);
@@ -522,7 +522,7 @@ int VoxelView::handle(int event) {
   return 0;
 }
 
-unsigned int VoxelView::addSpace(const pieceVoxel_c * vx) {
+unsigned int VoxelView::addSpace(const voxel_c * vx) {
   shapeInfo i;
 
   i.r = i.g = i.b = 1;

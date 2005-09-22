@@ -189,7 +189,7 @@ public:
 class ToolTab : public Fl_Tabs {
 
   ChangeSize * changeSize;
-  pieceVoxel_c * space;
+  voxel_c * space;
   bool _editLayersChanged;
   Fl_Light_Button *editLayersButton;
 
@@ -197,7 +197,7 @@ public:
 
   ToolTab(int x, int y, int w, int h);
 
-  void setVoxelSpace(pieceVoxel_c * sp) {
+  void setVoxelSpace(voxel_c * sp) {
     space = sp;
     if (space)
       changeSize->setXYZ(sp->getX(), sp->getY(), sp->getZ());

@@ -142,7 +142,7 @@ public:
    * Creates a new voxel space. Its of given size and
    * initializes all values to init.
    */
-  voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = 0, voxel_type outs = 0);
+  voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = 0, voxel_type outs = VX_EMPTY);
 
   /**
    * Copy constructor using reference. Transformation allows to
@@ -156,6 +156,11 @@ public:
    */
   voxel_c(const voxel_c * orig, unsigned int transformation = 0);
 
+  /**
+   * load from xml node
+   */
+  voxel_c(const xml::node & node);
+  
   /**
    * Destructor.
    * Free the space
@@ -397,24 +402,8 @@ public:
    * that results in an identical shape for this voxel space
    */
   unsigned char normalizeTransformation(unsigned char trans) const;
-};
-
-/* now 2 more specialised voxel spaces */
-
-/* this voxel space saves a piece. The voxels store 2 informations
- * the state of the voxel: empty, variable and filled and
- * also a value called color. This value is used to add additional
- * constraints on the placement of pieces
- */
-
-class pieceVoxel_c : public voxel_c {
 
 public:
-
-  pieceVoxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = 0) : voxel_c(x, y, z, init, VX_EMPTY) { }
-  pieceVoxel_c(const voxel_c & orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { }
-  pieceVoxel_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig, transformation) { }
-  pieceVoxel_c(const xml::node & node);
 
   /**
    * this enum defines some values that are used for some of

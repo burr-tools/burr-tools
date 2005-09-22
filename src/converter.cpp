@@ -8,11 +8,11 @@
 
 using namespace std;
 
-class my_voxel_0 : public pieceVoxel_c {
+class my_voxel_0 : public voxel_c {
 
 public:
 
-  my_voxel_0(istream * str) : pieceVoxel_c(0, 0, 0) {
+  my_voxel_0(istream * str) : voxel_c(0, 0, 0) {
 
     int sx, sy, sz;
 
@@ -74,7 +74,7 @@ public:
     unsigned int prob = addProblem();
     probSetName(prob, "Problem");
 
-    pieceVoxel_c * v = new my_voxel_0(str);
+    voxel_c * v = new my_voxel_0(str);
     assert(v);
     probSetResult(prob, addShape(v));
   
@@ -124,7 +124,7 @@ int PS3Dsave(const puzzle_c & p, std::ostream * str) {
     for (int y = 0; y < shapes[i].piece->getY(); y++) {
       for (int z = 0; z < shapes[i].piece->getZ(); z++) {
         for (int x = 0; x < shapes[i].piece->getX(); x++) {
-          if (shapes[i].piece->getState(x, y, z) != pieceVoxel_c::VX_EMPTY)
+          if (shapes[i].piece->getState(x, y, z) != voxel_c::VX_EMPTY)
             *str << char('A' + i);
           else
             *str << ' ';
@@ -140,7 +140,7 @@ int PS3Dsave(const puzzle_c & p, std::ostream * str) {
   for (int y = 0; y < results[0]->getY(); y++) {
     for (int z = 0; z < results[0]->getZ(); z++) {
       for (int x = 0; x < results[0]->getX(); x++) {
-        if (results[0]->getState(x, y, z) != pieceVoxel_c::VX_EMPTY)
+        if (results[0]->getState(x, y, z) != voxel_c::VX_EMPTY)
           *str << 'A';
         else
           *str << ' ';
