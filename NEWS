@@ -4,7 +4,7 @@
   also toggle tooltips and switch off the light in 3D view resulting in
   a completely even and very light colors for the pieces
 
-- better groupings. It is not possible to assign mutiple groups with
+- better groupings. It is not possible to assign mutliple groups with
   a count to each (set of) pieces. The meaning is defined like this.
   There can be UP TO the specified number of pieces in this group. This
   is not required, but when needed it is used. This may be useful if
@@ -19,7 +19,7 @@
 
 - reverse meaning of the slider in the grid editor
 
-- fix bug in minimize causing crash when executed on empty shapes
+- fix bug in minimise causing crash when executed on empty shapes
 
 - solution selector can take the focus, so you can use the cursor
   keys to go through solutions
@@ -68,7 +68,7 @@
   taken apart until single. You can set the group for each piece
   with the G+ and G- buttons in the problem tab
 
-- when puzzles where saved bevore a result shape was defined the
+- when puzzles where saved before a result shape was defined the
   program refused to load the file. This works now. Old filed
   can be loaded as well
 
