@@ -173,15 +173,15 @@
   Finally: I am sorry for all the typos, grammatical errors and poor
   expressions that this document contains. Writing texts has never been one
   of my strengths not even in my mother-tongue.
-  
+
   <chapter|The Program>
 
   <section|<name|PuzzleSolver3D> Users>
 
   People that know <name|PuzzleSover3D> written by André van Kammen should be
   able to quickly get used to the graphical user interface. For these people
-  is this chapter. Will just help you to do the things that you have done in
-  <name|PuzzleSolver3D> with <name|BurrTools>. Functionality that is not
+  is this chapter. It will just help you to do the things that you have done
+  in <name|PuzzleSolver3D> with <name|BurrTools>. Functionality that is not
   available in <name|PuzzleSolver3D> is not mentioned here. Read the next
   section for details.
 
@@ -211,7 +211,7 @@
 
     <item><name|BurrTools> allows you to define multiple problems in one
     file. So you can, for example, save all the SomaCube problems within one
-    file
+    file.
   </enumerate-numeric>
 
   Then there are some other not so mayor things that differ:
@@ -219,7 +219,7 @@
   <\enumerate-numeric>
     <item>There are no limits to the number and size of pieces, like in
     <name|PuzzleSolver3D>. You can make the pieces as big as you want and are
-    not limited to a size of 24
+    not limited to a size of 24.
 
     <item>There is no limit to the number of placements to the pieces. It
     wont happen that the program complains about too many placements. As long
@@ -228,7 +228,7 @@
     complete the search.
 
     <item>You can not play with the puzzle. That is a useless feature (in my
-    eyes)
+    eyes).
 
     <item>You don't need to clear solutions when you want to edit the puzzle
     again. The solutions get automatically removed as soon as you start
@@ -240,7 +240,7 @@
   </enumerate-numeric>
 
   I hope the description of these differences helps you to find out how to
-  use the program. If not you need to read the next chapter anyway.
+  use the program. If not you need to read the next chapter after all.
 
   <section|New Users>
 
@@ -738,6 +738,28 @@
   something similar to what you need in the GUI and look in which way the
   program saves these information.
 
+  <subsection|Voxel space>
+
+  Because this is probably the most complicated part of the format here is a
+  description of how the voxel spaces are saved. The size of the space is
+  saved inside the attributes of the node and the contents of the node is
+  saved in text of the node.
+
+  The 3 voxel states are saved with 3 characters:
+
+  <\itemize-dot>
+    <item>'<verbatim|_>' for empty voxels
+
+    <item>'<verbatim|#>' for filled voxels
+
+    <item>'<verbatim|+>' for variable voxels.
+  </itemize-dot>
+
+  Colours can not be attached to empty voxels but to voxels with the other 2
+  states. Currently colors are just a number (up to 2 digits) that are simply
+  written as a decimal numer and are appended to the voxel state. If the
+  colour number is 0 (which is the neutral color) nothing is appended.
+
   <section|The Library>
 
   The library is available for all people who want to do an analysis that
@@ -757,7 +779,7 @@
 
   <subsection|Class voxel>
 
-  This class contains function so organise, modify, transform 3-dimensional
+  This class contains functions to organise, modify, transform 3-dimensional
   arrays of cubes. Each entry inside the array contains 2 values:
 
   <\itemize>
@@ -820,7 +842,39 @@
 
   <subsection|Class disassembler>
 
-  The disassembler tries to find out if the puzzle can be taken apart.
+  The disassembler tries to find out if an assembly can be taken apart. And
+  if it can be taken apart it will return a shortest disassembly sequence.
+  The class contains some datastructures to make it possible to quickly check
+  multiple assemblies of the <em|same> problem. So it is possible to chreate
+  one instance of this class and disassemble a whole set of puzzles and then
+  destroy it.
+
+  <subsection|Class assembly>
+
+  This class contains an assembly of a puzzle. The assembly is always
+  connected to a specific problem of a puzzle because it takes reference to
+  the piece numbers defined in the problem and also to the shapes of the
+  pieces defined within the puzzle.
+
+  The assembly itself contains just a list of positions and transformations.
+  What shape is behind that must be asked from the puzzle class
+
+  Assemblies can be transformed. This changes to placement and transformation
+  of all the included pieces so that the resulting piece arrangement is
+  rotated.
+
+  Assemblies can also be compared. This is required for the rotation avoiding
+  technique describes below for the assembler.
+
+  <subsection|Class disassembly>
+
+  This class contains all the information to completely (or with piece
+  grouping not completely) disassemble the puzzle. It contains a tree. On
+  each branch of the tree the puzzle separates into 2 parts. If one part can
+  not be further assembled (e.g only one piece is in that part or the
+  grouping makes is not necessary to disassemble that part) the pointer to
+  the subtree is <verbatim|NULL>. Each node of the tree contains a list of
+  piecepositions that are the steps to take the problem apart.
 
   <subsection|Example>
 
@@ -850,22 +904,102 @@
 
   <subsection|Assembly>
 
+  As already said this algorithm is based on the Dancing link algorithm. This
+  algorithm is mainly a very efficient and elegant backtracking method that
+  stops much more early than many other algorithms. It stops then is finds
+  that a piece can not be placed any more. It stops when it finds that a cube
+  of the solution shape can not be filled any more. These recursion stops
+  don't need to be implemented separately, but they are part of the
+  algorithm. But bevore we go on describing the details, there is one mayor
+  problem that needs to be solved: avoid finding solutions multiple times.
+
+  <subsubsection|How to avoid finding multiple assemblies>
+
+  Now this is a complicated problem. There is the na~~~ïve approach would be
+  to save all found assemblies and check new found assemblies against this
+  list. This has major problems. You need to save all assemblies and there
+  can be many. You need to check against all those save assemblies and that
+  can get slow. If you want to make a break and later on continue you need to
+  save all those solutions on harddisc and load them again. An of course the
+  worst problem is that you waste a lot of time. If it just would be possible
+  to not find those solutions in the first place.
+
+  To solve this problem let us first analyze what kind of double solutions
+  exist
+
+  <\description-compact>
+    <item*|Identical assemblies>These are solutions that do look completely
+    identical. This happens when you have 2 identical pieces and find both
+    solutions where they are swapped. Another source for identical are pieces
+    that have some symmetry. If you have, for example, a piece that is cube
+    shaped and you find all solutions with all 24 rotations of the cube.
+
+    <item*|Rotated assemblies>These are solutions that are identical but need
+    to be rotated first to find that out.
+  </description-compact>
+
+  The first kind of assemblies can be easily avoided by removing rotations
+  from pieces that result in the same piece. And by being careful with
+  identical pieces and keep them in a certain order (see 2nd modification of
+  dancing link algorithm above).
+
+  The 2nd kind is very hard. The recursive part of the program will find
+  them. It is possible to avoid a few of them and in some puzzles even all of
+  them but there are puzzles that make this impossible. This avoiding can be
+  done by selecting a pivot piece and not placing this piece in all possible
+  positions. The rotations to avoid depend on the symmetry of the piece and
+  the solution shape.
+
+  So it is unavoidable to do something about this. Now Bill Cuttler came to
+  my help. He told me what he did and that is something very ingenious.
+
+  The first thing to do it to be able to compare two assemblies that are the
+  same but one is a rotation of the other and say assembly
+  <with|mode|math|a<rsub|1>> is smaller or larger or equal to assembly
+  <with|mode|math|a<rsub|2>>. This comparison can be implemented by comparing
+  piece positions and transformations. It can be completely arbitrary. It
+  just must be assured that the rotation suppression with the pivot piece
+  does not remove the one transformation that is the smallest when compared
+  with the comparison.
+
+  Now the following is done for each assembly found. At first all rotated
+  assemblies are generated that result in the same shape for the assembled
+  shape. These assemblies are compared with the found one. If there is one
+  that is smaller than the found one drop the found assembly and go on
+  searching. If the found assembly is the smallest one do whatever needs to
+  be done with it.
+
+  That left open the question what to do if the found assembly is the
+  smallest but there is another assembly just as small?
+
+  When does this happen? This happens then when solution itself (not only the
+  shape of the result but the also the construction) has some symmetry. That
+  means that there are 2 indetical looking solutions that differ in exchanged
+  pieces ore a rotation of a piece that does result in an identical looking
+  piece. This kind of identical solution has already been successfully
+  avoided, so there is no need to take special precautions, that case is
+  ignored. If the found assembly is one of the smallest it is taken, if there
+  is one ore more smaller assembly, it is dropped.
+
+  <subsubsection|The dancing link algorithm>
+
   I will describe the only the basics for the original dancing link
   algorithm. For further information read the document available on Mr.
   Knuths web page (<verbatim|http://www-cs-faculty.stanford.edu/~knuth/musings.html>).
 
   The algorithm represents the puzzle as a matrix. In this matrix the first
-  columns represents the pieces and the last columns represent one cube of
-  the result each.
+  columns represent the pieces and the last columns represent one voxel of
+  the result shape each.
 
   Each line of the matrix corresponds to one possible placement of one piece
   inside the result. The column of the piece and the columns the represent
   the places inside the solution that the piece occupies with the placement
   are 1 inside the matrix. All the other cells are 0.
 
-  The search itself runs on this matrix. We search for a set of lines that
-  all the lines contain exactly one 1 in each column. This means that each
-  piece must be used and each cube in the result must be filled.
+  The search itself runs on this matrix. It searches for a set so that all
+  the lines in this set taken together contain exactly one 1 in each column.
+  This means that each piece must be used and each cube in the result must be
+  filled.
 
   The algorithm does 2 operations on the matrix:
 
@@ -901,7 +1035,9 @@
 
   This algorithm is per se not dependent on square cubes it is not dependent
   on any shape. You only need to transfer your puzzle into the matrix. Even
-  William Waites puzzles should be possible. But as the square and cubes are
+  William Waites<\footnote>
+    see <verbatim|www.nemmelgebmurr.com>
+  </footnote> puzzles should be possible. But as the square and cubes are
   most common I have for now only implemented this transformation.
 
   Now to the changes that I have done to this basic algorithm. There is first
@@ -927,11 +1063,44 @@
   The disassembly algorithm is a breadth first tree search. In this tree
   every node represents one possible relative position of the pieces. To find
   out what can be moved in this node the algorithm Bill Cuttler used for his
-  6 Piece Burr analysis is used. Because this analysis of the movable pieces
-  a part of the information is saved within a cache. This caching is done in
-  the class <verbatim|movementcache> This cache can be retained from one
-  disassembly analysis and this speeding up puzzles that have a lot of
-  assemblies to analyse.
+  6 Piece Burr analysis is used. His algorithm anaylzes for 2 pieces how far
+  the first piece piece can be moved in the positive direction of each of the
+  3 axis if the other piece is fixed. This results in 3 matrixes each square
+  with as many rows and columns as there are pieces. The values for negative
+  directions can be taken from transposed matrixes. To make these matrixes
+  useful they need to contain not pairwise information but for the whole
+  state. To get this information the following property is used:
+
+  <\quote-env>
+    If piece A can be moved x units when B is fixed and piece C can be moved
+    y units whan piece C is fixed then piece C can not be moved more than x+y
+    units when B is fixed.
+  </quote-env>
+
+  With this property the 3 matrixes are treated again and again until all
+  values have reached a stable value. The resulting values tell you exactly
+  how far each piece can be moved when some other pieces are fixed.
+
+  Now all possible new states are generated with the aid of these calculated
+  values.
+
+  This worked nice but it has been quite slow. Slower than
+  <name|PuzzleSolver3D> at least. So I started to optimize. The slowest part
+  has been te pairwise analysis of all piece pairs. Initially I implemented
+  more and more complicated schemes that were supposed to speed up thing. But
+  the code got more and more complicated and due to the usage of preprocessor
+  macors utterly undebuggable. And it was still slower than
+  <name|PuzzleSolver3D>.
+
+  Finally I came up with a new scheme that solved the speed issues: a cache.
+  This cache contains the values calculated for the movement possibilities of
+  2 pieces. Once they are calculated they are put into the cache and used
+  from there later on. The cache contains the 3 calculated values. The key is
+  calculated from the piece numbers, their relative positions and their
+  transformations. The incorporation of the transformations made it possible
+  to used the cache over the whole process of a puzzle analysis and not to
+  restart it for each assembly. This has a mayor impact: the number of cache
+  hits is for some puzzles way over 90%.
 
   <section|Adding to the Library>
 
@@ -952,18 +1121,18 @@
   <\collection>
     <associate|font|roman>
     <associate|language|british>
-    <associate|page-breaking|optimal>
-    <associate|page-medium|paper>
+    <associate|page-breaking|sloppy>
+    <associate|page-medium|papyrus>
     <associate|page-orientation|portrait>
     <associate|par-columns|1>
-    <associate|par-hyphen|professional>
+    <associate|par-hyphen|normal>
     <associate|sfactor|4>
   </collection>
 </initial>
 
 <\references>
   <\collection>
-    <associate||<tuple|1|5>>
+    <associate||<tuple|2.1|5>>
     <associate|MainWindowImage|<tuple|1.1|9>>
     <associate|ToolsImage|<tuple|1.2|11>>
     <associate|auto-1|<tuple|<uninit>|3>>
@@ -976,19 +1145,23 @@
     <associate|auto-16|<tuple|1.3|14>>
     <associate|auto-17|<tuple|2|15>>
     <associate|auto-18|<tuple|2.1|15>>
-    <associate|auto-19|<tuple|2.2|15>>
+    <associate|auto-19|<tuple|2.1.1|15>>
     <associate|auto-2|<tuple|<uninit>|5>>
-    <associate|auto-20|<tuple|2.2.1|15>>
-    <associate|auto-21|<tuple|2.2.2|16>>
-    <associate|auto-22|<tuple|2.2.3|16>>
-    <associate|auto-23|<tuple|2.2.4|16>>
-    <associate|auto-24|<tuple|2.2.5|16>>
-    <associate|auto-25|<tuple|2.3|16>>
-    <associate|auto-26|<tuple|2.3.1|16>>
-    <associate|auto-27|<tuple|2.3.2|17>>
-    <associate|auto-28|<tuple|2.4|17>>
-    <associate|auto-29|<tuple|2.4|?>>
+    <associate|auto-20|<tuple|2.2|15>>
+    <associate|auto-21|<tuple|2.2.1|16>>
+    <associate|auto-22|<tuple|2.2.2|16>>
+    <associate|auto-23|<tuple|2.2.3|16>>
+    <associate|auto-24|<tuple|2.2.4|16>>
+    <associate|auto-25|<tuple|2.2.5|16>>
+    <associate|auto-26|<tuple|2.2.6|17>>
+    <associate|auto-27|<tuple|2.2.7|17>>
+    <associate|auto-28|<tuple|2.3|17>>
+    <associate|auto-29|<tuple|2.3.1|18>>
     <associate|auto-3|<tuple|1|7>>
+    <associate|auto-30|<tuple|2.3.1.1|18>>
+    <associate|auto-31|<tuple|2.3.1.2|?>>
+    <associate|auto-32|<tuple|2.3.2|?>>
+    <associate|auto-33|<tuple|2.4|?>>
     <associate|auto-4|<tuple|1.1|7>>
     <associate|auto-5|<tuple|1.2|8>>
     <associate|auto-6|<tuple|1.2.1|8>>
@@ -1089,24 +1262,36 @@
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-23>>
 
-      <with|par-left|<quote|1.5fn>|2.2.5<space|2spc>Example
+      <with|par-left|<quote|1.5fn>|2.2.5<space|2spc>Class assembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-24>>
 
+      <with|par-left|<quote|1.5fn>|2.2.6<space|2spc>Example
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-25>>
+
       2.3<space|2spc>The Algorithms <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-25>
+      <no-break><pageref|auto-26>
 
       <with|par-left|<quote|1.5fn>|2.3.1<space|2spc>Assembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-26>>
+      <no-break><pageref|auto-27>>
+
+      <with|par-left|<quote|3fn>|2.3.1.1<space|2spc>How to avoid finding
+      multiple assemblies <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-28>>
+
+      <with|par-left|<quote|3fn>|2.3.1.2<space|2spc>The dancing link
+      algorithm <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-29>>
 
       <with|par-left|<quote|1.5fn>|2.3.2<space|2spc>Disassembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-27>>
+      <no-break><pageref|auto-30>>
 
       2.4<space|2spc>Adding to the Library
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-28>
+      <no-break><pageref|auto-31>
     </associate>
   </collection>
 </auxiliary>
