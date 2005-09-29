@@ -292,3 +292,25 @@ void movementCache::getValue(int dx, int dy, int dz, unsigned char t1, unsigned 
   *mz = e->mz;
 }
 
+void movementCache::removePieceInfo(unsigned int s) {
+  /* go through the complete cache and free entries that contain the piece */
+  
+  for (unsigned int i = 0; i < tableSize; i++) {
+    entry * e = hash[i];
+    entry * l = 0;
+    while (e) {
+      if ((e->s1 == s) || (e->s2 == s)) {
+	if (l) {
+	  l->next = e->next;
+	} else {
+	  hash[i] = e->next;
+	}
+		  
+	delete e;
+      }
+      l = e;
+      e = e->next;
+    }
+  }
+}
+  

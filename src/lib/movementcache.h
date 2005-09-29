@@ -99,6 +99,9 @@ public:
    */
   void getValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2,
                 int * mx, int * my, int * mz);
+
+  /* remove all information that involves one shape from the cache */
+  void removePieceInfo(unsigned int s);
 };
 
 #endif
