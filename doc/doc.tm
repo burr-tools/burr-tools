@@ -915,43 +915,56 @@
 
   <subsubsection|How to avoid finding multiple assemblies>
 
-  Now this is a complicated problem. There is the na~~~ïve approach would be
-  to save all found assemblies and check new found assemblies against this
-  list. This has major problems. You need to save all assemblies and there
-  can be many. You need to check against all those save assemblies and that
-  can get slow. If you want to make a break and later on continue you need to
-  save all those solutions on harddisc and load them again. An of course the
-  worst problem is that you waste a lot of time. If it just would be possible
-  to not find those solutions in the first place.
+  Now this is a complicated problem. There is the na~~~ïve approach which
+  would be to save all found assemblies and check new found assemblies
+  against this list. This has major problems. You need to save all assemblies
+  and there can be many. You need to check against all those save assemblies
+  and that can get slow. If you want to make a break and later on continue
+  you need to save all those solutions on harddisc and load them again. An of
+  course the worst problem is that you waste a lot of time. If it just would
+  be possible to not find those solutions in the first place.
 
   To solve this problem let us first analyze what kind of double solutions
   exist
 
   <\description-compact>
     <item*|Identical assemblies>These are solutions that do look completely
-    identical. This happens when you have 2 identical pieces and find both
-    solutions where they are swapped. Another source for identical are pieces
-    that have some symmetry. If you have, for example, a piece that is cube
-    shaped and you find all solutions with all 24 rotations of the cube.
+    identical (they are not even rotated). There are 2 possible reasons for
+    this to happen:
+
+    <\enumerate-numeric>
+      <item>Two or more identical pieces that are exchanged
+
+      <item>One piece has symmetries and the (invisible) difference between
+      the 2 found solutions is that this piece is rotated
+
+      <item>A bug in the code that makes the program find <em|really>
+      identical assemblies.
+    </enumerate-numeric>
 
     <item*|Rotated assemblies>These are solutions that are identical but need
     to be rotated first to find that out.
   </description-compact>
 
-  The first kind of assemblies can be easily avoided by removing rotations
-  from pieces that result in the same piece. And by being careful with
-  identical pieces and keep them in a certain order (see 2nd modification of
-  dancing link algorithm above).
+  The first kind of assemblies can be avoided relatively easily by removing
+  rotations from pieces that result in the same piece. And by being careful
+  with identical pieces and avoid finding the permutations of these pieces.
+  With these precausions it can be assured that <em|no> identical looking
+  assemblies are found.
 
   The 2nd kind is very hard. The recursive part of the program will find
-  them. It is possible to avoid a few of them and in some puzzles even all of
-  them but there are puzzles that make this impossible. This avoiding can be
-  done by selecting a pivot piece and not placing this piece in all possible
-  positions. The rotations to avoid depend on the symmetry of the piece and
-  the solution shape.
+  them. It is possible to avoid finding a few of the rotations and in some
+  puzzles is even possible to avoid all of them but there are puzzles where
+  the program <em|will> find some or even all possibel rotation, so a clean
+  solution to this problem must be found.
 
-  So it is unavoidable to do something about this. Now Bill Cuttler came to
-  my help. He told me what he did and that is something very ingenious.
+  To avoid finding some of the rotation the following can be done. Select a
+  pivot piece and don't place this piece in all possible rotations. The
+  rotations to avoid depend on the symmetry of the piece and the solution
+  shape.
+
+  So back to the clean and general solution. Here Bill Cuttler came to my
+  help. He told me what he did and that is something very ingenious.
 
   The first thing to do it to be able to compare two assemblies that are the
   same but one is a rotation of the other and say assembly
@@ -962,24 +975,63 @@
   does not remove the one transformation that is the smallest when compared
   with the comparison.
 
-  Now the following is done for each assembly found. At first all rotated
-  assemblies are generated that result in the same shape for the assembled
-  shape. These assemblies are compared with the found one. If there is one
-  that is smaller than the found one drop the found assembly and go on
+  Now the following is done for each assembly found. At first all rotions
+  from this assembly are generated that result in the same shape for the
+  assembled shape. These assemblies are compared with the found one. If there
+  is one that is smaller than the found one drop the found assembly and go on
   searching. If the found assembly is the smallest one do whatever needs to
   be done with it.
 
-  That left open the question what to do if the found assembly is the
-  smallest but there is another assembly just as small?
+  There are 2 left open the question. What to do if the found assembly is the
+  smallest but there is another assembly just as small? And how can be
+  assured that the rotation selected by the comparions function is not
+  removed by the rotation avoiding method.
 
-  When does this happen? This happens then when solution itself (not only the
-  shape of the result but the also the construction) has some symmetry. That
-  means that there are 2 indetical looking solutions that differ in exchanged
-  pieces ore a rotation of a piece that does result in an identical looking
-  piece. This kind of identical solution has already been successfully
-  avoided, so there is no need to take special precautions, that case is
-  ignored. If the found assembly is one of the smallest it is taken, if there
-  is one ore more smaller assembly, it is dropped.
+  First to the first question. When does this happen? This happens then when
+  solution itself (not only the shape of the result but the also the
+  construction) has some symmetry. That means that there are 2 indetical
+  looking solutions that differ in exchanged pieces ore a rotation of a piece
+  that does result in an identical looking piece. This kind of identical
+  solution has already been successfully avoided, so there is no need to take
+  special precautions, that case is ignored. If the found assembly is one of
+  the smallest it is taken, if there is one ore more smaller assembly, it is
+  dropped.
+
+  Now on to the 2nd problem. Here we need to make sure that the rotation
+  avoiding method knowns about the comparison function and makes sure that
+  the smallest of the assemblies is kept. Here is one possibility:\ 
+
+  If the comparison function looks like this:
+
+  <\code>
+    for (p = 0 up to number of pieces the assembly) {
+
+    \ \ if (rotation of piece p in assembly 1 \<less\> rotation of piece p in
+    assembly 2)
+
+    \ \ \ \ return assembly 1 is smaller
+
+    \ \ elseif (rotation of piece p in assembly 1 \<gtr\> rotation of piece p
+    in assembly 2)
+
+    \ \ \ \ return assembly 2 is smaller
+
+    \ \ elseif (pos x of piece p in assembly 1 \<less\> pos x of piece p in
+    assembly2)
+
+    \ \ \ \ return assembly 1 is smaller
+
+    \ \ and so on
+
+    }
+  </code>
+
+  For this function an assembly with a piece 1 with a smaller rotation number
+  is always smaller that one with a bigger rotation number.
+
+  So if we chose a rotation avoiding technique that always selects piece one
+  as pivod piece and always removed the bigger rotation number, we should be
+  on the save side.
 
   <subsubsection|The dancing link algorithm>
 
