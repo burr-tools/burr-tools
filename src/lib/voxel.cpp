@@ -996,8 +996,8 @@ void voxel_c::transformPlacement(unsigned char trans, const voxel_c * container,
   }
   for (int i = 0; i < rotz(trans); i++) {
     int tmp = *x;
-    *x = *y;
-    *y = -tmp;
+    *x = -*y;
+    *y = tmp;
   }
     
   /* add the piece transformations and also find the smallest possible
@@ -1007,9 +1007,9 @@ void voxel_c::transformPlacement(unsigned char trans, const voxel_c * container,
 
   /* now transform back
    */
-  *x = (*x - getX(*t) + container->getX(trans))/2;
-  *y = (*y - getY(*t) + container->getY(trans))/2;
-  *z = (*z - getZ(*t) + container->getZ(trans))/2;
+  *x = (*x - (int)getX(*t) + (int)container->getX(trans))/2;
+  *y = (*y - (int)getY(*t) + (int)container->getY(trans))/2;
+  *z = (*z - (int)getZ(*t) + (int)container->getZ(trans))/2;
 }
 
 unsigned int voxel_c::getX(unsigned char trans) const {
@@ -1018,17 +1018,17 @@ unsigned int voxel_c::getX(unsigned char trans) const {
   case  0:  case  1:  case  2:  case  3:  case  8:  case  9:
   case 10:  case 11:  case 24:  case 25:  case 26:  case 27:
   case 32:  case 33:  case 34:  case 35:
-    return getX();
+    return sx;
   
   case  5:  case  7:  case 13:  case 15:  case 16:  case 18:
   case 20:  case 22:  case 29:  case 31:  case 37:  case 39:
   case 40:  case 42:  case 44:  case 46:
-    return getY();
+    return sy;
   
   case  4:  case  6:  case 12:  case 14:  case 17:  case 19:
   case 21:  case 23:  case 28:  case 30:  case 36:  case 38:
   case 41:  case 43:  case 45:  case 47:
-    return getZ();
+    return sz;
   }
 
   assert(0);
@@ -1042,17 +1042,17 @@ unsigned int voxel_c::getY(unsigned char trans) const {
   case 16:  case 17:  case 18:  case 19:  case 20:  case 21:
   case 22:  case 23:  case 40:  case 41:  case 42:  case 43:
   case 44:  case 45:  case 46:  case 47:
-    return getX();
+    return sx;
 
   case  0:  case  2:  case  4:  case  6:  case  8:  case 10:
   case 12:  case 14:  case 24:  case 26:  case 28:  case 30:
   case 32:  case 34:  case 36:  case 38:
-    return getY();
+    return sy;
 
   case  1:  case  3:  case  5:  case  7:  case  9:  case 11:
   case 13:  case 15:  case 25:  case 27:  case 29:  case 31:
   case 33:  case 35:  case 37:  case 39:
-    return getZ();
+    return sz;
   }
 
   assert(0);
@@ -1066,17 +1066,17 @@ unsigned int voxel_c::getZ(unsigned char trans) const {
   case  4:  case  5:  case  6:  case  7:  case 12:  case 13:
   case 14:  case 15:  case 28:  case 29:  case 30:  case 31:
   case 36:  case 37:  case 38:  case 39:
-    return getX();
+    return sx;
 
   case  1:  case  3:  case  9:  case 11:  case 17:  case 19:
   case 21:  case 23:  case 25:  case 27:  case 33:  case 35:
   case 41:  case 43:  case 45:  case 47:
-    return getY();
+    return sy;
 
   case  0:  case  2:  case  8:  case 10:  case 16:  case 18:
   case 20:  case 22:  case 24:  case 26:  case 32:  case 34:
   case 40:  case 42:  case 44:  case 46:
-    return getZ();
+    return sz;
   }
 
   assert(0);
