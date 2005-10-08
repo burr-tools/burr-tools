@@ -324,20 +324,26 @@ void VoxelView::drawVoxelSpace() {
 
     switch(trans) {
     case ScaleRotateTranslate:
-      glTranslatef(shapes[piece].x, shapes[piece].y, shapes[piece].z);
+      glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(), 
+	  shapes[piece].y - shapes[piece].shape->getHy(), 
+	  shapes[piece].z - shapes[piece].shape->getHz());
       glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
       arcBall->addTransform();
       glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
       break;
     case TranslateRoateScale:
       arcBall->addTransform();
-      glTranslatef(shapes[piece].x, shapes[piece].y, shapes[piece].z);
+      glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(), 
+	  shapes[piece].y - shapes[piece].shape->getHy(), 
+	  shapes[piece].z - shapes[piece].shape->getHz());
       glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
       glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
       break;
     case CenterTranslateRoateScale:
       arcBall->addTransform();
-      glTranslatef(shapes[piece].x, shapes[piece].y, shapes[piece].z);
+      glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(), 
+	  shapes[piece].y - shapes[piece].shape->getHy(), 
+	  shapes[piece].z - shapes[piece].shape->getHz());
       glTranslatef(-centerX, -centerY, -centerZ);
       glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
       break;

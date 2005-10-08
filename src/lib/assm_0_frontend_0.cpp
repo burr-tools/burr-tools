@@ -248,7 +248,7 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
                   int piecenode = 0;
 
                   if (!skipRotation)
-                    piecenode = AddPieceNode(piece, rot, x, y, z);
+                    piecenode = AddPieceNode(piece, rot, x+rotation->getHx(), y+rotation->getHy(), z+rotation->getHz());
                   else
                     AddFillerNode();
 

@@ -32,7 +32,7 @@
 
 using namespace std;
 
-voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), symmetries(0) {
+voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), symmetries(0), hx(0), hy(0), hz(0) {
 
   space = new voxel_type[voxels];
   assert(space);
@@ -51,7 +51,7 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init
   doRecalc = true;
 }
 
-voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx), sy(orig.sy), sz(orig.sz), voxels(orig.voxels), symmetries(0) {
+voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx), sy(orig.sy), sz(orig.sz), voxels(orig.voxels), symmetries(0), hx(0), hy(0), hz(0) {
 
   space = new voxel_type[voxels];
   assert(space);
@@ -72,7 +72,7 @@ voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx
   transform(transformation);
 }
 
-voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->sx), sy(orig->sy), sz(orig->sz), voxels(orig->voxels), symmetries(0) {
+voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->sx), sy(orig->sy), sz(orig->sz), voxels(orig->voxels), symmetries(0), hx(0), hy(0), hz(0) {
 
   space = new voxel_type[voxels];
   assert(space);
@@ -176,11 +176,14 @@ void voxel_c::rotatex(int by) {
       bz2 = by2;
       by2 = sy - 1 - bz1;
       bz1 = t;
+      
+      t = hy;
+      hy = sy - 1 - hz;
+      hz = t;
 
       delete [] space;
       space = s;
     }
-
     break;
   case 2:
     {
@@ -198,6 +201,9 @@ void voxel_c::rotatex(int by) {
       t = bz1;
       bz1 = sz - 1 - bz2;
       bz2 = sz - 1 - t;
+
+      hy = sy - 1 - hy;
+      hz = sz - 1 - hz;
 
       delete [] space;
       space = s;
@@ -222,6 +228,10 @@ void voxel_c::rotatex(int by) {
       bz1 = sz - 1 - by2;
       by2 = bz2;
       bz2 = sz - 1 - t;
+
+      t = hy;
+      hy = hz;
+      hz = sz - 1 - t;
 
       delete [] space;
       space = s;
@@ -261,8 +271,12 @@ void voxel_c::rotatey(int by) {
       bz2 = bx2;
       bx2 = sx - 1 - bz1;
       bz1 = t;
-    }
 
+      t = hx;
+      hx = sx - 1 - hz;
+      hz = t;
+      
+    }
     break;
   case 2:
     {
@@ -284,6 +298,10 @@ void voxel_c::rotatey(int by) {
       t = bz1;
       bz1 = sz - 1 - bz2;
       bz2 = sz - 1 - t;
+
+      hx = sx - 1 - hx;
+      hz = sz - 1 - hz;
+      
     }
     break;
   case 3:
@@ -308,6 +326,10 @@ void voxel_c::rotatey(int by) {
       bz1 = sz - 1 - bx2;
       bx2 = bz2;
       bz2 = sz - 1 - t;
+
+      t = hx;
+      hx = hz;
+      hz = sz - 1 - t;
 
     }
     break;
@@ -344,6 +366,11 @@ void voxel_c::rotatez(int by) {
       bx1 = sx - 1 - by2;
       by2 = bx2;
       bx2 = sx - 1 - t;
+
+      t = hy;
+      hy = hx;
+      hx = sx - 1 - t;
+      
     }
     break;
   case 2:
@@ -366,6 +393,9 @@ void voxel_c::rotatez(int by) {
       t = bx1;
       bx1 = sx - 1 - bx2;
       bx2 = sx - 1 - t;
+
+      hx = sx - 1 - hx;
+      hy = sy - 1 - hy;
     }
     break;
   case 3:
@@ -390,6 +420,10 @@ void voxel_c::rotatez(int by) {
       bx2 = by2;
       by2 = sy - 1 - bx1;
       bx1 = t;
+
+      t = hy;
+      hy = sy - 1 - hx;
+      hx = t;
     }
     break;
   }
@@ -446,6 +480,9 @@ void voxel_c::minimize(voxel_type val) {
     voxels = sx*sy*sz;
 
     recalcBoundingBox();
+    hx -= x1;
+    hy -= y1;
+    hz -= z1;
   }
 }
 
@@ -507,7 +544,9 @@ void voxel_c::mirrorX(void) {
 
   bx1 = sx - 1 - bx2;
   bx2 = sx - 1 - t;
-      
+
+  hx = sx - 1 -hx;
+        
   symmetries = 0;
 }
 
@@ -529,6 +568,8 @@ void voxel_c::mirrorY(void) {
 
   by1 = sy - 1 - by2;
   by2 = sy - 1 - t;
+
+  hy = sy - 1 - hy;
 
   symmetries = 0;    
 }
@@ -552,6 +593,8 @@ void voxel_c::mirrorZ(void) {
   bz1 = sz - 1 - bz2;
   bz2 = sz - 1 - t;
 
+  hz = sz - 1 - sz;
+
   symmetries = 0; 
 }
 
@@ -573,6 +616,10 @@ void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
   if (dx + bx1 <= 0) bx1 = 0; else if (dx + bx1 >= sx) bx1 = sx-1; else bx1 += dx;
   if (dy + by1 <= 0) by1 = 0; else if (dy + by1 >= sy) by1 = sy-1; else by1 += dy;
   if (dz + bz1 <= 0) bz1 = 0; else if (dz + bz1 >= sz) bz1 = sz-1; else bz1 += dz;
+
+  hx += dx;
+  hy += dy;
+  hz += dz;
 }
 
 bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
@@ -890,7 +937,7 @@ xml::node voxel_c::save(void) const {
   return nd;
 }
 
-voxel_c::voxel_c(const xml::node & node) {
+voxel_c::voxel_c(const xml::node & node) : hx(0), hy(0), hz(0) {
 
   // we must have a real node and the following attributes
   if ((node.get_type() != xml::node::type_element) ||

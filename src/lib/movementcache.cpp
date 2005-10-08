@@ -99,6 +99,13 @@ movementCache::entry * movementCache::calcValues(unsigned char s1, unsigned char
   e->s1 = s1;
   e->s2 = s2;
 
+  /* because the dx, dy and dz valuea are calculated using the hotspot we need to reverse
+   * that process
+   */
+  dx += (sh1->getHx() - sh2->getHx());
+  dy += (sh1->getHy() - sh2->getHy());
+  dz += (sh1->getHz() - sh2->getHz());
+
   /* calculate some bounding boxes for the intersecting and union boxes of the 2 pieces */
   int x1i, x2i, y1i, y2i, z1i, z2i;
 

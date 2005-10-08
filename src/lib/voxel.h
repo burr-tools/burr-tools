@@ -121,6 +121,17 @@ private:
    */
   symmetries_t symmetries;
 
+  /**
+   * this is the hot spot of the voxel
+   * when a piece is places somewhere it is always done relative to this
+   * point. This is necessary to be able to rotate assemblies.
+   * just place the hotspot somewhere inside the voxelspace and it will
+   * be possible to rotate a voxel space and place it at the same position without
+   * knowing the size of the piece
+   * The hotspot is also transformed, when the piece voxel space is transformed
+   */
+  int hx, hy, hz;
+
 protected:
 
   void recalcBoundingBox(void);
@@ -453,6 +464,13 @@ public:
 
   /* used to save to XML */
   xml::node save(void) const;
+
+
+  /* functions for hotspot management */
+  int getHx(void) const { return hx; }
+  int getHy(void) const { return hy; }
+  int getHz(void) const { return hz; }
+  void setHotspot(int x, int y, int z) { hx = x; hy = y; hz = z; }
 };
 
 #endif
