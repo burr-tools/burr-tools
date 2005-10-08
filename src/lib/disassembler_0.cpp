@@ -49,7 +49,7 @@ private:
 
 public:
 
-  node0_c(int pn) : comefrom(0), piecenumber(pn) {
+  node0_c(int pn, node0_c * comf) : comefrom(comf), piecenumber(pn) {
     dx = new int[piecenumber];
     dy = new int[piecenumber];
     dz = new int[piecenumber];
@@ -148,10 +148,6 @@ public:
 
   node0_c * getComefrom(void) const {
     return comefrom;
-  }
-
-  void setComefrom(node0_c *n) {
-    comefrom = n;
   }
 };
 
@@ -374,7 +370,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
        */
       if (checkmovement(next_pn/2)) {
 
-        node0_c * n = new node0_c(next_pn);
+        node0_c * n = new node0_c(next_pn, searchnode);
 
         /* create a new state with the pieces moved */
         for (int i = 0; i < next_pn; i++)
@@ -416,7 +412,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
  */
 static void create_new_params(node0_c * st, node0_c ** n, voxel_type ** pn, int piecenumber, voxel_type * pieces, int part, bool cond) {
 
-  *n = new node0_c(part);
+  *n = new node0_c(part, 0);
   *pn = new voxel_type[part];
 
   int num = 0;
@@ -521,7 +517,6 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
       }
 
       closed.insert(st);
-      st->setComefrom(node);
 
       if (!st->is_separation()) {
 
@@ -699,7 +694,7 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
   /* create the first node with the start state
    * here all pieces are at position (0; 0; 0)
    */
-  node0_c * start = new node0_c(piecenumber);
+  node0_c * start = new node0_c(piecenumber, 0);
 
   for (unsigned int i = 0; i < piecenumber; i++)
     start->set(i, assembly->getX(i), assembly->getY(i), assembly->getZ(i), assembly->getTransformation(i));
