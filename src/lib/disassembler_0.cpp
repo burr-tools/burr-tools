@@ -468,6 +468,30 @@ bool disassembler_0_c::subProbGrouping(voxel_type * pn, int piecenumber) {
   return true;
 }
 
+separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, node0_c * st, bool left, bool * ok) {
+
+  separation_c * res = 0;
+
+  if (pieceCount == 1) {
+    *ok = true;
+  } else if (subProbGroup(st, pieces, left, piecenumber)) {
+    *ok = true;
+  } else {
+
+    node0_c *n;
+    voxel_type * pn;
+    create_new_params(st, &n, &pn, piecenumber, pieces, pieceCount, left);
+    res = disassemble_rec(pieceCount, pn, n);
+
+    *ok = res || subProbGrouping(pn, pieceCount);
+
+    delete [] pn;
+  }
+
+  return res;
+}
+
+
 /* this is a bredth first search function that analyzes the movement of
  * an assembled problem. when the problem falls apart into 2 pieces the function
  * calls itself recursively. It returns null if the problem can not be taken apart
@@ -559,41 +583,11 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
        * else try to disassemble, if that fails, try to
        * group the involved pieces into an identical group
        */
-      if (part1 == 1) {
-        remove_ok = true;
-      } else if (subProbGroup(st, pieces, false, piecenumber)) {
-        remove_ok = true;
-      } else {
-
-        node0_c *n;
-        voxel_type * pn;
-        create_new_params(st, &n, &pn, piecenumber, pieces, part1, false);
-        remove = disassemble_rec(part1, pn, n);
-
-        remove_ok = remove || subProbGrouping(pn, part1);
-
-        delete [] pn;
-      }
+      remove = checkSubproblem(part1, pieces, piecenumber, st, false, &remove_ok);
 
       /* only check the left over part, when the removed part is ok */
-      if (remove_ok) {
-
-        if (part2 == 1) {
-          left_ok = true;
-        } else if (subProbGroup(st, pieces, true, piecenumber)) {
-          left_ok = true;
-        } else {
-  
-          node0_c *n;
-          voxel_type * pn;
-          create_new_params(st, &n, &pn, piecenumber, pieces, part2, true);
-          left = disassemble_rec(part2, pn, n);
-  
-          left_ok = left || subProbGrouping(pn, part2);
-  
-          delete [] pn;
-        }
-      }
+      if (remove_ok)
+        left = checkSubproblem(part2, pieces, piecenumber, st, true, &left_ok);
 
       /* if both subproblems are either trivial or solvable, return the
        * result, otherwise return 0

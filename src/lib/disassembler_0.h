@@ -75,6 +75,7 @@ private:
 
   unsigned short subProbGroup(node0_c * st, voxel_type * pn, bool cond, int piecenumber);
   bool subProbGrouping(voxel_type * pn, int piecenumber);
+  separation_c * checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, node0_c * st, bool left, bool * ok);
 
   /* the real disassembly routine. It separates the puzzle into 2 parts
    * and get's called recursively with each subpart to disassemble
