@@ -27,7 +27,6 @@
 #include <vector>
 
 class puzzle_c;
-class placement_c;
 
 /* this class contains the assembly for a puzzle
  * an assembly is a list of trnasformations and
@@ -44,17 +43,25 @@ public:
 
   int xpos, ypos, zpos;
 
-
   placement_c(unsigned char tran, int x, int y, int z) : transformation(tran), xpos(x), ypos(y), zpos(z) {}
+  placement_c(const placement_c * orig) : transformation(orig->transformation), xpos(orig->xpos), ypos(orig->ypos), zpos(orig->zpos) {}
 
   int getX(void) const { return xpos; }
-  int getY(void) const  { return ypos; }
-  int getZ(void) const  { return zpos; }
+  int getY(void) const { return ypos; }
+  int getZ(void) const { return zpos; }
   unsigned char getTransformation(void) const  { return transformation; }
 
   bool operator == (const placement_c & b) const {
     return ((transformation == b.transformation) &&
             (xpos == b.xpos) && (ypos == b.ypos) && (zpos == b.zpos));
+  }
+
+  placement_c & operator = (const placement_c & b) {
+    transformation = b.transformation;
+    xpos = b.xpos;
+    ypos = b.ypos;
+    zpos = b.zpos;
+    return *this;
   }
 
   bool operator < (const placement_c & b) const {
@@ -88,6 +95,7 @@ public:
    * copy constructor
    */
   assembly_c(const assembly_c * orig);
+  assembly_c(const assembly_c * orig, unsigned char trans, const puzzle_c * puz, unsigned int prob);
 
   /**
    * load the assembly from xml file
@@ -135,15 +143,6 @@ public:
    */
   void transform(unsigned char trans, const puzzle_c * puz, unsigned int prob);
 
-  /**
-   * this transforms the assemly so that it is lower or equal to all other
-   * transformations of this assembly. This is some kind of normalisation
-   * process on the assembly. All identical assemblies that are just
-   * rotations of one another will result in the same assembly after
-   * this call
-   */
-  void equalize(const puzzle_c * puz, unsigned int prob);
-
   /* to be able to put assemblies into sets we need to have 2 operators
    * on assemblies, the == and the < 
    */
@@ -162,20 +161,9 @@ public:
     return true;
   }
 
-  bool operator < (const assembly_c & b) const {
-    
-    assert(placements.size() == b.placements.size());
-    
-    for (unsigned int i = 0; i < placements.size(); i++) {
-      if (placements[i] < b.placements[i]) return true;
-      /* here it can only be larger or equal, so if it is not
-       * equal it must be larger so return false
-       */
-      if (!(placements[i] == b.placements[i])) return false;
-    }
+  bool compare(const assembly_c & b, unsigned int pivot) const;
 
-    return false;
-  }
+  bool smallerRotationExists(const puzzle_c * puz, unsigned int prob, unsigned int pivot) const;
 };
 
 

@@ -19,26 +19,24 @@
 
 #include "symmetries.h"
 
+#include "voxel.h"
+
 #include <assert.h>
 
-static int _rotx[NUM_TRANSFORMATIONS] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3 };
-static int _roty[NUM_TRANSFORMATIONS] = { 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0 };
-static int _rotz[NUM_TRANSFORMATIONS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 3, 3, 3, 3 };
+#define NUM_SYMMETRY_GROUOPS 82
 
-int rotx(unsigned int p) {
-  assert(p < NUM_TRANSFORMATIONS);
-  return _rotx[p];
-}
-int roty(unsigned int p) {
-  assert(p < NUM_TRANSFORMATIONS);
-  return _roty[p];
-}
-int rotz(unsigned int p) {
-  assert(p < NUM_TRANSFORMATIONS);
-  return _rotz[p];
-}
+/* these arrays contain the transformations necessary to get all possible orientations of a piece
+ * first do a mirroring along the x-y-plane, then rotate around x then y and then the z-axis
+ */
+static const int _rotx[NUM_TRANSFORMATIONS] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3 };
+static const int _roty[NUM_TRANSFORMATIONS] = { 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0 };
+static const int _rotz[NUM_TRANSFORMATIONS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 3, 3, 3, 3 };
 
-unsigned int transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATIONS_MIRROR] = {
+/* this matix contains the concatenation of 2 transformations
+ * if you first transform the piece around t1 and then around t2
+ * you can as well transform around transMult[t1][t2]
+ */
+static const unsigned int transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATIONS_MIRROR] = {
   { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47},
   { 1,  2,  3,  0,  5,  6,  7,  4,  9, 10, 11,  8, 13, 14, 15, 12, 17, 18, 19, 16, 21, 22, 23, 20, 25, 26, 27, 24, 29, 30, 31, 28, 33, 34, 35, 32, 37, 38, 39, 36, 41, 42, 43, 40, 45, 46, 47, 44},
   { 2,  3,  0,  1,  6,  7,  4,  5, 10, 11,  8,  9, 14, 15, 12, 13, 18, 19, 16, 17, 22, 23, 20, 21, 26, 27, 24, 25, 30, 31, 28, 29, 34, 35, 32, 33, 38, 39, 36, 37, 42, 43, 40, 41, 46, 47, 44, 45},
@@ -89,68 +87,779 @@ unsigned int transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATIONS_MIRROR] =
   {47, 36, 41, 30, 44, 24, 40, 34, 45, 28, 43, 38, 46, 32, 42, 26, 27, 39, 35, 31, 33, 37, 25, 29, 19,  4, 21, 14, 18,  8, 22,  2, 17, 12, 23,  6, 16,  0, 20, 10,  9,  5,  1, 13,  3,  7, 11, 15}
 };
 
-unsigned char transAdd(unsigned char t1, unsigned char t2) { return transMult[t1][t2]; }
-
-
-#include <stdio.h>   //TEMP
-
-
-/* this function returns a symmetry class that contains all symmetries that
- * must not be placed into th result, when the result has symmetry s1 and
- * the piece to place symmetry s2
+/* this array contains all possible symmetry groups, meaning bitmasks with exactly the bits set
+ * that correspond to transformations tha reorient the piece so that it looks identical
  */
-symmetries_t multiplySymmetries(symmetries_t s1, symmetries_t s2) {
+static const unsigned long long symmetries[NUM_SYMMETRY_GROUOPS] = {
+  0x000000000001LL,
+  0x000000000005LL,
+  0x000000000041LL,
+  0x000000000101LL,
+  0x000000000201LL,
+  0x000000000401LL,
+  0x000000000801LL,
+  0x000000000A05LL,
+  0x000000004001LL,
+  0x000000004141LL,
+  0x000000020081LL,
+  0x000000040001LL,
+  0x000000082001LL,
+  0x000000208001LL,
+  0x000000248241LL,
+  0x000000400001LL,
+  0x000000424281LL,
+  0x000000440401LL,
+  0x000000482841LL,
+  0x000000800021LL,
+  0x000000844821LL,
+  0x000001000001LL,
+  0x000004000001LL,
+  0x000005000005LL,
+  0x000010000001LL,
+  0x000014000041LL,
+  0x000100000001LL,
+  0x000101000101LL,
+  0x000104000401LL,
+  0x000200000001LL,
+  0x000201000201LL,
+  0x000204000801LL,
+  0x000400000001LL,
+  0x000401000401LL,
+  0x000404000101LL,
+  0x000410004001LL,
+  0x000500000005LL,
+  0x000505000505LL,
+  0x00050A000A05LL,
+  0x000800000001LL,
+  0x000801000801LL,
+  0x000804000201LL,
+  0x000A00000005LL,
+  0x000A05000A05LL,
+  0x000A0A000505LL,
+  0x000F0000000FLL,
+  0x000F0F000F0FLL,
+  0x001000000001LL,
+  0x001004004001LL,
+  0x001010000101LL,
+  0x001111001111LL,
+  0x001400000041LL,
+  0x001414004141LL,
+  0x004141004141LL,
+  0x005050000505LL,
+  0x005555005555LL,
+  0x010000000001LL,
+  0x010004040001LL,
+  0x010100400001LL,
+  0x010810208001LL,
+  0x011200800021LL,
+  0x028004082001LL,
+  0x080024020081LL,
+  0x100000000001LL,
+  0x100004400001LL,
+  0x100100040001LL,
+  0x100210082001LL,
+  0x101800020081LL,
+  0x110000000401LL,
+  0x110104440401LL,
+  0x110401110401LL,
+  0x128214482841LL,
+  0x181824424281LL,
+  0x200084800021LL,
+  0x211284844821LL,
+  0x440401440401LL,
+  0x550000000505LL,
+  0x550505550505LL,
+  0x802004208001LL,
+  0x812814248241LL,
+  0xAAA5A5AAA5A5LL,
+  0xFFFFFFFFFFFFLL
+};
 
-  symmetries_t s = 0;
+/* this matrix lets you calculate the orientation with the smallest number that results in an identical looking
+ * shape. This requires us to know the symmetry group
+ */
+static const unsigned char transformationMinimizer[NUM_SYMMETRY_GROUOPS][NUM_TRANSFORMATIONS_MIRROR] = {
+  { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47},
+  { 0, 1, 0, 1, 4, 5, 4, 5, 8, 9, 8, 9,12,13,12,13,16,17,16,17,20,21,20,21,24,25,24,25,28,29,28,29,32,33,32,33,36,37,36,37,40,41,40,41,44,45,44,45},
+  { 0, 1, 2, 3, 4, 5, 0, 7, 8, 9, 4,11, 2,13, 8,15, 7, 3,15,11, 5, 9,13, 1,24,25,26,27,26,29,30,31,30,33,34,35,34,37,24,39,37,33,29,25,39,27,31,35},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 0, 3, 2, 1, 4, 7, 6, 5,16,17,18,19,18,17,16,19,24,25,26,27,28,29,30,31,24,27,26,25,28,31,30,29,40,41,42,43,42,41,40,43},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 1, 0, 3, 2, 5, 4, 7, 6,16,17,18,19,19,18,17,16,24,25,26,27,28,29,30,31,25,24,27,26,29,28,31,30,40,41,42,43,43,42,41,40},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 2, 1, 0, 3, 6, 5, 4, 7,16,17,18,19,16,19,18,17,24,25,26,27,28,29,30,31,26,25,24,27,30,29,28,31,40,41,42,43,40,43,42,41},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 3, 2, 1, 0, 7, 6, 5, 4,16,17,18,19,17,16,19,18,24,25,26,27,28,29,30,31,27,26,25,24,31,30,29,28,40,41,42,43,41,40,43,42},
+  { 0, 1, 0, 1, 4, 5, 4, 5, 1, 0, 1, 0, 5, 4, 5, 4,16,17,16,17,17,16,17,16,24,25,24,25,28,29,28,29,25,24,25,24,29,28,29,28,40,41,40,41,41,40,41,40},
+  { 0, 1, 2, 3, 2, 5, 6, 7, 6, 9,10,11,10,13, 0,15,13, 9, 5, 1,15, 3, 7,11,24,25,26,27,28,29,24,31,32,33,28,35,26,37,32,39,31,27,39,35,29,33,37,25},
+  { 0, 1, 2, 3, 2, 5, 0, 7, 0, 3, 2, 1, 2, 7, 0, 5, 7, 3, 5, 1, 5, 3, 7, 1,24,25,26,27,26,29,24,31,24,27,26,25,26,31,24,29,31,27,29,25,29,27,31,25},
+  { 0, 1, 2, 3, 4, 5, 1, 0, 8, 9, 5, 4, 3, 2, 9, 8, 4, 0, 3, 8, 1, 5, 9, 2,24,25,26,27,27,26,30,31,31,30,34,35,35,34,25,24,25,34,30,26,35,24,27,31},
+  { 0, 1, 2, 3, 4, 5, 6, 1, 8, 9,10, 5,12, 3,14, 9, 8, 4, 0,12, 2, 6,10,14,24,25,26,27,28,27,30,31,32,31,34,35,36,35,38,25,26,38,34,30,32,36,24,28},
+  { 0, 1, 2, 3, 1, 5, 6, 2, 5, 9,10, 6, 9, 0, 3,10, 9, 5, 1, 0, 3, 2, 6,10,24,25,26,27,28,24,27,31,32,28,31,35,25,32,35,26,27,26,35,31,28,32,25,24},
+  { 0, 1, 2, 3, 3, 2, 6, 7, 7, 6,10,11,11,10, 1, 0, 1,10, 6, 2,11, 0, 3, 7,24,25,26,27,28,29,25,24,32,33,29,28,27,26,33,32,28,24,27,32,25,29,33,26},
+  { 0, 1, 2, 3, 3, 2, 0, 1, 1, 0, 3, 2, 2, 3, 1, 0, 1, 3, 0, 2, 2, 0, 3, 1,24,25,26,27,26,27,25,24,25,24,27,26,27,26,24,25,26,24,27,25,25,27,24,26},
+  { 0, 1, 2, 3, 4, 3, 6, 7, 8, 7,10,11,12,11,14, 1, 2,14,10, 6, 8,12, 0, 4,24,25,26,27,28,29,30,25,32,33,34,29,36,27,38,33,32,28,24,36,26,30,34,38},
+  { 0, 1, 2, 3, 2, 3, 1, 0, 1, 0, 3, 2, 3, 2, 0, 1, 2, 0, 3, 1, 1, 3, 0, 2,24,25,26,27,27,26,24,25,25,24,27,26,26,27,25,24,25,27,24,26,26,24,27,25},
+  { 0, 1, 2, 3, 4, 3, 6, 1, 2, 1, 0, 3, 6, 3, 4, 1, 2, 4, 0, 6, 2, 6, 0, 4,24,25,26,27,28,27,30,25,26,25,24,27,30,27,28,25,26,28,24,30,26,30,24,28},
+  { 0, 1, 2, 3, 1, 3, 0, 2, 3, 2, 1, 0, 2, 0, 3, 1, 2, 3, 1, 0, 3, 2, 0, 1,24,25,26,27,26,24,27,25,27,26,25,24,25,27,24,26,27,26,24,25,26,27,25,24},
+  { 0, 1, 2, 3, 4, 0, 3, 7, 8, 4, 7,11, 1, 8,11, 2, 3, 2,11, 7, 4, 8, 1, 0,24,25,26,27,25,29,30,26,29,33,34,30,33,24,27,34,33,29,25,24,27,26,30,34},
+  { 0, 1, 2, 3, 2, 0, 3, 1, 3, 2, 1, 0, 1, 3, 0, 2, 3, 2, 0, 1, 2, 3, 1, 0,24,25,26,27,25,27,24,26,27,26,25,24,26,24,27,25,26,27,25,24,27,26,24,25},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23, 2, 3, 0, 1, 6, 7, 4, 5,10,11, 8, 9,14,15,12,13,18,19,16,17,22,23,20,21},
+  { 0, 1, 0, 1, 4, 5, 4, 5, 8, 9, 8, 9,12,13,12,13,16,17,16,17,20,21,20,21, 0, 1, 0, 1, 4, 5, 4, 5, 8, 9, 8, 9,12,13,12,13,16,17,16,17,20,21,20,21},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,12,17, 6,23, 0,16,10,20, 4,19,14,21, 8,18, 2,22,15,11, 7, 3,13, 1, 5, 9},
+  { 0, 1, 2, 3, 4, 5, 0, 7, 8, 9, 4,11, 2,13, 8,15, 7, 3,15,11, 5, 9,13, 1, 2, 3, 0, 1, 0, 7, 4, 5, 4,11, 8, 9, 8,15, 2,13,15,11, 7, 3,13, 1, 5, 9},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23, 8,11,10, 9,12,15,14,13, 0, 3, 2, 1, 4, 7, 6, 5,22,21,20,23,18,17,16,19},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 0, 3, 2, 1, 4, 7, 6, 5,16,17,18,19,18,17,16,19, 0, 1, 2, 3, 4, 5, 6, 7, 0, 3, 2, 1, 4, 7, 6, 5,16,17,18,19,18,17,16,19},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 2, 1, 0, 3, 6, 5, 4, 7,16,17,18,19,16,19,18,17, 2, 3, 0, 1, 6, 7, 4, 5, 0, 3, 2, 1, 4, 7, 6, 5,18,19,16,17,18,17,16,19},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23, 9, 8,11,10,13,12,15,14, 1, 0, 3, 2, 5, 4, 7, 6,23,22,21,20,19,18,17,16},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 1, 0, 3, 2, 5, 4, 7, 6,16,17,18,19,19,18,17,16, 0, 1, 2, 3, 4, 5, 6, 7, 1, 0, 3, 2, 5, 4, 7, 6,16,17,18,19,19,18,17,16},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 3, 2, 1, 0, 7, 6, 5, 4,16,17,18,19,17,16,19,18, 2, 3, 0, 1, 6, 7, 4, 5, 1, 0, 3, 2, 5, 4, 7, 6,18,19,16,17,19,18,17,16},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,10, 9, 8,11,14,13,12,15, 2, 1, 0, 3, 6, 5, 4, 7,20,23,22,21,16,19,18,17},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 2, 1, 0, 3, 6, 5, 4, 7,16,17,18,19,16,19,18,17, 0, 1, 2, 3, 4, 5, 6, 7, 2, 1, 0, 3, 6, 5, 4, 7,16,17,18,19,16,19,18,17},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 0, 3, 2, 1, 4, 7, 6, 5,16,17,18,19,18,17,16,19, 2, 3, 0, 1, 6, 7, 4, 5, 2, 1, 0, 3, 6, 5, 4, 7,18,19,16,17,16,19,18,17},
+  { 0, 1, 2, 3, 2, 5, 6, 7, 6, 9,10,11,10,13, 0,15,13, 9, 5, 1,15, 3, 7,11,10, 9, 6,11, 0,13,10,15, 2, 1, 0, 3, 6, 5, 2, 7,15,11, 7, 3,13, 1, 5, 9},
+  { 0, 1, 0, 1, 4, 5, 4, 5, 8, 9, 8, 9,12,13,12,13,16,17,16,17,20,21,20,21, 8, 9, 8, 9,12,13,12,13, 0, 1, 0, 1, 4, 5, 4, 5,20,21,20,21,16,17,16,17},
+  { 0, 1, 0, 1, 4, 5, 4, 5, 0, 1, 0, 1, 4, 5, 4, 5,16,17,16,17,16,17,16,17, 0, 1, 0, 1, 4, 5, 4, 5, 0, 1, 0, 1, 4, 5, 4, 5,16,17,16,17,16,17,16,17},
+  { 0, 1, 0, 1, 4, 5, 4, 5, 1, 0, 1, 0, 5, 4, 5, 4,16,17,16,17,17,16,17,16, 1, 0, 1, 0, 5, 4, 5, 4, 0, 1, 0, 1, 4, 5, 4, 5,17,16,17,16,16,17,16,17},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,11,10, 9, 8,15,14,13,12, 3, 2, 1, 0, 7, 6, 5, 4,21,20,23,22,17,16,19,18},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 3, 2, 1, 0, 7, 6, 5, 4,16,17,18,19,17,16,19,18, 0, 1, 2, 3, 4, 5, 6, 7, 3, 2, 1, 0, 7, 6, 5, 4,16,17,18,19,17,16,19,18},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 1, 0, 3, 2, 5, 4, 7, 6,16,17,18,19,19,18,17,16, 2, 3, 0, 1, 6, 7, 4, 5, 3, 2, 1, 0, 7, 6, 5, 4,18,19,16,17,17,16,19,18},
+  { 0, 1, 0, 1, 4, 5, 4, 5, 8, 9, 8, 9,12,13,12,13,16,17,16,17,20,21,20,21, 9, 8, 9, 8,13,12,13,12, 1, 0, 1, 0, 5, 4, 5, 4,21,20,21,20,17,16,17,16},
+  { 0, 1, 0, 1, 4, 5, 4, 5, 1, 0, 1, 0, 5, 4, 5, 4,16,17,16,17,17,16,17,16, 0, 1, 0, 1, 4, 5, 4, 5, 1, 0, 1, 0, 5, 4, 5, 4,16,17,16,17,17,16,17,16},
+  { 0, 1, 0, 1, 4, 5, 4, 5, 0, 1, 0, 1, 4, 5, 4, 5,16,17,16,17,16,17,16,17, 1, 0, 1, 0, 5, 4, 5, 4, 1, 0, 1, 0, 5, 4, 5, 4,17,16,17,16,17,16,17,16},
+  { 0, 0, 0, 0, 4, 4, 4, 4, 8, 8, 8, 8,12,12,12,12,16,16,16,16,20,20,20,20, 8, 8, 8, 8,12,12,12,12, 0, 0, 0, 0, 4, 4, 4, 4,20,20,20,20,16,16,16,16},
+  { 0, 0, 0, 0, 4, 4, 4, 4, 0, 0, 0, 0, 4, 4, 4, 4,16,16,16,16,16,16,16,16, 0, 0, 0, 0, 4, 4, 4, 4, 0, 0, 0, 0, 4, 4, 4, 4,16,16,16,16,16,16,16,16},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23, 4,21,14,19, 8,22, 2,18,12,23, 6,17, 0,20,10,16, 5, 1,13, 9, 7,11,15, 3},
+  { 0, 1, 2, 3, 2, 5, 6, 7, 6, 9,10,11,10,13, 0,15,13, 9, 5, 1,15, 3, 7,11, 2, 3, 0, 1, 6, 7, 2, 5,10,11, 6, 9, 0,15,10,13, 5, 1,13, 9, 7,11,15, 3},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 0, 3, 2, 1, 4, 7, 6, 5,16,17,18,19,18,17,16,19, 4,17, 6,19, 0,16, 2,18, 4,19, 6,17, 0,18, 2,16, 5, 1, 7, 3, 7, 1, 5, 3},
+  { 0, 1, 2, 3, 0, 5, 2, 7, 0, 3, 2, 1, 0, 7, 2, 5, 5, 1, 7, 3, 7, 1, 5, 3, 0, 1, 2, 3, 0, 5, 2, 7, 0, 3, 2, 1, 0, 7, 2, 5, 5, 1, 7, 3, 7, 1, 5, 3},
+  { 0, 1, 2, 3, 4, 5, 0, 7, 8, 9, 4,11, 2,13, 8,15, 7, 3,15,11, 5, 9,13, 1, 4, 9, 8,11, 8,13, 2,15, 2, 1, 0, 3, 0, 5, 4, 7, 5, 1,13, 9, 7,11,15, 3},
+  { 0, 1, 2, 3, 2, 5, 0, 7, 0, 3, 2, 1, 2, 7, 0, 5, 7, 3, 5, 1, 5, 3, 7, 1, 2, 3, 0, 1, 0, 7, 2, 5, 2, 1, 0, 3, 0, 5, 2, 7, 5, 1, 7, 3, 7, 1, 5, 3},
+  { 0, 1, 2, 3, 2, 5, 0, 7, 0, 3, 2, 1, 2, 7, 0, 5, 7, 3, 5, 1, 5, 3, 7, 1, 0, 1, 2, 3, 2, 5, 0, 7, 0, 3, 2, 1, 2, 7, 0, 5, 7, 3, 5, 1, 5, 3, 7, 1},
+  { 0, 1, 0, 1, 4, 5, 4, 5, 0, 1, 0, 1, 4, 5, 4, 5,16,17,16,17,16,17,16,17, 4,17, 4,17, 0,16, 0,16, 4,17, 4,17, 0,16, 0,16, 5, 1, 5, 1, 5, 1, 5, 1},
+  { 0, 1, 0, 1, 0, 5, 0, 5, 0, 1, 0, 1, 0, 5, 0, 5, 5, 1, 5, 1, 5, 1, 5, 1, 0, 1, 0, 1, 0, 5, 0, 5, 0, 1, 0, 1, 0, 5, 0, 5, 5, 1, 5, 1, 5, 1, 5, 1},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,20,13,18, 7,21, 1,17,11,22, 5,16,15,23, 9,19, 3, 0,12, 8, 4,10,14, 2, 6},
+  { 0, 1, 2, 3, 4, 5, 6, 1, 8, 9,10, 5,12, 3,14, 9, 8, 4, 0,12, 2, 6,10,14, 2, 3, 0, 1, 6, 1, 4, 5,10, 5, 8, 9,14, 9,12, 3, 0,12, 8, 4,10,14, 2, 6},
+  { 0, 1, 2, 3, 4, 3, 6, 7, 8, 7,10,11,12,11,14, 1, 2,14,10, 6, 8,12, 0, 4, 8,11,10, 7,12, 1,14,11, 0, 3, 2, 1, 4, 7, 6, 3, 0,12, 8, 4,10,14, 2, 6},
+  { 0, 1, 2, 3, 3, 2, 6, 7, 7, 6,10,11,11,10, 1, 0, 1,10, 6, 2,11, 0, 3, 7,11,10, 6, 7, 0, 1,10,11, 3, 2, 1, 0, 7, 6, 2, 3, 0,11, 7, 3,10, 1, 2, 6},
+  { 0, 1, 2, 3, 4, 0, 3, 7, 8, 4, 7,11, 1, 8,11, 2, 3, 2,11, 7, 4, 8, 1, 0, 4, 8,11, 7, 8, 1, 2,11, 1, 0, 3, 2, 0, 4, 7, 3, 0, 1, 8, 4, 7,11, 2, 3},
+  { 0, 1, 2, 3, 1, 5, 6, 2, 5, 9,10, 6, 9, 0, 3,10, 9, 5, 1, 0, 3, 2, 6,10, 2, 3, 0, 1, 6, 2, 1, 5,10, 6, 5, 9, 3,10, 9, 0, 1, 0, 9, 5, 6,10, 3, 2},
+  { 0, 1, 2, 3, 4, 5, 1, 0, 8, 9, 5, 4, 3, 2, 9, 8, 4, 0, 3, 8, 1, 5, 9, 2, 2, 3, 0, 1, 1, 0, 4, 5, 5, 4, 8, 9, 9, 8, 3, 2, 3, 8, 4, 0, 9, 2, 1, 5},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,16, 5,22,15,19, 9,23, 3,18,13,20, 7,17, 1,21,11,10, 6, 2,14, 0, 4, 8,12},
+  { 0, 1, 2, 3, 4, 3, 6, 7, 8, 7,10,11,12,11,14, 1, 2,14,10, 6, 8,12, 0, 4, 2, 3, 0, 1, 6, 7, 4, 3,10,11, 8, 7,14, 1,12,11,10, 6, 2,14, 0, 4, 8,12},
+  { 0, 1, 2, 3, 4, 5, 6, 1, 8, 9,10, 5,12, 3,14, 9, 8, 4, 0,12, 2, 6,10,14, 8, 5,10, 9,12, 9,14, 3, 0, 3, 2, 1, 4, 1, 6, 5,10, 6, 2,14, 0, 4, 8,12},
+  { 0, 1, 2, 3, 1, 5, 6, 2, 5, 9,10, 6, 9, 0, 3,10, 9, 5, 1, 0, 3, 2, 6,10, 9, 5, 6,10, 0, 9,10, 3, 1, 0, 3, 2, 5, 1, 2, 6,10, 6, 2, 3, 0, 1, 5, 9},
+  { 0, 1, 2, 3, 4, 5, 1, 0, 8, 9, 5, 4, 3, 2, 9, 8, 4, 0, 3, 8, 1, 5, 9, 2, 4, 5, 9, 8, 8, 9, 2, 3, 3, 2, 1, 0, 0, 1, 5, 4, 5, 1, 2, 9, 0, 4, 8, 3},
+  { 0, 1, 2, 3, 4, 5, 6, 7, 2, 1, 0, 3, 6, 5, 4, 7,16,17,18,19,16,19,18,17,16, 5,18, 7,19, 1,17, 3,18, 5,16, 7,17, 1,19, 3, 0, 6, 2, 4, 0, 4, 2, 6},
+  { 0, 1, 2, 3, 4, 3, 6, 1, 2, 1, 0, 3, 6, 3, 4, 1, 2, 4, 0, 6, 2, 6, 0, 4, 2, 3, 0, 1, 6, 1, 4, 3, 0, 3, 2, 1, 4, 1, 6, 3, 0, 6, 2, 4, 0, 4, 2, 6},
+  { 0, 1, 2, 3, 4, 1, 6, 3, 2, 1, 0, 3, 6, 1, 4, 3, 0, 6, 2, 4, 0, 4, 2, 6, 0, 1, 2, 3, 4, 1, 6, 3, 2, 1, 0, 3, 6, 1, 4, 3, 0, 6, 2, 4, 0, 4, 2, 6},
+  { 0, 1, 2, 3, 1, 3, 0, 2, 3, 2, 1, 0, 2, 0, 3, 1, 2, 3, 1, 0, 3, 2, 0, 1, 2, 3, 0, 1, 0, 2, 1, 3, 1, 0, 3, 2, 3, 1, 2, 0, 1, 0, 2, 3, 0, 1, 3, 2},
+  { 0, 1, 2, 3, 2, 3, 1, 0, 1, 0, 3, 2, 3, 2, 0, 1, 2, 0, 3, 1, 1, 3, 0, 2, 2, 3, 0, 1, 1, 0, 2, 3, 3, 2, 1, 0, 0, 1, 3, 2, 3, 1, 2, 0, 0, 2, 1, 3},
+  { 0, 1, 2, 3, 4, 0, 3, 7, 8, 4, 7,11, 1, 8,11, 2, 3, 2,11, 7, 4, 8, 1, 0, 2, 3, 0, 1, 3, 7, 4, 0, 7,11, 8, 4,11, 2, 1, 8,11, 7, 3, 2, 1, 0, 4, 8},
+  { 0, 1, 2, 3, 2, 0, 3, 1, 3, 2, 1, 0, 1, 3, 0, 2, 3, 2, 0, 1, 2, 3, 1, 0, 2, 3, 0, 1, 3, 1, 2, 0, 1, 0, 3, 2, 0, 2, 1, 3, 0, 1, 3, 2, 1, 0, 2, 3},
+  { 0, 1, 2, 3, 4, 3, 6, 1, 2, 1, 0, 3, 6, 3, 4, 1, 2, 4, 0, 6, 2, 6, 0, 4, 0, 1, 2, 3, 4, 3, 6, 1, 2, 1, 0, 3, 6, 3, 4, 1, 2, 4, 0, 6, 2, 6, 0, 4},
+  { 0, 1, 0, 1, 4, 5, 4, 5, 0, 1, 0, 1, 4, 5, 4, 5,16,17,16,17,16,17,16,17,16, 5,16, 5,17, 1,17, 1,16, 5,16, 5,17, 1,17, 1, 0, 4, 0, 4, 0, 4, 0, 4},
+  { 0, 1, 0, 1, 4, 1, 4, 1, 0, 1, 0, 1, 4, 1, 4, 1, 0, 4, 0, 4, 0, 4, 0, 4, 0, 1, 0, 1, 4, 1, 4, 1, 0, 1, 0, 1, 4, 1, 4, 1, 0, 4, 0, 4, 0, 4, 0, 4},
+  { 0, 1, 2, 3, 3, 2, 6, 7, 7, 6,10,11,11,10, 1, 0, 1,10, 6, 2,11, 0, 3, 7, 2, 3, 0, 1, 6, 7, 3, 2,10,11, 7, 6, 1, 0,11,10, 6, 2, 1,10, 3, 7,11, 0},
+  { 0, 1, 2, 3, 3, 2, 0, 1, 1, 0, 3, 2, 2, 3, 1, 0, 1, 3, 0, 2, 2, 0, 3, 1, 2, 3, 0, 1, 0, 1, 3, 2, 3, 2, 1, 0, 1, 0, 2, 3, 0, 2, 1, 3, 3, 1, 2, 0},
+  { 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+};
 
-  int i, a1, a2;
 
-  for (int pos = 0; pos < NUM_TRANSFORMATIONS; pos++)
-    if ((s & (1 << pos)) == 0) {
+int rotx(unsigned int p) {
+  assert(p < NUM_TRANSFORMATIONS);
+  return _rotx[p];
+}
+int roty(unsigned int p) {
+  assert(p < NUM_TRANSFORMATIONS);
+  return _roty[p];
+}
+int rotz(unsigned int p) {
+  assert(p < NUM_TRANSFORMATIONS);
+  return _rotz[p];
+}
 
-      for (a1 = 1; a1 < NUM_TRANSFORMATIONS_MIRROR; a1++)
-        if (s1 & (((symmetries_t)1) << a1)) {
-          i = transMult[pos][a1];
-          if (i > pos)
-            s |= (((symmetries_t)1) << i);
-        }
-
-      for (a2 = 1; a2 < NUM_TRANSFORMATIONS_MIRROR; a2++)
-        if (s2 & (((symmetries_t)1) << a2)) {
-          i = transMult[pos][a2];
-          if (i > pos)
-            s |= (((symmetries_t)1) << i);
-        }
-
-      for (a1 = 1; a1 < NUM_TRANSFORMATIONS_MIRROR; a1++)
-        for (a2 = 1; a2 < NUM_TRANSFORMATIONS_MIRROR; a2++)
-          if ((s1 & (((symmetries_t)1) << a1)) && (s2 & (((symmetries_t)1) << a2))) {
-            i = transMult[transMult[pos][a1]][a2];
-            if (i > pos)
-              s |= (((symmetries_t)1) << i);
-
-            i = transMult[transMult[pos][a2]][a1];
-            if (i > pos)
-              s |= (((symmetries_t)1) << i);
-          }
-    }
-
-  return s;
+unsigned char transAdd(unsigned char t1, unsigned char t2) {
+  assert(t1 < NUM_TRANSFORMATIONS_MIRROR);
+  assert(t2 < NUM_TRANSFORMATIONS_MIRROR);
+  return transMult[t1][t2];
 }
 
 bool symmetrieContainsTransformation(symmetries_t s, unsigned int t) {
 
-  return ((s & (1 << t)) != 0);
+  assert(s < NUM_SYMMETRY_GROUOPS);
+  assert(t < NUM_TRANSFORMATIONS_MIRROR);
+
+  return ((symmetries[s] & ((unsigned long long)1 << t)) != 0);
 }
 
-unsigned int numSymmetries(symmetries_t s) {
+unsigned char minimizeTransformation(symmetries_t s, unsigned char trans) {
 
-  s -= ((s >> 1) & (symmetries_t)0x5555555555555555ll);
-  s = (((s >> 2) & (symmetries_t)0x3333333333333333ll) + (s & (symmetries_t)0x3333333333333333ll));
-  s = (((s >> 4) + s) & (symmetries_t)0x0f0f0f0f0f0f0f0fll);
+  assert(s < NUM_SYMMETRY_GROUOPS);
+  assert(trans < NUM_TRANSFORMATIONS_MIRROR);
+
+  return transformationMinimizer[s][trans];
+}
+
+unsigned int countSymmetryIntersection(symmetries_t s1, symmetries_t s2) {
+
+  assert(s1 < NUM_SYMMETRY_GROUOPS);
+  assert(s2 < NUM_SYMMETRY_GROUOPS);
+
+  unsigned long long s = symmetries[s1] & symmetries[s2];
+
+  s -= ((s >> 1) & 0x5555555555555555ll);
+  s = (((s >> 2) & 0x3333333333333333ll) + (s & 0x3333333333333333ll));
+  s = (((s >> 4) + s) & 0x0f0f0f0f0f0f0f0fll);
   s += (s >> 8);
   s += (s >> 16);
   s += (s >> 32);
   return (unsigned int)(s & 0x3f);
 }
 
+bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2) {
+
+  assert(resultSym < NUM_SYMMETRY_GROUOPS);
+  assert(s2 < NUM_SYMMETRY_GROUOPS);
+
+  return symmetries[resultSym] & symmetries[s2] & ~((unsigned long long)1);
+}
+
+symmetries_t symmetryCalcuation(const voxel_c *pp) {
+
+#ifndef NDEBUG
+
+  assert(pp);
+
+  /* this is debug code that checks, if we really have all symmetry groups included
+   * it should be finally removed some day in the future
+   */
+  unsigned long long s = 1;
+  for (int i = 1; i < NUM_TRANSFORMATIONS_MIRROR; i++) {
+    voxel_c v(pp, i);
+    if (pp->identicalInBB(&v))
+      s |= ((unsigned long long)1) << i;
+  }
+
+  int i;
+  for (i = 0; i < NUM_SYMMETRY_GROUOPS; i++)
+    if (symmetries[i] == s)
+      break;
+
+  /* if we can not find the current symmetry group in our list
+   * lets create thr groups for all possible orientation of the piece
+   * as they might differ for different initial orientations
+   */
+  if (symmetries[i] != s) {
+
+    for (int i = 1; i < NUM_TRANSFORMATIONS_MIRROR; i++) {
+      voxel_c p(pp, i);
+
+      unsigned long long s = 1;
+      for (int i = 1; i < NUM_TRANSFORMATIONS_MIRROR; i++) {
+        voxel_c v(pp, i);
+        if (pp->identicalInBB(&v))
+          s |= ((unsigned long long)1) << i;
+      }
+
+      printf("%llx\n", s);
+    }
+
+    assert(s == symmetries[i]);
+  }
+
+  s = i;
+#endif
+
+  /* this is autogenerated code, the tool to create this code is in tester.cpp function
+   * makeSymmetryTree(0, 0);
+   */
+#if 1
+  voxel_c v(pp, 26);
+  if (pp->identicalInBB(&v)) {
+    voxel_c v(pp, 2);
+    if (pp->identicalInBB(&v)) {
+      voxel_c v(pp, 9);
+      if (pp->identicalInBB(&v)) {
+        voxel_c v(pp, 1);
+        if (pp->identicalInBB(&v)) {
+          voxel_c v(pp, 4);
+          if (pp->identicalInBB(&v)) {
+            assert(s == 81);
+            return (symmetries_t)81; //FFFFFFFFFFFF
+          } else {
+            assert(s == 46);
+            return (symmetries_t)46; //000F0F000F0F
+          }
+        } else {
+          assert(s == 43);
+          return (symmetries_t)43; //000A05000A05
+        }
+      } else {
+        voxel_c v(pp, 8);
+        if (pp->identicalInBB(&v)) {
+          voxel_c v(pp, 4);
+          if (pp->identicalInBB(&v)) {
+            assert(s == 55);
+            return (symmetries_t)55; //005555005555
+          } else {
+            voxel_c v(pp, 5);
+            if (pp->identicalInBB(&v)) {
+              assert(s == 80);
+              return (symmetries_t)80; //AAA5A5AAA5A5
+            } else {
+              voxel_c v(pp, 16);
+              if (pp->identicalInBB(&v)) {
+                assert(s == 77);
+                return (symmetries_t)77; //550505550505
+              } else {
+                assert(s == 37);
+                return (symmetries_t)37; //000505000505
+              }
+            }
+          }
+        } else {
+          assert(s == 23);
+          return (symmetries_t)23; //000005000005
+        }
+      }
+    } else {
+      voxel_c v(pp, 6);
+      if (pp->identicalInBB(&v)) {
+        voxel_c v(pp, 8);
+        if (pp->identicalInBB(&v)) {
+          assert(s == 52);
+          return (symmetries_t)52; //001414004141
+        } else {
+          voxel_c v(pp, 9);
+          if (pp->identicalInBB(&v)) {
+            assert(s == 79);
+            return (symmetries_t)79; //812814248241
+          } else {
+            voxel_c v(pp, 11);
+            if (pp->identicalInBB(&v)) {
+              assert(s == 71);
+              return (symmetries_t)71; //128214482841
+            } else {
+              assert(s == 25);
+              return (symmetries_t)25; //000014000041
+            }
+          }
+        }
+      } else {
+        voxel_c v(pp, 14);
+        if (pp->identicalInBB(&v)) {
+          voxel_c v(pp, 5);
+          if (pp->identicalInBB(&v)) {
+            assert(s == 74);
+            return (symmetries_t)74; //211284844821
+          } else {
+            voxel_c v(pp, 7);
+            if (pp->identicalInBB(&v)) {
+              assert(s == 72);
+              return (symmetries_t)72; //181824424281
+            } else {
+              assert(s == 48);
+              return (symmetries_t)48; //001004004001
+            }
+          }
+        } else {
+          voxel_c v(pp, 10);
+          if (pp->identicalInBB(&v)) {
+            voxel_c v(pp, 18);
+            if (pp->identicalInBB(&v)) {
+              assert(s == 69);
+              return (symmetries_t)69; //110104440401
+            } else {
+              assert(s == 28);
+              return (symmetries_t)28; //000104000401
+            }
+          } else {
+            voxel_c v(pp, 5);
+            if (pp->identicalInBB(&v)) {
+              assert(s == 73);
+              return (symmetries_t)73; //200084800021
+            } else {
+              voxel_c v(pp, 7);
+              if (pp->identicalInBB(&v)) {
+                assert(s == 62);
+                return (symmetries_t)62; //080024020081
+              } else {
+                voxel_c v(pp, 8);
+                if (pp->identicalInBB(&v)) {
+                  assert(s == 34);
+                  return (symmetries_t)34; //000404000101
+                } else {
+                  voxel_c v(pp, 9);
+                  if (pp->identicalInBB(&v)) {
+                    assert(s == 41);
+                    return (symmetries_t)41; //000804000201
+                  } else {
+                    voxel_c v(pp, 11);
+                    if (pp->identicalInBB(&v)) {
+                      assert(s == 31);
+                      return (symmetries_t)31; //000204000801
+                    } else {
+                      voxel_c v(pp, 13);
+                      if (pp->identicalInBB(&v)) {
+                        assert(s == 61);
+                        return (symmetries_t)61; //028004082001
+                      } else {
+                        voxel_c v(pp, 15);
+                        if (pp->identicalInBB(&v)) {
+                          assert(s == 78);
+                          return (symmetries_t)78; //802004208001
+                        } else {
+                          voxel_c v(pp, 18);
+                          if (pp->identicalInBB(&v)) {
+                            assert(s == 57);
+                            return (symmetries_t)57; //010004040001
+                          } else {
+                            voxel_c v(pp, 22);
+                            if (pp->identicalInBB(&v)) {
+                              assert(s == 64);
+                              return (symmetries_t)64; //100004400001
+                            } else {
+                              assert(s == 22);
+                              return (symmetries_t)22; //000004000001
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } else {
+    voxel_c v(pp, 2);
+    if (pp->identicalInBB(&v)) {
+      voxel_c v(pp, 8);
+      if (pp->identicalInBB(&v)) {
+        voxel_c v(pp, 25);
+        if (pp->identicalInBB(&v)) {
+          assert(s == 44);
+          return (symmetries_t)44; //000A0A000505
+        } else {
+          voxel_c v(pp, 28);
+          if (pp->identicalInBB(&v)) {
+            assert(s == 54);
+            return (symmetries_t)54; //005050000505
+          } else {
+            assert(s == 76);
+            return (symmetries_t)76; //550000000505
+          }
+        }
+      } else {
+        voxel_c v(pp, 32);
+        if (pp->identicalInBB(&v)) {
+          voxel_c v(pp, 1);
+          if (pp->identicalInBB(&v)) {
+            assert(s == 45);
+            return (symmetries_t)45; //000F0000000F
+          } else {
+            voxel_c v(pp, 9);
+            if (pp->identicalInBB(&v)) {
+              assert(s == 38);
+              return (symmetries_t)38; //00050A000A05
+            } else {
+              assert(s == 36);
+              return (symmetries_t)36; //000500000005
+            }
+          }
+        } else {
+          voxel_c v(pp, 9);
+          if (pp->identicalInBB(&v)) {
+            assert(s == 7);
+            return (symmetries_t)7; //000000000A05
+          } else {
+            voxel_c v(pp, 33);
+            if (pp->identicalInBB(&v)) {
+              assert(s == 42);
+              return (symmetries_t)42; //000A00000005
+            } else {
+              assert(s == 1);
+              return (symmetries_t)1; //000000000005
+            }
+          }
+        }
+      }
+    } else {
+      voxel_c v(pp, 24);
+      if (pp->identicalInBB(&v)) {
+        voxel_c v(pp, 8);
+        if (pp->identicalInBB(&v)) {
+          voxel_c v(pp, 4);
+          if (pp->identicalInBB(&v)) {
+            assert(s == 50);
+            return (symmetries_t)50; //001111001111
+          } else {
+            voxel_c v(pp, 6);
+            if (pp->identicalInBB(&v)) {
+              assert(s == 53);
+              return (symmetries_t)53; //004141004141
+            } else {
+              assert(s == 27);
+              return (symmetries_t)27; //000101000101
+            }
+          }
+        } else {
+          voxel_c v(pp, 10);
+          if (pp->identicalInBB(&v)) {
+            voxel_c v(pp, 16);
+            if (pp->identicalInBB(&v)) {
+              assert(s == 70);
+              return (symmetries_t)70; //110401110401
+            } else {
+              voxel_c v(pp, 18);
+              if (pp->identicalInBB(&v)) {
+                assert(s == 75);
+                return (symmetries_t)75; //440401440401
+              } else {
+                assert(s == 33);
+                return (symmetries_t)33; //000401000401
+              }
+            }
+          } else {
+            voxel_c v(pp, 9);
+            if (pp->identicalInBB(&v)) {
+              assert(s == 30);
+              return (symmetries_t)30; //000201000201
+            } else {
+              voxel_c v(pp, 11);
+              if (pp->identicalInBB(&v)) {
+                assert(s == 40);
+                return (symmetries_t)40; //000801000801
+              } else {
+                assert(s == 21);
+                return (symmetries_t)21; //000001000001
+              }
+            }
+          }
+        }
+      } else {
+        voxel_c v(pp, 6);
+        if (pp->identicalInBB(&v)) {
+          voxel_c v(pp, 8);
+          if (pp->identicalInBB(&v)) {
+            assert(s == 9);
+            return (symmetries_t)9; //000000004141
+          } else {
+            voxel_c v(pp, 9);
+            if (pp->identicalInBB(&v)) {
+              assert(s == 14);
+              return (symmetries_t)14; //000000248241
+            } else {
+              voxel_c v(pp, 11);
+              if (pp->identicalInBB(&v)) {
+                assert(s == 18);
+                return (symmetries_t)18; //000000482841
+              } else {
+                voxel_c v(pp, 34);
+                if (pp->identicalInBB(&v)) {
+                  assert(s == 51);
+                  return (symmetries_t)51; //001400000041
+                } else {
+                  assert(s == 2);
+                  return (symmetries_t)2; //000000000041
+                }
+              }
+            }
+          }
+        } else {
+          voxel_c v(pp, 28);
+          if (pp->identicalInBB(&v)) {
+            voxel_c v(pp, 8);
+            if (pp->identicalInBB(&v)) {
+              assert(s == 49);
+              return (symmetries_t)49; //001010000101
+            } else {
+              voxel_c v(pp, 13);
+              if (pp->identicalInBB(&v)) {
+                assert(s == 66);
+                return (symmetries_t)66; //100210082001
+              } else {
+                voxel_c v(pp, 14);
+                if (pp->identicalInBB(&v)) {
+                  assert(s == 35);
+                  return (symmetries_t)35; //000410004001
+                } else {
+                  voxel_c v(pp, 15);
+                  if (pp->identicalInBB(&v)) {
+                    assert(s == 59);
+                    return (symmetries_t)59; //010810208001
+                  } else {
+                    assert(s == 24);
+                    return (symmetries_t)24; //000010000001
+                  }
+                }
+              }
+            }
+          } else {
+            voxel_c v(pp, 18);
+            if (pp->identicalInBB(&v)) {
+              voxel_c v(pp, 5);
+              if (pp->identicalInBB(&v)) {
+                assert(s == 20);
+                return (symmetries_t)20; //000000844821
+              } else {
+                voxel_c v(pp, 10);
+                if (pp->identicalInBB(&v)) {
+                  assert(s == 17);
+                  return (symmetries_t)17; //000000440401
+                } else {
+                  voxel_c v(pp, 32);
+                  if (pp->identicalInBB(&v)) {
+                    assert(s == 65);
+                    return (symmetries_t)65; //100100040001
+                  } else {
+                    assert(s == 11);
+                    return (symmetries_t)11; //000000040001
+                  }
+                }
+              }
+            } else {
+              voxel_c v(pp, 40);
+              if (pp->identicalInBB(&v)) {
+                voxel_c v(pp, 5);
+                if (pp->identicalInBB(&v)) {
+                  assert(s == 60);
+                  return (symmetries_t)60; //011200800021
+                } else {
+                  voxel_c v(pp, 10);
+                  if (pp->identicalInBB(&v)) {
+                    assert(s == 68);
+                    return (symmetries_t)68; //110000000401
+                  } else {
+                    voxel_c v(pp, 22);
+                    if (pp->identicalInBB(&v)) {
+                      assert(s == 58);
+                      return (symmetries_t)58; //010100400001
+                    } else {
+                      assert(s == 56);
+                      return (symmetries_t)56; //010000000001
+                    }
+                  }
+                }
+              } else {
+                voxel_c v(pp, 7);
+                if (pp->identicalInBB(&v)) {
+                  voxel_c v(pp, 9);
+                  if (pp->identicalInBB(&v)) {
+                    assert(s == 16);
+                    return (symmetries_t)16; //000000424281
+                  } else {
+                    voxel_c v(pp, 35);
+                    if (pp->identicalInBB(&v)) {
+                      assert(s == 67);
+                      return (symmetries_t)67; //101800020081
+                    } else {
+                      assert(s == 10);
+                      return (symmetries_t)10; //000000020081
+                    }
+                  }
+                } else {
+                  voxel_c v(pp, 5);
+                  if (pp->identicalInBB(&v)) {
+                    assert(s == 19);
+                    return (symmetries_t)19; //000000800021
+                  } else {
+                    voxel_c v(pp, 8);
+                    if (pp->identicalInBB(&v)) {
+                      assert(s == 3);
+                      return (symmetries_t)3; //000000000101
+                    } else {
+                      voxel_c v(pp, 9);
+                      if (pp->identicalInBB(&v)) {
+                        assert(s == 4);
+                        return (symmetries_t)4; //000000000201
+                      } else {
+                        voxel_c v(pp, 10);
+                        if (pp->identicalInBB(&v)) {
+                          assert(s == 5);
+                          return (symmetries_t)5; //000000000401
+                        } else {
+                          voxel_c v(pp, 11);
+                          if (pp->identicalInBB(&v)) {
+                            assert(s == 6);
+                            return (symmetries_t)6; //000000000801
+                          } else {
+                            voxel_c v(pp, 13);
+                            if (pp->identicalInBB(&v)) {
+                              assert(s == 12);
+                              return (symmetries_t)12; //000000082001
+                            } else {
+                              voxel_c v(pp, 14);
+                              if (pp->identicalInBB(&v)) {
+                                assert(s == 8);
+                                return (symmetries_t)8; //000000004001
+                              } else {
+                                voxel_c v(pp, 15);
+                                if (pp->identicalInBB(&v)) {
+                                  assert(s == 13);
+                                  return (symmetries_t)13; //000000208001
+                                } else {
+                                  voxel_c v(pp, 22);
+                                  if (pp->identicalInBB(&v)) {
+                                    assert(s == 15);
+                                    return (symmetries_t)15; //000000400001
+                                  } else {
+                                    voxel_c v(pp, 32);
+                                    if (pp->identicalInBB(&v)) {
+                                      assert(s == 26);
+                                      return (symmetries_t)26; //000100000001
+                                    } else {
+                                      voxel_c v(pp, 33);
+                                      if (pp->identicalInBB(&v)) {
+                                        assert(s == 29);
+                                        return (symmetries_t)29; //000200000001
+                                      } else {
+                                        voxel_c v(pp, 34);
+                                        if (pp->identicalInBB(&v)) {
+                                          assert(s == 32);
+                                          return (symmetries_t)32; //000400000001
+                                        } else {
+                                          voxel_c v(pp, 35);
+                                          if (pp->identicalInBB(&v)) {
+                                            assert(s == 39);
+                                            return (symmetries_t)39; //000800000001
+                                          } else {
+                                            voxel_c v(pp, 36);
+                                            if (pp->identicalInBB(&v)) {
+                                              assert(s == 47);
+                                              return (symmetries_t)47; //001000000001
+                                            } else {
+                                              voxel_c v(pp, 44);
+                                              if (pp->identicalInBB(&v)) {
+                                                assert(s == 63);
+                                                return (symmetries_t)63; //100000000001
+                                              } else {
+                                                assert(s == 0);
+                                                return (symmetries_t)0; //000000000001
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+#endif
+}

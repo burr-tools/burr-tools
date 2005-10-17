@@ -125,6 +125,15 @@ assembly_c::assembly_c(const assembly_c * orig) {
   
 }
 
+assembly_c::assembly_c(const assembly_c * orig, unsigned char trans, const puzzle_c * puz, unsigned int prob) {
+  for (unsigned int i = 0; i < orig->placements.size(); i++)
+    placements.push_back(placement_c(orig->getTransformation(i), orig->getX(i), orig->getY(i), orig->getZ(i)));
+
+  transform(trans, puz, prob);
+
+}
+
+
 xml::node assembly_c::save(void) const {
 
   xml::node nd("assembly");
@@ -150,36 +159,151 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
 
   if (!trans) return;
 
+  bool flip = false;
+  int rot = trans;
+
+  int rx, ry, rz;
+  puz->probGetResultShape(prob)->getHotspot(trans, &rx, &ry, &rz);
+
+  if (trans >= NUM_TRANSFORMATIONS) {
+    flip = true;
+    rot = trans - NUM_TRANSFORMATIONS;
+  }
+
   int p = 0;
-  
+
   for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
     for (unsigned int j = 0; j < puz->probGetShapeCount(prob, i); j++) {
+
+      /* now do the transformation */
+      if (flip)
+        placements[p].xpos = -placements[p].xpos;
       
-      puz->probGetShapeShape(prob, i)->transformPlacement(trans, puz->probGetResultShape(prob),
-                                                          &placements[p].transformation,
-                                                          &placements[p].xpos,
-                                                          &placements[p].ypos,
-                                                          &placements[p].zpos);
+      for (int t = 0; t < rotx(rot); t++) {
+        int tmp = placements[p].ypos;
+        placements[p].ypos = -placements[p].zpos;
+        placements[p].zpos = tmp;
+      }
+
+      for (int t = 0; t < roty(rot); t++) {
+        int tmp = placements[p].zpos;
+        placements[p].zpos = placements[p].xpos;
+        placements[p].xpos = -tmp;
+      }
+      for (int t = 0; t < rotz(rot); t++) {
+        int tmp = placements[p].xpos;
+        placements[p].xpos = -placements[p].ypos;
+        placements[p].ypos = tmp;
+      }
+      
+      placements[p].xpos += rx;
+      placements[p].ypos += ry;
+      placements[p].zpos += rz;
+
+      /* add the piece transformations and also find the smallest possible
+       * transformation that results in the same piece
+       */
+      placements[p].transformation = transAdd(placements[p].transformation, trans);
+
+      unsigned char tr = puz->probGetShapeShape(prob, i)->normalizeTransformation(placements[p].transformation);
+
+      if (tr != placements[p].transformation) {
+
+        /* alright, the normalized orientation of the piece is different from the calculated one
+         * we now neet to change the placement of the piece so, that it is at the right position with
+         * the normalized position
+         * this is the easiest solution but by far the slowest
+         */
+        int ax, ay, az, bx, by, bz;
+        puz->probGetShapeShape(prob, i)->getHotspot(placements[p].transformation, &ax, &ay, &az);
+        puz->probGetShapeShape(prob, i)->getHotspot(tr, &bx, &by, &bz);
+
+        placements[p].xpos += bx-ax;
+        placements[p].ypos += by-ay;
+        placements[p].zpos += bz-az;
+
+        placements[p].transformation = tr;
+      }
+
       p++;
     }
 
     /* now we need to sort pieces to that they are sorted by placement */
+    if (puz->probGetShapeCount(prob, i) > 1) {
+
+      /* as we normally only have a few identical pieces that need sorting we use bubble sort */
+      for (unsigned int a = 1; a <= puz->probGetShapeCount(prob, i) - 1; a++)
+        for (unsigned int b = a + 1; b <= puz->probGetShapeCount(prob, i); b++)
+          if (placements[p-a] < placements[p-b]) {
+
+            placement_c tmp(placements[p-b]);
+            placements[p-b] = placements[p-a];
+            placements[p-a] = tmp;
+          }
+    }
+
   } 
 }
 
-void assembly_c::equalize(const puzzle_c * puz, unsigned int prob) {
-
-  unsigned char best = 0;
+bool assembly_c::compare(const assembly_c & b, unsigned int pivot) const {
   
-  for (unsigned char t = 1; t < NUM_TRANSFORMATIONS; t++) {
-    assembly_c n(this);
-    n.transform(t, puz, prob);
-    if (n < *this)
-      best = t;
+  assert(placements.size() == b.placements.size());
+  assert(pivot < placements.size());
+
+  /* we first compare the pivot piece and leave that one out later on
+   * we do that because the pivot piece is the one that das reduced
+   * placements and may not occure in all possible positions and thus
+   * the rotation reduction algorithm may try to select on assembly
+   * that doesn't exist
+   */
+  if (placements[pivot] < b.placements[pivot]) return true;
+  if (!(placements[pivot] == b.placements[pivot])) return false;
+  
+  for (unsigned int i = 0; i < placements.size(); i++) {
+    if (i != pivot) {
+      if (placements[i] < b.placements[i]) return true;
+      /* here it can only be larger or equal, so if it is not
+       * equal it must be larger so return false
+       */
+      if (!(placements[i] == b.placements[i])) return false;
+    }
   }
 
-  if (best)
-    transform(best, puz, prob);
+  return false;
+}
+
+
+bool assembly_c::smallerRotationExists(const puzzle_c * puz, unsigned int prob, unsigned int pivot) const {
+
+  symmetries_t s = puz->probGetResultShape(prob)->selfSymmetries();
+
+  for (unsigned char t = 1; t < NUM_TRANSFORMATIONS_MIRROR; t++) {
+
+    if (symmetrieContainsTransformation(s, t)) {
+
+      assembly_c tmp(this, t, puz, prob);
+
+#if 0
+      printf("pivot: %i\n", pivot);
+      printf("comp: ");
+      for (int i = 0; i < placements.size(); i++)
+        printf("(%i  %i %i %i) ", placements[i].transformation, placements[i].xpos, placements[i].ypos, placements[i].zpos);
+      printf("\nwith: ");
+      for (int i = 0; i < tmp.placements.size(); i++)
+        printf("(%i  %i %i %i) ", tmp.placements[i].transformation, tmp.placements[i].xpos, tmp.placements[i].ypos, tmp.placements[i].zpos);
+
+      printf("\n");
+#endif
+      if (tmp.compare(*this, pivot)) {
+#if 0
+        printf("less\n");
+#endif
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 

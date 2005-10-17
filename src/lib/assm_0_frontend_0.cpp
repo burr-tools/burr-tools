@@ -172,41 +172,40 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
    * that are present in the piece
    */
   symmetries_t resultSym = result->selfSymmetries();
-  unsigned int symBreakerPiece = 0xFFFFFFFF;
+  unsigned int symBreakerShape = 0xFFFFFFFF;
 
   /* so, if we have just the self-symmetry in the result, everything needs to be tried
    * and not rotations can be removed
    */
-  if (resultSym != 1) {
+  if (!unSymmetric(resultSym)) {
 
     /* now we try to find the most "suitable" piece for our rotation removal. What is
      * suitable? Suitable is the piece shape that has the least common symmetries with
      * the result and that has the fiewest pieces
      */
     unsigned int bestFound = 25;
+    unsigned int symBreakerPiece = 0;
+    unsigned int pc = 0;
 
     for (unsigned int i = 0; i < puz->probShapeNumber(problemNum); i++) {
 
-      symmetries_t multSym = resultSym & puz->probGetShapeShape(problemNum, i)->selfSymmetries();
+      unsigned int cnt = countSymmetryIntersection(resultSym, puz->probGetShapeShape(problemNum, i)->selfSymmetries());
 
-      if ((numSymmetries(multSym) < bestFound) ||
-          (numSymmetries(multSym) == bestFound) && 
-	  (puz->probGetShapeCount(problemNum, i) < puz->probGetShapeCount(problemNum, symBreakerPiece))) {
-        bestFound = numSymmetries(multSym);
-        symBreakerPiece = i;
+      if ((cnt < bestFound) ||
+          (cnt == bestFound) &&
+          (puz->probGetShapeCount(problemNum, i) < puz->probGetShapeCount(problemNum, symBreakerShape))) {
+        bestFound = cnt;
+        symBreakerShape = i;
+        symBreakerPiece += pc;
       }
+
+      pc += puz->probGetShapeCount(problemNum, i);
     }
 
-    symmetries_t tmp = resultSym & puz->probGetShapeShape(problemNum, symBreakerPiece)->selfSymmetries() & ~((symmetries_t)1);
-
-    if (tmp || (puz->probGetShapeCount(problemNum, symBreakerPiece) > 1))
-      checkForTransformedAssemblies();
-
-    /* this is the function where the magic goes on. This function returns a symmetry set containing
-     * all symmetries that the selected piece must NOT be placed in. Look at the implementation for
-     * a detailed description of how it works
-     */
-    resultSym = multiplySymmetries(resultSym, puz->probGetShapeShape(problemNum, symBreakerPiece)->selfSymmetries());
+    bool tmp = symmetriesLeft(resultSym, puz->probGetShapeShape(problemNum, symBreakerShape)->selfSymmetries());
+    
+    if (tmp || (puz->probGetShapeCount(problemNum, symBreakerShape) > 1))
+      checkForTransformedAssemblies(symBreakerPiece);
   }
 
   /* node 0 is the start node for everything */
@@ -230,15 +229,14 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
 
       /* this array contains all the pieces found so far, this will help us
        * to not add two times the same piece to the structur */
-      voxel_c * cache[NUM_TRANSFORMATIONS];
+      voxel_c * cache[NUM_TRANSFORMATIONS_MIRROR];
       unsigned int cachefill = 0;
   
       /* go through all possible rotations of the piece
        * if shape is new to cache, add it to the cache and also
        * add the shape to the matrix, in all positions that it fits
        */
-      for (unsigned int rot = 0; rot < NUM_TRANSFORMATIONS; rot++) {
-        bool skipRotation = ((pc == symBreakerPiece) && (piececount == 0) && symmetrieContainsTransformation(resultSym, rot));
+      for (unsigned int rot = 0; rot < NUM_TRANSFORMATIONS; rot++)
         if (voxel_c * rotation = addToCache(cache, &cachefill, new voxel_c(puz->probGetShapeShape(problemNum, pc), rot))) {
           for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
             for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
@@ -264,8 +262,15 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
                             AddFillerNode();
                         }
                 }
+
+
+        /* for the symmetry breaker piece we also add all symmetries of the box */
+        if ((pc == symBreakerShape) && (piececount == 0))
+          for (unsigned int r = 1; r < NUM_TRANSFORMATIONS_MIRROR; r++)
+            if (symmetrieContainsTransformation(resultSym, r))
+              addToCache(cache, &cachefill, new voxel_c(puz->probGetShapeShape(problemNum, pc), transAdd(rot, r)));
         }
-      }
+
       for (unsigned int i = 0; i < cachefill; i++)  delete cache[i];
     }
 

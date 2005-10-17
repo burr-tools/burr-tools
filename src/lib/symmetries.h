@@ -25,6 +25,8 @@
 #define NUM_TRANSFORMATIONS 24
 #define NUM_TRANSFORMATIONS_MIRROR 48
 
+class voxel_c;
+
 /* one piece can have 48 symmetries. 24 rotational and another 24 rotational with mirroring.
  * the mirroring is possible to avoid finding mirrored solutions.
  * All the symmetries are enumbered. The first 24 are the not mirrored. the other 24 are
@@ -41,25 +43,28 @@ int rotz(unsigned int p);
 /* this type is used to collect all the symmetries that a piece can have. For each symmetry
  * the corresponding bit is set
  */
-#ifdef WIN32
-typedef unsigned long long symmetries_t;
-#else
-#include <sys/types.h>
-typedef u_int64_t symmetries_t;
-#endif
+typedef unsigned char symmetries_t;
 
 /* this return true, if the symmetry contains the given transformation */
 bool symmetrieContainsTransformation(symmetries_t s, unsigned int t);
 
-/* returns the number of rotations that are contained in this symmetry */
-unsigned int numSymmetries(symmetries_t s);
-
-/* this function returns a new symmetry class that contains both symmetries
- * at once
- */
-symmetries_t multiplySymmetries(symmetries_t s1, symmetries_t s2);
-
 unsigned char transAdd(unsigned char t1, unsigned char t2);
+
+/* find the first transformation, for a shape with the given transformation that
+ * retults in a shape identical to the given transformation
+ */
+unsigned char minimizeTransformation(symmetries_t s, unsigned char trans);
+
+#define unSymmetric(s) ((s) == 0)
+
+unsigned int countSymmetryIntersection(symmetries_t s1, symmetries_t s2);
+bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2);
+
+#define symmetryInvalid() (0xFF)
+
+#define isSymmetryInvalid(s) ((s) == 0xFF)
+
+symmetries_t symmetryCalcuation(const voxel_c * pp);
 
 #endif
 

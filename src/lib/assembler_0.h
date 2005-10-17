@@ -83,6 +83,9 @@ class assembler_0_c : public assembler_c {
 
 private:
 
+  const puzzle_c * puzzle;
+  unsigned int problem;
+
   /* this are the members of the node. One array for each member. This
    * accellerates access.
    *
@@ -268,14 +271,8 @@ private:
   /* the members for rotations avoidment
    */
   bool avoidTransformedAssemblies;
+  unsigned int avoidTransformedPivot;
 
-  /* this set contains all the solutions found up to now but
-   * only when avoidTransformedAssemblies is true
-   * otherwise this is not used
-   * the set must be restored with the already found solutions
-   * on load
-   */
-  std::set<assembly_c*> assemblySet;
 
 protected:
 
@@ -345,7 +342,7 @@ protected:
    * rotations it should call this funtion. This will then add an additional check
    * for each found assembly
    */
-  void checkForTransformedAssemblies(void);
+  void checkForTransformedAssemblies(unsigned int pivot);
 
 public:
 

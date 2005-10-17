@@ -95,44 +95,117 @@ static voxel_c * transform(const voxel_c * p, int nr) {
   return erg;
 }
 
+unsigned long long foundSym[200] = {
 
-unsigned int findSelfSymmetry(voxel_c * piece) {
+0x000000000001LL,
+0x000000000005LL,
+0x000000000041LL,
+0x000000000101LL,
+0x000000000201LL,
+0x000000000401LL,
+0x000000000801LL,
+0x000000000A05LL,
+0x000000004001LL,
+0x000000004141LL,
+0x000000020081LL,
+0x000000040001LL,
+0x000000082001LL,
+0x000000208001LL,
+0x000000248241LL,
+0x000000400001LL,
+0x000000424281LL,
+0x000000440401LL,
+0x000000482841LL,
+0x000000800021LL,
+0x000000844821LL,
+0x000001000001LL,
+0x000004000001LL,
+0x000005000005LL,
+0x000010000001LL,
+0x000014000041LL,
+0x000100000001LL,
+0x000101000101LL,
+0x000104000401LL,
+0x000200000001LL,
+0x000201000201LL,
+0x000204000801LL,
+0x000400000001LL,
+0x000401000401LL,
+0x000404000101LL,
+0x000410004001LL,
+0x000500000005LL,
+0x000505000505LL,
+0x00050A000A05LL,
+0x000800000001LL,
+0x000801000801LL,
+0x000804000201LL,
+0x000A00000005LL,
+0x000A05000A05LL,
+0x000A0A000505LL,
+0x000F0000000FLL,
+0x000F0F000F0FLL,
+0x001000000001LL,
+0x001004004001LL,
+0x001010000101LL,
+0x001111001111LL,
+0x001400000041LL,
+0x001414004141LL,
+0x004141004141LL,
+0x005050000505LL,
+0x005555005555LL,
+0x010000000001LL,
+0x010004040001LL,
+0x010100400001LL,
+0x010810208001LL,
+0x011200800021LL,
+0x028004082001LL,
+0x080024020081LL,
+0x100000000001LL,
+0x100004400001LL,
+0x100100040001LL,
+0x100210082001LL,
+0x101800020081LL,
+0x110000000401LL,
+0x110104440401LL,
+0x110401110401LL,
+0x128214482841LL,
+0x181824424281LL,
+0x200084800021LL,
+0x211284844821LL,
+0x440401440401LL,
+0x550000000505LL,
+0x550505550505LL,
+0x802004208001LL,
+0x812814248241LL,
+0xAAA5A5AAA5A5LL,
+0xFFFFFFFFFFFFLL,
 
-  unsigned int result = 1;
-
-  for (int i = 1; i < NUM_TRANSFORMATIONS; i++) {
-
-    voxel_c * rot = transform(piece, i);
-
-    if (*rot == *piece)
-      result |= (1 << i);
-
-    delete rot;
-  }
-
-  return result;
-}
-
-unsigned int foundSym[200] = {
-  0x20081, 0x208001, 0x800021, 0x82001, 0x801, 0x41, 0x401, 0x40001, 0x101, 0x4001,
-  0x400001, 0x201, 0x5, 0x844821, 0x482841, 0x424281, 0x248241, 0x110401, 0x1111,
-  0x4141, 0xf, 0xa05, 0x440401, 0x505, 0xaaa5a5, 0x1,
-  0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 
-unsigned int syms = 26;
+unsigned int syms = 82;
 
+const char * longlong2string(unsigned long long s) {
+  char hex[17] = "0123456789ABCDEF";
+  static char output[13];
+
+  
+  for (int i = 0; i < 12; i++)
+     output[11-i] = hex[(s >> (4*i)) & 0xF];
+
+  output[12] = 0;
+  
+  return output;  
+}
 
 void search(voxel_c * piece) {
 
-  unsigned int s = findSelfSymmetry(piece);
+#if 0
+  unsigned long long s = piece->selfSymmetries();
   bool found = false;
 
   for (int j = 0; j < syms; j++)
@@ -142,40 +215,131 @@ void search(voxel_c * piece) {
     }
 
   if (!found) {
-    printf("%x\n", s);
+    printf("%s\n", longlong2string(s));
     foundSym[syms++] = s;
 
     char fn[200];
 
-    snprintf(fn, 200, "symmetries/%06x.puzzle", s);
+    snprintf(fn, 200, "symmetries/%s.xmpuzzle", longlong2string(s));
 
     ofstream o(fn);
 
     o << piece->save();
   }
+#endif
 }
+
+unsigned char ssss(unsigned int trans, unsigned long long s) {
+  for (unsigned char t = 0; t < trans; t++)
+    for (unsigned char t2 = 0; t2 < NUM_TRANSFORMATIONS_MIRROR; t2++)
+      if (s & (((unsigned long long)1) << t2)) {
+	unsigned char trrr = transAdd(t2, t);
+	if (trrr == trans)
+	  return t;
+      }
+
+  return trans;
+}
+
+
+/* this function creates the lookup table for the function in the symmetry c-file */
+void outputMinimumSymmetries(void) {
+
+  printf("{\n");
+  for (int sy = 0; sy < syms; sy++) {
+    printf("  {");
+    for (int trans = 0; trans < NUM_TRANSFORMATIONS_MIRROR; trans++) {
+      printf("%2i", ssss(trans, foundSym[sy]));
+      if (trans < NUM_TRANSFORMATIONS_MIRROR-1)
+	printf(",");
+    }
+    if (sy < syms -1)
+      printf("},\n");
+    else
+      printf("}},\n");
+  }
+}
+
+
+/* this function creates a decision tree for symmetry creation trying to optimize for the
+ * lowest number of checks (6-7 should be possible, if we can subdivide each time#
+ * with nearly equal subparts
+ */
+void makeSymmetryTree(unsigned long long taken, unsigned long long val) {
+
+  /* greedy implementation: find the subdivision that is most equal */
+  int best_div = -100;
+  int best_bit = 0;
+  int b1, b2;
+
+  for (int t = 0; t < NUM_TRANSFORMATIONS_MIRROR; t++)
+    if (!(taken & (((unsigned long long)1) << t))) {
+      b1 = 0;
+      b2 = 0;
+      int lastfound;
+      for (int s = 0; s < syms; s++) {
+        if ((foundSym[s] & taken) == val) {
+          b1++;
+          lastfound = s;
+        }
+        if ((foundSym[s] & (taken | (((unsigned long long)1) << t))) == val)
+          b2++;
+      }
+
+//      printf(" b1 %i b2 %i\n", b1 ,b2);
+
+      if (b1 == 1) {
+        printf("assert(s == %i);\nreturn (symmetries_t)%i; //%s\n",lastfound, lastfound, longlong2string(foundSym[lastfound]));
+        return;
+      }
+
+      if ((b2 > 0) && (b1-b2>0) && (abs(b1/2 - best_div) > abs(b1/2 - b2))) {
+        best_div = b2;
+        best_bit = t;
+      }
+    }
+
+//  printf("/* separating into 2 groups of size %i and %i */\n", best_div, b1-best_div);
+
+  printf("voxel_c v(pp, %i);\nif (pp->identicalInBB(&v)) {\n", best_bit);
+  
+  makeSymmetryTree(taken | ((unsigned long long)1 << best_bit), val | ((unsigned long long)1 << best_bit));
+
+  printf("} else {\n");
+
+  makeSymmetryTree(taken | ((unsigned long long)1 << best_bit), val);
+
+  printf("}\n");
+  
+}
+
+
+
 
 
 void findsymmetries(void) {
 
-  voxel_c v(4, 4, 4);
+  voxel_c v(5, 5, 5);
 
   unsigned int indizes[100];
   unsigned int indizeCount = 0;
 
   printf("preparation\n");
-  for (int x = 0; x < 4; x++)
-    for (int y = 0; y < 4; y++)
-      for (int z = 0; z < 4; z++)
-        if ((x == 0) || (y == 0) || (z == 0) || (x == 3) || (y == 3) || (z == 3))
+  for (int x = 0; x < 5; x++)
+    for (int y = 0; y < 5; y++)
+      for (int z = 0; z < 5; z++)
+        if ((x == 0) || (y == 0) || (z == 0) || (x == 4) || (y == 4) || (z == 4))
           indizes[indizeCount++] = v.getIndex(x, y, z);
 
+  v.setAll(voxel_c::VX_FILLED);
+  search(&v);
+  
   printf("1 leerraum\n");
 
   for (int a = 0; a < indizeCount; a++) {
 
-// FIXME    v.setAll(VX_FILLED);
-    v.setState(a, voxel_c::VX_EMPTY);
+    v.setAll(voxel_c::VX_FILLED);
+    v.setState(indizes[a], voxel_c::VX_EMPTY);
 
     search(&v);
   }
@@ -185,9 +349,9 @@ void findsymmetries(void) {
   for (int a = 0; a < indizeCount; a++)
     for (int b = a+1; b < indizeCount; b++) {
 
-//FIXME      v.setAll(VX_FILLED);
-      v.setState(a, voxel_c::VX_EMPTY);
-      v.setState(b, voxel_c::VX_EMPTY);
+      v.setAll(voxel_c::VX_FILLED);
+      v.setState(indizes[a], voxel_c::VX_EMPTY);
+      v.setState(indizes[b], voxel_c::VX_EMPTY);
   
       search(&v);
     }
@@ -201,18 +365,17 @@ void findsymmetries(void) {
         for (int d = c+1; d < indizeCount; d++)
           for (int e = d+1; e < indizeCount; e++)
             for (int f = e+1; f < indizeCount; f++)
+    	    {
+	      v.setAll(voxel_c::VX_FILLED);
+	      v.setState(indizes[a], voxel_c::VX_EMPTY);
+	      v.setState(indizes[b], voxel_c::VX_EMPTY);
+	      v.setState(indizes[c], voxel_c::VX_EMPTY);
+	      v.setState(indizes[d], voxel_c::VX_EMPTY);
+	      v.setState(indizes[e], voxel_c::VX_EMPTY);
+	      v.setState(indizes[f], voxel_c::VX_EMPTY);
 
-        {
-// FIXME          v.setAll(VX_FILLED);
-          v.setState(a, voxel_c::VX_EMPTY);
-          v.setState(b, voxel_c::VX_EMPTY);
-          v.setState(c, voxel_c::VX_EMPTY);
-          v.setState(d, voxel_c::VX_EMPTY);
-          v.setState(e, voxel_c::VX_EMPTY);
-          v.setState(f, voxel_c::VX_EMPTY);
-
-          search(&v);
-        }
+	      search(&v);
+	    }
       }
 }
 
@@ -258,7 +421,7 @@ void solve(int argv, char* args[]) {
 
 void grow(int argv, char* args[]) {
 
-  srand48(time(0));
+//  srand48(time(0));
   srand(time(0));
 
   ifstream str(args[1]);
@@ -635,9 +798,12 @@ int main(int argv, char* args[]) {
 //  multTranformationsMatrix();
 //  inverseTranformationsMatrix();
 
-  grow(argv, args);
+//  grow(argv, args);
 //  solve(argv, agrs);
 //  findsymmetries();
+  outputMinimumSymmetries();
+  makeSymmetryTree(0, 0);
+
 //  savetoXML(argv, args);
 
 //  testNewRots();

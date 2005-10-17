@@ -32,7 +32,7 @@
 
 using namespace std;
 
-voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), symmetries(0), hx(0), hy(0), hz(0) {
+voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), hx(0), hy(0), hz(0) {
 
   space = new voxel_type[voxels];
   assert(space);
@@ -49,9 +49,12 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init
   }
 
   doRecalc = true;
+
+  symmetries = symmetryInvalid();
 }
 
-voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx), sy(orig.sy), sz(orig.sz), voxels(orig.voxels), symmetries(0), hx(0), hy(0), hz(0) {
+voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx), sy(orig.sy), sz(orig.sz),
+voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz) {
 
   space = new voxel_type[voxels];
   assert(space);
@@ -70,9 +73,12 @@ voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx
   doRecalc = true;
 
   transform(transformation);
+
+  symmetries = symmetryInvalid();
 }
 
-voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->sx), sy(orig->sy), sz(orig->sz), voxels(orig->voxels), symmetries(0), hx(0), hy(0), hz(0) {
+voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->sx), sy(orig->sy), sz(orig->sz),
+voxels(orig->voxels), hx(orig->hx), hy(orig->hy), hz(orig->hz) {
 
   space = new voxel_type[voxels];
   assert(space);
@@ -91,6 +97,8 @@ voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->s
   doRecalc = true;
 
   transform(transformation);
+
+  symmetries = symmetryInvalid();
 }
 
 voxel_c::~voxel_c() {
@@ -239,7 +247,7 @@ void voxel_c::rotatex(int by) {
 
     break;
   }
-  symmetries = 0; 
+  symmetries = symmetryInvalid();
 }
 
 void voxel_c::rotatey(int by) {
@@ -334,7 +342,7 @@ void voxel_c::rotatey(int by) {
     }
     break;
   }
-  symmetries = 0;   
+  symmetries = symmetryInvalid();
 }
 
 void voxel_c::rotatez(int by) {
@@ -427,8 +435,56 @@ void voxel_c::rotatez(int by) {
     }
     break;
   }
-  symmetries = 0; 
+  symmetries = symmetryInvalid();
 }
+
+void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
+
+  int tx = hx;
+  int ty = hy;
+  int tz = hz;
+  int tsx = sx;
+  int tsy = sy;
+  int tsz = sz;
+  int t;
+
+  if (trans >= NUM_TRANSFORMATIONS) {
+    tx = sx - 1 - tx;
+    trans -= NUM_TRANSFORMATIONS;
+  }
+
+  for (int i = 0; i < rotx(trans); i++) {
+    t = ty;
+    ty = tsz - 1 - tz;
+    tz = t;
+    t = tsy;
+    tsy = tsz;
+    tsz = t;
+  }
+
+  for (int i = 0; i < roty(trans); i++) {
+    t = tx;
+    tx = tsz - 1 - tz;
+    tz = t;
+    t = tsx;
+    tsx = tsz;
+    tsz = t;
+  }
+
+  for (int i = 0; i < rotz(trans); i++) {
+    t = ty;
+    ty = tx;
+    tx = tsy - 1 - t;
+    t = tsx;
+    tsx = tsy;
+    tsy = t;
+  }
+
+  *x = tx;
+  *y = ty;
+  *z = tz;
+}
+
 
 void voxel_c::minimize(voxel_type val) {
 
@@ -545,9 +601,9 @@ void voxel_c::mirrorX(void) {
   bx1 = sx - 1 - bx2;
   bx2 = sx - 1 - t;
 
-  hx = sx - 1 -hx;
+  hx = sx - 1 - hx;
         
-  symmetries = 0;
+  symmetries = symmetryInvalid();
 }
 
 void voxel_c::mirrorY(void) {
@@ -571,7 +627,7 @@ void voxel_c::mirrorY(void) {
 
   hy = sy - 1 - hy;
 
-  symmetries = 0;    
+  symmetries = symmetryInvalid();
 }
 
 void voxel_c::mirrorZ(void) {
@@ -595,7 +651,7 @@ void voxel_c::mirrorZ(void) {
 
   hz = sz - 1 - sz;
 
-  symmetries = 0; 
+  symmetries = symmetryInvalid();
 }
 
 void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
@@ -807,33 +863,12 @@ void voxel_c::transform(unsigned int nr) {
 
 symmetries_t voxel_c::selfSymmetries(void) const {
 
-  if ((symmetries & 1) == 0) {
+  if (isSymmetryInvalid(symmetries)) {
 
-    ((voxel_c*)this)->symmetries = 1;
-
-    for (int i = 1; i < NUM_TRANSFORMATIONS_MIRROR; i++) {
-
-      voxel_c rot(this, i);
-
-      if (identicalInBB(&rot))
-	((voxel_c*)this)->symmetries |= ((symmetries_t)1 << i);
-    }
+    ((voxel_c*)this)->symmetries = symmetryCalcuation(this);
   }
 
   return symmetries;
-}
-
-unsigned char voxel_c::normalizeTransformation(unsigned char trans) const {
-
-  symmetries_t s = selfSymmetries();
-
-  for (unsigned char t = 0; t < NUM_TRANSFORMATIONS; t++)
-    for (unsigned char t2 = 0; t2 < NUM_TRANSFORMATIONS; t2++) 
-      if (symmetrieContainsTransformation(s, t2))
-	if (transAdd(t, t2) == trans)
-	  return t;
-  
-  return trans;
 }
 
 void voxel_c::minimizePiece(void) {
@@ -1018,46 +1053,7 @@ voxel_c::voxel_c(const xml::node & node) : hx(0), hy(0), hz(0) {
   skipRecalcBoundingBox(false);
 }
 
-
-void voxel_c::transformPlacement(unsigned char trans, const voxel_c * container, 
-    unsigned char * t, int * x, int * y, int * z) const {
-
-  /* first center the piece, right after this transformation
-   * the positions are completely transformation independent
-   * so that we can just remove this values after the transformation
-   */
-  *x = *x*2 + getX(*t) - container->getX();
-  *y = *y*2 + getY(*t) - container->getY();
-  *z = *z*2 + getZ(*t) - container->getZ();
-
-  /* now do the transformation */
-  for (int i = 0; i < rotx(trans); i++) {
-    int tmp = *y;
-    *y = *x;
-    *x = -tmp;
-  }
-  for (int i = 0; i < roty(trans); i++) {
-    int tmp = *z;
-    *z = *x;
-    *x = -tmp;
-  }
-  for (int i = 0; i < rotz(trans); i++) {
-    int tmp = *x;
-    *x = -*y;
-    *y = tmp;
-  }
-    
-  /* add the piece transformations and also find the smallest possible
-   * transformation that results in the same piece
-   */
-  *t = normalizeTransformation(transAdd(*t, trans));
-
-  /* now transform back
-   */
-  *x = (*x - (int)getX(*t) + (int)container->getX(trans))/2;
-  *y = (*y - (int)getY(*t) + (int)container->getY(trans))/2;
-  *z = (*z - (int)getZ(*t) + (int)container->getZ(trans))/2;
-}
+#if 0
 
 unsigned int voxel_c::getX(unsigned char trans) const {
 
@@ -1130,5 +1126,5 @@ unsigned int voxel_c::getZ(unsigned char trans) const {
   return 0;
 }
 
-
+#endif
 

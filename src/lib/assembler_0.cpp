@@ -120,7 +120,8 @@ void assembler_0_c::nextPiece(unsigned int piece, unsigned int count, unsigned i
 assembler_0_c::assembler_0_c() :
   left(0), right(0), up(0), down(0), colCount(0),
   multiPieceCount(0), multiPieceIndex(0), pieceStart(0),
-  pos(0), rows(0), columns(0), nodeF(0), numF(0), pieceF(0), nodeB(0), numB(0), piece(0), searchState(0)
+  pos(0), rows(0), columns(0), nodeF(0), numF(0), pieceF(0),
+  nodeB(0), numB(0), piece(0), searchState(0), avoidTransformedAssemblies(0)
 {
 }
 
@@ -145,6 +146,9 @@ assembler_0_c::~assembler_0_c() {
 }
 
 assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsigned int prob) {
+
+  puzzle = puz;
+  problem = prob;
 
   /* get and save piecenumber of puzzle */
   piecenumber = puz->probPieceNumber(prob);
@@ -596,8 +600,9 @@ assembly_c * assembler_0_c::getAssembly(void) {
 }
 
 
-void assembler_0_c::checkForTransformedAssemblies(void) {
+void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot) {
   avoidTransformedAssemblies = true;
+  avoidTransformedPivot = pivot;
 }
 
 
@@ -609,20 +614,10 @@ void assembler_0_c::solution(void) {
 
     assembly_c * assembly = getAssembly();
 
-    if (avoidTransformedAssemblies) {
-      
-//FIXME      assembly->equalize(puzzle, prob);
-
-      if (assemblySet.find(assembly) != assemblySet.end()) {
-        delete assembly;
-        return;
-
-      } else
-        assemblySet.insert(assembly);
-
-    }
-
-    getCallback()->assembly(assembly);
+    if (avoidTransformedAssemblies && assembly->smallerRotationExists(puzzle, problem, avoidTransformedPivot))
+      delete assembly;
+    else
+      getCallback()->assembly(assembly);
   }
 }
 
