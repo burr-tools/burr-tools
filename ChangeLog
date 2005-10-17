@@ -1,3 +1,102 @@
+Wed Oct 12 18:13:56 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * make the pivot piece work correcty
+
+Wed Oct 12 17:16:14 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * reenable symmetry breaker piece calculation
+  
+  this still has the problem that a symmetry breaker when not
+  equal to zero results in problems with the symmetry
+  avioding method as the comparison function wants to select
+  assemblies that are no longer found
+
+Tue Oct 11 21:49:15 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add another symmetry groups and some bugfixes for the rotator
+
+Tue Oct 11 20:41:40 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * huge speedup for the new symmetry avoiding
+
+Tue Oct 11 16:33:09 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * updates for rotation removal
+  
+  this version now seems to work in most cases, it urgently
+  needs speedup and also some bugs are still left
+
+Sat Oct  8 19:52:53 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * subproblem creation and recursion moved into function
+
+Sat Oct  8 18:38:03 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * the comefreom field of nodes in the disassembler are instatiated in the constructor
+
+Sat Oct  8 14:51:09 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add hotspot functionality
+  
+  a Hotspot is a point inside a voxel space that always stays at the
+  same position reltvie to the shape defined inside the voxel space,
+  so if you have the hotspot at some special corner and now flip rotate
+  and shift the piece around inside the voxelspace the hotspot will stay
+  at the same corner of the piece and move along with this corner
+  
+  What is that useful for?
+  
+  To rotate assemblies. because now it is possible to recalculate the
+  orientation of a piece and calculate the new position of the hotspot
+  independent of the concrete shape of the piece
+
+Mon Oct  3 13:52:12 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * assembly rotation first fixes, more needs to be done
+
+Sun Oct  2 11:33:54 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * some more updates to algorithms
+
+Thu Sep 29 17:50:27 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add function to movementcache to remove information concerning one shape
+
+Wed Sep 28 21:29:27 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * describe some internals
+
+Tue Sep 27 20:39:50 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * tons of typos
+
+Mon Sep 26 17:34:23 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * some typos in news file
+
+Sun Sep 25 18:50:00 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * update Documentation partly with Doc Sonnevelds suggestions
+
+Thu Sep 22 21:44:14 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * merge pieceVoxel and voxel
+  
+  pieceVoxel_c is no longer required as we don't have the assembly
+  voxel any longer whose existence has been the reason for
+  a base voxel class and 2 specialized classes with different
+  information per voxel
+
+Thu Sep 22 21:17:09 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * first step to the new rotation avioding method
+
+Tue Sep 13 18:06:09 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * some comments and a bugfix for symmetry avoidance
+
+Sat Sep 10 14:24:16 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add placement browser
+  
+  this is a window that lets you go through all the placements
+  that each piece of the puzzle can have. This is mainly for
+  debugging reasons, if you want to find out why a certain solution
+  doesn't exist
+
+Wed Sep  7 17:19:07 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * documentation updates
+
+Tue Sep  6 21:47:41 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * Apple has the OpenGL files in another directory. Also remove an unnecessary include
+
+Tue Sep  6 20:26:38 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * some more changelog updates
+
+Tue Sep  6 20:25:30 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * hide marker whenever not needed
+
 Tue Sep  6 20:17:59 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
   * fix some widget exchange issues
 
