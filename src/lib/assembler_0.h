@@ -92,11 +92,11 @@ private:
    * colCount is a shared member. it's column for normal nodes and count for
    * column header nodes
    */
-  unsigned int * left;
-  unsigned int * right;
-  unsigned int * up;
-  unsigned int * down;
-  unsigned int * colCount;
+  std::vector<unsigned int> left;
+  std::vector<unsigned int> right;
+  std::vector<unsigned int> up;
+  std::vector<unsigned int> down;
+  std::vector<unsigned int> colCount;
 
   /* used to abbort the searching */
   bool abbort;
@@ -179,19 +179,15 @@ private:
   unsigned int *searchState;
   void iterativeMultiSearch(void);
 
-  /**
-   * this function counts the number of nodes required to acommodate all pieces
-   * the title line is missing from the returned number
-   */
-  virtual unsigned long countNodes(const puzzle_c * puz, unsigned int problemNum) = 0;
-
   /* this function creates the matrix for the search function
    * because we need to know how many nodes we need to allocate the
    * arrays with the right size, we add a parameter. if this is true
    * the function will not access the array but only count the number
    * of nodes used. this number is returned
+   *
+   * return error codes
    */
-  virtual void prepare(const puzzle_c * puz, int res_filles, int res_vari, unsigned int problemNum) = 0;
+  virtual int prepare(const puzzle_c * puz, int res_filles, int res_vari, unsigned int problemNum) = 0;
 
   /* used by reduce to find out if the given position is a dead end
    * and will always lead to non solvable positions
@@ -232,10 +228,6 @@ private:
    * voxels are all filled
    */
   int holes;
-
-  /* the current position inside the matrix
-   */
-  unsigned long firstfree;
 
   /* first and one after last column for the variable voxels */
   unsigned int varivoxelStart;
@@ -290,10 +282,6 @@ protected:
 
   /* call this whenever you start to add information for a new piece */
   void nextPiece(unsigned int piece, unsigned int count, unsigned int number);
-
-  /* filler nodes are nodes that
-   */
-  void AddFillerNode(void);
 
   /* this function adds a node to the matrix that belongs to the first columns that represent
    * the pieces. This is normally the first thing you do, when you start a new line in the matrix

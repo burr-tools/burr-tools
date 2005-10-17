@@ -26,12 +26,13 @@
 #endif
 
 void assembler_0_c::GenerateFirstRow(unsigned int res_filled) {
+
   for (unsigned int i = 0; i < varivoxelStart; i++) {
-    right[i] = i+1;
-    left[i+1] = i;
-    up[i] = i;
-    down[i] = i;
-    colCount[i] = 0;
+    right.push_back(i+1);
+    left.push_back(i-1);
+    up.push_back(i);
+    down.push_back(i);
+    colCount.push_back(0);
   }
 
   /* make the linked list cyclic */
@@ -43,35 +44,29 @@ void assembler_0_c::GenerateFirstRow(unsigned int res_filled) {
    * are not forced to be filled but otherwise behave
    * like normal columns
    */
-  for (unsigned int j = varivoxelStart; j < varivoxelEnd; j++) {
-    left[j+1] = j;
-    right[j] = j+1;
-    up[j] = j;
-    down[j] = j;
-    colCount[j] = 0;
+  for (unsigned int j = varivoxelStart; j <= varivoxelEnd; j++) {
+    left.push_back(j-1);
+    right.push_back(j+1);
+    up.push_back(j);
+    down.push_back(j);
+    colCount.push_back(0);
   }
   left[varivoxelStart] = varivoxelEnd;
   right[varivoxelEnd] = varivoxelStart;
-
-  /* first free node, we'll start to fill up starting from there */
-  firstfree = 2 + piecenumber + res_filled;
-}
-
-void assembler_0_c::AddFillerNode(void ) {
-  firstfree++;
 }
 
 int assembler_0_c::AddPieceNode(unsigned int piece, unsigned int rot, unsigned int x, unsigned int y, unsigned int z) {
-  unsigned long piecenode = firstfree++;
+  unsigned long piecenode = up.size();
 
-  left[piecenode] = piecenode;
-  right[piecenode] = piecenode;
-  down[piecenode] = piece+1;
-  up[piecenode] = up[piece+1];
+  left.push_back(piecenode);
+  right.push_back(piecenode);
+  down.push_back(piece+1);
+  up.push_back(up[piece+1]);
+
   down[up[piece+1]] = piecenode;
   up[piece+1] = piecenode;
 
-  colCount[piecenode] = piece+1;
+  colCount.push_back(piece+1);
   colCount[piece+1]++;
 
   piecePositions.push_back(piecePosition(x, y, z, rot, piecenode));
@@ -95,26 +90,26 @@ void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, 
 }
 
 void assembler_0_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
-  unsigned long newnode = firstfree++;
+  unsigned long newnode = up.size();
 
-  right[newnode] = piecenode;
-  left[newnode] = left[piecenode];
+  right.push_back(piecenode);
+  left.push_back(left[piecenode]);
   right[left[piecenode]] = newnode;
   left[piecenode] = newnode;
 
-  down[newnode] = col;
-  up[newnode] = up[col];
+  down.push_back(col);
+  up.push_back(up[col]);
   down[up[col]] = newnode;
   up[col] = newnode;
 
-  colCount[newnode] = col;
+  colCount.push_back(col);
   colCount[col]++;
 }
 
 void assembler_0_c::nextPiece(unsigned int piece, unsigned int count, unsigned int number) {
   multiPieceCount[piece] = count;
   multiPieceIndex[piece] = number;
-  pieceStart[piece] = firstfree;
+  pieceStart[piece] = up.size();
 }
 
 assembler_0_c::assembler_0_c() :
@@ -128,11 +123,6 @@ assembler_0_c::assembler_0_c() :
 assembler_0_c::~assembler_0_c() {
   if (rows) delete [] rows;
   if (columns) delete [] columns;
-  if (left) delete [] left;
-  if (right) delete [] right;
-  if (up) delete [] up;
-  if (down) delete [] down;
-  if (colCount) delete [] colCount;
   if (multiPieceCount) delete [] multiPieceCount;
   if (pieceStart) delete [] pieceStart;
   if (multiPieceIndex) delete [] multiPieceIndex;
@@ -191,19 +181,6 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
 
   holes = h;
 
-  /* count the number of required nodes*/
-  long nodes = countNodes(puz, prob);
-
-  // check, if there is one piece unplacable
-  if (nodes <= 0) {
-    errorsState = ERR_CAN_NOT_PLACE;
-    errorsParam = -nodes;
-    return errorsState;
-  }
-
-  /* countNode only counts inner node, so add the title row */
-  nodes += 2 + piecenumber + res_filled;
-
   /* allocate all the required memory */
   rows = new unsigned int[piecenumber];
   columns = new unsigned int [piecenumber];
@@ -220,14 +197,16 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   pieceStart = new unsigned int[piecenumber];
   multiPieceCount = new unsigned int[piecenumber];
   multiPieceIndex = new unsigned int[piecenumber];
-  left = new unsigned int [nodes];
-  right = new unsigned int [nodes];
-  up = new unsigned int [nodes];
-  down = new unsigned int [nodes];
-  colCount = new unsigned int [nodes];
 
   /* fill the nodes arrays */
-  prepare(puz, res_filled, res_vari, prob);
+  int error = prepare(puz, res_filled, res_vari, prob);
+
+  // check, if there is one piece unplacable
+  if (error <= 0) {
+    errorsState = ERR_CAN_NOT_PLACE;
+    errorsParam = -error;
+    return errorsState;
+  }
 
   memset(rows, 0, piecenumber * sizeof(int));
   memset(columns, 0, piecenumber * sizeof(int));
@@ -910,7 +889,7 @@ float assembler_0_c::getFinished(void) {
    * the value may jump
    */
 
-  if (!rows || !colCount || !columns || !down)
+  if (!rows || !columns || !down.size())
     return 0;
 
   float erg = 0;

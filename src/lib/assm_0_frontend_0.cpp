@@ -56,52 +56,6 @@ static voxel_c * addToCache(voxel_c * cache[NUM_TRANSFORMATIONS], unsigned int *
 }
 
 /**
- * this function counts the number of nodes required to acommodate all pieces
- * the title line is missing from the returned number
- */
-unsigned long assm_0_frontend_0_c::countNodes(const puzzle_c * puz, unsigned int problemNum) {
-
-  unsigned long nodes = 0;
-
-  const voxel_c * result = puz->probGetResultShape(problemNum);
-
-  /* now we insert one shape after another */
-  for (unsigned int pc = 0; pc < puz->probShapeNumber(problemNum); pc++) {
-
-    int placements = 0;
-
-    /* this array contains all the pieces found so far, this will help us
-     * to not add two times the same piece to the structur */
-    voxel_c * cache[NUM_TRANSFORMATIONS];
-    unsigned int cachefill = 0;
-
-    /* go through all possible rotations of the piece */
-    /* didn't find piece, so it's new shape, add to cache and add to
-     * node structure 
-     */
-    /* find all possible translations of piece and add them, if they fit */
-    for (unsigned int rot = 0; rot < NUM_TRANSFORMATIONS; rot++)
-      if (voxel_c * rotation = addToCache(cache, &cachefill, new voxel_c(puz->probGetShapeShape(problemNum, pc), rot)))
-        for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
-          for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
-            for (int z = (int)result->boundZ1()-(int)rotation->boundZ1(); z <= (int)result->boundZ2()-(int)rotation->boundZ2(); z++)
-              if (pieceFits(rotation, result, puz, x, y, z, problemNum))
-                placements++;
-
-    nodes += placements * (puz->probGetShapeShape(problemNum, pc)->countState(voxel_c::VX_FILLED) + 1) *
-      puz->probGetShapeCount(problemNum, pc);
-
-    for (unsigned int i = 0; i < cachefill; i++) delete cache[i];
-
-    // if one piece has no possible position in the result shape return error
-    if (placements == 0)
-      return -pc;
-  }
-
-  return nodes;
-}
-
-/**
  * this function prepares the matrix of nodes for the recursive function
  * I've done some additions to knuths algorithm to implement variable
  * voxels (empty spaces in the solution) and multiple instances of the
@@ -122,7 +76,7 @@ unsigned long assm_0_frontend_0_c::countNodes(const puzzle_c * puz, unsigned int
  * negative result show there is something wrong: the place -result has not
  * possible position inside the result
  */
-void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_vari, unsigned int problemNum) {
+int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_vari, unsigned int problemNum) {
 
   const voxel_c * result = puz->probGetResultShape(problemNum);
 
@@ -231,6 +185,7 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
        * to not add two times the same piece to the structur */
       voxel_c * cache[NUM_TRANSFORMATIONS_MIRROR];
       unsigned int cachefill = 0;
+      unsigned int placements = 0;
   
       /* go through all possible rotations of the piece
        * if shape is new to cache, add it to the cache and also
@@ -243,24 +198,15 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
               for (int z = (int)result->boundZ1()-(int)rotation->boundZ1(); z <= (int)result->boundZ2()-(int)rotation->boundZ2(); z++)
                 if (pieceFits(rotation, result, puz, x, y, z, problemNum)) {
 
-                  int piecenode = 0;
-
-                  if (!skipRotation)
-                    piecenode = AddPieceNode(piece, rot, x+rotation->getHx(), y+rotation->getHy(), z+rotation->getHz());
-                  else
-                    AddFillerNode();
+                  int piecenode = AddPieceNode(piece, rot, x+rotation->getHx(), y+rotation->getHy(), z+rotation->getHz());
+                  placements = 1;
 
                   /* now add the used cubes of the piece */
                   for (unsigned int pz = 0; pz < rotation->getZ(); pz++)
                     for (unsigned int py = 0; py < rotation->getY(); py++)
                       for (unsigned int px = 0; px < rotation->getX(); px++)
-                        if (rotation->getState(px, py, pz) != voxel_c::VX_EMPTY) {
-  
-                          if (!skipRotation)
-                            AddVoxelNode(columns[result->getIndex(x+px, y+py, z+pz)], piecenode);
-                          else
-                            AddFillerNode();
-                        }
+                        if (rotation->getState(px, py, pz) != voxel_c::VX_EMPTY)
+                          AddVoxelNode(columns[result->getIndex(x+px, y+py, z+pz)], piecenode);
                 }
 
 
@@ -272,9 +218,17 @@ void assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_
         }
 
       for (unsigned int i = 0; i < cachefill; i++)  delete cache[i];
+
+      /* check, if the current piece has at least one placement */
+      if (placements == 0) {
+        delete [] columns;
+        return -pc;
+      }
     }
 
   delete [] columns;
+
+  return 1;
 }
 
 assm_0_frontend_0_c::~assm_0_frontend_0_c() {

@@ -40,8 +40,7 @@ private:
    * the function will not access the array but only count the number
    * of nodes used. this number is returned
    */
-  unsigned long countNodes(const puzzle_c * puz, unsigned int resultnum);
-  void prepare(const puzzle_c * puz, int res_filles, int res_vari, unsigned int resultnum);
+  int prepare(const puzzle_c * puz, int res_filles, int res_vari, unsigned int resultnum);
 
 public:
 
