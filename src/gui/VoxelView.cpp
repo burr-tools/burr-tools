@@ -193,8 +193,8 @@ static void drawCube(const voxel_c * space, int x, int y, int z) {
 }
 
 static void drawRect(int x0, int y0, int z0,
-                int v1x, int v1y, int v1z,
-                int v2x, int v2y, int v2z, bool type, int diag) {
+                     int v1x, int v1y, int v1z,
+                     int v2x, int v2y, int v2z, bool type, int diag) {
 
   assert((v1x >= 0) && (v1y >= 0) && (v1z >= 0));
   assert((v2x >= 0) && (v2y >= 0) && (v2z >= 0));
@@ -213,46 +213,46 @@ static void drawRect(int x0, int y0, int z0,
     float x1 = x0;
     float y1 = y0;
     float z1 = z0;
-  
+
     float x2 = x0;
     float y2 = y0;
     float z2 = z0;
-  
+
     int xe = x0 + v1x + v2x;
     int ye = y0 + v1y + v2y;
     int ze = z0 + v1z + v2z;
 
     while ((x1 < xe) || (y1 < ye) || (z1 < ze)) {
       // v1=(x1, y1, z1) first goes along vector1 =(v1x, v1y, v1z) and then along vector2
-  
+
       if (state1 == 0) {
         if (v1x) x1 += 1.0/diag;
         if (v1y) y1 += 1.0/diag;
         if (v1z) z1 += 1.0/diag;
-  
+
         if ((v1x) && (x1 >= x0+v1x) || (v1y) && (y1 >= y0+v1y) || (v1z) && (z1 >= z0+v1z))
           state1 = 1;
       } else {
-  
+
         if (v2x) x1 += 1.0/diag;
         if (v2y) y1 += 1.0/diag;
         if (v2z) z1 += 1.0/diag;
       }
-  
+
       if (state2 == 0) {
         if (v2x) x2 += 1.0/diag;
         if (v2y) y2 += 1.0/diag;
         if (v2z) z2 += 1.0/diag;
-  
+
         if ((v2x) && (x2 >= x0+v2x) || (v2y) && (y2 >= y0+v2y) || (v2z) && (z2 >= z0+v2z))
           state2 = 1;
       } else {
-  
+
         if (v1x) x2 += 1.0/diag;
         if (v1y) y2 += 1.0/diag;
         if (v1z) z2 += 1.0/diag;
       }
-  
+
       glVertex3f(x1, y1, z1); glVertex3f(x2, y2, z2);
     }
 
@@ -261,46 +261,46 @@ static void drawRect(int x0, int y0, int z0,
     float x1 = x0 + v1x;
     float y1 = y0 + v1y;
     float z1 = z0 + v1z;
-  
+
     float x2 = x0 + v1x;
     float y2 = y0 + v1y;
     float z2 = z0 + v1z;
-  
+
     int xe = x0 + v2x;
     int ye = y0 + v2y;
     int ze = z0 + v2z;
 
     while ((x1 < xe) || (y1 < ye) || (z1 < ze)) {
       // v1=(x1, y1, z1) first goes along vector1 =(v1x, v1y, v1z) and then along vector2
-  
+
       if (state1 == 0) {
         if (v1x) x1 -= 1.0/diag;
         if (v1y) y1 -= 1.0/diag;
         if (v1z) z1 -= 1.0/diag;
-  
+
         if ((v1x) && (x1 <= x0) || (v1y) && (y1 <= y0) || (v1z) && (z1 <= z0))
           state1 = 1;
       } else {
-  
+
         if (v2x) x1 += 1.0/diag;
         if (v2y) y1 += 1.0/diag;
         if (v2z) z1 += 1.0/diag;
       }
-  
+
       if (state2 == 0) {
         if (v2x) x2 += 1.0/diag;
         if (v2y) y2 += 1.0/diag;
         if (v2z) z2 += 1.0/diag;
-  
+
         if ((v2x) && (x2 >= x0+v2x+v1x) || (v2y) && (y2 >= y0+v2y+v1y) || (v2z) && (z2 >= z0+v2z+v1z))
           state2 = 1;
       } else {
-  
+
         if (v1x) x2 -= 1.0/diag;
         if (v1y) y2 -= 1.0/diag;
         if (v1z) z2 -= 1.0/diag;
       }
-  
+
       glVertex3f(x1, y1, z1); glVertex3f(x2, y2, z2);
     }
   }
@@ -324,26 +324,26 @@ void VoxelView::drawVoxelSpace() {
 
     switch(trans) {
     case ScaleRotateTranslate:
-      glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(), 
-	  shapes[piece].y - shapes[piece].shape->getHy(), 
-	  shapes[piece].z - shapes[piece].shape->getHz());
+      glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
+                   shapes[piece].y - shapes[piece].shape->getHy(),
+                   shapes[piece].z - shapes[piece].shape->getHz());
       glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
       arcBall->addTransform();
       glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
       break;
     case TranslateRoateScale:
       arcBall->addTransform();
-      glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(), 
-	  shapes[piece].y - shapes[piece].shape->getHy(), 
-	  shapes[piece].z - shapes[piece].shape->getHz());
+      glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
+                   shapes[piece].y - shapes[piece].shape->getHy(),
+                   shapes[piece].z - shapes[piece].shape->getHz());
       glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
       glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
       break;
     case CenterTranslateRoateScale:
       arcBall->addTransform();
-      glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(), 
-	  shapes[piece].y - shapes[piece].shape->getHy(), 
-	  shapes[piece].z - shapes[piece].shape->getHz());
+      glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
+                   shapes[piece].y - shapes[piece].shape->getHy(),
+                   shapes[piece].z - shapes[piece].shape->getHz());
       glTranslatef(-centerX, -centerY, -centerZ);
       glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
       break;
@@ -369,7 +369,7 @@ void VoxelView::drawVoxelSpace() {
     for (unsigned int x = 0; x < shapes[piece].shape->getX(); x++)
       for (unsigned int y = 0; y < shapes[piece].shape->getY(); y++)
         for (unsigned int z = 0; z < shapes[piece].shape->getZ(); z++) {
-  
+
           if (shapes[piece].shape->isEmpty(x, y , z))
             continue;
 
@@ -441,12 +441,12 @@ void VoxelView::drawVoxelSpace() {
 
 static void gluPerspective(double fovy, double aspect, double zNear, double zFar) {
 
-   double xmin, xmax, ymin, ymax;
-   ymax = zNear * tan(fovy * 3.1415927 / 360.0);
-   ymin = -ymax;
-   xmin = ymin * aspect;
-   xmax = ymax * aspect;
-   glFrustum(xmin, xmax, ymin, ymax, zNear, zFar);
+  double xmin, xmax, ymin, ymax;
+  ymax = zNear * tan(fovy * 3.1415927 / 360.0);
+  ymin = -ymax;
+  xmin = ymin * aspect;
+  xmax = ymax * aspect;
+  glFrustum(xmin, xmax, ymin, ymax, zNear, zFar);
 }
 
 void VoxelView::draw() {
