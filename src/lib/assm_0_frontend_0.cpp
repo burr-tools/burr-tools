@@ -202,9 +202,9 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
                   placements = 1;
 
                   /* now add the used cubes of the piece */
-                  for (unsigned int pz = 0; pz < rotation->getZ(); pz++)
-                    for (unsigned int py = 0; py < rotation->getY(); py++)
-                      for (unsigned int px = 0; px < rotation->getX(); px++)
+                  for (unsigned int pz = rotation->boundZ1(); pz <= rotation->boundZ2(); pz++)
+                    for (unsigned int py = rotation->boundY1(); py <= rotation->boundY2(); py++)
+                      for (unsigned int px = rotation->boundX1(); px <= rotation->boundX2(); px++)
                         if (rotation->getState(px, py, pz) != voxel_c::VX_EMPTY)
                           AddVoxelNode(columns[result->getIndex(x+px, y+py, z+pz)], piecenode);
                 }
