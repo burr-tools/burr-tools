@@ -176,6 +176,38 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
   }
 }
 
+void ToolTab::cb_transform(long task) {
+  if (space) {
+
+    _editLayersChanged = false;
+
+    switch(task) {
+    case  0: space->translate( 1, 0, 0, 0); break;
+    case  1: space->translate(-1, 0, 0, 0); break;
+    case  2: space->translate( 0, 1, 0, 0); break;
+    case  3: space->translate( 0,-1, 0, 0); break;
+    case  4: space->translate( 0, 0, 1, 0); break;
+    case  5: space->translate( 0, 0,-1, 0); break;
+    case  7: space->rotatex(); space->rotatex(); // fallthrough
+    case  6: space->rotatex(); break;
+    case  9: space->rotatey(); space->rotatey(); // fallthrough
+    case  8: space->rotatey(); break;
+    case 11: space->rotatez(); space->rotatez(); // fallthrough
+    case 10: space->rotatez(); break;
+    case 12: space->mirrorX(); break;
+    case 13: space->mirrorY(); break;
+    case 14: space->mirrorZ(); break;
+    case 15: space->minimizePiece(); break;
+    case 16: space->makeInsideHoly(); break;
+    case 17: _editLayersChanged = true; break;
+    }
+    space->setHotspot(0, 0, 0);
+
+    do_callback();
+  }
+}
+
+
 static void cb_BlockListGroupSlider_stub(Fl_Widget* o, void* v) { ((BlockListGroup*)(o->parent()))->cb_slider(); }
 void BlockListGroup::cb_list(void) {
 

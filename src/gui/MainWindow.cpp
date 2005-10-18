@@ -204,6 +204,8 @@ void UserInterface::cb_TransformPiece(void) {
 
   if (pieceTools->editLayersChanged())
     pieceEdit->editAllLayers(pieceTools->editLayersOn());
+  else
+    changeShape(PcSel->getSelection());
 
   StatPieceInfo(PcSel->getSelection());
   activateShape(PcSel->getSelection());

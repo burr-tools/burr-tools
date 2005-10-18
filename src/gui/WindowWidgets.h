@@ -212,33 +212,7 @@ public:
     }
   }
 
-  void cb_transform(long task) {
-    if (space) {
-
-      switch(task) {
-      case  0: space->translate( 1, 0, 0, 0); break;
-      case  1: space->translate(-1, 0, 0, 0); break;
-      case  2: space->translate( 0, 1, 0, 0); break;
-      case  3: space->translate( 0,-1, 0, 0); break;
-      case  4: space->translate( 0, 0, 1, 0); break;
-      case  5: space->translate( 0, 0,-1, 0); break;
-      case  7: space->rotatex(); space->rotatex(); // fallthrough
-      case  6: space->rotatex(); break;
-      case  9: space->rotatey(); space->rotatey(); // fallthrough
-      case  8: space->rotatey(); break;
-      case 11: space->rotatez(); space->rotatez(); // fallthrough
-      case 10: space->rotatez(); break;
-      case 12: space->mirrorX(); break;
-      case 13: space->mirrorY(); break;
-      case 14: space->mirrorZ(); break;
-      case 15: space->minimizePiece(); break;
-      case 16: space->makeInsideHoly(); break;
-      case 17: _editLayersChanged = true; break;
-      }
-
-      do_callback();
-    }
-  }
+  void cb_transform(long task);
 
   bool editLayersChanged(void) { return _editLayersChanged; };
   bool editLayersOn(void) { return editLayersButton->value() == 1; }
