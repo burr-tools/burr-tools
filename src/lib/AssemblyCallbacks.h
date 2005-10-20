@@ -46,6 +46,7 @@ class assemblerThread : public assembler_cb {
   time_t startTime;
 
   disassembler_0_c disassm;
+  assembler_c * assm;
 
 public:
 
@@ -77,6 +78,8 @@ public:
   };
 
   unsigned int currentAction(void) { return action; }
+
+  unsigned int currentActionParameter(void);
 
   // let the thread start
   // returns true, if everything went well, false otherwise

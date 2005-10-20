@@ -1392,8 +1392,11 @@ void UserInterface::updateInterface(void) {
           char tmp[20];
           snprintf(tmp, 20, "red. %i", puzzle->probGetAssembler(prob)->getReducePiece());
           OutputActivity->value(tmp);
-        } else
-          OutputActivity->value("red.");
+        } else {
+          char tmp[20];
+          snprintf(tmp, 20, "red. %i", assmThread->currentActionParameter());
+          OutputActivity->value(tmp);
+        }
         break;
       case assemblerThread::ACT_ASSEMBLING:
         OutputActivity->value("assm.");

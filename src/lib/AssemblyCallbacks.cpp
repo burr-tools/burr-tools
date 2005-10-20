@@ -36,30 +36,27 @@ void* start_th(void * c)
 {
   assemblerThread * p = (assemblerThread*)c;
 
-  assm_0_frontend_0_c * assm;
-
-
   /* first check, if there is an assembler available with the
    * problem, if there is one take that
    */
   if (p->puzzle->probGetAssembler(p->prob))
-    assm = (assm_0_frontend_0_c*)p->puzzle->probGetAssembler(p->prob);
+    p->assm = (assm_0_frontend_0_c*)p->puzzle->probGetAssembler(p->prob);
 
   else {
 
     /* otherwise we have to chreate a new one
      */
     p->action = assemblerThread::ACT_PREPARATION;
-    assm = new assm_0_frontend_0_c();
+    p->assm = new assm_0_frontend_0_c();
 
-    p->errState = assm->createMatrix(p->puzzle, p->prob);
+    p->errState = p->assm->createMatrix(p->puzzle, p->prob);
     if (p->errState != assm_0_frontend_0_c::ERR_NONE) {
 
-      p->errParam = assm->getErrorsParam();
+      p->errParam = p->assm->getErrorsParam();
 
       p->action = assemblerThread::ACT_ERROR;
 
-      delete assm;
+      delete p->assm;
       return 0;
     }
 
@@ -68,7 +65,7 @@ void* start_th(void * c)
       if (!p->stopPressed)
         p->action = assemblerThread::ACT_REDUCE;
   
-      assm->reduce();
+      p->assm->reduce();
     }
 
     /* set the assembler to the problem as soon as it is finished
@@ -76,7 +73,7 @@ void* start_th(void * c)
      * also restores the assembler state to a state that might
      * be saved within the problem
      */
-    p->errState = p->puzzle->probSetAssembler(p->prob, assm);
+    p->errState = p->puzzle->probSetAssembler(p->prob, p->assm);
     if (p->errState != assm_0_frontend_0_c::ERR_NONE) {
       p->action = assemblerThread::ACT_ERROR;
       return 0;
@@ -86,9 +83,9 @@ void* start_th(void * c)
   if (!p->stopPressed) {
 
     p->action = assemblerThread::ACT_ASSEMBLING;
-    assm->assemble(p);
+    p->assm->assemble(p);
   
-    if (assm->getFinished() >= 1) {
+    if (p->assm->getFinished() >= 1) {
       p->action = assemblerThread::ACT_FINISHED;
       p->puzzle->probFinishedSolving(p->prob);
     } else
@@ -179,5 +176,17 @@ bool assemblerThread::start(void) {
   pthread_t th;
   return pthread_create(&th, 0, start_th, this) == 0;
 #endif
+}
+
+unsigned int assemblerThread::currentActionParameter(void) {
+
+  switch(action) {
+  case ACT_REDUCE:
+    return assm->getReducePiece();
+
+  default:
+    return 0;
+  }
+
 }
 
