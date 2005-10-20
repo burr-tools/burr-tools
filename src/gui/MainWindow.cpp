@@ -1284,6 +1284,8 @@ void UserInterface::updateInterface(void) {
 
     if (prob < puzzle->problemNumber()) {
 
+      // we have a valid problem selected, so update the information visible
+
       SolvingProgress->value(100*finished);
       SolvingProgress->show();
 
@@ -1325,8 +1327,16 @@ void UserInterface::updateInterface(void) {
         OutputSolutions->hide();
       }
 
+      // the placement browser can only be activated when an assember is available
+      if (puzzle->probGetAssembler(prob))
+        BtnPlacement->activate();
+      else
+        BtnPlacement->deactivate();
+
 
     } else {
+
+      // no valid problem available, hide all information
   
       SolutionSel->hide();
       SolutionsInfo->hide();
@@ -1336,9 +1346,13 @@ void UserInterface::updateInterface(void) {
   
       SolvingProgress->hide();
       OutputAssemblies->hide();
+
+      BtnPlacement->deactivate();
     }
 
     if (assmThread && (assmThread->getProblem() == prob)) {
+
+      // a thread is currently running
 
       unsigned int ut;
       if (puzzle->probUsedTimeKnown(prob))
