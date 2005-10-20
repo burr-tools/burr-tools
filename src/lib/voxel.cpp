@@ -932,14 +932,28 @@ xml::node voxel_c::save(void) const {
 
   char tmp[50];
 
-  snprintf(tmp, 50, "%i", getX());
+  snprintf(tmp, 50, "%i", sx);
   nd.get_attributes().insert("x", tmp);
 
-  snprintf(tmp, 50, "%i", getY());
+  snprintf(tmp, 50, "%i", sy);
   nd.get_attributes().insert("y", tmp);
 
-  snprintf(tmp, 50, "%i", getZ());
+  snprintf(tmp, 50, "%i", sz);
   nd.get_attributes().insert("z", tmp);
+
+  /* save the hotspot, but only when it is not zero */
+  if (hx) {
+    snprintf(tmp, 50, "%i", hx);
+    nd.get_attributes().insert("hx", tmp);
+  }
+  if (hy) {
+    snprintf(tmp, 50, "%i", hy);
+    nd.get_attributes().insert("hy", tmp);
+  }
+  if (hz) {
+    snprintf(tmp, 50, "%i", hz);
+    nd.get_attributes().insert("hz", tmp);
+  }
 
   // this might allow us to later add another format
   nd.get_attributes().insert("type", "0");
@@ -999,6 +1013,13 @@ voxel_c::voxel_c(const xml::node & node) : hx(0), hy(0), hz(0) {
   sy = atoi(node.get_attributes().find("y")->get_value());
   sz = atoi(node.get_attributes().find("z")->get_value());
   voxels = sx*sy*sz;
+
+  if (node.get_attributes().find("hx") != node.get_attributes().end())
+    hx = atoi(node.get_attributes().find("hx")->get_value());
+  if (node.get_attributes().find("hy") != node.get_attributes().end())
+    hy = atoi(node.get_attributes().find("hy")->get_value());
+  if (node.get_attributes().find("hz") != node.get_attributes().end())
+    hz = atoi(node.get_attributes().find("hz")->get_value());
   
   space = new voxel_type[voxels];
   assert(space);
