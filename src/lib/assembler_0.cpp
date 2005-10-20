@@ -140,6 +140,17 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   puzzle = puz;
   problem = prob;
 
+  /* first check for hotspots, they NEED to be in the origin */
+#ifndef NDEBUG
+  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
+    const voxel_c * s = puz->probGetShapeShape(prob, i);
+
+    assert(s->getHx() == 0);
+    assert(s->getHy() == 0);
+    assert(s->getHz() == 0);
+  }
+#endif
+
   /* get and save piecenumber of puzzle */
   piecenumber = puz->probPieceNumber(prob);
 
