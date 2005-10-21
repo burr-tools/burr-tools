@@ -351,7 +351,7 @@ public:
   virtual unsigned long getIterations(void) { return iterations; }
 
   /* some more special information to find out possible piece placements */
-  unsigned int getPiecePlacement(unsigned int node, unsigned int piece, unsigned char *tran, int *x, int *y, int *z);
+  unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z);
   unsigned int getPiecePlacementCount(unsigned int piece);
 };
 

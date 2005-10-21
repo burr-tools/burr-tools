@@ -1055,14 +1055,20 @@ xml::node assembler_0_c::save(void) const {
   return nd;
 }
 
-unsigned int assembler_0_c::getPiecePlacement(unsigned int node, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) {
+unsigned int assembler_0_c::getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) {
 
-  if (!node) node = piece + 1;
+  if (!node)
+    node = down[piece + 1];
 
-  if (down[node] <= node)
-    return 0;
+  while (delta > 0) {
+    node = down[node];
+    delta--;
+  }
 
-  node = down[node];
+  while (delta < 0) {
+    node = up[node];
+    delta++;
+  }
 
   getPieceInformation(node, tran, x, y, z);
   return node;

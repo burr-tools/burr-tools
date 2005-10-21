@@ -585,20 +585,23 @@ void View3dGroup::showPlacement(const puzzle_c * puz, unsigned int probNum, unsi
 
   int num;
 
-  int shape = 0;
-  unsigned int p = piece;
-  while (p >= puz->probGetShapeCount(probNum, shape)) {
-    p -= puz->probGetShapeCount(probNum, shape);
-    shape++;
-  }
+  if (trans < NUM_TRANSFORMATIONS_MIRROR) {
 
-  num = View3D->addSpace(new voxel_c(puz->probGetShapeShape(probNum, shape), trans));
-  View3D->setSpacePosition(num, x, y, z, 1);
-  View3D->setSpaceColor(num,
-                        pieceColorR(puz->probGetShape(probNum, shape), p),
-                        pieceColorG(puz->probGetShape(probNum, shape), p),
-                        pieceColorB(puz->probGetShape(probNum, shape), p), 255);
-  View3D->setDrawingMode(num, VoxelView::normal);
+    int shape = 0;
+    unsigned int p = piece;
+    while (p >= puz->probGetShapeCount(probNum, shape)) {
+      p -= puz->probGetShapeCount(probNum, shape);
+      shape++;
+    }
+
+    num = View3D->addSpace(new voxel_c(puz->probGetShapeShape(probNum, shape), trans));
+    View3D->setSpacePosition(num, x, y, z, 1);
+    View3D->setSpaceColor(num,
+                          pieceColorR(puz->probGetShape(probNum, shape), p),
+                          pieceColorG(puz->probGetShape(probNum, shape), p),
+                          pieceColorB(puz->probGetShape(probNum, shape), p), 255);
+    View3D->setDrawingMode(num, VoxelView::normal);
+  }
 
   num = View3D->addSpace(new voxel_c(puz->probGetResultShape(probNum)));
   View3D->setSpaceColor(num,

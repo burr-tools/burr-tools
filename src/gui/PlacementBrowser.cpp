@@ -28,30 +28,42 @@ static void cb_placement_stub(Fl_Widget* o, void* v) { ((PlacementBrowser*)v)->c
 void PlacementBrowser::cb_piece(Fl_Value_Slider* o) {
 
   placementSelector->value(0);
-  placementSelector->range(0, ((assembler_0_c*)puzzle->probGetAssembler(problem))->getPiecePlacementCount(pieceSelector->value())-1);
 
+  unsigned int piece = (int)pieceSelector->value();
+  unsigned int placements = ((assembler_0_c*)puzzle->probGetAssembler(problem))->getPiecePlacementCount(piece);
   unsigned char trans;
   int x, y, z;
 
-  ((assembler_0_c*)puzzle->probGetAssembler(problem))->getPiecePlacement(0, pieceSelector->value(), &trans, &x, &y, &z);
+  if (placements) {
+    placementSelector->activate();
+    placementSelector->range(0, placements-1);
 
-  view3d->showPlacement(puzzle, problem, pieceSelector->value(), trans, x, y, z);
+    node = ((assembler_0_c*)puzzle->probGetAssembler(problem))->getPiecePlacement(0, 0, piece, &trans, &x, &y, &z);
+
+  } else {
+
+    placementSelector->deactivate();
+
+    trans = 0xFF;
+    x = y = z = 20000;
+  }
+
+  placement = 0;
+  view3d->showPlacement(puzzle, problem, piece, trans, x, y, z);
 }
 
 void PlacementBrowser::cb_placement(Fl_Value_Slider* o) {
 
-  unsigned int val = (unsigned int)o->value();
-
-  unsigned int node = 0;
+  unsigned int piece = (int)pieceSelector->value();
+  int val = (unsigned int)o->value();
 
   unsigned char trans;
   int x, y, z;
 
-  do {
-    node = ((assembler_0_c*)puzzle->probGetAssembler(problem))->getPiecePlacement(node, pieceSelector->value(), &trans, &x, &y, &z);
-  } while(val-- > 0);
+  node = ((assembler_0_c*)puzzle->probGetAssembler(problem))->getPiecePlacement(node, val-placement, piece, &trans, &x, &y, &z);
+  placement = val;
 
-  view3d->showPlacement(puzzle, problem, pieceSelector->value(), trans, x, y, z);
+  view3d->showPlacement(puzzle, problem, piece, trans, x, y, z);
 }
 
 
@@ -69,18 +81,12 @@ PlacementBrowser::PlacementBrowser(puzzle_c * p, unsigned int prob) :
   pieceSelector->callback(cb_piece_stub, this);
 
   placementSelector = new Fl_Value_Slider(0, 20, 20, WINDOWSIZE_Y - 20);
-  placementSelector->range(0, ((assembler_0_c*)puzzle->probGetAssembler(problem))->getPiecePlacementCount(pieceSelector->value())-1);
   placementSelector->precision(0);
   placementSelector->callback(cb_placement_stub, this);
 
-  unsigned char trans;
-  int x, y, z;
-
-  ((assembler_0_c*)puzzle->probGetAssembler(problem))->getPiecePlacement(0, 0, &trans, &x, &y, &z);
-
   end();
 
-  view3d->showPlacement(puzzle, problem, 0, trans, x, y, z);
+  cb_piece(0);
 }
 
 int PlacementBrowser::handle(int event) {

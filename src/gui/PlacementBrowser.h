@@ -37,6 +37,9 @@ class PlacementBrowser : public Fl_Double_Window {
   puzzle_c * puzzle;
   unsigned int problem;
 
+  unsigned int node;
+  unsigned int placement;
+
 public:
 
   PlacementBrowser(puzzle_c * p, unsigned int prob);
