@@ -488,6 +488,8 @@ void VoxelView::draw() {
     glMaterialfv(GL_FRONT, GL_DIFFUSE, DiffuseParams);
     glMaterialfv(GL_FRONT, GL_SPECULAR, SpecularParams);
 
+    glLineWidth(3);
+
     arcBall->setBounds(w(), h());
   }
 
