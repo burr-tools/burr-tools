@@ -35,59 +35,50 @@ void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, i
 
   case CONTEXT_CELL:
 
+    // don't redraw the cell where the input line is activated
     if ((c == editGroup+1) && (r == editShape) && (input->visible())) return;
 
     fl_push_clip(x, y, w, h);
     {
       static char s[40];
 
-      if (c == 0) {
+      int cnt = -1;
 
-        int p = puzzle->probGetShape(prob, r);
+      if (c == 0)
+        cnt = puzzle->probGetShape(prob, r);
 
-        fl_color((int)(255*pieceColorR(p)), (int)(255*pieceColorG(p)), (int)(255*pieceColorB(p)));
-        fl_rectf(x, y, w, h);
+      else if (c == 1)
+        cnt = puzzle->probGetShapeCount(prob, r);
 
-        snprintf(s, 40, "%i", puzzle->probGetShape(prob, r));
-        fl_color(FL_BLACK);
-        fl_draw(s, x, y, w, h, FL_ALIGN_CENTER);
-
-      } else if (c == 1) {
-
-        int p = puzzle->probGetShape(prob, r);
-
-        fl_color((int)(255*pieceColorR(p)), (int)(255*pieceColorG(p)), (int)(255*pieceColorB(p)));
-        fl_rectf(x, y, w, h);
-
-        snprintf(s, 40, "%i", puzzle->probGetShapeCount(prob, r));
-        fl_color(FL_BLACK);
-        fl_draw(s, x, y, w, h, FL_ALIGN_CENTER);
-
-      } else {
-
-        int count = 0;
+      else {
 
         for (unsigned int j = 0; j < puzzle->probGetShapeGroupNumber(prob, r); j++)
           if (puzzle->probGetShapeGroup(prob, r, j) == (c - 1))
-            count = puzzle->probGetShapeGroupCount(prob, r, j);
-
-        if (count) {
-          int p = puzzle->probGetShape(prob, r);
-
-          fl_color((int)(255*pieceColorR(p)), (int)(255*pieceColorG(p)), (int)(255*pieceColorB(p)));
-          fl_rectf(x, y, w, h);
-
-          snprintf(s, 40, "%i", count);
-          fl_color(FL_BLACK);
-          fl_draw(s, x, y, w, h, FL_ALIGN_CENTER);
-
-        } else {
-
-          fl_color(color());
-          fl_rectf(x, y, w, h);
-        }
+            cnt = puzzle->probGetShapeGroupCount(prob, r, j);
 
       }
+
+      if (cnt >= 0) {
+
+        int p = puzzle->probGetShape(prob, r);
+        unsigned char r, g, b;
+        r = (int)(255*pieceColorR(p));
+        g = (int)(255*pieceColorG(p));
+        b = (int)(255*pieceColorB(p));
+
+        fl_color(r, g, b);
+        fl_rectf(x, y, w, h);
+        snprintf(s, 40, "%i", cnt);
+        if ((int)3*r + 6*g + 1*b > 1275)
+          fl_color(0, 0, 0);
+        else
+          fl_color(255, 255, 255);
+        fl_draw(s, x, y, w, h, FL_ALIGN_CENTER);
+      } else {
+        fl_color(color());
+        fl_rectf(x, y, w, h);
+      }
+
       fl_color(FL_BLACK);
       fl_rect(x, y, w, h);
     }
@@ -110,6 +101,7 @@ void GroupsEditor::cb_input(void) {
     puzzle->probSetShapeGroup(prob, editShape, editGroup, atoi(input->value()));
 
   input->hide();
+  changed = true;
 }
 
 
@@ -159,7 +151,7 @@ void GroupsEditor::cb_tab(void)
 }
 
 
-GroupsEditor::GroupsEditor(int x, int y, int w, int h, puzzle_c * puzzle, unsigned int problem) : Fl_Table(x, y, w, h) {
+GroupsEditor::GroupsEditor(int x, int y, int w, int h, puzzle_c * puzzle, unsigned int problem) : Fl_Table(x, y, w, h), changed(false) {
 
   this->puzzle = puzzle;
   this->prob = problem;

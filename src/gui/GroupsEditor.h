@@ -17,6 +17,8 @@ class GroupsEditor : public Fl_Table {
 
   unsigned int maxGroup;
 
+  bool changed;
+
   void draw_cell(TableContext context, int r = 0, int c = 0,
                  int x = 0, int y = 0, int w = 0, int h = 0);
 
@@ -28,6 +30,8 @@ public:
 
   void cb_input(void);
   void cb_tab(void);
+
+  bool getChanged(void) { return changed; }
 
 };
 
@@ -41,6 +45,8 @@ public:
 
   void cb_AddColor(void);
   void cb_CloseWindow(void);
+
+  bool changed(void) { return tab->getChanged(); }
 };
 
 #endif
