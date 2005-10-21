@@ -1601,20 +1601,31 @@ int UserInterface::handle(int event) {
   switch(event) {
   case FL_SHORTCUT:
     switch (Fl::event_key()) {
+    case FL_F+4:
+      if (TaskSelectionTab->value() == TabPieces) {
+        cb_Toggle3D();
+        return 1;
+      }
+      break;
+    case FL_F+3:
+      cb_Load();
+      return 1;
     case FL_F+2:
-      cb_Toggle3D();
+      cb_Save();
       return 1;
     case '-':
-      if (TaskSelectionTab == TabPieces) {
+      if (TaskSelectionTab->value() == TabPieces) {
         pieceEdit->setZ(pieceEdit->getZ()+1);
         return 1;
       }
+      break;
     case '+':
-      if (TaskSelectionTab == TabPieces) {
+      if (TaskSelectionTab->value() == TabPieces) {
         if (pieceEdit->getZ() > 0)
           pieceEdit->setZ(pieceEdit->getZ()-1);
         return 1;
       }
+      break;
     }
   }
 
