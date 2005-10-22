@@ -19,7 +19,8 @@
 #include "configuration.h"
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
+
+#include "../lib/bt_assert.h"
 
 #include "WindowWidgets.h"
 
@@ -135,7 +136,7 @@ void configuration::parse(FILE * in) {
           case CT_INT:
             *(int *)t->cnf_var = atoi(param);
             break;
-          default: assert(0);
+          default: bt_assert(0);
           }
           break;
         }
@@ -202,7 +203,7 @@ configuration::~configuration(void) {
 
   FILE * f = create_local_config_file();
 
-  assert(f);
+  bt_assert(f);
 
   fseek(f, 0, SEEK_SET);
 
@@ -221,7 +222,7 @@ configuration::~configuration(void) {
     case CT_INT:
       fprintf(f, "%i", *(int *)t->cnf_var);
       break;
-    default: assert(0);
+    default: bt_assert(0);
     }
 
     fprintf(f, "\n");
@@ -268,7 +269,7 @@ void configuration::dialog(void) {
         break;
       case CT_INT:
         break;
-      default: assert(0);
+      default: bt_assert(0);
       }
   
       y += 20;
@@ -305,7 +306,7 @@ void configuration::dialog(void) {
         break;
       case CT_INT:
         break;
-      default: assert(0);
+      default: bt_assert(0);
       }
     }
     t = t->next;

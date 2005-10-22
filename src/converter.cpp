@@ -75,7 +75,7 @@ public:
     probSetName(prob, "Problem");
 
     voxel_c * v = new my_voxel_0(str);
-    assert(v);
+    bt_assert(v);
     probSetResult(prob, addShape(v));
   
     int pieces;
@@ -99,7 +99,7 @@ public:
       }
   
       v = new my_voxel_0(str);
-      assert(v);
+      bt_assert(v);
 
       probAddShape(prob, addShape(v), nr);
 

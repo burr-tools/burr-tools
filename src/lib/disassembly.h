@@ -23,6 +23,7 @@
  */
 
 #include "voxel.h"
+#include "bt_assert.h"
 
 #include <deque>
 
@@ -101,7 +102,7 @@ public:
 
   /* get one state from the separation process */
   const state_c * getState(unsigned int num) const {
-    assert(num < states.size());
+    bt_assert(num < states.size());
     return states[num];
   }
 
@@ -126,7 +127,7 @@ public:
 
   /* get the number for the num-th piece that is in this separation */
   voxel_type getPieceName(unsigned int num) const {
-    assert(num < piecenumber);
+    bt_assert(num < piecenumber);
     return pieces[num];
   }
 };
@@ -161,15 +162,15 @@ public:
 
   /* the the x, y or z position of a piece */
   int getX(unsigned int i) const {
-    assert(i < piecenumber);
+    bt_assert(i < piecenumber);
     return dx[i];
   }
   int getY(unsigned int i) const {
-    assert(i < piecenumber);
+    bt_assert(i < piecenumber);
     return dy[i];
   }
   int getZ(unsigned int i) const {
-    assert(i < piecenumber);
+    bt_assert(i < piecenumber);
     return dz[i];
   }
 
@@ -183,7 +184,7 @@ public:
   state_c(const xml::node & node, unsigned int pn);
 
 #ifndef NDEBUG
-  /* one assert needs to check the piecenumber */
+  /* on assert needs to check the piecenumber */
   friend void separation_c::addstate(state_c *st);
 #endif
 };

@@ -148,6 +148,9 @@ public:
 
   void show(int argn, char ** argv);
 
+  /* this is used on assert to save the current puzzle */
+  const puzzle_c * getPuzzle(void) const { return puzzle; }
+
   /* update the interface to represent the latest state of
    * the solving progress, thas works in background
    */

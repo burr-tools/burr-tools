@@ -158,7 +158,7 @@ class ColorSelector : public SelectableTextList {
 
 public:
 
-  ColorSelector(int x, int y, int w, int h, puzzle_c * p, bool incNeutr) : SelectableTextList(x, y, w, h), puzzle(p), includeNeutral(incNeutr) { assert(p); }
+  ColorSelector(int x, int y, int w, int h, puzzle_c * p, bool incNeutr) : SelectableTextList(x, y, w, h), puzzle(p), includeNeutral(incNeutr) { bt_assert(p); }
 
   void setPuzzle(puzzle_c *pz);
 
@@ -186,7 +186,7 @@ private:
 
 public:
 
-  PieceSelector(int x, int y, int w, int h, puzzle_c * p) : SelectableTextList(x, y, w, h), puzzle(p) { assert(p); }
+  PieceSelector(int x, int y, int w, int h, puzzle_c * p) : SelectableTextList(x, y, w, h), puzzle(p) { bt_assert(p); }
 
   void setPuzzle(puzzle_c *pz);
   unsigned int virtual blockNumber(void);
@@ -206,7 +206,7 @@ public:
   ProblemSelector(int x, int y, int w, int h, puzzle_c * p) :
     SelectableTextList(x, y, w, h),
     puzzle(p)
-  { assert(p); }
+  { bt_assert(p); }
 
   void setPuzzle(puzzle_c *pz);
   unsigned int virtual blockNumber(void);
@@ -231,7 +231,7 @@ public:
   };
 
 
-  PiecesList(int x, int y, int w, int h, puzzle_c * p) : TextList(x, y, w, h), puzzle(p), problem(0) { assert(p); }
+  PiecesList(int x, int y, int w, int h, puzzle_c * p) : TextList(x, y, w, h), puzzle(p), problem(0) { bt_assert(p); }
 
   void setPuzzle(puzzle_c *pz, unsigned int prob);
   unsigned int virtual blockNumber(void);
@@ -273,7 +273,7 @@ public:
   virtual void push(unsigned int block);
 
   unsigned char getVisibility(unsigned int piece) {
-    assert(piece < puzzle->probPieceNumber(problem));
+    bt_assert(piece < puzzle->probPieceNumber(problem));
     return visState[piece];
   }
 };

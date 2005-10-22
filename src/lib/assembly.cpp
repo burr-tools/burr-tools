@@ -18,6 +18,7 @@
 
 #include "assembly.h"
 #include "puzzle.h"
+#include "bt_assert.h"
 
 assembly_c::assembly_c(const xml::node & node, unsigned int pieces) {
 
@@ -247,8 +248,8 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
 
 bool assembly_c::compare(const assembly_c & b, unsigned int pivot) const {
   
-  assert(placements.size() == b.placements.size());
-  assert(pivot < placements.size());
+  bt_assert(placements.size() == b.placements.size());
+  bt_assert(pivot < placements.size());
 
   /* we first compare the pivot piece and leave that one out later on
    * we do that because the pivot piece is the one that das reduced

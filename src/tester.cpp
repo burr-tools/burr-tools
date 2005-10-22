@@ -80,7 +80,7 @@ public:
 
 static voxel_c * transform(const voxel_c * p, int nr) {
 
-  assert(nr < NUM_TRANSFORMATIONS);
+  bt_assert(nr < NUM_TRANSFORMATIONS);
 
   static int rotx[NUM_TRANSFORMATIONS] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3 };
   static int roty[NUM_TRANSFORMATIONS] = { 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -290,7 +290,7 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val) {
 //      printf(" b1 %i b2 %i\n", b1 ,b2);
 
       if (b1 == 1) {
-        printf("assert(s == %i);\nreturn (symmetries_t)%i; //%s\n",lastfound, lastfound, longlong2string(foundSym[lastfound]));
+        printf("bt_assert(s == %i);\nreturn (symmetries_t)%i; //%s\n",lastfound, lastfound, longlong2string(foundSym[lastfound]));
         return;
       }
 

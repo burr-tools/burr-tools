@@ -179,7 +179,7 @@ state_c::state_c(unsigned int pn)
   dx = new int[pn];
   dy = new int[pn];
   dz = new int[pn];
-  assert(dx && dy && dz);
+  bt_assert(dx && dy && dz);
 }
 
 state_c::~state_c() {
@@ -189,14 +189,14 @@ state_c::~state_c() {
 }
 
 void state_c::set(unsigned int piece, int x, int y, int z) {
-  assert(piece < piecenumber);
+  bt_assert(piece < piecenumber);
   dx[piece] = x;
   dy[piece] = y;
   dz[piece] = z;
 }
 
 bool state_c::pieceRemoved(unsigned int i) const {
-  assert(i < piecenumber);
+  bt_assert(i < piecenumber);
   return (abs(dx[i]) > 10000) || (abs(dy[i]) > 10000) || (abs(dz[i]) > 10000);
 }
 
@@ -307,7 +307,7 @@ separation_c::separation_c(const xml::node & node, unsigned int pieceCnt) {
     if ((it->get_type() == xml::node::type_element) &&
         (strcmp(it->get_name(), "separation") == 0)) {
 
-      assert(it->get_attributes().find("type") != it->get_attributes().end());
+      bt_assert(it->get_attributes().find("type") != it->get_attributes().end());
       if (!strcmp(it->get_attributes().find("type")->get_value(), "left")) {
         if (left)
           throw load_error("more than one left branche in disassembly", node);
@@ -336,7 +336,7 @@ separation_c::~separation_c() {
 }
 
 unsigned int separation_c::sumMoves(void) const {
-  assert(states.size());
+  bt_assert(states.size());
   unsigned int erg = states.size() - 1;
   if (removed)
     erg += removed->sumMoves();
@@ -347,7 +347,7 @@ unsigned int separation_c::sumMoves(void) const {
 }
 
 void separation_c::addstate(state_c *st) {
-  assert(st->piecenumber == piecenumber);
+  bt_assert(st->piecenumber == piecenumber);
   states.push_front(st);
 }
 

@@ -54,8 +54,8 @@ public:
 
   void set(unsigned int pcCol, unsigned int resCol, bool value) {
 
-    assert(pcCol < colors);
-    assert(resCol < colors);
+    bt_assert(pcCol < colors);
+    bt_assert(resCol < colors);
 
     int idx = resCol * colors + pcCol;
 
@@ -66,8 +66,8 @@ public:
   }
 
   bool get(unsigned int pcCol, unsigned int resCol) const {
-    assert(pcCol < colors);
-    assert(resCol < colors);
+    bt_assert(pcCol < colors);
+    bt_assert(resCol < colors);
 
     int idx = resCol * colors + pcCol;
 
@@ -117,7 +117,7 @@ void bitmap_c::add(void) {
 
 void bitmap_c::remove(unsigned int col) {
 
-  assert(col <= colors);
+  bt_assert(col <= colors);
 
   unsigned char *m2 = new unsigned char[((colors-1)*(colors-1) + 7) >> 3];
 
@@ -692,7 +692,7 @@ void puzzle_c::addColor(unsigned char r, unsigned char g, unsigned char b) {
 
 void puzzle_c::removeColor(unsigned int col) {
 
-  assert(col <= colors.size());
+  bt_assert(col <= colors.size());
   colors.erase(colors.begin() + (col - 1));
 
   // go through all shapes and remove the deleted color
@@ -712,7 +712,7 @@ void puzzle_c::removeColor(unsigned int col) {
 
 void puzzle_c::changeColor(unsigned int idx, unsigned char r, unsigned char g, unsigned char b) {
 
-  assert(idx < colors.size());
+  bt_assert(idx < colors.size());
 
   colors[idx].r = r;
   colors[idx].g = g;
@@ -721,7 +721,7 @@ void puzzle_c::changeColor(unsigned int idx, unsigned char r, unsigned char g, u
 
 void puzzle_c::getColor(unsigned int idx, unsigned char * r, unsigned char * g, unsigned char * b) const {
 
-  assert(idx < colors.size());
+  bt_assert(idx < colors.size());
 
   *r = colors[idx].r;
   *g = colors[idx].g;
@@ -734,9 +734,9 @@ unsigned int puzzle_c::colorNumber(void) const {
 
 
 void puzzle_c::probAllowPlacement(unsigned int prob, unsigned int pc, unsigned int res) {
-  assert(prob < problems.size());
-  assert(pc <= colors.size());
-  assert(res <= colors.size());
+  bt_assert(prob < problems.size());
+  bt_assert(pc <= colors.size());
+  bt_assert(res <= colors.size());
 
   if ((pc == 0) || (res == 0))
     return;
@@ -745,9 +745,9 @@ void puzzle_c::probAllowPlacement(unsigned int prob, unsigned int pc, unsigned i
 }
 
 void puzzle_c::probDisallowPlacement(unsigned int prob, unsigned int pc, unsigned int res) {
-  assert(prob < problems.size());
-  assert(pc <= colors.size());
-  assert(res <= colors.size());
+  bt_assert(prob < problems.size());
+  bt_assert(pc <= colors.size());
+  bt_assert(res <= colors.size());
 
   if ((pc == 0) || (res == 0))
     return;
@@ -756,9 +756,9 @@ void puzzle_c::probDisallowPlacement(unsigned int prob, unsigned int pc, unsigne
 }
 
 bool puzzle_c::probPlacementAllowed(unsigned int prob, unsigned int pc, unsigned int res) const {
-  assert(prob < problems.size());
-  assert(pc <= colors.size());
-  assert(res <= colors.size());
+  bt_assert(prob < problems.size());
+  bt_assert(pc <= colors.size());
+  bt_assert(res <= colors.size());
 
   if (colors.size() == 0)
     return true;
@@ -884,13 +884,13 @@ unsigned int puzzle_c::addShape(int sx, int sy, int sz) {
 
 /* return the pointer to voxel space with the id */
 const voxel_c * puzzle_c::getShape(unsigned int idx) const {
-  assert(idx < shapes.size());
+  bt_assert(idx < shapes.size());
   return shapes[idx];
 }
 
 
 voxel_c * puzzle_c::getShape(unsigned int idx) {
-  assert(idx < shapes.size());
+  bt_assert(idx < shapes.size());
   return shapes[idx];
 }
 
@@ -942,7 +942,7 @@ void puzzle_c::removeProblem(unsigned int idx) {
 
 unsigned int puzzle_c::copyProblem(unsigned int prob) {
 
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
 
   problems.push_back(new problem_c(problems[prob]));
 
@@ -952,65 +952,65 @@ unsigned int puzzle_c::copyProblem(unsigned int prob) {
 
 /* set the shape-id for the result shape this the problem */
 void puzzle_c::probSetResult(unsigned int prob, unsigned int shape) {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
 
   problems[prob]->result = shape;
 }
 
 /* get the id for the result shape */
 unsigned int puzzle_c::probGetResult(unsigned prob) const {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
 
   return problems[prob]->result;
 }
 
 /* get the result shape voxel space */
 const voxel_c * puzzle_c::probGetResultShape(unsigned int prob) const {
-  assert(prob < problems.size());
-  assert(problems[prob]->result < shapes.size());
+  bt_assert(prob < problems.size());
+  bt_assert(problems[prob]->result < shapes.size());
 
   return shapes[problems[prob]->result];
 }
 
 voxel_c * puzzle_c::probGetResultShape(unsigned int prob) {
-  assert(prob < problems.size());
-  assert(problems[prob]->result < shapes.size());
+  bt_assert(prob < problems.size());
+  bt_assert(problems[prob]->result < shapes.size());
 
   return shapes[problems[prob]->result];
 }
 
 /* add a shape to the pieces of the problem */
 void puzzle_c::probAddShape(unsigned int prob, unsigned int shape, unsigned int count) {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
 
   problems[prob]->shapes.push_back(problem_c::shape_c(shape, count, 0));
 }
 
 /* change the instance count for one shape of the problem */
 void puzzle_c::probSetShapeCount(unsigned int prob, unsigned int shapeID, unsigned int count) {
-  assert(prob < problems.size());
-  assert(shapeID < problems[prob]->shapes.size());
+  bt_assert(prob < problems.size());
+  bt_assert(shapeID < problems[prob]->shapes.size());
 
   problems[prob]->shapes[shapeID].count = count;
 }
 
 /* remove the shape from the problem */
 void puzzle_c::probRemoveShape(unsigned int prob, unsigned int shapeID) {
-  assert(prob < problems.size());
-  assert(shapeID < problems[prob]->shapes.size());
+  bt_assert(prob < problems.size());
+  bt_assert(shapeID < problems[prob]->shapes.size());
 
   problems[prob]->shapes.erase(problems[prob]->shapes.begin() + shapeID);
 }
 
 /* return the number of shapes in the problem */
 unsigned int puzzle_c::probShapeNumber(unsigned int prob) const {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
   return problems[prob]->shapes.size();
 }
 
 /* return the number of pieces in the problem (sum of all counts of all shapes */
 unsigned int puzzle_c::probPieceNumber(unsigned int prob) const {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
 
   unsigned int result = 0;
 
@@ -1022,14 +1022,14 @@ unsigned int puzzle_c::probPieceNumber(unsigned int prob) const {
 
 /* return the shape id of the given shape (index into the shape array of the puzzle */
 unsigned int puzzle_c::probGetShape(unsigned int prob, unsigned int shapeID) const {
-  assert(prob < problems.size());
-  assert(shapeID < problems[prob]->shapes.size());
+  bt_assert(prob < problems.size());
+  bt_assert(shapeID < problems[prob]->shapes.size());
 
   return problems[prob]->shapes[shapeID].shapeId;
 }
 
 bool puzzle_c::probContainsShape(unsigned int prob, unsigned int shape) const {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
 
   if (problems[prob]->result == shape)
     return true;
@@ -1042,25 +1042,25 @@ bool puzzle_c::probContainsShape(unsigned int prob, unsigned int shape) const {
 }
 
 const voxel_c * puzzle_c::probGetShapeShape(unsigned int prob, unsigned int shapeID) const {
-  assert(prob < problems.size());
-  assert(shapeID < problems[prob]->shapes.size());
-  assert(problems[prob]->shapes[shapeID].shapeId < shapes.size());
+  bt_assert(prob < problems.size());
+  bt_assert(shapeID < problems[prob]->shapes.size());
+  bt_assert(problems[prob]->shapes[shapeID].shapeId < shapes.size());
 
   return shapes[problems[prob]->shapes[shapeID].shapeId];
 }
 
 voxel_c * puzzle_c::probGetShapeShape(unsigned int prob, unsigned int shapeID) {
-  assert(prob < problems.size());
-  assert(shapeID < problems[prob]->shapes.size());
-  assert(problems[prob]->shapes[shapeID].shapeId < shapes.size());
+  bt_assert(prob < problems.size());
+  bt_assert(shapeID < problems[prob]->shapes.size());
+  bt_assert(problems[prob]->shapes[shapeID].shapeId < shapes.size());
 
   return shapes[problems[prob]->shapes[shapeID].shapeId];
 }
 
 /* return the instance count for one shape of the problem */
 unsigned int puzzle_c::probGetShapeCount(unsigned int prob, unsigned int shapeID) const {
-  assert(prob < problems.size());
-  assert(shapeID < problems[prob]->shapes.size());
+  bt_assert(prob < problems.size());
+  bt_assert(shapeID < problems[prob]->shapes.size());
 
   return problems[prob]->shapes[shapeID].count;
 }
@@ -1075,15 +1075,15 @@ const std::string & puzzle_c::probGetName(unsigned int prob) const {
 
 
 void puzzle_c::probAddSolution(unsigned int prob, assembly_c * voxel) {
-  assert(prob < problems.size());
-  assert(problems[prob]->assm);
+  bt_assert(prob < problems.size());
+  bt_assert(problems[prob]->assm);
   problems[prob]->solutions.push_back(new solution_c(voxel, 0));
   problems[prob]->solveState = SS_SOLVING;
 }
 
 void puzzle_c::probAddSolution(unsigned int prob, assembly_c * voxel, separation_c * tree) {
-  assert(prob < problems.size());
-  assert(problems[prob]->assm);
+  bt_assert(prob < problems.size());
+  bt_assert(problems[prob]->assm);
 
   // find the place to insert and insert the new solution so that
   // they are sorted by the complexity of the disassembly
@@ -1105,7 +1105,7 @@ void puzzle_c::probAddSolution(unsigned int prob, assembly_c * voxel, separation
 }
 
 void puzzle_c::probRemoveAllSolutions(unsigned int prob) {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
   for_each(problems[prob]->solutions.begin(), problems[prob]->solutions.end(), deallocate<solution_c>);
   problems[prob]->solutions.clear();
   delete problems[prob]->assm;
@@ -1118,34 +1118,34 @@ void puzzle_c::probRemoveAllSolutions(unsigned int prob) {
 }
 
 puzzle_c::SolveState_e puzzle_c::probGetSolveState(unsigned int prob) const {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
   return problems[prob]->solveState;
 }
 
 bool puzzle_c::probNumAssembliesKnown(unsigned int prob) const {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
   return problems[prob]->numAssemblies != 0xFFFFFFFF;
 }
 
 bool puzzle_c::probNumSolutionsKnown(unsigned int prob) const {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
   return problems[prob]->numSolutions != 0xFFFFFFFF;
 }
 
 
 
 unsigned long puzzle_c::probGetNumAssemblies(unsigned int prob) const {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
   return problems[prob]->numAssemblies;
 }
 
 unsigned long puzzle_c::probGetNumSolutions(unsigned int prob) const {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
   return problems[prob]->numSolutions;
 }
 
 void puzzle_c::probAddTime(unsigned int prob, unsigned long time) {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
   if (problems[prob]->usedTime != 0xFFFFFFFF)
     problems[prob]->usedTime += time;
   else
@@ -1153,12 +1153,12 @@ void puzzle_c::probAddTime(unsigned int prob, unsigned long time) {
 }
 
 unsigned long puzzle_c::probGetUsedTime(unsigned int prob) const {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
   return problems[prob]->usedTime;
 }
 
 bool puzzle_c::probUsedTimeKnown(unsigned int prob) const {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
   return problems[prob]->usedTime != 0xFFFFFFFF;
 }
 
@@ -1181,40 +1181,40 @@ void puzzle_c::probFinishedSolving(unsigned int prob) {
 }
 
 unsigned int puzzle_c::probSolutionNumber(unsigned int prob) const {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
   return problems[prob]->solutions.size();
 }
 
 assembly_c * puzzle_c::probGetAssembly(unsigned int prob, unsigned int sol) {
-  assert(prob < problems.size());
-  assert(sol < problems[prob]->solutions.size());
+  bt_assert(prob < problems.size());
+  bt_assert(sol < problems[prob]->solutions.size());
 
   return problems[prob]->solutions[sol]->assembly;
 }
 
 const assembly_c * puzzle_c::probGetAssembly(unsigned int prob, unsigned int sol) const {
-  assert(prob < problems.size());
-  assert(sol < problems[prob]->solutions.size());
+  bt_assert(prob < problems.size());
+  bt_assert(sol < problems[prob]->solutions.size());
 
   return problems[prob]->solutions[sol]->assembly;
 }
 
 separation_c * puzzle_c::probGetDisassembly(unsigned int prob, unsigned int sol) {
-  assert(prob < problems.size());
-  assert(sol < problems[prob]->solutions.size());
+  bt_assert(prob < problems.size());
+  bt_assert(sol < problems[prob]->solutions.size());
 
   return problems[prob]->solutions[sol]->tree;
 }
 
 const separation_c * puzzle_c::probGetDisassembly(unsigned int prob, unsigned int sol) const {
-  assert(prob < problems.size());
-  assert(sol < problems[prob]->solutions.size());
+  bt_assert(prob < problems.size());
+  bt_assert(sol < problems[prob]->solutions.size());
 
   return problems[prob]->solutions[sol]->tree;
 }
 
 assembler_c::errState puzzle_c::probSetAssembler(unsigned int prob, assembler_c * assm) {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
 
   if (problems[prob]->assemblerState.length()) {
 
@@ -1243,18 +1243,18 @@ assembler_c::errState puzzle_c::probSetAssembler(unsigned int prob, assembler_c 
 }
 
 assembler_c * puzzle_c::probGetAssembler(unsigned int prob) {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
   return problems[prob]->assm;
 }
 
 const assembler_c * puzzle_c::probGetAssembler(unsigned int prob) const {
-  assert(prob < problems.size());
+  bt_assert(prob < problems.size());
   return problems[prob]->assm;
 }
 
 void puzzle_c::probSetShapeGroup(unsigned int prob, unsigned int shapeID, unsigned short group, unsigned short count) {
-  assert(prob < problems.size());
-  assert(shapeID < problems[prob]->shapes.size());
+  bt_assert(prob < problems.size());
+  bt_assert(shapeID < problems[prob]->shapes.size());
 
   // not first look, if we already have this group number in our list
   for (unsigned int i = 0; i < problems[prob]->shapes[shapeID].groups.size(); i++)
@@ -1275,22 +1275,22 @@ void puzzle_c::probSetShapeGroup(unsigned int prob, unsigned int shapeID, unsign
 
 unsigned short puzzle_c::probGetShapeGroupNumber(unsigned int prob, unsigned int shapeID) const {
 
-  assert(prob < problems.size());
-  assert(shapeID < problems[prob]->shapes.size());
+  bt_assert(prob < problems.size());
+  bt_assert(shapeID < problems[prob]->shapes.size());
 
   return problems[prob]->shapes[shapeID].groups.size();
 }
 
 unsigned short puzzle_c::probGetShapeGroup(unsigned int prob, unsigned int shapeID, unsigned int groupID) const {
-  assert(prob < problems.size());
-  assert(shapeID < problems[prob]->shapes.size());
+  bt_assert(prob < problems.size());
+  bt_assert(shapeID < problems[prob]->shapes.size());
 
   return problems[prob]->shapes[shapeID].groups[groupID].group;
 }
 
 unsigned short puzzle_c::probGetShapeGroupCount(unsigned int prob, unsigned int shapeID, unsigned int groupID) const {
-  assert(prob < problems.size());
-  assert(shapeID < problems[prob]->shapes.size());
+  bt_assert(prob < problems.size());
+  bt_assert(shapeID < problems[prob]->shapes.size());
 
   return problems[prob]->shapes[shapeID].groups[groupID].count;
 }

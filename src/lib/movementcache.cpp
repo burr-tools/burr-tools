@@ -151,7 +151,7 @@ movementCache::entry * movementCache::calcValues(unsigned char s1, unsigned char
 
       for (int x = x1u; x <= x2u; x++) {
 
-        assert(sh1->isEmpty2(x, y, z) || sh2->isEmpty2(x-dx, y-dy, z-dz));
+        bt_assert(sh1->isEmpty2(x, y, z) || sh2->isEmpty2(x-dx, y-dy, z-dz));
 
         if (sh1->isFilled2(x, y, z))
           last = x;
@@ -187,7 +187,7 @@ movementCache::entry * movementCache::calcValues(unsigned char s1, unsigned char
     }
 
   /* check the result and put it into the hash node */
-  assert((mx >= 0) && (my >= 0) && (mz >= 0));
+  bt_assert((mx >= 0) && (my >= 0) && (mz >= 0));
 
   e->mx = mx;
   e->my = my;

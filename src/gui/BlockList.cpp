@@ -208,7 +208,7 @@ void TextList::blockSize(unsigned int block, unsigned int *w, unsigned int *h) {
 }
 
 void ColorSelector::setPuzzle(puzzle_c *pz) {
-  assert(pz);
+  bt_assert(pz);
   puzzle = pz;
   setSelection(0);
 }
@@ -245,7 +245,7 @@ void ColorSelector::getText(unsigned int block, char * text) {
 }
 
 void PieceSelector::setPuzzle(puzzle_c *pz) {
-  assert(pz);
+  bt_assert(pz);
   puzzle = pz;
   setSelection(0);
 }
@@ -265,7 +265,7 @@ void PieceSelector::getColor(unsigned int block, unsigned char *r,  unsigned cha
 }
 
 void ProblemSelector::setPuzzle(puzzle_c *pz) {
-  assert(pz);
+  bt_assert(pz);
   puzzle = pz;
   setSelection(0);
 }
@@ -285,7 +285,7 @@ void ProblemSelector::getColor(unsigned int block, unsigned char *r,  unsigned c
 }
 
 void PiecesList::setPuzzle(puzzle_c *pz, unsigned int prob) {
-  assert(pz);
+  bt_assert(pz);
   puzzle = pz;
   problem = prob;
   redraw();
@@ -330,7 +330,7 @@ void PiecesList::getColor(unsigned int block, unsigned char *r,  unsigned char *
 }
 
 PieceVisibility::PieceVisibility(int x, int y, int w, int h, puzzle_c * p) : BlockList(x, y, w, h), puzzle(p), problem(0) {
-  assert(p);
+  bt_assert(p);
   if (p->problemNumber() > 0) {
     visState = new unsigned char[p->probPieceNumber(0)];
     for (unsigned int i = 0; i < p->probPieceNumber(0); i++)
@@ -418,7 +418,7 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
 }
 
 void PieceVisibility::setPuzzle(puzzle_c *pz, unsigned int prob) {
-  assert(pz);
+  bt_assert(pz);
   puzzle = pz;
   problem = prob;
 
@@ -655,7 +655,7 @@ void ColorConstraintsEdit::setSelection(unsigned int num) {
 
 
 void ColorConstraintsEdit::setPuzzle(puzzle_c *pz, unsigned int prob) {
-  assert(pz);
+  bt_assert(pz);
   if ((puzzle != pz) || (problem != prob)) {
     puzzle = pz;
     problem = prob;

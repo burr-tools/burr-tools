@@ -46,19 +46,19 @@ void DisasmToMoves::setStep(float step) {
 }
 
 float DisasmToMoves::getX(unsigned int piece) {
-  assert(piece < tree->getPieceNumber());
+  bt_assert(piece < tree->getPieceNumber());
   return moves[4*piece+0];
 }
 float DisasmToMoves::getY(unsigned int piece) {
-  assert(piece < tree->getPieceNumber());
+  bt_assert(piece < tree->getPieceNumber());
   return moves[4*piece+1];
 }
 float DisasmToMoves::getZ(unsigned int piece) {
-  assert(piece < tree->getPieceNumber());
+  bt_assert(piece < tree->getPieceNumber());
   return moves[4*piece+2];
 }
 float DisasmToMoves::getA(unsigned int piece) {
-  assert(piece < tree->getPieceNumber());
+  bt_assert(piece < tree->getPieceNumber());
   return moves[4*piece+3];
 }
 
@@ -89,7 +89,7 @@ static int mmax(int a, int b) {
  */
 int DisasmToMoves::doRecursive(const separation_c * tree, int step, float weight, int cx, int cy, int cz) {
 
-  assert(tree);
+  bt_assert(tree);
 
   /* first check, if we are inside this tree node, this is the case when
    * the number of steps is between 0 and the number of steps in this node

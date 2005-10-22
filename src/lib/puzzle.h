@@ -32,8 +32,6 @@
 #include <vector>
 #include <iostream>
 
-#include <assert.h>
-
 #include <xmlwrapp/node.h>
 
 

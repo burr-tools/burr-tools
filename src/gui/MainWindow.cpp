@@ -76,6 +76,8 @@ void UserInterface::cb_AddColor(void) {
 static void cb_RemoveColor_stub(Fl_Widget* o, void* v) { ui->cb_RemoveColor(); }
 void UserInterface::cb_RemoveColor(void) {
 
+  bt_assert(0);
+
   if (colorSelector->getSelection() == 0)
     fl_message("Can not delete the Neutral color, this color has to be there");
   else {
@@ -598,7 +600,7 @@ void UserInterface::cb_BtnCont(void) {
     return;
   }
 
-  assert(assmThread == 0);
+  bt_assert(assmThread == 0);
 
   if (SolveDisasm->value() != 0)
     if (JustCount->value() != 0)
@@ -627,7 +629,7 @@ void UserInterface::cb_BtnCont(void) {
 static void cb_BtnStop_stub(Fl_Widget* o, void* v) { ui->cb_BtnStop(); }
 void UserInterface::cb_BtnStop(void) {
 
-  assert(assmThread);
+  bt_assert(assmThread);
 
   assmThread->stop();
 }
@@ -1487,6 +1489,24 @@ void UserInterface::update(void) {
 
   if (assmThread) {
 
+    // check, if the thread has thrown an exception, if so rethrow it
+    if (assmThread->getAssertException()) {
+
+      assertWindow * aw = new assertWindow("Because of an internal error the current puzzle\n"
+                                           "can not be solved\n",
+                                           assmThread->getAssertException());
+
+      aw->show();
+    
+      while (aw->visible())
+        Fl::wait();
+
+      delete aw;
+      delete assmThread;
+      assmThread = 0;
+      return;
+    }
+
     // check, if the thread has stopped, if so then delete the object
     if ((assmThread->currentAction() == assemblerThread::ACT_PAUSING) ||
         (assmThread->currentAction() == assemblerThread::ACT_FINISHED)) {
@@ -1669,7 +1689,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
   int hi = h - pieceFixedHight - colorsFixedHight - editFixedHight;
 
-  assert(hi > 30);
+  bt_assert(hi > 30);
 
   int pieceHight = hi/numGroups + pieceFixedHight;
   int colorsHight = hi/numGroups + colorsFixedHight;
@@ -1816,7 +1836,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
   int hi = h - problemsFixedHight - colorsFixedHight - matrixFixedHight - shapesFixedHight - piecesFixedHight;
 
-  assert(hi > 30);
+  bt_assert(hi > 30);
 
   int problemsHight = hi/5 + problemsFixedHight;
   int colorsHight = hi/5 + colorsFixedHight;
@@ -2031,7 +2051,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
 
   int hi = h - paramsFixedHight - solutionsFixedHight;
 
-  assert(hi > 30);
+  bt_assert(hi > 30);
 
   int paramsHight = hi/2 + paramsFixedHight;
   int solutionsHight = hi - (hi/2) + solutionsFixedHight;
@@ -2131,7 +2151,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     y += SZ_TEXT_Y;
     lh -= SZ_TEXT_Y;
 
-    assert(lh == 0);
+    bt_assert(lh == 0);
 
     group->end();
   }

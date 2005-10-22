@@ -196,8 +196,8 @@ static void drawRect(int x0, int y0, int z0,
                      int v1x, int v1y, int v1z,
                      int v2x, int v2y, int v2z, bool type, int diag) {
 
-  assert((v1x >= 0) && (v1y >= 0) && (v1z >= 0));
-  assert((v2x >= 0) && (v2y >= 0) && (v2z >= 0));
+  bt_assert((v1x >= 0) && (v1y >= 0) && (v1z >= 0));
+  bt_assert((v2x >= 0) && (v2y >= 0) && (v2z >= 0));
 
   glBegin(GL_LINES);
   glVertex3f(x0, y0, z0); glVertex3f(x0+v1x, y0+v1y, z0+v1z);

@@ -35,7 +35,7 @@ using namespace std;
 voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), hx(0), hy(0), hz(0) {
 
   space = new voxel_type[voxels];
-  assert(space);
+  bt_assert(space);
 
   memset(space, init, voxels);
 
@@ -57,7 +57,7 @@ voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx
 voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz) {
 
   space = new voxel_type[voxels];
-  assert(space);
+  bt_assert(space);
 
   memcpy(space, orig.space, voxels);
 
@@ -81,7 +81,7 @@ voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->s
 voxels(orig->voxels), hx(orig->hx), hy(orig->hy), hz(orig->hz) {
 
   space = new voxel_type[voxels];
-  assert(space);
+  bt_assert(space);
 
   memcpy(space, orig->space, voxels);
 
@@ -837,7 +837,7 @@ bool voxel_c::neighbour(unsigned int p, voxel_type val) const {
   unsigned int y = ((p - x) / sx) % sy;
   unsigned int z = (((p - x) / sx) - y) / sy;
 
-  assert(x + sx * (y + sy * z) == p);
+  bt_assert(x + sx * (y + sy * z) == p);
 
   if ((x > 0   ) && (space[p-1] == val)) return true;
   if ((x < sx-1) && (space[p+1] == val)) return true;
@@ -853,7 +853,7 @@ bool voxel_c::neighbour(unsigned int p, voxel_type val) const {
 
 void voxel_c::transform(unsigned int nr) {
 
-  assert(nr < NUM_TRANSFORMATIONS_MIRROR);
+  bt_assert(nr < NUM_TRANSFORMATIONS_MIRROR);
 
   if (nr >= NUM_TRANSFORMATIONS) {
     mirrorX();
@@ -968,7 +968,7 @@ xml::node voxel_c::save(void) const {
     case VX_VARIABLE:
       cont += "+";
       if (getColor(i)) {
-        assert(getColor(i) < 100);
+        bt_assert(getColor(i) < 100);
         if (getColor(i) > 9)
           cont += ('0' + (getColor(i) / 10));
         cont += ('0' + (getColor(i) % 10));
@@ -977,7 +977,7 @@ xml::node voxel_c::save(void) const {
     case VX_FILLED:
       cont += "#";
       if (getColor(i)) {
-        assert(getColor(i) < 100);
+        bt_assert(getColor(i) < 100);
         if (getColor(i) > 9)
           cont += ('0' + (getColor(i) / 10));
         cont += ('0' + (getColor(i) % 10));
@@ -1022,7 +1022,7 @@ voxel_c::voxel_c(const xml::node & node) : hx(0), hy(0), hz(0) {
     hz = atoi(node.get_attributes().find("hz")->get_value());
   
   space = new voxel_type[voxels];
-  assert(space);
+  bt_assert(space);
   
   unsigned int type = atoi(node.get_attributes().find("type")->get_value());
 

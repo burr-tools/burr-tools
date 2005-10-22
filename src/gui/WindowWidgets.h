@@ -35,6 +35,7 @@
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Check_Button.H>
 #include <FL/Fl_Output.H>
+#include <FL/Fl_Double_Window.H>
 #include <FL/fl_draw.h>
 
 // my button, the only change it that the box is automatically set to engraved
@@ -318,5 +319,15 @@ public:
   bool useColors(void) { return colors->value() != 0; }
   void callback(Fl_Callback* fkt) { colors->callback(fkt); }
 };
+
+// this window is used to display assert messages
+class assertWindow : public Fl_Double_Window {
+
+public:
+
+  assertWindow(const char * text, assert_exception * a);
+
+};
+
 
 #endif

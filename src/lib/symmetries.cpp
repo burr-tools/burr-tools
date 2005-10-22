@@ -21,7 +21,7 @@
 
 #include "voxel.h"
 
-#include <assert.h>
+#include "bt_assert.h"
 
 #define NUM_SYMMETRY_GROUOPS 83
 
@@ -267,44 +267,44 @@ static const unsigned char transformationMinimizer[NUM_SYMMETRY_GROUOPS][NUM_TRA
 
 
 int rotx(unsigned int p) {
-  assert(p < NUM_TRANSFORMATIONS);
+  bt_assert(p < NUM_TRANSFORMATIONS);
   return _rotx[p];
 }
 int roty(unsigned int p) {
-  assert(p < NUM_TRANSFORMATIONS);
+  bt_assert(p < NUM_TRANSFORMATIONS);
   return _roty[p];
 }
 int rotz(unsigned int p) {
-  assert(p < NUM_TRANSFORMATIONS);
+  bt_assert(p < NUM_TRANSFORMATIONS);
   return _rotz[p];
 }
 
 unsigned char transAdd(unsigned char t1, unsigned char t2) {
-  assert(t1 < NUM_TRANSFORMATIONS_MIRROR);
-  assert(t2 < NUM_TRANSFORMATIONS_MIRROR);
+  bt_assert(t1 < NUM_TRANSFORMATIONS_MIRROR);
+  bt_assert(t2 < NUM_TRANSFORMATIONS_MIRROR);
   return transMult[t1][t2];
 }
 
 bool symmetrieContainsTransformation(symmetries_t s, unsigned int t) {
 
-  assert(s < NUM_SYMMETRY_GROUOPS);
-  assert(t < NUM_TRANSFORMATIONS_MIRROR);
+  bt_assert(s < NUM_SYMMETRY_GROUOPS);
+  bt_assert(t < NUM_TRANSFORMATIONS_MIRROR);
 
   return ((symmetries[s] & ((unsigned long long)1 << t)) != 0);
 }
 
 unsigned char minimizeTransformation(symmetries_t s, unsigned char trans) {
 
-  assert(s < NUM_SYMMETRY_GROUOPS);
-  assert(trans < NUM_TRANSFORMATIONS_MIRROR);
+  bt_assert(s < NUM_SYMMETRY_GROUOPS);
+  bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
 
   return transformationMinimizer[s][trans];
 }
 
 unsigned int countSymmetryIntersection(symmetries_t s1, symmetries_t s2) {
 
-  assert(s1 < NUM_SYMMETRY_GROUOPS);
-  assert(s2 < NUM_SYMMETRY_GROUOPS);
+  bt_assert(s1 < NUM_SYMMETRY_GROUOPS);
+  bt_assert(s2 < NUM_SYMMETRY_GROUOPS);
 
   unsigned long long s = symmetries[s1] & symmetries[s2];
 
@@ -319,8 +319,8 @@ unsigned int countSymmetryIntersection(symmetries_t s1, symmetries_t s2) {
 
 bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2) {
 
-  assert(resultSym < NUM_SYMMETRY_GROUOPS);
-  assert(s2 < NUM_SYMMETRY_GROUOPS);
+  bt_assert(resultSym < NUM_SYMMETRY_GROUOPS);
+  bt_assert(s2 < NUM_SYMMETRY_GROUOPS);
 
   return symmetries[resultSym] & symmetries[s2] & ~((unsigned long long)1);
 }
@@ -329,7 +329,7 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
 
 #ifndef NDEBUG
 
-  assert(pp);
+  bt_assert(pp);
 
   /* this is debug code that checks, if we really have all symmetry groups included
    * it should be finally removed some day in the future
@@ -362,10 +362,12 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
           s |= ((unsigned long long)1) << i;
       }
 
-      printf("%llx\n", s);
+      char txt[50];
+      snprintf(txt, 50, "%llx\n", s);
+      bt_assert_line(txt);
     }
 
-    assert(s == symmetries[i]);
+    bt_assert(s == symmetries[i]);
   }
 
   s = i;

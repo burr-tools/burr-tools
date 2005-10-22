@@ -18,12 +18,16 @@
 
 
 #include "MainWindow.h"
+#include "WindowWidgets.h"
+#include "gzstream.h"
 
 #include <FL/Fl.h>
 
 #include <time.h>
 
 #include <xmlwrapp/xmlwrapp.h>
+
+#include "../lib/bt_assert.h"
 
 class my_Fl : public Fl {
 
@@ -48,14 +52,44 @@ public:
 int main(int argc, char ** argv) {
 
   xml::init xmlinit;
+  bt_assert_init();
 
   UserInterface *ui = new UserInterface();
-  
-  ui->show(argc, argv);
 
-  int res = my_Fl::run(ui);
+  int res = 0;
+
+  try {
+
+    ui->show(argc, argv);
+
+    res = my_Fl::run(ui);
+  }
+
+  catch (assert_exception *a) {
+
+    assertWindow * aw = new assertWindow("I'm sorry there is a bug in this program. It needs to be closed.\n"
+                                         "I try to save the current puzzle in '__rescue.xmpuzzle'\n",
+                                         a);
+
+    aw->show();
+  
+    while (aw->visible())
+      Fl::wait();
+
+    delete aw;
+
+    ogzstream ostr("__rescue.xmpuzzle");
+  
+    if (ostr)
+      ostr << ui->getPuzzle()->save();
+
+    return -1;
+  }
+
+  catch (...) {
+    printf(" exception\n");
+  }
 
   delete ui;
-
   return res;
 }

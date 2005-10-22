@@ -20,6 +20,7 @@
 
 #include "disassembly.h"
 #include "voxel.h"
+#include "bt_assert.h"
 
 #include <queue>
 #include <set>
@@ -103,23 +104,23 @@ public:
   }
 
   int getX(int i) const {
-    assert(i < piecenumber);
+    bt_assert(i < piecenumber);
     return dx[i];
   }
   int getY(int i) const {
-    assert(i < piecenumber);
+    bt_assert(i < piecenumber);
     return dy[i];
   }
   int getZ(int i) const {
-    assert(i < piecenumber);
+    bt_assert(i < piecenumber);
     return dz[i];
   }
   unsigned int getTrans(int i) const {
-    assert(i < piecenumber);
+    bt_assert(i < piecenumber);
     return trans[i];
   }
   void set(int i, int x, int y, int z, unsigned int tr) {
-    assert(i < piecenumber);
+    bt_assert(i < piecenumber);
     dx[i] = x;
     dy[i] = y;
     dz[i] = z;
@@ -130,7 +131,7 @@ public:
    * of the rest of the puzzle
    */
   bool is_piece_removed(int nr) const {
-    assert(nr < piecenumber);
+    bt_assert(nr < piecenumber);
     return ((abs(dx[nr]) > 10000) || (abs(dy[nr]) > 10000) || (abs(dz[nr]) > 10000));
   }
 
@@ -438,7 +439,7 @@ static void create_new_params(node0_c * st, node0_c ** n, voxel_type ** pn, int 
       num++;
     }
 
-  assert(num == part);
+  bt_assert(num == part);
 }
 
 unsigned short disassembler_0_c::subProbGroup(node0_c * st, voxel_type * pn, bool cond, int piecenumber) {
@@ -569,7 +570,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
       /* each subpart must contain at least 1 piece,
        * otherwise there is something wrong
        */
-      assert((part1 > 0) && (part2 > 0));
+      bt_assert((part1 > 0) && (part2 > 0));
 
       separation_c * left, *remove;
       bool left_ok = false;
@@ -683,7 +684,7 @@ disassembler_0_c::~disassembler_0_c() {
 
 separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
 
-  assert(piecenumber == assembly->placementCount());
+  bt_assert(piecenumber == assembly->placementCount());
 
   /* create the first node with the start state
    * here all pieces are at position (0; 0; 0)

@@ -21,6 +21,7 @@
 #define __ASSEMBLY_H__
 
 #include "voxel.h"
+#include "bt_assert.h"
 
 #include <xmlwrapp/node.h>
 
@@ -106,7 +107,7 @@ public:
   xml::node save(void) const;
 
   void addPlacement(unsigned char tran, int x, int y, int z) {
-    assert(tran < NUM_TRANSFORMATIONS);
+    bt_assert(tran < NUM_TRANSFORMATIONS);
     placements.push_back(placement_c(tran, x, y, z));
   }
 
@@ -117,22 +118,22 @@ public:
   unsigned int placementCount(void) const { return placements.size(); }
 
   unsigned char getTransformation(unsigned char num) const {
-    assert(num < placements.size());
+    bt_assert(num < placements.size());
     return placements[num].getTransformation();
   }
 
   int getX(unsigned char num) const {
-    assert(num < placements.size());
+    bt_assert(num < placements.size());
     return placements[num].getX();
   }
 
   int getY(unsigned char num) const {
-    assert(num < placements.size());
+    bt_assert(num < placements.size());
     return placements[num].getY();
   }
 
   int getZ(unsigned char num) const {
-    assert(num < placements.size());
+    bt_assert(num < placements.size());
     return placements[num].getZ();
   }
 
@@ -152,7 +153,7 @@ public:
      * Comparisons are only possible, when the two assemblies
      * have the same number of pieces
      */
-    assert(placements.size() == b.placements.size());
+    bt_assert(placements.size() == b.placements.size());
     
     for (unsigned int i = 0; i < placements.size(); i++)
       if (!(placements[i] == b.placements[i]))

@@ -86,7 +86,7 @@ void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, 
       return;
     }
 
-  assert(0);
+  bt_assert(0);
 }
 
 void assembler_0_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
@@ -558,7 +558,7 @@ assembly_c * assembler_0_c::getAssembly(void) {
   memset(pieces, 0xff, sizeof(unsigned int) * getPos());
 
   for (unsigned int i = 0; i < getPos(); i++) {
-    assert(getPiece(i) < getPiecenumber());
+    bt_assert(getPiece(i) < getPiecenumber());
     pieces[getPiece(i)] = i;
   }
 
@@ -943,7 +943,7 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   /* we assert that the matrix is in the initial position
    * otherwise we would have to clean the stack
    */
-  assert(pos == 0);
+  bt_assert(pos == 0);
 
   /* check for te right version */
   if (strcmp(version, "1.2"))

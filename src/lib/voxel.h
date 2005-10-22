@@ -28,7 +28,7 @@
 
 #include <iostream>
 #include <stdexcept>
-#include <assert.h>
+#include "bt_assert.h"
 
 #include <xmlwrapp/node.h>
 
@@ -223,7 +223,7 @@ public:
    * this function returns the index for a given triple of x, y and z
    */
   int getIndex(unsigned int x, unsigned int y, unsigned int z) const {
-    assert((x<sx)&&(y<sy)&&(z<sz));
+    bt_assert((x<sx)&&(y<sy)&&(z<sz));
     return x + sx * (y + sy * z);
   }
 
@@ -263,7 +263,7 @@ public:
    * and this function for access
    */
   voxel_type get(unsigned int p) const {
-    assert((p>=0)&&(p<voxels));
+    bt_assert((p>=0)&&(p<voxels));
     return space[p];
   }
 
@@ -286,7 +286,7 @@ public:
    * The 1-dimensional variant of the set function.
    */
   void set(unsigned int p, voxel_type val) {
-    assert((p>=0)&&(p<voxels));
+    bt_assert((p>=0)&&(p<voxels));
     space[p] = val;
     recalcBoundingBox();
     symmetries = symmetryInvalid();
@@ -435,9 +435,9 @@ public:
   bool isVariable2(int x, int y, int z) const { return getState2(x, y, z) == VX_VARIABLE; }
 
   void setState(unsigned int x, unsigned int y, unsigned int z, int state) { set(x, y, z, (get(x, y, z) & ~0x3) | state); }
-  void setColor(unsigned int x, unsigned int y, unsigned int z, unsigned int color) { assert(color < 64); set(x, y, z, (get(x, y, z) & 0x3) | color << 2); }
+  void setColor(unsigned int x, unsigned int y, unsigned int z, unsigned int color) { bt_assert(color < 64); set(x, y, z, (get(x, y, z) & 0x3) | color << 2); }
   void setState(unsigned int i, int state) { set(i, (get(i) & ~0x3) | state); }
-  void setColor(unsigned int i, unsigned int color) { assert(color < 64); set(i, (get(i) & 0x3) | color << 2); }
+  void setColor(unsigned int i, unsigned int color) { bt_assert(color < 64); set(i, (get(i) & 0x3) | color << 2); }
 
   void minimizePiece(void);
 

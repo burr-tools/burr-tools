@@ -36,65 +36,75 @@ void* start_th(void * c)
 {
   assemblerThread * p = (assemblerThread*)c;
 
-  /* first check, if there is an assembler available with the
-   * problem, if there is one take that
-   */
-  if (p->puzzle->probGetAssembler(p->prob))
-    p->assm = (assm_0_frontend_0_c*)p->puzzle->probGetAssembler(p->prob);
-
-  else {
-
-    /* otherwise we have to chreate a new one
-     */
-    p->action = assemblerThread::ACT_PREPARATION;
-    p->assm = new assm_0_frontend_0_c();
-
-    p->errState = p->assm->createMatrix(p->puzzle, p->prob);
-    if (p->errState != assm_0_frontend_0_c::ERR_NONE) {
-
-      p->errParam = p->assm->getErrorsParam();
-
-      p->action = assemblerThread::ACT_ERROR;
-
-      delete p->assm;
-      return 0;
-    }
-
-    if (p->_reduce) {
-
-      if (!p->stopPressed)
-        p->action = assemblerThread::ACT_REDUCE;
+  try {
   
-      p->assm->reduce();
-    }
-
-    /* set the assembler to the problem as soon as it is finished
-     * with initialisation, NOT EARLIER as the function
-     * also restores the assembler state to a state that might
-     * be saved within the problem
+    /* first check, if there is an assembler available with the
+     * problem, if there is one take that
      */
-    p->errState = p->puzzle->probSetAssembler(p->prob, p->assm);
-    if (p->errState != assm_0_frontend_0_c::ERR_NONE) {
-      p->action = assemblerThread::ACT_ERROR;
-      return 0;
-    }
-  }
-
-  if (!p->stopPressed) {
-
-    p->action = assemblerThread::ACT_ASSEMBLING;
-    p->assm->assemble(p);
+    if (p->puzzle->probGetAssembler(p->prob))
+      p->assm = (assm_0_frontend_0_c*)p->puzzle->probGetAssembler(p->prob);
   
-    if (p->assm->getFinished() >= 1) {
-      p->action = assemblerThread::ACT_FINISHED;
-      p->puzzle->probFinishedSolving(p->prob);
+    else {
+  
+      /* otherwise we have to chreate a new one
+       */
+      p->action = assemblerThread::ACT_PREPARATION;
+      p->assm = new assm_0_frontend_0_c();
+  
+      p->errState = p->assm->createMatrix(p->puzzle, p->prob);
+      if (p->errState != assm_0_frontend_0_c::ERR_NONE) {
+  
+        p->errParam = p->assm->getErrorsParam();
+  
+        p->action = assemblerThread::ACT_ERROR;
+  
+        delete p->assm;
+        return 0;
+      }
+  
+      if (p->_reduce) {
+  
+        if (!p->stopPressed)
+          p->action = assemblerThread::ACT_REDUCE;
+    
+        p->assm->reduce();
+      }
+  
+      /* set the assembler to the problem as soon as it is finished
+       * with initialisation, NOT EARLIER as the function
+       * also restores the assembler state to a state that might
+       * be saved within the problem
+       */
+      p->errState = p->puzzle->probSetAssembler(p->prob, p->assm);
+      if (p->errState != assm_0_frontend_0_c::ERR_NONE) {
+        p->action = assemblerThread::ACT_ERROR;
+        return 0;
+      }
+    }
+  
+    if (!p->stopPressed) {
+  
+      p->action = assemblerThread::ACT_ASSEMBLING;
+      p->assm->assemble(p);
+    
+      if (p->assm->getFinished() >= 1) {
+        p->action = assemblerThread::ACT_FINISHED;
+        p->puzzle->probFinishedSolving(p->prob);
+      } else
+        p->action = assemblerThread::ACT_PAUSING;
+  
     } else
       p->action = assemblerThread::ACT_PAUSING;
+  
+    p->puzzle->probAddTime(p->prob, time(0)-p->startTime);
+  }
 
-  } else
-    p->action = assemblerThread::ACT_PAUSING;
+  catch (assert_exception *a) {
 
-  p->puzzle->probAddTime(p->prob, time(0)-p->startTime);
+    p->ae = a;
+
+  }
+
   return 0;
 }
 
@@ -104,7 +114,8 @@ _solutionAction(solAction),
 puzzle(puz),
 prob(problemNum),
 _reduce(red),
-disassm(puz, problemNum)
+disassm(puz, problemNum),
+ae(0)
 {
 }
 
