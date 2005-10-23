@@ -52,55 +52,79 @@
 
     <with|par-left|1.5fn|1.2.7<space|2spc>Solve Tab
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <no-break><pageref|auto-15>>
+    <no-break><pageref|auto-16>>
+
+    <with|par-left|1.5fn|1.2.8<space|2spc>Keyboard shortcuts
+    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <no-break><pageref|auto-18>>
 
     1.3<space|2spc>Future Plans <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <no-break><pageref|auto-16>
+    <no-break><pageref|auto-19>
 
     <vspace*|1fn><with|font-series|bold|math-font-series|bold|2<space|2spc>The
     Internals> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <no-break><pageref|auto-17><vspace|0.5fn>
+    <no-break><pageref|auto-20><vspace|0.5fn>
 
     2.1<space|2spc>The puzzle file format
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <no-break><pageref|auto-18>
+    <no-break><pageref|auto-21>
 
-    2.2<space|2spc>The Library <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <no-break><pageref|auto-19>
-
-    <with|par-left|1.5fn|2.2.1<space|2spc>Class voxel
-    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <no-break><pageref|auto-20>>
-
-    <with|par-left|1.5fn|2.2.2<space|2spc>Class puzzle
-    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <no-break><pageref|auto-21>>
-
-    <with|par-left|1.5fn|2.2.3<space|2spc>Class assembler
+    <with|par-left|1.5fn|2.1.1<space|2spc>Voxel space
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
     <no-break><pageref|auto-22>>
 
-    <with|par-left|1.5fn|2.2.4<space|2spc>Class disassembler
-    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <no-break><pageref|auto-23>>
+    2.2<space|2spc>The Library <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <no-break><pageref|auto-23>
 
-    <with|par-left|1.5fn|2.2.5<space|2spc>Example
+    <with|par-left|1.5fn|2.2.1<space|2spc>Class voxel
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
     <no-break><pageref|auto-24>>
 
-    2.3<space|2spc>The Algorithms <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <no-break><pageref|auto-25>
+    <with|par-left|1.5fn|2.2.2<space|2spc>Class puzzle
+    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <no-break><pageref|auto-25>>
 
-    <with|par-left|1.5fn|2.3.1<space|2spc>Assembly
+    <with|par-left|1.5fn|2.2.3<space|2spc>Class assembler
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
     <no-break><pageref|auto-26>>
 
-    <with|par-left|1.5fn|2.3.2<space|2spc>Disassembly
+    <with|par-left|1.5fn|2.2.4<space|2spc>Class disassembler
     <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
     <no-break><pageref|auto-27>>
 
+    <with|par-left|1.5fn|2.2.5<space|2spc>Class assembly
+    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <no-break><pageref|auto-28>>
+
+    <with|par-left|1.5fn|2.2.6<space|2spc>Class disassembly
+    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <no-break><pageref|auto-29>>
+
+    <with|par-left|1.5fn|2.2.7<space|2spc>Example
+    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <no-break><pageref|auto-30>>
+
+    2.3<space|2spc>The Algorithms <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <no-break><pageref|auto-31>
+
+    <with|par-left|1.5fn|2.3.1<space|2spc>Assembly
+    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <no-break><pageref|auto-32>>
+
+    <with|par-left|3fn|2.3.1.1<space|2spc>How to avoid finding multiple
+    assemblies <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <no-break><pageref|auto-33>>
+
+    <with|par-left|3fn|2.3.1.2<space|2spc>The dancing link algorithm
+    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <no-break><pageref|auto-34>>
+
+    <with|par-left|1.5fn|2.3.2<space|2spc>Disassembly
+    <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+    <no-break><pageref|auto-35>>
+
     2.4<space|2spc>Adding to the Library <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-    <no-break><pageref|auto-28>
+    <no-break><pageref|auto-36>
   </table-of-contents>
 
   <prologue>
@@ -597,18 +621,23 @@
   the piece is used.
 
   The 3rd button allows you to define groups of pieces. Once you press the
-  ``Grp'' button in the problem tab a window opens. Here you find a table
-  that has a line for each shape that is in the current problem. The first
-  column contains the shape number, then comes a number that says how many
-  times this shape is in the problem. And the following columns all stand for
-  one group. When you first create a puzzle there are just 2 columns but you
-  can add more columns by pressing the ``Add Group'' button (The unused
-  groups at the end of the list will vanish once you close the window). Once
-  you have a group column you can add numbers by clicking into the cells.
-  Coloured cells contain numbers not equal to zero. Cells with a zero are
-  gray and don't have a number inside. The numbers you enter here are the
-  <em|maximal> number of pieces of this shape that <em|may> go into this
-  group.
+  ``Grp'' button in the problem tab a window opens <\float|float|tbh>
+    <big-figure|<postscript|groupedit.png|/2|/2||||>|Group
+    editor<label|GroupEditor>>
+  </float>(see figure <reference|GroupEditor>). Here you find a table that
+  has a line for each shape that is in the current problem. The first column
+  contains the shape number, then comes a number that says how many times
+  this shape is in the problem. And the following columns all stand for one
+  group. When you first create a puzzle there are just 2 columns but you can
+  add more columns by pressing the ``Add Group'' button (The unused groups at
+  the end of the list will vanish once you close the window). Once you have a
+  group column you can add numbers by clicking into the cells. Coloured cells
+  contain numbers not equal to zero. Cells with a zero are gray and don't
+  have a number inside. The numbers you enter here are the <em|maximal>
+  number of pieces of this shape that <em|may> go into this group. In the
+  example window shape 0 and shape 5 are in the same group. There are also 2
+  instances of shape 5 inside the problem. That means the 3 shapes (0, 5.0
+  and 5.1) don't need to be disassembled.
 
   While editing problems you can see all the involved pieces in the 3D view.
   In the upper left corner you can see the result. It is drawn in double
@@ -685,6 +714,50 @@
     <item*|error>You did something wrong. The program should have displayed
     an error message. You should edit the puzzle to remove the found problem.
   </description-compact>
+
+  One button hasn't been mentioned until now. The ``Browse Placement'' Button
+  opens a window that lets you examine which positions for each piece will by
+  tried by the assembler.
+
+  <with|color|red|<strong|Attention:> The placements displayed in this window
+  are the placements left in the current state of the assembler. So if the
+  assembler has placed a piece A and this prevents the placement of another
+  piece B at some positions. These positions of piece B will <em|not> be
+  visible in the list. If you want to see every placement tried you either
+  have to stop the assembler bevore is starts to do anything (press stop
+  while in preparation of reduction phase) or you have to wait until the
+  assembler has finished its work.>
+
+  <\float|float|tbh>
+    <big-figure|<postscript|placebrows.png|/2|/2||||>|Placement
+    Browser<label|PlacementBrowser>>
+  </float>Now to the window. Figure <reference|PlacementBrowser> shows the
+  window. As you can see it's a very simple window. On the top is the slider
+  that lets you select the piece that you want to analyze. On the left is the
+  slider that lets you browse through the placements of the selected piece.
+  On the right is the zoom slider. You can rotate the object as usual by
+  dragging it with the mouse. You can use the cursor keys to move the
+  sliders. <kbd|Up> and <kbd|Down> for the left Slider and <kbd|Left> and
+  <kbd|Right> to select the piece. Be careful though. The first stroke on the
+  keyboard that doesn't fit to the current slider will select the next one
+  and the following keystroke will start to move the slider.
+
+  <subsection|Keyboard shortcuts>
+
+  Finally a list of all the commands that can be done with the keyboard.
+
+  \;
+
+  <\with|par-mode|center>
+    <tabular|<tformat|<cwith|3|3|2|2|cell-bborder|
+    0>|<cwith|1|1|1|2|cell-lborder|4>|<cwith|1|1|1|2|cell-rborder|4>|<cwith|1|1|1|2|cell-tborder|4>|<cwith|1|1|1|2|cell-bborder|1px>|<cwith|1|5|1|1|cell-rborder|1px>|<cwith|1|5|2|2|cell-hyphen|t>|<cwith|1|5|2|2|cell-width|10cm>|<cwith|3|3|1|2|cell-background|grey>|<cwith|5|5|1|2|cell-background|grey>|<table|<row|<cell|<strong|Key>>|<cell|<strong|Action<strong|>>>>|<row|<cell|<kbd|F2>>|<cell|Save
+    the current Puzzle>>|<row|<cell|<kbd|F3>>|<cell|Load a
+    puzzle>>|<row|<cell|<kbd|F4>>|<cell|When in the shape view this key
+    exchanges the 3D-View and the edit-grid>>|<row|<cell|<kbd|+>,<kbd|->>|<\cell>
+      When in shape view this changes the currently visible and editable
+      z-layer
+    </cell>>>>>
+  </with>
 
   <section|Future Plans>
 
@@ -1178,19 +1251,21 @@
   <\collection>
     <associate|font|roman>
     <associate|language|british>
-    <associate|page-breaking|sloppy>
-    <associate|page-medium|papyrus>
+    <associate|page-breaking|optimal>
+    <associate|page-medium|paper>
     <associate|page-orientation|portrait>
     <associate|par-columns|1>
-    <associate|par-hyphen|normal>
+    <associate|par-hyphen|professional>
     <associate|sfactor|5>
   </collection>
 </initial>
 
 <\references>
   <\collection>
-    <associate||<tuple|2.1|5>>
+    <associate||<tuple|2.1|21>>
+    <associate|GroupEditor|<tuple|1.4|13>>
     <associate|MainWindowImage|<tuple|1.1|9>>
+    <associate|PlacementBrowser|<tuple|1.5|14>>
     <associate|ToolsImage|<tuple|1.2|11>>
     <associate|auto-1|<tuple|<uninit>|3>>
     <associate|auto-10|<tuple|1.2.4|10>>
@@ -1198,27 +1273,30 @@
     <associate|auto-12|<tuple|1.3|10>>
     <associate|auto-13|<tuple|1.2.5|11>>
     <associate|auto-14|<tuple|1.2.6|12>>
-    <associate|auto-15|<tuple|1.2.7|13>>
-    <associate|auto-16|<tuple|1.3|14>>
-    <associate|auto-17|<tuple|2|15>>
-    <associate|auto-18|<tuple|2.1|15>>
-    <associate|auto-19|<tuple|2.1.1|15>>
+    <associate|auto-15|<tuple|1.4|13>>
+    <associate|auto-16|<tuple|1.2.7|13>>
+    <associate|auto-17|<tuple|1.5|14>>
+    <associate|auto-18|<tuple|1.2.8|14>>
+    <associate|auto-19|<tuple|1.3|15>>
     <associate|auto-2|<tuple|<uninit>|5>>
-    <associate|auto-20|<tuple|2.2|15>>
-    <associate|auto-21|<tuple|2.2.1|16>>
-    <associate|auto-22|<tuple|2.2.2|16>>
-    <associate|auto-23|<tuple|2.2.3|16>>
-    <associate|auto-24|<tuple|2.2.4|16>>
-    <associate|auto-25|<tuple|2.2.5|16>>
-    <associate|auto-26|<tuple|2.2.6|17>>
-    <associate|auto-27|<tuple|2.2.7|17>>
-    <associate|auto-28|<tuple|2.3|17>>
-    <associate|auto-29|<tuple|2.3.1|18>>
+    <associate|auto-20|<tuple|2|17>>
+    <associate|auto-21|<tuple|2.1|17>>
+    <associate|auto-22|<tuple|2.1.1|17>>
+    <associate|auto-23|<tuple|2.2|17>>
+    <associate|auto-24|<tuple|2.2.1|17>>
+    <associate|auto-25|<tuple|2.2.2|18>>
+    <associate|auto-26|<tuple|2.2.3|18>>
+    <associate|auto-27|<tuple|2.2.4|18>>
+    <associate|auto-28|<tuple|2.2.5|18>>
+    <associate|auto-29|<tuple|2.2.6|19>>
     <associate|auto-3|<tuple|1|7>>
-    <associate|auto-30|<tuple|2.3.1.1|18>>
-    <associate|auto-31|<tuple|2.3.1.2|?>>
-    <associate|auto-32|<tuple|2.3.2|?>>
-    <associate|auto-33|<tuple|2.4|?>>
+    <associate|auto-30|<tuple|2.2.7|19>>
+    <associate|auto-31|<tuple|2.3|19>>
+    <associate|auto-32|<tuple|2.3.1|19>>
+    <associate|auto-33|<tuple|2.3.1.1|19>>
+    <associate|auto-34|<tuple|2.3.1.2|20>>
+    <associate|auto-35|<tuple|2.3.2|21>>
+    <associate|auto-36|<tuple|2.4|22>>
     <associate|auto-4|<tuple|1.1|7>>
     <associate|auto-5|<tuple|1.2|8>>
     <associate|auto-6|<tuple|1.2.1|8>>
@@ -1240,6 +1318,10 @@
 
       <tuple|normal|The 3 tabs of the shape edit
       tools<label|shapeEditTools>|<pageref|auto-12>>
+
+      <tuple|normal|Group editor <label|GroupEditor>|<pageref|auto-15>>
+
+      <tuple|normal|Placement Browser<label|PlacementBrowser>|<pageref|auto-17>>
     </associate>
     <\associate|toc>
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|Table
@@ -1287,76 +1369,80 @@
 
       <with|par-left|<quote|1.5fn>|1.2.7<space|2spc>Solve Tab
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-15>>
+      <no-break><pageref|auto-16>>
+
+      <with|par-left|<quote|1.5fn>|1.2.8<space|2spc>Keyboard shortcuts
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-18>>
 
       1.3<space|2spc>Future Plans <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-16>
+      <no-break><pageref|auto-19>
 
       <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>The
       Internals> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-17><vspace|0.5fn>
+      <no-break><pageref|auto-20><vspace|0.5fn>
 
       2.1<space|2spc>The puzzle file format
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-18>
+      <no-break><pageref|auto-21>
 
       <with|par-left|<quote|1.5fn>|2.1.1<space|2spc>Voxel space
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-19>>
+      <no-break><pageref|auto-22>>
 
       2.2<space|2spc>The Library <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-20>
+      <no-break><pageref|auto-23>
 
       <with|par-left|<quote|1.5fn>|2.2.1<space|2spc>Class voxel
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-21>>
+      <no-break><pageref|auto-24>>
 
       <with|par-left|<quote|1.5fn>|2.2.2<space|2spc>Class puzzle
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-22>>
+      <no-break><pageref|auto-25>>
 
       <with|par-left|<quote|1.5fn>|2.2.3<space|2spc>Class assembler
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-23>>
+      <no-break><pageref|auto-26>>
 
       <with|par-left|<quote|1.5fn>|2.2.4<space|2spc>Class disassembler
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-24>>
+      <no-break><pageref|auto-27>>
 
       <with|par-left|<quote|1.5fn>|2.2.5<space|2spc>Class assembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-25>>
+      <no-break><pageref|auto-28>>
 
       <with|par-left|<quote|1.5fn>|2.2.6<space|2spc>Class disassembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-26>>
+      <no-break><pageref|auto-29>>
 
       <with|par-left|<quote|1.5fn>|2.2.7<space|2spc>Example
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-27>>
+      <no-break><pageref|auto-30>>
 
       2.3<space|2spc>The Algorithms <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-28>
+      <no-break><pageref|auto-31>
 
       <with|par-left|<quote|1.5fn>|2.3.1<space|2spc>Assembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-29>>
+      <no-break><pageref|auto-32>>
 
       <with|par-left|<quote|3fn>|2.3.1.1<space|2spc>How to avoid finding
       multiple assemblies <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-30>>
+      <no-break><pageref|auto-33>>
 
       <with|par-left|<quote|3fn>|2.3.1.2<space|2spc>The dancing link
       algorithm <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-31>>
+      <no-break><pageref|auto-34>>
 
       <with|par-left|<quote|1.5fn>|2.3.2<space|2spc>Disassembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-32>>
+      <no-break><pageref|auto-35>>
 
       2.4<space|2spc>Adding to the Library
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-33>
+      <no-break><pageref|auto-36>
     </associate>
   </collection>
 </auxiliary>
