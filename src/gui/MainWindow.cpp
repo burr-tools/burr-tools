@@ -72,11 +72,8 @@ void UserInterface::cb_AddColor(void) {
   }
 }
 
-
 static void cb_RemoveColor_stub(Fl_Widget* o, void* v) { ui->cb_RemoveColor(); }
 void UserInterface::cb_RemoveColor(void) {
-
-  bt_assert(0);
 
   if (colorSelector->getSelection() == 0)
     fl_message("Can not delete the Neutral color, this color has to be there");

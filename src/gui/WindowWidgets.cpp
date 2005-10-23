@@ -712,8 +712,6 @@ assertWindow::assertWindow(const char * text, assert_exception * a) : Fl_Double_
       pos += snprintf(txt+pos, 1000-pos, "%s\n", assert_log->line(l));
   }
 
-  printf(txt);
-
   (new Fl_Multiline_Output(5, 15+ASSERT_TXT1+ASSERT_TXT2, ASSERT_WINDOW_X-10, ASSERT_WINDOW_Y - 25 - 20 - ASSERT_TXT1 - ASSERT_TXT2))->value(txt);
 
   (new Fl_Button((ASSERT_WINDOW_X-ASSERT_BTN_X)/2, ASSERT_WINDOW_Y-25, ASSERT_BTN_X, 20, "Close"))->callback(cb_assertClose_stub, this);
