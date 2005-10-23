@@ -366,7 +366,7 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
       }
 
       char txt[50];
-      snprintf(txt, 50, "%llx\n", s);
+      snprintf(txt, 50, "%llx", s);
       bt_assert_line(txt);
     }
 
