@@ -155,7 +155,7 @@ void print(const separation_c * s, const assembly_c * a, const puzzle_c * p, uns
 
   const voxel_c * res = p->probGetResultShape(prob);
 
-  voxel_c ** pieces = new (voxel_c*)[a->placementCount()];
+  voxel_c ** pieces = new voxel_c*[a->placementCount()];
 
   unsigned int pc = 0;
 
@@ -185,7 +185,7 @@ void print(const assembly_c * a, const puzzle_c * p, unsigned int prob) {
   const voxel_c * res = p->probGetResultShape(prob);
 
 
-  voxel_c ** pieces = new (voxel_c*)[a->placementCount()];
+  voxel_c ** pieces = new voxel_c*[a->placementCount()];
 
   unsigned int pc = 0;
 
