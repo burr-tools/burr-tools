@@ -1,25 +1,100 @@
-Wed Oct 12 18:13:56 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
-  * make the pivot piece work correcty
+Sun Oct 23 16:46:20 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * documentation update (placement browser and group editor explained)
 
-Wed Oct 12 17:16:14 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
-  * reenable symmetry breaker piece calculation
+Sun Oct 23 14:12:59 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * no newlines for log lines
+
+Sun Oct 23 14:03:19 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * another symmetry group
+
+Sun Oct 23 10:04:26 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove some debug code
+
+Sat Oct 22 21:30:22 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove some unused code
+
+Sat Oct 22 21:29:59 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * die tab die
+
+Sat Oct 22 21:20:28 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * new asserts that throw an exception instead
   
-  this still has the problem that a symmetry breaker when not
-  equal to zero results in problems with the symmetry
-  avioding method as the comparison function wants to select
-  assemblies that are no longer found
-
-Tue Oct 11 21:49:15 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
-  * add another symmetry groups and some bugfixes for the rotator
-
-Tue Oct 11 20:41:40 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
-  * huge speedup for the new symmetry avoiding
-
-Tue Oct 11 16:33:09 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
-  * updates for rotation removal
+  this new scheme allows to catch after the lib produces
+  an unsolvabale error. A window with some information is
+  displayed and the program doesn't crash
   
-  this version now seems to work in most cases, it urgently
-  needs speedup and also some bugs are still left
+  Sadly FLTK is by default compiled without exception support
+  (what a crap) so the exceptions don't go through the callbacks
+  and so the program still crashed on asserts in the GUI
+  instead of saving the puzzle and shutting down
+
+Sat Oct 22 10:09:02 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * include all documentation files in distribution
+
+Fri Oct 21 17:15:22 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * make lines a bit thicker (for coordinate system and layer highlighting)
+
+Fri Oct 21 17:14:04 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * improvements to groups editor
+  
+  - simplified code
+  - only set change flag, if the user really does change something
+
+Fri Oct 21 17:01:40 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * improvements for keyboard shortcuts
+  
+  - F2 now saves, F3 loads, F4 toggled 3D view
+  - only toggle and +- layer when in shape tab
+
+Fri Oct 21 16:56:40 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * improvements to placement browser
+  
+  - don't crash when 0 placements are there
+  - speed improvement (only the delta is stepped through the matrix
+    instead if starting fresh of each change
+  - correctly handle empty result shape
+
+Fri Oct 21 16:49:44 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add another symmetry group, sigh
+
+Thu Oct 20 18:34:03 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * show the currently worked on piece when reducing
+
+Thu Oct 20 18:22:52 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * hotspot at origin is no longer necessary
+
+Thu Oct 20 18:22:15 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * placement browser activation only possible when assembler is available
+
+Thu Oct 20 18:05:51 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * save the hotspot, if it is not zero (we might need that some time in the future)
+
+Thu Oct 20 17:51:47 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * the upper limit of the bounding box was not moved when the voxel space content was moved
+
+Thu Oct 20 17:51:18 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * check that the hotspot is really in the origin when starting to solve a puzzle
+
+Tue Oct 18 18:27:31 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * take the bounding box of pieces into consideration
+
+Tue Oct 18 18:04:20 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * each transformation of a piece results in resetting the hotspot to 0 and removing solutions
+
+Tue Oct 18 17:31:58 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * die tab, die
+
+Mon Oct 17 22:03:18 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use vectors for nodes and thus get rid of node counting
+
+Mon Oct 17 22:02:57 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * + and - only work in shape view
+
+Mon Oct 17 22:02:37 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * new and changelog updates
+
+Mon Oct 17 21:54:40 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * new symmetry avoiding system
 
 Sat Oct  8 19:52:53 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
   * subproblem creation and recursion moved into function

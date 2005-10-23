@@ -1,5 +1,15 @@
 ------------- Version 0.1.8
 
+- when the program crashes it tries to show some information and it also
+  tries to save the current puzzle into __rescue.xmpuzzle. Please follow 
+  the instructions in this window and send me the information.
+
+- when reducing show the piece that is worked on to show that something
+  is going on
+
+- Placement browser lets you see at what positions a certain piece fits
+  into the resulting shape. Attention, read the documentation about this
+
 - Documentation updates. Some of the internals are described
 
 - Suppression of rotated and mirrored solutions. The program now
@@ -30,8 +40,8 @@
 - solution selector can take the focus, so you can use the cursor keys
   to go through solutions
 
-- some key-shortcuts: F2 toggles 3d and grid view, + and - change edit
-  layer
+- some key-shortcuts: F4 toggles 3d and grid view, + and - change edit
+layer, F2 saves and F3 loads a file
 
 - sort solutions by number of moves required the completely disassemble
 
