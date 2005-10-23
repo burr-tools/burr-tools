@@ -1016,7 +1016,14 @@ void UserInterface::show(int argn, char ** argv) {
   Fl_Double_Window::show();
 
   if (argn == 2)
+#ifdef __APPLE__
+  {
+    if (argv[1][0]!='-') // hack to get rid of -psn_0_* passed by apple finder
+      tryToLoad(argv[1]);
+  }
+#else
     tryToLoad(argv[1]);
+#endif
 }
 
 void UserInterface::activateClear(void) {
