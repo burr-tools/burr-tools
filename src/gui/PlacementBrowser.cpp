@@ -18,6 +18,7 @@
 
 #include "PlacementBrowser.h"
 
+#include <FL/fl_ask.H>
 
 #define WINDOWSIZE_X 400
 #define WINDOWSIZE_Y 400
@@ -85,6 +86,12 @@ PlacementBrowser::PlacementBrowser(puzzle_c * p, unsigned int prob) :
   placementSelector->callback(cb_placement_stub, this);
 
   end();
+
+  if ((puzzle->probGetAssembler(problem)->getFinished() > 0) &&
+      (puzzle->probGetAssembler(problem)->getFinished() < 1))
+    fl_message("Attention: The assembler is neither in intitial nor in final position\n"
+	       "The displayed placements may not be what you expect\n"
+	       "Read the documentation");
 
   cb_piece(0);
 }
