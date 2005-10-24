@@ -381,3 +381,18 @@ int separation_c::movesText(char * txt, int len) {
   return len2;
 }
 
+void separation_c::shiftPiece(unsigned int pc, int dx, int dy, int dz) {
+  for (unsigned int p = 0; p < piecenumber; p++)
+    if (pieces[p] == pc)
+      for (unsigned int s = 0; s < states.size(); s++)
+  	states[s]->set(p, states[s]->getX(p)+dx, states[s]->getY(p)+dy, states[s]->getZ(p)+dz);
+
+  if (removed)
+    removed->shiftPiece(pc, dx, dy, dz);
+
+  if (left)
+    left->shiftPiece(pc, dx, dy, dz);
+}
+
+
+

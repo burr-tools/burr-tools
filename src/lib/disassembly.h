@@ -130,6 +130,12 @@ public:
     bt_assert(num < piecenumber);
     return pieces[num];
   }
+
+  /* shift one piece by the given amount in all movement states and all
+   * supseparations
+   */
+  void shiftPiece(unsigned int pc, int dx, int dy, int dz);
+
 };
 
 

@@ -769,7 +769,7 @@ bool puzzle_c::probPlacementAllowed(unsigned int prob, unsigned int pc, unsigned
 xml::node puzzle_c::save(void) const {
 
   xml::node nd("puzzle");
-  nd.get_attributes().insert("version", "1");
+  nd.get_attributes().insert("version", "2");
 
   char tmp[50];
 
@@ -815,8 +815,11 @@ puzzle_c::puzzle_c(const xml::node & node) {
   if (node.get_attributes().find("version") == node.get_attributes().end())
     throw load_error("puzzle node must have a 'version' attribute", node);
 
-  if (atoi(node.get_attributes().find("version")->get_value()) != 1)
-    throw load_error("puzzle nodes must have version 1", node);
+  unsigned int version;
+  version = atoi(node.get_attributes().find("version")->get_value());
+
+  if ((version != 1) && (version != 2))
+    throw load_error("can only load files of version 1 and 2", node);
 
   xml::node::const_iterator it;
 
@@ -867,9 +870,38 @@ puzzle_c::puzzle_c(const xml::node & node) {
   it = node.find("comment");
   if (it != node.end() && it->get_type() == xml::node::type_text)
     comment = it->get_content();
+
+
+  /* from here on there are only corrections for older puzzle file version */
+
+  // for puzzles with version 1 we need to correct the positions of pieces
+  // to handle the new hotspot behaviour
+  if (version == 1) {
+    for (unsigned int p = 0; p < problems.size(); p++)
+      for (unsigned int s = 0; s < problems[p]->solutions.size(); s++) {
+	if (problems[p]->solutions[s]->assembly) {
+	  int pc = 0;
+	  for (unsigned int c = 0; c < problems[p]->shapes.size(); c++)
+	    for (unsigned int i = 0; i < problems[p]->shapes[c].count; i++) {
+	      int x, y, z;
+	      shapes[problems[p]->shapes[c].shapeId]->getHotspot(problems[p]->solutions[s]->assembly->getTransformation(pc), &x, &y, &z);
+	      problems[p]->solutions[s]->assembly->shiftPiece(pc, x, y, z);
+	      pc++;
+	    }
+	}
+	if (problems[p]->solutions[s]->tree) {
+	  int pc = 0;
+	  for (unsigned int c = 0; c < problems[p]->shapes.size(); c++)
+	    for (unsigned int i = 0; i < problems[p]->shapes[c].count; i++) {
+	      int x, y, z;
+	      shapes[problems[p]->shapes[c].shapeId]->getHotspot(problems[p]->solutions[s]->assembly->getTransformation(pc), &x, &y, &z);
+	      problems[p]->solutions[s]->tree->shiftPiece(pc, x, y, z);
+	      pc++;
+	    }
+	}
+      }
+  }
 }
-
-
 
 unsigned int puzzle_c::addShape(voxel_c * p) {
   shapes.push_back(p);

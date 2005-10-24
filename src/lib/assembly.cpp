@@ -307,4 +307,10 @@ bool assembly_c::smallerRotationExists(const puzzle_c * puz, unsigned int prob, 
   return false;
 }
 
+void assembly_c::shiftPiece(unsigned int pc, int dx, int dy, int dz) {
+  bt_assert(pc < placements.size());
+  placements[pc].xpos += dx;
+  placements[pc].ypos += dy;
+  placements[pc].zpos += dz;
+}
 
