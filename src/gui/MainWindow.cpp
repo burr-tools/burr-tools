@@ -1614,10 +1614,12 @@ void UserInterface::Toggle3DView(void)
 void UserInterface::Big3DView(void) {
   if (!is3DViewBig) Toggle3DView();
   View3D->show();
+  redraw();
 }
 void UserInterface::Small3DView(void) {
   if (is3DViewBig) Toggle3DView();
   pieceEdit->show();
+  redraw();
 }
 
 int UserInterface::handle(int event) {
