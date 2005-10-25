@@ -174,7 +174,7 @@ void SquareEditor::draw() {
   }
 }
 
-bool SquareEditor::setLayer(unsigned int z, voxel_type v) {
+bool SquareEditor::setLayer(unsigned int z) {
   int x1, x2, y1, y2;
 
   voxel_c * space = puzzle->getShape(piecenumber);
@@ -200,21 +200,34 @@ bool SquareEditor::setLayer(unsigned int z, voxel_type v) {
   if (y1 < 0) y1 = 0;
   if (y2 > (int)space->getY()-1) y2 = (int)space->getY()-1;
 
+  voxel_type v;
+
+  switch (task) {
+  case TSK_RESET:
+    v = voxel_c::VX_EMPTY;
+    break;
+  case TSK_SET:
+    v = voxel_c::VX_FILLED;
+    break;
+  case TSK_VAR:
+    v = voxel_c::VX_VARIABLE;
+    break;
+  }
+
   bool changed = false;
 
   for (int x = x1; x <= x2; x++)
-    for (int y = y1; y <= y2; y++) 
+    for (int y = y1; y <= y2; y++)
       if ((x >= 0) && (y >= 0) && (x < (int)space->getX()) && (y < (int)space->getY())) {
-	if (space->getState(x, y, z) != v) {
-	  changed = true;
-	  space->setState(x, y, z, v);
-	}
-	if (space->getColor(x, y, z) != currentColor) {
-	  changed = true;
-	  space->setColor(x, y, z, currentColor);
-	}
+        if ((task != TSK_COLOR) && (space->getState(x, y, z) != v)) {
+          changed = true;
+          space->setState(x, y, z, v);
+        }
+        if ((space->getState(x, y, z) != voxel_c::VX_EMPTY) && (space->getColor(x, y, z) != currentColor)) {
+          changed = true;
+          space->setColor(x, y, z, currentColor);
+        }
       }
-
 
   return changed;
 }
@@ -239,31 +252,17 @@ int SquareEditor::handle(int event) {
     {
       state = 0;
 
-      voxel_type vxNew = voxel_c::VX_EMPTY;
-
-      switch (task) {
-	case TSK_RESET:
-	  vxNew = voxel_c::VX_EMPTY;
-	  break;
-	case TSK_SET:
-	  vxNew = voxel_c::VX_FILLED;
-	  break;
-	case TSK_VAR:
-	  vxNew = voxel_c::VX_VARIABLE;
-	  break;
-      }
-
       bool changed = false;
 
       if (_editAllLayers)
-	for (unsigned int z = 0; z < space->getZ(); z++)
-	  changed |= setLayer(z, vxNew);
+        for (unsigned int z = 0; z < space->getZ(); z++)
+          changed |= setLayer(z);
       else
-	changed = setLayer(space->getZ()-currentZ-1, vxNew);
+        changed = setLayer(space->getZ()-currentZ-1);
 
       if (changed) {
-	callbackReason = RS_CHANGESQUARE;
-	do_callback();
+        callbackReason = RS_CHANGESQUARE;
+        do_callback();
       }
 
       redraw();

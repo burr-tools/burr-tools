@@ -85,7 +85,7 @@ protected:
 
   void draw();
 
-  bool setLayer(unsigned int z, voxel_type v);
+  bool setLayer(unsigned int z);
 
 public:
 
