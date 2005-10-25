@@ -85,7 +85,7 @@ protected:
 
   void draw();
 
-  bool setLayer(unsigned int z);
+  bool setLayer(unsigned int zv);
 
 public:
 

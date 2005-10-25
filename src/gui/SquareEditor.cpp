@@ -289,27 +289,27 @@ int SquareEditor::handle(int event) {
       y = space->getY() - y - 1;
 
       if (event == FL_PUSH) {
-	mX = startX = x;
-	mY = startY = y;
-	mZ = space->getZ()-currentZ-1;
-	redraw();
-	callbackReason = RS_MOUSEMOVE;
-	do_callback();
-	
+        mX = startX = x;
+        mY = startY = y;
+        mZ = space->getZ()-currentZ-1;
+        redraw();
+        callbackReason = RS_MOUSEMOVE;
+        do_callback();
+
       } else {
 
         // we move the mouse, if the new position is different from the saved one,
         // do a callback
-	if ((x != mX) || (y != mY) || ((int)space->getZ()-currentZ-1 != mZ)) {
-	  
-	  mX = x;
-	  mY = y;
-	  mZ = space->getZ()-currentZ-1;
+        if ((x != mX) || (y != mY) || ((int)space->getZ()-currentZ-1 != mZ)) {
 
-	  redraw();
-	  callbackReason = RS_MOUSEMOVE;
-	  do_callback();
-	}
+          mX = x;
+          mY = y;
+          mZ = space->getZ()-currentZ-1;
+
+          redraw();
+          callbackReason = RS_MOUSEMOVE;
+          do_callback();
+        }
       }
     }
     return 1;
