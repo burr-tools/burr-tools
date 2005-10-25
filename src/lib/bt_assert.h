@@ -65,6 +65,10 @@ void bt_assert_init(void);
 
 #else
 
+#ifdef WIN32
+#define __STRING(s) #s
+#endif
+
 #define bt_assert(expr)  (expr) ? 0 : throw new assert_exception(__STRING(expr), __FILE__, __LINE__, __PRETTY_FUNCTION__)
 #define bt_assert_line(line) assert_log->addLine(line)
 
