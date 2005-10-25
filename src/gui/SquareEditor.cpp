@@ -138,24 +138,39 @@ void SquareEditor::draw() {
     int x1, x2, y1, y2;
 
     if (startX < mX) {
-      x1 = tx+startX*s;
-      x2 = tx+mX*s+s;
+      x1 = startX;
+      x2 = mX;
     } else {
-      x2 = tx+startX*s+s;
-      x1 = tx+mX*s;
+      x2 = startX;
+      x1 = mX;
     }
+
+    if (x1 < 0) x1 = 0;
+    if (x2 > (int)space->getX()-1) x2 = (int)space->getX()-1;
+
+    x1 = tx + s*x1;
+    x2 = tx + s*x2 + s;
 
     if (startY > mY) {
-      y1 = ty+(space->getY()-startY-1)*s;
-      y2 = ty+(space->getY()-mY-1)*s+s;
+      y1 = startY;
+      y2 = mY;
     } else {
-      y2 = ty+(space->getY()-startY-1)*s+s;
-      y1 = ty+(space->getY()-mY-1)*s;
+      y2 = startY;
+      y1 = mY;
     }
 
-    fl_color(labelcolor());
-    fl_rect(x1-1, y1-1, x2-x1+3, y2-y1+3);
-    fl_rect(x1+1, y1+1, x2-x1-1, y2-y1-1);
+    if (y2 < 0) y2 = 0;
+    if (y1 > (int)space->getY()-1) y1 = (int)space->getY()-1;
+
+    y1 = ty + s*(space->getY()-y1-1);
+    y2 = ty + s*(space->getY()-y2-1) + s;
+
+    if ((x1 < x2) && (y1 < y2)) {
+
+      fl_color(labelcolor());
+      fl_rect(x1-1, y1-1, x2-x1+3, y2-y1+3);
+      fl_rect(x1+1, y1+1, x2-x1-1, y2-y1-1);
+    }
   }
 }
 
@@ -172,7 +187,6 @@ bool SquareEditor::setLayer(unsigned int z, voxel_type v) {
     x1 = startX;
   }
 
-
   if (mY < startY) {
     y1 = mY;
     y2 = startY;
@@ -181,19 +195,25 @@ bool SquareEditor::setLayer(unsigned int z, voxel_type v) {
     y1 = startY;
   }
 
+  if (x1 < 0) x1 = 0;
+  if (x2 > (int)space->getX()-1) x2 = (int)space->getX()-1;
+  if (y1 < 0) y1 = 0;
+  if (y2 > (int)space->getY()-1) y2 = (int)space->getY()-1;
+
   bool changed = false;
 
   for (int x = x1; x <= x2; x++)
-    for (int y = y1; y <= y2; y++) {
-      if (space->getState(x, y, z) != v) {
-        changed = true;
-        space->setState(x, y, z, v);
+    for (int y = y1; y <= y2; y++) 
+      if ((x >= 0) && (y >= 0) && (x < (int)space->getX()) && (y < (int)space->getY())) {
+	if (space->getState(x, y, z) != v) {
+	  changed = true;
+	  space->setState(x, y, z, v);
+	}
+	if (space->getColor(x, y, z) != currentColor) {
+	  changed = true;
+	  space->setColor(x, y, z, currentColor);
+	}
       }
-      if (space->getColor(x, y, z) != currentColor) {
-        changed = true;
-        space->setColor(x, y, z, currentColor);
-      }
-    }
 
 
   return changed;
@@ -216,40 +236,42 @@ int SquareEditor::handle(int event) {
 
   switch(event) {
   case FL_RELEASE:
-    if (mX < space->getX()) {
+    {
+      state = 0;
+
       voxel_type vxNew = voxel_c::VX_EMPTY;
-  
-      switch (state) {
-      case 2:
-        vxNew = voxel_c::VX_EMPTY;
-        break;
-      case 3:
-        vxNew = voxel_c::VX_FILLED;
-        break;
-      case 4:
-        vxNew = voxel_c::VX_VARIABLE;
-        break;
+
+      switch (task) {
+	case TSK_RESET:
+	  vxNew = voxel_c::VX_EMPTY;
+	  break;
+	case TSK_SET:
+	  vxNew = voxel_c::VX_FILLED;
+	  break;
+	case TSK_VAR:
+	  vxNew = voxel_c::VX_VARIABLE;
+	  break;
       }
-  
+
       bool changed = false;
-  
+
       if (_editAllLayers)
-        for (unsigned int z = 0; z < space->getZ(); z++)
-          changed |= setLayer(z, vxNew);
+	for (unsigned int z = 0; z < space->getZ(); z++)
+	  changed |= setLayer(z, vxNew);
       else
-        changed = setLayer(space->getZ()-currentZ-1, vxNew);
-  
+	changed = setLayer(space->getZ()-currentZ-1, vxNew);
+
       if (changed) {
-        callbackReason = RS_CHANGESQUARE;
-        do_callback();
+	callbackReason = RS_CHANGESQUARE;
+	do_callback();
       }
-  
+
+      redraw();
     }
-    state = 0;
-    redraw();
 
     return 1;
   case FL_PUSH:
+    inside = true;
     state = 1;
     // fallthrough
   case FL_DRAG:
@@ -259,62 +281,36 @@ int SquareEditor::handle(int event) {
       int s, tx, ty;
       calcParameters(&s, &tx, &ty);
 
-      if ((Fl::event_x() < tx) || (Fl::event_y() < ty))
-        return 1;
-
-      unsigned int x = Fl::event_x() - tx;
-      unsigned int y = Fl::event_y() - ty;
+      int x = Fl::event_x() - tx;
+      int y = Fl::event_y() - ty;
 
       x /= s;
       y /= s;
 
-      /* if we are outside the valid range, exit, we keep the current
-       * selected area
-       */
-      if ((x >= space->getX()) || (y >= space->getY())) {
-        inside = false;
-        mX = x;
-        return 1;
-      }
-
       y = space->getY() - y - 1;
 
-      inside = true;
-      bool doCB = false;
+      if (event == FL_PUSH) {
+	mX = startX = x;
+	mY = startY = y;
+	mZ = space->getZ()-currentZ-1;
+	redraw();
+	callbackReason = RS_MOUSEMOVE;
+	do_callback();
+	
+      } else {
 
-      if (state == 1) {
+        // we move the mouse, if the new position is different from the saved one,
+        // do a callback
+	if ((x != mX) || (y != mY) || ((int)space->getZ()-currentZ-1 != mZ)) {
+	  
+	  mX = x;
+	  mY = y;
+	  mZ = space->getZ()-currentZ-1;
 
-        // if we just pressed the button find out what to do while
-        // the button is pressed and initialize the drag start point
-        startX = x;
-        startY = y;
-        if (Fl::event_button() == 1)
-          state = (space->getState(x, y, space->getZ()-currentZ-1) == voxel_c::VX_FILLED) ? 2 : 3;
-        else
-          state = (space->getState(x, y, space->getZ()-currentZ-1) == voxel_c::VX_VARIABLE) ? 2 : 4;
-
-        doCB = true;
-      }
-
-      // we move the mouse, if the new position is different from the saved one,
-      // do a callback
-      if ((x != mX) || (y != mY) || (space->getZ()-currentZ-1 != mZ)) {
-        mX = x;
-        mY = y;
-        mZ = space->getZ()-currentZ-1;
-
-        if (state == 0) {
-          startX = mX;
-          startY = mY;
-        }
-
-        doCB = true;
-      }
-
-      if (doCB) {
-        redraw();
-        callbackReason = RS_MOUSEMOVE;
-        do_callback();
+	  redraw();
+	  callbackReason = RS_MOUSEMOVE;
+	  do_callback();
+	}
       }
     }
     return 1;

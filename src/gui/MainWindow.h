@@ -73,6 +73,8 @@ class UserInterface : public Fl_Double_Window {
   Fl_Group *TabProblems;
 
   ToolTab * pieceTools;
+  FlatLightButton *editLayersButton;
+  Fl_Choice *editChoice;
 
   Fl_Group *TabSolve;
   Fl_Check_Button *SolveDisasm, *JustCount;
@@ -191,6 +193,8 @@ public:
 
   void cb_TransformPiece(void);
   void cb_pieceEdit(VoxelEditGroup* o);
+  void cb_EditLayers(void);
+  void cb_EditChoice(void);
 
   void cb_TransformResult(void);
 

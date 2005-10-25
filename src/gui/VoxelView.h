@@ -115,7 +115,11 @@ public:
 
   void setTransformationType(transformationType type);
 
-  /* only active in single mode */
+  /* only active in single mode
+   * the marker has 2 parts, a white part that shows the complete z layer
+   * and a black part that is only drawn between the given coordinates
+   * if you don't want the black part make x1 >= x2
+   */
   void setMarker(int x1, int y1, int x2, int y2, int z);
   void hideMarker(void);
 

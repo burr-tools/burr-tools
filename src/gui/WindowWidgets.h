@@ -130,6 +130,10 @@ public:
   void editAllLayers(bool edit) {
     sqedit->editAllLayers(edit);
   }
+
+  void editChoice(SquareEditor::enTask c) {
+    sqedit->setTask(c);
+  }
 };
 
 
@@ -191,8 +195,6 @@ class ToolTab : public Fl_Tabs {
 
   ChangeSize * changeSize;
   voxel_c * space;
-  bool _editLayersChanged;
-  Fl_Light_Button *editLayersButton;
 
 public:
 
@@ -214,9 +216,6 @@ public:
   }
 
   void cb_transform(long task);
-
-  bool editLayersChanged(void) { return _editLayersChanged; };
-  bool editLayersOn(void) { return editLayersButton->value() == 1; }
 };
 
 

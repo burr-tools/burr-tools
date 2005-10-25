@@ -34,6 +34,16 @@
  *  - Changes of voxel states
  */
 class SquareEditor : public Fl_Widget {
+  
+public:
+  
+  /* sets the task of what to do next */
+  typedef enum {
+    TSK_SET,
+    TSK_VAR,
+    TSK_RESET,
+    TSK_COLOR
+  } enTask;
 
 private:
 
@@ -49,7 +59,7 @@ private:
   int state;
 
   // current position of the mouse cursor
-  unsigned int mX, mY, mZ;
+  int mX, mY, mZ;
 
   // is the mouse inside the widget?
   bool inside;
@@ -67,7 +77,9 @@ private:
 
   bool _editAllLayers;
 
-  unsigned int startX, startY;
+  int startX, startY;
+
+  enTask task;
 
 protected:
 
@@ -114,6 +126,10 @@ public:
   void editAllLayers(bool doIt) {
     _editAllLayers = doIt;
   }
+
+  
+  
+  void setTask(enTask t) { task = t; }
 
   int handle(int event);
 

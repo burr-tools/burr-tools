@@ -85,19 +85,19 @@ TransformButtons::TransformButtons(int x, int y, int w, int h) : Fl_Group(x, y, 
 
   new FlatButton(  5+x,  5+y, 40, SZ_BUTTON_Y, "S+X", "Shift up along X",                  cb_TransformButtons_stub,  0,   1);
   new FlatButton( 45+x,  5+y, 40, SZ_BUTTON_Y, "S-X", "Shift down along X",                cb_TransformButtons_stub,  1,   1);
-  new FlatButton(  5+x, 30+y, 40, SZ_BUTTON_Y, "S+Y", "Shift up along Y",                  cb_TransformButtons_stub,  2,   2);
-  new FlatButton( 45+x, 30+y, 40, SZ_BUTTON_Y, "S-Y", "Shift down along Y",                cb_TransformButtons_stub,  3,   2);
-  new FlatButton(  5+x, 55+y, 40, SZ_BUTTON_Y, "S+Z", "Shift up along Z",                  cb_TransformButtons_stub,  4, 237);
-  new FlatButton( 45+x, 55+y, 40, SZ_BUTTON_Y, "S-Z", "Shift down along Z",                cb_TransformButtons_stub,  5, 237);
+  new FlatButton(  5+x, 25+y, 40, SZ_BUTTON_Y, "S+Y", "Shift up along Y",                  cb_TransformButtons_stub,  2,   2);
+  new FlatButton( 45+x, 25+y, 40, SZ_BUTTON_Y, "S-Y", "Shift down along Y",                cb_TransformButtons_stub,  3,   2);
+  new FlatButton(  5+x, 45+y, 40, SZ_BUTTON_Y, "S+Z", "Shift up along Z",                  cb_TransformButtons_stub,  4, 237);
+  new FlatButton( 45+x, 45+y, 40, SZ_BUTTON_Y, "S-Z", "Shift down along Z",                cb_TransformButtons_stub,  5, 237);
   new FlatButton( 90+x,  5+y, 40, SZ_BUTTON_Y, "R+X", "Rotate clockwise along X-Axis",     cb_TransformButtons_stub,  6,   1);
   new FlatButton(130+x,  5+y, 40, SZ_BUTTON_Y, "R-X", "Rotate anticlockwise along X-Axis", cb_TransformButtons_stub,  7,   1);
-  new FlatButton( 90+x, 30+y, 40, SZ_BUTTON_Y, "R+Y", "Rotate clockwise along Y-Axis",     cb_TransformButtons_stub,  8,   2);
-  new FlatButton(130+x, 30+y, 40, SZ_BUTTON_Y, "R-Y", "Rotate anticlockwise along Y-Axis", cb_TransformButtons_stub,  9,   2);
-  new FlatButton( 90+x, 55+y, 40, SZ_BUTTON_Y, "R+Z", "Rotate clockwise along Z-Axis",     cb_TransformButtons_stub, 10, 237);
-  new FlatButton(130+x, 55+y, 40, SZ_BUTTON_Y, "R-Z", "Rotate anticlockwise along Z-Axis", cb_TransformButtons_stub, 11, 237);
-  new FlatButton( 32+x, 85+y, 30, SZ_BUTTON_Y, "F X", "Flip along Y-Z Plane",              cb_TransformButtons_stub, 12,   1);
-  new FlatButton( 67+x, 85+y, 30, SZ_BUTTON_Y, "F Y", "Flip along X-Z Plane",              cb_TransformButtons_stub, 13,   2);
-  new FlatButton(102+x, 85+y, 30, SZ_BUTTON_Y, "F Z", "Flip along X-Y Plane",              cb_TransformButtons_stub, 14, 237);
+  new FlatButton( 90+x, 25+y, 40, SZ_BUTTON_Y, "R+Y", "Rotate clockwise along Y-Axis",     cb_TransformButtons_stub,  8,   2);
+  new FlatButton(130+x, 25+y, 40, SZ_BUTTON_Y, "R-Y", "Rotate anticlockwise along Y-Axis", cb_TransformButtons_stub,  9,   2);
+  new FlatButton( 90+x, 45+y, 40, SZ_BUTTON_Y, "R+Z", "Rotate clockwise along Z-Axis",     cb_TransformButtons_stub, 10, 237);
+  new FlatButton(130+x, 45+y, 40, SZ_BUTTON_Y, "R-Z", "Rotate anticlockwise along Z-Axis", cb_TransformButtons_stub, 11, 237);
+  new FlatButton( 32+x, 70+y, 30, SZ_BUTTON_Y, "F X", "Flip along Y-Z Plane",              cb_TransformButtons_stub, 12,   1);
+  new FlatButton( 67+x, 70+y, 30, SZ_BUTTON_Y, "F Y", "Flip along X-Z Plane",              cb_TransformButtons_stub, 13,   2);
+  new FlatButton(102+x, 70+y, 30, SZ_BUTTON_Y, "F Z", "Flip along X-Y Plane",              cb_TransformButtons_stub, 14, 237);
 }
 
 
@@ -115,7 +115,7 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h, "Size"
   SizeX->step(0.25);
   SizeX->callback(cb_ChangeSize_stub, 0l);
 
-  SizeY = new Fl_Roller(70+x, 50+y, 90, 15);
+  SizeY = new Fl_Roller(70+x, 40+y, 90, 15);
   SizeY->type(1);
   SizeY->box(FL_THIN_DOWN_BOX);
   SizeY->minimum(1);
@@ -123,7 +123,7 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h, "Size"
   SizeY->step(0.25);
   SizeY->callback(cb_ChangeSize_stub, 1l);
 
-  SizeZ = new Fl_Roller(70+x, 85+y, 90, 15);
+  SizeZ = new Fl_Roller(70+x, 65+y, 90, 15);
   SizeZ->type(1);
   SizeZ->box(FL_THIN_DOWN_BOX);
   SizeZ->minimum(1);
@@ -137,13 +137,13 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h, "Size"
   SizeOutX->maximum(1000);
   SizeOutX->color((Fl_Color)1);
 
-  SizeOutY = new Fl_Value_Output(20+x, 45+y, 40, 20, "Y");
+  SizeOutY = new Fl_Value_Output(20+x, 35+y, 40, 20, "Y");
   SizeOutY->box(FL_THIN_DOWN_BOX);
   SizeOutY->minimum(1);
   SizeOutY->maximum(1000);
   SizeOutY->color((Fl_Color)2);
 
-  SizeOutZ = new Fl_Value_Output(20+x, 80+y, 40, 20, "Z");
+  SizeOutZ = new Fl_Value_Output(20+x, 60+y, 40, 20, "Z");
   SizeOutZ->box(FL_THIN_DOWN_BOX);
   SizeOutZ->minimum(1);
   SizeOutZ->maximum(1000);
@@ -173,15 +173,12 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
     o->hide();
     new FlatButton(x+5, y+25, w-10, 20, "Minimize", "Minimize the size", cb_ToolTabTransform2_stub, 15);
     new FlatButton(x+5, y+50, w-10, 20, "Make inside Variable", "Make the inside of the puzzle variable, so that it can contain holes", cb_ToolTabTransform2_stub, 16);
-    editLayersButton = new FlatLightButton(x+5, y+75, w-10, 20, "Edit all layers", "When this is active all layers are changed instead of just the active one", cb_ToolTabTransform2_stub, 17);
     o->end();
   }
 }
 
 void ToolTab::cb_transform(long task) {
   if (space) {
-
-    _editLayersChanged = false;
 
     switch(task) {
     case  0: space->translate( 1, 0, 0, 0); break;
@@ -201,7 +198,6 @@ void ToolTab::cb_transform(long task) {
     case 14: space->mirrorZ(); break;
     case 15: space->minimizePiece(); break;
     case 16: space->makeInsideHoly(); break;
-    case 17: _editLayersChanged = true; break;
     }
     space->setHotspot(0, 0, 0);
 

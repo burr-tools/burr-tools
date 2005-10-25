@@ -39,6 +39,7 @@
 
 #include <FL/Fl_Color_Chooser.H>
 #include <FL/Fl_Tooltip.H>
+#include <FL/Fl_Choice.H>
 
 static UserInterface * ui;
 
@@ -201,13 +202,33 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
 static void cb_TransformPiece_stub(Fl_Widget* o, long v) { ui->cb_TransformPiece(); }
 void UserInterface::cb_TransformPiece(void) {
 
-  if (pieceTools->editLayersChanged())
-    pieceEdit->editAllLayers(pieceTools->editLayersOn());
-  else
-    changeShape(PcSel->getSelection());
+  changeShape(PcSel->getSelection());
 
   StatPieceInfo(PcSel->getSelection());
   activateShape(PcSel->getSelection());
+}
+
+static void cb_EditLayers_stub(Fl_Widget* o, long v) { ui->cb_EditLayers(); }
+void UserInterface::cb_EditLayers(void) {
+  pieceEdit->editAllLayers(editLayersButton->value() == 1);
+}
+
+static void cb_EditChoice_stub(Fl_Widget* o, long v) { ui->cb_EditChoice(); }
+void UserInterface::cb_EditChoice(void) {
+  switch(editChoice->value()) {
+    case 0:
+      pieceEdit->editChoice(SquareEditor::TSK_SET);
+      break;
+    case 1:
+      pieceEdit->editChoice(SquareEditor::TSK_VAR);
+      break;
+    case 2:
+      pieceEdit->editChoice(SquareEditor::TSK_RESET);
+      break;
+    case 3:
+      pieceEdit->editChoice(SquareEditor::TSK_COLOR);
+      break;
+  }
 }
 
 
@@ -1666,6 +1687,7 @@ int UserInterface::handle(int event) {
 #define SZ_BUTTON_Y 20
 #define SZ_TEXT_Y 15
 #define SZ_SEPARATOR_Y 10
+#define SZ_TOOLTAB_Y 115
 
 void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
@@ -1681,7 +1703,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
   const int pieceFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
   const int colorsFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
-  const int editFixedHight = SZ_SEPARATOR_Y + 135 + SZ_GAP;
+  const int editFixedHight = SZ_SEPARATOR_Y + SZ_TOOLTAB_Y + 2*SZ_GAP + SZ_BUTTON_Y;
 
   int hi = h - pieceFixedHight - colorsFixedHight - editFixedHight;
 
@@ -1784,12 +1806,29 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 
-    pieceTools = new ToolTab(x, y, w, 135);
+    pieceTools = new ToolTab(x, y, w, SZ_TOOLTAB_Y);
     pieceTools->callback(cb_TransformPiece_stub);
     pieceTools->end();
-    y += 135 + SZ_GAP;
-    lh -= 135 + SZ_GAP;
-  
+    y += SZ_TOOLTAB_Y + SZ_GAP;
+    lh -= SZ_TOOLTAB_Y + SZ_GAP;
+
+    static Fl_Menu_Item EditChoise[] = {
+      {"Set Normal",   FL_F + 5, 0, 0},
+      {"Set Variable", FL_F + 6, 0, 0},
+      {"Reset",        FL_F + 7, 0, 0},
+      {"Color only",   FL_F + 8, 0, 0},
+      {0}};
+
+    editChoice = new Fl_Choice(x, y, (w-SZ_GAP)/2, SZ_BUTTON_Y);
+    editChoice->menu(EditChoise);
+    editChoice->box(FL_THIN_UP_BOX);
+    editChoice->callback(cb_EditChoice_stub);
+    
+    editLayersButton = new FlatLightButton(x+(w-SZ_GAP)/2+SZ_GAP, y, w-(w-SZ_GAP)/2-SZ_GAP, SZ_BUTTON_Y, "All layers", "When this is active all layers are changed instead of just the active one", cb_EditLayers_stub, 0);
+
+    y += SZ_BUTTON_Y + SZ_GAP;
+    lh -= SZ_BUTTON_Y + SZ_GAP;
+
     pieceEdit = new VoxelEditGroup(x, y, w, lh, puzzle);
     pieceEdit->callback(cb_pieceEdit_stub);
     pieceEdit->end();
