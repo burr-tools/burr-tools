@@ -478,27 +478,45 @@
   ``Make inside variable'' sets all the filled voxel that are completely
   surrounded by filled or variable voxels to variable voxels. If you apply
   this to your result shape the behaviour will be as if you pressed ``fill
-  outer cubes'' in <name|PuzzleSolver3D>. The 3rd button is used when
-  editing, it is explained below
+  outer cubes'' in <name|PuzzleSolver3D>.
+
+  Below the tabs are 2 elements. One allows you to select the edit mode for
+  the grid editor. The other one is used to select whether the intended
+  action is carried out in just the active z-layer or in all layers. To make
+  your life easier it is possible to change your grid edit mode using the
+  function keys <kbd|F5> to <kbd|F8>.
 
   The last item at the very bottom of this section is the editor to change
   the shape. It contains a slider at the left that selects the z-plane. You
-  edit by clicking and dragging within these squares. The left mouse button
-  adds normal cubes. The right mouse button adds variable cubes. These
-  variable cubes are only allowed in shapes that are used for the result.
-  Clicking on an already filled cube either removes it or replaces it by the
-  other cube type depending on the button the was pressed. Each cube filled
-  will also get the currently selected constraint colour (above in the colour
-  constraint section) attached to it. If this colour it not the neutral
-  colour it will be visible as a small square in the upper left corner of the
-  squares in the editor. The neutral colour will not be visible anywhere.
-  When you drag the mouse you can fill whole rectangles in one go.
+  can change the z-plane also using the <kbd|+> and <kbd|-> key. Editing is
+  done \ by clicking and dragging within the square grid. What exactly is
+  done depends on the currently selected grid edit mode. There are 4 modes
+  that do different things:
+
+  <\description-compact>
+    <item*|Set Normal>Changes all selected cubes to normal cubes.
+
+    <item*|Set Variable>Changes all selected cubes to variable cubes.
+
+    <item*|Reset>Clears all selected cubes
+
+    <item*|Color only>Does no editing and only changes cthe color constraint
+    of the selected cubes.
+  </description-compact>
+
+  Each editing operation also changes the color constraint color for each
+  edited cube to the currently selected color (above in the colour constraint
+  section). If this colour it not the neutral colour it will be visible as a
+  small square in the upper left corner of the squares in the editor. The
+  neutral colour will not be visible anywhere. When you drag the mouse you
+  can fill whole rectangles in one go.
 
   It is also possible to edit the whole stack instead of just the current
-  layer. For this you have to activate the 3rd button in the shape edit tools
-  tab. This is a toggle button. Press it and a yellow lamp will be switched
-  on press it again and it is switched off. Once you switched the lamp on you
-  always edit all z-layers instead of just the active one.
+  layer. For this you have to activate the button beside the edit mode
+  selector. The one with the little yellow light. This is a toggle button.
+  Press it and the lamp will be switched on press it again and it is switched
+  off. Once you switched the lamp on you always edit all z-layers instead of
+  just the active one.
 
   <subsection|Interlude: Piece Groups>
 
@@ -750,10 +768,14 @@
 
   <\with|par-mode|center>
     <tabular|<tformat|<cwith|3|3|2|2|cell-bborder|
-    0>|<cwith|1|1|1|2|cell-lborder|4>|<cwith|1|1|1|2|cell-rborder|4>|<cwith|1|1|1|2|cell-tborder|4>|<cwith|1|1|1|2|cell-bborder|1px>|<cwith|1|5|1|1|cell-rborder|1px>|<cwith|1|5|2|2|cell-hyphen|t>|<cwith|1|5|2|2|cell-width|10cm>|<cwith|3|3|1|2|cell-background|grey>|<cwith|5|5|1|2|cell-background|grey>|<table|<row|<cell|<strong|Key>>|<cell|<strong|Action<strong|>>>>|<row|<cell|<kbd|F2>>|<cell|Save
+    0>|<cwith|1|1|1|2|cell-lborder|4>|<cwith|1|1|1|2|cell-rborder|4>|<cwith|1|1|1|2|cell-tborder|4>|<cwith|1|1|1|2|cell-bborder|1px>|<cwith|1|9|1|1|cell-rborder|1px>|<cwith|1|9|2|2|cell-hyphen|t>|<cwith|1|9|2|2|cell-width|10cm>|<cwith|3|3|1|2|cell-background|grey>|<cwith|9|9|1|2|cell-background|grey>|<cwith|5|5|1|2|cell-background|grey>|<cwith|7|7|1|2|cell-background|grey>|<table|<row|<cell|<strong|Key>>|<cell|<strong|Action<strong|>>>>|<row|<cell|<kbd|F2>>|<cell|Save
     the current Puzzle>>|<row|<cell|<kbd|F3>>|<cell|Load a
     puzzle>>|<row|<cell|<kbd|F4>>|<cell|When in the shape view this key
-    exchanges the 3D-View and the edit-grid>>|<row|<cell|<kbd|+>,<kbd|->>|<\cell>
+    exchanges the 3D-View and the edit-grid>>|<row|<cell|<kbd|F5>>|<cell|<with|color|grey|>Select
+    Set mode for the grid editor>>|<row|<cell|<kbd|F6>>|<cell|Select Variable
+    mode for grid editor>>|<row|<cell|F7>|<cell|Select Reset mode for grid
+    editor>>|<row|<cell|F8>|<cell|Select Color Change mode for grid
+    editor>>|<row|<cell|<kbd|+>,<kbd|->>|<\cell>
       When in shape view this changes the currently visible and editable
       z-layer
     </cell>>>>>
@@ -1265,7 +1287,7 @@
     <associate||<tuple|2.1|21>>
     <associate|GroupEditor|<tuple|1.4|13>>
     <associate|MainWindowImage|<tuple|1.1|9>>
-    <associate|PlacementBrowser|<tuple|1.5|14>>
+    <associate|PlacementBrowser|<tuple|1.5|15>>
     <associate|ToolsImage|<tuple|1.2|11>>
     <associate|auto-1|<tuple|<uninit>|3>>
     <associate|auto-10|<tuple|1.2.4|10>>
@@ -1275,9 +1297,9 @@
     <associate|auto-14|<tuple|1.2.6|12>>
     <associate|auto-15|<tuple|1.4|13>>
     <associate|auto-16|<tuple|1.2.7|13>>
-    <associate|auto-17|<tuple|1.5|14>>
+    <associate|auto-17|<tuple|1.5|15>>
     <associate|auto-18|<tuple|1.2.8|14>>
-    <associate|auto-19|<tuple|1.3|15>>
+    <associate|auto-19|<tuple|1.3|14>>
     <associate|auto-2|<tuple|<uninit>|5>>
     <associate|auto-20|<tuple|2|17>>
     <associate|auto-21|<tuple|2.1|17>>
@@ -1298,7 +1320,7 @@
     <associate|auto-35|<tuple|2.3.2|21>>
     <associate|auto-36|<tuple|2.4|22>>
     <associate|auto-4|<tuple|1.1|7>>
-    <associate|auto-5|<tuple|1.2|8>>
+    <associate|auto-5|<tuple|1.2|7>>
     <associate|auto-6|<tuple|1.2.1|8>>
     <associate|auto-7|<tuple|1.2.2|8>>
     <associate|auto-8|<tuple|1.1|9>>
@@ -1319,7 +1341,7 @@
       <tuple|normal|The 3 tabs of the shape edit
       tools<label|shapeEditTools>|<pageref|auto-12>>
 
-      <tuple|normal|Group editor <label|GroupEditor>|<pageref|auto-15>>
+      <tuple|normal|Group editor<label|GroupEditor>|<pageref|auto-15>>
 
       <tuple|normal|Placement Browser<label|PlacementBrowser>|<pageref|auto-17>>
     </associate>
