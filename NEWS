@@ -40,8 +40,11 @@
 - solution selector can take the focus, so you can use the cursor keys
   to go through solutions
 
+- more clean design for the grid editor, no more left and right mouse
+  clicking
+
 - some key-shortcuts: F4 toggles 3d and grid view, + and - change edit
-layer, F2 saves and F3 loads a file
+  layer, F2 saves and F3 loads a file
 
 - sort solutions by number of moves required the completely disassemble
 

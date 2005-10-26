@@ -1,3 +1,56 @@
+Wed Oct 26 21:26:05 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add some examples
+
+Tue Oct 25 18:56:02 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * tab removal
+
+Tue Oct 25 18:14:34 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * now we can also set the color only
+
+Tue Oct 25 17:05:19 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * cleanup of grid editor
+  
+  now there is a button in the tool side bar that allows you to
+  select what you want to do. Also the "Edit all Layers" button
+  has been moved there.
+  
+  Also lots of cleanup in the square editor resulting from this
+
+Tue Oct 25 16:58:26 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * redraw after toggeling
+
+Tue Oct 25 16:57:57 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use shortcut keys in the menu instead manual ones
+
+Tue Oct 25 16:50:21 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * windows versions don't have __STRING
+
+Mon Oct 24 19:52:55 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use the character code for + and - instead of the key
+
+Mon Oct 24 16:47:42 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * increase puzzle version and make corrections after loading old version file
+
+Mon Oct 24 16:46:52 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * display a message when the placement browser is opened in intermediate assembling state
+
+Mon Oct 24 16:43:34 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * spell my name right
+
+Sun Oct 23 19:57:16 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * OSX specific parameter handling
+  
+  OSX passes a process id as the first parameter so we can not load
+  that file and we skip opening files
+  
+  we should have a proper solution there and do something more appropriate
+
+Sun Oct 23 19:32:41 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * gcc 4.0 fixes
+
+Sun Oct 23 17:36:31 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * news and changelog updates
+
 Sun Oct 23 16:46:20 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
   * documentation update (placement browser and group editor explained)
 
