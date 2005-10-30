@@ -731,6 +731,8 @@ void assembler_0_c::iterativeMultiSearch(void) {
           j = right[j];
         } while (j);
 
+        // FIXME: we should also do the hole check in here
+
         if (!j) {
           // select the column. We can either go backwards, if the last piece
           // placed was not the first one, or forward until we have placed
