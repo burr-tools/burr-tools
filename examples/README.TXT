@@ -13,6 +13,13 @@ pieces. When looking at the solution it is useful to display the box as a
 wire frame. This can be done by clicking at the blue rectangle at the lower end
 of the tools. The rectangle with the 0.0 in it.
 
+CubeInCage: Designed by Mineyuki Uyematsu
+This file contains MINE's CUBE in CAGE 333 cube g. This file demonstrates how
+to use the grouping capabilities. The puzzle contains 3 interlocked pieces
+that construct a cage. The piece move but can not be taken apart. It needs
+to be told to the program that this is intentional. So here you have an example
+of how to do that.
+
 Draculas Dental Desaster: Designed by Ronald Kint-Bruynseels
 This puzzle demonstrated the used of colour contraints. Halve of the end result
 must be red and the other halve black. You can see the colours if you enable
