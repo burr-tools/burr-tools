@@ -91,6 +91,7 @@ void usage(void) {
   cout << "  -r reduce the placements bevore starting to solve the puzzle\n";
   cout << "  -s print the assemby\n";
   cout << "  -q be quiet and only print statistics\n";
+  cout << "  -n don't print a newline at the end of the line\n";
 }
 
 int main(int argv, char* args[]) {
@@ -107,6 +108,7 @@ int main(int argv, char* args[]) {
   quiet = false;
   int filenumber = 0;
   bool reduce = false;
+  bool newline = true;
 
   for(int i = 1; i < argv; i++) {
 
@@ -122,6 +124,8 @@ int main(int argv, char* args[]) {
         printSolutions = true;
       else if (strcmp(args[i], "-r") == 0)
         reduce = true;
+      else if (strcmp(args[i], "-n") == 0)
+        newline = false;
       else if (strcmp(args[i], "-q") == 0) {
         quiet = true;
         printDisassemble = false;
@@ -174,7 +178,12 @@ int main(int argv, char* args[]) {
 
   assm->assemble(&a);
 
-  cout << a.Assemblies << " assemblies and " << a.Solutions << " solutions found with " << assm->getIterations() << " iterations\n";
+
+  cout << a.Assemblies << " assemblies and " << a.Solutions << " solutions found with " << assm->getIterations() << " iterations ";
+
+  if (newline)
+    cout << endl;
+
   delete assm;
 
   return 0;
