@@ -65,7 +65,7 @@ public:
           print(a, puzzle, prob);
 
         printf("level: %i\n", da->getMoves());
-        if (printDisassemble);
+        if (printDisassemble)
           print(da, a, puzzle, prob);
         delete da;
       }
