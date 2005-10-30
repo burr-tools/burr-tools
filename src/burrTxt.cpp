@@ -31,6 +31,7 @@ using namespace std;
 bool disassemble;
 bool printDisassemble;
 bool printSolutions;
+bool quiet;
 
 disassembler_0_c * d;
 
@@ -51,7 +52,7 @@ public:
 
     Assemblies++;
 
-    if ((Assemblies & 0x3f) == 0)
+    if (!quiet && ((Assemblies & 0x3f) == 0))
       cout << Assemblies << " Assembies found so far\n";
 
     if (disassemble) {
@@ -64,7 +65,9 @@ public:
         if (printSolutions)
           print(a, puzzle, prob);
 
-        printf("level: %i\n", da->getMoves());
+        if (!quiet)
+          printf("level: %i\n", da->getMoves());
+
         if (printDisassemble)
           print(da, a, puzzle, prob);
         delete da;
@@ -87,6 +90,7 @@ void usage(void) {
   cout << "  -p print the disassembly plan\n";
   cout << "  -r reduce the placements bevore starting to solve the puzzle\n";
   cout << "  -s print the assemby\n";
+  cout << "  -q be quiet and only print statistics\n";
 }
 
 int main(int argv, char* args[]) {
@@ -100,6 +104,7 @@ int main(int argv, char* args[]) {
   disassemble = false;
   printDisassemble = false;
   printSolutions = false;
+  quiet = false;
   int filenumber = 0;
   bool reduce = false;
 
@@ -117,7 +122,11 @@ int main(int argv, char* args[]) {
         printSolutions = true;
       else if (strcmp(args[i], "-r") == 0)
         reduce = true;
-      else
+      else if (strcmp(args[i], "-q") == 0) {
+        quiet = true;
+        printDisassemble = false;
+        printSolutions = false;
+      } else
         filenumber = i;
 
       break;
@@ -132,9 +141,10 @@ int main(int argv, char* args[]) {
   xml::tree_parser parser(args[filenumber]);
   puzzle_c p(parser.get_document().get_root_node());
 
-  cout << " The puzzle:\n\n";
-
-  print(&p);
+  if (!quiet) {
+    cout << " The puzzle:\n\n";
+    print(&p);
+  }
 
   assembler_0_c *assm = new assm_0_frontend_0_c();
 
@@ -151,9 +161,11 @@ int main(int argv, char* args[]) {
   }
 
   if (reduce) {
-    cout << "start reduce\n\n";
+    if (!quiet)
+      cout << "start reduce\n\n";
     assm->reduce();
-    cout << "finished reduce\n\n";
+    if (!quiet)
+      cout << "finished reduce\n\n";
   }
 
   asm_cb a(&p, 0);
