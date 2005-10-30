@@ -23,7 +23,7 @@
 
 #include "bt_assert.h"
 
-#define NUM_SYMMETRY_GROUOPS 85
+#define NUM_SYMMETRY_GROUOPS 87
 
 /* these arrays contain the transformations necessary to get all possible orientations of a piece
  * first do a mirroring along the x-y-plane, then rotate around x then y and then the z-axis
@@ -116,6 +116,7 @@ static const unsigned long long symmetries[NUM_SYMMETRY_GROUOPS] = {
   0x000001000001LL,
   0x000004000001LL,
   0x000005000005LL,
+  0x00000F00000FLL,
   0x000010000001LL,
   0x000014000041LL,
   0x000100000001LL,
@@ -146,6 +147,7 @@ static const unsigned long long symmetries[NUM_SYMMETRY_GROUOPS] = {
   0x001400000041LL,
   0x001414004141LL,
   0x004141004141LL,
+  0x004444001111LL,
   0x005050000505LL,
   0x005555005555LL,
   0x010000000001LL,
@@ -175,14 +177,13 @@ static const unsigned long long symmetries[NUM_SYMMETRY_GROUOPS] = {
   0x802004208001LL,
   0x812814248241LL,
   0xAAA5A5AAA5A5LL,
-  0xFFFFFFFFFFFFLL
+  0xFFFFFFFFFFFFLL,
 };
 
 /* this matrix lets you calculate the orientation with the smallest number that results in an identical looking
  * shape. This requires us to know the symmetry group
  */
 static const unsigned char transformationMinimizer[NUM_SYMMETRY_GROUOPS][NUM_TRANSFORMATIONS_MIRROR] = {
-
   { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47},
   { 0, 1, 0, 1, 4, 5, 4, 5, 8, 9, 8, 9,12,13,12,13,16,17,16,17,20,21,20,21,24,25,24,25,28,29,28,29,32,33,32,33,36,37,36,37,40,41,40,41,44,45,44,45},
   { 0, 1, 2, 3, 4, 5, 0, 7, 8, 9, 4,11, 2,13, 8,15, 7, 3,15,11, 5, 9,13, 1,24,25,26,27,26,29,30,31,30,33,34,35,34,37,24,39,37,33,29,25,39,27,31,35},
@@ -208,6 +209,7 @@ static const unsigned char transformationMinimizer[NUM_SYMMETRY_GROUOPS][NUM_TRA
   { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23},
   { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23, 2, 3, 0, 1, 6, 7, 4, 5,10,11, 8, 9,14,15,12,13,18,19,16,17,22,23,20,21},
   { 0, 1, 0, 1, 4, 5, 4, 5, 8, 9, 8, 9,12,13,12,13,16,17,16,17,20,21,20,21, 0, 1, 0, 1, 4, 5, 4, 5, 8, 9, 8, 9,12,13,12,13,16,17,16,17,20,21,20,21},
+  { 0, 0, 0, 0, 4, 4, 4, 4, 8, 8, 8, 8,12,12,12,12,16,16,16,16,20,20,20,20, 0, 0, 0, 0, 4, 4, 4, 4, 8, 8, 8, 8,12,12,12,12,16,16,16,16,20,20,20,20},
   { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,12,17, 6,23, 0,16,10,20, 4,19,14,21, 8,18, 2,22,15,11, 7, 3,13, 1, 5, 9},
   { 0, 1, 2, 3, 4, 5, 0, 7, 8, 9, 4,11, 2,13, 8,15, 7, 3,15,11, 5, 9,13, 1, 2, 3, 0, 1, 0, 7, 4, 5, 4,11, 8, 9, 8,15, 2,13,15,11, 7, 3,13, 1, 5, 9},
   { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23, 8,11,10, 9,12,15,14,13, 0, 3, 2, 1, 4, 7, 6, 5,22,21,20,23,18,17,16,19},
@@ -238,6 +240,7 @@ static const unsigned char transformationMinimizer[NUM_SYMMETRY_GROUOPS][NUM_TRA
   { 0, 1, 2, 3, 4, 5, 0, 7, 8, 9, 4,11, 2,13, 8,15, 7, 3,15,11, 5, 9,13, 1, 4, 9, 8,11, 8,13, 2,15, 2, 1, 0, 3, 0, 5, 4, 7, 5, 1,13, 9, 7,11,15, 3},
   { 0, 1, 2, 3, 2, 5, 0, 7, 0, 3, 2, 1, 2, 7, 0, 5, 7, 3, 5, 1, 5, 3, 7, 1, 2, 3, 0, 1, 0, 7, 2, 5, 2, 1, 0, 3, 0, 5, 2, 7, 5, 1, 7, 3, 7, 1, 5, 3},
   { 0, 1, 2, 3, 2, 5, 0, 7, 0, 3, 2, 1, 2, 7, 0, 5, 7, 3, 5, 1, 5, 3, 7, 1, 0, 1, 2, 3, 2, 5, 0, 7, 0, 3, 2, 1, 2, 7, 0, 5, 7, 3, 5, 1, 5, 3, 7, 1},
+  { 0, 1, 2, 3, 0, 5, 2, 7, 0, 3, 2, 1, 0, 7, 2, 5, 5, 1, 7, 3, 7, 1, 5, 3, 2, 3, 0, 1, 2, 7, 0, 5, 2, 1, 0, 3, 2, 5, 0, 7, 7, 3, 5, 1, 5, 3, 7, 1},
   { 0, 1, 0, 1, 4, 5, 4, 5, 0, 1, 0, 1, 4, 5, 4, 5,16,17,16,17,16,17,16,17, 4,17, 4,17, 0,16, 0,16, 4,17, 4,17, 0,16, 0,16, 5, 1, 5, 1, 5, 1, 5, 1},
   { 0, 1, 0, 1, 0, 5, 0, 5, 0, 1, 0, 1, 0, 5, 0, 5, 5, 1, 5, 1, 5, 1, 5, 1, 0, 1, 0, 1, 0, 5, 0, 5, 0, 1, 0, 1, 0, 5, 0, 5, 5, 1, 5, 1, 5, 1, 5, 1},
   { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,20,13,18, 7,21, 1,17,11,22, 5,16,15,23, 9,19, 3, 0,12, 8, 4,10,14, 2, 6},
@@ -362,8 +365,8 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
 
       unsigned long long s = 1;
       for (int i = 1; i < NUM_TRANSFORMATIONS_MIRROR; i++) {
-        voxel_c v(pp, i);
-        if (pp->identicalInBB(&v))
+        voxel_c v(p, i);
+        if (p.identicalInBB(&v))
           s |= ((unsigned long long)1) << i;
       }
 
@@ -384,55 +387,55 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
 #if 1
   voxel_c v(pp, 26);
   if (pp->identicalInBB(&v)) {
-    voxel_c v(pp, 10);
+    voxel_c v(pp, 2);
     if (pp->identicalInBB(&v)) {
-      voxel_c v(pp, 2);
+      voxel_c v(pp, 8);
       if (pp->identicalInBB(&v)) {
         voxel_c v(pp, 1);
         if (pp->identicalInBB(&v)) {
           voxel_c v(pp, 4);
           if (pp->identicalInBB(&v)) {
-            bt_assert(s == 84);
-            return (symmetries_t)84; //FFFFFFFFFFFF
+            bt_assert(s == 86);
+            return (symmetries_t)86; //FFFFFFFFFFFF
           } else {
-            bt_assert(s == 47);
-            return (symmetries_t)47; //000F0F000F0F
+            bt_assert(s == 48);
+            return (symmetries_t)48; //000F0F000F0F
           }
         } else {
           voxel_c v(pp, 4);
           if (pp->identicalInBB(&v)) {
-            bt_assert(s == 56);
-            return (symmetries_t)56; //005555005555
+            bt_assert(s == 58);
+            return (symmetries_t)58; //005555005555
           } else {
             voxel_c v(pp, 5);
             if (pp->identicalInBB(&v)) {
-              bt_assert(s == 83);
-              return (symmetries_t)83; //AAA5A5AAA5A5
+              bt_assert(s == 85);
+              return (symmetries_t)85; //AAA5A5AAA5A5
             } else {
               voxel_c v(pp, 16);
               if (pp->identicalInBB(&v)) {
-                bt_assert(s == 79);
-                return (symmetries_t)79; //550505550505
+                bt_assert(s == 81);
+                return (symmetries_t)81; //550505550505
               } else {
-                bt_assert(s == 38);
-                return (symmetries_t)38; //000505000505
+                bt_assert(s == 39);
+                return (symmetries_t)39; //000505000505
               }
             }
           }
         }
       } else {
-        voxel_c v(pp, 16);
+        voxel_c v(pp, 1);
         if (pp->identicalInBB(&v)) {
-          bt_assert(s == 76);
-          return (symmetries_t)76; //440104110401
+          bt_assert(s == 25);
+          return (symmetries_t)25; //00000F00000F
         } else {
-          voxel_c v(pp, 18);
+          voxel_c v(pp, 9);
           if (pp->identicalInBB(&v)) {
-            bt_assert(s == 70);
-            return (symmetries_t)70; //110104440401
+            bt_assert(s == 45);
+            return (symmetries_t)45; //000A05000A05
           } else {
-            bt_assert(s == 29);
-            return (symmetries_t)29; //000104000401
+            bt_assert(s == 24);
+            return (symmetries_t)24; //000005000005
           }
         }
       }
@@ -441,97 +444,109 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
       if (pp->identicalInBB(&v)) {
         voxel_c v(pp, 8);
         if (pp->identicalInBB(&v)) {
-          bt_assert(s == 53);
-          return (symmetries_t)53; //001414004141
+          bt_assert(s == 54);
+          return (symmetries_t)54; //001414004141
         } else {
           voxel_c v(pp, 9);
           if (pp->identicalInBB(&v)) {
-            bt_assert(s == 82);
-            return (symmetries_t)82; //812814248241
+            bt_assert(s == 84);
+            return (symmetries_t)84; //812814248241
           } else {
             voxel_c v(pp, 11);
             if (pp->identicalInBB(&v)) {
-              bt_assert(s == 72);
-              return (symmetries_t)72; //128214482841
+              bt_assert(s == 74);
+              return (symmetries_t)74; //128214482841
             } else {
-              bt_assert(s == 26);
-              return (symmetries_t)26; //000014000041
+              bt_assert(s == 27);
+              return (symmetries_t)27; //000014000041
             }
           }
         }
       } else {
-        voxel_c v(pp, 9);
+        voxel_c v(pp, 10);
         if (pp->identicalInBB(&v)) {
-          voxel_c v(pp, 2);
+          voxel_c v(pp, 16);
           if (pp->identicalInBB(&v)) {
-            bt_assert(s == 44);
-            return (symmetries_t)44; //000A05000A05
+            bt_assert(s == 78);
+            return (symmetries_t)78; //440104110401
           } else {
-            voxel_c v(pp, 7);
+            voxel_c v(pp, 18);
             if (pp->identicalInBB(&v)) {
-              bt_assert(s == 73);
-              return (symmetries_t)73; //181824424281
+              bt_assert(s == 72);
+              return (symmetries_t)72; //110104440401
             } else {
-              bt_assert(s == 42);
-              return (symmetries_t)42; //000804000201
+              bt_assert(s == 30);
+              return (symmetries_t)30; //000104000401
             }
           }
         } else {
-          voxel_c v(pp, 5);
+          voxel_c v(pp, 14);
           if (pp->identicalInBB(&v)) {
-            voxel_c v(pp, 11);
+            voxel_c v(pp, 5);
             if (pp->identicalInBB(&v)) {
-              bt_assert(s == 75);
-              return (symmetries_t)75; //211284844821
-            } else {
-              bt_assert(s == 74);
-              return (symmetries_t)74; //200084800021
-            }
-          } else {
-            voxel_c v(pp, 2);
-            if (pp->identicalInBB(&v)) {
-              bt_assert(s == 24);
-              return (symmetries_t)24; //000005000005
+              bt_assert(s == 77);
+              return (symmetries_t)77; //211284844821
             } else {
               voxel_c v(pp, 7);
               if (pp->identicalInBB(&v)) {
-                bt_assert(s == 63);
-                return (symmetries_t)63; //080024020081
+                bt_assert(s == 75);
+                return (symmetries_t)75; //181824424281
               } else {
-                voxel_c v(pp, 8);
+                bt_assert(s == 50);
+                return (symmetries_t)50; //001004004001
+              }
+            }
+          } else {
+            voxel_c v(pp, 8);
+            if (pp->identicalInBB(&v)) {
+              voxel_c v(pp, 4);
+              if (pp->identicalInBB(&v)) {
+                bt_assert(s == 56);
+                return (symmetries_t)56; //004444001111
+              } else {
+                bt_assert(s == 36);
+                return (symmetries_t)36; //000404000101
+              }
+            } else {
+              voxel_c v(pp, 5);
+              if (pp->identicalInBB(&v)) {
+                bt_assert(s == 76);
+                return (symmetries_t)76; //200084800021
+              } else {
+                voxel_c v(pp, 7);
                 if (pp->identicalInBB(&v)) {
-                  bt_assert(s == 35);
-                  return (symmetries_t)35; //000404000101
+                  bt_assert(s == 65);
+                  return (symmetries_t)65; //080024020081
                 } else {
-                  voxel_c v(pp, 11);
+                  voxel_c v(pp, 9);
                   if (pp->identicalInBB(&v)) {
-                    bt_assert(s == 32);
-                    return (symmetries_t)32; //000204000801
+                    bt_assert(s == 43);
+                    return (symmetries_t)43; //000804000201
                   } else {
-                    voxel_c v(pp, 13);
+                    voxel_c v(pp, 11);
                     if (pp->identicalInBB(&v)) {
-                      bt_assert(s == 62);
-                      return (symmetries_t)62; //028004082001
+                      bt_assert(s == 33);
+                      return (symmetries_t)33; //000204000801
                     } else {
-                      voxel_c v(pp, 14);
+                      voxel_c v(pp, 13);
                       if (pp->identicalInBB(&v)) {
-                        bt_assert(s == 49);
-                        return (symmetries_t)49; //001004004001
+                        bt_assert(s == 64);
+                        return (symmetries_t)64; //028004082001
                       } else {
                         voxel_c v(pp, 15);
                         if (pp->identicalInBB(&v)) {
-                          bt_assert(s == 81);
-                          return (symmetries_t)81; //802004208001
+                          bt_assert(s == 83);
+                          return (symmetries_t)83; //802004208001
                         } else {
                           voxel_c v(pp, 18);
                           if (pp->identicalInBB(&v)) {
-                            bt_assert(s == 58);
-                            return (symmetries_t)58; //010004040001
+                            bt_assert(s == 60);
+                            return (symmetries_t)60; //010004040001
                           } else {
                             voxel_c v(pp, 22);
                             if (pp->identicalInBB(&v)) {
-                              bt_assert(s == 65);
-                              return (symmetries_t)65; //100004400001
+                              bt_assert(s == 67);
+                              return (symmetries_t)67; //100004400001
                             } else {
                               bt_assert(s == 23);
                               return (symmetries_t)23; //000004000001
@@ -557,20 +572,20 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
         if (pp->identicalInBB(&v)) {
           voxel_c v(pp, 5);
           if (pp->identicalInBB(&v)) {
-            bt_assert(s == 80);
-            return (symmetries_t)80; //555A5AAAA5A5
+            bt_assert(s == 82);
+            return (symmetries_t)82; //555A5AAAA5A5
           } else {
-            bt_assert(s == 45);
-            return (symmetries_t)45; //000A0A000505
+            bt_assert(s == 46);
+            return (symmetries_t)46; //000A0A000505
           }
         } else {
           voxel_c v(pp, 28);
           if (pp->identicalInBB(&v)) {
-            bt_assert(s == 55);
-            return (symmetries_t)55; //005050000505
+            bt_assert(s == 57);
+            return (symmetries_t)57; //005050000505
           } else {
-            bt_assert(s == 78);
-            return (symmetries_t)78; //550000000505
+            bt_assert(s == 80);
+            return (symmetries_t)80; //550000000505
           }
         }
       } else {
@@ -578,16 +593,16 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
         if (pp->identicalInBB(&v)) {
           voxel_c v(pp, 16);
           if (pp->identicalInBB(&v)) {
-            bt_assert(s == 71);
-            return (symmetries_t)71; //110401110401
+            bt_assert(s == 73);
+            return (symmetries_t)73; //110401110401
           } else {
             voxel_c v(pp, 18);
             if (pp->identicalInBB(&v)) {
-              bt_assert(s == 77);
-              return (symmetries_t)77; //440401440401
+              bt_assert(s == 79);
+              return (symmetries_t)79; //440401440401
             } else {
-              bt_assert(s == 34);
-              return (symmetries_t)34; //000401000401
+              bt_assert(s == 35);
+              return (symmetries_t)35; //000401000401
             }
           }
         } else {
@@ -603,8 +618,8 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
             } else {
               voxel_c v(pp, 40);
               if (pp->identicalInBB(&v)) {
-                bt_assert(s == 69);
-                return (symmetries_t)69; //110000000401
+                bt_assert(s == 71);
+                return (symmetries_t)71; //110000000401
               } else {
                 bt_assert(s == 5);
                 return (symmetries_t)5; //000000000401
@@ -620,16 +635,16 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
         if (pp->identicalInBB(&v)) {
           voxel_c v(pp, 1);
           if (pp->identicalInBB(&v)) {
-            bt_assert(s == 46);
-            return (symmetries_t)46; //000F0000000F
+            bt_assert(s == 47);
+            return (symmetries_t)47; //000F0000000F
           } else {
             voxel_c v(pp, 9);
             if (pp->identicalInBB(&v)) {
-              bt_assert(s == 39);
-              return (symmetries_t)39; //00050A000A05
+              bt_assert(s == 40);
+              return (symmetries_t)40; //00050A000A05
             } else {
-              bt_assert(s == 37);
-              return (symmetries_t)37; //000500000005
+              bt_assert(s == 38);
+              return (symmetries_t)38; //000500000005
             }
           }
         } else {
@@ -637,31 +652,31 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
           if (pp->identicalInBB(&v)) {
             voxel_c v(pp, 4);
             if (pp->identicalInBB(&v)) {
-              bt_assert(s == 51);
-              return (symmetries_t)51; //001111001111
+              bt_assert(s == 52);
+              return (symmetries_t)52; //001111001111
             } else {
               voxel_c v(pp, 6);
               if (pp->identicalInBB(&v)) {
-                bt_assert(s == 54);
-                return (symmetries_t)54; //004141004141
+                bt_assert(s == 55);
+                return (symmetries_t)55; //004141004141
               } else {
-                bt_assert(s == 28);
-                return (symmetries_t)28; //000101000101
+                bt_assert(s == 29);
+                return (symmetries_t)29; //000101000101
               }
             }
           } else {
             voxel_c v(pp, 18);
             if (pp->identicalInBB(&v)) {
-              bt_assert(s == 66);
-              return (symmetries_t)66; //100100040001
+              bt_assert(s == 68);
+              return (symmetries_t)68; //100100040001
             } else {
               voxel_c v(pp, 22);
               if (pp->identicalInBB(&v)) {
-                bt_assert(s == 59);
-                return (symmetries_t)59; //010100400001
+                bt_assert(s == 61);
+                return (symmetries_t)61; //010100400001
               } else {
-                bt_assert(s == 27);
-                return (symmetries_t)27; //000100000001
+                bt_assert(s == 28);
+                return (symmetries_t)28; //000100000001
               }
             }
           }
@@ -686,8 +701,8 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
               } else {
                 voxel_c v(pp, 34);
                 if (pp->identicalInBB(&v)) {
-                  bt_assert(s == 52);
-                  return (symmetries_t)52; //001400000041
+                  bt_assert(s == 53);
+                  return (symmetries_t)53; //001400000041
                 } else {
                   bt_assert(s == 2);
                   return (symmetries_t)2; //000000000041
@@ -700,26 +715,26 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
           if (pp->identicalInBB(&v)) {
             voxel_c v(pp, 8);
             if (pp->identicalInBB(&v)) {
-              bt_assert(s == 50);
-              return (symmetries_t)50; //001010000101
+              bt_assert(s == 51);
+              return (symmetries_t)51; //001010000101
             } else {
               voxel_c v(pp, 13);
               if (pp->identicalInBB(&v)) {
-                bt_assert(s == 67);
-                return (symmetries_t)67; //100210082001
+                bt_assert(s == 69);
+                return (symmetries_t)69; //100210082001
               } else {
                 voxel_c v(pp, 14);
                 if (pp->identicalInBB(&v)) {
-                  bt_assert(s == 36);
-                  return (symmetries_t)36; //000410004001
+                  bt_assert(s == 37);
+                  return (symmetries_t)37; //000410004001
                 } else {
                   voxel_c v(pp, 15);
                   if (pp->identicalInBB(&v)) {
-                    bt_assert(s == 60);
-                    return (symmetries_t)60; //010810208001
+                    bt_assert(s == 62);
+                    return (symmetries_t)62; //010810208001
                   } else {
-                    bt_assert(s == 25);
-                    return (symmetries_t)25; //000010000001
+                    bt_assert(s == 26);
+                    return (symmetries_t)26; //000010000001
                   }
                 }
               }
@@ -739,8 +754,8 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
                 } else {
                   voxel_c v(pp, 24);
                   if (pp->identicalInBB(&v)) {
-                    bt_assert(s == 31);
-                    return (symmetries_t)31; //000201000201
+                    bt_assert(s == 32);
+                    return (symmetries_t)32; //000201000201
                   } else {
                     bt_assert(s == 4);
                     return (symmetries_t)4; //000000000201
@@ -752,21 +767,21 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
               if (pp->identicalInBB(&v)) {
                 voxel_c v(pp, 2);
                 if (pp->identicalInBB(&v)) {
-                  bt_assert(s == 43);
-                  return (symmetries_t)43; //000A00000005
+                  bt_assert(s == 44);
+                  return (symmetries_t)44; //000A00000005
                 } else {
                   voxel_c v(pp, 7);
                   if (pp->identicalInBB(&v)) {
-                    bt_assert(s == 68);
-                    return (symmetries_t)68; //101800020081
+                    bt_assert(s == 70);
+                    return (symmetries_t)70; //101800020081
                   } else {
                     voxel_c v(pp, 11);
                     if (pp->identicalInBB(&v)) {
-                      bt_assert(s == 41);
-                      return (symmetries_t)41; //000801000801
+                      bt_assert(s == 42);
+                      return (symmetries_t)42; //000801000801
                     } else {
-                      bt_assert(s == 40);
-                      return (symmetries_t)40; //000800000001
+                      bt_assert(s == 41);
+                      return (symmetries_t)41; //000800000001
                     }
                   }
                 }
@@ -780,8 +795,8 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
                   } else {
                     voxel_c v(pp, 33);
                     if (pp->identicalInBB(&v)) {
-                      bt_assert(s == 61);
-                      return (symmetries_t)61; //011200800021
+                      bt_assert(s == 63);
+                      return (symmetries_t)63; //011200800021
                     } else {
                       bt_assert(s == 20);
                       return (symmetries_t)20; //000000800021
@@ -840,28 +855,28 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
                                     } else {
                                       voxel_c v(pp, 33);
                                       if (pp->identicalInBB(&v)) {
-                                        bt_assert(s == 30);
-                                        return (symmetries_t)30; //000200000001
+                                        bt_assert(s == 31);
+                                        return (symmetries_t)31; //000200000001
                                       } else {
                                         voxel_c v(pp, 34);
                                         if (pp->identicalInBB(&v)) {
-                                          bt_assert(s == 33);
-                                          return (symmetries_t)33; //000400000001
+                                          bt_assert(s == 34);
+                                          return (symmetries_t)34; //000400000001
                                         } else {
                                           voxel_c v(pp, 36);
                                           if (pp->identicalInBB(&v)) {
-                                            bt_assert(s == 48);
-                                            return (symmetries_t)48; //001000000001
+                                            bt_assert(s == 49);
+                                            return (symmetries_t)49; //001000000001
                                           } else {
                                             voxel_c v(pp, 40);
                                             if (pp->identicalInBB(&v)) {
-                                              bt_assert(s == 57);
-                                              return (symmetries_t)57; //010000000001
+                                              bt_assert(s == 59);
+                                              return (symmetries_t)59; //010000000001
                                             } else {
                                               voxel_c v(pp, 44);
                                               if (pp->identicalInBB(&v)) {
-                                                bt_assert(s == 64);
-                                                return (symmetries_t)64; //100000000001
+                                                bt_assert(s == 66);
+                                                return (symmetries_t)66; //100000000001
                                               } else {
                                                 bt_assert(s == 0);
                                                 return (symmetries_t)0; //000000000001
