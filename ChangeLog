@@ -1,4 +1,40 @@
-Wed Oct 26 21:26:05 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+Sat Nov  5 16:16:53 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * minimize pieces for now, before starting to solve
+
+Sat Nov  5 16:16:35 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add the example into the distribution file
+
+Sun Oct 30 23:14:50 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * and 2 more
+
+Sun Oct 30 22:38:11 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * 2 more groups and bugfix in debugging code for symmetry checking
+
+Sun Oct 30 16:27:59 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * another example the designer kinly allowed me to bundle the file
+
+Sun Oct 30 15:03:10 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * yet another symmetry group
+
+Sun Oct 30 14:57:31 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * no newline option for burrTxt
+
+Sun Oct 30 14:15:10 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * quiet option for burrTxt
+
+Sun Oct 30 12:50:27 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * update comment
+
+Sun Oct 30 12:50:15 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * bugfix
+
+Wed Oct 26 21:52:24 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * documentation update
+
+Wed Oct 26 21:31:31 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
+  * changelog and NEWS file update
+
+Wed Oct 26 21:31:03 CEST 2005  Andreas Röver <roever@users.sourceforge.net>
   * add some examples
 
 Tue Oct 25 18:56:02 CEST 2005  Andreas Röver <roever@users.sourceforge.net>

@@ -10,7 +10,10 @@
 - Placement browser lets you see at what positions a certain piece fits
   into the resulting shape. Attention, read the documentation about this
 
-- Documentation updates. Some of the internals are described
+- Documentation updates. Some of the internals are described. I was also
+  able to bundle some puzzle designs with the program so that you
+  have something to play with right after installing the program.
+  Many thanks to the designers for allowing me to include their designs.
 
 - Suppression of rotated and mirrored solutions. The program now
   wont find rotated and mirrored solutions any longer (at leat I hope
