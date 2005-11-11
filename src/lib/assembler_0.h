@@ -153,7 +153,7 @@ private:
   assembly_c * getAssembly(void);
 
   /* this function gets called whenever an assembly was found
-   * when a callback is avaliable it will call getAssembly to 
+   * when a callback is avaliable it will call getAssembly to
    * obtain the assembly for the found solution when the
    * field avoidTransformedAssemblies is true then the assembly
    * is checked, if it has been found bevore. The assembly

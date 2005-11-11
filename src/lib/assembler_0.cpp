@@ -416,12 +416,12 @@ bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
       while (r != col) {
 
         if (!try_cover_row(r)) {
-  
+
           uncover(col);
           return true;
-  
+
         }
-  
+
         bool ret = checkmatrix(rec - 1, branch);
         uncover_row(r);
 
@@ -521,7 +521,7 @@ void assembler_0_c::reduce(void) {
 
           r = rr;
           row++;
-  
+
           removed++;
         }
 
@@ -676,15 +676,15 @@ void assembler_0_c::iterativeMultiSearch(void) {
           register int j = right[c];
 
           while (j) {
-  
+
             if (colCount[j] < s) {
               c = j;
               s = colCount[c];
-  
+
               if (!s)
                 break;
             }
-  
+
             j = right[j];
           }
         }
@@ -800,7 +800,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
       if (searchState[pos] == 0) {
 
         while ((piece[pos] < piecenumber-1) && (rows[pos] >= pieceStart[piece[pos]+1])) piece[pos]++;
- 
+
         // now depending on the properties of the current piece set up the variables for the
         // next recoursion step.
         if (multiPieceCount[piece[pos]] != 1) {
@@ -1007,7 +1007,7 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
         cover(columns[p]);
         cover_row(rows[p]);
       }
-  
+
       p++;
     }
   }
@@ -1045,9 +1045,9 @@ xml::node assembler_0_c::save(void) const {
         snprintf(tmp, 100, "(%i %i %i %i %i %i %i %i %i)", searchState[j], rows[j], columns[j], nodeF[j], numF[j], pieceF[j], nodeB[j], numB[j], piece[j]);
         break;
       }
-  
+
       cont += tmp;
-  
+
       if (j < pos)
         cont += " ";
     }

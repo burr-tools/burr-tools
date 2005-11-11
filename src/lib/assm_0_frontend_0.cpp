@@ -97,7 +97,7 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
   {
     int v = 0;
     int c = 0;
-  
+
     for (unsigned int i = 0; i < result->getXYZ(); i++) {
       switch(result->getState(i)) {
       case voxel_c::VX_VARIABLE:
@@ -114,12 +114,12 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
     }
   }
 
-  /* find the symmetry breaker 
-   * 
+  /* find the symmetry breaker
+   *
    * ok, what idea is behind this: we try to find as few double solutions as possible
    * because we don't want to fist search them and later on discard them because they are
    * double, so what do we do to prevent double solutions?
-   * 
+   *
    * Select one piece and remove rotations from this piece so that we don't even try to
    * place this piece in all possible positions. But which rotations need to be removed?
    * This depends on the symmetries that are present in the result and the symmetries
@@ -157,7 +157,7 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
     }
 
     bool tmp = symmetriesLeft(resultSym, puz->probGetShapeShape(problemNum, symBreakerShape)->selfSymmetries());
-    
+
     if (tmp || (puz->probGetShapeCount(problemNum, symBreakerShape) > 1))
       checkForTransformedAssemblies(symBreakerPiece);
   }
@@ -186,7 +186,7 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
       voxel_c * cache[NUM_TRANSFORMATIONS_MIRROR];
       unsigned int cachefill = 0;
       unsigned int placements = 0;
-  
+
       /* go through all possible rotations of the piece
        * if shape is new to cache, add it to the cache and also
        * add the shape to the matrix, in all positions that it fits
