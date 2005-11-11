@@ -1,3 +1,31 @@
+Fri Nov 11 22:35:53 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix problem with assert window
+  
+  the source of the problem has been that when the assembly
+  process asserted while already running it was not correclty
+  reset which lead to an endless loop while waiting for the
+  thread to finish
+  
+  now the thread is reset, also the interfice is updated
+
+Fri Nov 11 22:33:59 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * more whitespace
+
+Fri Nov 11 18:25:35 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove some whitespace
+
+Fri Nov 11 17:27:49 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * oops typo
+
+Wed Nov  9 21:28:04 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * put something into the README file
+
+Sat Nov  5 18:17:00 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  tagged 0.1.8
+
+Sat Nov  5 16:18:10 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * news and changelog updates
+
 Sat Nov  5 16:16:53 CET 2005  Andreas Röver <roever@users.sourceforge.net>
   * minimize pieces for now, before starting to solve
 
