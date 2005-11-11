@@ -79,7 +79,7 @@ int main(int argc, char ** argv) {
     delete aw;
 
     ogzstream ostr("__rescue.xmpuzzle");
-  
+
     if (ostr)
       ostr << ui->getPuzzle()->save();
 

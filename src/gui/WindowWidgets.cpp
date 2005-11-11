@@ -423,34 +423,34 @@ void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
     // first find out how to arrange the pieces:
     unsigned int square = 3;
     while (square * (square-2) < puz->probShapeNumber(probNum)) square++;
-  
+
     unsigned int num;
-  
+
     float diagonal = 0;
-  
+
     // now find a scaling factor, so that all pieces fit into their square
     if (puz->probGetResult(probNum) < puz->shapeNumber()) {
-  
+
       if (puz->probGetResultShape(probNum)->getDiagonal() > diagonal)
         diagonal = puz->probGetResultShape(probNum)->getDiagonal();
     }
 
     // check the selected shape
     if (selShape < puz->shapeNumber()) {
-  
+
       if (puz->getShape(selShape)->getDiagonal() > diagonal)
         diagonal = puz->getShape(selShape)->getDiagonal();
     }
-  
+
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
       if (puz->probGetShapeShape(probNum, p)->getDiagonal() > diagonal)
         diagonal = puz->probGetShapeShape(probNum, p)->getDiagonal();
-  
+
     diagonal = sqrt(diagonal)/1.5;
-  
+
     // now place the result shape
     if (puz->probGetResult(probNum) < puz->shapeNumber()) {
-  
+
       num = View3D->addSpace(new voxel_c(puz->probGetResultShape(probNum)));
       View3D->setSpaceColor(num,
                             pieceColorR(puz->probGetResult(probNum)),
@@ -463,7 +463,7 @@ void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
 
     // now place the selected shape
     if (selShape < puz->shapeNumber()) {
-  
+
       num = View3D->addSpace(new voxel_c(puz->getShape(selShape)));
       View3D->setSpaceColor(num,
                             pieceColorR(selShape),
@@ -473,30 +473,30 @@ void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
                                0.5* (square*diagonal) * (0.5 - 0.5/square),
                                0.5* (square*diagonal) * (0.5 - 0.5/square), -20, 0.5);
     }
-  
+
     // and now the shapes
     int unsigned line = 2;
     int unsigned col = 0;
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++) {
       num = View3D->addSpace(new voxel_c(puz->probGetShapeShape(probNum, p)));
-  
+
       View3D->setSpaceColor(num,
                             pieceColorR(puz->probGetShape(probNum, p)),
                             pieceColorG(puz->probGetShape(probNum, p)),
                             pieceColorB(puz->probGetShape(probNum, p)), 255);
-  
+
       View3D->setSpacePosition(num,
                                0.5* (square*diagonal) * ((col+0.5)/square - 0.5),
                                0.5* (square*diagonal) * (0.5 - (line+0.5)/square),
                                -20, 0.5);
-  
+
       col++;
       if (col == square) {
         col = 0;
         line++;
       }
     }
-  
+
     View3D->setScaling(5);
     View3D->setTransformationType(VoxelView::ScaleRotateTranslate);
     View3D->showCoordinateSystem(false);
@@ -535,27 +535,27 @@ void View3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsig
       (solNum < puz->probSolutionNumber(probNum))) {
 
     unsigned int num;
-  
+
     const assembly_c * assm = puz->probGetAssembly(probNum, solNum);
-  
+
     unsigned int piece = 0;
-  
+
     // and now the shapes
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
       for (unsigned int q = 0; q < puz->probGetShapeCount(probNum, p); q++) {
-  
+
         num = View3D->addSpace(new voxel_c(puz->probGetShapeShape(probNum, p), assm->getTransformation(piece)));
-  
+
         View3D->setSpacePosition(num, assm->getX(piece), assm->getY(piece), assm->getZ(piece), 1);
-    
+
         View3D->setSpaceColor(num,
                               pieceColorR(puz->probGetShape(probNum, p), q),
                               pieceColorG(puz->probGetShape(probNum, p), q),
                               pieceColorB(puz->probGetShape(probNum, p), q), 255);
-  
+
         piece++;
       }
-  
+
     View3D->setScaling(1);
     View3D->setCenter(0.5*puz->probGetResultShape(probNum)->getX(),
                       0.5*puz->probGetResultShape(probNum)->getY(),

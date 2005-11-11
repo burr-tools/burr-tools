@@ -46,7 +46,7 @@ static UserInterface * ui;
 static const char * FileSelection(const char * title) {
 #ifdef HAVE_FLU
     return flu_file_chooser(title, "*.xmpuzzle", "");
-#else    
+#else
     return fl_file_chooser(title, "*.xmpuzzle", "");
 #endif
 }
@@ -54,7 +54,7 @@ static const char * FileSelection(const char * title) {
 static const char * FileSelection2(const char * title) {
 #ifdef HAVE_FLU
     return flu_file_chooser(title, "*.puz", "");
-#else    
+#else
     return fl_file_chooser(title, "*.puz", "");
 #endif
 }
@@ -499,16 +499,16 @@ void UserInterface::cb_ShapeGroup(void) {
 
     /* as the user may have reset the counts of one shape to zero, go
      * through the list and remove entries of zero count */
-  
+
     unsigned int i = 0;
     while (i < puzzle->probShapeNumber(prob)) {
-  
+
       if (puzzle->probGetShapeCount(prob, i))
         i++;
       else
         puzzle->probRemoveShape(prob, i);
     }
-  
+
     PiecesCountList->redraw();
     PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
     changed = true;
@@ -741,28 +741,28 @@ void UserInterface::cb_Load_Ps3d(void) {
     if (f) {
 
       std::ifstream in(f);
-  
+
       puzzle_c * newPuzzle = loadPuzzlerSolver3D(&in);
       if (!newPuzzle) {
         fl_alert("Could not load puzzle, sorry!");
         return;
       }
-  
+
       if (fname) delete [] fname;
       fname = new char[strlen(f)+1];
       strcpy(fname, f);
-  
+
       char nm[300];
       snprintf(nm, 299, "BurrTools - %s", fname);
       label(nm);
-  
+
       ReplacePuzzle(newPuzzle);
       updateInterface();
-  
+
       TaskSelectionTab->value(TabPieces);
       activateShape(PcSel->getSelection());
       StatPieceInfo(PcSel->getSelection());
-  
+
       changed = false;
     }
   }
@@ -778,10 +778,10 @@ void UserInterface::cb_Save(void) {
 
     else {
       ogzstream ostr(fname);
-    
+
       if (ostr)
         ostr << puzzle->save();
-    
+
       if (!ostr)
         fl_alert("puzzle NOT saved!!");
       else
@@ -795,7 +795,7 @@ void UserInterface::cb_SaveAs(void) {
 
   if (threadStopped()) {
     const char * f = FileSelection("Save Puzzle as");
-  
+
     if (f) {
 
       char f2[1000];
@@ -812,16 +812,16 @@ void UserInterface::cb_SaveAs(void) {
 
       if (ostr)
         ostr << puzzle->save();
-  
+
       if (!ostr)
         fl_alert("puzzle NOT saved!!!");
       else
         changed = false;
-  
+
       if (fname) delete [] fname;
       fname = new char[strlen(f2)+1];
       strcpy(fname, f2);
-  
+
       char nm[300];
       snprintf(nm, 299, "BurrTools - %s", fname);
       label(nm);
@@ -905,14 +905,14 @@ void UserInterface::StatProblemInfo(unsigned int pr) {
   if (pr < puzzle->problemNumber()) {
 
     if (puzzle->probGetResult(pr) < puzzle->shapeNumber()) {
-  
+
       char txt[100];
-    
+
       unsigned int cnt = 0;
-  
+
       for (unsigned int i = 0; i < puzzle->probShapeNumber(pr); i++)
         cnt += puzzle->probGetShapeShape(pr, i)->countState(voxel_c::VX_FILLED) * puzzle->probGetShapeCount(pr, i);
-    
+
       snprintf(txt, 100, "Problem %i result can contain %i - %i cubes, pieces contain %i cubes", pr,
                puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
                puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
@@ -1174,7 +1174,7 @@ void UserInterface::updateInterface(void) {
 
   if (TaskSelectionTab->value() == TabPieces) {
     // shapes tab
-  
+
     // we can only delete colors, when something valid is selected
     // and no assembler is running
     if ((colorSelector->getSelection() > 0) && !assmThread)
@@ -1187,7 +1187,7 @@ void UserInterface::updateInterface(void) {
       BtnChnColor->activate();
     else
       BtnChnColor->deactivate();
-  
+
     // we can only edit and copy shapes, when something valid is selected
     if (PcSel->getSelection() < puzzle->shapeNumber()) {
       BtnCpyShape->activate();
@@ -1196,7 +1196,7 @@ void UserInterface::updateInterface(void) {
       BtnCpyShape->deactivate();
       pieceEdit->deactivate();
     }
-  
+
     // we can only delete shapes, when something valid is selected
     // and no assembler is running
     if ((PcSel->getSelection() < puzzle->shapeNumber()) && !assmThread) {
@@ -1204,7 +1204,7 @@ void UserInterface::updateInterface(void) {
     } else {
       BtnDelShape->deactivate();
     }
-  
+
     // we can only edit shapes, when something gvalid is selected and
     // either no assemlber is running or the shape is not in the problem that the assembler works on
     if ((PcSel->getSelection() < puzzle->shapeNumber()) &&
@@ -1213,7 +1213,7 @@ void UserInterface::updateInterface(void) {
     } else {
       pieceTools->deactivate();
     }
-  
+
     // when the current shape is in the assembler we lock the editor, only viewing is possible
     if (assmThread && (puzzle->probContainsShape(assmThread->getProblem(), PcSel->getSelection())))
       pieceEdit->lock(true);
@@ -1226,7 +1226,7 @@ void UserInterface::updateInterface(void) {
     PiecesCountList->setPuzzle(puzzle, problemSelector->getSelection());
     colconstrList->setPuzzle(puzzle, problemSelector->getSelection());
     problemResult->setPuzzle(puzzle, problemSelector->getSelection());
-  
+
     // problems can only be renames and copied, when something valid is selected
     if (problemSelector->getSelection() < puzzle->problemNumber()) {
       BtnCpyProb->activate();
@@ -1235,21 +1235,21 @@ void UserInterface::updateInterface(void) {
       BtnCpyProb->deactivate();
       BtnRenProb->deactivate();
     }
-  
+
     // problems can only be deleted, something valid is selected and the
     // assembler is not running
     if ((problemSelector->getSelection() < puzzle->problemNumber()) && !assmThread)
       BtnDelProb->activate();
     else
       BtnDelProb->deactivate();
-  
+
     // we can only edit color constraints when a valid problem is selected
     // the selected color is valid
     // the assembler is not running or not busy with the selected problem
     if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
         (colorAssignmentSelector->getSelection() < puzzle->colorNumber()) &&
         (!assmThread || (assmThread->getProblem() != problemSelector->getSelection()))) {
-  
+
       // check, if the given color is already added
       if (colconstrList->GetSortByResult()) {
         if (puzzle->probPlacementAllowed(problemSelector->getSelection(),
@@ -1276,7 +1276,7 @@ void UserInterface::updateInterface(void) {
       BtnColAdd->deactivate();
       BtnColRem->deactivate();
     }
-  
+
     // we can only change shapes, when a valid problem is selected
     // a valid shape is selected
     // the assembler is not running or not busy with out problem
@@ -1285,21 +1285,21 @@ void UserInterface::updateInterface(void) {
         (!assmThread || (assmThread->getProblem() != problemSelector->getSelection()))) {
       BtnSetResult->activate();
       BtnAddShape->activate();
-  
+
       bool found = false;
-  
+
       for (unsigned int p = 0; p < puzzle->probShapeNumber(problemSelector->getSelection()); p++)
         if (puzzle->probGetShape(problemSelector->getSelection(), p) == shapeAssignmentSelector->getSelection()) {
           found = true;
           break;
         }
-  
+
       if (found) {
         BtnRemShape->activate();
       } else {
         BtnRemShape->deactivate();
       }
-  
+
     } else {
       BtnSetResult->deactivate();
       BtnAddShape->deactivate();
@@ -1331,29 +1331,29 @@ void UserInterface::updateInterface(void) {
       SolvingProgress->show();
 
       unsigned long numSol = puzzle->probSolutionNumber(prob);
-    
+
       if (numSol > 0) {
-    
+
         SolutionSel->show();
         SolutionsInfo->show();
-    
+
         SolutionSel->range(0, numSol-1);
         SolutionsInfo->value(numSol);
-  
+
         // if we are in the solve tab and have a valid solution
         // we can activate that
         if (SolutionEmpty && (numSol > 0) && (TaskSelectionTab->value() == TabSolve))
           activateSolution(prob, 0);
-    
+
       } else {
-    
+
         SolutionSel->range(0, 0);
         SolutionSel->hide();
         SolutionsInfo->hide();
         SolutionAnim->hide();
         MovesInfo->hide();
       }
-  
+
       if (puzzle->probNumAssembliesKnown(prob)) {
         OutputAssemblies->value(puzzle->probGetNumAssemblies(prob));
         OutputAssemblies->show();
@@ -1378,13 +1378,13 @@ void UserInterface::updateInterface(void) {
     } else {
 
       // no valid problem available, hide all information
-  
+
       SolutionSel->hide();
       SolutionsInfo->hide();
       OutputSolutions->hide();
       SolutionAnim->hide();
       MovesInfo->hide();
-  
+
       SolvingProgress->hide();
       OutputAssemblies->hide();
 
@@ -1418,12 +1418,12 @@ void UserInterface::updateInterface(void) {
       } else {
         TimeUsed->hide();
       }
- 
+
       TimeEst->hide();
     }
-  
+
     if (assmThread) {
-  
+
       switch(assmThread->currentAction()) {
       case assemblerThread::ACT_PREPARATION:
         OutputActivity->value("prep.");
@@ -1458,16 +1458,16 @@ void UserInterface::updateInterface(void) {
         OutputActivity->value("error");
         break;
       }
-  
+
       if (assmThread->getProblem() == prob) {
-  
+
         // for the actually solved problem we enable the stop button
         BtnStart->deactivate();
         BtnCont->deactivate();
         BtnStop->activate();
-  
+
       } else {
-  
+
         // all other problems can do nothing
         BtnStart->deactivate();
         BtnCont->deactivate();
@@ -1477,16 +1477,16 @@ void UserInterface::updateInterface(void) {
     } else {
 
       pieceEdit->lock(false);
-  
+
       // no thread currently calculating
-  
+
       // so we can not stop the threas
       BtnStop->deactivate();
-  
+
       if (prob < puzzle->problemNumber()) {
-  
+
         // a valid problem is selected
-  
+
         switch(puzzle->probGetSolveState(prob)) {
         case puzzle_c::SS_UNSOLVED:
           OutputActivity->value("nothing");
@@ -1501,16 +1501,16 @@ void UserInterface::updateInterface(void) {
           BtnCont->activate();
           break;
         }
-  
+
         // if we have a result and at least one piece, we can give it a try
         if ((puzzle->probPieceNumber(prob) > 0) &&
             (puzzle->probGetResult(prob) < puzzle->shapeNumber()))
           BtnStart->activate();
         else
           BtnStart->deactivate();
-  
+
       } else {
-  
+
         // no start possible, when no valid problem selected
         BtnStart->deactivate();
         BtnCont->deactivate();
@@ -1533,7 +1533,7 @@ void UserInterface::update(void) {
                                            assmThread->getAssertException());
 
       aw->show();
-    
+
       while (aw->visible())
         Fl::wait();
 
@@ -1834,7 +1834,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     editChoice->menu(EditChoise);
     editChoice->box(FL_THIN_UP_BOX);
     editChoice->callback(cb_EditChoice_stub);
-    
+
     editLayersButton = new FlatLightButton(x+(w-SZ_GAP)/2+SZ_GAP, y, w-(w-SZ_GAP)/2-SZ_GAP, SZ_BUTTON_Y, "All layers", "When this is active all layers are changed instead of just the active one", cb_EditLayers_stub, 0);
 
     y += SZ_BUTTON_Y + SZ_GAP;
@@ -1954,7 +1954,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     group->resizable(colGroup);
     group->end();
-      
+
     y += lh;
   }
 
@@ -2226,7 +2226,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     SolutionSel->box(FL_THIN_DOWN_BOX);
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
- 
+
     MovesInfo = new Fl_Output(x+40, y, w-40, SZ_TEXT_Y);
     MovesInfo->tooltip("Steps for complete disassembly");
     MovesInfo->box(FL_FLAT_BOX);

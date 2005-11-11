@@ -37,39 +37,39 @@ void* start_th(void * c)
   assemblerThread * p = (assemblerThread*)c;
 
   try {
-  
+
     /* first check, if there is an assembler available with the
      * problem, if there is one take that
      */
     if (p->puzzle->probGetAssembler(p->prob))
       p->assm = (assm_0_frontend_0_c*)p->puzzle->probGetAssembler(p->prob);
-  
+
     else {
-  
+
       /* otherwise we have to chreate a new one
        */
       p->action = assemblerThread::ACT_PREPARATION;
       p->assm = new assm_0_frontend_0_c();
-  
+
       p->errState = p->assm->createMatrix(p->puzzle, p->prob);
       if (p->errState != assm_0_frontend_0_c::ERR_NONE) {
-  
+
         p->errParam = p->assm->getErrorsParam();
-  
+
         p->action = assemblerThread::ACT_ERROR;
-  
+
         delete p->assm;
         return 0;
       }
-  
+
       if (p->_reduce) {
-  
+
         if (!p->stopPressed)
           p->action = assemblerThread::ACT_REDUCE;
-    
+
         p->assm->reduce();
       }
-  
+
       /* set the assembler to the problem as soon as it is finished
        * with initialisation, NOT EARLIER as the function
        * also restores the assembler state to a state that might
@@ -81,21 +81,21 @@ void* start_th(void * c)
         return 0;
       }
     }
-  
+
     if (!p->stopPressed) {
-  
+
       p->action = assemblerThread::ACT_ASSEMBLING;
       p->assm->assemble(p);
-    
+
       if (p->assm->getFinished() >= 1) {
         p->action = assemblerThread::ACT_FINISHED;
         p->puzzle->probFinishedSolving(p->prob);
       } else
         p->action = assemblerThread::ACT_PAUSING;
-  
+
     } else
       p->action = assemblerThread::ACT_PAUSING;
-  
+
     p->puzzle->probAddTime(p->prob, time(0)-p->startTime);
   }
 
@@ -150,7 +150,7 @@ bool assemblerThread::assembly(assembly_c * a) {
 
       separation_c * s = disassm.disassemble(a);
       action = ACT_ASSEMBLING;
-  
+
       if (s) {
         puzzle->probIncNumSolutions(prob);
 
