@@ -102,7 +102,9 @@ void* start_th(void * c)
   catch (assert_exception *a) {
 
     p->ae = a;
-
+    p->action = assemblerThread::ACT_ERROR;
+    if (p->puzzle->probGetAssembler(p->prob))
+      p->puzzle->probRemoveAllSolutions(p->prob);
   }
 
   return 0;

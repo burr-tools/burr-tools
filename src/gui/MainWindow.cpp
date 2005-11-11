@@ -1540,6 +1540,7 @@ void UserInterface::update(void) {
       delete aw;
       delete assmThread;
       assmThread = 0;
+      updateInterface();
       return;
     }
 
