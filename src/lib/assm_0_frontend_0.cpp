@@ -150,7 +150,7 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
           (puz->probGetShapeCount(problemNum, i) < puz->probGetShapeCount(problemNum, symBreakerShape))) {
         bestFound = cnt;
         symBreakerShape = i;
-        symBreakerPiece += pc;
+        symBreakerPiece = pc;
       }
 
       pc += puz->probGetShapeCount(problemNum, i);
