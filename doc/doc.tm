@@ -812,6 +812,123 @@
   to keep in mind: the additions have to run on <name|Linux>. So you can not
   use any proprietary library that is not available for <name|Linux>.
 
+  <subsection|Burr Design Tools>
+
+  The following chapters are written as if the features are already
+  imlemented, but this is only done so that I can later on copy the text into
+  the real book without having to rewrite a lot of it.
+
+  There are 3 possible design methods implemented in BurrTools
+
+  <\enumerate-numeric>
+    <item>BurrGrowing after Dic Sonnevelds ideas
+
+    <item>Constructing, the natural aproach
+
+    <item>Destructing, the inverse way, take the assembled puzzle and try to
+    assign cubes to one of the pieces
+  </enumerate-numeric>
+
+  The following sections will describe these methods
+
+  <subsubsection|Burr Constructing>
+
+  The idea behind Constructing is to create new puzzles out of a set of
+  pieces, try all possibilites and select the best found. To give the
+  designer a great number of possibilities there are loooots of options here
+  beginning with the design of the pieces ending with the method of how to
+  solve the generated puzzle and how to save them.
+
+  The basis for the Burr Construction is a normal puzzle file containing some
+  shapes. These shapes are then taken by the constructor and made into many
+  puzzles that are solved.
+
+  So lets start with the piece generation. Each piece for the puzzle that
+  needs to be generated may be assembled out of the following possibilities:
+  a fixed piece, a list of pieces, a merger of 2 or more pieces, a piece
+  containing variable cubes. The whole possibilities can be stacked on one
+  another, so you can specify a list of 2 pieces where is piece is the merger
+  of 3 pieces containing variable cubes... . All this can result in many
+  possibilities, so be careful if you want a full analysis this side of
+  eternity. Because of the complexity the program also might encounter the
+  same puzzle several times. It will also be possible to let the program
+  select puzzles out of the definition space by chance insted of doing a full
+  analysis.
+
+  So what do the possibilties mean.
+
+  <\description-compact>
+    <item*|fixed piece>a shape containing no variable cubes. This shape is
+    directly used
+
+    <item*|variable piece>a shape containg n (n\<gtr\>0) variable cubes. All
+    shapes are used that have one of the <with|mode|math|2<rsup|n>> possible
+    conditions for the variable cubes are used
+
+    <item*|list of pieces>the pieces in the list are taken one after the
+    other
+
+    <item*|merger of n pieces>a new piece is constructed containing the union
+    of both pieces, where the union is set, if one of more of the shapes to
+    merge is set and the others are not set and variable is at least one is
+    variable.
+  </description-compact>
+
+  At the end of the process it is possible to define the type of connection
+  that must exists inside the shapes, shapes that do not fulfill this
+  requirement are dropped
+
+  All these possibilities may lead to a huge number of shapes, so be careful.
+
+  Now it is possible to select the way the puzzle is solved. This includes
+  disassembly (if or if not), also reduction and parameters for reduction can
+  be set
+
+  Finally it is possible to select the way the created puzzles are saved.
+
+  <\itemize-dot>
+    <item>All / only Solvable / only uniquely
+
+    <item>keep best with least number of solutions
+
+    <item>keep best with highest disassembly level
+
+    <item>keep best with biggest disassembly tree (most branches on the way
+    out)
+
+    <item>keep best with highest number of not disassembable solutions
+  </itemize-dot>
+
+  \ Save puzzles with solution(s) or without to save space
+
+  The puzzles are all saved into single directory, that must be selected
+
+  It woult be nice to be able to stop the search process and continue later
+  on, the parameters for the constructor should be saved into the source
+  puzzle file (including the current state)
+
+  <subsubsection|Destruction>
+
+  Destruction is in some way the inverse process of construction. Here you
+  start with the finished assembly and you assign the outer voxels to certain
+  pieces. Now the search process starts by assigning the not yet assigned
+  cubes to pieces or to voids. All possibilities are tried and the best are
+  kept.
+
+  Additionally it is possible to pose certain requirements on the piece
+  shapes. You can say in which way the pieces must be connected (by faces,
+  edges, corners), if the pieces need to be mashine makable.
+
+  Also it is possible to do the whole process randomly instead of completely
+
+  <subsubsection|Burr Growing>
+
+  This method has been pioneered by Dic Sonneveld. It is suitable to create
+  extremely high level burrs.
+
+  The algorithm works by adding cubes to pieces to prevent certain moves and
+  hope that the puzzle will still be disassembably in a different way.
+
   <chapter|The Internals>
 
   This chapter explains some of the internals. It is still quite incomplete,
@@ -1285,7 +1402,7 @@
 <\references>
   <\collection>
     <associate||<tuple|2.1|21>>
-    <associate|GroupEditor|<tuple|1.4|13>>
+    <associate|GroupEditor|<tuple|1.4|14>>
     <associate|MainWindowImage|<tuple|1.1|9>>
     <associate|PlacementBrowser|<tuple|1.5|15>>
     <associate|ToolsImage|<tuple|1.2|11>>
@@ -1295,31 +1412,35 @@
     <associate|auto-12|<tuple|1.3|10>>
     <associate|auto-13|<tuple|1.2.5|11>>
     <associate|auto-14|<tuple|1.2.6|12>>
-    <associate|auto-15|<tuple|1.4|13>>
+    <associate|auto-15|<tuple|1.4|14>>
     <associate|auto-16|<tuple|1.2.7|13>>
     <associate|auto-17|<tuple|1.5|15>>
     <associate|auto-18|<tuple|1.2.8|14>>
-    <associate|auto-19|<tuple|1.3|14>>
+    <associate|auto-19|<tuple|1.3|15>>
     <associate|auto-2|<tuple|<uninit>|5>>
-    <associate|auto-20|<tuple|2|17>>
-    <associate|auto-21|<tuple|2.1|17>>
-    <associate|auto-22|<tuple|2.1.1|17>>
-    <associate|auto-23|<tuple|2.2|17>>
-    <associate|auto-24|<tuple|2.2.1|17>>
-    <associate|auto-25|<tuple|2.2.2|18>>
-    <associate|auto-26|<tuple|2.2.3|18>>
-    <associate|auto-27|<tuple|2.2.4|18>>
-    <associate|auto-28|<tuple|2.2.5|18>>
-    <associate|auto-29|<tuple|2.2.6|19>>
+    <associate|auto-20|<tuple|1.3.1|15>>
+    <associate|auto-21|<tuple|1.3.1.1|15>>
+    <associate|auto-22|<tuple|1.3.1.2|16>>
+    <associate|auto-23|<tuple|1.3.1.3|16>>
+    <associate|auto-24|<tuple|2|17>>
+    <associate|auto-25|<tuple|2.1|17>>
+    <associate|auto-26|<tuple|2.1.1|17>>
+    <associate|auto-27|<tuple|2.2|17>>
+    <associate|auto-28|<tuple|2.2.1|17>>
+    <associate|auto-29|<tuple|2.2.2|18>>
     <associate|auto-3|<tuple|1|7>>
-    <associate|auto-30|<tuple|2.2.7|19>>
-    <associate|auto-31|<tuple|2.3|19>>
-    <associate|auto-32|<tuple|2.3.1|19>>
-    <associate|auto-33|<tuple|2.3.1.1|19>>
-    <associate|auto-34|<tuple|2.3.1.2|20>>
-    <associate|auto-35|<tuple|2.3.2|21>>
-    <associate|auto-36|<tuple|2.4|22>>
+    <associate|auto-30|<tuple|2.2.3|18>>
+    <associate|auto-31|<tuple|2.2.4|18>>
+    <associate|auto-32|<tuple|2.2.5|18>>
+    <associate|auto-33|<tuple|2.2.6|19>>
+    <associate|auto-34|<tuple|2.2.7|19>>
+    <associate|auto-35|<tuple|2.3|19>>
+    <associate|auto-36|<tuple|2.3.1|19>>
+    <associate|auto-37|<tuple|2.3.1.1|19>>
+    <associate|auto-38|<tuple|2.3.1.2|20>>
+    <associate|auto-39|<tuple|2.3.2|21>>
     <associate|auto-4|<tuple|1.1|7>>
+    <associate|auto-40|<tuple|2.4|22>>
     <associate|auto-5|<tuple|1.2|7>>
     <associate|auto-6|<tuple|1.2.1|8>>
     <associate|auto-7|<tuple|1.2.2|8>>
@@ -1400,71 +1521,87 @@
       1.3<space|2spc>Future Plans <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-19>
 
-      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>The
-      Internals> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-20><vspace|0.5fn>
-
-      2.1<space|2spc>The puzzle file format
+      <with|par-left|<quote|1.5fn>|1.3.1<space|2spc>Burr Design Tools
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-21>
+      <no-break><pageref|auto-20>>
 
-      <with|par-left|<quote|1.5fn>|2.1.1<space|2spc>Voxel space
+      <with|par-left|<quote|3fn>|1.3.1.1<space|2spc>Burr Constructing
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-21>>
+
+      <with|par-left|<quote|3fn>|1.3.1.2<space|2spc>Destruction
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-22>>
 
-      2.2<space|2spc>The Library <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-23>
-
-      <with|par-left|<quote|1.5fn>|2.2.1<space|2spc>Class voxel
+      <with|par-left|<quote|3fn>|1.3.1.3<space|2spc>Burr Growing
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-24>>
+      <no-break><pageref|auto-23>>
 
-      <with|par-left|<quote|1.5fn>|2.2.2<space|2spc>Class puzzle
+      <vspace*|1fn><with|font-series|<quote|bold>|math-font-series|<quote|bold>|2<space|2spc>The
+      Internals> <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-24><vspace|0.5fn>
+
+      2.1<space|2spc>The puzzle file format
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-25>>
+      <no-break><pageref|auto-25>
 
-      <with|par-left|<quote|1.5fn>|2.2.3<space|2spc>Class assembler
+      <with|par-left|<quote|1.5fn>|2.1.1<space|2spc>Voxel space
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-26>>
 
-      <with|par-left|<quote|1.5fn>|2.2.4<space|2spc>Class disassembler
-      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-27>>
+      2.2<space|2spc>The Library <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-27>
 
-      <with|par-left|<quote|1.5fn>|2.2.5<space|2spc>Class assembly
+      <with|par-left|<quote|1.5fn>|2.2.1<space|2spc>Class voxel
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-28>>
 
-      <with|par-left|<quote|1.5fn>|2.2.6<space|2spc>Class disassembly
+      <with|par-left|<quote|1.5fn>|2.2.2<space|2spc>Class puzzle
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-29>>
 
-      <with|par-left|<quote|1.5fn>|2.2.7<space|2spc>Example
+      <with|par-left|<quote|1.5fn>|2.2.3<space|2spc>Class assembler
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-30>>
 
-      2.3<space|2spc>The Algorithms <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-31>
+      <with|par-left|<quote|1.5fn>|2.2.4<space|2spc>Class disassembler
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-31>>
 
-      <with|par-left|<quote|1.5fn>|2.3.1<space|2spc>Assembly
+      <with|par-left|<quote|1.5fn>|2.2.5<space|2spc>Class assembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
       <no-break><pageref|auto-32>>
 
+      <with|par-left|<quote|1.5fn>|2.2.6<space|2spc>Class disassembly
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-33>>
+
+      <with|par-left|<quote|1.5fn>|2.2.7<space|2spc>Example
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-34>>
+
+      2.3<space|2spc>The Algorithms <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-35>
+
+      <with|par-left|<quote|1.5fn>|2.3.1<space|2spc>Assembly
+      <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
+      <no-break><pageref|auto-36>>
+
       <with|par-left|<quote|3fn>|2.3.1.1<space|2spc>How to avoid finding
       multiple assemblies <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-33>>
+      <no-break><pageref|auto-37>>
 
       <with|par-left|<quote|3fn>|2.3.1.2<space|2spc>The dancing link
       algorithm <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-34>>
+      <no-break><pageref|auto-38>>
 
       <with|par-left|<quote|1.5fn>|2.3.2<space|2spc>Disassembly
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-35>>
+      <no-break><pageref|auto-39>>
 
       2.4<space|2spc>Adding to the Library
       <datoms|<macro|x|<repeat|<arg|x>|<with|font-series|medium|<with|font-size|1|<space|0.2fn>.<space|0.2fn>>>>>|<htab|5mm>>
-      <no-break><pageref|auto-36>
+      <no-break><pageref|auto-40>
     </associate>
   </collection>
 </auxiliary>
