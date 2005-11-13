@@ -41,8 +41,6 @@
 #include <FL/Fl_Tooltip.H>
 #include <FL/Fl_Choice.H>
 
-static UserInterface * ui;
-
 static const char * FileSelection(const char * title) {
 #ifdef HAVE_FLU
     return flu_file_chooser(title, "*.xmpuzzle", "");
@@ -59,7 +57,7 @@ static const char * FileSelection2(const char * title) {
 #endif
 }
 
-static void cb_AddColor_stub(Fl_Widget* o, void* v) { ui->cb_AddColor(); }
+static void cb_AddColor_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_AddColor(); }
 void UserInterface::cb_AddColor(void) {
 
   unsigned char r, g, b;
@@ -73,7 +71,7 @@ void UserInterface::cb_AddColor(void) {
   }
 }
 
-static void cb_RemoveColor_stub(Fl_Widget* o, void* v) { ui->cb_RemoveColor(); }
+static void cb_RemoveColor_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_RemoveColor(); }
 void UserInterface::cb_RemoveColor(void) {
 
   if (colorSelector->getSelection() == 0)
@@ -87,7 +85,7 @@ void UserInterface::cb_RemoveColor(void) {
   }
 }
 
-static void cb_ChangeColor_stub(Fl_Widget* o, void* v) { ui->cb_ChangeColor(); }
+static void cb_ChangeColor_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ChangeColor(); }
 void UserInterface::cb_ChangeColor(void) {
 
   if (colorSelector->getSelection() == 0)
@@ -105,7 +103,7 @@ void UserInterface::cb_ChangeColor(void) {
 }
 
 
-static void cb_NewShape_stub(Fl_Widget* o, void* v) { ui->cb_NewShape(); }
+static void cb_NewShape_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_NewShape(); }
 void UserInterface::cb_NewShape(void) {
 
   // FIXME, all edit operations should be blocked while solving and should remove all
@@ -119,7 +117,7 @@ void UserInterface::cb_NewShape(void) {
 }
 
 
-static void cb_DeleteShape_stub(Fl_Widget* o, void* v) { ui->cb_DeleteShape(); }
+static void cb_DeleteShape_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteShape(); }
 void UserInterface::cb_DeleteShape(void) {
 
   unsigned int current = PcSel->getSelection();
@@ -151,7 +149,7 @@ void UserInterface::cb_DeleteShape(void) {
 }
 
 
-static void cb_CopyShape_stub(Fl_Widget* o, void* v) { ui->cb_CopyShape(); }
+static void cb_CopyShape_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_CopyShape(); }
 void UserInterface::cb_CopyShape(void) {
 
   unsigned int current = PcSel->getSelection();
@@ -171,7 +169,7 @@ void UserInterface::cb_CopyShape(void) {
 }
 
 
-static void cb_TaskSelectionTab_stub(Fl_Widget* o, void* v) { ui->cb_TaskSelectionTab((Fl_Tabs*)o); }
+static void cb_TaskSelectionTab_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_TaskSelectionTab((Fl_Tabs*)o); }
 void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
 
   if (o->value() == TabPieces) {
@@ -199,7 +197,7 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
 }
 
 
-static void cb_TransformPiece_stub(Fl_Widget* o, long v) { ui->cb_TransformPiece(); }
+static void cb_TransformPiece_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_TransformPiece(); }
 void UserInterface::cb_TransformPiece(void) {
 
   changeShape(PcSel->getSelection());
@@ -208,12 +206,12 @@ void UserInterface::cb_TransformPiece(void) {
   activateShape(PcSel->getSelection());
 }
 
-static void cb_EditLayers_stub(Fl_Widget* o, long v) { ui->cb_EditLayers(); }
+static void cb_EditLayers_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_EditLayers(); }
 void UserInterface::cb_EditLayers(void) {
   pieceEdit->editAllLayers(editLayersButton->value() == 1);
 }
 
-static void cb_EditChoice_stub(Fl_Widget* o, long v) { ui->cb_EditChoice(); }
+static void cb_EditChoice_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_EditChoice(); }
 void UserInterface::cb_EditChoice(void) {
   switch(editChoice->value()) {
     case 0:
@@ -232,8 +230,9 @@ void UserInterface::cb_EditChoice(void) {
 }
 
 
-static void cb_PcSel_stub(Fl_Widget* o, long v) { ui->cb_PcSel(v); }
-void UserInterface::cb_PcSel(long reason) {
+static void cb_PcSel_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_PcSel((BlockListGroup*)o); }
+void UserInterface::cb_PcSel(BlockListGroup* grp) {
+  int reason = grp->getReason();
 
   switch(reason) {
   case PieceSelector::RS_CHANGEDSELECTION:
@@ -244,8 +243,9 @@ void UserInterface::cb_PcSel(long reason) {
   }
 }
 
-static void cb_SolProbSel_stub(Fl_Widget* o, long v) { ui->cb_SolProbSel(v); }
-void UserInterface::cb_SolProbSel(long reason) {
+static void cb_SolProbSel_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_SolProbSel((BlockListGroup*)o); }
+void UserInterface::cb_SolProbSel(BlockListGroup* grp) {
+  int reason = grp->getReason();
 
   switch(reason) {
   case ProblemSelector::RS_CHANGEDSELECTION:
@@ -256,8 +256,9 @@ void UserInterface::cb_SolProbSel(long reason) {
   }
 }
 
-static void cb_ColSel_stub(Fl_Widget* o, long v) { ui->cb_ColSel(v); }
-void UserInterface::cb_ColSel(long reason) {
+static void cb_ColSel_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ColSel((BlockListGroup*)o); }
+void UserInterface::cb_ColSel(BlockListGroup* grp) {
+  int reason = grp->getReason();
 
   switch(reason) {
   case PieceSelector::RS_CHANGEDSELECTION:
@@ -268,8 +269,9 @@ void UserInterface::cb_ColSel(long reason) {
   }
 }
 
-static void cb_ProbSel_stub(Fl_Widget* o, long v) { ui->cb_ProbSel(v); }
-void UserInterface::cb_ProbSel(long reason) {
+static void cb_ProbSel_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ProbSel((BlockListGroup*)o); }
+void UserInterface::cb_ProbSel(BlockListGroup* grp) {
+  int reason = grp->getReason();
 
   switch(reason) {
   case PieceSelector::RS_CHANGEDSELECTION:
@@ -280,7 +282,7 @@ void UserInterface::cb_ProbSel(long reason) {
   }
 }
 
-static void cb_pieceEdit_stub(Fl_Widget* o, void* v) { ui->cb_pieceEdit((VoxelEditGroup*)o); }
+static void cb_pieceEdit_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_pieceEdit((VoxelEditGroup*)o); }
 void UserInterface::cb_pieceEdit(VoxelEditGroup* o) {
 
   switch (o->getReason()) {
@@ -301,7 +303,7 @@ void UserInterface::cb_pieceEdit(VoxelEditGroup* o) {
   View3D->redraw();
 }
 
-static void cb_NewProblem_stub(Fl_Widget* o, void* v) { ui->cb_NewProblem(); }
+static void cb_NewProblem_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_NewProblem(); }
 void UserInterface::cb_NewProblem(void) {
 
   const char * name = fl_input("Enter name for the new problem", "Problem");
@@ -320,7 +322,7 @@ void UserInterface::cb_NewProblem(void) {
   }
 }
 
-static void cb_DeleteProblem_stub(Fl_Widget* o, void* v) { ui->cb_DeleteProblem(); }
+static void cb_DeleteProblem_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteProblem(); }
 void UserInterface::cb_DeleteProblem(void) {
 
   if (problemSelector->getSelection() < puzzle->problemNumber()) {
@@ -342,7 +344,7 @@ void UserInterface::cb_DeleteProblem(void) {
   }
 }
 
-static void cb_CopyProblem_stub(Fl_Widget* o, void* v) { ui->cb_CopyProblem(); }
+static void cb_CopyProblem_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_CopyProblem(); }
 void UserInterface::cb_CopyProblem(void) {
 
   if (problemSelector->getSelection() < puzzle->problemNumber()) {
@@ -365,7 +367,7 @@ void UserInterface::cb_CopyProblem(void) {
   }
 }
 
-static void cb_RenameProblem_stub(Fl_Widget* o, void* v) { ui->cb_RenameProblem(); }
+static void cb_RenameProblem_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_RenameProblem(); }
 void UserInterface::cb_RenameProblem(void) {
 
   if (problemSelector->getSelection() < puzzle->problemNumber()) {
@@ -382,18 +384,18 @@ void UserInterface::cb_RenameProblem(void) {
   }
 }
 
-static void cb_ColorAssSel_stub(Fl_Widget* o, void* v) { ui->cb_ColorAssSel(); }
+static void cb_ColorAssSel_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ColorAssSel(); }
 void UserInterface::cb_ColorAssSel(void) {
   updateInterface();
 }
 
-static void cb_ColorConstrSel_stub(Fl_Widget* o, void* v) { ui->cb_ColorConstrSel(); }
+static void cb_ColorConstrSel_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ColorConstrSel(); }
 void UserInterface::cb_ColorConstrSel(void) {
   updateInterface();
 }
 
 
-static void cb_ShapeToResult_stub(Fl_Widget* o, void* v) { ui->cb_ShapeToResult(); }
+static void cb_ShapeToResult_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ShapeToResult(); }
 void UserInterface::cb_ShapeToResult(void) {
 
   if (problemSelector->getSelection() >= puzzle->problemNumber()) {
@@ -410,13 +412,13 @@ void UserInterface::cb_ShapeToResult(void) {
   changed = true;
 }
 
-static void cb_ShapeSel_stub(Fl_Widget* o, void* v) { ui->cb_SelectProblemShape(); }
+static void cb_ShapeSel_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_SelectProblemShape(); }
 void UserInterface::cb_SelectProblemShape(void) {
   updateInterface();
   activateProblem(problemSelector->getSelection());
 }
 
-static void cb_PiecesClicked_stub(Fl_Widget* o, void* v) { ui->cb_PiecesClicked(); }
+static void cb_PiecesClicked_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_PiecesClicked(); }
 void UserInterface::cb_PiecesClicked(void) {
 
   shapeAssignmentSelector->setSelection(puzzle->probGetShape(problemSelector->getSelection(), PiecesCountList->getClicked()));
@@ -426,7 +428,7 @@ void UserInterface::cb_PiecesClicked(void) {
 }
 
 
-static void cb_AddShapeToProblem_stub(Fl_Widget* o, void* v) { ui->cb_AddShapeToProblem(); }
+static void cb_AddShapeToProblem_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_AddShapeToProblem(); }
 void UserInterface::cb_AddShapeToProblem(void) {
 
   if (problemSelector->getSelection() >= puzzle->problemNumber()) {
@@ -455,7 +457,7 @@ void UserInterface::cb_AddShapeToProblem(void) {
   StatProblemInfo(problemSelector->getSelection());
 }
 
-static void cb_RemoveShapeFromProblem_stub(Fl_Widget* o, void* v) { ui->cb_RemoveShapeFromProblem(); }
+static void cb_RemoveShapeFromProblem_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_RemoveShapeFromProblem(); }
 void UserInterface::cb_RemoveShapeFromProblem(void) {
 
   if (problemSelector->getSelection() >= puzzle->problemNumber()) {
@@ -483,7 +485,7 @@ void UserInterface::cb_RemoveShapeFromProblem(void) {
   StatProblemInfo(problemSelector->getSelection());
 }
 
-static void cb_ShapeGroup_stub(Fl_Widget* o, void* v) { ui->cb_ShapeGroup(); }
+static void cb_ShapeGroup_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ShapeGroup(); }
 void UserInterface::cb_ShapeGroup(void) {
 
   unsigned int prob = problemSelector->getSelection();
@@ -521,7 +523,7 @@ void UserInterface::cb_ShapeGroup(void) {
   delete groupEditWin;
 }
 
-static void cb_BtnPlacementBrowser_stub(Fl_Widget* o, void* v) { ui->cb_BtnPlacementBrowser(); }
+static void cb_BtnPlacementBrowser_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_BtnPlacementBrowser(); }
 void UserInterface::cb_BtnPlacementBrowser(void) {
 
   unsigned int prob = problemSelector->getSelection();
@@ -537,7 +539,7 @@ void UserInterface::cb_BtnPlacementBrowser(void) {
 }
 
 
-static void cb_AllowColor_stub(Fl_Widget* o, void* v) { ui->cb_AllowColor(); }
+static void cb_AllowColor_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_AllowColor(); }
 void UserInterface::cb_AllowColor(void) {
 
   if (problemSelector->getSelection() >= puzzle->problemNumber()) {
@@ -558,7 +560,7 @@ void UserInterface::cb_AllowColor(void) {
   updateInterface();
 }
 
-static void cb_DisallowColor_stub(Fl_Widget* o, void* v) { ui->cb_DisallowColor(); }
+static void cb_DisallowColor_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DisallowColor(); }
 void UserInterface::cb_DisallowColor(void) {
 
   if (problemSelector->getSelection() >= puzzle->problemNumber()) {
@@ -580,8 +582,8 @@ void UserInterface::cb_DisallowColor(void) {
   updateInterface();
 }
 
-static void cb_CCSortByResult_stub(Fl_Widget* o, void* v) { ui->cb_CCSort(1); }
-static void cb_CCSortByPiece_stub(Fl_Widget* o, void* v) { ui->cb_CCSort(0); }
+static void cb_CCSortByResult_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_CCSort(1); }
+static void cb_CCSortByPiece_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_CCSort(0); }
 void UserInterface::cb_CCSort(bool byResult) {
   colconstrList->SetSortByResult(byResult);
 
@@ -594,7 +596,7 @@ void UserInterface::cb_CCSort(bool byResult) {
   }
 }
 
-static void cb_BtnStart_stub(Fl_Widget* o, void* v) { ui->cb_BtnStart(); }
+static void cb_BtnStart_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_BtnStart(); }
 void UserInterface::cb_BtnStart(void) {
 
   puzzle->probRemoveAllSolutions(solutionProblem->getSelection());
@@ -614,7 +616,7 @@ void UserInterface::cb_BtnStart(void) {
   cb_BtnCont();
 }
 
-static void cb_BtnCont_stub(Fl_Widget* o, void* v) { ui->cb_BtnCont(); }
+static void cb_BtnCont_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_BtnCont(); }
 void UserInterface::cb_BtnCont(void) {
 
   unsigned int prob = solutionProblem->getSelection();
@@ -655,7 +657,7 @@ void UserInterface::cb_BtnCont(void) {
   }
 }
 
-static void cb_BtnStop_stub(Fl_Widget* o, void* v) { ui->cb_BtnStop(); }
+static void cb_BtnStop_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_BtnStop(); }
 void UserInterface::cb_BtnStop(void) {
 
   bt_assert(assmThread);
@@ -663,13 +665,13 @@ void UserInterface::cb_BtnStop(void) {
   assmThread->stop();
 }
 
-static void cb_SolutionSel_stub(Fl_Widget* o, void* v) { ui->cb_SolutionSel((Fl_Value_Slider*)o); }
+static void cb_SolutionSel_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_SolutionSel((Fl_Value_Slider*)o); }
 void UserInterface::cb_SolutionSel(Fl_Value_Slider* o) {
   o->take_focus();
   activateSolution(solutionProblem->getSelection(), int(o->value()));
 }
 
-static void cb_SolutionAnim_stub(Fl_Widget* o, void* v) { ui->cb_SolutionAnim((Fl_Value_Slider*)o); }
+static void cb_SolutionAnim_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_SolutionAnim((Fl_Value_Slider*)o); }
 void UserInterface::cb_SolutionAnim(Fl_Value_Slider* o) {
   o->take_focus();
   if (disassemble) {
@@ -678,18 +680,18 @@ void UserInterface::cb_SolutionAnim(Fl_Value_Slider* o) {
   }
 }
 
-static void cb_PcVis_stub(Fl_Widget* o, void* v) { ui->cb_PcVis(); }
+static void cb_PcVis_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_PcVis(); }
 void UserInterface::cb_PcVis(void) {
   View3D->updateVisibility(PcVis);
 }
 
-static void cb_Status_stub(Fl_Widget* o, void* v) { ui->cb_Status(); }
+static void cb_Status_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Status(); }
 void UserInterface::cb_Status(void) {
   View3D->showColors(puzzle, Status->useColors());
 }
 
 
-static void cb_New_stub(Fl_Widget* o, void* v) { ui->cb_New(); }
+static void cb_New_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_New(); }
 void UserInterface::cb_New(void) {
 
   if (threadStopped()) {
@@ -712,7 +714,7 @@ void UserInterface::cb_New(void) {
   }
 }
 
-static void cb_Load_stub(Fl_Widget* o, void* v) { ui->cb_Load(); }
+static void cb_Load_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Load(); }
 void UserInterface::cb_Load(void) {
 
   if (threadStopped()) {
@@ -727,7 +729,7 @@ void UserInterface::cb_Load(void) {
   }
 }
 
-static void cb_Load_Ps3d_stub(Fl_Widget* o, void* v) { ui->cb_Load_Ps3d(); }
+static void cb_Load_Ps3d_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Load_Ps3d(); }
 void UserInterface::cb_Load_Ps3d(void) {
 
   if (threadStopped()) {
@@ -768,7 +770,7 @@ void UserInterface::cb_Load_Ps3d(void) {
   }
 }
 
-static void cb_Save_stub(Fl_Widget* o, void* v) { ui->cb_Save(); }
+static void cb_Save_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Save(); }
 void UserInterface::cb_Save(void) {
 
   if (threadStopped()) {
@@ -790,7 +792,7 @@ void UserInterface::cb_Save(void) {
   }
 }
 
-static void cb_SaveAs_stub(Fl_Widget* o, void* v) { ui->cb_SaveAs(); }
+static void cb_SaveAs_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_SaveAs(); }
 void UserInterface::cb_SaveAs(void) {
 
   if (threadStopped()) {
@@ -829,7 +831,7 @@ void UserInterface::cb_SaveAs(void) {
   }
 }
 
-static void cb_Quit_stub(Fl_Widget* o, void* v) { ui->cb_Quit(); }
+static void cb_Quit_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Quit(); }
 void UserInterface::cb_Quit(void) {
   if (changed)
     if (fl_ask("Puzzle changed are you shure?") == 0)
@@ -851,13 +853,13 @@ void UserInterface::cb_Quit(void) {
 
 }
 
-static void cb_Config_stub(Fl_Widget* o, void* v) { ui->cb_Config(); }
+static void cb_Config_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Config(); }
 void UserInterface::cb_Config(void) {
   config.dialog();
   activateConfigOptions();
 }
 
-static void cb_Toggle3D_stub(Fl_Widget* o, void* v) { ui->cb_Toggle3D(); }
+static void cb_Toggle3D_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Toggle3D(); }
 void UserInterface::cb_Toggle3D(void) {
 
   if (TaskSelectionTab->value() == TabPieces) {
@@ -869,7 +871,7 @@ void UserInterface::cb_Toggle3D(void) {
   }
 }
 
-static void cb_About_stub(Fl_Widget* o, void* v) { ui->cb_About(); }
+static void cb_About_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_About(); }
 void UserInterface::cb_About(void) {
 
   fl_message("This is the GUI for BurrTools version " VERSION "\n"
@@ -1737,19 +1739,19 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     int bw = (w - 2*SZ_GAP) / 3;
     {
       Fl_Group * o = new Fl_Group(x, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnNewColor = new FlatButton(x          , y, bw, SZ_BUTTON_Y, "Add", "Add another color", cb_AddColor_stub);
+      BtnNewColor = new FlatButton(x          , y, bw, SZ_BUTTON_Y, "Add", "Add another color", cb_AddColor_stub, this);
       o->resizable(BtnNewColor);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+bw+SZ_GAP, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Rem", "Remove selected color", cb_RemoveColor_stub);
+      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Rem", "Remove selected color", cb_RemoveColor_stub, this);
       o->resizable(BtnDelColor);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*(bw+SZ_GAP), y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnChnColor = new FlatButton(x+2*(SZ_GAP+bw), y, bw, SZ_BUTTON_Y, "Chn", "Change selected color", cb_ChangeColor_stub);
+      BtnChnColor = new FlatButton(x+2*(SZ_GAP+bw), y, bw, SZ_BUTTON_Y, "Chn", "Change selected color", cb_ChangeColor_stub, this);
       o->resizable(BtnDelColor);
       o->end();
     }
@@ -1758,7 +1760,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
     colorSelector = new ColorSelector(x, y, w, lh, puzzle, true);
     Fl_Group * colGroup = new BlockListGroup(x, y, w, lh, colorSelector);
-    colGroup->callback(cb_ColSel_stub);
+    colGroup->callback(cb_ColSel_stub, this);
 
     y += lh;
 
@@ -1778,19 +1780,19 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     int bw = (w - 2*SZ_GAP) / 3;
     {
       Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnNewShape = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", "Add another piece", cb_NewShape_stub);
+      BtnNewShape = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", "Add another piece", cb_NewShape_stub, this);
       o->resizable(BtnNewShape);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+1*SZ_GAP+1*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelShape = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Delete", "Delete selected piece", cb_DeleteShape_stub);
+      BtnDelShape = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Delete", "Delete selected piece", cb_DeleteShape_stub, this);
       o->resizable(BtnDelShape);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*SZ_GAP+2*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnCpyShape = new FlatButton(x+2*SZ_GAP+2*bw, y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Copy", "Copy selected piece", cb_CopyShape_stub);
+      BtnCpyShape = new FlatButton(x+2*SZ_GAP+2*bw, y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Copy", "Copy selected piece", cb_CopyShape_stub, this);
       o->resizable(BtnCpyShape);
       o->end();
     }
@@ -1800,7 +1802,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     PcSel = new PieceSelector(x, y, w, lh, puzzle);
     PcSel->setSelection(0xFFFF);
     Fl_Group * selGroup = new BlockListGroup(x, y, w, lh, PcSel);
-    selGroup->callback(cb_PcSel_stub);
+    selGroup->callback(cb_PcSel_stub, this);
 
     y += lh;
 
@@ -1819,7 +1821,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     lh -= SZ_SEPARATOR_Y;
 
     pieceTools = new ToolTab(x, y, w, SZ_TOOLTAB_Y);
-    pieceTools->callback(cb_TransformPiece_stub);
+    pieceTools->callback(cb_TransformPiece_stub, this);
     pieceTools->end();
     y += SZ_TOOLTAB_Y + SZ_GAP;
     lh -= SZ_TOOLTAB_Y + SZ_GAP;
@@ -1834,15 +1836,15 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     editChoice = new Fl_Choice(x, y, (w-SZ_GAP)/2, SZ_BUTTON_Y);
     editChoice->menu(EditChoise);
     editChoice->box(FL_THIN_UP_BOX);
-    editChoice->callback(cb_EditChoice_stub);
+    editChoice->callback(cb_EditChoice_stub, this);
 
-    editLayersButton = new FlatLightButton(x+(w-SZ_GAP)/2+SZ_GAP, y, w-(w-SZ_GAP)/2-SZ_GAP, SZ_BUTTON_Y, "All layers", "When this is active all layers are changed instead of just the active one", cb_EditLayers_stub, 0);
+    editLayersButton = new FlatLightButton(x+(w-SZ_GAP)/2+SZ_GAP, y, w-(w-SZ_GAP)/2-SZ_GAP, SZ_BUTTON_Y, "All layers", "When this is active all layers are changed instead of just the active one", cb_EditLayers_stub, this);
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
     pieceEdit = new VoxelEditGroup(x, y, w, lh, puzzle);
-    pieceEdit->callback(cb_pieceEdit_stub);
+    pieceEdit->callback(cb_pieceEdit_stub, this);
     pieceEdit->end();
     y += lh;
 
@@ -1903,25 +1905,25 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     int bw = (w - 3*SZ_GAP) / 4;
     {
       Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnNewProb = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", "Add another problem", cb_NewProblem_stub);
+      BtnNewProb = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", "Add another problem", cb_NewProblem_stub, this);
       o->resizable(BtnNewProb);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+1*SZ_GAP+1*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelProb = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Del", "Delete selected problem", cb_DeleteProblem_stub);
+      BtnDelProb = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Del", "Delete selected problem", cb_DeleteProblem_stub, this);
       o->resizable(BtnDelProb);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*SZ_GAP+2*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnCpyProb = new FlatButton(x+2*SZ_GAP+2*bw, y, bw, SZ_BUTTON_Y, "Copy", "Copy selected problem", cb_CopyProblem_stub);
+      BtnCpyProb = new FlatButton(x+2*SZ_GAP+2*bw, y, bw, SZ_BUTTON_Y, "Copy", "Copy selected problem", cb_CopyProblem_stub, this);
       o->resizable(BtnCpyProb);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+3*SZ_GAP+3*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnRenProb = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*SZ_GAP-3*bw, SZ_BUTTON_Y, "Ren", "Rename selected problem", cb_RenameProblem_stub);
+      BtnRenProb = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*SZ_GAP-3*bw, SZ_BUTTON_Y, "Ren", "Rename selected problem", cb_RenameProblem_stub, this);
       o->resizable(BtnRenProb);
       o->end();
     }
@@ -1930,7 +1932,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     problemSelector = new ProblemSelector(x, y, w, lh, puzzle);
     Fl_Group * probGroup = new BlockListGroup(x, y, w, lh, problemSelector);
-    probGroup->callback(cb_ProbSel_stub);
+    probGroup->callback(cb_ProbSel_stub, this);
 
 
     group->resizable(probGroup);
@@ -1951,7 +1953,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     colorAssignmentSelector = new ColorSelector(x, y, w, lh, puzzle, false);
     Fl_Group * colGroup = new BlockListGroup(x, y, w, lh-SZ_GAP, colorAssignmentSelector);
-    colGroup->callback(cb_ColorAssSel_stub);
+    colGroup->callback(cb_ColorAssSel_stub, this);
 
     group->resizable(colGroup);
     group->end();
@@ -1969,18 +1971,18 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     {
       Fl_Group * o = new Fl_Group(x, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnColSrtPc = new FlatButton(x, y, hw, SZ_BUTTON_Y, "Srt Pc", "Sort Color Constraints by Piece", cb_CCSortByPiece_stub);
+      BtnColSrtPc = new FlatButton(x, y, hw, SZ_BUTTON_Y, "Srt Pc", "Sort Color Constraints by Piece", cb_CCSortByPiece_stub, this);
       BtnColSrtPc->deactivate();
       o->resizable(BtnColSrtPc);
       o->end();
     }
 
-    BtnColAdd = new FlatButton(x+hw+SZ_GAP     , y, hw/2, SZ_BUTTON_Y, "@-12->", "Add Color", cb_AllowColor_stub);
-    BtnColRem = new FlatButton(x+hw+SZ_GAP+hw/2, y, hw/2, SZ_BUTTON_Y, "@-18->", "Add Color", cb_DisallowColor_stub);
+    BtnColAdd = new FlatButton(x+hw+SZ_GAP     , y, hw/2, SZ_BUTTON_Y, "@-12->", "Add Color", cb_AllowColor_stub, this);
+    BtnColRem = new FlatButton(x+hw+SZ_GAP+hw/2, y, hw/2, SZ_BUTTON_Y, "@-18->", "Add Color", cb_DisallowColor_stub, this);
 
     {
       Fl_Group * o = new Fl_Group(x+2*hw+SZ_GAP, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnColSrtRes = new FlatButton(x+2*hw+2*SZ_GAP, y, w-2*(hw+SZ_GAP), SZ_BUTTON_Y, "Srt Res", "Sort Color Constraints by Result", cb_CCSortByResult_stub);
+      BtnColSrtRes = new FlatButton(x+2*hw+2*SZ_GAP, y, w-2*(hw+SZ_GAP), SZ_BUTTON_Y, "Srt Res", "Sort Color Constraints by Result", cb_CCSortByResult_stub, this);
       o->resizable(BtnColSrtRes);
       o->end();
     }
@@ -1990,7 +1992,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     colconstrList = new ColorConstraintsEdit(x, y, w, lh, puzzle);
     Fl_Group * colGroup = new ConstraintsGroup(x, y, w, lh, colconstrList);
-    colGroup->callback(cb_ColorConstrSel_stub);
+    colGroup->callback(cb_ColorConstrSel_stub, this);
 
     group->resizable(colGroup);
     group->end();
@@ -2018,7 +2020,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     }
     {
       Fl_Group * o = new Fl_Group(x+hw+SZ_GAP, y, w-hw, SZ_BUTTON_Y);
-      BtnSetResult = new FlatButton(x+hw+SZ_GAP, y, w-hw-SZ_GAP, SZ_BUTTON_Y, "Set Result", "Set selected shape as result", cb_ShapeToResult_stub);
+      BtnSetResult = new FlatButton(x+hw+SZ_GAP, y, w-hw-SZ_GAP, SZ_BUTTON_Y, "Set Result", "Set selected shape as result", cb_ShapeToResult_stub, this);
       o->resizable(BtnSetResult);
       o->end();
     }
@@ -2028,7 +2030,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     shapeAssignmentSelector = new PieceSelector(x, y, w, lh-SZ_GAP, puzzle);
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh-SZ_GAP, shapeAssignmentSelector);
-    shapeGroup->callback(cb_ShapeSel_stub);
+    shapeGroup->callback(cb_ShapeSel_stub, this);
 
     group->resizable(shapeGroup);
     group->end();
@@ -2046,19 +2048,19 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     {
       Fl_Group * o = new Fl_Group(x,           y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnAddShape = new FlatButton(x,           y, hw         , SZ_BUTTON_Y, "+1", "Add another one of the selected shape", cb_AddShapeToProblem_stub);
+      BtnAddShape = new FlatButton(x,           y, hw         , SZ_BUTTON_Y, "+1", "Add another one of the selected shape", cb_AddShapeToProblem_stub, this);
       o->resizable(BtnAddShape);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+hw+SZ_GAP, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnRemShape = new FlatButton(x+hw+SZ_GAP, y, hw, SZ_BUTTON_Y, "-1", "Remove one of the selected shapes", cb_RemoveShapeFromProblem_stub);
+      BtnRemShape = new FlatButton(x+hw+SZ_GAP, y, hw, SZ_BUTTON_Y, "-1", "Remove one of the selected shapes", cb_RemoveShapeFromProblem_stub, this);
       o->resizable(BtnRemShape);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*(hw+SZ_GAP), y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnGroup = new FlatButton(x+2*(hw+SZ_GAP), y, hw, SZ_BUTTON_Y, "Grp", "Edit groups", cb_ShapeGroup_stub);
+      BtnGroup = new FlatButton(x+2*(hw+SZ_GAP), y, hw, SZ_BUTTON_Y, "Grp", "Edit groups", cb_ShapeGroup_stub, this);
       o->resizable(BtnGroup);
       o->end();
     }
@@ -2068,7 +2070,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     PiecesCountList = new PiecesList(x, y, w, lh-SZ_GAP, puzzle);
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh, PiecesCountList);
-    shapeGroup->callback(cb_PiecesClicked_stub);
+    shapeGroup->callback(cb_PiecesClicked_stub, this);
 
     group->resizable(shapeGroup);
     group->end();
@@ -2114,7 +2116,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
 
     solutionProblem = new ProblemSelector(x, y, w, lh-SZ_GAP, puzzle);
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh-(paramsFixedHight-SZ_SEPARATOR_Y), solutionProblem);
-    solutionProblem->callback(cb_SolProbSel_stub);
+    solutionProblem->callback(cb_SolProbSel_stub, this);
 
     group->resizable(shapeGroup);
 
@@ -2139,19 +2141,19 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
 
     {
       Fl_Group * o = new Fl_Group(x          , y, b1+SZ_GAP  , SZ_BUTTON_Y);
-      BtnStart = new FlatButton(x, y, b1, SZ_BUTTON_Y, "Start", "Start new solving process, removing old result.", cb_BtnStart_stub);
+      BtnStart = new FlatButton(x, y, b1, SZ_BUTTON_Y, "Start", "Start new solving process, removing old result.", cb_BtnStart_stub, this);
       o->resizable(BtnStart);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+b1+SZ_GAP, y, b2+SZ_GAP  , SZ_BUTTON_Y);
-      BtnCont = new FlatButton(x+b1+SZ_GAP, y, b2, SZ_BUTTON_Y, "Continue", "Continue started process.", cb_BtnCont_stub);
+      BtnCont = new FlatButton(x+b1+SZ_GAP, y, b2, SZ_BUTTON_Y, "Continue", "Continue started process.", cb_BtnCont_stub, this);
       o->resizable(BtnCont);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*SZ_GAP+b1+b2, y, b3+SZ_GAP  , SZ_BUTTON_Y);
-      BtnStop = new FlatButton(x+2*SZ_GAP+b1+b2, y, b3, SZ_BUTTON_Y, "Stop", "Stop a currently running solution process.", cb_BtnStop_stub);
+      BtnStop = new FlatButton(x+2*SZ_GAP+b1+b2, y, b3, SZ_BUTTON_Y, "Stop", "Stop a currently running solution process.", cb_BtnStop_stub, this);
       o->resizable(BtnStop);
       o->end();
     }
@@ -2159,7 +2161,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
-    BtnPlacement = new FlatButton(x, y, w, SZ_BUTTON_Y, "Browse Placements", "Browse the calculated placement of pieces", cb_BtnPlacementBrowser_stub);
+    BtnPlacement = new FlatButton(x, y, w, SZ_BUTTON_Y, "Browse Placements", "Browse the calculated placement of pieces", cb_BtnPlacementBrowser_stub, this);
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
@@ -2222,7 +2224,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     SolutionSel->tooltip("Select one Solution.");
     SolutionSel->type(1);
     SolutionSel->step(1);
-    SolutionSel->callback(cb_SolutionSel_stub);
+    SolutionSel->callback(cb_SolutionSel_stub, this);
     SolutionSel->align(FL_ALIGN_TOP_LEFT);
     SolutionSel->box(FL_THIN_DOWN_BOX);
     y += SZ_BUTTON_Y + SZ_GAP;
@@ -2239,7 +2241,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     SolutionAnim->tooltip("Animate the disassembly.");
     SolutionAnim->type(1);
     SolutionAnim->step(0.1);
-    SolutionAnim->callback(cb_SolutionAnim_stub);
+    SolutionAnim->callback(cb_SolutionAnim_stub, this);
     SolutionAnim->align(FL_ALIGN_TOP_LEFT);
     SolutionAnim->box(FL_THIN_DOWN_BOX);
     y += SZ_BUTTON_Y + SZ_GAP;
@@ -2248,7 +2250,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     PcVis = new PieceVisibility(x, y, w, lh, puzzle);
     PcVis->tooltip("Change appearance of the pieces between normal, grid and invisible.");
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh, PcVis);
-    shapeGroup->callback(cb_PcVis_stub);
+    shapeGroup->callback(cb_PcVis_stub, this);
 
     group->resizable(shapeGroup);
     group->end();
@@ -2270,7 +2272,6 @@ void UserInterface::activateConfigOptions(void) {
 }
 
 UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
-  ui = this;
 
   assmThread = 0;
   fname = 0;
@@ -2283,11 +2284,11 @@ UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
   user_data((void*)(this));
 
   MainMenu = new Fl_Menu_Bar(0, 0, SZ_WINDOW_X, SZ_MENU_Y);
-  MainMenu->menu(menu_MainMenu);
+  MainMenu->copy(menu_MainMenu, this);
   MainMenu->box(FL_THIN_UP_BOX);
 
   Status = new StatusLine(0, SZ_MENU_Y + SZ_CONTENT_Y, SZ_WINDOW_X, SZ_STATUS_Y);
-  Status->callback(cb_Status_stub);
+  Status->callback(cb_Status_stub, this);
 
   Fl_Tile * mainTile = new Fl_Tile(0, SZ_CONTENT_START_Y, SZ_WINDOW_X, SZ_CONTENT_Y);
   View3D = new View3dGroup(SZ_TOOL_X, SZ_CONTENT_START_Y, SZ_3DAREA_X, SZ_CONTENT_Y);
@@ -2299,7 +2300,7 @@ UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
   // the tab for the tool bar
   TaskSelectionTab = new Fl_Tabs(0, SZ_CONTENT_START_Y, SZ_TOOL_X, SZ_CONTENT_Y);
   TaskSelectionTab->box(FL_THIN_UP_BOX);
-  TaskSelectionTab->callback(cb_TaskSelectionTab_stub);
+  TaskSelectionTab->callback(cb_TaskSelectionTab_stub, this);
 
   // the three tabs
   CreateShapeTab(  0, SZ_CONTENT_START_Y+SZ_TAB_Y, SZ_TOOL_X, SZ_CONTENT_Y-SZ_TAB_Y);

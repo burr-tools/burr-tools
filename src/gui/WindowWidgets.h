@@ -81,6 +81,12 @@ public:
     tooltip(tt);
     callback(cb, cb_para);
   }
+
+  FlatLightButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback* cb, void * cb_para) : Fl_Light_Button(x, y, w, h, txt) {
+    box(FL_THIN_UP_BOX);
+    tooltip(tt);
+    callback(cb, cb_para);
+  }
 };
 
 
@@ -101,7 +107,7 @@ public:
   void setZ(unsigned int val);
   int getZ(void) { return sqedit->getZ(); }
 
-  void cb_Sqedit(SquareEditor* o) { do_callback(); }
+  void cb_Sqedit(SquareEditor* o) { do_callback(this, user_data()); }
 
   int getReason(void) { return sqedit->getReason(); }
 
@@ -223,6 +229,7 @@ class BlockListGroup : public Fl_Group {
 
   Fl_Slider * Slider;
   BlockList * List;
+  int callbackReason;
 
 public:
 
@@ -230,12 +237,15 @@ public:
 
   void cb_slider(void) { List->setShift((int)Slider->value()); }
   void cb_list(void);
+
+  int getReason(void) { return callbackReason; }
 };
 
 class ConstraintsGroup : public Fl_Group {
 
   Fl_Slider * Slider;
   ColorConstraintsEdit * List;
+  int callbackReason;
 
 public:
 
@@ -243,6 +253,8 @@ public:
 
   void cb_slider(void) { List->setShift((int)Slider->value()); }
   void cb_list(void);
+
+  int getReason(void) { return callbackReason; }
 };
 
 
@@ -316,7 +328,7 @@ public:
 
   void setText(const char * t);
   bool useColors(void) { return colors->value() != 0; }
-  void callback(Fl_Callback* fkt) { colors->callback(fkt); }
+  void callback(Fl_Callback* fkt, void * dat) { colors->callback(fkt, dat); }
 };
 
 // this window is used to display assert messages

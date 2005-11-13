@@ -185,9 +185,9 @@ public:
   void cb_AddShapeToProblem(void);
   void cb_RemoveShapeFromProblem(void);
 
-  void cb_PcSel(long reason);
-  void cb_ColSel(long reason);
-  void cb_ProbSel(long reason);
+  void cb_PcSel(BlockListGroup* reason);
+  void cb_ColSel(BlockListGroup* reason);
+  void cb_ProbSel(BlockListGroup* reason);
 
   void cb_PiecesClicked(void);
 
@@ -223,7 +223,7 @@ public:
   void cb_About(void);
   void cb_Config(void);
   void cb_Toggle3D(void);
-  void cb_SolProbSel(long reason);
+  void cb_SolProbSel(BlockListGroup* reason);
 
   void cb_ShapeGroup(void);
 

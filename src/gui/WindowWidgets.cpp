@@ -201,7 +201,7 @@ void ToolTab::cb_transform(long task) {
     }
     space->setHotspot(0, 0, 0);
 
-    do_callback();
+    do_callback(this, user_data());
   }
 }
 
@@ -217,8 +217,10 @@ void BlockListGroup::cb_list(void) {
 
     List->setShift((int)Slider->value());
 
-  } else
-    do_callback(this, List->getReason());
+  } else {
+    callbackReason = List->getReason();
+    do_callback(this, user_data());
+  }
 }
 
 static void cb_BlockListGroupList_stub(Fl_Widget* o, void* v) { ((BlockListGroup*)(o->parent()))->cb_list(); }
@@ -263,8 +265,10 @@ void ConstraintsGroup::cb_list(void) {
 
     List->setShift((int)Slider->value());
 
-  } else
-    do_callback(this, List->getReason());
+  } else {
+    callbackReason = List->getReason();
+    do_callback(this, user_data());
+  }
 }
 
 ConstraintsGroup::ConstraintsGroup(int x, int y, int w, int h, ColorConstraintsEdit * l) : Fl_Group(x, y, w, h), List(l) {
