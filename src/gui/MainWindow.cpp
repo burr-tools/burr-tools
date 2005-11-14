@@ -1736,19 +1736,19 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     int bw = (w - 2*SZ_GAP) / 3;
     {
       Fl_Group * o = new Fl_Group(x, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnNewColor = new FlatButton(x          , y, bw, SZ_BUTTON_Y, "Add", "Add another color", cb_AddColor_stub, this);
+      BtnNewColor = new FlatButton(x          , y, bw, SZ_BUTTON_Y, "Add", " Add another color ", cb_AddColor_stub, this);
       o->resizable(BtnNewColor);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+bw+SZ_GAP, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Rem", "Remove selected color", cb_RemoveColor_stub, this);
+      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Rem", " Remove selected color ", cb_RemoveColor_stub, this);
       o->resizable(BtnDelColor);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*(bw+SZ_GAP), y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnChnColor = new FlatButton(x+2*(SZ_GAP+bw), y, bw, SZ_BUTTON_Y, "Chn", "Change selected color", cb_ChangeColor_stub, this);
+      BtnChnColor = new FlatButton(x+2*(SZ_GAP+bw), y, bw, SZ_BUTTON_Y, "Chn", " Change selected color ", cb_ChangeColor_stub, this);
       o->resizable(BtnDelColor);
       o->end();
     }
@@ -1777,19 +1777,19 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     int bw = (w - 2*SZ_GAP) / 3;
     {
       Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnNewShape = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", "Add another piece", cb_NewShape_stub, this);
+      BtnNewShape = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", " Add another piece ", cb_NewShape_stub, this);
       o->resizable(BtnNewShape);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+1*SZ_GAP+1*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelShape = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Delete", "Delete selected piece", cb_DeleteShape_stub, this);
+      BtnDelShape = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Delete", " Delete selected piece ", cb_DeleteShape_stub, this);
       o->resizable(BtnDelShape);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*SZ_GAP+2*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnCpyShape = new FlatButton(x+2*SZ_GAP+2*bw, y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Copy", "Copy selected piece", cb_CopyShape_stub, this);
+      BtnCpyShape = new FlatButton(x+2*SZ_GAP+2*bw, y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Copy", " Copy selected piece ", cb_CopyShape_stub, this);
       o->resizable(BtnCpyShape);
       o->end();
     }
@@ -1834,8 +1834,9 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     editChoice->menu(EditChoise);
     editChoice->box(FL_THIN_UP_BOX);
     editChoice->callback(cb_EditChoice_stub, this);
+    editChoice->tooltip(" Select what is done when working in the grid editor below ");
 
-    editLayersButton = new FlatLightButton(x+(w-SZ_GAP)/2+SZ_GAP, y, w-(w-SZ_GAP)/2-SZ_GAP, SZ_BUTTON_Y, "All layers", "When this is active all layers are changed instead of just the active one", cb_EditLayers_stub, this);
+    editLayersButton = new FlatLightButton(x+(w-SZ_GAP)/2+SZ_GAP, y, w-(w-SZ_GAP)/2-SZ_GAP, SZ_BUTTON_Y, "All layers", " When this is active all layers are changed instead of just the active one ", cb_EditLayers_stub, this);
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
@@ -1902,25 +1903,25 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     int bw = (w - 3*SZ_GAP) / 4;
     {
       Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnNewProb = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", "Add another problem", cb_NewProblem_stub, this);
+      BtnNewProb = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", " Add another problem ", cb_NewProblem_stub, this);
       o->resizable(BtnNewProb);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+1*SZ_GAP+1*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelProb = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Del", "Delete selected problem", cb_DeleteProblem_stub, this);
+      BtnDelProb = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Del", " Delete selected problem ", cb_DeleteProblem_stub, this);
       o->resizable(BtnDelProb);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*SZ_GAP+2*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnCpyProb = new FlatButton(x+2*SZ_GAP+2*bw, y, bw, SZ_BUTTON_Y, "Copy", "Copy selected problem", cb_CopyProblem_stub, this);
+      BtnCpyProb = new FlatButton(x+2*SZ_GAP+2*bw, y, bw, SZ_BUTTON_Y, "Copy", " Copy selected problem ", cb_CopyProblem_stub, this);
       o->resizable(BtnCpyProb);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+3*SZ_GAP+3*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnRenProb = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*SZ_GAP-3*bw, SZ_BUTTON_Y, "Ren", "Rename selected problem", cb_RenameProblem_stub, this);
+      BtnRenProb = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*SZ_GAP-3*bw, SZ_BUTTON_Y, "Ren", " Rename selected problem ", cb_RenameProblem_stub, this);
       o->resizable(BtnRenProb);
       o->end();
     }
@@ -1968,18 +1969,18 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     {
       Fl_Group * o = new Fl_Group(x, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnColSrtPc = new FlatButton(x, y, hw, SZ_BUTTON_Y, "Srt Pc", "Sort Color Constraints by Piece", cb_CCSortByPiece_stub, this);
+      BtnColSrtPc = new FlatButton(x, y, hw, SZ_BUTTON_Y, "Srt Pc", " Sort Color Constraints by Piece ", cb_CCSortByPiece_stub, this);
       BtnColSrtPc->deactivate();
       o->resizable(BtnColSrtPc);
       o->end();
     }
 
-    BtnColAdd = new FlatButton(x+hw+SZ_GAP     , y, hw/2, SZ_BUTTON_Y, "@-12->", "Add Color", cb_AllowColor_stub, this);
-    BtnColRem = new FlatButton(x+hw+SZ_GAP+hw/2, y, hw/2, SZ_BUTTON_Y, "@-18->", "Add Color", cb_DisallowColor_stub, this);
+    BtnColAdd = new FlatButton(x+hw+SZ_GAP     , y, hw/2, SZ_BUTTON_Y, "@-12->", " Add Color ", cb_AllowColor_stub, this);
+    BtnColRem = new FlatButton(x+hw+SZ_GAP+hw/2, y, hw/2, SZ_BUTTON_Y, "@-18->", " Add Color ", cb_DisallowColor_stub, this);
 
     {
       Fl_Group * o = new Fl_Group(x+2*hw+SZ_GAP, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnColSrtRes = new FlatButton(x+2*hw+2*SZ_GAP, y, w-2*(hw+SZ_GAP), SZ_BUTTON_Y, "Srt Res", "Sort Color Constraints by Result", cb_CCSortByResult_stub, this);
+      BtnColSrtRes = new FlatButton(x+2*hw+2*SZ_GAP, y, w-2*(hw+SZ_GAP), SZ_BUTTON_Y, "Srt Res", " Sort Color Constraints by Result ", cb_CCSortByResult_stub, this);
       o->resizable(BtnColSrtRes);
       o->end();
     }
@@ -2017,7 +2018,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     }
     {
       Fl_Group * o = new Fl_Group(x+hw+SZ_GAP, y, w-hw, SZ_BUTTON_Y);
-      BtnSetResult = new FlatButton(x+hw+SZ_GAP, y, w-hw-SZ_GAP, SZ_BUTTON_Y, "Set Result", "Set selected shape as result", cb_ShapeToResult_stub, this);
+      BtnSetResult = new FlatButton(x+hw+SZ_GAP, y, w-hw-SZ_GAP, SZ_BUTTON_Y, "Set Result", " Set selected shape as result ", cb_ShapeToResult_stub, this);
       o->resizable(BtnSetResult);
       o->end();
     }
@@ -2045,19 +2046,19 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     {
       Fl_Group * o = new Fl_Group(x,           y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnAddShape = new FlatButton(x,           y, hw         , SZ_BUTTON_Y, "+1", "Add another one of the selected shape", cb_AddShapeToProblem_stub, this);
+      BtnAddShape = new FlatButton(x,           y, hw         , SZ_BUTTON_Y, "+1", " Add another one of the selected shape ", cb_AddShapeToProblem_stub, this);
       o->resizable(BtnAddShape);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+hw+SZ_GAP, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnRemShape = new FlatButton(x+hw+SZ_GAP, y, hw, SZ_BUTTON_Y, "-1", "Remove one of the selected shapes", cb_RemoveShapeFromProblem_stub, this);
+      BtnRemShape = new FlatButton(x+hw+SZ_GAP, y, hw, SZ_BUTTON_Y, "-1", " Remove one of the selected shapes ", cb_RemoveShapeFromProblem_stub, this);
       o->resizable(BtnRemShape);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*(hw+SZ_GAP), y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnGroup = new FlatButton(x+2*(hw+SZ_GAP), y, hw, SZ_BUTTON_Y, "Grp", "Edit groups", cb_ShapeGroup_stub, this);
+      BtnGroup = new FlatButton(x+2*(hw+SZ_GAP), y, hw, SZ_BUTTON_Y, "Grp", " Edit groups ", cb_ShapeGroup_stub, this);
       o->resizable(BtnGroup);
       o->end();
     }
@@ -2121,12 +2122,12 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     lh -= lh - (paramsFixedHight-SZ_SEPARATOR_Y);
 
     SolveDisasm = new Fl_Check_Button(x, y, w, SZ_BUTTON_Y, "Solve Disassembly");
-    SolveDisasm->tooltip("Do also try to disassemble the assembled puzzles. Only puzzles that can be disassembled will be added to solutions.");
+    SolveDisasm->tooltip(" Do also try to disassemble the assembled puzzles. Only puzzles that can be disassembled will be added to solutions ");
     y += SZ_BUTTON_Y;
     lh -= SZ_BUTTON_Y;
 
     JustCount = new Fl_Check_Button(x, y, w, SZ_BUTTON_Y, "Just Count");
-    JustCount->tooltip("Don\'t save the solutions, just count the number of them.");
+    JustCount->tooltip(" Don\'t save the solutions, just count the number of them ");
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
@@ -2138,19 +2139,19 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
 
     {
       Fl_Group * o = new Fl_Group(x          , y, b1+SZ_GAP  , SZ_BUTTON_Y);
-      BtnStart = new FlatButton(x, y, b1, SZ_BUTTON_Y, "Start", "Start new solving process, removing old result.", cb_BtnStart_stub, this);
+      BtnStart = new FlatButton(x, y, b1, SZ_BUTTON_Y, "Start", " Start new solving process, removing old result ", cb_BtnStart_stub, this);
       o->resizable(BtnStart);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+b1+SZ_GAP, y, b2+SZ_GAP  , SZ_BUTTON_Y);
-      BtnCont = new FlatButton(x+b1+SZ_GAP, y, b2, SZ_BUTTON_Y, "Continue", "Continue started process.", cb_BtnCont_stub, this);
+      BtnCont = new FlatButton(x+b1+SZ_GAP, y, b2, SZ_BUTTON_Y, "Continue", " Continue started process ", cb_BtnCont_stub, this);
       o->resizable(BtnCont);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*SZ_GAP+b1+b2, y, b3+SZ_GAP  , SZ_BUTTON_Y);
-      BtnStop = new FlatButton(x+2*SZ_GAP+b1+b2, y, b3, SZ_BUTTON_Y, "Stop", "Stop a currently running solution process.", cb_BtnStop_stub, this);
+      BtnStop = new FlatButton(x+2*SZ_GAP+b1+b2, y, b3, SZ_BUTTON_Y, "Stop", " Stop a currently running solution process ", cb_BtnStop_stub, this);
       o->resizable(BtnStop);
       o->end();
     }
@@ -2158,13 +2159,13 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
-    BtnPlacement = new FlatButton(x, y, w, SZ_BUTTON_Y, "Browse Placements", "Browse the calculated placement of pieces", cb_BtnPlacementBrowser_stub, this);
+    BtnPlacement = new FlatButton(x, y, w, SZ_BUTTON_Y, "Browse Placements", " Browse the calculated placement of pieces ", cb_BtnPlacementBrowser_stub, this);
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
     SolvingProgress = new Fl_Progress(x, y, w, SZ_BUTTON_Y, 0);
-    SolvingProgress->tooltip("Percentage of solution space searched.");
+    SolvingProgress->tooltip(" Percentage of solution space searched ");
     SolvingProgress->box(FL_ENGRAVED_BOX);
     SolvingProgress->selection_color((Fl_Color)4);
     SolvingProgress->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
@@ -2212,13 +2213,13 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     lh -= SZ_SEPARATOR_Y;
 
     SolutionsInfo = new Fl_Value_Output(x+w/2, y, w/2, SZ_TEXT_Y);
-    SolutionsInfo->tooltip("Number of solutions");
+    SolutionsInfo->tooltip(" Number of solutions ");
     SolutionsInfo->box(FL_FLAT_BOX);
     y += SZ_TEXT_Y;
     lh -= SZ_TEXT_Y;
 
     SolutionSel = new Fl_Value_Slider(x, y, w, SZ_BUTTON_Y, "Solution");
-    SolutionSel->tooltip("Select one Solution.");
+    SolutionSel->tooltip(" Select one Solution ");
     SolutionSel->type(1);
     SolutionSel->step(1);
     SolutionSel->callback(cb_SolutionSel_stub, this);
@@ -2228,14 +2229,14 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
     MovesInfo = new Fl_Output(x+40, y, w-40, SZ_TEXT_Y);
-    MovesInfo->tooltip("Steps for complete disassembly");
+    MovesInfo->tooltip(" Steps for complete disassembly ");
     MovesInfo->box(FL_FLAT_BOX);
     MovesInfo->color(FL_BACKGROUND_COLOR);
     y += SZ_TEXT_Y;
     lh -= SZ_TEXT_Y;
 
     SolutionAnim = new Fl_Value_Slider(x, y, w, SZ_BUTTON_Y, "Move");
-    SolutionAnim->tooltip("Animate the disassembly.");
+    SolutionAnim->tooltip(" Animate the disassembly ");
     SolutionAnim->type(1);
     SolutionAnim->step(0.1);
     SolutionAnim->callback(cb_SolutionAnim_stub, this);
@@ -2245,7 +2246,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
     PcVis = new PieceVisibility(x, y, w, lh, puzzle);
-    PcVis->tooltip("Change appearance of the pieces between normal, grid and invisible.");
+    PcVis->tooltip(" Change appearance of the pieces between normal, grid and invisible ");
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh, PcVis);
     shapeGroup->callback(cb_PcVis_stub, this);
 
