@@ -188,6 +188,7 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
       activateSolution(solutionProblem->getSelection(), int(SolutionSel->value()));
     }
     Big3DView();
+    Status->setText("");
   }
 
   updateInterface();
