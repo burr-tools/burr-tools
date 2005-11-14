@@ -2113,7 +2113,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
 
     solutionProblem = new ProblemSelector(x, y, w, lh-SZ_GAP, puzzle);
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh-(paramsFixedHight-SZ_SEPARATOR_Y), solutionProblem);
-    solutionProblem->callback(cb_SolProbSel_stub, this);
+    shapeGroup->callback(cb_SolProbSel_stub, this);
 
     group->resizable(shapeGroup);
 
