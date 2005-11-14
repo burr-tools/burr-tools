@@ -148,7 +148,7 @@
 
   But first a little bit of history of this program. There are already 2
   programs that do the same that <name|BurrTools> can do. One is
-  <name|BCPBox/Genda> written by Bill Cuttler. These programs are very
+  <name|BCPBox/Genda> written by Bill Cutler. These programs are very
   capable. They even know how to handle space grids different from cubes. The
   other one is <name|PuzzleSolver3D> by André van Kammen. I had bought this
   program a while ago and have generally been quite satisfied with it. I have
@@ -1175,7 +1175,7 @@
   rotations to avoid depend on the symmetry of the piece and the solution
   shape.
 
-  So back to the clean and general solution. Here Bill Cuttler came to my
+  So back to the clean and general solution. Here Bill Cutler came to my
   help. He told me what he did and that is something very ingenious.
 
   The first thing to do it to be able to compare two assemblies that are the
@@ -1326,8 +1326,8 @@
 
   The disassembly algorithm is a breadth first tree search. In this tree
   every node represents one possible relative position of the pieces. To find
-  out what can be moved in this node the algorithm Bill Cuttler used for his
-  6 Piece Burr analysis is used. His algorithm anaylzes for 2 pieces how far
+  out what can be moved in this node the algorithm Bill Cutler used for his 6
+  Piece Burr analysis is used. His algorithm anaylzes for 2 pieces how far
   the first piece piece can be moved in the positive direction of each of the
   3 axis if the other piece is fixed. This results in 3 matrixes each square
   with as many rows and columns as there are pieces. The values for negative
@@ -1402,9 +1402,9 @@
 <\references>
   <\collection>
     <associate||<tuple|2.1|21>>
-    <associate|GroupEditor|<tuple|1.4|14>>
+    <associate|GroupEditor|<tuple|1.4|13>>
     <associate|MainWindowImage|<tuple|1.1|9>>
-    <associate|PlacementBrowser|<tuple|1.5|15>>
+    <associate|PlacementBrowser|<tuple|1.5|14>>
     <associate|ToolsImage|<tuple|1.2|11>>
     <associate|auto-1|<tuple|<uninit>|3>>
     <associate|auto-10|<tuple|1.2.4|10>>
@@ -1412,9 +1412,9 @@
     <associate|auto-12|<tuple|1.3|10>>
     <associate|auto-13|<tuple|1.2.5|11>>
     <associate|auto-14|<tuple|1.2.6|12>>
-    <associate|auto-15|<tuple|1.4|14>>
+    <associate|auto-15|<tuple|1.4|13>>
     <associate|auto-16|<tuple|1.2.7|13>>
-    <associate|auto-17|<tuple|1.5|15>>
+    <associate|auto-17|<tuple|1.5|14>>
     <associate|auto-18|<tuple|1.2.8|14>>
     <associate|auto-19|<tuple|1.3|15>>
     <associate|auto-2|<tuple|<uninit>|5>>
