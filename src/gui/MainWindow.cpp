@@ -1115,8 +1115,10 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->show();
 
       char levelText[50];
-      int len = snprintf(levelText, 50, "%i=", puzzle->probGetDisassembly(prob, num)->sumMoves());
+      int len = snprintf(levelText, 50, "%i (", puzzle->probGetDisassembly(prob, num)->sumMoves());
       puzzle->probGetDisassembly(prob, num)->movesText(levelText + len, 50-len);
+      levelText[strlen(levelText)+1] = 0;
+      levelText[strlen(levelText)] = ')';
 
       MovesInfo->value(levelText);
 
