@@ -255,7 +255,7 @@ unsigned int PieceSelector::blockNumber(void) {
 }
 
 void PieceSelector::getText(unsigned int block, char * text) {
-  snprintf(text, 200, "%i", block);
+  snprintf(text, 200, "%i", block+1);
 }
 
 void PieceSelector::getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) {
@@ -303,7 +303,7 @@ void PiecesList::getText(unsigned int block, char * text) {
   int txtLen = 200;
   int len;
 
-  len = snprintf(text, txtLen, "%i", puzzle->probGetShape(problem, block));
+  len = snprintf(text, txtLen, "%i", puzzle->probGetShape(problem, block)+1);
   text += len;
   txtLen -= len;
 
@@ -315,9 +315,9 @@ void PiecesList::getText(unsigned int block, char * text) {
 
   for (int i = 0; i < puzzle->probGetShapeGroupNumber(problem, block); i++) {
     if (puzzle->probGetShapeGroupCount(problem, block, i) != puzzle->probGetShapeCount(problem, block))
-      len = snprintf(text, txtLen, ", G%i(%i)", puzzle->probGetShapeGroup(problem, block, i), puzzle->probGetShapeGroupCount(problem, block, i));
+      len = snprintf(text, txtLen, ", G%i(%i)", puzzle->probGetShapeGroup(problem, block, i), puzzle->probGetShapeGroupCount(problem, block, i)+1);
     else
-      len = snprintf(text, txtLen, ", G%i", puzzle->probGetShapeGroup(problem, block, i));
+      len = snprintf(text, txtLen, ", G%i", puzzle->probGetShapeGroup(problem, block, i)+1);
     text += len;
     txtLen -= len;
   }
@@ -359,9 +359,12 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
     subBlock -= puzzle->probGetShapeCount(problem, shape);
     shape++;
   }
-  shape = puzzle->probGetShape(problem, shape);
+  int shapeID = puzzle->probGetShape(problem, shape);
 
-  snprintf(txt, 199, "%i.%i", shape, subBlock);
+  if (puzzle->probGetShapeCount(problem, shape) > 1)
+    snprintf(txt, 199, "%i.%i", shapeID+1, subBlock+1);
+  else
+    snprintf(txt, 199, "%i", shapeID+1);
 
   r = int(255*pieceColorR(shape, subBlock));
   g = int(255*pieceColorG(shape, subBlock));
@@ -405,9 +408,13 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
     block -= puzzle->probGetShapeCount(problem, shape);
     shape++;
   }
-  shape = puzzle->probGetShape(problem, shape);
 
-  snprintf(txt, 199, "%i.%i", shape, block);
+  int shapeID = puzzle->probGetShape(problem, shape);
+
+  if (puzzle->probGetShapeCount(problem, shape) > 1)
+    snprintf(txt, 199, "%i.%i", shapeID+1, block+1);
+  else
+    snprintf(txt, 199, "%i", shapeID+1);
 
   int wi, hi;
   fl_font(labelfont(), labelsize());
