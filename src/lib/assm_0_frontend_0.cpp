@@ -137,7 +137,7 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
      * suitable? Suitable is the piece shape that has the least common symmetries with
      * the result and that has the fiewest pieces
      */
-    unsigned int bestFound = 25;
+    unsigned int bestFound = NUM_TRANSFORMATIONS_MIRROR + 1;
     unsigned int symBreakerPiece = 0;
     unsigned int pc = 0;
 
