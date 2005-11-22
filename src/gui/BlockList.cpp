@@ -91,13 +91,13 @@ int BlockList::handle(int event) {
 
         unsigned int wi, hi;
         blockSize(i, &wi, &hi);
-    
+
         if ((xpos > 0) && (xpos + wi > (unsigned int)w())) {
           zpos += maxz;
           maxz = 0;
           xpos = 0;
         }
-    
+
         if (hi > maxz) maxz = hi;
 
         if ((Fl::event_x() >= x() + (int)xpos) && (Fl::event_x() <= x() + (int)xpos + (int)wi) &&
@@ -111,7 +111,7 @@ int BlockList::handle(int event) {
 
           break;
         }
-    
+
         xpos += wi;
       }
     }
@@ -366,9 +366,9 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
   else
     snprintf(txt, 199, "%i", shapeID+1);
 
-  r = int(255*pieceColorR(shape, subBlock));
-  g = int(255*pieceColorG(shape, subBlock));
-  b = int(255*pieceColorB(shape, subBlock));
+  r = int(255*pieceColorR(shapeID, subBlock));
+  g = int(255*pieceColorG(shapeID, subBlock));
+  b = int(255*pieceColorB(shapeID, subBlock));
 
   w = 0;
   fl_measure(txt, w, h);
