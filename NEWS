@@ -1,4 +1,18 @@
-------------- Version 0.1.8
+------------- Version 0.1.8b
+
+- Fix Bug found by Markus Götz that made the program crash, when all 
+  piece were cubes
+
+- Fix a bug found by Primitivo Familiar Ramos. The problem- slider on 
+  the solve tab didn't work
+
+- also implement some suggestions by Primitivo: start counting from 1,
+  unify tool tips, fix some spelling errors
+
+- empty status bar when activating solve tab, as the information got 
+  stale (found by Peter Knoppers)
+
+------------- Version 0.1.8a Nov 13 2005
 
 - when the program crashes it tries to show some information and it also
   tries to save the current puzzle into __rescue.xmpuzzle. Please follow 
