@@ -226,6 +226,7 @@ public:
   void cb_SolProbSel(BlockListGroup* reason);
 
   void cb_ShapeGroup(void);
+  void cb_ImageExport(void);
 
   void activateConfigOptions(void);
 };
