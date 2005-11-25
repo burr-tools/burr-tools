@@ -158,7 +158,7 @@ class LFl_Box : public Fl_Box, public layoutable_c {
 
   public:
 
-  LFl_Box(const char *txt = 0, int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Box(0, 0, 0, 0, txt), layoutable_c(x, y, w, h) {}
+  LFl_Box(const char *txt, int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Box(0, 0, 0, 0, txt), layoutable_c(x, y, w, h) {}
   LFl_Box(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Box(0, 0, 0, 0), layoutable_c(x, y, w, h) {}
 
   virtual void getMinSize(int *width, int *height) const {
