@@ -14,6 +14,7 @@ AM_CONFIG_HEADER(src/config.h)
 
 AC_PROG_RANLIB
 
+AC_PROG_CC
 AC_PROG_CXX
 
 AC_CONFIG_FILES([Makefile src/Makefile src/lib/Makefile src/gui/Makefile])
@@ -42,6 +43,15 @@ if [test $xmlwrapp_found -eq 1]; then
   XML_LD_ADD=`xmlwrapp-config --libs`
 else
   AC_MSG_WARN([XMLwrapp not found, required for the library])
+fi  
+
+AC_CHECK_PROG(libpng_found, libpng-config, 1, 0)
+
+if [test $libpng_found -eq 1]; then
+  GUI_CPP_ADD="$GUI_CPP_ADD `libpng-config --cppflags`"
+  GUI_LD_ADD="$GUI_LD_ADD `libpng-config --libs`"
+else
+  AC_MSG_WARN([libpng not found, this libaray is required for the image export])
 fi  
 
 AC_SUBST(GUI_CPP_ADD, $GUI_CPP_ADD)

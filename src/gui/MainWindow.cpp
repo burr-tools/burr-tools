@@ -892,7 +892,7 @@ void UserInterface::cb_About(void) {
              "Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.\n"
              "\n"
              "The program uses\n"
-             "- Fltk, FLU, libZ, libXml2, XmlWrapp\n"
+             "- Fltk, FLU, libZ, libXml2, XmlWrapp, libpng\n"
              "- gzstream by Deepak Bandyopadhyay, Lutz Kettner\n"
              "- Fl_Table (http://3dsite.com/people/erco/Fl_Table/)\n"
              "- tr by Brian Paul (http://www.mesa3d.org/brianp/TR.html\n"
