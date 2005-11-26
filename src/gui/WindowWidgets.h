@@ -23,6 +23,7 @@
 #include "SquareEditor.h"
 #include "VoxelView.h"
 #include "BlockList.h"
+#include "DisasmToMoves.h"
 
 #include <FL/Fl.H>
 #include <FL/Fl_Button.H>

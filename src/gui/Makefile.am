@@ -7,6 +7,7 @@ burrGui_LDADD=-L../lib -lburr
 burrGui_CPPFLAGS=$(GUI_CPP_ADD) $(XML_CPP_ADD) -Wall
 burrGui_LDFLAGS=$(GUI_LD_ADD) $(XML_LD_ADD)
 burrGui_SOURCES=VoxelView.cpp VoxelView.h \
+		VoxelDrawer.cpp VoxelDrawer.h \
                 ArcBall.cpp ArcBall.h \
                 BlockList.cpp BlockList.h \
                 MainWindow.cpp MainWindow.h \
