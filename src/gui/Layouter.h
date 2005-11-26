@@ -196,8 +196,8 @@ class LFl_Button : public Fl_Button, public layoutable_c {
     *width = 0;
     fl_font(labelfont(), labelsize());
     fl_measure(label(), *width, *height);
-    *width += 4;
-    *height += 4;
+    *width += 20;
+    *height += 10;
   }
 };
 
