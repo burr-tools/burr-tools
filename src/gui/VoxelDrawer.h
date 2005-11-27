@@ -41,8 +41,8 @@
  *
  * additionally pieces can be transparent
  */
-
-//#define DEBUG
+#ifndef __VOXEL_DRAWER__
+#define __VOXEL_DRAWER__
 
 class VoxelDrawer {
 
@@ -56,7 +56,7 @@ public:
   VoxelDrawer(void);
   virtual ~VoxelDrawer(void) {}
 
-  void drawData(bool initBuffer);
+  void drawData(void);
 
   unsigned int addSpace(const voxel_c * vx);
   void clearSpaces(void);
@@ -154,3 +154,4 @@ private:
   bool _useLightning;
 };
 
+#endif

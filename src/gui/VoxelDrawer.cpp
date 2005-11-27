@@ -37,7 +37,7 @@
 #define EDGEHI 0.95f
 #define MY 0.005f
 
-VoxelDrawer::VoxelDrawer() : markerType(false), colors(pieceColor)
+VoxelDrawer::VoxelDrawer() : markerType(false), colors(pieceColor), _useLightning(true)
 {
 };
 
@@ -441,20 +441,15 @@ void VoxelDrawer::drawVoxelSpace() {
 
 }
 
-void VoxelDrawer::drawData(bool initBuffer) {
+void VoxelDrawer::drawData(void) {
 
-  if (initBuffer) {
+  glShadeModel(GL_FLAT);
+  glEnable(GL_DEPTH_TEST);
 
-    printf("init lights\n");
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    glShadeModel(GL_FLAT);
-    glEnable(GL_DEPTH_TEST);
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    glLineWidth(3);
-  }
+  glLineWidth(3);
 
   if (_useLightning)
     glEnable(GL_LIGHTING);

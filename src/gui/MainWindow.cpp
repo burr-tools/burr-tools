@@ -860,7 +860,7 @@ void UserInterface::cb_Config(void) {
 
 static void cb_ImageExport_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ImageExport(); }
 void UserInterface::cb_ImageExport(void) {
-  ImageExportWindow w;
+  ImageExportWindow w(puzzle);
   w.show();
 
   while (w.visible())

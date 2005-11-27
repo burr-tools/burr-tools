@@ -46,4 +46,6 @@ public:
 
   virtual void addRotationTransformation(void);
   virtual void updateRequired(void);
+
+  ArcBall_c * getArcBall(void) { return arcBall; }
 };

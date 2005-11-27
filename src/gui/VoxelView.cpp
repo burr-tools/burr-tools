@@ -52,20 +52,19 @@ static void gluPerspective(double fovy, double aspect, double zNear, double zFar
 
 void VoxelView::draw() {
 
-  GLfloat LightAmbient[]= { 0.01f, 0.01f, 0.01f, 1.0f };
-  GLfloat LightDiffuse[]= { 1.5f, 1.5f, 1.5f, 1.0f };
-  GLfloat LightPosition[]= { 700.0f, 200.0f, -90.0f, 1.0f };
-
-  GLfloat AmbientParams[] = {0.1, 0.1, 0.1, 1};
-  GLfloat DiffuseParams[] = {0.7, 0.7, 0.7, 0.1};
-  GLfloat SpecularParams[] = {0.4, 0.4, 0.4, 0.5};
-
   if (!doUpdates)
     return;
 
-  bool reinit = !valid();
+  if (!valid()) {
 
-  if (reinit) {
+    GLfloat LightAmbient[]= { 0.01f, 0.01f, 0.01f, 1.0f };
+    GLfloat LightDiffuse[]= { 1.5f, 1.5f, 1.5f, 1.0f };
+    GLfloat LightPosition[]= { 700.0f, 200.0f, -90.0f, 1.0f };
+
+    GLfloat AmbientParams[] = {0.1, 0.1, 0.1, 1};
+    GLfloat DiffuseParams[] = {0.7, 0.7, 0.7, 0.1};
+    GLfloat SpecularParams[] = {0.4, 0.4, 0.4, 0.5};
+
     glLoadIdentity();
     glViewport(0,0,w(),h());
 
@@ -89,7 +88,7 @@ void VoxelView::draw() {
 
   glPushMatrix();
   gluPerspective(5+size, 1.0*w()/h(), 10, 1100);
-  drawData(reinit);
+  drawData();
   glPopMatrix();
 }
 

@@ -285,6 +285,8 @@ public:
   void useLightning(bool val) { View3D->useLightning(val); }
 
   void redraw(void) { View3D->redraw(); }
+
+  VoxelView * getView(void) { return View3D; }
 };
 
 // a widget to separate 2 groups

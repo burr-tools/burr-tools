@@ -43,11 +43,34 @@
  */
 
 #include "Layouter.h"
+#include "WindowWidgets.h"
 
-class ImageExportWindow : public LFl_Double_Window {
+#include "../lib/puzzle.h"
+
+class LView3dGroup : public View3dGroup, public layoutable_c {
 
   public:
 
-    ImageExportWindow(void);
+    LView3dGroup(int x, int y, int w, int h) : View3dGroup(0, 0, 50, 50), layoutable_c(x, y, w, h) {}
+
+    virtual void getMinSize(int * w, int *h) const {
+      *w = 150;
+      *h = 150;
+    }
+};
+
+class ImageExportWindow : public LFl_Double_Window {
+
+  private:
+
+    puzzle_c * puzzle;
+    LView3dGroup *view3D;
+
+  public:
+
+    ImageExportWindow(puzzle_c * p);
+
+    void cb_Abort(void);
+    void cb_Export(void);
 
 };
