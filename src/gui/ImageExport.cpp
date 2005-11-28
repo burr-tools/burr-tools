@@ -26,8 +26,8 @@
 
 #include <FL/Fl.h>
 
-#define TILESIZE 10
-#define IMAGESIZE 256
+#define TILESIZE 100
+#define IMAGESIZE 512
 
 class MyVoxelDrawer : public VoxelDrawer {
 
