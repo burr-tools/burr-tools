@@ -296,6 +296,8 @@ class LFl_Double_Window : public Fl_Double_Window {
 
     size_range(wy, hy, wy, hy);
 
+    size(wy, hy);
+
     Fl_Double_Window::show();
   }
 };
