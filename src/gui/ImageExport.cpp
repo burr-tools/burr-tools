@@ -129,8 +129,8 @@ void ImageExportWindow::cb_Abort(void) {
 static void cb_ImageExportExport_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Export(); }
 void ImageExportWindow::cb_Export(void) {
 
-  glDrawBuffer(GL_AUX0);
-  glReadBuffer(GL_AUX0);
+  glDrawBuffer(GL_BACK);
+  glReadBuffer(GL_BACK);
 
   GLubyte *image = new GLubyte[IMAGESIZE * IMAGESIZE * 3];
 
