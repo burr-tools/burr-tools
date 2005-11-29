@@ -121,6 +121,7 @@ unsigned long long foundSym[200] = {
 0x000000482841LL,
 0x000000800021LL,
 0x000000844821LL,
+0x000000AAA5A5LL,
 0x000001000001LL,
 0x000004000001LL,
 0x000005000005LL,
@@ -187,26 +188,26 @@ unsigned long long foundSym[200] = {
 0xAAA5A5AAA5A5LL,
 0xFFFFFFFFFFFFLL,
 
-  0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 
-unsigned int syms = 89;
+unsigned int syms = 90;
 
 const char * longlong2string(unsigned long long s) {
   char hex[17] = "0123456789ABCDEF";
   static char output[13];
 
-  
+
   for (int i = 0; i < 12; i++)
      output[11-i] = hex[(s >> (4*i)) & 0xF];
 
   output[12] = 0;
-  
-  return output;  
+
+  return output;
 }
 
 void search(voxel_c * piece) {
@@ -309,7 +310,7 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val) {
 //  printf("/* separating into 2 groups of size %i and %i */\n", best_div, b1-best_div);
 
   printf("voxel_c v(pp, %i);\nif (pp->identicalInBB(&v)) {\n", best_bit);
-  
+
   makeSymmetryTree(taken | ((unsigned long long)1 << best_bit), val | ((unsigned long long)1 << best_bit));
 
   printf("} else {\n");
@@ -317,7 +318,7 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val) {
   makeSymmetryTree(taken | ((unsigned long long)1 << best_bit), val);
 
   printf("}\n");
-  
+
 }
 
 
@@ -340,7 +341,7 @@ void findsymmetries(void) {
 
   v.setAll(voxel_c::VX_FILLED);
   search(&v);
-  
+
   printf("1 leerraum\n");
 
   for (int a = 0; a < indizeCount; a++) {
@@ -359,7 +360,7 @@ void findsymmetries(void) {
       v.setAll(voxel_c::VX_FILLED);
       v.setState(indizes[a], voxel_c::VX_EMPTY);
       v.setState(indizes[b], voxel_c::VX_EMPTY);
-  
+
       search(&v);
     }
 
@@ -470,7 +471,7 @@ void convert(int argv, char* args[]) {
     cout << "oops outfile not opened\n";
     return;
   }
-  
+
 //  p.PS3Dsave(&ostr);
 }
 
