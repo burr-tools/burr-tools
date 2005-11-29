@@ -43,6 +43,7 @@ public:
 
   // this value determines the scaling factor used to draw the cube.
   void setSize(double sz);
+  double getSize(void) { return size; }
 
   virtual void addRotationTransformation(void);
   virtual void updateRequired(void);

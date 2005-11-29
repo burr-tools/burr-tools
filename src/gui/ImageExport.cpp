@@ -26,7 +26,6 @@
 
 #include <FL/Fl.h>
 
-#define TILESIZE 100
 #define IMAGESIZE 512
 
 class MyVoxelDrawer : public VoxelDrawer {
@@ -136,11 +135,11 @@ void ImageExportWindow::cb_Export(void) {
 
   TRcontext *tr = trNew();
 
-  trTileSize(tr, TILESIZE, TILESIZE, 0);
+  trTileSize(tr, view3D->getView()->w(), view3D->getView()->h(), 0);
   trImageSize(tr, IMAGESIZE, IMAGESIZE);
   trImageBuffer(tr, GL_RGB, GL_UNSIGNED_BYTE, image);
 
-  trPerspective(tr, 15, 1.0, 10, 1100);
+  trPerspective(tr, 5 + view3D->getView()->getSize(), 1.0, 10, 1100);
 
   MyVoxelDrawer dr(view3D->getView());
 
