@@ -239,5 +239,7 @@ groupsEditorWindow::groupsEditorWindow(puzzle_c * p, unsigned int pr) : Fl_Doubl
   label("Group Editor");
 
   set_modal();
+  size_range(SZ_WINDOW_X, SZ_WINDOW_Y, 0, 0);
+  resizable(tab);
 }
 
