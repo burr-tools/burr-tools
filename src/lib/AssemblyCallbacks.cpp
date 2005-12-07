@@ -150,17 +150,29 @@ bool assemblerThread::assembly(assembly_c * a) {
     {
       action = ACT_DISASSEMBLING;
 
-      separation_c * s = disassm.disassemble(a);
-      action = ACT_ASSEMBLING;
+      // when the assembly has only 1 piece, we don't need
+      // to disassemble, the disassembler will return 0 anyways
+      if (a->placementCount() > 1) {
+        separation_c * s = disassm.disassemble(a);
 
-      if (s) {
+        if (s) {
+          puzzle->probIncNumSolutions(prob);
+
+          if (_solutionAction == SOL_DISASM)
+            puzzle->probAddSolution(prob, a, s);
+          else
+            delete s;
+        }
+
+      } else {
+
+        // only one piece, that is always a solution, so increment number
+        // of solutions but save only the assembly
         puzzle->probIncNumSolutions(prob);
+        puzzle->probAddSolution(prob, a);
 
-        if (_solutionAction == SOL_DISASM)
-          puzzle->probAddSolution(prob, a, s);
-        else
-          delete s;
       }
+      action = ACT_ASSEMBLING;
     }
     break;
   }
