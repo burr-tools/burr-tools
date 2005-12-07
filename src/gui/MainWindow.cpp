@@ -1046,7 +1046,7 @@ Fl_Menu_Item UserInterface::menu_MainMenu[] = {
     {"Import",         0, cb_Load_Ps3d_stub,   0, 0, 0, 0, 14, 56},
     {"Save",    FL_F + 2, cb_Save_stub,        0, 0, 0, 0, 14, 56},
     {"Save as",        0, cb_SaveAs_stub,      0, FL_MENU_DIVIDER, 0, 0, 14, 56},
-    {"Quit",           0, cb_Quit_stub,        0, 0, 3, 0, 14, 1},
+    {"Quit",           0, cb_Quit_stub,        0, 0, 3, 0, 14, 56},
     { 0 },
   {"Toggle 3D", FL_F + 4, cb_Toggle3D_stub,    0, 0, 0, 0, 14, 56},
   {"Export Images",    0, cb_ImageExport_stub, 0, 0, 0, 0, 14, 56},
