@@ -1757,13 +1757,13 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     }
     {
       Fl_Group * o = new Fl_Group(x+bw+SZ_GAP, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Rem", " Remove selected color ", cb_RemoveColor_stub, this);
+      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Remove", " Remove selected color ", cb_RemoveColor_stub, this);
       o->resizable(BtnDelColor);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*(bw+SZ_GAP), y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnChnColor = new FlatButton(x+2*(SZ_GAP+bw), y, bw, SZ_BUTTON_Y, "Chn", " Change selected color ", cb_ChangeColor_stub, this);
+      BtnChnColor = new FlatButton(x+2*(SZ_GAP+bw), y, bw, SZ_BUTTON_Y, "Edit", " Change selected color ", cb_ChangeColor_stub, this);
       o->resizable(BtnDelColor);
       o->end();
     }
