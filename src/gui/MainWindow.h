@@ -150,6 +150,9 @@ public:
 
   void show(int argn, char ** argv);
 
+  // overwrite hide to check for changes in all possible exit situations
+  void hide(void);
+
   /* this is used on assert to save the current puzzle */
   const puzzle_c * getPuzzle(void) const { return puzzle; }
 

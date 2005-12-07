@@ -830,26 +830,10 @@ void UserInterface::cb_SaveAs(void) {
   }
 }
 
-static void cb_Quit_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Quit(); }
-void UserInterface::cb_Quit(void) {
-  if (changed)
-    if (fl_ask("Puzzle changed are you shure?") == 0)
-      return;
-
-  hide();
-
-  delete puzzle;
-
-  if (fname) {
-    delete [] fname;
-    fname = 0;
-  }
-
-  if (disassemble) {
-    delete disassemble;
-    disassemble = 0;
-  }
-
+static void cb_Quit_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->hide(); }
+void UserInterface::hide(void) {
+  if ((!changed) || fl_ask("Puzzle changed do you want to quit and loose the changes?"))
+    Fl_Double_Window::hide();
 }
 
 static void cb_Config_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Config(); }
@@ -2337,4 +2321,16 @@ UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
 UserInterface::~UserInterface() {
 
   config.windowPos(x(), y(), w(), h());
+
+  delete puzzle;
+
+  if (fname) {
+    delete [] fname;
+    fname = 0;
+  }
+
+  if (disassemble) {
+    delete disassemble;
+    disassemble = 0;
+  }
 }
