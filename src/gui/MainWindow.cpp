@@ -1440,24 +1440,24 @@ void UserInterface::updateInterface(void) {
 
       switch(assmThread->currentAction()) {
       case assemblerThread::ACT_PREPARATION:
-        OutputActivity->value("prep.");
+        OutputActivity->value("prepare");
         break;
       case assemblerThread::ACT_REDUCE:
         if (puzzle->probGetAssembler(prob)) {
           char tmp[20];
-          snprintf(tmp, 20, "red. %i", puzzle->probGetAssembler(prob)->getReducePiece());
+          snprintf(tmp, 20, "optimize piece %i", puzzle->probGetAssembler(prob)->getReducePiece());
           OutputActivity->value(tmp);
         } else {
           char tmp[20];
-          snprintf(tmp, 20, "red. %i", assmThread->currentActionParameter());
+          snprintf(tmp, 20, "optimize piece %i", assmThread->currentActionParameter());
           OutputActivity->value(tmp);
         }
         break;
       case assemblerThread::ACT_ASSEMBLING:
-        OutputActivity->value("assm.");
+        OutputActivity->value("assmemble");
         break;
       case assemblerThread::ACT_DISASSEMBLING:
-        OutputActivity->value("disassm.");
+        OutputActivity->value("disassmble");
         break;
       case assemblerThread::ACT_PAUSING:
         OutputActivity->value("pause");
