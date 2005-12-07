@@ -271,7 +271,7 @@ void configuration::dialog(void) {
         break;
       default: bt_assert(0);
       }
-  
+
       y += 20;
     }
 
@@ -283,6 +283,7 @@ void configuration::dialog(void) {
   win->end();
   win->resize(win->x(), win->y(), win->w(), y+40);
 
+  win->set_modal();
   win->show();
 
   while (win->visible())
@@ -296,7 +297,7 @@ void configuration::dialog(void) {
 
       switch (t->cnf_typ) {
       case CT_BOOL:
-  
+
         if (((Fl_Check_Button*)t->widget)->value())
           *((bool*)t->cnf_var) = true;
         else
