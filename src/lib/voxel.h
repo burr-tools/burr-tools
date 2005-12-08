@@ -114,7 +114,7 @@ private:
   unsigned int bz1, bz2;
   bool doRecalc;
 
-  /** 
+  /**
    * the self symmetries of this voxel space
    * this value is only valid when the lowest bit 1 is set
    * if the bit is not set the symmetries need to be calculated
@@ -171,7 +171,7 @@ public:
    * load from xml node
    */
   voxel_c(const xml::node & node);
-  
+
   /**
    * Destructor.
    * Free the space

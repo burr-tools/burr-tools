@@ -301,7 +301,7 @@ void movementCache::getValue(int dx, int dy, int dz, unsigned char t1, unsigned 
 
 void movementCache::removePieceInfo(unsigned int s) {
   /* go through the complete cache and free entries that contain the piece */
-  
+
   for (unsigned int i = 0; i < tableSize; i++) {
     entry * e = hash[i];
     entry * l = 0;
@@ -312,7 +312,7 @@ void movementCache::removePieceInfo(unsigned int s) {
 	} else {
 	  hash[i] = e->next;
 	}
-		  
+
 	delete e;
       }
       l = e;
@@ -320,4 +320,4 @@ void movementCache::removePieceInfo(unsigned int s) {
     }
   }
 }
-  
+

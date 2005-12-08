@@ -71,10 +71,10 @@ public:
 
     if (xpos < b.xpos) return true;
     if (xpos > b.xpos) return false;
-    
+
     if (ypos < b.ypos) return true;
     if (ypos > b.ypos) return false;
-    
+
     if (zpos < b.zpos) return true;
     if (zpos > b.zpos) return false;
 
@@ -145,7 +145,7 @@ public:
   void transform(unsigned char trans, const puzzle_c * puz, unsigned int prob);
 
   /* to be able to put assemblies into sets we need to have 2 operators
-   * on assemblies, the == and the < 
+   * on assemblies, the == and the <
    */
   bool operator == (const assembly_c & b) const {
     /* two assemblies are equal if all placements and transformations
@@ -154,7 +154,7 @@ public:
      * have the same number of pieces
      */
     bt_assert(placements.size() == b.placements.size());
-    
+
     for (unsigned int i = 0; i < placements.size(); i++)
       if (!(placements[i] == b.placements[i]))
         return false;

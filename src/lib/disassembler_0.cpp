@@ -72,14 +72,14 @@ public:
    * shifted by the same mount do are equal
    */
   bool operator == (const node0_c &b) const {
-  
+
     for (int i = 1; i < piecenumber; i++) {
       if (dx[i] - dx[0] != b.dx[i] - b.dx[0]) return false;
       if (dy[i] - dy[0] != b.dy[i] - b.dy[0]) return false;
       if (dz[i] - dz[0] != b.dz[i] - b.dz[0]) return false;
       // FIXME: transformation is missing
     }
-  
+
     return true;
   }
 
@@ -87,19 +87,19 @@ public:
    * the nodes into an arbitraty but deterministic order
    */
   bool operator < (const node0_c &b) const {
-  
+
     for (int i = 1; i < piecenumber; i++) {
       if (dx[i] - dx[0] < b.dx[i] - b.dx[0]) return true;
       if (dx[i] - dx[0] > b.dx[i] - b.dx[0]) return false;
-  
+
       if (dy[i] - dy[0] < b.dy[i] - b.dy[0]) return true;
       if (dy[i] - dy[0] > b.dy[i] - b.dy[0]) return false;
-  
+
       if (dz[i] - dz[0] < b.dz[i] - b.dz[0]) return true;
       if (dz[i] - dz[0] > b.dz[i] - b.dz[0]) return false;
       // FIXME: transformation is missing
     }
-  
+
     return false;
   }
 
@@ -200,12 +200,12 @@ void disassembler_0_c::prepare2(int pn) {
 
   for (int d = 0; d < 3; d++)
     do {
-  
+
       again = false;
 
       int * pos2 = matrix[d];     // j + piecenumber * k
       int * pos3 = matrix[d];     // i + piecenumber * k
-  
+
       for (int k = 0; k < pn; k++) {
 
         int * pos1 = matrix[d];   // i + piecenumber * j
@@ -233,7 +233,7 @@ void disassembler_0_c::prepare2(int pn) {
         pos2 += piecenumber - pn;
         pos3 += piecenumber;
       }
-  
+
     } while (again);
 }
 
@@ -267,9 +267,9 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces) {
   if (nextdir & 1) {
 
     do {
-  
+
       finished = true;
-  
+
       for (int i = 0; i < next_pn; i++)
         if (check[i]) {
           for (int j = 0; j < next_pn; j++)
@@ -286,15 +286,15 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces) {
               }
           check[i] = false;
         }
-  
+
     } while (!finished);
 
   } else {
 
     do {
-  
+
       finished = true;
-  
+
       for (int i = 0; i < next_pn; i++)
         if (check[i]) {
           for (int j = 0; j < next_pn; j++)
@@ -311,7 +311,7 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces) {
               }
           check[i] = false;
         }
-  
+
     } while (!finished);
   }
 
@@ -643,7 +643,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
   return 0;
 }
 
-disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) : 
+disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) :
   piecenumber(puz->probPieceNumber(prob)), puzzle(puz), problem(prob) {
 
   /* allocate the necessary arrays */

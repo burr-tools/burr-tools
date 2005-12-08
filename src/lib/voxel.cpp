@@ -178,13 +178,13 @@ void voxel_c::rotatex(int by) {
         for (unsigned int y = 0; y < sy; y++)
           for (unsigned int z = 0; z < sz; z++)
             s[x+sx*(y+sy*z)] = space[x+sx*(z+sz*(sy-y-1))];
-  
+
       unsigned int t = by1;
       by1 = sy - 1 - bz2;
       bz2 = by2;
       by2 = sy - 1 - bz1;
       bz1 = t;
-      
+
       t = hy;
       hy = sy - 1 - hz;
       hz = t;
@@ -201,7 +201,7 @@ void voxel_c::rotatex(int by) {
         for (unsigned int y = 0; y < sy; y++)
           for (unsigned int z = 0; z < sz; z++)
             s[x+sx*(y+sy*z)] = space[x+sx*((sy-y-1)+sy*(sz-z-1))];
-  
+
       unsigned int t = by1;
       by1 = sy - 1 - by2;
       by2 = sy - 1 - t;
@@ -225,12 +225,12 @@ void voxel_c::rotatex(int by) {
       sz = tmp;
 
       voxel_type *s = new voxel_type[voxels];
-    
+
       for (unsigned int x = 0; x < sx; x++)
         for (unsigned int y = 0; y < sy; y++)
           for (unsigned int z = 0; z < sz; z++)
             s[x+sx*(y+sy*z)] = space[x+sx*((sz-z-1)+sz*y)];
-  
+
       unsigned int t = by1;
       by1 = bz1;
       bz1 = sz - 1 - by2;
@@ -262,19 +262,19 @@ void voxel_c::rotatey(int by) {
       int tmp = sx;
       sx = sz;
       sz = tmp;
-    
+
       voxel_type *s = new voxel_type[voxels];
-    
+
       for (unsigned int x = 0; x < sx; x++)
         for (unsigned int y = 0; y < sy; y++)
           for (unsigned int z = 0; z < sz; z++)
             s[x+sx*(y+sy*z)] = space[z+sz*(y+sy*(sx-x-1))];
-    
+
       delete [] space;
       space = s;
-    
+
       unsigned int t = bx1;
-    
+
       bx1 = sx - 1 - bz2;
       bz2 = bx2;
       bx2 = sx - 1 - bz1;
@@ -283,23 +283,23 @@ void voxel_c::rotatey(int by) {
       t = hx;
       hx = sx - 1 - hz;
       hz = t;
-      
+
     }
     break;
   case 2:
     {
       voxel_type *s = new voxel_type[voxels];
-    
+
       for (unsigned int x = 0; x < sx; x++)
         for (unsigned int y = 0; y < sy; y++)
           for (unsigned int z = 0; z < sz; z++)
             s[x+sx*(y+sy*z)] = space[(sx-x-1)+sx*(y+sy*(sz-z-1))];
-    
+
       delete [] space;
       space = s;
-    
+
       unsigned int t = bx1;
-    
+
       bx1 = sx - 1 - bx2;
       bx2 = sx - 1 - t;
 
@@ -309,7 +309,7 @@ void voxel_c::rotatey(int by) {
 
       hx = sx - 1 - hx;
       hz = sz - 1 - hz;
-      
+
     }
     break;
   case 3:
@@ -317,19 +317,19 @@ void voxel_c::rotatey(int by) {
       int tmp = sx;
       sx = sz;
       sz = tmp;
-    
+
       voxel_type *s = new voxel_type[voxels];
-    
+
       for (unsigned int x = 0; x < sx; x++)
         for (unsigned int y = 0; y < sy; y++)
           for (unsigned int z = 0; z < sz; z++)
             s[x+sx*(y+sy*z)] = space[(sz-z-1)+sz*(y+sy*x)];
-    
+
       delete [] space;
       space = s;
-    
+
       unsigned int t = bx1;
-    
+
       bx1 = bz1;
       bz1 = sz - 1 - bx2;
       bx2 = bz2;
@@ -357,19 +357,19 @@ void voxel_c::rotatez(int by) {
       int tmp = sy;
       sy = sx;
       sx = tmp;
-    
+
       voxel_type *s = new voxel_type[voxels];
-    
+
       for (unsigned int x = 0; x < sx; x++)
         for (unsigned int y = 0; y < sy; y++)
           for (unsigned int z = 0; z < sz; z++)
             s[x+sx*(y+sy*z)] = space[y+sy*((sx-x-1)+sx*z)];
-    
+
       delete [] space;
       space = s;
-    
+
       unsigned int t = by1;
-    
+
       by1 = bx1;
       bx1 = sx - 1 - by2;
       by2 = bx2;
@@ -378,23 +378,23 @@ void voxel_c::rotatez(int by) {
       t = hy;
       hy = hx;
       hx = sx - 1 - t;
-      
+
     }
     break;
   case 2:
     {
       voxel_type *s = new voxel_type[voxels];
-    
+
       for (unsigned int x = 0; x < sx; x++)
         for (unsigned int y = 0; y < sy; y++)
           for (unsigned int z = 0; z < sz; z++)
             s[x+sx*(y+sy*z)] = space[(sx-x-1)+sx*((sy-y-1)+sy*z)];
-    
+
       delete [] space;
       space = s;
-    
+
       unsigned int t = by1;
-    
+
       by1 = sy - 1 - by2;
       by2 = sy - 1 - t;
 
@@ -411,19 +411,19 @@ void voxel_c::rotatez(int by) {
       int tmp = sy;
       sy = sx;
       sx = tmp;
-    
+
       voxel_type *s = new voxel_type[voxels];
-    
+
       for (unsigned int x = 0; x < sx; x++)
         for (unsigned int y = 0; y < sy; y++)
           for (unsigned int z = 0; z < sz; z++)
             s[x+sx*(y+sy*z)] = space[(sy-y-1)+sy*(x+sx*z)];
-    
+
       delete [] space;
       space = s;
-    
+
       unsigned int t = by1;
-    
+
       by1 = sy - 1 - bx2;
       bx2 = by2;
       by2 = sy - 1 - bx1;
@@ -602,7 +602,7 @@ void voxel_c::mirrorX(void) {
   bx2 = sx - 1 - t;
 
   hx = sx - 1 - hx;
-        
+
   symmetries = symmetryInvalid();
 }
 
@@ -726,7 +726,7 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
 
             if (root1 != root2) tree[root2] = root1;
           }
-  
+
           if ((inverse && (get(x, y, z-1) != value)) ||
               (!inverse && (get(x, y, z-1) == value))) {
 
@@ -739,28 +739,28 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
           if (type > 0) {
             if ((inverse && (get(x-1, y, z-1) != value)) ||
                 (!inverse && (get(x-1, y, z-1) == value))) {
-  
+
               int root2 = (x-1)+sx*(y+sy*(z-1));
               while (tree[root2]) root2 = tree[root2];
-  
+
               if (root1 != root2) tree[root2] = root1;
             }
 
             if ((inverse && (get(x-1, y-1, z) != value)) ||
                 (!inverse && (get(x-1, y-1, z) == value))) {
-  
+
               int root2 = (x-1)+sx*((y-1)+sy*z);
               while (tree[root2]) root2 = tree[root2];
-  
+
               if (root1 != root2) tree[root2] = root1;
             }
 
             if ((inverse && (get(x, y-1, z-1) != value)) ||
                 (!inverse && (get(x, y-1, z+1) == value))) {
-  
+
               int root2 = x+sx*((y-1)+sy*(z-1));
               while (tree[root2]) root2 = tree[root2];
-  
+
               if (root1 != root2) tree[root2] = root1;
             }
           }
@@ -768,10 +768,10 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
           if (type > 1) {
             if ((inverse && (get(x-1, y-1, z-1) != value)) ||
                 (!inverse && (get(x-1, y-1, z-1) == value))) {
-  
+
               int root2 = (x-1)+sx*(y+sy*(z-1));
               while (tree[root2]) root2 = tree[root2];
-  
+
               if (root1 != root2) tree[root2] = root1;
             }
           }
@@ -789,12 +789,12 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
             if (root == -1) {
               root = x+sx*(y+sy*z);
               while (tree[root]) root = tree[root];
-  
+
             } else {
-  
+
               int root2 = x+sx*(y+sy*z);
               while (tree[root2]) root2 = tree[root2];
-  
+
               if (root2 != root) {
                 delete [] tree;
                 return false;
@@ -862,7 +862,7 @@ void voxel_c::transform(unsigned int nr) {
 
   rotatex(rotx(nr));
   rotatey(roty(nr));
-  rotatez(rotz(nr));  
+  rotatez(rotz(nr));
 }
 
 symmetries_t voxel_c::selfSymmetries(void) const {
@@ -1020,10 +1020,10 @@ voxel_c::voxel_c(const xml::node & node) : hx(0), hy(0), hz(0) {
     hy = atoi(node.get_attributes().find("hy")->get_value());
   if (node.get_attributes().find("hz") != node.get_attributes().end())
     hz = atoi(node.get_attributes().find("hz")->get_value());
-  
+
   space = new voxel_type[voxels];
   bt_assert(space);
-  
+
   unsigned int type = atoi(node.get_attributes().find("type")->get_value());
 
   const char * c = node.get_content();

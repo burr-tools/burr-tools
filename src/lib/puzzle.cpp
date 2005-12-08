@@ -100,7 +100,7 @@ void bitmap_c::add(void) {
     for (unsigned int i = 0; i < colors; i++)
       for (unsigned int j = 0; j < colors; j++) {
         unsigned int idx = j * (colors+1) + i;
-    
+
         if (get(i, j))
           m2[idx >> 3] |= (1 << (idx & 7));
         else
@@ -129,7 +129,7 @@ void bitmap_c::remove(unsigned int col) {
 
       if (i < col) k = i; else k = i+1;
       if (j < col) l = j; else l = j+1;
-  
+
       if (get(k, l))
         m2[idx >> 3] |= (1 << (idx & 7));
       else
@@ -151,10 +151,10 @@ xml::node bitmap_c::save(void) const {
     for (unsigned int res = 0; res < colors; res++)
       if (get(pc, res)) {
         xml::node::iterator it = nd.insert(xml::node("pair"));
-    
+
         snprintf(tmp, 50, "%i", pc);
         it->get_attributes().insert("piece", tmp);
-    
+
         snprintf(tmp, 50, "%i", res);
         it->get_attributes().insert("result", tmp);
       }
@@ -462,7 +462,7 @@ xml::node problem_c::save(void) const {
 
           snprintf(tmp, 50, "%i", shapes[i].groups[j].group);
           it3->get_attributes().insert("group", tmp);
-      
+
           snprintf(tmp, 50, "%i", shapes[i].groups[j].count);
           it3->get_attributes().insert("count", tmp);
         }

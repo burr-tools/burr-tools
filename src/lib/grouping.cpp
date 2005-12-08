@@ -37,9 +37,9 @@ void grouping_c::newSet(void) {
   if (!failed) {
 
     struct set s;
-  
+
     s.currentGroup = 1;
-  
+
     sets.push_back(s);
   }
 }

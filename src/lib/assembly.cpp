@@ -123,7 +123,7 @@ assembly_c::assembly_c(const assembly_c * orig) {
 
   for (unsigned int i = 0; i < orig->placements.size(); i++)
     placements.push_back(placement_c(orig->getTransformation(i), orig->getX(i), orig->getY(i), orig->getZ(i)));
-  
+
 }
 
 assembly_c::assembly_c(const assembly_c * orig, unsigned char trans, const puzzle_c * puz, unsigned int prob) {
@@ -179,7 +179,7 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
       /* now do the transformation */
       if (flip)
         placements[p].xpos = -placements[p].xpos;
-      
+
       for (int t = 0; t < rotx(rot); t++) {
         int tmp = placements[p].ypos;
         placements[p].ypos = -placements[p].zpos;
@@ -196,7 +196,7 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
         placements[p].xpos = -placements[p].ypos;
         placements[p].ypos = tmp;
       }
-      
+
       placements[p].xpos += rx;
       placements[p].ypos += ry;
       placements[p].zpos += rz;
@@ -243,11 +243,11 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
           }
     }
 
-  } 
+  }
 }
 
 bool assembly_c::compare(const assembly_c & b, unsigned int pivot) const {
-  
+
   bt_assert(placements.size() == b.placements.size());
   bt_assert(pivot < placements.size());
 
@@ -259,7 +259,7 @@ bool assembly_c::compare(const assembly_c & b, unsigned int pivot) const {
    */
   if (placements[pivot] < b.placements[pivot]) return true;
   if (!(placements[pivot] == b.placements[pivot])) return false;
-  
+
   for (unsigned int i = 0; i < placements.size(); i++) {
     if (i != pivot) {
       if (placements[i] < b.placements[i]) return true;

@@ -84,13 +84,13 @@ private:
     int _selecting;
 
     // An STL-ish vector without templates
-    class IntVector 
+    class IntVector
     {
         int *arr;
 	unsigned int _size;
-	void init() 
+	void init()
 	    { arr = NULL; _size = 0; }
-	void copy(int *newarr, unsigned int newsize) 
+	void copy(int *newarr, unsigned int newsize)
 	    { size(newsize); memcpy(arr, newarr, newsize * sizeof(int)); }
     public:
         IntVector() { init(); }						// CTOR
@@ -189,7 +189,7 @@ protected:
     						// clamp r/c to known universe
 
     // Called to draw cells
-    virtual void draw_cell(TableContext context, int R=0, int C=0, 
+    virtual void draw_cell(TableContext context, int R=0, int C=0,
     			   int X=0, int Y=0, int W=0, int H=0)
 	{ }					// overridden by deriving class
 
@@ -205,7 +205,7 @@ protected:
 
     void redraw_range(int toprow, int botrow, int leftcol, int rightcol)
     {
-        if ( _redraw_toprow == -1 ) 
+        if ( _redraw_toprow == -1 )
 	{
 	    // Initialize redraw range
 	    _redraw_toprow = toprow;
@@ -240,7 +240,7 @@ public:
     inline Fl_Boxtype table_box( void ) { return(table->box()); }
 
     virtual void rows(int val);				// set/get number of rows
-    inline int rows() 
+    inline int rows()
         { return(_rows); }
 
     virtual void cols(int val);				// set/get number of columns
@@ -345,7 +345,7 @@ public:
     void insert(Fl_Widget& w, Fl_Widget* w2) { table->insert(w,w2); }
     void remove(Fl_Widget& w) { table->remove(w); }
     void begin() { table->begin(); }
-    void end() 
+    void end()
     {
         table->end();
 
@@ -361,11 +361,11 @@ public:
         { return(table->array()); }
     Fl_Widget *child(int n) const
         { return(table->child(n)); }
-    int children() const 
+    int children() const
         { return(table->children()-2); }    // -2: skip Fl_Scroll's h/v scrollbar widgets
-    int find(const Fl_Widget *w) const 
+    int find(const Fl_Widget *w) const
         { return(table->find(w)); }
-    int find(const Fl_Widget &w) const 
+    int find(const Fl_Widget &w) const
         { return(table->find(w)); }
 
     // CALLBACKS

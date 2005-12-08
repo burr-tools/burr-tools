@@ -72,7 +72,7 @@ int main(int argc, char ** argv) {
                                          a);
 
     aw->show();
-  
+
     while (aw->visible())
       Fl::wait();
 

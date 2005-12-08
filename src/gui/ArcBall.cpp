@@ -19,7 +19,7 @@
 
 #include "ArcBall.h"
 
-#include <math.h>   
+#include <math.h>
 #include <assert.h>
 
 #define Epsilon 1.0e-5

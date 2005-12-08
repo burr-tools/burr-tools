@@ -87,13 +87,13 @@ static void print_rec(const separation_c * s, voxel_c ** pieces, int sx, int sy,
       printf("+");
     }
     printf("\n");
-  
+
     for (int y = -sy/2; y < sy+sy/2; y++) {
       for (int z = -sz/2; z < sz+sz/2; z++) {
         printf(" !");
         for (int x = -sx/2; x < sx+sx/2; x++) {
           char c = ' ';
-  
+
           for (unsigned int pc = 0; pc < s->getPieceNumber(); pc++)
             if (pieces[pc]->isFilled2(x - st->getX(pc),
                                       y - st->getY(pc),
@@ -101,14 +101,14 @@ static void print_rec(const separation_c * s, voxel_c ** pieces, int sx, int sy,
               c = 'a' + pieceNum[pc];
               break;
             }
-  
+
           printf("%c", c);
         }
         printf("!");
       }
       printf("\n");
     }
-  
+
     { for (int z = -sz/2; z < sz+sz/2; z++) {
         printf(" +");
         for (int x = -sx/2; x < sx+sx/2; x++)

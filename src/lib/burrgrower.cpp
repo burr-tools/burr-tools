@@ -72,15 +72,15 @@ bool puzzleSol_c::assembly(assembly_c* a) {
       printf("%li\n", solutions);
 
     unsigned int l = da->getMoves();
-  
+
     if (l > maxLevel) maxLevel = l;
     if (l < minLevel) minLevel = l;
-  
+
     l = da->sumMoves();
-  
+
     if (l > maxMoves) maxMoves = l;
     if (l < minMoves) minMoves = l;
-  
+
     delete da;
   }
   return false;
@@ -320,19 +320,19 @@ void burrGrower_c::addToLists(puzzleSol_c * pz) {
       printf("%li ", unique[0]->numLevel());
     else
       printf("-- ");
-  
+
     printf("level: ");
     if (highLevel.size() != 0)
       printf("%li(%li) ", highLevel[0]->numLevel(), highLevel[0]->numSolutions());
     else
       printf("-- ");
-  
+
     printf("moves: ");
     if (highMoves.size() != 0)
       printf("%li(%li) ", highMoves[0]->numMoves(), highMoves[0]->numSolutions());
     else
       printf("-- ");
-  
+
     printf("\n");
   }
 }

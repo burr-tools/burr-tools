@@ -40,7 +40,7 @@ static void deleteTree(pieceTreeNode *t) {
   if (t) {
 
     if (t->piece == 0) {
-  
+
       deleteTree(t->filled);
       deleteTree(t->empty);
     }
@@ -99,7 +99,7 @@ static pieceTreeNode * addPiece(pieceTreeNode *t, voxel_c *p) {
         break;
       }
     }
-  
+
   } else {
       if (p->getState(t->pos) == voxel_c::VX_EMPTY)
         addPiece(t->empty, p);

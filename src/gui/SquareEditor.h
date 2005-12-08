@@ -34,9 +34,9 @@
  *  - Changes of voxel states
  */
 class SquareEditor : public Fl_Widget {
-  
+
 public:
-  
+
   /* sets the task of what to do next */
   typedef enum {
     TSK_SET,
@@ -127,8 +127,8 @@ public:
     _editAllLayers = doIt;
   }
 
-  
-  
+
+
   void setTask(enTask t) { task = t; }
 
   int handle(int event);

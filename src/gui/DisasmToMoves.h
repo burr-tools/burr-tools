@@ -63,7 +63,7 @@ public:
   DisasmToMoves(const separation_c * tr, unsigned int sz);
 
   virtual ~DisasmToMoves();
-  
+
   /* sets the moves for the step, if the value is not integer you
    * get a intermediate of the necessary move (for animation)
    */
