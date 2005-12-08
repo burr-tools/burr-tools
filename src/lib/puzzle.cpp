@@ -636,7 +636,6 @@ puzzle_c::puzzle_c(const puzzle_c * orig) {
   for (unsigned int i = 0; i < orig->colors.size(); i++)
     colors.push_back(orig->colors[i]);
 
-  designer = orig->designer;
   comment = orig->comment;
 }
 
@@ -797,9 +796,6 @@ xml::node puzzle_c::save(void) const {
   for (unsigned int i = 0; i < problems.size(); i++)
     it->insert(problems[i]->save());
 
-  if (designer.length())
-    it = nd.insert(xml::node("designer", designer.c_str()));
-
   if (comment.length())
     it = nd.insert(xml::node("comment", comment.c_str()));
 
@@ -862,10 +858,6 @@ puzzle_c::puzzle_c(const xml::node & node) {
       if ((i->get_type() == xml::node::type_element) &&
           (strcmp(i->get_name(), "problem") == 0))
         problems.push_back(new problem_c(*i, colors.size(), shapes.size()));
-
-  it = node.find("designer");
-  if (it != node.end() && it->get_type() == xml::node::type_text)
-    designer = it->get_content();
 
   it = node.find("comment");
   if (it != node.end() && it->get_type() == xml::node::type_text)

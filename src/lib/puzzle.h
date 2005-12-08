@@ -71,7 +71,6 @@ private:
   std::vector<colorDef> colors;
 
   /* some information about the puzzle */
-  std::string designer;
   std::string comment;
 
 public:
@@ -237,9 +236,7 @@ public:
   bool probPlacementAllowed(unsigned int prob, unsigned int pc, unsigned int res) const;
 
   /* some additional information about the puzzle */
-  void setDesigner(const std::string & name);
   void setComment(const std::string & comment);
-  const std::string & getDesigner(void) const;
   const std::string & getComment(void) const;
 
   void probAddTime(unsigned int prob, unsigned long time);
