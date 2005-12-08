@@ -2057,7 +2057,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     }
     {
       Fl_Group * o = new Fl_Group(x+2*(hw+SZ_GAP), y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnGroup = new FlatButton(x+2*(hw+SZ_GAP), y, hw, SZ_BUTTON_Y, "Grp", " Edit groups ", cb_ShapeGroup_stub, this);
+      BtnGroup = new FlatButton(x+2*(hw+SZ_GAP), y, hw, SZ_BUTTON_Y, "Group", " Edit groups ", cb_ShapeGroup_stub, this);
       o->resizable(BtnGroup);
       o->end();
     }
