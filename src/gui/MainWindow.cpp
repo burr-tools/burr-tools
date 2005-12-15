@@ -852,8 +852,10 @@ void UserInterface::cb_Coment(void) {
   while (win.visible())
     Fl::wait();
 
-  if (win.saveChanges())
+  if (win.saveChanges()) {
     puzzle->setComment(win.getText());
+    changed = true;
+  }
 }
 
 static void cb_ImageExport_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ImageExport(); }
