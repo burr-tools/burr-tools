@@ -860,7 +860,7 @@ puzzle_c::puzzle_c(const xml::node & node) {
         problems.push_back(new problem_c(*i, colors.size(), shapes.size()));
 
   it = node.find("comment");
-  if (it != node.end() && it->get_type() == xml::node::type_text)
+  if (it != node.end() && it->get_type() == xml::node::type_element)
     comment = it->get_content();
 
 
@@ -1319,3 +1319,10 @@ unsigned short puzzle_c::probGetShapeGroupCount(unsigned int prob, unsigned int 
   return problems[prob]->shapes[shapeID].groups[groupID].count;
 }
 
+void puzzle_c::setComment(const std::string & com) {
+  comment = com;
+}
+
+const std::string & puzzle_c::getComment(void) const {
+  return comment;
+}

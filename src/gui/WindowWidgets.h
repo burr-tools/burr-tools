@@ -37,6 +37,7 @@
 #include <FL/Fl_Check_Button.H>
 #include <FL/Fl_Output.H>
 #include <FL/Fl_Double_Window.H>
+#include <FL/Fl_Multiline_Input.H>
 #include <FL/fl_draw.h>
 
 // my button, the only change it that the box is automatically set to engraved
@@ -341,6 +342,25 @@ public:
 
   assertWindow(const char * text, assert_exception * a);
 
+};
+
+// a simple window containing a multi line input
+class multiLineWindow : public Fl_Double_Window {
+
+    Fl_Multiline_Input * inp;
+    bool _saveChanges;
+
+  public:
+    multiLineWindow(const char * title, const char *label, const char *deflt = 0);
+
+    const char * getText(void) { return inp->value(); }
+
+    void hide(bool save) {
+      _saveChanges = save;
+      Fl_Double_Window::hide();
+    }
+
+    bool saveChanges(void) { return _saveChanges; }
 };
 
 

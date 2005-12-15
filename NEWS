@@ -1,3 +1,5 @@
+- Add possibility to GUI to edit the comment included in a puzzle
+
 ------------- Version 0.1.8b
 
 - Fix Bug found by Markus Götz that made the program crash, when all 

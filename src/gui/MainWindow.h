@@ -225,6 +225,7 @@ public:
   void cb_Quit(void);
   void cb_About(void);
   void cb_Config(void);
+  void cb_Coment(void);
   void cb_Toggle3D(void);
   void cb_SolProbSel(BlockListGroup* reason);
 

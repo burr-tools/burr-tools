@@ -719,3 +719,35 @@ assertWindow::assertWindow(const char * text, assert_exception * a) : Fl_Double_
   label("Error");
 }
 
+
+static void cb_mlWindowClose(Fl_Widget* o, void * v) { ((multiLineWindow*)v)->hide(true); }
+static void cb_mlWindowAbort(Fl_Widget* o, void * v) { ((multiLineWindow*)v)->hide(false); }
+
+#define SZ_MLWIN_X 400
+#define SZ_MLWIN_Y 200
+#define SZ_BUTTON_X2 50
+#define SZ_GAP 5
+#define SZ_BUTTON 20
+
+multiLineWindow::multiLineWindow(const char * tit, const char *lab, const char *deflt) : Fl_Double_Window(SZ_MLWIN_X, SZ_MLWIN_Y) {
+
+  label(tit);
+
+  int w, h;
+  fl_measure(lab, w, h);
+
+  new Fl_Box(0, SZ_GAP, SZ_MLWIN_X, h, lab);
+
+  inp = new Fl_Multiline_Input(0, h+2*SZ_GAP, SZ_MLWIN_X, SZ_MLWIN_Y-h-4*SZ_GAP-SZ_BUTTON);
+  inp->value(deflt);
+
+  new FlatButton( (SZ_MLWIN_X/2)-SZ_BUTTON_X2-SZ_BUTTON_X2-2, SZ_MLWIN_Y-SZ_BUTTON-SZ_GAP, 2*SZ_BUTTON_X2, SZ_BUTTON,
+      "Finished", "Close and save changes", cb_mlWindowClose, this);
+
+  new FlatButton( (SZ_MLWIN_X/2)-SZ_BUTTON_X2+SZ_BUTTON_X2+3, SZ_MLWIN_Y-SZ_BUTTON-SZ_GAP, 2*SZ_BUTTON_X2, SZ_BUTTON,
+      "Abort", "Close and drop changes", cb_mlWindowAbort, this);
+
+  resizable(inp);
+
+  _saveChanges = false;
+}

@@ -842,6 +842,20 @@ void UserInterface::cb_Config(void) {
   activateConfigOptions();
 }
 
+static void cb_Comment_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Coment(); }
+void UserInterface::cb_Coment(void) {
+
+  multiLineWindow win("Edit Coment", "Change the comment for the current puzzle", puzzle->getComment().c_str());
+
+  win.show();
+
+  while (win.visible())
+    Fl::wait();
+
+  if (win.saveChanges())
+    puzzle->setComment(win.getText());
+}
+
 static void cb_ImageExport_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ImageExport(); }
 void UserInterface::cb_ImageExport(void) {
   ImageExportWindow w(puzzle);
@@ -1034,6 +1048,7 @@ Fl_Menu_Item UserInterface::menu_MainMenu[] = {
     { 0 },
   {"Toggle 3D", FL_F + 4, cb_Toggle3D_stub,    0, 0, 0, 0, 14, 56},
   {"Export Images",    0, cb_ImageExport_stub, 0, 0, 0, 0, 14, 56},
+  {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
   {"Config",           0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
   {"About",            0, cb_About_stub,       0, 0, 3, 0, 14, 56},
   {0}
