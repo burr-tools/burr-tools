@@ -80,6 +80,14 @@ void UserInterface::cb_RemoveColor(void) {
   else {
     changeColor(colorSelector->getSelection());
     puzzle->removeColor(colorSelector->getSelection());
+
+    unsigned int current = colorSelector->getSelection();
+
+    while ((current > 0) && (current > puzzle->colorNumber()))
+      current--;
+
+    colorSelector->setSelection(current);
+
     changed = true;
     View3D->showColors(puzzle, Status->useColors());
     updateInterface();
