@@ -154,8 +154,16 @@ void SelectableTextList::blockDraw(unsigned int block, int x, int y) {
   fl_font(labelfont(), labelsize());
   fl_draw(txt, x+4, y+h-4);
 
-  if (block == getSelection())
+  if (block == getSelection()) {
+    fl_color(0, 0, 0);
     fl_rect(x, y, w, h);
+    fl_color(255, 255, 255);
+    fl_rect(x+1, y+1, w-2, h-2);
+    fl_color(0, 0, 0);
+    fl_rect(x+2, y+2, w-4, h-4);
+    fl_color(255, 255, 255);
+    fl_rect(x+3, y+3, w-6, h-6);
+  }
 }
 
 void SelectableTextList::blockSize(unsigned int block, unsigned int *w, unsigned int *h) {
