@@ -299,6 +299,23 @@ public:
   Separator(int x, int y, int w, int h, const char * label, bool button);
 };
 
+// a group that can contain only buttons and one button is
+// pressed while others are not
+class ButtonGroup : public Fl_Group {
+
+  unsigned int currentButton;
+
+public:
+
+  ButtonGroup(int x, int y, int w, int h);
+
+  Fl_Button * addButton(int x, int y, int w, int h);
+
+  void cb_Push(Fl_Button * btn);
+
+  unsigned int getSelected(void) { return currentButton; }
+};
+
 
 class ResultViewer : public Fl_Box {
 

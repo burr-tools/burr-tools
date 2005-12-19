@@ -648,6 +648,43 @@ void View3dGroup::updateVisibility(PieceVisibility * pcvis) {
   View3D->update(true);
 }
 
+
+static void cb_ButtonGroup_stub(Fl_Widget* o, void* v) { ((ButtonGroup*)v)->cb_Push((Fl_Button*)o); }
+
+ButtonGroup::ButtonGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h), currentButton(0) {}
+
+Fl_Button * ButtonGroup::addButton(int x, int y, int w, int h) {
+
+  int c = children();
+
+  Fl_Button * b = new Fl_Button(x, y, w, h);
+  b->callback(cb_ButtonGroup_stub, this);
+
+  if (c == 0)
+    b->set();
+  else
+    b->clear();
+
+  add(b);
+
+  return b;
+}
+
+void ButtonGroup::cb_Push(Fl_Button * btn) {
+
+  Fl_Button ** a = (Fl_Button**) array();
+
+  for (int i = 0; i < children(); i++)
+    if (a[i] != btn) {
+      a[i]->clear();
+    } else {
+      a[i]->set();
+      currentButton = i;
+    }
+
+  do_callback();
+}
+
 StatusLine::StatusLine(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
 
   text = new Fl_Box(x, y, w - 130, h);
