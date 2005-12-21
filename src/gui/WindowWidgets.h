@@ -314,6 +314,7 @@ public:
   void cb_Push(Fl_Button * btn);
 
   unsigned int getSelected(void) { return currentButton; }
+  void select(int num);
 };
 
 
