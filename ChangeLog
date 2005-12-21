@@ -1,3 +1,111 @@
+Thu Dec  8 17:31:55 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove the designer field from the puzzle, the comment can contain that information
+
+Thu Dec  8 17:31:30 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove another abbreviation
+
+Thu Dec  8 17:29:05 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove whitespace from lineends
+
+Wed Dec  7 21:42:36 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * check all possible close situations for changed puzzle
+  
+  up to now you only got a warning, when using quit but not
+  when using the window manager "x", or when using Alt-F4, now you do.
+
+Wed Dec  7 21:37:39 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove 2 more abbreviations
+
+Wed Dec  7 21:35:55 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * remove abbreviations from activities
+
+Wed Dec  7 21:22:13 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * quit not red any longer
+
+Wed Dec  7 20:54:13 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * don't try to disassemble assemblies with only one piece
+
+Wed Dec  7 18:04:32 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * make group edit window resizable
+
+Wed Dec  7 18:02:22 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * make configuration window modal
+
+Tue Nov 29 11:24:02 CET 2005  Andreas Röver <roever@users.sf.net>[_^M_]
+  * use parameter from preview window for output
+
+Tue Nov 29 08:13:30 CET 2005  Andreas Röver <roever@users.sf.net>[_^M_]
+  * and another symmetry group
+
+Mon Nov 28 19:06:25 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * better tile size
+
+Mon Nov 28 17:50:27 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use back puffer, as many GL implementations don't provige auxiliary buffers
+
+Mon Nov 28 17:49:45 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * windows requires explicit resize of window for layouted windows
+
+Sun Nov 27 21:34:24 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * start new development cycle
+
+Sun Nov 27 21:30:50 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * some more image exporting functionality
+
+Sat Nov 26 15:33:52 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * separate the voxel drawing from the gui part
+  
+  Now it can be reused for the image export. But this is only a first step
+  as there seem to be some strange bug resulting in event getting queuesd
+  up and the F3 key not always getting through
+
+Sat Nov 26 12:27:04 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * unix style line breaks
+
+Sat Nov 26 12:26:38 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * wider buttons
+
+Sat Nov 26 12:25:56 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * a few more options for export window
+
+Sat Nov 26 12:24:31 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add libpng
+  
+  this library will be used to output the rendered images into
+  png files
+
+Sat Nov 26 12:07:29 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add the tile rendering library
+  
+  This library will be used to render the large size pictures
+  for the image export
+
+Fri Nov 25 22:15:24 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * start work on Image Export Functionality
+  
+  Right now only a simple dialog with some of the possible options
+  is shown and a new meny entry for testing purposes
+
+Fri Nov 25 22:14:52 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * disabiguate layouter function prototype
+
+Fri Nov 25 21:17:25 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add a few GPL header to files
+
+Fri Nov 25 21:10:41 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add first version of the layouter
+  
+  with this layouter its (hopefully) possible to quickly design
+  even complex dialogs by leaving the concrete layout to the
+  computer and only defining the relative playement of the different
+  groups inside the window
+
+Fri Nov 25 17:03:50 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  tagged 0.1.8b
+
+Thu Nov 24 18:25:31 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * release preparations
+
 Tue Nov 22 19:23:29 CET 2005  Andreas Röver <roever@users.sourceforge.net>
   * replace literal with correct define and solve a Bug found by Markus
 
