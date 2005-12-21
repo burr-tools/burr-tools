@@ -1710,11 +1710,11 @@ int UserInterface::handle(int event) {
 
 
 
-#define SZ_WINDOW_X 540                        // initial size of the window
-#define SZ_WINDOW_Y 488
+#define SZ_WINDOW_X 800                        // initial size of the window
+#define SZ_WINDOW_Y 600
 #define SZ_MENU_Y 25                           // hight of the menu
 #define SZ_STATUS_Y 25
-#define SZ_TOOL_X 190                          // initial width of the toolbar
+#define SZ_TOOL_X 350                          // initial width of the toolbar
 #define SZ_TAB_Y 20                            // hight of the tabs in a tab
 #define SZ_GAP 5                               // gap between elements
 #define SZ_CONTENT_START_Y SZ_MENU_Y           // y start of the content area

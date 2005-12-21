@@ -168,8 +168,8 @@ void configuration::register_entry(char *cnf_name, cnf_type cnf_typ, void *cnf_v
 #define CNF_CHAR_D(a,b,c,text) register_entry(a, CT_STRING, b, c, true, text)
 #define CNF_INT_D(a,b,text) register_entry(a, CT_INT, b, 0, true, text)
 
-#define SZ_WINDOW_X 540                        // initial size of the window
-#define SZ_WINDOW_Y 488
+#define SZ_WINDOW_X 800                        // initial size of the window
+#define SZ_WINDOW_Y 600
 
 
 configuration::configuration(void) {
