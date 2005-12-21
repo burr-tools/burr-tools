@@ -75,6 +75,9 @@ void SquareEditor::draw() {
   fl_color(color());
   fl_rectf(x(), y(), w(), h());
 
+  unsigned char bgr, bgg, bgb;
+  Fl::get_color(color(), bgr, bgg, bgb);
+
   if (piecenumber >= puzzle->shapeNumber())
     return;
 
@@ -115,6 +118,11 @@ void SquareEditor::draw() {
       case voxel_c::VX_VARIABLE:
         fl_rectf(tx+x*s+3, ty+y*s+3, s-5, s-5, r, g, b);
         break;
+      default:
+        if (currentZ < space->getZ()-1)
+          if (space->getState(x, space->getY()-y-1, space->getZ()-currentZ-2) != voxel_c::VX_EMPTY) {
+            fl_rectf(tx+x*s, ty+y*s, s, s, ((int)bgr*5+r)/6, ((int)bgg*5+g)/6, ((int)bgb*5+b)/6);
+          }
       }
 
       if ((space->getState(x, space->getY()-y-1, space->getZ()-currentZ-1) != voxel_c::VX_EMPTY) &&
