@@ -90,6 +90,7 @@ void UserInterface::cb_RemoveColor(void) {
 
     changed = true;
     View3D->showColors(puzzle, Status->useColors());
+    activateShape(PcSel->getSelection());
     updateInterface();
   }
 }
