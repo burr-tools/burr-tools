@@ -136,7 +136,10 @@ public:
   }
 
   void editAllLayers(bool edit) {
-    sqedit->editAllLayers(edit);
+    if (edit)
+      sqedit->activateTool(SquareEditor::TOOL_STACK_Z);
+    else
+      sqedit->deactivateTool(SquareEditor::TOOL_STACK_Z);
   }
 
   void editChoice(SquareEditor::enTask c) {

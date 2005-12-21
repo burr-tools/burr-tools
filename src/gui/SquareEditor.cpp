@@ -174,6 +174,78 @@ void SquareEditor::draw() {
   }
 }
 
+static bool set(voxel_c * s, int x, int y, int z, SquareEditor::enTask task, unsigned int currentColor) {
+
+  bool changed = false;
+  voxel_type v;
+
+  switch (task) {
+  case SquareEditor::TSK_RESET:
+    v = voxel_c::VX_EMPTY;
+    break;
+  case SquareEditor::TSK_SET:
+    v = voxel_c::VX_FILLED;
+    break;
+  case SquareEditor::TSK_VAR:
+    v = voxel_c::VX_VARIABLE;
+    break;
+  }
+
+  if ((task != SquareEditor::TSK_COLOR) && (s->getState(x, y, z) != v)) {
+    changed = true;
+    s->setState(x, y, z, v);
+  }
+  if ((s->getState(x, y, z) != voxel_c::VX_EMPTY) && (s->getColor(x, y, z) != currentColor)) {
+    changed = true;
+    s->setColor(x, y, z, currentColor);
+  }
+
+  return changed;
+}
+
+static bool setStacks(voxel_c * s, unsigned char tools, int x, int y, int z, SquareEditor::enTask task, unsigned int currentColor) {
+
+  bool changed = set(s, x, y, z, task, currentColor);
+
+  if (tools & SquareEditor::TOOL_STACK_X)
+    for (unsigned int xp = 0; xp < s->getX(); xp++)
+      changed |= set(s, xp, y, z, task, currentColor);
+  if (tools & SquareEditor::TOOL_STACK_Y)
+    for (unsigned int yp = 0; yp < s->getY(); yp++)
+      changed |= set(s, x, yp, z, task, currentColor);
+  if (tools & SquareEditor::TOOL_STACK_Z)
+    for (unsigned int zp = 0; zp < s->getX(); zp++)
+      changed |= set(s, x, y, zp, task, currentColor);
+
+  return changed;
+}
+
+static bool setMz(voxel_c * s, unsigned char tools, int x, int y, int z, SquareEditor::enTask task, unsigned int currentColor) {
+  bool changed = setStacks(s, tools, x, y, z, task, currentColor);
+  if (tools & SquareEditor::TOOL_MIRROR_Z)
+    changed |= setStacks(s, tools, x, y, s->getZ()-z-1, task, currentColor);
+
+  return changed;
+}
+
+static bool setMy(voxel_c * s, unsigned char tools, int x, int y, int z, SquareEditor::enTask task, unsigned int currentColor) {
+  bool changed = setMz(s, tools, x, y, z, task, currentColor);
+
+  if (tools & SquareEditor::TOOL_MIRROR_Y)
+    changed |= setMz(s, tools, x, s->getY()-y-1, z, task, currentColor);
+
+  return changed;
+}
+
+
+static bool setMx(voxel_c * s, unsigned char tools, int x, int y, int z, SquareEditor::enTask task, unsigned int currentColor) {
+  bool changed = setMy(s, tools, x, y, z, task, currentColor);
+  if (tools & SquareEditor::TOOL_MIRROR_X)
+    changed |= setMy(s, tools, s->getX()-x-1, y, z, task, currentColor);
+
+  return changed;
+}
+
 bool SquareEditor::setLayer(unsigned int z) {
   int x1, x2, y1, y2;
 
@@ -200,34 +272,12 @@ bool SquareEditor::setLayer(unsigned int z) {
   if (y1 < 0) y1 = 0;
   if (y2 > (int)space->getY()-1) y2 = (int)space->getY()-1;
 
-  voxel_type v;
-
-  switch (task) {
-  case TSK_RESET:
-    v = voxel_c::VX_EMPTY;
-    break;
-  case TSK_SET:
-    v = voxel_c::VX_FILLED;
-    break;
-  case TSK_VAR:
-    v = voxel_c::VX_VARIABLE;
-    break;
-  }
-
   bool changed = false;
 
   for (int x = x1; x <= x2; x++)
     for (int y = y1; y <= y2; y++)
-      if ((x >= 0) && (y >= 0) && (x < (int)space->getX()) && (y < (int)space->getY())) {
-        if ((task != TSK_COLOR) && (space->getState(x, y, z) != v)) {
-          changed = true;
-          space->setState(x, y, z, v);
-        }
-        if ((space->getState(x, y, z) != voxel_c::VX_EMPTY) && (space->getColor(x, y, z) != currentColor)) {
-          changed = true;
-          space->setColor(x, y, z, currentColor);
-        }
-      }
+      if ((x >= 0) && (y >= 0) && (x < (int)space->getX()) && (y < (int)space->getY()))
+        changed |= setMx(space, activeTools, x, y, z, task, currentColor);
 
   return changed;
 }
@@ -252,15 +302,7 @@ int SquareEditor::handle(int event) {
     {
       state = 0;
 
-      bool changed = false;
-
-      if (_editAllLayers)
-        for (unsigned int z = 0; z < space->getZ(); z++)
-          changed |= setLayer(z);
-      else
-        changed = setLayer(space->getZ()-currentZ-1);
-
-      if (changed) {
+      if (setLayer(space->getZ()-currentZ-1)) {
         callbackReason = RS_CHANGESQUARE;
         do_callback();
       }

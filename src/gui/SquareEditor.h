@@ -45,6 +45,16 @@ public:
     TSK_COLOR
   } enTask;
 
+  /* some editing tools */
+  enum {
+    TOOL_MIRROR_X = 1,
+    TOOL_MIRROR_Y = 2,
+    TOOL_MIRROR_Z = 4,
+    TOOL_STACK_X = 8,
+    TOOL_STACK_Y = 16,
+    TOOL_STACK_Z = 32
+  };
+
 private:
 
   puzzle_c * puzzle;
@@ -75,11 +85,11 @@ private:
 
   bool locked;
 
-  bool _editAllLayers;
-
   int startX, startY;
 
   enTask task;
+
+  unsigned char activeTools;
 
 protected:
 
@@ -89,7 +99,7 @@ protected:
 
 public:
 
-  SquareEditor(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), currentZ(0), piecenumber(0), state(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), inside(false), currentColor(0), locked(false), _editAllLayers(0) {}
+  SquareEditor(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), currentZ(0), piecenumber(0), state(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), inside(false), currentColor(0), locked(false), activeTools(0) {}
 
   // sets the z layer to edit the value is clamped to valid values
   void setZ(unsigned int z);
@@ -120,15 +130,6 @@ public:
     }
   }
 
-  /* when this is called with true, the edit operation is performed on all
-   * layers (z layers) instead of only the current one
-   */
-  void editAllLayers(bool doIt) {
-    _editAllLayers = doIt;
-  }
-
-
-
   void setTask(enTask t) { task = t; }
 
   int handle(int event);
@@ -148,6 +149,9 @@ public:
   };
 
   int getReason(void) { return callbackReason; }
+
+  void activateTool(int tool) { activeTools |= tool; }
+  void deactivateTool(int tool) { activeTools &= ~tool; }
 };
 
 #endif
