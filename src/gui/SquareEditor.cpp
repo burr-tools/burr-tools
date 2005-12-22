@@ -222,7 +222,7 @@ static bool setStacks(voxel_c * s, unsigned char tools, int x, int y, int z, Squ
     for (unsigned int yp = 0; yp < s->getY(); yp++)
       changed |= set(s, x, yp, z, task, currentColor);
   if (tools & SquareEditor::TOOL_STACK_Z)
-    for (unsigned int zp = 0; zp < s->getX(); zp++)
+    for (unsigned int zp = 0; zp < s->getZ(); zp++)
       changed |= set(s, x, y, zp, task, currentColor);
 
   return changed;
