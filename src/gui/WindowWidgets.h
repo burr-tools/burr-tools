@@ -91,12 +91,14 @@ public:
   }
 };
 
+class LineSpacer;
 
 // the group for the square editor including the colord marker and the slider for the z axis
 class VoxelEditGroup : public Fl_Group {
 
   SquareEditor * sqedit;
   Fl_Slider * zselect;
+  LineSpacer * space;
 
 public:
 

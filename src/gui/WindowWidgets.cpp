@@ -26,6 +26,69 @@
 
 // some tool widgets, that may be swapped out later into another file
 
+// draws an definable evenly spaced number of lines in one direction
+class LineSpacer : Fl_Widget {
+
+  int lines;
+  bool vertical;
+  int gap;
+
+  public:
+
+    LineSpacer(int x, int y, int w, int h, int borderSpace) : Fl_Widget(x, y, w, h), lines(2), vertical(true), gap(borderSpace) {}
+
+    void draw(void) {
+
+      fl_color(color());
+      fl_rectf(x(), y(), w(), h());
+
+      if (lines <= 1) return;
+
+      fl_color(0);
+
+      if (vertical) {
+
+        for (int i = 0; i < lines; i++) {
+          int ypos = y()+ gap + (h()-2*gap-1)*i/(lines-1);
+          int size;
+
+          if (i % 10 == 0)
+            size = w();
+          else if (i % 5 == 0)
+            size = 3*w()/4;
+          else
+            size = w()/2;
+
+          fl_line(x(), ypos, x()+size-1, ypos);
+        }
+
+      } else {
+
+        for (int i = 0; i < lines; i++) {
+          int xpos = x()+ gap + (w()-2*gap-1)*i/(lines-1);
+          int size;
+
+          if (i % 10 == 0)
+            size = h();
+          else if (i % 5 == 0)
+            size = 3*h()/4;
+          else
+            size = h()/2;
+
+          fl_line(y(), xpos, y()+size-1, xpos);
+        }
+      }
+
+    }
+
+    void setLines(int l, int vert) {
+      lines = l;
+      vertical = vert;
+      redraw();
+    }
+
+};
+
 
 static void cb_VoxelEditGroupZselect_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup*)v)->cb_Zselect((Fl_Slider*)o); }
 static void cb_VoxelEditGroupSqedit_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup*)v)->cb_Sqedit((SquareEditor*)o); }
@@ -39,8 +102,10 @@ VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle) : 
   zselect->step(1);
   zselect->callback(cb_VoxelEditGroupZselect_stub, this);
 
+  space = new LineSpacer(x+15, y, 5, h, 4);
+
   {
-    Fl_Box* o = new Fl_Box(x+20, y, 5, h-5);
+    Fl_Box* o = new Fl_Box(x+25, y, 5, h-5);
     o->box(FL_FLAT_BOX);
     o->color(fl_rgb_color(0, 192, 0));
   }
@@ -50,7 +115,7 @@ VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle) : 
     o->color((Fl_Color)1);
   }
 
-  sqedit = new SquareEditor(x+30, y, w-30, h-10, puzzle);
+  sqedit = new SquareEditor(x+35, y, w-35, h-10, puzzle);
   sqedit->tooltip(" Fill and empty cubes ");
   sqedit->box(FL_NO_BOX);
   sqedit->callback(cb_VoxelEditGroupSqedit_stub, this);
@@ -71,6 +136,7 @@ void VoxelEditGroup::setPuzzle(puzzle_c * puzzle, unsigned int num) {
     if (v) {
       zselect->bounds(0, v->getZ()-1);
       zselect->value(sqedit->getZ());
+      space->setLines(v->getZ(), true);
     }
   }
 }
