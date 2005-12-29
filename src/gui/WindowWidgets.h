@@ -286,7 +286,7 @@ public:
   void updateVisibility(PieceVisibility * pcvis);
   void showColors(const puzzle_c * puz, bool show);
 
-  void setMarker(int x1, int y1, int x2, int y2, int z) { View3D->setMarker(x1, y1, x2, y2, z); }
+  void setMarker(int x1, int y1, int x2, int y2, int z, int type) { View3D->setMarker(x1, y1, x2, y2, z, type); }
   void hideMarker(void) { View3D->hideMarker(); }
   void useLightning(bool val) { View3D->useLightning(val); }
 

@@ -296,7 +296,7 @@ void UserInterface::cb_pieceEdit(VoxelEditGroup* o) {
   switch (o->getReason()) {
   case SquareEditor::RS_MOUSEMOVE:
     if (o->getMouse())
-      View3D->setMarker(o->getMouseX1(), o->getMouseY1(), o->getMouseX2(), o->getMouseY2(), o->getMouseZ());
+      View3D->setMarker(o->getMouseX1(), o->getMouseY1(), o->getMouseX2(), o->getMouseY2(), o->getMouseZ(), 0);
     else
       View3D->hideMarker();
     break;

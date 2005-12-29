@@ -91,12 +91,22 @@ public:
 
   void setTransformationType(transformationType type);
 
+  /* some editing tools */
+  enum {
+    TOOL_MIRROR_X = 1,
+    TOOL_MIRROR_Y = 2,
+    TOOL_MIRROR_Z = 4,
+    TOOL_STACK_X = 8,
+    TOOL_STACK_Y = 16,
+    TOOL_STACK_Z = 32
+  };
+
   /* only active in single mode
    * the marker has 2 parts, a white part that shows the complete z layer
    * and a black part that is only drawn between the given coordinates
    * if you don't want the black part make x1 >= x2
    */
-  void setMarker(int x1, int y1, int x2, int y2, int z);
+  void setMarker(int x1, int y1, int x2, int y2, int z, int markerType);
   void hideMarker(void);
 
   void showCoordinateSystem(bool show) { _showCoordinateSystem = show; updateRequired(); }
@@ -134,7 +144,7 @@ private:
 
   /* the marker position */
   int mX1, mY1, mZ, mX2, mY2;
-  bool markerType;
+  int markerType;
 
   std::vector<shapeInfo> shapes;
 

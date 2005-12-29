@@ -37,7 +37,7 @@
 #define EDGEHI 0.95f
 #define MY 0.005f
 
-VoxelDrawer::VoxelDrawer() : markerType(false), colors(pieceColor), _useLightning(true)
+VoxelDrawer::VoxelDrawer() : markerType(-1), colors(pieceColor), _useLightning(true)
 {
 };
 
@@ -307,6 +307,50 @@ static void drawRect(int x0, int y0, int z0,
   glEnd();
 }
 
+static void drawCube(int x1, int y1, int z1, int x2, int y2, int z2, bool type, int diag) {
+  drawRect(x1, y1, z1, x2-x1, 0, 0, 0, y2-y1, 0, type, diag);
+  drawRect(x1, y1, z2, x2-x1, 0, 0, 0, y2-y1, 0, type, diag);
+  drawRect(x1, y1, z1, 0, 0, z2-z1, 0, y2-y1, 0, type, diag);
+  drawRect(x1, y1, z1, x2-x1, 0, 0, 0, 0, z2-z1, type, diag);
+  drawRect(x2, y1, z1, 0, 0, z2-z1, 0, y2-y1, 0, type, diag);
+  drawRect(x1, y2, z1, x2-x1, 0, 0, 0, 0, z2-z1, type, diag);
+}
+
+static void drawCursor(int phase, const voxel_c * s, unsigned char tools, int x, int y, int z) {
+
+  switch (phase) {
+    case 0:
+      drawCursor(1, s, tools, x, y, z);
+      if (tools & VoxelDrawer::TOOL_MIRROR_X)
+        drawCursor(1, s, tools, s->getX()-x-1, y, z);
+      break;
+    case 1:
+      drawCursor(2, s, tools, x, y, z);
+      if (tools & VoxelDrawer::TOOL_MIRROR_Y)
+        drawCursor(2, s, tools, x, s->getY()-y-1, z);
+      break;
+    case 2:
+      drawCursor(3, s, tools, x, y, z);
+      if (tools & VoxelDrawer::TOOL_MIRROR_Z)
+        drawCursor(3, s, tools, x, y, s->getZ()-z-1);
+      break;
+    case 3:
+      drawCube(x, y, z, x+1, y+1, z+1, false, 4);
+
+      if (tools & VoxelDrawer::TOOL_STACK_X)
+        for (unsigned int xp = 0; xp < s->getX(); xp++)
+          drawCube(xp, y, z, xp+1, y+1, z+1, false, 4);
+      if (tools & VoxelDrawer::TOOL_STACK_Y)
+        for (unsigned int yp = 0; yp < s->getY(); yp++)
+          drawCube(x, yp, z, x+1, yp+1, z+1, false, 4);
+      if (tools & VoxelDrawer::TOOL_STACK_Z)
+        for (unsigned int zp = 0; zp < s->getZ(); zp++)
+          drawCube(x, y, zp, x+1, y+1, zp+1, false, 4);
+      break;
+  }
+}
+
+
 
 void VoxelDrawer::drawVoxelSpace() {
 
@@ -407,29 +451,22 @@ void VoxelDrawer::drawVoxelSpace() {
           }
         }
 
-    if (markerType) {
+    if (markerType >= 0) {
       if (_useLightning) glDisable(GL_LIGHTING);
       glDisable(GL_BLEND);
 
+#if 0
       glColor4f(1, 1, 1, 1);
 
-      drawRect(-1, -1, mZ, shapes[piece].shape->getX()+2, 0, 0, 0, shapes[piece].shape->getY()+2, 0, true, 2);
-      drawRect(-1, -1, mZ+1, shapes[piece].shape->getX()+2, 0, 0, 0, shapes[piece].shape->getY()+2, 0, true, 2);
-      drawRect(-1, -1, mZ, 0, 0, 1, 0, shapes[piece].shape->getY()+2, 0, true, 2);
-      drawRect(-1, -1, mZ, shapes[piece].shape->getX()+2, 0, 0, 0, 0, 1, true, 2);
-      drawRect(shapes[piece].shape->getX()+1, -1, mZ, 0, 0, 1, 0, shapes[piece].shape->getY()+2, 0, true, 2);
-      drawRect(-1, shapes[piece].shape->getY()+1, mZ, shapes[piece].shape->getX()+2, 0, 0, 0, 0, 1, true, 2);
+      drawCube(-1, -1, mZ, shapes[piece].shape->getX()+1, shapes[piece].shape->getX()+1, shapes[piece].shape->getX()+1, true, 2);
+#endif
 
       if ((mX1 < mX2) && (mY1 < mY2)) {
 
         glColor4f(0, 0, 0, 1);
-
-        drawRect(mX1, mY1, mZ, mX2-mX1, 0, 0, 0, mY2-mY1, 0, false, 4);
-        drawRect(mX1, mY1, mZ+1, mX2-mX1, 0, 0, 0, mY2-mY1, 0, false, 4);
-        drawRect(mX1, mY1, mZ, 0, 0, 1, 0, mY2-mY1, 0, false, 4);
-        drawRect(mX1, mY1, mZ, mX2-mX1, 0, 0, 0, 0, 1, false, 4);
-        drawRect(mX2, mY1, mZ, 0, 0, 1, 0, mY2-mY1, 0, false, 4);
-        drawRect(mX1, mY2, mZ, mX2-mX1, 0, 0, 0, 0, 1, false, 4);
+        for (int x = mX1; x < mX2; x++)
+          for (int y = mY1; y < mY2; y++)
+            drawCursor(0, shapes[piece].shape, markerType, x, y, mZ);
       }
 
       if (_useLightning) glEnable(GL_LIGHTING);
@@ -555,8 +592,8 @@ void VoxelDrawer::addPaletteEntry(float r, float g, float b) {
   palette.push_back(ci);
 }
 
-void VoxelDrawer::setMarker(int x1, int y1, int x2, int y2, int z) {
-  markerType = true;
+void VoxelDrawer::setMarker(int x1, int y1, int x2, int y2, int z, int mT) {
+  markerType = mT;
   mX1 = x1;
   mY1 = y1;
   mX2 = x2+1;
@@ -565,6 +602,6 @@ void VoxelDrawer::setMarker(int x1, int y1, int x2, int y2, int z) {
 }
 
 void VoxelDrawer::hideMarker(void) {
-  markerType = false;
+  markerType = -1;
 }
 
