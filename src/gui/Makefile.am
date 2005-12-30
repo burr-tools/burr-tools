@@ -24,5 +24,17 @@ burrGui_SOURCES=VoxelView.cpp VoxelView.h \
 		ImageExport.cpp ImageExport.h \
 		tr.c tr.h \
 		Images.cpp Images.h \
-                main.cpp
+                main.cpp \
+                images/TB_Color_Brush.xpm images/TB_Color_Columns_X.xpm images/TB_Color_Columns_Y.xpm \
+		images/TB_Color_Columns_Z.xpm images/TB_Color_Eraser.xpm images/TB_Color_Mouse_Drag.xpm \
+		images/TB_Color_Mouse_Rubber_Band.xpm images/TB_Color_Pen_Fixed.xpm images/TB_Color_Pen_Variable.xpm \
+		images/TB_Color_Symmetrical_X.xpm images/TB_Color_Symmetrical_Y.xpm images/TB_Color_Symmetrical_Z.xpm \
+		images/TB_Disabled_Brush.xpm images/TB_Disabled_Columns_X.xpm images/TB_Disabled_Columns_Y.xpm \
+		images/TB_Disabled_Columns_Z.xpm images/TB_Disabled_Eraser.xpm images/TB_Disabled_Mouse_Drag.xpm \
+		images/TB_Disabled_Mouse_Rubber_Band.xpm images/TB_Disabled_Pen_Fixed.xpm images/TB_Disabled_Pen_Variable.xpm \
+		images/TB_Disabled_Symmetrical_X.xpm images/TB_Disabled_Symmetrical_Y.xpm images/TB_Disabled_Symmetrical_Z.xpm \
+		images/TB_Monochrome_Brush.xpm images/TB_Monochrome_Columns_X.xpm images/TB_Monochrome_Columns_Y.xpm \
+ 	        images/TB_Monochrome_Columns_Z.xpm images/TB_Monochrome_Eraser.xpm images/TB_Monochrome_Mouse_Drag.xpm \
+		images/TB_Monochrome_Mouse_Rubber_Band.xpm images/TB_Monochrome_Pen_Fixed.xpm images/TB_Monochrome_Pen_Variable.xpm \
+		images/TB_Monochrome_Symmetrical_X.xpm images/TB_Monochrome_Symmetrical_Y.xpm images/TB_Monochrome_Symmetrical_Z.xpm
 
