@@ -1,0 +1,35 @@
+/* XPM */
+static char *TB_Monochrome_Mouse_Drag_xpm[] = {
+/* columns rows colors chars-per-pixel */
+"23 23 6 1",
+"  c black",
+". c gray68",
+"X c #BBBBBB",
+"o c gray88",
+"O c gray100",
+"+ c None",
+/* pixels */
+"+++++++++++++++++++++++",
+"+               +++++++",
+"+ OOOOOO OOOOOO +++++++",
+"+ OOOOOO OOOOOO +++++++",
+"+ OOOOOO OOOOOO +++++++",
+"+ OOOOOO OOOOOO +++++++",
+"+ OOOOOO OOOO O +++++++",
+"+ OOOOOO OOOO   +++++++",
+"+             O +++++++",
+"+ OOOOOO ++++ oO ++++++",
+"+ OOOOOO ++++ ooO +++++",
+"+ OOOOOO ++++ .ooO ++++",
+"+ OOOOOO ++++ .oooO +++",
+"+ OOOOOO ++++ ..oooO ++",
+"+ OOOOOO ++++ ..oO    +",
+"+        ++++ .. o ++++",
+"+++++++++++++ .  . ++++",
+"+++++++++++++  ++ O +++",
+"+++++++++++++ +++ . +++",
+"++++++++++++++++++ O ++",
+"++++++++++++++++++ . ++",
+"+++++++++++++++++++ +++",
+"+++++++++++++++++++++++"
+};

@@ -152,6 +152,7 @@ public:
 
   void activateTool(int tool) { activeTools |= tool; }
   void deactivateTool(int tool) { activeTools &= ~tool; }
+  void setTool(int tool) { activeTools = tool; }
 };
 
 #endif

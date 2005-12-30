@@ -91,6 +91,25 @@ public:
   }
 };
 
+class ToggleButton : public Fl_Button {
+
+  Fl_Callback *callback;
+  void * callback_para;
+  long para;
+
+
+  public:
+    ToggleButton(int x, int y, int w, int h, Fl_Callback *cb, void * cb_para, long para);
+
+    void toggle(void) {
+      value(1-value());
+      if (callback)
+        callback(this, callback_para);
+    }
+
+    long ButtonVal(void) { return para; }
+};
+
 class LineSpacer;
 
 // the group for the square editor including the colord marker and the slider for the z axis
@@ -137,11 +156,8 @@ public:
     sqedit->lock(lock);
   }
 
-  void editAllLayers(bool edit) {
-    if (edit)
-      sqedit->activateTool(SquareEditor::TOOL_STACK_Z);
-    else
-      sqedit->deactivateTool(SquareEditor::TOOL_STACK_Z);
+  void editSymmetries(int syms) {
+    sqedit->setTool(syms);
   }
 
   void editChoice(SquareEditor::enTask c) {

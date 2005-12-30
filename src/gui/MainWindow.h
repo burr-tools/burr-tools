@@ -55,6 +55,7 @@ class UserInterface : public Fl_Double_Window {
   assemblerThread *assmThread;
   bool SolutionEmpty;
   bool changed;
+  int editSymmetries;
 
   Fl_Tabs *TaskSelectionTab;
   Fl_Group *TabPieces;
@@ -74,7 +75,8 @@ class UserInterface : public Fl_Double_Window {
 
   ToolTab * pieceTools;
   FlatLightButton *editLayersButton;
-  Fl_Choice *editChoice;
+  ButtonGroup *editChoice;
+  ButtonGroup *editMode;
 
   Fl_Group *TabSolve;
   Fl_Check_Button *SolveDisasm, *JustCount;
@@ -196,8 +198,9 @@ public:
 
   void cb_TransformPiece(void);
   void cb_pieceEdit(VoxelEditGroup* o);
-  void cb_EditLayers(void);
   void cb_EditChoice(void);
+  void cb_EditSym(int onoff, int value);
+  void cb_EditMode(void);
 
   void cb_TransformResult(void);
 

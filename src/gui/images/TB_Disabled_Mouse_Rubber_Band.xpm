@@ -1,0 +1,32 @@
+/* XPM */
+static char *TB_Disabled_Mouse_Rubber_Band_xpm[] = {
+/* columns rows colors chars-per-pixel */
+"23 23 3 1",
+"  c #868686",
+". c #BBBBBB",
+"X c None",
+/* pixels */
+"XXXXXXXXXXXXXXXXXXXXXXX",
+"X                 XXXXX",
+"X                 XXXXX",
+"X  XXXXXX XXXXXX  XXXXX",
+"X  XXXXXX XXXXXX  XXXXX",
+"X  XXXXXX XXXXXX  XXXXX",
+"X  XXXXXX XXX XX  XXXXX",
+"X  XXXXXX XXX  X  XXXXX",
+"X  XXXXXX XXX X   XXXXX",
+"X         XXX XX  XXXXX",
+"X  XXXXXXXXXX XXX XXXXX",
+"X  XXXXXXXXXX XXXX XXXX",
+"X  XXXXXXXXXX XXXXX XXX",
+"X  XXXXXXXXXX XXXXXX XX",
+"X  XXXXXXXXXX XXXX    X",
+"X  XXXXXXXXXX XX X XXXX",
+"X             X  X XXXX",
+"X                 X XXX",
+"XXXXXXXXXXXXX XXX X XXX",
+"XXXXXXXXXXXXXXXXXX X XX",
+"XXXXXXXXXXXXXXXXXX X XX",
+"XXXXXXXXXXXXXXXXXXX XXX",
+"XXXXXXXXXXXXXXXXXXXXXXX"
+};

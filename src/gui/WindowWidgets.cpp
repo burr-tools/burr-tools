@@ -26,6 +26,17 @@
 
 // some tool widgets, that may be swapped out later into another file
 
+static void cb_ToggleButton_stub(Fl_Widget* o, void* v) { ((ToggleButton*)o)->toggle(); }
+
+ToggleButton::ToggleButton(int x, int y, int w, int h, Fl_Callback* cb, void * cb_para, long p) : Fl_Button(x, y, w, h) {
+  box(FL_THIN_UP_BOX);
+  callback = cb;
+  callback_para = cb_para;
+  para = p;
+  Fl_Button::callback(cb_ToggleButton_stub);
+}
+
+
 // draws an definable evenly spaced number of lines in one direction
 class LineSpacer : Fl_Widget {
 
@@ -726,6 +737,7 @@ Fl_Button * ButtonGroup::addButton(int x, int y, int w, int h) {
   int c = children();
 
   Fl_Button * b = new Fl_Button(x, y, w, h);
+  b->box(FL_THIN_UP_BOX);
   b->callback(cb_ButtonGroup_stub, this);
 
   if (c == 0)

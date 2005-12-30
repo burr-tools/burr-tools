@@ -29,6 +29,7 @@
 #include "GroupsEditor.h"
 #include "PlacementBrowser.h"
 #include "ImageExport.h"
+#include "Images.h"
 
 #include "../config.h"
 
@@ -214,14 +215,22 @@ void UserInterface::cb_TransformPiece(void) {
   activateShape(PcSel->getSelection());
 }
 
-static void cb_EditLayers_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_EditLayers(); }
-void UserInterface::cb_EditLayers(void) {
-  pieceEdit->editAllLayers(editLayersButton->value() == 1);
+static void cb_EditSym_stub(Fl_Widget* o, void* v) {
+  ((UserInterface*)v)->cb_EditSym(((ToggleButton*)o)->value(), ((ToggleButton*)o)->ButtonVal());
+}
+void UserInterface::cb_EditSym(int onoff, int value) {
+  if (onoff) {
+    editSymmetries |= value;
+  } else {
+    editSymmetries &= ~value;
+  }
+
+  pieceEdit->editSymmetries(editSymmetries);
 }
 
 static void cb_EditChoice_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_EditChoice(); }
 void UserInterface::cb_EditChoice(void) {
-  switch(editChoice->value()) {
+  switch(editChoice->getSelected()) {
     case 0:
       pieceEdit->editChoice(SquareEditor::TSK_SET);
       break;
@@ -234,6 +243,12 @@ void UserInterface::cb_EditChoice(void) {
     case 3:
       pieceEdit->editChoice(SquareEditor::TSK_COLOR);
       break;
+  }
+}
+
+static void cb_EditMode_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_EditMode(); }
+void UserInterface::cb_EditMode(void) {
+  switch(editMode->getSelected()) {
   }
 }
 
@@ -296,7 +311,7 @@ void UserInterface::cb_pieceEdit(VoxelEditGroup* o) {
   switch (o->getReason()) {
   case SquareEditor::RS_MOUSEMOVE:
     if (o->getMouse())
-      View3D->setMarker(o->getMouseX1(), o->getMouseY1(), o->getMouseX2(), o->getMouseY2(), o->getMouseZ(), 0);
+      View3D->setMarker(o->getMouseX1(), o->getMouseY1(), o->getMouseX2(), o->getMouseY2(), o->getMouseZ(), editSymmetries);
     else
       View3D->hideMarker();
     break;
@@ -1703,6 +1718,32 @@ int UserInterface::handle(int event) {
         break;
       }
     }
+    switch(Fl::event_key()) {
+      case FL_F + 5:
+        if (TaskSelectionTab->value() == TabPieces) {
+          editChoice->select(0);
+          return 1;
+        }
+        break;
+      case FL_F + 6:
+        if (TaskSelectionTab->value() == TabPieces) {
+          editChoice->select(1);
+          return 1;
+        }
+        break;
+      case FL_F + 7:
+        if (TaskSelectionTab->value() == TabPieces) {
+          editChoice->select(2);
+          return 1;
+        }
+        break;
+      case FL_F + 8:
+        if (TaskSelectionTab->value() == TabPieces) {
+          editChoice->select(3);
+          return 1;
+        }
+        break;
+    }
   }
 
   return 0;
@@ -1721,6 +1762,7 @@ int UserInterface::handle(int event) {
 #define SZ_CONTENT_Y (SZ_WINDOW_Y - SZ_MENU_Y - SZ_STATUS_Y) // initial hight of the content of the window
 #define SZ_3DAREA_X (SZ_WINDOW_X - SZ_TOOL_X)
 #define SZ_BUTTON_Y 20
+#define SZ_BUTTON2_Y 25
 #define SZ_TEXT_Y 15
 #define SZ_SEPARATOR_Y 10
 #define SZ_TOOLTAB_Y 115
@@ -1848,23 +1890,39 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     y += SZ_TOOLTAB_Y + SZ_GAP;
     lh -= SZ_TOOLTAB_Y + SZ_GAP;
 
-    static Fl_Menu_Item EditChoise[] = {
-      {"Set Normal",   FL_F + 5, 0, 0},
-      {"Set Variable", FL_F + 6, 0, 0},
-      {"Reset",        FL_F + 7, 0, 0},
-      {"Color only",   FL_F + 8, 0, 0},
-      {0}};
-
-    editChoice = new Fl_Choice(x, y, (w-SZ_GAP)/2, SZ_BUTTON_Y);
-    editChoice->menu(EditChoise);
-    editChoice->box(FL_THIN_UP_BOX);
+    editChoice = new ButtonGroup(x, y, 4*SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    editChoice->addButton(x+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Pen_Fixed_xpm));
+    editChoice->addButton(x+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Pen_Variable_xpm));
+    editChoice->addButton(x+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Eraser_xpm));
+    editChoice->addButton(x+3*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Brush_xpm));
     editChoice->callback(cb_EditChoice_stub, this);
-    editChoice->tooltip(" Select what is done when working in the grid editor below ");
 
-    editLayersButton = new FlatLightButton(x+(w-SZ_GAP)/2+SZ_GAP, y, w-(w-SZ_GAP)/2-SZ_GAP, SZ_BUTTON_Y, "All layers", " When this is active all layers are changed instead of just the active one ", cb_EditLayers_stub, this);
+    ToggleButton * btn;
+    btn = new ToggleButton(x+4*SZ_BUTTON2_Y+SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_X);
+    btn->image(new Fl_Pixmap(TB_Color_Columns_X_xpm));
 
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
+    btn = new ToggleButton(x+5*SZ_BUTTON2_Y+SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_Y);
+    btn->image(new Fl_Pixmap(TB_Color_Columns_Y_xpm));
+
+    btn = new ToggleButton(x+6*SZ_BUTTON2_Y+SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_Z);
+    btn->image(new Fl_Pixmap(TB_Color_Columns_Z_xpm));
+
+    btn = new ToggleButton(x+7*SZ_BUTTON2_Y+2*SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_X);
+    btn->image(new Fl_Pixmap(TB_Color_Symmetrical_X_xpm));
+
+    btn = new ToggleButton(x+8*SZ_BUTTON2_Y+2*SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_Y);
+    btn->image(new Fl_Pixmap(TB_Color_Symmetrical_Y_xpm));
+
+    btn = new ToggleButton(x+9*SZ_BUTTON2_Y+2*SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_Z);
+    btn->image(new Fl_Pixmap(TB_Color_Symmetrical_Z_xpm));
+
+    editMode = new ButtonGroup(x+10*SZ_BUTTON2_Y+3*SZ_GAP, y, 2*SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    editMode->addButton(x+10*SZ_BUTTON2_Y+3*SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Mouse_Rubber_Band_xpm));
+    editMode->addButton(x+11*SZ_BUTTON2_Y+3*SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Mouse_Drag_xpm));
+    editMode->callback(cb_EditMode_stub, this);
+
+    y += SZ_BUTTON2_Y + SZ_GAP;
+    lh -= SZ_BUTTON2_Y + SZ_GAP;
 
     pieceEdit = new VoxelEditGroup(x, y, w, lh, puzzle);
     pieceEdit->callback(cb_pieceEdit_stub, this);
