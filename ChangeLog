@@ -1,3 +1,57 @@
+Fri Dec 30 13:22:32 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * first step in redesign of interface
+
+Thu Dec 29 17:10:16 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * edit mode cursor for 3D view
+
+Thu Dec 22 17:21:56 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add line space display for the z axis slider in the grid editor
+
+Thu Dec 22 16:53:35 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * darker green color axis
+
+Thu Dec 22 16:39:35 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix stack drawing
+
+Wed Dec 21 21:51:00 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * have a shadow of the layer below visible on the square drawer, remove color white as the contrast is not high enough
+
+Wed Dec 21 21:32:36 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * mirrored drawing and whole column drawing in swaure editor, unused by now
+
+Wed Dec 21 20:54:03 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * buttons in button groups can now be selected, also end the group right away to avoid manual ending
+
+Wed Dec 21 20:49:56 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * start window size is now 800x600 and the tooltab is wider
+
+Wed Dec 21 20:48:02 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix that removing a color might invalidate the displayed color for the 3d view
+
+Wed Dec 21 20:47:38 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * some docfile updates
+
+Mon Dec 19 21:38:06 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * a new widget: buttonGroup
+  
+  this widget has a number of buttons of which at each time
+  exactly one is pressed (like radiobutton)
+
+Mon Dec 19 21:37:29 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * use a thicker marker for selected blocks
+
+Fri Dec 16 13:07:08 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix scaling problem with edit color button
+
+Fri Dec 16 13:00:54 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * ensure valididy of color selected after removing one. Fix crash when deleting the last color and pressing del right again
+
+Thu Dec 15 18:14:00 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * puzzle is changed, when comment is saved
+
+Thu Dec 15 17:52:29 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * fix comment loading and enable GUI comment editing
+
 Thu Dec  8 17:31:55 CET 2005  Andreas Röver <roever@users.sourceforge.net>
   * remove the designer field from the puzzle, the comment can contain that information
 
