@@ -73,6 +73,14 @@ public:
     callback(cb, cb_para);
     color((Fl_Color)col);
   }
+
+  FlatButton(int x, int y, int w, int h, Fl_Image * img, Fl_Image * inact, const char * tt, Fl_Callback1* cb, long cb_para) : Fl_Button(x, y, w, h) {
+    box(FL_THIN_UP_BOX);
+    tooltip(tt);
+    callback(cb, cb_para);
+    image(img);
+    deimage(inact);
+  }
 };
 
 class FlatLightButton : public Fl_Light_Button {

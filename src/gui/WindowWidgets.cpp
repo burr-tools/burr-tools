@@ -19,7 +19,9 @@
 
 #include "WindowWidgets.h"
 #include "pieceColor.h"
+#include "Images.h"
 
+#include <FL/Fl_Pixmap.H>
 #include <FL/Fl_Multiline_Output.H>
 
 #include <math.h>
@@ -155,26 +157,27 @@ void VoxelEditGroup::setPuzzle(puzzle_c * puzzle, unsigned int num) {
 
 
 #define SZ_BUTTON_Y 20
+#define SZ_BUTTON2_Y 25
 
 static void cb_TransformButtons_stub(Fl_Widget* o, long v) { ((TransformButtons*)(o->parent()))->cb_Press(v); }
 
 TransformButtons::TransformButtons(int x, int y, int w, int h) : Fl_Group(x, y, w, h, "Transform") {
 
-  new FlatButton(  5+x,  5+y, 40, SZ_BUTTON_Y, "S+X", " Shift up along X ",                  cb_TransformButtons_stub,  0,   1);
-  new FlatButton( 45+x,  5+y, 40, SZ_BUTTON_Y, "S-X", " Shift down along X ",                cb_TransformButtons_stub,  1,   1);
-  new FlatButton(  5+x, 25+y, 40, SZ_BUTTON_Y, "S+Y", " Shift up along Y ",                  cb_TransformButtons_stub,  2,   fl_rgb_color(0, 192, 0));
-  new FlatButton( 45+x, 25+y, 40, SZ_BUTTON_Y, "S-Y", " Shift down along Y ",                cb_TransformButtons_stub,  3,   fl_rgb_color(0, 192, 0));
-  new FlatButton(  5+x, 45+y, 40, SZ_BUTTON_Y, "S+Z", " Shift up along Z ",                  cb_TransformButtons_stub,  4, 237);
-  new FlatButton( 45+x, 45+y, 40, SZ_BUTTON_Y, "S-Z", " Shift down along Z ",                cb_TransformButtons_stub,  5, 237);
-  new FlatButton( 90+x,  5+y, 40, SZ_BUTTON_Y, "R+X", " Rotate clockwise along X-Axis ",     cb_TransformButtons_stub,  6,   1);
-  new FlatButton(130+x,  5+y, 40, SZ_BUTTON_Y, "R-X", " Rotate anticlockwise along X-Axis ", cb_TransformButtons_stub,  7,   1);
-  new FlatButton( 90+x, 25+y, 40, SZ_BUTTON_Y, "R+Y", " Rotate clockwise along Y-Axis ",     cb_TransformButtons_stub,  8,   fl_rgb_color(0, 192, 0));
-  new FlatButton(130+x, 25+y, 40, SZ_BUTTON_Y, "R-Y", " Rotate anticlockwise along Y-Axis ", cb_TransformButtons_stub,  9,   fl_rgb_color(0, 192, 0));
-  new FlatButton( 90+x, 45+y, 40, SZ_BUTTON_Y, "R+Z", " Rotate clockwise along Z-Axis ",     cb_TransformButtons_stub, 10, 237);
-  new FlatButton(130+x, 45+y, 40, SZ_BUTTON_Y, "R-Z", " Rotate anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11, 237);
-  new FlatButton( 32+x, 70+y, 30, SZ_BUTTON_Y, "F X", " Flip along Y-Z Plane ",              cb_TransformButtons_stub, 12,   1);
-  new FlatButton( 67+x, 70+y, 30, SZ_BUTTON_Y, "F Y", " Flip along X-Z Plane ",              cb_TransformButtons_stub, 13,   fl_rgb_color(0, 192, 0));
-  new FlatButton(102+x, 70+y, 30, SZ_BUTTON_Y, "F Z", " Flip along X-Y Plane ",              cb_TransformButtons_stub, 14, 237);
+  new FlatButton(  5+x,  5+y, 35, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Nudge_X_Left_xpm)  , new Fl_Pixmap(Transform_Disabled_Nudge_X_Left_xpm)  , " Shift down along X ",                cb_TransformButtons_stub,  1);
+  new FlatButton( 40+x,  5+y, 35, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Nudge_X_Right_xpm) , new Fl_Pixmap(Transform_Disabled_Nudge_X_Right_xpm) , " Shift up along X ",                  cb_TransformButtons_stub,  0);
+  new FlatButton(  5+x, 30+y, 35, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Nudge_Y_Left_xpm)  , new Fl_Pixmap(Transform_Disabled_Nudge_Y_Left_xpm)  , " Shift down along Y ",                cb_TransformButtons_stub,  3);
+  new FlatButton( 40+x, 30+y, 35, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Nudge_Y_Right_xpm) , new Fl_Pixmap(Transform_Disabled_Nudge_Y_Right_xpm) , " Shift up along Y ",                  cb_TransformButtons_stub,  2);
+  new FlatButton(  5+x, 55+y, 35, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Nudge_Z_Left_xpm)  , new Fl_Pixmap(Transform_Disabled_Nudge_Z_Left_xpm)  , " Shift down along Z ",                cb_TransformButtons_stub,  5);
+  new FlatButton( 40+x, 55+y, 35, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Nudge_Z_Right_xpm) , new Fl_Pixmap(Transform_Disabled_Nudge_Z_Right_xpm) , " Shift up along Z ",                  cb_TransformButtons_stub,  4);
+  new FlatButton( 80+x,  5+y, 35, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Rotate_X_Left_xpm) , new Fl_Pixmap(Transform_Disabled_Rotate_X_Left_xpm) , " Rotate clockwise along X-Axis ",     cb_TransformButtons_stub,  6);
+  new FlatButton(115+x,  5+y, 35, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Rotate_X_Right_xpm), new Fl_Pixmap(Transform_Disabled_Rotate_X_Right_xpm), " Rotate anticlockwise along X-Axis ", cb_TransformButtons_stub,  7);
+  new FlatButton( 80+x, 30+y, 35, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Rotate_Y_Left_xpm) , new Fl_Pixmap(Transform_Disabled_Rotate_Y_Left_xpm) , " Rotate clockwise along Y-Axis ",     cb_TransformButtons_stub,  9);
+  new FlatButton(115+x, 30+y, 35, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Rotate_Y_Right_xpm), new Fl_Pixmap(Transform_Disabled_Rotate_Y_Right_xpm), " Rotate anticlockwise along Y-Axis ", cb_TransformButtons_stub,  8);
+  new FlatButton( 80+x, 55+y, 35, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Rotate_Z_Left_xpm) , new Fl_Pixmap(Transform_Disabled_Rotate_Z_Left_xpm) , " Rotate clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
+  new FlatButton(115+x, 55+y, 35, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Rotate_Z_Right_xpm), new Fl_Pixmap(Transform_Disabled_Rotate_Z_Right_xpm), " Rotate anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
+  new FlatButton(155+x,  5+y, 70, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Flip_X_xpm)        , new Fl_Pixmap(Transform_Disabled_Flip_X_xpm)        , " Flip along Y-Z Plane ",              cb_TransformButtons_stub, 12);
+  new FlatButton(155+x, 30+y, 70, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Flip_Y_xpm)        , new Fl_Pixmap(Transform_Disabled_Flip_Y_xpm)        , " Flip along X-Z Plane ",              cb_TransformButtons_stub, 13);
+  new FlatButton(155+x, 55+y, 70, SZ_BUTTON2_Y, new Fl_Pixmap(Transform_Color_Flip_Z_xpm)        , new Fl_Pixmap(Transform_Disabled_Flip_Z_xpm)        , " Flip along X-Y Plane ",              cb_TransformButtons_stub, 14);
 }
 
 

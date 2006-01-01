@@ -1,0 +1,33 @@
+/* XPM */
+static char *Transform_Disabled_Nudge_Y_Right_xpm[] = {
+/* columns rows colors chars-per-pixel */
+"33 23 4 1",
+"  c #868686",
+". c #BBBBBB",
+"X c gray83",
+"o c None",
+/* pixels */
+"ooooooooooooooooooooooooooooooooo",
+"ooooooooooo ooooooooooooooooooooo",
+"ooooooooooo ooooooooooooooooooooo",
+"ooooooooooo ooooooooooooooooooooo",
+"oooo  ooooo ooooooooooooooooooooo",
+"oooo   oooo oooooooooo      ooooo",
+"oooo    ooo ooooooooo oooo  ooooo",
+"o        oo oooooooo oooo o ooooo",
+"o         o ooooooo      oo ooooo",
+"o        oo ooooooo oooo oo ooooo",
+"oooo    ooo ooooooo oooo oo ooooo",
+"oooo   oooo ooooXXXXXXoo o oooooo",
+"oooo  ooooo oooXooooXXoo  ooooooo",
+"ooooooooooo ooXooooXoX   oooooooo",
+"ooooooooooo oXXXXXXooXooooooooooo",
+"ooo ooo ooo oXooooXooXooooooooooo",
+"ooo ooo ooo oXooooXooXooooooooooo",
+"oooo o oooo oXooooXoXoooooooooooo",
+"ooooo ooooo oXooooXXooooooooooooo",
+"ooooo ooooo oXXXXXXoooooooooooooo",
+"ooooo ooooo  oooooooooooooooooooo",
+"ooooo ooooo                     o",
+"ooooooooooooooooooooooooooooooooo"
+};
