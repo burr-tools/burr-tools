@@ -1792,52 +1792,11 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
   int editHight = hi - (hi/numGroups) * (numGroups-1) + editFixedHight;
 
   {
-    int lh = colorsHight;
-
-    Fl_Group* group = new Fl_Group(x, y, w, lh);
-    group->box(FL_FLAT_BOX);
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Colors", false);
-    y += SZ_SEPARATOR_Y;
-    lh -= SZ_SEPARATOR_Y;
-
-    int bw = (w - 2*SZ_GAP) / 3;
-    {
-      Fl_Group * o = new Fl_Group(x, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnNewColor = new FlatButton(x          , y, bw, SZ_BUTTON_Y, "Add", " Add another color ", cb_AddColor_stub, this);
-      o->resizable(BtnNewColor);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+bw+SZ_GAP, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Remove", " Remove selected color ", cb_RemoveColor_stub, this);
-      o->resizable(BtnDelColor);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+2*(bw+SZ_GAP), y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnChnColor = new FlatButton(x+2*(SZ_GAP+bw), y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Edit", " Change selected color ", cb_ChangeColor_stub, this);
-      o->resizable(BtnChnColor);
-      o->end();
-    }
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
-
-    colorSelector = new ColorSelector(x, y, w, lh, puzzle, true);
-    Fl_Group * colGroup = new BlockListGroup(x, y, w, lh, colorSelector);
-    colGroup->callback(cb_ColSel_stub, this);
-
-    y += lh;
-
-    group->resizable(colorSelector);
-    group->end();
-  }
-
-  {
     int lh = pieceHight;
 
     Fl_Group* group = new Fl_Group(x, y, w, lh);
     group->box(FL_FLAT_BOX);
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Shapes", true);
+    new Separator(x, y, w, SZ_SEPARATOR_Y, "Shapes", false);
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 
@@ -1871,6 +1830,47 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     y += lh;
 
     group->resizable(selGroup);
+    group->end();
+  }
+
+  {
+    int lh = colorsHight;
+
+    Fl_Group* group = new Fl_Group(x, y, w, lh);
+    group->box(FL_FLAT_BOX);
+    new Separator(x, y, w, SZ_SEPARATOR_Y, "Colors", true);
+    y += SZ_SEPARATOR_Y;
+    lh -= SZ_SEPARATOR_Y;
+
+    int bw = (w - 2*SZ_GAP) / 3;
+    {
+      Fl_Group * o = new Fl_Group(x, y, bw+SZ_GAP, SZ_BUTTON_Y);
+      BtnNewColor = new FlatButton(x          , y, bw, SZ_BUTTON_Y, "Add", " Add another color ", cb_AddColor_stub, this);
+      o->resizable(BtnNewColor);
+      o->end();
+    }
+    {
+      Fl_Group * o = new Fl_Group(x+bw+SZ_GAP, y, bw+SZ_GAP, SZ_BUTTON_Y);
+      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Remove", " Remove selected color ", cb_RemoveColor_stub, this);
+      o->resizable(BtnDelColor);
+      o->end();
+    }
+    {
+      Fl_Group * o = new Fl_Group(x+2*(bw+SZ_GAP), y, bw+SZ_GAP, SZ_BUTTON_Y);
+      BtnChnColor = new FlatButton(x+2*(SZ_GAP+bw), y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Edit", " Change selected color ", cb_ChangeColor_stub, this);
+      o->resizable(BtnChnColor);
+      o->end();
+    }
+    y += SZ_BUTTON_Y + SZ_GAP;
+    lh -= SZ_BUTTON_Y + SZ_GAP;
+
+    colorSelector = new ColorSelector(x, y, w, lh, puzzle, true);
+    Fl_Group * colGroup = new BlockListGroup(x, y, w, lh, colorSelector);
+    colGroup->callback(cb_ColSel_stub, this);
+
+    y += lh;
+
+    group->resizable(colorSelector);
     group->end();
   }
 
