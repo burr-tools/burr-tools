@@ -320,8 +320,11 @@ int SquareEditor::handle(int event) {
 
     return 1;
   case FL_PUSH:
-    inside = true;
     state = 1;
+  case FL_ENTER:
+    inside = true;
+    if (event == FL_ENTER)
+      Fl::belowmouse(this);
     // fallthrough
   case FL_DRAG:
   case FL_MOVE:
@@ -338,7 +341,13 @@ int SquareEditor::handle(int event) {
 
       y = space->getY() - y - 1;
 
-      if (event == FL_PUSH) {
+      // clip the coordinates to the size of the space
+      if (x < 0) x = 0;
+      if (y < 0) y = 0;
+      if (x >= space->getX()) x = space->getX() - 1;
+      if (y >= space->getY()) y = space->getY() - 1;
+
+      if (event == FL_PUSH || event == FL_MOVE) {
         mX = startX = x;
         mY = startY = y;
         mZ = space->getZ()-currentZ-1;
