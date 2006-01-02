@@ -22,6 +22,13 @@
 
 #include <FL/fl_draw.h>
 
+static int floordiv(int a, int b) {
+  if (a > 0)
+    return a/b;
+  else
+    return (a-b+1)/b;
+}
+
 void SquareEditor::setPuzzle(puzzle_c * p, unsigned int piecenum) {
 
   puzzle = p;
@@ -310,7 +317,19 @@ int SquareEditor::handle(int event) {
     {
       state = 0;
 
-      if (setLayer(space->getZ()-currentZ-1)) {
+      int s, tx, ty;
+      calcParameters(&s, &tx, &ty);
+
+      int x = Fl::event_x() - tx;
+      int y = Fl::event_y() - ty;
+
+      x = floordiv(x, s);
+      y = floordiv(y, s);
+
+      y = space->getY() - y - 1;
+
+      // check, if the current position is inside the grid, only if so carry out action
+      if (0 <= x && x < space->getX() && 0 <= y && y < space->getY() && setLayer(space->getZ()-currentZ-1)) {
         callbackReason = RS_CHANGESQUARE;
         do_callback();
       }
@@ -336,8 +355,8 @@ int SquareEditor::handle(int event) {
       int x = Fl::event_x() - tx;
       int y = Fl::event_y() - ty;
 
-      x /= s;
-      y /= s;
+      x = floordiv(x, s);
+      y = floordiv(y, s);
 
       y = space->getY() - y - 1;
 
