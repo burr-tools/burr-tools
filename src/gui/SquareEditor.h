@@ -55,6 +55,12 @@ public:
     TOOL_STACK_Z = 32
   };
 
+  /* edit types */
+  enum {
+    EDT_SINGLE,
+    EDT_RUBBER
+  };
+
 private:
 
   puzzle_c * puzzle;
@@ -90,6 +96,8 @@ private:
   enTask task;
 
   unsigned char activeTools;
+
+  int editType;
 
 protected:
 
@@ -153,6 +161,8 @@ public:
   void activateTool(int tool) { activeTools |= tool; }
   void deactivateTool(int tool) { activeTools &= ~tool; }
   void setTool(int tool) { activeTools = tool; }
+
+  void setEditType(int type) { editType = type; }
 };
 
 #endif

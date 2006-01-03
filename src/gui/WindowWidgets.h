@@ -171,6 +171,10 @@ public:
   void editChoice(SquareEditor::enTask c) {
     sqedit->setTask(c);
   }
+
+  void editType(int type) {
+    sqedit->setEditType(type);
+  }
 };
 
 

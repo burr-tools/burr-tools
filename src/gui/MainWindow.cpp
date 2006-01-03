@@ -249,6 +249,12 @@ void UserInterface::cb_EditChoice(void) {
 static void cb_EditMode_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_EditMode(); }
 void UserInterface::cb_EditMode(void) {
   switch(editMode->getSelected()) {
+    case 0:
+      pieceEdit->editType(SquareEditor::EDT_RUBBER);
+      break;
+    case 1:
+      pieceEdit->editType(SquareEditor::EDT_SINGLE);
+      break;
   }
 }
 
@@ -1927,6 +1933,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     pieceEdit = new VoxelEditGroup(x, y, w, lh, puzzle);
     pieceEdit->callback(cb_pieceEdit_stub, this);
     pieceEdit->end();
+    pieceEdit->editType(SquareEditor::EDT_RUBBER);
     y += lh;
 
     group->resizable(pieceEdit);
