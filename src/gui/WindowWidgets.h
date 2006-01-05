@@ -132,7 +132,7 @@ public:
   VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle);
 
   void cb_Zselect(Fl_Slider* o) {
-    sqedit->setZ(int(o->value()));
+    sqedit->setZ(int(zselect->maximum() - o->value()));
   }
 
   void setZ(unsigned int val);

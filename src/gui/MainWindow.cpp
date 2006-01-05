@@ -1709,13 +1709,13 @@ int UserInterface::handle(int event) {
   case FL_SHORTCUT:
     if (Fl::event_length()) {
       switch (Fl::event_text()[0]) {
-      case '-':
+      case '+':
         if (TaskSelectionTab->value() == TabPieces) {
           pieceEdit->setZ(pieceEdit->getZ()+1);
           return 1;
         }
         break;
-      case '+':
+      case '-':
         if (TaskSelectionTab->value() == TabPieces) {
           if (pieceEdit->getZ() > 0)
             pieceEdit->setZ(pieceEdit->getZ()-1);

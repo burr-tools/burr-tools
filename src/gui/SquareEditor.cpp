@@ -50,11 +50,7 @@ void SquareEditor::setZ(unsigned int z) {
 
   if (z != currentZ) {
 
-    currentZ = z;
-    mZ = puzzle->getShape(piecenumber)->getZ()-z-1;
-    startX = mX = puzzle->getShape(piecenumber)->getX();
-    startY = mY = puzzle->getShape(piecenumber)->getY();
-    inside = true;
+    mZ = currentZ = z;
     redraw();
     callbackReason = RS_MOUSEMOVE;
     do_callback();
@@ -118,7 +114,7 @@ void SquareEditor::draw() {
         b = int(255*lightPieceColor(pieceColorB(piecenumber)));
       }
 
-      switch(space->getState(x, space->getY()-y-1, space->getZ()-currentZ-1)) {
+      switch(space->getState(x, space->getY()-y-1, currentZ)) {
       case voxel_c::VX_FILLED:
         fl_rectf(tx+x*s, ty+y*s, s, s, r, g, b);
         break;
@@ -126,16 +122,16 @@ void SquareEditor::draw() {
         fl_rectf(tx+x*s+3, ty+y*s+3, s-5, s-5, r, g, b);
         break;
       default:
-        if (currentZ < space->getZ()-1)
-          if (space->getState(x, space->getY()-y-1, space->getZ()-currentZ-2) != voxel_c::VX_EMPTY) {
+        if (currentZ > 0)
+          if (space->getState(x, space->getY()-y-1, currentZ-1) != voxel_c::VX_EMPTY) {
             fl_rectf(tx+x*s, ty+y*s, s, s, ((int)bgr*5+r)/6, ((int)bgg*5+g)/6, ((int)bgb*5+b)/6);
           }
       }
 
-      if ((space->getState(x, space->getY()-y-1, space->getZ()-currentZ-1) != voxel_c::VX_EMPTY) &&
-          space->getColor(x, space->getY()-y-1, space->getZ()-currentZ-1)) {
+      if ((space->getState(x, space->getY()-y-1, currentZ) != voxel_c::VX_EMPTY) &&
+          space->getColor(x, space->getY()-y-1, currentZ)) {
 
-        puzzle->getColor(space->getColor(x, space->getY()-y-1, space->getZ()-currentZ-1)-1, &r, &g, &b);
+        puzzle->getColor(space->getColor(x, space->getY()-y-1, currentZ)-1, &r, &g, &b);
         fl_rectf(tx+x*s, ty+y*s, s/2, s/2, r, g, b);
       }
 
@@ -320,8 +316,8 @@ int SquareEditor::handle(int event) {
       int s, tx, ty;
       calcParameters(&s, &tx, &ty);
 
-      int x = Fl::event_x() - tx;
-      int y = Fl::event_y() - ty;
+      long x = Fl::event_x() - tx;
+      long y = Fl::event_y() - ty;
 
       x = floordiv(x, s);
       y = floordiv(y, s);
@@ -329,7 +325,7 @@ int SquareEditor::handle(int event) {
       y = space->getY() - y - 1;
 
       // check, if the current position is inside the grid, only if so carry out action
-      if (0 <= x && x < space->getX() && 0 <= y && y < space->getY() && setLayer(space->getZ()-currentZ-1)) {
+      if (0 <= x && x < space->getX() && 0 <= y && y < space->getY() && setLayer(currentZ)) {
         callbackReason = RS_CHANGESQUARE;
         do_callback();
       }
@@ -352,8 +348,8 @@ int SquareEditor::handle(int event) {
       int s, tx, ty;
       calcParameters(&s, &tx, &ty);
 
-      int x = Fl::event_x() - tx;
-      int y = Fl::event_y() - ty;
+      long x = Fl::event_x() - tx;
+      long y = Fl::event_y() - ty;
 
       x = floordiv(x, s);
       y = floordiv(y, s);
@@ -367,15 +363,15 @@ int SquareEditor::handle(int event) {
       if (y >= space->getY()) y = space->getY() - 1;
 
       if ((event == FL_DRAG || event == FL_PUSH) && (editType == EDT_SINGLE))
-        if (setLayer(space->getZ()-currentZ-1)) {
+        if (setLayer(currentZ)) {
           callbackReason = RS_CHANGESQUARE;
           do_callback();
         }
 
-      if (event == FL_PUSH || event == FL_MOVE) {
+      if (event == FL_PUSH || event == FL_MOVE || event == FL_ENTER) {
         mX = startX = x;
         mY = startY = y;
-        mZ = space->getZ()-currentZ-1;
+        mZ = currentZ;
 
         redraw();
         callbackReason = RS_MOUSEMOVE;
@@ -385,11 +381,11 @@ int SquareEditor::handle(int event) {
 
         // we move the mouse, if the new position is different from the saved one,
         // do a callback
-        if ((x != mX) || (y != mY) || ((int)space->getZ()-currentZ-1 != mZ)) {
+        if ((x != mX) || (y != mY) || (currentZ != mZ)) {
 
           mX = x;
           mY = y;
-          mZ = space->getZ()-currentZ-1;
+          mZ = currentZ;
 
           if (editType == EDT_SINGLE) {
             startX = mX;

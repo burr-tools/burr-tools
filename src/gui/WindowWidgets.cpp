@@ -138,7 +138,7 @@ VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle) : 
 
 void VoxelEditGroup::setZ(unsigned int val) {
   if (val > zselect->maximum()) val = (unsigned int)zselect->maximum();
-  zselect->value(val);
+  zselect->value(int(zselect->maximum()-val));
   sqedit->setZ(val);
 }
 
@@ -148,7 +148,7 @@ void VoxelEditGroup::setPuzzle(puzzle_c * puzzle, unsigned int num) {
     voxel_c * v = puzzle->getShape(num);
     if (v) {
       zselect->bounds(0, v->getZ()-1);
-      zselect->value(sqedit->getZ());
+      zselect->value(int(zselect->maximum()-sqedit->getZ()));
       space->setLines(v->getZ(), true);
     }
   }
