@@ -307,50 +307,47 @@ static void drawRect(int x0, int y0, int z0,
   glEnd();
 }
 
-static void drawCube(int x1, int y1, int z1, int x2, int y2, int z2, bool type, int diag) {
-  drawRect(x1, y1, z1, x2-x1, 0, 0, 0, y2-y1, 0, type, diag);
-  drawRect(x1, y1, z2, x2-x1, 0, 0, 0, y2-y1, 0, type, diag);
-  drawRect(x1, y1, z1, 0, 0, z2-z1, 0, y2-y1, 0, type, diag);
-  drawRect(x1, y1, z1, x2-x1, 0, 0, 0, 0, z2-z1, type, diag);
-  drawRect(x2, y1, z1, 0, 0, z2-z1, 0, y2-y1, 0, type, diag);
-  drawRect(x1, y2, z1, x2-x1, 0, 0, 0, 0, z2-z1, type, diag);
+// this function finds out if a given square is inside the selected region
+// this check includes the symmetric and comulmn edit modes
+static bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z2, int sx, int sy, int sz, int mode) {
+
+  if ((x < 0) || (y < 0) || (y < 0) || (x >= sx) || (y >= sy) || (z >= sz)) return false;
+
+  if (mode == 0)
+    return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2);
+  if (mode == VoxelDrawer::TOOL_STACK_Y)
+    return (x1 <= x) && (x <= x2) && (z1 <= z) && (z <= z2);
+  if (mode == VoxelDrawer::TOOL_STACK_X)
+    return (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2);
+  if (mode == VoxelDrawer::TOOL_STACK_Z)
+    return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2);
+
+  if (mode == VoxelDrawer::TOOL_STACK_X + VoxelDrawer::TOOL_STACK_Y)
+    return ((x1 <= x) && (x <= x2) || (y1 <= y) && (y <= y2)) && ((z1 <= z) && (z <= z2));
+  if (mode == VoxelDrawer::TOOL_STACK_X + VoxelDrawer::TOOL_STACK_Z)
+    return ((x1 <= x) && (x <= x2) || (z1 <= z) && (z <= z2)) && ((y1 <= y) && (y <= y2));
+  if (mode == VoxelDrawer::TOOL_STACK_Y + VoxelDrawer::TOOL_STACK_Z)
+    return ((y1 <= y) && (y <= y2) || (y1 <= y) && (y <= y2)) && ((x1 <= x) && (x <= x2));
+
+  if (mode == VoxelDrawer::TOOL_STACK_X + VoxelDrawer::TOOL_STACK_Y + VoxelDrawer::TOOL_STACK_Z)
+    return ((x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2) ||
+        (x1 <= x) && (x <= x2) && (z1 <= z) && (z <= z2) ||
+        (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2));
+
+  if (mode & VoxelDrawer::TOOL_MIRROR_X)
+    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~VoxelDrawer::TOOL_MIRROR_X) ||
+      inRegion(sx-x-1, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~VoxelDrawer::TOOL_MIRROR_X);
+
+  if (mode & VoxelDrawer::TOOL_MIRROR_Y)
+    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~VoxelDrawer::TOOL_MIRROR_Y) ||
+      inRegion(x, sy-y-1, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~VoxelDrawer::TOOL_MIRROR_Y);
+
+  if (mode & VoxelDrawer::TOOL_MIRROR_Z)
+    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~VoxelDrawer::TOOL_MIRROR_Z) ||
+      inRegion(x, y, sz-z-1, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~VoxelDrawer::TOOL_MIRROR_Z);
+
+  return false;
 }
-
-static void drawCursor(int phase, const voxel_c * s, unsigned char tools, int x, int y, int z) {
-
-  switch (phase) {
-    case 0:
-      drawCursor(1, s, tools, x, y, z);
-      if (tools & VoxelDrawer::TOOL_MIRROR_X)
-        drawCursor(1, s, tools, s->getX()-x-1, y, z);
-      break;
-    case 1:
-      drawCursor(2, s, tools, x, y, z);
-      if (tools & VoxelDrawer::TOOL_MIRROR_Y)
-        drawCursor(2, s, tools, x, s->getY()-y-1, z);
-      break;
-    case 2:
-      drawCursor(3, s, tools, x, y, z);
-      if (tools & VoxelDrawer::TOOL_MIRROR_Z)
-        drawCursor(3, s, tools, x, y, s->getZ()-z-1);
-      break;
-    case 3:
-      drawCube(x, y, z, x+1, y+1, z+1, false, 4);
-
-      if (tools & VoxelDrawer::TOOL_STACK_X)
-        for (unsigned int xp = 0; xp < s->getX(); xp++)
-          drawCube(xp, y, z, xp+1, y+1, z+1, false, 4);
-      if (tools & VoxelDrawer::TOOL_STACK_Y)
-        for (unsigned int yp = 0; yp < s->getY(); yp++)
-          drawCube(x, yp, z, x+1, yp+1, z+1, false, 4);
-      if (tools & VoxelDrawer::TOOL_STACK_Z)
-        for (unsigned int zp = 0; zp < s->getZ(); zp++)
-          drawCube(x, y, zp, x+1, y+1, zp+1, false, 4);
-      break;
-  }
-}
-
-
 
 void VoxelDrawer::drawVoxelSpace() {
 
@@ -451,24 +448,40 @@ void VoxelDrawer::drawVoxelSpace() {
           }
         }
 
-    if (markerType >= 0) {
+    // the marker should be only active, when only one shape is there
+    // otherwise it's drawn for every shape
+    if ((markerType >= 0) && (mX1 <= mX2) && (mY1 <= mY2)) {
+
       if (_useLightning) glDisable(GL_LIGHTING);
       glDisable(GL_BLEND);
 
-#if 0
-      glColor4f(1, 1, 1, 1);
+      glColor4f(0, 0, 0, 1);
 
-      drawCube(-1, -1, mZ, shapes[piece].shape->getX()+1, shapes[piece].shape->getX()+1, shapes[piece].shape->getX()+1, true, 2);
-#endif
+      // draw the cursor, this is done by iterating over all
+      // cubes and checking for the 3 directions (in one direction only as the other
+      // direction is done with the next cube), if there is a border in the cursor
+      // between these 2 cubes, if so draw the cursor grid
+      for (unsigned int x = 0; x <= shapes[piece].shape->getX(); x++)
+        for (unsigned int y = 0; y <= shapes[piece].shape->getY(); y++)
+          for (unsigned int z = 0; z <= shapes[piece].shape->getZ(); z++) {
+            bool ins = inRegion(x, y, z, mX1, mX2, mY1, mY2, mZ, mZ,
+                shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ(), markerType);
 
-      if ((mX1 < mX2) && (mY1 < mY2)) {
+            if (ins ^ inRegion(x-1, y, z, mX1, mX2, mY1, mY2, mZ, mZ,
+                  shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ(), markerType)) {
+              drawRect(x, y, z, 0, 1, 0, 0, 0, 1, false, 4);
+            }
 
-        glColor4f(0, 0, 0, 1);
-        for (int x = mX1; x < mX2; x++)
-          for (int y = mY1; y < mY2; y++)
-            drawCursor(0, shapes[piece].shape, markerType, x, y, mZ);
-      }
+            if (ins ^ inRegion(x, y-1, z, mX1, mX2, mY1, mY2, mZ, mZ,
+                  shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ(), markerType)) {
+              drawRect(x, y, z, 1, 0, 0, 0, 0, 1, false, 4);
+            }
 
+            if (ins ^ inRegion(x, y, z-1, mX1, mX2, mY1, mY2, mZ, mZ,
+                  shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ(), markerType)) {
+              drawRect(x, y, z, 1, 0, 0, 0, 1, 0, false, 4);
+            }
+          }
       if (_useLightning) glEnable(GL_LIGHTING);
       glEnable(GL_BLEND);
     }
@@ -596,8 +609,8 @@ void VoxelDrawer::setMarker(int x1, int y1, int x2, int y2, int z, int mT) {
   markerType = mT;
   mX1 = x1;
   mY1 = y1;
-  mX2 = x2+1;
-  mY2 = y2+1;
+  mX2 = x2;
+  mY2 = y2;
   mZ = z;
 }
 
