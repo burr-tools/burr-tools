@@ -172,7 +172,7 @@ void SquareEditor::draw() {
 
   // when we do something we need to draw a frame around the
   // squares that get edited
-  if (state) {
+  if (inside) {
 
     int x1, x2, y1, y2;
 
@@ -444,6 +444,7 @@ int SquareEditor::handle(int event) {
     return 1;
   case FL_LEAVE:
     inside = false;
+    redraw();
     callbackReason = RS_MOUSEMOVE;
     do_callback();
     return 1;
