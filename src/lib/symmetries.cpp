@@ -357,10 +357,10 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
     voxel_c p(pp, t);
     s = 1;
 
-    for (int i = 1; i < NUM_TRANSFORMATIONS_MIRROR; i++) {
-      voxel_c v(&p, i);
+    for (int j = 1; j < NUM_TRANSFORMATIONS_MIRROR; j++) {
+      voxel_c v(&p, j);
       if (p.identicalInBB(&v))
-        s |= ((unsigned long long)1) << i;
+        s |= ((unsigned long long)1) << j;
     }
 
     for (i = 0; i < NUM_SYMMETRY_GROUOPS; i++)
@@ -381,14 +381,14 @@ symmetries_t symmetryCalcuation(const voxel_c *pp) {
    */
   if (symmetries[i] != s) {
 
-    for (int i = 1; i < NUM_TRANSFORMATIONS_MIRROR; i++) {
-      voxel_c p(pp, i);
+    for (int j = 1; j < NUM_TRANSFORMATIONS_MIRROR; j++) {
+      voxel_c p(pp, j);
 
       unsigned long long s = 1;
-      for (int i = 1; i < NUM_TRANSFORMATIONS_MIRROR; i++) {
-        voxel_c v(p, i);
+      for (int k = 1; k < NUM_TRANSFORMATIONS_MIRROR; k++) {
+        voxel_c v(p, k);
         if (p.identicalInBB(&v))
-          s |= ((unsigned long long)1) << i;
+          s |= ((unsigned long long)1) << k;
       }
 
       char txt[50];
