@@ -64,7 +64,7 @@ static bool inRegion(int x, int y, int x1, int x2, int y1, int y2, int sx, int s
 
   if ((x < 0) || (y < 0) || (x >= sx) || (y >= sy)) return false;
 
-  mode &= ~ SquareEditor::TOOL_STACK_Z | SquareEditor::TOOL_MIRROR_Z;
+  mode &= ~ (SquareEditor::TOOL_STACK_Z + SquareEditor::TOOL_MIRROR_Z);
 
   if (mode == 0)
     return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2);
