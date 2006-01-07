@@ -58,6 +58,34 @@ void SquareEditor::setZ(unsigned int z) {
 
 }
 
+// this function finds out if a given square is inside the selected region
+// this check includes the symmetric and comulmn edit modes
+static bool inRegion(int x, int y, int x1, int x2, int y1, int y2, int sx, int sy, int mode) {
+
+  if ((x < 0) || (y < 0) || (x >= sx) || (y >= sy)) return false;
+
+  mode &= ~ SquareEditor::TOOL_STACK_Z | SquareEditor::TOOL_MIRROR_Z;
+
+  if (mode == 0)
+    return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2);
+  if (mode == SquareEditor::TOOL_STACK_Y)
+    return (x1 <= x) && (x <= x2);
+  if (mode == SquareEditor::TOOL_STACK_X)
+    return (y1 <= y) && (y <= y2);
+  if (mode == SquareEditor::TOOL_STACK_X + SquareEditor::TOOL_STACK_Y)
+    return (x1 <= x) && (x <= x2) || (y1 <= y) && (y <= y2);
+
+  if (mode & SquareEditor::TOOL_MIRROR_X)
+    return inRegion(x, y, x1, x2, y1, y2, sx, sy, mode & ~SquareEditor::TOOL_MIRROR_X) ||
+      inRegion(sx-x-1, y, x1, x2, y1, y2, sx, sy, mode & ~SquareEditor::TOOL_MIRROR_X);
+
+  if (mode & SquareEditor::TOOL_MIRROR_Y)
+    return inRegion(x, y, x1, x2, y1, y2, sx, sy, mode & ~SquareEditor::TOOL_MIRROR_Y) ||
+      inRegion(x, sy-y-1, x1, x2, y1, y2, sx, sy, mode & ~SquareEditor::TOOL_MIRROR_Y);
+
+  return false;
+}
+
 void SquareEditor::calcParameters(int *s, int *tx, int *ty) {
 
   // calculate the size of the squares
@@ -157,10 +185,7 @@ void SquareEditor::draw() {
     }
 
     if (x1 < 0) x1 = 0;
-    if (x2 > (int)space->getX()-1) x2 = (int)space->getX()-1;
-
-    x1 = tx + s*x1;
-    x2 = tx + s*x2 + s;
+    if (x2 >= (int)space->getX()) x2 = (int)space->getX()-1;
 
     if (startY > mY) {
       y1 = startY;
@@ -171,16 +196,32 @@ void SquareEditor::draw() {
     }
 
     if (y2 < 0) y2 = 0;
-    if (y1 > (int)space->getY()-1) y1 = (int)space->getY()-1;
+    if (y1 >= (int)space->getY()) y1 = (int)space->getY()-1;
 
-    y1 = ty + s*(space->getY()-y1-1);
-    y2 = ty + s*(space->getY()-y2-1) + s;
+    y1 = space->getY() - y1 - 1;
+    y2 = space->getY() - y2 - 1;
 
-    if ((x1 < x2) && (y1 < y2)) {
+    if ((x1 <= x2) && (y1 <= y2)) {
+
+      // ok, we have a valid range selected, now we need to check for
+      // edit mode (symmetric modes, ...) and draw the right cursor for the current mode
 
       fl_color(labelcolor());
-      fl_rect(x1-1, y1-1, x2-x1+3, y2-y1+3);
-      fl_rect(x1+1, y1+1, x2-x1-1, y2-y1-1);
+
+      for (unsigned int x = 0; x <= space->getX(); x++)
+        for (unsigned int y = 0; y <= space->getY(); y++) {
+          bool ins = inRegion(x, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools);
+
+          if (ins ^ inRegion(x, y-1, x1, x2, y1, y2, space->getX(), space->getY(), activeTools)) {
+            fl_line(tx+s*x, ty+s*y+1, tx+s*x+s, ty+s*y+1);
+            fl_line(tx+s*x, ty+s*y-1, tx+s*x+s, ty+s*y-1);
+          }
+
+          if (ins ^ inRegion(x-1, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools)) {
+            fl_line(tx+s*x+1, ty+s*y, tx+s*x+1, ty+s*y+s);
+            fl_line(tx+s*x-1, ty+s*y, tx+s*x-1, ty+s*y+s);
+          }
+        }
     }
   }
 }
@@ -188,24 +229,26 @@ void SquareEditor::draw() {
 static bool set(voxel_c * s, int x, int y, int z, SquareEditor::enTask task, unsigned int currentColor) {
 
   bool changed = false;
-  voxel_type v;
+  voxel_type v = voxel_c::VX_EMPTY;
 
   switch (task) {
-  case SquareEditor::TSK_RESET:
-    v = voxel_c::VX_EMPTY;
-    break;
   case SquareEditor::TSK_SET:
     v = voxel_c::VX_FILLED;
     break;
   case SquareEditor::TSK_VAR:
     v = voxel_c::VX_VARIABLE;
     break;
+  default:
+    break;
   }
 
+  // on all other tasks but the color changing one, we need to set the state of the voxel
   if ((task != SquareEditor::TSK_COLOR) && (s->getState(x, y, z) != v)) {
     changed = true;
     s->setState(x, y, z, v);
   }
+
+  // this is for the color change task
   if ((s->getState(x, y, z) != voxel_c::VX_EMPTY) && (s->getColor(x, y, z) != currentColor)) {
     changed = true;
     s->setColor(x, y, z, currentColor);
@@ -325,7 +368,7 @@ int SquareEditor::handle(int event) {
       y = space->getY() - y - 1;
 
       // check, if the current position is inside the grid, only if so carry out action
-      if (0 <= x && x < space->getX() && 0 <= y && y < space->getY() && setLayer(currentZ)) {
+      if (0 <= x && x < (long)space->getX() && 0 <= y && y < (long)space->getY() && setLayer(currentZ)) {
         callbackReason = RS_CHANGESQUARE;
         do_callback();
       }
@@ -359,8 +402,8 @@ int SquareEditor::handle(int event) {
       // clip the coordinates to the size of the space
       if (x < 0) x = 0;
       if (y < 0) y = 0;
-      if (x >= space->getX()) x = space->getX() - 1;
-      if (y >= space->getY()) y = space->getY() - 1;
+      if (x >= (long)space->getX()) x = space->getX() - 1;
+      if (y >= (long)space->getY()) y = space->getY() - 1;
 
       if ((event == FL_DRAG || event == FL_PUSH) && (editType == EDT_SINGLE))
         if (setLayer(currentZ)) {
@@ -381,7 +424,7 @@ int SquareEditor::handle(int event) {
 
         // we move the mouse, if the new position is different from the saved one,
         // do a callback
-        if ((x != mX) || (y != mY) || (currentZ != mZ)) {
+        if ((x != (long)mX) || (y != (long)mY) || ((long)currentZ != (long)mZ)) {
 
           mX = x;
           mY = y;
