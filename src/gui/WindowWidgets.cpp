@@ -36,6 +36,8 @@ ToggleButton::ToggleButton(int x, int y, int w, int h, Fl_Callback* cb, void * c
   callback_para = cb_para;
   para = p;
   Fl_Button::callback(cb_ToggleButton_stub);
+  selection_color(fl_lighter(color()));
+  clear_visible_focus();
 }
 
 
@@ -741,6 +743,9 @@ Fl_Button * ButtonGroup::addButton(int x, int y, int w, int h) {
 
   Fl_Button * b = new Fl_Button(x, y, w, h);
   b->box(FL_THIN_UP_BOX);
+  b->selection_color(fl_lighter(color()));
+  b->clear_visible_focus();
+
   b->callback(cb_ButtonGroup_stub, this);
 
   if (c == 0)
