@@ -71,7 +71,7 @@ private:
    * the functions returns the next possible state or 0 if no other state was found
    */
   node0_c * find(node0_c * searchnode);
-  bool checkmovement(unsigned int maxPieces);
+  bool checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep);
 
   unsigned short subProbGroup(node0_c * st, voxel_type * pn, bool cond, int piecenumber);
   bool subProbGrouping(voxel_type * pn, int piecenumber);

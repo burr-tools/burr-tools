@@ -250,10 +250,18 @@ void disassembler_0_c::prepare2(int pn) {
  * to distinguish "good" and "bad" moves the function returns true, if less maxPieces
  * have to be moved, this value should not be larger than halve of the pieces in the puzzle
  */
-bool disassembler_0_c::checkmovement(unsigned int maxPieces) {
+bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep) {
 
-  for (int i = 0; i < next_pn; i++)
-    check[i] = movement[i] != 0;
+  /* initialize the movement matrix. we want to move 'nextpiece' 'nextstep' units
+   * into the current direction, so we initialize the matrix with all
+   * zero except for our piece
+   */
+  for (int i = 0; i < next_pn; i++) {
+    movement[i] = 0;
+    check[i] = false;
+  }
+  movement[nextpiece] = nextstep;
+  check[nextpiece] = true;
 
   bool finished;
 
@@ -358,18 +366,12 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
     /* go through all directions */
     while (nextpiece < next_pn) {
 
-      /* initialize the movement matrix. we want to move 'nextpiece' 'nextstep' units
-       * into the current direction, so we initialize the matrix with all
-       * zero except for our piece
-       */
-      for (int i = 0; i < next_pn; i++) movement[i] = 0;
-      movement[nextpiece] = nextstep;
-
       /* checkmovement increases the values for all the other pieces so much that we can move
        * our selected piece as far as we want, if this results in more than halve of the
        * pieces beeing moved we don't do this because this would be stupid
        */
-      if (checkmovement(next_pn/2)) {
+
+      if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep)) {
 
         node0_c * n = new node0_c(next_pn, searchnode);
 
