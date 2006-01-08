@@ -119,6 +119,56 @@ static int savePngImage(char * fname, int sx, int sy, GLubyte * buffer)
 }
 
 
+// make an antialiased blit of the src image to the dst image, the src image has size sw and sh and a line pitch sp
+// the destination image dst has size dw and dh and line pitch dx
+// destination position is px and py
+// the image is scaled down by the given aa factor so that aa*aa pixels is src are averaged and put into dst
+// src must be a multiple of aa and it must fit completely onto dst
+// src image must be rgb, dst image rgba
+// src is bottom to top and dst is in top to bottom order
+// the key color is the color in the src image that is assumed to be transparent color
+static void aaBlit(unsigned char * src, int sw, int sh, int sp, int aa, int keyr, int keyg, int keyb, unsigned char * dst, int dw, int dh, int dp, int px, int py) {
+
+  // check size, must be multiple of antialiasing factor
+  if (sw % aa != 0) return;
+  if (sh % aa != 0) return;
+
+  // picture must fit
+  if (px + sw/aa >= dw) return;
+  if (py + sh/aa >= dh) return;
+
+  for(int x = 0; x < sw/aa; x++)
+    for (int y = 0; y < sh/aa; y++) {
+      int r, g, b, a;
+      r = g = b = a = 0;
+      for (int ax = 0; ax < aa; ax++)
+        for (int ay = 0; ay < aa; ay++) {
+          int pos = 3*(sp*(sh-y*aa+ay-1)+x*aa+ax);
+
+          if ((src[pos+0] != keyr) || (src[pos+1] != keyg) || (src[pos+2] != keyb)) {
+            r += src[pos+0];
+            b += src[pos+1];
+            g += src[pos+2];
+          } else {
+            a++;
+          }
+        }
+
+      r /= aa*aa-a;
+      g /= aa*aa-a;
+      b /= aa*aa-a;
+
+      int pos = 4*(dp*(py+y)+px+x);
+
+      dst[pos+0] = r;
+      dst[pos+1] = g;
+      dst[pos+2] = b;
+      dst[pos+3] = 255*a/(aa*aa);
+    }
+}
+
+
+
 
 static void cb_ImageExportAbort_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Abort(); }
 void ImageExportWindow::cb_Abort(void) {
@@ -143,15 +193,7 @@ void ImageExportWindow::cb_Export(void) {
 
   MyVoxelDrawer dr(view3D->getView());
 
-  dr.hideMarker();
-  dr.clearSpaces();
-  unsigned int num = dr.addSpace(new voxel_c(puzzle->getShape(0)));
-
-  dr.setSpaceColor(num, pieceColorR(0), pieceColorG(0), pieceColorB(0), 255);
-
-  dr.setTransformationType(VoxelDrawer::TranslateRoateScale);
-  dr.setScaling(1);
-  dr.showCoordinateSystem(false);
+  dr.showAssembly(puzzle, 0, 0, false);
 
   do {
     trBeginTile(tr);
@@ -175,9 +217,7 @@ void ImageExportWindow::cb_Export(void) {
     glMaterialfv(GL_FRONT, GL_DIFFUSE, DiffuseParams);
     glMaterialfv(GL_FRONT, GL_SPECULAR, SpecularParams);
 
-    unsigned char r, g, b;
-    Fl::get_color(color(), r, g, b);
-    glClearColor(r/255.0, g/255.0, b/255.0, 0);
+    glClearColor(1, 1, 1, 0);
 
     dr.drawData();
 
@@ -258,7 +298,14 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
 
   fr->end();
 
-  layouter_c * l = new layouter_c(0, 4, 3, 1);
+  fr = new LFl_Frame(0, 4, 2, 1);
+
+  new LFl_Round_Button("Export Assembly", 0, 0);
+  new LFl_Round_Button("Export Solution", 0, 1);
+
+  fr->end();
+
+  layouter_c * l = new layouter_c(0, 5, 3, 1);
 
   LFl_Button *b;
 
@@ -274,7 +321,9 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
 
   l->end();
 
-  view3D = new LView3dGroup(2, 0, 1, 4);
-  view3D->showSingleShape(p, 0, false);
+  view3D = new LView3dGroup(2, 0, 1, 5);
+//  view3D->showSingleShape(p, 0, false);
+  view3D->showAssembly(p, 0, 0, false);
+
 }
 
