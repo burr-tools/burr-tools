@@ -1485,7 +1485,7 @@ void UserInterface::updateInterface(void) {
         }
         break;
       case assemblerThread::ACT_ASSEMBLING:
-        OutputActivity->value("assmemble");
+        OutputActivity->value("assemble");
         break;
       case assemblerThread::ACT_DISASSEMBLING:
         OutputActivity->value("disassmble");
