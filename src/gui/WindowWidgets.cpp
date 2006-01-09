@@ -254,7 +254,15 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
     Fl_Group* o = new Fl_Group(x, y+20, w, h-20, "Tools");
     o->hide();
     new FlatButton(x+5, y+25, w-10, 20, "Minimize", " Minimize the size ", cb_ToolTabTransform2_stub, 15);
-    new FlatButton(x+5, y+50, w-10, 20, "Make inside Variable", " Make the inside of the puzzle variable, so that it can contain holes ", cb_ToolTabTransform2_stub, 16);
+
+    new FlatButton(x+5, y+50, 35, 25, new Fl_Pixmap(InOut_Color_Fixed_In_xpm), new Fl_Pixmap(InOut_Disabled_Fixed_In_xpm), "Make inside fixed", cb_ToolTabTransform2_stub, 16);
+    new FlatButton(x+5, y+75, 35, 25, new Fl_Pixmap(InOut_Color_Fixed_Out_xpm), new Fl_Pixmap(InOut_Disabled_Fixed_Out_xpm), "Make outside fixed", cb_ToolTabTransform2_stub, 17);
+
+    new FlatButton(x+45, y+50, 35, 25, new Fl_Pixmap(InOut_Color_Variable_In_xpm), new Fl_Pixmap(InOut_Disabled_Variable_In_xpm), "Make inside variable", cb_ToolTabTransform2_stub, 18);
+    new FlatButton(x+45, y+75, 35, 25, new Fl_Pixmap(InOut_Color_Variable_Out_xpm), new Fl_Pixmap(InOut_Disabled_Variable_Out_xpm), "Make outside variable", cb_ToolTabTransform2_stub, 19);
+
+    new FlatButton(x+85, y+50, 35, 25, new Fl_Pixmap(InOut_Color_RemoveColor_In_xpm), new Fl_Pixmap(InOut_Disabled_RemoveColor_In_xpm), "Remove Colors from inside cubes", cb_ToolTabTransform2_stub, 20);
+    new FlatButton(x+85, y+75, 35, 25, new Fl_Pixmap(InOut_Color_RemoveColor_Out_xpm), new Fl_Pixmap(InOut_Disabled_RemoveColor_Out_xpm), "RemoveColors from outside cubes", cb_ToolTabTransform2_stub, 21);
     o->end();
   }
 }
@@ -279,7 +287,12 @@ void ToolTab::cb_transform(long task) {
     case 13: space->mirrorY(); break;
     case 14: space->mirrorZ(); break;
     case 15: space->minimizePiece(); break;
-    case 16: space->makeInsideHoly(); break;
+    case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
+    case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
+    case 18: space->actionOnSpace(voxel_c::ACT_VARIABLE, true); break;
+    case 19: space->actionOnSpace(voxel_c::ACT_VARIABLE, false); break;
+    case 20: space->actionOnSpace(voxel_c::ACT_DECOLOR, true); break;
+    case 21: space->actionOnSpace(voxel_c::ACT_DECOLOR, false); break;
     }
     space->setHotspot(0, 0, 0);
 

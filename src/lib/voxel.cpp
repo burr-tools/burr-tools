@@ -907,22 +907,26 @@ void voxel_c::minimizePiece(void) {
   }
 }
 
-
-void voxel_c::makeInsideHoly(void) {
+void voxel_c::actionOnSpace(int action, bool inside) {
 
   if (!getX() || !getY() ||!getZ())
     return;
 
-  for (unsigned int x = 1; x < getX()-1; x++)
-    for (unsigned int y = 1; y < getY()-1; y++)
-      for (unsigned int z = 1; z < getZ()-1; z++)
+  for (unsigned int x = 0; x < getX(); x++)
+    for (unsigned int y = 0; y < getY(); y++)
+      for (unsigned int z = 0; z < getZ(); z++)
         if (getState(x, y, z) != VX_EMPTY) {
-          if ((getState(x-1, y, z) == VX_EMPTY) || (getState(x+1, y, z) == VX_EMPTY) ||
-              (getState(x, y-1, z) == VX_EMPTY) || (getState(x, y+1, z) == VX_EMPTY) ||
-              (getState(x, y, z-1) == VX_EMPTY) || (getState(x, y, z+1) == VX_EMPTY))
-            setState(x, y, z, VX_FILLED);
-          else
-            setState(x, y, z, VX_VARIABLE);
+          if (inside ^
+              ((getState2(x-1, y, z) == VX_EMPTY) || (getState2(x+1, y, z) == VX_EMPTY) ||
+               (getState2(x, y-1, z) == VX_EMPTY) || (getState2(x, y+1, z) == VX_EMPTY) ||
+               (getState2(x, y, z-1) == VX_EMPTY) || (getState2(x, y, z+1) == VX_EMPTY)
+              )
+             )
+            switch(action) {
+              case ACT_FIXED: setState(x, y, z, VX_FILLED); break;
+              case ACT_VARIABLE: setState(x, y, z, VX_VARIABLE); break;
+              case ACT_DECOLOR: setColor(x, y, z, 0); break;
+            }
         }
 }
 

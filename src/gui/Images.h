@@ -81,3 +81,22 @@ extern char * Transform_Monochrome_Rotate_Y_Right_xpm[];
 extern char * Transform_Monochrome_Rotate_Z_Left_xpm[];
 extern char * Transform_Monochrome_Rotate_Z_Right_xpm[];
 
+extern char * InOut_Color_Fixed_In_xpm[];
+extern char * InOut_Color_Fixed_Out_xpm[];
+extern char * InOut_Color_RemoveColor_In_xpm[];
+extern char * InOut_Color_RemoveColor_Out_xpm[];
+extern char * InOut_Color_Variable_In_xpm[];
+extern char * InOut_Color_Variable_Out_xpm[];
+extern char * InOut_Disabled_Fixed_In_xpm[];
+extern char * InOut_Disabled_Fixed_Out_xpm[];
+extern char * InOut_Disabled_RemoveColor_In_xpm[];
+extern char * InOut_Disabled_RemoveColor_Out_xpm[];
+extern char * InOut_Disabled_Variable_In_xpm[];
+extern char * InOut_Disabled_Variable_Out_xpm[];
+extern char * InOut_Monochrome_Fixed_In_xpm[];
+extern char * InOut_Monochrome_Fixed_Out_xpm[];
+extern char * InOut_Monochrome_RemoveColor_In_xpm[];
+extern char * InOut_Monochrome_RemoveColor_Out_xpm[];
+extern char * InOut_Monochrome_Variable_In_xpm[];
+extern char * InOut_Monochrome_Variable_Out_xpm[];
+

@@ -443,12 +443,18 @@ public:
 
   unsigned int countState(int state) const;
 
-  /**
-   * this function makes all voxels that are completely surrounded (6 neibor pieces)
-   * variable. This is useful, if you want to make invisible pieces contain holes
-   * it's not flawless, as it leaves pieces along inside holes static on
+  /* do something on the voxel space, what is done is defined with the enum
+   * fixed sets voxels to the fixed state, variable sets voxels to variable
+   * and decolor removes colors from voxels
+   * inside defines where to carry out the action, on inside cubes or on outside cubes
+   * inside cubes do have 6 nonempty cubes as neighbours
    */
-  void makeInsideHoly(void);
+  enum {
+    ACT_FIXED,
+    ACT_VARIABLE,
+    ACT_DECOLOR
+  };
+  void actionOnSpace(int action, bool inside);
 
   /* used to save to XML */
   xml::node save(void) const;
