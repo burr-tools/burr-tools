@@ -474,7 +474,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
         }
         break;
       case 3:
-        // check, if a single piece can be moved
+        // check, 2 pieces can be moved into the same direction
         if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep, nextpiece2)) {
           n = newNode(next_pn, nextdir, searchnode, movement);
 
