@@ -250,7 +250,13 @@ void disassembler_0_c::prepare2(int pn) {
  * to distinguish "good" and "bad" moves the function returns true, if less maxPieces
  * have to be moved, this value should not be larger than halve of the pieces in the puzzle
  */
-bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep) {
+bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep, int piece2) {
+
+  /* we count the number of pieces that need to be moved, if this number
+   * get's bigger than halve of the pices of the current problem we
+   * stop and return that this movement is rubbish
+   */
+  unsigned int moved_pieces = 1;
 
   /* initialize the movement matrix. we want to move 'nextpiece' 'nextstep' units
    * into the current direction, so we initialize the matrix with all
@@ -263,13 +269,13 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int ne
   movement[nextpiece] = nextstep;
   check[nextpiece] = true;
 
-  bool finished;
+  if (piece2 >= 0) {
+    movement[piece2] = nextstep;
+    check[piece2] = true;
+    moved_pieces++;
+  }
 
-  /* we count the number of pieces that need to be moved, if this number
-   * get's bigger than halve of the pices of the current problem we
-   * stop and return that this movement is rubbish
-   */
-  unsigned int moved_pieces = 1;
+  bool finished;
   int nd = nextdir >> 1;
 
   if (nextdir & 1) {
@@ -349,8 +355,44 @@ void disassembler_0_c::init_find(node0_c * nd, int piecenumber, voxel_type * pie
   nextdir = 0;
   nextpiece = 0;
   nextstep = 1;
+  nextstate = 0;
   next_pn = piecenumber;
 }
+
+
+static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * movement) {
+
+  // we only take this new node, when all pieces are either not moved at all
+  // or moved by the same amount
+
+  int amount = 0;
+
+  for (int i = 0; i < next_pn; i++) {
+    if (movement[i]) {
+      if (amount == 0)
+        amount = movement[i];
+
+      if (amount != movement[i])
+        return 0;
+    }
+  }
+
+  node0_c * n = new node0_c(next_pn, searchnode);
+
+  /* create a new state with the pieces moved */
+  for (int i = 0; i < next_pn; i++)
+    switch(nextdir) {
+      case 0: n->set(i, searchnode->getX(i) + movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
+      case 1: n->set(i, searchnode->getX(i) - movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
+      case 2: n->set(i, searchnode->getX(i), searchnode->getY(i) + movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
+      case 3: n->set(i, searchnode->getX(i), searchnode->getY(i) - movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
+      case 4: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) + movement[i], searchnode->getTrans(i)); break;
+      case 5: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) - movement[i], searchnode->getTrans(i)); break;
+    }
+
+  return n;
+}
+
 
 /* at first we check if movement is possible at all in the current direction, if so
  * the next thing to do is to check if something can be removed, and finally we look for longer
@@ -361,53 +403,111 @@ void disassembler_0_c::init_find(node0_c * nd, int piecenumber, voxel_type * pie
  */
 node0_c * disassembler_0_c::find(node0_c * searchnode) {
 
-  while (nextdir < 6) {
+  node0_c * n = 0;
 
-    /* go through all directions */
-    while (nextpiece < next_pn) {
+  // repeat until we either find a movement or have checked everything
+  while (!n && (nextstate < 4)) {
 
-      /* checkmovement increases the values for all the other pieces so much that we can move
-       * our selected piece as far as we want, if this results in more than halve of the
-       * pieces beeing moved we don't do this because this would be stupid
-       */
+    switch (nextstate) {
+      case 0:
+        // check, if a single piece can be removed
+        if (checkmovement(1, nextdir, next_pn, nextpiece, 30000))
+          n = newNode(next_pn, nextdir, searchnode, movement);
 
-      if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep)) {
-
-        node0_c * n = new node0_c(next_pn, searchnode);
-
-        /* create a new state with the pieces moved */
-        for (int i = 0; i < next_pn; i++)
-          switch(nextdir) {
-          case 0: n->set(i, searchnode->getX(i) + movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
-          case 1: n->set(i, searchnode->getX(i) - movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
-          case 2: n->set(i, searchnode->getX(i), searchnode->getY(i) + movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
-          case 3: n->set(i, searchnode->getX(i), searchnode->getY(i) - movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
-          case 4: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) + movement[i], searchnode->getTrans(i)); break;
-          case 5: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) - movement[i], searchnode->getTrans(i)); break;
-          }
-
-        if (nextstep == 1)
-          nextstep = 30000;
-        else
-          nextstep ++;
-
-        return n;
-      }
-
-      /* if we can not remove the piece we try to move it */
-      if (nextstep == 30000)
-        nextstep = 2;
-      else {
-        nextstep = 1;
         nextpiece++;
-      }
-    }
+        if (nextpiece >= next_pn) {
+          nextpiece = 0;
+          nextdir++;
+          if (nextdir >= 6) {
+            nextstate++;
+            nextdir = 0;
+          }
+        }
+        break;
+      case 1:
+        // check, if a group of pieces can be removed
+        if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, 30000))
+          n = newNode(next_pn, nextdir, searchnode, movement);
 
-    nextpiece = 0;
-    nextdir++;
+        nextpiece++;
+        if (nextpiece >= next_pn) {
+          nextpiece = 0;
+          nextdir++;
+          if (nextdir >= 6) {
+            nextstate++;
+            nextdir = 0;
+          }
+        }
+        break;
+      case 2:
+        // check, if a single piece can be moved
+        if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep)) {
+          n = newNode(next_pn, nextdir, searchnode, movement);
+
+          // if we can move something, we try larger steps
+          nextstep++;
+
+        } else {
+
+          // if not, lets try the next piece
+          nextstep = 1;
+          nextpiece++;
+          if (nextpiece >= next_pn) {
+            nextpiece = 0;
+            nextdir++;
+            if (nextdir >= 6) {
+
+              // next state is the 2 piece at once moving state,
+              // it is only useful to try this, when we have at least 4 pieces
+              // otherwise it doesn't make any sense and we skip that state
+              if (next_pn >= 4) {
+                nextstate++;
+                nextdir = 0;
+
+                nextpiece2 = 1;
+
+              } else {
+                nextstate += 2;
+              }
+            }
+          }
+        }
+        break;
+      case 3:
+        // check, if a single piece can be moved
+        if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep, nextpiece2)) {
+          n = newNode(next_pn, nextdir, searchnode, movement);
+
+          // if we can move something, we try larger steps
+          nextstep++;
+
+        } else {
+
+          // if not, lets try the next piece
+          nextstep = 1;
+          nextpiece2++;
+          if (nextpiece2 >= next_pn) {
+            nextpiece++;
+            nextpiece2 = nextpiece + 1;
+            if (nextpiece2 >= next_pn) {
+              nextpiece = 0;
+              nextpiece2 = 1;
+              nextdir++;
+              if (nextdir >= 6) {
+                nextstate++;
+                nextdir = 0;
+              }
+            }
+          }
+        }
+        break;
+      default:
+        // endstate, do nothing
+        break;
+    }
   }
 
-  return 0;
+  return n;
 }
 
 /* create all the necessary parameters for one of the two possible subproblems
