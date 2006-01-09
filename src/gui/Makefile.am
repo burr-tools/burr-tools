@@ -25,18 +25,24 @@ burrGui_SOURCES=VoxelView.cpp VoxelView.h \
 		tr.c tr.h \
 		Images.cpp Images.h \
                 main.cpp \
-                images/TB_Color_Brush.xpm images/TB_Color_Eraser.xpm images/TB_Color_Mouse_Drag.xpm \
-		images/TB_Color_Columns_X.xpm images/TB_Color_Columns_Y.xpm images/TB_Color_Columns_Z.xpm \
-		images/TB_Color_Mouse_Rubber_Band.xpm images/TB_Color_Pen_Fixed.xpm images/TB_Color_Pen_Variable.xpm \
-		images/TB_Color_Symmetrical_X.xpm images/TB_Color_Symmetrical_Y.xpm images/TB_Color_Symmetrical_Z.xpm \
-		images/TB_Disabled_Brush.xpm images/TB_Disabled_Columns_X.xpm images/TB_Disabled_Columns_Y.xpm \
-		images/TB_Disabled_Columns_Z.xpm images/TB_Disabled_Eraser.xpm images/TB_Disabled_Mouse_Drag.xpm \
-		images/TB_Disabled_Mouse_Rubber_Band.xpm images/TB_Disabled_Pen_Fixed.xpm images/TB_Disabled_Pen_Variable.xpm \
-		images/TB_Disabled_Symmetrical_X.xpm images/TB_Disabled_Symmetrical_Y.xpm images/TB_Disabled_Symmetrical_Z.xpm \
-		images/TB_Monochrome_Brush.xpm images/TB_Monochrome_Columns_X.xpm images/TB_Monochrome_Columns_Y.xpm \
- 	        images/TB_Monochrome_Columns_Z.xpm images/TB_Monochrome_Eraser.xpm images/TB_Monochrome_Mouse_Drag.xpm \
-		images/TB_Monochrome_Mouse_Rubber_Band.xpm images/TB_Monochrome_Pen_Fixed.xpm images/TB_Monochrome_Pen_Variable.xpm \
-		images/TB_Monochrome_Symmetrical_X.xpm images/TB_Monochrome_Symmetrical_Y.xpm images/TB_Monochrome_Symmetrical_Z.xpm \
+                images/TB_Color_Brush.xpm images/TB_Color_Eraser.xpm \
+		images/TB_Color_Mouse_Drag.xpm images/TB_Color_Columns_X.xpm \
+		images/TB_Color_Columns_Y.xpm images/TB_Color_Columns_Z.xpm \
+		images/TB_Color_Mouse_Rubber_Band.xpm images/TB_Color_Pen_Fixed.xpm \
+		images/TB_Color_Pen_Variable.xpm images/TB_Color_Symmetrical_X.xpm \
+		images/TB_Color_Symmetrical_Y.xpm images/TB_Color_Symmetrical_Z.xpm \
+		images/TB_Disabled_Brush.xpm images/TB_Disabled_Columns_X.xpm \
+		images/TB_Disabled_Columns_Y.xpm images/TB_Disabled_Columns_Z.xpm \
+		images/TB_Disabled_Eraser.xpm images/TB_Disabled_Mouse_Drag.xpm \
+		images/TB_Disabled_Mouse_Rubber_Band.xpm images/TB_Disabled_Pen_Fixed.xpm \
+		images/TB_Disabled_Pen_Variable.xpm images/TB_Disabled_Symmetrical_X.xpm \
+		images/TB_Disabled_Symmetrical_Y.xpm images/TB_Disabled_Symmetrical_Z.xpm \
+		images/TB_Monochrome_Brush.xpm images/TB_Monochrome_Columns_X.xpm \
+		images/TB_Monochrome_Columns_Y.xpm images/TB_Monochrome_Columns_Z.xpm \
+		images/TB_Monochrome_Eraser.xpm images/TB_Monochrome_Mouse_Drag.xpm \
+		images/TB_Monochrome_Mouse_Rubber_Band.xpm images/TB_Monochrome_Pen_Fixed.xpm \
+		images/TB_Monochrome_Pen_Variable.xpm images/TB_Monochrome_Symmetrical_X.xpm \
+		images/TB_Monochrome_Symmetrical_Y.xpm images/TB_Monochrome_Symmetrical_Z.xpm \
 		images/Transform_Color_Flip_X.xpm images/Transform_Color_Flip_Y.xpm images/Transform_Color_Flip_Z.xpm \
 		images/Transform_Color_Nudge_X_Left.xpm images/Transform_Color_Nudge_X_Right.xpm \
 		images/Transform_Color_Nudge_Y_Left.xpm images/Transform_Color_Nudge_Y_Right.xpm \
@@ -58,5 +64,15 @@ burrGui_SOURCES=VoxelView.cpp VoxelView.h \
 		images/Transform_Monochrome_Nudge_Z_Left.xpm images/Transform_Monochrome_Nudge_Z_Right.xpm \
 		images/Transform_Monochrome_Rotate_X_Left.xpm images/Transform_Monochrome_Rotate_X_Right.xpm \
 		images/Transform_Monochrome_Rotate_Y_Left.xpm images/Transform_Monochrome_Rotate_Y_Right.xpm \
-		images/Transform_Monochrome_Rotate_Z_Left.xpm images/Transform_Monochrome_Rotate_Z_Right.xpm
+		images/Transform_Monochrome_Rotate_Z_Left.xpm images/Transform_Monochrome_Rotate_Z_Right.xpm \
+		images/InOut_Color_Fixed_In.xpm images/InOut_Color_Fixed_Out.xpm \
+		images/InOut_Color_RemoveColor_In.xpm images/InOut_Color_RemoveColor_Out.xpm \
+		images/InOut_Color_Variable_In.xpm images/InOut_Color_Variable_Out.xpm \
+		images/InOut_Disabled_Fixed_In.xpm images/InOut_Disabled_Fixed_Out.xpm \
+		images/InOut_Disabled_RemoveColor_In.xpm images/InOut_Disabled_RemoveColor_Out.xpm \
+		images/InOut_Disabled_Variable_In.xpm images/InOut_Disabled_Variable_Out.xpm \
+		images/InOut_Monochrome_Fixed_In.xpm images/InOut_Monochrome_Fixed_Out.xpm \
+		images/InOut_Monochrome_RemoveColor_In.xpm images/InOut_Monochrome_RemoveColor_Out.xpm \
+		images/InOut_Monochrome_Variable_In.xpm images/InOut_Monochrome_Variable_Out.xpm
+
 
