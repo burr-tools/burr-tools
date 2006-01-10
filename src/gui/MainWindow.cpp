@@ -64,6 +64,11 @@ void UserInterface::cb_AddColor(void) {
 
   unsigned char r, g, b;
 
+  if (colorSelector->getSelection() == 0)
+    r = g = b = 128;
+  else
+    puzzle->getColor(colorSelector->getSelection()-1, &r, &g, &b);
+
   if (fl_color_chooser("New color", r, g, b)) {
     puzzle->addColor(r, g, b);
     colorSelector->setSelection(puzzle->colorNumber());
