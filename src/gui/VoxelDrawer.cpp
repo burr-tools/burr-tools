@@ -311,7 +311,7 @@ static void drawRect(int x0, int y0, int z0,
 // this check includes the symmetric and comulmn edit modes
 static bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z2, int sx, int sy, int sz, int mode) {
 
-  if ((x < 0) || (y < 0) || (y < 0) || (x >= sx) || (y >= sy) || (z >= sz)) return false;
+  if ((x < 0) || (y < 0) || (z < 0) || (x >= sx) || (y >= sy) || (z >= sz)) return false;
 
   if (mode == 0)
     return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2);
