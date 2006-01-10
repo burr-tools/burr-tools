@@ -1896,36 +1896,47 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     y += SZ_TOOLTAB_Y + SZ_GAP;
     lh -= SZ_TOOLTAB_Y + SZ_GAP;
 
-    editChoice = new ButtonGroup(x, y, 4*SZ_BUTTON2_Y, SZ_BUTTON2_Y);
-    editChoice->addButton(x+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Pen_Fixed_xpm));
-    editChoice->addButton(x+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Pen_Variable_xpm));
-    editChoice->addButton(x+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Eraser_xpm));
-    editChoice->addButton(x+3*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Brush_xpm));
+    int xpos = x;
+
+    editChoice = new ButtonGroup(xpos, y, 4*SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    editChoice->addButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Pen_Fixed_xpm));
+    editChoice->addButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Pen_Variable_xpm));
+    editChoice->addButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Eraser_xpm));
+    editChoice->addButton(xpos+3*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Brush_xpm));
     editChoice->callback(cb_EditChoice_stub, this);
 
+    xpos += 4*SZ_BUTTON2_Y + SZ_GAP;
+
+    editMode = new ButtonGroup(xpos, y, 2*SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    editMode->addButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Mouse_Rubber_Band_xpm));
+    editMode->addButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Mouse_Drag_xpm));
+    editMode->callback(cb_EditMode_stub, this);
+
+    xpos += 2*SZ_BUTTON2_Y + SZ_GAP;
+
     ToggleButton * btn;
-    btn = new ToggleButton(x+4*SZ_BUTTON2_Y+SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_X);
-    btn->image(new Fl_Pixmap(TB_Color_Columns_X_xpm));
 
-    btn = new ToggleButton(x+5*SZ_BUTTON2_Y+SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_Y);
-    btn->image(new Fl_Pixmap(TB_Color_Columns_Y_xpm));
-
-    btn = new ToggleButton(x+6*SZ_BUTTON2_Y+SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_Z);
-    btn->image(new Fl_Pixmap(TB_Color_Columns_Z_xpm));
-
-    btn = new ToggleButton(x+7*SZ_BUTTON2_Y+2*SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_X);
+    btn = new ToggleButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_X);
     btn->image(new Fl_Pixmap(TB_Color_Symmetrical_X_xpm));
 
-    btn = new ToggleButton(x+8*SZ_BUTTON2_Y+2*SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_Y);
+    btn = new ToggleButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_Y);
     btn->image(new Fl_Pixmap(TB_Color_Symmetrical_Y_xpm));
 
-    btn = new ToggleButton(x+9*SZ_BUTTON2_Y+2*SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_Z);
+    btn = new ToggleButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_Z);
     btn->image(new Fl_Pixmap(TB_Color_Symmetrical_Z_xpm));
 
-    editMode = new ButtonGroup(x+10*SZ_BUTTON2_Y+3*SZ_GAP, y, 2*SZ_BUTTON2_Y, SZ_BUTTON2_Y);
-    editMode->addButton(x+10*SZ_BUTTON2_Y+3*SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Mouse_Rubber_Band_xpm));
-    editMode->addButton(x+11*SZ_BUTTON2_Y+3*SZ_GAP, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Mouse_Drag_xpm));
-    editMode->callback(cb_EditMode_stub, this);
+    xpos += 3*SZ_BUTTON2_Y + SZ_GAP;
+
+    btn = new ToggleButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_X);
+    btn->image(new Fl_Pixmap(TB_Color_Columns_X_xpm));
+
+    btn = new ToggleButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_Y);
+    btn->image(new Fl_Pixmap(TB_Color_Columns_Y_xpm));
+
+    btn = new ToggleButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_Z);
+    btn->image(new Fl_Pixmap(TB_Color_Columns_Z_xpm));
+
+    xpos += 3*SZ_BUTTON2_Y * SZ_GAP;
 
     y += SZ_BUTTON2_Y + SZ_GAP;
     lh -= SZ_BUTTON2_Y + SZ_GAP;

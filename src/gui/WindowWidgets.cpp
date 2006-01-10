@@ -242,6 +242,8 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
   {
     Fl_Group* o = changeSize = new ChangeSize(x, y+20, w, h-20);
     o->callback(cb_ToolTabSize_stub);
+
+    new FlatButton(x+w/2+5, y+25, w/2-10, 20, "Minimize", " Minimize the size ", cb_ToolTabTransform2_stub, 15);
     o->end();
   }
   {
@@ -253,16 +255,15 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
   {
     Fl_Group* o = new Fl_Group(x, y+20, w, h-20, "Tools");
     o->hide();
-    new FlatButton(x+5, y+25, w-10, 20, "Minimize", " Minimize the size ", cb_ToolTabTransform2_stub, 15);
 
-    new FlatButton(x+5, y+50, 35, 25, new Fl_Pixmap(InOut_Color_Fixed_In_xpm), new Fl_Pixmap(InOut_Disabled_Fixed_In_xpm), "Make inside fixed", cb_ToolTabTransform2_stub, 16);
-    new FlatButton(x+5, y+75, 35, 25, new Fl_Pixmap(InOut_Color_Fixed_Out_xpm), new Fl_Pixmap(InOut_Disabled_Fixed_Out_xpm), "Make outside fixed", cb_ToolTabTransform2_stub, 17);
+    new FlatButton(x+5, y+25, 35, 25, new Fl_Pixmap(InOut_Color_Fixed_In_xpm), new Fl_Pixmap(InOut_Disabled_Fixed_In_xpm), "Make inside fixed", cb_ToolTabTransform2_stub, 16);
+    new FlatButton(x+5, y+50, 35, 25, new Fl_Pixmap(InOut_Color_Variable_In_xpm), new Fl_Pixmap(InOut_Disabled_Variable_In_xpm), "Make inside variable", cb_ToolTabTransform2_stub, 18);
+    new FlatButton(x+5, y+75, 35, 25, new Fl_Pixmap(InOut_Color_RemoveColor_In_xpm), new Fl_Pixmap(InOut_Disabled_RemoveColor_In_xpm), "Remove Colors from inside cubes", cb_ToolTabTransform2_stub, 20);
 
-    new FlatButton(x+45, y+50, 35, 25, new Fl_Pixmap(InOut_Color_Variable_In_xpm), new Fl_Pixmap(InOut_Disabled_Variable_In_xpm), "Make inside variable", cb_ToolTabTransform2_stub, 18);
-    new FlatButton(x+45, y+75, 35, 25, new Fl_Pixmap(InOut_Color_Variable_Out_xpm), new Fl_Pixmap(InOut_Disabled_Variable_Out_xpm), "Make outside variable", cb_ToolTabTransform2_stub, 19);
 
-    new FlatButton(x+85, y+50, 35, 25, new Fl_Pixmap(InOut_Color_RemoveColor_In_xpm), new Fl_Pixmap(InOut_Disabled_RemoveColor_In_xpm), "Remove Colors from inside cubes", cb_ToolTabTransform2_stub, 20);
-    new FlatButton(x+85, y+75, 35, 25, new Fl_Pixmap(InOut_Color_RemoveColor_Out_xpm), new Fl_Pixmap(InOut_Disabled_RemoveColor_Out_xpm), "RemoveColors from outside cubes", cb_ToolTabTransform2_stub, 21);
+    new FlatButton(x+45, y+25, 35, 25, new Fl_Pixmap(InOut_Color_Fixed_Out_xpm), new Fl_Pixmap(InOut_Disabled_Fixed_Out_xpm), "Make outside fixed", cb_ToolTabTransform2_stub, 17);
+    new FlatButton(x+45, y+50, 35, 25, new Fl_Pixmap(InOut_Color_Variable_Out_xpm), new Fl_Pixmap(InOut_Disabled_Variable_Out_xpm), "Make outside variable", cb_ToolTabTransform2_stub, 19);
+    new FlatButton(x+45, y+75, 35, 25, new Fl_Pixmap(InOut_Color_RemoveColor_Out_xpm), new Fl_Pixmap(InOut_Disabled_RemoveColor_Out_xpm), "RemoveColors from outside cubes", cb_ToolTabTransform2_stub, 21);
     o->end();
   }
 }
