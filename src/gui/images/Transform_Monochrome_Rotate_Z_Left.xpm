@@ -3,10 +3,10 @@ static char *Transform_Monochrome_Rotate_Z_Left_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 6 1",
 "  c black",
-". c gray40",
+". c #666666",
 "X c #BBBBBB",
 "o c #99FFFF",
-"O c gray100",
+"O c #FFFFFF",
 "+ c None",
 /* pixels */
 "+++++++++++++++++++++++++++++++++",

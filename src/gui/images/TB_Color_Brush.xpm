@@ -10,9 +10,9 @@ static char *TB_Color_Brush_xpm[] = {
 "+ c #BBBBBB",
 "@ c #9999FF",
 "# c #FFCC99",
-"$ c gray84",
+"$ c #D6D6D6",
 "% c #CCCCFF",
-"& c gray100",
+"& c #FFFFFF",
 "* c None",
 /* pixels */
 "***********************",

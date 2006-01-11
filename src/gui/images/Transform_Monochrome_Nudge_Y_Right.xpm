@@ -3,7 +3,7 @@ static char *Transform_Monochrome_Nudge_Y_Right_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 7 1",
 "  c black",
-". c gray40",
+". c #666666",
 "X c #FF6600",
 "o c #BBBBBB",
 "O c gainsboro",

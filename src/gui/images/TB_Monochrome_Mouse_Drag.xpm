@@ -3,10 +3,10 @@ static char *TB_Monochrome_Mouse_Drag_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "23 23 6 1",
 "  c black",
-". c gray68",
+". c #ADADAD",
 "X c #BBBBBB",
-"o c gray88",
-"O c gray100",
+"o c #E0E0E0",
+"O c #FFFFFF",
 "+ c None",
 /* pixels */
 "+++++++++++++++++++++++",

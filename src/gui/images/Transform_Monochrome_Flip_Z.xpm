@@ -3,7 +3,7 @@ static char *Transform_Monochrome_Flip_Z_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "68 23 6 1",
 "  c black",
-". c gray40",
+". c #666666",
 "X c #BBBBBB",
 "o c #99FFFF",
 "O c #F1F1F1",

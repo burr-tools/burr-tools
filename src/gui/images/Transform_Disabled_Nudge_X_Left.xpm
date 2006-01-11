@@ -4,7 +4,7 @@ static char *Transform_Disabled_Nudge_X_Left_xpm[] = {
 "33 23 4 1",
 "  c #868686",
 ". c #BBBBBB",
-"X c gray83",
+"X c #D4D4D4",
 "o c None",
 /* pixels */
 "ooooooooooooooooooooooooooooooooo",
