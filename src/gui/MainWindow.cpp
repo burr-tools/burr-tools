@@ -1766,7 +1766,7 @@ int UserInterface::handle(int event) {
 #define SZ_WINDOW_Y 600
 #define SZ_MENU_Y 25                           // hight of the menu
 #define SZ_STATUS_Y 25
-#define SZ_TOOL_X 350                          // initial width of the toolbar
+#define SZ_TOOL_X 325                          // initial width of the toolbar
 #define SZ_TAB_Y 20                            // hight of the tabs in a tab
 #define SZ_GAP 5                               // gap between elements
 #define SZ_CONTENT_START_Y SZ_MENU_Y           // y start of the content area
@@ -1776,7 +1776,7 @@ int UserInterface::handle(int event) {
 #define SZ_BUTTON2_Y 25
 #define SZ_TEXT_Y 15
 #define SZ_SEPARATOR_Y 10
-#define SZ_TOOLTAB_Y 115
+#define SZ_TOOLTAB_Y (115+20)
 
 void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
