@@ -405,12 +405,6 @@ int SquareEditor::handle(int event) {
       if (x >= (long)space->getX()) x = space->getX() - 1;
       if (y >= (long)space->getY()) y = space->getY() - 1;
 
-      if ((event == FL_DRAG || event == FL_PUSH) && (editType == EDT_SINGLE))
-        if (setLayer(currentZ)) {
-          callbackReason = RS_CHANGESQUARE;
-          do_callback();
-        }
-
       if (event == FL_PUSH || event == FL_MOVE || event == FL_ENTER) {
         mX = startX = x;
         mY = startY = y;
@@ -440,6 +434,14 @@ int SquareEditor::handle(int event) {
           do_callback();
         }
       }
+
+      if ((event == FL_DRAG || event == FL_PUSH) && (editType == EDT_SINGLE))
+        if (setLayer(currentZ)) {
+          callbackReason = RS_CHANGESQUARE;
+          redraw();
+          do_callback();
+        }
+
     }
     return 1;
   case FL_LEAVE:
