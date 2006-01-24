@@ -59,6 +59,23 @@ static const char * FileSelection2(const char * title) {
 #endif
 }
 
+/* returns true, if file exists, this is not the
+ optimal way to do this. it would be better to open
+ the dir the file is supposed to be in and look there
+ but this is not really portable so this
+ */
+bool fileExists(const char *n) {
+
+  FILE *f = fopen(n, "r");
+
+  if (f) {
+    fclose(f);
+    return true;
+  } else
+    return false;
+}
+
+
 static void cb_AddColor_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_AddColor(); }
 void UserInterface::cb_AddColor(void) {
 
@@ -846,33 +863,40 @@ void UserInterface::cb_SaveAs(void) {
 
     if (f) {
 
-      char f2[1000];
+      if (!fileExists(f) || fl_ask("File exists overwrite?")) {
 
-      // check, if the last characters are ".xmpuzzle"
-      if (strcmp(f + strlen(f) - strlen(".xmpuzzle"), ".xmpuzzle")) {
-        snprintf(f2, 1000, "%s.xmpuzzle", f);
+        char f2[1000];
 
-      } else
+        // check, if the last characters are ".xmpuzzle"
+        if (strcmp(f + strlen(f) - strlen(".xmpuzzle"), ".xmpuzzle")) {
+          snprintf(f2, 1000, "%s.xmpuzzle", f);
 
-        snprintf(f2, 1000, "%s", f);
+        } else
 
-      ogzstream ostr(f2);
+          snprintf(f2, 1000, "%s", f);
 
-      if (ostr)
-        ostr << puzzle->save();
+        ogzstream ostr(f2);
 
-      if (!ostr)
-        fl_alert("puzzle NOT saved!!!");
-      else
-        changed = false;
+        if (ostr)
+          ostr << puzzle->save();
 
-      if (fname) delete [] fname;
-      fname = new char[strlen(f2)+1];
-      strcpy(fname, f2);
+        if (!ostr)
+          fl_alert("puzzle NOT saved!!!");
+        else
+          changed = false;
 
-      char nm[300];
-      snprintf(nm, 299, "BurrTools - %s", fname);
-      label(nm);
+        if (fname) delete [] fname;
+        fname = new char[strlen(f2)+1];
+        strcpy(fname, f2);
+
+        char nm[300];
+        snprintf(nm, 299, "BurrTools - %s", fname);
+        label(nm);
+
+      } else {
+
+        fl_message("File not saved!\n");
+      }
     }
   }
 }
