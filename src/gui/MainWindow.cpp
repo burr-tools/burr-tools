@@ -951,7 +951,7 @@ void UserInterface::StatPieceInfo(unsigned int pc) {
 
   if (pc < puzzle->shapeNumber()) {
     char txt[100];
-    snprintf(txt, 100, "Shape %i has %i fixed and %i variable cubes", pc,
+    snprintf(txt, 100, "Shape %i has %i fixed and %i variable cubes", pc+1,
              puzzle->getShape(pc)->countState(voxel_c::VX_FILLED),
              puzzle->getShape(pc)->countState(voxel_c::VX_VARIABLE));
     Status->setText(txt);
@@ -1625,15 +1625,15 @@ void UserInterface::update(void) {
         fl_message("Pieces contain %i units less than required", assmThread->getErrorParam());
         break;
       case assembler_c::ERR_CAN_NOT_PLACE:
-        fl_message("Piece %i can be placed nowhere within the result", assmThread->getErrorParam()+1);
+        fl_message("Piece %i can be placed nowhere within the result", assmThread->getErrorParam()+2);
         selectShape = assmThread->getErrorParam()+1;
         break;
       case assembler_c::ERR_CAN_NOT_RESTORE:
         fl_message("Impossible to restore the saved state, you have to start from the beginning, sorry");
         break;
       case assembler_c::ERR_PIECE_WITH_VARICUBE:
-        fl_message("Shape %i is used as piece and contains variable cubes, that is not allowed", assmThread->getErrorParam());
-        selectShape = assmThread->getErrorParam()+1;
+        fl_message("Shape %i is used as piece and contains variable cubes, that is not allowed", assmThread->getErrorParam()+1);
+        selectShape = assmThread->getErrorParam();
         break;
       default:
         break;
@@ -1641,7 +1641,7 @@ void UserInterface::update(void) {
 
       if (selectShape < puzzle->shapeNumber()) {
         TaskSelectionTab->value(TabPieces);
-        PcSel->setSelection(assmThread->getErrorParam());
+        PcSel->setSelection(selectShape);
         activateShape(PcSel->getSelection());
         updateInterface();
         StatPieceInfo(PcSel->getSelection());
