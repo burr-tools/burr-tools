@@ -111,6 +111,11 @@ class UserInterface : public Fl_Double_Window {
 
   VoxelEditGroup *pieceEdit;
 
+  // the zoom levels for all 3 tabs independent, so that the problem
+  // tab can have a wider view
+  double ViewSizes[3];
+  int currentTab;
+
   void tryToLoad(const char *fname);
 
   void CreateShapeTab(int x, int y, int w, int h);

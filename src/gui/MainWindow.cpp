@@ -192,12 +192,20 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
       Small3DView();
     else
       Big3DView();
+    ViewSizes[currentTab] = View3D->getView()->getSize();
+    if (ViewSizes[0] >= 0)
+      View3D->getView()->setSize(ViewSizes[0]);
+    currentTab = 0;
   } else if(o->value() == TabProblems) {
     if (problemSelector->getSelection() < puzzle->problemNumber()) {
       activateProblem(problemSelector->getSelection());
       StatProblemInfo(problemSelector->getSelection());
     }
     Big3DView();
+    ViewSizes[currentTab] = View3D->getView()->getSize();
+    if (ViewSizes[1] >= 0)
+      View3D->getView()->setSize(ViewSizes[1]);
+    currentTab = 1;
   } else if(o->value() == TabSolve) {
     if ((solutionProblem->getSelection() < puzzle->problemNumber()) &&
         (SolutionSel->value() < puzzle->probSolutionNumber(solutionProblem->getSelection()))) {
@@ -205,6 +213,10 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
     }
     Big3DView();
     Status->setText("");
+    ViewSizes[currentTab] = View3D->getView()->getSize();
+    if (ViewSizes[2] >= 0)
+      View3D->getView()->setSize(ViewSizes[2]);
+    currentTab = 2;
   }
 
   updateInterface();
@@ -2410,6 +2422,11 @@ UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
   CreateShapeTab(  0, SZ_CONTENT_START_Y+SZ_TAB_Y, SZ_TOOL_X, SZ_CONTENT_Y-SZ_TAB_Y);
   CreateProblemTab(0, SZ_CONTENT_START_Y+SZ_TAB_Y, SZ_TOOL_X, SZ_CONTENT_Y-SZ_TAB_Y);
   CreateSolveTab(  0, SZ_CONTENT_START_Y+SZ_TAB_Y, SZ_TOOL_X, SZ_CONTENT_Y-SZ_TAB_Y);
+
+  currentTab = 0;
+  ViewSizes[0] = -1;
+  ViewSizes[1] = -1;
+  ViewSizes[2] = -1;
 
   resizable(mainTile);
 
