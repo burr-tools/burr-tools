@@ -1824,7 +1824,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
   Fl_Group * tile = new Fl_Tile(x, y, w, h);
 
   // calculate hight of different groups
-  const int numGroups = 3;
+  const int numGroups = 8;
 
   const int pieceFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
   const int colorsFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
@@ -1836,7 +1836,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
   int pieceHight = hi/numGroups + pieceFixedHight;
   int colorsHight = hi/numGroups + colorsFixedHight;
-  int editHight = hi - (hi/numGroups) * (numGroups-1) + editFixedHight;
+  int editHight = hi - (hi/numGroups) * 2 + editFixedHight;
 
   {
     int lh = pieceHight;
@@ -1949,6 +1949,12 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
     group->resizable(pieceEdit);
     group->end();
+
+    {
+      Fl_Box * b = new Fl_Box(group->x(), group->y(), group->w(), group->h());
+      b->hide();
+      tile->resizable(b);
+    }
   }
 
   {
@@ -1990,12 +1996,6 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
     group->resizable(colorSelector);
     group->end();
-  }
-
-  {
-    Fl_Box * b = new Fl_Box(tile->x(), tile->y(), tile->w(), tile->h()-170);
-    b->hide();
-    tile->resizable(b);
   }
 
   tile->end();
