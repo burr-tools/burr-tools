@@ -1873,6 +1873,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     PcSel->setSelection(0xFFFF);
     Fl_Group * selGroup = new BlockListGroup(x, y, w, lh, PcSel);
     selGroup->callback(cb_PcSel_stub, this);
+    selGroup->tooltip(" Select the shape that you want to edit ");
 
     y += lh;
 
@@ -1899,17 +1900,37 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     int xpos = x;
 
     editChoice = new ButtonGroup(xpos, y, 4*SZ_BUTTON2_Y, SZ_BUTTON2_Y);
-    editChoice->addButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Pen_Fixed_xpm));
-    editChoice->addButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Pen_Variable_xpm));
-    editChoice->addButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Eraser_xpm));
-    editChoice->addButton(xpos+3*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Brush_xpm));
+
+    Fl_Button * b;
+    b = editChoice->addButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    b->image(new Fl_Pixmap(TB_Color_Pen_Fixed_xpm));
+    b->tooltip(" Add normal voxels to the shape ");
+
+    b = editChoice->addButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    b->image(new Fl_Pixmap(TB_Color_Pen_Variable_xpm));
+    b->tooltip(" Add variable voxels to the shape ");
+
+    b = editChoice->addButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    b->image(new Fl_Pixmap(TB_Color_Eraser_xpm));
+    b->tooltip(" Removed voxels from the shape ");
+
+    b = editChoice->addButton(xpos+3*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    b->image(new Fl_Pixmap(TB_Color_Brush_xpm));
+    b->tooltip(" Change the constrain color of voxels in the shape ");
+
     editChoice->callback(cb_EditChoice_stub, this);
 
     xpos += 4*SZ_BUTTON2_Y + SZ_GAP;
 
     editMode = new ButtonGroup(xpos, y, 2*SZ_BUTTON2_Y, SZ_BUTTON2_Y);
-    editMode->addButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Mouse_Rubber_Band_xpm));
-    editMode->addButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y)->image(new Fl_Pixmap(TB_Color_Mouse_Drag_xpm));
+    b = editMode->addButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    b->image(new Fl_Pixmap(TB_Color_Mouse_Rubber_Band_xpm));
+    b->tooltip(" Make changes by dragging rectangular areas in the grid editor ");
+
+    b = editMode->addButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    b->image(new Fl_Pixmap(TB_Color_Mouse_Drag_xpm));
+    b->tooltip(" Make changes by painting in the grid editor ");
+
     editMode->callback(cb_EditMode_stub, this);
 
     xpos += 2*SZ_BUTTON2_Y + SZ_GAP;
@@ -1918,23 +1939,29 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
     btn = new ToggleButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_X);
     btn->image(new Fl_Pixmap(TB_Color_Symmetrical_X_xpm));
+    btn->tooltip(" Toggle mirroring along the y-z-plane ");
 
     btn = new ToggleButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_Y);
     btn->image(new Fl_Pixmap(TB_Color_Symmetrical_Y_xpm));
+    btn->tooltip(" Toggle mirroring along the x-z-plane ");
 
     btn = new ToggleButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_Z);
     btn->image(new Fl_Pixmap(TB_Color_Symmetrical_Z_xpm));
+    btn->tooltip(" Toggle mirroring along the x-y-plane ");
 
     xpos += 3*SZ_BUTTON2_Y + SZ_GAP;
 
     btn = new ToggleButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_X);
     btn->image(new Fl_Pixmap(TB_Color_Columns_X_xpm));
+    btn->tooltip(" Toggle drawing in all x layers ");
 
     btn = new ToggleButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_Y);
     btn->image(new Fl_Pixmap(TB_Color_Columns_Y_xpm));
+    btn->tooltip(" Toggle drawing in all y layers ");
 
     btn = new ToggleButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_Z);
     btn->image(new Fl_Pixmap(TB_Color_Columns_Z_xpm));
+    btn->tooltip(" Toggle drawing in all z layers ");
 
     xpos += 3*SZ_BUTTON2_Y * SZ_GAP;
 
@@ -1991,6 +2018,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     colorSelector = new ColorSelector(x, y, w, lh, puzzle, true);
     Fl_Group * colGroup = new BlockListGroup(x, y, w, lh, colorSelector);
     colGroup->callback(cb_ColSel_stub, this);
+    colGroup->tooltip(" Select color to use for all editing operations ");
 
     y += lh;
 
@@ -2073,6 +2101,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     problemSelector = new ProblemSelector(x, y, w, lh, puzzle);
     Fl_Group * probGroup = new BlockListGroup(x, y, w, lh, problemSelector);
     probGroup->callback(cb_ProbSel_stub, this);
+    probGroup->tooltip(" Select problem to edit ");
 
 
     group->resizable(probGroup);
@@ -2096,6 +2125,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     {
       Fl_Group * o = new Fl_Group(x,           y, hw+SZ_GAP, SZ_BUTTON_Y);
       problemResult = new ResultViewer(x, y, hw, SZ_BUTTON_Y, puzzle);
+      problemResult->tooltip(" The result shape for the current problem ");
       o->resizable(problemResult);
       o->end();
     }
@@ -2112,6 +2142,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     shapeAssignmentSelector = new PieceSelector(x, y, w, lh-SZ_GAP, puzzle);
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh-SZ_GAP, shapeAssignmentSelector);
     shapeGroup->callback(cb_ShapeSel_stub, this);
+    shapeGroup->tooltip(" Select a shape to set as result or to add or remove from problem ");
 
     group->resizable(shapeGroup);
     group->end();
@@ -2152,6 +2183,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     PiecesCountList = new PiecesList(x, y, w, lh-SZ_GAP, puzzle);
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh, PiecesCountList);
     shapeGroup->callback(cb_PiecesClicked_stub, this);
+    shapeGroup->tooltip(" Show which shapes are used in the current problem and how often they are used, can be used to select shapes ");
 
     group->resizable(shapeGroup);
     group->end();
@@ -2172,6 +2204,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     colorAssignmentSelector = new ColorSelector(x, y, w, lh, puzzle, false);
     Fl_Group * colGroup = new BlockListGroup(x, y, w, lh-SZ_GAP, colorAssignmentSelector);
     colGroup->callback(cb_ColorAssSel_stub, this);
+    colGroup->tooltip(" Select color to add or remove from constraints ");
 
     group->resizable(colGroup);
     group->end();
@@ -2189,14 +2222,14 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     {
       Fl_Group * o = new Fl_Group(x, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnColSrtPc = new FlatButton(x, y, hw, SZ_BUTTON_Y, "Srt Pc", " Sort Color Constraints by Piece ", cb_CCSortByPiece_stub, this);
+      BtnColSrtPc = new FlatButton(x, y, hw, SZ_BUTTON_Y, "Srt Pc", " Sort color constraints by piece ", cb_CCSortByPiece_stub, this);
       BtnColSrtPc->deactivate();
       o->resizable(BtnColSrtPc);
       o->end();
     }
 
-    BtnColAdd = new FlatButton(x+hw+SZ_GAP     , y, hw/2, SZ_BUTTON_Y, "@-12->", " Add Color ", cb_AllowColor_stub, this);
-    BtnColRem = new FlatButton(x+hw+SZ_GAP+hw/2, y, hw/2, SZ_BUTTON_Y, "@-18->", " Add Color ", cb_DisallowColor_stub, this);
+    BtnColAdd = new FlatButton(x+hw+SZ_GAP     , y, hw/2, SZ_BUTTON_Y, "@-12->", " Add color to constraint ", cb_AllowColor_stub, this);
+    BtnColRem = new FlatButton(x+hw+SZ_GAP+hw/2, y, hw/2, SZ_BUTTON_Y, "@-18->", " Add color to constraint ", cb_DisallowColor_stub, this);
 
     {
       Fl_Group * o = new Fl_Group(x+2*hw+SZ_GAP, y, hw+SZ_GAP, SZ_BUTTON_Y);
@@ -2211,6 +2244,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     colconstrList = new ColorConstraintsEdit(x, y, w, lh, puzzle);
     Fl_Group * colGroup = new ConstraintsGroup(x, y, w, lh, colconstrList);
     colGroup->callback(cb_ColorConstrSel_stub, this);
+    colGroup->tooltip(" Color constraints for the current problem ");
 
     group->resizable(colGroup);
     group->end();
@@ -2257,6 +2291,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     solutionProblem = new ProblemSelector(x, y, w, lh-SZ_GAP, puzzle);
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh-(paramsFixedHight-SZ_SEPARATOR_Y), solutionProblem);
     shapeGroup->callback(cb_SolProbSel_stub, this);
+    shapeGroup->tooltip(" Select problem to solve ");
 
     group->resizable(shapeGroup);
 
@@ -2317,18 +2352,21 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     OutputActivity = new Fl_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Activity:");
     OutputActivity->box(FL_FLAT_BOX);
     OutputActivity->color(FL_BACKGROUND_COLOR);
+    OutputActivity->tooltip(" What is currently done ");
     y += SZ_TEXT_Y + SZ_GAP;
     lh -= SZ_TEXT_Y + SZ_GAP;
 
     OutputAssemblies = new Fl_Value_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Assemblies:");
     OutputAssemblies->box(FL_FLAT_BOX);
     OutputAssemblies->step(1);   // make output NOT use scientific presentation for big numbers
+    OutputAssemblies->tooltip(" Number of assemblies found so far ");
     y += SZ_TEXT_Y;
     lh -= SZ_TEXT_Y;
 
     OutputSolutions = new Fl_Value_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Solutions:");
     OutputSolutions->box(FL_FLAT_BOX);
     OutputSolutions->step(1);    // make output NOT use scientific presentation for big numbers
+    OutputSolutions->tooltip(" Number of solutions (assemblies that can be disassembled) found so far ");
     y += SZ_TEXT_Y;
     lh -= SZ_TEXT_Y;
 
@@ -2339,6 +2377,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
 
     TimeEst = new Fl_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Time left:");
     TimeEst->box(FL_NO_BOX);
+    TimeEst->tooltip(" This is a very approximate estimate and can be totally wrong, to take with a grain of salt ");
     y += SZ_TEXT_Y;
     lh -= SZ_TEXT_Y;
 
@@ -2390,9 +2429,9 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
     PcVis = new PieceVisibility(x, y, w, lh, puzzle);
-    PcVis->tooltip(" Change appearance of the pieces between normal, grid and invisible ");
     Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh, PcVis);
     shapeGroup->callback(cb_PcVis_stub, this);
+    shapeGroup->tooltip(" Change appearance of the pieces between normal, grid and invisible ");
 
     group->resizable(shapeGroup);
     group->end();
