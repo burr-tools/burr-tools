@@ -153,15 +153,31 @@ bool assemblerThread::assembly(assembly_c * a) {
       // when the assembly has only 1 piece, we don't need
       // to disassemble, the disassembler will return 0 anyways
       if (a->placementCount() > 1) {
+
+        // try to disassemble
         separation_c * s = disassm.disassemble(a);
 
+        // check, if we found a disassembly sequence
         if (s) {
+
+          // yes, the puzzle is disassembably, count solutions
           puzzle->probIncNumSolutions(prob);
 
-          if (_solutionAction == SOL_DISASM)
+          // if the user wants to save the solution, do it
+          if (_solutionAction == SOL_DISASM) {
+
             puzzle->probAddSolution(prob, a, s);
-          else
+
+          } else {
+
+            // if not, delete disassembly AND assembly
             delete s;
+            delete a;
+          }
+        } else {
+
+          // no diassembly sequence found, delete assembly
+          delete a;
         }
 
       } else {
