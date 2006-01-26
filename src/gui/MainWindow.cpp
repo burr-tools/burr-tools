@@ -2322,11 +2322,13 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
 
     OutputAssemblies = new Fl_Value_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Assemblies:");
     OutputAssemblies->box(FL_FLAT_BOX);
+    OutputAssemblies->step(1);   // make output NOT use scientific presentation for big numbers
     y += SZ_TEXT_Y;
     lh -= SZ_TEXT_Y;
 
     OutputSolutions = new Fl_Value_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Solutions:");
     OutputSolutions->box(FL_FLAT_BOX);
+    OutputSolutions->step(1);    // make output NOT use scientific presentation for big numbers
     y += SZ_TEXT_Y;
     lh -= SZ_TEXT_Y;
 
