@@ -1,5 +1,34 @@
 - Add possibility to GUI to edit the comment included in a puzzle
 
+- another 2 symmetry groups were missing
+
+- fix: don't try to disassemble 1 piece puzzles
+
+- properly exit when pressing the close x in the window header
+
+- fix crash when removing the last color
+
+- the marker in the block lists is better visible
+
+- drawing modes from PuzzleSolver3D
+
+- ticks for the z layer selector in the grid editor
+
+- better cursor in 3D view
+
+- disassembler improvements (better move generation, merge, when 2 pieces
+  move the same amount in the same direction, unmerge, when they move a
+  different amount
+
+- lots interface changes with icons from Ronald Kint-Bruynseels and many
+  new functions to ease the drawing of puzzles
+
+- independent zoom levels for the 3 tabs
+
+- when making the piece numbers start with 1 I missed a few places
+
+- plug a memory leak that hit when having a lot of assemblies
+
 ------------- Version 0.1.8b
 
 - Fix Bug found by Markus Götz that made the program crash, when all 

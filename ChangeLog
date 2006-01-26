@@ -1,3 +1,134 @@
+Thu Jan 26 17:50:08 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * add lots of tool tips
+
+Thu Jan 26 17:07:18 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * don't use scientific presentation for number of assemblies and solutions
+
+Thu Jan 26 16:25:40 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * plug memory leak: found assemblies were not deleted when not disassembable, or only counted
+
+Wed Jan 25 21:38:26 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * make the initiali size for the exit part of the piece tab bigger. Disadvantate: the colors and pieces and not be hidden
+
+Tue Jan 24 17:44:29 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * ask bevore overwriting with saveAs
+
+Tue Jan 24 17:24:32 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * fixes for piece number (status line, selection after errors)
+
+Tue Jan 24 17:06:27 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * save the zoom level for the 3 tabs
+
+Wed Jan 11 18:20:39 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * and one new symmetry found by Derek Bosch
+
+Wed Jan 11 18:12:11 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * fix bug where the grid editor was only updated after leaving a square
+
+Wed Jan 11 18:06:27 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * shuffling around of the toolbar buttons
+
+Wed Jan 11 17:27:00 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * don't use named colors in the xpm files, named colors are unknown in windows
+
+Tue Jan 10 14:35:40 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * when adding a new color setup the startup color with something meaningful
+
+Tue Jan 10 14:25:58 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * move the color parts to the bottom of the toolbar
+
+Tue Jan 10 14:19:54 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * some shufling around of buttons
+
+Tue Jan 10 11:38:38 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * typo in 3d cursor drawing method
+
+Mon Jan  9 17:15:05 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * add new images to makefile
+
+Mon Jan  9 16:22:59 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * more versatile tool functions
+  
+  now its possible to set variable and fixed cubes on the
+  in and on the outside and to also decolorize cubes
+  
+  all this is done with a more versatile function in the voxel class
+
+Mon Jan  9 11:14:18 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * correct comment
+
+Mon Jan  9 10:29:23 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * improved the disassembler a bit
+  
+  the disassembler now no longer finds moves where one piece is moved
+  x units and another piece is moved y units in the same direction
+  
+  the disassembler now finds moved where 2 pieces are moved in the same
+  direction, until now it only found these when movement of the first
+  piece forced the 2nd to move.
+  
+  This needs to be improved to larger groups of pieces.
+
+Mon Jan  9 10:10:19 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * typo
+
+Sun Jan  8 16:26:26 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * lokalize the function checkmovement better
+
+Sun Jan  8 16:05:23 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * add for now unused antialiasing routine and some more updates to image exporter
+
+Sun Jan  8 10:32:24 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * move 3d-drawer setup routines into the drawer. Now it's possible to use these for the image export
+
+Sat Jan  7 18:06:56 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * lighter background for activated buttons in toolbar
+
+Sat Jan  7 17:40:58 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * fix for grid editor cursor, didn't show up when mirror Z was switched on
+
+Sat Jan  7 16:19:11 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * silence warning the symmetries debug code
+
+Sat Jan  7 16:18:38 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * update cursor in 2d view when ouse moves
+
+Sat Jan  7 14:53:36 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * use same idea for 3D cursor as used in grid editor, this removes the speed problem for complex cursors
+
+Sat Jan  7 14:10:30 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * proper grid editor corsor for symmetric drawing modes, remove all warings from module
+
+Thu Jan  5 10:23:45 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * cleanup the z coodinate inversion chaos and start at the bottom row of space when editing
+
+Tue Jan  3 19:10:26 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * implement edit types
+
+Tue Jan  3 19:09:58 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * remove the inner white frame from the box selector
+
+Mon Jan  2 14:03:02 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * don't edit when outside the grid when the mouse is released
+
+Mon Jan  2 13:44:20 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * update 3d-cursor as soon as we are inside the square editor
+
+Mon Jan  2 13:28:44 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * exchange the color and shape parts in the shape tab
+
+Sun Jan  1 18:07:06 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * add new images to makefile
+
+Sun Jan  1 18:00:21 CET 2006  Andreas Röver <roever@users.sourceforge.net>
+  * add images for transformation buttons and use them
+
+Fri Dec 30 13:45:49 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * changelog update
+
+Fri Dec 30 13:45:01 CET 2005  Andreas Röver <roever@users.sourceforge.net>
+  * add the images to the imagefile so that they are included in distribution
+
 Fri Dec 30 13:22:32 CET 2005  Andreas Röver <roever@users.sourceforge.net>
   * first step in redesign of interface
 
