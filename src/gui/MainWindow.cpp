@@ -981,7 +981,7 @@ void UserInterface::cb_About(void) {
              "- Fltk, FLU, libZ, libXml2, XmlWrapp, libpng\n"
              "- gzstream by Deepak Bandyopadhyay, Lutz Kettner\n"
              "- Fl_Table (http://3dsite.com/people/erco/Fl_Table/)\n"
-             "- tr by Brian Paul (http://www.mesa3d.org/brianp/TR.html\n"
+             "- tr by Brian Paul (http://www.mesa3d.org/brianp/TR.html)\n"
             );
 }
 
