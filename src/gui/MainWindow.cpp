@@ -198,6 +198,21 @@ void UserInterface::cb_CopyShape(void) {
 
 }
 
+static void cb_NameShape_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_NameShape(); }
+void UserInterface::cb_NameShape(void) {
+
+  if (PcSel->getSelection() < puzzle->shapeNumber()) {
+
+    const char * name = fl_input("Enter name for the shape", puzzle->getShape(PcSel->getSelection())->getName());
+
+    if (name) {
+      puzzle->getShape(PcSel->getSelection())->setName(name);
+      changed = true;
+      updateInterface();
+    }
+  }
+}
+
 
 static void cb_TaskSelectionTab_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_TaskSelectionTab((Fl_Tabs*)o); }
 void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
@@ -1277,9 +1292,11 @@ void UserInterface::updateInterface(void) {
     // we can only edit and copy shapes, when something valid is selected
     if (PcSel->getSelection() < puzzle->shapeNumber()) {
       BtnCpyShape->activate();
+      BtnRenShape->activate();
       pieceEdit->activate();
     } else {
       BtnCpyShape->deactivate();
+      BtnRenShape->deactivate();
       pieceEdit->deactivate();
     }
 
@@ -1847,7 +1864,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 
-    int bw = (w - 2*SZ_GAP) / 3;
+    int bw = (w - 2*SZ_GAP) / 4;
     {
       Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
       BtnNewShape = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", " Add another piece ", cb_NewShape_stub, this);
@@ -1860,10 +1877,18 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
       o->resizable(BtnDelShape);
       o->end();
     }
+
     {
       Fl_Group * o = new Fl_Group(x+2*SZ_GAP+2*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnCpyShape = new FlatButton(x+2*SZ_GAP+2*bw, y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Copy", " Copy selected piece ", cb_CopyShape_stub, this);
+      BtnCpyShape = new FlatButton(x+2*SZ_GAP+2*bw, y, bw, SZ_BUTTON_Y, "Copy", " Copy selected piece ", cb_CopyShape_stub, this);
       o->resizable(BtnCpyShape);
+      o->end();
+    }
+
+    {
+      Fl_Group * o = new Fl_Group(x+3*SZ_GAP+3*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
+      BtnRenShape = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*SZ_GAP-3*bw, SZ_BUTTON_Y, "Rename", " Give the selected shape a name ", cb_NameShape_stub, this);
+      o->resizable(BtnRenShape);
       o->end();
     }
     y += SZ_BUTTON_Y + SZ_GAP;

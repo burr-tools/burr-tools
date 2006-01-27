@@ -132,6 +132,9 @@ private:
    */
   int hx, hy, hz;
 
+  /* shapes can be named */
+  char * name;
+
 protected:
 
   void recalcBoundingBox(void);
@@ -469,6 +472,12 @@ public:
    * by the given transformation
    */
   void getHotspot(unsigned char trans, int * x, int * y, int * z) const;
+
+  /* functions to set the name */
+  const char * getName(void) const { return name; }
+
+  // if you give 0 or an empty string the name will be removed
+  void setName(const char * n);
 };
 
 #endif

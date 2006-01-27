@@ -261,7 +261,10 @@ unsigned int PieceSelector::blockNumber(void) {
 }
 
 void PieceSelector::getText(unsigned int block, char * text) {
-  snprintf(text, 200, "%i", block+1);
+  if (puzzle->getShape(block)->getName())
+    snprintf(text, 200, puzzle->getShape(block)->getName());
+  else
+    snprintf(text, 200, "%i", block+1);
 }
 
 void PieceSelector::getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) {
@@ -309,7 +312,10 @@ void PiecesList::getText(unsigned int block, char * text) {
   int txtLen = 200;
   int len;
 
-  len = snprintf(text, txtLen, "%i", puzzle->probGetShape(problem, block)+1);
+  if (puzzle->probGetShapeShape(problem, block)->getName())
+    len = snprintf(text, txtLen, puzzle->probGetShapeShape(problem, block)->getName());
+  else
+    len = snprintf(text, txtLen, "%i", puzzle->probGetShape(problem, block)+1);
   text += len;
   txtLen -= len;
 
@@ -367,10 +373,17 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
   }
   int shapeID = puzzle->probGetShape(problem, shape);
 
-  if (puzzle->probGetShapeCount(problem, shape) > 1)
-    snprintf(txt, 199, "%i.%i", shapeID+1, subBlock+1);
-  else
-    snprintf(txt, 199, "%i", shapeID+1);
+  if (puzzle->probGetShapeShape(problem, shape)->getName()) {
+    if (puzzle->probGetShapeCount(problem, shape) > 1)
+      snprintf(txt, 199, "%s.%i", puzzle->probGetShapeShape(problem, shape)->getName(), subBlock+1);
+    else
+      snprintf(txt, 199, "%s", puzzle->probGetShapeShape(problem, shape)->getName());
+  } else {
+    if (puzzle->probGetShapeCount(problem, shape) > 1)
+      snprintf(txt, 199, "%i.%i", shapeID+1, subBlock+1);
+    else
+      snprintf(txt, 199, "%i", shapeID+1);
+  }
 
   r = int(255*pieceColorR(shapeID, subBlock));
   g = int(255*pieceColorG(shapeID, subBlock));
@@ -417,10 +430,17 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
 
   int shapeID = puzzle->probGetShape(problem, shape);
 
-  if (puzzle->probGetShapeCount(problem, shape) > 1)
-    snprintf(txt, 199, "%i.%i", shapeID+1, block+1);
-  else
-    snprintf(txt, 199, "%i", shapeID+1);
+  if (puzzle->probGetShapeShape(problem, shape)->getName()) {
+    if (puzzle->probGetShapeCount(problem, shape) > 1)
+      snprintf(txt, 199, "%s.%i", puzzle->probGetShapeShape(problem, shape)->getName(), block+1);
+    else
+      snprintf(txt, 199, "%s", puzzle->probGetShapeShape(problem, shape)->getName());
+  } else {
+    if (puzzle->probGetShapeCount(problem, shape) > 1)
+      snprintf(txt, 199, "%i.%i", shapeID+1, block+1);
+    else
+      snprintf(txt, 199, "%i", shapeID+1);
+  }
 
   int wi, hi;
   fl_font(labelfont(), labelsize());

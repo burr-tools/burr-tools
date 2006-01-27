@@ -32,7 +32,7 @@
 
 using namespace std;
 
-voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), hx(0), hy(0), hz(0) {
+voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), hx(0), hy(0), hz(0), name(0) {
 
   space = new voxel_type[voxels];
   bt_assert(space);
@@ -54,7 +54,7 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init
 }
 
 voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx), sy(orig.sy), sz(orig.sz),
-voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz) {
+voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz), name(0) {
 
   space = new voxel_type[voxels];
   bt_assert(space);
@@ -78,7 +78,7 @@ voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz) {
 }
 
 voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->sx), sy(orig->sy), sz(orig->sz),
-voxels(orig->voxels), hx(orig->hx), hy(orig->hy), hz(orig->hz) {
+voxels(orig->voxels), hx(orig->hx), hy(orig->hy), hz(orig->hz), name(0) {
 
   space = new voxel_type[voxels];
   bt_assert(space);
@@ -103,6 +103,8 @@ voxels(orig->voxels), hx(orig->hx), hy(orig->hy), hz(orig->hz) {
 
 voxel_c::~voxel_c() {
   delete [] space;
+
+  if (name) delete [] name;
 }
 
 void voxel_c::recalcBoundingBox(void) {
@@ -829,6 +831,11 @@ void voxel_c::copy(const voxel_c * orig) {
   bz2 = orig->bz2;
 
   symmetries = orig->symmetries;
+
+  // we don't copy the name intentionally because the name is supposed to
+  // be unique
+  if (name) delete [] name;
+  name = 0;
 }
 
 bool voxel_c::neighbour(unsigned int p, voxel_type val) const {
@@ -959,6 +966,9 @@ xml::node voxel_c::save(void) const {
     nd.get_attributes().insert("hz", tmp);
   }
 
+  if (name)
+    nd.get_attributes().insert("name", name);
+
   // this might allow us to later add another format
   nd.get_attributes().insert("type", "0");
 
@@ -994,7 +1004,7 @@ xml::node voxel_c::save(void) const {
   return nd;
 }
 
-voxel_c::voxel_c(const xml::node & node) : hx(0), hy(0), hz(0) {
+voxel_c::voxel_c(const xml::node & node) : hx(0), hy(0), hz(0), name(0) {
 
   // we must have a real node and the following attributes
   if ((node.get_type() != xml::node::type_element) ||
@@ -1024,6 +1034,14 @@ voxel_c::voxel_c(const xml::node & node) : hx(0), hy(0), hz(0) {
     hy = atoi(node.get_attributes().find("hy")->get_value());
   if (node.get_attributes().find("hz") != node.get_attributes().end())
     hz = atoi(node.get_attributes().find("hz")->get_value());
+  if (node.get_attributes().find("name") != node.get_attributes().end()) {
+    int i = strlen(node.get_attributes().find("name")->get_value());
+    // we don't use names longer than 1000 characters that should be more
+    // than enough and will prevent allocating too long strings
+    if (i > 1000) i = 1000;
+    name = new char[i+1];
+    strncpy(name, node.get_attributes().find("name")->get_value(), i+1);
+  }
 
   space = new voxel_type[voxels];
   bt_assert(space);
@@ -1082,3 +1100,16 @@ voxel_c::voxel_c(const xml::node & node) : hx(0), hy(0), hz(0) {
   skipRecalcBoundingBox(false);
 }
 
+
+void voxel_c::setName(const char * n) {
+
+  /* delete the old name */
+  if (name)
+    delete [] name;
+  name = 0;
+
+  if (n && n[0]) {
+    name = new char [strlen(n)+1];
+    strcpy(name, n);
+  }
+}
