@@ -152,7 +152,7 @@ void SelectableTextList::blockDraw(unsigned int block, int x, int y) {
     fl_color(255, 255, 255);
 
   fl_font(labelfont(), labelsize());
-  fl_draw(txt, x+4, y+h-4);
+  fl_draw(txt, x+4, y+h-2-fl_descent());
 
   if (block == getSelection()) {
     fl_color(0, 0, 0);
@@ -198,7 +198,7 @@ void TextList::blockDraw(unsigned int block, int x, int y) {
     fl_color(255, 255, 255);
 
   fl_font(labelfont(), labelsize());
-  fl_draw(txt, x+4, y+h-4);
+  fl_draw(txt, x+4, y+h-2-fl_descent());
 }
 
 void TextList::blockSize(unsigned int block, unsigned int *w, unsigned int *h) {
@@ -409,13 +409,13 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
     break;
   }
 
-  if ((int)3*r + 6*g + 1*b > 1275)
+  if (((int)3*r + 6*g + 1*b > 1275) || (visState[block] == 2))
     fl_color(0, 0, 0);
   else
     fl_color(255, 255, 255);
 
   fl_font(labelfont(), labelsize());
-  fl_draw(txt, x+4, y+h-4);
+  fl_draw(txt, x+4, y+h-2-fl_descent());
 }
 
 void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned int *h) {
