@@ -450,7 +450,7 @@ void UserInterface::cb_RenameProblem(void) {
 
   if (problemSelector->getSelection() < puzzle->problemNumber()) {
 
-    const char * name = fl_input("Enter name for the copied problem", puzzle->probGetName(problemSelector->getSelection()).c_str());
+    const char * name = fl_input("Enter name for the problem", puzzle->probGetName(problemSelector->getSelection()).c_str());
 
     if (name) {
 
