@@ -964,14 +964,6 @@ voxel_c * puzzle_c::getShape(unsigned int idx) {
 template <class T>
 inline void deallocate(T * p) { ::operator delete (p); }
 
-
-class remove_deleted_shape {
-public:
-  int idx;
-  remove_deleted_shape(int i) : idx(i) {}
-  void operator()(problem_c *p) { p->shapeIdRemoved(idx); }
-};
-
 /* remove the num-th shape
  * be careful this changes all ids and so all problems must be updated
  */
@@ -981,7 +973,8 @@ void puzzle_c::removeShape(unsigned int idx) {
   shapes.erase(i);
 
   /* now remove the shapes from the problem shape list, if that is the one that got deleted */
-  for_each(problems.begin(), problems.end(), remove_deleted_shape(idx));
+  for (unsigned int i = 0; i < problems.size(); i++)
+    problems[i]->shapeIdRemoved(idx);
 }
 
 /* return how many shapes there are */
