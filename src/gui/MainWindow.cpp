@@ -2104,7 +2104,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     }
     {
       Fl_Group * o = new Fl_Group(x+1*SZ_GAP+1*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelProb = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Del", " Delete selected problem ", cb_DeleteProblem_stub, this);
+      BtnDelProb = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Delete", " Delete selected problem ", cb_DeleteProblem_stub, this);
       o->resizable(BtnDelProb);
       o->end();
     }
@@ -2116,7 +2116,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     }
     {
       Fl_Group * o = new Fl_Group(x+3*SZ_GAP+3*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnRenProb = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*SZ_GAP-3*bw, SZ_BUTTON_Y, "Ren", " Rename selected problem ", cb_RenameProblem_stub, this);
+      BtnRenProb = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*SZ_GAP-3*bw, SZ_BUTTON_Y, "Rename", " Rename selected problem ", cb_RenameProblem_stub, this);
       o->resizable(BtnRenProb);
       o->end();
     }
