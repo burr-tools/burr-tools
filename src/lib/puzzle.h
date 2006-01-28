@@ -144,6 +144,8 @@ public:
   /* create copy of the given problem and add the new problem at the end */
   unsigned int copyProblem(unsigned int);
 
+  void exchangeProblem(unsigned int p1, unsigned int p2);
+
   /* name of a problem */
   const std::string & probGetName(unsigned int prob) const;
   void probSetName(unsigned int prob, std::string name);

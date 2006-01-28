@@ -462,6 +462,20 @@ void UserInterface::cb_RenameProblem(void) {
   }
 }
 
+static void cb_ProblemLeft_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ProblemExchange(-1); }
+static void cb_ProblemRight_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ProblemExchange(+1); }
+void UserInterface::cb_ProblemExchange(int with) {
+
+  unsigned int current = problemSelector->getSelection();
+  unsigned int other = current + with;
+
+  if ((current < puzzle->problemNumber()) && (other < puzzle->problemNumber())) {
+    puzzle->exchangeProblem(current, other);
+    changed = true;
+    problemSelector->setSelection(other);
+  }
+}
+
 static void cb_ColorAssSel_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ColorAssSel(); }
 void UserInterface::cb_ColorAssSel(void) {
   updateInterface();
@@ -1339,6 +1353,17 @@ void UserInterface::updateInterface(void) {
       BtnRenProb->deactivate();
     }
 
+    // problems can only be shifted around when the corresponding neibor is
+    // available
+    if (problemSelector->getSelection() > 0)
+      BtnProbLeft->activate();
+    else
+      BtnProbLeft->deactivate();
+    if (problemSelector->getSelection()+1 < puzzle->problemNumber())
+      BtnProbRight->activate();
+    else
+      BtnProbRight->deactivate();
+
     // problems can only be deleted, something valid is selected and the
     // assembler is not running
     if ((problemSelector->getSelection() < puzzle->problemNumber()) && !assmThread)
@@ -2095,7 +2120,8 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 
-    int bw = (w - 3*SZ_GAP) / 4;
+    int bw = (w - 5*SZ_GAP - 2*SZ_BUTTON_Y) / 4;
+
     {
       Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
       BtnNewProb = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", " Add another problem ", cb_NewProblem_stub, this);
@@ -2115,11 +2141,16 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
       o->end();
     }
     {
-      Fl_Group * o = new Fl_Group(x+3*SZ_GAP+3*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnRenProb = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*SZ_GAP-3*bw, SZ_BUTTON_Y, "Rename", " Rename selected problem ", cb_RenameProblem_stub, this);
+      Fl_Group * o = new Fl_Group(x+3*SZ_GAP+3*bw, y, w-4*SZ_GAP-3*bw-2*SZ_BUTTON_Y, SZ_BUTTON_Y);
+      BtnRenProb = new FlatButton(x+3*SZ_GAP+3*bw, y, w-5*SZ_GAP-3*bw-2*SZ_BUTTON_Y, SZ_BUTTON_Y, "Rename", " Rename selected problem ", cb_RenameProblem_stub, this);
       o->resizable(BtnRenProb);
       o->end();
     }
+
+    BtnProbLeft = new FlatButton(x+w-SZ_GAP-2*SZ_BUTTON_Y, y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-14->", " Exchange current problem with previous problem ", cb_ProblemLeft_stub, this);
+    BtnProbRight = new FlatButton(x+w-SZ_BUTTON_Y,          y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-16->", " Exchange current problem with next problem ", cb_ProblemRight_stub, this);
+
+
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 

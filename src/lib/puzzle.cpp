@@ -973,6 +973,17 @@ unsigned int puzzle_c::copyProblem(unsigned int prob) {
   return problems.size()-1;
 }
 
+void puzzle_c::exchangeProblem(unsigned int p1, unsigned int p2) {
+
+  bt_assert(p1 < problems.size());
+  bt_assert(p2 < problems.size());
+
+  problem_c * p = problems[p1];
+  problems[p1] = problems[p2];
+  problems[p2] = p;
+}
+
+
 
 /* set the shape-id for the result shape this the problem */
 void puzzle_c::probSetResult(unsigned int prob, unsigned int shape) {
