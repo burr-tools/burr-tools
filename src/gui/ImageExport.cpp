@@ -18,11 +18,9 @@
 #include "ImageExport.h"
 #include "pieceColor.h"
 #include "VoxelDrawer.h"
+#include "Image.h"
 
 #include "tr.h"
-
-#include <png.h>
-#include <stdio.h>
 
 #include <FL/Fl.h>
 
@@ -43,133 +41,6 @@ class MyVoxelDrawer : public VoxelDrawer {
     }
 };
 
-static int savePngImage(char * fname, int sx, int sy, GLubyte * buffer)
-{
-  png_structp png_ptr;
-  png_infop info_ptr;
-  unsigned char ** png_rows;
-  int x, y;
-
-  FILE *fi = fopen(fname, "wb");
-  png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-
-  if (png_ptr == NULL)
-  {
-    fclose(fi);
-    png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
-    fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
-    return 0;
-  }
-
-  info_ptr = png_create_info_struct(png_ptr);
-  if (info_ptr == NULL)
-  {
-    fclose(fi);
-    png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
-    fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
-    return 0;
-  }
-
-  if (setjmp(png_jmpbuf(png_ptr)))
-  {
-    fclose(fi);
-    png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
-    fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
-    return 0;
-  }
-
-  png_init_io(png_ptr, fi);
-  info_ptr->width = sx;
-  info_ptr->height = sy;
-  info_ptr->bit_depth = 8;
-  info_ptr->color_type = PNG_COLOR_TYPE_RGB;
-  info_ptr->interlace_type = PNG_INTERLACE_NONE;
-  info_ptr->valid = 0;
-
-  png_write_info(png_ptr, info_ptr);
-
-  /* Save the picture: */
-
-  png_rows = (unsigned char **)(malloc(sizeof(char *) * sy));
-  for (y = 0; y < sy; y++)
-  {
-    png_rows[y] = (unsigned char*)malloc(sizeof(char) * 3 * sx);
-
-    for (x = 0; x < sx; x++)
-    {
-      png_rows[y][x * 3 + 0] = buffer[(y*sx+x)*3+0];
-      png_rows[y][x * 3 + 1] = buffer[(y*sx+x)*3+1];
-      png_rows[y][x * 3 + 2] = buffer[(y*sx+x)*3+2];
-    }
-  }
-
-  png_write_image(png_ptr, png_rows);
-
-  for (y = 0; y < sy; y++)
-    free(png_rows[y]);
-
-  free(png_rows);
-
-  png_write_end(png_ptr, NULL);
-
-  png_destroy_write_struct(&png_ptr, &info_ptr);
-  fclose(fi);
-
-  return 1;
-}
-
-
-// make an antialiased blit of the src image to the dst image, the src image has size sw and sh and a line pitch sp
-// the destination image dst has size dw and dh and line pitch dx
-// destination position is px and py
-// the image is scaled down by the given aa factor so that aa*aa pixels is src are averaged and put into dst
-// src must be a multiple of aa and it must fit completely onto dst
-// src image must be rgb, dst image rgba
-// src is bottom to top and dst is in top to bottom order
-// the key color is the color in the src image that is assumed to be transparent color
-static void aaBlit(unsigned char * src, int sw, int sh, int sp, int aa, int keyr, int keyg, int keyb, unsigned char * dst, int dw, int dh, int dp, int px, int py) {
-
-  // check size, must be multiple of antialiasing factor
-  if (sw % aa != 0) return;
-  if (sh % aa != 0) return;
-
-  // picture must fit
-  if (px + sw/aa >= dw) return;
-  if (py + sh/aa >= dh) return;
-
-  for(int x = 0; x < sw/aa; x++)
-    for (int y = 0; y < sh/aa; y++) {
-      int r, g, b, a;
-      r = g = b = a = 0;
-      for (int ax = 0; ax < aa; ax++)
-        for (int ay = 0; ay < aa; ay++) {
-          int pos = 3*(sp*(sh-y*aa+ay-1)+x*aa+ax);
-
-          if ((src[pos+0] != keyr) || (src[pos+1] != keyg) || (src[pos+2] != keyb)) {
-            r += src[pos+0];
-            b += src[pos+1];
-            g += src[pos+2];
-          } else {
-            a++;
-          }
-        }
-
-      r /= aa*aa-a;
-      g /= aa*aa-a;
-      b /= aa*aa-a;
-
-      int pos = 4*(dp*(py+y)+px+x);
-
-      dst[pos+0] = r;
-      dst[pos+1] = g;
-      dst[pos+2] = b;
-      dst[pos+3] = 255*a/(aa*aa);
-    }
-}
-
-
-
-
 static void cb_ImageExportAbort_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Abort(); }
 void ImageExportWindow::cb_Abort(void) {
   hide();
@@ -181,53 +52,45 @@ void ImageExportWindow::cb_Export(void) {
   glDrawBuffer(GL_BACK);
   glReadBuffer(GL_BACK);
 
-  GLubyte *image = new GLubyte[IMAGESIZE * IMAGESIZE * 3];
-
   TRcontext *tr = trNew();
 
   trTileSize(tr, view3D->getView()->w(), view3D->getView()->h(), 0);
-  trImageSize(tr, IMAGESIZE, IMAGESIZE);
-  trImageBuffer(tr, GL_RGB, GL_UNSIGNED_BYTE, image);
-
   trPerspective(tr, 5 + view3D->getView()->getSize(), 1.0, 10, 1100);
 
   MyVoxelDrawer dr(view3D->getView());
 
   dr.showAssembly(puzzle, 0, 0, false);
 
-  do {
-    trBeginTile(tr);
+  GLfloat LightAmbient[]= { 0.01f, 0.01f, 0.01f, 1.0f };
+  GLfloat LightDiffuse[]= { 1.5f, 1.5f, 1.5f, 1.0f };
+  GLfloat LightPosition[]= { 700.0f, 200.0f, -90.0f, 1.0f };
 
-    GLfloat LightAmbient[]= { 0.01f, 0.01f, 0.01f, 1.0f };
-    GLfloat LightDiffuse[]= { 1.5f, 1.5f, 1.5f, 1.0f };
-    GLfloat LightPosition[]= { 700.0f, 200.0f, -90.0f, 1.0f };
+  GLfloat AmbientParams[] = {0.1, 0.1, 0.1, 1};
+  GLfloat DiffuseParams[] = {0.7, 0.7, 0.7, 0.1};
+  GLfloat SpecularParams[] = {0.4, 0.4, 0.4, 0.5};
 
-    GLfloat AmbientParams[] = {0.1, 0.1, 0.1, 1};
-    GLfloat DiffuseParams[] = {0.7, 0.7, 0.7, 0.1};
-    GLfloat SpecularParams[] = {0.4, 0.4, 0.4, 0.5};
+  glEnable(GL_COLOR_MATERIAL);
+  glLightfv(GL_LIGHT1, GL_AMBIENT, LightAmbient);
+  glLightfv(GL_LIGHT1, GL_DIFFUSE, LightDiffuse);
+  glLightfv(GL_LIGHT1, GL_POSITION, LightPosition);
+  glEnable(GL_LIGHT1);
 
-    glEnable(GL_COLOR_MATERIAL);
-    glLightfv(GL_LIGHT1, GL_AMBIENT, LightAmbient);
-    glLightfv(GL_LIGHT1, GL_DIFFUSE, LightDiffuse);
-    glLightfv(GL_LIGHT1, GL_POSITION, LightPosition);
-    glEnable(GL_LIGHT1);
+  glMaterialf(GL_FRONT, GL_SHININESS, 0.5);
+  glMaterialfv(GL_FRONT, GL_AMBIENT, AmbientParams);
+  glMaterialfv(GL_FRONT, GL_DIFFUSE, DiffuseParams);
+  glMaterialfv(GL_FRONT, GL_SPECULAR, SpecularParams);
 
-    glMaterialf(GL_FRONT, GL_SHININESS, 0.5);
-    glMaterialfv(GL_FRONT, GL_AMBIENT, AmbientParams);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, DiffuseParams);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, SpecularParams);
+  glClearColor(1, 1, 1, 0);
 
-    glClearColor(1, 1, 1, 0);
+  Image i(IMAGESIZE, IMAGESIZE, &dr, tr);
+  i.transparentize(255, 255, 255);
+  i.scaleDown(2);
+  i.saveToPNG("test.png");
 
-    dr.drawData();
-
-  } while (trEndTile(tr));
+  glDrawBuffer(GL_FRONT);
+  glReadBuffer(GL_FRONT);
 
   trDelete(tr);
-
-  savePngImage("test.png", IMAGESIZE, IMAGESIZE, image);
-
-  delete [] image;
 
   hide();
 }
