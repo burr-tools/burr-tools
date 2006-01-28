@@ -476,6 +476,44 @@ void UserInterface::cb_ProblemExchange(int with) {
   }
 }
 
+static void cb_ShapeLeft_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ShapeExchange(-1); }
+static void cb_ShapeRight_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ShapeExchange(+1); }
+void UserInterface::cb_ShapeExchange(int with) {
+
+  unsigned int current = PcSel->getSelection();
+  unsigned int other = current + with;
+
+  if ((current < puzzle->shapeNumber()) && (other < puzzle->shapeNumber())) {
+    puzzle->exchangeShape(current, other);
+    changed = true;
+    PcSel->setSelection(other);
+  }
+}
+
+static void cb_ProbShapeLeft_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ProbShapeExchange(-1); }
+static void cb_ProbShapeRight_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ProbShapeExchange(+1); }
+void UserInterface::cb_ProbShapeExchange(int with) {
+
+  unsigned int p = problemSelector->getSelection();
+  unsigned int s = shapeAssignmentSelector->getSelection();
+
+  // find out the index in the problem table
+  unsigned int current;
+
+  for (current = 0; current < puzzle->probShapeNumber(p); current++)
+    if (puzzle->probGetShape(p, current) == s)
+      break;
+
+  unsigned int other = current + with;
+
+  if ((current < puzzle->probShapeNumber(p)) && (other < puzzle->probShapeNumber(p))) {
+    puzzle->probExchangeShape(p, current, other);
+    changed = true;
+    updateInterface();
+    activateProblem(problemSelector->getSelection());
+  }
+}
+
 static void cb_ColorAssSel_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ColorAssSel(); }
 void UserInterface::cb_ColorAssSel(void) {
   updateInterface();
@@ -1314,6 +1352,16 @@ void UserInterface::updateInterface(void) {
       pieceEdit->deactivate();
     }
 
+    // shapes can only be moved, when the neibor shape is there
+    if (PcSel->getSelection() && !assmThread)
+      BtnShapeLeft->activate();
+    else
+      BtnShapeLeft->deactivate();
+    if ((PcSel->getSelection()+1 < puzzle->shapeNumber()) && !assmThread)
+      BtnShapeRight->activate();
+    else
+      BtnShapeRight->deactivate();
+
     // we can only delete shapes, when something valid is selected
     // and no assembler is running
     if ((PcSel->getSelection() < puzzle->shapeNumber()) && !assmThread) {
@@ -1355,14 +1403,38 @@ void UserInterface::updateInterface(void) {
 
     // problems can only be shifted around when the corresponding neibor is
     // available
-    if (problemSelector->getSelection() > 0)
+    if ((problemSelector->getSelection() > 0) && !assmThread)
       BtnProbLeft->activate();
     else
       BtnProbLeft->deactivate();
-    if (problemSelector->getSelection()+1 < puzzle->problemNumber())
+    if ((problemSelector->getSelection()+1 < puzzle->problemNumber()) && !assmThread)
       BtnProbRight->activate();
     else
       BtnProbRight->deactivate();
+
+    if (problemSelector->getSelection() < puzzle->problemNumber() && !assmThread)
+    {
+      unsigned int current;
+      unsigned int p = problemSelector->getSelection();
+      unsigned int s = shapeAssignmentSelector->getSelection();
+
+      for (current = 0; current < puzzle->probShapeNumber(p); current++)
+        if (puzzle->probGetShape(p, current) == s)
+          break;
+
+      if (current && (current < puzzle->probShapeNumber(p)))
+        BtnProbShapeLeft->activate();
+      else
+        BtnProbShapeLeft->deactivate();
+      if (current+1 < puzzle->probShapeNumber(p))
+        BtnProbShapeRight->activate();
+      else
+        BtnProbShapeRight->deactivate();
+
+    } else {
+      BtnProbShapeRight->deactivate();
+      BtnProbShapeLeft->deactivate();
+    }
 
     // problems can only be deleted, something valid is selected and the
     // assembler is not running
@@ -1889,7 +1961,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 
-    int bw = (w - 2*SZ_GAP) / 4;
+    int bw = (w - 5*SZ_GAP - 2*SZ_BUTTON_Y) / 4;
     {
       Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
       BtnNewShape = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", " Add another piece ", cb_NewShape_stub, this);
@@ -1911,11 +1983,15 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     }
 
     {
-      Fl_Group * o = new Fl_Group(x+3*SZ_GAP+3*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnRenShape = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*SZ_GAP-3*bw, SZ_BUTTON_Y, "Rename", " Give the selected shape a name ", cb_NameShape_stub, this);
+      Fl_Group * o = new Fl_Group( x+3*SZ_GAP+3*bw, y, w-3*bw+4*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y);
+      BtnRenShape = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*bw-5*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y, "Rename", " Give the selected shape a name ", cb_NameShape_stub, this);
       o->resizable(BtnRenShape);
       o->end();
     }
+
+    BtnShapeLeft = new FlatButton(x+w-SZ_GAP-2*SZ_BUTTON_Y, y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-14->", " Exchange current shape with previous shape ", cb_ShapeLeft_stub, this);
+    BtnShapeRight = new FlatButton(x+w-SZ_BUTTON_Y,          y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-16->", " Exchange current shape with next shape ", cb_ShapeRight_stub, this);
+
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
@@ -2212,7 +2288,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     Fl_Group* group = new Fl_Group(x, y, w, lh);
     group->box(FL_FLAT_BOX);
 
-    int hw = (w - 2*SZ_GAP)/3;
+    int hw = (w - 4*SZ_GAP-2*SZ_BUTTON_Y)/3;
 
     {
       Fl_Group * o = new Fl_Group(x,           y, hw+SZ_GAP, SZ_BUTTON_Y);
@@ -2227,11 +2303,15 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
       o->end();
     }
     {
-      Fl_Group * o = new Fl_Group(x+2*(hw+SZ_GAP), y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnGroup = new FlatButton(x+2*(hw+SZ_GAP), y, hw, SZ_BUTTON_Y, "Group", " Edit groups ", cb_ShapeGroup_stub, this);
+
+      Fl_Group * o = new Fl_Group(x+2*(hw+SZ_GAP), y, w-2*hw-3*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y);
+      BtnGroup = new FlatButton(x+2*(hw+SZ_GAP)  , y, w-2*hw-4*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y, "Group", " Edit groups ", cb_ShapeGroup_stub, this);
       o->resizable(BtnGroup);
       o->end();
     }
+
+    BtnProbShapeLeft = new FlatButton(x+w-SZ_GAP-2*SZ_BUTTON_Y, y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-14->", " Exchange current shape with previous shape ", cb_ProbShapeLeft_stub, this);
+    BtnProbShapeRight = new FlatButton(x+w-SZ_BUTTON_Y,          y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-16->", " Exchange current shape with next shape ", cb_ProbShapeRight_stub, this);
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;

@@ -120,6 +120,12 @@ public:
   /* return how many shapes there are */
   unsigned int shapeNumber(void) const;
 
+  /* exchange 2 shapes in the list of shapes */
+  void exchangeShape(unsigned int s1, unsigned int s2);
+
+  /* exchange the position of the shapes inside the problem */
+  void probExchangeShape(unsigned int prob, unsigned int s1, unsigned int s2);
+
   /**
    * handle puzzle colors
    */

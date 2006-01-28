@@ -314,3 +314,12 @@ void assembly_c::shiftPiece(unsigned int pc, int dx, int dy, int dz) {
   placements[pc].zpos += dz;
 }
 
+void assembly_c::exchangeShape(unsigned int s1, unsigned int s2) {
+  bt_assert(s1 < placements.size());
+  bt_assert(s2 < placements.size());
+
+  placement_c p = placements[s1];
+  placements[s1] = placements[s2];
+  placements[s2] = p;
+}
+

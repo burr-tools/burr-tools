@@ -216,6 +216,13 @@ public:
   separation_c * tree;
 
   xml::node save(void) const;
+
+  void exchangeShape(unsigned int s1, unsigned int s2) {
+    if (assembly)
+      assembly->exchangeShape(s1, s2);
+    if (tree)
+      tree->exchangeShape(s1, s2);
+  }
 };
 
 solution_c::solution_c(const xml::node & node, unsigned int pieces) {
@@ -349,6 +356,16 @@ public:
    * list and also decrement the count for all the other shapes
    */
   void shapeIdRemoved(unsigned short idx);
+
+  /**
+   * inform the problem that 2 shapes have been exchanged
+   */
+  void exchangeShapeId(unsigned int s1, unsigned int s2);
+
+  /**
+   * exchange 2 shapes inside the shape table of the problem
+   */
+  void exchangeShape(unsigned int s1, unsigned int s2);
 
   /**
    * the name of the problem, so that the user can easily select one
@@ -617,6 +634,30 @@ void problem_c::shapeIdRemoved(unsigned short idx) {
   for (unsigned int i = 0; i < shapes.size(); i++)
     if (shapes[i].shapeId > idx) shapes[i].shapeId--;
 }
+
+void problem_c::exchangeShapeId(unsigned int s1, unsigned int s2) {
+
+  if (result == s1) result = s2;
+  else if (result == s2) result = s1;
+
+  for (unsigned int i = 0; i < shapes.size(); i++)
+    if (shapes[i].shapeId == s1) shapes[i].shapeId = s2;
+    else if (shapes[i].shapeId == s2) shapes[i].shapeId = s1;
+}
+
+void problem_c::exchangeShape(unsigned int s1, unsigned int s2) {
+
+  bt_assert(s1 < shapes.size());
+  bt_assert(s2 < shapes.size());
+
+  shape_c s = shapes[s1];
+  shapes[s1] = shapes[s2];
+  shapes[s2] = s;
+
+  for (unsigned int i = 0; i < solutions.size(); i++)
+    solutions[i]->exchangeShape(s1, s2);
+}
+
 
 
 /************** PUZZLE ****************/
@@ -945,6 +986,24 @@ void puzzle_c::removeShape(unsigned int idx) {
 
 /* return how many shapes there are */
 unsigned int puzzle_c::shapeNumber(void) const { return shapes.size(); }
+
+void puzzle_c::exchangeShape(unsigned int s1, unsigned int s2) {
+  bt_assert(s1 < shapes.size());
+  bt_assert(s2 < shapes.size());
+
+  voxel_c * v = shapes[s1];
+  shapes[s1] = shapes[s2];
+  shapes[s2] = v;
+
+  for (unsigned int i = 0; i < problems.size(); i++)
+    problems[i]->exchangeShapeId(s1, s2);
+}
+
+
+void puzzle_c::probExchangeShape(unsigned int prob, unsigned int s1, unsigned int s2) {
+  problems[prob]->exchangeShape(s1, s2);
+}
+
 
 /**
  * similar functions for problems

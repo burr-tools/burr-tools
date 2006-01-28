@@ -82,11 +82,11 @@ class UserInterface : public Fl_Double_Window {
   Fl_Check_Button *SolveDisasm, *JustCount;
 
   FlatButton *BtnStart, *BtnCont, *BtnStop, *BtnPlacement;
-  FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape;
+  FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape, *BtnShapeLeft, *BtnShapeRight;
   FlatButton *BtnNewColor, *BtnDelColor, *BtnChnColor;
   FlatButton *BtnNewProb, *BtnDelProb, *BtnCpyProb, *BtnRenProb, *BtnProbLeft, *BtnProbRight;
   FlatButton *BtnColSrtPc, *BtnColSrtRes, *BtnColAdd, *BtnColRem;
-  FlatButton *BtnSetResult, *BtnAddShape, *BtnRemShape, *BtnGroup;
+  FlatButton *BtnSetResult, *BtnAddShape, *BtnRemShape, *BtnGroup, *BtnProbShapeLeft, *BtnProbShapeRight;
 
   Fl_Progress *SolvingProgress;
   Fl_Value_Output *OutputAssemblies;
@@ -179,6 +179,7 @@ public:
   void cb_DeleteShape(void);
   void cb_CopyShape(void);
   void cb_NameShape(void);
+  void cb_ShapeExchange(int with);
 
   void cb_NewProblem(void);
   void cb_DeleteProblem(void);
@@ -196,6 +197,7 @@ public:
   void cb_SelectProblemShape(void);
   void cb_AddShapeToProblem(void);
   void cb_RemoveShapeFromProblem(void);
+  void cb_ProbShapeExchange(int with);
 
   void cb_PcSel(BlockListGroup* reason);
   void cb_ColSel(BlockListGroup* reason);

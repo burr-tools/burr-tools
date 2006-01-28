@@ -136,6 +136,9 @@ public:
    */
   void shiftPiece(unsigned int pc, int dx, int dy, int dz);
 
+  /* 2 pieces have exchanged their place in the problem list */
+  void exchangeShape(unsigned int s1, unsigned int s2);
+
 };
 
 

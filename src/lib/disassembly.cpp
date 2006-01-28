@@ -394,5 +394,17 @@ void separation_c::shiftPiece(unsigned int pc, int dx, int dy, int dz) {
     left->shiftPiece(pc, dx, dy, dz);
 }
 
+void separation_c::exchangeShape(unsigned int s1, unsigned int s2) {
+
+  for (unsigned int i = 0; i < piecenumber; i++)
+    if (pieces[i] == s1) pieces[i] = s2;
+    else if (pieces[i] == s2) pieces[i] = s1;
+
+  if (removed)
+    removed->exchangeShape(s1, s2);
+
+  if (left)
+    left->exchangeShape(s1, s2);
+}
 
 

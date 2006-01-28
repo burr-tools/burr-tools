@@ -168,6 +168,8 @@ public:
 
   /* shifts a piece around by a certain amount */
   void shiftPiece(unsigned int pc, int dx, int dy, int dz);
+
+  void exchangeShape(unsigned int s1, unsigned int s2);
 };
 
 
