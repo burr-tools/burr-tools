@@ -29,6 +29,13 @@
 
 - plug a memory leak that hit when having a lot of assemblies
 
+- make it possible to exchange shapes, problems and positions of shapes 
+  inside problems
+
+- shapes can be named. If they have a name it is used in most places, 
+  where the name is useful. If no name is given shapes keep the numbers
+  as usual. If you want the remove a given name just enter an empty text
+
 ------------- Version 0.1.8b
 
 - Fix Bug found by Markus Götz that made the program crash, when all 
