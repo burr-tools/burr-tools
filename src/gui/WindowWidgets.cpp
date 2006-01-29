@@ -513,9 +513,9 @@ void ResultViewer::draw(void) {
     unsigned int result = puzzle->probGetResult(problem);
 
     if (puzzle->probGetResultShape(problem)->getName())
-      snprintf(txt, 120, "Result: %s", puzzle->probGetResultShape(problem)->getName());
+      snprintf(txt, 120, "Result: S%i - %s", result+1, puzzle->probGetResultShape(problem)->getName());
     else
-      snprintf(txt, 19, "Result: %i", result);
+      snprintf(txt, 19, "Result: S%i", result + 1);
 
     unsigned char r, g, b;
 

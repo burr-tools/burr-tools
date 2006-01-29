@@ -1042,7 +1042,7 @@ void UserInterface::StatPieceInfo(unsigned int pc) {
 
   if (pc < puzzle->shapeNumber()) {
     char txt[100];
-    snprintf(txt, 100, "Shape %i has %i fixed and %i variable cubes", pc+1,
+    snprintf(txt, 100, "Shape S%i has %i fixed and %i variable cubes", pc+1,
              puzzle->getShape(pc)->countState(voxel_c::VX_FILLED),
              puzzle->getShape(pc)->countState(voxel_c::VX_VARIABLE));
     Status->setText(txt);
@@ -1062,7 +1062,7 @@ void UserInterface::StatProblemInfo(unsigned int pr) {
       for (unsigned int i = 0; i < puzzle->probShapeNumber(pr); i++)
         cnt += puzzle->probGetShapeShape(pr, i)->countState(voxel_c::VX_FILLED) * puzzle->probGetShapeCount(pr, i);
 
-      snprintf(txt, 100, "Problem %i result can contain %i - %i cubes, pieces contain %i cubes", pr,
+      snprintf(txt, 100, "Problem P%i result can contain %i - %i cubes, pieces contain %i cubes", pr,
                puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
                puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
                puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE), cnt);
