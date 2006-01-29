@@ -453,7 +453,7 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
 void PieceVisibility::setPuzzle(puzzle_c *pz, unsigned int prob) {
   bt_assert(pz);
 
-  if ((pz == puzzle) && (prob == problem))
+  if ((pz == puzzle) && (prob == problem) && visState)
     return;
 
   puzzle = pz;
