@@ -159,7 +159,7 @@ void UserInterface::cb_DeleteShape(void) {
     puzzle->removeShape(current);
 
     if (puzzle->shapeNumber() == 0)
-      current = 0xFFFF;
+      current = 0;
     else
       while (current >= puzzle->shapeNumber())
         current--;
@@ -1353,7 +1353,7 @@ void UserInterface::updateInterface(void) {
     }
 
     // shapes can only be moved, when the neibor shape is there
-    if (PcSel->getSelection() && !assmThread)
+    if ((PcSel->getSelection() > 0) && !assmThread)
       BtnShapeLeft->activate();
     else
       BtnShapeLeft->deactivate();
@@ -1996,7 +1996,6 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
     PcSel = new PieceSelector(x, y, w, lh, puzzle);
-    PcSel->setSelection(0xFFFF);
     Fl_Group * selGroup = new BlockListGroup(x, y, w, lh, PcSel);
     selGroup->callback(cb_PcSel_stub, this);
     selGroup->tooltip(" Select the shape that you want to edit ");
