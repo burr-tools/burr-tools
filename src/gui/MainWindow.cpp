@@ -2029,19 +2029,19 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     Fl_Button * b;
     b = editChoice->addButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
     b->image(new Fl_Pixmap(TB_Color_Pen_Fixed_xpm));
-    b->tooltip(" Add normal voxels to the shape ");
+    b->tooltip(" Add normal voxels to the shape F5 ");
 
     b = editChoice->addButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
     b->image(new Fl_Pixmap(TB_Color_Pen_Variable_xpm));
-    b->tooltip(" Add variable voxels to the shape ");
+    b->tooltip(" Add variable voxels to the shape F6 ");
 
     b = editChoice->addButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
     b->image(new Fl_Pixmap(TB_Color_Eraser_xpm));
-    b->tooltip(" Removed voxels from the shape ");
+    b->tooltip(" Removed voxels from the shape F7 ");
 
     b = editChoice->addButton(xpos+3*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
     b->image(new Fl_Pixmap(TB_Color_Brush_xpm));
-    b->tooltip(" Change the constrain color of voxels in the shape ");
+    b->tooltip(" Change the constrain color of voxels in the shape F8 ");
 
     editChoice->callback(cb_EditChoice_stub, this);
 
