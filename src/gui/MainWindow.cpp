@@ -1279,6 +1279,7 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
 
       View3D->showAssembly(puzzle, prob, num, Status->useColors());
       View3D->updatePositions(disassemble);
+      View3D->updateVisibility(PcVis);
 
     } else {
 
@@ -1288,6 +1289,7 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->hide();
 
       View3D->showAssembly(puzzle, prob, num, Status->useColors());
+      View3D->updateVisibility(PcVis);
     }
 
     SolutionEmpty = false;
