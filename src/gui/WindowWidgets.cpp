@@ -508,11 +508,14 @@ void ResultViewer::draw(void) {
     color(bg);
     labelcolor(fl_rgb_color(255, 0, 0));
   } else {
-    static char txt[20];
+    static char txt[120];
 
     unsigned int result = puzzle->probGetResult(problem);
 
-    snprintf(txt, 19, "Result: %i", result);
+    if (puzzle->probGetResultShape(problem)->getName())
+      snprintf(txt, 120, "Result: %s", puzzle->probGetResultShape(problem)->getName());
+    else
+      snprintf(txt, 19, "Result: %i", result);
 
     unsigned char r, g, b;
 

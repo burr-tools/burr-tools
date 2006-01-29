@@ -2247,22 +2247,22 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     Fl_Group* group = new Fl_Group(x, y, w, lh);
     group->box(FL_FLAT_BOX);
 
-    int hw = (w - SZ_GAP)/2;
+    int hw = (w - SZ_GAP)/4;
 
     new Separator(x, y, w, SZ_SEPARATOR_Y, "Piece assigment", true);
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 
     {
-      Fl_Group * o = new Fl_Group(x,           y, hw+SZ_GAP, SZ_BUTTON_Y);
-      problemResult = new ResultViewer(x, y, hw, SZ_BUTTON_Y, puzzle);
+      Fl_Group * o = new Fl_Group(x,           y, 3*hw+SZ_GAP, SZ_BUTTON_Y);
+      problemResult = new ResultViewer(x, y, 3*hw, SZ_BUTTON_Y, puzzle);
       problemResult->tooltip(" The result shape for the current problem ");
       o->resizable(problemResult);
       o->end();
     }
     {
-      Fl_Group * o = new Fl_Group(x+hw+SZ_GAP, y, w-hw, SZ_BUTTON_Y);
-      BtnSetResult = new FlatButton(x+hw+SZ_GAP, y, w-hw-SZ_GAP, SZ_BUTTON_Y, "Set Result", " Set selected shape as result ", cb_ShapeToResult_stub, this);
+      Fl_Group * o = new Fl_Group(x+3*hw+SZ_GAP, y, w-3*hw, SZ_BUTTON_Y);
+      BtnSetResult = new FlatButton(x+3*hw+SZ_GAP, y, w-3*hw-SZ_GAP, SZ_BUTTON_Y, "Set Result", " Set selected shape as result ", cb_ShapeToResult_stub, this);
       o->resizable(BtnSetResult);
       o->end();
     }
