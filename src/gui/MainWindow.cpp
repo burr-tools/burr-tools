@@ -384,20 +384,14 @@ void UserInterface::cb_pieceEdit(VoxelEditGroup* o) {
 static void cb_NewProblem_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_NewProblem(); }
 void UserInterface::cb_NewProblem(void) {
 
-  const char * name = fl_input("Enter name for the new problem", "Problem");
+  unsigned int prob = puzzle->addProblem();
 
-  if (name) {
+  problemSelector->setSelection(prob);
 
-    unsigned int prob = puzzle->addProblem();
-    puzzle->probSetName(prob, name);
-
-    problemSelector->setSelection(prob);
-
-    changed = true;
-    updateInterface();
-    activateProblem(problemSelector->getSelection());
-    StatProblemInfo(problemSelector->getSelection());
-  }
+  changed = true;
+  updateInterface();
+  activateProblem(problemSelector->getSelection());
+  StatProblemInfo(problemSelector->getSelection());
 }
 
 static void cb_DeleteProblem_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteProblem(); }
@@ -1986,7 +1980,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
     {
       Fl_Group * o = new Fl_Group( x+3*SZ_GAP+3*bw, y, w-3*bw+4*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y);
-      BtnRenShape = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*bw-5*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y, "Rename", " Give the selected shape a name ", cb_NameShape_stub, this);
+      BtnRenShape = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*bw-5*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y, "Label", " Give the selected shape a name ", cb_NameShape_stub, this);
       o->resizable(BtnRenShape);
       o->end();
     }
@@ -2219,7 +2213,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     }
     {
       Fl_Group * o = new Fl_Group(x+3*SZ_GAP+3*bw, y, w-4*SZ_GAP-3*bw-2*SZ_BUTTON_Y, SZ_BUTTON_Y);
-      BtnRenProb = new FlatButton(x+3*SZ_GAP+3*bw, y, w-5*SZ_GAP-3*bw-2*SZ_BUTTON_Y, SZ_BUTTON_Y, "Rename", " Rename selected problem ", cb_RenameProblem_stub, this);
+      BtnRenProb = new FlatButton(x+3*SZ_GAP+3*bw, y, w-5*SZ_GAP-3*bw-2*SZ_BUTTON_Y, SZ_BUTTON_Y, "Label", " Rename selected problem ", cb_RenameProblem_stub, this);
       o->resizable(BtnRenProb);
       o->end();
     }

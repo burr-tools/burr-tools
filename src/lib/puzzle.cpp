@@ -423,7 +423,9 @@ numAssemblies(0xFFFFFFFF), numSolutions(0xFFFFFFFF), usedTime(0xFFFFFFFF)
 
 xml::node problem_c::save(void) const {
   xml::node nd("problem");
-  nd.get_attributes().insert("name", name.c_str());
+
+  if (name.length() > 0)
+    nd.get_attributes().insert("name", name.c_str());
 
   char tmp[50];
 
@@ -510,10 +512,8 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
       (strcmp(node.get_name(), "problem") != 0))
     throw load_error("not the right node for the puzzle problem", node);
 
-  if (node.get_attributes().find("name") == node.get_attributes().end())
-    throw load_error("problems need to have a 'name' attribute", node);
-
-  name = node.get_attributes().find("name")->get_value();
+  if (node.get_attributes().find("name") != node.get_attributes().end())
+    name = node.get_attributes().find("name")->get_value();
 
   xml::node::const_iterator it;
 

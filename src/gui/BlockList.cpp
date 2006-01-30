@@ -310,7 +310,10 @@ unsigned int ProblemSelector::blockNumber(void) {
 }
 
 void ProblemSelector::getText(unsigned int block, char * text) {
-  snprintf(text, 200, "P%i - %s", block+1, puzzle->probGetName(block).c_str());
+  if (puzzle->probGetName(block).length())
+    snprintf(text, 200, "P%i - %s", block+1, puzzle->probGetName(block).c_str());
+  else
+    snprintf(text, 200, "P%i", block+1);
 }
 
 void ProblemSelector::getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) {
