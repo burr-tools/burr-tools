@@ -273,7 +273,7 @@ void ColorSelector::getText(unsigned int block, char * text) {
   if (block == 0)
     snprintf(text, 200, "Neutral");
   else
-    snprintf(text, 200, "%i", block);
+    snprintf(text, 200, "C%i", block);
 }
 
 void PieceSelector::setPuzzle(puzzle_c *pz) {
