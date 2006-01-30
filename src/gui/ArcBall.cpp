@@ -140,6 +140,9 @@ static void Matrix4fSetRotationFromMatrix3f(GLfloat a[16], const GLfloat m[9])
   a[10] = m[8] * scale;
 }
 
+/**
+ * find the point on the halve-sphere that is closest to the given coordinates
+ */
 void ArcBall_c::mapToSphere(GLfloat x, GLfloat y, GLfloat NewVec[3]) const
 {
   GLfloat TempPt[2];

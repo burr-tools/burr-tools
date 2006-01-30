@@ -30,6 +30,15 @@
 #include <GL/gl.h>
 #endif
 
+/**
+ * This class provides an implementation of an arcball. The mathematics of this is beyond me.
+ * Arcball is an algorithm that allows you to meaningful rotate objects by dragging them.
+ * The problem normally is that you must rotate the objects differently depending on their
+ * current rotation, when you want to drag them. This is handled in here.
+ *
+ * The class needs to know the size of the area where you can drag, so that it can make sense
+ * out of the given mouse positions. The rest of the handling is basic
+ */
 class ArcBall_c {
 
 protected:
@@ -37,22 +46,34 @@ protected:
   void getDrag(GLfloat NewRot[4]) const;
 
 public:
-  //Create/Destroy
+  /**
+   * create arcball class with an initial size for the drag area
+   */
   ArcBall_c(GLfloat NewWidth, GLfloat NewHeight);
 
-  //Set new bounds
+  /**
+   * change the size of the area where the mouse can move to
+   */
   void setBounds(GLfloat NewWidth, GLfloat NewHeight);
 
-  //Mouse down
+  /**
+   * the mouse starts to drag, give the position of the cursor
+   */
   void click(GLfloat x, GLfloat y);
 
-  // Mouse up
+  /**
+   * end the mouse draggin at the given position
+   */
   void clack(GLfloat x, GLfloat y);
 
-  //Mouse drag, calculate rotation
+  /**
+   * update the position of the mouse cursor, while dragging is active
+   */
   void drag(GLfloat x, GLfloat y);
 
-  // adds the current arcball transformation to the OpenGL transformation matrix
+  /**
+   * adds the current arcball transformation to the OpenGL transformation matrix
+   */
   void addTransform(void);
 
 protected:

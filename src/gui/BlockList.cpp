@@ -23,39 +23,51 @@
 #include <FL/fl_draw.h>
 #include <FL/Fl.h>
 
-
+/* draw a blocklist */
 void BlockList::draw() {
 
+  /* current position and current line feed size */
   unsigned int zpos = 0;
   unsigned int maxz = 0;
   unsigned int xpos = 0;
 
+  /* we are too small to draw anything return */
   if ((w() <= 0) || (h() <= 0)) return;
 
+  /* push our clip area so that we don't paint on the outside */
   fl_push_clip(x(), y(), w(), h());
 
+  /* clear area. This is necessary because we have empty background
+   * at the end of lines where no block fits
+   */
   fl_color(color());
   fl_rectf(x(), y(), w(), h());
 
+  /* draw all blocks */
   for (unsigned int i = 0; i < blockNumber(); i++) {
 
     unsigned int wi, hi;
 
+    /* get the size */
     blockSize(i, &wi, &hi);
 
+    /* check if it still fits on the current row */
     if ((xpos > 0) && (xpos + wi > (unsigned int)w())) {
       zpos += maxz;
       maxz = 0;
       xpos = 0;
     }
 
+    /* save line feed size */
     if (hi > maxz) maxz = hi;
 
+    /* draw */
     blockDraw(i, x()+xpos, y()+zpos-shift);
 
     xpos += wi;
   }
 
+  /* calculate how many how many pixels we can scroll */
   unsigned int scroll = zpos + maxz;
 
   if (scroll > (unsigned int)h())
@@ -63,6 +75,7 @@ void BlockList::draw() {
   else
     scroll = 0;
 
+  /* if the hight value has changed inform the user */
   if (lastHight != scroll) {
     lastHight = scroll;
     do_callback(RS_CHANGEDHIGHT);
@@ -87,6 +100,7 @@ int BlockList::handle(int event) {
 
   case FL_PUSH:
     {
+      /* find out which block has been clicked */
       for (unsigned int i = 0; i < blockNumber(); i++) {
 
         unsigned int wi, hi;
@@ -102,6 +116,8 @@ int BlockList::handle(int event) {
 
         if ((Fl::event_x() >= x() + (int)xpos) && (Fl::event_x() <= x() + (int)xpos + (int)wi) &&
             (Fl::event_y() >= y() + (int)zpos - (int)shift) && (Fl::event_y() <= y() + (int)zpos - (int)shift + (int)maxz)) {
+
+          /* save the block number and call inherited class */
           current_block = i;
           push(i);
 
@@ -131,29 +147,36 @@ int BlockList::handle(int event) {
   return 0;
 }
 
+/* draw a selectable text block with a background color */
 void SelectableTextList::blockDraw(unsigned int block, int x, int y) {
   int w, h;
   unsigned char r, g, b;
   char txt[200];
 
+  /* get color and text from inheritor */
   getColor(block, &r, &g, &b);
   getText(block, txt);
 
+  /* measure text and add border */
   w = 0;
   fl_measure(txt, w, h);
   w += 8;
   h += 4;
 
+  /* draw the colored rectangle */
   fl_rectf(x, y, w, h, r, g, b);
 
+  /* text color depends on how light the color is */
   if ((int)3*r + 6*g + 1*b > 1275)
     fl_color(0, 0, 0);
   else
     fl_color(255, 255, 255);
 
+  /* draw the text */
   fl_font(labelfont(), labelsize());
   fl_draw(txt, x+4, y+h-2-fl_descent());
 
+  /* if this block is selected draw a black-white border around it */
   if (block == getSelection()) {
     fl_color(0, 0, 0);
     fl_rect(x, y, w, h);
@@ -164,6 +187,7 @@ void SelectableTextList::blockDraw(unsigned int block, int x, int y) {
   }
 }
 
+/* return the size of a text block */
 void SelectableTextList::blockSize(unsigned int block, unsigned int *w, unsigned int *h) {
   char txt[200];
   getText(block, txt);
@@ -176,7 +200,7 @@ void SelectableTextList::blockSize(unsigned int block, unsigned int *w, unsigned
   *h = hi + 4;
 }
 
-
+/* drawe a non selectable text block with background color */
 void TextList::blockDraw(unsigned int block, int x, int y) {
   int w, h;
   unsigned char r, g, b;
@@ -228,6 +252,7 @@ unsigned int ColorSelector::blockNumber(void) {
 
 /* return the color for the block */
 void ColorSelector::getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) {
+
   // the block 0 is the neutral color and always available and
   // not saved in the color list
   if (!includeNeutral)
@@ -241,6 +266,7 @@ void ColorSelector::getColor(unsigned int block, unsigned char *r,  unsigned cha
 
 /* return the text for the block (not more than 20 characters */
 void ColorSelector::getText(unsigned int block, char * text) {
+
   if (!includeNeutral)
     block++;
 
@@ -312,6 +338,7 @@ void PiecesList::getText(unsigned int block, char * text) {
   int txtLen = 200;
   int len;
 
+  /* first the shape name */
   if (puzzle->probGetShapeShape(problem, block)->getName())
     len = snprintf(text, txtLen, "S%i - %s", puzzle->probGetShape(problem, block)+1, puzzle->probGetShapeShape(problem, block)->getName());
   else
@@ -319,12 +346,14 @@ void PiecesList::getText(unsigned int block, char * text) {
   text += len;
   txtLen -= len;
 
+  /* now how many pieces of that shape are available */
   if (puzzle->probGetShapeCount(problem, block) != 1) {
     len = snprintf(text, txtLen, "(%i)", puzzle->probGetShapeCount(problem, block));
     text += len;
     txtLen -= len;
   }
 
+  /* finally the group information */
   for (int i = 0; i < puzzle->probGetShapeGroupNumber(problem, block); i++) {
     if (puzzle->probGetShapeGroupCount(problem, block, i) != puzzle->probGetShapeCount(problem, block))
       len = snprintf(text, txtLen, ", G%i(%i)", puzzle->probGetShapeGroup(problem, block, i), puzzle->probGetShapeGroupCount(problem, block, i)+1);
@@ -394,14 +423,18 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
   w += 8;
   h += 4;
 
+  /* dependingon the state we draw 3 different things: */
   switch(visState[block]) {
   case 0:
+    /* a normal block */
     fl_rectf(x, y, w, h, r, g, b);
     break;
   case 1:
+    /* a block that is smaller and leaves a border around */
     fl_rectf(x+2, y+2, w-4, h-4, r, g, b);
     break;
   case 2:
+    /* only a frame */
     fl_rectf(x, y, w, 2, r, g, b);
     fl_rectf(x, y+h-2, w, 2, r, g, b);
     fl_rectf(x, y, 2, h, r, g, b);
@@ -409,6 +442,9 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
     break;
   }
 
+  /* the color of the label depends on the background color. If the only frame mode
+   * is on we normally have the light background color, so use the dark color, too
+   */
   if (((int)3*r + 6*g + 1*b > 1275) || (visState[block] == 2))
     fl_color(0, 0, 0);
   else
@@ -453,6 +489,7 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
 void PieceVisibility::setPuzzle(puzzle_c *pz, unsigned int prob) {
   bt_assert(pz);
 
+  /* if nothing changes, don't reset piece visibility */
   if ((pz == puzzle) && (prob == problem) && visState)
     return;
 
@@ -464,6 +501,7 @@ void PieceVisibility::setPuzzle(puzzle_c *pz, unsigned int prob) {
 
   visState = 0;
 
+  /* set up new visibilty when a valid problem is available */
   if (prob < pz->problemNumber() && (pz->probPieceNumber(prob) > 0)) {
     visState = new unsigned char[pz->probPieceNumber(prob)];
 
@@ -500,9 +538,11 @@ void PieceVisibility::push(unsigned int block) {
 
 void ColorConstraintsEdit::draw(void) {
 
+  /* no valid problem -> exit */
   if (problem >= puzzle->problemNumber())
     return;
 
+  /* too small -> exit */
   if ((w() <= 0) || (h() <= 0)) return;
 
   unsigned int ypos = 0;
@@ -510,9 +550,11 @@ void ColorConstraintsEdit::draw(void) {
 
   fl_push_clip(x(), y(), w(), h());
 
+  /* clear area */
   fl_color(color());
   fl_rectf(x(), y(), w(), h());
 
+  /* draw the vertical bar that shows which sort mode is active and where added colors will go */
   fl_color(fl_darker(color()));
   if (sortByResult) {
     fl_rectf(x(),
@@ -527,8 +569,13 @@ void ColorConstraintsEdit::draw(void) {
   }
   fl_color(labelcolor());
 
+  /* now for each color we have a vertical area
+   * on one side is the color and on the other side is a list of colors
+   * that are connected with the current color
+   */
   for (unsigned int c1 = 0; c1 < puzzle->colorNumber(); c1++) {
 
+    /* count the number of colors on the "other" side */
     unsigned int cnt = 0;
     unsigned int c2;
     for (c2 = 0; c2 < puzzle->colorNumber(); c2++)
@@ -539,6 +586,7 @@ void ColorConstraintsEdit::draw(void) {
     unsigned int height;
     unsigned int groupblockheight;
 
+    /* calculate the hight of the current color block */
     if (cnt == 0) {
       height = 2*CC_ADD_LENGTH+1;
       groupblockheight = height;
@@ -547,6 +595,7 @@ void ColorConstraintsEdit::draw(void) {
       groupblockheight = (2 * CC_ADD_LENGTH) + cnt + (cnt-1) * CC_ARROW_GAP;
     }
 
+    /* when we are selected, draw the horizontal bar */
     if (c1 == currentSelect) {
       fl_color(fl_darker(color()));
       fl_rectf(x(), ypos + y() - shift, w(), height+2*CC_GROUP_GAP);
@@ -558,6 +607,7 @@ void ColorConstraintsEdit::draw(void) {
 
     ypos += CC_GROUP_GAP;
 
+    /* draw the active color on the "one" side with a frame around */
     if (sortByResult) {
       puzzle->getColor(c1, &r, &g, &b);
       fl_rectf(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP, ypos + y()-shift + groupblockshift, CC_BLOCK_WIDTH, groupblockheight, r, g, b);
@@ -577,11 +627,14 @@ void ColorConstraintsEdit::draw(void) {
     unsigned int yp1 = ypos + y()-shift;
     unsigned int yp2 = ypos + groupblockshift + y()-shift;
 
+    /* draw the colors on the "other" side */
     for (c2 = 0; c2 < puzzle->colorNumber(); c2++)
       if ((!sortByResult && puzzle->probPlacementAllowed(problem, c1+1, c2+1)) ||
           (sortByResult && puzzle->probPlacementAllowed(problem, c2+1, c1+1))) {
 
         if (sortByResult) {
+
+          /* draw the color */
           puzzle->getColor(c2, &r, &g, &b);
           fl_rectf(x()+CC_LR_GAP, yp1, CC_BLOCK_WIDTH, 2*CC_ADD_LENGTH+1, r, g, b);
 
@@ -589,6 +642,7 @@ void ColorConstraintsEdit::draw(void) {
           fl_rect(x()+CC_LR_GAP, yp1, CC_BLOCK_WIDTH, 2*CC_ADD_LENGTH+1);
 
 
+          /* draw the arrow between both sides first the connection */
           fl_xyline(x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR, yp1 + CC_ADD_LENGTH,
                     x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR + CC_HORIZ_LENGTH);
 
@@ -598,6 +652,7 @@ void ColorConstraintsEdit::draw(void) {
           fl_line(x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR + CC_HORIZ_LENGTH, yp1 + CC_ADD_LENGTH,
                   x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR - CC_HORIZ_LENGTH, yp2 + CC_ADD_LENGTH);
 
+          /* and then the point */
           fl_line(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR, yp2 + CC_ADD_LENGTH,
                   x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR - CC_ARROW_LENGTH, yp2 + CC_ADD_LENGTH - CC_ARROW_WIDTH);
           fl_line(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR, yp2 + CC_ADD_LENGTH,
@@ -605,6 +660,8 @@ void ColorConstraintsEdit::draw(void) {
 
 
         } else {
+
+          /* draw the color */
           puzzle->getColor(c2, &r, &g, &b);
           fl_rectf(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP, yp1, CC_BLOCK_WIDTH, 2*CC_ADD_LENGTH+1, r, g, b);
 
@@ -612,6 +669,7 @@ void ColorConstraintsEdit::draw(void) {
           fl_rect(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP, yp1, CC_BLOCK_WIDTH, 2*CC_ADD_LENGTH+1);
 
 
+          /* draw the arrow between both sides first the connection */
           fl_xyline(x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR, yp2 + CC_ADD_LENGTH,
                     x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR + CC_HORIZ_LENGTH);
 
@@ -621,19 +679,23 @@ void ColorConstraintsEdit::draw(void) {
           fl_line(x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR + CC_HORIZ_LENGTH, yp2 + CC_ADD_LENGTH,
                   x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR - CC_HORIZ_LENGTH, yp1 + CC_ADD_LENGTH);
 
+          /* and then the point */
           fl_line(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR, yp1 + CC_ADD_LENGTH,
                   x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR - CC_ARROW_LENGTH, yp1 + CC_ADD_LENGTH - CC_ARROW_WIDTH);
           fl_line(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR, yp1 + CC_ADD_LENGTH,
                   x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR - CC_ARROW_LENGTH, yp1 + CC_ADD_LENGTH + CC_ARROW_WIDTH);
         }
 
+        /* next positions for the arrow start and end */
         yp1 += 2*CC_ADD_LENGTH+1 + CC_BLOCK_GAP;
         yp2 += CC_ARROW_GAP;
       }
 
+    /* next block */
     ypos += CC_GROUP_GAP + height;
   }
 
+  /* calculate scroll hight */
   if (ypos > (unsigned int)h())
     ypos -= h();
   else
@@ -653,15 +715,21 @@ int ColorConstraintsEdit::handle(int event) {
 
   unsigned int ypos = 0;
 
+  /* nothing there */
   if ((w() <= 0) || (h() <= 0)) return 1;
 
+  /* only handle push */
   if (event != FL_PUSH)
     return 1;
 
+  /* no valid problem available */
   if (problem >= puzzle->problemNumber())
     return 1;
 
+  /* find out the group that we clicked onto */
   for (unsigned int c1 = 0; c1 < puzzle->colorNumber(); c1++) {
+
+    /* count the number of colors in the current group */
     unsigned int cnt = 0;
     unsigned int c2;
     for (c2 = 0; c2 < puzzle->colorNumber(); c2++)
@@ -671,6 +739,7 @@ int ColorConstraintsEdit::handle(int event) {
 
     unsigned int height;
 
+    /* calculate the height of the current group */
     if (cnt == 0) {
       height = 2*CC_ADD_LENGTH+1;
     } else {
@@ -679,6 +748,7 @@ int ColorConstraintsEdit::handle(int event) {
 
     ypos += 2*CC_GROUP_GAP + height;
 
+    /* are we inside the group ? */
     if (Fl::event_y() < y() + (int)ypos - (int)shift) {
       if (currentSelect != c1) {
         currentSelect = c1;
@@ -696,7 +766,6 @@ void ColorConstraintsEdit::setSelection(unsigned int num) {
   currentSelect = num;
   redraw();
 }
-
 
 void ColorConstraintsEdit::setPuzzle(puzzle_c *pz, unsigned int prob) {
   bt_assert(pz);

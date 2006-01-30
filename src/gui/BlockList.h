@@ -24,6 +24,13 @@
 #include "../lib/puzzle.h"
 
 
+/**
+ * blocklist is a widget that displays a list of items in blocks. These blocks
+ * have the size, so that the label of the item fits. The blocks are arranged
+ * line by line like left aligned text
+ *
+ * this is the abstract base widget of all the different block lists
+ */
 class BlockList : public Fl_Widget {
 
   /* how many pixels is the whole thing shifted up. This is for
@@ -40,10 +47,26 @@ protected:
 
   void draw(void);
 
+  /**
+   * real block lists return the number of blocks with this function
+   */
   unsigned int virtual blockNumber(void) = 0;
+
+  /**
+   * the inherited classes need to draw block number block at the given position
+   */
   void virtual blockDraw(unsigned int block, int x, int y) = 0;
+
+  /**
+   * the inherited classes need to return the size of the block with the given
+   * number in the w and h variables
+   */
   void virtual blockSize(unsigned int block, unsigned int *w, unsigned int *h) = 0;
 
+  /**
+   * these are functions that can be filled with actions, when the given block is
+   * clicked or whatever
+   */
   virtual void push(unsigned int block) {};
   virtual void release(unsigned int block) {};
   virtual void drag(unsigned int block, int dx, int dy) {};
@@ -57,12 +80,23 @@ public:
 
   BlockList(int x, int y, int w, int h) : Fl_Widget(x, y, w, h), shift(0), lastHight(0xFFFFFFFF) {}
 
+  /**
+   * this sets the amount of pixels that the block list is shifted upwards from 0
+   */
   void setShift(unsigned int z) {
     shift = z;
     redraw();
   }
 
   int handle(int event);
+
+  /**
+   * this function returns the current height of the block list. The height depends on how many
+   * lines are required to display all blocks
+   * the hight is NOT the hight of the block list, but the number of pixels that need to be scrolled
+   * to show everything, so when the block list is 100 pixels high and the widget 50 we get 100-50 = 50
+   * if everything fits into the widget size 0 is returned
+   */
   unsigned int calcHeight(void) { return lastHight; }
 
   enum {
@@ -74,7 +108,10 @@ public:
 };
 
 
-
+/**
+ * this class defines a blocklist, where different elements of the list
+ * can be selected by clicking on the items with the left mouse button
+ */
 class SelectableList : public BlockList {
 
 private:
@@ -92,8 +129,14 @@ public:
 
   SelectableList(int x, int y, int w, int h) : BlockList(x, y, w, h), currentSelect(0), locked(false) { }
 
+  /**
+   * returns the currently selected block, starting from 0
+   */
   unsigned int getSelection(void) { return currentSelect; }
 
+  /**
+   * sets the currently selected block
+   */
   void setSelection(unsigned int num) {
     if (currentSelect != num) {
       currentSelect = num;
@@ -119,6 +162,13 @@ public:
 
 };
 
+
+/**
+ * a blocklist whose block labels is text and whose elements can
+ * be selected you need to inherit from this class to actually use it
+ * the inherited class needs to provide functions that return the color
+ * to use for the block and the text that should be displayed inside the block
+ */
 class SelectableTextList : public SelectableList {
 
 public:
@@ -135,6 +185,11 @@ public:
 };
 
 
+/**
+ * a blocklist with text labels but not selectable blocks
+ * as in the SelectableTextList you need to provide functions for the color and
+ * the labels of the blocks
+ */
 class TextList : public BlockList {
 
 public:
@@ -151,6 +206,12 @@ public:
 };
 
 
+/**
+ * a concrete block list that displays the defined colors inside a puzzle
+ * and lets you select one. Additionally it also always displays a block at the
+ * first position with the label Neutral for the transparent or neutral color
+ * that is always there and can not be deleted
+ */
 class ColorSelector : public SelectableTextList {
 
   puzzle_c * puzzle;
@@ -171,8 +232,9 @@ public:
   void virtual getText(unsigned int block, char * text);
 };
 
-/* a widget that shows a list of the puzzle pieces with their color
- * and alows the user to active one of it
+/**
+ * a widget that shows a list of the puzzle pieces with their color
+ * and alows the user to activate one of it
  *
  * there are 2 reasons for the callback: user clicked and changed the selection
  * and the hight changed. This second callback is there to allow the application
@@ -194,7 +256,9 @@ public:
   void virtual getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
 };
 
-
+/**
+ * blocklist that show the problems and lets you select one of it
+ */
 class ProblemSelector : public SelectableTextList {
 
 private:
@@ -214,6 +278,10 @@ public:
   void virtual getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
 };
 
+/**
+ * a blocklist that show the pieces of a problem and additional information
+ * for each piece
+ */
 class PiecesList : public TextList {
 
 private:
@@ -247,6 +315,10 @@ public:
 
 };
 
+/**
+ * a blocklist to set the visibility mode for all pieces in a puzzle. The
+ * user can circle between 3 possible states: 0, 1 or 2
+ */
 class PieceVisibility : public BlockList {
 
 private:
@@ -272,13 +344,26 @@ public:
 
   virtual void push(unsigned int block);
 
+  /**
+   * return the visibility mode for the given piece. Currently
+   * there are 3 return values 0, 1 or 2
+   * it's up to you to say what these values mean
+   */
   unsigned char getVisibility(unsigned int piece) {
     bt_assert(piece < puzzle->probPieceNumber(problem));
     return visState[piece];
   }
 };
 
-
+/**
+ * A widget allowing to display and edit color constraints.
+ * In reality color constraints are really collor permissions.
+ * Each entry alows the placement of a cube of one color into a
+ * cube of another color.
+ * The editor currentl shows a list of colors on the left and
+ * a list of colors on the right and arrows between them to say
+ * this color on the left can go into this color on the right
+ */
 class ColorConstraintsEdit : public Fl_Widget {
 
   /* how many pixels is the whole thing shifted up. This is for
@@ -289,6 +374,7 @@ class ColorConstraintsEdit : public Fl_Widget {
   /* the hight that the whole drawing had the last time */
   unsigned int lastHight;
 
+  /* the puzzle and the problem to be edited */
   puzzle_c * puzzle;
   unsigned int problem;
 
@@ -339,10 +425,7 @@ public:
   }
 
   bool GetSortByResult(void) { return sortByResult; }
-
 };
-
-
 
 #endif
 
