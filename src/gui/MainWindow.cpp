@@ -42,6 +42,7 @@
 #include <FL/Fl_Color_Chooser.H>
 #include <FL/Fl_Tooltip.H>
 #include <FL/Fl_Choice.H>
+#include <FL/Fl_Pixmap.h>
 
 static const char * FileSelection(const char * title) {
 #ifdef HAVE_FLU
