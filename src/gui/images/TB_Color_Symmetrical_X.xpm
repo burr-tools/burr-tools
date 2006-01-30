@@ -3,10 +3,10 @@ static char *TB_Color_Symmetrical_X_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "23 23 9 1",
 "  c black",
-". c blue",
+". c #0000FF",
 "X c #009900",
 "o c #990033",
-"O c red",
+"O c #FF0000",
 "+ c #FF0066",
 "@ c #FF6699",
 "# c #BBBBBB",

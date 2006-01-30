@@ -6,7 +6,7 @@ static char *InOut_Color_RemoveColor_In_xpm[] = {
 ". c #6B6B6B",
 "X c #993333",
 "o c #CC0000",
-"O c red",
+"O c #FF0000",
 "+ c #9900FF",
 "@ c #CC66FF",
 "# c #FFCC00",

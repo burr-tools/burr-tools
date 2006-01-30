@@ -6,7 +6,7 @@ static char *Transform_Monochrome_Nudge_Z_Left_xpm[] = {
 ". c #666666",
 "X c #FF6600",
 "o c #BBBBBB",
-"O c gainsboro",
+"O c #DCDCDC",
 "+ c #F1F1F1",
 "@ c None",
 /* pixels */

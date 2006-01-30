@@ -3,11 +3,11 @@ static char *Transform_Color_Rotate_Z_Right_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 12 1",
 "  c black",
-". c blue",
+". c #0000FF",
 "X c #006699",
 "o c #009900",
 "O c #00CCFF",
-"+ c red",
+"+ c #FF0000",
 "@ c #CCCC33",
 "# c #FFFF66",
 "$ c #BBBBBB",

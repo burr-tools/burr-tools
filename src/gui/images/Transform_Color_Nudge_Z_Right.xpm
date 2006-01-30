@@ -3,14 +3,14 @@ static char *Transform_Color_Nudge_Z_Right_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 10 1",
 "  c black",
-". c blue",
+". c #0000FF",
 "X c #006699",
 "o c #009900",
 "O c #00CCFF",
-"+ c red",
+"+ c #FF0000",
 "@ c #BBBBBB",
 "# c #99FFFF",
-"$ c gainsboro",
+"$ c #DCDCDC",
 "% c None",
 /* pixels */
 "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%",
