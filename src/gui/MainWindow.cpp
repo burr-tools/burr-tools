@@ -225,9 +225,9 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
       Small3DView();
     else
       Big3DView();
-    ViewSizes[currentTab] = View3D->getView()->getSize();
+    ViewSizes[currentTab] = View3D->getZoom();
     if (ViewSizes[0] >= 0)
-      View3D->getView()->setSize(ViewSizes[0]);
+      View3D->setZoom(ViewSizes[0]);
     currentTab = 0;
   } else if(o->value() == TabProblems) {
     if (problemSelector->getSelection() < puzzle->problemNumber()) {
@@ -235,9 +235,9 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
       StatProblemInfo(problemSelector->getSelection());
     }
     Big3DView();
-    ViewSizes[currentTab] = View3D->getView()->getSize();
+    ViewSizes[currentTab] = View3D->getZoom();
     if (ViewSizes[1] >= 0)
-      View3D->getView()->setSize(ViewSizes[1]);
+      View3D->setZoom(ViewSizes[1]);
     currentTab = 1;
   } else if(o->value() == TabSolve) {
     if ((solutionProblem->getSelection() < puzzle->problemNumber()) &&
@@ -246,9 +246,9 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
     }
     Big3DView();
     Status->setText("");
-    ViewSizes[currentTab] = View3D->getView()->getSize();
+    ViewSizes[currentTab] = View3D->getZoom();
     if (ViewSizes[2] >= 0)
-      View3D->getView()->setSize(ViewSizes[2]);
+      View3D->setZoom(ViewSizes[2]);
     currentTab = 2;
   }
 

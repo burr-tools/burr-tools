@@ -318,6 +318,9 @@ public:
   void hideMarker(void) { View3D->hideMarker(); }
   void useLightning(bool val) { View3D->useLightning(val); }
 
+  double getZoom(void) { return slider->value(); }
+  void setZoom(double v) { slider->value(v); cb_slider(); }
+
   void redraw(void) { View3D->redraw(); }
 
   VoxelView * getView(void) { return View3D; }
