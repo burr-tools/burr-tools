@@ -1105,7 +1105,8 @@ bool UserInterface::threadStopped(void) {
 
 void UserInterface::tryToLoad(const char * f) {
 
-  if (f) {
+  // it may well be that the file doesn't exist, if it comed from the command line
+  if (f && fileExists(f)) {
 
     xml::tree_parser parser(f);
 
