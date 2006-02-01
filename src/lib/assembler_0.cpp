@@ -1078,15 +1078,6 @@ unsigned int assembler_0_c::getPiecePlacement(unsigned int node, int delta, unsi
 
 unsigned int assembler_0_c::getPiecePlacementCount(unsigned int piece) {
 
-  unsigned int node = piece + 1;
-  unsigned int placements = 0;
-
-
-  while (down[node] > node) {
-    placements++;
-    node = down[node];
-  }
-
-  return placements;
+  return colCount[piece+1];
 }
 
