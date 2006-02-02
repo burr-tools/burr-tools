@@ -111,6 +111,9 @@ class UserInterface : public Fl_Double_Window {
 
   VoxelEditGroup *pieceEdit;
 
+  int progressLabelDigits;
+
+
   // the zoom levels for all 3 tabs independent, so that the problem
   // tab can have a wider view
   double ViewSizes[3];
