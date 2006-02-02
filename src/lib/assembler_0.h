@@ -147,10 +147,6 @@ private:
    */
   bool try_cover_row(register unsigned int r);
 
-  /* get's called when a solution is found. this function
-   * then assembles the solution and returns an assembly
-   */
-  assembly_c * getAssembly(void);
 
   /* this function gets called whenever an assembly was found
    * when a callback is avaliable it will call getAssembly to
@@ -265,6 +261,12 @@ private:
   bool avoidTransformedAssemblies;
   unsigned int avoidTransformedPivot;
 
+  /* the variables for debugging assembling processes
+   */
+  bool debug;         // debugging enabled
+  int debug_loops;    // how many loops to run ?
+  int debug_pos;      // run until pos is debug_pos
+
 
 protected:
 
@@ -353,6 +355,29 @@ public:
   /* some more special information to find out possible piece placements */
   unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z);
   unsigned int getPiecePlacementCount(unsigned int piece);
+
+  /* finally some debugging functions that allow to look how, why, and where pieces are placed */
+
+  /* do exactly the given numbe of rounds in the assembler, and then stop */
+  void debug_step(unsigned long num = 1);
+
+  /* run until we reach the given level */
+  void debug_run(unsigned int level);
+
+  enum {
+    DBG_ACT_START_COL,
+    DBG_ACT_COL_ZERO,
+    DBG_ACT_TOO_MANY_HOLES,
+    DBG_ACT_NEXT_ROW
+  };
+
+  /* returns one of the enum above to tell, what we have done in the last iteration */
+  int debug_activity(void);
+
+  /* get's called when a solution is found. this function
+   * then assembles the solution and returns an assembly
+   */
+  assembly_c * getAssembly(void);
 };
 
 #endif

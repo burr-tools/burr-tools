@@ -663,6 +663,20 @@ void UserInterface::cb_BtnPlacementBrowser(void) {
   delete plbr;
 }
 
+static void cb_BtnAssemblerStep_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_BtnAssemblerStep(); }
+void UserInterface::cb_BtnAssemblerStep(void) {
+
+  bt_assert(assmThread == 0);
+
+  assembler_0_c * assm = (assembler_0_c*)puzzle->probGetAssembler(solutionProblem->getSelection());
+
+  bt_assert(assm);
+
+  assm->debug_step();
+
+  View3D->showAssemblerState(puzzle, solutionProblem->getSelection(), assm->getAssembly());
+}
+
 
 static void cb_AllowColor_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_AllowColor(); }
 void UserInterface::cb_AllowColor(void) {
@@ -2496,7 +2510,8 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
-    BtnPlacement = new FlatButton(x, y, w, SZ_BUTTON_Y, "Browse Placements", " Browse the calculated placement of pieces ", cb_BtnPlacementBrowser_stub, this);
+    BtnPlacement = new FlatButton(x, y, (w-SZ_GAP)/2, SZ_BUTTON_Y, "Browse Placements", " Browse the calculated placement of pieces ", cb_BtnPlacementBrowser_stub, this);
+    BtnPlacement = new FlatButton(x+(w-SZ_GAP)/2+SZ_GAP, y, (w-SZ_GAP)/2, SZ_BUTTON_Y, "Step", " Make one step in the assembler ", cb_BtnAssemblerStep_stub, this);
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;

@@ -224,6 +224,7 @@ public:
   void cb_BtnCont(void);
   void cb_BtnStop(void);
   void cb_BtnPlacementBrowser(void);
+  void cb_BtnAssemblerStep(void);
 
   void cb_SolutionSel(Fl_Value_Slider*);
   void cb_SolutionAnim(Fl_Value_Slider*);

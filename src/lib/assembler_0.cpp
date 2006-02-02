@@ -443,6 +443,7 @@ bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
 }
 
 void assembler_0_c::reduce(void) {
+
   unsigned int removed = 0;
   bool rem_sth;
   unsigned int iteration = 1;
@@ -555,7 +556,7 @@ assembly_c * assembler_0_c::getAssembly(void) {
   /* fill the array with 0xff, so that we can distinguish between
    * placed and unplaced pieces
    */
-  memset(pieces, 0xff, sizeof(unsigned int) * getPos());
+  memset(pieces, 0xff, sizeof(unsigned int) * getPiecenumber());
 
   for (unsigned int i = 0; i < getPos(); i++) {
     bt_assert(getPiece(i) < getPiecenumber());
@@ -563,7 +564,7 @@ assembly_c * assembler_0_c::getAssembly(void) {
   }
 
   for (unsigned int i = 0; i < getPiecenumber(); i++)
-    if (pieces[i] > getPos())
+    if (pieces[i] >= getPos())
       assembly->addNonPlacement();
     else {
       unsigned char tran;
@@ -642,6 +643,17 @@ void assembler_0_c::iterativeMultiSearch(void) {
     // written. Meanwhile abbort was pressed and abbort was changed. this new value got lost.
     if (!right[0])
       solution();
+
+    // the debugger
+    if (debug) {
+      if (debug_loops <= 0)
+        break;
+
+      debug_loops --;
+
+      if (debug_pos == pos)
+        break;
+    }
 
     // if all pieces are placed we can not go on even if there are
     // more columns that need attention, all of them should be
@@ -877,6 +889,8 @@ void assembler_0_c::iterativeMultiSearch(void) {
 
 void assembler_0_c::assemble(assembler_cb * callback) {
 
+  debug = false;
+
   if (errorsState == ERR_NONE) {
     asm_bc = callback;
     iterativeMultiSearch();
@@ -1079,5 +1093,17 @@ unsigned int assembler_0_c::getPiecePlacement(unsigned int node, int delta, unsi
 unsigned int assembler_0_c::getPiecePlacementCount(unsigned int piece) {
 
   return colCount[piece+1];
+}
+
+
+void assembler_0_c::debug_step(unsigned long num) {
+  debug = true;
+  debug_loops = 1;
+  debug_pos = -1;
+  asm_bc = 0;
+  iterativeMultiSearch();
+}
+
+void assembler_0_c::debug_run(unsigned int level) {
 }
 
