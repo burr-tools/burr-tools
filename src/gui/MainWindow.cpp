@@ -1594,12 +1594,11 @@ void UserInterface::updateInterface(void) {
         OutputSolutions->hide();
       }
 
-      // the placement browser can only be activated when an assember is available
-      if (puzzle->probGetAssembler(prob))
+      // the placement browser can only be activated when an assember is available and not assembling is active
+      if (puzzle->probGetAssembler(prob) && !assmThread)
         BtnPlacement->activate();
       else
         BtnPlacement->deactivate();
-
 
     } else {
 
