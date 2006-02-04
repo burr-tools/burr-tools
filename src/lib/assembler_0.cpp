@@ -1030,7 +1030,7 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   bt_assert(pos == 0);
 
   /* check for te right version */
-  if (strcmp(version, "1.2"))
+  if (strcmp(version, "1.3"))
     return ERR_CAN_NOT_RESTORE;
 
   /* get the values from the string. For the moment we assume that
