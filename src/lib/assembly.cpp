@@ -156,6 +156,32 @@ xml::node assembly_c::save(void) const {
   return nd;
 }
 
+void assembly_c::sort(const puzzle_c * puz, unsigned int prob) {
+
+  int p = 0;
+
+  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
+
+    unsigned int cnt = puz->probGetShapeCount(prob, i);
+
+    /* now we need to sort pieces to that they are sorted by placement */
+    if (cnt > 1) {
+
+      /* as we normally only have a few identical pieces that need sorting we use bubble sort */
+      for (unsigned int a = 0; a < cnt - 1; a++)
+        for (unsigned int b = a + 1; b < cnt; b++)
+          if (placements[p+b] < placements[p+a]) {
+
+            placement_c tmp(placements[p+b]);
+            placements[p+b] = placements[p+a];
+            placements[p+a] = tmp;
+          }
+    }
+
+    p += cnt;
+  }
+}
+
 void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned int prob) {
 
   if (!trans) return;
@@ -228,22 +254,9 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
 
       p++;
     }
-
-    /* now we need to sort pieces to that they are sorted by placement */
-    if (puz->probGetShapeCount(prob, i) > 1) {
-
-      /* as we normally only have a few identical pieces that need sorting we use bubble sort */
-      for (unsigned int a = 1; a <= puz->probGetShapeCount(prob, i) - 1; a++)
-        for (unsigned int b = a + 1; b <= puz->probGetShapeCount(prob, i); b++)
-          if (placements[p-a] < placements[p-b]) {
-
-            placement_c tmp(placements[p-b]);
-            placements[p-b] = placements[p-a];
-            placements[p-a] = tmp;
-          }
-    }
-
   }
+
+  sort(puz, prob);
 }
 
 bool assembly_c::compare(const assembly_c & b, unsigned int pivot) const {

@@ -164,6 +164,8 @@ public:
 
   bool compare(const assembly_c & b, unsigned int pivot) const;
 
+  void sort(const puzzle_c * puz, unsigned int prob);
+
   bool smallerRotationExists(const puzzle_c * puz, unsigned int prob, unsigned int pivot) const;
 
   /* shifts a piece around by a certain amount */

@@ -27,6 +27,7 @@
 
 #include <vector>
 #include <set>
+#include <stack>
 
 /* the order of pieces is mostly unimportant, except for the
  * very first piece. this is added with removed symmetry of the
@@ -147,6 +148,11 @@ private:
    */
   bool try_cover_row(register unsigned int r);
 
+  /* these 2 functions remove and reinsert rows from the matrix
+   * they only remvoe the given row
+   */
+  void remove_row(register unsigned int r);
+  void reinsert_row(register unsigned int r);
 
   /* this function gets called whenever an assembly was found
    * when a callback is avaliable it will call getAssembly to
@@ -168,11 +174,10 @@ private:
   unsigned int *columns;
   unsigned int *nodeF;
   unsigned int *numF;
-  unsigned int *pieceF;
-  unsigned int *nodeB;
-  unsigned int *numB;
   unsigned int *piece;
   unsigned int *searchState;
+  std::stack<unsigned int> *addRows;
+
   void iterativeMultiSearch(void);
 
   /* this function creates the matrix for the search function

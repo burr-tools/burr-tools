@@ -115,8 +115,8 @@ void assembler_0_c::nextPiece(unsigned int piece, unsigned int count, unsigned i
 assembler_0_c::assembler_0_c() :
   left(0), right(0), up(0), down(0), colCount(0),
   multiPieceCount(0), multiPieceIndex(0), pieceStart(0),
-  pos(0), rows(0), columns(0), nodeF(0), numF(0), pieceF(0),
-  nodeB(0), numB(0), piece(0), searchState(0), avoidTransformedAssemblies(0)
+  pos(0), rows(0), columns(0), nodeF(0), numF(0),
+  piece(0), searchState(0), addRows(0), avoidTransformedAssemblies(0)
 {
 }
 
@@ -128,11 +128,9 @@ assembler_0_c::~assembler_0_c() {
   if (multiPieceIndex) delete [] multiPieceIndex;
   if (nodeF) delete [] nodeF;
   if (numF) delete [] numF;
-  if (pieceF) delete [] pieceF;
-  if (nodeB) delete [] nodeB;
-  if (numB) delete [] numB;
   if (piece) delete [] piece;
   if (searchState) delete [] searchState;
+  if (addRows) delete [] addRows;
 }
 
 assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsigned int prob) {
@@ -186,10 +184,8 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   columns = new unsigned int [piecenumber];
   nodeF = new unsigned int [piecenumber];
   numF = new unsigned int [piecenumber];
-  pieceF = new unsigned int [piecenumber];
-  nodeB = new unsigned int [piecenumber];
-  numB = new unsigned int [piecenumber];
   piece = new unsigned int [piecenumber];
+  addRows = new std::stack<unsigned int> [piecenumber];
   searchState = new unsigned int [piecenumber + 1];
 
   searchState[0] = 0;
@@ -381,6 +377,35 @@ void assembler_0_c::uncover_row(register unsigned int r) {
   }
 }
 
+void assembler_0_c::remove_row(register unsigned int r) {
+  register unsigned int j = r;
+  do {
+    register unsigned int u, d;
+
+    colCount[colCount[j]]--;
+
+    u = up[j];
+    d = down[j];
+
+    up[d] = u;
+    down[u] = d;
+    j = right[j];
+  } while (j != r);
+}
+
+void assembler_0_c::reinsert_row(register unsigned int r) {
+  register unsigned int j = r;
+  do {
+    up[down[j]] = j;
+    down[up[j]] = j;
+
+    colCount[colCount[j]]++;
+
+    j = right[j];
+  } while (j != r);
+}
+
+
 bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
 
   /* check the number of holes, if they are larger than allowed return */
@@ -535,13 +560,13 @@ void assembler_0_c::reduce(void) {
       delete [] rowsToRemove;
     }
 
-    return;
+//    return;
 
-    iteration++;
-    rec++;
-    if (rec > 2)
-      rec = 2;
-    branch = 1;
+//    iteration++;
+//    rec++;
+//    if (rec > 2)
+//      rec = 2;
+//    branch = 1;
 
   } while (rem_sth);
 }
@@ -549,6 +574,9 @@ void assembler_0_c::reduce(void) {
 assembly_c * assembler_0_c::getAssembly(void) {
 
   assembly_c * assembly = new assembly_c();
+
+  // if no pieces are placed, or we finished return an empty assembly
+  if (getPos() <= 0) return assembly;
 
   /* first we need to find the order the piece are in */
   unsigned int * pieces = new unsigned int[getPiecenumber()];
@@ -575,6 +603,8 @@ assembly_c * assembler_0_c::getAssembly(void) {
     }
 
   delete [] pieces;
+
+  assembly->sort(puzzle, problem);
 
   return assembly;
 }
@@ -678,14 +708,16 @@ void assembler_0_c::iterativeMultiSearch(void) {
          * will lead to impossible arrangements
          *
          * FIXME: possible improvement
-         * finally we count the number of holes by checking the variable result voxels
-         * that can not be filled any longer. that number must be smaller than the number of holes
+         * For some columns is is necessary that they are not at least one but even
+         * bigger. Columns for multi pieces for example need to have at least the value
+         * of the number of instances, e.g if there are 10 instances of a multi piece
+         * each of that instance needs to fit at least 10 times
          */
         unsigned int c = right[0];
         unsigned int s = colCount[c];
 
         if (s) {
-          register int j = right[c];
+          register unsigned int j = right[c];
 
           while (j) {
 
@@ -696,6 +728,18 @@ void assembler_0_c::iterativeMultiSearch(void) {
               if (!s)
                 break;
             }
+
+            // multi pieces need to have at least num placements
+            // as we are not currently in the process of placing a multi
+            // piece either all of a group of multipieces have been placed and
+            // the columns removed or none of them. So we can check the columns
+            // that are still there and force the counters above the number
+            // of pieces in the group of multipieces
+            if ((j <= piecenumber) && (colCount[j] < multiPieceCount[j-1]) && (multiPieceIndex[j-1] > 0)) {
+              s = 0;
+              break;
+            }
+
 
             j = right[j];
           }
@@ -723,10 +767,22 @@ void assembler_0_c::iterativeMultiSearch(void) {
         }
 
         if (s) {
+
           // we have found a valid column, start a search
           columns[pos] = c;
-          piece[pos] = 0;
           rows[pos] = down[columns[pos]];
+
+          if (c <= piecenumber)
+            piece[pos] = c-1;
+          else {
+            // find out the piece for the current column
+            // the piece can only change for non piece columns
+            piece[pos] = 0;
+            while ((piece[pos] < piecenumber-1) && (rows[pos] >= pieceStart[piece[pos]+1])) piece[pos]++;
+          }
+
+          bt_assert(multiPieceIndex[piece[pos]] == 0);
+
           cont = true;
         }
       } else {
@@ -735,39 +791,37 @@ void assembler_0_c::iterativeMultiSearch(void) {
         // we do not need to search for a good column here as we already know wich
         // column we are going to place, but we must check, if there is one column
         // with a count of 0 so we can back track
-        int j = right[0];
+        unsigned int j = right[0];
 
         do {
-          if (!colCount[j])
+          if (!colCount[j]) {
             break;
+          }
+
+          // check that multi pieces can still be places the required number of times. En detail:
+          // if we have a piece column that is for the current multi piece group and the
+          // counter is smaller than the number of pieces still required to place, break
+          if ((piece[pos]+1 <= j-1) && (piece[pos]+numF[pos] > j-1) && (colCount[j] < numF[pos])) {
+            break;
+          }
+
+          // if we have a column for a piece and that piece is NOT the currently placed multi-piece
+          // the number of possible placements needs to be at least the size of the multi piece group
+          if ((j <= piecenumber) && ((piece[pos] > j-1) || (piece[pos]+numF[pos] <= j-1)) && (colCount[j] < multiPieceCount[j-1])) {
+            break;
+          }
+
           j = right[j];
         } while (j);
 
         // FIXME: we should also do the hole check in here
 
         if (!j) {
-          // select the column. We can either go backwards, if the last piece
-          // placed was not the first one, or forward until we have placed
-          // all multi pieces
+          // select the column.
+          // we have a fixed column given by the last recursion step, so take this column
           columns[pos] = piece[pos] + 1;
           rows[pos] = down[columns[pos]];
           cont = true;
-
-          // in case of the forward place mode we have to find a row with a placement larger than
-          // that of the last piece
-          if (searchState[pos] == 1) {
-            while ((rows[pos] - pieceStart[piece[pos]]) <= nodeF[pos]) {
-              rows[pos] = down[rows[pos]];
-              // we have searched all the rows and none fits so we can backtrack
-              if (rows[pos] == columns[pos]) {
-                cont = false;
-                break;
-              }
-            }
-          } else if ((rows[pos] - pieceStart[piece[pos]]) >= nodeB[pos])
-            // searchState can only be 2 by now meaning backward search
-            // if the row is already bigger than the last we don't even need to start
-            cont = false;
         }
       }
 
@@ -782,103 +836,117 @@ void assembler_0_c::iterativeMultiSearch(void) {
 
     } else {
 
+
       // continue on a column we have already started, this is inside the loop in the
       // recourseve function, after we return from the recoursive call
       // we uncover our row, find the next one and continue, if there is a new row
       uncover_row(rows[pos]);
-      rows[pos] = down[rows[pos]];
-      cont = (rows[pos] != columns[pos]);
+      cont = true;
 
-      // check, if the this row if grater than the last alowed row, this is the abbort
-      // criterium in backwards search as ther will be no morw valid rows
-      if (cont && (searchState[pos] == 2) && ((rows[pos] - pieceStart[piece[pos]]) >= nodeB[pos]))
-        cont = false;
+      do {
+        rows[pos] = down[rows[pos]];
+
+        if (rows[pos] == columns[pos]) {
+          cont = false;
+          break;
+        }
+
+        // find out the piece for the current column
+        // the piece can only change for non piece columns
+        if (columns[pos] > piecenumber)
+          while ((piece[pos] < piecenumber-1) && (rows[pos] >= pieceStart[piece[pos]+1])) piece[pos]++;
+
+        if (searchState[pos] == 1) break;
+
+      } while (multiPieceIndex[piece[pos]] > 0);
     }
 
     // check, if we continue, if we have found a new row to cover
     if (cont) {
 
       // cover the row
-      cover_row(rows[pos]);
 
       // the next lines with the crazy if-nesting sets up the parameters for the next
       // recoursion step, this is different depending on the state we are in if there
       // are more pieces in front or behind us...
 
-      // let's assume that the next recursion step is the simple one
-      // the value will be changed if required
-      searchState[pos+1] = 0;
+      // now depending on the properties of the current piece set up the variables for the
+      // next recoursion step.
+      if ((searchState[pos] == 0) && (multiPieceCount[piece[pos]] != 1)) {
 
-      if (searchState[pos] == 0) {
+        // this is the case when we are in normal mode but want to place a multipiece
 
-        while ((piece[pos] < piecenumber-1) && (rows[pos] >= pieceStart[piece[pos]+1])) piece[pos]++;
+        bt_assert(multiPieceIndex[piece[pos]] == 0);
 
-        // now depending on the properties of the current piece set up the variables for the
-        // next recoursion step.
-        if (multiPieceCount[piece[pos]] != 1) {
+        // is is a multi piece, so we have to at least go forward until we have placed all
+        // the multi pieces
 
-          // is is a multi piece, so we have to at least go forward until we have placed all
-          // the multi pieces
+        if (columns[pos] != piece[pos]+1)
+          nodeF[pos+1] = 0;
+        else
           nodeF[pos+1] = rows[pos] - pieceStart[piece[pos]];
-          numF[pos+1] = multiPieceCount[piece[pos]] - 1 - multiPieceIndex[piece[pos]];
 
-          if (multiPieceIndex[piece[pos]]) {
-            // if the piece just placed is not the first one in the set we also have to go
-            // backwards and place all the pieces in front of the current on
-            nodeB[pos+1] = rows[pos] - pieceStart[piece[pos]];
-            numB[pos+1] = multiPieceIndex[piece[pos]];
-            piece[pos+1] = piece[pos] - 1;
-            pieceF[pos+1] = piece[pos] + 1;
+        numF[pos+1] = multiPieceCount[piece[pos]] - 1 - multiPieceIndex[piece[pos]];
+        piece[pos+1] = piece[pos] + 1;
+        searchState[pos+1] = 1;
 
-            searchState[pos+1] = 2;
+      } else if ((searchState[pos] == 1) && (numF[pos] > 1)) {
 
-          } else {
+        // this is the case that we are in moving forward mode and
+        // there are more pieces to place, so let's do another forward step
 
-            piece[pos+1] = piece[pos] + 1;
-            searchState[pos+1] = 1;
+        nodeF[pos+1] = rows[pos]-pieceStart[piece[pos]];
+        numF[pos+1] = numF[pos] - 1;
+        piece[pos+1] = piece[pos] + 1;
+        searchState[pos+1] = 1;
+
+      } else {
+
+        // nothing special continue in normal mode
+        searchState[pos+1] = 0;
+      }
+
+      if ((searchState[pos+1] == 1) && (nodeF[pos+1] > 0)) {
+        /* we cover all rows in all multi pieces that are still available
+         * whose row number is forbidden
+         * problem: how to uncover?
+         * for this we have the stack addRows, that contains all the additionally covered
+         * rows
+         */
+
+        // for all pieces of this multi-piece set
+        for (unsigned int n = piece[pos+1]; n < piece[pos+1]+numF[pos+1]; n++) {
+          unsigned int r = down[n+1];
+
+          // check all the rows
+          while (r != n+1) {
+
+            // remove the row, if it is forbidden
+            if ((r - pieceStart[n]) < nodeF[pos+1]) {
+              remove_row(r);
+              addRows[pos].push(r);
+            }
+
+            r = down[r];
           }
         }
-      } else if (searchState[pos] == 1) {
-
-        // we are moving forward, so let's check, if there are more peces to place
-        if (numF[pos] > 1) {
-
-          // there are more pieces, do let's do another forward step
-          nodeF[pos+1] = rows[pos]-pieceStart[piece[pos]];
-          numF[pos+1] = numF[pos] - 1;
-          piece[pos+1] = piece[pos] + 1;
-
-          searchState[pos+1] = 1;
-        }
-      } else if ((numB[pos] > 1) || (numF[pos] > 0)) {
-
-        // if there are still pieces in front of us or behind us we need to continue somewhere
-        nodeF[pos+1] = nodeF[pos];
-        numF[pos+1] = numF[pos];
-
-        if (numB[pos] > 1) {
-
-          // there is also space behind us
-          nodeB[pos+1] = rows[pos]-pieceStart[piece[pos]];
-          numB[pos+1] = numB[pos] - 1;
-          piece[pos+1] = piece[pos] - 1;
-
-          pieceF[pos+1] = pieceF[pos];
-
-          searchState[pos+1] = 2;
-
-        } else {
-
-          searchState[pos+1] = 1;
-          piece[pos+1] = pieceF[pos];
-        }
       }
+
+      cover_row(rows[pos]);
+
       pos++;
 
     } else {
 
+      // now ucover the removed rows
+      while (addRows[pos].size()) {
+        reinsert_row(addRows[pos].top());
+        addRows[pos].pop();
+      }
+
       // ok finished this column, uncover it and backtrack
       uncover(columns[pos]);
+
       rows[pos] = 0;
       pos--;
     }
@@ -992,16 +1060,6 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
         string += getInt(string, &numF[i]);
         string += getInt(string, &piece[i]);
         break;
-      case 2:
-        string += getInt(string, &rows[i]);
-        string += getInt(string, &columns[i]);
-        string += getInt(string, &nodeF[i]);
-        string += getInt(string, &numF[i]);
-        string += getInt(string, &pieceF[i]);
-        string += getInt(string, &nodeB[i]);
-        string += getInt(string, &numB[i]);
-        string += getInt(string, &piece[i]);
-        break;
       }
 
       while (*string != ')') string++; string++;
@@ -1019,6 +1077,33 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
 
       if ((p < piecenumber) && rows[p]) {
         cover(columns[p]);
+
+        if ((p < pos-1) && (searchState[p+1] == 1) && (nodeF[p+1] > 0)) {
+          /* we cover all rows in all multi pieces that are still available
+           * whose row number is forbidden
+           * problem: how to uncover?
+           * for this we have the stack addRows, that contains all the additionally covered
+           * rows
+           */
+
+          // for all pieces of this multi-piece set
+          for (unsigned int n = piece[p+1]; n < piece[p+1]+numF[p+1]; n++) {
+            unsigned int r = down[n+1];
+
+            // check all the rows
+            while (r != n+1) {
+
+              // remove the row, if it is forbidden
+              if ((r - pieceStart[n]) < nodeF[p+1]) {
+                remove_row(r);
+                addRows[p].push(r);
+              }
+
+              r = down[r];
+            }
+          }
+        }
+
         cover_row(rows[p]);
       }
 
@@ -1054,9 +1139,6 @@ xml::node assembler_0_c::save(void) const {
         break;
       case 1:
         snprintf(tmp, 100, "(%i %i %i %i %i %i)", searchState[j], rows[j], columns[j], nodeF[j], numF[j], piece[j]);
-        break;
-      case 2:
-        snprintf(tmp, 100, "(%i %i %i %i %i %i %i %i %i)", searchState[j], rows[j], columns[j], nodeF[j], numF[j], pieceF[j], nodeB[j], numB[j], piece[j]);
         break;
       }
 
