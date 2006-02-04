@@ -1,3 +1,5 @@
+------------- Version 0.2.0
+
 - Add possibility to GUI to edit the comment included in a puzzle
 
 - another 2 symmetry groups were missing
@@ -35,6 +37,12 @@
 - shapes can be named. If they have a name it is used in most places, 
   where the name is useful. If no name is given shapes keep the numbers
   as usual. If you want the remove a given name just enter an empty text
+  Problems are treated the same way. They don't need to have a name.
+
+- huge speed improvement for the assembling of puzzles with many identical
+  pieces. The time for JayCube, for example, dropped on my machine from
+  2.5 hours to 7 minutes. The disadvantage is that you can not continue
+  old saved puzzles.
 
 ------------- Version 0.1.8b
 
