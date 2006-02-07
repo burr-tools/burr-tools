@@ -741,16 +741,9 @@ void UserInterface::cb_BtnStart(void) {
   puzzle->probRemoveAllSolutions(solutionProblem->getSelection());
   SolutionEmpty = true;
 
-  // FIXME: currently the library expects that the pieces are minimized
-  // when a puzzle will be solved, because otherwise the rotation reduction
-  // method will get confused
-  // so we currently minimize the pieces bevore solving this is not intended to
-  // stay like this but right now I don't know a solution
   for (unsigned int i = 0; i < puzzle->shapeNumber(); i++) {
-    puzzle->getShape(i)->minimizePiece();
     puzzle->getShape(i)->setHotspot(0, 0, 0);
   }
-
 
   cb_BtnCont();
 }

@@ -347,6 +347,11 @@ public:
   unsigned int boundZ2(void) const { return bz2; }
 
   /**
+   * get the bounding box of a rotated voxel space
+   */
+  void getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2 = 0, int * y2 = 0, int * z2 = 0) const;
+
+  /**
    * Comparison of two voxel spaces.
    * two voxel spaces are equal if and only if:
    * their sizes are the same and

@@ -145,13 +145,7 @@ int main(int argv, char* args[]) {
   xml::tree_parser parser(args[filenumber]);
   puzzle_c p(parser.get_document().get_root_node());
 
-  // FIXME: currently the library expects that the pieces are minimized
-  // when a puzzle will be solved, because otherwise the rotation reduction
-  // method will get confused
-  // so we currently minimize the pieces bevore solving this is not intended to
-  // stay like this but right now I don't know a solution
   for (unsigned int i = 0; i < p.shapeNumber(); i++) {
-    p.getShape(i)->minimizePiece();
     p.getShape(i)->setHotspot(0, 0, 0);
   }
 

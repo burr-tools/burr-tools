@@ -241,13 +241,16 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
          * the normalized position
          * this is the easiest solution but by far the slowest
          */
-        int ax, ay, az, bx, by, bz;
+        int ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz;
         puz->probGetShapeShape(prob, i)->getHotspot(placements[p].transformation, &ax, &ay, &az);
         puz->probGetShapeShape(prob, i)->getHotspot(tr, &bx, &by, &bz);
 
-        placements[p].xpos += bx-ax;
-        placements[p].ypos += by-ay;
-        placements[p].zpos += bz-az;
+        puz->probGetShapeShape(prob, i)->getBoundingBox(placements[p].transformation, &cx, &cy, &cz);
+        puz->probGetShapeShape(prob, i)->getBoundingBox(tr, &dx, &dy, &dz);
+
+        placements[p].xpos += bx-ax + cx-dx;
+        placements[p].ypos += by-ay + cy-dy;
+        placements[p].zpos += bz-az + cz-dz;
 
         placements[p].transformation = tr;
       }
@@ -297,21 +300,7 @@ bool assembly_c::smallerRotationExists(const puzzle_c * puz, unsigned int prob, 
 
       assembly_c tmp(this, t, puz, prob);
 
-#if 0
-      printf("pivot: %i\n", pivot);
-      printf("comp: ");
-      for (int i = 0; i < placements.size(); i++)
-        printf("(%i  %i %i %i) ", placements[i].transformation, placements[i].xpos, placements[i].ypos, placements[i].zpos);
-      printf("\nwith: ");
-      for (int i = 0; i < tmp.placements.size(); i++)
-        printf("(%i  %i %i %i) ", tmp.placements[i].transformation, tmp.placements[i].xpos, tmp.placements[i].ypos, tmp.placements[i].zpos);
-
-      printf("\n");
-#endif
       if (tmp.compare(*this, pivot)) {
-#if 0
-        printf("less\n");
-#endif
         return true;
       }
     }
