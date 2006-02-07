@@ -44,6 +44,9 @@
   2.5 hours to 7 minutes. The disadvantage is that you can not continue
   old saved puzzles.
 
+- pieces are no longer minimised when a puzzle is solved. This has been
+  in the program only because the program couldn't handle that properly
+
 ------------- Version 0.1.8b
 
 - Fix Bug found by Markus Götz that made the program crash, when all 

@@ -772,15 +772,19 @@ void assembler_0_c::iterativeMultiSearch(void) {
           columns[pos] = c;
           rows[pos] = down[columns[pos]];
 
+          // find out the piece number for the first row, for the piece
+          // columns we can take a shortcut, because here the piecenumber
+          // equals the column number
           if (c <= piecenumber)
             piece[pos] = c-1;
           else {
-            // find out the piece for the current column
-            // the piece can only change for non piece columns
+            // for the other columns we need to search for the piece number
             piece[pos] = 0;
             while ((piece[pos] < piecenumber-1) && (rows[pos] >= pieceStart[piece[pos]+1])) piece[pos]++;
           }
 
+          // we must either have hit a single piece or the first
+          // piece of a multi-piece. Everytime the index is 0
           bt_assert(multiPieceIndex[piece[pos]] == 0);
 
           cont = true;
@@ -794,6 +798,8 @@ void assembler_0_c::iterativeMultiSearch(void) {
         unsigned int j = right[0];
 
         do {
+
+          // if we find a column with count 0 backtrack
           if (!colCount[j]) {
             break;
           }
@@ -819,6 +825,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
         if (!j) {
           // select the column.
           // we have a fixed column given by the last recursion step, so take this column
+          // the piece array has already been initialized in the last loop, see below
           columns[pos] = piece[pos] + 1;
           rows[pos] = down[columns[pos]];
           cont = true;
