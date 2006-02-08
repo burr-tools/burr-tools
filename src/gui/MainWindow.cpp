@@ -765,8 +765,6 @@ void UserInterface::cb_BtnCont(void) {
 
   bt_assert(assmThread == 0);
 
-  progressLabelDigits = 0;
-
   if (SolveDisasm->value() != 0)
     if (JustCount->value() != 0)
       assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_COUNT_DISASM, true);
@@ -1539,27 +1537,7 @@ void UserInterface::updateInterface(void) {
 
       {
         static char tmp[100];
-        static float oldFinished;
-
-        if (oldFinished != finished) {
-          if ((progressLabelDigits < 1) && (int(finished*1) == int(oldFinished*1))) progressLabelDigits++;
-          if ((progressLabelDigits < 2) && (int(finished*10) == int(oldFinished*10))) progressLabelDigits++;
-          if ((progressLabelDigits < 3) && (int(finished*100) == int(oldFinished*100))) progressLabelDigits++;
-          if ((progressLabelDigits < 4) && (int(finished*1000) == int(oldFinished*1000))) progressLabelDigits++;
-          if ((progressLabelDigits < 5) && (int(finished*10000) == int(oldFinished*10000))) progressLabelDigits++;
-
-          oldFinished = finished;
-        }
-
-        switch(progressLabelDigits) {
-          case 1: snprintf(tmp, 100, "%.1f%%", 100*finished); break;
-          case 2: snprintf(tmp, 100, "%.2f%%", 100*finished); break;
-          case 3: snprintf(tmp, 100, "%.3f%%", 100*finished); break;
-          case 4: snprintf(tmp, 100, "%.4f%%", 100*finished); break;
-          case 5: snprintf(tmp, 100, "%.5f%%", 100*finished); break;
-          case 6: snprintf(tmp, 100, "%.6f%%", 100*finished); break;
-          default: snprintf(tmp, 100, "%.0f%%", 100*finished); break;
-        }
+        snprintf(tmp, 100, "%.4f%%", 100*finished);
         SolvingProgress->label(tmp);
       }
 
