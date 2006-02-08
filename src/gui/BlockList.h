@@ -127,7 +127,7 @@ public:
     RS_SELECTABLE_LAST
   };
 
-  SelectableList(int x, int y, int w, int h) : BlockList(x, y, w, h), currentSelect(0), locked(false) { }
+  SelectableList(int x, int y, int w, int h) : BlockList(x, y, w, h), currentSelect((unsigned int)-1), locked(false) { }
 
   /**
    * returns the currently selected block, starting from 0
