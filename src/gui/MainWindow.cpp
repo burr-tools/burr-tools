@@ -2509,7 +2509,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
-    SolvingProgress = new Fl_Progress(x, y, w, SZ_BUTTON_Y, 0);
+    SolvingProgress = new ProgressBar(x, y, w, SZ_BUTTON_Y);
     SolvingProgress->tooltip(" Percentage of solution space searched ");
     SolvingProgress->box(FL_ENGRAVED_BOX);
     SolvingProgress->selection_color((Fl_Color)4);

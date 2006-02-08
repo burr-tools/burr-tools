@@ -88,7 +88,7 @@ class UserInterface : public Fl_Double_Window {
   FlatButton *BtnColSrtPc, *BtnColSrtRes, *BtnColAdd, *BtnColRem;
   FlatButton *BtnSetResult, *BtnAddShape, *BtnRemShape, *BtnGroup, *BtnProbShapeLeft, *BtnProbShapeRight;
 
-  Fl_Progress *SolvingProgress;
+  ProgressBar *SolvingProgress;
   Fl_Value_Output *OutputAssemblies;
   Fl_Value_Output *OutputSolutions;
   Fl_Output *OutputActivity;

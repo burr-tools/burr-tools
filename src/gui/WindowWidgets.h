@@ -38,6 +38,7 @@
 #include <FL/Fl_Output.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Multiline_Input.H>
+#include <FL/Fl_Progress.H>
 #include <FL/fl_draw.h>
 
 // my button, the only change it that the box is automatically set to engraved
@@ -420,6 +421,14 @@ class multiLineWindow : public Fl_Double_Window {
     }
 
     bool saveChanges(void) { return _saveChanges; }
+};
+
+class ProgressBar : public Fl_Progress {
+  public:
+
+    ProgressBar(int x, int y, int w, int h) : Fl_Progress(x, y, w, h) {}
+
+    void draw(void);
 };
 
 
