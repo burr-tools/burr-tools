@@ -202,6 +202,13 @@ class ChangeSize : public Fl_Group {
   Fl_Value_Input* SizeOutY;
   Fl_Value_Input* SizeOutZ;
 
+  Fl_Check_Button * ConnectX;
+  Fl_Check_Button * ConnectY;
+  Fl_Check_Button * ConnectZ;
+
+  void calcNewSizes(unsigned int ox, unsigned int oy, unsigned int oz,
+               unsigned int *nx, unsigned int *ny, unsigned int *nz);
+
 public:
 
   ChangeSize(int w, int y, int w, int h);
@@ -220,28 +227,20 @@ public:
 class ToolTab : public Fl_Tabs {
 
   ChangeSize * changeSize;
-  voxel_c * space;
+  Fl_Check_Button * toAll;
+  puzzle_c * puzzle;
+  unsigned int shape;
 
 public:
 
   ToolTab(int x, int y, int w, int h);
 
-  void setVoxelSpace(voxel_c * sp) {
-    space = sp;
-    if (space)
-      changeSize->setXYZ(sp->getX(), sp->getY(), sp->getZ());
-    else
-      changeSize->setXYZ(0, 0, 0);
-  }
+  void setVoxelSpace(puzzle_c * puz, unsigned int sh);
 
-  void cb_size(void) {
-    if (space) {
-      space->resize(changeSize->getX(), changeSize->getY(), changeSize->getZ(), 0);
-      do_callback();
-    }
-  }
-
+  void cb_size(void);
   void cb_transform(long task);
+
+  bool operationToAll(void) { return toAll->value() != 0; }
 };
 
 

@@ -259,10 +259,17 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
 static void cb_TransformPiece_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_TransformPiece(); }
 void UserInterface::cb_TransformPiece(void) {
 
-  changeShape(PcSel->getSelection());
+  if (pieceTools->operationToAll()) {
+    for (unsigned int i = 0; i < puzzle->shapeNumber(); i++)
+      changeShape(i);
+  } else {
+    changeShape(PcSel->getSelection());
+  }
 
   StatPieceInfo(PcSel->getSelection());
   activateShape(PcSel->getSelection());
+
+  changed = true;
 }
 
 static void cb_EditSym_stub(Fl_Widget* o, void* v) {
@@ -1215,7 +1222,7 @@ void UserInterface::show(int argn, char ** argv) {
 void UserInterface::activateClear(void) {
   View3D->showNothing();
   pieceEdit->clearPuzzle();
-  pieceTools->setVoxelSpace(0);
+  pieceTools->setVoxelSpace(0, 0);
 
   SolutionEmpty = true;
 }
@@ -1224,11 +1231,9 @@ void UserInterface::activateShape(unsigned int number) {
 
   if ((number < puzzle->shapeNumber())) {
 
-    voxel_c * p = puzzle->getShape(number);
-
     View3D->showSingleShape(puzzle, number, Status->useColors());
     pieceEdit->setPuzzle(puzzle, number);
-    pieceTools->setVoxelSpace(p);
+    pieceTools->setVoxelSpace(puzzle, number);
 
     PcSel->setSelection(number);
 
@@ -1236,7 +1241,7 @@ void UserInterface::activateShape(unsigned int number) {
 
     View3D->showNothing();
     pieceEdit->clearPuzzle();
-    pieceTools->setVoxelSpace(0);
+    pieceTools->setVoxelSpace(0, 0);
   }
 
   SolutionEmpty = true;

@@ -223,31 +223,86 @@ static void cb_ChangeSize_stub(Fl_Widget* o, long v) { ((ChangeSize*)(o->parent(
 static void cb_InputSize_stub(Fl_Widget* o, long v) { ((ChangeSize*)(o->parent()))->cb_input(v); }
 
 void ChangeSize::cb_roll(long dir) {
-  switch (dir) {
-    case 0: SizeOutX->value(int(SizeX->value())); break;
-    case 1: SizeOutY->value(int(SizeY->value())); break;
-    case 2: SizeOutZ->value(int(SizeZ->value())); break;
-  }
+
+  unsigned int ox, oy, oz, nx, ny, nz;
+
+  ox = (unsigned int)SizeOutX->value();
+  nx = (unsigned int)SizeX->value();
+  oy = (unsigned int)SizeOutY->value();
+  ny = (unsigned int)SizeY->value();
+  oz = (unsigned int)SizeOutZ->value();
+  nz = (unsigned int)SizeZ->value();
+
+  calcNewSizes(ox, oy, oz, &nx, &ny, &nz);
+
+  SizeOutX->value(nx);
+  SizeOutY->value(ny);
+  SizeOutZ->value(nz);
+  SizeX->value(nx);
+  SizeY->value(ny);
+  SizeZ->value(nz);
 
   do_callback();
 }
 
 void ChangeSize::cb_input(long dir) {
-  switch (dir) {
-    case 0: SizeX->value(int(SizeOutX->value())); break;
-    case 1: SizeY->value(int(SizeOutY->value())); break;
-    case 2: SizeZ->value(int(SizeOutZ->value())); break;
-  }
+  unsigned int ox, oy, oz, nx, ny, nz;
+
+  ox = (unsigned int)SizeX->value();
+  nx = (unsigned int)SizeOutX->value();
+  oy = (unsigned int)SizeY->value();
+  ny = (unsigned int)SizeOutY->value();
+  oz = (unsigned int)SizeZ->value();
+  nz = (unsigned int)SizeOutZ->value();
+
+  calcNewSizes(ox, oy, oz, &nx, &ny, &nz);
+
+  SizeOutX->value(nx);
+  SizeOutY->value(ny);
+  SizeOutZ->value(nz);
+  SizeX->value(nx);
+  SizeY->value(ny);
+  SizeZ->value(nz);
 
   // seems like the Rollers don't callback, when value is set
   do_callback();
+}
+
+void ChangeSize::calcNewSizes(unsigned int ox, unsigned int oy, unsigned int oz,
+                              unsigned int *nx, unsigned int *ny, unsigned int *nz) {
+  int dx = *nx - ox;
+  int dy = *ny - oy;
+  int dz = *nz - oz;
+
+  if (dx != 0 && ConnectX->value()) {
+    if (ConnectY->value()) dy = dx;
+    if (ConnectZ->value()) dz = dx;
+  }
+
+  if (dy != 0 && ConnectY->value()) {
+    if (ConnectX->value()) dx = dy;
+    if (ConnectZ->value()) dz = dy;
+  }
+
+  if (dz != 0 && ConnectZ->value()) {
+    if (ConnectX->value()) dx = dz;
+    if (ConnectY->value()) dy = dz;
+  }
+
+  *nx = ox + dx;
+  *ny = oy + dy;
+  *nz = oz + dz;
+
+  if (*nx < 1) *nx = 1;
+  if (*ny < 1) *ny = 1;
+  if (*nz < 1) *nz = 1;
 }
 
 ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
 
   tooltip(" Change size of space ");
 
-  SizeX = new Fl_Roller(70+x, 10+y, w-70, 20);
+  SizeX = new Fl_Roller(70+x, 10+y, w-90, 20);
   SizeX->type(1);
   SizeX->box(FL_THIN_DOWN_BOX);
   SizeX->minimum(1);
@@ -255,7 +310,7 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   SizeX->step(0.25);
   SizeX->callback(cb_ChangeSize_stub, 0l);
 
-  SizeY = new Fl_Roller(70+x, 35+y, w-70, 20);
+  SizeY = new Fl_Roller(70+x, 35+y, w-90, 20);
   SizeY->type(1);
   SizeY->box(FL_THIN_DOWN_BOX);
   SizeY->minimum(1);
@@ -263,7 +318,7 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   SizeY->step(0.25);
   SizeY->callback(cb_ChangeSize_stub, 1l);
 
-  SizeZ = new Fl_Roller(70+x, 60+y, w-70, 20);
+  SizeZ = new Fl_Roller(70+x, 60+y, w-90, 20);
   SizeZ->type(1);
   SizeZ->box(FL_THIN_DOWN_BOX);
   SizeZ->minimum(1);
@@ -292,6 +347,14 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   SizeOutZ->callback(cb_InputSize_stub, 2l);
   SizeOutZ->input.when(FL_WHEN_RELEASE/* | FL_WHEN_ENTER_KEY*/);
 
+  ConnectX = new Fl_Check_Button(x+w-20, 10+y, 20, 20);
+  ConnectY = new Fl_Check_Button(x+w-20, 35+y, 20, 20);
+  ConnectZ = new Fl_Check_Button(x+w-20, 60+y, 20, 20);
+
+  ConnectX->tooltip(" Link the sizes together so that a change will be done to the other sizes as well ");
+  ConnectY->tooltip(" Link the sizes together so that a change will be done to the other sizes as well ");
+  ConnectZ->tooltip(" Link the sizes together so that a change will be done to the other sizes as well ");
+
   end();
 }
 
@@ -306,6 +369,17 @@ void ChangeSize::setXYZ(long x, long y, long z) {
 }
 
 
+void ToolTab::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
+  puzzle = puz;
+  shape = sh;
+  if (puzzle && shape < puzzle->shapeNumber())
+    changeSize->setXYZ(puzzle->getShape(shape)->getX(),
+        puzzle->getShape(shape)->getY(),
+        puzzle->getShape(shape)->getZ());
+  else
+    changeSize->setXYZ(0, 0, 0);
+}
+
 static void cb_ToolTabSize_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()->parent()))->cb_size(); }
 static void cb_ToolTabTransform_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()))->cb_transform(v); }
 static void cb_ToolTabTransform2_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()->parent()))->cb_transform(v); }
@@ -315,7 +389,7 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
   {
     Fl_Group * o = new Fl_Group(x, y+20, w, h-20, "Size");
 
-    changeSize = new ChangeSize(x, y+20, w-85, h-20);
+    changeSize = new ChangeSize(x, y+20, w-90, h-40);
     changeSize->callback(cb_ToolTabSize_stub);
 
     new Fl_Box(x+w-80, y+25, 35, SZ_BUTTON_Y, "Grid");
@@ -329,6 +403,9 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
     (new FlatButton(x+w-40, y+ 45, 35, 25, new Fl_Pixmap(Rescale_Color_X1_xpm), new Fl_Pixmap(Rescale_Disabled_X1_xpm), "Try to minimize size of shape", cb_ToolTabTransform2_stub, 15))->deactivate();
     new FlatButton(x+w-40, y+ 75, 35, 25, new Fl_Pixmap(Rescale_Color_X2_xpm), new Fl_Pixmap(Rescale_Disabled_X2_xpm), "Double size of shape", cb_ToolTabTransform2_stub, 22);
     new FlatButton(x+w-40, y+105, 35, 25, new Fl_Pixmap(Rescale_Color_X3_xpm), new Fl_Pixmap(Rescale_Disabled_X3_xpm), "Triple size of shape", cb_ToolTabTransform2_stub, 23);
+
+    toAll = new Fl_Check_Button(x+5, y+h-25, w-85, 20, "Do Operation to all Shapes");
+    toAll->tooltip(" If this is active, the actions on this tab are done to all shapes ");
 
     o->end();
   }
@@ -357,53 +434,99 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
   }
 }
 
-void ToolTab::cb_transform(long task) {
-  if (space) {
+void ToolTab::cb_size(void) {
+  if (puzzle && shape < puzzle->shapeNumber()) {
 
-    switch(task) {
-    case  0: space->translate( 1, 0, 0, 0); break;
-    case  1: space->translate(-1, 0, 0, 0); break;
-    case  2: space->translate( 0, 1, 0, 0); break;
-    case  3: space->translate( 0,-1, 0, 0); break;
-    case  4: space->translate( 0, 0, 1, 0); break;
-    case  5: space->translate( 0, 0,-1, 0); break;
-    case  7: space->rotatex(); space->rotatex(); // fallthrough
-    case  6: space->rotatex(); break;
-    case  9: space->rotatey(); space->rotatey(); // fallthrough
-    case  8: space->rotatey(); break;
-    case 11: space->rotatez(); space->rotatez(); // fallthrough
-    case 10: space->rotatez(); break;
-    case 12: space->mirrorX(); break;
-    case 13: space->mirrorY(); break;
-    case 14: space->mirrorZ(); break;
-    case 15: space->minimizePiece(); break;
-    case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
-    case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
-    case 18: space->actionOnSpace(voxel_c::ACT_VARIABLE, true); break;
-    case 19: space->actionOnSpace(voxel_c::ACT_VARIABLE, false); break;
-    case 20: space->actionOnSpace(voxel_c::ACT_DECOLOR, true); break;
-    case 21: space->actionOnSpace(voxel_c::ACT_DECOLOR, false); break;
-    case 22: space->scale(2); break;
-    case 23: space->scale(3); break;
-    case 24: space->translate(- space->boundX1(), - space->boundY1(), - space->boundZ1(), 0);
-    case 25:
-             {
-               int fx = space->getX() - (space->boundX2()-space->boundX1()+1);
-               int fy = space->getY() - (space->boundY2()-space->boundY1()+1);
-               int fz = space->getZ() - (space->boundZ2()-space->boundZ1()+1);
+    if (toAll->value()) {
 
-               if ((fx & 1) || (fy & 1) || (fz & 1)) {
-                 space->resize(space->getX()+(fx&1), space->getY()+(fy&1), space->getZ()+(fz&1), 0);
-                 fx += fx&1;
-                 fy += fy&1;
-                 fz += fz&1;
-               }
-               space->translate(fx/2 - space->boundX1(), fy/2 - space->boundY1(), fz/2 - space->boundZ1(), 0);
-             }
-             break;
+      int dx, dy, dz;
 
+      dx = changeSize->getX() - puzzle->getShape(shape)->getX();
+      dy = changeSize->getY() - puzzle->getShape(shape)->getY();
+      dz = changeSize->getZ() - puzzle->getShape(shape)->getZ();
+
+      for (unsigned int s = 0; s < puzzle->shapeNumber(); s++) {
+        int nx = puzzle->getShape(s)->getX()+dx;
+        int ny = puzzle->getShape(s)->getY()+dy;
+        int nz = puzzle->getShape(s)->getZ()+dz;
+
+        if (nx < 1) nx = 1;
+        if (ny < 1) ny = 1;
+        if (nz < 1) nz = 1;
+
+        puzzle->getShape(s)->resize(nx, ny, nz, 0);
+      }
+
+    } else {
+
+      puzzle->getShape(shape)->resize(changeSize->getX(), changeSize->getY(), changeSize->getZ(), 0);
     }
-    space->setHotspot(0, 0, 0);
+    do_callback();
+  }
+}
+
+
+void ToolTab::cb_transform(long task) {
+  if (puzzle && shape < puzzle->shapeNumber()) {
+
+    int ss, se;
+
+    if (toAll->value()) {
+      ss = 0;
+      se = puzzle->shapeNumber();
+    } else {
+      ss = shape;
+      se = shape+1;
+    }
+
+    for (int s = ss; s < se; s++) {
+      voxel_c * space = puzzle->getShape(s);
+
+
+      switch(task) {
+        case  0: space->translate( 1, 0, 0, 0); break;
+        case  1: space->translate(-1, 0, 0, 0); break;
+        case  2: space->translate( 0, 1, 0, 0); break;
+        case  3: space->translate( 0,-1, 0, 0); break;
+        case  4: space->translate( 0, 0, 1, 0); break;
+        case  5: space->translate( 0, 0,-1, 0); break;
+        case  7: space->rotatex(); space->rotatex(); // fallthrough
+        case  6: space->rotatex(); break;
+        case  9: space->rotatey(); space->rotatey(); // fallthrough
+        case  8: space->rotatey(); break;
+        case 11: space->rotatez(); space->rotatez(); // fallthrough
+        case 10: space->rotatez(); break;
+        case 12: space->mirrorX(); break;
+        case 13: space->mirrorY(); break;
+        case 14: space->mirrorZ(); break;
+        case 15: space->minimizePiece(); break;
+        case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
+        case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
+        case 18: space->actionOnSpace(voxel_c::ACT_VARIABLE, true); break;
+        case 19: space->actionOnSpace(voxel_c::ACT_VARIABLE, false); break;
+        case 20: space->actionOnSpace(voxel_c::ACT_DECOLOR, true); break;
+        case 21: space->actionOnSpace(voxel_c::ACT_DECOLOR, false); break;
+        case 22: space->scale(2); break;
+        case 23: space->scale(3); break;
+        case 24: space->translate(- space->boundX1(), - space->boundY1(), - space->boundZ1(), 0);
+        case 25:
+                 {
+                   int fx = space->getX() - (space->boundX2()-space->boundX1()+1);
+                   int fy = space->getY() - (space->boundY2()-space->boundY1()+1);
+                   int fz = space->getZ() - (space->boundZ2()-space->boundZ1()+1);
+
+                   if ((fx & 1) || (fy & 1) || (fz & 1)) {
+                     space->resize(space->getX()+(fx&1), space->getY()+(fy&1), space->getZ()+(fz&1), 0);
+                     fx += fx&1;
+                     fy += fy&1;
+                     fz += fz&1;
+                   }
+                   space->translate(fx/2 - space->boundX1(), fy/2 - space->boundY1(), fz/2 - space->boundZ1(), 0);
+                 }
+                 break;
+      }
+      space->setHotspot(0, 0, 0);
+    }
 
     do_callback(this, user_data());
   }
