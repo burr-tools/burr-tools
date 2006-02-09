@@ -220,12 +220,34 @@ TransformButtons::TransformButtons(int x, int y, int w, int h) : Fl_Group(x, y, 
 
 
 static void cb_ChangeSize_stub(Fl_Widget* o, long v) { ((ChangeSize*)(o->parent()))->cb_roll(v); }
+static void cb_InputSize_stub(Fl_Widget* o, long v) { ((ChangeSize*)(o->parent()))->cb_input(v); }
 
-ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h, "Size") {
+void ChangeSize::cb_roll(long dir) {
+  switch (dir) {
+    case 0: SizeOutX->value(int(SizeX->value())); break;
+    case 1: SizeOutY->value(int(SizeY->value())); break;
+    case 2: SizeOutZ->value(int(SizeZ->value())); break;
+  }
+
+  do_callback();
+}
+
+void ChangeSize::cb_input(long dir) {
+  switch (dir) {
+    case 0: SizeX->value(int(SizeOutX->value())); break;
+    case 1: SizeY->value(int(SizeOutY->value())); break;
+    case 2: SizeZ->value(int(SizeOutZ->value())); break;
+  }
+
+  // seems like the Rollers don't callback, when value is set
+  do_callback();
+}
+
+ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
 
   tooltip(" Change size of space ");
 
-  SizeX = new Fl_Roller(70+x, 15+y, 90, 15);
+  SizeX = new Fl_Roller(70+x, 10+y, w-70, 20);
   SizeX->type(1);
   SizeX->box(FL_THIN_DOWN_BOX);
   SizeX->minimum(1);
@@ -233,7 +255,7 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h, "Size"
   SizeX->step(0.25);
   SizeX->callback(cb_ChangeSize_stub, 0l);
 
-  SizeY = new Fl_Roller(70+x, 40+y, 90, 15);
+  SizeY = new Fl_Roller(70+x, 35+y, w-70, 20);
   SizeY->type(1);
   SizeY->box(FL_THIN_DOWN_BOX);
   SizeY->minimum(1);
@@ -241,7 +263,7 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h, "Size"
   SizeY->step(0.25);
   SizeY->callback(cb_ChangeSize_stub, 1l);
 
-  SizeZ = new Fl_Roller(70+x, 65+y, 90, 15);
+  SizeZ = new Fl_Roller(70+x, 60+y, w-70, 20);
   SizeZ->type(1);
   SizeZ->box(FL_THIN_DOWN_BOX);
   SizeZ->minimum(1);
@@ -249,37 +271,65 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h, "Size"
   SizeZ->step(0.25);
   SizeZ->callback(cb_ChangeSize_stub, 2l);
 
-  SizeOutX = new Fl_Value_Output(20+x, 10+y, 40, 20, "X");
+  SizeOutX = new Fl_Value_Input(20+x, 10+y, 45, 20, "X");
   SizeOutX->box(FL_THIN_DOWN_BOX);
   SizeOutX->minimum(1);
   SizeOutX->maximum(1000);
-  SizeOutX->color((Fl_Color)1);
+  SizeOutX->callback(cb_InputSize_stub, 0l);
+  SizeOutX->input.when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
 
-  SizeOutY = new Fl_Value_Output(20+x, 35+y, 40, 20, "Y");
+  SizeOutY = new Fl_Value_Input(20+x, 35+y, 45, 20, "Y");
   SizeOutY->box(FL_THIN_DOWN_BOX);
   SizeOutY->minimum(1);
   SizeOutY->maximum(1000);
-  SizeOutY->color(fl_rgb_color(0, 192, 0));
+  SizeOutY->callback(cb_InputSize_stub, 1l);
+  SizeOutY->input.when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
 
-  SizeOutZ = new Fl_Value_Output(20+x, 60+y, 40, 20, "Z");
+  SizeOutZ = new Fl_Value_Input(20+x, 60+y, 45, 20, "Z");
   SizeOutZ->box(FL_THIN_DOWN_BOX);
   SizeOutZ->minimum(1);
   SizeOutZ->maximum(1000);
-  SizeOutZ->color((Fl_Color)237);
+  SizeOutZ->callback(cb_InputSize_stub, 2l);
+  SizeOutZ->input.when(FL_WHEN_RELEASE/* | FL_WHEN_ENTER_KEY*/);
+
+  end();
 }
 
 
-static void cb_ToolTabSize_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()))->cb_size(); }
+void ChangeSize::setXYZ(long x, long y, long z) {
+  SizeX->value(x);
+  SizeY->value(y);
+  SizeZ->value(z);
+  SizeOutX->value(x);
+  SizeOutY->value(y);
+  SizeOutZ->value(z);
+}
+
+
+static void cb_ToolTabSize_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()->parent()))->cb_size(); }
 static void cb_ToolTabTransform_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()))->cb_transform(v); }
 static void cb_ToolTabTransform2_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()->parent()))->cb_transform(v); }
 
 ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
 
   {
-    Fl_Group* o = changeSize = new ChangeSize(x, y+20, w, h-20);
-    o->callback(cb_ToolTabSize_stub);
+    Fl_Group * o = new Fl_Group(x, y+20, w, h-20, "Size");
 
-    new FlatButton(x+w/2+5, y+25, w/2-10, 20, "Minimize", " Minimize the size ", cb_ToolTabTransform2_stub, 15);
+    changeSize = new ChangeSize(x, y+20, w-85, h-20);
+    changeSize->callback(cb_ToolTabSize_stub);
+
+    new Fl_Box(x+w-80, y+25, 35, SZ_BUTTON_Y, "Grid");
+
+    new FlatButton(x+w-80, y+ 45, 35, 25, new Fl_Pixmap(Grid_Color_Minimize_xpm), new Fl_Pixmap(Grid_Disabled_Minimize_xpm), "Minimize size of grid", cb_ToolTabTransform2_stub, 15);
+    new FlatButton(x+w-80, y+ 75, 35, 25, new Fl_Pixmap(Grid_Color_Center_xpm), new Fl_Pixmap(Grid_Disabled_Center_xpm), "Center shape inside the grid", cb_ToolTabTransform2_stub, 25);
+    new FlatButton(x+w-80, y+105, 35, 25, new Fl_Pixmap(Grid_Color_Origin_xpm), new Fl_Pixmap(Grid_Disabled_Origin_xpm), "Move shape to origin of grid", cb_ToolTabTransform2_stub, 24);
+
+    new Fl_Box(x+w-40, y+25, 35, SZ_BUTTON_Y, "Shape");
+
+    (new FlatButton(x+w-40, y+ 45, 35, 25, new Fl_Pixmap(Rescale_Color_X1_xpm), new Fl_Pixmap(Rescale_Disabled_X1_xpm), "Try to minimize size of shape", cb_ToolTabTransform2_stub, 15))->deactivate();
+    new FlatButton(x+w-40, y+ 75, 35, 25, new Fl_Pixmap(Rescale_Color_X2_xpm), new Fl_Pixmap(Rescale_Disabled_X2_xpm), "Double size of shape", cb_ToolTabTransform2_stub, 22);
+    new FlatButton(x+w-40, y+105, 35, 25, new Fl_Pixmap(Rescale_Color_X3_xpm), new Fl_Pixmap(Rescale_Disabled_X3_xpm), "Triple size of shape", cb_ToolTabTransform2_stub, 23);
+
     o->end();
   }
   {
@@ -333,6 +383,25 @@ void ToolTab::cb_transform(long task) {
     case 19: space->actionOnSpace(voxel_c::ACT_VARIABLE, false); break;
     case 20: space->actionOnSpace(voxel_c::ACT_DECOLOR, true); break;
     case 21: space->actionOnSpace(voxel_c::ACT_DECOLOR, false); break;
+    case 22: space->scale(2); break;
+    case 23: space->scale(3); break;
+    case 24: space->translate(- space->boundX1(), - space->boundY1(), - space->boundZ1(), 0);
+    case 25:
+             {
+               int fx = space->getX() - (space->boundX2()-space->boundX1()+1);
+               int fy = space->getY() - (space->boundY2()-space->boundY1()+1);
+               int fz = space->getZ() - (space->boundZ2()-space->boundZ1()+1);
+
+               if ((fx & 1) || (fy & 1) || (fz & 1)) {
+                 space->resize(space->getX()+(fx&1), space->getY()+(fy&1), space->getZ()+(fz&1), 0);
+                 fx += fx&1;
+                 fy += fy&1;
+                 fz += fz&1;
+               }
+               space->translate(fx/2 - space->boundX1(), fy/2 - space->boundY1(), fz/2 - space->boundZ1(), 0);
+             }
+             break;
+
     }
     space->setHotspot(0, 0, 0);
 

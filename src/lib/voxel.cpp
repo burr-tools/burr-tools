@@ -647,6 +647,30 @@ void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel
   recalcBoundingBox();
 }
 
+void voxel_c::scale(unsigned int amount) {
+  voxel_type * s2 = new voxel_type[sx*amount*sy*amount*sz*amount];
+
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++)
+        for (unsigned int ax = 0; ax < amount; ax++)
+          for (unsigned int ay = 0; ay < amount; ay++)
+            for (unsigned int az = 0; az < amount; az++)
+              s2[(x*amount+ax) + (sx*amount) * ((y*amount+ay) + (sy*amount) * (z*amount+az))] = get(x, y, z);
+
+  delete [] space;
+  space = s2;
+
+  sx *= amount;
+  sy *= amount;
+  sz *= amount;
+
+  voxels = sx*sy*sz;
+
+  recalcBoundingBox();
+}
+
+
 unsigned int voxel_c::count(voxel_type val) const {
   unsigned int count = 0;
   for (unsigned int i = 0; i < getXYZ(); i++)

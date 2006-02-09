@@ -1,0 +1,35 @@
+/* XPM */
+static char *Rescale_Color_X1_xpm[] = {
+/* columns rows colors chars-per-pixel */
+"33 23 6 1",
+"  c black",
+". c #996600",
+"X c #FFCC00",
+"o c #BBBBBB",
+"O c #FFFF99",
+"+ c None",
+/* pixels */
+"+++++++++++++++++++++++++++++++++",
+"++++++++++++++++++++++++ +++++ ++",
+"+++++++++++++++++++++++  ++++  ++",
+"+++++++             ++++ +++++ ++",
+"++++++ OOOOOOOOOOO  ++++ ++ ++ ++",
+"+++++ OOOOOOOOOOO . ++++ +++++ ++",
+"++++ OOOOOOOOOOO .. ++++ ++ ++ ++",
+"+++ OOOOOOOOOOO ... +++   +++   +",
+"++ OOOOOOOOOOO .... +++++++++++++",
+"+             ..... +++++++++++++",
+"+ XXXXXXXXXXX ..... +++++++++++++",
+"+ XXXXXXXXXXX ..... +++++++++++++",
+"+ XXXXXXXXXXX ..... +++++++++++++",
+"+ XXXXXXXXXXX ..... +++++++++++++",
+"+ XXXXXXXXXXX ..... +++++++++++++",
+"+ XXXXXXXXXXX ..... +++++++     +",
+"+ XXXXXXXXXXX .... ++ ++++ OOO  +",
+"+ XXXXXXXXXXX ... +++  ++     . +",
+"+ XXXXXXXXXXX .. ++++   + XXX . +",
+"+ XXXXXXXXXXX . +++++  ++ XXX . +",
+"+ XXXXXXXXXXX  ++++++ +++ XXX  ++",
+"+             +++++++++++     +++",
+"+++++++++++++++++++++++++++++++++"
+};

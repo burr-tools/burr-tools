@@ -1,0 +1,34 @@
+/* XPM */
+static char *Grid_Monochrome_Center_xpm[] = {
+/* columns rows colors chars-per-pixel */
+"33 23 5 1",
+"  c black",
+". c #A0A0A0",
+"X c #BBBBBB",
+"o c #FFFFFF",
+"O c None",
+/* pixels */
+"OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO",
+"O OOOOOOOOOOOOO   OOOOOOOOOOOOOOO",
+"O ....O....O.... ....O....O....OO",
+"O ....O....O.... ....O....O....OO",
+"O ....O....O...   ...O....O....OO",
+"O ....O....O....O....O....O....OO",
+"O OOOOOOOOO           OOOOOOOOOOO",
+"O ....O.... oooo oooo ....O....OO",
+"O ....O.... oooo oooo ....O....OO",
+"OO....O.... oooo oooo ....O....OO",
+"O ....O.. . oooo oooo . ..O.... O",
+"O         O           O         O",
+"O ....O.. . oooo oooo . ..O.... O",
+"OO....O.... oooo oooo ....O....OO",
+"O ....O.... oooo oooo ....O....OO",
+"O ....O.... oooo oooo ....O....OO",
+"O OOOOOOOOO           OOOOOOOOOOO",
+"O ....O....O....O....O....O....OO",
+"O ....O....O...   ...O....O....OO",
+"O ....O....O.... ....O....O....OO",
+"O ....O....O.... ....O....O....OO",
+"O             O   O             O",
+"OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
+};

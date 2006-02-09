@@ -1,0 +1,35 @@
+/* XPM */
+static char *Grid_Color_Minimize_xpm[] = {
+/* columns rows colors chars-per-pixel */
+"33 23 6 1",
+"  c black",
+". c #000099",
+"X c #FFCC00",
+"o c #BBBBBB",
+"O c #CCCCFF",
+"+ c None",
+/* pixels */
+"+++++++++++++++++++++++++++++++++",
+"+                               +",
+"+ O.OO+OOOO+OOOO+OOOO+OOOO+OO.O +",
+"+ ...O+O.OO+OOOO+OOOO+OO.O+O... +",
+"+ O...+..OO+OOOO+OOOO+OO..+...O +",
+"+ OO.....OO+OOOO+OOOO+OO.....OO +",
+"+ +++....++           ++....+++ +",
+"+ OO.....OO XXXX XXXX OO.....OO +",
+"+ O......OO XXXX XXXX OO......O +",
+"+ OOOO+OOOO XXXX XXXX OOOO+OOOO +",
+"+ OOOO+OOOO XXXX XXXX OOOO+OOOO +",
+"+ +++++++++           +++++++++ +",
+"+ OOOO+OOOO XXXX XXXX OOOO+OOOO +",
+"+ OOOO+OOOO XXXX XXXX OOOO+OOOO +",
+"+ O......OO XXXX XXXX OO......O +",
+"+ OO.....OO XXXX XXXX OO.....OO +",
+"+ +++....++           ++....+++ +",
+"+ OO.....OO+OOOO+OOOO+OO.....OO +",
+"+ O...+..OO+OOOO+OOOO+OO..+...O +",
+"+ ...O+O.OO+OOOO+OOOO+OO.O+O... +",
+"+ O.OO+OOOO+OOOO+OOOO+OOOO+OO.O +",
+"+                               +",
+"+++++++++++++++++++++++++++++++++"
+};

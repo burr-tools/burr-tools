@@ -31,7 +31,7 @@
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Slider.H>
 #include <FL/Fl_Roller.H>
-#include <FL/Fl_Value_Output.H>
+#include <FL/Fl_Value_Input.H>
 #include <FL/Fl_Tabs.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Check_Button.H>
@@ -191,8 +191,6 @@ public:
 
 
 
-
-
 // the change size group
 class ChangeSize : public Fl_Group {
 
@@ -200,36 +198,22 @@ class ChangeSize : public Fl_Group {
   Fl_Roller* SizeY;
   Fl_Roller* SizeZ;
 
-  Fl_Value_Output* SizeOutX;
-  Fl_Value_Output* SizeOutY;
-  Fl_Value_Output* SizeOutZ;
+  Fl_Value_Input* SizeOutX;
+  Fl_Value_Input* SizeOutY;
+  Fl_Value_Input* SizeOutZ;
 
 public:
 
   ChangeSize(int w, int y, int w, int h);
 
-  void cb_roll(long dir) {
-    switch (dir) {
-    case 0: SizeOutX->value(int(SizeX->value())); break;
-    case 1: SizeOutY->value(int(SizeY->value())); break;
-    case 2: SizeOutZ->value(int(SizeZ->value())); break;
-    }
-
-    do_callback();
-  }
+  void cb_roll(long dir);
+  void cb_input(long dir);
 
   int getX(void) { return (int)SizeX->value(); }
   int getY(void) { return (int)SizeY->value(); }
   int getZ(void) { return (int)SizeZ->value(); }
 
-  void setXYZ(long x, long y, long z) {
-    SizeX->value(x);
-    SizeY->value(y);
-    SizeZ->value(z);
-    SizeOutX->value(x);
-    SizeOutY->value(y);
-    SizeOutZ->value(z);
-  }
+  void setXYZ(long x, long y, long z);
 };
 
 // the class that contains the tool tab

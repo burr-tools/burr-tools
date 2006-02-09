@@ -102,3 +102,23 @@
 #include "images/InOut_Monochrome_Variable_In.xpm"
 #include "images/InOut_Monochrome_Variable_Out.xpm"
 
+#include "images/Grid_Color_Center.xpm"
+#include "images/Grid_Color_Minimize.xpm"
+#include "images/Grid_Color_Origin.xpm"
+#include "images/Grid_Disabled_Center.xpm"
+#include "images/Grid_Disabled_Minimize.xpm"
+#include "images/Grid_Disabled_Origin.xpm"
+#include "images/Grid_Monochrome_Center.xpm"
+#include "images/Grid_Monochrome_Minimize.xpm"
+#include "images/Grid_Monochrome_Origin.xpm"
+
+#include "images/Rescale_Color_X1.xpm"
+#include "images/Rescale_Color_X2.xpm"
+#include "images/Rescale_Color_X3.xpm"
+#include "images/Rescale_Disabled_X1.xpm"
+#include "images/Rescale_Disabled_X2.xpm"
+#include "images/Rescale_Disabled_X3.xpm"
+#include "images/Rescale_Monochrome_X1.xpm"
+#include "images/Rescale_Monochrome_X2.xpm"
+#include "images/Rescale_Monochrome_X3.xpm"
+

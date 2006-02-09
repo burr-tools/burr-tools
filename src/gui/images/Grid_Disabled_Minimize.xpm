@@ -1,0 +1,32 @@
+/* XPM */
+static char *Grid_Disabled_Minimize_xpm[] = {
+/* columns rows colors chars-per-pixel */
+"33 23 3 1",
+"  c #00FFFF",
+". c #868686",
+"X c None",
+/* pixels */
+"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+"X...............................X",
+"X.X.XXXXXXXXXXXXXXXXXXXXXXXXX.X.X",
+"X....XXX.XXXXXXXXXXXXXXX.XXX....X",
+"X.X...X..XXXXXXXXXXXXXXX..X...X.X",
+"X.XX.....XXXXXXXXXXXXXXX.....XX.X",
+"X.XXX....XX...........XX....XXX.X",
+"X.XX.....XX.XXXX.XXXX.XX.....XX.X",
+"X.X......XX.XXXX.XXXX.XX......X.X",
+"X.XXXXXXXXX.XXXX.XXXX.XXXXXXXXX.X",
+"X.XXXXXXXXX.XXXX.XXXX.XXXXXXXXX.X",
+"X.XXXXXXXXX...........XXXXXXXXX.X",
+"X.XXXXXXXXX.XXXX.XXXX.XXXXXXXXX.X",
+"X.XXXXXXXXX.XXXX.XXXX.XXXXXXXXX.X",
+"X.X......XX.XXXX.XXXX.XX......X.X",
+"X.XX.....XX.XXXX.XXXX.XX.....XX.X",
+"X.XXX....XX...........XX....XXX.X",
+"X.XX.....XXXXXXXXXXXXXXX.....XX.X",
+"X.X...X..XXXXXXXXXXXXXXX..X...X.X",
+"X....XXX.XXXXXXXXXXXXXXX.XXX....X",
+"X.X.XXXXXXXXXXXXXXXXXXXXXXXXX.X.X",
+"X...............................X",
+"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+};

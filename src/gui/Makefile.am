@@ -74,6 +74,12 @@ burrGui_SOURCES=VoxelView.cpp VoxelView.h \
 		images/InOut_Disabled_Variable_In.xpm images/InOut_Disabled_Variable_Out.xpm \
 		images/InOut_Monochrome_Fixed_In.xpm images/InOut_Monochrome_Fixed_Out.xpm \
 		images/InOut_Monochrome_RemoveColor_In.xpm images/InOut_Monochrome_RemoveColor_Out.xpm \
-		images/InOut_Monochrome_Variable_In.xpm images/InOut_Monochrome_Variable_Out.xpm
+		images/InOut_Monochrome_Variable_In.xpm images/InOut_Monochrome_Variable_Out.xpm \
+		images/Grid_Color_Center.xpm images/Grid_Color_Minimize.xpm images/Grid_Color_Origin.xpm \
+		images/Grid_Disabled_Center.xpm images/Grid_Disabled_Minimize.xpm images/Grid_Disabled_Origin.xpm \
+		images/Grid_Monochrome_Center.xpm images/Grid_Monochrome_Minimize.xpm images/Grid_Monochrome_Origin.xpm \
+		images/Rescale_Color_X1.xpm images/Rescale_Color_X2.xpm images/Rescale_Color_X3.xpm \
+		images/Rescale_Disabled_X1.xpm images/Rescale_Disabled_X2.xpm images/Rescale_Disabled_X3.xpm \
+ 	        images/Rescale_Monochrome_X1.xpm images/Rescale_Monochrome_X2.xpm images/Rescale_Monochrome_X3.xpm
 
 

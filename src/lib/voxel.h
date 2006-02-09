@@ -374,6 +374,11 @@ public:
    */
   void resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel_type filler);
 
+  /**
+   * scale the space, making x by x by x cubes out of single cubes
+   */
+  void scale(unsigned int amount);
+
   /** checks the voxelspace for connectedness. It is checked
    * if there is no group of voxels, that is disconnected from
    * the rest of the voxels. There are serveral different types

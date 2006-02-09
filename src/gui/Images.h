@@ -100,3 +100,23 @@ extern char * InOut_Monochrome_RemoveColor_Out_xpm[];
 extern char * InOut_Monochrome_Variable_In_xpm[];
 extern char * InOut_Monochrome_Variable_Out_xpm[];
 
+extern char * Grid_Color_Center_xpm[];
+extern char * Grid_Color_Minimize_xpm[];
+extern char * Grid_Color_Origin_xpm[];
+extern char * Grid_Disabled_Center_xpm[];
+extern char * Grid_Disabled_Minimize_xpm[];
+extern char * Grid_Disabled_Origin_xpm[];
+extern char * Grid_Monochrome_Center_xpm[];
+extern char * Grid_Monochrome_Minimize_xpm[];
+extern char * Grid_Monochrome_Origin_xpm[];
+
+extern char * Rescale_Color_X1_xpm[];
+extern char * Rescale_Color_X2_xpm[];
+extern char * Rescale_Color_X3_xpm[];
+extern char * Rescale_Disabled_X1_xpm[];
+extern char * Rescale_Disabled_X2_xpm[];
+extern char * Rescale_Disabled_X3_xpm[];
+extern char * Rescale_Monochrome_X1_xpm[];
+extern char * Rescale_Monochrome_X2_xpm[];
+extern char * Rescale_Monochrome_X3_xpm[];
+

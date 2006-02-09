@@ -1,0 +1,35 @@
+/* XPM */
+static char *Rescale_Monochrome_X1_xpm[] = {
+/* columns rows colors chars-per-pixel */
+"33 23 6 1",
+"  c black",
+". c #666666",
+"X c #00FFFF",
+"o c #BBBBBB",
+"O c #F1F1F1",
+"+ c None",
+/* pixels */
+"+++++++++++++++++++++++++++++++++",
+"++++++++++++++++++++++++ +++++ ++",
+"+++++++++++++++++++++++  ++++  ++",
+"+++++++             ++++ +++++ ++",
+"++++++ OOOOOOOOOOO  ++++ ++ ++ ++",
+"+++++ OOOOOOOOOOO . ++++ +++++ ++",
+"++++ OOOOOOOOOOO .. ++++ ++ ++ ++",
+"+++ OOOOOOOOOOO ... +++   +++   +",
+"++ OOOOOOOOOOO .... +++++++++++++",
+"+             ..... +++++++++++++",
+"+ ooooooooooo ..... +++++++++++++",
+"+ ooooooooooo ..... +++++++++++++",
+"+ ooooooooooo ..... +++++++++++++",
+"+ ooooooooooo ..... +++++++++++++",
+"+ ooooooooooo ..... +++++++++++++",
+"+ ooooooooooo ..... +++++++     +",
+"+ ooooooooooo .... ++ ++++ OOO  +",
+"+ ooooooooooo ... +++  ++     . +",
+"+ ooooooooooo .. ++++   + ooo . +",
+"+ ooooooooooo . +++++  ++ ooo . +",
+"+ ooooooooooo  ++++++ +++ ooo  ++",
+"+             +++++++++++     +++",
+"+++++++++++++++++++++++++++++++++"
+};
