@@ -219,7 +219,7 @@ class ColorSelector : public SelectableTextList {
 
 public:
 
-  ColorSelector(int x, int y, int w, int h, puzzle_c * p, bool incNeutr) : SelectableTextList(x, y, w, h), puzzle(p), includeNeutral(incNeutr) { bt_assert(p); }
+  ColorSelector(int x, int y, int w, int h, puzzle_c * p, bool incNeutr) : SelectableTextList(x, y, w, h), puzzle(p), includeNeutral(incNeutr) { bt_assert(p); if (incNeutr) setSelection(0); }
 
   void setPuzzle(puzzle_c *pz);
 

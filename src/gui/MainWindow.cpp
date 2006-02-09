@@ -160,7 +160,7 @@ void UserInterface::cb_DeleteShape(void) {
     puzzle->removeShape(current);
 
     if (puzzle->shapeNumber() == 0)
-      current = 0;
+      current = (unsigned int)-1;
     else
       while (current >= puzzle->shapeNumber())
         current--;
