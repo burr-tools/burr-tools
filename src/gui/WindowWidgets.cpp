@@ -405,7 +405,7 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
     new FlatButton(x+w-40, y+105, 35, 25, new Fl_Pixmap(Rescale_Color_X3_xpm), new Fl_Pixmap(Rescale_Disabled_X3_xpm), "Triple size of shape", cb_ToolTabTransform2_stub, 23);
 
     toAll = new Fl_Check_Button(x+5, y+h-25, w-85, 20, "Do Operation to all Shapes");
-    toAll->tooltip(" If this is active, the actions on this tab are done to all shapes ");
+    toAll->tooltip(" If this is active, all operations (including transformations and constrains are done to all shapes ");
 
     o->end();
   }
