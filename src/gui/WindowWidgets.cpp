@@ -226,20 +226,22 @@ static void cb_InputSize_stub(Fl_Widget* o, long v) { ((ChangeSize*)(o->parent()
 
 void ChangeSize::cb_roll(long dir) {
 
-  unsigned int ox, oy, oz, nx, ny, nz;
+  int ox, oy, oz, nx, ny, nz;
 
-  ox = (unsigned int)SizeOutX->value();
-  nx = (unsigned int)SizeX->value();
-  oy = (unsigned int)SizeOutY->value();
-  ny = (unsigned int)SizeY->value();
-  oz = (unsigned int)SizeOutZ->value();
-  nz = (unsigned int)SizeZ->value();
+  ox = atoi(SizeOutX->value());
+  nx = (int)SizeX->value();
+  oy = atoi(SizeOutY->value());
+  ny = (int)SizeY->value();
+  oz = atoi(SizeOutZ->value());
+  nz = (int)SizeZ->value();
 
   calcNewSizes(ox, oy, oz, &nx, &ny, &nz);
 
-  SizeOutX->value(nx);
-  SizeOutY->value(ny);
-  SizeOutZ->value(nz);
+  char num[20];
+
+  snprintf(num, 20, "%i", nx); SizeOutX->value(num);
+  snprintf(num, 20, "%i", ny); SizeOutY->value(num);
+  snprintf(num, 20, "%i", nz); SizeOutZ->value(num);
   SizeX->value(nx);
   SizeY->value(ny);
   SizeZ->value(nz);
@@ -248,20 +250,22 @@ void ChangeSize::cb_roll(long dir) {
 }
 
 void ChangeSize::cb_input(long dir) {
-  unsigned int ox, oy, oz, nx, ny, nz;
+  int ox, oy, oz, nx, ny, nz;
 
-  ox = (unsigned int)SizeX->value();
-  nx = (unsigned int)SizeOutX->value();
-  oy = (unsigned int)SizeY->value();
-  ny = (unsigned int)SizeOutY->value();
-  oz = (unsigned int)SizeZ->value();
-  nz = (unsigned int)SizeOutZ->value();
+  ox = (int)SizeX->value();
+  nx = atoi(SizeOutX->value());
+  oy = (int)SizeY->value();
+  ny = atoi(SizeOutY->value());
+  oz = (int)SizeZ->value();
+  nz = atoi(SizeOutZ->value());
 
   calcNewSizes(ox, oy, oz, &nx, &ny, &nz);
 
-  SizeOutX->value(nx);
-  SizeOutY->value(ny);
-  SizeOutZ->value(nz);
+  char num[20];
+
+  snprintf(num, 20, "%i", nx); SizeOutX->value(num);
+  snprintf(num, 20, "%i", ny); SizeOutY->value(num);
+  snprintf(num, 20, "%i", nz); SizeOutZ->value(num);
   SizeX->value(nx);
   SizeY->value(ny);
   SizeZ->value(nz);
@@ -270,8 +274,7 @@ void ChangeSize::cb_input(long dir) {
   do_callback();
 }
 
-void ChangeSize::calcNewSizes(unsigned int ox, unsigned int oy, unsigned int oz,
-                              unsigned int *nx, unsigned int *ny, unsigned int *nz) {
+void ChangeSize::calcNewSizes(int ox, int oy, int oz, int *nx, int *ny, int *nz) {
   int dx = *nx - ox;
   int dy = *ny - oy;
   int dz = *nz - oz;
@@ -298,6 +301,10 @@ void ChangeSize::calcNewSizes(unsigned int ox, unsigned int oy, unsigned int oz,
   if (*nx < 1) *nx = 1;
   if (*ny < 1) *ny = 1;
   if (*nz < 1) *nz = 1;
+
+  if (*nx > 1000) *nx = 1000;
+  if (*ny > 1000) *ny = 1000;
+  if (*nz > 1000) *nz = 1000;
 }
 
 ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
@@ -331,26 +338,20 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   SizeZ->callback(cb_ChangeSize_stub, 2l);
   SizeZ->clear_visible_focus();
 
-  SizeOutX = new Fl_Value_Input(20+x, 10+y, 45, 20, "X");
+  SizeOutX = new Fl_Int_Input(20+x, 10+y, 45, 20, "X");
   SizeOutX->box(FL_THIN_DOWN_BOX);
-  SizeOutX->minimum(1);
-  SizeOutX->maximum(1000);
   SizeOutX->callback(cb_InputSize_stub, 0l);
-  SizeOutX->input.when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
+  SizeOutX->when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
 
-  SizeOutY = new Fl_Value_Input(20+x, 35+y, 45, 20, "Y");
+  SizeOutY = new Fl_Int_Input(20+x, 35+y, 45, 20, "Y");
   SizeOutY->box(FL_THIN_DOWN_BOX);
-  SizeOutY->minimum(1);
-  SizeOutY->maximum(1000);
   SizeOutY->callback(cb_InputSize_stub, 1l);
-  SizeOutY->input.when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
+  SizeOutY->when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
 
-  SizeOutZ = new Fl_Value_Input(20+x, 60+y, 45, 20, "Z");
+  SizeOutZ = new Fl_Int_Input(20+x, 60+y, 45, 20, "Z");
   SizeOutZ->box(FL_THIN_DOWN_BOX);
-  SizeOutZ->minimum(1);
-  SizeOutZ->maximum(1000);
   SizeOutZ->callback(cb_InputSize_stub, 2l);
-  SizeOutZ->input.when(FL_WHEN_RELEASE/* | FL_WHEN_ENTER_KEY*/);
+  SizeOutZ->when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
 
   ConnectX = new Fl_Check_Button(x+w-20, 10+y, 20, 20);
   ConnectY = new Fl_Check_Button(x+w-20, 35+y, 20, 20);
@@ -372,9 +373,12 @@ void ChangeSize::setXYZ(long x, long y, long z) {
   SizeX->value(x);
   SizeY->value(y);
   SizeZ->value(z);
-  SizeOutX->value(x);
-  SizeOutY->value(y);
-  SizeOutZ->value(z);
+
+  char num[20];
+
+  snprintf(num, 20, "%li", x); SizeOutX->value(num);
+  snprintf(num, 20, "%li", y); SizeOutY->value(num);
+  snprintf(num, 20, "%li", z); SizeOutZ->value(num);
 }
 
 

@@ -31,7 +31,7 @@
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Slider.H>
 #include <FL/Fl_Roller.H>
-#include <FL/Fl_Value_Input.H>
+#include <FL/Fl_Int_Input.H>
 #include <FL/Fl_Tabs.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Check_Button.H>
@@ -206,16 +206,15 @@ class ChangeSize : public Fl_Group {
   Fl_Roller* SizeY;
   Fl_Roller* SizeZ;
 
-  Fl_Value_Input* SizeOutX;
-  Fl_Value_Input* SizeOutY;
-  Fl_Value_Input* SizeOutZ;
+  Fl_Int_Input* SizeOutX;
+  Fl_Int_Input* SizeOutY;
+  Fl_Int_Input* SizeOutZ;
 
   Fl_Check_Button * ConnectX;
   Fl_Check_Button * ConnectY;
   Fl_Check_Button * ConnectZ;
 
-  void calcNewSizes(unsigned int ox, unsigned int oy, unsigned int oz,
-               unsigned int *nx, unsigned int *ny, unsigned int *nz);
+  void calcNewSizes(int ox, int oy, int oz, int *nx, int *ny, int *nz);
 
 public:
 
