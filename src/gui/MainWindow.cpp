@@ -1947,6 +1947,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
   TabPieces = new Fl_Group(x, y, w, h, "Shapes");
   TabPieces->tooltip("Edit shapes");
+  TabPieces->clear_visible_focus();
 
   x += SZ_GAP; y++;  w -= 2*SZ_GAP; h -= SZ_GAP + 1;
 
@@ -2179,6 +2180,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
   TabProblems = new Fl_Group(x, y, w, h, "Problems");
   TabProblems->tooltip("Edit problems");
   TabProblems->hide();
+  TabProblems->clear_visible_focus();
 
   x += SZ_GAP; y++; w -= 2*SZ_GAP; h -= SZ_GAP + 1;
 
@@ -2413,6 +2415,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
   TabSolve = new Fl_Group(x, y, w, h, "Solve");
   TabSolve->tooltip("Solve problems");
   TabSolve->hide();
+  TabSolve->clear_visible_focus();
 
   x += SZ_GAP; y++; w -= 2*SZ_GAP; h -= SZ_GAP + 1;
 
@@ -2450,11 +2453,13 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
 
     SolveDisasm = new Fl_Check_Button(x, y, w, SZ_BUTTON_Y, "Solve Disassembly");
     SolveDisasm->tooltip(" Do also try to disassemble the assembled puzzles. Only puzzles that can be disassembled will be added to solutions ");
+    SolveDisasm->clear_visible_focus();
     y += SZ_BUTTON_Y;
     lh -= SZ_BUTTON_Y;
 
     JustCount = new Fl_Check_Button(x, y, w, SZ_BUTTON_Y, "Just Count");
     JustCount->tooltip(" Don\'t save the solutions, just count the number of them ");
+    JustCount->clear_visible_focus();
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
@@ -2505,6 +2510,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     OutputActivity->box(FL_FLAT_BOX);
     OutputActivity->color(FL_BACKGROUND_COLOR);
     OutputActivity->tooltip(" What is currently done ");
+    OutputActivity->clear_visible_focus();
     y += SZ_TEXT_Y + SZ_GAP;
     lh -= SZ_TEXT_Y + SZ_GAP;
 
@@ -2634,6 +2640,7 @@ UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
   TaskSelectionTab = new Fl_Tabs(0, SZ_CONTENT_START_Y, SZ_TOOL_X, SZ_CONTENT_Y);
   TaskSelectionTab->box(FL_THIN_UP_BOX);
   TaskSelectionTab->callback(cb_TaskSelectionTab_stub, this);
+  TaskSelectionTab->clear_visible_focus();
 
   // the three tabs
   CreateShapeTab(  0, SZ_CONTENT_START_Y+SZ_TAB_Y, SZ_TOOL_X, SZ_CONTENT_Y-SZ_TAB_Y);

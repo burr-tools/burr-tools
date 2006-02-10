@@ -116,6 +116,7 @@ VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle) : 
   zselect->color((Fl_Color)237);
   zselect->step(1);
   zselect->callback(cb_VoxelEditGroupZselect_stub, this);
+  zselect->clear_visible_focus();
 
   space = new LineSpacer(x+15, y, 5, h, 4);
 
@@ -134,6 +135,7 @@ VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle) : 
   sqedit->tooltip(" Fill and empty cubes ");
   sqedit->box(FL_NO_BOX);
   sqedit->callback(cb_VoxelEditGroupSqedit_stub, this);
+  sqedit->clear_visible_focus();
 
   resizable(sqedit);
 }
@@ -309,6 +311,7 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   SizeX->maximum(1000);
   SizeX->step(0.25);
   SizeX->callback(cb_ChangeSize_stub, 0l);
+  SizeX->clear_visible_focus();
 
   SizeY = new Fl_Roller(70+x, 35+y, w-90, 20);
   SizeY->type(1);
@@ -317,6 +320,7 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   SizeY->maximum(1000);
   SizeY->step(0.25);
   SizeY->callback(cb_ChangeSize_stub, 1l);
+  SizeY->clear_visible_focus();
 
   SizeZ = new Fl_Roller(70+x, 60+y, w-90, 20);
   SizeZ->type(1);
@@ -325,6 +329,7 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   SizeZ->maximum(1000);
   SizeZ->step(0.25);
   SizeZ->callback(cb_ChangeSize_stub, 2l);
+  SizeZ->clear_visible_focus();
 
   SizeOutX = new Fl_Value_Input(20+x, 10+y, 45, 20, "X");
   SizeOutX->box(FL_THIN_DOWN_BOX);
@@ -354,6 +359,10 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   ConnectX->tooltip(" Link the sizes together so that a change will be done to the other sizes as well ");
   ConnectY->tooltip(" Link the sizes together so that a change will be done to the other sizes as well ");
   ConnectZ->tooltip(" Link the sizes together so that a change will be done to the other sizes as well ");
+
+  ConnectX->clear_visible_focus();
+  ConnectY->clear_visible_focus();
+  ConnectZ->clear_visible_focus();
 
   end();
 }
@@ -406,6 +415,7 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
 
     toAll = new Fl_Check_Button(x+5, y+h-25, w-85, 20, "Do Operation to all Shapes");
     toAll->tooltip(" If this is active, all operations (including transformations and constrains are done to all shapes ");
+    toAll->clear_visible_focus();
 
     o->end();
   }
@@ -566,6 +576,7 @@ BlockListGroup::BlockListGroup(int x, int y, int w, int h, BlockList * l) : Fl_G
   Slider->box(FL_THIN_DOWN_BOX);
   Slider->maximum(0);
   Slider->callback(cb_BlockListGroupSlider_stub);
+  Slider->clear_visible_focus();
 
   w-=15;
 
@@ -609,6 +620,7 @@ ConstraintsGroup::ConstraintsGroup(int x, int y, int w, int h, ColorConstraintsE
   Slider->box(FL_THIN_DOWN_BOX);
   Slider->maximum(0);
   Slider->callback(cb_ConstraintsGroupSlider_stub);
+  Slider->clear_visible_focus();
 
   w-=15;
 
@@ -646,6 +658,7 @@ View3dGroup::View3dGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   slider->step(0.01);
   slider->value(2);
   slider->callback(cb_View3dGroupSlider_stub);
+  slider->clear_visible_focus();
 
   cb_slider();
 
@@ -684,6 +697,7 @@ ResultViewer::ResultViewer(int x, int y, int w, int h, puzzle_c * p) : Fl_Box(x,
   bg = color();
 //  setcontent();
   box(FL_BORDER_BOX);
+  clear_visible_focus();
 }
 
 void ResultViewer::setPuzzle(puzzle_c * p, unsigned int prob) {
@@ -834,6 +848,8 @@ StatusLine::StatusLine(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   colors->tooltip(" Toggle between piece colors and the colors of the color constraints (neutral units will have piece color) ");
 
   resizable(text);
+
+  clear_visible_focus();
 
   end();
 }
