@@ -140,7 +140,11 @@ void UserInterface::cb_ChangeColor(void) {
 static void cb_NewShape_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_NewShape(); }
 void UserInterface::cb_NewShape(void) {
 
-  PcSel->setSelection(puzzle->addShape(6, 6, 6));
+  if (PcSel->getSelection() < puzzle->shapeNumber()) {
+    const voxel_c * v = puzzle->getShape(PcSel->getSelection());
+    PcSel->setSelection(puzzle->addShape(v->getX(), v->getY(), v->getZ()));
+  } else
+    PcSel->setSelection(puzzle->addShape(6, 6, 6));
   pieceEdit->setZ(0);
   updateInterface();
   StatPieceInfo(PcSel->getSelection());
