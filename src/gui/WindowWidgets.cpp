@@ -508,7 +508,7 @@ void ToolTab::cb_transform(long task) {
         case 21: space->actionOnSpace(voxel_c::ACT_DECOLOR, false); break;
         case 22: space->scale(2); break;
         case 23: space->scale(3); break;
-        case 24: space->translate(- space->boundX1(), - space->boundY1(), - space->boundZ1(), 0);
+        case 24: space->translate(- space->boundX1(), - space->boundY1(), - space->boundZ1(), 0); break;
         case 25:
                  {
                    int fx = space->getX() - (space->boundX2()-space->boundX1()+1);
