@@ -31,6 +31,13 @@ Image::Image(unsigned int w, unsigned int h, VoxelDrawer * dr, TRcontext * tr) :
 
   } while (trEndTile(tr));
 
+  // now flip vertically
+  for (unsigned int y = 0; y < h/2; y++)
+    for (unsigned int x = 0; x < w*4; x++) {
+      unsigned char tmp = bitmap[y*4*w+x];
+      bitmap[y*4*w+x] = bitmap[(h-y-1)*4*w+x];
+      bitmap[(h-y-1)*4*w+x] = tmp;
+    }
 }
 
 
@@ -125,14 +132,15 @@ void Image::blit(const Image * i, int xpos, int ypos) {
       }
 }
 
-void Image::transparentize(unsigned char r, unsigned char g, unsigned char b) {
+void Image::deTransparentize(unsigned char r, unsigned char g, unsigned char b) {
   for (unsigned int x = 0; x < width; x++)
-    for (unsigned int y = 0; y < height; y++) {
-      if ((bitmap[4*(y*width + x) + 0] == r) &&
-          (bitmap[4*(y*width + x) + 1] == g) &&
-          (bitmap[4*(y*width + x) + 2] == b))
-        bitmap[4*(y*width + x) + 3] = 0;
-    }
+    for (unsigned int y = 0; y < height; y++)
+      if (bitmap[4*(y*width + x) + 3] == 0) {
+        bitmap[4*(y*width + x) + 0] = r;
+        bitmap[4*(y*width + x) + 1] = g;
+        bitmap[4*(y*width + x) + 2] = b;
+        bitmap[4*(y*width + x) + 3] = 255;
+      }
 }
 
 void Image::scaleDown(unsigned char by) {
@@ -153,10 +161,13 @@ void Image::scaleDown(unsigned char by) {
 
       for (unsigned int ax = 0; ax < by; ax++)
         for (unsigned int ay = 0; ay < by; ay++) {
-          r += bitmap[4*((y*by+ay)*width + x*by+ax) + 0];
-          g += bitmap[4*((y*by+ay)*width + x*by+ax) + 1];
-          b += bitmap[4*((y*by+ay)*width + x*by+ax) + 2];
-          a += bitmap[4*((y*by+ay)*width + x*by+ax) + 3];
+          unsigned int pos = 4*((y*by+ay)*width + x*by+ax);
+          if (bitmap[pos + 3]) {
+            r += bitmap[pos + 0];
+            g += bitmap[pos + 1];
+            b += bitmap[pos + 2];
+            a += bitmap[pos + 3];
+          }
         }
 
       if (a) {

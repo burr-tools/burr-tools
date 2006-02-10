@@ -54,8 +54,18 @@ class LView3dGroup : public View3dGroup, public layoutable_c {
     LView3dGroup(int x, int y, int w, int h) : View3dGroup(0, 0, 50, 50), layoutable_c(x, y, w, h) {}
 
     virtual void getMinSize(int * w, int *h) const {
-      *w = 150;
-      *h = 150;
+      *w = 400;
+      *h = 400;
+    }
+};
+
+class LBlockListGroup : public BlockListGroup, public layoutable_c {
+  public:
+    LBlockListGroup(int x, int y, int w, int h, BlockList * l) : BlockListGroup(0, 0, 50, 50, l), layoutable_c(x, y, w, h) {}
+
+    virtual void getMinSize(int *w, int *h) const {
+      *w = 40;
+      *h = 40;
     }
 };
 
@@ -65,6 +75,12 @@ class ImageExportWindow : public LFl_Double_Window {
 
     puzzle_c * puzzle;
     LView3dGroup *view3D;
+
+    LFl_Int_Input *SizePixelX, *SizePixelY;
+    LFl_Radio_Button *AA1, *AA2, *AA3, *AA4, *AA5;
+    LFl_Radio_Button *BgWhite, *BgTransp;
+    LFl_Input *Fname, *Pname;
+    LFl_Box *status;
 
   public:
 

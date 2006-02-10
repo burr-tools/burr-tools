@@ -29,6 +29,7 @@
 #include <FL/Fl_Check_Button.h>
 #include <FL/Fl_Round_Button.h>
 #include <FL/Fl_Input.h>
+#include <FL/Fl_Int_Input.h>
 #include <FL/Fl_Double_Window.h>
 
 #include <vector>
@@ -235,6 +236,24 @@ class LFl_Round_Button : public Fl_Round_Button, public layoutable_c {
   }
 };
 
+class LFl_Radio_Button : public Fl_Round_Button, public layoutable_c {
+
+  public:
+
+  LFl_Radio_Button(const char *text, int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Round_Button(0, 0, 0, 0, text), layoutable_c(x, y, w, h) {
+    stretchVCenter();
+    type(FL_RADIO_BUTTON);
+  }
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 0;
+    fl_font(labelfont(), labelsize());
+    fl_measure(label(), *width, *height);
+    *width += 18;
+    *height += 4;
+  }
+};
+
 class LFl_Slider : public Fl_Slider, public layoutable_c {
 
   public:
@@ -265,6 +284,24 @@ class LFl_Input : public Fl_Input, public layoutable_c {
   public:
 
   LFl_Input(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Input(0, 0, 0, 0), layoutable_c(x, y, w, h) {
+    stretchVCenter();
+  }
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 30;
+    *height = 20;
+  }
+
+  // sets width so that the given text will fit into the input line
+  void setMinWidth(const char *) {
+  }
+};
+
+class LFl_Int_Input : public Fl_Int_Input, public layoutable_c {
+
+  public:
+
+  LFl_Int_Input(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Int_Input(0, 0, 0, 0), layoutable_c(x, y, w, h) {
     stretchVCenter();
   }
 

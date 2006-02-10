@@ -24,8 +24,8 @@ class Image {
 
     void blit(const Image * i, int xpos, int ypos);
 
-    /* makes the pixels with the given color transparent */
-    void transparentize(unsigned char r, unsigned char g, unsigned char b);
+    /* assigns a color to all transparent pixels */
+    void deTransparentize(unsigned char r, unsigned char g, unsigned char b);
 
     /* scales the image down by the given factor */
     void scaleDown(unsigned char by);
