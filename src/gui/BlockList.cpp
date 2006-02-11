@@ -157,6 +157,12 @@ void SelectableTextList::blockDraw(unsigned int block, int x, int y) {
   getColor(block, &r, &g, &b);
   getText(block, txt);
 
+  /* when we are deactivated, turn the color into gray */
+  if (!active()) {
+    int gray = (3*g + 6*g + b) / 10;
+    r = g = b = gray;
+  }
+
   /* measure text and add border */
   w = 0;
   fl_measure(txt, w, h);
@@ -177,7 +183,7 @@ void SelectableTextList::blockDraw(unsigned int block, int x, int y) {
   fl_draw(txt, x+4, y+h-2-fl_descent());
 
   /* if this block is selected draw a black-white border around it */
-  if (block == getSelection()) {
+  if (block == getSelection() && active()) {
     fl_color(0, 0, 0);
     fl_rect(x, y, w, h);
     fl_color(255, 255, 255);
@@ -208,6 +214,12 @@ void TextList::blockDraw(unsigned int block, int x, int y) {
 
   getColor(block, &r, &g, &b);
   getText(block, txt);
+
+  /* when we are deactivated, turn the color into gray */
+  if (!active()) {
+    int gray = (3*g + 6*g + b) / 10;
+    r = g = b = gray;
+  }
 
   w = 0;
   fl_measure(txt, w, h);
@@ -420,6 +432,12 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
   r = int(255*pieceColorR(shapeID, subBlock));
   g = int(255*pieceColorG(shapeID, subBlock));
   b = int(255*pieceColorB(shapeID, subBlock));
+
+  /* when we are deactivated, turn the color into gray */
+  if (!active()) {
+    int gray = (3*g + 6*g + b) / 10;
+    r = g = b = gray;
+  }
 
   w = 0;
   fl_measure(txt, w, h);
