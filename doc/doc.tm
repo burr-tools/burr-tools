@@ -1,4 +1,4 @@
-<TeXmacs|1.0.5.6>
+<TeXmacs|1.0.6>
 
 <style|book>
 
@@ -788,22 +788,57 @@
   interesting to implement are the following things:
 
   <\itemize-dot>
-    <item>Include the burr growing into the GUI. This might not happen any
-    time soon but it might be useful.
-
-    <item>Include a possibility to generate images with solutions. Currently
-    you need the program to animate for you.
+    <item>Include a possibility to generate images with the problem the
+    shapes or the solutions. Currently you need the program to animate for
+    you.
 
     <item>Add some special algorithms that are faster for certain kind of
     puzzles. The current algorithms is quite good for nearly all puzzles, but
     it's not <em|the> fastest.
 
-    <item>Add more colour constraint possibilities
+    <item>Add more colour constraint possibilities, like edge matching, ...
 
     <item>Add different space grids, or at least parameters to the cube grid
     (lengths and angles)
 
     <item>Add rotation checks to the disassembler
+
+    <item>Add a shape generator: create all piece shapes that fullfill
+    certain rules (shape, colors, union of 2 shapes, ...)
+
+    <item>Libraries of shapes to import pieces from
+
+    <item>Add tools for puzzle design, (like described below)
+
+    <item>Make it possible to divide problems so that they can be solved
+    parallel on several computers and then the solutions are merged back
+    together in one file.
+
+    <item>Improve multithreading so that multi-core CPUs are better used
+
+    <item>Improve assembler to cope with ranges of piece numbers (e.g. 1-5 of
+    piece x) and doesn't need to place all pieces. So that is is possible to
+    solve piece sets and also to create puzzles by defining a set of pieces
+    and let the program find out which of them results in a nice puzzle
+
+    <item>Better tool for colorization of a piece. E.g checkers, but it needs
+    to be more general than just checkers
+
+    <item>Improve disassembler to find bigger groups of in unison movable
+    pieces. Currently it only finds 2. It finds all movements if they have to
+    move, but it may first move piece p1 up x and then p2 up x which results
+    in higher levels than there really are
+
+    <item>Improve 3d view. It currently sucks for big shapes. The wide angled
+    view distorts big pieces.
+
+    <item>Make it possible to only save a few solutions if puzzles have a lot
+    of solutions this might be useful
+
+    <item>Create a debug window to make it possible to find out why there is
+    no assembly or why an assembly can not be taken apart.
+
+    <item>speed improvements
   </itemize-dot>
 
   I would be very happy to get contributions from other people. After all
@@ -1390,11 +1425,11 @@
   <\collection>
     <associate|font|roman>
     <associate|language|british>
-    <associate|page-breaking|optimal>
-    <associate|page-medium|paper>
+    <associate|page-breaking|sloppy>
+    <associate|page-medium|papyrus>
     <associate|page-orientation|portrait>
     <associate|par-columns|1>
-    <associate|par-hyphen|professional>
+    <associate|par-hyphen|normal>
     <associate|sfactor|5>
   </collection>
 </initial>
