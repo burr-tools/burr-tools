@@ -662,7 +662,7 @@ void UserInterface::cb_ShapeGroup(void) {
 static void cb_BtnPlacementBrowser_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_BtnPlacementBrowser(); }
 void UserInterface::cb_BtnPlacementBrowser(void) {
 
-  unsigned int prob = problemSelector->getSelection();
+  unsigned int prob = solutionProblem->getSelection();
 
   PlacementBrowser * plbr = new PlacementBrowser(puzzle, prob);
 
