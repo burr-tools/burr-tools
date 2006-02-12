@@ -2344,7 +2344,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     {
 
       Fl_Group * o = new Fl_Group(x+2*(hw+SZ_GAP), y, w-2*hw-3*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y);
-      BtnGroup = new FlatButton(x+2*(hw+SZ_GAP)  , y, w-2*hw-4*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y, "Group", " Edit groups ", cb_ShapeGroup_stub, this);
+      BtnGroup = new FlatButton(x+2*(hw+SZ_GAP)  , y, w-2*hw-4*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y, "Group", " Create or edit groups ", cb_ShapeGroup_stub, this);
       o->resizable(BtnGroup);
       o->end();
     }
@@ -2397,7 +2397,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     {
       Fl_Group * o = new Fl_Group(x, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnColSrtPc = new FlatButton(x, y, hw, SZ_BUTTON_Y, "Srt Pc", " Sort color constraints by piece ", cb_CCSortByPiece_stub, this);
+      BtnColSrtPc = new FlatButton(x, y, hw, SZ_BUTTON_Y, "Sort by Piece", " Sort color constraints by piece ", cb_CCSortByPiece_stub, this);
       BtnColSrtPc->deactivate();
       o->resizable(BtnColSrtPc);
       o->end();
@@ -2408,7 +2408,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     {
       Fl_Group * o = new Fl_Group(x+2*hw+SZ_GAP, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnColSrtRes = new FlatButton(x+2*hw+2*SZ_GAP, y, w-2*(hw+SZ_GAP), SZ_BUTTON_Y, "Srt Res", " Sort Color Constraints by Result ", cb_CCSortByResult_stub, this);
+      BtnColSrtRes = new FlatButton(x+2*hw+2*SZ_GAP, y, w-2*(hw+SZ_GAP), SZ_BUTTON_Y, "Sort by Result", " Sort Color Constraints by Result ", cb_CCSortByResult_stub, this);
       o->resizable(BtnColSrtRes);
       o->end();
     }

@@ -40,7 +40,7 @@ void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, i
       if (c == 0)
         snprintf(s, 40, "Shape");
       else if (c == 1)
-        snprintf(s, 40, "Cnt");
+        snprintf(s, 40, "n");
       else
         snprintf(s, 40, "Gr %i", c-1);
 
