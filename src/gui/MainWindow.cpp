@@ -1165,6 +1165,23 @@ void UserInterface::tryToLoad(const char * f) {
     StatPieceInfo(PcSel->getSelection());
 
     changed = false;
+
+    {
+
+      // check for astarted assemblies, and warn user about it
+      bool containsStarted = false;
+
+      for (unsigned int p = 0; p < puzzle->problemNumber(); p++) {
+        if (puzzle->probGetSolveState(p) == puzzle_c::SS_SOLVING) {
+          containsStarted = true;
+          break;
+        }
+      }
+
+      if (containsStarted)
+        fl_message("This puzzle file contains started but not finished search for solutions.");
+
+    }
   }
 }
 
