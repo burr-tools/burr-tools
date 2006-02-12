@@ -62,17 +62,24 @@ void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, i
 
       int cnt = -1;
 
-      if (c == 0)
+      if (c == 0) {
+
         cnt = puzzle->probGetShape(prob, r);
+        if (puzzle->getShape(cnt)->getName())
+          snprintf(s, 40, "S%i - %s", cnt+1, puzzle->getShape(cnt)->getName());
+        else
+          snprintf(s, 40, "S%i", cnt+1);
 
-      else if (c == 1)
+      } else if (c == 1) {
         cnt = puzzle->probGetShapeCount(prob, r);
+        snprintf(s, 40, "%i", cnt);
 
-      else {
+      } else {
 
         for (unsigned int j = 0; j < puzzle->probGetShapeGroupNumber(prob, r); j++)
           if (puzzle->probGetShapeGroup(prob, r, j) == (c - 1))
             cnt = puzzle->probGetShapeGroupCount(prob, r, j);
+        snprintf(s, 40, "%i", cnt);
 
       }
 
@@ -86,7 +93,6 @@ void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, i
 
         fl_color(r, g, b);
         fl_rectf(x, y, w, h);
-        snprintf(s, 40, "%i", cnt);
         if ((int)3*r + 6*g + 1*b > 1275)
           fl_color(0, 0, 0);
         else
@@ -187,7 +193,7 @@ GroupsEditor::GroupsEditor(int x, int y, int w, int h, puzzle_c * puzzle, unsign
   col_header(1);
   row_height_all(20);
 
-  col_width(0, 50);
+  col_width(0, 150);
   col_width(1, 35);
   for (unsigned int i = 0; i < maxGroup; i++)
     col_width(i+2, 35);
