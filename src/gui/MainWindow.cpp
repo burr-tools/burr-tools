@@ -1077,10 +1077,11 @@ void UserInterface::StatProblemInfo(unsigned int pr) {
       for (unsigned int i = 0; i < puzzle->probShapeNumber(pr); i++)
         cnt += puzzle->probGetShapeShape(pr, i)->countState(voxel_c::VX_FILLED) * puzzle->probGetShapeCount(pr, i);
 
-      snprintf(txt, 100, "Problem P%i result can contain %i - %i cubes, pieces contain %i cubes", pr+1,
+      snprintf(txt, 100, "Problem P%i result can contain %i - %i cubes, pieces (n = %i) contain %i cubes", pr+1,
                puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
                puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
-               puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE), cnt);
+               puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE),
+               puzzle->probPieceNumber(pr), cnt);
       Status->setText(txt);
     }
 
