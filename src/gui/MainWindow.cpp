@@ -1055,9 +1055,11 @@ void UserInterface::StatPieceInfo(unsigned int pc) {
 
   if (pc < puzzle->shapeNumber()) {
     char txt[100];
-    snprintf(txt, 100, "Shape S%i has %i fixed and %i variable cubes", pc+1,
-             puzzle->getShape(pc)->countState(voxel_c::VX_FILLED),
-             puzzle->getShape(pc)->countState(voxel_c::VX_VARIABLE));
+
+    unsigned int fx = puzzle->getShape(pc)->countState(voxel_c::VX_FILLED);
+    unsigned int vr = puzzle->getShape(pc)->countState(voxel_c::VX_VARIABLE);
+
+    snprintf(txt, 100, "Shape S%i has %i cubes (%i fixed, %i variable)", pc+1, fx+vr, fx, vr);
     Status->setText(txt);
   }
 }
