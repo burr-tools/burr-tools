@@ -65,32 +65,14 @@ class LineSpacer : Fl_Widget {
 
         for (int i = 0; i < lines; i++) {
           int ypos = y()+ gap + (h()-2*gap-1)*i/(lines-1);
-          int size;
-
-          if (i % 10 == 0)
-            size = w();
-          else if (i % 5 == 0)
-            size = 3*w()/4;
-          else
-            size = w()/2;
-
-          fl_line(x(), ypos, x()+size-1, ypos);
+          fl_line(x(), ypos, x()+w()-1, ypos);
         }
 
       } else {
 
         for (int i = 0; i < lines; i++) {
           int xpos = x()+ gap + (w()-2*gap-1)*i/(lines-1);
-          int size;
-
-          if (i % 10 == 0)
-            size = h();
-          else if (i % 5 == 0)
-            size = 3*h()/4;
-          else
-            size = h()/2;
-
-          fl_line(y(), xpos, y()+size-1, xpos);
+          fl_line(y(), xpos, y()+w()-1, xpos);
         }
       }
 
