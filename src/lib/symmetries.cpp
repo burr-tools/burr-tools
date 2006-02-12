@@ -184,6 +184,102 @@ static const unsigned long long symmetries[NUM_SYMMETRY_GROUOPS] = {
   0xFFFFFFFFFFFFLL,
 };
 
+static const unsigned long long unifiedSymmetries[NUM_SYMMETRY_GROUOPS] = {
+  0x000000000001LL,
+  0x000000000505LL,
+  0x00000011151FLL,
+  0x000000444A41LL,
+  0x000000000505LL,
+  0x000000444A41LL,
+  0x000000000505LL,
+  0x000000000505LL,
+  0x000000444A41LL,
+  0x000000444F45LL,
+  0x00000011151FLL,
+  0x000000444A41LL,
+  0x000000444F45LL,
+  0x000000AAA0A1LL,
+  0x000000444A41LL,
+  0x000000AAA0A1LL,
+  0x00000011151FLL,
+  0x000000AAA0A1LL,
+  0x000000EEEAE1LL,
+  0x000000444A41LL,
+  0x000000EEEAE1LL,
+  0x000000444F45LL,
+  0x000000EEEAE1LL,
+  0x000000AAA0A1LL,
+  0x000000EEEAE1LL,
+  0x000000AAA5A5LL,
+  0x000501000001LL,
+  0x000004000001LL,
+  0x000505000505LL,
+  0x44454F11151FLL,
+  0x111A10000001LL,
+  0x111A14444A41LL,
+  0x000501000001LL,
+  0x000501000505LL,
+  0x000505000505LL,
+  0x111A10000001LL,
+  0x111F11444A41LL,
+  0x111A14444A41LL,
+  0x000501000001LL,
+  0x000501000505LL,
+  0x000505000505LL,
+  0x111F11444A41LL,
+  0x000501000505LL,
+  0x000505000505LL,
+  0x44454B444F45LL,
+  0x111A10000001LL,
+  0x111F11444A41LL,
+  0x111A14444A41LL,
+  0x111A10000505LL,
+  0x111F15444F45LL,
+  0x555A5A000505LL,
+  0x111F1111151FLL,
+  0x555F5F555F5FLL,
+  0x111A10000001LL,
+  0x111A14444A41LL,
+  0x111A10000505LL,
+  0x111F1111151FLL,
+  0x111F11444A41LL,
+  0x111F15444F45LL,
+  0x44454B444F45LL,
+  0x44454F11151FLL,
+  0x555A5A000505LL,
+  0x555F5F555F5FLL,
+  0x111A10000001LL,
+  0x111A14444A41LL,
+  0x111F11444A41LL,
+  0x111A10AAA0A1LL,
+  0x111A10AAA0A1LL,
+  0xAAA0A4AAA0A1LL,
+  0xAAA0A4AAA0A1LL,
+  0x111A10000001LL,
+  0x111A14444A41LL,
+  0x111F11444A41LL,
+  0x111A10AAA0A1LL,
+  0x111A10AAA0A1LL,
+  0x111A10000505LL,
+  0x111F15444F45LL,
+  0x111F1111151FLL,
+  0xBBBAB4EEEAE1LL,
+  0xBBBAB4EEEAE1LL,
+  0xAAA0A4AAA0A1LL,
+  0xBBBAB4EEEAE1LL,
+  0x44454F11151FLL,
+  0x44454B444F45LL,
+  0x555A5A000505LL,
+  0x555F5F555F5FLL,
+  0x555A5AAAA5A5LL,
+  0xAAA0A4AAA0A1LL,
+  0xBBBAB4EEEAE1LL,
+  0xAAA5A5AAA5A5LL,
+  0xFFFFFFFFFFFFLL,
+};
+
+
+
 /* this matrix lets you calculate the orientation with the smallest number that results in an identical looking
  * shape. This requires us to know the symmetry group
  */
@@ -318,12 +414,12 @@ unsigned char minimizeTransformation(symmetries_t s, unsigned char trans) {
   return transformationMinimizer[s][trans];
 }
 
-unsigned int countSymmetryIntersection(symmetries_t s1, symmetries_t s2) {
+unsigned int countSymmetryIntersection(symmetries_t res, symmetries_t s2) {
 
-  bt_assert(s1 < NUM_SYMMETRY_GROUOPS);
+  bt_assert(res < NUM_SYMMETRY_GROUOPS);
   bt_assert(s2 < NUM_SYMMETRY_GROUOPS);
 
-  unsigned long long s = symmetries[s1] & symmetries[s2];
+  unsigned long long s = symmetries[res] & unifiedSymmetries[s2];
 
   s -= ((s >> 1) & 0x5555555555555555ll);
   s = (((s >> 2) & 0x3333333333333333ll) + (s & 0x3333333333333333ll));
@@ -339,7 +435,7 @@ bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2) {
   bt_assert(resultSym < NUM_SYMMETRY_GROUOPS);
   bt_assert(s2 < NUM_SYMMETRY_GROUOPS);
 
-  return symmetries[resultSym] & symmetries[s2] & ~((unsigned long long)1);
+  return symmetries[resultSym] & unifiedSymmetries[s2] & ~((unsigned long long)1);
 }
 
 symmetries_t symmetryCalcuation(const voxel_c *pp) {

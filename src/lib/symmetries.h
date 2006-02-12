@@ -57,7 +57,7 @@ unsigned char minimizeTransformation(symmetries_t s, unsigned char trans);
 
 #define unSymmetric(s) ((s) == 0)
 
-unsigned int countSymmetryIntersection(symmetries_t s1, symmetries_t s2);
+unsigned int countSymmetryIntersection(symmetries_t resultSym, symmetries_t s2);
 bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2);
 
 #define symmetryInvalid() (0xFF)

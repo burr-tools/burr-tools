@@ -158,8 +158,9 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
 
     bool tmp = symmetriesLeft(resultSym, puz->probGetShapeShape(problemNum, symBreakerShape)->selfSymmetries());
 
-    if (tmp || (puz->probGetShapeCount(problemNum, symBreakerShape) > 1))
+    if (tmp || (puz->probGetShapeCount(problemNum, symBreakerShape) > 1)) {
       checkForTransformedAssemblies(symBreakerPiece);
+    }
   }
 
   /* node 0 is the start node for everything */
