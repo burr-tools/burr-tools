@@ -236,8 +236,8 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
   } else if(o->value() == TabProblems) {
     if (problemSelector->getSelection() < puzzle->problemNumber()) {
       activateProblem(problemSelector->getSelection());
-      StatProblemInfo(problemSelector->getSelection());
     }
+    StatProblemInfo(problemSelector->getSelection());
     Big3DView();
     ViewSizes[currentTab] = View3D->getZoom();
     if (ViewSizes[1] >= 0)
@@ -1079,24 +1079,21 @@ void UserInterface::StatPieceInfo(unsigned int pc) {
 
 void UserInterface::StatProblemInfo(unsigned int pr) {
 
-  if (pr < puzzle->problemNumber()) {
+  if ((pr < puzzle->problemNumber()) && (puzzle->probGetResult(pr) < puzzle->shapeNumber())) {
 
-    if (puzzle->probGetResult(pr) < puzzle->shapeNumber()) {
+    char txt[100];
 
-      char txt[100];
+    unsigned int cnt = 0;
 
-      unsigned int cnt = 0;
+    for (unsigned int i = 0; i < puzzle->probShapeNumber(pr); i++)
+      cnt += puzzle->probGetShapeShape(pr, i)->countState(voxel_c::VX_FILLED) * puzzle->probGetShapeCount(pr, i);
 
-      for (unsigned int i = 0; i < puzzle->probShapeNumber(pr); i++)
-        cnt += puzzle->probGetShapeShape(pr, i)->countState(voxel_c::VX_FILLED) * puzzle->probGetShapeCount(pr, i);
-
-      snprintf(txt, 100, "Problem P%i result can contain %i - %i cubes, pieces (n = %i) contain %i cubes", pr+1,
-               puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
-               puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
-               puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE),
-               puzzle->probPieceNumber(pr), cnt);
-      Status->setText(txt);
-    }
+    snprintf(txt, 100, "Problem P%i result can contain %i - %i cubes, pieces (n = %i) contain %i cubes", pr+1,
+             puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
+             puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
+             puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE),
+             puzzle->probPieceNumber(pr), cnt);
+    Status->setText(txt);
 
   } else
 
