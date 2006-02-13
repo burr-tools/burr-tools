@@ -1625,10 +1625,13 @@ void UserInterface::updateInterface(void) {
       }
 
       // the placement browser can only be activated when an assember is available and not assembling is active
-      if (puzzle->probGetAssembler(prob) && !assmThread)
+      if (puzzle->probGetAssembler(prob) && !assmThread) {
         BtnPlacement->activate();
-      else
+        BtnStep->activate();
+      } else {
         BtnPlacement->deactivate();
+        BtnStep->deactivate();
+      }
 
     } else {
 
@@ -1644,6 +1647,7 @@ void UserInterface::updateInterface(void) {
       OutputAssemblies->hide();
 
       BtnPlacement->deactivate();
+      BtnStep->deactivate();
     }
 
     if (assmThread && (assmThread->getProblem() == prob)) {
@@ -2532,7 +2536,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
     BtnPlacement = new FlatButton(x, y, (w-SZ_GAP)/2, SZ_BUTTON_Y, "Browse Placements", " Browse the calculated placement of pieces ", cb_BtnPlacementBrowser_stub, this);
-    BtnPlacement = new FlatButton(x+(w-SZ_GAP)/2+SZ_GAP, y, (w-SZ_GAP)/2, SZ_BUTTON_Y, "Step", " Make one step in the assembler ", cb_BtnAssemblerStep_stub, this);
+    BtnStep = new FlatButton(x+(w-SZ_GAP)/2+SZ_GAP, y, (w-SZ_GAP)/2, SZ_BUTTON_Y, "Step", " Make one step in the assembler ", cb_BtnAssemblerStep_stub, this);
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
