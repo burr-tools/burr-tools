@@ -371,9 +371,9 @@ void PiecesList::getText(unsigned int block, char * text) {
   /* finally the group information */
   for (int i = 0; i < puzzle->probGetShapeGroupNumber(problem, block); i++) {
     if (puzzle->probGetShapeGroupCount(problem, block, i) != puzzle->probGetShapeCount(problem, block))
-      len = snprintf(text, txtLen, ", G%i(%i)", puzzle->probGetShapeGroup(problem, block, i), puzzle->probGetShapeGroupCount(problem, block, i)+1);
+      len = snprintf(text, txtLen, ", G%i(%i)", puzzle->probGetShapeGroup(problem, block, i), puzzle->probGetShapeGroupCount(problem, block, i));
     else
-      len = snprintf(text, txtLen, ", G%i", puzzle->probGetShapeGroup(problem, block, i)+1);
+      len = snprintf(text, txtLen, ", G%i", puzzle->probGetShapeGroup(problem, block, i));
     text += len;
     txtLen -= len;
   }
