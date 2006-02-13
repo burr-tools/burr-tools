@@ -127,7 +127,7 @@ void UserInterface::cb_ChangeColor(void) {
   else {
     unsigned char r, g, b;
     puzzle->getColor(colorSelector->getSelection()-1, &r, &g, &b);
-    if (fl_color_chooser("New color", r, g, b)) {
+    if (fl_color_chooser("Change color", r, g, b)) {
       puzzle->changeColor(colorSelector->getSelection()-1, r, g, b);
       changed = true;
       View3D->showColors(puzzle, Status->useColors());
