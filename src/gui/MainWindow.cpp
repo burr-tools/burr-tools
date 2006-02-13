@@ -1166,6 +1166,7 @@ void UserInterface::tryToLoad(const char * f) {
     TaskSelectionTab->value(TabPieces);
     activateShape(PcSel->getSelection());
     StatPieceInfo(PcSel->getSelection());
+    View3D->showColors(puzzle, Status->useColors());
 
     changed = false;
 
