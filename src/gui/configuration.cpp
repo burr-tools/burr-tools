@@ -176,6 +176,7 @@ configuration::configuration(void) {
 
   i_use_tooltips = true;
   i_use_lightning = true;
+  i_use_rubberband = false;
 
   i_window_pos_x = 30;
   i_window_pos_y = 30;
@@ -186,6 +187,7 @@ configuration::configuration(void) {
 
   CNF_BOOL_D("tooltips",            &i_use_tooltips, "Use Tooltips");
   CNF_BOOL_D("lightning",           &i_use_lightning, "Use lights in 3D view");
+  CNF_BOOL("rubberband",           &i_use_rubberband);
   CNF_INT("windowposx",           &i_window_pos_x);
   CNF_INT("windowposy",           &i_window_pos_y);
   CNF_INT("windowposw",           &i_window_pos_w);

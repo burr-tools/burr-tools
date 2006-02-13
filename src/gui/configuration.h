@@ -38,6 +38,9 @@ public:
   bool useLightning(void) { return i_use_lightning; }
   void useLightning(bool val) { i_use_lightning = val; }
 
+  bool useRubberband(void) { return i_use_rubberband; }
+  void useRubberband(bool val) { i_use_rubberband = val; }
+
   int windowPosX(void) { return i_window_pos_x; }
   int windowPosY(void) { return i_window_pos_y; }
   int windowPosW(void) { return i_window_pos_w; }
@@ -77,6 +80,7 @@ private:
 
   bool i_use_tooltips;
   bool i_use_lightning;
+  bool i_use_rubberband;
 
   int i_window_pos_x;
   int i_window_pos_y;

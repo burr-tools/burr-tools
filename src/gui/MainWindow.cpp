@@ -312,9 +312,11 @@ void UserInterface::cb_EditMode(void) {
   switch(editMode->getSelected()) {
     case 0:
       pieceEdit->editType(SquareEditor::EDT_RUBBER);
+      config.useRubberband(true);
       break;
     case 1:
       pieceEdit->editType(SquareEditor::EDT_SINGLE);
+      config.useRubberband(false);
       break;
   }
 }
@@ -2681,6 +2683,11 @@ UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
 
   size_range(250, 400);
   resize(config.windowPosX(), config.windowPosY(), config.windowPosW(), config.windowPosH());
+
+  if (!config.useRubberband())
+    editMode->select(1);
+  else
+    editMode->select(0);
 
   is3DViewBig = true;
   shapeEditorWithBig3DView = true;
