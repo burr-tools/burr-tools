@@ -1356,7 +1356,7 @@ void puzzle_c::probSetShapeGroup(unsigned int prob, unsigned int shapeID, unsign
     }
 
   // not found add, but only groups not equal to 0
-  if (group)
+  if (group && count)
     problems[prob]->shapes[shapeID].addGroup(group, count);
 }
 
