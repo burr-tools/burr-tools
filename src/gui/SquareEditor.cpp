@@ -331,7 +331,7 @@ bool SquareEditor::setLayer(unsigned int z) {
   for (int x = x1; x <= x2; x++)
     for (int y = y1; y <= y2; y++)
       if ((x >= 0) && (y >= 0) && (x < (int)space->getX()) && (y < (int)space->getY()))
-        changed |= setMx(space, activeTools, x, y, z, task, currentColor);
+        changed |= setMx(space, activeTools, x, y, z, (state == 1) ? (task) : (TSK_RESET), currentColor);
 
   return changed;
 }
@@ -354,8 +354,6 @@ int SquareEditor::handle(int event) {
   switch(event) {
   case FL_RELEASE:
     {
-      state = 0;
-
       int s, tx, ty;
       calcParameters(&s, &tx, &ty);
 
@@ -373,12 +371,15 @@ int SquareEditor::handle(int event) {
         do_callback();
       }
 
+      state = 0;
+
       redraw();
     }
 
     return 1;
   case FL_PUSH:
-    state = 1;
+    state = Fl::event_button();
+
   case FL_ENTER:
     inside = true;
     if (event == FL_ENTER)
