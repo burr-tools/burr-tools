@@ -50,6 +50,8 @@ public:
 
   bool getChanged(void) { return changed; }
 
+  void finishEdit(void);
+
 };
 
 class groupsEditorWindow : public Fl_Double_Window {
@@ -60,10 +62,12 @@ public:
 
   groupsEditorWindow(puzzle_c * p, unsigned int pr);
 
-  void cb_AddColor(void);
+  void cb_AddGroup(void);
   void cb_CloseWindow(void);
 
   bool changed(void) { return tab->getChanged(); }
+
+  void hide(void);
 };
 
 #endif

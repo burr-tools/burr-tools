@@ -219,8 +219,14 @@ void GroupsEditor::addGroup(void) {
   col_width(maxGroup+1, 35);
 }
 
-static void cb_AddGroup_stub(Fl_Widget* o, void* v) { ((groupsEditorWindow*)v)->cb_AddColor(); }
-void groupsEditorWindow::cb_AddColor(void) {
+void GroupsEditor::finishEdit(void) {
+  if (input->visible()) {
+    cb_input();
+  }
+}
+
+static void cb_AddGroup_stub(Fl_Widget* o, void* v) { ((groupsEditorWindow*)v)->cb_AddGroup(); }
+void groupsEditorWindow::cb_AddGroup(void) {
   tab->addGroup();
 }
 
@@ -229,6 +235,10 @@ void groupsEditorWindow::cb_CloseWindow(void) {
   hide();
 }
 
+void groupsEditorWindow::hide(void) {
+  tab->finishEdit();
+  Fl_Double_Window::hide();
+}
 
 #define SZ_WINDOW_X 300                        // initial size of the window
 #define SZ_WINDOW_Y 200
