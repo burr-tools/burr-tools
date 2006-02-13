@@ -541,11 +541,22 @@ void UserInterface::cb_ShapeToResult(void) {
     return;
   }
 
-  changeProblem(problemSelector->getSelection());
-  puzzle->probSetResult(problemSelector->getSelection(), shapeAssignmentSelector->getSelection());
-  problemResult->setPuzzle(puzzle, problemSelector->getSelection());
-  activateProblem(problemSelector->getSelection());
-  StatProblemInfo(problemSelector->getSelection());
+  unsigned int prob = problemSelector->getSelection();
+
+  // check if this shape is already a piece of the problem
+  for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++) {
+    if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
+      puzzle->probRemoveShape(prob, i);
+      break;
+    }
+  }
+
+  changeProblem(prob);
+  puzzle->probSetResult(prob, shapeAssignmentSelector->getSelection());
+  problemResult->setPuzzle(puzzle, prob);
+  activateProblem(prob);
+  StatProblemInfo(prob);
+  updateInterface();
 
   changed = true;
 }
@@ -1521,7 +1532,12 @@ void UserInterface::updateInterface(void) {
         (shapeAssignmentSelector->getSelection() < puzzle->shapeNumber()) &&
         (!assmThread || (assmThread->getProblem() != problemSelector->getSelection()))) {
       BtnSetResult->activate();
-      BtnAddShape->activate();
+
+      // we can only add a shape, when it's not the result of the current problem
+      if (puzzle->probGetResult(problemSelector->getSelection()) != shapeAssignmentSelector->getSelection())
+        BtnAddShape->activate();
+      else
+        BtnAddShape->deactivate();
 
       bool found = false;
 
