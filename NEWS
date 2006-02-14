@@ -47,6 +47,10 @@
 - pieces are no longer minimised when a puzzle is solved. This has been
   in the program only because the program couldn't handle that properly
 
+- fixed but in rotation suppression. Sometimes the program would find 
+  rotated solutions. Even worse, that was dependend on the orientation
+  of the pieces
+
 ------------- Version 0.1.8b
 
 - Fix Bug found by Markus Götz that made the program crash, when all 

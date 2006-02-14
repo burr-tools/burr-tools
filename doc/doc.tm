@@ -1,4 +1,4 @@
-<TeXmacs|1.0.6>
+<TeXmacs|WinTeXmacs-1.0.5>
 
 <style|book>
 
@@ -1153,7 +1153,7 @@
 
   As already said this algorithm is based on the Dancing link algorithm. This
   algorithm is mainly a very efficient and elegant backtracking method that
-  stops much more early than many other algorithms. It stops then is finds
+  stops much more early than many other algorithms. It stops when is finds
   that a piece can not be placed any more. It stops when it finds that a cube
   of the solution shape can not be filled any more. These recursion stops
   don't need to be implemented separately, but they are part of the
@@ -1162,14 +1162,14 @@
 
   <subsubsection|How to avoid finding multiple assemblies>
 
-  Now this is a complicated problem. There is the na~~~ïve approach which
-  would be to save all found assemblies and check new found assemblies
-  against this list. This has major problems. You need to save all assemblies
-  and there can be many. You need to check against all those save assemblies
-  and that can get slow. If you want to make a break and later on continue
-  you need to save all those solutions on harddisc and load them again. An of
-  course the worst problem is that you waste a lot of time. If it just would
-  be possible to not find those solutions in the first place.
+  Now this is a complicated problem. There is the naïve approach which would
+  be to save all found assemblies and check new found assemblies against this
+  list. This has major problems. You need to save all assemblies and there
+  can be many. You need to check against all those save assemblies and that
+  can get slow. If you want to make a break and later on continue you need to
+  save all those solutions on harddisc and load them again. An of course the
+  worst problem is that you waste a lot of time. If it just would be possible
+  to not find those solutions in the first place.
 
   To solve this problem let us first analyze what kind of double solutions
   exist
@@ -1186,7 +1186,7 @@
       the 2 found solutions is that this piece is rotated
 
       <item>A bug in the code that makes the program find <em|really>
-      identical assemblies.
+      identical assemblies. Lets assume that this is a rare event.
     </enumerate-numeric>
 
     <item*|Rotated assemblies>These are solutions that are identical but need
@@ -1199,22 +1199,49 @@
   With these precausions it can be assured that <em|no> identical looking
   assemblies are found.
 
-  The 2nd kind is very hard. The recursive part of the program will find
+  The second kind is very hard. The recursive part of the program will find
   them. It is possible to avoid finding a few of the rotations and in some
-  puzzles is even possible to avoid all of them but there are puzzles where
-  the program <em|will> find some or even all possibel rotation, so a clean
-  solution to this problem must be found.
+  puzzles is even possible to avoid finding any of them but there are puzzles
+  where the program <em|will> find some or even all possible rotation, so a
+  solution needs to be found that can detect rotations when they are found.
 
-  To avoid finding some of the rotation the following can be done. Select a
-  pivot piece and don't place this piece in all possible rotations. The
-  rotations to avoid depend on the symmetry of the piece and the solution
-  shape.
+  But first let's see how we can avoid as many of the possible rotations as
+  possible. This is done by selecting one piece and dropping a few of the
+  rotations that are possible with this piece. As this piece can not only be
+  inside the solution in certain positions all solutions that would require
+  that piece to be rotated will not be found. If we can be sure that all
+  solutions that are dropped also exist as a rotation inside the solutions
+  that we find we are lucky. But which piece to select? And what rotations to
+  drop?
 
-  So back to the clean and general solution. Here Bill Cutler came to my
+  To find out which piece it helps to think of the perfect piece. Lets assume
+  our target is a cube and it has only one solution. A cube has 24 symmetries
+  so we would normally find 24 solutions (maybe even more, due to mirror
+  solutions, but let's forget about this for a while). With each rotation
+  that we drop from our selected piece one of the possible rotations for the
+  solutions wont be found until we have only one possible rotation left for
+  the selected piece and so we find only that solution where this piece is in
+  that left over rotation. All other rotations would require the piece to be
+  in another rotation, which is not in our list to try. But this only works,
+  if the piece really has 24 differen rotations from which we can drop 23. If
+  the piece is symmetric in one way or another it will not have that many
+  different rotations as a few of them will result in the same piece and thus
+  can not be considered. So the best choice is always a piece with no
+  symmetries. What to do if there is none such piece? Select one has has the
+  least overlap with the symmetries of the result shape.
+
+  Before we make clear what that means we have to see which rotations need to
+  be dropped. We need to drop those rotations that might result in a rotated
+  solution. A rotated solution is one that has the same exterior appearance.
+  So the possible rotations result from the shape of the result. If all these
+  rotations do exist in the selected piece we can supress the rotations from
+  the solutions by dropping them.\ 
+
+  And now back to the clean and general solution. Here Bill Cutler came to my
   help. He told me what he did and that is something very ingenious.
 
   The first thing to do it to be able to compare two assemblies that are the
-  same but one is a rotation of the other and say assembly
+  same but one is a rotation of the other and be able to say assembly
   <with|mode|math|a<rsub|1>> is smaller or larger or equal to assembly
   <with|mode|math|a<rsub|2>>. This comparison can be implemented by comparing
   piece positions and transformations. It can be completely arbitrary. It
@@ -1222,10 +1249,10 @@
   does not remove the one transformation that is the smallest when compared
   with the comparison.
 
-  Now the following is done for each assembly found. At first all rotions
-  from this assembly are generated that result in the same shape for the
-  assembled shape. These assemblies are compared with the found one. If there
-  is one that is smaller than the found one drop the found assembly and go on
+  Now the following is done for each assembly found. At first all rotions of
+  this assembly are generated that result in the same shape for the assembled
+  shape. These assemblies are compared with the found one. If there is one
+  that is smaller than the found one drop the found assembly and go on
   searching. If the found assembly is the smallest one do whatever needs to
   be done with it.
 
