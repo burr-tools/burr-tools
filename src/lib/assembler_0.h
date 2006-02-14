@@ -29,55 +29,29 @@
 #include <set>
 #include <stack>
 
-/* the order of pieces is mostly unimportant, except for the
- * very first piece. this is added with removed symmetry of the
- * target shape. for this the first piece must not have any symmetry
- * at all, or the program will also calc some or all rotatet solutions  FIXME
- *
- * currently we also find all solutions for puzzles with multiple identical
- * pieces serveral time. e.g. if your puzzle has 2 pieces of type a and 3 of
- * type b and all others once you get each solution 2! times 3! = 12 times.
- * this is a real problem with e.g. loveley18. Here we have 11 identical piece
- * wich leads to each solution 11! = 39,916,800 times. This is not good.
- *
- * the problem is how to avoid these solutions with the dancing link algorithm
- * the current idea is to sort the identical pieces. Piece n+1 must have a position
- * that is later in the position list than piece n. How to achieve this. If one of
- * the pieces with serveral instances get's places, all others need to be placed, too
- *
- * the problem is the dancing link alg. may select a piece to place next and also
- * a unit of the puzzle to be filled next. In cas a piece is selected it's simply
- * the upper mentioned step to take. Place all the instances of the piece at once
- * using the ordered theorem. and then go on dancing :-)
- *
- * but if we selct a voxel to be filled then the program goes through all pieces
- * and all possible placements of these pieces that fill the selected voxel we have
- * to check each possibility if a piece is selected that
- */
-
-
 /* this class is only a base class containing the functionality for the matrix
  * the functions in here don't know anything about the meaning of the matrix
  * for them it mainly consists of a set of one and empty nodes
  *
- * for a real puzzle assemlber this class must be dereved from and some functions
+ * for a real puzzle assemlber this class must be derived from and some functions
  * need to be overloaded. These are:
  *
  * countNodes, prepare and solution
  *
  * when a new puzzle has to be solved the user calls createMatrix. This function
- * does some initialisation and then calls countNodes. You have to return the number
- * of nodes that you require for your part of the matrix. The createMatrix function
- * then allocaed enough memory for this and calls prepare. Here you have to fill in
- * the matrix with your node (including the header.
+ * does some initialisation and then calls prepare. Here you have to fill in
+ * the matrix with your node (including the header).
+ *
+ * In this preparation you are asked to try to make the algorithm avoid finding
+ * rotated solutions (its for your own speed). But if you can not do so, you
+ * need to call checkForTransformedAssemblies(symBreakerPiece). This tells
+ * this base class to check each found solution, if it may be a rotation of
+ * another one and drop it automatically.
  *
  * When assembling the function in this class calls solution, whenever a solution
  * is found. It's now your task to transform the gained information into a format
  * valuable for your interpretation format.
  *
- * there is one assumption in the class: empty voxels don't exist. So you have to find
- * an interpretation for your space that doesn't require empty voxels within the 3d
- * space of the voxels
  */
 
 class assembler_0_c : public assembler_c {

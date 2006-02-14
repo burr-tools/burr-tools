@@ -397,9 +397,6 @@ static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * m
 /* at first we check if movement is possible at all in the current direction, if so
  * the next thing to do is to check if something can be removed, and finally we look for longer
  * movements in the actual direction
- *
- * FIXME: we should first try to remove a single piece, then to remove groups of pieces
- * and then check movement of pieces
  */
 node0_c * disassembler_0_c::find(node0_c * searchnode) {
 

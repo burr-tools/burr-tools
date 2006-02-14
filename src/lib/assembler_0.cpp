@@ -708,12 +708,6 @@ void assembler_0_c::iterativeMultiSearch(void) {
          *
          * we also look for piece and result columns that have a count of 0 that value
          * will lead to impossible arrangements
-         *
-         * FIXME: possible improvement
-         * For some columns is is necessary that they are not at least one but even
-         * bigger. Columns for multi pieces for example need to have at least the value
-         * of the number of instances, e.g if there are 10 instances of a multi piece
-         * each of that instance needs to fit at least 10 times
          */
         unsigned int c = right[0];
         unsigned int s = colCount[c];

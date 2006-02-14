@@ -745,7 +745,7 @@ void puzzle_c::removeColor(unsigned int col) {
           (*i)->setColor(p, (*i)->getColor(p)-1);
       }
 
-  // FIXME, remove color constrains and shift the colors inside the shapes
+  // remove color constrains that include this color
   for (vector<problem_c*>::iterator i = problems.begin(); i != problems.end(); i++)
     (*i)->colorConstraints.remove(col);
 }
