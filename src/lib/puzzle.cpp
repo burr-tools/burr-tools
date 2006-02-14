@@ -650,12 +650,63 @@ void problem_c::exchangeShape(unsigned int s1, unsigned int s2) {
   bt_assert(s1 < shapes.size());
   bt_assert(s2 < shapes.size());
 
+  if (s1 == s2) return;
+
+  if (s1 > s2) {
+    unsigned int s = s1;
+    s1 = s2;
+    s2 = s;
+  }
+
+  unsigned int p1Start;
+  unsigned int p2Start;
+  unsigned int p1Count;
+  unsigned int p2Count;
+
+  p1Start = p2Start = 0;
+
+  for (unsigned int i = 0; i < s1; i++)
+    p1Start += shapes[i].count;
+
+  for (unsigned int i = 0; i < s2; i++)
+    p2Start += shapes[i].count;
+
+  p1Count = shapes[s1].count;
+  p2Count = shapes[s2].count;
+
+  bt_assert(p1Start+p1Count == p2Start);
+
   shape_c s = shapes[s1];
   shapes[s1] = shapes[s2];
   shapes[s2] = s;
 
-  for (unsigned int i = 0; i < solutions.size(); i++)
-    solutions[i]->exchangeShape(s1, s2);
+  /* this vector holds the target position of all the involved piece
+   * as long as its not in the order 0, 1, 2, ... some pieces must be exchanged
+   */
+  std::vector<unsigned int>pos;
+
+  pos.resize(p1Count+p2Count);
+
+  for (unsigned int i = 0; i < p1Count; i++)
+    pos[i] = p2Count+i;
+  for (unsigned int i = 0; i < p2Count; i++)
+    pos[p1Count+i] = i;
+
+  for (unsigned int i = 0; i < p1Count+p2Count-1; i++)
+    if (pos[i] != i) {
+
+      // search for i
+      unsigned int j = i+1;
+      while ((j < p1Count+p2Count) && (pos[j] != i)) j++;
+
+      bt_assert(j < p1Count+p2Count);
+
+      for (unsigned int s = 0; s < solutions.size(); s++)
+        solutions[s]->exchangeShape(p1Start+i, p1Start+j);
+
+      pos[j] = pos[i];
+      // normally we would also need pos[i] = i; but as we don't touch that field any more let's save that operation
+    }
 }
 
 
