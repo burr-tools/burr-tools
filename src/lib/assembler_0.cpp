@@ -25,6 +25,8 @@
 #define snprintf _snprintf
 #endif
 
+#define ASSEMBLER_VERSION "1.3"
+
 void assembler_0_c::GenerateFirstRow(unsigned int res_filled) {
 
   for (unsigned int i = 0; i < varivoxelStart; i++) {
@@ -1037,40 +1039,67 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   bt_assert(pos == 0);
 
   /* check for te right version */
-  if (strcmp(version, "1.3"))
-    return ERR_CAN_NOT_RESTORE;
+  if (strcmp(version, ASSEMBLER_VERSION))
+    return ERR_CAN_NOT_RESTORE_VERSION;
 
-  /* get the values from the string. For the moment we assume that
-   * the string is correct and contains enough values, if not sad things
-   * will happen
-   * FIXME
+  unsigned int len = strlen(string);
+  unsigned int spos = 0;
+
+  /* get the values from the string.
    */
-  string += getInt(string, &pos);
-  string += getLong(string, &iterations);
+  spos += getInt(string+spos, &pos);
+  if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+
+  spos += getLong(string+spos, &iterations);
+  if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
   if (pos <= piecenumber)
     for (unsigned int i = 0; i <= pos; i++) {
-      while (*string != '(') string++; string++;
+      while ((spos < len) && (*(string+spos) != '(')) spos++;
+      spos++;
+      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
-      string += getInt(string, &searchState[i]);
+      spos += getInt(string+spos, &searchState[i]); if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
       switch(searchState[i]) {
       case 0:
-        string += getInt(string, &rows[i]);
-        string += getInt(string, &columns[i]);
-        string += getInt(string, &piece[i]);
+        spos += getInt(string+spos, &rows[i]);      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        spos += getInt(string+spos, &columns[i]);   if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        spos += getInt(string+spos, &piece[i]);     if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
         break;
       case 1:
-        string += getInt(string, &rows[i]);
-        string += getInt(string, &columns[i]);
-        string += getInt(string, &nodeF[i]);
-        string += getInt(string, &numF[i]);
-        string += getInt(string, &piece[i]);
+        spos += getInt(string+spos, &rows[i]);      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        spos += getInt(string+spos, &columns[i]);   if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        spos += getInt(string+spos, &nodeF[i]);     if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        spos += getInt(string+spos, &numF[i]);      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        spos += getInt(string+spos, &piece[i]);     if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
         break;
+      default:
+        // must not happen, return with error
+        return ERR_CAN_NOT_RESTORE_SYNTAX;
       }
 
-      while (*string != ')') string++; string++;
+      while ((spos < len) && (*(string+spos) != ')')) spos++;
+      spos++;
+      // after the last ')' we might be at the end of the string, so here
+      // it's ok to have a pos at the end
+      if ((i < pos) && (spos >= len)) return ERR_CAN_NOT_RESTORE_SYNTAX;
     }
+
+  /* check for integrity last read data may contain only preparation for next, so don't check that one */
+  for (unsigned int i = 0; i < pos; i++) {
+    // check if the piecenumber and the covered row fit together
+    if (rows[i] < pieceStart[piece[i]])
+      return ERR_CAN_NOT_RESTORE_SYNTAX;
+
+    // except for the last piece we can also check the end row
+    if ((piece[i]+1 < piecenumber) && (rows[i] >= pieceStart[piece[i]+1]))
+      return ERR_CAN_NOT_RESTORE_SYNTAX;
+
+    // for the last piece we can check for the number of nodes
+    if (rows[i] > left.size())
+      return ERR_CAN_NOT_RESTORE_SYNTAX;
+  }
 
   /* here we need to get the matrix into this exact position as it has been, when we
    * saved the position that means we need to cover all rows and columns in the same
@@ -1125,7 +1154,7 @@ xml::node assembler_0_c::save(void) const {
 
   xml::node nd("assembler");
 
-  nd.get_attributes().insert("version", "1.2");
+  nd.get_attributes().insert("version", ASSEMBLER_VERSION);
 
   std::string cont;
 

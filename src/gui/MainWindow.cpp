@@ -1825,8 +1825,13 @@ void UserInterface::update(void) {
         fl_message("Piece %i can be placed nowhere within the result", assmThread->getErrorParam()+2);
         selectShape = assmThread->getErrorParam()+1;
         break;
-      case assembler_c::ERR_CAN_NOT_RESTORE:
-        fl_message("Impossible to restore the saved state, you have to start from the beginning, sorry");
+      case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
+        fl_message("Impossible to restore the saved state because the internal format changed.\n"
+                   "You either have to start from the beginning or finish with the old version of BurrTools, sorry");
+        break;
+      case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
+        fl_message("Impossible to restore the saved state because something with the data is wrong.\n"
+                   "You have to start from the beginning, sorry");
         break;
       case assembler_c::ERR_PIECE_WITH_VARICUBE:
         fl_message("Shape %i is used as piece and contains variable cubes, that is not allowed", assmThread->getErrorParam()+1);

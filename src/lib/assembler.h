@@ -55,7 +55,8 @@ public:
     ERR_TOO_MANY_UNITS,
     ERR_TOO_FEW_UNITS,
     ERR_CAN_NOT_PLACE,
-    ERR_CAN_NOT_RESTORE,
+    ERR_CAN_NOT_RESTORE_VERSION,
+    ERR_CAN_NOT_RESTORE_SYNTAX,
     ERR_PIECE_WITH_VARICUBE
   } errState;
 
@@ -122,7 +123,7 @@ public:
    * the function should only be called when assembly is not running it shoule be
    * called before calling assemble
    */
-  virtual errState setPosition(const char * string, const char * version) { return ERR_CAN_NOT_RESTORE; }
+  virtual errState setPosition(const char * string, const char * version) { return ERR_CAN_NOT_RESTORE_VERSION; }
 
   /* this function saves the current state of the assembler into an xml node to
    * write it to an file
