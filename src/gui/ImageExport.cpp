@@ -61,8 +61,18 @@ void ImageExportWindow::cb_Export(void) {
   if (AA4->value()) aa = 4;
   if (AA5->value()) aa = 5;
 
+  if (ExpShape->value())
+    dr.showSingleShape(puzzle, ShapeSelect->getSelection(), ((int)ColConst->value()) == 1);
+  else if (ExpAssembly->value())
+    dr.showAssembly(puzzle, ProblemSelect->getSelection(), 0, ((int)ColConst->value()) == 1);
+  else {
+    // these values require the assemlby of multiple images
+  }
+
+  dr.showColors(puzzle, ColConst->value() == 1);
+
   status->label("Create image");
-  Image i(atoi(SizePixelX->value())*aa, atoi(SizePixelY->value())*aa, &dr, tr);
+  Image i(atoi(SizePixelX->value())*aa, atoi(SizePixelY->value())*aa, &dr, view3D->getView());
 
   if (BgWhite->value()) {
     status->label("Set background");
@@ -94,38 +104,70 @@ void ImageExportWindow::cb_Export(void) {
   hide();
 }
 
+static void cb_ImageExport3DUpdate_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Update3DView(); }
+void ImageExportWindow::cb_Update3DView(void) {
+
+  if (ExpShape->value()) {
+    view3D->showSingleShape(puzzle, ShapeSelect->getSelection(), ((int)ColConst->value()) == 1);
+    view3D->showColors(puzzle, ColConst->value() == 1);
+  } else if (ExpAssembly->value()) {
+    view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0, ((int)ColConst->value()) == 1);
+    view3D->showColors(puzzle, ColConst->value() == 1);
+  } else {
+  }
+
+}
+
 ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
 
   label("Export Images");
 
   LFl_Frame *fr;
 
-  fr = new LFl_Frame(0, 0, 1, 2);
-  BgWhite = new LFl_Radio_Button("White Background", 0, 0);
-  BgTransp = new LFl_Radio_Button("Transparent Background", 0, 1);
-  BgWhite->value(1);
-  (new LFl_Box(0, 2))->weight(0, 1);
-  fr->end();
+  {
+    fr = new LFl_Frame(0, 0, 1, 2);
 
-  fr = new LFl_Frame(0, 2);
-
-  AA1 = new LFl_Radio_Button("No Antialiasing", 0, 0);
-  AA2 = new LFl_Radio_Button("2x2 Supersampling", 0, 1);
-  AA3 = new LFl_Radio_Button("3x3 Supersampling", 0, 2);
-  AA3->value(1);
-  AA4 = new LFl_Radio_Button("4x4 Supersampling", 0, 3);
-  AA5 = new LFl_Radio_Button("5x5 Supersampling", 0, 4);
-
-  new LFl_Round_Button("Use piece colors", 0, 5);
-  new LFl_Round_Button("Use color constraint colors", 0, 6);
-  new LFl_Check_Button("Dim static pieces", 0, 7);
-  (new LFl_Box(0, 8))->weight(0, 1);
-  fr->end();
-
-  // user defined size input
-  fr = new LFl_Frame(1, 1, 1, 2);
+    BgWhite = new LFl_Radio_Button("White Background", 0, 0);
+    BgTransp = new LFl_Radio_Button("Transparent Background", 0, 1);
+    BgWhite->value(1);
+    (new LFl_Box(0, 2))->weight(0, 1);
+    fr->end();
+  }
 
   {
+    // the group that defines the supersampling
+    fr = new LFl_Frame(0, 2);
+
+    AA1 = new LFl_Radio_Button("No Antialiasing", 0, 0);
+    AA2 = new LFl_Radio_Button("2x2 Supersampling", 0, 1);
+    AA3 = new LFl_Radio_Button("3x3 Supersampling", 0, 2);
+    AA3->value(1);
+    AA4 = new LFl_Radio_Button("4x4 Supersampling", 0, 3);
+    AA5 = new LFl_Radio_Button("5x5 Supersampling", 0, 4);
+
+    {
+      layouter_c * l = new layouter_c(0, 5, 1, 2);
+
+      ColPiece = new LFl_Radio_Button("Use piece colors", 0, 5);
+      ColConst = new LFl_Radio_Button("Use color constraint colors", 0, 6);
+
+      ColPiece->value(1);
+
+      ColPiece->callback(cb_ImageExport3DUpdate_stub, this);
+      ColConst->callback(cb_ImageExport3DUpdate_stub, this);
+
+      l->end();
+    }
+
+    new LFl_Check_Button("Dim static pieces", 0, 7);
+    (new LFl_Box(0, 8))->weight(0, 1);
+    fr->end();
+  }
+
+  {
+    // user defined size input
+    fr = new LFl_Frame(1, 1, 1, 2);
+
     int y = 0;
 
     new LFl_Radio_Button("A4 Portrait", 0, y++, 5, 1);
@@ -161,37 +203,83 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
     fr->end();
   }
 
-  fr = new LFl_Frame(0, 3, 2, 1);
+  {
+    fr = new LFl_Frame(0, 3, 2, 1);
 
-  (new LFl_Box("File name", 0, 0))->stretchLeft();
-  (new LFl_Box("Path", 0, 1))->stretchLeft();
-  (new LFl_Box("Number of files", 0, 2, 3, 1))->stretchLeft();
-  (new LFl_Box("Number of images", 0, 3, 3, 1))->stretchLeft();
+    (new LFl_Box("File name", 0, 0))->stretchLeft();
+    (new LFl_Box("Path", 0, 1))->stretchLeft();
+    (new LFl_Box("Number of files", 0, 2, 3, 1))->stretchLeft();
+    (new LFl_Box("Number of images", 0, 3, 3, 1))->stretchLeft();
 
-  (new LFl_Box(1, 0))->setMinimumSize(5, 0);
-  (new LFl_Box(3, 0))->setMinimumSize(5, 0);
+    (new LFl_Box(1, 0))->setMinimumSize(5, 0);
+    (new LFl_Box(3, 0))->setMinimumSize(5, 0);
 
-  Fname = new LFl_Input(2, 0, 3, 1);
-  Fname->value("test.png");
-  Fname->weight(1, 0);
-  Pname = new LFl_Input(2, 1, 3, 1);
-  new LFl_Int_Input(4, 2);
-  new LFl_Int_Input(4, 3);
+    Fname = new LFl_Input(2, 0, 3, 1);
+    Fname->value("test.png");
+    Fname->weight(1, 0);
+    Pname = new LFl_Input(2, 1, 3, 1);
+    new LFl_Int_Input(4, 2);
+    new LFl_Int_Input(4, 3);
 
-  fr->end();
+    fr->end();
+  }
 
-  fr = new LFl_Frame(0, 4, 2, 1);
+  {
+    // create the radio buttons that select what of the current puzzle file to
+    // export and enable only those of the possibilites that are available in
+    // the current puzzle
 
-  new LFl_Radio_Button("Export Shape", 0, 0);
-  new LFl_Radio_Button("Export Problem", 0, 1);
-  new LFl_Radio_Button("Export Assembly", 0, 2);
-  new LFl_Radio_Button("Export Solution", 0, 3);
+    fr = new LFl_Frame(0, 4, 2, 1);
 
-  (new LFl_Box(0, 4))->weight(0, 1);
+    ExpShape = new LFl_Radio_Button("Export Shape", 0, 0);
+    ExpProblem = new LFl_Radio_Button("Export Problem", 0, 1);
+    ExpAssembly = new LFl_Radio_Button("Export Assembly", 0, 2);
+    ExpSolution = new LFl_Radio_Button("Export Solution", 0, 3);
 
-  fr->end();
+    bool assemblies = false;
+    bool solutions = false;
 
-  new LBlockListGroup(0, 5, 2, 1, new PieceSelector(0, 0, 20, 20, puzzle));
+    for (unsigned int i = 0; i < puzzle->problemNumber(); i++) {
+      for (unsigned int j = 0; j < puzzle->probSolutionNumber(i); j++) {
+        if (puzzle->probGetAssembly(i, j)) assemblies = true;
+        if (puzzle->probGetDisassembly(i, j)) solutions = true;
+        if (assemblies || solutions) break;
+      }
+      if (assemblies || solutions) break;
+    }
+
+    if (puzzle->shapeNumber() == 0)   ExpShape->deactivate();     else ExpShape->setonly();
+    if (puzzle->problemNumber() == 0) ExpProblem->deactivate();   else ExpProblem->setonly();
+    if (!assemblies)                  ExpAssembly->deactivate();  else ExpAssembly->setonly();
+    if (!solutions)                   ExpSolution->deactivate();  else ExpSolution->setonly();
+
+    (new LFl_Box(0, 4))->weight(0, 1);
+
+    ExpShape->callback(cb_ImageExport3DUpdate_stub, this);
+    ExpProblem->callback(cb_ImageExport3DUpdate_stub, this);
+    ExpAssembly->callback(cb_ImageExport3DUpdate_stub, this);
+    ExpSolution->callback(cb_ImageExport3DUpdate_stub, this);
+
+    fr->end();
+  }
+
+  {
+    layouter_c * l = new layouter_c(0, 5, 2, 1);
+
+    ShapeSelect = new PieceSelector(0, 0, 20, 20, puzzle);
+    ProblemSelect = new ProblemSelector(0, 0, 20, 20, puzzle);
+
+    Fl_Group * gr = new LBlockListGroup(0, 0, 1, 1, ShapeSelect);
+    gr->callback(cb_ImageExport3DUpdate_stub, this);
+
+    gr = new LBlockListGroup(1, 0, 1, 1, ProblemSelect);
+    gr->callback(cb_ImageExport3DUpdate_stub, this);
+
+    ShapeSelect->setSelection(0);
+    ProblemSelect->setSelection(0);
+
+    l->end();
+  }
 
   {
     layouter_c * l = new layouter_c(0, 6, 3, 1);
@@ -218,8 +306,6 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
   }
 
   view3D = new LView3dGroup(2, 0, 1, 6);
-//  view3D->showSingleShape(p, 0, false);
-  view3D->showAssembly(p, 0, 0, false);
-
+  cb_Update3DView();
 }
 

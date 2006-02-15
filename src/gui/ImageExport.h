@@ -64,8 +64,8 @@ class LBlockListGroup : public BlockListGroup, public layoutable_c {
     LBlockListGroup(int x, int y, int w, int h, BlockList * l) : BlockListGroup(0, 0, 50, 50, l), layoutable_c(x, y, w, h) {}
 
     virtual void getMinSize(int *w, int *h) const {
-      *w = 40;
-      *h = 40;
+      *w = 100;
+      *h = 60;
     }
 };
 
@@ -79,8 +79,12 @@ class ImageExportWindow : public LFl_Double_Window {
     LFl_Int_Input *SizePixelX, *SizePixelY;
     LFl_Radio_Button *AA1, *AA2, *AA3, *AA4, *AA5;
     LFl_Radio_Button *BgWhite, *BgTransp;
+    LFl_Radio_Button *ColPiece, *ColConst;
     LFl_Input *Fname, *Pname;
     LFl_Box *status;
+    LFl_Radio_Button *ExpShape, *ExpProblem, *ExpAssembly, *ExpSolution;
+    PieceSelector * ShapeSelect;
+    ProblemSelector * ProblemSelect;
 
   public:
 
@@ -88,5 +92,6 @@ class ImageExportWindow : public LFl_Double_Window {
 
     void cb_Abort(void);
     void cb_Export(void);
+    void cb_Update3DView(void);
 
 };
