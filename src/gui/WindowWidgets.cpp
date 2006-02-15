@@ -441,6 +441,10 @@ void ToolTab::cb_size(void) {
       dy = changeSize->getY() - puzzle->getShape(shape)->getY();
       dz = changeSize->getZ() - puzzle->getShape(shape)->getZ();
 
+      if (dx < 0) dx = 0;
+      if (dy < 0) dy = 0;
+      if (dz < 0) dz = 0;
+
       for (unsigned int s = 0; s < puzzle->shapeNumber(); s++) {
         int nx = puzzle->getShape(s)->getX()+dx;
         int ny = puzzle->getShape(s)->getY()+dy;
@@ -453,10 +457,13 @@ void ToolTab::cb_size(void) {
         puzzle->getShape(s)->resize(nx, ny, nz, 0);
       }
 
-    } else {
-
-      puzzle->getShape(shape)->resize(changeSize->getX(), changeSize->getY(), changeSize->getZ(), 0);
     }
+
+    // we always do this, is may be that the shape is not changed in the loop above because
+    // that loop and only inclrease the size, so smaller sizes for the selected shape must be done
+    // here
+    puzzle->getShape(shape)->resize(changeSize->getX(), changeSize->getY(), changeSize->getZ(), 0);
+
     do_callback();
   }
 }
