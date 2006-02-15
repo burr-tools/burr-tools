@@ -15,6 +15,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+
+#ifndef __VOXEL_DRAWER_H__
+#define __VOXEL_DRAWER_H__
+
 #ifdef WIN32
 #include <windows.h>
 #endif
@@ -44,9 +48,6 @@
  *
  * additionally pieces can be transparent
  */
-#ifndef __VOXEL_DRAWER__
-#define __VOXEL_DRAWER__
-
 class VoxelDrawer {
 
 private:

@@ -1,3 +1,6 @@
+#ifndef __IMAGE_H__
+#define __IMAGE_H__
+
 #include "tr.h"
 #include "VoxelDrawer.h"
 #include "VoxelView.h"
@@ -36,3 +39,5 @@ class Image {
     void minimizeWidth(unsigned char r, unsigned char g, unsigned char b, unsigned int border);
 
 };
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef __IMAGES_H__
+#define __IMAGES_H__
+
 extern char * TB_Color_Brush_xpm[];
 extern char * TB_Color_Columns_X_xpm[];
 extern char * TB_Color_Columns_Y_xpm[];
@@ -120,3 +123,4 @@ extern char * Rescale_Monochrome_X1_xpm[];
 extern char * Rescale_Monochrome_X2_xpm[];
 extern char * Rescale_Monochrome_X3_xpm[];
 
+#endif

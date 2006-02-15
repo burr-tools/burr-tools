@@ -15,6 +15,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+#ifndef __VOXEL_VIEW_H__
+#define __VOXEL_VIEW_H__
+
 #include <FL/Fl_Gl_Window.H>
 
 #include "VoxelDrawer.h"
@@ -50,3 +53,5 @@ public:
 
   ArcBall_c * getArcBall(void) { return arcBall; }
 };
+
+#endif
