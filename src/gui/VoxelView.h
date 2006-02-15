@@ -46,12 +46,13 @@ public:
 
   // this value determines the scaling factor used to draw the cube.
   void setSize(double sz);
-  double getSize(void) { return size; }
+  double getSize(void) const { return size; }
 
   virtual void addRotationTransformation(void);
   virtual void updateRequired(void);
 
   ArcBall_c * getArcBall(void) { return arcBall; }
+  const ArcBall_c * getArcBall(void) const { return arcBall; }
 };
 
 #endif
