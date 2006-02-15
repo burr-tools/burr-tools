@@ -474,7 +474,7 @@ void ToolTab::cb_transform(long task) {
 
     int ss, se;
 
-    if (toAll->value()) {
+    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 25)))) {
       ss = 0;
       se = puzzle->shapeNumber();
     } else {
@@ -484,7 +484,6 @@ void ToolTab::cb_transform(long task) {
 
     for (int s = ss; s < se; s++) {
       voxel_c * space = puzzle->getShape(s);
-
 
       switch(task) {
         case  0: space->translate( 1, 0, 0, 0); break;
