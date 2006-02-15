@@ -20,8 +20,6 @@
 #include "VoxelDrawer.h"
 #include "Image.h"
 
-#include "tr.h"
-
 #include <FL/Fl.h>
 
 #define IMAGESIZE 512
@@ -54,35 +52,7 @@ void ImageExportWindow::cb_Export(void) {
   glDrawBuffer(GL_BACK);
   glReadBuffer(GL_BACK);
 
-  TRcontext *tr = trNew();
-
-  trTileSize(tr, view3D->getView()->w(), view3D->getView()->h(), 0);
-  trPerspective(tr, 5 + view3D->getView()->getSize(), 1.0, 10, 1100);
-
   MyVoxelDrawer dr(view3D->getView());
-
-  dr.showAssembly(puzzle, 0, 0, false);
-
-  GLfloat LightAmbient[]= { 0.01f, 0.01f, 0.01f, 1.0f };
-  GLfloat LightDiffuse[]= { 1.5f, 1.5f, 1.5f, 1.0f };
-  GLfloat LightPosition[]= { 700.0f, 200.0f, -90.0f, 1.0f };
-
-  GLfloat AmbientParams[] = {0.1, 0.1, 0.1, 1};
-  GLfloat DiffuseParams[] = {0.7, 0.7, 0.7, 0.1};
-  GLfloat SpecularParams[] = {0.4, 0.4, 0.4, 0.5};
-
-  glEnable(GL_COLOR_MATERIAL);
-  glLightfv(GL_LIGHT1, GL_AMBIENT, LightAmbient);
-  glLightfv(GL_LIGHT1, GL_DIFFUSE, LightDiffuse);
-  glLightfv(GL_LIGHT1, GL_POSITION, LightPosition);
-  glEnable(GL_LIGHT1);
-
-  glMaterialf(GL_FRONT, GL_SHININESS, 0.5);
-  glMaterialfv(GL_FRONT, GL_AMBIENT, AmbientParams);
-  glMaterialfv(GL_FRONT, GL_DIFFUSE, DiffuseParams);
-  glMaterialfv(GL_FRONT, GL_SPECULAR, SpecularParams);
-
-  glClearColor(1, 1, 1, 0);
 
   // calculate antialiasing factor
   int aa = 1;
@@ -119,8 +89,6 @@ void ImageExportWindow::cb_Export(void) {
 
   glDrawBuffer(GL_FRONT);
   glReadBuffer(GL_FRONT);
-
-  trDelete(tr);
 
   status->label(0);
   hide();
