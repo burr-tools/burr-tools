@@ -74,7 +74,7 @@ public:
   /**
    * adds the current arcball transformation to the OpenGL transformation matrix
    */
-  void addTransform(void);
+  void addTransform(void) const;
 
 protected:
   GLfloat AdjustWidth;       //Mouse bounds width
@@ -84,7 +84,6 @@ protected:
   GLfloat EnVec[3];          //Saved drag vector
 
   GLfloat LastRot[9];
-  GLfloat ThisRot[9];
 
   bool mouseDown;
 };

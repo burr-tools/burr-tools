@@ -201,6 +201,7 @@ void ArcBall_c::clack(GLfloat x, GLfloat y) {
   mapToSphere(x, y, EnVec);
 
   GLfloat ThisQuat[4];
+  GLfloat ThisRot[9];
 
   getDrag(ThisQuat);                                              // Update End Vector And Get Rotation As Quaternion
   Matrix3fSetRotationFromQuat4f(ThisRot, ThisQuat);               // Convert Quaternion Into Matrix3fT
@@ -262,7 +263,7 @@ void ArcBall_c::setBounds(GLfloat NewWidth, GLfloat NewHeight) {
   }
 }
 
-void ArcBall_c::addTransform(void) {
+void ArcBall_c::addTransform(void) const {
 
   GLfloat Transform[16];
 
@@ -274,6 +275,7 @@ void ArcBall_c::addTransform(void) {
   if (mouseDown) {
 
     GLfloat ThisQuat[4];
+    GLfloat ThisRot[9];
 
     getDrag(ThisQuat);                                              // Update End Vector And Get Rotation As Quaternion
     Matrix3fSetRotationFromQuat4f(ThisRot, ThisQuat);               // Convert Quaternion Into Matrix3fT
