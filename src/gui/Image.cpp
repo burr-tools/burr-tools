@@ -190,6 +190,15 @@ void Image::deTransparentize(unsigned char r, unsigned char g, unsigned char b) 
       }
 }
 
+void Image::transparentize(unsigned char r, unsigned char g, unsigned char b) {
+  for (unsigned int x = 0; x < width; x++)
+    for (unsigned int y = 0; y < height; y++)
+      if ((bitmap[4*(y*width + x) + 0] == r) &&
+          (bitmap[4*(y*width + x) + 1] == g) &&
+          (bitmap[4*(y*width + x) + 2] == b))
+        bitmap[4*(y*width + x) + 3] = 0;
+}
+
 void Image::scaleDown(unsigned char by) {
   bt_assert(width % by == 0);
   bt_assert(height % by == 0);

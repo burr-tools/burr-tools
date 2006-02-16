@@ -29,6 +29,8 @@ class Image {
     /* assigns a color to all transparent pixels */
     void deTransparentize(unsigned char r, unsigned char g, unsigned char b);
 
+    void transparentize(unsigned char r, unsigned char g, unsigned char b);
+
     /* scales the image down by the given factor */
     void scaleDown(unsigned char by);
 

@@ -35,20 +35,17 @@ class ImageInfo {
 
     ImageInfo(ShadowView * d) : dr(d) {
       i = new Image(600, 200, dr);
+      i->transparentize(255, 255, 255);
       i->minimizeWidth(10);
     }
 
     double ratio(void) { return ((double)(i->w()))/i->h(); }
 
-    // FIXME: we need to also minimizeWidth as the content may not be
-    // in the middle of the image but rather somewhere else, ...
     Image * generateImage(unsigned int w, unsigned int h, unsigned char aa) {
       Image * i = new Image ((h*3)*aa, h*aa, dr);
 
+      i->transparentize(255, 255, 255);
       i->minimizeWidth(aa*h/20, aa);
-
-      printf("expected %i got %i\n", w*aa, i->w());
-
       i->scaleDown(aa);
 
       return i;
