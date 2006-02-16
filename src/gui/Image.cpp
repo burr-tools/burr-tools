@@ -157,6 +157,25 @@ void Image::blit(const Image * i, int xpos, int ypos) {
   for (unsigned int x = 0; x < i->width; x++)
     for (unsigned int y = 0; y < i->height; y++)
       if ((x+xpos >= 0) && (x+xpos < width) && (y+ypos >= 0) && (y+ypos < height)) {
+        unsigned char r1,r2, g1, g2, b1, b2, a1, a2;
+
+        r1 = bitmap[((y+ypos)*width + (x+xpos)) * 4 + 0];
+        r2 = i->bitmap[(y*i->width+x) * 4 + 0];
+
+        g1 = bitmap[((y+ypos)*width + (x+xpos)) * 4 + 1];
+        g2 = i->bitmap[(y*i->width+x) * 4 + 1];
+
+        b1 = bitmap[((y+ypos)*width + (x+xpos)) * 4 + 2];
+        b2 = i->bitmap[(y*i->width+x) * 4 + 2];
+
+        a1 = bitmap[((y+ypos)*width + (x+xpos)) * 4 + 3];
+        a2 = i->bitmap[(y*i->width+x) * 4 + 3];
+
+        bitmap[((y+ypos)*width + (x+xpos)) * 4 + 0] = (r1 * (255-a2) + r2 * a2) / 255;
+        bitmap[((y+ypos)*width + (x+xpos)) * 4 + 1] = (g1 * (255-a2) + g2 * a2) / 255;
+        bitmap[((y+ypos)*width + (x+xpos)) * 4 + 2] = (b1 * (255-a2) + b2 * a2) / 255;
+
+        bitmap[((y+ypos)*width + (x+xpos)) * 4 + 3] = (unsigned char)((1 - ((1-a1/255.0) * (1-a2/255.0))) * 255 + 0.5);
       }
 }
 
@@ -217,6 +236,95 @@ void Image::scaleDown(unsigned char by) {
   width = nw;
 }
 
-void Image::minimizeWidth(unsigned char r, unsigned char g, unsigned char b, unsigned int border) {
+void Image::minimizeWidth(unsigned int border, unsigned int multiple) {
+
+  unsigned int xmin = 0;
+
+  // find the smallest used column
+  do {
+
+    bool allTran = true;
+    // check column for a pixed that is not completely transparent
+    for (unsigned int y = 0; y < height; y++)
+      if (bitmap[y*width*4+4*xmin+3] != 0) {
+        allTran = false;
+        break;
+      }
+
+    if (!allTran)
+      break;
+
+    xmin++;
+
+  } while (xmin < width);
+
+  unsigned int xmax = width-1;
+
+  // find the smallest used column
+  do {
+
+    bool allTran = true;
+    // check column for a pixed that is not completely transparent
+    for (unsigned int y = 0; y < height; y++)
+      if (bitmap[y*width*4+4*xmax+3] != 0) {
+        allTran = false;
+        break;
+      }
+
+    if (!allTran)
+      break;
+
+    xmax--;
+
+  } while (xmax > 0);
+
+  // include the border
+  if (xmin > border)
+    xmin -= border;
+  else
+    xmin = 0;
+
+  if (xmax + border + 1 < width)
+    xmax += border;
+  else
+    xmax = width-1;
+
+  if (xmin > xmax) {
+    xmin = xmax = 0;
+  }
+
+  unsigned int nw = xmax-xmin+1;
+
+  if ((nw % multiple) != 0) {
+    unsigned int add = multiple - (nw % multiple);
+
+    if (xmin >= add/2) {
+      xmin -= add/2;
+      add -= add/2;
+    } else {
+      add -= xmin;
+      xmin = 0;
+    }
+
+    xmax += add;
+
+    nw = xmax-xmin+1;
+  }
+
+  // create new bitmap
+  unsigned char * nb = new unsigned char[nw*height*4];
+
+  // copy image information
+  for (unsigned int y = 0; y < height; y++)
+    for (unsigned int x = xmin; x <= xmax; x++) {
+      nb[(y*nw+x-xmin)*4+0] = bitmap[(y*width+x)*4+0];
+      nb[(y*nw+x-xmin)*4+1] = bitmap[(y*width+x)*4+1];
+      nb[(y*nw+x-xmin)*4+2] = bitmap[(y*width+x)*4+2];
+      nb[(y*nw+x-xmin)*4+3] = bitmap[(y*width+x)*4+3];
+    }
+
+  delete [] bitmap;
+  bitmap = nb;
+  width = nw;
 }
 

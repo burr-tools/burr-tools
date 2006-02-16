@@ -33,10 +33,15 @@ class Image {
     /* scales the image down by the given factor */
     void scaleDown(unsigned char by);
 
-    /* removes pixels columns from left and right that are only filled with the given color
+    /* removes pixels columns from left and right that are completely transparent
      * but leaves a border of the given amount of pixels
+     * the resulting image will be a multiple of multiple wide
      */
-    void minimizeWidth(unsigned char r, unsigned char g, unsigned char b, unsigned int border);
+    void minimizeWidth(unsigned int border, unsigned int multiple = 1);
+
+    unsigned int w(void) { return width; }
+    unsigned int h(void) { return height; }
+
 
 };
 
