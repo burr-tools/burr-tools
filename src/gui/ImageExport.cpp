@@ -108,6 +108,19 @@ void ImageExportWindow::cb_Export(void) {
     }
 
   } else if (ExpProblem->value()) {
+    // generate an image for each piece in the problem
+    ShadowView * dr = new ShadowView(view3D->getView());
+    dr->showSingleShape(puzzle, puzzle->probGetResult(ProblemSelect->getSelection()), ((int)ColConst->value()) == 1);
+    dr->showColors(puzzle, ColConst->value() == 1);
+    images.push_back(new ImageInfo(dr));
+
+    for (unsigned int p = 0; p < puzzle->probShapeNumber(ProblemSelect->getSelection()); p++) {
+      ShadowView * dr = new ShadowView(view3D->getView());
+      dr->showSingleShape(puzzle, puzzle->probGetShape(ProblemSelect->getSelection(), p), ((int)ColConst->value()) == 1);
+      dr->showColors(puzzle, ColConst->value() == 1);
+      images.push_back(new ImageInfo(dr));
+    }
+
   } else
     return;
 
