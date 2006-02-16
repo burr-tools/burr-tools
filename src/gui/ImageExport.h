@@ -81,6 +81,7 @@ class ImageExportWindow : public LFl_Double_Window {
     LFl_Radio_Button *BgWhite, *BgTransp;
     LFl_Radio_Button *ColPiece, *ColConst;
     LFl_Input *Fname, *Pname;
+    LFl_Int_Input *NumPages;
     LFl_Box *status;
     LFl_Radio_Button *ExpShape, *ExpProblem, *ExpAssembly, *ExpSolution;
     PieceSelector * ShapeSelect;

@@ -23,6 +23,10 @@
 #include "VoxelDrawer.h"
 #include "ArcBall.h"
 
+/* this is a voxel drawer that paints its information into
+ * an Fl_Gl_Window and that has handling for
+ * dragging the contents with the mouse via an arcball
+ */
 class VoxelView : public Fl_Gl_Window, public VoxelDrawer
 {
 
@@ -54,5 +58,29 @@ public:
   ArcBall_c * getArcBall(void) { return arcBall; }
   const ArcBall_c * getArcBall(void) const { return arcBall; }
 };
+
+/* this is a voxel drawer that paints into another voxel view instead
+ * of its own. This is useful when you want to grep images from OpenGL
+ * and those images need to be drawn into an OpenGL context. This context
+ * can be used here. Aditionally the rotation matrix from the given view
+ * is taken
+ */
+class ShadowView : public VoxelDrawer {
+
+  private:
+
+    VoxelView *vv;
+
+  public:
+
+    ShadowView(VoxelView * v) : vv(v) {}
+
+    virtual void addRotationTransformation(void) {
+      vv->getArcBall()->addTransform();
+    }
+
+    VoxelView * getView(void) { return vv; };
+};
+
 
 #endif

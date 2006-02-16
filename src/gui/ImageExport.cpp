@@ -22,21 +22,38 @@
 
 #include <FL/Fl.h>
 
-#define IMAGESIZE 512
+#include <vector>
 
-class MyVoxelDrawer : public VoxelDrawer {
+class ImageInfo {
 
   private:
 
-    VoxelView *vv;
+    ShadowView * dr;
+    Image * i;  // image generated with the drawer that is with a fixed hight and the required width
 
   public:
 
-    MyVoxelDrawer(VoxelView * v) : vv(v) {}
-
-    virtual void addRotationTransformation(void) {
-      vv->getArcBall()->addTransform();
+    ImageInfo(ShadowView * d) : dr(d) {
+      i = new Image(600, 200, dr);
+      i->minimizeWidth(10);
     }
+
+    double ratio(void) { return ((double)(i->w()))/i->h(); }
+
+    // FIXME: we need to also minimizeWidth as the content may not be
+    // in the middle of the image but rather somewhere else, ...
+    Image * generateImage(unsigned int w, unsigned int h, unsigned char aa) {
+      Image * i = new Image ((h*3)*aa, h*aa, dr);
+
+      i->minimizeWidth(aa*h/20, aa);
+
+      printf("expected %i got %i\n", w*aa, i->w());
+
+      i->scaleDown(aa);
+
+      return i;
+    }
+
 };
 
 static void cb_ImageExportAbort_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Abort(); }
@@ -49,10 +66,13 @@ void ImageExportWindow::cb_Export(void) {
 
   status->label("Prepare for image");
 
+  /* this vector contains all the information of all images that need to appear in the output */
+  std::vector<ImageInfo*> images;
+
   glDrawBuffer(GL_BACK);
   glReadBuffer(GL_BACK);
 
-  MyVoxelDrawer dr(view3D->getView());
+  ShadowView dr(view3D->getView());
 
   // calculate antialiasing factor
   int aa = 1;
@@ -61,40 +81,261 @@ void ImageExportWindow::cb_Export(void) {
   if (AA4->value()) aa = 4;
   if (AA5->value()) aa = 5;
 
-  if (ExpShape->value())
-    dr.showSingleShape(puzzle, ShapeSelect->getSelection(), ((int)ColConst->value()) == 1);
-  else if (ExpAssembly->value())
-    dr.showAssembly(puzzle, ProblemSelect->getSelection(), 0, ((int)ColConst->value()) == 1);
-  else {
-    // these values require the assemlby of multiple images
+
+  if (ExpShape->value()) {
+    ShadowView * dr = new ShadowView(view3D->getView());
+    dr->showSingleShape(puzzle, ShapeSelect->getSelection(), ((int)ColConst->value()) == 1);
+    dr->showColors(puzzle, ColConst->value() == 1);
+    images.push_back(new ImageInfo(dr));
+  } else if (ExpAssembly->value()) {
+    ShadowView * dr = new ShadowView(view3D->getView());
+    dr->showAssembly(puzzle, ProblemSelect->getSelection(), 0, ((int)ColConst->value()) == 1);
+    dr->showColors(puzzle, ColConst->value() == 1);
+    images.push_back(new ImageInfo(dr));
+  } else if (ExpSolution->value()) {
+    // renerate an image for each step (for the moment only for the last solution)
+    unsigned int s = puzzle->probSolutionNumber(ProblemSelect->getSelection()) - 1;
+    separation_c * t = puzzle->probGetDisassembly(ProblemSelect->getSelection(), s);
+    if (!t) return;
+
+    DisasmToMoves dtm(t, 20);
+
+    for (unsigned int step = 0; step < t->sumMoves(); step++) {
+      ShadowView * dr = new ShadowView(view3D->getView());
+      dr->showAssembly(puzzle, ProblemSelect->getSelection(), s, false);
+      dr->showColors(puzzle, ColConst->value() == 1);
+      dtm.setStep(step);
+      dr->updatePositions(&dtm);
+
+      images.push_back(new ImageInfo(dr));
+    }
+
+  } else if (ExpProblem->value()) {
+  } else
+    return;
+
+  // if we have less images than pages, lower pages
+  unsigned int pages = atoi(NumPages->value());
+  if (pages > images.size()) pages = images.size();
+
+  // now find out in how many lines the images need to be put onto the pages to
+  // get them all onto the available space
+
+  unsigned int linesPerPage = 1;
+  unsigned int pageHeight = atoi(SizePixelY->value());
+  unsigned int pageWidth = atoi(SizePixelX->value());
+
+  unsigned int curWidth = 0;
+  unsigned int curLine = 0;
+  unsigned int curPage = 0;
+
+  unsigned int imgHeight = pageHeight / linesPerPage;
+
+  while (true) {
+
+    curWidth = 0;
+    curLine = 0;
+    curPage = 0;
+
+    imgHeight = pageHeight / linesPerPage;
+
+    // check, if everything fits with the current number of lines
+    for (unsigned int im = 0; im < images.size(); im++) {
+      // calculate width of the image when it has the current line hight
+      unsigned int w = (unsigned int)(imgHeight * images[im]->ratio() + 0.9);
+
+      if (curWidth + w < pageWidth) {
+        // image fits onto the line
+        curWidth += w;
+      } else if (curWidth == 0) {
+        // image is too wide for page, so force it onto the line
+        curLine++;
+        if (curLine >= linesPerPage) {
+          curLine = 0;
+          curPage++;
+        }
+      } else if (w > pageWidth) {
+        // image is too wide, and another line had been stated, so finish that line
+        // and put image into next line
+        curLine++;
+        if (curLine >= linesPerPage) {
+          curLine = 0;
+          curPage++;
+        }
+        curLine++;
+        if (curLine >= linesPerPage) {
+          curLine = 0;
+          curPage++;
+        }
+        curWidth = 0;
+      } else {
+        // image on the next line
+        curWidth = w;
+        curLine++;
+        if (curLine >= linesPerPage) {
+          curLine = 0;
+          curPage++;
+        }
+      }
+    }
+
+    // check if we fit
+    if ((curPage <= pages) || ((curPage == pages+1) && (curLine == 0) && (curWidth == 0)))
+      break;
+
+    linesPerPage++;
   }
 
-  dr.showColors(puzzle, ColConst->value() == 1);
+  // ok, now lets output
+
+  curWidth = 0;
+  curLine = 0;
+  curPage = 0;
+
+  imgHeight = pageHeight / linesPerPage;
 
   status->label("Create image");
-  Image i(atoi(SizePixelX->value())*aa, atoi(SizePixelY->value())*aa, &dr, view3D->getView());
+
+  Image *i;
 
   if (BgWhite->value()) {
-    status->label("Set background");
-    i.deTransparentize(255, 255, 255);
+    i = new Image(pageWidth, pageHeight, 255, 255, 255, 255);
+  } else {
+    i = new Image(pageWidth, pageHeight, 0, 0, 0, 0);
   }
 
-  if (aa > 1) {
-    status->label("Apply antialiasing");
-    i.scaleDown(aa);
+  // check, if everything fits with the current number of lines
+  for (unsigned int im = 0; im < images.size(); im++) {
+    // calculate width of the image when it has the current line hight
+    unsigned int w = (unsigned int)(imgHeight * images[im]->ratio() + 0.9);
+
+    Image *i2 = images[im]->generateImage(w, imgHeight, aa);
+
+    if (curWidth + w < pageWidth) {
+      // image fits onto the line
+      i->blit(i2, curWidth, curLine * imgHeight);
+      curWidth += w;
+    } else if (curWidth == 0) {
+      i->blit(i2, 0, curLine * imgHeight);
+      // image is too wide for page, so force it onto the line
+      curLine++;
+      if (curLine >= linesPerPage) {
+        curLine = 0;
+        {
+          char name[1000];
+
+          if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
+            snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
+          else
+            snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
+
+
+          status->label("Saving");
+          i->saveToPNG(name);
+          delete i;
+          if (BgWhite->value()) {
+            i = new Image(pageWidth, pageHeight, 255, 255, 255, 255);
+          } else {
+            i = new Image(pageWidth, pageHeight, 0, 0, 0, 0);
+          }
+        }
+        curPage++;
+      }
+    } else if (w > pageWidth) {
+      // image is too wide, and another line had been stated, so finish that line
+      // and put image into next line
+      curLine++;
+      if (curLine >= linesPerPage) {
+        curLine = 0;
+        {
+          char name[1000];
+
+          if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
+            snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
+          else
+            snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
+
+
+          status->label("Saving");
+          i->saveToPNG(name);
+          delete i;
+          if (BgWhite->value()) {
+            i = new Image(pageWidth, pageHeight, 255, 255, 255, 255);
+          } else {
+            i = new Image(pageWidth, pageHeight, 0, 0, 0, 0);
+          }
+        }
+        curPage++;
+      }
+      i->blit(i2, 0, curLine * imgHeight);
+      curLine++;
+      if (curLine >= linesPerPage) {
+        curLine = 0;
+        {
+          char name[1000];
+
+          if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
+            snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
+          else
+            snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
+
+
+          status->label("Saving");
+          i->saveToPNG(name);
+          delete i;
+          if (BgWhite->value()) {
+            i = new Image(pageWidth, pageHeight, 255, 255, 255, 255);
+          } else {
+            i = new Image(pageWidth, pageHeight, 0, 0, 0, 0);
+          }
+        }
+        curPage++;
+      }
+      curWidth = 0;
+    } else {
+      // image on the next line
+      curWidth = w;
+      curLine++;
+      if (curLine >= linesPerPage) {
+        curLine = 0;
+        {
+          char name[1000];
+
+          if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
+            snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
+          else
+            snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
+
+
+          status->label("Saving");
+          i->saveToPNG(name);
+          delete i;
+          if (BgWhite->value()) {
+            i = new Image(pageWidth, pageHeight, 255, 255, 255, 255);
+          } else {
+            i = new Image(pageWidth, pageHeight, 0, 0, 0, 0);
+          }
+        }
+        curPage++;
+      }
+      i->blit(i2, 0, curLine * imgHeight);
+    }
+
+    delete i2;
   }
 
   {
     char name[1000];
 
     if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
-      snprintf(name, 1000, "%s/%s", Pname->value(), Fname->value());
+      snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
     else
-      snprintf(name, 1000, "%s%s", Pname->value(), Fname->value());
+      snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
 
 
     status->label("Saving");
-    i.saveToPNG(name);
+    i->saveToPNG(name);
+    delete i;
   }
 
   glDrawBuffer(GL_FRONT);
@@ -113,9 +354,13 @@ void ImageExportWindow::cb_Update3DView(void) {
   } else if (ExpAssembly->value()) {
     view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0, ((int)ColConst->value()) == 1);
     view3D->showColors(puzzle, ColConst->value() == 1);
-  } else {
+  } else if (ExpSolution->value()) {
+    view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0, ((int)ColConst->value()) == 1);
+    view3D->showColors(puzzle, ColConst->value() == 1);
+  } else if (ExpProblem->value()) {
+    view3D->showSingleShape(puzzle, puzzle->probGetResult(ProblemSelect->getSelection()), ((int)ColConst->value()) == 1);
+    view3D->showColors(puzzle, ColConst->value() == 1);
   }
-
 }
 
 ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
@@ -215,10 +460,10 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
     (new LFl_Box(3, 0))->setMinimumSize(5, 0);
 
     Fname = new LFl_Input(2, 0, 3, 1);
-    Fname->value("test.png");
+    Fname->value("test");
     Fname->weight(1, 0);
     Pname = new LFl_Input(2, 1, 3, 1);
-    new LFl_Int_Input(4, 2);
+    NumPages = new LFl_Int_Input(4, 2);
     new LFl_Int_Input(4, 3);
 
     fr->end();
@@ -269,14 +514,14 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
     ShapeSelect = new PieceSelector(0, 0, 20, 20, puzzle);
     ProblemSelect = new ProblemSelector(0, 0, 20, 20, puzzle);
 
+    ShapeSelect->setSelection(0);
+    ProblemSelect->setSelection(0);
+
     Fl_Group * gr = new LBlockListGroup(0, 0, 1, 1, ShapeSelect);
     gr->callback(cb_ImageExport3DUpdate_stub, this);
 
     gr = new LBlockListGroup(1, 0, 1, 1, ProblemSelect);
     gr->callback(cb_ImageExport3DUpdate_stub, this);
-
-    ShapeSelect->setSelection(0);
-    ProblemSelect->setSelection(0);
 
     l->end();
   }
