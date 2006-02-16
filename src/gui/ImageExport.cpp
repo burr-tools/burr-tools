@@ -157,27 +157,6 @@ void ImageExportWindow::cb_Export(void) {
       if (curWidth + w < pageWidth) {
         // image fits onto the line
         curWidth += w;
-      } else if (curWidth == 0) {
-        // image is too wide for page, so force it onto the line
-        curLine++;
-        if (curLine >= linesPerPage) {
-          curLine = 0;
-          curPage++;
-        }
-      } else if (w > pageWidth) {
-        // image is too wide, and another line had been stated, so finish that line
-        // and put image into next line
-        curLine++;
-        if (curLine >= linesPerPage) {
-          curLine = 0;
-          curPage++;
-        }
-        curLine++;
-        if (curLine >= linesPerPage) {
-          curLine = 0;
-          curPage++;
-        }
-        curWidth = 0;
       } else {
         // image on the next line
         curWidth = w;
@@ -225,83 +204,6 @@ void ImageExportWindow::cb_Export(void) {
       // image fits onto the line
       i->blit(i2, curWidth, curLine * imgHeight);
       curWidth += w;
-    } else if (curWidth == 0) {
-      i->blit(i2, 0, curLine * imgHeight);
-      // image is too wide for page, so force it onto the line
-      curLine++;
-      if (curLine >= linesPerPage) {
-        curLine = 0;
-        {
-          char name[1000];
-
-          if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
-            snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
-          else
-            snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
-
-
-          status->label("Saving");
-          i->saveToPNG(name);
-          delete i;
-          if (BgWhite->value()) {
-            i = new Image(pageWidth, pageHeight, 255, 255, 255, 255);
-          } else {
-            i = new Image(pageWidth, pageHeight, 0, 0, 0, 0);
-          }
-        }
-        curPage++;
-      }
-    } else if (w > pageWidth) {
-      // image is too wide, and another line had been stated, so finish that line
-      // and put image into next line
-      curLine++;
-      if (curLine >= linesPerPage) {
-        curLine = 0;
-        {
-          char name[1000];
-
-          if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
-            snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
-          else
-            snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
-
-
-          status->label("Saving");
-          i->saveToPNG(name);
-          delete i;
-          if (BgWhite->value()) {
-            i = new Image(pageWidth, pageHeight, 255, 255, 255, 255);
-          } else {
-            i = new Image(pageWidth, pageHeight, 0, 0, 0, 0);
-          }
-        }
-        curPage++;
-      }
-      i->blit(i2, 0, curLine * imgHeight);
-      curLine++;
-      if (curLine >= linesPerPage) {
-        curLine = 0;
-        {
-          char name[1000];
-
-          if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
-            snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
-          else
-            snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
-
-
-          status->label("Saving");
-          i->saveToPNG(name);
-          delete i;
-          if (BgWhite->value()) {
-            i = new Image(pageWidth, pageHeight, 255, 255, 255, 255);
-          } else {
-            i = new Image(pageWidth, pageHeight, 0, 0, 0, 0);
-          }
-        }
-        curPage++;
-      }
-      curWidth = 0;
     } else {
       // image on the next line
       curWidth = w;
