@@ -2,7 +2,6 @@
 #define __IMAGE_H__
 
 #include "tr.h"
-#include "VoxelDrawer.h"
 #include "VoxelView.h"
 
 /* this class represents an bitmap image */
@@ -19,7 +18,7 @@ class Image {
 
     Image(unsigned int width, unsigned int height, unsigned char r, unsigned char g, unsigned char b, unsigned char a);
     Image(unsigned int width, unsigned int height, unsigned char *bitmap);
-    Image(unsigned int width, unsigned int height, VoxelDrawer * dr, const VoxelView * v3d);
+    Image(unsigned int width, unsigned int height, ShadowView * dr);
 
     ~Image(void);
 

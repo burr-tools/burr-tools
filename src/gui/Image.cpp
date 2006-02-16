@@ -19,15 +19,15 @@ Image::Image(unsigned int w, unsigned int h, unsigned char r, unsigned char g, u
 Image::Image(unsigned int w, unsigned int h, unsigned char *b) : width(w), height(h), bitmap(b) {
 }
 
-Image::Image(unsigned int w, unsigned int h, VoxelDrawer * dr, const VoxelView *v3d) : width(w), height(h) {
+Image::Image(unsigned int w, unsigned int h, ShadowView * dr) : width(w), height(h) {
   bitmap = new unsigned char[w*h*4];
 
   TRcontext *tr = trNew();
 
-  trTileSize(tr, v3d->w(), v3d->h(), 0);
-  trPerspective(tr, 5 + v3d->getSize(), 1.0, 10, 1100);
-
+  trTileSize(tr, dr->getView()->w(), dr->getView()->h(), 0);
   trImageSize(tr, w, h);
+  trPerspective(tr, 5 + dr->getView()->getSize(), (double)w/h, 10, 1100);
+
   trImageBuffer(tr, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
 
   GLfloat LightAmbient[]= { 0.01f, 0.01f, 0.01f, 1.0f };
