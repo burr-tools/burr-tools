@@ -353,85 +353,77 @@ void VoxelDrawer::drawVoxelSpace() {
 
   glShadeModel(GL_FLAT);
 
-  for (unsigned int piece = 0; piece < shapes.size(); piece++) {
+  for (unsigned int run = 0; run < 2; run++)
 
-    if (shapes[piece].a == 0)
-      continue;
+    for (unsigned int piece = 0; piece < shapes.size(); piece++) {
 
-    glPushMatrix();
+      if (shapes[piece].a == 0)
+        continue;
 
-    switch(trans) {
-    case ScaleRotateTranslate:
-      glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
-                   shapes[piece].y - shapes[piece].shape->getHy(),
-                   shapes[piece].z - shapes[piece].shape->getHz());
-      glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
-      addRotationTransformation();
-      glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
-      break;
-    case TranslateRoateScale:
-      addRotationTransformation();
-      glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
-                   shapes[piece].y - shapes[piece].shape->getHy(),
-                   shapes[piece].z - shapes[piece].shape->getHz());
-      glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
-      glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
-      break;
-    case CenterTranslateRoateScale:
-      addRotationTransformation();
-      glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
-                   shapes[piece].y - shapes[piece].shape->getHy(),
-                   shapes[piece].z - shapes[piece].shape->getHz());
-      glTranslatef(-centerX, -centerY, -centerZ);
-      glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
-      break;
-    default:
-      break;
-    }
+      // in run 0 we only paint opaque objects and in run 1 only transparent ones
+      // this lets the transparent objects be always in front of the others
+      if ((run == 0) && (shapes[piece].a != 1)) continue;
+      if ((run == 1) && (shapes[piece].a == 1)) continue;
 
-    if (_showCoordinateSystem) {
-      if (_useLightning) glDisable(GL_LIGHTING);
-      glDisable(GL_BLEND);
-      glBegin(GL_LINES);
-      glColor3f(1, 0, 0);
-      glVertex3f(-1, -1, -1); glVertex3f(shapes[piece].shape->getX()+1, -1, -1);
-      glColor3f(0, 0.75, 0);
-      glVertex3f(-1, -1, -1); glVertex3f(-1, shapes[piece].shape->getY()+1, -1);
-      glColor3f(0, 0, 1);
-      glVertex3f(-1, -1, -1); glVertex3f(-1, -1, shapes[piece].shape->getZ()+1);
-      glEnd();
-      if (_useLightning) glEnable(GL_LIGHTING);
-      glEnable(GL_BLEND);
-    }
+      glPushMatrix();
 
-    for (unsigned int x = 0; x < shapes[piece].shape->getX(); x++)
-      for (unsigned int y = 0; y < shapes[piece].shape->getY(); y++)
-        for (unsigned int z = 0; z < shapes[piece].shape->getZ(); z++) {
+      switch(trans) {
+      case ScaleRotateTranslate:
+        glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
+                     shapes[piece].y - shapes[piece].shape->getHy(),
+                     shapes[piece].z - shapes[piece].shape->getHz());
+        glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
+        addRotationTransformation();
+        glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
+        break;
+      case TranslateRoateScale:
+        addRotationTransformation();
+        glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
+                     shapes[piece].y - shapes[piece].shape->getHy(),
+                     shapes[piece].z - shapes[piece].shape->getHz());
+        glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
+        glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
+        break;
+      case CenterTranslateRoateScale:
+        addRotationTransformation();
+        glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
+                     shapes[piece].y - shapes[piece].shape->getHy(),
+                     shapes[piece].z - shapes[piece].shape->getHz());
+        glTranslatef(-centerX, -centerY, -centerZ);
+        glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
+        break;
+      default:
+        break;
+      }
 
-          if (shapes[piece].shape->isEmpty(x, y , z))
-            continue;
+      if (_showCoordinateSystem) {
+        if (_useLightning) glDisable(GL_LIGHTING);
+        glDisable(GL_BLEND);
+        glBegin(GL_LINES);
+        glColor3f(1, 0, 0);
+        glVertex3f(-1, -1, -1); glVertex3f(shapes[piece].shape->getX()+1, -1, -1);
+        glColor3f(0, 0.75, 0);
+        glVertex3f(-1, -1, -1); glVertex3f(-1, shapes[piece].shape->getY()+1, -1);
+        glColor3f(0, 0, 1);
+        glVertex3f(-1, -1, -1); glVertex3f(-1, -1, shapes[piece].shape->getZ()+1);
+        glEnd();
+        if (_useLightning) glEnable(GL_LIGHTING);
+        glEnable(GL_BLEND);
+      }
 
-          float cr, cg, cb, ca;
-          cr = cg = cb = 0;
-          ca = 1;
+      for (unsigned int x = 0; x < shapes[piece].shape->getX(); x++)
+        for (unsigned int y = 0; y < shapes[piece].shape->getY(); y++)
+          for (unsigned int z = 0; z < shapes[piece].shape->getZ(); z++) {
 
-          switch (colors) {
-          case pieceColor:
-            if ((x+y+z) & 1) {
-              cr = shapes[piece].r;
-              cg = shapes[piece].g;
-              cb = shapes[piece].b;
-              ca = shapes[piece].a;
-            } else {
-              cr = shapes[piece].r*0.9;
-              cg = shapes[piece].g*0.9;
-              cb = shapes[piece].b*0.9;
-              ca = shapes[piece].a;
-            }
-            break;
-          case paletteColor:
-            unsigned int color = shapes[piece].shape->getColor(x, y, z);
-            if ((color == 0) || (color - 1 >= palette.size())) {
+            if (shapes[piece].shape->isEmpty(x, y , z))
+              continue;
+
+            float cr, cg, cb, ca;
+            cr = cg = cb = 0;
+            ca = 1;
+
+            switch (colors) {
+            case pieceColor:
               if ((x+y+z) & 1) {
                 cr = shapes[piece].r;
                 cg = shapes[piece].g;
@@ -443,79 +435,94 @@ void VoxelDrawer::drawVoxelSpace() {
                 cb = shapes[piece].b*0.9;
                 ca = shapes[piece].a;
               }
-            } else {
-              cr = palette[color-1].r;
-              cg = palette[color-1].g;
-              cb = palette[color-1].b;
-              ca = shapes[piece].a;
+              break;
+            case paletteColor:
+              unsigned int color = shapes[piece].shape->getColor(x, y, z);
+              if ((color == 0) || (color - 1 >= palette.size())) {
+                if ((x+y+z) & 1) {
+                  cr = shapes[piece].r;
+                  cg = shapes[piece].g;
+                  cb = shapes[piece].b;
+                  ca = shapes[piece].a;
+                } else {
+                  cr = shapes[piece].r*0.9;
+                  cg = shapes[piece].g*0.9;
+                  cb = shapes[piece].b*0.9;
+                  ca = shapes[piece].a;
+                }
+              } else {
+                cr = palette[color-1].r;
+                cg = palette[color-1].g;
+                cb = palette[color-1].b;
+                ca = shapes[piece].a;
+              }
+            }
+
+            if (shapes[piece].dim) {
+              cr = 1.2 - (1 - cr) * 0.2;
+              cg = 1.2 - (1 - cg) * 0.2;
+              cb = 1.2 - (1 - cb) * 0.2;
+            }
+
+            glColor4f(cr, cg, cb, ca);
+
+            switch (shapes[piece].mode) {
+            case normal:
+              if (shapes[piece].shape->getState(x, y , z) == voxel_c::VX_VARIABLE) {
+                drawBox(shapes[piece].shape, x, y, z, shapes[piece].a, shapes[piece].dim ? 0 : 0.05);
+                glColor4f(0, 0, 0, shapes[piece].a);
+                drawCube(shapes[piece].shape, x, y, z);
+              } else
+                drawBox(shapes[piece].shape, x, y, z, shapes[piece].a, shapes[piece].dim ? 0 : 0.05);
+              break;
+            case gridline:
+              drawFrame(shapes[piece].shape, x, y, z, 0.05);
+              break;
+            case invisible:
+              break;
             }
           }
 
-          if (shapes[piece].dim) {
-            cr = 1.2 - (1 - cr) * 0.2;
-            cg = 1.2 - (1 - cg) * 0.2;
-            cb = 1.2 - (1 - cb) * 0.2;
-          }
+      // the marker should be only active, when only one shape is there
+      // otherwise it's drawn for every shape
+      if ((markerType >= 0) && (mX1 <= mX2) && (mY1 <= mY2)) {
 
-          glColor4f(cr, cg, cb, ca);
+        if (_useLightning) glDisable(GL_LIGHTING);
+        glDisable(GL_BLEND);
 
-          switch (shapes[piece].mode) {
-          case normal:
-            if (shapes[piece].shape->getState(x, y , z) == voxel_c::VX_VARIABLE) {
-              drawBox(shapes[piece].shape, x, y, z, shapes[piece].a, shapes[piece].dim ? 0 : 0.05);
-              glColor4f(0, 0, 0, shapes[piece].a);
-              drawCube(shapes[piece].shape, x, y, z);
-            } else
-              drawBox(shapes[piece].shape, x, y, z, shapes[piece].a, shapes[piece].dim ? 0 : 0.05);
-            break;
-          case gridline:
-            drawFrame(shapes[piece].shape, x, y, z, 0.05);
-            break;
-          case invisible:
-            break;
-          }
-        }
+        glColor4f(0, 0, 0, 1);
 
-    // the marker should be only active, when only one shape is there
-    // otherwise it's drawn for every shape
-    if ((markerType >= 0) && (mX1 <= mX2) && (mY1 <= mY2)) {
+        // draw the cursor, this is done by iterating over all
+        // cubes and checking for the 3 directions (in one direction only as the other
+        // direction is done with the next cube), if there is a border in the cursor
+        // between these 2 cubes, if so draw the cursor grid
+        for (unsigned int x = 0; x <= shapes[piece].shape->getX(); x++)
+          for (unsigned int y = 0; y <= shapes[piece].shape->getY(); y++)
+            for (unsigned int z = 0; z <= shapes[piece].shape->getZ(); z++) {
+              bool ins = inRegion(x, y, z, mX1, mX2, mY1, mY2, mZ, mZ,
+                  shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ(), markerType);
 
-      if (_useLightning) glDisable(GL_LIGHTING);
-      glDisable(GL_BLEND);
+              if (ins ^ inRegion(x-1, y, z, mX1, mX2, mY1, mY2, mZ, mZ,
+                    shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ(), markerType)) {
+                drawRect(x, y, z, 0, 1, 0, 0, 0, 1, false, 4);
+              }
 
-      glColor4f(0, 0, 0, 1);
+              if (ins ^ inRegion(x, y-1, z, mX1, mX2, mY1, mY2, mZ, mZ,
+                    shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ(), markerType)) {
+                drawRect(x, y, z, 1, 0, 0, 0, 0, 1, false, 4);
+              }
 
-      // draw the cursor, this is done by iterating over all
-      // cubes and checking for the 3 directions (in one direction only as the other
-      // direction is done with the next cube), if there is a border in the cursor
-      // between these 2 cubes, if so draw the cursor grid
-      for (unsigned int x = 0; x <= shapes[piece].shape->getX(); x++)
-        for (unsigned int y = 0; y <= shapes[piece].shape->getY(); y++)
-          for (unsigned int z = 0; z <= shapes[piece].shape->getZ(); z++) {
-            bool ins = inRegion(x, y, z, mX1, mX2, mY1, mY2, mZ, mZ,
-                shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ(), markerType);
-
-            if (ins ^ inRegion(x-1, y, z, mX1, mX2, mY1, mY2, mZ, mZ,
-                  shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ(), markerType)) {
-              drawRect(x, y, z, 0, 1, 0, 0, 0, 1, false, 4);
+              if (ins ^ inRegion(x, y, z-1, mX1, mX2, mY1, mY2, mZ, mZ,
+                    shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ(), markerType)) {
+                drawRect(x, y, z, 1, 0, 0, 0, 1, 0, false, 4);
+              }
             }
+        if (_useLightning) glEnable(GL_LIGHTING);
+        glEnable(GL_BLEND);
+      }
 
-            if (ins ^ inRegion(x, y-1, z, mX1, mX2, mY1, mY2, mZ, mZ,
-                  shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ(), markerType)) {
-              drawRect(x, y, z, 1, 0, 0, 0, 0, 1, false, 4);
-            }
-
-            if (ins ^ inRegion(x, y, z-1, mX1, mX2, mY1, mY2, mZ, mZ,
-                  shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ(), markerType)) {
-              drawRect(x, y, z, 1, 0, 0, 0, 1, 0, false, 4);
-            }
-          }
-      if (_useLightning) glEnable(GL_LIGHTING);
-      glEnable(GL_BLEND);
+      glPopMatrix();
     }
-
-    glPopMatrix();
-  }
 
 }
 
