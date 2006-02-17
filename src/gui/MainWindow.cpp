@@ -690,6 +690,11 @@ void UserInterface::cb_BtnAssemblerStep(void) {
 
   assm->debug_step();
 
+  if (assm->getFinished() >= 1)
+    puzzle->probFinishedSolving(solutionProblem->getSelection());
+
+  updateInterface();
+
   View3D->showAssemblerState(puzzle, solutionProblem->getSelection(), assm->getAssembly());
 }
 
@@ -1626,7 +1631,7 @@ void UserInterface::updateInterface(void) {
       }
 
       // the placement browser can only be activated when an assember is available and not assembling is active
-      if (puzzle->probGetAssembler(prob) && !assmThread) {
+      if (puzzle->probGetAssembler(prob) && !assmThread && (puzzle->probGetSolveState(prob) != puzzle_c::SS_SOLVED)) {
         BtnPlacement->activate();
         BtnStep->activate();
       } else {

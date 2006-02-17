@@ -578,7 +578,11 @@ assembly_c * assembler_0_c::getAssembly(void) {
   assembly_c * assembly = new assembly_c();
 
   // if no pieces are placed, or we finished return an empty assembly
-  if (getPos() <= 0) return assembly;
+  if (pos > piecenumber) {
+    for (unsigned int i = 0; i < getPiecenumber(); i++)
+      assembly->addNonPlacement();
+    return assembly;
+  }
 
   /* first we need to find the order the piece are in */
   unsigned int * pieces = new unsigned int[getPiecenumber()];
