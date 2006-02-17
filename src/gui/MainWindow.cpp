@@ -2005,9 +2005,9 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
   bt_assert(hi > 30);
 
-  int pieceHight = hi/numGroups + pieceFixedHight;
+  int pieceHight = 3*hi/numGroups + pieceFixedHight;
   int colorsHight = hi/numGroups + colorsFixedHight;
-  int editHight = hi - (hi/numGroups) * 2 + editFixedHight;
+  int editHight = hi - (hi/numGroups) * 4 + editFixedHight;
 
   {
     int lh = pieceHight;
