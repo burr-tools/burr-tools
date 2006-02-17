@@ -66,9 +66,9 @@ void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, i
 
         cnt = puzzle->probGetShape(prob, r);
         if (puzzle->getShape(cnt)->getName())
-          snprintf(s, 40, "S%i - %s", cnt+1, puzzle->getShape(cnt)->getName());
+          snprintf(s, 40, " S%i - %s", cnt+1, puzzle->getShape(cnt)->getName());
         else
-          snprintf(s, 40, "S%i", cnt+1);
+          snprintf(s, 40, " S%i", cnt+1);
 
       } else if (c == 1) {
         cnt = puzzle->probGetShapeCount(prob, r);
@@ -97,7 +97,11 @@ void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, i
           fl_color(0, 0, 0);
         else
           fl_color(255, 255, 255);
-        fl_draw(s, x, y, w, h, FL_ALIGN_CENTER);
+
+        if (c == 0)
+          fl_draw(s, x, y, w, h, FL_ALIGN_LEFT);
+        else
+          fl_draw(s, x, y, w, h, FL_ALIGN_CENTER);
       } else {
         fl_color(color());
         fl_rectf(x, y, w, h);
