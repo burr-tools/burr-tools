@@ -464,5 +464,7 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
 
   view3D = new LView3dGroup(2, 0, 1, 6);
   cb_Update3DView();
+
+  set_modal();
 }
 

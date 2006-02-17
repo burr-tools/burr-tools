@@ -99,6 +99,8 @@ PlacementBrowser::PlacementBrowser(puzzle_c * p, unsigned int prob) :
 	       "Read the documentation");
 
   cb_piece(0);
+
+  set_modal();
 }
 
 int PlacementBrowser::handle(int event) {
