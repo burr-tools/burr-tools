@@ -299,9 +299,9 @@ public:
   void cb_slider(void);
 
   void showNothing(void) { View3D->clearSpaces(); }
-  void showSingleShape(const puzzle_c * puz, unsigned int shapeNum, bool showColors);
-  void showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape, bool showColors);
-  void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum, bool showColors);
+  void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
+  void showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape);
+  void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum);
   void showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z);
   void showAssemblerState(const puzzle_c * puz, unsigned int probNum, const assembly_c * assm) {
     View3D->showAssemblerState(puz, probNum, assm);

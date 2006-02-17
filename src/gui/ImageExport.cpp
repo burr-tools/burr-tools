@@ -81,12 +81,12 @@ void ImageExportWindow::cb_Export(void) {
 
   if (ExpShape->value()) {
     ShadowView * dr = new ShadowView(view3D->getView());
-    dr->showSingleShape(puzzle, ShapeSelect->getSelection(), ((int)ColConst->value()) == 1);
+    dr->showSingleShape(puzzle, ShapeSelect->getSelection());
     dr->showColors(puzzle, ColConst->value() == 1);
     images.push_back(new ImageInfo(dr));
   } else if (ExpAssembly->value()) {
     ShadowView * dr = new ShadowView(view3D->getView());
-    dr->showAssembly(puzzle, ProblemSelect->getSelection(), 0, ((int)ColConst->value()) == 1);
+    dr->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
     dr->showColors(puzzle, ColConst->value() == 1);
     images.push_back(new ImageInfo(dr));
   } else if (ExpSolution->value()) {
@@ -99,7 +99,7 @@ void ImageExportWindow::cb_Export(void) {
 
     for (unsigned int step = 0; step < t->sumMoves(); step++) {
       ShadowView * dr = new ShadowView(view3D->getView());
-      dr->showAssembly(puzzle, ProblemSelect->getSelection(), s, false);
+      dr->showAssembly(puzzle, ProblemSelect->getSelection(), s);
       dr->showColors(puzzle, ColConst->value() == 1);
       dtm.setStep(step);
       dr->updatePositions(&dtm);
@@ -111,13 +111,13 @@ void ImageExportWindow::cb_Export(void) {
   } else if (ExpProblem->value()) {
     // generate an image for each piece in the problem
     ShadowView * dr = new ShadowView(view3D->getView());
-    dr->showSingleShape(puzzle, puzzle->probGetResult(ProblemSelect->getSelection()), ((int)ColConst->value()) == 1);
+    dr->showSingleShape(puzzle, puzzle->probGetResult(ProblemSelect->getSelection()));
     dr->showColors(puzzle, ColConst->value() == 1);
     images.push_back(new ImageInfo(dr));
 
     for (unsigned int p = 0; p < puzzle->probShapeNumber(ProblemSelect->getSelection()); p++) {
       ShadowView * dr = new ShadowView(view3D->getView());
-      dr->showSingleShape(puzzle, puzzle->probGetShape(ProblemSelect->getSelection(), p), ((int)ColConst->value()) == 1);
+      dr->showSingleShape(puzzle, puzzle->probGetShape(ProblemSelect->getSelection(), p));
       dr->showColors(puzzle, ColConst->value() == 1);
       images.push_back(new ImageInfo(dr));
     }
@@ -262,16 +262,16 @@ static void cb_ImageExport3DUpdate_stub(Fl_Widget* o, void* v) { ((ImageExportWi
 void ImageExportWindow::cb_Update3DView(void) {
 
   if (ExpShape->value()) {
-    view3D->showSingleShape(puzzle, ShapeSelect->getSelection(), ((int)ColConst->value()) == 1);
+    view3D->showSingleShape(puzzle, ShapeSelect->getSelection());
     view3D->showColors(puzzle, ColConst->value() == 1);
   } else if (ExpAssembly->value()) {
-    view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0, ((int)ColConst->value()) == 1);
+    view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
     view3D->showColors(puzzle, ColConst->value() == 1);
   } else if (ExpSolution->value()) {
-    view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0, ((int)ColConst->value()) == 1);
+    view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
     view3D->showColors(puzzle, ColConst->value() == 1);
   } else if (ExpProblem->value()) {
-    view3D->showSingleShape(puzzle, puzzle->probGetResult(ProblemSelect->getSelection()), ((int)ColConst->value()) == 1);
+    view3D->showSingleShape(puzzle, puzzle->probGetResult(ProblemSelect->getSelection()));
     view3D->showColors(puzzle, ColConst->value() == 1);
   }
 }

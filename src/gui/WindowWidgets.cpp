@@ -740,16 +740,16 @@ void ResultViewer::draw(void) {
 }
 
 
-void View3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum, bool showColors) {
+void View3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
   View3D->update(false);
-  View3D->showSingleShape(puz, shapeNum, showColors);
+  View3D->showSingleShape(puz, shapeNum);
   View3D->update(true);
 }
 
-void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape, bool showColors) {
+void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape) {
 
   View3D->update(false);
-  View3D->showProblem(puz, probNum, selShape, showColors);
+  View3D->showProblem(puz, probNum, selShape);
   View3D->update(true);
 }
 
@@ -760,9 +760,9 @@ void View3dGroup::showColors(const puzzle_c * puz, bool show) {
 }
 
 
-void View3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum, bool showColors) {
+void View3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
   View3D->update(false);
-  View3D->showAssembly(puz, probNum, solNum, showColors);
+  View3D->showAssembly(puz, probNum, solNum);
   View3D->update(true);
 }
 

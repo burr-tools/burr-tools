@@ -385,7 +385,7 @@ void UserInterface::cb_pieceEdit(VoxelEditGroup* o) {
       View3D->hideMarker();
     break;
   case SquareEditor::RS_CHANGESQUARE:
-    View3D->showSingleShape(puzzle, PcSel->getSelection(), Status->useColors());
+    View3D->showSingleShape(puzzle, PcSel->getSelection());
     StatPieceInfo(PcSel->getSelection());
     changeShape(PcSel->getSelection());
     changed = true;
@@ -1272,7 +1272,7 @@ void UserInterface::activateShape(unsigned int number) {
 
   if ((number < puzzle->shapeNumber())) {
 
-    View3D->showSingleShape(puzzle, number, Status->useColors());
+    View3D->showSingleShape(puzzle, number);
     pieceEdit->setPuzzle(puzzle, number);
     pieceTools->setVoxelSpace(puzzle, number);
 
@@ -1290,7 +1290,7 @@ void UserInterface::activateShape(unsigned int number) {
 
 void UserInterface::activateProblem(unsigned int prob) {
 
-  View3D->showProblem(puzzle, prob, shapeAssignmentSelector->getSelection(), Status->useColors());
+  View3D->showProblem(puzzle, prob, shapeAssignmentSelector->getSelection());
 
   SolutionEmpty = true;
 }
@@ -1326,7 +1326,7 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
                                       2*puzzle->probGetResultShape(prob)->getBiggestDimension());
       disassemble->setStep(SolutionAnim->value());
 
-      View3D->showAssembly(puzzle, prob, num, Status->useColors());
+      View3D->showAssembly(puzzle, prob, num);
       View3D->updatePositions(disassemble);
       View3D->updateVisibility(PcVis);
 
@@ -1337,7 +1337,7 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->value(0);
       MovesInfo->hide();
 
-      View3D->showAssembly(puzzle, prob, num, Status->useColors());
+      View3D->showAssembly(puzzle, prob, num);
       View3D->updateVisibility(PcVis);
     }
 

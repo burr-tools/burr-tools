@@ -662,7 +662,7 @@ void VoxelDrawer::hideMarker(void) {
 
 
 
-void VoxelDrawer::showSingleShape(const puzzle_c * puz, unsigned int shapeNum, bool showColors) {
+void VoxelDrawer::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
 
   hideMarker();
   clearSpaces();
@@ -675,7 +675,7 @@ void VoxelDrawer::showSingleShape(const puzzle_c * puz, unsigned int shapeNum, b
   showCoordinateSystem(true);
 }
 
-void VoxelDrawer::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape, bool showColors) {
+void VoxelDrawer::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape) {
 
   hideMarker();
   clearSpaces();
@@ -783,7 +783,7 @@ void VoxelDrawer::showColors(const puzzle_c * puz, bool show) {
 }
 
 
-void VoxelDrawer::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum, bool showColors) {
+void VoxelDrawer::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
 
   hideMarker();
   clearSpaces();
