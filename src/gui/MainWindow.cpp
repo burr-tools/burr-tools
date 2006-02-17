@@ -751,6 +751,14 @@ void UserInterface::cb_CCSort(bool byResult) {
   }
 }
 
+static void cb_BtnPrepare_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_BtnPrepare(); }
+void UserInterface::cb_BtnPrepare(void) {
+  cb_BtnStart();
+
+  if (assmThread)
+    assmThread->stop();
+}
+
 static void cb_BtnStart_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_BtnStart(); }
 void UserInterface::cb_BtnStart(void) {
 
@@ -1626,6 +1634,13 @@ void UserInterface::updateInterface(void) {
         BtnStep->deactivate();
       }
 
+      // the prepare button is only available, when a valid problem is selected
+      // that problem has no assembler assigned and no thread is running
+      if (!puzzle->probGetAssembler(prob) && !assmThread)
+        BtnPrepare->activate();
+      else
+        BtnPrepare->deactivate();
+
     } else {
 
       // no valid problem available, hide all information
@@ -1641,7 +1656,9 @@ void UserInterface::updateInterface(void) {
 
       BtnPlacement->deactivate();
       BtnStep->deactivate();
+      BtnPrepare->deactivate();
     }
+
 
     if (assmThread && (assmThread->getProblem() == prob)) {
 
@@ -2505,27 +2522,34 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
-    int bw = w - 2*SZ_GAP;
+    int bw = w - 3*SZ_GAP;
 
-    int b1 = 8 * bw / 30;
-    int b2 = 14 * bw / 30;
-    int b3 = bw-b1-b2;
+    int b0 = 8 * bw / 38;
+    int b1 = 8 * bw / 38;
+    int b2 = 14 * bw / 38;
+    int b3 = bw-b0-b1-b2;
 
     {
-      Fl_Group * o = new Fl_Group(x          , y, b1+SZ_GAP  , SZ_BUTTON_Y);
-      BtnStart = new FlatButton(x, y, b1, SZ_BUTTON_Y, "Start", " Start new solving process, removing old result ", cb_BtnStart_stub, this);
+      Fl_Group * o = new Fl_Group(x          , y, b0+SZ_GAP  , SZ_BUTTON_Y);
+      BtnPrepare = new FlatButton(x, y, b1, SZ_BUTTON_Y, "Prepare", " Do the preparation phase and then stop, this removes old results ", cb_BtnPrepare_stub, this);
+      o->resizable(BtnPrepare);
+      o->end();
+    }
+    {
+      Fl_Group * o = new Fl_Group(x+b0+SZ_GAP, y, b1+SZ_GAP  , SZ_BUTTON_Y);
+      BtnStart = new FlatButton(x+b0+SZ_GAP, y, b1, SZ_BUTTON_Y, "Start", " Start new solving process, removing old result ", cb_BtnStart_stub, this);
       o->resizable(BtnStart);
       o->end();
     }
     {
-      Fl_Group * o = new Fl_Group(x+b1+SZ_GAP, y, b2+SZ_GAP  , SZ_BUTTON_Y);
-      BtnCont = new FlatButton(x+b1+SZ_GAP, y, b2, SZ_BUTTON_Y, "Continue", " Continue started process ", cb_BtnCont_stub, this);
+      Fl_Group * o = new Fl_Group(x+2*SZ_GAP+b0+b1, y, b2+SZ_GAP  , SZ_BUTTON_Y);
+      BtnCont = new FlatButton(x+2*SZ_GAP+b0+b1, y, b2, SZ_BUTTON_Y, "Continue", " Continue started process ", cb_BtnCont_stub, this);
       o->resizable(BtnCont);
       o->end();
     }
     {
-      Fl_Group * o = new Fl_Group(x+2*SZ_GAP+b1+b2, y, b3+SZ_GAP  , SZ_BUTTON_Y);
-      BtnStop = new FlatButton(x+2*SZ_GAP+b1+b2, y, b3, SZ_BUTTON_Y, "Stop", " Stop a currently running solution process ", cb_BtnStop_stub, this);
+      Fl_Group * o = new Fl_Group(x+3*SZ_GAP+b0+b1+b2, y, b3+SZ_GAP  , SZ_BUTTON_Y);
+      BtnStop = new FlatButton(x+3*SZ_GAP+b0+b1+b2, y, b3, SZ_BUTTON_Y, "Stop", " Stop a currently running solution process ", cb_BtnStop_stub, this);
       o->resizable(BtnStop);
       o->end();
     }

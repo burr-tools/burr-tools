@@ -81,7 +81,7 @@ class UserInterface : public Fl_Double_Window {
   Fl_Group *TabSolve;
   Fl_Check_Button *SolveDisasm, *JustCount;
 
-  FlatButton *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep;
+  FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape, *BtnShapeLeft, *BtnShapeRight;
   FlatButton *BtnNewColor, *BtnDelColor, *BtnChnColor;
   FlatButton *BtnNewProb, *BtnDelProb, *BtnCpyProb, *BtnRenProb, *BtnProbLeft, *BtnProbRight;
@@ -217,6 +217,7 @@ public:
   void cb_DisallowColor(void);
   void cb_CCSort(bool byResult);
 
+  void cb_BtnPrepare(void);
   void cb_BtnStart(void);
   void cb_BtnCont(void);
   void cb_BtnStop(void);
