@@ -140,6 +140,12 @@ void VoxelEditGroup::setPuzzle(puzzle_c * puzzle, unsigned int num) {
   }
 }
 
+void VoxelEditGroup::draw() {
+  fl_push_clip(x(), y(), w(), h());
+  Fl_Group::draw();
+  fl_pop_clip();
+}
+
 
 
 #define SZ_BUTTON_Y 20
