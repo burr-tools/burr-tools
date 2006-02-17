@@ -410,7 +410,6 @@ problem_c::problem_c(problem_c * orig) : result(orig->result), colorConstraints(
 numAssemblies(0xFFFFFFFF), numSolutions(0xFFFFFFFF), usedTime(0xFFFFFFFF)
 {
   assm = 0;
-  name = orig->name;
 
   for (unsigned int i = 0; i < colorConstraints.getColors(); i++)
     for (unsigned int j = 0; j < colorConstraints.getColors(); j++)

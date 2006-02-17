@@ -435,21 +435,13 @@ void UserInterface::cb_CopyProblem(void) {
 
   if (problemSelector->getSelection() < puzzle->problemNumber()) {
 
-    char pname[50];
-    snprintf(pname, 50, "%s_cp", puzzle->probGetName(problemSelector->getSelection()).c_str());
+    unsigned int prob = puzzle->copyProblem(problemSelector->getSelection());
+    problemSelector->setSelection(prob);
 
-    const char * name = fl_input("Enter name for the copied problem", pname);
-
-    if (name) {
-      unsigned int prob = puzzle->copyProblem(problemSelector->getSelection());
-      puzzle->probSetName(prob, name);
-      problemSelector->setSelection(prob);
-
-      changed = true;
-      updateInterface();
-      activateProblem(problemSelector->getSelection());
-      StatProblemInfo(problemSelector->getSelection());
-    }
+    changed = true;
+    updateInterface();
+    activateProblem(problemSelector->getSelection());
+    StatProblemInfo(problemSelector->getSelection());
   }
 }
 
