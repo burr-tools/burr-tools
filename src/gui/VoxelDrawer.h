@@ -86,8 +86,6 @@ public:
   void setDrawingMode(unsigned int nr, drawingMode mode);
   void setColorMode(colorMode color);
 
-  void setScaling(float factor);
-
   typedef enum {
     ScaleRotateTranslate,      // for showing problems
     TranslateRoateScale,       // for showing pieces
@@ -146,8 +144,6 @@ private:
     bool dim;
 
   } shapeInfo;
-
-  float scale;
 
   /* the marker position */
   int mX1, mY1, mZ, mX2, mY2;

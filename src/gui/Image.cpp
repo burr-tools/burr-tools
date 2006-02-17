@@ -26,13 +26,14 @@ Image::Image(unsigned int w, unsigned int h, ShadowView * dr) : width(w), height
 
   trTileSize(tr, dr->getView()->w(), dr->getView()->h(), 0);
   trImageSize(tr, w, h);
-  trPerspective(tr, 5 + dr->getView()->getSize(), (double)w/h, 10, 1100);
+  trPerspective(tr, 25, (double)w/h, dr->getView()->getSize(), dr->getView()->getSize()+100);
 
   trImageBuffer(tr, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
 
-  GLfloat LightAmbient[]= { 0.01f, 0.01f, 0.01f, 1.0f };
-  GLfloat LightDiffuse[]= { 1.5f, 1.5f, 1.5f, 1.0f };
-  GLfloat LightPosition[]= { 700.0f, 200.0f, -90.0f, 1.0f };
+
+  GLfloat LightAmbient[]= { 0.2f, 0.2f, 0.2f, 1.0f };
+  GLfloat LightDiffuse[]= { 0.6f, 0.6f, 0.6f, 0.0f };
+  GLfloat LightPosition[]= { 700.0f, 200.0f, 700.0f, 1.0f };
 
   GLfloat AmbientParams[] = {0.1, 0.1, 0.1, 1};
   GLfloat DiffuseParams[] = {0.7, 0.7, 0.7, 0.1};
@@ -48,6 +49,11 @@ Image::Image(unsigned int w, unsigned int h, ShadowView * dr) : width(w), height
   glMaterialfv(GL_FRONT, GL_AMBIENT, AmbientParams);
   glMaterialfv(GL_FRONT, GL_DIFFUSE, DiffuseParams);
   glMaterialfv(GL_FRONT, GL_SPECULAR, SpecularParams);
+
+  glEnable(GL_RESCALE_NORMAL);
+
+  glLoadIdentity();
+  glTranslatef(0, 0, -20-dr->getView()->getSize());
 
   glClearColor(1, 1, 1, 0);
 

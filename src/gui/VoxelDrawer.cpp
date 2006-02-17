@@ -353,8 +353,6 @@ void VoxelDrawer::drawVoxelSpace() {
 
   glShadeModel(GL_FLAT);
 
-  glScalef(scale, scale, scale);
-
   for (unsigned int piece = 0; piece < shapes.size(); piece++) {
 
     if (shapes[piece].a == 0)
@@ -539,7 +537,6 @@ void VoxelDrawer::drawData(void) {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   glPushMatrix();
-  glTranslatef(0, 0, -50);
   drawVoxelSpace();
   glPopMatrix();
 }
@@ -622,12 +619,6 @@ void VoxelDrawer::setColorMode(colorMode color) {
   updateRequired();
 }
 
-void VoxelDrawer::setScaling(float factor) {
-  scale = factor;
-
-  updateRequired();
-}
-
 void VoxelDrawer::setTransformationType(transformationType type) {
   trans = type;
 
@@ -671,7 +662,6 @@ void VoxelDrawer::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
   setSpaceColor(num, pieceColorR(shapeNum), pieceColorG(shapeNum), pieceColorB(shapeNum), 255);
 
   setTransformationType(TranslateRoateScale);
-  setScaling(1);
   showCoordinateSystem(true);
 }
 
@@ -759,7 +749,6 @@ void VoxelDrawer::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
       }
     }
 
-    setScaling(5);
     setTransformationType(ScaleRotateTranslate);
     showCoordinateSystem(false);
   }
@@ -813,7 +802,6 @@ void VoxelDrawer::showAssembly(const puzzle_c * puz, unsigned int probNum, unsig
         piece++;
       }
 
-    setScaling(1);
     setCenter(0.5*puz->probGetResultShape(probNum)->getX(),
                       0.5*puz->probGetResultShape(probNum)->getY(),
                       0.5*puz->probGetResultShape(probNum)->getZ()
@@ -852,7 +840,6 @@ void VoxelDrawer::showAssemblerState(const puzzle_c * puz, unsigned int probNum,
         piece++;
       }
 
-    setScaling(1);
     setCenter(0.5*puz->probGetResultShape(probNum)->getX(),
                       0.5*puz->probGetResultShape(probNum)->getY(),
                       0.5*puz->probGetResultShape(probNum)->getZ()
@@ -866,7 +853,6 @@ void VoxelDrawer::showPlacement(const puzzle_c * puz, unsigned int probNum, unsi
 
   clearSpaces();
   hideMarker();
-  setScaling(1);
   setTransformationType(CenterTranslateRoateScale);
   showCoordinateSystem(false);
   setCenter(0.5*puz->probGetResultShape(probNum)->getX(),

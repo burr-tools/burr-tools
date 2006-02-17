@@ -57,9 +57,9 @@ void VoxelView::draw() {
 
   if (!valid()) {
 
-    GLfloat LightAmbient[]= { 0.01f, 0.01f, 0.01f, 1.0f };
-    GLfloat LightDiffuse[]= { 1.5f, 1.5f, 1.5f, 1.0f };
-    GLfloat LightPosition[]= { 700.0f, 200.0f, -90.0f, 1.0f };
+    GLfloat LightAmbient[]= { 0.2f, 0.2f, 0.2f, 1.0f };
+    GLfloat LightDiffuse[]= { 0.6f, 0.6f, 0.6f, 0.0f };
+    GLfloat LightPosition[]= { 700.0f, 200.0f, 700.0f, 1.0f };
 
     GLfloat AmbientParams[] = {0.1, 0.1, 0.1, 1};
     GLfloat DiffuseParams[] = {0.7, 0.7, 0.7, 0.1};
@@ -79,6 +79,8 @@ void VoxelView::draw() {
     glMaterialfv(GL_FRONT, GL_DIFFUSE, DiffuseParams);
     glMaterialfv(GL_FRONT, GL_SPECULAR, SpecularParams);
 
+    glEnable(GL_RESCALE_NORMAL);
+
     arcBall->setBounds(w(), h());
 
     unsigned char r, g, b;
@@ -86,8 +88,12 @@ void VoxelView::draw() {
     glClearColor(r/255.0, g/255.0, b/255.0, 0);
   }
 
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  gluPerspective(25, 1.0*w()/h(), size, size+100);
+  glMatrixMode(GL_MODELVIEW);
   glPushMatrix();
-  gluPerspective(5+size, 1.0*w()/h(), 10, 1100);
+  glTranslatef(0, 0, -20-size);
   drawData();
   glPopMatrix();
 }

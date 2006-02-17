@@ -255,7 +255,8 @@ void ImageExportWindow::cb_Export(void) {
   glReadBuffer(GL_FRONT);
 
   status->label(0);
-  hide();
+  view3D->getView()->invalidate();
+  cb_Update3DView();
 }
 
 static void cb_ImageExport3DUpdate_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Update3DView(); }

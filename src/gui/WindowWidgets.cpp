@@ -637,7 +637,7 @@ ConstraintsGroup::ConstraintsGroup(int x, int y, int w, int h, ColorConstraintsE
 static void cb_View3dGroupSlider_stub(Fl_Widget* o, void* v) { ((View3dGroup*)(o->parent()))->cb_slider(); }
 
 void View3dGroup::cb_slider(void) {
-  View3D->setSize(exp(slider->value()));
+  View3D->setSize(exp(6-slider->value()));
 }
 
 
@@ -651,8 +651,8 @@ View3dGroup::View3dGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   slider = new Fl_Slider(x+w-15, y, 15, h);
   slider->tooltip("Zoom view.");
   slider->box(FL_THIN_DOWN_BOX);
-  slider->maximum(5);
-  slider->minimum(-3);
+  slider->maximum(6);
+  slider->minimum(0);
   slider->step(0.01);
   slider->value(2);
   slider->callback(cb_View3dGroupSlider_stub);
