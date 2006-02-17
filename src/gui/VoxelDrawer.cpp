@@ -413,23 +413,53 @@ void VoxelDrawer::drawVoxelSpace() {
           if (shapes[piece].shape->isEmpty(x, y , z))
             continue;
 
+          float cr, cg, cb, ca;
+          cr = cg = cb = 0;
+          ca = 1;
+
           switch (colors) {
           case pieceColor:
-            if ((x+y+z) & 1)
-              glColor4f(shapes[piece].r, shapes[piece].g, shapes[piece].b, shapes[piece].a);
-            else
-              glColor4f(shapes[piece].r*0.9, shapes[piece].g*0.9, shapes[piece].b*0.9, shapes[piece].a);
+            if ((x+y+z) & 1) {
+              cr = shapes[piece].r;
+              cg = shapes[piece].g;
+              cb = shapes[piece].b;
+              ca = shapes[piece].a;
+            } else {
+              cr = shapes[piece].r*0.9;
+              cg = shapes[piece].g*0.9;
+              cb = shapes[piece].b*0.9;
+              ca = shapes[piece].a;
+            }
             break;
           case paletteColor:
             unsigned int color = shapes[piece].shape->getColor(x, y, z);
             if ((color == 0) || (color - 1 >= palette.size())) {
-              if ((x+y+z) & 1)
-                glColor4f(shapes[piece].r, shapes[piece].g, shapes[piece].b, shapes[piece].a);
-              else
-                glColor4f(shapes[piece].r*0.9, shapes[piece].g*0.9, shapes[piece].b*0.9, shapes[piece].a);
-            } else
-              glColor4f(palette[color-1].r, palette[color-1].g, palette[color-1].b, shapes[piece].a);
+              if ((x+y+z) & 1) {
+                cr = shapes[piece].r;
+                cg = shapes[piece].g;
+                cb = shapes[piece].b;
+                ca = shapes[piece].a;
+              } else {
+                cr = shapes[piece].r*0.9;
+                cg = shapes[piece].g*0.9;
+                cb = shapes[piece].b*0.9;
+                ca = shapes[piece].a;
+              }
+            } else {
+              cr = palette[color-1].r;
+              cg = palette[color-1].g;
+              cb = palette[color-1].b;
+              ca = shapes[piece].a;
+            }
           }
+
+          if (shapes[piece].dim) {
+            cr = 1.2 - (1 - cr) * 0.2;
+            cg = 1.2 - (1 - cg) * 0.2;
+            cb = 1.2 - (1 - cb) * 0.2;
+          }
+
+          glColor4f(cr, cg, cb, ca);
 
           switch (shapes[piece].mode) {
           case normal:
@@ -526,6 +556,8 @@ unsigned int VoxelDrawer::addSpace(const voxel_c * vx) {
   i.x = i.y = i.z = 0;
   i.scale = 1;
 
+  i.dim = false;
+
   shapes.push_back(i);
 
   updateRequired();
@@ -569,6 +601,14 @@ void VoxelDrawer::setSpacePosition(unsigned int nr, float x, float y, float z, f
 
   updateRequired();
 }
+
+void VoxelDrawer::setSpaceDim(unsigned int nr, bool dim) {
+
+  shapes[nr].dim = dim;
+
+  updateRequired();
+}
+
 
 void VoxelDrawer::setDrawingMode(unsigned int nr, drawingMode mode) {
   shapes[nr].mode = mode;
@@ -868,6 +908,13 @@ void VoxelDrawer::updatePositions(PiecePositions *shifting) {
   for (unsigned int p = 0; p < spaceNumber(); p++) {
     setSpacePosition(p, shifting->getX(p), shifting->getY(p), shifting->getZ(p), 1);
     setSpaceColor(p, shifting->getA(p));
+  }
+}
+
+void VoxelDrawer::dimStaticPieces(PiecePositions *shifting) {
+
+  for (unsigned int p = 0; p < spaceNumber(); p++) {
+    setSpaceDim(p, !shifting->moving(p));
   }
 }
 

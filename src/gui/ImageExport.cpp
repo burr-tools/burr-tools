@@ -103,6 +103,7 @@ void ImageExportWindow::cb_Export(void) {
       dr->showColors(puzzle, ColConst->value() == 1);
       dtm.setStep(step);
       dr->updatePositions(&dtm);
+      if (DimStatic->value()) dr->dimStaticPieces(&dtm);
 
       images.push_back(new ImageInfo(dr));
     }
@@ -316,7 +317,7 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
       l->end();
     }
 
-    new LFl_Check_Button("Dim static pieces", 0, 7);
+    DimStatic = new LFl_Check_Button("Dim static pieces", 0, 7);
     (new LFl_Box(0, 8))->weight(0, 1);
     fr->end();
   }

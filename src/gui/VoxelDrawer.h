@@ -70,6 +70,7 @@ public:
   void setSpaceColor(unsigned int nr, float r, float g, float b, float a);
   void setSpaceColor(unsigned int nr, float a);
   void setSpacePosition(unsigned int nr, float x, float y, float z, float scale);
+  void setSpaceDim(unsigned int nr, bool dim);
 
   typedef enum {
     normal,          // draw normal cubes with a grate at outer edges
@@ -133,6 +134,7 @@ public:
   virtual void addRotationTransformation(void) {}
   virtual void updateRequired(void) {}
 
+
 private:
 
   typedef struct {
@@ -141,6 +143,7 @@ private:
     const voxel_c * shape;
     drawingMode mode;
     float x, y, z, scale;
+    bool dim;
 
   } shapeInfo;
 
@@ -177,6 +180,7 @@ public:
   void showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z);
   void updatePositions(PiecePositions *shifting);
   void updateVisibility(PieceVisibility * pcvis);
+  void dimStaticPieces(PiecePositions *shifting);
 
 };
 

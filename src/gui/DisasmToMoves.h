@@ -37,6 +37,9 @@ public:
 
   /* the alpha value of the piece (0 invisible, 1 opaque) */
   virtual float getA(unsigned int piece) = 0;
+
+  /* piece moving at this time */
+  virtual bool moving(unsigned int piece) = 0;
 };
 
 /* this class takes a disassembly tree and generates relative piecepositions
@@ -55,8 +58,11 @@ class DisasmToMoves : public PiecePositions {
   /* this array contains the current position and alpha values of all pieces */
   float * moves;
 
+  /* this array contains the information, if a piece is currently moving, or not */
+  bool * mv;
+
   /* this function walks the tree and sets the piece positions */
-  int doRecursive(const separation_c * tree, int step, float weight, int cx, int cy, int cz);
+  int doRecursive(const separation_c * tree, int step, float * array, int cx, int cy, int cz);
 
 public:
 
@@ -76,6 +82,7 @@ public:
   virtual float getY(unsigned int piece);
   virtual float getZ(unsigned int piece);
   virtual float getA(unsigned int piece);
+  virtual bool moving(unsigned int piece);
 };
 
 #endif

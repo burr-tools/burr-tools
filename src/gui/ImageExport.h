@@ -84,6 +84,7 @@ class ImageExportWindow : public LFl_Double_Window {
     LFl_Int_Input *NumPages;
     LFl_Box *status;
     LFl_Radio_Button *ExpShape, *ExpProblem, *ExpAssembly, *ExpSolution;
+    LFl_Check_Button *DimStatic;
     PieceSelector * ShapeSelect;
     ProblemSelector * ProblemSelect;
 
