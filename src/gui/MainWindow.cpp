@@ -857,6 +857,7 @@ void UserInterface::cb_New(void) {
 
     changed = false;
 
+    Status->setText("");
     updateInterface();
     activateShape(0);
   }
