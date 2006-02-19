@@ -80,6 +80,8 @@ class ImageExportWindow : public LFl_Double_Window {
     LFl_Radio_Button *AA1, *AA2, *AA3, *AA4, *AA5;
     LFl_Radio_Button *BgWhite, *BgTransp;
     LFl_Radio_Button *ColPiece, *ColConst;
+    LFl_Radio_Button *SzA4Port, *SzA4Land, *SzLetterPort, *SzLetterLand, *SzManual;
+    LFl_Input *SzDPI, *SzX, *SzY;
     LFl_Input *Fname, *Pname;
     LFl_Int_Input *NumPages;
     LFl_Box *status;
@@ -95,5 +97,6 @@ class ImageExportWindow : public LFl_Double_Window {
     void cb_Abort(void);
     void cb_Export(void);
     void cb_Update3DView(void);
+    void cb_SzUpdate(void);
 
 };

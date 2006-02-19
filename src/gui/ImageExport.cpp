@@ -277,6 +277,44 @@ void ImageExportWindow::cb_Update3DView(void) {
   }
 }
 
+static void cb_ImageExportSzUpdate_stub(Fl_Widget *o, void *v) { ((ImageExportWindow*)(v))->cb_SzUpdate(); }
+void ImageExportWindow::cb_SzUpdate(void) {
+
+  if (SzA4Land->value()) {
+    SzX->value("297");
+    SzY->value("210");
+  } else if (SzA4Port->value()) {
+    SzX->value("210");
+    SzY->value("297");
+  } else if (SzLetterLand->value()) {
+    SzX->value("279");
+    SzY->value("216");
+  } else if (SzLetterPort->value()) {
+    SzX->value("216");
+    SzY->value("279");
+  }
+
+  if (SzManual->value()) {
+    SzX->activate();
+    SzY->activate();
+  } else {
+    SzX->deactivate();
+    SzY->deactivate();
+  }
+
+  if (SzX->value() && SzX->value()[0] && SzDPI->value() && SzDPI->value()[0]) {
+    char tmp[20];
+    snprintf(tmp, 20, "%i", int(atoi(SzDPI->value()) * atoi(SzX->value()) * 0.03937 + 0.5));
+    SizePixelX->value(tmp);
+  }
+
+  if (SzY->value() && SzY->value()[0] && SzDPI->value() && SzDPI->value()[0]) {
+    char tmp[20];
+    snprintf(tmp, 20, "%i", int(atoi(SzDPI->value()) * atoi(SzY->value()) * 0.03937 + 0.5));
+    SizePixelY->value(tmp);
+  }
+}
+
 ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
 
   label("Export Images");
@@ -329,24 +367,38 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
 
     int y = 0;
 
-    new LFl_Radio_Button("A4 Portrait", 0, y++, 5, 1);
-    new LFl_Radio_Button("A4 Landscape", 0, y++, 5, 1);
-    new LFl_Radio_Button("Legal Portrait", 0, y++, 5, 1);
-    new LFl_Radio_Button("Legal Landscape", 0, y++, 5, 1);
-    (new LFl_Radio_Button("manual", 0, y++, 5, 1))->value(1);
+    SzA4Port = new LFl_Radio_Button("A4 Portrait", 0, y++, 5, 1);
+    SzA4Port->callback(cb_ImageExportSzUpdate_stub, this);
+
+    SzA4Land = new LFl_Radio_Button("A4 Landscape", 0, y++, 5, 1);
+    SzA4Land->callback(cb_ImageExportSzUpdate_stub, this);
+
+    SzLetterPort = new LFl_Radio_Button("Letter Portrait", 0, y++, 5, 1);
+    SzLetterPort->callback(cb_ImageExportSzUpdate_stub, this);
+
+    SzLetterLand = new LFl_Radio_Button("Letter Landscape", 0, y++, 5, 1);
+    SzLetterLand->callback(cb_ImageExportSzUpdate_stub, this);
+
+    SzManual = new LFl_Radio_Button("manual", 0, y++, 5, 1);
+    SzManual->value(1);
+    SzManual->callback(cb_ImageExportSzUpdate_stub, this);
 
     (new LFl_Box("Size X", 0, y))->stretchRight();
-    new LFl_Input(2, y);
+    SzX = new LFl_Input(2, y);
+    SzX->callback(cb_ImageExportSzUpdate_stub, this);
     (new LFl_Box("mm", 4, y))->stretchLeft();
     (new LFl_Box(3, y))->setMinimumSize(5, 0);
     (new LFl_Box(1, y++))->setMinimumSize(5, 0);
 
     (new LFl_Box("Size Y", 0, y))->stretchRight();
-    new LFl_Input(2, y);
+    SzY = new LFl_Input(2, y);
+    SzY->callback(cb_ImageExportSzUpdate_stub, this);
     (new LFl_Box("mm", 4, y++))->stretchLeft();
 
     (new LFl_Box("DPI", 0, y))->stretchRight();
-    new LFl_Input(2, y++);
+    SzDPI = new LFl_Input(2, y++);
+    SzDPI->value("300");
+    SzDPI->callback(cb_ImageExportSzUpdate_stub, this);
 
     (new LFl_Box("Pixel X", 0, y))->stretchRight();
     SizePixelX = new LFl_Int_Input(2, y++);
