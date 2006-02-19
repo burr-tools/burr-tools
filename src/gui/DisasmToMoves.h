@@ -66,6 +66,10 @@ class DisasmToMoves : public PiecePositions {
 
 public:
 
+  /* chreate class. sz is used when the pieces are removed from the
+   * assembled puzzle. The larger the further away the pieces will be
+   * moved
+   */
   DisasmToMoves(const separation_c * tr, unsigned int sz);
 
   virtual ~DisasmToMoves();
@@ -76,7 +80,7 @@ public:
   void setStep(float step);
 
   /* as the functions are virtual it's no use to declare them inline,
-   * speed is of no omportance anyway
+   * speed is of no importance anyway
    */
   virtual float getX(unsigned int piece);
   virtual float getY(unsigned int piece);

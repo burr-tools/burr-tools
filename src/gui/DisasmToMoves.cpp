@@ -34,21 +34,25 @@ void DisasmToMoves::setStep(float step) {
   int s = int(step);
   float frac = step - s;
 
+  // a temporary array, used to save the 2nd placement for the interpolation */
   float * moves2 = new float[tree->getPieceNumber()*4];
+
+  for (unsigned int i = 0; i < 4 * tree->getPieceNumber(); i++) {
+    moves[i] = moves2[i] = 0;
+  }
 
   /* what we do is go twice through the tree and linearly interpolate between
    * the 2 states that we have in in the two nodes that we are currently in between
    *
    * this is done with the weight value (1-frac and frac)
    */
-  for (unsigned int i = 0; i < 4 * tree->getPieceNumber(); i++) {
-    moves[i] = moves2[i] = 0;
-  }
-
   if (tree) {
+
+    /* get the 2 possible positions between we have to interpolate */
     doRecursive(tree, s  , moves, 0, 0, 0);
     doRecursive(tree, s+1, moves2, 0, 0, 0);
 
+    // interpolate and check, which piece moves right now
     for (unsigned int i = 0; i < tree->getPieceNumber(); i++) {
       mv[i] = ((moves[4*i+0] != moves2[4*i+0]) || (moves[4*i+1] != moves2[4*i+1]) || (moves[4*i+2] != moves2[4*i+2]));
       moves[4*i+0] = (1-frac)*moves[4*i+0] + frac*moves2[4*i+0];
@@ -219,6 +223,4 @@ int DisasmToMoves::doRecursive(const separation_c * tree, int step, float * arra
 
   return tree->getMoves() + steps + steps2;
 }
-
-
 
