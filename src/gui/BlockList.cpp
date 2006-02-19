@@ -291,7 +291,10 @@ void ColorSelector::getText(unsigned int block, char * text) {
 void PieceSelector::setPuzzle(puzzle_c *pz) {
   bt_assert(pz);
   puzzle = pz;
-  setSelection(0);
+  if (pz->shapeNumber())
+    setSelection(0);
+  else
+    setSelection((unsigned int)-1);
 }
 
 unsigned int PieceSelector::blockNumber(void) {
