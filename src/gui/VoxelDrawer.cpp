@@ -180,17 +180,17 @@ static void drawBox(const voxel_c * space, int x, int y, int z, float alpha, flo
 static void drawCube(const voxel_c * space, int x, int y, int z) {
   glBegin(GL_QUADS);
   glNormal3f( 0.0f, 0.0f, -1.0f);
-  glVertex3f(x+0.2, y+0.2, z-0.02); glVertex3f(x+0.2, y+0.8, z-0.02); glVertex3f(x+0.8, y+0.8, z-0.02); glVertex3f(x+0.8, y+0.2, z-0.02);
+  glVertex3f(x+0.2, y+0.2, z-MY); glVertex3f(x+0.2, y+0.8, z-MY); glVertex3f(x+0.8, y+0.8, z-MY); glVertex3f(x+0.8, y+0.2, z-MY);
   glNormal3f( -1.0f, 0.0f, 0.0f);
-  glVertex3f(x-0.02, y+0.2, z+0.2); glVertex3f(x-0.02, y+0.2, z+0.8); glVertex3f(x-0.02, y+0.8, z+0.8); glVertex3f(x-0.02, y+0.8, z+0.2);
+  glVertex3f(x-MY, y+0.2, z+0.2); glVertex3f(x-MY, y+0.2, z+0.8); glVertex3f(x-MY, y+0.8, z+0.8); glVertex3f(x-MY, y+0.8, z+0.2);
   glNormal3f( 1.0f, 0.0f, 0.0f);
-  glVertex3f(x+1.02, y+0.8, z+0.2); glVertex3f(x+1.02, y+0.8, z+0.8); glVertex3f(x+1.02, y+0.2, z+0.8); glVertex3f(x+1.02, y+0.2, z+0.2);
+  glVertex3f(x+1+MY, y+0.8, z+0.2); glVertex3f(x+1+MY, y+0.8, z+0.8); glVertex3f(x+1+MY, y+0.2, z+0.8); glVertex3f(x+1+MY, y+0.2, z+0.2);
   glNormal3f( 0.0f, 0.0f, 1.0f);
-  glVertex3f(x+0.2, y+0.2, z+1.02); glVertex3f(x+0.2, y+0.8, z+1.02); glVertex3f(x+0.8, y+0.8, z+1.02); glVertex3f(x+0.8, y+0.2, z+1.02);
+  glVertex3f(x+0.2, y+0.2, z+1+MY); glVertex3f(x+0.2, y+0.8, z+1+MY); glVertex3f(x+0.8, y+0.8, z+1+MY); glVertex3f(x+0.8, y+0.2, z+1.02);
   glNormal3f( 0.0f, -1.0f, 0.0f);
-  glVertex3f(x+0.2, y-0.02, z+0.2); glVertex3f(x+0.8, y-0.02, z+0.2); glVertex3f(x+0.8, y-0.02, z+0.8); glVertex3f(x+0.2, y-0.02, z+0.8);
+  glVertex3f(x+0.2, y-MY, z+0.2); glVertex3f(x+0.8, y-MY, z+0.2); glVertex3f(x+0.8, y-MY, z+0.8); glVertex3f(x+0.2, y-MY, z+0.8);
   glNormal3f( 0.0f, 1.0f, 0.0f);
-  glVertex3f(x+0.2, y+1.02, z+0.2); glVertex3f(x+0.2, y+1.02, z+0.8); glVertex3f(x+0.8, y+1.02, z+0.8); glVertex3f(x+0.8, y+1.02, z+0.2);
+  glVertex3f(x+0.2, y+1+MY, z+0.2); glVertex3f(x+0.2, y+1+MY, z+0.8); glVertex3f(x+0.8, y+1+MY, z+0.8); glVertex3f(x+0.8, y+1+MY, z+0.2);
   glEnd();
 }
 
