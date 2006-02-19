@@ -20,14 +20,28 @@
 #ifndef __PIECECOLOR_H__
 #define __PIECECOLOR_H__
 
+/* this module provides the colors for the pieces. The first few colors are defined within
+ * a table, the following colors use a function that hopefully delivers ever changeing
+ * nice color values
+ */
+
+/* the following 3 functions return the base color of piece x */
 float pieceColorR(int x);
 float pieceColorG(int x);
 float pieceColorB(int x);
 
+/* if there is more than one instance of the same shape, you can get
+ * the color with this function. It slightly changes the color
+ * from piece to piece so that the pieces all have a similar but distinuishable
+ * color
+ */
 float pieceColorR(int x, int sub);
 float pieceColorG(int x, int sub);
 float pieceColorB(int x, int sub);
 
+/* the pieces are drawn with checkerd colors, these 2 functions can be used to
+ * achieve that effect
+ */
 float darkPieceColor(float f);
 float lightPieceColor(float f);
 

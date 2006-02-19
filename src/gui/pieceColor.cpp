@@ -23,18 +23,52 @@
 
 #define COLS 18
 
-static float r[COLS] = {0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.7f, 0.7f, 0.0f, 0.7f, 0.0f, 0.7f, 1.0f, 1.0f};
-static float g[COLS] = {0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.7f, 0.7f, 0.0f, 1.0f, 1.0f, 0.7f, 0.0f, 0.7f, 0.0f};
-static float b[COLS] = {1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.7f, 0.0f, 0.0f, 0.7f, 0.0f, 0.7f, 0.7f, 0.0f, 1.0f, 1.0f, 0.0f, 0.7f};
+// the table for the first COLS fixed defined colors
+static float r[COLS] = {
+  0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.7f,
+  0.0f, 0.7f, 0.7f, 0.0f, 0.7f, 0.0f, 0.7f, 1.0f, 1.0f
+};
+static float g[COLS] = {
+  0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.7f, 0.0f,
+  0.7f, 0.7f, 0.0f, 1.0f, 1.0f, 0.7f, 0.0f, 0.7f, 0.0f
+};
+static float b[COLS] = {
+  1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.7f, 0.0f, 0.0f,
+  0.7f, 0.0f, 0.7f, 0.7f, 0.0f, 1.0f, 1.0f, 0.0f, 0.7f
+};
 
 #define JITTERS 53
 
-static float jr[JITTERS] = { 0.0f, -0.3f, 0.3f, -0.3f,  0.3f, -0.3f,  0.3f, -0.3f,  0.3f, 0.3f, -0.3f, -0.3f,  0.3f, 0.3f, -0.3f, -0.3f,  0.3f, 0.0f,  0.0f,  0.0f,  0.0f, 0.0f,  0.0f, 0.0f,  0.0f, 0.3f, -0.3f,
-                                   -0.4f, 0.4f, -0.4f,  0.4f, -0.4f,  0.4f, -0.4f,  0.4f, 0.4f, -0.4f, -0.4f,  0.4f, 0.4f, -0.4f, -0.4f,  0.4f, 0.0f,  0.0f,  0.0f,  0.0f, 0.0f,  0.0f, 0.0f,  0.0f, 0.4f, -0.4f };
-static float jg[JITTERS] = { 0.0f, -0.3f, 0.3f,  0.3f, -0.3f, -0.3f,  0.3f,  0.3f, -0.3f, 0.3f, -0.3f,  0.3f, -0.3f, 0.0f,  0.0f,  0.0f,  0.0f, 0.3f, -0.3f, -0.3f,  0.3f, 0.0f,  0.0f, 0.3f, -0.3f, 0.0f,  0.0f,
-                                   -0.4f, 0.4f,  0.4f, -0.4f, -0.4f,  0.4f,  0.4f, -0.4f, 0.4f, -0.4f,  0.4f, -0.4f, 0.0f,  0.0f,  0.0f,  0.0f, 0.4f, -0.4f, -0.4f,  0.4f, 0.0f,  0.0f, 0.4f, -0.4f, 0.0f,  0.0f };
-static float jb[JITTERS] = { 0.0f, -0.3f, 0.3f,  0.3f, -0.3f,  0.3f, -0.3f, -0.3f,  0.3f, 0.0f,  0.0f,  0.0f,  0.0f, 0.3f, -0.3f,  0.3f, -0.3f, 0.3f, -0.3f,  0.3f, -0.3f, 0.3f, -0.3f, 0.0f,  0.0f, 0.0f,  0.0f,
-                                   -0.4f, 0.4f,  0.4f, -0.4f,  0.4f, -0.4f, -0.4f,  0.4f, 0.0f,  0.0f,  0.0f,  0.0f, 0.4f, -0.4f,  0.4f, -0.4f, 0.4f, -0.4f,  0.4f, -0.4f, 0.4f, -0.4f, 0.0f,  0.0f, 0.0f,  0.0f };
+// the table with the modofication values for the multi-pieces
+static float jr[JITTERS] = {
+   0.0f,
+  -0.3f,  0.3f, -0.3f,  0.3f, -0.3f,  0.3f, -0.3f,  0.3f,  0.3f,
+  -0.3f, -0.3f,  0.3f,  0.3f, -0.3f, -0.3f,  0.3f,  0.0f,  0.0f,
+   0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.3f, -0.3f,
+  -0.4f,  0.4f, -0.4f,  0.4f, -0.4f,  0.4f, -0.4f,  0.4f,  0.4f,
+  -0.4f, -0.4f,  0.4f,  0.4f, -0.4f, -0.4f,  0.4f,  0.0f,  0.0f,
+   0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.4f, -0.4f
+};
+static float jg[JITTERS] = {
+   0.0f,
+  -0.3f,  0.3f,  0.3f, -0.3f, -0.3f,  0.3f,  0.3f, -0.3f,  0.3f,
+  -0.3f,  0.3f, -0.3f,  0.0f,  0.0f,  0.0f,  0.0f,  0.3f, -0.3f,
+  -0.3f,  0.3f,  0.0f,  0.0f,  0.3f, -0.3f,  0.0f,  0.0f,
+  -0.4f,  0.4f,  0.4f, -0.4f, -0.4f,  0.4f,  0.4f, -0.4f,  0.4f,
+  -0.4f,  0.4f, -0.4f,  0.0f,  0.0f,  0.0f,  0.0f,  0.4f, -0.4f,
+  -0.4f,  0.4f,  0.0f,  0.0f,  0.4f, -0.4f,  0.0f,  0.0f
+};
+static float jb[JITTERS] = {
+   0.0f,
+  -0.3f,  0.3f,  0.3f, -0.3f,  0.3f, -0.3f, -0.3f,  0.3f,  0.0f,
+   0.0f,  0.0f,  0.0f,  0.3f, -0.3f,  0.3f, -0.3f,  0.3f, -0.3f,
+   0.3f, -0.3f,  0.3f, -0.3f,  0.0f,  0.0f,  0.0f,  0.0f,
+  -0.4f,  0.4f,  0.4f, -0.4f,  0.4f, -0.4f, -0.4f,  0.4f,  0.0f,
+   0.0f,  0.0f,  0.0f,  0.4f, -0.4f,  0.4f, -0.4f,  0.4f, -0.4f,
+   0.4f, -0.4f,  0.4f, -0.4f,  0.0f,  0.0f,  0.0f,  0.0f
+};
+
+
 
 float pieceColorR(int x) {
   if (x < COLS)
@@ -57,6 +91,13 @@ float pieceColorB(int x) {
     return float((1+sin(3.5*x+2.3))/2);
 }
 
+/* the problem is that simply adding the jitter
+ * would cause an overflow every now and then, so we
+ * search in the list of possible jitter values
+ * for the x-th with no overflow
+ * when the table is exausted, we simple do no
+ * jittering any longer
+ */
 static int getJitter(int val, int sub) {
   int j = 0;
   float x;
