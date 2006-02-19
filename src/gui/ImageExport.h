@@ -85,16 +85,27 @@ class ImageExportWindow : public LFl_Double_Window {
     LFl_Box *status;
     LFl_Radio_Button *ExpShape, *ExpProblem, *ExpAssembly, *ExpSolution;
     LFl_Check_Button *DimStatic;
+    LFl_Button *BtnStart, *BtnAbbort;
     PieceSelector * ShapeSelect;
     ProblemSelector * ProblemSelect;
+
+    bool working;
 
   public:
 
     ImageExportWindow(puzzle_c * p);
+
+    void update(void);
+    void exportImage(void);
 
     void cb_Abort(void);
     void cb_Export(void);
     void cb_Update3DView(void);
     void cb_SzUpdate(void);
 
+#ifdef WIN32
+  friend unsigned long __stdcall start_export(void * c);
+#else
+  friend void* start_export(void * c);
+#endif
 };

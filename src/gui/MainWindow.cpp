@@ -1019,8 +1019,10 @@ void UserInterface::cb_ImageExport(void) {
   ImageExportWindow w(puzzle);
   w.show();
 
-  while (w.visible())
-    Fl::wait();
+  while (w.visible()) {
+    w.update();
+    Fl::wait(0.5);
+  }
 }
 
 static void cb_Toggle3D_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Toggle3D(); }

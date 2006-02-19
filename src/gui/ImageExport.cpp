@@ -58,9 +58,23 @@ void ImageExportWindow::cb_Abort(void) {
   hide();
 }
 
-static void cb_ImageExportExport_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Export(); }
-void ImageExportWindow::cb_Export(void) {
 
+#ifdef WIN32
+unsigned long __stdcall start_export(void * c)
+#else
+void* start_export(void * c)
+#endif
+{
+  ImageExportWindow * w = (ImageExportWindow*)c;
+
+  w->exportImage();
+
+  return 0;
+}
+
+void ImageExportWindow::exportImage(void) {
+
+  char statText[200];
   status->label("Prepare for image");
 
   /* this vector contains all the information of all images that need to appear in the output */
@@ -80,11 +94,13 @@ void ImageExportWindow::cb_Export(void) {
 
 
   if (ExpShape->value()) {
+    status->label("measure image");
     ShadowView * dr = new ShadowView(view3D->getView());
     dr->showSingleShape(puzzle, ShapeSelect->getSelection());
     dr->showColors(puzzle, ColConst->value() == 1);
     images.push_back(new ImageInfo(dr));
   } else if (ExpAssembly->value()) {
+    status->label("measure image");
     ShadowView * dr = new ShadowView(view3D->getView());
     dr->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
     dr->showColors(puzzle, ColConst->value() == 1);
@@ -98,6 +114,8 @@ void ImageExportWindow::cb_Export(void) {
     DisasmToMoves dtm(t, 20);
 
     for (unsigned int step = 0; step < t->sumMoves(); step++) {
+      snprintf(statText, 200, "measure image %i/%i", step, t->sumMoves());
+      status->label(statText);
       ShadowView * dr = new ShadowView(view3D->getView());
       dr->showAssembly(puzzle, ProblemSelect->getSelection(), s);
       dr->showColors(puzzle, ColConst->value() == 1);
@@ -110,12 +128,18 @@ void ImageExportWindow::cb_Export(void) {
 
   } else if (ExpProblem->value()) {
     // generate an image for each piece in the problem
+    snprintf(statText, 200, "measure image %i/%i", 0, puzzle->probShapeNumber(ProblemSelect->getSelection())+1);
+    status->label(statText);
     ShadowView * dr = new ShadowView(view3D->getView());
     dr->showSingleShape(puzzle, puzzle->probGetResult(ProblemSelect->getSelection()));
     dr->showColors(puzzle, ColConst->value() == 1);
     images.push_back(new ImageInfo(dr));
 
     for (unsigned int p = 0; p < puzzle->probShapeNumber(ProblemSelect->getSelection()); p++) {
+
+      snprintf(statText, 200, "measure image %i/%i", p+1, puzzle->probShapeNumber(ProblemSelect->getSelection())+1);
+      status->label(statText);
+
       ShadowView * dr = new ShadowView(view3D->getView());
       dr->showSingleShape(puzzle, puzzle->probGetShape(ProblemSelect->getSelection(), p));
       dr->showColors(puzzle, ColConst->value() == 1);
@@ -141,6 +165,8 @@ void ImageExportWindow::cb_Export(void) {
   unsigned int curPage = 0;
 
   unsigned int imgHeight = pageHeight / linesPerPage;
+
+  status->label("formatting images");
 
   while (true) {
 
@@ -199,6 +225,9 @@ void ImageExportWindow::cb_Export(void) {
     // calculate width of the image when it has the current line hight
     unsigned int w = (unsigned int)(imgHeight * images[im]->ratio() + 0.9);
 
+    snprintf(statText, 200, "placing images %i/%i", im, images.size());
+    status->label(statText);
+
     Image *i2 = images[im]->generateImage(w, imgHeight, aa);
 
     if (curWidth + w < pageWidth) {
@@ -212,6 +241,8 @@ void ImageExportWindow::cb_Export(void) {
       if (curLine >= linesPerPage) {
         curLine = 0;
         {
+          snprintf(statText, 200, "save page %i", curPage);
+          status->label(statText);
           char name[1000];
 
           if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
@@ -219,8 +250,6 @@ void ImageExportWindow::cb_Export(void) {
           else
             snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
 
-
-          status->label("Saving");
           i->saveToPNG(name);
           delete i;
           if (BgWhite->value()) {
@@ -238,6 +267,9 @@ void ImageExportWindow::cb_Export(void) {
   }
 
   {
+    snprintf(statText, 200, "save page %i", curPage);
+    status->label(statText);
+
     char name[1000];
 
     if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
@@ -245,8 +277,6 @@ void ImageExportWindow::cb_Export(void) {
     else
       snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
 
-
-    status->label("Saving");
     i->saveToPNG(name);
     delete i;
   }
@@ -254,9 +284,28 @@ void ImageExportWindow::cb_Export(void) {
   glDrawBuffer(GL_FRONT);
   glReadBuffer(GL_FRONT);
 
-  status->label(0);
+  status->label("Finished");
   view3D->getView()->invalidate();
-  cb_Update3DView();
+
+  working = false;
+}
+
+
+
+static void cb_ImageExportExport_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Export(); }
+void ImageExportWindow::cb_Export(void) {
+
+  working = true;
+  BtnStart->deactivate();
+  BtnAbbort->deactivate();
+#ifdef WIN32
+  DWORD threadID;
+  CreateThread(NULL, 0, start_export, this, 0, &threadID) != NULL;
+#else
+  pthread_t th;
+  pthread_create(&th, 0, start_export, this) == 0;
+#endif
+
 }
 
 static void cb_ImageExport3DUpdate_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Update3DView(); }
@@ -495,23 +544,21 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
   {
     layouter_c * l = new layouter_c(0, 6, 3, 1);
 
-    LFl_Button *b;
-
     status = new LFl_Box();
     status->weight(1, 0);
     status->label("Test");
     status->pitch(7);
     status->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-    b = new LFl_Button("Export Image(s)", 1, 0);
-    b->pitch(7);
-    b->callback(cb_ImageExportExport_stub, this);
-    b->box(FL_THIN_UP_BOX);
+    BtnStart = new LFl_Button("Export Image(s)", 1, 0);
+    BtnStart->pitch(7);
+    BtnStart->callback(cb_ImageExportExport_stub, this);
+    BtnStart->box(FL_THIN_UP_BOX);
 
-    b = new LFl_Button("Abort", 2, 0);
-    b->pitch(7);
-    b->callback(cb_ImageExportAbort_stub, this);
-    b->box(FL_THIN_UP_BOX);
+    BtnAbbort = new LFl_Button("Abort", 2, 0);
+    BtnAbbort->pitch(7);
+    BtnAbbort->callback(cb_ImageExportAbort_stub, this);
+    BtnAbbort->box(FL_THIN_UP_BOX);
 
     l->end();
   }
@@ -521,3 +568,14 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
 
   set_modal();
 }
+
+void ImageExportWindow::update(void) {
+  if (working) {
+    BtnStart->deactivate();
+    BtnAbbort->deactivate();
+  } else {
+    BtnStart->activate();
+    BtnAbbort->activate();
+  }
+}
+
