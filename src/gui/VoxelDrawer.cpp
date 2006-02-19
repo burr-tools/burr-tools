@@ -459,9 +459,9 @@ void VoxelDrawer::drawVoxelSpace() {
             }
 
             if (shapes[piece].dim) {
-              cr = 1.2 - (1 - cr) * 0.2;
-              cg = 1.2 - (1 - cg) * 0.2;
-              cb = 1.2 - (1 - cb) * 0.2;
+              cr = 1 - (1 - cr) * 0.2;
+              cg = 1 - (1 - cg) * 0.2;
+              cb = 1 - (1 - cb) * 0.2;
             }
 
             glColor4f(cr, cg, cb, ca);
