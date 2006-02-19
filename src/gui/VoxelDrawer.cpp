@@ -428,14 +428,14 @@ void VoxelDrawer::drawVoxelSpace() {
             switch (colors) {
             case pieceColor:
               if ((x+y+z) & 1) {
-                cr = shapes[piece].r;
-                cg = shapes[piece].g;
-                cb = shapes[piece].b;
+                cr = lightPieceColor(shapes[piece].r);
+                cg = lightPieceColor(shapes[piece].g);
+                cb = lightPieceColor(shapes[piece].b);
                 ca = shapes[piece].a;
               } else {
-                cr = shapes[piece].r*0.9;
-                cg = shapes[piece].g*0.9;
-                cb = shapes[piece].b*0.9;
+                cr = darkPieceColor(shapes[piece].r);
+                cg = darkPieceColor(shapes[piece].g);
+                cb = darkPieceColor(shapes[piece].b);
                 ca = shapes[piece].a;
               }
               break;
@@ -443,14 +443,14 @@ void VoxelDrawer::drawVoxelSpace() {
               unsigned int color = shapes[piece].shape->getColor(x, y, z);
               if ((color == 0) || (color - 1 >= palette.size())) {
                 if ((x+y+z) & 1) {
-                  cr = shapes[piece].r;
-                  cg = shapes[piece].g;
-                  cb = shapes[piece].b;
+                  cr = lightPieceColor(shapes[piece].r);
+                  cg = lightPieceColor(shapes[piece].g);
+                  cb = lightPieceColor(shapes[piece].b);
                   ca = shapes[piece].a;
                 } else {
-                  cr = shapes[piece].r*0.9;
-                  cg = shapes[piece].g*0.9;
-                  cb = shapes[piece].b*0.9;
+                  cr = darkPieceColor(shapes[piece].r);
+                  cg = darkPieceColor(shapes[piece].g);
+                  cb = darkPieceColor(shapes[piece].b);
                   ca = shapes[piece].a;
                 }
               } else {
