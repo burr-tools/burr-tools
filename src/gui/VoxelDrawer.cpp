@@ -33,6 +33,9 @@
 #include "pieceColor.h"
 
 
+// this is used to shift one side of the cubes so that they slightly differ
+// from the side of the next cube, so that (in case of frames) the sides
+// are clearly separated and dont't interlock when drawing
 #define MY 0.005f
 
 VoxelDrawer::VoxelDrawer() : markerType(-1), colors(pieceColor), _useLightning(true)
