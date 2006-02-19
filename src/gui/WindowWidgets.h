@@ -171,8 +171,12 @@ public:
     sqedit->setColor(num);
   }
 
-  void lock(bool lock) {
-    sqedit->lock(lock);
+  void deactivate(void) {
+    sqedit->deactivate();
+  }
+
+  void activate(void) {
+    sqedit->activate();
   }
 
   void editSymmetries(int syms) {

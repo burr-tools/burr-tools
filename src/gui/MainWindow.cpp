@@ -1432,9 +1432,9 @@ void UserInterface::updateInterface(void) {
 
     // when the current shape is in the assembler we lock the editor, only viewing is possible
     if (assmThread && (puzzle->probContainsShape(assmThread->getProblem(), PcSel->getSelection())))
-      pieceEdit->lock(true);
+      pieceEdit->deactivate();
     else
-      pieceEdit->lock(false);
+      pieceEdit->activate();
 
   } else if (TaskSelectionTab->value() == TabProblems) {
 
@@ -1750,7 +1750,7 @@ void UserInterface::updateInterface(void) {
 
     } else {
 
-      pieceEdit->lock(false);
+      pieceEdit->activate();
 
       // no thread currently calculating
 

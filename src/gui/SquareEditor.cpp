@@ -121,12 +121,6 @@ void SquareEditor::draw() {
   int s, tx, ty;
   calcParameters(&s, &tx, &ty);
 
-  // the color for the grid lines
-  if (locked)
-    fl_color(color());
-  else
-    fl_color(labelcolor());
-
   // the color for the squares
   unsigned char r, g, b;
 
@@ -163,10 +157,12 @@ void SquareEditor::draw() {
         fl_rectf(tx+x*s, ty+y*s, s/2, s/2, r, g, b);
       }
 
-      if (locked)
-        fl_color(color());
-      else
+      // the color for the grid lines
+      if (active())
         fl_color(labelcolor());
+      else
+        fl_color(color());
+
       fl_rect(tx+x*s, ty+y*s, s+1, s+1);
     }
 
@@ -342,7 +338,7 @@ int SquareEditor::handle(int event) {
   if (piecenumber >= puzzle->shapeNumber())
     return 0;
 
-  if (locked)
+  if (!active())
     return 0;
 
   voxel_c * space = puzzle->getShape(piecenumber);
