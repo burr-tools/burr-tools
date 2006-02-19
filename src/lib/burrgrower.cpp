@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #include "burrgrower.h"
 
 #include "disassembler_0.h"
@@ -58,7 +56,6 @@ puzzleSol_c::puzzleSol_c(const puzzleSol_c * p) {
   solutions = p->solutions;
 }
 
-
 bool puzzleSol_c::assembly(assembly_c* a) {
 
 
@@ -86,7 +83,6 @@ bool puzzleSol_c::assembly(assembly_c* a) {
   return false;
 }
 
-
 puzzleSol_c::~puzzleSol_c(void) {
   delete puzzle;
 }
@@ -106,8 +102,7 @@ double puzzleSol_c::fitness(void) {
 //  printf("sol %i mam %i mim %i mal %i mil %i erg %f", solutions, maxMoves, minMoves, maxLevel, minLevel, erg);
 
   return erg;
-};
-
+}
 
 void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
 
@@ -336,4 +331,3 @@ void burrGrower_c::addToLists(puzzleSol_c * pz) {
     printf("\n");
   }
 }
-

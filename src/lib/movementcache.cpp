@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #include <movementcache.h>
 
 /* the hash function. I don't know how well it performes, but it seems to be okay */
@@ -320,4 +318,3 @@ void movementCache::removePieceInfo(unsigned int s) {
     }
   }
 }
-

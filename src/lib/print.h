@@ -15,7 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
+#ifndef __PRINT_H__
+#define __PRINT_H__
 
 /* this module contains printing routines for the classes,
  * they print function is not part of the classes bacause they are not
@@ -31,3 +32,5 @@ void print(const voxel_c * v, char base = 'a');
 void print(const puzzle_c * p);
 void print(const assembly_c * a, const puzzle_c * p, unsigned int prob);
 void print(const separation_c * s, const assembly_c * a, const puzzle_c * p, unsigned int prob);
+
+#endif

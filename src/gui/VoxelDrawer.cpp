@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #include "VoxelDrawer.h"
 #include <math.h>
 
@@ -31,7 +29,6 @@
 #include "../lib/puzzle.h"
 
 #include "pieceColor.h"
-
 
 // this is used to shift one side of the cubes so that they slightly differ
 // from the side of the next cube, so that (in case of frames) the sides
@@ -174,7 +171,6 @@ static void drawBox(const voxel_c * space, int x, int y, int z, float alpha, flo
 
   drawFrame(space, x, y, z, edge);
 }
-
 
 // draw a bube that is smaller than 1
 static void drawCube(const voxel_c * space, int x, int y, int z) {
@@ -659,10 +655,6 @@ void VoxelDrawer::hideMarker(void) {
   markerType = -1;
 }
 
-
-
-
-
 void VoxelDrawer::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
 
   hideMarker();
@@ -780,7 +772,6 @@ void VoxelDrawer::showColors(const puzzle_c * puz, bool show) {
     setColorMode(pieceColor);
 
 }
-
 
 void VoxelDrawer::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
 
@@ -931,6 +922,3 @@ void VoxelDrawer::updateVisibility(PieceVisibility * pcvis) {
     }
   }
 }
-
-
-

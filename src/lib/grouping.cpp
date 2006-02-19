@@ -15,10 +15,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
 #include "grouping.h"
-#include <assert.h>
 
+#include <assert.h>
 
 void grouping_c::addPieces(unsigned int pc, unsigned int group, unsigned int count) {
 
@@ -49,7 +48,6 @@ void grouping_c::reSet(void) {
   failed = false;
 }
 
-
 void grouping_c::newSet(void) {
 
   if (!failed) {
@@ -61,8 +59,6 @@ void grouping_c::newSet(void) {
     sets.push_back(s);
   }
 }
-
-
 
 bool grouping_c::addPieceToSet(unsigned int pc) {
 
@@ -149,4 +145,3 @@ bool grouping_c::addPieceToSet(unsigned int pc) {
 
   return true;
 }
-

@@ -141,7 +141,6 @@ public:
 
 };
 
-
 /* defines one step in the separation process,
  * one state of relative piece positions on your way
  */

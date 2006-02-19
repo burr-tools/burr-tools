@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #include "puzzle.h"
 #include "assembler.h"
 
@@ -27,7 +25,6 @@
 #include <functional>
 
 using namespace std;
-
 
 /* the 2d bitmap
  * the bitmap is always square and alows only for the here necessary modifications
@@ -190,11 +187,6 @@ void bitmap_c::load(const xml::node & node) {
       set(piece, result, true);
     }
 }
-
-
-
-
-
 
 class solution_c {
 
@@ -405,7 +397,6 @@ public:
   unsigned long usedTime;
 };
 
-
 problem_c::problem_c(problem_c * orig) : result(orig->result), colorConstraints(orig->colorConstraints.getColors()),
 numAssemblies(0xFFFFFFFF), numSolutions(0xFFFFFFFF), usedTime(0xFFFFFFFF)
 {
@@ -418,7 +409,6 @@ numAssemblies(0xFFFFFFFF), numSolutions(0xFFFFFFFF), usedTime(0xFFFFFFFF)
   for (unsigned int i = 0; i < orig->shapes.size(); i++)
     shapes.push_back(orig->shapes[i]);
 }
-
 
 xml::node problem_c::save(void) const {
   xml::node nd("problem");
@@ -708,13 +698,10 @@ void problem_c::exchangeShape(unsigned int s1, unsigned int s2) {
     }
 }
 
-
-
 /************** PUZZLE ****************/
 
 puzzle_c::puzzle_c(void) {
 }
-
 
 puzzle_c::puzzle_c(const puzzle_c * orig) {
 
@@ -729,7 +716,6 @@ puzzle_c::puzzle_c(const puzzle_c * orig) {
 
   comment = orig->comment;
 }
-
 
 puzzle_c::~puzzle_c(void) {
 
@@ -1003,12 +989,10 @@ const voxel_c * puzzle_c::getShape(unsigned int idx) const {
   return shapes[idx];
 }
 
-
 voxel_c * puzzle_c::getShape(unsigned int idx) {
   bt_assert(idx < shapes.size());
   return shapes[idx];
 }
-
 
 /* template unary function to delete an object */
 template <class T>
@@ -1042,11 +1026,9 @@ void puzzle_c::exchangeShape(unsigned int s1, unsigned int s2) {
     problems[i]->exchangeShapeId(s1, s2);
 }
 
-
 void puzzle_c::probExchangeShape(unsigned int prob, unsigned int s1, unsigned int s2) {
   problems[prob]->exchangeShape(s1, s2);
 }
-
 
 /**
  * similar functions for problems
@@ -1084,8 +1066,6 @@ void puzzle_c::exchangeProblem(unsigned int p1, unsigned int p2) {
   problems[p1] = problems[p2];
   problems[p2] = p;
 }
-
-
 
 /* set the shape-id for the result shape this the problem */
 void puzzle_c::probSetResult(unsigned int prob, unsigned int shape) {
@@ -1210,7 +1190,6 @@ const std::string & puzzle_c::probGetName(unsigned int prob) const {
   return problems[prob]->name;
 }
 
-
 void puzzle_c::probAddSolution(unsigned int prob, assembly_c * voxel) {
   bt_assert(prob < problems.size());
   bt_assert(problems[prob]->assm);
@@ -1269,8 +1248,6 @@ bool puzzle_c::probNumSolutionsKnown(unsigned int prob) const {
   return problems[prob]->numSolutions != 0xFFFFFFFF;
 }
 
-
-
 unsigned long puzzle_c::probGetNumAssemblies(unsigned int prob) const {
   bt_assert(prob < problems.size());
   return problems[prob]->numAssemblies;
@@ -1298,7 +1275,6 @@ bool puzzle_c::probUsedTimeKnown(unsigned int prob) const {
   bt_assert(prob < problems.size());
   return problems[prob]->usedTime != 0xFFFFFFFF;
 }
-
 
 void puzzle_c::probIncNumAssemblies(unsigned int prob) {
   if (problems[prob]->numAssemblies == 0xFFFFFFFF)

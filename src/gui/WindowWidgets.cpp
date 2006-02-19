@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #include "WindowWidgets.h"
 #include "pieceColor.h"
 #include "Images.h"
@@ -39,7 +37,6 @@ ToggleButton::ToggleButton(int x, int y, int w, int h, Fl_Callback* cb, void * c
   selection_color(fl_lighter(color()));
   clear_visible_focus();
 }
-
 
 // draws an definable evenly spaced number of lines in one direction
 class LineSpacer : Fl_Widget {
@@ -85,7 +82,6 @@ class LineSpacer : Fl_Widget {
     }
 
 };
-
 
 static void cb_VoxelEditGroupZselect_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup*)v)->cb_Zselect((Fl_Slider*)o); }
 static void cb_VoxelEditGroupSqedit_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup*)v)->cb_Sqedit((SquareEditor*)o); }
@@ -146,8 +142,6 @@ void VoxelEditGroup::draw() {
   fl_pop_clip();
 }
 
-
-
 #define SZ_BUTTON_Y 20
 #define SZ_BUTTON2_Y 25
 
@@ -207,7 +201,6 @@ TransformButtons::TransformButtons(int x, int y, int w, int h) : Fl_Group(x, y, 
       new Fl_Pixmap(Transform_Color_Flip_Z_xpm)        , new Fl_Pixmap(Transform_Disabled_Flip_Z_xpm)        ,
       " Flip along X-Y Plane ",              cb_TransformButtons_stub, 14);
 }
-
 
 static void cb_ChangeSize_stub(Fl_Widget* o, long v) { ((ChangeSize*)(o->parent()))->cb_roll(v); }
 static void cb_InputSize_stub(Fl_Widget* o, long v) { ((ChangeSize*)(o->parent()))->cb_input(v); }
@@ -356,7 +349,6 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   end();
 }
 
-
 void ChangeSize::setXYZ(long x, long y, long z) {
   SizeX->value(x);
   SizeY->value(y);
@@ -368,7 +360,6 @@ void ChangeSize::setXYZ(long x, long y, long z) {
   snprintf(num, 20, "%li", y); SizeOutY->value(num);
   snprintf(num, 20, "%li", z); SizeOutZ->value(num);
 }
-
 
 void ToolTab::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
   puzzle = puz;
@@ -474,7 +465,6 @@ void ToolTab::cb_size(void) {
   }
 }
 
-
 void ToolTab::cb_transform(long task) {
   if (puzzle && shape < puzzle->shapeNumber()) {
 
@@ -539,7 +529,6 @@ void ToolTab::cb_transform(long task) {
     do_callback(this, user_data());
   }
 }
-
 
 static void cb_BlockListGroupSlider_stub(Fl_Widget* o, void* v) { ((BlockListGroup*)(o->parent()))->cb_slider(); }
 void BlockListGroup::cb_list(void) {
@@ -633,13 +622,11 @@ ConstraintsGroup::ConstraintsGroup(int x, int y, int w, int h, ColorConstraintsE
   end();
 }
 
-
 static void cb_View3dGroupSlider_stub(Fl_Widget* o, void* v) { ((View3dGroup*)(o->parent()))->cb_slider(); }
 
 void View3dGroup::cb_slider(void) {
   View3D->setSize(exp(6-slider->value()));
 }
-
 
 View3dGroup::View3dGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   box(FL_DOWN_BOX);
@@ -663,7 +650,6 @@ View3dGroup::View3dGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   resizable(View3D);
   end();
 }
-
 
 Separator::Separator(int x, int y, int w, int h, const char * label, bool button) : Fl_Group(x, y, w, h) {
 
@@ -739,7 +725,6 @@ void ResultViewer::draw(void) {
   Fl_Box::draw();
 }
 
-
 void View3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
   View3D->update(false);
   View3D->showSingleShape(puz, shapeNum);
@@ -758,7 +743,6 @@ void View3dGroup::showColors(const puzzle_c * puz, bool show) {
   View3D->showColors(puz, show);
   View3D->update(true);
 }
-
 
 void View3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
   View3D->update(false);
@@ -784,7 +768,6 @@ void View3dGroup::updateVisibility(PieceVisibility * pcvis) {
   View3D->updateVisibility(pcvis);
   View3D->update(true);
 }
-
 
 static void cb_ButtonGroup_stub(Fl_Widget* o, void* v) { ((ButtonGroup*)v)->cb_Push((Fl_Button*)o); }
 
@@ -833,7 +816,6 @@ void ButtonGroup::select(int num) {
     cb_Push((Fl_Button*)array()[num]);
 }
 
-
 StatusLine::StatusLine(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
 
   text = new Fl_Box(x, y, w - 130, h);
@@ -856,7 +838,6 @@ void StatusLine::setText(const char * t) {
 
   text->copy_label(t);
 }
-
 
 #define ASSERT_WINDOW_X 500
 #define ASSERT_WINDOW_Y 400
@@ -906,7 +887,6 @@ assertWindow::assertWindow(const char * text, assert_exception * a) : Fl_Double_
 
   label("Error");
 }
-
 
 static void cb_mlWindowClose(Fl_Widget* o, void * v) { ((multiLineWindow*)v)->hide(true); }
 static void cb_mlWindowAbort(Fl_Widget* o, void * v) { ((multiLineWindow*)v)->hide(false); }
@@ -985,4 +965,3 @@ void ProgressBar::draw(void) {
     draw_label(tx, y() + by, tw, h() - bh);
   }
 }
-

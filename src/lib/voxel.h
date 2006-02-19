@@ -15,14 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #ifndef __VOXEL_H__
 #define __VOXEL_H__
-
-/** @file
- * Contains definitions for voxel space.
- */
 
 #include <sys/types.h>
 
@@ -45,7 +39,6 @@ typedef unsigned char voxel_type;
 #else
 typedef u_int8_t voxel_type;
 #endif
-
 
 /**
  * this class get's thrown when there is an error on loading from a stream

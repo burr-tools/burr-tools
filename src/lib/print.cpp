@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #include "print.h"
 
 void print(const voxel_c * v, char base) {
@@ -149,8 +147,6 @@ static void print_rec(const separation_c * s, voxel_c ** pieces, int sx, int sy,
   }
 }
 
-
-
 void print(const separation_c * s, const assembly_c * a, const puzzle_c * p, unsigned int prob) {
 
   const voxel_c * res = p->probGetResultShape(prob);
@@ -178,7 +174,6 @@ void print(const separation_c * s, const assembly_c * a, const puzzle_c * p, uns
   delete [] pieceNum;
   delete [] pieces;
 }
-
 
 void print(const assembly_c * a, const puzzle_c * p, unsigned int prob) {
 
@@ -237,4 +232,3 @@ void print(const assembly_c * a, const puzzle_c * p, unsigned int prob) {
 
   delete [] pieces;
 }
-

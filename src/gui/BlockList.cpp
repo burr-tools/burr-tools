@@ -15,7 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
 #include "BlockList.h"
 
 #include "pieceColor.h"
@@ -547,8 +546,6 @@ void PieceVisibility::push(unsigned int block) {
   do_callback(RS_CHANGEDSELECTION);
 }
 
-
-
 #define CC_ADD_LENGTH 10
 #define CC_BLOCK_GAP 2
 #define CC_GROUP_GAP 4
@@ -799,4 +796,3 @@ void ColorConstraintsEdit::setPuzzle(puzzle_c *pz, unsigned int prob) {
     setSelection(0);
   }
 }
-

@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #ifndef __WINDOW_WIDGETS_H__
 #define __WINDOW_WIDGETS_H__
 
@@ -192,7 +190,6 @@ public:
   }
 };
 
-
 // the transform group
 class TransformButtons : public Fl_Group {
 
@@ -202,8 +199,6 @@ public:
 
   void cb_Press(long button) { do_callback(this, button); }
 };
-
-
 
 // the change size group
 class ChangeSize : public Fl_Group {
@@ -256,7 +251,6 @@ public:
   bool operationToAll(void) { return toAll->value() != 0; }
 };
 
-
 class BlockListGroup : public Fl_Group {
 
   Fl_Slider * Slider;
@@ -288,7 +282,6 @@ public:
 
   int getReason(void) { return callbackReason; }
 };
-
 
 // the groups with the 3d view and the zoom slider
 class View3dGroup : public Fl_Group {
@@ -354,7 +347,6 @@ public:
   unsigned int getSelected(void) { return currentButton; }
   void select(int num);
 };
-
 
 class ResultViewer : public Fl_Box {
 
@@ -426,6 +418,5 @@ class ProgressBar : public Fl_Progress {
 
     void draw(void);
 };
-
 
 #endif

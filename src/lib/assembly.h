@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #ifndef __ASSEMBLY_H__
 #define __ASSEMBLY_H__
 
@@ -81,7 +79,6 @@ public:
     return false;
   }
 };
-
 
 class assembly_c {
 
@@ -173,9 +170,5 @@ public:
 
   void exchangeShape(unsigned int s1, unsigned int s2);
 };
-
-
-
-
 
 #endif

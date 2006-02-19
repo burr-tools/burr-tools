@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #include "DisasmToMoves.h"
 
 DisasmToMoves::DisasmToMoves(const separation_c * tr, unsigned int sz) : tree(tr), size(sz) {
@@ -223,4 +221,3 @@ int DisasmToMoves::doRecursive(const separation_c * tree, int step, float * arra
 
   return tree->getMoves() + steps + steps2;
 }
-

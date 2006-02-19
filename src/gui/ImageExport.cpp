@@ -521,4 +521,3 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
 
   set_modal();
 }
-

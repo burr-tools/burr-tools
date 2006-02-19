@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #include "VoxelView.h"
 #include <math.h>
 
@@ -38,7 +36,6 @@ VoxelView::VoxelView(int x,int y,int w,int h,const char *l) : Fl_Gl_Window(x,y,w
   arcBall(new ArcBall_c(w, h)), doUpdates(true), size(10)
 {
 };
-
 
 static void gluPerspective(double fovy, double aspect, double zNear, double zFar) {
 
@@ -139,4 +136,3 @@ void VoxelView::setSize(double sz) {
   size = sz;
   redraw();
 }
-

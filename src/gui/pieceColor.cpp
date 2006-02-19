@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #include "pieceColor.h"
 
 #include <math.h>
@@ -67,8 +65,6 @@ static float jb[JITTERS] = {
    0.0f,  0.0f,  0.0f,  0.4f, -0.4f,  0.4f, -0.4f,  0.4f, -0.4f,
    0.4f, -0.4f,  0.4f, -0.4f,  0.0f,  0.0f,  0.0f,  0.0f
 };
-
-
 
 float pieceColorR(int x) {
   if (x < COLS)
@@ -131,8 +127,6 @@ static int getJitter(int val, int sub) {
   return j;
 }
 
-
-
 float pieceColorR(int x, int sub) {
 
   float jitter = jr[getJitter(x, sub)];
@@ -159,4 +153,3 @@ float pieceColorB(int x, int sub) {
 
 float darkPieceColor(float f) { return float(f * 0.9); }
 float lightPieceColor(float f) { return float(1 - (0.9 * (1-f))); }
-

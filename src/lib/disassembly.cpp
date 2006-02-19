@@ -15,13 +15,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
 #include "disassembly.h"
 
 #include <xmlwrapp/attributes.h>
 
 #include <string.h>
-
 
 /* template function to get space separated integer values
  * from a string and enter these into an iterator
@@ -93,8 +91,6 @@ void getNumbers(const char * c, iter start, iter end, bool neg_allowed) {
   if (start != end)
     throw load_error("too few number in disassembly");
 }
-
-
 
 /************************************************************************
  * State
@@ -199,9 +195,6 @@ bool state_c::pieceRemoved(unsigned int i) const {
   bt_assert(i < piecenumber);
   return (abs(dx[i]) > 10000) || (abs(dy[i]) > 10000) || (abs(dz[i]) > 10000);
 }
-
-
-
 
 /************************************************************************
  * Separation
@@ -406,5 +399,3 @@ void separation_c::exchangeShape(unsigned int s1, unsigned int s2) {
   if (left)
     left->exchangeShape(s1, s2);
 }
-
-

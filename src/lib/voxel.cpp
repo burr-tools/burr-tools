@@ -15,15 +15,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #include "puzzle.h"
 
 #include "symmetries.h"
-
-/** @ file
- * The Implementation of the voxel space class.
- */
 
 #include <string.h>
 #include <stdio.h>
@@ -130,7 +124,6 @@ void voxel_c::recalcBoundingBox(void) {
         }
 }
 
-
 bool voxel_c::operator ==(const voxel_c & op) const {
 
   if (sx != op.sx) return false;
@@ -158,8 +151,6 @@ bool voxel_c::identicalInBB(const voxel_c * op) const {
 
   return true;
 }
-
-
 
 void voxel_c::rotatex(int by) {
 
@@ -565,7 +556,6 @@ void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, 
 #undef MAX
 }
 
-
 void voxel_c::minimize(voxel_type val) {
 
   unsigned int x1, x2, y1, y2, z1, z2;
@@ -622,7 +612,6 @@ void voxel_c::minimize(voxel_type val) {
   }
 }
 
-
 void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel_type filler) {
   voxel_type * s2 = new voxel_type[nsx*nsy*nsz];
   memset(s2, filler, nsx*nsy*nsz);
@@ -669,7 +658,6 @@ void voxel_c::scale(unsigned int amount) {
 
   recalcBoundingBox();
 }
-
 
 unsigned int voxel_c::count(voxel_type val) const {
   unsigned int count = 0;
@@ -1202,7 +1190,6 @@ voxel_c::voxel_c(const xml::node & node) : hx(0), hy(0), hz(0), name(0) {
   setOutside(VX_EMPTY);
   skipRecalcBoundingBox(false);
 }
-
 
 void voxel_c::setName(const char * n) {
 

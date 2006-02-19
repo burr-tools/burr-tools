@@ -15,7 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
 #include "PlacementBrowser.h"
 
 #include <FL/fl_ask.H>
@@ -83,7 +82,6 @@ PlacementBrowser::PlacementBrowser(puzzle_c * p, unsigned int prob) :
   pieceSelector->box(FL_THIN_DOWN_BOX);
   pieceSelector->tooltip(" Select the piece whose placements you want to see ");
 
-
   placementSelector = new Fl_Value_Slider(0, 20, 20, WINDOWSIZE_Y - 20);
   placementSelector->precision(0);
   placementSelector->callback(cb_placement_stub, this);
@@ -128,4 +126,3 @@ int PlacementBrowser::handle(int event) {
 
   return 0;
 }
-

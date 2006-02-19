@@ -15,14 +15,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
+#ifndef __PS3DLOADER_H__
+#define __PS3DLOADER_H__
 
 /* this module just contains a function that tries to load puzzles saved with the
  * puzzle solver 3d
  */
-
-#ifndef __PS3DLOADER_H__
-#define __PS3DLOADER_H__
 
 #include "puzzle.h"
 
@@ -30,6 +28,5 @@
 
 /* either return a puzzle, or nil, when failed */
 puzzle_c * loadPuzzlerSolver3D(std::istream * str);
-
 
 #endif

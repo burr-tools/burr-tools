@@ -1,3 +1,20 @@
+/* Burr Solver
+ * Copyright (C) 2003-2006  Andreas Röver
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
 #include "Image.h"
 
 #include "../lib/bt_assert.h"
@@ -15,9 +32,7 @@ Image::Image(unsigned int w, unsigned int h, unsigned char r, unsigned char g, u
   }
 }
 
-
-Image::Image(unsigned int w, unsigned int h, unsigned char *b) : width(w), height(h), bitmap(b) {
-}
+Image::Image(unsigned int w, unsigned int h, unsigned char *b) : width(w), height(h), bitmap(b) { }
 
 Image::Image(unsigned int w, unsigned int h, ShadowView * dr) : width(w), height(h) {
   bitmap = new unsigned char[w*h*4];
@@ -342,4 +357,3 @@ void Image::minimizeWidth(unsigned int border, unsigned int multiple) {
   bitmap = nb;
   width = nw;
 }
-

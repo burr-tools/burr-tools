@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #ifndef __ASSEMBLER_H__
 #define __ASSEMBLER_H__
 
@@ -41,7 +39,6 @@ public:
    */
   virtual bool assembly(assembly_c * a) = 0;
 };
-
 
 /* as the assembly could be done using different routines we provide an
  * general interface to the assemblers using this abstract base class

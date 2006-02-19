@@ -365,4 +365,3 @@ void layouter_c::getMinSize(int *width, int *height) const {
     for (unsigned int i = 0; i < heights.size(); i++) *height += heights[i];
   }
 }
-

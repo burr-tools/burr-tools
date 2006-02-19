@@ -15,12 +15,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
-// this modules contains just some helper functions for transformations and symmetrie handling
-
 #ifndef __SYMMETRIES_H__
 #define __SYMMETRIES_H__
+
+// this modules contains just some helper functions for transformations and symmetrie handling
 
 #define NUM_TRANSFORMATIONS 24
 #define NUM_TRANSFORMATIONS_MIRROR 48
@@ -67,4 +65,3 @@ bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2);
 symmetries_t symmetryCalcuation(const voxel_c * pp);
 
 #endif
-

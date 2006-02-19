@@ -15,14 +15,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
 #ifndef __BLOCKLIST_H__
 #define __BLOCKLIST_H__
 
 #include <FL/Fl_Widget.h>
 
 #include "../lib/puzzle.h"
-
 
 /**
  * blocklist is a widget that displays a list of items in blocks. These blocks
@@ -107,7 +105,6 @@ public:
   int getReason(void) { return callbackReason; }
 };
 
-
 /**
  * this class defines a blocklist, where different elements of the list
  * can be selected by clicking on the items with the left mouse button
@@ -162,7 +159,6 @@ public:
 
 };
 
-
 /**
  * a blocklist whose block labels is text and whose elements can
  * be selected you need to inherit from this class to actually use it
@@ -184,7 +180,6 @@ public:
   void virtual blockSize(unsigned int block, unsigned int *w, unsigned int *h);
 };
 
-
 /**
  * a blocklist with text labels but not selectable blocks
  * as in the SelectableTextList you need to provide functions for the color and
@@ -204,7 +199,6 @@ public:
   void virtual blockDraw(unsigned int block, int x, int y);
   void virtual blockSize(unsigned int block, unsigned int *w, unsigned int *h);
 };
-
 
 /**
  * a concrete block list that displays the defined colors inside a puzzle
@@ -298,7 +292,6 @@ public:
     RS_PIECES_LAST
   };
 
-
   PiecesList(int x, int y, int w, int h, puzzle_c * p) : TextList(x, y, w, h), puzzle(p), problem(0) { bt_assert(p); }
 
   void setPuzzle(puzzle_c *pz, unsigned int prob);
@@ -333,7 +326,6 @@ public:
     RS_CHANGEDSELECTION = RS_LIST_LAST,
     RS_VISIBILITY_LAST
   };
-
 
   PieceVisibility(int x, int y, int w, int h, puzzle_c * p);
 
@@ -428,4 +420,3 @@ public:
 };
 
 #endif
-

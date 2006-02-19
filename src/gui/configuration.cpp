@@ -15,7 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
 #include "configuration.h"
 #include <string.h>
 #include <stdlib.h>
@@ -45,8 +44,6 @@
 #include <unistd.h>
 #endif
 
-
-
 // retugns either the home directory or the current
 // directory on system that don't know home dirs
 static char * homedir() {
@@ -54,7 +51,6 @@ static char * homedir() {
   static char userHome[MAX_PATH];
 
 #ifdef WIN32
-
 
   HKEY key;
   DWORD size = MAX_PATH;
@@ -74,7 +70,6 @@ static char * homedir() {
   userHome[size] = '\\';
   userHome[size+1] = '\0';
 
-
 #else
 
   fl_filename_expand( userHome, MAX_PATH, "~/" );
@@ -83,8 +78,6 @@ static char * homedir() {
 
   return userHome;
 }
-
-
 
 static FILE *create_local_config_file(void) {
 
@@ -101,9 +94,6 @@ static FILE *open_local_config_file(void) {
   return fopen(n, "r");
 
 }
-
-
-
 
 static bool str2bool(char *s) {
   if (s) {
@@ -171,7 +161,6 @@ void configuration::register_entry(char *cnf_name, cnf_type cnf_typ, void *cnf_v
 #define SZ_WINDOW_X 800                        // initial size of the window
 #define SZ_WINDOW_Y 600
 
-
 configuration::configuration(void) {
 
   i_use_tooltips = true;
@@ -199,7 +188,6 @@ configuration::configuration(void) {
     fclose(f);
   }
 }
-
 
 configuration::~configuration(void) {
 
@@ -242,7 +230,6 @@ configuration::~configuration(void) {
     first_data = t;
   }
 }
-
 
 static void cb_ConfigDialog_stub(Fl_Widget* o, void* v) { ((Fl_Double_Window*)v)->hide(); }
 
@@ -317,4 +304,5 @@ void configuration::dialog(void) {
 
   delete win;
 }
+
 configuration config;

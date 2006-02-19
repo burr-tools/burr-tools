@@ -121,4 +121,3 @@
 #include "images/Rescale_Monochrome_X1.xpm"
 #include "images/Rescale_Monochrome_X2.xpm"
 #include "images/Rescale_Monochrome_X3.xpm"
-

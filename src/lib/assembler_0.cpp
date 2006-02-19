@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #include "assembler_0.h"
 
 #include <xmlwrapp/attributes.h>
@@ -215,7 +213,6 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   return errorsState;
 }
 
-
 /* remove column from array, and also all the rows, where the column is one */
 void assembler_0_c::cover(register unsigned int col)
 {
@@ -406,7 +403,6 @@ void assembler_0_c::reinsert_row(register unsigned int r) {
     j = right[j];
   } while (j != r);
 }
-
 
 bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
 
@@ -615,12 +611,10 @@ assembly_c * assembler_0_c::getAssembly(void) {
   return assembly;
 }
 
-
 void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot) {
   avoidTransformedAssemblies = true;
   avoidTransformedPivot = pivot;
 }
-
 
 /* this function handles the assemblies found by the assembler engine
  */
@@ -1222,4 +1216,3 @@ void assembler_0_c::debug_step(unsigned long num) {
 
 void assembler_0_c::debug_run(unsigned int level) {
 }
-

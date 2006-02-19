@@ -15,12 +15,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #include "MainWindow.h"
 
 #include "config.h"
-
 
 #include <xmlwrapp/xmlwrapp.h>
 
@@ -75,7 +72,6 @@ bool fileExists(const char *n) {
   } else
     return false;
 }
-
 
 static void cb_AddColor_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_AddColor(); }
 void UserInterface::cb_AddColor(void) {
@@ -136,7 +132,6 @@ void UserInterface::cb_ChangeColor(void) {
   }
 }
 
-
 static void cb_NewShape_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_NewShape(); }
 void UserInterface::cb_NewShape(void) {
 
@@ -150,7 +145,6 @@ void UserInterface::cb_NewShape(void) {
   StatPieceInfo(PcSel->getSelection());
   changed = true;
 }
-
 
 static void cb_DeleteShape_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteShape(); }
 void UserInterface::cb_DeleteShape(void) {
@@ -182,7 +176,6 @@ void UserInterface::cb_DeleteShape(void) {
     fl_message("No shape to delete selected!");
 
 }
-
 
 static void cb_CopyShape_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_CopyShape(); }
 void UserInterface::cb_CopyShape(void) {
@@ -217,7 +210,6 @@ void UserInterface::cb_NameShape(void) {
     }
   }
 }
-
 
 static void cb_TaskSelectionTab_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_TaskSelectionTab((Fl_Tabs*)o); }
 void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
@@ -258,7 +250,6 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
 
   updateInterface();
 }
-
 
 static void cb_TransformPiece_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_TransformPiece(); }
 void UserInterface::cb_TransformPiece(void) {
@@ -320,7 +311,6 @@ void UserInterface::cb_EditMode(void) {
       break;
   }
 }
-
 
 static void cb_PcSel_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_PcSel((BlockListGroup*)o); }
 void UserInterface::cb_PcSel(BlockListGroup* grp) {
@@ -524,7 +514,6 @@ void UserInterface::cb_ColorConstrSel(void) {
   updateInterface();
 }
 
-
 static void cb_ShapeToResult_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ShapeToResult(); }
 void UserInterface::cb_ShapeToResult(void) {
 
@@ -567,7 +556,6 @@ void UserInterface::cb_PiecesClicked(void) {
   updateInterface();
   activateProblem(problemSelector->getSelection());
 }
-
 
 static void cb_AddShapeToProblem_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_AddShapeToProblem(); }
 void UserInterface::cb_AddShapeToProblem(void) {
@@ -697,7 +685,6 @@ void UserInterface::cb_BtnAssemblerStep(void) {
 
   View3D->showAssemblerState(puzzle, solutionProblem->getSelection(), assm->getAssembly());
 }
-
 
 static void cb_AllowColor_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_AllowColor(); }
 void UserInterface::cb_AllowColor(void) {
@@ -850,7 +837,6 @@ static void cb_Status_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Stat
 void UserInterface::cb_Status(void) {
   View3D->showColors(puzzle, Status->useColors());
 }
-
 
 static void cb_New_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_New(); }
 void UserInterface::cb_New(void) {
@@ -1069,7 +1055,6 @@ void UserInterface::cb_About(void) {
             );
 }
 
-
 void UserInterface::StatPieceInfo(unsigned int pc) {
 
   if (pc < puzzle->shapeNumber()) {
@@ -1125,9 +1110,6 @@ void UserInterface::changeShape(unsigned int nr) {
 void UserInterface::changeProblem(unsigned int nr) {
   puzzle->probRemoveAllSolutions(nr);
 }
-
-
-
 
 bool UserInterface::threadStopped(void) {
 
@@ -1227,7 +1209,6 @@ void UserInterface::ReplacePuzzle(puzzle_c * NewPuzzle) {
     puzzle = NewPuzzle;
 }
 
-
 Fl_Menu_Item UserInterface::menu_MainMenu[] = {
   { "&File",           0, 0, 0, FL_SUBMENU },
     {"New",            0, cb_New_stub,         0, 0, 0, 0, 14, 56},
@@ -1244,7 +1225,6 @@ Fl_Menu_Item UserInterface::menu_MainMenu[] = {
   {"About",            0, cb_About_stub,       0, 0, 3, 0, 14, 56},
   {0}
 };
-
 
 void UserInterface::show(int argn, char ** argv) {
   Fl_Double_Window::show();
@@ -1928,6 +1908,7 @@ void UserInterface::Big3DView(void) {
   View3D->show();
   redraw();
 }
+
 void UserInterface::Small3DView(void) {
   if (is3DViewBig) Toggle3DView();
   pieceEdit->show();
@@ -1988,8 +1969,6 @@ int UserInterface::handle(int event) {
 
   return 0;
 }
-
-
 
 #define SZ_WINDOW_X 800                        // initial size of the window
 #define SZ_WINDOW_Y 600
@@ -2306,7 +2285,6 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     BtnProbLeft = new FlatButton(x+w-SZ_GAP-2*SZ_BUTTON_Y, y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-14->", " Exchange current problem with previous problem ", cb_ProblemLeft_stub, this);
     BtnProbRight = new FlatButton(x+w-SZ_BUTTON_Y,          y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-16->", " Exchange current problem with next problem ", cb_ProblemRight_stub, this);
 
-
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
@@ -2314,7 +2292,6 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     Fl_Group * probGroup = new BlockListGroup(x, y, w, lh, problemSelector);
     probGroup->callback(cb_ProbSel_stub, this);
     probGroup->tooltip(" Select problem to edit ");
-
 
     group->resizable(probGroup);
     group->end();

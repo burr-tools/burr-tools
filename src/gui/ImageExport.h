@@ -16,8 +16,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-
-
 /* often requeste here it is: export solutions, just the assembly or the disassembly animation
  * into a (set of) image files (png files)
  */

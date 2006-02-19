@@ -15,15 +15,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #ifndef __MOVEMENTCACHE_H__
 #define __MOVEMENTCACHE_H__
 
-
 #include "voxel.h"
 #include "puzzle.h"
-
 
 /* this class calculates the possible movement between 2 pieces
  * because that calculation is relatively expensive it caches

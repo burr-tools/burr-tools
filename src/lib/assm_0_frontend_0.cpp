@@ -15,8 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
-
 #include "assm_0_frontend_0.h"
 
 /* helper function to check if a piece an go at a position */
@@ -236,4 +234,3 @@ assm_0_frontend_0_c::~assm_0_frontend_0_c() {
   if (voxelindex)
     delete [] voxelindex;
 }
-

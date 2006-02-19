@@ -15,7 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
 #include "assembly.h"
 #include "puzzle.h"
 #include "bt_assert.h"
@@ -133,7 +132,6 @@ assembly_c::assembly_c(const assembly_c * orig, unsigned char trans, const puzzl
   transform(trans, puz, prob);
 
 }
-
 
 xml::node assembly_c::save(void) const {
 
@@ -289,7 +287,6 @@ bool assembly_c::compare(const assembly_c & b, unsigned int pivot) const {
   return false;
 }
 
-
 bool assembly_c::smallerRotationExists(const puzzle_c * puz, unsigned int prob, unsigned int pivot) const {
 
   symmetries_t s = puz->probGetResultShape(prob)->selfSymmetries();
@@ -324,4 +321,3 @@ void assembly_c::exchangeShape(unsigned int s1, unsigned int s2) {
   placements[s1] = placements[s2];
   placements[s2] = p;
 }
-

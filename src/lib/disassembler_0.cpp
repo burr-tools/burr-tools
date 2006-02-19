@@ -15,7 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
 #include "disassembler_0.h"
 
 #include "disassembly.h"
@@ -359,7 +358,6 @@ void disassembler_0_c::init_find(node0_c * nd, int piecenumber, voxel_type * pie
   next_pn = piecenumber;
 }
 
-
 static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * movement) {
 
   // we only take this new node, when all pieces are either not moved at all
@@ -392,7 +390,6 @@ static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * m
 
   return n;
 }
-
 
 /* at first we check if movement is possible at all in the current direction, if so
  * the next thing to do is to check if something can be removed, and finally we look for longer
@@ -591,7 +588,6 @@ separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pi
   return res;
 }
 
-
 /* this is a bredth first search function that analyzes the movement of
  * an assembled problem. when the problem falls apart into 2 pieces the function
  * calls itself recursively. It returns null if the problem can not be taken apart
@@ -780,7 +776,6 @@ disassembler_0_c::~disassembler_0_c() {
   delete cache;
 }
 
-
 separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
 
   bt_assert(piecenumber == assembly->placementCount());
@@ -812,4 +807,3 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
 
   return s;
 }
-

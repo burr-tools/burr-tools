@@ -15,7 +15,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-
 #include "GroupsEditor.h"
 #include "pieceColor.h"
 #include "WindowWidgets.h"
@@ -132,7 +131,6 @@ void GroupsEditor::cb_input(void) {
   changed = true;
 }
 
-
 static void cb_tab_stub(Fl_Widget*, void *v) { ((GroupsEditor*)v)->cb_tab(); }
 void GroupsEditor::cb_tab(void)
 {
@@ -177,7 +175,6 @@ void GroupsEditor::cb_tab(void)
     return;
   }
 }
-
 
 GroupsEditor::GroupsEditor(int x, int y, int w, int h, puzzle_c * puzzle, unsigned int problem) : Fl_Table(x, y, w, h), changed(false) {
 
@@ -262,4 +259,3 @@ groupsEditorWindow::groupsEditorWindow(puzzle_c * p, unsigned int pr) : Fl_Doubl
   size_range(SZ_WINDOW_X, SZ_WINDOW_Y, 0, 0);
   resizable(tab);
 }
-

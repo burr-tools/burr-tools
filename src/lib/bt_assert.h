@@ -20,7 +20,6 @@
  * the assert, this exception can be caught at the end of the program and
  * the information displayed
  */
-
 #ifndef __ASSERT_H__
 #define __ASSERT_H__
 
