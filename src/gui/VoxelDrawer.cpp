@@ -352,8 +352,7 @@ void VoxelDrawer::drawVoxelSpace() {
 
   glShadeModel(GL_FLAT);
 
-  for (unsigned int run = 0; run < 2; run++)
-
+  for (unsigned int run = 0; run < 2; run++) {
     for (unsigned int piece = 0; piece < shapes.size(); piece++) {
 
       if (shapes[piece].a == 0)
@@ -523,6 +522,10 @@ void VoxelDrawer::drawVoxelSpace() {
       glPopMatrix();
     }
 
+    glDepthMask(GL_FALSE);
+  }
+
+  glDepthMask(GL_TRUE);
 }
 
 void VoxelDrawer::drawData(void) {
@@ -661,7 +664,7 @@ void VoxelDrawer::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
   clearSpaces();
   unsigned int num = addSpace(new voxel_c(puz->getShape(shapeNum)));
 
-  setSpaceColor(num, pieceColorR(shapeNum), pieceColorG(shapeNum), pieceColorB(shapeNum), 255);
+  setSpaceColor(num, pieceColorR(shapeNum), pieceColorG(shapeNum), pieceColorB(shapeNum), 1);
 
   setTransformationType(TranslateRoateScale);
   showCoordinateSystem(true);
@@ -709,7 +712,7 @@ void VoxelDrawer::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
       setSpaceColor(num,
                             pieceColorR(puz->probGetResult(probNum)),
                             pieceColorG(puz->probGetResult(probNum)),
-                            pieceColorB(puz->probGetResult(probNum)), 255);
+                            pieceColorB(puz->probGetResult(probNum)), 1);
       setSpacePosition(num,
                                0.5* (square*diagonal) * (1.0/square - 0.5),
                                0.5* (square*diagonal) * (0.5 - 1.0/square), -20, 1.0);
@@ -722,7 +725,7 @@ void VoxelDrawer::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
       setSpaceColor(num,
                             pieceColorR(selShape),
                             pieceColorG(selShape),
-                            pieceColorB(selShape), 255);
+                            pieceColorB(selShape), 1);
       setSpacePosition(num,
                                0.5* (square*diagonal) * (0.5 - 0.5/square),
                                0.5* (square*diagonal) * (0.5 - 0.5/square), -20, 0.5);
@@ -737,7 +740,7 @@ void VoxelDrawer::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
       setSpaceColor(num,
                             pieceColorR(puz->probGetShape(probNum, p)),
                             pieceColorG(puz->probGetShape(probNum, p)),
-                            pieceColorB(puz->probGetShape(probNum, p)), 255);
+                            pieceColorB(puz->probGetShape(probNum, p)), 1);
 
       setSpacePosition(num,
                                0.5* (square*diagonal) * ((col+0.5)/square - 0.5),
@@ -798,7 +801,7 @@ void VoxelDrawer::showAssembly(const puzzle_c * puz, unsigned int probNum, unsig
         setSpaceColor(num,
                               pieceColorR(puz->probGetShape(probNum, p), q),
                               pieceColorG(puz->probGetShape(probNum, p), q),
-                              pieceColorB(puz->probGetShape(probNum, p), q), 255);
+                              pieceColorB(puz->probGetShape(probNum, p), q), 1);
 
         piece++;
       }
@@ -835,7 +838,7 @@ void VoxelDrawer::showAssemblerState(const puzzle_c * puz, unsigned int probNum,
           setSpaceColor(num,
               pieceColorR(puz->probGetShape(probNum, p), q),
               pieceColorG(puz->probGetShape(probNum, p), q),
-              pieceColorB(puz->probGetShape(probNum, p), q), 255);
+              pieceColorB(puz->probGetShape(probNum, p), q), 1);
         }
 
         piece++;
@@ -877,7 +880,7 @@ void VoxelDrawer::showPlacement(const puzzle_c * puz, unsigned int probNum, unsi
     setSpaceColor(num,
                           pieceColorR(puz->probGetShape(probNum, shape), p),
                           pieceColorG(puz->probGetShape(probNum, shape), p),
-                          pieceColorB(puz->probGetShape(probNum, shape), p), 255);
+                          pieceColorB(puz->probGetShape(probNum, shape), p), 1);
     setDrawingMode(num, normal);
   }
 
@@ -885,7 +888,7 @@ void VoxelDrawer::showPlacement(const puzzle_c * puz, unsigned int probNum, unsi
   setSpaceColor(num,
                         pieceColorR(puz->probGetResult(probNum)),
                         pieceColorG(puz->probGetResult(probNum)),
-                        pieceColorB(puz->probGetResult(probNum)), 255);
+                        pieceColorB(puz->probGetResult(probNum)), 1);
   setDrawingMode(num, gridline);
 }
 
