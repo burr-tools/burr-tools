@@ -29,8 +29,8 @@ static unsigned int hashValue(unsigned int s1, unsigned int s2, int dx, int dy, 
   return val % tableSize;
 }
 
-int min(int a, int b) { if (a < b) return a; else return b; }
-int max(int a, int b) { if (a > b) return a; else return b; }
+static int min(int a, int b) { if (a < b) return a; else return b; }
+static int max(int a, int b) { if (a > b) return a; else return b; }
 
 /* double the hash table size and copy the old elements into
  * the new table
