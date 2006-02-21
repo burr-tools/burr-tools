@@ -20,6 +20,9 @@
 
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
+#elif WIN32
+#include <GL/gl.h>
+#include <GL/glext.h>
 #else
 #include <GL/gl.h>
 #endif

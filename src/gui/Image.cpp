@@ -22,6 +22,15 @@
 #include <png.h>
 #include <stdio.h>
 
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#elif WIN32
+#include <GL/gl.h>
+#include <GL/glext.h>
+#else
+#include <GL/gl.h>
+#endif
+
 Image::Image(unsigned int w, unsigned int h, unsigned char r, unsigned char g, unsigned char b, unsigned char a) : width(w), height(h) {
   bitmap = new unsigned char[w*h*4];
   for (unsigned int x = 0; x < w*h; x++) {
