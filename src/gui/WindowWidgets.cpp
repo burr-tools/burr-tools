@@ -392,7 +392,7 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
 
     new Fl_Box(x+w-40, y+25, 35, SZ_BUTTON_Y, "Shape");
 
-    (new FlatButton(x+w-40, y+ 45, 35, 25, new Fl_Pixmap(Rescale_Color_X1_xpm), new Fl_Pixmap(Rescale_Disabled_X1_xpm), "Try to minimize size of shape", cb_ToolTabTransform2_stub, 15))->deactivate();
+    new FlatButton(x+w-40, y+ 45, 35, 25, new Fl_Pixmap(Rescale_Color_X1_xpm), new Fl_Pixmap(Rescale_Disabled_X1_xpm), "Try to minimize size of shape", cb_ToolTabTransform2_stub, 26);
     new FlatButton(x+w-40, y+ 75, 35, 25, new Fl_Pixmap(Rescale_Color_X2_xpm), new Fl_Pixmap(Rescale_Disabled_X2_xpm), "Double size of shape", cb_ToolTabTransform2_stub, 22);
     new FlatButton(x+w-40, y+105, 35, 25, new Fl_Pixmap(Rescale_Color_X3_xpm), new Fl_Pixmap(Rescale_Disabled_X3_xpm), "Triple size of shape", cb_ToolTabTransform2_stub, 23);
 
@@ -470,12 +470,45 @@ void ToolTab::cb_transform(long task) {
 
     int ss, se;
 
-    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 25)))) {
+    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
       ss = 0;
       se = puzzle->shapeNumber();
     } else {
       ss = shape;
       se = shape+1;
+    }
+
+    if (task == 26) {
+
+      unsigned char primes[] = {2, 3, 5, 7, 11, 13, 17, 19, 0};
+
+      // special case for minimisation
+
+      int prime = 0;
+
+      while (primes[prime]) {
+
+        bool canScale = true;
+
+        for (int s = ss; s < se; s++)
+          if (!puzzle->getShape(s)->scaleDown(primes[prime], false)) {
+            canScale = false;
+            break;
+          }
+
+        if (canScale) {
+          for (int s = ss; s < se; s++)
+            puzzle->getShape(s)->scaleDown(primes[prime], true);
+        } else
+          prime++;
+      }
+
+      for (int s = ss; s < se; s++)
+        puzzle->getShape(s)->setHotspot(0, 0, 0);
+
+      do_callback(this, user_data());
+
+      return;
     }
 
     for (int s = ss; s < se; s++) {

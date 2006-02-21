@@ -481,6 +481,14 @@ public:
 
   // if you give 0 or an empty string the name will be removed
   void setName(const char * n);
+
+  /* for the minimize scale function applied to all shapes
+   * we need to first check, if all shapes can be scaled down
+   * by a certain factor and then do it. if action is true, then
+   * the shape is really scaled, otherwise you only get the fact
+   * if it is scalable by the given amount
+   */
+  bool scaleDown(unsigned char by, bool action);
 };
 
 #endif
