@@ -51,6 +51,14 @@
   rotated solutions. Even worse, that was dependend on the orientation
   of the pieces
 
+- improvements to 3D view: no wideangle distortion when viewing big
+  puzzles, no color changes when zooming objects, slightly transparent
+  piecen no longer "hide" some pieces behind them
+
+- image export to create images of shapes, problems or solutions with
+  complete assembly instructions with many options to influence the
+  resulting image(s)
+
 ------------- Version 0.1.8b
 
 - Fix Bug found by Markus Götz that made the program crash, when all 
