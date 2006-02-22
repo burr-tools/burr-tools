@@ -92,7 +92,6 @@ void ImageExportWindow::exportImage(void) {
   if (AA4->value()) aa = 4;
   if (AA5->value()) aa = 5;
 
-
   if (ExpShape->value()) {
     status->label("measure image");
     ShadowView * dr = new ShadowView(view3D->getView());
@@ -364,7 +363,7 @@ void ImageExportWindow::cb_SzUpdate(void) {
   }
 }
 
-ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p) {
+ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p), working(false) {
 
   label("Export Images");
 
