@@ -30,32 +30,46 @@ class ImageInfo {
 
     ShadowView * dr;
     Image * i;  // image generated with the drawer that is with a fixed hight and the required width
+    Image * i2; // the final image
 
   public:
 
-    ImageInfo(ShadowView * d) : dr(d) {
+    ImageInfo(ShadowView * d) : dr(d), i2(0) {
       i = new Image(600, 200);
+    }
 
-      while (i->getOpenGlImagePart(dr));
+    bool getPreviewImage(void) {
 
-      i->transparentize(255, 255, 255);
-      i->minimizeWidth(10);
+      if (!i->getOpenGlImagePart(dr)) {
+
+        i->transparentize(255, 255, 255);
+        i->minimizeWidth(10);
+
+        return false;
+      } else
+        return true;
     }
 
     double ratio(void) { return ((double)(i->w()))/i->h(); }
 
-    Image * generateImage(unsigned int w, unsigned int h, unsigned char aa) {
-      Image * i = new Image ((h*3)*aa, h*aa);
-
-      while (i->getOpenGlImagePart(dr));
-
-      i->transparentize(255, 255, 255);
-      i->minimizeWidth(aa*h/20, aa);
-      i->scaleDown(aa);
-
-      return i;
+    void generateImage(unsigned int w, unsigned int h, unsigned char aa) {
+      if (i2)
+        delete i2;
+      i2 = new Image ((h*3)*aa, h*aa);
     }
 
+    Image * generateImagePart(unsigned char aa) {
+
+      if (!i2->getOpenGlImagePart(dr)) {
+
+        i2->transparentize(255, 255, 255);
+        i2->minimizeWidth(i->h()/60, aa);
+        i2->scaleDown(aa);
+
+        return i2;
+      } else
+        return 0;
+    }
 };
 
 static void cb_ImageExportAbort_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Abort(); }
@@ -97,13 +111,17 @@ void ImageExportWindow::exportImage(void) {
     ShadowView * dr = new ShadowView(view3D->getView());
     dr->showSingleShape(puzzle, ShapeSelect->getSelection());
     dr->showColors(puzzle, ColConst->value() == 1);
-    images.push_back(new ImageInfo(dr));
+    ImageInfo *ii = new ImageInfo(dr);
+    while (ii->getPreviewImage());
+    images.push_back(ii);
   } else if (ExpAssembly->value()) {
     status->label("measure image");
     ShadowView * dr = new ShadowView(view3D->getView());
     dr->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
     dr->showColors(puzzle, ColConst->value() == 1);
-    images.push_back(new ImageInfo(dr));
+    ImageInfo *ii = new ImageInfo(dr);
+    while (ii->getPreviewImage());
+    images.push_back(ii);
   } else if (ExpSolution->value()) {
     // renerate an image for each step (for the moment only for the last solution)
     unsigned int s = puzzle->probSolutionNumber(ProblemSelect->getSelection()) - 1;
@@ -122,7 +140,9 @@ void ImageExportWindow::exportImage(void) {
       dr->updatePositions(&dtm);
       if (DimStatic->value()) dr->dimStaticPieces(&dtm);
 
-      images.push_back(new ImageInfo(dr));
+      ImageInfo *ii = new ImageInfo(dr);
+      while (ii->getPreviewImage());
+      images.push_back(ii);
     }
 
   } else if (ExpProblem->value()) {
@@ -132,7 +152,9 @@ void ImageExportWindow::exportImage(void) {
     ShadowView * dr = new ShadowView(view3D->getView());
     dr->showSingleShape(puzzle, puzzle->probGetResult(ProblemSelect->getSelection()));
     dr->showColors(puzzle, ColConst->value() == 1);
-    images.push_back(new ImageInfo(dr));
+    ImageInfo *ii = new ImageInfo(dr);
+    while (ii->getPreviewImage());
+    images.push_back(ii);
 
     for (unsigned int p = 0; p < puzzle->probShapeNumber(ProblemSelect->getSelection()); p++) {
 
@@ -142,7 +164,9 @@ void ImageExportWindow::exportImage(void) {
       ShadowView * dr = new ShadowView(view3D->getView());
       dr->showSingleShape(puzzle, puzzle->probGetShape(ProblemSelect->getSelection(), p));
       dr->showColors(puzzle, ColConst->value() == 1);
-      images.push_back(new ImageInfo(dr));
+      ImageInfo *ii = new ImageInfo(dr);
+      while (ii->getPreviewImage());
+      images.push_back(ii);
     }
 
   } else
@@ -227,7 +251,11 @@ void ImageExportWindow::exportImage(void) {
     snprintf(statText, 200, "placing images %i/%i", im, images.size());
     status->label(statText);
 
-    Image *i2 = images[im]->generateImage(w, imgHeight, aa);
+    images[im]->generateImage(w, imgHeight, aa);
+    Image *i2;
+    do {
+      i2 = images[im]->generateImagePart(aa);
+    } while (!i2);
 
     if (curWidth + w < pageWidth) {
       // image fits onto the line
