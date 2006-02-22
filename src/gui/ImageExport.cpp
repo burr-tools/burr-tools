@@ -80,11 +80,6 @@ void ImageExportWindow::exportImage(void) {
   /* this vector contains all the information of all images that need to appear in the output */
   std::vector<ImageInfo*> images;
 
-  glDrawBuffer(GL_BACK);
-  glReadBuffer(GL_BACK);
-
-  ShadowView dr(view3D->getView());
-
   // calculate antialiasing factor
   int aa = 1;
   if (AA2->value()) aa = 2;
@@ -279,9 +274,6 @@ void ImageExportWindow::exportImage(void) {
     i->saveToPNG(name);
     delete i;
   }
-
-  glDrawBuffer(GL_FRONT);
-  glReadBuffer(GL_FRONT);
 
   status->label("Finished");
   view3D->getView()->invalidate();
