@@ -30,14 +30,18 @@ class Image {
 
     unsigned width, height;
     unsigned char * bitmap;
+    TRcontext *tr;
 
   public:
 
     Image(unsigned int width, unsigned int height, unsigned char r, unsigned char g, unsigned char b, unsigned char a);
     Image(unsigned int width, unsigned int height, unsigned char *bitmap);
-    Image(unsigned int width, unsigned int height, ShadowView * dr);
+    Image(unsigned int width, unsigned int height);
 
     ~Image(void);
+
+    // returns true, as long as we need to call it again
+    bool getOpenGlImagePart(ShadowView * dr);
 
     int saveToPNG(const char * fname) const;
 

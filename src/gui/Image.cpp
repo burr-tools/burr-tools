@@ -41,19 +41,23 @@ Image::Image(unsigned int w, unsigned int h, unsigned char r, unsigned char g, u
   }
 }
 
+Image::Image(unsigned int w, unsigned int h) : width(w), height(h), tr(0) {
+  bitmap = new unsigned char[w*h*4];
+}
+
 Image::Image(unsigned int w, unsigned int h, unsigned char *b) : width(w), height(h), bitmap(b) { }
 
-Image::Image(unsigned int w, unsigned int h, ShadowView * dr) : width(w), height(h) {
-  bitmap = new unsigned char[w*h*4];
+bool Image::getOpenGlImagePart(ShadowView * dr) {
 
-  TRcontext *tr = trNew();
+  if (!tr) {
+    tr = trNew();
 
-  trTileSize(tr, dr->getView()->w(), dr->getView()->h(), 0);
-  trImageSize(tr, w, h);
-  trPerspective(tr, 25, (double)w/h, dr->getView()->getSize(), dr->getView()->getSize()+100);
+    trTileSize(tr, dr->getView()->w(), dr->getView()->h(), 0);
+    trImageSize(tr, width, height);
+    trPerspective(tr, 25, (double)width/height, dr->getView()->getSize(), dr->getView()->getSize()+100);
 
-  trImageBuffer(tr, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
-
+    trImageBuffer(tr, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
+  }
 
   GLfloat LightAmbient[]= { 0.2f, 0.2f, 0.2f, 1.0f };
   GLfloat LightDiffuse[]= { 0.6f, 0.6f, 0.6f, 0.0f };
@@ -81,21 +85,27 @@ Image::Image(unsigned int w, unsigned int h, ShadowView * dr) : width(w), height
 
   glClearColor(1, 1, 1, 0);
 
-  do {
-    trBeginTile(tr);
-    dr->drawData();
+  trBeginTile(tr);
+  dr->drawData();
 
-  } while (trEndTile(tr));
+  int result = trEndTile(tr);
 
-  // now flip vertically
-  for (unsigned int y = 0; y < h/2; y++)
-    for (unsigned int x = 0; x < w*4; x++) {
-      unsigned char tmp = bitmap[y*4*w+x];
-      bitmap[y*4*w+x] = bitmap[(h-y-1)*4*w+x];
-      bitmap[(h-y-1)*4*w+x] = tmp;
-    }
+  if (!result) {
+    // we finished
 
-  trDelete(tr);
+    // now flip vertically
+    for (unsigned int y = 0; y < height/2; y++)
+      for (unsigned int x = 0; x < width*4; x++) {
+        unsigned char tmp = bitmap[y*4*width+x];
+        bitmap[y*4*width+x] = bitmap[(height-y-1)*4*width+x];
+        bitmap[(height-y-1)*4*width+x] = tmp;
+      }
+
+    trDelete(tr);
+    tr = 0;
+  }
+
+  return (result != 0);
 }
 
 

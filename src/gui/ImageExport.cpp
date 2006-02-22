@@ -34,7 +34,10 @@ class ImageInfo {
   public:
 
     ImageInfo(ShadowView * d) : dr(d) {
-      i = new Image(600, 200, dr);
+      i = new Image(600, 200);
+
+      while (i->getOpenGlImagePart(dr));
+
       i->transparentize(255, 255, 255);
       i->minimizeWidth(10);
     }
@@ -42,7 +45,9 @@ class ImageInfo {
     double ratio(void) { return ((double)(i->w()))/i->h(); }
 
     Image * generateImage(unsigned int w, unsigned int h, unsigned char aa) {
-      Image * i = new Image ((h*3)*aa, h*aa, dr);
+      Image * i = new Image ((h*3)*aa, h*aa);
+
+      while (i->getOpenGlImagePart(dr));
 
       i->transparentize(255, 255, 255);
       i->minimizeWidth(aa*h/20, aa);
