@@ -1229,9 +1229,12 @@ bool voxel_c::scaleDown(unsigned char by, bool action) {
 
           if (action) {
 
-            unsigned int nsx = sx/by+1;
-            unsigned int nsy = sy/by+1;
-            unsigned int nsz = sz/by+1;
+            // we don't need to include the +1 in the sizes
+            // as we've done for the check as these voxels are
+            // definitively empty
+            unsigned int nsx = sx/by;
+            unsigned int nsy = sy/by;
+            unsigned int nsz = sz/by;
 
             voxel_type * s2 = new voxel_type[nsx*nsy*nsz];
 
