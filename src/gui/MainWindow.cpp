@@ -2098,7 +2098,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
     b = editChoice->addButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
     b->image(new Fl_Pixmap(TB_Color_Eraser_xpm));
-    b->tooltip(" Removed voxels from the shape F7 ");
+    b->tooltip(" Remove voxels from the shape F7 ");
 
     b = editChoice->addButton(xpos+3*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
     b->image(new Fl_Pixmap(TB_Color_Brush_xpm));
