@@ -45,6 +45,8 @@
 
 #include "../lib/puzzle.h"
 
+#include <vector>
+
 class LView3dGroup : public View3dGroup, public layoutable_c {
 
   public:
@@ -66,6 +68,9 @@ class LBlockListGroup : public BlockListGroup, public layoutable_c {
       *h = 60;
     }
 };
+
+class ImageInfo;
+class Image;
 
 class ImageExportWindow : public LFl_Double_Window {
 
@@ -90,6 +95,16 @@ class ImageExportWindow : public LFl_Double_Window {
     ProblemSelector * ProblemSelect;
 
     bool working;
+
+    std::vector<ImageInfo*> images;
+
+    unsigned int state;
+    Image *i;
+    unsigned int curWidth;
+    unsigned int curLine;
+    unsigned int curPage;
+    unsigned int im;
+    unsigned int linesPerPage;
 
   public:
 

@@ -22,7 +22,6 @@
 
 #include <FL/Fl.h>
 
-#include <vector>
 
 class ImageInfo {
 
@@ -36,6 +35,11 @@ class ImageInfo {
 
     ImageInfo(ShadowView * d) : dr(d), i2(0) {
       i = new Image(600, 200);
+    }
+
+    ~ImageInfo() {
+      if (i) delete i;
+      if (i2) delete i2;
     }
 
     bool getPreviewImage(void) {
@@ -86,7 +90,8 @@ void* start_export(void * c)
 {
   ImageExportWindow * w = (ImageExportWindow*)c;
 
-  w->exportImage();
+  while (w->working)
+    w->exportImage();
 
   return 0;
 }
@@ -94,10 +99,6 @@ void* start_export(void * c)
 void ImageExportWindow::exportImage(void) {
 
   char statText[200];
-  status->label("Prepare for image");
-
-  /* this vector contains all the information of all images that need to appear in the output */
-  std::vector<ImageInfo*> images;
 
   // calculate antialiasing factor
   int aa = 1;
@@ -106,106 +107,188 @@ void ImageExportWindow::exportImage(void) {
   if (AA4->value()) aa = 4;
   if (AA5->value()) aa = 5;
 
-  if (ExpShape->value()) {
-    status->label("measure image");
-    ShadowView * dr = new ShadowView(view3D->getView());
-    dr->showSingleShape(puzzle, ShapeSelect->getSelection());
-    dr->showColors(puzzle, ColConst->value() == 1);
-    ImageInfo *ii = new ImageInfo(dr);
-    while (ii->getPreviewImage());
-    images.push_back(ii);
-  } else if (ExpAssembly->value()) {
-    status->label("measure image");
-    ShadowView * dr = new ShadowView(view3D->getView());
-    dr->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
-    dr->showColors(puzzle, ColConst->value() == 1);
-    ImageInfo *ii = new ImageInfo(dr);
-    while (ii->getPreviewImage());
-    images.push_back(ii);
-  } else if (ExpSolution->value()) {
-    // renerate an image for each step (for the moment only for the last solution)
-    unsigned int s = puzzle->probSolutionNumber(ProblemSelect->getSelection()) - 1;
-    separation_c * t = puzzle->probGetDisassembly(ProblemSelect->getSelection(), s);
-    if (!t) return;
-
-    DisasmToMoves dtm(t, 20);
-
-    for (unsigned int step = 0; step < t->sumMoves(); step++) {
-      snprintf(statText, 200, "measure image %i/%i", step, t->sumMoves());
-      status->label(statText);
-      ShadowView * dr = new ShadowView(view3D->getView());
-      dr->showAssembly(puzzle, ProblemSelect->getSelection(), s);
-      dr->showColors(puzzle, ColConst->value() == 1);
-      dtm.setStep(step);
-      dr->updatePositions(&dtm);
-      if (DimStatic->value()) dr->dimStaticPieces(&dtm);
-
-      ImageInfo *ii = new ImageInfo(dr);
-      while (ii->getPreviewImage());
-      images.push_back(ii);
-    }
-
-  } else if (ExpProblem->value()) {
-    // generate an image for each piece in the problem
-    snprintf(statText, 200, "measure image %i/%i", 0, puzzle->probShapeNumber(ProblemSelect->getSelection())+1);
-    status->label(statText);
-    ShadowView * dr = new ShadowView(view3D->getView());
-    dr->showSingleShape(puzzle, puzzle->probGetResult(ProblemSelect->getSelection()));
-    dr->showColors(puzzle, ColConst->value() == 1);
-    ImageInfo *ii = new ImageInfo(dr);
-    while (ii->getPreviewImage());
-    images.push_back(ii);
-
-    for (unsigned int p = 0; p < puzzle->probShapeNumber(ProblemSelect->getSelection()); p++) {
-
-      snprintf(statText, 200, "measure image %i/%i", p+1, puzzle->probShapeNumber(ProblemSelect->getSelection())+1);
-      status->label(statText);
-
-      ShadowView * dr = new ShadowView(view3D->getView());
-      dr->showSingleShape(puzzle, puzzle->probGetShape(ProblemSelect->getSelection(), p));
-      dr->showColors(puzzle, ColConst->value() == 1);
-      ImageInfo *ii = new ImageInfo(dr);
-      while (ii->getPreviewImage());
-      images.push_back(ii);
-    }
-
-  } else
-    return;
+  unsigned int pageHeight = atoi(SizePixelY->value());
+  unsigned int pageWidth = atoi(SizePixelX->value());
+  unsigned int imgHeight;
 
   // if we have less images than pages, lower pages
   unsigned int pages = atoi(NumPages->value());
   if (pages > images.size()) pages = images.size();
 
-  // now find out in how many lines the images need to be put onto the pages to
-  // get them all onto the available space
+  unsigned int w;
 
-  unsigned int linesPerPage = 1;
-  unsigned int pageHeight = atoi(SizePixelY->value());
-  unsigned int pageWidth = atoi(SizePixelX->value());
+  switch(state) {
+    case 0:
 
-  unsigned int curWidth = 0;
-  unsigned int curLine = 0;
-  unsigned int curPage = 0;
+      status->label("Prepare for image");
 
-  unsigned int imgHeight = pageHeight / linesPerPage;
+      /* this vector contains all the information of all images that need to appear in the output */
+      images.clear();
 
-  status->label("formatting images");
+      if (ExpShape->value()) {
+        status->label("measure image");
+        ShadowView * dr = new ShadowView(view3D->getView());
+        dr->showSingleShape(puzzle, ShapeSelect->getSelection());
+        dr->showColors(puzzle, ColConst->value() == 1);
+        ImageInfo *ii = new ImageInfo(dr);
+        while (ii->getPreviewImage());
+        images.push_back(ii);
+        state = 1;
+      } else if (ExpAssembly->value()) {
+        status->label("measure image");
+        ShadowView * dr = new ShadowView(view3D->getView());
+        dr->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
+        dr->showColors(puzzle, ColConst->value() == 1);
+        ImageInfo *ii = new ImageInfo(dr);
+        while (ii->getPreviewImage());
+        images.push_back(ii);
+        state = 1;
+      } else if (ExpSolution->value()) {
+        // renerate an image for each step (for the moment only for the last solution)
+        unsigned int s = puzzle->probSolutionNumber(ProblemSelect->getSelection()) - 1;
+        separation_c * t = puzzle->probGetDisassembly(ProblemSelect->getSelection(), s);
+        if (!t) return;
 
-  while (true) {
+        DisasmToMoves dtm(t, 20);
 
-    curWidth = 0;
-    curLine = 0;
-    curPage = 0;
+        for (unsigned int step = 0; step < t->sumMoves(); step++) {
+          snprintf(statText, 200, "measure image %i/%i", step, t->sumMoves());
+          status->label(statText);
+          ShadowView * dr = new ShadowView(view3D->getView());
+          dr->showAssembly(puzzle, ProblemSelect->getSelection(), s);
+          dr->showColors(puzzle, ColConst->value() == 1);
+          dtm.setStep(step);
+          dr->updatePositions(&dtm);
+          if (DimStatic->value()) dr->dimStaticPieces(&dtm);
 
-    imgHeight = pageHeight / linesPerPage;
+          ImageInfo *ii = new ImageInfo(dr);
+          while (ii->getPreviewImage());
+          images.push_back(ii);
+        }
 
-    // check, if everything fits with the current number of lines
-    for (unsigned int im = 0; im < images.size(); im++) {
+        state = 1;
+
+      } else if (ExpProblem->value()) {
+        // generate an image for each piece in the problem
+        snprintf(statText, 200, "measure image %i/%i", 0, puzzle->probShapeNumber(ProblemSelect->getSelection())+1);
+        status->label(statText);
+        ShadowView * dr = new ShadowView(view3D->getView());
+        dr->showSingleShape(puzzle, puzzle->probGetResult(ProblemSelect->getSelection()));
+        dr->showColors(puzzle, ColConst->value() == 1);
+        ImageInfo *ii = new ImageInfo(dr);
+        while (ii->getPreviewImage());
+        images.push_back(ii);
+
+        for (unsigned int p = 0; p < puzzle->probShapeNumber(ProblemSelect->getSelection()); p++) {
+
+          snprintf(statText, 200, "measure image %i/%i", p+1, puzzle->probShapeNumber(ProblemSelect->getSelection())+1);
+          status->label(statText);
+
+          ShadowView * dr = new ShadowView(view3D->getView());
+          dr->showSingleShape(puzzle, puzzle->probGetShape(ProblemSelect->getSelection(), p));
+          dr->showColors(puzzle, ColConst->value() == 1);
+          ImageInfo *ii = new ImageInfo(dr);
+          while (ii->getPreviewImage());
+          images.push_back(ii);
+        }
+
+        state = 1;
+
+      } else
+        state = 99;
+
+      break;
+
+    case 1:
+      // now find out in how many lines the images need to be put onto the pages to
+      // get them all onto the available space
+      linesPerPage = 1;
+      imgHeight = pageHeight / linesPerPage;
+
+      curWidth = 0;
+      curLine = 0;
+      curPage = 0;
+
+      status->label("formatting images");
+
+      while (true) {
+
+        curWidth = 0;
+        curLine = 0;
+        curPage = 0;
+
+        imgHeight = pageHeight / linesPerPage;
+
+        // check, if everything fits with the current number of lines
+        for (unsigned int im = 0; im < images.size(); im++) {
+          // calculate width of the image when it has the current line hight
+          unsigned int w = (unsigned int)(imgHeight * images[im]->ratio() + 0.9);
+
+          if (curWidth + w < pageWidth) {
+            // image fits onto the line
+            curWidth += w;
+          } else {
+            // image on the next line
+            curWidth = w;
+            curLine++;
+            if (curLine >= linesPerPage) {
+              curLine = 0;
+              curPage++;
+            }
+          }
+        }
+
+        // check if we fit
+        if ((curPage <= pages) || ((curPage == pages+1) && (curLine == 0) && (curWidth == 0)))
+          break;
+
+        linesPerPage++;
+      }
+
+      // ok, now lets output
+
+      curWidth = 0;
+      curLine = 0;
+      curPage = 0;
+
+      imgHeight = pageHeight / linesPerPage;
+
+      status->label("Create image");
+
+      if (BgWhite->value()) {
+        i = new Image(pageWidth, pageHeight, 255, 255, 255, 255);
+      } else {
+        i = new Image(pageWidth, pageHeight, 0, 0, 0, 0);
+      }
+
+      im = 0;
+
+      state = 2;
+
+    case 2:
+
+      imgHeight = pageHeight / linesPerPage;
+
+      if (im >= images.size()) {
+        state = 3;
+        break;
+      }
+
       // calculate width of the image when it has the current line hight
-      unsigned int w = (unsigned int)(imgHeight * images[im]->ratio() + 0.9);
+      w = (unsigned int)(imgHeight * images[im]->ratio() + 0.9);
+
+      snprintf(statText, 200, "placing images %i/%i", im, images.size());
+      status->label(statText);
+
+      images[im]->generateImage(w, imgHeight, aa);
+      Image *i2;
+      do {
+        i2 = images[im]->generateImagePart(aa);
+      } while (!i2);
 
       if (curWidth + w < pageWidth) {
         // image fits onto the line
+        i->blit(i2, curWidth, curLine * imgHeight);
         curWidth += w;
       } else {
         // image on the next line
@@ -213,105 +296,63 @@ void ImageExportWindow::exportImage(void) {
         curLine++;
         if (curLine >= linesPerPage) {
           curLine = 0;
+          {
+            snprintf(statText, 200, "save page %i", curPage);
+            status->label(statText);
+            char name[1000];
+
+            if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
+              snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
+            else
+              snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
+
+            i->saveToPNG(name);
+            delete i;
+            if (BgWhite->value()) {
+              i = new Image(pageWidth, pageHeight, 255, 255, 255, 255);
+            } else {
+              i = new Image(pageWidth, pageHeight, 0, 0, 0, 0);
+            }
+          }
           curPage++;
         }
-      }
-    }
+        i->blit(i2, 0, curLine * imgHeight);
 
-    // check if we fit
-    if ((curPage <= pages) || ((curPage == pages+1) && (curLine == 0) && (curWidth == 0)))
+
+        break;
+      }
+
+      im++;
+
       break;
 
-    linesPerPage++;
-  }
+    case 3:
 
-  // ok, now lets output
+      {
+        snprintf(statText, 200, "save page %i", curPage);
+        status->label(statText);
 
-  curWidth = 0;
-  curLine = 0;
-  curPage = 0;
+        char name[1000];
 
-  imgHeight = pageHeight / linesPerPage;
+        if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
+          snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
+        else
+          snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
 
-  status->label("Create image");
-
-  Image *i;
-
-  if (BgWhite->value()) {
-    i = new Image(pageWidth, pageHeight, 255, 255, 255, 255);
-  } else {
-    i = new Image(pageWidth, pageHeight, 0, 0, 0, 0);
-  }
-
-  // check, if everything fits with the current number of lines
-  for (unsigned int im = 0; im < images.size(); im++) {
-    // calculate width of the image when it has the current line hight
-    unsigned int w = (unsigned int)(imgHeight * images[im]->ratio() + 0.9);
-
-    snprintf(statText, 200, "placing images %i/%i", im, images.size());
-    status->label(statText);
-
-    images[im]->generateImage(w, imgHeight, aa);
-    Image *i2;
-    do {
-      i2 = images[im]->generateImagePart(aa);
-    } while (!i2);
-
-    if (curWidth + w < pageWidth) {
-      // image fits onto the line
-      i->blit(i2, curWidth, curLine * imgHeight);
-      curWidth += w;
-    } else {
-      // image on the next line
-      curWidth = w;
-      curLine++;
-      if (curLine >= linesPerPage) {
-        curLine = 0;
-        {
-          snprintf(statText, 200, "save page %i", curPage);
-          status->label(statText);
-          char name[1000];
-
-          if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
-            snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
-          else
-            snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
-
-          i->saveToPNG(name);
-          delete i;
-          if (BgWhite->value()) {
-            i = new Image(pageWidth, pageHeight, 255, 255, 255, 255);
-          } else {
-            i = new Image(pageWidth, pageHeight, 0, 0, 0, 0);
-          }
-        }
-        curPage++;
+        i->saveToPNG(name);
+        delete i;
       }
-      i->blit(i2, 0, curLine * imgHeight);
-    }
 
-    delete i2;
+      state = 4;
+      break;
+
+    default:
+
+      status->label("Finished");
+      working = false;
   }
 
-  {
-    snprintf(statText, 200, "save page %i", curPage);
-    status->label(statText);
-
-    char name[1000];
-
-    if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
-      snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
-    else
-      snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
-
-    i->saveToPNG(name);
-    delete i;
-  }
-
-  status->label("Finished");
   view3D->getView()->invalidate();
-
-  working = false;
 }
 
 
