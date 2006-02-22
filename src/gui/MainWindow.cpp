@@ -1386,7 +1386,7 @@ void UserInterface::updateInterface(void) {
     }
 
     // shapes can only be moved, when the neibor shape is there
-    if ((PcSel->getSelection() > 0) && !assmThread)
+    if ((PcSel->getSelection() > 0) && (PcSel->getSelection() < puzzle->shapeNumber()) && !assmThread)
       BtnShapeLeft->activate();
     else
       BtnShapeLeft->deactivate();
@@ -1436,7 +1436,7 @@ void UserInterface::updateInterface(void) {
 
     // problems can only be shifted around when the corresponding neibor is
     // available
-    if ((problemSelector->getSelection() > 0) && !assmThread)
+    if ((problemSelector->getSelection() > 0) && (problemSelector->getSelection() < puzzle->problemNumber()) && !assmThread)
       BtnProbLeft->activate();
     else
       BtnProbLeft->deactivate();
