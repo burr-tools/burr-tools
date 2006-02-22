@@ -838,6 +838,11 @@
     <item>Create a debug window to make it possible to find out why there is
     no assembly or why an assembly can not be taken apart.
 
+    <item>Possibility to have several independent result shapes at once, e.g.
+    like the <with|mode|math|3<rsup|3>+4<rsup|3>+5<rsup|3>=6<rsup|3>> Puzzle,
+    where you can assemble the pieces into a large cube or into 3 cubes of
+    size 3, 4 and 5.
+
     <item>speed improvements
   </itemize-dot>
 
