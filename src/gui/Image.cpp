@@ -47,46 +47,24 @@ Image::Image(unsigned int w, unsigned int h) : width(w), height(h), tr(0) {
 
 Image::Image(unsigned int w, unsigned int h, unsigned char *b) : width(w), height(h), bitmap(b) { }
 
-bool Image::getOpenGlImagePart(ShadowView * dr) {
+void Image::prepareOpenGlImagePart(VoxelView * dr) {
 
   if (!tr) {
     tr = trNew();
 
-    trTileSize(tr, dr->getView()->w(), dr->getView()->h(), 0);
+    trTileSize(tr, dr->w(), dr->h(), 0);
     trImageSize(tr, width, height);
-    trPerspective(tr, 25, (double)width/height, dr->getView()->getSize(), dr->getView()->getSize()+100);
+    trPerspective(tr, 25, (double)width/height, dr->getSize(), dr->getSize()+100);
 
     trImageBuffer(tr, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
   }
 
-  GLfloat LightAmbient[]= { 0.2f, 0.2f, 0.2f, 1.0f };
-  GLfloat LightDiffuse[]= { 0.6f, 0.6f, 0.6f, 0.0f };
-  GLfloat LightPosition[]= { 700.0f, 200.0f, 700.0f, 1.0f };
-
-  GLfloat AmbientParams[] = {0.1, 0.1, 0.1, 1};
-  GLfloat DiffuseParams[] = {0.7, 0.7, 0.7, 0.1};
-  GLfloat SpecularParams[] = {0.4, 0.4, 0.4, 0.5};
-
-  glEnable(GL_COLOR_MATERIAL);
-  glLightfv(GL_LIGHT1, GL_AMBIENT, LightAmbient);
-  glLightfv(GL_LIGHT1, GL_DIFFUSE, LightDiffuse);
-  glLightfv(GL_LIGHT1, GL_POSITION, LightPosition);
-  glEnable(GL_LIGHT1);
-
-  glMaterialf(GL_FRONT, GL_SHININESS, 0.5);
-  glMaterialfv(GL_FRONT, GL_AMBIENT, AmbientParams);
-  glMaterialfv(GL_FRONT, GL_DIFFUSE, DiffuseParams);
-  glMaterialfv(GL_FRONT, GL_SPECULAR, SpecularParams);
-
-  glEnable(GL_RESCALE_NORMAL);
-
-  glLoadIdentity();
-  glTranslatef(0, 0, -20-dr->getView()->getSize());
-
   glClearColor(1, 1, 1, 0);
 
   trBeginTile(tr);
-  dr->drawData();
+}
+
+bool Image::getOpenGlImagePart(void) {
 
   int result = trEndTile(tr);
 

@@ -41,7 +41,8 @@ class Image {
     ~Image(void);
 
     // returns true, as long as we need to call it again
-    bool getOpenGlImagePart(ShadowView * dr);
+    void prepareOpenGlImagePart(VoxelView * dr);
+    bool getOpenGlImagePart(void);
 
     int saveToPNG(const char * fname) const;
 
