@@ -24,6 +24,7 @@
 
 #include "BlockList.h"
 #include "DisasmToMoves.h"
+#include "VoxelView.h"
 
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
@@ -47,7 +48,7 @@
  *
  * additionally pieces can be transparent
  */
-class VoxelDrawer {
+class VoxelDrawer : public VoxelView {
 
 private:
 
@@ -56,10 +57,10 @@ private:
 
 public:
 
-  VoxelDrawer(void);
+  VoxelDrawer(int x,int y,int w,int h,const char *l);
   virtual ~VoxelDrawer(void) {}
 
-  void drawData(void);
+  virtual void drawData(void);
 
   unsigned int addSpace(const voxel_c * vx);
   void clearSpaces(void);
@@ -127,10 +128,6 @@ public:
     _useLightning = val;
     updateRequired();
   }
-
-  virtual void addRotationTransformation(void) {}
-  virtual void updateRequired(void) {}
-
 
 private:
 

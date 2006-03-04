@@ -664,7 +664,7 @@ void View3dGroup::cb_slider(void) {
 View3dGroup::View3dGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   box(FL_DOWN_BOX);
 
-  View3D = new VoxelView(x, y, w-15, h, "3d View");
+  View3D = new VoxelDrawer(x, y, w-15, h, "3d View");
   View3D->tooltip(" Rotate the puzzle by dragging with the mouse ");
   View3D->box(FL_NO_BOX);
 

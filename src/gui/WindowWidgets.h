@@ -19,7 +19,7 @@
 #define __WINDOW_WIDGETS_H__
 
 #include "SquareEditor.h"
-#include "VoxelView.h"
+#include "VoxelDrawer.h"
 #include "BlockList.h"
 #include "DisasmToMoves.h"
 
@@ -286,7 +286,7 @@ public:
 // the groups with the 3d view and the zoom slider
 class View3dGroup : public Fl_Group {
 
-  VoxelView * View3D;
+  VoxelDrawer * View3D;
   Fl_Slider * slider;
 
 public:

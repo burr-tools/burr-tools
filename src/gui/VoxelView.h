@@ -20,14 +20,37 @@
 
 #include <FL/Fl_Gl_Window.H>
 
-#include "VoxelDrawer.h"
 #include "ArcBall.h"
+
+#include "../lib/puzzle.h"
+
+/* this callback class defines 2 functions that are called, when
+ * the draw function is called in VoxelView
+ */
+class VoxelViewCallbacks {
+  public:
+
+    /* this function gets called before the the setup of the camera
+     * and rotation of the object. If you return true
+     * here the draw function will NOT setup its own camera and rotation
+     * but you can continue using the light setup as its done before
+     * this function is called
+     */
+    virtual bool PreDraw(void) { return false; }
+
+    /* this is called AFTER the data has been drawn
+     */
+    virtual void PostDraw(void) { }
+};
+
+class PiecePositions;
+class PieceVisibility;
 
 /* this is a voxel drawer that paints its information into
  * an Fl_Gl_Window and that has handling for
  * dragging the contents with the mouse via an arcball
  */
-class VoxelView : public Fl_Gl_Window, public VoxelDrawer
+class VoxelView : public Fl_Gl_Window
 {
 
 private:
@@ -35,6 +58,8 @@ private:
   ArcBall_c * arcBall;
   bool doUpdates;
   double size;
+
+  VoxelViewCallbacks * cb;
 
 public:
 
@@ -52,35 +77,26 @@ public:
   void setSize(double sz);
   double getSize(void) const { return size; }
 
-  virtual void addRotationTransformation(void);
-  virtual void updateRequired(void);
+  void addRotationTransformation(void);
+  void updateRequired(void);
 
   ArcBall_c * getArcBall(void) { return arcBall; }
   const ArcBall_c * getArcBall(void) const { return arcBall; }
+
+  virtual void drawData(void) {}
+
+  void setCallback(VoxelViewCallbacks *c = 0) { cb = c; }
+
+
+  virtual void showSingleShape(const puzzle_c * puz, unsigned int shapeNum) = 0;
+  virtual void showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape) = 0;
+  virtual void showColors(const puzzle_c * puz, bool show) = 0;
+  virtual void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) = 0;
+  virtual void showAssemblerState(const puzzle_c * puz, unsigned int probNum, const assembly_c * assm) = 0;
+  virtual void showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z) = 0;
+  virtual void updatePositions(PiecePositions *shifting) = 0;
+  virtual void updateVisibility(PieceVisibility * pcvis) = 0;
+  virtual void dimStaticPieces(PiecePositions *shifting) = 0;
 };
-
-/* this is a voxel drawer that paints into another voxel view instead
- * of its own. This is useful when you want to grep images from OpenGL
- * and those images need to be drawn into an OpenGL context. This context
- * can be used here. Aditionally the rotation matrix from the given view
- * is taken
- */
-class ShadowView : public VoxelDrawer {
-
-  private:
-
-    VoxelView *vv;
-
-  public:
-
-    ShadowView(VoxelView * v) : vv(v) {}
-
-    virtual void addRotationTransformation(void) {
-      vv->getArcBall()->addTransform();
-    }
-
-    VoxelView * getView(void) { return vv; };
-};
-
 
 #endif

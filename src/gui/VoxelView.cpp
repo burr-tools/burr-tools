@@ -36,7 +36,7 @@
 #include <Fl/Fl.h>
 
 VoxelView::VoxelView(int x,int y,int w,int h,const char *l) : Fl_Gl_Window(x,y,w,h,l),
-  arcBall(new ArcBall_c(w, h)), doUpdates(true), size(10)
+  arcBall(new ArcBall_c(w, h)), doUpdates(true), size(10), cb(0)
 {
 };
 
@@ -88,14 +88,22 @@ void VoxelView::draw() {
     glClearColor(r/255.0, g/255.0, b/255.0, 0);
   }
 
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  gluPerspective(25, 1.0*w()/h(), size, size+100);
-  glMatrixMode(GL_MODELVIEW);
+  if (!cb || !cb->PreDraw()) {
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(25, 1.0*w()/h(), size, size+100);
+    glMatrixMode(GL_MODELVIEW);
+
+  }
+
   glPushMatrix();
   glTranslatef(0, 0, -20-size);
   drawData();
   glPopMatrix();
+
+  if (cb)
+    cb->PostDraw();
 }
 
 void VoxelView::update(bool doIt) {
