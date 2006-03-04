@@ -89,6 +89,7 @@ bool Image::getOpenGlImagePart(void) {
 
 Image::~Image(void) {
   delete [] bitmap;
+  if (tr) trDelete(tr);
 }
 
 int Image::saveToPNG(const char * fname) const {
