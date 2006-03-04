@@ -53,6 +53,7 @@ class ImageInfo {
     // the image data
     Image * i;  // image generated with the drawer that is with a fixed hight and the required width
     Image * i2; // the final image
+    unsigned int i2aa;
 
   public:
 
@@ -120,6 +121,7 @@ class ImageInfo {
       if (i2)
         delete i2;
       i2 = new Image ((h*3)*aa, h*aa);
+      i2aa = aa;
     }
 
     bool imageStarted(void) { return i2; }
@@ -130,13 +132,13 @@ class ImageInfo {
       i2->prepareOpenGlImagePart(vv);
     }
 
-    Image * getImage(unsigned char aa) {
+    Image * getImage(void) {
 
       if (!i2->getOpenGlImagePart()) {
 
         i2->transparentize(255, 255, 255);
-        i2->minimizeWidth(i->h()/60, aa);
-        i2->scaleDown(aa);
+        i2->minimizeWidth(i->h()/60, i2aa);
+        i2->scaleDown(i2aa);
 
         return i2;
       } else
@@ -227,13 +229,6 @@ void ImageExportWindow::nextImage(bool finish) {
 
 void ImageExportWindow::PostDraw(void) {
 
-  // calculate antialiasing factor
-  int aa = 1;
-  if (AA2->value()) aa = 2;
-  if (AA3->value()) aa = 3;
-  if (AA4->value()) aa = 4;
-  if (AA5->value()) aa = 5;
-
   unsigned int pageHeight = atoi(SizePixelY->value());
   unsigned int pageWidth = atoi(SizePixelX->value());
   unsigned int imgHeight;
@@ -321,7 +316,7 @@ void ImageExportWindow::PostDraw(void) {
 
     case 1:
 
-      Image * i2 = images[im]->getImage(aa);
+      Image * i2 = images[im]->getImage();
 
       if (i2) {
 
