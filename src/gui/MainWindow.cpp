@@ -1021,7 +1021,10 @@ void UserInterface::cb_ImageExport(void) {
 
   while (w.visible()) {
     w.update();
-    Fl::wait(0.5);
+    if (w.isWorking())
+      Fl::wait(0);
+    else
+      Fl::wait(1);
   }
 }
 

@@ -42,6 +42,7 @@
 
 #include "Layouter.h"
 #include "WindowWidgets.h"
+#include "VoxelView.h"
 
 #include "../lib/puzzle.h"
 
@@ -72,7 +73,7 @@ class LBlockListGroup : public BlockListGroup, public layoutable_c {
 class ImageInfo;
 class Image;
 
-class ImageExportWindow : public LFl_Double_Window {
+class ImageExportWindow : public LFl_Double_Window, public VoxelViewCallbacks {
 
   private:
 
@@ -106,9 +107,13 @@ class ImageExportWindow : public LFl_Double_Window {
     unsigned int im;
     unsigned int linesPerPage;
 
+    void nextImage(bool finish);
+
   public:
 
     ImageExportWindow(puzzle_c * p);
+
+    bool isWorking(void) { return working; }
 
     void update(void);
     void exportImage(void);
@@ -118,9 +123,7 @@ class ImageExportWindow : public LFl_Double_Window {
     void cb_Update3DView(void);
     void cb_SzUpdate(void);
 
-#ifdef WIN32
-  friend unsigned long __stdcall start_export(void * c);
-#else
-  friend void* start_export(void * c);
-#endif
+    virtual bool PreDraw(void);
+    virtual void PostDraw(void);
+
 };
