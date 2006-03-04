@@ -155,14 +155,6 @@ bool ImageExportWindow::PreDraw(void) {
 
   static char statText[50];
 
-  // calculate antialiasing factor
-  int aa = 1;
-  if (AA2->value()) aa = 2;
-  if (AA3->value()) aa = 3;
-  if (AA4->value()) aa = 4;
-  if (AA5->value()) aa = 5;
-
-
   switch(state) {
     case 0:
 
@@ -182,6 +174,13 @@ bool ImageExportWindow::PreDraw(void) {
 
         unsigned int pageHeight = atoi(SizePixelY->value());
         unsigned int w = (unsigned int)((pageHeight / linesPerPage) * images[im]->ratio() + 0.9);
+
+        // calculate antialiasing factor
+        int aa = 1;
+        if (AA2->value()) aa = 2;
+        if (AA3->value()) aa = 3;
+        if (AA4->value()) aa = 4;
+        if (AA5->value()) aa = 5;
 
         images[im]->generateImage(w, pageHeight / linesPerPage, aa);
       }
@@ -212,6 +211,7 @@ void ImageExportWindow::nextImage(bool finish) {
 
     i->saveToPNG(name);
     delete i;
+    i = 0;
   }
 
   if (!finish) {
@@ -229,16 +229,6 @@ void ImageExportWindow::nextImage(bool finish) {
 
 void ImageExportWindow::PostDraw(void) {
 
-  unsigned int pageHeight = atoi(SizePixelY->value());
-  unsigned int pageWidth = atoi(SizePixelX->value());
-  unsigned int imgHeight;
-
-  // if we have less images than pages, lower pages
-  unsigned int pages = atoi(NumPages->value());
-  if (pages > images.size()) pages = images.size();
-
-  unsigned int w;
-
   switch(state) {
     case 0:
 
@@ -253,13 +243,12 @@ void ImageExportWindow::PostDraw(void) {
           // now find out in how many lines the images need to be put onto the pages to
           // get them all onto the available space
           linesPerPage = 1;
-          imgHeight = pageHeight / linesPerPage;
 
-          curWidth = 0;
-          curLine = 0;
-          curPage = 0;
+          unsigned int pageWidth = atoi(SizePixelX->value());
 
-          status->label("formatting images");
+          // if we have less images than pages, lower pages
+          unsigned int pages = atoi(NumPages->value());
+          if (pages > images.size()) pages = images.size();
 
           while (true) {
 
@@ -267,7 +256,7 @@ void ImageExportWindow::PostDraw(void) {
             curLine = 0;
             curPage = 0;
 
-            imgHeight = pageHeight / linesPerPage;
+            unsigned int imgHeight = atoi(SizePixelY->value()) / linesPerPage;
 
             // check, if everything fits with the current number of lines
             for (unsigned int im = 0; im < images.size(); im++) {
@@ -295,15 +284,10 @@ void ImageExportWindow::PostDraw(void) {
             linesPerPage++;
           }
 
-          // ok, now lets output
-
+          // ok, now lets setup the variable for output
           curWidth = 0;
           curLine = 0;
           curPage = 0;
-
-          imgHeight = pageHeight / linesPerPage;
-
-          i = 0;
 
           nextImage(false);
 
@@ -320,9 +304,10 @@ void ImageExportWindow::PostDraw(void) {
 
       if (i2) {
 
-        imgHeight = pageHeight / linesPerPage;
+        unsigned int pageWidth = atoi(SizePixelX->value());
+        unsigned int imgHeight = atoi(SizePixelY->value()) / linesPerPage;
 
-        w = i2->w();
+        unsigned int w = i2->w();
 
         if (curWidth + w < pageWidth) {
           // image fits onto the line
@@ -469,7 +454,7 @@ void ImageExportWindow::cb_SzUpdate(void) {
   }
 }
 
-ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p), working(false) {
+ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p), working(false), state(0), i(0) {
 
   label("Export Images");
 

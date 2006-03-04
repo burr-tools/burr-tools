@@ -31,7 +31,7 @@
 #include <GL/gl.h>
 #endif
 
-Image::Image(unsigned int w, unsigned int h, unsigned char r, unsigned char g, unsigned char b, unsigned char a) : width(w), height(h) {
+Image::Image(unsigned int w, unsigned int h, unsigned char r, unsigned char g, unsigned char b, unsigned char a) : width(w), height(h), tr(0) {
   bitmap = new unsigned char[w*h*4];
   for (unsigned int x = 0; x < w*h; x++) {
     bitmap[4*x+0] = r;
@@ -45,7 +45,7 @@ Image::Image(unsigned int w, unsigned int h) : width(w), height(h), tr(0) {
   bitmap = new unsigned char[w*h*4];
 }
 
-Image::Image(unsigned int w, unsigned int h, unsigned char *b) : width(w), height(h), bitmap(b) { }
+Image::Image(unsigned int w, unsigned int h, unsigned char *b) : width(w), height(h), bitmap(b), tr(0) { }
 
 void Image::prepareOpenGlImagePart(VoxelView * dr) {
 
