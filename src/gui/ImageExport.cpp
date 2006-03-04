@@ -56,26 +56,24 @@ class ImageInfo {
 
   public:
 
-    ImageInfo(functions fkt, puzzle_c * p) : setupFunction(fkt), puzzle(p), i2(0) {
+    ImageInfo(puzzle_c * p, bool color, unsigned int shape) : setupFunction(SHOW_SINGLE), puzzle(p), i2(0) {
       i = new Image(600, 200);
-    }
-
-    ~ImageInfo() {
-      if (i) delete i;
-      if (i2) delete i2;
-    }
-
-    void setParams(bool color, unsigned int shape) {
       showColors = color;
       this->shape = shape;
     }
 
-    void setParams(bool color, unsigned int prob, unsigned int sol, DisasmToMoves * pos = 0, bool d = false) {
+    ImageInfo(puzzle_c * p, bool color, unsigned int prob, unsigned int sol, DisasmToMoves * pos = 0, bool d = false) : setupFunction(SHOW_ASSEMBLY), puzzle(p), i2(0) {
+      i = new Image(600, 200);
       showColors = color;
       problem = prob;
       solution = sol;
       positions = pos;
       dim = d;
+    }
+
+    ~ImageInfo() {
+      if (i) delete i;
+      if (i2) delete i2;
     }
 
     void setupContent(VoxelView * vv) {
@@ -310,8 +308,6 @@ void ImageExportWindow::PostDraw(void) {
 
           imgHeight = pageHeight / linesPerPage;
 
-          status->label("Create image");
-
           i = 0;
 
           nextImage(false);
@@ -380,45 +376,34 @@ void ImageExportWindow::cb_Export(void) {
 
   if (ExpShape->value()) {
 
-    ImageInfo *ii = new ImageInfo(ImageInfo::SHOW_SINGLE, puzzle);
-    ii->setParams(ColConst->value() == 1, ShapeSelect->getSelection());
-    images.push_back(ii);
+    images.push_back(new ImageInfo(puzzle, ColConst->value(), ShapeSelect->getSelection()));
 
   } else if (ExpAssembly->value()) {
 
-    ImageInfo *ii = new ImageInfo(ImageInfo::SHOW_ASSEMBLY, puzzle);
-    ii->setParams(ColConst->value() == 1, ProblemSelect->getSelection(), 0);
-    images.push_back(ii);
+    images.push_back(new ImageInfo(puzzle, ColConst->value(), ProblemSelect->getSelection(), 0));
 
   } else if (ExpSolution->value()) {
 
     // renerate an image for each step (for the moment only for the last solution)
     unsigned int s = puzzle->probSolutionNumber(ProblemSelect->getSelection()) - 1;
     separation_c * t = puzzle->probGetDisassembly(ProblemSelect->getSelection(), s);
+    unsigned int prob = ProblemSelect->getSelection();
     if (!t) return;
 
     for (unsigned int step = 0; step < t->sumMoves(); step++) {
       DisasmToMoves * dtm = new DisasmToMoves(t, 20);
       dtm->setStep(step);
-
-      ImageInfo *ii = new ImageInfo(ImageInfo::SHOW_ASSEMBLY, puzzle);
-      ii->setParams(ColConst->value() == 1, ProblemSelect->getSelection(), s, dtm, DimStatic->value());
-      images.push_back(ii);
+      images.push_back(new ImageInfo(puzzle, ColConst->value(), prob, s, dtm, DimStatic->value()));
     }
 
   } else if (ExpProblem->value()) {
     // generate an image for each piece in the problem
+    unsigned int prob = ProblemSelect->getSelection();
 
-    ImageInfo *ii = new ImageInfo(ImageInfo::SHOW_SINGLE, puzzle);
-    ii->setParams(ColConst->value() == 1, puzzle->probGetResult(ProblemSelect->getSelection()));
-    images.push_back(ii);
+    images.push_back(new ImageInfo(puzzle, ColConst->value(), puzzle->probGetResult(prob)));
 
-    for (unsigned int p = 0; p < puzzle->probShapeNumber(ProblemSelect->getSelection()); p++) {
-
-      ImageInfo *ii = new ImageInfo(ImageInfo::SHOW_SINGLE, puzzle);
-      ii->setParams(ColConst->value() == 1, puzzle->probGetShape(ProblemSelect->getSelection(), p));
-      images.push_back(ii);
-    }
+    for (unsigned int p = 0; p < puzzle->probShapeNumber(prob); p++)
+      images.push_back(new ImageInfo(puzzle, ColConst->value(), puzzle->probGetShape(prob, p)));
 
   } else
 
