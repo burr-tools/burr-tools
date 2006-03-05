@@ -1214,9 +1214,9 @@ bool voxel_c::scaleDown(unsigned char by, bool action) {
 
         bool problem = false;
 
-        for (int x = 0; x < sx/by+1; x++)
-          for (int y = 0; y < sy/by+1; y++)
-            for (int z = 0; z < sz/by+1; z++)
+        for (int x = 0; x < (int)sx/by+1; x++)
+          for (int y = 0; y < (int)sy/by+1; y++)
+            for (int z = 0; z < (int)sz/by+1; z++)
 
               for (unsigned int cx = 0; cx < by; cx++)
                 for (unsigned int cy = 0; cy < by; cy++)
