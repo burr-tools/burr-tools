@@ -101,6 +101,7 @@ class ImageInfo {
 
       setupContent(vv);
       i->prepareOpenGlImagePart(vv);
+      glClearColor(1, 1, 1, 0);
     }
 
     bool getPreviewImage(void) {
@@ -130,6 +131,7 @@ class ImageInfo {
 
       setupContent(vv);
       i2->prepareOpenGlImagePart(vv);
+      glClearColor(1, 1, 1, 0);
     }
 
     Image * getImage(void) {

@@ -31,8 +31,9 @@
 #include <GL/gl.h>
 #endif
 
-Image::Image(unsigned int w, unsigned int h, unsigned char r, unsigned char g, unsigned char b, unsigned char a) : width(w), height(h), tr(0) {
-  bitmap = new unsigned char[w*h*4];
+Image::Image(unsigned int w, unsigned int h, unsigned char r, unsigned char g, unsigned char b, unsigned char a) : width(w), height(h), bitmap(new unsigned char[w*h*4]), tr(0) {
+
+  /* initialize image bitmap */
   for (unsigned int x = 0; x < w*h; x++) {
     bitmap[4*x+0] = r;
     bitmap[4*x+1] = g;
@@ -41,15 +42,12 @@ Image::Image(unsigned int w, unsigned int h, unsigned char r, unsigned char g, u
   }
 }
 
-Image::Image(unsigned int w, unsigned int h) : width(w), height(h), tr(0) {
-  bitmap = new unsigned char[w*h*4];
-}
-
-Image::Image(unsigned int w, unsigned int h, unsigned char *b) : width(w), height(h), bitmap(b), tr(0) { }
-
 void Image::prepareOpenGlImagePart(VoxelView * dr) {
 
   if (!tr) {
+
+    /* we start a new image grepping, so initialite tile render context */
+
     tr = trNew();
 
     trTileSize(tr, dr->w(), dr->h(), 0);
@@ -59,36 +57,39 @@ void Image::prepareOpenGlImagePart(VoxelView * dr) {
     trImageBuffer(tr, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
   }
 
-  glClearColor(1, 1, 1, 0);
-
+  /* prepare camera for next tile */
   trBeginTile(tr);
 }
 
 bool Image::getOpenGlImagePart(void) {
 
-  int result = trEndTile(tr);
+  /* grep the next tile */
+  if (trEndTile(tr))
+    /* there are more tils that need to be done */
+    return true;
 
-  if (!result) {
-    // we finished
+  /* we have finished all tiles, so delete the tile render context */
+  trDelete(tr);
+  tr = 0;
 
-    // now flip vertically
-    for (unsigned int y = 0; y < height/2; y++)
-      for (unsigned int x = 0; x < width*4; x++) {
-        unsigned char tmp = bitmap[y*4*width+x];
-        bitmap[y*4*width+x] = bitmap[(height-y-1)*4*width+x];
-        bitmap[(height-y-1)*4*width+x] = tmp;
-      }
+  /* flip vertically, as the tile renderer generates an image that is bottom up */
+  for (unsigned int y = 0; y < height/2; y++)
+    for (unsigned int x = 0; x < width*4; x++) {
+      unsigned char tmp = bitmap[y*4*width+x];
+      bitmap[y*4*width+x] = bitmap[(height-y-1)*4*width+x];
+      bitmap[(height-y-1)*4*width+x] = tmp;
+    }
 
-    trDelete(tr);
-    tr = 0;
-  }
-
-  return (result != 0);
+  return false;
 }
 
 
 Image::~Image(void) {
   delete [] bitmap;
+
+  /* if we delete the image while we are doing an openGl grep, the context
+   * must be deleted, too
+   */
   if (tr) trDelete(tr);
 }
 
@@ -100,7 +101,7 @@ int Image::saveToPNG(const char * fname) const {
 
   png_structp png_ptr;
   png_infop info_ptr;
-  unsigned char ** png_rows;
+  unsigned char ** png_rows = 0;
   int x, y;
 
   FILE *fi = fopen(fname, "wb");
@@ -125,6 +126,15 @@ int Image::saveToPNG(const char * fname) const {
 
   if (setjmp(png_jmpbuf(png_ptr)))
   {
+
+    /* if we have already instanciated the png_rows, we need to free them */
+    if (png_rows) {
+      for (y = 0; y < sy; y++)
+        delete [] png_rows[y];
+
+      delete [] png_rows;
+    }
+
     fclose(fi);
     png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
     fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
@@ -143,10 +153,10 @@ int Image::saveToPNG(const char * fname) const {
 
   /* Save the picture: */
 
-  png_rows = new unsigned char*[sy]; //     (unsigned char **)(malloc(sizeof(char *) * sy));
+  png_rows = new unsigned char*[sy];
   for (y = 0; y < sy; y++)
   {
-    png_rows[y] = new unsigned char[4*sx];// (unsigned char*)malloc(sizeof(char) * 3 * sx);
+    png_rows[y] = new unsigned char[4*sx];
 
     for (x = 0; x < sx; x++)
     {
@@ -160,9 +170,9 @@ int Image::saveToPNG(const char * fname) const {
   png_write_image(png_ptr, png_rows);
 
   for (y = 0; y < sy; y++)
-    delete [] png_rows[y]; //free(png_rows[y]);
+    delete [] png_rows[y];
 
-  delete [] png_rows; //free(png_rows);
+  delete [] png_rows;
 
   png_write_end(png_ptr, NULL);
 
@@ -176,24 +186,29 @@ void Image::blit(const Image * i, int xpos, int ypos) {
   for (unsigned int x = 0; x < i->width; x++)
     for (unsigned int y = 0; y < i->height; y++)
       if ((x+xpos >= 0) && (x+xpos < width) && (y+ypos >= 0) && (y+ypos < height)) {
-        unsigned char r1,r2, g1, g2, b1, b2, a1, a2;
 
-        r1 = bitmap[((y+ypos)*width + (x+xpos)) * 4 + 0];
-        r2 = i->bitmap[(y*i->width+x) * 4 + 0];
+        /* get the values of the 2 pixels to blend */
+        unsigned char r1 = bitmap[((y+ypos)*width + (x+xpos)) * 4 + 0];
+        unsigned char g1 = bitmap[((y+ypos)*width + (x+xpos)) * 4 + 1];
+        unsigned char b1 = bitmap[((y+ypos)*width + (x+xpos)) * 4 + 2];
+        unsigned char a1 = bitmap[((y+ypos)*width + (x+xpos)) * 4 + 3];
 
-        g1 = bitmap[((y+ypos)*width + (x+xpos)) * 4 + 1];
-        g2 = i->bitmap[(y*i->width+x) * 4 + 1];
+        unsigned char r2 = i->bitmap[(y*i->width+x) * 4 + 0];
+        unsigned char g2 = i->bitmap[(y*i->width+x) * 4 + 1];
+        unsigned char b2 = i->bitmap[(y*i->width+x) * 4 + 2];
+        unsigned char a2 = i->bitmap[(y*i->width+x) * 4 + 3];
 
-        b1 = bitmap[((y+ypos)*width + (x+xpos)) * 4 + 2];
-        b2 = i->bitmap[(y*i->width+x) * 4 + 2];
-
-        a1 = bitmap[((y+ypos)*width + (x+xpos)) * 4 + 3];
-        a2 = i->bitmap[(y*i->width+x) * 4 + 3];
-
+        /* calculate the new color value: it is a blend of the old and the new one depending
+         * on the alpha value of the new pixel
+         */
         bitmap[((y+ypos)*width + (x+xpos)) * 4 + 0] = (r1 * (255-a2) + r2 * a2) / 255;
         bitmap[((y+ypos)*width + (x+xpos)) * 4 + 1] = (g1 * (255-a2) + g2 * a2) / 255;
         bitmap[((y+ypos)*width + (x+xpos)) * 4 + 2] = (b1 * (255-a2) + b2 * a2) / 255;
 
+        /* the new alpha value is the inverse product of the 2 old alpha values:
+         * (1-a) = (1-a1) * (1-a2)
+         * as the values are in range of 0..255 we need to scale them
+         */
         bitmap[((y+ypos)*width + (x+xpos)) * 4 + 3] = (unsigned char)((1 - ((1-a1/255.0) * (1-a2/255.0))) * 255 + 0.5);
       }
 }
@@ -245,6 +260,9 @@ void Image::scaleDown(unsigned char by) {
           }
         }
 
+      /* the new color value is the average of all non transparent pixels
+       * or 0 if all pixels were transparent
+       */
       if (a) {
         nb[4*(y*nw+x) + 0] = 255 * r / a;
         nb[4*(y*nw+x) + 1] = 255 * g / a;
@@ -254,6 +272,8 @@ void Image::scaleDown(unsigned char by) {
         nb[4*(y*nw+x) + 1] = 0;
         nb[4*(y*nw+x) + 2] = 0;
       }
+
+      /* the new alpha value is the average of all alpha values */
       nb[4*(y*nw+x) + 3] = a / (by*by);
     }
 
@@ -272,7 +292,7 @@ void Image::minimizeWidth(unsigned int border, unsigned int multiple) {
   do {
 
     bool allTran = true;
-    // check column for a pixed that is not completely transparent
+    // check column for a pixel that is not completely transparent
     for (unsigned int y = 0; y < height; y++)
       if (bitmap[y*width*4+4*xmin+3] != 0) {
         allTran = false;
@@ -288,11 +308,11 @@ void Image::minimizeWidth(unsigned int border, unsigned int multiple) {
 
   unsigned int xmax = width-1;
 
-  // find the smallest used column
+  // find the largest used column
   do {
 
     bool allTran = true;
-    // check column for a pixed that is not completely transparent
+    // check column for a pixel that is not completely transparent
     for (unsigned int y = 0; y < height; y++)
       if (bitmap[y*width*4+4*xmax+3] != 0) {
         allTran = false;
@@ -323,6 +343,9 @@ void Image::minimizeWidth(unsigned int border, unsigned int multiple) {
 
   unsigned int nw = xmax-xmin+1;
 
+  /* make the width a multiple of the given multiplier
+   * by adding pixels left and right
+   */
   if ((nw % multiple) != 0) {
     unsigned int add = multiple - (nw % multiple);
 
@@ -351,6 +374,7 @@ void Image::minimizeWidth(unsigned int border, unsigned int multiple) {
       nb[(y*nw+x-xmin)*4+3] = bitmap[(y*width+x)*4+3];
     }
 
+  /* delete the old bitmap */
   delete [] bitmap;
   bitmap = nb;
   width = nw;
