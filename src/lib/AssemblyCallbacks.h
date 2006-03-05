@@ -18,10 +18,11 @@
 #ifndef __ASSEMBLYCALLBACK_H__
 #define __ASSEMBLYCALLBACK_H__
 
-#include "puzzle.h"
 #include "assembler.h"
 #include "disassembler_0.h"
 #include "bt_assert.h"
+
+class puzzle_c;
 
 /* this class will handle the solving of one problem of the puzzle, it can also
  * be used to continue an already started solution, so that you can save you results

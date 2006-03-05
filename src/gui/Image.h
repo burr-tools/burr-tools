@@ -19,7 +19,8 @@
 #define __IMAGE_H__
 
 #include "tr.h"
-#include "VoxelView.h"
+
+class VoxelView;
 
 /* this class represents an bitmap image
  * that always has rgb and alpha map

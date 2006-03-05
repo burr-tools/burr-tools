@@ -24,9 +24,10 @@
  * they are in fact quite interface specific
  */
 
-#include "voxel.h"
-#include "puzzle.h"
-#include "disassembly.h"
+class voxel_c;
+class puzzle_c;
+class assembly_c;
+class separation_c;
 
 void print(const voxel_c * v, char base = 'a');
 void print(const puzzle_c * p);

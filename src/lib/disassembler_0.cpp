@@ -18,8 +18,11 @@
 #include "disassembler_0.h"
 
 #include "disassembly.h"
-#include "voxel.h"
 #include "bt_assert.h"
+#include "movementcache.h"
+#include "puzzle.h"
+#include "grouping.h"
+#include "assembly.h"
 
 #include <queue>
 #include <set>

@@ -22,9 +22,9 @@
  * fullfill some kind of property, e.g. all hexominos, or so
  */
 
-#include "voxel.h"
-
 #include <vector>
+
+class voxel_c;
 
 class pieceGenerator_c {
 

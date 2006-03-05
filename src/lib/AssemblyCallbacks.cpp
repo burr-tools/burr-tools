@@ -17,14 +17,16 @@
  */
 #include "AssemblyCallbacks.h"
 
+#include "disassembly.h"
+#include "assm_0_frontend_0.h"
+#include "puzzle.h"
+#include "assembly.h"
+
 #ifdef WIN32
 #include <windows.h>
 #else
 #include <pthread.h>
 #endif
-
-#include "disassembly.h"
-#include "assm_0_frontend_0.h"
 
 #ifdef WIN32
 unsigned long __stdcall start_th(void * c)

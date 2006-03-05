@@ -31,6 +31,7 @@
 #include <time.h>
 
 #include <fstream>
+#include <iostream>
 
 #include <xmlwrapp/xmlwrapp.h>
 

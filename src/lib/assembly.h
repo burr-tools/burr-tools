@@ -18,8 +18,8 @@
 #ifndef __ASSEMBLY_H__
 #define __ASSEMBLY_H__
 
-#include "voxel.h"
 #include "bt_assert.h"
+#include "symmetries.h"
 
 #include <xmlwrapp/node.h>
 

@@ -18,6 +18,9 @@
 #include "SquareEditor.h"
 #include "pieceColor.h"
 
+#include "../lib/voxel.h"
+#include "../lib/puzzle.h"
+
 #include <FL/fl_draw.h>
 
 // round towards -inf instead of 0
@@ -494,3 +497,9 @@ int SquareEditor::handle(int event) {
 
   return 0;
 }
+
+void SquareEditor::clearPuzzle() {
+  piecenumber = puzzle->shapeNumber();
+  redraw();
+}
+

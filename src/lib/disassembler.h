@@ -18,10 +18,7 @@
 #ifndef __DISASSEMBLER_H__
 #define __DISASSEMBLER_H__
 
-#include "voxel.h"
-#include "disassembly.h"
-
-#include <functional>
+class separation_c;
 
 /* this class implements a burr disassembler. the interface is simple:
  * 1) construct the class with whatever parameters the concrete subclass requires

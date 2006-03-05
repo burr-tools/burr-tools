@@ -17,6 +17,8 @@
  */
 #include "PlacementBrowser.h"
 
+#include "../lib/assembler_0.h"
+
 #include <FL/fl_ask.H>
 
 #define WINDOWSIZE_X 400

@@ -18,7 +18,10 @@
 #include "burrgrower.h"
 
 #include "disassembler_0.h"
+#include "disassembly.h"
 #include "assm_0_frontend_0.h"
+#include "puzzle.h"
+#include "voxel.h"
 
 #include <fstream>
 

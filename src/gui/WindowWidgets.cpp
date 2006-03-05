@@ -19,6 +19,9 @@
 #include "pieceColor.h"
 #include "Images.h"
 
+#include "../lib/voxel.h"
+#include "../lib/puzzle.h"
+
 #include <FL/Fl_Pixmap.H>
 #include <FL/Fl_Multiline_Output.H>
 

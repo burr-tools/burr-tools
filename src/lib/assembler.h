@@ -18,10 +18,11 @@
 #ifndef __ASSEMBLER_H__
 #define __ASSEMBLER_H__
 
-#include "voxel.h"
-#include "assembly.h"
-
 #include <xmlwrapp/node.h>
+
+class voxel_c;
+class assembly_c;
+class puzzle_c;
 
 /* here we have a callback class, meaning a class that you give
  * as parameter to a function and this function finally calls the

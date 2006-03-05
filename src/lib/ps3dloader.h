@@ -22,9 +22,9 @@
  * puzzle solver 3d
  */
 
-#include "puzzle.h"
-
 #include <iostream>
+
+class puzzle_c;
 
 /* either return a puzzle, or nil, when failed */
 puzzle_c * loadPuzzlerSolver3D(std::istream * str);

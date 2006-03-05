@@ -18,10 +18,11 @@
 #ifndef __BURRGROWER_H__
 #define __BURRGROWER_H__
 
-#include "puzzle.h"
 #include "assembler.h"
 
 #include <vector>
+
+class voxel_c;
 
 class puzzleSol_c : public assembler_cb {
 

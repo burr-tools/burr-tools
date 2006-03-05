@@ -18,8 +18,8 @@
 #ifndef __MOVEMENTCACHE_H__
 #define __MOVEMENTCACHE_H__
 
-#include "voxel.h"
-#include "puzzle.h"
+class voxel_c;
+class puzzle_c;
 
 /* this class calculates the possible movement between 2 pieces
  * because that calculation is relatively expensive it caches

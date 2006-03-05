@@ -15,7 +15,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include <movementcache.h>
+#include "movementcache.h"
+
+#include "voxel.h"
+#include "puzzle.h"
 
 /* the hash function. I don't know how well it performes, but it seems to be okay */
 static unsigned int hashValue(unsigned int s1, unsigned int s2, int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int tableSize) {

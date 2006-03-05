@@ -21,8 +21,8 @@
 /* this module contains the datastructures to store the instruction how to assemble
  * and disassemble a puzzle
  */
-
 #include "voxel.h"
+
 #include "bt_assert.h"
 
 #include <deque>

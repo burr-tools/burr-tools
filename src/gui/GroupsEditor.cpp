@@ -19,6 +19,9 @@
 #include "pieceColor.h"
 #include "WindowWidgets.h"
 
+#include "../lib/voxel.h"
+#include "../lib/puzzle.h"
+
 #include <FL/fl_draw.h>
 
 void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, int w, int h) {

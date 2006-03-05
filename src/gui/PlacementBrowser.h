@@ -18,13 +18,12 @@
 #ifndef __PLACEMENT_BROWSER_H__
 #define __PLACEMENT_BROWSER_H__
 
-#include "../lib/assembler_0.h"
-#include "../lib/puzzle.h"
-
 #include "WindowWidgets.h"
 
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Value_Slider.H>
+
+class puzzle_c;
 
 class PlacementBrowser : public Fl_Double_Window {
 

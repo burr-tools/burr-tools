@@ -20,12 +20,11 @@
 
 #include "assembler.h"
 
-#include "voxel.h"
-#include "puzzle.h"
-
 #include <vector>
 #include <set>
 #include <stack>
+
+class puzzle_c;
 
 /* this class is only a base class containing the functionality for the matrix
  * the functions in here don't know anything about the meaning of the matrix

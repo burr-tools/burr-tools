@@ -18,10 +18,11 @@
 #ifndef __BLOCKLIST_H__
 #define __BLOCKLIST_H__
 
+#include "../lib/bt_assert.h"
+
 #include <FL/Fl_Widget.h>
 
-#include "../lib/puzzle.h"
-
+class puzzle_c;
 /**
  * blocklist is a widget that displays a list of items in blocks. These blocks
  * have the size, so that the label of the item fits. The blocks are arranged
@@ -341,10 +342,7 @@ public:
    * there are 3 return values 0, 1 or 2
    * it's up to you to say what these values mean
    */
-  unsigned char getVisibility(unsigned int piece) {
-    bt_assert(piece < puzzle->probPieceNumber(problem));
-    return visState[piece];
-  }
+  unsigned char getVisibility(unsigned int piece);
 };
 
 /**

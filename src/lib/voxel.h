@@ -18,15 +18,12 @@
 #ifndef __VOXEL_H__
 #define __VOXEL_H__
 
-#include <sys/types.h>
-
-#include <iostream>
-#include <stdexcept>
 #include "bt_assert.h"
+#include "symmetries.h"
 
 #include <xmlwrapp/node.h>
 
-#include "symmetries.h"
+#include <sys/types.h>
 
 /**
  * the type used for one voxel, \c u_int8_t

@@ -18,6 +18,7 @@
 #include "pieceGenerator.h"
 
 #include "puzzle.h"
+#include "voxel.h"
 
 typedef struct pieceTreeNode {
 

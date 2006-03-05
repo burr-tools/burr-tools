@@ -17,6 +17,11 @@
  */
 #include "print.h"
 
+#include "voxel.h"
+#include "puzzle.h"
+#include "disassembly.h"
+#include "assembly.h"
+
 void print(const voxel_c * v, char base) {
   for (unsigned int z = 0; z < v->getZ(); z++) {
     printf(" +");

@@ -2,6 +2,7 @@
 
 
 #include "lib/puzzle.h"
+#include "lib/voxel.h"
 
 #include <iostream>
 #include <fstream>

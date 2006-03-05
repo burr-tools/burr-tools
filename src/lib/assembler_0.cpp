@@ -17,6 +17,11 @@
  */
 #include "assembler_0.h"
 
+#include "bt_assert.h"
+#include "puzzle.h"
+#include "voxel.h"
+#include "assembly.h"
+
 #include <xmlwrapp/attributes.h>
 
 #ifdef WIN32

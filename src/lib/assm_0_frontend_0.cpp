@@ -17,6 +17,10 @@
  */
 #include "assm_0_frontend_0.h"
 
+#include "voxel.h"
+#include "puzzle.h"
+#include "bt_assert.h"
+
 /* helper function to check if a piece an go at a position */
 static bool pieceFits(const voxel_c * piece, const voxel_c * result, const puzzle_c * puz, int x, int y, int z, unsigned int problemNum) {
 

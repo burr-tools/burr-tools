@@ -21,6 +21,7 @@
 #include "Image.h"
 
 #include "../lib/puzzle.h"
+#include "../lib/disassembly.h"
 
 #include <FL/Fl.h>
 

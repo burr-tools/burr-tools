@@ -17,6 +17,9 @@
  */
 #include "ps3dloader.h"
 
+#include "voxel.h"
+#include "puzzle.h"
+
 #include <fstream>
 #include <sstream>
 

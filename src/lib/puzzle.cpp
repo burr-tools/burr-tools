@@ -16,7 +16,12 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "puzzle.h"
+
 #include "assembler.h"
+#include "bt_assert.h"
+#include "voxel.h"
+#include "assembly.h"
+#include "disassembly.h"
 
 #include <stdio.h>
 

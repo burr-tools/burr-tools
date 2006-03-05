@@ -18,8 +18,7 @@
 #ifndef __DISASSMTOMOVES_H__
 #define __DISASSMTOMOVES_H__
 
-#include <../lib/disassembly.h>
-#include <../lib/assembly.h>
+class separation_c;
 
 /* this is an abstract class used to give thet piece positions to the voxel
  * space widget

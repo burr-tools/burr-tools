@@ -31,6 +31,11 @@
 #include "../config.h"
 
 #include "../lib/ps3dloader.h"
+#include "../lib/voxel.h"
+#include "../lib/puzzle.h"
+#include "../lib/assembler_0.h"
+#include "../lib/AssemblyCallbacks.h"
+#include "../lib/disassembly.h"
 
 #ifdef HAVE_FLU
 #include <FLU/Flu_File_Chooser.h>

@@ -19,10 +19,13 @@
 
 #include "lib/puzzle.h"
 #include "lib/assm_0_frontend_0.h"
+#include "lib/assembly.h"
 #include "lib/disassembler_0.h"
+#include "lib/disassembly.h"
 #include "lib/print.h"
 
 #include <fstream>
+#include <iostream>
 
 #include <xmlwrapp/xmlwrapp.h>
 

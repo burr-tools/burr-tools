@@ -19,6 +19,9 @@
 
 #include "pieceColor.h"
 
+#include "../lib/puzzle.h"
+#include "../lib/voxel.h"
+
 #include <FL/fl_draw.h>
 #include <FL/Fl.h>
 
@@ -544,6 +547,11 @@ void PieceVisibility::push(unsigned int block) {
   redraw();
 
   do_callback(RS_CHANGEDSELECTION);
+}
+
+unsigned char PieceVisibility::getVisibility(unsigned int piece) {
+  bt_assert(piece < puzzle->probPieceNumber(problem));
+  return visState[piece];
 }
 
 #define CC_ADD_LENGTH 10

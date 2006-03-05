@@ -20,8 +20,8 @@
 
 #include "assembler_0.h"
 
-#include "voxel.h"
-#include "puzzle.h"
+class puzzle_c;
+
 
 class assm_0_frontend_0_c : public assembler_0_c {
 

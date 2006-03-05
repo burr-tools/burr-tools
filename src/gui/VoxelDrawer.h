@@ -26,10 +26,10 @@
 #include "DisasmToMoves.h"
 #include "VoxelView.h"
 
-#include "../lib/voxel.h"
-#include "../lib/puzzle.h"
-
 #include <vector>
+
+class voxel_c;
+class puzzle_c;
 
 /** this class draws a 3d view of a voxel space.
  * there are 2 modes:

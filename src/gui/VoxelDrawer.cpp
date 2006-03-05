@@ -16,6 +16,13 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "VoxelDrawer.h"
+
+#include "pieceColor.h"
+
+#include "../lib/voxel.h"
+#include "../lib/puzzle.h"
+#include "../lib/assembly.h"
+
 #include <math.h>
 
 #ifdef __APPLE__
@@ -23,12 +30,6 @@
 #else
 #include <GL/gl.h>
 #endif
-
-#include <stdlib.h>
-
-#include "../lib/puzzle.h"
-
-#include "pieceColor.h"
 
 // this is used to shift one side of the cubes so that they slightly differ
 // from the side of the next cube, so that (in case of frames) the sides

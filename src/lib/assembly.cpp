@@ -16,8 +16,10 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "assembly.h"
+
 #include "puzzle.h"
 #include "bt_assert.h"
+#include "voxel.h"
 
 assembly_c::assembly_c(const xml::node & node, unsigned int pieces) {
 

@@ -18,9 +18,6 @@
 #ifndef MainWindow_h
 #define MainWindow_h
 
-#include "../lib/puzzle.h"
-#include "../lib/AssemblyCallbacks.h"
-#include "DisasmToMoves.h"
 #include "WindowWidgets.h"
 #include "BlockList.h"
 
@@ -44,6 +41,9 @@ class VoxelEditGroup;
 class ChangeSize;
 class ToolTab;
 class View3dGroup;
+class puzzle_c;
+class assemblerThread;
+class DisasmToMoves;
 
 class UserInterface : public Fl_Double_Window {
 

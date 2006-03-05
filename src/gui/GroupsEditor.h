@@ -19,10 +19,11 @@
 #define __GROUPS_EDITOR_H__
 
 #include "Fl_Table.h"
-#include "../lib/puzzle.h"
 
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Int_Input.H>
+
+class puzzle_c;
 
 class GroupsEditor : public Fl_Table {
 

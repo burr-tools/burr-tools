@@ -17,6 +17,8 @@
  */
 #include "DisasmToMoves.h"
 
+#include "../lib/disassembly.h"
+
 DisasmToMoves::DisasmToMoves(const separation_c * tr, unsigned int sz) : tree(tr), size(sz) {
   moves = new float[tr->getPieceNumber()*4];
   mv = new bool[tr->getPieceNumber()];

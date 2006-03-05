@@ -21,7 +21,7 @@
 #include <FL/Fl.H>
 #include <FL/Fl_Widget.h>
 
-#include "../lib/puzzle.h"
+class puzzle_c;
 
 /**
  * this widget allows to edit voxel spaces. It shows one Z-Layer of the space as a grid
@@ -121,10 +121,7 @@ public:
   // sets the voxel space to edit, the widget doesn't take over the space
   // the voxelspace must not be deleted while this is set here
   void setPuzzle(puzzle_c * p, unsigned int piecenum);
-  void clearPuzzle() {
-    piecenumber = puzzle->shapeNumber();
-    redraw();
-  }
+  void clearPuzzle();
 
   void setTask(enTask t) { task = t; }
 

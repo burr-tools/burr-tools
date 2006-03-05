@@ -18,12 +18,14 @@
 #ifndef __DISASSEMBLER_0_H__
 #define __DISASSEMBLER_0_H__
 
-#include "voxel.h"
 #include "disassembler.h"
-#include "assembly.h"
-#include "puzzle.h"
-#include "movementcache.h"
-#include "grouping.h"
+#include "voxel.h"
+
+class puzzle_c;
+class grouping_c;
+class movementCache;
+class assembly_c;
+class separation_c;
 
 class node0_c;
 

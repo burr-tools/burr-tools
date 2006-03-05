@@ -21,16 +21,15 @@
 /** @ file
  * Contains the definitions for the puzzle class
  */
-
-#include "voxel.h"
-#include "disassembly.h"
-#include "assembly.h"
 #include "assembler.h"
 
 #include <vector>
-#include <iostream>
 
 #include <xmlwrapp/node.h>
+
+class voxel_c;
+class separation_c;
+class assembly_c;
 
 class problem_c;
 
