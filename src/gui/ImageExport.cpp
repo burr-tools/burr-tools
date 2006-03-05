@@ -20,9 +20,37 @@
 #include "VoxelDrawer.h"
 #include "Image.h"
 
+#include "../lib/puzzle.h"
+
 #include <FL/Fl.h>
 
+/* 2 classes for layoutable widgets */
+class LView3dGroup : public View3dGroup, public layoutable_c {
 
+  public:
+
+    LView3dGroup(int x, int y, int w, int h) : View3dGroup(0, 0, 50, 50), layoutable_c(x, y, w, h) {}
+
+    virtual void getMinSize(int * w, int *h) const {
+      *w = 400;
+      *h = 400;
+    }
+};
+
+class LBlockListGroup : public BlockListGroup, public layoutable_c {
+  public:
+    LBlockListGroup(int x, int y, int w, int h, BlockList * l) : BlockListGroup(0, 0, 50, 50, l), layoutable_c(x, y, w, h) {}
+
+    virtual void getMinSize(int *w, int *h) const {
+      *w = 100;
+      *h = 60;
+    }
+};
+
+/* image info contains the information for one image to be exported
+ * this information is the setup required to produce this image, also
+ * the size
+ */
 class ImageInfo {
 
   public:
@@ -55,98 +83,132 @@ class ImageInfo {
     Image * i2; // the final image
     unsigned int i2aa;
 
+    /* the openGL context to draw to */
+    VoxelView * vv;
+
   public:
 
-    ImageInfo(puzzle_c * p, bool color, unsigned int shape) : setupFunction(SHOW_SINGLE), puzzle(p), i2(0) {
-      i = new Image(600, 200);
-      showColors = color;
-      this->shape = shape;
-    }
+    /* create image info to create a single shape image */
+    ImageInfo(puzzle_c * p, bool color,
+        unsigned int s, VoxelView * v) : setupFunction(SHOW_SINGLE), puzzle(p),
+                                          shape(s), showColors(color),
+                                          i(new Image(600, 200)), i2(0), vv(v) { }
 
-    ImageInfo(puzzle_c * p, bool color, unsigned int prob, unsigned int sol, DisasmToMoves * pos = 0, bool d = false) : setupFunction(SHOW_ASSEMBLY), puzzle(p), i2(0) {
-      i = new Image(600, 200);
-      showColors = color;
-      problem = prob;
-      solution = sol;
-      positions = pos;
-      dim = d;
-    }
+    /* image info for an assembly, if you don't give pos, you will get the standard assembly with
+     * no piece shifted
+     */
+    ImageInfo(puzzle_c * p, bool color, unsigned int prob,
+        unsigned int sol, VoxelView* v,
+        DisasmToMoves * pos = 0, bool d = false) : setupFunction(SHOW_ASSEMBLY), puzzle(p),
+                                                   showColors(color), problem(prob),
+                                                   solution(sol), dim(d), positions(pos),
+                                                   i(new Image(600, 200)),
+                                                   i2(0), vv(v) { }
 
     ~ImageInfo() {
       if (i) delete i;
       if (i2) delete i2;
     }
 
-    void setupContent(VoxelView * vv) {
+    /* set up the VoxelView so that is shows the information for this image */
+    void setupContent(void);
 
-      switch (setupFunction) {
-        case SHOW_SINGLE:
-          vv->showSingleShape(puzzle, shape);
-          vv->showColors(puzzle, showColors);
+    /* preparation to get a tile for the preview image */
+    void preparePreviewImage(void);
 
-          break;
-        case SHOW_ASSEMBLY:
-          vv->showAssembly(puzzle, problem, solution);
-          vv->showColors(puzzle, showColors);
+    /* get a tile of the preview image */
+    bool getPreviewImage(void);
 
-          if (positions) {
-            vv->updatePositions(positions);
-            if (dim)
-              vv->dimStaticPieces(positions);
-          }
-      }
-    }
-
-    void preparePreviewImage(VoxelView * vv) {
-
-      setupContent(vv);
-      i->prepareOpenGlImagePart(vv);
-      glClearColor(1, 1, 1, 0);
-    }
-
-    bool getPreviewImage(void) {
-
-      if (!i->getOpenGlImagePart()) {
-
-        i->transparentize(255, 255, 255);
-        i->minimizeWidth(10);
-
-        return false;
-      } else
-        return true;
-    }
-
+    /* get the width / height ratio of the preview image */
     double ratio(void) { return ((double)(i->w()))/i->h(); }
 
-    void generateImage(unsigned int w, unsigned int h, unsigned char aa) {
-      if (i2)
-        delete i2;
-      i2 = new Image ((h*3)*aa, h*aa);
-      i2aa = aa;
-    }
+    /* start a new image */
+    void generateImage(unsigned int w, unsigned int h, unsigned char aa);
 
+    /* returns true, if the image has been started */
     bool imageStarted(void) { return i2; }
 
-    void prepareImage(VoxelView * vv) {
+    /* prepare for a new tile of the image */
+    void prepareImage(void);
 
-      setupContent(vv);
-      i2->prepareOpenGlImagePart(vv);
-      glClearColor(1, 1, 1, 0);
-    }
-
-    Image * getImage(void) {
-
-      if (!i2->getOpenGlImagePart()) {
-
-        i2->transparentize(255, 255, 255);
-        i2->minimizeWidth(i->h()/60, i2aa);
-        i2->scaleDown(i2aa);
-
-        return i2;
-      } else
-        return 0;
-    }
+    /* get a new tile for the image */
+    Image * getImage(void);
 };
+
+void ImageInfo::setupContent(void) {
+
+  switch (setupFunction) {
+    case SHOW_SINGLE:
+      vv->showSingleShape(puzzle, shape);
+      vv->showColors(puzzle, showColors);
+
+      break;
+    case SHOW_ASSEMBLY:
+      vv->showAssembly(puzzle, problem, solution);
+      vv->showColors(puzzle, showColors);
+
+      if (positions) {
+        vv->updatePositions(positions);
+        if (dim)
+          vv->dimStaticPieces(positions);
+      }
+  }
+}
+
+/* preparation to get a tile for the preview image */
+void ImageInfo::preparePreviewImage(void) {
+
+  setupContent();
+  i->prepareOpenGlImagePart(vv);
+  glClearColor(1, 1, 1, 0);
+}
+
+/* get a tile of the preview image */
+bool ImageInfo::getPreviewImage(void) {
+
+  if (!i->getOpenGlImagePart()) {
+
+    i->transparentize(255, 255, 255);
+    i->minimizeWidth(10);
+
+    return false;
+  } else
+    return true;
+}
+
+/* start a new image */
+void ImageInfo::generateImage(unsigned int w, unsigned int h, unsigned char aa) {
+  if (i2)
+    delete i2;
+  i2 = new Image ((h*3)*aa, h*aa);
+  i2aa = aa;
+}
+
+/* prepare for a new tile of the image */
+void ImageInfo::prepareImage(void) {
+
+  setupContent();
+  i2->prepareOpenGlImagePart(vv);
+  glClearColor(1, 1, 1, 0);
+}
+
+/* get a new tile for the image */
+Image * ImageInfo::getImage(void) {
+
+  if (!i2->getOpenGlImagePart()) {
+
+    i2->transparentize(255, 255, 255);
+    i2->minimizeWidth(i->h()/60, i2aa);
+    i2->scaleDown(i2aa);
+
+    return i2;
+  } else
+    return 0;
+}
+
+
+
+
 
 static void cb_ImageExportAbort_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Abort(); }
 void ImageExportWindow::cb_Abort(void) {
@@ -163,7 +225,7 @@ bool ImageExportWindow::PreDraw(void) {
       snprintf(statText, 50, "create Preview Image %i / %i", im, images.size());
       status->label(statText);
 
-      images[im]->preparePreviewImage(view3D->getView());
+      images[im]->preparePreviewImage();
 
       return true;
 
@@ -187,7 +249,7 @@ bool ImageExportWindow::PreDraw(void) {
         images[im]->generateImage(w, pageHeight / linesPerPage, aa);
       }
 
-      images[im]->prepareImage(view3D->getView());
+      images[im]->prepareImage();
 
       return true;
   }
@@ -358,11 +420,11 @@ void ImageExportWindow::cb_Export(void) {
 
   if (ExpShape->value()) {
 
-    images.push_back(new ImageInfo(puzzle, ColConst->value(), ShapeSelect->getSelection()));
+    images.push_back(new ImageInfo(puzzle, ColConst->value(), ShapeSelect->getSelection(), view3D->getView()));
 
   } else if (ExpAssembly->value()) {
 
-    images.push_back(new ImageInfo(puzzle, ColConst->value(), ProblemSelect->getSelection(), 0));
+    images.push_back(new ImageInfo(puzzle, ColConst->value(), ProblemSelect->getSelection(), 0, view3D->getView()));
 
   } else if (ExpSolution->value()) {
 
@@ -375,17 +437,17 @@ void ImageExportWindow::cb_Export(void) {
     for (unsigned int step = 0; step < t->sumMoves(); step++) {
       DisasmToMoves * dtm = new DisasmToMoves(t, 20);
       dtm->setStep(step);
-      images.push_back(new ImageInfo(puzzle, ColConst->value(), prob, s, dtm, DimStatic->value()));
+      images.push_back(new ImageInfo(puzzle, ColConst->value(), prob, s, view3D->getView(), dtm, DimStatic->value()));
     }
 
   } else if (ExpProblem->value()) {
     // generate an image for each piece in the problem
     unsigned int prob = ProblemSelect->getSelection();
 
-    images.push_back(new ImageInfo(puzzle, ColConst->value(), puzzle->probGetResult(prob)));
+    images.push_back(new ImageInfo(puzzle, ColConst->value(), puzzle->probGetResult(prob), view3D->getView()));
 
     for (unsigned int p = 0; p < puzzle->probShapeNumber(prob); p++)
-      images.push_back(new ImageInfo(puzzle, ColConst->value(), puzzle->probGetShape(prob, p)));
+      images.push_back(new ImageInfo(puzzle, ColConst->value(), puzzle->probGetShape(prob, p), view3D->getView()));
 
   } else
 

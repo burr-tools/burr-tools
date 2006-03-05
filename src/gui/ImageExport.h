@@ -44,42 +44,23 @@
 #include "WindowWidgets.h"
 #include "VoxelView.h"
 
-#include "../lib/puzzle.h"
-
 #include <vector>
 
-class LView3dGroup : public View3dGroup, public layoutable_c {
-
-  public:
-
-    LView3dGroup(int x, int y, int w, int h) : View3dGroup(0, 0, 50, 50), layoutable_c(x, y, w, h) {}
-
-    virtual void getMinSize(int * w, int *h) const {
-      *w = 400;
-      *h = 400;
-    }
-};
-
-class LBlockListGroup : public BlockListGroup, public layoutable_c {
-  public:
-    LBlockListGroup(int x, int y, int w, int h, BlockList * l) : BlockListGroup(0, 0, 50, 50, l), layoutable_c(x, y, w, h) {}
-
-    virtual void getMinSize(int *w, int *h) const {
-      *w = 100;
-      *h = 60;
-    }
-};
-
+class LView3dGroup;
+class LBlockListGroup;
 class ImageInfo;
 class Image;
+class puzzle_c;
 
 class ImageExportWindow : public LFl_Double_Window, public VoxelViewCallbacks {
 
   private:
 
+    /* the puzzle that is going to be exported */
     puzzle_c * puzzle;
-    LView3dGroup *view3D;
 
+    /* The different window elements */
+    LView3dGroup *view3D;
     LFl_Int_Input *SizePixelX, *SizePixelY;
     LFl_Radio_Button *AA1, *AA2, *AA3, *AA4, *AA5;
     LFl_Radio_Button *BgWhite, *BgTransp;
@@ -95,17 +76,22 @@ class ImageExportWindow : public LFl_Double_Window, public VoxelViewCallbacks {
     PieceSelector * ShapeSelect;
     ProblemSelector * ProblemSelect;
 
+    /* true, when there is an export in execution */
     bool working;
 
+    /* this vector is set up at the beginning of an export with
+     * all the images that need to be in the target image
+     */
     std::vector<ImageInfo*> images;
 
-    unsigned int state;
-    Image *i;
-    unsigned int curWidth;
-    unsigned int curLine;
-    unsigned int curPage;
-    unsigned int im;
-    unsigned int linesPerPage;
+    /* some internal variables for the image export */
+    unsigned int state;        /* what is currently done, 0: preview, 1: export */
+    Image *i;                  /* current page that is worked on */
+    unsigned int curWidth;     /* how much of the current line is filled */
+    unsigned int curLine;      /* current line number */
+    unsigned int curPage;      /* number of the current page */
+    unsigned int im;           /* number of the image int images that is worked on */
+    unsigned int linesPerPage; /* how many lines must be on a page to fit everything on it */
 
     void nextImage(bool finish);
 
@@ -113,17 +99,22 @@ class ImageExportWindow : public LFl_Double_Window, public VoxelViewCallbacks {
 
     ImageExportWindow(puzzle_c * p);
 
+    /* returns true, when there is currently a image export in progres */
     bool isWorking(void) { return working; }
 
+    /* this must be called cyclically, this updates the buttons activation
+     * status and also it sets up a new redraw cycle, and thus getting the next tile
+     * so when isWorking returns true, call as fast as possible, otherwise call
+     * from time to time
+     */
     void update(void);
-    void exportImage(void);
 
     void cb_Abort(void);
     void cb_Export(void);
     void cb_Update3DView(void);
     void cb_SzUpdate(void);
 
+    /* the 2 functions that do the export are stored inside the callback of the voxelView */
     virtual bool PreDraw(void);
     virtual void PostDraw(void);
-
 };
