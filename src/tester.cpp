@@ -124,6 +124,7 @@ unsigned long long foundSym[200] = {
 0x000000800021LL,
 0x000000844821LL,
 0x000000AAA5A5LL,
+0x000000FFFFFFLL,
 0x000001000001LL,
 0x000004000001LL,
 0x000005000005LL,
@@ -190,14 +191,14 @@ unsigned long long foundSym[200] = {
 0xAAA5A5AAA5A5LL,
 0xFFFFFFFFFFFFLL,
 
-  0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 
-unsigned int syms = 91;
+unsigned int syms = 92;
 
 const char * longlong2string(unsigned long long s) {
   char hex[17] = "0123456789ABCDEF";
@@ -927,9 +928,9 @@ int main(int argv, char* args[]) {
 //  grow(argv, args);
 //  solve(argv, agrs);
 //  findsymmetries();
-//  outputMinimumSymmetries();
+  outputMinimumSymmetries();
   outputCompleteSymmetries();
-//  makeSymmetryTree(0, 0);
+  makeSymmetryTree(0, 0);
 
 //  savetoXML(argv, args);
 
