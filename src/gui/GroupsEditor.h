@@ -25,18 +25,33 @@
 
 class puzzle_c;
 
+/* this is the groups editor table
+ */
 class GroupsEditor : public Fl_Table {
 
+  /* the puzzle and the problem to edit */
   puzzle_c * puzzle;
   unsigned int prob;
 
+  /* the input line where the user inputs the value
+   * it is places over the cell the user clicks onto
+   */
   Fl_Int_Input* input;
+
+  /* the position inside the table where the imput line is
+   */
   int editShape, editGroup;
 
+  /* the current maximum group number
+   */
   unsigned int maxGroup;
 
+  /* was something changed? */
   bool changed;
 
+  /* this is the virtual function called by the table widget to
+   * draw a single cell
+   */
   void draw_cell(TableContext context, int r = 0, int c = 0,
                  int x = 0, int y = 0, int w = 0, int h = 0);
 
@@ -44,6 +59,8 @@ public:
 
   GroupsEditor(int x, int y, int w, int h, puzzle_c * puzzle, unsigned int problem);
 
+  /* add a group to the puzzle and a column to the table
+   */
   void addGroup(void);
 
   void cb_input(void);
@@ -51,10 +68,14 @@ public:
 
   bool getChanged(void) { return changed; }
 
+  /* take over the currently edited value (if there is one) and
+   * close the edit line
+   */
   void finishEdit(void);
 
 };
 
+/* the window that contins the group edit table */
 class groupsEditorWindow : public Fl_Double_Window {
 
   GroupsEditor * tab;
@@ -68,6 +89,7 @@ public:
 
   bool changed(void) { return tab->getChanged(); }
 
+  /* finish editing and close window */
   void hide(void);
 };
 

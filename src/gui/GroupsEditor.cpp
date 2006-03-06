@@ -24,6 +24,7 @@
 
 #include <FL/fl_draw.h>
 
+/* draw a cell of the table */
 void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, int w, int h) {
 
   switch(context) {
@@ -35,10 +36,18 @@ void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, i
   case CONTEXT_COL_HEADER:
     fl_push_clip(x, y, w, h);
     {
+      /* draw the header */
+
+      /* clear the background and paint a raised box */
       fl_draw_box(FL_THIN_UP_BOX, x, y, w, h, color());
 
+      /* create the text of the cell */
       static char s[40];
 
+      /* first column is the shape columns
+       * second contains the number of that shape that is in the puzzle
+       * the other columns are group golumns
+       */
       if (c == 0)
         snprintf(s, 40, "Shape");
       else if (c == 1)
@@ -46,6 +55,7 @@ void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, i
       else
         snprintf(s, 40, "Gr %i", c-1);
 
+      /* output the text */
       fl_color(FL_BLACK);
       fl_draw(s, x, y, w, h, FL_ALIGN_CENTER);
 
@@ -60,58 +70,93 @@ void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, i
 
     fl_push_clip(x, y, w, h);
     {
+      /* this will contain the text to display */
       static char s[40];
 
-      int cnt = -1;
+      /* this contains what to draw, 0: empty cell
+       * 1: the string s inside a colored cell
+       */
+      int type = 0;
 
       if (c == 0) {
 
-        cnt = puzzle->probGetShape(prob, r);
-        if (puzzle->getShape(cnt)->getName())
-          snprintf(s, 40, " S%i - %s", cnt+1, puzzle->getShape(cnt)->getName());
+        /* the shape column, find out the shape number and display that one */
+
+        type = 1;
+
+        int num = puzzle->probGetShape(prob, r);
+        if (puzzle->getShape(num)->getName())
+          snprintf(s, 40, " S%i - %s", num+1, puzzle->getShape(num)->getName());
         else
-          snprintf(s, 40, " S%i", cnt+1);
+          snprintf(s, 40, " S%i", num+1);
 
       } else if (c == 1) {
-        cnt = puzzle->probGetShapeCount(prob, r);
-        snprintf(s, 40, "%i", cnt);
+
+        /* the 2nd column, display the count for this shape */
+
+        type = 1;
+
+        snprintf(s, 40, "%i", puzzle->probGetShapeCount(prob, r));
 
       } else {
+
+        /* the group columns, only display, when an entry for this
+         * group exists
+         */
 
         for (unsigned int j = 0; j < puzzle->probGetShapeGroupNumber(prob, r); j++)
-          if (puzzle->probGetShapeGroup(prob, r, j) == (c - 1))
-            cnt = puzzle->probGetShapeGroupCount(prob, r, j);
-        snprintf(s, 40, "%i", cnt);
+          if (puzzle->probGetShapeGroup(prob, r, j) == (c - 1)) {
+            type = 1;
+            snprintf(s, 40, "%i", puzzle->probGetShapeGroupCount(prob, r, j));
+            break;
+          }
 
       }
 
-      if (cnt >= 0) {
+      /* draw the cell */
+      switch (type) {
+        case 0:
 
-        int p = puzzle->probGetShape(prob, r);
-        unsigned char r, g, b;
-        r = (int)(255*pieceColorR(p));
-        g = (int)(255*pieceColorG(p));
-        b = (int)(255*pieceColorB(p));
+          /* an empty cell */
+          fl_color(color());
+          fl_rectf(x, y, w, h);
 
-        fl_color(r, g, b);
-        fl_rectf(x, y, w, h);
-        if ((int)3*r + 6*g + 1*b > 1275)
-          fl_color(0, 0, 0);
-        else
-          fl_color(255, 255, 255);
+          break;
 
-        if (c == 0)
-          fl_draw(s, x, y, w, h, FL_ALIGN_LEFT);
-        else
-          fl_draw(s, x, y, w, h, FL_ALIGN_CENTER);
-      } else {
-        fl_color(color());
-        fl_rectf(x, y, w, h);
+        case 1:
+
+          /* a cell with a background corresponding with the shape color */
+          {
+            /* get the color for the cell */
+            int p = puzzle->probGetShape(prob, r);
+            unsigned char r, g, b;
+            r = (int)(255*pieceColorR(p));
+            g = (int)(255*pieceColorG(p));
+            b = (int)(255*pieceColorB(p));
+
+            /* draw background */
+            fl_color(r, g, b);
+            fl_rectf(x, y, w, h);
+            if ((int)3*r + 6*g + 1*b > 1275)
+              fl_color(0, 0, 0);
+            else
+              fl_color(255, 255, 255);
+
+            /* draw the text */
+            if (c == 0)
+              fl_draw(s, x, y, w, h, FL_ALIGN_LEFT);
+            else
+              fl_draw(s, x, y, w, h, FL_ALIGN_CENTER);
+          }
+
+          break;
       }
 
+      /* draw a black frame around the cell to make it visible */
       fl_color(FL_BLACK);
       fl_rect(x, y, w, h);
     }
+
     fl_pop_clip();
     return;
 
@@ -122,18 +167,22 @@ void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, i
   }
 }
 
+/* called when the input line has been completed */
 static void cb_input_stub(Fl_Widget*, void* v) { ((GroupsEditor*)v)->cb_input(); }
 void GroupsEditor::cb_input(void) {
 
+  /* we have either changed the count for the shape, or the group count */
   if (editGroup == 0)
     puzzle->probSetShapeCount(prob, editShape, atoi(input->value()));
   else
     puzzle->probSetShapeGroup(prob, editShape, editGroup, atoi(input->value()));
 
+  /* hide the edit line */
   input->hide();
   changed = true;
 }
 
+/* handle mouse events for the tables */
 static void cb_tab_stub(Fl_Widget*, void *v) { ((GroupsEditor*)v)->cb_tab(); }
 void GroupsEditor::cb_tab(void)
 {
@@ -144,18 +193,24 @@ void GroupsEditor::cb_tab(void)
   switch ( context ) {
   case CONTEXT_CELL:
     {
+      /* no editing in column 0 */
       if (col == 0) return;
+
+      /* if there is an active edit line, finish it */
       if (input->visible()) input->do_callback();
 
       editShape = row;
       editGroup = col-1;
 
+      /* calculate the cell the user has clicked into */
       int x, y, w, h;
 
       find_cell(CONTEXT_CELL, row, col, x, y, w, h);
 
+      /* place the input line on that cell */
       input->resize(x, y, w, h);
 
+      /* the text that should be initially in the input line */
       char s[30];
       int count = 0;
 
@@ -186,6 +241,7 @@ GroupsEditor::GroupsEditor(int x, int y, int w, int h, puzzle_c * puzzle, unsign
 
   rows(puzzle->probShapeNumber(problem));
 
+  /* find out the number of groups */
   maxGroup = 0;
 
   for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++)
@@ -197,6 +253,7 @@ GroupsEditor::GroupsEditor(int x, int y, int w, int h, puzzle_c * puzzle, unsign
   col_header(1);
   row_height_all(20);
 
+  /* set the widths of the columns */
   col_width(0, 150);
   col_width(1, 35);
   for (unsigned int i = 0; i < maxGroup; i++)
@@ -205,6 +262,7 @@ GroupsEditor::GroupsEditor(int x, int y, int w, int h, puzzle_c * puzzle, unsign
   when(FL_WHEN_RELEASE);
   callback(cb_tab_stub, this);
 
+  /* initialize the input line that is going to be used when asking for values */
   input = new Fl_Int_Input(0, 0, 0, 0);
   input->hide();
   input->when(FL_WHEN_ENTER_KEY_ALWAYS);
@@ -239,6 +297,7 @@ void groupsEditorWindow::cb_CloseWindow(void) {
   hide();
 }
 
+/* when hiding the window, first close active editing tasks */
 void groupsEditorWindow::hide(void) {
   tab->finishEdit();
   Fl_Double_Window::hide();
