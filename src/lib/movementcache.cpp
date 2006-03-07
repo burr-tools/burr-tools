@@ -38,7 +38,7 @@ static int max(int a, int b) { if (a > b) return a; else return b; }
 /* double the hash table size and copy the old elements into
  * the new table
  */
-void movementCache::rehash(void) {
+void movementCache_c::rehash(void) {
   unsigned int oldSize = tableSize;
 
   /* the new size, roughly twice the old size but odd */
@@ -68,9 +68,9 @@ void movementCache::rehash(void) {
 }
 
 /* calculate the required movement possibilities */
-movementCache::entry * movementCache::calcValues(unsigned char s1, unsigned char t1,
-                                                 unsigned int s2, unsigned int t2,
-                                                 int dx, int dy, int dz) {
+movementCache_c::entry * movementCache_c::calcValues(unsigned char s1, unsigned char t1,
+                                                     unsigned int s2, unsigned int t2,
+                                                     int dx, int dy, int dz) {
 
   /* first get the shapes, create them when they are not available */
   const voxel_c * sh1 = shapes[s1][t1];
@@ -197,7 +197,7 @@ movementCache::entry * movementCache::calcValues(unsigned char s1, unsigned char
   return e;
 }
 
-movementCache::movementCache(const puzzle_c * puzzle, unsigned int problem) {
+movementCache_c::movementCache_c(const puzzle_c * puzzle, unsigned int problem) {
 
   /* initial table */
   tableSize = 101;
@@ -229,7 +229,7 @@ movementCache::movementCache(const puzzle_c * puzzle, unsigned int problem) {
       pieces[pos++] = s;
 }
 
-movementCache::~movementCache() {
+movementCache_c::~movementCache_c() {
 
   /* delete the hash nodes */
   for (unsigned int i = 0; i < tableSize; i++)
@@ -257,7 +257,7 @@ movementCache::~movementCache() {
   delete [] pieces;
 }
 
-void movementCache::getValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2,
+void movementCache_c::getValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2,
          int * mx, int * my, int * mz) {
 
   /* find out the shapes that the pieces have */
@@ -300,7 +300,7 @@ void movementCache::getValue(int dx, int dy, int dz, unsigned char t1, unsigned 
   *mz = e->mz;
 }
 
-void movementCache::removePieceInfo(unsigned int s) {
+void movementCache_c::removePieceInfo(unsigned int s) {
   /* go through the complete cache and free entries that contain the piece */
 
   for (unsigned int i = 0; i < tableSize; i++) {

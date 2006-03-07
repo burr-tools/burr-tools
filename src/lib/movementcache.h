@@ -25,7 +25,7 @@ class puzzle_c;
  * because that calculation is relatively expensive it caches
  * that value. Thats the reason for the name
  */
-class movementCache {
+class movementCache_c {
 
   /* values are saved within a hash table, this is the
    * entry for the table
@@ -83,9 +83,9 @@ public:
   /* create the cache, the cache is then fixed to the puzzle and the problem, it can
    * and should be reused to analyse all assemblies found but can not be used for another puzzle
    */
-  movementCache(const puzzle_c * puz, unsigned int problem);
+  movementCache_c(const puzzle_c * puz, unsigned int problem);
 
-  ~movementCache(void);
+  ~movementCache_c(void);
 
   /* return the values, that are:
    * how far can the 2nd piece be ove in positive x, y and z direction, when

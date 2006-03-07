@@ -23,7 +23,7 @@
 
 class puzzle_c;
 class grouping_c;
-class movementCache;
+class movementCache_c;
 class assembly_c;
 class separation_c;
 
@@ -57,7 +57,7 @@ private:
   int * matrix[3];
 
   /* this is the cache with the already calculated movements */
-  movementCache * cache;
+  movementCache_c * cache;
 
   /* here we can group pieces together */
   grouping_c * groups;

@@ -751,7 +751,7 @@ disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) :
   for (int j = 0; j < 3; j++)
     matrix[j] = new int[piecenumber * piecenumber];
 
-  cache = new movementCache(puzzle, problem);
+  cache = new movementCache_c(puzzle, problem);
 
   /* initialize the grouping class */
   groups = new grouping_c();
