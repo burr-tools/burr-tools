@@ -93,6 +93,8 @@ PlacementBrowser::PlacementBrowser(puzzle_c * p, unsigned int prob) :
 
   (new FlatButton(5, WINDOWSIZE_Y - 25, WINDOWSIZE_X - 10, 20, "Close", "Close the window"))->callback(cb_close_stub, this);
 
+  label("Placement Browser");
+
   end();
 
   if ((puzzle->probGetAssembler(problem)->getFinished() > 0) &&
