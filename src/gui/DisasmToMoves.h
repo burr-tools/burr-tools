@@ -74,7 +74,7 @@ public:
   /* sets the moves for the step, if the value is not integer you
    * get a intermediate of the necessary move (for animation)
    */
-  void setStep(float step);
+  void setStep(float step, bool fadeOut = true);
 
   /* as the functions are virtual it's no use to declare them inline,
    * speed is of no importance anyway

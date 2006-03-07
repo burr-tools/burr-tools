@@ -828,7 +828,7 @@ static void cb_SolutionAnim_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->c
 void UserInterface::cb_SolutionAnim(Fl_Value_Slider* o) {
   o->take_focus();
   if (disassemble) {
-    disassemble->setStep(o->value());
+    disassemble->setStep(o->value(), config.useBlendedRemoving());
     View3D->updatePositions(disassemble);
   }
 }
@@ -1314,7 +1314,7 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
 
       disassemble = new DisasmToMoves(puzzle->probGetDisassembly(prob, num),
                                       2*puzzle->probGetResultShape(prob)->getBiggestDimension());
-      disassemble->setStep(SolutionAnim->value());
+      disassemble->setStep(SolutionAnim->value(), config.useBlendedRemoving());
 
       View3D->showAssembly(puzzle, prob, num);
       View3D->updatePositions(disassemble);

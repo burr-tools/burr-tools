@@ -40,6 +40,9 @@ public:
   bool useRubberband(void) { return i_use_rubberband; }
   void useRubberband(bool val) { i_use_rubberband = val; }
 
+  bool useBlendedRemoving(void) { return i_use_blendedRemoving; }
+  void useBlendedRemoving(bool val) { i_use_blendedRemoving = val; }
+
   int windowPosX(void) { return i_window_pos_x; }
   int windowPosY(void) { return i_window_pos_y; }
   int windowPosW(void) { return i_window_pos_w; }
@@ -80,6 +83,7 @@ private:
   bool i_use_tooltips;
   bool i_use_lightning;
   bool i_use_rubberband;
+  bool i_use_blendedRemoving;
 
   int i_window_pos_x;
   int i_window_pos_y;

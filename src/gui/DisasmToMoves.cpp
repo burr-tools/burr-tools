@@ -29,7 +29,7 @@ DisasmToMoves::~DisasmToMoves() {
   delete [] mv;
 }
 
-void DisasmToMoves::setStep(float step) {
+void DisasmToMoves::setStep(float step, bool fadeOut) {
 
   int s = int(step);
   float frac = step - s;
@@ -60,6 +60,11 @@ void DisasmToMoves::setStep(float step) {
       moves[4*i+2] = (1-frac)*moves[4*i+2] + frac*moves2[4*i+2];
       moves[4*i+3] = (1-frac)*moves[4*i+3] + frac*moves2[4*i+3];
     }
+
+    if (!fadeOut)
+      for (unsigned int i = 0; i < tree->getPieceNumber(); i++)
+        if (moves[4*i+3] > 0) moves[4*i+3] = 1;
+
   }
 
   delete [] moves2;
