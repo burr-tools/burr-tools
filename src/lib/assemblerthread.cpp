@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "AssemblyCallbacks.h"
+#include "assemblerthread.h"
 
 #include "disassembly.h"
 #include "assm_0_frontend_0.h"

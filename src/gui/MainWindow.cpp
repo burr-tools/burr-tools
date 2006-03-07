@@ -34,7 +34,7 @@
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
 #include "../lib/assembler_0.h"
-#include "../lib/AssemblyCallbacks.h"
+#include "../lib/assemblerthread.h"
 #include "../lib/disassembly.h"
 
 #ifdef HAVE_FLU

@@ -16,7 +16,7 @@ libburr_a_SOURCES=disassembler.h assembler.h \
                   burrgrower.h burrgrower.cpp \
                   pieceGenerator.h pieceGenerator.cpp \
                   symmetries.h symmetries.cpp \
-                  AssemblyCallbacks.cpp AssemblyCallbacks.h \
+                  assemblerthread.cpp assemblerthread.h \
                   print.h print.cpp \
                   ps3dloader.h ps3dloader.cpp \
                   movementcache.h movementcache.cpp \
