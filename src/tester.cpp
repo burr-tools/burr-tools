@@ -22,7 +22,7 @@
 #include "lib/disassembler_0.h"
 
 #include "lib/burrgrower.h"
-#include "lib/pieceGenerator.h"
+#include "lib/piecegenerator.h"
 
 #include "lib/print.h"
 

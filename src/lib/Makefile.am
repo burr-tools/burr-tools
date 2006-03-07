@@ -14,7 +14,7 @@ libburr_a_SOURCES=disassembler.h assembler.h \
                   puzzle.cpp puzzle.h \
                   voxel.cpp voxel.h \
                   burrgrower.h burrgrower.cpp \
-                  pieceGenerator.h pieceGenerator.cpp \
+                  piecegenerator.h piecegenerator.cpp \
                   symmetries.h symmetries.cpp \
                   assemblerthread.cpp assemblerthread.h \
                   print.h print.cpp \
