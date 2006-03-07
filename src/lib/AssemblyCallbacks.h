@@ -28,7 +28,7 @@ class puzzle_c;
  * be used to continue an already started solution, so that you can save you results
  * and continue later on
  */
-class assemblerThread : public assembler_cb {
+class assemblerThread_c : public assembler_cb {
 
   unsigned int action;
   unsigned int _solutionAction;
@@ -60,10 +60,10 @@ public:
   };
 
   // create all the necessary data structures to start the thread later on
-  assemblerThread(puzzle_c * puz, unsigned int problemNum, unsigned int solAction, bool reduce = false);
+  assemblerThread_c(puzzle_c * puz, unsigned int problemNum, unsigned int solAction, bool reduce = false);
 
   // stop and exit
-  virtual ~assemblerThread(void);
+  virtual ~assemblerThread_c(void);
 
   // the callbacl
   bool assembly(assembly_c* a);

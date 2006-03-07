@@ -42,7 +42,7 @@ class ChangeSize;
 class ToolTab;
 class View3dGroup;
 class puzzle_c;
-class assemblerThread;
+class assemblerThread_c;
 class DisasmToMoves;
 
 class UserInterface : public Fl_Double_Window {
@@ -50,7 +50,7 @@ class UserInterface : public Fl_Double_Window {
   puzzle_c * puzzle;
   char * fname;
   DisasmToMoves * disassemble;
-  assemblerThread *assmThread;
+  assemblerThread_c *assmThread;
   bool SolutionEmpty;
   bool changed;
   int editSymmetries;

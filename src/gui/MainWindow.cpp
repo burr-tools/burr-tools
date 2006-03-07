@@ -788,14 +788,14 @@ void UserInterface::cb_BtnCont(void) {
 
   if (SolveDisasm->value() != 0)
     if (JustCount->value() != 0)
-      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_COUNT_DISASM, true);
+      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_COUNT_DISASM, true);
     else
-      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_DISASM, true);
+      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_DISASM, true);
   else
     if (JustCount->value() != 0)
-      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_COUNT_ASM, true);
+      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_COUNT_ASM, true);
     else
-      assmThread = new assemblerThread(puzzle, prob, assemblerThread::SOL_SAVE_ASM, true);
+      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_SAVE_ASM, true);
 
   if (!assmThread->start()) {
     fl_message("Could not start the solving process, the thread creation failed, sorry.");
@@ -1689,10 +1689,10 @@ void UserInterface::updateInterface(void) {
     if (assmThread) {
 
       switch(assmThread->currentAction()) {
-      case assemblerThread::ACT_PREPARATION:
+      case assemblerThread_c::ACT_PREPARATION:
         OutputActivity->value("prepare");
         break;
-      case assemblerThread::ACT_REDUCE:
+      case assemblerThread_c::ACT_REDUCE:
         if (puzzle->probGetAssembler(prob)) {
           char tmp[20];
           snprintf(tmp, 20, "optimize piece %i", puzzle->probGetAssembler(prob)->getReducePiece());
@@ -1703,22 +1703,22 @@ void UserInterface::updateInterface(void) {
           OutputActivity->value(tmp);
         }
         break;
-      case assemblerThread::ACT_ASSEMBLING:
+      case assemblerThread_c::ACT_ASSEMBLING:
         OutputActivity->value("assemble");
         break;
-      case assemblerThread::ACT_DISASSEMBLING:
+      case assemblerThread_c::ACT_DISASSEMBLING:
         OutputActivity->value("disassemble");
         break;
-      case assemblerThread::ACT_PAUSING:
+      case assemblerThread_c::ACT_PAUSING:
         OutputActivity->value("pause");
         break;
-      case assemblerThread::ACT_FINISHED:
+      case assemblerThread_c::ACT_FINISHED:
         OutputActivity->value("finished");
         break;
-      case assemblerThread::ACT_WAIT_TO_STOP:
+      case assemblerThread_c::ACT_WAIT_TO_STOP:
         OutputActivity->value("please wait");
         break;
-      case assemblerThread::ACT_ERROR:
+      case assemblerThread_c::ACT_ERROR:
         OutputActivity->value("error");
         break;
       }
@@ -1809,13 +1809,13 @@ void UserInterface::update(void) {
     }
 
     // check, if the thread has stopped, if so then delete the object
-    if ((assmThread->currentAction() == assemblerThread::ACT_PAUSING) ||
-        (assmThread->currentAction() == assemblerThread::ACT_FINISHED)) {
+    if ((assmThread->currentAction() == assemblerThread_c::ACT_PAUSING) ||
+        (assmThread->currentAction() == assemblerThread_c::ACT_FINISHED)) {
 
       delete assmThread;
       assmThread = 0;
 
-    } else if (assmThread->currentAction() == assemblerThread::ACT_ERROR) {
+    } else if (assmThread->currentAction() == assemblerThread_c::ACT_ERROR) {
 
       unsigned int selectShape = 0xFFFFFFFF;
 

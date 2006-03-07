@@ -34,7 +34,7 @@ unsigned long __stdcall start_th(void * c)
 void* start_th(void * c)
 #endif
 {
-  assemblerThread * p = (assemblerThread*)c;
+  assemblerThread_c * p = (assemblerThread_c*)c;
 
   try {
 
@@ -48,7 +48,7 @@ void* start_th(void * c)
 
       /* otherwise we have to chreate a new one
        */
-      p->action = assemblerThread::ACT_PREPARATION;
+      p->action = assemblerThread_c::ACT_PREPARATION;
       p->assm = new assm_0_frontend_0_c();
 
       p->errState = p->assm->createMatrix(p->puzzle, p->prob);
@@ -56,7 +56,7 @@ void* start_th(void * c)
 
         p->errParam = p->assm->getErrorsParam();
 
-        p->action = assemblerThread::ACT_ERROR;
+        p->action = assemblerThread_c::ACT_ERROR;
 
         delete p->assm;
         return 0;
@@ -65,7 +65,7 @@ void* start_th(void * c)
       if (p->_reduce) {
 
         if (!p->stopPressed)
-          p->action = assemblerThread::ACT_REDUCE;
+          p->action = assemblerThread_c::ACT_REDUCE;
 
         p->assm->reduce();
       }
@@ -77,24 +77,24 @@ void* start_th(void * c)
        */
       p->errState = p->puzzle->probSetAssembler(p->prob, p->assm);
       if (p->errState != assm_0_frontend_0_c::ERR_NONE) {
-        p->action = assemblerThread::ACT_ERROR;
+        p->action = assemblerThread_c::ACT_ERROR;
         return 0;
       }
     }
 
     if (!p->stopPressed) {
 
-      p->action = assemblerThread::ACT_ASSEMBLING;
+      p->action = assemblerThread_c::ACT_ASSEMBLING;
       p->assm->assemble(p);
 
       if (p->assm->getFinished() >= 1) {
-        p->action = assemblerThread::ACT_FINISHED;
+        p->action = assemblerThread_c::ACT_FINISHED;
         p->puzzle->probFinishedSolving(p->prob);
       } else
-        p->action = assemblerThread::ACT_PAUSING;
+        p->action = assemblerThread_c::ACT_PAUSING;
 
     } else
-      p->action = assemblerThread::ACT_PAUSING;
+      p->action = assemblerThread_c::ACT_PAUSING;
 
     p->puzzle->probAddTime(p->prob, time(0)-p->startTime);
   }
@@ -102,7 +102,7 @@ void* start_th(void * c)
   catch (assert_exception *a) {
 
     p->ae = a;
-    p->action = assemblerThread::ACT_ERROR;
+    p->action = assemblerThread_c::ACT_ERROR;
     if (p->puzzle->probGetAssembler(p->prob))
       p->puzzle->probRemoveAllSolutions(p->prob);
   }
@@ -110,7 +110,7 @@ void* start_th(void * c)
   return 0;
 }
 
-assemblerThread::assemblerThread(puzzle_c * puz, unsigned int problemNum, unsigned int solAction, bool red) :
+assemblerThread_c::assemblerThread_c(puzzle_c * puz, unsigned int problemNum, unsigned int solAction, bool red) :
 action(ACT_PREPARATION),
 _solutionAction(solAction),
 puzzle(puz),
@@ -121,7 +121,7 @@ ae(0)
 {
 }
 
-assemblerThread::~assemblerThread(void) {
+assemblerThread_c::~assemblerThread_c(void) {
 
   if (puzzle->probGetAssembler(prob)) {
 
@@ -136,7 +136,7 @@ assemblerThread::~assemblerThread(void) {
   }
 }
 
-bool assemblerThread::assembly(assembly_c * a) {
+bool assemblerThread_c::assembly(assembly_c * a) {
 
   puzzle->probIncNumAssemblies(prob);
 
@@ -196,7 +196,7 @@ bool assemblerThread::assembly(assembly_c * a) {
   return true;
 }
 
-void assemblerThread::stop(void) {
+void assemblerThread_c::stop(void) {
   action = ACT_WAIT_TO_STOP;
 
   if (puzzle->probGetAssembler(prob))
@@ -205,7 +205,7 @@ void assemblerThread::stop(void) {
   stopPressed = true;
 }
 
-bool assemblerThread::start(void) {
+bool assemblerThread_c::start(void) {
 
   stopPressed = false;
   startTime = time(0);
@@ -219,7 +219,7 @@ bool assemblerThread::start(void) {
 #endif
 }
 
-unsigned int assemblerThread::currentActionParameter(void) {
+unsigned int assemblerThread_c::currentActionParameter(void) {
 
   switch(action) {
   case ACT_REDUCE:
