@@ -1,14 +1,17 @@
 ------------- Version 0.2.0
 
+- the fade out of pieces that are removed in the assembly animation can be
+  turned on and off
+
 - Add possibility to GUI to edit the comment included in a puzzle
 
-- another 2 symmetry groups were missing
+- another 3 symmetry groups were missing
 
 - fix: don't try to disassemble 1 piece puzzles
 
 - properly exit when pressing the close x in the window header
 
-- fix crash when removing the last color
+- fix crash when removing the last colour
 
 - the marker in the block lists is better visible
 
@@ -48,16 +51,16 @@
   in the program only because the program couldn't handle that properly
 
 - fixed but in rotation suppression. Sometimes the program would find 
-  rotated solutions. Even worse, that was dependend on the orientation
+  rotated solutions. Even worse, that was dependent on the orientation
   of the pieces
 
 - improvements to 3D view: no wideangle distortion when viewing big
-  puzzles, no color changes when zooming objects, slightly transparent
-  piecen no longer "hide" some pieces behind them
+  puzzles, no colour changes when zooming objects, slightly transparent
+  pieces no longer "hide" some pieces behind them
 
 - image export to create images of shapes, problems or solutions with
-  complete assembly instructions with many options to influence the
-  resulting image(s)
+  complete assembly instructions with a few options to influence the
+  resulting image(s). More development is going to come here.
 
 ------------- Version 0.1.8b
 
