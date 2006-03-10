@@ -94,6 +94,78 @@ void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, 
   bt_assert(0);
 }
 
+/* find identical columns within the matrix and remove all but one
+ * of these identical columns, this will not save us iterations, but will
+ * make the iterations much cheaper
+ */
+void assembler_0_c::clumpify(void) {
+
+  unsigned int col = right[0];
+
+  while (col) {
+
+    /* find all columns that are identical to col
+     */
+
+    /* this vector will contain all the columns that are not
+     * yet ruled out to be different from col
+     * the vector contains the node index
+     */
+    std::vector<unsigned int>columns;
+
+    unsigned int c = right[col];
+
+    while (c) {
+      columns.push_back(down[c]);
+      c = right[c];
+    }
+
+    unsigned int row = down[col];
+    unsigned int line = 0;
+
+    while (row != col) {
+
+      while ((line < piecePositions.size()) && (piecePositions[line+1].row <= row)) line++;
+
+      unsigned int i = 0;
+
+      /* remove all columns that are not in the same
+       * line as the column
+       */
+      while (i < columns.size()) {
+        if ((columns[i] < piecePositions[line].row) ||
+            (columns[i] >= piecePositions[line+1].row)
+           ) {
+          columns.erase(columns.begin()+i);
+        } else
+          i++;
+      }
+
+      if (columns.size() == 0)
+        break;
+
+      row = down[row];
+
+      for (i = 0; i < columns.size(); i++)
+        columns[i] = down[columns[i]];
+    }
+
+    /* now all the columns need to be in the header again */
+    unsigned int i = 0;
+    while (i < columns.size()) {
+      if (columns[i] >= piecePositions[0].row)
+        columns.erase(columns.begin()+i);
+      else
+        i++;
+    }
+
+    for (unsigned int i = 0; i < columns.size(); i++)
+      remove_column(columns[i]);
+
+    col = right[col];
+  }
+}
+
 void assembler_0_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
   unsigned long newnode = up.size();
 
@@ -397,6 +469,16 @@ void assembler_0_c::remove_row(register unsigned int r) {
   } while (j != r);
 }
 
+void assembler_0_c::remove_column(register unsigned int c) {
+  register unsigned int j = c;
+  do {
+    right[left[j]] = right[j];
+    left[right[j]] = left[j];
+
+    j = down[j];
+  } while (j != c);
+}
+
 void assembler_0_c::reinsert_row(register unsigned int r) {
   register unsigned int j = r;
   do {
@@ -471,6 +553,8 @@ bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
 }
 
 void assembler_0_c::reduce(void) {
+
+  clumpify();
 
   unsigned int removed = 0;
   bool rem_sth;
@@ -572,6 +656,8 @@ void assembler_0_c::reduce(void) {
 //    branch = 1;
 
   } while (rem_sth);
+
+  clumpify();
 }
 
 assembly_c * assembler_0_c::getAssembly(void) {

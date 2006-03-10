@@ -125,6 +125,8 @@ private:
   void remove_row(register unsigned int r);
   void reinsert_row(register unsigned int r);
 
+  void remove_column(register unsigned int c);
+
   /* this function gets called whenever an assembly was found
    * when a callback is avaliable it will call getAssembly to
    * obtain the assembly for the found solution when the
@@ -243,6 +245,7 @@ private:
   int debug_loops;    // how many loops to run ?
   int debug_pos;      // run until pos is debug_pos
 
+  void clumpify(void);
 
 protected:
 
