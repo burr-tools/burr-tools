@@ -91,11 +91,6 @@ private:
    */
   void cover(register unsigned int col);
 
-  /* does the same ar cover but returns
-   * false if one of the columns does now contain a 0
-   */
-  bool try_cover(register unsigned int col, unsigned int * columns);
-
   /* uncover the given column
    * this is the exact inverse operation of cover. It requires that the
    * maxtrix has the same state as after the corresponding cover.
@@ -113,11 +108,11 @@ private:
   void cover_row(register unsigned int r);
   void uncover_row(register unsigned int r);
 
-  /* same as cover row, but using try_cover and abborting
+  /* same as cover row, but abborting
    * as soon as one of the columns does contain a zero
    * and then uncovering all that was already done
    */
-  bool try_cover_row(register unsigned int r);
+  bool try_cover_row(register unsigned int r, unsigned int * columns);
 
   /* these 2 functions remove and reinsert rows from the matrix
    * they only remvoe the given row

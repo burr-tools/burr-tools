@@ -328,51 +328,6 @@ void assembler_0_c::cover(register unsigned int col)
   }
 }
 
-/* remove column from array, and also all the rows, where the column is one */
-bool assembler_0_c::try_cover(register unsigned int col, unsigned int * columns)
-{
-  {
-    register unsigned int l, r;
-
-    l = left[col];
-    r = right[col];
-
-    left[r] = l;
-    right[l] = r;
-  }
-
-  bool result = true;
-
-  register unsigned int i = down[col];
-  while (i != col) {
-
-    register unsigned int j = right[i];
-    while (j != i) {
-
-      {
-        register unsigned int u, d;
-
-        u = up[j];
-        d = down[j];
-
-        up[d] = u;
-        down[u] = d;
-      }
-
-      colCount[colCount[j]]--;
-
-      if ((colCount[colCount[j]] == 0) && (columns[colCount[j]] == 0))
-        result = false;
-
-      j = right[j];
-    }
-
-    i = down[i];
-  }
-
-  return result;
-}
-
 void assembler_0_c::uncover(register unsigned int col) {
 
   register unsigned int i = up[col];
@@ -407,41 +362,38 @@ void assembler_0_c::cover_row(register unsigned int r) {
   }
 }
 
-bool assembler_0_c::try_cover_row(register unsigned int r) {
+bool assembler_0_c::try_cover_row(register unsigned int r, unsigned int * columns) {
 
-  unsigned int *columns = new unsigned int[varivoxelEnd];
   memset(columns, 0, varivoxelEnd * sizeof(int));
 
-  register unsigned int j = right[r];
+  unsigned int j = right[r];
   while (j != r) {
     columns[colCount[j]] = 1;
     j = right[j];
   }
 
-  j = right[varivoxelEnd];
-  while (j != varivoxelEnd) {
-    columns[j] = 1;
-    j = right[j];
-  }
-
-
   j = right[r];
+
   while (j != r) {
 
-    if (!try_cover(colCount[j], columns)) {
-      do {
-        uncover(colCount[j]);
-        j = left[j];
-      } while (j != r);
+    cover(colCount[j]);
 
-      delete [] columns;
-      return false;
+    unsigned int k = right[0];
+    while (k) {
+      if ((columns[k] == 0) && (colCount[k] == 0)) {
+        do {
+          uncover(colCount[j]);
+          j = left[j];
+        } while (j != r);
+
+        return false;
+      }
+      k = right[k];
     }
 
     j = right[j];
   }
 
-  delete [] columns;
   return true;
 }
 
@@ -505,6 +457,7 @@ bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
     j = right[j];
   }
 
+#if 0
   unsigned int col = right[0];
 
   while (col) {
@@ -548,6 +501,7 @@ bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
 
     col = right[col];
   }
+#endif
 
   return false;
 }
@@ -563,99 +517,60 @@ void assembler_0_c::reduce(void) {
   unsigned int rec = 0;
   unsigned int branch = 0;
 
+  unsigned int *columns = new unsigned int[varivoxelEnd];
+
   do {
 
     rem_sth = false;
 
     /* check all the pieces */
-    for (unsigned int p = 0; p < piecenumber;) {
+    for (unsigned int p = 0; p < piecenumber; p++) {
 
       reducePiece = p;
 
       // place the piece and check, if this leads to some
       // infillable holes or unplacable pieces or whaever
       // conditions that make a solution impossible
-
       cover(p+1);
+      columns[p+1] = 0;
 
       // we first collect all the rows that we finally want to
       // remove and only remove them after the complete check
-      int * rowsToRemove = new int[colCount[p+1]];
-      int countToRemove = 0;
+      std::vector<unsigned int> rowsToRemove;
 
       // go over all the placements of the piece and check, if
       // each for possibility
       unsigned int r = down[p+1];
-      unsigned int row = 0;
       while (r != p+1) {
 
         // try to do this placement, if the placing goes
         // wrong already, we don't need to do the deep check
-        if (!try_cover_row(r)) {
-          rowsToRemove[countToRemove++] = row;
+        if (!try_cover_row(r, columns)) {
+          rowsToRemove.push_back(r);
         } else {
 
           /* and check if that results in a dead end */
           if (checkmatrix(rec, branch))
-            rowsToRemove[countToRemove++] = row;
+            rowsToRemove.push_back(r);
 
           uncover_row(r);
         }
 
         r = down[r];
-        row++;
       }
 
+      columns[p+1] = 1;
       uncover(p+1);
 
-//      int count = multiPieceCount[p];
+      for (int rem = 0; rem < rowsToRemove.size(); rem++)
+        remove_row(rowsToRemove[rem]);
 
-      for (int pc = 0; pc < 1/*count*/; pc++) {
-
-        int r = down[p+1];
-        int row = 0;
-
-        for (int rem = 0; rem < countToRemove; rem++) {
-
-          while (row < rowsToRemove[rem]) {
-            r = down[r];
-            row++;
-          }
-
-          int s = r;
-          int rr = down[r];
-
-          do {
-            up[down[s]] = up[s];
-            down[up[s]] = down[s];
-            colCount[colCount[s]]--;
-            s = right[s];
-          } while (s != r);
-
-          r = rr;
-          row++;
-
-          removed++;
-        }
-
-        p++;
-      }
-
-      if (countToRemove)
-        rem_sth = true;
-
-      delete [] rowsToRemove;
+      rem_sth |= (rowsToRemove.size() > 0);
+      removed += rowsToRemove.size();
     }
-
-//    return;
-
-//    iteration++;
-//    rec++;
-//    if (rec > 2)
-//      rec = 2;
-//    branch = 1;
-
   } while (rem_sth);
+
+  delete [] columns;
 
   clumpify();
 }
