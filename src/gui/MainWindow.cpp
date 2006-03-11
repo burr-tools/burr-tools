@@ -1621,11 +1621,17 @@ void UserInterface::updateInterface(void) {
       }
 
       // the placement browser can only be activated when an assember is available and not assembling is active
-      if (puzzle->probGetAssembler(prob) && !assmThread && (puzzle->probGetSolveState(prob) != puzzle_c::SS_SOLVED)) {
+      if (puzzle->probGetAssembler(prob) && !assmThread) {
         BtnPlacement->activate();
-        BtnStep->activate();
       } else {
         BtnPlacement->deactivate();
+      }
+
+      // the step button is only active when the placements browser can be active AND when the puzzle is not
+      // yet completely solved
+      if (puzzle->probGetAssembler(prob) && !assmThread && (puzzle->probGetSolveState(prob) != puzzle_c::SS_SOLVED)) {
+        BtnStep->activate();
+      } else {
         BtnStep->deactivate();
       }
 
