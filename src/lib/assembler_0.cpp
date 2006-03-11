@@ -525,6 +525,52 @@ void assembler_0_c::reduce(void) {
 
       rem_sth |= (rowsToRemove.size() > 0);
       removed += rowsToRemove.size();
+
+      /* find all columns that are always filled with the given piece in each of it's possible
+       * placements, no other piece can be there, all other pieces placements that fill
+       * this cube can be removed
+       */
+      memset(columns, 0, varivoxelEnd * sizeof(unsigned int));
+      unsigned int placements = 0;
+      for (unsigned int r = down[p+1]; r != p+1; r = down[r]) {
+        for (unsigned int j = right[r]; j != r; j = right[j])
+          columns[colCount[j]]++;
+        placements++;
+      }
+
+      /* now columns contains the number of times the voxel is filled
+       * with this piece and placements contains the number of placements
+       * for the current piece. If the number of times a voxel is filled
+       * equal to the total number of placements for that piece the
+       * pice fills that unit in every possible of its placements, so no other
+       * piece can fill that unit and all placements of other pieces that fill
+       * that unit can be removed
+       */
+      for (unsigned int c = right[0]; c; c = right[c]) {
+        if (columns[c] == placements) {
+
+          rowsToRemove.clear();
+
+          unsigned int piece = 0;
+          for (unsigned int r = down[c]; r != c; r = down[r]) {
+
+            /* find out to which piece this row belongs */
+            while ((piece < piecenumber-1) && (r >= pieceStart[piece+1])) piece++;
+
+            if (piece != p)
+              rowsToRemove.push_back(r);
+          }
+
+          /* remove the rows found */
+          for (unsigned int rem = 0; rem < rowsToRemove.size(); rem++) {
+            remove_row(rowsToRemove[rem]);
+          }
+
+          rem_sth |= (rowsToRemove.size() > 0);
+          removed += rowsToRemove.size();
+
+        }
+      }
     }
   } while (rem_sth);
 
