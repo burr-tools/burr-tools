@@ -471,17 +471,18 @@ bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
 
 void assembler_0_c::reduce(void) {
 
+  /* this array is used in several occasions, where we need to
+   * keep some information for all columns
+   */
   unsigned int *columns = new unsigned int[varivoxelEnd];
   unsigned int removed = 0;
   bool rem_sth;
-  unsigned int iteration = 1;
-
-  unsigned int rec = 0;
-  unsigned int branch = 0;
 
   // we first collect all the rows that we finally want to
   // remove and only remove them after the complete check
   std::vector<unsigned int> rowsToRemove;
+
+  reducePiece = 0;
 
   for (unsigned int col = right[0]; col; col = right[col]) {
 
@@ -522,16 +523,12 @@ void assembler_0_c::reduce(void) {
           remove_row(rowsToRemove[rem]);
         }
 
-        rem_sth |= (rowsToRemove.size() > 0);
         removed += rowsToRemove.size();
-
       }
     }
   }
 
   clumpify();
-
-
 
   do {
 
@@ -560,7 +557,7 @@ void assembler_0_c::reduce(void) {
         } else {
 
           /* and check if that results in a dead end */
-          if (checkmatrix(rec, branch))
+          if (checkmatrix(0, 0))
             rowsToRemove.push_back(r);
 
           uncover_row(r);

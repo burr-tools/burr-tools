@@ -280,7 +280,7 @@ protected:
    */
   void AddVoxelNode(unsigned int col, unsigned int piecenode);
 
-  /* these functions provde access to the cover information for you */
+  /* these functions provide access to the cover information for you */
   unsigned int getRows(int pos) { return rows[pos]; }
   unsigned int getRight(int pos) { return right[pos]; }
   unsigned int getPiece(int pos) { return piece[pos]; }
@@ -298,7 +298,7 @@ protected:
 
   /* call this function if you think that there might be
    * rotated assemblies found. Here a description of how the whole aspekt of
-   * rotation avoiding is suppoed to work
+   * rotation avoiding is supposed to work
    * the frontend is supposed to initialize the assembler so that as few as
    * possible double assemblies are found by selecting one piece and not placing
    * this piece in all possible positions. But this will not always work, if

@@ -138,6 +138,11 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
     /* now we try to find the most "suitable" piece for our rotation removal. What is
      * suitable? Suitable is the piece shape that has the least common symmetries with
      * the result and that has the fiewest pieces
+     *
+     * FIXME: if there is more than one suitable piece, select the one with the most
+     * placements, this will gain us a little (or even bigger) speedup
+     * as its a difference if we select a piece that has only one placement anyway
+     * or select one with 400 placements of which 23/24th can be dropped
      */
     unsigned int bestFound = NUM_TRANSFORMATIONS_MIRROR + 1;
     unsigned int symBreakerPiece = 0;
