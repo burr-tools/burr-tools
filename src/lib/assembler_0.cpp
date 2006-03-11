@@ -294,57 +294,37 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
 void assembler_0_c::cover(register unsigned int col)
 {
   {
-    register unsigned int l, r;
-
-    l = left[col];
-    r = right[col];
+    unsigned int l = left[col];
+    unsigned int r = right[col];
 
     left[r] = l;
     right[l] = r;
   }
 
-  register unsigned int i = down[col];
-  while (i != col) {
+  for (unsigned int i = down[col]; i != col; i = down[i]) {
+    for (unsigned int j = right[i]; j != i; j = right[j]) {
 
-    register unsigned int j = right[i];
-    while (j != i) {
+      unsigned int u = up[j];
+      unsigned int d = down[j];
 
-      {
-        register int u, d;
-
-        u = up[j];
-        d = down[j];
-
-        up[d] = u;
-        down[u] = d;
-      }
+      up[d] = u;
+      down[u] = d;
 
       colCount[colCount[j]]--;
-
-      j = right[j];
     }
-
-    i = down[i];
   }
 }
 
 void assembler_0_c::uncover(register unsigned int col) {
 
-  register unsigned int i = up[col];
-  while (i != col) {
-
-    register unsigned int j = left[i];
-    while (j != i) {
+  for (unsigned int i = up[col]; i != col; i = up[i]) {
+    for (unsigned int j = left[i]; j != i; j = left[j]) {
 
       colCount[colCount[j]]++;
 
       up[down[j]] = j;
       down[up[j]] = j;
-
-      j = left[j];
     }
-
-    i = up[i];
   }
 
   left[right[col]] = col;
@@ -355,31 +335,23 @@ void assembler_0_c::uncover(register unsigned int col) {
  * row contains ones
  */
 void assembler_0_c::cover_row(register unsigned int r) {
-  register unsigned int j = right[r];
-  while (j != r) {
+  for (unsigned int j = right[r]; j != r; j = right[j])
     cover(colCount[j]);
-    j = right[j];
-  }
 }
 
 bool assembler_0_c::try_cover_row(register unsigned int r, unsigned int * columns) {
 
-  memset(columns, 0, varivoxelEnd * sizeof(int));
+  memset(columns, 0, varivoxelEnd * sizeof(unsigned int));
 
-  unsigned int j = right[r];
-  while (j != r) {
+  for (unsigned int j = right[r]; j != r; j = right[j])
     columns[colCount[j]] = 1;
-    j = right[j];
-  }
 
-  j = right[r];
-
-  while (j != r) {
+  for (unsigned int j = right[r]; j != r; j = right[j]) {
 
     cover(colCount[j]);
 
-    unsigned int k = right[0];
-    while (k) {
+    for (unsigned int k = right[0]; k; k = right[k]) {
+
       if ((columns[k] == 0) && (colCount[k] == 0)) {
         do {
           uncover(colCount[j]);
@@ -388,21 +360,15 @@ bool assembler_0_c::try_cover_row(register unsigned int r, unsigned int * column
 
         return false;
       }
-      k = right[k];
     }
-
-    j = right[j];
   }
 
   return true;
 }
 
 void assembler_0_c::uncover_row(register unsigned int r) {
-  register unsigned int j = left[r];
-  while (j != r) {
+  for (unsigned int j = left[r]; j != r; j = left[j])
     uncover(colCount[j]);
-    j = left[j];
-  }
 }
 
 void assembler_0_c::remove_row(register unsigned int r) {
@@ -446,16 +412,13 @@ void assembler_0_c::reinsert_row(register unsigned int r) {
 bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
 
   /* check the number of holes, if they are larger than allowed return */
-  unsigned int j = right[varivoxelEnd];
   unsigned int count = holes;
-  while (j != varivoxelEnd) {
+  for (unsigned int j = right[varivoxelEnd]; j != varivoxelEnd; j = right[j])
     if (colCount[j] == 0) {
       if (!count)
         return true;
       count--;
     }
-    j = right[j];
-  }
 
 #if 0
   unsigned int col = right[0];
@@ -532,7 +495,6 @@ void assembler_0_c::reduce(void) {
       // infillable holes or unplacable pieces or whaever
       // conditions that make a solution impossible
       cover(p+1);
-      columns[p+1] = 0;
 
       // we first collect all the rows that we finally want to
       // remove and only remove them after the complete check
@@ -540,8 +502,7 @@ void assembler_0_c::reduce(void) {
 
       // go over all the placements of the piece and check, if
       // each for possibility
-      unsigned int r = down[p+1];
-      while (r != p+1) {
+      for (unsigned int r = down[p+1]; r != p+1; r = down[r]) {
 
         // try to do this placement, if the placing goes
         // wrong already, we don't need to do the deep check
@@ -555,14 +516,11 @@ void assembler_0_c::reduce(void) {
 
           uncover_row(r);
         }
-
-        r = down[r];
       }
 
-      columns[p+1] = 1;
       uncover(p+1);
 
-      for (int rem = 0; rem < rowsToRemove.size(); rem++)
+      for (unsigned int rem = 0; rem < rowsToRemove.size(); rem++)
         remove_row(rowsToRemove[rem]);
 
       rem_sth |= (rowsToRemove.size() > 0);
