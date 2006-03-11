@@ -471,8 +471,7 @@ bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
 
 void assembler_0_c::reduce(void) {
 
-  clumpify();
-
+  unsigned int *columns = new unsigned int[varivoxelEnd];
   unsigned int removed = 0;
   bool rem_sth;
   unsigned int iteration = 1;
@@ -480,7 +479,59 @@ void assembler_0_c::reduce(void) {
   unsigned int rec = 0;
   unsigned int branch = 0;
 
-  unsigned int *columns = new unsigned int[varivoxelEnd];
+  // we first collect all the rows that we finally want to
+  // remove and only remove them after the complete check
+  std::vector<unsigned int> rowsToRemove;
+
+  for (unsigned int col = right[0]; col; col = right[col]) {
+
+    memset(columns, 0, varivoxelEnd * sizeof(unsigned int));
+
+    unsigned int placements = 0;
+    for (unsigned int r = down[col]; r != col; r = down[r]) {
+      for (unsigned int j = right[r]; j != r; j = right[j])
+        columns[colCount[j]]++;
+      placements++;
+    }
+
+    /* now columns contains the number of times the voxel is filled
+     * with this piece and placements contains the number of placements
+     * for the current piece. If the number of times a voxel is filled
+     * equal to the total number of placements for that piece the
+     * pice fills that unit in every possible of its placements, so no other
+     * piece can fill that unit and all placements of other pieces that fill
+     * that unit can be removed
+     */
+    for (unsigned int c = right[0]; c; c = right[c]) {
+      if (columns[c] == placements) {
+
+        rowsToRemove.clear();
+
+        for (unsigned int r = down[c]; r != c; r = down[r]) {
+
+          /* find the column col */
+          unsigned int c2 = right[r];
+          while ((colCount[c2] != col) && (c2 != r)) c2 = right[c2];
+
+          if (c2 == r)
+            rowsToRemove.push_back(r);
+        }
+
+        /* remove the rows found */
+        for (unsigned int rem = 0; rem < rowsToRemove.size(); rem++) {
+          remove_row(rowsToRemove[rem]);
+        }
+
+        rem_sth |= (rowsToRemove.size() > 0);
+        removed += rowsToRemove.size();
+
+      }
+    }
+  }
+
+  clumpify();
+
+
 
   do {
 
@@ -496,9 +547,7 @@ void assembler_0_c::reduce(void) {
       // conditions that make a solution impossible
       cover(p+1);
 
-      // we first collect all the rows that we finally want to
-      // remove and only remove them after the complete check
-      std::vector<unsigned int> rowsToRemove;
+      rowsToRemove.clear();
 
       // go over all the placements of the piece and check, if
       // each for possibility
