@@ -375,6 +375,9 @@ int SquareEditor::handle(int event) {
     return 0;
 
   switch(event) {
+  case FL_FOCUS:
+    return 1;
+
   case FL_RELEASE:
     {
       // mouse released, update the rubberband area
@@ -416,6 +419,13 @@ int SquareEditor::handle(int event) {
     // we save the mouse button in state, so that we can do different actions
     // depending on the mouse button
     state = Fl::event_button();
+
+    if (event == FL_PUSH) {
+      // take the focus to make the input lines in the main window take over their value
+      set_visible_focus();
+      take_focus();
+      clear_visible_focus();
+    }
 
     // fallthrough
   case FL_DRAG:
