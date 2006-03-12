@@ -242,8 +242,8 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
     currentTab = 1;
   } else if(o->value() == TabSolve) {
     if ((solutionProblem->getSelection() < puzzle->problemNumber()) &&
-        (SolutionSel->value() < puzzle->probSolutionNumber(solutionProblem->getSelection()))) {
-      activateSolution(solutionProblem->getSelection(), int(SolutionSel->value()));
+        (SolutionSel->value()-1 < puzzle->probSolutionNumber(solutionProblem->getSelection()))) {
+      activateSolution(solutionProblem->getSelection(), int(SolutionSel->value()-1));
     }
     Big3DView();
     Status->setText("");
@@ -338,7 +338,7 @@ void UserInterface::cb_SolProbSel(BlockListGroup* grp) {
   case ProblemSelector::RS_CHANGEDSELECTION:
 
     updateInterface();
-    activateSolution(solutionProblem->getSelection(), (int)SolutionSel->value());
+    activateSolution(solutionProblem->getSelection(), (int)SolutionSel->value()-1);
     break;
   }
 }
@@ -821,7 +821,7 @@ void UserInterface::cb_BtnStop(void) {
 static void cb_SolutionSel_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_SolutionSel((Fl_Value_Slider*)o); }
 void UserInterface::cb_SolutionSel(Fl_Value_Slider* o) {
   o->take_focus();
-  activateSolution(solutionProblem->getSelection(), int(o->value()));
+  activateSolution(solutionProblem->getSelection(), int(o->value()-1));
 }
 
 static void cb_SolutionAnim_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_SolutionAnim((Fl_Value_Slider*)o); }
@@ -1212,7 +1212,7 @@ void UserInterface::ReplacePuzzle(puzzle_c * NewPuzzle) {
     solutionProblem->setPuzzle(NewPuzzle);
     PcVis->setPuzzle(NewPuzzle, 0);
 
-    SolutionSel->value(0);
+    SolutionSel->value(1);
     SolutionAnim->value(0);
 
     delete puzzle;
@@ -1589,7 +1589,9 @@ void UserInterface::updateInterface(void) {
         SolutionSel->show();
         SolutionsInfo->show();
 
-        SolutionSel->range(0, numSol-1);
+        SolutionSel->range(1, numSol);
+        if (SolutionSel->value() > numSol)
+          SolutionSel->value(numSol);
         SolutionsInfo->value(numSol);
 
         // if we are in the solve tab and have a valid solution
@@ -1599,7 +1601,7 @@ void UserInterface::updateInterface(void) {
 
       } else {
 
-        SolutionSel->range(0, 0);
+        SolutionSel->range(1, 1);
         SolutionSel->hide();
         SolutionsInfo->hide();
         SolutionAnim->hide();
@@ -2625,6 +2627,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
 
     SolutionSel = new Fl_Value_Slider(x, y, w, SZ_BUTTON_Y, "Solution");
     SolutionSel->tooltip(" Select one Solution ");
+    SolutionSel->value(1);
     SolutionSel->type(1);
     SolutionSel->step(1);
     SolutionSel->callback(cb_SolutionSel_stub, this);
