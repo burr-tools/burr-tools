@@ -390,7 +390,7 @@ void PiecesList::getColor(unsigned int block, unsigned char *r,  unsigned char *
   *b = (int)(255*pieceColorB(puzzle->probGetShape(problem, block)));
 }
 
-PieceVisibility::PieceVisibility(int x, int y, int w, int h, puzzle_c * p) : BlockList(x, y, w, h), puzzle(p), problem(0) {
+PieceVisibility::PieceVisibility(int x, int y, int w, int h, puzzle_c * p) : BlockList(x, y, w, h), puzzle(p), problem(0), count(0) {
   bt_assert(p);
   if (p->problemNumber() > 0) {
     visState = new unsigned char[p->probPieceNumber(0)];
@@ -515,8 +515,12 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
 void PieceVisibility::setPuzzle(puzzle_c *pz, unsigned int prob) {
   bt_assert(pz);
 
+  unsigned int c = 0;
+  if (prob < pz->problemNumber())
+    c = pz->probPieceNumber(prob);
+
   /* if nothing changes, don't reset piece visibility */
-  if ((pz == puzzle) && (prob == problem) && visState)
+  if ((pz == puzzle) && (prob == problem) && visState && (c == count))
     return;
 
   puzzle = pz;
@@ -528,11 +532,13 @@ void PieceVisibility::setPuzzle(puzzle_c *pz, unsigned int prob) {
   visState = 0;
 
   /* set up new visibilty when a valid problem is available */
-  if (prob < pz->problemNumber() && (pz->probPieceNumber(prob) > 0)) {
-    visState = new unsigned char[pz->probPieceNumber(prob)];
+  if (c) {
+    visState = new unsigned char[c];
 
-    for (unsigned int i = 0; i < pz->probPieceNumber(prob); i++)
+    for (unsigned int i = 0; i < c; i++)
       visState[i] = 0;
+
+    count = c;
   }
 
   redraw();

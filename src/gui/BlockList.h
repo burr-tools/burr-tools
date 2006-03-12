@@ -319,6 +319,8 @@ private:
 
   puzzle_c * puzzle;
   unsigned int problem;
+
+  unsigned int count;
   unsigned char * visState;
 
 public:
