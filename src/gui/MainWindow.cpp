@@ -2250,8 +2250,8 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
   // calculate hight of different groups
   const int problemsFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
   const int colorsFixedHight = SZ_SEPARATOR_Y + SZ_GAP;
-  const int matrixFixedHight = SZ_BUTTON_Y + SZ_GAP;
-  const int shapesFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + 2*SZ_GAP;
+  const int matrixFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
+  const int shapesFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
   const int piecesFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
 
   int hi = h - problemsFixedHight - colorsFixedHight - matrixFixedHight - shapesFixedHight - piecesFixedHight;
@@ -2346,8 +2346,8 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
-    shapeAssignmentSelector = new PieceSelector(x, y, w, lh-SZ_GAP, puzzle);
-    Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh-SZ_GAP, shapeAssignmentSelector);
+    shapeAssignmentSelector = new PieceSelector(x, y, w, lh, puzzle);
+    Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh, shapeAssignmentSelector);
     shapeGroup->callback(cb_ShapeSel_stub, this);
     shapeGroup->tooltip(" Select a shape to set as result or to add or remove from problem ");
 
@@ -2362,6 +2362,10 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     Fl_Group* group = new Fl_Group(x, y, w, lh);
     group->box(FL_FLAT_BOX);
+
+    new Separator(x, y, w, SZ_SEPARATOR_Y, 0, true);
+    y += SZ_SEPARATOR_Y;
+    lh -= SZ_SEPARATOR_Y;
 
     int hw = (w - 4*SZ_GAP-2*SZ_BUTTON_Y)/3;
 
@@ -2413,7 +2417,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     lh -= SZ_SEPARATOR_Y;
 
     colorAssignmentSelector = new ColorSelector(x, y, w, lh, puzzle, false);
-    Fl_Group * colGroup = new BlockListGroup(x, y, w, lh-SZ_GAP, colorAssignmentSelector);
+    Fl_Group * colGroup = new BlockListGroup(x, y, w, lh, colorAssignmentSelector);
     colGroup->callback(cb_ColorAssSel_stub, this);
     colGroup->tooltip(" Select color to add or remove from constraints ");
 
@@ -2428,6 +2432,10 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     Fl_Group* group = new Fl_Group(x, y, w, lh);
     group->box(FL_FLAT_BOX);
+
+    new Separator(x, y, w, SZ_SEPARATOR_Y, 0, true);
+    y += SZ_SEPARATOR_Y;
+    lh -= SZ_SEPARATOR_Y;
 
     int hw = (w - 2*SZ_GAP) / 3;
 
