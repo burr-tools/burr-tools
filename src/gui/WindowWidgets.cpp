@@ -147,14 +147,15 @@ void VoxelEditGroup::draw() {
 
 #define SZ_BUTTON_Y 20
 #define SZ_BUTTON2_Y 25
+#define LABEL_FONT_SIZE 12
 
 static void cb_TransformButtons_stub(Fl_Widget* o, long v) { ((TransformButtons*)(o->parent()))->cb_Press(v); }
 
 TransformButtons::TransformButtons(int x, int y, int w, int h) : Fl_Group(x, y, w, h, "Transform") {
 
-  new Fl_Box( 80+x, y+5, 70, SZ_BUTTON_Y, "Nudge");
-  new Fl_Box(155+x, y+5, 70, SZ_BUTTON_Y, "Rotate");
-  new Fl_Box(  5+x, y+5, 70, SZ_BUTTON_Y, "Flip");
+  (new Fl_Box( 80+x, y+5, 70, SZ_BUTTON_Y, "Nudge"))->labelsize(LABEL_FONT_SIZE);
+  (new Fl_Box(155+x, y+5, 70, SZ_BUTTON_Y, "Rotate"))->labelsize(LABEL_FONT_SIZE);
+  (new Fl_Box(  5+x, y+5, 70, SZ_BUTTON_Y, "Flip"))->labelsize(LABEL_FONT_SIZE);
 
   y += SZ_BUTTON_Y;
 
@@ -384,22 +385,22 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
   {
     Fl_Group * o = new Fl_Group(x, y+20, w, h-20, "Size");
 
-    changeSize = new ChangeSize(x, y+20, w-90, h-40);
+    changeSize = new ChangeSize(x, y+20+20, w-90, h-40);
     changeSize->callback(cb_ToolTabSize_stub);
 
-    new Fl_Box(x+w-80, y+25, 35, SZ_BUTTON_Y, "Grid");
+    (new Fl_Box(x+w-80, y+25, 35, SZ_BUTTON_Y, "Grid"))->labelsize(LABEL_FONT_SIZE);
 
     new FlatButton(x+w-80, y+ 45, 35, 25, new Fl_Pixmap(Grid_Color_Minimize_xpm), new Fl_Pixmap(Grid_Disabled_Minimize_xpm), "Minimize size of grid", cb_ToolTabTransform2_stub, 15);
     new FlatButton(x+w-80, y+ 75, 35, 25, new Fl_Pixmap(Grid_Color_Center_xpm), new Fl_Pixmap(Grid_Disabled_Center_xpm), "Center shape inside the grid", cb_ToolTabTransform2_stub, 25);
     new FlatButton(x+w-80, y+105, 35, 25, new Fl_Pixmap(Grid_Color_Origin_xpm), new Fl_Pixmap(Grid_Disabled_Origin_xpm), "Move shape to origin of grid", cb_ToolTabTransform2_stub, 24);
 
-    new Fl_Box(x+w-40, y+25, 35, SZ_BUTTON_Y, "Shape");
+    (new Fl_Box(x+w-40, y+25, 35, SZ_BUTTON_Y, "Shape"))->labelsize(LABEL_FONT_SIZE);
 
     new FlatButton(x+w-40, y+ 45, 35, 25, new Fl_Pixmap(Rescale_Color_X1_xpm), new Fl_Pixmap(Rescale_Disabled_X1_xpm), "Try to minimize size of shape", cb_ToolTabTransform2_stub, 26);
     new FlatButton(x+w-40, y+ 75, 35, 25, new Fl_Pixmap(Rescale_Color_X2_xpm), new Fl_Pixmap(Rescale_Disabled_X2_xpm), "Double size of shape", cb_ToolTabTransform2_stub, 22);
     new FlatButton(x+w-40, y+105, 35, 25, new Fl_Pixmap(Rescale_Color_X3_xpm), new Fl_Pixmap(Rescale_Disabled_X3_xpm), "Triple size of shape", cb_ToolTabTransform2_stub, 23);
 
-    toAll = new Fl_Check_Button(x+5, y+h-25, w-85, 20, "Do Operation to all Shapes");
+    toAll = new Fl_Check_Button(x+15, y+25, w-85, 20, "Apply to all Shapes");
     toAll->tooltip(" If this is active, all operations (including transformations and constrains are done to all shapes ");
     toAll->clear_visible_focus();
 
@@ -415,7 +416,7 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
     Fl_Group* o = new Fl_Group(x, y+20, w, h-20, "Tools");
     o->hide();
 
-    new Fl_Box(x+5, y+25, 70, SZ_BUTTON_Y, "Constrain");
+    (new Fl_Box(x+5, y+25, 70, SZ_BUTTON_Y, "Constrain"))->labelsize(LABEL_FONT_SIZE);
 
 
     new FlatButton(x+5, y+ 45, 35, 25, new Fl_Pixmap(InOut_Color_Fixed_In_xpm), new Fl_Pixmap(InOut_Disabled_Fixed_In_xpm), "Make inside fixed", cb_ToolTabTransform2_stub, 16);
