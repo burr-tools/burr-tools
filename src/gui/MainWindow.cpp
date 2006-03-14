@@ -1752,8 +1752,12 @@ void UserInterface::updateInterface(void) {
 
       // no thread currently calculating
 
-      // so we can not stop the threas
+      // so we can not stop the thread
       BtnStop->deactivate();
+
+      // the stop button might be pressed when the thread finished, this might happen
+      // relatively often, so we clear the state of that button
+      BtnStop->clear();
 
       if (prob < puzzle->problemNumber()) {
 

@@ -197,6 +197,10 @@ bool assemblerThread_c::assembly(assembly_c * a) {
 }
 
 void assemblerThread_c::stop(void) {
+
+  if ((action != ACT_ASSEMBLING) && (action != ACT_REDUCE))
+    return;
+
   action = ACT_WAIT_TO_STOP;
 
   if (puzzle->probGetAssembler(prob))
