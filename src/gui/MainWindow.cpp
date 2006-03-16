@@ -88,7 +88,7 @@ void UserInterface::cb_AddColor(void) {
   else
     puzzle->getColor(colorSelector->getSelection()-1, &r, &g, &b);
 
-  if (fl_color_chooser("New color", r, g, b)) {
+  if (fl_color_chooser("New colour", r, g, b)) {
     puzzle->addColor(r, g, b);
     colorSelector->setSelection(puzzle->colorNumber());
     changed = true;
@@ -101,7 +101,7 @@ static void cb_RemoveColor_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb
 void UserInterface::cb_RemoveColor(void) {
 
   if (colorSelector->getSelection() == 0)
-    fl_message("Can not delete the Neutral color, this color has to be there");
+    fl_message("Can not delete the Neutral colour, this colour has to be there");
   else {
     changeColor(colorSelector->getSelection());
     puzzle->removeColor(colorSelector->getSelection());
@@ -124,11 +124,11 @@ static void cb_ChangeColor_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb
 void UserInterface::cb_ChangeColor(void) {
 
   if (colorSelector->getSelection() == 0)
-    fl_message("Can not edit the Neutral color");
+    fl_message("Can not edit the Neutral colour");
   else {
     unsigned char r, g, b;
     puzzle->getColor(colorSelector->getSelection()-1, &r, &g, &b);
-    if (fl_color_chooser("Change color", r, g, b)) {
+    if (fl_color_chooser("Change colour", r, g, b)) {
       puzzle->changeColor(colorSelector->getSelection()-1, r, g, b);
       changed = true;
       View3D->showColors(puzzle, Status->useColors());
@@ -2122,7 +2122,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
     b = editChoice->addButton(xpos+3*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
     b->image(new Fl_Pixmap(TB_Color_Brush_xpm));
-    b->tooltip(" Change the constrain color of voxels in the shape F8 ");
+    b->tooltip(" Change the constrain colour of voxels in the shape F8 ");
 
     editChoice->callback(cb_EditChoice_stub, this);
 
@@ -2195,26 +2195,26 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
     Fl_Group* group = new Fl_Group(x, y, w, lh);
     group->box(FL_FLAT_BOX);
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Colors", true);
+    new Separator(x, y, w, SZ_SEPARATOR_Y, "Colours", true);
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 
     int bw = (w - 2*SZ_GAP) / 3;
     {
       Fl_Group * o = new Fl_Group(x, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnNewColor = new FlatButton(x          , y, bw, SZ_BUTTON_Y, "Add", " Add another color ", cb_AddColor_stub, this);
+      BtnNewColor = new FlatButton(x          , y, bw, SZ_BUTTON_Y, "Add", " Add another colour ", cb_AddColor_stub, this);
       o->resizable(BtnNewColor);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+bw+SZ_GAP, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Remove", " Remove selected color ", cb_RemoveColor_stub, this);
+      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Remove", " Remove selected colour ", cb_RemoveColor_stub, this);
       o->resizable(BtnDelColor);
       o->end();
     }
     {
       Fl_Group * o = new Fl_Group(x+2*(bw+SZ_GAP), y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnChnColor = new FlatButton(x+2*(SZ_GAP+bw), y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Edit", " Change selected color ", cb_ChangeColor_stub, this);
+      BtnChnColor = new FlatButton(x+2*(SZ_GAP+bw), y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Edit", " Change selected colour ", cb_ChangeColor_stub, this);
       o->resizable(BtnChnColor);
       o->end();
     }
@@ -2224,7 +2224,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     colorSelector = new ColorSelector(x, y, w, lh, puzzle, true);
     Fl_Group * colGroup = new BlockListGroup(x, y, w, lh, colorSelector);
     colGroup->callback(cb_ColSel_stub, this);
-    colGroup->tooltip(" Select color to use for all editing operations ");
+    colGroup->tooltip(" Select colour to use for all editing operations ");
 
     y += lh;
 
@@ -2329,7 +2329,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     int hw = (w - SZ_GAP)/4;
 
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Piece assigment", true);
+    new Separator(x, y, w, SZ_SEPARATOR_Y, "Piece assignment", true);
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 
@@ -2416,14 +2416,14 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     Fl_Group* group = new Fl_Group(x, y, w, lh);
     group->box(FL_FLAT_BOX);
 
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Color assigment", true);
+    new Separator(x, y, w, SZ_SEPARATOR_Y, "Colour assignment", true);
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 
     colorAssignmentSelector = new ColorSelector(x, y, w, lh, puzzle, false);
     Fl_Group * colGroup = new BlockListGroup(x, y, w, lh, colorAssignmentSelector);
     colGroup->callback(cb_ColorAssSel_stub, this);
-    colGroup->tooltip(" Select color to add or remove from constraints ");
+    colGroup->tooltip(" Select colour to add or remove from constraints ");
 
     group->resizable(colGroup);
     group->end();
@@ -2445,18 +2445,18 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     {
       Fl_Group * o = new Fl_Group(x, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnColSrtPc = new FlatButton(x, y, hw, SZ_BUTTON_Y, "Sort by Piece", " Sort color constraints by piece ", cb_CCSortByPiece_stub, this);
+      BtnColSrtPc = new FlatButton(x, y, hw, SZ_BUTTON_Y, "Sort by Piece", " Sort colour constraints by piece ", cb_CCSortByPiece_stub, this);
       BtnColSrtPc->deactivate();
       o->resizable(BtnColSrtPc);
       o->end();
     }
 
-    BtnColAdd = new FlatButton(x+hw+SZ_GAP     , y, hw/2, SZ_BUTTON_Y, "@-12->", " Add color to constraint ", cb_AllowColor_stub, this);
-    BtnColRem = new FlatButton(x+hw+SZ_GAP+hw/2, y, hw/2, SZ_BUTTON_Y, "@-18->", " Add color to constraint ", cb_DisallowColor_stub, this);
+    BtnColAdd = new FlatButton(x+hw+SZ_GAP     , y, hw/2, SZ_BUTTON_Y, "@-12->", " Add colour to constraint ", cb_AllowColor_stub, this);
+    BtnColRem = new FlatButton(x+hw+SZ_GAP+hw/2, y, hw/2, SZ_BUTTON_Y, "@-18->", " Add colour to constraint ", cb_DisallowColor_stub, this);
 
     {
       Fl_Group * o = new Fl_Group(x+2*hw+SZ_GAP, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnColSrtRes = new FlatButton(x+2*hw+2*SZ_GAP, y, w-2*(hw+SZ_GAP), SZ_BUTTON_Y, "Sort by Result", " Sort Color Constraints by Result ", cb_CCSortByResult_stub, this);
+      BtnColSrtRes = new FlatButton(x+2*hw+2*SZ_GAP, y, w-2*(hw+SZ_GAP), SZ_BUTTON_Y, "Sort by Result", " Sort Colour Constraints by Result ", cb_CCSortByResult_stub, this);
       o->resizable(BtnColSrtRes);
       o->end();
     }
@@ -2467,7 +2467,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     colconstrList = new ColorConstraintsEdit(x, y, w, lh, puzzle);
     Fl_Group * colGroup = new ConstraintsGroup(x, y, w, lh, colconstrList);
     colGroup->callback(cb_ColorConstrSel_stub, this);
-    colGroup->tooltip(" Color constraints for the current problem ");
+    colGroup->tooltip(" Colour constraints for the current problem ");
 
     group->resizable(colGroup);
     group->end();

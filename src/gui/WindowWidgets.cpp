@@ -421,12 +421,12 @@ ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
 
     new FlatButton(x+5, y+ 45, 35, 25, new Fl_Pixmap(InOut_Color_Fixed_In_xpm), new Fl_Pixmap(InOut_Disabled_Fixed_In_xpm), "Make inside fixed", cb_ToolTabTransform2_stub, 16);
     new FlatButton(x+5, y+ 75, 35, 25, new Fl_Pixmap(InOut_Color_Variable_In_xpm), new Fl_Pixmap(InOut_Disabled_Variable_In_xpm), "Make inside variable", cb_ToolTabTransform2_stub, 18);
-    new FlatButton(x+5, y+105, 35, 25, new Fl_Pixmap(InOut_Color_RemoveColor_In_xpm), new Fl_Pixmap(InOut_Disabled_RemoveColor_In_xpm), "Remove Colors from inside cubes", cb_ToolTabTransform2_stub, 20);
+    new FlatButton(x+5, y+105, 35, 25, new Fl_Pixmap(InOut_Color_RemoveColor_In_xpm), new Fl_Pixmap(InOut_Disabled_RemoveColor_In_xpm), "Remove Colours from inside cubes", cb_ToolTabTransform2_stub, 20);
 
 
     new FlatButton(x+40, y+ 45, 35, 25, new Fl_Pixmap(InOut_Color_Fixed_Out_xpm), new Fl_Pixmap(InOut_Disabled_Fixed_Out_xpm), "Make outside fixed", cb_ToolTabTransform2_stub, 17);
     new FlatButton(x+40, y+ 75, 35, 25, new Fl_Pixmap(InOut_Color_Variable_Out_xpm), new Fl_Pixmap(InOut_Disabled_Variable_Out_xpm), "Make outside variable", cb_ToolTabTransform2_stub, 19);
-    new FlatButton(x+40, y+105, 35, 25, new Fl_Pixmap(InOut_Color_RemoveColor_Out_xpm), new Fl_Pixmap(InOut_Disabled_RemoveColor_Out_xpm), "RemoveColors from outside cubes", cb_ToolTabTransform2_stub, 21);
+    new FlatButton(x+40, y+105, 35, 25, new Fl_Pixmap(InOut_Color_RemoveColor_Out_xpm), new Fl_Pixmap(InOut_Disabled_RemoveColor_Out_xpm), "RemoveColours from outside cubes", cb_ToolTabTransform2_stub, 21);
     o->end();
   }
 }
@@ -860,9 +860,9 @@ StatusLine::StatusLine(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   text->color(FL_BACKGROUND_COLOR);
   text->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-  colors = new Fl_Check_Button(x+w-130, y, 130, h, "Color 3D View");
+  colors = new Fl_Check_Button(x+w-130, y, 130, h, "Colour 3D View");
   colors->box(FL_THIN_UP_BOX);
-  colors->tooltip(" Toggle between piece colors and the colors of the color constraints (neutral units will have piece color) ");
+  colors->tooltip(" Toggle between piece colours and the colours of the colour constraints (neutral units will have piece colour) ");
 
   resizable(text);
 
