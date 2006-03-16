@@ -301,6 +301,66 @@ void assembler_0_c::cover(register unsigned int col)
     right[l] = r;
   }
 
+#if 1
+
+  unsigned int * up_ptr = &(up[0]);
+  unsigned int * down_ptr = &(down[0]);
+  unsigned int * right_ptr = &(right[0]);
+  unsigned int * colCount_ptr = &(colCount[0]);
+
+  unsigned int tmp;
+
+  __asm__ (
+      "movl %1, %%esi               \n"           // esi = up
+      "movl %2, %%edi               \n"           // edi = down
+      "movl %3, %%edx               \n"           // edx = right
+      "movl %4, %%ebx               \n"           // ebx = colCount
+      "                             \n"
+      "movl %0, %%ecx               \n"           // read col from stack into eax
+      "movl (%%edi,%%ecx,4), %%eax  \n"           // ax = i = up[col]
+      "cmpl %%eax, %%ecx            \n"           // if ax == col
+      "je cendloop1                 \n"           //  endloop1
+      "                             \n"
+"cagainloop1:                       \n"
+      "                             \n"
+      "movl (%%edx,%%eax,4), %%ecx  \n"           // j = right[i]
+      "cmpl %%ecx, %%eax            \n"           // if (j(cx) == i
+      "je cendloop2                 \n"
+      "                             \n"
+      "movl %%eax, %5               \n"           // put i onto stack
+      "                             \n"
+"cagainloop2:                       \n"
+      "                             \n"
+      "pushl %%edx                  \n"
+      "movl (%%esi,%%ecx,4), %%eax  \n"           // eax = up[j]
+      "movl (%%edi,%%ecx,4), %%edx  \n"           // edx = down[ax]
+      "movl %%edx, (%%edi,%%eax,4)  \n"           // ax = down[j]
+      "movl %%eax, (%%esi,%%edx,4)  \n"           // ax = down[j]
+      "popl %%edx                   \n"
+      "                             \n"
+      "movl (%%ebx,%%ecx,4), %%eax  \n"           // ax = colCount[j]
+      "decl (%%ebx,%%eax,4)         \n"           // inc(colCount[ax])
+      "                             \n"
+      "movl (%%edx,%%ecx,4), %%ecx  \n"           // cx = right[cx]
+      "cmpl %%ecx, %5               \n"
+      "jne cagainloop2              \n"
+      "                             \n"           //      we know ecx == %5, so we don't need to load it
+                                                  //      "movl %5, %%eax               \n"
+      "                             \n"
+"cendloop2:                         \n"
+      "                             \n"
+      "movl (%%edi,%%ecx,4), %%eax  \n"
+      "cmpl %%eax, %0               \n"
+      "jne cagainloop1              \n"
+      "                             \n"
+"cendloop1:                         \n"
+     :
+     : "m" (col), "m" (up_ptr), "m" (down_ptr), "m" (right_ptr), "m" (colCount_ptr), "m" (tmp)
+     : "eax", "ebx", "ecx", "edx", "esi", "edi"
+   );
+
+#else
+
   for (unsigned int i = down[col]; i != col; i = down[i]) {
     for (unsigned int j = right[i]; j != i; j = right[j]) {
 
@@ -313,9 +373,70 @@ void assembler_0_c::cover(register unsigned int col)
       colCount[colCount[j]]--;
     }
   }
+
+#endif
+
 }
 
 void assembler_0_c::uncover(register unsigned int col) {
+
+#if 1
+
+  unsigned int * up_ptr = &(up[0]);
+  unsigned int * down_ptr = &(down[0]);
+  unsigned int * left_ptr = &(left[0]);
+  unsigned int * colCount_ptr = &(colCount[0]);
+
+  unsigned int tmp;
+
+  __asm__ (
+      "movl %1, %%esi               \n"           // esi = up
+      "movl %2, %%edi               \n"           // edi = down
+      "movl %3, %%edx               \n"           // edx = left
+      "movl %4, %%ebx               \n"           // ebx = colCount
+      "                             \n"
+      "movl %0, %%ecx               \n"           // read col from stack into eax
+      "movl (%%esi,%%ecx,4), %%eax  \n"           // ax = i = up[col]
+      "cmpl %%eax, %%ecx            \n"           // if ax == col
+      "je endloop1                  \n"           //  endloop1
+      "                             \n"
+"againloop1:                        \n"
+      "                             \n"
+      "movl (%%edx,%%eax,4), %%ecx  \n"           // j = left[i]
+      "cmpl %%ecx, %%eax            \n"           // if (j(cx) == i
+      "je endloop2                  \n"
+      "                             \n"
+      "movl %%eax, %5               \n"           // put i onto stack
+      "                             \n"
+"againloop2:                        \n"
+      "                             \n"
+      "movl (%%ebx,%%ecx,4), %%eax  \n"           // ax = colCount[j]
+      "incl (%%ebx,%%eax,4)         \n"           // inc(colCount[ax])
+      "                             \n"
+      "movl (%%esi,%%ecx,4), %%eax  \n"           // ax = up[j]
+      "movl %%ecx, (%%edi,%%eax,4)  \n"           // down[ax] = j
+      "movl (%%edi,%%ecx,4), %%eax  \n"           // ax = down[j]
+      "movl %%ecx, (%%esi,%%eax,4)  \n"           // up[ax] = j;
+      "                             \n"
+      "movl (%%edx,%%ecx,4), %%ecx  \n"           // cx = left[cx]
+      "cmpl %%ecx, %5               \n"
+      "jne againloop2               \n"
+      "                             \n"           // we know that %%ecx == %5, so we don't need to load it
+                                                  //      "movl %5, %%eax               \n"
+      "                             \n"
+"endloop2:                          \n"
+      "                             \n"
+      "movl (%%esi,%%ecx,4), %%eax  \n"
+      "cmpl %%eax, %0               \n"
+      "jne againloop1               \n"
+      "                             \n"
+"endloop1:                          \n"
+     :
+     : "m" (col), "m" (up_ptr), "m" (down_ptr), "m" (left_ptr), "m" (colCount_ptr), "m" (tmp)
+     : "eax", "ebx", "ecx", "edx", "esi", "edi"
+   );
+
+#else
 
   for (unsigned int i = up[col]; i != col; i = up[i]) {
     for (unsigned int j = left[i]; j != i; j = left[j]) {
@@ -326,6 +447,8 @@ void assembler_0_c::uncover(register unsigned int col) {
       down[up[j]] = j;
     }
   }
+
+#endif
 
   left[right[col]] = col;
   right[left[col]] = col;
