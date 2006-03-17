@@ -310,8 +310,8 @@ void assembler_0_c::cover(register unsigned int col)
 
   __asm__ (
       "movl %1, %%esi                 \n"           // esi = upDown
-      "movl %3, %%edx                 \n"           // edx = right
-      "movl %4, %%ebx                 \n"           // ebx = colCount
+      "movl %2, %%edx                 \n"           // edx = right
+      "movl %3, %%ebx                 \n"           // ebx = colCount
       "                               \n"
       "movl %0, %%ecx                 \n"           // read col from stack into eax
       "movl 4(%%esi,%%ecx,8), %%eax   \n"           // ax = i = down[col]
@@ -324,7 +324,7 @@ void assembler_0_c::cover(register unsigned int col)
       "cmpl %%ecx, %%eax              \n"           // if (j(cx) == i
       "je cendloop2                   \n"
       "                               \n"
-      "movl %%eax, %5                 \n"           // put i onto stack
+      "movl %%eax, %4                 \n"           // put i onto stack
       "                               \n"
 "cagainloop2:                         \n"
       "                               \n"
@@ -337,7 +337,7 @@ void assembler_0_c::cover(register unsigned int col)
       "decl (%%ebx,%%eax,4)           \n"           // inc(colCount[ax])
       "                               \n"
       "movl (%%edx,%%ecx,4), %%ecx    \n"           // cx = right[cx]
-      "cmpl %%ecx, %5                 \n"
+      "cmpl %%ecx, %4                 \n"
       "jne cagainloop2                \n"
       "                               \n"           //      we know ecx == %5, so we don't need to load it
 "cendloop2:                           \n"
@@ -348,7 +348,7 @@ void assembler_0_c::cover(register unsigned int col)
       "                               \n"
 "cendloop1:                           \n"
      :
-     : "m" (col), "m" (upDown_ptr), "m" (upDown_ptr), "m" (right_ptr), "m" (colCount_ptr), "m" (tmp)
+     : "m" (col), "m" (upDown_ptr), "m" (right_ptr), "m" (colCount_ptr), "m" (tmp)
      : "eax", "ebx", "ecx", "edx", "esi", "edi"
    );
 
@@ -383,8 +383,8 @@ void assembler_0_c::uncover(register unsigned int col) {
 
   __asm__ (
       "movl %1, %%esi                 \n"           // esi = up
-      "movl %3, %%edx                 \n"           // edx = left
-      "movl %4, %%ebx                 \n"           // ebx = colCount
+      "movl %2, %%edx                 \n"           // edx = left
+      "movl %3, %%ebx                 \n"           // ebx = colCount
       "                               \n"
       "movl %0, %%ecx                 \n"           // read col from stack into eax
       "movl (%%esi,%%ecx,8), %%eax    \n"           // ax = i = up[col]
@@ -397,7 +397,7 @@ void assembler_0_c::uncover(register unsigned int col) {
       "cmpl %%ecx, %%eax              \n"           // if (j(cx) == i
       "je endloop2                    \n"
       "                               \n"
-      "movl %%eax, %5                 \n"           // put i onto stack
+      "movl %%eax, %4                 \n"           // put i onto stack
       "                               \n"
 "againloop2:                          \n"
       "                               \n"
@@ -410,7 +410,7 @@ void assembler_0_c::uncover(register unsigned int col) {
       "movl %%ecx, 0(%%esi,%%edi,8)   \n"           // up[ax] = j;
       "                               \n"
       "movl (%%edx,%%ecx,4), %%ecx    \n"           // cx = left[cx]
-      "cmpl %%ecx, %5                 \n"
+      "cmpl %%ecx, %4                 \n"
       "jne againloop2                 \n"
       "                               \n"           // we know that %%ecx == %5, so we don't need to load it
 "endloop2:                            \n"
@@ -421,7 +421,7 @@ void assembler_0_c::uncover(register unsigned int col) {
       "                               \n"
 "endloop1:                            \n"
      :
-     : "m" (col), "m" (upDown_ptr), "m" (upDown_ptr), "m" (left_ptr), "m" (colCount_ptr), "m" (tmp)
+     : "m" (col), "m" (upDown_ptr), "m" (left_ptr), "m" (colCount_ptr), "m" (tmp)
      : "eax", "ebx", "ecx", "edx", "esi", "edi"
    );
 
