@@ -334,9 +334,8 @@ void assembler_0_c::cover(register unsigned int col)
       "movl %%eax, 0(%%esi,%%edi,8)   \n"           // ax = down[j]
       "                               \n"
       "movl (%%ebx,%%ecx,4), %%eax    \n"           // ax = colCount[j]
-      "decl (%%ebx,%%eax,4)           \n"           // inc(colCount[ax])
-      "                               \n"
       "movl (%%edx,%%ecx,4), %%ecx    \n"           // cx = right[cx]
+      "decl (%%ebx,%%eax,4)           \n"           // inc(colCount[ax])
       "cmpl %%ecx, %4                 \n"
       "jne cagainloop2                \n"
       "                               \n"           //      we know ecx == %5, so we don't need to load it
@@ -401,15 +400,14 @@ void assembler_0_c::uncover(register unsigned int col) {
       "                               \n"
 "againloop2:                          \n"
       "                               \n"
-      "movl (%%ebx,%%ecx,4), %%eax    \n"           // ax = colCount[j]
-      "incl (%%ebx,%%eax,4)           \n"           // inc(colCount[ax])
-      "                               \n"
       "movl 0(%%esi,%%ecx,8), %%eax   \n"           // ax = up[j]
       "movl 4(%%esi,%%ecx,8), %%edi   \n"           // ax = down[j]
       "movl %%ecx, 4(%%esi,%%eax,8)   \n"           // down[ax] = j
       "movl %%ecx, 0(%%esi,%%edi,8)   \n"           // up[ax] = j;
       "                               \n"
+      "movl (%%ebx,%%ecx,4), %%eax    \n"           // ax = colCount[j]
       "movl (%%edx,%%ecx,4), %%ecx    \n"           // cx = left[cx]
+      "incl (%%ebx,%%eax,4)           \n"           // inc(colCount[ax])
       "cmpl %%ecx, %4                 \n"
       "jne againloop2                 \n"
       "                               \n"           // we know that %%ecx == %5, so we don't need to load it
