@@ -35,8 +35,8 @@ void assembler_0_c::GenerateFirstRow(unsigned int res_filled) {
   for (unsigned int i = 0; i < varivoxelStart; i++) {
     right.push_back(i+1);
     left.push_back(i-1);
-    up.push_back(i);
-    down.push_back(i);
+    upDown.push_back(i);
+    upDown.push_back(i);
     colCount.push_back(0);
   }
 
@@ -52,8 +52,8 @@ void assembler_0_c::GenerateFirstRow(unsigned int res_filled) {
   for (unsigned int j = varivoxelStart; j <= varivoxelEnd; j++) {
     left.push_back(j-1);
     right.push_back(j+1);
-    up.push_back(j);
-    down.push_back(j);
+    upDown.push_back(j);
+    upDown.push_back(j);
     colCount.push_back(0);
   }
   left[varivoxelStart] = varivoxelEnd;
@@ -61,15 +61,15 @@ void assembler_0_c::GenerateFirstRow(unsigned int res_filled) {
 }
 
 int assembler_0_c::AddPieceNode(unsigned int piece, unsigned int rot, unsigned int x, unsigned int y, unsigned int z) {
-  unsigned long piecenode = up.size();
+  unsigned long piecenode = left.size();
 
   left.push_back(piecenode);
   right.push_back(piecenode);
-  down.push_back(piece+1);
-  up.push_back(up[piece+1]);
+  upDown.push_back(up(piece+1));
+  upDown.push_back(piece+1);
 
-  down[up[piece+1]] = piecenode;
-  up[piece+1] = piecenode;
+  down(up(piece+1)) = piecenode;
+  up(piece+1) = piecenode;
 
   colCount.push_back(piece+1);
   colCount[piece+1]++;
@@ -116,11 +116,11 @@ void assembler_0_c::clumpify(void) {
     unsigned int c = right[col];
 
     while (c) {
-      columns.push_back(down[c]);
+      columns.push_back(down(c));
       c = right[c];
     }
 
-    unsigned int row = down[col];
+    unsigned int row = down(col);
     unsigned int line = 0;
 
     while (row != col) {
@@ -144,10 +144,10 @@ void assembler_0_c::clumpify(void) {
       if (columns.size() == 0)
         break;
 
-      row = down[row];
+      row = down(row);
 
       for (i = 0; i < columns.size(); i++)
-        columns[i] = down[columns[i]];
+        columns[i] = down(columns[i]);
     }
 
     /* now all the columns need to be in the header again */
@@ -167,17 +167,17 @@ void assembler_0_c::clumpify(void) {
 }
 
 void assembler_0_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
-  unsigned long newnode = up.size();
+  unsigned long newnode = left.size();
 
   right.push_back(piecenode);
   left.push_back(left[piecenode]);
   right[left[piecenode]] = newnode;
   left[piecenode] = newnode;
 
-  down.push_back(col);
-  up.push_back(up[col]);
-  down[up[col]] = newnode;
-  up[col] = newnode;
+  upDown.push_back(up(col));
+  upDown.push_back(col);
+  down(up(col)) = newnode;
+  up(col) = newnode;
 
   colCount.push_back(col);
   colCount[col]++;
@@ -186,11 +186,10 @@ void assembler_0_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
 void assembler_0_c::nextPiece(unsigned int piece, unsigned int count, unsigned int number) {
   multiPieceCount[piece] = count;
   multiPieceIndex[piece] = number;
-  pieceStart[piece] = up.size();
+  pieceStart[piece] = left.size();
 }
 
 assembler_0_c::assembler_0_c() :
-  left(0), right(0), up(0), down(0), colCount(0),
   multiPieceCount(0), multiPieceIndex(0), pieceStart(0),
   pos(0), rows(0), columns(0), nodeF(0), numF(0),
   piece(0), searchState(0), addRows(0), avoidTransformedAssemblies(0)
@@ -303,72 +302,66 @@ void assembler_0_c::cover(register unsigned int col)
 
 #if 1
 
-  unsigned int * up_ptr = &(up[0]);
-  unsigned int * down_ptr = &(down[0]);
+  unsigned int * upDown_ptr = &(upDown[0]);
   unsigned int * right_ptr = &(right[0]);
   unsigned int * colCount_ptr = &(colCount[0]);
 
   unsigned int tmp;
 
   __asm__ (
-      "movl %1, %%esi               \n"           // esi = up
-      "movl %2, %%edi               \n"           // edi = down
-      "movl %3, %%edx               \n"           // edx = right
-      "movl %4, %%ebx               \n"           // ebx = colCount
-      "                             \n"
-      "movl %0, %%ecx               \n"           // read col from stack into eax
-      "movl (%%edi,%%ecx,4), %%eax  \n"           // ax = i = up[col]
-      "cmpl %%eax, %%ecx            \n"           // if ax == col
-      "je cendloop1                 \n"           //  endloop1
-      "                             \n"
-"cagainloop1:                       \n"
-      "                             \n"
-      "movl (%%edx,%%eax,4), %%ecx  \n"           // j = right[i]
-      "cmpl %%ecx, %%eax            \n"           // if (j(cx) == i
-      "je cendloop2                 \n"
-      "                             \n"
-      "movl %%eax, %5               \n"           // put i onto stack
-      "                             \n"
-"cagainloop2:                       \n"
-      "                             \n"
-      "pushl %%edx                  \n"
-      "movl (%%esi,%%ecx,4), %%eax  \n"           // eax = up[j]
-      "movl (%%edi,%%ecx,4), %%edx  \n"           // edx = down[ax]
-      "movl %%edx, (%%edi,%%eax,4)  \n"           // ax = down[j]
-      "movl %%eax, (%%esi,%%edx,4)  \n"           // ax = down[j]
-      "popl %%edx                   \n"
-      "                             \n"
-      "movl (%%ebx,%%ecx,4), %%eax  \n"           // ax = colCount[j]
-      "decl (%%ebx,%%eax,4)         \n"           // inc(colCount[ax])
-      "                             \n"
-      "movl (%%edx,%%ecx,4), %%ecx  \n"           // cx = right[cx]
-      "cmpl %%ecx, %5               \n"
-      "jne cagainloop2              \n"
-      "                             \n"           //      we know ecx == %5, so we don't need to load it
-                                                  //      "movl %5, %%eax               \n"
-      "                             \n"
-"cendloop2:                         \n"
-      "                             \n"
-      "movl (%%edi,%%ecx,4), %%eax  \n"
-      "cmpl %%eax, %0               \n"
-      "jne cagainloop1              \n"
-      "                             \n"
-"cendloop1:                         \n"
+      "movl %1, %%esi                 \n"           // esi = upDown
+      "movl %3, %%edx                 \n"           // edx = right
+      "movl %4, %%ebx                 \n"           // ebx = colCount
+      "                               \n"
+      "movl %0, %%ecx                 \n"           // read col from stack into eax
+      "movl 4(%%esi,%%ecx,8), %%eax   \n"           // ax = i = down[col]
+      "cmpl %%eax, %%ecx              \n"           // if ax == col
+      "je cendloop1                   \n"           //  endloop1
+      "                               \n"
+"cagainloop1:                         \n"
+      "                               \n"
+      "movl (%%edx,%%eax,4), %%ecx    \n"           // j = right[i]
+      "cmpl %%ecx, %%eax              \n"           // if (j(cx) == i
+      "je cendloop2                   \n"
+      "                               \n"
+      "movl %%eax, %5                 \n"           // put i onto stack
+      "                               \n"
+"cagainloop2:                         \n"
+      "                               \n"
+      "movl 0(%%esi,%%ecx,8), %%eax   \n"           // eax = up[j]
+      "movl 4(%%esi,%%ecx,8), %%edi   \n"           // edx = down[ax]
+      "movl %%edi, 4(%%esi,%%eax,8)   \n"           // ax = down[j]
+      "movl %%eax, 0(%%esi,%%edi,8)   \n"           // ax = down[j]
+      "                               \n"
+      "movl (%%ebx,%%ecx,4), %%eax    \n"           // ax = colCount[j]
+      "decl (%%ebx,%%eax,4)           \n"           // inc(colCount[ax])
+      "                               \n"
+      "movl (%%edx,%%ecx,4), %%ecx    \n"           // cx = right[cx]
+      "cmpl %%ecx, %5                 \n"
+      "jne cagainloop2                \n"
+      "                               \n"           //      we know ecx == %5, so we don't need to load it
+"cendloop2:                           \n"
+      "                               \n"
+      "movl 4(%%esi,%%ecx,8), %%eax   \n"
+      "cmpl %%eax, %0                 \n"
+      "jne cagainloop1                \n"
+      "                               \n"
+"cendloop1:                           \n"
      :
-     : "m" (col), "m" (up_ptr), "m" (down_ptr), "m" (right_ptr), "m" (colCount_ptr), "m" (tmp)
+     : "m" (col), "m" (upDown_ptr), "m" (upDown_ptr), "m" (right_ptr), "m" (colCount_ptr), "m" (tmp)
      : "eax", "ebx", "ecx", "edx", "esi", "edi"
    );
 
 #else
 
-  for (unsigned int i = down[col]; i != col; i = down[i]) {
+  for (unsigned int i = down(col); i != col; i = down(i)) {
     for (unsigned int j = right[i]; j != i; j = right[j]) {
 
-      unsigned int u = up[j];
-      unsigned int d = down[j];
+      unsigned int u = up(j);
+      unsigned int d = down(j);
 
-      up[d] = u;
-      down[u] = d;
+      up(d) = u;
+      down(u) = d;
 
       colCount[colCount[j]]--;
     }
@@ -382,69 +375,65 @@ void assembler_0_c::uncover(register unsigned int col) {
 
 #if 1
 
-  unsigned int * up_ptr = &(up[0]);
-  unsigned int * down_ptr = &(down[0]);
+  unsigned int * upDown_ptr = &(upDown[0]);
   unsigned int * left_ptr = &(left[0]);
   unsigned int * colCount_ptr = &(colCount[0]);
 
   unsigned int tmp;
 
   __asm__ (
-      "movl %1, %%esi               \n"           // esi = up
-      "movl %2, %%edi               \n"           // edi = down
-      "movl %3, %%edx               \n"           // edx = left
-      "movl %4, %%ebx               \n"           // ebx = colCount
-      "                             \n"
-      "movl %0, %%ecx               \n"           // read col from stack into eax
-      "movl (%%esi,%%ecx,4), %%eax  \n"           // ax = i = up[col]
-      "cmpl %%eax, %%ecx            \n"           // if ax == col
-      "je endloop1                  \n"           //  endloop1
-      "                             \n"
-"againloop1:                        \n"
-      "                             \n"
-      "movl (%%edx,%%eax,4), %%ecx  \n"           // j = left[i]
-      "cmpl %%ecx, %%eax            \n"           // if (j(cx) == i
-      "je endloop2                  \n"
-      "                             \n"
-      "movl %%eax, %5               \n"           // put i onto stack
-      "                             \n"
-"againloop2:                        \n"
-      "                             \n"
-      "movl (%%ebx,%%ecx,4), %%eax  \n"           // ax = colCount[j]
-      "incl (%%ebx,%%eax,4)         \n"           // inc(colCount[ax])
-      "                             \n"
-      "movl (%%esi,%%ecx,4), %%eax  \n"           // ax = up[j]
-      "movl %%ecx, (%%edi,%%eax,4)  \n"           // down[ax] = j
-      "movl (%%edi,%%ecx,4), %%eax  \n"           // ax = down[j]
-      "movl %%ecx, (%%esi,%%eax,4)  \n"           // up[ax] = j;
-      "                             \n"
-      "movl (%%edx,%%ecx,4), %%ecx  \n"           // cx = left[cx]
-      "cmpl %%ecx, %5               \n"
-      "jne againloop2               \n"
-      "                             \n"           // we know that %%ecx == %5, so we don't need to load it
-                                                  //      "movl %5, %%eax               \n"
-      "                             \n"
-"endloop2:                          \n"
-      "                             \n"
-      "movl (%%esi,%%ecx,4), %%eax  \n"
-      "cmpl %%eax, %0               \n"
-      "jne againloop1               \n"
-      "                             \n"
-"endloop1:                          \n"
+      "movl %1, %%esi                 \n"           // esi = up
+      "movl %3, %%edx                 \n"           // edx = left
+      "movl %4, %%ebx                 \n"           // ebx = colCount
+      "                               \n"
+      "movl %0, %%ecx                 \n"           // read col from stack into eax
+      "movl (%%esi,%%ecx,8), %%eax    \n"           // ax = i = up[col]
+      "cmpl %%eax, %%ecx              \n"           // if ax == col
+      "je endloop1                    \n"           //  endloop1
+      "                               \n"
+"againloop1:                          \n"
+      "                               \n"
+      "movl (%%edx,%%eax,4), %%ecx    \n"           // j = left[i]
+      "cmpl %%ecx, %%eax              \n"           // if (j(cx) == i
+      "je endloop2                    \n"
+      "                               \n"
+      "movl %%eax, %5                 \n"           // put i onto stack
+      "                               \n"
+"againloop2:                          \n"
+      "                               \n"
+      "movl (%%ebx,%%ecx,4), %%eax    \n"           // ax = colCount[j]
+      "incl (%%ebx,%%eax,4)           \n"           // inc(colCount[ax])
+      "                               \n"
+      "movl 0(%%esi,%%ecx,8), %%eax   \n"           // ax = up[j]
+      "movl 4(%%esi,%%ecx,8), %%edi   \n"           // ax = down[j]
+      "movl %%ecx, 4(%%esi,%%eax,8)   \n"           // down[ax] = j
+      "movl %%ecx, 0(%%esi,%%edi,8)   \n"           // up[ax] = j;
+      "                               \n"
+      "movl (%%edx,%%ecx,4), %%ecx    \n"           // cx = left[cx]
+      "cmpl %%ecx, %5                 \n"
+      "jne againloop2                 \n"
+      "                               \n"           // we know that %%ecx == %5, so we don't need to load it
+"endloop2:                            \n"
+      "                               \n"
+      "movl (%%esi,%%ecx,8), %%eax    \n"
+      "cmpl %%eax, %0                 \n"
+      "jne againloop1                 \n"
+      "                               \n"
+"endloop1:                            \n"
      :
-     : "m" (col), "m" (up_ptr), "m" (down_ptr), "m" (left_ptr), "m" (colCount_ptr), "m" (tmp)
+     : "m" (col), "m" (upDown_ptr), "m" (upDown_ptr), "m" (left_ptr), "m" (colCount_ptr), "m" (tmp)
      : "eax", "ebx", "ecx", "edx", "esi", "edi"
    );
 
 #else
 
-  for (unsigned int i = up[col]; i != col; i = up[i]) {
+  for (unsigned int i = up(col); i != col; i = up(i)) {
     for (unsigned int j = left[i]; j != i; j = left[j]) {
 
       colCount[colCount[j]]++;
 
-      up[down[j]] = j;
-      down[up[j]] = j;
+      up(down(j)) = j;
+      down(up(j)) = j;
     }
   }
 
@@ -501,11 +490,12 @@ void assembler_0_c::remove_row(register unsigned int r) {
 
     colCount[colCount[j]]--;
 
-    u = up[j];
-    d = down[j];
+    u = up(j);
+    d = down(j);
 
-    up[d] = u;
-    down[u] = d;
+    up(d) = u;
+    down(u) = d;
+
     j = right[j];
   } while (j != r);
 }
@@ -516,15 +506,15 @@ void assembler_0_c::remove_column(register unsigned int c) {
     right[left[j]] = right[j];
     left[right[j]] = left[j];
 
-    j = down[j];
+    j = down(j);
   } while (j != c);
 }
 
 void assembler_0_c::reinsert_row(register unsigned int r) {
   register unsigned int j = r;
   do {
-    up[down[j]] = j;
-    down[up[j]] = j;
+    up(down(j)) = j;
+    down(up(j)) = j;
 
     colCount[colCount[j]]++;
 
@@ -612,7 +602,7 @@ void assembler_0_c::reduce(void) {
     memset(columns, 0, varivoxelEnd * sizeof(unsigned int));
 
     unsigned int placements = 0;
-    for (unsigned int r = down[col]; r != col; r = down[r]) {
+    for (unsigned int r = down(col); r != col; r = down(r)) {
       for (unsigned int j = right[r]; j != r; j = right[j])
         columns[colCount[j]]++;
       placements++;
@@ -631,7 +621,7 @@ void assembler_0_c::reduce(void) {
 
         rowsToRemove.clear();
 
-        for (unsigned int r = down[c]; r != c; r = down[r]) {
+        for (unsigned int r = down(c); r != c; r = down(r)) {
 
           /* find the column col */
           unsigned int c2 = right[r];
@@ -671,7 +661,7 @@ void assembler_0_c::reduce(void) {
 
       // go over all the placements of the piece and check, if
       // each for possibility
-      for (unsigned int r = down[p+1]; r != p+1; r = down[r]) {
+      for (unsigned int r = down(p+1); r != p+1; r = down(r)) {
 
         // try to do this placement, if the placing goes
         // wrong already, we don't need to do the deep check
@@ -701,7 +691,7 @@ void assembler_0_c::reduce(void) {
        */
       memset(columns, 0, varivoxelEnd * sizeof(unsigned int));
       unsigned int placements = 0;
-      for (unsigned int r = down[p+1]; r != p+1; r = down[r]) {
+      for (unsigned int r = down(p+1); r != p+1; r = down(r)) {
         for (unsigned int j = right[r]; j != r; j = right[j])
           columns[colCount[j]]++;
         placements++;
@@ -721,7 +711,7 @@ void assembler_0_c::reduce(void) {
           rowsToRemove.clear();
 
           unsigned int piece = 0;
-          for (unsigned int r = down[c]; r != c; r = down[r]) {
+          for (unsigned int r = down(c); r != c; r = down(r)) {
 
             /* find out to which piece this row belongs */
             while ((piece < piecenumber-1) && (r >= pieceStart[piece+1])) piece++;
@@ -943,7 +933,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
 
           // we have found a valid column, start a search
           columns[pos] = c;
-          rows[pos] = down[columns[pos]];
+          rows[pos] = down(columns[pos]);
 
           // find out the piece number for the first row, for the piece
           // columns we can take a shortcut, because here the piecenumber
@@ -1000,7 +990,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
           // we have a fixed column given by the last recursion step, so take this column
           // the piece array has already been initialized in the last loop, see below
           columns[pos] = piece[pos] + 1;
-          rows[pos] = down[columns[pos]];
+          rows[pos] = down(columns[pos]);
           cont = true;
         }
       }
@@ -1024,7 +1014,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
       cont = true;
 
       do {
-        rows[pos] = down[rows[pos]];
+        rows[pos] = down(rows[pos]);
 
         if (rows[pos] == columns[pos]) {
           cont = false;
@@ -1096,7 +1086,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
 
         // for all pieces of this multi-piece set
         for (unsigned int n = piece[pos+1]; n < piece[pos+1]+numF[pos+1]; n++) {
-          unsigned int r = down[n+1];
+          unsigned int r = down(n+1);
 
           // check all the rows
           while (r != n+1) {
@@ -1107,7 +1097,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
               addRows[pos].push(r);
             }
 
-            r = down[r];
+            r = down(r);
           }
         }
       }
@@ -1153,7 +1143,7 @@ float assembler_0_c::getFinished(void) {
    * the value may jump
    */
 
-  if (!rows || !columns || !down.size())
+  if (!rows || !columns || !upDown.size())
     return 0;
 
   float erg = 0;
@@ -1166,9 +1156,9 @@ float assembler_0_c::getFinished(void) {
     unsigned int r = rows[i];
     unsigned int l = colCount[columns[i]];
 
-    while (l && r && (r != down[columns[i]])) {
+    while (l && r && (r != down(columns[i]))) {
       erg += 1;
-      r = up[r];
+      r = up(r);
       l--;
     }
 
@@ -1295,7 +1285,7 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
 
           // for all pieces of this multi-piece set
           for (unsigned int n = piece[p+1]; n < piece[p+1]+numF[p+1]; n++) {
-            unsigned int r = down[n+1];
+            unsigned int r = down(n+1);
 
             // check all the rows
             while (r != n+1) {
@@ -1306,7 +1296,7 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
                 addRows[p].push(r);
               }
 
-              r = down[r];
+              r = down(r);
             }
           }
         }
@@ -1363,15 +1353,15 @@ xml::node assembler_0_c::save(void) const {
 unsigned int assembler_0_c::getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) {
 
   if (!node)
-    node = down[piece + 1];
+    node = down(piece+1);
 
   while (delta > 0) {
-    node = down[node];
+    node = down(node);
     delta--;
   }
 
   while (delta < 0) {
-    node = up[node];
+    node = up(node);
     delta++;
   }
 

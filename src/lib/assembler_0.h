@@ -66,9 +66,15 @@ private:
    */
   std::vector<unsigned int> left;
   std::vector<unsigned int> right;
-  std::vector<unsigned int> up;
-  std::vector<unsigned int> down;
+  std::vector<unsigned int> upDown;   // this is special, is contains in reality 2 arrays interflieved
+                                      // the even entries (0, 2, 4, ...) are up and the odd (1, 3, 5, ...) are down
+                                      // I've done this to save a register for the assembly versions of the cover
+                                      // and uncover functions and to speed them up by %
   std::vector<unsigned int> colCount;
+
+  //to make access to the up and down vectors easier, the following 2 macros are provided
+#define up(x) upDown[2*(x)]
+#define down(x) upDown[2*(x)+1]
 
   /* used to abbort the searching */
   bool abbort;
