@@ -231,6 +231,11 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
       View3D->setZoom(ViewSizes[0]);
     currentTab = 0;
   } else if(o->value() == TabProblems) {
+
+    // make sure the selector has a valid problem selected, when there is one
+    if (puzzle->problemNumber() && (problemSelector->getSelection() >= puzzle->problemNumber()))
+      problemSelector->setSelection(puzzle->problemNumber()-1);
+
     if (problemSelector->getSelection() < puzzle->problemNumber()) {
       activateProblem(problemSelector->getSelection());
     }
@@ -241,6 +246,11 @@ void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
       View3D->setZoom(ViewSizes[1]);
     currentTab = 1;
   } else if(o->value() == TabSolve) {
+
+    // make sure the selector has a valid problem selected, when there is one
+    if (puzzle->problemNumber() && (solutionProblem->getSelection() >= puzzle->problemNumber()))
+      solutionProblem->setSelection(puzzle->problemNumber()-1);
+
     if ((solutionProblem->getSelection() < puzzle->problemNumber()) &&
         (SolutionSel->value()-1 < puzzle->probSolutionNumber(solutionProblem->getSelection()))) {
       activateSolution(solutionProblem->getSelection(), int(SolutionSel->value()-1));
