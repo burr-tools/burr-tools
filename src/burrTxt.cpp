@@ -16,7 +16,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-
 #include "lib/puzzle.h"
 #include "lib/assm_0_frontend_0.h"
 #include "lib/assembly.h"
@@ -89,12 +88,13 @@ void usage(void) {
 
   cout << "burrTxt [options] file [options]\n\n";
   cout << "  file: puzzle file with the puzzle definition to solve\n\n";
-  cout << "  -d try to disassemble and only print solutions that do disassemble\n";
-  cout << "  -p print the disassembly plan\n";
-  cout << "  -r reduce the placements bevore starting to solve the puzzle\n";
-  cout << "  -s print the assemby\n";
-  cout << "  -q be quiet and only print statistics\n";
-  cout << "  -n don't print a newline at the end of the line\n";
+  cout << "  -d    try to disassemble and only print solutions that do disassemble\n";
+  cout << "  -p    print the disassembly plan\n";
+  cout << "  -r    reduce the placements bevore starting to solve the puzzle\n";
+  cout << "  -s    print the assemby\n";
+  cout << "  -q    be quiet and only print statistics\n";
+  cout << "  -n    don't print a newline at the end of the line\n";
+  cout << "  -o n  select the problem to solve\n";
 }
 
 int main(int argv, char* args[]) {
@@ -109,6 +109,7 @@ int main(int argv, char* args[]) {
   printDisassemble = false;
   printSolutions = false;
   quiet = false;
+  unsigned int problem = 0;
   int filenumber = 0;
   bool reduce = false;
   bool newline = true;
@@ -129,7 +130,10 @@ int main(int argv, char* args[]) {
         reduce = true;
       else if (strcmp(args[i], "-n") == 0)
         newline = false;
-      else if (strcmp(args[i], "-q") == 0) {
+      else if (strcmp(args[i], "-o") == 0) {
+        problem = atoi(args[i+1]);
+        i++;
+      } else if (strcmp(args[i], "-q") == 0) {
         quiet = true;
         printDisassemble = false;
         printSolutions = false;
@@ -159,7 +163,7 @@ int main(int argv, char* args[]) {
 
   assembler_0_c *assm = new assm_0_frontend_0_c();
 
-  switch (assm->createMatrix(&p, 0)) {
+  switch (assm->createMatrix(&p, problem)) {
   case assm_0_frontend_0_c::ERR_TOO_MANY_UNITS:
     printf("%i units too many for the result shape\n", assm->getErrorsParam());
     return 0;
@@ -179,12 +183,11 @@ int main(int argv, char* args[]) {
       cout << "finished reduce\n\n";
   }
 
-  asm_cb a(&p, 0);
+  asm_cb a(&p, problem);
 
-  d = new disassembler_0_c(&p, 0);
+  d = new disassembler_0_c(&p, problem);
 
   assm->assemble(&a);
-
 
   cout << a.Assemblies << " assemblies and " << a.Solutions << " solutions found with " << assm->getIterations() << " iterations ";
 
