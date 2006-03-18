@@ -244,7 +244,7 @@ private:
    */
   bool debug;         // debugging enabled
   int debug_loops;    // how many loops to run ?
-  int debug_pos;      // run until pos is debug_pos
+  unsigned int debug_pos;      // run until pos is debug_pos
 
   void clumpify(void);
 

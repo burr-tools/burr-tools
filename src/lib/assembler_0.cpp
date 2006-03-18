@@ -1379,7 +1379,7 @@ unsigned int assembler_0_c::getPiecePlacementCount(unsigned int piece) {
 void assembler_0_c::debug_step(unsigned long num) {
   debug = true;
   debug_loops = 1;
-  debug_pos = -1;
+  debug_pos = (unsigned int)-1;
   asm_bc = 0;
   iterativeMultiSearch();
 }
