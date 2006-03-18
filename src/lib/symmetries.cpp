@@ -419,7 +419,7 @@ unsigned int countSymmetryIntersection(symmetries_t res, symmetries_t s2) {
   bt_assert(res < NUM_SYMMETRY_GROUPS);
   bt_assert(s2 < NUM_SYMMETRY_GROUPS);
 
-  unsigned long long s = symmetries[res] & unifiedSymmetries[s2];
+  unsigned long long s = unifiedSymmetries[res] & symmetries[s2];
 
   s -= ((s >> 1) & 0x5555555555555555ll);
   s = (((s >> 2) & 0x3333333333333333ll) + (s & 0x3333333333333333ll));
