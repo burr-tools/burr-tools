@@ -890,13 +890,16 @@ void assembler_0_c::iterativeMultiSearch(void) {
                 break;
             }
 
-            // multi pieces need to have at least num placements
+            // multi pieces need to have at least num-1 placements
             // as we are not currently in the process of placing a multi
             // piece either all of a group of multipieces have been placed and
             // the columns removed or none of them. So we can check the columns
             // that are still there and force the counters above the number
             // of pieces in the group of multipieces
-            if ((j <= piecenumber) && (colCount[j] < multiPieceCount[j-1]) && (multiPieceIndex[j-1] > 0)) {
+            // num-1 because the first piece has the first placement the other instances
+            // might have this placement already removed, so we check only against that
+            // smaller number
+            if ((j <= piecenumber) && (colCount[j] < multiPieceCount[j-1]-1) && (multiPieceIndex[j-1] > 0)) {
               s = 0;
               break;
             }
