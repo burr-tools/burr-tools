@@ -2020,7 +2020,7 @@ int UserInterface::handle(int event) {
 
 void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
-  TabPieces = new Fl_Group(x, y, w, h, "Shapes");
+  TabPieces = new Fl_Group(x, y, w, h, "Entity");
   TabPieces->tooltip("Edit shapes");
   TabPieces->clear_visible_focus();
 
@@ -2252,7 +2252,7 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
 void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
-  TabProblems = new Fl_Group(x, y, w, h, "Problems");
+  TabProblems = new Fl_Group(x, y, w, h, "Puzzle");
   TabProblems->tooltip("Edit problems");
   TabProblems->hide();
   TabProblems->clear_visible_focus();
@@ -2493,7 +2493,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
 void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
 
-  TabSolve = new Fl_Group(x, y, w, h, "Solve");
+  TabSolve = new Fl_Group(x, y, w, h, "Solver");
   TabSolve->tooltip("Solve problems");
   TabSolve->hide();
   TabSolve->clear_visible_focus();
