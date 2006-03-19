@@ -20,6 +20,7 @@
 
 #include "bt_assert.h"
 #include "symmetries.h"
+#include "gridtype.h"
 
 #include <xmlwrapp/node.h>
 
@@ -63,6 +64,10 @@ public:
 class voxel_c {
 
 private:
+
+  /* each voxel needs to know the parameters for its gridspace
+   */
+  const gridType_c *gt;
 
   /**
    * The x-size of the space.
@@ -146,7 +151,7 @@ public:
    * Creates a new voxel space. Its of given size and
    * initializes all values to init.
    */
-  voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init = 0, voxel_type outs = VX_EMPTY);
+  voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0, voxel_type outs = VX_EMPTY);
 
   /**
    * Copy constructor using reference. Transformation allows to
@@ -163,7 +168,7 @@ public:
   /**
    * load from xml node
    */
-  voxel_c(const xml::node & node);
+  voxel_c(const xml::node & node, const gridType_c * gt);
 
   /**
    * Destructor.
@@ -401,7 +406,7 @@ public:
    * that results in an identical shape for this voxel space
    */
   unsigned char normalizeTransformation(unsigned char trans) const {
-    return minimizeTransformation(selfSymmetries(), trans);
+    return gt->getSymmetries()->minimizeTransformation(selfSymmetries(), trans);
   }
 
 

@@ -21,6 +21,8 @@
 
 #include "bt_assert.h"
 
+#define NUM_TRANSFORMATIONS 24
+#define NUM_TRANSFORMATIONS_MIRROR 48
 #define NUM_SYMMETRY_GROUPS 92
 
 /* these arrays contain the transformations necessary to get all possible orientations of a piece
@@ -379,26 +381,32 @@ static const unsigned char transformationMinimizer[NUM_SYMMETRY_GROUPS][NUM_TRAN
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 
-int rotx(unsigned int p) {
+symmetries_0_c::symmetries_0_c(const gridType_c * gt) {
+}
+
+unsigned int symmetries_0_c::getNumTransformations(void) const { return NUM_TRANSFORMATIONS; }
+unsigned int symmetries_0_c::getNumTransformationsMirror(void) const { return NUM_TRANSFORMATIONS_MIRROR; }
+
+int symmetries_0_c::rotx(unsigned int p) const {
   bt_assert(p < NUM_TRANSFORMATIONS);
   return _rotx[p];
 }
-int roty(unsigned int p) {
+int symmetries_0_c::roty(unsigned int p) const {
   bt_assert(p < NUM_TRANSFORMATIONS);
   return _roty[p];
 }
-int rotz(unsigned int p) {
+int symmetries_0_c::rotz(unsigned int p) const {
   bt_assert(p < NUM_TRANSFORMATIONS);
   return _rotz[p];
 }
 
-unsigned char transAdd(unsigned char t1, unsigned char t2) {
+unsigned char symmetries_0_c::transAdd(unsigned char t1, unsigned char t2) const {
   bt_assert(t1 < NUM_TRANSFORMATIONS_MIRROR);
   bt_assert(t2 < NUM_TRANSFORMATIONS_MIRROR);
   return transMult[t1][t2];
 }
 
-bool symmetrieContainsTransformation(symmetries_t s, unsigned int t) {
+bool symmetries_0_c::symmetrieContainsTransformation(symmetries_t s, unsigned int t) const {
 
   bt_assert(s < NUM_SYMMETRY_GROUPS);
   bt_assert(t < NUM_TRANSFORMATIONS_MIRROR);
@@ -406,7 +414,7 @@ bool symmetrieContainsTransformation(symmetries_t s, unsigned int t) {
   return ((symmetries[s] & ((unsigned long long)1 << t)) != 0);
 }
 
-unsigned char minimizeTransformation(symmetries_t s, unsigned char trans) {
+unsigned char symmetries_0_c::minimizeTransformation(symmetries_t s, unsigned char trans) const {
 
   bt_assert(s < NUM_SYMMETRY_GROUPS);
   bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
@@ -414,7 +422,7 @@ unsigned char minimizeTransformation(symmetries_t s, unsigned char trans) {
   return transformationMinimizer[s][trans];
 }
 
-unsigned int countSymmetryIntersection(symmetries_t res, symmetries_t s2) {
+unsigned int symmetries_0_c::countSymmetryIntersection(symmetries_t res, symmetries_t s2) const {
 
   bt_assert(res < NUM_SYMMETRY_GROUPS);
   bt_assert(s2 < NUM_SYMMETRY_GROUPS);
@@ -430,7 +438,7 @@ unsigned int countSymmetryIntersection(symmetries_t res, symmetries_t s2) {
   return (unsigned int)(s & 0x3f);
 }
 
-bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2) {
+bool symmetries_0_c::symmetriesLeft(symmetries_t resultSym, symmetries_t s2) const {
 
   bt_assert(resultSym < NUM_SYMMETRY_GROUPS);
   bt_assert(s2 < NUM_SYMMETRY_GROUPS);
@@ -438,7 +446,7 @@ bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2) {
   return symmetries[resultSym] & unifiedSymmetries[s2] & ~((unsigned long long)1);
 }
 
-symmetries_t symmetryCalcuation(const voxel_c *pp) {
+symmetries_t symmetries_0_c::symmetryCalcuation(const voxel_c *pp) const {
 
   bt_assert(pp);
 

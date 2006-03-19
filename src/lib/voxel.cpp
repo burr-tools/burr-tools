@@ -25,7 +25,7 @@
 
 using namespace std;
 
-voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), hx(0), hy(0), hz(0), name(0) {
+voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * g, voxel_type init, voxel_type outs) : gt(g), sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), hx(0), hy(0), hz(0), name(0) {
 
   space = new voxel_type[voxels];
   bt_assert(space);
@@ -432,6 +432,8 @@ void voxel_c::rotatez(int by) {
 
 void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 
+  const symmetries_c * sym = gt->getSymmetries();
+
   int tx = hx;
   int ty = hy;
   int tz = hz;
@@ -440,12 +442,12 @@ void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
   int tsz = sz;
   int t;
 
-  if (trans >= NUM_TRANSFORMATIONS) {
+  if (trans >= sym->getNumTransformations()) {
     tx = sx - 1 - tx;
-    trans -= NUM_TRANSFORMATIONS;
+    trans -= sym->getNumTransformations();
   }
 
-  for (int i = 0; i < rotx(trans); i++) {
+  for (int i = 0; i < sym->rotx(trans); i++) {
     t = ty;
     ty = tsz - 1 - tz;
     tz = t;
@@ -454,7 +456,7 @@ void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
     tsz = t;
   }
 
-  for (int i = 0; i < roty(trans); i++) {
+  for (int i = 0; i < sym->roty(trans); i++) {
     t = tx;
     tx = tsz - 1 - tz;
     tz = t;
@@ -463,7 +465,7 @@ void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
     tsz = t;
   }
 
-  for (int i = 0; i < rotz(trans); i++) {
+  for (int i = 0; i < sym->rotz(trans); i++) {
     t = ty;
     ty = tx;
     tx = tsy - 1 - t;
@@ -479,6 +481,8 @@ void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 
 void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2, int * y2, int * z2) const {
 
+  const symmetries_c * sym = gt->getSymmetries();
+
   int t1x = bx1;
   int t1y = by1;
   int t1z = bz1;
@@ -491,13 +495,13 @@ void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, 
   int tsz = sz;
   int t;
 
-  if (trans >= NUM_TRANSFORMATIONS) {
+  if (trans >= sym->getNumTransformations()) {
     t1x = sx - 1 - t1x;
     t2x = sx - 1 - t2x;
-    trans -= NUM_TRANSFORMATIONS;
+    trans -= sym->getNumTransformations();
   }
 
-  for (int i = 0; i < rotx(trans); i++) {
+  for (int i = 0; i < sym->rotx(trans); i++) {
     t = t1y;
     t1y = tsz - 1 - t1z;
     t1z = t;
@@ -511,7 +515,7 @@ void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, 
     tsz = t;
   }
 
-  for (int i = 0; i < roty(trans); i++) {
+  for (int i = 0; i < sym->roty(trans); i++) {
     t = t1x;
     t1x = tsz - 1 - t1z;
     t1z = t;
@@ -525,7 +529,7 @@ void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, 
     tsz = t;
   }
 
-  for (int i = 0; i < rotz(trans); i++) {
+  for (int i = 0; i < sym->rotz(trans); i++) {
     t = t1y;
     t1y = t1x;
     t1x = tsy - 1 - t;
@@ -950,23 +954,25 @@ bool voxel_c::neighbour(unsigned int p, voxel_type val) const {
 
 void voxel_c::transform(unsigned int nr) {
 
-  bt_assert(nr < NUM_TRANSFORMATIONS_MIRROR);
+  const symmetries_c * sym = gt->getSymmetries();
 
-  if (nr >= NUM_TRANSFORMATIONS) {
+  bt_assert(nr < sym->getNumTransformationsMirror());
+
+  if (nr >= sym->getNumTransformations()) {
     mirrorX();
-    nr -= NUM_TRANSFORMATIONS;
+    nr -= sym->getNumTransformations();
   }
 
-  rotatex(rotx(nr));
-  rotatey(roty(nr));
-  rotatez(rotz(nr));
+  rotatex(sym->rotx(nr));
+  rotatey(sym->roty(nr));
+  rotatez(sym->rotz(nr));
 }
 
 symmetries_t voxel_c::selfSymmetries(void) const {
 
   if (isSymmetryInvalid(symmetries)) {
 
-    ((voxel_c*)this)->symmetries = symmetryCalcuation(this);
+    ((voxel_c*)this)->symmetries = gt->getSymmetries()->symmetryCalcuation(this);
   }
 
   return symmetries;
@@ -1094,7 +1100,7 @@ xml::node voxel_c::save(void) const {
   return nd;
 }
 
-voxel_c::voxel_c(const xml::node & node) : hx(0), hy(0), hz(0), name(0) {
+voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), hy(0), hz(0), name(0) {
 
   // we must have a real node and the following attributes
   if ((node.get_type() != xml::node::type_element) ||

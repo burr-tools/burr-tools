@@ -869,7 +869,7 @@ void VoxelDrawer::showPlacement(const puzzle_c * puz, unsigned int probNum, unsi
 
   int num;
 
-  if (trans < NUM_TRANSFORMATIONS_MIRROR) {
+  if (trans < puz->getGridType()->getSymmetries()->getNumTransformationsMirror()) {
 
     int shape = 0;
     unsigned int p = piece;

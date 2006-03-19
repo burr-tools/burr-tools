@@ -71,6 +71,9 @@ class movementCache_c {
   /* number of shapes */
   unsigned int num_shapes;
 
+  /* numbe of possible transformations for each shape */
+  unsigned int num_transformations;
+
   /* this function resizes the hash table to roughly twice the size */
   void rehash(void);
 

@@ -199,7 +199,7 @@ public:
 
   solution_c(assembly_c * assm, separation_c * t) : assembly(assm), tree(t) {}
 
-  solution_c(const xml::node & node, unsigned int pieces);
+  solution_c(const xml::node & node, unsigned int pieces, const gridType_c * gt);
 
   ~solution_c(void);
 
@@ -222,7 +222,7 @@ public:
   }
 };
 
-solution_c::solution_c(const xml::node & node, unsigned int pieces) {
+solution_c::solution_c(const xml::node & node, unsigned int pieces, const gridType_c * gt) {
 
   if ((node.get_type() != xml::node::type_element) ||
       (strcmp(node.get_name(), "solution") != 0))
@@ -234,7 +234,7 @@ solution_c::solution_c(const xml::node & node, unsigned int pieces) {
   xml::node::const_iterator it;
 
   it = node.find("assembly");
-  assembly = new assembly_c(*it, pieces);
+  assembly = new assembly_c(*it, pieces, gt);
 
   it = node.find("separation");
   if (it != node.end())
@@ -270,7 +270,7 @@ public:
     numSolutions(0xFFFFFFFF)
   {}
 
-  problem_c(const xml::node & node, unsigned int colors, unsigned int shapes);
+  problem_c(const xml::node & node, unsigned int colors, unsigned int shapes, const gridType_c * gt);
 
   // nearly copy constructor, only the problem is copied not the solution
   problem_c(problem_c * prob);
@@ -500,7 +500,7 @@ xml::node problem_c::save(void) const {
   return nd;
 }
 
-problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int shape) : result(0xFFFFFFFF), colorConstraints(color), assm(0) {
+problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int shape, const gridType_c * gt) : result(0xFFFFFFFF), colorConstraints(color), assm(0) {
 
   if ((node.get_type() != xml::node::type_element) ||
       (strcmp(node.get_name(), "problem") != 0))
@@ -588,7 +588,7 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
     for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
       if ((i->get_type() == xml::node::type_element) &&
           (strcmp(i->get_name(), "solution") == 0))
-        solutions.push_back(new solution_c(*i, pieces));
+        solutions.push_back(new solution_c(*i, pieces, gt));
   }
 
   if (node.get_attributes().find("state") != node.get_attributes().end())
@@ -709,7 +709,7 @@ void problem_c::exchangeShape(unsigned int s1, unsigned int s2) {
 
 /************** PUZZLE ****************/
 
-puzzle_c::puzzle_c(void) {
+puzzle_c::puzzle_c(const gridType_c * g) : gt(g) {
 }
 
 puzzle_c::puzzle_c(const puzzle_c * orig) {
@@ -724,6 +724,7 @@ puzzle_c::puzzle_c(const puzzle_c * orig) {
     colors.push_back(orig->colors[i]);
 
   comment = orig->comment;
+  gt = orig->gt;
 }
 
 puzzle_c::~puzzle_c(void) {
@@ -905,6 +906,14 @@ puzzle_c::puzzle_c(const xml::node & node) {
 
   xml::node::const_iterator it;
 
+  it = node.find("gridType");
+  if (it != node.end())
+    gt = new gridType_c(*it);
+  else
+    // this creates a grid type for cubes, so all puzzle filed
+    // that do contain no grid type definition are build out of cubes
+    gt = new gridType_c();
+
   it = node.find("colors");
   if (it != node.end()) {
     for (xml::node::const_iterator i = it->begin(); i != it->end(); i++) {
@@ -936,14 +945,14 @@ puzzle_c::puzzle_c(const xml::node & node) {
     for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
       if ((i->get_type() == xml::node::type_element) &&
           (strcmp(i->get_name(), "voxel") == 0))
-        shapes.push_back(new voxel_c(*i));
+        shapes.push_back(new voxel_c(*i, gt));
 
   it = node.find("problems");
   if (it != node.end())
     for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
       if ((i->get_type() == xml::node::type_element) &&
           (strcmp(i->get_name(), "problem") == 0))
-        problems.push_back(new problem_c(*i, colors.size(), shapes.size()));
+        problems.push_back(new problem_c(*i, colors.size(), shapes.size(), gt));
 
   it = node.find("comment");
   if (it != node.end() && it->get_type() == xml::node::type_element)
@@ -988,7 +997,7 @@ unsigned int puzzle_c::addShape(voxel_c * p) {
 
 /* add empty shape of given size */
 unsigned int puzzle_c::addShape(int sx, int sy, int sz) {
-  shapes.push_back(new voxel_c(sx, sy, sz, voxel_c::VX_EMPTY));
+  shapes.push_back(new voxel_c(sx, sy, sz, gt, voxel_c::VX_EMPTY));
   return shapes.size()-1;
 }
 

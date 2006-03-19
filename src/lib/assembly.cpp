@@ -21,7 +21,7 @@
 #include "bt_assert.h"
 #include "voxel.h"
 
-assembly_c::assembly_c(const xml::node & node, unsigned int pieces) {
+assembly_c::assembly_c(const xml::node & node, unsigned int pieces, const gridType_c * gt) : sym(gt->getSymmetries()) {
 
   // we must have a real node and the following attributes
   if ((node.get_type() != xml::node::type_element) ||
@@ -40,7 +40,7 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces) {
     if (*c == ' ') {
       if (state == 3) {
 
-        if ((trans != 255) && ((trans < 0) || (trans >= NUM_TRANSFORMATIONS)))
+        if ((trans != 255) && ((trans < 0) || ((unsigned int)trans >= sym->getNumTransformations())))
           throw load_error("transformations need to be either 255 or between 0 and NUM_TRANSFORMATIONS", node);
 
         placements.push_back(placement_c(trans, x, y, z));
@@ -111,7 +111,7 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces) {
   if (state != 3)
     throw load_error("not the right number of numbers in assembly", node);
 
-  if ((trans != 255) && ((trans < 0) || (trans >= NUM_TRANSFORMATIONS)))
+  if ((trans != 255) && ((trans < 0) || ((unsigned int)trans >= sym->getNumTransformations())))
     throw load_error("transformations need to be either 255 or between 0 and NUM_TRANSFORMATIONS", node);
 
   placements.push_back(placement_c(trans, x, y, z));
@@ -192,9 +192,9 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
   int rx, ry, rz;
   puz->probGetResultShape(prob)->getHotspot(trans, &rx, &ry, &rz);
 
-  if (trans >= NUM_TRANSFORMATIONS) {
+  if (trans >= sym->getNumTransformations()) {
     flip = true;
-    rot = trans - NUM_TRANSFORMATIONS;
+    rot = trans - sym->getNumTransformations();
   }
 
   int p = 0;
@@ -206,18 +206,18 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
       if (flip)
         placements[p].xpos = -placements[p].xpos;
 
-      for (int t = 0; t < rotx(rot); t++) {
+      for (int t = 0; t < sym->rotx(rot); t++) {
         int tmp = placements[p].ypos;
         placements[p].ypos = -placements[p].zpos;
         placements[p].zpos = tmp;
       }
 
-      for (int t = 0; t < roty(rot); t++) {
+      for (int t = 0; t < sym->roty(rot); t++) {
         int tmp = placements[p].zpos;
         placements[p].zpos = placements[p].xpos;
         placements[p].xpos = -tmp;
       }
-      for (int t = 0; t < rotz(rot); t++) {
+      for (int t = 0; t < sym->rotz(rot); t++) {
         int tmp = placements[p].xpos;
         placements[p].xpos = -placements[p].ypos;
         placements[p].ypos = tmp;
@@ -230,7 +230,7 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
       /* add the piece transformations and also find the smallest possible
        * transformation that results in the same piece
        */
-      placements[p].transformation = transAdd(placements[p].transformation, trans);
+      placements[p].transformation = sym->transAdd(placements[p].transformation, trans);
 
       unsigned char tr = puz->probGetShapeShape(prob, i)->normalizeTransformation(placements[p].transformation);
 
@@ -293,9 +293,9 @@ bool assembly_c::smallerRotationExists(const puzzle_c * puz, unsigned int prob, 
 
   symmetries_t s = puz->probGetResultShape(prob)->selfSymmetries();
 
-  for (unsigned char t = 1; t < NUM_TRANSFORMATIONS_MIRROR; t++) {
+  for (unsigned char t = 1; t < sym->getNumTransformationsMirror(); t++) {
 
-    if (symmetrieContainsTransformation(s, t)) {
+    if (sym->symmetrieContainsTransformation(s, t)) {
 
       assembly_c tmp(this, t, puz, prob);
 

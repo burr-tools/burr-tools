@@ -25,6 +25,7 @@
 #include <stack>
 
 class puzzle_c;
+class gridType_c;
 
 /* this class is only a base class containing the functionality for the matrix
  * the functions in here don't know anything about the meaning of the matrix

@@ -19,6 +19,7 @@
 
 #include "voxel.h"
 #include "puzzle.h"
+#include "gridtype.h"
 
 #include <fstream>
 #include <sstream>
@@ -26,7 +27,7 @@
 /* either return a puzzle, or nil, when failed */
 puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
 
-  puzzle_c * p = new puzzle_c();
+  puzzle_c * p = new puzzle_c(new gridType_c());
 
   p->addProblem();
   p->probSetName(0, "Problem");

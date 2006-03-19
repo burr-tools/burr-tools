@@ -20,6 +20,7 @@
 #include "voxel.h"
 #include "puzzle.h"
 #include "bt_assert.h"
+#include "gridtype.h"
 
 /* helper function to check if a piece an go at a position */
 static bool pieceFits(const voxel_c * piece, const voxel_c * result, const puzzle_c * puz, int x, int y, int z, unsigned int problemNum) {
@@ -44,7 +45,7 @@ static bool pieceFits(const voxel_c * piece, const voxel_c * result, const puzzl
 /* add a piece to the cache, but only if it is not already there. If it is added return the
  * piece pointer otherwise return null
  */
-static voxel_c * addToCache(voxel_c * cache[NUM_TRANSFORMATIONS], unsigned int * fill, voxel_c * piece) {
+static voxel_c * addToCache(voxel_c * cache[], unsigned int * fill, voxel_c * piece) {
 
   for (unsigned int i = 0; i < *fill; i++)
     if (cache[i]->identicalInBB(piece)) {
@@ -128,6 +129,7 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
    * that are present in the piece
    */
   symmetries_t resultSym = result->selfSymmetries();
+  const symmetries_c * sym = puz->getGridType()->getSymmetries();
   unsigned int symBreakerShape = 0xFFFFFFFF;
 
   /* so, if we have just the self-symmetry in the result, everything needs to be tried
@@ -144,13 +146,13 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
      * as its a difference if we select a piece that has only one placement anyway
      * or select one with 400 placements of which 23/24th can be dropped
      */
-    unsigned int bestFound = NUM_TRANSFORMATIONS_MIRROR + 1;
+    unsigned int bestFound = sym->getNumTransformationsMirror() + 1;
     unsigned int symBreakerPiece = 0;
     unsigned int pc = 0;
 
     for (unsigned int i = 0; i < puz->probShapeNumber(problemNum); i++) {
 
-      unsigned int cnt = countSymmetryIntersection(resultSym, puz->probGetShapeShape(problemNum, i)->selfSymmetries());
+      unsigned int cnt = sym->countSymmetryIntersection(resultSym, puz->probGetShapeShape(problemNum, i)->selfSymmetries());
 
       if ((cnt < bestFound) ||
           (cnt == bestFound) &&
@@ -163,7 +165,7 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
       pc += puz->probGetShapeCount(problemNum, i);
     }
 
-    bool tmp = symmetriesLeft(resultSym, puz->probGetShapeShape(problemNum, symBreakerShape)->selfSymmetries());
+    bool tmp = sym->symmetriesLeft(resultSym, puz->probGetShapeShape(problemNum, symBreakerShape)->selfSymmetries());
 
     if (tmp || (puz->probGetShapeCount(problemNum, symBreakerShape) > 1)) {
       checkForTransformedAssemblies(symBreakerPiece);
@@ -183,6 +185,8 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
 
   int piece = 0;
 
+  voxel_c ** cache = new voxel_c *[sym->getNumTransformationsMirror()];
+
   /* now we insert one shape after another */
   for (unsigned int pc = 0; pc < puz->probShapeNumber(problemNum); pc++)
     for (unsigned int piececount = 0; piececount < puz->probGetShapeCount(problemNum, pc); piececount++, piece++) {
@@ -191,7 +195,6 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
 
       /* this array contains all the pieces found so far, this will help us
        * to not add two times the same piece to the structur */
-      voxel_c * cache[NUM_TRANSFORMATIONS_MIRROR];
       unsigned int cachefill = 0;
       unsigned int placements = 0;
 
@@ -199,7 +202,7 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
        * if shape is new to cache, add it to the cache and also
        * add the shape to the matrix, in all positions that it fits
        */
-      for (unsigned int rot = 0; rot < NUM_TRANSFORMATIONS; rot++)
+      for (unsigned int rot = 0; rot < sym->getNumTransformations(); rot++)
         if (voxel_c * rotation = addToCache(cache, &cachefill, new voxel_c(puz->probGetShapeShape(problemNum, pc), rot))) {
           for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
             for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
@@ -220,20 +223,22 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
 
         /* for the symmetry breaker piece we also add all symmetries of the box */
         if ((pc == symBreakerShape) && (piececount == 0))
-          for (unsigned int r = 1; r < NUM_TRANSFORMATIONS_MIRROR; r++)
-            if (symmetrieContainsTransformation(resultSym, r))
-              addToCache(cache, &cachefill, new voxel_c(puz->probGetShapeShape(problemNum, pc), transAdd(rot, r)));
+          for (unsigned int r = 1; r < sym->getNumTransformationsMirror(); r++)
+            if (sym->symmetrieContainsTransformation(resultSym, r))
+              addToCache(cache, &cachefill, new voxel_c(puz->probGetShapeShape(problemNum, pc), sym->transAdd(rot, r)));
         }
 
       for (unsigned int i = 0; i < cachefill; i++)  delete cache[i];
 
       /* check, if the current piece has at least one placement */
       if (placements == 0) {
+        delete [] cache;
         delete [] columns;
         return -pc;
       }
     }
 
+  delete [] cache;
   delete [] columns;
 
   return 1;

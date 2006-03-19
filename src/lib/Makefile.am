@@ -21,5 +21,6 @@ libburr_a_SOURCES=disassembler.h assembler.h \
                   ps3dloader.h ps3dloader.cpp \
                   movementcache.h movementcache.cpp \
                   grouping.h grouping.cpp \
-                  bt_assert.h bt_assert.cpp
+                  bt_assert.h bt_assert.cpp \
+		  gridtype.h gridtype.cpp
 

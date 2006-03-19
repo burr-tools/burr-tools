@@ -30,6 +30,7 @@
 class voxel_c;
 class separation_c;
 class assembly_c;
+class gridType_c;
 
 class problem_c;
 
@@ -45,6 +46,8 @@ class problem_c;
 class puzzle_c {
 
 private:
+
+  const gridType_c *gt;
 
   /**
    * The vector with the shapes
@@ -79,7 +82,7 @@ public:
   /**
    * Constructor for empty puzzle, no shape, no problem and no colors
    */
-  puzzle_c(void);
+  puzzle_c(const gridType_c * gt);
 
   /**
    * load the puzzle from the XML file
@@ -95,6 +98,8 @@ public:
    * Deletes all the shapes in the puzzle
    */
   ~puzzle_c(void);
+
+  const gridType_c * getGridType(void) const { return gt; }
 
   /**
    * add a shape to the puzzle

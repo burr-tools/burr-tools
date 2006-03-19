@@ -212,10 +212,12 @@ movementCache_c::movementCache_c(const puzzle_c * puzzle, unsigned int problem) 
    */
   num_shapes = puzzle->probShapeNumber(problem);
 
+  num_transformations = puzzle->getGridType()->getSymmetries()->getNumTransformations();
+
   shapes = new const voxel_c ** [num_shapes];
   for (unsigned int s = 0; s < num_shapes; s++) {
-    shapes[s] = new const voxel_c * [NUM_TRANSFORMATIONS];
-    memset(shapes[s], 0, NUM_TRANSFORMATIONS * sizeof(voxel_c*));
+    shapes[s] = new const voxel_c * [num_transformations];
+    memset(shapes[s], 0, num_transformations * sizeof(voxel_c*));
     shapes[s][0] = puzzle->probGetShapeShape(problem, s);
   }
 
@@ -246,7 +248,7 @@ movementCache_c::~movementCache_c() {
    * but all the others are created by us, so we free them
    */
   for (unsigned int s = 0; s < num_shapes; s++) {
-    for (unsigned int t = 1; t < NUM_TRANSFORMATIONS; t++)
+    for (unsigned int t = 1; t < num_transformations; t++)
       if (shapes[s][t])
         delete shapes[s][t];
     delete [] shapes[s];

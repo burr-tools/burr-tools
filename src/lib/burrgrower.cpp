@@ -22,6 +22,7 @@
 #include "assm_0_frontend_0.h"
 #include "puzzle.h"
 #include "voxel.h"
+#include "gridtype.h"
 
 #include <fstream>
 

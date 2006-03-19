@@ -36,6 +36,7 @@
 #include "../lib/assembler_0.h"
 #include "../lib/assemblerthread.h"
 #include "../lib/disassembly.h"
+#include "../lib/gridtype.h"
 
 #ifdef HAVE_FLU
 #include <FLU/Flu_File_Chooser.h>
@@ -862,7 +863,7 @@ void UserInterface::cb_New(void) {
       if (fl_ask("Puzzle changed are you shure?") == 0)
         return;
 
-    ReplacePuzzle(new puzzle_c());
+    ReplacePuzzle(new puzzle_c(new gridType_c()));
 
     if (fname) {
       delete [] fname;
@@ -2705,7 +2706,7 @@ UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
   fname = 0;
   disassemble = 0;
 
-  puzzle = new puzzle_c();
+  puzzle = new puzzle_c(new gridType_c());
   changed = false;
 
   label("BurrTools - unknown");

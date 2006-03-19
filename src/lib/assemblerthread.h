@@ -23,6 +23,7 @@
 #include "bt_assert.h"
 
 class puzzle_c;
+class gridType_c;
 
 /* this class will handle the solving of one problem of the puzzle, it can also
  * be used to continue an already started solution, so that you can save you results
@@ -33,6 +34,7 @@ class assemblerThread_c : public assembler_cb {
   unsigned int action;
   unsigned int _solutionAction;
 
+  const gridType_c * gt;
   puzzle_c * puzzle;
   unsigned int prob;
 

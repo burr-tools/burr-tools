@@ -20,6 +20,7 @@
 
 #include "bt_assert.h"
 #include "symmetries.h"
+#include "gridtype.h"
 
 #include <xmlwrapp/node.h>
 
@@ -84,10 +85,11 @@ class assembly_c {
 
 
   std::vector<placement_c> placements;
+  const symmetries_c * sym;
 
 public:
 
-  assembly_c(void) {}
+  assembly_c(const gridType_c * gt) : sym(gt->getSymmetries()) {}
 
   /**
    * copy constructor
@@ -98,13 +100,13 @@ public:
   /**
    * load the assembly from xml file
    */
-  assembly_c(const xml::node & node, unsigned int pieces);
+  assembly_c(const xml::node & node, unsigned int pieces, const gridType_c * gt);
 
   /* used to save to XML */
   xml::node save(void) const;
 
   void addPlacement(unsigned char tran, int x, int y, int z) {
-    bt_assert(tran < NUM_TRANSFORMATIONS);
+    bt_assert(tran < sym->getNumTransformations());
     placements.push_back(placement_c(tran, x, y, z));
   }
 

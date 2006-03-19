@@ -21,6 +21,7 @@
 #include "puzzle.h"
 #include "voxel.h"
 #include "assembly.h"
+#include "gridtype.h"
 
 #include <xmlwrapp/attributes.h>
 
@@ -189,7 +190,7 @@ void assembler_0_c::nextPiece(unsigned int piece, unsigned int count, unsigned i
   pieceStart[piece] = left.size();
 }
 
-assembler_0_c::assembler_0_c() :
+assembler_0_c::assembler_0_c(void) :
   multiPieceCount(0), multiPieceIndex(0), pieceStart(0),
   pos(0), rows(0), columns(0), nodeF(0), numF(0),
   piece(0), searchState(0), addRows(0), avoidTransformedAssemblies(0)
@@ -738,7 +739,7 @@ void assembler_0_c::reduce(void) {
 
 assembly_c * assembler_0_c::getAssembly(void) {
 
-  assembly_c * assembly = new assembly_c();
+  assembly_c * assembly = new assembly_c(puzzle->getGridType());
 
   // if no pieces are placed, or we finished return an empty assembly
   if (pos > piecenumber) {
