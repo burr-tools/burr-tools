@@ -48,7 +48,7 @@ class gridType_c {
 
     } parameters;
 
-    const symmetries_c * sym;
+    symmetries_c * sym;
 
   public:
 

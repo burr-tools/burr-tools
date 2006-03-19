@@ -53,7 +53,7 @@ gridType_c::gridType_c(void) {
   parameters.brick.axy_differs_ayz = false;
   parameters.brick.ayz_differs_ayz = false;
 
-  sym = new symmetries_0_c(this);
+  sym = 0;
 }
 
 
@@ -91,8 +91,15 @@ voxel_c * gridType_c::getVoxel(const xml::node & node) const {
   }
 }
 
-
 const symmetries_c * gridType_c::getSymmetries(void) const {
+  if (!sym) {
+    switch(type) {
+      case GT_BRICKS:
+        const_cast<gridType_c*>(this)->sym = new symmetries_0_c(this);
+        break;
+    }
+  }
+
   return sym;
 }
 

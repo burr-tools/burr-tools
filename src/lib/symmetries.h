@@ -18,7 +18,7 @@
 #ifndef __SYMMETRIES_H__
 #define __SYMMETRIES_H__
 
-class gridType_c;
+#include "gridtype.h"
 
 // this modules contains just some helper functions for transformations and symmetrie handling
 
@@ -90,19 +90,24 @@ class symmetries_c {
 /* this is the symmetries class for cubes */
 class symmetries_0_c : public symmetries_c {
 
-  /* this varable contains the symmetries that are available because
-   * of the subsetting of the cube because of skewing and scaling along the different axes
-   * this is used to suppres certain symmetries for the placement and symmetry checks
-   *
-   * this value infuences the rotx y z functions to only return those transformations
-   * that are really available, als getNumTransformations and getNumTransformationsMirror are
-   * influenced to only return the number of symmetries within this field, ...
-   */
-  symmetries_t subSymmetry;
+  private:
 
-  public:
+    /* this varable contains the symmetries that are available because
+     * of the subsetting of the cube because of skewing and scaling along the different axes
+     * this is used to suppres certain symmetries for the placement and symmetry checks
+     *
+     * this value infuences the rotx y z functions to only return those transformations
+     * that are really available, als getNumTransformations and getNumTransformationsMirror are
+     * influenced to only return the number of symmetries within this field, ...
+     */
+    symmetries_t subSymmetry;
+
 
     symmetries_0_c(const gridType_c * gt);
+
+    friend const symmetries_c * gridType_c::getSymmetries(void) const;
+
+  public:
 
     unsigned int getNumTransformations(void) const;
     unsigned int getNumTransformationsMirror(void) const;
