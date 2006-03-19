@@ -19,6 +19,7 @@
 #define __ASSEMBLER_0_FRONTENT_0_H__
 
 #include "assembler_0.h"
+#include "gridtype.h"
 
 class puzzle_c;
 
@@ -40,9 +41,14 @@ private:
    */
   int prepare(const puzzle_c * puz, int res_filles, int res_vari, unsigned int resultnum);
 
-public:
+private:
 
   assm_0_frontend_0_c(void) : assembler_0_c(), voxelindex(0) {}
+
+  friend assembler_0_c * gridType_c::getAssembler(void) const;
+
+public:
+
   ~assm_0_frontend_0_c();
 };
 

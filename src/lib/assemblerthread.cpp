@@ -42,14 +42,14 @@ void* start_th(void * c)
      * problem, if there is one take that
      */
     if (p->puzzle->probGetAssembler(p->prob))
-      p->assm = (assm_0_frontend_0_c*)p->puzzle->probGetAssembler(p->prob);
+      p->assm = p->puzzle->probGetAssembler(p->prob);
 
     else {
 
       /* otherwise we have to chreate a new one
        */
       p->action = assemblerThread_c::ACT_PREPARATION;
-      p->assm = new assm_0_frontend_0_c();
+      p->assm = p->puzzle->getGridType()->getAssembler();
 
       p->errState = p->assm->createMatrix(p->puzzle, p->prob);
       if (p->errState != assm_0_frontend_0_c::ERR_NONE) {
@@ -116,7 +116,7 @@ _solutionAction(solAction),
 puzzle(puz),
 prob(problemNum),
 _reduce(red),
-disassm(puz, problemNum),
+disassm(puz->getGridType()->getDisassembler(puz, problemNum)),
 ae(0)
 {
 }
@@ -134,6 +134,8 @@ assemblerThread_c::~assemblerThread_c(void) {
       usleep(10000);
 #endif
   }
+
+  delete disassm;
 }
 
 bool assemblerThread_c::assembly(assembly_c * a) {
@@ -155,7 +157,7 @@ bool assemblerThread_c::assembly(assembly_c * a) {
       if (a->placementCount() > 1) {
 
         // try to disassemble
-        separation_c * s = disassm.disassemble(a);
+        separation_c * s = disassm->disassemble(a);
 
         // check, if we found a disassembly sequence
         if (s) {

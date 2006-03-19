@@ -95,13 +95,16 @@ private:
    */
   unsigned short * piece2shape;
 
-public:
-
   /* construct the disassembler for this concrete problem, is can not be
    * changed, once you done that but you can analyse many assemblies for
    * disassembability
    */
   disassembler_0_c(const puzzle_c * puz, unsigned int prob);
+
+  friend disassembler_c * gridType_c::getDisassembler(const puzzle_c * puz, unsigned int prob) const;
+
+public:
+
   ~disassembler_0_c();
 
   /* because we can only have or don't have a disassembly sequence

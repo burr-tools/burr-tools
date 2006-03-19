@@ -5,10 +5,11 @@
 
 #include <xmlwrapp/node.h>
 
-class assembler_c;
+class assembler_0_c;
 class disassembler_c;
 class symmetries_c;
 class voxel_c;
+class puzzle_c;
 
 /* this class encapsulates all information required to handle the different grid types
  */
@@ -67,8 +68,8 @@ class gridType_c {
     /* these functions return assembler and disassemble for the current space grid
      * if the requied functionality is not available, return 0
      */
-    assembler_c * getAssembler(void) const;
-    disassembler_c * getDisassembler(void) const;
+    assembler_0_c * getAssembler(void) const;
+    disassembler_c * getDisassembler(const puzzle_c * puz, unsigned int prob) const;
 
     /* voxel spaces have different implementatios for rotation, and mirror functions */
     voxel_c * getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const;

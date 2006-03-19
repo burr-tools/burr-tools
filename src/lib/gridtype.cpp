@@ -61,18 +61,18 @@ gridType_c::gridType_c(void) {
 /* these functions return assembler and disassemble for the current space grid
  * if the requied functionality is not available, return 0
  */
-assembler_c * gridType_c::getAssembler(void) const {
+assembler_0_c * gridType_c::getAssembler(void) const {
 
   switch (type) {
-    //case GT_BRICKS: return new assm_0_frontend_0();
+    case GT_BRICKS: return new assm_0_frontend_0_c();
     default: return 0;
   }
 
 }
-disassembler_c * gridType_c::getDisassembler(void) const {
+disassembler_c * gridType_c::getDisassembler(const puzzle_c * puz, unsigned int prob) const {
 
   switch (type) {
-//    case GT_BRICKS: return new disassembler_0();
+    case GT_BRICKS: return new disassembler_0_c(puz, prob);
     default: return 0;
   }
 }

@@ -19,7 +19,7 @@
 #define __ASSEMBLERTHREAD_H__
 
 #include "assembler.h"
-#include "disassembler_0.h"
+#include "disassembler.h"
 #include "bt_assert.h"
 
 class puzzle_c;
@@ -47,7 +47,7 @@ class assemblerThread_c : public assembler_cb {
 
   time_t startTime;
 
-  disassembler_0_c disassm;
+  disassembler_c * disassm;
   assembler_c * assm;
 
   assert_exception *ae;

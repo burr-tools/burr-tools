@@ -19,7 +19,7 @@
 
 #include "disassembler_0.h"
 #include "disassembly.h"
-#include "assm_0_frontend_0.h"
+#include "assembler_0.h"
 #include "puzzle.h"
 #include "voxel.h"
 #include "gridtype.h"
@@ -33,8 +33,8 @@ puzzleSol_c::puzzleSol_c(puzzle_c * p, unsigned int prob) {
   puzzle = p;
   this->prob = prob;
 
-  assm_0_frontend_0_c *assm = new assm_0_frontend_0_c();
-  if (assm->createMatrix(p, prob) == assm_0_frontend_0_c::ERR_NONE) {
+  assembler_0_c *assm = p->getGridType()->getAssembler();
+  if (assm->createMatrix(p, prob) == assembler_0_c::ERR_NONE) {
 
     solutions = 0;
 
@@ -63,8 +63,8 @@ puzzleSol_c::puzzleSol_c(const puzzleSol_c * p) {
 bool puzzleSol_c::assembly(assembly_c* a) {
 
 
-  disassembler_0_c d(puzzle, prob);
-  separation_c * da = d.disassemble(a);
+  disassembler_c * d = puzzle->getGridType()->getDisassembler(puzzle, prob);
+  separation_c * da = d->disassemble(a);
 
   if (da) {
 
@@ -84,6 +84,9 @@ bool puzzleSol_c::assembly(assembly_c* a) {
 
     delete da;
   }
+
+  delete d;
+
   return false;
 }
 

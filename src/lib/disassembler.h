@@ -19,6 +19,7 @@
 #define __DISASSEMBLER_H__
 
 class separation_c;
+class assembly_c;
 
 /* this class implements a burr disassembler. the interface is simple:
  * 1) construct the class with whatever parameters the concrete subclass requires
@@ -40,7 +41,7 @@ public:
    * you need to take care of freeing the disassembly sequence after
    * doing with it whatever you want
    */
-  virtual separation_c * disassemble(void) { return 0; }
+  virtual separation_c * disassemble(const assembly_c * assembly) { return 0; }
 
 };
 
