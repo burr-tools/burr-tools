@@ -19,9 +19,8 @@ class gridType_c {
 
     typedef enum {
       GT_BRICKS,
-      GT_TRIANGULAR_PRISM,
-      GT_RHOMBIC_DODECAEDER,
-      GT_HEXAGONAL_PRISM,
+//      GT_TRIANGULAR_PRISM,
+//      GT_RHOMBIC_DODECAEDER,
     } gridType;
 
   protected:
