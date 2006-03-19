@@ -709,7 +709,7 @@ void problem_c::exchangeShape(unsigned int s1, unsigned int s2) {
 
 /************** PUZZLE ****************/
 
-puzzle_c::puzzle_c(const gridType_c * g) : gt(g) {
+puzzle_c::puzzle_c(gridType_c * g) : gt(g) {
 }
 
 puzzle_c::puzzle_c(const puzzle_c * orig) {
@@ -734,6 +734,8 @@ puzzle_c::~puzzle_c(void) {
 
   for (unsigned int i = 0; i < problems.size(); i++)
     delete problems[i];
+
+  delete gt;
 }
 
 void puzzle_c::orthogonalize(void) {

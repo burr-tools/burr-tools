@@ -47,7 +47,7 @@ class puzzle_c {
 
 private:
 
-  const gridType_c *gt;
+  gridType_c *gt;
 
   /**
    * The vector with the shapes
@@ -81,8 +81,10 @@ public:
 
   /**
    * Constructor for empty puzzle, no shape, no problem and no colors
+   * ownership of the given gridtpe is taken over, the memory
+   * is freed on destruction of this class
    */
-  puzzle_c(const gridType_c * gt);
+  puzzle_c(gridType_c * gt);
 
   /**
    * load the puzzle from the XML file
@@ -99,7 +101,11 @@ public:
    */
   ~puzzle_c(void);
 
+  /**
+   * return the current set grid type for this puzzle
+   */
   const gridType_c * getGridType(void) const { return gt; }
+  gridType_c * getGridType(void) { return gt; }
 
   /**
    * add a shape to the puzzle
