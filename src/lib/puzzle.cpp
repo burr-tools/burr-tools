@@ -945,7 +945,7 @@ puzzle_c::puzzle_c(const xml::node & node) {
     for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
       if ((i->get_type() == xml::node::type_element) &&
           (strcmp(i->get_name(), "voxel") == 0))
-        shapes.push_back(new voxel_c(*i, gt));
+        shapes.push_back(gt->getVoxel(*i));
 
   it = node.find("problems");
   if (it != node.end())
@@ -997,7 +997,7 @@ unsigned int puzzle_c::addShape(voxel_c * p) {
 
 /* add empty shape of given size */
 unsigned int puzzle_c::addShape(int sx, int sy, int sz) {
-  shapes.push_back(new voxel_c(sx, sy, sz, gt, voxel_c::VX_EMPTY));
+  shapes.push_back(gt->getVoxel(sx, sy, sz, voxel_c::VX_EMPTY, voxel_c::VX_EMPTY));
   return shapes.size()-1;
 }
 

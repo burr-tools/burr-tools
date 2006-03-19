@@ -21,22 +21,9 @@
 #include "bt_assert.h"
 #include "symmetries.h"
 #include "gridtype.h"
+#include "types.h"
 
 #include <xmlwrapp/node.h>
-
-#include <sys/types.h>
-
-/**
- * the type used for one voxel, \c u_int8_t
- * allows up to 255 differen pieces this should
- * be enough for almost all puzzles, but just for
- * the case it isn't we can easily change the type
- */
-#ifdef WIN32
-typedef unsigned char voxel_type;
-#else
-typedef u_int8_t voxel_type;
-#endif
 
 /**
  * this class get's thrown when there is an error on loading from a stream
@@ -136,6 +123,22 @@ protected:
 
 public:
 
+  /**
+   * this enum defines some values that are used for some of
+   * the voxel spaces
+   *
+   * generally there will be 2 types of usage for voxelspace
+   * sone single-piece and one multi-piece. The single piece will
+   * use this enum to define a puzzle piece or a solution shape
+   * the multi-piece will use the values of the voxels to
+   * distinguish between different pieces
+   */
+  enum {
+    VX_EMPTY,
+    VX_FILLED,
+    VX_VARIABLE
+  };
+
   void skipRecalcBoundingBox(bool skipit) {
     if (skipit)
       doRecalc = false;
@@ -145,13 +148,25 @@ public:
     }
   }
 
-public:
+  // a few of the constructor are private so that voxel spaces can only be constructed via
+  // the factory in gridType_c
+private:
 
   /**
    * Creates a new voxel space. Its of given size and
    * initializes all values to init.
    */
   voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0, voxel_type outs = VX_EMPTY);
+  /**
+   * load from xml node
+   */
+  voxel_c(const xml::node & node, const gridType_c * gt);
+
+  /* the factory functions need to be friend to use the constructors */
+  friend voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const;
+  friend voxel_c * gridType_c::getVoxel(const xml::node & node) const;
+
+public:
 
   /**
    * Copy constructor using reference. Transformation allows to
@@ -164,11 +179,6 @@ public:
    * have a rotated version of this voxel space
    */
   voxel_c(const voxel_c * orig, unsigned int transformation = 0);
-
-  /**
-   * load from xml node
-   */
-  voxel_c(const xml::node & node, const gridType_c * gt);
 
   /**
    * Destructor.
@@ -411,22 +421,6 @@ public:
 
 
 public:
-
-  /**
-   * this enum defines some values that are used for some of
-   * the voxel spaces
-   *
-   * generally there will be 2 types of usage for voxelspace
-   * sone single-piece and one multi-piece. The single piece will
-   * use this enum to define a puzzle piece or a solution shape
-   * the multi-piece will use the values of the voxels to
-   * distinguish between different pieces
-   */
-  enum {
-    VX_EMPTY,
-    VX_FILLED,
-    VX_VARIABLE
-  };
 
   int getState(unsigned int x, unsigned int y, unsigned int z) const { return get(x, y, z) & 0x3; }
   int getState2(int x, int y, int z) const { return get2(x, y, z) & 0x3; }

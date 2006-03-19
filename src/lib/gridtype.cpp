@@ -78,9 +78,19 @@ disassembler_c * gridType_c::getDisassembler(void) const {
 }
 
 /* voxel spaces have different implementatios for rotation, and mirror functions */
-voxel_c * gridType_c::getVoxel(void) const {
-//  return new voxel_c();
+voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const {
+  switch (type) {
+    case GT_BRICKS: return new voxel_c(x, y, z, this, init, outs);
+    default: return 0;
+  }
 }
+voxel_c * gridType_c::getVoxel(const xml::node & node) const {
+  switch (type) {
+    case GT_BRICKS: return new voxel_c(node, this);
+    default: return 0;
+  }
+}
+
 
 const symmetries_c * gridType_c::getSymmetries(void) const {
   return sym;

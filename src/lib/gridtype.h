@@ -1,12 +1,14 @@
 #ifndef __GRID_TYPE_H__
 #define __GRID_TYPE_H__
 
+#include "types.h"
+
 #include <xmlwrapp/node.h>
 
 class assembler_c;
 class disassembler_c;
-class voxel_c;
 class symmetries_c;
+class voxel_c;
 
 /* this class encapsulates all information required to handle the different grid types
  */
@@ -69,7 +71,9 @@ class gridType_c {
     disassembler_c * getDisassembler(void) const;
 
     /* voxel spaces have different implementatios for rotation, and mirror functions */
-    voxel_c * getVoxel(void) const;
+    voxel_c * getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const;
+    voxel_c * getVoxel(const xml::node & node) const;
+
     const symmetries_c * getSymmetries(void) const;
 
     /* sometimes it might be possible to convert from the current grid

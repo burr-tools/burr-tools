@@ -29,6 +29,7 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_
 
   space = new voxel_type[voxels];
   bt_assert(space);
+  bt_assert(gt);
 
   memset(space, init, voxels);
 
@@ -46,7 +47,7 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_
   symmetries = symmetryInvalid();
 }
 
-voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : sx(orig.sx), sy(orig.sy), sz(orig.sz),
+voxel_c::voxel_c(const voxel_c & orig, unsigned int transformation) : gt(orig.gt), sx(orig.sx), sy(orig.sy), sz(orig.sz),
 voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz), name(0) {
 
   space = new voxel_type[voxels];
@@ -70,7 +71,7 @@ voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz), name(0) {
   symmetries = symmetryInvalid();
 }
 
-voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : sx(orig->sx), sy(orig->sy), sz(orig->sz),
+voxel_c::voxel_c(const voxel_c * orig, unsigned int transformation) : gt(orig->gt), sx(orig->sx), sy(orig->sy), sz(orig->sz),
 voxels(orig->voxels), hx(orig->hx), hy(orig->hy), hz(orig->hz), name(0) {
 
   space = new voxel_type[voxels];
