@@ -60,6 +60,9 @@
   can never result in a proper solution. These false placements can now
   be removed much more efficiently before the more expensive check starts
   resulting in less work for the expensive checks and in speedup.
+  
+- handwritten mashine level code for time important functions giving 
+  another 20% speed gain for calculation intensive puzzles
 
 - pieces are no longer minimised when a puzzle is solved. This has been
   in the program only because the program couldn't handle that properly
