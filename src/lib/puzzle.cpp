@@ -577,6 +577,10 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
       throw load_error("the result node must have an 'id' attribute", *it);
 
     result = atoi(it->get_attributes().find("id")->get_value());
+
+    // if, for whatever reasons the shape is was not right, we reset it to an empty shape
+    if (result >= shape)
+      result = 0xFFFFFFFF;
   }
 
   it = node.find("solutions");
