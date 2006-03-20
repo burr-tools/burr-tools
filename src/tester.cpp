@@ -26,8 +26,6 @@
 
 #include "lib/print.h"
 
-#include "lib/symmetries.h"
-
 #include <time.h>
 
 #include <fstream>
@@ -78,23 +76,6 @@ public:
 #endif
   }
 };
-
-static voxel_c * transform(const voxel_c * p, int nr) {
-
-  bt_assert(nr < NUM_TRANSFORMATIONS);
-
-  static int rotx[NUM_TRANSFORMATIONS] = { 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3 };
-  static int roty[NUM_TRANSFORMATIONS] = { 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0 };
-  static int rotz[NUM_TRANSFORMATIONS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 3, 3, 3, 3 };
-
-  voxel_c *erg = new voxel_c(*p);
-
-  for (int i = 0; i < rotx[nr]; i++) erg->rotatex();
-  for (int i = 0; i < roty[nr]; i++) erg->rotatey();
-  for (int i = 0; i < rotz[nr]; i++) erg->rotatez();
-
-  return erg;
-}
 
 unsigned long long foundSym[200] = {
 
@@ -240,11 +221,13 @@ void search(voxel_c * piece) {
 #endif
 }
 
-unsigned char ssss(unsigned int trans, unsigned long long s) {
+#define NUM_TRANSFORMATIONS_MIRROR 48
+
+unsigned char ssss(unsigned int trans, unsigned long long s, const gridType_c * gt) {
   for (unsigned char t = 0; t < trans; t++)
     for (unsigned char t2 = 0; t2 < NUM_TRANSFORMATIONS_MIRROR; t2++)
       if (s & (((unsigned long long)1) << t2)) {
-	unsigned char trrr = transAdd(t2, t);
+	unsigned char trrr = gt->getSymmetries()->transAdd(t2, t);
 	if (trrr == trans)
 	  return t;
       }
@@ -254,13 +237,13 @@ unsigned char ssss(unsigned int trans, unsigned long long s) {
 
 
 /* this function creates the lookup table for the function in the symmetry c-file */
-void outputMinimumSymmetries(void) {
+void outputMinimumSymmetries(const gridType_c * gt) {
 
   printf("{\n");
   for (int sy = 0; sy < syms; sy++) {
     printf("  {");
     for (int trans = 0; trans < NUM_TRANSFORMATIONS_MIRROR; trans++) {
-      printf("%2i", ssss(trans, foundSym[sy]));
+      printf("%2i", ssss(trans, foundSym[sy], gt));
       if (trans < NUM_TRANSFORMATIONS_MIRROR-1)
 	printf(",");
     }
@@ -442,7 +425,7 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val) {
 
 
 
-
+#if 0
 
 void findsymmetries(void) {
 
@@ -505,7 +488,9 @@ void findsymmetries(void) {
 	    }
       }
 }
+#endif
 
+#if 0
 
 void solve(int argv, char* args[]) {
   ifstream str(args[1]);
@@ -515,7 +500,7 @@ void solve(int argv, char* args[]) {
     return;
   }
 
-  puzzle_c p; /* FIXME &str*/
+  puzzle_c p(new gridType_c()); /* FIXME &str*/
 
 //  p.print();
 
@@ -614,7 +599,9 @@ void savetoXML(int argv, char* args[]) {
 
   std::cout << xmldoc;
 }
+#endif
 
+#if 0
 void multTranformationsMatrix(void) {
 
   voxel_c * w[NUM_TRANSFORMATIONS_MIRROR];
@@ -988,18 +975,18 @@ void epipedize(void) {
             }
 
 }
-
+#endif
 int main(int argv, char* args[]) {
 
-  multTranformationsMatrix();
-  inverseTranformationsMatrix();
+//  multTranformationsMatrix();
+//  inverseTranformationsMatrix();
 
 //  grow(argv, args);
 //  solve(argv, agrs);
 //  findsymmetries();
 
-  outputMinimumSymmetries();
-  outputCompleteSymmetries();
+//  outputMinimumSymmetries();
+//  outputCompleteSymmetries();
 //  makeSymmetryTree(0, 0);
 
 //  savetoXML(argv, args);
