@@ -617,28 +617,31 @@ void savetoXML(int argv, char* args[]) {
 
 void multTranformationsMatrix(void) {
 
+  voxel_c * w[NUM_TRANSFORMATIONS_MIRROR];
+
+  for (int t = 0; t < NUM_TRANSFORMATIONS_MIRROR; t++) {
+    w[t] = new voxel_c(3, 3, 3);
+    w[t]->setState(1, 1, 1, voxel_c::VX_FILLED); w[t]->setState(0, 1, 1, voxel_c::VX_FILLED);
+    w[t]->setState(0, 0, 1, voxel_c::VX_FILLED); w[t]->setState(0, 0, 0, voxel_c::VX_FILLED);
+
+    w[t]->transform(t);
+  }
+
+
   for (int tr1 = 0; tr1 < NUM_TRANSFORMATIONS_MIRROR; tr1++) {
     printf("{");
 
+    voxel_c v(3, 3, 3);
+    v.setState(1, 1, 1, voxel_c::VX_FILLED); v.setState(0, 1, 1, voxel_c::VX_FILLED);
+    v.setState(0, 0, 1, voxel_c::VX_FILLED); v.setState(0, 0, 0, voxel_c::VX_FILLED);
+    v.transform(tr1);
+
     for (int tr2 = 0; tr2 < NUM_TRANSFORMATIONS_MIRROR; tr2++) {
 
-      voxel_c v(3, 3, 3);
-      v.setState(1, 1, 1, voxel_c::VX_FILLED); v.setState(0, 1, 1, voxel_c::VX_FILLED);
-      v.setState(0, 0, 1, voxel_c::VX_FILLED); v.setState(0, 0, 0, voxel_c::VX_FILLED);
-
-      int i;
-
-      v.transform(tr1);
-      v.transform(tr2);
+      voxel_c v2(v, tr2);
 
       for (int t = 0; t < NUM_TRANSFORMATIONS_MIRROR; t++) {
-        voxel_c w(3, 3, 3);
-        w.setState(1, 1, 1, voxel_c::VX_FILLED); w.setState(0, 1, 1, voxel_c::VX_FILLED);
-        w.setState(0, 0, 1, voxel_c::VX_FILLED); w.setState(0, 0, 0, voxel_c::VX_FILLED);
-
-        w.transform(t);
-
-        if (v == w) {
+        if (v2 == *w[t]) {
           printf("%2i, ", t);
           break;
         }
@@ -920,23 +923,93 @@ void testNewRots(void) {
   }
 }
 
+/* returns a number the corresponds to the opposite angle color */
+int opposite(int i) {
+  if (i == 1) return 1;
+  return i + 10;
+}
+
+/* this function is there to calculate all possible variations of a parallelepiped
+ * and its symmetries, of which the cube is only one variation
+ */
+void epipedize(void) {
+
+  voxel_c v(4, 4, 4);
+
+  v.setAll(voxel_c::VX_FILLED);
+
+  for (int l1 = 1; l1 < 4; l1++)
+    for (int l2 = 1; l2 < 4; l2++)
+      for (int l3 = 1; l3 < 4; l3++)
+        for (int a1 = 1; a1 < 5; a1++)
+          for (int a2 = 1; a2 < 5; a2++)
+            for (int a3 = 1; a3 < 5; a3++) {
+
+              /* setup of the cube */
+
+              // l1 = x length
+              v.setColor(1, 0, 0, l1); v.setColor(2, 0, 0, l1);
+              v.setColor(1, 3, 0, l1); v.setColor(2, 3, 0, l1);
+              v.setColor(1, 0, 3, l1); v.setColor(2, 0, 3, l1);
+              v.setColor(1, 3, 3, l1); v.setColor(2, 3, 3, l1);
+
+              // l2 = y length
+              v.setColor(0, 1, 0, l2); v.setColor(0, 2, 0, l2);
+              v.setColor(3, 1, 0, l2); v.setColor(3, 2, 0, l2);
+              v.setColor(0, 1, 3, l2); v.setColor(0, 2, 3, l2);
+              v.setColor(3, 1, 3, l2); v.setColor(3, 2, 3, l2);
+
+              // l3 = z length
+              v.setColor(0, 0, 1, l3); v.setColor(0, 0, 2, l3);
+              v.setColor(3, 0, 1, l3); v.setColor(3, 0, 2, l3);
+              v.setColor(0, 3, 1, l3); v.setColor(0, 3, 2, l3);
+              v.setColor(3, 3, 1, l3); v.setColor(3, 3, 2, l3);
+
+              // a1 = angle between x and y
+              v.setColor(1, 1, 0, a1); v.setColor(2, 2, 0, a1);
+              v.setColor(1, 1, 3, a1); v.setColor(2, 2, 3, a1);
+              v.setColor(1, 2, 0, opposite(a1)); v.setColor(2, 1, 0, opposite(a1));
+              v.setColor(1, 2, 3, opposite(a1)); v.setColor(2, 1, 3, opposite(a1));
+
+              // a2 = angle between x and z
+              v.setColor(1, 0, 1, a2); v.setColor(2, 0, 2, a2);
+              v.setColor(1, 3, 1, a2); v.setColor(2, 3, 2, a2);
+              v.setColor(1, 0, 2, opposite(a2)); v.setColor(2, 0, 1, opposite(a2));
+              v.setColor(1, 3, 2, opposite(a2)); v.setColor(2, 3, 1, opposite(a2));
+
+              // a3 = angle between y and z
+              v.setColor(0, 1, 1, a3); v.setColor(0, 2, 2, a3);
+              v.setColor(3, 1, 1, a3); v.setColor(3, 2, 2, a3);
+              v.setColor(0, 1, 2, opposite(a3)); v.setColor(0, 2, 1, opposite(a3));
+              v.setColor(3, 1, 2, opposite(a3)); v.setColor(3, 2, 1, opposite(a3));
+
+              // now printout
+              printf("sym %5i for l %i %i %i a %i %i %i\n", v.selfSymmetries(), l1, l2, l3, a1, a2, a3);
+            }
+
+}
+
 int main(int argv, char* args[]) {
 
-//  multTranformationsMatrix();
-//  inverseTranformationsMatrix();
+  multTranformationsMatrix();
+  inverseTranformationsMatrix();
 
 //  grow(argv, args);
 //  solve(argv, agrs);
 //  findsymmetries();
+
   outputMinimumSymmetries();
   outputCompleteSymmetries();
-  makeSymmetryTree(0, 0);
+//  makeSymmetryTree(0, 0);
 
 //  savetoXML(argv, args);
 
 //  testNewRots();
 
 //  convert(argv, args);
+
+
+//  epipedize();
 }
 
 
