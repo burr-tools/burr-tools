@@ -129,6 +129,7 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
    * that are present in the piece
    */
   symmetries_t resultSym = result->selfSymmetries();
+  const gridType_c * gt = puz->getGridType();
   const symmetries_c * sym = puz->getGridType()->getSymmetries();
   unsigned int symBreakerShape = 0xFFFFFFFF;
 
@@ -203,7 +204,7 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
        * add the shape to the matrix, in all positions that it fits
        */
       for (unsigned int rot = 0; rot < sym->getNumTransformations(); rot++)
-        if (voxel_c * rotation = addToCache(cache, &cachefill, new voxel_c(puz->probGetShapeShape(problemNum, pc), rot))) {
+        if (voxel_c * rotation = addToCache(cache, &cachefill, gt->getVoxel(puz->probGetShapeShape(problemNum, pc), rot))) {
           for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
             for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
               for (int z = (int)result->boundZ1()-(int)rotation->boundZ1(); z <= (int)result->boundZ2()-(int)rotation->boundZ2(); z++)
@@ -225,7 +226,7 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
         if ((pc == symBreakerShape) && (piececount == 0))
           for (unsigned int r = 1; r < sym->getNumTransformationsMirror(); r++)
             if (sym->symmetrieContainsTransformation(resultSym, r))
-              addToCache(cache, &cachefill, new voxel_c(puz->probGetShapeShape(problemNum, pc), sym->transAdd(rot, r)));
+              addToCache(cache, &cachefill, gt->getVoxel(puz->probGetShapeShape(problemNum, pc), sym->transAdd(rot, r)));
         }
 
       for (unsigned int i = 0; i < cachefill; i++)  delete cache[i];

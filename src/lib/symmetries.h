@@ -101,6 +101,7 @@ class symmetries_0_c : public symmetries_c {
      * influenced to only return the number of symmetries within this field, ...
      */
     symmetries_t subSymmetry;
+    gridType_c * gt;
 
 
     symmetries_0_c(const gridType_c * gt);

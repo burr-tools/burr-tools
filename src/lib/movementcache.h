@@ -20,6 +20,7 @@
 
 class voxel_c;
 class puzzle_c;
+class gridType_c;
 
 /* this class calculates the possible movement between 2 pieces
  * because that calculation is relatively expensive it caches
@@ -80,6 +81,8 @@ class movementCache_c {
   /* when the entry is not inside the table, this function calculates the values */
   entry * calcValues(unsigned char s1, unsigned char t1, unsigned int s2, unsigned int t2,
                      int dx, int dy, int dz);
+
+  const gridType_c * gt;
 
 public:
 

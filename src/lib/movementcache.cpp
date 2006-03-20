@@ -76,14 +76,14 @@ movementCache_c::entry * movementCache_c::calcValues(unsigned char s1, unsigned 
   const voxel_c * sh1 = shapes[s1][t1];
 
   if (!sh1) {
-    sh1 = new voxel_c(shapes[s1][0], t1);
+    sh1 = gt->getVoxel(shapes[s1][0], t1);
     shapes[s1][t1] = sh1;
   }
 
   const voxel_c * sh2 = shapes[s2][t2];
 
   if (!sh2) {
-    sh2 = new voxel_c(shapes[s2][0], t2);
+    sh2 = gt->getVoxel(shapes[s2][0], t2);
     shapes[s2][t2] = sh2;
   }
 
@@ -197,7 +197,7 @@ movementCache_c::entry * movementCache_c::calcValues(unsigned char s1, unsigned 
   return e;
 }
 
-movementCache_c::movementCache_c(const puzzle_c * puzzle, unsigned int problem) {
+movementCache_c::movementCache_c(const puzzle_c * puzzle, unsigned int problem) : gt(puzzle->getGridType()) {
 
   /* initial table */
   tableSize = 101;

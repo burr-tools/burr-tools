@@ -190,7 +190,7 @@ void UserInterface::cb_CopyShape(void) {
 
   if (current < puzzle->shapeNumber()) {
 
-    PcSel->setSelection(puzzle->addShape(new voxel_c(puzzle->getShape(current))));
+    PcSel->setSelection(puzzle->addShape(puzzle->getGridType()->getVoxel(puzzle->getShape(current))));
     changed = true;
 
     updateInterface();

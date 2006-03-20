@@ -91,6 +91,20 @@ voxel_c * gridType_c::getVoxel(const xml::node & node) const {
   }
 }
 
+voxel_c * gridType_c::getVoxel(const voxel_c & orig, unsigned int transformation) const {
+  switch (type) {
+    case GT_BRICKS: return new voxel_c(orig, transformation);
+    default: return 0;
+  }
+}
+
+voxel_c * gridType_c::getVoxel(const voxel_c * orig, unsigned int transformation) const {
+  switch (type) {
+    case GT_BRICKS: return new voxel_c(orig, transformation);
+    default: return 0;
+  }
+}
+
 const symmetries_c * gridType_c::getSymmetries(void) const {
   if (!sym) {
     switch(type) {

@@ -665,7 +665,7 @@ void VoxelDrawer::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
 
   hideMarker();
   clearSpaces();
-  unsigned int num = addSpace(new voxel_c(puz->getShape(shapeNum)));
+  unsigned int num = addSpace(puz->getGridType()->getVoxel(puz->getShape(shapeNum)));
 
   setSpaceColor(num, pieceColorR(shapeNum), pieceColorG(shapeNum), pieceColorB(shapeNum), 1);
 
@@ -711,7 +711,7 @@ void VoxelDrawer::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
     // now place the result shape
     if (puz->probGetResult(probNum) < puz->shapeNumber()) {
 
-      num = addSpace(new voxel_c(puz->probGetResultShape(probNum)));
+      num = addSpace(puz->getGridType()->getVoxel(puz->probGetResultShape(probNum)));
       setSpaceColor(num,
                             pieceColorR(puz->probGetResult(probNum)),
                             pieceColorG(puz->probGetResult(probNum)),
@@ -724,7 +724,7 @@ void VoxelDrawer::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
     // now place the selected shape
     if (selShape < puz->shapeNumber()) {
 
-      num = addSpace(new voxel_c(puz->getShape(selShape)));
+      num = addSpace(puz->getGridType()->getVoxel(puz->getShape(selShape)));
       setSpaceColor(num,
                             pieceColorR(selShape),
                             pieceColorG(selShape),
@@ -738,7 +738,7 @@ void VoxelDrawer::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
     int unsigned line = 2;
     int unsigned col = 0;
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++) {
-      num = addSpace(new voxel_c(puz->probGetShapeShape(probNum, p)));
+      num = addSpace(puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, p)));
 
       setSpaceColor(num,
                             pieceColorR(puz->probGetShape(probNum, p)),
@@ -797,7 +797,7 @@ void VoxelDrawer::showAssembly(const puzzle_c * puz, unsigned int probNum, unsig
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
       for (unsigned int q = 0; q < puz->probGetShapeCount(probNum, p); q++) {
 
-        num = addSpace(new voxel_c(puz->probGetShapeShape(probNum, p), assm->getTransformation(piece)));
+        num = addSpace(puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, p), assm->getTransformation(piece)));
 
         setSpacePosition(num, assm->getX(piece), assm->getY(piece), assm->getZ(piece), 1);
 
@@ -834,7 +834,7 @@ void VoxelDrawer::showAssemblerState(const puzzle_c * puz, unsigned int probNum,
 
         if (assm->getTransformation(piece) < 0xff) {
 
-          num = addSpace(new voxel_c(puz->probGetShapeShape(probNum, p), assm->getTransformation(piece)));
+          num = addSpace(puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, p), assm->getTransformation(piece)));
 
           setSpacePosition(num, assm->getX(piece), assm->getY(piece), assm->getZ(piece), 1);
 
@@ -878,7 +878,7 @@ void VoxelDrawer::showPlacement(const puzzle_c * puz, unsigned int probNum, unsi
       shape++;
     }
 
-    num = addSpace(new voxel_c(puz->probGetShapeShape(probNum, shape), trans));
+    num = addSpace(puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, shape), trans));
     setSpacePosition(num, x, y, z, 1);
     setSpaceColor(num,
                           pieceColorR(puz->probGetShape(probNum, shape), p),
@@ -887,7 +887,7 @@ void VoxelDrawer::showPlacement(const puzzle_c * puz, unsigned int probNum, unsi
     setDrawingMode(num, normal);
   }
 
-  num = addSpace(new voxel_c(puz->probGetResultShape(probNum)));
+  num = addSpace(puz->getGridType()->getVoxel(puz->probGetResultShape(probNum)));
   setSpaceColor(num,
                         pieceColorR(puz->probGetResult(probNum)),
                         pieceColorG(puz->probGetResult(probNum)),

@@ -162,12 +162,6 @@ private:
    */
   voxel_c(const xml::node & node, const gridType_c * gt);
 
-  /* the factory functions need to be friend to use the constructors */
-  friend voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const;
-  friend voxel_c * gridType_c::getVoxel(const xml::node & node) const;
-
-public:
-
   /**
    * Copy constructor using reference. Transformation allows to
    * have a rotated version of this voxel space
@@ -179,6 +173,16 @@ public:
    * have a rotated version of this voxel space
    */
   voxel_c(const voxel_c * orig, unsigned int transformation = 0);
+
+  /* the factory functions need to be friend to use the constructors */
+  friend voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const;
+  friend voxel_c * gridType_c::getVoxel(const xml::node & node) const;
+  friend voxel_c * gridType_c::getVoxel(const voxel_c & orig, unsigned int transformation = 0) const;
+  friend voxel_c * gridType_c::getVoxel(const voxel_c * orig, unsigned int transformation = 0) const;
+  friend symmetries_t symmetries_0_c::symmetryCalcuation(const voxel_c *pp) const;
+
+public:
+
 
   /**
    * Destructor.

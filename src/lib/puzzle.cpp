@@ -720,8 +720,10 @@ puzzle_c::puzzle_c(gridType_c * g) : gt(g) {
 
 puzzle_c::puzzle_c(const puzzle_c * orig) {
 
+  gt = new gridType_c(*orig->gt);
+
   for (unsigned int i = 0; i < orig->shapes.size(); i++)
-    shapes.push_back(new voxel_c(orig->shapes[i]));
+    shapes.push_back(gt->getVoxel(orig->shapes[i]));
 
   for (unsigned int i = 0; i < orig->problems.size(); i++)
     problems.push_back(new problem_c(orig->problems[i]));
@@ -730,7 +732,6 @@ puzzle_c::puzzle_c(const puzzle_c * orig) {
     colors.push_back(orig->colors[i]);
 
   comment = orig->comment;
-  gt = orig->gt;
 }
 
 puzzle_c::~puzzle_c(void) {

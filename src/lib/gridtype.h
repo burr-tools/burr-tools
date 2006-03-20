@@ -73,6 +73,8 @@ class gridType_c {
     /* voxel spaces have different implementatios for rotation, and mirror functions */
     voxel_c * getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const;
     voxel_c * getVoxel(const xml::node & node) const;
+    voxel_c * getVoxel(const voxel_c & orig, unsigned int transformation = 0) const;
+    voxel_c * getVoxel(const voxel_c * orig, unsigned int transformation = 0) const;
 
     const symmetries_c * getSymmetries(void) const;
 

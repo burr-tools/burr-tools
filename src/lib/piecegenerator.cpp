@@ -20,6 +20,8 @@
 #include "puzzle.h"
 #include "voxel.h"
 
+#if 0
+
 typedef struct pieceTreeNode {
 
   // the position to check
@@ -112,7 +114,7 @@ static pieceTreeNode * addPiece(pieceTreeNode *t, voxel_c *p) {
 
 pieceGenerator_c::pieceGenerator_c (const voxel_c * p) {
 
-  voxel_c * pt = new voxel_c(p);
+//  voxel_c * pt = new voxel_c(p);
 
   for (unsigned int z = 0; z < pt->getXYZ(); z++)
     if (pt->getState(z) == voxel_c::VX_VARIABLE)
@@ -154,10 +156,10 @@ pieceGenerator_c::pieceGenerator_c (const voxel_c * p) {
            ) {
 
           // create a new piece where this voxel is filled
-          voxel_c * ps = new voxel_c(pieces[i]);
+//          voxel_c * ps = new voxel_c(pieces[i]);
           ps->setState(v, voxel_c::VX_FILLED);
 
-          voxel_c sym(ps);
+//          voxel_c sym(ps);
 
           sym.rotatez();
           sym.rotatez();
@@ -186,3 +188,5 @@ pieceGenerator_c::pieceGenerator_c (const voxel_c * p) {
     adder++;
   }
 }
+
+#endif
