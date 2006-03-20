@@ -100,8 +100,7 @@ class symmetries_0_c : public symmetries_c {
      * that are really available, als getNumTransformations and getNumTransformationsMirror are
      * influenced to only return the number of symmetries within this field, ...
      */
-    symmetries_t subSymmetry;
-    gridType_c * gt;
+    const gridType_c * gt;
 
 
     symmetries_0_c(const gridType_c * gt);
@@ -112,9 +111,9 @@ class symmetries_0_c : public symmetries_c {
 
     unsigned int getNumTransformations(void) const;
     unsigned int getNumTransformationsMirror(void) const;
-    int rotx(unsigned int p) const;
-    int roty(unsigned int p) const;
-    int rotz(unsigned int p) const;
+    virtual int rotx(unsigned int p) const;
+    virtual int roty(unsigned int p) const;
+    virtual int rotz(unsigned int p) const;
     bool symmetrieContainsTransformation(symmetries_t s, unsigned int t) const;
     unsigned char transAdd(unsigned char t1, unsigned char t2) const;
     unsigned char minimizeTransformation(symmetries_t s, unsigned char trans) const;

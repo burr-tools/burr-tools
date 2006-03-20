@@ -50,7 +50,7 @@ public:
  */
 class voxel_c {
 
-private:
+protected:
 
   /* each voxel needs to know the parameters for its gridspace
    */
@@ -150,7 +150,7 @@ public:
 
   // a few of the constructor are private so that voxel spaces can only be constructed via
   // the factory in gridType_c
-private:
+public:
 
   /**
    * Creates a new voxel space. Its of given size and
@@ -166,29 +166,19 @@ private:
    * Copy constructor using reference. Transformation allows to
    * have a rotated version of this voxel space
    */
-  voxel_c(const voxel_c & orig, unsigned int transformation = 0);
+  voxel_c(const voxel_c & orig);
 
   /**
    * Copy constructor using pointer. Transformation allows to
    * have a rotated version of this voxel space
    */
-  voxel_c(const voxel_c * orig, unsigned int transformation = 0);
-
-  /* the factory functions need to be friend to use the constructors */
-  friend voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const;
-  friend voxel_c * gridType_c::getVoxel(const xml::node & node) const;
-  friend voxel_c * gridType_c::getVoxel(const voxel_c & orig, unsigned int transformation = 0) const;
-  friend voxel_c * gridType_c::getVoxel(const voxel_c * orig, unsigned int transformation = 0) const;
-  friend symmetries_t symmetries_0_c::symmetryCalcuation(const voxel_c *pp) const;
-
-public:
-
+  voxel_c(const voxel_c * orig);
 
   /**
    * Destructor.
    * Free the space
    */
-  ~voxel_c();
+  virtual ~voxel_c();
 
   /**
    * make this voxelspace be identical to the one given
@@ -324,9 +314,9 @@ public:
    * The voxel space is resized to that it's contents
    * fits into the rotated position
    */
-  void rotatex(int by = 1);
-  void rotatey(int by = 1);
-  void rotatez(int by = 1);
+  virtual void rotatex(int by = 1) = 0;
+  virtual void rotatey(int by = 1) = 0;
+  virtual void rotatez(int by = 1) = 0;
 
   /**
    * shift the space around. Voxels that go over the
