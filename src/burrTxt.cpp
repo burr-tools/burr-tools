@@ -17,9 +17,9 @@
  */
 
 #include "lib/puzzle.h"
-#include "lib/assm_0_frontend_0.h"
+#include "lib/assembler_0.h"
 #include "lib/assembly.h"
-#include "lib/disassembler_0.h"
+#include "lib/disassembler.h"
 #include "lib/disassembly.h"
 #include "lib/print.h"
 
@@ -35,7 +35,7 @@ bool printDisassemble;
 bool printSolutions;
 bool quiet;
 
-disassembler_0_c * d;
+disassembler_c * d;
 
 class asm_cb : public assembler_cb {
 
@@ -161,16 +161,16 @@ int main(int argv, char* args[]) {
     print(&p);
   }
 
-  assembler_0_c *assm = new assm_0_frontend_0_c();
+  assembler_0_c *assm = p.getGridType()->getAssembler();
 
   switch (assm->createMatrix(&p, problem)) {
-  case assm_0_frontend_0_c::ERR_TOO_MANY_UNITS:
+  case assembler_0_c::ERR_TOO_MANY_UNITS:
     printf("%i units too many for the result shape\n", assm->getErrorsParam());
     return 0;
-  case assm_0_frontend_0_c::ERR_TOO_FEW_UNITS:
+  case assembler_0_c::ERR_TOO_FEW_UNITS:
     printf("%i units too few for the result shape\n", assm->getErrorsParam());
     return 0;
-  case assm_0_frontend_0_c::ERR_CAN_NOT_PLACE:
+  case assembler_0_c::ERR_CAN_NOT_PLACE:
     printf("Piece %i can be place nowhere in the result shape\n", assm->getErrorsParam());
     return 0;
   }
@@ -185,7 +185,7 @@ int main(int argv, char* args[]) {
 
   asm_cb a(&p, problem);
 
-  d = new disassembler_0_c(&p, problem);
+  d = p.getGridType()->getDisassembler(&p, problem);
 
   assm->assemble(&a);
 

@@ -2,18 +2,19 @@
 
 
 #include "lib/puzzle.h"
-#include "lib/voxel.h"
+#include "lib/voxel_0.h"
+#include "lib/gridtype.h"
 
 #include <iostream>
 #include <fstream>
 
 using namespace std;
 
-class my_voxel_0 : public voxel_c {
+class my_voxel_0 : public voxel_0_c {
 
 public:
 
-  my_voxel_0(istream * str) : voxel_c(0, 0, 0) {
+  my_voxel_0(istream * str) : voxel_0_c(0, 0, 0, 0, 0) {
 
     int sx, sy, sz;
 
@@ -70,7 +71,7 @@ class my_puzzle_0 : public puzzle_c {
    */
 
 public:
-  my_puzzle_0(istream * str) {
+  my_puzzle_0(istream * str) : puzzle_c(new gridType_c()) {
 
     unsigned int prob = addProblem();
     probSetName(prob, "Problem");

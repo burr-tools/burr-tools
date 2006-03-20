@@ -23,7 +23,7 @@
 
 class voxel_0_c : public voxel_c {
 
-  private:
+  protected:
 
     voxel_0_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0, voxel_type outs = VX_EMPTY) : voxel_c(x, y, z, gt, init, outs) {}
     voxel_0_c(const xml::node & node, const gridType_c * gt) : voxel_c(node, gt) {}
