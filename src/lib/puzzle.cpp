@@ -629,8 +629,14 @@ void problem_c::shapeIdRemoved(unsigned short idx) {
 
   shapes.erase(remove_if(shapes.begin(), shapes.end(), shape_id_removed(idx)), shapes.end());
 
+  /* now check all shapes, and the result, if their id is larger
+   * than the deleted shape, if so decrement to update the number
+   */
   for (unsigned int i = 0; i < shapes.size(); i++)
     if (shapes[i].shapeId > idx) shapes[i].shapeId--;
+
+  if (result > idx)
+    result--;
 }
 
 void problem_c::exchangeShapeId(unsigned int s1, unsigned int s2) {
