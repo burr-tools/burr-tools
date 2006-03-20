@@ -120,14 +120,14 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces, const gridTy
     throw load_error("not the right number of placements in assembly", node);
 }
 
-assembly_c::assembly_c(const assembly_c * orig) {
+assembly_c::assembly_c(const assembly_c * orig) : sym(orig->sym) {
 
   for (unsigned int i = 0; i < orig->placements.size(); i++)
     placements.push_back(placement_c(orig->getTransformation(i), orig->getX(i), orig->getY(i), orig->getZ(i)));
 
 }
 
-assembly_c::assembly_c(const assembly_c * orig, unsigned char trans, const puzzle_c * puz, unsigned int prob) {
+assembly_c::assembly_c(const assembly_c * orig, unsigned char trans, const puzzle_c * puz, unsigned int prob) : sym(orig->sym) {
   for (unsigned int i = 0; i < orig->placements.size(); i++)
     placements.push_back(placement_c(orig->getTransformation(i), orig->getX(i), orig->getY(i), orig->getZ(i)));
 
