@@ -57,7 +57,7 @@ private:
 
 public:
 
-  VoxelDrawer(int x,int y,int w,int h,const char *l);
+  VoxelDrawer(int x,int y,int w,int h);
   virtual ~VoxelDrawer(void) {}
 
   virtual void drawData(void);

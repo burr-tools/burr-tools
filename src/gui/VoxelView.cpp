@@ -35,7 +35,7 @@
 
 #include <Fl/Fl.h>
 
-VoxelView::VoxelView(int x,int y,int w,int h,const char *l) : Fl_Gl_Window(x,y,w,h,l),
+VoxelView::VoxelView(int x,int y,int w,int h) : Fl_Gl_Window(x,y,w,h),
   arcBall(new ArcBall_c(w, h)), doUpdates(true), size(10), cb(0)
 {
 };

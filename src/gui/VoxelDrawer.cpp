@@ -36,8 +36,8 @@
 // are clearly separated and dont't interlock when drawing
 #define MY 0.005f
 
-VoxelDrawer::VoxelDrawer(int x,int y,int w,int h,const char *l) :
-  VoxelView(x, y, w, h, l), markerType(-1),
+VoxelDrawer::VoxelDrawer(int x,int y,int w,int h) :
+  VoxelView(x, y, w, h), markerType(-1),
   colors(pieceColor), _useLightning(true)
 {
 };

@@ -63,7 +63,7 @@ private:
 
 public:
 
-  VoxelView(int x,int y,int w,int h,const char *l=0);
+  VoxelView(int x,int y,int w,int h);
   ~VoxelView(void) { delete arcBall; }
 
   void draw();
