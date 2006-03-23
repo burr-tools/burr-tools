@@ -15,8 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#ifndef __SQUAREEDITOR_H__
-#define __SQUAREEDITOR_H__
+#ifndef __GRID_EDITOR_0_H__
+#define __GRID_EDITOR_0_H__
 
 #include "grideditor.h"
 
@@ -35,7 +35,7 @@ class puzzle_c;
  *
  *  this is by faaaaar the most ugly code in the whole project, this really needs a clean rewrite
  */
-class SquareEditor : public gridEditor_c {
+class gridEditor_0_c : public gridEditor_c {
 
 private:
 
@@ -54,7 +54,7 @@ protected:
 
 public:
 
-  SquareEditor(int x, int y, int w, int h, puzzle_c * p) : gridEditor_c(x, y, w, h, p), state(0) {}
+  gridEditor_0_c(int x, int y, int w, int h, puzzle_c * p) : gridEditor_c(x, y, w, h, p), state(0) {}
 
   int handle(int event);
 };

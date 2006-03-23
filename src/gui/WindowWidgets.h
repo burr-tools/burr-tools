@@ -18,7 +18,7 @@
 #ifndef __WINDOW_WIDGETS_H__
 #define __WINDOW_WIDGETS_H__
 
-#include "SquareEditor.h"
+#include "grideditor.h"
 #include "VoxelDrawer.h"
 #include "BlockList.h"
 #include "DisasmToMoves.h"
@@ -38,6 +38,8 @@
 #include <FL/Fl_Multiline_Input.H>
 #include <FL/Fl_Progress.H>
 #include <FL/fl_draw.h>
+
+class guiGridType_c;
 
 // my button, the only change it that the box is automatically set to engraved
 class FlatButton : public Fl_Button {
@@ -130,13 +132,13 @@ class LineSpacer;
 // the group for the square editor including the colord marker and the slider for the z axis
 class VoxelEditGroup : public Fl_Group {
 
-  SquareEditor * sqedit;
+  gridEditor_c * sqedit;
   Fl_Slider * zselect;
   LineSpacer * space;
 
 public:
 
-  VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle);
+  VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle, const guiGridType_c * ggt);
 
   void draw();
 
@@ -147,7 +149,7 @@ public:
   void setZ(unsigned int val);
   int getZ(void) { return sqedit->getZ(); }
 
-  void cb_Sqedit(SquareEditor* o) { do_callback(this, user_data()); }
+  void cb_Sqedit(gridEditor_c* o) { do_callback(this, user_data()); }
 
   int getReason(void) { return sqedit->getReason(); }
 
@@ -181,7 +183,7 @@ public:
     sqedit->setTool(syms);
   }
 
-  void editChoice(SquareEditor::enTask c) {
+  void editChoice(gridEditor_c::enTask c) {
     sqedit->setTask(c);
   }
 

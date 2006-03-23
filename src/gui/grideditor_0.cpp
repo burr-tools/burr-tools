@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "SquareEditor.h"
+#include "grideditor_0.h"
 #include "pieceColor.h"
 
 #include "../lib/voxel.h"
@@ -42,38 +42,38 @@ static bool inRegion(int x, int y, int x1, int x2, int y1, int y2, int sx, int s
   if ((x < 0) || (y < 0) || (x >= sx) || (y >= sy)) return false;
 
   // these 2 modes ar of no interest, they only belong to the z layer
-  mode &= ~ (SquareEditor::TOOL_STACK_Z + SquareEditor::TOOL_MIRROR_Z);
+  mode &= ~ (gridEditor_0_c::TOOL_STACK_Z + gridEditor_0_c::TOOL_MIRROR_Z);
 
   if (mode == 0)
     // no mode bit set, so the given coordinate needs to be inside the selected area
     return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2);
-  if (mode == SquareEditor::TOOL_STACK_Y)
+  if (mode == gridEditor_0_c::TOOL_STACK_Y)
     // y stack active, so we need to be inside the x area
     return (x1 <= x) && (x <= x2);
-  if (mode == SquareEditor::TOOL_STACK_X)
+  if (mode == gridEditor_0_c::TOOL_STACK_X)
     // x stack active, so we need to be inside the y area
     return (y1 <= y) && (y <= y2);
-  if (mode == SquareEditor::TOOL_STACK_X + SquareEditor::TOOL_STACK_Y)
+  if (mode == gridEditor_0_c::TOOL_STACK_X + gridEditor_0_c::TOOL_STACK_Y)
     // x and y stack active, we need to be either in the row or the column
     return (x1 <= x) && (x <= x2) || (y1 <= y) && (y <= y2);
 
   // symmetric modes, recursive call with the same coordinates and also
   // with the corresponding mirrored coordinate and the symmetry bit removed
   // from mode, so that in the functioncall the checks above work properly.
-  if (mode & SquareEditor::TOOL_MIRROR_X)
-    return inRegion(x, y, x1, x2, y1, y2, sx, sy, mode & ~SquareEditor::TOOL_MIRROR_X) ||
-      inRegion(sx-x-1, y, x1, x2, y1, y2, sx, sy, mode & ~SquareEditor::TOOL_MIRROR_X);
+  if (mode & gridEditor_0_c::TOOL_MIRROR_X)
+    return inRegion(x, y, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_0_c::TOOL_MIRROR_X) ||
+      inRegion(sx-x-1, y, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_0_c::TOOL_MIRROR_X);
 
-  if (mode & SquareEditor::TOOL_MIRROR_Y)
-    return inRegion(x, y, x1, x2, y1, y2, sx, sy, mode & ~SquareEditor::TOOL_MIRROR_Y) ||
-      inRegion(x, sy-y-1, x1, x2, y1, y2, sx, sy, mode & ~SquareEditor::TOOL_MIRROR_Y);
+  if (mode & gridEditor_0_c::TOOL_MIRROR_Y)
+    return inRegion(x, y, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_0_c::TOOL_MIRROR_Y) ||
+      inRegion(x, sy-y-1, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_0_c::TOOL_MIRROR_Y);
 
   return false;
 }
 
 // this function calculates the size of the squares and the starting position
 // for the grid inside the available space of the widget
-void SquareEditor::calcParameters(int *s, int *tx, int *ty) {
+void gridEditor_0_c::calcParameters(int *s, int *tx, int *ty) {
 
   // calculate the size of the squares
   int sx = (w() > 2) ? (w()-1) / puzzle->getShape(piecenumber)->getX() : 0;
@@ -87,7 +87,7 @@ void SquareEditor::calcParameters(int *s, int *tx, int *ty) {
   *ty = y() + (h() - puzzle->getShape(piecenumber)->getY()*(*s) - 1) / 2;
 }
 
-void SquareEditor::draw() {
+void gridEditor_0_c::draw() {
 
   // draw the background, as we don't cover the whole area
   fl_color(color());
@@ -226,7 +226,7 @@ void SquareEditor::draw() {
 // It sets a (group of) voxels depending in the active tools by cesoursively
 // calling itself
 // tools contains the active tools, taks, what to do with the voxels
-static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, SquareEditor::enTask task, unsigned int currentColor) {
+static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, gridEditor_0_c::enTask task, unsigned int currentColor) {
 
   bool changed = false;
 
@@ -236,10 +236,10 @@ static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, 
     voxel_type v = voxel_c::VX_EMPTY;
 
     switch (task) {
-    case SquareEditor::TSK_SET:
+    case gridEditor_0_c::TSK_SET:
       v = voxel_c::VX_FILLED;
       break;
-    case SquareEditor::TSK_VAR:
+    case gridEditor_0_c::TSK_VAR:
       v = voxel_c::VX_VARIABLE;
       break;
     default:
@@ -247,7 +247,7 @@ static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, 
     }
 
     // on all other tasks but the color changing one, we need to set the state of the voxel
-    if ((task != SquareEditor::TSK_COLOR) && (s->getState(x, y, z) != v)) {
+    if ((task != gridEditor_0_c::TSK_COLOR) && (s->getState(x, y, z) != v)) {
       changed = true;
       s->setState(x, y, z, v);
     }
@@ -257,16 +257,16 @@ static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, 
       changed = true;
       s->setColor(x, y, z, currentColor);
     }
-  } else if (tools & SquareEditor::TOOL_MIRROR_X) {
+  } else if (tools & gridEditor_0_c::TOOL_MIRROR_X) {
     // the mirror tools are active, call resursively with both possible coordinates
-    changed |= setRecursive(s, tools & ~SquareEditor::TOOL_MIRROR_X, x, y, z, task, currentColor);
-    changed |= setRecursive(s, tools & ~SquareEditor::TOOL_MIRROR_X, s->getX()-x-1, y, z, task, currentColor);
-  } else if (tools & SquareEditor::TOOL_MIRROR_Y) {
-    changed |= setRecursive(s, tools & ~SquareEditor::TOOL_MIRROR_Y, x, y, z, task, currentColor);
-    changed |= setRecursive(s, tools & ~SquareEditor::TOOL_MIRROR_Y, x, s->getY()-y-1, z, task, currentColor);
-  } else if (tools & SquareEditor::TOOL_MIRROR_Z) {
-    changed |= setRecursive(s, tools & ~SquareEditor::TOOL_MIRROR_Z, x, y, z, task, currentColor);
-    changed |= setRecursive(s, tools & ~SquareEditor::TOOL_MIRROR_Z, x, y, s->getZ()-z-1, task, currentColor);
+    changed |= setRecursive(s, tools & ~gridEditor_0_c::TOOL_MIRROR_X, x, y, z, task, currentColor);
+    changed |= setRecursive(s, tools & ~gridEditor_0_c::TOOL_MIRROR_X, s->getX()-x-1, y, z, task, currentColor);
+  } else if (tools & gridEditor_0_c::TOOL_MIRROR_Y) {
+    changed |= setRecursive(s, tools & ~gridEditor_0_c::TOOL_MIRROR_Y, x, y, z, task, currentColor);
+    changed |= setRecursive(s, tools & ~gridEditor_0_c::TOOL_MIRROR_Y, x, s->getY()-y-1, z, task, currentColor);
+  } else if (tools & gridEditor_0_c::TOOL_MIRROR_Z) {
+    changed |= setRecursive(s, tools & ~gridEditor_0_c::TOOL_MIRROR_Z, x, y, z, task, currentColor);
+    changed |= setRecursive(s, tools & ~gridEditor_0_c::TOOL_MIRROR_Z, x, y, s->getZ()-z-1, task, currentColor);
   } else {
     // the column modes are active, this part must be at the end, because is
     // doesn't mask out the tool bits but clears all of them at once
@@ -274,13 +274,13 @@ static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, 
     // all 3 column tools need to be handled at once because otherwise we wouldnt handle
     // just the columns at the current position but all rows of all columns or so if more than
     // one columns tool is active
-    if (tools & SquareEditor::TOOL_STACK_X)
+    if (tools & gridEditor_0_c::TOOL_STACK_X)
       for (unsigned int xp = 0; xp < s->getX(); xp++)
         changed |= setRecursive(s, 0, xp, y, z, task, currentColor);
-    if (tools & SquareEditor::TOOL_STACK_Y)
+    if (tools & gridEditor_0_c::TOOL_STACK_Y)
       for (unsigned int yp = 0; yp < s->getY(); yp++)
         changed |= setRecursive(s, 0, x, yp, z, task, currentColor);
-    if (tools & SquareEditor::TOOL_STACK_Z)
+    if (tools & gridEditor_0_c::TOOL_STACK_Z)
       for (unsigned int zp = 0; zp < s->getZ(); zp++)
         changed |= setRecursive(s, 0, x, y, zp, task, currentColor);
   }
@@ -288,7 +288,7 @@ static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, 
   return changed;
 }
 
-bool SquareEditor::setLayer(unsigned int z) {
+bool gridEditor_0_c::setLayer(unsigned int z) {
   int x1, x2, y1, y2;
 
   voxel_c * space = puzzle->getShape(piecenumber);
@@ -328,7 +328,7 @@ bool SquareEditor::setLayer(unsigned int z) {
   return changed;
 }
 
-int SquareEditor::handle(int event) {
+int gridEditor_0_c::handle(int event) {
 
   // no valid shape, nothing to do
   if (piecenumber >= puzzle->shapeNumber())

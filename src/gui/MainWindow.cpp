@@ -28,6 +28,7 @@
 #include "ImageExport.h"
 #include "Images.h"
 #include "guigridtype.h"
+#include "grideditor.h"
 
 #include "../config.h"
 
@@ -301,16 +302,16 @@ static void cb_EditChoice_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_
 void UserInterface::cb_EditChoice(void) {
   switch(editChoice->getSelected()) {
     case 0:
-      pieceEdit->editChoice(SquareEditor::TSK_SET);
+      pieceEdit->editChoice(gridEditor_c::TSK_SET);
       break;
     case 1:
-      pieceEdit->editChoice(SquareEditor::TSK_VAR);
+      pieceEdit->editChoice(gridEditor_c::TSK_VAR);
       break;
     case 2:
-      pieceEdit->editChoice(SquareEditor::TSK_RESET);
+      pieceEdit->editChoice(gridEditor_c::TSK_RESET);
       break;
     case 3:
-      pieceEdit->editChoice(SquareEditor::TSK_COLOR);
+      pieceEdit->editChoice(gridEditor_c::TSK_COLOR);
       break;
   }
 }
@@ -319,11 +320,11 @@ static void cb_EditMode_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Ed
 void UserInterface::cb_EditMode(void) {
   switch(editMode->getSelected()) {
     case 0:
-      pieceEdit->editType(SquareEditor::EDT_RUBBER);
+      pieceEdit->editType(gridEditor_c::EDT_RUBBER);
       config.useRubberband(true);
       break;
     case 1:
-      pieceEdit->editType(SquareEditor::EDT_SINGLE);
+      pieceEdit->editType(gridEditor_c::EDT_SINGLE);
       config.useRubberband(false);
       break;
   }
@@ -385,13 +386,13 @@ static void cb_pieceEdit_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_p
 void UserInterface::cb_pieceEdit(VoxelEditGroup* o) {
 
   switch (o->getReason()) {
-  case SquareEditor::RS_MOUSEMOVE:
+  case gridEditor_c::RS_MOUSEMOVE:
     if (o->getMouse())
       View3D->setMarker(o->getMouseX1(), o->getMouseY1(), o->getMouseX2(), o->getMouseY2(), o->getMouseZ(), editSymmetries);
     else
       View3D->hideMarker();
     break;
-  case SquareEditor::RS_CHANGESQUARE:
+  case gridEditor_c::RS_CHANGESQUARE:
     View3D->showSingleShape(puzzle, PcSel->getSelection());
     StatPieceInfo(PcSel->getSelection());
     changeShape(PcSel->getSelection());
@@ -2163,29 +2164,29 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
     ToggleButton * btn;
 
-    btn = new ToggleButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_X);
+    btn = new ToggleButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_X);
     btn->image(new Fl_Pixmap(TB_Color_Symmetrical_X_xpm));
     btn->tooltip(" Toggle mirroring along the y-z-plane ");
 
-    btn = new ToggleButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_Y);
+    btn = new ToggleButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_Y);
     btn->image(new Fl_Pixmap(TB_Color_Symmetrical_Y_xpm));
     btn->tooltip(" Toggle mirroring along the x-z-plane ");
 
-    btn = new ToggleButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_MIRROR_Z);
+    btn = new ToggleButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_Z);
     btn->image(new Fl_Pixmap(TB_Color_Symmetrical_Z_xpm));
     btn->tooltip(" Toggle mirroring along the x-y-plane ");
 
     xpos += 3*SZ_BUTTON2_Y + SZ_GAP;
 
-    btn = new ToggleButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_X);
+    btn = new ToggleButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_STACK_X);
     btn->image(new Fl_Pixmap(TB_Color_Columns_X_xpm));
     btn->tooltip(" Toggle drawing in all x layers ");
 
-    btn = new ToggleButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_Y);
+    btn = new ToggleButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_STACK_Y);
     btn->image(new Fl_Pixmap(TB_Color_Columns_Y_xpm));
     btn->tooltip(" Toggle drawing in all y layers ");
 
-    btn = new ToggleButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, SquareEditor::TOOL_STACK_Z);
+    btn = new ToggleButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_STACK_Z);
     btn->image(new Fl_Pixmap(TB_Color_Columns_Z_xpm));
     btn->tooltip(" Toggle drawing in all z layers ");
 
@@ -2194,10 +2195,10 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     y += SZ_BUTTON2_Y + SZ_GAP;
     lh -= SZ_BUTTON2_Y + SZ_GAP;
 
-    pieceEdit = new VoxelEditGroup(x, y, w, lh, puzzle);
+    pieceEdit = new VoxelEditGroup(x, y, w, lh, puzzle, ggt);
     pieceEdit->callback(cb_pieceEdit_stub, this);
     pieceEdit->end();
-    pieceEdit->editType(SquareEditor::EDT_RUBBER);
+    pieceEdit->editType(gridEditor_c::EDT_RUBBER);
     y += lh;
 
     group->resizable(pieceEdit);

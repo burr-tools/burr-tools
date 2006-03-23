@@ -14,7 +14,7 @@ burrGui_SOURCES=VoxelView.cpp VoxelView.h \
                 MainWindow.cpp MainWindow.h \
                 WindowWidgets.cpp WindowWidgets.h \
 		grideditor.cpp grideditor.h \
-                SquareEditor.cpp SquareEditor.h \
+                grideditor_0.cpp grideditor_0.h \
                 DisasmToMoves.cpp DisasmToMoves.h \
                 pieceColor.cpp pieceColor.h \
                 gzstream.cpp gzstream.h \

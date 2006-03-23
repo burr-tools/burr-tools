@@ -18,6 +18,7 @@
 #include "WindowWidgets.h"
 #include "pieceColor.h"
 #include "Images.h"
+#include "guigridtype.h"
 
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
@@ -87,9 +88,9 @@ class LineSpacer : Fl_Widget {
 };
 
 static void cb_VoxelEditGroupZselect_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup*)v)->cb_Zselect((Fl_Slider*)o); }
-static void cb_VoxelEditGroupSqedit_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup*)v)->cb_Sqedit((SquareEditor*)o); }
+static void cb_VoxelEditGroupSqedit_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup*)v)->cb_Sqedit((gridEditor_c*)o); }
 
-VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle) : Fl_Group(x, y, w, h) {
+VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle, const guiGridType_c * ggt) : Fl_Group(x, y, w, h) {
 
   zselect = new Fl_Slider(x, y, 15, h);
   zselect->tooltip(" Select Z Plane ");
@@ -112,7 +113,7 @@ VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle) : 
     o->color((Fl_Color)1);
   }
 
-  sqedit = new SquareEditor(x+35, y, w-35, h-10, puzzle);
+  sqedit = ggt->getGridEditor(x+35, y, w-35, h-10, puzzle);
   sqedit->tooltip(" Fill and empty cubes ");
   sqedit->box(FL_NO_BOX);
   sqedit->callback(cb_VoxelEditGroupSqedit_stub, this);

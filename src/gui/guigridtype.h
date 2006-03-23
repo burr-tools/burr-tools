@@ -3,7 +3,7 @@
 
 #include "../lib/gridtype.h"
 
-class SquareEditor;
+class gridEditor_c;
 class VoxelDrawer;
 class LFl_Group;
 
@@ -17,18 +17,18 @@ class guiGridType_c {
 
     guiGridType_c(gridType_c * gt);
 
-    SquareEditor * getGridEditor(int x, int y, int w, int h, puzzle_c * puzzle);
-    VoxelDrawer * getVoxelDrawer(int x, int y, int w, int h);
+    gridEditor_c * getGridEditor(int x, int y, int w, int h, puzzle_c * puzzle) const;
+    VoxelDrawer * getVoxelDrawer(int x, int y, int w, int h) const;
 
     /* returns a group to edit the parameters for this grid type
      * is is used in the new puzzle grid selection dialog
      * and also in the later possible grid parameters dialog
      */
-    LFl_Group * getCofigurationDialog(void);
+    LFl_Group * getCofigurationDialog(void) const;
 
     /* return icon and text for the current grid type */
-    char * getIcon(void);
-    const char * getName(void);
+    char * getIcon(void) const;
+    const char * getName(void) const;
 };
 
 #endif
