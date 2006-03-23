@@ -13,6 +13,7 @@ burrGui_SOURCES=VoxelView.cpp VoxelView.h \
                 BlockList.cpp BlockList.h \
                 MainWindow.cpp MainWindow.h \
                 WindowWidgets.cpp WindowWidgets.h \
+		grideditor.cpp grideditor.h \
                 SquareEditor.cpp SquareEditor.h \
                 DisasmToMoves.cpp DisasmToMoves.h \
                 pieceColor.cpp pieceColor.h \

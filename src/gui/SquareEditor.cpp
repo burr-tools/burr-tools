@@ -31,34 +31,6 @@ static int floordiv(int a, int b) {
     return (a-b+1)/b;
 }
 
-void SquareEditor::setPuzzle(puzzle_c * p, unsigned int piecenum) {
-
-  puzzle = p;
-  piecenumber = piecenum;
-
-  // check if the current z value is in valid regions
-  if ((piecenum < puzzle->shapeNumber()) && (puzzle->getShape(piecenum)->getZ() <= currentZ))
-    currentZ = puzzle->getShape(piecenum)->getZ() - 1;
-
-  if (currentZ < 0) currentZ = 0;
-
-  redraw();
-}
-
-void SquareEditor::setZ(unsigned int z) {
-
-  // clamp the value to valid values
-  if (z >= puzzle->getShape(piecenumber)->getZ()) z = puzzle->getShape(piecenumber)->getZ()-1;
-
-  if (z != currentZ) {
-
-    mZ = currentZ = z;
-    redraw();
-    callbackReason = RS_MOUSEMOVE;
-    do_callback();
-  }
-
-}
 
 // this function finds out if a given square is inside the selected region
 // this check includes the symmetric and column edit modes
@@ -508,8 +480,4 @@ int SquareEditor::handle(int event) {
   return 0;
 }
 
-void SquareEditor::clearPuzzle() {
-  piecenumber = puzzle->shapeNumber();
-  redraw();
-}
 

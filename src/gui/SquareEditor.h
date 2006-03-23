@@ -18,6 +18,8 @@
 #ifndef __SQUAREEDITOR_H__
 #define __SQUAREEDITOR_H__
 
+#include "grideditor.h"
+
 #include <FL/Fl.H>
 #include <FL/Fl_Widget.h>
 
@@ -33,69 +35,16 @@ class puzzle_c;
  *
  *  this is by faaaaar the most ugly code in the whole project, this really needs a clean rewrite
  */
-class SquareEditor : public Fl_Widget {
-
-public:
-
-  /* sets the task of what to do next */
-  typedef enum {
-    TSK_SET,
-    TSK_VAR,
-    TSK_RESET,
-    TSK_COLOR
-  } enTask;
-
-  /* some editing tools */
-  enum {
-    TOOL_MIRROR_X = 1,
-    TOOL_MIRROR_Y = 2,
-    TOOL_MIRROR_Z = 4,
-    TOOL_STACK_X = 8,
-    TOOL_STACK_Y = 16,
-    TOOL_STACK_Z = 32
-  };
-
-  /* edit types */
-  enum {
-    EDT_SINGLE,
-    EDT_RUBBER
-  };
+class SquareEditor : public gridEditor_c {
 
 private:
-
-  puzzle_c * puzzle;
-
-  // the current edited layer
-  unsigned int currentZ;
-
-  // the number of the piece, this is used to colorize the squares
-  unsigned int piecenumber;
 
   // the edit state
   int state;
 
-  // current position of the mouse cursor
-  int mX, mY, mZ;
-
-  // is the mouse inside the widget?
-  bool inside;
-
   // calculate the size of the grid cells and the
   // top right corner position
   void calcParameters(int *s, int *tx, int *ty);
-
-  int callbackReason;
-
-  // the constraint color to use
-  unsigned int currentColor;
-
-  int startX, startY;
-
-  enTask task;
-
-  unsigned char activeTools;
-
-  int editType;
 
 protected:
 
@@ -105,49 +54,9 @@ protected:
 
 public:
 
-  SquareEditor(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), currentZ(0), piecenumber(0), state(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), inside(false), currentColor(0), activeTools(0) {}
-
-  // sets the z layer to edit the value is clamped to valid values
-  void setZ(unsigned int z);
-
-  // get the current Z value
-  unsigned int getZ(void) { return currentZ; }
-
-  // sets the color to use for editing voxels
-  void setColor(unsigned int col) {
-    currentColor = col;
-  }
-
-  // sets the voxel space to edit, the widget doesn't take over the space
-  // the voxelspace must not be deleted while this is set here
-  void setPuzzle(puzzle_c * p, unsigned int piecenum);
-  void clearPuzzle();
-
-  void setTask(enTask t) { task = t; }
+  SquareEditor(int x, int y, int w, int h, puzzle_c * p) : gridEditor_c(x, y, w, h, p), state(0) {}
 
   int handle(int event);
-
-  // get the mouse mosition so that the cursor can be shown in 3d view
-  bool getMouse(void) { return inside; }
-  int getMouseX1(void) { return (startX < mX)?(startX):(mX); }
-  int getMouseY1(void) { return (startY < mY)?(startY):(mY); }
-  int getMouseX2(void) { return (startX > mX)?(startX):(mX); }
-  int getMouseY2(void) { return (startY > mY)?(startY):(mY); }
-  int getMouseZ(void) { return mZ; }
-
-  // find out the reason why this widget called the callback
-  enum {
-    RS_MOUSEMOVE,
-    RS_CHANGESQUARE
-  };
-
-  int getReason(void) { return callbackReason; }
-
-  void activateTool(int tool) { activeTools |= tool; }
-  void deactivateTool(int tool) { activeTools &= ~tool; }
-  void setTool(int tool) { activeTools = tool; }
-
-  void setEditType(int type) { editType = type; }
 };
 
 #endif
