@@ -64,6 +64,9 @@ class gridType_c {
     /* create a cube grid */
     gridType_c(void);
 
+    /* get the grid type */
+    gridType getType(void) { return type; }
+
     /* these functions return assembler and disassemble for the current space grid
      * if the requied functionality is not available, return 0
      */
@@ -87,23 +90,5 @@ class gridType_c {
 };
 
 
-#if 0
-class guiGridType_c : public gridType_c {
-
-  GridEditor * getGridEditor(void);
-  VoxelDrawer * getVoxelDrawer(void);
-
-  /* returns a group to edit the parameters for this grid type
-   * is is used in the new puzzle grid selection dialog
-   * and also in the later possible grid parameters dialog
-   */
-  LFl_Group * getCofigurationDialog(void);
-
-  /* return icon and text for the current grid type */
-  char * getIcon(void);
-  const char * getName(void);
-};
-
-#endif
 
 #endif

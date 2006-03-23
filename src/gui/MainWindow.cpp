@@ -27,6 +27,7 @@
 #include "PlacementBrowser.h"
 #include "ImageExport.h"
 #include "Images.h"
+#include "guigridtype.h"
 
 #include "../config.h"
 
@@ -1228,6 +1229,14 @@ void UserInterface::ReplacePuzzle(puzzle_c * NewPuzzle) {
 
     delete puzzle;
     puzzle = NewPuzzle;
+
+    delete ggt;
+    ggt = new guiGridType_c(puzzle->getGridType());
+
+    // now replace all gridtype dependent gui elements with
+    // instances from the guigridtype
+
+
 }
 
 Fl_Menu_Item UserInterface::menu_MainMenu[] = {
@@ -2700,13 +2709,14 @@ void UserInterface::activateConfigOptions(void) {
   View3D->useLightning(config.useLightning());
 }
 
-UserInterface::UserInterface() : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
+UserInterface::UserInterface(gridType_c * gt) : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
 
   assmThread = 0;
   fname = 0;
   disassemble = 0;
 
-  puzzle = new puzzle_c(new gridType_c());
+  puzzle = new puzzle_c(gt);
+  ggt = new guiGridType_c(puzzle->getGridType());
   changed = false;
 
   label("BurrTools - unknown");

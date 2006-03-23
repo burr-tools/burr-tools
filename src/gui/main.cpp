@@ -28,6 +28,7 @@
 #include <xmlwrapp/xmlwrapp.h>
 
 #include "../lib/bt_assert.h"
+#include "../lib/gridtype.h"
 
 class my_Fl : public Fl {
 
@@ -54,7 +55,7 @@ int main(int argc, char ** argv) {
   xml::init xmlinit;
   bt_assert_init();
 
-  UserInterface *ui = new UserInterface();
+  UserInterface *ui = new UserInterface(new gridType_c());
 
   int res = 0;
 

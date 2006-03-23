@@ -9,6 +9,7 @@ burrGui_LDFLAGS=$(GUI_LD_ADD) $(XML_LD_ADD)
 burrGui_SOURCES=VoxelView.cpp VoxelView.h \
 		VoxelDrawer.cpp VoxelDrawer.h \
                 ArcBall.cpp ArcBall.h \
+		guigridtype.cpp guigridtype.h \
                 BlockList.cpp BlockList.h \
                 MainWindow.cpp MainWindow.h \
                 WindowWidgets.cpp WindowWidgets.h \

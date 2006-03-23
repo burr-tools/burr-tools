@@ -45,9 +45,13 @@ class puzzle_c;
 class assemblerThread_c;
 class DisasmToMoves;
 
+class gridType_c;
+class guiGridType_c;
+
 class UserInterface : public Fl_Double_Window {
 
   puzzle_c * puzzle;
+  guiGridType_c * ggt;  // this is the guigridtype for the puzzle, is must always be in sync
   char * fname;
   DisasmToMoves * disassemble;
   assemblerThread_c *assmThread;
@@ -148,7 +152,7 @@ class UserInterface : public Fl_Double_Window {
 
 public:
 
-  UserInterface();
+  UserInterface(gridType_c * gt);
   virtual ~UserInterface();
 
   int handle(int event);
