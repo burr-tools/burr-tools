@@ -777,6 +777,8 @@ disassembler_0_c::~disassembler_0_c() {
     delete [] matrix[k];
 
   delete cache;
+  delete groups;
+  delete [] piece2shape;
 }
 
 separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
