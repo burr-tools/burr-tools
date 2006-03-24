@@ -15,37 +15,19 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#ifndef __GUI_GRID_TYPE__
-#define __GUI_GRID_TYPE__
+#ifndef __VOXEL_DRAWER_0_H__
+#define __VOXEL_DRAWER_0_H__
 
-#include "../lib/gridtype.h"
+#include "voxeldrawer.h"
 
-class gridEditor_c;
-class voxelDrawer_c;
-class LFl_Group;
-
-class guiGridType_c {
-
-  private:
-
-    gridType_c * gt;
+class voxelDrawer_0_c : public voxelDrawer_c {
 
   public:
 
-    guiGridType_c(gridType_c * gt);
+    voxelDrawer_0_c(int x, int y, int w, int h) : voxelDrawer_c(x, y, w, h) {}
 
-    gridEditor_c * getGridEditor(int x, int y, int w, int h, puzzle_c * puzzle) const;
-    voxelDrawer_c * getVoxelDrawer(int x, int y, int w, int h) const;
-
-    /* returns a group to edit the parameters for this grid type
-     * is is used in the new puzzle grid selection dialog
-     * and also in the later possible grid parameters dialog
-     */
-    LFl_Group * getCofigurationDialog(void) const;
-
-    /* return icon and text for the current grid type */
-    char * getIcon(void) const;
-    const char * getName(void) const;
+    void drawShape(const shapeInfo * shape, colorMode colors);
+    void drawCursor(unsigned int sx, unsigned int sy, unsigned int sz);
 };
 
 #endif

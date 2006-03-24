@@ -19,7 +19,7 @@
 #define __WINDOW_WIDGETS_H__
 
 #include "grideditor.h"
-#include "VoxelDrawer.h"
+#include "voxeldrawer.h"
 #include "BlockList.h"
 #include "DisasmToMoves.h"
 
@@ -288,12 +288,12 @@ public:
 // the groups with the 3d view and the zoom slider
 class View3dGroup : public Fl_Group {
 
-  VoxelDrawer * View3D;
+  voxelDrawer_c * View3D;
   Fl_Slider * slider;
 
 public:
 
-  View3dGroup(int x, int y, int w, int h);
+  View3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt);
 
   void cb_slider(void);
 

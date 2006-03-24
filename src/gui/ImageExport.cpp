@@ -17,7 +17,7 @@
  */
 #include "ImageExport.h"
 #include "pieceColor.h"
-#include "VoxelDrawer.h"
+#include "voxeldrawer.h"
 #include "Image.h"
 
 #include "../lib/puzzle.h"
@@ -30,7 +30,7 @@ class LView3dGroup : public View3dGroup, public layoutable_c {
 
   public:
 
-    LView3dGroup(int x, int y, int w, int h) : View3dGroup(0, 0, 50, 50), layoutable_c(x, y, w, h) {}
+    LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt) : View3dGroup(0, 0, 50, 50, ggt), layoutable_c(x, y, w, h) {}
 
     virtual void getMinSize(int * w, int *h) const {
       *w = 400;
@@ -519,7 +519,7 @@ void ImageExportWindow::cb_SzUpdate(void) {
   }
 }
 
-ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p), working(false), state(0), i(0) {
+ImageExportWindow::ImageExportWindow(puzzle_c * p, const guiGridType_c * ggt) : puzzle(p), working(false), state(0), i(0) {
 
   label("Export Images");
 
@@ -718,7 +718,7 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p) : puzzle(p), working(false), 
     l->end();
   }
 
-  view3D = new LView3dGroup(2, 0, 1, 6);
+  view3D = new LView3dGroup(2, 0, 1, 6, ggt);
   cb_Update3DView();
 
   set_modal();

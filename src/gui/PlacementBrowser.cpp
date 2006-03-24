@@ -70,12 +70,12 @@ void PlacementBrowser::cb_placement(Fl_Value_Slider* o) {
 }
 
 
-PlacementBrowser::PlacementBrowser(puzzle_c * p, unsigned int prob) :
+PlacementBrowser::PlacementBrowser(puzzle_c * p, unsigned int prob, const guiGridType_c * ggt) :
   Fl_Double_Window(WINDOWSIZE_X, WINDOWSIZE_Y), puzzle(p), problem(prob) {
 
   bt_assert(puzzle->probGetAssembler(problem));
 
-  view3d = new View3dGroup(20, 20, WINDOWSIZE_X - 20, WINDOWSIZE_Y - (20 + 30));
+  view3d = new View3dGroup(20, 20, WINDOWSIZE_X - 20, WINDOWSIZE_Y - (20 + 30), ggt);
 
   pieceSelector = new Fl_Value_Slider(0, 0, WINDOWSIZE_X, 20);
   pieceSelector->type(FL_HOR_SLIDER);

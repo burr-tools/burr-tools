@@ -48,7 +48,7 @@ class puzzle_c;
  *
  * additionally pieces can be transparent
  */
-class VoxelDrawer : public VoxelView {
+class voxelDrawer_c : public VoxelView {
 
 private:
 
@@ -57,8 +57,8 @@ private:
 
 public:
 
-  VoxelDrawer(int x,int y,int w,int h);
-  virtual ~VoxelDrawer(void) {}
+  voxelDrawer_c(int x,int y,int w,int h);
+  virtual ~voxelDrawer_c(void) {}
 
   virtual void drawData(void);
 
@@ -129,7 +129,7 @@ public:
     updateRequired();
   }
 
-private:
+protected:
 
   typedef struct {
 
@@ -141,9 +141,17 @@ private:
 
   } shapeInfo;
 
+  typedef struct {
+    float r, g, b;
+  } colorInfo;
+
+  std::vector<colorInfo> palette;
+
   /* the marker position */
   int mX1, mY1, mZ, mX2, mY2;
   int markerType;
+
+private:
 
   std::vector<shapeInfo> shapes;
 
@@ -154,13 +162,10 @@ private:
 
   float centerX, centerY, centerZ;
 
-  typedef struct {
-    float r, g, b;
-  } colorInfo;
-
-  std::vector<colorInfo> palette;
-
   bool _useLightning;
+
+  virtual void drawShape(const shapeInfo * shape, colorMode colors) = 0;
+  virtual void drawCursor(unsigned int sx, unsigned int sy, unsigned int sz) = 0;
 
 public:
 

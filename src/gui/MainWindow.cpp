@@ -675,7 +675,7 @@ void UserInterface::cb_BtnPlacementBrowser(void) {
 
   unsigned int prob = solutionProblem->getSelection();
 
-  PlacementBrowser * plbr = new PlacementBrowser(puzzle, prob);
+  PlacementBrowser * plbr = new PlacementBrowser(puzzle, prob, ggt);
 
   plbr->show();
 
@@ -1034,7 +1034,7 @@ void UserInterface::cb_Coment(void) {
 
 static void cb_ImageExport_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ImageExport(); }
 void UserInterface::cb_ImageExport(void) {
-  ImageExportWindow w(puzzle);
+  ImageExportWindow w(puzzle, ggt);
   w.show();
 
   while (w.visible()) {
@@ -2731,7 +2731,7 @@ UserInterface::UserInterface(gridType_c * gt) : Fl_Double_Window(SZ_WINDOW_X, SZ
   Status->callback(cb_Status_stub, this);
 
   Fl_Tile * mainTile = new Fl_Tile(0, SZ_CONTENT_START_Y, SZ_WINDOW_X, SZ_CONTENT_Y);
-  View3D = new View3dGroup(SZ_TOOL_X, SZ_CONTENT_START_Y, SZ_3DAREA_X, SZ_CONTENT_Y);
+  View3D = new View3dGroup(SZ_TOOL_X, SZ_CONTENT_START_Y, SZ_3DAREA_X, SZ_CONTENT_Y, ggt);
   new Fl_Group(0, SZ_CONTENT_START_Y, SZ_TOOL_X, SZ_CONTENT_Y);
 
   // this box paints the background behind the tab, because the tabs are partly transparent

@@ -666,10 +666,10 @@ void View3dGroup::cb_slider(void) {
   View3D->setSize(exp(6-slider->value()));
 }
 
-View3dGroup::View3dGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
+View3dGroup::View3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt) : Fl_Group(x, y, w, h) {
   box(FL_DOWN_BOX);
 
-  View3D = new VoxelDrawer(x, y, w-15, h);
+  View3D = ggt->getVoxelDrawer(x, y, w-15, h);
   View3D->tooltip(" Rotate the puzzle by dragging with the mouse ");
   View3D->box(FL_NO_BOX);
 
