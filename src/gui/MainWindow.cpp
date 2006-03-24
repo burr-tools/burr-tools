@@ -209,7 +209,7 @@ void UserInterface::cb_NameShape(void) {
 
   if (PcSel->getSelection() < puzzle->shapeNumber()) {
 
-    const char * name = fl_input("Enter name for the shape", puzzle->getShape(PcSel->getSelection())->getName());
+    const char * name = fl_input("Enter name for the shape", puzzle->getShape(PcSel->getSelection())->getName().c_str());
 
     if (name) {
       puzzle->getShape(PcSel->getSelection())->setName(name);

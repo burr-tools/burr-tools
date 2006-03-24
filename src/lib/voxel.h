@@ -115,7 +115,7 @@ protected:
   int hx, hy, hz;
 
   /* shapes can be named */
-  char * name;
+  std::string name;
 
 protected:
 
@@ -467,10 +467,10 @@ public:
   void getHotspot(unsigned char trans, int * x, int * y, int * z) const;
 
   /* functions to set the name */
-  const char * getName(void) const { return name; }
+  const std::string & getName(void) const { return name; }
 
   // if you give 0 or an empty string the name will be removed
-  void setName(const char * n);
+  void setName(const std::string & n) { name = n; }
 
   /* for the minimize scale function applied to all shapes
    * we need to first check, if all shapes can be scaled down

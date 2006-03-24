@@ -740,8 +740,8 @@ void ResultViewer::draw(void) {
 
     unsigned int result = puzzle->probGetResult(problem);
 
-    if (puzzle->probGetResultShape(problem)->getName())
-      snprintf(txt, 120, "Result: S%i - %s", result+1, puzzle->probGetResultShape(problem)->getName());
+    if (puzzle->probGetResultShape(problem)->getName().length())
+      snprintf(txt, 120, "Result: S%i - %s", result+1, puzzle->probGetResultShape(problem)->getName().c_str());
     else
       snprintf(txt, 19, "Result: S%i", result + 1);
 

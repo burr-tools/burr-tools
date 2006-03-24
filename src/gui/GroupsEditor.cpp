@@ -85,8 +85,8 @@ void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, i
         type = 1;
 
         int num = puzzle->probGetShape(prob, r);
-        if (puzzle->getShape(num)->getName())
-          snprintf(s, 40, " S%i - %s", num+1, puzzle->getShape(num)->getName());
+        if (puzzle->getShape(num)->getName().length())
+          snprintf(s, 40, " S%i - %s", num+1, puzzle->getShape(num)->getName().c_str());
         else
           snprintf(s, 40, " S%i", num+1);
 

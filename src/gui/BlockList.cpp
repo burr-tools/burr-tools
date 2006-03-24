@@ -304,8 +304,8 @@ unsigned int PieceSelector::blockNumber(void) {
 }
 
 void PieceSelector::getText(unsigned int block, char * text) {
-  if (puzzle->getShape(block)->getName())
-    snprintf(text, 200, "S%i - %s", block+1, puzzle->getShape(block)->getName());
+  if (puzzle->getShape(block)->getName().length())
+    snprintf(text, 200, "S%i - %s", block+1, puzzle->getShape(block)->getName().c_str());
   else
     snprintf(text, 200, "S%i", block+1);
 }
@@ -359,8 +359,8 @@ void PiecesList::getText(unsigned int block, char * text) {
   int len;
 
   /* first the shape name */
-  if (puzzle->probGetShapeShape(problem, block)->getName())
-    len = snprintf(text, txtLen, "S%i - %s", puzzle->probGetShape(problem, block)+1, puzzle->probGetShapeShape(problem, block)->getName());
+  if (puzzle->probGetShapeShape(problem, block)->getName().length())
+    len = snprintf(text, txtLen, "S%i - %s", puzzle->probGetShape(problem, block)+1, puzzle->probGetShapeShape(problem, block)->getName().c_str());
   else
     len = snprintf(text, txtLen, "S%i", puzzle->probGetShape(problem, block)+1);
   text += len;
@@ -422,11 +422,11 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
   }
   int shapeID = puzzle->probGetShape(problem, shape);
 
-  if (puzzle->probGetShapeShape(problem, shape)->getName()) {
+  if (puzzle->probGetShapeShape(problem, shape)->getName().length()) {
     if (puzzle->probGetShapeCount(problem, shape) > 1)
-      snprintf(txt, 199, "S%i.%i - %s", shapeID+1, subBlock+1, puzzle->probGetShapeShape(problem, shape)->getName());
+      snprintf(txt, 199, "S%i.%i - %s", shapeID+1, subBlock+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
     else
-      snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->probGetShapeShape(problem, shape)->getName());
+      snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
   } else {
     if (puzzle->probGetShapeCount(problem, shape) > 1)
       snprintf(txt, 199, "S%i.%i", shapeID+1, subBlock+1);
@@ -492,11 +492,11 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
 
   int shapeID = puzzle->probGetShape(problem, shape);
 
-  if (puzzle->probGetShapeShape(problem, shape)->getName()) {
+  if (puzzle->probGetShapeShape(problem, shape)->getName().length()) {
     if (puzzle->probGetShapeCount(problem, shape) > 1)
-      snprintf(txt, 199, "S%i.%i - %s", shapeID+1, block+1, puzzle->probGetShapeShape(problem, shape)->getName());
+      snprintf(txt, 199, "S%i.%i - %s", shapeID+1, block+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
     else
-      snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->probGetShapeShape(problem, shape)->getName());
+      snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
   } else {
     if (puzzle->probGetShapeCount(problem, shape) > 1)
       snprintf(txt, 199, "S%i.%i", shapeID+1, block+1);
