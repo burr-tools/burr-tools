@@ -250,6 +250,10 @@ static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, 
     if ((task != gridEditor_0_c::TSK_COLOR) && (s->getState(x, y, z) != v)) {
       changed = true;
       s->setState(x, y, z, v);
+
+      // when emptying a cube, also clear the color away
+      if (v == voxel_c::VX_EMPTY)
+        s->setColor(x, y, z, 0);
     }
 
     // this is for the color change task
