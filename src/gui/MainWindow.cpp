@@ -1860,8 +1860,8 @@ void UserInterface::update(void) {
         fl_message("Pieces contain %i units less than required", assmThread->getErrorParam());
         break;
       case assembler_c::ERR_CAN_NOT_PLACE:
-        fl_message("Piece %i can be placed nowhere within the result", assmThread->getErrorParam()+2);
-        selectShape = assmThread->getErrorParam()+1;
+        fl_message("Piece %i can be placed nowhere within the result", assmThread->getErrorParam()+1);
+        selectShape = assmThread->getErrorParam();
         break;
       case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
         fl_message("Impossible to restore the saved state because the internal format changed.\n"

@@ -235,7 +235,7 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
       if (placements == 0) {
         delete [] cache;
         delete [] columns;
-        return -pc;
+        return -puz->probGetShape(problemNum, pc);
       }
     }
 
