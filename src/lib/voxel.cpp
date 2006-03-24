@@ -25,7 +25,7 @@
 
 using namespace std;
 
-voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) : sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), hx(0), hy(0), hz(0), name(0) {
+voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * g, voxel_type init, voxel_type outs) : gt(g), sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), hx(0), hy(0), hz(0) {
 
   space = new voxel_type[voxels];
   bt_assert(space);
@@ -815,7 +815,7 @@ xml::node voxel_c::save(void) const {
   return nd;
 }
 
-voxel_c::voxel_c(const xml::node & node) : hx(0), hy(0), hz(0), name(0) {
+voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), hy(0), hz(0) {
 
   // we must have a real node and the following attributes
   if ((node.get_type() != xml::node::type_element) ||
