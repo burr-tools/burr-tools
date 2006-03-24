@@ -195,6 +195,9 @@ int main(int argv, char* args[]) {
     cout << endl;
 
   delete assm;
+  delete d;
+  d = 0;
+  assm = 0;
 
   return 0;
 }
