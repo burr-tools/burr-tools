@@ -43,8 +43,8 @@ xml::node gridType_c::save(void) const {
   switch(type) {
 
     case GT_BRICKS:
-        if (parameters.brick.y_differs_x)
-          nd.get_attributes().insert("y_differs_x", "");
+        if (parameters.brick.x_differs_y)
+          nd.get_attributes().insert("x_differs_y", "");
 
         break;
   }
@@ -58,9 +58,9 @@ xml::node gridType_c::save(void) const {
 gridType_c::gridType_c(void) {
   type = GT_BRICKS;
 
-  parameters.brick.y_differs_x = false;
-  parameters.brick.z_differs_x = false;
-  parameters.brick.z_differs_y = false;
+  parameters.brick.x_differs_y = false;
+  parameters.brick.x_differs_z = false;
+  parameters.brick.y_differs_z = false;
 
   parameters.brick.axy_ortho = true;
   parameters.brick.axz_ortho = true;
@@ -68,7 +68,7 @@ gridType_c::gridType_c(void) {
 
   parameters.brick.axy_differs_axz = false;
   parameters.brick.axy_differs_ayz = false;
-  parameters.brick.ayz_differs_ayz = false;
+  parameters.brick.axz_differs_ayz = false;
 
   sym = 0;
 }
