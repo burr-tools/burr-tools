@@ -22,7 +22,7 @@
 
 class gridEditor_c;
 class voxelDrawer_c;
-class LFl_Group;
+class gridTypeGui_c;
 
 class guiGridType_c {
 
@@ -41,7 +41,7 @@ class guiGridType_c {
      * is is used in the new puzzle grid selection dialog
      * and also in the later possible grid parameters dialog
      */
-    LFl_Group * getCofigurationDialog(void) const;
+    gridTypeGui_c * getCofigurationDialog(int x, int y, int w, int h);
 
     /* return icon and text for the current grid type */
     char * getIcon(void) const;
