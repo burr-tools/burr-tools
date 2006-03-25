@@ -139,12 +139,16 @@ class gridTypeInfos_c {
     gridTypeInfos_c(gridType_c * g) : gt(g), ggt(new guiGridType_c(g)) {}
 };
 
+static void cb_WindowButton_stub(Fl_Widget *o, void *v) { ((Fl_Double_Window*)(v))->hide(); }
+
 gridTypeParameterWindow_c::gridTypeParameterWindow_c(guiGridType_c * ggt) {
   label("Set parameters for grid type");
 
   ggt->getConfigurationDialog(0, 0, 1, 1);
 
-  (new LFl_Button("Close", 0, 1))->pitch(7);
+  LFl_Button * b = new LFl_Button("Close", 0, 1);
+  b->pitch(7);
+  b->callback(cb_WindowButton_stub, this);
 }
 
 gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) {
@@ -196,7 +200,9 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) {
   {
     layouter_c * l = new layouter_c(0, 1, 3, 1);
 
-    (new LFl_Button("Ok", 0, 0))->pitch(7);
+    LFl_Button * b = new LFl_Button("Ok", 0, 0);
+    b->pitch(7);
+    b->callback(cb_WindowButton_stub, this);
 
     l->end();
   }

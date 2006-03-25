@@ -1059,7 +1059,7 @@ void UserInterface::cb_GridParameter(void) {
   w.show();
 
   while (w.visible()) {
-    Fl::wait(0);
+    Fl::wait();
   }
 
   View3D->getView()->gridTypeChanged();
