@@ -33,9 +33,12 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_
 
   memset(space, init, voxels);
 
-  if (init == 0)
-    bx1 = bx2 = by1 = by2 = bz1 = bz2 = 0;
-  else {
+  if (init == 0) {
+    bx2 = by2 = bz2 = 0;
+    bx1 = x-1;
+    by1 = y-1;
+    bz1 = z-1;
+  } else {
     bx1 = by1 = bz1 = 0;
     bx2 = x-1;
     by2 = y-1;

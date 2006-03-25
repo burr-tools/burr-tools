@@ -547,6 +547,10 @@ void ToolTab::cb_transform(long task) {
         case 24: space->translate(- space->boundX1(), - space->boundY1(), - space->boundZ1(), 0); break;
         case 25:
                  {
+		   // if the space is empty, don't do anything
+		   if (space->boundX2() < space->boundX1())
+		     break;
+
                    int fx = space->getX() - (space->boundX2()-space->boundX1()+1);
                    int fy = space->getY() - (space->boundY2()-space->boundY1()+1);
                    int fz = space->getZ() - (space->boundZ2()-space->boundZ1()+1);
