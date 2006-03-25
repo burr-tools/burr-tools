@@ -2043,7 +2043,7 @@ int UserInterface::handle(int event) {
 
 void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
-  TabPieces = new Fl_Group(x, y, w, h, "Entity");
+  TabPieces = new Fl_Group(x, y, w, h, "Entities");
   TabPieces->tooltip("Edit shapes");
   TabPieces->clear_visible_focus();
 
