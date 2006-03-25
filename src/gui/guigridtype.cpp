@@ -45,7 +45,7 @@ voxelDrawer_c * guiGridType_c::getVoxelDrawer(int x, int y, int w, int h) const 
  * is is used in the new puzzle grid selection dialog
  * and also in the later possible grid parameters dialog
  */
-gridTypeGui_c * guiGridType_c::getCofigurationDialog(int x, int y, int w, int h) {
+gridTypeGui_c * guiGridType_c::getConfigurationDialog(int x, int y, int w, int h) {
   switch(gt->getType()) {
     case gridType_c::GT_BRICKS: return new gridTypeGui_0_c(x, y, w, h, gt);
   }

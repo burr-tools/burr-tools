@@ -41,7 +41,7 @@ class guiGridType_c {
      * is is used in the new puzzle grid selection dialog
      * and also in the later possible grid parameters dialog
      */
-    gridTypeGui_c * getCofigurationDialog(int x, int y, int w, int h);
+    gridTypeGui_c * getConfigurationDialog(int x, int y, int w, int h);
 
     /* return icon and text for the current grid type */
     char * getIcon(void) const;

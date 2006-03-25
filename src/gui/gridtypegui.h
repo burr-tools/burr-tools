@@ -55,6 +55,7 @@ class gridTypeSelectorWindow_c : public LFl_Double_Window {
   public:
 
     gridTypeSelectorWindow_c(void);
+    ~gridTypeSelectorWindow_c(void);
 
     /* after the window has been close you can get the created grid type with this function
      */

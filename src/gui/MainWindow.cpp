@@ -866,7 +866,13 @@ void UserInterface::cb_New(void) {
       if (fl_ask("Puzzle changed are you shure?") == 0)
         return;
 
-    ReplacePuzzle(new puzzle_c(new gridType_c()));
+    gridTypeSelectorWindow_c w;
+    w.show();
+
+    while (w.visible())
+      Fl::wait();
+
+    ReplacePuzzle(new puzzle_c(w.getGridType()));
 
     if (fname) {
       delete [] fname;
