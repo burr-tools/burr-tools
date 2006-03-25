@@ -22,12 +22,20 @@
 
 class voxelDrawer_0_c : public voxelDrawer_c {
 
+  private:
+
+    const gridType_c * gt;
+
   public:
 
-    voxelDrawer_0_c(int x, int y, int w, int h) : voxelDrawer_c(x, y, w, h) {}
+    voxelDrawer_0_c(int x, int y, int w, int h, const gridType_c * g) : voxelDrawer_c(x, y, w, h), gt(g) {
+      gridTypeChanged();
+    }
 
     void drawShape(const shapeInfo * shape, colorMode colors);
     void drawCursor(unsigned int sx, unsigned int sy, unsigned int sz);
+
+    void gridTypeChanged(void);
 };
 
 #endif

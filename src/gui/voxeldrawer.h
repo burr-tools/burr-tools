@@ -167,6 +167,9 @@ private:
   virtual void drawShape(const shapeInfo * shape, colorMode colors) = 0;
   virtual void drawCursor(unsigned int sx, unsigned int sy, unsigned int sz) = 0;
 
+  /* this matrix is used to change the look of the basic unit */
+  GLfloat transformMatrix[16];
+
 public:
 
   void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
@@ -178,6 +181,16 @@ public:
   void updatePositions(PiecePositions *shifting);
   void updateVisibility(PieceVisibility * pcvis);
   void dimStaticPieces(PiecePositions *shifting);
+
+  /* this function is called whenever the gridType changed, so that the drawer can update
+   * internal structures. Only parameters may have changed, but not the type itself
+   */
+  virtual void gridTypeChanged(void);
+
+  /* this function sets a transformations matrix that is used to change the appearance of the
+   * basic unit
+   */
+  void setTransformationMatrix(GLfloat m[16]);
 
 };
 

@@ -35,7 +35,7 @@ gridEditor_c * guiGridType_c::getGridEditor(int x, int y, int w, int h, puzzle_c
 
 voxelDrawer_c * guiGridType_c::getVoxelDrawer(int x, int y, int w, int h) const {
   switch(gt->getType()) {
-    case gridType_c::GT_BRICKS: return new voxelDrawer_0_c(x, y, w, h);
+    case gridType_c::GT_BRICKS: return new voxelDrawer_0_c(x, y, w, h, gt);
   }
 
   return 0;

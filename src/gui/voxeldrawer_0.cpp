@@ -425,3 +425,48 @@ void voxelDrawer_0_c::drawCursor(unsigned int sx, unsigned int sy, unsigned int 
         }
       }
 }
+
+
+void voxelDrawer_0_c::gridTypeChanged(void) {
+
+  GLfloat sx, sy, sz;
+  sx = sy = sz = 1;
+
+  unsigned char bb = 0;
+
+  if (gt->getBrickXneY()) bb |= 1;
+  if (gt->getBrickXneZ()) bb |= 2;
+  if (gt->getBrickYneZ()) bb |= 4;
+
+  switch (bb) {
+    case 0:
+      // all equal
+      break;
+    case 1:
+    case 2:
+    case 4:
+      // impossible
+      break;
+    case 3:
+      sx = 0.7;
+      break;
+    case 5:
+      sy = 0.7;
+      break;
+    case 6:
+      sz = 0.7;
+      break;
+    case 7:
+      sy = 0.7;
+      sz = 1.3;
+      break;
+  }
+
+  GLfloat m[16] = {
+    sx, 0, 0, 0,
+    0, sy, 0, 0,
+    0, 0, sz, 0,
+    0, 0, 0,  1 };
+
+  setTransformationMatrix(m);
+}

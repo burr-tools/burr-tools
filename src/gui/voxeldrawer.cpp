@@ -37,6 +37,21 @@ voxelDrawer_c::voxelDrawer_c(int x,int y,int w,int h) :
 {
 };
 
+void voxelDrawer_c::setTransformationMatrix(GLfloat m[16]) {
+  for (unsigned int i = 0; i < 16; i++)
+    transformMatrix[i] = m[i];
+}
+
+void voxelDrawer_c::gridTypeChanged(void) {
+  GLfloat m[16] = {
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1};
+
+  setTransformationMatrix(m);
+}
+
 void voxelDrawer_c::drawVoxelSpace() {
 
   glShadeModel(GL_FLAT);
@@ -61,6 +76,7 @@ void voxelDrawer_c::drawVoxelSpace() {
                      shapes[piece].z - shapes[piece].shape->getHz());
         glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
         addRotationTransformation();
+        glMultMatrixf(transformMatrix);
         glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
         break;
       case TranslateRoateScale:
@@ -68,11 +84,13 @@ void voxelDrawer_c::drawVoxelSpace() {
         glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
                      shapes[piece].y - shapes[piece].shape->getHy(),
                      shapes[piece].z - shapes[piece].shape->getHz());
+        glMultMatrixf(transformMatrix);
         glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
         glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
         break;
       case CenterTranslateRoateScale:
         addRotationTransformation();
+        glMultMatrixf(transformMatrix);
         glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
                      shapes[piece].y - shapes[piece].shape->getHy(),
                      shapes[piece].z - shapes[piece].shape->getHz());

@@ -1061,6 +1061,8 @@ void UserInterface::cb_GridParameter(void) {
   while (w.visible()) {
     Fl::wait(0);
   }
+
+  View3D->getView()->gridTypeChanged();
 }
 
 static void cb_Toggle3D_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Toggle3D(); }

@@ -59,9 +59,18 @@ void gridTypeGui_0_c::updateValues(void) {
       break;
   }
 
+  gt->setBrickXneY(lxy->value());
+  gt->setBrickXneZ(lxz->value());
+  gt->setBrickYneZ(lyz->value());
+  gt->setBrickAngleOrthoXY(arxy->value());
+  gt->setBrickAngleOrthoXZ(arxz->value());
+  gt->setBrickAngleOrthoYZ(aryz->value());
+  gt->setBrickAngleXYneXZ(axyeaxz->value());
+  gt->setBrickAngleXYneYZ(axyeayz->value());
+  gt->setBrickAngleXZneYZ(axzeayz->value());
 }
 
-gridTypeGui_0_c::gridTypeGui_0_c(int x, int y, int w, int h, gridType_c * gt) {
+gridTypeGui_0_c::gridTypeGui_0_c(int x, int y, int w, int h, gridType_c * g) : gt(g) {
 
   LFl_Frame *fr;
 
@@ -69,7 +78,7 @@ gridTypeGui_0_c::gridTypeGui_0_c(int x, int y, int w, int h, gridType_c * gt) {
     fr = new LFl_Frame(0, 0);
 
     lxy = new LFl_Check_Button("Length X different from Length Y", 0, 0);
-    lyz = new LFl_Check_Button("Length X different from Length Z", 0, 1);
+    lxz = new LFl_Check_Button("Length X different from Length Z", 0, 1);
     lyz = new LFl_Check_Button("Length Y different from Length Z", 0, 2);
 
     if (gt->getBrickXneY()) lxy->set();
@@ -105,8 +114,9 @@ gridTypeGui_0_c::gridTypeGui_0_c(int x, int y, int w, int h, gridType_c * gt) {
     fr->end();
   }
 
+
   lxy->callback(cb_gridTypeGui0Update, this);
-  lyz->callback(cb_gridTypeGui0Update, this);
+  lxz->callback(cb_gridTypeGui0Update, this);
   lyz->callback(cb_gridTypeGui0Update, this);
   arxy->callback(cb_gridTypeGui0Update, this);
   arxz->callback(cb_gridTypeGui0Update, this);
