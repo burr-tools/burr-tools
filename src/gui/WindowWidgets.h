@@ -140,6 +140,8 @@ public:
 
   VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle, const guiGridType_c * ggt);
 
+  void newGridType(const guiGridType_c * ggt, puzzle_c * puzzle);
+
   void draw();
 
   void cb_Zselect(Fl_Slider* o) {
@@ -294,6 +296,8 @@ class View3dGroup : public Fl_Group {
 public:
 
   View3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt);
+
+  void newGridType(const guiGridType_c * ggt);
 
   void cb_slider(void);
 

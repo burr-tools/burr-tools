@@ -1231,32 +1231,47 @@ void UserInterface::tryToLoad(const char * f) {
 
 void UserInterface::ReplacePuzzle(puzzle_c * NewPuzzle) {
 
-    // inform everybody
-    colorSelector->setPuzzle(NewPuzzle);
-    PcSel->setPuzzle(NewPuzzle);
-    pieceEdit->setPuzzle(NewPuzzle, 0);
-    problemSelector->setPuzzle(NewPuzzle);
-    colorAssignmentSelector->setPuzzle(NewPuzzle);
-    colconstrList->setPuzzle(NewPuzzle, 0);
-    problemResult->setPuzzle(NewPuzzle, 0);
-    shapeAssignmentSelector->setPuzzle(NewPuzzle);
-    PiecesCountList->setPuzzle(NewPuzzle, 0);
-    solutionProblem->setPuzzle(NewPuzzle);
-    PcVis->setPuzzle(NewPuzzle, 0);
+  // inform everybody
+  colorSelector->setPuzzle(NewPuzzle);
+  PcSel->setPuzzle(NewPuzzle);
+  pieceEdit->setPuzzle(NewPuzzle, 0);
+  problemSelector->setPuzzle(NewPuzzle);
+  colorAssignmentSelector->setPuzzle(NewPuzzle);
+  colconstrList->setPuzzle(NewPuzzle, 0);
+  problemResult->setPuzzle(NewPuzzle, 0);
+  shapeAssignmentSelector->setPuzzle(NewPuzzle);
+  PiecesCountList->setPuzzle(NewPuzzle, 0);
+  solutionProblem->setPuzzle(NewPuzzle);
+  PcVis->setPuzzle(NewPuzzle, 0);
 
-    SolutionSel->value(1);
-    SolutionAnim->value(0);
+  SolutionSel->value(1);
+  SolutionAnim->value(0);
 
-    delete puzzle;
-    puzzle = NewPuzzle;
+  delete puzzle;
+  puzzle = NewPuzzle;
 
-    delete ggt;
-    ggt = new guiGridType_c(puzzle->getGridType());
+  guiGridType_c * nggt = new guiGridType_c(puzzle->getGridType());
 
-    // now replace all gridtype dependent gui elements with
-    // instances from the guigridtype
+  // now replace all gridtype dependent gui elements with
+  // instances from the guigridtype
+  View3D->newGridType(nggt);
+  pieceEdit->newGridType(nggt, puzzle);
 
+  // for the pieceEditor we need to reset all the edit mode fields
+  pieceEdit->editSymmetries(editSymmetries);
+  switch(editChoice->getSelected()) {
+    case 0: pieceEdit->editChoice(gridEditor_c::TSK_SET); break;
+    case 1: pieceEdit->editChoice(gridEditor_c::TSK_VAR); break;
+    case 2: pieceEdit->editChoice(gridEditor_c::TSK_RESET); break;
+    case 3: pieceEdit->editChoice(gridEditor_c::TSK_COLOR); break;
+  }
+  switch(editMode->getSelected()) {
+    case 0: pieceEdit->editType(gridEditor_c::EDT_RUBBER); break;
+    case 1: pieceEdit->editType(gridEditor_c::EDT_SINGLE); break;
+  }
 
+  delete ggt;
+  ggt = nggt;
 }
 
 Fl_Menu_Item UserInterface::menu_MainMenu[] = {

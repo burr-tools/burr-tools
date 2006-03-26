@@ -122,6 +122,26 @@ VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle, co
   resizable(sqedit);
 }
 
+void VoxelEditGroup::newGridType(const guiGridType_c * ggt, puzzle_c * puzzle) {
+
+  gridEditor_c * nsq;
+
+  nsq = ggt->getGridEditor(sqedit->x(), sqedit->y(), sqedit->w(), sqedit->h(), puzzle);
+  nsq->tooltip(" Fill and empty cubes ");
+  nsq->box(FL_NO_BOX);
+  nsq->callback(cb_VoxelEditGroupSqedit_stub, this);
+  nsq->clear_visible_focus();
+
+  resizable(nsq);
+
+  remove(sqedit);
+  delete sqedit;
+
+  sqedit = nsq;
+  add(sqedit);
+}
+
+
 void VoxelEditGroup::setZ(unsigned int val) {
   if (val > zselect->maximum()) val = (unsigned int)zselect->maximum();
   zselect->value(int(zselect->maximum()-val));
@@ -691,6 +711,29 @@ View3dGroup::View3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt) 
 
   resizable(View3D);
   end();
+}
+
+void View3dGroup::newGridType(const guiGridType_c * ggt) {
+
+  View3D->hide();
+
+  voxelDrawer_c * nv;
+
+  nv = ggt->getVoxelDrawer(View3D->x(), View3D->y(), View3D->w(), View3D->h());
+  nv->tooltip(" Rotate the puzzle by dragging with the mouse ");
+  nv->box(FL_NO_BOX);
+
+  resizable(nv);
+
+  remove(View3D);
+  delete View3D;
+
+  View3D = nv;
+  add(View3D);
+
+  cb_slider();
+
+  View3D->show();
 }
 
 Separator::Separator(int x, int y, int w, int h, const char * label, bool button) : Fl_Group(x, y, w, h) {
