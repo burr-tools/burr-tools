@@ -200,7 +200,11 @@ bool assemblerThread_c::assembly(assembly_c * a) {
 
 void assemblerThread_c::stop(void) {
 
-  if ((action != ACT_ASSEMBLING) && (action != ACT_REDUCE) && (action != ACT_DISASSEMBLING))
+  if ((action != ACT_ASSEMBLING) &&
+      (action != ACT_REDUCE) &&
+      (action != ACT_DISASSEMBLING) &&
+      (action != ACT_PREPARATION)
+     )
     return;
 
   action = ACT_WAIT_TO_STOP;
