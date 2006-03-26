@@ -90,7 +90,7 @@ protected:
 
 public:
 
-  gridEditor_c(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), currentZ(0), piecenumber(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), inside(false), currentColor(0), activeTools(0) {}
+  gridEditor_c(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), currentZ(0), piecenumber(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), startX(0), startY(0), inside(false), callbackReason(0), currentColor(0), task(TSK_SET), activeTools(0), editType(0) {}
 
   // sets the z layer to edit the value is clamped to valid values
   void setZ(unsigned int z);
