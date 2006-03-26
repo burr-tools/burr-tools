@@ -28,7 +28,34 @@
  * load from xml node
  */
 gridType_c::gridType_c(const xml::node & node) {
+  // we must have a real node and the following attributes
+  if ((node.get_type() != xml::node::type_element) ||
+      (strcmp(node.get_name(), "gridType") != 0))
+    throw load_error("not the right type of node for a grid type", node);
 
+  if (node.get_attributes().find("type") == node.get_attributes().end())
+    throw load_error("grid type with no type attribute encountered", node);
+
+  // set to the correct size
+  type = (gridType)atoi(node.get_attributes().find("type")->get_value());
+
+  switch (type) {
+
+    case GT_BRICKS:
+      parameters.brick.x_differs_y = node.get_attributes().find("x_differs_y") != node.get_attributes().end();
+      parameters.brick.x_differs_z = node.get_attributes().find("x_differs_z") != node.get_attributes().end();
+      parameters.brick.y_differs_z = node.get_attributes().find("y_differs_z") != node.get_attributes().end();
+
+      parameters.brick.axy_ortho = node.get_attributes().find("axy_ortho") != node.get_attributes().end();
+      parameters.brick.axz_ortho = node.get_attributes().find("axz_ortho") != node.get_attributes().end();
+      parameters.brick.ayz_ortho = node.get_attributes().find("ayz_ortho") != node.get_attributes().end();
+
+      parameters.brick.axy_differs_axz = node.get_attributes().find("axy_differs_axz") != node.get_attributes().end();
+      parameters.brick.axy_differs_ayz = node.get_attributes().find("axy_differs_ayz") != node.get_attributes().end();
+      parameters.brick.axz_differs_ayz = node.get_attributes().find("axz_differs_ayz") != node.get_attributes().end();
+
+      break;
+  }
 }
 
 /* used to save to XML */
@@ -40,13 +67,22 @@ xml::node gridType_c::save(void) const {
   snprintf(tmp, 50, "%i", type);
   nd.get_attributes().insert("type", tmp);
 
-  switch(type) {
+  switch (type) {
 
     case GT_BRICKS:
-        if (parameters.brick.x_differs_y)
-          nd.get_attributes().insert("x_differs_y", "");
+      if (parameters.brick.x_differs_y) nd.get_attributes().insert("x_differs_y", "");
+      if (parameters.brick.x_differs_z) nd.get_attributes().insert("x_differs_z", "");
+      if (parameters.brick.y_differs_z) nd.get_attributes().insert("y_differs_z", "");
 
-        break;
+      if (parameters.brick.axy_ortho) nd.get_attributes().insert("axy_ortho", "");
+      if (parameters.brick.axz_ortho) nd.get_attributes().insert("axz_ortho", "");
+      if (parameters.brick.ayz_ortho) nd.get_attributes().insert("ayz_ortho", "");
+
+      if (parameters.brick.axy_differs_axz) nd.get_attributes().insert("axy_differs_axz", "");
+      if (parameters.brick.axy_differs_ayz) nd.get_attributes().insert("axy_differs_ayz", "");
+      if (parameters.brick.axz_differs_ayz) nd.get_attributes().insert("axz_differs_ayz", "");
+
+      break;
   }
 
   return nd;

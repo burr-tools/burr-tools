@@ -870,6 +870,8 @@ xml::node puzzle_c::save(void) const {
 
   xml::node::iterator it;
 
+  nd.insert(gt->save());
+
   it = nd.insert(xml::node("colors"));
   for (unsigned int i = 0; i < colors.size(); i++) {
     xml::node::iterator it2 = it->insert(xml::node("color"));
