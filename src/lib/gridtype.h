@@ -83,6 +83,8 @@ class gridType_c {
     /* create a cube grid */
     gridType_c(void);
 
+    ~gridType_c(void);
+
     /* get the grid type */
     gridType getType(void) { return type; }
 

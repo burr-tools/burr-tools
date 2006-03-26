@@ -109,6 +109,10 @@ gridType_c::gridType_c(void) {
   sym = 0;
 }
 
+gridType_c::~gridType_c(void) {
+  if (sym)
+    delete sym;
+}
 
 
 /* these functions return assembler and disassemble for the current space grid
@@ -179,41 +183,3 @@ converter_c * gridType_c::getConveter(gridType target) {
 }
 #endif
 
-
-
-#if 0
-
-GridEditor * guiGridType::getGridEditor(void) {
-  switch (type) {
-    case GT_BRICKS: return new GridEditor();
-    default: return 0;
-  }
-}
-
-VoxelDrawer * guiGridType::getVoxelDrawer(void) {
-  switch (type) {
-    case GT_BRICKS: return new VoxelDrawer();
-    default: return 0;
-  }
-}
-
-/* returns a group to edit the parameters for this grid type
- * is is used in the new puzzle grid selection dialog
- * and also in the later possible grid parameters dialog
- */
-LFl_Group * guiGridType::getCofigurationDialog(void) {
-  return 0;
-}
-
-/* return icon and text for the current grid type */
-char * guiGridType::getIcon(void) {
-  return 0;
-}
-
-const char * guiGridType::getName(void) {
-  switch (type) {
-    case GT_BRICKS: return "Parallelepipedion";
-    default: return 0;
-  }
-}
-#endif
