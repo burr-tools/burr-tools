@@ -201,16 +201,16 @@ void gridEditor_1_c::draw() {
         }
       }
 
-#if 0
       // if the voxel is not empty and has a color assigned, draw a marker in the
       // upper left corner with the color of the constraint color
       if ((space->getState(x, space->getY()-y-1, currentZ) != voxel_c::VX_EMPTY) &&
           space->getColor(x, space->getY()-y-1, currentZ)) {
 
         puzzle->getColor(space->getColor(x, space->getY()-y-1, currentZ)-1, &r, &g, &b);
-        fl_rectf(tx+x*s, ty+y*s, s/2, s/2, r, g, b);
+        fl_color(r, g, b);
+        fl_polygon(x3, y3, (x1+x3)/2, (y1+y3)/2, (x2+x3)/2, (y2+y3)/2);
       }
-#endif
+
       // the color for the grid lines
       if (active())
         fl_color(labelcolor());
