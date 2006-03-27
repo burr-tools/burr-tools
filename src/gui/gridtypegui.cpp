@@ -130,6 +130,11 @@ gridTypeGui_0_c::gridTypeGui_0_c(int x, int y, int w, int h, gridType_c * g) : g
   updateValues();
 }
 
+gridTypeGui_1_c::gridTypeGui_1_c(int x, int y, int w, int h, gridType_c * gt) {
+  new LFl_Box("There are no parameters for this space grid!", 0, 0);
+}
+
+
 class gridTypeInfos_c {
   public:
 
@@ -158,7 +163,8 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) {
    * vector. This vector will be later on the one
    * with all required information
    */
-  gti.push_back(new gridTypeInfos_c(new gridType_c));
+  gti.push_back(new gridTypeInfos_c(new gridType_c()));
+  gti.push_back(new gridTypeInfos_c(new gridType_c(gridType_c::GT_TRIANGULAR_PRISM)));
 
   /* from here on the code should not need changes when new grid types are added */
 

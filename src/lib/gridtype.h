@@ -38,7 +38,7 @@ class gridType_c {
 
     typedef enum {
       GT_BRICKS,
-//      GT_TRIANGULAR_PRISM,
+      GT_TRIANGULAR_PRISM,
 //      GT_RHOMBIC_DODECAEDER,
     } gridType;
 
@@ -64,6 +64,10 @@ class gridType_c {
         bool axz_differs_ayz;
       } brick;
 
+      struct {
+        bool nothgin;    // nothing for now
+      } triangularPrism;
+
     } parameters;
 
     symmetries_c * sym;
@@ -82,6 +86,9 @@ class gridType_c {
 
     /* create a cube grid */
     gridType_c(void);
+
+    /* create a grid of the given type with its standard parameters */
+    gridType_c(gridType gt);
 
     ~gridType_c(void);
 

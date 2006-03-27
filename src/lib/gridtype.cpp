@@ -55,6 +55,9 @@ gridType_c::gridType_c(const xml::node & node) {
       parameters.brick.axz_differs_ayz = node.get_attributes().find("axz_differs_ayz") != node.get_attributes().end();
 
       break;
+
+    case GT_TRIANGULAR_PRISM:
+      break;
   }
 }
 
@@ -83,6 +86,9 @@ xml::node gridType_c::save(void) const {
       if (parameters.brick.axz_differs_ayz) nd.get_attributes().insert("axz_differs_ayz", "");
 
       break;
+
+    case GT_TRIANGULAR_PRISM:
+      break;
   }
 
   return nd;
@@ -108,6 +114,36 @@ gridType_c::gridType_c(void) {
 
   sym = 0;
 }
+
+gridType_c::gridType_c(gridType gt) {
+
+  type = gt;
+
+  switch (type) {
+    case GT_BRICKS:
+
+      parameters.brick.x_differs_y = false;
+      parameters.brick.x_differs_z = false;
+      parameters.brick.y_differs_z = false;
+
+      parameters.brick.axy_ortho = true;
+      parameters.brick.axz_ortho = true;
+      parameters.brick.ayz_ortho = true;
+
+      parameters.brick.axy_differs_axz = false;
+      parameters.brick.axy_differs_ayz = false;
+      parameters.brick.axz_differs_ayz = false;
+
+      break;
+
+    case GT_TRIANGULAR_PRISM:
+
+      break;
+  }
+
+  sym = 0;
+}
+
 
 gridType_c::~gridType_c(void) {
   if (sym)
@@ -138,12 +174,14 @@ disassembler_c * gridType_c::getDisassembler(const puzzle_c * puz, unsigned int 
 voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const {
   switch (type) {
     case GT_BRICKS: return new voxel_0_c(x, y, z, this, init, outs);
+    case GT_TRIANGULAR_PRISM: return new voxel_0_c(x, y, z, this, init, outs);     // TODO: add proper value
     default: return 0;
   }
 }
 voxel_c * gridType_c::getVoxel(const xml::node & node) const {
   switch (type) {
     case GT_BRICKS: return new voxel_0_c(node, this);
+    case GT_TRIANGULAR_PRISM: return new voxel_0_c(node, this);    // TODO: add proper value
     default: return 0;
   }
 }
@@ -151,6 +189,7 @@ voxel_c * gridType_c::getVoxel(const xml::node & node) const {
 voxel_c * gridType_c::getVoxel(const voxel_c & orig, unsigned int transformation) const {
   switch (type) {
     case GT_BRICKS: return new voxel_0_c(orig, transformation);
+    case GT_TRIANGULAR_PRISM: return new voxel_0_c(orig, transformation);   // TODO: add proper value
     default: return 0;
   }
 }
@@ -158,6 +197,7 @@ voxel_c * gridType_c::getVoxel(const voxel_c & orig, unsigned int transformation
 voxel_c * gridType_c::getVoxel(const voxel_c * orig, unsigned int transformation) const {
   switch (type) {
     case GT_BRICKS: return new voxel_0_c(orig, transformation);
+    case GT_TRIANGULAR_PRISM: return new voxel_0_c(orig, transformation);  // TODO: add proper value
     default: return 0;
   }
 }
@@ -168,6 +208,8 @@ const symmetries_c * gridType_c::getSymmetries(void) const {
       case GT_BRICKS:
         const_cast<gridType_c*>(this)->sym = new symmetries_0_c(this);
         break;
+      case GT_TRIANGULAR_PRISM:
+        const_cast<gridType_c*>(this)->sym = new symmetries_0_c(this);   //TODO: add proper value
     }
   }
 

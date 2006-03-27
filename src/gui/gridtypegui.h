@@ -33,6 +33,13 @@ class gridTypeGui_0_c : public gridTypeGui_c {
     void updateValues(void);
 };
 
+class gridTypeGui_1_c : public gridTypeGui_c {
+
+  public:
+
+    gridTypeGui_1_c(int x, int y, int w, int h, gridType_c * gt);
+};
+
 /* this window allows you to edit the parameters of one
  * grid type
  */
