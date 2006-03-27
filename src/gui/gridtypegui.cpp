@@ -140,6 +140,8 @@ class gridTypeInfos_c {
 
     gridType_c * gt;
     guiGridType_c * ggt;
+    LFl_Radio_Button * btn;
+    gridTypeGui_c * gui;
 
     gridTypeInfos_c(gridType_c * g) : gt(g), ggt(new guiGridType_c(g)) {}
 };
@@ -154,6 +156,19 @@ gridTypeParameterWindow_c::gridTypeParameterWindow_c(guiGridType_c * ggt) {
   LFl_Button * b = new LFl_Button("Close", 0, 1);
   b->pitch(7);
   b->callback(cb_WindowButton_stub, this);
+}
+
+static void cb_gridTypeSelectorSelect_stub(Fl_Widget *o, void *v) { ((gridTypeSelectorWindow_c*)(v))->select_cb(); }
+void gridTypeSelectorWindow_c::select_cb(void) {
+  for (unsigned int i = 0; i < gti.size(); i++) {
+    if (gti[i]->btn->value()) {
+
+      gti[current]->gui->hide();
+      current = i;
+      gti[current]->gui->show();
+
+    }
+  }
 }
 
 gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) {
@@ -177,9 +192,10 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) {
     fr = new LFl_Frame(0, 0);
 
     for (unsigned int i = 0; i < gti.size(); i++) {
-      LFl_Radio_Button * b = new LFl_Radio_Button(gti[i]->ggt->getName(), 0, i);
+      gti[i]->btn = new LFl_Radio_Button(gti[i]->ggt->getName(), 0, i);
+      gti[i]->btn->callback(cb_gridTypeSelectorSelect_stub, this);
       if (i == 0)
-        b->set();
+        gti[i]->btn->set();
     }
 
     fr->end();
@@ -190,10 +206,10 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) {
     fr = new LFl_Frame(1, 0);
 
     for (unsigned int i = 0; i < gti.size(); i++) {
-      gridTypeGui_c * g = gti[i]->ggt->getConfigurationDialog(0, 0, 1, 1);
+      gti[i]->gui = gti[i]->ggt->getConfigurationDialog(0, 0, 1, 1);
 
       if (i != 0)
-        g->hide();
+        gti[i]->gui->hide();
     }
 
     fr->end();
