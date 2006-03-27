@@ -44,7 +44,7 @@ private:
 
   // calculate the size of the grid cells and the
   // top right corner position
-  void calcParameters(int *s, int *tx, int *ty);
+  void calcParameters(int *s, int *s2, int *tx, int *ty);
 
 protected:
 

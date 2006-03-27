@@ -23,6 +23,8 @@
 
 #include <FL/fl_draw.h>
 
+#define HEIGHT 0.8660254     // sqrt(3)/2
+
 // round towards -inf instead of 0
 static int floordiv(int a, int b) {
   if (a > 0)
@@ -73,18 +75,35 @@ static bool inRegion(int x, int y, int x1, int x2, int y1, int y2, int sx, int s
 
 // this function calculates the size of the squares and the starting position
 // for the grid inside the available space of the widget
-void gridEditor_1_c::calcParameters(int *s, int *tx, int *ty) {
+void gridEditor_1_c::calcParameters(int *s, int *s2, int *tx, int *ty) {
+
+  int xx = puzzle->getShape(piecenumber)->getX();
+  int yy = puzzle->getShape(piecenumber)->getY();
 
   // calculate the size of the squares
-  int sx = (w() > 2) ? (w()-1) / puzzle->getShape(piecenumber)->getX() : 0;
-  int sy = (h() > 2) ? (h()-1) / puzzle->getShape(piecenumber)->getY() : 0;
+  int sx = (w() > 2) ? (int)((w()-1) / ((1+xx)/2.0)) : 0;
+  int sy = (h() > 2) ? (h()-1) / (yy) : 0;
 
-  *s = (sx < sy) ? sx : sy;
+  if (sx*HEIGHT < sy) {
+    // use x as base
 
-  if (*s > 20) *s = 20;
+    // make sx even, so that we have the point of the triangle in the center
+    if (sx & 1) sx--;
 
-  *tx = x() + (w() - puzzle->getShape(piecenumber)->getX()*(*s) - 1) / 2;
-  *ty = y() + (h() - puzzle->getShape(piecenumber)->getY()*(*s) - 1) / 2;
+  } else {
+    // use height as base for calculation
+
+    sx = (int)(sy/HEIGHT + 0.5);
+    if (sx & 1) sx--;
+  }
+
+  if (sx > 24) sx = 24;
+
+  *s = sx;
+  *s2 = (int)(sx * HEIGHT + 0.5);
+
+  *tx = x() + ((int)(w() - (1+(xx-1)/2.0) * (*s) - 1)) / 2;
+  *ty = y() + (h() - yy * (*s2) - 1) / 2;
 }
 
 void gridEditor_1_c::draw() {
@@ -107,8 +126,8 @@ void gridEditor_1_c::draw() {
   unsigned char bgr, bgg, bgb;
   Fl::get_color(color(), bgr, bgg, bgb);
 
-  int s, tx, ty;
-  calcParameters(&s, &tx, &ty);
+  int s, s2, tx, ty;
+  calcParameters(&s, &s2, &tx, &ty);
 
   // the color for the squares
   unsigned char r, g, b;
@@ -127,21 +146,62 @@ void gridEditor_1_c::draw() {
         b = int(255*lightPieceColor(pieceColorB(piecenumber)));
       }
 
+      int x1, y1, x2, y2, x3, y3;
+      int x1v, y1v, x2v, y2v, x3v, y3v;
+
+      /* find out the coordinates of the 3 corners of the triangle */
+      if ((x+(space->getY()-y)) & 1) {
+        // triangle with base at the top
+
+        x1 = tx+s*x/2;
+        y1 = ty+s2+y*s2;
+        x2 = x1+s;
+        y2 = y1;
+        x3 = x1+s/2;
+        y3 = y1-s2;
+
+        y1v = y2v = y1 - 3;
+        x1v = x1 + 5;
+        x2v = x2 - 5;
+        x3v = x3;
+        y3v = y3 + 6;
+
+      } else {
+
+        x1 = tx+s*x/2;
+        y1 = ty+y*s2;
+        x2 = x1+s;
+        y2 = y1;
+        x3 = x1+s/2;
+        y3 = y1+s2;
+
+        y1v = y2v = y1 + 3;
+        x1v = x1 + 5;
+        x2v = x2 - 5;
+        x3v = x3;
+        y3v = y3 - 6;
+      }
+
       // draw the square depending on the state
       switch(space->getState(x, space->getY()-y-1, currentZ)) {
       case voxel_c::VX_FILLED:
-        fl_rectf(tx+x*s, ty+y*s, s, s, r, g, b);
+        fl_color(r, g, b);
+        fl_polygon(x1, y1, x2, y2, x3, y3);
         break;
       case voxel_c::VX_VARIABLE:
-        fl_rectf(tx+x*s+3, ty+y*s+3, s-5, s-5, r, g, b);
+        fl_color(r, g, b);
+        fl_polygon(x1v, y1v, x2v, y2v, x3v, y3v);
         break;
       default:
         // for empty squares we check the layer below and if the square below is
         // not empty draw a very dimmed square
-        if ((currentZ > 0) && (space->getState(x, space->getY()-y-1, currentZ-1) != voxel_c::VX_EMPTY))
-          fl_rectf(tx+x*s, ty+y*s, s, s, ((int)bgr*5+r)/6, ((int)bgg*5+g)/6, ((int)bgb*5+b)/6);
+        if ((currentZ > 0) && (space->getState(x, space->getY()-y-1, currentZ-1) != voxel_c::VX_EMPTY)) {
+          fl_color(((int)bgr*5+r)/6, ((int)bgg*5+g)/6, ((int)bgb*5+b)/6);
+          fl_polygon(x1, y1, x2, y2, x3, y3);
+        }
       }
 
+#if 0
       // if the voxel is not empty and has a color assigned, draw a marker in the
       // upper left corner with the color of the constraint color
       if ((space->getState(x, space->getY()-y-1, currentZ) != voxel_c::VX_EMPTY) &&
@@ -150,7 +210,7 @@ void gridEditor_1_c::draw() {
         puzzle->getColor(space->getColor(x, space->getY()-y-1, currentZ)-1, &r, &g, &b);
         fl_rectf(tx+x*s, ty+y*s, s/2, s/2, r, g, b);
       }
-
+#endif
       // the color for the grid lines
       if (active())
         fl_color(labelcolor());
@@ -158,8 +218,10 @@ void gridEditor_1_c::draw() {
         fl_color(color());
 
       // draw the rectangle around the square, this will be the grid
-      fl_rect(tx+x*s, ty+y*s, s+1, s+1);
+      fl_loop(x1, y1, x2, y2, x3, y3);
     }
+
+#if 0
 
   // if the cursor is inside the widget, we do need to draw the cursor
   if (inside && active()) {
@@ -220,6 +282,7 @@ void gridEditor_1_c::draw() {
         }
     }
   }
+#endif
 }
 
 // this function work in the same as the cursor inside function.
@@ -358,8 +421,8 @@ int gridEditor_1_c::handle(int event) {
     {
       // mouse released, update the rubberband area
 
-      int s, tx, ty;
-      calcParameters(&s, &tx, &ty);
+      int s, s2, tx, ty;
+      calcParameters(&s, &s2, &tx, &ty);
 
       long x = Fl::event_x() - tx;
       long y = Fl::event_y() - ty;
@@ -408,8 +471,8 @@ int gridEditor_1_c::handle(int event) {
   case FL_MOVE:
     {
       /* find out where the mouse cursor is */
-      int s, tx, ty;
-      calcParameters(&s, &tx, &ty);
+      int s, s2, tx, ty;
+      calcParameters(&s, &s2, &tx, &ty);
 
       long x = Fl::event_x() - tx;
       long y = Fl::event_y() - ty;
