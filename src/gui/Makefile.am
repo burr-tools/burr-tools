@@ -9,6 +9,7 @@ burrGui_LDFLAGS=$(GUI_LD_ADD) $(XML_LD_ADD)
 burrGui_SOURCES=VoxelView.cpp VoxelView.h \
 		voxeldrawer.cpp voxeldrawer.h \
 		voxeldrawer_0.cpp voxeldrawer_0.h \
+		voxeldrawer_1.cpp voxeldrawer_1.h \
                 ArcBall.cpp ArcBall.h \
 		guigridtype.cpp guigridtype.h \
 		gridtypegui.cpp gridtypegui.h \
@@ -17,6 +18,7 @@ burrGui_SOURCES=VoxelView.cpp VoxelView.h \
                 WindowWidgets.cpp WindowWidgets.h \
 		grideditor.cpp grideditor.h \
                 grideditor_0.cpp grideditor_0.h \
+                grideditor_1.cpp grideditor_1.h \
                 DisasmToMoves.cpp DisasmToMoves.h \
                 pieceColor.cpp pieceColor.h \
                 gzstream.cpp gzstream.h \

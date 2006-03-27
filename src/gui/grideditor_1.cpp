@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "grideditor_0.h"
+#include "grideditor_1.h"
 #include "pieceColor.h"
 
 #include "../lib/voxel.h"
@@ -73,7 +73,7 @@ static bool inRegion(int x, int y, int x1, int x2, int y1, int y2, int sx, int s
 
 // this function calculates the size of the squares and the starting position
 // for the grid inside the available space of the widget
-void gridEditor_0_c::calcParameters(int *s, int *tx, int *ty) {
+void gridEditor_1_c::calcParameters(int *s, int *tx, int *ty) {
 
   // calculate the size of the squares
   int sx = (w() > 2) ? (w()-1) / puzzle->getShape(piecenumber)->getX() : 0;
@@ -87,7 +87,7 @@ void gridEditor_0_c::calcParameters(int *s, int *tx, int *ty) {
   *ty = y() + (h() - puzzle->getShape(piecenumber)->getY()*(*s) - 1) / 2;
 }
 
-void gridEditor_0_c::draw() {
+void gridEditor_1_c::draw() {
 
   // draw the background, as we don't cover the whole area
   fl_color(color());
@@ -226,7 +226,7 @@ void gridEditor_0_c::draw() {
 // It sets a (group of) voxels depending in the active tools by cesoursively
 // calling itself
 // tools contains the active tools, taks, what to do with the voxels
-static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, gridEditor_0_c::enTask task, unsigned int currentColor) {
+static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, gridEditor_1_c::enTask task, unsigned int currentColor) {
 
   bool changed = false;
 
@@ -292,7 +292,7 @@ static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, 
   return changed;
 }
 
-bool gridEditor_0_c::setLayer(unsigned int z) {
+bool gridEditor_1_c::setLayer(unsigned int z) {
   int x1, x2, y1, y2;
 
   voxel_c * space = puzzle->getShape(piecenumber);
@@ -332,7 +332,7 @@ bool gridEditor_0_c::setLayer(unsigned int z) {
   return changed;
 }
 
-int gridEditor_0_c::handle(int event) {
+int gridEditor_1_c::handle(int event) {
 
   // no valid shape, nothing to do
   if (piecenumber >= puzzle->shapeNumber())

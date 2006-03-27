@@ -18,7 +18,9 @@
 #include "guigridtype.h"
 
 #include "grideditor_0.h"
+#include "grideditor_1.h"
 #include "voxeldrawer_0.h"
+#include "voxeldrawer_1.h"
 #include "gridtypegui.h"
 
 #include "../lib/gridtype.h"
@@ -28,7 +30,7 @@ guiGridType_c::guiGridType_c(gridType_c * g) : gt(g) { }
 gridEditor_c * guiGridType_c::getGridEditor(int x, int y, int w, int h, puzzle_c * puzzle) const {
   switch(gt->getType()) {
     case gridType_c::GT_BRICKS: return new gridEditor_0_c(x, y, w, h, puzzle);
-    case gridType_c::GT_TRIANGULAR_PRISM: return new gridEditor_0_c(x, y, w, h, puzzle);
+    case gridType_c::GT_TRIANGULAR_PRISM: return new gridEditor_1_c(x, y, w, h, puzzle);
   }
 
   return 0;
@@ -37,7 +39,7 @@ gridEditor_c * guiGridType_c::getGridEditor(int x, int y, int w, int h, puzzle_c
 voxelDrawer_c * guiGridType_c::getVoxelDrawer(int x, int y, int w, int h) const {
   switch(gt->getType()) {
     case gridType_c::GT_BRICKS: return new voxelDrawer_0_c(x, y, w, h, gt);
-    case gridType_c::GT_TRIANGULAR_PRISM: return new voxelDrawer_0_c(x, y, w, h, gt);
+    case gridType_c::GT_TRIANGULAR_PRISM: return new voxelDrawer_1_c(x, y, w, h, gt);
   }
 
   return 0;
