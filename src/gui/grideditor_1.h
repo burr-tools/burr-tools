@@ -46,6 +46,8 @@ private:
   // top right corner position
   void calcParameters(int *s, int *s2, int *tx, int *ty);
 
+  void calcGridPosition(int x, int y, int *gx, int *gy);
+
 protected:
 
   void draw();

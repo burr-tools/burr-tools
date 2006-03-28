@@ -23,6 +23,8 @@
 
 #include <FL/fl_draw.h>
 
+#include <math.h>
+
 #define HEIGHT 0.8660254     // sqrt(3)/2
 
 // round towards -inf instead of 0
@@ -97,7 +99,7 @@ void gridEditor_1_c::calcParameters(int *s, int *s2, int *tx, int *ty) {
     if (sx & 1) sx--;
   }
 
-  if (sx > 24) sx = 24;
+  if (sx > 30) sx = 30;
 
   *s = sx;
   *s2 = (int)(sx * HEIGHT + 0.5);
@@ -221,8 +223,6 @@ void gridEditor_1_c::draw() {
       fl_loop(x1, y1, x2, y2, x3, y3);
     }
 
-#if 0
-
   // if the cursor is inside the widget, we do need to draw the cursor
   if (inside && active()) {
 
@@ -268,21 +268,51 @@ void gridEditor_1_c::draw() {
       // the other on the outside, if so draw the cursor line
       for (unsigned int x = 0; x <= space->getX(); x++)
         for (unsigned int y = 0; y <= space->getY(); y++) {
+
+
+          int xl1, yl1, xl2, yl2, xl3, yl3;
+
+          if ((x+(space->getY()-y)) & 1) {
+            // triangle with base at the top
+
+            xl1 = tx+s*x/2;
+            yl1 = ty+s2+y*s2;
+            xl2 = xl1+s;
+            yl2 = yl1;
+            xl3 = xl1+s/2;
+            yl3 = yl1-s2;
+
+          } else {
+
+            xl1 = tx+s*x/2;
+            yl1 = ty+y*s2;
+            xl2 = xl1+s;
+            yl2 = yl1;
+            xl3 = xl1+s/2;
+            yl3 = yl1+s2;
+
+          }
+
           bool ins = inRegion(x, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools);
 
-          if (ins ^ inRegion(x, y-1, x1, x2, y1, y2, space->getX(), space->getY(), activeTools)) {
-            fl_line(tx+s*x, ty+s*y+1, tx+s*x+s, ty+s*y+1);
-            fl_line(tx+s*x, ty+s*y-1, tx+s*x+s, ty+s*y-1);
+
+          if ((((x+(space->getY()-y))&1)) && (ins ^ inRegion(x, y+1, x1, x2, y1, y2, space->getX(), space->getY(), activeTools))) {
+            fl_line(xl1, yl1+1, xl2, yl2+1);
+            fl_line(xl1, yl1-1, xl2, yl2-1);
+          }
+
+          if ((!((x+(space->getY()-y))&1)) && (ins ^ inRegion(x, y-1, x1, x2, y1, y2, space->getX(), space->getY(), activeTools))) {
+            fl_line(xl1, yl1+1, xl2, yl2+1);
+            fl_line(xl1, yl1-1, xl2, yl2-1);
           }
 
           if (ins ^ inRegion(x-1, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools)) {
-            fl_line(tx+s*x+1, ty+s*y, tx+s*x+1, ty+s*y+s);
-            fl_line(tx+s*x-1, ty+s*y, tx+s*x-1, ty+s*y+s);
+            fl_line(xl1+1, yl1, xl3+1, yl3);
+            fl_line(xl1-1, yl1, xl3-1, yl3);
           }
         }
     }
   }
-#endif
 }
 
 // this function work in the same as the cursor inside function.
@@ -395,6 +425,48 @@ bool gridEditor_1_c::setLayer(unsigned int z) {
   return changed;
 }
 
+void gridEditor_1_c::calcGridPosition(int x, int y, int *gx, int *gy) {
+
+  voxel_c * space = puzzle->getShape(piecenumber);
+
+  int s, s2, tx, ty;
+  calcParameters(&s, &s2, &tx, &ty);
+
+  x -= tx;
+  y -= ty;
+
+  int xp;
+  int yp = floordiv(y, s2);
+
+  int yf = y - yp*s2;
+
+  if ((space->getY()-yp-1) & 1) {
+
+    x -= (int)(yf/sqrt(3)+0.5);
+
+    xp = floordiv(x, s);
+
+    if (1.0*(x - xp*s)/s + (1.0*yf/s2) > 1.0)
+      xp = 2*xp + 1;
+    else
+      xp = 2*xp;
+
+  } else {
+
+    x -= (int)((s2-yf) / sqrt(3)+0.5);
+
+    xp = floordiv(x, s);
+
+    if ((1.0*(x - xp*s)/s + (1.0*(s2-yf)/s2)) > 1.0)
+      xp = 2*xp + 1;
+    else
+      xp = 2*xp;
+  }
+
+  *gx = xp;
+  *gy = space->getY()-yp-1;
+}
+
 int gridEditor_1_c::handle(int event) {
 
   // no valid shape, nothing to do
@@ -421,16 +493,8 @@ int gridEditor_1_c::handle(int event) {
     {
       // mouse released, update the rubberband area
 
-      int s, s2, tx, ty;
-      calcParameters(&s, &s2, &tx, &ty);
-
-      long x = Fl::event_x() - tx;
-      long y = Fl::event_y() - ty;
-
-      x = floordiv(x, s);
-      y = floordiv(y, s);
-
-      y = space->getY() - y - 1;
+      int x, y;
+      calcGridPosition(Fl::event_x(), Fl::event_y(), &x, &y);
 
       // check, if the current position is inside the grid, only if so carry out action, we wouldnt
       // need to to this if we are not in rubberband modus, but it doesn't hurt either
@@ -471,16 +535,8 @@ int gridEditor_1_c::handle(int event) {
   case FL_MOVE:
     {
       /* find out where the mouse cursor is */
-      int s, s2, tx, ty;
-      calcParameters(&s, &s2, &tx, &ty);
-
-      long x = Fl::event_x() - tx;
-      long y = Fl::event_y() - ty;
-
-      x = floordiv(x, s);
-      y = floordiv(y, s);
-
-      y = space->getY() - y - 1;
+      int x, y;
+      calcGridPosition(Fl::event_x(), Fl::event_y(), &x, &y);
 
       // clip the coordinates to the size of the space
       if (x < 0) x = 0;
