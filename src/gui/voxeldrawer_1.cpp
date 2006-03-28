@@ -79,93 +79,133 @@ static void drawFrame(const voxel_c * space, int x, int y, int z, float edge) {
 // draws a box with borders depending on the neibor boxes
 static void drawBox(const voxel_c * space, int x, int y, int z, float alpha, float edge) {
 
-  GLfloat a0, b0, a1, b1;
+#define HEIGHT 0.8660254     // sqrt(3)/2
+
+  GLfloat x1, y1, x2, y2, x3, y3, n1x, n1y, n2x, n2y, n3x, n3y;
+
+  if ((x+(space->getY()-y)) & 1) {
+    // triangle with base at the top
+
+    x1 = x/2.0;
+    y1 = HEIGHT+y*HEIGHT;
+    x2 = x1+1;
+    y2 = y1;
+    x3 = x1+0.5;
+    y3 = y1-HEIGHT;
+
+    n1x = 0; n1y = 1;
+    n2x = -cos(M_PI/180*30); n2y = -sin(M_PI/180*30);
+    n3x = cos(M_PI/180*30); n3y = -sin(M_PI/180*30);
+
+  } else {
+
+    x1 = x/2.0;
+    y1 = y*HEIGHT;
+    x2 = x1+1;
+    y2 = y1;
+    x3 = x1+0.5;
+    y3 = y1+HEIGHT;
+
+    n1x = 0; n1y = -1;
+    n2x = -cos(M_PI/180*30); n2y = sin(M_PI/180*30);
+    n3x = cos(M_PI/180*30); n3y = sin(M_PI/180*30);
+  }
+
 
   glBegin(GL_QUADS);
-  if (space->isEmpty2(x, y, z-1)) {
-    glNormal3f( 0.0f, 0.0f, -1.0f);
 
-    if (!space->isEmpty2(x-1, y, z) && space->isEmpty2(x-1, y, z-1)) a0 = 0; else a0 = edge;
-    if (!space->isEmpty2(x+1, y, z) && space->isEmpty2(x+1, y, z-1)) a1 = 1; else a1 = (1-edge);
-    if (!space->isEmpty2(x, y-1, z) && space->isEmpty2(x, y-1, z-1)) b0 = 0; else b0 = edge;
-    if (!space->isEmpty2(x, y+1, z) && space->isEmpty2(x, y+1, z-1)) b1 = 1; else b1 = (1-edge);
+  glNormal3f( n1x, n1y, 0.0f);
+  glVertex3f(x1, y1, z); glVertex3f(x2, y2, z); glVertex3f(x2, y2, z+1); glVertex3f(x1, y1, z+1);
 
-    glVertex3f(x+a0, y+b0, z); glVertex3f(x+a0, y+b1, z); glVertex3f(x+a1, y+b1, z); glVertex3f(x+a1, y+b0, z);
-  }
-  if (space->isEmpty2(x-1, y, z)) {
-    glNormal3f( -1.0f, 0.0f, 0.0f);
+  glNormal3f( n2x, n2y, 0.0f);
+  glVertex3f(x1, y1, z); glVertex3f(x3, y3, z); glVertex3f(x3, y3, z+1); glVertex3f(x1, y1, z+1);
 
-    if (!space->isEmpty2(x, y-1, z) && space->isEmpty2(x-1, y-1, z)) a0 = 0; else a0 = edge;
-    if (!space->isEmpty2(x, y+1, z) && space->isEmpty2(x-1, y+1, z)) a1 = 1; else a1 = (1-edge);
-    if (!space->isEmpty2(x, y, z-1) && space->isEmpty2(x-1, y, z-1)) b0 = 0; else b0 = edge;
-    if (!space->isEmpty2(x, y, z+1) && space->isEmpty2(x-1, y, z+1)) b1 = 1; else b1 = (1-edge);
-
-    glVertex3f(x, y+a0, z+b0); glVertex3f(x, y+a0, z+b1); glVertex3f(x, y+a1, z+b1); glVertex3f(x, y+a1, z+b0);
-  }
-  if (space->isEmpty2(x+1, y, z)) {
-    glNormal3f( 1.0f, 0.0f, 0.0f);
-
-    if (!space->isEmpty2(x, y-1, z) && space->isEmpty2(x+1, y-1, z)) a0 = 0; else a0 = edge;
-    if (!space->isEmpty2(x, y+1, z) && space->isEmpty2(x+1, y+1, z)) a1 = 1; else a1 = (1-edge);
-    if (!space->isEmpty2(x, y, z-1) && space->isEmpty2(x+1, y, z-1)) b0 = 0; else b0 = edge;
-    if (!space->isEmpty2(x, y, z+1) && space->isEmpty2(x+1, y, z+1)) b1 = 1; else b1 = (1-edge);
-
-    glVertex3f(x+1-MY, y+a1, z+b0); glVertex3f(x+1-MY, y+a1, z+b1); glVertex3f(x+1-MY, y+a0, z+b1); glVertex3f(x+1-MY, y+a0, z+b0);
-  }
-  if (space->isEmpty2(x, y, z+1)) {
-    glNormal3f( 0.0f, 0.0f, 1.0f);
-
-    if (!space->isEmpty2(x-1, y, z) && space->isEmpty2(x-1, y, z+1)) a0 = 0; else a0 = edge;
-    if (!space->isEmpty2(x+1, y, z) && space->isEmpty2(x+1, y, z+1)) a1 = 1; else a1 = (1-edge);
-    if (!space->isEmpty2(x, y-1, z) && space->isEmpty2(x, y-1, z+1)) b0 = 0; else b0 = edge;
-    if (!space->isEmpty2(x, y+1, z) && space->isEmpty2(x, y+1, z+1)) b1 = 1; else b1 = (1-edge);
-
-    glVertex3f(x+a0, y+b0, z+1-MY); glVertex3f(x+a0, y+b1, z+1-MY); glVertex3f(x+a1, y+b1, z+1-MY); glVertex3f(x+a1, y+b0, z+1-MY);
-  }
-  if (space->isEmpty2(x, y-1, z)) {
-    glNormal3f( 0.0f, -1.0f, 0.0f);
-
-    if (!space->isEmpty2(x-1, y, z) && space->isEmpty2(x-1, y-1, z)) a0 = 0; else a0 = edge;
-    if (!space->isEmpty2(x+1, y, z) && space->isEmpty2(x+1, y-1, z)) a1 = 1; else a1 = (1-edge);
-    if (!space->isEmpty2(x, y, z-1) && space->isEmpty2(x, y-1, z-1)) b0 = 0; else b0 = edge;
-    if (!space->isEmpty2(x, y, z+1) && space->isEmpty2(x, y-1, z+1)) b1 = 1; else b1 = (1-edge);
-
-    glVertex3f(x+a0, y  , z+b0); glVertex3f(x+a1, y  , z+b0); glVertex3f(x+a1, y  , z+b1); glVertex3f(x+a0, y  , z+b1);
-  }
-  if (space->isEmpty2(x, y+1, z)) {
-    glNormal3f( 0.0f, 1.0f, 0.0f);
-
-    if (!space->isEmpty2(x-1, y, z) && space->isEmpty2(x-1, y+1, z)) a0 = 0; else a0 = edge;
-    if (!space->isEmpty2(x+1, y, z) && space->isEmpty2(x+1, y+1, z)) a1 = 1; else a1 = (1-edge);
-    if (!space->isEmpty2(x, y, z-1) && space->isEmpty2(x, y+1, z-1)) b0 = 0; else b0 = edge;
-    if (!space->isEmpty2(x, y, z+1) && space->isEmpty2(x, y+1, z+1)) b1 = 1; else b1 = (1-edge);
-
-    glVertex3f(x+a0, y+1-MY, z+b0); glVertex3f(x+a0, y+1-MY, z+b1); glVertex3f(x+a1, y+1-MY, z+b1); glVertex3f(x+a1, y+1-MY, z+b0);
-  }
+  glNormal3f( n3x, n3y, 0.0f);
+  glVertex3f(x2, y2, z); glVertex3f(x3, y3, z); glVertex3f(x3, y3, z+1); glVertex3f(x2, y2, z+1);
 
   glEnd();
 
-  glColor4f(0, 0, 0, alpha);
+  glBegin(GL_TRIANGLES);
 
-  drawFrame(space, x, y, z, edge);
+  glNormal3f( 0.0f, 0.0f, -1.0f);
+  glVertex3f(x1, y1, z); glVertex3f(x2, y2, z); glVertex3f(x3, y3, z);
+
+  glNormal3f( 0.0f, 0.0f, 1.0f);
+  glVertex3f(x1, y1, z+1); glVertex3f(x2, y2, z+1); glVertex3f(x3, y3, z+1);
+
+  glEnd();
+
 }
 
 // draw a bube that is smaller than 1
 static void drawCube(const voxel_c * space, int x, int y, int z) {
+
+  GLfloat x1, y1, x2, y2, x3, y3, n1x, n1y, n2x, n2y, n3x, n3y;
+
+  if ((x+(space->getY()-y)) & 1) {
+    // triangle with base at the top
+
+    x1 = x/2.0;
+    y1 = HEIGHT+y*HEIGHT;
+    x2 = x1+1;
+    y2 = y1;
+    x3 = x1+0.5;
+    y3 = y1-HEIGHT;
+
+    n1x = 0; n1y = 1;
+    n2x = -cos(M_PI/180*30); n2y = -sin(M_PI/180*30);
+    n3x = cos(M_PI/180*30); n3y = -sin(M_PI/180*30);
+
+  } else {
+
+    x1 = x/2.0;
+    y1 = y*HEIGHT;
+    x2 = x1+1;
+    y2 = y1;
+    x3 = x1+0.5;
+    y3 = y1+HEIGHT;
+
+    n1x = 0; n1y = -1;
+    n2x = -cos(M_PI/180*30); n2y = sin(M_PI/180*30);
+    n3x = cos(M_PI/180*30); n3y = sin(M_PI/180*30);
+  }
+
   glBegin(GL_QUADS);
-  glNormal3f( 0.0f, 0.0f, -1.0f);
-  glVertex3f(x+0.2, y+0.2, z-MY); glVertex3f(x+0.2, y+0.8, z-MY); glVertex3f(x+0.8, y+0.8, z-MY); glVertex3f(x+0.8, y+0.2, z-MY);
-  glNormal3f( -1.0f, 0.0f, 0.0f);
-  glVertex3f(x-MY, y+0.2, z+0.2); glVertex3f(x-MY, y+0.2, z+0.8); glVertex3f(x-MY, y+0.8, z+0.8); glVertex3f(x-MY, y+0.8, z+0.2);
-  glNormal3f( 1.0f, 0.0f, 0.0f);
-  glVertex3f(x+1+MY, y+0.8, z+0.2); glVertex3f(x+1+MY, y+0.8, z+0.8); glVertex3f(x+1+MY, y+0.2, z+0.8); glVertex3f(x+1+MY, y+0.2, z+0.2);
-  glNormal3f( 0.0f, 0.0f, 1.0f);
-  glVertex3f(x+0.2, y+0.2, z+1+MY); glVertex3f(x+0.2, y+0.8, z+1+MY); glVertex3f(x+0.8, y+0.8, z+1+MY); glVertex3f(x+0.8, y+0.2, z+1.02);
-  glNormal3f( 0.0f, -1.0f, 0.0f);
-  glVertex3f(x+0.2, y-MY, z+0.2); glVertex3f(x+0.8, y-MY, z+0.2); glVertex3f(x+0.8, y-MY, z+0.8); glVertex3f(x+0.2, y-MY, z+0.8);
-  glNormal3f( 0.0f, 1.0f, 0.0f);
-  glVertex3f(x+0.2, y+1+MY, z+0.2); glVertex3f(x+0.2, y+1+MY, z+0.8); glVertex3f(x+0.8, y+1+MY, z+0.8); glVertex3f(x+0.8, y+1+MY, z+0.2);
+
+  glNormal3f(n1x, n1y, 0.0f);
+  glVertex3f(x1+(x2-x1)*0.2+MY*n1x, y1+(y2-y1)*0.2+MY*n1y, z+0.2);
+  glVertex3f(x2+(x1-x2)*0.2+MY*n1x, y2+(y1-y2)*0.2+MY*n1y, z+0.2);
+  glVertex3f(x2+(x1-x2)*0.2+MY*n1x, y2+(y1-y2)*0.2+MY*n1y, z+0.8);
+  glVertex3f(x1+(x2-x1)*0.2+MY*n1x, y1+(y2-y1)*0.2+MY*n1y, z+0.8);
+
+  glNormal3f(n2x, n2y, 0.0f);
+  glVertex3f(x1+(x3-x1)*0.2+MY*n2x, y1+(y3-y1)*0.2+MY*n2y, z+0.2);
+  glVertex3f(x3+(x1-x3)*0.2+MY*n2x, y3+(y1-y3)*0.2+MY*n2y, z+0.2);
+  glVertex3f(x3+(x1-x3)*0.2+MY*n2x, y3+(y1-y3)*0.2+MY*n2y, z+0.8);
+  glVertex3f(x1+(x3-x1)*0.2+MY*n2x, y1+(y3-y1)*0.2+MY*n2y, z+0.8);
+
+  glNormal3f(n3x, n3y, 0.0f);
+  glVertex3f(x2+(x3-x2)*0.2+MY*n3x, y2+(y3-y2)*0.2+MY*n3y, z+0.2);
+  glVertex3f(x3+(x2-x3)*0.2+MY*n3x, y3+(y2-y3)*0.2+MY*n3y, z+0.2);
+  glVertex3f(x3+(x2-x3)*0.2+MY*n3x, y3+(y2-y3)*0.2+MY*n3y, z+0.8);
+  glVertex3f(x2+(x3-x2)*0.2+MY*n3x, y2+(y3-y2)*0.2+MY*n3y, z+0.8);
+
   glEnd();
+
+  glBegin(GL_TRIANGLES);
+
+  glNormal3f(0.0f, 0.0f, -1.0f);
+  glVertex3f(x1+sqrt(0.1)*n3x, y1+sqrt(0.1)*n3y, z-MY);
+  glVertex3f(x2+sqrt(0.1)*n2x, y2+sqrt(0.1)*n2y, z-MY);
+  glVertex3f(x3+sqrt(0.1)*n1x, y3+sqrt(0.1)*n1y, z-MY);
+
+  glNormal3f(0.0f, 0.0f, 1.0f);
+  glVertex3f(x1+sqrt(0.1)*n3x, y1+sqrt(0.1)*n3y, z+1+MY);
+  glVertex3f(x2+sqrt(0.1)*n2x, y2+sqrt(0.1)*n2y, z+1+MY);
+  glVertex3f(x3+sqrt(0.1)*n1x, y3+sqrt(0.1)*n1y, z+1+MY);
+
+  glEnd();
+
 }
 
 static void drawRect(int x0, int y0, int z0,
