@@ -91,6 +91,7 @@ protected:
   int editType;
 
   int handle(int event);
+  void draw();
 
 public:
 
@@ -142,8 +143,20 @@ public:
    */
   virtual void calcGridPosition(int x, int y, int *gx, int *gy) = 0;
 
+  virtual void drawNormalTile(int x, int y, int tx, int ty, int sx, int sy) = 0;
+  virtual void drawVariableTile(int x, int y, int tx, int ty, int sx, int sy) = 0;
+  virtual void drawTileFrame(int x, int y, int tx, int ty, int sx, int sy) = 0;
+  virtual void drawTileColor(int x, int y, int tx, int ty, int sx, int sy) = 0;
+  virtual void drawTileCursor(int x, int y, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy) = 0;
+
+  virtual void calcParameters(int *sx, int *sy, int *tx, int *ty) = 0;
+
   bool setLayer(unsigned int zv);
 
+  /* tool function to calculate, if the given voxel coordinate x;y is inside
+   * the specified area
+   */
+  bool inRegion(int x, int y, int x1, int x2, int y1, int y2, int sx, int sy, int mode);
 };
 
 #endif

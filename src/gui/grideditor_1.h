@@ -45,11 +45,11 @@ private:
 
   void calcGridPosition(int x, int y, int *gx, int *gy);
 
-protected:
-
-  void draw();
-
-  bool setLayer(unsigned int zv);
+  void drawNormalTile(int x, int y, int tx, int ty, int sx, int sy);
+  void drawVariableTile(int x, int y, int tx, int ty, int sx, int sy);
+  void drawTileFrame(int x, int y, int tx, int ty, int sx, int sy);
+  void drawTileColor(int x, int y, int tx, int ty, int sx, int sy);
+  void drawTileCursor(int x, int y, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy);
 
 public:
 

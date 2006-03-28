@@ -35,46 +35,6 @@ static int floordiv(int a, int b) {
     return (a-b+1)/b;
 }
 
-
-// this function finds out if a given square is inside the selected region
-// this check includes the symmetric and column edit modes
-//
-// it works resursive. mode contains the yet to check symmetries and columns
-static bool inRegion(int x, int y, int x1, int x2, int y1, int y2, int sx, int sy, int mode) {
-
-  // if we are outside the active shape we are not in a region
-  if ((x < 0) || (y < 0) || (x >= sx) || (y >= sy)) return false;
-
-  // these 2 modes ar of no interest, they only belong to the z layer
-  mode &= ~ (gridEditor_c::TOOL_STACK_Z + gridEditor_c::TOOL_MIRROR_Z);
-
-  if (mode == 0)
-    // no mode bit set, so the given coordinate needs to be inside the selected area
-    return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2);
-  if (mode == gridEditor_c::TOOL_STACK_Y)
-    // y stack active, so we need to be inside the x area
-    return (x1 <= x) && (x <= x2);
-  if (mode == gridEditor_c::TOOL_STACK_X)
-    // x stack active, so we need to be inside the y area
-    return (y1 <= y) && (y <= y2);
-  if (mode == gridEditor_c::TOOL_STACK_X + gridEditor_c::TOOL_STACK_Y)
-    // x and y stack active, we need to be either in the row or the column
-    return (x1 <= x) && (x <= x2) || (y1 <= y) && (y <= y2);
-
-  // symmetric modes, recursive call with the same coordinates and also
-  // with the corresponding mirrored coordinate and the symmetry bit removed
-  // from mode, so that in the functioncall the checks above work properly.
-  if (mode & gridEditor_c::TOOL_MIRROR_X)
-    return inRegion(x, y, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_c::TOOL_MIRROR_X) ||
-      inRegion(sx-x-1, y, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_c::TOOL_MIRROR_X);
-
-  if (mode & gridEditor_c::TOOL_MIRROR_Y)
-    return inRegion(x, y, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_c::TOOL_MIRROR_Y) ||
-      inRegion(x, sy-y-1, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_c::TOOL_MIRROR_Y);
-
-  return false;
-}
-
 // this function calculates the size of the squares and the starting position
 // for the grid inside the available space of the widget
 void gridEditor_1_c::calcParameters(int *s, int *s2, int *tx, int *ty) {
@@ -108,210 +68,170 @@ void gridEditor_1_c::calcParameters(int *s, int *s2, int *tx, int *ty) {
   *ty = y() + (h() - yy * (*s2) - 1) / 2;
 }
 
-void gridEditor_1_c::draw() {
+void gridEditor_1_c::drawNormalTile(int x, int y, int tx, int ty, int s, int s2) {
 
-  // draw the background, as we don't cover the whole area
-  fl_color(color());
-  fl_rectf(x(), y(), w(), h());
-
-  // no valid piece, nothing to draw
-  if (piecenumber >= puzzle->shapeNumber())
-    return;
-
+  int x1, y1, x2, y2, x3, y3;
   voxel_c * space = puzzle->getShape(piecenumber);
 
-  // if there is no voxelspace or the space is of volumn 0 return
-  if ((space->getX() == 0) || (space->getY() == 0) || (space->getZ() == 0))
-    return;
+  /* find out the coordinates of the 3 corners of the triangle */
+  if ((x+(space->getY()-y)) & 1) {
+    // triangle with base at the top
 
-  // get the backgroud color, used for the dimmed squared if the layer below
-  unsigned char bgr, bgg, bgb;
-  Fl::get_color(color(), bgr, bgg, bgb);
+    x1 = tx+s*x/2;
+    y1 = ty+s2+y*s2;
+    x2 = x1+s;
+    y2 = y1;
+    x3 = x1+s/2;
+    y3 = y1-s2;
 
-  int s, s2, tx, ty;
-  calcParameters(&s, &s2, &tx, &ty);
+  } else {
 
-  // the color for the squares
-  unsigned char r, g, b;
+    x1 = tx+s*x/2;
+    y1 = ty+y*s2;
+    x2 = x1+s;
+    y2 = y1;
+    x3 = x1+s/2;
+    y3 = y1+s2;
+  }
+  fl_polygon(x1, y1, x2, y2, x3, y3);
+}
 
-  for (unsigned int x = 0; x < space->getX(); x++)
-    for (unsigned int y = 0; y < space->getY(); y++) {
+void gridEditor_1_c::drawVariableTile(int x, int y, int tx, int ty, int s, int s2) {
+  int x1, y1, x2, y2, x3, y3;
+  int x1v, y1v, x2v, y2v, x3v, y3v;
+  voxel_c * space = puzzle->getShape(piecenumber);
 
-      // apply the checkerboard pattern
-      if ((x+y+currentZ) & 1) {
-        r = int(255*darkPieceColor(pieceColorR(piecenumber)));
-        g = int(255*darkPieceColor(pieceColorG(piecenumber)));
-        b = int(255*darkPieceColor(pieceColorB(piecenumber)));
-      } else {
-        r = int(255*lightPieceColor(pieceColorR(piecenumber)));
-        g = int(255*lightPieceColor(pieceColorG(piecenumber)));
-        b = int(255*lightPieceColor(pieceColorB(piecenumber)));
-      }
+  /* find out the coordinates of the 3 corners of the triangle */
+  if ((x+(space->getY()-y)) & 1) {
+    // triangle with base at the top
 
-      int x1, y1, x2, y2, x3, y3;
-      int x1v, y1v, x2v, y2v, x3v, y3v;
+    x1 = tx+s*x/2;
+    y1 = ty+s2+y*s2;
+    x2 = x1+s;
+    y2 = y1;
+    x3 = x1+s/2;
+    y3 = y1-s2;
 
-      /* find out the coordinates of the 3 corners of the triangle */
-      if ((x+(space->getY()-y)) & 1) {
-        // triangle with base at the top
+    y1v = y2v = y1 - 3;
+    x1v = x1 + 5;
+    x2v = x2 - 5;
+    x3v = x3;
+    y3v = y3 + 6;
 
-        x1 = tx+s*x/2;
-        y1 = ty+s2+y*s2;
-        x2 = x1+s;
-        y2 = y1;
-        x3 = x1+s/2;
-        y3 = y1-s2;
+  } else {
 
-        y1v = y2v = y1 - 3;
-        x1v = x1 + 5;
-        x2v = x2 - 5;
-        x3v = x3;
-        y3v = y3 + 6;
+    x1 = tx+s*x/2;
+    y1 = ty+y*s2;
+    x2 = x1+s;
+    y2 = y1;
+    x3 = x1+s/2;
+    y3 = y1+s2;
 
-      } else {
+    y1v = y2v = y1 + 3;
+    x1v = x1 + 5;
+    x2v = x2 - 5;
+    x3v = x3;
+    y3v = y3 - 6;
+  }
+  fl_polygon(x1v, y1v, x2v, y2v, x3v, y3v);
+}
 
-        x1 = tx+s*x/2;
-        y1 = ty+y*s2;
-        x2 = x1+s;
-        y2 = y1;
-        x3 = x1+s/2;
-        y3 = y1+s2;
+void gridEditor_1_c::drawTileFrame(int x, int y, int tx, int ty, int s, int s2) {
+  int x1, y1, x2, y2, x3, y3;
+  voxel_c * space = puzzle->getShape(piecenumber);
 
-        y1v = y2v = y1 + 3;
-        x1v = x1 + 5;
-        x2v = x2 - 5;
-        x3v = x3;
-        y3v = y3 - 6;
-      }
+  /* find out the coordinates of the 3 corners of the triangle */
+  if ((x+(space->getY()-y)) & 1) {
+    // triangle with base at the top
 
-      // draw the square depending on the state
-      switch(space->getState(x, space->getY()-y-1, currentZ)) {
-      case voxel_c::VX_FILLED:
-        fl_color(r, g, b);
-        fl_polygon(x1, y1, x2, y2, x3, y3);
-        break;
-      case voxel_c::VX_VARIABLE:
-        fl_color(r, g, b);
-        fl_polygon(x1v, y1v, x2v, y2v, x3v, y3v);
-        break;
-      default:
-        // for empty squares we check the layer below and if the square below is
-        // not empty draw a very dimmed square
-        if ((currentZ > 0) && (space->getState(x, space->getY()-y-1, currentZ-1) != voxel_c::VX_EMPTY)) {
-          fl_color(((int)bgr*5+r)/6, ((int)bgg*5+g)/6, ((int)bgb*5+b)/6);
-          fl_polygon(x1, y1, x2, y2, x3, y3);
-        }
-      }
+    x1 = tx+s*x/2;
+    y1 = ty+s2+y*s2;
+    x2 = x1+s;
+    y2 = y1;
+    x3 = x1+s/2;
+    y3 = y1-s2;
 
-      // if the voxel is not empty and has a color assigned, draw a marker in the
-      // upper left corner with the color of the constraint color
-      if ((space->getState(x, space->getY()-y-1, currentZ) != voxel_c::VX_EMPTY) &&
-          space->getColor(x, space->getY()-y-1, currentZ)) {
+  } else {
 
-        puzzle->getColor(space->getColor(x, space->getY()-y-1, currentZ)-1, &r, &g, &b);
-        fl_color(r, g, b);
-        fl_polygon(x3, y3, (x1+x3)/2, (y1+y3)/2, (x2+x3)/2, (y2+y3)/2);
-      }
+    x1 = tx+s*x/2;
+    y1 = ty+y*s2;
+    x2 = x1+s;
+    y2 = y1;
+    x3 = x1+s/2;
+    y3 = y1+s2;
+  }
+  fl_loop(x1, y1, x2, y2, x3, y3);
+}
 
-      // the color for the grid lines
-      if (active())
-        fl_color(labelcolor());
-      else
-        fl_color(color());
+void gridEditor_1_c::drawTileColor(int x, int y, int tx, int ty, int s, int s2) {
+  int x1, y1, x2, y2, x3, y3;
+  voxel_c * space = puzzle->getShape(piecenumber);
 
-      // draw the rectangle around the square, this will be the grid
-      fl_loop(x1, y1, x2, y2, x3, y3);
-    }
+  /* find out the coordinates of the 3 corners of the triangle */
+  if ((x+(space->getY()-y)) & 1) {
+    // triangle with base at the top
 
-  // if the cursor is inside the widget, we do need to draw the cursor
-  if (inside && active()) {
+    x1 = tx+s*x/2;
+    y1 = ty+s2+y*s2;
+    x2 = x1+s;
+    y2 = y1;
+    x3 = x1+s/2;
+    y3 = y1-s2;
 
-    int x1, x2, y1, y2;
+  } else {
 
-    // sort the marker points, so that x1 is always the smaller one
-    if (startX < mX) {
-      x1 = startX;
-      x2 = mX;
-    } else {
-      x2 = startX;
-      x1 = mX;
-    }
+    x1 = tx+s*x/2;
+    y1 = ty+y*s2;
+    x2 = x1+s;
+    y2 = y1;
+    x3 = x1+s/2;
+    y3 = y1+s2;
+  }
+  fl_polygon(x3, y3, (x1+x3)/2, (y1+y3)/2, (x2+x3)/2, (y2+y3)/2);
+}
 
-    // clamp area
-    if (x1 < 0) x1 = 0;
-    if (x2 >= (int)space->getX()) x2 = (int)space->getX()-1;
+void gridEditor_1_c::drawTileCursor(int x, int y, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy) {
 
-    // same for y
-    if (startY > mY) {
-      y1 = startY;
-      y2 = mY;
-    } else {
-      y2 = startY;
-      y1 = mY;
-    }
+  voxel_c * space = puzzle->getShape(piecenumber);
+  int xl1, yl1, xl2, yl2, xl3, yl3;
 
-    if (y2 < 0) y2 = 0;
-    if (y1 >= (int)space->getY()) y1 = (int)space->getY()-1;
+  if ((x+(space->getY()-y)) & 1) {
+    // triangle with base at the top
 
-    // flip y vertically, as everything is drawn vertially flipped
-    y1 = space->getY() - y1 - 1;
-    y2 = space->getY() - y2 - 1;
+    xl1 = tx+sx*x/2;
+    yl1 = ty+sy+y*sy;
+    xl2 = xl1+sx;
+    yl2 = yl1;
+    xl3 = xl1+sx/2;
+    yl3 = yl1-sy;
 
-    if ((x1 <= x2) && (y1 <= y2)) {
+  } else {
 
-      // ok, we have a valid range selected, now we need to check for
-      // edit mode (symmetric modes, ...) and draw the right cursor for the current mode
+    xl1 = tx+sx*x/2;
+    yl1 = ty+y*sy;
+    xl2 = xl1+sx;
+    yl2 = yl1;
+    xl3 = xl1+sx/2;
+    yl3 = yl1+sy;
 
-      fl_color(labelcolor());
+  }
 
-      // go over all grid lines and check, if the square on one side of the line is inside and
-      // the other on the outside, if so draw the cursor line
-      for (unsigned int x = 0; x <= space->getX(); x++)
-        for (unsigned int y = 0; y <= space->getY(); y++) {
+  bool ins = inRegion(x, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools);
 
 
-          int xl1, yl1, xl2, yl2, xl3, yl3;
+  if ((((x+(space->getY()-y))&1)) && (ins ^ inRegion(x, y+1, x1, x2, y1, y2, space->getX(), space->getY(), activeTools))) {
+    fl_line(xl1, yl1+1, xl2, yl2+1);
+    fl_line(xl1, yl1-1, xl2, yl2-1);
+  }
 
-          if ((x+(space->getY()-y)) & 1) {
-            // triangle with base at the top
+  if ((!((x+(space->getY()-y))&1)) && (ins ^ inRegion(x, y-1, x1, x2, y1, y2, space->getX(), space->getY(), activeTools))) {
+    fl_line(xl1, yl1+1, xl2, yl2+1);
+    fl_line(xl1, yl1-1, xl2, yl2-1);
+  }
 
-            xl1 = tx+s*x/2;
-            yl1 = ty+s2+y*s2;
-            xl2 = xl1+s;
-            yl2 = yl1;
-            xl3 = xl1+s/2;
-            yl3 = yl1-s2;
-
-          } else {
-
-            xl1 = tx+s*x/2;
-            yl1 = ty+y*s2;
-            xl2 = xl1+s;
-            yl2 = yl1;
-            xl3 = xl1+s/2;
-            yl3 = yl1+s2;
-
-          }
-
-          bool ins = inRegion(x, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools);
-
-
-          if ((((x+(space->getY()-y))&1)) && (ins ^ inRegion(x, y+1, x1, x2, y1, y2, space->getX(), space->getY(), activeTools))) {
-            fl_line(xl1, yl1+1, xl2, yl2+1);
-            fl_line(xl1, yl1-1, xl2, yl2-1);
-          }
-
-          if ((!((x+(space->getY()-y))&1)) && (ins ^ inRegion(x, y-1, x1, x2, y1, y2, space->getX(), space->getY(), activeTools))) {
-            fl_line(xl1, yl1+1, xl2, yl2+1);
-            fl_line(xl1, yl1-1, xl2, yl2-1);
-          }
-
-          if (ins ^ inRegion(x-1, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools)) {
-            fl_line(xl1+1, yl1, xl3+1, yl3);
-            fl_line(xl1-1, yl1, xl3-1, yl3);
-          }
-        }
-    }
+  if (ins ^ inRegion(x-1, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools)) {
+    fl_line(xl1+1, yl1, xl3+1, yl3);
+    fl_line(xl1-1, yl1, xl3-1, yl3);
   }
 }
 

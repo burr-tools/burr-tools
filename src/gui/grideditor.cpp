@@ -1,7 +1,10 @@
 #include "grideditor.h"
+#include "pieceColor.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
+
+#include <FL/fl_draw.h>
 
 void gridEditor_c::setZ(unsigned int z) {
 
@@ -283,4 +286,171 @@ int gridEditor_c::handle(int event) {
   return 0;
 }
 
+void gridEditor_c::draw() {
+
+  // draw the background, as we don't cover the whole area
+  fl_color(color());
+  fl_rectf(x(), y(), w(), h());
+
+  // no valid piece, nothing to draw
+  if (piecenumber >= puzzle->shapeNumber())
+    return;
+
+  voxel_c * space = puzzle->getShape(piecenumber);
+
+  // if there is no voxelspace or the space is of volumn 0 return
+  if ((space->getX() == 0) || (space->getY() == 0) || (space->getZ() == 0))
+    return;
+
+  // get the backgroud color, used for the dimmed squared if the layer below
+  unsigned char bgr, bgg, bgb;
+  Fl::get_color(color(), bgr, bgg, bgb);
+
+  int sx, sy, tx, ty;
+  calcParameters(&sx, &sy, &tx, &ty);
+
+  // the color for the squares
+  unsigned char r, g, b;
+
+  for (unsigned int x = 0; x < space->getX(); x++)
+    for (unsigned int y = 0; y < space->getY(); y++) {
+
+      // apply the checkerboard pattern
+      if ((x+y+currentZ) & 1) {
+        r = int(255*darkPieceColor(pieceColorR(piecenumber)));
+        g = int(255*darkPieceColor(pieceColorG(piecenumber)));
+        b = int(255*darkPieceColor(pieceColorB(piecenumber)));
+      } else {
+        r = int(255*lightPieceColor(pieceColorR(piecenumber)));
+        g = int(255*lightPieceColor(pieceColorG(piecenumber)));
+        b = int(255*lightPieceColor(pieceColorB(piecenumber)));
+      }
+
+      // draw the square depending on the state
+      switch(space->getState(x, space->getY()-y-1, currentZ)) {
+      case voxel_c::VX_FILLED:
+        fl_color(r, g, b);
+        drawNormalTile(x, y, tx, ty, sx, sy);
+        break;
+      case voxel_c::VX_VARIABLE:
+        fl_color(r, g, b);
+        drawVariableTile(x, y, tx, ty, sx, sy);
+        break;
+      default:
+        // for empty squares we check the layer below and if the square below is
+        // not empty draw a very dimmed square
+        if ((currentZ > 0) && (space->getState(x, space->getY()-y-1, currentZ-1) != voxel_c::VX_EMPTY)) {
+          fl_color(((int)bgr*5+r)/6, ((int)bgg*5+g)/6, ((int)bgb*5+b)/6);
+          drawNormalTile(x, y, tx, ty, sx, sy);
+        }
+      }
+
+      // if the voxel is not empty and has a color assigned, draw a marker in the
+      // upper left corner with the color of the constraint color
+      if ((space->getState(x, space->getY()-y-1, currentZ) != voxel_c::VX_EMPTY) &&
+          space->getColor(x, space->getY()-y-1, currentZ)) {
+
+        puzzle->getColor(space->getColor(x, space->getY()-y-1, currentZ)-1, &r, &g, &b);
+        fl_color(r, g, b);
+        drawTileColor(x, y, tx, ty, sx, sy);
+      }
+
+      // the color for the grid lines
+      if (active())
+        fl_color(labelcolor());
+      else
+        fl_color(color());
+
+      // draw the rectangle around the square, this will be the grid
+      drawTileFrame(x, y, tx, ty, sx, sy);
+    }
+
+  // if the cursor is inside the widget, we do need to draw the cursor
+  if (inside && active()) {
+
+    int x1, x2, y1, y2;
+
+    // sort the marker points, so that x1 is always the smaller one
+    if (startX < mX) {
+      x1 = startX;
+      x2 = mX;
+    } else {
+      x2 = startX;
+      x1 = mX;
+    }
+
+    // clamp area
+    if (x1 < 0) x1 = 0;
+    if (x2 >= (int)space->getX()) x2 = (int)space->getX()-1;
+
+    // same for y
+    if (startY > mY) {
+      y1 = startY;
+      y2 = mY;
+    } else {
+      y2 = startY;
+      y1 = mY;
+    }
+
+    if (y2 < 0) y2 = 0;
+    if (y1 >= (int)space->getY()) y1 = (int)space->getY()-1;
+
+    // flip y vertically, as everything is drawn vertially flipped
+    y1 = space->getY() - y1 - 1;
+    y2 = space->getY() - y2 - 1;
+
+    if ((x1 <= x2) && (y1 <= y2)) {
+
+      // ok, we have a valid range selected, now we need to check for
+      // edit mode (symmetric modes, ...) and draw the right cursor for the current mode
+
+      fl_color(labelcolor());
+
+      // go over all grid lines and check, if the square on one side of the line is inside and
+      // the other on the outside, if so draw the cursor line
+      for (unsigned int x = 0; x <= space->getX(); x++)
+        for (unsigned int y = 0; y <= space->getY(); y++)
+          drawTileCursor(x, y, x1, y1, x2, y2, tx, ty, sx, sy);
+    }
+  }
+}
+
+// this function finds out if a given square is inside the selected region
+// this check includes the symmetric and column edit modes
+//
+// it works resursive. mode contains the yet to check symmetries and columns
+bool gridEditor_c::inRegion(int x, int y, int x1, int x2, int y1, int y2, int sx, int sy, int mode) {
+
+  // if we are outside the active shape we are not in a region
+  if ((x < 0) || (y < 0) || (x >= sx) || (y >= sy)) return false;
+
+  // these 2 modes ar of no interest, they only belong to the z layer
+  mode &= ~ (gridEditor_c::TOOL_STACK_Z + gridEditor_c::TOOL_MIRROR_Z);
+
+  if (mode == 0)
+    // no mode bit set, so the given coordinate needs to be inside the selected area
+    return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2);
+  if (mode == gridEditor_c::TOOL_STACK_Y)
+    // y stack active, so we need to be inside the x area
+    return (x1 <= x) && (x <= x2);
+  if (mode == gridEditor_c::TOOL_STACK_X)
+    // x stack active, so we need to be inside the y area
+    return (y1 <= y) && (y <= y2);
+  if (mode == gridEditor_c::TOOL_STACK_X + gridEditor_c::TOOL_STACK_Y)
+    // x and y stack active, we need to be either in the row or the column
+    return (x1 <= x) && (x <= x2) || (y1 <= y) && (y <= y2);
+
+  // symmetric modes, recursive call with the same coordinates and also
+  // with the corresponding mirrored coordinate and the symmetry bit removed
+  // from mode, so that in the functioncall the checks above work properly.
+  if (mode & gridEditor_c::TOOL_MIRROR_X)
+    return inRegion(x, y, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_c::TOOL_MIRROR_X) ||
+      inRegion(sx-x-1, y, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_c::TOOL_MIRROR_X);
+
+  if (mode & gridEditor_c::TOOL_MIRROR_Y)
+    return inRegion(x, y, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_c::TOOL_MIRROR_Y) ||
+      inRegion(x, sy-y-1, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_c::TOOL_MIRROR_Y);
+
+  return false;
+}
 

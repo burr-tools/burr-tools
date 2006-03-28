@@ -41,13 +41,15 @@ private:
 
   // calculate the size of the grid cells and the
   // top right corner position
-  void calcParameters(int *s, int *tx, int *ty);
+  void calcParameters(int *sx, int *sy, int *tx, int *ty);
 
   void calcGridPosition(int x, int y, int *gx, int *gy);
 
-protected:
-
-  void draw();
+  void drawNormalTile(int x, int y, int tx, int ty, int sx, int sy);
+  void drawVariableTile(int x, int y, int tx, int ty, int sx, int sy);
+  void drawTileFrame(int x, int y, int tx, int ty, int sx, int sy);
+  void drawTileColor(int x, int y, int tx, int ty, int sx, int sy);
+  void drawTileCursor(int x, int y, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy);
 
 public:
 
