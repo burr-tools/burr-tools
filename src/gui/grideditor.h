@@ -65,6 +65,9 @@ protected:
 
   puzzle_c * puzzle;
 
+  // the edit state
+  int state;
+
   // the current edited layer
   unsigned int currentZ;
 
@@ -87,10 +90,11 @@ protected:
   unsigned char activeTools;
   int editType;
 
+  int handle(int event);
 
 public:
 
-  gridEditor_c(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), currentZ(0), piecenumber(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), startX(0), startY(0), inside(false), callbackReason(0), currentColor(0), task(TSK_SET), activeTools(0), editType(0) {}
+  gridEditor_c(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), state(0), currentZ(0), piecenumber(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), startX(0), startY(0), inside(false), callbackReason(0), currentColor(0), task(TSK_SET), activeTools(0), editType(0) {}
 
   // sets the z layer to edit the value is clamped to valid values
   void setZ(unsigned int z);
@@ -131,6 +135,15 @@ public:
   void setTool(int tool) { activeTools = tool; }
 
   void setEditType(int type) { editType = type; }
+
+  /* each grid editor has to provide this function
+   * is calculates the grid position gx and gy inside the voxel
+   * for the given screen position x, y
+   */
+  virtual void calcGridPosition(int x, int y, int *gx, int *gy) = 0;
+
+  bool setLayer(unsigned int zv);
+
 };
 
 #endif

@@ -39,9 +39,6 @@ class gridEditor_1_c : public gridEditor_c {
 
 private:
 
-  // the edit state
-  int state;
-
   // calculate the size of the grid cells and the
   // top right corner position
   void calcParameters(int *s, int *s2, int *tx, int *ty);
@@ -56,9 +53,7 @@ protected:
 
 public:
 
-  gridEditor_1_c(int x, int y, int w, int h, puzzle_c * p) : gridEditor_c(x, y, w, h, p), state(0) {}
-
-  int handle(int event);
+  gridEditor_1_c(int x, int y, int w, int h, puzzle_c * p) : gridEditor_c(x, y, w, h, p) {}
 };
 
 #endif
