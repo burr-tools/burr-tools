@@ -674,6 +674,7 @@ void voxel_c::transform(unsigned int nr) {
 
   const symmetries_c * sym = gt->getSymmetries();
 
+  bt_assert(sym);
   bt_assert(nr < sym->getNumTransformationsMirror());
 
   if (nr >= sym->getNumTransformations()) {
