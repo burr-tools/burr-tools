@@ -36,6 +36,8 @@ class voxelDrawer_0_c : public voxelDrawer_c {
     void drawCursor(unsigned int sx, unsigned int sy, unsigned int sz);
 
     void gridTypeChanged(void);
+
+    void calculateSize(const voxel_c * shape, float * x, float * y, float * z);
 };
 
 #endif

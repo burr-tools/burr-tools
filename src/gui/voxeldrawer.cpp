@@ -77,7 +77,11 @@ void voxelDrawer_c::drawVoxelSpace() {
         glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
         addRotationTransformation();
         glMultMatrixf(transformMatrix);
-        glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
+        {
+          float cx, cy, cz;
+          calculateSize(shapes[piece].shape, &cx, &cy, &cz);
+          glTranslatef(-0.5*cx, -0.5*cy, -0.5*cz);
+        }
         break;
       case TranslateRoateScale:
         addRotationTransformation();
@@ -85,7 +89,11 @@ void voxelDrawer_c::drawVoxelSpace() {
                      shapes[piece].y - shapes[piece].shape->getHy(),
                      shapes[piece].z - shapes[piece].shape->getHz());
         glMultMatrixf(transformMatrix);
-        glTranslatef(shapes[piece].shape->getX()/-2.0, shapes[piece].shape->getY()/-2.0, shapes[piece].shape->getZ()/-2.0);
+        {
+          float cx, cy, cz;
+          calculateSize(shapes[piece].shape, &cx, &cy, &cz);
+          glTranslatef(-0.5*cx, -0.5*cy, -0.5*cz);
+        }
         glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
         break;
       case CenterTranslateRoateScale:
@@ -105,12 +113,12 @@ void voxelDrawer_c::drawVoxelSpace() {
         if (_useLightning) glDisable(GL_LIGHTING);
         glDisable(GL_BLEND);
         glBegin(GL_LINES);
-        glColor3f(1, 0, 0);
-        glVertex3f(-1, -1, -1); glVertex3f(shapes[piece].shape->getX()+1, -1, -1);
-        glColor3f(0, 0.75, 0);
-        glVertex3f(-1, -1, -1); glVertex3f(-1, shapes[piece].shape->getY()+1, -1);
-        glColor3f(0, 0, 1);
-        glVertex3f(-1, -1, -1); glVertex3f(-1, -1, shapes[piece].shape->getZ()+1);
+        float cx, cy, cz;
+        calculateSize(shapes[piece].shape, &cx, &cy, &cz);
+
+        glColor3f(1, 0,    0); glVertex3f(-1, -1, -1); glVertex3f(cx+1, -1, -1);
+        glColor3f(0, 0.75, 0); glVertex3f(-1, -1, -1); glVertex3f(-1, cy+1, -1);
+        glColor3f(0, 0,    1); glVertex3f(-1, -1, -1); glVertex3f(-1, -1, cz+1);
         glEnd();
         if (_useLightning) glEnable(GL_LIGHTING);
         glEnable(GL_BLEND);
@@ -421,10 +429,9 @@ void voxelDrawer_c::showAssembly(const puzzle_c * puz, unsigned int probNum, uns
         piece++;
       }
 
-    setCenter(0.5*puz->probGetResultShape(probNum)->getX(),
-                      0.5*puz->probGetResultShape(probNum)->getY(),
-                      0.5*puz->probGetResultShape(probNum)->getZ()
-                     );
+    float cx, cy, cz;
+    calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
+    setCenter(cx*0.5, cy*0.5, cz*0.5);
     setTransformationType(CenterTranslateRoateScale);
     showCoordinateSystem(false);
   }

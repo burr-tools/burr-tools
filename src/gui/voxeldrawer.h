@@ -167,6 +167,8 @@ private:
   virtual void drawShape(const shapeInfo * shape, colorMode colors) = 0;
   virtual void drawCursor(unsigned int sx, unsigned int sy, unsigned int sz) = 0;
 
+  virtual void calculateSize(const voxel_c * shape, float * x, float * y, float * z) = 0;
+
   /* this matrix is used to change the look of the basic unit */
   GLfloat transformMatrix[16];
 

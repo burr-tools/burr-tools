@@ -470,3 +470,10 @@ void voxelDrawer_0_c::gridTypeChanged(void) {
 
   setTransformationMatrix(m);
 }
+
+void voxelDrawer_0_c::calculateSize(const voxel_c * shape, float * x, float * y, float * z) {
+  *x = shape->getX();
+  *y = shape->getY();
+  *z = shape->getZ();
+}
+

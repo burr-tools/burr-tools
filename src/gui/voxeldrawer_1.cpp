@@ -17,6 +17,9 @@
 // are clearly separated and dont't interlock when drawing
 #define MY 0.005f
 
+// the height of one of the prisms
+#define HEIGHT 0.8660254     // sqrt(3)/2
+
 // draws a wireframe box depending on the neibors
 static void drawFrame(const voxel_c * space, int x, int y, int z, float edge) {
 
@@ -79,7 +82,6 @@ static void drawFrame(const voxel_c * space, int x, int y, int z, float edge) {
 // draws a box with borders depending on the neibor boxes
 static void drawBox(const voxel_c * space, int x, int y, int z, float alpha, float edge) {
 
-#define HEIGHT 0.8660254     // sqrt(3)/2
 
   GLfloat x1, y1, x2, y2, x3, y3, n1x, n1y, n2x, n2y, n3x, n3y;
 
@@ -480,3 +482,10 @@ void voxelDrawer_1_c::gridTypeChanged(void) {
 
   setTransformationMatrix(m);
 }
+
+void voxelDrawer_1_c::calculateSize(const voxel_c * shape, float * x, float * y, float * z) {
+  *x = (1 + (shape->getX()-1) * 0.5);
+  *y = shape->getY() * HEIGHT;
+  *z = shape->getZ();
+}
+
