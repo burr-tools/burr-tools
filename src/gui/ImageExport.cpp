@@ -40,7 +40,9 @@ class LView3dGroup : public View3dGroup, public layoutable_c {
 
 class LBlockListGroup : public BlockListGroup, public layoutable_c {
   public:
-    LBlockListGroup(int x, int y, int w, int h, BlockList * l) : BlockListGroup(0, 0, 50, 50, l), layoutable_c(x, y, w, h) {}
+    LBlockListGroup(int x, int y, int w, int h, BlockList * l) : BlockListGroup(0, 0, 50, 50, l), layoutable_c(x, y, w, h) {
+      pitch(1);
+    }
 
     virtual void getMinSize(int *w, int *h) const {
       *w = 100;

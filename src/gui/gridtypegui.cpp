@@ -156,6 +156,7 @@ gridTypeParameterWindow_c::gridTypeParameterWindow_c(guiGridType_c * ggt) {
   LFl_Button * b = new LFl_Button("Close", 0, 1);
   b->pitch(7);
   b->callback(cb_WindowButton_stub, this);
+  b->box(FL_THIN_UP_BOX);
 }
 
 static void cb_gridTypeSelectorSelect_stub(Fl_Widget *o, void *v) { ((gridTypeSelectorWindow_c*)(v))->select_cb(); }
@@ -189,7 +190,7 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) {
 
   /* first the selector for all grid types */
   {
-    fr = new LFl_Frame(0, 0);
+    fr = new LFl_Frame(0, 0, 1, 2);
 
     for (unsigned int i = 0; i < gti.size(); i++) {
       gti[i]->btn = new LFl_Radio_Button(gti[i]->ggt->getName(), 0, i);
@@ -198,12 +199,20 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) {
         gti[i]->btn->set();
     }
 
+    (new LFl_Box(0, gti.size()))->weight(0, 100);
+
     fr->end();
   }
 
+  (new LFl_Box("Attention: Concrete values withing the\n"
+      "parameters are never evaluated, the solver only\n"
+      "cares for equal and not equal. So if you want something\n"
+      "that is twice as high as wide, assemble is out of\n"
+      "several unit pieces.", 1, 0))->pitch(7);
+
   /* now all the parameter boxes, only the first one is visible, the others are hidden for now */
   {
-    fr = new LFl_Frame(1, 0);
+    fr = new LFl_Frame(1, 1);
 
     for (unsigned int i = 0; i < gti.size(); i++) {
       gti[i]->gui = gti[i]->ggt->getConfigurationDialog(0, 0, 1, 1);
@@ -220,11 +229,12 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) {
 
   /* now the buttons */
   {
-    layouter_c * l = new layouter_c(0, 1, 3, 1);
+    layouter_c * l = new layouter_c(0, 2, 3, 1);
 
     LFl_Button * b = new LFl_Button("Ok", 0, 0);
     b->pitch(7);
     b->callback(cb_WindowButton_stub, this);
+    b->box(FL_THIN_UP_BOX);
 
     l->end();
   }

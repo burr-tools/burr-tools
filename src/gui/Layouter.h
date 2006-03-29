@@ -177,7 +177,7 @@ class LFl_Frame : public layouter_c {
 
   LFl_Frame(int x = 0, int y = 0, int w = 1, int h = 1) : layouter_c(x, y, w, h) {
     l = new layouter_c();
-    l->pitch(5);
+    l->pitch(3);
     box(FL_ENGRAVED_BOX);
     pitch(1);
   }
