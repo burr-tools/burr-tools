@@ -85,7 +85,7 @@ static void drawBox(const voxel_c * space, int x, int y, int z, float alpha, flo
 
   GLfloat x1, y1, x2, y2, x3, y3, n1x, n1y, n2x, n2y, n3x, n3y;
 
-  if ((x+(space->getY()-y)) & 1) {
+  if ((x+y) & 1) {
     // triangle with base at the top
 
     x1 = x/2.0;
@@ -144,7 +144,7 @@ static void drawCube(const voxel_c * space, int x, int y, int z) {
 
   GLfloat x1, y1, x2, y2, x3, y3, n1x, n1y, n2x, n2y, n3x, n3y;
 
-  if ((x+(space->getY()-y)) & 1) {
+  if ((x+y) & 1) {
     // triangle with base at the top
 
     x1 = x/2.0;
