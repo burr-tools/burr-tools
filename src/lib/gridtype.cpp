@@ -210,6 +210,7 @@ const symmetries_c * gridType_c::getSymmetries(void) const {
         break;
       case GT_TRIANGULAR_PRISM:
         const_cast<gridType_c*>(this)->sym = new symmetries_0_c(this);   //TODO: add proper value
+        break;
     }
   }
 
