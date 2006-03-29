@@ -59,6 +59,8 @@ gridType_c::gridType_c(const xml::node & node) {
     case GT_TRIANGULAR_PRISM:
       break;
   }
+
+  sym = 0;
 }
 
 /* used to save to XML */
