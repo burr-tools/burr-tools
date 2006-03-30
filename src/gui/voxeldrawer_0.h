@@ -38,6 +38,10 @@ class voxelDrawer_0_c : public voxelDrawer_c {
     void gridTypeChanged(void);
 
     void calculateSize(const voxel_c * shape, float * x, float * y, float * z);
+
+    void drawFrame(const voxel_c * space, int x, int y, int z, float edge);
+    void drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge);
+    void drawVariableMarkers(const voxel_c * space, int x, int y, int z);
 };
 
 #endif

@@ -18,7 +18,7 @@
 #define MY 0.005f
 
 // draws a wireframe box depending on the neibors
-static void drawFrame(const voxel_c * space, int x, int y, int z, float edge) {
+void voxelDrawer_0_c::drawFrame(const voxel_c * space, int x, int y, int z, float edge) {
 
   if (fabs(edge) < 0.00001) return;
 
@@ -77,7 +77,7 @@ static void drawFrame(const voxel_c * space, int x, int y, int z, float edge) {
 }
 
 // draws a box with borders depending on the neibor boxes
-static void drawBox(const voxel_c * space, int x, int y, int z, float alpha, float edge) {
+void voxelDrawer_0_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge) {
 
   GLfloat a0, b0, a1, b1;
 
@@ -151,7 +151,7 @@ static void drawBox(const voxel_c * space, int x, int y, int z, float alpha, flo
 }
 
 // draw a bube that is smaller than 1
-static void drawCube(const voxel_c * space, int x, int y, int z) {
+void voxelDrawer_0_c::drawVariableMarkers(const voxel_c * space, int x, int y, int z) {
   glBegin(GL_QUADS);
   glNormal3f( 0.0f, 0.0f, -1.0f);
   glVertex3f(x+0.2, y+0.2, z-MY); glVertex3f(x+0.2, y+0.8, z-MY); glVertex3f(x+0.8, y+0.8, z-MY); glVertex3f(x+0.8, y+0.2, z-MY);
@@ -324,82 +324,6 @@ static bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1
       inRegion(x, y, sz-z-1, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelDrawer_c::TOOL_MIRROR_Z);
 
   return false;
-}
-
-
-void voxelDrawer_0_c::drawShape(const shapeInfo * shape, colorMode colors) {
-
-  for (unsigned int x = 0; x < shape->shape->getX(); x++)
-    for (unsigned int y = 0; y < shape->shape->getY(); y++)
-      for (unsigned int z = 0; z < shape->shape->getZ(); z++) {
-
-        if (shape->shape->isEmpty(x, y , z))
-          continue;
-
-        float cr, cg, cb, ca;
-        cr = cg = cb = 0;
-        ca = 1;
-
-        switch (colors) {
-          case pieceColor:
-            if ((x+y+z) & 1) {
-              cr = lightPieceColor(shape->r);
-              cg = lightPieceColor(shape->g);
-              cb = lightPieceColor(shape->b);
-              ca = shape->a;
-            } else {
-              cr = darkPieceColor(shape->r);
-              cg = darkPieceColor(shape->g);
-              cb = darkPieceColor(shape->b);
-              ca = shape->a;
-            }
-            break;
-          case paletteColor:
-            unsigned int color = shape->shape->getColor(x, y, z);
-            if ((color == 0) || (color - 1 >= palette.size())) {
-              if ((x+y+z) & 1) {
-                cr = lightPieceColor(shape->r);
-                cg = lightPieceColor(shape->g);
-                cb = lightPieceColor(shape->b);
-                ca = shape->a;
-              } else {
-                cr = darkPieceColor(shape->r);
-                cg = darkPieceColor(shape->g);
-                cb = darkPieceColor(shape->b);
-                ca = shape->a;
-              }
-            } else {
-              cr = palette[color-1].r;
-              cg = palette[color-1].g;
-              cb = palette[color-1].b;
-              ca = shape->a;
-            }
-        }
-
-        if (shape->dim) {
-          cr = 1 - (1 - cr) * 0.2;
-          cg = 1 - (1 - cg) * 0.2;
-          cb = 1 - (1 - cb) * 0.2;
-        }
-
-        glColor4f(cr, cg, cb, ca);
-
-        switch (shape->mode) {
-          case normal:
-            if (shape->shape->getState(x, y , z) == voxel_c::VX_VARIABLE) {
-              drawBox(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
-              glColor4f(0, 0, 0, shape->a);
-              drawCube(shape->shape, x, y, z);
-            } else
-              drawBox(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
-            break;
-          case gridline:
-            drawFrame(shape->shape, x, y, z, 0.05);
-            break;
-          case invisible:
-            break;
-        }
-      }
 }
 
 void voxelDrawer_0_c::drawCursor(unsigned int sx, unsigned int sy, unsigned int sz) {

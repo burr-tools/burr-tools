@@ -124,7 +124,79 @@ void voxelDrawer_c::drawVoxelSpace() {
         glEnable(GL_BLEND);
       }
 
-      drawShape(&shapes[piece], colors);
+      const shapeInfo * shape = &shapes[piece];
+
+      for (unsigned int x = 0; x < shape->shape->getX(); x++)
+        for (unsigned int y = 0; y < shape->shape->getY(); y++)
+          for (unsigned int z = 0; z < shape->shape->getZ(); z++) {
+
+            if (shape->shape->isEmpty(x, y , z))
+              continue;
+
+            float cr, cg, cb, ca;
+            cr = cg = cb = 0;
+            ca = 1;
+
+            switch (colors) {
+              case pieceColor:
+                if ((x+y+z) & 1) {
+                  cr = lightPieceColor(shape->r);
+                  cg = lightPieceColor(shape->g);
+                  cb = lightPieceColor(shape->b);
+                  ca = shape->a;
+                } else {
+                  cr = darkPieceColor(shape->r);
+                  cg = darkPieceColor(shape->g);
+                  cb = darkPieceColor(shape->b);
+                  ca = shape->a;
+                }
+                break;
+              case paletteColor:
+                unsigned int color = shape->shape->getColor(x, y, z);
+                if ((color == 0) || (color - 1 >= palette.size())) {
+                  if ((x+y+z) & 1) {
+                    cr = lightPieceColor(shape->r);
+                    cg = lightPieceColor(shape->g);
+                    cb = lightPieceColor(shape->b);
+                    ca = shape->a;
+                  } else {
+                    cr = darkPieceColor(shape->r);
+                    cg = darkPieceColor(shape->g);
+                    cb = darkPieceColor(shape->b);
+                    ca = shape->a;
+                  }
+                } else {
+                  cr = palette[color-1].r;
+                  cg = palette[color-1].g;
+                  cb = palette[color-1].b;
+                  ca = shape->a;
+                }
+            }
+
+            if (shape->dim) {
+              cr = 1 - (1 - cr) * 0.2;
+              cg = 1 - (1 - cg) * 0.2;
+              cb = 1 - (1 - cb) * 0.2;
+            }
+
+            glColor4f(cr, cg, cb, ca);
+
+            switch (shape->mode) {
+              case normal:
+                if (shape->shape->getState(x, y , z) == voxel_c::VX_VARIABLE) {
+                  drawNormalVoxel(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
+                  glColor4f(0, 0, 0, shape->a);
+                  drawVariableMarkers(shape->shape, x, y, z);
+                } else
+                  drawNormalVoxel(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
+                break;
+              case gridline:
+                drawFrame(shape->shape, x, y, z, 0.05);
+                break;
+              case invisible:
+                break;
+            }
+          }
 
       // the marker should be only active, when only one shape is there
       // otherwise it's drawn for every shape

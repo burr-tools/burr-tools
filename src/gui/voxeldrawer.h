@@ -164,7 +164,6 @@ private:
 
   bool _useLightning;
 
-  virtual void drawShape(const shapeInfo * shape, colorMode colors) = 0;
   virtual void drawCursor(unsigned int sx, unsigned int sy, unsigned int sz) = 0;
 
   virtual void calculateSize(const voxel_c * shape, float * x, float * y, float * z) = 0;
@@ -194,6 +193,10 @@ public:
    */
   void setTransformationMatrix(GLfloat m[16]);
 
+
+  virtual void drawFrame(const voxel_c * space, int x, int y, int z, float edge) = 0;
+  virtual void drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge) = 0;
+  virtual void drawVariableMarkers(const voxel_c * space, int x, int y, int z) = 0;
 };
 
 #endif
