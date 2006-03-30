@@ -206,6 +206,8 @@ public:
       double v1x, double v1y, double v1z,
       double v2x, double v2y, double v2z, int diag);
 
+  bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z2, int sx, int sy, int sz, int mode);
+
 };
 
 #endif

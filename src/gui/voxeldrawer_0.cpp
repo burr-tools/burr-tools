@@ -168,48 +168,6 @@ void voxelDrawer_0_c::drawVariableMarkers(const voxel_c * space, int x, int y, i
   glEnd();
 }
 
-// this function finds out if a given square is inside the selected region
-// this check includes the symmetric and comulmn edit modes
-static bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z2, int sx, int sy, int sz, int mode) {
-
-  if ((x < 0) || (y < 0) || (z < 0) || (x >= sx) || (y >= sy) || (z >= sz)) return false;
-
-  if (mode == 0)
-    return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2);
-  if (mode == voxelDrawer_c::TOOL_STACK_Y)
-    return (x1 <= x) && (x <= x2) && (z1 <= z) && (z <= z2);
-  if (mode == voxelDrawer_c::TOOL_STACK_X)
-    return (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2);
-  if (mode == voxelDrawer_c::TOOL_STACK_Z)
-    return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2);
-
-  if (mode == voxelDrawer_c::TOOL_STACK_X + voxelDrawer_c::TOOL_STACK_Y)
-    return ((x1 <= x) && (x <= x2) || (y1 <= y) && (y <= y2)) && ((z1 <= z) && (z <= z2));
-  if (mode == voxelDrawer_c::TOOL_STACK_X + voxelDrawer_c::TOOL_STACK_Z)
-    return ((x1 <= x) && (x <= x2) || (z1 <= z) && (z <= z2)) && ((y1 <= y) && (y <= y2));
-  if (mode == voxelDrawer_c::TOOL_STACK_Y + voxelDrawer_c::TOOL_STACK_Z)
-    return ((y1 <= y) && (y <= y2) || (y1 <= y) && (y <= y2)) && ((x1 <= x) && (x <= x2));
-
-  if (mode == voxelDrawer_c::TOOL_STACK_X + voxelDrawer_c::TOOL_STACK_Y + voxelDrawer_c::TOOL_STACK_Z)
-    return ((x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2) ||
-        (x1 <= x) && (x <= x2) && (z1 <= z) && (z <= z2) ||
-        (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2));
-
-  if (mode & voxelDrawer_c::TOOL_MIRROR_X)
-    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelDrawer_c::TOOL_MIRROR_X) ||
-      inRegion(sx-x-1, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelDrawer_c::TOOL_MIRROR_X);
-
-  if (mode & voxelDrawer_c::TOOL_MIRROR_Y)
-    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelDrawer_c::TOOL_MIRROR_Y) ||
-      inRegion(x, sy-y-1, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelDrawer_c::TOOL_MIRROR_Y);
-
-  if (mode & voxelDrawer_c::TOOL_MIRROR_Z)
-    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelDrawer_c::TOOL_MIRROR_Z) ||
-      inRegion(x, y, sz-z-1, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelDrawer_c::TOOL_MIRROR_Z);
-
-  return false;
-}
-
 void voxelDrawer_0_c::drawCursor(unsigned int sx, unsigned int sy, unsigned int sz) {
   // draw the cursor, this is done by iterating over all
   // cubes and checking for the 3 directions (in one direction only as the other
