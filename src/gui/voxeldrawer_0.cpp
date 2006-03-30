@@ -168,122 +168,6 @@ void voxelDrawer_0_c::drawVariableMarkers(const voxel_c * space, int x, int y, i
   glEnd();
 }
 
-static void drawRect(int x0, int y0, int z0,
-                     int v1x, int v1y, int v1z,
-                     int v2x, int v2y, int v2z, bool type, int diag) {
-
-  bt_assert((v1x >= 0) && (v1y >= 0) && (v1z >= 0));
-  bt_assert((v2x >= 0) && (v2y >= 0) && (v2z >= 0));
-
-  glBegin(GL_LINES);
-  glVertex3f(x0, y0, z0); glVertex3f(x0+v1x, y0+v1y, z0+v1z);
-  glVertex3f(x0+v1x, y0+v1y, z0+v1z); glVertex3f(x0+v1x+v2x, y0+v1y+v2y, z0+v1z+v2z);
-  glVertex3f(x0+v1x+v2x, y0+v1y+v2y, z0+v1z+v2z); glVertex3f(x0+v2x, y0+v2y, z0+v2z);
-  glVertex3f(x0+v2x, y0+v2y, z0+v2z); glVertex3f(x0, y0, z0);
-
-  int state1 = 0;
-  int state2 = 0;
-
-  if (type) {
-
-    float x1 = x0;
-    float y1 = y0;
-    float z1 = z0;
-
-    float x2 = x0;
-    float y2 = y0;
-    float z2 = z0;
-
-    int xe = x0 + v1x + v2x;
-    int ye = y0 + v1y + v2y;
-    int ze = z0 + v1z + v2z;
-
-    while ((x1 < xe) || (y1 < ye) || (z1 < ze)) {
-      // v1=(x1, y1, z1) first goes along vector1 =(v1x, v1y, v1z) and then along vector2
-
-      if (state1 == 0) {
-        if (v1x) x1 += 1.0/diag;
-        if (v1y) y1 += 1.0/diag;
-        if (v1z) z1 += 1.0/diag;
-
-        if ((v1x) && (x1 >= x0+v1x) || (v1y) && (y1 >= y0+v1y) || (v1z) && (z1 >= z0+v1z))
-          state1 = 1;
-      } else {
-
-        if (v2x) x1 += 1.0/diag;
-        if (v2y) y1 += 1.0/diag;
-        if (v2z) z1 += 1.0/diag;
-      }
-
-      if (state2 == 0) {
-        if (v2x) x2 += 1.0/diag;
-        if (v2y) y2 += 1.0/diag;
-        if (v2z) z2 += 1.0/diag;
-
-        if ((v2x) && (x2 >= x0+v2x) || (v2y) && (y2 >= y0+v2y) || (v2z) && (z2 >= z0+v2z))
-          state2 = 1;
-      } else {
-
-        if (v1x) x2 += 1.0/diag;
-        if (v1y) y2 += 1.0/diag;
-        if (v1z) z2 += 1.0/diag;
-      }
-
-      glVertex3f(x1, y1, z1); glVertex3f(x2, y2, z2);
-    }
-
-  } else {
-
-    float x1 = x0 + v1x;
-    float y1 = y0 + v1y;
-    float z1 = z0 + v1z;
-
-    float x2 = x0 + v1x;
-    float y2 = y0 + v1y;
-    float z2 = z0 + v1z;
-
-    int xe = x0 + v2x;
-    int ye = y0 + v2y;
-    int ze = z0 + v2z;
-
-    while ((x1 < xe) || (y1 < ye) || (z1 < ze)) {
-      // v1=(x1, y1, z1) first goes along vector1 =(v1x, v1y, v1z) and then along vector2
-
-      if (state1 == 0) {
-        if (v1x) x1 -= 1.0/diag;
-        if (v1y) y1 -= 1.0/diag;
-        if (v1z) z1 -= 1.0/diag;
-
-        if ((v1x) && (x1 <= x0) || (v1y) && (y1 <= y0) || (v1z) && (z1 <= z0))
-          state1 = 1;
-      } else {
-
-        if (v2x) x1 += 1.0/diag;
-        if (v2y) y1 += 1.0/diag;
-        if (v2z) z1 += 1.0/diag;
-      }
-
-      if (state2 == 0) {
-        if (v2x) x2 += 1.0/diag;
-        if (v2y) y2 += 1.0/diag;
-        if (v2z) z2 += 1.0/diag;
-
-        if ((v2x) && (x2 >= x0+v2x+v1x) || (v2y) && (y2 >= y0+v2y+v1y) || (v2z) && (z2 >= z0+v2z+v1z))
-          state2 = 1;
-      } else {
-
-        if (v1x) x2 -= 1.0/diag;
-        if (v1y) y2 -= 1.0/diag;
-        if (v1z) z2 -= 1.0/diag;
-      }
-
-      glVertex3f(x1, y1, z1); glVertex3f(x2, y2, z2);
-    }
-  }
-
-  glEnd();
-}
-
 // this function finds out if a given square is inside the selected region
 // this check includes the symmetric and comulmn edit modes
 static bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z2, int sx, int sy, int sz, int mode) {
@@ -337,15 +221,15 @@ void voxelDrawer_0_c::drawCursor(unsigned int sx, unsigned int sy, unsigned int 
         bool ins = inRegion(x, y, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType);
 
         if (ins ^ inRegion(x-1, y, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType)) {
-          drawRect(x, y, z, 0, 1, 0, 0, 0, 1, false, 4);
+          drawGridRect(x, y, z, 0, 1, 0, 0, 0, 1, 4);
         }
 
         if (ins ^ inRegion(x, y-1, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType)) {
-          drawRect(x, y, z, 1, 0, 0, 0, 0, 1, false, 4);
+          drawGridRect(x, y, z, 1, 0, 0, 0, 0, 1, 4);
         }
 
         if (ins ^ inRegion(x, y, z-1, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType)) {
-          drawRect(x, y, z, 1, 0, 0, 0, 1, 0, false, 4);
+          drawGridRect(x, y, z, 1, 0, 0, 0, 1, 0, 4);
         }
       }
 }

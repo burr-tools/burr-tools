@@ -197,6 +197,15 @@ public:
   virtual void drawFrame(const voxel_c * space, int x, int y, int z, float edge) = 0;
   virtual void drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge) = 0;
   virtual void drawVariableMarkers(const voxel_c * space, int x, int y, int z) = 0;
+
+
+  void drawGridTriangle(double x0, double y0, double z0,
+      double v1x, double v1y, double v1z,
+      double v2x, double v2y, double v2z, int diag);
+  void drawGridRect(double x0, double y0, double z0,
+      double v1x, double v1y, double v1z,
+      double v2x, double v2y, double v2z, int diag);
+
 };
 
 #endif
