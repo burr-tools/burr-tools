@@ -1,4 +1,4 @@
-AC_INIT(burrTools, 0.1.9pre)
+AC_INIT(burrTools, 0.1.9)
 
 AC_CONFIG_SRCDIR(src/tester.cpp)
 AC_CONFIG_AUX_DIR(admin)
