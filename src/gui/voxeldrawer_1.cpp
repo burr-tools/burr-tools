@@ -139,7 +139,6 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
       if (!space->isEmpty2(x-1, y-1, z) ||
           !space->isEmpty2(x, y-1, z) ||
-          space->isEmpty2(x+1, y, z) ||
           space->isEmpty2(x+1, y-1, z)) {
         glVertex3f(x3-MY, y3, z); glVertex3f(x3-MY, y3, z+1);
         glVertex3f(x3-C2EX*edge-MY, y3+C2EY*edge, z+1); glVertex3f(x3-C2EX*edge-MY, y3+C2EY*edge, z);
@@ -147,7 +146,6 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
       if (!space->isEmpty2(x-2, y, z) ||
           !space->isEmpty2(x-2, y+1, z) ||
-          space->isEmpty2(x, y+1, z) ||
           space->isEmpty2(x-1, y+1, z)) {
         glVertex3f(x1-MY, y1, z); glVertex3f(x1-MY, y1, z+1);
         glVertex3f(x1+C2EX*edge-MY, y1-C2EY*edge, z+1); glVertex3f(x1+C2EX*edge-MY, y1-C2EY*edge, z);
@@ -162,7 +160,6 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
       if (!space->isEmpty2(x-1, y+1, z) ||
           !space->isEmpty2(x, y+1, z) ||
-          space->isEmpty2(x+1, y, z) ||
           space->isEmpty2(x+1, y+1, z)) {
         glVertex3f(x3-MY, y3, z); glVertex3f(x3-MY, y3, z+1);
         glVertex3f(x3-C2EX*edge-MY, y3-C2EY*edge, z+1); glVertex3f(x3-C2EX*edge-MY, y3-C2EY*edge, z);
@@ -170,7 +167,6 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
       if (!space->isEmpty2(x-2, y, z) ||
           !space->isEmpty2(x-2, y-1, z) ||
-          space->isEmpty2(x, y-1, z) ||
           space->isEmpty2(x-1, y-1, z)) {
         glVertex3f(x1-MY, y1, z); glVertex3f(x1-MY, y1, z+1);
         glVertex3f(x1+C2EX*edge-MY, y1+C2EY*edge, z+1); glVertex3f(x1+C2EX*edge-MY, y1+C2EY*edge, z);
@@ -203,7 +199,6 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
       if (!space->isEmpty2(x+1, y-1, z) ||
           !space->isEmpty2(x, y-1, z) ||
-          space->isEmpty2(x-1, y, z) ||
           space->isEmpty2(x-1, y-1, z)) {
         glVertex3f(x3+MY, y3, z); glVertex3f(x3+MY, y3, z+1);
         glVertex3f(x3+C2EX*edge+MY, y3+C2EY*edge, z+1); glVertex3f(x3+C2EX*edge+MY, y3+C2EY*edge, z);
@@ -211,7 +206,6 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
       if (!space->isEmpty2(x+2, y, z) ||
           !space->isEmpty2(x+2, y+1, z) ||
-          space->isEmpty2(x, y+1, z) ||
           space->isEmpty2(x+1, y+1, z)) {
         glVertex3f(x1+MY, y1, z); glVertex3f(x1+MY, y1, z+1);
         glVertex3f(x1-C2EX*edge+MY, y1-C2EY*edge, z+1); glVertex3f(x1-C2EX*edge+MY, y1-C2EY*edge, z);
@@ -226,7 +220,6 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
       if (!space->isEmpty2(x+1, y+1, z) ||
           !space->isEmpty2(x, y+1, z) ||
-          space->isEmpty2(x-1, y, z) ||
           space->isEmpty2(x-1, y+1, z)) {
         glVertex3f(x3+MY, y3, z); glVertex3f(x3+MY, y3, z+1);
         glVertex3f(x3+C2EX*edge+MY, y3-C2EY*edge, z+1); glVertex3f(x3+C2EX*edge+MY, y3-C2EY*edge, z);
@@ -234,7 +227,6 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
       if (!space->isEmpty2(x+2, y, z) ||
           !space->isEmpty2(x+2, y-1, z) ||
-          space->isEmpty2(x, y-1, z) ||
           space->isEmpty2(x+1, y-1, z)) {
         glVertex3f(x1+MY, y1, z); glVertex3f(x1+MY, y1, z+1);
         glVertex3f(x1-C2EX*edge+MY, y1+C2EY*edge, z+1); glVertex3f(x1-C2EX*edge+MY, y1+C2EY*edge, z);
@@ -265,16 +257,14 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
       if (!space->isEmpty2(x-2, y+1, z) ||
           !space->isEmpty2(x-1, y+1, z) ||
-          space->isEmpty2(x-2, y, z) ||
-          space->isEmpty2(x-1, y, z)) {
+          space->isEmpty2(x-2, y, z)) {
         glVertex3f(x1, y1+MY, z); glVertex3f(x1, y1+MY, z+1);
         glVertex3f(x1+edge, y1+MY, z+1); glVertex3f(x1+edge, y1+MY, z);
       }
 
       if (!space->isEmpty2(x+2, y+1, z) ||
           !space->isEmpty2(x+1, y+1, z) ||
-          space->isEmpty2(x+2, y, z) ||
-          space->isEmpty2(x+1, y, z)) {
+          space->isEmpty2(x+2, y, z)) {
         glVertex3f(x2, y2+MY, z); glVertex3f(x2, y2+MY, z+1);
         glVertex3f(x2-edge, y1+MY, z+1); glVertex3f(x2-edge, y1+MY, z);
       }
@@ -302,16 +292,14 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
       if (!space->isEmpty2(x-2, y-1, z) ||
           !space->isEmpty2(x-1, y-1, z) ||
-          space->isEmpty2(x-2, y, z) ||
-          space->isEmpty2(x-1, y, z)) {
+          space->isEmpty2(x-2, y, z)) {
         glVertex3f(x1, y1-MY, z); glVertex3f(x1, y1-MY, z+1);
         glVertex3f(x1+edge, y1-MY, z+1); glVertex3f(x1+edge, y1-MY, z);
       }
 
       if (!space->isEmpty2(x+2, y-1, z) ||
           !space->isEmpty2(x+1, y-1, z) ||
-          space->isEmpty2(x+2, y, z) ||
-          space->isEmpty2(x+1, y, z)) {
+          space->isEmpty2(x+2, y, z)) {
         glVertex3f(x2, y2-MY, z); glVertex3f(x2, y2-MY, z+1);
         glVertex3f(x2-edge, y1-MY, z+1); glVertex3f(x2-edge, y1-MY, z);
       }
