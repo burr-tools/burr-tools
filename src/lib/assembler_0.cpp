@@ -301,7 +301,7 @@ void assembler_0_c::cover(register unsigned int col)
     right[l] = r;
   }
 
-#if 1
+#ifndef __APPLE__
 
   unsigned int * upDown_ptr = &(upDown[0]);
   unsigned int * right_ptr = &(right[0]);
@@ -373,7 +373,7 @@ void assembler_0_c::cover(register unsigned int col)
 
 void assembler_0_c::uncover(register unsigned int col) {
 
-#if 1
+#ifndef __APPLE__
 
   unsigned int * upDown_ptr = &(upDown[0]);
   unsigned int * left_ptr = &(left[0]);
