@@ -219,12 +219,11 @@ const symmetries_c * gridType_c::getSymmetries(void) const {
   return sym;
 }
 
-/* sometimes it might be possible to convert from the current grid
- * to anothe e.g. hexagonal to triangular prisms
- */
-#if 0
-converter_c * gridType_c::getConveter(gridType target) {
-  return 0;
+unsigned int gridType_c::getCapabilities(void) const {
+  switch (type) {
+    case GT_BRICKS: return CAP_ASSEMBLE | CAP_DISASSEMBLE;
+    case GT_TRIANGULAR_PRISM: return 0;
+    default: return 0;
+  }
 }
-#endif
 

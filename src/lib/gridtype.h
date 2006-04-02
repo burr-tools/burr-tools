@@ -42,6 +42,12 @@ class gridType_c {
 //      GT_RHOMBIC_DODECAEDER,
     } gridType;
 
+    /* capabilities of a given grid space */
+    typedef enum {
+      CAP_ASSEMBLE = 1,
+      CAP_DISASSEMBLE = 2
+    } capabilities;
+
   protected:
 
     gridType type;
@@ -95,6 +101,8 @@ class gridType_c {
     /* get the grid type */
     gridType getType(void) { return type; }
 
+    unsigned int getCapabilities(void) const;
+
     /* functions to access the fields for a BRICK grid type */
     bool getBrickXneY(void) const { bt_assert(type == GT_BRICKS); return parameters.brick.x_differs_y; }
     bool getBrickXneZ(void) const { bt_assert(type == GT_BRICKS); return parameters.brick.x_differs_z; }
@@ -130,13 +138,6 @@ class gridType_c {
     voxel_c * getVoxel(const voxel_c * orig, unsigned int transformation = 0) const;
 
     const symmetries_c * getSymmetries(void) const;
-
-    /* sometimes it might be possible to convert from the current grid
-     * to anothe e.g. hexagonal to triangular prisms
-     */
-#if 0
-    converter_c * getConveter(gridType target);
-#endif
 };
 
 

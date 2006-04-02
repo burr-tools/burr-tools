@@ -46,6 +46,8 @@ class guiGridType_c {
     /* return icon and text for the current grid type */
     char * getIcon(void) const;
     const char * getName(void) const;
+
+    const gridType_c * getGridType(void) const { return gt; }
 };
 
 #endif

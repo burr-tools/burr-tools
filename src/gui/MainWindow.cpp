@@ -788,6 +788,17 @@ void UserInterface::cb_BtnCont(void) {
 
   unsigned int prob = solutionProblem->getSelection();
 
+  if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_ASSEMBLE)) {
+    fl_message("Sorry this space grid doesn't have an assembler (yet)!");
+    return;
+  }
+
+  if (SolveDisasm->value() && !(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
+    fl_message("Sorry this space grid doesn't have a disassembler (yet)!\n"
+               "You must disable the disassembler first\n");
+    return;
+  }
+
   if (prob >= puzzle->problemNumber()) {
     fl_message("First create a problem");
     return;
