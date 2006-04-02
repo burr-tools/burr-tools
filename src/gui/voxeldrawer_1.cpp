@@ -38,6 +38,7 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
   glBegin(GL_QUADS);
 
+  // bottom triangle
   if (space->isEmpty2(x, y, z-1)) {
     glNormal3f( 0.0f, 0.0f, -1.0f);
 
@@ -48,16 +49,16 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       float x3 = x1+0.5;  float y3 = y1 - HEIGHT;
 
       if (space->isEmpty2(x, y+1, z) || !space->isEmpty2(x, y+1, z-1)) {
-        glVertex3f(x1, y1, z-MY); glVertex3f(x2, y2, z-MY);
-        glVertex3f(x2-edge*C1E1X, y2-edge*C1E1Y, z-MY); glVertex3f(x1+edge*C1E1X, y1-edge*C1E1Y, z-MY);
+        glVertex3f(x1, y1, z); glVertex3f(x2, y2, z);
+        glVertex3f(x2-edge*C1E1X, y2-edge*C1E1Y, z); glVertex3f(x1+edge*C1E1X, y1-edge*C1E1Y, z);
       }
       if (space->isEmpty2(x-1, y, z) || !space->isEmpty2(x-1, y, z-1)) {
-        glVertex3f(x1, y1, z-MY); glVertex3f(x3, y3, z-MY);
-        glVertex3f(x3+C2EX*edge, y3+C2EY*edge, z-MY); glVertex3f(x1+edge*C1E2X, y1-edge*C1E2Y, z-MY);
+        glVertex3f(x1, y1, z); glVertex3f(x3, y3, z);
+        glVertex3f(x3+C2EX*edge, y3+C2EY*edge, z); glVertex3f(x1+edge*C1E2X, y1-edge*C1E2Y, z);
       }
       if (space->isEmpty2(x+1, y, z) || !space->isEmpty2(x+1, y, z-1)) {
-        glVertex3f(x2, y2, z-MY); glVertex3f(x3, y3, z-MY);
-        glVertex3f(x3-C2EX*edge, y3+C2EY*edge, z-MY); glVertex3f(x2-edge*C1E2X, y2-edge*C1E2Y, z-MY);
+        glVertex3f(x2, y2, z); glVertex3f(x3, y3, z);
+        glVertex3f(x3-C2EX*edge, y3+C2EY*edge, z); glVertex3f(x2-edge*C1E2X, y2-edge*C1E2Y, z);
       }
 
     } else {
@@ -67,21 +68,22 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       float x3 = x1+0.5;  float y3 = y1 + HEIGHT;
 
       if (space->isEmpty2(x, y-1, z) || !space->isEmpty2(x, y-1, z-1)) {
-        glVertex3f(x1, y1, z-MY); glVertex3f(x2, y2, z-MY);
-        glVertex3f(x2-edge*C1E1X, y2+edge*C1E1Y, z-MY); glVertex3f(x1+edge*C1E1X, y1+edge*C1E1Y, z-MY);
+        glVertex3f(x1, y1, z); glVertex3f(x2, y2, z);
+        glVertex3f(x2-edge*C1E1X, y2+edge*C1E1Y, z); glVertex3f(x1+edge*C1E1X, y1+edge*C1E1Y, z);
       }
       if (space->isEmpty2(x-1, y, z) || !space->isEmpty2(x-1, y, z-1)) {
-        glVertex3f(x1, y1, z-MY); glVertex3f(x3, y3, z-MY);
-        glVertex3f(x3+C2EX*edge, y3-C2EY*edge, z-MY); glVertex3f(x1+edge*C1E2X, y1+edge*C1E2Y, z-MY);
+        glVertex3f(x1, y1, z); glVertex3f(x3, y3, z);
+        glVertex3f(x3+C2EX*edge, y3-C2EY*edge, z); glVertex3f(x1+edge*C1E2X, y1+edge*C1E2Y, z);
       }
       if (space->isEmpty2(x+1, y, z) || !space->isEmpty2(x+1, y, z-1)) {
-        glVertex3f(x2, y2, z-MY); glVertex3f(x3, y3, z-MY);
-        glVertex3f(x3-C2EX*edge, y3-C2EY*edge, z-MY); glVertex3f(x2-edge*C1E2X, y2+edge*C1E2Y, z-MY);
+        glVertex3f(x2, y2, z); glVertex3f(x3, y3, z);
+        glVertex3f(x3-C2EX*edge, y3-C2EY*edge, z); glVertex3f(x2-edge*C1E2X, y2+edge*C1E2Y, z);
       }
 
     }
   }
 
+  // top triangle
   if (space->isEmpty2(x, y, z+1)) {
     glNormal3f( 0.0f, 0.0f, 1.0f);
 
@@ -92,16 +94,16 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       float x3 = x1+0.5;  float y3 = y1 - HEIGHT;
 
       if (space->isEmpty2(x, y+1, z) || !space->isEmpty2(x, y+1, z+1)) {
-        glVertex3f(x1, y1, z+1+MY); glVertex3f(x2, y2, z+1+MY);
-        glVertex3f(x2-edge*C1E1X, y2-edge*C1E1Y, z+1+MY); glVertex3f(x1+edge*C1E1X, y1-edge*C1E1Y, z+1+MY);
+        glVertex3f(x1, y1, z+1); glVertex3f(x2, y2, z+1);
+        glVertex3f(x2-edge*C1E1X, y2-edge*C1E1Y, z+1); glVertex3f(x1+edge*C1E1X, y1-edge*C1E1Y, z+1);
       }
       if (space->isEmpty2(x-1, y, z) || !space->isEmpty2(x-1, y, z+1)) {
-        glVertex3f(x1, y1, z+1+MY); glVertex3f(x3, y3, z+1+MY);
-        glVertex3f(x3+C2EX*edge, y3+C2EY*edge, z+1+MY); glVertex3f(x1+edge*C1E2X, y1-edge*C1E2Y, z+1+MY);
+        glVertex3f(x1, y1, z+1); glVertex3f(x3, y3, z+1);
+        glVertex3f(x3+C2EX*edge, y3+C2EY*edge, z+1); glVertex3f(x1+edge*C1E2X, y1-edge*C1E2Y, z+1);
       }
       if (space->isEmpty2(x+1, y, z) || !space->isEmpty2(x+1, y, z+1)) {
-        glVertex3f(x2, y2, z+1+MY); glVertex3f(x3, y3, z+1+MY);
-        glVertex3f(x3-C2EX*edge, y3+C2EY*edge, z+1+MY); glVertex3f(x2-edge*C1E2X, y2-edge*C1E2Y, z+1+MY);
+        glVertex3f(x2, y2, z+1); glVertex3f(x3, y3, z+1);
+        glVertex3f(x3-C2EX*edge, y3+C2EY*edge, z+1); glVertex3f(x2-edge*C1E2X, y2-edge*C1E2Y, z+1);
       }
 
     } else {
@@ -111,21 +113,22 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       float x3 = x1+0.5;  float y3 = y1 + HEIGHT;
 
       if (space->isEmpty2(x, y-1, z) || !space->isEmpty2(x, y-1, z+1)) {
-        glVertex3f(x1, y1, z+1+MY); glVertex3f(x2, y2, z+1+MY);
-        glVertex3f(x2-edge*C1E1X, y2+edge*C1E1Y, z+1+MY); glVertex3f(x1+edge*C1E1X, y1+edge*C1E1Y, z+1+MY);
+        glVertex3f(x1, y1, z+1); glVertex3f(x2, y2, z+1);
+        glVertex3f(x2-edge*C1E1X, y2+edge*C1E1Y, z+1); glVertex3f(x1+edge*C1E1X, y1+edge*C1E1Y, z+1);
       }
       if (space->isEmpty2(x-1, y, z) || !space->isEmpty2(x-1, y, z+1)) {
-        glVertex3f(x1, y1, z+1+MY); glVertex3f(x3, y3, z+1+MY);
-        glVertex3f(x3+C2EX*edge, y3-C2EY*edge, z+1+MY); glVertex3f(x1+edge*C1E2X, y1+edge*C1E2Y, z+1+MY);
+        glVertex3f(x1, y1, z+1); glVertex3f(x3, y3, z+1);
+        glVertex3f(x3+C2EX*edge, y3-C2EY*edge, z+1); glVertex3f(x1+edge*C1E2X, y1+edge*C1E2Y, z+1);
       }
       if (space->isEmpty2(x+1, y, z) || !space->isEmpty2(x+1, y, z+1)) {
-        glVertex3f(x2, y2, z+1+MY); glVertex3f(x3, y3, z+1+MY);
-        glVertex3f(x3-C2EX*edge, y3-C2EY*edge, z+1+MY); glVertex3f(x2-edge*C1E2X, y2+edge*C1E2Y, z+1+MY);
+        glVertex3f(x2, y2, z+1); glVertex3f(x3, y3, z+1);
+        glVertex3f(x3-C2EX*edge, y3-C2EY*edge, z+1); glVertex3f(x2-edge*C1E2X, y2+edge*C1E2Y, z+1);
       }
 
     }
   }
 
+  // the left square
   if (space->isEmpty2(x-1, y, z)) {
 
     float x1, y1, x3, y3;
@@ -140,15 +143,15 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       if (!space->isEmpty2(x-1, y-1, z) ||
           !space->isEmpty2(x, y-1, z) ||
           space->isEmpty2(x+1, y-1, z)) {
-        glVertex3f(x3-MY, y3, z); glVertex3f(x3-MY, y3, z+1);
-        glVertex3f(x3-C2EX*edge-MY, y3+C2EY*edge, z+1); glVertex3f(x3-C2EX*edge-MY, y3+C2EY*edge, z);
+        glVertex3f(x3, y3, z); glVertex3f(x3, y3, z+1);
+        glVertex3f(x3-C2EX*edge, y3+C2EY*edge, z+1); glVertex3f(x3-C2EX*edge, y3+C2EY*edge, z);
       }
 
       if (!space->isEmpty2(x-2, y, z) ||
           !space->isEmpty2(x-2, y+1, z) ||
           space->isEmpty2(x-1, y+1, z)) {
-        glVertex3f(x1-MY, y1, z); glVertex3f(x1-MY, y1, z+1);
-        glVertex3f(x1+C2EX*edge-MY, y1-C2EY*edge, z+1); glVertex3f(x1+C2EX*edge-MY, y1-C2EY*edge, z);
+        glVertex3f(x1, y1, z); glVertex3f(x1, y1, z+1);
+        glVertex3f(x1+C2EX*edge, y1-C2EY*edge, z+1); glVertex3f(x1+C2EX*edge, y1-C2EY*edge, z);
       }
 
     } else {
@@ -161,31 +164,32 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       if (!space->isEmpty2(x-1, y+1, z) ||
           !space->isEmpty2(x, y+1, z) ||
           space->isEmpty2(x+1, y+1, z)) {
-        glVertex3f(x3-MY, y3, z); glVertex3f(x3-MY, y3, z+1);
-        glVertex3f(x3-C2EX*edge-MY, y3-C2EY*edge, z+1); glVertex3f(x3-C2EX*edge-MY, y3-C2EY*edge, z);
+        glVertex3f(x3, y3, z); glVertex3f(x3, y3, z+1);
+        glVertex3f(x3-C2EX*edge, y3-C2EY*edge, z+1); glVertex3f(x3-C2EX*edge, y3-C2EY*edge, z);
       }
 
       if (!space->isEmpty2(x-2, y, z) ||
           !space->isEmpty2(x-2, y-1, z) ||
           space->isEmpty2(x-1, y-1, z)) {
-        glVertex3f(x1-MY, y1, z); glVertex3f(x1-MY, y1, z+1);
-        glVertex3f(x1+C2EX*edge-MY, y1+C2EY*edge, z+1); glVertex3f(x1+C2EX*edge-MY, y1+C2EY*edge, z);
+        glVertex3f(x1, y1, z); glVertex3f(x1, y1, z+1);
+        glVertex3f(x1+C2EX*edge, y1+C2EY*edge, z+1); glVertex3f(x1+C2EX*edge, y1+C2EY*edge, z);
       }
     }
 
     if (!space->isEmpty2(x-1, y, z+1) ||
         space->isEmpty2(x, y, z+1)) {
-      glVertex3f(x1-MY, y1, z+1); glVertex3f(x3-MY, y3, z+1);
-      glVertex3f(x3-MY, y3, z+1-edge); glVertex3f(x1-MY, y1, z+1-edge);
+      glVertex3f(x1, y1, z+1); glVertex3f(x3, y3, z+1);
+      glVertex3f(x3, y3, z+1-edge); glVertex3f(x1, y1, z+1-edge);
     }
 
     if (!space->isEmpty2(x-1, y, z-1) ||
         space->isEmpty2(x, y, z-1)) {
-      glVertex3f(x1-MY, y1, z); glVertex3f(x3-MY, y3, z);
-      glVertex3f(x3-MY, y3, z+edge); glVertex3f(x1-MY, y1, z+edge);
+      glVertex3f(x1, y1, z); glVertex3f(x3, y3, z);
+      glVertex3f(x3, y3, z+edge); glVertex3f(x1, y1, z+edge);
     }
   }
 
+  // the right square
   if (space->isEmpty2(x+1, y, z)) {
 
     float x1, y1, x3, y3;
@@ -200,15 +204,15 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       if (!space->isEmpty2(x+1, y-1, z) ||
           !space->isEmpty2(x, y-1, z) ||
           space->isEmpty2(x-1, y-1, z)) {
-        glVertex3f(x3+MY, y3, z); glVertex3f(x3+MY, y3, z+1);
-        glVertex3f(x3+C2EX*edge+MY, y3+C2EY*edge, z+1); glVertex3f(x3+C2EX*edge+MY, y3+C2EY*edge, z);
+        glVertex3f(x3, y3, z); glVertex3f(x3, y3, z+1);
+        glVertex3f(x3+C2EX*edge, y3+C2EY*edge, z+1); glVertex3f(x3+C2EX*edge, y3+C2EY*edge, z);
       }
 
       if (!space->isEmpty2(x+2, y, z) ||
           !space->isEmpty2(x+2, y+1, z) ||
           space->isEmpty2(x+1, y+1, z)) {
-        glVertex3f(x1+MY, y1, z); glVertex3f(x1+MY, y1, z+1);
-        glVertex3f(x1-C2EX*edge+MY, y1-C2EY*edge, z+1); glVertex3f(x1-C2EX*edge+MY, y1-C2EY*edge, z);
+        glVertex3f(x1, y1, z); glVertex3f(x1, y1, z+1);
+        glVertex3f(x1-C2EX*edge, y1-C2EY*edge, z+1); glVertex3f(x1-C2EX*edge, y1-C2EY*edge, z);
       }
 
     } else {
@@ -221,31 +225,32 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       if (!space->isEmpty2(x+1, y+1, z) ||
           !space->isEmpty2(x, y+1, z) ||
           space->isEmpty2(x-1, y+1, z)) {
-        glVertex3f(x3+MY, y3, z); glVertex3f(x3+MY, y3, z+1);
-        glVertex3f(x3+C2EX*edge+MY, y3-C2EY*edge, z+1); glVertex3f(x3+C2EX*edge+MY, y3-C2EY*edge, z);
+        glVertex3f(x3, y3, z); glVertex3f(x3, y3, z+1);
+        glVertex3f(x3+C2EX*edge, y3-C2EY*edge, z+1); glVertex3f(x3+C2EX*edge, y3-C2EY*edge, z);
       }
 
       if (!space->isEmpty2(x+2, y, z) ||
           !space->isEmpty2(x+2, y-1, z) ||
           space->isEmpty2(x+1, y-1, z)) {
-        glVertex3f(x1+MY, y1, z); glVertex3f(x1+MY, y1, z+1);
-        glVertex3f(x1-C2EX*edge+MY, y1+C2EY*edge, z+1); glVertex3f(x1-C2EX*edge+MY, y1+C2EY*edge, z);
+        glVertex3f(x1, y1, z); glVertex3f(x1, y1, z+1);
+        glVertex3f(x1-C2EX*edge, y1+C2EY*edge, z+1); glVertex3f(x1-C2EX*edge, y1+C2EY*edge, z);
       }
     }
 
     if (!space->isEmpty2(x+1, y, z+1) ||
         space->isEmpty2(x, y, z+1)) {
-      glVertex3f(x1+MY, y1, z+1); glVertex3f(x3+MY, y3, z+1);
-      glVertex3f(x3+MY, y3, z+1-edge); glVertex3f(x1+MY, y1, z+1-edge);
+      glVertex3f(x1, y1, z+1); glVertex3f(x3, y3, z+1);
+      glVertex3f(x3, y3, z+1-edge); glVertex3f(x1, y1, z+1-edge);
     }
 
     if (!space->isEmpty2(x+1, y, z-1) ||
         space->isEmpty2(x, y, z-1)) {
-      glVertex3f(x1+MY, y1, z); glVertex3f(x3+MY, y3, z);
-      glVertex3f(x3+MY, y3, z+edge); glVertex3f(x1+MY, y1, z+edge);
+      glVertex3f(x1, y1, z); glVertex3f(x3, y3, z);
+      glVertex3f(x3, y3, z+edge); glVertex3f(x1, y1, z+edge);
     }
   }
 
+  // the square above or below (depending on the triangle type)
   if ((x+y) & 1) {
 
     if (space->isEmpty2(x, y+1, z)) {
@@ -258,34 +263,34 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       if (!space->isEmpty2(x-2, y+1, z) ||
           !space->isEmpty2(x-1, y+1, z) ||
           space->isEmpty2(x-2, y, z)) {
-        glVertex3f(x1, y1+MY, z); glVertex3f(x1, y1+MY, z+1);
-        glVertex3f(x1+edge, y1+MY, z+1); glVertex3f(x1+edge, y1+MY, z);
+        glVertex3f(x1, y1, z); glVertex3f(x1, y1, z+1);
+        glVertex3f(x1+edge, y1, z+1); glVertex3f(x1+edge, y1, z);
       }
 
       if (!space->isEmpty2(x+2, y+1, z) ||
           !space->isEmpty2(x+1, y+1, z) ||
           space->isEmpty2(x+2, y, z)) {
-        glVertex3f(x2, y2+MY, z); glVertex3f(x2, y2+MY, z+1);
-        glVertex3f(x2-edge, y1+MY, z+1); glVertex3f(x2-edge, y1+MY, z);
+        glVertex3f(x2, y2, z); glVertex3f(x2, y2, z+1);
+        glVertex3f(x2-edge, y1, z+1); glVertex3f(x2-edge, y1, z);
       }
 
       if (!space->isEmpty2(x, y+1, z+1) ||
           space->isEmpty2(x, y, z+1)) {
-        glVertex3f(x1, y1+MY, z+1); glVertex3f(x2, y2+MY, z+1);
-        glVertex3f(x2, y2+MY, z+1-edge); glVertex3f(x1, y1+MY, z+1-edge);
+        glVertex3f(x1, y1, z+1); glVertex3f(x2, y2, z+1);
+        glVertex3f(x2, y2, z+1-edge); glVertex3f(x1, y1, z+1-edge);
       }
 
       if (!space->isEmpty2(x, y+1, z-1) ||
           space->isEmpty2(x, y, z-1)) {
-        glVertex3f(x1, y1+MY, z); glVertex3f(x2, y2+MY, z);
-        glVertex3f(x2, y2+MY, z+edge); glVertex3f(x1, y1+MY, z+edge);
+        glVertex3f(x1, y1, z); glVertex3f(x2, y2, z);
+        glVertex3f(x2, y2, z+edge); glVertex3f(x1, y1, z+edge);
       }
     }
 
   } else {
 
     if (space->isEmpty2(x, y-1, z)) {
-      glNormal3f(0.0f, 1.0f, 0.0f);
+      glNormal3f(0.0f, -1.0f, 0.0f);
 
       float x1 = x*0.5;  float y1 = y*HEIGHT;
       float x2 = x1 + 1; float y2 = y1;
@@ -293,27 +298,27 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       if (!space->isEmpty2(x-2, y-1, z) ||
           !space->isEmpty2(x-1, y-1, z) ||
           space->isEmpty2(x-2, y, z)) {
-        glVertex3f(x1, y1-MY, z); glVertex3f(x1, y1-MY, z+1);
-        glVertex3f(x1+edge, y1-MY, z+1); glVertex3f(x1+edge, y1-MY, z);
+        glVertex3f(x1, y1, z); glVertex3f(x1, y1, z+1);
+        glVertex3f(x1+edge, y1, z+1); glVertex3f(x1+edge, y1, z);
       }
 
       if (!space->isEmpty2(x+2, y-1, z) ||
           !space->isEmpty2(x+1, y-1, z) ||
           space->isEmpty2(x+2, y, z)) {
-        glVertex3f(x2, y2-MY, z); glVertex3f(x2, y2-MY, z+1);
-        glVertex3f(x2-edge, y1-MY, z+1); glVertex3f(x2-edge, y1-MY, z);
+        glVertex3f(x2, y2, z); glVertex3f(x2, y2, z+1);
+        glVertex3f(x2-edge, y1, z+1); glVertex3f(x2-edge, y1, z);
       }
 
       if (!space->isEmpty2(x, y-1, z+1) ||
           space->isEmpty2(x, y, z+1)) {
-        glVertex3f(x1, y1-MY, z+1); glVertex3f(x2, y2-MY, z+1);
-        glVertex3f(x2, y2-MY, z+1-edge); glVertex3f(x1, y1-MY, z+1-edge);
+        glVertex3f(x1, y1, z+1); glVertex3f(x2, y2, z+1);
+        glVertex3f(x2, y2, z+1-edge); glVertex3f(x1, y1, z+1-edge);
       }
 
       if (!space->isEmpty2(x, y-1, z-1) ||
           space->isEmpty2(x, y, z-1)) {
-        glVertex3f(x1, y1-MY, z); glVertex3f(x2, y2-MY, z);
-        glVertex3f(x2, y2-MY, z+edge); glVertex3f(x1, y1-MY, z+edge);
+        glVertex3f(x1, y1, z); glVertex3f(x2, y2, z);
+        glVertex3f(x2, y2, z+edge); glVertex3f(x1, y1, z+edge);
       }
     }
   }
@@ -357,34 +362,235 @@ void voxelDrawer_1_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
 
   glBegin(GL_QUADS);
 
+  // top or bottom square
   if (((x+y) & 1) && space->isEmpty2(x, y+1, z) ||
       !((x+y) & 1) && space->isEmpty2(x, y-1, z)) {
-    glNormal3f( n1x, n1y, 0.0f);
-    glVertex3f(x1, y1, z); glVertex3f(x2, y2, z); glVertex3f(x2, y2, z+1); glVertex3f(x1, y1, z+1);
+
+    float x1p = x1;
+    float y1p = y1;
+    float z1p = z;
+    float x2p = x2;
+    float y2p = y2;
+    float z2p = z+1;
+
+    int ydelta;
+
+    if ((x+y) & 1)
+      ydelta = 1;
+    else
+      ydelta = -1;
+
+    if (!space->isEmpty2(x-2, y+ydelta, z) ||
+        !space->isEmpty2(x-1, y+ydelta, z) ||
+        space->isEmpty2(x-2, y, z)) {
+      x1p += edge;
+    }
+
+    if (!space->isEmpty2(x+2, y+ydelta, z) ||
+        !space->isEmpty2(x+1, y+ydelta, z) ||
+        space->isEmpty2(x+2, y, z)) {
+      x2p -= edge;
+    }
+
+    if (!space->isEmpty2(x, y+ydelta, z+1) ||
+        space->isEmpty2(x, y, z+1)) {
+      z2p -= edge;
+    }
+
+    if (!space->isEmpty2(x, y+ydelta, z-1) ||
+        space->isEmpty2(x, y, z-1)) {
+      z1p += edge;
+    }
+
+    glNormal3f(n1x, n1y, 0.0f);
+    glVertex3f(x1p, y1p, z1p); glVertex3f(x2p, y2p, z1p); glVertex3f(x2p, y2p, z2p); glVertex3f(x1p, y1p, z2p);
   }
 
   if (space->isEmpty2(x-1, y, z)) {
-    glNormal3f( n2x, n2y, 0.0f);
-    glVertex3f(x1, y1, z); glVertex3f(x3, y3, z); glVertex3f(x3, y3, z+1); glVertex3f(x1, y1, z+1);
+
+    float x1p = x1;
+    float y1p = y1;
+    float z1p = z;
+    float x3p = x3;
+    float y3p = y3;
+    float z3p = z+1;
+
+    if ((x+y) & 1) {
+
+      if (!space->isEmpty2(x-1, y-1, z) ||
+          !space->isEmpty2(x, y-1, z) ||
+          space->isEmpty2(x+1, y-1, z)) {
+        x3p -= C2EX*edge; y3p += C2EY*edge;
+      }
+
+      if (!space->isEmpty2(x-2, y, z) ||
+          !space->isEmpty2(x-2, y+1, z) ||
+          space->isEmpty2(x-1, y+1, z)) {
+        x1p += C2EX*edge; y1p -= C2EY*edge;
+      }
+
+    } else {
+
+      if (!space->isEmpty2(x-1, y+1, z) ||
+          !space->isEmpty2(x, y+1, z) ||
+          space->isEmpty2(x+1, y+1, z)) {
+        x3p -= C2EX*edge; y3p -= C2EY*edge;
+      }
+
+      if (!space->isEmpty2(x-2, y, z) ||
+          !space->isEmpty2(x-2, y-1, z) ||
+          space->isEmpty2(x-1, y-1, z)) {
+        x1p += C2EX*edge; y1p += C2EY*edge;
+      }
+    }
+
+    if (!space->isEmpty2(x-1, y, z+1) ||
+        space->isEmpty2(x, y, z+1)) {
+      z3p -= edge;
+    }
+
+    if (!space->isEmpty2(x-1, y, z-1) ||
+        space->isEmpty2(x, y, z-1)) {
+      z1p += edge;
+    }
+
+    glNormal3f(n2x, n2y, 0.0f);
+    glVertex3f(x1p, y1p, z1p); glVertex3f(x3p, y3p, z1p); glVertex3f(x3p, y3p, z3p); glVertex3f(x1p, y1p, z3p);
   }
 
+  // right triangle
   if (space->isEmpty2(x+1, y, z)) {
+
+    float x2p = x2;
+    float y2p = y2;
+    float z2p = z;
+    float x3p = x3;
+    float y3p = y3;
+    float z3p = z+1;
+
+    if ((x+y) & 1) {
+
+      if (!space->isEmpty2(x+1, y-1, z) ||
+          !space->isEmpty2(x, y-1, z) ||
+          space->isEmpty2(x-1, y-1, z)) {
+        x3p += C2EX*edge; y3p += C2EY*edge;
+      }
+
+      if (!space->isEmpty2(x+2, y, z) ||
+          !space->isEmpty2(x+2, y+1, z) ||
+          space->isEmpty2(x+1, y+1, z)) {
+        x2p -= C2EX*edge; y2p -= C2EY*edge;
+      }
+
+    } else {
+
+      if (!space->isEmpty2(x+1, y+1, z) ||
+          !space->isEmpty2(x, y+1, z) ||
+          space->isEmpty2(x-1, y+1, z)) {
+        x3p += C2EX*edge; y3p -= C2EY*edge;
+      }
+
+      if (!space->isEmpty2(x+2, y, z) ||
+          !space->isEmpty2(x+2, y-1, z) ||
+          space->isEmpty2(x+1, y-1, z)) {
+        x2p -= C2EX*edge; y2p += C2EY*edge;
+      }
+    }
+
+    if (!space->isEmpty2(x+1, y, z+1) ||
+        space->isEmpty2(x, y, z+1)) {
+      z3p -= edge;
+    }
+
+    if (!space->isEmpty2(x+1, y, z-1) ||
+        space->isEmpty2(x, y, z-1)) {
+      z2p += edge;
+    }
+
     glNormal3f( n3x, n3y, 0.0f);
-    glVertex3f(x2, y2, z); glVertex3f(x3, y3, z); glVertex3f(x3, y3, z+1); glVertex3f(x2, y2, z+1);
+    glVertex3f(x2p, y2p, z2p); glVertex3f(x3p, y3p, z2p); glVertex3f(x3p, y3p, z3p); glVertex3f(x2p, y2p, z3p);
   }
 
   glEnd();
 
   glBegin(GL_TRIANGLES);
 
+  // bottom triangle
   if (space->isEmpty2(x, y, z-1)) {
+
+    float x1p = x1;
+    float y1p = y1;
+    float x2p = x2;
+    float y2p = y2;
+    float x3p = x3;
+    float y3p = y3;
+
+    if ((x+y) & 1) {
+
+      if (space->isEmpty2(x, y+1, z) || !space->isEmpty2(x, y+1, z-1)) {
+        x1p += edge*C1E1X; x2p -= edge*C1E1X; y1p -= edge*C1E1Y; y2p -= edge*C1E1Y;
+      }
+      if (space->isEmpty2(x-1, y, z) || !space->isEmpty2(x-1, y, z-1)) {
+        x3p += C2EX*edge; y3p += C2EY*edge; x1p += edge*C1E2X; y1p -= edge*C1E2Y;
+      }
+      if (space->isEmpty2(x+1, y, z) || !space->isEmpty2(x+1, y, z-1)) {
+        x3p -= C2EX*edge; y3p += C2EY*edge; x2p -= edge*C1E2X; y2p -= edge*C1E2Y;
+      }
+
+    } else {
+
+      if (space->isEmpty2(x, y-1, z) || !space->isEmpty2(x, y-1, z-1)) {
+        x2p -= edge*C1E1X; y2p += edge*C1E1Y; x1p += edge*C1E1X; y1p += edge*C1E1Y;
+      }
+      if (space->isEmpty2(x-1, y, z) || !space->isEmpty2(x-1, y, z-1)) {
+        x3p += C2EX*edge; y3p -= C2EY*edge; x1p += edge*C1E2X; y1p += edge*C1E2Y;
+      }
+      if (space->isEmpty2(x+1, y, z) || !space->isEmpty2(x+1, y, z-1)) {
+        x3p -= C2EX*edge; y3p -= C2EY*edge; x2p -= edge*C1E2X; y2p += edge*C1E2Y;
+      }
+
+    }
     glNormal3f( 0.0f, 0.0f, -1.0f);
-    glVertex3f(x1, y1, z); glVertex3f(x2, y2, z); glVertex3f(x3, y3, z);
+    glVertex3f(x1p, y1p, z); glVertex3f(x2p, y2p, z); glVertex3f(x3p, y3p, z);
   }
 
+  // top triangle
   if (space->isEmpty2(x, y, z+1)) {
+
+    float x1p = x1;
+    float y1p = y1;
+    float x2p = x2;
+    float y2p = y2;
+    float x3p = x3;
+    float y3p = y3;
+
+    if ((x+y) & 1) {
+
+      if (space->isEmpty2(x, y+1, z) || !space->isEmpty2(x, y+1, z+1)) {
+        x2p -= edge*C1E1X; y2p -= edge*C1E1Y; x1p += edge*C1E1X; y1p -= edge*C1E1Y;
+      }
+      if (space->isEmpty2(x-1, y, z) || !space->isEmpty2(x-1, y, z+1)) {
+        x3p += C2EX*edge; y3p += C2EY*edge; x1p += edge*C1E2X; y1p -= edge*C1E2Y;
+      }
+      if (space->isEmpty2(x+1, y, z) || !space->isEmpty2(x+1, y, z+1)) {
+        x3p -= C2EX*edge; y3p += C2EY*edge; x2p -= edge*C1E2X; y2p -= edge*C1E2Y;
+      }
+
+    } else {
+
+      if (space->isEmpty2(x, y-1, z) || !space->isEmpty2(x, y-1, z+1)) {
+        x2p -= edge*C1E1X; y2p += edge*C1E1Y; x1p += edge*C1E1X; y1p += edge*C1E1Y;
+      }
+      if (space->isEmpty2(x-1, y, z) || !space->isEmpty2(x-1, y, z+1)) {
+        x3p += C2EX*edge; y3p -= C2EY*edge; x1p += edge*C1E2X; y1p += edge*C1E2Y;
+      }
+      if (space->isEmpty2(x+1, y, z) || !space->isEmpty2(x+1, y, z+1)) {
+        x3p -= C2EX*edge; y3p -= C2EY*edge; x2p -= edge*C1E2X; y2p += edge*C1E2Y;
+      }
+    }
+
     glNormal3f( 0.0f, 0.0f, 1.0f);
-    glVertex3f(x1, y1, z+1); glVertex3f(x2, y2, z+1); glVertex3f(x3, y3, z+1);
+    glVertex3f(x1p, y1p, z+1); glVertex3f(x2p, y2p, z+1); glVertex3f(x3p, y3p, z+1);
   }
 
   glEnd();
