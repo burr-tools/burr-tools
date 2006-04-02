@@ -1,3 +1,8 @@
+------------- Version 0.2.0
+
+- write required base for other space grids and partially implement triangular prisms 
+  (only editing and displaying right now)
+
 ------------- Version 0.1.9
 
 - the fade out of pieces that are removed in the assembly animation can be
