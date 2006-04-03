@@ -348,7 +348,7 @@ public:
   /**
    * get the bounding box of a rotated voxel space
    */
-  void getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2 = 0, int * y2 = 0, int * z2 = 0) const;
+  virtual void getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2 = 0, int * y2 = 0, int * z2 = 0) const;
 
   /**
    * Comparison of two voxel spaces.
@@ -464,7 +464,7 @@ public:
   /* this function returns the hotspot, if the voxel space would be rotated
    * by the given transformation
    */
-  void getHotspot(unsigned char trans, int * x, int * y, int * z) const;
+  virtual void getHotspot(unsigned char trans, int * x, int * y, int * z) const;
 
   /* functions to set the name */
   const std::string & getName(void) const { return name; }

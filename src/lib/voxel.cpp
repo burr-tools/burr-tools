@@ -151,131 +151,28 @@ bool voxel_c::identicalInBB(const voxel_c * op) const {
 
 void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 
-  const symmetries_c * sym = gt->getSymmetries();
+  /* this version always works, but also is quite slow
+   */
+  voxel_c * tmp = gt->getVoxel(this, trans);
+  *x = tmp->getHx();
+  *y = tmp->getHy();
+  *z = tmp->getHz();
 
-  int tx = hx;
-  int ty = hy;
-  int tz = hz;
-  int tsx = sx;
-  int tsy = sy;
-  int tsz = sz;
-  int t;
-
-  if (trans >= sym->getNumTransformations()) {
-    tx = sx - 1 - tx;
-    trans -= sym->getNumTransformations();
-  }
-
-  for (int i = 0; i < sym->rotx(trans); i++) {
-    t = ty;
-    ty = tsz - 1 - tz;
-    tz = t;
-    t = tsy;
-    tsy = tsz;
-    tsz = t;
-  }
-
-  for (int i = 0; i < sym->roty(trans); i++) {
-    t = tx;
-    tx = tsz - 1 - tz;
-    tz = t;
-    t = tsx;
-    tsx = tsz;
-    tsz = t;
-  }
-
-  for (int i = 0; i < sym->rotz(trans); i++) {
-    t = ty;
-    ty = tx;
-    tx = tsy - 1 - t;
-    t = tsx;
-    tsx = tsy;
-    tsy = t;
-  }
-
-  *x = tx;
-  *y = ty;
-  *z = tz;
+  delete tmp;
 }
 
 void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2, int * y2, int * z2) const {
 
-  const symmetries_c * sym = gt->getSymmetries();
+  /* this version always works, but it is quite slow */
+  voxel_c * tmp = gt->getVoxel(this, trans);
+  *x1 = tmp->boundX1();
+  *x2 = tmp->boundX2();
+  *y1 = tmp->boundY1();
+  *y2 = tmp->boundY2();
+  *z1 = tmp->boundZ1();
+  *z2 = tmp->boundZ2();
 
-  int t1x = bx1;
-  int t1y = by1;
-  int t1z = bz1;
-  int t2x = bx2;
-  int t2y = by2;
-  int t2z = bz2;
-
-  int tsx = sx;
-  int tsy = sy;
-  int tsz = sz;
-  int t;
-
-  if (trans >= sym->getNumTransformations()) {
-    t1x = sx - 1 - t1x;
-    t2x = sx - 1 - t2x;
-    trans -= sym->getNumTransformations();
-  }
-
-  for (int i = 0; i < sym->rotx(trans); i++) {
-    t = t1y;
-    t1y = tsz - 1 - t1z;
-    t1z = t;
-
-    t = t2y;
-    t2y = tsz - 1 - t2z;
-    t2z = t;
-
-    t = tsy;
-    tsy = tsz;
-    tsz = t;
-  }
-
-  for (int i = 0; i < sym->roty(trans); i++) {
-    t = t1x;
-    t1x = tsz - 1 - t1z;
-    t1z = t;
-
-    t = t2x;
-    t2x = tsz - 1 - t2z;
-    t2z = t;
-
-    t = tsx;
-    tsx = tsz;
-    tsz = t;
-  }
-
-  for (int i = 0; i < sym->rotz(trans); i++) {
-    t = t1y;
-    t1y = t1x;
-    t1x = tsy - 1 - t;
-
-    t = t2y;
-    t2y = t2x;
-    t2x = tsy - 1 - t;
-
-    t = tsx;
-    tsx = tsy;
-    tsy = t;
-  }
-
-#define MIN(a,b) (a<b)?(a):(b)
-#define MAX(a,b) (a>b)?(a):(b)
-
-  if (x1) *x1 = MIN(t1x, t2x);
-  if (x2) *x2 = MAX(t1x, t2x);
-
-  if (y1) *y1 = MIN(t1y, t2y);
-  if (y2) *y2 = MAX(t1y, t2y);
-
-  if (z1) *z1 = MIN(t1z, t2z);
-  if (z2) *z2 = MAX(t1z, t2z);
-
-#undef MIN
-#undef MAX
+  delete tmp;
 }
 
 void voxel_c::minimize(voxel_type val) {

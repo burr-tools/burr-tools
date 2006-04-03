@@ -47,6 +47,8 @@ class voxel_0_c : public voxel_c {
     void rotatey(int by = 1);
     void rotatez(int by = 1);
 
+    virtual void getHotspot(unsigned char trans, int * x, int * y, int * z) const;
+    virtual void getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2 = 0, int * y2 = 0, int * z2 = 0) const;
 };
 
 #endif
