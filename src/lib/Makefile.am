@@ -17,7 +17,8 @@ libburr_a_SOURCES=disassembler.h assembler.h \
 		  voxel_1.cpp voxel_1.h \
                   burrgrower.h burrgrower.cpp \
                   piecegenerator.h piecegenerator.cpp \
-                  symmetries.h symmetries.cpp \
+                  symmetries.h \
+                  symmetries_0.h symmetries_0.cpp \
                   assemblerthread.cpp assemblerthread.h \
                   print.h print.cpp \
                   ps3dloader.h ps3dloader.cpp \
