@@ -106,6 +106,7 @@ void voxel_1_c::rotatez(int by) {
     int d1x1, d1y1, d1x2, d1y2;  // the 2 vectors for the x-direction
     int d2x1, d2y1, d2x2, d2y2;  // the 2 vectors for the y-direction
 
+    d1x1 = d1y1 = d1x2 = d1y2 = d2x1 = d2y1 = d2x2 = d2y2 = 0;
     int px = 0;
     int py = 0;
 
@@ -125,6 +126,8 @@ void voxel_1_c::rotatez(int by) {
     case 5:
       d1x1 =  1; d1y1 = 0; d1x2 =  0; d1y2 = -1; d2x1 =  2; d2y1 =  1; d2x2 =  1; d2y2 =  0;
       break;
+    default:
+      bt_assert(0);
     }
 
     // now find out the area that is occupied by the rotated space
