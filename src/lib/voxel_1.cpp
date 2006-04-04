@@ -46,6 +46,8 @@ void voxel_1_c::rotatex(int by) {
     sy = nsy;
     sz = nsz;
 
+    // TODO: recalc bounding box and hotspot position
+
     voxels = nsx*nsy*nsz;
   }
 
@@ -77,6 +79,8 @@ void voxel_1_c::rotatey(int by) {
     sz = nsz;
 
     voxels = nsx*nsy*nsz;
+
+    // TODO: recalc bounding box and hotspot position
   }
 
   symmetries = symmetryInvalid();
@@ -84,59 +88,163 @@ void voxel_1_c::rotatey(int by) {
 
 void voxel_1_c::rotatez(int by) {
 
-  // this is the complicated case
-  //
-  // we first calculate the rotation center by looking for a point where the maximum distance of the other
-  // used points is minimal
-  // then we calculate the size required to hold all of the possible rotations
-  // then we place the new rotation inside this new grid
-
-  by &= 6;
-
-  // the rotation center
-  float rx, ry;
-  int nsx = sx;
-  int nsy = sy;
-  int nsz = sz;
+  /* this is the complicated case
+   * it works by first calculating directions for the x any y axis in the
+   * rotated shape, this can be done with 2 vectors that are alternatingly
+   * applied and let you skip from one triangle to the next
+   *
+   * with this vectors the resulting area of the shape is calculated with
+   * this area the final grid size and position is calculated
+   */
+  by %= 6;
 
   // calculate rotation center and new grid size
   if (by != 0) {
-  }
+    // the rotation center
+    // translation, the
 
-  // perform the rotations around the caluclated center
-  voxel_type *s = new voxel_type[nsx*nsy*nsz];
-  memset(s, outside, nsx*nsy*nsz);
+    int d1x1, d1y1, d1x2, d1y2;  // the 2 vectors for the x-direction
+    int d2x1, d2y1, d2x2, d2y2;  // the 2 vectors for the y-direction
 
-  for (unsigned int x = 0; x < sx; x++)
-    for (unsigned int y = 0; y < sy; y++) {
+    int px = 0;
+    int py = 0;
 
-      // calculete a point inside the current triangle
-      float px = x*0.5+0.5 - rx;
-      float py = (y+0.5)*sqrt(3)/2 - ry;
-
-      // rotate arount z axis by 60 degree
-      float tx =  cos(by*60*M_PI/180)*px + sin(by*60*M_PI/180)*py + rx;
-      float ty = -sin(by*60*M_PI/180)*px + cos(by*60*M_PI/180)*py + ry;
-
-      // find out the tile that we are on
-      bt_assert(tx > 0);
-      bt_assert(ty > 0);
-
-      unsigned int tty = (unsigned int)(ty / (sqrt(3)/2));
-      unsigned int ttx = 2 * (unsigned int)tx;
-
-      for (unsigned int z = 0; z < nsz; z++)
-        s[ttx + nsx*(y + nsy*z)] = space[x + sx*(y + sy*z)];
+    switch (by) {
+    case 1:
+      d1x1 =  0; d1y1 = 1; d1x2 =  1; d1y2 = 0; d2x1 = -2; d2y1 =  1; d2x2 = -1; d2y2 =  0;
+      break;
+    case 2:
+      d1x1 = -1; d1y1 = 0; d1x2 =  0; d1y2 = 1; d2x1 = -2; d2y1 = -1; d2x2 = -1; d2y2 =  0;
+      break;
+    case 3:
+      d1x1 = -1; d1y1 = 0; d1x2 = -1; d1y2 = 0; d2x1 =  0; d2y1 = -1; d2x2 =  0; d2y2 = -1;
+      break;
+    case 4:
+      d1x1 = 0; d1y1 = -1; d1x2 =  -1; d1y2 = 0; d2x1 = 2; d2y1 =  -1; d2x2 = 1; d2y2 =  0;
+      break;
+    case 5:
+      d1x1 =  1; d1y1 = 0; d1x2 =  0; d1y2 = -1; d2x1 =  2; d2y1 =  1; d2x2 =  1; d2y2 =  0;
+      break;
     }
 
-  delete [] space;
-  space = s;
-  sx = nsx;
-  sy = nsy;
-  sz = nsz;
+    // now find out the area that is occupied by the rotated space
 
-  voxels = nsx*nsy*nsz;
+    int ax1 = 10000;
+    int ay1 = 10000;
+    int ax2 = -10000;
+    int ay2 = -10000;
 
+    for (unsigned int y = 0; y < sy; y++) {
+
+      int tx = px;
+      int ty = py;
+
+      for (unsigned int x = 0; x < sx; x++) {
+
+        // if it is occupied, save the bounding box of the result shape
+        for (unsigned int z = 0; z < sz; z++)
+          if (get(x, y, z)) {
+            if (tx < ax1) ax1 = tx;
+            if (tx > ax2) ax2 = tx;
+
+            if (ty < ay1) ay1 = ty;
+            if (ty > ay2) ay2 = ty;
+          }
+
+        if ((x+y) & 1) {
+          tx += d1x2;
+          ty += d1y2;
+        } else {
+          tx += d1x1;
+          ty += d1y1;
+        }
+      }
+
+      if (y & 1) {
+        px += d2x2;
+        py += d2y2;
+      } else {
+        px += d2x1;
+        py += d2y1;
+      }
+    }
+
+    // when empty, don't do anything
+    if (ax1 == 10000) return;
+
+    // calculate the size of the new voxel space with the rotated solution
+    int nsx = sx;
+    int nsy = sy;
+    int nsz = sz;
+
+    // the rotated solution must fit into the new space, so make it larger if required
+    if (ax2-ax1+1 > nsx) nsx = ax2-ax1+1;
+    if (ay2-ay1+1 > nsy) nsy = ay2-ay1+1;
+
+    // now shift, so that the rotated shape is in the center
+
+    px = -ax1;
+    py = -ay1;
+
+    px += (nsx - (ax2-ax1+1)) / 2;
+    py += (nsy - (ay2-ay1+1)) / 2;
+
+    // now check, that the starting point has the right parity
+    if (by & 1) {
+      if (!((px+py) & 1)) px++;
+    } else {
+      if ((px+py) & 1) px++;
+    }
+
+    // if the grid now doesn't fit any more, make ist bigger
+    if (ax2 + px >= nsx) nsx++;
+
+    // perform the rotations and copy into new buffer
+    voxel_type *s = new voxel_type[nsx*nsy*nsz];
+    memset(s, outside, nsx*nsy*nsz);
+
+    for (unsigned int y = 0; y < sy; y++) {
+
+      int tx = px;
+      int ty = py;
+
+      for (unsigned int x = 0; x < sx; x++) {
+
+        if ((tx >= 0) && (tx < nsx) && (ty >= 0) && (ty < nsy))
+          for (unsigned int z = 0; z < nsz; z++)
+            s[tx + nsx*(ty + nsy*z)] = space[x + sx*(y + sy*z)];
+
+        if ((x+y) & 1) {
+          tx += d1x2;
+          ty += d1y2;
+        } else {
+          tx += d1x1;
+          ty += d1y1;
+        }
+      }
+
+      if (y & 1) {
+        px += d2x2;
+        py += d2y2;
+      } else {
+        px += d2x1;
+        py += d2y1;
+      }
+    }
+
+    delete [] space;
+    space = s;
+    sx = nsx;
+    sy = nsy;
+    sz = nsz;
+
+    voxels = nsx*nsy*nsz;
+
+    recalcBoundingBox();
+
+    // FIXME: hotpot position
+
+  }
   symmetries = symmetryInvalid();
 }
 
