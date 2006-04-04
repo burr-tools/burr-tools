@@ -28,9 +28,7 @@ class voxelDrawer_0_c : public voxelDrawer_c {
 
   public:
 
-    voxelDrawer_0_c(int x, int y, int w, int h, const gridType_c * g) : voxelDrawer_c(x, y, w, h), gt(g) {
-      gridTypeChanged();
-    }
+    voxelDrawer_0_c(int x, int y, int w, int h, const gridType_c * g) : voxelDrawer_c(x, y, w, h), gt(g) {}
 
     void drawShape(const shapeInfo * shape, colorMode colors);
     void drawCursor(unsigned int sx, unsigned int sy, unsigned int sz);

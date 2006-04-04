@@ -33,7 +33,8 @@
 
 voxelDrawer_c::voxelDrawer_c(int x,int y,int w,int h) :
   VoxelView(x, y, w, h), markerType(-1),
-  colors(pieceColor), _useLightning(true)
+  colors(pieceColor), _useLightning(true),
+  _gtChanged(true)
 {
 };
 
@@ -50,6 +51,9 @@ void voxelDrawer_c::gridTypeChanged(void) {
     0, 0, 0, 1};
 
   setTransformationMatrix(m);
+
+  _gtChanged = false;
+  redraw();
 }
 
 void voxelDrawer_c::drawVoxelSpace() {
@@ -223,6 +227,9 @@ void voxelDrawer_c::drawVoxelSpace() {
 }
 
 void voxelDrawer_c::drawData(void) {
+
+  if (_gtChanged)
+    gridTypeChanged();
 
   glShadeModel(GL_FLAT);
   glEnable(GL_DEPTH_TEST);

@@ -171,6 +171,9 @@ private:
   /* this matrix is used to change the look of the basic unit */
   GLfloat transformMatrix[16];
 
+  // set to true, when the grid type changed and the transformation matrix is not yet updated
+  bool _gtChanged;
+
 public:
 
   void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
