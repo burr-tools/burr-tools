@@ -92,7 +92,11 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
    */
   unsigned int * columns = new unsigned int[result->getXYZ()];
   unsigned int piecenumber = puz->probPieceNumber(problemNum);
-  voxelindex = new int[result->getXYZ() + piecenumber + 1];
+
+  /* voxelindex is the invers of the function column. it returns
+   * the index (not x, y, z) of a given column in the matrix
+   */
+  int * voxelindex = new int[result->getXYZ() + piecenumber + 1];
 
   for (unsigned int i = 0; i < result->getXYZ() + piecenumber + 1; i++)
     voxelindex[i] = -1;
@@ -235,17 +239,15 @@ int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_v
       if (placements == 0) {
         delete [] cache;
         delete [] columns;
+        delete [] voxelindex;
         return -puz->probGetShape(problemNum, pc);
       }
     }
 
   delete [] cache;
   delete [] columns;
+  delete [] voxelindex;
 
   return 1;
 }
 
-assm_0_frontend_0_c::~assm_0_frontend_0_c() {
-  if (voxelindex)
-    delete [] voxelindex;
-}

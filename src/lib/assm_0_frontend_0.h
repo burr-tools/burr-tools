@@ -23,15 +23,9 @@
 
 class puzzle_c;
 
-
 class assm_0_frontend_0_c : public assembler_0_c {
 
 private:
-
-  /* voxelindex is the invers of the function column. it returns
-   * the index (not x, y, z) of a given column in the matrix
-   */
-  int * voxelindex;
 
   /* this function creates the matrix for the search function
    * because we need to know how many nodes we need to allocate the
@@ -41,15 +35,9 @@ private:
    */
   int prepare(const puzzle_c * puz, int res_filles, int res_vari, unsigned int resultnum);
 
-private:
-
-  assm_0_frontend_0_c(void) : assembler_0_c(), voxelindex(0) {}
-
+  assm_0_frontend_0_c(void) : assembler_0_c() {}
   friend assembler_0_c * gridType_c::getAssembler(void) const;
 
-public:
-
-  ~assm_0_frontend_0_c();
 };
 
 #endif
