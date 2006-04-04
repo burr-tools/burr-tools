@@ -46,6 +46,8 @@ class voxel_1_c : public voxel_c {
     void rotatex(int by = 1);
     void rotatey(int by = 1);
     void rotatez(int by = 1);
+
+    void minimizePiece(void);
 };
 
 #endif

@@ -336,7 +336,8 @@ public:
    * changes the size of the voxel space to the smallest size
    * so that all voxels whose value is not val can be contained.
    */
-  void minimize(voxel_type val);
+  virtual void minimize(voxel_type val);
+  virtual void minimizePiece(void);
 
   unsigned int boundX1(void) const { return bx1; }
   unsigned int boundX2(void) const { return bx2; }
@@ -435,7 +436,6 @@ public:
   void setState(unsigned int i, int state) { set(i, (get(i) & ~0x3) | state); }
   void setColor(unsigned int i, unsigned int color) { bt_assert(color < 64); set(i, (get(i) & 0x3) | color << 2); }
 
-  void minimizePiece(void);
 
   unsigned int countState(int state) const;
 

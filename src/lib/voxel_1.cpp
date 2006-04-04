@@ -140,3 +140,43 @@ void voxel_1_c::rotatez(int by) {
   symmetries = symmetryInvalid();
 }
 
+void voxel_1_c::minimizePiece(void) {
+
+  // find a first voxel
+  unsigned int fx, fy;
+  fx = fy = 0;
+
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++)
+        if (!isEmpty(x, y, z)) {
+          fx = x;
+          fy = y;
+
+          // break out of loops
+          z = sz;
+          y = sy;
+          x = sx;
+        }
+
+  voxel_c::minimizePiece();
+
+  // find the first voxel again
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++)
+        if (!isEmpty(x, y, z)) {
+
+          // if the parity of that voxel changed, add an empty column at the left
+          if ( ((fx+fy) & 1) != ((x+y) & 1) ) {
+            resize(sx+1, sy, sz, 0);
+            translate(1, 0, 0, 0);
+          }
+
+          // break out of loops
+          z = sz;
+          y = sy;
+          x = sx;
+        }
+}
+
