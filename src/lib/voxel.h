@@ -334,9 +334,8 @@ public:
 
   /**
    * changes the size of the voxel space to the smallest size
-   * so that all voxels whose value is not val can be contained.
+   * so that all voxels whose value is not 0 can be contained.
    */
-  virtual void minimize(voxel_type val);
   virtual void minimizePiece(void);
 
   unsigned int boundX1(void) const { return bx1; }

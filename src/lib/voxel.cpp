@@ -175,62 +175,6 @@ void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, 
   delete tmp;
 }
 
-void voxel_c::minimize(voxel_type val) {
-
-  unsigned int x1, x2, y1, y2, z1, z2;
-
-  x1 = y1 = z1 = sx+sy+sz;
-  x2 = y2 = z2 = 0;
-
-  for (unsigned int x = 0; x < sx; x++)
-    for (unsigned int y = 0; y < sy; y++)
-      for (unsigned int z = 0; z < sz; z++)
-        if (get(x, y, z) != val) {
-          if (x < x1) x1 = x;
-          if (x > x2) x2 = x;
-
-          if (y < y1) y1 = y;
-          if (y > y2) y2 = y;
-
-          if (z < z1) z1 = z;
-          if (z > z2) z2 = z;
-        }
-
-  // check for empty cube and do nothing in that case
-  if (x1 > x2)
-    return;
-
-  if ((x1 != 0) || (y1 != 0) || (z1 != 0) || (x2 != sx-1) || (y2 != sy-1) || (z2 != sz-1)) {
-    if (x1 > x2) {
-      sx = sy = sz = 0;
-      if (space) {
-        delete [] space;
-        space = 0;
-      }
-    }
-
-    voxel_type * s2 = new voxel_type[(x2-x1+1) * (y2-y1+1) * (z2-z1+1)];
-
-    for (unsigned int x = x1; x <= x2; x++)
-      for (unsigned int y = y1; y <= y2; y++)
-        for (unsigned int z = z1; z <= z2; z++)
-          s2[(x-x1) + (x2-x1+1) * ((y-y1) + (y2-y1+1) * (z-z1))] = get(x, y, z);
-
-    delete [] space;
-    space = s2;
-
-    sx = x2-x1+1;
-    sy = y2-y1+1;
-    sz = z2-z1+1;
-    voxels = sx*sy*sz;
-
-    recalcBoundingBox();
-    hx -= x1;
-    hy -= y1;
-    hz -= z1;
-  }
-}
-
 void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel_type filler) {
   voxel_type * s2 = new voxel_type[nsx*nsy*nsz];
   memset(s2, filler, nsx*nsy*nsz);
