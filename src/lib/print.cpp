@@ -98,9 +98,9 @@ static void print_rec(const separation_c * s, voxel_c ** pieces, int sx, int sy,
           char c = ' ';
 
           for (unsigned int pc = 0; pc < s->getPieceNumber(); pc++)
-            if (pieces[pc]->isFilled2(x - st->getX(pc),
-                                      y - st->getY(pc),
-                                      z - st->getZ(pc))) {
+            if (pieces[pc]->isFilled2(x - (st->getX(pc) - pieces[pc]->getHx()),
+                                      y - (st->getY(pc) - pieces[pc]->getHy()),
+                                      z - (st->getZ(pc) - pieces[pc]->getHz()))) {
               c = 'a' + pieceNum[pc];
               break;
             }
@@ -211,7 +211,9 @@ void print(const assembly_c * a, const puzzle_c * p, unsigned int prob) {
         char c = ' ';
 
         for (unsigned int pc = 0; pc < a->placementCount(); pc++)
-          if (pieces[pc]->isFilled2(x - a->getX(pc), y - a->getY(pc), z - a->getZ(pc))) {
+          if (pieces[pc]->isFilled2(x - (a->getX(pc) - pieces[pc]->getHx()),
+                                    y - (a->getY(pc) - pieces[pc]->getHy()),
+                                    z - (a->getZ(pc) - pieces[pc]->getHz()))) {
             c = 'a' + pc;
             break;
           }
