@@ -291,3 +291,41 @@ void voxel_1_c::minimizePiece(void) {
         }
 }
 
+void voxel_1_c::mirrorX(void) {
+  voxel_c::mirrorX();
+
+  if (!(sx & 1)) {
+    if (bx1 > 0)
+      translate(-1, 0, 0, 0);
+    else if (bx2 < sx-1)
+      translate(1, 0, 0, 0);
+    else if (by1 > 0)
+      translate(0, -1, 0, 0);
+    else if (by2 < sy-1)
+      translate(0, 1, 0, 0);
+    else {
+      resize(sx+1, sy, sz, 0);
+      translate(1, 0, 0, 0);
+    }
+  }
+}
+
+void voxel_1_c::mirrorY(void) {
+  voxel_c::mirrorY();
+
+  if (sy & 1) {
+    if (bx1 > 0)
+      translate(-1, 0, 0, 0);
+    else if (bx2 < sx-1)
+      translate(1, 0, 0, 0);
+    else if (by1 > 0)
+      translate(0, -1, 0, 0);
+    else if (by2 < sy-1)
+      translate(0, 1, 0, 0);
+    else {
+      resize(sx+1, sy, sz, 0);
+      translate(1, 0, 0, 0);
+    }
+  }
+}
+

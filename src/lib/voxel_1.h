@@ -47,6 +47,9 @@ class voxel_1_c : public voxel_c {
     void rotatey(int by = 1);
     void rotatez(int by = 1);
 
+    void mirrorX(void);
+    void mirrorY(void);
+
     void minimizePiece(void);
 };
 

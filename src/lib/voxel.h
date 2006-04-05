@@ -328,9 +328,9 @@ public:
   /**
    * mirrors the space along the given axis
    */
-  void mirrorX(void);
-  void mirrorY(void);
-  void mirrorZ(void);
+  virtual void mirrorX(void);
+  virtual void mirrorY(void);
+  virtual void mirrorZ(void);
 
   /**
    * changes the size of the voxel space to the smallest size
