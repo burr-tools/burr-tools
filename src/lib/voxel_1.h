@@ -23,7 +23,7 @@
 
 class voxel_1_c : public voxel_c {
 
-  protected:
+  public:
 
     voxel_1_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0, voxel_type outs = VX_EMPTY) : voxel_c(x, y, z, gt, init, outs) {}
     voxel_1_c(const xml::node & node, const gridType_c * gt) : voxel_c(node, gt) {}
@@ -33,15 +33,6 @@ class voxel_1_c : public voxel_c {
     voxel_1_c(const voxel_c * orig, unsigned int transformation = 0) : voxel_c(orig) {
       transform(transformation);
     }
-
-    /* the factory functions need to be friend to use the constructors */
-    friend voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const;
-    friend voxel_c * gridType_c::getVoxel(const xml::node & node) const;
-    friend voxel_c * gridType_c::getVoxel(const voxel_c & orig, unsigned int transformation = 0) const;
-    friend voxel_c * gridType_c::getVoxel(const voxel_c * orig, unsigned int transformation = 0) const;
-    friend symmetries_t symmetries_0_c::symmetryCalcuation(const voxel_c *pp) const;
-
-  public:
 
     void rotatex(int by = 1);
     void rotatey(int by = 1);
