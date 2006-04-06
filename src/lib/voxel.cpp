@@ -284,7 +284,7 @@ void voxel_c::mirrorX(void) {
   bx1 = sx - 1 - bx2;
   bx2 = sx - 1 - t;
 
-  hx = sx - 1 - hx;
+  hx = sx - hx;
 
   symmetries = symmetryInvalid();
 }
@@ -308,7 +308,7 @@ void voxel_c::mirrorY(void) {
   by1 = sy - 1 - by2;
   by2 = sy - 1 - t;
 
-  hy = sy - 1 - hy;
+  hy = sy - hy;
 
   symmetries = symmetryInvalid();
 }
@@ -332,7 +332,7 @@ void voxel_c::mirrorZ(void) {
   bz1 = sz - 1 - bz2;
   bz2 = sz - 1 - t;
 
-  hz = sz - 1 - sz;
+  hz = sz - hz;
 
   symmetries = symmetryInvalid();
 }
