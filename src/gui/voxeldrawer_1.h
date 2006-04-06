@@ -39,6 +39,8 @@ class voxelDrawer_1_c : public voxelDrawer_c {
     void drawFrame(const voxel_c * space, int x, int y, int z, float edge);
     void drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge);
     void drawVariableMarkers(const voxel_c * space, int x, int y, int z);
+
+    void recalcSpaceCoordinates(float * x, float * y, float * z);
 };
 
 #endif

@@ -73,11 +73,17 @@ void voxelDrawer_c::drawVoxelSpace() {
 
       glPushMatrix();
 
+      float hx, hy, hz;
+      hx = shapes[piece].shape->getHx();
+      hy = shapes[piece].shape->getHy();
+      hz = shapes[piece].shape->getHz();
+      recalcSpaceCoordinates(&hx, &hy, &hz);
+
       switch(trans) {
       case ScaleRotateTranslate:
-        glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
-                     shapes[piece].y - shapes[piece].shape->getHy(),
-                     shapes[piece].z - shapes[piece].shape->getHz());
+        glTranslatef(shapes[piece].x - hx,
+                     shapes[piece].y - hy,
+                     shapes[piece].z - hz);
         glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
         addRotationTransformation();
         glMultMatrixf(transformMatrix);
@@ -89,9 +95,9 @@ void voxelDrawer_c::drawVoxelSpace() {
         break;
       case TranslateRoateScale:
         addRotationTransformation();
-        glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
-                     shapes[piece].y - shapes[piece].shape->getHy(),
-                     shapes[piece].z - shapes[piece].shape->getHz());
+        glTranslatef(shapes[piece].x - hx,
+                     shapes[piece].y - hy,
+                     shapes[piece].z - hz);
         glMultMatrixf(transformMatrix);
         {
           float cx, cy, cz;
@@ -103,9 +109,9 @@ void voxelDrawer_c::drawVoxelSpace() {
       case CenterTranslateRoateScale:
         addRotationTransformation();
         glMultMatrixf(transformMatrix);
-        glTranslatef(shapes[piece].x - shapes[piece].shape->getHx(),
-                     shapes[piece].y - shapes[piece].shape->getHy(),
-                     shapes[piece].z - shapes[piece].shape->getHz());
+        glTranslatef(shapes[piece].x - hx,
+                     shapes[piece].y - hy,
+                     shapes[piece].z - hz);
         glTranslatef(-centerX, -centerY, -centerZ);
         glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
         break;
@@ -301,7 +307,12 @@ void voxelDrawer_c::setSpaceColor(unsigned int nr, float a) {
   updateRequired();
 }
 
+void voxelDrawer_c::recalcSpaceCoordinates(float * x, float * y, float * z) {}
+
 void voxelDrawer_c::setSpacePosition(unsigned int nr, float x, float y, float z, float scale) {
+
+  recalcSpaceCoordinates(&x, &y, &z);
+
   shapes[nr].x = x;
   shapes[nr].y = y;
   shapes[nr].z = z;

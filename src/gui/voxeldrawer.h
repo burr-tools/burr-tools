@@ -69,6 +69,9 @@ public:
 
   void setSpaceColor(unsigned int nr, float r, float g, float b, float a);
   void setSpaceColor(unsigned int nr, float a);
+
+  virtual void recalcSpaceCoordinates(float * x, float * y, float * z);
+
   void setSpacePosition(unsigned int nr, float x, float y, float z, float scale);
   void setSpaceDim(unsigned int nr, bool dim);
 

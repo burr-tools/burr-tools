@@ -730,3 +730,8 @@ void voxelDrawer_1_c::calculateSize(const voxel_c * shape, float * x, float * y,
   *z = shape->getZ();
 }
 
+void voxelDrawer_1_c::recalcSpaceCoordinates(float * x, float * y, float * z) {
+  *x = *x * 0.5;
+  *y = *y * HEIGHT;
+}
+
