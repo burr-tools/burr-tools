@@ -21,7 +21,7 @@
 #include "disassembler_0.h"
 #include "voxel_0.h"
 #include "voxel_1.h"
-#include "symmetries.h"
+#include "symmetries_0.h"
 
 #include <xmlwrapp/attributes.h>
 
@@ -212,7 +212,7 @@ const symmetries_c * gridType_c::getSymmetries(void) const {
         const_cast<gridType_c*>(this)->sym = new symmetries_0_c(this);
         break;
       case GT_TRIANGULAR_PRISM:
-        const_cast<gridType_c*>(this)->sym = new symmetries_0_c(this);   //TODO: add proper value
+        const_cast<gridType_c*>(this)->sym = new symmetries_1_c(this);
         break;
     }
   }

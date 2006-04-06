@@ -15,25 +15,25 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "symmetries_0.h"
+#include "symmetries_1.h"
 
-#include "voxel_0.h"
+#include "voxel_1.h"
 
 #include "bt_assert.h"
 
-#include "tabs_0/tablesizes.inc"
+#include "tabs_1/tablesizes.inc"
 
 /* these arrays contain the transformations necessary to get all possible orientations of a piece
  * first do a mirroring along the x-y-plane, then rotate around x then y and then the z-axis
  */
 static const int _rotx[NUM_TRANSFORMATIONS] = {
-#include "tabs_0/rotx.inc"
+#include "tabs_1/rotx.inc"
 };
 static const int _roty[NUM_TRANSFORMATIONS] = {
-#include "tabs_0/roty.inc"
+#include "tabs_1/roty.inc"
 };
 static const int _rotz[NUM_TRANSFORMATIONS] = {
-#include "tabs_0/rotz.inc"
+#include "tabs_1/rotz.inc"
 };
 
 /* this matix contains the concatenation of 2 transformations
@@ -41,53 +41,53 @@ static const int _rotz[NUM_TRANSFORMATIONS] = {
  * you can as well transform around transMult[t1][t2]
  */
 static const unsigned int transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATIONS_MIRROR] = {
-#include "tabs_0/transmult.inc"
+#include "tabs_1/transmult.inc"
 };
 
 /* this array contains all possible symmetry groups, meaning bitmasks with exactly the bits set
  * that correspond to transformations tha reorient the piece so that it looks identical
  */
 static const unsigned long long symmetries[NUM_SYMMETRY_GROUPS] = {
-#include "tabs_0/symmetries.inc"
+#include "tabs_1/symmetries.inc"
 };
 
 static const unsigned long long unifiedSymmetries[NUM_SYMMETRY_GROUPS] = {
-#include "tabs_0/unifiedsym.inc"
+#include "tabs_1/unifiedsym.inc"
 };
 
 /* this matrix lets you calculate the orientation with the smallest number that results in an identical looking
  * shape. This requires us to know the symmetry group
  */
 static const unsigned char transformationMinimizer[NUM_SYMMETRY_GROUPS][NUM_TRANSFORMATIONS_MIRROR] = {
-#include "tabs_0/transformmini.inc"
+#include "tabs_1/transformmini.inc"
 };
 
-symmetries_0_c::symmetries_0_c(const gridType_c * g) : gt(g) {
+symmetries_1_c::symmetries_1_c(const gridType_c * g) : gt(g) {
 }
 
-unsigned int symmetries_0_c::getNumTransformations(void) const { return NUM_TRANSFORMATIONS; }
-unsigned int symmetries_0_c::getNumTransformationsMirror(void) const { return NUM_TRANSFORMATIONS_MIRROR; }
+unsigned int symmetries_1_c::getNumTransformations(void) const { return NUM_TRANSFORMATIONS; }
+unsigned int symmetries_1_c::getNumTransformationsMirror(void) const { return NUM_TRANSFORMATIONS_MIRROR; }
 
-int symmetries_0_c::rotx(unsigned int p) const {
+int symmetries_1_c::rotx(unsigned int p) const {
   bt_assert(p < NUM_TRANSFORMATIONS);
   return _rotx[p];
 }
-int symmetries_0_c::roty(unsigned int p) const {
+int symmetries_1_c::roty(unsigned int p) const {
   bt_assert(p < NUM_TRANSFORMATIONS);
   return _roty[p];
 }
-int symmetries_0_c::rotz(unsigned int p) const {
+int symmetries_1_c::rotz(unsigned int p) const {
   bt_assert(p < NUM_TRANSFORMATIONS);
   return _rotz[p];
 }
 
-unsigned char symmetries_0_c::transAdd(unsigned char t1, unsigned char t2) const {
+unsigned char symmetries_1_c::transAdd(unsigned char t1, unsigned char t2) const {
   bt_assert(t1 < NUM_TRANSFORMATIONS_MIRROR);
   bt_assert(t2 < NUM_TRANSFORMATIONS_MIRROR);
   return transMult[t1][t2];
 }
 
-bool symmetries_0_c::symmetrieContainsTransformation(symmetries_t s, unsigned int t) const {
+bool symmetries_1_c::symmetrieContainsTransformation(symmetries_t s, unsigned int t) const {
 
   bt_assert(s < NUM_SYMMETRY_GROUPS);
   bt_assert(t < NUM_TRANSFORMATIONS_MIRROR);
@@ -95,7 +95,7 @@ bool symmetries_0_c::symmetrieContainsTransformation(symmetries_t s, unsigned in
   return ((symmetries[s] & ((unsigned long long)1 << t)) != 0);
 }
 
-unsigned char symmetries_0_c::minimizeTransformation(symmetries_t s, unsigned char trans) const {
+unsigned char symmetries_1_c::minimizeTransformation(symmetries_t s, unsigned char trans) const {
 
   bt_assert(s < NUM_SYMMETRY_GROUPS);
   bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
@@ -103,7 +103,7 @@ unsigned char symmetries_0_c::minimizeTransformation(symmetries_t s, unsigned ch
   return transformationMinimizer[s][trans];
 }
 
-unsigned int symmetries_0_c::countSymmetryIntersection(symmetries_t res, symmetries_t s2) const {
+unsigned int symmetries_1_c::countSymmetryIntersection(symmetries_t res, symmetries_t s2) const {
 
   bt_assert(res < NUM_SYMMETRY_GROUPS);
   bt_assert(s2 < NUM_SYMMETRY_GROUPS);
@@ -119,7 +119,7 @@ unsigned int symmetries_0_c::countSymmetryIntersection(symmetries_t res, symmetr
   return (unsigned int)(s & 0x3f);
 }
 
-bool symmetries_0_c::symmetriesLeft(symmetries_t resultSym, symmetries_t s2) const {
+bool symmetries_1_c::symmetriesLeft(symmetries_t resultSym, symmetries_t s2) const {
 
   bt_assert(resultSym < NUM_SYMMETRY_GROUPS);
   bt_assert(s2 < NUM_SYMMETRY_GROUPS);
@@ -127,7 +127,7 @@ bool symmetries_0_c::symmetriesLeft(symmetries_t resultSym, symmetries_t s2) con
   return symmetries[resultSym] & unifiedSymmetries[s2] & ~((unsigned long long)1);
 }
 
-symmetries_t symmetries_0_c::symmetryCalcuation(const voxel_c *pp) const {
+symmetries_t symmetries_1_c::symmetryCalcuation(const voxel_c *pp) const {
 
   bt_assert(pp);
 
@@ -141,11 +141,11 @@ symmetries_t symmetries_0_c::symmetryCalcuation(const voxel_c *pp) const {
 
   for (int t = NUM_TRANSFORMATIONS_MIRROR-1; t >= 0; t--) {
 
-    voxel_0_c p(pp, t);
+    voxel_1_c p(pp, t);
     s = 1;
 
     for (int j = 1; j < NUM_TRANSFORMATIONS_MIRROR; j++) {
-      voxel_0_c v(&p, j);
+      voxel_1_c v(&p, j);
       if (p.identicalInBB(&v))
         s |= ((unsigned long long)1) << j;
     }
@@ -169,11 +169,11 @@ symmetries_t symmetries_0_c::symmetryCalcuation(const voxel_c *pp) const {
   if (symmetries[i] != s) {
 
     for (int j = 1; j < NUM_TRANSFORMATIONS_MIRROR; j++) {
-      voxel_0_c p(pp, j);
+      voxel_1_c p(pp, j);
 
       unsigned long long s = 1;
       for (int k = 1; k < NUM_TRANSFORMATIONS_MIRROR; k++) {
-        voxel_0_c v(p, k);
+        voxel_1_c v(p, k);
         if (p.identicalInBB(&v))
           s |= ((unsigned long long)1) << k;
       }
@@ -193,6 +193,6 @@ symmetries_t symmetries_0_c::symmetryCalcuation(const voxel_c *pp) const {
    * makeSymmetryTree(0, 0);
    */
 #if 1
-#include "tabs_0/symcalc.inc"
+#include "tabs_1/symcalc.inc"
 #endif
 }

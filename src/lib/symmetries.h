@@ -80,46 +80,10 @@ class symmetries_c {
      */
     virtual unsigned int countSymmetryIntersection(symmetries_t resultSym, symmetries_t s2) const = 0;
 
-
     virtual bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2) const = 0;
 
     /* calculate the symmetry mask for the given voxel space */
     virtual symmetries_t symmetryCalcuation(const voxel_c * pp) const = 0;
-};
-
-/* this is the symmetries class for cubes */
-class symmetries_0_c : public symmetries_c {
-
-  private:
-
-    /* this varable contains the symmetries that are available because
-     * of the subsetting of the cube because of skewing and scaling along the different axes
-     * this is used to suppres certain symmetries for the placement and symmetry checks
-     *
-     * this value infuences the rotx y z functions to only return those transformations
-     * that are really available, als getNumTransformations and getNumTransformationsMirror are
-     * influenced to only return the number of symmetries within this field, ...
-     */
-    const gridType_c * gt;
-
-
-    symmetries_0_c(const gridType_c * gt);
-
-    friend const symmetries_c * gridType_c::getSymmetries(void) const;
-
-  public:
-
-    unsigned int getNumTransformations(void) const;
-    unsigned int getNumTransformationsMirror(void) const;
-    virtual int rotx(unsigned int p) const;
-    virtual int roty(unsigned int p) const;
-    virtual int rotz(unsigned int p) const;
-    bool symmetrieContainsTransformation(symmetries_t s, unsigned int t) const;
-    unsigned char transAdd(unsigned char t1, unsigned char t2) const;
-    unsigned char minimizeTransformation(symmetries_t s, unsigned char trans) const;
-    unsigned int countSymmetryIntersection(symmetries_t resultSym, symmetries_t s2) const;
-    bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2) const;
-    symmetries_t symmetryCalcuation(const voxel_c * pp) const;
 };
 
 #endif

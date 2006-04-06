@@ -19,7 +19,7 @@
 #define __VOXEL_1_H__
 
 #include "voxel.h"
-#include "symmetries.h"
+#include "symmetries_1.h"
 
 class voxel_1_c : public voxel_c {
 
