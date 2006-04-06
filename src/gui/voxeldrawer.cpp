@@ -130,6 +130,22 @@ void voxelDrawer_c::drawVoxelSpace() {
         glColor3f(0, 0.75, 0); glVertex3f(-1, -1, -1); glVertex3f(-1, cy+1, -1);
         glColor3f(0, 0,    1); glVertex3f(-1, -1, -1); glVertex3f(-1, -1, cz+1);
         glEnd();
+
+#if 0    // if you enable this, the hotspot will be shown as a small cross
+        float x = shapes[piece].shape->getHx();
+        float y = shapes[piece].shape->getHy();
+        float z = shapes[piece].shape->getHz();
+
+        recalcSpaceCoordinates(&x, &y, &z);
+
+        glBegin(GL_LINES);
+        glColor3f(0, 1, 0);
+        glVertex3f(x-0.2, y, z); glVertex3f(x+0.2, y, z);
+        glVertex3f(x, y-0.2, z); glVertex3f(x, y+0.2, z);
+        glVertex3f(x, y, z-0.2); glVertex3f(x, y, z+0.2);
+        glEnd();
+#endif
+
         if (_useLightning) glEnable(GL_LIGHTING);
         glEnable(GL_BLEND);
       }
