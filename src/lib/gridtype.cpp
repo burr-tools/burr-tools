@@ -176,14 +176,14 @@ disassembler_c * gridType_c::getDisassembler(const puzzle_c * puz, unsigned int 
 /* voxel spaces have different implementatios for rotation, and mirror functions */
 voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const {
   switch (type) {
-    case GT_BRICKS: return new voxel_0_c(x, y, z, this, init, outs);
+    case GT_BRICKS:           return new voxel_0_c(x, y, z, this, init, outs);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(x, y, z, this, init, outs);
     default: return 0;
   }
 }
 voxel_c * gridType_c::getVoxel(const xml::node & node) const {
   switch (type) {
-    case GT_BRICKS: return new voxel_0_c(node, this);
+    case GT_BRICKS:           return new voxel_0_c(node, this);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(node, this);
     default: return 0;
   }
@@ -191,7 +191,7 @@ voxel_c * gridType_c::getVoxel(const xml::node & node) const {
 
 voxel_c * gridType_c::getVoxel(const voxel_c & orig, unsigned int transformation) const {
   switch (type) {
-    case GT_BRICKS: return new voxel_0_c(orig, transformation);
+    case GT_BRICKS:           return new voxel_0_c(orig, transformation);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig, transformation);
     default: return 0;
   }
@@ -199,7 +199,7 @@ voxel_c * gridType_c::getVoxel(const voxel_c & orig, unsigned int transformation
 
 voxel_c * gridType_c::getVoxel(const voxel_c * orig, unsigned int transformation) const {
   switch (type) {
-    case GT_BRICKS: return new voxel_0_c(orig, transformation);
+    case GT_BRICKS:           return new voxel_0_c(orig, transformation);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig, transformation);
     default: return 0;
   }
@@ -222,7 +222,7 @@ const symmetries_c * gridType_c::getSymmetries(void) const {
 
 unsigned int gridType_c::getCapabilities(void) const {
   switch (type) {
-    case GT_BRICKS: return CAP_ASSEMBLE | CAP_DISASSEMBLE;
+    case GT_BRICKS:           return CAP_ASSEMBLE | CAP_DISASSEMBLE;
     case GT_TRIANGULAR_PRISM: return 0;
     default: return 0;
   }
