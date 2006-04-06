@@ -363,8 +363,30 @@ public:
    * 2 voxel spaces are identical, if their bounding
    * boxes have the same size and the voxels within
    * there boxes is identical
+   *
+   * if includeColors is true, the colors are included in the
+   * comparison, meaning when the colors differ the
+   * shapes are not equal
    */
-  bool identicalInBB(const voxel_c * op) const;
+  bool identicalInBB(const voxel_c * op, bool includeColors = true) const;
+
+  /**
+   * comparison of 2 voxel spaces.
+   * 2 spaces are identical, if one of the rotations
+   * is identical to the other voxel space
+   * you can specify, if you want to include the colors
+   * in the comparison, or just want to compare the shape
+   * naturally this function is relatively slow
+   *
+   * if includeMirror is true, the function checks agains all transformations
+   * including the mirrored shape, if it is false, mirrored transformations
+   * are excluded
+   *
+   * if includeColors is true, the colors are included in the
+   * comparison, meaning when the colors differ the
+   * shapes are not equal
+   */
+  bool identicalWithRots(const voxel_c * op, bool includeMirror, bool includeColors) const;
 
   /** resizes the voxelspace, spreserving the lover part
    * of the data, when the new one is smaller and

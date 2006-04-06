@@ -134,7 +134,7 @@ bool voxel_c::operator ==(const voxel_c & op) const {
   return true;
 }
 
-bool voxel_c::identicalInBB(const voxel_c * op) const {
+bool voxel_c::identicalInBB(const voxel_c * op, bool includeColors) const {
 
   if (bx2-bx1 != op->bx2-op->bx1) return false;
   if (by2-by1 != op->by2-op->by1) return false;
@@ -143,11 +143,38 @@ bool voxel_c::identicalInBB(const voxel_c * op) const {
   for (unsigned int x = bx1; x <= bx2; x++)
     for (unsigned int y = by1; y <= by2; y++)
       for (unsigned int z = bz1; z <= bz2; z++)
-        if (get(x, y, z) != op->get(x-bx1+op->bx1, y-by1+op->by1, z-bz1+op->bz1))
-          return false;
+        if (includeColors) {
+          if (get(x, y, z) != op->get(x-bx1+op->bx1, y-by1+op->by1, z-bz1+op->bz1))
+            return false;
+        } else {
+          if (getState(x, y, z) != op->getState(x-bx1+op->bx1, y-by1+op->by1, z-bz1+op->bz1))
+            return false;
+        }
+
 
   return true;
 }
+
+bool voxel_c::identicalWithRots(const voxel_c * op, bool includeMirror, bool includeColors) const {
+
+  const symmetries_c * sym = gt->getSymmetries();
+
+  unsigned int maxTrans = includeMirror ? sym->getNumTransformationsMirror() : sym->getNumTransformations();
+
+  for (unsigned int t = 0; t < maxTrans; t++) {
+    voxel_c * v = gt->getVoxel(op, t);
+
+    if (identicalInBB(v, includeColors)) {
+      delete v;
+      return true;
+    }
+
+    delete v;
+  }
+
+  return false;
+}
+
 
 void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 
