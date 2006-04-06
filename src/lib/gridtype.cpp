@@ -18,6 +18,7 @@
 #include "gridtype.h"
 
 #include "assm_0_frontend_0.h"
+#include "assm_0_frontend_1.h"
 #include "disassembler_0.h"
 #include "voxel_0.h"
 #include "voxel_1.h"
@@ -160,8 +161,9 @@ gridType_c::~gridType_c(void) {
 assembler_0_c * gridType_c::getAssembler(void) const {
 
   switch (type) {
-    case GT_BRICKS: return new assm_0_frontend_0_c();
-    default: return 0;
+    case GT_BRICKS:           return new assm_0_frontend_0_c();
+    case GT_TRIANGULAR_PRISM: return new assm_0_frontend_1_c();
+    default:                  return 0;
   }
 
 }
@@ -223,7 +225,7 @@ const symmetries_c * gridType_c::getSymmetries(void) const {
 unsigned int gridType_c::getCapabilities(void) const {
   switch (type) {
     case GT_BRICKS:           return CAP_ASSEMBLE | CAP_DISASSEMBLE;
-    case GT_TRIANGULAR_PRISM: return 0;
+    case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE;
     default: return 0;
   }
 }

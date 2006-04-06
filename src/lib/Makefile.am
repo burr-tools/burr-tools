@@ -11,6 +11,7 @@ libburr_a_SOURCES=disassembler.h assembler.h \
                   assembly.cpp assembly.h \
                   assembler_0.cpp assembler_0.h \
                   assm_0_frontend_0.cpp assm_0_frontend_0.h \
+                  assm_0_frontend_1.cpp assm_0_frontend_1.h \
                   puzzle.cpp puzzle.h \
                   voxel.cpp voxel.h \
 		  voxel_0.cpp voxel_0.h \

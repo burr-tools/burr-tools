@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "assm_0_frontend_0.h"
+#include "assm_0_frontend_1.h"
 
 #include "voxel.h"
 #include "puzzle.h"
@@ -24,6 +24,9 @@
 
 /* helper function to check if a piece an go at a position */
 static bool pieceFits(const voxel_c * piece, const voxel_c * result, const puzzle_c * puz, int x, int y, int z, unsigned int problemNum) {
+
+  // the shape doesn't fit, when the lower left corner doesn't have the righ parity
+  if ((x+y) & 1) return false;
 
   for (unsigned int pz = piece->boundZ1(); pz <= piece->boundZ2(); pz++)
     for (unsigned int py = piece->boundY1(); py <= piece->boundY2(); py++)
@@ -79,7 +82,7 @@ static voxel_c * addToCache(voxel_c * cache[], unsigned int * fill, voxel_c * pi
  * negative result show there is something wrong: the place -result has not
  * possible position inside the result
  */
-int assm_0_frontend_0_c::prepare(const puzzle_c * puz, int res_filled, int res_vari, unsigned int problemNum) {
+int assm_0_frontend_1_c::prepare(const puzzle_c * puz, int res_filled, int res_vari, unsigned int problemNum) {
 
   const voxel_c * result = puz->probGetResultShape(problemNum);
 
