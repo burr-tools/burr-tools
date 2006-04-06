@@ -530,6 +530,17 @@ void solve(int argv, char* args[]) {
   return;
 }
 
+#endif
+void calcSymmetries(char * fname) {
+
+  xml::tree_parser parser(fname);
+  puzzle_c p(parser.get_document().get_root_node());
+
+  for (unsigned int i = 0; i < p.shapeNumber(); i++) {
+    p.getShape(i)->selfSymmetries();
+  }
+}
+#if 0
 
 void grow(int argv, char* args[]) {
 
@@ -997,6 +1008,8 @@ int main(int argv, char* args[]) {
 
 
 //  epipedize();
+
+    calcSymmetries(args[1]);
 }
 
 
