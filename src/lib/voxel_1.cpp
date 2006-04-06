@@ -25,7 +25,6 @@ void voxel_1_c::rotatex(int by) {
   by &= 1;
 
   if (by != 0) {
-
     // this works, when the vertical size is even
 
     unsigned int nsy = sy + (sy & 1);
@@ -62,8 +61,8 @@ void voxel_1_c::rotatex(int by) {
     bt_assert(bz2 == z2);
 
     // recalculate hotspot position
-    hy = sy - 1 - hy;
-    hz = sz - 1 - hz;
+    hy = sy - hy;
+    hz = sz - hz;
 
     // make sure hotspot is correct
     bt_assert(((hx+hy) & 1) == 0);
@@ -112,8 +111,8 @@ void voxel_1_c::rotatey(int by) {
     bt_assert(bz2 == z2);
 
     // recalculate hotspot position
-    hx = sx - 1 - hx;
-    hz = sz - 1 - hz;
+    hx = sx + 1 - hx;
+    hz = sz - hz;
 
     // make sure hotspot is correct
     bt_assert(((hx+hy) & 1) == 0);
@@ -136,6 +135,7 @@ void voxel_1_c::rotatez(int by) {
 
   // calculate rotation center and new grid size
   if (by != 0) {
+
     // the rotation center
     // translation, the
 
@@ -328,9 +328,13 @@ void voxel_1_c::rotatez(int by) {
       case 5: py++; break;
     }
 
+    hx = px;
+    hy = py;
+
     // make sure hotspot is correct
     bt_assert(((hx+hy) & 1) == 0);
   }
+
   symmetries = symmetryInvalid();
 }
 
@@ -375,6 +379,7 @@ void voxel_1_c::minimizePiece(void) {
 }
 
 void voxel_1_c::mirrorX(void) {
+
   voxel_c::mirrorX();
 
   if (!(sx & 1)) {
@@ -391,6 +396,7 @@ void voxel_1_c::mirrorX(void) {
       translate(1, 0, 0, 0);
     }
   }
+  if ((hx+hy) & 1) hx++;
   // make sure hotspot is correct
   bt_assert(((hx+hy) & 1) == 0);
 }
@@ -412,6 +418,7 @@ void voxel_1_c::mirrorY(void) {
       translate(1, 0, 0, 0);
     }
   }
+  if ((hx+hy) & 1) hx++;
   // make sure hotspot is correct
   bt_assert(((hx+hy) & 1) == 0);
 }
