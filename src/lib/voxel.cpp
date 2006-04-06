@@ -192,12 +192,12 @@ void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, 
 
   /* this version always works, but it is quite slow */
   voxel_c * tmp = gt->getVoxel(this, trans);
-  *x1 = tmp->boundX1();
-  *x2 = tmp->boundX2();
-  *y1 = tmp->boundY1();
-  *y2 = tmp->boundY2();
-  *z1 = tmp->boundZ1();
-  *z2 = tmp->boundZ2();
+  if (x1) *x1 = tmp->boundX1();
+  if (x2) *x2 = tmp->boundX2();
+  if (y1) *y1 = tmp->boundY1();
+  if (y2) *y2 = tmp->boundY2();
+  if (z1) *z1 = tmp->boundZ1();
+  if (z2) *z2 = tmp->boundZ2();
 
   delete tmp;
 }
