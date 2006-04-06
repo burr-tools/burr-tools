@@ -46,8 +46,6 @@ void voxel_1_c::rotatex(int by) {
     sy = nsy;
     sz = nsz;
 
-    // TODO: recalc bounding box and hotspot position
-
     voxels = nsx*nsy*nsz;
 
     // recalculate bounding box
@@ -64,6 +62,11 @@ void voxel_1_c::rotatex(int by) {
     bt_assert(bz2 == z2);
 
     // recalculate hotspot position
+    hy = sy - 1 - hy;
+    hz = sz - 1 - hz;
+
+    // make sure hotspot is correct
+    bt_assert(((hx+hy) & 1) == 0);
   }
 
   symmetries = symmetryInvalid();
@@ -109,6 +112,11 @@ void voxel_1_c::rotatey(int by) {
     bt_assert(bz2 == z2);
 
     // recalculate hotspot position
+    hx = sx - 1 - hx;
+    hz = sz - 1 - hz;
+
+    // make sure hotspot is correct
+    bt_assert(((hx+hy) & 1) == 0);
   }
 
   symmetries = symmetryInvalid();
@@ -234,6 +242,9 @@ void voxel_1_c::rotatez(int by) {
     voxel_type *s = new voxel_type[nsx*nsy*nsz];
     memset(s, outside, nsx*nsy*nsz);
 
+    int posx = px;
+    int posy = py;
+
     for (unsigned int y = 0; y < sy; y++) {
 
       int tx = px;
@@ -273,8 +284,52 @@ void voxel_1_c::rotatez(int by) {
 
     recalcBoundingBox();
 
-    // FIXME: hotpot position
+    // recalculate hotpot position
 
+
+    // first falculate which triangle contains the new hotspot
+    // the hotspot is then on one of the corners of the trianle
+    px = posx;
+    py = posy;
+
+    int pos = 0;
+    while (pos < hy) {
+      if (pos & 1) { px += d2x2; py += d2y2;
+      } else {       px += d2x1; py += d2y1; }
+      pos++;
+    }
+    while (pos > hy) {
+      if (pos & 1) { px -= d2x1; py -= d2y1;
+      } else {       px -= d2x2; py -= d2y2; }
+      pos--;
+    }
+
+    pos = 0;
+    while (pos < hx) {
+      if ((pos+hy) & 1) { px += d1x2; py += d1y2;
+      } else {            px += d1x1; py += d1y1; }
+      pos++;
+    }
+    while (pos > hx) {
+      if ((pos+hy) & 1) { px -= d1x1; py -= d1y1;
+      } else {            px -= d1x2; py -= d1y2; }
+      pos--;
+    }
+
+    // now we find out at which corner the hotspot is situated
+    // and move over so that we always have the lower left corner of
+    // the given triangle as the hotspot
+    switch (by) {
+      case 1: px++; break;
+      case 2: px += 2; break;  // as an example, this will be a base triangle with the hotspot in the lower right, so go 2 right
+                               // then the hotspot is in the lower left corner
+      case 3: py++; px += 2; break;
+      case 4: py++; px++; break;
+      case 5: py++; break;
+    }
+
+    // make sure hotspot is correct
+    bt_assert(((hx+hy) & 1) == 0);
   }
   symmetries = symmetryInvalid();
 }
@@ -336,6 +391,8 @@ void voxel_1_c::mirrorX(void) {
       translate(1, 0, 0, 0);
     }
   }
+  // make sure hotspot is correct
+  bt_assert(((hx+hy) & 1) == 0);
 }
 
 void voxel_1_c::mirrorY(void) {
@@ -355,5 +412,7 @@ void voxel_1_c::mirrorY(void) {
       translate(1, 0, 0, 0);
     }
   }
+  // make sure hotspot is correct
+  bt_assert(((hx+hy) & 1) == 0);
 }
 
