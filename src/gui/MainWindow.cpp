@@ -30,6 +30,7 @@
 #include "guigridtype.h"
 #include "grideditor.h"
 #include "gridtypegui.h"
+#include "statuswindow.h"
 
 #include "../config.h"
 
@@ -1076,6 +1077,16 @@ void UserInterface::cb_GridParameter(void) {
   View3D->getView()->gridTypeChanged();
 }
 
+static void cb_StatusWindow_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_StatusWindow(); }
+void UserInterface::cb_StatusWindow(void) {
+  statusWindow_c w(puzzle);
+  w.show();
+
+  while (w.visible()) {
+    Fl::wait();
+  }
+}
+
 static void cb_Toggle3D_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Toggle3D(); }
 void UserInterface::cb_Toggle3D(void) {
 
@@ -1297,6 +1308,7 @@ Fl_Menu_Item UserInterface::menu_MainMenu[] = {
   {"Toggle 3D", FL_F + 4, cb_Toggle3D_stub,    0, 0, 0, 0, 14, 56},
   {"Export Images",    0, cb_ImageExport_stub, 0, 0, 0, 0, 14, 56},
   {"Grid Parameter",   0, cb_GridParameter_stub, 0, 0, 0, 0, 14, 56},
+  {"Status",           0, cb_StatusWindow_stub,  0, 0, 0, 0, 14, 56},
   {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
   {"Config",           0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
   {"About",            0, cb_About_stub,       0, 0, 3, 0, 14, 56},

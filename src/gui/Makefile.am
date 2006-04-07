@@ -11,6 +11,7 @@ burrGui_SOURCES=VoxelView.cpp VoxelView.h \
 		voxeldrawer_0.cpp voxeldrawer_0.h \
 		voxeldrawer_1.cpp voxeldrawer_1.h \
                 ArcBall.cpp ArcBall.h \
+		statuswindow.cpp statuswindow.h \
 		guigridtype.cpp guigridtype.h \
 		gridtypegui.cpp gridtypegui.h \
                 BlockList.cpp BlockList.h \

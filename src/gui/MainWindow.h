@@ -248,6 +248,7 @@ public:
   void cb_ShapeGroup(void);
   void cb_ImageExport(void);
   void cb_GridParameter(void);
+  void cb_StatusWindow(void);
 
   void activateConfigOptions(void);
 };
