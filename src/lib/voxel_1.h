@@ -42,6 +42,7 @@ class voxel_1_c : public voxel_c {
     void mirrorY(void);
 
     void minimizePiece(void);
+    bool identicalInBB(const voxel_c * op, bool includeColors = true) const;
 };
 
 #endif

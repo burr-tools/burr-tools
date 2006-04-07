@@ -368,7 +368,7 @@ public:
    * comparison, meaning when the colors differ the
    * shapes are not equal
    */
-  bool identicalInBB(const voxel_c * op, bool includeColors = true) const;
+  virtual bool identicalInBB(const voxel_c * op, bool includeColors = true) const;
 
   /**
    * comparison of 2 voxel spaces.

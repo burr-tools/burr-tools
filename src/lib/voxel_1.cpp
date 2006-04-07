@@ -423,3 +423,7 @@ void voxel_1_c::mirrorY(void) {
   bt_assert(((hx+hy) & 1) == 0);
 }
 
+bool voxel_1_c::identicalInBB(const voxel_c * op, bool includeColors) const {
+  return (((bx1+by1) & 1) == ((op->boundX1() + op->boundY1()) & 1)) && voxel_c::identicalInBB(op, includeColors);
+}
+
