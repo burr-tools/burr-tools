@@ -540,6 +540,30 @@ void calcSymmetries(char * fname) {
     p.getShape(i)->selfSymmetries();
   }
 }
+
+void hotspotCheck(char * fname) {
+
+  xml::tree_parser parser(fname);
+  puzzle_c p(parser.get_document().get_root_node());
+
+  for (unsigned int i = 1; i < p.shapeNumber(); i++) {
+    for (unsigned int t = 0; t < p.getGridType()->getSymmetries()->getNumTransformationsMirror(); t++) {
+      voxel_c * vv = p.getGridType()->getVoxel(p.getShape(i), t);
+      int x, y, z;
+      p.getShape(i)->getHotspot(t, &x, &y, &z);
+      if (x != vv->getHx()) {
+        printf("hx for trans %i  %i %i\n", t, x, vv->getHx());
+      }
+      if (y != vv->getHy()) {
+        printf("hy for trans %i  %i %i\n", t, y, vv->getHy());
+      }
+      if (z != vv->getHz()) {
+        printf("hz for trans %i  %i %i\n", t, z, vv->getHz());
+      }
+      delete vv;
+    }
+  }
+}
 #if 0
 
 void grow(int argv, char* args[]) {
@@ -1009,7 +1033,8 @@ int main(int argv, char* args[]) {
 
 //  epipedize();
 
-    calcSymmetries(args[1]);
+//    calcSymmetries(args[1]);
+    hotspotCheck(args[1]);
 }
 
 
