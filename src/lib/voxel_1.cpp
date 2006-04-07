@@ -229,14 +229,20 @@ void voxel_1_c::rotatez(int by) {
     py += (nsy - (ay2-ay1+1)) / 2;
 
     // now check, that the starting point has the right parity
-    if (by & 1) {
-      if (!((px+py) & 1)) px++;
-    } else {
-      if ((px+py) & 1) px++;
-    }
+    if ( ((by & 1) && !((px+py) & 1)) ||
+         (!(by & 1) && ((px+py) & 1)) ) {
 
-    // if the grid now doesn't fit any more, make ist bigger
-    if (ax2 + px >= nsx) nsx++;
+      // first try to shift around
+      if (ax1+px > 0) px--;
+      else if (ax2+px < nsx-1) px++;
+      else if (ay1+py > 0) py--;
+      else if (ay2+py < nsy-1) py++;
+      else {
+        // only if there is no space for shifting, insert a column at the left
+        px++;
+        nsx++;
+      }
+    }
 
     // perform the rotations and copy into new buffer
     voxel_type *s = new voxel_type[nsx*nsy*nsz];
