@@ -424,3 +424,30 @@ void voxel_0_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1
 #undef MAX
 }
 
+void voxel_0_c::transformPoint(int * x, int * y, int * z, unsigned int trans) const {
+  const symmetries_c * sym = gt->getSymmetries();
+
+  if (trans >= sym->getNumTransformations()) {
+    *x = -(*x);
+    trans -= sym->getNumTransformations();
+  }
+
+  for (int i = 0; i < sym->rotx(trans); i++) {
+    int tmp = *y;
+    *y = - (*z);
+    *z = tmp;
+  }
+
+  for (int i = 0; i < sym->roty(trans); i++) {
+    int tmp = *z;
+    *z = *x;
+    *x = -tmp;
+  }
+
+  for (int i = 0; i < sym->rotz(trans); i++) {
+    int tmp = *x;
+    *x = -(*y);
+    *y = tmp;
+  }
+}
+

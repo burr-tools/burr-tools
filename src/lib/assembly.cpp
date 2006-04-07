@@ -202,26 +202,7 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
   for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
     for (unsigned int j = 0; j < puz->probGetShapeCount(prob, i); j++) {
 
-      /* now do the transformation */
-      if (flip)
-        placements[p].xpos = -placements[p].xpos;
-
-      for (int t = 0; t < sym->rotx(rot); t++) {
-        int tmp = placements[p].ypos;
-        placements[p].ypos = -placements[p].zpos;
-        placements[p].zpos = tmp;
-      }
-
-      for (int t = 0; t < sym->roty(rot); t++) {
-        int tmp = placements[p].zpos;
-        placements[p].zpos = placements[p].xpos;
-        placements[p].xpos = -tmp;
-      }
-      for (int t = 0; t < sym->rotz(rot); t++) {
-        int tmp = placements[p].xpos;
-        placements[p].xpos = -placements[p].ypos;
-        placements[p].ypos = tmp;
-      }
+      puz->probGetResultShape(prob)->transformPoint(&placements[p].xpos, &placements[p].ypos, &placements[p].zpos, trans);
 
       placements[p].xpos += rx;
       placements[p].ypos += ry;

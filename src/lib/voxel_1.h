@@ -37,6 +37,7 @@ class voxel_1_c : public voxel_c {
     void rotatex(int by = 1);
     void rotatey(int by = 1);
     void rotatez(int by = 1);
+    void transformPoint(int * x, int * y, int * z, unsigned int trans) const;
 
     void mirrorX(void);
     void mirrorY(void);

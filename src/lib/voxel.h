@@ -319,6 +319,12 @@ public:
   virtual void rotatez(int by = 1) = 0;
 
   /**
+   * this function transformes the given point by the given transformation
+   * around the the origin
+   */
+  virtual void transformPoint(int * x, int * y, int * z, unsigned int trans) const = 0;
+
+  /**
    * shift the space around. Voxels that go over the
    * edge get lost. the size is not changed
    * the new empty space gets filled with the filler value

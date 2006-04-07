@@ -433,3 +433,31 @@ bool voxel_1_c::identicalInBB(const voxel_c * op, bool includeColors) const {
   return (((bx1+by1) & 1) == ((op->boundX1() + op->boundY1()) & 1)) && voxel_c::identicalInBB(op, includeColors);
 }
 
+void voxel_1_c::transformPoint(int * x, int * y, int * z, unsigned int trans) const {
+  const symmetries_c * sym = gt->getSymmetries();
+
+  if (trans >= sym->getNumTransformations()) {
+    *x = -(*x);
+    trans -= sym->getNumTransformations();
+  }
+
+  for (int t = 0; t < sym->rotx(trans); t++) {
+    *y = -(*y);
+    *z = -(*z);
+  }
+
+  for (int t = 0; t < sym->roty(trans); t++) {
+    *z = -(*z);
+    *x = -(*x);
+  }
+
+  for (int t = 0; t < sym->rotz(trans); t++) {
+
+    int tx = *x;
+    int ty = *y;
+
+    *x = (tx-3*ty)/2;
+    *y = (tx+ty)/2;
+  }
+}
+
