@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "statuswindow.h"
+#include "pieceColor.h"
 
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
@@ -64,73 +65,137 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) {
   (new LFl_Box("Sum", 6, 1))->pitch(2);
   new LFl_Line(7, 0, 1, lines+head, 2);
 
-  (new LFl_Box("Identical", 8, 0, 3))->pitch(2);
-  (new LFl_Box("Shape", 8, 1))->pitch(2);
+  (new LFl_Box("Identical", 8, 0, 5))->pitch(2);
+  (new LFl_Box("Mirror", 8, 1))->pitch(2);
   new LFl_Line(9, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Complete", 10, 1))->pitch(2);
-  new LFl_Line(11, 0, 1, lines+head, 2);
+  (new LFl_Box("Shape", 10, 1))->pitch(2);
+  new LFl_Line(11, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Complete", 12, 1))->pitch(2);
+  new LFl_Line(13, 0, 1, lines+head, 2);
 
-  (new LFl_Box("Connectivity", 12, 0, 5))->pitch(2);
-  (new LFl_Box("Face", 12, 1))->pitch(2);
-  new LFl_Line(13, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Edge", 14, 1))->pitch(2);
+  (new LFl_Box("Connectivity", 14, 0, 5))->pitch(2);
+  (new LFl_Box("Face", 14, 1))->pitch(2);
   new LFl_Line(15, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Corner", 16, 1))->pitch(2);
-  new LFl_Line(17, 0, 1, lines+head, 2);
+  (new LFl_Box("Edge", 16, 1))->pitch(2);
+  new LFl_Line(17, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Corner", 18, 1))->pitch(2);
+  new LFl_Line(19, 0, 1, lines+head, 2);
 
-  (new LFl_Box("Holes", 18, 0, 3))->pitch(2);
-  (new LFl_Box("2D", 18, 1))->pitch(2);
-  new LFl_Line(19, 1, 1, lines+head-1, 1);
-  (new LFl_Box("3D", 20, 1))->pitch(2);
+  (new LFl_Box("Holes", 20, 0, 3))->pitch(2);
+  (new LFl_Box("2D", 20, 1))->pitch(2);
+  new LFl_Line(21, 1, 1, lines+head-1, 1);
+  (new LFl_Box("3D", 22, 1))->pitch(2);
 
-  new LFl_Line(0, 2, 21, 1, 2);
+  new LFl_Line(0, 2, 23, 1, 2);
 
   for (unsigned int s = 0; s < p->shapeNumber(); s++) {
 
     const voxel_c * v = p->getShape(s);
+    LFl_Box * b;
+
+    unsigned int col = 0;
 
     if (v->getName().length())
       snprintf(tmp, 200, "S%i - %s", s+1, v->getName().c_str());
     else
       snprintf(tmp, 200, "S%i", s+1);
 
-    (new LFl_Box("", 0, s+head))->copy_label(tmp);
+    b = new LFl_Box("", col, s+head);
+    b->copy_label(tmp);
+    b->color(fl_rgb_color((int)(pieceColorR(s)*255), (int)(pieceColorG(s)*255), (int)(pieceColorB(s)*255)));
+    b->box(FL_FLAT_BOX);
+    col += 2;
 
     snprintf(tmp, 200, "%i", v->countState(voxel_c::VX_FILLED));
-    (new LFl_Box("", 2, s+head))->copy_label(tmp);
+    (new LFl_Box("", col, s+head))->copy_label(tmp);
+    col += 2;
 
     snprintf(tmp, 200, "%i", v->countState(voxel_c::VX_VARIABLE));
-    (new LFl_Box("", 4, s+head))->copy_label(tmp);
+    (new LFl_Box("", col, s+head))->copy_label(tmp);
+    col += 2;
 
     snprintf(tmp, 200, "%i", v->countState(voxel_c::VX_VARIABLE) + v->countState(voxel_c::VX_FILLED));
-    (new LFl_Box("", 6, s+head))->copy_label(tmp);
+    (new LFl_Box("", col, s+head))->copy_label(tmp);
+    col += 2;
+
+    for (unsigned int s2 = 0; s2 < s; s2++)
+      if (v->identicalWithRots(p->getShape(s2), true, false)) {
+        snprintf(tmp, 200, "%i", s2+1);
+        b = new LFl_Box("", col, s+head);
+        b->copy_label(tmp);
+        b->color(fl_rgb_color((int)(pieceColorR(s2)*255), (int)(pieceColorG(s2)*255), (int)(pieceColorB(s2)*255)));
+        b->box(FL_FLAT_BOX);
+        break;
+      }
+    col += 2;
 
     for (unsigned int s2 = 0; s2 < s; s2++)
       if (v->identicalWithRots(p->getShape(s2), false, false)) {
         snprintf(tmp, 200, "%i", s2+1);
-        (new LFl_Box("", 8, s+head))->copy_label(tmp);
+        b = new LFl_Box("", col, s+head);
+        b->copy_label(tmp);
+        b->color(fl_rgb_color((int)(pieceColorR(s2)*255), (int)(pieceColorG(s2)*255), (int)(pieceColorB(s2)*255)));
+        b->box(FL_FLAT_BOX);
         break;
       }
+    col += 2;
 
     for (unsigned int s2 = 0; s2 < s; s2++)
       if (v->identicalWithRots(p->getShape(s2), false, true)) {
         snprintf(tmp, 200, "%i", s2+1);
-        (new LFl_Box("", 10, s+head))->copy_label(tmp);
+        b = new LFl_Box("", col, s+head);
+        b->copy_label(tmp);
+        b->color(fl_rgb_color((int)(pieceColorR(s2)*255), (int)(pieceColorG(s2)*255), (int)(pieceColorB(s2)*255)));
+        b->box(FL_FLAT_BOX);
         break;
       }
+    col +=2 ;
 
-    if (v->connected(0, true, 0)) new LFl_Box("X", 12, s+head);
-    if (v->connected(1, true, 0)) new LFl_Box("X", 14, s+head);
-    if (v->connected(2, true, 0)) new LFl_Box("X", 16, s+head);
+    if (v->connected(0, true, 0)) {
+      new LFl_Box("X", col, s+head);
+    } else {
+      b = new LFl_Box("", col, s+head);
+      b->color(fl_rgb_color((int)(pieceColorR(s)*255), (int)(pieceColorG(s)*255), (int)(pieceColorB(s)*255)));
+      b->box(FL_FLAT_BOX);
+    }
+    col += 2;
+
+    if (v->connected(1, true, 0)) {
+      new LFl_Box("X", col, s+head);
+    } else {
+      b = new LFl_Box("", col, s+head);
+      b->color(fl_rgb_color((int)(pieceColorR(s)*255), (int)(pieceColorG(s)*255), (int)(pieceColorB(s)*255)));
+      b->box(FL_FLAT_BOX);
+    }
+    col += 2;
+
+    if (v->connected(2, true, 0)) {
+      new LFl_Box("X", col, s+head);
+    } else {
+      b = new LFl_Box("", col, s+head);
+      b->color(fl_rgb_color((int)(pieceColorR(s)*255), (int)(pieceColorG(s)*255), (int)(pieceColorB(s)*255)));
+      b->box(FL_FLAT_BOX);
+    }
+    col += 2;
 
     voxel_c * tmp = p->getGridType()->getVoxel(v);
     tmp->resize(tmp->getX()+2, tmp->getY()+2, tmp->getZ(),  0);
     tmp->translate(1, 1, 0,  0);
-    if (!tmp->connected(0, false, 0)) new LFl_Box("X", 18, s+head);
+    if (!tmp->connected(0, false, 0)) {
+      b = new LFl_Box("X", col, s+head);
+      b->color(fl_rgb_color((int)(pieceColorR(s)*255), (int)(pieceColorG(s)*255), (int)(pieceColorB(s)*255)));
+      b->box(FL_FLAT_BOX);
+    }
+    col += 2;
 
     tmp->resize(tmp->getX(), tmp->getY(), tmp->getZ()+2,  0);
     tmp->translate(0, 0, 1,  0);
-    if (!tmp->connected(0, false, 0)) new LFl_Box("X", 20, s+head);
+    if (!tmp->connected(0, false, 0)) {
+      b = new LFl_Box("X", col, s+head);
+      b->color(fl_rgb_color((int)(pieceColorR(s)*255), (int)(pieceColorG(s)*255), (int)(pieceColorB(s)*255)));
+      b->box(FL_FLAT_BOX);
+    }
+    col += 2;
 
     delete tmp;
   }
