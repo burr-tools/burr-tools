@@ -276,6 +276,17 @@ public:
   bool neighbour(unsigned int p, voxel_type val) const;
 
   /**
+   * returns the coordinates for a neighbor to the given voxel
+   *
+   * idx is the index if the neighbor, if you want the next neighbour, give the next number
+   * typ is what kind of neighbor you want, face (0), edge (1) or corner (2)
+   * x, y, z coordinate for the source
+   * xn, yn, zn, coordinate for the neighbor
+   * return true, when a valid neibor with that index exists
+   */
+  virtual bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const = 0;
+
+  /**
    * the x, y, z variant of the set function.
    */
   void set(unsigned int x, unsigned int y, unsigned int z, voxel_type val) {

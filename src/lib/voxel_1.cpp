@@ -461,3 +461,68 @@ void voxel_1_c::transformPoint(int * x, int * y, int * z, unsigned int trans) co
   }
 }
 
+bool voxel_1_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const {
+
+  int t = ((x+y) & 1) ? -1 : 1;  // -1 for top down, 1 for base triangle
+
+  switch (typ) {
+    case 0:
+      switch (idx) {
+        case 0: *xn = x-1; *yn = y;   *zn = z;   break;
+        case 1: *xn = x+1; *yn = y;   *zn = z;   break;
+        case 2: *xn = x;   *yn = y;   *zn = z-1; break;
+        case 3: *xn = x;   *yn = y;   *zn = z+1; break;
+        case 4: *xn = x;   *yn = y-t; *zn = z;   break;
+        default: return false;
+      }
+      break;
+    case 1:
+      switch (idx) {
+        case  0: *xn = x-2; *yn = y  ; *zn = z;   break;
+        case  1: *xn = x+2; *yn = y  ; *zn = z;   break;
+        case  2: *xn = x-1; *yn = y+1; *zn = z;   break;
+        case  3: *xn = x-1; *yn = y-1; *zn = z;   break;
+        case  4: *xn = x+1; *yn = y+1; *zn = z;   break;
+        case  5: *xn = x+1; *yn = y-1; *zn = z;   break;
+        case  6: *xn = x-2; *yn = y-t; *zn = z;   break;
+        case  7: *xn = x+2; *yn = y-t; *zn = z;   break;
+        case  8: *xn = x;   *yn = y+t; *zn = z;   break;
+
+        case  9: *xn = x-1; *yn = y;   *zn = z+1; break;
+        case 10: *xn = x-1; *yn = y;   *zn = z-1; break;
+        case 11: *xn = x+1; *yn = y;   *zn = z+1; break;
+        case 12: *xn = x+1; *yn = y;   *zn = z-1; break;
+
+        case 13: *xn = x;   *yn = y-t; *zn = z-1; break;
+        case 14: *xn = x;   *yn = y-t; *zn = z+1; break;
+        default: return false;
+      }
+      break;
+    case 2:
+      switch (idx) {
+        case  0: *xn = x-2; *yn = y  ; *zn = z-1; break;
+        case  1: *xn = x+2; *yn = y  ; *zn = z-1; break;
+        case  2: *xn = x-1; *yn = y+1; *zn = z-1; break;
+        case  3: *xn = x-1; *yn = y-1; *zn = z-1; break;
+        case  4: *xn = x+1; *yn = y+1; *zn = z-1; break;
+        case  5: *xn = x+1; *yn = y-1; *zn = z-1; break;
+        case  6: *xn = x-2; *yn = y-t; *zn = z-1; break;
+        case  7: *xn = x+2; *yn = y-t; *zn = z-1; break;
+        case  8: *xn = x;   *yn = y+t; *zn = z-1; break;
+
+        case  9: *xn = x-2; *yn = y  ; *zn = z+1; break;
+        case 10: *xn = x+2; *yn = y  ; *zn = z+1; break;
+        case 11: *xn = x-1; *yn = y+1; *zn = z+1; break;
+        case 12: *xn = x-1; *yn = y-1; *zn = z+1; break;
+        case 13: *xn = x+1; *yn = y+1; *zn = z+1; break;
+        case 14: *xn = x+1; *yn = y-1; *zn = z+1; break;
+        case 15: *xn = x-2; *yn = y-t; *zn = z+1; break;
+        case 16: *xn = x+2; *yn = y-t; *zn = z+1; break;
+        case 17: *xn = x;   *yn = y+t; *zn = z+1; break;
+        default: return false;
+      }
+      break;
+  }
+  return true;
+}
+

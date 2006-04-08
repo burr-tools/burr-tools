@@ -391,178 +391,28 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
           int root1 = getIndex(x, y, z);
           while (tree[root1]) root1 = tree[root1];
 
-          if ( (x > 0) &&
-              ((inverse && (get(x-1, y, z) != value)) ||
-               (!inverse && (get(x-1, y, z) == value)))) {
+          int curTyp = 0;
 
-            int root2 = getIndex(x-1, y, z);
-            while (tree[root2]) root2 = tree[root2];
+          while (curTyp <= type) {
 
-            if (root1 != root2) tree[root2] = root1;
-          }
+            int x2, y2, z2;
+            int idx = 0;
+            while (getNeighbor(idx, curTyp, x, y, z, &x2, &y2, &z2)) {
+              if ((x2 < x) || (y2 < y) || (z2 < z)) {
+                if ((x2 >= 0) && (x2 < sx) && (y2 >= 0) && (y2 < sy) && (z2 >= 0) && (z2 < sz)) {
+                  if ((inverse && (get(x2, y2, z2) != value)) ||
+                      (!inverse && (get(x2, y2, z2) == value))) {
 
-          if ( (y > 0) &&
-              ((inverse && (get(x, y-1, z) != value)) ||
-               (!inverse && (get(x, y-1, z) == value)))) {
+                    int root2 = getIndex(x2, y2, z2);
+                    while (tree[root2]) root2 = tree[root2];
 
-            int root2 = getIndex(x, y-1, z);
-            while (tree[root2]) root2 = tree[root2];
-
-            if (root1 != root2) tree[root2] = root1;
-          }
-
-          if ( (z > 0) &&
-              ((inverse && (get(x, y, z-1) != value)) ||
-               (!inverse && (get(x, y, z-1) == value)))) {
-
-            int root2 = getIndex(x, y, z-1);
-            while (tree[root2]) root2 = tree[root2];
-
-            if (root1 != root2) tree[root2] = root1;
-          }
-
-          if (type > 0) {
-            if ( (x > 0) && (z > 0) &&
-                ((inverse && (get(x-1, y, z-1) != value)) ||
-                 (!inverse && (get(x-1, y, z-1) == value)))) {
-
-              int root2 = getIndex(x-1, y, z-1);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
+                    if (root1 != root2) tree[root2] = root1;
+                  }
+                }
+              }
+              idx++;
             }
-
-            if ( (x > 0) && (z < sz-1) &&
-                ((inverse && (get(x-1, y, z+1) != value)) ||
-                 (!inverse && (get(x-1, y, z+1) == value)))) {
-
-              int root2 = getIndex(x-1, y, z+1);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
-            }
-
-            if ( (x < sx-1) && (z > 0) &&
-                ((inverse && (get(x+1, y, z-1) != value)) ||
-                 (!inverse && (get(x+1, y, z-1) == value)))) {
-
-              int root2 = getIndex(x+1, y, z-1);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
-            }
-
-            if ( (x > 0) && (y > 0) &&
-                ((inverse && (get(x-1, y-1, z) != value)) ||
-                 (!inverse && (get(x-1, y-1, z) == value)))) {
-
-              int root2 = getIndex(x-1, y-1, z);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
-            }
-
-            if ( (x > 0) && (y < sy-1) &&
-                ((inverse && (get(x-1, y+1, z) != value)) ||
-                 (!inverse && (get(x-1, y+1, z) == value)))) {
-
-              int root2 = getIndex(x-1, y+1, z);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
-            }
-
-            if ( (x < sx-1) && (y > 0) &&
-                ((inverse && (get(x+1, y-1, z) != value)) ||
-                 (!inverse && (get(x+1, y-1, z) == value)))) {
-
-              int root2 = getIndex(x+1, y-1, z);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
-            }
-
-            if ( (y > 0) && (z > 0) &&
-                ((inverse && (get(x, y-1, z-1) != value)) ||
-                 (!inverse && (get(x, y-1, z-1) == value)))) {
-
-              int root2 = getIndex(x, y-1, z-1);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
-            }
-          }
-
-          if (type > 1) {
-            if ( (x > 0) && (y > 0) && (z > 0) &&
-                ((inverse && (get(x-1, y-1, z-1) != value)) ||
-                 (!inverse && (get(x-1, y-1, z-1) == value)))) {
-
-              int root2 = getIndex(x-1, y-1, z-1);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
-            }
-
-            if ( (x < sx-1) && (y < sy-1) && (z > 0) &&
-                ((inverse && (get(x+1, y+1, z-1) != value)) ||
-                 (!inverse && (get(x+1, y+1, z-1) == value)))) {
-
-              int root2 = getIndex(x+1, y+1, z-1);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
-            }
-
-            if ( (x < sx-1) && (y > 0) && (z < sz-1) &&
-                ((inverse && (get(x+1, y-1, z+1) != value)) ||
-                 (!inverse && (get(x+1, y-1, z+1) == value)))) {
-
-              int root2 = getIndex(x+1, y-1, z+1);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
-            }
-
-            if ( (x > 0) && (y < sy-1) && (z < sz-1) &&
-                ((inverse && (get(x-1, y+1, z+1) != value)) ||
-                 (!inverse && (get(x-1, y+1, z+1) == value)))) {
-
-              int root2 = getIndex(x-1, y+1, z+1);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
-            }
-
-            if ( (x < sx-1) && (y > 0) && (z > 0) &&
-                ((inverse && (get(x+1, y-1, z-1) != value)) ||
-                 (!inverse && (get(x+1, y-1, z-1) == value)))) {
-
-              int root2 = getIndex(x+1, y-1, z-1);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
-            }
-
-            if ( (x > 0) && (y < sy-1) && (z > 0) &&
-                ((inverse && (get(x-1, y+1, z-1) != value)) ||
-                 (!inverse && (get(x-1, y+1, z-1) == value)))) {
-
-              int root2 = getIndex(x-1, y+1, z-1);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
-            }
-
-            if ( (x > 0) && (y > 0) && (z < sz-1) &&
-                ((inverse && (get(x-1, y-1, z+1) != value)) ||
-                 (!inverse && (get(x-1, y-1, z+1) == value)))) {
-
-              int root2 = getIndex(x-1, y-1, z+1);
-              while (tree[root2]) root2 = tree[root2];
-
-              if (root1 != root2) tree[root2] = root1;
-            }
+            curTyp++;
           }
         }
 
