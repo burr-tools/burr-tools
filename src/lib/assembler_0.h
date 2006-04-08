@@ -54,10 +54,12 @@ class gridType_c;
 
 class assembler_0_c : public assembler_c {
 
-private:
+protected:
 
   const puzzle_c * puzzle;
   unsigned int problem;
+
+private:
 
   /* this are the members of the node. One array for each member. This
    * accellerates access.
@@ -155,6 +157,12 @@ private:
 
   void iterativeMultiSearch(void);
 
+  /**
+   * this function is called by the default implementation of prepare
+   * to check, if the piece fits at the given position
+   */
+  virtual bool pieceFits(const voxel_c * piece, int x, int y, int z) = 0;
+
   /* this function creates the matrix for the search function
    * because we need to know how many nodes we need to allocate the
    * arrays with the right size, we add a parameter. if this is true
@@ -163,7 +171,7 @@ private:
    *
    * return error codes
    */
-  virtual int prepare(const puzzle_c * puz, int res_filles, int res_vari, unsigned int problemNum) = 0;
+  virtual int prepare(int res_filles, int res_vari);
 
   /* used by reduce to find out if the given position is a dead end
    * and will always lead to non solvable positions

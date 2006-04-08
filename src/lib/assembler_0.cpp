@@ -210,6 +210,217 @@ assembler_0_c::~assembler_0_c() {
   if (addRows) delete [] addRows;
 }
 
+/* add a piece to the cache, but only if it is not already there. If it is added return the
+ * piece pointer otherwise return null
+ */
+static voxel_c * addToCache(voxel_c * cache[], unsigned int * fill, voxel_c * piece) {
+
+  for (unsigned int i = 0; i < *fill; i++)
+    if (cache[i]->identicalInBB(piece)) {
+      delete piece;
+      return 0;
+    }
+
+  cache[*fill] = piece;
+  (*fill)++;
+  return piece;
+}
+
+/**
+ * this function prepares the matrix of nodes for the recursive function
+ * I've done some additions to knuths algorithm to implement variable
+ * voxels (empty spaces in the solution) and multiple instances of the
+ * same piece. Empty voxels in the result are done by removing columns
+ * from the matrix. This will prevent the algorithm from filling the
+ * corresponding voxels. But we need to have the constraints that these
+ * columns place on the solution. This is done by adding these columns
+ * to the matrix but behind the normal columns. These additional columns
+ * wont be searched by the alg if it looks for the next task to achive.
+ *
+ * Multiple instances of the same piece is handles in a similar way. To
+ * prevent finding the same solution again and again with just the
+ * pieces swapping places we enumber the pieces and their possible
+ * placements and disallow that the position number of piece n is lower
+ * than the position number of piece n-1. This can be achived by adding
+ * more constraint columns. There need to be one column for each
+ *
+ * negative result show there is something wrong: the place -result has not
+ * possible position inside the result
+ */
+int assembler_0_c::prepare(int res_filled, int res_vari) {
+
+  const voxel_c * result = puzzle->probGetResultShape(problem);
+
+  /* this array contains the column in our matrix that corresponds with
+   * the voxel position inside the result. We use this matrix because
+   * the calculation of the exact column depends on the number of FILLED
+   * and VARIABLE voxels and is relatively expensive to calculate
+   * with this lookup I was able to reduce the preparation time
+   * from 5 to 0.5 seconds for TheLostDay puzzle
+   */
+  unsigned int * columns = new unsigned int[result->getXYZ()];
+  unsigned int piecenumber = puzzle->probPieceNumber(problem);
+
+  /* voxelindex is the invers of the function column. it returns
+   * the index (not x, y, z) of a given column in the matrix
+   */
+  int * voxelindex = new int[result->getXYZ() + piecenumber + 1];
+
+  for (unsigned int i = 0; i < result->getXYZ() + piecenumber + 1; i++)
+    voxelindex[i] = -1;
+
+  {
+    int v = 0;
+    int c = 0;
+
+    for (unsigned int i = 0; i < result->getXYZ(); i++) {
+      switch(result->getState(i)) {
+      case voxel_c::VX_VARIABLE:
+        voxelindex[getVarivoxelStart() + v] = i;
+        columns[i] = getVarivoxelStart() + v++;
+        break;
+      case voxel_c::VX_FILLED:
+        voxelindex[1 + piecenumber + c] = i;
+        columns[i] = 1 + piecenumber + c++;
+        break;
+      default:
+        columns[i] = 0;
+      }
+    }
+  }
+
+  /* find the symmetry breaker
+   *
+   * ok, what idea is behind this: we try to find as few double solutions as possible
+   * because we don't want to fist search them and later on discard them because they are
+   * double, so what do we do to prevent double solutions?
+   *
+   * Select one piece and remove rotations from this piece so that we don't even try to
+   * place this piece in all possible positions. But which rotations need to be removed?
+   * This depends on the symmetries that are present in the result and the symmetries
+   * that are present in the piece
+   */
+  symmetries_t resultSym = result->selfSymmetries();
+  const gridType_c * gt = puzzle->getGridType();
+  const symmetries_c * sym = puzzle->getGridType()->getSymmetries();
+  unsigned int symBreakerShape = 0xFFFFFFFF;
+
+  /* so, if we have just the self-symmetry in the result, everything needs to be tried
+   * and not rotations can be removed
+   */
+  if (!unSymmetric(resultSym)) {
+
+    /* now we try to find the most "suitable" piece for our rotation removal. What is
+     * suitable? Suitable is the piece shape that has the least common symmetries with
+     * the result and that has the fiewest pieces
+     *
+     * FIXME: if there is more than one suitable piece, select the one with the most
+     * placements, this will gain us a little (or even bigger) speedup
+     * as its a difference if we select a piece that has only one placement anyway
+     * or select one with 400 placements of which 23/24th can be dropped
+     */
+    unsigned int bestFound = sym->getNumTransformationsMirror() + 1;
+    unsigned int symBreakerPiece = 0;
+    unsigned int pc = 0;
+
+    for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++) {
+
+      unsigned int cnt = sym->countSymmetryIntersection(resultSym, puzzle->probGetShapeShape(problem, i)->selfSymmetries());
+
+      if ((cnt < bestFound) ||
+          (cnt == bestFound) &&
+          (puzzle->probGetShapeCount(problem, i) < puzzle->probGetShapeCount(problem, symBreakerShape))) {
+        bestFound = cnt;
+        symBreakerShape = i;
+        symBreakerPiece = pc;
+      }
+
+      pc += puzzle->probGetShapeCount(problem, i);
+    }
+
+    bool tmp = sym->symmetriesLeft(resultSym, puzzle->probGetShapeShape(problem, symBreakerShape)->selfSymmetries());
+
+    if (tmp || (puzzle->probGetShapeCount(problem, symBreakerShape) > 1)) {
+      checkForTransformedAssemblies(symBreakerPiece);
+    }
+  }
+
+  /* node 0 is the start node for everything */
+
+  /* even thou the matrix has a column for each result voxel and each piece we leave out
+   * the VARIABLE voxels in the ring list of the header. This is to avoid selecting these
+   * columns for filling. The columns for the VARIABLE voxels are only there to make sure
+   * these voxels are only used once
+   */
+
+  /* nodes 1..n are the columns nodes */
+  GenerateFirstRow(res_filled);
+
+  int piece = 0;
+
+  voxel_c ** cache = new voxel_c *[sym->getNumTransformationsMirror()];
+
+  /* now we insert one shape after another */
+  for (unsigned int pc = 0; pc < puzzle->probShapeNumber(problem); pc++)
+    for (unsigned int piececount = 0; piececount < puzzle->probGetShapeCount(problem, pc); piececount++, piece++) {
+
+      nextPiece(piece, puzzle->probGetShapeCount(problem, pc), piececount);
+
+      /* this array contains all the pieces found so far, this will help us
+       * to not add two times the same piece to the structur */
+      unsigned int cachefill = 0;
+      unsigned int placements = 0;
+
+      /* go through all possible rotations of the piece
+       * if shape is new to cache, add it to the cache and also
+       * add the shape to the matrix, in all positions that it fits
+       */
+      for (unsigned int rot = 0; rot < sym->getNumTransformations(); rot++)
+        if (voxel_c * rotation = addToCache(cache, &cachefill, gt->getVoxel(puzzle->probGetShapeShape(problem, pc), rot))) {
+          for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
+            for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
+              for (int z = (int)result->boundZ1()-(int)rotation->boundZ1(); z <= (int)result->boundZ2()-(int)rotation->boundZ2(); z++)
+                if (pieceFits(rotation, x, y, z)) {
+
+                  int piecenode = AddPieceNode(piece, rot, x+rotation->getHx(), y+rotation->getHy(), z+rotation->getHz());
+                  placements = 1;
+
+                  /* now add the used cubes of the piece */
+                  for (unsigned int pz = rotation->boundZ1(); pz <= rotation->boundZ2(); pz++)
+                    for (unsigned int py = rotation->boundY1(); py <= rotation->boundY2(); py++)
+                      for (unsigned int px = rotation->boundX1(); px <= rotation->boundX2(); px++)
+                        if (rotation->getState(px, py, pz) != voxel_c::VX_EMPTY)
+                          AddVoxelNode(columns[result->getIndex(x+px, y+py, z+pz)], piecenode);
+                }
+
+
+          /* for the symmetry breaker piece we also add all symmetries of the box */
+          if ((pc == symBreakerShape) && (piececount == 0))
+            for (unsigned int r = 1; r < sym->getNumTransformationsMirror(); r++)
+              if (sym->symmetrieContainsTransformation(resultSym, r))
+                addToCache(cache, &cachefill, gt->getVoxel(puzzle->probGetShapeShape(problem, pc), sym->transAdd(rot, r)));
+        }
+
+      for (unsigned int i = 0; i < cachefill; i++)  delete cache[i];
+
+      /* check, if the current piece has at least one placement */
+      if (placements == 0) {
+        delete [] cache;
+        delete [] columns;
+        delete [] voxelindex;
+        return -puzzle->probGetShape(problem, pc);
+      }
+    }
+
+  delete [] cache;
+  delete [] columns;
+  delete [] voxelindex;
+
+  return 1;
+}
+
+
+
 assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsigned int prob) {
 
   puzzle = puz;
@@ -272,7 +483,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   multiPieceIndex = new unsigned int[piecenumber];
 
   /* fill the nodes arrays */
-  int error = prepare(puz, res_filled, res_vari, prob);
+  int error = prepare(res_filled, res_vari);
 
   // check, if there is one piece unplacable
   if (error <= 0) {

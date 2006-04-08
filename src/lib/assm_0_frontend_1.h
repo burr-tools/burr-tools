@@ -21,19 +21,13 @@
 #include "assembler_0.h"
 #include "gridtype.h"
 
-class puzzle_c;
+class voxel_c;
 
 class assm_0_frontend_1_c : public assembler_0_c {
 
 private:
 
-  /* this function creates the matrix for the search function
-   * because we need to know how many nodes we need to allocate the
-   * arrays with the right size, we add a parameter. if this is true
-   * the function will not access the array but only count the number
-   * of nodes used. this number is returned
-   */
-  int prepare(const puzzle_c * puz, int res_filles, int res_vari, unsigned int resultnum);
+  bool pieceFits(const voxel_c * piece, int x, int y, int z);
 
   assm_0_frontend_1_c(void) : assembler_0_c() {}
   friend assembler_0_c * gridType_c::getAssembler(void) const;
