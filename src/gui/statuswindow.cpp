@@ -105,14 +105,14 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) {
     snprintf(tmp, 200, "%i", v->countState(voxel_c::VX_VARIABLE) + v->countState(voxel_c::VX_FILLED));
     (new LFl_Box("", 6, s+head))->copy_label(tmp);
 
-    for (unsigned int s2 = 1; s2 < s; s2++)
+    for (unsigned int s2 = 0; s2 < s; s2++)
       if (v->identicalWithRots(p->getShape(s2), false, false)) {
         snprintf(tmp, 200, "%i", s2+1);
         (new LFl_Box("", 8, s+head))->copy_label(tmp);
         break;
       }
 
-    for (unsigned int s2 = 1; s2 < s; s2++)
+    for (unsigned int s2 = 0; s2 < s; s2++)
       if (v->identicalWithRots(p->getShape(s2), false, true)) {
         snprintf(tmp, 200, "%i", s2+1);
         (new LFl_Box("", 10, s+head))->copy_label(tmp);
