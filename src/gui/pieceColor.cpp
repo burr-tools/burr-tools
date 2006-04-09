@@ -199,3 +199,4 @@ unsigned int pieceColorBi(int x, int sub) {
 
 float darkPieceColor(float f) { return float(f * 0.9); }
 float lightPieceColor(float f) { return float(1 - (0.9 * (1-f))); }
+

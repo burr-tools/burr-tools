@@ -16,7 +16,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "grideditor_1.h"
-#include "pieceColor.h"
 
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
