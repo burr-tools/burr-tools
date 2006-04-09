@@ -794,9 +794,9 @@ void ResultViewer::draw(void) {
 
     unsigned char r, g, b;
 
-    r = (int)(255*pieceColorR(result));
-    g = (int)(255*pieceColorG(result));
-    b = (int)(255*pieceColorB(result));
+    r = pieceColorRi(result);
+    g = pieceColorGi(result);
+    b = pieceColorBi(result);
 
     color(fl_rgb_color(r, g, b));
 

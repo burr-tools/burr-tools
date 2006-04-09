@@ -130,9 +130,9 @@ void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, i
             /* get the color for the cell */
             int p = puzzle->probGetShape(prob, r);
             unsigned char r, g, b;
-            r = (int)(255*pieceColorR(p));
-            g = (int)(255*pieceColorG(p));
-            b = (int)(255*pieceColorB(p));
+            r = pieceColorRi(p);
+            g = pieceColorGi(p);
+            b = pieceColorBi(p);
 
             /* draw background */
             fl_color(r, g, b);

@@ -311,9 +311,9 @@ void PieceSelector::getText(unsigned int block, char * text) {
 }
 
 void PieceSelector::getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) {
-  *r = (int)(255*pieceColorR(block));
-  *g = (int)(255*pieceColorG(block));
-  *b = (int)(255*pieceColorB(block));
+  *r = pieceColorRi(block);
+  *g = pieceColorGi(block);
+  *b = pieceColorBi(block);
 }
 
 void ProblemSelector::setPuzzle(puzzle_c *pz) {
@@ -334,9 +334,9 @@ void ProblemSelector::getText(unsigned int block, char * text) {
 }
 
 void ProblemSelector::getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) {
-  *r = (int)(255*pieceColorR(block));
-  *g = (int)(255*pieceColorG(block));
-  *b = (int)(255*pieceColorB(block));
+  *r = pieceColorRi(block);
+  *g = pieceColorGi(block);
+  *b = pieceColorBi(block);
 }
 
 void PiecesList::setPuzzle(puzzle_c *pz, unsigned int prob) {
@@ -385,9 +385,9 @@ void PiecesList::getText(unsigned int block, char * text) {
 }
 
 void PiecesList::getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) {
-  *r = (int)(255*pieceColorR(puzzle->probGetShape(problem, block)));
-  *g = (int)(255*pieceColorG(puzzle->probGetShape(problem, block)));
-  *b = (int)(255*pieceColorB(puzzle->probGetShape(problem, block)));
+  *r = pieceColorRi(puzzle->probGetShape(problem, block));
+  *g = pieceColorGi(puzzle->probGetShape(problem, block));
+  *b = pieceColorBi(puzzle->probGetShape(problem, block));
 }
 
 PieceVisibility::PieceVisibility(int x, int y, int w, int h, puzzle_c * p) : BlockList(x, y, w, h), puzzle(p), problem(0), count(0) {
@@ -434,9 +434,9 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
       snprintf(txt, 199, "S%i", shapeID+1);
   }
 
-  r = int(255*pieceColorR(shapeID, subBlock));
-  g = int(255*pieceColorG(shapeID, subBlock));
-  b = int(255*pieceColorB(shapeID, subBlock));
+  r = pieceColorRi(shapeID, subBlock);
+  g = pieceColorGi(shapeID, subBlock);
+  b = pieceColorBi(shapeID, subBlock);
 
   /* when we are deactivated, turn the color into gray */
   if (!active()) {

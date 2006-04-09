@@ -28,6 +28,10 @@ float pieceColorR(int x);
 float pieceColorG(int x);
 float pieceColorB(int x);
 
+unsigned int pieceColorRi(int x);
+unsigned int pieceColorGi(int x);
+unsigned int pieceColorBi(int x);
+
 /* if there is more than one instance of the same shape, you can get
  * the color with this function. It slightly changes the color
  * from piece to piece so that the pieces all have a similar but distinuishable
@@ -36,6 +40,10 @@ float pieceColorB(int x);
 float pieceColorR(int x, int sub);
 float pieceColorG(int x, int sub);
 float pieceColorB(int x, int sub);
+
+unsigned int pieceColorRi(int x, int sub);
+unsigned int pieceColorGi(int x, int sub);
+unsigned int pieceColorBi(int x, int sub);
 
 /* the pieces are drawn with checkerd colors, these 2 functions can be used to
  * achieve that effect

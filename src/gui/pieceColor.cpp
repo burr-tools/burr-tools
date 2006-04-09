@@ -87,6 +87,28 @@ float pieceColorB(int x) {
     return float((1+sin(3.5*x+2.3))/2);
 }
 
+unsigned int pieceColorRi(int x) {
+  if (x < COLS)
+    return (unsigned int)(r[x]*255);
+  else
+    return (unsigned int)(255*(1+sin(0.7*x))/2);
+}
+
+unsigned int pieceColorGi(int x) {
+  if (x < COLS)
+    return (unsigned int)(g[x]*255);
+  else
+    return (unsigned int)(255*(1+sin(1.3*x+1.5))/2);
+}
+
+unsigned int pieceColorBi(int x) {
+  if (x < COLS)
+    return (unsigned int)(b[x]*255);
+  else
+    return (unsigned int)(255*(1+sin(3.5*x+2.3))/2);
+}
+
+
 /* the problem is that simply adding the jitter
  * would cause an overflow every now and then, so we
  * search in the list of possible jitter values
@@ -149,6 +171,30 @@ float pieceColorB(int x, int sub) {
   float val = pieceColorB(x);
 
   return val + jitter;
+}
+
+unsigned int pieceColorRi(int x, int sub) {
+
+  float jitter = jr[getJitter(x, sub)];
+  float val = pieceColorR(x);
+
+  return (unsigned int)((val + jitter)*255);
+}
+
+unsigned int pieceColorGi(int x, int sub) {
+
+  float jitter = jg[getJitter(x, sub)];
+  float val = pieceColorG(x);
+
+  return (unsigned int)((val + jitter)*255);
+}
+
+unsigned int pieceColorBi(int x, int sub) {
+
+  float jitter = jb[getJitter(x, sub)];
+  float val = pieceColorB(x);
+
+  return (unsigned int)((val + jitter)*255);
 }
 
 float darkPieceColor(float f) { return float(f * 0.9); }
