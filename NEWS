@@ -1,7 +1,10 @@
 ------------- Version 0.2.0
 
 - write required base for other space grids and partially implement triangular prisms 
-  (only editing and displaying right now)
+  (no disassembling right now)
+
+- implement a status window that displays all kinds of useful and not so useful
+  information for all the shapes
 
 ------------- Version 0.1.9
 
