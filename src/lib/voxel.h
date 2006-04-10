@@ -428,8 +428,12 @@ public:
    * that are not equal to value this is useful for pieces
    * or a result shape that contain voxels of different value but
    * all these values belong to the same piece
+   *
+   * normally the outside is one node and voxels that are on the edge
+   * of the shape may be merged with the outside, this can be suppressed
+   * for the z-axis by setting outsideZ to false
    */
-  bool connected(char type, bool inverse, voxel_type value) const;
+  bool connected(char type, bool inverse, voxel_type value, bool outsideZ = true) const;
 
   /** all possible rotations of one piece can be generated
    * using this function by iterating nr from 0 to NUM_TRANSFORMATIONS (24 for cubes) excluding

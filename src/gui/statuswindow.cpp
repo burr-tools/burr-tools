@@ -151,26 +151,20 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) {
     }
     col += 2;
 
-    voxel_c * tmp = p->getGridType()->getVoxel(v);
-    tmp->resize(tmp->getX()+2, tmp->getY()+2, tmp->getZ(),  0);
-    tmp->translate(1, 1, 0,  0);
-    if (!tmp->connected(0, false, 0)) {
+    if (!v->connected(0, false, 0, false)) {
       b = new LFl_Box("X", col, s+head);
       b->color(fl_rgb_color(pieceColorRi(s), pieceColorGi(s), pieceColorBi(s)));
       b->box(FL_FLAT_BOX);
     }
     col += 2;
 
-    tmp->resize(tmp->getX(), tmp->getY(), tmp->getZ()+2,  0);
-    tmp->translate(0, 0, 1,  0);
-    if (!tmp->connected(0, false, 0)) {
+    if (!v->connected(0, false, 0)) {
       b = new LFl_Box("X", col, s+head);
       b->color(fl_rgb_color(pieceColorRi(s), pieceColorGi(s), pieceColorBi(s)));
       b->box(FL_FLAT_BOX);
     }
     col += 2;
 
-    delete tmp;
   }
 
   (new LFl_Box("Shape", 0, 0))->pitch(2);

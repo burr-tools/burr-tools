@@ -365,7 +365,7 @@ void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
   hz += dz;
 }
 
-bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
+bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ) const {
 
   /* union find algorithm:
    * 1. put all voxels that matter in an own set
@@ -373,13 +373,14 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
    * 3. check if all voxels are in the same set
    */
 
-  /* allocate enough space for all voxels */
-  int * tree = new int[voxels];
+  /* allocate enough space for all voxels plus one for the outside */
+  int * tree = new int[voxels+1];
 
   /* initialize tree */
-  for (unsigned int i = 0; i < voxels; i++) {
-    tree[i] = 0;
-  }
+  for (unsigned int i = 0; i < voxels+1; i++)
+    tree[i] = -1;
+
+  bool merge_outside = ((inverse && (value != outside)) || (!inverse && (value == outside)));
 
   /* merge all neigboring voxels */
   for (unsigned int x = 0; x < sx; x++)
@@ -389,7 +390,7 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
             (!inverse && (get(x, y, z) == value))) {
 
           int root1 = getIndex(x, y, z);
-          while (tree[root1]) root1 = tree[root1];
+          while (tree[root1] >= 0) root1 = tree[root1];
 
           int curTyp = 0;
 
@@ -398,16 +399,27 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
             int x2, y2, z2;
             int idx = 0;
             while (getNeighbor(idx, curTyp, x, y, z, &x2, &y2, &z2)) {
-              if ((x2 < x) || (y2 < y) || (z2 < z)) {
-                if ((x2 >= 0) && (x2 < sx) && (y2 >= 0) && (y2 < sy) && (z2 >= 0) && (z2 < sz)) {
+              if ((x2 >= 0) && (x2 < sx) && (y2 >= 0) && (y2 < sy) && (z2 >= 0) && (z2 < sz)) {
+                if ((x2 < x) || (y2 < y) || (z2 < z)) {
                   if ((inverse && (get(x2, y2, z2) != value)) ||
                       (!inverse && (get(x2, y2, z2) == value))) {
 
                     int root2 = getIndex(x2, y2, z2);
-                    while (tree[root2]) root2 = tree[root2];
+                    while (tree[root2] >= 0) root2 = tree[root2];
 
-                    if (root1 != root2) tree[root2] = root1;
+                    if (root1 != root2)
+                      tree[root2] = root1;
                   }
+                }
+              } else if (merge_outside) {
+
+                if (outsideZ || ((z2 >= 0) && (z2 < sz))) {
+
+                  int root2 = voxels;
+                  while (tree[root2] >= 0) root2 = tree[root2];
+
+                  if (root1 != root2)
+                    tree[root2] = root1;
                 }
               }
               idx++;
@@ -425,13 +437,13 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
           if ((inverse && (get(x, y, z) != value)) ||
               (!inverse && (get(x, y, z) == value))) {
             if (root == -1) {
-              root = x+sx*(y+sy*z);
-              while (tree[root]) root = tree[root];
+              root = getIndex(x, y, z);
+              while (tree[root] >= 0) root = tree[root];
 
             } else {
 
-              int root2 = x+sx*(y+sy*z);
-              while (tree[root2]) root2 = tree[root2];
+              int root2 = getIndex(x, y, z);
+              while (tree[root2] >= 0) root2 = tree[root2];
 
               if (root2 != root) {
                 delete [] tree;
@@ -439,6 +451,16 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value) const {
               }
             }
           }
+
+    if ((root != -1) && merge_outside) {
+      int root2 = voxels;
+      while (tree[root2] >= 0) root2 = tree[root2];
+
+      if (root2 != root) {
+        delete [] tree;
+        return false;
+      }
+    }
   }
 
   delete [] tree;
