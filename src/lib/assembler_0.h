@@ -255,7 +255,7 @@ private:
   int debug_loops;    // how many loops to run ?
   unsigned int debug_pos;      // run until pos is debug_pos
 
-  void clumpify(void);
+  unsigned int clumpify(void);
 
 protected:
 

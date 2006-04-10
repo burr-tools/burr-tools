@@ -98,10 +98,13 @@ void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, 
 /* find identical columns within the matrix and remove all but one
  * of these identical columns, this will not save us iterations, but will
  * make the iterations much cheaper
+ *
+ * returns the number of columns that were removed
  */
-void assembler_0_c::clumpify(void) {
+unsigned int assembler_0_c::clumpify(void) {
 
   unsigned int col = right[0];
+  unsigned int removed = 0;
 
   while (col) {
 
@@ -163,8 +166,12 @@ void assembler_0_c::clumpify(void) {
     for (unsigned int i = 0; i < columns.size(); i++)
       remove_column(columns[i]);
 
+    removed += columns.size();
+
     col = right[col];
   }
+
+  return removed;
 }
 
 void assembler_0_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
@@ -799,6 +806,7 @@ void assembler_0_c::reduce(void) {
    */
   unsigned int *columns = new unsigned int[varivoxelEnd];
   unsigned int removed = 0;
+  unsigned int remCol = 0;
   bool rem_sth;
 
   // we first collect all the rows that we finally want to
@@ -851,7 +859,7 @@ void assembler_0_c::reduce(void) {
     }
   }
 
-  clumpify();
+  remCol += clumpify();
 
   do {
 
@@ -945,7 +953,9 @@ void assembler_0_c::reduce(void) {
 
   delete [] columns;
 
-  clumpify();
+  remCol += clumpify();
+
+  printf("reduce removed %i rows and %i columns\n", removed, remCol);
 }
 
 assembly_c * assembler_0_c::getAssembly(void) {
