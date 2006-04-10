@@ -118,7 +118,7 @@ class UserInterface : public Fl_Double_Window {
   double ViewSizes[3];
   int currentTab;
 
-  void tryToLoad(const char *fname);
+  bool tryToLoad(const char *fname);
 
   void CreateShapeTab(int x, int y, int w, int h);
   void CreateProblemTab(int x, int y, int w, int h);

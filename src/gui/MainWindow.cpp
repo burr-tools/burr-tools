@@ -1186,69 +1186,67 @@ bool UserInterface::threadStopped(void) {
   return true;
 }
 
-void UserInterface::tryToLoad(const char * f) {
+bool UserInterface::tryToLoad(const char * f) {
 
-  // it may well be that the file doesn't exist, if it comed from the command line
-  if (f && fileExists(f)) {
+  // it may well be that the file doesn't exist, if it came from the command line
+  if (!f) return false;
+  if (!fileExists(f)) return false;
 
-    xml::tree_parser parser(f);
+  xml::tree_parser parser(f);
 
-    if (!parser) {
+  if (!parser) {
 
-      fl_message("Error parsing xml puzzle file, xml-syntax incorrect:\n %s", parser.get_error_message().c_str());
+    fl_message("Error parsing xml puzzle file, xml-syntax incorrect:\n %s", parser.get_error_message().c_str());
 
-      return;
-    }
+    return false;
+  }
 
-    xml::document &doc = parser.get_document();
+  xml::document &doc = parser.get_document();
 
-    puzzle_c * newPuzzle;
+  puzzle_c * newPuzzle;
 
-    try {
-      newPuzzle = new puzzle_c(doc.get_root_node());
-    }
+  try {
+    newPuzzle = new puzzle_c(doc.get_root_node());
+  }
 
-    catch (load_error e) {
-      fl_message(e.getText());
-      std::cout << e.getNode();
-      return;
-    }
+  catch (load_error e) {
+    fl_message(e.getText());
+    std::cout << e.getNode();
+    return false;
+  }
 
-    if (fname) delete [] fname;
-    fname = new char[strlen(f)+1];
-    strcpy(fname, f);
+  if (fname) delete [] fname;
+  fname = new char[strlen(f)+1];
+  strcpy(fname, f);
 
-    char nm[300];
-    snprintf(nm, 299, "BurrTools - %s", fname);
-    label(nm);
+  char nm[300];
+  snprintf(nm, 299, "BurrTools - %s", fname);
+  label(nm);
 
-    ReplacePuzzle(newPuzzle);
-    updateInterface();
+  ReplacePuzzle(newPuzzle);
+  updateInterface();
 
-    TaskSelectionTab->value(TabPieces);
-    activateShape(PcSel->getSelection());
-    StatPieceInfo(PcSel->getSelection());
-    View3D->showColors(puzzle, Status->useColors());
+  TaskSelectionTab->value(TabPieces);
+  activateShape(PcSel->getSelection());
+  StatPieceInfo(PcSel->getSelection());
+  View3D->showColors(puzzle, Status->useColors());
 
-    changed = false;
+  changed = false;
 
-    {
+  // check for a started assemblies, and warn user about it
+  bool containsStarted = false;
 
-      // check for astarted assemblies, and warn user about it
-      bool containsStarted = false;
-
-      for (unsigned int p = 0; p < puzzle->problemNumber(); p++) {
-        if (puzzle->probGetSolveState(p) == puzzle_c::SS_SOLVING) {
-          containsStarted = true;
-          break;
-        }
-      }
-
-      if (containsStarted)
-        fl_message("This puzzle file contains started but not finished search for solutions.");
-
+  for (unsigned int p = 0; p < puzzle->problemNumber(); p++) {
+    if (puzzle->probGetSolveState(p) == puzzle_c::SS_SOLVING) {
+      containsStarted = true;
+      break;
     }
   }
+
+  if (containsStarted)
+    fl_message("This puzzle file contains started but not finished search for solutions.");
+
+  return true;
 }
 
 void UserInterface::ReplacePuzzle(puzzle_c * NewPuzzle) {
@@ -1318,15 +1316,15 @@ Fl_Menu_Item UserInterface::menu_MainMenu[] = {
 void UserInterface::show(int argn, char ** argv) {
   Fl_Double_Window::show();
 
-  if (argn == 2)
-#ifdef __APPLE__
-  {
-    if (argv[1][0]!='-') // hack to get rid of -psn_0_* passed by apple finder
-      tryToLoad(argv[1]);
-  }
-#else
-    tryToLoad(argv[1]);
-#endif
+  int arg = 1;
+
+  // try all command line switches, until either they are
+  // all tried or one got loaded successfully
+  while (arg < argn)
+    if (tryToLoad(argv[arg]))
+      break;
+    else
+      arg++;
 }
 
 void UserInterface::activateClear(void) {
