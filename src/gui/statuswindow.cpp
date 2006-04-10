@@ -54,44 +54,17 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) {
   layouter_c * fr = new layouter_c(0, 0, 1, 1);
   fr->pitch(7);
 
-  (new LFl_Box("Shape", 0, 0))->pitch(2);
-  new LFl_Line(1, 0, 1, lines+head, 2);
-
-  (new LFl_Box("Units", 2, 0, 5))->pitch(2);
-  (new LFl_Box("Normal", 2, 1))->pitch(2);
-  new LFl_Line(3, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Variable", 4, 1))->pitch(2);
-  new LFl_Line(5, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Sum", 6, 1))->pitch(2);
-  new LFl_Line(7, 0, 1, lines+head, 2);
-
-  (new LFl_Box("Identical", 8, 0, 5))->pitch(2);
-  (new LFl_Box("Mirror", 8, 1))->pitch(2);
-  new LFl_Line(9, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Shape", 10, 1))->pitch(2);
-  new LFl_Line(11, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Complete", 12, 1))->pitch(2);
-  new LFl_Line(13, 0, 1, lines+head, 2);
-
-  (new LFl_Box("Connectivity", 14, 0, 5))->pitch(2);
-  (new LFl_Box("Face", 14, 1))->pitch(2);
-  new LFl_Line(15, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Edge", 16, 1))->pitch(2);
-  new LFl_Line(17, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Corner", 18, 1))->pitch(2);
-  new LFl_Line(19, 0, 1, lines+head, 2);
-
-  (new LFl_Box("Holes", 20, 0, 3))->pitch(2);
-  (new LFl_Box("2D", 20, 1))->pitch(2);
-  new LFl_Line(21, 1, 1, lines+head-1, 1);
-  (new LFl_Box("3D", 22, 1))->pitch(2);
-
-  new LFl_Line(0, 2, 23, 1, 2);
-
   for (unsigned int s = 0; s < p->shapeNumber(); s++) {
 
-    const voxel_c * v = p->getShape(s);
     LFl_Box * b;
+
+    if (s & 1) {
+      b = new LFl_Box("", 1, s+head, 22, 1);
+      b->color(fl_rgb_color(150, 150, 150));
+      b->box(FL_FLAT_BOX);
+    }
+
+    const voxel_c * v = p->getShape(s);
 
     unsigned int col = 0;
 
@@ -199,6 +172,40 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) {
 
     delete tmp;
   }
+
+  (new LFl_Box("Shape", 0, 0))->pitch(2);
+  new LFl_Line(1, 0, 1, lines+head, 2);
+
+  (new LFl_Box("Units", 2, 0, 5))->pitch(2);
+  (new LFl_Box("Normal", 2, 1))->pitch(2);
+  new LFl_Line(3, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Variable", 4, 1))->pitch(2);
+  new LFl_Line(5, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Sum", 6, 1))->pitch(2);
+  new LFl_Line(7, 0, 1, lines+head, 2);
+
+  (new LFl_Box("Identical", 8, 0, 5))->pitch(2);
+  (new LFl_Box("Mirror", 8, 1))->pitch(2);
+  new LFl_Line(9, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Shape", 10, 1))->pitch(2);
+  new LFl_Line(11, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Complete", 12, 1))->pitch(2);
+  new LFl_Line(13, 0, 1, lines+head, 2);
+
+  (new LFl_Box("Connectivity", 14, 0, 5))->pitch(2);
+  (new LFl_Box("Face", 14, 1))->pitch(2);
+  new LFl_Line(15, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Edge", 16, 1))->pitch(2);
+  new LFl_Line(17, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Corner", 18, 1))->pitch(2);
+  new LFl_Line(19, 0, 1, lines+head, 2);
+
+  (new LFl_Box("Holes", 20, 0, 3))->pitch(2);
+  (new LFl_Box("2D", 20, 1))->pitch(2);
+  new LFl_Line(21, 1, 1, lines+head-1, 1);
+  (new LFl_Box("3D", 22, 1))->pitch(2);
+
+  new LFl_Line(0, 2, 23, 1, 2);
 
   fr->end();
 
