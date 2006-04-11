@@ -76,7 +76,6 @@ class UserInterface : public Fl_Double_Window {
   Fl_Group *TabProblems;
 
   ToolTab * pieceTools;
-  FlatLightButton *editLayersButton;
   ButtonGroup *editChoice;
   ButtonGroup *editMode;
 

@@ -90,24 +90,6 @@ public:
   }
 };
 
-class FlatLightButton : public Fl_Light_Button {
-
-public:
-  FlatLightButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback1* cb, long cb_para) : Fl_Light_Button(x, y, w, h, txt) {
-    box(FL_THIN_UP_BOX);
-    tooltip(tt);
-    callback(cb, cb_para);
-    clear_visible_focus();
-  }
-
-  FlatLightButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback* cb, void * cb_para) : Fl_Light_Button(x, y, w, h, txt) {
-    box(FL_THIN_UP_BOX);
-    tooltip(tt);
-    callback(cb, cb_para);
-    clear_visible_focus();
-  }
-};
-
 class ToggleButton : public Fl_Button {
 
   Fl_Callback *callback;
