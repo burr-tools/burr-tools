@@ -2570,7 +2570,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
   Fl_Group * tile = new Fl_Tile(x, y, w, h);
 
   // calculate hight of different groups
-  const int paramsFixedHight = SZ_SEPARATOR_Y + 5*SZ_BUTTON_Y + 5*SZ_GAP +  5*SZ_TEXT_Y;
+  const int paramsFixedHight = SZ_SEPARATOR_Y + 4*SZ_BUTTON_Y + 5*SZ_GAP +  5*SZ_TEXT_Y;
   const int solutionsFixedHight = SZ_SEPARATOR_Y + 2*SZ_BUTTON_Y + 2*SZ_GAP + 2*SZ_TEXT_Y;
 
   int hi = h - paramsFixedHight - solutionsFixedHight;
@@ -2599,15 +2599,14 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     y += lh - (paramsFixedHight-SZ_SEPARATOR_Y);
     lh -= lh - (paramsFixedHight-SZ_SEPARATOR_Y);
 
-    SolveDisasm = new Fl_Check_Button(x, y, w, SZ_BUTTON_Y, "Solve Disassembly");
+    SolveDisasm = new Fl_Check_Button(x, y, w/2, SZ_BUTTON_Y, "Disassemble");
     SolveDisasm->tooltip(" Do also try to disassemble the assembled puzzles. Only puzzles that can be disassembled will be added to solutions ");
     SolveDisasm->clear_visible_focus();
-    y += SZ_BUTTON_Y;
-    lh -= SZ_BUTTON_Y;
 
-    JustCount = new Fl_Check_Button(x, y, w, SZ_BUTTON_Y, "Just Count");
+    JustCount = new Fl_Check_Button(x+w/2, y, w-w/2, SZ_BUTTON_Y, "Just Count");
     JustCount->tooltip(" Don\'t save the solutions, just count the number of them ");
     JustCount->clear_visible_focus();
+
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
