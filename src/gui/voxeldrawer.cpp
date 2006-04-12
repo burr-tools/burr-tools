@@ -572,10 +572,10 @@ void voxelDrawer_c::showAssemblerState(const puzzle_c * puz, unsigned int probNu
         piece++;
       }
 
-    setCenter(0.5*puz->probGetResultShape(probNum)->getX(),
-                      0.5*puz->probGetResultShape(probNum)->getY(),
-                      0.5*puz->probGetResultShape(probNum)->getZ()
-                     );
+    float cx, cy, cz;
+    calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
+    setCenter(cx*0.5, cy*0.5, cz*0.5);
+
     setTransformationType(CenterTranslateRoateScale);
     showCoordinateSystem(false);
   }
