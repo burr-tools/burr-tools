@@ -192,7 +192,7 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
   int rx, ry, rz;
   puz->probGetResultShape(prob)->getHotspot(trans, &rx, &ry, &rz);
 
-  if (trans >= sym->getNumTransformations()) {
+  if (trans >= NUM_TRANSFORMATIONS) {
     flip = true;
     rot = trans - sym->getNumTransformations();
   }
@@ -249,7 +249,7 @@ bool assembly_c::compare(const assembly_c & b, unsigned int pivot) const {
   bt_assert(pivot < placements.size());
 
   /* we first compare the pivot piece and leave that one out later on
-   * we do that because the pivot piece is the one that das reduced
+   * we do that because the pivot piece is the one that has reduced
    * placements and may not occure in all possible positions and thus
    * the rotation reduction algorithm may try to select on assembly
    * that doesn't exist
