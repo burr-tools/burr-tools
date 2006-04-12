@@ -578,6 +578,13 @@ void voxelDrawer_c::showAssemblerState(const puzzle_c * puz, unsigned int probNu
 
     setTransformationType(CenterTranslateRoateScale);
     showCoordinateSystem(false);
+
+    num = addSpace(puz->getGridType()->getVoxel(puz->probGetResultShape(probNum)));
+    setSpaceColor(num,
+                        pieceColorR(puz->probGetResult(probNum)),
+                        pieceColorG(puz->probGetResult(probNum)),
+                        pieceColorB(puz->probGetResult(probNum)), 1);
+    setDrawingMode(num, gridline);
   }
 }
 
