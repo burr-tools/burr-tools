@@ -981,7 +981,7 @@ static void cb_SaveAs_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Save
 void UserInterface::cb_SaveAs(void) {
 
   if (threadStopped()) {
-    const char * f = FileSelection("Save Puzzle as");
+    const char * f = FileSelection("Save Puzzle As");
 
     if (f) {
 
@@ -1300,7 +1300,7 @@ Fl_Menu_Item UserInterface::menu_MainMenu[] = {
     {"Load",    FL_F + 3, cb_Load_stub,        0, 0, 0, 0, 14, 56},
     {"Import",         0, cb_Load_Ps3d_stub,   0, 0, 0, 0, 14, 56},
     {"Save",    FL_F + 2, cb_Save_stub,        0, 0, 0, 0, 14, 56},
-    {"Save as",        0, cb_SaveAs_stub,      0, FL_MENU_DIVIDER, 0, 0, 14, 56},
+    {"Save As",        0, cb_SaveAs_stub,      0, FL_MENU_DIVIDER, 0, 0, 14, 56},
     {"Quit",           0, cb_Quit_stub,        0, 0, 3, 0, 14, 56},
     { 0 },
   {"Toggle 3D", FL_F + 4, cb_Toggle3D_stub,    0, 0, 0, 0, 14, 56},
@@ -2406,7 +2406,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
 
     int hw = (w - SZ_GAP)/4;
 
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Piece assignment", true);
+    new Separator(x, y, w, SZ_SEPARATOR_Y, "Piece Assignment", true);
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 
@@ -2493,7 +2493,7 @@ void UserInterface::CreateProblemTab(int x, int y, int w, int h) {
     Fl_Group* group = new Fl_Group(x, y, w, lh);
     group->box(FL_FLAT_BOX);
 
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Colour assignment", true);
+    new Separator(x, y, w, SZ_SEPARATOR_Y, "Colour Assignment", true);
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 

@@ -176,8 +176,8 @@ configuration::configuration(void) {
   first_data = 0;
 
   CNF_BOOL_D("tooltips",          &i_use_tooltips, "Use Tooltips");
-  CNF_BOOL_D("lightning",         &i_use_lightning, "Use lights in 3D view");
-  CNF_BOOL_D("fadeout",           &i_use_blendedRemoving, "Fade out pieces");
+  CNF_BOOL_D("lightning",         &i_use_lightning, "Use Lights in 3D View");
+  CNF_BOOL_D("fadeout",           &i_use_blendedRemoving, "Fade Out Pieces");
   CNF_BOOL("rubberband",          &i_use_rubberband);
   CNF_INT("windowposx",           &i_window_pos_x);
   CNF_INT("windowposy",           &i_window_pos_y);
