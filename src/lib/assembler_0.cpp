@@ -326,17 +326,17 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
      * as its a difference if we select a piece that has only one placement anyway
      * or select one with 400 placements of which 23/24th can be dropped
      */
-    unsigned int bestFound = sym->getNumTransformationsMirror() + 1;
     unsigned int symBreakerPiece = 0;
-    unsigned int pc = 0;
+    unsigned int pc = puzzle->probGetShapeCount(problem, 0);
+    unsigned int bestFound = sym->countSymmetryIntersection(resultSym, puzzle->probGetShapeShape(problem, 0)->selfSymmetries());
+    symBreakerShape = 0;
 
-    for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++) {
+    for (unsigned int i = 1; i < puzzle->probShapeNumber(problem); i++) {
 
       unsigned int cnt = sym->countSymmetryIntersection(resultSym, puzzle->probGetShapeShape(problem, i)->selfSymmetries());
 
-      if ((cnt < bestFound) ||
-          (cnt == bestFound) &&
-          (puzzle->probGetShapeCount(problem, i) < puzzle->probGetShapeCount(problem, symBreakerShape))) {
+      if ((puzzle->probGetShapeCount(problem, i) < puzzle->probGetShapeCount(problem, symBreakerShape)) ||
+          (puzzle->probGetShapeCount(problem, i) == puzzle->probGetShapeCount(problem, symBreakerShape)) && (cnt < bestFound)) {
         bestFound = cnt;
         symBreakerShape = i;
         symBreakerPiece = pc;
@@ -1171,6 +1171,13 @@ void assembler_0_c::iterativeMultiSearch(void) {
 
           // we must either have hit a single piece or the first
           // piece of a multi-piece. Everytime the index is 0
+          //
+          // shh... we can hit a later piece of a multi piece here after
+          // all, that can happen, when we hav selected the multi-piece
+          // as a symmetry breaker, and the search selects a voxel to fill
+          // and that voxel can not be filled with the first piece of the multi-
+          // piece because of its limits in orientation because of it beeing the
+          // symmetry breaker.
           bt_assert(multiPieceIndex[piece[pos]] == 0);
 
           cont = true;
