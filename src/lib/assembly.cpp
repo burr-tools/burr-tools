@@ -192,7 +192,26 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
   int rx, ry, rz;
   puz->probGetResultShape(prob)->getHotspot(trans, &rx, &ry, &rz);
 
-  if (trans >= NUM_TRANSFORMATIONS) {
+  {
+    /* when the result shape is not minimized, or in space grids that are not
+     * cubes is happens that the rotation of the result shape makes it jump
+     * around which makes comparisons of rotated assemblies impossible,
+     * this code makes the rotation stay in place. This is possible because
+     * this normally only gets called when when the result shape looks
+     * identical with the new orientation
+     */
+
+    int cx, cy, cz, dx, dy, dz;
+
+    puz->probGetResultShape(prob)->getBoundingBox(trans, &cx, &cy, &cz);
+    puz->probGetResultShape(prob)->getBoundingBox(0, &dx, &dy, &dz);
+
+    rx += dx - cx;
+    ry += dy - cy;
+    rz += dz - cz;
+  }
+
+  if (trans >= sym->getNumTransformations()) {
     flip = true;
     rot = trans - sym->getNumTransformations();
   }
