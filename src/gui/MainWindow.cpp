@@ -824,6 +824,7 @@ void UserInterface::cb_BtnCont(void) {
       assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_SAVE_ASM, true);
 
   assmThread->setSortMethod(sortMethod->value());
+  assmThread->setSolutionLimits(solLimit->value(), solDrop->value());
 
   if (!assmThread->start()) {
     fl_message("Could not start the solving process, the thread creation failed, sorry.");
@@ -2572,7 +2573,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
   Fl_Group * tile = new Fl_Tile(x, y, w, h);
 
   // calculate hight of different groups
-  const int paramsFixedHight = SZ_SEPARATOR_Y + 5*SZ_BUTTON_Y + 5*SZ_GAP +  5*SZ_TEXT_Y;
+  const int paramsFixedHight = SZ_SEPARATOR_Y + 6*SZ_BUTTON_Y + 6*SZ_GAP +  5*SZ_TEXT_Y;
   const int solutionsFixedHight = SZ_SEPARATOR_Y + 2*SZ_BUTTON_Y + 2*SZ_GAP + 2*SZ_TEXT_Y;
 
   int hi = h - paramsFixedHight - solutionsFixedHight;
@@ -2620,6 +2621,21 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     sortMethod->add("Level");
 
     sortMethod->value(1);
+
+    y += SZ_BUTTON_Y + SZ_GAP;
+    lh -= SZ_BUTTON_Y + SZ_GAP;
+
+    solDrop = new Fl_Value_Input(x+60, y, w/2-60, SZ_BUTTON_Y, "Drop");
+    solLimit = new Fl_Value_Input(x+w/2+SZ_GAP+60, y, w - w/2 - SZ_GAP - 60, SZ_BUTTON_Y, "Limit");
+    solDrop->box(FL_THIN_DOWN_BOX);
+    solLimit->box(FL_THIN_DOWN_BOX);
+    solDrop->bounds(1, 100000000);
+    solLimit->bounds(1, 100000000);
+    solLimit->step(1, 1);
+    solDrop->step(1, 1);
+
+    solDrop->value(1);
+    solLimit->value(100);
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;

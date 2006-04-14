@@ -1245,6 +1245,14 @@ void puzzle_c::probRemoveAllSolutions(unsigned int prob) {
   problems[prob]->usedTime = 0xFFFFFFFF;
 }
 
+void puzzle_c::probRemoveSolution(unsigned int prob, unsigned int sol) {
+  bt_assert(prob < problems.size());
+  bt_assert(sol < problems[prob]->solutions.size());
+  delete problems[prob]->solutions[sol];
+  problems[prob]->solutions.erase(problems[prob]->solutions.begin()+sol);
+}
+
+
 puzzle_c::SolveState_e puzzle_c::probGetSolveState(unsigned int prob) const {
   bt_assert(prob < problems.size());
   return problems[prob]->solveState;

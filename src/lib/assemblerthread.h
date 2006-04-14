@@ -54,6 +54,12 @@ class assemblerThread_c : public assembler_cb {
 
   int sortMethod;
 
+  /* don't save more than this number of solutions 0 means no limit */
+  unsigned int solutionLimit;
+
+  /* save only every x-th solution, the others are dropped */
+  unsigned int solutionDrop;
+
 public:
 
   enum {
@@ -116,6 +122,11 @@ public:
   };
 
   void setSortMethod(int sort) { sortMethod = sort; }
+
+  void setSolutionLimits(unsigned int limit, unsigned int drop = 1) {
+    solutionLimit = limit;
+    solutionDrop = drop;
+  }
 
 #ifdef WIN32
   friend unsigned long __stdcall start_th(void * c);

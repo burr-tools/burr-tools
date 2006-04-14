@@ -118,7 +118,9 @@ prob(problemNum),
 _reduce(red),
 disassm(puz->getGridType()->getDisassembler(puz, problemNum)),
 ae(0),
-sortMethod(SRT_COMPLETE_MOVES)
+sortMethod(SRT_COMPLETE_MOVES),
+solutionLimit(10),
+solutionDrop(1)
 {
 }
 
@@ -145,7 +147,10 @@ bool assemblerThread_c::assembly(assembly_c * a) {
 
   switch(_solutionAction) {
   case SOL_SAVE_ASM:
-    puzzle->probAddSolution(prob, a);
+
+    if ((puzzle->probGetNumAssemblies(prob)-1) % solutionDrop == 0)
+      puzzle->probAddSolution(prob, a);
+
     break;
 
   case SOL_DISASM:
@@ -190,6 +195,15 @@ bool assemblerThread_c::assembly(assembly_c * a) {
                     }
                   }
                 }
+
+                if (!ins) puzzle->probAddSolution(prob, a, s);
+
+                // remove the front most solution, if we only want to save
+                // a limited number of solutions, as the front most
+                // solutions are the more unimportant ones
+                if (solutionLimit && (puzzle->probSolutionNumber(prob) > solutionLimit))
+                  puzzle->probRemoveSolution(prob, 0);
+
                 break;
               case SRT_LEVEL:
                 {
@@ -204,13 +218,23 @@ bool assemblerThread_c::assembly(assembly_c * a) {
                     }
                   }
                 }
+
+                if (!ins) puzzle->probAddSolution(prob, a, s);
+
+                // remove the front most solution, if we only want to save
+                // a limited number of solutions, as the front most
+                // solutions are the more unimportant ones
+                if (solutionLimit && (puzzle->probSolutionNumber(prob) > solutionLimit))
+                  puzzle->probRemoveSolution(prob, 0);
+
                 break;
               case SRT_UNSORT:
+                /* only save every solutionDrop-th solution */
+                if (!ins && ((puzzle->probGetNumSolutions(prob)-1) % solutionDrop == 0))
+                  puzzle->probAddSolution(prob, a, s);
+
                 break;
             }
-
-            if (!ins)
-              puzzle->probAddSolution(prob, a, s);
 
           } else {
 
@@ -235,6 +259,15 @@ bool assemblerThread_c::assembly(assembly_c * a) {
       action = ACT_ASSEMBLING;
     }
     break;
+  }
+
+  // remove the front most solution, if we only want to save
+  // a limited number of solutions, as the front most
+  // solutions are the more unimportant ones
+  if (solutionLimit && (puzzle->probSolutionNumber(prob) > solutionLimit)) {
+
+
+
   }
 
   return true;

@@ -34,6 +34,7 @@
 #include <FL/Fl_Menu_Bar.H>
 #include <FL/Fl_File_Chooser.H>
 #include <FL/Fl_Choice.H>
+#include <FL/Fl_Value_Input.H>
 #include <FL/fl_ask.H>
 
 #include <fstream>
@@ -114,6 +115,7 @@ class UserInterface : public Fl_Double_Window {
   VoxelEditGroup *pieceEdit;
 
   Fl_Choice * sortMethod;
+  Fl_Value_Input *solDrop, *solLimit;
 
   // the zoom levels for all 3 tabs independent, so that the problem
   // tab can have a wider view
