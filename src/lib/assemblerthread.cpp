@@ -117,7 +117,8 @@ puzzle(puz),
 prob(problemNum),
 _reduce(red),
 disassm(puz->getGridType()->getDisassembler(puz, problemNum)),
-ae(0)
+ae(0),
+sortMethod(SRT_COMPLETE_MOVES)
 {
 }
 
@@ -171,18 +172,41 @@ bool assemblerThread_c::assembly(assembly_c * a) {
             // find the place to insert and insert the new solution so that
             // they are sorted by the complexity of the disassembly
 
-            unsigned int lev = s->sumMoves();
             bool ins = false;
 
-            for (unsigned int i = 0; i < puzzle->probSolutionNumber(prob); i++) {
+            switch(sortMethod) {
+              case SRT_COMPLETE_MOVES:
+                {
+                  unsigned int lev = s->sumMoves();
 
-              const separation_c * s2 = puzzle->probGetDisassembly(prob, i);
+                  for (unsigned int i = 0; i < puzzle->probSolutionNumber(prob); i++) {
 
-              if (s2 && s2->sumMoves() > lev) {
-                puzzle->probAddSolution(prob, a, s, i);
-                ins = true;
+                    const separation_c * s2 = puzzle->probGetDisassembly(prob, i);
+
+                    if (s2 && s2->sumMoves() > lev) {
+                      puzzle->probAddSolution(prob, a, s, i);
+                      ins = true;
+                      break;
+                    }
+                  }
+                }
                 break;
-              }
+              case SRT_LEVEL:
+                {
+                  for (unsigned int i = 0; i < puzzle->probSolutionNumber(prob); i++) {
+
+                    const separation_c * s2 = puzzle->probGetDisassembly(prob, i);
+
+                    if (s2 && (s2->compare(s) > 0)) {
+                      puzzle->probAddSolution(prob, a, s, i);
+                      ins = true;
+                      break;
+                    }
+                  }
+                }
+                break;
+              case SRT_UNSORT:
+                break;
             }
 
             if (!ins)

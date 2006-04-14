@@ -52,6 +52,8 @@ class assemblerThread_c : public assembler_cb {
 
   assert_exception *ae;
 
+  int sortMethod;
+
 public:
 
   enum {
@@ -107,6 +109,13 @@ public:
 
   assert_exception * getAssertException(void) { return ae; }
 
+  enum {
+    SRT_UNSORT,
+    SRT_COMPLETE_MOVES,
+    SRT_LEVEL
+  };
+
+  void setSortMethod(int sort) { sortMethod = sort; }
 
 #ifdef WIN32
   friend unsigned long __stdcall start_th(void * c);

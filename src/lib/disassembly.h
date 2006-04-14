@@ -100,6 +100,16 @@ public:
    */
   int movesText(char * txt, int len);
 
+  /* compares this and the goven separation, for a higher level
+   * one separation is bigger than the other if all levels
+   * up to branch n are equal and on n+1 the level is larger then
+   * the level of the other
+   * if this assembly is bigger >0 is returned
+   * if this assembler is smaller <0 is returned
+   * if they are both equal =0 is returned
+   */
+  int compare(const separation_c * s2) const;
+
   /* get one state from the separation process */
   const state_c * getState(unsigned int num) const {
     bt_assert(num < states.size());

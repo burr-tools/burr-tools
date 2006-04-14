@@ -374,6 +374,35 @@ int separation_c::movesText(char * txt, int len) {
   return len2;
 }
 
+int separation_c::compare(const separation_c * s2) const {
+
+  if (!s2) return 1;
+
+  if (states.size() > s2->states.size())
+    return 1;
+  else if (states.size() < s2->states.size())
+    return -1;
+  else {
+    int a;
+    if (left)
+      a = left->compare(s2->left);
+    else if (s2->left)
+      a = -1;
+    else
+      a = 0;
+
+    if (a != 0) return a;
+
+    if (removed)
+      return removed->compare(s2->removed);
+    else if (s2->removed)
+      return -1;
+    else
+      return 0;
+  }
+}
+
+
 void separation_c::shiftPiece(unsigned int pc, int dx, int dy, int dz) {
   for (unsigned int p = 0; p < piecenumber; p++)
     if (pieces[p] == pc)
