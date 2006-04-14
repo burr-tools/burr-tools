@@ -228,17 +228,27 @@ public:
   bool probNumAssembliesKnown(unsigned int prob) const;
   bool probNumSolutionsKnown(unsigned int prob) const;
 
+  /* this returns the number of assemblies and solutions counted
+   * they don't necessarily need to be saved all of them
+   */
   unsigned long probGetNumAssemblies(unsigned int prob) const;
   unsigned long probGetNumSolutions(unsigned int prob) const;
 
-  void probAddSolution(unsigned int prob, assembly_c * voxel);
-  void probAddSolution(unsigned int prob, assembly_c * voxel, separation_c * tree);
+  /* this returns the number of solutions that are saved */
+  unsigned int probSolutionNumber(unsigned int prob) const;
+
+  void probAddSolution(unsigned int prob, assembly_c * assm, separation_c * disasm = 0, unsigned int pos = 0xFFFFFFFF);
   void probFinishedSolving(unsigned int prob);
 
   /* this also removes maybe available old states of the assembler
    */
   void probRemoveAllSolutions(unsigned int prob);
-  unsigned int probSolutionNumber(unsigned int prob) const;
+  void probRemoveSolution(unsigned int prob, unsigned int sol);
+
+  /* switches the places of the 1st and the 2nd solution, this is useful
+   * if you want to sort the solutions in a different way
+   */
+  void probSwapSolutions(unsigned int prob, unsigned int sol1, unsigned int sol2);
   assembly_c * probGetAssembly(unsigned int prob, unsigned int sol);
   separation_c * probGetDisassembly(unsigned int prob, unsigned int sol);
 

@@ -1219,32 +1219,15 @@ const std::string & puzzle_c::probGetName(unsigned int prob) const {
   return problems[prob]->name;
 }
 
-void puzzle_c::probAddSolution(unsigned int prob, assembly_c * voxel) {
-  bt_assert(prob < problems.size());
-  bt_assert(problems[prob]->assm);
-  problems[prob]->solutions.push_back(new solution_c(voxel, 0));
-  problems[prob]->solveState = SS_SOLVING;
-}
-
-void puzzle_c::probAddSolution(unsigned int prob, assembly_c * voxel, separation_c * tree) {
+void puzzle_c::probAddSolution(unsigned int prob, assembly_c * assm, separation_c * disasm, unsigned int pos) {
   bt_assert(prob < problems.size());
   bt_assert(problems[prob]->assm);
 
-  // find the place to insert and insert the new solution so that
-  // they are sorted by the complexity of the disassembly
-
-  unsigned int s = tree->sumMoves();
-  bool ins = false;
-
-  for (unsigned int i = 0; i < problems[prob]->solutions.size(); i++)
-    if (problems[prob]->solutions[i]->tree->sumMoves() > s) {
-      problems[prob]->solutions.insert(problems[prob]->solutions.begin()+i, new solution_c(voxel, tree));
-      ins = true;
-      break;
-    }
-
-  if (!ins)
-    problems[prob]->solutions.push_back(new solution_c(voxel, tree));
+  // if the given index is behind te number of solutions add at the end
+  if (pos < problems[prob]->solutions.size())
+    problems[prob]->solutions.insert(problems[prob]->solutions.begin()+pos, new solution_c(assm, disasm));
+  else
+    problems[prob]->solutions.push_back(new solution_c(assm, disasm));
 
   problems[prob]->solveState = SS_SOLVING;
 }

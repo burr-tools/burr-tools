@@ -168,7 +168,25 @@ bool assemblerThread_c::assembly(assembly_c * a) {
           // if the user wants to save the solution, do it
           if (_solutionAction == SOL_DISASM) {
 
-            puzzle->probAddSolution(prob, a, s);
+            // find the place to insert and insert the new solution so that
+            // they are sorted by the complexity of the disassembly
+
+            unsigned int lev = s->sumMoves();
+            bool ins = false;
+
+            for (unsigned int i = 0; i < puzzle->probSolutionNumber(prob); i++) {
+
+              const separation_c * s2 = puzzle->probGetDisassembly(prob, i);
+
+              if (s2 && s2->sumMoves() > lev) {
+                puzzle->probAddSolution(prob, a, s, i);
+                ins = true;
+                break;
+              }
+            }
+
+            if (!ins)
+              puzzle->probAddSolution(prob, a, s);
 
           } else {
 
