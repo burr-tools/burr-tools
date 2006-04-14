@@ -823,6 +823,8 @@ void UserInterface::cb_BtnCont(void) {
     else
       assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_SAVE_ASM, true);
 
+  assmThread->setSortMethod(sortMethod->value());
+
   if (!assmThread->start()) {
     fl_message("Could not start the solving process, the thread creation failed, sorry.");
     delete assmThread;
@@ -2570,7 +2572,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
   Fl_Group * tile = new Fl_Tile(x, y, w, h);
 
   // calculate hight of different groups
-  const int paramsFixedHight = SZ_SEPARATOR_Y + 4*SZ_BUTTON_Y + 5*SZ_GAP +  5*SZ_TEXT_Y;
+  const int paramsFixedHight = SZ_SEPARATOR_Y + 5*SZ_BUTTON_Y + 5*SZ_GAP +  5*SZ_TEXT_Y;
   const int solutionsFixedHight = SZ_SEPARATOR_Y + 2*SZ_BUTTON_Y + 2*SZ_GAP + 2*SZ_TEXT_Y;
 
   int hi = h - paramsFixedHight - solutionsFixedHight;
@@ -2606,6 +2608,18 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     JustCount = new Fl_Check_Button(x+w/2, y, w-w/2, SZ_BUTTON_Y, "Just Count");
     JustCount->tooltip(" Don\'t save the solutions, just count the number of them ");
     JustCount->clear_visible_focus();
+
+    y += SZ_BUTTON_Y;
+    lh -= SZ_BUTTON_Y;
+
+    sortMethod = new Fl_Choice(x+60, y, w-60, SZ_BUTTON_Y, "Sort by" );
+
+    // be careful the order in here must correspond with the enum in assembler thread
+    sortMethod->add("Unsort");
+    sortMethod->add("Moves for Complete Disassemble");
+    sortMethod->add("Level");
+
+    sortMethod->value(1);
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
