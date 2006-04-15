@@ -143,11 +143,10 @@ assemblerThread_c::~assemblerThread_c(void) {
 
 bool assemblerThread_c::assembly(assembly_c * a) {
 
-
   switch(_solutionAction) {
   case SOL_SAVE_ASM:
 
-    if ((puzzle->probGetNumAssemblies(prob)-1) % solutionDrop == 0)
+    if (puzzle->probGetNumAssemblies(prob) % (solutionDrop*dropMultiplicator) == 0)
       puzzle->probAddSolution(prob, a);
 
     break;
@@ -250,7 +249,7 @@ bool assemblerThread_c::assembly(assembly_c * a) {
           break;
         case SRT_UNSORT:
           /* only save every solutionDrop-th solution */
-          if (!ins && ((puzzle->probGetNumSolutions(prob)-1) % solutionDrop == 0))
+          if (puzzle->probGetNumSolutions(prob) % (solutionDrop * dropMultiplicator) == 0)
             puzzle->probAddSolution(prob, a, s);
 
           break;
@@ -258,19 +257,25 @@ bool assemblerThread_c::assembly(assembly_c * a) {
 
       // yes, the puzzle is disassembably, count solutions
       puzzle->probIncNumSolutions(prob);
-
     }
     break;
   }
 
-  // remove the front most solution, if we only want to save
-  // a limited number of solutions, as the front most
-  // solutions are the more unimportant ones
-  if (solutionLimit && (puzzle->probSolutionNumber(prob) > solutionLimit)) {
-
-  }
-
   puzzle->probIncNumAssemblies(prob);
+
+  // this is the case for assembly only or unsorted disassembly solutions
+  // we need to thin out the list
+  if (solutionLimit && (puzzle->probSolutionNumber(prob) > solutionLimit)) {
+    unsigned int idx = (_solutionAction == SOL_SAVE_ASM) ? puzzle->probGetNumAssemblies(prob)-1
+                                                         : puzzle->probGetNumSolutions(prob)-1;
+
+    idx = (idx % (solutionLimit * solutionDrop * dropMultiplicator)) / (solutionDrop * dropMultiplicator);
+
+    if (idx == solutionLimit-1)
+      dropMultiplicator *= 2;
+
+    puzzle->probRemoveSolution(prob, idx+1);
+  }
 
   return true;
 }
@@ -296,6 +301,27 @@ bool assemblerThread_c::start(void) {
 
   stopPressed = false;
   startTime = time(0);
+
+  // calculate dropMultiplicator
+
+  dropMultiplicator = 1;
+
+  unsigned int a;
+
+  if (_solutionAction == SOL_SAVE_ASM) {
+    a = puzzle->probGetNumAssemblies(prob);
+    if (!puzzle->probNumAssembliesKnown(prob))
+      a = 0;
+  } else {
+    a = puzzle->probGetNumSolutions(prob);
+    if (!puzzle->probNumSolutionsKnown(prob))
+      a = 0;
+  }
+
+  while (a+solutionDrop > 2 * solutionLimit * solutionDrop) {
+    dropMultiplicator *= 2;
+    a = (a+1) / 2;
+  }
 
 #ifdef WIN32
   DWORD threadID;

@@ -60,6 +60,11 @@ class assemblerThread_c : public assembler_cb {
   /* save only every x-th solution, the others are dropped */
   unsigned int solutionDrop;
 
+  /* this is used to increase the drop with time, when the limit is reaced
+   * and onyl every 2nd valid solution is taken
+   */
+  unsigned int dropMultiplicator;
+
 public:
 
   enum {
