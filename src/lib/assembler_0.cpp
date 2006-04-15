@@ -350,6 +350,10 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
     if (tmp || (puzzle->probGetShapeCount(problem, symBreakerShape) > 1)) {
       checkForTransformedAssemblies(symBreakerPiece);
     }
+
+    if (puzzle->probGetShapeCount(problem, symBreakerShape) > 1) {
+      symBreakerShape = 0xFFFFFFFF;
+    }
   }
 
   /* node 0 is the start node for everything */
