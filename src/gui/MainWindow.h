@@ -117,6 +117,8 @@ class UserInterface : public Fl_Double_Window {
   Fl_Choice * sortMethod;
   Fl_Value_Input *solDrop, *solLimit;
 
+  Fl_Value_Output *SolutionNumber, *AssemblyNumber;
+
   // the zoom levels for all 3 tabs independent, so that the problem
   // tab can have a wider view
   double ViewSizes[3];

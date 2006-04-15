@@ -197,7 +197,8 @@ class solution_c {
 
 public:
 
-  solution_c(assembly_c * assm, separation_c * t) : assembly(assm), tree(t) {}
+  solution_c(assembly_c * assm, unsigned int assmNum, separation_c * t, unsigned int solNum) :
+    assembly(assm), tree(t), assemblyNum(assmNum), solutionNum(solNum) {}
 
   solution_c(const xml::node & node, unsigned int pieces, const gridType_c * gt);
 
@@ -212,6 +213,15 @@ public:
    */
   separation_c * tree;
 
+  /* as it is now possible to not save all solutions
+   * it might be useful to know the exact number and sequence
+   * how solutions were found
+   *
+   * solutionNum is 0, when tree is 0
+   */
+  unsigned int assemblyNum;
+  unsigned int solutionNum;
+
   xml::node save(void) const;
 
   void exchangeShape(unsigned int s1, unsigned int s2) {
@@ -222,7 +232,8 @@ public:
   }
 };
 
-solution_c::solution_c(const xml::node & node, unsigned int pieces, const gridType_c * gt) {
+solution_c::solution_c(const xml::node & node, unsigned int pieces, const gridType_c * gt) :
+  tree(0), assemblyNum(0), solutionNum(0) {
 
   if ((node.get_type() != xml::node::type_element) ||
       (strcmp(node.get_name(), "solution") != 0))
@@ -239,17 +250,34 @@ solution_c::solution_c(const xml::node & node, unsigned int pieces, const gridTy
   it = node.find("separation");
   if (it != node.end())
     tree = new separation_c(*it, pieces);
-  else
-    tree = 0;
+
+  if (node.get_attributes().find("asmNum") != node.get_attributes().end())
+    assemblyNum = atoi(node.get_attributes().find("asmNum")->get_value());
+
+  if (tree && (node.get_attributes().find("solNum") != node.get_attributes().end()))
+    solutionNum = atoi(node.get_attributes().find("solNum")->get_value());
 }
 
 xml::node solution_c::save(void) const {
   xml::node nd("solution");
 
+  char tmp[50];
+
+  if (assemblyNum) {
+    snprintf(tmp, 50, "%i", assemblyNum);
+    nd.get_attributes().insert("asmNum", tmp);
+  }
+
   nd.insert(assembly->save());
 
-  if (tree)
+  if (tree) {
     nd.insert(tree->save());
+
+    if (solutionNum) {
+      snprintf(tmp, 50, "%i", solutionNum);
+      nd.get_attributes().insert("solNum", tmp);
+    }
+  }
 
   return nd;
 }
@@ -1223,11 +1251,17 @@ void puzzle_c::probAddSolution(unsigned int prob, assembly_c * assm, separation_
   bt_assert(prob < problems.size());
   bt_assert(problems[prob]->assm);
 
+  unsigned int a = problems[prob]->numAssemblies;
+  if (a == 0xFFFFFFFF) a = 0;
+
+  unsigned int s = problems[prob]->numSolutions;
+  if (s == 0xFFFFFFFF) s = 0;
+
   // if the given index is behind te number of solutions add at the end
   if (pos < problems[prob]->solutions.size())
-    problems[prob]->solutions.insert(problems[prob]->solutions.begin()+pos, new solution_c(assm, disasm));
+    problems[prob]->solutions.insert(problems[prob]->solutions.begin()+pos, new solution_c(assm, a, disasm, s));
   else
-    problems[prob]->solutions.push_back(new solution_c(assm, disasm));
+    problems[prob]->solutions.push_back(new solution_c(assm, a, disasm, s));
 
   problems[prob]->solveState = SS_SOLVING;
 }
@@ -1344,6 +1378,20 @@ const separation_c * puzzle_c::probGetDisassembly(unsigned int prob, unsigned in
   bt_assert(sol < problems[prob]->solutions.size());
 
   return problems[prob]->solutions[sol]->tree;
+}
+
+unsigned int puzzle_c::probGetAssemblyNum(unsigned int prob, unsigned int sol) const {
+  bt_assert(prob < problems.size());
+  bt_assert(sol < problems[prob]->solutions.size());
+
+  return problems[prob]->solutions[sol]->assemblyNum;
+}
+
+unsigned int puzzle_c::probGetSolutionNum(unsigned int prob, unsigned int sol) const {
+  bt_assert(prob < problems.size());
+  bt_assert(sol < problems[prob]->solutions.size());
+
+  return problems[prob]->solutions[sol]->solutionNum;
 }
 
 assembler_c::errState puzzle_c::probSetAssembler(unsigned int prob, assembler_c * assm) {

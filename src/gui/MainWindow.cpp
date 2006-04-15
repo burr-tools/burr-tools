@@ -1375,6 +1375,8 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
   if ((prob < puzzle->problemNumber()) && (num < puzzle->probSolutionNumber(prob))) {
 
     PcVis->setPuzzle(puzzle, prob);
+    AssemblyNumber->show();
+    AssemblyNumber->value(puzzle->probGetAssemblyNum(prob, num)+1);
 
     if (puzzle->probGetDisassembly(prob, num)) {
       SolutionAnim->show();
@@ -1400,6 +1402,9 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
       View3D->updatePositions(disassemble);
       View3D->updateVisibility(PcVis);
 
+      SolutionNumber->show();
+      SolutionNumber->value(puzzle->probGetSolutionNum(prob, num)+1);
+
     } else {
 
       SolutionAnim->range(0, 0);
@@ -1409,6 +1414,8 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
 
       View3D->showAssembly(puzzle, prob, num);
       View3D->updateVisibility(PcVis);
+
+      SolutionNumber->hide();
     }
 
     SolutionEmpty = false;
@@ -1423,6 +1430,8 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
 
     PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
 
+    AssemblyNumber->hide();
+    SolutionNumber->hide();
   }
 }
 
@@ -1686,6 +1695,9 @@ void UserInterface::updateInterface(void) {
         SolutionsInfo->hide();
         SolutionAnim->hide();
         MovesInfo->hide();
+
+        AssemblyNumber->hide();
+        SolutionNumber->hide();
       }
 
       if (puzzle->probNumAssembliesKnown(prob)) {
@@ -1733,6 +1745,9 @@ void UserInterface::updateInterface(void) {
       OutputSolutions->hide();
       SolutionAnim->hide();
       MovesInfo->hide();
+
+      AssemblyNumber->hide();
+      SolutionNumber->hide();
 
       SolvingProgress->hide();
       OutputAssemblies->hide();
@@ -2574,7 +2589,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
 
   // calculate hight of different groups
   const int paramsFixedHight = SZ_SEPARATOR_Y + 6*SZ_BUTTON_Y + 6*SZ_GAP +  5*SZ_TEXT_Y;
-  const int solutionsFixedHight = SZ_SEPARATOR_Y + 2*SZ_BUTTON_Y + 2*SZ_GAP + 2*SZ_TEXT_Y;
+  const int solutionsFixedHight = SZ_SEPARATOR_Y + 3*SZ_BUTTON_Y + 3*SZ_GAP + 2*SZ_TEXT_Y;
 
   int hi = h - paramsFixedHight - solutionsFixedHight;
 
@@ -2768,6 +2783,14 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     SolutionAnim->callback(cb_SolutionAnim_stub, this);
     SolutionAnim->align(FL_ALIGN_TOP_LEFT);
     SolutionAnim->box(FL_THIN_DOWN_BOX);
+    y += SZ_BUTTON_Y + SZ_GAP;
+    lh -= SZ_BUTTON_Y + SZ_GAP;
+
+    AssemblyNumber = new Fl_Value_Output(x+80, y, w/2-80, SZ_BUTTON_Y, "Assembly:");
+    SolutionNumber = new Fl_Value_Output(x+w/2+80, y, w-w/2-80, SZ_BUTTON_Y, "Solution:");
+    AssemblyNumber->box(FL_FLAT_BOX);
+    SolutionNumber->box(FL_FLAT_BOX);
+
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 

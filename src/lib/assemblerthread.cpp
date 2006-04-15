@@ -143,7 +143,6 @@ assemblerThread_c::~assemblerThread_c(void) {
 
 bool assemblerThread_c::assembly(assembly_c * a) {
 
-  puzzle->probIncNumAssemblies(prob);
 
   switch(_solutionAction) {
   case SOL_SAVE_ASM:
@@ -156,107 +155,110 @@ bool assemblerThread_c::assembly(assembly_c * a) {
   case SOL_DISASM:
   case SOL_COUNT_DISASM:
     {
-      action = ACT_DISASSEMBLING;
 
       // when the assembly has only 1 piece, we don't need
       // to disassemble, the disassembler will return 0 anyways
-      if (a->placementCount() > 1) {
-
-        // try to disassemble
-        separation_c * s = disassm->disassemble(a);
-
-        // check, if we found a disassembly sequence
-        if (s) {
-
-          // yes, the puzzle is disassembably, count solutions
-          puzzle->probIncNumSolutions(prob);
-
-          // if the user wants to save the solution, do it
-          if (_solutionAction == SOL_DISASM) {
-
-            // find the place to insert and insert the new solution so that
-            // they are sorted by the complexity of the disassembly
-
-            bool ins = false;
-
-            switch(sortMethod) {
-              case SRT_COMPLETE_MOVES:
-                {
-                  unsigned int lev = s->sumMoves();
-
-                  for (unsigned int i = 0; i < puzzle->probSolutionNumber(prob); i++) {
-
-                    const separation_c * s2 = puzzle->probGetDisassembly(prob, i);
-
-                    if (s2 && s2->sumMoves() > lev) {
-                      puzzle->probAddSolution(prob, a, s, i);
-                      ins = true;
-                      break;
-                    }
-                  }
-                }
-
-                if (!ins) puzzle->probAddSolution(prob, a, s);
-
-                // remove the front most solution, if we only want to save
-                // a limited number of solutions, as the front most
-                // solutions are the more unimportant ones
-                if (solutionLimit && (puzzle->probSolutionNumber(prob) > solutionLimit))
-                  puzzle->probRemoveSolution(prob, 0);
-
-                break;
-              case SRT_LEVEL:
-                {
-                  for (unsigned int i = 0; i < puzzle->probSolutionNumber(prob); i++) {
-
-                    const separation_c * s2 = puzzle->probGetDisassembly(prob, i);
-
-                    if (s2 && (s2->compare(s) > 0)) {
-                      puzzle->probAddSolution(prob, a, s, i);
-                      ins = true;
-                      break;
-                    }
-                  }
-                }
-
-                if (!ins) puzzle->probAddSolution(prob, a, s);
-
-                // remove the front most solution, if we only want to save
-                // a limited number of solutions, as the front most
-                // solutions are the more unimportant ones
-                if (solutionLimit && (puzzle->probSolutionNumber(prob) > solutionLimit))
-                  puzzle->probRemoveSolution(prob, 0);
-
-                break;
-              case SRT_UNSORT:
-                /* only save every solutionDrop-th solution */
-                if (!ins && ((puzzle->probGetNumSolutions(prob)-1) % solutionDrop == 0))
-                  puzzle->probAddSolution(prob, a, s);
-
-                break;
-            }
-
-          } else {
-
-            // if not, delete disassembly AND assembly
-            delete s;
-            delete a;
-          }
-        } else {
-
-          // no diassembly sequence found, delete assembly
-          delete a;
-        }
-
-      } else {
+      if (a->placementCount() <= 1) {
 
         // only one piece, that is always a solution, so increment number
         // of solutions but save only the assembly
-        puzzle->probIncNumSolutions(prob);
         puzzle->probAddSolution(prob, a);
+        puzzle->probIncNumSolutions(prob);
 
+        break;
       }
+
+      // try to disassemble
+      action = ACT_DISASSEMBLING;
+      separation_c * s = disassm->disassemble(a);
       action = ACT_ASSEMBLING;
+
+      // check, if we found a disassembly sequence
+      if (!s) {
+        // no diassembly sequence found, delete assembly
+        delete a;
+
+        break;
+      }
+
+      // if the user wants to save the solution, do it
+      if (_solutionAction != SOL_DISASM) {
+
+        // if not, delete disassembly AND assembly
+        delete s;
+        delete a;
+
+        // yes, the puzzle is disassembably, count solutions
+        puzzle->probIncNumSolutions(prob);
+
+        break;
+      }
+
+      // find the place to insert and insert the new solution so that
+      // they are sorted by the complexity of the disassembly
+
+      bool ins = false;
+
+      switch(sortMethod) {
+        case SRT_COMPLETE_MOVES:
+          {
+            unsigned int lev = s->sumMoves();
+
+            for (unsigned int i = 0; i < puzzle->probSolutionNumber(prob); i++) {
+
+              const separation_c * s2 = puzzle->probGetDisassembly(prob, i);
+
+              if (s2 && s2->sumMoves() > lev) {
+                puzzle->probAddSolution(prob, a, s, i);
+                ins = true;
+                break;
+              }
+            }
+          }
+
+          if (!ins) puzzle->probAddSolution(prob, a, s);
+
+          // remove the front most solution, if we only want to save
+          // a limited number of solutions, as the front most
+          // solutions are the more unimportant ones
+          if (solutionLimit && (puzzle->probSolutionNumber(prob) > solutionLimit))
+            puzzle->probRemoveSolution(prob, 0);
+
+          break;
+        case SRT_LEVEL:
+          {
+            for (unsigned int i = 0; i < puzzle->probSolutionNumber(prob); i++) {
+
+              const separation_c * s2 = puzzle->probGetDisassembly(prob, i);
+
+              if (s2 && (s2->compare(s) > 0)) {
+                puzzle->probAddSolution(prob, a, s, i);
+                ins = true;
+                break;
+              }
+            }
+          }
+
+          if (!ins) puzzle->probAddSolution(prob, a, s);
+
+          // remove the front most solution, if we only want to save
+          // a limited number of solutions, as the front most
+          // solutions are the more unimportant ones
+          if (solutionLimit && (puzzle->probSolutionNumber(prob) > solutionLimit))
+            puzzle->probRemoveSolution(prob, 0);
+
+          break;
+        case SRT_UNSORT:
+          /* only save every solutionDrop-th solution */
+          if (!ins && ((puzzle->probGetNumSolutions(prob)-1) % solutionDrop == 0))
+            puzzle->probAddSolution(prob, a, s);
+
+          break;
+      }
+
+      // yes, the puzzle is disassembably, count solutions
+      puzzle->probIncNumSolutions(prob);
+
     }
     break;
   }
@@ -266,9 +268,9 @@ bool assemblerThread_c::assembly(assembly_c * a) {
   // solutions are the more unimportant ones
   if (solutionLimit && (puzzle->probSolutionNumber(prob) > solutionLimit)) {
 
-
-
   }
+
+  puzzle->probIncNumAssemblies(prob);
 
   return true;
 }

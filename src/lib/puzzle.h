@@ -254,6 +254,8 @@ public:
 
   const assembly_c * probGetAssembly(unsigned int prob, unsigned int sol) const;
   const separation_c * probGetDisassembly(unsigned int prob, unsigned int sol) const;
+  unsigned int probGetAssemblyNum(unsigned int prob, unsigned int sol) const;
+  unsigned int probGetSolutionNum(unsigned int prob, unsigned int sol) const;
 
   /* edit the color matrix */
   void probAllowPlacement(unsigned int prob, unsigned int pc, unsigned int res);
