@@ -332,6 +332,8 @@ public:
 
   PieceVisibility(int x, int y, int w, int h, puzzle_c * p);
 
+  ~PieceVisibility(void) { if (visState) delete visState; }
+
   void setPuzzle(puzzle_c *pz, unsigned int prob);
   unsigned int virtual blockNumber(void);
   void virtual blockDraw(unsigned int block, int x, int y);
