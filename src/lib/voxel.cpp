@@ -399,8 +399,8 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ
             int x2, y2, z2;
             int idx = 0;
             while (getNeighbor(idx, curTyp, x, y, z, &x2, &y2, &z2)) {
-              if ((x2 >= 0) && (x2 < sx) && (y2 >= 0) && (y2 < sy) && (z2 >= 0) && (z2 < sz)) {
-                if ((x2 < x) || (y2 < y) || (z2 < z)) {
+              if ((x2 >= 0) && (x2 < (int)sx) && (y2 >= 0) && (y2 < (int)sy) && (z2 >= 0) && (z2 < (int)sz)) {
+                if ((x2 < (int)x) || (y2 < (int)y) || (z2 < (int)z)) {
                   if ((inverse && (get(x2, y2, z2) != value)) ||
                       (!inverse && (get(x2, y2, z2) == value))) {
 
@@ -413,7 +413,7 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ
                 }
               } else if (merge_outside) {
 
-                if (outsideZ || ((z2 >= 0) && (z2 < sz))) {
+                if (outsideZ || ((z2 >= 0) && (z2 < (int)sz))) {
 
                   int root2 = voxels;
                   while (tree[root2] >= 0) root2 = tree[root2];
