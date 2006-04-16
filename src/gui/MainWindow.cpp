@@ -2204,19 +2204,19 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
     Fl_Button * b;
     b = editChoice->addButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
-    b->image(new Fl_Pixmap(TB_Color_Pen_Fixed_xpm));
+    b->image(pm.get(TB_Color_Pen_Fixed_xpm));
     b->tooltip(" Add normal voxels to the shape F5 ");
 
     b = editChoice->addButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
-    b->image(new Fl_Pixmap(TB_Color_Pen_Variable_xpm));
+    b->image(pm.get(TB_Color_Pen_Variable_xpm));
     b->tooltip(" Add variable voxels to the shape F6 ");
 
     b = editChoice->addButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
-    b->image(new Fl_Pixmap(TB_Color_Eraser_xpm));
+    b->image(pm.get(TB_Color_Eraser_xpm));
     b->tooltip(" Remove voxels from the shape F7 ");
 
     b = editChoice->addButton(xpos+3*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
-    b->image(new Fl_Pixmap(TB_Color_Brush_xpm));
+    b->image(pm.get(TB_Color_Brush_xpm));
     b->tooltip(" Change the constrain colour of voxels in the shape F8 ");
 
     editChoice->callback(cb_EditChoice_stub, this);
@@ -2225,11 +2225,11 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
 
     editMode = new ButtonGroup(xpos, y, 2*SZ_BUTTON2_Y, SZ_BUTTON2_Y);
     b = editMode->addButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
-    b->image(new Fl_Pixmap(TB_Color_Mouse_Rubber_Band_xpm));
+    b->image(pm.get(TB_Color_Mouse_Rubber_Band_xpm));
     b->tooltip(" Make changes by dragging rectangular areas in the grid editor ");
 
     b = editMode->addButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
-    b->image(new Fl_Pixmap(TB_Color_Mouse_Drag_xpm));
+    b->image(pm.get(TB_Color_Mouse_Drag_xpm));
     b->tooltip(" Make changes by painting in the grid editor ");
 
     editMode->callback(cb_EditMode_stub, this);
@@ -2239,29 +2239,29 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     ToggleButton * btn;
 
     btn = new ToggleButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_X);
-    btn->image(new Fl_Pixmap(TB_Color_Symmetrical_X_xpm));
+    btn->image(pm.get(TB_Color_Symmetrical_X_xpm));
     btn->tooltip(" Toggle mirroring along the y-z-plane ");
 
     btn = new ToggleButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_Y);
-    btn->image(new Fl_Pixmap(TB_Color_Symmetrical_Y_xpm));
+    btn->image(pm.get(TB_Color_Symmetrical_Y_xpm));
     btn->tooltip(" Toggle mirroring along the x-z-plane ");
 
     btn = new ToggleButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_Z);
-    btn->image(new Fl_Pixmap(TB_Color_Symmetrical_Z_xpm));
+    btn->image(pm.get(TB_Color_Symmetrical_Z_xpm));
     btn->tooltip(" Toggle mirroring along the x-y-plane ");
 
     xpos += 3*SZ_BUTTON2_Y + SZ_GAP;
 
     btn = new ToggleButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_STACK_X);
-    btn->image(new Fl_Pixmap(TB_Color_Columns_X_xpm));
+    btn->image(pm.get(TB_Color_Columns_X_xpm));
     btn->tooltip(" Toggle drawing in all x layers ");
 
     btn = new ToggleButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_STACK_Y);
-    btn->image(new Fl_Pixmap(TB_Color_Columns_Y_xpm));
+    btn->image(pm.get(TB_Color_Columns_Y_xpm));
     btn->tooltip(" Toggle drawing in all y layers ");
 
     btn = new ToggleButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_STACK_Z);
-    btn->image(new Fl_Pixmap(TB_Color_Columns_Z_xpm));
+    btn->image(pm.get(TB_Color_Columns_Z_xpm));
     btn->tooltip(" Toggle drawing in all z layers ");
 
     xpos += 3*SZ_BUTTON2_Y * SZ_GAP;

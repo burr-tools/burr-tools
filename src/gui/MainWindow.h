@@ -20,6 +20,7 @@
 
 #include "WindowWidgets.h"
 #include "BlockList.h"
+#include "Images.h"
 
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
@@ -60,6 +61,8 @@ class UserInterface : public Fl_Double_Window {
   bool SolutionEmpty;
   bool changed;
   int editSymmetries;
+
+  pixmapList_c pm;
 
   Fl_Tabs *TaskSelectionTab;
   Fl_Group *TabPieces;
