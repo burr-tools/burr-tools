@@ -1,9 +1,10 @@
 #! /bin/sh
 
+export DARCS_DONT_ESCAPE_ISPRINT=1
+darcs changes > ChangeLog
+
 aclocal \
 && automake-1.9 --gnu --add-missing \
 && autoconf
 ./configure
 
-export DARCS_DONT_ESCAPE_ISPRINT=1
-darcs changes > ChangeLog
