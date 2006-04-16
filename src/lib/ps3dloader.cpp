@@ -37,7 +37,7 @@ puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
   int state = 0;
   int linenum = 0;
   int sx, sy, sz;
-  int piece;
+  int piece = 0;
 
   while (getline(*str,line,'\n'))  {
 
