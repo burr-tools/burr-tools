@@ -58,7 +58,9 @@ private:
 public:
 
   voxelDrawer_c(int x,int y,int w,int h);
-  virtual ~voxelDrawer_c(void) {}
+  virtual ~voxelDrawer_c(void) {
+    clearSpaces();
+  }
 
   virtual void drawData(void);
 
