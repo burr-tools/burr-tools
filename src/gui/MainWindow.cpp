@@ -2895,4 +2895,7 @@ UserInterface::~UserInterface() {
     delete disassemble;
     disassemble = 0;
   }
+
+  if (ggt)
+    delete ggt;
 }
