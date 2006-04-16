@@ -148,6 +148,8 @@ bool assemblerThread_c::assembly(assembly_c * a) {
 
     if (puzzle->probGetNumAssemblies(prob) % (solutionDrop*dropMultiplicator) == 0)
       puzzle->probAddSolution(prob, a);
+    else
+      delete a;
 
     break;
 
@@ -251,6 +253,10 @@ bool assemblerThread_c::assembly(assembly_c * a) {
           /* only save every solutionDrop-th solution */
           if (puzzle->probGetNumSolutions(prob) % (solutionDrop * dropMultiplicator) == 0)
             puzzle->probAddSolution(prob, a, s);
+          else {
+            delete a;
+            delete s;
+          }
 
           break;
       }
