@@ -1051,10 +1051,6 @@ voxel_c * puzzle_c::getShape(unsigned int idx) {
   return shapes[idx];
 }
 
-/* template unary function to delete an object */
-template <class T>
-inline void deallocate(T * p) { ::operator delete (p); }
-
 /* remove the num-th shape
  * be careful this changes all ids and so all problems must be updated
  */
@@ -1268,7 +1264,8 @@ void puzzle_c::probAddSolution(unsigned int prob, assembly_c * assm, separation_
 
 void puzzle_c::probRemoveAllSolutions(unsigned int prob) {
   bt_assert(prob < problems.size());
-  for_each(problems[prob]->solutions.begin(), problems[prob]->solutions.end(), deallocate<solution_c>);
+  for (unsigned int i = 0; i < problems[prob]->solutions.size(); i++)
+    delete problems[prob]->solutions[i];
   problems[prob]->solutions.clear();
   delete problems[prob]->assm;
   problems[prob]->assm = 0;
