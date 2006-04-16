@@ -1,3 +1,5 @@
+#include "Images.h"
+
 #define static
 
 #include "images/TB_Color_Brush.xpm"
@@ -121,3 +123,15 @@
 #include "images/Rescale_Monochrome_X1.xpm"
 #include "images/Rescale_Monochrome_X2.xpm"
 #include "images/Rescale_Monochrome_X3.xpm"
+
+
+pixmapList_c::~pixmapList_c(void) {
+  for (unsigned int i = 0; i < list.size(); i++)
+    delete list[i];
+}
+
+Fl_Pixmap * pixmapList_c::get(char * data[]) {
+  list.push_back(new Fl_Pixmap(data));
+  return list[list.size()-1];
+}
+

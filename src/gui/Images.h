@@ -1,6 +1,10 @@
 #ifndef __IMAGES_H__
 #define __IMAGES_H__
 
+#include <vector>
+
+#include <FL/Fl_Pixmap.h>
+
 extern char * TB_Color_Brush_xpm[];
 extern char * TB_Color_Columns_X_xpm[];
 extern char * TB_Color_Columns_Y_xpm[];
@@ -122,5 +126,28 @@ extern char * Rescale_Disabled_X3_xpm[];
 extern char * Rescale_Monochrome_X1_xpm[];
 extern char * Rescale_Monochrome_X2_xpm[];
 extern char * Rescale_Monochrome_X3_xpm[];
+
+/* just a little cache to make sure the pixmaps are freed after usage
+ *
+ * usage is simple, put one instance of this class into your widget that
+ * uses pixmaps and use this the function inside to create the pixmap
+ *
+ * once the class is freed, all images are, too
+ *
+ */
+class pixmapList_c {
+
+  private:
+
+    std::vector<Fl_Pixmap*> list;
+
+  public:
+
+    pixmapList_c(void) {}
+
+    ~pixmapList_c(void);
+
+    Fl_Pixmap * get(char * data[]);
+};
 
 #endif

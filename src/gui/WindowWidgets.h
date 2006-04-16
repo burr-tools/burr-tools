@@ -22,6 +22,7 @@
 #include "voxeldrawer.h"
 #include "BlockList.h"
 #include "DisasmToMoves.h"
+#include "Images.h"
 
 #include <FL/Fl.H>
 #include <FL/Fl_Button.H>
@@ -179,6 +180,8 @@ public:
 // the transform group
 class TransformButtons : public Fl_Group {
 
+  pixmapList_c pm;
+
 public:
 
   TransformButtons(int x, int y, int w, int h);
@@ -224,6 +227,7 @@ class ToolTab : public Fl_Tabs {
   Fl_Check_Button * toAll;
   puzzle_c * puzzle;
   unsigned int shape;
+  pixmapList_c pm;
 
 public:
 
