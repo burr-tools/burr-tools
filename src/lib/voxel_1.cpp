@@ -214,7 +214,6 @@ void voxel_1_c::rotatez(int by) {
     // calculate the size of the new voxel space with the rotated solution
     int nsx = sx;
     int nsy = sy;
-    int nsz = sz;
 
     // the rotated solution must fit into the new space, so make it larger if required
     if (ax2-ax1+1 > nsx) nsx = ax2-ax1+1;
@@ -245,8 +244,8 @@ void voxel_1_c::rotatez(int by) {
     }
 
     // perform the rotations and copy into new buffer
-    voxel_type *s = new voxel_type[nsx*nsy*nsz];
-    memset(s, outside, nsx*nsy*nsz);
+    voxel_type *s = new voxel_type[nsx*nsy*sz];
+    memset(s, outside, nsx*nsy*sz);
 
     int posx = px;
     int posy = py;
@@ -259,7 +258,7 @@ void voxel_1_c::rotatez(int by) {
       for (unsigned int x = 0; x < sx; x++) {
 
         if ((tx >= 0) && (tx < nsx) && (ty >= 0) && (ty < nsy))
-          for (unsigned int z = 0; z < nsz; z++)
+          for (unsigned int z = 0; z < sz; z++)
             s[tx + nsx*(ty + nsy*z)] = space[x + sx*(y + sy*z)];
 
         if ((x+y) & 1) {
@@ -284,9 +283,8 @@ void voxel_1_c::rotatez(int by) {
     space = s;
     sx = nsx;
     sy = nsy;
-    sz = nsz;
 
-    voxels = nsx*nsy*nsz;
+    voxels = nsx*nsy*sz;
 
     recalcBoundingBox();
 
