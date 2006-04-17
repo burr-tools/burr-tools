@@ -824,7 +824,7 @@ void UserInterface::cb_BtnCont(void) {
       assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_SAVE_ASM, true);
 
   assmThread->setSortMethod(sortMethod->value());
-  assmThread->setSolutionLimits(solLimit->value(), solDrop->value());
+  assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
 
   if (!assmThread->start()) {
     fl_message("Could not start the solving process, the thread creation failed, sorry.");
