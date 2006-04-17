@@ -878,7 +878,7 @@ void UserInterface::cb_New(void) {
   if (threadStopped()) {
 
     if (changed)
-      if (fl_ask("Puzzle changed are you shure?") == 0)
+      if (fl_choice("Puzzle changed are you shure?", "Cancel", "New Puzzle", 0) == 0)
         return;
 
     gridTypeSelectorWindow_c w;
@@ -908,7 +908,7 @@ void UserInterface::cb_Load(void) {
   if (threadStopped()) {
 
     if (changed)
-      if (fl_ask("Puzzle changed are you shure?") == 0)
+      if (fl_choice("Puzzle changed are you shure?", "Cancel", "Load", 0) == 0)
         return;
 
     const char * f = FileSelection("Load Puzzle");
@@ -923,7 +923,7 @@ void UserInterface::cb_Load_Ps3d(void) {
   if (threadStopped()) {
 
     if (changed)
-      if (fl_ask("Puzzle changed are you shure?") == 0)
+      if (fl_choice("Puzzle changed are you shure?", "Cancel", "Load", 0) == 0)
         return;
 
     const char * f = FileSelection2("Load Puzzle");
@@ -988,7 +988,7 @@ void UserInterface::cb_SaveAs(void) {
 
     if (f) {
 
-      if (!fileExists(f) || fl_ask("File exists overwrite?")) {
+      if (!fileExists(f) || fl_choice("File exists overwrite?", "Cancel", "Overwrite", 0)) {
 
         char f2[1000];
 
@@ -1028,7 +1028,7 @@ void UserInterface::cb_SaveAs(void) {
 
 static void cb_Quit_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->hide(); }
 void UserInterface::hide(void) {
-  if ((!changed) || fl_ask("Puzzle changed do you want to quit and loose the changes?"))
+  if ((!changed) || fl_choice("Puzzle changed do you want to quit and loose the changes?", "Cancel", "Quit", 0))
     Fl_Double_Window::hide();
 }
 
