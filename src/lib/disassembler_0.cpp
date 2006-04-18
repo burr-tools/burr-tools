@@ -39,7 +39,7 @@ private:
   /* the nodes are used to save the shortest way from the start to each
    * node. So each node saves where the way to the start is
    */
-  node0_c * comefrom;
+  const node0_c * comefrom;
 
   /* number of pieces this node is handling */
   int piecenumber;
@@ -52,7 +52,7 @@ private:
 
 public:
 
-  node0_c(int pn, node0_c * comf) : comefrom(comf), piecenumber(pn) {
+  node0_c(int pn, const node0_c * comf) : comefrom(comf), piecenumber(pn) {
     dx = new int[piecenumber];
     dy = new int[piecenumber];
     dz = new int[piecenumber];
@@ -149,7 +149,7 @@ public:
     return false;
   }
 
-  node0_c * getComefrom(void) const {
+  const node0_c * getComefrom(void) const {
     return comefrom;
   }
 };
@@ -361,7 +361,7 @@ void disassembler_0_c::init_find(node0_c * nd, int piecenumber, voxel_type * pie
   next_pn = piecenumber;
 }
 
-static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * movement) {
+static node0_c * newNode(int next_pn, int nextdir, const node0_c * searchnode, int * movement) {
 
   // we only take this new node, when all pieces are either not moved at all
   // or moved by the same amount
@@ -394,6 +394,57 @@ static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * m
   return n;
 }
 
+
+/* creates a new node that contains the merged movements of the given 2 nodes */
+static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, const node0_c * searchnode, int next_pn, int nextdir, int * movement) {
+
+  /* we need to make sure the new node is different from n0 and n1
+   */
+  bool different0 = false;
+  bool different1 = false;
+  int moved = 0;
+
+  for (int i = 0; i < next_pn; i++) {
+
+    int d0, d1;
+
+    // calculate the movement of the merged node
+    switch(nextdir) {
+      case 0:
+      case 1:
+        d0 = abs(n0->getX(i) - searchnode->getX(i));
+        d1 = abs(n1->getX(i) - searchnode->getX(i));
+        break;
+      case 2:
+      case 3:
+        d0 = abs(n0->getY(i) - searchnode->getY(i));
+        d1 = abs(n1->getY(i) - searchnode->getY(i));
+        break;
+      case 4:
+      case 5:
+        d0 = abs(n0->getZ(i) - searchnode->getZ(i));
+        d1 = abs(n1->getZ(i) - searchnode->getZ(i));
+        break;
+      default:
+        bt_assert(0);
+        break;
+    }
+    movement[i] = (d0 > d1) ? d0 : d1;
+    different0 |= (movement[i] != d0);
+    different1 |= (movement[i] != d1);
+    if (movement[i]) moved++;
+  }
+
+  // if the new node is equal to n0 or n1, exit
+  if (!different0 || !different1) return 0;
+
+  // if too many pieces need to be moved, don't do it
+  if (moved > next_pn/2) return 0;
+
+  return newNode(next_pn, nextdir, searchnode, movement);
+}
+
+
 /* at first we check if movement is possible at all in the current direction, if so
  * the next thing to do is to check if something can be removed, and finally we look for longer
  * movements in the actual direction
@@ -402,8 +453,10 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
 
   node0_c * n = 0;
 
+  static std::vector<node0_c *> nodes;
+
   // repeat until we either find a movement or have checked everything
-  while (!n && (nextstate < 4)) {
+  while (!n && ((nextstate < 3) || (nextstate == 99))) {
 
     switch (nextstate) {
       case 0:
@@ -433,6 +486,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
           if (nextdir >= 6) {
             nextstate++;
             nextdir = 0;
+            nodes.clear();
           }
         }
         break;
@@ -440,6 +494,18 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
         // check, if a single piece can be moved
         if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep)) {
           n = newNode(next_pn, nextdir, searchnode, movement);
+
+          // we need to merge the gained node with all already found
+          // nodes with the same step and if that leads to valid new nodes
+          // we also need to return those
+
+          if (n) {
+            nodes.push_back(n);
+
+            nextstate = 99;
+            state99piece = 0;
+            state99nextState = 2;
+          }
 
           // if we can move something, we try larger steps
           nextstep++;
@@ -452,6 +518,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
           if (nextpiece >= next_pn) {
             nextpiece = 0;
             nextdir++;
+            nodes.clear();
             if (nextdir >= 6) {
 
               // next state is the 2 piece at once moving state,
@@ -470,34 +537,31 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
           }
         }
         break;
-      case 3:
-        // check, 2 pieces can be moved into the same direction
-        if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep, nextpiece2)) {
-          n = newNode(next_pn, nextdir, searchnode, movement);
 
-          // if we can move something, we try larger steps
-          nextstep++;
+      case 99:
 
-        } else {
+        // this is a special state that takes the last found node and creates mergers with all
+        // the already found nodes.
+        // a merger is a new node that contains the movement of one node AND the movement of
+        // the 2nd node at the same time. Of course both nodes need to point into the same
+        // direction and in both nodes te pieces need to be moved by
+        // the same amount
+        //
+        // This is needed because when moving groups of pieces and both pieces are independent of
+        // one another the code above alone wont find movements where both pieces are moved at
+        // the same time but rather one after the other
 
-          // if not, lets try the next piece
-          nextstep = 1;
-          nextpiece2++;
-          if (nextpiece2 >= next_pn) {
-            nextpiece++;
-            nextpiece2 = nextpiece + 1;
-            if (nextpiece2 >= next_pn) {
-              nextpiece = 0;
-              nextpiece2 = 1;
-              nextdir++;
-              if (nextdir >= 6) {
-                nextstate++;
-                nextdir = 0;
-              }
-            }
-          }
-        }
+        if (state99piece < (int)nodes.size()-1) {
+          n = newNodeMerge(nodes[state99piece], nodes[nodes.size()-1], searchnode, next_pn, nextdir, movement);
+
+          if (n) nodes.push_back(n);
+
+          state99piece++;
+        } else
+          nextstate = state99nextState;
+
         break;
+
       default:
         // endstate, do nothing
         break;
@@ -611,6 +675,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 
   std::queue<node0_c *> openlist;
   std::set<node0_c *, node_ptr_less> closed;
+  std::vector<node0_c *> deletelist;
 
   closed.insert(start);
   openlist.push(start);
@@ -634,8 +699,11 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 
         /* the new node is already here. We have found a new longer way to that
          * node, so we can savely delete the new node and continue to the next
+         *
+         * don't delete it right here, but only after the serch was finished because
+         * the find function still requires the node information
          */
-        delete st;
+        deletelist.push_back(st);
         continue;
       }
 
@@ -727,6 +795,11 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 
       return erg;
     }
+
+    /* now we can delete the entries inside the deletelist */
+    for (unsigned int i = 0; i < deletelist.size(); i++)
+      delete deletelist[i];
+    deletelist.clear();
 
     /* we have checked all the successors of this node, so we don't need the matrix
      * any longer
