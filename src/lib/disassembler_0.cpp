@@ -252,7 +252,7 @@ void disassembler_0_c::prepare2(int pn) {
  * to distinguish "good" and "bad" moves the function returns true, if less maxPieces
  * have to be moved, this value should not be larger than halve of the pieces in the puzzle
  */
-bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep, int piece2) {
+bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep) {
 
   /* we count the number of pieces that need to be moved, if this number
    * get's bigger than halve of the pices of the current problem we
@@ -270,12 +270,6 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int ne
   }
   movement[nextpiece] = nextstep;
   check[nextpiece] = true;
-
-  if (piece2 >= 0) {
-    movement[piece2] = nextstep;
-    check[piece2] = true;
-    moved_pieces++;
-  }
 
   bool finished;
   int nd = nextdir >> 1;
