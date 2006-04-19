@@ -122,6 +122,9 @@ class UserInterface : public Fl_Double_Window {
 
   Fl_Value_Output *SolutionNumber, *AssemblyNumber;
 
+  FlatButton *BtnSrtFind, *BtnSrtLevel, *BtnSrtMoves;
+  FlatButton *BtnDelAll, *BtnDelBefore, *BtnDelAt, *BtnDelAfter;
+
   // the zoom levels for all 3 tabs independent, so that the problem
   // tab can have a wider view
   double ViewSizes[3];
@@ -258,6 +261,9 @@ public:
   void cb_ImageExport(void);
   void cb_GridParameter(void);
   void cb_StatusWindow(void);
+
+  void cb_SortSolutions(unsigned int by);
+  void cb_DeleteSolutions(unsigned int which);
 
   void activateConfigOptions(void);
 };

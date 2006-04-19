@@ -862,6 +862,92 @@ void UserInterface::cb_SolutionAnim(Fl_Value_Slider* o) {
   }
 }
 
+static void cb_SrtFind_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_SortSolutions(0); }
+static void cb_SrtLevel_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_SortSolutions(1); }
+static void cb_SrtMoves_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_SortSolutions(2); }
+void UserInterface::cb_SortSolutions(unsigned int by) {
+  unsigned int prob = solutionProblem->getSelection();
+
+  if (prob >= puzzle->problemNumber())
+    return;
+
+  unsigned int sol = puzzle->probSolutionNumber(prob);
+
+  // this is bubble sort, so it might be a bit slow
+  // for larger number of solutions but is has the advantage
+  // of beeing a stable sort method
+  for (unsigned int a = 0; a < sol-1; a++)
+    for (unsigned int b = a+1; b < sol; b++) {
+
+      bool exchange = false;
+
+      switch (by) {
+        case 0:
+          exchange = puzzle->probGetAssemblyNum(prob, a) > puzzle->probGetAssemblyNum(prob, b);
+          break;
+        case 1:
+          exchange = puzzle->probGetDisassembly(prob, a) && puzzle->probGetDisassembly(prob, b) &&
+            (puzzle->probGetDisassembly(prob, a)->compare(puzzle->probGetDisassembly(prob, b)) > 0);
+          break;
+        case 2:
+          exchange = puzzle->probGetDisassembly(prob, a) && puzzle->probGetDisassembly(prob, b) &&
+            (puzzle->probGetDisassembly(prob, a)->sumMoves() > puzzle->probGetDisassembly(prob, b)->sumMoves());
+          break;
+      }
+
+      if (exchange)
+        puzzle->probSwapSolutions(prob, a, b);
+    }
+
+  activateSolution(prob, (int)SolutionSel->value()-1);
+  updateInterface();
+}
+
+static void cb_DelAll_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteSolutions(0); }
+static void cb_DelBefore_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteSolutions(1); }
+static void cb_DelAt_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteSolutions(2); }
+static void cb_DelAfter_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteSolutions(3); }
+void UserInterface::cb_DeleteSolutions(unsigned int which) {
+
+  unsigned int prob = solutionProblem->getSelection();
+
+  if (prob >= puzzle->problemNumber())
+    return;
+
+  unsigned int sol = (int)SolutionSel->value()-1;
+
+  if (sol >= puzzle->probSolutionNumber(prob))
+    return;
+
+  unsigned int cnt;
+
+  switch (which) {
+  case 0:
+    cnt = puzzle->probSolutionNumber(prob);
+    for (unsigned int i = 0; i < cnt; i++)
+      puzzle->probRemoveSolution(prob, 0);
+    break;
+  case 1:
+    for (unsigned int i = 0; i < sol; i++)
+      puzzle->probRemoveSolution(prob, 0);
+    break;
+  case 2:
+    puzzle->probRemoveSolution(prob, sol);
+    break;
+  case 3:
+    cnt = puzzle->probSolutionNumber(prob) - sol - 1;
+    for (unsigned int i = 0; i < cnt; i++)
+      puzzle->probRemoveSolution(prob, sol+1);
+    break;
+  }
+
+  if (SolutionSel->value() > puzzle->probSolutionNumber(prob))
+    SolutionSel->value(puzzle->probSolutionNumber(prob) - 1);
+
+  activateSolution(prob, (int)SolutionSel->value()-1);
+  updateInterface();
+}
+
 static void cb_PcVis_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_PcVis(); }
 void UserInterface::cb_PcVis(void) {
   View3D->updateVisibility(PcVis);
@@ -2790,6 +2876,25 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     SolutionNumber = new Fl_Value_Output(x+w/2+80, y, w-w/2-80, SZ_BUTTON_Y, "Solution:");
     AssemblyNumber->box(FL_FLAT_BOX);
     SolutionNumber->box(FL_FLAT_BOX);
+
+    y += SZ_BUTTON_Y + SZ_GAP;
+    lh -= SZ_BUTTON_Y + SZ_GAP;
+
+    int bw = (w - 2*SZ_GAP) / 3;
+
+    BtnSrtFind =  new FlatButton(x              , y, bw, SZ_BUTTON_Y, "Sort by Finding", " Sort in the order the solutions were found ", cb_SrtFind_stub, this);
+    BtnSrtLevel = new FlatButton(x+bw+SZ_GAP    , y, bw, SZ_BUTTON_Y, "Sort by Level", " Sort in the order of increasing level ", cb_SrtLevel_stub, this);
+    BtnSrtMoves = new FlatButton(x+2*bw+2*SZ_GAP, y, w-2*bw-2*SZ_GAP, SZ_BUTTON_Y, "Sort by Disasm", " Sort in the order of increasing moves for complete disassembly ", cb_SrtMoves_stub, this);
+
+    y += SZ_BUTTON_Y + SZ_GAP;
+    lh -= SZ_BUTTON_Y + SZ_GAP;
+
+    bw = (w - 3*SZ_GAP) / 4;
+
+    BtnDelAll =    new FlatButton(x,               y, bw,              SZ_BUTTON_Y, "Del All", " Delete all solutions ", cb_DelAll_stub, this);
+    BtnDelBefore = new FlatButton(x+1*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "Del Before", " Delete all before the currently selected one ", cb_DelBefore_stub, this);
+    BtnDelAt =     new FlatButton(x+2*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "Del At", " Delete current solution ", cb_DelAt_stub, this);
+    BtnDelAfter =  new FlatButton(x+3*(bw+SZ_GAP), y, w-3*(bw+SZ_GAP), SZ_BUTTON_Y, "Del After", " Delete all solutions after the currently selected one ", cb_DelAfter_stub, this);
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;

@@ -1276,6 +1276,18 @@ void puzzle_c::probRemoveAllSolutions(unsigned int prob) {
   problems[prob]->usedTime = 0xFFFFFFFF;
 }
 
+void puzzle_c::probSwapSolutions(unsigned int prob, unsigned int sol1, unsigned int sol2) {
+  bt_assert(prob < problems.size());
+  bt_assert(sol1 < problems[prob]->solutions.size());
+  bt_assert(sol2 < problems[prob]->solutions.size());
+
+  if (sol1 == sol2) return;
+
+  solution_c * s = problems[prob]->solutions[sol1];
+  problems[prob]->solutions[sol1] = problems[prob]->solutions[sol2];
+  problems[prob]->solutions[sol2] = s;
+}
+
 void puzzle_c::probRemoveSolution(unsigned int prob, unsigned int sol) {
   bt_assert(prob < problems.size());
   bt_assert(sol < problems[prob]->solutions.size());
