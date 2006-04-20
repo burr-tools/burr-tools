@@ -48,17 +48,16 @@ void voxel_1_c::rotatex(int by) {
     voxels = nsx*nsy*nsz;
 
     // recalculate bounding box
-    int y1 = nsy-by2-1;
-    int y2 = nsy-by1-1;
-    int z1 = nsz-bz2-1;
-    int z2 = nsz-bz1-1;
 
-    // this can be removed later on, when we can be more certain that the above is right
-    recalcBoundingBox();
-    bt_assert(by1 == y1);
-    bt_assert(by2 == y2);
-    bt_assert(bz1 == z1);
-    bt_assert(bz2 == z2);
+    unsigned int tmp = by1;
+
+    by1 = nsy-by2-1;
+    by2 = nsy-tmp-1;
+
+    tmp = bz1;
+
+    bz1 = nsz-bz2-1;
+    bz2 = nsz-tmp-1;
 
     // recalculate hotspot position
     hy = sy - hy;
@@ -98,17 +97,16 @@ void voxel_1_c::rotatey(int by) {
     voxels = nsx*nsy*nsz;
 
     // recalculate bounding box
-    int x1 = nsx-bx2-1;
-    int x2 = nsx-bx1-1;
-    int z1 = nsz-bz2-1;
-    int z2 = nsz-bz1-1;
 
-    // this can be removed later on, when we can be more certain that the above is right
-    recalcBoundingBox();
-    bt_assert(bx1 == x1);
-    bt_assert(bx2 == x2);
-    bt_assert(bz1 == z1);
-    bt_assert(bz2 == z2);
+    unsigned int tmp = bx1;
+
+    bx1 = nsx-bx2-1;
+    bx2 = nsx-tmp-1;
+
+    tmp = bz1;
+
+    bz1 = nsz-bz2-1;
+    bz2 = nsz-tmp-1;
 
     // recalculate hotspot position
     hx = sx + 1 - hx;
