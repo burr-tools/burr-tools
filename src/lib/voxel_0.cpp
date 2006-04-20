@@ -44,7 +44,7 @@ void voxel_0_c::rotatex(int by) {
       bz1 = t;
 
       t = hy;
-      hy = sy - hz;
+      hy = sy - hz - 1;
       hz = t;
 
       delete [] space;
@@ -68,8 +68,8 @@ void voxel_0_c::rotatex(int by) {
       bz1 = sz - 1 - bz2;
       bz2 = sz - 1 - t;
 
-      hy = sy - hy;
-      hz = sz - hz;
+      hy = sy - hy - 1;
+      hz = sz - hz - 1;
 
       delete [] space;
       space = s;
@@ -97,7 +97,7 @@ void voxel_0_c::rotatex(int by) {
 
       t = hy;
       hy = hz;
-      hz = sz - t;
+      hz = sz - t - 1;
 
       delete [] space;
       space = s;
@@ -139,7 +139,7 @@ void voxel_0_c::rotatey(int by) {
       bz1 = t;
 
       t = hx;
-      hx = sx - hz;
+      hx = sx - hz - 1;
       hz = t;
 
     }
@@ -165,8 +165,8 @@ void voxel_0_c::rotatey(int by) {
       bz1 = sz - 1 - bz2;
       bz2 = sz - 1 - t;
 
-      hx = sx - hx;
-      hz = sz - hz;
+      hx = sx - hx - 1;
+      hz = sz - hz - 1;
 
     }
     break;
@@ -195,7 +195,7 @@ void voxel_0_c::rotatey(int by) {
 
       t = hx;
       hx = hz;
-      hz = sz - t;
+      hz = sz - t - 1;
     }
     break;
   }
@@ -234,7 +234,7 @@ void voxel_0_c::rotatez(int by) {
 
       t = hy;
       hy = hx;
-      hx = sx - t;
+      hx = sx - t - 1;
 
     }
     break;
@@ -259,8 +259,8 @@ void voxel_0_c::rotatez(int by) {
       bx1 = sx - 1 - bx2;
       bx2 = sx - 1 - t;
 
-      hx = sx - hx;
-      hy = sy - hy;
+      hx = sx - hx - 1;
+      hy = sy - hy - 1;
     }
     break;
   case 3:
@@ -287,7 +287,7 @@ void voxel_0_c::rotatez(int by) {
       bx1 = t;
 
       t = hy;
-      hy = sy - hx;
+      hy = sy - hx - 1;
       hx = t;
     }
     break;
@@ -308,13 +308,13 @@ void voxel_0_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const
   int t;
 
   if (trans >= sym->getNumTransformations()) {
-    tx = sx - tx;
+    tx = sx - tx - 1;
     trans -= sym->getNumTransformations();
   }
 
   for (int i = 0; i < sym->rotx(trans); i++) {
     t = ty;
-    ty = tsz - tz;
+    ty = tsz - tz - 1;
     tz = t;
     t = tsy;
     tsy = tsz;
@@ -323,7 +323,7 @@ void voxel_0_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const
 
   for (int i = 0; i < sym->roty(trans); i++) {
     t = tx;
-    tx = tsz - tz;
+    tx = tsz - tz - 1;
     tz = t;
     t = tsx;
     tsx = tsz;
@@ -333,7 +333,7 @@ void voxel_0_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const
   for (int i = 0; i < sym->rotz(trans); i++) {
     t = ty;
     ty = tx;
-    tx = tsy - t;
+    tx = tsy - t - 1;
     t = tsx;
     tsx = tsy;
     tsy = t;

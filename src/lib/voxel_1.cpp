@@ -60,11 +60,8 @@ void voxel_1_c::rotatex(int by) {
     bz2 = nsz-tmp-1;
 
     // recalculate hotspot position
-    hy = sy - hy;
-    hz = sz - hz;
-
-    // make sure hotspot is correct
-    bt_assert(((hx+hy) & 1) == 0);
+    hy = sy - hy - 1;
+    hz = sz - hz - 1;
   }
 
   symmetries = symmetryInvalid();
@@ -109,11 +106,8 @@ void voxel_1_c::rotatey(int by) {
     bz2 = nsz-tmp-1;
 
     // recalculate hotspot position
-    hx = sx + 1 - hx;
-    hz = sz - hz;
-
-    // make sure hotspot is correct
-    bt_assert(((hx+hy) & 1) == 0);
+    hx = sx - hx - 1;
+    hz = sz - hz - 1;
   }
 
   symmetries = symmetryInvalid();
@@ -289,8 +283,7 @@ void voxel_1_c::rotatez(int by) {
     // recalculate hotpot position
 
 
-    // first falculate which triangle contains the new hotspot
-    // the hotspot is then on one of the corners of the trianle
+    // calculate which triangle contains the new hotspot
     px = posx;
     py = posy;
 
@@ -318,23 +311,8 @@ void voxel_1_c::rotatez(int by) {
       pos--;
     }
 
-    // now we find out at which corner the hotspot is situated
-    // and move over so that we always have the lower left corner of
-    // the given triangle as the hotspot
-    switch (by) {
-      case 1: px++; break;
-      case 2: px += 2; break;  // as an example, this will be a base triangle with the hotspot in the lower right, so go 2 right
-                               // then the hotspot is in the lower left corner
-      case 3: py++; px += 2; break;
-      case 4: py++; px++; break;
-      case 5: py++; break;
-    }
-
     hx = px;
     hy = py;
-
-    // make sure hotspot is correct
-    bt_assert(((hx+hy) & 1) == 0);
   }
 
   symmetries = symmetryInvalid();
@@ -398,9 +376,6 @@ void voxel_1_c::mirrorX(void) {
       translate(1, 0, 0, 0);
     }
   }
-  if ((hx+hy) & 1) hx++;
-  // make sure hotspot is correct
-  bt_assert(((hx+hy) & 1) == 0);
 }
 
 void voxel_1_c::mirrorY(void) {
@@ -420,9 +395,6 @@ void voxel_1_c::mirrorY(void) {
       translate(1, 0, 0, 0);
     }
   }
-  if ((hx+hy) & 1) hx++;
-  // make sure hotspot is correct
-  bt_assert(((hx+hy) & 1) == 0);
 }
 
 bool voxel_1_c::identicalInBB(const voxel_c * op, bool includeColors) const {

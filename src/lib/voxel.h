@@ -111,6 +111,9 @@ protected:
    * be possible to rotate a voxel space and place it at the same position without
    * knowing the size of the piece
    * The hotspot is also transformed, when the piece voxel space is transformed
+   * The hotspot is in the center of the given voxel for most of he defined
+   * voxel spaces. This has the advantage that it is not necessary to calculate
+   * the exact coner where is is, but it requires rotation independend center definition
    */
   int hx, hy, hz;
 
