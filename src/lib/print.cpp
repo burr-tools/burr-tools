@@ -29,7 +29,7 @@ void print(const voxel_c * v, char base) {
       printf("-");
     printf("+");
   }
-  printf("\n");
+  printf(" bx %i-%i by %i-%i bz %i-%i h: %i %i %i \n", v->boundX1(), v->boundX2(), v->boundY1(), v->boundY2(), v->boundZ1(), v->boundZ2(), v->getHx(), v->getHy(), v->getHz());
 
   for (unsigned int y = 0; y < v->getY(); y++) {
     for (unsigned int z = 0; z < v->getZ(); z++) {
