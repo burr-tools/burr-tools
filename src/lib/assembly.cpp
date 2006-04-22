@@ -289,6 +289,17 @@ bool assembly_c::compare(const assembly_c & b, unsigned int pivot) const {
   return false;
 }
 
+bool assembly_c::containsMirroredPieces(void) const {
+
+  for (unsigned int i = 0; i < placements.size(); i++) {
+
+    if (placements[i].transformation >= sym->getNumTransformations())
+      return true;
+  }
+
+  return false;
+}
+
 bool assembly_c::smallerRotationExists(const puzzle_c * puz, unsigned int prob, unsigned int pivot) const {
 
   symmetries_t s = puz->probGetResultShape(prob)->selfSymmetries();
@@ -298,6 +309,18 @@ bool assembly_c::smallerRotationExists(const puzzle_c * puz, unsigned int prob, 
     if (sym->symmetrieContainsTransformation(s, t)) {
 
       assembly_c tmp(this, t, puz, prob);
+
+      // if the assembly orientation requires mirrored pieces
+      // it is invalid, that should be the case for most assemblies
+      // when checking for mirrored
+      //
+      // FIXME: we should check, if we can exchange 2 shapes that are
+      // mirrors of one another to see, if we can remove the mirror
+      // problem
+      if ((t >= sym->getNumTransformations()) && tmp.containsMirroredPieces()) {
+        printf("mirrors in here, not checked \n");
+        continue;
+      }
 
       if (tmp.compare(*this, pivot)) {
         return true;

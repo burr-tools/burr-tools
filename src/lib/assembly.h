@@ -143,6 +143,16 @@ public:
    */
   void transform(unsigned char trans, const puzzle_c * puz, unsigned int prob);
 
+  /**
+   * returns true, if one of the pieces within this assembly is
+   * a mirror orientation
+   *
+   * this is used by the smaller rotation exists check,
+   * to see, if the mirrored orientation can be achieved
+   * with the given pieces
+   */
+  bool containsMirroredPieces(void) const;
+
   /* to be able to put assemblies into sets we need to have 2 operators
    * on assemblies, the == and the <
    */
