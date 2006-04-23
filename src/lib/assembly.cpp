@@ -184,10 +184,7 @@ void assembly_c::sort(const puzzle_c * puz, unsigned int prob) {
 
 void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned int prob) {
 
-  if (!trans) return;
-
-  bool flip = false;
-  int rot = trans;
+  if (trans == 0) return;
 
   int rx, ry, rz;
   puz->probGetResultShape(prob)->getHotspot(trans, &rx, &ry, &rz);
@@ -209,11 +206,6 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
     rx += dx - cx;
     ry += dy - cy;
     rz += dz - cz;
-  }
-
-  if (trans >= sym->getNumTransformations()) {
-    flip = true;
-    rot = trans - sym->getNumTransformations();
   }
 
   int p = 0;
