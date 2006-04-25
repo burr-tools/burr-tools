@@ -2928,6 +2928,7 @@ UserInterface::UserInterface(gridType_c * gt) : Fl_Double_Window(SZ_WINDOW_X, SZ
   assmThread = 0;
   fname = 0;
   disassemble = 0;
+  editSymmetries = 0;
 
   puzzle = new puzzle_c(gt);
   ggt = new guiGridType_c(puzzle->getGridType());
