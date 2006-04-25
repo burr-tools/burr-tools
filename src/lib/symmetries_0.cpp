@@ -81,6 +81,11 @@ int symmetries_0_c::rotz(unsigned int p) const {
   return _rotz[p];
 }
 
+unsigned long long symmetries_0_c::getSymmetryMask(symmetries_t sym) const {
+  bt_assert(sym < NUM_SYMMETRY_GROUPS);
+  return symmetries[sym];
+}
+
 unsigned char symmetries_0_c::transAdd(unsigned char t1, unsigned char t2) const {
   bt_assert(t1 < NUM_TRANSFORMATIONS_MIRROR);
   bt_assert(t2 < NUM_TRANSFORMATIONS_MIRROR);

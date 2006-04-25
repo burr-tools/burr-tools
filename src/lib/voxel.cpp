@@ -175,6 +175,23 @@ bool voxel_c::identicalWithRots(const voxel_c * op, bool includeMirror, bool inc
   return false;
 }
 
+unsigned char voxel_c::getMirrorTransform(const voxel_c * op) const {
+
+  const symmetries_c * sym = gt->getSymmetries();
+
+  for (unsigned int t = sym->getNumTransformations(); t < sym->getNumTransformationsMirror(); t++) {
+    voxel_c * v = gt->getVoxel(this, t);
+
+    if (v->identicalInBB(op, true)) {
+      delete v;
+      return t;
+    }
+
+    delete v;
+  }
+
+  return 0;
+}
 
 void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 

@@ -28,11 +28,10 @@
 
 class puzzle_c;
 
-/* this class contains the assembly for a puzzle
- * an assembly is a list of trnasformations and
- * positions for each piece in the final assembly
+/* this class contains the information for the placement of
+ * one piece within the assembly.
  *
- * the transformations are the same as defined in the voxel space class
+ * That is the position and the orientation of that piece
  */
 class placement_c {
 
@@ -81,6 +80,43 @@ public:
   }
 };
 
+/* this class contains mirror information for a given puzzle
+ * this means it contains pairs of pieces that are mirror shapes
+ * of one another and how one piece is transformed into the other
+ */
+class mirrorInfo_c {
+
+  typedef struct {
+    unsigned int pc1;
+    unsigned int pc2;
+
+    unsigned char trans;
+  } entry;
+
+  std::vector<entry> entries;
+
+  public:
+
+    mirrorInfo_c(void) {};
+
+    /* adds a pair of pieces that are mirrors or one another,
+     * trans transforms the first piece into the 2nd
+     */
+    void addPieces(unsigned int p1, unsigned int p2, unsigned char trans);
+
+    /* returns the piece information for piece p
+     * p_out and trans contains the attatched info
+     * returns only true, when valid entry was found
+     */
+    bool getPieceInfo(unsigned int p, unsigned int * p_out, unsigned char * trans) const;
+};
+
+/* this class contains the assembly for a puzzle
+ * an assembly is a list of trnasformations and
+ * positions for each piece in the final assembly
+ *
+ * the transformations are the same as defined in the voxel space class
+ */
 class assembly_c {
 
 
@@ -95,7 +131,7 @@ public:
    * copy constructor
    */
   assembly_c(const assembly_c * orig);
-  assembly_c(const assembly_c * orig, unsigned char trans, const puzzle_c * puz, unsigned int prob);
+  assembly_c(const assembly_c * orig, unsigned char trans, const puzzle_c * puz, unsigned int prob, const mirrorInfo_c * mir);
 
   /**
    * load the assembly from xml file
@@ -141,7 +177,7 @@ public:
    * placements we need to know the sizes of the shapes because
    * the given position is always the corner with the lowest coordinates
    */
-  void transform(unsigned char trans, const puzzle_c * puz, unsigned int prob);
+  void transform(unsigned char trans, const puzzle_c * puz, unsigned int prob, const mirrorInfo_c * mir);
 
   /**
    * returns true, if one of the pieces within this assembly is
@@ -175,7 +211,7 @@ public:
 
   void sort(const puzzle_c * puz, unsigned int prob);
 
-  bool smallerRotationExists(const puzzle_c * puz, unsigned int prob, unsigned int pivot) const;
+  bool smallerRotationExists(const puzzle_c * puz, unsigned int prob, unsigned int pivot, const mirrorInfo_c * mir) const;
 
   /* shifts a piece around by a certain amount */
   void shiftPiece(unsigned int pc, int dx, int dy, int dz);

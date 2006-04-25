@@ -408,6 +408,16 @@ public:
    */
   bool identicalWithRots(const voxel_c * op, bool includeMirror, bool includeColors) const;
 
+  /**
+   * this function returns the transformation, that transforms this voxel space into the
+   * as parameter given one
+   *
+   * the returned transformation always contains a mirroring
+   *
+   * if no transformation can be found, return 0
+   */
+  unsigned char getMirrorTransform(const voxel_c * op) const;
+
   /** resizes the voxelspace, spreserving the lover part
    * of the data, when the new one is smaller and
    * adding new voxels at the upper end, if the new space

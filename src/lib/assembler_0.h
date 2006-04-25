@@ -26,6 +26,7 @@
 
 class puzzle_c;
 class gridType_c;
+class mirrorInfo_c;
 
 /* this class is only a base class containing the functionality for the matrix
  * the functions in here don't know anything about the meaning of the matrix
@@ -248,6 +249,7 @@ private:
    */
   bool avoidTransformedAssemblies;
   unsigned int avoidTransformedPivot;
+  mirrorInfo_c * avoidTransformedMirror;
 
   /* the variables for debugging assembling processes
    */

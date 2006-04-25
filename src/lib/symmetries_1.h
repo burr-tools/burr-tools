@@ -53,6 +53,7 @@ class symmetries_1_c : public symmetries_c {
     unsigned int countSymmetryIntersection(symmetries_t resultSym, symmetries_t s2) const;
     bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2) const;
     symmetries_t symmetryCalcuation(const voxel_c * pp) const;
+    unsigned long long getSymmetryMask(symmetries_t sym) const;
 };
 
 #endif

@@ -21,6 +21,28 @@
 #include "bt_assert.h"
 #include "voxel.h"
 
+
+void mirrorInfo_c::addPieces(unsigned int p1, unsigned int p2, unsigned char trans) {
+  entry e;
+  e.pc1 = p1;
+  e.pc2 = p2;
+  e.trans = trans;
+  entries.push_back(e);
+}
+
+bool mirrorInfo_c::getPieceInfo(unsigned int p, unsigned int * p_out, unsigned char * trans) const {
+
+  for (unsigned int i = 0; i < entries.size(); i++)
+    if (entries[i].pc1 == p) {
+      *p_out = entries[i].pc2;
+      *trans = entries[i].trans;
+      return true;
+    }
+
+  return false;
+}
+
+
 assembly_c::assembly_c(const xml::node & node, unsigned int pieces, const gridType_c * gt) : sym(gt->getSymmetries()) {
 
   // we must have a real node and the following attributes
@@ -127,11 +149,11 @@ assembly_c::assembly_c(const assembly_c * orig) : sym(orig->sym) {
 
 }
 
-assembly_c::assembly_c(const assembly_c * orig, unsigned char trans, const puzzle_c * puz, unsigned int prob) : sym(orig->sym) {
+assembly_c::assembly_c(const assembly_c * orig, unsigned char trans, const puzzle_c * puz, unsigned int prob, const mirrorInfo_c * mir) : sym(orig->sym) {
   for (unsigned int i = 0; i < orig->placements.size(); i++)
     placements.push_back(placement_c(orig->getTransformation(i), orig->getX(i), orig->getY(i), orig->getZ(i)));
 
-  transform(trans, puz, prob);
+  transform(trans, puz, prob, mir);
 
 }
 
@@ -182,7 +204,7 @@ void assembly_c::sort(const puzzle_c * puz, unsigned int prob) {
   }
 }
 
-void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned int prob) {
+void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned int prob, const mirrorInfo_c * mir) {
 
   if (trans == 0) return;
 
@@ -251,6 +273,106 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
     }
   }
 
+  // finally we need to check, if we can exchange mirrored pieces, so that
+  // they no longer require mirrored orientation
+
+  if (mir) {
+
+    unsigned int p = 0;
+
+    for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
+      for (unsigned int j = 0; j < puz->probGetShapeCount(prob, i); j++) {
+
+        // only check, if the current piece is mirrored
+        if (placements[p].transformation >= sym->getNumTransformations()) {
+
+          unsigned int p2 = 0;
+          unsigned char t;
+
+          if (mir->getPieceInfo(p, &p2, &t)) {
+
+            unsigned int p3;
+            unsigned char t_inv;
+
+            mir->getPieceInfo(p2, &p3, &t_inv);
+
+            bt_assert(p3 == p);
+
+            unsigned int i2 = 0;
+
+            {
+              unsigned int ss = 0;
+
+              while (ss+puz->probGetShapeCount(prob, i2) < p2) {
+                ss += puz->probGetShapeCount(prob, i2);
+                i2++;
+              }
+            }
+
+            /* ok, we found replacement information for piece p,
+             * we are supposed to replace it with piece p2
+             *
+             * so we put the current piece at position p2 and the piece
+             * at position p, we need to find out the target orientations
+             * of the 2 pieces and we need to transform the new positions
+             * with the hotspots
+             */
+
+            int p1x = placements[p].xpos;
+            int p1y = placements[p].ypos;
+            int p1z = placements[p].zpos;
+            unsigned char p1t = placements[p].transformation;
+
+            int p2x = placements[p2].xpos;
+            int p2y = placements[p2].ypos;
+            int p2z = placements[p2].zpos;
+            unsigned char p2t = placements[p2].transformation;
+
+            /* the 2nd piece must also be mirrored */
+            bt_assert(p2t >= sym->getNumTransformations());
+
+            int hx, hy, hz;
+
+            puz->probGetShapeShape(prob, i)->getHotspot(p1t, &hx, &hy, &hz);
+            p1x -= hx;
+            p1y -= hy;
+            p1z -= hz;
+
+            puz->probGetShapeShape(prob, i2)->getHotspot(p2t, &hx, &hy, &hz);
+            p2x -= hx;
+            p2y -= hy;
+            p2z -= hz;
+
+            p1t = puz->probGetShapeShape(prob, i)->normalizeTransformation(sym->transAdd(t, p1t));
+            p2t = puz->probGetShapeShape(prob, i2)->normalizeTransformation(sym->transAdd(t_inv, p2t));
+
+            puz->probGetShapeShape(prob, i)->getHotspot(p1t, &hx, &hy, &hz);
+            p1x += hx;
+            p1y += hy;
+            p1z += hz;
+
+            puz->probGetShapeShape(prob, i2)->getHotspot(p2t, &hx, &hy, &hz);
+            p2x += hx;
+            p2y += hy;
+            p2z += hz;
+
+            placements[p].xpos = p2x;
+            placements[p].ypos = p2y;
+            placements[p].zpos = p2z;
+            placements[p].transformation = p2t;
+
+            placements[p2].xpos = p1x;
+            placements[p2].ypos = p1y;
+            placements[p2].zpos = p1z;
+            placements[p2].transformation = p1t;
+          }
+        }
+
+        p++;
+      }
+    }
+  }
+
   sort(puz, prob);
 }
 
@@ -292,15 +414,21 @@ bool assembly_c::containsMirroredPieces(void) const {
   return false;
 }
 
-bool assembly_c::smallerRotationExists(const puzzle_c * puz, unsigned int prob, unsigned int pivot) const {
+bool assembly_c::smallerRotationExists(const puzzle_c * puz, unsigned int prob, unsigned int pivot, const mirrorInfo_c * mir) const {
 
   symmetries_t s = puz->probGetResultShape(prob)->selfSymmetries();
 
-  for (unsigned char t = 1; t < sym->getNumTransformationsMirror(); t++) {
+  /* we only need to check for mirrored transformations, if mirrorInfo is given
+   * if not we assume that the pieceset contains at least one piece that has no
+   * mirror symmetries and no mirror pair
+   */
+  unsigned int endTrans = mir ? sym->getNumTransformationsMirror() : sym->getNumTransformations();
+
+  for (unsigned char t = 1; t < endTrans; t++) {
 
     if (sym->symmetrieContainsTransformation(s, t)) {
 
-      assembly_c tmp(this, t, puz, prob);
+      assembly_c tmp(this, t, puz, prob, mir);
 
       // if the assembly orientation requires mirrored pieces
       // it is invalid, that should be the case for most assemblies
@@ -310,7 +438,6 @@ bool assembly_c::smallerRotationExists(const puzzle_c * puz, unsigned int prob, 
       // mirrors of one another to see, if we can remove the mirror
       // problem
       if ((t >= sym->getNumTransformations()) && tmp.containsMirroredPieces()) {
-        printf("mirrors in here, not checked \n");
         continue;
       }
 

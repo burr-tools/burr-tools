@@ -200,7 +200,7 @@ void assembler_0_c::nextPiece(unsigned int piece, unsigned int count, unsigned i
 assembler_0_c::assembler_0_c(void) :
   multiPieceCount(0), multiPieceIndex(0), pieceStart(0),
   pos(0), rows(0), columns(0), nodeF(0), numF(0),
-  piece(0), searchState(0), addRows(0), avoidTransformedAssemblies(0)
+  piece(0), searchState(0), addRows(0), avoidTransformedAssemblies(0), avoidTransformedMirror(0)
 {
 }
 
@@ -215,6 +215,8 @@ assembler_0_c::~assembler_0_c() {
   if (piece) delete [] piece;
   if (searchState) delete [] searchState;
   if (addRows) delete [] addRows;
+
+  if (avoidTransformedMirror) delete avoidTransformedMirror;
 }
 
 /* add a piece to the cache, but only if it is not already there. If it is added return the
@@ -349,6 +351,64 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
 
     if (tmp || (puzzle->probGetShapeCount(problem, symBreakerShape) > 1)) {
       checkForTransformedAssemblies(symBreakerPiece);
+
+      /* FIXME: we need to to the mirror check here, and initisalize the mirror
+       * structure, otherwise no mirror check will be done
+       */
+
+      /* so, we need to find out which case this puzzle is, depending on the pieces
+       * 1) all pieces contain mirror symmetries -> check mirrors, but no pairs
+       * 2) as least one piece has no mirror symmetries
+       *   2a) all pieces with no mirror symmetries have a mirror partner -> check mirrors, find pairs
+       *   2b) at least one piece with no mirror symmetries has no partner -> no mirror check
+       */
+      bool allContainMirror = true;
+      pc = 0;
+
+      for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++) {
+
+        if (!sym->symmetryContainsMirror(puzzle->probGetShapeShape(problem, i)->selfSymmetries())) {
+          allContainMirror = false;
+          unsigned int pc2 = 0;
+
+          bool found = false;
+
+          // now see if we can find another shape that is the mirror of the current shape
+          for (unsigned int j = 0; j < puzzle->probShapeNumber(problem); j++) {
+            if ((i != j) && (puzzle->probGetShapeCount(problem, i) == puzzle->probGetShapeCount(problem, j))) {
+              unsigned int trans = puzzle->probGetShapeShape(problem, i)->getMirrorTransform(puzzle->probGetShapeShape(problem, j));
+
+              if (trans > 0) {
+
+                if (!avoidTransformedMirror)
+                  avoidTransformedMirror = new mirrorInfo_c();
+
+                for (unsigned int p = 0; p < puzzle->probGetShapeCount(problem, i); p++)
+                  avoidTransformedMirror->addPieces(pc+p, pc2+p, trans);
+
+                found = true;
+                break;
+              }
+            }
+            pc2 += puzzle->probGetShapeCount(problem, j);
+          }
+
+          // when we could not find a mirror transformation for the non mirrorable piece
+          // we can stop and we don't need to make mirror checks
+          if (!found) {
+            if (avoidTransformedMirror) {
+              delete avoidTransformedMirror;
+              avoidTransformedMirror = 0;
+            }
+            break;
+          }
+        }
+        pc += puzzle->probGetShapeCount(problem, i);
+      }
+
+      if (allContainMirror) {
+        avoidTransformedMirror = new mirrorInfo_c();
+      }
     }
 
     if (puzzle->probGetShapeCount(problem, symBreakerShape) > 1) {
@@ -1007,6 +1067,7 @@ assembly_c * assembler_0_c::getAssembly(void) {
 void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot) {
   avoidTransformedAssemblies = true;
   avoidTransformedPivot = pivot;
+  avoidTransformedMirror = 0;
 }
 
 /* this function handles the assemblies found by the assembler engine
@@ -1017,10 +1078,11 @@ void assembler_0_c::solution(void) {
 
     assembly_c * assembly = getAssembly();
 
-    if (avoidTransformedAssemblies && assembly->smallerRotationExists(puzzle, problem, avoidTransformedPivot))
+    if (avoidTransformedAssemblies && assembly->smallerRotationExists(puzzle, problem, avoidTransformedPivot, avoidTransformedMirror))
       delete assembly;
-    else
+    else {
       getCallback()->assembly(assembly);
+    }
   }
 }
 

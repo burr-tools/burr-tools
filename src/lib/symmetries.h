@@ -82,6 +82,15 @@ class symmetries_c {
 
     virtual bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2) const = 0;
 
+    virtual unsigned long long getSymmetryMask(symmetries_t sym) const = 0;
+
+    /* returns true, if the symmetry mask given contains a mirror symmetry, meaning
+     * the shape that symmetry belongs to can be mirrored by rotation
+     */
+    bool symmetryContainsMirror(symmetries_t sym) const {
+      return (getSymmetryMask(sym) & ~((1 << getNumTransformations()) - 1)) != 0;
+    }
+
     /* calculate the symmetry mask for the given voxel space */
     virtual symmetries_t symmetryCalcuation(const voxel_c * pp) const = 0;
 };
