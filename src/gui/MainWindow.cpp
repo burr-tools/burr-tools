@@ -2983,6 +2983,9 @@ UserInterface::UserInterface(gridType_c * gt) : Fl_Double_Window(SZ_WINDOW_X, SZ
   updateInterface();
   activateClear();
 
+  // set the edit mode from the selected mode
+  cb_EditChoice();
+
   activateConfigOptions();
 }
 
