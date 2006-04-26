@@ -1506,6 +1506,29 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
       SolutionNumber->show();
       SolutionNumber->value(puzzle->probGetSolutionNum(prob, num)+1);
 
+    } else if (puzzle->probGetDisassemblyInfo(prob, num)) {
+
+      SolutionAnim->range(0, 0);
+      SolutionAnim->hide();
+
+      SolutionsInfo->show();
+
+      MovesInfo->show();
+
+      char levelText[50];
+      int len = snprintf(levelText, 50, "%i (", puzzle->probGetDisassemblyInfo(prob, num)->sumMoves());
+      puzzle->probGetDisassemblyInfo(prob, num)->movesText(levelText + len, 50-len);
+      levelText[strlen(levelText)+1] = 0;
+      levelText[strlen(levelText)] = ')';
+
+      MovesInfo->value(levelText);
+
+      View3D->showAssembly(puzzle, prob, num);
+      View3D->updateVisibility(PcVis);
+
+      SolutionNumber->show();
+      SolutionNumber->value(puzzle->probGetSolutionNum(prob, num)+1);
+
     } else {
 
       SolutionAnim->range(0, 0);
