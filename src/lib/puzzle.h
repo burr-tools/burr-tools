@@ -29,6 +29,7 @@
 
 class voxel_c;
 class separation_c;
+class separationInfo_c;
 class assembly_c;
 class gridType_c;
 
@@ -237,7 +238,10 @@ public:
   /* this returns the number of solutions that are saved */
   unsigned int probSolutionNumber(unsigned int prob) const;
 
-  void probAddSolution(unsigned int prob, assembly_c * assm, separation_c * disasm = 0, unsigned int pos = 0xFFFFFFFF);
+  void probAddSolution(unsigned int prob, assembly_c * assm);
+  void probAddSolution(unsigned int prob, assembly_c * assm, separationInfo_c * disasm, unsigned int pos = 0xFFFFFFFF);
+  void probAddSolution(unsigned int prob, assembly_c * assm, separation_c * disasm, unsigned int pos = 0xFFFFFFFF);
+
   void probFinishedSolving(unsigned int prob);
 
   /* this also removes maybe available old states of the assembler
@@ -245,15 +249,34 @@ public:
   void probRemoveAllSolutions(unsigned int prob);
   void probRemoveSolution(unsigned int prob, unsigned int sol);
 
+  /* these function remove one or all disassemblies from solutions.
+   * This is nice to save memory
+   *
+   * the disassembly instructions are replaces by
+   * level information fields that do only contain the information
+   * about how complex the disassembly was
+   *
+   * if there are no disassemblies, nothing happens
+   */
+  void probRemoveAllDisassm(unsigned int prob);
+  void probRemoveDisassm(unsigned int prob, unsigned int sol);
+
+  /* add a disassembly to a given assembly, replacing an existing
+   * disassembly, or disassemblyInfo
+   */
+  void probAddDisasmToSolution(unsigned int prob, unsigned int sol, separation_c * disasm);
+
   /* switches the places of the 1st and the 2nd solution, this is useful
    * if you want to sort the solutions in a different way
    */
   void probSwapSolutions(unsigned int prob, unsigned int sol1, unsigned int sol2);
   assembly_c * probGetAssembly(unsigned int prob, unsigned int sol);
   separation_c * probGetDisassembly(unsigned int prob, unsigned int sol);
+  separationInfo_c * probGetDisassemblyInfo(unsigned int prob, unsigned int sol);
 
   const assembly_c * probGetAssembly(unsigned int prob, unsigned int sol) const;
   const separation_c * probGetDisassembly(unsigned int prob, unsigned int sol) const;
+  const separationInfo_c * probGetDisassemblyInfo(unsigned int prob, unsigned int sol) const;
   unsigned int probGetAssemblyNum(unsigned int prob, unsigned int sol) const;
   unsigned int probGetSolutionNum(unsigned int prob, unsigned int sol) const;
 

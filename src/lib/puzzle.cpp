@@ -198,7 +198,13 @@ class solution_c {
 public:
 
   solution_c(assembly_c * assm, unsigned int assmNum, separation_c * t, unsigned int solNum) :
-    assembly(assm), tree(t), assemblyNum(assmNum), solutionNum(solNum) {}
+    assembly(assm), tree(t), treeInfo(0), assemblyNum(assmNum), solutionNum(solNum) {}
+
+  solution_c(assembly_c * assm, unsigned int assmNum, separationInfo_c * ti, unsigned int solNum) :
+    assembly(assm), tree(0), treeInfo(ti), assemblyNum(assmNum), solutionNum(solNum) {}
+
+  solution_c(assembly_c * assm, unsigned int assmNum) :
+    assembly(assm), tree(0), treeInfo(0), assemblyNum(assmNum), solutionNum(0) {}
 
   solution_c(const xml::node & node, unsigned int pieces, const gridType_c * gt);
 
@@ -212,6 +218,11 @@ public:
    * have disassembleed the puzzle
    */
   separation_c * tree;
+
+  /* if no separation is given, maybe we have a separationInfo
+   * that contains some of the information in that
+   */
+  separationInfo_c * treeInfo;
 
   /* as it is now possible to not save all solutions
    * it might be useful to know the exact number and sequence
@@ -233,7 +244,7 @@ public:
 };
 
 solution_c::solution_c(const xml::node & node, unsigned int pieces, const gridType_c * gt) :
-  tree(0), assemblyNum(0), solutionNum(0) {
+  tree(0), treeInfo(0), assemblyNum(0), solutionNum(0) {
 
   if ((node.get_type() != xml::node::type_element) ||
       (strcmp(node.get_name(), "solution") != 0))
@@ -250,6 +261,12 @@ solution_c::solution_c(const xml::node & node, unsigned int pieces, const gridTy
   it = node.find("separation");
   if (it != node.end())
     tree = new separation_c(*it, pieces);
+  else {
+
+    it = node.find("separationInfo");
+    treeInfo = new separationInfo_c(*it);
+
+  }
 
   if (node.get_attributes().find("asmNum") != node.get_attributes().end())
     assemblyNum = atoi(node.get_attributes().find("asmNum")->get_value());
@@ -277,6 +294,10 @@ xml::node solution_c::save(void) const {
       snprintf(tmp, 50, "%i", solutionNum);
       nd.get_attributes().insert("solNum", tmp);
     }
+  } else if (treeInfo) {
+
+    nd.insert(treeInfo->save());
+
   }
 
   return nd;
@@ -288,6 +309,9 @@ solution_c::~solution_c(void) {
 
   if (assembly)
     delete assembly;
+
+  if (treeInfo)
+    delete treeInfo;
 }
 
 class problem_c {
@@ -1243,7 +1267,38 @@ const std::string & puzzle_c::probGetName(unsigned int prob) const {
   return problems[prob]->name;
 }
 
+void puzzle_c::probAddSolution(unsigned int prob, assembly_c * assm) {
+  bt_assert(prob < problems.size());
+  bt_assert(problems[prob]->assm);
+
+  unsigned int a = problems[prob]->numAssemblies;
+  if (a == 0xFFFFFFFF) a = 0;
+
+  problems[prob]->solutions.push_back(new solution_c(assm, a));
+
+  problems[prob]->solveState = SS_SOLVING;
+}
+
 void puzzle_c::probAddSolution(unsigned int prob, assembly_c * assm, separation_c * disasm, unsigned int pos) {
+  bt_assert(prob < problems.size());
+  bt_assert(problems[prob]->assm);
+
+  unsigned int a = problems[prob]->numAssemblies;
+  if (a == 0xFFFFFFFF) a = 0;
+
+  unsigned int s = problems[prob]->numSolutions;
+  if (s == 0xFFFFFFFF) s = 0;
+
+  // if the given index is behind te number of solutions add at the end
+  if (pos < problems[prob]->solutions.size())
+    problems[prob]->solutions.insert(problems[prob]->solutions.begin()+pos, new solution_c(assm, a, disasm, s));
+  else
+    problems[prob]->solutions.push_back(new solution_c(assm, a, disasm, s));
+
+  problems[prob]->solveState = SS_SOLVING;
+}
+
+void puzzle_c::probAddSolution(unsigned int prob, assembly_c * assm, separationInfo_c * disasm, unsigned int pos) {
   bt_assert(prob < problems.size());
   bt_assert(problems[prob]->assm);
 
@@ -1295,6 +1350,38 @@ void puzzle_c::probRemoveSolution(unsigned int prob, unsigned int sol) {
   problems[prob]->solutions.erase(problems[prob]->solutions.begin()+sol);
 }
 
+void puzzle_c::probRemoveAllDisassm(unsigned int prob) {
+  bt_assert(prob < problems.size());
+
+  for (unsigned int i = 0; i < problems[prob]->solutions.size(); i++)
+    probRemoveDisassm(prob, i);
+}
+
+void puzzle_c::probRemoveDisassm(unsigned int prob, unsigned int sol) {
+  bt_assert(prob < problems.size());
+  bt_assert(sol < problems[prob]->solutions.size());
+
+  solution_c * s = problems[prob]->solutions[sol];
+
+  if (s->tree) {
+    s->treeInfo = new separationInfo_c(s->tree);
+    delete s->tree;
+    s->tree = 0;
+  }
+}
+
+void puzzle_c::probAddDisasmToSolution(unsigned int prob, unsigned int sol, separation_c * disasm) {
+  bt_assert(prob < problems.size());
+  bt_assert(sol < problems[prob]->solutions.size());
+
+  solution_c * s = problems[prob]->solutions[sol];
+
+  if (s->tree) delete s->tree;
+  if (s->treeInfo) delete s->treeInfo;
+
+  s->treeInfo = 0;
+  s->tree = disasm;
+}
 
 puzzle_c::SolveState_e puzzle_c::probGetSolveState(unsigned int prob) const {
   bt_assert(prob < problems.size());
@@ -1387,6 +1474,20 @@ const separation_c * puzzle_c::probGetDisassembly(unsigned int prob, unsigned in
   bt_assert(sol < problems[prob]->solutions.size());
 
   return problems[prob]->solutions[sol]->tree;
+}
+
+separationInfo_c * puzzle_c::probGetDisassemblyInfo(unsigned int prob, unsigned int sol) {
+  bt_assert(prob < problems.size());
+  bt_assert(sol < problems[prob]->solutions.size());
+
+  return problems[prob]->solutions[sol]->treeInfo;
+}
+
+const separationInfo_c * puzzle_c::probGetDisassemblyInfo(unsigned int prob, unsigned int sol) const {
+  bt_assert(prob < problems.size());
+  bt_assert(sol < problems[prob]->solutions.size());
+
+  return problems[prob]->solutions[sol]->treeInfo;
 }
 
 unsigned int puzzle_c::probGetAssemblyNum(unsigned int prob, unsigned int sol) const {
