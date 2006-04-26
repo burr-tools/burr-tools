@@ -123,7 +123,7 @@ class UserInterface : public Fl_Double_Window {
   Fl_Value_Output *SolutionNumber, *AssemblyNumber;
 
   FlatButton *BtnSrtFind, *BtnSrtLevel, *BtnSrtMoves;
-  FlatButton *BtnDelAll, *BtnDelBefore, *BtnDelAt, *BtnDelAfter;
+  FlatButton *BtnDelAll, *BtnDelBefore, *BtnDelAt, *BtnDelAfter, *BtnDelDisasm;
 
   // the zoom levels for all 3 tabs independent, so that the problem
   // tab can have a wider view

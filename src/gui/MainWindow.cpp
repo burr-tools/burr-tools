@@ -907,6 +907,7 @@ static void cb_DelAll_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_Dele
 static void cb_DelBefore_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteSolutions(1); }
 static void cb_DelAt_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteSolutions(2); }
 static void cb_DelAfter_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteSolutions(3); }
+static void cb_DelDisasmless_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteSolutions(4); }
 void UserInterface::cb_DeleteSolutions(unsigned int which) {
 
   unsigned int prob = solutionProblem->getSelection();
@@ -938,6 +939,20 @@ void UserInterface::cb_DeleteSolutions(unsigned int which) {
     cnt = puzzle->probSolutionNumber(prob) - sol - 1;
     for (unsigned int i = 0; i < cnt; i++)
       puzzle->probRemoveSolution(prob, sol+1);
+    break;
+  case 4:
+    cnt = puzzle->probSolutionNumber(prob);
+    {
+      unsigned int i = 0;
+      while (i < cnt) {
+        if (puzzle->probGetDisassembly(prob, i) || puzzle->probGetDisassemblyInfo(prob, i))
+          i++;
+        else {
+          puzzle->probRemoveSolution(prob, i);
+          cnt--;
+        }
+      }
+    }
     break;
   }
 
@@ -2889,12 +2904,13 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
 
-    bw = (w - 3*SZ_GAP) / 4;
+    bw = (w - 3*SZ_GAP) / 5;
 
     BtnDelAll =    new FlatButton(x,               y, bw,              SZ_BUTTON_Y, "Del All", " Delete all solutions ", cb_DelAll_stub, this);
     BtnDelBefore = new FlatButton(x+1*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "Del Before", " Delete all before the currently selected one ", cb_DelBefore_stub, this);
     BtnDelAt =     new FlatButton(x+2*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "Del At", " Delete current solution ", cb_DelAt_stub, this);
-    BtnDelAfter =  new FlatButton(x+3*(bw+SZ_GAP), y, w-3*(bw+SZ_GAP), SZ_BUTTON_Y, "Del After", " Delete all solutions after the currently selected one ", cb_DelAfter_stub, this);
+    BtnDelAfter =  new FlatButton(x+3*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "Del After", " Delete all solutions after the currently selected one ", cb_DelAfter_stub, this);
+    BtnDelDisasm = new FlatButton(x+4*(bw+SZ_GAP), y, w-4*(bw+SZ_GAP), SZ_BUTTON_Y, "Del w/o DA", " Delete all solutions without valid disassembly ", cb_DelDisasmless_stub, this);
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
