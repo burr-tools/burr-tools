@@ -428,3 +428,102 @@ void separation_c::exchangeShape(unsigned int s1, unsigned int s2) {
   if (left)
     left->exchangeShape(s1, s2);
 }
+
+
+separationInfo_c::separationInfo_c(const xml::node & node) {
+}
+
+separationInfo_c::separationInfo_c(const separation_c * sep) {
+
+  statesSize = sep->getMoves()+1;
+
+  if (sep->getLeft())
+    left = new separationInfo_c(sep->getLeft());
+  else
+    left = 0;
+
+  if (sep->getRemoved())
+    removed = new separationInfo_c(sep->getRemoved());
+  else
+    removed = 0;
+}
+
+xml::node separationInfo_c::save(void) const {
+
+  xml::node nd("separationInfo");
+
+  return nd;
+}
+
+unsigned int separationInfo_c::sumMoves(void) const {
+
+  unsigned int erg = statesSize;
+
+  if (removed)
+    erg += removed->sumMoves();
+
+  if (left)
+    erg += left->sumMoves();
+
+  return erg;
+}
+
+int separationInfo_c::movesText(char * txt, int len) {
+
+  int len2 = snprintf(txt, len, "%i", statesSize-1);
+
+  if (len2+5 > len)
+    return len2;
+
+  if (left && left->containsMultiMoves()) {
+    snprintf(txt+len2, len-len2, ".");
+    len2++;
+    len2 += left->movesText(txt+len2, len-len2);
+  }
+
+  if (len2+5 > len)
+    return len2;
+
+  if (removed && removed->containsMultiMoves()) {
+    snprintf(txt+len2, len-len2, ".");
+    len2++;
+    len2 += removed->movesText(txt+len2, len-len2);
+  }
+
+  return len2;
+}
+
+int separationInfo_c::compare(const separationInfo_c * s2) const {
+
+  if (!s2) return 1;
+
+  if (statesSize > s2->statesSize)
+    return 1;
+  else if (statesSize < s2->statesSize)
+    return -1;
+  else {
+    int a;
+    if (left)
+      a = left->compare(s2->left);
+    else if (s2->left)
+      a = -1;
+    else
+      a = 0;
+
+    if (a != 0) return a;
+
+    if (removed)
+      return removed->compare(s2->removed);
+    else if (s2->removed)
+      return -1;
+    else
+      return 0;
+  }
+}
+
+bool separationInfo_c::containsMultiMoves(void) {
+  return (statesSize > 2) ||
+    (left && left->containsMultiMoves()) ||
+    (removed && removed->containsMultiMoves());
+}
+

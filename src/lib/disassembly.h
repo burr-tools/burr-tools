@@ -151,6 +151,38 @@ public:
 
 };
 
+/* this class is used to store the complexity of a disassembly, it
+ * is used as a memory efficient replacement for the basic information
+ * in separation_c without the detailed disassembly instructions
+ */
+class separationInfo_c {
+
+  private:
+
+    unsigned int statesSize;
+    separationInfo_c *removed, *left;
+
+    bool containsMultiMoves(void);
+
+  public:
+
+    /* separationInfo classes can only be created from normal disassemblies or
+     * loaded from xml file
+     */
+    separationInfo_c(const xml::node & node);
+    separationInfo_c(const separation_c * sep);
+
+    /* save into an xml node */
+    xml::node save(void) const;
+
+    /* the following 3 functions return the exact same information
+     * as the corresponding information in separation_c
+     */
+    unsigned int sumMoves(void) const;
+    int movesText(char * txt, int len);
+    int compare(const separationInfo_c * s2) const;
+};
+
 /* defines one step in the separation process,
  * one state of relative piece positions on your way
  */
