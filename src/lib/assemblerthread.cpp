@@ -214,6 +214,16 @@ bool assemblerThread_c::assembly(assembly_c * a) {
                 ins = true;
                 break;
               }
+
+              if (!s2) {
+                const separationInfo_c * s3 = puzzle->probGetDisassemblyInfo(prob, i);
+
+                if (s3 && s3->sumMoves() > lev) {
+                  puzzle->probAddSolution(prob, a, s, i);
+                  ins = true;
+                  break;
+                }
+              }
             }
           }
 
