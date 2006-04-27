@@ -264,8 +264,8 @@ solution_c::solution_c(const xml::node & node, unsigned int pieces, const gridTy
   else {
 
     it = node.find("separationInfo");
-    treeInfo = new separationInfo_c(*it);
-
+    if (it != node.end())
+      treeInfo = new separationInfo_c(*it);
   }
 
   if (node.get_attributes().find("asmNum") != node.get_attributes().end())
