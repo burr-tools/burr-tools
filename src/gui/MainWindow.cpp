@@ -1023,7 +1023,20 @@ void UserInterface::cb_AddAllDisasm(bool all) {
 
   disassembler_c * dis = puzzle->getGridType()->getDisassembler(puzzle, prob);
 
+  Fl_Double_Window * w = new Fl_Double_Window(20, 20, 300, 30);
+  Fl_Box * b = new Fl_Box(0, 0, 300, 30);
+  w->end();
+  w->label("Disassembling...");
+  w->set_modal();
+  char txt[100];
+  w->show();
+
   for (unsigned int sol = 0; sol < puzzle->probSolutionNumber(prob); sol++) {
+
+    snprintf(txt, 100, "solved %i of %i disassemblies\n", sol, puzzle->probSolutionNumber(prob));
+    b->label(txt);
+
+    Fl::wait(0);
 
     if (all || !puzzle->probGetDisassembly(prob, sol)) {
 
@@ -1033,6 +1046,9 @@ void UserInterface::cb_AddAllDisasm(bool all) {
         puzzle->probAddDisasmToSolution(prob, sol, d);
     }
   }
+
+  delete dis;
+  delete w;
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
