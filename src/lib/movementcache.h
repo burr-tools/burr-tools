@@ -22,6 +22,11 @@ class voxel_c;
 class puzzle_c;
 class gridType_c;
 
+/* when this is defined the cache will collect some information while
+ * running and print some statistics when destructed
+ */
+#undef MV_CACHE_DEBUG
+
 /* this class calculates the possible movement between 2 pieces
  * because that calculation is relatively expensive it caches
  * that value. Thats the reason for the name
@@ -83,6 +88,15 @@ class movementCache_c {
                      int dx, int dy, int dz);
 
   const gridType_c * gt;
+
+#ifdef MV_CACHE_DEBUG
+
+  unsigned long maxListLen;
+  unsigned long cacheHits;
+  unsigned long cacheRequests;
+  unsigned long cachCollisions;
+
+#endif
 
 public:
 

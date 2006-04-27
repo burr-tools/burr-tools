@@ -49,7 +49,12 @@ void movementCache_c::rehash(void) {
   memset(newHash, 0, tableSize * sizeof(entry*));
 
   /* copy the elements */
-  for (unsigned int i = 0; i < oldSize; i++)
+  for (unsigned int i = 0; i < oldSize; i++) {
+
+#ifdef MV_CACHE_DEBUG
+    unsigned long listLen = 0;
+#endif
+
     while (hash[i]) {
 
       /* remove from old table */
@@ -60,7 +65,16 @@ void movementCache_c::rehash(void) {
       unsigned int h = hashValue(e->s1, e->s2, e->dx, e->dy, e->dz, e->t1, e->t2, tableSize);
       e->next = newHash[h];
       newHash[h] = e;
+
+#ifdef MV_CACHE_DEBUG
+      listLen++;
+#endif
     }
+
+#ifdef MV_CACHE_DEBUG
+  if (listLen > maxListLen) maxListLen = listLen;
+#endif
+  }
 
   /* delete the old table and make the new table the current one */
   delete [] hash;
@@ -229,18 +243,58 @@ movementCache_c::movementCache_c(const puzzle_c * puzzle, unsigned int problem) 
   for (unsigned int s = 0; s < puzzle->probShapeNumber(problem); s++)
     for (unsigned int i = 0; i < puzzle->probGetShapeCount(problem, s); i++)
       pieces[pos++] = s;
+
+#ifdef MV_CACHE_DEBUG
+  cacheRequests = 0;
+  cacheHits = 0;
+  maxListLen = 0;
+  cachCollisions = 0;
+#endif
 }
 
 movementCache_c::~movementCache_c() {
 
+#ifdef MV_CACHE_DEBUG
+  printf("cache had %li hits and %f%% successful retrievals \n", cacheRequests, cacheHits*100.0/cacheRequests);
+  printf("longest list ever seen %i\n", maxListLen);
+  printf("%li cache collitions over the whole and %f collisions per request\n", cachCollisions, cachCollisions*1.0/cacheRequests);
+  printf("last cache table is %i entries big and contains %i entries\n", tableSize, entries);
+#endif
+
+#ifdef MV_CACHE_DEBUG
+  maxListLen = 0;
+  float avgListLen = 0;
+#endif
+
   /* delete the hash nodes */
-  for (unsigned int i = 0; i < tableSize; i++)
+  for (unsigned int i = 0; i < tableSize; i++) {
+
+#ifdef MV_CACHE_DEBUG
+    unsigned int listLen = 0;
+#endif
+
     while (hash[i]) {
       entry * e = hash[i];
       hash[i] = e->next;
 
+#ifdef MV_CACHE_DEBUG
+      listLen++;
+#endif
+
       delete e;
     }
+
+#ifdef MV_CACHE_DEBUG
+    if (listLen > maxListLen) maxListLen = listLen;
+    avgListLen += listLen;
+#endif
+  }
+
+#ifdef MV_CACHE_DEBUG
+  printf("last hashtable has average list len %f, max list len %li\n",
+      avgListLen/tableSize,
+      maxListLen);
+#endif
 
   /* the shape with transformation 0 is just
    * a pointer into the puzzle, so don't delete them
@@ -272,8 +326,14 @@ void movementCache_c::getValue(int dx, int dy, int dz, unsigned char t1, unsigne
 
   /* check the list of nodes in the current hash bucket */
   while (e && ((e->dx != dx) || (e->dy != dy) || (e->dz != dz) ||
-               (e->t1 != t1) || (e->t2 != t2) || (e->s1 != s1) || (e->s2 != s2)))
+               (e->t1 != t1) || (e->t2 != t2) || (e->s1 != s1) || (e->s2 != s2))) {
     e = e->next;
+
+#ifdef MV_CACHE_DEBUG
+    cachCollisions++;
+#endif
+
+  }
 
   /* check, if we found the required node */
   if (!e) {
@@ -294,7 +354,14 @@ void movementCache_c::getValue(int dx, int dy, int dz, unsigned char t1, unsigne
     e = calcValues(s1, t1, s2, t2, dx, dy, dz);
     e->next = hash[h];
     hash[h] = e;
+  } else {
+#ifdef MV_CACHE_DEBUG
+    cacheHits++;
+#endif
   }
+#ifdef MV_CACHE_DEBUG
+  cacheRequests++;
+#endif
 
   /* return the values */
   *mx = e->mx;
