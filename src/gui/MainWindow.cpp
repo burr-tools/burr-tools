@@ -963,6 +963,82 @@ void UserInterface::cb_DeleteSolutions(unsigned int which) {
   updateInterface();
 }
 
+static void cb_DelDisasm_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteDisasm(); }
+void UserInterface::cb_DeleteDisasm(void) {
+  unsigned int prob = solutionProblem->getSelection();
+
+  if (prob >= puzzle->problemNumber())
+    return;
+
+  unsigned int sol = (int)SolutionSel->value()-1;
+
+  puzzle->probRemoveDisassm(prob, sol);
+
+  activateSolution(prob, (int)SolutionSel->value()-1);
+  updateInterface();
+}
+
+static void cb_DelAllDisasm_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_DeleteAllDisasm(); }
+void UserInterface::cb_DeleteAllDisasm(void) {
+  unsigned int prob = solutionProblem->getSelection();
+
+  if (prob >= puzzle->problemNumber())
+    return;
+
+  puzzle->probRemoveAllDisassm(prob);
+
+  activateSolution(prob, (int)SolutionSel->value()-1);
+  updateInterface();
+}
+
+static void cb_AddDisasm_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_AddDisasm(); }
+void UserInterface::cb_AddDisasm(void) {
+  unsigned int prob = solutionProblem->getSelection();
+
+  if (prob >= puzzle->problemNumber())
+    return;
+
+  unsigned int sol = (int)SolutionSel->value()-1;
+
+  disassembler_c * dis = puzzle->getGridType()->getDisassembler(puzzle, prob);
+
+  separation_c * d = dis->disassemble(puzzle->probGetAssembly(prob, sol));
+
+  if (d)
+    puzzle->probAddDisasmToSolution(prob, sol, d);
+
+  activateSolution(prob, (int)SolutionSel->value()-1);
+  updateInterface();
+
+  delete dis;
+}
+
+static void cb_AddAllDisasm_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_AddAllDisasm(true); }
+static void cb_AddMissingDisasm_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_AddAllDisasm(false); }
+void UserInterface::cb_AddAllDisasm(bool all) {
+  unsigned int prob = solutionProblem->getSelection();
+
+  if (prob >= puzzle->problemNumber())
+    return;
+
+  disassembler_c * dis = puzzle->getGridType()->getDisassembler(puzzle, prob);
+
+  for (unsigned int sol = 0; sol < puzzle->probSolutionNumber(prob); sol++) {
+
+    if (all || !puzzle->probGetDisassembly(prob, sol)) {
+
+      separation_c * d = dis->disassemble(puzzle->probGetAssembly(prob, sol));
+
+      if (d)
+        puzzle->probAddDisasmToSolution(prob, sol, d);
+    }
+  }
+
+  activateSolution(prob, (int)SolutionSel->value()-1);
+  updateInterface();
+}
+
+
 static void cb_PcVis_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_PcVis(); }
 void UserInterface::cb_PcVis(void) {
   View3D->updateVisibility(PcVis);
@@ -2713,7 +2789,7 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
 
   // calculate hight of different groups
   const int paramsFixedHight = SZ_SEPARATOR_Y + 6*SZ_BUTTON_Y + 6*SZ_GAP +  5*SZ_TEXT_Y;
-  const int solutionsFixedHight = SZ_SEPARATOR_Y + 3*SZ_BUTTON_Y + 3*SZ_GAP + 2*SZ_TEXT_Y;
+  const int solutionsFixedHight = SZ_SEPARATOR_Y + 4*SZ_BUTTON_Y + 4*SZ_GAP + 2*SZ_TEXT_Y;
 
   int hi = h - paramsFixedHight - solutionsFixedHight;
 
@@ -2934,6 +3010,17 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     BtnDelAt =     new FlatButton(x+2*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "Del At", " Delete current solution ", cb_DelAt_stub, this);
     BtnDelAfter =  new FlatButton(x+3*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "Del After", " Delete all solutions after the currently selected one ", cb_DelAfter_stub, this);
     BtnDelDisasm = new FlatButton(x+4*(bw+SZ_GAP), y, w-4*(bw+SZ_GAP), SZ_BUTTON_Y, "Del w/o DA", " Delete all solutions without valid disassembly ", cb_DelDisasmless_stub, this);
+
+    y += SZ_BUTTON_Y + SZ_GAP;
+    lh -= SZ_BUTTON_Y + SZ_GAP;
+
+    bw = (w - 3*SZ_GAP) / 5;
+
+    BtnDisasmDel    = new FlatButton(x,               y, bw,              SZ_BUTTON_Y, "D DA", " Remove the disassembly for the current solution ", cb_DelDisasm_stub, this);
+    BtnDisasmDelAll = new FlatButton(x+1*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "D A DA", " Remove the disassemblies for all solutions ", cb_DelAllDisasm_stub, this);
+    BtnDisasmAdd    = new FlatButton(x+2*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "A DA", " Recalculate the disassembly for the current solution ", cb_AddDisasm_stub, this);
+    BtnDisasmAddAll = new FlatButton(x+3*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "A A DA", " Recalculate the disassemblies for all solutions ", cb_AddAllDisasm_stub, this);
+    BtnDisasmAddMissing=new FlatButton(x+4*(bw+SZ_GAP), y, w-4*(bw+SZ_GAP), SZ_BUTTON_Y, "A M DA", " Recalculate the missing disassemblies for all solutions without valid disassembly ", cb_AddMissingDisasm_stub, this);
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;

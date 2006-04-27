@@ -124,6 +124,7 @@ class UserInterface : public Fl_Double_Window {
 
   FlatButton *BtnSrtFind, *BtnSrtLevel, *BtnSrtMoves;
   FlatButton *BtnDelAll, *BtnDelBefore, *BtnDelAt, *BtnDelAfter, *BtnDelDisasm;
+  FlatButton *BtnDisasmDel, *BtnDisasmDelAll, *BtnDisasmAdd, *BtnDisasmAddAll, *BtnDisasmAddMissing;
 
   // the zoom levels for all 3 tabs independent, so that the problem
   // tab can have a wider view
@@ -264,6 +265,11 @@ public:
 
   void cb_SortSolutions(unsigned int by);
   void cb_DeleteSolutions(unsigned int which);
+
+  void cb_DeleteDisasm(void);
+  void cb_DeleteAllDisasm(void);
+  void cb_AddDisasm(void);
+  void cb_AddAllDisasm(bool all);
 
   void activateConfigOptions(void);
 };
