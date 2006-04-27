@@ -1518,6 +1518,9 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
 
       spos += getInt(string+spos, &searchState[i]); if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
+      /* we have only a valid searchState for pos == piecenumber */
+      if (i == piecenumber) continue;
+
       switch(searchState[i]) {
       case 0:
         spos += getInt(string+spos, &rows[i]);      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
