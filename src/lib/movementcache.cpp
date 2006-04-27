@@ -384,6 +384,7 @@ void movementCache_c::removePieceInfo(unsigned int s) {
 	}
 
 	delete e;
+        entries--;
       }
       l = e;
       e = e->next;
