@@ -70,12 +70,12 @@ private:
   /* find all possible movements of starting from the state given to init_find
    * the functions returns the next possible state or 0 if no other state was found
    */
-  node0_c * find(node0_c * searchnode);
+  node0_c * find(node0_c * searchnode, const int * weights);
   bool checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep);
 
   unsigned short subProbGroup(node0_c * st, voxel_type * pn, bool cond, int piecenumber);
   bool subProbGrouping(voxel_type * pn, int piecenumber);
-  separation_c * checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, node0_c * st, bool left, bool * ok);
+  separation_c * checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, node0_c * st, bool left, bool * ok, const int * weights);
 
   /* the real disassembly routine. It separates the puzzle into 2 parts
    * and get's called recursively with each subpart to disassemble
@@ -85,7 +85,7 @@ private:
    * pieces contains the names of all the pieces that are still inside the
    * subpuzzle puzzle, start defines the starting position of these pieces
    */
-  separation_c * disassemble_rec(int piecenumber, voxel_type * pieces, node0_c * start);
+  separation_c * disassemble_rec(int piecenumber, voxel_type * pieces, node0_c * start, const int * weights);
 
   const puzzle_c * puzzle;
   unsigned int problem;
@@ -94,6 +94,9 @@ private:
    * shape number, as these are needed for the grouping functions
    */
   unsigned short * piece2shape;
+
+  /* this array contains the weights of all the shapes involved in this problem */
+  int * weights;
 
   /* construct the disassembler for this concrete problem, is can not be
    * changed, once you done that but you can analyse many assemblies for

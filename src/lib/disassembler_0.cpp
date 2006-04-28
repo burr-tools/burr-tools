@@ -355,12 +355,14 @@ void disassembler_0_c::init_find(node0_c * nd, int piecenumber, voxel_type * pie
   next_pn = piecenumber;
 }
 
-static node0_c * newNode(int next_pn, int nextdir, const node0_c * searchnode, int * movement) {
+static node0_c * newNode(int next_pn, int nextdir, const node0_c * searchnode, int * movement, const int * weights) {
 
   // we only take this new node, when all pieces are either not moved at all
   // or moved by the same amount
 
   int amount = 0;
+  int moveWeight = 0;
+  int stilWeight = 0;
 
   for (int i = 0; i < next_pn; i++) {
     if (movement[i]) {
@@ -369,28 +371,51 @@ static node0_c * newNode(int next_pn, int nextdir, const node0_c * searchnode, i
 
       if (amount != movement[i])
         return 0;
+
+      moveWeight += weights[i];
+
+    } else {
+      stilWeight += weights[i];
     }
   }
 
   node0_c * n = new node0_c(next_pn, searchnode);
 
-  /* create a new state with the pieces moved */
-  for (int i = 0; i < next_pn; i++)
-    switch(nextdir) {
-      case 0: n->set(i, searchnode->getX(i) + movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
-      case 1: n->set(i, searchnode->getX(i) - movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
-      case 2: n->set(i, searchnode->getX(i), searchnode->getY(i) + movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
-      case 3: n->set(i, searchnode->getX(i), searchnode->getY(i) - movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
-      case 4: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) + movement[i], searchnode->getTrans(i)); break;
-      case 5: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) - movement[i], searchnode->getTrans(i)); break;
-    }
+  if (stilWeight >= moveWeight) {
+
+    /* create a new state with the pieces moved */
+    for (int i = 0; i < next_pn; i++)
+      switch(nextdir) {
+        case 0: n->set(i, searchnode->getX(i) + movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
+        case 1: n->set(i, searchnode->getX(i) - movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
+        case 2: n->set(i, searchnode->getX(i), searchnode->getY(i) + movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
+        case 3: n->set(i, searchnode->getX(i), searchnode->getY(i) - movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
+        case 4: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) + movement[i], searchnode->getTrans(i)); break;
+        case 5: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) - movement[i], searchnode->getTrans(i)); break;
+      }
+
+  } else {
+
+    /* here we do the oppostide of above, all pieces that are steady in the movement field are moved
+     * by the neagtive amount and the moving pieces are left untouched
+     */
+    for (int i = 0; i < next_pn; i++)
+      switch(nextdir) {
+        case 0: n->set(i, searchnode->getX(i) + (movement[i]?0:(-amount)), searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
+        case 1: n->set(i, searchnode->getX(i) - (movement[i]?0:(-amount)), searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
+        case 2: n->set(i, searchnode->getX(i), searchnode->getY(i) + (movement[i]?0:(-amount)), searchnode->getZ(i), searchnode->getTrans(i)); break;
+        case 3: n->set(i, searchnode->getX(i), searchnode->getY(i) - (movement[i]?0:(-amount)), searchnode->getZ(i), searchnode->getTrans(i)); break;
+        case 4: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) + (movement[i]?0:(-amount)), searchnode->getTrans(i)); break;
+        case 5: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) - (movement[i]?0:(-amount)), searchnode->getTrans(i)); break;
+      }
+  }
 
   return n;
 }
 
 
 /* creates a new node that contains the merged movements of the given 2 nodes */
-static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, const node0_c * searchnode, int next_pn, int nextdir, int * movement) {
+static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, const node0_c * searchnode, int next_pn, int nextdir, int * movement, const int * weights) {
 
   /* we need to make sure the new node is different from n0 and n1
    */
@@ -435,7 +460,7 @@ static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, const node0_
   // if too many pieces need to be moved, don't do it
   if (moved > next_pn/2) return 0;
 
-  return newNode(next_pn, nextdir, searchnode, movement);
+  return newNode(next_pn, nextdir, searchnode, movement, weights);
 }
 
 
@@ -443,7 +468,7 @@ static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, const node0_
  * the next thing to do is to check if something can be removed, and finally we look for longer
  * movements in the actual direction
  */
-node0_c * disassembler_0_c::find(node0_c * searchnode) {
+node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
 
   node0_c * n = 0;
 
@@ -456,7 +481,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
       case 0:
         // check, if a single piece can be removed
         if (checkmovement(1, nextdir, next_pn, nextpiece, 30000))
-          n = newNode(next_pn, nextdir, searchnode, movement);
+          n = newNode(next_pn, nextdir, searchnode, movement, weights);
 
         nextpiece++;
         if (nextpiece >= next_pn) {
@@ -471,7 +496,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
       case 1:
         // check, if a group of pieces can be removed
         if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, 30000))
-          n = newNode(next_pn, nextdir, searchnode, movement);
+          n = newNode(next_pn, nextdir, searchnode, movement, weights);
 
         nextpiece++;
         if (nextpiece >= next_pn) {
@@ -487,7 +512,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
       case 2:
         // check, if a single piece can be moved
         if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep)) {
-          n = newNode(next_pn, nextdir, searchnode, movement);
+          n = newNode(next_pn, nextdir, searchnode, movement, weights);
 
           // we need to merge the gained node with all already found
           // nodes with the same step and if that leads to valid new nodes
@@ -546,7 +571,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
         // the same time but rather one after the other
 
         if (state99piece < (int)nodes.size()-1) {
-          n = newNodeMerge(nodes[state99piece], nodes[nodes.size()-1], searchnode, next_pn, nextdir, movement);
+          n = newNodeMerge(nodes[state99piece], nodes[nodes.size()-1], searchnode, next_pn, nextdir, movement, weights);
 
           if (n) nodes.push_back(n);
 
@@ -568,10 +593,11 @@ node0_c * disassembler_0_c::find(node0_c * searchnode) {
 /* create all the necessary parameters for one of the two possible subproblems
  * our current problems divides into
  */
-static void create_new_params(node0_c * st, node0_c ** n, voxel_type ** pn, int piecenumber, voxel_type * pieces, int part, bool cond) {
+static void create_new_params(node0_c * st, node0_c ** n, voxel_type ** pn, int ** nw, int piecenumber, voxel_type * pieces, const int * weights, int part, bool cond) {
 
   *n = new node0_c(part, 0);
   *pn = new voxel_type[part];
+  *nw = new int[part];
 
   int num = 0;
   int dx, dy, dz;
@@ -593,6 +619,7 @@ static void create_new_params(node0_c * st, node0_c ** n, voxel_type ** pn, int 
                 st->getZ(i) - dz,
                 st->getTrans(i));
       (*pn)[num] = pieces[i];
+      (*nw)[num] = weights[i];
       num++;
     }
 
@@ -626,7 +653,7 @@ bool disassembler_0_c::subProbGrouping(voxel_type * pn, int piecenumber) {
   return true;
 }
 
-separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, node0_c * st, bool left, bool * ok) {
+separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, node0_c * st, bool left, bool * ok, const int * weights) {
 
   separation_c * res = 0;
 
@@ -638,12 +665,14 @@ separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pi
 
     node0_c *n;
     voxel_type * pn;
-    create_new_params(st, &n, &pn, piecenumber, pieces, pieceCount, left);
-    res = disassemble_rec(pieceCount, pn, n);
+    int * nw;
+    create_new_params(st, &n, &pn, &nw, piecenumber, pieces, weights, pieceCount, left);
+    res = disassemble_rec(pieceCount, pn, n, nw);
 
     *ok = res || subProbGrouping(pn, pieceCount);
 
     delete [] pn;
+    delete [] nw;
   }
 
   return res;
@@ -665,7 +694,7 @@ separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pi
  * the function takes over the ownership of the node and pieces. They are deleted at the end
  * of the function, so you must allocate them with new
  */
-separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * pieces, node0_c * start) {
+separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * pieces, node0_c * start, const int * weights) {
 
   std::queue<node0_c *> openlist;
   std::set<node0_c *, node_ptr_less> closed;
@@ -687,7 +716,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 
     node0_c * st;
 
-    while ((st = find(node))) {
+    while ((st = find(node, weights))) {
 
       if (closed.find(st) != closed.end()) {
 
@@ -744,11 +773,11 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
        * else try to disassemble, if that fails, try to
        * group the involved pieces into an identical group
        */
-      remove = checkSubproblem(part1, pieces, piecenumber, st, false, &remove_ok);
+      remove = checkSubproblem(part1, pieces, piecenumber, st, false, &remove_ok, weights);
 
       /* only check the left over part, when the removed part is ok */
       if (remove_ok)
-        left = checkSubproblem(part2, pieces, piecenumber, st, true, &left_ok);
+        left = checkSubproblem(part2, pieces, piecenumber, st, true, &left_ok, weights);
 
       /* if both subproblems are either trivial or solvable, return the
        * result, otherwise return 0
@@ -835,6 +864,10 @@ disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) :
     for (unsigned int j = 0; j < puz->probGetShapeCount(prob, i); j++)
       piece2shape[p++] = i;
 
+  /* create the weights array */
+  weights = new int[piecenumber];
+  for (unsigned int i = 0; i < piecenumber; i++)
+    weights[i] = puzzle->probGetShapeShape(prob, piece2shape[i])->getWeight();
 }
 
 disassembler_0_c::~disassembler_0_c() {
@@ -846,6 +879,7 @@ disassembler_0_c::~disassembler_0_c() {
   delete cache;
   delete groups;
   delete [] piece2shape;
+  delete [] weights;
 }
 
 separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
@@ -866,14 +900,13 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
    * with all the numbers
    */
   voxel_type * pieces = new voxel_type[piecenumber];
+  for (unsigned int j = 0; j < piecenumber; j++)
+    pieces[j] = j;
 
   /* reset the grouping class */
   groups->reSet();
 
-  for (unsigned int j = 0; j < piecenumber; j++)
-    pieces[j] = j;
-
-  separation_c * s = disassemble_rec(piecenumber, pieces, start);
+  separation_c * s = disassemble_rec(piecenumber, pieces, start, weights);
 
   delete [] pieces;
 
