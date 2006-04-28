@@ -120,6 +120,11 @@ protected:
   /* shapes can be named */
   std::string name;
 
+  /* shapes have a weight, this weight is used by the disassembler to
+   * decide which piece of groups to move and which to keep still
+   */
+  int weight;
+
 protected:
 
   void recalcBoundingBox(void);
@@ -534,6 +539,10 @@ public:
    * if it is scalable by the given amount
    */
   bool scaleDown(unsigned char by, bool action);
+
+  /* functions for the weight */
+  int getWeight(void) const { return weight; }
+  void setWeight(int w) { weight = w; }
 };
 
 #endif

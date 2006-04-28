@@ -25,7 +25,7 @@
 
 using namespace std;
 
-voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * g, voxel_type init, voxel_type outs) : gt(g), sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), hx(0), hy(0), hz(0) {
+voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * g, voxel_type init, voxel_type outs) : gt(g), sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), hx(0), hy(0), hz(0), weight(1) {
 
   space = new voxel_type[voxels];
   bt_assert(space);
@@ -51,7 +51,7 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_
 }
 
 voxel_c::voxel_c(const voxel_c & orig) : gt(orig.gt), sx(orig.sx), sy(orig.sy), sz(orig.sz),
-voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz) {
+voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz), weight(orig.weight) {
 
   space = new voxel_type[voxels];
   bt_assert(space);
@@ -73,7 +73,7 @@ voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz) {
 }
 
 voxel_c::voxel_c(const voxel_c * orig) : gt(orig->gt), sx(orig->sx), sy(orig->sy), sz(orig->sz),
-voxels(orig->voxels), hx(orig->hx), hy(orig->hy), hz(orig->hz) {
+voxels(orig->voxels), hx(orig->hx), hy(orig->hy), hz(orig->hz), weight(orig->weight) {
 
   space = new voxel_type[voxels];
   bt_assert(space);
@@ -510,6 +510,8 @@ void voxel_c::copy(const voxel_c * orig) {
   // we don't copy the name intentionally because the name is supposed to
   // be unique
   name = "";
+
+  weight = orig->weight;
 }
 
 bool voxel_c::neighbour(unsigned int p, voxel_type val) const {
@@ -642,6 +644,10 @@ xml::node voxel_c::save(void) const {
     snprintf(tmp, 50, "%i", hz);
     nd.get_attributes().insert("hz", tmp);
   }
+  if (weight != 1) {
+    snprintf(tmp, 50, "%i", weight);
+    nd.get_attributes().insert("weight", tmp);
+  }
 
   if (name.length())
     nd.get_attributes().insert("name", name.c_str());
@@ -681,7 +687,7 @@ xml::node voxel_c::save(void) const {
   return nd;
 }
 
-voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), hy(0), hz(0) {
+voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), hy(0), hz(0), weight(1) {
 
   // we must have a real node and the following attributes
   if ((node.get_type() != xml::node::type_element) ||
@@ -713,6 +719,8 @@ voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), h
     hz = atoi(node.get_attributes().find("hz")->get_value());
   if (node.get_attributes().find("name") != node.get_attributes().end())
     name = node.get_attributes().find("name")->get_value();
+  if (node.get_attributes().find("weight") != node.get_attributes().end())
+    weight = atoi(node.get_attributes().find("weight")->get_value());
 
   space = new voxel_type[voxels];
   bt_assert(space);
