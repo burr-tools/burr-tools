@@ -1,10 +1,20 @@
 ------------- Version 0.2.0
 
-- write required base for other space grids and partially implement triangular prisms 
-  (no disassembling right now)
+- write required base for other space grids and partially implement
+  triangular prisms (no disassembling right now)
 
-- implement a status window that displays all kinds of useful and not so useful
-  information for all the shapes
+- implement a status window that displays all kinds of useful and not so
+  useful information for all the shapes in the puzzle
+
+- new functionality for solver tab:
+    - sort solutions in different ways while solving
+    - sort after the solving has finished
+    - remove single and multiple solutions
+    - add and remove disassemblies to save memory
+
+- give pieces a weight so that the disassembler knows which pieces have
+  priority when they get moved. This way you can make the box fixed for
+  the disassembly animation
 
 ------------- Version 0.1.9
 
