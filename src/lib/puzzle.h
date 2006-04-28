@@ -276,6 +276,10 @@ public:
 
   const assembly_c * probGetAssembly(unsigned int prob, unsigned int sol) const;
   const separation_c * probGetDisassembly(unsigned int prob, unsigned int sol) const;
+
+  // returns a disassemblyinfo object. This might even return information even when
+  // get Disassembly returns 0 because there once was a disassembly that was removed
+  // then the information of that former disassembly is left intact
   const separationInfo_c * probGetDisassemblyInfo(unsigned int prob, unsigned int sol) const;
   unsigned int probGetAssemblyNum(unsigned int prob, unsigned int sol) const;
   unsigned int probGetSolutionNum(unsigned int prob, unsigned int sol) const;

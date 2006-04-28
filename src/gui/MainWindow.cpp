@@ -900,26 +900,12 @@ void UserInterface::cb_SortSolutions(unsigned int by) {
           exchange = puzzle->probGetAssemblyNum(prob, a) > puzzle->probGetAssemblyNum(prob, b);
           break;
         case 1:
-          exchange = puzzle->probGetDisassembly(prob, a) && puzzle->probGetDisassembly(prob, b) &&
-            (puzzle->probGetDisassembly(prob, a)->compare(puzzle->probGetDisassembly(prob, b)) > 0);
+          exchange = puzzle->probGetDisassemblyInfo(prob, a) && puzzle->probGetDisassemblyInfo(prob, b) &&
+            (puzzle->probGetDisassemblyInfo(prob, a)->compare(puzzle->probGetDisassemblyInfo(prob, b)) > 0);
           break;
         case 2:
-          {
-            unsigned int sa = 0;
-            unsigned int sb = 0;
-
-            if (puzzle->probGetDisassembly(prob, a))
-              sa = puzzle->probGetDisassembly(prob, a)->sumMoves();
-            else if (puzzle->probGetDisassemblyInfo(prob, a))
-              sa = puzzle->probGetDisassemblyInfo(prob, a)->sumMoves();
-
-            if (puzzle->probGetDisassembly(prob, b))
-              sb = puzzle->probGetDisassembly(prob, b)->sumMoves();
-            else if (puzzle->probGetDisassemblyInfo(prob, b))
-              sb = puzzle->probGetDisassemblyInfo(prob, b)->sumMoves();
-
-            exchange = (sa) && (sb) && (sa > sb);
-          }
+          exchange = puzzle->probGetDisassemblyInfo(prob, a) && puzzle->probGetDisassemblyInfo(prob, b) &&
+            (puzzle->probGetDisassemblyInfo(prob, a)->sumMoves() > puzzle->probGetDisassemblyInfo(prob, b)->sumMoves());
           break;
       }
 

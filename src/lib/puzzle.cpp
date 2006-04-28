@@ -1360,7 +1360,10 @@ void puzzle_c::probRemoveDisassm(unsigned int prob, unsigned int sol) {
   solution_c * s = problems[prob]->solutions[sol];
 
   if (s->tree) {
-    s->treeInfo = new separationInfo_c(s->tree);
+
+    if (!s->treeInfo)
+      s->treeInfo = new separationInfo_c(s->tree);
+
     delete s->tree;
     s->tree = 0;
   }
@@ -1476,12 +1479,18 @@ separationInfo_c * puzzle_c::probGetDisassemblyInfo(unsigned int prob, unsigned 
   bt_assert(prob < problems.size());
   bt_assert(sol < problems[prob]->solutions.size());
 
+  if (!problems[prob]->solutions[sol]->treeInfo && problems[prob]->solutions[sol]->tree)
+    problems[prob]->solutions[sol]->treeInfo = new separationInfo_c(problems[prob]->solutions[sol]->tree);
+
   return problems[prob]->solutions[sol]->treeInfo;
 }
 
 const separationInfo_c * puzzle_c::probGetDisassemblyInfo(unsigned int prob, unsigned int sol) const {
   bt_assert(prob < problems.size());
   bt_assert(sol < problems[prob]->solutions.size());
+
+  if (!problems[prob]->solutions[sol]->treeInfo && problems[prob]->solutions[sol]->tree)
+    problems[prob]->solutions[sol]->treeInfo = new separationInfo_c(problems[prob]->solutions[sol]->tree);
 
   return problems[prob]->solutions[sol]->treeInfo;
 }

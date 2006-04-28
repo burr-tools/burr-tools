@@ -207,22 +207,12 @@ bool assemblerThread_c::assembly(assembly_c * a) {
 
             for (unsigned int i = 0; i < puzzle->probSolutionNumber(prob); i++) {
 
-              const separation_c * s2 = puzzle->probGetDisassembly(prob, i);
+              const separationInfo_c * s2 = puzzle->probGetDisassemblyInfo(prob, i);
 
               if (s2 && s2->sumMoves() > lev) {
                 puzzle->probAddSolution(prob, a, s, i);
                 ins = true;
                 break;
-              }
-
-              if (!s2) {
-                const separationInfo_c * s3 = puzzle->probGetDisassemblyInfo(prob, i);
-
-                if (s3 && s3->sumMoves() > lev) {
-                  puzzle->probAddSolution(prob, a, s, i);
-                  ins = true;
-                  break;
-                }
               }
             }
           }
@@ -238,16 +228,20 @@ bool assemblerThread_c::assembly(assembly_c * a) {
           break;
         case SRT_LEVEL:
           {
+            separationInfo_c * si = new separationInfo_c(s);
+
             for (unsigned int i = 0; i < puzzle->probSolutionNumber(prob); i++) {
 
-              const separation_c * s2 = puzzle->probGetDisassembly(prob, i);
+              const separationInfo_c * s2 = puzzle->probGetDisassemblyInfo(prob, i);
 
-              if (s2 && (s2->compare(s) > 0)) {
+              if (s2 && (s2->compare(si) > 0)) {
                 puzzle->probAddSolution(prob, a, s, i);
                 ins = true;
                 break;
               }
             }
+
+            delete si;
           }
 
           if (!ins) puzzle->probAddSolution(prob, a, s);
