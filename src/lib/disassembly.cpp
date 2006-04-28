@@ -431,63 +431,137 @@ void separation_c::exchangeShape(unsigned int s1, unsigned int s2) {
 
 
 separationInfo_c::separationInfo_c(const xml::node & node) {
+
+  const char * c = node.get_content();
+
+  unsigned int pos = 0;
+  unsigned int num = 0;
+
+  while (c[pos]) {
+
+    if (c[pos] == ' ') {
+      values.push_back(num);
+      num = 0;
+    }
+
+    if (c[pos] >= '0' && (c[pos] <= '9'))
+      num = 10*num + c[pos] - '0';
+
+    pos++;
+  }
+
+  values.push_back(num);
+
+  // check consitency of the tree (does it end?)
+
+  /* the idea here with the branches counter is used again and again blow but I will
+   * explain only here.
+   * branches counts the number of _open_ ends that still need to be looked at, so
+   * when we encounter a node with a number in it, it _must_ have 2 children and
+   * so the number of open branches increases by one. If we come to an and the
+   * number of open ends decreases because this branch just ended
+   */
+  unsigned int branches = 1;
+  pos = 0;
+
+  while (branches) {
+    if (pos >= values.size())
+      throw load_error("the tree in the disassemblyInformation tag is incomplete", node);
+
+    if (values[pos])
+      branches++;
+    else
+      branches--;
+
+    pos++;
+  }
+}
+
+/* this is a simple recursive function to get the separation tree into pre-order */
+void separationInfo_c::recursiveConstruction(const separation_c * sep) {
+  values.push_back(sep->getMoves()+1);
+
+  if (sep->getLeft())
+    recursiveConstruction(sep->getLeft());
+  else
+    values.push_back(0);
+
+  if (sep->getRemoved())
+    recursiveConstruction(sep->getRemoved());
+  else
+    values.push_back(0);
 }
 
 separationInfo_c::separationInfo_c(const separation_c * sep) {
 
-  statesSize = sep->getMoves()+1;
-
-  if (sep->getLeft())
-    left = new separationInfo_c(sep->getLeft());
-  else
-    left = 0;
-
-  if (sep->getRemoved())
-    removed = new separationInfo_c(sep->getRemoved());
-  else
-    removed = 0;
+  recursiveConstruction(sep);
 }
 
 xml::node separationInfo_c::save(void) const {
 
+  char tmp[50];
+
   xml::node nd("separationInfo");
+
+  std::string cont;
+
+  for (unsigned int i = 0; i < values.size(); i++) {
+    if (cont.length() > 0)
+      cont += " ";
+
+    snprintf(tmp, 49, "%i", values[i]);
+    cont += tmp;
+  }
+
+  nd.set_content(cont.c_str());
 
   return nd;
 }
 
 unsigned int separationInfo_c::sumMoves(void) const {
 
-  unsigned int erg = statesSize;
+  unsigned int erg = 0;
 
-  if (removed)
-    erg += removed->sumMoves();
-
-  if (left)
-    erg += left->sumMoves();
+  for (unsigned int i = 0; i < values.size(); i++)
+    if (values[i])
+      erg += (values[i] - 1);
 
   return erg;
 }
 
-int separationInfo_c::movesText(char * txt, int len) {
+int separationInfo_c::movesText(char * txt, int len, unsigned int idx) {
 
-  int len2 = snprintf(txt, len, "%i", statesSize-1);
+  int len2 = snprintf(txt, len, "%i", values[idx]-1);
 
   if (len2+5 > len)
     return len2;
 
-  if (left && left->containsMultiMoves()) {
+  idx++;
+
+  if (values[idx] && containsMultiMoves(idx)) {
     snprintf(txt+len2, len-len2, ".");
     len2++;
-    len2 += left->movesText(txt+len2, len-len2);
+    len2 += movesText(txt+len2, len-len2, idx);
   }
 
   if (len2+5 > len)
     return len2;
 
-  if (removed && removed->containsMultiMoves()) {
+  /* skip the left tree the idea is described in the xml node constructor above */
+  unsigned int branches = 1;
+
+  while (branches) {
+    if (values[idx])
+      branches++;
+    else
+      branches--;
+    idx++;
+  }
+
+  if (values[idx] && containsMultiMoves(idx)) {
     snprintf(txt+len2, len-len2, ".");
     len2++;
-    len2 += removed->movesText(txt+len2, len-len2);
+    len2 += movesText(txt+len2, len-len2, idx);
   }
 
   return len2;
@@ -495,35 +569,31 @@ int separationInfo_c::movesText(char * txt, int len) {
 
 int separationInfo_c::compare(const separationInfo_c * s2) const {
 
-  if (!s2) return 1;
-
-  if (statesSize > s2->statesSize)
-    return 1;
-  else if (statesSize < s2->statesSize)
-    return -1;
-  else {
-    int a;
-    if (left)
-      a = left->compare(s2->left);
-    else if (s2->left)
-      a = -1;
-    else
-      a = 0;
-
-    if (a != 0) return a;
-
-    if (removed)
-      return removed->compare(s2->removed);
-    else if (s2->removed)
-      return -1;
-    else
-      return 0;
+  for (unsigned int i = 0; i < values.size(); i++) {
+    if (values[i] < s2->values[i]) return -1;
+    if (values[i] > s2->values[i]) return 1;
   }
+
+  return 0;
+
 }
 
-bool separationInfo_c::containsMultiMoves(void) {
-  return (statesSize > 2) ||
-    (left && left->containsMultiMoves()) ||
-    (removed && removed->containsMultiMoves());
+bool separationInfo_c::containsMultiMoves(unsigned int idx) {
+
+  unsigned int branches = 1;
+
+  while (branches) {
+    if (values[idx] > 2) return true;
+
+    /* see xml::node constructor above for the idea behind this */
+    if (values[idx])
+      branches++;
+    else
+      branches--;
+
+    idx++;
+  }
+
+  return false;
 }
 

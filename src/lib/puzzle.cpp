@@ -271,7 +271,7 @@ solution_c::solution_c(const xml::node & node, unsigned int pieces, const gridTy
   if (node.get_attributes().find("asmNum") != node.get_attributes().end())
     assemblyNum = atoi(node.get_attributes().find("asmNum")->get_value());
 
-  if (tree && (node.get_attributes().find("solNum") != node.get_attributes().end()))
+  if ((tree || treeInfo) && (node.get_attributes().find("solNum") != node.get_attributes().end()))
     solutionNum = atoi(node.get_attributes().find("solNum")->get_value());
 }
 
@@ -287,17 +287,13 @@ xml::node solution_c::save(void) const {
 
   nd.insert(assembly->save());
 
-  if (tree) {
-    nd.insert(tree->save());
+  if (tree) {            nd.insert(tree->save());
+  } else if (treeInfo) { nd.insert(treeInfo->save());
+  }
 
-    if (solutionNum) {
-      snprintf(tmp, 50, "%i", solutionNum);
-      nd.get_attributes().insert("solNum", tmp);
-    }
-  } else if (treeInfo) {
-
-    nd.insert(treeInfo->save());
-
+  if ((tree || treeInfo) && solutionNum) {
+    snprintf(tmp, 50, "%i", solutionNum);
+    nd.get_attributes().insert("solNum", tmp);
   }
 
   return nd;

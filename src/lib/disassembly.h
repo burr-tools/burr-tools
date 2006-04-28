@@ -26,6 +26,7 @@
 #include "bt_assert.h"
 
 #include <deque>
+#include <vector>
 
 /* forward declaration, the definition is below */
 class state_c;
@@ -159,10 +160,21 @@ class separationInfo_c {
 
   private:
 
-    unsigned int statesSize;
-    separationInfo_c *removed, *left;
+    /* this array contains the whole disassembly tree in prefix order, root, left, removed
+     * when a certain subtree is empty a zero is included, otherwise the number is the number
+     * of states within this tree node
+     *
+     * example, 3 2 1 0 0 0 0     tree root 3 --> 2 --> 1
+     *
+     * another example
+     *
+     *          3 1 1 0 0 0 1 1 0 0 0   tree root  3 --> 1 --> 1
+     *                                              \--> 1 --> 1
+     */
+    std::vector<unsigned int> values;
 
-    bool containsMultiMoves(void);
+    bool containsMultiMoves(unsigned int root);
+    void recursiveConstruction(const separation_c * sep);
 
   public:
 
@@ -179,7 +191,7 @@ class separationInfo_c {
      * as the corresponding information in separation_c
      */
     unsigned int sumMoves(void) const;
-    int movesText(char * txt, int len);
+    int movesText(char * txt, int len, unsigned int idx = 0);
     int compare(const separationInfo_c * s2) const;
 };
 
