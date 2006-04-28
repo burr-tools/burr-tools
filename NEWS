@@ -87,6 +87,11 @@
   complete assembly instructions with a few options to influence the
   resulting image(s). More development is going to come here.
 
+- sometime loading of saved assembly states failed making a resume
+  impossible, the saving was ok, there was an error when reading the
+  data. So if you have files like that that didn't load properly you
+  can give it a new try with this version
+
 ------------- Version 0.1.8b
 
 - Fix Bug found by Markus Götz that made the program crash, when all 
