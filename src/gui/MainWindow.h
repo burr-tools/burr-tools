@@ -88,7 +88,7 @@ class UserInterface : public Fl_Double_Window {
   Fl_Check_Button *SolveDisasm, *JustCount;
 
   FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep;
-  FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape, *BtnShapeLeft, *BtnShapeRight;
+  FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape, *BtnShapeLeft, *BtnShapeRight, *BtnWeightInc, *BtnWeightDec;
   FlatButton *BtnNewColor, *BtnDelColor, *BtnChnColor;
   FlatButton *BtnNewProb, *BtnDelProb, *BtnCpyProb, *BtnRenProb, *BtnProbLeft, *BtnProbRight;
   FlatButton *BtnColSrtPc, *BtnColSrtRes, *BtnColAdd, *BtnColRem;
@@ -195,6 +195,7 @@ public:
   void cb_CopyShape(void);
   void cb_NameShape(void);
   void cb_ShapeExchange(int with);
+  void cb_WeightChange(int by);
 
   void cb_NewProblem(void);
   void cb_DeleteProblem(void);

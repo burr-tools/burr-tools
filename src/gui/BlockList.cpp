@@ -304,10 +304,16 @@ unsigned int PieceSelector::blockNumber(void) {
 }
 
 void PieceSelector::getText(unsigned int block, char * text) {
+
+  unsigned int start = 0;
+
+  start += snprintf(text+start, 200-start, "S%i", block+1);
+
   if (puzzle->getShape(block)->getName().length())
-    snprintf(text, 200, "S%i - %s", block+1, puzzle->getShape(block)->getName().c_str());
-  else
-    snprintf(text, 200, "S%i", block+1);
+    start += snprintf(text+start, 200-start, " - %s", puzzle->getShape(block)->getName().c_str());
+
+  if (puzzle->getShape(block)->getWeight() != 1)
+    start += snprintf(text+start, 200-start, " W(%i)", puzzle->getShape(block)->getWeight());
 }
 
 void PieceSelector::getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) {

@@ -221,6 +221,20 @@ void UserInterface::cb_NameShape(void) {
   }
 }
 
+static void cb_WeightInc_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_WeightChange(1); }
+static void cb_WeightDec_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_WeightChange(-1); }
+void UserInterface::cb_WeightChange(int by) {
+
+  if (PcSel->getSelection() < puzzle->shapeNumber()) {
+
+    voxel_c * v = puzzle->getShape(PcSel->getSelection());
+    v->setWeight(v->getWeight() + by);
+    changed = true;
+    updateInterface();
+  }
+}
+
+
 static void cb_TaskSelectionTab_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_TaskSelectionTab((Fl_Tabs*)o); }
 void UserInterface::cb_TaskSelectionTab(Fl_Tabs* o) {
 
@@ -2367,30 +2381,44 @@ void UserInterface::CreateShapeTab(int x, int y, int w, int h) {
     y += SZ_SEPARATOR_Y;
     lh -= SZ_SEPARATOR_Y;
 
-    int bw = (w - 5*SZ_GAP - 2*SZ_BUTTON_Y) / 4;
+    int bw = (w - 7*SZ_GAP - 2*SZ_BUTTON_Y) / 10;
     {
-      Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnNewShape = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", " Add another piece ", cb_NewShape_stub, this);
+      Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, 2*bw+SZ_GAP, SZ_BUTTON_Y);
+      BtnNewShape = new FlatButton(x+0*SZ_GAP+0*bw, y, 2*bw, SZ_BUTTON_Y, "New", " Add another piece ", cb_NewShape_stub, this);
       o->resizable(BtnNewShape);
       o->end();
     }
     {
-      Fl_Group * o = new Fl_Group(x+1*SZ_GAP+1*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelShape = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Delete", " Delete selected piece ", cb_DeleteShape_stub, this);
+      Fl_Group * o = new Fl_Group(x+1*SZ_GAP+2*bw, y, 2*bw+SZ_GAP, SZ_BUTTON_Y);
+      BtnDelShape = new FlatButton(x+1*SZ_GAP+2*bw, y, 2*bw, SZ_BUTTON_Y, "Delete", " Delete selected piece ", cb_DeleteShape_stub, this);
       o->resizable(BtnDelShape);
       o->end();
     }
 
     {
-      Fl_Group * o = new Fl_Group(x+2*SZ_GAP+2*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnCpyShape = new FlatButton(x+2*SZ_GAP+2*bw, y, bw, SZ_BUTTON_Y, "Copy", " Copy selected piece ", cb_CopyShape_stub, this);
+      Fl_Group * o = new Fl_Group(x+2*SZ_GAP+4*bw, y, 2*bw+SZ_GAP, SZ_BUTTON_Y);
+      BtnCpyShape = new FlatButton(x+2*SZ_GAP+4*bw, y, 2*bw, SZ_BUTTON_Y, "Copy", " Copy selected piece ", cb_CopyShape_stub, this);
       o->resizable(BtnCpyShape);
       o->end();
     }
 
     {
-      Fl_Group * o = new Fl_Group( x+3*SZ_GAP+3*bw, y, w-3*bw+4*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y);
-      BtnRenShape = new FlatButton(x+3*SZ_GAP+3*bw, y, w-3*bw-5*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y, "Label", " Give the selected shape a name ", cb_NameShape_stub, this);
+      Fl_Group * o = new Fl_Group( x+3*SZ_GAP+6*bw, y, 2*bw+SZ_GAP, SZ_BUTTON_Y);
+      BtnRenShape = new FlatButton(x+3*SZ_GAP+6*bw, y, 2*bw, SZ_BUTTON_Y, "Label", " Give the selected shape a name ", cb_NameShape_stub, this);
+      o->resizable(BtnRenShape);
+      o->end();
+    }
+
+    {
+      Fl_Group * o = new Fl_Group( x+4*SZ_GAP+8*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
+      BtnWeightInc = new FlatButton(x+4*SZ_GAP+8*bw, y, bw, SZ_BUTTON_Y, "W+", " Increase Weight of the selected shape ",cb_WeightInc_stub, this);
+      o->resizable(BtnRenShape);
+      o->end();
+    }
+
+    {
+      Fl_Group * o = new Fl_Group( x+5*SZ_GAP+9*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
+      BtnWeightDec = new FlatButton(x+5*SZ_GAP+9*bw, y, bw, SZ_BUTTON_Y, "W-", " Decrease Weight of the selected shape ",cb_WeightDec_stub, this);
       o->resizable(BtnRenShape);
       o->end();
     }
