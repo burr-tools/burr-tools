@@ -3048,6 +3048,8 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     SolutionNumber = new Fl_Value_Output(x+w/2+80, y, w-w/2-80, SZ_BUTTON_Y, "Solution:");
     AssemblyNumber->box(FL_FLAT_BOX);
     SolutionNumber->box(FL_FLAT_BOX);
+    AssemblyNumber->step(1);    // make output NOT use scientific presentation for big numbers
+    SolutionNumber->step(1);    // make output NOT use scientific presentation for big numbers
 
     y += SZ_BUTTON_Y + SZ_GAP;
     lh -= SZ_BUTTON_Y + SZ_GAP;
