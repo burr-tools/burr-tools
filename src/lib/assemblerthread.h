@@ -44,6 +44,7 @@ class assemblerThread_c : public assembler_cb {
   bool stopPressed;
 
   bool _reduce;
+  bool _dropDisassemblies;
 
   time_t startTime;
 
@@ -132,6 +133,8 @@ public:
     solutionLimit = limit;
     solutionDrop = drop;
   }
+
+  void setDropDisassemblies(bool drop) { _dropDisassemblies = drop; }
 
 #ifdef WIN32
   friend unsigned long __stdcall start_th(void * c);

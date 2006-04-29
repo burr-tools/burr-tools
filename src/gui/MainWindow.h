@@ -85,7 +85,7 @@ class UserInterface : public Fl_Double_Window {
   ButtonGroup *editMode;
 
   Fl_Group *TabSolve;
-  Fl_Check_Button *SolveDisasm, *JustCount;
+  Fl_Check_Button *SolveDisasm, *JustCount, *DropDisassemblies;
 
   FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape, *BtnShapeLeft, *BtnShapeRight, *BtnWeightInc, *BtnWeightDec;

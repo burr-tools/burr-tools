@@ -116,6 +116,7 @@ _solutionAction(solAction),
 puzzle(puz),
 prob(problemNum),
 _reduce(red),
+_dropDisassemblies(false),
 disassm(puz->getGridType()->getDisassembler(puz, problemNum)),
 ae(0),
 sortMethod(SRT_COMPLETE_MOVES),
@@ -210,14 +211,26 @@ bool assemblerThread_c::assembly(assembly_c * a) {
               const separationInfo_c * s2 = puzzle->probGetDisassemblyInfo(prob, i);
 
               if (s2 && s2->sumMoves() > lev) {
-                puzzle->probAddSolution(prob, a, s, i);
+                if (_dropDisassemblies) {
+                  separationInfo_c * si = new separationInfo_c(s);
+                  puzzle->probAddSolution(prob, a, si, i);
+                  delete s;
+                } else
+                  puzzle->probAddSolution(prob, a, s, i);
                 ins = true;
                 break;
               }
             }
           }
 
-          if (!ins) puzzle->probAddSolution(prob, a, s);
+          if (!ins) {
+            if (_dropDisassemblies) {
+              separationInfo_c * si = new separationInfo_c(s);
+              puzzle->probAddSolution(prob, a, si);
+              delete s;
+            } else
+              puzzle->probAddSolution(prob, a, s);
+          }
 
           // remove the front most solution, if we only want to save
           // a limited number of solutions, as the front most
@@ -235,16 +248,28 @@ bool assemblerThread_c::assembly(assembly_c * a) {
               const separationInfo_c * s2 = puzzle->probGetDisassemblyInfo(prob, i);
 
               if (s2 && (s2->compare(si) > 0)) {
-                puzzle->probAddSolution(prob, a, s, i);
+                if (_dropDisassemblies) {
+                  puzzle->probAddSolution(prob, a, si, i);
+                  delete s;
+                  si = 0;
+                } else
+                  puzzle->probAddSolution(prob, a, s, i);
                 ins = true;
                 break;
               }
             }
 
-            delete si;
-          }
+            if (!ins)  {
+              if (_dropDisassemblies) {
+                puzzle->probAddSolution(prob, a, si);
+                si = 0;
+                delete s;
+              } else
+                puzzle->probAddSolution(prob, a, s);
+            }
 
-          if (!ins) puzzle->probAddSolution(prob, a, s);
+            if (si) delete si;
+          }
 
           // remove the front most solution, if we only want to save
           // a limited number of solutions, as the front most
@@ -255,9 +280,14 @@ bool assemblerThread_c::assembly(assembly_c * a) {
           break;
         case SRT_UNSORT:
           /* only save every solutionDrop-th solution */
-          if (puzzle->probGetNumSolutions(prob) % (solutionDrop * dropMultiplicator) == 0)
-            puzzle->probAddSolution(prob, a, s);
-          else {
+          if (puzzle->probGetNumSolutions(prob) % (solutionDrop * dropMultiplicator) == 0) {
+            if (_dropDisassemblies) {
+              separationInfo_c * si = new separationInfo_c(s);
+              puzzle->probAddSolution(prob, a, si);
+              delete s;
+            } else
+              puzzle->probAddSolution(prob, a, s);
+          } else {
             delete a;
             delete s;
           }

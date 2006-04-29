@@ -839,6 +839,7 @@ void UserInterface::cb_BtnCont(void) {
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
+  assmThread->setDropDisassemblies(DropDisassemblies->value() != 0);
 
   if (!assmThread->start()) {
     fl_message("Could not start the solving process, the thread creation failed, sorry.");
@@ -2861,13 +2862,17 @@ void UserInterface::CreateSolveTab(int x, int y, int w, int h) {
     y += lh - (paramsFixedHight-SZ_SEPARATOR_Y);
     lh -= lh - (paramsFixedHight-SZ_SEPARATOR_Y);
 
-    SolveDisasm = new Fl_Check_Button(x, y, w/2, SZ_BUTTON_Y, "Disassemble");
+    SolveDisasm = new Fl_Check_Button(x, y, w/3, SZ_BUTTON_Y, "Disassemble");
     SolveDisasm->tooltip(" Do also try to disassemble the assembled puzzles. Only puzzles that can be disassembled will be added to solutions ");
     SolveDisasm->clear_visible_focus();
 
-    JustCount = new Fl_Check_Button(x+w/2, y, w-w/2, SZ_BUTTON_Y, "Just Count");
+    JustCount = new Fl_Check_Button(x+w/3, y, w/3, SZ_BUTTON_Y, "Just Count");
     JustCount->tooltip(" Don\'t save the solutions, just count the number of them ");
     JustCount->clear_visible_focus();
+
+    DropDisassemblies = new Fl_Check_Button(x+2*(w/3), y, w-2*(w/3), SZ_BUTTON_Y, "Drop Disassm.");
+    DropDisassemblies->tooltip(" Don\'t save the Disassemblies, just the information about them ");
+    DropDisassemblies->clear_visible_focus();
 
     y += SZ_BUTTON_Y;
     lh -= SZ_BUTTON_Y;
