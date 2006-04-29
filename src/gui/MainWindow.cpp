@@ -1928,8 +1928,10 @@ void UserInterface::updateInterface(void) {
 
         // if we are in the solve tab and have a valid solution
         // we can activate that
-        if (SolutionEmpty && (numSol > 0) && (TaskSelectionTab->value() == TabSolve))
+        if (SolutionEmpty && (numSol > 0)) {
           activateSolution(prob, 0);
+          SolutionSel->value(1);
+        }
 
       } else {
 
