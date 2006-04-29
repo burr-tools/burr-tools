@@ -366,8 +366,17 @@ void UserInterface::cb_SolProbSel(BlockListGroup* grp) {
   switch(reason) {
   case ProblemSelector::RS_CHANGEDSELECTION:
 
-    updateInterface();
-    activateSolution(solutionProblem->getSelection(), (int)SolutionSel->value()-1);
+    unsigned int prob = solutionProblem->getSelection();
+
+    if (prob < puzzle->problemNumber()) {
+
+      /* check the number of solutions on this tab and lower the slider value if necessary */
+      if (SolutionSel->value() > puzzle->probSolutionNumber(prob))
+        SolutionSel->value(puzzle->probSolutionNumber(prob));
+
+      updateInterface();
+      activateSolution(prob, (int)SolutionSel->value()-1);
+    }
     break;
   }
 }
