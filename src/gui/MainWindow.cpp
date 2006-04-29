@@ -955,6 +955,7 @@ void UserInterface::cb_DeleteSolutions(unsigned int which) {
   case 1:
     for (unsigned int i = 0; i < sol; i++)
       puzzle->probRemoveSolution(prob, 0);
+    SolutionSel->value(1);
     break;
   case 2:
     puzzle->probRemoveSolution(prob, sol);
@@ -974,6 +975,8 @@ void UserInterface::cb_DeleteSolutions(unsigned int which) {
         else {
           puzzle->probRemoveSolution(prob, i);
           cnt--;
+          if (SolutionSel->value() > i)
+            SolutionSel->value(SolutionSel->value()-1);
         }
       }
     }
@@ -981,7 +984,7 @@ void UserInterface::cb_DeleteSolutions(unsigned int which) {
   }
 
   if (SolutionSel->value() > puzzle->probSolutionNumber(prob))
-    SolutionSel->value(puzzle->probSolutionNumber(prob) - 1);
+    SolutionSel->value(puzzle->probSolutionNumber(prob));
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
