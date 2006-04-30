@@ -5,31 +5,33 @@ GUI_LD_ADD=@GUI_LD_ADD@
 burrGui_LDADD=-L../lib -lburr $(GUI_LD_ADD) $(XML_LD_ADD)
 
 burrGui_CPPFLAGS=$(GUI_CPP_ADD) $(XML_CPP_ADD) -Wall
-burrGui_SOURCES=voxeldrawer.cpp voxeldrawer.h \
-		voxeldrawer_0.cpp voxeldrawer_0.h \
-		voxeldrawer_1.cpp voxeldrawer_1.h \
+burrGui_SOURCES=\
                 arcball.cpp arcball.h \
-		statuswindow.cpp statuswindow.h \
-		guigridtype.cpp guigridtype.h \
-		gridtypegui.cpp gridtypegui.h \
-                BlockList.cpp BlockList.h \
-                MainWindow.cpp MainWindow.h \
-                WindowWidgets.cpp WindowWidgets.h \
+                configuration.cpp configuration.h \
 		grideditor.cpp grideditor.h \
                 grideditor_0.cpp grideditor_0.h \
                 grideditor_1.cpp grideditor_1.h \
+		gridtypegui.cpp gridtypegui.h \
+		guigridtype.cpp guigridtype.h \
+		image.cpp image.h \
+                main.cpp \
                 piececolor.cpp piececolor.h \
+		statuswindow.cpp statuswindow.h \
+                voxeldrawer.cpp voxeldrawer.h \
+		voxeldrawer_0.cpp voxeldrawer_0.h \
+		voxeldrawer_1.cpp voxeldrawer_1.h \
+                \
+		BlockList.cpp BlockList.h \
+                MainWindow.cpp MainWindow.h \
+                WindowWidgets.cpp WindowWidgets.h \
                 gzstream.cpp gzstream.h \
                 Fl_Table.cpp Fl_Table.h \
                 GroupsEditor.cpp GroupsEditor.h \
                 PlacementBrowser.cpp PlacementBrowser.h \
-                configuration.cpp configuration.h \
 		Layouter.cpp Layouter.h \
 		ImageExport.cpp ImageExport.h \
-		image.cpp image.h \
 		tr.c tr.h \
 		Images.cpp Images.h \
-                main.cpp \
                 images/TB_Color_Brush.xpm images/TB_Color_Eraser.xpm \
 		images/TB_Color_Mouse_Drag.xpm images/TB_Color_Columns_X.xpm \
 		images/TB_Color_Columns_Y.xpm images/TB_Color_Columns_Z.xpm \
