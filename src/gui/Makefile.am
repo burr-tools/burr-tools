@@ -26,7 +26,7 @@ burrGui_SOURCES=voxeldrawer.cpp voxeldrawer.h \
                 configuration.cpp configuration.h \
 		Layouter.cpp Layouter.h \
 		ImageExport.cpp ImageExport.h \
-		Image.cpp Image.h \
+		image.cpp image.h \
 		tr.c tr.h \
 		Images.cpp Images.h \
                 main.cpp \

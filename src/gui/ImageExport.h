@@ -49,7 +49,7 @@
 class LView3dGroup;
 class LBlockListGroup;
 class ImageInfo;
-class Image;
+class image_c;
 class puzzle_c;
 class guiGridType_c;
 
@@ -87,7 +87,7 @@ class ImageExportWindow : public LFl_Double_Window, public VoxelViewCallbacks {
 
     /* some internal variables for the image export */
     unsigned int state;        /* what is currently done, 0: preview, 1: export */
-    Image *i;                  /* current page that is worked on */
+    image_c *i;                  /* current page that is worked on */
     unsigned int curWidth;     /* how much of the current line is filled */
     unsigned int curLine;      /* current line number */
     unsigned int curPage;      /* number of the current page */

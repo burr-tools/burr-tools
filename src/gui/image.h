@@ -25,7 +25,7 @@ class voxelDrawer_c;
 /* this class represents an bitmap image
  * that always has rgb and alpha map
  */
-class Image {
+class image_c {
 
   private:
 
@@ -37,22 +37,22 @@ class Image {
      */
     unsigned char * bitmap;
 
-    /* this structure is used, when an OpenGl Image is accumulated, otherwise it's 0
+    /* this structure is used, when an OpenGl image_c is accumulated, otherwise it's 0
      */
     TRcontext *tr;
 
   public:
 
     /* create new image and instatiate with the given color */
-    Image(unsigned int width, unsigned int height, unsigned char r, unsigned char g, unsigned char b, unsigned char a);
+    image_c(unsigned int width, unsigned int height, unsigned char r, unsigned char g, unsigned char b, unsigned char a);
 
     /* create new image with given bitmap, this bitmap must be the right format */
-    Image(unsigned int w, unsigned int h, unsigned char *b) : width(w), height(h), bitmap(b), tr(0) { }
+    image_c(unsigned int w, unsigned int h, unsigned char *b) : width(w), height(h), bitmap(b), tr(0) { }
 
     /* just create the required memory for an image of the given size */
-    Image(unsigned int w, unsigned int h) : width(w), height(h), bitmap(new unsigned char[w*h*4]), tr(0) { }
+    image_c(unsigned int w, unsigned int h) : width(w), height(h), bitmap(new unsigned char[w*h*4]), tr(0) { }
 
-    ~Image(void);
+    ~image_c(void);
 
     /* openGL image grepping is done in loops as the target resolution might
      * be much bigger than the openGl context. Wo the image is repped part by part
@@ -73,7 +73,7 @@ class Image {
     /* blit image i at the given position into this
      * image. Alpha blending is done
      */
-    void blit(const Image * i, int xpos, int ypos);
+    void blit(const image_c * i, int xpos, int ypos);
 
     /* assigns a color to all transparent pixels the pixels must be completely transparent */
     void deTransparentize(unsigned char r, unsigned char g, unsigned char b);

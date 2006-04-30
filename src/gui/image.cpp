@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "Image.h"
+#include "image.h"
 #include "voxeldrawer.h"
 
 #include "../lib/bt_assert.h"
@@ -32,7 +32,7 @@
 #include <GL/gl.h>
 #endif
 
-Image::Image(unsigned int w, unsigned int h, unsigned char r, unsigned char g, unsigned char b, unsigned char a) : width(w), height(h), bitmap(new unsigned char[w*h*4]), tr(0) {
+image_c::image_c(unsigned int w, unsigned int h, unsigned char r, unsigned char g, unsigned char b, unsigned char a) : width(w), height(h), bitmap(new unsigned char[w*h*4]), tr(0) {
 
   /* initialize image bitmap */
   for (unsigned int x = 0; x < w*h; x++) {
@@ -43,7 +43,7 @@ Image::Image(unsigned int w, unsigned int h, unsigned char r, unsigned char g, u
   }
 }
 
-void Image::prepareOpenGlImagePart(voxelDrawer_c * dr) {
+void image_c::prepareOpenGlImagePart(voxelDrawer_c * dr) {
 
   if (!tr) {
 
@@ -62,7 +62,7 @@ void Image::prepareOpenGlImagePart(voxelDrawer_c * dr) {
   trBeginTile(tr);
 }
 
-bool Image::getOpenGlImagePart(void) {
+bool image_c::getOpenGlImagePart(void) {
 
   /* grep the next tile */
   if (trEndTile(tr))
@@ -85,7 +85,7 @@ bool Image::getOpenGlImagePart(void) {
 }
 
 
-Image::~Image(void) {
+image_c::~image_c(void) {
   delete [] bitmap;
 
   /* if we delete the image while we are doing an openGl grep, the context
@@ -94,7 +94,7 @@ Image::~Image(void) {
   if (tr) trDelete(tr);
 }
 
-int Image::saveToPNG(const char * fname) const {
+int image_c::saveToPNG(const char * fname) const {
 
   int sx = width;
   int sy = height;
@@ -183,7 +183,7 @@ int Image::saveToPNG(const char * fname) const {
   return 1;
 }
 
-void Image::blit(const Image * i, int xpos, int ypos) {
+void image_c::blit(const image_c * i, int xpos, int ypos) {
   for (unsigned int x = 0; x < i->width; x++)
     for (unsigned int y = 0; y < i->height; y++)
       if ((x+xpos >= 0) && (x+xpos < width) && (y+ypos >= 0) && (y+ypos < height)) {
@@ -214,7 +214,7 @@ void Image::blit(const Image * i, int xpos, int ypos) {
       }
 }
 
-void Image::deTransparentize(unsigned char r, unsigned char g, unsigned char b) {
+void image_c::deTransparentize(unsigned char r, unsigned char g, unsigned char b) {
   for (unsigned int x = 0; x < width; x++)
     for (unsigned int y = 0; y < height; y++)
       if (bitmap[4*(y*width + x) + 3] == 0) {
@@ -225,7 +225,7 @@ void Image::deTransparentize(unsigned char r, unsigned char g, unsigned char b) 
       }
 }
 
-void Image::transparentize(unsigned char r, unsigned char g, unsigned char b) {
+void image_c::transparentize(unsigned char r, unsigned char g, unsigned char b) {
   for (unsigned int x = 0; x < width; x++)
     for (unsigned int y = 0; y < height; y++)
       if ((bitmap[4*(y*width + x) + 0] == r) &&
@@ -234,7 +234,7 @@ void Image::transparentize(unsigned char r, unsigned char g, unsigned char b) {
         bitmap[4*(y*width + x) + 3] = 0;
 }
 
-void Image::scaleDown(unsigned char by) {
+void image_c::scaleDown(unsigned char by) {
   bt_assert(width % by == 0);
   bt_assert(height % by == 0);
 
@@ -285,7 +285,7 @@ void Image::scaleDown(unsigned char by) {
   width = nw;
 }
 
-void Image::minimizeWidth(unsigned int border, unsigned int multiple) {
+void image_c::minimizeWidth(unsigned int border, unsigned int multiple) {
 
   unsigned int xmin = 0;
 

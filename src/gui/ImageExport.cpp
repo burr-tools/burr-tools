@@ -17,7 +17,7 @@
  */
 #include "ImageExport.h"
 #include "voxeldrawer.h"
-#include "Image.h"
+#include "image.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/disassembly.h"
@@ -82,8 +82,8 @@ class ImageInfo {
     disasmToMoves_c * positions;
 
     // the image data
-    Image * i;  // image generated with the drawer that is with a fixed hight and the required width
-    Image * i2; // the final image
+    image_c * i;  // image generated with the drawer that is with a fixed hight and the required width
+    image_c * i2; // the final image
     unsigned int i2aa;
 
     /* the openGL context to draw to */
@@ -95,7 +95,7 @@ class ImageInfo {
     ImageInfo(puzzle_c * p, bool color,
         unsigned int s, voxelDrawer_c * v) : setupFunction(SHOW_SINGLE), puzzle(p),
                                           shape(s), showColors(color),
-                                          i(new Image(600, 200)), i2(0), vv(v) { }
+                                          i(new image_c(600, 200)), i2(0), vv(v) { }
 
     /* image info for an assembly, if you don't give pos, you will get the standard assembly with
      * no piece shifted
@@ -105,7 +105,7 @@ class ImageInfo {
         disasmToMoves_c * pos = 0, bool d = false) : setupFunction(SHOW_ASSEMBLY), puzzle(p),
                                                    showColors(color), problem(prob),
                                                    solution(sol), dim(d), positions(pos),
-                                                   i(new Image(600, 200)),
+                                                   i(new image_c(600, 200)),
                                                    i2(0), vv(v) { }
 
     ~ImageInfo() {
@@ -135,7 +135,7 @@ class ImageInfo {
     void prepareImage(void);
 
     /* get a new tile for the image */
-    Image * getImage(void);
+    image_c * getImage(void);
 };
 
 void ImageInfo::setupContent(void) {
@@ -183,7 +183,7 @@ bool ImageInfo::getPreviewImage(void) {
 void ImageInfo::generateImage(unsigned int w, unsigned int h, unsigned char aa) {
   if (i2)
     delete i2;
-  i2 = new Image ((h*3)*aa, h*aa);
+  i2 = new image_c ((h*3)*aa, h*aa);
   i2aa = aa;
 }
 
@@ -196,7 +196,7 @@ void ImageInfo::prepareImage(void) {
 }
 
 /* get a new tile for the image */
-Image * ImageInfo::getImage(void) {
+image_c * ImageInfo::getImage(void) {
 
   if (!i2->getOpenGlImagePart()) {
 
@@ -225,7 +225,7 @@ bool ImageExportWindow::PreDraw(void) {
   switch(state) {
     case 0:
 
-      snprintf(statText, 50, "create Preview Image %i / %i", im, images.size());
+      snprintf(statText, 50, "create Preview image_c %i / %i", im, images.size());
       status->label(statText);
 
       images[im]->preparePreviewImage();
@@ -236,7 +236,7 @@ bool ImageExportWindow::PreDraw(void) {
 
       if (!images[im]->imageStarted()) {
 
-        snprintf(statText, 50, "create Image %i / %i", im, images.size());
+        snprintf(statText, 50, "create image_c %i / %i", im, images.size());
         status->label(statText);
 
         unsigned int pageHeight = atoi(SizePixelY->value());
@@ -287,9 +287,9 @@ void ImageExportWindow::nextImage(bool finish) {
     unsigned int pageWidth = atoi(SizePixelX->value());
 
     if (BgWhite->value()) {
-      i = new Image(pageWidth, pageHeight, 255, 255, 255, 255);
+      i = new image_c(pageWidth, pageHeight, 255, 255, 255, 255);
     } else {
-      i = new Image(pageWidth, pageHeight, 0, 0, 0, 0);
+      i = new image_c(pageWidth, pageHeight, 0, 0, 0, 0);
     }
   }
 }
@@ -367,7 +367,7 @@ void ImageExportWindow::PostDraw(void) {
 
     case 1:
 
-      Image * i2 = images[im]->getImage();
+      image_c * i2 = images[im]->getImage();
 
       if (i2) {
 
@@ -707,7 +707,7 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p, const guiGridType_c * ggt) : 
     status->pitch(7);
     status->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-    BtnStart = new LFl_Button("Export Image(s)", 1, 0);
+    BtnStart = new LFl_Button("Export image_c(s)", 1, 0);
     BtnStart->pitch(7);
     BtnStart->callback(cb_ImageExportExport_stub, this);
     BtnStart->box(FL_THIN_UP_BOX);
