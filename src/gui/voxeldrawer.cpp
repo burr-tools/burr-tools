@@ -18,7 +18,7 @@
 #include "voxeldrawer.h"
 #include "arcball.h"
 
-#include "pieceColor.h"
+#include "piececolor.h"
 
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"

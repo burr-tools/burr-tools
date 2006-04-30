@@ -18,7 +18,7 @@
 
 #include "voxeldrawer_0.h"
 
-#include "pieceColor.h"
+#include "piececolor.h"
 
 #include "../lib/voxel.h"
 

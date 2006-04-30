@@ -17,7 +17,7 @@
  */
 #include "BlockList.h"
 
-#include "pieceColor.h"
+#include "piececolor.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
