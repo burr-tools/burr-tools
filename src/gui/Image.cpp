@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "Image.h"
-#include "VoxelView.h"
+#include "voxeldrawer.h"
 
 #include "../lib/bt_assert.h"
 
@@ -43,7 +43,7 @@ Image::Image(unsigned int w, unsigned int h, unsigned char r, unsigned char g, u
   }
 }
 
-void Image::prepareOpenGlImagePart(VoxelView * dr) {
+void Image::prepareOpenGlImagePart(voxelDrawer_c * dr) {
 
   if (!tr) {
 

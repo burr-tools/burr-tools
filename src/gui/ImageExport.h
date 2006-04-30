@@ -42,7 +42,7 @@
 
 #include "Layouter.h"
 #include "WindowWidgets.h"
-#include "VoxelView.h"
+#include "voxeldrawer.h"
 
 #include <vector>
 

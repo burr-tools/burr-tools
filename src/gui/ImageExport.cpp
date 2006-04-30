@@ -86,13 +86,13 @@ class ImageInfo {
     unsigned int i2aa;
 
     /* the openGL context to draw to */
-    VoxelView * vv;
+    voxelDrawer_c * vv;
 
   public:
 
     /* create image info to create a single shape image */
     ImageInfo(puzzle_c * p, bool color,
-        unsigned int s, VoxelView * v) : setupFunction(SHOW_SINGLE), puzzle(p),
+        unsigned int s, voxelDrawer_c * v) : setupFunction(SHOW_SINGLE), puzzle(p),
                                           shape(s), showColors(color),
                                           i(new Image(600, 200)), i2(0), vv(v) { }
 
@@ -100,7 +100,7 @@ class ImageInfo {
      * no piece shifted
      */
     ImageInfo(puzzle_c * p, bool color, unsigned int prob,
-        unsigned int sol, VoxelView* v,
+        unsigned int sol, voxelDrawer_c * v,
         DisasmToMoves * pos = 0, bool d = false) : setupFunction(SHOW_ASSEMBLY), puzzle(p),
                                                    showColors(color), problem(prob),
                                                    solution(sol), dim(d), positions(pos),
@@ -112,7 +112,7 @@ class ImageInfo {
       if (i2) delete i2;
     }
 
-    /* set up the VoxelView so that is shows the information for this image */
+    /* set up the voxelDrawer_c so that is shows the information for this image */
     void setupContent(void);
 
     /* preparation to get a tile for the preview image */

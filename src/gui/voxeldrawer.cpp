@@ -24,16 +24,27 @@
 #include "../lib/assembly.h"
 
 #include <math.h>
+#include <stdlib.h>
+
+#include <Fl/Fl.h>
 
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
+#elif WIN32
+#include <GL/gl.h>
+#include <GL/glext.h>
 #else
 #include <GL/gl.h>
 #endif
 
+
 voxelDrawer_c::voxelDrawer_c(int x,int y,int w,int h) :
-  VoxelView(x, y, w, h), markerType(-1),
-  colors(pieceColor), _useLightning(true),
+  Fl_Gl_Window(x,y,w,h),
+  markerType(-1),
+  arcBall(new ArcBall_c(w, h)),
+  doUpdates(true), size(10), cb(0),
+  colors(pieceColor),
+  _useLightning(true),
   _gtChanged(true)
 {
 };
@@ -810,4 +821,111 @@ bool voxelDrawer_c::inRegion(int x, int y, int z, int x1, int x2, int y1, int y2
   return false;
 }
 
+static void gluPerspective(double fovy, double aspect, double zNear, double zFar) {
+
+  double xmin, xmax, ymin, ymax;
+  ymax = zNear * tan(fovy * 3.1415927 / 360.0);
+  ymin = -ymax;
+  xmin = ymin * aspect;
+  xmax = ymax * aspect;
+  glFrustum(xmin, xmax, ymin, ymax, zNear, zFar);
+}
+
+void voxelDrawer_c::draw() {
+
+  if (!doUpdates)
+    return;
+
+  if (!valid()) {
+
+    GLfloat LightAmbient[]= { 0.2f, 0.2f, 0.2f, 1.0f };
+    GLfloat LightDiffuse[]= { 0.6f, 0.6f, 0.6f, 0.0f };
+    GLfloat LightPosition[]= { 700.0f, 200.0f, 700.0f, 1.0f };
+
+    GLfloat AmbientParams[] = {0.1, 0.1, 0.1, 1};
+    GLfloat DiffuseParams[] = {0.7, 0.7, 0.7, 0.1};
+    GLfloat SpecularParams[] = {0.4, 0.4, 0.4, 0.5};
+
+    glLoadIdentity();
+    glViewport(0,0,w(),h());
+
+    glEnable(GL_COLOR_MATERIAL);
+    glLightfv(GL_LIGHT1, GL_AMBIENT, LightAmbient);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, LightDiffuse);
+    glLightfv(GL_LIGHT1, GL_POSITION, LightPosition);
+    glEnable(GL_LIGHT1);
+
+    glMaterialf(GL_FRONT, GL_SHININESS, 0.5);
+    glMaterialfv(GL_FRONT, GL_AMBIENT, AmbientParams);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, DiffuseParams);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, SpecularParams);
+
+    glEnable(GL_RESCALE_NORMAL);
+
+    arcBall->setBounds(w(), h());
+
+    unsigned char r, g, b;
+    Fl::get_color(color(), r, g, b);
+    glClearColor(r/255.0, g/255.0, b/255.0, 0);
+  }
+
+  if (!cb || !cb->PreDraw()) {
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(25, 1.0*w()/h(), size, size+100);
+    glMatrixMode(GL_MODELVIEW);
+
+  }
+
+  glPushMatrix();
+  glTranslatef(0, 0, -20-size);
+  drawData();
+  glPopMatrix();
+
+  if (cb)
+    cb->PostDraw();
+}
+
+void voxelDrawer_c::update(bool doIt) {
+  doUpdates = doIt;
+  if (doIt)
+    redraw();
+}
+
+int voxelDrawer_c::handle(int event) {
+
+  if (Fl_Gl_Window::handle(event))
+    return 1;
+
+  switch(event) {
+  case FL_PUSH:
+    arcBall->click(Fl::event_x(), Fl::event_y());
+    return 1;
+
+  case FL_DRAG:
+    arcBall->drag(Fl::event_x(), Fl::event_y());
+    redraw();
+    return 1;
+
+  case FL_RELEASE:
+    arcBall->clack(Fl::event_x(), Fl::event_y());
+    return 1;
+  }
+
+  return 0;
+}
+
+void voxelDrawer_c::addRotationTransformation(void) {
+  arcBall->addTransform();
+}
+
+void voxelDrawer_c::updateRequired(void) {
+  redraw();
+}
+
+void voxelDrawer_c::setSize(double sz) {
+  size = sz;
+  redraw();
+}
 

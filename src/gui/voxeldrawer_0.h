@@ -20,6 +20,8 @@
 
 #include "voxeldrawer.h"
 
+class gridType_c;
+
 class voxelDrawer_0_c : public voxelDrawer_c {
 
   private:

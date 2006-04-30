@@ -20,7 +20,7 @@
 
 #include "tr.h"
 
-class VoxelView;
+class voxelDrawer_c;
 
 /* this class represents an bitmap image
  * that always has rgb and alpha map
@@ -62,7 +62,7 @@ class Image {
      *   draw();
      * while (getOpenGlImagePart);
      */
-    void prepareOpenGlImagePart(VoxelView * dr);
+    void prepareOpenGlImagePart(voxelDrawer_c * dr);
     bool getOpenGlImagePart(void);
 
     /* saves the image into a png file with the given name

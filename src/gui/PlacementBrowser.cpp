@@ -18,6 +18,7 @@
 #include "PlacementBrowser.h"
 
 #include "../lib/assembler_0.h"
+#include "../lib/puzzle.h"
 
 #include <FL/fl_ask.H>
 

@@ -29,6 +29,7 @@
 
 #include "../lib/bt_assert.h"
 #include "../lib/gridtype.h"
+#include "../lib/puzzle.h"
 
 class my_Fl : public Fl {
 

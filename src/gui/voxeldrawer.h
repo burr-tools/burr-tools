@@ -24,12 +24,34 @@
 
 #include "BlockList.h"
 #include "DisasmToMoves.h"
-#include "VoxelView.h"
+#include "ArcBall.h"
+
+#include <FL/Fl_Gl_Window.H>
 
 #include <vector>
 
 class voxel_c;
 class puzzle_c;
+class assembly_c;
+
+/* this callback class defines 2 functions that are called, when
+ * the draw function is called in VoxelView
+ */
+class VoxelViewCallbacks {
+  public:
+
+    /* this function gets called before the the setup of the camera
+     * and rotation of the object. If you return true
+     * here the draw function will NOT setup its own camera and rotation
+     * but you can continue using the light setup as its done before
+     * this function is called
+     */
+    virtual bool PreDraw(void) { return false; }
+
+    /* this is called AFTER the data has been drawn
+     */
+    virtual void PostDraw(void) { }
+};
 
 /** this class draws a 3d view of a voxel space.
  * there are 2 modes:
@@ -48,7 +70,7 @@ class puzzle_c;
  *
  * additionally pieces can be transparent
  */
-class voxelDrawer_c : public VoxelView {
+class voxelDrawer_c : public Fl_Gl_Window {
 
 private:
 
@@ -60,6 +82,7 @@ public:
   voxelDrawer_c(int x,int y,int w,int h);
   virtual ~voxelDrawer_c(void) {
     clearSpaces();
+    delete arcBall;
   }
 
   virtual void drawData(void);
@@ -158,6 +181,12 @@ protected:
 
 private:
 
+  ArcBall_c * arcBall;
+  bool doUpdates;
+  double size;
+
+  VoxelViewCallbacks * cb;
+
   std::vector<shapeInfo> shapes;
 
   transformationType trans;
@@ -216,6 +245,24 @@ public:
 
   bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z2, int sx, int sy, int sz, int mode);
 
+  void draw();
+  int handle(int event);
+
+  // if more complex updates are done, this can avoid doing
+  // a screen update each time
+  void update(bool doIt);
+
+  // this value determines the scaling factor used to draw the cube.
+  void setSize(double sz);
+  double getSize(void) const { return size; }
+
+  void addRotationTransformation(void);
+  void updateRequired(void);
+
+  ArcBall_c * getArcBall(void) { return arcBall; }
+  const ArcBall_c * getArcBall(void) const { return arcBall; }
+
+  void setCallback(VoxelViewCallbacks *c = 0) { cb = c; }
 };
 
 #endif
