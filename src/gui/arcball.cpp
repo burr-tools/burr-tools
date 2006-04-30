@@ -141,7 +141,7 @@ static void Matrix4fSetRotationFromMatrix3f(GLfloat a[16], const GLfloat m[9])
 /**
  * find the point on the halve-sphere that is closest to the given coordinates
  */
-void ArcBall_c::mapToSphere(GLfloat x, GLfloat y, GLfloat NewVec[3]) const
+void arcBall_c::mapToSphere(GLfloat x, GLfloat y, GLfloat NewVec[3]) const
 {
   GLfloat TempPt[2];
 
@@ -173,7 +173,7 @@ void ArcBall_c::mapToSphere(GLfloat x, GLfloat y, GLfloat NewVec[3]) const
 }
 
 //Create/Destroy
-ArcBall_c::ArcBall_c(GLfloat NewWidth, GLfloat NewHeight) {
+arcBall_c::arcBall_c(GLfloat NewWidth, GLfloat NewHeight) {
 
   LastRot[0] = 1;  LastRot[1] = 0;  LastRot[2] = 0;
   LastRot[3] = 0;  LastRot[4] = 1;  LastRot[5] = 0;
@@ -185,7 +185,7 @@ ArcBall_c::ArcBall_c(GLfloat NewWidth, GLfloat NewHeight) {
   mouseDown = false;
 }
 
-void ArcBall_c::click(GLfloat x, GLfloat y) {
+void arcBall_c::click(GLfloat x, GLfloat y) {
 
   //Map the point to the sphere
   mapToSphere(x, y, StVec);
@@ -194,7 +194,7 @@ void ArcBall_c::click(GLfloat x, GLfloat y) {
   mouseDown = true;
 }
 
-void ArcBall_c::clack(GLfloat x, GLfloat y) {
+void arcBall_c::clack(GLfloat x, GLfloat y) {
 
   mapToSphere(x, y, EnVec);
 
@@ -212,14 +212,14 @@ void ArcBall_c::clack(GLfloat x, GLfloat y) {
 }
 
 
-void ArcBall_c::drag(GLfloat x, GLfloat y) {
+void arcBall_c::drag(GLfloat x, GLfloat y) {
 
   //Map the point to the sphere
   mapToSphere(x, y, EnVec);
 }
 
 
-void ArcBall_c::getDrag(GLfloat NewRot[4]) const
+void arcBall_c::getDrag(GLfloat NewRot[4]) const
 {
   GLfloat Perp[3];
 
@@ -244,7 +244,7 @@ void ArcBall_c::getDrag(GLfloat NewRot[4]) const
   }
 }
 
-void ArcBall_c::setBounds(GLfloat NewWidth, GLfloat NewHeight) {
+void arcBall_c::setBounds(GLfloat NewWidth, GLfloat NewHeight) {
 
 
   if ((NewWidth > 1.0f) && (NewHeight > 1.0f)) {
@@ -261,7 +261,7 @@ void ArcBall_c::setBounds(GLfloat NewWidth, GLfloat NewHeight) {
   }
 }
 
-void ArcBall_c::addTransform(void) const {
+void arcBall_c::addTransform(void) const {
 
   GLfloat Transform[16];
 

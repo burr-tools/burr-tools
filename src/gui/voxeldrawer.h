@@ -24,15 +24,21 @@
 
 #include "BlockList.h"
 #include "DisasmToMoves.h"
-#include "arcball.h"
 
 #include <FL/Fl_Gl_Window.H>
 
 #include <vector>
 
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#else
+#include <GL/gl.h>
+#endif
+
 class voxel_c;
 class puzzle_c;
 class assembly_c;
+class arcBall_c;
 
 /* this callback class defines 2 functions that are called, when
  * the draw function is called in VoxelView
@@ -80,10 +86,7 @@ private:
 public:
 
   voxelDrawer_c(int x,int y,int w,int h);
-  virtual ~voxelDrawer_c(void) {
-    clearSpaces();
-    delete arcBall;
-  }
+  virtual ~voxelDrawer_c(void);
 
   virtual void drawData(void);
 
@@ -181,7 +184,7 @@ protected:
 
 private:
 
-  ArcBall_c * arcBall;
+  arcBall_c * arcBall;
   bool doUpdates;
   double size;
 
@@ -259,8 +262,8 @@ public:
   void addRotationTransformation(void);
   void updateRequired(void);
 
-  ArcBall_c * getArcBall(void) { return arcBall; }
-  const ArcBall_c * getArcBall(void) const { return arcBall; }
+  arcBall_c * getArcBall(void) { return arcBall; }
+  const arcBall_c * getArcBall(void) const { return arcBall; }
 
   void setCallback(VoxelViewCallbacks *c = 0) { cb = c; }
 };

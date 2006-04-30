@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "voxeldrawer.h"
+#include "arcball.h"
 
 #include "pieceColor.h"
 
@@ -41,13 +42,18 @@
 voxelDrawer_c::voxelDrawer_c(int x,int y,int w,int h) :
   Fl_Gl_Window(x,y,w,h),
   markerType(-1),
-  arcBall(new ArcBall_c(w, h)),
+  arcBall(new arcBall_c(w, h)),
   doUpdates(true), size(10), cb(0),
   colors(pieceColor),
   _useLightning(true),
   _gtChanged(true)
 {
 };
+
+voxelDrawer_c::~voxelDrawer_c(void) {
+  clearSpaces();
+  delete arcBall;
+}
 
 void voxelDrawer_c::setTransformationMatrix(GLfloat m[16]) {
   for (unsigned int i = 0; i < 16; i++)

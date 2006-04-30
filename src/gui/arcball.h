@@ -15,8 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#ifndef _ArcBall_h
-#define _ArcBall_h
+#ifndef __ARCBALL_H__
+#define __ARCBALL_H__
 
 #ifdef WIN32
 #include <windows.h>
@@ -37,7 +37,7 @@
  * The class needs to know the size of the area where you can drag, so that it can make sense
  * out of the given mouse positions. The rest of the handling is basic
  */
-class ArcBall_c {
+class arcBall_c {
 
 protected:
   void mapToSphere(GLfloat x, GLfloat y, GLfloat NewVec[3]) const;
@@ -47,7 +47,7 @@ public:
   /**
    * create arcball class with an initial size for the drag area
    */
-  ArcBall_c(GLfloat NewWidth, GLfloat NewHeight);
+  arcBall_c(GLfloat NewWidth, GLfloat NewHeight);
 
   /**
    * change the size of the area where the mouse can move to
