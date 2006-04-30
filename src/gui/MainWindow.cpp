@@ -41,6 +41,7 @@
 #include "../lib/assemblerthread.h"
 #include "../lib/disassembly.h"
 #include "../lib/gridtype.h"
+#include "../lib/disasmtomoves.h"
 
 #ifdef HAVE_FLU
 #include <FLU/Flu_File_Chooser.h>
@@ -1614,7 +1615,7 @@ void UserInterface::activateSolution(unsigned int prob, unsigned int num) {
 
       MovesInfo->value(levelText);
 
-      disassemble = new DisasmToMoves(puzzle->probGetDisassembly(prob, num),
+      disassemble = new disasmToMoves_c(puzzle->probGetDisassembly(prob, num),
                                       2*puzzle->probGetResultShape(prob)->getBiggestDimension());
       disassemble->setStep(SolutionAnim->value(), config.useBlendedRemoving());
 

@@ -8,6 +8,7 @@ libburr_a_CPPFLAGS=-Wall $(XML_CPP_ADD)
 libburr_a_SOURCES=disassembler.h assembler.h \
                   disassembler_0.h disassembler_0.cpp \
                   disassembly.cpp disassembly.h \
+		  disasmtomoves.cpp disasmtomoves.h \
                   assembly.cpp assembly.h \
                   assembler_0.cpp assembler_0.h \
                   assm_0_frontend_0.cpp assm_0_frontend_0.h \

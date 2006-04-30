@@ -23,6 +23,7 @@
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
 #include "../lib/assembly.h"
+#include "../lib/disasmtomoves.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -645,7 +646,7 @@ void voxelDrawer_c::showPlacement(const puzzle_c * puz, unsigned int probNum, un
 }
 
 
-void voxelDrawer_c::updatePositions(PiecePositions *shifting) {
+void voxelDrawer_c::updatePositions(piecePositions_c *shifting) {
 
   for (unsigned int p = 0; p < spaceNumber(); p++) {
     setSpacePosition(p, shifting->getX(p), shifting->getY(p), shifting->getZ(p), 1);
@@ -653,7 +654,7 @@ void voxelDrawer_c::updatePositions(PiecePositions *shifting) {
   }
 }
 
-void voxelDrawer_c::dimStaticPieces(PiecePositions *shifting) {
+void voxelDrawer_c::dimStaticPieces(piecePositions_c *shifting) {
 
   for (unsigned int p = 0; p < spaceNumber(); p++) {
     setSpaceDim(p, !shifting->moving(p));

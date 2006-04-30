@@ -21,7 +21,6 @@
 #include "grideditor.h"
 #include "voxeldrawer.h"
 #include "BlockList.h"
-#include "DisasmToMoves.h"
 #include "Images.h"
 
 #include <FL/Fl.H>
@@ -41,6 +40,7 @@
 #include <FL/fl_draw.h>
 
 class guiGridType_c;
+class piecePositions_c;
 
 // my button, the only change it that the box is automatically set to engraved
 class FlatButton : public Fl_Button {
@@ -297,7 +297,7 @@ public:
   }
 
 
-  void updatePositions(PiecePositions *shifting);
+  void updatePositions(piecePositions_c *shifting);
   void updateVisibility(PieceVisibility * pcvis);
   void showColors(const puzzle_c * puz, bool show);
 

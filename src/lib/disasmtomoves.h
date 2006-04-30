@@ -23,7 +23,7 @@ class separation_c;
 /* this is an abstract class used to give thet piece positions to the voxel
  * space widget
  */
-class PiecePositions {
+class piecePositions_c {
 
 public:
 
@@ -42,7 +42,7 @@ public:
 /* this class takes a disassembly tree and generates relative piecepositions
  * for all pieces at each step of disassembly
  */
-class DisasmToMoves : public PiecePositions {
+class disasmToMoves_c : public piecePositions_c {
 
   /* the disassembly tree */
   const separation_c * tree;
@@ -67,9 +67,9 @@ public:
    * assembled puzzle. The larger the further away the pieces will be
    * moved
    */
-  DisasmToMoves(const separation_c * tr, unsigned int sz);
+  disasmToMoves_c(const separation_c * tr, unsigned int sz);
 
-  virtual ~DisasmToMoves();
+  virtual ~disasmToMoves_c();
 
   /* sets the moves for the step, if the value is not integer you
    * get a intermediate of the necessary move (for animation)

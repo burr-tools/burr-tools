@@ -18,7 +18,6 @@ burrGui_SOURCES=voxeldrawer.cpp voxeldrawer.h \
 		grideditor.cpp grideditor.h \
                 grideditor_0.cpp grideditor_0.h \
                 grideditor_1.cpp grideditor_1.h \
-                DisasmToMoves.cpp DisasmToMoves.h \
                 piececolor.cpp piececolor.h \
                 gzstream.cpp gzstream.h \
                 Fl_Table.cpp Fl_Table.h \

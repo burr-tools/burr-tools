@@ -841,7 +841,7 @@ void View3dGroup::showPlacement(const puzzle_c * puz, unsigned int probNum, unsi
   View3D->update(true);
 }
 
-void View3dGroup::updatePositions(PiecePositions *shifting) {
+void View3dGroup::updatePositions(piecePositions_c *shifting) {
   View3D->update(false);
   View3D->updatePositions(shifting);
   View3D->update(true);

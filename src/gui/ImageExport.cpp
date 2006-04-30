@@ -21,6 +21,7 @@
 
 #include "../lib/puzzle.h"
 #include "../lib/disassembly.h"
+#include "../lib/disasmtomoves.h"
 
 #include <FL/Fl.h>
 
@@ -78,7 +79,7 @@ class ImageInfo {
     unsigned int solution;
     bool dim;
 
-    DisasmToMoves * positions;
+    disasmToMoves_c * positions;
 
     // the image data
     Image * i;  // image generated with the drawer that is with a fixed hight and the required width
@@ -101,7 +102,7 @@ class ImageInfo {
      */
     ImageInfo(puzzle_c * p, bool color, unsigned int prob,
         unsigned int sol, voxelDrawer_c * v,
-        DisasmToMoves * pos = 0, bool d = false) : setupFunction(SHOW_ASSEMBLY), puzzle(p),
+        disasmToMoves_c * pos = 0, bool d = false) : setupFunction(SHOW_ASSEMBLY), puzzle(p),
                                                    showColors(color), problem(prob),
                                                    solution(sol), dim(d), positions(pos),
                                                    i(new Image(600, 200)),
@@ -437,7 +438,7 @@ void ImageExportWindow::cb_Export(void) {
     if (!t) return;
 
     for (unsigned int step = 0; step < t->sumMoves(); step++) {
-      DisasmToMoves * dtm = new DisasmToMoves(t, 20);
+      disasmToMoves_c * dtm = new disasmToMoves_c(t, 20);
       dtm->setStep(step);
       images.push_back(new ImageInfo(puzzle, ColConst->value(), prob, s, view3D->getView(), dtm, DimStatic->value()));
     }

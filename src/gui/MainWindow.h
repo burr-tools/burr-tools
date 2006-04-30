@@ -46,7 +46,7 @@ class ToolTab;
 class View3dGroup;
 class puzzle_c;
 class assemblerThread_c;
-class DisasmToMoves;
+class disasmToMoves_c;
 
 class gridType_c;
 class guiGridType_c;
@@ -56,7 +56,7 @@ class UserInterface : public Fl_Double_Window {
   puzzle_c * puzzle;
   guiGridType_c * ggt;  // this is the guigridtype for the puzzle, is must always be in sync
   char * fname;
-  DisasmToMoves * disassemble;
+  disasmToMoves_c * disassemble;
   assemblerThread_c *assmThread;
   bool SolutionEmpty;
   bool changed;

@@ -23,7 +23,6 @@
 #endif
 
 #include "BlockList.h"
-#include "DisasmToMoves.h"
 
 #include <FL/Fl_Gl_Window.H>
 
@@ -38,6 +37,8 @@
 class voxel_c;
 class puzzle_c;
 class assembly_c;
+class piecePositions_c;
+
 class arcBall_c;
 
 /* this callback class defines 2 functions that are called, when
@@ -219,9 +220,9 @@ public:
   void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum);
   void showAssemblerState(const puzzle_c * puz, unsigned int probNum, const assembly_c * assm);
   void showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z);
-  void updatePositions(PiecePositions *shifting);
+  void updatePositions(piecePositions_c *shifting);
   void updateVisibility(PieceVisibility * pcvis);
-  void dimStaticPieces(PiecePositions *shifting);
+  void dimStaticPieces(piecePositions_c *shifting);
 
   /* this function is called whenever the gridType changed, so that the drawer can update
    * internal structures. Only parameters may have changed, but not the type itself

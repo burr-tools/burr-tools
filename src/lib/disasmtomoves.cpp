@@ -15,21 +15,21 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "DisasmToMoves.h"
+#include "disasmtomoves.h"
 
 #include "../lib/disassembly.h"
 
-DisasmToMoves::DisasmToMoves(const separation_c * tr, unsigned int sz) : tree(tr), size(sz) {
+disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz) : tree(tr), size(sz) {
   moves = new float[tr->getPieceNumber()*4];
   mv = new bool[tr->getPieceNumber()];
 }
 
-DisasmToMoves::~DisasmToMoves() {
+disasmToMoves_c::~disasmToMoves_c() {
   delete [] moves;
   delete [] mv;
 }
 
-void DisasmToMoves::setStep(float step, bool fadeOut) {
+void disasmToMoves_c::setStep(float step, bool fadeOut) {
 
   int s = int(step);
   float frac = step - s;
@@ -70,23 +70,23 @@ void DisasmToMoves::setStep(float step, bool fadeOut) {
   delete [] moves2;
 }
 
-float DisasmToMoves::getX(unsigned int piece) {
+float disasmToMoves_c::getX(unsigned int piece) {
   bt_assert(piece < tree->getPieceNumber());
   return moves[4*piece+0];
 }
-float DisasmToMoves::getY(unsigned int piece) {
+float disasmToMoves_c::getY(unsigned int piece) {
   bt_assert(piece < tree->getPieceNumber());
   return moves[4*piece+1];
 }
-float DisasmToMoves::getZ(unsigned int piece) {
+float disasmToMoves_c::getZ(unsigned int piece) {
   bt_assert(piece < tree->getPieceNumber());
   return moves[4*piece+2];
 }
-float DisasmToMoves::getA(unsigned int piece) {
+float disasmToMoves_c::getA(unsigned int piece) {
   bt_assert(piece < tree->getPieceNumber());
   return moves[4*piece+3];
 }
-bool DisasmToMoves::moving(unsigned int piece) {
+bool disasmToMoves_c::moving(unsigned int piece) {
   bt_assert(piece < tree->getPieceNumber());
   return mv[piece];
 }
@@ -116,7 +116,7 @@ static int mmax(int a, int b) {
  *                values are multiplied by this value and then the 2 end points are added
  *    cx, cy, cz are the center to display the current tree
  */
-int DisasmToMoves::doRecursive(const separation_c * tree, int step, float * array, int cx, int cy, int cz) {
+int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * array, int cx, int cy, int cz) {
 
   bt_assert(tree);
 
