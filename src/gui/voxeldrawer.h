@@ -24,7 +24,7 @@
 
 #include "BlockList.h"
 #include "DisasmToMoves.h"
-#include "ArcBall.h"
+#include "arcball.h"
 
 #include <FL/Fl_Gl_Window.H>
 
