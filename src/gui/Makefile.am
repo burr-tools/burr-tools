@@ -2,10 +2,9 @@ bin_PROGRAMS=burrGui
 
 GUI_CPP_ADD=@GUI_CPP_ADD@
 GUI_LD_ADD=@GUI_LD_ADD@
-burrGui_LDADD=-L../lib -lburr
+burrGui_LDADD=-L../lib -lburr $(GUI_LD_ADD) $(XML_LD_ADD)
 
 burrGui_CPPFLAGS=$(GUI_CPP_ADD) $(XML_CPP_ADD) -Wall
-burrGui_LDFLAGS=$(GUI_LD_ADD) $(XML_LD_ADD)
 burrGui_SOURCES=VoxelView.cpp VoxelView.h \
 		voxeldrawer.cpp voxeldrawer.h \
 		voxeldrawer_0.cpp voxeldrawer_0.h \
