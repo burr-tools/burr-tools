@@ -27,7 +27,7 @@ class puzzle_c;
 
 class guiGridType_c;
 
-class PlacementBrowser : public Fl_Double_Window {
+class placementBrowser_c : public Fl_Double_Window {
 
   View3dGroup *view3d;
 
@@ -42,7 +42,7 @@ class PlacementBrowser : public Fl_Double_Window {
 
 public:
 
-  PlacementBrowser(puzzle_c * p, unsigned int prob, const guiGridType_c * ggt);
+  placementBrowser_c(puzzle_c * p, unsigned int prob, const guiGridType_c * ggt);
 
   int handle(int event);
 

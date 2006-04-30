@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "PlacementBrowser.h"
+#include "placementbrowser.h"
 
 #include "../lib/assembler_0.h"
 #include "../lib/puzzle.h"
@@ -25,11 +25,11 @@
 #define WINDOWSIZE_X 400
 #define WINDOWSIZE_Y 400
 
-static void cb_close_stub(Fl_Widget* o, void* v) { ((PlacementBrowser*)v)->hide(); }
-static void cb_piece_stub(Fl_Widget* o, void* v) { ((PlacementBrowser*)v)->cb_piece((Fl_Value_Slider*)o); }
-static void cb_placement_stub(Fl_Widget* o, void* v) { ((PlacementBrowser*)v)->cb_placement((Fl_Value_Slider*)o); }
+static void cb_close_stub(Fl_Widget* o, void* v) { ((placementBrowser_c*)v)->hide(); }
+static void cb_piece_stub(Fl_Widget* o, void* v) { ((placementBrowser_c*)v)->cb_piece((Fl_Value_Slider*)o); }
+static void cb_placement_stub(Fl_Widget* o, void* v) { ((placementBrowser_c*)v)->cb_placement((Fl_Value_Slider*)o); }
 
-void PlacementBrowser::cb_piece(Fl_Value_Slider* o) {
+void placementBrowser_c::cb_piece(Fl_Value_Slider* o) {
 
   placementSelector->value(0);
 
@@ -56,7 +56,7 @@ void PlacementBrowser::cb_piece(Fl_Value_Slider* o) {
   view3d->showPlacement(puzzle, problem, piece, trans, x, y, z);
 }
 
-void PlacementBrowser::cb_placement(Fl_Value_Slider* o) {
+void placementBrowser_c::cb_placement(Fl_Value_Slider* o) {
 
   unsigned int piece = (int)pieceSelector->value();
   int val = (unsigned int)o->value();
@@ -71,7 +71,7 @@ void PlacementBrowser::cb_placement(Fl_Value_Slider* o) {
 }
 
 
-PlacementBrowser::PlacementBrowser(puzzle_c * p, unsigned int prob, const guiGridType_c * ggt) :
+placementBrowser_c::placementBrowser_c(puzzle_c * p, unsigned int prob, const guiGridType_c * ggt) :
   Fl_Double_Window(WINDOWSIZE_X, WINDOWSIZE_Y), puzzle(p), problem(prob) {
 
   bt_assert(puzzle->probGetAssembler(problem));
@@ -109,7 +109,7 @@ PlacementBrowser::PlacementBrowser(puzzle_c * p, unsigned int prob, const guiGri
   set_modal();
 }
 
-int PlacementBrowser::handle(int event) {
+int placementBrowser_c::handle(int event) {
 
   if (Fl_Double_Window::handle(event))
     return 1;

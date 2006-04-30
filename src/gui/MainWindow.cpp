@@ -24,7 +24,7 @@
 #include "gzstream.h"
 #include "configuration.h"
 #include "GroupsEditor.h"
-#include "PlacementBrowser.h"
+#include "placementbrowser.h"
 #include "ImageExport.h"
 #include "Images.h"
 #include "guigridtype.h"
@@ -701,7 +701,7 @@ void UserInterface::cb_BtnPlacementBrowser(void) {
 
   unsigned int prob = solutionProblem->getSelection();
 
-  PlacementBrowser * plbr = new PlacementBrowser(puzzle, prob, ggt);
+  placementBrowser_c * plbr = new placementBrowser_c(puzzle, prob, ggt);
 
   plbr->show();
 

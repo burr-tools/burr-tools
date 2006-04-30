@@ -16,6 +16,7 @@ burrGui_SOURCES=\
 		image.cpp image.h \
                 main.cpp \
                 piececolor.cpp piececolor.h \
+                placementbrowser.cpp placementbrowser.h \
 		statuswindow.cpp statuswindow.h \
                 voxeldrawer.cpp voxeldrawer.h \
 		voxeldrawer_0.cpp voxeldrawer_0.h \
@@ -27,7 +28,6 @@ burrGui_SOURCES=\
                 gzstream.cpp gzstream.h \
                 Fl_Table.cpp Fl_Table.h \
                 GroupsEditor.cpp GroupsEditor.h \
-                PlacementBrowser.cpp PlacementBrowser.h \
 		Layouter.cpp Layouter.h \
 		ImageExport.cpp ImageExport.h \
 		tr.c tr.h \
