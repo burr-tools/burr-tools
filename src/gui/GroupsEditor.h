@@ -22,12 +22,12 @@
 
 class puzzle_c;
 
-class GroupsEditor;
+class groupsEditorTab_c;
 
 /* the window that contins the group edit table */
 class groupsEditorWindow : public Fl_Double_Window {
 
-  GroupsEditor * tab;
+  groupsEditorTab_c * tab;
 
 public:
 

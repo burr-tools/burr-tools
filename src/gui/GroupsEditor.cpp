@@ -29,7 +29,7 @@
 
 /* this is the groups editor table
  */
-class GroupsEditor : public Fl_Table {
+class groupsEditorTab_c : public Fl_Table {
 
   /* the puzzle and the problem to edit */
   puzzle_c * puzzle;
@@ -59,7 +59,7 @@ class GroupsEditor : public Fl_Table {
 
 public:
 
-  GroupsEditor(int x, int y, int w, int h, puzzle_c * puzzle, unsigned int problem);
+  groupsEditorTab_c(int x, int y, int w, int h, puzzle_c * puzzle, unsigned int problem);
 
   /* add a group to the puzzle and a column to the table
    */
@@ -78,7 +78,7 @@ public:
 };
 
 /* draw a cell of the table */
-void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, int w, int h) {
+void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int y, int w, int h) {
 
   switch(context) {
 
@@ -221,8 +221,8 @@ void GroupsEditor::draw_cell(TableContext context, int r, int c, int x, int y, i
 }
 
 /* called when the input line has been completed */
-static void cb_input_stub(Fl_Widget*, void* v) { ((GroupsEditor*)v)->cb_input(); }
-void GroupsEditor::cb_input(void) {
+static void cb_input_stub(Fl_Widget*, void* v) { ((groupsEditorTab_c*)v)->cb_input(); }
+void groupsEditorTab_c::cb_input(void) {
 
   /* we have either changed the count for the shape, or the group count */
   if (editGroup == 0)
@@ -236,8 +236,8 @@ void GroupsEditor::cb_input(void) {
 }
 
 /* handle mouse events for the tables */
-static void cb_tab_stub(Fl_Widget*, void *v) { ((GroupsEditor*)v)->cb_tab(); }
-void GroupsEditor::cb_tab(void)
+static void cb_tab_stub(Fl_Widget*, void *v) { ((groupsEditorTab_c*)v)->cb_tab(); }
+void groupsEditorTab_c::cb_tab(void)
 {
   int row = callback_row();
   int col = callback_col();
@@ -287,7 +287,7 @@ void GroupsEditor::cb_tab(void)
   }
 }
 
-GroupsEditor::GroupsEditor(int x, int y, int w, int h, puzzle_c * puzzle, unsigned int problem) : Fl_Table(x, y, w, h), changed(false) {
+groupsEditorTab_c::groupsEditorTab_c(int x, int y, int w, int h, puzzle_c * puzzle, unsigned int problem) : Fl_Table(x, y, w, h), changed(false) {
 
   this->puzzle = puzzle;
   this->prob = problem;
@@ -324,7 +324,7 @@ GroupsEditor::GroupsEditor(int x, int y, int w, int h, puzzle_c * puzzle, unsign
   end();
 }
 
-void GroupsEditor::addGroup(void) {
+void groupsEditorTab_c::addGroup(void) {
 
   maxGroup++;
 
@@ -334,7 +334,7 @@ void GroupsEditor::addGroup(void) {
   col_width(maxGroup+1, 35);
 }
 
-void GroupsEditor::finishEdit(void) {
+void groupsEditorTab_c::finishEdit(void) {
   if (input->visible()) {
     cb_input();
   }
@@ -363,7 +363,7 @@ void groupsEditorWindow::hide(void) {
 
 groupsEditorWindow::groupsEditorWindow(puzzle_c * p, unsigned int pr) : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
 
-  tab = new GroupsEditor(SZ_GAP, SZ_GAP, SZ_WINDOW_X-2*SZ_GAP, SZ_WINDOW_Y-3*SZ_GAP-SZ_BUTTON_Y, p, pr);
+  tab = new groupsEditorTab_c(SZ_GAP, SZ_GAP, SZ_WINDOW_X-2*SZ_GAP, SZ_WINDOW_Y-3*SZ_GAP-SZ_BUTTON_Y, p, pr);
 
   new FlatButton(SZ_GAP, SZ_WINDOW_Y-SZ_GAP-SZ_BUTTON_Y, (SZ_WINDOW_X-3*SZ_GAP)/2, SZ_BUTTON_Y, "Add Group", "Add another group", cb_AddGroup_stub, this);
   new FlatButton((SZ_GAP+SZ_WINDOW_X)/2, SZ_WINDOW_Y-SZ_GAP-SZ_BUTTON_Y, (SZ_WINDOW_X-3*SZ_GAP)/2, SZ_BUTTON_Y, "Close", "Close Window", cb_CloseWindow_stub, this);
