@@ -2391,70 +2391,46 @@ void mainWindow_c::CreateShapeTab(int x, int y, int w, int h) {
   int editHight = hi - (hi/numGroups) * 4 + editFixedHight;
 
   {
-    int lh = pieceHight;
-
-    Fl_Group* group = new Fl_Group(x, y, w, lh);
+    layouter_c * group = new layouter_c();
     group->box(FL_FLAT_BOX);
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Shapes", false);
-    y += SZ_SEPARATOR_Y;
-    lh -= SZ_SEPARATOR_Y;
+    group->resize(x, y, w, pieceHight);
 
-    int bw = (w - 7*SZ_GAP - 2*SZ_BUTTON_Y) / 10;
-    {
-      Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, 2*bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnNewShape = new FlatButton(x+0*SZ_GAP+0*bw, y, 2*bw, SZ_BUTTON_Y, "New", " Add another piece ", cb_NewShape_stub, this);
-      o->resizable(BtnNewShape);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+1*SZ_GAP+2*bw, y, 2*bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelShape = new FlatButton(x+1*SZ_GAP+2*bw, y, 2*bw, SZ_BUTTON_Y, "Delete", " Delete selected piece ", cb_DeleteShape_stub, this);
-      o->resizable(BtnDelShape);
-      o->end();
-    }
+    new LSeparator_c(0, 0, 1, 1, "Shapes", false);
 
-    {
-      Fl_Group * o = new Fl_Group(x+2*SZ_GAP+4*bw, y, 2*bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnCpyShape = new FlatButton(x+2*SZ_GAP+4*bw, y, 2*bw, SZ_BUTTON_Y, "Copy", " Copy selected piece ", cb_CopyShape_stub, this);
-      o->resizable(BtnCpyShape);
-      o->end();
-    }
+    layouter_c * o = new layouter_c(0, 1);
 
-    {
-      Fl_Group * o = new Fl_Group( x+3*SZ_GAP+6*bw, y, 2*bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnRenShape = new FlatButton(x+3*SZ_GAP+6*bw, y, 2*bw, SZ_BUTTON_Y, "Label", " Give the selected shape a name ", cb_NameShape_stub, this);
-      o->resizable(BtnRenShape);
-      o->end();
-    }
+    BtnNewShape =   new LFlatButton_c(0, 0, 1, 1, "New", " Add another piece ", cb_NewShape_stub, this);
+    ((LFlatButton_c*)BtnNewShape)->weight(1, 0);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    BtnDelShape =   new LFlatButton_c(2, 0, 1, 1, "Delete", " Delete selected piece ", cb_DeleteShape_stub, this);
+    ((LFlatButton_c*)BtnDelShape)->weight(1, 0);
+    (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnCpyShape =   new LFlatButton_c(4, 0, 1, 1, "Copy", " Copy selected piece ", cb_CopyShape_stub, this);
+    ((LFlatButton_c*)BtnCpyShape)->weight(1, 0);
+    (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnRenShape =   new LFlatButton_c(6, 0, 1, 1, "Label", " Give the selected shape a name ", cb_NameShape_stub, this);
+    ((LFlatButton_c*)BtnRenShape)->weight(1, 0);
+    (new LFl_Box(7, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnWeightInc =  new LFlatButton_c(8, 0, 1, 1, "W+", " Increase Weight of the selected shape ",cb_WeightInc_stub, this);
+    (new LFl_Box(9, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnWeightDec =  new LFlatButton_c(10, 0, 1, 1, "W-", " Decrease Weight of the selected shape ",cb_WeightDec_stub, this);
+    (new LFl_Box(11, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnShapeLeft =  new LFlatButton_c(12, 0, 1, 1, "@-14->", " Exchange current shape with previous shape ", cb_ShapeLeft_stub, this);
+    (new LFl_Box(13, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnShapeRight = new LFlatButton_c(14, 0, 1, 1, "@-16->", " Exchange current shape with next shape ", cb_ShapeRight_stub, this);
 
-    {
-      Fl_Group * o = new Fl_Group( x+4*SZ_GAP+8*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnWeightInc = new FlatButton(x+4*SZ_GAP+8*bw, y, bw, SZ_BUTTON_Y, "W+", " Increase Weight of the selected shape ",cb_WeightInc_stub, this);
-      o->resizable(BtnRenShape);
-      o->end();
-    }
+    o->end();
 
-    {
-      Fl_Group * o = new Fl_Group( x+5*SZ_GAP+9*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnWeightDec = new FlatButton(x+5*SZ_GAP+9*bw, y, bw, SZ_BUTTON_Y, "W-", " Decrease Weight of the selected shape ",cb_WeightDec_stub, this);
-      o->resizable(BtnRenShape);
-      o->end();
-    }
+    (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    BtnShapeLeft = new FlatButton(x+w-SZ_GAP-2*SZ_BUTTON_Y, y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-14->", " Exchange current shape with previous shape ", cb_ShapeLeft_stub, this);
-    BtnShapeRight = new FlatButton(x+w-SZ_BUTTON_Y,          y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-16->", " Exchange current shape with next shape ", cb_ShapeRight_stub, this);
-
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
-
-    PcSel = new PieceSelector(x, y, w, lh, puzzle);
-    Fl_Group * selGroup = new BlockListGroup(x, y, w, lh, PcSel);
+    PcSel = new PieceSelector(x, y, w, pieceHight, puzzle);
+    LBlockListGroup_c * selGroup = new LBlockListGroup_c(0, 3, 1, 1, PcSel);
     selGroup->callback(cb_PcSel_stub, this);
     selGroup->tooltip(" Select the shape that you want to edit ");
+    selGroup->weight(1, 1);
 
-    y += lh;
+    y += pieceHight;
 
-    group->resizable(selGroup);
     group->end();
   }
 

@@ -22,6 +22,7 @@
 #include "voxeldrawer.h"
 #include "BlockList.h"
 #include "Images.h"
+#include "Layouter.h"
 
 #include <FL/Fl.H>
 #include <FL/Fl_Button.H>
@@ -67,6 +68,28 @@ public:
     image(img);
     deimage(inact);
     clear_visible_focus();
+  }
+};
+
+class LFlatButton_c : public FlatButton, public layoutable_c {
+
+public:
+
+  LFlatButton_c(int x, int y, int w, int h, const char * txt, const char * tt) : FlatButton(0, 0, 0, 0, txt, tt), layoutable_c(x, y, w, h) {
+  }
+
+  LFlatButton_c(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback* cb, void * cb_para) : FlatButton(0, 0, 0, 0, txt, tt, cb, cb_para), layoutable_c(x, y, w, h) {
+  }
+
+  LFlatButton_c(int x, int y, int w, int h, Fl_Image * img, Fl_Image * inact, const char * tt, Fl_Callback1* cb, long cb_para) : FlatButton(0, 0, 0, 0, img, inact, tt, cb, cb_para), layoutable_c(x, y, w, h) {
+  }
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 0;
+    fl_font(labelfont(), labelsize());
+    fl_measure(label(), *width, *height);
+    *width += 4;
+    *height += 4;
   }
 };
 
@@ -236,6 +259,18 @@ public:
   int getReason(void) { return callbackReason; }
 };
 
+class LBlockListGroup_c : public BlockListGroup, public layoutable_c {
+
+  public:
+
+  LBlockListGroup_c(int x, int y, int w, int h, BlockList * l) : BlockListGroup(0, 0, 100, 100, l), layoutable_c(x, y, w, h) {}
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width += 30;
+    *height += 20;
+  }
+};
+
 class ConstraintsGroup : public Fl_Group {
 
   Fl_Slider * Slider;
@@ -299,6 +334,18 @@ class Separator : public Fl_Group {
 public:
 
   Separator(int x, int y, int w, int h, const char * label, bool button);
+};
+
+class LSeparator_c : public Fl_Group, public layoutable_c  {
+
+public:
+
+  LSeparator_c(int x, int y, int w, int h, const char * label, bool button);
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 10;
+    *height = 10;
+  }
 };
 
 // a group that can contain only buttons and one button is

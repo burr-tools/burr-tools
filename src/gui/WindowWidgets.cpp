@@ -760,6 +760,36 @@ Separator::Separator(int x, int y, int w, int h, const char * label, bool button
   end();
 }
 
+LSeparator_c::LSeparator_c(int x, int y, int w, int h, const char * label, bool button) : Fl_Group(0, 0, 300, 10), layoutable_c(x, y, w, h) {
+
+  x = 0;
+  y = 0;
+  w = 300;
+  h = 10;
+
+  if (label) {
+    int lw, lh;
+
+    fl_font(labelfont(), labelsize()-4);
+
+    lw = lh = 0;
+    fl_measure(label, lw, lh);
+    (new Fl_Box(FL_FLAT_BOX, x, y, lw+4, h, label))->labelsize(labelsize()-4);
+
+    x += lw + 6;
+    w -= lw + 6;
+  }
+
+  if (button) {
+    new Fl_Box(FL_THIN_UP_BOX, x+w-8, y+h/2-4, 8, 8, 0);
+    w -= 8;
+  }
+
+  resizable(new Fl_Box(FL_THIN_DOWN_BOX, x, y+h/2-1, w, 2, 0));
+
+  end();
+}
+
 ResultViewer::ResultViewer(int x, int y, int w, int h, puzzle_c * p) : Fl_Box(x, y, w, h), puzzle(p), problem(0) {
   bt_assert(p);
   bg = color();
