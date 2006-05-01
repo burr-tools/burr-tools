@@ -18,10 +18,6 @@
 #ifndef __ARCBALL_H__
 #define __ARCBALL_H__
 
-#ifdef WIN32
-#include <windows.h>
-#endif
-
 /**
  * This class provides an implementation of an arcball. The mathematics of this is beyond me.
  * Arcball is an algorithm that allows you to meaningful rotate objects by dragging them.
