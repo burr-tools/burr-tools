@@ -2680,52 +2680,40 @@ void mainWindow_c::CreateProblemTab(int x, int y, int w, int h) {
   }
 
   {
-    int lh = piecesHight;
-
-    Fl_Group* group = new Fl_Group(x, y, w, lh);
+    layouter_c * group = new layouter_c();
     group->box(FL_FLAT_BOX);
+    group->resize(x, y, w, piecesHight);
 
-    new Separator(x, y, w, SZ_SEPARATOR_Y, 0, true);
-    y += SZ_SEPARATOR_Y;
-    lh -= SZ_SEPARATOR_Y;
+    new LSeparator_c(0, 0, 1, 1, 0, true);
 
-    int hw = (w - 4*SZ_GAP-2*SZ_BUTTON_Y)/3;
+    layouter_c * o = new layouter_c(0, 1);
 
-    {
-      Fl_Group * o = new Fl_Group(x,           y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnAddShape = new FlatButton(x,           y, hw         , SZ_BUTTON_Y, "+1", " Add another one of the selected shape ", cb_AddShapeToProblem_stub, this);
-      o->resizable(BtnAddShape);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+hw+SZ_GAP, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnRemShape = new FlatButton(x+hw+SZ_GAP, y, hw, SZ_BUTTON_Y, "-1", " Remove one of the selected shapes ", cb_RemoveShapeFromProblem_stub, this);
-      o->resizable(BtnRemShape);
-      o->end();
-    }
-    {
+    BtnAddShape = new LFlatButton_c(0, 0, 1, 1, "+1", " Add another one of the selected shape ", cb_AddShapeToProblem_stub, this);
+    ((LFlatButton_c*)BtnAddShape)->weight(1, 0);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    BtnRemShape = new LFlatButton_c(2, 0, 1, 1, "-1", " Remove one of the selected shapes ", cb_RemoveShapeFromProblem_stub, this);
+    ((LFlatButton_c*)BtnRemShape)->weight(1, 0);
+    (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnGroup =    new LFlatButton_c(4, 0, 1, 1, "Group", " Create or edit groups ", cb_ShapeGroup_stub, this);
+    ((LFlatButton_c*)BtnGroup)->weight(1, 0);
+    (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnProbShapeLeft = new LFlatButton_c(6, 0, 1, 1, "@-14->", " Exchange current shape with previous shape ", cb_ProbShapeLeft_stub, this);
+    (new LFl_Box(7, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnProbShapeRight = new LFlatButton_c(8, 0, 1, 1, "@-16->", " Exchange current shape with next shape ", cb_ProbShapeRight_stub, this);
 
-      Fl_Group * o = new Fl_Group(x+2*(hw+SZ_GAP), y, w-2*hw-3*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y);
-      BtnGroup = new FlatButton(x+2*(hw+SZ_GAP)  , y, w-2*hw-4*SZ_GAP-2*SZ_BUTTON_Y, SZ_BUTTON_Y, "Group", " Create or edit groups ", cb_ShapeGroup_stub, this);
-      o->resizable(BtnGroup);
-      o->end();
-    }
+    o->end();
 
-    BtnProbShapeLeft = new FlatButton(x+w-SZ_GAP-2*SZ_BUTTON_Y, y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-14->", " Exchange current shape with previous shape ", cb_ProbShapeLeft_stub, this);
-    BtnProbShapeRight = new FlatButton(x+w-SZ_BUTTON_Y,          y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-16->", " Exchange current shape with next shape ", cb_ProbShapeRight_stub, this);
+    (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
-
-    PiecesCountList = new PiecesList(x, y, w, lh-SZ_GAP, puzzle);
-    Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh, PiecesCountList);
+    PiecesCountList = new PiecesList(x, y, w, piecesHight, puzzle);
+    LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 3, 1, 1, PiecesCountList);
     shapeGroup->callback(cb_PiecesClicked_stub, this);
     shapeGroup->tooltip(" Show which shapes are used in the current problem and how often they are used, can be used to select shapes ");
+    shapeGroup->weight(1, 1);
 
-    group->resizable(shapeGroup);
     group->end();
 
-    y += lh;
+    y += piecesHight;
   }
 
   {
