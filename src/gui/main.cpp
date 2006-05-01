@@ -17,7 +17,7 @@
  */
 
 
-#include "MainWindow.h"
+#include "mainwindow.h"
 #include "WindowWidgets.h"
 #include "gzstream.h"
 
@@ -35,7 +35,7 @@ class my_Fl : public Fl {
 
 public:
 
-  static int run(UserInterface * ui) {
+  static int run(mainWindow_c * ui) {
 
     time_t start = time(0);
 
@@ -56,7 +56,7 @@ int main(int argc, char ** argv) {
   xml::init xmlinit;
   bt_assert_init();
 
-  UserInterface *ui = new UserInterface(new gridType_c());
+  mainWindow_c *ui = new mainWindow_c(new gridType_c());
 
   int res = 0;
 

@@ -15,8 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#ifndef MainWindow_h
-#define MainWindow_h
+#ifndef __MAINWINDOW_H__
+#define __MAINWINDOW_H__
 
 #include "Images.h"
 
@@ -56,7 +56,7 @@ class Fl_Value_Input;
 class Fl_Menu_Bar;
 class Fl_Choice;
 
-class UserInterface : public Fl_Double_Window {
+class mainWindow_c : public Fl_Double_Window {
 
   puzzle_c * puzzle;
   guiGridType_c * ggt;  // this is the guigridtype for the puzzle, is must always be in sync
@@ -170,8 +170,8 @@ class UserInterface : public Fl_Double_Window {
 
 public:
 
-  UserInterface(gridType_c * gt);
-  virtual ~UserInterface();
+  mainWindow_c(gridType_c * gt);
+  virtual ~mainWindow_c();
 
   int handle(int event);
 
