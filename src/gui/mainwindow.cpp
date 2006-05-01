@@ -2717,24 +2717,21 @@ void mainWindow_c::CreateProblemTab(int x, int y, int w, int h) {
   }
 
   {
-    int lh = colorsHight;
-
-    Fl_Group* group = new Fl_Group(x, y, w, lh);
+    layouter_c * group = new layouter_c();
     group->box(FL_FLAT_BOX);
+    group->resize(x, y, w, colorsHight);
 
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Colour Assignment", true);
-    y += SZ_SEPARATOR_Y;
-    lh -= SZ_SEPARATOR_Y;
+    new LSeparator_c(0, 0, 1, 1, "Colour Assignment", true);
 
-    colorAssignmentSelector = new ColorSelector(x, y, w, lh, puzzle, false);
-    Fl_Group * colGroup = new BlockListGroup(x, y, w, lh, colorAssignmentSelector);
+    colorAssignmentSelector = new ColorSelector(x, y, w, colorsHight, puzzle, false);
+    LBlockListGroup_c * colGroup = new LBlockListGroup_c(0, 1, 1, 1, colorAssignmentSelector);
     colGroup->callback(cb_ColorAssSel_stub, this);
     colGroup->tooltip(" Select colour to add or remove from constraints ");
+    colGroup->weight(1, 1);
 
-    group->resizable(colGroup);
     group->end();
 
-    y += lh;
+    y += colorsHight;
   }
 
   {
