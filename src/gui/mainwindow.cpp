@@ -2538,44 +2538,35 @@ void mainWindow_c::CreateShapeTab(int x, int y, int w, int h) {
   }
 
   {
-    int lh = colorsHight;
-
-    Fl_Group* group = new Fl_Group(x, y, w, lh);
+    layouter_c * group = new layouter_c();
     group->box(FL_FLAT_BOX);
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Colours", true);
-    y += SZ_SEPARATOR_Y;
-    lh -= SZ_SEPARATOR_Y;
+    group->resize(x, y, w, colorsHight);
 
-    int bw = (w - 2*SZ_GAP) / 3;
-    {
-      Fl_Group * o = new Fl_Group(x, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnNewColor = new FlatButton(x          , y, bw, SZ_BUTTON_Y, "Add", " Add another colour ", cb_AddColor_stub, this);
-      o->resizable(BtnNewColor);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+bw+SZ_GAP, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelColor = new FlatButton(x+SZ_GAP+bw, y, bw, SZ_BUTTON_Y, "Remove", " Remove selected colour ", cb_RemoveColor_stub, this);
-      o->resizable(BtnDelColor);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+2*(bw+SZ_GAP), y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnChnColor = new FlatButton(x+2*(SZ_GAP+bw), y, w-2*SZ_GAP-2*bw, SZ_BUTTON_Y, "Edit", " Change selected colour ", cb_ChangeColor_stub, this);
-      o->resizable(BtnChnColor);
-      o->end();
-    }
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
+    new LSeparator_c(0, 0, 1, 1, "Colours", true);
 
-    colorSelector = new ColorSelector(x, y, w, lh, puzzle, true);
-    Fl_Group * colGroup = new BlockListGroup(x, y, w, lh, colorSelector);
+    layouter_c * o = new layouter_c(0, 1);
+
+    BtnNewColor = new LFlatButton_c(0, 0, 1, 1, "Add", " Add another colour ", cb_AddColor_stub, this);
+    ((LFlatButton_c*)BtnNewColor)->weight(1, 0);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    BtnDelColor = new LFlatButton_c(2, 0, 1, 1, "Remove", " Remove selected colour ", cb_RemoveColor_stub, this);
+    ((LFlatButton_c*)BtnDelColor)->weight(1, 0);
+    (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnChnColor = new LFlatButton_c(4, 0, 1, 1, "Edit", " Change selected colour ", cb_ChangeColor_stub, this);
+    ((LFlatButton_c*)BtnChnColor)->weight(1, 0);
+
+    o->end();
+
+    (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
+
+    colorSelector = new ColorSelector(x, y, w, colorsHight, puzzle, true);
+    LBlockListGroup_c * colGroup = new LBlockListGroup_c(0, 3, 1, 1, colorSelector);
     colGroup->callback(cb_ColSel_stub, this);
     colGroup->tooltip(" Select colour to use for all editing operations ");
+    colGroup->weight(1, 1);
 
-    y += lh;
+    y += colorsHight;
 
-    group->resizable(colorSelector);
     group->end();
   }
 
