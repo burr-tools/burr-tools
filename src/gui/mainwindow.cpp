@@ -2735,47 +2735,36 @@ void mainWindow_c::CreateProblemTab(int x, int y, int w, int h) {
   }
 
   {
-    int lh = matrixHight;
-
-    Fl_Group* group = new Fl_Group(x, y, w, lh);
+    layouter_c * group = new layouter_c();
     group->box(FL_FLAT_BOX);
+    group->resize(x, y, w, matrixHight);
 
-    new Separator(x, y, w, SZ_SEPARATOR_Y, 0, true);
-    y += SZ_SEPARATOR_Y;
-    lh -= SZ_SEPARATOR_Y;
+    new LSeparator_c(0, 0, 1, 1, 0, true);
 
-    int hw = (w - 2*SZ_GAP) / 3;
+    layouter_c * o = new layouter_c(0, 1);
 
-    {
-      Fl_Group * o = new Fl_Group(x, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnColSrtPc = new FlatButton(x, y, hw, SZ_BUTTON_Y, "Sort by Piece", " Sort colour constraints by piece ", cb_CCSortByPiece_stub, this);
-      BtnColSrtPc->deactivate();
-      o->resizable(BtnColSrtPc);
-      o->end();
-    }
+    BtnColSrtPc = new LFlatButton_c(0, 0, 1, 1, "Sort by Piece", " Sort colour constraints by piece ", cb_CCSortByPiece_stub, this);
+    ((LFlatButton_c*)BtnColSrtPc)->weight(1, 0);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    BtnColAdd = new LFlatButton_c(2, 0, 1, 1, "@-12->", " Add colour to constraint ", cb_AllowColor_stub, this);
+    BtnColRem = new LFlatButton_c(3, 0, 1, 1, "@-18->", " Add colour to constraint ", cb_DisallowColor_stub, this);
+    (new LFl_Box(4, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnColSrtRes = new LFlatButton_c(5, 0, 1, 1, "Sort by Result", " Sort Colour Constraints by Result ", cb_CCSortByResult_stub, this);
+    ((LFlatButton_c*)BtnColSrtRes)->weight(1, 0);
 
-    BtnColAdd = new FlatButton(x+hw+SZ_GAP     , y, hw/2, SZ_BUTTON_Y, "@-12->", " Add colour to constraint ", cb_AllowColor_stub, this);
-    BtnColRem = new FlatButton(x+hw+SZ_GAP+hw/2, y, hw/2, SZ_BUTTON_Y, "@-18->", " Add colour to constraint ", cb_DisallowColor_stub, this);
+    o->end();
 
-    {
-      Fl_Group * o = new Fl_Group(x+2*hw+SZ_GAP, y, hw+SZ_GAP, SZ_BUTTON_Y);
-      BtnColSrtRes = new FlatButton(x+2*hw+2*SZ_GAP, y, w-2*(hw+SZ_GAP), SZ_BUTTON_Y, "Sort by Result", " Sort Colour Constraints by Result ", cb_CCSortByResult_stub, this);
-      o->resizable(BtnColSrtRes);
-      o->end();
-    }
+    (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    y += SZ_GAP + SZ_BUTTON_Y;
-    lh -= SZ_GAP + SZ_BUTTON_Y;
-
-    colconstrList = new ColorConstraintsEdit(x, y, w, lh, puzzle);
-    Fl_Group * colGroup = new ConstraintsGroup(x, y, w, lh, colconstrList);
+    colconstrList = new ColorConstraintsEdit(x, y, w, matrixHight, puzzle);
+    LConstraintsGroup_c * colGroup = new LConstraintsGroup_c(0, 3, 1, 1, colconstrList);
     colGroup->callback(cb_ColorConstrSel_stub, this);
     colGroup->tooltip(" Colour constraints for the current problem ");
+    colGroup->weight(1, 1);
 
-    group->resizable(colGroup);
     group->end();
 
-    y += lh;
+    y += matrixHight;
   }
 
   tile->end();

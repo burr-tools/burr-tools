@@ -266,8 +266,8 @@ class LBlockListGroup_c : public BlockListGroup, public layoutable_c {
   LBlockListGroup_c(int x, int y, int w, int h, BlockList * l) : BlockListGroup(0, 0, 100, 100, l), layoutable_c(x, y, w, h) {}
 
   virtual void getMinSize(int *width, int *height) const {
-    *width += 30;
-    *height += 20;
+    *width = 30;
+    *height = 20;
   }
 };
 
@@ -285,6 +285,19 @@ public:
   void cb_list(void);
 
   int getReason(void) { return callbackReason; }
+};
+
+class LConstraintsGroup_c : public ConstraintsGroup, public layoutable_c {
+
+  public:
+
+  LConstraintsGroup_c(int x, int y, int w, int h, ColorConstraintsEdit * l) : ConstraintsGroup(0, 0, 100, 100, l), layoutable_c(x, y, w, h) {}
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 30;
+    *height = 20;
+  }
+
 };
 
 // the groups with the 3d view and the zoom slider
