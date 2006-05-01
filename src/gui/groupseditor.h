@@ -25,13 +25,13 @@ class puzzle_c;
 class groupsEditorTab_c;
 
 /* the window that contins the group edit table */
-class groupsEditorWindow : public Fl_Double_Window {
+class groupsEditor_c : public Fl_Double_Window {
 
   groupsEditorTab_c * tab;
 
 public:
 
-  groupsEditorWindow(puzzle_c * p, unsigned int pr);
+  groupsEditor_c(puzzle_c * p, unsigned int pr);
 
   void cb_AddGroup(void);
   void cb_CloseWindow(void);

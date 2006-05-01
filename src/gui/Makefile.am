@@ -12,6 +12,7 @@ burrGui_SOURCES=\
                 grideditor_0.cpp grideditor_0.h \
                 grideditor_1.cpp grideditor_1.h \
 		gridtypegui.cpp gridtypegui.h \
+                groupseditor.cpp groupseditor.h \
 		guigridtype.cpp guigridtype.h \
 		image.cpp image.h \
 		imageexport.cpp imageexport.h \
@@ -28,7 +29,6 @@ burrGui_SOURCES=\
                 WindowWidgets.cpp WindowWidgets.h \
                 gzstream.cpp gzstream.h \
                 Fl_Table.cpp Fl_Table.h \
-                GroupsEditor.cpp GroupsEditor.h \
 		Layouter.cpp Layouter.h \
 		tr.c tr.h \
 		Images.cpp Images.h \

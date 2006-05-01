@@ -19,7 +19,7 @@
 
 #include "gzstream.h"
 #include "configuration.h"
-#include "GroupsEditor.h"
+#include "groupseditor.h"
 #include "placementbrowser.h"
 #include "imageexport.h"
 #include "guigridtype.h"
@@ -679,7 +679,7 @@ void mainWindow_c::cb_ShapeGroup(void) {
 
   unsigned int prob = problemSelector->getSelection();
 
-  groupsEditorWindow * groupEditWin = new groupsEditorWindow(puzzle, prob);
+  groupsEditor_c * groupEditWin = new groupsEditor_c(puzzle, prob);
 
   groupEditWin->show();
 

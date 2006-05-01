@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "GroupsEditor.h"
+#include "groupseditor.h"
 #include "piececolor.h"
 #include "WindowWidgets.h"
 
@@ -340,18 +340,18 @@ void groupsEditorTab_c::finishEdit(void) {
   }
 }
 
-static void cb_AddGroup_stub(Fl_Widget* o, void* v) { ((groupsEditorWindow*)v)->cb_AddGroup(); }
-void groupsEditorWindow::cb_AddGroup(void) {
+static void cb_AddGroup_stub(Fl_Widget* o, void* v) { ((groupsEditor_c*)v)->cb_AddGroup(); }
+void groupsEditor_c::cb_AddGroup(void) {
   tab->addGroup();
 }
 
-static void cb_CloseWindow_stub(Fl_Widget* o, void* v) { ((groupsEditorWindow*)v)->cb_CloseWindow(); }
-void groupsEditorWindow::cb_CloseWindow(void) {
+static void cb_CloseWindow_stub(Fl_Widget* o, void* v) { ((groupsEditor_c*)v)->cb_CloseWindow(); }
+void groupsEditor_c::cb_CloseWindow(void) {
   hide();
 }
 
 /* when hiding the window, first close active editing tasks */
-void groupsEditorWindow::hide(void) {
+void groupsEditor_c::hide(void) {
   tab->finishEdit();
   Fl_Double_Window::hide();
 }
@@ -361,7 +361,7 @@ void groupsEditorWindow::hide(void) {
 #define SZ_GAP 5                               // gap between elements
 #define SZ_BUTTON_Y 20
 
-groupsEditorWindow::groupsEditorWindow(puzzle_c * p, unsigned int pr) : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
+groupsEditor_c::groupsEditor_c(puzzle_c * p, unsigned int pr) : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
 
   tab = new groupsEditorTab_c(SZ_GAP, SZ_GAP, SZ_WINDOW_X-2*SZ_GAP, SZ_WINDOW_Y-3*SZ_GAP-SZ_BUTTON_Y, p, pr);
 
@@ -376,7 +376,7 @@ groupsEditorWindow::groupsEditorWindow(puzzle_c * p, unsigned int pr) : Fl_Doubl
 }
 
 
-bool groupsEditorWindow::changed(void) {
+bool groupsEditor_c::changed(void) {
   return tab->getChanged();
 }
 
