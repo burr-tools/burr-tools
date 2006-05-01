@@ -2648,43 +2648,35 @@ void mainWindow_c::CreateProblemTab(int x, int y, int w, int h) {
   }
 
   {
-    int lh = shapesHight;
-
-    Fl_Group* group = new Fl_Group(x, y, w, lh);
+    layouter_c * group = new layouter_c();
     group->box(FL_FLAT_BOX);
+    group->resize(x, y, w, shapesHight);
 
-    int hw = (w - SZ_GAP)/4;
+    new LSeparator_c(0, 0, 1, 1, "Piece Assignment", true);
 
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Piece Assignment", true);
-    y += SZ_SEPARATOR_Y;
-    lh -= SZ_SEPARATOR_Y;
+    layouter_c * o = new layouter_c(0, 1);
 
-    {
-      Fl_Group * o = new Fl_Group(x,           y, 3*hw+SZ_GAP, SZ_BUTTON_Y);
-      problemResult = new ResultViewer(x, y, 3*hw, SZ_BUTTON_Y, puzzle);
-      problemResult->tooltip(" The result shape for the current problem ");
-      o->resizable(problemResult);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+3*hw+SZ_GAP, y, w-3*hw, SZ_BUTTON_Y);
-      BtnSetResult = new FlatButton(x+3*hw+SZ_GAP, y, w-3*hw-SZ_GAP, SZ_BUTTON_Y, "Set Result", " Set selected shape as result ", cb_ShapeToResult_stub, this);
-      o->resizable(BtnSetResult);
-      o->end();
-    }
+    problemResult = new ResultViewer(0, 0, 1, 1, puzzle);
+    problemResult->tooltip(" The result shape for the current problem ");
+    problemResult->weight(1, 0);
 
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
 
-    shapeAssignmentSelector = new PieceSelector(x, y, w, lh, puzzle);
-    Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh, shapeAssignmentSelector);
+    BtnSetResult = new LFlatButton_c(2, 0, 1, 1, "Set Result", " Set selected shape as result ", cb_ShapeToResult_stub, this);
+
+    o->end();
+
+    (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
+
+    shapeAssignmentSelector = new PieceSelector(x, y, w, shapesHight, puzzle);
+    LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 3, 1, 1, shapeAssignmentSelector);
     shapeGroup->callback(cb_ShapeSel_stub, this);
     shapeGroup->tooltip(" Select a shape to set as result or to add or remove from problem ");
+    shapeGroup->weight(1, 1);
 
-    group->resizable(shapeGroup);
     group->end();
 
-    y += lh;
+    y += shapesHight;
   }
 
   {

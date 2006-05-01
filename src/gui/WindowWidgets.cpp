@@ -790,7 +790,7 @@ LSeparator_c::LSeparator_c(int x, int y, int w, int h, const char * label, bool 
   end();
 }
 
-ResultViewer::ResultViewer(int x, int y, int w, int h, puzzle_c * p) : Fl_Box(x, y, w, h), puzzle(p), problem(0) {
+ResultViewer::ResultViewer(int x, int y, int w, int h, puzzle_c * p) : Fl_Box(0, 0, 10, 10), layoutable_c(x, y, w, h), puzzle(p), problem(0) {
   bt_assert(p);
   bg = color();
 //  setcontent();

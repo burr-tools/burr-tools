@@ -366,7 +366,7 @@ public:
   void select(int num);
 };
 
-class ResultViewer : public Fl_Box {
+class ResultViewer : public Fl_Box, public layoutable_c {
 
 private:
 
@@ -380,6 +380,11 @@ public:
   void setPuzzle(puzzle_c * p, unsigned int prob);
 //  void setcontent(void);
   void draw(void);
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 4;
+    *height = 4;
+  }
 
 };
 
