@@ -22,12 +22,6 @@
 #include <windows.h>
 #endif
 
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#else
-#include <GL/gl.h>
-#endif
-
 /**
  * This class provides an implementation of an arcball. The mathematics of this is beyond me.
  * Arcball is an algorithm that allows you to meaningful rotate objects by dragging them.
@@ -40,34 +34,34 @@
 class arcBall_c {
 
 protected:
-  void mapToSphere(GLfloat x, GLfloat y, GLfloat NewVec[3]) const;
-  void getDrag(GLfloat NewRot[4]) const;
+  void mapToSphere(float x, float y, float NewVec[3]) const;
+  void getDrag(float NewRot[4]) const;
 
 public:
   /**
    * create arcball class with an initial size for the drag area
    */
-  arcBall_c(GLfloat NewWidth, GLfloat NewHeight);
+  arcBall_c(float NewWidth, float NewHeight);
 
   /**
    * change the size of the area where the mouse can move to
    */
-  void setBounds(GLfloat NewWidth, GLfloat NewHeight);
+  void setBounds(float NewWidth, float NewHeight);
 
   /**
    * the mouse starts to drag, give the position of the cursor
    */
-  void click(GLfloat x, GLfloat y);
+  void click(float x, float y);
 
   /**
    * end the mouse draggin at the given position
    */
-  void clack(GLfloat x, GLfloat y);
+  void clack(float x, float y);
 
   /**
    * update the position of the mouse cursor, while dragging is active
    */
-  void drag(GLfloat x, GLfloat y);
+  void drag(float x, float y);
 
   /**
    * adds the current arcball transformation to the OpenGL transformation matrix
@@ -75,13 +69,13 @@ public:
   void addTransform(void) const;
 
 protected:
-  GLfloat AdjustWidth;       //Mouse bounds width
-  GLfloat AdjustHeight;      //Mouse bounds height
+  float AdjustWidth;       //Mouse bounds width
+  float AdjustHeight;      //Mouse bounds height
 
-  GLfloat StVec[3];          //Saved click vector
-  GLfloat EnVec[3];          //Saved drag vector
+  float StVec[3];          //Saved click vector
+  float EnVec[3];          //Saved drag vector
 
-  GLfloat LastRot[9];
+  float LastRot[9];
 
   bool mouseDown;
 };

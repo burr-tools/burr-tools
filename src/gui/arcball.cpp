@@ -20,13 +20,19 @@
 #include <math.h>
 #include <assert.h>
 
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#else
+#include <GL/gl.h>
+#endif
+
 #define Epsilon 1.0e-5
 
 /**
  * Sets the vector c to be the vector cross product of vectors a and b.
  * don't do Vector3fCross(a, a, b);
  */
-static void Vector3fCross(const GLfloat a[3], const GLfloat b[3], GLfloat c[3])
+static void Vector3fCross(const float a[3], const float b[3], float c[3])
 {
   c[0] = a[1]*b[2] - a[2]*b[1];
   c[1] = a[2]*b[0] - a[0]*b[2];
@@ -36,7 +42,7 @@ static void Vector3fCross(const GLfloat a[3], const GLfloat b[3], GLfloat c[3])
 /**
  * Computes the dot product of the vector a and b
  */
-static GLfloat Vector3fDot(const GLfloat a[3], const GLfloat b[3])
+static GLfloat Vector3fDot(const float a[3], const float b[3])
 {
   return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
 }
@@ -45,7 +51,7 @@ static GLfloat Vector3fDot(const GLfloat a[3], const GLfloat b[3])
  * Returns the length of this vector.
  * @return the length of this vector
  */
-static GLfloat Vector3fLength(const GLfloat a[3])
+static float Vector3fLength(const float a[3])
 {
   return sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2]);
 }
@@ -55,7 +61,7 @@ static GLfloat Vector3fLength(const GLfloat a[3])
  * quaternion argument.
  * @param q1 the quaternion to be converted
  */
-static void Matrix3fSetRotationFromQuat4f(GLfloat m[9], const GLfloat q1[4])
+static void Matrix3fSetRotationFromQuat4f(float m[9], const float q1[4])
 {
   GLfloat n, s;
   GLfloat xs, ys, zs;
@@ -79,7 +85,7 @@ static void Matrix3fSetRotationFromQuat4f(GLfloat m[9], const GLfloat q1[4])
 /**
  * a = a matrix mult b
  */
-static void Matrix3fMulMatrix3f(GLfloat a[9], const GLfloat b[9])
+static void Matrix3fMulMatrix3f(float a[9], const float b[9])
 {
   GLfloat Result[9];
 
@@ -123,7 +129,7 @@ static GLfloat Matrix4fSVD(const GLfloat a[16])
  * components.
  * @param m1 T precision 3x3 matrix
  */
-static void Matrix4fSetRotationFromMatrix3f(GLfloat a[16], const GLfloat m[9])
+static void Matrix4fSetRotationFromMatrix3f(GLfloat a[16], const float m[9])
 {
   GLfloat scale = Matrix4fSVD(a);
 
@@ -141,7 +147,7 @@ static void Matrix4fSetRotationFromMatrix3f(GLfloat a[16], const GLfloat m[9])
 /**
  * find the point on the halve-sphere that is closest to the given coordinates
  */
-void arcBall_c::mapToSphere(GLfloat x, GLfloat y, GLfloat NewVec[3]) const
+void arcBall_c::mapToSphere(float x, float y, float NewVec[3]) const
 {
   GLfloat TempPt[2];
 
@@ -173,7 +179,7 @@ void arcBall_c::mapToSphere(GLfloat x, GLfloat y, GLfloat NewVec[3]) const
 }
 
 //Create/Destroy
-arcBall_c::arcBall_c(GLfloat NewWidth, GLfloat NewHeight) {
+arcBall_c::arcBall_c(float NewWidth, float NewHeight) {
 
   LastRot[0] = 1;  LastRot[1] = 0;  LastRot[2] = 0;
   LastRot[3] = 0;  LastRot[4] = 1;  LastRot[5] = 0;
@@ -185,7 +191,7 @@ arcBall_c::arcBall_c(GLfloat NewWidth, GLfloat NewHeight) {
   mouseDown = false;
 }
 
-void arcBall_c::click(GLfloat x, GLfloat y) {
+void arcBall_c::click(float x, float y) {
 
   //Map the point to the sphere
   mapToSphere(x, y, StVec);
@@ -194,7 +200,7 @@ void arcBall_c::click(GLfloat x, GLfloat y) {
   mouseDown = true;
 }
 
-void arcBall_c::clack(GLfloat x, GLfloat y) {
+void arcBall_c::clack(float x, float y) {
 
   mapToSphere(x, y, EnVec);
 
@@ -212,16 +218,16 @@ void arcBall_c::clack(GLfloat x, GLfloat y) {
 }
 
 
-void arcBall_c::drag(GLfloat x, GLfloat y) {
+void arcBall_c::drag(float x, float y) {
 
   //Map the point to the sphere
   mapToSphere(x, y, EnVec);
 }
 
 
-void arcBall_c::getDrag(GLfloat NewRot[4]) const
+void arcBall_c::getDrag(float NewRot[4]) const
 {
-  GLfloat Perp[3];
+  float Perp[3];
 
   //Compute the vector perpendicular to the begin and end vectors
   Vector3fCross(StVec, EnVec, Perp);
@@ -272,8 +278,8 @@ void arcBall_c::addTransform(void) const {
 
   if (mouseDown) {
 
-    GLfloat ThisQuat[4];
-    GLfloat ThisRot[9];
+    float ThisQuat[4];
+    float ThisRot[9];
 
     getDrag(ThisQuat);                                              // Update End Vector And Get Rotation As Quaternion
     Matrix3fSetRotationFromQuat4f(ThisRot, ThisQuat);               // Convert Quaternion Into Matrix3fT
