@@ -14,6 +14,7 @@ burrGui_SOURCES=\
 		gridtypegui.cpp gridtypegui.h \
 		guigridtype.cpp guigridtype.h \
 		image.cpp image.h \
+		imageexport.cpp imageexport.h \
                 main.cpp \
                 piececolor.cpp piececolor.h \
                 placementbrowser.cpp placementbrowser.h \
@@ -29,7 +30,6 @@ burrGui_SOURCES=\
                 Fl_Table.cpp Fl_Table.h \
                 GroupsEditor.cpp GroupsEditor.h \
 		Layouter.cpp Layouter.h \
-		ImageExport.cpp ImageExport.h \
 		tr.c tr.h \
 		Images.cpp Images.h \
                 images/TB_Color_Brush.xpm images/TB_Color_Eraser.xpm \

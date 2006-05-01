@@ -25,7 +25,7 @@
 #include "configuration.h"
 #include "GroupsEditor.h"
 #include "placementbrowser.h"
-#include "ImageExport.h"
+#include "imageexport.h"
 #include "Images.h"
 #include "guigridtype.h"
 #include "grideditor.h"
@@ -1277,7 +1277,7 @@ void UserInterface::cb_Coment(void) {
 
 static void cb_ImageExport_stub(Fl_Widget* o, void* v) { ((UserInterface*)v)->cb_ImageExport(); }
 void UserInterface::cb_ImageExport(void) {
-  ImageExportWindow w(puzzle, ggt);
+  imageExport_c w(puzzle, ggt);
   w.show();
 
   while (w.visible()) {

@@ -53,7 +53,7 @@ class image_c;
 class puzzle_c;
 class guiGridType_c;
 
-class ImageExportWindow : public LFl_Double_Window, public VoxelViewCallbacks {
+class imageExport_c : public LFl_Double_Window, public VoxelViewCallbacks {
 
   private:
 
@@ -98,7 +98,7 @@ class ImageExportWindow : public LFl_Double_Window, public VoxelViewCallbacks {
 
   public:
 
-    ImageExportWindow(puzzle_c * p, const guiGridType_c * ggt);
+    imageExport_c(puzzle_c * p, const guiGridType_c * ggt);
 
     /* returns true, when there is currently a image export in progres */
     bool isWorking(void) { return working; }

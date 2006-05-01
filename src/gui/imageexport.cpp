@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "ImageExport.h"
+#include "imageexport.h"
 #include "voxeldrawer.h"
 #include "image.h"
 
@@ -213,12 +213,12 @@ image_c * ImageInfo::getImage(void) {
 
 
 
-static void cb_ImageExportAbort_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Abort(); }
-void ImageExportWindow::cb_Abort(void) {
+static void cb_ImageExportAbort_stub(Fl_Widget* o, void* v) { ((imageExport_c*)(v))->cb_Abort(); }
+void imageExport_c::cb_Abort(void) {
   hide();
 }
 
-bool ImageExportWindow::PreDraw(void) {
+bool imageExport_c::PreDraw(void) {
 
   static char statText[50];
 
@@ -260,7 +260,7 @@ bool ImageExportWindow::PreDraw(void) {
   return false;
 }
 
-void ImageExportWindow::nextImage(bool finish) {
+void imageExport_c::nextImage(bool finish) {
 
   static char statText[20];
 
@@ -294,7 +294,7 @@ void ImageExportWindow::nextImage(bool finish) {
   }
 }
 
-void ImageExportWindow::PostDraw(void) {
+void imageExport_c::PostDraw(void) {
 
   switch(state) {
     case 0:
@@ -415,8 +415,8 @@ void ImageExportWindow::PostDraw(void) {
 }
 
 
-static void cb_ImageExportExport_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Export(); }
-void ImageExportWindow::cb_Export(void) {
+static void cb_ImageExportExport_stub(Fl_Widget* o, void* v) { ((imageExport_c*)(v))->cb_Export(); }
+void imageExport_c::cb_Export(void) {
 
   /* this vector contains all the information of all images that need to appear in the output */
   images.clear();
@@ -465,8 +465,8 @@ void ImageExportWindow::cb_Export(void) {
   view3D->getView()->setCallback(this);
 }
 
-static void cb_ImageExport3DUpdate_stub(Fl_Widget* o, void* v) { ((ImageExportWindow*)(v))->cb_Update3DView(); }
-void ImageExportWindow::cb_Update3DView(void) {
+static void cb_ImageExport3DUpdate_stub(Fl_Widget* o, void* v) { ((imageExport_c*)(v))->cb_Update3DView(); }
+void imageExport_c::cb_Update3DView(void) {
 
   if (ExpShape->value()) {
     view3D->showSingleShape(puzzle, ShapeSelect->getSelection());
@@ -483,8 +483,8 @@ void ImageExportWindow::cb_Update3DView(void) {
   }
 }
 
-static void cb_ImageExportSzUpdate_stub(Fl_Widget *o, void *v) { ((ImageExportWindow*)(v))->cb_SzUpdate(); }
-void ImageExportWindow::cb_SzUpdate(void) {
+static void cb_ImageExportSzUpdate_stub(Fl_Widget *o, void *v) { ((imageExport_c*)(v))->cb_SzUpdate(); }
+void imageExport_c::cb_SzUpdate(void) {
 
   if (SzA4Land->value()) {
     SzX->value("297");
@@ -521,7 +521,7 @@ void ImageExportWindow::cb_SzUpdate(void) {
   }
 }
 
-ImageExportWindow::ImageExportWindow(puzzle_c * p, const guiGridType_c * ggt) : puzzle(p), working(false), state(0), i(0) {
+imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : puzzle(p), working(false), state(0), i(0) {
 
   label("Export Images");
 
@@ -726,7 +726,7 @@ ImageExportWindow::ImageExportWindow(puzzle_c * p, const guiGridType_c * ggt) : 
   set_modal();
 }
 
-void ImageExportWindow::update(void) {
+void imageExport_c::update(void) {
   if (working) {
     BtnStart->deactivate();
     BtnAbbort->deactivate();
