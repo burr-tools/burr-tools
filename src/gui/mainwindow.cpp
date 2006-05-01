@@ -2607,56 +2607,44 @@ void mainWindow_c::CreateProblemTab(int x, int y, int w, int h) {
   int piecesHight = hi - (hi/5) * 4 + piecesFixedHight;
 
   {
-    int lh = problemsHight;
-
-    Fl_Group* group = new Fl_Group(x, y, w, lh);
+    layouter_c * group = new layouter_c();
     group->box(FL_FLAT_BOX);
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Problems", false);
-    y += SZ_SEPARATOR_Y;
-    lh -= SZ_SEPARATOR_Y;
+    group->resize(x, y, w, problemsHight);
 
-    int bw = (w - 5*SZ_GAP - 2*SZ_BUTTON_Y) / 4;
+    new LSeparator_c(0, 0, 1, 1, "Problems", false);
 
-    {
-      Fl_Group * o = new Fl_Group(x+0*SZ_GAP+0*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnNewProb = new FlatButton(x+0*SZ_GAP+0*bw, y, bw, SZ_BUTTON_Y, "New", " Add another problem ", cb_NewProblem_stub, this);
-      o->resizable(BtnNewProb);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+1*SZ_GAP+1*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnDelProb = new FlatButton(x+1*SZ_GAP+1*bw, y, bw, SZ_BUTTON_Y, "Delete", " Delete selected problem ", cb_DeleteProblem_stub, this);
-      o->resizable(BtnDelProb);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+2*SZ_GAP+2*bw, y, bw+SZ_GAP, SZ_BUTTON_Y);
-      BtnCpyProb = new FlatButton(x+2*SZ_GAP+2*bw, y, bw, SZ_BUTTON_Y, "Copy", " Copy selected problem ", cb_CopyProblem_stub, this);
-      o->resizable(BtnCpyProb);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+3*SZ_GAP+3*bw, y, w-4*SZ_GAP-3*bw-2*SZ_BUTTON_Y, SZ_BUTTON_Y);
-      BtnRenProb = new FlatButton(x+3*SZ_GAP+3*bw, y, w-5*SZ_GAP-3*bw-2*SZ_BUTTON_Y, SZ_BUTTON_Y, "Label", " Rename selected problem ", cb_RenameProblem_stub, this);
-      o->resizable(BtnRenProb);
-      o->end();
-    }
+    layouter_c * o = new layouter_c(0, 1);
 
-    BtnProbLeft = new FlatButton(x+w-SZ_GAP-2*SZ_BUTTON_Y, y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-14->", " Exchange current problem with previous problem ", cb_ProblemLeft_stub, this);
-    BtnProbRight = new FlatButton(x+w-SZ_BUTTON_Y,          y, SZ_BUTTON_Y, SZ_BUTTON_Y, "@-16->", " Exchange current problem with next problem ", cb_ProblemRight_stub, this);
+    BtnNewProb = new LFlatButton_c(0, 0, 1, 1, "New", " Add another problem ", cb_NewProblem_stub, this);
+    ((LFlatButton_c*)BtnNewProb)->weight(1, 0);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    BtnDelProb = new LFlatButton_c(2, 0, 1, 1, "Delete", " Delete selected problem ", cb_DeleteProblem_stub, this);
+    ((LFlatButton_c*)BtnDelProb)->weight(1, 0);
+    (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnCpyProb = new LFlatButton_c(4, 0, 1, 1, "Copy", " Copy selected problem ", cb_CopyProblem_stub, this);
+    ((LFlatButton_c*)BtnCpyProb)->weight(1, 0);
+    (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnRenProb = new LFlatButton_c(6, 0, 1, 1, "Label", " Rename selected problem ", cb_RenameProblem_stub, this);
+    ((LFlatButton_c*)BtnRenProb)->weight(1, 0);
+    (new LFl_Box(7, 0))->setMinimumSize(SZ_GAP, 0);
 
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
+    BtnProbLeft = new LFlatButton_c(8, 0, 1, 1, "@-14->", " Exchange current problem with previous problem ", cb_ProblemLeft_stub, this);
+    (new LFl_Box(9, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnProbRight = new LFlatButton_c(10, 0, 1, 1, "@-16->", " Exchange current problem with next problem ", cb_ProblemRight_stub, this);
 
-    problemSelector = new ProblemSelector(x, y, w, lh, puzzle);
-    Fl_Group * probGroup = new BlockListGroup(x, y, w, lh, problemSelector);
+    o->end();
+
+    (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
+
+    problemSelector = new ProblemSelector(x, y, w, problemsHight, puzzle);
+    LBlockListGroup_c * probGroup = new LBlockListGroup_c(0, 3, 1, 1, problemSelector);
     probGroup->callback(cb_ProbSel_stub, this);
     probGroup->tooltip(" Select problem to edit ");
+    probGroup->weight(1, 1);
 
-    group->resizable(probGroup);
     group->end();
 
-    y += lh;
+    y += problemsHight;
   }
 
   {
