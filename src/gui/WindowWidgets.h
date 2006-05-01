@@ -46,23 +46,10 @@ class piecePositions_c;
 class FlatButton : public Fl_Button {
 
 public:
+
   FlatButton(int x, int y, int w, int h, const char * txt, const char * tt) : Fl_Button(x, y, w, h, txt) {
     box(FL_THIN_UP_BOX);
     tooltip(tt);
-    clear_visible_focus();
-  }
-
-  FlatButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback* cb) : Fl_Button(x, y, w, h, txt) {
-    box(FL_THIN_UP_BOX);
-    tooltip(tt);
-    callback(cb);
-    clear_visible_focus();
-  }
-
-  FlatButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback1* cb, long cb_para) : Fl_Button(x, y, w, h, txt) {
-    box(FL_THIN_UP_BOX);
-    tooltip(tt);
-    callback(cb, cb_para);
     clear_visible_focus();
   }
 
@@ -70,14 +57,6 @@ public:
     box(FL_THIN_UP_BOX);
     tooltip(tt);
     callback(cb, cb_para);
-    clear_visible_focus();
-  }
-
-  FlatButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback1* cb, long cb_para, int col) : Fl_Button(x, y, w, h, txt) {
-    box(FL_THIN_UP_BOX);
-    tooltip(tt);
-    callback(cb, cb_para);
-    color((Fl_Color)col);
     clear_visible_focus();
   }
 
