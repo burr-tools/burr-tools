@@ -103,7 +103,7 @@ static bool str2bool(char *s) {
   return false;
 }
 
-void configuration::parse(FILE * in) {
+void configuration_c::parse(FILE * in) {
   char line[201], param[201];
 
   while (!feof(in)) {
@@ -136,7 +136,7 @@ void configuration::parse(FILE * in) {
   }
 }
 
-void configuration::register_entry(char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, char * dtext) {
+void configuration_c::register_entry(char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, char * dtext) {
   config_data *t = new config_data;
 
   t->next = first_data;
@@ -161,7 +161,7 @@ void configuration::register_entry(char *cnf_name, cnf_type cnf_typ, void *cnf_v
 #define SZ_WINDOW_X 800                        // initial size of the window
 #define SZ_WINDOW_Y 600
 
-configuration::configuration(void) {
+configuration_c::configuration_c(void) {
 
   i_use_tooltips = true;
   i_use_lightning = true;
@@ -191,7 +191,7 @@ configuration::configuration(void) {
   }
 }
 
-configuration::~configuration(void) {
+configuration_c::~configuration_c(void) {
 
   FILE * f = create_local_config_file();
 
@@ -235,7 +235,7 @@ configuration::~configuration(void) {
 
 static void cb_ConfigDialog_stub(Fl_Widget* o, void* v) { ((Fl_Double_Window*)v)->hide(); }
 
-void configuration::dialog(void) {
+void configuration_c::dialog(void) {
 
   Fl_Double_Window * win = new Fl_Double_Window(200, 500);
 
@@ -307,4 +307,4 @@ void configuration::dialog(void) {
   delete win;
 }
 
-configuration config;
+configuration_c config;

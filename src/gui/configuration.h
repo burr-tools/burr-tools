@@ -24,12 +24,12 @@
  * handling loading and saving is handled
  */
 
-class configuration {
+class configuration_c {
 
 public:
 
-  configuration(void);
-  ~configuration(void);
+  configuration_c(void);
+  ~configuration_c(void);
 
   bool useTooltips(void) { return i_use_tooltips; }
   void useTooltips(bool val) { i_use_tooltips = val; }
@@ -91,6 +91,6 @@ private:
   int i_window_pos_h;
 };
 
-extern configuration config;
+extern configuration_c config;
 
 #endif
