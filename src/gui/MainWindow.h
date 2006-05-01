@@ -18,27 +18,9 @@
 #ifndef MainWindow_h
 #define MainWindow_h
 
-#include "WindowWidgets.h"
-#include "BlockList.h"
 #include "Images.h"
 
-#include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
-#include <FL/Fl_Group.H>
-#include <FL/Fl_Tile.H>
-#include <FL/Fl_Tabs.H>
-#include <FL/Fl_Value_Output.H>
-#include <FL/Fl_Check_Button.H>
-#include <FL/Fl_Progress.H>
-#include <FL/Fl_Output.H>
-#include <FL/Fl_Value_Slider.H>
-#include <FL/Fl_Menu_Bar.H>
-#include <FL/Fl_File_Chooser.H>
-#include <FL/Fl_Choice.H>
-#include <FL/Fl_Value_Input.H>
-#include <FL/fl_ask.H>
-
-#include <fstream>
 
 class VoxelEditGroup;
 class ChangeSize;
@@ -47,9 +29,32 @@ class View3dGroup;
 class puzzle_c;
 class assemblerThread_c;
 class disasmToMoves_c;
-
 class gridType_c;
 class guiGridType_c;
+
+class PieceSelector;
+class ProblemSelector;
+class ColorSelector;
+class ResultViewer;
+class PiecesList;
+class PieceVisibility;
+class ColorConstraintsEdit;
+class ToolTab;
+class ButtonGroup;
+class FlatButton;
+class ProgressBar;
+class StatusLine;
+class BlockListGroup;
+
+class Fl_Tabs;
+class Fl_Group;
+class Fl_Check_Button;
+class Fl_Value_Output;
+class Fl_Output;
+class Fl_Value_Slider;
+class Fl_Value_Input;
+class Fl_Menu_Bar;
+class Fl_Choice;
 
 class UserInterface : public Fl_Double_Window {
 

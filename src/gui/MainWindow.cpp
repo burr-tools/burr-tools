@@ -17,20 +17,18 @@
  */
 #include "MainWindow.h"
 
-#include "config.h"
-
-#include <xmlwrapp/xmlwrapp.h>
-
 #include "gzstream.h"
 #include "configuration.h"
 #include "GroupsEditor.h"
 #include "placementbrowser.h"
 #include "imageexport.h"
-#include "Images.h"
 #include "guigridtype.h"
 #include "grideditor.h"
 #include "gridtypegui.h"
 #include "statuswindow.h"
+#include "WindowWidgets.h"
+#include "BlockList.h"
+#include "Images.h"
 
 #include "../config.h"
 
@@ -51,6 +49,24 @@
 #include <FL/Fl_Tooltip.H>
 #include <FL/Fl_Choice.H>
 #include <FL/Fl_Pixmap.h>
+#include <FL/Fl.H>
+#include <FL/Fl_Group.H>
+#include <FL/Fl_Tile.H>
+#include <FL/Fl_Tabs.H>
+#include <FL/Fl_Value_Output.H>
+#include <FL/Fl_Check_Button.H>
+#include <FL/Fl_Progress.H>
+#include <FL/Fl_Output.H>
+#include <FL/Fl_Value_Slider.H>
+#include <FL/Fl_Menu_Bar.H>
+#include <FL/Fl_File_Chooser.H>
+#include <FL/Fl_Choice.H>
+#include <FL/Fl_Value_Input.H>
+#include <FL/fl_ask.H>
+
+#include <xmlwrapp/xmlwrapp.h>
+
+#include <fstream>
 
 static const char * FileSelection(const char * title) {
 #ifdef HAVE_FLU
