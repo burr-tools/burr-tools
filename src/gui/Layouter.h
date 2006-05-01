@@ -29,6 +29,9 @@
 #include <FL/Fl_Check_Button.h>
 #include <FL/Fl_Round_Button.h>
 #include <FL/Fl_Input.h>
+#include <FL/Fl_Output.h>
+#include <FL/Fl_Value_Output.h>
+#include <FL/Fl_Value_Slider.h>
 #include <FL/Fl_Int_Input.h>
 #include <FL/Fl_Double_Window.h>
 
@@ -297,6 +300,20 @@ class LFl_Input : public Fl_Input, public layoutable_c {
   }
 };
 
+class LFl_Output : public Fl_Output, public layoutable_c {
+
+  public:
+
+  LFl_Output(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Output(0, 0, 0, 0), layoutable_c(x, y, w, h) {
+    stretchVCenter();
+  }
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 30;
+    *height = 20;
+  }
+};
+
 class LFl_Int_Input : public Fl_Int_Input, public layoutable_c {
 
   public:
@@ -314,6 +331,31 @@ class LFl_Int_Input : public Fl_Int_Input, public layoutable_c {
   void setMinWidth(const char *) {
   }
 };
+
+class LFl_Value_Output : public Fl_Value_Output, public layoutable_c {
+
+  public:
+
+    LFl_Value_Output(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Value_Output(0, 0, 0, 0), layoutable_c(x, y, w, h) {}
+
+    virtual void getMinSize(int *width, int *height) const {
+      *width = 30;
+      *height = 20;
+    }
+};
+
+class LFl_Value_Slider : public Fl_Value_Slider, public layoutable_c {
+
+  public:
+
+    LFl_Value_Slider(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Value_Slider(0, 0, 0, 0), layoutable_c(x, y, w, h) {}
+
+    virtual void getMinSize(int *width, int *height) const {
+      *width = 30;
+      *height = 20;
+    }
+};
+
 
 class LFl_Double_Window : public Fl_Double_Window {
 

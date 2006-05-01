@@ -2945,21 +2945,25 @@ void mainWindow_c::CreateSolveTab(int x, int y, int w, int h) {
   }
 
   {
-    int lh = solutionsHight;
-
-    Fl_Group* group = new Fl_Group(x, y, w, lh);
+    layouter_c * group = new layouter_c();
     group->box(FL_FLAT_BOX);
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Solutions", true);
-    y += SZ_SEPARATOR_Y;
-    lh -= SZ_SEPARATOR_Y;
+    group->resize(x, y, w, solutionsHight);
 
-    SolutionsInfo = new Fl_Value_Output(x+w/2, y, w/2, SZ_TEXT_Y);
+    new LSeparator_c(0, 0, 1, 1, "Solutions", true);
+
+    layouter_c * o = new layouter_c(0, 1);
+
+    new LFl_Box("Solution", 0, 0, 1, 1);
+
+    // Gap between Solution and value
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
+
+    SolutionsInfo = new LFl_Value_Output(2, 0, 1, 1);
     SolutionsInfo->tooltip(" Number of solutions ");
     SolutionsInfo->box(FL_FLAT_BOX);
-    y += SZ_TEXT_Y;
-    lh -= SZ_TEXT_Y;
+    ((LFl_Value_Output*)SolutionsInfo)->weight(1, 0);
 
-    SolutionSel = new Fl_Value_Slider(x, y, w, SZ_BUTTON_Y, "Solution");
+    SolutionSel = new LFl_Value_Slider(0, 1, 3, 1);
     SolutionSel->tooltip(" Select one Solution ");
     SolutionSel->value(1);
     SolutionSel->type(1);
@@ -2967,73 +2971,110 @@ void mainWindow_c::CreateSolveTab(int x, int y, int w, int h) {
     SolutionSel->callback(cb_SolutionSel_stub, this);
     SolutionSel->align(FL_ALIGN_TOP_LEFT);
     SolutionSel->box(FL_THIN_DOWN_BOX);
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
 
-    MovesInfo = new Fl_Output(x+40, y, w-40, SZ_TEXT_Y);
+    (new LFl_Box(0, 3))->setMinimumSize(0, SZ_GAP);
+
+    new LFl_Box("Move", 0, 4, 1, 1);
+
+    MovesInfo = new LFl_Output(2, 4, 1, 1);
     MovesInfo->tooltip(" Steps for complete disassembly ");
     MovesInfo->box(FL_FLAT_BOX);
     MovesInfo->color(FL_BACKGROUND_COLOR);
-    y += SZ_TEXT_Y;
-    lh -= SZ_TEXT_Y;
+    ((LFl_Output*)MovesInfo)->weight(1, 0);
 
-    SolutionAnim = new Fl_Value_Slider(x, y, w, SZ_BUTTON_Y, "Move");
+    SolutionAnim = new LFl_Value_Slider(0, 5, 3, 1);
     SolutionAnim->tooltip(" Animate the disassembly ");
     SolutionAnim->type(1);
     SolutionAnim->step(0.1);
     SolutionAnim->callback(cb_SolutionAnim_stub, this);
     SolutionAnim->align(FL_ALIGN_TOP_LEFT);
     SolutionAnim->box(FL_THIN_DOWN_BOX);
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
 
-    AssemblyNumber = new Fl_Value_Output(x+80, y, w/2-80, SZ_BUTTON_Y, "Assembly:");
-    SolutionNumber = new Fl_Value_Output(x+w/2+80, y, w-w/2-80, SZ_BUTTON_Y, "Solution:");
+    o->end();
+
+    (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
+
+    o = new layouter_c(0, 3);
+
+    new LFl_Box("Assembly:", 0, 0, 1, 1);
+    new LFl_Box("Solution:", 2, 0, 1, 1);
+
+    AssemblyNumber = new LFl_Value_Output(1, 0, 1, 1);
+    SolutionNumber = new LFl_Value_Output(3, 0, 1, 1);
     AssemblyNumber->box(FL_FLAT_BOX);
     SolutionNumber->box(FL_FLAT_BOX);
     AssemblyNumber->step(1);    // make output NOT use scientific presentation for big numbers
     SolutionNumber->step(1);    // make output NOT use scientific presentation for big numbers
+    ((LFl_Value_Output*)AssemblyNumber)->weight(1, 0);
+    ((LFl_Value_Output*)SolutionNumber)->weight(1, 0);
 
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
+    o->end();
 
-    int bw = (w - 2*SZ_GAP) / 3;
+    (new LFl_Box(0, 4))->setMinimumSize(0, SZ_GAP);
 
-    BtnSrtFind =  new FlatButton(x              , y, bw, SZ_BUTTON_Y, "Sort by Finding", " Sort in the order the solutions were found ", cb_SrtFind_stub, this);
-    BtnSrtLevel = new FlatButton(x+bw+SZ_GAP    , y, bw, SZ_BUTTON_Y, "Sort by Level", " Sort in the order of increasing level ", cb_SrtLevel_stub, this);
-    BtnSrtMoves = new FlatButton(x+2*bw+2*SZ_GAP, y, w-2*bw-2*SZ_GAP, SZ_BUTTON_Y, "Sort by Disasm", " Sort in the order of increasing moves for complete disassembly ", cb_SrtMoves_stub, this);
+    o = new layouter_c(0, 5);
 
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
+    BtnSrtFind =  new LFlatButton_c(0, 0, 1, 1, "Sort by Finding", " Sort in the order the solutions were found ", cb_SrtFind_stub, this);
+    ((LFlatButton_c*)BtnSrtFind)->weight(1, 0);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    BtnSrtLevel = new LFlatButton_c(2, 0, 1, 1, "Sort by Level", " Sort in the order of increasing level ", cb_SrtLevel_stub, this);
+    ((LFlatButton_c*)BtnSrtLevel)->weight(1, 0);
+    (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnSrtMoves = new LFlatButton_c(4, 0, 1, 1, "Sort by Disasm", " Sort in the order of increasing moves for complete disassembly ", cb_SrtMoves_stub, this);
+    ((LFlatButton_c*)BtnSrtMoves)->weight(1, 0);
 
-    bw = (w - 3*SZ_GAP) / 5;
+    o->end();
 
-    BtnDelAll =    new FlatButton(x,               y, bw,              SZ_BUTTON_Y, "Del All", " Delete all solutions ", cb_DelAll_stub, this);
-    BtnDelBefore = new FlatButton(x+1*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "Del Before", " Delete all before the currently selected one ", cb_DelBefore_stub, this);
-    BtnDelAt =     new FlatButton(x+2*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "Del At", " Delete current solution ", cb_DelAt_stub, this);
-    BtnDelAfter =  new FlatButton(x+3*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "Del After", " Delete all solutions after the currently selected one ", cb_DelAfter_stub, this);
-    BtnDelDisasm = new FlatButton(x+4*(bw+SZ_GAP), y, w-4*(bw+SZ_GAP), SZ_BUTTON_Y, "Del w/o DA", " Delete all solutions without valid disassembly ", cb_DelDisasmless_stub, this);
+    (new LFl_Box(0, 6))->setMinimumSize(0, SZ_GAP);
 
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
+    o = new layouter_c(0, 7);
 
-    bw = (w - 3*SZ_GAP) / 5;
+    BtnDelAll =    new LFlatButton_c(0, 0, 1, 1, "Del All", " Delete all solutions ", cb_DelAll_stub, this);
+    ((LFlatButton_c*)BtnDelAll)->weight(1, 0);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    BtnDelBefore = new LFlatButton_c(2, 0, 1, 1, "Del Before", " Delete all before the currently selected one ", cb_DelBefore_stub, this);
+    ((LFlatButton_c*)BtnDelBefore)->weight(1, 0);
+    (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnDelAt =     new LFlatButton_c(4, 0, 1, 1, "Del At", " Delete current solution ", cb_DelAt_stub, this);
+    ((LFlatButton_c*)BtnDelAt)->weight(1, 0);
+    (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnDelAfter =  new LFlatButton_c(6, 0, 1, 1, "Del After", " Delete all solutions after the currently selected one ", cb_DelAfter_stub, this);
+    ((LFlatButton_c*)BtnDelAfter)->weight(1, 0);
+    (new LFl_Box(7, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnDelDisasm = new LFlatButton_c(8, 0, 1, 1, "Del w/o DA", " Delete all solutions without valid disassembly ", cb_DelDisasmless_stub, this);
+    ((LFlatButton_c*)BtnDelDisasm)->weight(1, 0);
 
-    BtnDisasmDel    = new FlatButton(x,               y, bw,              SZ_BUTTON_Y, "D DA", " Remove the disassembly for the current solution ", cb_DelDisasm_stub, this);
-    BtnDisasmDelAll = new FlatButton(x+1*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "D A DA", " Remove the disassemblies for all solutions ", cb_DelAllDisasm_stub, this);
-    BtnDisasmAdd    = new FlatButton(x+2*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "A DA", " Recalculate the disassembly for the current solution ", cb_AddDisasm_stub, this);
-    BtnDisasmAddAll = new FlatButton(x+3*(bw+SZ_GAP), y, bw,              SZ_BUTTON_Y, "A A DA", " Recalculate the disassemblies for all solutions ", cb_AddAllDisasm_stub, this);
-    BtnDisasmAddMissing=new FlatButton(x+4*(bw+SZ_GAP), y, w-4*(bw+SZ_GAP), SZ_BUTTON_Y, "A M DA", " Recalculate the missing disassemblies for all solutions without valid disassembly ", cb_AddMissingDisasm_stub, this);
+    o->end();
 
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
+    (new LFl_Box(0, 8))->setMinimumSize(0, SZ_GAP);
 
-    PcVis = new PieceVisibility(x, y, w, lh, puzzle);
-    Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh, PcVis);
+    o = new layouter_c(0, 9);
+
+    BtnDisasmDel    = new LFlatButton_c(0, 0, 1, 1, "D DA", " Remove the disassembly for the current solution ", cb_DelDisasm_stub, this);
+    ((LFlatButton_c*)BtnDisasmDel)->weight(1, 0);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    BtnDisasmDelAll = new LFlatButton_c(2, 0, 1, 1, "D A DA", " Remove the disassemblies for all solutions ", cb_DelAllDisasm_stub, this);
+    ((LFlatButton_c*)BtnDisasmDelAll)->weight(1, 0);
+    (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnDisasmAdd    = new LFlatButton_c(4, 0, 1, 1, "A DA", " Recalculate the disassembly for the current solution ", cb_AddDisasm_stub, this);
+    ((LFlatButton_c*)BtnDisasmAdd)->weight(1, 0);
+    (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnDisasmAddAll = new LFlatButton_c(6, 0, 1, 1, "A A DA", " Recalculate the disassemblies for all solutions ", cb_AddAllDisasm_stub, this);
+    ((LFlatButton_c*)BtnDisasmAddAll)->weight(1, 0);
+    (new LFl_Box(7, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnDisasmAddMissing=new LFlatButton_c(8, 0, 1, 1, "A M DA", " Recalculate the missing disassemblies for all solutions without valid disassembly ", cb_AddMissingDisasm_stub, this);
+    ((LFlatButton_c*)BtnDisasmAddMissing)->weight(1, 0);
+
+    o->end();
+
+    (new LFl_Box(0, 10))->setMinimumSize(0, SZ_GAP);
+
+    PcVis = new PieceVisibility(x, y, w, solutionsHight, puzzle);
+    LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 11, 1, 1, PcVis);
     shapeGroup->callback(cb_PcVis_stub, this);
     shapeGroup->tooltip(" Change appearance of the pieces between normal, grid and invisible ");
+    shapeGroup->weight(1, 1);
 
-    group->resizable(shapeGroup);
     group->end();
   }
   tile->end();
