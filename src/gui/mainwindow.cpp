@@ -2796,40 +2796,41 @@ void mainWindow_c::CreateSolveTab(int x, int y, int w, int h) {
   int solutionsHight = hi - (hi/2) + solutionsFixedHight;
 
   {
-    int lh = paramsHight;
-
-    Fl_Group* group = new Fl_Group(x, y, w, lh);
+    layouter_c * group = new layouter_c();
     group->box(FL_FLAT_BOX);
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Parameters", false);
-    y += SZ_SEPARATOR_Y;
-    lh -= SZ_SEPARATOR_Y;
+    group->resize(x, y, w, paramsHight);
+    y += paramsHight;
 
-    solutionProblem = new ProblemSelector(x, y, w, lh-SZ_GAP, puzzle);
-    Fl_Group * shapeGroup = new BlockListGroup(x, y, w, lh-(paramsFixedHight-SZ_SEPARATOR_Y), solutionProblem);
+    new LSeparator_c(0, 0, 1, 1, "Parameters", false);
+
+    solutionProblem = new ProblemSelector(x, y, w, paramsHight, puzzle);
+    LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 1, 1, 1, solutionProblem);
     shapeGroup->callback(cb_SolProbSel_stub, this);
     shapeGroup->tooltip(" Select problem to solve ");
+    shapeGroup->weight(1, 1);
 
-    group->resizable(shapeGroup);
+    layouter_c * o = new layouter_c(0, 2);
 
-    y += lh - (paramsFixedHight-SZ_SEPARATOR_Y);
-    lh -= lh - (paramsFixedHight-SZ_SEPARATOR_Y);
-
-    SolveDisasm = new Fl_Check_Button(x, y, w/3, SZ_BUTTON_Y, "Disassemble");
+    SolveDisasm = new LFl_Check_Button("Disassemble", 0, 0, 1, 1);
     SolveDisasm->tooltip(" Do also try to disassemble the assembled puzzles. Only puzzles that can be disassembled will be added to solutions ");
     SolveDisasm->clear_visible_focus();
 
-    JustCount = new Fl_Check_Button(x+w/3, y, w/3, SZ_BUTTON_Y, "Just Count");
+    JustCount = new LFl_Check_Button("Just Count", 1, 0, 1, 1);
     JustCount->tooltip(" Don\'t save the solutions, just count the number of them ");
     JustCount->clear_visible_focus();
 
-    DropDisassemblies = new Fl_Check_Button(x+2*(w/3), y, w-2*(w/3), SZ_BUTTON_Y, "Drop Disassm.");
+    DropDisassemblies = new LFl_Check_Button("Drop Disassm.", 2, 0, 1, 1);
     DropDisassemblies->tooltip(" Don\'t save the Disassemblies, just the information about them ");
     DropDisassemblies->clear_visible_focus();
 
-    y += SZ_BUTTON_Y;
-    lh -= SZ_BUTTON_Y;
+    o->end();
 
-    sortMethod = new Fl_Choice(x+60, y, w-60, SZ_BUTTON_Y, "Sort by" );
+    o = new layouter_c(0, 3);
+
+    new LFl_Box("Sort by: ", 0, 0, 1, 1);
+
+    sortMethod = new LFl_Choice(1, 0, 1, 1);
+    ((LFl_Choice*)sortMethod)->weight(1, 0);
 
     // be careful the order in here must correspond with the enum in assembler thread
     sortMethod->add("Unsort");
@@ -2838,11 +2839,18 @@ void mainWindow_c::CreateSolveTab(int x, int y, int w, int h) {
 
     sortMethod->value(1);
 
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
+    o->end();
 
-    solDrop = new Fl_Value_Input(x+60, y, w/2-60, SZ_BUTTON_Y, "Drop");
-    solLimit = new Fl_Value_Input(x+w/2+SZ_GAP+60, y, w - w/2 - SZ_GAP - 60, SZ_BUTTON_Y, "Limit");
+    (new LFl_Box(0, 4))->setMinimumSize(0, SZ_GAP);
+
+    o = new layouter_c(0, 5);
+
+    new LFl_Box("Drop ", 0, 0, 1, 1);
+    new LFl_Box("Limit ", 3, 0, 1, 1);
+    (new LFl_Box(2, 0))->setMinimumSize(SZ_GAP, 0);
+
+    solDrop = new LFl_Value_Input(1, 0, 1, 1);
+    solLimit = new LFl_Value_Input(4, 0, 1, 1);
     solDrop->box(FL_THIN_DOWN_BOX);
     solLimit->box(FL_THIN_DOWN_BOX);
     solDrop->bounds(1, 100000000);
@@ -2853,93 +2861,85 @@ void mainWindow_c::CreateSolveTab(int x, int y, int w, int h) {
     solDrop->value(1);
     solLimit->value(100);
 
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
+    ((LFl_Value_Input*)solDrop)->weight(1, 0);
+    ((LFl_Value_Input*)solLimit)->weight(1, 0);
 
-    int bw = w - 3*SZ_GAP;
+    o->end();
 
-    int b0 = 8 * bw / 38;
-    int b1 = 8 * bw / 38;
-    int b2 = 14 * bw / 38;
-    int b3 = bw-b0-b1-b2;
+    (new LFl_Box(0, 6))->setMinimumSize(0, SZ_GAP);
 
-    {
-      Fl_Group * o = new Fl_Group(x          , y, b0+SZ_GAP  , SZ_BUTTON_Y);
-      BtnPrepare = new FlatButton(x, y, b1, SZ_BUTTON_Y, "Prepare", " Do the preparation phase and then stop, this removes old results ", cb_BtnPrepare_stub, this);
-      o->resizable(BtnPrepare);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+b0+SZ_GAP, y, b1+SZ_GAP  , SZ_BUTTON_Y);
-      BtnStart = new FlatButton(x+b0+SZ_GAP, y, b1, SZ_BUTTON_Y, "Start", " Start new solving process, removing old result ", cb_BtnStart_stub, this);
-      o->resizable(BtnStart);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+2*SZ_GAP+b0+b1, y, b2+SZ_GAP  , SZ_BUTTON_Y);
-      BtnCont = new FlatButton(x+2*SZ_GAP+b0+b1, y, b2, SZ_BUTTON_Y, "Continue", " Continue started process ", cb_BtnCont_stub, this);
-      o->resizable(BtnCont);
-      o->end();
-    }
-    {
-      Fl_Group * o = new Fl_Group(x+3*SZ_GAP+b0+b1+b2, y, b3+SZ_GAP  , SZ_BUTTON_Y);
-      BtnStop = new FlatButton(x+3*SZ_GAP+b0+b1+b2, y, b3, SZ_BUTTON_Y, "Stop", " Stop a currently running solution process ", cb_BtnStop_stub, this);
-      o->resizable(BtnStop);
-      o->end();
-    }
+    o = new layouter_c(0, 7);
 
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
+    BtnPrepare = new LFlatButton_c(0, 0, 1, 1, "Prepare", " Do the preparation phase and then stop, this removes old results ", cb_BtnPrepare_stub, this);
+    ((LFlatButton_c*)BtnPrepare)->weight(1, SZ_BUTTON_Y);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    BtnStart = new LFlatButton_c(2, 0, 1, 1, "Start", " Start new solving process, removing old result ", cb_BtnStart_stub, this);
+    ((LFlatButton_c*)BtnStart)->weight(1, SZ_BUTTON_Y);
+    (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnCont = new LFlatButton_c(4, 0, 1, 1, "Continue", " Continue started process ", cb_BtnCont_stub, this);
+    ((LFlatButton_c*)BtnCont)->weight(1, 0);
+    (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    BtnStop = new LFlatButton_c(6, 0, 1, 1, "Stop", " Stop a currently running solution process ", cb_BtnStop_stub, this);
+    ((LFlatButton_c*)BtnStop)->weight(1, 0);
 
-    BtnPlacement = new FlatButton(x, y, (w-SZ_GAP)/2, SZ_BUTTON_Y, "Browse Placements", " Browse the calculated placement of pieces ", cb_BtnPlacementBrowser_stub, this);
-    BtnStep = new FlatButton(x+(w-SZ_GAP)/2+SZ_GAP, y, (w-SZ_GAP)/2, SZ_BUTTON_Y, "Step", " Make one step in the assembler ", cb_BtnAssemblerStep_stub, this);
+    o->end();
 
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
+    (new LFl_Box(0, 8))->setMinimumSize(0, SZ_GAP);
 
-    SolvingProgress = new ProgressBar(x, y, w, SZ_BUTTON_Y);
+    o = new layouter_c(0, 9);
+
+    BtnPlacement = new LFlatButton_c(0, 0, 1, 1, "Browse Placements", " Browse the calculated placement of pieces ", cb_BtnPlacementBrowser_stub, this);
+    ((LFlatButton_c*)BtnPlacement)->weight(1, SZ_BUTTON_Y);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    BtnStep = new LFlatButton_c(2, 0, 1, 1, "Step", " Make one step in the assembler ", cb_BtnAssemblerStep_stub, this);
+    ((LFlatButton_c*)BtnStep)->weight(1, 0);
+
+    o->end();
+
+    (new LFl_Box(0, 10))->setMinimumSize(0, SZ_GAP);
+
+    SolvingProgress = new LProgressBar_c(0, 11, 1, 1);
     SolvingProgress->tooltip(" Percentage of solution space searched ");
     SolvingProgress->box(FL_ENGRAVED_BOX);
     SolvingProgress->selection_color((Fl_Color)4);
     SolvingProgress->align(FL_ALIGN_CENTER | FL_ALIGN_INSIDE);
     SolvingProgress->labelcolor(fl_rgb_color(128, 128, 255));
-    y += SZ_BUTTON_Y + SZ_GAP;
-    lh -= SZ_BUTTON_Y + SZ_GAP;
 
-    OutputActivity = new Fl_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Activity:");
+    o = new layouter_c(0, 12);
+
+    (new LFl_Box("Activity: ", 0, 0, 1, 1))->stretchRight();
+    OutputActivity = new LFl_Output(1, 0, 1, 1);
     OutputActivity->box(FL_FLAT_BOX);
     OutputActivity->color(FL_BACKGROUND_COLOR);
     OutputActivity->tooltip(" What is currently done ");
     OutputActivity->clear_visible_focus();
-    y += SZ_TEXT_Y + SZ_GAP;
-    lh -= SZ_TEXT_Y + SZ_GAP;
 
-    OutputAssemblies = new Fl_Value_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Assemblies:");
+    ((LFl_Output*)OutputActivity)->weight(1, 0);
+
+    (new LFl_Box("Assemblies: ", 0, 1, 1, 1))->stretchRight();
+    OutputAssemblies = new LFl_Value_Output(1, 1, 1, 1);
     OutputAssemblies->box(FL_FLAT_BOX);
     OutputAssemblies->step(1);   // make output NOT use scientific presentation for big numbers
     OutputAssemblies->tooltip(" Number of assemblies found so far ");
-    y += SZ_TEXT_Y;
-    lh -= SZ_TEXT_Y;
 
-    OutputSolutions = new Fl_Value_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Solutions:");
+    (new LFl_Box("Solutions: ", 0, 2, 1, 1))->stretchRight();
+    OutputSolutions = new LFl_Value_Output(1, 2, 1, 1);
     OutputSolutions->box(FL_FLAT_BOX);
     OutputSolutions->step(1);    // make output NOT use scientific presentation for big numbers
     OutputSolutions->tooltip(" Number of solutions (assemblies that can be disassembled) found so far ");
-    y += SZ_TEXT_Y;
-    lh -= SZ_TEXT_Y;
 
-    TimeUsed = new Fl_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Time used:");
+    (new LFl_Box(0, 3))->setMinimumSize(0, SZ_GAP);
+
+    (new LFl_Box("Time used: ", 0, 4, 1, 1))->stretchRight();
+    TimeUsed = new LFl_Output(1, 4, 1, 1);
     TimeUsed->box(FL_NO_BOX);
-    y += SZ_TEXT_Y;
-    lh -= SZ_TEXT_Y;
 
-    TimeEst = new Fl_Output(x+w/2, y, w/2, SZ_TEXT_Y, "Time left:");
+    (new LFl_Box("Time left: ", 0, 5, 1, 1))->stretchRight();
+    TimeEst = new LFl_Output(1, 5, 1, 1);
     TimeEst->box(FL_NO_BOX);
     TimeEst->tooltip(" This is a very approximate estimate and can be totally wrong, to take with a grain of salt ");
-    y += SZ_TEXT_Y;
-    lh -= SZ_TEXT_Y;
 
-    bt_assert(lh == 0);
+    o->end();
 
     group->end();
   }

@@ -455,4 +455,15 @@ class ProgressBar : public Fl_Progress {
     void draw(void);
 };
 
+class LProgressBar_c : public ProgressBar, public layoutable_c {
+  public:
+
+    LProgressBar_c(int x, int y, int w, int h) : ProgressBar(0, 0, 10, 10), layoutable_c(x, y, w, h) {}
+
+    virtual void getMinSize(int *width, int *height) const {
+      *width = 20;
+      *height = 20;
+    }
+};
+
 #endif
