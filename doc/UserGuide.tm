@@ -2150,7 +2150,9 @@
     unchecked for puzzles that always can be disassembled (e.g.
     <name|Pentomino> problems and other packing problems). For that kind of
     puzzles running the disassembler would only slow down the process without
-    any gain in information.
+    any gain in information. Also saving and loading the disassembly
+    instructions takes a lot of time and memory, so if they are not really
+    needed they are just a waste of time.
 
     <item*|<with|font-family|ss|Just Count>>When checked the solver will only
     count the number of solutions. Check this option if you're only
