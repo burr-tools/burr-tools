@@ -869,7 +869,7 @@
   </enumerate-numeric>
 
   <name|BurrTools> also has capabilities for <em|importing>
-  <name|PuzzleSolver3D> files. So there's no need to redo you designs from
+  <name|PuzzleSolver3D> files. So there's no need to redo your designs from
   scratch, although some postediting may be required because of the
   differences in handling duplicates of pieces and holes in the puzzle.
 
@@ -2014,7 +2014,7 @@
   S<em|b> would be in the wrong group, it can only be in Group-<no-break>1.
   If there would be another piece S<em|a> in the first set it would not be
   possible to assign groups because we can only have two pieces S<em|a> in
-  Group-<no-break>2. But if would be possible to have another piece S<em|a>
+  Group-<no-break>2. But it would be possible to have another piece S<em|a>
   in the second set.
 
   We have no idea how useful this might be with puzzles as most of the
@@ -2359,9 +2359,9 @@
   solution. Note that this scrollbar is only visible for searches which have
   the <with|font-family|ss|Solve Disassembly> option checked.
 
-  The position of the of the <with|font-family|ss|Move> scrollbar isn't
-  affected by selecting any other solution and thus allows easily comparing
-  the different solutions at a particular stage in the disassembly process.
+  The position of the <with|font-family|ss|Move> scrollbar isn't affected by
+  selecting any other solution and thus allows easily comparing the different
+  solutions at a particular stage in the disassembly process.
 
   <subsection|Visibility of Pieces<label|VisibilityOfPieces>>
 
@@ -2613,7 +2613,7 @@
 
   The format is actually a gzip compressed XML-File. The program can read
   both, compressed and uncompressed files transparently so you don't need to
-  zip them before loading into the program. The GUI always write compressed
+  zip them before loading into the program. The GUI always writes compressed
   files so if you want to change something in them you first need to
   decompress it.
 
