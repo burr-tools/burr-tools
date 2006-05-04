@@ -2188,7 +2188,12 @@
   (<with|mode|math|\<vartriangleright\>>Chapter <reference|ChapterPuzzles>)
   can be edited. If no editing whatsoever of these has been done the solving
   process can be simply resumed (<with|font-family|ss|<strong|Continue>>),
-  otherwise you need to start all over again.
+  otherwise you need to start all over again. But keep in mind the this
+  savingof the internal state of the solver is very version depentent. So it
+  is likely that a new version of <name|BurrTools> can not resume solving a
+  puzzle saved with an older version. So it is good practive to finishe
+  solving jobs with one version of <name|BurrTools> before updating to the
+  next.
 
   When the solver is running it provides a lot of information about its
   current state (what it is doing) and an estimate of the time it will need
