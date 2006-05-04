@@ -171,59 +171,60 @@ void VoxelEditGroup::draw() {
 
 static void cb_TransformButtons_stub(Fl_Widget* o, long v) { ((TransformButtons*)(o->parent()))->cb_Press(v); }
 
-TransformButtons::TransformButtons(int x, int y, int w, int h) : Fl_Group(x, y, w, h, "Transform") {
+TransformButtons::TransformButtons(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
 
-  (new Fl_Box( 80+x, y+5, 70, SZ_BUTTON_Y, "Nudge"))->labelsize(LABEL_FONT_SIZE);
-  (new Fl_Box(155+x, y+5, 70, SZ_BUTTON_Y, "Rotate"))->labelsize(LABEL_FONT_SIZE);
-  (new Fl_Box(  5+x, y+5, 70, SZ_BUTTON_Y, "Flip"))->labelsize(LABEL_FONT_SIZE);
+  label("Transform");
 
-  y += SZ_BUTTON_Y;
+  (new LFl_Box(0, 0, 1, 1))->weight(1, 1);
+  (new LFl_Box(0, 8, 1, 1))->weight(1, 1);
+  (new LFl_Box(8, 0, 1, 1))->weight(1, 1);
+  (new LFl_Box(8, 8, 1, 1))->weight(1, 1);
 
-  new FlatButton( 80+x,  5+y, 35, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Nudge_X_Left_xpm)  , pm.get(Transform_Disabled_Nudge_X_Left_xpm)  ,
-      " Shift down along X ",                cb_TransformButtons_stub,  1);
-  new FlatButton(115+x,  5+y, 35, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Nudge_X_Right_xpm) , pm.get(Transform_Disabled_Nudge_X_Right_xpm) ,
-      " Shift up along X ",                  cb_TransformButtons_stub,  0);
-  new FlatButton( 80+x, 35+y, 35, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Nudge_Y_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Y_Left_xpm)  ,
-      " Shift down along Y ",                cb_TransformButtons_stub,  3);
-  new FlatButton(115+x, 35+y, 35, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Nudge_Y_Right_xpm) , pm.get(Transform_Disabled_Nudge_Y_Right_xpm) ,
-      " Shift up along Y ",                  cb_TransformButtons_stub,  2);
-  new FlatButton( 80+x, 65+y, 35, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
-      " Shift down along Z ",                cb_TransformButtons_stub,  5);
-  new FlatButton(115+x, 65+y, 35, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Nudge_Z_Right_xpm) , pm.get(Transform_Disabled_Nudge_Z_Right_xpm) ,
-      " Shift up along Z ",                  cb_TransformButtons_stub,  4);
-  new FlatButton(155+x,  5+y, 35, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
-      " Rotate clockwise along X-Axis ",     cb_TransformButtons_stub,  6);
-  new FlatButton(190+x,  5+y, 35, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Rotate_X_Right_xpm), pm.get(Transform_Disabled_Rotate_X_Right_xpm),
-      " Rotate anticlockwise along X-Axis ", cb_TransformButtons_stub,  7);
-  new FlatButton(155+x, 35+y, 35, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
-      " Rotate clockwise along Y-Axis ",     cb_TransformButtons_stub,  9);
-  new FlatButton(190+x, 35+y, 35, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Rotate_Y_Right_xpm), pm.get(Transform_Disabled_Rotate_Y_Right_xpm),
-      " Rotate anticlockwise along Y-Axis ", cb_TransformButtons_stub,  8);
-  new FlatButton(155+x, 65+y, 35, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
-      " Rotate clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
-  new FlatButton(190+x, 65+y, 35, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
-      " Rotate anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
-  new FlatButton(  5+x,  5+y, 70, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Flip_X_xpm)        , pm.get(Transform_Disabled_Flip_X_xpm)        ,
+  (new LFl_Box("Flip",   1, 1, 1, 1))->labelsize(LABEL_FONT_SIZE);
+  (new LFl_Box("Nudge",  3, 1, 2, 1))->labelsize(LABEL_FONT_SIZE);
+  (new LFl_Box("Rotate", 6, 1, 2, 1))->labelsize(LABEL_FONT_SIZE);
+
+  new LFlatButton_c(1, 3, 1, 1, pm.get(Transform_Color_Flip_X_xpm)        , pm.get(Transform_Disabled_Flip_X_xpm)        ,
       " Flip along Y-Z Plane ",              cb_TransformButtons_stub, 12);
-  new FlatButton(  5+x, 35+y, 70, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Flip_Y_xpm)        , pm.get(Transform_Disabled_Flip_Y_xpm)        ,
+  new LFlatButton_c(1, 5, 1, 1, pm.get(Transform_Color_Flip_Y_xpm)        , pm.get(Transform_Disabled_Flip_Y_xpm)        ,
       " Flip along X-Z Plane ",              cb_TransformButtons_stub, 13);
-  new FlatButton(  5+x, 65+y, 70, SZ_BUTTON2_Y,
-      pm.get(Transform_Color_Flip_Z_xpm)        , pm.get(Transform_Disabled_Flip_Z_xpm)        ,
+  new LFlatButton_c(1, 7, 1, 1, pm.get(Transform_Color_Flip_Z_xpm)        , pm.get(Transform_Disabled_Flip_Z_xpm)        ,
       " Flip along X-Y Plane ",              cb_TransformButtons_stub, 14);
+
+  new LFlatButton_c(3, 3, 1, 1, pm.get(Transform_Color_Nudge_X_Left_xpm)  , pm.get(Transform_Disabled_Nudge_X_Left_xpm)  ,
+      " Shift down along X ",                cb_TransformButtons_stub,  1);
+  new LFlatButton_c(4, 3, 1, 1, pm.get(Transform_Color_Nudge_X_Right_xpm) , pm.get(Transform_Disabled_Nudge_X_Right_xpm) ,
+      " Shift up along X ",                  cb_TransformButtons_stub,  0);
+  new LFlatButton_c(3, 5, 1, 1, pm.get(Transform_Color_Nudge_Y_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Y_Left_xpm)  ,
+      " Shift down along Y ",                cb_TransformButtons_stub,  3);
+  new LFlatButton_c(4, 5, 1, 1, pm.get(Transform_Color_Nudge_Y_Right_xpm) , pm.get(Transform_Disabled_Nudge_Y_Right_xpm) ,
+      " Shift up along Y ",                  cb_TransformButtons_stub,  2);
+  new LFlatButton_c(3, 7, 1, 1, pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
+      " Shift down along Z ",                cb_TransformButtons_stub,  5);
+  new LFlatButton_c(4, 7, 1, 1, pm.get(Transform_Color_Nudge_Z_Right_xpm) , pm.get(Transform_Disabled_Nudge_Z_Right_xpm) ,
+      " Shift up along Z ",                  cb_TransformButtons_stub,  4);
+
+  new LFlatButton_c(6, 3, 1, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
+      " Rotate clockwise along X-Axis ",     cb_TransformButtons_stub,  6);
+  new LFlatButton_c(7, 3, 1, 1, pm.get(Transform_Color_Rotate_X_Right_xpm), pm.get(Transform_Disabled_Rotate_X_Right_xpm),
+      " Rotate anticlockwise along X-Axis ", cb_TransformButtons_stub,  7);
+  new LFlatButton_c(6, 5, 1, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
+      " Rotate clockwise along Y-Axis ",     cb_TransformButtons_stub,  9);
+  new LFlatButton_c(7, 5, 1, 1, pm.get(Transform_Color_Rotate_Y_Right_xpm), pm.get(Transform_Disabled_Rotate_Y_Right_xpm),
+      " Rotate anticlockwise along Y-Axis ", cb_TransformButtons_stub,  8);
+  new LFlatButton_c(6, 7, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
+      " Rotate clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
+  new LFlatButton_c(7, 7, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
+      " Rotate anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
+
+  (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
+//  (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
+//  (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
+
+  (new LFl_Box(2, 0, 1, 1))->setMinimumSize(5, 0);
+  (new LFl_Box(5, 0, 1, 1))->setMinimumSize(5, 0);
+
+  end();
 }
 
 static void cb_ChangeSize_stub(Fl_Widget* o, long v) { ((ChangeSize*)(o->parent()))->cb_roll(v); }
@@ -312,11 +313,19 @@ void ChangeSize::calcNewSizes(int ox, int oy, int oz, int *nx, int *ny, int *nz)
   if (*nz > 1000) *nz = 1000;
 }
 
-ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
+ChangeSize::ChangeSize(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
 
   tooltip(" Change size of space ");
 
-  SizeX = new Fl_Roller(70+x, 10+y, w-90, 20);
+  (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
+  (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
+  (new LFl_Box(4, 1, 1, 1))->setMinimumSize(5, 0);
+  (new LFl_Box(2, 1, 1, 1))->setMinimumSize(5, 0);
+
+  (new LFl_Box(2, 0, 1, 1))->weight(0, 1);
+  (new LFl_Box(2, 6, 1, 1))->weight(0, 1);
+
+  SizeX = new LFl_Roller(5, 1, 1, 1);
   SizeX->type(1);
   SizeX->box(FL_THIN_DOWN_BOX);
   SizeX->minimum(1);
@@ -324,8 +333,9 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   SizeX->step(0.25);
   SizeX->callback(cb_ChangeSize_stub, 0l);
   SizeX->clear_visible_focus();
+  SizeX->weight(1, 0);
 
-  SizeY = new Fl_Roller(70+x, 35+y, w-90, 20);
+  SizeY = new LFl_Roller(5, 3, 1, 1);
   SizeY->type(1);
   SizeY->box(FL_THIN_DOWN_BOX);
   SizeY->minimum(1);
@@ -334,7 +344,7 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   SizeY->callback(cb_ChangeSize_stub, 1l);
   SizeY->clear_visible_focus();
 
-  SizeZ = new Fl_Roller(70+x, 60+y, w-90, 20);
+  SizeZ = new LFl_Roller(5, 5, 1, 1);
   SizeZ->type(1);
   SizeZ->box(FL_THIN_DOWN_BOX);
   SizeZ->minimum(1);
@@ -343,24 +353,28 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
   SizeZ->callback(cb_ChangeSize_stub, 2l);
   SizeZ->clear_visible_focus();
 
-  SizeOutX = new Fl_Int_Input(20+x, 10+y, 45, 20, "X");
+  SizeOutX = new LFl_Int_Input(3, 1, 1, 1);
   SizeOutX->box(FL_THIN_DOWN_BOX);
   SizeOutX->callback(cb_InputSize_stub, 0l);
   SizeOutX->when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
 
-  SizeOutY = new Fl_Int_Input(20+x, 35+y, 45, 20, "Y");
+  SizeOutY = new LFl_Int_Input(3, 3, 1, 1);
   SizeOutY->box(FL_THIN_DOWN_BOX);
   SizeOutY->callback(cb_InputSize_stub, 1l);
   SizeOutY->when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
 
-  SizeOutZ = new Fl_Int_Input(20+x, 60+y, 45, 20, "Z");
+  SizeOutZ = new LFl_Int_Input(3, 5, 1, 1);
   SizeOutZ->box(FL_THIN_DOWN_BOX);
   SizeOutZ->callback(cb_InputSize_stub, 2l);
   SizeOutZ->when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
 
-  ConnectX = new Fl_Check_Button(x+w-20, 10+y, 20, 20);
-  ConnectY = new Fl_Check_Button(x+w-20, 35+y, 20, 20);
-  ConnectZ = new Fl_Check_Button(x+w-20, 60+y, 20, 20);
+  new LFl_Box("X", 1, 1, 1, 1);
+  new LFl_Box("Y", 1, 3, 1, 1);
+  new LFl_Box("Z", 1, 5, 1, 1);
+
+  ConnectX = new LFl_Check_Button("", 6, 1, 1, 1);
+  ConnectY = new LFl_Check_Button("", 6, 3, 1, 1);
+  ConnectZ = new LFl_Check_Button("", 6, 5, 1, 1);
 
   ConnectX->tooltip(" Link the sizes together so that a change will be done to the other sizes as well ");
   ConnectY->tooltip(" Link the sizes together so that a change will be done to the other sizes as well ");
@@ -396,59 +410,103 @@ void ToolTab::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
     changeSize->setXYZ(0, 0, 0);
 }
 
-static void cb_ToolTabSize_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()->parent()))->cb_size(); }
+static void cb_ToolTabSize_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()->parent()->parent()))->cb_size(); }
 static void cb_ToolTabTransform_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()))->cb_transform(v); }
-static void cb_ToolTabTransform2_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()->parent()))->cb_transform(v); }
+static void cb_ToolTabTransform2_stub(Fl_Widget* o, long v) { ((ToolTab*)(o->parent()->parent()->parent()))->cb_transform(v); }
 
-ToolTab::ToolTab(int x, int y, int w, int h) : Fl_Tabs(x, y, w, h) {
+ToolTab::ToolTab(int x, int y, int w, int h) : LFl_Tabs(x, y, w, h) {
 
   {
-    Fl_Group * o = new Fl_Group(x, y+20, w, h-20, "Size");
+    layouter_c * o = new layouter_c(0, 1, 1, 1);
+    o->label("Size");
+    o->pitch(5);
 
-    changeSize = new ChangeSize(x, y+20+20, w-90, h-40);
+    layouter_c *o2 = new layouter_c(0, 0, 1, 1);
+
+    changeSize = new ChangeSize(0, 1, 1, 1);
     changeSize->callback(cb_ToolTabSize_stub);
 
-    (new Fl_Box(x+w-80, y+25, 35, SZ_BUTTON_Y, "Grid"))->labelsize(LABEL_FONT_SIZE);
-
-    new FlatButton(x+w-80, y+ 45, 35, 25, pm.get(Grid_Color_Minimize_xpm), pm.get(Grid_Disabled_Minimize_xpm), "Minimize size of grid", cb_ToolTabTransform2_stub, 15);
-    new FlatButton(x+w-80, y+ 75, 35, 25, pm.get(Grid_Color_Center_xpm), pm.get(Grid_Disabled_Center_xpm), "Center shape inside the grid", cb_ToolTabTransform2_stub, 25);
-    new FlatButton(x+w-80, y+105, 35, 25, pm.get(Grid_Color_Origin_xpm), pm.get(Grid_Disabled_Origin_xpm), "Move shape to origin of grid", cb_ToolTabTransform2_stub, 24);
-
-    (new Fl_Box(x+w-40, y+25, 35, SZ_BUTTON_Y, "Shape"))->labelsize(LABEL_FONT_SIZE);
-
-    new FlatButton(x+w-40, y+ 45, 35, 25, pm.get(Rescale_Color_X1_xpm), pm.get(Rescale_Disabled_X1_xpm), "Try to minimize size of shape", cb_ToolTabTransform2_stub, 26);
-    new FlatButton(x+w-40, y+ 75, 35, 25, pm.get(Rescale_Color_X2_xpm), pm.get(Rescale_Disabled_X2_xpm), "Double size of shape", cb_ToolTabTransform2_stub, 22);
-    new FlatButton(x+w-40, y+105, 35, 25, pm.get(Rescale_Color_X3_xpm), pm.get(Rescale_Disabled_X3_xpm), "Triple size of shape", cb_ToolTabTransform2_stub, 23);
-
-    toAll = new Fl_Check_Button(x+15, y+25, 150, 20, "Apply to All Shapes");
+    toAll = new LFl_Check_Button("Apply to All Shapes", 0, 0, 1, 1);
     toAll->tooltip(" If this is active, all operations (including transformations and constrains are done to all shapes ");
     toAll->clear_visible_focus();
+    toAll->stretchHCenter();
+
+    o2->end();
+    o2->weight(1, 0);
+
+    (new LFl_Box(1, 0, 1, 1))->setMinimumSize(5, 0);
+
+    o2 = new layouter_c(2, 0, 1, 1);
+
+    (new LFl_Box(0, 0, 1, 1))->weight(1, 1);
+    (new LFl_Box(0, 8, 1, 1))->weight(1, 1);
+
+    (new LFl_Box("Grid", 0, 1, 1, 1))->labelsize(LABEL_FONT_SIZE);
+
+    new LFlatButton_c(0, 3, 1, 1, pm.get(Grid_Color_Minimize_xpm), pm.get(Grid_Disabled_Minimize_xpm),
+        " Minimize size of grid ", cb_ToolTabTransform2_stub, 15);
+    new LFlatButton_c(0, 5, 1, 1, pm.get(Grid_Color_Center_xpm), pm.get(Grid_Disabled_Center_xpm),
+        " Center shape inside the grid ", cb_ToolTabTransform2_stub, 25);
+    new LFlatButton_c(0, 7, 1, 1, pm.get(Grid_Color_Origin_xpm), pm.get(Grid_Disabled_Origin_xpm),
+        " Move shape to origin of grid ", cb_ToolTabTransform2_stub, 24);
+
+    (new LFl_Box("Shape", 2, 1, 1, 1))->labelsize(LABEL_FONT_SIZE);
+
+    new LFlatButton_c(2, 3, 1, 1, pm.get(Rescale_Color_X1_xpm), pm.get(Rescale_Disabled_X1_xpm),
+        " Try to minimize size of shape ", cb_ToolTabTransform2_stub, 26);
+    new LFlatButton_c(2, 5, 1, 1, pm.get(Rescale_Color_X2_xpm), pm.get(Rescale_Disabled_X2_xpm),
+        " Double size of shape ", cb_ToolTabTransform2_stub, 22);
+    new LFlatButton_c(2, 7, 1, 1, pm.get(Rescale_Color_X3_xpm), pm.get(Rescale_Disabled_X3_xpm),
+        " Triple size of shape ", cb_ToolTabTransform2_stub, 23);
+
+//    (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
+    (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
+    (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
+
+    o2->end();
 
     o->end();
   }
   {
-    Fl_Group* o = new TransformButtons(x, y+20, w, h-20);
+    Fl_Group* o = new TransformButtons(0, 1, 1, 1);
     o->callback(cb_ToolTabTransform_stub);
     o->hide();
-    o->end();
   }
   {
-    Fl_Group* o = new Fl_Group(x, y+20, w, h-20, "Tools");
+    Fl_Group* o = new layouter_c(0, 1, 1, 1);
     o->hide();
 
-    (new Fl_Box(x+5, y+25, 70, SZ_BUTTON_Y, "Constrain"))->labelsize(LABEL_FONT_SIZE);
+    o->label("Tools");
 
+    (new LFl_Box(0, 0, 1, 1))->weight(1, 1);
+    (new LFl_Box(0, 8, 1, 1))->weight(1, 1);
+    (new LFl_Box(8, 0, 1, 1))->weight(1, 1);
+    (new LFl_Box(8, 8, 1, 1))->weight(1, 1);
 
-    new FlatButton(x+5, y+ 45, 35, 25, pm.get(InOut_Color_Fixed_In_xpm), pm.get(InOut_Disabled_Fixed_In_xpm), "Make inside fixed", cb_ToolTabTransform2_stub, 16);
-    new FlatButton(x+5, y+ 75, 35, 25, pm.get(InOut_Color_Variable_In_xpm), pm.get(InOut_Disabled_Variable_In_xpm), "Make inside variable", cb_ToolTabTransform2_stub, 18);
-    new FlatButton(x+5, y+105, 35, 25, pm.get(InOut_Color_RemoveColor_In_xpm), pm.get(InOut_Disabled_RemoveColor_In_xpm), "Remove Colours from inside cubes", cb_ToolTabTransform2_stub, 20);
+    (new LFl_Box("Constrain", 3, 1, 2, 1))->labelsize(LABEL_FONT_SIZE);
 
+    new LFlatButton_c(3, 3, 1, 1, pm.get(InOut_Color_Fixed_In_xpm), pm.get(InOut_Disabled_Fixed_In_xpm),
+        " Make inside fixed ", cb_ToolTabTransform2_stub, 16);
+    new LFlatButton_c(3, 5, 1, 1, pm.get(InOut_Color_Variable_In_xpm), pm.get(InOut_Disabled_Variable_In_xpm),
+        " Make inside variable ", cb_ToolTabTransform2_stub, 18);
+    new LFlatButton_c(3, 7, 1, 1, pm.get(InOut_Color_RemoveColor_In_xpm), pm.get(InOut_Disabled_RemoveColor_In_xpm),
+        " Remove Colours from inside cubes ", cb_ToolTabTransform2_stub, 20);
 
-    new FlatButton(x+40, y+ 45, 35, 25, pm.get(InOut_Color_Fixed_Out_xpm), pm.get(InOut_Disabled_Fixed_Out_xpm), "Make outside fixed", cb_ToolTabTransform2_stub, 17);
-    new FlatButton(x+40, y+ 75, 35, 25, pm.get(InOut_Color_Variable_Out_xpm), pm.get(InOut_Disabled_Variable_Out_xpm), "Make outside variable", cb_ToolTabTransform2_stub, 19);
-    new FlatButton(x+40, y+105, 35, 25, pm.get(InOut_Color_RemoveColor_Out_xpm), pm.get(InOut_Disabled_RemoveColor_Out_xpm), "RemoveColours from outside cubes", cb_ToolTabTransform2_stub, 21);
+    new LFlatButton_c(4, 3, 1, 1, pm.get(InOut_Color_Fixed_Out_xpm), pm.get(InOut_Disabled_Fixed_Out_xpm),
+        " Make outside fixed ", cb_ToolTabTransform2_stub, 17);
+    new LFlatButton_c(4, 5, 1, 1, pm.get(InOut_Color_Variable_Out_xpm), pm.get(InOut_Disabled_Variable_Out_xpm),
+        " Make outside variable ", cb_ToolTabTransform2_stub, 19);
+    new LFlatButton_c(4, 7, 1, 1, pm.get(InOut_Color_RemoveColor_Out_xpm), pm.get(InOut_Disabled_RemoveColor_Out_xpm),
+        " RemoveColours from outside cubes ", cb_ToolTabTransform2_stub, 21);
+
+    (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
+    (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
+    (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
+
     o->end();
   }
+
+  end();
 }
 
 void ToolTab::cb_size(void) {

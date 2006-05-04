@@ -2445,6 +2445,7 @@ void mainWindow_c::CreateShapeTab(int x, int y, int w, int h) {
     lh -= SZ_SEPARATOR_Y;
 
     pieceTools = new ToolTab(x, y, w, SZ_TOOLTAB_Y);
+    pieceTools->resize(x, y, w, SZ_TOOLTAB_Y);
     pieceTools->callback(cb_TransformPiece_stub, this);
     pieceTools->end();
     y += SZ_TOOLTAB_Y + SZ_GAP;

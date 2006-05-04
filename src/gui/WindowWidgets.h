@@ -179,7 +179,7 @@ public:
 };
 
 // the transform group
-class TransformButtons : public Fl_Group {
+class TransformButtons : public layouter_c {
 
   pixmapList_c pm;
 
@@ -191,11 +191,11 @@ public:
 };
 
 // the change size group
-class ChangeSize : public Fl_Group {
+class ChangeSize : public layouter_c {
 
-  Fl_Roller* SizeX;
-  Fl_Roller* SizeY;
-  Fl_Roller* SizeZ;
+  LFl_Roller* SizeX;
+  LFl_Roller* SizeY;
+  LFl_Roller* SizeZ;
 
   Fl_Int_Input* SizeOutX;
   Fl_Int_Input* SizeOutY;
@@ -222,10 +222,10 @@ public:
 };
 
 // the class that contains the tool tab
-class ToolTab : public Fl_Tabs {
+class ToolTab : public LFl_Tabs {
 
   ChangeSize * changeSize;
-  Fl_Check_Button * toAll;
+  LFl_Check_Button * toAll;
   puzzle_c * puzzle;
   unsigned int shape;
   pixmapList_c pm;

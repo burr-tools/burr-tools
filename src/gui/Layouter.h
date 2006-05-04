@@ -29,6 +29,7 @@
 #include <FL/Fl_Check_Button.h>
 #include <FL/Fl_Choice.h>
 #include <FL/Fl_Round_Button.h>
+#include <FL/Fl_Roller.h>
 #include <FL/Fl_Input.h>
 #include <FL/Fl_Output.h>
 #include <FL/Fl_Value_Output.h>
@@ -36,6 +37,7 @@
 #include <FL/Fl_Value_Slider.h>
 #include <FL/Fl_Int_Input.h>
 #include <FL/Fl_Double_Window.h>
+#include <FL/Fl_Tabs.h>
 
 #include <vector>
 
@@ -388,6 +390,17 @@ class LFl_Value_Slider : public Fl_Value_Slider, public layoutable_c {
     }
 };
 
+class LFl_Roller : public Fl_Roller, public layoutable_c {
+
+  public:
+
+    LFl_Roller(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Roller(0, 0, 0, 0), layoutable_c(x, y, w, h) {}
+
+    virtual void getMinSize(int *width, int *height) const {
+      *width = 30;
+      *height = 20;
+    }
+};
 
 class LFl_Double_Window : public Fl_Double_Window {
 
@@ -411,6 +424,16 @@ class LFl_Double_Window : public Fl_Double_Window {
 
     Fl_Double_Window::show();
   }
+};
+
+class LFl_Tabs : public Fl_Tabs, public layoutable_c {
+
+  public:
+
+    LFl_Tabs(int x, int y, int w, int h) : Fl_Tabs(0, 0, 100, 100), layoutable_c(x, y, w, h) { }
+
+    virtual void getMinSize(int *width, int *height) const;
+    virtual void resize(int x, int y, int w, int h);
 };
 
 #endif

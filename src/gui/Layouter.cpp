@@ -365,3 +365,45 @@ void layouter_c::getMinSize(int *width, int *height) const {
     for (unsigned int i = 0; i < heights.size(); i++) *height += heights[i];
   }
 }
+
+
+void LFl_Tabs::getMinSize(int *width, int *height) const {
+
+  Fl_Widget *const * _widgets = array();
+
+  for (int i = 0; i < children(); i++) {
+
+    int w, h;
+
+    layoutable_c * widget = dynamic_cast<layoutable_c*>(_widgets[i]);
+
+    widget->getMinSize(&w, &h);
+
+    w += 2 * widget->getPitch();
+    h += 2 * widget->getPitch();
+
+    if (w > *width) *width = w;
+    if (h > *height) *height = h;
+  }
+
+  *height += 2;
+}
+
+void LFl_Tabs::resize(int x, int y, int w, int h) {
+
+  Fl_Tabs::resize(x, y, w, h);
+
+  Fl_Widget *const * _widgets = array();
+
+  for (int i = 0; i < children(); i++) {
+
+    layoutable_c * widget = dynamic_cast<layoutable_c*>(_widgets[i]);
+
+    unsigned int p = widget->getPitch();
+
+    _widgets[i]->resize(x+p, y+20+p, w-2*p, h-20-2*p);
+  }
+}
+
+
+
