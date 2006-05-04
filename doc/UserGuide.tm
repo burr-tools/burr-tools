@@ -2428,10 +2428,6 @@
   \;
 
   <\itemize-dot>
-    <item>Include a possibility to generate images with the problem(s), the
-    shapes or the solutions. Currently you need the program to animate for
-    you.
-
     <item>Add some special algorithms that are faster for certain kind of
     puzzles. The current algorithm is quite good for nearly all puzzles, but
     it's not <em|the> fastest.
@@ -2463,14 +2459,6 @@
 
     <item>Better tool for colorization of a piece. E.g. checkering, but it
     needs to be more general than just checkering.
-
-    <item>Improve disassembler to find bigger groups of in unison movable
-    pieces. Currently it only finds two. It finds all movements if they have
-    to move, but it may first move piece S1 up x and then S2 up x which
-    results in higher levels than they really are.
-
-    <item>Improved 3D viewer. It currently sucks for big shapes. The wide
-    angled view distorts big pieces.
 
     <item>Make it possible to save only a few solutions. For puzzles that
     have a lot of solutions this might be useful.
