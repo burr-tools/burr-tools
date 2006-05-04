@@ -86,8 +86,7 @@ public:
 
   virtual void getMinSize(int *width, int *height) const {
     *width = 0;
-    fl_font(labelfont(), labelsize());
-    fl_measure(label(), *width, *height);
+    ((LFlatButton_c*)this)->measure_label(*width, *height);
     *width += 4;
     *height += 4;
   }
