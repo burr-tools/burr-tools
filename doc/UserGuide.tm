@@ -487,11 +487,11 @@
     the number of possible placements.
   </enumerate-numeric>
 
-  Anyway, I was not completely satisfied with the available software. Then
-  the <name|<name|C>'t>, a German computer magazine, started a competition to
-  write a program that counts the number of solutions to a merchandising
-  puzzle of them as fast as possible. My program wasn't the fastest but it
-  was the starting point for the <name|BurrTools>.
+  Anyway, I was not completely satisfied with the available software. Then in
+  summer 2003 a German computer magazine, started a competition to write a
+  program that counts the number of solutions to a merchandising puzzle of
+  them as fast as possible. My program wasn't the fastest but it was the
+  starting point for the <name|BurrTools>.
 
   As there are many people out there that are a lot more creative than I am
   and that could use a program like this to design nice puzzles I decided to
