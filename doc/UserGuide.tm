@@ -1092,9 +1092,9 @@
     <postscript|Pics/SizeBar.png|*5/8|*5/8||||>
   </big-figure|<label|FigureResize>Resize handles>
 
-  <no-indent>Note that it possible to drag certain panels completely out of
-  view and that it may be nescessary to drag 'the same' separtor up <em|and>
-  down to make these sections visible again.
+  <no-indent>Note that it is possible to drag certain panels completely out
+  of view and that it may be nescessary to drag 'the same' separtor up
+  <em|and> down to make these sections visible again.
 
   <section|The 3-D Viewer>
 
