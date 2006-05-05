@@ -386,7 +386,7 @@ void LFl_Tabs::getMinSize(int *width, int *height) const {
     if (h > *height) *height = h;
   }
 
-  *height += 2;
+  *height += 20;
 }
 
 void LFl_Tabs::resize(int x, int y, int w, int h) {
