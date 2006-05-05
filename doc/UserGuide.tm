@@ -504,7 +504,18 @@
   so stay calm if things look a bit unusual, they behave in fact quite
   similar to how a normal <name|Windows>-program behaves.
 
-  All this work has taken over two years to reach the current state, I hope
+  Lately 2 people played important roles in the development of the program.
+  These 2 are Ronald Kint-Bruynseels and Derek Bosch. Ronald has rewritten
+  the first part of this manual and has generally contributed lots of well
+  organized suggestions. Derek is resposible for the OSX port of the program.
+  Without him there would be no binary for this operating system available.
+
+  I want to thank both of them for their work. I also want to thank all the
+  other people that have sent in bug reports, suggestions and praise. Their
+  input is very welcome and cruicial to the further development of the
+  program.
+
+  All this work has taken nearly 3 years to reach the current state, I hope
   it was worth it and you have a lot of fun with the program.
 
   \;
