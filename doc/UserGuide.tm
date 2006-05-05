@@ -729,7 +729,7 @@
   synchronise our use of vocabulary and explain a few concepts that crucial
   to the way <name|BurrTools> works.
 
-  <subsection|Definitions<label|Definitions>>
+  <subsection|Definitions><label|Definitions>
 
   <\description>
     <item*|Voxel>A voxel <em|(volume pixel)> is a space unit in the
@@ -795,7 +795,7 @@
     a unit or just one of these without specifying which one.
   </description>
 
-  <subsection|Concepts<label|Concepts>>
+  <subsection|Concepts><label|Concepts>
 
   As described above <name|BurrTools> works with shapes which are merely a
   collection of voxels that each can have either one of three different
@@ -855,7 +855,7 @@
   with this colour, but in the future more advanced possibilities for
   colouring and conditions may be added.
 
-  <section|<label|PS3DUsers>Notes for PuzzleSolver3D Users>
+  <section|Notes for PuzzleSolver3D Users><label|PS3DUsers>
 
   <name|BurrTools> was initially very much based on <name|PuzzleSolver3D> by
   André van Kammen but diverged quite a bit from that. We strongly advise you
@@ -951,7 +951,7 @@
     about the program.
   </description-compact>
 
-  <subsection|The File Menu<label|FileMenu>>
+  <subsection|The File Menu><label|FileMenu>
 
   The <with|font-family|ss|<strong|File>> menu has all the traditional
   entries for handling files. Many of these are well known from other
@@ -1018,7 +1018,7 @@
   to <name|BurrTools> and have them solved in several sessions overnight or
   whenever you don't need your computer for other tasks.
 
-  <subsection|The Configuration Menu<label|ConfigMenu>>
+  <subsection|The Configuration Menu><label|ConfigMenu>
 
   The <with|font-family|ss|<strong|Config>> item on the menu bar opens a new
   window (Figure <reference|FigureConfig>) to set some options for the GUI.
@@ -1152,7 +1152,7 @@
   <with|font-family|ss|Config> menu (<with|mode|math|\<vartriangleright\>><reference|ConfigMenu>).
 
   <\with|par-mode|right>
-    <chapter|Creating Shapes<label|ChapterShapes>>
+    <chapter|Creating Shapes><label|ChapterShapes>
   </with>
 
   The key concept of <name|BurrTools> is <em|shapes>. A shape is simply a
@@ -1205,7 +1205,7 @@
   future other grid types and transformations of these (skewing and
   stretching) may be implemented.
 
-  <section|Creating Shapes<label|CreatingShapes>>
+  <section|Creating Shapes><label|CreatingShapes>
 
   The very first step is to initialise the shapes that can be used in your
   puzzle design. All the tools to do so are just below the
@@ -1240,7 +1240,7 @@
   number of shapes, e.g. all 59 notchable six-piece burr pieces, of which you
   assign only 6 to the pieces of your puzzle design.
 
-  <section|Grid Functions<label|GridFunctions>>
+  <section|Grid Functions><label|GridFunctions>
 
   Since shapes are defined as objects in 3-<no-break>D space and
   theoretically 3-<no-break>D space is unlimited in size, it's convenient
@@ -1253,7 +1253,7 @@
   <big-figure|<postscript|Pics/Subtab_Size.png|*5/8|*5/8||||>|<label|FigureSizeSubtab>Grid
   and scaling functions>
 
-  <subsection|Adjusting the Grid Size<label|AdjustingGridSize>>
+  <subsection|Adjusting the Grid Size><label|AdjustingGridSize>
 
   When the very first shape is initialised it has a default grid size of
   6<with|mode|math|\<times\>>6<with|mode|math|\<times\>>6, but all other new
@@ -1289,7 +1289,7 @@
   14<with|mode|math|\<times\>>14<with|mode|math|\<times\>>14 and centering
   the 'core' in that enlarged grid.
 
-  <subsection|Advanced Grid and Scaling Functions<label|AdvancedGrid>>
+  <subsection|Advanced Grid and Scaling Functions><label|AdvancedGrid>
 
   <name|BurrTools> has some powerful time saving functions to manipulate the
   position of the shape in its grid or to rescale a shape together with the
@@ -1362,7 +1362,7 @@
   replaced by 27 identical voxels. This can be very useful if you want to
   introduce <em|'pins and holes'><em|<em|>> into your design.>>>>>
 
-  <subsection|Adjusting All Shapes<label|AdjustAllShapes>>
+  <subsection|Adjusting All Shapes><label|AdjustAllShapes>
 
   A last, but certainly not least, item to mention is the
   <strong|<with|font-family|ss|Apply to All Shapes>> checkbox. When checked
@@ -1381,7 +1381,7 @@
   scaled down <em|by the <em|<em|same>> factor>. This to prevent ending up
   with an unintended mixture of differently scaled shapes.
 
-  <section|Building and Editing Shapes<label|BuildingShapes>>
+  <section|Building and Editing Shapes><label|BuildingShapes>
 
   <\with|par-par-sep|0>
     Once a shape has been initialised the 2-<no-break>D grid wherein it can
@@ -1406,7 +1406,7 @@
   all be cumulatively added to them.
 
   <subsection|Navigating in 2-<no-break>D and
-  3-<no-break>D<label|Navigating2D3D>>
+  3-<no-break>D><label|Navigating2D3D>
 
   Building and editing takes almost exclusively place in the 2-<no-break>D
   grid to which the 3-<no-break>D viewport only acts as a visual aid. Both
@@ -1505,7 +1505,7 @@
   <name|BurrTools> so that it always defaults to the drawing style that was
   active on the last shutdown of the program.<new-line>
 
-  <subsection|Compound Drawing Tools<label|CompoundDrawing>>
+  <subsection|Compound Drawing Tools><label|CompoundDrawing>
 
   Although the basic drawing tools are all that is needed for creating
   shapes, some compound drawing tools are added to speed up the process. The
@@ -1531,7 +1531,7 @@
   settings of the grid. Hence, to take fully advantage of these functions the
   grid should be first adjusted to the proper dimensions.>>>>>
 
-  <section|Adding Colour<label|AddingColour>>
+  <section|Adding Colour><label|AddingColour>
 
   There are basically two reasons for using colours in your puzzle designs.
   The first is merely <em|aesthetical> and colours are only used to explore
@@ -1601,7 +1601,7 @@
   discard the colour from the list, but will also remove it from any voxel
   that has it as an attribute by replacing it with the neutral color.
 
-  <subsection|Applying Colours<label|BrushTool>>
+  <subsection|Applying Colours><label|BrushTool>
 
   Colours can be applied while drawing the shape. Just select a colour and it
   will become an extra attribute of the fixed pen or the variable pen.
@@ -1620,7 +1620,7 @@
   compound drawing tools. Note that the right mouse button will still
   completely erase the voxel.
 
-  <section|Representations<label|Representations>>
+  <section|Representations><label|Representations>
 
   Voxels can either be fixed or variable and each of these can come with or
   without an additional custom colour. In <name|BurrTools> all of these have
@@ -1650,7 +1650,7 @@
   neutral colour). Note that in both grids the neutral colours also have a
   slightly checkered pattern which can assist navigating in space.
 
-  <section|Transformation Tools<label|TransformationTools>>
+  <section|Transformation Tools><label|TransformationTools>
 
   Editing complex shapes can be very cumbersome and requires often a lot of
   navigating through the 2-<no-break>D grid. So, properly positioning and/or
@@ -1839,7 +1839,7 @@
   create such a problem: <em|initialising> the problem and <em|assigning>
   shapes to the pieces and the result.
 
-  <subsection|Initialising Problems<label|InitialisingProblems>>
+  <subsection|Initialising Problems><label|InitialisingProblems>
 
   The first step is to <em|initialise> the problem(s). All the tools to do so
   are just below the <with|font-family|ss|<strong|Problems>> caption. Just
@@ -1859,7 +1859,7 @@
   <big-figure|<postscript|Pics/Window_Clarissa.png|*5/8|*5/8||||>|<label|FigureSimplePuzzleProblem>A
   simple puzzle problem with multipieces>
 
-  <subsection|Piece Assignment<label|PieceAssignment>>
+  <subsection|Piece Assignment><label|PieceAssignment>
 
   Until now we dealt with shapes as rather abstract concepts. Only by
   <em|<em|<em|assigning>>> these shapes to the pieces or the goal of a puzzle
@@ -2083,7 +2083,7 @@
   all the values of a previously made group will remove the group even if its
   column stays present in the <with|font-family|ss|Group Editor>.
 
-  <section|Setting Colour Constraints<label|ColourConstraints>>
+  <section|Setting Colour Constraints><label|ColourConstraints>
 
   The <strong|<with|font-family|ss|Colour Assignment>> panel (Figure
   <reference|FigureColourAssignment>) also has two lists. The first one shows
@@ -2137,7 +2137,7 @@
   <subsection|Constraint Tips>
 
   <\with|par-mode|right>
-    <chapter|Solving Puzzles<label|ChapterSolver>>
+    <chapter|Solving Puzzles><label|ChapterSolver>
   </with>
 
   Solving puzzles is what <name|BurrTools> is really about. Without its
@@ -2250,7 +2250,7 @@
   <big-figure|<postscript|Pics/SolverProgress.png|*5/8|*5/8||||>|<label|FigureSolverInformation>The
   solver information>
 
-  <subsubsection|Solver State Information<label|SolverInformation>>
+  <subsubsection|Solver State Information><label|SolverInformation>
 
   Probably more important is the <with|font-family|ss|<strong|Activity>> and
   result information provided by the solver. The
@@ -2321,7 +2321,7 @@
   initial phase and the subsequent steps of the assembler can be seen in the
   3-D viewer by clicking the <with|font-family|ss|<strong|Step>> button.
 
-  <section|Browsing Placements<label|BrowsingPlacements>>
+  <section|Browsing Placements><label|BrowsingPlacements>
 
   The <strong|<with|font-family|ss|Browse Placements>> button opens a window
   (Figure <reference|FigurePlacementBrowser>) that lets you examine the
@@ -2357,7 +2357,7 @@
   just select the other one and the following keystroke will start to move
   the slider.
 
-  <section|Inspecting Results<label|InspectingResults>>
+  <section|Inspecting Results><label|InspectingResults>
 
   As soon as any result is found the solutions list becomes available on the
   <with|font-family|ss|<strong|Solutions>> panel and the 3-<no-break>D viewer
@@ -2402,7 +2402,7 @@
   selecting any other solution and thus allows easily comparing the different
   solutions at a particular stage in the disassembly process.
 
-  <subsection|Visibility of Pieces<label|VisibilityOfPieces>>
+  <subsection|Visibility of Pieces><label|VisibilityOfPieces>
 
   In the list at the bottom of the <with|font-family|ss|Solutions> panel all
   pieces used in the problem are represented by their identifier. Instances
@@ -2440,7 +2440,7 @@
   rather consider them to be merely a preview or a teaser to stick to
   <name|BurrTools>.
 
-  <section|Adding Comments<label|AddingComments>>
+  <section|Adding Comments><label|AddingComments>
 
   The <with|font-family|ss|<strong|Edit Comment>> entry on the menu bar opens
   a new window that allows you to add textual information to the puzzle file.
@@ -3115,7 +3115,7 @@
   \;
 
   <\with|par-mode|right>
-    <appendix|Examples<label|AppendixExamples>>
+    <appendix|Examples><label|AppendixExamples>
   </with>
 
   <name|BurrTools> comes with some examples that illustrate the capabilities
