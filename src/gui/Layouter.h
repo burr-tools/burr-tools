@@ -202,10 +202,9 @@ class LFl_Button : public Fl_Button, public layoutable_c {
 
   virtual void getMinSize(int *width, int *height) const {
     *width = 0;
-    fl_font(labelfont(), labelsize());
-    fl_measure(label(), *width, *height);
-    *width += 20;
-    *height += 10;
+    ((LFl_Button*)this)->measure_label(*width, *height);
+    *width += 4;
+    *height += 4;
   }
 };
 
