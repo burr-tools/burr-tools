@@ -2458,7 +2458,105 @@
   It can be used to append extra information to the puzzle such as the name
   of the designer, or a 'to do' list for your own designs.
 
-  <section|Exporting Images<label|ExportingImages>>
+  <section|Exporting Images><label|ExportingImages>
+
+  <\float|float|tbh>
+    <big-figure|<postscript|Pics/Window_ImageExport.png|*4/8|*4/8||||>|<label|FigureImageExport>The
+    image export window>
+  </float>The <with|font-family|ss|<strong|Export Images>> entry on the menu
+  opens a window that allows you to export a portion of the current puzzle in
+  to (a list of) images (see Figure <reference|FigureImageExport>). The
+  window has a 3D view on the right and input elements that control what is
+  beeing created on the left. On the very bottom of these controls you can
+  select what you want to create images of. Depending on what is present in
+  the puzzle, the following things can be exported:
+
+  <\description-compact>
+    <item*|Shape>An image of a single shape is created. You can select which
+    shape with the shape selector below.
+
+    <item*|Problem>An image containing all shapes that are used for a problem
+    is created. Again you will find the problem selector below that is used
+    to select which problem you are going to create images of.
+
+    <item*|Assembly>An image showing the positions of the pieces in an
+    assembly is created. You can select the problem. Of that problem the
+    first assembly is exported.
+
+    <item*|Solution>An image containing all steps necessary to disassemble a
+    problem is created. In this case you also select the problem with the
+    selector below. The images will be created for the last solution of that
+    problem.
+  </description-compact>
+
+  This is the first thing that you have to select. Naturally only the choices
+  are available to wich the puzzle has data. So if you have not run the
+  solver on the current puzzle it is impossible to export solutons or
+  assemblies.
+
+  Above these selector you find the file output parameters. First the name
+  and the path to where the images are supposed to be created. If you give no
+  path the images are put into the working directory of teh program. The
+  filename is just a prefix, so if you keep 'test' as filename you get files
+  of the form 'test000.png', 'test001.png', <with|mode|math|\<ldots\>>.
+
+  Finally you can say how many images you intend to create. <name|BurrTools>
+  will try to do so, but might use less. If you only have one assembly to
+  export, only one page can be created.
+
+  The <with|font-family|ss|Number of images> entry is ignored by the software
+  for the time beeing, it will be used later on.
+
+  Above these input elements you find the last section that defines how you
+  want to output, what you output. You can define the quality and some
+  additional parameters that influence how the images look, but not what is
+  to be seen.
+
+  In the top left corner you find the definition of the background of the
+  image. You can choose between transparent or white. Transparent is useful
+  if you want to have a background with patterns or want to further edit the
+  images.
+
+  Below you find the settings for the oversampling factor. The higher that is
+  the smoother the images will look, but the more memory and calculation time
+  is required.
+
+  Below you can select if you want to use the constraint colours for the
+  output or rather the neutral colour of the shapes.
+
+  The checkbox <with|font-family|ss|Dim static pieces> makes <name|BurrTools>
+  draw pieces that are not involved in the current move in a lighter color,
+  so that the actually moving pieces are easier to spot. This, of course,
+  only works when exporting solutions.
+
+  Finally there are the parameters for the image size that the program
+  creates. You have 2 possibilities. Either define the pixel size directly,
+  or define the size of the image in millimeters and the DPI printer
+  resolution. If you want to create A4 or letter sized images for printing
+  you can use the predefined sizes.
+
+  To position the shapes in the output images you can use the 3D view at the
+  right of the export window. All images exported will use the same settings
+  for angle and zoom as in that 3D view. If the shapes reach above or below
+  the 3D view they will be cut. Left and right is different. The width of the
+  images to generate is not fixed. So the program will make them quite a bit
+  wider to accomodate the horizontal spread of the pieces.
+
+  If you have finished with all settings press <with|font-family|ss|Export
+  Image(s)<strong|>>. You will see a flurry of images in the 3D view. The
+  program draws the shapes there and grabs the content from the display. This
+  may take a while. First the size of the images is determined then the
+  images are drawn in the required high resolution for the output. The
+  progress can be seen on the left besides the 2 buttons. You will see how
+  many images are finished and how many there are overall.
+
+  Hint: If you get unexpected results and broken images try to do nothing
+  while the images are exported. On Linux it is forbidden to change the
+  virtual desktop because then nothing is drawn.
+
+  The export is far from what we want it to be, many important features are
+  missing, so you can expect some progress in later versions of
+  <name|BurrTools>.
 
   <\with|par-mode|right>
     <chapter|Future Plans>
