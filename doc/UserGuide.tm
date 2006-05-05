@@ -2730,7 +2730,9 @@
   This method has been pioneered by Dic Sonneveld. It is suitable to create
   extremely high level burrs. The algorithm works by adding cubes to pieces
   to prevent certain moves and hope that the puzzle will still be
-  disassembable in a different way.<part|Advanced User Guide>
+  disassembable in a different way.
+
+  <part|Advanced User Guide>
 
   <\with|par-mode|left>
     <\with|par-mode|right>
