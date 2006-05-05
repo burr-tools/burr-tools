@@ -319,7 +319,7 @@ void mainWindow_c::cb_TransformPiece(void) {
 }
 
 static void cb_EditSym_stub(Fl_Widget* o, void* v) {
-  ((mainWindow_c*)v)->cb_EditSym(((ToggleButton*)o)->value(), ((ToggleButton*)o)->ButtonVal());
+  ((mainWindow_c*)v)->cb_EditSym(((LToggleButton_c*)o)->value(), ((LToggleButton_c*)o)->ButtonVal());
 }
 void mainWindow_c::cb_EditSym(int onoff, int value) {
   if (onoff) {
@@ -424,8 +424,8 @@ void mainWindow_c::cb_ProbSel(BlockListGroup* grp) {
   }
 }
 
-static void cb_pieceEdit_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_pieceEdit((VoxelEditGroup*)o); }
-void mainWindow_c::cb_pieceEdit(VoxelEditGroup* o) {
+static void cb_pieceEdit_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_pieceEdit((VoxelEditGroup_c*)o); }
+void mainWindow_c::cb_pieceEdit(VoxelEditGroup_c* o) {
 
   switch (o->getReason()) {
   case gridEditor_c::RS_MOUSEMOVE:
@@ -2435,107 +2435,99 @@ void mainWindow_c::CreateShapeTab(int x, int y, int w, int h) {
   }
 
   {
-    int lh = editHight;
-
-    Fl_Group* group = new Fl_Group(x, y, w, lh);
+    layouter_c * group = new layouter_c();
     group->box(FL_FLAT_BOX);
+    group->resize(x, y, w, editHight);
+    y += editHight;
 
-    new Separator(x, y, w, SZ_SEPARATOR_Y, "Edit", true);
-    y += SZ_SEPARATOR_Y;
-    lh -= SZ_SEPARATOR_Y;
+    new LSeparator_c(0, 0, 1, 1, "Edit", true);
 
-    pieceTools = new ToolTab(x, y, w, SZ_TOOLTAB_Y);
-    pieceTools->resize(x, y, w, SZ_TOOLTAB_Y);
+    pieceTools = new ToolTab(0, 1, 1, 1);
     pieceTools->callback(cb_TransformPiece_stub, this);
     pieceTools->end();
-    y += SZ_TOOLTAB_Y + SZ_GAP;
-    lh -= SZ_TOOLTAB_Y + SZ_GAP;
 
-    int xpos = x;
+    (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
 
-    editChoice = new ButtonGroup(xpos, y, 4*SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    layouter_c * o2 = new layouter_c(0, 3, 1, 1);
+
+    editChoice = new ButtonGroup(0, 0, 1, 1);
 
     Fl_Button * b;
-    b = editChoice->addButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    b = editChoice->addButton();
     b->image(pm.get(TB_Color_Pen_Fixed_xpm));
     b->tooltip(" Add normal voxels to the shape F5 ");
 
-    b = editChoice->addButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    b = editChoice->addButton();
     b->image(pm.get(TB_Color_Pen_Variable_xpm));
     b->tooltip(" Add variable voxels to the shape F6 ");
 
-    b = editChoice->addButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    b = editChoice->addButton();
     b->image(pm.get(TB_Color_Eraser_xpm));
     b->tooltip(" Remove voxels from the shape F7 ");
 
-    b = editChoice->addButton(xpos+3*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    b = editChoice->addButton();
     b->image(pm.get(TB_Color_Brush_xpm));
     b->tooltip(" Change the constrain colour of voxels in the shape F8 ");
 
     editChoice->callback(cb_EditChoice_stub, this);
 
-    xpos += 4*SZ_BUTTON2_Y + SZ_GAP;
+    (new LFl_Box(1, 0, 1, 1))->setMinimumSize(5, 0);
 
-    editMode = new ButtonGroup(xpos, y, 2*SZ_BUTTON2_Y, SZ_BUTTON2_Y);
-    b = editMode->addButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    editMode = new ButtonGroup(2, 0, 1, 1);
+
+    b = editMode->addButton();
     b->image(pm.get(TB_Color_Mouse_Rubber_Band_xpm));
     b->tooltip(" Make changes by dragging rectangular areas in the grid editor ");
 
-    b = editMode->addButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y);
+    b = editMode->addButton();
     b->image(pm.get(TB_Color_Mouse_Drag_xpm));
     b->tooltip(" Make changes by painting in the grid editor ");
 
     editMode->callback(cb_EditMode_stub, this);
 
-    xpos += 2*SZ_BUTTON2_Y + SZ_GAP;
+    (new LFl_Box(3, 0, 1, 1))->setMinimumSize(5, 0);
 
-    ToggleButton * btn;
+    LToggleButton_c * btn;
 
-    btn = new ToggleButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_X);
+    btn = new LToggleButton_c(4, 0, 1, 1, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_X);
     btn->image(pm.get(TB_Color_Symmetrical_X_xpm));
     btn->tooltip(" Toggle mirroring along the y-z-plane ");
 
-    btn = new ToggleButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_Y);
+    btn = new LToggleButton_c(5, 0, 1, 1, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_Y);
     btn->image(pm.get(TB_Color_Symmetrical_Y_xpm));
     btn->tooltip(" Toggle mirroring along the x-z-plane ");
 
-    btn = new ToggleButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_Z);
+    btn = new LToggleButton_c(6, 0, 1, 1, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_Z);
     btn->image(pm.get(TB_Color_Symmetrical_Z_xpm));
     btn->tooltip(" Toggle mirroring along the x-y-plane ");
 
-    xpos += 3*SZ_BUTTON2_Y + SZ_GAP;
+    (new LFl_Box(7, 0, 1, 1))->setMinimumSize(5, 0);
 
-    btn = new ToggleButton(xpos+0*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_STACK_X);
+    btn = new LToggleButton_c(8, 0, 1, 1, cb_EditSym_stub, this, gridEditor_c::TOOL_STACK_X);
     btn->image(pm.get(TB_Color_Columns_X_xpm));
     btn->tooltip(" Toggle drawing in all x layers ");
 
-    btn = new ToggleButton(xpos+1*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_STACK_Y);
+    btn = new LToggleButton_c(9, 0, 1, 1, cb_EditSym_stub, this, gridEditor_c::TOOL_STACK_Y);
     btn->image(pm.get(TB_Color_Columns_Y_xpm));
     btn->tooltip(" Toggle drawing in all y layers ");
 
-    btn = new ToggleButton(xpos+2*SZ_BUTTON2_Y, y, SZ_BUTTON2_Y, SZ_BUTTON2_Y, cb_EditSym_stub, this, gridEditor_c::TOOL_STACK_Z);
+    btn = new LToggleButton_c(10, 0, 1, 1, cb_EditSym_stub, this, gridEditor_c::TOOL_STACK_Z);
     btn->image(pm.get(TB_Color_Columns_Z_xpm));
     btn->tooltip(" Toggle drawing in all z layers ");
 
-    xpos += 3*SZ_BUTTON2_Y * SZ_GAP;
+    (new LFl_Box(11, 0, 1, 1))->weight(1, 0);
 
-    y += SZ_BUTTON2_Y + SZ_GAP;
-    lh -= SZ_BUTTON2_Y + SZ_GAP;
+    o2->end();
 
-    pieceEdit = new VoxelEditGroup(x, y, w, lh, puzzle, ggt);
+    (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
+
+    pieceEdit = new VoxelEditGroup_c(0, 5, 1, 1, puzzle, ggt);
     pieceEdit->callback(cb_pieceEdit_stub, this);
     pieceEdit->end();
     pieceEdit->editType(gridEditor_c::EDT_RUBBER);
-    y += lh;
+    pieceEdit->weight(0, 1);
 
-    group->resizable(pieceEdit);
     group->end();
-
-    {
-      Fl_Box * b = new Fl_Box(group->x(), group->y(), group->w(), group->h());
-      b->hide();
-      tile->resizable(b);
-    }
   }
 
   {

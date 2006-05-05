@@ -22,7 +22,7 @@
 
 #include <FL/Fl_Double_Window.H>
 
-class VoxelEditGroup;
+class VoxelEditGroup_c;
 class ChangeSize;
 class ToolTab;
 class View3dGroup;
@@ -120,7 +120,7 @@ class mainWindow_c : public Fl_Double_Window {
 
   ColorSelector * colorSelector;
 
-  VoxelEditGroup *pieceEdit;
+  VoxelEditGroup_c *pieceEdit;
 
   Fl_Choice * sortMethod;
   Fl_Value_Input *solDrop, *solLimit;
@@ -227,7 +227,7 @@ public:
   void cb_PiecesClicked(void);
 
   void cb_TransformPiece(void);
-  void cb_pieceEdit(VoxelEditGroup* o);
+  void cb_pieceEdit(VoxelEditGroup_c* o);
   void cb_EditChoice(void);
   void cb_EditSym(int onoff, int value);
   void cb_EditMode(void);

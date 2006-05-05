@@ -109,12 +109,38 @@ class ToggleButton : public Fl_Button {
     }
 
     long ButtonVal(void) { return para; }
+
+};
+
+class LToggleButton_c : public Fl_Button, public layoutable_c {
+
+  Fl_Callback *callback;
+  void * callback_para;
+  long para;
+
+  public:
+    LToggleButton_c(int x, int y, int w, int h, Fl_Callback *cb, void * cb_para, long para);
+
+    void toggle(void) {
+      value(1-value());
+      if (callback)
+        callback(this, callback_para);
+    }
+
+    long ButtonVal(void) { return para; }
+
+    virtual void getMinSize(int *width, int *height) const {
+      *width = 0;
+      ((LFlatButton_c*)this)->measure_label(*width, *height);
+      *width += 4;
+      *height += 4;
+    }
 };
 
 class LineSpacer;
 
 // the group for the square editor including the colord marker and the slider for the z axis
-class VoxelEditGroup : public Fl_Group {
+class VoxelEditGroup_c : public Fl_Group, public layoutable_c {
 
   gridEditor_c * sqedit;
   Fl_Slider * zselect;
@@ -122,7 +148,7 @@ class VoxelEditGroup : public Fl_Group {
 
 public:
 
-  VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle, const guiGridType_c * ggt);
+  VoxelEditGroup_c(int x, int y, int w, int h, puzzle_c * puzzle, const guiGridType_c * ggt);
 
   void newGridType(const guiGridType_c * ggt, puzzle_c * puzzle);
 
@@ -175,6 +201,13 @@ public:
 
   void editType(int type) {
     sqedit->setEditType(type);
+  }
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 0;
+    ((LFlatButton_c*)this)->measure_label(*width, *height);
+    *width += 4;
+    *height += 4;
   }
 };
 
@@ -362,7 +395,7 @@ public:
 
 // a group that can contain only buttons and one button is
 // pressed while others are not
-class ButtonGroup : public Fl_Group {
+class ButtonGroup : public layouter_c {
 
   unsigned int currentButton;
 
@@ -370,7 +403,7 @@ public:
 
   ButtonGroup(int x, int y, int w, int h);
 
-  Fl_Button * addButton(int x, int y, int w, int h);
+  Fl_Button * addButton(void);
 
   void cb_Push(Fl_Button * btn);
 

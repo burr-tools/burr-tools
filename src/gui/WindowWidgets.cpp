@@ -41,6 +41,18 @@ ToggleButton::ToggleButton(int x, int y, int w, int h, Fl_Callback* cb, void * c
   clear_visible_focus();
 }
 
+static void cb_LToggleButton_stub(Fl_Widget* o, void* v) { ((LToggleButton_c*)o)->toggle(); }
+
+LToggleButton_c::LToggleButton_c(int x, int y, int w, int h, Fl_Callback* cb, void * cb_para, long p) : Fl_Button(0, 0, 10, 10), layoutable_c(x, y, w, h) {
+  box(FL_THIN_UP_BOX);
+  callback = cb;
+  callback_para = cb_para;
+  para = p;
+  Fl_Button::callback(cb_LToggleButton_stub);
+  selection_color(fl_lighter(color()));
+  clear_visible_focus();
+}
+
 // draws an definable evenly spaced number of lines in one direction
 class LineSpacer : Fl_Widget {
 
@@ -86,10 +98,15 @@ class LineSpacer : Fl_Widget {
 
 };
 
-static void cb_VoxelEditGroupZselect_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup*)v)->cb_Zselect((Fl_Slider*)o); }
-static void cb_VoxelEditGroupSqedit_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup*)v)->cb_Sqedit((gridEditor_c*)o); }
+static void cb_VoxelEditGroupZselect_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup_c*)v)->cb_Zselect((Fl_Slider*)o); }
+static void cb_VoxelEditGroupSqedit_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup_c*)v)->cb_Sqedit((gridEditor_c*)o); }
 
-VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle, const guiGridType_c * ggt) : Fl_Group(x, y, w, h) {
+VoxelEditGroup_c::VoxelEditGroup_c(int x, int y, int w, int h, puzzle_c * puzzle, const guiGridType_c * ggt) : Fl_Group(0, 0, 300, 300), layoutable_c(x, y, w, h) {
+
+  x = 0;
+  y = 0;
+  w = 300;
+  h = 300;
 
   zselect = new Fl_Slider(x, y, 15, h);
   zselect->tooltip(" Select Z Plane ");
@@ -121,7 +138,7 @@ VoxelEditGroup::VoxelEditGroup(int x, int y, int w, int h, puzzle_c * puzzle, co
   resizable(sqedit);
 }
 
-void VoxelEditGroup::newGridType(const guiGridType_c * ggt, puzzle_c * puzzle) {
+void VoxelEditGroup_c::newGridType(const guiGridType_c * ggt, puzzle_c * puzzle) {
 
   gridEditor_c * nsq;
 
@@ -141,13 +158,13 @@ void VoxelEditGroup::newGridType(const guiGridType_c * ggt, puzzle_c * puzzle) {
 }
 
 
-void VoxelEditGroup::setZ(unsigned int val) {
+void VoxelEditGroup_c::setZ(unsigned int val) {
   if (val > zselect->maximum()) val = (unsigned int)zselect->maximum();
   zselect->value(int(zselect->maximum()-val));
   sqedit->setZ(val);
 }
 
-void VoxelEditGroup::setPuzzle(puzzle_c * puzzle, unsigned int num) {
+void VoxelEditGroup_c::setPuzzle(puzzle_c * puzzle, unsigned int num) {
   sqedit->setPuzzle(puzzle, num);
   if (puzzle && (num < puzzle->shapeNumber())) {
     voxel_c * v = puzzle->getShape(num);
@@ -159,7 +176,7 @@ void VoxelEditGroup::setPuzzle(puzzle_c * puzzle, unsigned int num) {
   }
 }
 
-void VoxelEditGroup::draw() {
+void VoxelEditGroup_c::draw() {
   fl_push_clip(x(), y(), w(), h());
   Fl_Group::draw();
   fl_pop_clip();
@@ -943,15 +960,15 @@ void View3dGroup::updateVisibility(PieceVisibility * pcvis) {
 
 static void cb_ButtonGroup_stub(Fl_Widget* o, void* v) { ((ButtonGroup*)v)->cb_Push((Fl_Button*)o); }
 
-ButtonGroup::ButtonGroup(int x, int y, int w, int h) : Fl_Group(x, y, w, h), currentButton(0) {
+ButtonGroup::ButtonGroup(int x, int y, int w, int h) : layouter_c(x, y, w, h), currentButton(0) {
   end();
 }
 
-Fl_Button * ButtonGroup::addButton(int x, int y, int w, int h) {
+Fl_Button * ButtonGroup::addButton(void) {
 
   int c = children();
 
-  Fl_Button * b = new Fl_Button(x, y, w, h);
+  Fl_Button * b = new LFl_Button(0, c, 0, 1, 1);
   b->box(FL_THIN_UP_BOX);
   b->selection_color(fl_lighter(color()));
   b->clear_visible_focus();
