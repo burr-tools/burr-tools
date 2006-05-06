@@ -191,14 +191,14 @@
 
   <subsubsection|Linux / Unix>
 
-  For <name|Linux> <name|BurrTools> comes in 2 versions: a precompiled binary
-  and source code.
+  For <name|Linux> users <name|BurrTools> comes in two versions: a
+  precompiled binary and source code.
 
   The binary is provided in the hope that it is working on many variants of
-  the Linux OS. It is compiled for intel processors and requires a more or
-  less modern <name|Linux> system. As the different Unixes differ widely it
-  is likely that the binary will not work for your system. In that case you
-  need to compile <name|BurrTools> yourself.
+  the <name|Linux> OS. It is compiled for intel processors and requires a
+  more or less modern <name|Linux> system. As distinct versions of
+  <name|Unixes> differ widely it is likely that the binary will not work for
+  your system. In that case you need to compile <name|BurrTools> yourself.
 
   <paragraph|Using the Precompiled Binary>
 
@@ -212,32 +212,32 @@
   If the program still doesn't work call <verbatim|ldd burrGui> from the
   console within the path where you decompressed the files. This will list
   all libraries required by the binary and where the system could find them.
-  If one of the listet binaries is not available try to install that. If all
-  that doesn't work you should consider compiling on your own.<samp|libxslt>
+  If one of the listed binaries is not available try to install that. If all
+  that doesn't work you should consider compiling on your own or mail me.
 
-  <paragraph|Compiling from source>
+  <paragraph|Compiling from Source>
 
   These installation instructions just contain some hints for the compilation
   of <name|BurrTools>. As <name|BurrTools> requires a few not so widespread
   libraries it is not the easiest task to do this.
 
-  To install BurrTools for Unix you first need to make sure you have the
-  following libaries installed: <with|font-family|tt|zlib>,
+  To install <name|BurrTools> for <name|Unix> you first need to make sure you
+  have the following libaries installed: <with|font-family|tt|zlib>,
   <with|font-family|tt|libpng>, <with|font-family|tt|libxml2> and
   <with|font-family|tt|libxslt>. These libraries are usually installed on
   every <name|Linux> system. You just have to make sure that you have
   installed the development packages, otherwise it is not possible to compile
-  a program that use these libraries, but just start programs that usw them.
+  a program that use these libraries, but just start programs that use them.
 
   Additionally the following libraries are required:
   <with|font-family|tt|flkt>, <with|font-family|tt|flu> and
   <with|font-family|tt|xmlwrapp>.
 
-  Fltk is the library used for the GUI of <name|BurrTools>. It may be
-  included in your Linux distribution or it may not.
+  <verbatim|Fltk> is the library used for the GUI of <name|BurrTools>. It may
+  be included in your <name|Linux> distribution or it may not.
 
   The problem is that we need a version of this library that is not compiled
-  with the default switsches. This library must be compiled with C++
+  with the default switches. This library must be compiled with C++
   exceptions enabled. If you don't do this the program will simply shut down
   when an internal error occures instead of displaying an error message and
   making an emergency save. To compile <with|font-family|tt|flkt> with
@@ -256,13 +256,14 @@
   </itemize-dot>
 
   It is of course possible to use a normal version of the <verbatim|fltk>
-  library, you just don't get the emergensy save feature if there is a bug in
+  library, you just don't get the emergency save feature if there is a bug in
   the GUI of <name|BurrTools>. But as the number of bugs is hopefully quite
   small right now that should not be such a big problem.
 
-  Flu is not included in most distributions. So you need to install it
-  manually. It is installed in the usual way. Refer to installation
-  instructions of that library.
+  <verbatim|Flu> is not included in most distributions. So you need to
+  install it manually. It is installed in the usual way. Refer to
+  installation instructions of that library. <name|BurrTools> can be compiled
+  without <verbatim|Flu> but then the File Open Dialog is really ugly.
 
   The last library, <verbatim|xmlwrapp>, can be hard to find, so here a link
 
