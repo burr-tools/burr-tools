@@ -599,17 +599,17 @@ void assembler_0_c::cover(register unsigned int col)
       "movl %0, %%ecx                 \n"           // read col from stack into eax
       "movl 4(%%esi,%%ecx,8), %%eax   \n"           // ax = i = down[col]
       "cmpl %%eax, %%ecx              \n"           // if ax == col
-      "je cendloop1                   \n"           //  endloop1
+      "je 4                           \n"           //  cendloop1
       "                               \n"
-"cagainloop1:                         \n"
+"1:                                   \n"           // cagainloop1:
       "                               \n"
       "movl (%%edx,%%eax,4), %%ecx    \n"           // j = right[i]
       "cmpl %%ecx, %%eax              \n"           // if (j(cx) == i
-      "je cendloop2                   \n"
+      "je 3                           \n"           // cendloop2
       "                               \n"
       "movl %%eax, %4                 \n"           // put i onto stack
       "                               \n"
-"cagainloop2:                         \n"
+"2:                                   \n"           // cagainloop2
       "                               \n"
       "movl 0(%%esi,%%ecx,8), %%eax   \n"           // eax = up[j]
       "movl 4(%%esi,%%ecx,8), %%edi   \n"           // edx = down[ax]
@@ -620,15 +620,15 @@ void assembler_0_c::cover(register unsigned int col)
       "movl (%%edx,%%ecx,4), %%ecx    \n"           // cx = right[cx]
       "decl (%%ebx,%%eax,4)           \n"           // inc(colCount[ax])
       "cmpl %%ecx, %4                 \n"
-      "jne cagainloop2                \n"
+      "jne  2                         \n"           // cagainloop2
       "                               \n"           //      we know ecx == %5, so we don't need to load it
-"cendloop2:                           \n"
+"3:                                   \n"           // cendloop2:
       "                               \n"
       "movl 4(%%esi,%%ecx,8), %%eax   \n"
       "cmpl %%eax, %0                 \n"
-      "jne cagainloop1                \n"
+      "jne 1                          \n"           // cagainloop1
       "                               \n"
-"cendloop1:                           \n"
+"4:                                   \n"           // cendloop1
      :
      : "m" (col), "m" (upDown_ptr), "m" (right_ptr), "m" (colCount_ptr), "m" (tmp)
      : "eax", "ebx", "ecx", "edx", "esi", "edi"
@@ -671,17 +671,17 @@ void assembler_0_c::uncover(register unsigned int col) {
       "movl %0, %%ecx                 \n"           // read col from stack into eax
       "movl (%%esi,%%ecx,8), %%eax    \n"           // ax = i = up[col]
       "cmpl %%eax, %%ecx              \n"           // if ax == col
-      "je endloop1                    \n"           //  endloop1
+      "je 4                           \n"           // endloop1
       "                               \n"
-"againloop1:                          \n"
+"1:                                   \n"           // againloop1:   
       "                               \n"
       "movl (%%edx,%%eax,4), %%ecx    \n"           // j = left[i]
       "cmpl %%ecx, %%eax              \n"           // if (j(cx) == i
-      "je endloop2                    \n"
+      "je 3                           \n"           // endloop2
       "                               \n"
       "movl %%eax, %4                 \n"           // put i onto stack
       "                               \n"
-"againloop2:                          \n"
+"2:                                   \n"           // againloop2:
       "                               \n"
       "movl 0(%%esi,%%ecx,8), %%eax   \n"           // ax = up[j]
       "movl 4(%%esi,%%ecx,8), %%edi   \n"           // ax = down[j]
@@ -692,15 +692,15 @@ void assembler_0_c::uncover(register unsigned int col) {
       "movl (%%edx,%%ecx,4), %%ecx    \n"           // cx = left[cx]
       "incl (%%ebx,%%eax,4)           \n"           // inc(colCount[ax])
       "cmpl %%ecx, %4                 \n"
-      "jne againloop2                 \n"
+      "jne 2                          \n"           // againloop2
       "                               \n"           // we know that %%ecx == %5, so we don't need to load it
-"endloop2:                            \n"
+"3:                                   \n"           // endloop2:
       "                               \n"
       "movl (%%esi,%%ecx,8), %%eax    \n"
       "cmpl %%eax, %0                 \n"
-      "jne againloop1                 \n"
+      "jne 1                          \n"           // againloop1
       "                               \n"
-"endloop1:                            \n"
+"4:                                   \n"           // endloop1:
      :
      : "m" (col), "m" (upDown_ptr), "m" (left_ptr), "m" (colCount_ptr), "m" (tmp)
      : "eax", "ebx", "ecx", "edx", "esi", "edi"
