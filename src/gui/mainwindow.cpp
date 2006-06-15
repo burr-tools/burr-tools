@@ -85,8 +85,8 @@ static const char * FileSelection2(const char * title) {
 }
 
 /* returns true, if file exists, this is not the
- optimal way to do this. it would be better to open
- the dir the file is supposed to be in and look there
+ optimal way to do this. It would be better to open
+ the directory the file is supposed to be in and look there
  but this is not really portable so this
  */
 bool fileExists(const char *n) {
@@ -631,7 +631,7 @@ void mainWindow_c::cb_AddShapeToProblem(void) {
   PiecesCountList->redraw();
   changeProblem(prob);
 
-  // first see, if there is already a the selected shape inside
+  // first see, if there is already a selected shape inside
   for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
     if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
       puzzle->probSetShapeCount(prob, i, puzzle->probGetShapeCount(prob, i) + 1);
@@ -916,7 +916,7 @@ void mainWindow_c::cb_SortSolutions(unsigned int by) {
 
   // this is bubble sort, so it might be a bit slow
   // for larger number of solutions but is has the advantage
-  // of beeing a stable sort method
+  // of being a stable sort method
   for (unsigned int a = 0; a < sol-1; a++)
     for (unsigned int b = a+1; b < sol; b++) {
 
@@ -1115,7 +1115,7 @@ void mainWindow_c::cb_New(void) {
   if (threadStopped()) {
 
     if (changed)
-      if (fl_choice("Puzzle changed are you shure?", "Cancel", "New Puzzle", 0) == 0)
+      if (fl_choice("Puzzle changed are you sure?", "Cancel", "New Puzzle", 0) == 0)
         return;
 
     gridTypeSelectorWindow_c w;
@@ -1145,7 +1145,7 @@ void mainWindow_c::cb_Load(void) {
   if (threadStopped()) {
 
     if (changed)
-      if (fl_choice("Puzzle changed are you shure?", "Cancel", "Load", 0) == 0)
+      if (fl_choice("Puzzle changed are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
     const char * f = FileSelection("Load Puzzle");
@@ -1160,7 +1160,7 @@ void mainWindow_c::cb_Load_Ps3d(void) {
   if (threadStopped()) {
 
     if (changed)
-      if (fl_choice("Puzzle changed are you shure?", "Cancel", "Load", 0) == 0)
+      if (fl_choice("Puzzle changed are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
     const char * f = FileSelection2("Load Puzzle");
@@ -1278,7 +1278,7 @@ void mainWindow_c::cb_Config(void) {
 static void cb_Comment_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_Coment(); }
 void mainWindow_c::cb_Coment(void) {
 
-  multiLineWindow win("Edit Coment", "Change the comment for the current puzzle", puzzle->getComment().c_str());
+  multiLineWindow win("Edit Comment", "Change the comment for the current puzzle", puzzle->getComment().c_str());
 
   win.show();
 
@@ -1705,7 +1705,7 @@ const char * timeToString(float time) {
   else if (time < 60*60*24*30)                 snprintf(tmp, 50, "%.1f days",      time/(60*60*24              ));
   else if (time < 60*60*24*365.2422)           snprintf(tmp, 50, "%.1f months",    time/(60*60*24*30           ));
   else if (time < 60*60*24*365.2422*1000)      snprintf(tmp, 50, "%.1f years",     time/(60*60*24*365.2422     ));
-  else if (time < 60*60*24*365.2422*1000*1000) snprintf(tmp, 50, "%.1f millenia",  time/(60*60*24*365.2422*1000));
+  else if (time < 60*60*24*365.2422*1000*1000) snprintf(tmp, 50, "%.1f millennia", time/(60*60*24*365.2422*1000));
   else                                         snprintf(tmp, 50, "ages");
 
   return tmp;
@@ -1718,14 +1718,14 @@ void mainWindow_c::updateInterface(void) {
   if (TaskSelectionTab->value() == TabPieces) {
     // shapes tab
 
-    // we can only delete colors, when something valid is selected
+    // we can only delete colours, when something valid is selected
     // and no assembler is running
     if ((colorSelector->getSelection() > 0) && !assmThread)
       BtnDelColor->activate();
     else
       BtnDelColor->deactivate();
 
-    // colors can be changed for all colors except the neutral color
+    // colours can be changed for all colours except the neutral colour
     if (colorSelector->getSelection() > 0)
       BtnChnColor->activate();
     else
@@ -1742,7 +1742,7 @@ void mainWindow_c::updateInterface(void) {
       pieceEdit->deactivate();
     }
 
-    // shapes can only be moved, when the neibor shape is there
+    // shapes can only be moved, when the neighbour shape is there
     if ((PcSel->getSelection() > 0) && (PcSel->getSelection() < puzzle->shapeNumber()) && !assmThread)
       BtnShapeLeft->activate();
     else
@@ -1760,8 +1760,8 @@ void mainWindow_c::updateInterface(void) {
       BtnDelShape->deactivate();
     }
 
-    // we can only edit shapes, when something gvalid is selected and
-    // either no assemlber is running or the shape is not in the problem that the assembler works on
+    // we can only edit shapes, when something valid is selected and
+    // either no assembler is running or the shape is not in the problem that the assembler works on
     if ((PcSel->getSelection() < puzzle->shapeNumber()) &&
         (!assmThread || !puzzle->probContainsShape(assmThread->getProblem(), PcSel->getSelection()))) {
       pieceTools->activate();
@@ -1791,7 +1791,7 @@ void mainWindow_c::updateInterface(void) {
       BtnRenProb->deactivate();
     }
 
-    // problems can only be shifted around when the corresponding neibor is
+    // problems can only be shifted around when the corresponding neighbour is
     // available
     if ((problemSelector->getSelection() > 0) && (problemSelector->getSelection() < puzzle->problemNumber()) && !assmThread)
       BtnProbLeft->activate();
@@ -1833,14 +1833,14 @@ void mainWindow_c::updateInterface(void) {
     else
       BtnDelProb->deactivate();
 
-    // we can only edit color constraints when a valid problem is selected
-    // the selected color is valid
+    // we can only edit colour constraints when a valid problem is selected
+    // the selected colour is valid
     // the assembler is not running or not busy with the selected problem
     if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
         (colorAssignmentSelector->getSelection() < puzzle->colorNumber()) &&
         (!assmThread || (assmThread->getProblem() != problemSelector->getSelection()))) {
 
-      // check, if the given color is already added
+      // check, if the given colour is already added
       if (colconstrList->GetSortByResult()) {
         if (puzzle->probPlacementAllowed(problemSelector->getSelection(),
                                          colorAssignmentSelector->getSelection()+1,
@@ -1901,7 +1901,7 @@ void mainWindow_c::updateInterface(void) {
       BtnRemShape->deactivate();
     }
 
-    // we can edit the groups, whe we have a problem with at leat one shape and
+    // we can edit the groups, when we have a problem with at least one shape and
     // the assembler is not working on the current problem
     if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
         (puzzle->probShapeNumber(problemSelector->getSelection()) > 0) &&
@@ -1976,7 +1976,7 @@ void mainWindow_c::updateInterface(void) {
         OutputSolutions->hide();
       }
 
-      // the placement browser can only be activated when an assember is available and not assembling is active
+      // the placement browser can only be activated when an assembler is available and not assembling is active
       if (puzzle->probGetAssembler(prob) && !assmThread) {
         BtnPlacement->activate();
       } else {
@@ -2158,7 +2158,7 @@ void mainWindow_c::update(void) {
 
   if (assmThread) {
 
-    // check, if the thread has thrown an exception, if so rethrow it
+    // check, if the thread has thrown an exception, if so re-throw it
     if (assmThread->getAssertException()) {
 
       assertWindow * aw = new assertWindow("Because of an internal error the current puzzle\n"
@@ -2237,7 +2237,7 @@ void mainWindow_c::update(void) {
 void mainWindow_c::Toggle3DView(void)
 {
   // select the pieces tab, as exchanging widgets while they are invisible
-  // didn't work. Save the current tab bevore that
+  // didn't work. Save the current tab before that
   TaskSelectionTab->when(0);
   Fl_Widget *v = TaskSelectionTab->value();
   if (v != TabPieces) TaskSelectionTab->value(TabPieces);
@@ -2253,7 +2253,7 @@ void mainWindow_c::Toggle3DView(void)
 
   tile->position(0, ytile, 0, 200);
 
-  // exchange vidget positions
+  // exchange widget positions
   Fl_Group * tmp = pieceEdit->parent();
   View3D->parent()->add(pieceEdit);
   tmp->add(View3D);
@@ -2825,8 +2825,8 @@ void mainWindow_c::CreateSolveTab(int x, int y, int w, int h) {
     sortMethod = new LFl_Choice(1, 0, 1, 1);
     ((LFl_Choice*)sortMethod)->weight(1, 0);
 
-    // be careful the order in here must correspond with the enum in assembler thread
-    sortMethod->add("Unsort");
+    // be careful the order in here must correspond with the enumeration in assembler thread
+    sortMethod->add("Unsorted");
     sortMethod->add("Moves for Complete Disassemble");
     sortMethod->add("Level");
 

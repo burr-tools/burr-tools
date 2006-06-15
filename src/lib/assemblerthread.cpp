@@ -46,7 +46,7 @@ void* start_th(void * c)
 
     else {
 
-      /* otherwise we have to chreate a new one
+      /* otherwise we have to create a new one
        */
       p->action = assemblerThread_c::ACT_PREPARATION;
       p->assm = p->puzzle->getGridType()->getAssembler();
@@ -159,7 +159,7 @@ bool assemblerThread_c::assembly(assembly_c * a) {
     {
 
       // when the assembly has only 1 piece, we don't need
-      // to disassemble, the disassembler will return 0 anyways
+      // to disassemble, the disassembler will return 0 anyway
       if (a->placementCount() <= 1) {
 
         // only one piece, that is always a solution, so increment number
@@ -177,7 +177,7 @@ bool assemblerThread_c::assembly(assembly_c * a) {
 
       // check, if we found a disassembly sequence
       if (!s) {
-        // no diassembly sequence found, delete assembly
+        // no disassembly sequence found, delete assembly
         delete a;
 
         break;

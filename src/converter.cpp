@@ -64,7 +64,7 @@ class my_puzzle_0 : public puzzle_c {
    * first line is x y z size of the assembled block separated by space
    * all other lines stand one line for one piece
    * the first 3 number are the dimensions followed by a string in ""
-   * in this string everything else esxept for space is asumed to be filled
+   * in this string everything else except for space is assumed to be filled
    * the string is a linear list of all blocks inside the piece block
    * with x the lowest and z the highest dimension. So the formula to get
    * the position of one block is x+xs*(y+ys*z)
@@ -85,7 +85,7 @@ public:
     *str >> pieces;
 
     if ((pieces < 0) || (pieces > 500)) {
-      printf("too many pieces in file? probably voxel space not defined correctly");
+      printf("too many pieces in file? Probably voxel space not defined correctly");
       exit(1);
     }
 
@@ -96,7 +96,7 @@ public:
       *str >> nr;
 
       if ((nr < 0) || (nr > 500)) {
-        printf("too many instances of one piece? probably voxel space not defined correctly");
+        printf("too many instances of one piece? Probably voxel space not defined correctly");
         exit(1);
       }
 
@@ -163,7 +163,7 @@ int main(int argn, char * args[]) {
   /* load the puzzle */
 
   // there are 2 mayor puzzle formats: old one and xml
-  // they are differentiated by extension. the xml
+  // they are differentiated by extension. The xml
   // format has the extension puzxml, the old one puzzle
 
   ofstream out(args[2]);

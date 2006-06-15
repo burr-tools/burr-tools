@@ -250,8 +250,8 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
 
       if (tr != placements[p].transformation) {
 
-        /* alright, the normalized orientation of the piece is different from the calculated one
-         * we now neet to change the placement of the piece so, that it is at the right position with
+        /* Right, the normalized orientation of the piece is different from the calculated one
+         * we now need to change the placement of the piece so, that it is at the right position with
          * the normalized position
          * this is the easiest solution but by far the slowest
          */
@@ -309,7 +309,7 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
               }
             }
 
-            /* ok, we found replacement information for piece p,
+            /* OK, we found replacement information for piece p,
              * we are supposed to replace it with piece p2
              *
              * so we put the current piece at position p2 and the piece
@@ -383,7 +383,7 @@ bool assembly_c::compare(const assembly_c & b, unsigned int pivot) const {
 
   /* we first compare the pivot piece and leave that one out later on
    * we do that because the pivot piece is the one that has reduced
-   * placements and may not occure in all possible positions and thus
+   * placements and may not occur in all possible positions and thus
    * the rotation reduction algorithm may try to select on assembly
    * that doesn't exist
    */
@@ -419,7 +419,7 @@ bool assembly_c::smallerRotationExists(const puzzle_c * puz, unsigned int prob, 
   symmetries_t s = puz->probGetResultShape(prob)->selfSymmetries();
 
   /* we only need to check for mirrored transformations, if mirrorInfo is given
-   * if not we assume that the pieceset contains at least one piece that has no
+   * if not we assume that the piece set contains at least one piece that has no
    * mirror symmetries and no mirror pair
    */
   unsigned int endTrans = mir ? sym->getNumTransformationsMirror() : sym->getNumTransformations();

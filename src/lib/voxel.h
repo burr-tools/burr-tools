@@ -52,7 +52,7 @@ class voxel_c {
 
 protected:
 
-  /* each voxel needs to know the parameters for its gridspace
+  /* each voxel needs to know the parameters for its space grid
    */
   const gridType_c *gt;
 
@@ -78,7 +78,7 @@ protected:
 
   /**
    * The space. It's dynamically allocated on construction
-   * and deleted on destruction. the position of a voxel
+   * and deleted on destruction. The position of a voxel
    * inside this 1-dimensional structure is \f$ x + sx*(y + sy*z) \f$
    */
   voxel_type * space;
@@ -111,9 +111,9 @@ protected:
    * be possible to rotate a voxel space and place it at the same position without
    * knowing the size of the piece
    * The hotspot is also transformed, when the piece voxel space is transformed
-   * The hotspot is in the center of the given voxel for most of he defined
+   * The hotspot is in the centre of the given voxel for most of he defined
    * voxel spaces. This has the advantage that it is not necessary to calculate
-   * the exact coner where is is, but it requires rotation independend center definition
+   * the exact corner where is is, but it requires rotation independent centre definition
    */
   int hx, hy, hz;
 
@@ -132,12 +132,12 @@ protected:
 public:
 
   /**
-   * this enum defines some values that are used for some of
+   * this enumeration defines some values that are used for some of
    * the voxel spaces
    *
    * generally there will be 2 types of usage for voxelspace
-   * sone single-piece and one multi-piece. The single piece will
-   * use this enum to define a puzzle piece or a solution shape
+   * some single-piece and one multi-piece. The single piece will
+   * use this enumeration to define a puzzle piece or a solution shape
    * the multi-piece will use the values of the voxels to
    * distinguish between different pieces
    */
@@ -278,19 +278,19 @@ public:
   }
 
   /**
-   * returns true, if a neighbor of the given
+   * returns true, if a neighbour of the given
    * voxel has the given value
    */
   bool neighbour(unsigned int p, voxel_type val) const;
 
   /**
-   * returns the coordinates for a neighbor to the given voxel
+   * returns the coordinates for a neighbour to the given voxel
    *
-   * idx is the index if the neighbor, if you want the next neighbour, give the next number
-   * typ is what kind of neighbor you want, face (0), edge (1) or corner (2)
+   * idx is the index if the neighbour, if you want the next neighbour, give the next number
+   * typ is what kind of neighbour you want, face (0), edge (1) or corner (2)
    * x, y, z coordinate for the source
-   * xn, yn, zn, coordinate for the neighbor
-   * return true, when a valid neibor with that index exists
+   * xn, yn, zn, coordinate for the neighbour
+   * return true, when a valid neighbour with that index exists
    */
   virtual bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const = 0;
 
@@ -338,14 +338,14 @@ public:
   virtual void rotatez(int by = 1) = 0;
 
   /**
-   * this function transformes the given point by the given transformation
-   * around the the origin
+   * this function transforms the given point by the given transformation
+   * around the origin
    */
   virtual void transformPoint(int * x, int * y, int * z, unsigned int trans) const = 0;
 
   /**
    * shift the space around. Voxels that go over the
-   * edge get lost. the size is not changed
+   * edge get lost. The size is not changed
    * the new empty space gets filled with the filler value
    */
   void translate(int dx, int dy, int dz, voxel_type filler);
@@ -389,8 +389,8 @@ public:
    * boxes have the same size and the voxels within
    * there boxes is identical
    *
-   * if includeColors is true, the colors are included in the
-   * comparison, meaning when the colors differ the
+   * if includeColors is true, the colours are included in the
+   * comparison, meaning when the colours differ the
    * shapes are not equal
    */
   virtual bool identicalInBB(const voxel_c * op, bool includeColors = true) const;
@@ -399,16 +399,16 @@ public:
    * comparison of 2 voxel spaces.
    * 2 spaces are identical, if one of the rotations
    * is identical to the other voxel space
-   * you can specify, if you want to include the colors
+   * you can specify, if you want to include the colours
    * in the comparison, or just want to compare the shape
    * naturally this function is relatively slow
    *
-   * if includeMirror is true, the function checks agains all transformations
+   * if includeMirror is true, the function checks against all transformations
    * including the mirrored shape, if it is false, mirrored transformations
    * are excluded
    *
-   * if includeColors is true, the colors are included in the
-   * comparison, meaning when the colors differ the
+   * if includeColors is true, the colours are included in the
+   * comparison, meaning when the colours differ the
    * shapes are not equal
    */
   bool identicalWithRots(const voxel_c * op, bool includeMirror, bool includeColors) const;
@@ -423,7 +423,7 @@ public:
    */
   unsigned char getMirrorTransform(const voxel_c * op) const;
 
-  /** resizes the voxelspace, spreserving the lover part
+  /** resizes the voxelspace, preserving the lover part
    * of the data, when the new one is smaller and
    * adding new voxels at the upper end, if the new space
    * is bigger
@@ -437,7 +437,7 @@ public:
 
   /** checks the voxelspace for connectedness. It is checked
    * if there is no group of voxels, that is disconnected from
-   * the rest of the voxels. There are serveral different types
+   * the rest of the voxels. There are several different types
    * of connectedness: face, edge, corner. Meaning the
    * voxels are at least connected via a common face, edge or corner
    *
@@ -460,7 +460,7 @@ public:
 
   /**
    * this function returns the self symmetries of this voxel
-   * space. The returned value is a bitfiled containing a one
+   * space. The returned value is a bitfieled containing a one
    * for each transformations that maps the voxel space
    * into itself
    */
@@ -499,11 +499,11 @@ public:
 
   unsigned int countState(int state) const;
 
-  /* do something on the voxel space, what is done is defined with the enum
+  /* do something on the voxel space, what is done is defined with the enumeration
    * fixed sets voxels to the fixed state, variable sets voxels to variable
-   * and decolor removes colors from voxels
+   * and decolour removes colours from voxels
    * inside defines where to carry out the action, on inside cubes or on outside cubes
-   * inside cubes do have 6 nonempty cubes as neighbours
+   * inside cubes do have 6 non-empty cubes as neighbours
    */
   enum {
     ACT_FIXED,
@@ -534,7 +534,7 @@ public:
 
   /* for the minimize scale function applied to all shapes
    * we need to first check, if all shapes can be scaled down
-   * by a certain factor and then do it. if action is true, then
+   * by a certain factor and then do it. If action is true, then
    * the shape is really scaled, otherwise you only get the fact
    * if it is scalable by the given amount
    */

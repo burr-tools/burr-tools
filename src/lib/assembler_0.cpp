@@ -237,20 +237,20 @@ static voxel_c * addToCache(voxel_c * cache[], unsigned int * fill, voxel_c * pi
 
 /**
  * this function prepares the matrix of nodes for the recursive function
- * I've done some additions to knuths algorithm to implement variable
+ * I've done some additions to Knuths algorithm to implement variable
  * voxels (empty spaces in the solution) and multiple instances of the
  * same piece. Empty voxels in the result are done by removing columns
  * from the matrix. This will prevent the algorithm from filling the
  * corresponding voxels. But we need to have the constraints that these
  * columns place on the solution. This is done by adding these columns
  * to the matrix but behind the normal columns. These additional columns
- * wont be searched by the alg if it looks for the next task to achive.
+ * wont be searched by the alg if it looks for the next task to achieve.
  *
  * Multiple instances of the same piece is handles in a similar way. To
  * prevent finding the same solution again and again with just the
  * pieces swapping places we enumber the pieces and their possible
  * placements and disallow that the position number of piece n is lower
- * than the position number of piece n-1. This can be achived by adding
+ * than the position number of piece n-1. This can be achieved by adding
  * more constraint columns. There need to be one column for each
  *
  * negative result show there is something wrong: the place -result has not
@@ -270,7 +270,7 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
   unsigned int * columns = new unsigned int[result->getXYZ()];
   unsigned int piecenumber = puzzle->probPieceNumber(problem);
 
-  /* voxelindex is the invers of the function column. it returns
+  /* voxelindex is the inverse of the function column. It returns
    * the index (not x, y, z) of a given column in the matrix
    */
   int * voxelindex = new int[result->getXYZ() + piecenumber + 1];
@@ -300,7 +300,7 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
 
   /* find the symmetry breaker
    *
-   * ok, what idea is behind this: we try to find as few double solutions as possible
+   * OK, what idea is behind this: we try to find as few double solutions as possible
    * because we don't want to fist search them and later on discard them because they are
    * double, so what do we do to prevent double solutions?
    *
@@ -321,10 +321,10 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
 
     /* now we try to find the most "suitable" piece for our rotation removal. What is
      * suitable? Suitable is the piece shape that has the least common symmetries with
-     * the result and that has the fiewest pieces
+     * the result and that has the fewest pieces
      *
      * FIXME: if there is more than one suitable piece, select the one with the most
-     * placements, this will gain us a little (or even bigger) speedup
+     * placements, this will gain us a little (or even bigger) speed-up
      * as its a difference if we select a piece that has only one placement anyway
      * or select one with 400 placements of which 23/24th can be dropped
      */
@@ -352,7 +352,7 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
     if (tmp || (puzzle->probGetShapeCount(problem, symBreakerShape) > 1)) {
       checkForTransformedAssemblies(symBreakerPiece);
 
-      /* FIXME: we need to to the mirror check here, and initisalize the mirror
+      /* FIXME: we need to to the mirror check here, and initialize the mirror
        * structure, otherwise no mirror check will be done
        */
 
@@ -438,7 +438,7 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
       nextPiece(piece, puzzle->probGetShapeCount(problem, pc), piececount);
 
       /* this array contains all the pieces found so far, this will help us
-       * to not add two times the same piece to the structur */
+       * to not add two times the same piece to the structure */
       unsigned int cachefill = 0;
       unsigned int placements = 0;
 
@@ -894,7 +894,7 @@ void assembler_0_c::reduce(void) {
      * with this piece and placements contains the number of placements
      * for the current piece. If the number of times a voxel is filled
      * equal to the total number of placements for that piece the
-     * pice fills that unit in every possible of its placements, so no other
+     * piece fills that unit in every possible of its placements, so no other
      * piece can fill that unit and all placements of other pieces that fill
      * that unit can be removed
      */
@@ -935,7 +935,7 @@ void assembler_0_c::reduce(void) {
       reducePiece = p;
 
       // place the piece and check, if this leads to some
-      // infillable holes or unplacable pieces or whaever
+      // infillable holes or unplacable pieces or whatever
       // conditions that make a solution impossible
       cover(p+1);
 
@@ -983,7 +983,7 @@ void assembler_0_c::reduce(void) {
        * with this piece and placements contains the number of placements
        * for the current piece. If the number of times a voxel is filled
        * equal to the total number of placements for that piece the
-       * pice fills that unit in every possible of its placements, so no other
+       * piece fills that unit in every possible of its placements, so no other
        * piece can fill that unit and all placements of other pieces that fill
        * that unit can be removed
        */
@@ -1088,13 +1088,13 @@ void assembler_0_c::solution(void) {
 
 /* to understand this function you need to first completely understand the
  * dancing link algorithm.
- * The next thing to know is how this alg. avoids finding the solutions
+ * The next thing to know is how this alg. Avoids finding the solutions
  * with identical pieces with all permutations. This is done by enforcing
  * an order of the pieces. The placements and the pieces are enumerated and
  * pieces with a smaller number must have a placement with a smaller number.
  * Then you need to know the layout of the matrix used here. It's exactly as
  * describes by Knuth. First columns for pieces. Followed by the columns for
- * the normal result voxels followed by the columnns for the variable
+ * the normal result voxels followed by the columns for the variable
  * pieces. All placements for one piece are one below the other. One piece
  * follows after another. The nodes are enumerated line by line.
  * This fixed order allows for simple checks of the placement numbers against
@@ -1108,7 +1108,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
   abbort = false;
   running = true;
 
-  // this variable is used to shor if we continue with our loop over
+  // this variable is used to store if we continue with our loop over
   // the rows or have finished
   bool cont;
 
@@ -1120,12 +1120,12 @@ void assembler_0_c::iterativeMultiSearch(void) {
       break;
 
     // check, if all pieces are placed and all voxels are filled
-    // careful here abbort is also modified by another thread
+    // careful here abort is also modified by another thread
     // i once used the expression
-    //   abbort |= !solution()
-    // and search halve a day why it didn't work. The value of abbort was read
+    //   abort |= !solution()
+    // and search halve a day why it didn't work. The value of abort was read
     // then the function called then the new value calculated then the new value
-    // written. Meanwhile abbort was pressed and abbort was changed. this new value got lost.
+    // written. Meanwhile abort was pressed and abort was changed. This new value got lost.
     if (!right[0])
       solution();
 
@@ -1200,7 +1200,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
         // now check for the holes, only the variable columns can be unfillable
         // but there must not be more unfillable voxels than there are holes
         // if that is the case we can backtrack
-        // sometimes this doesnt help much, but it also seems like
+        // sometimes this doesn't help much, but it also seems like
         // it doesn't cost a lot of time, so let's keep it in for the moment
         if (s) {
           unsigned int currentHoles = holes;
@@ -1225,7 +1225,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
           rows[pos] = down(columns[pos]);
 
           // find out the piece number for the first row, for the piece
-          // columns we can take a shortcut, because here the piecenumber
+          // columns we can take a short cut, because here the piecenumber
           // equals the column number
           if (c <= piecenumber)
             piece[pos] = c-1;
@@ -1236,13 +1236,13 @@ void assembler_0_c::iterativeMultiSearch(void) {
           }
 
           // we must either have hit a single piece or the first
-          // piece of a multi-piece. Everytime the index is 0
+          // piece of a multi-piece. Every time the index is 0
           //
           // shh... we can hit a later piece of a multi piece here after
-          // all, that can happen, when we hav selected the multi-piece
+          // all, that can happen, when we have selected the multi-piece
           // as a symmetry breaker, and the search selects a voxel to fill
           // and that voxel can not be filled with the first piece of the multi-
-          // piece because of its limits in orientation because of it beeing the
+          // piece because of its limits in orientation because of it being the
           // symmetry breaker.
           bt_assert(multiPieceIndex[piece[pos]] == 0);
 
@@ -1251,7 +1251,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
       } else {
         // this is the branch for the case we are forced to place certain pieces
         // this happens, if we placed a piece with a shape used by more than one piece
-        // we do not need to search for a good column here as we already know wich
+        // we do not need to search for a good column here as we already know which
         // column we are going to place, but we must check, if there is one column
         // with a count of 0 so we can back track
         unsigned int j = right[0];
@@ -1304,7 +1304,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
 
 
       // continue on a column we have already started, this is inside the loop in the
-      // recourseve function, after we return from the recoursive call
+      // recursive function, after we return from the recursive call
       // we uncover our row, find the next one and continue, if there is a new row
       uncover_row(rows[pos]);
       cont = true;
@@ -1333,11 +1333,11 @@ void assembler_0_c::iterativeMultiSearch(void) {
       // cover the row
 
       // the next lines with the crazy if-nesting sets up the parameters for the next
-      // recoursion step, this is different depending on the state we are in if there
+      // recursion step, this is different depending on the state we are in if there
       // are more pieces in front or behind us...
 
       // now depending on the properties of the current piece set up the variables for the
-      // next recoursion step.
+      // next recursion step.
       if ((searchState[pos] == 0) && (multiPieceCount[piece[pos]] != 1)) {
 
         // this is the case when we are in normal mode but want to place a multipiece
@@ -1410,7 +1410,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
         addRows[pos].pop();
       }
 
-      // ok finished this column, uncover it and backtrack
+      // OK finished this column, uncover it and backtrack
       uncover(columns[pos]);
 
       rows[pos] = 0;
@@ -1435,7 +1435,7 @@ float assembler_0_c::getFinished(void) {
 
   /* we don't need locking, as I hope that I have written the
    * code in a way that updated the data so, that it will never
-   * be in an inconsistant state. The thing that will happen is that
+   * be in an inconsistent state. The thing that will happen is that
    * the value may jump
    */
 
@@ -1495,7 +1495,7 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
    */
   bt_assert(pos == 0);
 
-  /* check for te right version */
+  /* check for the right version */
   if (strcmp(version, ASSEMBLER_VERSION))
     return ERR_CAN_NOT_RESTORE_VERSION;
 
