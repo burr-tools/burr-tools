@@ -495,6 +495,10 @@ ToolTab::ToolTab(int x, int y, int w, int h) : LFl_Tabs(x, y, w, h) {
 
     o->label("Tools");
 
+    // this 2nd group is not necessary, but it the callback function requires it to find
+    // the right parent class
+    Fl_Group* o2 = new layouter_c(0, 0, 1, 1);
+
     (new LFl_Box(0, 0, 1, 1))->weight(1, 1);
     (new LFl_Box(0, 8, 1, 1))->weight(1, 1);
     (new LFl_Box(8, 0, 1, 1))->weight(1, 1);
@@ -519,6 +523,8 @@ ToolTab::ToolTab(int x, int y, int w, int h) : LFl_Tabs(x, y, w, h) {
     (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
     (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
     (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
+
+    o2->end();
 
     o->end();
   }
