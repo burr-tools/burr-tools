@@ -190,7 +190,7 @@ bool assemblerThread_c::assembly(assembly_c * a) {
         delete s;
         delete a;
 
-        // yes, the puzzle is disassembably, count solutions
+        // yes, the puzzle is disassembable count solutions
         puzzle->probIncNumSolutions(prob);
 
         break;

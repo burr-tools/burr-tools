@@ -105,14 +105,14 @@ class mirrorInfo_c {
     void addPieces(unsigned int p1, unsigned int p2, unsigned char trans);
 
     /* returns the piece information for piece p
-     * p_out and trans contains the attatched info
+     * p_out and trans contains the attached info
      * returns only true, when valid entry was found
      */
     bool getPieceInfo(unsigned int p, unsigned int * p_out, unsigned char * trans) const;
 };
 
 /* this class contains the assembly for a puzzle
- * an assembly is a list of trnasformations and
+ * an assembly is a list of transformations and
  * positions for each piece in the final assembly
  *
  * the transformations are the same as defined in the voxel space class

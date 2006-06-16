@@ -193,7 +193,7 @@ void gridTypeSelectorWindow_c::select_cb(void) {
 
 gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) {
 
-  /* for each grid type available we need to greate an instance
+  /* for each grid type available we need to create an instance
    * here and put it into a gridtypeinfo class and into the
    * vector. This vector will be later on the one
    * with all required information
@@ -223,7 +223,7 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) {
     fr->end();
   }
 
-  (new LFl_Box("Attention: Concrete values withing the\n"
+  (new LFl_Box("Attention: Concrete values within the\n"
       "parameters are never evaluated, the solver only\n"
       "cares for equal and not equal. So if you want something\n"
       "that is twice as high as wide, assemble is out of\n"
@@ -250,7 +250,7 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) {
   {
     layouter_c * l = new layouter_c(0, 2, 3, 1);
 
-    LFl_Button * b = new LFl_Button("Ok", 0, 0);
+    LFl_Button * b = new LFl_Button("OK", 0, 0);
     b->pitch(7);
     b->callback(cb_WindowButton_stub, this);
     b->box(FL_THIN_UP_BOX);

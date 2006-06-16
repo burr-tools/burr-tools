@@ -20,21 +20,21 @@
 
 #include "gridtype.h"
 
-// this modules contains just some helper functions for transformations and symmetrie handling
+// this modules contains just some helper functions for transformations and symmetry handling
 
 /* this type is used to collect all the symmetries that a piece can have. For each symmetry
  * the corresponding bit is set
  */
 typedef unsigned char symmetries_t;
 
-/* some macros for ht esymmeties_t type
+/* some macros for the symmeties_t type
  */
 
-/* symmetry 0 always correspondy to the completely unsymmetric case
+/* symmetry 0 always corresponds to the completely asymmetric case
  */
 #define unSymmetric(s) ((s) == 0)
 
-/* the higest symmetry number is 0xff and that is the invaid case. Let's hope that there is
+/* the highest symmetry number is 0xff and that is the invalid case. Let's hope that there is
  * no grid space that has more than 255 different symmetries
  */
 #define symmetryInvalid() (0xFF)
@@ -51,10 +51,10 @@ class symmetries_c {
 
     /* one piece can have 48 symmetries. 24 rotational and another 24 rotational with mirroring.
      * the mirroring is possible to avoid finding mirrored solutions.
-     * All the symmetries are enumbered. The first 24 are the not mirrored. the other 24 are
-     * first mirrored along the x axins (-x -> x). The the piece is rotated around the x axis by
+     * All the symmetries are numbered. The first 24 are the not mirrored. The other 24 are
+     * first mirrored along the x axis (-x -> x). The piece is rotated around the x axis by
      * the value contained inside this array at the position of the symmetry number or symmetry number
-     * minus 24. The the piece is rotated around y and finally around z.
+     * minus 24. The piece is rotated around y and finally around z.
      * If the resulting piece is identical to the original untransformed than the piece has the
      * symmetry or the given rotation number
      */
@@ -65,18 +65,18 @@ class symmetries_c {
     /* this return true, if the symmetry contains the given transformation */
     virtual bool symmetrieContainsTransformation(symmetries_t s, unsigned int t) const = 0;
 
-    /* returns the transformation that results, whenyou first carry out transformation t1
+    /* returns the transformation that results, when you first carry out transformation t1
      * and then transformation t2
      */
     virtual unsigned char transAdd(unsigned char t1, unsigned char t2) const = 0;
 
     /* find the first transformation, for a shape with the given transformation that
-     * retults in a shape identical to the given transformation
+     * results in a shape identical to the given transformation
      */
     virtual unsigned char minimizeTransformation(symmetries_t s, unsigned char trans) const = 0;
 
-    /* this counts how many 'overlap' there is in symmetrie between the given result and the shape
-     * the value is smalle, when the 2 shapes have less symmetries in common
+    /* this counts how many 'overlap' there is in symmetry between the given result and the shape
+     * the value is small, when the 2 shapes have less symmetries in common
      */
     virtual unsigned int countSymmetryIntersection(symmetries_t resultSym, symmetries_t s2) const = 0;
 

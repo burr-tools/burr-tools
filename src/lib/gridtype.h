@@ -126,12 +126,12 @@ class gridType_c {
     void setBrickAngleXZneYZ(bool val) { bt_assert(type == GT_BRICKS); parameters.brick.axz_differs_ayz = val; }
 
     /* these functions return assembler and disassemble for the current space grid
-     * if the requied functionality is not available, return 0
+     * if the required functionality is not available, return 0
      */
     assembler_0_c * getAssembler(void) const;
     disassembler_c * getDisassembler(const puzzle_c * puz, unsigned int prob) const;
 
-    /* voxel spaces have different implementatios for rotation, and mirror functions */
+    /* voxel spaces have different implementations for rotation, and mirror functions */
     voxel_c * getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const;
     voxel_c * getVoxel(const xml::node & node) const;
     voxel_c * getVoxel(const voxel_c & orig, unsigned int transformation = 0) const;

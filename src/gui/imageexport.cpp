@@ -225,7 +225,7 @@ bool imageExport_c::PreDraw(void) {
   switch(state) {
     case 0:
 
-      snprintf(statText, 50, "create Preview image_c %i / %i", im, images.size());
+      snprintf(statText, 50, "create Preview image %i / %i", im, images.size());
       status->label(statText);
 
       images[im]->preparePreviewImage();
@@ -236,13 +236,13 @@ bool imageExport_c::PreDraw(void) {
 
       if (!images[im]->imageStarted()) {
 
-        snprintf(statText, 50, "create image_c %i / %i", im, images.size());
+        snprintf(statText, 50, "create image %i / %i", im, images.size());
         status->label(statText);
 
         unsigned int pageHeight = atoi(SizePixelY->value());
         unsigned int w = (unsigned int)((pageHeight / linesPerPage) * images[im]->ratio() + 0.9);
 
-        // calculate antialiasing factor
+        // calculate anti-aliasing factor
         int aa = 1;
         if (AA2->value()) aa = 2;
         if (AA3->value()) aa = 3;
@@ -351,7 +351,7 @@ void imageExport_c::PostDraw(void) {
             linesPerPage++;
           }
 
-          // ok, now lets setup the variable for output
+          // OK, now lets setup the variable for output
           curWidth = 0;
           curLine = 0;
           curPage = 0;
@@ -431,7 +431,7 @@ void imageExport_c::cb_Export(void) {
 
   } else if (ExpSolution->value()) {
 
-    // renerate an image for each step (for the moment only for the last solution)
+    // generate an image for each step (for the moment only for the last solution)
     unsigned int s = puzzle->probSolutionNumber(ProblemSelect->getSelection()) - 1;
     separation_c * t = puzzle->probGetDisassembly(ProblemSelect->getSelection(), s);
     unsigned int prob = ProblemSelect->getSelection();
@@ -538,7 +538,7 @@ imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : puzzle(p
   }
 
   {
-    // the group that defines the supersampling
+    // the group that defines the super sampling
     fr = new LFl_Frame(0, 2);
 
     AA1 = new LFl_Radio_Button("No Antialiasing", 0, 0);
@@ -551,8 +551,8 @@ imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : puzzle(p
     {
       layouter_c * l = new layouter_c(0, 5, 1, 2);
 
-      ColPiece = new LFl_Radio_Button("Use piece colors", 0, 5);
-      ColConst = new LFl_Radio_Button("Use color constraint colors", 0, 6);
+      ColPiece = new LFl_Radio_Button("Use piece colours", 0, 5);
+      ColConst = new LFl_Radio_Button("Use colour constraint colours", 0, 6);
 
       ColPiece->value(1);
 
@@ -643,7 +643,7 @@ imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : puzzle(p
 
   {
     // create the radio buttons that select what of the current puzzle file to
-    // export and enable only those of the possibilites that are available in
+    // export and enable only those of the possibilities that are available in
     // the current puzzle
 
     fr = new LFl_Frame(0, 4, 2, 1);
@@ -707,7 +707,7 @@ imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : puzzle(p
     status->pitch(7);
     status->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-    BtnStart = new LFl_Button("Export image_c(s)", 1, 0);
+    BtnStart = new LFl_Button("Export image(s)", 1, 0);
     BtnStart->pitch(7);
     BtnStart->callback(cb_ImageExportExport_stub, this);
     BtnStart->box(FL_THIN_UP_BOX);

@@ -155,7 +155,7 @@ public:
   }
 
   // locks the current selected position
-  // mous clicks are ignored
+  // mouse clicks are ignored
   void lockPosition(bool lock) { locked = lock; }
 
 };
@@ -163,7 +163,7 @@ public:
 /**
  * a blocklist whose block labels is text and whose elements can
  * be selected you need to inherit from this class to actually use it
- * the inherited class needs to provide functions that return the color
+ * the inherited class needs to provide functions that return the colour
  * to use for the block and the text that should be displayed inside the block
  */
 class SelectableTextList : public SelectableList {
@@ -172,7 +172,7 @@ public:
 
   SelectableTextList(int x, int y, int w, int h) : SelectableList(x, y, w, h) { }
 
-  /* return the color for the block */
+  /* return the colour for the block */
   void virtual getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) = 0;
 
   /* return the text for the block (not more than 20 characters */
@@ -183,7 +183,7 @@ public:
 
 /**
  * a blocklist with text labels but not selectable blocks
- * as in the SelectableTextList you need to provide functions for the color and
+ * as in the SelectableTextList you need to provide functions for the colour and
  * the labels of the blocks
  */
 class TextList : public BlockList {
@@ -192,7 +192,7 @@ public:
 
   TextList(int x, int y, int w, int h) : BlockList(x, y, w, h) { }
 
-  /* return the color for the block */
+  /* return the colour for the block */
   void virtual getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) = 0;
 
   /* return the text for the block (not more than 20 characters */
@@ -202,9 +202,9 @@ public:
 };
 
 /**
- * a concrete block list that displays the defined colors inside a puzzle
+ * a concrete block list that displays the defined colours inside a puzzle
  * and lets you select one. Additionally it also always displays a block at the
- * first position with the label Neutral for the transparent or neutral color
+ * first position with the label Neutral for the transparent or neutral colour
  * that is always there and can not be deleted
  */
 class ColorSelector : public SelectableTextList {
@@ -220,7 +220,7 @@ public:
 
   unsigned int virtual blockNumber(void);
 
-  /* return the color for the block */
+  /* return the colour for the block */
   void virtual getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
 
   /* return the text for the block (not more than 20 characters */
@@ -228,8 +228,8 @@ public:
 };
 
 /**
- * a widget that shows a list of the puzzle pieces with their color
- * and alows the user to activate one of it
+ * a widget that shows a list of the puzzle pieces with their colour
+ * and allows the user to activate one of it
  *
  * there are 2 reasons for the callback: user clicked and changed the selection
  * and the hight changed. This second callback is there to allow the application
@@ -350,13 +350,13 @@ public:
 };
 
 /**
- * A widget allowing to display and edit color constraints.
- * In reality color constraints are really collor permissions.
- * Each entry alows the placement of a cube of one color into a
- * cube of another color.
- * The editor currentl shows a list of colors on the left and
- * a list of colors on the right and arrows between them to say
- * this color on the left can go into this color on the right
+ * A widget allowing to display and edit colour constraints.
+ * In reality colour constraints are really colour permissions.
+ * Each entry allows the placement of a cube of one colour into a
+ * cube of another colour.
+ * The editor currently shows a list of colours on the left and
+ * a list of colours on the right and arrows between them to say
+ * this colour on the left can go into this colour on the right
  */
 class ColorConstraintsEdit : public Fl_Widget {
 

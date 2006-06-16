@@ -59,9 +59,9 @@ void gridEditor_c::clearPuzzle() {
 }
 
 // this function work in the same as the cursor inside function.
-// It sets a (group of) voxels depending in the active tools by cesoursively
+// It sets a (group of) voxels depending in the active tools by recursively
 // calling itself
-// tools contains the active tools, taks, what to do with the voxels
+// tools contains the active tools, task, what to do with the voxels
 static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, gridEditor_c::enTask task, unsigned int currentColor) {
 
   bool changed = false;
@@ -82,23 +82,23 @@ static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, 
       break;
     }
 
-    // on all other tasks but the color changing one, we need to set the state of the voxel
+    // on all other tasks but the colour changing one, we need to set the state of the voxel
     if ((task != gridEditor_c::TSK_COLOR) && (s->getState(x, y, z) != v)) {
       changed = true;
       s->setState(x, y, z, v);
 
-      // when emptying a cube, also clear the color away
+      // when emptying a cube, also clear the colour away
       if (v == voxel_c::VX_EMPTY)
         s->setColor(x, y, z, 0);
     }
 
-    // this is for the color change task
+    // this is for the colour change task
     if ((s->getState(x, y, z) != voxel_c::VX_EMPTY) && (s->getColor(x, y, z) != currentColor)) {
       changed = true;
       s->setColor(x, y, z, currentColor);
     }
   } else if (tools & gridEditor_c::TOOL_MIRROR_X) {
-    // the mirror tools are active, call resursively with both possible coordinates
+    // the mirror tools are active, call recursively with both possible coordinates
     changed |= setRecursive(s, tools & ~gridEditor_c::TOOL_MIRROR_X, x, y, z, task, currentColor);
     changed |= setRecursive(s, tools & ~gridEditor_c::TOOL_MIRROR_X, s->getX()-x-1, y, z, task, currentColor);
   } else if (tools & gridEditor_c::TOOL_MIRROR_Y) {
@@ -111,7 +111,7 @@ static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, 
     // the column modes are active, this part must be at the end, because is
     // doesn't mask out the tool bits but clears all of them at once
     //
-    // all 3 column tools need to be handled at once because otherwise we wouldnt handle
+    // all 3 column tools need to be handled at once because otherwise we wouldn't handle
     // just the columns at the current position but all rows of all columns or so if more than
     // one columns tool is active
     if (tools & gridEditor_c::TOOL_STACK_X)
@@ -175,7 +175,7 @@ int gridEditor_c::handle(int event) {
     return 0;
 
   // not active, nothing to do. Normally we wouldn't require this
-  // but mouse move events are still delivered and this would unnesessarily
+  // but mouse move events are still delivered and this would unnecessarily
   // update the cursor
   if (!active())
     return 0;
@@ -197,7 +197,7 @@ int gridEditor_c::handle(int event) {
       int x, y;
       calcGridPosition(Fl::event_x(), Fl::event_y(), &x, &y);
 
-      // check, if the current position is inside the grid, only if so carry out action, we wouldnt
+      // check, if the current position is inside the grid, only if so carry out action, we don't
       // need to to this if we are not in rubberband modus, but it doesn't hurt either
       if (0 <= x && x < (long)space->getX() && 0 <= y && y < (long)space->getY() && setLayer(currentZ)) {
         callbackReason = RS_CHANGESQUARE;
@@ -214,7 +214,7 @@ int gridEditor_c::handle(int event) {
     // we want to get mouse movement events
     Fl::belowmouse(this);
 
-    // fallthrough
+    // fall through
   case FL_PUSH:
 
     // the mouse is inside the widget, so draw the cursor
@@ -231,7 +231,7 @@ int gridEditor_c::handle(int event) {
       clear_visible_focus();
     }
 
-    // fallthrough
+    // fall through
   case FL_DRAG:
   case FL_MOVE:
     {
@@ -247,7 +247,7 @@ int gridEditor_c::handle(int event) {
 
       if (event == FL_PUSH || event == FL_MOVE || event == FL_ENTER) {
 
-        // the startup events, save the current cursor position for the
+        // the start-up events, save the current cursor position for the
         // rubber band
         mX = startX = x;
         mY = startY = y;
@@ -316,24 +316,24 @@ void gridEditor_c::draw() {
 
   voxel_c * space = puzzle->getShape(piecenumber);
 
-  // if there is no voxelspace or the space is of volumn 0 return
+  // if there is no voxelspace or the space is of column 0 return
   if ((space->getX() == 0) || (space->getY() == 0) || (space->getZ() == 0))
     return;
 
-  // get the backgroud color, used for the dimmed squared if the layer below
+  // get the background colour, used for the dimmed squared if the layer below
   unsigned char bgr, bgg, bgb;
   Fl::get_color(color(), bgr, bgg, bgb);
 
   int sx, sy, tx, ty;
   calcParameters(&sx, &sy, &tx, &ty);
 
-  // the color for the squares
+  // the colour for the squares
   unsigned char r, g, b;
 
   for (unsigned int x = 0; x < space->getX(); x++)
     for (unsigned int y = 0; y < space->getY(); y++) {
 
-      // apply the checkerboard pattern
+      // apply the chequerboard pattern
       if ((x+y+currentZ) & 1) {
         r = int(255*darkPieceColor(pieceColorR(piecenumber)));
         g = int(255*darkPieceColor(pieceColorG(piecenumber)));
@@ -363,8 +363,8 @@ void gridEditor_c::draw() {
         }
       }
 
-      // if the voxel is not empty and has a color assigned, draw a marker in the
-      // upper left corner with the color of the constraint color
+      // if the voxel is not empty and has a colour assigned, draw a marker in the
+      // upper left corner with the colour of the constraint colour
       if ((space->getState(x, space->getY()-y-1, currentZ) != voxel_c::VX_EMPTY) &&
           space->getColor(x, space->getY()-y-1, currentZ)) {
 
@@ -373,7 +373,7 @@ void gridEditor_c::draw() {
         drawTileColor(x, y, tx, ty, sx, sy);
       }
 
-      // the color for the grid lines
+      // the colour for the grid lines
       if (active())
         fl_color(labelcolor());
       else
@@ -413,13 +413,13 @@ void gridEditor_c::draw() {
     if (y2 < 0) y2 = 0;
     if (y1 >= (int)space->getY()) y1 = (int)space->getY()-1;
 
-    // flip y vertically, as everything is drawn vertially flipped
+    // flip y vertically, as everything is drawn vertically flipped
     y1 = space->getY() - y1 - 1;
     y2 = space->getY() - y2 - 1;
 
     if ((x1 <= x2) && (y1 <= y2)) {
 
-      // ok, we have a valid range selected, now we need to check for
+      // OK, we have a valid range selected, now we need to check for
       // edit mode (symmetric modes, ...) and draw the right cursor for the current mode
 
       fl_color(labelcolor());
@@ -436,13 +436,13 @@ void gridEditor_c::draw() {
 // this function finds out if a given square is inside the selected region
 // this check includes the symmetric and column edit modes
 //
-// it works resursive. mode contains the yet to check symmetries and columns
+// it works recursive. Mode contains the yet to check symmetries and columns
 bool gridEditor_c::inRegion(int x, int y, int x1, int x2, int y1, int y2, int sx, int sy, int mode) {
 
   // if we are outside the active shape we are not in a region
   if ((x < 0) || (y < 0) || (x >= sx) || (y >= sy)) return false;
 
-  // these 2 modes ar of no interest, they only belong to the z layer
+  // these 2 modes are of no interest, they only belong to the z layer
   mode &= ~ (gridEditor_c::TOOL_STACK_Z + gridEditor_c::TOOL_MIRROR_Z);
 
   if (mode == 0)
@@ -460,7 +460,7 @@ bool gridEditor_c::inRegion(int x, int y, int x1, int x2, int y1, int y2, int sx
 
   // symmetric modes, recursive call with the same coordinates and also
   // with the corresponding mirrored coordinate and the symmetry bit removed
-  // from mode, so that in the functioncall the checks above work properly.
+  // from mode, so that in the function call the checks above work properly.
   if (mode & gridEditor_c::TOOL_MIRROR_X)
     return inRegion(x, y, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_c::TOOL_MIRROR_X) ||
       inRegion(sx-x-1, y, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_c::TOOL_MIRROR_X);

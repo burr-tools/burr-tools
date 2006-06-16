@@ -31,8 +31,8 @@
 
 using namespace std;
 
-/* the 2d bitmap
- * the bitmap is always square and alows only for the here necessary modifications
+/* the 2D bitmap
+ * the bitmap is always square and allows only for the here necessary modifications
  */
 class bitmap_c {
 
@@ -48,10 +48,10 @@ public:
 
   ~bitmap_c(void) { if (map) delete [] map; }
 
-  /* add a new color at the end */
+  /* add a new colour at the end */
   void add(void);
 
-  /* remove the given color */
+  /* remove the given colour */
   void remove(unsigned int col);
 
   void set(unsigned int pcCol, unsigned int resCol, bool value) {
@@ -168,7 +168,7 @@ void bitmap_c::load(const xml::node & node) {
 
   if ((node.get_type() != xml::node::type_element) ||
       (strcmp(node.get_name(), "bitmap") != 0))
-    throw load_error("not the right node for color constrains", node);
+    throw load_error("not the right node for colour constrains", node);
 
   xml::node::const_iterator it;
 
@@ -177,17 +177,17 @@ void bitmap_c::load(const xml::node & node) {
         (strcmp(i->get_name(), "pair") == 0)) {
 
       if (i->get_attributes().find("piece") == i->get_attributes().end())
-        throw load_error("no attribute 'piece' found in color constraint node", node);
+        throw load_error("no attribute 'piece' found in colour constraint node", node);
       if (i->get_attributes().find("result") == i->get_attributes().end())
-        throw load_error("no attribute 'result' found in color constraint node", node);
+        throw load_error("no attribute 'result' found in colour constraint node", node);
 
       unsigned int piece = atoi(i->get_attributes().find("piece")->get_value());
       unsigned int result = atoi(i->get_attributes().find("result")->get_value());
 
       if (piece >= colors)
-        throw load_error("piece color too big", node);
+        throw load_error("piece colour too big", node);
       if (result >= colors)
-        throw load_error("result color too big", node);
+        throw load_error("result colour too big", node);
 
       set(piece, result, true);
     }
@@ -215,7 +215,7 @@ public:
   assembly_c * assembly;
 
   /* the disassembly tree, only not NULL, if we
-   * have disassembleed the puzzle
+   * have disassembled the puzzle
    */
   separation_c * tree;
 
@@ -251,7 +251,7 @@ solution_c::solution_c(const xml::node & node, unsigned int pieces, const gridTy
     throw load_error("wrong node type for solution", node);
 
   if (node.find("assembly") == node.end())
-    throw load_error("slution does not contain an assembly", node);
+    throw load_error("solution does not contain an assembly", node);
 
   xml::node::const_iterator it;
 
@@ -372,7 +372,7 @@ public:
   };
 
   // the pieces for this problem and how many of the pieces
-  // of each hape are there
+  // of each shape are there
   std::vector<shape_c> shapes;
 
   // the result shape
@@ -382,9 +382,9 @@ public:
   std::vector<solution_c*> solutions;
 
   /**
-   * this array contains the constrains for the colors for each pair of
-   * colors is defines, if it is allowed to place a voxel inside a piece shape
-   * at the result where the corresponding voxel has a certain color
+   * this array contains the constrains for the colours for each pair of
+   * colours is defines, if it is allowed to place a voxel inside a piece shape
+   * at the result where the corresponding voxel has a certain colour
    */
   bitmap_c colorConstraints;
 
@@ -419,7 +419,7 @@ public:
   std::string name;
 
   /**
-   * this state reflecs how far we are with solving this problem
+   * this state reflects how far we are with solving this problem
    */
   puzzle_c::SolveState_e solveState;
 
@@ -427,7 +427,7 @@ public:
    * for this variables 0xFFFFFFFF always stands for unknown and
    * 0xFFFFFFFE for too much to count
    *
-   * this is independend of the soluions vector, these are the pure numbers
+   * this is independent of the solutions vector, these are the pure numbers
    */
   unsigned long numAssemblies;
   unsigned long numSolutions;
@@ -440,7 +440,7 @@ public:
   std::string assemblerState;
   /**
    * each assembler also saves a version into the node so that it can check, if
-   * the saves state can be resored
+   * the saves state can be restored
    */
   std::string assemblerVersion;
 
@@ -591,7 +591,7 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
           shapes.push_back(shape_c(id, cnt, grp));
 
         else {
-          /* ok we have 2 ways to specify groups for pieces, either
+          /* OK we have 2 ways to specify groups for pieces, either
            * a group attribute in the tag. Then all pieces are
            * in the given group, or you specify a list of group
            * tags inside the tag. Each of the group tag gives a
@@ -828,7 +828,7 @@ void puzzle_c::addColor(unsigned char r, unsigned char g, unsigned char b) {
 
   colors.push_back(c);
 
-  // go through all problems and add the new color to the matrix
+  // go through all problems and add the new colour to the matrix
   for (vector<problem_c*>::iterator i = problems.begin(); i != problems.end(); i++)
     (*i)->colorConstraints.add();
 }
@@ -838,7 +838,7 @@ void puzzle_c::removeColor(unsigned int col) {
   bt_assert(col <= colors.size());
   colors.erase(colors.begin() + (col - 1));
 
-  // go through all shapes and remove the deleted color
+  // go through all shapes and remove the deleted colour
   for (vector<voxel_c*>::iterator i = shapes.begin(); i != shapes.end(); i++)
     for (unsigned int p = 0; p < (*i)->getXYZ(); p++)
       if ((*i)->getState(p) != voxel_c::VX_EMPTY) {
@@ -848,7 +848,7 @@ void puzzle_c::removeColor(unsigned int col) {
           (*i)->setColor(p, (*i)->getColor(p)-1);
       }
 
-  // remove color constrains that include this color
+  // remove colour constrains that include this colour
   for (vector<problem_c*>::iterator i = problems.begin(); i != problems.end(); i++)
     (*i)->colorConstraints.remove(col);
 }
@@ -983,7 +983,7 @@ puzzle_c::puzzle_c(const xml::node & node) {
           throw load_error("color nodes must have a 'red' attribute", *i);
 
         if (i->get_attributes().find("green") == i->get_attributes().end())
-          throw load_error("color nodes must have a 'gree' attribute", *i);
+          throw load_error("color nodes must have a 'green' attribute", *i);
 
         if (i->get_attributes().find("blue") == i->get_attributes().end())
           throw load_error("color nodes must have a 'blue' attribute", *i);
@@ -1285,7 +1285,7 @@ void puzzle_c::probAddSolution(unsigned int prob, assembly_c * assm, separation_
   unsigned int s = problems[prob]->numSolutions;
   if (s == 0xFFFFFFFF) s = 0;
 
-  // if the given index is behind te number of solutions add at the end
+  // if the given index is behind the number of solutions add at the end
   if (pos < problems[prob]->solutions.size())
     problems[prob]->solutions.insert(problems[prob]->solutions.begin()+pos, new solution_c(assm, a, disasm, s));
   else
@@ -1304,7 +1304,7 @@ void puzzle_c::probAddSolution(unsigned int prob, assembly_c * assm, separationI
   unsigned int s = problems[prob]->numSolutions;
   if (s == 0xFFFFFFFF) s = 0;
 
-  // if the given index is behind te number of solutions add at the end
+  // if the given index is behind the number of solutions add at the end
   if (pos < problems[prob]->solutions.size())
     problems[prob]->solutions.insert(problems[prob]->solutions.begin()+pos, new solution_c(assm, a, disasm, s));
   else
@@ -1520,7 +1520,7 @@ assembler_c::errState puzzle_c::probSetAssembler(unsigned int prob, assembler_c 
     // and remove that data
     problems[prob]->assemblerState = "";
 
-    // when we could not load, return with error and reset to unsovled
+    // when we could not load, return with error and reset to unsolved
     if (err != assembler_c::ERR_NONE) {
       problems[prob]->solveState = SS_UNSOLVED;
       return err;
@@ -1528,7 +1528,7 @@ assembler_c::errState puzzle_c::probSetAssembler(unsigned int prob, assembler_c 
 
   } else {
 
-    // if no data is available for assemlber restoration reset counters
+    // if no data is available for assembler restoration reset counters
     problems[prob]->numAssemblies = 0xFFFFFFFF;
     problems[prob]->numSolutions = 0xFFFFFFFF;
   }

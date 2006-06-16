@@ -31,7 +31,7 @@ class node0_c;
 
 /* this class is a disassembler for the cube space.
  *
- * is is implemented using bill cuttlers algorithm, so please read there
+ * is is implemented using Bill Cuttlers algorithm, so please read there
  * in case you are interested how it works. The comments are written with
  * the thought that you know his algorithm
  */
@@ -50,9 +50,9 @@ private:
 
   /* matrix should normally have 6 subarrays, for each of the 6 possible
    * directions (positive x negative x, positive y, ...) one, but because
-   * the matrix for the negative direction in the same dimenstion is the
+   * the matrix for the negative direction in the same dimension is the
    * transposition (m[i][j] == m[j][i]) we save the calculation or copying
-   * and rather do the transposition insde the checkmovement function
+   * and rather do the transposition inside the checkmovement function
    */
   int * matrix[3];
 
@@ -78,7 +78,7 @@ private:
   separation_c * checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, node0_c * st, bool left, bool * ok, const int * weights);
 
   /* the real disassembly routine. It separates the puzzle into 2 parts
-   * and get's called recursively with each subpart to disassemble
+   * and gets called recursively with each subpart to disassemble
    *
    * the return is the disassembly tree for that part
    *

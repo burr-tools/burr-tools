@@ -32,10 +32,10 @@
 
 // this is used to shift one side of the cubes so that they slightly differ
 // from the side of the next cube, so that (in case of frames) the sides
-// are clearly separated and dont't interlock when drawing
+// are clearly separated and don't interlock when drawing
 #define MY 0.005f
 
-// draws a wireframe box depending on the neibors
+// draws a wire frame box depending on the neighbours
 void voxelDrawer_0_c::drawFrame(const voxel_c * space, int x, int y, int z, float edge) {
 
   if (fabs(edge) < 0.00001) return;
@@ -94,7 +94,7 @@ void voxelDrawer_0_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
   glEnd();
 }
 
-// draws a box with borders depending on the neibor boxes
+// draws a box with borders depending on the neighbour boxes
 void voxelDrawer_0_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge) {
 
   GLfloat a0, b0, a1, b1;
@@ -168,7 +168,7 @@ void voxelDrawer_0_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
   drawFrame(space, x, y, z, edge);
 }
 
-// draw a bube that is smaller than 1
+// draw a cube that is smaller than 1
 void voxelDrawer_0_c::drawVariableMarkers(const voxel_c * space, int x, int y, int z) {
   glBegin(GL_QUADS);
   if (space->isEmpty2(x, y, z-1)) {

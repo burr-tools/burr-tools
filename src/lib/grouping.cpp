@@ -86,11 +86,11 @@ bool grouping_c::addPieceToSet(unsigned int pc) {
       pieces[findPiece(sets[set].pieces[p], sets[set].currentGroup)].count++;
   }
 
-  // ok when we get here something doesn't fit, so
+  // OK when we get here something doesn't fit, so
   // take the last set and increase the group
-  // if we reaced the last group restart with the
+  // if we reached the last group restart with the
   // first and increment the 2nd last group, until
-  // the first group reaced the end
+  // the first group reached the end
   // as soon as we find something suitable in here, stop
 
   // now increment the groups until we either find a fitting

@@ -23,7 +23,7 @@
 
 /**
  * the type used for one voxel, \c u_int8_t
- * allows up to 255 differen pieces this should
+ * allows up to 255 different pieces this should
  * be enough for almost all puzzles, but just for
  * the case it isn't we can easily change the type
  */

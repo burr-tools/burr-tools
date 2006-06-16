@@ -463,7 +463,7 @@ ToolTab::ToolTab(int x, int y, int w, int h) : LFl_Tabs(x, y, w, h) {
     new LFlatButton_c(0, 3, 1, 1, pm.get(Grid_Color_Minimize_xpm), pm.get(Grid_Disabled_Minimize_xpm),
         " Minimize size of grid ", cb_ToolTabTransform2_stub, 15);
     new LFlatButton_c(0, 5, 1, 1, pm.get(Grid_Color_Center_xpm), pm.get(Grid_Disabled_Center_xpm),
-        " Center shape inside the grid ", cb_ToolTabTransform2_stub, 25);
+        " Centre shape inside the grid ", cb_ToolTabTransform2_stub, 25);
     new LFlatButton_c(0, 7, 1, 1, pm.get(Grid_Color_Origin_xpm), pm.get(Grid_Disabled_Origin_xpm),
         " Move shape to origin of grid ", cb_ToolTabTransform2_stub, 24);
 
@@ -514,7 +514,7 @@ ToolTab::ToolTab(int x, int y, int w, int h) : LFl_Tabs(x, y, w, h) {
     new LFlatButton_c(4, 5, 1, 1, pm.get(InOut_Color_Variable_Out_xpm), pm.get(InOut_Disabled_Variable_Out_xpm),
         " Make outside variable ", cb_ToolTabTransform2_stub, 19);
     new LFlatButton_c(4, 7, 1, 1, pm.get(InOut_Color_RemoveColor_Out_xpm), pm.get(InOut_Disabled_RemoveColor_Out_xpm),
-        " RemoveColours from outside cubes ", cb_ToolTabTransform2_stub, 21);
+        " Remove Colours from outside cubes ", cb_ToolTabTransform2_stub, 21);
 
     (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
     (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
@@ -556,7 +556,7 @@ void ToolTab::cb_size(void) {
     }
 
     // we always do this, is may be that the shape is not changed in the loop above because
-    // that loop and only inclrease the size, so smaller sizes for the selected shape must be done
+    // that loop and only increase the size, so smaller sizes for the selected shape must be done
     // here
     puzzle->getShape(shape)->resize(changeSize->getX(), changeSize->getY(), changeSize->getZ(), 0);
 
@@ -620,11 +620,11 @@ void ToolTab::cb_transform(long task) {
         case  3: space->translate( 0,-1, 0, 0); break;
         case  4: space->translate( 0, 0, 1, 0); break;
         case  5: space->translate( 0, 0,-1, 0); break;
-        case  7: space->rotatex(); space->rotatex(); // fallthrough
+        case  7: space->rotatex(); space->rotatex(); // fall through
         case  6: space->rotatex(); break;
-        case  9: space->rotatey(); space->rotatey(); // fallthrough
+        case  9: space->rotatey(); space->rotatey(); // fall through
         case  8: space->rotatey(); break;
-        case 11: space->rotatez(); space->rotatez(); // fallthrough
+        case 11: space->rotatez(); space->rotatez(); // fall through
         case 10: space->rotatez(); break;
         case 12: space->mirrorX(); break;
         case 13: space->mirrorY(); break;
@@ -1049,7 +1049,7 @@ assertWindow::assertWindow(const char * text, assert_exception * a) : Fl_Double_
   (new Fl_Box(5, 10+ASSERT_TXT1, ASSERT_WINDOW_X-10, ASSERT_TXT2,
              "Please send the text in the following box to roever@@users.sf.net\n"
              "if possible include a file of the puzzle that failed and a description\n"
-             "of what you did until this error occured,   thank you."
+             "of what you did until this error occurred,   thank you."
             ))->align(FL_ALIGN_CENTER | FL_ALIGN_INSIDE | FL_ALIGN_LEFT);
 
   // finally the text box

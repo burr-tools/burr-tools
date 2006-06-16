@@ -24,7 +24,7 @@ class puzzle_c;
 
 class groupsEditorTab_c;
 
-/* the window that contins the group edit table */
+/* the window that contains the group edit table */
 class groupsEditor_c : public Fl_Double_Window {
 
   groupsEditorTab_c * tab;

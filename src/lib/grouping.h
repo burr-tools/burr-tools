@@ -19,7 +19,7 @@
 #define __GROUPING_H__
 
 /* problem: when trying to disassemble a puzzle with groups
- * there occures a problem when identical pieces belong to different groups
+ * there occurs a problem when identical pieces belong to different groups
  * because you don't know, to which group the current piece belongs to
  *
  * but this groups assignment might change the disassembability of the
@@ -34,13 +34,13 @@
  * The functionality in here is supposed to help solve this problem
  * when the disassembler goes along it's way and tries to disassemble
  * a (sub)problem it only stops premature when there is a clear group
- * assignment available, meaning all pieces have a unique group asigned
+ * assignment available, meaning all pieces have a unique group assigned
  *
  * otherwise it tries to disassemble. If this is not possible it
  * checks with the functions in here, if it is possible to assign
  * groups to the pieces in such a way that all the involved pieces
  * are in the same group. The class will allocate the groups to the
- * involved pieces and use this knownledge later on when more groups
+ * involved pieces and use this knowledge later on when more groups
  * get added
  */
 
@@ -84,7 +84,7 @@ public:
   grouping_c(void) : numGroups(0), failed(false) {}
 
 
-  /* intialisation:
+  /* initialisation:
    * the following functions tell the class what pieces can be in what groups
    * and how many of them are available
    */

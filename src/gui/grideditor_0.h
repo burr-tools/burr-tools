@@ -27,7 +27,7 @@ class puzzle_c;
 
 /**
  * this widget allows to edit voxel spaces. It shows one Z-Layer of the space as a grid
- * of spheres and each of these quares can be toggled between the state filled, variable, empty
+ * of spheres and each of these squares can be toggled between the state filled, variable, empty
  *
  * the callback is issued on on the following occasions:
  *  - Mouse moves inside the area of the widget (for the 3d view to show the cursor

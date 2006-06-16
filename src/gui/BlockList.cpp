@@ -149,17 +149,17 @@ int BlockList::handle(int event) {
   return 0;
 }
 
-/* draw a selectable text block with a background color */
+/* draw a selectable text block with a background colour */
 void SelectableTextList::blockDraw(unsigned int block, int x, int y) {
   int w, h;
   unsigned char r, g, b;
   char txt[200];
 
-  /* get color and text from inheritor */
+  /* get colour and text from inheritor */
   getColor(block, &r, &g, &b);
   getText(block, txt);
 
-  /* when we are deactivated, turn the color into gray */
+  /* when we are deactivated, turn the colour into grey */
   if (!active()) {
     int gray = (3*g + 6*g + b) / 10;
     r = g = b = gray;
@@ -171,10 +171,10 @@ void SelectableTextList::blockDraw(unsigned int block, int x, int y) {
   w += 8;
   h += 4;
 
-  /* draw the colored rectangle */
+  /* draw the coloured rectangle */
   fl_rectf(x, y, w, h, r, g, b);
 
-  /* text color depends on how light the color is */
+  /* text colour depends on how light the colour is */
   if ((int)3*r + 6*g + 1*b > 1275)
     fl_color(0, 0, 0);
   else
@@ -208,7 +208,7 @@ void SelectableTextList::blockSize(unsigned int block, unsigned int *w, unsigned
   *h = hi + 4;
 }
 
-/* drawe a non selectable text block with background color */
+/* draw a non selectable text block with background colour */
 void TextList::blockDraw(unsigned int block, int x, int y) {
   int w, h;
   unsigned char r, g, b;
@@ -217,7 +217,7 @@ void TextList::blockDraw(unsigned int block, int x, int y) {
   getColor(block, &r, &g, &b);
   getText(block, txt);
 
-  /* when we are deactivated, turn the color into gray */
+  /* when we are deactivated, turn the colour into grey */
   if (!active()) {
     int gray = (3*g + 6*g + b) / 10;
     r = g = b = gray;
@@ -264,11 +264,11 @@ unsigned int ColorSelector::blockNumber(void) {
     return puzzle->colorNumber();
 }
 
-/* return the color for the block */
+/* return the colour for the block */
 void ColorSelector::getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) {
 
-  // the block 0 is the neutral color and always available and
-  // not saved in the color list
+  // the block 0 is the neutral colour and always available and
+  // not saved in the colour list
   if (!includeNeutral)
     block++;
 
@@ -444,7 +444,7 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
   g = pieceColorGi(shapeID, subBlock);
   b = pieceColorBi(shapeID, subBlock);
 
-  /* when we are deactivated, turn the color into gray */
+  /* when we are deactivated, turn the colour into grey */
   if (!active()) {
     int gray = (3*g + 6*g + b) / 10;
     r = g = b = gray;
@@ -455,7 +455,7 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
   w += 8;
   h += 4;
 
-  /* dependingon the state we draw 3 different things: */
+  /* depending on the state we draw 3 different things: */
   switch(visState[block]) {
   case 0:
     /* a normal block */
@@ -474,8 +474,8 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
     break;
   }
 
-  /* the color of the label depends on the background color. If the only frame mode
-   * is on we normally have the light background color, so use the dark color, too
+  /* the colour of the label depends on the background colour. If the only frame mode
+   * is on we normally have the light background colour, so use the dark colour, too
    */
   if (((int)3*r + 6*g + 1*b > 1275) || (visState[block] == 2))
     fl_color(0, 0, 0);
@@ -537,7 +537,7 @@ void PieceVisibility::setPuzzle(puzzle_c *pz, unsigned int prob) {
 
   visState = 0;
 
-  /* set up new visibilty when a valid problem is available */
+  /* set up new visibility when a valid problem is available */
   if (c) {
     visState = new unsigned char[c];
 
@@ -595,7 +595,7 @@ void ColorConstraintsEdit::draw(void) {
   fl_color(color());
   fl_rectf(x(), y(), w(), h());
 
-  /* draw the vertical bar that shows which sort mode is active and where added colors will go */
+  /* draw the vertical bar that shows which sort mode is active and where added colours will go */
   fl_color(fl_darker(color()));
   if (sortByResult) {
     fl_rectf(x(),
@@ -610,13 +610,13 @@ void ColorConstraintsEdit::draw(void) {
   }
   fl_color(labelcolor());
 
-  /* now for each color we have a vertical area
-   * on one side is the color and on the other side is a list of colors
-   * that are connected with the current color
+  /* now for each colour we have a vertical area
+   * on one side is the colour and on the other side is a list of colours
+   * that are connected with the current colour
    */
   for (unsigned int c1 = 0; c1 < puzzle->colorNumber(); c1++) {
 
-    /* count the number of colors on the "other" side */
+    /* count the number of colours on the "other" side */
     unsigned int cnt = 0;
     unsigned int c2;
     for (c2 = 0; c2 < puzzle->colorNumber(); c2++)
@@ -627,7 +627,7 @@ void ColorConstraintsEdit::draw(void) {
     unsigned int height;
     unsigned int groupblockheight;
 
-    /* calculate the hight of the current color block */
+    /* calculate the hight of the current colour block */
     if (cnt == 0) {
       height = 2*CC_ADD_LENGTH+1;
       groupblockheight = height;
@@ -648,7 +648,7 @@ void ColorConstraintsEdit::draw(void) {
 
     ypos += CC_GROUP_GAP;
 
-    /* draw the active color on the "one" side with a frame around */
+    /* draw the active colour on the "one" side with a frame around */
     if (sortByResult) {
       puzzle->getColor(c1, &r, &g, &b);
       fl_rectf(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP, ypos + y()-shift + groupblockshift, CC_BLOCK_WIDTH, groupblockheight, r, g, b);
@@ -668,14 +668,14 @@ void ColorConstraintsEdit::draw(void) {
     unsigned int yp1 = ypos + y()-shift;
     unsigned int yp2 = ypos + groupblockshift + y()-shift;
 
-    /* draw the colors on the "other" side */
+    /* draw the colours on the "other" side */
     for (c2 = 0; c2 < puzzle->colorNumber(); c2++)
       if ((!sortByResult && puzzle->probPlacementAllowed(problem, c1+1, c2+1)) ||
           (sortByResult && puzzle->probPlacementAllowed(problem, c2+1, c1+1))) {
 
         if (sortByResult) {
 
-          /* draw the color */
+          /* draw the colour */
           puzzle->getColor(c2, &r, &g, &b);
           fl_rectf(x()+CC_LR_GAP, yp1, CC_BLOCK_WIDTH, 2*CC_ADD_LENGTH+1, r, g, b);
 
@@ -702,7 +702,7 @@ void ColorConstraintsEdit::draw(void) {
 
         } else {
 
-          /* draw the color */
+          /* draw the colour */
           puzzle->getColor(c2, &r, &g, &b);
           fl_rectf(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP, yp1, CC_BLOCK_WIDTH, 2*CC_ADD_LENGTH+1, r, g, b);
 
@@ -770,7 +770,7 @@ int ColorConstraintsEdit::handle(int event) {
   /* find out the group that we clicked onto */
   for (unsigned int c1 = 0; c1 < puzzle->colorNumber(); c1++) {
 
-    /* count the number of colors in the current group */
+    /* count the number of colours in the current group */
     unsigned int cnt = 0;
     unsigned int c2;
     for (c2 = 0; c2 < puzzle->colorNumber(); c2++)

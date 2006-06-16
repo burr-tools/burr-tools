@@ -29,11 +29,11 @@ bool assm_0_frontend_0_c::pieceFits(const voxel_c * piece, int x, int y, int z) 
     for (unsigned int py = piece->boundY1(); py <= piece->boundY2(); py++)
       for (unsigned int px = piece->boundX1(); px <= piece->boundX2(); px++)
         if (
-            // the piece can not be place if the result is empty and the piece is fileed at a given voxel
+            // the piece can not be place if the result is empty and the piece is filled at a given voxel
             ((piece->getState(px, py, pz) != voxel_c::VX_EMPTY) &&
              (result->getState(x+px, y+py, z+pz) == voxel_c::VX_EMPTY)) ||
 
-            // the piece can also not be placed when the color constraints don't fit
+            // the piece can also not be placed when the colour constraints don't fit
             !puzzle->probPlacementAllowed(problem, piece->getColor(px, py, pz), result->getColor(x+px, y+py, z+pz))
 
            )

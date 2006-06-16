@@ -19,7 +19,7 @@
 #define __PRINT_H__
 
 /* this module contains printing routines for the classes,
- * they print function is not part of the classes bacause they are not
+ * they print function is not part of the classes because they are not
  * required there
  * they are in fact quite interface specific
  */

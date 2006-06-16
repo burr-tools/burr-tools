@@ -40,7 +40,7 @@ class groupsEditorTab_c : public Fl_Table {
    */
   Fl_Int_Input* input;
 
-  /* the position inside the table where the imput line is
+  /* the position inside the table where the input line is
    */
   int editShape, editGroup;
 
@@ -99,7 +99,7 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
 
       /* first column is the shape columns
        * second contains the number of that shape that is in the puzzle
-       * the other columns are group golumns
+       * the other columns are group columns
        */
       if (c == 0)
         snprintf(s, 40, "Shape");
@@ -127,7 +127,7 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
       static char s[40];
 
       /* this contains what to draw, 0: empty cell
-       * 1: the string s inside a colored cell
+       * 1: the string s inside a coloured cell
        */
       int type = 0;
 
@@ -178,9 +178,9 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
 
         case 1:
 
-          /* a cell with a background corresponding with the shape color */
+          /* a cell with a background corresponding with the shape colour */
           {
-            /* get the color for the cell */
+            /* get the colour for the cell */
             int p = puzzle->probGetShape(prob, r);
             unsigned char r, g, b;
             r = pieceColorRi(p);

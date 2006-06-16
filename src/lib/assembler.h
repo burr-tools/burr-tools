@@ -35,7 +35,7 @@ class assembler_cb {
 public:
 
   /* this function gets called once for every assembly
-   * found by an assembler. it get's the found aseembly
+   * found by an assembler. It gets the found assembly
    * as parameter
    */
   virtual bool assembly(assembly_c * a) = 0;
@@ -66,7 +66,7 @@ public:
   virtual errState createMatrix(const puzzle_c * puz, unsigned int problemNum) { return ERR_NONE; }
 
   /* after the constructor call check this function. It return 0 if everything is
-   * ok, or a pointer to a string, that you should display providing a message
+   * OK, or a pointer to a string, that you should display providing a message
    * why the puzzle is not solvable
    */
   virtual int getErrorsParam(void) { return 0; }
@@ -85,7 +85,7 @@ public:
    * get a number to display with the information that the program is
    * currently reducing. The intended interpretation is that the program
    * is currently working on the piece with the returned number, but if
-   * you want you can alco return something else
+   * you want you can also return something else
    */
   virtual unsigned int getReducePiece(void) { return 0; }
 
@@ -109,16 +109,16 @@ public:
    */
   virtual float getFinished(void) { return 0; }
 
-  /* stops the assembly process somewhen in the near future. */
+  /* stops the assembly process sometimes in the near future. */
   virtual void stop(void) {}
 
   /* returns true, as soon as the process really has stopped */
   virtual bool stopped(void) const { return false; }
 
-  /* sets the position of the assembly process, so that it continues exacly
+  /* sets the position of the assembly process, so that it continues exactly
    * where it stood, when getPosition was called
    *
-   * the function should only be called when assembly is not running it shoule be
+   * the function should only be called when assembly is not running it should be
    * called before calling assemble
    */
   virtual errState setPosition(const char * string, const char * version) { return ERR_CAN_NOT_RESTORE_VERSION; }

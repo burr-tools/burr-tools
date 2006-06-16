@@ -29,7 +29,7 @@ class gridType_c;
 
 /* this class calculates the possible movement between 2 pieces
  * because that calculation is relatively expensive it caches
- * that value. Thats the reason for the name
+ * that value. That's the reason for the name
  */
 class movementCache_c {
 
@@ -77,7 +77,7 @@ class movementCache_c {
   /* number of shapes */
   unsigned int num_shapes;
 
-  /* numbe of possible transformations for each shape */
+  /* number of possible transformations for each shape */
   unsigned int num_transformations;
 
   /* this function resizes the hash table to roughly twice the size */
@@ -108,8 +108,8 @@ public:
   ~movementCache_c(void);
 
   /* return the values, that are:
-   * how far can the 2nd piece be ove in positive x, y and z direction, when
-   * the 2nd piece is ofset by dx, dy and dz relative to the first,
+   * how far can the 2nd piece be moved in positive x, y and z direction, when
+   * the 2nd piece is offset by dx, dy and dz relative to the first,
    * the 2 pieces are the pieces p1 and p2 from the puzzle and problem defined in the constructor
    * and the 2 pieces are transformed by t1 and t2
    */

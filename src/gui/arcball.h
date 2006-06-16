@@ -50,7 +50,7 @@ public:
   void click(float x, float y);
 
   /**
-   * end the mouse draggin at the given position
+   * end the mouse dragging at the given position
    */
   void clack(float x, float y);
 

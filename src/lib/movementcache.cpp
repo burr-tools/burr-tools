@@ -20,7 +20,7 @@
 #include "voxel.h"
 #include "puzzle.h"
 
-/* the hash function. I don't know how well it performes, but it seems to be okay */
+/* the hash function. I don't know how well it performs, but it seems to be okay */
 static unsigned int hashValue(unsigned int s1, unsigned int s2, int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int tableSize) {
   unsigned int val = dx * 0x10101010;
   val +=             dy * 0x14814814;
@@ -114,7 +114,7 @@ movementCache_c::entry * movementCache_c::calcValues(unsigned char s1, unsigned 
   e->s1 = s1;
   e->s2 = s2;
 
-  /* because the dx, dy and dz valuea are calculated using the hotspot we need to reverse
+  /* because the dx, dy and dz values are calculated using the hotspot we need to reverse
    * that process
    */
   dx += (sh1->getHx() - sh2->getHx());
@@ -149,13 +149,13 @@ movementCache_c::entry * movementCache_c::calcValues(unsigned char s1, unsigned 
    * area of the x axis.
    *
    * scan in the positive x-direction and search for the smallest gap between
-   * a cube of piece 1 and a sube in piece 2
+   * a cube of piece 1 and a cube in piece 2
    * so if we find a cube in piece 1 on our way we reset the start gap marker (last)
    * when we find a cube in the 2nd piece we look how long ago the last piece
    * one hit we had, if that value is smaller than the saved one, we save that
    *
-   * to avoid the the need for a check for the case that we need to hit a
-   * cube 1 first bevore calculating a gap size I initialize the gap
+   * to avoid the need for a check for the case that we need to hit a
+   * cube 1 first before calculating a gap size I initialize the gap
    * start marker so that the resulting gap would be so big that it is bigger
    * than the initial value
    */
@@ -221,7 +221,7 @@ movementCache_c::movementCache_c(const puzzle_c * puzzle, unsigned int problem) 
   entries = 0;
 
   /* initialize the shape array with the shapes from the
-   * puzzle problem. the shape with transformation 0 is just
+   * puzzle problem. The shape with transformation 0 is just
    * a pointer into the puzzle, so don't delete them later on
    */
   num_shapes = puzzle->probShapeNumber(problem);
@@ -257,7 +257,7 @@ movementCache_c::~movementCache_c() {
 #ifdef MV_CACHE_DEBUG
   printf("cache had %li hits and %f%% successful retrievals \n", cacheRequests, cacheHits*100.0/cacheRequests);
   printf("longest list ever seen %i\n", maxListLen);
-  printf("%li cache collitions over the whole and %f collisions per request\n", cachCollisions, cachCollisions*1.0/cacheRequests);
+  printf("%li cache collisions over the whole and %f collisions per request\n", cachCollisions, cachCollisions*1.0/cacheRequests);
   printf("last cache table is %i entries big and contains %i entries\n", tableSize, entries);
 #endif
 

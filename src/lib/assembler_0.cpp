@@ -244,11 +244,11 @@ static voxel_c * addToCache(voxel_c * cache[], unsigned int * fill, voxel_c * pi
  * corresponding voxels. But we need to have the constraints that these
  * columns place on the solution. This is done by adding these columns
  * to the matrix but behind the normal columns. These additional columns
- * wont be searched by the alg if it looks for the next task to achieve.
+ * wont be searched by the alg. if it looks for the next task to achieve.
  *
  * Multiple instances of the same piece is handles in a similar way. To
  * prevent finding the same solution again and again with just the
- * pieces swapping places we enumber the pieces and their possible
+ * pieces swapping places we number the pieces and their possible
  * placements and disallow that the position number of piece n is lower
  * than the position number of piece n-1. This can be achieved by adding
  * more constraint columns. There need to be one column for each
@@ -497,7 +497,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   puzzle = puz;
   problem = prob;
 
-  /* get and save piecenumber of puzzle */
+  /* get and save piece number of puzzle */
   piecenumber = puz->probPieceNumber(prob);
 
   /* count the filled and variable units */
@@ -556,7 +556,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   /* fill the nodes arrays */
   int error = prepare(res_filled, res_vari);
 
-  // check, if there is one piece unplacable
+  // check, if there is one piece not placeable
   if (error <= 0) {
     errorsState = ERR_CAN_NOT_PLACE;
     errorsParam = -error;
@@ -673,7 +673,7 @@ void assembler_0_c::uncover(register unsigned int col) {
       "cmpl %%eax, %%ecx              \n"           // if ax == col
       "je 4                           \n"           // endloop1
       "                               \n"
-"1:                                   \n"           // againloop1:   
+"1:                                   \n"           // againloop1:
       "                               \n"
       "movl (%%edx,%%eax,4), %%ecx    \n"           // j = left[i]
       "cmpl %%ecx, %%eax              \n"           // if (j(cx) == i
@@ -935,7 +935,7 @@ void assembler_0_c::reduce(void) {
       reducePiece = p;
 
       // place the piece and check, if this leads to some
-      // infillable holes or unplacable pieces or whatever
+      // infillable holes or unplaceable pieces or whatever
       // conditions that make a solution impossible
       cover(p+1);
 
@@ -1404,7 +1404,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
 
     } else {
 
-      // now ucover the removed rows
+      // now uncover the removed rows
       while (addRows[pos].size()) {
         reinsert_row(addRows[pos].top());
         addRows[pos].pop();

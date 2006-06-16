@@ -44,8 +44,8 @@
 #include <unistd.h>
 #endif
 
-// retugns either the home directory or the current
-// directory on system that don't know home dirs
+// returns either the home directory or the current
+// directory on system that don't know home directories
 static char * homedir() {
 
   static char userHome[MAX_PATH];

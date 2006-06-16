@@ -386,7 +386,7 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ
 
   /* union find algorithm:
    * 1. put all voxels that matter in an own set
-   * 2. unify all sets whose voxels are neibors
+   * 2. unify all sets whose voxels are neighbours
    * 3. check if all voxels are in the same set
    */
 
@@ -399,7 +399,7 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ
 
   bool merge_outside = ((inverse && (value != outside)) || (!inverse && (value == outside)));
 
-  /* merge all neigboring voxels */
+  /* merge all neighbouring voxels */
   for (unsigned int x = 0; x < sx; x++)
     for (unsigned int y = 0; y < sy; y++)
       for (unsigned int z = 0; z < sz; z++)
@@ -695,13 +695,13 @@ voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), h
     throw load_error("not the right type of node for a voxel space", node);
 
   if (node.get_attributes().find("x") == node.get_attributes().end())
-    throw load_error("piece Voxel with no attribut 'x' encountered", node);
+    throw load_error("piece Voxel with no attribute 'x' encountered", node);
   if (node.get_attributes().find("y") == node.get_attributes().end())
-    throw load_error("piece Voxel with no attribut 'y' encountered", node);
+    throw load_error("piece Voxel with no attribute 'y' encountered", node);
   if (node.get_attributes().find("z") == node.get_attributes().end())
-    throw load_error("piece Voxel with no attribut 'z' encountered", node);
+    throw load_error("piece Voxel with no attribute 'z' encountered", node);
   if (node.get_attributes().find("type") == node.get_attributes().end())
-    throw load_error("piece Voxel with no attribut 'type' encountered", node);
+    throw load_error("piece Voxel with no attribute 'type' encountered", node);
 
   skipRecalcBoundingBox(true);
 
@@ -734,7 +734,7 @@ voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), h
   if (c) {
 
     if (type != 0)
-      throw load_error("piece Voxel with type not equal to 0 encountetred", node);
+      throw load_error("piece Voxel with type not equal to 0 encountered", node);
 
     while (*c) {
       switch(*c) {
@@ -761,7 +761,7 @@ voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), h
       case '8': color = color * 10 + 8; break;
       case '9': color = color * 10 + 9; break;
       default:
-        throw load_error("unrecognized character in piece voxel space", node);
+        throw load_error("unrecognised character in piece voxel space", node);
       }
 
       if (idx > 0)

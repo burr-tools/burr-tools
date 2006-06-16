@@ -67,7 +67,7 @@ void getNumbers(const char * c, iter start, iter end, bool neg_allowed) {
 
     } else {
 
-      throw load_error("not alowed character in disassembly");
+      throw load_error("not allowed character in disassembly");
 
     }
     c++;
@@ -227,7 +227,7 @@ xml::node separation_c::save(void) const {
     nd.insert(states[jj]->save(piecenumber));
 
   // finally save the removed and left over part
-  // we ann an attribute to the node of the subseparations to later distinguish
+  // we add an attribute to the node of the subseparations to later distinguish
   // between the removed and the left over separation
   if (removed)
     nd.insert(removed->save())->get_attributes().insert("type", "removed");
@@ -266,7 +266,7 @@ separation_c::separation_c(const xml::node & node, unsigned int pieceCnt) {
   pieces = new voxel_type[piecenumber];
 
   if (pieces == 0)
-    throw load_error("could not allocate the required memors", *it);
+    throw load_error("could not allocate the required memory", *it);
 
   try {
     getNumbers(it->get_content(), pieces, pieces+piecenumber, false);
@@ -303,11 +303,11 @@ separation_c::separation_c(const xml::node & node, unsigned int pieceCnt) {
       bt_assert(it->get_attributes().find("type") != it->get_attributes().end());
       if (!strcmp(it->get_attributes().find("type")->get_value(), "left")) {
         if (left)
-          throw load_error("more than one left branche in disassembly", node);
+          throw load_error("more than one left branch in disassembly", node);
         left = new separation_c(*it, leftPc);
       } else if (!strcmp(it->get_attributes().find("type")->get_value(), "removed")) {
         if (removed)
-          throw load_error("more than one removed branche in disassembly", node);
+          throw load_error("more than one removed branch in disassembly", node);
         removed = new separation_c(*it, removedPc);
       } else
         throw load_error("subnodes most be either left or removed", node);
@@ -452,7 +452,7 @@ separationInfo_c::separationInfo_c(const xml::node & node) {
 
   values.push_back(num);
 
-  // check consitency of the tree (does it end?)
+  // check consistency of the tree (does it end?)
 
   /* the idea here with the branches counter is used again and again blow but I will
    * explain only here.

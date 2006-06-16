@@ -58,12 +58,12 @@ private:
   * requested: _MINUS put it on the upper or left edge, _PLUS put it on
   * the lower or right edge, _MIDDLE put it in the middle, STRETCH stretch
   * it to the available size
-  * stratch _SQUARE takes the smaller size in the two dimensions and applies
+  * stretch _SQUARE takes the smaller size in the two dimensions and applies
   * this size to both (width and height)
   */
   stretch _stretchX, _stretchY;
 
-  /* surroung the widget by pitch pixel */
+  /* surround the widget by pitch pixel */
   unsigned char _pitch;
 
   /* if space is left the available pixels will be distributed weighted by

@@ -109,7 +109,7 @@ static void Matrix3fMulMatrix3f(float a[9], const float b[9])
  * Performs SVD on this matrix and gets scale and rotation.
  * Rotation is placed into rot3, and rot4.
  * @param rot3 the rotation factor(Matrix3d). if null, ignored
- * @param rot4 the rotation factor(Matrix4) only upper 3x3 elements are changed. if null, ignored
+ * @param rot4 the rotation factor(Matrix4) only upper 3x3 elements are changed. If null, ignored
  * @return scale factor
  */
 static GLfloat Matrix4fSVD(const GLfloat a[16])
@@ -151,11 +151,11 @@ void arcBall_c::mapToSphere(float x, float y, float NewVec[3]) const
 {
   GLfloat TempPt[2];
 
-  //Adjust point coords and scale down to range of [-1 ... 1]
+  //Adjust point coordinates and scale down to range of [-1 ... 1]
   TempPt[0] =        (x * AdjustWidth)  - 1.0f;
   TempPt[1] = 1.0f - (y * AdjustHeight);
 
-  //Compute the square of the length of the vector to the point from the center
+  //Compute the square of the length of the vector to the point from the centre
   GLfloat length = (TempPt[0] * TempPt[0]) + (TempPt[1] * TempPt[1]);
 
   //If the point is mapped outside of the sphere... (length > radius squared)
@@ -235,7 +235,7 @@ void arcBall_c::getDrag(float NewRot[4]) const
   //Compute the length of the perpendicular vector
   if (Vector3fLength(Perp) > Epsilon) {   //if its non-zero
 
-    //We're ok, so return the perpendicular vector as the transform after all
+    //We're OK, so return the perpendicular vector as the transform after all
     NewRot[0] = Perp[0];
     NewRot[1] = Perp[1];
     NewRot[2] = Perp[2];
@@ -284,12 +284,12 @@ void arcBall_c::addTransform(void) const {
     getDrag(ThisQuat);                                              // Update End Vector And Get Rotation As Quaternion
     Matrix3fSetRotationFromQuat4f(ThisRot, ThisQuat);               // Convert Quaternion Into Matrix3fT
     Matrix3fMulMatrix3f(ThisRot, LastRot);                          // Accumulate Last Rotation Into This One
-    Matrix4fSetRotationFromMatrix3f(Transform, ThisRot);            // Set Our Final Transform's Rotation From This One
+    Matrix4fSetRotationFromMatrix3f(Transform, ThisRot);            // Set Our Final Transformations Rotation From This One
     glMultMatrixf(Transform);                                       // NEW: Apply Dynamic Transform
 
   } else {
 
-    Matrix4fSetRotationFromMatrix3f(Transform, LastRot);            // Set Our Final Transform's Rotation From This One
+    Matrix4fSetRotationFromMatrix3f(Transform, LastRot);            // Set Our Final Transformations Rotation From This One
     glMultMatrixf(Transform);                                       // NEW: Apply Dynamic Transform
   }
 }

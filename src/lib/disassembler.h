@@ -21,11 +21,11 @@
 class separation_c;
 class assembly_c;
 
-/* this class implements a burr disassembler. the interface is simple:
+/* this class implements a burr disassembler. The interface is simple:
  * 1) construct the class with whatever parameters the concrete subclass requires
  * 2) call diassemble for each assembly found and evaluate the result
  *
- * some subclasses may be able to handle serveral assemblies, others may only
+ * some subclasses may be able to handle several assemblies, others may only
  * disassembler one, that depends on the concrete disassembler you use
  */
 class disassembler_c {

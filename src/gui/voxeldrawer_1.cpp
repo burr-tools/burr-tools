@@ -32,7 +32,7 @@
 
 // this is used to shift one side of the cubes so that they slightly differ
 // from the side of the next cube, so that (in case of frames) the sides
-// are clearly separated and dont't interlock when drawing
+// are clearly separated and don't interlock when drawing
 #define MY 0.005f
 
 // the height of one of the prisms
@@ -49,7 +49,7 @@
 #define C2EY 1
 
 
-// draws a wireframe box depending on the neibors
+// draws a wire frame box depending on the neighbours
 void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, float edge) {
 
   if (fabs(edge) < 0.00001) return;
@@ -344,7 +344,7 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
   glEnd();
 }
 
-// draws a box with borders depending on the neibor boxes
+// draws a box with borders depending on the neighbour boxes
 void voxelDrawer_1_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge) {
 
 

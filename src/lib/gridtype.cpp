@@ -156,7 +156,7 @@ gridType_c::~gridType_c(void) {
 
 
 /* these functions return assembler and disassemble for the current space grid
- * if the requied functionality is not available, return 0
+ * if the required functionality is not available, return 0
  */
 assembler_0_c * gridType_c::getAssembler(void) const {
 
@@ -175,7 +175,7 @@ disassembler_c * gridType_c::getDisassembler(const puzzle_c * puz, unsigned int 
   }
 }
 
-/* voxel spaces have different implementatios for rotation, and mirror functions */
+/* voxel spaces have different implementations for rotation, and mirror functions */
 voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const {
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(x, y, z, this, init, outs);

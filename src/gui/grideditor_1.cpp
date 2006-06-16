@@ -48,7 +48,7 @@ void gridEditor_1_c::calcParameters(int *s, int *s2, int *tx, int *ty) {
   if (sx*HEIGHT < sy) {
     // use x as base
 
-    // make sx even, so that we have the point of the triangle in the center
+    // make sx even, so that we have the point of the triangle in the centre
     if (sx & 1) sx--;
 
   } else {

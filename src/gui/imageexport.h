@@ -16,15 +16,15 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-/* often requeste here it is: export solutions, just the assembly or the disassembly animation
+/* often requested here it is: export solutions, just the assembly or the disassembly animation
  * into a (set of) image files (png files)
  */
 
-/* folowing parameters can be chosen:
+/* following parameters can be chosen:
  * pixel size of the images
  * for animations: how many files are to be saved
  * the rotation for each step
- * filename, number are appended for multiple images
+ * file name, number are appended for multiple images
  */
 
 /* fixed parameters (for now):
@@ -33,7 +33,7 @@
  * block justification of the images, except for the last line
  */
 
-/* the images are measured and then sizes so, that thes do fit onto the
+/* the images are measured and then sized so, that they do fit onto the
  * requested number of pages
  * then they are taken at the requires size times 3
  * smoothly downscaled and put onto the page
@@ -100,7 +100,7 @@ class imageExport_c : public LFl_Double_Window, public VoxelViewCallbacks {
 
     imageExport_c(puzzle_c * p, const guiGridType_c * ggt);
 
-    /* returns true, when there is currently a image export in progres */
+    /* returns true, when there is currently a image export in progress */
     bool isWorking(void) { return working; }
 
     /* this must be called cyclically, this updates the buttons activation

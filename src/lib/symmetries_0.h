@@ -25,12 +25,12 @@ class symmetries_0_c : public symmetries_c {
 
   private:
 
-    /* this varable contains the symmetries that are available because
+    /* this variable contains the symmetries that are available because
      * of the subsetting of the cube because of skewing and scaling along the different axes
-     * this is used to suppres certain symmetries for the placement and symmetry checks
+     * this is used to suppress certain symmetries for the placement and symmetry checks
      *
-     * this value infuences the rotx y z functions to only return those transformations
-     * that are really available, als getNumTransformations and getNumTransformationsMirror are
+     * this value influences the rotx y z functions to only return those transformations
+     * that are really available, also getNumTransformations and getNumTransformationsMirror are
      * influenced to only return the number of symmetries within this field, ...
      */
     const gridType_c * gt;

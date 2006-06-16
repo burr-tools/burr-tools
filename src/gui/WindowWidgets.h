@@ -139,7 +139,7 @@ class LToggleButton_c : public Fl_Button, public layoutable_c {
 
 class LineSpacer;
 
-// the group for the square editor including the colord marker and the slider for the z axis
+// the group for the square editor including the coloured marker and the slider for the z axis
 class VoxelEditGroup_c : public Fl_Group, public layoutable_c {
 
   gridEditor_c * sqedit;
@@ -434,7 +434,7 @@ public:
 };
 
 // a status line containing text and a button to toggle
-// between colored and normal view
+// between coloured and normal view
 class StatusLine : public Fl_Group {
 
 private:

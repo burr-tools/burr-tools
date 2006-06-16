@@ -40,7 +40,7 @@ class problem_c;
  * A puzzle is a collection of shapes and a set of problems associated
  * with these shapes
  * each problem defines a solution shape and a set of pieces (multiple
- * occurances are possible) that need to be assembles into the given solution
+ * occurrences are possible) that need to be assembles into the given solution
  * shape
  * the class also handles the solutions that belong to the problem
  */
@@ -61,8 +61,8 @@ private:
   std::vector<problem_c*> problems;
 
   /**
-   * there can be many colors to contrain the placement of pieces
-   * these are the actual colors used to display them
+   * there can be many colours to constrain the placement of pieces
+   * these are the actual colours used to display them
    */
   typedef struct colorDef {
     unsigned char r, g, b;
@@ -81,8 +81,8 @@ public:
   puzzle_c(const puzzle_c * orig);
 
   /**
-   * Constructor for empty puzzle, no shape, no problem and no colors
-   * ownership of the given gridtpe is taken over, the memory
+   * Constructor for empty puzzle, no shape, no problem and no colours
+   * ownership of the given gridtype is taken over, the memory
    * is freed on destruction of this class
    */
   puzzle_c(gridType_c * gt);
@@ -135,7 +135,7 @@ public:
   void probExchangeShape(unsigned int prob, unsigned int s1, unsigned int s2);
 
   /**
-   * handle puzzle colors
+   * handle puzzle colours
    */
   void addColor(unsigned char r, unsigned char g, unsigned char b);
   void removeColor(unsigned int idx);
@@ -213,7 +213,7 @@ public:
   const assembler_c * probGetAssembler(unsigned int prob) const;
 
   /**
-   * this state reflecs how far we are with solving this problem
+   * this state reflects how far we are with solving this problem
    */
   typedef enum {
     SS_UNSOLVED,    // nothing done yet
@@ -284,7 +284,7 @@ public:
   unsigned int probGetAssemblyNum(unsigned int prob, unsigned int sol) const;
   unsigned int probGetSolutionNum(unsigned int prob, unsigned int sol) const;
 
-  /* edit the color matrix */
+  /* edit the colour matrix */
   void probAllowPlacement(unsigned int prob, unsigned int pc, unsigned int res);
   void probDisallowPlacement(unsigned int prob, unsigned int pc, unsigned int res);
   bool probPlacementAllowed(unsigned int prob, unsigned int pc, unsigned int res) const;

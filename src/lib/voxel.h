@@ -26,7 +26,7 @@
 #include <xmlwrapp/node.h>
 
 /**
- * this class get's thrown when there is an error on loading from a stream
+ * this class gets thrown when there is an error on loading from a stream
  */
 class load_error {
 

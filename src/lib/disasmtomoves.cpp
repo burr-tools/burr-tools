@@ -114,7 +114,7 @@ static int mmax(int a, int b) {
  *                the steps required for this tree we are somewhere outside the tree
  *    weight is used for the linear interpolation it is a value between 0 and 1 including
  *                values are multiplied by this value and then the 2 end points are added
- *    cx, cy, cz are the center to display the current tree
+ *    cx, cy, cz are the centre to display the current tree
  */
 int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * array, int cx, int cy, int cz) {
 
@@ -124,8 +124,8 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
    * the number of steps is between 0 and the number of steps in this node
    *
    * we do need to include "=" here because the last move will be the separation and
-   * we don't want to display that move as said in the state but rater a bit
-   * more adequat for the screen
+   * we don't want to display that move as said in the state but rather a bit
+   * more adequate for the screen
    *
    * in the state the removed part would be removed by 10000 units
    */
@@ -133,11 +133,11 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
 
     /* so, this is the path for after the current node, the first thing
      * is to find out in which directions the pieces that are removed
-     * are removed, then define the new center for the removed
+     * are removed, then define the new centre for the removed
      * part and call the subtrees
      *
      * we can be sure that we have disassembled the current subpuzzle,
-     * so we need to display both subparts separated. it is possible that
+     * so we need to display both subparts separated. It is possible that
      * one or both subparts are only one piece. In this case the tree
      * doesn't contain the subtrees
      *
@@ -171,7 +171,7 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
 
     int steps, steps2;
 
-    /* place the removed pieces with the new center */
+    /* place the removed pieces with the new centre */
     if (tree->getRemoved())
       steps = doRecursive(tree->getRemoved(), step - (int)tree->getMoves(), array, cx+dx, cy+dy, cz+dz);
     else {
@@ -187,7 +187,7 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
       steps = 0;
     }
 
-    /* place the left over pieces in the old center */
+    /* place the left over pieces in the old centre */
     if (tree->getLeft())
       steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, array, cx, cy, cz);
     else {
@@ -211,7 +211,7 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
    * this node, so get the state and place the pieces ad the right position
    *
    * we also have to place the pieces at their initial position, when we are
-   * bevore the current node
+   * before the current node
    */
   const state_c * s = tree->getState(mmax(step, 0));
 

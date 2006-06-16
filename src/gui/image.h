@@ -43,7 +43,7 @@ class image_c {
 
   public:
 
-    /* create new image and instatiate with the given color */
+    /* create new image and instantiate with the given colour */
     image_c(unsigned int width, unsigned int height, unsigned char r, unsigned char g, unsigned char b, unsigned char a);
 
     /* create new image with given bitmap, this bitmap must be the right format */
@@ -55,7 +55,7 @@ class image_c {
     ~image_c(void);
 
     /* openGL image grepping is done in loops as the target resolution might
-     * be much bigger than the openGl context. Wo the image is repped part by part
+     * be much bigger than the openGl context. The image is grepped part by part
      * this is done in a loop
      * do {
      *   prepareOpenGlImagePart(..)
@@ -66,7 +66,7 @@ class image_c {
     bool getOpenGlImagePart(void);
 
     /* saves the image into a png file with the given name
-     * extention is _not_ appended
+     * extension is _not_ appended
      */
     int saveToPNG(const char * fname) const;
 
@@ -75,10 +75,10 @@ class image_c {
      */
     void blit(const image_c * i, int xpos, int ypos);
 
-    /* assigns a color to all transparent pixels the pixels must be completely transparent */
+    /* assigns a colour to all transparent pixels the pixels must be completely transparent */
     void deTransparentize(unsigned char r, unsigned char g, unsigned char b);
 
-    /* makes all pixels with the given color completely transparent */
+    /* makes all pixels with the given colour completely transparent */
     void transparentize(unsigned char r, unsigned char g, unsigned char b);
 
     /* scales the image down by the given factor

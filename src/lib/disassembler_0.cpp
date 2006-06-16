@@ -70,7 +70,7 @@ public:
    * meaning all the pieces are shifted so, that the position
    * of piece 0 is (0; 0; 0). This prevents us from shifting
    * the whole set around without movement of the pieces
-   * relativ to each other because all nodes with all pieces
+   * relative to each other because all nodes with all pieces
    * shifted by the same mount do are equal
    */
   bool operator == (const node0_c &b) const {
@@ -85,8 +85,8 @@ public:
     return true;
   }
 
-  /* this opeartion is required for the container. It brings
-   * the nodes into an arbitraty but deterministic order
+  /* this operation is required for the container. It brings
+   * the nodes into an arbitrary but deterministic order
    */
   bool operator < (const node0_c &b) const {
 
@@ -138,7 +138,7 @@ public:
   }
 
   /* check if this node is for a state that separates
-   * the puzzle into 2 pieces. this is the case if there
+   * the puzzle into 2 pieces. This is the case if there
    * is one piece that is removed
    */
   bool is_separation() const {
@@ -174,7 +174,7 @@ public:
  *  - if it's empty the pieces do not interlock and the matrix
  *    is initialized to infinity (32000)
  *  - if we have an intersection we check each column inside this area
- *    and find the shortest distance the the pirst piece follows
+ *    and find the shortest distance the first piece follows
  *    the second and the second piece follows the first
  */
 void disassembler_0_c::prepare(int pn, voxel_type * pieces, node0_c * searchnode) {
@@ -255,12 +255,12 @@ void disassembler_0_c::prepare2(int pn) {
 bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep) {
 
   /* we count the number of pieces that need to be moved, if this number
-   * get's bigger than halve of the pices of the current problem we
+   * gets bigger than halve of the pieces of the current problem we
    * stop and return that this movement is rubbish
    */
   unsigned int moved_pieces = 1;
 
-  /* initialize the movement matrix. we want to move 'nextpiece' 'nextstep' units
+  /* initialize the movement matrix. We want to move 'nextpiece' 'nextstep' units
    * into the current direction, so we initialize the matrix with all
    * zero except for our piece
    */
@@ -331,10 +331,10 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int ne
 void disassembler_0_c::init_find(node0_c * nd, int piecenumber, voxel_type * pieces) {
 
   /* when a new search has been started we need to first calculate
-   * the movement matrixes, this is a table that contains one 2 dimensional
+   * the movement matrices, this is a table that contains one 2 dimensional
    * matrix for each of the 6 directions where movement is possible
    *
-   * the matrixes contains possible movement of one piece if other pieces
+   * the matrices contains possible movement of one piece if other pieces
    * are not moved. So a one in column 2 row 4 means that piece nr. 2 can
    * be moved one unit it we fix piece nr. 4
    *
@@ -396,8 +396,8 @@ static node0_c * newNode(int next_pn, int nextdir, const node0_c * searchnode, i
 
   } else {
 
-    /* here we do the oppostide of above, all pieces that are steady in the movement field are moved
-     * by the neagtive amount and the moving pieces are left untouched
+    /* here we do the opposite of above, all pieces that are steady in the movement field are moved
+     * by the negative amount and the moving pieces are left untouched
      */
     for (int i = 0; i < next_pn; i++)
       switch(nextdir) {
@@ -563,7 +563,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
         // the already found nodes.
         // a merger is a new node that contains the movement of one node AND the movement of
         // the 2nd node at the same time. Of course both nodes need to point into the same
-        // direction and in both nodes te pieces need to be moved by
+        // direction and in both nodes the pieces need to be moved by
         // the same amount
         //
         // This is needed because when moving groups of pieces and both pieces are independent of
@@ -608,7 +608,7 @@ static void create_new_params(node0_c * st, node0_c ** n, voxel_type ** pn, int 
     if (st->is_piece_removed(i) == cond) {
       if (num == 0) {
         /* find the direction, the first piece was moved out of the puzzle
-         * and shift it back along this avis */
+         * and shift it back along this axis */
         if ((st->getX(i) > 10000) || (st->getX(i) < -10000)) dx = st->getX(i);
         if ((st->getY(i) > 10000) || (st->getY(i) < -10000)) dy = st->getY(i);
         if ((st->getZ(i) > 10000) || (st->getZ(i) < -10000)) dz = st->getZ(i);
@@ -678,16 +678,16 @@ separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pi
   return res;
 }
 
-/* this is a bredth first search function that analyzes the movement of
- * an assembled problem. when the problem falls apart into 2 pieces the function
+/* this is a breadth first search function that analyses the movement of
+ * an assembled problem. When the problem falls apart into 2 pieces the function
  * calls itself recursively. It returns null if the problem can not be taken apart
  * completely and otherwise the disassembly tree
  *
  * the parameters are:
- *  - piecenumber: the number of pieces of the current problem. because we can have
+ *  - piecenumber: the number of pieces of the current problem. Because we can have
  *                 subproblems this number is not identical to the number of pieces
  *                 in the assembly voxel space
- *  - pieces: defines which pieces of the assemly voxel space are acually really present
+ *  - pieces: defines which pieces of the assembly voxel space are actually really present
  *            in the current subproblem
  *  - start: the start position of each piece
  *
@@ -721,9 +721,9 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
       if (closed.find(st) != closed.end()) {
 
         /* the new node is already here. We have found a new longer way to that
-         * node, so we can savely delete the new node and continue to the next
+         * node, so we can safely delete the new node and continue to the next
          *
-         * don't delete it right here, but only after the serch was finished because
+         * don't delete it right here, but only after the search was finished because
          * the find function still requires the node information
          */
         deletelist.push_back(st);
@@ -743,7 +743,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
       }
 
       /* if we get here we have found a node that separated the puzzle into
-       * 2 pieces. So we recoursively solve the subpuzzles and create a tree
+       * 2 pieces. So we recursively solve the subpuzzles and create a tree
        * with them that needs to be returned
        */
 
@@ -767,7 +767,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
       left = remove = 0;
 
       /* all right, the following thing come twice, maybe I should
-       * put it into a function, anyways:
+       * put it into a function, anyway:
        * if the subproblem to check has only one piece, it's solved
        * if all the pieces belong to the same group, we can stop
        * else try to disassemble, if that fails, try to
@@ -775,7 +775,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
        */
       remove = checkSubproblem(part1, pieces, piecenumber, st, false, &remove_ok, weights);
 
-      /* only check the left over part, when the removed part is ok */
+      /* only check the left over part, when the removed part is OK */
       if (remove_ok)
         left = checkSubproblem(part2, pieces, piecenumber, st, true, &left_ok, weights);
 
@@ -894,8 +894,8 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
   for (unsigned int i = 0; i < piecenumber; i++)
     start->set(i, assembly->getX(i), assembly->getY(i), assembly->getZ(i), assembly->getTransformation(i));
 
-  /* create pieces field. this field contains the
-   * names of all present pieces. because at the start
+  /* create pieces field. This field contains the
+   * names of all present pieces. Because at the start
    * all pieces are still there we fill the array
    * with all the numbers
    */

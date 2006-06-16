@@ -73,9 +73,9 @@ private:
     cnf_type  cnf_typ;   // data type of the variable
     void     *cnf_var;   // pointer to the variable
     long      maxlen;    // maximum length (for strings)
-    bool      dialog;    // shall it be visible in the config dialog
+    bool      dialog;    // shall it be visible in the config dialogue
     char *    dialogText;
-    void *    widget;    // used in the dialog to save pointer to the widget
+    void *    widget;    // used in the dialogue to save pointer to the widget
   } config_data;
 
   config_data *first_data;

@@ -28,7 +28,7 @@ class guiGridType_c;
  * parameters that a certain gridtype can have
  *
  * in fact this is only the base class, for each gridtype there will be
- * a inherited class thata contains the elements
+ * an inherited class that contains the elements
  */
 class gridTypeGui_c : public layouter_c {
 };
@@ -69,7 +69,7 @@ class gridTypeParameterWindow_c : public LFl_Double_Window {
     gridTypeParameterWindow_c(guiGridType_c * ggt);
 };
 
-/* this class is used int eh window below to hold all data necessary
+/* this class is used in the window below to hold all data necessary
  * for one grid type
  */
 class gridTypeInfos_c;

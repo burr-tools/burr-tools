@@ -787,7 +787,7 @@ void voxelDrawer_c::drawGridTriangle(double x0, double y0, double z0,
 }
 
 // this function finds out if a given square is inside the selected region
-// this check includes the symmetric and comulmn edit modes
+// this check includes the symmetric and column edit modes
 bool voxelDrawer_c::inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z2, int sx, int sy, int sz, int mode) {
 
   if ((x < 0) || (y < 0) || (z < 0) || (x >= sx) || (y >= sy) || (z >= sz)) return false;

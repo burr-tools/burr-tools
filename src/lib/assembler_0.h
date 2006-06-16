@@ -32,7 +32,7 @@ class mirrorInfo_c;
  * the functions in here don't know anything about the meaning of the matrix
  * for them it mainly consists of a set of one and empty nodes
  *
- * for a real puzzle assemlber this class must be derived from and some functions
+ * for a real puzzle assembler this class must be derived from and some functions
  * need to be overloaded. These are:
  *
  * countNodes, prepare and solution
@@ -63,14 +63,14 @@ protected:
 private:
 
   /* this are the members of the node. One array for each member. This
-   * accellerates access.
+   * accelerates access.
    *
-   * colCount is a shared member. it's column for normal nodes and count for
+   * colCount is a shared member. It is column for normal nodes and count for
    * column header nodes
    */
   std::vector<unsigned int> left;
   std::vector<unsigned int> right;
-  std::vector<unsigned int> upDown;   // this is special, is contains in reality 2 arrays interflieved
+  std::vector<unsigned int> upDown;   // this is special, is contains in reality 2 arrays interleaved
                                       // the even entries (0, 2, 4, ...) are up and the odd (1, 3, 5, ...) are down
                                       // I've done this to save a register for the assembly versions of the cover
                                       // and uncover functions and to speed them up by %
@@ -80,7 +80,7 @@ private:
 #define up(x) upDown[2*(x)]
 #define down(x) upDown[2*(x)+1]
 
-  /* used to abbort the searching */
+  /* used to abort the searching */
   bool abbort;
 
   /* used to save if the search is running */
@@ -103,12 +103,12 @@ private:
 
   /* uncover the given column
    * this is the exact inverse operation of cover. It requires that the
-   * maxtrix has the same state as after the corresponding cover.
+   * matrix has the same state as after the corresponding cover.
    * so
    *
    * cover(i); uncover(i);
    *
-   * will result in the same matrix as bevore
+   * will result in the same matrix as before
    */
   void uncover(register unsigned int col);
 
@@ -118,14 +118,14 @@ private:
   void cover_row(register unsigned int r);
   void uncover_row(register unsigned int r);
 
-  /* same as cover row, but abborting
+  /* same as cover row, but aborting
    * as soon as one of the columns does contain a zero
    * and then uncovering all that was already done
    */
   bool try_cover_row(register unsigned int r, unsigned int * columns);
 
   /* these 2 functions remove and reinsert rows from the matrix
-   * they only remvoe the given row
+   * they only remove the given row
    */
   void remove_row(register unsigned int r);
   void reinsert_row(register unsigned int r);
@@ -133,18 +133,18 @@ private:
   void remove_column(register unsigned int c);
 
   /* this function gets called whenever an assembly was found
-   * when a callback is avaliable it will call getAssembly to
+   * when a callback is available it will call getAssembly to
    * obtain the assembly for the found solution when the
    * field avoidTransformedAssemblies is true then the assembly
-   * is checked, if it has been found bevore. The assembly
+   * is checked, if it has been found before. The assembly
    * is normalized in inserted into a set of assemblies for
    * later reference
    */
   void solution(void);
 
-  /* used to collect the data neccessary to construct and for the iterative algorithm
+  /* used to collect the data necessary to construct and for the iterative algorithm
    * the assembly, it contains the indexes to the selected rows
-   * the columns array contains the indices of the coveres columns
+   * the columns array contains the indices of the covered columns
    * the pos value contains the number of pieces placed
    */
   unsigned int pos;
@@ -166,9 +166,9 @@ private:
 
   /* this function creates the matrix for the search function
    * because we need to know how many nodes we need to allocate the
-   * arrays with the right size, we add a parameter. if this is true
+   * arrays with the right size, we add a parameter. If this is true
    * the function will not access the array but only count the number
-   * of nodes used. this number is returned
+   * of nodes used. This number is returned
    *
    * return error codes
    */
@@ -178,15 +178,15 @@ private:
    * and will always lead to non solvable positions
    *
    * you have 2 parameters to control how thorough the process is carried out
-   * here we have the following idea. if after placing one piece there is a
+   * here we have the following idea. If after placing one piece there is a
    * forced move somewhere (e.g. one piece can now be placed only in one
    * place, we could continue placing this piece and check if after that
-   * we went into a cul-de-sac. rec gives tha number of pieces that are placed
+   * we went into a cul-de-sac. rec gives the number of pieces that are placed
    * maximally until we assume that it's not a dead end.
    *
-   * the second value specifies the branc level, meaning: when we placed on piece
+   * the second value specifies the branch level, meaning: when we placed on piece
    * and now one other has only very few placements left, we could try all those
-   * and check if all of them lead to dead ends. branch specifies how many placements
+   * and check if all of them lead to dead ends. Branch specifies how many placements
    * are maximally checked.
    *
    * be careful with these values as they may lead to extraordinary long calculation
@@ -205,7 +205,7 @@ private:
   errState errorsState;
   int errorsParam;
 
-  /* number of iterations the asseble routine run */
+  /* number of iterations the assemble routine run */
   unsigned long iterations;
 
   /* the number of holes the assembles piece will have. Holes are
@@ -245,7 +245,7 @@ private:
   };
   std::vector<piecePosition> piecePositions;
 
-  /* the members for rotations avoidment
+  /* the members for rotations rejection
    */
   bool avoidTransformedAssemblies;
   unsigned int avoidTransformedPivot;
@@ -261,9 +261,9 @@ private:
 
 protected:
 
-  /* as this is only a backend doing the processing on the matrix, there needs to
-   * be a frontend creating the matrix and evaluating the results. These functions
-   * are helpers for the frontend
+  /* as this is only a back end doing the processing on the matrix, there needs to
+   * be a front end creating the matrix and evaluating the results. These functions
+   * are helpers for the front end
    */
 
   /* this function creates the first row of the matrix. As the createMatrix function
@@ -286,7 +286,7 @@ protected:
   int AddPieceNode(unsigned int piece, unsigned int rot, unsigned int x, unsigned int y, unsigned int z);
 
   /* this is in a way the inverse of the function above. You give a node number and get
-   * the exact piece and placement the line this node belonges to stands for
+   * the exact piece and placement the line this node belongs to stands for
    * this function is used in the solution function to restore the placement of the piece
    */
   void getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z);
@@ -314,13 +314,13 @@ protected:
   unsigned int getPiecenumber(void) { return piecenumber; }
 
   /* call this function if you think that there might be
-   * rotated assemblies found. Here a description of how the whole aspekt of
+   * rotated assemblies found. Here a description of how the whole aspect of
    * rotation avoiding is supposed to work
-   * the frontend is supposed to initialize the assembler so that as few as
+   * the front end is supposed to initialize the assembler so that as few as
    * possible double assemblies are found by selecting one piece and not placing
    * this piece in all possible positions. But this will not always work, if
-   * the frontend is are not absolutely certain that it has avoided all possible
-   * rotations it should call this funtion. This will then add an additional check
+   * the front end is are not absolutely certain that it has avoided all possible
+   * rotations it should call this function. This will then add an additional check
    * for each found assembly
    */
   void checkForTransformedAssemblies(unsigned int pivot);
@@ -349,7 +349,7 @@ public:
 
   /* finally some debugging functions that allow to look how, why, and where pieces are placed */
 
-  /* do exactly the given numbe of rounds in the assembler, and then stop */
+  /* do exactly the given number of rounds in the assembler, and then stop */
   void debug_step(unsigned long num = 1);
 
   /* run until we reach the given level */
@@ -365,7 +365,7 @@ public:
   /* returns one of the enum above to tell, what we have done in the last iteration */
   int debug_activity(void);
 
-  /* get's called when a solution is found. this function
+  /* gets called when a solution is found. This function
    * then assembles the solution and returns an assembly
    */
   assembly_c * getAssembly(void);

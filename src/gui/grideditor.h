@@ -25,7 +25,7 @@ class puzzle_c;
 
 /**
  * this widget allows to edit voxel spaces. It shows one Z-Layer of the space as a grid
- * of spheres and each of these quares can be toggled between the state filled, variable, empty
+ * of spheres and each of these squares can be toggled between the state filled, variable, empty
  *
  * the callback is issued on on the following occasions:
  *  - Mouse moves inside the area of the widget (for the 3d view to show the cursor
@@ -48,7 +48,7 @@ public:
   void setTask(enTask t) { task = t; }
 
   /* some editing tools these might change with the inherited classes
-   * but right now we keep it in here and have just one ste of editing tools
+   * but right now we keep it in here and have just one set of editing tools
    */
   enum {
     TOOL_MIRROR_X = 1,
@@ -81,7 +81,7 @@ protected:
   // the current edited layer
   unsigned int currentZ;
 
-  // the number of the piece, this is used to colorize the squares
+  // the number of the piece, this is used to colourize the squares
   unsigned int piecenumber;
 
   // current position of the mouse cursor
@@ -93,7 +93,7 @@ protected:
 
   int callbackReason;
 
-  // the constraint color to use
+  // the constraint colour to use
   unsigned int currentColor;
 
   enTask task;
@@ -121,7 +121,7 @@ public:
   // get the current Z value
   unsigned int getZ(void) { return currentZ; }
 
-  // sets the color to use for editing voxels
+  // sets the colour to use for editing voxels
   void setColor(unsigned int col) { currentColor = col; }
 
   // sets the voxel space to edit, the widget doesn't take over the space
@@ -129,7 +129,7 @@ public:
   void setPuzzle(puzzle_c * p, unsigned int piecenum);
   void clearPuzzle();
 
-  // get the mouse mosition so that the cursor can be shown in 3d view
+  // get the mouse position so that the cursor can be shown in 3d view
   bool getMouse(void) { return inside; }
   int getMouseX1(void) { return (startX < mX)?(startX):(mX); }
   int getMouseY1(void) { return (startY < mY)?(startY):(mY); }
@@ -153,25 +153,25 @@ public:
 
   /* calculate the x and sy scaling and the x and y translation for
    * the current shape so that it fits into the available space and
-   * is well centered, the returned values will be given
+   * is well centred, the returned values will be given
    * to all drawing functions so that they do know where to paint
    */
   virtual void calcParameters(int *sx, int *sy, int *tx, int *ty) = 0;
 
   /* the following function all do draw a little bit of one tile
-   * The first draws the color part of a normal tile, this should fill
-   * out the tile completely, the 2nd draws the color part of a variable tile
+   * The first draws the colour part of a normal tile, this should fill
+   * out the tile completely, the 2nd draws the colour part of a variable tile
    * this should leave 3 pixels empty to the edge of the tile. Both functions
    * do not draw the frame around the tile, just the inside. You don't need
-   * to take care of the color, just draw
+   * to take care of the colour, just draw
    *
    * If follows the frame drawing function. Just draw a frame around the tile
-   * keep in mind to properly merge with the neibors otherwise the frames might
+   * keep in mind to properly merge with the neighbours otherwise the frames might
    * be 2 pixels thick
    *
-   * Then we have the tile color. Here you draw the assignd color constraint color
+   * Then we have the tile colour. Here you draw the assigned colour constraint colour
    * marker. This should be placed within one corner of the tile. Just draw it and
-   * don't worry for the color
+   * don't worry for the colour
    *
    * Finally the cursor. Right now its completely up to you do completely draw
    * it. Eventually I will provide a better way to do that

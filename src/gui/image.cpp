@@ -47,7 +47,7 @@ void image_c::prepareOpenGlImagePart(voxelDrawer_c * dr) {
 
   if (!tr) {
 
-    /* we start a new image grepping, so initialite tile render context */
+    /* we start a new image grepping, so initialise tile render context */
 
     tr = trNew();
 
@@ -66,7 +66,7 @@ bool image_c::getOpenGlImagePart(void) {
 
   /* grep the next tile */
   if (trEndTile(tr))
-    /* there are more tils that need to be done */
+    /* there are more tiles that need to be done */
     return true;
 
   /* we have finished all tiles, so delete the tile render context */
@@ -128,7 +128,7 @@ int image_c::saveToPNG(const char * fname) const {
   if (setjmp(png_jmpbuf(png_ptr)))
   {
 
-    /* if we have already instanciated the png_rows, we need to free them */
+    /* if we have already instantiated the png_rows, we need to free them */
     if (png_rows) {
       for (y = 0; y < sy; y++)
         delete [] png_rows[y];
@@ -199,7 +199,7 @@ void image_c::blit(const image_c * i, int xpos, int ypos) {
         unsigned char b2 = i->bitmap[(y*i->width+x) * 4 + 2];
         unsigned char a2 = i->bitmap[(y*i->width+x) * 4 + 3];
 
-        /* calculate the new color value: it is a blend of the old and the new one depending
+        /* calculate the new colour value: it is a blend of the old and the new one depending
          * on the alpha value of the new pixel
          */
         bitmap[((y+ypos)*width + (x+xpos)) * 4 + 0] = (r1 * (255-a2) + r2 * a2) / 255;
@@ -261,7 +261,7 @@ void image_c::scaleDown(unsigned char by) {
           }
         }
 
-      /* the new color value is the average of all non transparent pixels
+      /* the new colour value is the average of all non transparent pixels
        * or 0 if all pixels were transparent
        */
       if (a) {

@@ -19,7 +19,7 @@
 #define __PS3DLOADER_H__
 
 /* this module just contains a function that tries to load puzzles saved with the
- * puzzle solver 3d
+ * puzzle solver 3D
  */
 
 #include <iostream>

@@ -184,7 +184,7 @@ public:
   const puzzle_c * getPuzzle(void) const { return puzzle; }
 
   /* update the interface to represent the latest state of
-   * the solving progress, thas works in background
+   * the solving progress, that works in background
    */
   void update(void);
 

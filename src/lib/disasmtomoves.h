@@ -20,7 +20,7 @@
 
 class separation_c;
 
-/* this is an abstract class used to give thet piece positions to the voxel
+/* this is an abstract class used to give that piece positions to the voxel
  * space widget
  */
 class piecePositions_c {
@@ -63,7 +63,7 @@ class disasmToMoves_c : public piecePositions_c {
 
 public:
 
-  /* chreate class. sz is used when the pieces are removed from the
+  /* create class. sz is used when the pieces are removed from the
    * assembled puzzle. The larger the further away the pieces will be
    * moved
    */

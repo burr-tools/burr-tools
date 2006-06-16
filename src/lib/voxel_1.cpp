@@ -117,7 +117,7 @@ void voxel_1_c::rotatez(int by) {
 
   /* this is the complicated case
    * it works by first calculating directions for the x any y axis in the
-   * rotated shape, this can be done with 2 vectors that are alternatingly
+   * rotated shape, this can be done with 2 vectors that are alternating
    * applied and let you skip from one triangle to the next
    *
    * with this vectors the resulting area of the shape is calculated with
@@ -125,10 +125,10 @@ void voxel_1_c::rotatez(int by) {
    */
   by %= 6;
 
-  // calculate rotation center and new grid size
+  // calculate rotation centre and new grid size
   if (by != 0) {
 
-    // the rotation center
+    // the rotation centre
     // translation, the
 
     int d1x1, d1y1, d1x2, d1y2;  // the 2 vectors for the x-direction
@@ -211,7 +211,7 @@ void voxel_1_c::rotatez(int by) {
     if (ax2-ax1+1 > nsx) nsx = ax2-ax1+1;
     if (ay2-ay1+1 > nsy) nsy = ay2-ay1+1;
 
-    // now shift, so that the rotated shape is in the center
+    // now shift, so that the rotated shape is in the centre
 
     px = -ax1;
     py = -ay1;

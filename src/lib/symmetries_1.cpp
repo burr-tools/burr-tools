@@ -36,7 +36,7 @@ static const int _rotz[NUM_TRANSFORMATIONS] = {
 #include "tabs_1/rotz.inc"
 };
 
-/* this matix contains the concatenation of 2 transformations
+/* this matrix contains the concatenation of 2 transformations
  * if you first transform the piece around t1 and then around t2
  * you can as well transform around transMult[t1][t2]
  */
@@ -45,7 +45,7 @@ static const unsigned int transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATI
 };
 
 /* this array contains all possible symmetry groups, meaning bitmasks with exactly the bits set
- * that correspond to transformations tha reorient the piece so that it looks identical
+ * that correspond to transformations that reorient the piece so that it looks identical
  */
 static const unsigned long long symmetries[NUM_SYMMETRY_GROUPS] = {
 #include "tabs_1/symmetries.inc"
@@ -168,7 +168,7 @@ symmetries_t symmetries_1_c::symmetryCalcuation(const voxel_c *pp) const {
   }
 
   /* if we can not find the current symmetry group in our list
-   * lets create thr groups for all possible orientation of the piece
+   * lets create the groups for all possible orientation of the piece
    * as they might differ for different initial orientations
    */
   if (symmetries[i] != s) {

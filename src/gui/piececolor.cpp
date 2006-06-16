@@ -21,7 +21,7 @@
 
 #define COLS 18
 
-// the table for the first COLS fixed defined colors
+// the table for the first COLS fixed defined colours
 static float r[COLS] = {
   0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.7f,
   0.0f, 0.7f, 0.7f, 0.0f, 0.7f, 0.0f, 0.7f, 1.0f, 1.0f
@@ -37,7 +37,7 @@ static float b[COLS] = {
 
 #define JITTERS 53
 
-// the table with the modofication values for the multi-pieces
+// the table with the modification values for the multi-pieces
 static float jr[JITTERS] = {
    0.0f,
   -0.3f,  0.3f, -0.3f,  0.3f, -0.3f,  0.3f, -0.3f,  0.3f,  0.3f,
@@ -113,7 +113,7 @@ unsigned int pieceColorBi(int x) {
  * would cause an overflow every now and then, so we
  * search in the list of possible jitter values
  * for the x-th with no overflow
- * when the table is exausted, we simple do no
+ * when the table is exhausted, we simple do no
  * jittering any longer
  */
 static int getJitter(int val, int sub) {

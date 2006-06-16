@@ -33,7 +33,7 @@ class state_c;
 
 /* a list of states that lead to a separation of the
  * puzzle into 2 parts
- * the separation of a puzzle into lots of single pieaces consists
+ * the separation of a puzzle into lots of single pieces consists
  * of a tree of such separations. The root class starts with the assembled
  * puzzle and the lower parts divide the puzzle more and more until only
  * single pieces are left
@@ -63,7 +63,7 @@ class separation_c {
   std::deque <state_c *> states;
 
   /* the 2 parts the puzzle gets divided with the
-   * last move. if one of this parts consists of only
+   * last move. If one of this parts consists of only
    * one piece there will be a null pointer
    */
   separation_c * removed, *left;
@@ -101,7 +101,7 @@ public:
    */
   int movesText(char * txt, int len);
 
-  /* compares this and the goven separation, for a higher level
+  /* compares this and the given separation, for a higher level
    * one separation is bigger than the other if all levels
    * up to branch n are equal and on n+1 the level is larger then
    * the level of the other
@@ -212,7 +212,7 @@ class state_c {
 
 public:
 
-  /* chreate a new spate for pn pieces, you can not add more
+  /* create a new spate for pn pieces, you can not add more
    * pieces later on, so plan ahead
    */
   state_c(unsigned int pn);
@@ -222,7 +222,7 @@ public:
   /* set the position of a piece */
   void set(unsigned int piece, int x, int y, int z);
 
-  /* the the x, y or z position of a piece */
+  /* the x, y or z position of a piece */
   int getX(unsigned int i) const {
     bt_assert(i < piecenumber);
     return dx[i];

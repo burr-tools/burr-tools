@@ -100,7 +100,7 @@ placementBrowser_c::placementBrowser_c(puzzle_c * p, unsigned int prob, const gu
 
   if ((puzzle->probGetAssembler(problem)->getFinished() > 0) &&
       (puzzle->probGetAssembler(problem)->getFinished() < 1))
-    fl_message("Attention: The assembler is neither in intitial nor in final position\n"
+    fl_message("Attention: The assembler is neither in initial nor in final position\n"
 	       "The displayed placements may not be what you expect\n"
 	       "Read the documentation");
 
