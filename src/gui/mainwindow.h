@@ -42,7 +42,6 @@ class ColorConstraintsEdit;
 class ToolTab;
 class ButtonGroup;
 class FlatButton;
-class ProgressBar;
 class StatusLine;
 class BlockListGroup;
 
@@ -55,6 +54,7 @@ class Fl_Value_Slider;
 class Fl_Value_Input;
 class Fl_Menu_Bar;
 class Fl_Choice;
+class Fl_Progress;
 
 class mainWindow_c : public Fl_Double_Window {
 
@@ -99,7 +99,7 @@ class mainWindow_c : public Fl_Double_Window {
   FlatButton *BtnColSrtPc, *BtnColSrtRes, *BtnColAdd, *BtnColRem;
   FlatButton *BtnSetResult, *BtnAddShape, *BtnRemShape, *BtnGroup, *BtnProbShapeLeft, *BtnProbShapeRight;
 
-  ProgressBar *SolvingProgress;
+  Fl_Progress *SolvingProgress;
   Fl_Value_Output *OutputAssemblies;
   Fl_Value_Output *OutputSolutions;
   Fl_Output *OutputActivity;

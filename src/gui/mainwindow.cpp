@@ -2896,7 +2896,6 @@ void mainWindow_c::CreateSolveTab(int x, int y, int w, int h) {
     SolvingProgress->box(FL_ENGRAVED_BOX);
     SolvingProgress->selection_color((Fl_Color)4);
     SolvingProgress->align(FL_ALIGN_CENTER | FL_ALIGN_INSIDE);
-    SolvingProgress->labelcolor(fl_rgb_color(128, 128, 255));
 
     o = new layouter_c(0, 12);
 

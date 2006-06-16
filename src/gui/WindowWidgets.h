@@ -479,18 +479,10 @@ class multiLineWindow : public Fl_Double_Window {
     bool saveChanges(void) { return _saveChanges; }
 };
 
-class ProgressBar : public Fl_Progress {
+class LProgressBar_c : public Fl_Progress, public layoutable_c {
   public:
 
-    ProgressBar(int x, int y, int w, int h) : Fl_Progress(x, y, w, h) {}
-
-    void draw(void);
-};
-
-class LProgressBar_c : public ProgressBar, public layoutable_c {
-  public:
-
-    LProgressBar_c(int x, int y, int w, int h) : ProgressBar(0, 0, 10, 10), layoutable_c(x, y, w, h) {}
+    LProgressBar_c(int x, int y, int w, int h) : Fl_Progress(0, 0, 10, 10), layoutable_c(x, y, w, h) {}
 
     virtual void getMinSize(int *width, int *height) const {
       *width = 20;
