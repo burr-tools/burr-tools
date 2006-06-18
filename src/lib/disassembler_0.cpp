@@ -39,7 +39,7 @@ private:
   /* the nodes are used to save the shortest way from the start to each
    * node. So each node saves where the way to the start is
    */
-  const node0_c * comefrom;
+  node0_c * comefrom;
 
   /* number of pieces this node is handling */
   int piecenumber;
@@ -50,13 +50,22 @@ private:
   int *dx, *dy, *dz;
   unsigned int *trans;
 
+  /* contains the number of pointers that point to this node
+   * most of there pointers are comefrom pointers from other nodes
+   * but one increment results from the pointer inside the node lists
+   */
+  unsigned int refcount;
+
 public:
 
-  node0_c(int pn, const node0_c * comf) : comefrom(comf), piecenumber(pn) {
+  node0_c(int pn, node0_c * comf) : comefrom(comf), piecenumber(pn), refcount(1) {
     dx = new int[piecenumber];
     dy = new int[piecenumber];
     dz = new int[piecenumber];
     trans = new unsigned int[piecenumber];
+
+    if (comefrom)
+      comefrom->refcount++;
   }
 
   ~node0_c() {
@@ -64,6 +73,21 @@ public:
     delete [] dy;
     delete [] dz;
     delete [] trans;
+
+    if (comefrom) {
+      comefrom->refcount--;
+      if (comefrom->refcount == 0)
+        delete comefrom;
+    }
+  }
+
+  /* this function is used by outsiders to free
+   * their own pointers to this node, if the function
+   * returs true, delete the node
+   */
+  bool decRefCount(void) {
+    refcount--;
+    return refcount == 0;
   }
 
   /* the comparison operations use "normalized" positions,
@@ -355,7 +379,7 @@ void disassembler_0_c::init_find(node0_c * nd, int piecenumber, voxel_type * pie
   next_pn = piecenumber;
 }
 
-static node0_c * newNode(int next_pn, int nextdir, const node0_c * searchnode, int * movement, const int * weights) {
+static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * movement, const int * weights) {
 
   // we only take this new node, when all pieces are either not moved at all
   // or moved by the same amount
@@ -415,7 +439,7 @@ static node0_c * newNode(int next_pn, int nextdir, const node0_c * searchnode, i
 
 
 /* creates a new node that contains the merged movements of the given 2 nodes */
-static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, const node0_c * searchnode, int next_pn, int nextdir, int * movement, const int * weights) {
+static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, node0_c * searchnode, int next_pn, int nextdir, int * movement, const int * weights) {
 
   /* we need to make sure the new node is different from n0 and n1
    */
@@ -423,26 +447,66 @@ static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, const node0_
   bool different1 = false;
   int moved = 0;
 
-  for (int i = 0; i < next_pn; i++) {
+  int adder0, adder1;
+  adder0 = adder1 = 0;
 
-    int d0, d1;
+  int d0, d1;
+
+  // first find out, for both nodes, if they are positive or negative movement nodes
+  // this can happen because of the weights that we have negative movement even though
+  // we are right now positive axis and also the other way around
+  for (int i = 0; i < next_pn; i++) {
+    switch(nextdir) {
+      case 0:
+        d0 = n0->getX(i) - searchnode->getX(i);
+        d1 = n1->getX(i) - searchnode->getX(i);
+        break;
+      case 1:
+        d0 = - (n0->getX(i) - searchnode->getX(i));
+        d1 = - (n1->getX(i) - searchnode->getX(i));
+        break;
+      case 2:
+        d0 = n0->getY(i) - searchnode->getY(i);
+        d1 = n1->getY(i) - searchnode->getY(i);
+        break;
+      case 3:
+        d0 = - (n0->getY(i) - searchnode->getY(i));
+        d1 = - (n1->getY(i) - searchnode->getY(i));
+        break;
+      case 4:
+        d0 = n0->getZ(i) - searchnode->getZ(i);
+        d1 = n1->getZ(i) - searchnode->getZ(i);
+        break;
+      case 5:
+        d0 = - (n0->getZ(i) - searchnode->getZ(i));
+        d1 = - (n1->getZ(i) - searchnode->getZ(i));
+        break;
+      default:
+        bt_assert(0);
+        break;
+    }
+    if (-d0 > adder0) adder0 = -d0;
+    if (-d1 > adder1) adder1 = -d1;
+  }
+
+  for (int i = 0; i < next_pn; i++) {
 
     // calculate the movement of the merged node
     switch(nextdir) {
       case 0:
       case 1:
-        d0 = abs(n0->getX(i) - searchnode->getX(i));
-        d1 = abs(n1->getX(i) - searchnode->getX(i));
+        d0 = abs(n0->getX(i) - searchnode->getX(i)) + adder0;
+        d1 = abs(n1->getX(i) - searchnode->getX(i)) + adder1;
         break;
       case 2:
       case 3:
-        d0 = abs(n0->getY(i) - searchnode->getY(i));
-        d1 = abs(n1->getY(i) - searchnode->getY(i));
+        d0 = abs(n0->getY(i) - searchnode->getY(i)) + adder0;
+        d1 = abs(n1->getY(i) - searchnode->getY(i)) + adder1;
         break;
       case 4:
       case 5:
-        d0 = abs(n0->getZ(i) - searchnode->getZ(i));
-        d1 = abs(n1->getZ(i) - searchnode->getZ(i));
+        d0 = abs(n0->getZ(i) - searchnode->getZ(i)) + adder0;
+        d1 = abs(n1->getZ(i) - searchnode->getZ(i)) + adder1;
         break;
       default:
         bt_assert(0);
@@ -456,9 +520,6 @@ static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, const node0_
 
   // if the new node is equal to n0 or n1, exit
   if (!different0 || !different1) return 0;
-
-  // if too many pieces need to be moved, don't do it
-  if (moved > next_pn/2) return 0;
 
   return newNode(next_pn, nextdir, searchnode, movement, weights);
 }
@@ -523,6 +584,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
 
             nextstate = 99;
             state99piece = 0;
+            state99piece2 = nodes.size()-1;
             state99nextState = 2;
           }
 
@@ -539,19 +601,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
             nextdir++;
             nodes.clear();
             if (nextdir >= 6) {
-
-              // next state is the 2 piece at once moving state,
-              // it is only useful to try this, when we have at least 4 pieces
-              // otherwise it doesn't make any sense and we skip that state
-              if (next_pn >= 4) {
-                nextstate++;
-                nextdir = 0;
-
-                nextpiece2 = 1;
-
-              } else {
-                nextstate += 2;
-              }
+              nextstate ++;
             }
           }
         }
@@ -570,8 +620,8 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
         // one another the code above alone wont find movements where both pieces are moved at
         // the same time but rather one after the other
 
-        if (state99piece < (int)nodes.size()-1) {
-          n = newNodeMerge(nodes[state99piece], nodes[nodes.size()-1], searchnode, next_pn, nextdir, movement, weights);
+        if (state99piece < state99piece2) {
+          n = newNodeMerge(nodes[state99piece], nodes[state99piece2], searchnode, next_pn, nextdir, movement, weights);
 
           if (n) nodes.push_back(n);
 
@@ -696,21 +746,50 @@ separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pi
  */
 separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * pieces, node0_c * start, const int * weights) {
 
-  std::queue<node0_c *> openlist;
-  std::set<node0_c *, node_ptr_less> closed;
+  std::queue<node0_c *> openlist[2];
+  std::set<node0_c *, node_ptr_less> closed[3];
   std::vector<node0_c *> deletelist;
 
-  closed.insert(start);
-  openlist.push(start);
+  int curListFront = 0;
+  int newListFront = 1;
+  int oldFront = 0;
+  int curFront = 1;
+  int newFront = 2;
+
+  closed[curFront].insert(start);
+  openlist[curListFront].push(start);
 
   separation_c * erg = 0;
 
+  /* the algorithm works with 3 sets of nodes. All nodes in one set do have the same distance
+   * from the start node. The 3 sets are the current frontier (cf), the new frontier (nf) and the line
+   * behind the current frontier (of).
+   * The nodes in the cf list are taken one by one and examined and all neighbour nodes are generated. Now
+   * there are 3 possibilities: 1) the node is one way further from the start, then the new node belongs to
+   * nf, if the node has the same distance from the start as the currently examined node, if belongs into the
+   * cf list and if it is nearer to the start is must be in of.
+   * How do we find out where it belongs? By checking, if that node is already there. We check if the node is
+   * in of or in cf or in nf, only if it is nowhere to be found, we add it to nf.
+   * After all nodes in cf are checked, all nodes in of are dropped, cf becomes of, and nf becomes cf. nf is empty.
+   * And we restart.
+   * "Dropping" of the old frontier doesn't mean the nodes are deleted. They can only be deleted, when they are not
+   * part of the used shortest way to one of the nodes in cf. This is done by reference counting. So dropping
+   * means, check if there is an other node using a node, if not we can delete the node. This deletion may even
+   * result in more deletion as this might drop the reference counter of another node to 0
+   * This reference counter is increased for each node whose comefrom pointer points to that node. The counter
+   * is also increased by one as long as it is inside one of the frontier lists.
+   */
+
   /* while there are nodes left we should look at and we have not found a solution */
-  while (!openlist.empty()) {
+  while (!openlist[curListFront].empty()) {
 
     /* remove the node from the open list and start examining */
-    node0_c * node = openlist.front();
-    openlist.pop();
+    node0_c * node = openlist[curListFront].front();
+    openlist[curListFront].pop();
+
+    /* if the current list is now empty, we need to toggle everything after we have finished
+     * searching this node
+     */
 
     init_find(node, piecenumber, pieces);
 
@@ -718,7 +797,10 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 
     while ((st = find(node, weights))) {
 
-      if (closed.find(st) != closed.end()) {
+      if ((closed[oldFront].find(st) != closed[oldFront].end()) ||
+          (closed[curFront].find(st) != closed[curFront].end()) ||
+          (closed[newFront].find(st) != closed[newFront].end())
+         ) {
 
         /* the new node is already here. We have found a new longer way to that
          * node, so we can safely delete the new node and continue to the next
@@ -730,7 +812,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
         continue;
       }
 
-      closed.insert(st);
+      closed[newFront].insert(st);
 
       if (!st->is_separation()) {
 
@@ -738,7 +820,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
          * new state into the known state table
          * and the open list for later examination and go on to the next node
          */
-        openlist.push(st);
+        openlist[newListFront].push(st);
         continue;
       }
 
@@ -812,9 +894,12 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
        * search process
        */
 
-      std::set<node0_c *, node_ptr_less>::iterator it;
-      for (it = closed.begin(); it != closed.end(); it++)
-        delete *it;
+      for (int i = 0; i < 3; i++) {
+        std::set<node0_c *, node_ptr_less>::iterator it;
+        for (it = closed[i].begin(); it != closed[i].end(); it++)
+          if ((*it)->decRefCount())
+            delete *it;
+      }
 
       return erg;
     }
@@ -824,15 +909,34 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
       delete deletelist[i];
     deletelist.clear();
 
-    /* we have checked all the successors of this node, so we don't need the matrix
-     * any longer
-     */
+    // if the current front is completely checked, open up the new front
+    if (openlist[curListFront].empty()) {
+
+      // toggle the 2 lists of the fronts
+      curListFront = 1 - curListFront;
+      newListFront = 1 - newListFront;
+
+      // free the oldFront nodes
+      std::set<node0_c *, node_ptr_less>::iterator it;
+      for (it = closed[oldFront].begin(); it != closed[oldFront].end(); it++)
+        if ((*it)->decRefCount())
+          delete *it;
+
+      closed[oldFront].clear();
+
+      oldFront = curFront;
+      curFront = newFront;
+      newFront = (newFront + 1) % 3;
+    }
   }
 
   // free all the allocated nodes
-  std::set<node0_c *, node_ptr_less>::iterator i;
-  for (i = closed.begin(); i != closed.end(); i++)
-    delete *i;
+  for (int i = 0; i < 3; i++) {
+    std::set<node0_c *, node_ptr_less>::iterator it;
+    for (it = closed[i].begin(); it != closed[i].end(); it++)
+      if ((*it)->decRefCount())
+        delete *it;
+  }
 
   return 0;
 }
