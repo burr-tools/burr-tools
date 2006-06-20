@@ -59,7 +59,7 @@ class disasmToMoves_c : public piecePositions_c {
   bool * mv;
 
   /* this function walks the tree and sets the piece positions */
-  int doRecursive(const separation_c * tree, int step, float * array, int cx, int cy, int cz);
+  int doRecursive(const separation_c * tree, int step, float * array, bool center_active, int cx, int cy, int cz);
 
 public:
 
@@ -73,8 +73,12 @@ public:
 
   /* sets the moves for the step, if the value is not integer you
    * get a intermediate of the necessary move (for animation)
+   * if fade out is true, pieces face out, when they are removed from the
+   * rest of the puzzle
+   * if center_active if true, the group of pieces that currently is
+   * worked on is always in the middle of the display, other groups are invisible
    */
-  void setStep(float step, bool fadeOut = true);
+  void setStep(float step, bool fadeOut = true, bool center_active = false);
 
   /* as the functions are virtual it's no use to declare them inline,
    * speed is of no importance anyway

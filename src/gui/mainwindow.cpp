@@ -898,7 +898,7 @@ static void cb_SolutionAnim_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb
 void mainWindow_c::cb_SolutionAnim(Fl_Value_Slider* o) {
   o->take_focus();
   if (disassemble) {
-    disassemble->setStep(o->value(), config.useBlendedRemoving());
+    disassemble->setStep(o->value(), config.useBlendedRemoving(), true);
     View3D->updatePositions(disassemble);
   }
 }

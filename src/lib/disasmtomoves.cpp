@@ -29,7 +29,7 @@ disasmToMoves_c::~disasmToMoves_c() {
   delete [] mv;
 }
 
-void disasmToMoves_c::setStep(float step, bool fadeOut) {
+void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
 
   int s = int(step);
   float frac = step - s;
@@ -49,8 +49,8 @@ void disasmToMoves_c::setStep(float step, bool fadeOut) {
   if (tree) {
 
     /* get the 2 possible positions between we have to interpolate */
-    doRecursive(tree, s  , moves, 0, 0, 0);
-    doRecursive(tree, s+1, moves2, 0, 0, 0);
+    doRecursive(tree, s  , moves, center_active, 0, 0, 0);
+    doRecursive(tree, s+1, moves2, center_active, 0, 0, 0);
 
     // interpolate and check, which piece moves right now
     for (unsigned int i = 0; i < tree->getPieceNumber(); i++) {
@@ -116,7 +116,7 @@ static int mmax(int a, int b) {
  *                values are multiplied by this value and then the 2 end points are added
  *    cx, cy, cz are the centre to display the current tree
  */
-int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * array, int cx, int cy, int cz) {
+int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * array, bool center_active, int cx, int cy, int cz) {
 
   bt_assert(tree);
 
@@ -172,9 +172,24 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
     int steps, steps2;
 
     /* place the removed pieces with the new centre */
-    if (tree->getRemoved())
-      steps = doRecursive(tree->getRemoved(), step - (int)tree->getMoves(), array, cx+dx, cy+dy, cz+dz);
-    else {
+    if (tree->getRemoved()) {
+
+      /* if we use the center_active option we need to keep the removed part stationary
+       * and place the pieces where they belong,
+       *
+       * otherwise we place the removed part somewhere out of the way
+       */
+      if (center_active)
+        steps = doRecursive(tree->getRemoved(), step - (int)tree->getMoves(), array, center_active,
+            tree->getState(tree->getMoves()-1)->getX(pc) + cx - tree->getRemoved()->getState(0)->getX(0),
+            tree->getState(tree->getMoves()-1)->getY(pc) + cy - tree->getRemoved()->getState(0)->getY(0),
+            tree->getState(tree->getMoves()-1)->getZ(pc) + cz - tree->getRemoved()->getState(0)->getZ(0));
+      else
+        steps = doRecursive(tree->getRemoved(), step - (int)tree->getMoves(), array, center_active, cx+dx, cy+dy, cz+dz);
+
+    } else {
+
+      /* if there is no removed tree, the pieces need to vanish */
       if (array)
         for (unsigned int p = 0; p < tree->getPieceNumber(); p++)
           if (s->pieceRemoved(p)) {
@@ -188,9 +203,31 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
     }
 
     /* place the left over pieces in the old centre */
-    if (tree->getLeft())
-      steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, array, cx, cy, cz);
-    else {
+    if (tree->getLeft()) {
+
+      /* if we use center_active switch, we first display the removed part and need to move the left
+       * over part out of the way, this is done via the d. values in the negative direction of the
+       * removal of the pieces
+       *
+       * if we don't use the center_active option, the left over part stays in the middle
+       */
+      if (center_active && (step - (int)tree->getMoves() < steps) && (tree->getRemoved()))
+        steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, array, center_active, cx-dx, cy-dy, cz-dz);
+      else
+        steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, array, center_active, cx, cy, cz);
+
+      /* if the steps tell us that we are currenlty animating the removed part
+       * and there actually _is_ a removed animation, we hide all
+       * pieces that are not removed
+       */
+      if (array && center_active && (step - (int)tree->getMoves() < steps) && (tree->getRemoved())) {
+        for (unsigned int p = 0; p < tree->getPieceNumber(); p++)
+          if (!s->pieceRemoved(p)) {
+            array[4*tree->getPieceName(p)+3] = 0;
+          }
+      }
+
+    } else {
 
       if (array)
         for (unsigned int p = 0; p < tree->getPieceNumber(); p++)
@@ -208,7 +245,7 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
   }
 
   /* all right the number of steps shows us that we have the task to disassemble
-   * this node, so get the state and place the pieces ad the right position
+   * this node, so get the state and place the pieces at the right position
    *
    * we also have to place the pieces at their initial position, when we are
    * before the current node
@@ -223,8 +260,8 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
       array[4*tree->getPieceName(i)+3] += 1;
     }
 
-  int steps  = tree->getRemoved() ? doRecursive(tree->getRemoved(), step - tree->getMoves()        , 0, 0, 0, 0) : 0;
-  int steps2 = tree->getLeft()    ? doRecursive(tree->getLeft()   , step - tree->getMoves() - steps, 0, 0, 0, 0) : 0;
+  int steps  = tree->getRemoved() ? doRecursive(tree->getRemoved(), step - tree->getMoves()        , 0, center_active, 0, 0, 0) : 0;
+  int steps2 = tree->getLeft()    ? doRecursive(tree->getLeft()   , step - tree->getMoves() - steps, 0, center_active, 0, 0, 0) : 0;
 
   return tree->getMoves() + steps + steps2;
 }
