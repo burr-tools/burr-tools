@@ -204,7 +204,8 @@ public:
  */
 void disassembler_0_c::prepare(int pn, voxel_type * pieces, node0_c * searchnode) {
 
-  for (int j = 0; j < pn; j++)
+  unsigned int idx = 0;
+  for (int j = 0; j < pn; j++) {
     for (int i = 0; i < pn; i++) {
       if (i != j)
         cache->getValue(searchnode->getX(j) - searchnode->getX(i),
@@ -212,12 +213,14 @@ void disassembler_0_c::prepare(int pn, voxel_type * pieces, node0_c * searchnode
                         searchnode->getZ(j) - searchnode->getZ(i),
                         searchnode->getTrans(i), searchnode->getTrans(j),
                         pieces[i], pieces[j],
-                        &matrix[0][i + piecenumber * j],
-                        &matrix[1][i + piecenumber * j],
-                        &matrix[2][i + piecenumber * j]);
-      else
-        matrix[0][i + piecenumber * j] = matrix[1][i + piecenumber * j] = matrix[2][i + piecenumber * j] = 0;
+                        &matrix[0][idx], &matrix[1][idx], &matrix[2][idx]);
+
+      // the diagonals are always zero and will stay that for ever they are initialized
+      // to that value in the init function so only the other values need
+      idx++;
     }
+    idx = idx - pn + piecenumber;
+  }
 }
 
 void disassembler_0_c::prepare2(int pn) {
@@ -951,6 +954,9 @@ disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) :
 
   for (int j = 0; j < 3; j++)
     matrix[j] = new int[piecenumber * piecenumber];
+
+  for (unsigned int i = 0; i < piecenumber; i++)
+    matrix[0][i+i*piecenumber] = matrix[1][i+i*piecenumber] = matrix[2][i+i*piecenumber] = 0;
 
   cache = new movementCache_c(puzzle, problem);
 
