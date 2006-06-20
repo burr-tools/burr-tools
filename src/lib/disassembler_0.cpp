@@ -86,6 +86,7 @@ public:
    * returs true, delete the node
    */
   bool decRefCount(void) {
+    bt_assert(refcount > 0);
     refcount--;
     return refcount == 0;
   }
