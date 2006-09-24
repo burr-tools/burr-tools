@@ -198,15 +198,21 @@ class LFl_Frame : public layouter_c {
 
 class LFl_Button : public Fl_Button, public layoutable_c {
 
+  private:
+
+    int padX, padY;
+
   public:
 
-  LFl_Button(const char * text, int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Button(0, 0, 0, 0, text), layoutable_c(x, y, w, h) {}
+  LFl_Button(const char * text, int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Button(0, 0, 0, 0, text), layoutable_c(x, y, w, h), padX(4), padY(4) {}
+
+  void setPadding(int x, int y) { padX = x; padY = y; }
 
   virtual void getMinSize(int *width, int *height) const {
     *width = 0;
     ((LFl_Button*)this)->measure_label(*width, *height);
-    *width += 4;
-    *height += 4;
+    *width += padX;
+    *height += padY;
   }
 };
 
