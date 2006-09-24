@@ -974,10 +974,11 @@ Fl_Button * ButtonGroup::addButton(void) {
 
   int c = children();
 
-  Fl_Button * b = new LFl_Button(0, c, 0, 1, 1);
+  LFl_Button * b = new LFl_Button(0, c, 0, 1, 1);
   b->box(FL_THIN_UP_BOX);
   b->selection_color(fl_lighter(color()));
   b->clear_visible_focus();
+  b->setPadding(2, 0);
 
   b->callback(cb_ButtonGroup_stub, this);
 
