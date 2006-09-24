@@ -1402,6 +1402,27 @@
     'inside' colour and the other pieces may go into either colour.
   </description-compact>
 
+  <section|Simulating non-cubic gridspaces>
+
+  It is possible to emulate spacegrids different from cubes by just using
+  cubes and this way use <name|BurrTools> to solve different kind of puzzles.
+  This section will give hints of how to things:
+
+  <subsection|Two-Sided Pieces>
+
+  <subsection|Diagonally Cut Cubes and Squares>
+
+  <subsection|Cairos>
+
+  Cairos are pentagons but luckily they have only 4 rotations.
+
+  <subsection|Squares with Cuts of Slope 0.5>
+
+  <subsection|Edge Matching>
+
+  Sometimes it is possible to emulate edge matching problems by using nothes
+  and dents at the outside of the shapes.
+
   <\with|par-mode|right>
     <chapter|Defining Puzzles><label|ChapterPuzzles>
   </with>
