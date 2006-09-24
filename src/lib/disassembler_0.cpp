@@ -391,17 +391,19 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int ne
       for (int i = 0; i < next_pn; i++)
         if (check[i]) {
           for (int j = 0; j < next_pn; j++)
-            if ((i != j) && (movement[i] > matrix[nd][j + piecenumber * i]))
-              if (movement[i] - matrix[nd][j + piecenumber * i] > movement[j]) {
+            if (i != j) {
+              int diff = movement[i] - matrix[nd][j + piecenumber * i];
+              if (diff > movement[j]) {
                 if (movement[j] == 0) {
                   moved_pieces++;
                   if (moved_pieces > maxPieces)
                     return false;
                 }
-                movement[j] = movement[i] - matrix[nd][j + piecenumber * i];
+                movement[j] = diff;
                 check[j] = true;
                 finished = false;
               }
+            }
           check[i] = false;
         }
 
@@ -416,17 +418,19 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int ne
       for (int i = 0; i < next_pn; i++)
         if (check[i]) {
           for (int j = 0; j < next_pn; j++)
-            if ((i != j) && (movement[i] > matrix[nd][i + piecenumber * j]))
-              if (movement[i] - matrix[nd][i + piecenumber * j] > movement[j]) {
+            if (i != j) {
+              int diff = movement[i] - matrix[nd][i + piecenumber * j];
+              if (diff > movement[j]) {
                 if (movement[j] == 0) {
                   moved_pieces++;
                   if (moved_pieces > maxPieces)
                     return false;
                 }
-                movement[j] = movement[i] - matrix[nd][i + piecenumber * j];
+                movement[j] = diff;
                 check[j] = true;
                 finished = false;
               }
+            }
           check[i] = false;
         }
 
