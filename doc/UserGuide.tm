@@ -3,8 +3,10 @@
 <style|book>
 
 <\body>
-  <doc-data|<doc-title|BurrTools>|<doc-author-data|<author-name|Andreas
-  Röver>|<author-email|roever@users.sf.net>>>
+  <doc-data|<doc-title|BurrTools>|<\doc-author-data|<author-name|Andreas
+  Röver, Ronald Kint-Bruynseels>>
+    \;
+  </doc-author-data|<author-email|roever@users.sf.net>>>
 
   <\table-of-contents|toc>
   </table-of-contents>
