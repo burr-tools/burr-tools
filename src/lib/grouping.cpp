@@ -102,7 +102,7 @@ bool grouping_c::addPieceToSet(unsigned int pc) {
 
     // all groups have been tried for this set
     if (sets[set].currentGroup >= numGroups) {
-      sets[set].currentGroup == 0;
+      sets[set].currentGroup = 0;
 
       if (set == 0) {
         failed = true;
