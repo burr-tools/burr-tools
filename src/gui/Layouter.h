@@ -80,6 +80,8 @@ public:
 
   layoutable_c(int gx = 0, int gy = 0, int gw = 1, int gh = 1) : _gridX(gx), _gridY(gy), _gridW(gw), _gridH(gh), _stretchX(STRETCH), _stretchY(STRETCH), _pitch(0), _weightX(0), _weightY(0), _minWidth(0), _minHeight(0) {}
 
+  virtual ~layoutable_c(void) {}
+
   int getMinWidth(void) const { return _minWidth; }
   int getMinHeight(void) const { return _minHeight; }
   unsigned char getPitch(void) const { return _pitch; }

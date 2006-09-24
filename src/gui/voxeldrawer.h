@@ -47,6 +47,8 @@ class arcBall_c;
 class VoxelViewCallbacks {
   public:
 
+    virtual ~VoxelViewCallbacks(void) {}
+
     /* this function gets called before the the setup of the camera
      * and rotation of the object. If you return true
      * here the draw function will NOT setup its own camera and rotation

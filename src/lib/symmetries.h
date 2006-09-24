@@ -46,6 +46,8 @@ class symmetries_c {
 
   public:
 
+    virtual ~symmetries_c(void) {}
+
     virtual unsigned int getNumTransformations(void) const = 0;
     virtual unsigned int getNumTransformationsMirror(void) const = 0;
 

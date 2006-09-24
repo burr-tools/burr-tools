@@ -27,6 +27,8 @@ class piecePositions_c {
 
 public:
 
+  virtual ~piecePositions_c(void) {}
+
   /* the current position of the piece is returned */
   virtual float getX(unsigned int piece) = 0;
   virtual float getY(unsigned int piece) = 0;

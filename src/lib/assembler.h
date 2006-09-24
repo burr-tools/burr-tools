@@ -39,6 +39,8 @@ public:
    * as parameter
    */
   virtual bool assembly(assembly_c * a) = 0;
+
+  virtual ~assembler_cb(void) {}
 };
 
 /* as the assembly could be done using different routines we provide an
