@@ -68,7 +68,7 @@ class separation_c {
    */
   separation_c * removed, *left;
 
-  bool separation_c::containsMultiMoves(void);
+  bool containsMultiMoves(void);
 
 public:
 
