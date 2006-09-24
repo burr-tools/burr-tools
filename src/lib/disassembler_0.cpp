@@ -25,8 +25,6 @@
 #include "assembly.h"
 
 #include <queue>
-#include <set>
-#include <functional>
 
 /* node is used to build the search tree for the breadth first search of the
  * state tree each node contains the position of all the pieces relative
@@ -91,6 +89,21 @@ public:
     return refcount == 0;
   }
 
+  unsigned long hash(void) const {
+    unsigned long h = 0x1fe3b3c;
+
+    for (int i = 1; i < piecenumber; i++) {
+      h += (dx[i]-dx[0]) * 0x5;
+      h *= 13;
+      h += (dy[i]-dy[0]) * 0x3a;
+      h *= 19;
+      h += (dz[i]-dz[0]) * 0x13;
+      h *= 11;
+    }
+
+    return h;
+  }
+
   /* the comparison operations use "normalized" positions,
    * meaning all the pieces are shifted so, that the position
    * of piece 0 is (0; 0; 0). This prevents us from shifting
@@ -108,26 +121,6 @@ public:
     }
 
     return true;
-  }
-
-  /* this operation is required for the container. It brings
-   * the nodes into an arbitrary but deterministic order
-   */
-  bool operator < (const node0_c &b) const {
-
-    for (int i = 1; i < piecenumber; i++) {
-      if (dx[i] - dx[0] < b.dx[i] - b.dx[0]) return true;
-      if (dx[i] - dx[0] > b.dx[i] - b.dx[0]) return false;
-
-      if (dy[i] - dy[0] < b.dy[i] - b.dy[0]) return true;
-      if (dy[i] - dy[0] > b.dy[i] - b.dy[0]) return false;
-
-      if (dz[i] - dz[0] < b.dz[i] - b.dz[0]) return true;
-      if (dz[i] - dz[0] > b.dz[i] - b.dz[0]) return false;
-      // FIXME: transformation is missing
-    }
-
-    return false;
   }
 
   int getX(int i) const {
@@ -179,17 +172,104 @@ public:
   }
 };
 
-/* because we save pointers to nodes inside our nodes set, we need a special
- * operation for the comparison, the standard one would compare the pointers
- * and not the things the pointers point to
- */
-class node_ptr_less : public std::binary_function<node0_c *, node0_c *, bool> {
+/* this is a hashtable that stores nodes */
+class nodeHash {
 
-public:
+  private:
 
-  bool operator()(const node0_c * a, const node0_c * b) const {
-    return *a < *b;
-  }
+    unsigned long tab_size;
+    unsigned long tab_entries;
+
+    typedef struct hashNode {
+      node0_c * dat;
+      hashNode * next;
+    } hashNode;
+
+    hashNode ** tab;
+
+  public:
+
+    nodeHash(void) {
+
+      tab_size = 1001;
+      tab_entries = 0;
+
+      tab = new hashNode* [tab_size];
+
+      for (unsigned int i = 0; i < tab_size; i++)
+        tab[i] = 0;
+    }
+
+    ~nodeHash(void) {
+      clear();
+
+      delete [] tab;
+    }
+
+    /* delete all nodes and empty table for new usage */
+    void clear(void) {
+      for (unsigned int i = 0; i < tab_size; i++) {
+        while (tab[i]) {
+          hashNode * n = tab[i];
+          tab[i] = n->next;
+
+          if (n->dat->decRefCount())
+            delete n->dat;
+
+          delete n;
+        }
+      }
+
+      for (unsigned int i = 0; i < tab_size; i++)
+        tab[i] = 0;
+
+      tab_entries = 0;
+    }
+
+    /* add a new node  returns true, if the given node has already been
+     * in the table, false if the node is inserted
+     */
+    bool insert(node0_c * n) {
+
+      unsigned long h = n->hash() % tab_size;
+
+      hashNode * hn = tab[h];
+
+      while (hn) {
+        if (*(hn->dat) == *n)
+          return true;
+
+        hn = hn->next;
+      }
+
+      /* node not in table, insert */
+
+      tab_entries++;
+
+      hn = new hashNode;
+      hn->dat = n;
+      hn->next = tab[h];
+      tab[h] = hn;
+
+      return false;
+    }
+
+    /* check, if a node is in the map */
+    bool contains(node0_c * n) {
+      unsigned long h = n->hash() % tab_size;
+
+      hashNode * hn = tab[h];
+
+      while (hn) {
+        if (*(hn->dat) == *n)
+          return true;
+
+        hn = hn->next;
+      }
+
+      return false;
+    }
+
 };
 
 /* so, this isn't the function as described by Bill but rather a
@@ -751,7 +831,7 @@ separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pi
 separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * pieces, node0_c * start, const int * weights) {
 
   std::queue<node0_c *> openlist[2];
-  std::set<node0_c *, node_ptr_less> closed[3];
+  nodeHash closed[3];
   std::vector<node0_c *> deletelist;
 
   int curListFront = 0;
@@ -801,10 +881,11 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 
     while ((st = find(node, weights))) {
 
-      if ((closed[oldFront].find(st) != closed[oldFront].end()) ||
-          (closed[curFront].find(st) != closed[curFront].end()) ||
-          (closed[newFront].find(st) != closed[newFront].end())
-         ) {
+      /* check all closed nodelists and also insert the node into the newFront list
+       * insert has the same return value as contains, but also inserts the node
+       * when it is not yet inside the hashtable
+       */
+      if (closed[oldFront].contains(st) || closed[curFront].contains(st) || closed[newFront].insert(st)) {
 
         /* the new node is already here. We have found a new longer way to that
          * node, so we can safely delete the new node and continue to the next
@@ -815,8 +896,6 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
         deletelist.push_back(st);
         continue;
       }
-
-      closed[newFront].insert(st);
 
       if (!st->is_separation()) {
 
@@ -898,13 +977,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
        * search process
        */
 
-      for (int i = 0; i < 3; i++) {
-        std::set<node0_c *, node_ptr_less>::iterator it;
-        for (it = closed[i].begin(); it != closed[i].end(); it++)
-          if ((*it)->decRefCount())
-            delete *it;
-      }
-
+      /* nodes inside the closed hashtables are freed automagically */
       return erg;
     }
 
@@ -921,11 +994,6 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
       newListFront = 1 - newListFront;
 
       // free the oldFront nodes
-      std::set<node0_c *, node_ptr_less>::iterator it;
-      for (it = closed[oldFront].begin(); it != closed[oldFront].end(); it++)
-        if ((*it)->decRefCount())
-          delete *it;
-
       closed[oldFront].clear();
 
       oldFront = curFront;
@@ -934,14 +1002,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
     }
   }
 
-  // free all the allocated nodes
-  for (int i = 0; i < 3; i++) {
-    std::set<node0_c *, node_ptr_less>::iterator it;
-    for (it = closed[i].begin(); it != closed[i].end(); it++)
-      if ((*it)->decRefCount())
-        delete *it;
-  }
-
+  // the nodes inside the hashtables are freed automatically
   return 0;
 }
 
