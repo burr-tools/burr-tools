@@ -593,7 +593,7 @@ void voxel_c::minimizePiece(void) {
   }
 }
 
-void voxel_c::actionOnSpace(int action, bool inside) {
+void voxel_c::actionOnSpace(VoxelAction action, bool inside) {
 
   if (!getX() || !getY() ||!getZ())
     return;

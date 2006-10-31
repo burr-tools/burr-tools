@@ -26,48 +26,67 @@
 #include <xmlwrapp/node.h>
 
 /**
- * this class gets thrown when there is an error on loading from a stream
+ * This class gets thrown when there is an error while loading something from an xml node.
+ *
+ * This class may get thrown by the constructors in other classes that initialise the class
+ * via an xml node. It gets thrown whenever an error occured while loading from the
+ * given xml node.
  */
 class load_error {
 
-  const xml::node node;
-  const std::string text;
+  const xml::node node;    ///< the node where the error occured
+  const std::string text;  ///< error text provided by the code that found the error
 
 public:
+
+  /**
+   * This constructor creates the error with the xml node and text
+   */
   load_error(const std::string & arg, const xml::node & nd) : node(nd), text(arg) {};
 
+  /**
+   * This constructor creates an error with an empty xml node and only text
+   */
   load_error(const std::string & arg) : text(arg) {};
 
+  /**
+   * Returns the error message.
+   */
   const char * getText(void) const { return text.c_str(); }
+  /**
+   * Returns the node where the error occured.
+   */
   const xml::node getNode(void) const { return node; }
 };
 
 /**
  * This class handles one voxel space. A voxel space
  * is a 3 dimensional representation of a space using
- * cubes. Each cube can have certain values of type
- * voxel_type
+ * some kind of regular units to fill the space. This is only an abstract
+ * base class that provides functionality common to all other voxel spaces.
+ * To have a real voxel space (e.g. made out of unit cubes) you need to inherit
+ * from this class and provide functions for rotation and other things.
+ *
+ * Each voxel has 2 information: its state and its color. State is one of the
+ * VoxelState enums values. And color can right now be one of 64 possible values
  */
 class voxel_c {
 
 protected:
 
-  /* each voxel needs to know the parameters for its space grid
+  /**
+   * each voxel needs to know the parameters for its space grid
    */
   const gridType_c *gt;
 
+  //@{
   /**
-   * The x-size of the space.
+   * The size of the space.
    */
   unsigned int sx;
-  /**
-   * The y-size of the space.
-   */
   unsigned int sy;
-  /**
-   * The z-size of the space.
-   */
   unsigned int sz;
+  //@}
 
   /**
    * The number of voxel inside the space.
@@ -97,14 +116,14 @@ protected:
   bool doRecalc;
 
   /**
-   * the self symmetries of this voxel space
+   * the self symmetries of this voxel space.
    * this value is only valid when the lowest bit 1 is set
    * if the bit is not set the symmetries need to be calculated
    */
   symmetries_t symmetries;
 
   /**
-   * this is the hot spot of the voxel
+   * this is the hot spot of the voxel.
    * when a piece is places somewhere it is always done relative to this
    * point. This is necessary to be able to rotate assemblies.
    * just place the hotspot somewhere inside the voxelspace and it will
@@ -117,23 +136,28 @@ protected:
    */
   int hx, hy, hz;
 
-  /* shapes can be named */
+  /**
+   * shapes can be named
+   */
   std::string name;
 
-  /* shapes have a weight, this weight is used by the disassembler to
+  /**
+   * shapes have a weight. this weight is used by the disassembler to
    * decide which piece of groups to move and which to keep still
    */
   int weight;
 
 protected:
 
+  /**
+   * updates the bounding box to fit the current shape inside the space
+   */
   void recalcBoundingBox(void);
 
 public:
 
   /**
-   * this enumeration defines some values that are used for some of
-   * the voxel spaces
+   * this enumeration defines some values that are used for some of the voxel spaces.
    *
    * generally there will be 2 types of usage for voxelspace
    * some single-piece and one multi-piece. The single piece will
@@ -141,12 +165,20 @@ public:
    * the multi-piece will use the values of the voxels to
    * distinguish between different pieces
    */
-  enum {
-    VX_EMPTY,
-    VX_FILLED,
-    VX_VARIABLE
-  };
+  typedef enum {
+    VX_EMPTY,   ///< This is used for empty voxels
+    VX_FILLED,  ///< This value is used for filled foxels
+    VX_VARIABLE ///< This value is used for voxels with variable content
+  } VoxelState;
 
+  /**
+   * enable or diable the update of the bounding box after each operation.
+   * Sometimes, when more complex operations are performed it is useful to not
+   * update the bounding box every time but rather finish all operations first
+   * and then update the box after all is finished. This can be done here
+   * call this function with skipit = true at the start of such a block of
+   * operations and at the end call it with skipit = false
+   */
   void skipRecalcBoundingBox(bool skipit) {
     if (skipit)
       doRecalc = false;
@@ -156,8 +188,6 @@ public:
     }
   }
 
-  // a few of the constructor are private so that voxel spaces can only be constructed via
-  // the factory in gridType_c
 public:
 
   /**
@@ -165,6 +195,7 @@ public:
    * initializes all values to init.
    */
   voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0, voxel_type outs = VX_EMPTY);
+
   /**
    * load from xml node
    */
@@ -193,24 +224,25 @@ public:
    */
   void copy(const voxel_c * orig);
 
+  //@{
   /**
-   * Get the actual x-size of the space.
+   * Get the size of the space.
+   * These functions return the size of the voxel space not the size
+   * of the object within the space
    */
   unsigned int getX(void) const { return sx; }
-  /**
-   * Get the actual y-size of the space.
-   */
   unsigned int getY(void) const { return sy; }
-  /**
-   * Get the actual z-size of the space.
-   */
   unsigned int getZ(void) const { return sz; }
+  //@}
 
   /**
-   * returns the squared diagonal of the space
+   * Returns the squared diagonal of the space
    */
   unsigned int getDiagonal(void) const { return sx*sx + sy*sy + sz*sz; }
 
+  /**
+   * Returns the value of the biggest out of getX, getY or getZ.
+   */
   unsigned int getBiggestDimension(void) const {
     if (sx > sy)
       if (sz > sx)
@@ -225,7 +257,7 @@ public:
   }
 
   /**
-   * Get the number of voxels
+   * Get the number of voxels, which is getX()*getY()*getZ()
    */
   unsigned int getXYZ(void) const { return voxels; }
 
@@ -245,7 +277,8 @@ public:
   }
 
   /**
-   * sets the value of the outside
+   * sets the value of the outside.
+   * Outside is returned whenever a get2 is used with a coordinate outside the voxel space
    */
   void setOutside(voxel_type val) {
     outside = val;
@@ -254,7 +287,7 @@ public:
   }
 
   /**
-   * same as get but returns 0 for each voxel outside
+   * same as get but returns the outside value for each voxel outside
    * the space
    */
   voxel_type get2(int x, int y, int z) const {
@@ -328,14 +361,18 @@ public:
    */
   unsigned int count(voxel_type val) const;
 
+  //@{
   /**
-   * rotate the space 90 degree around the given axis.
+   * rotate the space around the x axis.
+   * The amount is a multiple of a base dregree depending on
+   * the actual voxel space interprtation
    * The voxel space is resized to that it's contents
    * fits into the rotated position
    */
   virtual void rotatex(int by = 1) = 0;
   virtual void rotatey(int by = 1) = 0;
   virtual void rotatez(int by = 1) = 0;
+  //@}
 
   /**
    * this function transforms the given point by the given transformation
@@ -350,12 +387,14 @@ public:
    */
   void translate(int dx, int dy, int dz, voxel_type filler);
 
+  //@{
   /**
    * mirrors the space along the given axis
    */
   virtual void mirrorX(void);
   virtual void mirrorY(void);
   virtual void mirrorZ(void);
+  //@}
 
   /**
    * changes the size of the voxel space to the smallest size
@@ -363,12 +402,17 @@ public:
    */
   virtual void minimizePiece(void);
 
+  //@{
+  /**
+   * Return the coordinates of the bounding box
+   */
   unsigned int boundX1(void) const { return bx1; }
   unsigned int boundX2(void) const { return bx2; }
   unsigned int boundY1(void) const { return by1; }
   unsigned int boundY2(void) const { return by2; }
   unsigned int boundZ1(void) const { return bz1; }
   unsigned int boundZ2(void) const { return bz2; }
+  //@}
 
   /**
    * get the bounding box of a rotated voxel space
@@ -384,14 +428,14 @@ public:
   bool operator == (const voxel_c & op) const;
 
   /**
-   * comparison of two voxel spaces.
+   * Comparison of two voxel spaces.
    * 2 voxel spaces are identical, if their bounding
    * boxes have the same size and the voxels within
    * there boxes is identical
    *
    * if includeColors is true, the colours are included in the
    * comparison, meaning when the colours differ the
-   * shapes are not equal
+   * shapes are not equal, otherwise only the states are compared
    */
   virtual bool identicalInBB(const voxel_c * op, bool includeColors = true) const;
 
@@ -423,7 +467,8 @@ public:
    */
   unsigned char getMirrorTransform(const voxel_c * op) const;
 
-  /** resizes the voxelspace, preserving the lover part
+  /**
+   * resizes the voxelspace. preserving the lower part
    * of the data, when the new one is smaller and
    * adding new voxels at the upper end, if the new space
    * is bigger
@@ -435,7 +480,8 @@ public:
    */
   void scale(unsigned int amount);
 
-  /** checks the voxelspace for connectedness. It is checked
+  /**
+   * checks the voxelspace for connectedness. It is checked
    * if there is no group of voxels, that is disconnected from
    * the rest of the voxels. There are several different types
    * of connectedness: face, edge, corner. Meaning the
@@ -453,13 +499,14 @@ public:
    */
   bool connected(char type, bool inverse, voxel_type value, bool outsideZ = true) const;
 
-  /** all possible rotations of one piece can be generated
+  /**
+   * all possible rotations of one piece can be generated.
    * using this function by iterating nr from 0 to NUM_TRANSFORMATIONS (24 for cubes) excluding
    */
   void transform(unsigned int nr);
 
   /**
-   * this function returns the self symmetries of this voxel
+   * This function returns the self symmetries of this voxel
    * space. The returned value is a bitfieled containing a one
    * for each transformations that maps the voxel space
    * into itself
@@ -477,62 +524,101 @@ public:
 
 public:
 
+  //@{
+  /**
+   * Functions to get the voxel state or color of a single voxel
+   */
   int getState(unsigned int x, unsigned int y, unsigned int z) const { return get(x, y, z) & 0x3; }
   int getState2(int x, int y, int z) const { return get2(x, y, z) & 0x3; }
   int getState(unsigned int i) const { return get(i) & 0x3; }
   unsigned int getColor(unsigned int x, unsigned int y, unsigned int z) const { return get(x, y, z) >> 2; }
   unsigned int getColor2(int x, int y, int z) const { return get2(x, y, z) >> 2; }
   unsigned int getColor(unsigned int i) const { return get(i) >> 2; }
+  //@}
 
+  //@{
+  /**
+   * Functions to ask, if a voxel has a certain state
+   */
   bool isEmpty(unsigned int x, unsigned int y, unsigned int z) const { return getState(x, y, z) == VX_EMPTY; }
   bool isEmpty2(int x, int y, int z) const { return getState2(x, y, z) == VX_EMPTY; }
   bool isFilled(unsigned int x, unsigned int y, unsigned int z) const { return getState(x, y, z) == VX_FILLED; }
   bool isFilled2(int x, int y, int z) const { return getState2(x, y, z) == VX_FILLED; }
   bool isVariable(unsigned int x, unsigned int y, unsigned int z) const { return getState(x, y, z) == VX_VARIABLE; }
   bool isVariable2(int x, int y, int z) const { return getState2(x, y, z) == VX_VARIABLE; }
+  //@}
 
+  //@{
+  /**
+   * Functions to set the state or color of a certain voxel.
+   * The position is either given as a coordinate or as an index
+   */
   void setState(unsigned int x, unsigned int y, unsigned int z, int state) { set(x, y, z, (get(x, y, z) & ~0x3) | state); }
   void setColor(unsigned int x, unsigned int y, unsigned int z, unsigned int color) { bt_assert(color < 64); set(x, y, z, (get(x, y, z) & 0x3) | color << 2); }
   void setState(unsigned int i, int state) { set(i, (get(i) & ~0x3) | state); }
   void setColor(unsigned int i, unsigned int color) { bt_assert(color < 64); set(i, (get(i) & 0x3) | color << 2); }
+  //@}
 
-
+  /**
+   * Counts how many voxels there are of a certain state.
+   * Color markings are ignored with this function, only the state
+   * is considered
+   */
   unsigned int countState(int state) const;
 
-  /* do something on the voxel space, what is done is defined with the enumeration
+  //@{
+  /**
+   * Defined possible actions for the actionOnSpace function.
+   */
+  typedef enum {
+    ACT_FIXED,    ///< Make voxel fixed
+    ACT_VARIABLE, ///< Make voxels variable
+    ACT_DECOLOR   ///< Set color to neutral
+  } VoxelAction;
+
+  /**
+   * Change the state of some or all voxels. What is done is defined with the enumeration
    * fixed sets voxels to the fixed state, variable sets voxels to variable
    * and decolour removes colours from voxels
    * inside defines where to carry out the action, on inside cubes or on outside cubes
    * inside cubes do have 6 non-empty cubes as neighbours
    */
-  enum {
-    ACT_FIXED,
-    ACT_VARIABLE,
-    ACT_DECOLOR
-  };
-  void actionOnSpace(int action, bool inside);
+  void actionOnSpace(VoxelAction action, bool inside);
+  //@}
 
-  /* used to save to XML */
+  /**
+   *  used to save to XML
+   */
   xml::node save(void) const;
 
-
-  /* functions for hotspot management */
+  //@{
+  /**
+   * functions for hotspot management
+   */
   int getHx(void) const { return hx; }
   int getHy(void) const { return hy; }
   int getHz(void) const { return hz; }
   void setHotspot(int x, int y, int z) { hx = x; hy = y; hz = z; }
-  /* this function returns the hotspot, if the voxel space would be rotated
-   * by the given transformation
+  //@}
+
+  /**
+   * this function returns the hotspot of the rotated space.
    */
   virtual void getHotspot(unsigned char trans, int * x, int * y, int * z) const;
 
-  /* functions to set the name */
+  /** functions to set the name */
   const std::string & getName(void) const { return name; }
 
-  // if you give 0 or an empty string the name will be removed
+  /**
+   * Set the name for this voxel space.
+   * if you give 0 or an empty string the name will be removed
+   */
   void setName(const std::string & n) { name = n; }
 
-  /* for the minimize scale function applied to all shapes
+  /**
+   * Scale down voxel space by a certain amount.
+   *
+   * for the minimize scale function applied to all shapes
    * we need to first check, if all shapes can be scaled down
    * by a certain factor and then do it. If action is true, then
    * the shape is really scaled, otherwise you only get the fact
@@ -540,9 +626,11 @@ public:
    */
   bool scaleDown(unsigned char by, bool action);
 
+  //@{
   /* functions for the weight */
   int getWeight(void) const { return weight; }
   void setWeight(int w) { weight = w; }
+  //@}
 };
 
 #endif
