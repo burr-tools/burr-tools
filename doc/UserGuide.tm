@@ -495,7 +495,11 @@
     pieces. So it won't happen that <name|BurrTools> complains about too many
     placements. As long as your computer has sufficient memory the program
     will merrily continue working - even if it would take longer than the
-    universe exists - to complete the search.<next-line>
+    universe exists - to complete the search.
+
+    <item><name|BurrTools> supports another gridspace besides the cube space
+    supported by <name|PuzzleSolver3D>. This allows the design and analysis
+    of completely new puzzles<next-line>
   </enumerate-numeric>
 
   <name|BurrTools> also has capabilities for <em|importing>
