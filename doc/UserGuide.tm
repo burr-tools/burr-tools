@@ -336,6 +336,10 @@
     voxel. Currently <name|BurrTools> can only attach one single colour to
     the voxel as a whole.
 
+    <item*|Spacegrid>The spacegrid defines the shape and orientation of the
+    voxels. Right now there are 2 space grids available in <name|BurrTools>:
+    cubes and prisms with a equilateral triangle as base.
+
     <item*|Shape>This is a definition of a 3-<no-break>dimensional object.
     Shapes are assembled out of voxels.\ 
 
@@ -558,7 +562,11 @@
 
   <\description-compact>
     <item*|<with|font-family|ss|New>>Starts a new design after removing all
-    the information of the current one.
+    the information of the current one. The first thing that happens when you
+    start a new puzzle is that you will be asked which spacegrid to use. When
+    <name|BurrTools> is started it always starts with a puzzle that uses the
+    cubes spacegrid, so when you want to use another grid you need to use
+    this menu.
 
     <item*|<with|font-family|ss|Load>>Opens a <name|BurrTools>
     <with|font-family|tt|*.xmpuzzle> file. A notification will pop up when a
@@ -792,12 +800,15 @@
     of the pieces (<with|mode|math|\<vartriangleright\>><reference|AddingColour>).
   </description-compact>>
 
-  <section|Grid Types>
+  <section|Spacegrids>
 
-  Currently <name|BurrTools> only handles cubic grids. So no further action
-  needs to be undertaken as the program defaults to this grid type. In the
-  future other grid types and transformations of these (skewing and
-  stretching) may be implemented.
+  Currently <name|BurrTools> handles cubic grids and grids that use prisms
+  with a baseshape that is a equilateral triangle. The spacegrid is used for
+  all shapes that are used within a puzzle so you can not have one shape made
+  out of cubes and one using another grid. The spacegrid needs to be set
+  <em|before> you start with the puzzle. It can not be changed later on. The
+  gridtype is seleced when you use the <with|font-family|ss|<strong|New>>
+  option.
 
   <section|Creating Shapes><label|CreatingShapes>
 
@@ -833,6 +844,16 @@
   the puzzle. This means that you can build a file that contains a vast
   number of shapes, e.g. all 59 notchable six-piece burr pieces, of which you
   assign only 6 to the pieces of your puzzle design.
+
+  Finally the shapes have an additional parameter: the weight. This value is
+  used when constructing the disassembly animations. When the disassembler
+  has found 2 groups of pieces that can be moved against each other it needs
+  to decide which group to actually move and which to keep where it is. This
+  decision can be influenced with the weight. The program searches the
+  maximum weight in both groups and the one group that has the bigger maximum
+  weight will be kept in place and the other group will be moved. If both
+  groups have the same maximum weight the group with the smaller number of
+  pieces will be used.
 
   <section|Grid Functions><label|GridFunctions>
 
@@ -1405,12 +1426,48 @@
   <section|Simulating non-cubic gridspaces>
 
   It is possible to emulate spacegrids different from cubes by just using
-  cubes and this way use <name|BurrTools> to solve different kind of puzzles.
-  This section will give hints of how to things:
+  cubes. This way <name|BurrTools> can solve different kind of puzzles. This
+  section will give hints of how to things. It will not contain obvious
+  emulation possibilities like hexagons with 6 triangles or x by y rectangles
+  using several squares, but rather the mor complicated possibilities. The
+  chapter can not be complete but it rather wants to show what can be done
+  and give you some initial ideas. If you come up with a cool idea you are
+  welcome to send it to me and I will include it in here.
+
+  Generally this emulation requires to use more cubes for one basic unit.
+  This will probably result in a slowdown of the solving process. But this
+  slowdown is not always that grave. <name|BurrTools> knows how to merge
+  voxels that are always occupied by the same piece into one, so if there is
+  for example a puzzle that uses hexagonal pieces made out of the triangular
+  prisms and these hexagons are always within a hexagonal grid
+  <name|BurrTools> will merge the 6 triangle together and work with the
+  resulting shapes. This only takes some time at the initialisation phase. On
+  the other hand there might be many placements of pieces that fit the
+  underlying cube to triangle grid that are not proper placements and that
+  need to be sorted out first. This can take a long time. <name|Major Chaos>
+  by Kevin Holmes for example has a lot of illegal placements for pieces that
+  need to be sorted out. That takes a very long time, but once that is done
+  the solving is actually very fast.
 
   <subsection|Two-Sided Pieces>
 
+  If you have pieces that have a top and a bottom there are several
+  possibilities to model that in <name|BurrTools>. One possibility is to use
+  colors. Make the piece and the result 2 layers thick. The bottom layer of
+  both will get a special color.
+
+  Another possibility is to add an additional layer that has voxels only in
+  certain places as seen in the picture. The additional voxel prevents the
+  rotation of the shape.
+
   <subsection|Diagonally Cut Cubes and Squares>
+
+  Cubes can be cut in many differenc ways, the cut that results in shapes
+  such as given above can be emulated\ 
+
+  It is, of course, also possible to simluate diagonally cut squares this
+  way. The squared need to be 2 layers thick and be really cubes, but that is
+  all there is to it.
 
   <subsection|Cairos>
 
@@ -1805,6 +1862,53 @@
     count the number of solutions. Check this option if you're only
     interested in the number of solutions and not in the solutions
     themselves.\ 
+
+    <item*|Drop Disassm>When checked the program checks, if the found
+    assembly is disassembable and discards the solution if it is not
+    disassembable. But the disassembly is <em|not> stored, only the assembly
+    and some information <em|about> the disassembly (like its level). This is
+    useful if you have a problem that has many solutions and you want to find
+    the most interesting solutions. Disassemblies take up a lot of memory
+    within the computer so it is useful to just save some information while
+    solving the puzzle and then later on, when everything is finished
+    recalculate the disassemblies for the interesting solutions.
+
+    <item*|Sort by>This option lets you choose in which way the found
+    solutions are ordered. There are 3 possibilities:
+
+    <\enumerate-numeric>
+      <item>Unsorted: The solutions are sorted into the list in the order in
+      they are found
+
+      <item>by Level: The solutions are sorted by the level. First the first
+      level, if that is identical then by the second level, and so on.
+
+      <item>by number of moves to disassemble: The solutions are sored by the
+      sum of all moves required to completely disassemble the puzzle.
+    </enumerate-numeric>
+
+    <item*|Drop>If a puzzle has very many solutions it might not be necessary
+    to save all of them. E.g for polyomino-like puzzles it might be nive to
+    keep just every 1000 of the millions of solutions to have a profile of
+    the possible solutions. Here you can specify every how many-th solution
+    you want to keep. A 1 means you keep every solution, a 100 means you keep
+    the first and the 101st and the 201st and so on.
+
+    <item*|Limit>Limits the number of solutions to be saved. There will never
+    be more than the specified amount of solutions in the list. When the list
+    is full the program has 2 choices:\ 
+
+    <\enumerate-numeric>
+      <item>Solutions are sorted: The programs throws away the solutions at
+      the end. So low level solutions are removed
+
+      <item>Solutions are unsorted: The program starts to throw away every
+      second solution. So when you started with a drop-value of one and the
+      list is full the program starts to drop every 2nd solution is finds and
+      only adds every 2nd solution to the list. But for each added solution
+      it also removes every 2nd solution that already has been added to the
+      list.
+    </enumerate-numeric>
   </description-compact>
 
   <section|Solving Puzzles>
@@ -2017,6 +2121,62 @@
   selecting any other solution and thus allows easily comparing the different
   solutions at a particular stage in the disassembly process.
 
+  Below the <with|font-family|ss|Move> scrollbar are 2 fields that show you 2
+  numbers associated with the currenlty selected solution. The first is the
+  assembly number and the second is the solution number. Both numbers define
+  when a solution was found. The first found assembly gets assembly number
+  one. But that one might not be disassembable so it gets thrown away. The
+  second found assembly gets assembly number one and if it is also
+  disassembable it gets solution number 1. So you will see assembly 2 and
+  solution 1 in these 2 fields for the given example.
+
+  <subsection|Handling Solutions>
+
+  The big button group below the Solution selector and animator lets you
+  modify the solutions. Be careful with these buttons while the solver is
+  running. Strange things might happen.
+
+  In the first row you can resort the found solutions by the samve criteria
+  as you can select for the solver. You can sort them in the order they were
+  found (Unsort) or by level or by sum of moves to completely disassemble.
+
+  The second row buttons allows the deletion of certain solutions from the
+  list.
+
+  <\description-compact>
+    <item*|Del All>removes all solutions
+
+    <item*|Del Before>removes all solution before the currently selected
+    solution. The selected solution is the first one in the list that is not
+    removed
+
+    <item*|Del At>removes the currently selected solution
+
+    <item*|Del After>removes all solutions behind the currently selected one.
+    The selected on is the last one that is kept
+
+    <item*|Del w/o DA>remove all solutions that have no disassembly
+  </description-compact>
+
+  The last row of buttons allow the addition or removal of disassemblies to
+  the list of puzzles.
+
+  <\description-compact>
+    <item*|D DA>deletes the disassembly of the currently selected solution.
+    THe disassembly is replaced by a something containing only information
+    about the disassembly, so you can still sort the solutions
+
+    <item*|D A DA>deletes all disassemblies
+
+    <item*|A DA>adds the disassembly to the currently selected solution
+
+    <item*|A A DA>add the disassembly to all solutions. Already existing
+    disassemblies are thrown away
+
+    <item*|A M DA>add the disassembly to all solutions that do not have one.
+    Solutions that already have a disassembly are left unchanged
+  </description-compact>
+
   <subsection|Visibility of Pieces><label|VisibilityOfPieces>
 
   In the list at the bottom of the <with|font-family|ss|Solutions> panel all
@@ -2204,9 +2364,6 @@
 
     <item>Better tool for colorization of a piece. E.g. checkering, but it
     needs to be more general than just checkering.
-
-    <item>Make it possible to save only a few solutions. For puzzles that
-    have a lot of solutions this might be useful.
 
     <item>Create a debug window to make it possible to find out why there is
     no assembly or why an assembly can not be taken apart.
