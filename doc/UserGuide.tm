@@ -543,6 +543,10 @@
     contents of the 3-<no-break>D viewer that can be used to create high
     quality solution sheets (<with|mode|math|\<vartriangleright\>><reference|ExportingImages>).
 
+    <item*|<with|font-family|ss|Status>>This opens up a window containing
+    lots of maybe useful information about the shapes of the puzzles
+    (<with|mode|math|\<vartriangleright\>><reference|ChapterStatus>).
+
     <item*|<with|font-family|ss|Edit Comment>>Allows appending textual
     information to the puzzle file (<with|mode|math|\<vartriangleright\>><reference|AddingComments>).
 
@@ -1358,6 +1362,63 @@
   Currently only the shapes can be rearranged with the left and right arrow
   buttons of the <with|font-family|ss|Shapes> section, but more advanced
   maninging procedures will be added in the future.
+
+  <section|Shape Information><label|ChapterStatus>
+
+  <big-figure|<postscript|Pics/Window_Status.png|*5/8|*5/8||||>|>
+
+  \;
+
+  When using the mainmenu entry <with|font-family|ss|<strong|Status>> a
+  window like the one above opens and displays all kinds of information about
+  all the shapes available inside the puzzle. The table columns have the
+  following meanings:
+
+  <\description-compact>
+    <item*|Units Normal>Contains the number of voxels inside the shape that
+    have the state fixed.
+
+    <item*|Units Variable>Contains the number of voxle inside the shape that
+    have the state variable.
+
+    <item*|Units Sum>Contains the number of voxels inside the shape that are
+    either fixed or variable.
+
+    <item*|Identical>If the shape is identical to another shape with smaller
+    number the first one of these number is displayed, so if shape 3, 4 and 5
+    are identical shape 4 and 5 will point to shape 3 but shape 3 will show
+    none. So the table only points to a shape above.
+
+    <item*|Identical Mirror>A shape is entered, if the shapes can somehow be
+    transformed into the other including the mirror transformation
+
+    <item*|Identical Shape>A shape is entered, if the shape is identical
+    without including mirrored shapes.
+
+    <item*|Identical Complete>In this case shapes must be completely
+    identical including colors and not only the appearance of the shape.
+
+    <item*|Connectivity>This part of the table shows if the shape is
+    completely connected and doesn't contain any separate voxels
+
+    <item*|Connectivity Face>This part is marked with an X when all parts of
+    the shape are connected via the faces of the voxels
+
+    <item*|Connectivity Edge>This part is marked with an X when all parts of
+    the shape are connected via an edge or a face of the voxel
+
+    <item*|Connectivity Corner>This part is marked with an X when all parts
+    of the shape are connected via a corner, an edge or a face
+
+    <item*|Holes>This part of the table contains information about possible
+    holes inside the shapes.
+
+    <item*|Holes 2D>A 2D hole is a hole in the shape, if the shape would be 2
+    dimensional. So the o-octomino has a 2D hole.
+
+    <item*|Holes 3D>A 3D hole is a completely surrounded region inside a
+    shape.
+  </description-compact>
 
   <section|Tips and Tricks>
 
