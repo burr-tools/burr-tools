@@ -320,8 +320,8 @@
   <section|Concepts and Definitions>
 
   Before we start describing the functions of <name|BurrTools>, let's
-  synchronise our use of vocabulary and explain a few concepts that crucial
-  to the way <name|BurrTools> works.
+  synchronise our use of vocabulary and explain a few concepts that are
+  crucial to the way <name|BurrTools> works.
 
   <subsection|Definitions><label|Definitions>
 
@@ -336,9 +336,13 @@
     voxel. Currently <name|BurrTools> can only attach one single colour to
     the voxel as a whole.
 
-    <item*|Spacegrid>The spacegrid defines the shape and orientation of the
-    voxels. Right now there are 2 space grids available in <name|BurrTools>:
-    cubes and prisms with a equilateral triangle as base.
+    <item*|Spacegrid>The spacegrid defines the shape and orientation and
+    arrangement of the voxels. Right now there are 2 space grids available in
+    <name|BurrTools>: cubes and prisms with a equilateral triangle as base.
+    Spacegrids are always fixed. That means that a voxel in a certain
+    position will always have the same shape and orientation. So a spacegrid
+    defining, for example, all penrose patters is not possible because this
+    is not a fixed pattern.
 
     <item*|Shape>This is a definition of a 3-<no-break>dimensional object.
     Shapes are assembled out of voxels.\ 
@@ -369,7 +373,9 @@
 
     <item*|Identifier>A unique code to identify a shape, colour or problem.
     This consists of an automatically assigned prefix to which a custom name
-    may be added.
+    may be added. The prefix is already unique. It is a letter followed by a
+    number. The letter is different for all items that required identifiers,
+    e.g. it is S for shapes, P for problems and C for colors.
 
     <item*|Assembly>An assembly is a physically possible (meaning the pieces
     do not overlap in space) arrangement of pieces so that the resulting
@@ -399,7 +405,7 @@
   collection of voxels that each can have either one of three different
   states: <em|empty>, <em|fixed> or <em|variable>. Particularly the
   difference between fixed and variable voxels has a great impact on the way
-  the solver works and which solutions are considered to be valid and which
+  the solver works and which assemblies are considered to be valid and which
   are not. Besides that, the validity of solutions can be further restricted
   by imposing colour constraints.\ 
 
@@ -419,18 +425,22 @@
     in the final assembly. This is required for puzzles that have holes in
     <em|undetermined> places (like all the higher level six-piece burrs). All
     voxels that <em|might> be empty <em|<em|<em|<em|must>>>> have the
-    <em|<em|variable>> state in the result shape. The variable state can only
-    be used in <em|<em|result shapes>> and the solver will pop up an error
-    message whenever it encounters a variable state in a normal piece.
+    <em|<em|variable>> state in the result shape. Right now the variable
+    state can only be used in <em|<em|result shapes>> and the solver will pop
+    up an error message whenever it encounters a variable state in a normal
+    piece.<next-line>Later on variable voxels might be used in piece shapes
+    as well to define voxels in the shape that the program might alter to
+    create interesting puzzles.
   </description-compact>
 
-  The question now is: <em|why not always use variable voxels>? This is a
-  matter of speed. When the program tries to find assemblies and encounters a
-  voxel that it is unable to fill with the available shapes it can
-  immediately abort if that voxel has the filled state in the result shape.
-  As the algorithm is instructed that it <em|must> fill this particular voxel
-  but it cannot do so, something is wrong. On the other hand, If the state of
-  that voxel is variable the algorithm knows nothing and has to carry on.
+  The question now is: <em|why not always use variable voxels> in the result
+  shape? This is a matter of speed. When the program tries to find assemblies
+  and encounters a voxel that it is unable to fill with the available shapes
+  it can immediately abort, if that voxel has the filled state in the result
+  shape as the algorithm is instructed that it <em|must> fill this particular
+  voxel but it cannot do so, so something is wrong. On the other hand, if the
+  state of that voxel is variable the algorithm knows nothing and has to
+  carry on.
 
   <subsubsection|Colour Constraints>
 
@@ -477,11 +487,11 @@
     result shape must be filled and which ones may be empty.
 
     <item>The <name|BurrTools> solver doesn't automatically detect multiple
-    identical pieces. You need to specify if a piece is used more than once.
+    identical pieces. You need to specify, if a piece is used more than once.
     If you just copy them the way you do in <name|PuzzleSolver3D> the program
     will find way too many solutions. For example, with Bruce Love's
-    <name|<name|Lovely 18 >Piece Burr> it will find nearly 40,000,000 times
-    as many solutions as there realy are. So be careful.
+    <name|Lovely 18 Piece Burr> it will find nearly 40,000,000 times as many
+    solutions as there realy are. So be careful.
 
     <item><name|BurrTools> allows you to define multiple problems in a single
     session. So you can, for example, save all the <name|Soma Cube> (Piet
@@ -494,8 +504,8 @@
     <item>There is no limit to the number of possible positions for the
     pieces. So it won't happen that <name|BurrTools> complains about too many
     placements. As long as your computer has sufficient memory the program
-    will merrily continue working - even if it would take longer than the
-    universe exists - to complete the search.
+    will merrily continue working -- even if it would take longer than the
+    universe exists -- to complete the search.
 
     <item><name|BurrTools> supports another gridspace besides the cube space
     supported by <name|PuzzleSolver3D>. This allows the design and analysis
