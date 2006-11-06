@@ -1938,18 +1938,18 @@
     interested in the number of solutions and not in the solutions
     themselves.\ 
 
-    <item*|Drop Disassm>When checked the program checks, if the found
-    assembly is disassembable and discards the solution if it is not
-    disassembable. But the disassembly is <em|not> stored, only the assembly
-    and some information <em|about> the disassembly (like its level). This is
-    useful if you have a problem that has many solutions and you want to find
-    the most interesting solutions. Disassemblies take up a lot of memory
-    within the computer so it is useful to just save some information while
-    solving the puzzle and then later on, when everything is finished
-    recalculate the disassemblies for the interesting solutions.
+    <with|font-family|ss|<item*|Drop Disassm>>When checked the program
+    checks, if the found assembly is disassembable and discards the solution
+    if it is not disassembable. But the disassembly is <em|not> stored, only
+    the assembly and some information <em|about> the disassembly (like its
+    level). This is useful if you have a problem that has many solutions and
+    you want to find the most interesting solutions. Disassemblies take up a
+    lot of memory within the computer so it is useful to just save some
+    information while solving the puzzle and then later on, when everything
+    is finished recalculate the disassemblies for the interesting solutions.
 
-    <item*|Sort by>This option lets you choose in which way the found
-    solutions are ordered. There are 3 possibilities:
+    <with|font-family|ss|<item*|Sort by>>This option lets you choose in which
+    way the found solutions are ordered. There are 3 possibilities:
 
     <\enumerate-numeric>
       <item>Unsorted: The solutions are sorted into the list in the order in
@@ -1962,16 +1962,17 @@
       sum of all moves required to completely disassemble the puzzle.
     </enumerate-numeric>
 
-    <item*|Drop>If a puzzle has very many solutions it might not be necessary
-    to save all of them. E.g for polyomino-like puzzles it might be nive to
-    keep just every 1000 of the millions of solutions to have a profile of
-    the possible solutions. Here you can specify every how many-th solution
-    you want to keep. A 1 means you keep every solution, a 100 means you keep
-    the first and the 101st and the 201st and so on.
+    <with|font-family|ss|<item*|Drop>>If a puzzle has very many solutions it
+    might not be necessary to save all of them. E.g for polyomino-like
+    puzzles it might be nive to keep just every 1000 of the millions of
+    solutions to have a profile of the possible solutions. Here you can
+    specify every how many-th solution you want to keep. A 1 means you keep
+    every solution, a 100 means you keep the first and the 101st and the
+    201st and so on.
 
-    <item*|Limit>Limits the number of solutions to be saved. There will never
-    be more than the specified amount of solutions in the list. When the list
-    is full the program has 2 choices:\ 
+    <with|font-family|ss|<item*|Limit>>Limits the number of solutions to be
+    saved. There will never be more than the specified amount of solutions in
+    the list. When the list is full the program has 2 choices:\
 
     <\enumerate-numeric>
       <item>Solutions are sorted: The programs throws away the solutions at
@@ -2219,37 +2220,42 @@
   list.
 
   <\description-compact>
-    <item*|Del All>removes all solutions
+    <with|font-family|ss|<item*|Del All>>removes all solutions
 
-    <item*|Del Before>removes all solution before the currently selected
-    solution. The selected solution is the first one in the list that is not
-    removed
+    <with|font-family|ss|<item*|Del Before>>removes all solution before the
+    currently selected solution. The selected solution is the first one in
+    the list that is not removed
 
-    <item*|Del At>removes the currently selected solution
+    <with|font-family|ss|<item*|Del At>>removes the currently selected
+    solution
 
-    <item*|Del After>removes all solutions behind the currently selected one.
-    The selected on is the last one that is kept
+    <with|font-family|ss|<item*|Del After>>removes all solutions behind the
+    currently selected one. The selected on is the last one that is kept
 
-    <item*|Del w/o DA>remove all solutions that have no disassembly
+    <with|font-family|ss|<item*|Del w/o DA>>remove all solutions that have no
+    disassembly
   </description-compact>
 
   The last row of buttons allow the addition or removal of disassemblies to
   the list of puzzles.
 
   <\description-compact>
-    <item*|D DA>deletes the disassembly of the currently selected solution.
-    THe disassembly is replaced by a something containing only information
-    about the disassembly, so you can still sort the solutions
+    <with|font-family|ss|<item*|D DA>>deletes the disassembly of the
+    currently selected solution. THe disassembly is replaced by a something
+    containing only information about the disassembly, so you can still sort
+    the solutions
 
-    <item*|D A DA>deletes all disassemblies
+    <with|font-family|ss|<item*|D A DA>>deletes all disassemblies
 
-    <item*|A DA>adds the disassembly to the currently selected solution
+    <with|font-family|ss|<item*|A DA>>adds the disassembly to the currently
+    selected solution
 
-    <item*|A A DA>add the disassembly to all solutions. Already existing
-    disassemblies are thrown away
+    <with|font-family|ss|<item*|A A DA>>add the disassembly to all solutions.
+    Already existing disassemblies are thrown away
 
-    <item*|A M DA>add the disassembly to all solutions that do not have one.
-    Solutions that already have a disassembly are left unchanged
+    <with|font-family|ss|<item*|A M DA>>add the disassembly to all solutions
+    that do not have one. Solutions that already have a disassembly are left
+    unchanged
   </description-compact>
 
   <subsection|Visibility of Pieces><label|VisibilityOfPieces>
