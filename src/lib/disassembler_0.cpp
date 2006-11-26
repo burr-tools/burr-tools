@@ -467,6 +467,13 @@ void disassembler_0_c::init_find(node0_c * nd, int piecenumber, voxel_type * pie
   next_pn = piecenumber;
 }
 
+static int max(int a, int b) {
+  if (a > b)
+    return a;
+  else
+    return b;
+}
+
 static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * movement, const int * weights) {
 
   // we only take this new node, when all pieces are either not moved at all
@@ -484,15 +491,18 @@ static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * m
       if (amount != movement[i])
         return 0;
 
-      moveWeight += weights[i];
+      moveWeight = max(moveWeight, weights[i]);
 
     } else {
-      stilWeight += weights[i];
+      stilWeight = max(stilWeight, weights[i]);
     }
   }
 
   node0_c * n = new node0_c(next_pn, searchnode);
 
+  /* we move the group of pieces with the smaller weight or, if both have the same
+   * weight the group with the fewer pieces.
+   */
   if (stilWeight >= moveWeight) {
 
     /* create a new state with the pieces moved */
