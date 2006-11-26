@@ -663,6 +663,15 @@ void voxelDrawer_c::dimStaticPieces(piecePositions_c *shifting) {
 
 void voxelDrawer_c::updateVisibility(PieceVisibility * pcvis) {
 
+  /* savety check, it might be possible to click onto the visibility
+   * selector even if no solution is displayed, e.g. when there is no
+   * solution, if we then have more pieces on the display as there
+   * are blocks in the visibility selector we crash, so if the
+   * number of blocks inside the visibility selector is smaller
+   * than the number of visible voxel spaces, drop out
+   */
+  if (pcvis->blockNumber() < spaceNumber()) return;
+
   for (unsigned int p = 0; p < spaceNumber(); p++) {
 
     switch(pcvis->getVisibility(p)) {
