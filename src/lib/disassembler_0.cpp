@@ -393,13 +393,12 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int ne
           for (int j = 0; j < next_pn; j++)
             if (i != j) {
               int diff = movement[i] - matrix[nd][j + piecenumber * i];
-              if (diff > movement[j]) {
-                if (movement[j] == 0) {
-                  moved_pieces++;
-                  if (moved_pieces > maxPieces)
-                    return false;
-                }
-                movement[j] = diff;
+              if ((diff > 0) && (movement[j] == 0)) {
+                moved_pieces++;
+                if (moved_pieces > maxPieces)
+                  return false;
+
+                movement[j] = nextstep;
                 check[j] = true;
                 finished = false;
               }
@@ -420,13 +419,12 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int ne
           for (int j = 0; j < next_pn; j++)
             if (i != j) {
               int diff = movement[i] - matrix[nd][i + piecenumber * j];
-              if (diff > movement[j]) {
-                if (movement[j] == 0) {
-                  moved_pieces++;
-                  if (moved_pieces > maxPieces)
-                    return false;
-                }
-                movement[j] = diff;
+              if ((diff > 0) && (movement[j] == 0)) {
+                moved_pieces++;
+                if (moved_pieces > maxPieces)
+                  return false;
+
+                movement[j] = nextstep;
                 check[j] = true;
                 finished = false;
               }
@@ -488,8 +486,7 @@ static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * m
       if (amount == 0)
         amount = movement[i];
 
-      if (amount != movement[i])
-        return 0;
+      bt_assert(amount == movement[i]);
 
       moveWeight = max(moveWeight, weights[i]);
 
@@ -618,6 +615,20 @@ static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, node0_c * se
 
   // if the new node is equal to n0 or n1, exit
   if (!different0 || !different1) return 0;
+
+  // check, if the amounts differ, if they do return 0;
+  int amount = 0;
+
+  for (int i = 0; i < next_pn; i++) {
+    if (movement[i]) {
+      if (amount == 0)
+        amount = movement[i];
+
+      if (amount != movement[i]) {
+        return 0;
+      }
+    }
+  }
 
   return newNode(next_pn, nextdir, searchnode, movement, weights);
 }
