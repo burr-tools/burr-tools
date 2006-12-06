@@ -89,16 +89,16 @@ public:
     return refcount == 0;
   }
 
-  unsigned long hash(void) const {
-    unsigned long h = 0x1fe3b3c;
+  unsigned int hash(void) const {
+    unsigned int h = 0x17fe3b3c;
 
     for (int i = 1; i < piecenumber; i++) {
-      h += (dx[i]-dx[0]) * 0x5;
-      h *= 13;
-      h += (dy[i]-dy[0]) * 0x3a;
-      h *= 19;
-      h += (dz[i]-dz[0]) * 0x13;
-      h *= 11;
+      h += (dx[i]-dx[0]);
+      h *= 1343;
+      h += (dy[i]-dy[0]);
+      h *= 923;
+      h += (dz[i]-dz[0]);
+      h *= 113;
     }
 
     return h;
