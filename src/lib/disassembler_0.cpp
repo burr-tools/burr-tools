@@ -191,23 +191,22 @@ class nodeHash {
 
     nodeHash(void) {
 
-      tab_size = 1001;
+      tab_size = 101;
       tab_entries = 0;
 
       tab = new hashNode* [tab_size];
 
-      for (unsigned int i = 0; i < tab_size; i++)
-        tab[i] = 0;
+      memset(tab, 0, tab_size*sizeof(hashNode*));
     }
 
     ~nodeHash(void) {
-      clear();
+      clear(false);
 
       delete [] tab;
     }
 
     /* delete all nodes and empty table for new usage */
-    void clear(void) {
+    void clear(bool reset = true) {
       for (unsigned int i = 0; i < tab_size; i++) {
         while (tab[i]) {
           hashNode * n = tab[i];
@@ -220,10 +219,10 @@ class nodeHash {
         }
       }
 
-      for (unsigned int i = 0; i < tab_size; i++)
-        tab[i] = 0;
-
-      tab_entries = 0;
+      if (reset) {
+        memset(tab, 0, tab_size*sizeof(hashNode*));
+        tab_entries = 0;
+      }
     }
 
     /* add a new node  returns true, if the given node has already been
@@ -244,12 +243,34 @@ class nodeHash {
 
       /* node not in table, insert */
 
-      tab_entries++;
-
       hn = new hashNode;
       hn->dat = n;
       hn->next = tab[h];
       tab[h] = hn;
+
+      tab_entries++;
+      if (tab_entries > tab_size) {
+        // rehash
+
+        unsigned long new_size = tab_size * 2 + 1;
+
+        hashNode ** new_tab = new hashNode* [new_size];
+        memset(new_tab, 0, new_size*sizeof(hashNode*));
+
+        for (unsigned int i = 0; i < tab_size; i++) {
+          while (tab[i]) {
+            hashNode * n = tab[i];
+            tab[i] = n->next;
+            unsigned long h = n->dat->hash() % new_size;
+            n->next = new_tab[h];
+            new_tab[h] = n;
+          }
+        }
+
+        delete[] tab;
+        tab = new_tab;
+        tab_size = new_size;
+      }
 
       return false;
     }
