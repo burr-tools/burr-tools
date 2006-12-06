@@ -564,44 +564,51 @@ static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, node0_c * se
   int adder0, adder1;
   adder0 = adder1 = 0;
 
-  int d0, d1;
+  int diff;
 
   // first find out, for both nodes, if they are positive or negative movement nodes
   // this can happen because of the weights that we have negative movement even though
   // we are right now positive axis and also the other way around
   for (int i = 0; i < next_pn; i++) {
     switch(nextdir) {
-      case 0:
-        d0 = n0->getX(i) - searchnode->getX(i);
-        d1 = n1->getX(i) - searchnode->getX(i);
-        break;
-      case 1:
-        d0 = - (n0->getX(i) - searchnode->getX(i));
-        d1 = - (n1->getX(i) - searchnode->getX(i));
-        break;
-      case 2:
-        d0 = n0->getY(i) - searchnode->getY(i);
-        d1 = n1->getY(i) - searchnode->getY(i);
-        break;
-      case 3:
-        d0 = - (n0->getY(i) - searchnode->getY(i));
-        d1 = - (n1->getY(i) - searchnode->getY(i));
-        break;
-      case 4:
-        d0 = n0->getZ(i) - searchnode->getZ(i);
-        d1 = n1->getZ(i) - searchnode->getZ(i);
-        break;
-      case 5:
-        d0 = - (n0->getZ(i) - searchnode->getZ(i));
-        d1 = - (n1->getZ(i) - searchnode->getZ(i));
-        break;
+      case 0: diff = searchnode->getX(i) - n0->getX(i); break;
+      case 1: diff = n0->getX(i) - searchnode->getX(i); break;
+      case 2: diff = searchnode->getY(i) - n0->getY(i); break;
+      case 3: diff = n0->getY(i) - searchnode->getY(i); break;
+      case 4: diff = searchnode->getZ(i) - n0->getZ(i); break;
+      case 5: diff = n0->getZ(i) - searchnode->getZ(i); break;
       default:
         bt_assert(0);
         break;
     }
-    if (-d0 > adder0) adder0 = -d0;
-    if (-d1 > adder1) adder1 = -d1;
+
+    if (diff > 0) {
+      adder0 = diff;
+      break;
+    }
   }
+
+  for (int i = 0; i < next_pn; i++) {
+    switch(nextdir) {
+      case 0: diff = searchnode->getX(i) - n1->getX(i); break;
+      case 1: diff = n1->getX(i) - searchnode->getX(i); break;
+      case 2: diff = searchnode->getY(i) - n1->getY(i); break;
+      case 3: diff = n1->getY(i) - searchnode->getY(i); break;
+      case 4: diff = searchnode->getZ(i) - n1->getZ(i); break;
+      case 5: diff = n1->getZ(i) - searchnode->getZ(i); break;
+      default:
+        bt_assert(0);
+        break;
+    }
+
+    if (diff > 0) {
+      adder1 = diff;
+      break;
+    }
+  }
+
+  int amount = 0;
+  int d0, d1;
 
   for (int i = 0; i < next_pn; i++) {
 
@@ -629,25 +636,17 @@ static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, node0_c * se
     movement[i] = (d0 > d1) ? d0 : d1;
     different0 |= (movement[i] != d0);
     different1 |= (movement[i] != d1);
-    if (movement[i]) moved++;
+    if (movement[i]) {
+      moved++;
+      if (amount == 0)
+        amount = movement[i];
+      else if (movement[i] != amount)
+        return 0;
+    }
   }
 
   // if the new node is equal to n0 or n1, exit
   if (!different0 || !different1) return 0;
-
-  // check, if the amounts differ, if they do return 0;
-  int amount = 0;
-
-  for (int i = 0; i < next_pn; i++) {
-    if (movement[i]) {
-      if (amount == 0)
-        amount = movement[i];
-
-      if (amount != movement[i]) {
-        return 0;
-      }
-    }
-  }
 
   return newNode(next_pn, nextdir, searchnode, movement, weights);
 }
