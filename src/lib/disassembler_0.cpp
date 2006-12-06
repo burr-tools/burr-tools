@@ -706,7 +706,18 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
           // nodes with the same step and if that leads to valid new nodes
           // we also need to return those
 
+          // but first we check, if we have this node already found (maybe via a merger)
+          // and if so we delete it
+          for (unsigned int i = 0; i < nodes.size(); i++)
+            if (*n == *(nodes[i])) {
+              delete n;
+              n = 0;
+              break;
+            }
+
+          // if the node is still valid save it and do a merger with all known nodes
           if (n) {
+
             nodes.push_back(n);
 
             nextstate = 99;
@@ -749,6 +760,17 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
 
         if (state99piece < state99piece2) {
           n = newNodeMerge(nodes[state99piece], nodes[state99piece2], searchnode, next_pn, nextdir, movement, weights);
+
+          // if the node is valid check if we already know that node, if so
+          // delte it
+          if (n) {
+            for (unsigned int i = 0; i < nodes.size(); i++)
+              if (*n == *(nodes[i])) {
+                delete n;
+                n = 0;
+                break;
+              }
+          }
 
           if (n) nodes.push_back(n);
 
