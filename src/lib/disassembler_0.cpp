@@ -170,6 +170,11 @@ public:
   const node0_c * getComefrom(void) const {
     return comefrom;
   }
+
+  /* for the links in the hashtable we use this
+   * pointer
+   */
+  node0_c * next;
 };
 
 /* this is a hashtable that stores nodes */
@@ -180,23 +185,18 @@ class nodeHash {
     unsigned long tab_size;
     unsigned long tab_entries;
 
-    typedef struct hashNode {
-      node0_c * dat;
-      hashNode * next;
-    } hashNode;
-
-    hashNode ** tab;
+    node0_c ** tab;
 
   public:
 
     nodeHash(void) {
 
-      tab_size = 101;
+      tab_size = 11;
       tab_entries = 0;
 
-      tab = new hashNode* [tab_size];
+      tab = new node0_c* [tab_size];
 
-      memset(tab, 0, tab_size*sizeof(hashNode*));
+      memset(tab, 0, tab_size*sizeof(node0_c*));
     }
 
     ~nodeHash(void) {
@@ -209,18 +209,16 @@ class nodeHash {
     void clear(bool reset = true) {
       for (unsigned int i = 0; i < tab_size; i++) {
         while (tab[i]) {
-          hashNode * n = tab[i];
+          node0_c * n = tab[i];
           tab[i] = n->next;
 
-          if (n->dat->decRefCount())
-            delete n->dat;
-
-          delete n;
+          if (n->decRefCount())
+            delete n;
         }
       }
 
       if (reset) {
-        memset(tab, 0, tab_size*sizeof(hashNode*));
+        memset(tab, 0, tab_size*sizeof(node0_c*));
         tab_entries = 0;
       }
     }
@@ -232,10 +230,10 @@ class nodeHash {
 
       unsigned long h = n->hash() % tab_size;
 
-      hashNode * hn = tab[h];
+      node0_c * hn = tab[h];
 
       while (hn) {
-        if (*(hn->dat) == *n)
+        if (*hn == *n)
           return true;
 
         hn = hn->next;
@@ -243,25 +241,23 @@ class nodeHash {
 
       /* node not in table, insert */
 
-      hn = new hashNode;
-      hn->dat = n;
-      hn->next = tab[h];
-      tab[h] = hn;
+      n->next = tab[h];
+      tab[h] = n;
 
       tab_entries++;
       if (tab_entries > tab_size) {
         // rehash
 
-        unsigned long new_size = tab_size * 2 + 1;
+        unsigned long new_size = tab_size * 4 + 1;
 
-        hashNode ** new_tab = new hashNode* [new_size];
-        memset(new_tab, 0, new_size*sizeof(hashNode*));
+        node0_c ** new_tab = new node0_c* [new_size];
+        memset(new_tab, 0, new_size*sizeof(node0_c*));
 
         for (unsigned int i = 0; i < tab_size; i++) {
           while (tab[i]) {
-            hashNode * n = tab[i];
+            node0_c * n = tab[i];
             tab[i] = n->next;
-            unsigned long h = n->dat->hash() % new_size;
+            unsigned long h = n->hash() % new_size;
             n->next = new_tab[h];
             new_tab[h] = n;
           }
@@ -279,10 +275,10 @@ class nodeHash {
     bool contains(node0_c * n) {
       unsigned long h = n->hash() % tab_size;
 
-      hashNode * hn = tab[h];
+      node0_c * hn = tab[h];
 
       while (hn) {
-        if (*(hn->dat) == *n)
+        if (*hn == *n)
           return true;
 
         hn = hn->next;
