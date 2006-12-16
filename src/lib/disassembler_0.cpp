@@ -322,46 +322,106 @@ void disassembler_0_c::prepare(int pn, voxel_type * pieces, node0_c * searchnode
 
 void disassembler_0_c::prepare2(int pn) {
 
+  /* having a look at this algorithm in more detail
+   * it comes out that the first pass has lots to do, the 2nd pass
+   * is much cheaper (usually a few more corrections sometimes
+   * event zero) and then it finished
+   *
+   * so I change this: alsways look, if a change done leads to other necessary
+   * changes, and only if that is the case do another loop
+   */
+
   /* second part of Bills algorithm. */
-  bool again;
 
-  for (int d = 0; d < 3; d++)
+  unsigned int again = 0;
+
+  for (int d = 0; d < 3; d++) {
     do {
+      again = 0;
 
-      again = false;
+/*
+      // this is just for commentaty reasons it show the same algorithmus as below
+      // just a bit more understandable
 
-      int * pos2 = matrix[d];     // j + piecenumber * k
-      int * pos3 = matrix[d];     // i + piecenumber * k
+      for (int y = 0; y < pn; y++)
+        for (int x = 0; x < pn; x++) {
+          int min = matrix[d][x] + matrix[d][y*piecenumber];
 
-      for (int k = 0; k < pn; k++) {
-
-        int * pos1 = matrix[d];   // i + piecenumber * j
-
-        for (int j = 0; j < pn; j++) {
-
-          for (int i = 0; i < pn; i++) {
-
-            int l = *pos1 + *pos2;
-
-            if (*pos3 > l) {
-              *pos3 = l;
-              again = true;
-            }
-
-            pos3++;
-            pos1++;
+          for (int i = 1; i < pn; i++) {
+            int l = matrix[d][x + i*piecenumber] + matrix[d][i + y*piecenumber];
+            if (l < min) min = l;
           }
 
-          pos1 += piecenumber - pn;
+          if (min < matrix[d][x + y*piecenumber]) {
+            matrix[d][x + y*piecenumber] = min;
+            if (!again) {
+              for (int i = 0; i < y; i++)
+                if (min + matrix[d][y + i*piecenumber] < matrix[d][x + i*piecenumber]) {
+                  again = true;
+                  break;
+                }
+
+              if (!again)
+                for (int i = 0; i < x; i++)
+                  if (matrix[d][i + x*piecenumber] + min < matrix[d][i + y*piecenumber]) {
+                    again = true;
+                    break;
+                  }
+          }
+        }
+*/
+
+#if 1
+      int * pos1 = matrix[d];           // y * piecenumber;
+      int idx, i;
+
+      for (int y = 0; y < pn; y++) {
+        int * pos2 = matrix[d];           // x
+
+        for (int x = 0; x < pn; x++) {
+          int min = *pos2 + *pos1;
+
+          for (i = 1, idx = piecenumber; i < pn; i++, idx += piecenumber) {
+            int l = pos2[idx] + pos1[i];
+            if (l < min) min = l;
+          }
+
+          if (min < pos1[x]) {
+            pos1[x] = min;
+
+            if (!again) {
+
+              int * pos3 = matrix[d];
+
+              for (int i = 0; i < y; i++) {
+                if (min + pos3[y] < pos3[x]) {
+                  again = true;
+                  break;
+                }
+                pos3 += piecenumber;
+              }
+
+              if (!again) {
+
+                pos3 = matrix[d] + x*piecenumber;
+
+                for (int i = 0; i < x; i++)
+                  if (pos3[i] + min < pos1[i]) {
+                    again = true;
+                    break;
+                  }
+              }
+            }
+          }
           pos2++;
-          pos3 -= pn;
         }
 
-        pos2 += piecenumber - pn;
-        pos3 += piecenumber;
+        pos1 += piecenumber;
       }
+#endif
 
-    } while (again);
+    } while (again > 0);
+  }
 }
 
 /*
