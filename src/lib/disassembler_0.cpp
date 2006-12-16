@@ -25,6 +25,7 @@
 #include "assembly.h"
 
 #include <queue>
+#include <vector>
 
 /* node is used to build the search tree for the breadth first search of the
  * state tree each node contains the position of all the pieces relative
