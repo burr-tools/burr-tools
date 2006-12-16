@@ -476,26 +476,48 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int ne
   bool finished;
   int nd = nextdir >> 1;
 
+  // the idea here is the following, if we want to move
+  // a piece the matrix tells us if we can do that with respecto to
+  // another piece, if we can't that other piece must be moved as well
+  // and with that new moved piece we need to check that piece, too
+  //
+  // the comments are only in the first part the second is the same
+  // just for the other directions
   if (nextdir & 1) {
 
     do {
 
       finished = true;
 
+      // go over all pieces
       for (int i = 0; i < next_pn; i++)
+        // if the piece needs to be checked
         if (check[i]) {
+          // check it against all other pieces
           for (int j = 0; j < next_pn; j++)
+            // if it is another piece that is still stationary (if it is already
+            // moving it moves by the same amount as the other piece, so there
+            // will be no problems here
             if ((i != j) && (movement[j] == 0)) {
-              if ((movement[i] - matrix[nd][j + piecenumber * i]) > 0) {
+              // if the requested movement is more than the matrix alows
+              // we must also move the new piece
+              if (movement[i] > matrix[nd][j + piecenumber * i]) {
+                // count the number of moved pieces, if there are more
+                // than halve, we bail out because it doesn't make sense
+                // to move more than that amount
                 moved_pieces++;
                 if (moved_pieces > maxPieces)
                   return false;
 
+                // to we move that new piece by the same amount
+                // as the first piece and we also need to check
+                // that new piece
                 movement[j] = nextstep;
                 check[j] = true;
                 finished = false;
               }
             }
+          // the current piece is now checked, so we don't need to do that again
           check[i] = false;
         }
 
@@ -511,7 +533,7 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int ne
         if (check[i]) {
           for (int j = 0; j < next_pn; j++)
             if ((i != j) && (movement[j] == 0)) {
-              if ((movement[i] - matrix[nd][i + piecenumber * j]) > 0) {
+              if (movement[i] > matrix[nd][i + piecenumber * j]) {
                 moved_pieces++;
                 if (moved_pieces > maxPieces)
                   return false;
