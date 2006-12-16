@@ -54,9 +54,16 @@ private:
    */
   unsigned int refcount;
 
+  /* with regard to the parent node this node defines a movement
+   * of a set of pieces along a certain axis by a certain amount,
+   * because this information is required often, we save it in here
+   */
+  int dir;    // the interpretation of dir is up to the user, but is the same ax nextdir
+  int amount;
+
 public:
 
-  node0_c(int pn, node0_c * comf) : comefrom(comf), piecenumber(pn), refcount(1) {
+  node0_c(int pn, node0_c * comf, int _dir, int _amount) : comefrom(comf), piecenumber(pn), refcount(1), dir(_dir), amount(_amount) {
     dx = new int[piecenumber];
     dy = new int[piecenumber];
     dz = new int[piecenumber];
@@ -170,6 +177,15 @@ public:
   const node0_c * getComefrom(void) const {
     return comefrom;
   }
+
+  int getAmount(void) const {
+    return amount;
+  }
+
+  int getDirection(void) const {
+    return dir;
+  }
+
 
   /* for the links in the hashtable we use this
    * pointer
@@ -547,20 +563,15 @@ static int max(int a, int b) {
     return b;
 }
 
-static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * movement, const int * weights) {
+static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * movement, const int * weights, int amount) {
 
   // we only take this new node, when all pieces are either not moved at all
   // or moved by the same amount
-
-  int amount = 0;
   int moveWeight = 0;
   int stilWeight = 0;
 
   for (int i = 0; i < next_pn; i++) {
     if (movement[i]) {
-      if (amount == 0)
-        amount = movement[i];
-
       bt_assert(amount == movement[i]);
 
       moveWeight = max(moveWeight, weights[i]);
@@ -570,141 +581,115 @@ static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * m
     }
   }
 
-  node0_c * n = new node0_c(next_pn, searchnode);
-
-  /* we move the group of pieces with the smaller weight or, if both have the same
-   * weight the group with the fewer pieces.
+  /* we need to invert the movement direction, when the
+   * weight of the currently moved pieces is bigger than
+   * those of stationary pieces
    */
-  if (stilWeight >= moveWeight) {
+  if (stilWeight < moveWeight) {
 
-    /* create a new state with the pieces moved */
+    // stationary pieces become moved, moved piece become stationary
     for (int i = 0; i < next_pn; i++)
-      switch(nextdir) {
-        case 0: n->set(i, searchnode->getX(i) + movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
-        case 1: n->set(i, searchnode->getX(i) - movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
-        case 2: n->set(i, searchnode->getX(i), searchnode->getY(i) + movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
-        case 3: n->set(i, searchnode->getX(i), searchnode->getY(i) - movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
-        case 4: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) + movement[i], searchnode->getTrans(i)); break;
-        case 5: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) - movement[i], searchnode->getTrans(i)); break;
-      }
+      if (movement[i])
+        movement[i] = 0;
+      else
+        movement[i] = amount;
 
-  } else {
-
-    /* here we do the opposite of above, all pieces that are steady in the movement field are moved
-     * by the negative amount and the moving pieces are left untouched
-     */
-    for (int i = 0; i < next_pn; i++)
-      switch(nextdir) {
-        case 0: n->set(i, searchnode->getX(i) + (movement[i]?0:(-amount)), searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
-        case 1: n->set(i, searchnode->getX(i) - (movement[i]?0:(-amount)), searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
-        case 2: n->set(i, searchnode->getX(i), searchnode->getY(i) + (movement[i]?0:(-amount)), searchnode->getZ(i), searchnode->getTrans(i)); break;
-        case 3: n->set(i, searchnode->getX(i), searchnode->getY(i) - (movement[i]?0:(-amount)), searchnode->getZ(i), searchnode->getTrans(i)); break;
-        case 4: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) + (movement[i]?0:(-amount)), searchnode->getTrans(i)); break;
-        case 5: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) - (movement[i]?0:(-amount)), searchnode->getTrans(i)); break;
-      }
+    // and the direction changes to the opposite direction
+    nextdir ^= 1;
   }
+
+  node0_c * n = new node0_c(next_pn, searchnode, nextdir, amount);
+
+  /* create a new state with the pieces moved */
+  for (int i = 0; i < next_pn; i++)
+    switch(nextdir) {
+      case 0: n->set(i, searchnode->getX(i) + movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
+      case 1: n->set(i, searchnode->getX(i) - movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
+      case 2: n->set(i, searchnode->getX(i), searchnode->getY(i) + movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
+      case 3: n->set(i, searchnode->getX(i), searchnode->getY(i) - movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
+      case 4: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) + movement[i], searchnode->getTrans(i)); break;
+      case 5: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) - movement[i], searchnode->getTrans(i)); break;
+    }
 
   return n;
 }
 
 
-/* creates a new node that contains the merged movements of the given 2 nodes */
+/* creates a new node that contains the merged movements of the given 2 nodes
+ * merged movement means that a piece is moved the maximum amount specified in
+ * both nodes. But only one direction is allowed, so if one piece moves this
+ * way and another piece that way 0 i sreturned
+ * the function also returns zero, if the new node would be identical to n1 or n0
+ * also the amount must be identical in both nodes, so if piece a moves 1 unit
+ * in node n0 and andother piece move 2 units in node n1 0 is returned
+ *
+ * */
 static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, node0_c * searchnode, int next_pn, int nextdir, int * movement, const int * weights) {
+
+  // assert that direction are along the same axis
+  bt_assert((nextdir | 1) == (n0->getDirection() | 1));
+  bt_assert((nextdir | 1) == (n1->getDirection() | 1));
+
+  bool invert0 = (nextdir != n0->getDirection());
+  bool invert1 = (nextdir != n1->getDirection());
+
+  // both nodes need to have the same movement amount, if not return 0
+  int amount = n0->getAmount();
+  if (amount != n1->getAmount()) return 0;
 
   /* we need to make sure the new node is different from n0 and n1
    */
   bool different0 = false;
   bool different1 = false;
   int moved = 0;
-
-  int adder0, adder1;
-  adder0 = adder1 = 0;
-
-  int diff;
-
-  // first find out, for both nodes, if they are positive or negative movement nodes
-  // this can happen because of the weights that we have negative movement even though
-  // we are right now positive axis and also the other way around
-  for (int i = 0; i < next_pn; i++) {
-    switch(nextdir) {
-      case 0: diff = searchnode->getX(i) - n0->getX(i); break;
-      case 1: diff = n0->getX(i) - searchnode->getX(i); break;
-      case 2: diff = searchnode->getY(i) - n0->getY(i); break;
-      case 3: diff = n0->getY(i) - searchnode->getY(i); break;
-      case 4: diff = searchnode->getZ(i) - n0->getZ(i); break;
-      case 5: diff = n0->getZ(i) - searchnode->getZ(i); break;
-      default:
-        bt_assert(0);
-        break;
-    }
-
-    if (diff > 0) {
-      adder0 = diff;
-      break;
-    }
-  }
-
-  for (int i = 0; i < next_pn; i++) {
-    switch(nextdir) {
-      case 0: diff = searchnode->getX(i) - n1->getX(i); break;
-      case 1: diff = n1->getX(i) - searchnode->getX(i); break;
-      case 2: diff = searchnode->getY(i) - n1->getY(i); break;
-      case 3: diff = n1->getY(i) - searchnode->getY(i); break;
-      case 4: diff = searchnode->getZ(i) - n1->getZ(i); break;
-      case 5: diff = n1->getZ(i) - searchnode->getZ(i); break;
-      default:
-        bt_assert(0);
-        break;
-    }
-
-    if (diff > 0) {
-      adder1 = diff;
-      break;
-    }
-  }
-
-  int amount = 0;
-  int d0, d1;
+  bool move0, move1;
 
   for (int i = 0; i < next_pn; i++) {
 
-    // calculate the movement of the merged node
+    // calculate the movement of the merged node by first findint out if the
+    // piece has been moved within one node
     switch(nextdir) {
       case 0:
       case 1:
-        d0 = abs(n0->getX(i) - searchnode->getX(i)) + adder0;
-        d1 = abs(n1->getX(i) - searchnode->getX(i)) + adder1;
+        move0 = (n0->getX(i) != searchnode->getX(i)) ^ invert0;
+        move1 = (n1->getX(i) != searchnode->getX(i)) ^ invert1;
         break;
       case 2:
       case 3:
-        d0 = abs(n0->getY(i) - searchnode->getY(i)) + adder0;
-        d1 = abs(n1->getY(i) - searchnode->getY(i)) + adder1;
+        move0 = (n0->getY(i) != searchnode->getY(i)) ^ invert0;
+        move1 = (n1->getY(i) != searchnode->getY(i)) ^ invert1;
         break;
       case 4:
       case 5:
-        d0 = abs(n0->getZ(i) - searchnode->getZ(i)) + adder0;
-        d1 = abs(n1->getZ(i) - searchnode->getZ(i)) + adder1;
+        move0 = (n0->getZ(i) != searchnode->getZ(i)) ^ invert0;
+        move1 = (n1->getZ(i) != searchnode->getZ(i)) ^ invert1;
         break;
       default:
         bt_assert(0);
         break;
     }
-    movement[i] = (d0 > d1) ? d0 : d1;
-    different0 |= (movement[i] != d0);
-    different1 |= (movement[i] != d1);
-    if (movement[i]) {
+
+    // and if it has been moved in one of them, it needs
+    // to be moved in the new node
+    if (move0 || move1) {
+      movement[i] = amount;
       moved++;
-      if (amount == 0)
-        amount = movement[i];
-      else if (movement[i] != amount)
-        return 0;
-    }
+    } else
+      movement[i] = 0;
+
+    // the new node differs from the old one if there was a movement cause by the other node which
+    // was not available in the first one
+    different0 |= (move1 && !move0);
+    different1 |= (move0 && !move1);
   }
+
+  // if no or all pieces are moved, exit, this created degenerated nodes
+  if (moved == 0 || moved == next_pn) return 0;
 
   // if the new node is equal to n0 or n1, exit
   if (!different0 || !different1) return 0;
 
-  return newNode(next_pn, nextdir, searchnode, movement, weights);
+  return newNode(next_pn, nextdir, searchnode, movement, weights, amount);
 }
 
 
@@ -725,7 +710,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
       case 0:
         // check, if a single piece can be removed
         if (checkmovement(1, nextdir, next_pn, nextpiece, 30000))
-          n = newNode(next_pn, nextdir, searchnode, movement, weights);
+          n = newNode(next_pn, nextdir, searchnode, movement, weights, 30000);
 
         nextpiece++;
         if (nextpiece >= next_pn) {
@@ -740,7 +725,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
       case 1:
         // check, if a group of pieces can be removed
         if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, 30000))
-          n = newNode(next_pn, nextdir, searchnode, movement, weights);
+          n = newNode(next_pn, nextdir, searchnode, movement, weights, 30000);
 
         nextpiece++;
         if (nextpiece >= next_pn) {
@@ -756,7 +741,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
       case 2:
         // check, if a single piece can be moved
         if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep)) {
-          n = newNode(next_pn, nextdir, searchnode, movement, weights);
+          n = newNode(next_pn, nextdir, searchnode, movement, weights, nextstep);
 
           // we need to merge the gained node with all already found
           // nodes with the same step and if that leads to valid new nodes
@@ -850,7 +835,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
  */
 static void create_new_params(node0_c * st, node0_c ** n, voxel_type ** pn, int ** nw, int piecenumber, voxel_type * pieces, const int * weights, int part, bool cond) {
 
-  *n = new node0_c(part, 0);
+  *n = new node0_c(part, 0, 0, 0);
   *pn = new voxel_type[part];
   *nw = new int[part];
 
@@ -1182,7 +1167,7 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
   /* create the first node with the start state
    * here all pieces are at position (0; 0; 0)
    */
-  node0_c * start = new node0_c(piecenumber, 0);
+  node0_c * start = new node0_c(piecenumber, 0, 0, 0);
 
   for (unsigned int i = 0; i < piecenumber; i++)
     start->set(i, assembly->getX(i), assembly->getY(i), assembly->getZ(i), assembly->getTransformation(i));
