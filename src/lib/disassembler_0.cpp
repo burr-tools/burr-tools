@@ -62,6 +62,8 @@ private:
   int dir;    // the interpretation of dir is up to the user, but is the same ax nextdir
   int amount;
 
+  unsigned int hashValue;
+
 public:
 
   node0_c(int pn, node0_c * comf, int _dir, int _amount) : comefrom(comf), piecenumber(pn), refcount(1), dir(_dir), amount(_amount) {
@@ -72,6 +74,8 @@ public:
 
     if (comefrom)
       comefrom->refcount++;
+
+    hashValue = 0;
   }
 
   ~node0_c() {
@@ -98,6 +102,9 @@ public:
   }
 
   unsigned int hash(void) const {
+
+    if (hashValue) return hashValue;
+
     unsigned int h = 0x17fe3b3c;
 
     for (int i = 1; i < piecenumber; i++) {
@@ -109,6 +116,7 @@ public:
       h *= 113;
     }
 
+    const_cast<node0_c*>(this)->hashValue = h;
     return h;
   }
 
@@ -153,6 +161,7 @@ public:
     dy[i] = y;
     dz[i] = z;
     trans[i] = tr;
+    hashValue = 0;
   }
 
   /* check if the given piece is at a position outside
@@ -186,7 +195,6 @@ public:
   int getDirection(void) const {
     return dir;
   }
-
 
   /* for the links in the hashtable we use this
    * pointer
