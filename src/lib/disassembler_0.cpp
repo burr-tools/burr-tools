@@ -101,6 +101,10 @@ public:
     return refcount == 0;
   }
 
+  void incRefCount(void) {
+    refcount++;
+  }
+
   unsigned int hash(void) const {
 
     if (hashValue) return hashValue;
@@ -371,7 +375,12 @@ class countingNodeHash {
 
       while (hn) {
         hashNode * hn2 = hn->link;
+
+        if (hn->dat->decRefCount())
+          delete hn->dat;
+
         delete hn;
+
         hn = hn2;
       }
 
@@ -941,6 +950,8 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
 
           } else {
 
+            n->incRefCount();
+
             nextstate = 99;
             state99node = n;
             nodes.initScan();
@@ -987,10 +998,14 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
 
             // if the node is valid check if we already know that node, if so
             // delete it
-            if (n && nodes.insert(n)) {
-              delete n;
-              n = 0;
+            if (n) {
+              if (nodes.insert(n)) {
+                delete n;
+                n = 0;
+              } else
+                n->incRefCount();
             }
+
           } else
             nextstate = state99nextState;
         }
@@ -1114,7 +1129,6 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 
   std::queue<node0_c *> openlist[2];
   nodeHash closed[3];
-  std::vector<node0_c *> deletelist;
 
   int curListFront = 0;
   int newListFront = 1;
@@ -1175,7 +1189,10 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
          * don't delete it right here, but only after the search was finished because
          * the find function still requires the node information
          */
-        deletelist.push_back(st);
+
+        if (st->decRefCount())
+          delete st;
+
         continue;
       }
 
@@ -1261,21 +1278,8 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 
       /* nodes inside the closed hashtables are freed automagically */
 
-      /* the deletelist ist always empty at this place because
-       * it is filled with nodes while examining one node and emptied
-       * when done with one node. The last node examined allowed for
-       * a separation and separations are always found first, so
-       * up to that point we were not able to put anything into the deletelist
-       */
-      bt_assert(deletelist.size() == 0);
-
       return erg;
     }
-
-    /* now we can delete the entries inside the deletelist */
-    for (unsigned int i = 0; i < deletelist.size(); i++)
-      delete deletelist[i];
-    deletelist.clear();
 
     // if the current front is completely checked, open up the new front
     if (openlist[curListFront].empty()) {
