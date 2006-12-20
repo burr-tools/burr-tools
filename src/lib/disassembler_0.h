@@ -44,7 +44,8 @@ private:
   /* these variables are used for the routine that looks
    * for the pieces to move find, checkmovement
    */
-  int nextpiece, nextstep, nextdir, next_pn, nextstate, nextpiece2, state99piece, state99piece2, state99nextState;
+  int nextpiece, nextstep, nextdir, next_pn, nextstate, nextpiece2, state99nextState;
+  node0_c * state99node;
   int * movement;
   bool * check;
 

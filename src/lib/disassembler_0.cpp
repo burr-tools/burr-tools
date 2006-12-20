@@ -314,6 +314,166 @@ class nodeHash {
 
 };
 
+
+
+/* this is a hashtable that stores nodes but is also
+ * alows traversal of all nodes added at a given point in
+ * time, only one such traversal can be active at one time
+ * and the nodes are scanned in the reverse order they
+ * were added
+ */
+class countingNodeHash {
+
+  private:
+
+    unsigned long tab_size;
+    unsigned long tab_entries;
+
+    struct hashNode {
+      node0_c * dat;
+      hashNode * next;
+      hashNode * link;
+    };
+
+    hashNode ** tab;
+    hashNode * linkStart;
+
+    hashNode * scanPtr;
+    bool scanActive;
+
+  public:
+
+    countingNodeHash(void) {
+
+      tab_size = 100;
+      tab_entries = 0;
+
+      tab = new hashNode * [tab_size];
+
+      memset(tab, 0, tab_size*sizeof(hashNode*));
+
+      scanPtr = 0;
+      scanActive = false;
+
+      linkStart = 0;
+    }
+
+    ~countingNodeHash(void) {
+      clear(false);
+
+      delete [] tab;
+    }
+
+    /* delete all nodes and empty table for new usage */
+    void clear(bool reset = true) {
+
+      hashNode * hn = linkStart;
+
+      while (hn) {
+        hashNode * hn2 = hn->link;
+        delete hn;
+        hn = hn2;
+      }
+
+      if (reset) {
+        memset(tab, 0, tab_size*sizeof(hashNode*));
+        tab_entries = 0;
+      }
+
+      linkStart = 0;
+    }
+
+    /* add a new node  returns true, if the given node has already been
+     * in the table, false if the node is inserted
+     */
+    bool insert(node0_c * n) {
+
+      unsigned long h = n->hash() % tab_size;
+
+      hashNode * hn = tab[h];
+
+      while (hn) {
+        if (*(hn->dat) == *n)
+          return true;
+
+        hn = hn->next;
+      }
+
+      /* node not in table, insert */
+
+      hn = new hashNode;
+      hn->dat = n;
+
+      hn->next = tab[h];
+      tab[h] = hn;
+
+      hn->link = linkStart;
+      linkStart = hn;
+
+      tab_entries++;
+      if (tab_entries > tab_size) {
+
+        unsigned long new_size = tab_size * 4 + 1;
+
+        hashNode ** new_tab = new hashNode* [new_size];
+        memset(new_tab, 0, new_size*sizeof(hashNode*));
+
+        for (unsigned int i = 0; i < tab_size; i++) {
+          while (tab[i]) {
+            hashNode * hn = tab[i];
+            tab[i] = hn->next;
+            unsigned long h = hn->dat->hash() % new_size;
+            hn->next = new_tab[h];
+            new_tab[h] = hn;
+          }
+        }
+
+        delete[] tab;
+        tab = new_tab;
+        tab_size = new_size;
+      }
+
+      return false;
+    }
+
+    /* with the following 2 functions it is possible to
+     * scan through all nodes that are currently in the
+     * hashhable, first you call initScan to start
+     * it end then nextScan. This function returns one
+     * node after the other until nothing is left and then
+     * returns 0.
+     * You can add new nodes to the hashtable while a scan
+     * is running. The new nodes will not influence a running
+     * scan, only the nodes that were present when calling initScan
+     * will be returned.
+     * The nodes will be returned in the revers order they were inserted
+     */
+    void initScan(void) {
+
+      bt_assert(!scanActive);
+
+      scanPtr = linkStart;
+      scanActive = true;
+    }
+
+    const node0_c * nextScan(void) {
+
+      bt_assert(scanActive);
+
+      if (!scanPtr) {
+        scanActive = false;
+        return 0;
+
+      } else {
+
+        node0_c * res = scanPtr->dat;
+        scanPtr = scanPtr->link;
+
+        return res;
+      }
+    }
+};
+
 /* so, this isn't the function as described by Bill but rather a
  * bit optimized. For each pair of 2 different pieces and for
  * each of the three dimensions I do the following:
@@ -732,7 +892,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
 
   node0_c * n = 0;
 
-  static std::vector<node0_c *> nodes;
+  static countingNodeHash nodes;
 
   // repeat until we either find a movement or have checked everything
   while (!n && ((nextstate < 3) || (nextstate == 99))) {
@@ -830,25 +990,21 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
         // one another the code above alone wont find movements where both pieces are moved at
         // the same time but rather one after the other
 
-        if (state99piece < state99piece2) {
-          n = newNodeMerge(nodes[state99piece], nodes[state99piece2], searchnode, next_pn, nextdir, movement, weights);
+        {
+          const node0_c * nd2 = nodes.nextScan();
 
-          // if the node is valid check if we already know that node, if so
-          // delte it
-          if (n) {
-            for (unsigned int i = 0; i < nodes.size(); i++)
-              if (*n == *(nodes[i])) {
-                delete n;
-                n = 0;
-                break;
-              }
-          }
+          if (nd2) {
+            n = newNodeMerge(state99node, nd2, searchnode, next_pn, nextdir, movement, weights);
 
-          if (n) nodes.push_back(n);
-
-          state99piece++;
-        } else
-          nextstate = state99nextState;
+            // if the node is valid check if we already know that node, if so
+            // delete it
+            if (n && nodes.insert(n)) {
+              delete n;
+              n = 0;
+            }
+          } else
+            nextstate = state99nextState;
+        }
 
         break;
 
