@@ -556,7 +556,6 @@ void disassembler_0_c::prepare2(int pn) {
         }
 */
 
-#if 1
       int * pos1 = matrix[d];           // y * piecenumber;
       int idx, i;
 
@@ -603,8 +602,6 @@ void disassembler_0_c::prepare2(int pn) {
 
         pos1 += piecenumber;
       }
-#endif
-
     } while (again > 0);
   }
 }
@@ -730,15 +727,13 @@ void disassembler_0_c::init_find(node0_c * nd, int piecenumber, voxel_type * pie
    * are not moved. So a one in column 2 row 4 means that piece nr. 2 can
    * be moved one unit it we fix piece nr. 4
    *
-   * the algorithm used here is describes in Bill Cuttlers booklet
+   * the algorithm used here is describes in Bill Cutlers booklet
    * "Computer Analysis of All 6 Piece Burrs"
    */
   prepare(piecenumber, pieces, nd);
   prepare2(piecenumber);
 
-  /* first we try to remove the piece completely by specifying
-   * a very large distance, if it is possible to move this piece that
-   * far, it is probably removed
+  /* initialize the state machine for the find routine
    */
   nextdir = 0;
   nextpiece = 0;
@@ -756,8 +751,8 @@ static int max(int a, int b) {
 
 static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * movement, const int * weights, int amount) {
 
-  // we only take this new node, when all pieces are either not moved at all
-  // or moved by the same amount
+  // calculate the weight of the all the stationary and all the
+  // moving pieces
   int moveWeight = 0;
   int stilWeight = 0;
 
@@ -813,8 +808,7 @@ static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * m
  * the function also returns zero, if the new node would be identical to n1 or n0
  * also the amount must be identical in both nodes, so if piece a moves 1 unit
  * in node n0 and andother piece move 2 units in node n1 0 is returned
- *
- * */
+ */
 static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, node0_c * searchnode, int next_pn, int nextdir, int * movement, const int * weights) {
 
   // assert that direction are along the same axis
@@ -837,7 +831,7 @@ static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, node0_c * se
 
   for (int i = 0; i < next_pn; i++) {
 
-    // calculate the movement of the merged node by first findint out if the
+    // calculate the movement of the merged node by first finding out if the
     // piece has been moved within one node
     switch(nextdir) {
       case 0:
@@ -1271,6 +1265,15 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
        */
 
       /* nodes inside the closed hashtables are freed automagically */
+
+      /* the deletelist ist always empty at this place because
+       * it is filled with nodes while examining one node and emptied
+       * when done with one node. The last node examined allowed for
+       * a separation and separations are always found first, so
+       * up to that point we were not able to put anything into the deletelist
+       */
+      bt_assert(deletelist.size() == 0);
+
       return erg;
     }
 
