@@ -297,7 +297,7 @@ class nodeHash {
     }
 
     /* check, if a node is in the map */
-    bool contains(node0_c * n) {
+    bool contains(const node0_c * n) const {
       unsigned long h = n->hash() % tab_size;
 
       node0_c * hn = tab[h];
