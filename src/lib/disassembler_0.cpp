@@ -927,6 +927,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
         // check, if a single piece can be moved
         if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep)) {
           n = newNode(next_pn, nextdir, searchnode, movement, weights, nextstep);
+          bt_assert(n);
 
           // we need to merge the gained node with all already found
           // nodes with the same step and if that leads to valid new nodes
@@ -934,21 +935,15 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
 
           // but first we check, if we have this node already found (maybe via a merger)
           // and if so we delete it
-          for (unsigned int i = 0; i < nodes.size(); i++)
-            if (*n == *(nodes[i])) {
-              delete n;
-              n = 0;
-              break;
-            }
+          if (nodes.insert(n)) {
+            delete n;
+            n = 0;
 
-          // if the node is still valid save it and do a merger with all known nodes
-          if (n) {
-
-            nodes.push_back(n);
+          } else {
 
             nextstate = 99;
-            state99piece = 0;
-            state99piece2 = nodes.size()-1;
+            state99node = n;
+            nodes.initScan();
             state99nextState = 2;
           }
 
