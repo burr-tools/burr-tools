@@ -409,6 +409,7 @@ class countingNodeHash {
       }
 
       /* node not in table, insert */
+      n->incRefCount();
 
       hn = new hashNode;
       hn->dat = n;
@@ -950,8 +951,6 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
 
           } else {
 
-            n->incRefCount();
-
             nextstate = 99;
             state99node = n;
             nodes.initScan();
@@ -998,12 +997,9 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
 
             // if the node is valid check if we already know that node, if so
             // delete it
-            if (n) {
-              if (nodes.insert(n)) {
-                delete n;
-                n = 0;
-              } else
-                n->incRefCount();
+            if (n && nodes.insert(n)) {
+              delete n;
+              n = 0;
             }
 
           } else
