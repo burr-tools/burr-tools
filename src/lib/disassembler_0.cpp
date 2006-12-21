@@ -898,7 +898,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
   static countingNodeHash nodes;
 
   // repeat until we either find a movement or have checked everything
-  while (!n && ((nextstate < 3) || (nextstate == 99))) {
+  while (!n) {
 
     switch (nextstate) {
       case 0:
@@ -971,7 +971,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
             nextdir++;
             nodes.clear();
             if (nextdir >= 6) {
-              nextstate ++;
+              return 0;
             }
           }
         }
@@ -1014,7 +1014,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
 
       default:
         // endstate, do nothing
-        break;
+        return 0;
     }
   }
 
