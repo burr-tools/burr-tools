@@ -1998,6 +1998,20 @@ void mainWindow_c::updateInterface(void) {
       else
         BtnPrepare->deactivate();
 
+      BtnSrtFind->activate();
+      BtnSrtLevel->activate();
+      BtnSrtMoves->activate();
+      BtnDelAll->activate();
+      BtnDelBefore->activate();
+      BtnDelAt->activate();
+      BtnDelAfter->activate();
+      BtnDelDisasm->activate();
+      BtnDisasmDel->activate();
+      BtnDisasmDelAll->activate();
+      BtnDisasmAdd->activate();
+      BtnDisasmAddAll->activate();
+      BtnDisasmAddMissing->activate();
+
     } else {
 
       // no valid problem available, hide all information
@@ -2017,6 +2031,20 @@ void mainWindow_c::updateInterface(void) {
       BtnPlacement->deactivate();
       BtnStep->deactivate();
       BtnPrepare->deactivate();
+
+      BtnSrtFind->deactivate();
+      BtnSrtLevel->deactivate();
+      BtnSrtMoves->deactivate();
+      BtnDelAll->deactivate();
+      BtnDelBefore->deactivate();
+      BtnDelAt->deactivate();
+      BtnDelAfter->deactivate();
+      BtnDelDisasm->deactivate();
+      BtnDisasmDel->deactivate();
+      BtnDisasmDelAll->deactivate();
+      BtnDisasmAdd->deactivate();
+      BtnDisasmAddAll->deactivate();
+      BtnDisasmAddMissing->deactivate();
     }
 
 
@@ -2095,12 +2123,28 @@ void mainWindow_c::updateInterface(void) {
         BtnCont->deactivate();
         BtnStop->activate();
 
+        // we can not edit solutions for a currently solved problem
+        BtnSrtFind->deactivate();
+        BtnSrtLevel->deactivate();
+        BtnSrtMoves->deactivate();
+        BtnDelAll->deactivate();
+        BtnDelBefore->deactivate();
+        BtnDelAt->deactivate();
+        BtnDelAfter->deactivate();
+        BtnDelDisasm->deactivate();
+        BtnDisasmDel->deactivate();
+        BtnDisasmDelAll->deactivate();
+        BtnDisasmAdd->deactivate();
+        BtnDisasmAddAll->deactivate();
+        BtnDisasmAddMissing->deactivate();
+
       } else {
 
         // all other problems can do nothing
         BtnStart->deactivate();
         BtnCont->deactivate();
         BtnStop->deactivate();
+
       }
 
     } else {
