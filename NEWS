@@ -16,6 +16,16 @@
   priority when they get moved. This way you can make the box fixed for
   the disassembly animation
 
+- new disassembler, for complex disassemblies it is quite a bit faster and
+  consumes less memory. But this will probably not show in most puzzles
+
+- new datastructure for the disassembler. This structur should make the
+  disassembler a bit faster
+
+- new disassembly animation. This is used in the image export to produce
+  image sequences where the action always takes place in the middle and
+  thus is much better visible
+
 ------------- Version 0.1.9
 
 - the fade out of pieces that are removed in the assembly animation can be
