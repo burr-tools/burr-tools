@@ -1189,10 +1189,9 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
         /* the new node is already here. We have found a new longer way to that
          * node, so we can safely delete the new node and continue to the next
          *
-         * don't delete it right here, but only after the search was finished because
-         * the find function still requires the node information
+         * we use the reference count mechanism of the node class, so if the node
+         * isn't use anywhere else, we can delete it here
          */
-
         if (st->decRefCount())
           delete st;
 
