@@ -38,6 +38,7 @@
 #include <FL/Fl_Int_Input.h>
 #include <FL/Fl_Double_Window.h>
 #include <FL/Fl_Tabs.h>
+#include <FL/Fl_Menu_Bar.h>
 
 #include <vector>
 
@@ -159,7 +160,7 @@ class layouter_c : public Fl_Group, public layoutable_c {
 
   virtual void resize(int x, int y, int w, int h);
 
-  layouter_c(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Group(0, 0, 0, 0), layoutable_c(x, y, w, h) {}
+  layouter_c(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Group(0, 0, 100, 100), layoutable_c(x, y, w, h) {}
 };
 
 /* now some basic widgets made layoutable */
@@ -228,7 +229,7 @@ class LFl_Check_Button : public Fl_Check_Button, public layoutable_c {
     *width = 0;
     fl_font(labelfont(), labelsize());
     fl_measure(label(), *width, *height);
-    *width += 18;
+    *width += 20;
     *height += 4;
   }
 };
@@ -412,10 +413,11 @@ class LFl_Roller : public Fl_Roller, public layoutable_c {
 class LFl_Double_Window : public Fl_Double_Window {
 
   layouter_c * lay;
+  bool res;
 
   public:
 
-  LFl_Double_Window(void) : Fl_Double_Window(10, 10) {
+  LFl_Double_Window(bool resizab) : Fl_Double_Window(10, 10), res(resizab) {
     lay = new layouter_c();
     lay->resize(0, 0, 10, 10);
     resizable(lay);
@@ -425,7 +427,10 @@ class LFl_Double_Window : public Fl_Double_Window {
     int wy, hy;
     lay->getMinSize(&wy, &hy);
 
-    size_range(wy, hy, wy, hy);
+    if (res)
+      size_range(wy, hy, 0, 0);
+    else
+      size_range(wy, hy, wy, hy);
 
     size(wy, hy);
 
@@ -441,6 +446,18 @@ class LFl_Tabs : public Fl_Tabs, public layoutable_c {
 
     virtual void getMinSize(int *width, int *height) const;
     virtual void resize(int x, int y, int w, int h);
+};
+
+class LFl_Menu_Bar : public Fl_Menu_Bar, public layoutable_c {
+
+  public:
+
+    LFl_Menu_Bar(int x, int y, int w, int h) : Fl_Menu_Bar(0, 0, 100, 100), layoutable_c(x, y, w, h) { }
+
+    virtual void getMinSize(int *width, int *height) const {
+      *width = 30;
+      *height = 25;
+    }
 };
 
 #endif

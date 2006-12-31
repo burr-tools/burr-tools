@@ -167,7 +167,7 @@ class gridTypeInfos_c {
 
 static void cb_WindowButton_stub(Fl_Widget *o, void *v) { ((Fl_Double_Window*)(v))->hide(); }
 
-gridTypeParameterWindow_c::gridTypeParameterWindow_c(guiGridType_c * ggt) {
+gridTypeParameterWindow_c::gridTypeParameterWindow_c(guiGridType_c * ggt) : LFl_Double_Window(false) {
   label("Set parameters for grid type");
 
   ggt->getConfigurationDialog(0, 0, 1, 1);
@@ -191,7 +191,7 @@ void gridTypeSelectorWindow_c::select_cb(void) {
   }
 }
 
-gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) {
+gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) : LFl_Double_Window(false) {
 
   /* for each grid type available we need to create an instance
    * here and put it into a gridtypeinfo class and into the

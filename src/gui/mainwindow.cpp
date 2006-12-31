@@ -30,6 +30,8 @@
 #include "BlockList.h"
 #include "Images.h"
 
+#include "LFl_Tile.h"
+
 #include "../config.h"
 
 #include "../lib/ps3dloader.h"
@@ -1554,7 +1556,7 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
 };
 
 void mainWindow_c::show(int argn, char ** argv) {
-  Fl_Double_Window::show();
+  LFl_Double_Window::show();
 
   int arg = 1;
 
@@ -2409,35 +2411,19 @@ int mainWindow_c::handle(int event) {
 #define SZ_SEPARATOR_Y 10
 #define SZ_TOOLTAB_Y (115+20)
 
-void mainWindow_c::CreateShapeTab(int x, int y, int w, int h) {
+void mainWindow_c::CreateShapeTab(void) {
 
-  TabPieces = new Fl_Group(x, y, w, h, "Entities");
+  TabPieces = new layouter_c();
+  TabPieces->label("Entities");
   TabPieces->tooltip("Edit shapes");
   TabPieces->clear_visible_focus();
 
-  x += SZ_GAP; y++;  w -= 2*SZ_GAP; h -= SZ_GAP + 1;
-
-  Fl_Group * tile = new Fl_Tile(x, y, w, h);
-
-  // calculate hight of different groups
-  const int numGroups = 8;
-
-  const int pieceFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
-  const int colorsFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
-  const int editFixedHight = SZ_SEPARATOR_Y + SZ_TOOLTAB_Y + 2*SZ_GAP + SZ_BUTTON_Y;
-
-  int hi = h - pieceFixedHight - colorsFixedHight - editFixedHight;
-
-  bt_assert(hi > 30);
-
-  int pieceHight = 3*hi/numGroups + pieceFixedHight;
-  int colorsHight = hi/numGroups + colorsFixedHight;
-  int editHight = hi - (hi/numGroups) * 4 + editFixedHight;
+  LFl_Tile * tile = new LFl_Tile(0, 0, 1, 1);
+  tile->pitch(SZ_GAP);
 
   {
-    layouter_c * group = new layouter_c();
+    layouter_c * group = new layouter_c(0, 0);
     group->box(FL_FLAT_BOX);
-    group->resize(x, y, w, pieceHight);
 
     new LSeparator_c(0, 0, 1, 1, "Shapes", false);
 
@@ -2467,22 +2453,18 @@ void mainWindow_c::CreateShapeTab(int x, int y, int w, int h) {
 
     (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    PcSel = new PieceSelector(x, y, w, pieceHight, puzzle);
+    PcSel = new PieceSelector(0, 0, 200, 200, puzzle);
     LBlockListGroup_c * selGroup = new LBlockListGroup_c(0, 3, 1, 1, PcSel);
     selGroup->callback(cb_PcSel_stub, this);
     selGroup->tooltip(" Select the shape that you want to edit ");
     selGroup->weight(1, 1);
 
-    y += pieceHight;
-
     group->end();
   }
 
   {
-    layouter_c * group = new layouter_c();
+    layouter_c * group = new layouter_c(0, 1);
     group->box(FL_FLAT_BOX);
-    group->resize(x, y, w, editHight);
-    y += editHight;
 
     new LSeparator_c(0, 0, 1, 1, "Edit", true);
 
@@ -2575,9 +2557,8 @@ void mainWindow_c::CreateShapeTab(int x, int y, int w, int h) {
   }
 
   {
-    layouter_c * group = new layouter_c();
+    layouter_c * group = new layouter_c(0, 2);
     group->box(FL_FLAT_BOX);
-    group->resize(x, y, w, colorsHight);
 
     new LSeparator_c(0, 0, 1, 1, "Colours", true);
 
@@ -2596,13 +2577,11 @@ void mainWindow_c::CreateShapeTab(int x, int y, int w, int h) {
 
     (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    colorSelector = new ColorSelector(x, y, w, colorsHight, puzzle, true);
+    colorSelector = new ColorSelector(0, 0, 200, 200, puzzle, true);
     LBlockListGroup_c * colGroup = new LBlockListGroup_c(0, 3, 1, 1, colorSelector);
     colGroup->callback(cb_ColSel_stub, this);
     colGroup->tooltip(" Select colour to use for all editing operations ");
     colGroup->weight(1, 1);
-
-    y += colorsHight;
 
     group->end();
   }
@@ -2615,38 +2594,20 @@ void mainWindow_c::CreateShapeTab(int x, int y, int w, int h) {
   Fl_Group::current()->resizable(TabPieces);
 }
 
-void mainWindow_c::CreateProblemTab(int x, int y, int w, int h) {
+void mainWindow_c::CreateProblemTab(void) {
 
-  TabProblems = new Fl_Group(x, y, w, h, "Puzzle");
+  TabProblems = new layouter_c();
+  TabProblems->label("Puzzle");
   TabProblems->tooltip("Edit problems");
   TabProblems->hide();
   TabProblems->clear_visible_focus();
 
-  x += SZ_GAP; y++; w -= 2*SZ_GAP; h -= SZ_GAP + 1;
-
-  Fl_Group * tile = new Fl_Tile(x, y, w, h);
-
-  // calculate hight of different groups
-  const int problemsFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
-  const int colorsFixedHight = SZ_SEPARATOR_Y + SZ_GAP;
-  const int matrixFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
-  const int shapesFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
-  const int piecesFixedHight = SZ_SEPARATOR_Y + SZ_BUTTON_Y + SZ_GAP;
-
-  int hi = h - problemsFixedHight - colorsFixedHight - matrixFixedHight - shapesFixedHight - piecesFixedHight;
-
-  bt_assert(hi > 30);
-
-  int problemsHight = hi/5 + problemsFixedHight;
-  int colorsHight = hi/5 + colorsFixedHight;
-  int matrixHight = hi/5 + matrixFixedHight;
-  int shapesHight = hi/5 + shapesFixedHight;
-  int piecesHight = hi - (hi/5) * 4 + piecesFixedHight;
+  LFl_Tile * tile = new LFl_Tile(0, 0, 1, 1);
+  tile->pitch(SZ_GAP);
 
   {
-    layouter_c * group = new layouter_c();
+    layouter_c * group = new layouter_c(0, 0);
     group->box(FL_FLAT_BOX);
-    group->resize(x, y, w, problemsHight);
 
     new LSeparator_c(0, 0, 1, 1, "Problems", false);
 
@@ -2673,21 +2634,18 @@ void mainWindow_c::CreateProblemTab(int x, int y, int w, int h) {
 
     (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    problemSelector = new ProblemSelector(x, y, w, problemsHight, puzzle);
+    problemSelector = new ProblemSelector(0, 0, 100, 100, puzzle);
     LBlockListGroup_c * probGroup = new LBlockListGroup_c(0, 3, 1, 1, problemSelector);
     probGroup->callback(cb_ProbSel_stub, this);
     probGroup->tooltip(" Select problem to edit ");
     probGroup->weight(1, 1);
 
     group->end();
-
-    y += problemsHight;
   }
 
   {
-    layouter_c * group = new layouter_c();
+    layouter_c * group = new layouter_c(0, 1);
     group->box(FL_FLAT_BOX);
-    group->resize(x, y, w, shapesHight);
 
     new LSeparator_c(0, 0, 1, 1, "Piece Assignment", true);
 
@@ -2705,21 +2663,18 @@ void mainWindow_c::CreateProblemTab(int x, int y, int w, int h) {
 
     (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    shapeAssignmentSelector = new PieceSelector(x, y, w, shapesHight, puzzle);
+    shapeAssignmentSelector = new PieceSelector(0, 0, 100, 100, puzzle);
     LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 3, 1, 1, shapeAssignmentSelector);
     shapeGroup->callback(cb_ShapeSel_stub, this);
     shapeGroup->tooltip(" Select a shape to set as result or to add or remove from problem ");
     shapeGroup->weight(1, 1);
 
     group->end();
-
-    y += shapesHight;
   }
 
   {
-    layouter_c * group = new layouter_c();
+    layouter_c * group = new layouter_c(0, 2);
     group->box(FL_FLAT_BOX);
-    group->resize(x, y, w, piecesHight);
 
     new LSeparator_c(0, 0, 1, 1, 0, true);
 
@@ -2742,39 +2697,33 @@ void mainWindow_c::CreateProblemTab(int x, int y, int w, int h) {
 
     (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    PiecesCountList = new PiecesList(x, y, w, piecesHight, puzzle);
+    PiecesCountList = new PiecesList(0, 0, 100, 100, puzzle);
     LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 3, 1, 1, PiecesCountList);
     shapeGroup->callback(cb_PiecesClicked_stub, this);
     shapeGroup->tooltip(" Show which shapes are used in the current problem and how often they are used, can be used to select shapes ");
     shapeGroup->weight(1, 1);
 
     group->end();
-
-    y += piecesHight;
   }
 
   {
-    layouter_c * group = new layouter_c();
+    layouter_c * group = new layouter_c(0, 3);
     group->box(FL_FLAT_BOX);
-    group->resize(x, y, w, colorsHight);
 
     new LSeparator_c(0, 0, 1, 1, "Colour Assignment", true);
 
-    colorAssignmentSelector = new ColorSelector(x, y, w, colorsHight, puzzle, false);
+    colorAssignmentSelector = new ColorSelector(0, 0, 100, 100, puzzle, false);
     LBlockListGroup_c * colGroup = new LBlockListGroup_c(0, 1, 1, 1, colorAssignmentSelector);
     colGroup->callback(cb_ColorAssSel_stub, this);
     colGroup->tooltip(" Select colour to add or remove from constraints ");
     colGroup->weight(1, 1);
 
     group->end();
-
-    y += colorsHight;
   }
 
   {
-    layouter_c * group = new layouter_c();
+    layouter_c * group = new layouter_c(0, 4);
     group->box(FL_FLAT_BOX);
-    group->resize(x, y, w, matrixHight);
 
     new LSeparator_c(0, 0, 1, 1, 0, true);
 
@@ -2793,15 +2742,13 @@ void mainWindow_c::CreateProblemTab(int x, int y, int w, int h) {
 
     (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    colconstrList = new ColorConstraintsEdit(x, y, w, matrixHight, puzzle);
+    colconstrList = new ColorConstraintsEdit(0, 0, 100, 100, puzzle);
     LConstraintsGroup_c * colGroup = new LConstraintsGroup_c(0, 3, 1, 1, colconstrList);
     colGroup->callback(cb_ColorConstrSel_stub, this);
     colGroup->tooltip(" Colour constraints for the current problem ");
     colGroup->weight(1, 1);
 
     group->end();
-
-    y += matrixHight;
   }
 
   tile->end();
@@ -2810,37 +2757,24 @@ void mainWindow_c::CreateProblemTab(int x, int y, int w, int h) {
   TabProblems->end();
 }
 
-void mainWindow_c::CreateSolveTab(int x, int y, int w, int h) {
+void mainWindow_c::CreateSolveTab(void) {
 
-  TabSolve = new Fl_Group(x, y, w, h, "Solver");
+  TabSolve = new layouter_c();
+  TabSolve->label("Solver");
   TabSolve->tooltip("Solve problems");
   TabSolve->hide();
   TabSolve->clear_visible_focus();
 
-  x += SZ_GAP; y++; w -= 2*SZ_GAP; h -= SZ_GAP + 1;
-
-  Fl_Group * tile = new Fl_Tile(x, y, w, h);
-
-  // calculate hight of different groups
-  const int paramsFixedHight = SZ_SEPARATOR_Y + 6*SZ_BUTTON_Y + 6*SZ_GAP +  5*SZ_TEXT_Y;
-  const int solutionsFixedHight = SZ_SEPARATOR_Y + 4*SZ_BUTTON_Y + 4*SZ_GAP + 2*SZ_TEXT_Y;
-
-  int hi = h - paramsFixedHight - solutionsFixedHight;
-
-  bt_assert(hi > 30);
-
-  int paramsHight = hi/2 + paramsFixedHight;
-  int solutionsHight = hi - (hi/2) + solutionsFixedHight;
+  LFl_Tile * tile = new LFl_Tile(0, 0, 1, 1);
+  tile->pitch(SZ_GAP);
 
   {
-    layouter_c * group = new layouter_c();
+    layouter_c * group = new layouter_c(0, 0);
     group->box(FL_FLAT_BOX);
-    group->resize(x, y, w, paramsHight);
-    y += paramsHight;
 
     new LSeparator_c(0, 0, 1, 1, "Parameters", false);
 
-    solutionProblem = new ProblemSelector(x, y, w, paramsHight, puzzle);
+    solutionProblem = new ProblemSelector(0, 0, 100, 100, puzzle);
     LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 1, 1, 1, solutionProblem);
     shapeGroup->callback(cb_SolProbSel_stub, this);
     shapeGroup->tooltip(" Select problem to solve ");
@@ -2981,9 +2915,8 @@ void mainWindow_c::CreateSolveTab(int x, int y, int w, int h) {
   }
 
   {
-    layouter_c * group = new layouter_c();
+    layouter_c * group = new layouter_c(0, 1);
     group->box(FL_FLAT_BOX);
-    group->resize(x, y, w, solutionsHight);
 
     new LSeparator_c(0, 0, 1, 1, "Solutions", true);
 
@@ -3105,7 +3038,7 @@ void mainWindow_c::CreateSolveTab(int x, int y, int w, int h) {
 
     (new LFl_Box(0, 10))->setMinimumSize(0, SZ_GAP);
 
-    PcVis = new PieceVisibility(x, y, w, solutionsHight, puzzle);
+    PcVis = new PieceVisibility(0, 0, 100, 100, puzzle);
     LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 11, 1, 1, PcVis);
     shapeGroup->callback(cb_PcVis_stub, this);
     shapeGroup->tooltip(" Change appearance of the pieces between normal, grid and invisible ");
@@ -3129,7 +3062,7 @@ void mainWindow_c::activateConfigOptions(void) {
   View3D->useLightning(config.useLightning());
 }
 
-mainWindow_c::mainWindow_c(gridType_c * gt) : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
+mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
 
   assmThread = 0;
   fname = 0;
@@ -3143,39 +3076,39 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : Fl_Double_Window(SZ_WINDOW_X, SZ_W
   label("BurrTools - unknown");
   user_data((void*)(this));
 
-  MainMenu = new Fl_Menu_Bar(0, 0, SZ_WINDOW_X, SZ_MENU_Y);
+  MainMenu = new LFl_Menu_Bar(0, 0, 1, 1);
   MainMenu->copy(menu_MainMenu, this);
   MainMenu->box(FL_THIN_UP_BOX);
 
-  Status = new StatusLine(0, SZ_MENU_Y + SZ_CONTENT_Y, SZ_WINDOW_X, SZ_STATUS_Y);
+  Status = new LStatusLine(0, 2, 1, 1);
   Status->callback(cb_Status_stub, this);
 
-  Fl_Tile * mainTile = new Fl_Tile(0, SZ_CONTENT_START_Y, SZ_WINDOW_X, SZ_CONTENT_Y);
-  View3D = new View3dGroup(SZ_TOOL_X, SZ_CONTENT_START_Y, SZ_3DAREA_X, SZ_CONTENT_Y, ggt);
-  new Fl_Group(0, SZ_CONTENT_START_Y, SZ_TOOL_X, SZ_CONTENT_Y);
+  LFl_Tile * mainTile = new LFl_Tile(0, 1, 1, 1);
+  mainTile->resize(0, SZ_CONTENT_START_Y, SZ_WINDOW_X, SZ_CONTENT_Y);
+  mainTile->weight(0, 1);
+
+  View3D = new LView3dGroup(1, 0, 1, 1, ggt);
+  View3D->weight(1, 0);
 
   // this box paints the background behind the tab, because the tabs are partly transparent
-  (new Fl_Box(FL_FLAT_BOX, 0, SZ_CONTENT_START_Y, SZ_TOOL_X, SZ_CONTENT_Y, 0))->color(FL_BACKGROUND_COLOR);
+  (new LFl_Box(0, 0, 1, 1))->color(FL_BACKGROUND_COLOR);
 
   // the tab for the tool bar
-  TaskSelectionTab = new Fl_Tabs(0, SZ_CONTENT_START_Y, SZ_TOOL_X, SZ_CONTENT_Y);
+  TaskSelectionTab = new LFl_Tabs(0, 0, 1, 1);
   TaskSelectionTab->box(FL_THIN_UP_BOX);
   TaskSelectionTab->callback(cb_TaskSelectionTab_stub, this);
   TaskSelectionTab->clear_visible_focus();
 
   // the three tabs
-  CreateShapeTab(  0, SZ_CONTENT_START_Y+SZ_TAB_Y, SZ_TOOL_X, SZ_CONTENT_Y-SZ_TAB_Y);
-  CreateProblemTab(0, SZ_CONTENT_START_Y+SZ_TAB_Y, SZ_TOOL_X, SZ_CONTENT_Y-SZ_TAB_Y);
-  CreateSolveTab(  0, SZ_CONTENT_START_Y+SZ_TAB_Y, SZ_TOOL_X, SZ_CONTENT_Y-SZ_TAB_Y);
+  CreateShapeTab();
+  CreateProblemTab();
+  CreateSolveTab();
 
   currentTab = 0;
   ViewSizes[0] = -1;
   ViewSizes[1] = -1;
   ViewSizes[2] = -1;
 
-  resizable(mainTile);
-
-  size_range(250, 400);
   resize(config.windowPosX(), config.windowPosY(), config.windowPosW(), config.windowPosH());
 
   if (!config.useRubberband())

@@ -25,31 +25,6 @@
 
 #include <FL/Fl.h>
 
-/* 2 classes for layoutable widgets */
-class LView3dGroup : public View3dGroup, public layoutable_c {
-
-  public:
-
-    LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt) : View3dGroup(0, 0, 50, 50, ggt), layoutable_c(x, y, w, h) {}
-
-    virtual void getMinSize(int * w, int *h) const {
-      *w = 400;
-      *h = 400;
-    }
-};
-
-class LBlockListGroup : public BlockListGroup, public layoutable_c {
-  public:
-    LBlockListGroup(int x, int y, int w, int h, BlockList * l) : BlockListGroup(0, 0, 50, 50, l), layoutable_c(x, y, w, h) {
-      pitch(1);
-    }
-
-    virtual void getMinSize(int *w, int *h) const {
-      *w = 100;
-      *h = 60;
-    }
-};
-
 /* image info contains the information for one image to be exported
  * this information is the setup required to produce this image, also
  * the size
@@ -521,7 +496,7 @@ void imageExport_c::cb_SzUpdate(void) {
   }
 }
 
-imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : puzzle(p), working(false), state(0), i(0) {
+imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_Window(false), puzzle(p), working(false), state(0), i(0) {
 
   label("Export Images");
 
@@ -689,10 +664,10 @@ imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : puzzle(p
     ShapeSelect->setSelection(0);
     ProblemSelect->setSelection(0);
 
-    Fl_Group * gr = new LBlockListGroup(0, 0, 1, 1, ShapeSelect);
+    Fl_Group * gr = new LBlockListGroup_c(0, 0, 1, 1, ShapeSelect);
     gr->callback(cb_ImageExport3DUpdate_stub, this);
 
-    gr = new LBlockListGroup(1, 0, 1, 1, ProblemSelect);
+    gr = new LBlockListGroup_c(1, 0, 1, 1, ProblemSelect);
     gr->callback(cb_ImageExport3DUpdate_stub, this);
 
     l->end();

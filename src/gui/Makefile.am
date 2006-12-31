@@ -29,6 +29,7 @@ burrGui_SOURCES=\
                 WindowWidgets.cpp WindowWidgets.h \
                 gzstream.cpp gzstream.h \
                 Fl_Table.cpp Fl_Table.h \
+		LFl_Tile.cpp LFl_Tile.h \
 		Layouter.cpp Layouter.h \
 		tr.c tr.h \
 		Images.cpp Images.h \

@@ -42,7 +42,7 @@ class LFl_Line : public Fl_Box, public layoutable_c {
 
 static void cb_Close_stub(Fl_Widget* o, void* v) { ((statusWindow_c*)v)->hide(); }
 
-statusWindow_c::statusWindow_c(const puzzle_c * p) {
+statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(false) {
 
   char tmp[200];
 

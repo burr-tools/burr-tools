@@ -1012,25 +1012,30 @@ void ButtonGroup::select(int num) {
     cb_Push((Fl_Button*)array()[num]);
 }
 
-StatusLine::StatusLine(int x, int y, int w, int h) : Fl_Group(x, y, w, h) {
+LStatusLine::LStatusLine(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
 
-  text = new Fl_Box(x, y, w - 130, h);
+  text = new LFl_Box(0, 0, 1, 1);
   text->box(FL_THIN_UP_BOX);
   text->color(FL_BACKGROUND_COLOR);
   text->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+  text->weight(1, 0);
 
-  colors = new Fl_Check_Button(x+w-130, y, 130, h, "Colour 3D View");
-  colors->box(FL_THIN_UP_BOX);
+  layouter_c * tmp = new layouter_c(1, 0, 1, 1);
+  tmp->box(FL_THIN_UP_BOX);
+
+  colors = new LFl_Check_Button("Colour 3D View", 0, 0, 1, 1);
+  colors->box(FL_NO_BOX);
   colors->tooltip(" Toggle between piece colours and the colours of the colour constraints (neutral units will have piece colour) ");
-
-  resizable(text);
+  colors->stretchCenter();
+  colors->clear_visible_focus();
 
   clear_visible_focus();
 
+  tmp->end();
   end();
 }
 
-void StatusLine::setText(const char * t) {
+void LStatusLine::setText(const char * t) {
 
   text->copy_label(t);
 }

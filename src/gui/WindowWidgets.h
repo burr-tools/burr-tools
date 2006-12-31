@@ -372,6 +372,18 @@ public:
   voxelDrawer_c * getView(void) { return View3D; }
 };
 
+class LView3dGroup : public View3dGroup, public layoutable_c {
+
+  public:
+
+    LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt) : View3dGroup(0, 0, 50, 50, ggt), layoutable_c(x, y, w, h) {}
+
+    virtual void getMinSize(int * w, int *h) const {
+      *w = 400;
+      *h = 400;
+    }
+};
+
 // a widget to separate 2 groups
 
 class Separator : public Fl_Group {
@@ -435,20 +447,25 @@ public:
 
 // a status line containing text and a button to toggle
 // between coloured and normal view
-class StatusLine : public Fl_Group {
+class LStatusLine : public layouter_c {
 
 private:
 
-  Fl_Check_Button * colors;
-  Fl_Box * text;
+  LFl_Check_Button * colors;
+  LFl_Box * text;
 
 public:
 
-  StatusLine(int x, int y, int w, int h);
+  LStatusLine(int x, int y, int w, int h);
 
   void setText(const char * t);
   bool useColors(void) { return colors->value() != 0; }
   void callback(Fl_Callback* fkt, void * dat) { colors->callback(fkt, dat); }
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 30;
+    *height = 25;
+  }
 };
 
 // this window is used to display assert messages

@@ -20,17 +20,18 @@
 
 #include "Images.h"
 
-#include <FL/Fl_Double_Window.H>
+#include "Layouter.h"
 
 class VoxelEditGroup_c;
 class ChangeSize;
 class ToolTab;
-class View3dGroup;
+class LView3dGroup;
 class puzzle_c;
 class assemblerThread_c;
 class disasmToMoves_c;
 class gridType_c;
 class guiGridType_c;
+class layouter_c;
 
 class PieceSelector;
 class ProblemSelector;
@@ -42,7 +43,7 @@ class ColorConstraintsEdit;
 class ToolTab;
 class ButtonGroup;
 class FlatButton;
-class StatusLine;
+class LStatusLine;
 class BlockListGroup;
 
 class Fl_Tabs;
@@ -56,7 +57,7 @@ class Fl_Menu_Bar;
 class Fl_Choice;
 class Fl_Progress;
 
-class mainWindow_c : public Fl_Double_Window {
+class mainWindow_c : public LFl_Double_Window {
 
   puzzle_c * puzzle;
   guiGridType_c * ggt;  // this is the guigridtype for the puzzle, is must always be in sync
@@ -70,7 +71,7 @@ class mainWindow_c : public Fl_Double_Window {
   pixmapList_c pm;
 
   Fl_Tabs *TaskSelectionTab;
-  Fl_Group *TabPieces;
+  layouter_c *TabPieces;
   Fl_Group *MinSizeSelector;
 
   PieceSelector * PcSel;
@@ -83,13 +84,13 @@ class mainWindow_c : public Fl_Double_Window {
   PieceVisibility * PcVis;
   ColorConstraintsEdit * colconstrList;
 
-  Fl_Group *TabProblems;
+  layouter_c *TabProblems;
 
   ToolTab * pieceTools;
   ButtonGroup *editChoice;
   ButtonGroup *editMode;
 
-  Fl_Group *TabSolve;
+  layouter_c *TabSolve;
   Fl_Check_Button *SolveDisasm, *JustCount, *DropDisassemblies;
 
   FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep;
@@ -111,11 +112,11 @@ class mainWindow_c : public Fl_Double_Window {
 
   Fl_Output *TimeUsed, *TimeEst;
 
-  View3dGroup * View3D;
+  LView3dGroup * View3D;
 
   Fl_Group *MinSizeTools;
   Fl_Menu_Bar *MainMenu;
-  StatusLine *Status;
+  LStatusLine *Status;
   static Fl_Menu_Item menu_MainMenu[];
 
   ColorSelector * colorSelector;
@@ -138,9 +139,9 @@ class mainWindow_c : public Fl_Double_Window {
 
   bool tryToLoad(const char *fname);
 
-  void CreateShapeTab(int x, int y, int w, int h);
-  void CreateProblemTab(int x, int y, int w, int h);
-  void CreateSolveTab(int x, int y, int w, int h);
+  void CreateShapeTab(void);
+  void CreateProblemTab(void);
+  void CreateSolveTab(void);
 
 
   bool is3DViewBig;
