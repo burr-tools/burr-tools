@@ -648,6 +648,46 @@ void mainWindow_c::cb_AddShapeToProblem(void) {
   StatProblemInfo(problemSelector->getSelection());
 }
 
+static void cb_AddAllShapesToProblem_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_AddAllShapesToProblem(); }
+void mainWindow_c::cb_AddAllShapesToProblem(void) {
+
+  if (problemSelector->getSelection() >= puzzle->problemNumber()) {
+    fl_message("First create a problem");
+    return;
+  }
+
+  unsigned int prob = problemSelector->getSelection();
+
+  changed = true;
+  PiecesCountList->redraw();
+  changeProblem(prob);
+
+  for (unsigned int j = 0; j < puzzle->shapeNumber(); j++) {
+
+    // we don't add the result shape
+    if (j == puzzle->probGetResult(prob))
+      continue;
+
+    bool found = false;
+
+    // first see, if there is already a selected shape inside
+    for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
+      if (puzzle->probGetShape(prob, i) == j) {
+        puzzle->probSetShapeCount(prob, i, puzzle->probGetShapeCount(prob, i) + 1);
+        found = true;
+        break;
+      }
+
+    if (!found)
+      puzzle->probAddShape(prob, j, 1);
+  }
+
+  activateProblem(problemSelector->getSelection());
+  PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+  updateInterface();
+  StatProblemInfo(problemSelector->getSelection());
+}
+
 static void cb_RemoveShapeFromProblem_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_RemoveShapeFromProblem(); }
 void mainWindow_c::cb_RemoveShapeFromProblem(void) {
 
@@ -671,6 +711,28 @@ void mainWindow_c::cb_RemoveShapeFromProblem(void) {
       PiecesCountList->redraw();
       PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
     }
+
+  activateProblem(problemSelector->getSelection());
+  StatProblemInfo(problemSelector->getSelection());
+}
+
+static void cb_RemoveAllShapesFromProblem_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_RemoveAllShapesFromProblem(); }
+void mainWindow_c::cb_RemoveAllShapesFromProblem(void) {
+
+  if (problemSelector->getSelection() >= puzzle->problemNumber()) {
+    fl_message("First create a problem");
+    return;
+  }
+
+  unsigned int prob = problemSelector->getSelection();
+  changeProblem(prob);
+
+  while (puzzle->probShapeNumber(prob))
+    puzzle->probRemoveShape(prob, 0);
+
+  changed = true;
+  PiecesCountList->redraw();
+  PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
 
   activateProblem(problemSelector->getSelection());
   StatProblemInfo(problemSelector->getSelection());
@@ -1913,6 +1975,15 @@ void mainWindow_c::updateInterface(void) {
       BtnGroup->deactivate();
     }
 
+    if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
+        (!assmThread || (assmThread->getProblem() != problemSelector->getSelection()))) {
+      BtnAddAll->activate();
+      BtnRemAll->activate();
+    } else {
+      BtnAddAll->deactivate();
+      BtnRemAll->deactivate();
+    }
+
   } else {
 
     // solution tab
@@ -2690,18 +2761,26 @@ void mainWindow_c::CreateProblemTab(void) {
 
     layouter_c * o = new layouter_c(0, 1);
 
-    BtnAddShape = new LFlatButton_c(0, 0, 1, 1, "+1", " Add another one of the selected shape ", cb_AddShapeToProblem_stub, this);
+    int xp = 0;
+
+    BtnAddShape = new LFlatButton_c(xp++, 0, 1, 1, "+1", " Add another one of the selected shape ", cb_AddShapeToProblem_stub, this);
     ((LFlatButton_c*)BtnAddShape)->weight(1, 0);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
-    BtnRemShape = new LFlatButton_c(2, 0, 1, 1, "-1", " Remove one of the selected shapes ", cb_RemoveShapeFromProblem_stub, this);
+    (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    BtnRemShape = new LFlatButton_c(xp++, 0, 1, 1, "-1", " Remove one of the selected shapes ", cb_RemoveShapeFromProblem_stub, this);
     ((LFlatButton_c*)BtnRemShape)->weight(1, 0);
-    (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
-    BtnGroup =    new LFlatButton_c(4, 0, 1, 1, "Group", " Create or edit groups ", cb_ShapeGroup_stub, this);
+    (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnAddAll = new LFlatButton_c(xp++, 0, 1, 1, "+1 each", " Add one of all shapes except result ", cb_AddAllShapesToProblem_stub, this);
+    ((LFlatButton_c*)BtnAddAll)->weight(1, 0);
+    (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnRemAll = new LFlatButton_c(xp++, 0, 1, 1, "Clr", " Remove all pieces ", cb_RemoveAllShapesFromProblem_stub, this);
+    ((LFlatButton_c*)BtnRemAll)->weight(1, 0);
+    (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnGroup =    new LFlatButton_c(xp++, 0, 1, 1, "Group", " Create or edit groups ", cb_ShapeGroup_stub, this);
     ((LFlatButton_c*)BtnGroup)->weight(1, 0);
-    (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, 0);
-    BtnProbShapeLeft = new LFlatButton_c(6, 0, 1, 1, "@-14->", " Exchange current shape with previous shape ", cb_ProbShapeLeft_stub, this);
-    (new LFl_Box(7, 0))->setMinimumSize(SZ_GAP, 0);
-    BtnProbShapeRight = new LFlatButton_c(8, 0, 1, 1, "@-16->", " Exchange current shape with next shape ", cb_ProbShapeRight_stub, this);
+    (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnProbShapeLeft = new LFlatButton_c(xp++, 0, 1, 1, "@-14->", " Exchange current shape with previous shape ", cb_ProbShapeLeft_stub, this);
+    (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnProbShapeRight = new LFlatButton_c(xp++, 0, 1, 1, "@-16->", " Exchange current shape with next shape ", cb_ProbShapeRight_stub, this);
 
     o->end();
 

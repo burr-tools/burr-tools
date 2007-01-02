@@ -1635,6 +1635,13 @@
   <strong|<with|font-family|ss|-<no-break>1>>. Again, this only removes a
   single instance and needs to be repeated for removing multipieces.
 
+  Most of the time it is necessary to add one instance of all defined shaped
+  to the puzzle. If there are a lot of them this can take w while. This is
+  what the <with|font-family|ss|<strong|+1 each>> button is for. It increases
+  the piece counter for each shape by one. Or it adds a first instance of the
+  shape to the problem. The <with|font-family|ss|<strong|Clr>> button removes
+  all pieces from the problem.
+
   Since it doesn't make sense to have a certain shape to be result and piece
   at the same time, the shape set as result cannot be added to the list of
   pieces. Consequently, assigning a shape that's already in the list of
