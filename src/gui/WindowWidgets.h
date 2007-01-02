@@ -377,8 +377,8 @@ class LView3dGroup : public View3dGroup, public layoutable_c {
     LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt) : View3dGroup(0, 0, 50, 50, ggt), layoutable_c(x, y, w, h) {}
 
     virtual void getMinSize(int * w, int *h) const {
-      *w = 400;
-      *h = 400;
+      *w = 40;
+      *h = 40;
     }
 };
 

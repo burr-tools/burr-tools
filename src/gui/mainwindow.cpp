@@ -2313,6 +2313,16 @@ void mainWindow_c::Toggle3DView(void)
   pieceEdit->resize(View3D->x(), View3D->y(), View3D->w(), View3D->h());
   View3D->resize(x, y, w, h);
 
+  // exchange grid positions
+  {
+    unsigned int x1, y1, w1, h1, x2, y2, w2, h2;
+    pieceEdit->getGridValues(&x1, &y1, &w1, &h1);
+    View3D->getGridValues   (&x2, &y2, &w2, &h2);
+
+    pieceEdit->setGridValues( x2,  y2,  w2,  h2);
+    View3D->setGridValues   ( x1,  y1,  w1,  h1);
+  }
+
   is3DViewBig = !is3DViewBig;
 
   if (is3DViewBig)
@@ -3087,8 +3097,12 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
   mainTile->resize(0, SZ_CONTENT_START_Y, SZ_WINDOW_X, SZ_CONTENT_Y);
   mainTile->weight(0, 1);
 
-  View3D = new LView3dGroup(1, 0, 1, 1, ggt);
-  View3D->weight(1, 0);
+  layouter_c * lay = new layouter_c(1, 0, 1, 1);
+  View3D = new LView3dGroup(0, 0, 1, 1, ggt);
+  lay->weight(1, 0);
+  lay->end();
+  lay->setMinimumSize(400, 400);
+  View3D->weight(0, 1);
 
   // this box paints the background behind the tab, because the tabs are partly transparent
   (new LFl_Box(0, 0, 1, 1))->color(FL_BACKGROUND_COLOR);

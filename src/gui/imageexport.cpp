@@ -696,6 +696,7 @@ imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Doub
   }
 
   view3D = new LView3dGroup(2, 0, 1, 6, ggt);
+  view3D->setMinimumSize(400, 400);
   cb_Update3DView();
 
   set_modal();
