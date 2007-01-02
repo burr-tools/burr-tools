@@ -204,10 +204,8 @@ public:
   }
 
   virtual void getMinSize(int *width, int *height) const {
-    *width = 0;
-    ((LFlatButton_c*)this)->measure_label(*width, *height);
-    *width += 4;
-    *height += 4;
+    *width += 40;
+    *height += 20;
   }
 };
 
