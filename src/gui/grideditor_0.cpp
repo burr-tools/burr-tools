@@ -48,23 +48,23 @@ void gridEditor_0_c::calcParameters(int *szx, int *szy, int *tx, int *ty) {
   *ty = y() + (h() - puzzle->getShape(piecenumber)->getY()*(*szy) - 1) / 2;
 }
 
-void gridEditor_0_c::drawNormalTile(int x, int y, int tx, int ty, int sx, int sy) {
+void gridEditor_0_c::drawNormalTile(int x, int y, int, int tx, int ty, int sx, int sy) {
   fl_rectf(tx+x*sx, ty+y*sy, sx, sy);
 }
 
-void gridEditor_0_c::drawVariableTile(int x, int y, int tx, int ty, int sx, int sy) {
+void gridEditor_0_c::drawVariableTile(int x, int y, int, int tx, int ty, int sx, int sy) {
   fl_rectf(tx+x*sx+3, ty+y*sy+3, sx-5, sy-5);
 }
 
-void gridEditor_0_c::drawTileFrame(int x, int y, int tx, int ty, int sx, int sy) {
+void gridEditor_0_c::drawTileFrame(int x, int y, int, int tx, int ty, int sx, int sy) {
   fl_rect(tx+x*sx, ty+y*sy, sx+1, sy+1);
 }
 
-void gridEditor_0_c::drawTileColor(int x, int y, int tx, int ty, int sx, int sy) {
+void gridEditor_0_c::drawTileColor(int x, int y, int, int tx, int ty, int sx, int sy) {
   fl_rectf(tx+x*sx, ty+y*sy, sx/2, sy/2);
 }
 
-void gridEditor_0_c::drawTileCursor(int x, int y, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy) {
+void gridEditor_0_c::drawTileCursor(int x, int y, int, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy) {
   voxel_c * space = puzzle->getShape(piecenumber);
 
   bool ins = inRegion(x, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools);
@@ -80,7 +80,7 @@ void gridEditor_0_c::drawTileCursor(int x, int y, int x1, int y1, int x2, int y2
   }
 }
 
-void gridEditor_0_c::calcGridPosition(int x, int y, int *gx, int *gy) {
+void gridEditor_0_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
 
   voxel_c * space = puzzle->getShape(piecenumber);
 

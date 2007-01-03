@@ -143,6 +143,10 @@ gridType_c::gridType_c(gridType gt) {
     case GT_TRIANGULAR_PRISM:
 
       break;
+
+    case GT_SPHERES:
+
+      break;
   }
 
   sym = 0;
@@ -180,6 +184,7 @@ voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, v
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(x, y, z, this, init, outs);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(x, y, z, this, init, outs);
+    case GT_SPHERES:          return new voxel_0_c(x, y, z, this, init, outs);
     default: return 0;
   }
 }
@@ -187,6 +192,7 @@ voxel_c * gridType_c::getVoxel(const xml::node & node) const {
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(node, this);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(node, this);
+    case GT_SPHERES:          return new voxel_0_c(node, this);
     default: return 0;
   }
 }
@@ -195,6 +201,7 @@ voxel_c * gridType_c::getVoxel(const voxel_c & orig, unsigned int transformation
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(orig, transformation);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig, transformation);
+    case GT_SPHERES:          return new voxel_0_c(orig, transformation);
     default: return 0;
   }
 }
@@ -203,6 +210,7 @@ voxel_c * gridType_c::getVoxel(const voxel_c * orig, unsigned int transformation
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(orig, transformation);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig, transformation);
+    case GT_SPHERES:          return new voxel_0_c(orig, transformation);
     default: return 0;
   }
 }
@@ -216,6 +224,9 @@ const symmetries_c * gridType_c::getSymmetries(void) const {
       case GT_TRIANGULAR_PRISM:
         const_cast<gridType_c*>(this)->sym = new symmetries_1_c(this);
         break;
+      case GT_SPHERES:
+        const_cast<gridType_c*>(this)->sym = new symmetries_0_c(this);
+        break;
     }
   }
 
@@ -226,6 +237,7 @@ unsigned int gridType_c::getCapabilities(void) const {
   switch (type) {
     case GT_BRICKS:           return CAP_ASSEMBLE | CAP_DISASSEMBLE;
     case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE;
+    case GT_SPHERES:          return 0;
     default: return 0;
   }
 }

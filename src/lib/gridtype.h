@@ -39,6 +39,7 @@ class gridType_c {
     typedef enum {
       GT_BRICKS,
       GT_TRIANGULAR_PRISM,
+      GT_SPHERES,                  // tightly packed spheres
 //      GT_RHOMBIC_DODECAEDER,
     } gridType;
 
@@ -73,6 +74,10 @@ class gridType_c {
       struct {
         bool nothgin;    // nothing for now
       } triangularPrism;
+
+      struct {
+        bool nothing;
+      } spheres;
 
     } parameters;
 

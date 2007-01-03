@@ -150,7 +150,17 @@ gridTypeGui_0_c::gridTypeGui_0_c(int x, int y, int w, int h, gridType_c * g) : g
 
 gridTypeGui_1_c::gridTypeGui_1_c(int x, int y, int w, int h, gridType_c * gt) {
   new LFl_Box("There are no parameters for this space grid!\n"
-      "This space grid also has not assembler and disassembler (yet)", 0, 0);
+      "This space grid also has no disassembler (yet)", 0, 0);
+
+  end();
+}
+
+gridTypeGui_2_c::gridTypeGui_2_c(int x, int y, int w, int h, gridType_c * gt) {
+
+  new LFl_Box("There are no parameters for this space grid!\n"
+      "This space grid also has no assembler and disassembler (yet)", 0, 0);
+
+  end();
 }
 
 
@@ -200,6 +210,7 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) : LFl_Double_Window(fal
    */
   gti.push_back(new gridTypeInfos_c(new gridType_c()));
   gti.push_back(new gridTypeInfos_c(new gridType_c(gridType_c::GT_TRIANGULAR_PRISM)));
+  gti.push_back(new gridTypeInfos_c(new gridType_c(gridType_c::GT_SPHERES)));
 
   /* from here on the code should not need changes when new grid types are added */
 

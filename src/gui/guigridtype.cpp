@@ -19,8 +19,10 @@
 
 #include "grideditor_0.h"
 #include "grideditor_1.h"
+#include "grideditor_2.h"
 #include "voxeldrawer_0.h"
 #include "voxeldrawer_1.h"
+#include "voxeldrawer_2.h"
 #include "gridtypegui.h"
 
 #include "../lib/gridtype.h"
@@ -31,6 +33,7 @@ gridEditor_c * guiGridType_c::getGridEditor(int x, int y, int w, int h, puzzle_c
   switch(gt->getType()) {
     case gridType_c::GT_BRICKS: return new gridEditor_0_c(x, y, w, h, puzzle);
     case gridType_c::GT_TRIANGULAR_PRISM: return new gridEditor_1_c(x, y, w, h, puzzle);
+    case gridType_c::GT_SPHERES: return new gridEditor_2_c(x, y, w, h, puzzle);
   }
 
   return 0;
@@ -40,6 +43,7 @@ voxelDrawer_c * guiGridType_c::getVoxelDrawer(int x, int y, int w, int h) const 
   switch(gt->getType()) {
     case gridType_c::GT_BRICKS: return new voxelDrawer_0_c(x, y, w, h, gt);
     case gridType_c::GT_TRIANGULAR_PRISM: return new voxelDrawer_1_c(x, y, w, h, gt);
+    case gridType_c::GT_SPHERES: return new voxelDrawer_2_c(x, y, w, h, gt);
   }
 
   return 0;
@@ -53,6 +57,7 @@ gridTypeGui_c * guiGridType_c::getConfigurationDialog(int x, int y, int w, int h
   switch(gt->getType()) {
     case gridType_c::GT_BRICKS: return new gridTypeGui_0_c(x, y, w, h, gt);
     case gridType_c::GT_TRIANGULAR_PRISM: return new gridTypeGui_1_c(x, y, w, h, gt);
+    case gridType_c::GT_SPHERES: return new gridTypeGui_2_c(x, y, w, h, gt);
   }
 
   return 0;
@@ -63,6 +68,7 @@ char * guiGridType_c::getIcon(void) const {
   switch(gt->getType()) {
     case gridType_c::GT_BRICKS: return 0;
     case gridType_c::GT_TRIANGULAR_PRISM: return 0;
+    case gridType_c::GT_SPHERES: return 0;
   }
 
   return 0;
@@ -72,6 +78,7 @@ const char * guiGridType_c::getName(void) const {
   switch(gt->getType()) {
     case gridType_c::GT_BRICKS: return "Brick";
     case gridType_c::GT_TRIANGULAR_PRISM: return "Triangular Prism";
+    case gridType_c::GT_SPHERES: return "Spheres";
   }
 
   return 0;

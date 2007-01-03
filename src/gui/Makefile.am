@@ -11,6 +11,7 @@ burrGui_SOURCES=\
 		grideditor.cpp grideditor.h \
                 grideditor_0.cpp grideditor_0.h \
                 grideditor_1.cpp grideditor_1.h \
+                grideditor_2.cpp grideditor_2.h \
 		gridtypegui.cpp gridtypegui.h \
                 groupseditor.cpp groupseditor.h \
 		guigridtype.cpp guigridtype.h \
@@ -24,6 +25,7 @@ burrGui_SOURCES=\
                 voxeldrawer.cpp voxeldrawer.h \
 		voxeldrawer_0.cpp voxeldrawer_0.h \
 		voxeldrawer_1.cpp voxeldrawer_1.h \
+		voxeldrawer_2.cpp voxeldrawer_2.h \
                 \
 		BlockList.cpp BlockList.h \
                 WindowWidgets.cpp WindowWidgets.h \

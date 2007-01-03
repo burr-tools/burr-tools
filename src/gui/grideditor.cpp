@@ -195,7 +195,7 @@ int gridEditor_c::handle(int event) {
       // mouse released, update the rubberband area
 
       int x, y;
-      calcGridPosition(Fl::event_x(), Fl::event_y(), &x, &y);
+      calcGridPosition(Fl::event_x(), Fl::event_y(), currentZ, &x, &y);
 
       // check, if the current position is inside the grid, only if so carry out action, we don't
       // need to to this if we are not in rubberband modus, but it doesn't hurt either
@@ -237,7 +237,7 @@ int gridEditor_c::handle(int event) {
     {
       /* find out where the mouse cursor is */
       int x, y;
-      calcGridPosition(Fl::event_x(), Fl::event_y(), &x, &y);
+      calcGridPosition(Fl::event_x(), Fl::event_y(), currentZ, &x, &y);
 
       // clip the coordinates to the size of the space
       if (x < 0) x = 0;
@@ -344,23 +344,38 @@ void gridEditor_c::draw() {
         b = int(255*lightPieceColor(pieceColorB(piecenumber)));
       }
 
+      // for empty squares we check the layer below and if the square below is
+      // not empty draw a very dimmed square
+      if ((currentZ > 0) && (space->getState(x, space->getY()-y-1, currentZ-1) != voxel_c::VX_EMPTY)) {
+        fl_color(((int)bgr*5+r)/6, ((int)bgg*5+g)/6, ((int)bgb*5+b)/6);
+        drawNormalTile(x, y, currentZ-1, tx, ty, sx, sy);
+      }
+    }
+
+  for (unsigned int x = 0; x < space->getX(); x++)
+    for (unsigned int y = 0; y < space->getY(); y++) {
+
+      // apply the chequerboard pattern
+      if ((x+y+currentZ) & 1) {
+        r = int(255*darkPieceColor(pieceColorR(piecenumber)));
+        g = int(255*darkPieceColor(pieceColorG(piecenumber)));
+        b = int(255*darkPieceColor(pieceColorB(piecenumber)));
+      } else {
+        r = int(255*lightPieceColor(pieceColorR(piecenumber)));
+        g = int(255*lightPieceColor(pieceColorG(piecenumber)));
+        b = int(255*lightPieceColor(pieceColorB(piecenumber)));
+      }
+
       // draw the square depending on the state
       switch(space->getState(x, space->getY()-y-1, currentZ)) {
       case voxel_c::VX_FILLED:
         fl_color(r, g, b);
-        drawNormalTile(x, y, tx, ty, sx, sy);
+        drawNormalTile(x, y, currentZ, tx, ty, sx, sy);
         break;
       case voxel_c::VX_VARIABLE:
         fl_color(r, g, b);
-        drawVariableTile(x, y, tx, ty, sx, sy);
+        drawVariableTile(x, y, currentZ, tx, ty, sx, sy);
         break;
-      default:
-        // for empty squares we check the layer below and if the square below is
-        // not empty draw a very dimmed square
-        if ((currentZ > 0) && (space->getState(x, space->getY()-y-1, currentZ-1) != voxel_c::VX_EMPTY)) {
-          fl_color(((int)bgr*5+r)/6, ((int)bgg*5+g)/6, ((int)bgb*5+b)/6);
-          drawNormalTile(x, y, tx, ty, sx, sy);
-        }
       }
 
       // if the voxel is not empty and has a colour assigned, draw a marker in the
@@ -370,7 +385,7 @@ void gridEditor_c::draw() {
 
         puzzle->getColor(space->getColor(x, space->getY()-y-1, currentZ)-1, &r, &g, &b);
         fl_color(r, g, b);
-        drawTileColor(x, y, tx, ty, sx, sy);
+        drawTileColor(x, y, currentZ, tx, ty, sx, sy);
       }
 
       // the colour for the grid lines
@@ -380,7 +395,7 @@ void gridEditor_c::draw() {
         fl_color(color());
 
       // draw the rectangle around the square, this will be the grid
-      drawTileFrame(x, y, tx, ty, sx, sy);
+      drawTileFrame(x, y, currentZ, tx, ty, sx, sy);
     }
 
   // if the cursor is inside the widget, we do need to draw the cursor
@@ -428,7 +443,7 @@ void gridEditor_c::draw() {
       // the other on the outside, if so draw the cursor line
       for (unsigned int x = 0; x <= space->getX(); x++)
         for (unsigned int y = 0; y <= space->getY(); y++)
-          drawTileCursor(x, y, x1, y1, x2, y2, tx, ty, sx, sy);
+          drawTileCursor(x, y, currentZ, x1, y1, x2, y2, tx, ty, sx, sy);
     }
   }
 }

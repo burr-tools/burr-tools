@@ -147,9 +147,9 @@ public:
 
   /* each grid editor has to provide this function
    * is calculates the grid position gx and gy inside the voxel
-   * for the given screen position x, y
+   * for the given screen position x, y and the current z layer
    */
-  virtual void calcGridPosition(int x, int y, int *gx, int *gy) = 0;
+  virtual void calcGridPosition(int x, int y, int z, int *gx, int *gy) = 0;
 
   /* calculate the x and sy scaling and the x and y translation for
    * the current shape so that it fits into the available space and
@@ -176,11 +176,11 @@ public:
    * Finally the cursor. Right now its completely up to you do completely draw
    * it. Eventually I will provide a better way to do that
    */
-  virtual void drawNormalTile(int x, int y, int tx, int ty, int sx, int sy) = 0;
-  virtual void drawVariableTile(int x, int y, int tx, int ty, int sx, int sy) = 0;
-  virtual void drawTileFrame(int x, int y, int tx, int ty, int sx, int sy) = 0;
-  virtual void drawTileColor(int x, int y, int tx, int ty, int sx, int sy) = 0;
-  virtual void drawTileCursor(int x, int y, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy) = 0;
+  virtual void drawNormalTile(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;
+  virtual void drawVariableTile(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;
+  virtual void drawTileFrame(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;
+  virtual void drawTileColor(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;
+  virtual void drawTileCursor(int x, int y, int z, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy) = 0;
 
 };
 

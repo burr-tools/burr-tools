@@ -67,7 +67,7 @@ void gridEditor_1_c::calcParameters(int *s, int *s2, int *tx, int *ty) {
   *ty = y() + (h() - yy * (*s2) - 1) / 2;
 }
 
-void gridEditor_1_c::drawNormalTile(int x, int y, int tx, int ty, int s, int s2) {
+void gridEditor_1_c::drawNormalTile(int x, int y, int, int tx, int ty, int s, int s2) {
 
   int x1, y1, x2, y2, x3, y3;
   voxel_c * space = puzzle->getShape(piecenumber);
@@ -95,7 +95,7 @@ void gridEditor_1_c::drawNormalTile(int x, int y, int tx, int ty, int s, int s2)
   fl_polygon(x1, y1, x2, y2, x3, y3);
 }
 
-void gridEditor_1_c::drawVariableTile(int x, int y, int tx, int ty, int s, int s2) {
+void gridEditor_1_c::drawVariableTile(int x, int y, int, int tx, int ty, int s, int s2) {
   int x1, y1, x2, y2, x3, y3;
   int x1v, y1v, x2v, y2v, x3v, y3v;
   voxel_c * space = puzzle->getShape(piecenumber);
@@ -135,7 +135,7 @@ void gridEditor_1_c::drawVariableTile(int x, int y, int tx, int ty, int s, int s
   fl_polygon(x1v, y1v, x2v, y2v, x3v, y3v);
 }
 
-void gridEditor_1_c::drawTileFrame(int x, int y, int tx, int ty, int s, int s2) {
+void gridEditor_1_c::drawTileFrame(int x, int y, int, int tx, int ty, int s, int s2) {
   int x1, y1, x2, y2, x3, y3;
   voxel_c * space = puzzle->getShape(piecenumber);
 
@@ -162,7 +162,7 @@ void gridEditor_1_c::drawTileFrame(int x, int y, int tx, int ty, int s, int s2) 
   fl_loop(x1, y1, x2, y2, x3, y3);
 }
 
-void gridEditor_1_c::drawTileColor(int x, int y, int tx, int ty, int s, int s2) {
+void gridEditor_1_c::drawTileColor(int x, int y, int, int tx, int ty, int s, int s2) {
   int x1, y1, x2, y2, x3, y3;
   voxel_c * space = puzzle->getShape(piecenumber);
 
@@ -189,7 +189,7 @@ void gridEditor_1_c::drawTileColor(int x, int y, int tx, int ty, int s, int s2) 
   fl_polygon(x3, y3, (x1+x3)/2, (y1+y3)/2, (x2+x3)/2, (y2+y3)/2);
 }
 
-void gridEditor_1_c::drawTileCursor(int x, int y, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy) {
+void gridEditor_1_c::drawTileCursor(int x, int y, int, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy) {
 
   voxel_c * space = puzzle->getShape(piecenumber);
   int xl1, yl1, xl2, yl2, xl3, yl3;
@@ -234,7 +234,7 @@ void gridEditor_1_c::drawTileCursor(int x, int y, int x1, int y1, int x2, int y2
   }
 }
 
-void gridEditor_1_c::calcGridPosition(int x, int y, int *gx, int *gy) {
+void gridEditor_1_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
 
   voxel_c * space = puzzle->getShape(piecenumber);
 

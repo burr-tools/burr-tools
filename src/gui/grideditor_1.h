@@ -43,13 +43,13 @@ private:
   // top right corner position
   void calcParameters(int *s, int *s2, int *tx, int *ty);
 
-  void calcGridPosition(int x, int y, int *gx, int *gy);
+  void calcGridPosition(int x, int y, int z, int *gx, int *gy);
 
-  void drawNormalTile(int x, int y, int tx, int ty, int sx, int sy);
-  void drawVariableTile(int x, int y, int tx, int ty, int sx, int sy);
-  void drawTileFrame(int x, int y, int tx, int ty, int sx, int sy);
-  void drawTileColor(int x, int y, int tx, int ty, int sx, int sy);
-  void drawTileCursor(int x, int y, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy);
+  void drawNormalTile(int x, int y, int z, int tx, int ty, int sx, int sy);
+  void drawVariableTile(int x, int y, int z, int tx, int ty, int sx, int sy);
+  void drawTileFrame(int x, int y, int z, int tx, int ty, int sx, int sy);
+  void drawTileColor(int x, int y, int z, int tx, int ty, int sx, int sy);
+  void drawTileCursor(int x, int y, int z, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy);
 
 public:
 
