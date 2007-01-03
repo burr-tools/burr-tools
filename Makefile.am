@@ -28,6 +28,6 @@ EXTRA_DIST = doc/UserGuide.tm doc/UserGuide.pdf \
 	     doc/Pics/Window_DDD_1.png doc/Pics/Window_DDD_2.png \
 	     doc/Pics/Window_DDD_3.png doc/Pics/Window_Placements.png \
 	     doc/Pics/Window_StartUp.png doc/Pics/Window_ImageExport.png \
-	     dos/Pics/Window_Status.png \
+	     doc/Pics/Window_Status.png \
 	     examples/README.TXT examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle \
 	     examples/PelikanBurr.xmpuzzle examples/CubeInCage.xmpuzzle
