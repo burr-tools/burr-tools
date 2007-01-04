@@ -36,19 +36,9 @@ class gridTypeGui_c : public layouter_c {
 /* the required elements for the brick grid type */
 class gridTypeGui_0_c : public gridTypeGui_c {
 
-  private:
-
-    gridType_c * gt;
-
-    LFl_Check_Button *lxy, *lxz, *lyz;
-    LFl_Check_Button *arxy, *arxz, *aryz;
-    LFl_Check_Button *axyeaxz, *axyeayz, *axzeayz;
-
   public:
 
     gridTypeGui_0_c(int x, int y, int w, int h, gridType_c * gt);
-
-    void updateValues(void);
 };
 
 class gridTypeGui_1_c : public gridTypeGui_c {

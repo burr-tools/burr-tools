@@ -45,18 +45,6 @@ gridType_c::gridType_c(const xml::node & node) {
   switch (type) {
 
     case GT_BRICKS:
-      parameters.brick.x_differs_y = node.get_attributes().find("x_differs_y") != node.get_attributes().end();
-      parameters.brick.x_differs_z = node.get_attributes().find("x_differs_z") != node.get_attributes().end();
-      parameters.brick.y_differs_z = node.get_attributes().find("y_differs_z") != node.get_attributes().end();
-
-      parameters.brick.axy_ortho = node.get_attributes().find("axy_ortho") != node.get_attributes().end();
-      parameters.brick.axz_ortho = node.get_attributes().find("axz_ortho") != node.get_attributes().end();
-      parameters.brick.ayz_ortho = node.get_attributes().find("ayz_ortho") != node.get_attributes().end();
-
-      parameters.brick.axy_differs_axz = node.get_attributes().find("axy_differs_axz") != node.get_attributes().end();
-      parameters.brick.axy_differs_ayz = node.get_attributes().find("axy_differs_ayz") != node.get_attributes().end();
-      parameters.brick.axz_differs_ayz = node.get_attributes().find("axz_differs_ayz") != node.get_attributes().end();
-
       break;
 
     case GT_TRIANGULAR_PRISM:
@@ -78,21 +66,12 @@ xml::node gridType_c::save(void) const {
   switch (type) {
 
     case GT_BRICKS:
-      if (parameters.brick.x_differs_y) nd.get_attributes().insert("x_differs_y", "");
-      if (parameters.brick.x_differs_z) nd.get_attributes().insert("x_differs_z", "");
-      if (parameters.brick.y_differs_z) nd.get_attributes().insert("y_differs_z", "");
-
-      if (parameters.brick.axy_ortho) nd.get_attributes().insert("axy_ortho", "");
-      if (parameters.brick.axz_ortho) nd.get_attributes().insert("axz_ortho", "");
-      if (parameters.brick.ayz_ortho) nd.get_attributes().insert("ayz_ortho", "");
-
-      if (parameters.brick.axy_differs_axz) nd.get_attributes().insert("axy_differs_axz", "");
-      if (parameters.brick.axy_differs_ayz) nd.get_attributes().insert("axy_differs_ayz", "");
-      if (parameters.brick.axz_differs_ayz) nd.get_attributes().insert("axz_differs_ayz", "");
-
       break;
 
     case GT_TRIANGULAR_PRISM:
+      break;
+
+    case GT_SPHERES:
       break;
   }
 
@@ -105,18 +84,6 @@ xml::node gridType_c::save(void) const {
 gridType_c::gridType_c(void) {
   type = GT_BRICKS;
 
-  parameters.brick.x_differs_y = false;
-  parameters.brick.x_differs_z = false;
-  parameters.brick.y_differs_z = false;
-
-  parameters.brick.axy_ortho = true;
-  parameters.brick.axz_ortho = true;
-  parameters.brick.ayz_ortho = true;
-
-  parameters.brick.axy_differs_axz = false;
-  parameters.brick.axy_differs_ayz = false;
-  parameters.brick.axz_differs_ayz = false;
-
   sym = 0;
 }
 
@@ -126,27 +93,12 @@ gridType_c::gridType_c(gridType gt) {
 
   switch (type) {
     case GT_BRICKS:
-
-      parameters.brick.x_differs_y = false;
-      parameters.brick.x_differs_z = false;
-      parameters.brick.y_differs_z = false;
-
-      parameters.brick.axy_ortho = true;
-      parameters.brick.axz_ortho = true;
-      parameters.brick.ayz_ortho = true;
-
-      parameters.brick.axy_differs_axz = false;
-      parameters.brick.axy_differs_ayz = false;
-      parameters.brick.axz_differs_ayz = false;
-
       break;
 
     case GT_TRIANGULAR_PRISM:
-
       break;
 
     case GT_SPHERES:
-
       break;
   }
 

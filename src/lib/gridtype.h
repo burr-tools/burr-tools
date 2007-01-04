@@ -58,17 +58,7 @@ class gridType_c {
       /* the parameter for the GT_BRICKS type
        */
       struct {
-        bool x_differs_y;  // length of y-axis is different from x axis
-        bool x_differs_z;
-        bool y_differs_z;
-
-        bool axy_ortho;    // y axis is in a rectangle to x axis
-        bool axz_ortho;
-        bool ayz_ortho;
-
-        bool axy_differs_axz;  // the angle between axes x and y is different from the angle between axes x and z
-        bool axy_differs_ayz;
-        bool axz_differs_ayz;
+        bool nothing;
       } brick;
 
       struct {
@@ -107,28 +97,6 @@ class gridType_c {
     gridType getType(void) { return type; }
 
     unsigned int getCapabilities(void) const;
-
-    /* functions to access the fields for a BRICK grid type */
-    bool getBrickXneY(void) const { bt_assert(type == GT_BRICKS); return parameters.brick.x_differs_y; }
-    bool getBrickXneZ(void) const { bt_assert(type == GT_BRICKS); return parameters.brick.x_differs_z; }
-    bool getBrickYneZ(void) const { bt_assert(type == GT_BRICKS); return parameters.brick.y_differs_z; }
-    void setBrickXneY(bool val) { bt_assert(type == GT_BRICKS); parameters.brick.x_differs_y = val; }
-    void setBrickXneZ(bool val) { bt_assert(type == GT_BRICKS); parameters.brick.x_differs_z = val; }
-    void setBrickYneZ(bool val) { bt_assert(type == GT_BRICKS); parameters.brick.y_differs_z = val; }
-
-    bool getBrickAngleOrthoXY(void) const { bt_assert(type == GT_BRICKS); return parameters.brick.axy_ortho; }
-    bool getBrickAngleOrthoXZ(void) const { bt_assert(type == GT_BRICKS); return parameters.brick.axz_ortho; }
-    bool getBrickAngleOrthoYZ(void) const { bt_assert(type == GT_BRICKS); return parameters.brick.ayz_ortho; }
-    void setBrickAngleOrthoXY(bool val) { bt_assert(type == GT_BRICKS); parameters.brick.axy_ortho = val; }
-    void setBrickAngleOrthoXZ(bool val) { bt_assert(type == GT_BRICKS); parameters.brick.axz_ortho = val; }
-    void setBrickAngleOrthoYZ(bool val) { bt_assert(type == GT_BRICKS); parameters.brick.ayz_ortho = val; }
-
-    bool getBrickAngleXYneXZ(void) const { bt_assert(type == GT_BRICKS); return parameters.brick.axy_differs_axz; }
-    bool getBrickAngleXYneYZ(void) const { bt_assert(type == GT_BRICKS); return parameters.brick.axy_differs_ayz; }
-    bool getBrickAngleXZneYZ(void) const { bt_assert(type == GT_BRICKS); return parameters.brick.axz_differs_ayz; }
-    void setBrickAngleXYneXZ(bool val) { bt_assert(type == GT_BRICKS); parameters.brick.axy_differs_axz = val; }
-    void setBrickAngleXYneYZ(bool val) { bt_assert(type == GT_BRICKS); parameters.brick.axy_differs_ayz = val; }
-    void setBrickAngleXZneYZ(bool val) { bt_assert(type == GT_BRICKS); parameters.brick.axz_differs_ayz = val; }
 
     /* these functions return assembler and disassemble for the current space grid
      * if the required functionality is not available, return 0

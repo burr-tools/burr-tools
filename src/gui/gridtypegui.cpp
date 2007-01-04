@@ -26,126 +26,13 @@
 #include <FL/Fl_Browser_.H>
 #include <FL/Fl_Image.H>
 
-static void cb_gridTypeGui0Update(Fl_Widget *o, void *v) { ((gridTypeGui_0_c*)(v))->updateValues(); }
-void gridTypeGui_0_c::updateValues(void) {
+gridTypeGui_0_c::gridTypeGui_0_c(int x, int y, int w, int h, gridType_c * g) {
 
-  unsigned char bb = 0;
-  if (arxy->value()) bb |= 1;
-  if (arxz->value()) bb |= 2;
-  if (aryz->value()) bb |= 4;
-
-  switch (bb) {
-    case 0:
-      axyeaxz->activate();
-      axyeayz->activate();
-      axzeayz->activate();
-      break;
-    case 1:
-      axyeaxz->deactivate(); axyeaxz->set();
-      axyeayz->deactivate(); axyeayz->set();
-      axzeayz->activate();
-      break;
-    case 2:
-      axyeaxz->deactivate(); axyeaxz->set();
-      axyeayz->activate();
-      axzeayz->deactivate(); axzeayz->set();
-      break;
-    case 3:
-      axyeaxz->deactivate(); axyeaxz->clear();
-      axyeayz->deactivate(); axyeayz->set();
-      axzeayz->deactivate(); axzeayz->clear();
-      break;
-    case 4:
-      axyeaxz->activate();
-      axyeayz->deactivate(); axyeayz->set();
-      axzeayz->deactivate(); axzeayz->set();
-      break;
-    case 5:
-      axyeaxz->deactivate(); axyeaxz->set();
-      axyeayz->deactivate(); axyeayz->clear();
-      axzeayz->deactivate(); axzeayz->clear();
-      break;
-    case 6:
-      axyeaxz->deactivate(); axyeaxz->clear();
-      axyeayz->deactivate(); axyeayz->clear();
-      axzeayz->deactivate(); axzeayz->set();
-      break;
-    case 7:
-      axyeaxz->deactivate(); axyeaxz->clear();
-      axyeayz->deactivate(); axyeayz->clear();
-      axzeayz->deactivate(); axzeayz->clear();
-      break;
-  }
-
-  gt->setBrickXneY(lxy->value());
-  gt->setBrickXneZ(lxz->value());
-  gt->setBrickYneZ(lyz->value());
-  gt->setBrickAngleOrthoXY(arxy->value());
-  gt->setBrickAngleOrthoXZ(arxz->value());
-  gt->setBrickAngleOrthoYZ(aryz->value());
-  gt->setBrickAngleXYneXZ(axyeaxz->value());
-  gt->setBrickAngleXYneYZ(axyeayz->value());
-  gt->setBrickAngleXZneYZ(axzeayz->value());
-}
-
-gridTypeGui_0_c::gridTypeGui_0_c(int x, int y, int w, int h, gridType_c * g) : gt(g) {
-
-  LFl_Frame *fr;
-
-  {
-    fr = new LFl_Frame(0, 0);
-
-    lxy = new LFl_Check_Button("Length X different from Length Y", 0, 0);
-    lxz = new LFl_Check_Button("Length X different from Length Z", 0, 1);
-    lyz = new LFl_Check_Button("Length Y different from Length Z", 0, 2);
-
-    if (gt->getBrickXneY()) lxy->set();
-    if (gt->getBrickXneZ()) lxz->set();
-    if (gt->getBrickYneZ()) lyz->set();
-
-    fr->end();
-  }
-  {
-    fr = new LFl_Frame(0, 1);
-
-    arxy = new LFl_Check_Button("Angle between X and Y Axis is 90", 0, 0);
-    arxz = new LFl_Check_Button("Angle between X and Z Axis is 90", 0, 1);
-    aryz = new LFl_Check_Button("Angle between Y and Z Axis is 90", 0, 2);
-
-    if (gt->getBrickAngleOrthoXY()) arxy->set();
-    if (gt->getBrickAngleOrthoXZ()) arxz->set();
-    if (gt->getBrickAngleOrthoYZ()) aryz->set();
-
-    fr->end();
-  }
-  {
-    fr = new LFl_Frame(0, 2);
-
-    axyeaxz = new LFl_Check_Button("X-Y Axis and X-Z Axis Angles are different", 0, 0);
-    axyeayz = new LFl_Check_Button("X-Y Axis and Y-Z Axis Angles are different", 0, 1);
-    axzeayz = new LFl_Check_Button("X-Z Axis and Y-Z Axis Angles are different", 0, 2);
-
-    if (gt->getBrickAngleXYneXZ()) axyeaxz->set();
-    if (gt->getBrickAngleXYneYZ()) axyeayz->set();
-    if (gt->getBrickAngleXZneYZ()) axzeayz->set();
-
-    fr->end();
-  }
-
-
-  lxy->callback(cb_gridTypeGui0Update, this);
-  lxz->callback(cb_gridTypeGui0Update, this);
-  lyz->callback(cb_gridTypeGui0Update, this);
-  arxy->callback(cb_gridTypeGui0Update, this);
-  arxz->callback(cb_gridTypeGui0Update, this);
-  aryz->callback(cb_gridTypeGui0Update, this);
-  axyeaxz->callback(cb_gridTypeGui0Update, this);
-  axyeayz->callback(cb_gridTypeGui0Update, this);
-  axzeayz->callback(cb_gridTypeGui0Update, this);
+  new LFl_Box("In a distant future there might be parameters\n"
+      "to stretch and shear the cube into a parallelepiped\n"
+      "but not right now!!", 0, 0);
 
   end();
-
-  updateValues();
 }
 
 gridTypeGui_1_c::gridTypeGui_1_c(int x, int y, int w, int h, gridType_c * gt) {
