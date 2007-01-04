@@ -17,7 +17,12 @@
   the disassembly animation
 
 - new disassembler, for complex disassemblies it is quite a bit faster and
-  consumes less memory. But this will probably not show in most puzzles
+  consumes less memory. But this will probably not show in most puzzles.
+  This disassembler also never moves 2 pieces by different amounts at
+  the same time, e.g Piece1 by 1 and Piece2 by 2 units. It is also finds
+  now all possibilities to move groups of pieces. The old one used to
+  oversee a few chances to move 2 or more pieces at the same time. This
+  might slow down the disassembler when many choices exist.
 
 - new datastructure for the disassembler. This structur should make the
   disassembler a bit faster
