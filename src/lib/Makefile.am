@@ -31,6 +31,7 @@ libburr_a_SOURCES=\
                   voxel.cpp voxel.h \
 		  voxel_0.cpp voxel_0.h \
 		  voxel_1.cpp voxel_1.h \
+		  voxel_2.cpp voxel_2.h \
 		  types.h \
 		  tabs_0/rotx.inc tabs_0/roty.inc tabs_0/rotz.inc tabs_0/symcalc.inc tabs_0/symmetries.inc \
 		  tabs_0/tablesizes.inc tabs_0/transformmini.inc tabs_0/transmult.inc tabs_0/unifiedsym.inc \

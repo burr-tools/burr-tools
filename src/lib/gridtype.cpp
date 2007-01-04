@@ -22,6 +22,7 @@
 #include "disassembler_0.h"
 #include "voxel_0.h"
 #include "voxel_1.h"
+#include "voxel_2.h"
 #include "symmetries_0.h"
 
 #include <xmlwrapp/attributes.h>
@@ -184,7 +185,7 @@ voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, v
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(x, y, z, this, init, outs);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(x, y, z, this, init, outs);
-    case GT_SPHERES:          return new voxel_0_c(x, y, z, this, init, outs);
+    case GT_SPHERES:          return new voxel_2_c(x, y, z, this, init, outs);
     default: return 0;
   }
 }
@@ -192,7 +193,7 @@ voxel_c * gridType_c::getVoxel(const xml::node & node) const {
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(node, this);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(node, this);
-    case GT_SPHERES:          return new voxel_0_c(node, this);
+    case GT_SPHERES:          return new voxel_2_c(node, this);
     default: return 0;
   }
 }
@@ -201,7 +202,7 @@ voxel_c * gridType_c::getVoxel(const voxel_c & orig, unsigned int transformation
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(orig, transformation);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig, transformation);
-    case GT_SPHERES:          return new voxel_0_c(orig, transformation);
+    case GT_SPHERES:          return new voxel_2_c(orig, transformation);
     default: return 0;
   }
 }
@@ -210,7 +211,7 @@ voxel_c * gridType_c::getVoxel(const voxel_c * orig, unsigned int transformation
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(orig, transformation);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig, transformation);
-    case GT_SPHERES:          return new voxel_0_c(orig, transformation);
+    case GT_SPHERES:          return new voxel_2_c(orig, transformation);
     default: return 0;
   }
 }
