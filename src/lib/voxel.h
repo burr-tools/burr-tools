@@ -506,7 +506,7 @@ public:
    * not exist with certain shapes, this function returns a bool showing
    * if the transformation action has succeeded
    */
-  bool transform(unsigned int nr);
+  virtual bool transform(unsigned int nr) = 0;
 
   /**
    * This function returns the self symmetries of this voxel

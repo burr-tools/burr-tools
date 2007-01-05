@@ -539,25 +539,6 @@ bool voxel_c::neighbour(unsigned int p, voxel_type val) const {
   return false;
 }
 
-bool voxel_c::transform(unsigned int nr) {
-
-  const symmetries_c * sym = gt->getSymmetries();
-
-  bt_assert(sym);
-  bt_assert(nr < sym->getNumTransformationsMirror());
-
-  if (nr >= sym->getNumTransformations()) {
-    mirrorX();
-    nr -= sym->getNumTransformations();
-  }
-
-  rotatex(sym->rotx(nr));
-  rotatey(sym->roty(nr));
-  rotatez(sym->rotz(nr));
-
-  return true;
-}
-
 symmetries_t voxel_c::selfSymmetries(void) const {
 
   if (isSymmetryInvalid(symmetries)) {

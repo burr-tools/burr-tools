@@ -44,9 +44,6 @@ class symmetries_1_c : public symmetries_c {
 
     unsigned int getNumTransformations(void) const;
     unsigned int getNumTransformationsMirror(void) const;
-    virtual int rotx(unsigned int p) const;
-    virtual int roty(unsigned int p) const;
-    virtual int rotz(unsigned int p) const;
     bool symmetrieContainsTransformation(symmetries_t s, unsigned int t) const;
     unsigned char transAdd(unsigned char t1, unsigned char t2) const;
     unsigned char minimizeTransformation(symmetries_t s, unsigned char trans) const;

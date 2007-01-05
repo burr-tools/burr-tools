@@ -51,19 +51,6 @@ class symmetries_c {
     virtual unsigned int getNumTransformations(void) const = 0;
     virtual unsigned int getNumTransformationsMirror(void) const = 0;
 
-    /* one piece can have 48 symmetries. 24 rotational and another 24 rotational with mirroring.
-     * the mirroring is possible to avoid finding mirrored solutions.
-     * All the symmetries are numbered. The first 24 are the not mirrored. The other 24 are
-     * first mirrored along the x axis (-x -> x). The piece is rotated around the x axis by
-     * the value contained inside this array at the position of the symmetry number or symmetry number
-     * minus 24. The piece is rotated around y and finally around z.
-     * If the resulting piece is identical to the original untransformed than the piece has the
-     * symmetry or the given rotation number
-     */
-    virtual int rotx(unsigned int p) const = 0;
-    virtual int roty(unsigned int p) const = 0;
-    virtual int rotz(unsigned int p) const = 0;
-
     /* this return true, if the symmetry contains the given transformation */
     virtual bool symmetrieContainsTransformation(symmetries_t s, unsigned int t) const = 0;
 

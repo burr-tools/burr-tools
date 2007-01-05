@@ -295,9 +295,42 @@ void voxel_0_c::rotatez(int by) {
   symmetries = symmetryInvalid();
 }
 
+#include "tabs_0/tablesizes.inc"
+
+/* these arrays contain the transformations necessary to get all possible orientations of a piece
+ * first do a mirroring along the x-y-plane, then rotate around x then y and then the z-axis
+ */
+static const int _rotx[NUM_TRANSFORMATIONS] = {
+#include "tabs_0/rotx.inc"
+};
+static const int _roty[NUM_TRANSFORMATIONS] = {
+#include "tabs_0/roty.inc"
+};
+static const int _rotz[NUM_TRANSFORMATIONS] = {
+#include "tabs_0/rotz.inc"
+};
+
+bool voxel_0_c::transform(unsigned int nr) {
+
+  bt_assert(nr < NUM_TRANSFORMATIONS_MIRROR);
+
+  if (nr >= NUM_TRANSFORMATIONS) {
+    mirrorX();
+    nr -= NUM_TRANSFORMATIONS;
+  }
+
+  rotatex(_rotx[nr]);
+  rotatey(_roty[nr]);
+  rotatez(_rotz[nr]);
+
+  return true;
+}
+
+
+
 void voxel_0_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 
-  const symmetries_c * sym = gt->getSymmetries();
+  bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
 
   int tx = hx;
   int ty = hy;
@@ -307,12 +340,12 @@ void voxel_0_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const
   int tsz = sz;
   int t;
 
-  if (trans >= sym->getNumTransformations()) {
+  if (trans >= NUM_TRANSFORMATIONS) {
     tx = sx - tx - 1;
-    trans -= sym->getNumTransformations();
+    trans -= NUM_TRANSFORMATIONS;
   }
 
-  for (int i = 0; i < sym->rotx(trans); i++) {
+  for (int i = 0; i < _rotx[trans]; i++) {
     t = ty;
     ty = tsz - tz - 1;
     tz = t;
@@ -321,7 +354,7 @@ void voxel_0_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const
     tsz = t;
   }
 
-  for (int i = 0; i < sym->roty(trans); i++) {
+  for (int i = 0; i < _roty[trans]; i++) {
     t = tx;
     tx = tsz - tz - 1;
     tz = t;
@@ -330,7 +363,7 @@ void voxel_0_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const
     tsz = t;
   }
 
-  for (int i = 0; i < sym->rotz(trans); i++) {
+  for (int i = 0; i < _rotz[trans]; i++) {
     t = ty;
     ty = tx;
     tx = tsy - t - 1;
@@ -346,7 +379,7 @@ void voxel_0_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const
 
 void voxel_0_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2, int * y2, int * z2) const {
 
-  const symmetries_c * sym = gt->getSymmetries();
+  bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
 
   int t1x = bx1;
   int t1y = by1;
@@ -360,13 +393,13 @@ void voxel_0_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1
   int tsz = sz;
   int t;
 
-  if (trans >= sym->getNumTransformations()) {
+  if (trans >= NUM_TRANSFORMATIONS) {
     t1x = sx - 1 - t1x;
     t2x = sx - 1 - t2x;
-    trans -= sym->getNumTransformations();
+    trans -= NUM_TRANSFORMATIONS;
   }
 
-  for (int i = 0; i < sym->rotx(trans); i++) {
+  for (int i = 0; i < _rotx[trans]; i++) {
     t = t1y;
     t1y = tsz - 1 - t1z;
     t1z = t;
@@ -380,7 +413,7 @@ void voxel_0_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1
     tsz = t;
   }
 
-  for (int i = 0; i < sym->roty(trans); i++) {
+  for (int i = 0; i < _roty[trans]; i++) {
     t = t1x;
     t1x = tsz - 1 - t1z;
     t1z = t;
@@ -394,7 +427,7 @@ void voxel_0_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1
     tsz = t;
   }
 
-  for (int i = 0; i < sym->rotz(trans); i++) {
+  for (int i = 0; i < _rotz[trans]; i++) {
     t = t1y;
     t1y = t1x;
     t1x = tsy - 1 - t;
@@ -425,26 +458,27 @@ void voxel_0_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1
 }
 
 void voxel_0_c::transformPoint(int * x, int * y, int * z, unsigned int trans) const {
-  const symmetries_c * sym = gt->getSymmetries();
 
-  if (trans >= sym->getNumTransformations()) {
+  bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
+
+  if (trans >= NUM_TRANSFORMATIONS) {
     *x = -(*x);
-    trans -= sym->getNumTransformations();
+    trans -= NUM_TRANSFORMATIONS;
   }
 
-  for (int i = 0; i < sym->rotx(trans); i++) {
+  for (int i = 0; i < _rotx[trans]; i++) {
     int tmp = *y;
     *y = - (*z);
     *z = tmp;
   }
 
-  for (int i = 0; i < sym->roty(trans); i++) {
+  for (int i = 0; i < _roty[trans]; i++) {
     int tmp = *z;
     *z = *x;
     *x = -tmp;
   }
 
-  for (int i = 0; i < sym->rotz(trans); i++) {
+  for (int i = 0; i < _rotz[trans]; i++) {
     int tmp = *x;
     *x = -(*y);
     *y = tmp;

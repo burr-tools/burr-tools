@@ -397,29 +397,64 @@ void voxel_1_c::mirrorY(void) {
   }
 }
 
+#include "tabs_1/tablesizes.inc"
+
+/* these arrays contain the transformations necessary to get all possible orientations of a piece
+ * first do a mirroring along the x-y-plane, then rotate around x then y and then the z-axis
+ */
+static const int _rotx[NUM_TRANSFORMATIONS] = {
+#include "tabs_1/rotx.inc"
+};
+static const int _roty[NUM_TRANSFORMATIONS] = {
+#include "tabs_1/roty.inc"
+};
+static const int _rotz[NUM_TRANSFORMATIONS] = {
+#include "tabs_1/rotz.inc"
+};
+
+bool voxel_1_c::transform(unsigned int nr) {
+
+  bt_assert(nr < NUM_TRANSFORMATIONS_MIRROR);
+
+  if (nr >= NUM_TRANSFORMATIONS) {
+    mirrorX();
+    nr -= NUM_TRANSFORMATIONS;
+  }
+
+  rotatex(_rotx[nr]);
+  rotatey(_roty[nr]);
+  rotatez(_rotz[nr]);
+
+  return true;
+}
+
+
+
+
 bool voxel_1_c::identicalInBB(const voxel_c * op, bool includeColors) const {
   return (((bx1+by1) & 1) == ((op->boundX1() + op->boundY1()) & 1)) && voxel_c::identicalInBB(op, includeColors);
 }
 
 void voxel_1_c::transformPoint(int * x, int * y, int * z, unsigned int trans) const {
-  const symmetries_c * sym = gt->getSymmetries();
 
-  if (trans >= sym->getNumTransformations()) {
+  bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
+
+  if (trans >= NUM_TRANSFORMATIONS) {
     *x = -(*x);
-    trans -= sym->getNumTransformations();
+    trans -= NUM_TRANSFORMATIONS;
   }
 
-  for (int t = 0; t < sym->rotx(trans); t++) {
+  for (int t = 0; t < _rotx[trans]; t++) {
     *y = -(*y);
     *z = -(*z);
   }
 
-  for (int t = 0; t < sym->roty(trans); t++) {
+  for (int t = 0; t < _roty[trans]; t++) {
     *z = -(*z);
     *x = -(*x);
   }
 
-  for (int t = 0; t < sym->rotz(trans); t++) {
+  for (int t = 0; t < _rotz[trans]; t++) {
 
     int tx = *x;
     int ty = *y;

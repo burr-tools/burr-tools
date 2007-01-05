@@ -23,19 +23,6 @@
 
 #include "tabs_1/tablesizes.inc"
 
-/* these arrays contain the transformations necessary to get all possible orientations of a piece
- * first do a mirroring along the x-y-plane, then rotate around x then y and then the z-axis
- */
-static const int _rotx[NUM_TRANSFORMATIONS] = {
-#include "tabs_1/rotx.inc"
-};
-static const int _roty[NUM_TRANSFORMATIONS] = {
-#include "tabs_1/roty.inc"
-};
-static const int _rotz[NUM_TRANSFORMATIONS] = {
-#include "tabs_1/rotz.inc"
-};
-
 /* this matrix contains the concatenation of 2 transformations
  * if you first transform the piece around t1 and then around t2
  * you can as well transform around transMult[t1][t2]
@@ -67,19 +54,6 @@ symmetries_1_c::symmetries_1_c(const gridType_c * g) : gt(g) {
 
 unsigned int symmetries_1_c::getNumTransformations(void) const { return NUM_TRANSFORMATIONS; }
 unsigned int symmetries_1_c::getNumTransformationsMirror(void) const { return NUM_TRANSFORMATIONS_MIRROR; }
-
-int symmetries_1_c::rotx(unsigned int p) const {
-  bt_assert(p < NUM_TRANSFORMATIONS);
-  return _rotx[p];
-}
-int symmetries_1_c::roty(unsigned int p) const {
-  bt_assert(p < NUM_TRANSFORMATIONS);
-  return _roty[p];
-}
-int symmetries_1_c::rotz(unsigned int p) const {
-  bt_assert(p < NUM_TRANSFORMATIONS);
-  return _rotz[p];
-}
 
 unsigned long long symmetries_1_c::getSymmetryMask(symmetries_t sym) const {
   bt_assert(sym < NUM_SYMMETRY_GROUPS);
