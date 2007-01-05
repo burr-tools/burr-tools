@@ -162,9 +162,9 @@ bool voxel_c::identicalWithRots(const voxel_c * op, bool includeMirror, bool inc
   unsigned int maxTrans = includeMirror ? sym->getNumTransformationsMirror() : sym->getNumTransformations();
 
   for (unsigned int t = 0; t < maxTrans; t++) {
-    voxel_c * v = gt->getVoxel(op, t);
+    voxel_c * v = gt->getVoxel(op);
 
-    if (identicalInBB(v, includeColors)) {
+    if (v->transform(t) && identicalInBB(v, includeColors)) {
       delete v;
       return true;
     }
@@ -180,9 +180,9 @@ unsigned char voxel_c::getMirrorTransform(const voxel_c * op) const {
   const symmetries_c * sym = gt->getSymmetries();
 
   for (unsigned int t = sym->getNumTransformations(); t < sym->getNumTransformationsMirror(); t++) {
-    voxel_c * v = gt->getVoxel(this, t);
+    voxel_c * v = gt->getVoxel(this);
 
-    if (v->identicalInBB(op, true)) {
+    if (v->transform(t) && v->identicalInBB(op, true)) {
       delete v;
       return t;
     }
@@ -197,7 +197,10 @@ void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 
   /* this version always works, but also is quite slow
    */
-  voxel_c * tmp = gt->getVoxel(this, trans);
+  voxel_c * tmp = gt->getVoxel(this);
+
+  bt_assert(tmp->transform(trans));
+
   *x = tmp->getHx();
   *y = tmp->getHy();
   *z = tmp->getHz();
@@ -208,7 +211,9 @@ void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2, int * y2, int * z2) const {
 
   /* this version always works, but it is quite slow */
-  voxel_c * tmp = gt->getVoxel(this, trans);
+  voxel_c * tmp = gt->getVoxel(this);
+  bt_assert(tmp->transform(trans));
+
   if (x1) *x1 = tmp->boundX1();
   if (x2) *x2 = tmp->boundX2();
   if (y1) *y1 = tmp->boundY1();
@@ -534,7 +539,7 @@ bool voxel_c::neighbour(unsigned int p, voxel_type val) const {
   return false;
 }
 
-void voxel_c::transform(unsigned int nr) {
+bool voxel_c::transform(unsigned int nr) {
 
   const symmetries_c * sym = gt->getSymmetries();
 
@@ -549,6 +554,8 @@ void voxel_c::transform(unsigned int nr) {
   rotatex(sym->rotx(nr));
   rotatey(sym->roty(nr));
   rotatez(sym->rotz(nr));
+
+  return true;
 }
 
 symmetries_t voxel_c::selfSymmetries(void) const {

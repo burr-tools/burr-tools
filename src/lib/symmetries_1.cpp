@@ -146,11 +146,13 @@ symmetries_t symmetries_1_c::symmetryCalcuation(const voxel_c *pp) const {
 
   for (int t = NUM_TRANSFORMATIONS_MIRROR-1; t >= 0; t--) {
 
-    voxel_1_c p(pp, t);
+    voxel_1_c p(pp);
+    bt_assert(p.transform(t));
     s = 1;
 
     for (int j = 1; j < NUM_TRANSFORMATIONS_MIRROR; j++) {
-      voxel_1_c v(&p, j);
+      voxel_1_c v(&p);
+      bt_assert(v.transform(j));
       if (p.identicalInBB(&v))
         s |= ((unsigned long long)1) << j;
     }
@@ -174,11 +176,13 @@ symmetries_t symmetries_1_c::symmetryCalcuation(const voxel_c *pp) const {
   if (symmetries[i] != s) {
 
     for (int j = 1; j < NUM_TRANSFORMATIONS_MIRROR; j++) {
-      voxel_1_c p(pp, j);
+      voxel_1_c p(pp);
+      bt_assert(p.transform(j));
 
       unsigned long long s = 1;
       for (int k = 1; k < NUM_TRANSFORMATIONS_MIRROR; k++) {
-        voxel_1_c v(p, k);
+        voxel_1_c v(p);
+        bt_assert(v.transform(k));
         if (p.identicalInBB(&v))
           s |= ((unsigned long long)1) << k;
       }

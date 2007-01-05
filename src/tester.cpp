@@ -33,6 +33,8 @@
 
 #include <xmlwrapp/xmlwrapp.h>
 
+#include <assert.h>
+
 using namespace std;
 
 class asm_cb : public assembler_cb {
@@ -135,7 +137,8 @@ void hotspotCheck(char * fname) {
 
   for (unsigned int i = 1; i < p.shapeNumber(); i++) {
     for (unsigned int t = 0; t < p.getGridType()->getSymmetries()->getNumTransformationsMirror(); t++) {
-      voxel_c * vv = p.getGridType()->getVoxel(p.getShape(i), t);
+      voxel_c * vv = p.getGridType()->getVoxel(p.getShape(i));
+      assert(vv->transform(t));
       int x, y, z;
       p.getShape(i)->getHotspot(t, &x, &y, &z);
       if (x != vv->getHx()) {

@@ -150,20 +150,20 @@ voxel_c * gridType_c::getVoxel(const xml::node & node) const {
   }
 }
 
-voxel_c * gridType_c::getVoxel(const voxel_c & orig, unsigned int transformation) const {
+voxel_c * gridType_c::getVoxel(const voxel_c & orig) const {
   switch (type) {
-    case GT_BRICKS:           return new voxel_0_c(orig, transformation);
-    case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig, transformation);
-    case GT_SPHERES:          return new voxel_2_c(orig, transformation);
+    case GT_BRICKS:           return new voxel_0_c(orig);
+    case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig);
+    case GT_SPHERES:          return new voxel_2_c(orig);
     default: return 0;
   }
 }
 
-voxel_c * gridType_c::getVoxel(const voxel_c * orig, unsigned int transformation) const {
+voxel_c * gridType_c::getVoxel(const voxel_c * orig) const {
   switch (type) {
-    case GT_BRICKS:           return new voxel_0_c(orig, transformation);
-    case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig, transformation);
-    case GT_SPHERES:          return new voxel_2_c(orig, transformation);
+    case GT_BRICKS:           return new voxel_0_c(orig);
+    case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig);
+    case GT_SPHERES:          return new voxel_2_c(orig);
     default: return 0;
   }
 }

@@ -446,8 +446,17 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
        * if shape is new to cache, add it to the cache and also
        * add the shape to the matrix, in all positions that it fits
        */
-      for (unsigned int rot = 0; rot < sym->getNumTransformations(); rot++)
-        if (voxel_c * rotation = addToCache(cache, &cachefill, gt->getVoxel(puzzle->probGetShapeShape(problem, pc), rot))) {
+      for (unsigned int rot = 0; rot < sym->getNumTransformations(); rot++) {
+
+        voxel_c * rotation = gt->getVoxel(puzzle->probGetShapeShape(problem, pc));
+        if (!rotation->transform(rot)) {
+          delete rotation;
+          continue;
+        }
+
+        rotation = addToCache(cache, &cachefill, rotation);
+
+        if (rotation) {
           for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
             for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
               for (int z = (int)result->boundZ1()-(int)rotation->boundZ1(); z <= (int)result->boundZ2()-(int)rotation->boundZ2(); z++)
@@ -468,9 +477,19 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
           /* for the symmetry breaker piece we also add all symmetries of the box */
           if ((pc == symBreakerShape) && (piececount == 0))
             for (unsigned int r = 1; r < sym->getNumTransformationsMirror(); r++)
-              if (sym->symmetrieContainsTransformation(resultSym, r))
-                addToCache(cache, &cachefill, gt->getVoxel(puzzle->probGetShapeShape(problem, pc), sym->transAdd(rot, r)));
+              if (sym->symmetrieContainsTransformation(resultSym, r)) {
+
+                voxel_c * vx = gt->getVoxel(puzzle->probGetShapeShape(problem, pc));
+
+                if (!vx->transform(sym->transAdd(rot, r))) {
+                  delete vx;
+                  continue;
+                }
+
+                addToCache(cache, &cachefill, vx);
+              }
         }
+      }
 
       for (unsigned int i = 0; i < cachefill; i++)  delete cache[i];
 

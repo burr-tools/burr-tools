@@ -502,8 +502,11 @@ public:
   /**
    * all possible rotations of one piece can be generated.
    * using this function by iterating nr from 0 to NUM_TRANSFORMATIONS (24 for cubes) excluding
+   * because in some spacegrids there might be transformations that do
+   * not exist with certain shapes, this function returns a bool showing
+   * if the transformation action has succeeded
    */
-  void transform(unsigned int nr);
+  bool transform(unsigned int nr);
 
   /**
    * This function returns the self symmetries of this voxel

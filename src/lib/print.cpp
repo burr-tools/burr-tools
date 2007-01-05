@@ -163,7 +163,8 @@ void print(const separation_c * s, const assembly_c * a, const puzzle_c * p, uns
   for (unsigned int i = 0; i < p->probShapeNumber(prob); i++)
     for (unsigned int j = 0; j < p->probGetShapeCount(prob, i); j++) {
 
-      pieces[pc] = p->getGridType()->getVoxel(p->probGetShapeShape(prob, i), a->getTransformation(pc));
+      pieces[pc] = p->getGridType()->getVoxel(p->probGetShapeShape(prob, i));
+      bt_assert(pieces[pc]->transform(a->getTransformation(pc)));
       pc++;
     }
 
@@ -192,7 +193,8 @@ void print(const assembly_c * a, const puzzle_c * p, unsigned int prob) {
   for (unsigned int i = 0; i < p->probShapeNumber(prob); i++)
     for (unsigned int j = 0; j < p->probGetShapeCount(prob, i); j++) {
 
-      pieces[pc] = p->getGridType()->getVoxel(p->probGetShapeShape(prob, i), a->getTransformation(pc));
+      pieces[pc] = p->getGridType()->getVoxel(p->probGetShapeShape(prob, i));
+      bt_assert(pieces[pc]->transform(a->getTransformation(pc)));
       pc++;
     }
 

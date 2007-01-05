@@ -172,7 +172,7 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val, FILE * o
       }
     }
 
-  fprintf(out, "voxel_1_c v(pp, %i);\nif (pp->identicalInBB(&v)) {\n", best_bit);
+  fprintf(out, "voxel_1_c v(pp);\nv.transform(%i);\nif (pp->identicalInBB(&v)) {\n", best_bit);
 
   makeSymmetryTree(taken | ((unsigned long long)1 << best_bit), val | ((unsigned long long)1 << best_bit), out);
 
@@ -211,7 +211,8 @@ void multTranformationsMatrix(void) {
 
     for (int tr2 = 0; tr2 < NUM_TRANSFORMATIONS_MIRROR; tr2++) {
 
-      voxel_1_c v2(v, tr2);
+      voxel_1_c v2(v);
+      v2.transform(tr2);
 
       for (int t = 0; t < NUM_TRANSFORMATIONS_MIRROR; t++) {
         if (v2.identicalInBB(w[t])) {

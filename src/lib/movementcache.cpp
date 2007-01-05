@@ -90,15 +90,19 @@ movementCache_c::entry * movementCache_c::calcValues(unsigned char s1, unsigned 
   const voxel_c * sh1 = shapes[s1][t1];
 
   if (!sh1) {
-    sh1 = gt->getVoxel(shapes[s1][0], t1);
-    shapes[s1][t1] = sh1;
+    voxel_c * tsh1 = gt->getVoxel(shapes[s1][0]);
+    bt_assert(tsh1->transform(t1));
+    shapes[s1][t1] = tsh1;
+    sh1 = tsh1;
   }
 
   const voxel_c * sh2 = shapes[s2][t2];
 
   if (!sh2) {
-    sh2 = gt->getVoxel(shapes[s2][0], t2);
-    shapes[s2][t2] = sh2;
+    voxel_c * tsh2 = gt->getVoxel(shapes[s2][0]);
+    bt_assert(tsh2->transform(t2));
+    shapes[s2][t2] = tsh2;
+    sh2 = tsh2;
   }
 
   /* create the new have entry and fill some of its fields */
