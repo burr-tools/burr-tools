@@ -2310,7 +2310,11 @@ void mainWindow_c::update(void) {
         fl_message("Pieces contain %i units too many", assmThread->getErrorParam());
         break;
       case assembler_c::ERR_TOO_FEW_UNITS:
-        fl_message("Pieces contain %i units less than required", assmThread->getErrorParam());
+        fl_message("Pieces contain %i units less than required\n"
+                   "See user guide sections\n"
+                   "1.3.2.1 'Voxel States'\n"
+                   "3.4.2 'Basic Drawing Tools' and\n"
+                   "3.8 'Miscellaneous Editing Tools'", assmThread->getErrorParam());
         break;
       case assembler_c::ERR_CAN_NOT_PLACE:
         fl_message("Piece %i can be placed nowhere within the result", assmThread->getErrorParam()+1);
