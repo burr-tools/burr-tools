@@ -259,7 +259,7 @@ static void draw_wire_sphere(void) {
 // draws a wire frame box depending on the neighbours
 void voxelDrawer_2_c::drawFrame(const voxel_c * space, int x, int y, int z, float edge) {
 
-  if (((x+y+z) & 1) == 0) return;
+  if (((x+y+z) & 1) != 0) return;
 
   // first calculate center
 
@@ -279,7 +279,7 @@ void voxelDrawer_2_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 // draws a box with borders depending on the neighbour boxes
 void voxelDrawer_2_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge) {
 
-  if (((x+y+z) & 1) == 0) return;
+  if (((x+y+z) & 1) != 0) return;
 
   // first calculate center
 
@@ -299,7 +299,7 @@ void voxelDrawer_2_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
 // draw a cube that is smaller than 1
 void voxelDrawer_2_c::drawVariableMarkers(const voxel_c * space, int x, int y, int z) {
 
-  if (((x+y+z) & 1) == 0) return;
+  if (((x+y+z) & 1) != 0) return;
 
   // first calculate center
 
@@ -326,7 +326,7 @@ void voxelDrawer_2_c::drawCursor(unsigned int sx, unsigned int sy, unsigned int 
       for (unsigned int z = 0; z <= sz; z++) {
         bool ins = inRegion(x, y, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType);
 
-        if (ins && (((x+y+z) & 1) != 0)) {
+        if (ins && (((x+y+z) & 1) == 0)) {
 
           // first calculate center
 

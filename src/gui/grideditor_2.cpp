@@ -55,9 +55,10 @@ void gridEditor_2_c::calcParameters(int *szx, int *szy, int *tx, int *ty) {
 
 void gridEditor_2_c::drawNormalTile(int x, int y, int z, int tx, int ty, int sx, int sy) {
 
+  voxel_c * space = puzzle->getShape(piecenumber);
   // only draw tiles with x+y+z & 1 == 0
 
-  if ((x+y+z) & 1 != 0)
+  if (((x+(space->getY()-y)+z-1) & 1) != 0)
     return;
 
   int sxc = 7071*sx/10000;
@@ -68,7 +69,9 @@ void gridEditor_2_c::drawNormalTile(int x, int y, int z, int tx, int ty, int sx,
 
 void gridEditor_2_c::drawVariableTile(int x, int y, int z, int tx, int ty, int sx, int sy) {
 
-  if ((x+y+z) & 1 != 0)
+  voxel_c * space = puzzle->getShape(piecenumber);
+
+  if (((x+(space->getY()-y)+z-1) & 1) != 0)
     return;
 
   int sxc = 7071*sx/10000;
@@ -79,7 +82,9 @@ void gridEditor_2_c::drawVariableTile(int x, int y, int z, int tx, int ty, int s
 
 void gridEditor_2_c::drawTileFrame(int x, int y, int z, int tx, int ty, int sx, int sy) {
 
-  if ((x+y+z) & 1 != 0)
+  voxel_c * space = puzzle->getShape(piecenumber);
+
+  if (((x+(space->getY()-y)+z-1) & 1) != 0)
     return;
 
   int sxc = 7071*sx/10000;
@@ -90,7 +95,9 @@ void gridEditor_2_c::drawTileFrame(int x, int y, int z, int tx, int ty, int sx, 
 
 void gridEditor_2_c::drawTileColor(int x, int y, int z, int tx, int ty, int sx, int sy) {
 
-  if ((x+y+z) & 1 != 0)
+  voxel_c * space = puzzle->getShape(piecenumber);
+
+  if (((x+(space->getY()-y)+z) & 1) != 0)
     return;
 
   int sxc = 7071*sx/10000;
@@ -108,7 +115,7 @@ void gridEditor_2_c::drawTileCursor(int x, int y, int z, int x1, int y1, int x2,
 
   bool ins = inRegion(x, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools);
 
-  if (ins && (((x+y+z) & 1) == 0)) {
+  if (ins && (((x+(space->getY()-y-1)+z) & 1) == 0)) {
     fl_arc(tx+x*sxc-1, ty+y*syc-1, sx+2, sy+2, 0, 360);
 
     fl_arc(tx+x*sxc-1, ty+y*syc-1, sx+1, sy+1, 0, 360);

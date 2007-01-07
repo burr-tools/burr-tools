@@ -36,6 +36,10 @@ class voxel_2_c : public voxel_c {
     void transformPoint(int * x, int * y, int * z, unsigned int trans) const;
     virtual bool transform(unsigned int nr);
 
+    void mirrorX(void);
+    void mirrorY(void);
+    void mirrorZ(void);
+
     bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const;
 };
 
