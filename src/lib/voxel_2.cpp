@@ -533,28 +533,27 @@ void voxel_2_c::transformPoint(int * x, int * y, int * z, unsigned int trans) co
 
 bool voxel_2_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const {
 
+  // spheres have only one type of neighbour
   switch (typ) {
     case 0:
       switch (idx) {
-        case 0: *xn = x-1; *yn = y;   *zn = z;   break;
-        case 1: *xn = x;   *yn = y-1; *zn = z;   break;
-        case 2: *xn = x  ; *yn = y;   *zn = z-1; break;
-        case 3: *xn = x+1; *yn = y;   *zn = z;   break;
-        case 4: *xn = x  ; *yn = y+1; *zn = z;   break;
-        case 5: *xn = x  ; *yn = y;   *zn = z+1; break;
+        case  0: *xn = x-1; *yn = y-1; *zn = z;   break;
+        case  1: *xn = x-1; *yn = y+1; *zn = z;   break;
+        case  2: *xn = x+1; *yn = y-1; *zn = z;   break;
+        case  3: *xn = x+1; *yn = y+1; *zn = z;   break;
+        case  4: *xn = x-1; *yn = y;   *zn = z-1; break;
+        case  5: *xn = x-1; *yn = y;   *zn = z+1; break;
+        case  6: *xn = x+1; *yn = y;   *zn = z-1; break;
+        case  7: *xn = x+1; *yn = y;   *zn = z+1; break;
+        case  8: *xn = x;   *yn = y-1; *zn = z-1; break;
+        case  9: *xn = x;   *yn = y-1; *zn = z+1; break;
+        case 10: *xn = x;   *yn = y+1; *zn = z-1; break;
+        case 11: *xn = x;   *yn = y+1; *zn = z+1; break;
         default: return false;
       }
       break;
-    case 1:
-      switch (idx) {
-        default: return false;
-      }
-      break;
-    case 2:
-      switch (idx) {
-        default: return false;
-      }
-      break;
+    default:
+      return false;
   }
   return true;
 }
