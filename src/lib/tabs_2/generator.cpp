@@ -317,8 +317,8 @@ void inverseTranformationsMatrix(void) {
 
 int main(int argv, char* args[]) {
 
-//  multTranformationsMatrix();
-//  outputMinimumSymmetries();
+  multTranformationsMatrix();
+  outputMinimumSymmetries();
   outputCompleteSymmetries();
 
 //  FILE * out = fopen("symcalc.inc", "w");
