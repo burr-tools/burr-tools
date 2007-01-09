@@ -395,6 +395,8 @@ bool voxel_2_c::transform(unsigned int nr) {
   voxel_type *s = new voxel_type[voxelsn];
   memset(s, outside, voxelsn);
 
+  bool hotspot_done = false;
+
   for (unsigned int x = 0; x < sx; x++)
     for (unsigned int y = 0; y < sy; y++)
       for (unsigned int z = 0; z < sz; z++) {
@@ -424,6 +426,13 @@ bool voxel_2_c::transform(unsigned int nr) {
             int xn = (int)round(xpn);
             int yn = (int)round(ypn);
             int zn = (int)round(zpn);
+
+            if ((x == hx) && (y == hy) && (z == hz) && (!hotspot_done)) {
+              hx = xn-minx;
+              hy = yn-miny;
+              hz = zn-minz;
+              hotspot_done = true;
+            }
 
             s[(xn-minx) + nsx*((yn-miny) + nsy*(zn-minz))] = space[x + sx*(y + sy*z)];
           }
@@ -508,7 +517,7 @@ void voxel_2_c::mirrorZ(void) {
 
 void voxel_2_c::transformPoint(int * x, int * y, int * z, unsigned int trans) const {
 
-  bt_assert((*x+*y+*z) & 1 == 0);
+  bt_assert(((*x+*y+*z) & 1) == 0);
 
   double xp = *x * sqrt(0.5);
   double yp = *y * sqrt(0.5);
@@ -518,9 +527,13 @@ void voxel_2_c::transformPoint(int * x, int * y, int * z, unsigned int trans) co
   double ypn = rotationMatrices[trans][3]*xp + rotationMatrices[trans][4]*yp + rotationMatrices[trans][5]*zp;
   double zpn = rotationMatrices[trans][6]*xp + rotationMatrices[trans][7]*yp + rotationMatrices[trans][8]*zp;
 
-  int xn = (int)(xpn+0.5);
-  int yn = (int)(ypn+0.5);
-  int zn = (int)(zpn+0.5);
+  xpn /= sqrt(0.5);
+  ypn /= sqrt(0.5);
+  zpn /= sqrt(0.5);
+
+  int xn = (int)round(xpn);
+  int yn = (int)round(ypn);
+  int zn = (int)round(zpn);
 
   // is should fall on a valid grid position
   bt_assert((fabs(xpn-xn) < 0.01) && (fabs(ypn-yn) < 0.01) && (fabs(zpn-zn) < 0.01));
