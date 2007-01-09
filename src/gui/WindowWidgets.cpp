@@ -1052,7 +1052,7 @@ static void cb_assertClose_stub(Fl_Widget* o, void* v) { ((Fl_Double_Window*)v)-
 
 assertWindow::assertWindow(const char * text, assert_exception * a) : Fl_Double_Window(0, 0, ASSERT_WINDOW_X, ASSERT_WINDOW_Y) {
 
-  char txt[1000];
+  char txt[100000];
 
   // first the text given
   (new Fl_Box(5, 5, ASSERT_WINDOW_X-10, ASSERT_TXT1, text))->align(FL_ALIGN_CENTER | FL_ALIGN_INSIDE | FL_ALIGN_LEFT);
@@ -1076,10 +1076,10 @@ assertWindow::assertWindow(const char * text, assert_exception * a) : Fl_Double_
   // append the log
   if (assert_log->lines()) {
 
-    pos += snprintf(txt+pos, 1000-pos, "log:\n");
+    pos += snprintf(txt+pos, 100000-pos, "log:\n");
 
     for (unsigned int l = 0; l < assert_log->lines(); l++)
-      pos += snprintf(txt+pos, 1000-pos, "%s\n", assert_log->line(l));
+      pos += snprintf(txt+pos, 100000-pos, "%s\n", assert_log->line(l));
   }
 
   (new Fl_Multiline_Output(5, 15+ASSERT_TXT1+ASSERT_TXT2, ASSERT_WINDOW_X-10, ASSERT_WINDOW_Y - 25 - 20 - ASSERT_TXT1 - ASSERT_TXT2))->value(txt);
