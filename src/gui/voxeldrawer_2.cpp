@@ -361,17 +361,15 @@ void voxelDrawer_2_c::gridTypeChanged(void) {
 }
 
 void voxelDrawer_2_c::calculateSize(const voxel_c * shape, float * x, float * y, float * z) {
-  *x = shape->getX();
-  *y = shape->getY();
 
-  if (shape->getZ() > 1) {
+  *x = 1 + (shape->getX()-1)*sqrt(0.5);
+  *y = 1 + (shape->getY()-1)*sqrt(0.5);
+  *z = 1 + (shape->getZ()-1)*sqrt(0.5);
+}
 
-    *x += 0.5;
-    *y += 0.5;
-    *z = 1 + sqrt(0.5)*(shape->getZ()-1);
-
-  } else
-
-    *z = 1;
+void voxelDrawer_2_c::recalcSpaceCoordinates(float * x, float * y, float * z) {
+  *x = *x * sqrt(0.5);
+  *y = *y * sqrt(0.5);
+  *z = *z * sqrt(0.5);
 }
 
