@@ -11,6 +11,7 @@ libburr_a_SOURCES=\
                   assembly.cpp assembly.h \
                   assm_0_frontend_0.cpp assm_0_frontend_0.h \
                   assm_0_frontend_1.cpp assm_0_frontend_1.h \
+                  assm_0_frontend_2.cpp assm_0_frontend_2.h \
                   assemblerthread.cpp assemblerthread.h \
                   bt_assert.h bt_assert.cpp \
                   burrgrower.h burrgrower.cpp \
@@ -28,13 +29,17 @@ libburr_a_SOURCES=\
                   symmetries.h \
                   symmetries_0.h symmetries_0.cpp \
                   symmetries_1.h symmetries_1.cpp \
+                  symmetries_2.h symmetries_2.cpp \
                   voxel.cpp voxel.h \
 		  voxel_0.cpp voxel_0.h \
 		  voxel_1.cpp voxel_1.h \
 		  voxel_2.cpp voxel_2.h \
 		  types.h \
+		  bitfield.h \
 		  tabs_0/rotx.inc tabs_0/roty.inc tabs_0/rotz.inc tabs_0/symcalc.inc tabs_0/symmetries.inc \
 		  tabs_0/tablesizes.inc tabs_0/transformmini.inc tabs_0/transmult.inc tabs_0/unifiedsym.inc \
 		  tabs_1/rotx.inc tabs_1/roty.inc tabs_1/rotz.inc tabs_1/symcalc.inc tabs_1/symmetries.inc \
-		  tabs_1/tablesizes.inc tabs_1/transformmini.inc tabs_1/transmult.inc tabs_1/unifiedsym.inc
+		  tabs_1/tablesizes.inc tabs_1/transformmini.inc tabs_1/transmult.inc tabs_1/unifiedsym.inc \
+		  tabs_2/rotmatrix.inc tabs_2/symcalc.inc tabs_2/symmetries.inc \
+		  tabs_2/tablesizes.inc tabs_2/transformmini.inc tabs_2/transmult.inc tabs_2/unifiedsym.inc
 

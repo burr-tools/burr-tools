@@ -19,11 +19,14 @@
 
 #include "assm_0_frontend_0.h"
 #include "assm_0_frontend_1.h"
+#include "assm_0_frontend_2.h"
 #include "disassembler_0.h"
 #include "voxel_0.h"
 #include "voxel_1.h"
 #include "voxel_2.h"
 #include "symmetries_0.h"
+#include "symmetries_1.h"
+#include "symmetries_2.h"
 
 #include <xmlwrapp/attributes.h>
 
@@ -120,6 +123,7 @@ assembler_0_c * gridType_c::getAssembler(void) const {
   switch (type) {
     case GT_BRICKS:           return new assm_0_frontend_0_c();
     case GT_TRIANGULAR_PRISM: return new assm_0_frontend_1_c();
+    case GT_SPHERES:          return new assm_0_frontend_2_c();
     default:                  return 0;
   }
 
@@ -178,7 +182,7 @@ const symmetries_c * gridType_c::getSymmetries(void) const {
         const_cast<gridType_c*>(this)->sym = new symmetries_1_c(this);
         break;
       case GT_SPHERES:
-        const_cast<gridType_c*>(this)->sym = new symmetries_0_c(this);
+        const_cast<gridType_c*>(this)->sym = new symmetries_2_c(this);
         break;
     }
   }
@@ -190,7 +194,7 @@ unsigned int gridType_c::getCapabilities(void) const {
   switch (type) {
     case GT_BRICKS:           return CAP_ASSEMBLE | CAP_DISASSEMBLE;
     case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE;
-    case GT_SPHERES:          return 0;
+    case GT_SPHERES:          return CAP_ASSEMBLE;
     default: return 0;
   }
 }
