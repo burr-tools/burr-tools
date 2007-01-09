@@ -20,6 +20,7 @@
 #include "voxel_2.h"
 #include "gridtype.h"
 #include "print.h"
+#include "bitfield.h"
 
 #include "tablesizes.inc"
 
@@ -34,12 +35,14 @@ double matrix[NUM_TRANSFORMATIONS][9] = {
  * if you first transform the piece around t1 and then around t2
  * you can as well transform around transMult[t1][t2]
  */
-static int transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATIONS_MIRROR];
+static int transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATIONS_MIRROR] = {
+#include "transmult.inc"
+};
 
 /* this array contains all possible symmetry groups, meaning bitmasks with exactly the bits set
  * that correspond to transformations tha reorient the piece so that it looks identical
  */
-static const unsigned long long symmetries[NUM_SYMMETRY_GROUPS] = {
+static const bitfield_c<NUM_TRANSFORMATIONS_MIRROR> symmetries[NUM_SYMMETRY_GROUPS] = {
 #include "symmetries.inc"
 };
 
@@ -56,13 +59,14 @@ const char * longlong2string(unsigned long long s) {
   return output;
 }
 
-unsigned char ssss(unsigned int trans, unsigned long long s) {
+unsigned char ssss(unsigned int trans, const bitfield_c<NUM_TRANSFORMATIONS_MIRROR> & s) {
   for (unsigned char t = 0; t < trans; t++)
     for (unsigned char t2 = 0; t2 < NUM_TRANSFORMATIONS_MIRROR; t2++)
-      if (s & (((unsigned long long)1) << t2)) {
-	unsigned char trrr = transMult[t2][t];
-	if (trrr == trans)
+      if (s.get(t2)) {
+	int trrr = transMult[t2][t];
+	if (trrr == trans) {
 	  return t;
+        }
       }
 
   return trans;
@@ -95,15 +99,16 @@ void outputMinimumSymmetries(void) {
 * are set that where the shape reproduces itself in one of the 48 possible
 * rotations
 */
+
 void outputCompleteSymmetries(void) {
 
   FILE * fout = fopen("unifiedsym.inc", "w");
 
   for (int sy = 0; sy < NUM_SYMMETRY_GROUPS; sy++) {
 
-    unsigned long long s = symmetries[sy];
+    bitfield_c<NUM_TRANSFORMATIONS_MIRROR> s = symmetries[sy];
 
-    unsigned long long out = s;
+    bitfield_c<NUM_TRANSFORMATIONS_MIRROR> out = s;
 
     for (int r = 1; r < NUM_TRANSFORMATIONS_MIRROR; r++) {
 
@@ -118,20 +123,29 @@ void outputCompleteSymmetries(void) {
 
       for (int x = 0; x < NUM_TRANSFORMATIONS_MIRROR; x++) {
         int res = transMult[r][x];
+
+        if (res == -1) continue;
+
         res = transMult[res][rinv];
 
-        if ((s >> res) & 1) {
-        out |= (1ll << x);
+        if (res == -1) continue;
+
+        if (s.get(res)) {
+          out.set(x);
         }
       }
 
     }
-    fprintf(fout, "0x%012llXLL,\n", out);
+    char line[100];
+    out.print(line, 100);
+
+
+    fprintf(fout, "  \"%s\",\n", line+4);
   }
 
   fclose(fout);
 }
-
+#if 0
 /* this function creates a decision tree for symmetry creation trying to optimize for the
  * lowest number of checks (6-7 should be possible, if we can subdivide each time#
  * with nearly equal subparts
@@ -179,7 +193,7 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val, FILE * o
   fprintf(out, "}\n");
 
 }
-
+#endif
 void mmult(double * m, int num) {
 
   if (num >= 120) {
@@ -216,7 +230,7 @@ bool mequal(double *m, int num) {
     n[6] *= -1;
   }
 
-  for (int i = 1; i < 9; i++)
+  for (int i = 0; i < 9; i++)
     if (fabs(m[i]-n[i]) > 0.00001)
       return false;
 
@@ -303,9 +317,9 @@ void inverseTranformationsMatrix(void) {
 
 int main(int argv, char* args[]) {
 
-  multTranformationsMatrix();
+//  multTranformationsMatrix();
 //  outputMinimumSymmetries();
-//  outputCompleteSymmetries();
+  outputCompleteSymmetries();
 
 //  FILE * out = fopen("symcalc.inc", "w");
 //  makeSymmetryTree(0, 0, out);
