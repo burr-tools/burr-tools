@@ -55,9 +55,9 @@ symmetries_1_c::symmetries_1_c(const gridType_c * g) : gt(g) {
 unsigned int symmetries_1_c::getNumTransformations(void) const { return NUM_TRANSFORMATIONS; }
 unsigned int symmetries_1_c::getNumTransformationsMirror(void) const { return NUM_TRANSFORMATIONS_MIRROR; }
 
-unsigned long long symmetries_1_c::getSymmetryMask(symmetries_t sym) const {
+bool symmetries_1_c::symmetryContainsMirror(symmetries_t sym) const {
   bt_assert(sym < NUM_SYMMETRY_GROUPS);
-  return symmetries[sym];
+  return (symmetries[sym] & ~((1 << getNumTransformations()) - 1)) != 0;
 }
 
 unsigned char symmetries_1_c::transAdd(unsigned char t1, unsigned char t2) const {
