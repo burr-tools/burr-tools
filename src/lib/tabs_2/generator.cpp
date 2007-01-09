@@ -145,12 +145,12 @@ void outputCompleteSymmetries(void) {
 
   fclose(fout);
 }
-#if 0
+
 /* this function creates a decision tree for symmetry creation trying to optimize for the
  * lowest number of checks (6-7 should be possible, if we can subdivide each time#
  * with nearly equal subparts
  */
-void makeSymmetryTree(unsigned long long taken, unsigned long long val, FILE * out) {
+void makeSymmetryTree(bitfield_c<NUM_TRANSFORMATIONS_MIRROR> taken,bitfield_c<NUM_TRANSFORMATIONS_MIRROR> val, FILE * out) {
 
   /* greedy implementation: find the subdivision that is most equal */
   int best_div = -100;
@@ -158,7 +158,7 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val, FILE * o
   int b1, b2;
 
   for (int t = 0; t < NUM_TRANSFORMATIONS_MIRROR; t++)
-    if (!(taken & (((unsigned long long)1) << t))) {
+    if (!taken.get(t)) {
       b1 = 0;
       b2 = 0;
       int lastfound;
@@ -167,12 +167,14 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val, FILE * o
           b1++;
           lastfound = s;
         }
-        if ((symmetries[s] & (taken | (((unsigned long long)1) << t))) == val)
+        taken.set(t);
+        if ((symmetries[s] & taken) == val)
           b2++;
+        taken.reset(t);
       }
 
       if (b1 == 1) {
-        fprintf(out, "bt_assert(s == %i);\nreturn (symmetries_t)%i; //%s\n",lastfound, lastfound, longlong2string(symmetries[lastfound]));
+        fprintf(out, "bt_assert(i == %i);\nreturn (symmetries_t)%i;\n",lastfound, lastfound);
         return;
       }
 
@@ -182,18 +184,21 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val, FILE * o
       }
     }
 
-  fprintf(out, "voxel_1_c v(pp);\nv.transform(%i);\nif (pp->identicalInBB(&v)) {\n", best_bit);
+  fprintf(out, "voxel_2_c v(pp);\nif (v.transform(%i) && pp->identicalInBB(&v)) {\n", best_bit);
 
-  makeSymmetryTree(taken | ((unsigned long long)1 << best_bit), val | ((unsigned long long)1 << best_bit), out);
+  taken.set(best_bit);
+  val.set(best_bit);
+  makeSymmetryTree(taken, val, out);
+  val.reset(best_bit);
 
   fprintf(out, "} else {\n");
 
-  makeSymmetryTree(taken | ((unsigned long long)1 << best_bit), val, out);
+  makeSymmetryTree(taken, val, out);
 
   fprintf(out, "}\n");
 
 }
-#endif
+
 void mmult(double * m, int num) {
 
   if (num >= 120) {
@@ -321,9 +326,9 @@ int main(int argv, char* args[]) {
   outputMinimumSymmetries();
   outputCompleteSymmetries();
 
-//  FILE * out = fopen("symcalc.inc", "w");
-//  makeSymmetryTree(0, 0, out);
-//  fclose(out);
+  FILE * out = fopen("symcalc.inc", "w");
+  makeSymmetryTree("0", "0", out);
+  fclose(out);
 
 //  inverseTranformationsMatrix(gt);
 }
