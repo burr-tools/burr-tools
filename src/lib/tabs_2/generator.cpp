@@ -279,13 +279,13 @@ void multTranformationsMatrix(void) {
         }
       }
 
-      if (!found)
+      if (!found) {
         if (tr2 < NUM_TRANSFORMATIONS_MIRROR-1)
           fprintf(out, "%3i, ", -1);
         else
           fprintf(out, "%3i", -1);
         transMult[tr1][tr2] = -1;
-
+      }
 
     }
     if (tr1 < NUM_TRANSFORMATIONS_MIRROR-1)
