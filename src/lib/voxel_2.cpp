@@ -517,11 +517,17 @@ void voxel_2_c::mirrorZ(void) {
 
 void voxel_2_c::transformPoint(int * x, int * y, int * z, unsigned int trans) const {
 
+  bt_assert(trans < 240);
   bt_assert(((*x+*y+*z) & 1) == 0);
 
   double xp = *x * sqrt(0.5);
   double yp = *y * sqrt(0.5);
   double zp = *z * sqrt(0.5);
+
+  if (trans >= 120) {
+    xp = -xp;
+    trans -= 120;
+  }
 
   double xpn = rotationMatrices[trans][0]*xp + rotationMatrices[trans][1]*yp + rotationMatrices[trans][2]*zp;
   double ypn = rotationMatrices[trans][3]*xp + rotationMatrices[trans][4]*yp + rotationMatrices[trans][5]*zp;
