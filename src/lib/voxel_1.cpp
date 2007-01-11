@@ -435,6 +435,15 @@ bool voxel_1_c::identicalInBB(const voxel_c * op, bool includeColors) const {
   return (((bx1+by1) & 1) == ((op->boundX1() + op->boundY1()) & 1)) && voxel_c::identicalInBB(op, includeColors);
 }
 
+
+static int div_down(int a, int b) {
+  if ((a >= 0) == (b >= 0))
+    return a/b;
+  else
+    return (a-b+1)/b;
+}
+
+
 void voxel_1_c::transformPoint(int * x, int * y, int * z, unsigned int trans) const {
 
   bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
@@ -459,8 +468,8 @@ void voxel_1_c::transformPoint(int * x, int * y, int * z, unsigned int trans) co
     int tx = *x;
     int ty = *y;
 
-    *x = (tx-3*ty)/2;
-    *y = (tx+ty)/2;
+    *x = -1 + div_down(tx,2) - div_down(3*(ty)+((tx+1)&1),2);
+    *y = div_down(tx+1,2) + div_down(ty+((tx+1)&1),2);
   }
 }
 
