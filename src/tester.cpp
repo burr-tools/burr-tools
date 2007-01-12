@@ -26,6 +26,9 @@
 
 #include "lib/print.h"
 
+#include "lib/voxel_2.h"
+#include "lib/bitfield.h"
+
 #include <time.h>
 
 #include <fstream>
@@ -504,6 +507,57 @@ void epipedize(void) {
 
 }
 #endif
+
+void sphere_symmetries(void) {
+
+  static char pos[14][3] = {
+    {0, 0, 0},
+    {2, 0, 0},
+    {1, 1, 0},
+    {0, 2, 0},
+    {2, 2, 0},
+    {1, 0, 1},
+    {0, 1, 1},
+    {2, 1, 1},
+    {1, 2, 1},
+    {0, 0, 2},
+    {2, 0, 2},
+    {1, 1, 2},
+    {0, 2, 2},
+    {2, 2, 2}
+  };
+
+  gridType_c gt(gridType_c::GT_SPHERES);
+
+  voxel_2_c s(3, 3, 3, &gt);
+
+  for (int i = 1; i < (1 << 14) - 1; i++) {
+    for (int p = 0; p < 14; p++) {
+      if (i & (1 << p))
+        s.setState(pos[p][0], pos[p][1], pos[p][2], voxel_c::VX_EMPTY);
+      else
+        s.setState(pos[p][0], pos[p][1], pos[p][2], voxel_c::VX_FILLED);
+    }
+
+    bitfield_c<240> st;
+
+    st.clear();
+    st.set(0);
+
+    for (int j = 1; j < 240; j++) {
+      voxel_2_c v(&s);
+      if (v.transform(j) && s.identicalInBB(&v))
+        st.set(j);
+    }
+
+    st.print();
+    printf("\n");
+  }
+
+
+}
+
+
 int main(int argv, char* args[]) {
 
 //  grow(argv, args);
@@ -514,6 +568,8 @@ int main(int argv, char* args[]) {
 //  epipedize();
 
 //    calcSymmetries(args[1]);
-    hotspotCheck(args[1]);
+//    hotspotCheck(args[1]);
+
+    sphere_symmetries();
 }
 
