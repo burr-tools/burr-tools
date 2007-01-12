@@ -62,51 +62,60 @@ void gridEditor_c::clearPuzzle() {
 // It sets a (group of) voxels depending in the active tools by recursively
 // calling itself
 // tools contains the active tools, task, what to do with the voxels
-static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, gridEditor_c::enTask task, unsigned int currentColor) {
+bool gridEditor_c::setRecursive(unsigned char tools, int x, int y, int z) {
 
   bool changed = false;
+  voxel_c * space = puzzle->getShape(piecenumber);
 
   if (tools == 0) {
 
     // no further tool is active, so we set the current voxel
-    voxel_type v = voxel_c::VX_EMPTY;
 
-    switch (task) {
-    case gridEditor_c::TSK_SET:
-      v = voxel_c::VX_FILLED;
-      break;
-    case gridEditor_c::TSK_VAR:
-      v = voxel_c::VX_VARIABLE;
-      break;
-    default:
-      break;
-    }
+    // but first we check, if the current coordinates are valid
+    // if not don't change anything
+    if (validCoordinates(x, y, z)) {
 
-    // on all other tasks but the colour changing one, we need to set the state of the voxel
-    if ((task != gridEditor_c::TSK_COLOR) && (s->getState(x, y, z) != v)) {
-      changed = true;
-      s->setState(x, y, z, v);
+      voxel_type v = voxel_c::VX_EMPTY;
 
-      // when emptying a cube, also clear the colour away
-      if (v == voxel_c::VX_EMPTY)
-        s->setColor(x, y, z, 0);
-    }
+      enTask todo = (state == 1) ? (task) : (TSK_RESET);
 
-    // this is for the colour change task
-    if ((s->getState(x, y, z) != voxel_c::VX_EMPTY) && (s->getColor(x, y, z) != currentColor)) {
-      changed = true;
-      s->setColor(x, y, z, currentColor);
+      switch (todo) {
+        case gridEditor_c::TSK_SET:
+          v = voxel_c::VX_FILLED;
+          break;
+        case gridEditor_c::TSK_VAR:
+          v = voxel_c::VX_VARIABLE;
+          break;
+        default:
+          break;
+      }
+
+      // on all other tasks but the colour changing one, we need to set the state of the voxel
+      if ((todo != gridEditor_c::TSK_COLOR) && (space->getState(x, y, z) != v)) {
+        changed = true;
+        space->setState(x, y, z, v);
+
+        // when emptying a cube, also clear the colour away
+        if (v == voxel_c::VX_EMPTY)
+          space->setColor(x, y, z, 0);
+      }
+
+      // this is for the colour change task
+      if ((space->getState(x, y, z) != voxel_c::VX_EMPTY) && (space->getColor(x, y, z) != currentColor)) {
+        changed = true;
+        space->setColor(x, y, z, currentColor);
+      }
     }
   } else if (tools & gridEditor_c::TOOL_MIRROR_X) {
     // the mirror tools are active, call recursively with both possible coordinates
-    changed |= setRecursive(s, tools & ~gridEditor_c::TOOL_MIRROR_X, x, y, z, task, currentColor);
-    changed |= setRecursive(s, tools & ~gridEditor_c::TOOL_MIRROR_X, s->getX()-x-1, y, z, task, currentColor);
+    changed |= setRecursive(tools & ~gridEditor_c::TOOL_MIRROR_X, x, y, z);
+    changed |= setRecursive(tools & ~gridEditor_c::TOOL_MIRROR_X, space->getX()-x-1, y, z);
   } else if (tools & gridEditor_c::TOOL_MIRROR_Y) {
-    changed |= setRecursive(s, tools & ~gridEditor_c::TOOL_MIRROR_Y, x, y, z, task, currentColor);
-    changed |= setRecursive(s, tools & ~gridEditor_c::TOOL_MIRROR_Y, x, s->getY()-y-1, z, task, currentColor);
+    changed |= setRecursive(tools & ~gridEditor_c::TOOL_MIRROR_Y, x, y, z);
+    changed |= setRecursive(tools & ~gridEditor_c::TOOL_MIRROR_Y, x, space->getY()-y-1, z);
   } else if (tools & gridEditor_c::TOOL_MIRROR_Z) {
-    changed |= setRecursive(s, tools & ~gridEditor_c::TOOL_MIRROR_Z, x, y, z, task, currentColor);
-    changed |= setRecursive(s, tools & ~gridEditor_c::TOOL_MIRROR_Z, x, y, s->getZ()-z-1, task, currentColor);
+    changed |= setRecursive(tools & ~gridEditor_c::TOOL_MIRROR_Z, x, y, z);
+    changed |= setRecursive(tools & ~gridEditor_c::TOOL_MIRROR_Z, x, y, space->getZ()-z-1);
   } else {
     // the column modes are active, this part must be at the end, because is
     // doesn't mask out the tool bits but clears all of them at once
@@ -115,14 +124,14 @@ static bool setRecursive(voxel_c * s, unsigned char tools, int x, int y, int z, 
     // just the columns at the current position but all rows of all columns or so if more than
     // one columns tool is active
     if (tools & gridEditor_c::TOOL_STACK_X)
-      for (unsigned int xp = 0; xp < s->getX(); xp++)
-        changed |= setRecursive(s, 0, xp, y, z, task, currentColor);
+      for (unsigned int xp = 0; xp < space->getX(); xp++)
+        changed |= setRecursive(0, xp, y, z);
     if (tools & gridEditor_c::TOOL_STACK_Y)
-      for (unsigned int yp = 0; yp < s->getY(); yp++)
-        changed |= setRecursive(s, 0, x, yp, z, task, currentColor);
+      for (unsigned int yp = 0; yp < space->getY(); yp++)
+        changed |= setRecursive(0, x, yp, z);
     if (tools & gridEditor_c::TOOL_STACK_Z)
-      for (unsigned int zp = 0; zp < s->getZ(); zp++)
-        changed |= setRecursive(s, 0, x, y, zp, task, currentColor);
+      for (unsigned int zp = 0; zp < space->getZ(); zp++)
+        changed |= setRecursive(0, x, y, zp);
   }
 
   return changed;
@@ -163,7 +172,7 @@ bool gridEditor_c::setLayer(unsigned int z) {
     for (int y = y1; y <= y2; y++)
       if ((x >= 0) && (y >= 0) && (x < (int)space->getX()) && (y < (int)space->getY()))
         // depending on the state we either do the current active task, or clear
-        changed |= setRecursive(space, activeTools, x, y, z, (state == 1) ? (task) : (TSK_RESET), currentColor);
+        changed |= setRecursive(activeTools, x, y, z);
 
   return changed;
 }
@@ -485,5 +494,9 @@ bool gridEditor_c::inRegion(int x, int y, int x1, int x2, int y1, int y2, int sx
       inRegion(x, sy-y-1, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_c::TOOL_MIRROR_Y);
 
   return false;
+}
+
+bool gridEditor_c::validCoordinates(int x, int y, int z) {
+  return true;
 }
 

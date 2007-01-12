@@ -145,3 +145,8 @@ void gridEditor_2_c::calcGridPosition(int x, int y, int z, int *gx, int *gy) {
   *gy = space->getY() - y - 1;
 }
 
+bool gridEditor_2_c::validCoordinates(int x, int y, int z) {
+
+  return ((x+y+z) & 1) == 0;
+}
+

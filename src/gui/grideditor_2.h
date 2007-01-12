@@ -50,6 +50,7 @@ private:
   void drawTileFrame(int x, int y, int z, int tx, int ty, int sx, int sy);
   void drawTileColor(int x, int y, int z, int tx, int ty, int sx, int sy);
   void drawTileCursor(int x, int y, int z, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy);
+  bool validCoordinates(int x, int y, int z);
 
 public:
 
