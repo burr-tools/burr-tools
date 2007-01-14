@@ -2359,34 +2359,26 @@ void mainWindow_c::Toggle3DView(void)
 {
   // select the pieces tab, as exchanging widgets while they are invisible
   // didn't work. Save the current tab before that
+  // this is required when changing the tab and we need to get the 3D view back
+  // in the large window
   TaskSelectionTab->when(0);
   Fl_Widget *v = TaskSelectionTab->value();
   if (v != TabPieces) TaskSelectionTab->value(TabPieces);
-
-  // first move the tile so that the widget at the
-  // bottom is visible
-  Fl_Widget * pos = (is3DViewBig)
-    ? (pieceEdit->parent())
-    : (View3D->parent());
-  Fl_Tile * tile = (Fl_Tile *)(pos->parent());
-
-  int ytile = pos->y();
-
-  tile->position(0, ytile, 0, 200);
 
   // exchange widget positions
   Fl_Group * tmp = pieceEdit->parent();
   View3D->parent()->add(pieceEdit);
   tmp->add(View3D);
 
-  int x = pieceEdit->x();
-  int y = pieceEdit->y();
-  int w = pieceEdit->w();
-  int h = pieceEdit->h();
-
   // exchange sizes
-  pieceEdit->resize(View3D->x(), View3D->y(), View3D->w(), View3D->h());
-  View3D->resize(x, y, w, h);
+  {
+    int x = pieceEdit->x();
+    int y = pieceEdit->y();
+    int w = pieceEdit->w();
+    int h = pieceEdit->h();
+    pieceEdit->resize(View3D->x(), View3D->y(), View3D->w(), View3D->h());
+    View3D->resize(x, y, w, h);
+  }
 
   // exchange grid positions
   {
@@ -2404,9 +2396,6 @@ void mainWindow_c::Toggle3DView(void)
     pieceEdit->parent()->resizable(pieceEdit);
   else
     View3D->parent()->resizable(View3D);
-
-  // now move the tile back to its position
-  tile->position(0, 200, 0, ytile);
 
   // restore the old selected tab
   if (v != TabPieces) TaskSelectionTab->value(v);
