@@ -512,10 +512,27 @@
     of completely new puzzles<next-line>
   </enumerate-numeric>
 
+  <subsection|Importing <name|PuzzleSolver3D> files>
+
   <name|BurrTools> also has capabilities for <em|importing>
   <name|PuzzleSolver3D> files. So there's no need to redo your designs from
   scratch, although some postediting may be required because of the
   differences in handling duplicates of pieces and holes in the puzzle.
+
+  There are 2 possibilities for the holes. Depending on whether the option
+  ``Fill outer Cubes'' is enabled or not when you solve the puzzle with
+  <name|PuzzleSolver3D> you must either make the inner cubes of the result
+  shape or the whole shape variable when you want to get the same results
+  with <name|BurrTools>. This can be done with the tools described in section
+  <reference|ChapterConstrainingTools>. With these tools you can make inner
+  and outer cubes of a shape variable.
+
+  The duplicate pieces are handled automatically. <name|BurrTools> adds all
+  shapes to the new puzzle but does not add duplicates to the problem instead
+  the counter for the original is increased. The unused shapes are marked as
+  unused and can be deleted when they are not required.
+
+  This is all there is to know about importing.
 
   <\with|par-mode|right>
     <chapter|The BurrTools Interface>
@@ -1333,7 +1350,7 @@
   <big-figure|<postscript|Pics/Subtab_Tools.png|*5/8|*5/8||||>|<label|FigureTools>Extra
   editing tools>
 
-  <subsection|Constraining Tools>
+  <subsection|Constraining Tools><label|ChapterConstrainingTools>
 
   These tools are <em|mass editing> tools that somehow have an impact on the
   possible placements of the pieces in the final result. They act either on
@@ -1979,8 +1996,7 @@
 
     <with|font-family|ss|<item*|Limit>>Limits the number of solutions to be
     saved. There will never be more than the specified amount of solutions in
-    the list. When the list is full the program has 2 choices:\
-
+    the list. When the list is full the program has 2 choices:
     <\enumerate-numeric>
       <item>Solutions are sorted: The programs throws away the solutions at
       the end. So low level solutions are removed
