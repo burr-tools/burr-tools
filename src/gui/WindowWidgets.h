@@ -204,8 +204,8 @@ public:
   }
 
   virtual void getMinSize(int *width, int *height) const {
-    *width += 40;
-    *height += 20;
+    *width = 40;
+    *height = 20;
   }
 };
 
