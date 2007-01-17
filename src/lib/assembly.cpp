@@ -55,7 +55,7 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces, const gridTy
   int x, y, z, trans, state, sign;
 
   x = y = z = trans = state = 0;
-  sign = 0;
+  sign = 1;
 
   while (*c) {
 
@@ -67,8 +67,10 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces, const gridTy
 
         placements.push_back(placement_c(trans, x, y, z));
         x = y = z = trans = state = 0;
-      } else
+      } else {
+        sign = 1;
         state++;
+      }
 
     } else {
 
@@ -77,51 +79,39 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces, const gridTy
 
       switch(state) {
       case 0:
-        if (*c == '-')
-          sign = 1;
-        else {
+        if (*c == '-') {
+          if (x) throw load_error("assembly placements minus in number", node);
+          sign = -1;
+        } else {
           x *= 10;
-          x += *c - '0';
-          if (x && sign) {
-            sign = 0;
-            x = -x;
-          }
+          x += sign*(*c - '0');
         }
         break;
       case 1:
-        if (*c == '-')
-          sign = 1;
-        else {
+        if (*c == '-') {
+          if (y) throw load_error("assembly placements minus in number", node);
+          sign = -1;
+        } else {
           y *= 10;
-          y += *c - '0';
-          if (y && sign) {
-            sign = 0;
-            y = -y;
-          }
+          y += sign*(*c - '0');
         }
         break;
       case 2:
-        if (*c == '-')
-          sign = 1;
-        else {
+        if (*c == '-') {
+          if (z) throw load_error("assembly placements minus in number", node);
+          sign = -1;
+        } else {
           z *= 10;
-          z += *c - '0';
-          if (z && sign) {
-            sign = 0;
-            z = -z;
-          }
+          z += sign*(*c - '0');
         }
         break;
       case 3:
-        if (*c == '-')
-          sign = 1;
-        else {
+        if (*c == '-') {
+          if (trans) throw load_error("assembly placements minus in number", node);
+          sign = -1;
+        } else {
           trans *= 10;
-          trans += *c - '0';
-          if (trans && sign) {
-            sign = 0;
-            trans = -trans;
-          }
+          trans += sign*(*c - '0');
         }
         break;
       }
