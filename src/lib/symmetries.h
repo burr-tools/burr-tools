@@ -20,12 +20,14 @@
 
 #include "gridtype.h"
 
+#include <inttypes.h>
+
 // this modules contains just some helper functions for transformations and symmetry handling
 
 /* this type is used to collect all the symmetries that a piece can have. For each symmetry
  * the corresponding bit is set
  */
-typedef unsigned char symmetries_t;
+typedef uint8_t symmetries_t;
 
 /* some macros for the symmeties_t type
  */

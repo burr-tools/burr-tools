@@ -1,6 +1,7 @@
 #ifndef __BITFIELD_H__
 #define __BITFIELD_H__
 
+#include <inttypes.h>
 
 // this is a fast class to have a bit vector with a constant number of bits
 // the number it dependend on the template parameter
@@ -10,7 +11,7 @@ class bitfield_c {
 
   private:
 
-    u_int64_t field[(bits+63)/64]; // the bitfield
+    uint64_t field[(bits+63)/64]; // the bitfield
 
   public:
 
@@ -23,17 +24,17 @@ class bitfield_c {
       operator=(val);
     }
 
-    bool get(u_int16_t pos) const {
+    bool get(uint16_t pos) const {
       bt_assert(pos < bits);
       return field[pos >> 6] & (1ll << (pos & 63));
     }
 
-    void set(u_int16_t pos) {
+    void set(uint16_t pos) {
       bt_assert(pos < bits);
       field[pos >> 6] |= (1ll << (pos & 63));
     }
 
-    void reset(u_int16_t pos) {
+    void reset(uint16_t pos) {
       bt_assert(pos < bits);
       field[pos >> 6] &= ~(1ll << (pos & 63));
     }
