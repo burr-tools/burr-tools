@@ -134,10 +134,8 @@ class bitfield_c {
 
     void print(void) const {
 
-      int idx = 0;
-
       for (int i = ((bits+63)/64)-1; i >= 0; i--)
-        idx += printf("%016llx", field[i]);
+        printf("%016llx", field[i]);
     }
 
     const bitfield_c<bits> operator&(const bitfield_c<bits> & right) const {
