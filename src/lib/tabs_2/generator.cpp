@@ -203,8 +203,8 @@ void mmult(double * m, int num) {
 
   if (num >= 120) {
     m[0] *= -1;
-    m[3] *= -1;
-    m[6] *= -1;
+    m[1] *= -1;
+    m[2] *= -1;
     num -= 120;
   }
 
