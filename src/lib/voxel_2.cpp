@@ -395,8 +395,6 @@ bool voxel_2_c::transform(unsigned int nr) {
   voxel_type *s = new voxel_type[voxelsn];
   memset(s, outside, voxelsn);
 
-  bool hotspot_done = false;
-
   for (unsigned int x = 0; x < sx; x++)
     for (unsigned int y = 0; y < sy; y++)
       for (unsigned int z = 0; z < sz; z++) {
@@ -427,45 +425,38 @@ bool voxel_2_c::transform(unsigned int nr) {
             int yn = (int)round(ypn);
             int zn = (int)round(zpn);
 
-            if ((x == hx) && (y == hy) && (z == hz) && (!hotspot_done)) {
-              hx = xn-minx;
-              hy = yn-miny;
-              hz = zn-minz;
-              hotspot_done = true;
-            }
-
             s[(xn-minx) + nsx*((yn-miny) + nsy*(zn-minz))] = space[x + sx*(y + sy*z)];
           }
         }
       }
 
-  if (!hotspot_done) {
 
-    bt_assert(((hx+hy+hz) & 1) == 0);
+  // calculate the new hotspot position
+  bt_assert(((hx+hy+hz) & 1) == 0);
 
-    double xp = hx * sqrt(0.5);
-    double yp = hy * sqrt(0.5);
-    double zp = hz * sqrt(0.5);
+  double xp = hx * sqrt(0.5);
+  double yp = hy * sqrt(0.5);
+  double zp = hz * sqrt(0.5);
 
-    double xpn = rotationMatrices[nr][0]*xp + rotationMatrices[nr][1]*yp + rotationMatrices[nr][2]*zp;
-    double ypn = rotationMatrices[nr][3]*xp + rotationMatrices[nr][4]*yp + rotationMatrices[nr][5]*zp;
-    double zpn = rotationMatrices[nr][6]*xp + rotationMatrices[nr][7]*yp + rotationMatrices[nr][8]*zp;
+  double xpn = rotationMatrices[nr][0]*xp + rotationMatrices[nr][1]*yp + rotationMatrices[nr][2]*zp;
+  double ypn = rotationMatrices[nr][3]*xp + rotationMatrices[nr][4]*yp + rotationMatrices[nr][5]*zp;
+  double zpn = rotationMatrices[nr][6]*xp + rotationMatrices[nr][7]*yp + rotationMatrices[nr][8]*zp;
 
-    xpn /= sqrt(0.5);
-    ypn /= sqrt(0.5);
-    zpn /= sqrt(0.5);
+  xpn /= sqrt(0.5);
+  ypn /= sqrt(0.5);
+  zpn /= sqrt(0.5);
 
-    xpn -= shx;
-    ypn -= shy;
-    zpn -= shz;
+  xpn -= shx;
+  ypn -= shy;
+  zpn -= shz;
 
-    hx = (int)round(xpn) - minx;
-    hy = (int)round(ypn) - miny;
-    hz = (int)round(zpn) - minz;
+  hx = (int)round(xpn) - minx;
+  hy = (int)round(ypn) - miny;
+  hz = (int)round(zpn) - minz;
 
-    bt_assert(((hx+hy+hz) & 1) == 0);
-  }
+  bt_assert(((hx+hy+hz) & 1) == 0);
 
+  // take over new space and new size
   sx = nsx;
   sy = nsy;
   sz = nsz;
