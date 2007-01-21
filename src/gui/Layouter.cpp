@@ -271,7 +271,7 @@ void layouter_c::resize(int xt, int yt, int w, int h) {
 //  if (wi > w) w = wi;
 //  if (hi > h) h = hi;
 
-  Fl_Group::resize(xt, yt, w, h);
+  Fl_Widget::resize(xt, yt, w, h);
 
   Fl_Widget *const * _widgets = array();
 
@@ -350,20 +350,45 @@ void layouter_c::resize(int xt, int yt, int w, int h) {
 
 void layouter_c::getMinSize(int *width, int *height) const {
 
-  std::vector<int> widths;
-  std::vector<int> heights;
+  if (!minsizeValid) {
 
-  *width = 0;
-  *height = 0;
+    std::vector<int> widths;
+    std::vector<int> heights;
 
-  if (children()) {
+    ((layouter_c*)this)->mw = ((layouter_c*)this)->mh = 0;
 
-    calcLayout(0, &widths, &heights, 0, 0);
+    if (children()) {
 
-    /* accumulate the rows and columns */
-    for (unsigned int i = 0; i < widths.size(); i++) *width += widths[i];
-    for (unsigned int i = 0; i < heights.size(); i++) *height += heights[i];
+      calcLayout(0, &widths, &heights, 0, 0);
+
+      /* accumulate the rows and columns */
+      for (unsigned int i = 0; i < widths.size(); i++) ((layouter_c*)this)->mw += widths[i];
+      for (unsigned int i = 0; i < heights.size(); i++) ((layouter_c*)this)->mh += heights[i];
+    }
+
+    ((layouter_c*)this)->minsizeValid = true;
   }
+
+  *width = mw;
+  *height = mh;
+}
+
+void layouter_c::remove(Fl_Widget &w) {
+  minsizeValid = false;
+  Fl_Group::remove(w);
+}
+void layouter_c::remove(Fl_Widget *w) {
+  minsizeValid = false;
+  Fl_Group::remove(w);
+}
+void layouter_c::add(Fl_Widget &w) {
+  minsizeValid = false;
+  Fl_Group::add(w);
+}
+
+void layouter_c::add(Fl_Widget *w) {
+  minsizeValid = false;
+  Fl_Group::add(w);
 }
 
 

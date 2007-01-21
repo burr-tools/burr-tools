@@ -151,6 +151,11 @@ public:
 
 class layouter_c : public Fl_Group, public layoutable_c {
 
+  private:
+
+    bool minsizeValid;
+    int mw, mh;
+
   public:
 
   virtual void getMinSize(int *width, int *height) const;
@@ -160,7 +165,13 @@ class layouter_c : public Fl_Group, public layoutable_c {
 
   virtual void resize(int x, int y, int w, int h);
 
-  layouter_c(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Group(0, 0, 100, 100), layoutable_c(x, y, w, h) {}
+  layouter_c(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Group(0, 0, 100, 100),
+              layoutable_c(x, y, w, h), minsizeValid(false) {}
+
+  void remove(Fl_Widget &w);
+  void remove(Fl_Widget *w);
+  void add(Fl_Widget &w);
+  void add(Fl_Widget *w);
 };
 
 /* now some basic widgets made layoutable */
