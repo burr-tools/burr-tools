@@ -36,6 +36,17 @@ public:
   void cb_Press(long button) { do_callback(this, button); }
 };
 
+class ToolsButtons : public layouter_c {
+
+  pixmapList_c pm;
+
+public:
+
+  ToolsButtons(int x, int y, int w, int h);
+
+  void cb_Press(long button) { do_callback(this, button); }
+};
+
 // the change size group
 class ChangeSize : public layouter_c {
 
@@ -126,6 +137,41 @@ TransformButtons::TransformButtons(int x, int y, int w, int h) : layouter_c(x, y
 
   (new LFl_Box(2, 0, 1, 1))->setMinimumSize(5, 0);
   (new LFl_Box(5, 0, 1, 1))->setMinimumSize(5, 0);
+
+  end();
+}
+
+
+static void cb_ToolsButtons_stub(Fl_Widget* o, long v) { ((ToolsButtons*)(o->parent()))->cb_Press(v); }
+
+ToolsButtons::ToolsButtons(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
+
+  label("Tools");
+
+  (new LFl_Box(0, 0, 1, 1))->weight(1, 1);
+  (new LFl_Box(0, 8, 1, 1))->weight(1, 1);
+  (new LFl_Box(8, 0, 1, 1))->weight(1, 1);
+  (new LFl_Box(8, 8, 1, 1))->weight(1, 1);
+
+  (new LFl_Box("Constrain", 3, 1, 2, 1))->labelsize(LABEL_FONT_SIZE);
+
+  new LFlatButton_c(3, 3, 1, 1, pm.get(InOut_Color_Fixed_In_xpm), pm.get(InOut_Disabled_Fixed_In_xpm),
+      " Make inside fixed ", cb_ToolsButtons_stub, 16);
+  new LFlatButton_c(3, 5, 1, 1, pm.get(InOut_Color_Variable_In_xpm), pm.get(InOut_Disabled_Variable_In_xpm),
+      " Make inside variable ", cb_ToolsButtons_stub, 18);
+  new LFlatButton_c(3, 7, 1, 1, pm.get(InOut_Color_RemoveColor_In_xpm), pm.get(InOut_Disabled_RemoveColor_In_xpm),
+      " Remove Colours from inside cubes ", cb_ToolsButtons_stub, 20);
+
+  new LFlatButton_c(4, 3, 1, 1, pm.get(InOut_Color_Fixed_Out_xpm), pm.get(InOut_Disabled_Fixed_Out_xpm),
+      " Make outside fixed ", cb_ToolsButtons_stub, 17);
+  new LFlatButton_c(4, 5, 1, 1, pm.get(InOut_Color_Variable_Out_xpm), pm.get(InOut_Disabled_Variable_Out_xpm),
+      " Make outside variable ", cb_ToolsButtons_stub, 19);
+  new LFlatButton_c(4, 7, 1, 1, pm.get(InOut_Color_RemoveColor_Out_xpm), pm.get(InOut_Disabled_RemoveColor_Out_xpm),
+      " Remove Colours from outside cubes ", cb_ToolsButtons_stub, 21);
+
+  (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
+  (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
+  (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
 
   end();
 }
@@ -381,43 +427,9 @@ ToolTab_0::ToolTab_0(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
     o->hide();
   }
   {
-    Fl_Group* o = new layouter_c(0, 1, 1, 1);
+    Fl_Group* o = new ToolsButtons(0, 1, 1, 1);
+    o->callback(cb_ToolTab0Transform_stub);
     o->hide();
-
-    o->label("Tools");
-
-    // this 2nd group is not necessary, but it the callback function requires it to find
-    // the right parent class
-    Fl_Group* o2 = new layouter_c(0, 0, 1, 1);
-
-    (new LFl_Box(0, 0, 1, 1))->weight(1, 1);
-    (new LFl_Box(0, 8, 1, 1))->weight(1, 1);
-    (new LFl_Box(8, 0, 1, 1))->weight(1, 1);
-    (new LFl_Box(8, 8, 1, 1))->weight(1, 1);
-
-    (new LFl_Box("Constrain", 3, 1, 2, 1))->labelsize(LABEL_FONT_SIZE);
-
-    new LFlatButton_c(3, 3, 1, 1, pm.get(InOut_Color_Fixed_In_xpm), pm.get(InOut_Disabled_Fixed_In_xpm),
-        " Make inside fixed ", cb_ToolTab0Transform2_stub, 16);
-    new LFlatButton_c(3, 5, 1, 1, pm.get(InOut_Color_Variable_In_xpm), pm.get(InOut_Disabled_Variable_In_xpm),
-        " Make inside variable ", cb_ToolTab0Transform2_stub, 18);
-    new LFlatButton_c(3, 7, 1, 1, pm.get(InOut_Color_RemoveColor_In_xpm), pm.get(InOut_Disabled_RemoveColor_In_xpm),
-        " Remove Colours from inside cubes ", cb_ToolTab0Transform2_stub, 20);
-
-    new LFlatButton_c(4, 3, 1, 1, pm.get(InOut_Color_Fixed_Out_xpm), pm.get(InOut_Disabled_Fixed_Out_xpm),
-        " Make outside fixed ", cb_ToolTab0Transform2_stub, 17);
-    new LFlatButton_c(4, 5, 1, 1, pm.get(InOut_Color_Variable_Out_xpm), pm.get(InOut_Disabled_Variable_Out_xpm),
-        " Make outside variable ", cb_ToolTab0Transform2_stub, 19);
-    new LFlatButton_c(4, 7, 1, 1, pm.get(InOut_Color_RemoveColor_Out_xpm), pm.get(InOut_Disabled_RemoveColor_Out_xpm),
-        " Remove Colours from outside cubes ", cb_ToolTab0Transform2_stub, 21);
-
-    (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
-    (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
-    (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
-
-    o2->end();
-
-    o->end();
   }
 
   end();
@@ -508,7 +520,7 @@ void ToolTab_0::cb_transform(long task) {
     }
 
     for (int s = ss; s < se; s++) {
-      voxel_c * space = puzzle->getShape(s);
+      voxel_0_c * space = dynamic_cast<voxel_0_c*>(puzzle->getShape(s));
 
       switch(task) {
         case  0: space->translate( 1, 0, 0, 0); break;
@@ -644,43 +656,9 @@ ToolTab_1::ToolTab_1(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
     o->hide();
   }
   {
-    Fl_Group* o = new layouter_c(0, 1, 1, 1);
+    Fl_Group* o = new ToolsButtons(0, 1, 1, 1);
+    o->callback(cb_ToolTab1Transform_stub);
     o->hide();
-
-    o->label("Tools");
-
-    // this 2nd group is not necessary, but it the callback function requires it to find
-    // the right parent class
-    Fl_Group* o2 = new layouter_c(0, 0, 1, 1);
-
-    (new LFl_Box(0, 0, 1, 1))->weight(1, 1);
-    (new LFl_Box(0, 8, 1, 1))->weight(1, 1);
-    (new LFl_Box(8, 0, 1, 1))->weight(1, 1);
-    (new LFl_Box(8, 8, 1, 1))->weight(1, 1);
-
-    (new LFl_Box("Constrain", 3, 1, 2, 1))->labelsize(LABEL_FONT_SIZE);
-
-    new LFlatButton_c(3, 3, 1, 1, pm.get(InOut_Color_Fixed_In_xpm), pm.get(InOut_Disabled_Fixed_In_xpm),
-        " Make inside fixed ", cb_ToolTab1Transform2_stub, 16);
-    new LFlatButton_c(3, 5, 1, 1, pm.get(InOut_Color_Variable_In_xpm), pm.get(InOut_Disabled_Variable_In_xpm),
-        " Make inside variable ", cb_ToolTab1Transform2_stub, 18);
-    new LFlatButton_c(3, 7, 1, 1, pm.get(InOut_Color_RemoveColor_In_xpm), pm.get(InOut_Disabled_RemoveColor_In_xpm),
-        " Remove Colours from inside cubes ", cb_ToolTab1Transform2_stub, 20);
-
-    new LFlatButton_c(4, 3, 1, 1, pm.get(InOut_Color_Fixed_Out_xpm), pm.get(InOut_Disabled_Fixed_Out_xpm),
-        " Make outside fixed ", cb_ToolTab1Transform2_stub, 17);
-    new LFlatButton_c(4, 5, 1, 1, pm.get(InOut_Color_Variable_Out_xpm), pm.get(InOut_Disabled_Variable_Out_xpm),
-        " Make outside variable ", cb_ToolTab1Transform2_stub, 19);
-    new LFlatButton_c(4, 7, 1, 1, pm.get(InOut_Color_RemoveColor_Out_xpm), pm.get(InOut_Disabled_RemoveColor_Out_xpm),
-        " Remove Colours from outside cubes ", cb_ToolTab1Transform2_stub, 21);
-
-    (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
-    (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
-    (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
-
-    o2->end();
-
-    o->end();
   }
 
   end();
@@ -904,43 +882,9 @@ ToolTab_2::ToolTab_2(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
     o->hide();
   }
   {
-    Fl_Group* o = new layouter_c(0, 1, 1, 1);
+    Fl_Group* o = new ToolsButtons(0, 1, 1, 1);
+    o->callback(cb_ToolTab2Transform_stub);
     o->hide();
-
-    o->label("Tools");
-
-    // this 2nd group is not necessary, but it the callback function requires it to find
-    // the right parent class
-    Fl_Group* o2 = new layouter_c(0, 0, 1, 1);
-
-    (new LFl_Box(0, 0, 1, 1))->weight(1, 1);
-    (new LFl_Box(0, 8, 1, 1))->weight(1, 1);
-    (new LFl_Box(8, 0, 1, 1))->weight(1, 1);
-    (new LFl_Box(8, 8, 1, 1))->weight(1, 1);
-
-    (new LFl_Box("Constrain", 3, 1, 2, 1))->labelsize(LABEL_FONT_SIZE);
-
-    new LFlatButton_c(3, 3, 1, 1, pm.get(InOut_Color_Fixed_In_xpm), pm.get(InOut_Disabled_Fixed_In_xpm),
-        " Make inside fixed ", cb_ToolTab2Transform2_stub, 16);
-    new LFlatButton_c(3, 5, 1, 1, pm.get(InOut_Color_Variable_In_xpm), pm.get(InOut_Disabled_Variable_In_xpm),
-        " Make inside variable ", cb_ToolTab2Transform2_stub, 18);
-    new LFlatButton_c(3, 7, 1, 1, pm.get(InOut_Color_RemoveColor_In_xpm), pm.get(InOut_Disabled_RemoveColor_In_xpm),
-        " Remove Colours from inside cubes ", cb_ToolTab2Transform2_stub, 20);
-
-    new LFlatButton_c(4, 3, 1, 1, pm.get(InOut_Color_Fixed_Out_xpm), pm.get(InOut_Disabled_Fixed_Out_xpm),
-        " Make outside fixed ", cb_ToolTab2Transform2_stub, 17);
-    new LFlatButton_c(4, 5, 1, 1, pm.get(InOut_Color_Variable_Out_xpm), pm.get(InOut_Disabled_Variable_Out_xpm),
-        " Make outside variable ", cb_ToolTab2Transform2_stub, 19);
-    new LFlatButton_c(4, 7, 1, 1, pm.get(InOut_Color_RemoveColor_Out_xpm), pm.get(InOut_Disabled_RemoveColor_Out_xpm),
-        " Remove Colours from outside cubes ", cb_ToolTab2Transform2_stub, 21);
-
-    (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
-    (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
-    (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
-
-    o2->end();
-
-    o->end();
   }
 
   end();
