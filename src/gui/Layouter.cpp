@@ -370,6 +370,7 @@ void layouter_c::getMinSize(int *width, int *height) const {
 void LFl_Tabs::getMinSize(int *width, int *height) const {
 
   Fl_Widget *const * _widgets = array();
+  *height = *width = 10;
 
   for (int i = 0; i < children(); i++) {
 
