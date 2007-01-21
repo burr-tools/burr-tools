@@ -40,7 +40,7 @@ class ResultViewer;
 class PiecesList;
 class PieceVisibility;
 class ColorConstraintsEdit;
-class ToolTab;
+class ToolTabContainer;
 class ButtonGroup;
 class FlatButton;
 class LStatusLine;
@@ -86,7 +86,7 @@ class mainWindow_c : public LFl_Double_Window {
 
   layouter_c *TabProblems;
 
-  ToolTab * pieceTools;
+  ToolTabContainer * pieceTools;
   ButtonGroup *editChoice;
   ButtonGroup *editMode;
 

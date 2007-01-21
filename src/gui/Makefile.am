@@ -22,6 +22,7 @@ burrGui_SOURCES=\
                 piececolor.cpp piececolor.h \
                 placementbrowser.cpp placementbrowser.h \
 		statuswindow.cpp statuswindow.h \
+		tooltabs.cpp tooltabs.h \
                 voxeldrawer.cpp voxeldrawer.h \
 		voxeldrawer_0.cpp voxeldrawer_0.h \
 		voxeldrawer_1.cpp voxeldrawer_1.h \

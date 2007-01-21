@@ -24,6 +24,7 @@
 #include "voxeldrawer_1.h"
 #include "voxeldrawer_2.h"
 #include "gridtypegui.h"
+#include "tooltabs.h"
 
 #include "../lib/gridtype.h"
 
@@ -84,3 +85,12 @@ const char * guiGridType_c::getName(void) const {
   return 0;
 }
 
+ToolTab * guiGridType_c::getToolTab(int x, int y, int w, int h) const {
+  switch(gt->getType()) {
+    case gridType_c::GT_BRICKS: return new ToolTab_0(x, y, w, h);
+    case gridType_c::GT_TRIANGULAR_PRISM: return new ToolTab_1(x, y, w, h);
+    case gridType_c::GT_SPHERES: return new ToolTab_2(x, y, w, h);
+  }
+
+  return 0;
+}

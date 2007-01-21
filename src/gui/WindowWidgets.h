@@ -252,27 +252,6 @@ public:
   void setXYZ(long x, long y, long z);
 };
 
-// the class that contains the tool tab
-class ToolTab : public LFl_Tabs {
-
-  ChangeSize * changeSize;
-  LFl_Check_Button * toAll;
-  puzzle_c * puzzle;
-  unsigned int shape;
-  pixmapList_c pm;
-
-public:
-
-  ToolTab(int x, int y, int w, int h);
-
-  void setVoxelSpace(puzzle_c * puz, unsigned int sh);
-
-  void cb_size(void);
-  void cb_transform(long task);
-
-  bool operationToAll(void) { return toAll->value() != 0; }
-};
-
 class BlockListGroup : public Fl_Group {
 
   Fl_Slider * Slider;

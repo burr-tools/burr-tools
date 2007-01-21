@@ -26,6 +26,7 @@
 #include "grideditor.h"
 #include "gridtypegui.h"
 #include "statuswindow.h"
+#include "tooltabs.h"
 #include "WindowWidgets.h"
 #include "BlockList.h"
 #include "Images.h"
@@ -1580,6 +1581,7 @@ void mainWindow_c::ReplacePuzzle(puzzle_c * NewPuzzle) {
   // instances from the guigridtype
   View3D->newGridType(nggt);
   pieceEdit->newGridType(nggt, puzzle);
+  pieceTools->newGridType(nggt);
 
   // for the pieceEditor we need to reset all the edit mode fields
   pieceEdit->editSymmetries(editSymmetries);
@@ -2542,9 +2544,8 @@ void mainWindow_c::CreateShapeTab(void) {
 
     new LSeparator_c(0, 0, 1, 1, "Edit", true);
 
-    pieceTools = new ToolTab(0, 1, 1, 1);
+    pieceTools = new ToolTabContainer(0, 1, 1, 1, ggt);
     pieceTools->callback(cb_TransformPiece_stub, this);
-    pieceTools->end();
 
     (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
 

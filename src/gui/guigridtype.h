@@ -23,6 +23,7 @@
 class gridEditor_c;
 class voxelDrawer_c;
 class gridTypeGui_c;
+class ToolTab;
 
 class guiGridType_c {
 
@@ -48,6 +49,9 @@ class guiGridType_c {
     const char * getName(void) const;
 
     const gridType_c * getGridType(void) const { return gt; }
+
+    /* return the tool tab for the current grid type */
+    ToolTab * getToolTab(int x, int y, int w, int h) const;
 };
 
 #endif
