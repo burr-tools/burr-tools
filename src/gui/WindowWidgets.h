@@ -209,49 +209,6 @@ public:
   }
 };
 
-// the transform group
-class TransformButtons : public layouter_c {
-
-  pixmapList_c pm;
-
-public:
-
-  TransformButtons(int x, int y, int w, int h);
-
-  void cb_Press(long button) { do_callback(this, button); }
-};
-
-// the change size group
-class ChangeSize : public layouter_c {
-
-  LFl_Roller* SizeX;
-  LFl_Roller* SizeY;
-  LFl_Roller* SizeZ;
-
-  Fl_Int_Input* SizeOutX;
-  Fl_Int_Input* SizeOutY;
-  Fl_Int_Input* SizeOutZ;
-
-  Fl_Check_Button * ConnectX;
-  Fl_Check_Button * ConnectY;
-  Fl_Check_Button * ConnectZ;
-
-  void calcNewSizes(int ox, int oy, int oz, int *nx, int *ny, int *nz);
-
-public:
-
-  ChangeSize(int w, int y, int w, int h);
-
-  void cb_roll(long dir);
-  void cb_input(long dir);
-
-  int getX(void) { return (int)SizeX->value(); }
-  int getY(void) { return (int)SizeY->value(); }
-  int getZ(void) { return (int)SizeZ->value(); }
-
-  void setXYZ(long x, long y, long z);
-};
-
 class BlockListGroup : public Fl_Group {
 
   Fl_Slider * Slider;
