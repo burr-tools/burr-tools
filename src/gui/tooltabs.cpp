@@ -47,6 +47,17 @@ public:
   void cb_Press(long button) { do_callback(this, button); }
 };
 
+class SizeButtons : public layouter_c {
+
+  pixmapList_c pm;
+
+public:
+
+  SizeButtons(int x, int y, int w, int h);
+
+  void cb_Press(long button) { do_callback(this, button); }
+};
+
 // the change size group
 class ChangeSize : public layouter_c {
 
@@ -170,6 +181,38 @@ ToolsButtons::ToolsButtons(int x, int y, int w, int h) : layouter_c(x, y, w, h) 
       " Remove Colours from outside cubes ", cb_ToolsButtons_stub, 21);
 
   (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
+  (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
+  (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
+
+  end();
+}
+
+
+static void cb_SizeButtons_stub(Fl_Widget* o, long v) { ((SizeButtons*)(o->parent()))->cb_Press(v); }
+
+SizeButtons::SizeButtons(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
+
+  (new LFl_Box(0, 0, 1, 1))->weight(1, 1);
+  (new LFl_Box(0, 8, 1, 1))->weight(1, 1);
+
+  (new LFl_Box("Grid", 0, 1, 1, 1))->labelsize(LABEL_FONT_SIZE);
+
+  new LFlatButton_c(0, 3, 1, 1, pm.get(Grid_Color_Minimize_xpm), pm.get(Grid_Disabled_Minimize_xpm),
+      " Minimize size of grid ", cb_SizeButtons_stub, 15);
+  new LFlatButton_c(0, 5, 1, 1, pm.get(Grid_Color_Center_xpm), pm.get(Grid_Disabled_Center_xpm),
+      " Centre shape inside the grid ", cb_SizeButtons_stub, 25);
+  new LFlatButton_c(0, 7, 1, 1, pm.get(Grid_Color_Origin_xpm), pm.get(Grid_Disabled_Origin_xpm),
+      " Move shape to origin of grid ", cb_SizeButtons_stub, 24);
+
+  (new LFl_Box("Shape", 2, 1, 1, 1))->labelsize(LABEL_FONT_SIZE);
+
+  new LFlatButton_c(2, 3, 1, 1, pm.get(Rescale_Color_X1_xpm), pm.get(Rescale_Disabled_X1_xpm),
+      " Try to minimize size of shape ", cb_SizeButtons_stub, 26);
+  new LFlatButton_c(2, 5, 1, 1, pm.get(Rescale_Color_X2_xpm), pm.get(Rescale_Disabled_X2_xpm),
+      " Double size of shape ", cb_SizeButtons_stub, 22);
+  new LFlatButton_c(2, 7, 1, 1, pm.get(Rescale_Color_X3_xpm), pm.get(Rescale_Disabled_X3_xpm),
+      " Triple size of shape ", cb_SizeButtons_stub, 23);
+
   (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
   (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
 
@@ -404,7 +447,7 @@ void ToolTab_0::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
 
 static void cb_ToolTab0Size_stub(Fl_Widget* o, long v) { ((ToolTab_0*)(o->parent()->parent()->parent()))->cb_size(); }
 static void cb_ToolTab0Transform_stub(Fl_Widget* o, long v) { ((ToolTab_0*)(o->parent()))->cb_transform(v); }
-static void cb_ToolTab0Transform2_stub(Fl_Widget* o, long v) { ((ToolTab_0*)(o->parent()->parent()->parent()))->cb_transform(v); }
+static void cb_ToolTab0Transform2_stub(Fl_Widget* o, long v) { ((ToolTab_0*)(o->parent()->parent()))->cb_transform(v); }
 
 ToolTab_0::ToolTab_0(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 
@@ -428,34 +471,8 @@ ToolTab_0::ToolTab_0(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 
     (new LFl_Box(1, 0, 1, 1))->setMinimumSize(5, 0);
 
-    o2 = new layouter_c(2, 0, 1, 1);
-
-    (new LFl_Box(0, 0, 1, 1))->weight(1, 1);
-    (new LFl_Box(0, 8, 1, 1))->weight(1, 1);
-
-    (new LFl_Box("Grid", 0, 1, 1, 1))->labelsize(LABEL_FONT_SIZE);
-
-    new LFlatButton_c(0, 3, 1, 1, pm.get(Grid_Color_Minimize_xpm), pm.get(Grid_Disabled_Minimize_xpm),
-        " Minimize size of grid ", cb_ToolTab0Transform2_stub, 15);
-    new LFlatButton_c(0, 5, 1, 1, pm.get(Grid_Color_Center_xpm), pm.get(Grid_Disabled_Center_xpm),
-        " Centre shape inside the grid ", cb_ToolTab0Transform2_stub, 25);
-    new LFlatButton_c(0, 7, 1, 1, pm.get(Grid_Color_Origin_xpm), pm.get(Grid_Disabled_Origin_xpm),
-        " Move shape to origin of grid ", cb_ToolTab0Transform2_stub, 24);
-
-    (new LFl_Box("Shape", 2, 1, 1, 1))->labelsize(LABEL_FONT_SIZE);
-
-    new LFlatButton_c(2, 3, 1, 1, pm.get(Rescale_Color_X1_xpm), pm.get(Rescale_Disabled_X1_xpm),
-        " Try to minimize size of shape ", cb_ToolTab0Transform2_stub, 26);
-    new LFlatButton_c(2, 5, 1, 1, pm.get(Rescale_Color_X2_xpm), pm.get(Rescale_Disabled_X2_xpm),
-        " Double size of shape ", cb_ToolTab0Transform2_stub, 22);
-    new LFlatButton_c(2, 7, 1, 1, pm.get(Rescale_Color_X3_xpm), pm.get(Rescale_Disabled_X3_xpm),
-        " Triple size of shape ", cb_ToolTab0Transform2_stub, 23);
-
-//    (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
-    (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
-    (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
-
-    o2->end();
+    o2 = new SizeButtons(2, 0, 1, 1);
+    o2->callback(cb_ToolTab0Transform2_stub);
 
     o->end();
   }
@@ -603,7 +620,7 @@ void ToolTab_1::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
 
 static void cb_ToolTab1Size_stub(Fl_Widget* o, long v) { ((ToolTab_1*)(o->parent()->parent()->parent()))->cb_size(); }
 static void cb_ToolTab1Transform_stub(Fl_Widget* o, long v) { ((ToolTab_1*)(o->parent()))->cb_transform(v); }
-static void cb_ToolTab1Transform2_stub(Fl_Widget* o, long v) { ((ToolTab_1*)(o->parent()->parent()->parent()))->cb_transform(v); }
+static void cb_ToolTab1Transform2_stub(Fl_Widget* o, long v) { ((ToolTab_1*)(o->parent()->parent()))->cb_transform(v); }
 
 ToolTab_1::ToolTab_1(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 
@@ -627,34 +644,8 @@ ToolTab_1::ToolTab_1(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 
     (new LFl_Box(1, 0, 1, 1))->setMinimumSize(5, 0);
 
-    o2 = new layouter_c(2, 0, 1, 1);
-
-    (new LFl_Box(0, 0, 1, 1))->weight(1, 1);
-    (new LFl_Box(0, 8, 1, 1))->weight(1, 1);
-
-    (new LFl_Box("Grid", 0, 1, 1, 1))->labelsize(LABEL_FONT_SIZE);
-
-    new LFlatButton_c(0, 3, 1, 1, pm.get(Grid_Color_Minimize_xpm), pm.get(Grid_Disabled_Minimize_xpm),
-        " Minimize size of grid ", cb_ToolTab1Transform2_stub, 15);
-    new LFlatButton_c(0, 5, 1, 1, pm.get(Grid_Color_Center_xpm), pm.get(Grid_Disabled_Center_xpm),
-        " Centre shape inside the grid ", cb_ToolTab1Transform2_stub, 25);
-    new LFlatButton_c(0, 7, 1, 1, pm.get(Grid_Color_Origin_xpm), pm.get(Grid_Disabled_Origin_xpm),
-        " Move shape to origin of grid ", cb_ToolTab1Transform2_stub, 24);
-
-    (new LFl_Box("Shape", 2, 1, 1, 1))->labelsize(LABEL_FONT_SIZE);
-
-    new LFlatButton_c(2, 3, 1, 1, pm.get(Rescale_Color_X1_xpm), pm.get(Rescale_Disabled_X1_xpm),
-        " Try to minimize size of shape ", cb_ToolTab1Transform2_stub, 26);
-    new LFlatButton_c(2, 5, 1, 1, pm.get(Rescale_Color_X2_xpm), pm.get(Rescale_Disabled_X2_xpm),
-        " Double size of shape ", cb_ToolTab1Transform2_stub, 22);
-    new LFlatButton_c(2, 7, 1, 1, pm.get(Rescale_Color_X3_xpm), pm.get(Rescale_Disabled_X3_xpm),
-        " Triple size of shape ", cb_ToolTab1Transform2_stub, 23);
-
-//    (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
-    (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
-    (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
-
-    o2->end();
+    o2 = new SizeButtons(2, 0, 1, 1);
+    o2->callback(cb_ToolTab1Transform2_stub);
 
     o->end();
   }
@@ -799,7 +790,7 @@ void ToolTab_2::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
 
 static void cb_ToolTab2Size_stub(Fl_Widget* o, long v) { ((ToolTab_2*)(o->parent()->parent()->parent()))->cb_size(); }
 static void cb_ToolTab2Transform_stub(Fl_Widget* o, long v) { ((ToolTab_2*)(o->parent()))->cb_transform(v); }
-static void cb_ToolTab2Transform2_stub(Fl_Widget* o, long v) { ((ToolTab_2*)(o->parent()->parent()->parent()))->cb_transform(v); }
+static void cb_ToolTab2Transform2_stub(Fl_Widget* o, long v) { ((ToolTab_2*)(o->parent()->parent()))->cb_transform(v); }
 
 ToolTab_2::ToolTab_2(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 
@@ -823,34 +814,8 @@ ToolTab_2::ToolTab_2(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 
     (new LFl_Box(1, 0, 1, 1))->setMinimumSize(5, 0);
 
-    o2 = new layouter_c(2, 0, 1, 1);
-
-    (new LFl_Box(0, 0, 1, 1))->weight(1, 1);
-    (new LFl_Box(0, 8, 1, 1))->weight(1, 1);
-
-    (new LFl_Box("Grid", 0, 1, 1, 1))->labelsize(LABEL_FONT_SIZE);
-
-    new LFlatButton_c(0, 3, 1, 1, pm.get(Grid_Color_Minimize_xpm), pm.get(Grid_Disabled_Minimize_xpm),
-        " Minimize size of grid ", cb_ToolTab2Transform2_stub, 15);
-    new LFlatButton_c(0, 5, 1, 1, pm.get(Grid_Color_Center_xpm), pm.get(Grid_Disabled_Center_xpm),
-        " Centre shape inside the grid ", cb_ToolTab2Transform2_stub, 25);
-    new LFlatButton_c(0, 7, 1, 1, pm.get(Grid_Color_Origin_xpm), pm.get(Grid_Disabled_Origin_xpm),
-        " Move shape to origin of grid ", cb_ToolTab2Transform2_stub, 24);
-
-    (new LFl_Box("Shape", 2, 1, 1, 1))->labelsize(LABEL_FONT_SIZE);
-
-    new LFlatButton_c(2, 3, 1, 1, pm.get(Rescale_Color_X1_xpm), pm.get(Rescale_Disabled_X1_xpm),
-        " Try to minimize size of shape ", cb_ToolTab2Transform2_stub, 26);
-    new LFlatButton_c(2, 5, 1, 1, pm.get(Rescale_Color_X2_xpm), pm.get(Rescale_Disabled_X2_xpm),
-        " Double size of shape ", cb_ToolTab2Transform2_stub, 22);
-    new LFlatButton_c(2, 7, 1, 1, pm.get(Rescale_Color_X3_xpm), pm.get(Rescale_Disabled_X3_xpm),
-        " Triple size of shape ", cb_ToolTab2Transform2_stub, 23);
-
-//    (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
-    (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
-    (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
-
-    o2->end();
+    o2 = new SizeButtons(2, 0, 1, 1);
+    o2->callback(cb_ToolTab2Transform2_stub);
 
     o->end();
   }
