@@ -71,9 +71,9 @@ public:
   void cb_roll(long dir);
   void cb_input(long dir);
 
-  int getX(void) { return (int)SizeX->value(); }
-  int getY(void) { return (int)SizeY->value(); }
-  int getZ(void) { return (int)SizeZ->value(); }
+  int getX(void) const { return (int)SizeX->value(); }
+  int getY(void) const { return (int)SizeY->value(); }
+  int getZ(void) const { return (int)SizeZ->value(); }
 
   void setXYZ(long x, long y, long z);
 };
@@ -349,6 +349,44 @@ void ChangeSize::setXYZ(long x, long y, long z) {
 }
 
 
+static void resizeSpace(bool toAll, const ChangeSize *changeSize, puzzle_c * puzzle, unsigned int shape) {
+
+  if (toAll) {
+
+    int dx, dy, dz;
+
+    dx = changeSize->getX() - puzzle->getShape(shape)->getX();
+    dy = changeSize->getY() - puzzle->getShape(shape)->getY();
+    dz = changeSize->getZ() - puzzle->getShape(shape)->getZ();
+
+    if (dx < 0) dx = 0;
+    if (dy < 0) dy = 0;
+    if (dz < 0) dz = 0;
+
+    for (unsigned int s = 0; s < puzzle->shapeNumber(); s++) {
+      int nx = puzzle->getShape(s)->getX()+dx;
+      int ny = puzzle->getShape(s)->getY()+dy;
+      int nz = puzzle->getShape(s)->getZ()+dz;
+
+      if (nx < 1) nx = 1;
+      if (ny < 1) ny = 1;
+      if (nz < 1) nz = 1;
+
+      puzzle->getShape(s)->resize(nx, ny, nz, 0);
+    }
+
+  }
+
+  // we always do this, is may be that the shape is not changed in the loop above because
+  // that loop and only increase the size, so smaller sizes for the selected shape must be done
+  // here
+  puzzle->getShape(shape)->resize(changeSize->getX(), changeSize->getY(), changeSize->getZ(), 0);
+}
+
+
+
+
+
 
 void ToolTab_0::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
   puzzle = puz;
@@ -438,37 +476,7 @@ ToolTab_0::ToolTab_0(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 void ToolTab_0::cb_size(void) {
   if (puzzle && shape < puzzle->shapeNumber()) {
 
-    if (toAll->value()) {
-
-      int dx, dy, dz;
-
-      dx = changeSize->getX() - puzzle->getShape(shape)->getX();
-      dy = changeSize->getY() - puzzle->getShape(shape)->getY();
-      dz = changeSize->getZ() - puzzle->getShape(shape)->getZ();
-
-      if (dx < 0) dx = 0;
-      if (dy < 0) dy = 0;
-      if (dz < 0) dz = 0;
-
-      for (unsigned int s = 0; s < puzzle->shapeNumber(); s++) {
-        int nx = puzzle->getShape(s)->getX()+dx;
-        int ny = puzzle->getShape(s)->getY()+dy;
-        int nz = puzzle->getShape(s)->getZ()+dz;
-
-        if (nx < 1) nx = 1;
-        if (ny < 1) ny = 1;
-        if (nz < 1) nz = 1;
-
-        puzzle->getShape(s)->resize(nx, ny, nz, 0);
-      }
-
-    }
-
-    // we always do this, is may be that the shape is not changed in the loop above because
-    // that loop and only increase the size, so smaller sizes for the selected shape must be done
-    // here
-    puzzle->getShape(shape)->resize(changeSize->getX(), changeSize->getY(), changeSize->getZ(), 0);
-
+    resizeSpace(toAll->value(), changeSize, puzzle, shape);
     do_callback();
   }
 }
@@ -667,37 +675,7 @@ ToolTab_1::ToolTab_1(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 void ToolTab_1::cb_size(void) {
   if (puzzle && shape < puzzle->shapeNumber()) {
 
-    if (toAll->value()) {
-
-      int dx, dy, dz;
-
-      dx = changeSize->getX() - puzzle->getShape(shape)->getX();
-      dy = changeSize->getY() - puzzle->getShape(shape)->getY();
-      dz = changeSize->getZ() - puzzle->getShape(shape)->getZ();
-
-      if (dx < 0) dx = 0;
-      if (dy < 0) dy = 0;
-      if (dz < 0) dz = 0;
-
-      for (unsigned int s = 0; s < puzzle->shapeNumber(); s++) {
-        int nx = puzzle->getShape(s)->getX()+dx;
-        int ny = puzzle->getShape(s)->getY()+dy;
-        int nz = puzzle->getShape(s)->getZ()+dz;
-
-        if (nx < 1) nx = 1;
-        if (ny < 1) ny = 1;
-        if (nz < 1) nz = 1;
-
-        puzzle->getShape(s)->resize(nx, ny, nz, 0);
-      }
-
-    }
-
-    // we always do this, is may be that the shape is not changed in the loop above because
-    // that loop and only increase the size, so smaller sizes for the selected shape must be done
-    // here
-    puzzle->getShape(shape)->resize(changeSize->getX(), changeSize->getY(), changeSize->getZ(), 0);
-
+    resizeSpace(toAll->value(), changeSize, puzzle, shape);
     do_callback();
   }
 }
@@ -893,37 +871,7 @@ ToolTab_2::ToolTab_2(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 void ToolTab_2::cb_size(void) {
   if (puzzle && shape < puzzle->shapeNumber()) {
 
-    if (toAll->value()) {
-
-      int dx, dy, dz;
-
-      dx = changeSize->getX() - puzzle->getShape(shape)->getX();
-      dy = changeSize->getY() - puzzle->getShape(shape)->getY();
-      dz = changeSize->getZ() - puzzle->getShape(shape)->getZ();
-
-      if (dx < 0) dx = 0;
-      if (dy < 0) dy = 0;
-      if (dz < 0) dz = 0;
-
-      for (unsigned int s = 0; s < puzzle->shapeNumber(); s++) {
-        int nx = puzzle->getShape(s)->getX()+dx;
-        int ny = puzzle->getShape(s)->getY()+dy;
-        int nz = puzzle->getShape(s)->getZ()+dz;
-
-        if (nx < 1) nx = 1;
-        if (ny < 1) ny = 1;
-        if (nz < 1) nz = 1;
-
-        puzzle->getShape(s)->resize(nx, ny, nz, 0);
-      }
-
-    }
-
-    // we always do this, is may be that the shape is not changed in the loop above because
-    // that loop and only increase the size, so smaller sizes for the selected shape must be done
-    // here
-    puzzle->getShape(shape)->resize(changeSize->getX(), changeSize->getY(), changeSize->getZ(), 0);
-
+    resizeSpace(toAll->value(), changeSize, puzzle, shape);
     do_callback();
   }
 }
