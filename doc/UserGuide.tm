@@ -3113,6 +3113,17 @@
     rectangle at the lower end of the tools. The rectangle with the S1 in it.
   </description-compact>
 
+  <section|Bermuda>
+
+  <\description-compact>
+    <item*|Design>Bill Cutler, 1992, USA
+
+    <item*|File><verbatim|Bermuda.xmpuzzle>
+
+    <item*|Remarks>This puzzle demonstrates the triangle space grid. You can
+    see that you can stack many layers on top of each other.
+  </description-compact>
+
   <section|MINE's CUBE in CAGE>
 
   <\description-compact>

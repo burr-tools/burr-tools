@@ -13,6 +13,10 @@ pieces. When looking at the solution it is useful to display the box as a
 wire frame. This can be done by clicking at the blue rectangle at the lower end
 of the tools. The rectangle with the 0.0 in it.
 
+Bermuda: Designed by Bill Cutler
+This is a puzzle using the triangular gridspace. You can see that several layers
+of triangles can be stacked on top of one another
+
 CubeInCage: Designed by Mineyuki Uyematsu
 This file contains MINE's CUBE in CAGE 333 cube g. This file demonstrates how
 to use the grouping capabilities. The puzzle contains 3 interlocked pieces

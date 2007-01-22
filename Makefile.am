@@ -30,4 +30,4 @@ EXTRA_DIST = doc/UserGuide.tm doc/UserGuide.pdf \
 	     doc/Pics/Window_StartUp.png doc/Pics/Window_ImageExport.png \
 	     doc/Pics/Window_Status.png \
 	     examples/README.TXT examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle \
-	     examples/PelikanBurr.xmpuzzle examples/CubeInCage.xmpuzzle
+	     examples/PelikanBurr.xmpuzzle examples/CubeInCage.xmpuzzle examples/Bermuda.xmpuzzle
