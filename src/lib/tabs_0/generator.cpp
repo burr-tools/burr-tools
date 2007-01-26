@@ -16,10 +16,22 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+#include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-#include "voxel_0.h"
-#include "gridtype.h"
+
+double rotz[9] = {  0, -1,  0,
+                 1,  0,  0,
+                 0,  0,  1};
+
+double rotx[9] = {  1,  0,  0,
+                 0,  0, -1,
+                 0,  1,  0};
+
+double roty[9] = {  0,  0, -1,
+                    0,  1,  0,
+                    1,  0,  0};
 
 #include "tablesizes.inc"
 
@@ -32,6 +44,8 @@ static const int _roty[NUM_TRANSFORMATIONS] = {
 static const int _rotz[NUM_TRANSFORMATIONS] = {
 #include "rotz.inc"
 };
+
+double matrix[NUM_TRANSFORMATIONS][9];
 
 /* this matix contains the concatenation of 2 transformations
  * if you first transform the piece around t1 and then around t2
@@ -183,45 +197,95 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val, FILE * o
 
 }
 
+void mmult(double * m, double * matrix) {
+
+  double n[9];
+
+  for (int x = 0; x < 3; x++)
+    for (int y = 0; y < 3; y++) {
+      n[y*3+x] = 0;
+      for (int c = 0; c < 3; c++) {
+        n[y*3+x] += m[c*3+x]*matrix[y*3+c];
+      }
+    }
+
+  for (int i = 0; i < 9; i++)
+    m[i] = n[i];
+}
+
+void mmult(double * m, int num) {
+
+  if (num >= NUM_TRANSFORMATIONS) {
+    m[0] *= -1;
+    m[1] *= -1;
+    m[2] *= -1;
+    num -= NUM_TRANSFORMATIONS;
+  }
+
+  mmult(m, matrix[num]);
+}
+
+bool mequal(double *m, int num) {
+
+  double n[9];
+
+  for (int i = 0; i < 9; i++)
+    n[i] = matrix[num%NUM_TRANSFORMATIONS][i];
+
+  if (num >= NUM_TRANSFORMATIONS) {
+    n[0] *= -1;
+    n[3] *= -1;
+    n[6] *= -1;
+  }
+
+  for (int i = 0; i < 9; i++)
+    if (fabs(m[i]-n[i]) > 0.00001)
+      return false;
+
+  return true;
+}
+
+
 void multTranformationsMatrix(void) {
 
   FILE * out = fopen("transmult.inc", "w");
 
-  gridType_c * gt = new gridType_c();
-
-  voxel_c * w[NUM_TRANSFORMATIONS_MIRROR];
-
-  for (int t = 0; t < NUM_TRANSFORMATIONS_MIRROR; t++) {
-    w[t] = new voxel_0_c(3, 3, 3, gt);
-    w[t]->setState(1, 1, 1, voxel_c::VX_FILLED); w[t]->setState(0, 1, 1, voxel_c::VX_FILLED);
-    w[t]->setState(0, 0, 1, voxel_c::VX_FILLED); w[t]->setState(0, 0, 0, voxel_c::VX_FILLED);
-
-    w[t]->transform(t);
-  }
-
   for (int tr1 = 0; tr1 < NUM_TRANSFORMATIONS_MIRROR; tr1++) {
     fprintf(out, "{");
 
-    voxel_0_c v(3, 3, 3, gt);
-    v.setState(1, 1, 1, voxel_c::VX_FILLED); v.setState(0, 1, 1, voxel_c::VX_FILLED);
-    v.setState(0, 0, 1, voxel_c::VX_FILLED); v.setState(0, 0, 0, voxel_c::VX_FILLED);
-    v.transform(tr1);
 
     for (int tr2 = 0; tr2 < NUM_TRANSFORMATIONS_MIRROR; tr2++) {
 
-      voxel_0_c v2(v);
-      v2.transform(tr2);
+      double m[9];
+      m[0] = m[4] = m[8] = 1;
+      m[1] = m[2] = m[3] = m[5] = m[6] = m[7] = 0;
+
+      mmult(m, tr1);
+      mmult(m, tr2);
+
+      bool found = false;
 
       for (int t = 0; t < NUM_TRANSFORMATIONS_MIRROR; t++) {
-        if (v2 == *w[t]) {
+
+        if (mequal(m, t)) {
           if (tr2 < NUM_TRANSFORMATIONS_MIRROR-1)
             fprintf(out, "%2i, ", t);
           else
             fprintf(out, "%2i", t);
           transMult[tr1][tr2] = t;
+          found = true;
           break;
         }
       }
+
+      if (!found) {
+        if (tr2 < NUM_TRANSFORMATIONS_MIRROR-1)
+          fprintf(out, "%2i, ", -1);
+        else
+          fprintf(out, "%2i", -1);
+        transMult[tr1][tr2] = -1;
+      }
+
     }
     if (tr1 < NUM_TRANSFORMATIONS_MIRROR-1)
       fprintf(out, "},\n");
@@ -231,31 +295,27 @@ void multTranformationsMatrix(void) {
   fclose(out);
 }
 
-#if 0
-void inverseTranformationsMatrix(void) {
+void createTransformationMatrix() {
 
-  voxel_0_c v(3, 3, 3);
-  v.setState(1, 1, 1, voxel_c::VX_FILLED); v.setState(0, 1, 1, voxel_c::VX_FILLED);
-  v.setState(0, 0, 1, voxel_c::VX_FILLED); v.setState(0, 0, 0, voxel_c::VX_FILLED);
+  for (int i = 0; i < NUM_TRANSFORMATIONS; i++) {
+    matrix[i][0] = matrix[i][4] = matrix[i][8] = 1;
+    matrix[i][1] = matrix[i][2] = matrix[i][3] = 0;
+    matrix[i][5] = matrix[i][6] = matrix[i][7] = 0;
 
-  for (int tr = 0; tr < NUM_TRANSFORMATIONS_MIRROR; tr++) {
+    for (int t = 0; t < _rotx[i]; t++)
+      mmult(matrix[i], rotx);
 
-    voxel_0_c w(v, tr);
+    for (int t = 0; t < _roty[i]; t++)
+      mmult(matrix[i], roty);
 
-    for (int t = 0; t < NUM_TRANSFORMATIONS_MIRROR; t++) {
-
-      voxel_0_c x(w, t);
-
-      if (v == x) {
-        printf("%2i, ", t);
-        break;
-      }
-    }
+    for (int t = 0; t < _rotz[i]; t++)
+      mmult(matrix[i], rotz);
   }
 }
-#endif
 
 int main(int argv, char* args[]) {
+
+  createTransformationMatrix();
 
   multTranformationsMatrix();
   outputMinimumSymmetries();
@@ -264,7 +324,5 @@ int main(int argv, char* args[]) {
   FILE * out = fopen("symcalc.inc", "w");
   makeSymmetryTree(0, 0, out);
   fclose(out);
-
-//  inverseTranformationsMatrix(gt);
 }
 
