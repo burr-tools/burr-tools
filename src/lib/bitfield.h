@@ -3,6 +3,8 @@
 
 #include <inttypes.h>
 
+#include "bt_assert.h"
+
 // this is a fast class to have a bit vector with a constant number of bits
 // the number it dependend on the template parameter
 template<int bits>
