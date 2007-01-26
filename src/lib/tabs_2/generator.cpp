@@ -17,9 +17,6 @@
  */
 
 
-#include "voxel_2.h"
-#include "gridtype.h"
-#include "print.h"
 #include "bitfield.h"
 
 #include "tablesizes.inc"
@@ -247,10 +244,6 @@ void multTranformationsMatrix(void) {
 
   FILE * out = fopen("transmult.inc", "w");
 
-  gridType_c * gt = new gridType_c(gridType_c::GT_TRIANGULAR_PRISM);
-
-  voxel_c * w[NUM_TRANSFORMATIONS_MIRROR];
-
   for (int tr1 = 0; tr1 < NUM_TRANSFORMATIONS_MIRROR; tr1++) {
     fprintf(out, "{");
 
@@ -296,30 +289,6 @@ void multTranformationsMatrix(void) {
   fclose(out);
 }
 
-#if 0
-void inverseTranformationsMatrix(void) {
-
-  voxel_1_c v(3, 3, 3);
-  v.setState(1, 1, 1, voxel_c::VX_FILLED); v.setState(0, 1, 1, voxel_c::VX_FILLED);
-  v.setState(0, 0, 1, voxel_c::VX_FILLED); v.setState(0, 0, 0, voxel_c::VX_FILLED);
-
-  for (int tr = 0; tr < NUM_TRANSFORMATIONS_MIRROR; tr++) {
-
-    voxel_1_c w(v, tr);
-
-    for (int t = 0; t < NUM_TRANSFORMATIONS_MIRROR; t++) {
-
-      voxel_1_c x(w, t);
-
-      if (v == x) {
-        printf("%2i, ", t);
-        break;
-      }
-    }
-  }
-}
-#endif
-
 int main(int argv, char* args[]) {
 
   multTranformationsMatrix();
@@ -329,7 +298,5 @@ int main(int argv, char* args[]) {
   FILE * out = fopen("symcalc.inc", "w");
   makeSymmetryTree("0", "0", out);
   fclose(out);
-
-//  inverseTranformationsMatrix(gt);
 }
 
