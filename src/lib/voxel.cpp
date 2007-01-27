@@ -590,12 +590,17 @@ void voxel_c::actionOnSpace(VoxelAction action, bool inside) {
     for (unsigned int y = 0; y < getY(); y++)
       for (unsigned int z = 0; z < getZ(); z++)
         if (getState(x, y, z) != VX_EMPTY) {
-          if (inside ^
-              ((getState2(x-1, y, z) == VX_EMPTY) || (getState2(x+1, y, z) == VX_EMPTY) ||
-               (getState2(x, y-1, z) == VX_EMPTY) || (getState2(x, y+1, z) == VX_EMPTY) ||
-               (getState2(x, y, z-1) == VX_EMPTY) || (getState2(x, y, z+1) == VX_EMPTY)
-              )
-             )
+          bool neighborEmpty = false;
+
+          int idx = 0;
+          int nx, ny, nz;
+
+          while (!neighborEmpty && getNeighbor(idx, 0, x, y, z, &nx, &ny, &nz)) {
+            neighborEmpty |= (getState2(nx, ny, nz) == VX_EMPTY);
+            idx++;
+          }
+
+          if (inside ^ neighborEmpty)
             switch(action) {
               case ACT_FIXED: setState(x, y, z, VX_FILLED); break;
               case ACT_VARIABLE: setState(x, y, z, VX_VARIABLE); break;
