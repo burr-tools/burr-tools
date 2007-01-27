@@ -43,6 +43,8 @@ class voxel_1_c : public voxel_c {
     bool identicalInBB(const voxel_c * op, bool includeColors = true) const;
 
     bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const;
+
+    void scale(unsigned int amount);
 };
 
 #endif

@@ -249,27 +249,13 @@ void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel
 }
 
 void voxel_c::scale(unsigned int amount) {
-  voxel_type * s2 = new voxel_type[sx*amount*sy*amount*sz*amount];
-
-  for (unsigned int x = 0; x < sx; x++)
-    for (unsigned int y = 0; y < sy; y++)
-      for (unsigned int z = 0; z < sz; z++)
-        for (unsigned int ax = 0; ax < amount; ax++)
-          for (unsigned int ay = 0; ay < amount; ay++)
-            for (unsigned int az = 0; az < amount; az++)
-              s2[(x*amount+ax) + (sx*amount) * ((y*amount+ay) + (sy*amount) * (z*amount+az))] = get(x, y, z);
-
-  delete [] space;
-  space = s2;
-
-  sx *= amount;
-  sy *= amount;
-  sz *= amount;
-
-  voxels = sx*sy*sz;
-
-  recalcBoundingBox();
+  // do nothing by default
 }
+
+bool voxel_c::scaleDown(unsigned char by, bool action) {
+  return false;
+}
+
 
 unsigned int voxel_c::count(voxel_type val) const {
   unsigned int count = 0;
@@ -700,63 +686,5 @@ voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), h
   skipRecalcBoundingBox(false);
 
   symmetries = symmetryInvalid();
-}
-
-bool voxel_c::scaleDown(unsigned char by, bool action) {
-
-  if (by < 2) return true;
-  if (sx < by || sy < by || sz < by) return false;
-
-  for (unsigned int shx = 0; shx < by; shx++)
-    for (unsigned int shy = 0; shy < by; shy++)
-      for (unsigned int shz = 0; shz < by; shz++) {
-
-        bool problem = false;
-
-        for (int x = 0; x < (int)sx/by+1; x++)
-          for (int y = 0; y < (int)sy/by+1; y++)
-            for (int z = 0; z < (int)sz/by+1; z++)
-
-              for (unsigned int cx = 0; cx < by; cx++)
-                for (unsigned int cy = 0; cy < by; cy++)
-                  for (unsigned int cz = 0; cz < by; cz++)
-
-                    problem |= get2(x*by-shx, y*by-shy, z*by-shz) != get2(x*by-shx+cx, y*by-shy+cy, z*by-shz+cz);
-
-        if (!problem) {
-
-          if (action) {
-
-            // we don't need to include the +1 in the sizes
-            // as we've done for the check as these voxels are
-            // definitively empty
-            unsigned int nsx = sx/by;
-            unsigned int nsy = sy/by;
-            unsigned int nsz = sz/by;
-
-            voxel_type * s2 = new voxel_type[nsx*nsy*nsz];
-
-            for (unsigned int x = 0; x < nsx; x++)
-              for (unsigned int y = 0; y < nsy; y++)
-                for (unsigned int z = 0; z < nsz; z++)
-                  s2[x + nsx * (y + nsy * z)] = get2(x*by, y*by, z*by);
-
-            delete [] space;
-            space = s2;
-
-            sx = nsx;
-            sy = nsy;
-            sz = nsz;
-
-            voxels = sx*sy*sz;
-
-            recalcBoundingBox();
-          }
-
-          return true;
-        }
-      }
-
-  return false;
 }
 

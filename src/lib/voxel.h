@@ -456,7 +456,18 @@ public:
   /**
    * scale the space, making x by x by x cubes out of single cubes
    */
-  void scale(unsigned int amount);
+  virtual void scale(unsigned int amount);
+
+  /**
+   * Scale down voxel space by a certain amount.
+   *
+   * for the minimize scale function applied to all shapes
+   * we need to first check, if all shapes can be scaled down
+   * by a certain factor and then do it. If action is true, then
+   * the shape is really scaled, otherwise you only get the fact
+   * if it is scalable by the given amount
+   */
+  virtual bool scaleDown(unsigned char by, bool action);
 
   /**
    * checks the voxelspace for connectedness. It is checked
@@ -595,17 +606,6 @@ public:
    * if you give 0 or an empty string the name will be removed
    */
   void setName(const std::string & n) { name = n; }
-
-  /**
-   * Scale down voxel space by a certain amount.
-   *
-   * for the minimize scale function applied to all shapes
-   * we need to first check, if all shapes can be scaled down
-   * by a certain factor and then do it. If action is true, then
-   * the shape is really scaled, otherwise you only get the fact
-   * if it is scalable by the given amount
-   */
-  bool scaleDown(unsigned char by, bool action);
 
   //@{
   /* functions for the weight */

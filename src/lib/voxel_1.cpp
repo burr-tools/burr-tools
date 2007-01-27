@@ -527,3 +527,44 @@ bool voxel_1_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, in
   return true;
 }
 
+void voxel_1_c::scale(unsigned int amount) {
+
+  unsigned int nsx = amount-1 + sx*amount;
+  unsigned int nsy = sy*amount;
+  unsigned int nsz = sz*amount;
+  voxel_type * s2 = new voxel_type[nsx*nsy*nsz];
+  memset(s2, outside, nsx*nsy*nsz);
+
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++)
+
+        for (unsigned int ax = 0; ax < 2*amount-1; ax++)
+          for (unsigned int ay = 0; ay < amount; ay++) {
+
+            if (((x+y) & 1) == 0) {
+
+              if ((ay <= ax) && (ay < 2*amount-1-ax))
+                for (unsigned int az = 0; az < amount; az++)
+                  s2[(x*amount+ax) + nsx * ((y*amount+ay) + nsy * (z*amount+az))] = get(x, y, z);
+
+            } else {
+
+              if ((ay <= ax) && (ay < 2*amount-1-ax))
+                for (unsigned int az = 0; az < amount; az++)
+                  s2[(x*amount+ax) + nsx * ((y*amount+amount-1-ay) + nsy * (z*amount+az))] = get(x, y, z);
+            }
+          }
+
+  delete [] space;
+  space = s2;
+
+  sx = nsx;
+  sy = nsy;
+  sz = nsz;
+
+  voxels = sx*sy*sz;
+
+  recalcBoundingBox();
+}
+
