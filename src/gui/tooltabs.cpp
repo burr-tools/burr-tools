@@ -20,6 +20,7 @@
 
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
+#include "../lib/voxel_0.h"
 #include "WindowWidgets.h"
 #include "guigridtype.h"
 
