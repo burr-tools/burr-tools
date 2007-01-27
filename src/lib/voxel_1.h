@@ -23,6 +23,12 @@
 
 class voxel_1_c : public voxel_c {
 
+  private:
+    void rotatex(int by = 1);
+    void rotatey(int by = 1);
+    void rotatez(int by = 1);
+    void mirrorX(void);
+
   public:
 
     voxel_1_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0, voxel_type outs = VX_EMPTY) : voxel_c(x, y, z, gt, init, outs) {}
@@ -30,14 +36,8 @@ class voxel_1_c : public voxel_c {
     voxel_1_c(const voxel_c & orig) : voxel_c(orig) { }
     voxel_1_c(const voxel_c * orig) : voxel_c(orig) { }
 
-    void rotatex(int by = 1);
-    void rotatey(int by = 1);
-    void rotatez(int by = 1);
     void transformPoint(int * x, int * y, int * z, unsigned int trans) const;
     virtual bool transform(unsigned int nr);
-
-    void mirrorX(void);
-    void mirrorY(void);
 
     void minimizePiece(void);
     bool identicalInBB(const voxel_c * op, bool includeColors = true) const;

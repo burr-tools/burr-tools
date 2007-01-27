@@ -23,6 +23,9 @@
 
 class voxel_2_c : public voxel_c {
 
+  private:
+    void mirrorX(void);
+
   public:
 
     voxel_2_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0, voxel_type outs = VX_EMPTY) : voxel_c(x, y, z, gt, init, outs) {}
@@ -30,15 +33,9 @@ class voxel_2_c : public voxel_c {
     voxel_2_c(const voxel_c & orig) : voxel_c(orig) { }
     voxel_2_c(const voxel_c * orig) : voxel_c(orig) { }
 
-    void rotatex(int by = 1);
-    void rotatey(int by = 1);
-    void rotatez(int by = 1);
     void transformPoint(int * x, int * y, int * z, unsigned int trans) const;
     virtual bool transform(unsigned int nr);
 
-    void mirrorX(void);
-    void mirrorY(void);
-    void mirrorZ(void);
 
     bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const;
 };

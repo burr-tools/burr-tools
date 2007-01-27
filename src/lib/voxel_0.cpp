@@ -310,6 +310,30 @@ static const int _rotz[NUM_TRANSFORMATIONS] = {
 #include "tabs_0/rotz.inc"
 };
 
+void voxel_0_c::mirrorX(void) {
+
+  doRecalc = false;
+
+  for (unsigned int x = 0; x < sx/2; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++) {
+        voxel_type tmp = get(x, y, z);
+        set(x, y, z, get(sx-x-1, y, z));
+        set(sx-x-1, y, z, tmp);
+      }
+
+  doRecalc = true;
+
+  unsigned int t = bx1;
+
+  bx1 = sx - 1 - bx2;
+  bx2 = sx - 1 - t;
+
+  hx = sx - hx - 1;
+
+  symmetries = symmetryInvalid();
+}
+
 bool voxel_0_c::transform(unsigned int nr) {
 
   bt_assert(nr < NUM_TRANSFORMATIONS_MIRROR);

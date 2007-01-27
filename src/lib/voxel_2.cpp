@@ -23,283 +23,8 @@ double rotationMatrices[120][9] = {
 #include "tabs_2/rotmatrix.inc"
 };
 
-void voxel_2_c::rotatex(int by) {
 
-  by &= 3;
 
-  switch(by) {
-  case 0:
-    break;
-  case 1:
-    {
-      int tmp = sy;
-      sy = sz;
-      sz = tmp;
-
-      voxel_type *s = new voxel_type[voxels];
-
-      for (unsigned int x = 0; x < sx; x++)
-        for (unsigned int y = 0; y < sy; y++)
-          for (unsigned int z = 0; z < sz; z++)
-            s[x+sx*(y+sy*z)] = space[x+sx*(z+sz*(sy-y-1))];
-
-      unsigned int t = by1;
-      by1 = sy - 1 - bz2;
-      bz2 = by2;
-      by2 = sy - 1 - bz1;
-      bz1 = t;
-
-      t = hy;
-      hy = sy - hz - 1;
-      hz = t;
-
-      delete [] space;
-      space = s;
-    }
-    break;
-  case 2:
-    {
-      voxel_type *s = new voxel_type[voxels];
-
-      for (unsigned int x = 0; x < sx; x++)
-        for (unsigned int y = 0; y < sy; y++)
-          for (unsigned int z = 0; z < sz; z++)
-            s[x+sx*(y+sy*z)] = space[x+sx*((sy-y-1)+sy*(sz-z-1))];
-
-      unsigned int t = by1;
-      by1 = sy - 1 - by2;
-      by2 = sy - 1 - t;
-
-      t = bz1;
-      bz1 = sz - 1 - bz2;
-      bz2 = sz - 1 - t;
-
-      hy = sy - hy - 1;
-      hz = sz - hz - 1;
-
-      delete [] space;
-      space = s;
-    }
-
-    break;
-  case 3:
-    {
-      int tmp = sy;
-      sy = sz;
-      sz = tmp;
-
-      voxel_type *s = new voxel_type[voxels];
-
-      for (unsigned int x = 0; x < sx; x++)
-        for (unsigned int y = 0; y < sy; y++)
-          for (unsigned int z = 0; z < sz; z++)
-            s[x+sx*(y+sy*z)] = space[x+sx*((sz-z-1)+sz*y)];
-
-      unsigned int t = by1;
-      by1 = bz1;
-      bz1 = sz - 1 - by2;
-      by2 = bz2;
-      bz2 = sz - 1 - t;
-
-      t = hy;
-      hy = hz;
-      hz = sz - t - 1;
-
-      delete [] space;
-      space = s;
-    }
-
-    break;
-  }
-  symmetries = symmetryInvalid();
-}
-
-void voxel_2_c::rotatey(int by) {
-
-  by &= 3;
-
-  switch(by) {
-  case 0:
-    break;
-  case 1:
-    {
-      int tmp = sx;
-      sx = sz;
-      sz = tmp;
-
-      voxel_type *s = new voxel_type[voxels];
-
-      for (unsigned int x = 0; x < sx; x++)
-        for (unsigned int y = 0; y < sy; y++)
-          for (unsigned int z = 0; z < sz; z++)
-            s[x+sx*(y+sy*z)] = space[z+sz*(y+sy*(sx-x-1))];
-
-      delete [] space;
-      space = s;
-
-      unsigned int t = bx1;
-
-      bx1 = sx - 1 - bz2;
-      bz2 = bx2;
-      bx2 = sx - 1 - bz1;
-      bz1 = t;
-
-      t = hx;
-      hx = sx - hz - 1;
-      hz = t;
-
-    }
-    break;
-  case 2:
-    {
-      voxel_type *s = new voxel_type[voxels];
-
-      for (unsigned int x = 0; x < sx; x++)
-        for (unsigned int y = 0; y < sy; y++)
-          for (unsigned int z = 0; z < sz; z++)
-            s[x+sx*(y+sy*z)] = space[(sx-x-1)+sx*(y+sy*(sz-z-1))];
-
-      delete [] space;
-      space = s;
-
-      unsigned int t = bx1;
-
-      bx1 = sx - 1 - bx2;
-      bx2 = sx - 1 - t;
-
-      t = bz1;
-      bz1 = sz - 1 - bz2;
-      bz2 = sz - 1 - t;
-
-      hx = sx - hx - 1;
-      hz = sz - hz - 1;
-
-    }
-    break;
-  case 3:
-    {
-      int tmp = sx;
-      sx = sz;
-      sz = tmp;
-
-      voxel_type *s = new voxel_type[voxels];
-
-      for (unsigned int x = 0; x < sx; x++)
-        for (unsigned int y = 0; y < sy; y++)
-          for (unsigned int z = 0; z < sz; z++)
-            s[x+sx*(y+sy*z)] = space[(sz-z-1)+sz*(y+sy*x)];
-
-      delete [] space;
-      space = s;
-
-      unsigned int t = bx1;
-
-      bx1 = bz1;
-      bz1 = sz - 1 - bx2;
-      bx2 = bz2;
-      bz2 = sz - 1 - t;
-
-      t = hx;
-      hx = hz;
-      hz = sz - t - 1;
-    }
-    break;
-  }
-  symmetries = symmetryInvalid();
-}
-
-void voxel_2_c::rotatez(int by) {
-
-  by &= 3;
-
-  switch(by) {
-  case 0:
-    break;
-  case 1:
-    {
-      int tmp = sy;
-      sy = sx;
-      sx = tmp;
-
-      voxel_type *s = new voxel_type[voxels];
-
-      for (unsigned int x = 0; x < sx; x++)
-        for (unsigned int y = 0; y < sy; y++)
-          for (unsigned int z = 0; z < sz; z++)
-            s[x+sx*(y+sy*z)] = space[y+sy*((sx-x-1)+sx*z)];
-
-      delete [] space;
-      space = s;
-
-      unsigned int t = by1;
-
-      by1 = bx1;
-      bx1 = sx - 1 - by2;
-      by2 = bx2;
-      bx2 = sx - 1 - t;
-
-      t = hy;
-      hy = hx;
-      hx = sx - t - 1;
-
-    }
-    break;
-  case 2:
-    {
-      voxel_type *s = new voxel_type[voxels];
-
-      for (unsigned int x = 0; x < sx; x++)
-        for (unsigned int y = 0; y < sy; y++)
-          for (unsigned int z = 0; z < sz; z++)
-            s[x+sx*(y+sy*z)] = space[(sx-x-1)+sx*((sy-y-1)+sy*z)];
-
-      delete [] space;
-      space = s;
-
-      unsigned int t = by1;
-
-      by1 = sy - 1 - by2;
-      by2 = sy - 1 - t;
-
-      t = bx1;
-      bx1 = sx - 1 - bx2;
-      bx2 = sx - 1 - t;
-
-      hx = sx - hx - 1;
-      hy = sy - hy - 1;
-    }
-    break;
-  case 3:
-    {
-      int tmp = sy;
-      sy = sx;
-      sx = tmp;
-
-      voxel_type *s = new voxel_type[voxels];
-
-      for (unsigned int x = 0; x < sx; x++)
-        for (unsigned int y = 0; y < sy; y++)
-          for (unsigned int z = 0; z < sz; z++)
-            s[x+sx*(y+sy*z)] = space[(sy-y-1)+sy*(x+sx*z)];
-
-      delete [] space;
-      space = s;
-
-      unsigned int t = by1;
-
-      by1 = sy - 1 - bx2;
-      bx2 = by2;
-      by2 = sy - 1 - bx1;
-      bx1 = t;
-
-      t = hy;
-      hy = sy - hx - 1;
-      hx = t;
-    }
-    break;
-  }
-  symmetries = symmetryInvalid();
-}
 
 bool voxel_2_c::transform(unsigned int nr) {
 
@@ -473,64 +198,30 @@ bool voxel_2_c::transform(unsigned int nr) {
 
 void voxel_2_c::mirrorX(void) {
 
-  voxel_c::mirrorX();
+  // if x size is not odd make it so
+  if ((sx & 1) == 0)
+    resize(sx+1, sy, sz, 0);
 
-  if (!(sx & 1)) {
-    if (bx1 > 0)
-      translate(-1, 0, 0, 0);
-    else if (bx2 < sx-1)
-      translate(1, 0, 0, 0);
-    else if (by1 > 0)
-      translate(0, -1, 0, 0);
-    else if (by2 < sy-1)
-      translate(0, 1, 0, 0);
-    else {
-      resize(sx+1, sy, sz, 0);
-      translate(1, 0, 0, 0);
-    }
-  }
-}
+  doRecalc = false;
 
-void voxel_2_c::mirrorY(void) {
-  voxel_c::mirrorY();
+  for (unsigned int x = 0; x < sx/2; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++) {
+        voxel_type tmp = get(x, y, z);
+        set(x, y, z, get(sx-x-1, y, z));
+        set(sx-x-1, y, z, tmp);
+      }
 
-  if (sy & 1) {
-    if (bx1 > 0)
-      translate(-1, 0, 0, 0);
-    else if (bx2 < sx-1)
-      translate(1, 0, 0, 0);
-    else if (by1 > 0)
-      translate(0, -1, 0, 0);
-    else if (by2 < sy-1)
-      translate(0, 1, 0, 0);
-    else {
-      resize(sx+1, sy, sz, 0);
-      translate(1, 0, 0, 0);
-    }
-  }
-}
+  doRecalc = true;
 
-void voxel_2_c::mirrorZ(void) {
-  voxel_c::mirrorZ();
+  unsigned int t = bx1;
 
-  if (sz & 1) {
-    if (bx1 > 0)
-      translate(-1, 0, 0, 0);
-    else if (bx2 < sx-1)
-      translate(1, 0, 0, 0);
-    else if (by1 > 0)
-      translate(0, -1, 0, 0);
-    else if (by2 < sy-1)
-      translate(0, 1, 0, 0);
-    else if (bz1 > 0)
-      translate(0, 0, -1, 0);
-    else if (bz2 < sz-1)
-      translate(0, 0, 1, 0);
-    else {
-      resize(sx+1, sy, sz, 0);
-      translate(1, 0, 0, 0);
-    }
-  }
+  bx1 = sx - 1 - bx2;
+  bx2 = sx - 1 - t;
+
+  hx = sx - hx - 1;
+
+  symmetries = symmetryInvalid();
 }
 
 void voxel_2_c::transformPoint(int * x, int * y, int * z, unsigned int trans) const {

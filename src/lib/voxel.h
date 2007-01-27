@@ -361,19 +361,6 @@ public:
    */
   unsigned int count(voxel_type val) const;
 
-  //@{
-  /**
-   * rotate the space around the x axis.
-   * The amount is a multiple of a base dregree depending on
-   * the actual voxel space interprtation
-   * The voxel space is resized to that it's contents
-   * fits into the rotated position
-   */
-  virtual void rotatex(int by = 1) = 0;
-  virtual void rotatey(int by = 1) = 0;
-  virtual void rotatez(int by = 1) = 0;
-  //@}
-
   /**
    * this function transforms the given point by the given transformation
    * around the origin
@@ -386,15 +373,6 @@ public:
    * the new empty space gets filled with the filler value
    */
   void translate(int dx, int dy, int dz, voxel_type filler);
-
-  //@{
-  /**
-   * mirrors the space along the given axis
-   */
-  virtual void mirrorX(void);
-  virtual void mirrorY(void);
-  virtual void mirrorZ(void);
-  //@}
 
   /**
    * changes the size of the voxel space to the smallest size

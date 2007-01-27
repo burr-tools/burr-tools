@@ -360,41 +360,30 @@ void voxel_1_c::minimizePiece(void) {
 
 void voxel_1_c::mirrorX(void) {
 
-  voxel_c::mirrorX();
+  // if x size is not odd make it so
+  if ((sx & 1) == 0)
+    resize(sx+1, sy, sz, 0);
 
-  if (!(sx & 1)) {
-    if (bx1 > 0)
-      translate(-1, 0, 0, 0);
-    else if (bx2 < sx-1)
-      translate(1, 0, 0, 0);
-    else if (by1 > 0)
-      translate(0, -1, 0, 0);
-    else if (by2 < sy-1)
-      translate(0, 1, 0, 0);
-    else {
-      resize(sx+1, sy, sz, 0);
-      translate(1, 0, 0, 0);
-    }
-  }
-}
+  doRecalc = false;
 
-void voxel_1_c::mirrorY(void) {
-  voxel_c::mirrorY();
+  for (unsigned int x = 0; x < sx/2; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++) {
+        voxel_type tmp = get(x, y, z);
+        set(x, y, z, get(sx-x-1, y, z));
+        set(sx-x-1, y, z, tmp);
+      }
 
-  if (sy & 1) {
-    if (bx1 > 0)
-      translate(-1, 0, 0, 0);
-    else if (bx2 < sx-1)
-      translate(1, 0, 0, 0);
-    else if (by1 > 0)
-      translate(0, -1, 0, 0);
-    else if (by2 < sy-1)
-      translate(0, 1, 0, 0);
-    else {
-      resize(sx+1, sy, sz, 0);
-      translate(1, 0, 0, 0);
-    }
-  }
+  doRecalc = true;
+
+  unsigned int t = bx1;
+
+  bx1 = sx - 1 - bx2;
+  bx2 = sx - 1 - t;
+
+  hx = sx - hx - 1;
+
+  symmetries = symmetryInvalid();
 }
 
 #include "tabs_1/tablesizes.inc"

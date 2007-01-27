@@ -23,6 +23,12 @@
 
 class voxel_0_c : public voxel_c {
 
+  private:
+    void mirrorX(void);
+    void rotatex(int by = 1);
+    void rotatey(int by = 1);
+    void rotatez(int by = 1);
+
   public:
 
     voxel_0_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0, voxel_type outs = VX_EMPTY) : voxel_c(x, y, z, gt, init, outs) {}
@@ -30,9 +36,6 @@ class voxel_0_c : public voxel_c {
     voxel_0_c(const voxel_c & orig) : voxel_c(orig) { }
     voxel_0_c(const voxel_c * orig) : voxel_c(orig) { }
 
-    void rotatex(int by = 1);
-    void rotatey(int by = 1);
-    void rotatez(int by = 1);
     void transformPoint(int * x, int * y, int * z, unsigned int trans) const;
     virtual bool transform(unsigned int nr);
 
