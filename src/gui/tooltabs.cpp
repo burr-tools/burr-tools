@@ -991,6 +991,10 @@ void ToolTab_2::cb_transform(long task) {
                      fy += fy&1;
                      fz += fz&1;
                    }
+                   if ((fx/2 - space->boundX1()) + (fy/2 - space->boundY1()) + (fz/2 - space->boundZ1()) & 1) {
+                     space->resize(space->getX()+2, space->getY(), space->getZ(), 0);
+                     fx+=2;
+                   }
                    space->translate(fx/2 - space->boundX1(), fy/2 - space->boundY1(), fz/2 - space->boundZ1(), 0);
                  }
                  break;
