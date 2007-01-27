@@ -545,7 +545,7 @@ ToolTab_0::ToolTab_0(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
     changeSize = new ChangeSize(0, 1, 1, 1);
     changeSize->callback(cb_ToolTab0Size_stub);
 
-    toAll = new LFl_Check_Button("Apply to All Shapes (Bricks)", 0, 0, 1, 1);
+    toAll = new LFl_Check_Button("Apply to All Shapes", 0, 0, 1, 1);
     toAll->tooltip(" If this is active, all operations (including transformations and constrains are done to all shapes ");
     toAll->clear_visible_focus();
     toAll->stretchHCenter();
@@ -718,7 +718,7 @@ ToolTab_1::ToolTab_1(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
     changeSize = new ChangeSize(0, 1, 1, 1);
     changeSize->callback(cb_ToolTab1Size_stub);
 
-    toAll = new LFl_Check_Button("Apply to All Shapes (Triangles)", 0, 0, 1, 1);
+    toAll = new LFl_Check_Button("Apply to All Shapes", 0, 0, 1, 1);
     toAll->tooltip(" If this is active, all operations (including transformations and constrains are done to all shapes ");
     toAll->clear_visible_focus();
     toAll->stretchHCenter();
@@ -889,7 +889,7 @@ ToolTab_2::ToolTab_2(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
     changeSize = new ChangeSize(0, 1, 1, 1);
     changeSize->callback(cb_ToolTab2Size_stub);
 
-    toAll = new LFl_Check_Button("Apply to All Shapes (Spheres)", 0, 0, 1, 1);
+    toAll = new LFl_Check_Button("Apply to All Shapes", 0, 0, 1, 1);
     toAll->tooltip(" If this is active, all operations (including transformations and constrains are done to all shapes ");
     toAll->clear_visible_focus();
     toAll->stretchHCenter();
