@@ -197,18 +197,32 @@ TransformButtons::TransformButtons(int x, int y, int w, int h, int type) : layou
 
   o = new layouter_c(6, 3, 1, 1);
 
-  new LFlatButton_c(6, 3, 1, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
-      " Rotate clockwise along X-Axis ",     cb_TransformButtons_stub,  6);
-  new LFlatButton_c(7, 3, 1, 1, pm.get(Transform_Color_Rotate_X_Right_xpm), pm.get(Transform_Disabled_Rotate_X_Right_xpm),
-      " Rotate anticlockwise along X-Axis ", cb_TransformButtons_stub,  7);
-  new LFlatButton_c(6, 5, 1, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
-      " Rotate clockwise along Y-Axis ",     cb_TransformButtons_stub,  9);
-  new LFlatButton_c(7, 5, 1, 1, pm.get(Transform_Color_Rotate_Y_Right_xpm), pm.get(Transform_Disabled_Rotate_Y_Right_xpm),
-      " Rotate anticlockwise along Y-Axis ", cb_TransformButtons_stub,  8);
-  new LFlatButton_c(6, 7, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
-      " Rotate clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
-  new LFlatButton_c(7, 7, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
-      " Rotate anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
+  if (type == 1) {
+
+    new LFlatButton_c(6, 0, 2, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
+        " Rotate 180° along X-Axis ",     cb_TransformButtons_stub,  6);
+    new LFlatButton_c(6, 1, 2, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
+        " Rotate 180° along Y-Axis ",     cb_TransformButtons_stub,  9);
+    new LFlatButton_c(6, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
+        " Rotate 60° clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
+    new LFlatButton_c(7, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
+        " Rotate 60° anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
+
+  } else {
+
+    new LFlatButton_c(6, 0, 1, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
+        " Rotate 90° clockwise along X-Axis ",     cb_TransformButtons_stub,  6);
+    new LFlatButton_c(7, 0, 1, 1, pm.get(Transform_Color_Rotate_X_Right_xpm), pm.get(Transform_Disabled_Rotate_X_Right_xpm),
+        " Rotate 90° anticlockwise along X-Axis ", cb_TransformButtons_stub,  7);
+    new LFlatButton_c(6, 1, 1, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
+        " Rotate 90° clockwise along Y-Axis ",     cb_TransformButtons_stub,  9);
+    new LFlatButton_c(7, 1, 1, 1, pm.get(Transform_Color_Rotate_Y_Right_xpm), pm.get(Transform_Disabled_Rotate_Y_Right_xpm),
+        " Rotate 90° anticlockwise along Y-Axis ", cb_TransformButtons_stub,  8);
+    new LFlatButton_c(6, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
+        " Rotate 90° clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
+    new LFlatButton_c(7, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
+        " Rotate 90° anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
+  }
 
   o->end();
 
@@ -800,15 +814,13 @@ void ToolTab_1::cb_transform(long task) {
         case  5: space->translate( 0, 0,-1, 0); break;
         case 28: space->translate(-1,-1, 0, 0); break;
         case 27: space->translate( 1,-1, 0, 0); break;
-        case  7: space->rotatex(); space->rotatex(); // fall through
-        case  6: space->rotatex(); break;
-        case  9: space->rotatey(); space->rotatey(); // fall through
-        case  8: space->rotatey(); break;
-        case 11: space->rotatez(); space->rotatez(); // fall through
-        case 10: space->rotatez(); break;
-        case 12: space->mirrorX(); break;
-        case 13: space->mirrorY(); break;
-        case 14: space->mirrorZ(); break;
+        case  6: space->transform(9); break;
+        case  9: space->transform(6); break;
+        case 11: space->transform(1); break;
+        case 10: space->transform(5); break;
+        case 12: space->transform(12); break;
+        case 13: space->transform(15); break;
+        case 14: space->transform(18); break;
         case 15: space->minimizePiece(); break;
         case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
         case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
