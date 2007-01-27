@@ -54,7 +54,7 @@ class SizeButtons : public layouter_c {
 
 public:
 
-  SizeButtons(int x, int y, int w, int h);
+  SizeButtons(int x, int y, int w, int h, bool addScale);
 
   void cb_Press(long button) { do_callback(this, button); }
 };
@@ -191,7 +191,7 @@ ToolsButtons::ToolsButtons(int x, int y, int w, int h) : layouter_c(x, y, w, h) 
 
 static void cb_SizeButtons_stub(Fl_Widget* o, long v) { ((SizeButtons*)(o->parent()))->cb_Press(v); }
 
-SizeButtons::SizeButtons(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
+SizeButtons::SizeButtons(int x, int y, int w, int h, bool addScale) : layouter_c(x, y, w, h) {
 
   (new LFl_Box(0, 0, 1, 1))->weight(1, 1);
   (new LFl_Box(0, 8, 1, 1))->weight(1, 1);
@@ -205,14 +205,17 @@ SizeButtons::SizeButtons(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
   new LFlatButton_c(0, 7, 1, 1, pm.get(Grid_Color_Origin_xpm), pm.get(Grid_Disabled_Origin_xpm),
       " Move shape to origin of grid ", cb_SizeButtons_stub, 24);
 
-  (new LFl_Box("Shape", 2, 1, 1, 1))->labelsize(LABEL_FONT_SIZE);
 
-  new LFlatButton_c(2, 3, 1, 1, pm.get(Rescale_Color_X1_xpm), pm.get(Rescale_Disabled_X1_xpm),
-      " Try to minimize size of shape ", cb_SizeButtons_stub, 26);
-  new LFlatButton_c(2, 5, 1, 1, pm.get(Rescale_Color_X2_xpm), pm.get(Rescale_Disabled_X2_xpm),
-      " Double size of shape ", cb_SizeButtons_stub, 22);
-  new LFlatButton_c(2, 7, 1, 1, pm.get(Rescale_Color_X3_xpm), pm.get(Rescale_Disabled_X3_xpm),
-      " Triple size of shape ", cb_SizeButtons_stub, 23);
+  if (addScale) {
+    (new LFl_Box("Shape", 2, 1, 1, 1))->labelsize(LABEL_FONT_SIZE);
+
+    new LFlatButton_c(2, 3, 1, 1, pm.get(Rescale_Color_X1_xpm), pm.get(Rescale_Disabled_X1_xpm),
+        " Try to minimize size of shape ", cb_SizeButtons_stub, 26);
+    new LFlatButton_c(2, 5, 1, 1, pm.get(Rescale_Color_X2_xpm), pm.get(Rescale_Disabled_X2_xpm),
+        " Double size of shape ", cb_SizeButtons_stub, 22);
+    new LFlatButton_c(2, 7, 1, 1, pm.get(Rescale_Color_X3_xpm), pm.get(Rescale_Disabled_X3_xpm),
+        " Triple size of shape ", cb_SizeButtons_stub, 23);
+  }
 
   (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
   (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
@@ -472,7 +475,7 @@ ToolTab_0::ToolTab_0(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 
     (new LFl_Box(1, 0, 1, 1))->setMinimumSize(5, 0);
 
-    o2 = new SizeButtons(2, 0, 1, 1);
+    o2 = new SizeButtons(2, 0, 1, 1, true);
     o2->callback(cb_ToolTab0Transform2_stub);
 
     o->end();
@@ -645,7 +648,7 @@ ToolTab_1::ToolTab_1(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 
     (new LFl_Box(1, 0, 1, 1))->setMinimumSize(5, 0);
 
-    o2 = new SizeButtons(2, 0, 1, 1);
+    o2 = new SizeButtons(2, 0, 1, 1, true);
     o2->callback(cb_ToolTab1Transform2_stub);
 
     o->end();
@@ -815,7 +818,7 @@ ToolTab_2::ToolTab_2(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 
     (new LFl_Box(1, 0, 1, 1))->setMinimumSize(5, 0);
 
-    o2 = new SizeButtons(2, 0, 1, 1);
+    o2 = new SizeButtons(2, 0, 1, 1, false);
     o2->callback(cb_ToolTab2Transform2_stub);
 
     o->end();
@@ -847,45 +850,12 @@ void ToolTab_2::cb_transform(long task) {
 
     int ss, se;
 
-    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
+    if (toAll->value() && ((task == 15) || (task == 24) || (task == 25))) {
       ss = 0;
       se = puzzle->shapeNumber();
     } else {
       ss = shape;
       se = shape+1;
-    }
-
-    if (task == 26) {
-
-      unsigned char primes[] = {2, 3, 5, 7, 11, 13, 17, 19, 0};
-
-      // special case for minimisation
-
-      int prime = 0;
-
-      while (primes[prime]) {
-
-        bool canScale = true;
-
-        for (int s = ss; s < se; s++)
-          if (!puzzle->getShape(s)->scaleDown(primes[prime], false)) {
-            canScale = false;
-            break;
-          }
-
-        if (canScale) {
-          for (int s = ss; s < se; s++)
-            puzzle->getShape(s)->scaleDown(primes[prime], true);
-        } else
-          prime++;
-      }
-
-      for (int s = ss; s < se; s++)
-        puzzle->getShape(s)->setHotspot(0, 0, 0);
-
-      do_callback(this, user_data());
-
-      return;
     }
 
     for (int s = ss; s < se; s++) {
@@ -914,8 +884,6 @@ void ToolTab_2::cb_transform(long task) {
         case 19: space->actionOnSpace(voxel_c::ACT_VARIABLE, false); break;
         case 20: space->actionOnSpace(voxel_c::ACT_DECOLOR, true); break;
         case 21: space->actionOnSpace(voxel_c::ACT_DECOLOR, false); break;
-        case 22: space->scale(2); break;
-        case 23: space->scale(3); break;
         case 24: space->translate(- space->boundX1(), - space->boundY1(), - space->boundZ1(), 0); break;
         case 25:
                  {
