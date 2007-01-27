@@ -33,6 +33,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <vector>
 
 #include <xmlwrapp/xmlwrapp.h>
 
@@ -557,6 +558,140 @@ void sphere_symmetries(void) {
 
 }
 
+void sphere_symmetries4(void) {
+
+  static char pos[32][3] = {
+    {0, 0, 0},
+    {2, 0, 0},
+    {1, 1, 0},
+    {3, 1, 0},
+    {0, 2, 0},
+    {2, 2, 0},
+    {1, 3, 0},
+    {3, 3, 0},
+    {1, 0, 1},
+    {3, 0, 1},
+    {0, 1, 1},
+    {2, 1, 1},
+    {1, 2, 1},
+    {3, 2, 1},
+    {0, 3, 1},
+    {2, 3, 1},
+    {0, 0, 2},
+    {2, 0, 2},
+    {1, 1, 2},
+    {3, 1, 2},
+    {0, 2, 2},
+    {2, 2, 2},
+    {1, 3, 2},
+    {3, 3, 2},
+    {1, 0, 3},
+    {3, 0, 3},
+    {0, 1, 3},
+    {2, 1, 3},
+    {1, 2, 3},
+    {3, 2, 3},
+    {0, 3, 3},
+    {2, 3, 3}
+  };
+
+  gridType_c gt(gridType_c::GT_SPHERES);
+  typedef bitfield_c<240> bv;
+
+  voxel_2_c s(4, 4, 4, &gt);
+  std::vector<bv> found;
+
+  for (unsigned long long i = 1; i < (1ll << 32) - 1; i++) {
+
+    if ((i % 1000) == 0)
+      fprintf(stderr, "%i\n", i);
+
+    for (int p = 0; p < 32; p++) {
+      if (i & (1ll << p))
+        s.setState(pos[p][0], pos[p][1], pos[p][2], voxel_c::VX_EMPTY);
+      else
+        s.setState(pos[p][0], pos[p][1], pos[p][2], voxel_c::VX_FILLED);
+    }
+
+    bitfield_c<240> st;
+
+    st.clear();
+    st.set(0);
+
+    for (int j = 1; j < 240; j++) {
+      voxel_2_c v(&s);
+      if (v.transform(j) && s.identicalInBB(&v))
+        st.set(j);
+    }
+
+    int i;
+    for (i = 0; i < found.size(); i++)
+      if (found[i] == st)
+        break;
+
+    if (i >= found.size()) {
+      st.print();
+      printf("\n");
+      found.push_back(st);
+    }
+  }
+
+
+}
+
+void sphere_symmetries_rand(int size, int loops) {
+
+  gridType_c gt(gridType_c::GT_SPHERES);
+
+  voxel_2_c s(size, size, size, &gt);
+
+  typedef bitfield_c<240> bv;
+
+  std::vector<bv> found;
+
+  while (loops) {
+
+    int x, y, z;
+
+    do {
+
+      x = rand() % size;
+      y = rand() % size;
+      z = rand() % size;
+
+    } while ((x+y+z) & 1);
+
+    if (s.isEmpty(x, y, z))
+      s.setState(x, y, z, voxel_c::VX_FILLED);
+    else
+      s.setState(x, y, z, voxel_c::VX_EMPTY);
+
+    bitfield_c<240> st;
+
+    st.clear();
+    st.set(0);
+
+    for (int j = 1; j < 240; j++) {
+      voxel_2_c v(&s);
+      if (v.transform(j) && s.identicalInBB(&v))
+        st.set(j);
+    }
+
+    int i;
+    for (i = 0; i < found.size(); i++)
+      if (found[i] == st)
+        break;
+
+    if (i >= found.size()) {
+      st.print();
+      printf("\n");
+      found.push_back(st);
+    }
+
+    loops--;
+  }
+}
+
 
 int main(int argv, char* args[]) {
 
@@ -570,6 +705,9 @@ int main(int argv, char* args[]) {
 //    calcSymmetries(args[1]);
 //    hotspotCheck(args[1]);
 
-    sphere_symmetries();
+  sphere_symmetries4();
+
+//    sphere_symmetries_rand(4, 10000);
+//    sphere_symmetries_rand(4, 10000);
 }
 
