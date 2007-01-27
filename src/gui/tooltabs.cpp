@@ -20,7 +20,6 @@
 
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
-#include "../lib/voxel_0.h"
 #include "WindowWidgets.h"
 #include "guigridtype.h"
 
@@ -630,7 +629,7 @@ void ToolTab_0::cb_transform(long task) {
     }
 
     for (int s = ss; s < se; s++) {
-      voxel_0_c * space = dynamic_cast<voxel_0_c*>(puzzle->getShape(s));
+      voxel_c * space = puzzle->getShape(s);
 
       switch(task) {
         case  0: space->translate( 1, 0, 0, 0); break;
@@ -639,15 +638,15 @@ void ToolTab_0::cb_transform(long task) {
         case  3: space->translate( 0,-1, 0, 0); break;
         case  4: space->translate( 0, 0, 1, 0); break;
         case  5: space->translate( 0, 0,-1, 0); break;
-        case  7: space->rotatex(); space->rotatex(); // fall through
-        case  6: space->rotatex(); break;
-        case  9: space->rotatey(); space->rotatey(); // fall through
-        case  8: space->rotatey(); break;
-        case 11: space->rotatez(); space->rotatez(); // fall through
-        case 10: space->rotatez(); break;
-        case 12: space->mirrorX(); break;
-        case 13: space->mirrorY(); break;
-        case 14: space->mirrorZ(); break;
+        case  7: space->transform(3); break;
+        case  6: space->transform(1); break;
+        case  9: space->transform(12); break;
+        case  8: space->transform(4); break;
+        case 11: space->transform(20); break;
+        case 10: space->transform(16); break;
+        case 12: space->transform(24); break;
+        case 13: space->transform(34); break;
+        case 14: space->transform(32); break;
         case 15: space->minimizePiece(); break;
         case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
         case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
@@ -757,6 +756,7 @@ void ToolTab_1::cb_size(void) {
 }
 
 void ToolTab_1::cb_transform(long task) {
+
   if (puzzle && shape < puzzle->shapeNumber()) {
 
     int ss, se;
