@@ -32,7 +32,11 @@ class TransformButtons : public layouter_c {
 
 public:
 
-  TransformButtons(int x, int y, int w, int h);
+  /* type 0 = bricks
+   * type 1 = triangles
+   * type 2 = spheres
+   */
+  TransformButtons(int x, int y, int w, int h, int type);
 
   void cb_Press(long button) { do_callback(this, button); }
 };
@@ -95,9 +99,9 @@ public:
 #define SZ_BUTTON2_Y 25
 #define LABEL_FONT_SIZE 12
 
-static void cb_TransformButtons_stub(Fl_Widget* o, long v) { ((TransformButtons*)(o->parent()))->cb_Press(v); }
+static void cb_TransformButtons_stub(Fl_Widget* o, long v) { ((TransformButtons*)(o->parent()->parent()))->cb_Press(v); }
 
-TransformButtons::TransformButtons(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
+TransformButtons::TransformButtons(int x, int y, int w, int h, int type) : layouter_c(x, y, w, h) {
 
   label("Transform");
 
@@ -110,25 +114,88 @@ TransformButtons::TransformButtons(int x, int y, int w, int h) : layouter_c(x, y
   (new LFl_Box("Nudge",  3, 1, 2, 1))->labelsize(LABEL_FONT_SIZE);
   (new LFl_Box("Rotate", 6, 1, 2, 1))->labelsize(LABEL_FONT_SIZE);
 
-  new LFlatButton_c(1, 3, 1, 1, pm.get(Transform_Color_Flip_X_xpm)        , pm.get(Transform_Disabled_Flip_X_xpm)        ,
+  layouter_c * o = new layouter_c(1, 3, 1, 1);
+
+  new LFlatButton_c(0, 0, 1, 1, pm.get(Transform_Color_Flip_X_xpm)        , pm.get(Transform_Disabled_Flip_X_xpm)        ,
       " Flip along Y-Z Plane ",              cb_TransformButtons_stub, 12);
-  new LFlatButton_c(1, 5, 1, 1, pm.get(Transform_Color_Flip_Y_xpm)        , pm.get(Transform_Disabled_Flip_Y_xpm)        ,
+  new LFlatButton_c(0, 1, 1, 1, pm.get(Transform_Color_Flip_Y_xpm)        , pm.get(Transform_Disabled_Flip_Y_xpm)        ,
       " Flip along X-Z Plane ",              cb_TransformButtons_stub, 13);
-  new LFlatButton_c(1, 7, 1, 1, pm.get(Transform_Color_Flip_Z_xpm)        , pm.get(Transform_Disabled_Flip_Z_xpm)        ,
+  new LFlatButton_c(0, 2, 1, 1, pm.get(Transform_Color_Flip_Z_xpm)        , pm.get(Transform_Disabled_Flip_Z_xpm)        ,
       " Flip along X-Y Plane ",              cb_TransformButtons_stub, 14);
 
-  new LFlatButton_c(3, 3, 1, 1, pm.get(Transform_Color_Nudge_X_Left_xpm)  , pm.get(Transform_Disabled_Nudge_X_Left_xpm)  ,
-      " Shift down along X ",                cb_TransformButtons_stub,  1);
-  new LFlatButton_c(4, 3, 1, 1, pm.get(Transform_Color_Nudge_X_Right_xpm) , pm.get(Transform_Disabled_Nudge_X_Right_xpm) ,
-      " Shift up along X ",                  cb_TransformButtons_stub,  0);
-  new LFlatButton_c(3, 5, 1, 1, pm.get(Transform_Color_Nudge_Y_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Y_Left_xpm)  ,
-      " Shift down along Y ",                cb_TransformButtons_stub,  3);
-  new LFlatButton_c(4, 5, 1, 1, pm.get(Transform_Color_Nudge_Y_Right_xpm) , pm.get(Transform_Disabled_Nudge_Y_Right_xpm) ,
-      " Shift up along Y ",                  cb_TransformButtons_stub,  2);
-  new LFlatButton_c(3, 7, 1, 1, pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
-      " Shift down along Z ",                cb_TransformButtons_stub,  5);
-  new LFlatButton_c(4, 7, 1, 1, pm.get(Transform_Color_Nudge_Z_Right_xpm) , pm.get(Transform_Disabled_Nudge_Z_Right_xpm) ,
-      " Shift up along Z ",                  cb_TransformButtons_stub,  4);
+  o->end();
+
+  o = new layouter_c(3, 3, 1, 1);
+
+  if (type == 0) {
+    new LFlatButton_c(0, 0, 1, 1, pm.get(Transform_Color_Nudge_X_Left_xpm)  , pm.get(Transform_Disabled_Nudge_X_Left_xpm)  ,
+        " Shift down along X ",                cb_TransformButtons_stub,  1);
+    new LFlatButton_c(1, 0, 1, 1, pm.get(Transform_Color_Nudge_X_Right_xpm) , pm.get(Transform_Disabled_Nudge_X_Right_xpm) ,
+        " Shift up along X ",                  cb_TransformButtons_stub,  0);
+    new LFlatButton_c(0, 1, 1, 1, pm.get(Transform_Color_Nudge_Y_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Y_Left_xpm)  ,
+        " Shift down along Y ",                cb_TransformButtons_stub,  3);
+    new LFlatButton_c(1, 1, 1, 1, pm.get(Transform_Color_Nudge_Y_Right_xpm) , pm.get(Transform_Disabled_Nudge_Y_Right_xpm) ,
+        " Shift up along Y ",                  cb_TransformButtons_stub,  2);
+    new LFlatButton_c(0, 2, 1, 1, pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
+        " Shift down along Z ",                cb_TransformButtons_stub,  5);
+    new LFlatButton_c(1, 2, 1, 1, pm.get(Transform_Color_Nudge_Z_Right_xpm) , pm.get(Transform_Disabled_Nudge_Z_Right_xpm) ,
+        " Shift up along Z ",                  cb_TransformButtons_stub,  4);
+
+  } else if (type == 1) {
+
+    new LFlatButton_c(0, 0, 1, 1, "up left",
+        " Shift up left along XY plane ",  cb_TransformButtons_stub,  1);
+    new LFlatButton_c(1, 0, 1, 1, "up right",
+        " Shift up right along XY plane ", cb_TransformButtons_stub,  0);
+    new LFlatButton_c(0, 1, 1, 1, "left",
+        " Shift left along X ",            cb_TransformButtons_stub,  3);
+    new LFlatButton_c(1, 1, 1, 1, "right",
+        " Shift right along X ",           cb_TransformButtons_stub,  2);
+    new LFlatButton_c(0, 2, 1, 1, "down left",
+        " Shift down left XY plane ",      cb_TransformButtons_stub,  28);
+    new LFlatButton_c(1, 2, 1, 1, "down right",
+        " Shift down right XY plane ",     cb_TransformButtons_stub,  27);
+
+    new LFlatButton_c(0, 3, 1, 1, pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
+        " Shift down along Z ",            cb_TransformButtons_stub,  5);
+    new LFlatButton_c(1, 3, 1, 1, pm.get(Transform_Color_Nudge_Z_Right_xpm) , pm.get(Transform_Disabled_Nudge_Z_Right_xpm) ,
+        " Shift up along Z ",              cb_TransformButtons_stub,  4);
+
+  } else if (type == 2) {
+
+    new LFlatButton_c(0, 0, 1, 1, "u @6->",
+        " Shift up along Z and right along X ",cb_TransformButtons_stub,  0);
+    new LFlatButton_c(1, 0, 1, 1, "u @8->",
+        " Shift up along Z and up along Y ",   cb_TransformButtons_stub,  1);
+    new LFlatButton_c(2, 0, 1, 1, "u @4->",
+        " Shift up along Z and left along X ", cb_TransformButtons_stub,  2);
+    new LFlatButton_c(3, 0, 1, 1, "u @2->",
+        " Shift up along Z and down along Y ", cb_TransformButtons_stub,  3);
+
+    new LFlatButton_c(0, 1, 1, 1, "@9->",
+        " Shift up right along XY plane ",     cb_TransformButtons_stub,  4);
+    new LFlatButton_c(1, 1, 1, 1, "@7->",
+        " Shift up left along XY plane ",      cb_TransformButtons_stub,  5);
+    new LFlatButton_c(2, 1, 1, 1, "@1->",
+        " Shift down left along XY plane ",    cb_TransformButtons_stub,  27);
+    new LFlatButton_c(3, 1, 1, 1, "@3->",
+        " Shift down right along XY plane ",   cb_TransformButtons_stub,  28);
+
+
+    new LFlatButton_c(0, 2, 1, 1, "d @6->",
+        " Shift down along Z and right along X ", cb_TransformButtons_stub, 29);
+    new LFlatButton_c(1, 2, 1, 1, "d @8->",
+        " Shift down along Z and up along Y ",    cb_TransformButtons_stub, 30);
+    new LFlatButton_c(2, 2, 1, 1, "d @4->",
+        " Shift down along Z and left along X ",  cb_TransformButtons_stub, 31);
+    new LFlatButton_c(3, 2, 1, 1, "d @2->",
+        " Shift down along Z and down along Y ",  cb_TransformButtons_stub, 32);
+
+  }
+
+  o->end();
+
+  o = new layouter_c(6, 3, 1, 1);
 
   new LFlatButton_c(6, 3, 1, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
       " Rotate clockwise along X-Axis ",     cb_TransformButtons_stub,  6);
@@ -143,9 +210,9 @@ TransformButtons::TransformButtons(int x, int y, int w, int h) : layouter_c(x, y
   new LFlatButton_c(7, 7, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
       " Rotate anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
 
+  o->end();
+
   (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
-//  (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
-//  (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
 
   (new LFl_Box(2, 0, 1, 1))->setMinimumSize(5, 0);
   (new LFl_Box(5, 0, 1, 1))->setMinimumSize(5, 0);
@@ -481,7 +548,7 @@ ToolTab_0::ToolTab_0(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
     o->end();
   }
   {
-    Fl_Group* o = new TransformButtons(0, 1, 1, 1);
+    Fl_Group* o = new TransformButtons(0, 1, 1, 1, 0);
     o->callback(cb_ToolTab0Transform_stub);
     o->hide();
   }
@@ -654,7 +721,7 @@ ToolTab_1::ToolTab_1(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
     o->end();
   }
   {
-    Fl_Group* o = new TransformButtons(0, 1, 1, 1);
+    Fl_Group* o = new TransformButtons(0, 1, 1, 1, 1);
     o->callback(cb_ToolTab1Transform_stub);
     o->hide();
   }
@@ -725,12 +792,14 @@ void ToolTab_1::cb_transform(long task) {
       voxel_c * space = puzzle->getShape(s);
 
       switch(task) {
-        case  0: space->translate( 1, 0, 0, 0); break;
-        case  1: space->translate(-1, 0, 0, 0); break;
-        case  2: space->translate( 0, 1, 0, 0); break;
-        case  3: space->translate( 0,-1, 0, 0); break;
+        case  0: space->translate( 1, 1, 0, 0); break;
+        case  1: space->translate(-1, 1, 0, 0); break;
+        case  2: space->translate( 2, 0, 0, 0); break;
+        case  3: space->translate(-2, 0, 0, 0); break;
         case  4: space->translate( 0, 0, 1, 0); break;
         case  5: space->translate( 0, 0,-1, 0); break;
+        case 28: space->translate(-1,-1, 0, 0); break;
+        case 27: space->translate( 1,-1, 0, 0); break;
         case  7: space->rotatex(); space->rotatex(); // fall through
         case  6: space->rotatex(); break;
         case  9: space->rotatey(); space->rotatey(); // fall through
@@ -824,7 +893,7 @@ ToolTab_2::ToolTab_2(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
     o->end();
   }
   {
-    Fl_Group* o = new TransformButtons(0, 1, 1, 1);
+    Fl_Group* o = new TransformButtons(0, 1, 1, 1, 2);
     o->callback(cb_ToolTab2Transform_stub);
     o->hide();
   }
@@ -862,12 +931,21 @@ void ToolTab_2::cb_transform(long task) {
       voxel_c * space = puzzle->getShape(s);
 
       switch(task) {
-        case  0: space->translate( 1, 0, 0, 0); break;
-        case  1: space->translate(-1, 0, 0, 0); break;
-        case  2: space->translate( 0, 1, 0, 0); break;
-        case  3: space->translate( 0,-1, 0, 0); break;
-        case  4: space->translate( 0, 0, 1, 0); break;
-        case  5: space->translate( 0, 0,-1, 0); break;
+        case  0: space->translate( 1, 0, 1, 0); break;
+        case  1: space->translate( 0, 1, 1, 0); break;
+        case  2: space->translate(-1, 0, 1, 0); break;
+        case  3: space->translate( 0,-1, 1, 0); break;
+
+        case  4: space->translate( 1, 1, 0, 0); break;
+        case  5: space->translate(-1, 1, 0, 0); break;
+        case 27: space->translate(-1,-1, 0, 0); break;
+        case 28: space->translate( 1,-1, 0, 0); break;
+
+        case 29: space->translate( 1, 0,-1, 0); break;
+        case 30: space->translate( 0, 1,-1, 0); break;
+        case 31: space->translate(-1, 0,-1, 0); break;
+        case 32: space->translate( 0,-1,-1, 0); break;
+
         case  7: space->rotatex(); space->rotatex(); // fall through
         case  6: space->rotatex(); break;
         case  9: space->rotatey(); space->rotatey(); // fall through
