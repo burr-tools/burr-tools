@@ -17,7 +17,7 @@
  */
 
 
-#include "bitfield.h"
+#include "../bitfield.h"
 
 #include "tablesizes.inc"
 
@@ -32,9 +32,7 @@ double matrix[NUM_TRANSFORMATIONS][9] = {
  * if you first transform the piece around t1 and then around t2
  * you can as well transform around transMult[t1][t2]
  */
-static int transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATIONS_MIRROR] = {
-#include "transmult.inc"
-};
+static int transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATIONS_MIRROR];
 
 /* this array contains all possible symmetry groups, meaning bitmasks with exactly the bits set
  * that correspond to transformations tha reorient the piece so that it looks identical
