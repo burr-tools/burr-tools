@@ -946,15 +946,15 @@ void ToolTab_2::cb_transform(long task) {
         case 31: space->translate(-1, 0,-1, 0); break;
         case 32: space->translate( 0,-1,-1, 0); break;
 
-        case  7: space->rotatex(); space->rotatex(); // fall through
-        case  6: space->rotatex(); break;
-        case  9: space->rotatey(); space->rotatey(); // fall through
-        case  8: space->rotatey(); break;
-        case 11: space->rotatez(); space->rotatez(); // fall through
-        case 10: space->rotatez(); break;
-        case 12: space->mirrorX(); break;
-        case 13: space->mirrorY(); break;
-        case 14: space->mirrorZ(); break;
+        case  7: space->transform(9); break;
+        case  6: space->transform(14); break;
+        case  9: space->transform(5); break;
+        case  8: space->transform(16); break;
+        case 11: space->transform(2); break;
+        case 10: space->transform(6); break;
+        case 12: space->transform(120); break;
+        case 13: space->transform(124); break;
+        case 14: space->transform(141); break;
         case 15: space->minimizePiece(); break;
         case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
         case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
