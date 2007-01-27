@@ -193,6 +193,8 @@ bool voxel_2_c::transform(unsigned int nr) {
 
   recalcBoundingBox();
 
+  symmetries = symmetryInvalid();
+
   return true;
 }
 
