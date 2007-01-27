@@ -765,6 +765,8 @@ voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), h
 
   setOutside(VX_EMPTY);
   skipRecalcBoundingBox(false);
+
+  symmetries = symmetryInvalid();
 }
 
 bool voxel_c::scaleDown(unsigned char by, bool action) {
