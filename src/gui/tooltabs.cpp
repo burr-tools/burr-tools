@@ -444,9 +444,9 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
   SizeOutZ->callback(cb_InputSize_stub, 2l);
   SizeOutZ->when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
 
-  new LFl_Box("X", 1, 1, 1, 1);
-  new LFl_Box("Y", 1, 3, 1, 1);
-  new LFl_Box("Z", 1, 5, 1, 1);
+  (new LFl_Box("X", 1, 1, 1, 1))->labelcolor(fl_rgb_color(255, 0, 0));
+  (new LFl_Box("Y", 1, 3, 1, 1))->labelcolor(fl_rgb_color(0, 128, 0));
+  (new LFl_Box("Z", 1, 5, 1, 1))->labelcolor(fl_rgb_color(0, 0, 255));
 
   ConnectX = new LFl_Check_Button("", 6, 1, 1, 1);
   ConnectY = new LFl_Check_Button("", 6, 3, 1, 1);
