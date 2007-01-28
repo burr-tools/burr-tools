@@ -401,6 +401,10 @@ static const int _rotz[NUM_TRANSFORMATIONS] = {
 #include "tabs_1/rotz.inc"
 };
 
+static double rotationMatrices[NUM_TRANSFORMATIONS_MIRROR][9] = {
+#include "tabs_1/rotmatrix.inc"
+};
+
 bool voxel_1_c::transform(unsigned int nr) {
 
   bt_assert(nr < NUM_TRANSFORMATIONS_MIRROR);
@@ -424,42 +428,35 @@ bool voxel_1_c::identicalInBB(const voxel_c * op, bool includeColors) const {
   return (((bx1+by1) & 1) == ((op->boundX1() + op->boundY1()) & 1)) && voxel_c::identicalInBB(op, includeColors);
 }
 
-
-static int div_down(int a, int b) {
-  if ((a >= 0) == (b >= 0))
-    return a/b;
-  else
-    return (a-b+1)/b;
+static int roundDown(double a) {
+  if (a >= 0) {
+    return (int)a;
+  } else {
+    return (int)(a-1);
+  }
 }
-
 
 void voxel_1_c::transformPoint(int * x, int * y, int * z, unsigned int trans) const {
 
   bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
 
-  if (trans >= NUM_TRANSFORMATIONS) {
-    *x = -(*x);
-    trans -= NUM_TRANSFORMATIONS;
+  double xs = 0.5 + 0.5* *x;
+  double ys = *y * sqrt(0.75);
+  double zs = *z;
+
+  if ((*x + *y) & 1) {
+    ys += sqrt(1.0/3);
+  } else {
+    ys += sqrt(1.0/12);
   }
 
-  for (int t = 0; t < _rotx[trans]; t++) {
-    *y = -(*y);
-    *z = -(*z);
-  }
+  double xpn = rotationMatrices[trans][0]*xs + rotationMatrices[trans][1]*ys + rotationMatrices[trans][2]*zs;
+  double ypn = rotationMatrices[trans][3]*xs + rotationMatrices[trans][4]*ys + rotationMatrices[trans][5]*zs;
+  double zpn = rotationMatrices[trans][6]*xs + rotationMatrices[trans][7]*ys + rotationMatrices[trans][8]*zs;
 
-  for (int t = 0; t < _roty[trans]; t++) {
-    *z = -(*z);
-    *x = -(*x);
-  }
-
-  for (int t = 0; t < _rotz[trans]; t++) {
-
-    int tx = *x;
-    int ty = *y;
-
-    *x = -1 + div_down(tx,2) - div_down(3*(ty)+((tx+1)&1),2);
-    *y = div_down(tx+1,2) + div_down(ty+((tx+1)&1),2);
-  }
+  *z = (int)round(zpn);
+  *x = (int)round((xpn-0.5)*2);
+  *y = roundDown(ypn/sqrt(0.75));
 }
 
 bool voxel_1_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const {
