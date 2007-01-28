@@ -19,21 +19,15 @@
 
 #include <math.h>
 
-double rotationMatrices[120][9] = {
+#include "tabs_2/tablesizes.inc"
+
+double rotationMatrices[NUM_TRANSFORMATIONS_MIRROR][9] = {
 #include "tabs_2/rotmatrix.inc"
 };
 
-
-
-
 bool voxel_2_c::transform(unsigned int nr) {
 
-  bt_assert(nr < 240);
-
-  if (nr >= 120) {
-    mirrorX();
-    nr -= 120;
-  }
+  bt_assert(nr < NUM_TRANSFORMATIONS_MIRROR);
 
   int minx = 100000;
   int miny = 100000;
@@ -198,47 +192,14 @@ bool voxel_2_c::transform(unsigned int nr) {
   return true;
 }
 
-void voxel_2_c::mirrorX(void) {
-
-  // if x size is not odd make it so
-  if ((sx & 1) == 0)
-    resize(sx+1, sy, sz, 0);
-
-  doRecalc = false;
-
-  for (unsigned int x = 0; x < sx/2; x++)
-    for (unsigned int y = 0; y < sy; y++)
-      for (unsigned int z = 0; z < sz; z++) {
-        voxel_type tmp = get(x, y, z);
-        set(x, y, z, get(sx-x-1, y, z));
-        set(sx-x-1, y, z, tmp);
-      }
-
-  doRecalc = true;
-
-  unsigned int t = bx1;
-
-  bx1 = sx - 1 - bx2;
-  bx2 = sx - 1 - t;
-
-  hx = sx - hx - 1;
-
-  symmetries = symmetryInvalid();
-}
-
 void voxel_2_c::transformPoint(int * x, int * y, int * z, unsigned int trans) const {
 
-  bt_assert(trans < 240);
+  bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
   bt_assert(((*x+*y+*z) & 1) == 0);
 
   double xp = *x * sqrt(0.5);
   double yp = *y * sqrt(0.5);
   double zp = *z * sqrt(0.5);
-
-  if (trans >= 120) {
-    xp = -xp;
-    trans -= 120;
-  }
 
   double xpn = rotationMatrices[trans][0]*xp + rotationMatrices[trans][1]*yp + rotationMatrices[trans][2]*zp;
   double ypn = rotationMatrices[trans][3]*xp + rotationMatrices[trans][4]*yp + rotationMatrices[trans][5]*zp;

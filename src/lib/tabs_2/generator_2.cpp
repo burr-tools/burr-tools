@@ -24,7 +24,7 @@
 #include <math.h>
 #include <stdio.h>
 
-double matrix[NUM_TRANSFORMATIONS][9] = {
+double matrix[NUM_TRANSFORMATIONS_MIRROR][9] = {
 #include "rotmatrix.inc"
 };
 
@@ -196,13 +196,6 @@ void makeSymmetryTree(bitfield_c<NUM_TRANSFORMATIONS_MIRROR> taken,bitfield_c<NU
 
 void mmult(double * m, int num) {
 
-  if (num >= 120) {
-    m[0] *= -1;
-    m[1] *= -1;
-    m[2] *= -1;
-    num -= 120;
-  }
-
   double n[9];
 
   for (int x = 0; x < 3; x++)
@@ -219,19 +212,8 @@ void mmult(double * m, int num) {
 
 bool mequal(double *m, int num) {
 
-  double n[9];
-
   for (int i = 0; i < 9; i++)
-    n[i] = matrix[num%120][i];
-
-  if (num >= 120) {
-    n[0] *= -1;
-    n[3] *= -1;
-    n[6] *= -1;
-  }
-
-  for (int i = 0; i < 9; i++)
-    if (fabs(m[i]-n[i]) > 0.00001)
+    if (fabs(m[i]-matrix[num][i]) > 0.00001)
       return false;
 
   return true;
