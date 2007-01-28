@@ -27,6 +27,8 @@ double rotationMatrices[NUM_TRANSFORMATIONS_MIRROR][9] = {
 
 bool voxel_2_c::transform(unsigned int nr) {
 
+  if (nr == 0) return true;
+
   bt_assert(nr < NUM_TRANSFORMATIONS_MIRROR);
 
   int minx = 100000;

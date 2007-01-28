@@ -210,18 +210,30 @@ void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 
 void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2, int * y2, int * z2) const {
 
-  /* this version always works, but it is quite slow */
-  voxel_c * tmp = gt->getVoxel(this);
-  bt_assert(tmp->transform(trans));
+  if (trans == 0) {
 
-  if (x1) *x1 = tmp->boundX1();
-  if (x2) *x2 = tmp->boundX2();
-  if (y1) *y1 = tmp->boundY1();
-  if (y2) *y2 = tmp->boundY2();
-  if (z1) *z1 = tmp->boundZ1();
-  if (z2) *z2 = tmp->boundZ2();
+    if (x1) *x1 = boundX1();
+    if (x2) *x2 = boundX2();
+    if (y1) *y1 = boundY1();
+    if (y2) *y2 = boundY2();
+    if (z1) *z1 = boundZ1();
+    if (z2) *z2 = boundZ2();
 
-  delete tmp;
+  } else {
+
+    /* this version always works, but it is quite slow */
+    voxel_c * tmp = gt->getVoxel(this);
+    bt_assert(tmp->transform(trans));
+
+    if (x1) *x1 = tmp->boundX1();
+    if (x2) *x2 = tmp->boundX2();
+    if (y1) *y1 = tmp->boundY1();
+    if (y2) *y2 = tmp->boundY2();
+    if (z1) *z1 = tmp->boundZ1();
+    if (z2) *z2 = tmp->boundZ2();
+
+    delete tmp;
+  }
 }
 
 void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel_type filler) {
