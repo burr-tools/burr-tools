@@ -20,32 +20,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
-double rotz[9] = {  0, -1,  0,
-                 1,  0,  0,
-                 0,  0,  1};
-
-double rotx[9] = {  1,  0,  0,
-                 0,  0, -1,
-                 0,  1,  0};
-
-double roty[9] = {  0,  0, -1,
-                    0,  1,  0,
-                    1,  0,  0};
-
 #include "tablesizes.inc"
 
-static const int _rotx[NUM_TRANSFORMATIONS] = {
-#include "rotx.inc"
+double matrix[NUM_TRANSFORMATIONS_MIRROR][9] = {
+#include "rotmatrix.inc"
 };
-static const int _roty[NUM_TRANSFORMATIONS] = {
-#include "roty.inc"
-};
-static const int _rotz[NUM_TRANSFORMATIONS] = {
-#include "rotz.inc"
-};
-
-double matrix[NUM_TRANSFORMATIONS][9];
 
 /* this matix contains the concatenation of 2 transformations
  * if you first transform the piece around t1 and then around t2
@@ -215,31 +194,14 @@ void mmult(double * m, double * matrix) {
 
 void mmult(double * m, int num) {
 
-  if (num >= NUM_TRANSFORMATIONS) {
-    m[0] *= -1;
-    m[1] *= -1;
-    m[2] *= -1;
-    num -= NUM_TRANSFORMATIONS;
-  }
 
   mmult(m, matrix[num]);
 }
 
 bool mequal(double *m, int num) {
 
-  double n[9];
-
   for (int i = 0; i < 9; i++)
-    n[i] = matrix[num%NUM_TRANSFORMATIONS][i];
-
-  if (num >= NUM_TRANSFORMATIONS) {
-    n[0] *= -1;
-    n[3] *= -1;
-    n[6] *= -1;
-  }
-
-  for (int i = 0; i < 9; i++)
-    if (fabs(m[i]-n[i]) > 0.00001)
+    if (fabs(m[i]-matrix[num][i]) > 0.00001)
       return false;
 
   return true;
@@ -295,27 +257,7 @@ void multTranformationsMatrix(void) {
   fclose(out);
 }
 
-void createTransformationMatrix() {
-
-  for (int i = 0; i < NUM_TRANSFORMATIONS; i++) {
-    matrix[i][0] = matrix[i][4] = matrix[i][8] = 1;
-    matrix[i][1] = matrix[i][2] = matrix[i][3] = 0;
-    matrix[i][5] = matrix[i][6] = matrix[i][7] = 0;
-
-    for (int t = 0; t < _rotx[i]; t++)
-      mmult(matrix[i], rotx);
-
-    for (int t = 0; t < _roty[i]; t++)
-      mmult(matrix[i], roty);
-
-    for (int t = 0; t < _rotz[i]; t++)
-      mmult(matrix[i], rotz);
-  }
-}
-
 int main(int argv, char* args[]) {
-
-  createTransformationMatrix();
 
   multTranformationsMatrix();
   outputMinimumSymmetries();

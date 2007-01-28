@@ -44,7 +44,7 @@ lib_libburr_a_SOURCES=\
     lib/voxel_1.cpp \
     lib/voxel_2.cpp \
     \
-    lib/tabs_0/rotx.inc lib/tabs_0/roty.inc lib/tabs_0/rotz.inc lib/tabs_0/symmetries.inc lib/tabs_0/tablesizes.inc \
+    lib/tabs_0/rotmatrix.inc lib/tabs_0/symmetries.inc lib/tabs_0/tablesizes.inc \
     lib/tabs_1/rotx.inc lib/tabs_1/roty.inc lib/tabs_1/rotz.inc lib/tabs_1/symmetries.inc lib/tabs_1/tablesizes.inc \
     lib/tabs_2/rotmatrix.inc lib/tabs_2/symmetries.inc lib/tabs_2/tablesizes.inc \
     \
