@@ -201,6 +201,49 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
   int rx, ry, rz;
   puz->probGetResultShape(prob)->getHotspot(trans, &rx, &ry, &rz);
 
+  /* the hole idea behind this is:
+   *
+   * the position of a piece is given as a vector from the origin, now when
+   * transforming we can rotate that vector easily but we don't know from where
+   * to start it. To find that out we have the hotspot. This hotspot of the
+   * result shape is the new point zero from where we start with our rotated
+   * vector leading to the final position of the piece
+   *
+   * this is not all, of course, what we really want to have here is a transformation
+   * that is placed in the very same position so that when the result matches itself
+   * in this new orientation the rotated assembly is ecatly at the same place.
+   * This doesn't work when the result changes place when is corresponding voxel
+   * space is rotated, so we need to find out how much it changed place via this
+   * rotation. That is done with the bounding box.
+   *
+   * the 2nd problem is that the 0 vector for piece positions may not be zero
+   * after being transformed. This is fixed below
+   */
+
+
+  {
+    /* in some grid spaces the 0 coordinate doesn stay in place when transformed
+     * because a state needs to change which can only be chieve by changing place
+     * (e.g Triangles, when rotating by 60° the orientation of the triangle changes)
+     * to accommodate this shift we check, where the hotspot moves to, when transformed
+     * and accommodate for this change
+     */
+
+    int hx = puz->probGetResultShape(prob)->getHx();
+    int hy = puz->probGetResultShape(prob)->getHy();
+    int hz = puz->probGetResultShape(prob)->getHz();
+
+    rx += hx;
+    ry += hy;
+    rz += hz;
+
+    puz->probGetResultShape(prob)->transformPoint(&hx, &hy, &hz, trans);
+
+    rx -= hx;
+    ry -= hy;
+    rz -= hz;
+  }
+
   {
     /* when the result shape is not minimized, or in space grids that are not
      * cubes is happens that the rotation of the result shape makes it jump
