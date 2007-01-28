@@ -21,7 +21,7 @@
 
 #include "tabs_2/tablesizes.inc"
 
-double rotationMatrices[NUM_TRANSFORMATIONS_MIRROR][9] = {
+static double rotationMatrices[NUM_TRANSFORMATIONS_MIRROR][9] = {
 #include "tabs_2/rotmatrix.inc"
 };
 
