@@ -97,7 +97,7 @@ void gridEditor_2_c::drawTileColor(int x, int y, int z, int tx, int ty, int sx, 
 
   voxel_c * space = puzzle->getShape(piecenumber);
 
-  if (((x+(space->getY()-y)+z) & 1) != 0)
+  if (((x+(space->getY()-y)+z-1) & 1) != 0)
     return;
 
   int sxc = 7071*sx/10000;
