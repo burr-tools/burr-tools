@@ -830,7 +830,22 @@ void ToolTab_1::cb_transform(long task) {
         case 21: space->actionOnSpace(voxel_c::ACT_DECOLOR, false); break;
         case 22: space->scale(2); break;
         case 23: space->scale(3); break;
-        case 24: space->translate(- space->boundX1(), - space->boundY1(), - space->boundZ1(), 0); break;
+        case 24: {
+                   int dx = -space->boundX1();
+                   int dy = -space->boundY1();
+
+                   // we need to make sure that we move by an even amount, otherwise
+                   // the state toggles
+                   if ((dx+dy) & 1) {
+                     if (dx < 0)
+                       dx++;
+                     else
+                       dy++;
+                   }
+
+                   space->translate(dx, dy, - space->boundZ1(), 0);
+                 }
+                 break;
         case 25:
                  {
 		   // if the space is empty, don't do anything
@@ -846,6 +861,10 @@ void ToolTab_1::cb_transform(long task) {
                      fx += fx&1;
                      fy += fy&1;
                      fz += fz&1;
+                   }
+                   if (((fx/2 - space->boundX1()) + (fy/2 - space->boundY1())) & 1) {
+                     space->resize(space->getX()+2, space->getY(), space->getZ(), 0);
+                     fx+=2;
                    }
                    space->translate(fx/2 - space->boundX1(), fy/2 - space->boundY1(), fz/2 - space->boundZ1(), 0);
                  }
@@ -974,7 +993,25 @@ void ToolTab_2::cb_transform(long task) {
         case 19: space->actionOnSpace(voxel_c::ACT_VARIABLE, false); break;
         case 20: space->actionOnSpace(voxel_c::ACT_DECOLOR, true); break;
         case 21: space->actionOnSpace(voxel_c::ACT_DECOLOR, false); break;
-        case 24: space->translate(- space->boundX1(), - space->boundY1(), - space->boundZ1(), 0); break;
+        case 24: {
+                   int dx = -space->boundX1();
+                   int dy = -space->boundY1();
+                   int dz = -space->boundZ1();
+
+                   // we need to make sure that we move by an even amount, otherwise
+                   // the state toggles
+                   if ((dx+dy+dz) & 1) {
+                     if (dx < 0)
+                       dx++;
+                     else if (dy < 0)
+                       dy++;
+                     else
+                       dz++;
+                   }
+
+                   space->translate(dx, dy, dz, 0);
+                 }
+                 break;
         case 25:
                  {
 		   // if the space is empty, don't do anything
