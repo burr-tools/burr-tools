@@ -613,6 +613,7 @@ multiLineWindow::multiLineWindow(const char * tit, const char *lab, const char *
   label(tit);
 
   int w, h;
+  w = h = 0;
   fl_measure(lab, w, h);
 
   new Fl_Box(0, SZ_GAP, SZ_MLWIN_X, h, lab);
