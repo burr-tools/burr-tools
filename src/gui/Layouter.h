@@ -435,15 +435,19 @@ class LFl_Double_Window : public Fl_Double_Window {
   }
 
   void show(void) {
-    int wy, hy;
-    lay->getMinSize(&wy, &hy);
 
-    if (res)
-      size_range(wy, hy, 0, 0);
-    else
-      size_range(wy, hy, wy, hy);
+    if (!shown()) {
 
-    size(wy, hy);
+      int wy, hy;
+      lay->getMinSize(&wy, &hy);
+
+      if (res)
+        size_range(wy, hy, 0, 0);
+      else
+        size_range(wy, hy, wy, hy);
+
+      size(wy, hy);
+    }
 
     Fl_Double_Window::show();
   }
