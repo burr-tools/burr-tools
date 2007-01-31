@@ -337,12 +337,13 @@
     the voxel as a whole.
 
     <item*|Spacegrid>The spacegrid defines the shape and orientation and
-    arrangement of the voxels. Right now there are 2 space grids available in
-    <name|BurrTools>: cubes and prisms with a equilateral triangle as base.
-    Spacegrids are always fixed. That means that a voxel in a certain
-    position will always have the same shape and orientation. So a spacegrid
-    defining, for example, all penrose patters is not possible because this
-    is not a fixed pattern.
+    arrangement of the voxels. Right now there are 3 space grids available in
+    <name|BurrTools>: cubes, prisms with a equilateral triangle as base and
+    tightly packed spheres. Spacegrids are always fixed and periodic. That
+    means that a voxel in a certain position will always have the same shape
+    and orientation. So a spacegrid defining, for example, all penrose
+    patters is not possible because this is neither a fixed nor a periodic
+    pattern.
 
     <item*|Shape>This is a definition of a 3-<no-break>dimensional object.
     Shapes are assembled out of voxels.\ 
@@ -532,8 +533,6 @@
   the counter for the original is increased. The unused shapes are marked as
   unused and can be deleted when they are not required.
 
-  This is all there is to know about importing.
-
   <\with|par-mode|right>
     <chapter|The BurrTools Interface>
   </with>
@@ -569,6 +568,11 @@
     <item*|<with|font-family|ss|Export Images>>Allows you to export the
     contents of the 3-<no-break>D viewer that can be used to create high
     quality solution sheets (<with|mode|math|\<vartriangleright\>><reference|ExportingImages>).
+
+    <item*|Grid Parameters>This menu entry will allow you to change
+    parameters for the currently used space grid. These parameters include
+    things like scaling of axes or skew. Not all space grids support
+    parameters.
 
     <item*|<with|font-family|ss|Status>>This opens up a window containing
     lots of maybe useful information about the shapes of the puzzles
@@ -761,9 +765,8 @@
     <postscript|Pics/SizeBar.png|*5/8|*5/8||||>
   </big-figure|<label|FigureResize>Resize handles>
 
-  <no-indent>Note that it is possible to drag certain panels completely out
-  of view and that it may be nescessary to drag 'the same' separtor up
-  <em|and> down to make these sections visible again.
+  <no-indent>Note that each section has a minimum size. It is not possible to
+  make it smaller than that minimum size.
 
   <section|The 3-D Viewer>
 
@@ -837,13 +840,24 @@
 
   <section|Spacegrids>
 
-  Currently <name|BurrTools> handles cubic grids and grids that use prisms
-  with a baseshape that is a equilateral triangle. The spacegrid is used for
-  all shapes that are used within a puzzle so you can not have one shape made
-  out of cubes and one using another grid. The spacegrid needs to be set
-  <em|before> you start with the puzzle. It can not be changed later on. The
-  gridtype is seleced when you use the <with|font-family|ss|<strong|New>>
-  option.
+  Currently <name|BurrTools> handles cubic grids, grids that use prisms with
+  a baseshape that is a equilateral triangle and tightly packed spheres. The
+  spacegrid is used for all shapes that are used within a puzzle so you can
+  not have one shape made out of cubes and one using another grid. The
+  spacegrid needs to be set <em|before> you start with the puzzle. It can not
+  be changed later on. The gridtype is seleced when you use the
+  <with|font-family|ss|<strong|New>> option. Some gridtypes support it to set
+  some parameters of the grid, like scaling or skew. These parameter can be
+  used to suppress certain orientations for shapes but not to create new
+  puzle shapes. E.g the sphere grid might some time support a switch to turn
+  it into a space fo rhombic dodecaeders. This space is very similar except
+  that some orientations that are possible with spheres can not be done with
+  the dodecaeders.\ 
+
+  Same for cubes: there might be a parameter that scales the cubes in
+  y-direction. If that values differs from the x-direction value it will be
+  only possible to turn the cubes by 180<degreesign> when rotated around the
+  x-axis.
 
   <section|Creating Shapes><label|CreatingShapes>
 
@@ -899,6 +913,10 @@
   functions on the <with|font-family|ss|<strong|Size>> subtab (Figure
   <reference|FigureSizeSubtab>) of the <with|font-family|ss|<strong|Edit>>
   panel.
+
+  Note that the tab might look slightly different for different gridtypes.
+  For example the sphere grid doesn't have the shape buttons as those are
+  useless with this grid.
 
   <big-figure|<postscript|Pics/Subtab_Size.png|*5/8|*5/8||||>|<label|FigureSizeSubtab>Grid
   and scaling functions>
@@ -990,6 +1008,11 @@
   the 1:1 tool can take a considerably long time. So, <em|think twice, click
   once...>
 
+  These tools only make sense for spacegrids where a group of voxels can be
+  group to make a upscaled shape that looks like a voxel of the grid, e.g. a
+  group of 2x2x2 cubes looks like a bigger cube. As this is not working with
+  spheres, those tools are not available there.
+
   \;
 
   <tabular|<tformat|<cwith|1|3|1|1|cell-width|1cm>|<cwith|1|3|2|2|cell-hyphen|t>|<cwith|1|3|2|2|cell-valign|t>|<cwith|1|3|1|1|cell-valign|t>|<cwith|1|1|2|2|cell-width|13cm>|<cwith|1|1|1|1|cell-width|2cm>|<cwith|1|3|1|1|cell-halign|r>|<table|<row|<cell|<postscript|Pics/Button_Size_Shape_11.png|*5/8|*5/8||||>>|<cell|<strong|Minimise
@@ -1002,10 +1025,10 @@
   since the algorithm may scale down beyond the initial
   size.<next-line>>>|<row|<cell|<postscript|Pics/Button_Size_Shape_x2.png|*5/8|*5/8||||>>|<cell|<strong|Double
   the scale -> This function will double the scale of the shape (and its
-  grid). In other words, it will replace every voxel in the shape with 8
-  voxels that all have the same characteristics (state and colour) as the
-  original voxel. This can be very useful to introduce half-unit notches or
-  colouring into the design without having to redraw the
+  grid). In other words, it will replace every voxel in the shape with a
+  group of voxels that all have the same characteristics (state and colour)
+  as the original voxel. This can be very useful to introduce half-unit
+  notches or colouring into the design without having to redraw the
   shape(s).<next-line>>>|<row|<cell|<postscript|Pics/Button_Size_Shape_x3.png|*5/8|*5/8||||>>|<cell|<strong|Triple
   the scale -> This function is similar to doubling the scale. Only now a
   scaling factor of 3 is used and hence every voxel in the shape will be
@@ -1162,6 +1185,12 @@
   compound drawing tools can be added <em|cumulatively> to the basic drawing
   tools and only extend the range of action for the latter ones.
 
+  Note that these tools always go along the 3 orthogonal axes, so they are
+  very useful for cubes but might needs a bit getting use to for the other
+  spaces as they might behave differently along the 3 axes. The triangular
+  prisms for for example are stacked along the z-axis, side by side along the
+  x-axis and tip by tip along the y-axis.
+
   \;
 
   <tabular|<tformat|<cwith|1|3|1|1|cell-halign|r>|<cwith|1|3|1|1|cell-valign|t>|<cwith|1|3|2|2|cell-hyphen|t>|<cwith|1|3|2|2|cell-valign|t>|<cwith|1|1|1|1|cell-hyphen|t>|<cwith|2|2|1|1|cell-hyphen|t>|<cwith|1|1|1|1|cell-width|2cm>|<cwith|1|1|2|2|cell-width|13cm>|<table|<row|<cell|<postscript|Pics/Button_Toolbar_Symm_X.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Toolbar_Symm_Y.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Toolbar_Symm_Z.png|*5/8|*5/8||||>>|<cell|<strong|Symmetrical
@@ -1279,26 +1308,34 @@
   an overview of these. In this picture the neutral colour is red (= shape
   S3) and the custom colour is green (RGB = 0.600, 0.753, 0).
 
-  <\big-figure|<postscript|Pics/RepresentationA.png|*5/8|*5/8||||>
-  \ \ \ \ <postscript|Pics/RepresentationB.png|*5/8|*5/8||||>>
+  <\big-figure>
+    <postscript|Pics/RepresentationA.png|*5/8|*5/8||||>
+    \ \ \ \ <postscript|Pics/RepresentationC.png|*5/8|*5/8||||>
+    \ \ \ \ <postscript|Pics/RepresentationE.png|*5/8|*5/8||||>
+
+    <postscript|Pics/RepresentationB.png|*5/8|*5/8||||>
+    \ \ \ \ <postscript|Pics/RepresentationD.png|*5/8|*5/8||||>
+    \ \ \ \ <postscript|Pics/RepresentationF.png|*5/8|*5/8||||>
+  <|big-figure>
     <label|FigureRepresentations>Representations in 2-<no-break>D and
     3-<no-break>D
   </big-figure>
 
   Fixed voxels always fill the cell completely in the 2-<no-break>D grid as
-  well as in the 3-<no-break>D grid. In both the pictures of Figure
-  <reference|FigureRepresentations> the cubes on the left are fixed voxels.
+  well as in the 3-<no-break>D grid. In all the pictures of Figure
+  <reference|FigureRepresentations> the voxels on the left are fixed voxels.
   Variable voxels only fill the cell partially in 2-<no-break>D and have a
-  black inset in 3-<no-break>D (the cubes on the right in Figure
+  black inset in 3-<no-break>D (the voxels on the right in Figure
   <reference|FigureRepresentations>).
 
-  Voxels that have a custom colour added (the bottom cubes in Figure
+  Voxels that have a custom colour added (the yellow voxels in Figure
   <reference|FigureRepresentations>) show this colour as an inset in the
   2-<no-break>D grid, whereas in the 3-D viewer they are completely painted
   with this colour (provided that the <strong|<with|font-family|ss|Colour 3D
   View>> on the status line is checked, otherwise they will be painted in the
   neutral colour). Note that in both grids the neutral colours also have a
-  slightly checkered pattern which can assist navigating in space.
+  slightly checkered pattern which can assist navigating in space (except for
+  the spheres, they have no checkering).
 
   <section|Transformation Tools><label|TransformationTools>
 
@@ -1309,10 +1346,18 @@
   position and orientation of the shapes. These functions are grouped on the
   <with|font-family|ss|<strong|Transform>> subtab of the
   <strong|<with|font-family|ss|Edit>> panel (Figure
-  <reference|FigureTransformationTools>).
+  <reference|FigureTransformationTools>). The first thing to see is that the
+  transform tab looks quite different for all 3 available gridtypes. On the
+  top of the firgure you see the tab for cubes, blow for the triangles and at
+  the bottom for spheres.
 
-  <big-figure|<postscript|Pics/Subtab_Transform.png|*5/8|*5/8||||>|<label|FigureTransformationTools>Transformation
-  tools>
+  <\big-figure>
+    <postscript|Pics/Subtab_TransformA.png|*5/8|*5/8||||>
+
+    <postscript|Pics/Subtab_TransformB.png|*5/8|*5/8||||>
+
+    <postscript|Pics/Subtab_TransformC.png|*5/8|*5/8||||>
+  </big-figure|<label|FigureTransformationTools>Transformation tools>
 
   <tabular|<tformat|<cwith|1|3|1|2|cell-hyphen|t>|<cwith|1|3|2|2|cell-valign|t>|<cwith|1|3|1|1|cell-valign|t>|<cwith|1|3|1|1|cell-halign|r>|<cwith|1|3|2|2|cell-width|13cm>|<cwith|1|3|1|1|cell-width|2cm>|<cwith|1|1|1|1|cell-width|2cm>|<table|<row|<cell|<postscript|Pics/Button_Transform_Flip_X.png|*5/8|*5/8||||><line-break><postscript|Pics/Button_Transform_Flip_Y.png|*5/8|*5/8||||><line-break><postscript|Pics/Button_Transform_Flip_Z.png|*5/8|*5/8||||>>|<cell|<strong|Flip
   -> These 'three' functions are merely <em|one single mirroring tool> and
@@ -1325,9 +1370,10 @@
   be obtained by simply rotating the outcome of any other. However, there are
   three buttons to provide some control over the orientation of the mirrored
   shape in the grid space, which can have a time saving effect if the shape
-  needs further editing.<next-line>>>|<row|<cell|<postscript|Pics/Button_Transform_Nudge_X.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Transform_Nudge_Y.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Transform_Nudge_Z.png|*5/8|*5/8||||>>|<cell|<strong|Nudge
-  - >These functions provide <em|translations> (along the x-axis, y-axis or
-  z-axis respectively) of the shapes in their surrounding grids. These
+  needs further editing.<next-line>>>|<row|<cell|<postscript|Pics/Button_Transform_Nudge_X.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Transform_Nudge_Y.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Transform_Nudge_Z.png|*5/8|*5/8||||><next-line>and
+  more>|<cell|<strong|Nudge - >These functions provide <em|translations>
+  (along the x-axis, y-axis or z-axis for the cubes or along different axes
+  for other gridtypes) of the shapes in their surrounding grids. These
   buttons have two parts, of which the left part will shift the shape towards
   the origin of the grid and the right part will move it away from the
   origin. Note that shifting a shape beyond the boundaries of the grid will
@@ -1339,7 +1385,9 @@
   parts, of which the left rotates the shape 90<degreesign> anti-clockwise
   (viewed towards the origin) and the right button turns the shape
   90<degreesign> clockwise. To avoid destroying shapes by rotating them the
-  grid may become rotated as well.>>>>>
+  grid may become rotated as well.<next-line>The triangle space has only one
+  rotation button for the x and y-axis because it is only possible to rotate
+  by 180<degreesign> around these axes.>>>>>
 
   <section|Miscellaneous Editing Tools>
 
@@ -1543,6 +1591,9 @@
 
   <subsection|Two-Sided Pieces>
 
+  <big-figure|<postscript|Pics/Emulation_2Layer.png|*7/8|*7/8||||>|Emulate 2
+  Sided Piece>
+
   If you have pieces that have a top and a bottom there are several
   possibilities to model that in <name|BurrTools>. One possibility is to use
   colors. Make the piece and the result 2 layers thick. The bottom layer of
@@ -1550,11 +1601,16 @@
 
   Another possibility is to add an additional layer that has voxels only in
   certain places as seen in the picture. The additional voxel prevents the
-  rotation of the shape.
+  rotation of the shape. But you have to make sure that the allowed rotations
+  are still possible, e.g. if you place the notches in different places
+  rotation around the z-axis is also no longer possible.
 
   <subsection|Diagonally Cut Cubes and Squares>
 
-  Cubes can be cut in many differenc ways, the cut that results in shapes
+  <big-figure|<postscript|Pics/Emulation_DiagonalCut.png|*7/8|*7/8||||>|Diagonally
+  cut cube>
+
+  Cubes can be cut in many different ways, the cut that results in shapes
   such as given above can be emulated\ 
 
   It is, of course, also possible to simluate diagonally cut squares this
@@ -1571,6 +1627,36 @@
 
   Sometimes it is possible to emulate edge matching problems by using nothes
   and dents at the outside of the shapes.
+
+  <subsection|Other possibilities>
+
+  <big-figure|<postscript|Pics/Emulation_Pagoda.jpg|*6/8|*6/8||||>|The Knit
+  Pagoda>
+
+  There are many other shapes that can be emulated. As one example I will
+  show 2 ways to emulate William Waites <name|Knit Pagoda>. The puzzle can be
+  seen in the image. Additionally to the shape the pieces have an upside and
+  a bottom. The next figure shows 2 possible ways to emulate these pieces.
+  Both shapes emulate the T-shaped piece seen on the right bottom.
+
+  <big-figure|<postscript|Pics/Emulation_Pagoda2.png|*7/8|*7/8||||>|Emulation
+  for one of the <name|Knit Pagoda> Pieces>
+
+  It is quite easy to see that the pink shape working. It is constructed
+  starting with a 3x3x1 square and adding a cube at the center of one shape
+  if that side is bulged outward and removing one cube, when the side is
+  bulding inwards. Finally add a cube at the center of the 3x3 square to make
+  it unflippable.
+
+  The second is quite a bit more complicated to understand. Here the
+  startingpoint is a 2x2 square. A cube is added or removed for the bulges
+  just as in the other case but those cubes can not be in the middle. They
+  are at one side so that the cube from an outer bulge can go into a gap
+  created by an inner bulge. The resulting shape for one unit contains 4
+  cubes along a zig-zag line. You can see it by looking for the lighter cubes
+  in the turqoise shape above. This ways has the additional advantage of
+  avoinding flips because when the piece is flipped over the orientation of
+  the bulges changes and the cubes do not mesh.
 
   <\with|par-mode|right>
     <chapter|Defining Puzzles><label|ChapterPuzzles>
