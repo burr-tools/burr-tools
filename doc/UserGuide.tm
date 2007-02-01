@@ -89,8 +89,9 @@
   Lately 2 people played important roles in the development of the program.
   These 2 are Ronald Kint-Bruynseels and Derek Bosch. Ronald has rewritten
   the first part of this manual and has generally contributed lots of well
-  organized suggestions. Derek is responsible for the OSX port of the program.
-  Without him there would be no binary for this operating system available.
+  organized suggestions. Derek is responsible for the OSX port of the
+  program. Without him there would be no binary for this operating system
+  available.
 
   I want to thank both of them for their work. I also want to thank all the
   other people that have sent in bug reports, suggestions and praise. Their
@@ -193,8 +194,8 @@
 
   <subsubsection|Linux / Unix>
 
-  For <name|Linux> users <name|BurrTools> comes in two versions: a
-  pre compiled binary and source code.
+  For <name|Linux> users <name|BurrTools> comes in two versions: a pre
+  compiled binary and source code.
 
   The binary is provided in the hope that it is working on many variants of
   the <name|Linux> OS. It is compiled for Intel processors and requires a
@@ -954,8 +955,8 @@
   Kint-Bruynseels), which is easily done by first creating the central burr
   in a 6<with|mode|math|\<times\>>6<with|mode|math|\<times\>>6 grid and
   adding the extensions after resizing the grid to
-  14<with|mode|math|\<times\>>14<with|mode|math|\<times\>>14 and centring
-  the 'core' in that enlarged grid.
+  14<with|mode|math|\<times\>>14<with|mode|math|\<times\>>14 and centring the
+  'core' in that enlarged grid.
 
   <subsection|Advanced Grid and Scaling Functions><label|AdvancedGrid>
 
@@ -1265,8 +1266,8 @@
   button allows you to create a custom colour. A dialogue will pop up and
   present you the necessary tools to create the colour you need. Accordingly
   the <with|font-family|ss|<strong|Edit>> button allows you to transform an
-  already existing colour using a similar dialogue. This dialogue also shows the
-  currently selected colour for comparison (unless the neutral colour is
+  already existing colour using a similar dialogue. This dialogue also shows
+  the currently selected colour for comparison (unless the neutral colour is
   selected, which makes the dialogue to show the default medium grey). Note
   that the neutral colour can be neither removed or changed. It's important
   to realise that the <name|BurrTools> engine only discriminates custom
@@ -1648,15 +1649,15 @@
   bulging inwards. Finally add a cube at the centre of the 3x3 square to make
   it unflippable.
 
-  The second is quite a bit more complicated to understand. Here the
-  starting point is a 2x2 square. A cube is added or removed for the bulges
-  just as in the other case but those cubes can not be in the middle. They
-  are at one side so that the cube from an outer bulge can go into a gap
-  created by an inner bulge. The resulting shape for one unit contains 4
-  cubes along a zig-zag line. You can see it by looking for the lighter cubes
-  in the turquoise shape above. This ways has the additional advantage of
-  avoiding flips because when the piece is flipped over the orientation of
-  the bulges changes and the cubes do not mesh.
+  The second is quite a bit more complicated to understand. Here the starting
+  point is a 2x2 square. A cube is added or removed for the bulges just as in
+  the other case but those cubes can not be in the middle. They are at one
+  side so that the cube from an outer bulge can go into a gap created by an
+  inner bulge. The resulting shape for one unit contains 4 cubes along a
+  zig-zag line. You can see it by looking for the lighter cubes in the
+  turquoise shape above. This ways has the additional advantage of avoiding
+  flips because when the piece is flipped over the orientation of the bulges
+  changes and the cubes do not mesh.
 
   <\with|par-mode|right>
     <chapter|Defining Puzzles><label|ChapterPuzzles>
@@ -1971,13 +1972,13 @@
   <reference|FigureColourAssignment>), the list shows which piece colours
   will be allowed to go in a particular colour of the result.
 
-  To set these relationships, first click the piece colour (or result
-  colour, depending on the sorting method) for which you want to set the
-  constraints. This will activate the 'relations line' for that particular
-  colour which is indicated with a dark surrounding box (note that clicking
-  anywhere on this relations line has the same effect). Next, the down and up
-  pointing arrows will respectively add or remove the colour selected in the
-  top list to or from the constraint settings.
+  To set these relationships, first click the piece colour (or result colour,
+  depending on the sorting method) for which you want to set the constraints.
+  This will activate the 'relations line' for that particular colour which is
+  indicated with a dark surrounding box (note that clicking anywhere on this
+  relations line has the same effect). Next, the down and up pointing arrows
+  will respectively add or remove the colour selected in the top list to or
+  from the constraint settings.
 
   <section|Managing Problems>
 
@@ -2068,8 +2069,8 @@
       <item>by Level: The solutions are sorted by the level. First the first
       level, if that is identical then by the second level, and so on.
 
-      <item>by number of moves to disassemble: The solutions are sorted by the
-      sum of all moves required to completely disassemble the puzzle.
+      <item>by number of moves to disassemble: The solutions are sorted by
+      the sum of all moves required to completely disassemble the puzzle.
     </enumerate-numeric>
 
     <with|font-family|ss|<item*|Drop>>If a puzzle has very many solutions it
@@ -2252,14 +2253,14 @@
   in space and use the scrollbar on the right to zoom in or out.
 
   Each piece in the problem (note that each instance of a multipiece is
-  available) can be selected with the scrollbar on top of the window. The left
-  scrollbar allows browsing all the different placements for the selected
-  piece. Both these scrollbars can also be controlled with the cursor keys on
-  the keyboard: <kbd|[Up]> and [<kbd|Down]> for the left scrollbar and
-  <kbd|[Left]> and <kbd|[Right]> to select the piece. Be careful though, the
-  first stroke on the keyboard that doesn't fit the current scrollbar will
-  just select the other one and the following keystroke will start to move
-  the slider.
+  available) can be selected with the scrollbar on top of the window. The
+  left scrollbar allows browsing all the different placements for the
+  selected piece. Both these scrollbars can also be controlled with the
+  cursor keys on the keyboard: <kbd|[Up]> and [<kbd|Down]> for the left
+  scrollbar and <kbd|[Left]> and <kbd|[Right]> to select the piece. Be
+  careful though, the first stroke on the keyboard that doesn't fit the
+  current scrollbar will just select the other one and the following
+  keystroke will start to move the slider.
 
   <section|Inspecting Results><label|InspectingResults>
 
@@ -2276,23 +2277,23 @@
   This panel has three components: a scrollbar
   (<with|font-family|ss|<strong|>>) to browse the different solutions, a
   second scrollbar (<with|font-family|ss|<strong|Move>>) to view the moves
-  involved in the disassembly and a list of all instances of the pieces in the
-  puzzle problem, which allows you to alter the visibility of particular
+  involved in the disassembly and a list of all instances of the pieces in
+  the puzzle problem, which allows you to alter the visibility of particular
   pieces in the solution(s).
 
   <subsection|Selecting Solutions and Animating Disassemblies>
 
   By moving the slider of the top scrollbar
   (<with|font-family|ss|<strong|Solution>>) any solution from the list can be
-  selected as is indicated by its number in the text box left of the it. Above
-  the scrollbar there is an indication of the total number of solutions
+  selected as is indicated by its number in the text box left of the it.
+  Above the scrollbar there is an indication of the total number of solutions
   already found. When the scrollbar is active it can also be controlled by
   the <with|font-family|tt|[Left]> and <with|font-family|tt|[Right]> cursor
   keys.
 
-  The second scrollbar (<strong|<with|font-family|ss|Move>>) also has a
-  text box on the left, this time reflecting the stage of disassembly (i.e.
-  the number of moves executed in the disassembling process) of the currently
+  The second scrollbar (<strong|<with|font-family|ss|Move>>) also has a text
+  box on the left, this time reflecting the stage of disassembly (i.e. the
+  number of moves executed in the disassembling process) of the currently
   selected solution. Moving the slider to the right will animate the
   disassembly, moving it to the left will reassemble the pieces in the
   3-<no-break>D viewer. Again, when activated the scrollbar can be controlled
@@ -2321,8 +2322,8 @@
   modify the solutions. Be careful with these buttons while the solver is
   running. Strange things might happen.
 
-  In the first row you can resort the found solutions by the same criteria
-  as you can select for the solver. You can sort them in the order they were
+  In the first row you can resort the found solutions by the same criteria as
+  you can select for the solver. You can sort them in the order they were
   found (unsorted) or by level or by sum of moves to completely disassemble.
 
   The second row buttons allows the deletion of certain solutions from the
@@ -2450,9 +2451,9 @@
 
   Above these selector you find the file output parameters. First the name
   and the path to where the images are supposed to be created. If you give no
-  path the images are put into the working directory of the program. The
-  file name is just a prefix, so if you keep 'test' as file name you get files
-  of the form 'test000.png', 'test001.png', <with|mode|math|\<ldots\>>.
+  path the images are put into the working directory of the program. The file
+  name is just a prefix, so if you keep 'test' as file name you get files of
+  the form 'test000.png', 'test001.png', <with|mode|math|\<ldots\>>.
 
   Finally you can say how many images you intend to create. <name|BurrTools>
   will try to do so, but might use less. If you only have one assembly to
@@ -2534,8 +2535,8 @@
 
     <item>Add rotation checks to the disassembler.
 
-    <item>Add a shape generator: create all piece shapes that fulfil
-    certain rules (shape, colours, union of two shapes, ...)
+    <item>Add a shape generator: create all piece shapes that fulfil certain
+    rules (shape, colours, union of two shapes, ...)
 
     <item>Libraries of shapes to import pieces from.
 
@@ -2607,8 +2608,8 @@
   possibilities, so be careful if you want a full analysis this side of
   eternity. Because of the complexity the program also might encounter the
   same puzzle several times. It will also be possible to let the program
-  select puzzles out of the definition space by chance instead of doing a full
-  analysis.
+  select puzzles out of the definition space by chance instead of doing a
+  full analysis.
 
   So what do the possibilities mean.
 
@@ -2616,9 +2617,9 @@
     <item*|fixed piece>a shape containing no variable cubes. This shape is
     directly used
 
-    <item*|variable piece>a shape containing n (n\<gtr\>0) variable cubes. All
-    shapes are used that have one of the <with|mode|math|2<rsup|n>> possible
-    conditions for the variable cubes are used
+    <item*|variable piece>a shape containing n (n\<gtr\>0) variable cubes.
+    All shapes are used that have one of the <with|mode|math|2<rsup|n>>
+    possible conditions for the variable cubes are used
 
     <item*|list of pieces>the pieces in the list are taken one after the
     other
@@ -2728,9 +2729,9 @@
   </itemize-dot>
 
   Colours can not be attached to empty voxels but to voxels with the other 2
-  states. Currently colours are just a number (up to 2 digits) that are simply
-  written as a decimal number and are appended to the voxel state. If the
-  colour number is 0 (which is the neutral colour) nothing is appended.
+  states. Currently colours are just a number (up to 2 digits) that are
+  simply written as a decimal number and are appended to the voxel state. If
+  the colour number is 0 (which is the neutral colour) nothing is appended.
 
   <section|The Library>
 
