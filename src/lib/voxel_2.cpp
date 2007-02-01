@@ -251,3 +251,15 @@ bool voxel_2_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, in
   return true;
 }
 
+
+void voxel_2_c::minimizePiece(void) {
+  int move_again = (bx1 + by1 + bz1) & 1;
+
+  voxel_c::minimizePiece();
+
+  if (move_again) {
+    resize(sx+1, sy, sz, 0);
+    translate(1, 0, 0, 0);
+  }
+}
+
