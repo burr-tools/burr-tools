@@ -59,7 +59,7 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(false) {
     LFl_Box * b;
 
     if (s & 1) {
-      b = new LFl_Box("", 1, s+head, 22, 1);
+      b = new LFl_Box("", 1, s+head, 25, 1);
       b->color(fl_rgb_color(150, 150, 150));
       b->box(FL_FLAT_BOX);
     }
@@ -171,6 +171,14 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(false) {
     }
     col += 2;
 
+    if (!p->getGridType()->getSymmetries()->symmetryKnown(v)) {
+      b = new LFl_Box("X", col, s+head);
+      b->color(fl_rgb_color(pieceColorRi(s), pieceColorGi(s), pieceColorBi(s)));
+      if (3*pieceColorRi(s) + 6*pieceColorGi(s) + pieceColorBi(s) < 1275)
+        b->labelcolor(fl_rgb_color(255, 255, 255));
+      b->box(FL_FLAT_BOX);
+    }
+    col += 2;
   }
 
   (new LFl_Box("Shape", 0, 0))->pitch(2);
@@ -205,7 +213,10 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(false) {
   new LFl_Line(21, 1, 1, lines+head-1, 1);
   (new LFl_Box("3D", 22, 1))->pitch(2);
 
-  new LFl_Line(0, 2, 23, 1, 2);
+  new LFl_Line(23, 0, 1, lines+head, 2);
+  (new LFl_Box("Sym", 24, 0, 1))->pitch(2);
+
+  new LFl_Line(0, 2, 25, 1, 2);
 
   fr->end();
 

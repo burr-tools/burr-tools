@@ -80,6 +80,8 @@ class symmetries_c {
 
     /* calculate the symmetry mask for the given voxel space */
     virtual symmetries_t symmetryCalcuation(const voxel_c * pp) const = 0;
+
+    virtual bool symmetryKnown(const voxel_c * pp) const = 0;
 };
 
 #endif

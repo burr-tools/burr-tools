@@ -50,6 +50,7 @@ class symmetries_2_c : public symmetries_c {
     bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2) const;
     symmetries_t symmetryCalcuation(const voxel_c * pp) const;
     bool symmetryContainsMirror(symmetries_t sym) const;
+    bool symmetryKnown(const voxel_c * pp) const;
 };
 
 #endif

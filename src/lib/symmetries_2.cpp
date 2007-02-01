@@ -112,6 +112,27 @@ bool symmetries_2_c::symmetriesLeft(symmetries_t resultSym, symmetries_t s2) con
   return s.notNull();
 }
 
+bool symmetries_2_c::symmetryKnown(const voxel_c * pp) const {
+
+  int i;
+  bitfield_c<NUM_TRANSFORMATIONS_MIRROR> s;
+
+  s.clear();
+  s.set(0);
+
+  for (int j = 1; j < NUM_TRANSFORMATIONS_MIRROR; j++) {
+    voxel_2_c v(pp);
+    if (v.transform(j) && pp->identicalInBB(&v))
+      s.set(j);
+  }
+
+  for (i = 0; i < NUM_SYMMETRY_GROUPS; i++)
+    if (symmetries[i] == s)
+      break;
+
+  return symmetries[i] == s;
+}
+
 symmetries_t symmetries_2_c::symmetryCalcuation(const voxel_c *pp) const {
 
   bt_assert(pp);

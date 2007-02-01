@@ -106,6 +106,29 @@ bool symmetries_0_c::symmetriesLeft(symmetries_t resultSym, symmetries_t s2) con
   return symmetries[resultSym] & unifiedSymmetries[s2] & ~((unsigned long long)1);
 }
 
+bool symmetries_0_c::symmetryKnown(const voxel_c * pp) const {
+
+  /* this is debug code that checks, if we really have all symmetry groups included
+   * it should be finally removed some day in the future
+   */
+  unsigned long long s = 1;
+  int i;
+
+  for (int j = 1; j < NUM_TRANSFORMATIONS_MIRROR; j++) {
+    voxel_0_c v(pp);
+    if (!v.transform(j)) continue;
+    if (pp->identicalInBB(&v))
+      s |= ((unsigned long long)1) << j;
+  }
+
+  for (i = 0; i < NUM_SYMMETRY_GROUPS; i++)
+    if (symmetries[i] == s)
+      break;
+
+  return symmetries[i] == s;
+}
+
+
 symmetries_t symmetries_0_c::symmetryCalcuation(const voxel_c *pp) const {
 
   bt_assert(pp);
