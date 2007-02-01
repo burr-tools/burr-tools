@@ -3200,6 +3200,18 @@
     rectangle at the lower end of the tools. The rectangle with the S1 in it.
   </description-compact>
 
+  <section|Ball Room>
+
+  <\description-compact>
+    <item*|Design>Stewart Coffin, #197-A, USA
+
+    <item*|File><verbatim|BallRoom.xmpuzzle>
+
+    <item*|Remarks>This puzzle shows off the sphere gridspace. It also
+    demonstrates that is is possible and useful to include more than one
+    problem within one file.
+  </description-compact>
+
   <section|Bermuda>
 
   <\description-compact>

@@ -13,6 +13,10 @@ pieces. When looking at the solution it is useful to display the box as a
 wire frame. This can be done by clicking at the blue rectangle at the lower end
 of the tools. The rectangle with the 0.0 in it.
 
+Ball Room: Designed by Stewart Coffin
+This puzzle shows the sphere gridspace. If also shows how to include more than
+one problem within one file.
+
 Bermuda: Designed by Bill Cutler
 This is a puzzle using the triangular gridspace. You can see that several layers
 of triangles can be stacked on top of one another
