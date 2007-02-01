@@ -21,7 +21,7 @@
 #include "WindowWidgets.h"
 #include "gzstream.h"
 
-#include <FL/Fl.h>
+#include <FL/Fl.H>
 
 #include <time.h>
 

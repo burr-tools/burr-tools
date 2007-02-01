@@ -18,27 +18,27 @@
 #ifndef __LAYOUTER_H__
 #define __LAYOUTER_H__
 
-#include <FL/Fl_Widget.h>
-#include <FL/Fl_Group.h>
+#include <FL/Fl_Widget.H>
+#include <FL/Fl_Group.H>
 
 #include <FL/fl_draw.H>
 
-#include <FL/Fl_Button.h>
-#include <FL/Fl_Slider.h>
-#include <FL/Fl_Box.h>
-#include <FL/Fl_Check_Button.h>
-#include <FL/Fl_Choice.h>
-#include <FL/Fl_Round_Button.h>
-#include <FL/Fl_Roller.h>
-#include <FL/Fl_Input.h>
-#include <FL/Fl_Output.h>
-#include <FL/Fl_Value_Output.h>
-#include <FL/Fl_Value_Input.h>
-#include <FL/Fl_Value_Slider.h>
-#include <FL/Fl_Int_Input.h>
-#include <FL/Fl_Double_Window.h>
-#include <FL/Fl_Tabs.h>
-#include <FL/Fl_Menu_Bar.h>
+#include <FL/Fl_Button.H>
+#include <FL/Fl_Slider.H>
+#include <FL/Fl_Box.H>
+#include <FL/Fl_Check_Button.H>
+#include <FL/Fl_Choice.H>
+#include <FL/Fl_Round_Button.H>
+#include <FL/Fl_Roller.H>
+#include <FL/Fl_Input.H>
+#include <FL/Fl_Output.H>
+#include <FL/Fl_Value_Output.H>
+#include <FL/Fl_Value_Input.H>
+#include <FL/Fl_Value_Slider.H>
+#include <FL/Fl_Int_Input.H>
+#include <FL/Fl_Double_Window.H>
+#include <FL/Fl_Tabs.H>
+#include <FL/Fl_Menu_Bar.H>
 
 #include <vector>
 

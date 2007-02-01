@@ -24,7 +24,7 @@
 
 #include "Fl_Table.h"
 
-#include <FL/fl_draw.h>
+#include <FL/fl_draw.H>
 #include <FL/Fl_Int_Input.H>
 
 /* this is the groups editor table

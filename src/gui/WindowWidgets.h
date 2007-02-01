@@ -38,7 +38,7 @@
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Multiline_Input.H>
 #include <FL/Fl_Progress.H>
-#include <FL/fl_draw.h>
+#include <FL/fl_draw.H>
 
 class guiGridType_c;
 class piecePositions_c;

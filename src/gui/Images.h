@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include <FL/Fl_Pixmap.h>
+#include <FL/Fl_Pixmap.H>
 
 extern char * TB_Color_Brush_xpm[];
 extern char * TB_Color_Columns_X_xpm[];

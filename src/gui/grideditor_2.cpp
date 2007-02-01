@@ -20,7 +20,7 @@
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
 
-#include <FL/fl_draw.h>
+#include <FL/fl_draw.H>
 
 // round towards -inf instead of 0
 static int floordiv(int a, int b) {

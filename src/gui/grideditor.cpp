@@ -22,7 +22,7 @@
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
 
-#include <FL/fl_draw.h>
+#include <FL/fl_draw.H>
 
 void gridEditor_c::setZ(unsigned int z) {
 

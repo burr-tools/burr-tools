@@ -22,8 +22,8 @@
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
 
-#include <FL/fl_draw.h>
-#include <FL/Fl.h>
+#include <FL/fl_draw.H>
+#include <FL/Fl.H>
 
 /* draw a blocklist */
 void BlockList::draw() {

@@ -20,7 +20,7 @@
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
 
-#include <FL/fl_draw.h>
+#include <FL/fl_draw.H>
 
 #include <math.h>
 

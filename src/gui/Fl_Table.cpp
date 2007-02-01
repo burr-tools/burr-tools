@@ -21,7 +21,7 @@
 //
 
 #include <stdio.h>		// fprintf
-#include <FL/fl_draw.h>
+#include <FL/fl_draw.H>
 #include "Fl_Table.h"
 
 #if defined(USE_UTF8) && ( defined(MICROSOFT) || defined(LINUX) )

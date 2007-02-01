@@ -28,7 +28,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include <Fl/Fl.h>
+#include <Fl/Fl.H>
 
 #ifdef __APPLE__
 #include <OpenGL/gl.h>

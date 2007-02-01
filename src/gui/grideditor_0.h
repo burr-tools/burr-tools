@@ -20,9 +20,6 @@
 
 #include "grideditor.h"
 
-#include <FL/Fl.H>
-#include <FL/Fl_Widget.h>
-
 class puzzle_c;
 
 /**

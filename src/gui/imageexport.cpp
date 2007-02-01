@@ -23,7 +23,7 @@
 #include "../lib/disassembly.h"
 #include "../lib/disasmtomoves.h"
 
-#include <FL/Fl.h>
+#include <FL/Fl.H>
 
 /* image info contains the information for one image to be exported
  * this information is the setup required to produce this image, also

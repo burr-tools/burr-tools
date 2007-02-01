@@ -51,7 +51,7 @@
 #include <FL/Fl_Color_Chooser.H>
 #include <FL/Fl_Tooltip.H>
 #include <FL/Fl_Choice.H>
-#include <FL/Fl_Pixmap.h>
+#include <FL/Fl_Pixmap.H>
 #include <FL/Fl.H>
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Tile.H>

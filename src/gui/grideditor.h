@@ -19,7 +19,7 @@
 #define __GRID_EDITOR_H__
 
 #include <FL/Fl.H>
-#include <FL/Fl_Widget.h>
+#include <FL/Fl_Widget.H>
 
 class puzzle_c;
 

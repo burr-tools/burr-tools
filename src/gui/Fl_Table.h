@@ -37,11 +37,11 @@
 #include <stdlib.h>		// UNIX: malloc/realloc
 #endif /*_WIN32*/
 
-#include <FL/Fl.h>
-#include <FL/Fl_Group.h>
-#include <FL/Fl_Scroll.h>
-#include <FL/Fl_Box.h>
-#include <FL/Fl_Scrollbar.h>
+#include <FL/Fl.H>
+#include <FL/Fl_Group.H>
+#include <FL/Fl_Scroll.H>
+#include <FL/Fl_Box.H>
+#include <FL/Fl_Scrollbar.H>
 
 class Fl_Table : public Fl_Group
 {
