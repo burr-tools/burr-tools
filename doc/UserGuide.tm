@@ -856,7 +856,7 @@
   puzzle shapes. E.g the sphere grid might some time support a switch to turn
   it into a space of rhombic dodecahedra. This space is very similar except
   that some orientations that are possible with spheres can not be done with
-  the dodecahedra.\
+  the dodecahedra.
 
   Same for cubes: there might be a parameter that scales the cubes in
   y-direction. If that values differs from the x-direction value it will be
@@ -2094,7 +2094,8 @@
 
     <with|font-family|ss|<item*|Limit>>Limits the number of solutions to be
     saved. There will never be more than the specified amount of solutions in
-    the list. When the list is full the program has 2 choices:
+    the list. When the list is full the program has 2 choices:\ 
+
     <\enumerate-numeric>
       <item>Solutions are sorted: The programs throws away the solutions at
       the end. So low level solutions are removed
