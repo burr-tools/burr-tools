@@ -1634,7 +1634,7 @@
 
   <subsection|Other possibilities>
 
-  <big-figure|<postscript|Pics/Emulation_Pagoda.jpg|*6/8|*6/8||||>|The Knit
+  <big-figure|<postscript|Pics/Emulation_Pagoda.png|*6/8|*6/8||||>|The Knit
   Pagoda>
 
   There are many other shapes that can be emulated. As one example I will
