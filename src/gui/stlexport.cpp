@@ -18,11 +18,14 @@
 #include "stlexport.h"
 #include "math.h"
 
-#include "../lib/puzzle.h"
-#include "../lib/disassembly.h"
-#include "../lib/disasmtomoves.h"
+#include "BlockList.h"
+#include "WindowWidgets.h"
 
-#include <FL/Fl.h>
+#include "../lib/puzzle.h"
+#include "../lib/voxel.h"
+
+#include <FL/Fl.H>
+#include <FL/fl_ask.H>
 
 static void cb_stlExportAbort_stub(Fl_Widget* o, void* v) { ((stlExport_c*)(v))->cb_Abort(); }
 
@@ -42,7 +45,6 @@ static void cb_stlExport3DUpdate_stub(Fl_Widget* o, void* v) { ((stlExport_c*)(v
 void stlExport_c::cb_Update3DView(void) {
 
   view3D->showSingleShape(puzzle, ShapeSelect->getSelection());
-  //    view3D->showColors(puzzle, ColConst->value() == 1);
 }
 
 stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_Window(false), puzzle(p) {
@@ -52,7 +54,7 @@ stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_W
   LFl_Frame *fr;
 
   {
-    fr = new LFl_Frame(0, 0, 2, 1);
+    fr = new LFl_Frame(0, 0, 1, 1);
 
     (new LFl_Box("File name", 0, 0))->stretchLeft();
     (new LFl_Box("Path", 0, 1))->stretchLeft();
@@ -63,16 +65,18 @@ stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_W
     Fname = new LFl_Input(2, 0, 3, 1);
     Fname->value("test");
     Fname->weight(1, 0);
+    Fname->setMinimumSize(50, 0);
     Pname = new LFl_Input(2, 1, 3, 1);
     Pname->value("./");
     Pname->weight(1, 0);
+    Pname->setMinimumSize(50, 0);
 
     fr->end();
   }
 
 
   {
-    fr = new LFl_Frame(0, 1, 2, 1);
+    fr = new LFl_Frame(0, 1, 1, 1);
 
     (new LFl_Box("Cube Size", 0, 0))->stretchLeft();
     (new LFl_Box("Bevel", 0, 1))->stretchLeft();
@@ -95,20 +99,18 @@ stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_W
   }
 
   {
-    layouter_c * l = new layouter_c(0, 2, 2, 1);
-
     ShapeSelect = new PieceSelector(0, 0, 20, 20, puzzle);
 
     ShapeSelect->setSelection(0);
 
-    Fl_Group * gr = new LBlockListGroup_c(0, 0, 1, 1, ShapeSelect);
+    LBlockListGroup_c * gr = new LBlockListGroup_c(0, 2, 1, 1, ShapeSelect);
     gr->callback(cb_stlExport3DUpdate_stub, this);
-
-    l->end();
+    gr->setMinimumSize(200, 100);
+    gr->stretch();
   }
 
   {
-    layouter_c * l = new layouter_c(0, 6, 3, 1);
+    layouter_c * l = new layouter_c(0, 3, 2, 1);
 
     status = new LFl_Box();
     status->weight(1, 0);
@@ -129,7 +131,7 @@ stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_W
     l->end();
   }
 
-  view3D = new LView3dGroup(2, 0, 1, 6, ggt);
+  view3D = new LView3dGroup(1, 0, 1, 3, ggt);
   view3D->setMinimumSize(400, 400);
   cb_Update3DView();
 
@@ -137,12 +139,12 @@ stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_W
 }
 
 
-FILE *fp;
-float bevel;
-float shrink;
-float cube_scale;
+static FILE *fp;
+static float bevel;
+static float shrink;
+static float cube_scale;
 
-int get_mask(const voxel_c *v, int x,int y,int z,int rot, int edgeface)
+static int get_mask(const voxel_c *v, int x,int y,int z,int rot, int edgeface)
  {
   int xx,yy,zz;
   int mask;
@@ -189,7 +191,7 @@ int get_mask(const voxel_c *v, int x,int y,int z,int rot, int edgeface)
   return mask;
 }
 
-void rotate_point(float *x, float *y, float *z, int rot)
+static void rotate_point(float *x, float *y, float *z, int rot)
 {
   float xx,yy,zz;
   xx=*x;yy=*y;zz=*z;
@@ -230,18 +232,18 @@ void rotate_point(float *x, float *y, float *z, int rot)
     }
 }
 
-float vlength(const float a[3]) {
+static float vlength(const float a[3]) {
   return sqrt(a[0]*a[0]+a[1]*a[1]+a[2]*a[2]);
 }
 
 #define Epsilon 1.0e-5
 
-void make_tri(float x0, float y0, float z0, 
+static void make_tri(float x0, float y0, float z0,
 	     float x1, float y1, float z1,
 	     float x2, float y2, float z2,
 	     int rot, int x, int y, int z)
 
-{  
+{
   float v1[3],v2[3],v3[3];
   float p0[3],p1[3],p2[3],n[3];
   float len;
@@ -290,7 +292,7 @@ void make_tri(float x0, float y0, float z0,
   fprintf(fp,"  endfacet\n");
 }
 
-void make_quad(float x0, float y0, float z0, 
+static void make_quad(float x0, float y0, float z0,
 	       float x1, float y1, float z1,
 	       float x2, float y2, float z2,
 	       float x3, float y3, float z3,
@@ -300,7 +302,7 @@ void make_quad(float x0, float y0, float z0,
   make_tri(x0,y0,z0,x2,y2,z2,x3,y3,z3,rot,x,y,z);
 }
 
-void make_corners(const voxel_c *v, const int x, const int y, const int z)
+static void make_corners(const voxel_c *v, const int x, const int y, const int z)
 {
   int match,mask;
   int rot;
@@ -323,8 +325,8 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 	case 3 : // tested
 	  make_quad(-(bevel+shrink),shrink,(bevel+shrink),
 		    -(bevel+shrink),(bevel+shrink),shrink,
-		    bevel+shrink,(bevel+shrink),shrink,   
-		    bevel+shrink,shrink,(bevel+shrink),   
+		    bevel+shrink,(bevel+shrink),shrink,
+		    bevel+shrink,shrink,(bevel+shrink),
 		   rot, x, y, z);
 	  break;
 	case 6: // tested
@@ -340,8 +342,8 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 	case 7 : // tested
 	  make_quad(-(bevel+shrink),shrink,bevel+shrink,
 		    -(bevel+shrink),bevel+shrink,shrink,
-		    bevel+shrink,bevel+shrink,shrink,   
-		    shrink,shrink,bevel+shrink,   
+		    bevel+shrink,bevel+shrink,shrink,
+		    shrink,shrink,bevel+shrink,
 		   rot, x, y, z);
 	  make_quad(bevel+shrink,-(bevel+shrink),shrink,
 		    shrink,-(bevel+shrink),bevel+shrink,
@@ -351,8 +353,8 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 	  break;
 	case 15 : // tested
 	  make_quad(-(bevel+shrink),-(bevel+shrink),shrink,
-		    -(bevel+shrink),bevel+shrink,shrink,   
-		    bevel+shrink,bevel+shrink,shrink,   
+		    -(bevel+shrink),bevel+shrink,shrink,
+		    bevel+shrink,bevel+shrink,shrink,
 		    bevel+shrink,-(bevel+shrink),shrink,
 		   rot, x, y, z);
 	  break;
@@ -377,8 +379,8 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 		   rot, x, y, z);
 	  make_quad(-(bevel+shrink),shrink,bevel+shrink,
 		    -(bevel+shrink),bevel+shrink,shrink,
-		    shrink,bevel+shrink,shrink,   
-		    shrink,shrink,bevel+shrink,   
+		    shrink,bevel+shrink,shrink,
+		    shrink,shrink,bevel+shrink,
 		   rot, x, y, z);
 	  make_quad(bevel+shrink,-(bevel+shrink),shrink,
 		    shrink,-(bevel+shrink),bevel+shrink,
@@ -412,7 +414,7 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 		   -(bevel+shrink),-shrink,bevel+shrink,
 		   rot, x, y, z);
 	  break;
-	case 27: 
+	case 27:
 	  make_quad(shrink,bevel+shrink,-(bevel+shrink),
 		    bevel+shrink,shrink,-(bevel+shrink),
 		    bevel+shrink,shrink,bevel+shrink,
@@ -429,7 +431,7 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 		    bevel+shrink,shrink,bevel+shrink,
 		    rot, x, y, z);
 	  break;
-	case 29: // tested 
+	case 29: // tested
 	  make_quad(shrink,bevel+shrink,-(bevel+shrink),
 		    bevel+shrink,shrink,-(bevel+shrink),
 		    bevel+shrink,shrink,shrink,
@@ -449,8 +451,8 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 	case 30: // tested
 	  make_quad((bevel+shrink),-shrink,bevel+shrink,
 		    (bevel+shrink),-(bevel+shrink),shrink,
-		    -(bevel+shrink),-(bevel+shrink),shrink,   
-		    -shrink,-shrink,bevel+shrink,   
+		    -(bevel+shrink),-(bevel+shrink),shrink,
+		    -shrink,-shrink,bevel+shrink,
 		   rot, x, y, z);
 	  make_quad(-(bevel+shrink),(bevel+shrink),shrink,
 		    -shrink,(bevel+shrink),bevel+shrink,
@@ -484,13 +486,13 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 	  break;
 	case 60 : // tested
 	  make_quad(-(bevel+shrink),-shrink,(bevel+shrink),
-		    bevel+shrink,-shrink,(bevel+shrink),   
-		    bevel+shrink,-(bevel+shrink),shrink,   
+		    bevel+shrink,-shrink,(bevel+shrink),
+		    bevel+shrink,-(bevel+shrink),shrink,
 		    -(bevel+shrink),-(bevel+shrink),shrink,
 		   rot, x, y, z);
 	  make_quad(-(bevel+shrink),shrink,-(bevel+shrink),
-		    bevel+shrink,shrink,-(bevel+shrink),   
-		    bevel+shrink,(bevel+shrink),-shrink,   
+		    bevel+shrink,shrink,-(bevel+shrink),
+		    bevel+shrink,(bevel+shrink),-shrink,
 		    -(bevel+shrink),(bevel+shrink),-shrink,
 		   rot, x, y, z);
 	  break;
@@ -502,7 +504,7 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 		    rot, x, y, z);
 	  make_quad(-(bevel+shrink),shrink,shrink,
 		    -shrink,bevel+shrink,shrink,
-		    bevel+shrink,bevel+shrink,shrink,   
+		    bevel+shrink,bevel+shrink,shrink,
 		    shrink,shrink,shrink,
 		   rot, x, y, z);
 	  make_quad(-(bevel+shrink),shrink,shrink,
@@ -528,14 +530,14 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 	  break;
 	case 63: // tested
 	  make_quad(-(bevel+shrink),-(bevel+shrink),shrink,
-		    -(bevel+shrink),shrink,shrink,   
-		    bevel+shrink,shrink,shrink,   
+		    -(bevel+shrink),shrink,shrink,
+		    bevel+shrink,shrink,shrink,
 		    bevel+shrink,-(bevel+shrink),shrink,
 		   rot, x, y, z);
 	  make_quad(-(bevel+shrink),shrink,-(bevel+shrink),
 		    bevel+shrink,shrink,-(bevel+shrink),
-		    bevel+shrink,shrink,shrink,   
-		    -(bevel+shrink),shrink,shrink,   
+		    bevel+shrink,shrink,shrink,
+		    -(bevel+shrink),shrink,shrink,
 		   rot, x, y, z);
 	  break;
 	case 105: // tested
@@ -556,7 +558,7 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 		   shrink,-(bevel+shrink),-(bevel+shrink),
 		   rot, x, y, z);
 	  break;
-	case 111: // tested 
+	case 111: // tested
 	  make_quad(-shrink,bevel+shrink,-(bevel+shrink),
 		    -shrink,bevel+shrink,shrink,
 		    -(bevel+shrink),shrink,shrink,
@@ -569,14 +571,14 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 		   rot, x, y, z);
 	  make_quad(shrink,-(bevel+shrink),shrink,
 		    -(bevel+shrink),-(bevel+shrink),shrink,
-		    -(bevel+shrink),+shrink,shrink,   
-		    bevel+shrink,-shrink,shrink,   
+		    -(bevel+shrink),+shrink,shrink,
+		    bevel+shrink,-shrink,shrink,
 		    rot, x, y, z);
 
 	  make_quad(-shrink,bevel+shrink,shrink,
 		    bevel+shrink,bevel+shrink,shrink,
-		    bevel+shrink,-shrink,shrink,   
-		    -(bevel+shrink),shrink,shrink,   
+		    bevel+shrink,-shrink,shrink,
+		    -(bevel+shrink),shrink,shrink,
 		    rot, x, y, z);
 
 
@@ -585,12 +587,12 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 	case 127: // tested;
 	  make_quad(-(bevel+shrink),shrink,-(bevel+shrink),
 		    shrink,shrink,-(bevel+shrink),
-		    shrink,shrink,shrink,   
-		    -(bevel+shrink),shrink,shrink,   
+		    shrink,shrink,shrink,
+		    -(bevel+shrink),shrink,shrink,
 		   rot, x, y, z);
 	  make_quad(-(bevel+shrink),-(bevel+shrink),shrink,
 		    -(bevel+shrink),shrink,shrink,
-		    shrink,shrink,shrink,   
+		    shrink,shrink,shrink,
 		    shrink,-(bevel+shrink),shrink,
 		   rot, x, y, z);
 	  make_quad(shrink,-(bevel+shrink),-(bevel+shrink),
@@ -610,8 +612,8 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
 		   rot, x, y, z);
 	  make_quad(-(bevel+shrink),shrink,bevel+shrink,
 		    -(bevel+shrink),bevel+shrink,shrink,
-		    shrink,bevel+shrink,shrink,   
-		    shrink,shrink,bevel+shrink,   
+		    shrink,bevel+shrink,shrink,
+		    shrink,shrink,bevel+shrink,
 		   rot, x, y, z);
 	  make_quad(bevel+shrink,-(bevel+shrink),shrink,
 		    shrink,-(bevel+shrink),bevel+shrink,
@@ -631,7 +633,7 @@ void make_corners(const voxel_c *v, const int x, const int y, const int z)
     }
 }
 
-void make_edges(const voxel_c *v, const int x, const int y, const int z)
+static void make_edges(const voxel_c *v, const int x, const int y, const int z)
 {
   int rot;
   for (rot=0; rot<12; rot++)
@@ -640,7 +642,7 @@ void make_edges(const voxel_c *v, const int x, const int y, const int z)
 	{
 	case 0 : break;
 	case 15 : break;
-	case 1 : 
+	case 1 :
 	  make_quad((bevel+shrink),shrink,bevel+shrink,
 		    (bevel+shrink),shrink,cube_scale-(bevel+shrink),
 		    shrink,(bevel+shrink),cube_scale-(bevel+shrink),
@@ -683,7 +685,7 @@ void make_edges(const voxel_c *v, const int x, const int y, const int z)
     }
 }
 
-void make_faces(const voxel_c *v, const int x,const int y,const int z)
+static void make_faces(const voxel_c *v, const int x,const int y,const int z)
 {
   int rot;
   for (rot=24; rot<30; rot++)
@@ -700,7 +702,7 @@ void make_faces(const voxel_c *v, const int x,const int y,const int z)
 void stlExport_c::exportSTL(int shape)
 {
   int x,y,z;
-  char name[99];
+  char name[1000];
 
   voxel_c *v = puzzle->getShape(shape);
   int xsize = v->getX();
@@ -710,21 +712,31 @@ void stlExport_c::exportSTL(int shape)
   bevel = atof(Bevel->value());
   shrink = atof(Offset->value());
   cube_scale = atof(CubeSize->value());
-  if (Pname->value() && Pname->value()[0] && 
+  if (Pname->value() && Pname->value()[0] &&
       Pname->value()[strlen(Pname->value())-1] != '/')
     snprintf(name, 1000, "%s/%s%03i.stl", Pname->value(), Fname->value(), shape);
   else
     snprintf(name, 1000, "%s%s%03i.stl", Pname->value(), Fname->value(), shape);
 
-  printf("opening %s\n", name);
-  if (cube_scale < Epsilon || cube_scale < (2*bevel + 2*shrink))
-    return;
+  status->copy_label(name);
 
+  if (cube_scale < Epsilon) {
+    fl_message("Cube size too small!");
+    return;
+  }
+
+  if (cube_scale < (2*bevel + 2*shrink)) {
+    fl_message("Cube size too small for given bevel and offset!");
+    return;
+  }
 
   fp = (FILE *) fopen(name,"w");
 
-  if (fp==NULL) return;
-      
+  if (fp==NULL) {
+    fl_message("Could not open file");
+    return;
+  }
+
   fprintf(fp,"solid %s\n",Fname->value());
   for (x=0; x<=xsize; x++)
     for (y=0; y<=ysize; y++)

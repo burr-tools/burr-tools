@@ -23,25 +23,21 @@
 /* following parameters can be chosen:
  * cube size in mm
  * bevel (amount of mm to round the edges of cubes)
- * offset (in mm - tolerance of the 3d printer, 
+ * offset (in mm - tolerance of the 3d printer,
  *         shrinks all solids by that amount)
  * file name
  */
 
 
 #include "Layouter.h"
-#include "WindowWidgets.h"
-#include "voxeldrawer.h"
-
-#include <vector>
-#include "arcball.h"
 
 class LView3dGroup;
 class LBlockListGroup;
 class puzzle_c;
 class guiGridType_c;
+class PieceSelector;
 
-class stlExport_c : public LFl_Double_Window, public VoxelViewCallbacks {
+class stlExport_c : public LFl_Double_Window {
 
   private:
 
