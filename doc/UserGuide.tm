@@ -573,10 +573,10 @@
     other allows you to create STL files for 3-<no-break>D printers
     (<with|mode|math|\<vartriangleright\>><reference|ExportingSTL>)
 
-    <item*|Grid Parameters>This menu entry will allow you to change
-    parameters for the currently used space grid. These parameters include
-    things like scaling of axes or skew. Not all space grids support
-    parameters.
+    <with|font-family|ss|<item*|Grid Parameters>>This menu entry will allow
+    you to change parameters for the currently used space grid. These
+    parameters include things like scaling of axes or skew. Not all space
+    grids support parameters.
 
     <item*|<with|font-family|ss|Status>>This opens up a window containing
     lots of maybe useful information about the shapes of the puzzles
