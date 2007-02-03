@@ -49,7 +49,7 @@ public:
 
   typedef enum {
     STRETCH_MINUS, STRETCH_PLUS, STRETCH_MIDDLE, STRETCH, STRETCH_SQUARE
-  } stretch;
+  } stretch_t;
 
 private:
 
@@ -63,7 +63,7 @@ private:
   * stretch _SQUARE takes the smaller size in the two dimensions and applies
   * this size to both (width and height)
   */
-  stretch _stretchX, _stretchY;
+  stretch_t _stretchX, _stretchY;
 
   /* surround the widget by pitch pixel */
   unsigned char _pitch;
@@ -89,8 +89,8 @@ public:
   unsigned char getPitch(void) const { return _pitch; }
   unsigned char getWeightX(void) const { return _weightX; }
   unsigned char getWeightY(void) const { return _weightY; }
-  stretch getStretchX(void) const { return _stretchX; }
-  stretch getStretchY(void) const { return _stretchY; }
+  stretch_t getStretchX(void) const { return _stretchX; }
+  stretch_t getStretchY(void) const { return _stretchY; }
 
   /* the following function is for the layouter to find out how much space
    * the widget requires at least
@@ -124,7 +124,7 @@ public:
    * automatically enable layouting for this widget, because
    * without layouting these values do not make any sense
    */
-  void setLayoutParameter(stretch stretchX, stretch stretchY, unsigned char pitch, unsigned char weightX, unsigned char weightY) {
+  void setLayoutParameter(stretch_t stretchX, stretch_t stretchY, unsigned char pitch, unsigned char weightX, unsigned char weightY) {
     _stretchX = stretchX;
     _stretchY = stretchY;
     _pitch = pitch;
@@ -141,6 +141,7 @@ public:
   void stretchHCenter(void) { _stretchX = STRETCH_MIDDLE; }
   void stretchVCenter(void) { _stretchY = STRETCH_MIDDLE; }
   void stretchCenter(void) { _stretchX = _stretchY = STRETCH_MIDDLE; }
+  void stretch(void) { _stretchX = _stretchY = STRETCH; }
   void weight(unsigned char x, unsigned char y) { _weightX = x; _weightY = y; }
 
   /* sets the minimum size a widget should have */
