@@ -263,3 +263,20 @@ void voxel_2_c::minimizePiece(void) {
   }
 }
 
+void voxel_2_c::initHotspot(void) {
+
+  unsigned long best = getX()*getX() + getY()*getY() + getZ()*getZ();
+
+  // find a sphere as near as possible to the source
+  for (unsigned int z = 0; z < getZ(); z++)
+    for (unsigned int y = 0; y < getY(); y++)
+      for (unsigned int x = 0; x < getX(); x++)
+        if (!isEmpty(x, y, z)) {
+          unsigned long diff = x*x + y*y + z*z;
+          if (diff < best) {
+            best = diff;
+            setHotspot(x, y, z);
+          }
+        }
+}
+

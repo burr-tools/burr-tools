@@ -700,3 +700,7 @@ voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), h
   symmetries = symmetryInvalid();
 }
 
+void voxel_c::initHotspot(void) {
+  setHotspot(0, 0, 0);
+}
+

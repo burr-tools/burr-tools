@@ -158,9 +158,8 @@ int main(int argv, char* args[]) {
 
   if (assemble) {
 
-    for (unsigned int i = 0; i < p.shapeNumber(); i++) {
-      p.getShape(i)->setHotspot(0, 0, 0);
-    }
+    for (unsigned int i = 0; i < p.shapeNumber(); i++)
+      p.getShape(i)->initHotspot();
 
     if (!quiet) {
       cout << " The puzzle:\n\n";

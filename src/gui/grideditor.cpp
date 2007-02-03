@@ -174,6 +174,9 @@ bool gridEditor_c::setLayer(unsigned int z) {
         // depending on the state we either do the current active task, or clear
         changed |= setRecursive(activeTools, x, y, z);
 
+  if (changed)
+    space->initHotspot();
+
   return changed;
 }
 

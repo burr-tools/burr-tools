@@ -621,7 +621,7 @@ void ToolTab_0::cb_transform(long task) {
       }
 
       for (int s = ss; s < se; s++)
-        puzzle->getShape(s)->setHotspot(0, 0, 0);
+        puzzle->getShape(s)->initHotspot();
 
       do_callback(this, user_data());
 
@@ -677,7 +677,7 @@ void ToolTab_0::cb_transform(long task) {
                  }
                  break;
       }
-      space->setHotspot(0, 0, 0);
+      space->initHotspot();
     }
 
     do_callback(this, user_data());
@@ -795,7 +795,7 @@ void ToolTab_1::cb_transform(long task) {
       }
 
       for (int s = ss; s < se; s++)
-        puzzle->getShape(s)->setHotspot(0, 0, 0);
+        puzzle->getShape(s)->initHotspot();
 
       do_callback(this, user_data());
 
@@ -870,7 +870,7 @@ void ToolTab_1::cb_transform(long task) {
                  }
                  break;
       }
-      space->setHotspot(0, 0, 0);
+      space->initHotspot();
     }
 
     do_callback(this, user_data());
@@ -1036,7 +1036,7 @@ void ToolTab_2::cb_transform(long task) {
                  }
                  break;
       }
-      space->setHotspot(0, 0, 0);
+      space->initHotspot();
     }
 
     do_callback(this, user_data());

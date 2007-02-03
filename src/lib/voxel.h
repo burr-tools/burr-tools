@@ -591,6 +591,14 @@ public:
   int getHy(void) const { return hy; }
   int getHz(void) const { return hz; }
   void setHotspot(int x, int y, int z) { hx = x; hy = y; hz = z; }
+  /* in some voxelspaces the hotspot needs to be in special
+   * places to stay valid after all possible transformations
+   * this function sets the hotspot so, that is has this
+   * property. As many spaces do not have this requirement
+   * there is a default implementation that puts the hotspot
+   * at 0;0;0 if you need something special, overwrite this function
+   */
+  virtual void initHotspot(void);
   //@}
 
   /**

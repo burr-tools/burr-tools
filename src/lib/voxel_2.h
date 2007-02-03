@@ -35,6 +35,8 @@ class voxel_2_c : public voxel_c {
     void minimizePiece(void);
 
     bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const;
+
+    void initHotspot(void);
 };
 
 #endif

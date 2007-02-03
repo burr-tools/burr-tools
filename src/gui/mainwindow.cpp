@@ -882,9 +882,8 @@ void mainWindow_c::cb_BtnStart(void) {
   puzzle->probRemoveAllSolutions(solutionProblem->getSelection());
   SolutionEmpty = true;
 
-  for (unsigned int i = 0; i < puzzle->shapeNumber(); i++) {
-    puzzle->getShape(i)->setHotspot(0, 0, 0);
-  }
+  for (unsigned int i = 0; i < puzzle->shapeNumber(); i++)
+    puzzle->getShape(i)->initHotspot();
 
   cb_BtnCont();
 }
