@@ -1497,6 +1497,14 @@
 
     <item*|Holes 3D>A 3D hole is a completely surrounded region inside a
     shape.
+
+    <item*|Sym>This is a column that is mainly there for my help.
+    <name|BurrTools> needs to know about all kinds of symmetries a shape can
+    have. If a shape turns up that has a kind of symmetry yet unknown to the
+    program it can not solve puzzles with this shape. So here is a tool to
+    check beforehand and without the need to create a problem. If you ever
+    see a mark in the last column send me the shapes where it turns up. As
+    long as this last column is empty everything is fine.
   </description-compact>
 
   <section|Tips and Tricks>
