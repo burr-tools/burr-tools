@@ -772,7 +772,7 @@
   <no-indent>Note that each section has a minimum size. It is not possible to
   make it smaller than that minimum size.
 
-  <section|The 3-D Viewer>
+  <section|The 3-<no-break>D Viewer>
 
   Normally the biggest part of the GUI is reserved for the 3-<no-break>D
   viewport. In fact this 3-<no-break>D viewer is threefold and has different
@@ -1334,7 +1334,7 @@
 
   Voxels that have a custom colour added (the yellow voxels in Figure
   <reference|FigureRepresentations>) show this colour as an inset in the
-  2-<no-break>D grid, whereas in the 3-D viewer they are completely painted
+  2-<no-break>D grid, whereas in the 3-<no-break>D viewer they are completely painted
   with this colour (provided that the <strong|<with|font-family|ss|Colour 3D
   View>> on the status line is checked, otherwise they will be painted in the
   neutral colour). Note that in both grids the neutral colours also have a
@@ -2227,7 +2227,7 @@
   search. This can be accomplished by clicking
   <with|font-family|ss|<strong|Prepare>>. The solver will halt after this
   initial phase and the subsequent steps of the assembler can be seen in the
-  3-D viewer by clicking the <with|font-family|ss|<strong|Step>> button.
+  3-<no-break>D viewer by clicking the <with|font-family|ss|<strong|Step>> button.
 
   <section|Browsing Placements><label|BrowsingPlacements>
 
@@ -2501,7 +2501,7 @@
   wider to accommodate the horizontal spread of the pieces.
 
   If you have finished with all settings press <with|font-family|ss|Export
-  Image(s)<strong|>>. You will see a flurry of images in the 3D view. The
+  Image(s)<strong|>>. You will see a flurry of images in the 3-<no-break>D view. The
   program draws the shapes there and grabs the content from the display. This
   may take a while. First the size of the images is determined then the
   images are drawn in the required high resolution for the output. The
@@ -2786,7 +2786,7 @@
 
   <subsection|Class Voxel>
 
-  This class contains functions to organise, modify, transform 3-dimensional
+  This class contains functions to organise, modify, transform 3-<no-break>dimensional
   arrays of cubes. Each entry inside the array contains 2 values:
 
   <\itemize>
