@@ -704,7 +704,19 @@ void stlExport_c::exportSTL(int shape)
   int x,y,z;
   char name[1000];
 
+  if (puzzle->getGridType()->getType() != gridType_c::GT_BRICKS) {
+    fl_message("Sorry STL export only supports cubes right now");
+    return;
+  }
+
   voxel_c *v = puzzle->getShape(shape);
+
+  for (unsigned int i = 0; i < v->getXYZ(); i++)
+    if (v->getState(i) == voxel_c::VX_VARIABLE) {
+      fl_message("I can not export shapes with variable voxels");
+      return;
+    }
+
   int xsize = v->getX();
   int ysize = v->getY();
   int zsize = v->getZ();
