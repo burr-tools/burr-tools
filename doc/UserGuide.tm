@@ -566,9 +566,12 @@
     3-<no-break>D grids for the <with|font-family|ss|Entities> tab
     (<with|mode|math|\<vartriangleright\><reference|Navigating2D3D>>).
 
-    <item*|<with|font-family|ss|Export Images>>Allows you to export the
-    contents of the 3-<no-break>D viewer that can be used to create high
-    quality solution sheets (<with|mode|math|\<vartriangleright\>><reference|ExportingImages>).
+    <item*|<with|font-family|ss|Export>>Contains a submenu with 2 entries.
+    One allows you to export the contents of the 3-<no-break>D viewer that
+    can be used to create high quality solution sheets
+    (<with|mode|math|\<vartriangleright\>><reference|ExportingImages>). The
+    other allows you to create STL files for 3-<no-break>D printers
+    (<with|mode|math|\<vartriangleright\>><reference|ExportingSTL>)
 
     <item*|Grid Parameters>This menu entry will allow you to change
     parameters for the currently used space grid. These parameters include
@@ -2418,11 +2421,11 @@
   <\float|float|tbh>
     <big-figure|<postscript|Pics/Window_ImageExport.png|*4/8|*4/8||||>|<label|FigureImageExport>The
     image export window>
-  </float>The <with|font-family|ss|<strong|Export Images>> entry on the menu
-  opens a window that allows you to export a portion of the current puzzle in
-  to (a list of) images (see Figure <reference|FigureImageExport>). The
-  window has a 3D view on the right and input elements that control what is
-  being created on the left. On the very bottom of these controls you can
+  </float>The <with|font-family|ss|<strong|Export - Images>> entry on the
+  menu opens a window that allows you to export a portion of the current
+  puzzle in to (a list of) images (see Figure <reference|FigureImageExport>).
+  The window has a 3D view on the right and input elements that control what
+  is being created on the left. On the very bottom of these controls you can
   select what you want to create images of. Depending on what is present in
   the puzzle, the following things can be exported:
 
@@ -2512,6 +2515,37 @@
   The export is far from what we want it to be, many important features are
   missing, so you can expect some progress in later versions of
   <name|BurrTools>.
+
+  <section|Exporting to STL><label|ExportingSTL>
+
+  STL, which stands for Standard Triangulation Language or Standard
+  Tesselation Language is a file format used by stereolithography software.
+  STL-Files describe the surface of 3-<no-break>dimensional objects. <name|BurrTools>
+  can export single shapes into STL files so that 3D printer can quickly
+  fabricate prototypes of them.
+
+  The main menu entry <with|font-family|ss|<strong|Export - STL>> opens the
+  window seen in figure <reference|stlexportwindow>. The window has shape
+  selector, a 3-<no-break>D view of the selected shape and some parameters that control
+  the created shapes.
+
+  <big-figure|<postscript|Pics/Window_StlExport.png|*4/8|*4/8||||>|<label|stlexportwindow>The
+  STL-Export window>
+
+  <with|font-family|ss|<strong|Filename>> and
+  <with|font-family|ss|<strong|Path>> control the name and position of the
+  generated file. <with|font-family|ss|<strong|Cube Size>> controls the base
+  length of the created cubes. <with|font-family|ss|<strong|Bevel>> controls
+  the size of the bevel and <with|font-family|ss|<strong|Shrink>> allows to
+  have a gap between different pieces, so that it is actually possible to
+  assemble them. If the shapes were make to correct sizes they would touch
+  and movement impossible.
+
+  The STL-Export does right now only work for cubes. Triangles and spheres
+  are not working. Also the shapes to export must not contain any variable
+  voxels.
+
+  \;
 
   <\with|par-mode|right>
     <chapter|Future Plans>

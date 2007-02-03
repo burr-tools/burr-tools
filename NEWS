@@ -3,6 +3,9 @@
 - write required base for other space grids and partially implement
   triangular prisms (no disassembling right now)
 
+- STL (3D printer format) export. It is now possible to export cubes into a
+  file suitable for 3D printer for rapid prototyping
+
 - implement a status window that displays all kinds of useful and not so
   useful information for all the shapes in the puzzle
 
