@@ -1334,12 +1334,13 @@
 
   Voxels that have a custom colour added (the yellow voxels in Figure
   <reference|FigureRepresentations>) show this colour as an inset in the
-  2-<no-break>D grid, whereas in the 3-<no-break>D viewer they are completely painted
-  with this colour (provided that the <strong|<with|font-family|ss|Colour 3D
-  View>> on the status line is checked, otherwise they will be painted in the
-  neutral colour). Note that in both grids the neutral colours also have a
-  slightly checkered pattern which can assist navigating in space (except for
-  the spheres, they have no checkering).
+  2-<no-break>D grid, whereas in the 3-<no-break>D viewer they are completely
+  painted with this colour (provided that the
+  <strong|<with|font-family|ss|Colour 3D View>> on the status line is
+  checked, otherwise they will be painted in the neutral colour). Note that
+  in both grids the neutral colours also have a slightly checkered pattern
+  which can assist navigating in space (except for the spheres, they have no
+  checkering).
 
   <section|Transformation Tools><label|TransformationTools>
 
@@ -2236,7 +2237,8 @@
   search. This can be accomplished by clicking
   <with|font-family|ss|<strong|Prepare>>. The solver will halt after this
   initial phase and the subsequent steps of the assembler can be seen in the
-  3-<no-break>D viewer by clicking the <with|font-family|ss|<strong|Step>> button.
+  3-<no-break>D viewer by clicking the <with|font-family|ss|<strong|Step>>
+  button.
 
   <section|Browsing Placements><label|BrowsingPlacements>
 
@@ -2510,12 +2512,12 @@
   wider to accommodate the horizontal spread of the pieces.
 
   If you have finished with all settings press <with|font-family|ss|Export
-  Image(s)<strong|>>. You will see a flurry of images in the 3-<no-break>D view. The
-  program draws the shapes there and grabs the content from the display. This
-  may take a while. First the size of the images is determined then the
-  images are drawn in the required high resolution for the output. The
-  progress can be seen on the left besides the 2 buttons. You will see how
-  many images are finished and how many there are overall.
+  Image(s)<strong|>>. You will see a flurry of images in the 3-<no-break>D
+  view. The program draws the shapes there and grabs the content from the
+  display. This may take a while. First the size of the images is determined
+  then the images are drawn in the required high resolution for the output.
+  The progress can be seen on the left besides the 2 buttons. You will see
+  how many images are finished and how many there are overall.
 
   Hint: If you get unexpected results and broken images try to do nothing
   while the images are exported. On Linux it is forbidden to change the
@@ -2529,14 +2531,14 @@
 
   STL, which stands for Standard Triangulation Language or Standard
   Tesselation Language is a file format used by stereolithography software.
-  STL-Files describe the surface of 3-<no-break>dimensional objects. <name|BurrTools>
-  can export single shapes into STL files so that 3D printer can quickly
-  fabricate prototypes of them.
+  STL-Files describe the surface of 3-<no-break>dimensional objects.
+  <name|BurrTools> can export single shapes into STL files so that 3D printer
+  can quickly fabricate prototypes of them.
 
   The main menu entry <with|font-family|ss|<strong|Export - STL>> opens the
   window seen in figure <reference|stlexportwindow>. The window has shape
-  selector, a 3-<no-break>D view of the selected shape and some parameters that control
-  the created shapes.
+  selector, a 3-<no-break>D view of the selected shape and some parameters
+  that control the created shapes.
 
   <big-figure|<postscript|Pics/Window_StlExport.png|*4/8|*4/8||||>|<label|stlexportwindow>The
   STL-Export window>
@@ -2795,8 +2797,9 @@
 
   <subsection|Class Voxel>
 
-  This class contains functions to organise, modify, transform 3-<no-break>dimensional
-  arrays of cubes. Each entry inside the array contains 2 values:
+  This class contains functions to organise, modify, transform
+  3-<no-break>dimensional arrays of cubes. Each entry inside the array
+  contains 2 values:
 
   <\itemize>
     <item>The type of voxel (is it empty <verbatim|VX_EMPTY>, filled
