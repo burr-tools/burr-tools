@@ -140,6 +140,7 @@ gui_burrGui_SOURCES=\
      gui/piececolor.cpp \
      gui/placementbrowser.cpp \
      gui/statuswindow.cpp \
+     gui/stlexport.cpp \
      gui/tooltabs.cpp \
      gui/voxeldrawer.cpp \
      gui/voxeldrawer_0.cpp \
@@ -170,6 +171,7 @@ gui_burrGui_SOURCES=\
      gui/piececolor.h \
      gui/placementbrowser.h \
      gui/statuswindow.h \
+     gui/stlexport.h \
      gui/tooltabs.h \
      gui/voxeldrawer.h \
      gui/voxeldrawer_0.h \

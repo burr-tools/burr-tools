@@ -36,6 +36,7 @@
 #include <FL/Fl_Value_Input.H>
 #include <FL/Fl_Value_Slider.H>
 #include <FL/Fl_Int_Input.H>
+#include <FL/Fl_Float_Input.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Tabs.H>
 #include <FL/Fl_Menu_Bar.H>
@@ -360,6 +361,24 @@ class LFl_Int_Input : public Fl_Int_Input, public layoutable_c {
   public:
 
   LFl_Int_Input(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Int_Input(0, 0, 0, 0), layoutable_c(x, y, w, h) {
+    stretchVCenter();
+  }
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 30;
+    *height = 20;
+  }
+
+  // sets width so that the given text will fit into the input line
+  void setMinWidth(const char *) {
+  }
+};
+
+class LFl_Float_Input : public Fl_Float_Input, public layoutable_c {
+
+  public:
+
+  LFl_Float_Input(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Float_Input(0, 0, 0, 0), layoutable_c(x, y, w, h) {
     stretchVCenter();
   }
 
