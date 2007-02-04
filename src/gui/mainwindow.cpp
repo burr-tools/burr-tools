@@ -939,9 +939,7 @@ void mainWindow_c::cb_BtnCont(void) {
 
   } else {
 
-    BtnStart->deactivate();
-    BtnCont->deactivate();
-    BtnStop->activate();
+    updateInterface();
   }
 }
 
