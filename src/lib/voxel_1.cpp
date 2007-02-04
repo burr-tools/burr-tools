@@ -104,9 +104,37 @@ bool voxel_1_c::transform(unsigned int nr) {
   if ((minx+miny) & 1)
     minx--;
 
-  int nsx = maxx-minx+1;
-  int nsy = maxy-miny+1;
-  int nsz = maxz-minz+1;
+  unsigned int nsx = maxx-minx+1;
+  unsigned int nsy = maxy-miny+1;
+  unsigned int nsz = maxz-minz+1;
+
+  // don't make the new space smaller than the old one
+  // if the old one was larger center the object inside it
+  if (nsz < sz) {
+    minz -= (sz-nsz)/2;
+    nsz = sz;
+  }
+
+  if ((nsx < sx) || (nsy < sy)) {
+    // we must make sure that we shift so that we don't change the
+    // state of the voxels, do (dx+dy)&1 must be 0
+
+    int dx = (nsx < sx) ? (sx-nsx)/2 : 0;
+    int dy = (nsy < sy) ? (sy-nsy)/2 : 0;
+
+    if ((dx+dy) & 1) {
+
+      if (dx > 0)
+        dx--;
+      else
+        dy--;
+    }
+
+    minx -= dx;
+    miny -= dy;
+    nsx = (sx > nsx) ? sx : nsx;
+    nsy = (sy > nsy) ? sy : nsy;
+  }
 
   int voxelsn = nsx*nsy*nsz;
 
