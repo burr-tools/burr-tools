@@ -97,6 +97,10 @@ bool voxel_1_c::transform(unsigned int nr) {
           if (zn < minz) minz = zn;
         }
 
+  // empty space, do nothing
+  if (minx == 100000)
+    return true;
+
   if ((minx+miny) & 1)
     minx--;
 
