@@ -2239,6 +2239,7 @@ void mainWindow_c::updateInterface(void) {
         BtnStart->deactivate();
         BtnCont->deactivate();
         BtnStop->deactivate();
+        BtnPrepare->deactivate();
 
       }
 
@@ -2286,6 +2287,7 @@ void mainWindow_c::updateInterface(void) {
         // no start possible, when no valid problem selected
         BtnStart->deactivate();
         BtnCont->deactivate();
+        BtnPrepare->deactivate();
       }
     }
   }
