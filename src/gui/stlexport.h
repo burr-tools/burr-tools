@@ -54,12 +54,6 @@ class stlExport_c : public LFl_Double_Window {
     PieceSelector * ShapeSelect;
     LFl_Radio_Button *ExpShape;
 
-    /* some internal variables for the STL export */
-
-    float bevel;
-    float offset;
-    float size;
-
   public:
 
     stlExport_c(puzzle_c * p, const guiGridType_c * ggt);
