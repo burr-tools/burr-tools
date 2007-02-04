@@ -1751,12 +1751,13 @@
   <strong|<with|font-family|ss|-<no-break>1>>. Again, this only removes a
   single instance and needs to be repeated for removing multipieces.
 
-  Most of the time it is necessary to add one instance of all defined shaped
-  to the puzzle. If there are a lot of them this can take w while. This is
-  what the <with|font-family|ss|<strong|+1 each>> button is for. It increases
-  the piece counter for each shape by one. Or it adds a first instance of the
-  shape to the problem. The <with|font-family|ss|<strong|Clr>> button removes
-  all pieces from the problem.
+  Most of the time it is necessary to add one instance of all defined shapes
+  to the puzzle. If there are a lot of them this can take while. This is what
+  the <with|font-family|ss|<strong|+1 each>> button is for. It increases the
+  piece counter for each shape (except the one assigned for the result) by
+  one. Or it adds a first instance of the shape to the problem. The
+  <with|font-family|ss|<strong|Clr>> button removes all pieces from the
+  problem.
 
   Since it doesn't make sense to have a certain shape to be result and piece
   at the same time, the shape set as result cannot be added to the list of
@@ -2015,9 +2016,9 @@
   drawing a very specific kind of 3-<no-break>D objects... a task a lot of
   other software is no doubt even better suited for.
 
-  Solving puzzles is very straightforward with BurrTools as the
+  Solving puzzles is very straightforward with BurrTools even if the
   <with|font-family|ss|<strong|Solver>> tab (Figure <reference|FigureSolver>)
-  only has a few controls. On top there is the
+  has quite a some controls. On top there is the
   <with|font-family|ss|Parameters> panel, that contains a list allowing you
   to select a specific problem to be solved, provides option settings for the
   solver and has a series of buttons to direct the solving process. Finally,
@@ -2025,7 +2026,7 @@
 
   A second panel (<with|font-family|ss|Solutions>) has the tools to browse
   the different solutions found, animate the moves to disassemble the puzzle
-  and to <em|inspect> the solutions in detail.
+  to <em|inspect> the solutions in detail and to organize found solutions.
 
   <big-figure|<postscript|Pics/Window_DDD_3.png|*5/8|*5/8||||>|<label|FigureSolver>Solving
   puzzles>
@@ -2035,11 +2036,11 @@
   In order to make the solver run a problem must be selected first. A list of
   all previously defined problems is available right below the
   <with|font-family|ss|<strong|Parameters>> caption. Selecting problems to be
-  solved is completely similar to selecting shapes, colours or problems on
-  the other tabs. Note that only the selected problem will be solved and that
-  solving one problem will preserve the results of any already solved or
-  partially solved problem. Currently there are only two options for the
-  solver. Both deal with the kind of information the solver will report.
+  solved is \ similar to selecting shapes, colours or problems on the other
+  tabs. Note that only the selected problem will be solved and that solving
+  one problem will preserve the results of any already solved or partially
+  solved problem. Currently there are the following options for the solver.
+  All deal with the kind of information the solver will report.
 
   <\description-compact>
     <item*|<with|font-family|ss|Solve Disassembly>>When checked the solver
@@ -2057,9 +2058,9 @@
     needed they are just a waste of time.
 
     <item*|<with|font-family|ss|Just Count>>When checked the solver will only
-    count the number of solutions. Check this option if you're only
-    interested in the number of solutions and not in the solutions
-    themselves.\ 
+    count the number of solutions it will drop the found solutions right
+    after they were found. Check this option if you're only interested in the
+    number of solutions and not in the solutions themselves.\ 
 
     <with|font-family|ss|<item*|Drop Disassm>>When checked the program
     checks, if the found assembly is disassembable and discards the solution
@@ -2076,22 +2077,23 @@
 
     <\enumerate-numeric>
       <item>Unsorted: The solutions are sorted into the list in the order in
-      they are found
+      they are found.
 
-      <item>by Level: The solutions are sorted by the level. First the first
-      level, if that is identical then by the second level, and so on.
+      <item>by Level: The solutions are sorted by the level. First the number
+      of moves to remove the first piece, if that is identical then by the
+      moves for the second piece, and so on.
 
       <item>by number of moves to disassemble: The solutions are sorted by
       the sum of all moves required to completely disassemble the puzzle.
     </enumerate-numeric>
 
     <with|font-family|ss|<item*|Drop>>If a puzzle has very many solutions it
-    might not be necessary to save all of them. E.g for polyomino-like
-    puzzles it might be nice to keep just every 1000 of the millions of
-    solutions to have a profile of the possible solutions. Here you can
-    specify every how many-th solution you want to keep. A 1 means you keep
-    every solution, a 100 means you keep the first and the 101st and the
-    201st and so on.
+    might not be possible or even necessary to save all of them. E.g for
+    polyomino-like puzzles it might be nice to keep just every 1000 of the
+    millions of solutions to have a profile of the possible solutions. Here
+    you can specify every how many-th solution you want to keep. A 1 means
+    you keep every solution, a 100 means you keep the first and the 101st and
+    the 201st and so on.
 
     <with|font-family|ss|<item*|Limit>>Limits the number of solutions to be
     saved. There will never be more than the specified amount of solutions in
@@ -2106,7 +2108,12 @@
       list is full the program starts to drop every 2nd solution is finds and
       only adds every 2nd solution to the list. But for each added solution
       it also removes every 2nd solution that already has been added to the
-      list.
+      list. After a while the list contains only every 2nd solution then the
+      program only adds every fourth solution and removes again every 2nd
+      solution in the list which result in only every fourth solution ending
+      in the list. This sounds complicated but what is does is that is makes
+      sure you have an nice crossection of all the solutions found until then
+      and not just the first or last.
     </enumerate-numeric>
   </description-compact>
 
@@ -2170,7 +2177,7 @@
 
   <subsubsection|Solver State Information><label|SolverInformation>
 
-  Probably more important is the <with|font-family|ss|<strong|Activity>> and
+  Probably most important is the <with|font-family|ss|<strong|Activity>> and
   result information provided by the solver. The
   <with|font-family|ss|Activity> line not only tells you what the solver is
   currently doing, but it also whether the solver can be interrupted or not.
@@ -2200,8 +2207,8 @@
 
     <item*|pause>A search was started and interrupted.
 
-    <item*|finished>The search was completed, all found solutions become
-    ordered by the total number of moves an can sequentially be inspected
+    <item*|finished>The search was completed, all found solutions, ordered by
+    the set up sorting criterium, can be inspected
     (<with|mode|math|\<vartriangleright\>><reference|InspectingResults>).
 
     <item*|please wait>The user wanted to stop the search, but the program
@@ -2288,12 +2295,14 @@
   on completing the search resetting the scrollbar for browsing the solutions
   may be needed to show the solutions properly ordered.
 
-  This panel has three components: a scrollbar
-  (<with|font-family|ss|<strong|>>) to browse the different solutions, a
-  second scrollbar (<with|font-family|ss|<strong|Move>>) to view the moves
-  involved in the disassembly and a list of all instances of the pieces in
-  the puzzle problem, which allows you to alter the visibility of particular
-  pieces in the solution(s).
+  This panel has four components: a scrollbar
+  (<with|font-family|ss|<strong|Solution>><with|font-family|ss|<strong|>>) to
+  browse the different solutions, a second scrollbar
+  (<with|font-family|ss|<strong|Move>>) to view the moves involved in the
+  disassembly, an array of buttons with very short labels to organize the
+  solution list and a list of all instances of the pieces in the puzzle
+  problem, which allows you to alter the visibility of particular pieces in
+  the solution(s).
 
   <subsection|Selecting Solutions and Animating Disassemblies>
 
@@ -2301,9 +2310,11 @@
   (<with|font-family|ss|<strong|Solution>>) any solution from the list can be
   selected as is indicated by its number in the text box left of the it.
   Above the scrollbar there is an indication of the total number of solutions
-  already found. When the scrollbar is active it can also be controlled by
-  the <with|font-family|tt|[Left]> and <with|font-family|tt|[Right]> cursor
-  keys.
+  in the list. When the scrollbar is active it can also be controlled by the
+  <with|font-family|tt|[Left]> and <with|font-family|tt|[Right]> cursor keys.
+  Keep in mind that the number of solutions in the list may be different from
+  the real number of solutions. The correct number of solutions for the
+  problem is shown in the solver progress section.
 
   The second scrollbar (<strong|<with|font-family|ss|Move>>) also has a text
   box on the left, this time reflecting the stage of disassembly (i.e. the
@@ -2314,8 +2325,8 @@
   by the <with|font-family|tt|[Left]> and <with|font-family|tt|[Right]>
   cursor keys. Above this scrollbar the <em|total> number of moves required
   for the disassembly is shown followed by the level(s) of the selected
-  solution. Note that this scrollbar is only visible for searches which have
-  the <with|font-family|ss|Solve Disassembly> option checked.
+  solution. Note that this scrollbar is only visible for solutions which have
+  disassembly instructions available.
 
   The position of the <with|font-family|ss|Move> scrollbar isn't affected by
   selecting any other solution and thus allows easily comparing the different
@@ -2326,19 +2337,19 @@
   assembly number and the second is the solution number. Both numbers define
   when a solution was found. The first found assembly gets assembly number
   one. But that one might not be disassembable so it gets thrown away. The
-  second found assembly gets assembly number one and if it is also
+  second found assembly gets assembly number two and if it is also
   disassembable it gets solution number 1. So you will see assembly 2 and
   solution 1 in these 2 fields for the given example.
 
   <subsection|Handling Solutions>
 
   The big button group below the Solution selector and animator lets you
-  modify the solutions. Be careful with these buttons while the solver is
-  running. Strange things might happen.
+  modify the solutions. They are only activated when no solver is running.
 
-  In the first row you can resort the found solutions by the same criteria as
-  you can select for the solver. You can sort them in the order they were
-  found (unsorted) or by level or by sum of moves to completely disassemble.
+  With the buttons in the first row you can resort the found solutions by the
+  same criteria as you can select for the solver. You can sort them in the
+  order they were found (unsorted) or by level or by sum of moves to
+  completely disassemble.
 
   The second row buttons allows the deletion of certain solutions from the
   list.
