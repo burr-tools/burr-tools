@@ -35,7 +35,7 @@ EXTRA_DIST = doc/UserGuide.tm doc/UserGuide.pdf \
              doc/Pics/Emulation_2Layer.png \
              doc/Pics/Emulation_DiagonalCut.png \
              doc/Pics/Emulation_Pagoda2.png \
-             doc/Pics/Emulation_Pagoda.jpg \
+             doc/Pics/Emulation_Pagoda.png \
              examples/README.TXT examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle \
              examples/PelikanBurr.xmpuzzle examples/CubeInCage.xmpuzzle examples/Bermuda.xmpuzzle \
              examples/BallRoom.xmpuzzle
