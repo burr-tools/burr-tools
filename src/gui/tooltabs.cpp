@@ -23,6 +23,7 @@
 #include "WindowWidgets.h"
 #include "guigridtype.h"
 
+#include "FL/fl_ask.H"
 
 // the transform group
 class TransformButtons : public layouter_c {
@@ -771,35 +772,9 @@ void ToolTab_1::cb_transform(long task) {
 
     if (task == 26) {
 
-      unsigned char primes[] = {2, 3, 5, 7, 11, 13, 17, 19, 0};
-
-      // special case for minimisation
-
-      int prime = 0;
-
-      while (primes[prime]) {
-
-        bool canScale = true;
-
-        for (int s = ss; s < se; s++)
-          if (!puzzle->getShape(s)->scaleDown(primes[prime], false)) {
-            canScale = false;
-            break;
-          }
-
-        if (canScale) {
-          for (int s = ss; s < se; s++)
-            puzzle->getShape(s)->scaleDown(primes[prime], true);
-        } else
-          prime++;
-      }
-
-      for (int s = ss; s < se; s++)
-        puzzle->getShape(s)->initHotspot();
-
-      do_callback(this, user_data());
-
+      fl_message("Sorry this is not yet implemented!");
       return;
+
     }
 
     for (int s = ss; s < se; s++) {
