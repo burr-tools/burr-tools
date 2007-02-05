@@ -173,8 +173,6 @@ bool voxel_1_c::transform(unsigned int nr) {
         }
 
   // calculate the new hotspot position
-  bt_assert(((hx+hy+hz) & 1) == 0);
-
   double xp = 0.5 +  hx * 0.5;
   double yp = hy * sqrt(0.75);
   double zp = hz;
