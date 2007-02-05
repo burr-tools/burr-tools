@@ -759,7 +759,8 @@ void stlExport_c::exportSTL(int shape)
     return;
   }
 
-  fprintf(fp,"solid %s\n",Fname->value());
+  int cost = (int)ceilf((float)(v->count(voxel_c::VX_FILLED))*cube_scale*cube_scale*cube_scale / 1000.0);
+  fprintf(fp,"solid %s_%d\n",Fname->value(),cost);
   for (x=0; x<=xsize; x++)
     for (y=0; y<=ysize; y++)
       for (z=0; z<=zsize; z++)
