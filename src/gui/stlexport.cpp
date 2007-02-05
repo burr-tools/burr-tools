@@ -737,6 +737,16 @@ void stlExport_c::exportSTL(int shape)
     return;
   }
 
+  if (shrink < 0) {
+    fl_message("Offset cannot be negative!");
+    return;
+  }
+
+  if (bevel < 0) {
+    fl_message("Bevel cannot be negative!");
+    return;
+  }
+
   if (cube_scale < (2*bevel + 2*shrink)) {
     fl_message("Cube size too small for given bevel and offset!");
     return;
