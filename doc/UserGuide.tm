@@ -2615,7 +2615,15 @@
     <item>Create a debug window to make it possible to find out why there is
     no assembly or why an assembly can not be taken apart.
 
-    <item>Speed improvements.<next-line>
+    <item>Speed improvements.
+
+    <item>''Unificator'' a tool that makes it easy to check the results of
+    adding color constraints. For example: suppose you have designed a puzzle
+    with one interesting solutions and many uninteresting and you want now,
+    by adding color constrains, make that one solution unique. It can be a
+    labor intensive task to do that. The unificator would help here by
+    quickly showing the resulty of adding color here or making a piece that
+    color, ...<next-line>
   </itemize-dot>
 
   We would be very happy to get contributions from other people. After all
