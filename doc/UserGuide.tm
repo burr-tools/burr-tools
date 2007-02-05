@@ -474,8 +474,6 @@
   and there are also some functions that PuzzleSolver3D doesn't have. Below
   are the most prominent differences that need your attention:
 
-  \;
-
   <\enumerate-numeric>
     <item><name|BurrTools> doesn't handle holes automatically as
     <name|PuzzleSolver3D> does. This may at first sound like a disadvantage
@@ -539,7 +537,10 @@
   </with>
 
   When BurrTools is started for the very first time the GUI will look like
-  Figure <reference|FigureMainWindowStart> which shows the main window.
+  Figure<\float|float|tb>
+    <big-figure|<postscript|Pics/Window_StartUp.png|*5/8|*5/8||||>|<label|FigureMainWindowStart>The
+    main window on start-up>
+  </float> <reference|FigureMainWindowStart> which shows the main window.
   Although some small variations may occur depending on your operating
   system, screen resolution and display preferences settings. The GUI has
   four major parts. On top there is a <em|menu bar> that allows handling of
@@ -548,9 +549,6 @@
   presenting relevant information about the task at hand. In between there is
   a <em|tools section> on the left and a <em|3-<no-break>D viewport> on the
   right.
-
-  <big-figure|<postscript|Pics/Window_StartUp.png|*5/8|*5/8||||>|<label|FigureMainWindowStart>The
-  main window on start-up>
 
   <section|The BurrTools Menus>
 
@@ -600,8 +598,6 @@
   keyboard short cuts as indicated in the menus. Prior to executing most of
   these commands a warning (and option to cancel) is given whenever changes
   to the current design haven't been saved yet.
-
-  \;
 
   <\description-compact>
     <item*|<with|font-family|ss|New>>Starts a new design after removing all
@@ -666,15 +662,13 @@
   <subsection|The Configuration Menu><label|ConfigMenu>
 
   The <with|font-family|ss|<strong|Config>> item on the menu bar opens a new
-  window (Figure <reference|FigureConfig>) to set some options for the GUI.
-  These settings will be stored in a file that is either in your home
-  directory (<name|Unix>) or in your profile (<name|Windows>). The program
-  will use these settings each time it is started.
-
-  <big-figure|<postscript|Pics/Window_Config.png|*5/8|*5/8||||>|<label|FigureConfig>The
-  configuration window>
-
-  \;
+  window (Figure<\float|float|hf>
+    <big-figure|<postscript|Pics/Window_Config.png|*5/8|*5/8||||>|<label|FigureConfig>The
+    configuration window>
+  </float> <reference|FigureConfig>) to set some options for the GUI. These
+  settings will be stored in a file that is either in your home directory
+  (<name|Unix>) or in your profile (<name|Windows>). The program will use
+  these settings each time it is started.
 
   <\description-compact>
     <item*|<with|font-family|ss|Fade Out Pieces>>This option affects the way
@@ -757,20 +751,16 @@
   shapes but no colour constraints at all, reducing the size of all colour
   related controls and maximising those concerning shapes could be very
   advantageous. The panels on the tool tabs are separated by so called resize
-  handles (Figure <reference|FigureResize>). The separators that allow
-  resizing are easily recognised by a little bevelled square on their right
-  end. Hover your mouse pointer over the lines until it changes into an
-  up-down arrow, indicating that you can drag the separator up or down to
-  resize the panel.\ 
+  handles (Figure<\float|float|tbh>
+    <big-figure|<postscript|Pics/SizeBar.png|*5/8|*5/8||||>|<label|FigureResize>Resize
+    handles>
+  </float> <reference|FigureResize>). The separators that allow resizing are
+  easily recognised by a little bevelled square on their right end. Hover
+  your mouse pointer over the lines until it changes into an up-down arrow,
+  indicating that you can drag the separator up or down to resize the panel.
 
-  \;
-
-  <\big-figure>
-    <postscript|Pics/SizeBar.png|*5/8|*5/8||||>
-  </big-figure|<label|FigureResize>Resize handles>
-
-  <no-indent>Note that each section has a minimum size. It is not possible to
-  make it smaller than that minimum size.
+  Note that each section has a minimum size. It is not possible to make it
+  smaller than that minimum size.
 
   <section|The 3-<no-break>D Viewer>
 
@@ -808,14 +798,14 @@
   separated in space. The solver certainly won't bother... but how these
   shapes could be crafted in the workshop is beyond the scope of the program.
 
-  <big-figure|<postscript|Pics/Window_DDD_0.png|*5/8|*5/8||||>|<label|FigureEntitiesTab>Creating
-  shapes on the Entities tab>
-
   All functions and tools for creating and editing shapes - once the grid
   type is set - are located on the <with|font-family|ss|<strong|Entities>>
   tab (shapes are the <em|physical> <em|entities> that can make a puzzle when
   subjected to certain rules) which has - from top to bottom - three main
-  sections (Figure <reference|FigureEntitiesTab>):
+  sections (Figure<\float|float|tbh>
+    <big-figure|<postscript|Pics/Window_DDD_0.png|*5/8|*5/8||||>|<label|FigureEntitiesTab>Creating
+    shapes on the Entities tab>
+  </float> <reference|FigureEntitiesTab>):
 
   <with|font-series|medium|<\description-compact>
     <item*|The <with|font-family|ss|Shapes> panel>This section is mainly a
@@ -914,16 +904,16 @@
   theoretically 3-<no-break>D space is unlimited in size, it's convenient
   somehow to be able to define a more feasible subspace to work with. This,
   and some more advanced scalings of the shapes, can be accomplished with the
-  functions on the <with|font-family|ss|<strong|Size>> subtab (Figure
-  <reference|FigureSizeSubtab>) of the <with|font-family|ss|<strong|Edit>>
-  panel.
+  functions on the <with|font-family|ss|<strong|Size>> subtab
+  (Figure<\float|float|tbh>
+    <big-figure|<postscript|Pics/Subtab_Size.png|*5/8|*5/8||||>|<label|FigureSizeSubtab>Grid
+    and scaling functions>
+  </float> <reference|FigureSizeSubtab>) of the
+  <with|font-family|ss|<strong|Edit>> panel.
 
   Note that the tab might look slightly different for different gridtypes.
   For example the sphere grid doesn't have the shape buttons as those are
   useless with this grid.
-
-  <big-figure|<postscript|Pics/Subtab_Size.png|*5/8|*5/8||||>|<label|FigureSizeSubtab>Grid
-  and scaling functions>
 
   <subsection|Adjusting the Grid Size><label|AdjustingGridSize>
 
@@ -1065,16 +1055,15 @@
     be build becomes accessible on the <with|font-family|ss|<strong|Edit>>
     panel. Basically one needs only three tools to create any shape, but some
     more features are added to make life easy. All these are on the toolbar
-    right above the 2-<no-break>D grid (Figure
-    <reference|FigureToolbarGrid>). The first four buttons are the <em|basic
-    drawing tools> and <em|colouring tool>. These are all toggle buttons,
-    meaning that enabling one will disable the others. They affect the
-    presence and/or the state and colour of the voxels by clicking in, or
+    right above the 2-<no-break>D grid (Figure<\float|float|bhft>
+      <big-figure|<postscript|Pics/ToolbarGrid.png|*5/8|*5/8||||>|<label|FigureToolbarGrid>Toolbar
+      and 2-D grid>
+    </float> <reference|FigureToolbarGrid>). The first four buttons are the
+    <em|basic drawing tools> and <em|colouring tool>. These are all toggle
+    buttons, meaning that enabling one will disable the others. They affect
+    the presence and/or the state and colour of the voxels by clicking in, or
     dragging over the cells in the 2-<no-break>D grid.
   </with>
-
-  <big-figure|<postscript|Pics/ToolbarGrid.png|*5/8|*5/8||||>|<label|FigureToolbarGrid>Toolbar
-  and 2-D grid>
 
   Next come two toggle buttons that allow you to select the <em|drawing
   style>. This is the way the basic drawing tools will respond to dragging
@@ -1097,13 +1086,12 @@
   number of z-<no-break>layers is always indicated with the proper number of
   ticks along the scrollbar). Another way to navigate these
   z-<no-break>layers is by pressing <with|font-family|tt|[+]> (moves up one
-  layer) or <with|font-family|tt|[-]> (moves down one layer) on the keyboard.
-
-  <\with|par-par-sep|0>
+  layer) or <with|font-family|tt|[-]> (moves down one layer) on the
+  keyboard.<\float|float|tbhf>
     <big-figure|<postscript|Pics/NavigationA.png|*5/8|*5/8||||>
     \ \ \ \ <postscript|Pics/NavigationB.png|*5/8|*5/8||||>|<label|FigureNavigation>Selections
     of grid cells in 2-<no-break>D an 3-<no-break>D>
-  </with>
+  </float>
 
   Moving the mouse cursor over the 2-<no-break>D grid gives an indication of
   the cell(s) - depending on the state of the compound drawing tools - that
@@ -1180,7 +1168,7 @@
 
   <no-indent>The status of these drawing styles is remembered by
   <name|BurrTools> so that it always defaults to the drawing style that was
-  active on the last shut down of the program.<new-line>
+  active on the last shut down of the program.
 
   <subsection|Compound Drawing Tools><label|CompoundDrawing>
 
@@ -1224,15 +1212,14 @@
   certain positions of particular pieces in the assembly. These
   <em|constraining> techniques can be very useful to pursue a unique solution
   for a puzzle design. Of course one can try to achieve both the aesthetic
-  and constraining goals at the same time. Figure
-  <reference|FigureCustomColours> shows an example of <name|Dracula's Dental
-  Disaster> (Ronald Kint-Bruynseels) in which colours serve both. The red and
-  black voxels are meant to impose constraints on the placements of the
-  pieces, whereas the white colour of the parts on the inside of the pieces
-  is only used to make them look nice.
-
-  <big-figure|<postscript|Pics/Window_DDD_1.png|*5/8|*5/8||||>|<label|FigureCustomColours>A
-  shape with custom colours>
+  and constraining goals at the same time. Figure<\float|float|tbf>
+    <big-figure|<postscript|Pics/Window_DDD_1.png|*5/8|*5/8||||>|<label|FigureCustomColours>A
+    shape with custom colours>
+  </float> <reference|FigureCustomColours> shows an example of
+  <name|Dracula's Dental Disaster> (Ronald Kint-Bruynseels) in which colours
+  serve both. The red and black voxels are meant to impose constraints on the
+  placements of the pieces, whereas the white colour of the parts on the
+  inside of the pieces is only used to make them look nice.
 
   <subsection|The Neutral Colour and Custom Colours >
 
@@ -1308,22 +1295,20 @@
   Voxels can either be fixed or variable and each of these can come with or
   without an additional custom colour. In <name|BurrTools> all of these have
   their own specific representations in the 2-<no-break>D grid as well as in
-  the 3-<no-break>D viewport. Figure <reference|FigureRepresentations> shows
-  an overview of these. In this picture the neutral colour is red (= shape
-  S3) and the custom colour is green (RGB = 0.600, 0.753, 0).
+  the 3-<no-break>D viewport. Figure<\float|float|tbh>
+    <\big-figure>
+      <postscript|Pics/RepresentationA.png|*5/8|*5/8||||>
+      \ \ \ \ <postscript|Pics/RepresentationC.png|*5/8|*5/8||||>
+      \ \ \ \ <postscript|Pics/RepresentationE.png|*5/8|*5/8||||>
 
-  <\big-figure>
-    <postscript|Pics/RepresentationA.png|*5/8|*5/8||||>
-    \ \ \ \ <postscript|Pics/RepresentationC.png|*5/8|*5/8||||>
-    \ \ \ \ <postscript|Pics/RepresentationE.png|*5/8|*5/8||||>
-
-    <postscript|Pics/RepresentationB.png|*5/8|*5/8||||>
-    \ \ \ \ <postscript|Pics/RepresentationD.png|*5/8|*5/8||||>
-    \ \ \ \ <postscript|Pics/RepresentationF.png|*5/8|*5/8||||>
-  <|big-figure>
-    <label|FigureRepresentations>Representations in 2-<no-break>D and
-    3-<no-break>D
-  </big-figure>
+      <postscript|Pics/RepresentationB.png|*5/8|*5/8||||>
+      \ \ \ \ <postscript|Pics/RepresentationD.png|*5/8|*5/8||||>
+      \ \ \ \ <postscript|Pics/RepresentationF.png|*5/8|*5/8||||>
+    </big-figure|<label|FigureRepresentations>Representations in
+    2-<no-break>D and 3-<no-break>D>
+  </float> <reference|FigureRepresentations> shows an overview of these. In
+  this picture the neutral colour is red (= shape S3) and the custom colour
+  is green (RGB = 0.600, 0.753, 0).
 
   Fixed voxels always fill the cell completely in the 2-<no-break>D grid as
   well as in the 3-<no-break>D grid. In all the pictures of Figure
@@ -1350,19 +1335,20 @@
   <name|BurrTools> comes with a set of functions that help you adjust the
   position and orientation of the shapes. These functions are grouped on the
   <with|font-family|ss|<strong|Transform>> subtab of the
-  <strong|<with|font-family|ss|Edit>> panel (Figure
-  <reference|FigureTransformationTools>). The first thing to see is that the
-  transform tab looks quite different for all 3 available gridtypes. On the
-  top of the figure you see the tab for cubes, blow for the triangles and at
-  the bottom for spheres.
+  <strong|<with|font-family|ss|Edit>> panel (Figure<\float|float|tb>
+    <\big-figure>
+      <postscript|Pics/Subtab_TransformA.png|*5/8|*5/8||||>
 
-  <\big-figure>
-    <postscript|Pics/Subtab_TransformA.png|*5/8|*5/8||||>
+      <postscript|Pics/Subtab_TransformB.png|*5/8|*5/8||||>
 
-    <postscript|Pics/Subtab_TransformB.png|*5/8|*5/8||||>
+      <postscript|Pics/Subtab_TransformC.png|*5/8|*5/8||||>
+    </big-figure|<label|FigureTransformationTools>Transformation tools>
+  </float> <reference|FigureTransformationTools>). The first thing to see is
+  that the transform tab looks quite different for all 3 available gridtypes.
+  On the top of the figure you see the tab for cubes, blow for the triangles
+  and at the bottom for spheres.
 
-    <postscript|Pics/Subtab_TransformC.png|*5/8|*5/8||||>
-  </big-figure|<label|FigureTransformationTools>Transformation tools>
+  \;
 
   <tabular|<tformat|<cwith|1|3|1|2|cell-hyphen|t>|<cwith|1|3|2|2|cell-valign|t>|<cwith|1|3|1|1|cell-valign|t>|<cwith|1|3|1|1|cell-halign|r>|<cwith|1|3|2|2|cell-width|13cm>|<cwith|1|3|1|1|cell-width|2cm>|<cwith|1|1|1|1|cell-width|2cm>|<table|<row|<cell|<postscript|Pics/Button_Transform_Flip_X.png|*5/8|*5/8||||><line-break><postscript|Pics/Button_Transform_Flip_Y.png|*5/8|*5/8||||><line-break><postscript|Pics/Button_Transform_Flip_Z.png|*5/8|*5/8||||>>|<cell|<strong|Flip
   -> These 'three' functions are merely <em|one single mirroring tool> and
@@ -1396,12 +1382,11 @@
 
   <section|Miscellaneous Editing Tools>
 
-  The <with|font-family|ss|<strong|Tools>> subtab (Figure
-  <reference|FigureTools>) offers extra editing tools. Currently only some
-  constraint related tools are available.
-
-  <big-figure|<postscript|Pics/Subtab_Tools.png|*5/8|*5/8||||>|<label|FigureTools>Extra
-  editing tools>
+  The <with|font-family|ss|<strong|Tools>> subtab (Figure<\float|float|tbf>
+    <big-figure|<postscript|Pics/Subtab_Tools.png|*5/8|*5/8||||>|<label|FigureTools>Extra
+    editing tools>
+  </float> <reference|FigureTools>) offers extra editing tools. Currently
+  only some constraint related tools are available.
 
   <subsection|Constraining Tools><label|ChapterConstrainingTools>
 
@@ -1411,8 +1396,6 @@
   the inside are voxels that have another voxel adjacent to <em|all> of their
   faces. Consequently, outside voxels have at least one empty voxel
   neighbouring.
-
-  \;
 
   <tabular|<tformat|<cwith|1|1|2|2|cell-hyphen|t>|<cwith|1|1|1|1|cell-valign|t>|<cwith|1|1|1|1|cell-halign|r>|<cwith|2|2|1|1|cell-valign|t>|<cwith|2|2|1|1|cell-halign|r>|<cwith|3|3|1|1|cell-valign|t>|<cwith|3|3|1|1|cell-halign|r>|<cwith|2|2|2|2|cell-hyphen|t>|<cwith|3|3|2|2|cell-hyphen|t>|<cwith|1|3|2|2|cell-valign|t>|<cwith|1|1|2|2|cell-width|13cm>|<cwith|1|1|1|1|cell-width|2cm>|<table|<row|<cell|<postscript|Pics/Button_Constraints_Fixed.png|*5/8|*5/8||||>>|<cell|<strong|Fixed
   Inside/Outside -> These functions allow you to change the state of the
@@ -1435,8 +1418,6 @@
   the colour constraints are only relevant to the overall appearance of the
   puzzle. >>>>>
 
-  \;
-
   <section|Managing Shapes and Colours>
 
   Currently only the shapes can be rearranged with the left and right arrow
@@ -1445,14 +1426,13 @@
 
   <section|Shape Information><label|ChapterStatus>
 
-  <big-figure|<postscript|Pics/Window_Status.png|*5/8|*5/8||||>|>
-
-  \;
-
   When using the main menu entry <with|font-family|ss|<strong|Status>> a
-  window like the one above opens and displays all kinds of information about
-  all the shapes available inside the puzzle. The table columns have the
-  following meanings:
+  window (Figure<\float|float|tb>
+    <big-figure|<postscript|Pics/Window_Status.png|*5/8|*5/8||||>|<label|WindowStatus>The
+    Status window>
+  </float> <reference|WindowStatus>) like the one above opens and displays
+  all kinds of information about all the shapes available inside the puzzle.
+  The table columns have the following meanings:
 
   <\description-compact>
     <item*|Units Normal>Contains the number of voxels inside the shape that
@@ -1509,8 +1489,6 @@
   </description-compact>
 
   <section|Tips and Tricks>
-
-  \;
 
   Below are some tips and tricks that can be useful to simplify your designs,
   speed up the designing and/or solving process, or can be used as
@@ -1604,10 +1582,10 @@
 
   <subsection|Two-Sided Pieces>
 
-  <big-figure|<postscript|Pics/Emulation_2Layer.png|*7/8|*7/8||||>|Emulate 2
-  Sided Piece>
-
-  If you have pieces that have a top and a bottom there are several
+  <\float|float|tbhf>
+    <big-figure|<postscript|Pics/Emulation_2Layer.png|*7/8|*7/8||||>|Emulate
+    2 Sided Piece<label|Emul2Sided>>
+  </float>If you have pieces that have a top and a bottom there are several
   possibilities to model that in <name|BurrTools>. One possibility is to use
   colours. Make the piece and the result 2 layers thick. The bottom layer of
   both will get a special colour.
@@ -1616,19 +1594,20 @@
   certain places as seen in the picture. The additional voxel prevents the
   rotation of the shape. But you have to make sure that the allowed rotations
   are still possible, e.g. if you place the notches in different places
-  rotation around the z-axis is also no longer possible.
+  rotation around the z-axis is also no longer possible. An example can be
+  seen in Figure <reference|Emul2Sided>
 
   <subsection|Diagonally Cut Cubes and Squares>
 
-  <big-figure|<postscript|Pics/Emulation_DiagonalCut.png|*7/8|*7/8||||>|Diagonally
-  cut cube>
-
   Cubes can be cut in many different ways, the cut that results in shapes
-  such as given above can be emulated\ 
+  such as given in Figure <\float|float|tbh>
+    <big-figure|<postscript|Pics/Emulation_DiagonalCut.png|*7/8|*7/8||||>|<label|EmulDiagCut>Diagonally
+    cut cube>
+  </float> <reference|EmulDiagCut> can be emulated using cubes as seen in the
+  image.
 
   It is, of course, also possible to simulate diagonally cut squares this
-  way. The squared need to be 2 layers thick and be really cubes, but that is
-  all there is to it.
+  way. The squares need to be 2 layers thick.
 
   <subsection|Cairos>
 
@@ -1643,17 +1622,17 @@
 
   <subsection|Other possibilities>
 
-  <big-figure|<postscript|Pics/Emulation_Pagoda.png|*6/8|*6/8||||>|The Knit
-  Pagoda>
-
   There are many other shapes that can be emulated. As one example I will
-  show 2 ways to emulate William Waites <name|Knit Pagoda>. The puzzle can be
-  seen in the image. Additionally to the shape the pieces have an upside and
-  a bottom. The next figure shows 2 possible ways to emulate these pieces.
-  Both shapes emulate the T-shaped piece seen on the right bottom.
-
-  <big-figure|<postscript|Pics/Emulation_Pagoda2.png|*7/8|*7/8||||>|Emulation
-  for one of the <name|Knit Pagoda> Pieces>
+  show 2 ways to emulate William Waites <name|Knit Pagoda> (see
+  Figure<\float|float|tbh>
+    <big-figure|<postscript|Pics/Emulation_Pagoda.png|*6/8|*6/8||||>|<label|EmulPagoda1>The
+    Knit Pagoda>
+  </float> <reference|EmulPagoda1>). Additionally to the shape the pieces
+  have an upside and a bottom. Figure<\float|float|tbh>
+    <big-figure|<postscript|Pics/Emulation_Pagoda2.png|*7/8|*7/8||||>|<label|EmulPagoda2>Emulation
+    for one of the <name|Knit Pagoda> Pieces>
+  </float> <reference|EmulPagoda2> shows 2 possible ways to emulate these
+  pieces. Both shapes emulate the T-shaped piece seen on the right bottom.
 
   It is quite easy to see that the pink shape working. It is constructed
   starting with a 3x3x1 square and adding a cube at the centre of one shape
@@ -1684,12 +1663,12 @@
 
   As stated before, a puzzle can be a collection of problems, either simple,
   complex or a mixture of both. The <with|font-family|ss|<strong|Puzzle>> tab
-  (Figure <reference|FigurePuzzleTab>) provides all the tools needed to build
-  a variety of puzzle problems that are suited for the
+  (Figure<\float|float|tb>
+    <big-figure|<postscript|Pics/Window_DDD_2.png|*5/8|*5/8||||>|<label|FigurePuzzleTab>Defining
+    problems on the Puzzle tab>
+  </float> <reference|FigurePuzzleTab>) provides all the tools needed to
+  build a variety of puzzle problems that are suited for the
   <with|font-family|ss|Solver>.
-
-  <big-figure|<postscript|Pics/Window_DDD_2.png|*5/8|*5/8||||>|<label|FigurePuzzleTab>Defining
-  problems on the Puzzle tab>
 
   <section|Defining Simple Problems>
 
@@ -1719,9 +1698,6 @@
   counterparts on the <with|font-family|ss|Entities> tab and need no further
   explanation here.
 
-  <big-figure|<postscript|Pics/Window_Clarissa.png|*5/8|*5/8||||>|<label|FigureSimplePuzzleProblem>A
-  simple puzzle problem with multipieces>
-
   <subsection|Piece Assignment><label|PieceAssignment>
 
   Until now we dealt with shapes as rather abstract concepts. Only by
@@ -1732,8 +1708,11 @@
   distinction is made between shapes and pieces, it's not necessary that all
   shapes are used in a single problem or in any problem at all.
 
-  Although not mandatory, it's probably best to assign the result shape
-  first: select the appropriate shape and click
+  <\float|float|tb>
+    <big-figure|<postscript|Pics/Window_Clarissa.png|*5/8|*5/8||||>|<label|FigureSimplePuzzleProblem>A
+    simple puzzle problem with multipieces>
+  </float>Although not mandatory, it's probably best to assign the result
+  shape first: select the appropriate shape and click
   <with|font-family|ss|<strong|Set Result>>. The result shape is then
   depicted in the top left part of the 3-<no-break>D viewport (which also
   shows a smaller example of the currently selected shape) and the status
@@ -1767,7 +1746,7 @@
   Whenever the total number of cubes in the pieces is within the boundaries
   set by the result shape (which can be inspected on the status line) this
   kind of simple puzzle problems can be taken to the solver. Note that the
-  solver won't run when one or more pieces contain any variable voxels.\ 
+  solver won't run when one or more pieces contain any variable voxels.
 
   <section|Grouping Pieces>
 
@@ -1852,7 +1831,7 @@
   in Group-<no-break>2 when S<em|a> and S<em|c> cannot let go from each
   other. In both cases the solver will report a valid disassembly. However,
   if S<em|b> and S<em|c> are entangled the solver is not able to find a valid
-  disassembly
+  disassembly.
 
   <subsubsection|Grouping Multipieces>
 
@@ -1929,17 +1908,16 @@
 
   Although the above may sound complicated, implementing piece groups is
   actually very simple. All actions take place in the
-  <with|font-family|ss|<strong|Group Editor>> (Figure
-  <reference|FigureGroupEditor>) which becomes activated by clicking the
-  <with|font-family|ss|<strong|Group>> button. Initially the
+  <with|font-family|ss|<strong|Group Editor>> (Figure<\float|float|tbh>
+    <big-figure|<postscript|Pics/Form_Group_Editor.png|*5/8|*5/8||||>|<label|FigureGroupEditor>The
+    Group Editor>
+  </float> <reference|FigureGroupEditor>) which becomes activated by clicking
+  the <with|font-family|ss|<strong|Group>> button. Initially the
   <with|font-family|ss|Group Editor> shows a tabulated overview of the pieces
   used in the problem. The first column (<with|font-family|ss|Shape>) lists
   the pieces by their prefix and name, the second (<with|font-family|ss|n>)
   enumerates the instances of each. Note that it is possible to add or remove
   instances by changing these <with|font-family|ss|n>-values.
-
-  <big-figure|<postscript|Pics/Form_Group_Editor.png|*5/8|*5/8||||>|<label|FigureGroupEditor>The
-  Group Editor>
 
   Creating piece groups is straightforward as the
   <with|font-family|ss|<strong|Add Group>> button simply adds a new group to
@@ -1956,26 +1934,26 @@
 
   <section|Setting Colour Constraints><label|ColourConstraints>
 
-  The <strong|<with|font-family|ss|Colour Assignment>> panel (Figure
-  <reference|FigureColourAssignment>) also has two lists. The first one shows
-  all the available custom colours and allows selecting a certain colour for
-  which then some relations can be set. These relations simply indicate which
-  colour(s) in the result can accommodate for which colour(s) in the pieces.
-  By allowing certain combinations (which is in fact prohibiting all other
-  combinations) constraints are imposed on the theoretically possible
-  placements of the pieces. These relationships are shown and constructed in
-  the second list. This list has three columns of which the first shows the
-  'piece colours', the last shows the 'result colours' and the one in between
-  clearly depicts the relationships by a series of arrows pointing from the
-  piece colours to the result colours. The list is either sorted by the piece
-  colours or by the result colours. The buttons
-  <with|font-family|ss|<strong|Sort by Piece>> and
+  The <strong|<with|font-family|ss|Colour Assignment>> panel
+  (Figure<\float|float|tbf>
+    <big-figure|<postscript|Pics/Panel_Colour_Assignment_A.png|*5/8|*5/8||||>
+    \ \ \ \ <postscript|Pics/Panel_Colour_Assignment_B.png|*5/8|*5/8||||>|<label|FigureColourAssignment>Colour
+    assignment>
+  </float> <reference|FigureColourAssignment>) also has two lists. The first
+  one shows all the available custom colours and allows selecting a certain
+  colour for which then some relations can be set. These relations simply
+  indicate which colour(s) in the result can accommodate for which colour(s)
+  in the pieces. By allowing certain combinations (which is in fact
+  prohibiting all other combinations) constraints are imposed on the
+  theoretically possible placements of the pieces. These relationships are
+  shown and constructed in the second list. This list has three columns of
+  which the first shows the 'piece colours', the last shows the 'result
+  colours' and the one in between clearly depicts the relationships by a
+  series of arrows pointing from the piece colours to the result colours. The
+  list is either sorted by the piece colours or by the result colours. The
+  buttons <with|font-family|ss|<strong|Sort by Piece>> and
   <with|font-family|ss|<strong|Sort by Result>> switch between these two
   views.
-
-  <big-figure|<postscript|Pics/Panel_Colour_Assignment_A.png|*5/8|*5/8||||>
-  \ \ \ \ <postscript|Pics/Panel_Colour_Assignment_B.png|*5/8|*5/8||||>|<label|FigureColourAssignment>Colour
-  assignment>
 
   When <em|sorted by piece> (the left part of Figure
   <reference|FigureColourAssignment>), the bottom list is showing you that
@@ -2017,19 +1995,19 @@
   other software is no doubt even better suited for.
 
   Solving puzzles is very straightforward with BurrTools even if the
-  <with|font-family|ss|<strong|Solver>> tab (Figure <reference|FigureSolver>)
-  has quite a some controls. On top there is the
-  <with|font-family|ss|Parameters> panel, that contains a list allowing you
-  to select a specific problem to be solved, provides option settings for the
-  solver and has a series of buttons to direct the solving process. Finally,
-  some information of the ongoing solving process is presented.
+  <with|font-family|ss|<strong|Solver>> tab (Figure<\float|float|tbf>
+    <big-figure|<postscript|Pics/Window_DDD_3.png|*5/8|*5/8||||>|<label|FigureSolver>Solving
+    puzzles>
+  </float> <reference|FigureSolver>) has quite a some controls. On top there
+  is the <with|font-family|ss|Parameters> panel, that contains a list
+  allowing you to select a specific problem to be solved, provides option
+  settings for the solver and has a series of buttons to direct the solving
+  process. Finally, some information of the ongoing solving process is
+  presented.
 
   A second panel (<with|font-family|ss|Solutions>) has the tools to browse
   the different solutions found, animate the moves to disassemble the puzzle
   to <em|inspect> the solutions in detail and to organize found solutions.
-
-  <big-figure|<postscript|Pics/Window_DDD_3.png|*5/8|*5/8||||>|<label|FigureSolver>Solving
-  puzzles>
 
   <section|Solver Settings>
 
@@ -2155,8 +2133,10 @@
   When the solver is running it provides a lot of information about its
   current state (what it is doing) and an estimate of the time it will need
   to finish the search. All this information is presented on six lines
-  immediately below the solver control buttons (Figure
-  <reference|FigureSolverInformation>).
+  immediately below the solver control buttons (Figure<\float|float|tbh>
+    <big-figure|<postscript|Pics/SolverProgress.png|*5/8|*5/8||||>|<label|FigureSolverInformation>The
+    solver information>
+  </float> <reference|FigureSolverInformation>).
 
   <subsubsection|Solver Progress Information>
 
@@ -2172,9 +2152,6 @@
   fluctuating as they are determined by the positions of previously placed
   pieces (<with|mode|math|\<vartriangleright\>><reference|BrowsingPlacements>).
 
-  <big-figure|<postscript|Pics/SolverProgress.png|*5/8|*5/8||||>|<label|FigureSolverInformation>The
-  solver information>
-
   <subsubsection|Solver State Information><label|SolverInformation>
 
   Probably most important is the <with|font-family|ss|<strong|Activity>> and
@@ -2182,8 +2159,6 @@
   <with|font-family|ss|Activity> line not only tells you what the solver is
   currently doing, but it also whether the solver can be interrupted or not.
   The following is an overview of the activities of the solver:
-
-  \ 
 
   <\description-compact>
     <item*|nothing>This indicates that the solver is ready to be started
@@ -2250,7 +2225,10 @@
   <section|Browsing Placements><label|BrowsingPlacements>
 
   The <strong|<with|font-family|ss|Browse Placements>> button opens a window
-  (Figure <reference|FigurePlacementBrowser>) that lets you examine the
+  (Figure<\float|float|tbh>
+    <big-figure|<postscript|Pics/Window_Placements.png|*5/8|*5/8||||>|<label|FigurePlacementBrowser>Placement
+    browser>
+  </float> <reference|FigurePlacementBrowser>) that lets you examine the
   positions for each piece that will by tried by the assembler. The
   placements displayed in this window are the possible positions left in the
   current state of the assembler. So if the assembler has placed a piece
@@ -2260,10 +2238,7 @@
   manual search (click the <with|font-family|ss|Prepare> button), stop the
   assembler before is starts to do anything (click <with|font-family|ss|Stop>
   while in preparation or optimisation stage) or you have to wait until the
-  assembler has finished its work.\ 
-
-  <big-figure|<postscript|Pics/Window_Placements.png|*5/8|*5/8||||>|<label|FigurePlacementBrowser>Placement
-  browser>
+  assembler has finished its work.
 
   The <strong|<with|font-family|ss|Placement Browser>> window (Figure
   <reference|FigurePlacementBrowser>) has a very simple layout and consist
@@ -2440,16 +2415,16 @@
 
   <section|Exporting Images><label|ExportingImages>
 
-  <\float|float|tbh>
+  The <with|font-family|ss|<strong|Export - Images>> entry on the menu opens
+  a window that allows you to export a portion of the current puzzle in to (a
+  list of) images (see Figure<\float|float|tbf>
     <big-figure|<postscript|Pics/Window_ImageExport.png|*4/8|*4/8||||>|<label|FigureImageExport>The
     image export window>
-  </float>The <with|font-family|ss|<strong|Export - Images>> entry on the
-  menu opens a window that allows you to export a portion of the current
-  puzzle in to (a list of) images (see Figure <reference|FigureImageExport>).
-  The window has a 3D view on the right and input elements that control what
-  is being created on the left. On the very bottom of these controls you can
-  select what you want to create images of. Depending on what is present in
-  the puzzle, the following things can be exported:
+  </float> <reference|FigureImageExport>). The window has a 3D view on the
+  right and input elements that control what is being created on the left. On
+  the very bottom of these controls you can select what you want to create
+  images of. Depending on what is present in the puzzle, the following things
+  can be exported:
 
   <\description-compact>
     <item*|Shape>An image of a single shape is created. You can select which
@@ -2547,12 +2522,12 @@
   can quickly fabricate prototypes of them.
 
   The main menu entry <with|font-family|ss|<strong|Export - STL>> opens the
-  window seen in figure <reference|stlexportwindow>. The window has shape
-  selector, a 3-<no-break>D view of the selected shape and some parameters
-  that control the created shapes.
-
-  <big-figure|<postscript|Pics/Window_StlExport.png|*4/8|*4/8||||>|<label|stlexportwindow>The
-  STL-Export window>
+  window seen in Figure<\float|float|tb>
+    <big-figure|<postscript|Pics/Window_StlExport.png|*4/8|*4/8||||>|<label|stlexportwindow>The
+    STL-Export window>
+  </float> <reference|stlexportwindow>. The window has shape selector, a
+  3-<no-break>D view of the selected shape and some parameters that control
+  the created shapes.
 
   <with|font-family|ss|<strong|Filename>> and
   <with|font-family|ss|<strong|Path>> control the name and position of the
@@ -2567,8 +2542,6 @@
   are not working. Also the shapes to export must not contain any variable
   voxels.
 
-  \;
-
   <\with|par-mode|right>
     <chapter|Future Plans>
   </with>
@@ -2577,8 +2550,6 @@
   in need of improvements) from the current program. A list of things that
   might be interesting to implement are the following:
 
-  \;
-
   <\itemize-dot>
     <item>Add some special algorithms that are faster for certain kind of
     puzzles. The current algorithm is quite good for nearly all puzzles, but
@@ -2586,7 +2557,7 @@
 
     <item>Add more colour constraint possibilities, e.g. edge matching, ...
 
-    <item>Add different space grids, or at least parameters to the cube grid
+    <item>Add different more space grids, add parameters to some grids
     (lengths and angles).
 
     <item>Add rotation checks to the disassembler.
@@ -3153,7 +3124,7 @@
   This algorithm is per se not dependent on square cubes it is not dependent
   on any shape. You only need to transfer your puzzle into the matrix. Even
   William Waites<\footnote>
-    see <verbatim|www.nemmelgebmurr.com>
+    see <verbatim|www.puzzlemist.com>
   </footnote> puzzles should be possible. But as the square and cubes are
   most common I have for now only implemented this transformation.
 
