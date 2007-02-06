@@ -42,7 +42,7 @@ class LFl_Line : public Fl_Box, public layoutable_c {
 
 static void cb_Close_stub(Fl_Widget* o, void* v) { ((statusWindow_c*)v)->hide(); }
 
-statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(false) {
+statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
 
   char tmp[200];
 
@@ -53,6 +53,8 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(false) {
 
   layouter_c * fr = new layouter_c(0, 0, 1, 1);
   fr->pitch(7);
+
+  (new LFl_Scroll(0, 0, 1, 1))->type(Fl_Scroll::VERTICAL_ALWAYS);
 
   for (unsigned int s = 0; s < p->shapeNumber(); s++) {
 
@@ -224,4 +226,7 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(false) {
   btn->pitch(7);
   btn->callback(cb_Close_stub, this);
   btn->box(FL_THIN_UP_BOX);
+
+  fr->setMinimumSize(10, 200);
+  fr->weight(1, 1);
 }
