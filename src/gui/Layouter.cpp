@@ -432,4 +432,36 @@ void LFl_Tabs::resize(int x, int y, int w, int h) {
 }
 
 
+void LFl_Scroll::getMinSize(int *width, int *height) const {
+
+  lay->getMinSize(width, height);
+
+  switch(type()) {
+    case Fl_Scroll::HORIZONTAL_ALWAYS: // - Horizontal scrollbar always on, vertical always off.
+    case Fl_Scroll::HORIZONTAL:// - Only a horizontal scrollbar.
+      *width = 30;
+      *height += 20;
+      break;
+    case Fl_Scroll::VERTICAL_ALWAYS: // - Vertical scrollbar always on, horizontal always off.
+    case Fl_Scroll::VERTICAL:// - Only a vertical scrollbar.
+      *height = 30;
+      *width += 20;
+      break;
+    case Fl_Scroll::BOTH_ALWAYS: // - Both always on.
+    case Fl_Scroll::BOTH: // - The default is both scrollbars.
+      *width = *height = 30;
+      break;
+  }
+}
+
+void LFl_Scroll::resize(int x, int y, int w, int h) {
+
+  int lw, lh;
+
+  lay->getMinSize(&lw, &lh);
+
+  lay->resize(lay->x(), lay->y(), lw, lh);
+
+  Fl_Scroll::resize(x, y, w, h);
+}
 

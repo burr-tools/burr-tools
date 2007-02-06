@@ -40,6 +40,7 @@
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Tabs.H>
 #include <FL/Fl_Menu_Bar.H>
+#include <FL/Fl_Scroll.H>
 
 #include <vector>
 
@@ -493,6 +494,26 @@ class LFl_Menu_Bar : public Fl_Menu_Bar, public layoutable_c {
       *width = 30;
       *height = 25;
     }
+};
+
+class LFl_Scroll : public Fl_Scroll, public layoutable_c {
+
+  private:
+
+    layouter_c * lay;
+
+  public:
+
+    LFl_Scroll(int x, int y, int w, int h) : Fl_Scroll(0, 0, 100, 100), layoutable_c(x, y, w, h) {
+
+      lay = new layouter_c();
+      lay->resize(0, 0, 200, 200);
+      resizable(lay);
+    }
+
+    void getMinSize(int *width, int *height) const;
+    void resize(int x, int y, int w, int h);
+
 };
 
 #endif
