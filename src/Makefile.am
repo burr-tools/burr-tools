@@ -1,4 +1,4 @@
-bin_PROGRAMS=tester burrTxt converter gui/burrGui
+bin_PROGRAMS=burrTxt gui/burrGui
 noinst_LIBRARIES=lib/libburr.a
 noinst_PROGRAMS=lib/tabs_0/generator_0 lib/tabs_1/generator_1 lib/tabs_2/generator_2
 
@@ -13,9 +13,7 @@ lib_tabs_0_generator_0_LDADD=
 lib_tabs_1_generator_1_LDADD=
 lib_tabs_2_generator_2_LDADD=
 
-tester_SOURCES=tester.cpp
 burrTxt_SOURCES=burrTxt.cpp
-converter_SOURCES=converter.cpp
 
 lib_libburr_a_SOURCES=\
     lib/assembler_0.cpp \
