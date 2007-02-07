@@ -143,7 +143,7 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val, FILE * o
     if (!(taken & (((unsigned long long)1) << t))) {
       b1 = 0;
       b2 = 0;
-      int lastfound;
+      int lastfound = 0;
       for (int s = 0; s < NUM_SYMMETRY_GROUPS; s++) {
         if ((symmetries[s] & taken) == val) {
           b1++;

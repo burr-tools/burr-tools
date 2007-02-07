@@ -137,7 +137,7 @@ symmetries_t symmetries_2_c::symmetryCalcuation(const voxel_c *pp) const {
 
   bt_assert(pp);
 
-  int i;
+  int i = 0;
   bitfield_c<NUM_TRANSFORMATIONS_MIRROR> s;
 
 #ifndef NDEBUG

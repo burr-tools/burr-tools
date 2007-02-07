@@ -54,9 +54,9 @@ const char * longlong2string(unsigned long long s) {
   return output;
 }
 
-unsigned char ssss(unsigned int trans, const bitfield_c<NUM_TRANSFORMATIONS_MIRROR> & s) {
-  for (unsigned char t = 0; t < trans; t++)
-    for (unsigned char t2 = 0; t2 < NUM_TRANSFORMATIONS_MIRROR; t2++)
+unsigned char ssss(int trans, const bitfield_c<NUM_TRANSFORMATIONS_MIRROR> & s) {
+  for (int t = 0; t < trans; t++)
+    for (int t2 = 0; t2 < NUM_TRANSFORMATIONS_MIRROR; t2++)
       if (s.get(t2)) {
 	int trrr = transMult[t2][t];
 	if (trrr == trans) {
@@ -156,7 +156,7 @@ void makeSymmetryTree(bitfield_c<NUM_TRANSFORMATIONS_MIRROR> taken,bitfield_c<NU
     if (!taken.get(t)) {
       b1 = 0;
       b2 = 0;
-      int lastfound;
+      int lastfound = 0;
       for (int s = 0; s < NUM_SYMMETRY_GROUPS; s++) {
         if ((symmetries[s] & taken) == val) {
           b1++;

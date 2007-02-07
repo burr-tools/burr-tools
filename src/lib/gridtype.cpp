@@ -52,6 +52,9 @@ gridType_c::gridType_c(const xml::node & node) {
 
     case GT_TRIANGULAR_PRISM:
       break;
+
+    case GT_SPHERES:
+      break;
   }
 
   sym = 0;

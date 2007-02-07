@@ -138,8 +138,8 @@ symmetries_t symmetries_0_c::symmetryCalcuation(const voxel_c *pp) const {
   /* this is debug code that checks, if we really have all symmetry groups included
    * it should be finally removed some day in the future
    */
-  unsigned long long s;
-  int i;
+  unsigned long long s = 0;
+  int i = 0;
 
   for (int t = NUM_TRANSFORMATIONS_MIRROR-1; t >= 0; t--) {
 
