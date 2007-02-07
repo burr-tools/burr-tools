@@ -440,12 +440,12 @@ void LFl_Scroll::getMinSize(int *width, int *height) const {
     case Fl_Scroll::HORIZONTAL_ALWAYS: // - Horizontal scrollbar always on, vertical always off.
     case Fl_Scroll::HORIZONTAL:// - Only a horizontal scrollbar.
       *width = 30;
-      *height += 20;
+      *height += hscrollbar.h();
       break;
     case Fl_Scroll::VERTICAL_ALWAYS: // - Vertical scrollbar always on, horizontal always off.
     case Fl_Scroll::VERTICAL:// - Only a vertical scrollbar.
       *height = 30;
-      *width += 20;
+      *width += scrollbar.w();
       break;
     case Fl_Scroll::BOTH_ALWAYS: // - Both always on.
     case Fl_Scroll::BOTH: // - The default is both scrollbars.
