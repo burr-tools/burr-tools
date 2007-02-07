@@ -38,15 +38,6 @@ static double rotationMatrices[NUM_TRANSFORMATIONS_MIRROR][9] = {
 #include "tabs_1/rotmatrix.inc"
 };
 
-static int roundDown(double a) {
-  if (a >= 0) {
-    return (int)a;
-  } else {
-    return (int)(a-1);
-  }
-}
-
-
 bool voxel_1_c::transform(unsigned int nr) {
 
   if (nr == 0) return true;
@@ -84,9 +75,9 @@ bool voxel_1_c::transform(unsigned int nr) {
           xpn = (xpn - 0.5)*2;
           ypn /= sqrt(0.75);
 
-          int xn = (int)round(xpn);
-          int yn = (int)roundDown(ypn);
-          int zn = (int)round(zpn);
+          int xn = (int)(xpn+(xpn<0?-0.5:0.5));
+          int yn = (int)floor(ypn);
+          int zn = (int)(zpn+(zpn<0?-0.5:0.5));
 
           if (xn > maxx) maxx = xn;
           if (yn > maxy) maxy = yn;
@@ -165,9 +156,9 @@ bool voxel_1_c::transform(unsigned int nr) {
           xpn = (xpn - 0.5)*2;
           ypn /= sqrt(0.75);
 
-          int xn = (int)round(xpn);
-          int yn = (int)roundDown(ypn);
-          int zn = (int)round(zpn);
+          int xn = (int)(xpn+(xpn<0?-0.5:0.5));
+          int yn = (int)floor(ypn);
+          int zn = (int)(zpn+(zpn<0?-0.5:0.5));
 
           s[(xn-minx) + nsx*((yn-miny) + nsy*(zn-minz))] = space[x + sx*(y + sy*z)];
         }
@@ -190,9 +181,9 @@ bool voxel_1_c::transform(unsigned int nr) {
   xpn = (xpn - 0.5)*2;
   ypn /= sqrt(0.75);
 
-  hx = (int)round(xpn) - minx;
-  hy = (int)roundDown(ypn) - miny;
-  hz = (int)round(zpn) - minz;
+  hx = (int)(xpn+(xpn<0?-0.5:0.5)) - minx;
+  hy = (int)floor(ypn) - miny;
+  hz = (int)(zpn+(zpn<0?-0.5:0.5)) - minz;
 
   // take over new space and new size
   sx = nsx;
@@ -236,9 +227,12 @@ void voxel_1_c::transformPoint(int * x, int * y, int * z, unsigned int trans) co
   double ypn = rotationMatrices[trans][3]*xs + rotationMatrices[trans][4]*ys + rotationMatrices[trans][5]*zs;
   double zpn = rotationMatrices[trans][6]*xs + rotationMatrices[trans][7]*ys + rotationMatrices[trans][8]*zs;
 
-  *z = (int)round(zpn);
-  *x = (int)round((xpn-0.5)*2);
-  *y = roundDown(ypn/sqrt(0.75));
+  xpn = (xpn - 0.5)*2;
+  ypn /= sqrt(0.75);
+
+  *z = (int)(zpn+(zpn<0?-0.5:0.5));
+  *y = (int)floor(ypn);
+  *x = (int)(xpn+(xpn<0?-0.5:0.5));
 }
 
 bool voxel_1_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const {
