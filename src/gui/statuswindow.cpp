@@ -101,6 +101,8 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
         b = new LFl_Box("", col, s+head);
         b->copy_label(tmp);
         b->color(fl_rgb_color(pieceColorRi(s2), pieceColorGi(s2), pieceColorBi(s2)));
+        if (3*pieceColorRi(s2) + 6*pieceColorGi(s2) + pieceColorBi(s2) < 1275)
+          b->labelcolor(fl_rgb_color(255, 255, 255));
         b->box(FL_FLAT_BOX);
         break;
       }
@@ -112,6 +114,8 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
         b = new LFl_Box("", col, s+head);
         b->copy_label(tmp);
         b->color(fl_rgb_color(pieceColorRi(s2), pieceColorGi(s2), pieceColorBi(s2)));
+        if (3*pieceColorRi(s2) + 6*pieceColorGi(s2) + pieceColorBi(s2) < 1275)
+          b->labelcolor(fl_rgb_color(255, 255, 255));
         b->box(FL_FLAT_BOX);
         break;
       }
@@ -123,6 +127,8 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
         b = new LFl_Box("", col, s+head);
         b->copy_label(tmp);
         b->color(fl_rgb_color(pieceColorRi(s2), pieceColorGi(s2), pieceColorBi(s2)));
+        if (3*pieceColorRi(s2) + 6*pieceColorGi(s2) + pieceColorBi(s2) < 1275)
+          b->labelcolor(fl_rgb_color(255, 255, 255));
         b->box(FL_FLAT_BOX);
         break;
       }
