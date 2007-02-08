@@ -55,6 +55,9 @@ gridType_c::gridType_c(const xml::node & node) {
 
     case GT_SPHERES:
       break;
+
+    default:
+      throw load_error("puzzle with unknown grid type", node);
   }
 
   sym = 0;
