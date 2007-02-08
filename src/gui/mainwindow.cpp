@@ -977,6 +977,9 @@ void mainWindow_c::cb_SortSolutions(unsigned int by) {
 
   unsigned int sol = puzzle->probSolutionNumber(prob);
 
+  if (sol < 2)
+    return;
+
   // this is bubble sort, so it might be a bit slow
   // for larger number of solutions but is has the advantage
   // of being a stable sort method
@@ -2091,9 +2094,15 @@ void mainWindow_c::updateInterface(void) {
       else
         BtnPrepare->deactivate();
 
-      BtnSrtFind->activate();
-      BtnSrtLevel->activate();
-      BtnSrtMoves->activate();
+      if (puzzle->probSolutionNumber(prob) >= 2) {
+        BtnSrtFind->activate();
+        BtnSrtLevel->activate();
+        BtnSrtMoves->activate();
+      } else {
+        BtnSrtFind->deactivate();
+        BtnSrtLevel->deactivate();
+        BtnSrtMoves->deactivate();
+      }
       BtnDelAll->activate();
       BtnDelBefore->activate();
       BtnDelAt->activate();
