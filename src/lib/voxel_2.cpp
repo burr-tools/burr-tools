@@ -76,9 +76,9 @@ bool voxel_2_c::transform(unsigned int nr) {
               zpn -= shz;
             }
 
-            int xn = (int)round(xpn);
-            int yn = (int)round(ypn);
-            int zn = (int)round(zpn);
+            int xn = (int)(xpn+(xpn<0?-0.5:0.5));
+            int yn = (int)(ypn+(ypn<0?-0.5:0.5));
+            int zn = (int)(zpn+(zpn<0?-0.5:0.5));
 
             // check errors, it should be small enough, so the calculated
             // new position should fall on a grid position
@@ -170,9 +170,9 @@ bool voxel_2_c::transform(unsigned int nr) {
             ypn -= shy;
             zpn -= shz;
 
-            int xn = (int)round(xpn);
-            int yn = (int)round(ypn);
-            int zn = (int)round(zpn);
+            int xn = (int)(xpn+(xpn<0?-0.5:0.5));
+            int yn = (int)(ypn+(ypn<0?-0.5:0.5));
+            int zn = (int)(zpn+(zpn<0?-0.5:0.5));
 
             s[(xn-minx) + nsx*((yn-miny) + nsy*(zn-minz))] = space[x + sx*(y + sy*z)];
           }
@@ -199,9 +199,9 @@ bool voxel_2_c::transform(unsigned int nr) {
   ypn -= shy;
   zpn -= shz;
 
-  hx = (int)round(xpn) - minx;
-  hy = (int)round(ypn) - miny;
-  hz = (int)round(zpn) - minz;
+  hx = (int)(xpn+(xpn<0?-0.5:0.5)) - minx;
+  hy = (int)(ypn+(ypn<0?-0.5:0.5)) - miny;
+  hz = (int)(zpn+(zpn<0?-0.5:0.5)) - minz;
 
   bt_assert(((hx+hy+hz) & 1) == 0);
 
@@ -239,9 +239,9 @@ void voxel_2_c::transformPoint(int * x, int * y, int * z, unsigned int trans) co
   ypn /= sqrt(0.5);
   zpn /= sqrt(0.5);
 
-  int xn = (int)round(xpn);
-  int yn = (int)round(ypn);
-  int zn = (int)round(zpn);
+  int xn = (int)(xpn+(xpn<0?-0.5:0.5));
+  int yn = (int)(ypn+(ypn<0?-0.5:0.5));
+  int zn = (int)(zpn+(zpn<0?-0.5:0.5));
 
   // is should fall on a valid grid position
   bt_assert((fabs(xpn-xn) < 0.01) && (fabs(ypn-yn) < 0.01) && (fabs(zpn-zn) < 0.01));
