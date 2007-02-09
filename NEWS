@@ -34,6 +34,9 @@
   image sequences where the action always takes place in the middle and
   thus is much better visible
 
+- smaller optimisations for preparation and assembly phase (around 10%
+  speed improvement)
+
 ------------- Version 0.1.9
 
 - the fade out of pieces that are removed in the assembly animation can be
