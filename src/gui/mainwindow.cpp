@@ -1108,6 +1108,11 @@ void mainWindow_c::cb_AddDisasm(void) {
   if (prob >= puzzle->problemNumber())
     return;
 
+  if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
+    fl_message("Sorry this space grid doesn't have a disassembler (yet)!");
+    return;
+  }
+
   unsigned int sol = (int)SolutionSel->value()-1;
 
   disassembler_c * dis = puzzle->getGridType()->getDisassembler(puzzle, prob);
@@ -1130,6 +1135,11 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
   if (prob >= puzzle->problemNumber())
     return;
+
+  if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
+    fl_message("Sorry this space grid doesn't have a disassembler (yet)!");
+    return;
+  }
 
   disassembler_c * dis = puzzle->getGridType()->getDisassembler(puzzle, prob);
 
@@ -2110,9 +2120,19 @@ void mainWindow_c::updateInterface(void) {
       BtnDelDisasm->activate();
       BtnDisasmDel->activate();
       BtnDisasmDelAll->activate();
-      BtnDisasmAdd->activate();
-      BtnDisasmAddAll->activate();
-      BtnDisasmAddMissing->activate();
+
+      if (ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE) {
+        BtnDisasmAdd->activate();
+        BtnDisasmAddAll->activate();
+        BtnDisasmAddMissing->activate();
+        SolveDisasm->activate();
+      } else {
+        BtnDisasmAdd->deactivate();
+        BtnDisasmAddAll->deactivate();
+        BtnDisasmAddMissing->deactivate();
+        SolveDisasm->deactivate();
+        SolveDisasm->value(0);
+      }
 
     } else {
 
