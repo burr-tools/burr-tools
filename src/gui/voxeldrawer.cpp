@@ -900,13 +900,13 @@ void voxelDrawer_c::draw() {
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(25, 1.0*w()/h(), size, size+100);
+    gluPerspective(25, 1.0*w()/h(), size+10, 3*size+100);
     glMatrixMode(GL_MODELVIEW);
 
   }
 
   glPushMatrix();
-  glTranslatef(0, 0, -20-size);
+  glTranslatef(0, 0, -50-size*2);
   drawData();
   glPopMatrix();
 
