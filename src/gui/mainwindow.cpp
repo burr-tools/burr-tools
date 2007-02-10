@@ -955,6 +955,7 @@ static void cb_SolutionSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_
 void mainWindow_c::cb_SolutionSel(Fl_Value_Slider* o) {
   o->take_focus();
   activateSolution(solutionProblem->getSelection(), int(o->value()-1));
+  updateInterface();
 }
 
 static void cb_SolutionAnim_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SolutionAnim((Fl_Value_Slider*)o); }
@@ -1082,6 +1083,9 @@ void mainWindow_c::cb_DeleteDisasm(void) {
 
   unsigned int sol = (int)SolutionSel->value()-1;
 
+  if (sol >= puzzle->probSolutionNumber(prob))
+    return;
+
   puzzle->probRemoveDisassm(prob, sol);
 
   activateSolution(prob, (int)SolutionSel->value()-1);
@@ -1108,12 +1112,15 @@ void mainWindow_c::cb_AddDisasm(void) {
   if (prob >= puzzle->problemNumber())
     return;
 
+  unsigned int sol = (int)SolutionSel->value()-1;
+
+  if (sol >= puzzle->probSolutionNumber(prob))
+    return;
+
   if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
     fl_message("Sorry this space grid doesn't have a disassembler (yet)!");
     return;
   }
-
-  unsigned int sol = (int)SolutionSel->value()-1;
 
   disassembler_c * dis = puzzle->getGridType()->getDisassembler(puzzle, prob);
 
@@ -2113,18 +2120,55 @@ void mainWindow_c::updateInterface(void) {
         BtnSrtLevel->deactivate();
         BtnSrtMoves->deactivate();
       }
-      BtnDelAll->activate();
-      BtnDelBefore->activate();
-      BtnDelAt->activate();
-      BtnDelAfter->activate();
-      BtnDelDisasm->activate();
-      BtnDisasmDel->activate();
-      BtnDisasmDelAll->activate();
+
+      if (puzzle->probSolutionNumber(prob) > 0) {
+        BtnDelAll->activate();
+        if (SolutionSel->value() > 1)
+          BtnDelBefore->activate();
+        else
+          BtnDelBefore->deactivate();
+
+        BtnDelAt->activate();
+
+        if ((SolutionSel->value()-1) < (puzzle->probSolutionNumber(prob)-1))
+          BtnDelAfter->activate();
+        else
+          BtnDelAfter->deactivate();
+
+        BtnDelDisasm->activate();
+      } else {
+        BtnDelAll->deactivate();
+        BtnDelBefore->deactivate();
+        BtnDelAt->deactivate();
+        BtnDelAfter->deactivate();
+        BtnDelDisasm->deactivate();
+      }
+
+      if ((SolutionSel->value() >= 1) &&
+          ((int)SolutionSel->value()-1) < (int)puzzle->probSolutionNumber(prob) &&
+          puzzle->probGetDisassembly(prob, (int)SolutionSel->value()-1)) {
+        BtnDisasmDel->activate();
+      } else {
+        BtnDisasmDel->deactivate();
+      }
+
+      if (puzzle->probSolutionNumber(prob) > 0) {
+        BtnDisasmDelAll->activate();
+      } else {
+        BtnDisasmDelAll->deactivate();
+      }
 
       if (ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE) {
-        BtnDisasmAdd->activate();
-        BtnDisasmAddAll->activate();
-        BtnDisasmAddMissing->activate();
+
+        if (puzzle->probSolutionNumber(prob) > 0) {
+          BtnDisasmAdd->activate();
+          BtnDisasmAddAll->activate();
+          BtnDisasmAddMissing->activate();
+        } else {
+          BtnDisasmAdd->deactivate();
+          BtnDisasmAddAll->deactivate();
+          BtnDisasmAddMissing->deactivate();
+        }
         SolveDisasm->activate();
       } else {
         BtnDisasmAdd->deactivate();
