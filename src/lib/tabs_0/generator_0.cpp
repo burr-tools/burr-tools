@@ -154,7 +154,7 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val, FILE * o
       }
 
       if (b1 == 1) {
-        fprintf(out, "bt_assert(s == %i);\nreturn (symmetries_t)%i; //%s\n",lastfound, lastfound, longlong2string(symmetries[lastfound]));
+        fprintf(out, "return (symmetries_t)%i; //%s\n", lastfound, longlong2string(symmetries[lastfound]));
         return;
       }
 

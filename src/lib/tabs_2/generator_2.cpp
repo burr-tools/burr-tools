@@ -169,7 +169,7 @@ void makeSymmetryTree(bitfield_c<NUM_TRANSFORMATIONS_MIRROR> taken,bitfield_c<NU
       }
 
       if (b1 == 1) {
-        fprintf(out, "bt_assert(i == %i);\nreturn (symmetries_t)%i;\n",lastfound, lastfound);
+        fprintf(out, "return (symmetries_t)%i;\n", lastfound);
         return;
       }
 
