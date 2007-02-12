@@ -180,11 +180,16 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
     col += 2;
 
     if (!p->getGridType()->getSymmetries()->symmetryKnown(v)) {
-      b = new LFl_Box("X", col, s+head);
+      b = new LFl_Box("---", col, s+head);
       b->color(fl_rgb_color(pieceColorRi(s), pieceColorGi(s), pieceColorBi(s)));
       if (3*pieceColorRi(s) + 6*pieceColorGi(s) + pieceColorBi(s) < 1275)
         b->labelcolor(fl_rgb_color(255, 255, 255));
       b->box(FL_FLAT_BOX);
+    } else {
+      snprintf(tmp, 200, "%i", p->getGridType()->getSymmetries()->symmetryCalcuation(v));
+      b = new LFl_Box("", col, s+head);
+      b->copy_label(tmp);
+      b->box(FL_NO_BOX);
     }
     col += 2;
   }
