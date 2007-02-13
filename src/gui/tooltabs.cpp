@@ -143,17 +143,17 @@ TransformButtons::TransformButtons(int x, int y, int w, int h, int type) : layou
 
   } else if (type == 1) {
 
-    new LFlatButton_c(0, 0, 1, 1, "up left",
+    new LFlatButton_c(0, 0, 1, 1, "@7->",
         " Shift up left along XY plane ",  cb_TransformButtons_stub,  1);
-    new LFlatButton_c(1, 0, 1, 1, "up right",
+    new LFlatButton_c(1, 0, 1, 1, "@9->",
         " Shift up right along XY plane ", cb_TransformButtons_stub,  0);
-    new LFlatButton_c(0, 1, 1, 1, "left",
+    new LFlatButton_c(0, 1, 1, 1, "@4->",
         " Shift left along X ",            cb_TransformButtons_stub,  3);
-    new LFlatButton_c(1, 1, 1, 1, "right",
+    new LFlatButton_c(1, 1, 1, 1, "@6->",
         " Shift right along X ",           cb_TransformButtons_stub,  2);
-    new LFlatButton_c(0, 2, 1, 1, "down left",
+    new LFlatButton_c(0, 2, 1, 1, "@1->",
         " Shift down left XY plane ",      cb_TransformButtons_stub,  28);
-    new LFlatButton_c(1, 2, 1, 1, "down right",
+    new LFlatButton_c(1, 2, 1, 1, "@3->",
         " Shift down right XY plane ",     cb_TransformButtons_stub,  27);
 
     new LFlatButton_c(0, 3, 1, 1, pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
