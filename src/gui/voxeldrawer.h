@@ -114,7 +114,8 @@ public:
 
   typedef enum {
     pieceColor,
-    paletteColor
+    paletteColor,
+    anaglyphColor
   } colorMode;
 
   void setDrawingMode(unsigned int nr, drawingMode mode);
@@ -218,7 +219,7 @@ public:
 
   void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
   void showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape);
-  void showColors(const puzzle_c * puz, bool show);
+  void showColors(const puzzle_c * puz, colorMode mode);
   void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum);
   void showAssemblerState(const puzzle_c * puz, unsigned int probNum, const assembly_c * assm);
   void showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z);

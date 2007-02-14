@@ -144,6 +144,10 @@ extern char * Rescale_Monochrome_X1_xpm[];
 extern char * Rescale_Monochrome_X2_xpm[];
 extern char * Rescale_Monochrome_X3_xpm[];
 
+extern char * ViewModeNormal_xpm[];
+extern char * ViewModeColor_xpm[];
+extern char * ViewMode3D_xpm[];
+
 /* just a little cache to make sure the pixmaps are freed after usage
  *
  * usage is simple, put one instance of this class into your widget that

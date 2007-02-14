@@ -235,7 +235,7 @@ gui_burrGui_SOURCES=\
      gui/images/Grid_Monochrome_Center.xpm gui/images/Grid_Monochrome_Minimize.xpm gui/images/Grid_Monochrome_Origin.xpm \
      gui/images/Rescale_Color_X1.xpm gui/images/Rescale_Color_X2.xpm gui/images/Rescale_Color_X3.xpm \
      gui/images/Rescale_Disabled_X1.xpm gui/images/Rescale_Disabled_X2.xpm gui/images/Rescale_Disabled_X3.xpm \
-     gui/images/Rescale_Monochrome_X1.xpm gui/images/Rescale_Monochrome_X2.xpm gui/images/Rescale_Monochrome_X3.xpm
-
+     gui/images/Rescale_Monochrome_X1.xpm gui/images/Rescale_Monochrome_X2.xpm gui/images/Rescale_Monochrome_X3.xpm \
+     gui/images/ViewMode3D.xpm gui/images/ViewModeColor.xpm gui/images/ViewModeNormal.xpm
 
 

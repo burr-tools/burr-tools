@@ -443,9 +443,9 @@ void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsign
   View3D->update(true);
 }
 
-void View3dGroup::showColors(const puzzle_c * puz, bool show) {
+void View3dGroup::showColors(const puzzle_c * puz, voxelDrawer_c::colorMode mode) {
   View3D->update(false);
-  View3D->showColors(puz, show);
+  View3D->showColors(puz, mode);
   View3D->update(true);
 }
 
@@ -530,18 +530,13 @@ LStatusLine::LStatusLine(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
   text->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
   text->weight(1, 0);
 
-  layouter_c * tmp = new layouter_c(1, 0, 1, 1);
-  tmp->box(FL_THIN_UP_BOX);
-
-  colors = new LFl_Check_Button("Colour 3D View", 0, 0, 1, 1);
-  colors->box(FL_NO_BOX);
-  colors->tooltip(" Toggle between piece colours and the colours of the colour constraints (neutral units will have piece colour) ");
-  colors->stretchCenter();
-  colors->clear_visible_focus();
+  mode = new ButtonGroup(1, 0, 1, 1);
+  mode->addButton()->image(pm.get(ViewModeNormal_xpm));
+  mode->addButton()->image(pm.get(ViewModeColor_xpm));
+  mode->addButton()->image(pm.get(ViewMode3D_xpm));
 
   clear_visible_focus();
 
-  tmp->end();
   end();
 }
 

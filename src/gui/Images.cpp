@@ -141,6 +141,9 @@
 #include "images/Rescale_Monochrome_X2.xpm"
 #include "images/Rescale_Monochrome_X3.xpm"
 
+#include "images/ViewModeNormal.xpm"
+#include "images/ViewModeColor.xpm"
+#include "images/ViewMode3D.xpm"
 
 pixmapList_c::~pixmapList_c(void) {
   for (unsigned int i = 0; i < list.size(); i++)

@@ -118,7 +118,7 @@ void mainWindow_c::cb_AddColor(void) {
     puzzle->addColor(r, g, b);
     colorSelector->setSelection(puzzle->colorNumber());
     changed = true;
-    View3D->showColors(puzzle, Status->useColors());
+    View3D->showColors(puzzle, Status->getColorMode());
     updateInterface();
   }
 }
@@ -140,7 +140,7 @@ void mainWindow_c::cb_RemoveColor(void) {
     colorSelector->setSelection(current);
 
     changed = true;
-    View3D->showColors(puzzle, Status->useColors());
+    View3D->showColors(puzzle, Status->getColorMode());
     activateShape(PcSel->getSelection());
     updateInterface();
   }
@@ -157,7 +157,7 @@ void mainWindow_c::cb_ChangeColor(void) {
     if (fl_color_chooser("Change colour", r, g, b)) {
       puzzle->changeColor(colorSelector->getSelection()-1, r, g, b);
       changed = true;
-      View3D->showColors(puzzle, Status->useColors());
+      View3D->showColors(puzzle, Status->getColorMode());
       updateInterface();
     }
   }
@@ -1189,7 +1189,7 @@ void mainWindow_c::cb_PcVis(void) {
 
 static void cb_Status_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_Status(); }
 void mainWindow_c::cb_Status(void) {
-  View3D->showColors(puzzle, Status->useColors());
+  View3D->showColors(puzzle, Status->getColorMode());
 }
 
 static void cb_New_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_New(); }
@@ -1569,7 +1569,7 @@ bool mainWindow_c::tryToLoad(const char * f) {
   TaskSelectionTab->value(TabPieces);
   activateShape(PcSel->getSelection());
   StatPieceInfo(PcSel->getSelection());
-  View3D->showColors(puzzle, Status->useColors());
+  View3D->showColors(puzzle, Status->getColorMode());
 
   changed = false;
 

@@ -47,7 +47,7 @@ class ImageInfo {
 
     // parameters for single
     unsigned int shape;
-    bool showColors;
+    voxelDrawer_c::colorMode showColors;
 
     // parameters for assembly
     unsigned int problem;
@@ -67,7 +67,7 @@ class ImageInfo {
   public:
 
     /* create image info to create a single shape image */
-    ImageInfo(puzzle_c * p, bool color,
+    ImageInfo(puzzle_c * p, voxelDrawer_c::colorMode color,
         unsigned int s, voxelDrawer_c * v) : setupFunction(SHOW_SINGLE), puzzle(p),
                                           shape(s), showColors(color),
                                           i(new image_c(600, 200)), i2(0), vv(v) { }
@@ -75,7 +75,7 @@ class ImageInfo {
     /* image info for an assembly, if you don't give pos, you will get the standard assembly with
      * no piece shifted
      */
-    ImageInfo(puzzle_c * p, bool color, unsigned int prob,
+    ImageInfo(puzzle_c * p, voxelDrawer_c::colorMode color, unsigned int prob,
         unsigned int sol, voxelDrawer_c * v,
         disasmToMoves_c * pos = 0, bool d = false) : setupFunction(SHOW_ASSEMBLY), puzzle(p),
                                                    showColors(color), problem(prob),
@@ -398,11 +398,13 @@ void imageExport_c::cb_Export(void) {
 
   if (ExpShape->value()) {
 
-    images.push_back(new ImageInfo(puzzle, ColConst->value(), ShapeSelect->getSelection(), view3D->getView()));
+    images.push_back(new ImageInfo(puzzle, getColorMode(),
+        ShapeSelect->getSelection(), view3D->getView()));
 
   } else if (ExpAssembly->value()) {
 
-    images.push_back(new ImageInfo(puzzle, ColConst->value(), ProblemSelect->getSelection(), 0, view3D->getView()));
+    images.push_back(new ImageInfo(puzzle, getColorMode(),
+        ProblemSelect->getSelection(), 0, view3D->getView()));
 
   } else if (ExpSolution->value()) {
 
@@ -415,17 +417,20 @@ void imageExport_c::cb_Export(void) {
     for (unsigned int step = 0; step < t->sumMoves(); step++) {
       disasmToMoves_c * dtm = new disasmToMoves_c(t, 20);
       dtm->setStep(step, false, true);
-      images.push_back(new ImageInfo(puzzle, ColConst->value(), prob, s, view3D->getView(), dtm, DimStatic->value()));
+      images.push_back(new ImageInfo(puzzle, getColorMode(),
+           prob, s, view3D->getView(), dtm, DimStatic->value()));
     }
 
   } else if (ExpProblem->value()) {
     // generate an image for each piece in the problem
     unsigned int prob = ProblemSelect->getSelection();
 
-    images.push_back(new ImageInfo(puzzle, ColConst->value(), puzzle->probGetResult(prob), view3D->getView()));
+    images.push_back(new ImageInfo(puzzle, getColorMode(),
+          puzzle->probGetResult(prob), view3D->getView()));
 
     for (unsigned int p = 0; p < puzzle->probShapeNumber(prob); p++)
-      images.push_back(new ImageInfo(puzzle, ColConst->value(), puzzle->probGetShape(prob, p), view3D->getView()));
+      images.push_back(new ImageInfo(puzzle, getColorMode(),
+            puzzle->probGetShape(prob, p), view3D->getView()));
 
   } else
 
@@ -445,17 +450,14 @@ void imageExport_c::cb_Update3DView(void) {
 
   if (ExpShape->value()) {
     view3D->showSingleShape(puzzle, ShapeSelect->getSelection());
-    view3D->showColors(puzzle, ColConst->value() == 1);
   } else if (ExpAssembly->value()) {
     view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
-    view3D->showColors(puzzle, ColConst->value() == 1);
   } else if (ExpSolution->value()) {
     view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
-    view3D->showColors(puzzle, ColConst->value() == 1);
   } else if (ExpProblem->value()) {
     view3D->showSingleShape(puzzle, puzzle->probGetResult(ProblemSelect->getSelection()));
-    view3D->showColors(puzzle, ColConst->value() == 1);
   }
+  view3D->showColors(puzzle, getColorMode());
 }
 
 static void cb_ImageExportSzUpdate_stub(Fl_Widget *o, void *v) { ((imageExport_c*)(v))->cb_SzUpdate(); }

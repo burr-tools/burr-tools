@@ -302,7 +302,7 @@ public:
 
   void updatePositions(piecePositions_c *shifting);
   void updateVisibility(PieceVisibility * pcvis);
-  void showColors(const puzzle_c * puz, bool show);
+  void showColors(const puzzle_c * puz, voxelDrawer_c::colorMode mode);
 
   void setMarker(int x1, int y1, int x2, int y2, int z, int type) { View3D->setMarker(x1, y1, x2, y2, z, type); }
   void hideMarker(void) { View3D->hideMarker(); }
@@ -363,7 +363,7 @@ public:
 
   void cb_Push(Fl_Button * btn);
 
-  unsigned int getSelected(void) { return currentButton; }
+  unsigned int getSelected(void) const { return currentButton; }
   void select(int num);
 };
 
@@ -395,16 +395,23 @@ class LStatusLine : public layouter_c {
 
 private:
 
-  LFl_Check_Button * colors;
+  ButtonGroup *mode;
   LFl_Box * text;
+  pixmapList_c pm;
 
 public:
 
   LStatusLine(int x, int y, int w, int h);
 
   void setText(const char * t);
-  bool useColors(void) { return colors->value() != 0; }
-  void callback(Fl_Callback* fkt, void * dat) { colors->callback(fkt, dat); }
+  voxelDrawer_c::colorMode getColorMode(void) const {
+    return mode->getSelected()==0
+      ?voxelDrawer_c::pieceColor
+      :(mode->getSelected()==1
+          ?voxelDrawer_c::paletteColor
+          :voxelDrawer_c::anaglyphColor);
+  }
+  void callback(Fl_Callback* fkt, void * dat) { mode->callback(fkt, dat); }
 
   virtual void getMinSize(int *width, int *height) const {
     *width = 30;

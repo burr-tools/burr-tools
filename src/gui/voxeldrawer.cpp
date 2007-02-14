@@ -144,9 +144,15 @@ void voxelDrawer_c::drawVoxelSpace() {
         float cx, cy, cz;
         calculateSize(shapes[piece].shape, &cx, &cy, &cz);
 
-        glColor3f(1, 0,    0); glVertex3f(-1, -1, -1); glVertex3f(cx+1, -1, -1);
-        glColor3f(0, 0.75, 0); glVertex3f(-1, -1, -1); glVertex3f(-1, cy+1, -1);
-        glColor3f(0, 0,    1); glVertex3f(-1, -1, -1); glVertex3f(-1, -1, cz+1);
+        if (colors == anaglyphColor) {
+          glColor3f(0.3, 0.3, 0.3); glVertex3f(-1, -1, -1); glVertex3f(cx+1, -1, -1);
+          glColor3f(0.6, 0.6, 0.6); glVertex3f(-1, -1, -1); glVertex3f(-1, cy+1, -1);
+          glColor3f(0.1, 0.1, 0.1); glVertex3f(-1, -1, -1); glVertex3f(-1, -1, cz+1);
+        } else {
+          glColor3f(1, 0,    0); glVertex3f(-1, -1, -1); glVertex3f(cx+1, -1, -1);
+          glColor3f(0, 0.75, 0); glVertex3f(-1, -1, -1); glVertex3f(-1, cy+1, -1);
+          glColor3f(0, 0,    1); glVertex3f(-1, -1, -1); glVertex3f(-1, -1, cz+1);
+        }
         glEnd();
 
 #if 0    // if you enable this, the hotspot will be shown as a small cross
@@ -183,6 +189,7 @@ void voxelDrawer_c::drawVoxelSpace() {
 
             switch (colors) {
               case pieceColor:
+              case anaglyphColor:
                 if ((x+y+z) & 1) {
                   cr = lightPieceColor(shape->r);
                   cg = lightPieceColor(shape->g);
@@ -196,25 +203,33 @@ void voxelDrawer_c::drawVoxelSpace() {
                 }
                 break;
               case paletteColor:
-                unsigned int color = shape->shape->getColor(x, y, z);
-                if ((color == 0) || (color - 1 >= palette.size())) {
-                  if ((x+y+z) & 1) {
-                    cr = lightPieceColor(shape->r);
-                    cg = lightPieceColor(shape->g);
-                    cb = lightPieceColor(shape->b);
-                    ca = shape->a;
+                {
+                  unsigned int color = shape->shape->getColor(x, y, z);
+                  if ((color == 0) || (color - 1 >= palette.size())) {
+                    if ((x+y+z) & 1) {
+                      cr = lightPieceColor(shape->r);
+                      cg = lightPieceColor(shape->g);
+                      cb = lightPieceColor(shape->b);
+                      ca = shape->a;
+                    } else {
+                      cr = darkPieceColor(shape->r);
+                      cg = darkPieceColor(shape->g);
+                      cb = darkPieceColor(shape->b);
+                      ca = shape->a;
+                    }
                   } else {
-                    cr = darkPieceColor(shape->r);
-                    cg = darkPieceColor(shape->g);
-                    cb = darkPieceColor(shape->b);
+                    cr = palette[color-1].r;
+                    cg = palette[color-1].g;
+                    cb = palette[color-1].b;
                     ca = shape->a;
                   }
-                } else {
-                  cr = palette[color-1].r;
-                  cg = palette[color-1].g;
-                  cb = palette[color-1].b;
-                  ca = shape->a;
                 }
+                break;
+            }
+
+            if (colors == anaglyphColor) {
+              double gr = 0.1*cb + 0.3*cr + 0.6*cg;
+              cr = cg = cb = gr;
             }
 
             if (shape->dim) {
@@ -506,9 +521,9 @@ void voxelDrawer_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsi
   }
 }
 
-void voxelDrawer_c::showColors(const puzzle_c * puz, bool show) {
+void voxelDrawer_c::showColors(const puzzle_c * puz, colorMode mode) {
 
-  if (show) {
+  if (mode == paletteColor) {
 
     clearPalette();
     for (unsigned int i = 0; i < puz->colorNumber(); i++) {
@@ -519,7 +534,7 @@ void voxelDrawer_c::showColors(const puzzle_c * puz, bool show) {
     setColorMode(paletteColor);
 
   } else
-    setColorMode(pieceColor);
+    setColorMode(mode);
 
 }
 
@@ -907,8 +922,25 @@ void voxelDrawer_c::draw() {
 
   glPushMatrix();
   glTranslatef(0, 0, -size*2);
+
+  if (colors == anaglyphColor) {
+    glPushMatrix();
+    glTranslatef(-0.04, 0, 0);
+    glRotatef(-1, 0, 1, 0);
+    glColorMask(GL_TRUE, GL_FALSE, GL_FALSE, GL_TRUE);
+    drawData();
+    glPopMatrix();
+    glTranslatef(0.04, 0, 0);
+    glRotatef(1, 0, 1, 0);
+    glColorMask(GL_FALSE, GL_TRUE, GL_TRUE, GL_TRUE);
+  }
+
   drawData();
   glPopMatrix();
+
+  if (colors == anaglyphColor) {
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+  }
 
   if (cb)
     cb->PostDraw();
