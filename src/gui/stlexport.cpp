@@ -724,12 +724,21 @@ void stlExport_c::exportSTL(int shape)
   bevel = atof(Bevel->value());
   shrink = atof(Offset->value());
   cube_scale = atof(CubeSize->value());
-  if (Pname->value() && Pname->value()[0] &&
-      Pname->value()[strlen(Pname->value())-1] != '/')
-    snprintf(name, 1000, "%s/%s%03i.stl", Pname->value(), Fname->value(), shape);
-  else
-    snprintf(name, 1000, "%s%s%03i.stl", Pname->value(), Fname->value(), shape);
+  int cost = (int)ceilf((float)(v->count(voxel_c::VX_FILLED))*cube_scale*cube_scale*cube_scale / 1000.0);
 
+  if (Pname->value() && Pname->value()[0] &&
+      Pname->value()[strlen(Pname->value())-1] != '/') {
+    if (v->getName().length())
+      snprintf(name, 1000, "%s/%s_%s_%03i.stl", Pname->value(), Fname->value(), v->getName().c_str(),cost);
+    else
+      snprintf(name, 1000, "%s/%s_S%d_%03i.stl", Pname->value(), Fname->value(), shape+1,cost);
+  }
+  else {
+    if (v->getName().length())
+      snprintf(name, 1000, "%s%s_%s_%03i.stl", Pname->value(), Fname->value(), v->getName().c_str(),cost);
+    else
+      snprintf(name, 1000, "%s%s_S%d_%03i.stl", Pname->value(), Fname->value(), shape+1,cost);
+  }
   status->copy_label(name);
 
   if (cube_scale < Epsilon) {
@@ -759,8 +768,10 @@ void stlExport_c::exportSTL(int shape)
     return;
   }
 
-  int cost = (int)ceilf((float)(v->count(voxel_c::VX_FILLED))*cube_scale*cube_scale*cube_scale / 1000.0);
-  fprintf(fp,"solid %s_%d\n",Fname->value(),cost);
+  if (v->getName().length())
+    fprintf(fp,"solid %s_%s_%03i\n",Fname->value(),v->getName().c_str(),cost);
+  else
+    fprintf(fp,"solid %s_S%d_%03i\n",Fname->value(),shape+1,cost);
   for (x=0; x<=xsize; x++)
     for (y=0; y<=ysize; y++)
       for (z=0; z<=zsize; z++)
