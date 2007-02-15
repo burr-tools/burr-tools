@@ -90,10 +90,10 @@ stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_W
     CubeSize->value("10.0");
 
     Bevel = new LFl_Float_Input(2, 1, 3, 1);
-    Bevel->value("0.1");
+    Bevel->value("1.0");
 
     Offset = new LFl_Float_Input(2, 2, 3, 1);
-    Offset->value("0.01");
+    Offset->value("0.1");
 
     fr->end();
   }
