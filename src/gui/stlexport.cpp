@@ -724,7 +724,7 @@ void stlExport_c::exportSTL(int shape)
   bevel = atof(Bevel->value());
   shrink = atof(Offset->value());
   cube_scale = atof(CubeSize->value());
-  int cost = (int)ceilf((float)(v->count(voxel_c::VX_FILLED))*cube_scale*cube_scale*cube_scale / 1000.0);
+  int cost = (int)ceilf((float)(v->countState(voxel_c::VX_FILLED))*cube_scale*cube_scale*cube_scale / 1000.0);
 
   if (Pname->value() && Pname->value()[0] &&
       Pname->value()[strlen(Pname->value())-1] != '/') {
