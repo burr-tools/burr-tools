@@ -186,7 +186,7 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
         b->labelcolor(fl_rgb_color(255, 255, 255));
       b->box(FL_FLAT_BOX);
     } else {
-      snprintf(tmp, 200, "%i", p->getGridType()->getSymmetries()->symmetryCalcuation(v));
+      snprintf(tmp, 200, "%i", p->getGridType()->getSymmetries()->calculateSymmetry(v));
       b = new LFl_Box("", col, s+head);
       b->copy_label(tmp);
       b->box(FL_NO_BOX);

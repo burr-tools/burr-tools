@@ -129,7 +129,7 @@ bool symmetries_0_c::symmetryKnown(const voxel_c * pp) const {
 }
 
 
-symmetries_t symmetries_0_c::symmetryCalcuation(const voxel_c *pp) const {
+symmetries_t symmetries_0_c::calculateSymmetry(const voxel_c *pp) const {
 
   bt_assert(pp);
 

@@ -79,7 +79,7 @@ class symmetries_c {
     virtual bool symmetryContainsMirror(symmetries_t sym) const = 0;
 
     /* calculate the symmetry mask for the given voxel space */
-    virtual symmetries_t symmetryCalcuation(const voxel_c * pp) const = 0;
+    virtual symmetries_t calculateSymmetry(const voxel_c * pp) const = 0;
 
     virtual bool symmetryKnown(const voxel_c * pp) const = 0;
 };

@@ -49,7 +49,7 @@ class symmetries_0_c : public symmetries_c {
     unsigned char minimizeTransformation(symmetries_t s, unsigned char trans) const;
     unsigned int countSymmetryIntersection(symmetries_t resultSym, symmetries_t s2) const;
     bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2) const;
-    symmetries_t symmetryCalcuation(const voxel_c * pp) const;
+    symmetries_t calculateSymmetry(const voxel_c * pp) const;
     bool symmetryContainsMirror(symmetries_t sym) const;
     bool symmetryKnown(const voxel_c * pp) const;
 };

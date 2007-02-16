@@ -469,7 +469,7 @@ symmetries_t voxel_c::selfSymmetries(void) const {
 
   if (isSymmetryInvalid(symmetries)) {
 
-    ((voxel_c*)this)->symmetries = gt->getSymmetries()->symmetryCalcuation(this);
+    ((voxel_c*)this)->symmetries = gt->getSymmetries()->calculateSymmetry(this);
   }
 
   return symmetries;
