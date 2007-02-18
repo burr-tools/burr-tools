@@ -59,7 +59,7 @@ private:
    * of a set of pieces along a certain axis by a certain amount,
    * because this information is required often, we save it in here
    */
-  int dir;    // the interpretation of dir is up to the user, but is the same ax nextdir
+  int dir;    // the interpretation of dir is up to the user, but is the same as nextdir
   int amount;
 
   unsigned int hashValue;
@@ -941,7 +941,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
         }
         break;
       case 2:
-        // check, if a single piece can be moved
+        // check, if pieces can be moved
         if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep)) {
           n = newNode(next_pn, nextdir, searchnode, movement, weights, nextstep);
           bt_assert(n);
