@@ -325,14 +325,6 @@ class LView3dGroup : public View3dGroup, public layoutable_c {
 };
 
 // a widget to separate 2 groups
-
-class Separator : public Fl_Group {
-
-public:
-
-  Separator(int x, int y, int w, int h, const char * label, bool button);
-};
-
 class LSeparator_c : public Fl_Group, public layoutable_c  {
 
 public:
