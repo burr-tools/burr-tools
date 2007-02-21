@@ -98,26 +98,6 @@ public:
   }
 };
 
-class ToggleButton : public Fl_Button {
-
-  Fl_Callback *callback;
-  void * callback_para;
-  long para;
-
-
-  public:
-    ToggleButton(int x, int y, int w, int h, Fl_Callback *cb, void * cb_para, long para);
-
-    void toggle(void) {
-      value(1-value());
-      if (callback)
-        callback(this, callback_para);
-    }
-
-    long ButtonVal(void) { return para; }
-
-};
-
 class LToggleButton_c : public Fl_Button, public layoutable_c {
 
   Fl_Callback *callback;
