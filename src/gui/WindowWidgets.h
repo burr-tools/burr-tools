@@ -215,27 +215,20 @@ public:
   }
 };
 
-class BlockListGroup : public Fl_Group {
+class LBlockListGroup_c : public Fl_Group, public layoutable_c {
 
   Fl_Slider * Slider;
   BlockList * List;
   int callbackReason;
 
-public:
+  public:
 
-  BlockListGroup(int x, int y, int w, int h, BlockList * l);
+  LBlockListGroup_c(int x, int y, int w, int h, BlockList * l);
 
   void cb_slider(void) { List->setShift((int)Slider->value()); }
   void cb_list(void);
 
   int getReason(void) { return callbackReason; }
-};
-
-class LBlockListGroup_c : public BlockListGroup, public layoutable_c {
-
-  public:
-
-  LBlockListGroup_c(int x, int y, int w, int h, BlockList * l) : BlockListGroup(0, 0, 100, 100, l), layoutable_c(x, y, w, h) {}
 
   virtual void getMinSize(int *width, int *height) const {
     *width = 30;

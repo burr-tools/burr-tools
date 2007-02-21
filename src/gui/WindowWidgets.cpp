@@ -179,8 +179,8 @@ void VoxelEditGroup_c::draw() {
   fl_pop_clip();
 }
 
-static void cb_BlockListGroupSlider_stub(Fl_Widget* o, void* v) { ((BlockListGroup*)(o->parent()))->cb_slider(); }
-void BlockListGroup::cb_list(void) {
+static void cb_BlockListGroupSlider_stub(Fl_Widget* o, void* v) { ((LBlockListGroup_c*)(o->parent()))->cb_slider(); }
+void LBlockListGroup_c::cb_list(void) {
 
   if (List->getReason() == PieceSelector::RS_CHANGEDHIGHT) {
 
@@ -196,11 +196,14 @@ void BlockListGroup::cb_list(void) {
   }
 }
 
-static void cb_BlockListGroupList_stub(Fl_Widget* o, void* v) { ((BlockListGroup*)(o->parent()))->cb_list(); }
+static void cb_BlockListGroupList_stub(Fl_Widget* o, void* v) { ((LBlockListGroup_c*)(o->parent()))->cb_list(); }
 
-BlockListGroup::BlockListGroup(int x, int y, int w, int h, BlockList * l) : Fl_Group(x, y, w, h), List(l) {
+LBlockListGroup_c::LBlockListGroup_c(int x, int y, int w, int h, BlockList * l) : Fl_Group(0, 0, 100, 100), layoutable_c(x, y, w, h), List(l) {
 
   box(FL_DOWN_FRAME);
+
+  x = y = 0;
+  w = h = 100;
   x++; y++; w-=2; h-=2;
 
   // important the list must be added first to be drawn first

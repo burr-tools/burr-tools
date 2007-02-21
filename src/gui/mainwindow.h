@@ -44,7 +44,7 @@ class ToolTabContainer;
 class ButtonGroup;
 class FlatButton;
 class LStatusLine;
-class BlockListGroup;
+class LBlockListGroup_c;
 
 class Fl_Tabs;
 class Fl_Group;
@@ -223,9 +223,9 @@ public:
   void cb_RemoveAllShapesFromProblem(void);
   void cb_ProbShapeExchange(int with);
 
-  void cb_PcSel(BlockListGroup* reason);
-  void cb_ColSel(BlockListGroup* reason);
-  void cb_ProbSel(BlockListGroup* reason);
+  void cb_PcSel(LBlockListGroup_c* reason);
+  void cb_ColSel(LBlockListGroup_c* reason);
+  void cb_ProbSel(LBlockListGroup_c* reason);
 
   void cb_PiecesClicked(void);
 
@@ -265,7 +265,7 @@ public:
   void cb_Config(void);
   void cb_Coment(void);
   void cb_Toggle3D(void);
-  void cb_SolProbSel(BlockListGroup* reason);
+  void cb_SolProbSel(LBlockListGroup_c* reason);
 
   void cb_ShapeGroup(void);
   void cb_ImageExport(void);

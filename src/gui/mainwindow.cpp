@@ -367,8 +367,8 @@ void mainWindow_c::cb_EditMode(void) {
   }
 }
 
-static void cb_PcSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_PcSel((BlockListGroup*)o); }
-void mainWindow_c::cb_PcSel(BlockListGroup* grp) {
+static void cb_PcSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_PcSel((LBlockListGroup_c*)o); }
+void mainWindow_c::cb_PcSel(LBlockListGroup_c* grp) {
   int reason = grp->getReason();
 
   switch(reason) {
@@ -380,8 +380,8 @@ void mainWindow_c::cb_PcSel(BlockListGroup* grp) {
   }
 }
 
-static void cb_SolProbSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SolProbSel((BlockListGroup*)o); }
-void mainWindow_c::cb_SolProbSel(BlockListGroup* grp) {
+static void cb_SolProbSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SolProbSel((LBlockListGroup_c*)o); }
+void mainWindow_c::cb_SolProbSel(LBlockListGroup_c* grp) {
   int reason = grp->getReason();
 
   switch(reason) {
@@ -402,8 +402,8 @@ void mainWindow_c::cb_SolProbSel(BlockListGroup* grp) {
   }
 }
 
-static void cb_ColSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_ColSel((BlockListGroup*)o); }
-void mainWindow_c::cb_ColSel(BlockListGroup* grp) {
+static void cb_ColSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_ColSel((LBlockListGroup_c*)o); }
+void mainWindow_c::cb_ColSel(LBlockListGroup_c* grp) {
   int reason = grp->getReason();
 
   switch(reason) {
@@ -415,8 +415,8 @@ void mainWindow_c::cb_ColSel(BlockListGroup* grp) {
   }
 }
 
-static void cb_ProbSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_ProbSel((BlockListGroup*)o); }
-void mainWindow_c::cb_ProbSel(BlockListGroup* grp) {
+static void cb_ProbSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_ProbSel((LBlockListGroup_c*)o); }
+void mainWindow_c::cb_ProbSel(LBlockListGroup_c* grp) {
   int reason = grp->getReason();
 
   switch(reason) {
