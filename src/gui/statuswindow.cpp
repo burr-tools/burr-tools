@@ -236,7 +236,6 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
   LFl_Button * btn = new LFl_Button("Close", 0, 1);
   btn->pitch(7);
   btn->callback(cb_Close_stub, this);
-  btn->box(FL_THIN_UP_BOX);
 
   fr->setMinimumSize(10, 200);
   fr->weight(1, 1);

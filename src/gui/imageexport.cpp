@@ -687,12 +687,10 @@ imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Doub
     BtnStart = new LFl_Button("Export image(s)", 1, 0);
     BtnStart->pitch(7);
     BtnStart->callback(cb_ImageExportExport_stub, this);
-    BtnStart->box(FL_THIN_UP_BOX);
 
     BtnAbbort = new LFl_Button("Abort", 2, 0);
     BtnAbbort->pitch(7);
     BtnAbbort->callback(cb_ImageExportAbort_stub, this);
-    BtnAbbort->box(FL_THIN_UP_BOX);
 
     l->end();
   }

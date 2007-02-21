@@ -49,27 +49,23 @@ class FlatButton : public Fl_Button {
 public:
 
   FlatButton(int x, int y, int w, int h, const char * txt, const char * tt) : Fl_Button(x, y, w, h, txt) {
-    box(FL_THIN_UP_BOX);
     tooltip(tt);
     clear_visible_focus();
   }
 
   FlatButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback* cb, void * cb_para) : Fl_Button(x, y, w, h, txt) {
-    box(FL_THIN_UP_BOX);
     tooltip(tt);
     callback(cb, cb_para);
     clear_visible_focus();
   }
 
   FlatButton(int x, int y, int w, int h, const char * txt, const char * tt, Fl_Callback1* cb, long cb_para) : Fl_Button(x, y, w, h, txt) {
-    box(FL_THIN_UP_BOX);
     tooltip(tt);
     callback(cb, cb_para);
     clear_visible_focus();
   }
 
   FlatButton(int x, int y, int w, int h, Fl_Image * img, Fl_Image * inact, const char * tt, Fl_Callback1* cb, long cb_para) : Fl_Button(x, y, w, h) {
-    box(FL_THIN_UP_BOX);
     tooltip(tt);
     callback(cb, cb_para);
     image(img);

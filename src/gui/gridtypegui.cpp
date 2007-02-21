@@ -72,7 +72,6 @@ gridTypeParameterWindow_c::gridTypeParameterWindow_c(guiGridType_c * ggt) : LFl_
   LFl_Button * b = new LFl_Button("Close", 0, 1);
   b->pitch(7);
   b->callback(cb_WindowButton_stub, this);
-  b->box(FL_THIN_UP_BOX);
 }
 
 static void cb_gridTypeSelectorSelect_stub(Fl_Widget *o, void *v) { ((gridTypeSelectorWindow_c*)(v))->select_cb(); }
@@ -151,7 +150,6 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) : LFl_Double_Window(fal
     LFl_Button * b = new LFl_Button("OK", 0, 0);
     b->pitch(7);
     b->callback(cb_WindowButton_stub, this);
-    b->box(FL_THIN_UP_BOX);
 
     l->end();
   }

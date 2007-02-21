@@ -404,7 +404,6 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
 
   SizeX = new LFl_Roller(5, 1, 1, 1);
   SizeX->type(1);
-  SizeX->box(FL_THIN_DOWN_BOX);
   SizeX->minimum(1);
   SizeX->maximum(1000);
   SizeX->step(0.25);
@@ -414,7 +413,6 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
 
   SizeY = new LFl_Roller(5, 3, 1, 1);
   SizeY->type(1);
-  SizeY->box(FL_THIN_DOWN_BOX);
   SizeY->minimum(1);
   SizeY->maximum(1000);
   SizeY->step(0.25);
@@ -423,7 +421,6 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
 
   SizeZ = new LFl_Roller(5, 5, 1, 1);
   SizeZ->type(1);
-  SizeZ->box(FL_THIN_DOWN_BOX);
   SizeZ->minimum(1);
   SizeZ->maximum(1000);
   SizeZ->step(0.25);
@@ -431,17 +428,14 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
   SizeZ->clear_visible_focus();
 
   SizeOutX = new LFl_Int_Input(3, 1, 1, 1);
-  SizeOutX->box(FL_THIN_DOWN_BOX);
   SizeOutX->callback(cb_InputSize_stub, 0l);
   SizeOutX->when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
 
   SizeOutY = new LFl_Int_Input(3, 3, 1, 1);
-  SizeOutY->box(FL_THIN_DOWN_BOX);
   SizeOutY->callback(cb_InputSize_stub, 1l);
   SizeOutY->when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
 
   SizeOutZ = new LFl_Int_Input(3, 5, 1, 1);
-  SizeOutZ->box(FL_THIN_DOWN_BOX);
   SizeOutZ->callback(cb_InputSize_stub, 2l);
   SizeOutZ->when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
 

@@ -2998,8 +2998,6 @@ void mainWindow_c::CreateSolveTab(void) {
 
     solDrop = new LFl_Value_Input(1, 0, 1, 1);
     solLimit = new LFl_Value_Input(4, 0, 1, 1);
-    solDrop->box(FL_THIN_DOWN_BOX);
-    solLimit->box(FL_THIN_DOWN_BOX);
     solDrop->bounds(1, 100000000);
     solLimit->bounds(1, 100000000);
     solLimit->step(1, 1);
@@ -3115,7 +3113,6 @@ void mainWindow_c::CreateSolveTab(void) {
     SolutionSel->step(1);
     SolutionSel->callback(cb_SolutionSel_stub, this);
     SolutionSel->align(FL_ALIGN_TOP_LEFT);
-    SolutionSel->box(FL_THIN_DOWN_BOX);
 
     (new LFl_Box(0, 3))->setMinimumSize(0, SZ_GAP);
 
@@ -3133,7 +3130,6 @@ void mainWindow_c::CreateSolveTab(void) {
     SolutionAnim->step(0.1);
     SolutionAnim->callback(cb_SolutionAnim_stub, this);
     SolutionAnim->align(FL_ALIGN_TOP_LEFT);
-    SolutionAnim->box(FL_THIN_DOWN_BOX);
 
     o->end();
 
@@ -3254,7 +3250,6 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
 
   MainMenu = new LFl_Menu_Bar(0, 0, 1, 1);
   MainMenu->copy(menu_MainMenu, this);
-  MainMenu->box(FL_THIN_UP_BOX);
 
   Status = new LStatusLine(0, 2, 1, 1);
   Status->callback(cb_Status_stub, this);
@@ -3275,7 +3270,6 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
 
   // the tab for the tool bar
   TaskSelectionTab = new LFl_Tabs(0, 0, 1, 1);
-  TaskSelectionTab->box(FL_THIN_UP_BOX);
   TaskSelectionTab->callback(cb_TaskSelectionTab_stub, this);
   TaskSelectionTab->clear_visible_focus();
 

@@ -135,7 +135,7 @@ Fl_Table::Fl_Table(int X, int Y, int W, int H, const char *l) : Fl_Group(X,Y,W,H
     select_row        = -1;
     select_col        = -1;
 
-    box(FL_THIN_DOWN_FRAME);
+    box(FL_DOWN_FRAME);
 
     vscrollbar = new Fl_Scrollbar(x()+w()-SCROLLBAR_SIZE, y(),
                                   SCROLLBAR_SIZE, h()-SCROLLBAR_SIZE);

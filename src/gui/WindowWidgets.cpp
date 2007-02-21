@@ -32,7 +32,6 @@
 static void cb_ToggleButton_stub(Fl_Widget* o, void* v) { ((ToggleButton*)o)->toggle(); }
 
 ToggleButton::ToggleButton(int x, int y, int w, int h, Fl_Callback* cb, void * cb_para, long p) : Fl_Button(x, y, w, h) {
-  box(FL_THIN_UP_BOX);
   callback = cb;
   callback_para = cb_para;
   para = p;
@@ -44,7 +43,6 @@ ToggleButton::ToggleButton(int x, int y, int w, int h, Fl_Callback* cb, void * c
 static void cb_LToggleButton_stub(Fl_Widget* o, void* v) { ((LToggleButton_c*)o)->toggle(); }
 
 LToggleButton_c::LToggleButton_c(int x, int y, int w, int h, Fl_Callback* cb, void * cb_para, long p) : Fl_Button(0, 0, 10, 10), layoutable_c(x, y, w, h) {
-  box(FL_THIN_UP_BOX);
   callback = cb;
   callback_para = cb_para;
   para = p;
@@ -110,7 +108,6 @@ VoxelEditGroup_c::VoxelEditGroup_c(int x, int y, int w, int h, puzzle_c * puzzle
 
   zselect = new Fl_Slider(x, y, 15, h);
   zselect->tooltip(" Select Z Plane ");
-  zselect->box(FL_THIN_DOWN_BOX);
   zselect->color((Fl_Color)237);
   zselect->step(1);
   zselect->callback(cb_VoxelEditGroupZselect_stub, this);
@@ -203,7 +200,7 @@ static void cb_BlockListGroupList_stub(Fl_Widget* o, void* v) { ((BlockListGroup
 
 BlockListGroup::BlockListGroup(int x, int y, int w, int h, BlockList * l) : Fl_Group(x, y, w, h), List(l) {
 
-  box(FL_THIN_DOWN_FRAME);
+  box(FL_DOWN_FRAME);
   x++; y++; w-=2; h-=2;
 
   // important the list must be added first to be drawn first
@@ -212,15 +209,13 @@ BlockListGroup::BlockListGroup(int x, int y, int w, int h, BlockList * l) : Fl_G
   add(List);
 
   Slider = new Fl_Slider(x+w-15-1, y-1, 15+2, h+2);
-  Slider->box(FL_THIN_DOWN_BOX);
   Slider->maximum(0);
   Slider->callback(cb_BlockListGroupSlider_stub);
   Slider->clear_visible_focus();
 
   w-=15;
 
-  Fl_Box * frame = new Fl_Box(x, y, w, h);
-  frame->box(FL_THIN_UP_FRAME);
+  new Fl_Box(FL_UP_FRAME, x, y, w, h, 0);
   x++; y++; w-=2; h-=2;
 
   List->resize(x, y, w, h);
@@ -250,21 +245,19 @@ void ConstraintsGroup::cb_list(void) {
 
 ConstraintsGroup::ConstraintsGroup(int x, int y, int w, int h, ColorConstraintsEdit * l) : Fl_Group(x, y, w, h), List(l) {
 
-  box(FL_THIN_DOWN_FRAME);
+  box(FL_DOWN_FRAME);
   x++; y++; w-=2; h-=2;
 
   add(List);
 
   Slider = new Fl_Slider(x+w-15-1, y-1, 15+2, h+2);
-  Slider->box(FL_THIN_DOWN_BOX);
   Slider->maximum(0);
   Slider->callback(cb_ConstraintsGroupSlider_stub);
   Slider->clear_visible_focus();
 
   w-=15;
 
-  Fl_Box * frame = new Fl_Box(x, y, w, h);
-  frame->box(FL_THIN_UP_FRAME);
+  new Fl_Box(FL_UP_FRAME, x, y, w, h, 0);
   x++; y++; w-=2; h-=2;
 
   List->resize(x, y, w, h);
@@ -289,7 +282,6 @@ View3dGroup::View3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt) 
 
   slider = new Fl_Slider(x+w-15, y, 15, h);
   slider->tooltip("Zoom view.");
-  slider->box(FL_THIN_DOWN_BOX);
   slider->maximum(6);
   slider->minimum(0);
   slider->step(0.01);
@@ -342,7 +334,7 @@ Separator::Separator(int x, int y, int w, int h, const char * label, bool button
   }
 
   if (button) {
-    new Fl_Box(FL_THIN_UP_BOX, x+w-8, y+h/2-4, 8, 8, 0);
+    new Fl_Box(FL_UP_BOX, x+w-8, y+h/2-4, 8, 8, 0);
     w -= 8;
   }
 
@@ -372,7 +364,7 @@ LSeparator_c::LSeparator_c(int x, int y, int w, int h, const char * label, bool 
   }
 
   if (button) {
-    new Fl_Box(FL_THIN_UP_BOX, x+w-8, y+h/2-4, 8, 8, 0);
+    new Fl_Box(FL_UP_BOX, x+w-8, y+h/2-4, 8, 8, 0);
     w -= 8;
   }
 
@@ -485,7 +477,6 @@ Fl_Button * ButtonGroup::addButton(void) {
   int c = children();
 
   LFl_Button * b = new LFl_Button(0, c, 0, 1, 1);
-  b->box(FL_THIN_UP_BOX);
   b->selection_color(fl_lighter(color()));
   b->clear_visible_focus();
   b->setPadding(2, 0);
@@ -525,7 +516,7 @@ void ButtonGroup::select(int num) {
 LStatusLine::LStatusLine(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
 
   text = new LFl_Box(0, 0, 1, 1);
-  text->box(FL_THIN_UP_BOX);
+  text->box(FL_UP_BOX);
   text->color(FL_BACKGROUND_COLOR);
   text->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
   text->weight(1, 0);

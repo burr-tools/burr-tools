@@ -83,13 +83,11 @@ placementBrowser_c::placementBrowser_c(puzzle_c * p, unsigned int prob, const gu
   pieceSelector->range(0, puzzle->probPieceNumber(problem)-1);
   pieceSelector->precision(0);
   pieceSelector->callback(cb_piece_stub, this);
-  pieceSelector->box(FL_THIN_DOWN_BOX);
   pieceSelector->tooltip(" Select the piece whose placements you want to see ");
 
   placementSelector = new Fl_Value_Slider(0, 20, 20, WINDOWSIZE_Y - (20+30));
   placementSelector->precision(0);
   placementSelector->callback(cb_placement_stub, this);
-  placementSelector->box(FL_THIN_DOWN_BOX);
   placementSelector->tooltip(" Browse the placements ");
 
   (new FlatButton(5, WINDOWSIZE_Y - 25, WINDOWSIZE_X - 10, 20, "Close", "Close the window"))->callback(cb_close_stub, this);

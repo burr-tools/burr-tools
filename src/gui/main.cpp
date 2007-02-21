@@ -56,6 +56,11 @@ int main(int argc, char ** argv) {
   xml::init xmlinit;
   bt_assert_init();
 
+  Fl::set_boxtype(FL_UP_BOX, FL_THIN_UP_BOX);
+  Fl::set_boxtype(FL_DOWN_BOX, FL_THIN_DOWN_BOX);
+  Fl::set_boxtype(FL_UP_FRAME, FL_THIN_UP_FRAME);
+  Fl::set_boxtype(FL_DOWN_FRAME, FL_THIN_DOWN_FRAME);
+
   mainWindow_c *ui = new mainWindow_c(new gridType_c());
 
   int res = 0;

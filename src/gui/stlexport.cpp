@@ -121,12 +121,10 @@ stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_W
     BtnStart = new LFl_Button("Export STL", 1, 0);
     BtnStart->pitch(7);
     BtnStart->callback(cb_stlExportExport_stub, this);
-    BtnStart->box(FL_THIN_UP_BOX);
 
     BtnAbbort = new LFl_Button("Abort", 2, 0);
     BtnAbbort->pitch(7);
     BtnAbbort->callback(cb_stlExportAbort_stub, this);
-    BtnAbbort->box(FL_THIN_UP_BOX);
 
     l->end();
   }

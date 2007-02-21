@@ -92,7 +92,7 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
       /* draw the header */
 
       /* clear the background and paint a raised box */
-      fl_draw_box(FL_THIN_UP_BOX, x, y, w, h, color());
+      fl_draw_box(FL_UP_BOX, x, y, w, h, color());
 
       /* create the text of the cell */
       static char s[40];
