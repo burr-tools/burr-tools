@@ -225,9 +225,9 @@ BlockListGroup::BlockListGroup(int x, int y, int w, int h, BlockList * l) : Fl_G
   end();
 }
 
-static void cb_ConstraintsGroupSlider_stub(Fl_Widget* o, void* v) { ((ConstraintsGroup*)(o->parent()))->cb_slider(); }
-static void cb_ConstraintsGroupList_stub(Fl_Widget* o, void* v) { ((ConstraintsGroup*)(o->parent()))->cb_list(); }
-void ConstraintsGroup::cb_list(void) {
+static void cb_ConstraintsGroupSlider_stub(Fl_Widget* o, void* v) { ((LConstraintsGroup_c*)(o->parent()))->cb_slider(); }
+static void cb_ConstraintsGroupList_stub(Fl_Widget* o, void* v) { ((LConstraintsGroup_c*)(o->parent()))->cb_list(); }
+void LConstraintsGroup_c::cb_list(void) {
 
   if (List->getReason() == ColorConstraintsEdit::RS_CHANGEDHIGHT) {
 
@@ -243,9 +243,12 @@ void ConstraintsGroup::cb_list(void) {
   }
 }
 
-ConstraintsGroup::ConstraintsGroup(int x, int y, int w, int h, ColorConstraintsEdit * l) : Fl_Group(x, y, w, h), List(l) {
+LConstraintsGroup_c::LConstraintsGroup_c(int x, int y, int w, int h, ColorConstraintsEdit * l) : Fl_Group(0, 0, 100, 100), layoutable_c(x, y, w, h), List(l) {
 
   box(FL_DOWN_FRAME);
+
+  x = y = 0;
+  w = h = 100;
   x++; y++; w-=2; h-=2;
 
   add(List);

@@ -243,27 +243,20 @@ class LBlockListGroup_c : public BlockListGroup, public layoutable_c {
   }
 };
 
-class ConstraintsGroup : public Fl_Group {
+class LConstraintsGroup_c : public Fl_Group, public layoutable_c {
 
   Fl_Slider * Slider;
   ColorConstraintsEdit * List;
   int callbackReason;
 
-public:
+  public:
 
-  ConstraintsGroup(int x, int y, int w, int h, ColorConstraintsEdit * l);
+  LConstraintsGroup_c(int x, int y, int w, int h, ColorConstraintsEdit * l);
 
   void cb_slider(void) { List->setShift((int)Slider->value()); }
   void cb_list(void);
 
   int getReason(void) { return callbackReason; }
-};
-
-class LConstraintsGroup_c : public ConstraintsGroup, public layoutable_c {
-
-  public:
-
-  LConstraintsGroup_c(int x, int y, int w, int h, ColorConstraintsEdit * l) : ConstraintsGroup(0, 0, 100, 100, l), layoutable_c(x, y, w, h) {}
 
   virtual void getMinSize(int *width, int *height) const {
     *width = 30;
