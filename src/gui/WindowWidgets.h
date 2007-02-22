@@ -382,25 +382,6 @@ public:
 
 };
 
-// a simple window containing a multi line input
-class multiLineWindow : public Fl_Double_Window {
-
-    Fl_Multiline_Input * inp;
-    bool _saveChanges;
-
-  public:
-    multiLineWindow(const char * title, const char *label, const char *deflt = 0);
-
-    const char * getText(void) { return inp->value(); }
-
-    void hide(bool save) {
-      _saveChanges = save;
-      Fl_Double_Window::hide();
-    }
-
-    bool saveChanges(void) { return _saveChanges; }
-};
-
 class LProgressBar_c : public Fl_Progress, public layoutable_c {
   public:
 

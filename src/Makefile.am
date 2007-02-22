@@ -131,6 +131,7 @@ gui_burrGui_SOURCES=\
      gui/imageexport.cpp \
      gui/main.cpp \
      gui/mainwindow.cpp \
+     gui/multilinewindow.cpp \
      gui/piececolor.cpp \
      gui/placementbrowser.cpp \
      gui/statuswindow.cpp \
@@ -162,6 +163,7 @@ gui_burrGui_SOURCES=\
      gui/image.h \
      gui/imageexport.h \
      gui/mainwindow.h \
+     gui/multilinewindow.h \
      gui/piececolor.h \
      gui/placementbrowser.h \
      gui/statuswindow.h \

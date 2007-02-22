@@ -32,6 +32,8 @@
 #include "BlockList.h"
 #include "Images.h"
 
+#include "multilinewindow.h"
+
 #include "LFl_Tile.h"
 
 #include "../config.h"
@@ -1361,7 +1363,7 @@ void mainWindow_c::cb_Config(void) {
 static void cb_Comment_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_Coment(); }
 void mainWindow_c::cb_Coment(void) {
 
-  multiLineWindow win("Edit Comment", "Change the comment for the current puzzle", puzzle->getComment().c_str());
+  multiLineWindow_c win("Edit Comment", "Change the comment for the current puzzle", puzzle->getComment().c_str());
 
   win.show();
 
