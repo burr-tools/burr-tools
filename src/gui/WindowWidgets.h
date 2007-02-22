@@ -18,29 +18,14 @@
 #ifndef __WINDOW_WIDGETS_H__
 #define __WINDOW_WIDGETS_H__
 
-#include "grideditor.h"
-#include "voxeldrawer.h"
 #include "BlockList.h"
-#include "Images.h"
 #include "Layouter.h"
+#include "Images.h"
+#include "voxeldrawer.h"
 
 #include <FL/Fl.H>
 #include <FL/Fl_Button.H>
-#include <FL/Fl_Light_Button.H>
 #include <FL/Fl_Group.H>
-#include <FL/Fl_Slider.H>
-#include <FL/Fl_Roller.H>
-#include <FL/Fl_Int_Input.H>
-#include <FL/Fl_Tabs.H>
-#include <FL/Fl_Box.H>
-#include <FL/Fl_Check_Button.H>
-#include <FL/Fl_Output.H>
-#include <FL/Fl_Double_Window.H>
-#include <FL/Fl_Multiline_Input.H>
-#include <FL/fl_draw.H>
-
-class guiGridType_c;
-class piecePositions_c;
 
 // my button, the only change it that the box is automatically set to engraved
 class FlatButton : public Fl_Button {

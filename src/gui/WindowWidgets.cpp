@@ -17,15 +17,11 @@
  */
 #include "WindowWidgets.h"
 #include "piececolor.h"
-#include "guigridtype.h"
 
-#include "../lib/voxel.h"
 #include "../lib/puzzle.h"
+#include "../lib/voxel.h"
 
 #include <FL/Fl_Pixmap.H>
-#include <FL/Fl_Multiline_Output.H>
-
-#include <math.h>
 
 // some tool widgets, that may be swapped out later into another file
 
