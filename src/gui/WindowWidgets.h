@@ -37,7 +37,6 @@
 #include <FL/Fl_Output.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Multiline_Input.H>
-#include <FL/Fl_Progress.H>
 #include <FL/fl_draw.H>
 
 class guiGridType_c;
@@ -380,17 +379,6 @@ public:
 
   assertWindow(const char * text, assert_exception * a);
 
-};
-
-class LProgressBar_c : public Fl_Progress, public layoutable_c {
-  public:
-
-    LProgressBar_c(int x, int y, int w, int h) : Fl_Progress(0, 0, 10, 10), layoutable_c(x, y, w, h) {}
-
-    virtual void getMinSize(int *width, int *height) const {
-      *width = 20;
-      *height = 20;
-    }
 };
 
 #endif

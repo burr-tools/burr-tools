@@ -3045,7 +3045,7 @@ void mainWindow_c::CreateSolveTab(void) {
 
     (new LFl_Box(0, 10))->setMinimumSize(0, SZ_GAP);
 
-    SolvingProgress = new LProgressBar_c(0, 11, 1, 1);
+    SolvingProgress = new LFl_Progress(0, 11, 1, 1);
     SolvingProgress->tooltip(" Percentage of solution space searched ");
     SolvingProgress->box(FL_ENGRAVED_BOX);
     SolvingProgress->selection_color((Fl_Color)4);

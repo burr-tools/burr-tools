@@ -41,6 +41,7 @@
 #include <FL/Fl_Tabs.H>
 #include <FL/Fl_Menu_Bar.H>
 #include <FL/Fl_Scroll.H>
+#include <FL/Fl_Progress.H>
 
 #include <vector>
 
@@ -514,6 +515,18 @@ class LFl_Scroll : public Fl_Scroll, public layoutable_c {
     void getMinSize(int *width, int *height) const;
     void resize(int x, int y, int w, int h);
 
+};
+
+class LFl_Progress : public Fl_Progress, public layoutable_c {
+
+  public:
+
+    LFl_Progress(int x, int y, int w, int h) : Fl_Progress(0, 0, 10, 10), layoutable_c(x, y, w, h) {}
+
+    virtual void getMinSize(int *width, int *height) const {
+      *width = 20;
+      *height = 20;
+    }
 };
 
 #endif
