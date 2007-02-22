@@ -3233,7 +3233,8 @@
     check if the pieces can be moved into or out of the box. You can also see
     how to handle multipieces. When looking at the solution it is useful to
     display the box as a wire frame. This can be done by clicking at the blue
-    rectangle at the lower end of the tools. The rectangle with the S1 in it.
+    rectangle at the lower end of the tools. The rectangle with the text
+    ``S1-Box'' in it.
   </description-compact>
 
   <section|Ball Room>

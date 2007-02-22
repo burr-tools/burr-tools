@@ -11,7 +11,7 @@ include the box as a piece so that the program can also check, if the pieces
 can be moved into the box. You can also see how to handle multiple identical
 pieces. When looking at the solution it is useful to display the box as a
 wire frame. This can be done by clicking at the blue rectangle at the lower end
-of the tools. The rectangle with the 0.0 in it.
+of the tools. The rectangle with the text "S1 - Box" in it.
 
 Ball Room: Designed by Stewart Coffin
 This puzzle shows the sphere gridspace. If also shows how to include more than
