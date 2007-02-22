@@ -33,6 +33,7 @@
 #include "Images.h"
 
 #include "multilinewindow.h"
+#include "assertwindow.h"
 
 #include "LFl_Tile.h"
 
@@ -2375,9 +2376,9 @@ void mainWindow_c::update(void) {
     // check, if the thread has thrown an exception, if so re-throw it
     if (assmThread->getAssertException()) {
 
-      assertWindow * aw = new assertWindow("Because of an internal error the current puzzle\n"
-                                           "can not be solved\n",
-                                           assmThread->getAssertException());
+      assertWindow_c * aw = new assertWindow_c("Because of an internal error the current puzzle\n"
+                                               "can not be solved\n",
+                                               assmThread->getAssertException());
 
       aw->show();
 

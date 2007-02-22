@@ -372,13 +372,4 @@ public:
   }
 };
 
-// this window is used to display assert messages
-class assertWindow : public Fl_Double_Window {
-
-public:
-
-  assertWindow(const char * text, assert_exception * a);
-
-};
-
 #endif

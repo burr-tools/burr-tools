@@ -18,7 +18,7 @@
 
 
 #include "mainwindow.h"
-#include "WindowWidgets.h"
+#include "assertwindow.h"
 #include "gzstream.h"
 
 #include <FL/Fl.H>
@@ -74,9 +74,9 @@ int main(int argc, char ** argv) {
 
   catch (assert_exception *a) {
 
-    assertWindow * aw = new assertWindow("I'm sorry there is a bug in this program. It needs to be closed.\n"
-                                         "I try to save the current puzzle in '__rescue.xmpuzzle'\n",
-                                         a);
+    assertWindow_c * aw = new assertWindow_c("I'm sorry there is a bug in this program. It needs to be closed.\n"
+                                             "I try to save the current puzzle in '__rescue.xmpuzzle'\n",
+                                             a);
 
     aw->show();
 
