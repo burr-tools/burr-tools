@@ -22,6 +22,9 @@
 
 #include <FL/fl_ask.H>
 
+#include "view3dgroup.h"
+#include "WindowWidgets.h"
+
 #define WINDOWSIZE_X 400
 #define WINDOWSIZE_Y 400
 

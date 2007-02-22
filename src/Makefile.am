@@ -139,6 +139,7 @@ gui_burrGui_SOURCES=\
      gui/stlexport.cpp \
      gui/togglebutton.cpp \
      gui/tooltabs.cpp \
+     gui/view3dgroup.cpp \
      gui/voxeldrawer.cpp \
      gui/voxeldrawer_0.cpp \
      gui/voxeldrawer_1.cpp \
@@ -174,6 +175,7 @@ gui_burrGui_SOURCES=\
      gui/stlexport.h \
      gui/togglebutton.h \
      gui/tooltabs.h \
+     gui/view3dgroup.h \
      gui/voxeldrawer.h \
      gui/voxeldrawer_0.h \
      gui/voxeldrawer_1.h \

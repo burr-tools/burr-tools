@@ -45,6 +45,7 @@ class ButtonGroup;
 class FlatButton;
 class LStatusLine;
 class LBlockListGroup_c;
+class LView3dGroup;
 
 class Fl_Tabs;
 class Fl_Group;

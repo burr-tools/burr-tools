@@ -36,6 +36,7 @@
 #include "assertwindow.h"
 #include "togglebutton.h"
 #include "voxeleditgroup.h"
+#include "view3dgroup.h"
 
 #include "LFl_Tile.h"
 

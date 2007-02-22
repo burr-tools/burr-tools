@@ -18,6 +18,7 @@
 #include "imageexport.h"
 #include "voxeldrawer.h"
 #include "image.h"
+#include "view3dgroup.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/disassembly.h"
