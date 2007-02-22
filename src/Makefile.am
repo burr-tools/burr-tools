@@ -135,6 +135,7 @@ gui_burrGui_SOURCES=\
      gui/multilinewindow.cpp \
      gui/piececolor.cpp \
      gui/placementbrowser.cpp \
+     gui/statusline.cpp \
      gui/statuswindow.cpp \
      gui/stlexport.cpp \
      gui/togglebutton.cpp \
@@ -171,6 +172,7 @@ gui_burrGui_SOURCES=\
      gui/multilinewindow.h \
      gui/piececolor.h \
      gui/placementbrowser.h \
+     gui/statusline.h \
      gui/statuswindow.h \
      gui/stlexport.h \
      gui/togglebutton.h \

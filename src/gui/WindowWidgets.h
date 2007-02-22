@@ -20,8 +20,6 @@
 
 #include "BlockList.h"
 #include "Layouter.h"
-#include "Images.h"
-#include "voxeldrawer.h"
 
 #include <FL/Fl.H>
 #include <FL/Fl_Button.H>
@@ -176,36 +174,6 @@ public:
     *height = 4;
   }
 
-};
-
-// a status line containing text and a button to toggle
-// between coloured and normal view
-class LStatusLine : public layouter_c {
-
-private:
-
-  ButtonGroup *mode;
-  LFl_Box * text;
-  pixmapList_c pm;
-
-public:
-
-  LStatusLine(int x, int y, int w, int h);
-
-  void setText(const char * t);
-  voxelDrawer_c::colorMode getColorMode(void) const {
-    return mode->getSelected()==0
-      ?voxelDrawer_c::pieceColor
-      :(mode->getSelected()==1
-          ?voxelDrawer_c::paletteColor
-          :voxelDrawer_c::anaglyphColor);
-  }
-  void callback(Fl_Callback* fkt, void * dat) { mode->callback(fkt, dat); }
-
-  virtual void getMinSize(int *width, int *height) const {
-    *width = 30;
-    *height = 25;
-  }
 };
 
 #endif

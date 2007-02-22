@@ -245,26 +245,3 @@ void ButtonGroup::select(int num) {
     cb_Push((Fl_Button*)array()[num]);
 }
 
-LStatusLine::LStatusLine(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
-
-  text = new LFl_Box(0, 0, 1, 1);
-  text->box(FL_UP_BOX);
-  text->color(FL_BACKGROUND_COLOR);
-  text->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-  text->weight(1, 0);
-
-  mode = new ButtonGroup(1, 0, 1, 1);
-  mode->addButton()->image(pm.get(ViewModeNormal_xpm));
-  mode->addButton()->image(pm.get(ViewModeColor_xpm));
-  mode->addButton()->image(pm.get(ViewMode3D_xpm));
-
-  clear_visible_focus();
-
-  end();
-}
-
-void LStatusLine::setText(const char * t) {
-
-  text->copy_label(t);
-}
-

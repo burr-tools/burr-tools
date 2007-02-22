@@ -37,6 +37,7 @@
 #include "togglebutton.h"
 #include "voxeleditgroup.h"
 #include "view3dgroup.h"
+#include "statusline.h"
 
 #include "LFl_Tile.h"
 
