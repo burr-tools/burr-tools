@@ -29,17 +29,6 @@
 
 // some tool widgets, that may be swapped out later into another file
 
-static void cb_LToggleButton_stub(Fl_Widget* o, void* v) { ((LToggleButton_c*)o)->toggle(); }
-
-LToggleButton_c::LToggleButton_c(int x, int y, int w, int h, Fl_Callback* cb, void * cb_para, long p) : Fl_Button(0, 0, 10, 10), layoutable_c(x, y, w, h) {
-  callback = cb;
-  callback_para = cb_para;
-  para = p;
-  Fl_Button::callback(cb_LToggleButton_stub);
-  selection_color(fl_lighter(color()));
-  clear_visible_focus();
-}
-
 // draws an definable evenly spaced number of lines in one direction
 class LineSpacer : Fl_Widget {
 

@@ -97,31 +97,6 @@ public:
   }
 };
 
-class LToggleButton_c : public Fl_Button, public layoutable_c {
-
-  Fl_Callback *callback;
-  void * callback_para;
-  long para;
-
-  public:
-    LToggleButton_c(int x, int y, int w, int h, Fl_Callback *cb, void * cb_para, long para);
-
-    void toggle(void) {
-      value(1-value());
-      if (callback)
-        callback(this, callback_para);
-    }
-
-    long ButtonVal(void) { return para; }
-
-    virtual void getMinSize(int *width, int *height) const {
-      *width = 0;
-      ((LFlatButton_c*)this)->measure_label(*width, *height);
-      *width += 4;
-      *height += 4;
-    }
-};
-
 class LineSpacer;
 
 // the group for the square editor including the coloured marker and the slider for the z axis
