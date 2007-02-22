@@ -143,6 +143,7 @@ gui_burrGui_SOURCES=\
      gui/voxeldrawer_0.cpp \
      gui/voxeldrawer_1.cpp \
      gui/voxeldrawer_2.cpp \
+     gui/voxeleditgroup.cpp \
      \
      gui/BlockList.cpp \
      gui/WindowWidgets.cpp \
@@ -177,6 +178,7 @@ gui_burrGui_SOURCES=\
      gui/voxeldrawer_0.h \
      gui/voxeldrawer_1.h \
      gui/voxeldrawer_2.h \
+     gui/voxeleditgroup.h \
      \
      gui/BlockList.h \
      gui/WindowWidgets.h \

@@ -35,6 +35,7 @@
 #include "multilinewindow.h"
 #include "assertwindow.h"
 #include "togglebutton.h"
+#include "voxeleditgroup.h"
 
 #include "LFl_Tile.h"
 
