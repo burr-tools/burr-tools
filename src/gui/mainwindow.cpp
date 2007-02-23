@@ -39,6 +39,7 @@
 #include "view3dgroup.h"
 #include "statusline.h"
 #include "resultviewer.h"
+#include "separator.h"
 
 #include "LFl_Tile.h"
 

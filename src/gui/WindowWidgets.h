@@ -123,19 +123,6 @@ class LConstraintsGroup_c : public Fl_Group, public layoutable_c {
 
 };
 
-// a widget to separate 2 groups
-class LSeparator_c : public Fl_Group, public layoutable_c  {
-
-public:
-
-  LSeparator_c(int x, int y, int w, int h, const char * label, bool button);
-
-  virtual void getMinSize(int *width, int *height) const {
-    *width = 10;
-    *height = 10;
-  }
-};
-
 // a group that can contain only buttons and one button is
 // pressed while others are not
 class ButtonGroup : public layouter_c {
