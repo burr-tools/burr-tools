@@ -123,22 +123,4 @@ class LConstraintsGroup_c : public Fl_Group, public layoutable_c {
 
 };
 
-// a group that can contain only buttons and one button is
-// pressed while others are not
-class ButtonGroup : public layouter_c {
-
-  unsigned int currentButton;
-
-public:
-
-  ButtonGroup(int x, int y, int w, int h);
-
-  Fl_Button * addButton(void);
-
-  void cb_Push(Fl_Button * btn);
-
-  unsigned int getSelected(void) const { return currentButton; }
-  void select(int num);
-};
-
 #endif

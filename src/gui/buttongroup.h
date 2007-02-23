@@ -15,37 +15,27 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#ifndef __STATUS_LINE_H__
-#define __STATUS_LINE_H__
+#ifndef __BUTTON_GROUP_H__
+#define __BUTTON_GROUP_H__
 
 #include "Layouter.h"
-#include "Images.h"
-#include "voxeldrawer.h"
 
-class ButtonGroup_c;
+// a group that can contain only buttons and one button is
+// pressed while others are not
+class ButtonGroup_c : public layouter_c {
 
-// a status line containing text and a button to toggle
-// between coloured and normal view
-class LStatusLine : public layouter_c {
-
-private:
-
-  ButtonGroup_c *mode;
-  LFl_Box * text;
-  pixmapList_c pm;
+  unsigned int currentButton;
 
 public:
 
-  LStatusLine(int x, int y, int w, int h);
+  ButtonGroup_c(int x, int y, int w, int h);
 
-  void setText(const char * t);
-  voxelDrawer_c::colorMode getColorMode(void) const;
-  void callback(Fl_Callback* fkt, void * dat);
+  LFl_Button * addButton(void);
 
-  virtual void getMinSize(int *width, int *height) const {
-    *width = 30;
-    *height = 25;
-  }
+  void cb_Push(Fl_Button * btn);
+
+  unsigned int getSelected(void) const { return currentButton; }
+  void select(int num);
 };
 
 #endif

@@ -120,6 +120,7 @@ lib_tabs_2_generator_2_SOURCES=\
 gui_burrGui_SOURCES=\
      gui/arcball.cpp \
      gui/assertwindow.cpp \
+     gui/buttongroup.cpp \
      gui/configuration.cpp \
      gui/grideditor.cpp \
      gui/grideditor_0.cpp \
@@ -160,6 +161,7 @@ gui_burrGui_SOURCES=\
      \
      gui/arcball.h \
      gui/assertwindow.h \
+     gui/buttongroup.h \
      gui/configuration.h \
      gui/grideditor.h \
      gui/grideditor_0.h \

@@ -17,7 +17,7 @@
  */
 #include "statusline.h"
 
-#include "WindowWidgets.h"
+#include "buttongroup.h"
 
 LStatusLine::LStatusLine(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
 
@@ -27,7 +27,7 @@ LStatusLine::LStatusLine(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
   text->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
   text->weight(1, 0);
 
-  mode = new ButtonGroup(1, 0, 1, 1);
+  mode = new ButtonGroup_c(1, 0, 1, 1);
   mode->addButton()->image(pm.get(ViewModeNormal_xpm));
   mode->addButton()->image(pm.get(ViewModeColor_xpm));
   mode->addButton()->image(pm.get(ViewMode3D_xpm));

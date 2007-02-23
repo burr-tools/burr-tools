@@ -41,7 +41,7 @@ class PiecesList;
 class PieceVisibility;
 class ColorConstraintsEdit;
 class ToolTabContainer;
-class ButtonGroup;
+class ButtonGroup_c;
 class FlatButton;
 class LStatusLine;
 class LBlockListGroup_c;
@@ -88,8 +88,8 @@ class mainWindow_c : public LFl_Double_Window {
   layouter_c *TabProblems;
 
   ToolTabContainer * pieceTools;
-  ButtonGroup *editChoice;
-  ButtonGroup *editMode;
+  ButtonGroup_c *editChoice;
+  ButtonGroup_c *editMode;
 
   layouter_c *TabSolve;
   Fl_Check_Button *SolveDisasm, *JustCount, *DropDisassemblies;

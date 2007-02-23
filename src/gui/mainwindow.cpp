@@ -40,6 +40,7 @@
 #include "statusline.h"
 #include "resultviewer.h"
 #include "separator.h"
+#include "buttongroup.h"
 
 #include "LFl_Tile.h"
 
@@ -2653,7 +2654,7 @@ void mainWindow_c::CreateShapeTab(void) {
 
     layouter_c * o2 = new layouter_c(0, 3, 1, 1);
 
-    editChoice = new ButtonGroup(0, 0, 1, 1);
+    editChoice = new ButtonGroup_c(0, 0, 1, 1);
 
     Fl_Button * b;
     b = editChoice->addButton();
@@ -2676,7 +2677,7 @@ void mainWindow_c::CreateShapeTab(void) {
 
     (new LFl_Box(1, 0, 1, 1))->setMinimumSize(5, 0);
 
-    editMode = new ButtonGroup(2, 0, 1, 1);
+    editMode = new ButtonGroup_c(2, 0, 1, 1);
 
     b = editMode->addButton();
     b->image(pm.get(TB_Color_Mouse_Rubber_Band_xpm));
