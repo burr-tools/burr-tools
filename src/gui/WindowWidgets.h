@@ -154,26 +154,4 @@ public:
   void select(int num);
 };
 
-class ResultViewer : public Fl_Box, public layoutable_c {
-
-private:
-
-  puzzle_c * puzzle;
-  unsigned int problem;
-  Fl_Color bg;
-
-public:
-
-  ResultViewer(int x, int y, int w, int h, puzzle_c * p);
-  void setPuzzle(puzzle_c * p, unsigned int prob);
-//  void setcontent(void);
-  void draw(void);
-
-  virtual void getMinSize(int *width, int *height) const {
-    *width = 4;
-    *height = 4;
-  }
-
-};
-
 #endif

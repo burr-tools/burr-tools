@@ -36,7 +36,7 @@ class layouter_c;
 class PieceSelector;
 class ProblemSelector;
 class ColorSelector;
-class ResultViewer;
+class ResultViewer_c;
 class PiecesList;
 class PieceVisibility;
 class ColorConstraintsEdit;
@@ -80,7 +80,7 @@ class mainWindow_c : public LFl_Double_Window {
   ProblemSelector * solutionProblem;
   ColorSelector * colorAssignmentSelector;
   PieceSelector * shapeAssignmentSelector;
-  ResultViewer * problemResult;
+  ResultViewer_c * problemResult;
   PiecesList * PiecesCountList;
   PieceVisibility * PcVis;
   ColorConstraintsEdit * colconstrList;

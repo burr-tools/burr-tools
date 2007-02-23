@@ -38,6 +38,7 @@
 #include "voxeleditgroup.h"
 #include "view3dgroup.h"
 #include "statusline.h"
+#include "resultviewer.h"
 
 #include "LFl_Tile.h"
 
@@ -2826,7 +2827,7 @@ void mainWindow_c::CreateProblemTab(void) {
 
     layouter_c * o = new layouter_c(0, 1);
 
-    problemResult = new ResultViewer(0, 0, 1, 1, puzzle);
+    problemResult = new ResultViewer_c(0, 0, 1, 1, puzzle);
     problemResult->tooltip(" The result shape for the current problem ");
     problemResult->weight(1, 0);
 

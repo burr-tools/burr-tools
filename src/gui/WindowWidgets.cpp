@@ -149,55 +149,6 @@ LSeparator_c::LSeparator_c(int x, int y, int w, int h, const char * label, bool 
   end();
 }
 
-ResultViewer::ResultViewer(int x, int y, int w, int h, puzzle_c * p) : Fl_Box(0, 0, 10, 10), layoutable_c(x, y, w, h), puzzle(p), problem(0) {
-  bt_assert(p);
-  bg = color();
-//  setcontent();
-  box(FL_BORDER_BOX);
-  clear_visible_focus();
-}
-
-void ResultViewer::setPuzzle(puzzle_c * p, unsigned int prob) {
-  puzzle = p;
-  problem = prob;
-  redraw();
-//  setcontent();
-}
-
-void ResultViewer::draw(void) {
-  if (problem >= puzzle->problemNumber() ||
-      (puzzle->probGetResult(problem) > puzzle->shapeNumber())) {
-    label("No Result");
-    color(bg);
-    labelcolor(fl_rgb_color(255, 0, 0));
-  } else {
-    static char txt[120];
-
-    unsigned int result = puzzle->probGetResult(problem);
-
-    if (puzzle->probGetResultShape(problem)->getName().length())
-      snprintf(txt, 120, "Result: S%i - %s", result+1, puzzle->probGetResultShape(problem)->getName().c_str());
-    else
-      snprintf(txt, 19, "Result: S%i", result + 1);
-
-    unsigned char r, g, b;
-
-    r = pieceColorRi(result);
-    g = pieceColorGi(result);
-    b = pieceColorBi(result);
-
-    color(fl_rgb_color(r, g, b));
-
-    if ((int)3*r + 6*g + 1*b > 1275)
-      labelcolor(fl_rgb_color(0, 0, 0));
-    else
-      labelcolor(fl_rgb_color(255, 255, 255));
-
-    label(txt);
-  }
-  Fl_Box::draw();
-}
-
 static void cb_ButtonGroup_stub(Fl_Widget* o, void* v) { ((ButtonGroup*)v)->cb_Push((Fl_Button*)o); }
 
 ButtonGroup::ButtonGroup(int x, int y, int w, int h) : layouter_c(x, y, w, h), currentButton(0) {
