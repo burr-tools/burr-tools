@@ -120,6 +120,7 @@ lib_tabs_2_generator_2_SOURCES=\
 gui_burrGui_SOURCES=\
      gui/arcball.cpp \
      gui/assertwindow.cpp \
+     gui/blocklistgroup.cpp \
      gui/buttongroup.cpp \
      gui/configuration.cpp \
      gui/constraintsgroup.cpp \
@@ -162,6 +163,7 @@ gui_burrGui_SOURCES=\
      \
      gui/arcball.h \
      gui/assertwindow.h \
+     gui/blocklistgroup.h \
      gui/buttongroup.h \
      gui/configuration.h \
      gui/constraintsgroup.h \

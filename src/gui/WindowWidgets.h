@@ -80,25 +80,4 @@ public:
   }
 };
 
-class LBlockListGroup_c : public Fl_Group, public layoutable_c {
-
-  Fl_Slider * Slider;
-  BlockList * List;
-  int callbackReason;
-
-  public:
-
-  LBlockListGroup_c(int x, int y, int w, int h, BlockList * l);
-
-  void cb_slider(void) { List->setShift((int)Slider->value()); }
-  void cb_list(void);
-
-  int getReason(void) { return callbackReason; }
-
-  virtual void getMinSize(int *width, int *height) const {
-    *width = 30;
-    *height = 20;
-  }
-};
-
 #endif

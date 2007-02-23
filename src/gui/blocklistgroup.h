@@ -15,13 +15,34 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "WindowWidgets.h"
-#include "piececolor.h"
+#ifndef __BLOCKLIST_GROUP_H__
+#define __BLOCKLIST_GROUP_H__
 
-#include "../lib/puzzle.h"
-#include "../lib/voxel.h"
+#include "Layouter.h"
 
-#include <FL/Fl_Pixmap.H>
+#include <FL/Fl_Group.H>
 
+class BlockList;
 
+class LBlockListGroup_c : public Fl_Group, public layoutable_c {
 
+  Fl_Slider * Slider;
+  BlockList * List;
+  int callbackReason;
+
+  public:
+
+  LBlockListGroup_c(int x, int y, int w, int h, BlockList * l);
+
+  void cb_slider(void);
+  void cb_list(void);
+
+  int getReason(void) { return callbackReason; }
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 30;
+    *height = 20;
+  }
+};
+
+#endif

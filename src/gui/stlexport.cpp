@@ -21,6 +21,7 @@
 #include "BlockList.h"
 #include "WindowWidgets.h"
 #include "view3dgroup.h"
+#include "blocklistgroup.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"

@@ -42,6 +42,7 @@
 #include "separator.h"
 #include "buttongroup.h"
 #include "constraintsgroup.h"
+#include "blocklistgroup.h"
 
 #include "LFl_Tile.h"
 

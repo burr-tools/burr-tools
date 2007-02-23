@@ -16,9 +16,12 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "imageexport.h"
-#include "voxeldrawer.h"
+
 #include "image.h"
 #include "view3dgroup.h"
+#include "Layouter.h"
+#include "WindowWidgets.h"
+#include "blocklistgroup.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/disassembly.h"

@@ -41,7 +41,6 @@
  */
 
 #include "Layouter.h"
-#include "WindowWidgets.h"
 #include "voxeldrawer.h"
 
 #include <vector>
