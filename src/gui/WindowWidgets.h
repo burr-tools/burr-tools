@@ -18,12 +18,9 @@
 #ifndef __WINDOW_WIDGETS_H__
 #define __WINDOW_WIDGETS_H__
 
-#include "BlockList.h"
 #include "Layouter.h"
 
-#include <FL/Fl.H>
 #include <FL/Fl_Button.H>
-#include <FL/Fl_Group.H>
 
 // my button, the only change it that the box is automatically set to engraved
 class FlatButton : public Fl_Button {

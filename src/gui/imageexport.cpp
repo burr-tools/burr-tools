@@ -20,7 +20,6 @@
 #include "image.h"
 #include "view3dgroup.h"
 #include "Layouter.h"
-#include "WindowWidgets.h"
 #include "blocklistgroup.h"
 
 #include "../lib/puzzle.h"

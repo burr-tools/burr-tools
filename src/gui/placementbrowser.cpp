@@ -20,6 +20,7 @@
 #include "../lib/assembler_0.h"
 #include "../lib/puzzle.h"
 
+#include <FL/Fl.H>
 #include <FL/fl_ask.H>
 
 #include "view3dgroup.h"

@@ -19,7 +19,6 @@
 #include "math.h"
 
 #include "BlockList.h"
-#include "WindowWidgets.h"
 #include "view3dgroup.h"
 #include "blocklistgroup.h"
 

@@ -153,7 +153,6 @@ gui_burrGui_SOURCES=\
      gui/voxeleditgroup.cpp \
      \
      gui/BlockList.cpp \
-     gui/WindowWidgets.cpp \
      gui/gzstream.cpp \
      gui/Fl_Table.cpp \
      gui/LFl_Tile.cpp \
