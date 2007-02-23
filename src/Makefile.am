@@ -122,6 +122,7 @@ gui_burrGui_SOURCES=\
      gui/assertwindow.cpp \
      gui/buttongroup.cpp \
      gui/configuration.cpp \
+     gui/constraintsgroup.cpp \
      gui/grideditor.cpp \
      gui/grideditor_0.cpp \
      gui/grideditor_1.cpp \
@@ -163,6 +164,7 @@ gui_burrGui_SOURCES=\
      gui/assertwindow.h \
      gui/buttongroup.h \
      gui/configuration.h \
+     gui/constraintsgroup.h \
      gui/grideditor.h \
      gui/grideditor_0.h \
      gui/grideditor_1.h \

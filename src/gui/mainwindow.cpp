@@ -41,6 +41,7 @@
 #include "resultviewer.h"
 #include "separator.h"
 #include "buttongroup.h"
+#include "constraintsgroup.h"
 
 #include "LFl_Tile.h"
 
