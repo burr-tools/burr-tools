@@ -2576,21 +2576,7 @@ int mainWindow_c::handle(int event) {
   return 0;
 }
 
-#define SZ_WINDOW_X 800                        // initial size of the window
-#define SZ_WINDOW_Y 600
-#define SZ_MENU_Y 25                           // hight of the menu
-#define SZ_STATUS_Y 25
-#define SZ_TOOL_X 325                          // initial width of the toolbar
-#define SZ_TAB_Y 20                            // hight of the tabs in a tab
 #define SZ_GAP 5                               // gap between elements
-#define SZ_CONTENT_START_Y SZ_MENU_Y           // y start of the content area
-#define SZ_CONTENT_Y (SZ_WINDOW_Y - SZ_MENU_Y - SZ_STATUS_Y) // initial hight of the content of the window
-#define SZ_3DAREA_X (SZ_WINDOW_X - SZ_TOOL_X)
-#define SZ_BUTTON_Y 20
-#define SZ_BUTTON2_Y 25
-#define SZ_TEXT_Y 15
-#define SZ_SEPARATOR_Y 10
-#define SZ_TOOLTAB_Y (115+20)
 
 void mainWindow_c::CreateShapeTab(void) {
 
@@ -2612,7 +2598,7 @@ void mainWindow_c::CreateShapeTab(void) {
 
     BtnNewShape =   new LFlatButton_c(0, 0, 1, 1, "New", " Add another piece ", cb_NewShape_stub, this);
     ((LFlatButton_c*)BtnNewShape)->weight(1, 0);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDelShape =   new LFlatButton_c(2, 0, 1, 1, "Delete", " Delete selected piece ", cb_DeleteShape_stub, this);
     ((LFlatButton_c*)BtnDelShape)->weight(1, 0);
     (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
@@ -2746,7 +2732,7 @@ void mainWindow_c::CreateShapeTab(void) {
 
     BtnNewColor = new LFlatButton_c(0, 0, 1, 1, "Add", " Add another colour ", cb_AddColor_stub, this);
     ((LFlatButton_c*)BtnNewColor)->weight(1, 0);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDelColor = new LFlatButton_c(2, 0, 1, 1, "Remove", " Remove selected colour ", cb_RemoveColor_stub, this);
     ((LFlatButton_c*)BtnDelColor)->weight(1, 0);
     (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
@@ -2795,7 +2781,7 @@ void mainWindow_c::CreateProblemTab(void) {
 
     BtnNewProb = new LFlatButton_c(0, 0, 1, 1, "New", " Add another problem ", cb_NewProblem_stub, this);
     ((LFlatButton_c*)BtnNewProb)->weight(1, 0);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDelProb = new LFlatButton_c(2, 0, 1, 1, "Delete", " Delete selected problem ", cb_DeleteProblem_stub, this);
     ((LFlatButton_c*)BtnDelProb)->weight(1, 0);
     (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
@@ -2864,7 +2850,7 @@ void mainWindow_c::CreateProblemTab(void) {
 
     BtnAddShape = new LFlatButton_c(xp++, 0, 1, 1, "+1", " Add another one of the selected shape ", cb_AddShapeToProblem_stub, this);
     ((LFlatButton_c*)BtnAddShape)->weight(1, 0);
-    (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnRemShape = new LFlatButton_c(xp++, 0, 1, 1, "-1", " Remove one of the selected shapes ", cb_RemoveShapeFromProblem_stub, this);
     ((LFlatButton_c*)BtnRemShape)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
@@ -2919,7 +2905,7 @@ void mainWindow_c::CreateProblemTab(void) {
 
     BtnColSrtPc = new LFlatButton_c(0, 0, 1, 1, "Sort by Piece", " Sort colour constraints by piece ", cb_CCSortByPiece_stub, this);
     ((LFlatButton_c*)BtnColSrtPc)->weight(1, 0);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnColAdd = new LFlatButton_c(2, 0, 1, 1, "@-12->", " Add colour to constraint ", cb_AllowColor_stub, this);
     BtnColRem = new LFlatButton_c(3, 0, 1, 1, "@-18->", " Add colour to constraint ", cb_DisallowColor_stub, this);
     (new LFl_Box(4, 0))->setMinimumSize(SZ_GAP, 0);
@@ -3028,14 +3014,14 @@ void mainWindow_c::CreateSolveTab(void) {
     o = new layouter_c(0, 7);
 
     BtnPrepare = new LFlatButton_c(0, 0, 1, 1, "Prepare", " Do the preparation phase and then stop, this removes old results ", cb_BtnPrepare_stub, this);
-    ((LFlatButton_c*)BtnPrepare)->weight(1, SZ_BUTTON_Y);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    ((LFlatButton_c*)BtnPrepare)->weight(1, 0);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnStart = new LFlatButton_c(2, 0, 1, 1, "Start", " Start new solving process, removing old result ", cb_BtnStart_stub, this);
-    ((LFlatButton_c*)BtnStart)->weight(1, SZ_BUTTON_Y);
+    ((LFlatButton_c*)BtnStart)->weight(1, 0);
     (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
     BtnCont = new LFlatButton_c(4, 0, 1, 1, "Continue", " Continue started process ", cb_BtnCont_stub, this);
     ((LFlatButton_c*)BtnCont)->weight(1, 0);
-    (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, 0);
     BtnStop = new LFlatButton_c(6, 0, 1, 1, "Stop", " Stop a currently running solution process ", cb_BtnStop_stub, this);
     ((LFlatButton_c*)BtnStop)->weight(1, 0);
 
@@ -3046,8 +3032,8 @@ void mainWindow_c::CreateSolveTab(void) {
     o = new layouter_c(0, 9);
 
     BtnPlacement = new LFlatButton_c(0, 0, 1, 1, "Browse Placements", " Browse the calculated placement of pieces ", cb_BtnPlacementBrowser_stub, this);
-    ((LFlatButton_c*)BtnPlacement)->weight(1, SZ_BUTTON_Y);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    ((LFlatButton_c*)BtnPlacement)->weight(1, 0);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnStep = new LFlatButton_c(2, 0, 1, 1, "Step", " Make one step in the assembler ", cb_BtnAssemblerStep_stub, this);
     ((LFlatButton_c*)BtnStep)->weight(1, 0);
 
@@ -3169,7 +3155,7 @@ void mainWindow_c::CreateSolveTab(void) {
 
     BtnSrtFind =  new LFlatButton_c(0, 0, 1, 1, "Sort by Finding", " Sort in the order the solutions were found ", cb_SrtFind_stub, this);
     ((LFlatButton_c*)BtnSrtFind)->weight(1, 0);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnSrtLevel = new LFlatButton_c(2, 0, 1, 1, "Sort by Level", " Sort in the order of increasing level ", cb_SrtLevel_stub, this);
     ((LFlatButton_c*)BtnSrtLevel)->weight(1, 0);
     (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
@@ -3184,7 +3170,7 @@ void mainWindow_c::CreateSolveTab(void) {
 
     BtnDelAll =    new LFlatButton_c(0, 0, 1, 1, "Del All", " Delete all solutions ", cb_DelAll_stub, this);
     ((LFlatButton_c*)BtnDelAll)->weight(1, 0);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDelBefore = new LFlatButton_c(2, 0, 1, 1, "Del Before", " Delete all before the currently selected one ", cb_DelBefore_stub, this);
     ((LFlatButton_c*)BtnDelBefore)->weight(1, 0);
     (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
@@ -3205,7 +3191,7 @@ void mainWindow_c::CreateSolveTab(void) {
 
     BtnDisasmDel    = new LFlatButton_c(0, 0, 1, 1, "D DA", " Remove the disassembly for the current solution ", cb_DelDisasm_stub, this);
     ((LFlatButton_c*)BtnDisasmDel)->weight(1, 0);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, SZ_BUTTON_Y);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDisasmDelAll = new LFlatButton_c(2, 0, 1, 1, "D A DA", " Remove the disassemblies for all solutions ", cb_DelAllDisasm_stub, this);
     ((LFlatButton_c*)BtnDisasmDelAll)->weight(1, 0);
     (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
@@ -3267,7 +3253,6 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
   Status->callback(cb_Status_stub, this);
 
   LFl_Tile * mainTile = new LFl_Tile(0, 1, 1, 1);
-  mainTile->resize(0, SZ_CONTENT_START_Y, SZ_WINDOW_X, SZ_CONTENT_Y);
   mainTile->weight(0, 1);
 
   layouter_c * lay = new layouter_c(1, 0, 1, 1);
