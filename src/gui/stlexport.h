@@ -27,7 +27,8 @@
  *         shrinks all solids by that amount)
  * file name
  */
-
+#ifndef __STL_EXPORT_H__
+#define __STL_EXPORT_H__
 
 #include "Layouter.h"
 
@@ -63,3 +64,5 @@ class stlExport_c : public LFl_Double_Window {
     void cb_Update3DView(void);
     void exportSTL(int shape);
 };
+
+#endif

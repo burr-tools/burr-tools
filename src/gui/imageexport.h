@@ -39,6 +39,8 @@
  * smoothly downscaled and put onto the page
  * add a line of text explaining what is currently done
  */
+#ifndef __IMAGE_EXPORT_H__
+#define __IMAGE_EXPORT_H__
 
 #include "Layouter.h"
 #include "voxeldrawer.h"
@@ -123,3 +125,5 @@ class imageExport_c : public LFl_Double_Window, public VoxelViewCallbacks {
     virtual bool PreDraw(void);
     virtual void PostDraw(void);
 };
+
+#endif
