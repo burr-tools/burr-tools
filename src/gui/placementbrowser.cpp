@@ -24,10 +24,6 @@
 #include <FL/fl_ask.H>
 
 #include "view3dgroup.h"
-#include "WindowWidgets.h"
-
-#define WINDOWSIZE_X 400
-#define WINDOWSIZE_Y 400
 
 static void cb_close_stub(Fl_Widget* o, void* v) { ((placementBrowser_c*)v)->hide(); }
 static void cb_piece_stub(Fl_Widget* o, void* v) { ((placementBrowser_c*)v)->cb_piece((Fl_Value_Slider*)o); }
@@ -76,25 +72,32 @@ void placementBrowser_c::cb_placement(Fl_Value_Slider* o) {
 
 
 placementBrowser_c::placementBrowser_c(puzzle_c * p, unsigned int prob, const guiGridType_c * ggt) :
-  Fl_Double_Window(WINDOWSIZE_X, WINDOWSIZE_Y), puzzle(p), problem(prob) {
+  LFl_Double_Window(true), puzzle(p), problem(prob) {
 
   bt_assert(puzzle->probGetAssembler(problem));
 
-  view3d = new View3dGroup(20, 20, WINDOWSIZE_X - 20, WINDOWSIZE_Y - (20 + 30), ggt);
+  view3d = new LView3dGroup(1, 1, 1, 1, ggt);
+  view3d->weight(1, 1);
+  view3d->setMinimumSize(300, 300);
 
-  pieceSelector = new Fl_Value_Slider(0, 0, WINDOWSIZE_X, 20);
+  pieceSelector = new LFl_Value_Slider(0, 0, 2, 1);
   pieceSelector->type(FL_HOR_SLIDER);
   pieceSelector->range(0, puzzle->probPieceNumber(problem)-1);
   pieceSelector->precision(0);
   pieceSelector->callback(cb_piece_stub, this);
   pieceSelector->tooltip(" Select the piece whose placements you want to see ");
+  pieceSelector->setMinimumSize(0, 20);
 
-  placementSelector = new Fl_Value_Slider(0, 20, 20, WINDOWSIZE_Y - (20+30));
+  placementSelector = new LFl_Value_Slider(0, 1, 1, 1);
   placementSelector->precision(0);
   placementSelector->callback(cb_placement_stub, this);
   placementSelector->tooltip(" Browse the placements ");
+  placementSelector->setMinimumSize(20, 0);
 
-  (new FlatButton(5, WINDOWSIZE_Y - 25, WINDOWSIZE_X - 10, 20, "Close", "Close the window"))->callback(cb_close_stub, this);
+  LFl_Button * b = new LFl_Button("Close", 0, 2, 2, 1);
+  b->tooltip(" Close the window ");
+  b->callback(cb_close_stub, this);
+  b->pitch(5);
 
   label("Placement Browser");
 

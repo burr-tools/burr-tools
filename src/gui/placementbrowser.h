@@ -18,22 +18,20 @@
 #ifndef __PLACEMENT_BROWSER_H__
 #define __PLACEMENT_BROWSER_H__
 
-
-#include <FL/Fl_Double_Window.H>
-#include <FL/Fl_Value_Slider.H>
+#include "Layouter.h"
 
 class puzzle_c;
 
 class guiGridType_c;
 
-class View3dGroup;
+class LView3dGroup;
 
-class placementBrowser_c : public Fl_Double_Window {
+class placementBrowser_c : public LFl_Double_Window {
 
-  View3dGroup *view3d;
+  LView3dGroup *view3d;
 
-  Fl_Value_Slider * pieceSelector;
-  Fl_Value_Slider * placementSelector;
+  LFl_Value_Slider * pieceSelector;
+  LFl_Value_Slider * placementSelector;
 
   puzzle_c * puzzle;
   unsigned int problem;

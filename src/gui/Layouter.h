@@ -426,8 +426,21 @@ class LFl_Value_Slider : public Fl_Value_Slider, public layoutable_c {
     LFl_Value_Slider(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Value_Slider(0, 0, 0, 0), layoutable_c(x, y, w, h) {}
 
     virtual void getMinSize(int *width, int *height) const {
-      *width = 30;
-      *height = 20;
+
+      switch(type()) {
+        case FL_HORIZONTAL:
+        case FL_HOR_FILL_SLIDER:
+        case FL_HOR_NICE_SLIDER:
+          *width = 30;
+          *height = 20;
+          break;
+        case FL_VERTICAL:
+        case FL_VERT_FILL_SLIDER:
+        case FL_VERT_NICE_SLIDER:
+          *width = 20;
+          *height = 30;
+          break;
+      }
     }
 };
 
