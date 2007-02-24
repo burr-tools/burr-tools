@@ -21,11 +21,8 @@
 
 #include "../lib/bt_assert.h"
 
-#include "WindowWidgets.h"
+#include "Layouter.h"
 
-#include <FL/Fl_Pack.H>
-#include <FL/Fl_Double_Window.H>
-#include <FL/Fl_Check_Button.H>
 #include <FL/Fl.H>
 #include <FL/filename.H>
 
@@ -237,10 +234,10 @@ static void cb_ConfigDialog_stub(Fl_Widget* o, void* v) { ((Fl_Double_Window*)v)
 
 void configuration_c::dialog(void) {
 
-  Fl_Double_Window * win = new Fl_Double_Window(200, 500);
+  LFl_Double_Window * win = new LFl_Double_Window(false);
 
   config_data *t = first_data;
-  int y = 10;
+  int y = 0;
 
   while(t) {
     if (t->dialog) {
@@ -248,7 +245,7 @@ void configuration_c::dialog(void) {
       switch (t->cnf_typ) {
       case CT_BOOL:
         {
-          Fl_Check_Button *w = new Fl_Check_Button(10, y, 180, 20, t->dialogText);
+          LFl_Check_Button *w = new LFl_Check_Button(t->dialogText, 0, y, 1, 1);
           t->widget = w;
           if (*((bool*)t->cnf_var))
             w->value(1);
@@ -263,16 +260,19 @@ void configuration_c::dialog(void) {
       default: bt_assert(0);
       }
 
-      y += 20;
+      y ++;
     }
 
     t = t->next;
   }
 
-  new FlatButton(10, y+10, 180, 20, "Close", "Close window", cb_ConfigDialog_stub, win);
+  LFl_Button * btn = new LFl_Button("Close", 0, y, 1, 1);
+  btn->tooltip("Close window");
+  btn->callback(cb_ConfigDialog_stub, win);
+  btn->pitch(5);
 
   win->end();
-  win->resize(win->x(), win->y(), win->w(), y+40);
+  win->label("Configuration");
 
   win->set_modal();
   win->show();
