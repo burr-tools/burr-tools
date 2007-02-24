@@ -29,13 +29,18 @@
 
 // some tool widgets, that may be swapped out later into another file
 
-static void cb_View3dGroupSlider_stub(Fl_Widget* o, void* v) { ((View3dGroup*)(o->parent()))->cb_slider(); }
+static void cb_View3dGroupSlider_stub(Fl_Widget* o, void* v) { ((LView3dGroup*)(o->parent()))->cb_slider(); }
 
-void View3dGroup::cb_slider(void) {
+void LView3dGroup::cb_slider(void) {
   View3D->setSize(exp(6-slider->value()));
 }
 
-View3dGroup::View3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt) : Fl_Group(x, y, w, h) {
+
+LView3dGroup::LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt) : Fl_Group(0, 0, 50, 50), layoutable_c(x, y, w, h) {
+
+  x = y = 0;
+  w = h = 50;
+
   box(FL_DOWN_BOX);
 
   View3D = ggt->getVoxelDrawer(x, y, w-15, h);
@@ -57,7 +62,7 @@ View3dGroup::View3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt) 
   end();
 }
 
-void View3dGroup::newGridType(const guiGridType_c * ggt) {
+void LView3dGroup::newGridType(const guiGridType_c * ggt) {
 
   View3D->hide();
 
@@ -80,45 +85,45 @@ void View3dGroup::newGridType(const guiGridType_c * ggt) {
   View3D->show();
 }
 
-void View3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
+void LView3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
   View3D->update(false);
   View3D->showSingleShape(puz, shapeNum);
   View3D->update(true);
 }
 
-void View3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape) {
+void LView3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape) {
 
   View3D->update(false);
   View3D->showProblem(puz, probNum, selShape);
   View3D->update(true);
 }
 
-void View3dGroup::showColors(const puzzle_c * puz, voxelDrawer_c::colorMode mode) {
+void LView3dGroup::showColors(const puzzle_c * puz, voxelDrawer_c::colorMode mode) {
   View3D->update(false);
   View3D->showColors(puz, mode);
   View3D->update(true);
 }
 
-void View3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
+void LView3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
   View3D->update(false);
   View3D->showAssembly(puz, probNum, solNum);
   View3D->update(true);
 }
 
-void View3dGroup::showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z) {
+void LView3dGroup::showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z) {
 
   View3D->update(false);
   View3D->showPlacement(puz, probNum, piece, trans, x, y, z);
   View3D->update(true);
 }
 
-void View3dGroup::updatePositions(piecePositions_c *shifting) {
+void LView3dGroup::updatePositions(piecePositions_c *shifting) {
   View3D->update(false);
   View3D->updatePositions(shifting);
   View3D->update(true);
 }
 
-void View3dGroup::updateVisibility(PieceVisibility * pcvis) {
+void LView3dGroup::updateVisibility(PieceVisibility * pcvis) {
   View3D->update(false);
   View3D->updateVisibility(pcvis);
   View3D->update(true);

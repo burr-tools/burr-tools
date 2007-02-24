@@ -28,14 +28,14 @@ class guiGridType_c;
 class piecePositions_c;
 
 // the groups with the 3d view and the zoom slider
-class View3dGroup : public Fl_Group {
+class LView3dGroup : public Fl_Group, public layoutable_c {
 
   voxelDrawer_c * View3D;
   Fl_Slider * slider;
 
 public:
 
-  View3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt);
+  LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt);
 
   void newGridType(const guiGridType_c * ggt);
 
@@ -64,18 +64,11 @@ public:
   void redraw(void) { View3D->redraw(); }
 
   voxelDrawer_c * getView(void) { return View3D; }
-};
 
-class LView3dGroup : public View3dGroup, public layoutable_c {
-
-  public:
-
-    LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt) : View3dGroup(0, 0, 50, 50, ggt), layoutable_c(x, y, w, h) {}
-
-    virtual void getMinSize(int * w, int *h) const {
-      *w = 40;
-      *h = 40;
-    }
+  virtual void getMinSize(int * w, int *h) const {
+    *w = 40;
+    *h = 40;
+  }
 };
 
 #endif

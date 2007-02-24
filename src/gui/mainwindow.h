@@ -25,7 +25,6 @@
 class VoxelEditGroup_c;
 class ChangeSize;
 class ToolTab;
-class LView3dGroup;
 class puzzle_c;
 class assemblerThread_c;
 class disasmToMoves_c;

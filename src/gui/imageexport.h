@@ -53,7 +53,6 @@ class ImageInfo;
 class image_c;
 class puzzle_c;
 class guiGridType_c;
-class LView3dGroup;
 
 class imageExport_c : public LFl_Double_Window, public VoxelViewCallbacks {
 
