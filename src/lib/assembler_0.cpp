@@ -197,7 +197,8 @@ void assembler_0_c::nextPiece(unsigned int piece, unsigned int count, unsigned i
   pieceStart[piece] = left.size();
 }
 
-assembler_0_c::assembler_0_c(void) :
+assembler_0_c::assembler_0_c(assemblerFrontend_c * fe) :
+  assembler_c(fe),
   multiPieceCount(0), multiPieceIndex(0), pieceStart(0),
   pos(0), rows(0), columns(0), nodeF(0), numF(0),
   piece(0), searchState(0), addRows(0), avoidTransformedAssemblies(0), avoidTransformedMirror(0)
@@ -234,6 +235,32 @@ static voxel_c * addToCache(voxel_c * cache[], unsigned int * fill, voxel_c * pi
   (*fill)++;
   return piece;
 }
+
+
+bool assembler_0_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
+
+  if (!pieceFits(x, y, z))
+    return false;
+
+  const voxel_c * result = puzzle->probGetResultShape(problem);
+
+  for (unsigned int pz = piece->boundZ1(); pz <= piece->boundZ2(); pz++)
+    for (unsigned int py = piece->boundY1(); py <= piece->boundY2(); py++)
+      for (unsigned int px = piece->boundX1(); px <= piece->boundX2(); px++)
+        if (
+            // the piece can not be place if the result is empty and the piece is filled at a given voxel
+            ((piece->getState(px, py, pz) != voxel_c::VX_EMPTY) &&
+             (result->getState(x+px, y+py, z+pz) == voxel_c::VX_EMPTY)) ||
+
+            // the piece can also not be placed when the colour constraints don't fit
+            !puzzle->probPlacementAllowed(problem, piece->getColor(px, py, pz), result->getColor(x+px, y+py, z+pz))
+
+           )
+          return false;
+
+  return true;
+}
+
 
 /**
  * this function prepares the matrix of nodes for the recursive function
@@ -460,7 +487,7 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
           for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
             for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
               for (int z = (int)result->boundZ1()-(int)rotation->boundZ1(); z <= (int)result->boundZ2()-(int)rotation->boundZ2(); z++)
-                if (pieceFits(rotation, x, y, z)) {
+                if (canPlace(rotation, x, y, z)) {
 
                   int piecenode = AddPieceNode(piece, rot, x+rotation->getHx(), y+rotation->getHy(), z+rotation->getHz());
                   placements = 1;

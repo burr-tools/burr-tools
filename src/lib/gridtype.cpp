@@ -17,9 +17,9 @@
  */
 #include "gridtype.h"
 
-#include "assm_0_frontend_0.h"
-#include "assm_0_frontend_1.h"
-#include "assm_0_frontend_2.h"
+#include "assemblerfrontend_0.h"
+#include "assemblerfrontend_1.h"
+#include "assemblerfrontend_2.h"
 #include "disassembler_0.h"
 #include "voxel_0.h"
 #include "voxel_1.h"
@@ -124,12 +124,12 @@ gridType_c::~gridType_c(void) {
 /* these functions return assembler and disassemble for the current space grid
  * if the required functionality is not available, return 0
  */
-assembler_0_c * gridType_c::getAssembler(void) const {
+assemblerFrontend_c * gridType_c::getAssemblerFrontend(void) const {
 
   switch (type) {
-    case GT_BRICKS:           return new assm_0_frontend_0_c();
-    case GT_TRIANGULAR_PRISM: return new assm_0_frontend_1_c();
-    case GT_SPHERES:          return new assm_0_frontend_2_c();
+    case GT_BRICKS:           return new assemblerFrontend_0_c();
+    case GT_TRIANGULAR_PRISM: return new assemblerFrontend_1_c();
+    case GT_SPHERES:          return new assemblerFrontend_2_c();
     default:                  return 0;
   }
 

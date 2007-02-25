@@ -15,23 +15,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#ifndef __ASSEMBLER_0_FRONTENT_1_H__
-#define __ASSEMBLER_0_FRONTENT_1_H__
+#include "assemblerfrontend_1.h"
 
-#include "assembler_0.h"
-#include "gridtype.h"
+/* helper function to check if a piece an go at a position */
+bool assemblerFrontend_1_c::pieceFits(int x, int y, int z) const {
 
-class voxel_c;
+  // the shape doesn't fit, when the lower left corner doesn't have the right parity
+  if ((x+y) & 1) return false;
 
-class assm_0_frontend_1_c : public assembler_0_c {
+  return true;
+}
 
-private:
-
-  bool pieceFits(const voxel_c * piece, int x, int y, int z);
-
-  assm_0_frontend_1_c(void) : assembler_0_c() {}
-  friend assembler_0_c * gridType_c::getAssembler(void) const;
-
-};
-
-#endif

@@ -158,11 +158,10 @@ private:
 
   void iterativeMultiSearch(void);
 
-  /**
-   * this function is called by the default implementation of prepare
-   * to check, if the piece fits at the given position
+  /* this function checks, if the given piece can be placed
+   * at the given position inside the result
    */
-  virtual bool pieceFits(const voxel_c * piece, int x, int y, int z) = 0;
+  bool canPlace(const voxel_c * piece, int x, int y, int z) const;
 
   /* this function creates the matrix for the search function
    * because we need to know how many nodes we need to allocate the
@@ -327,7 +326,7 @@ protected:
 
 public:
 
-  assembler_0_c(void);
+  assembler_0_c(assemblerFrontend_c * fe);
   ~assembler_0_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */

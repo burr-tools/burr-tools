@@ -15,22 +15,18 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#ifndef __ASSEMBLER_0_FRONTENT_2_H__
-#define __ASSEMBLER_0_FRONTENT_2_H__
+#ifndef __ASSEMBLER_FRONTENT_0_H__
+#define __ASSEMBLER_FRONTENT_0_H__
 
-#include "assembler_0.h"
-#include "gridtype.h"
+#include "assembler.h"
 
-class voxel_c;
+class assemblerFrontend_0_c : public assemblerFrontend_c {
 
-class assm_0_frontend_2_c : public assembler_0_c {
+public:
 
-private:
+  bool pieceFits(int x, int y, int z) const;
 
-  bool pieceFits(const voxel_c * piece, int x, int y, int z);
-
-  assm_0_frontend_2_c(void) : assembler_0_c() {}
-  friend assembler_0_c * gridType_c::getAssembler(void) const;
+  assemblerFrontend_0_c(void) {}
 
 };
 

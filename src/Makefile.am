@@ -17,10 +17,10 @@ burrTxt_SOURCES=burrTxt.cpp
 
 lib_libburr_a_SOURCES=\
     lib/assembler_0.cpp \
+    lib/assemblerfrontend_0.cpp \
+    lib/assemblerfrontend_1.cpp \
+    lib/assemblerfrontend_2.cpp \
     lib/assembly.cpp \
-    lib/assm_0_frontend_0.cpp \
-    lib/assm_0_frontend_1.cpp \
-    lib/assm_0_frontend_2.cpp \
     lib/assemblerthread.cpp \
     lib/bt_assert.cpp \
     lib/burrgrower.cpp \
@@ -58,10 +58,10 @@ BUILT_SOURCES=\
 pkginclude_HEADERS=\
     lib/assembler.h \
     lib/assembler_0.h \
+    lib/assemblerfrontend_0.h \
+    lib/assemblerfrontend_1.h \
+    lib/assemblerfrontend_2.h \
     lib/assembly.h \
-    lib/assm_0_frontend_0.h \
-    lib/assm_0_frontend_1.h \
-    lib/assm_0_frontend_2.h \
     lib/assemblerthread.h \
     lib/bitfield.h \
     lib/bt_assert.h \

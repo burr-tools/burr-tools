@@ -33,7 +33,7 @@ puzzleSol_c::puzzleSol_c(puzzle_c * p, unsigned int prob) {
   puzzle = p;
   this->prob = prob;
 
-  assembler_0_c *assm = p->getGridType()->getAssembler();
+  assembler_0_c *assm = new assembler_0_c(p->getGridType()->getAssemblerFrontend());
   if (assm->createMatrix(p, prob) == assembler_0_c::ERR_NONE) {
 
     solutions = 0;

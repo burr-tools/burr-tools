@@ -43,10 +43,27 @@ public:
   virtual ~assembler_cb(void) {}
 };
 
+class assemblerFrontend_c {
+
+public:
+
+  virtual bool pieceFits(int x, int y, int z) const = 0;
+
+  virtual ~assemblerFrontend_c(void) {}
+};
+
 /* as the assembly could be done using different routines we provide an
  * general interface to the assemblers using this abstract base class
  */
 class assembler_c {
+
+  const assemblerFrontend_c * frontend;
+
+protected:
+
+  bool pieceFits(int x, int y, int z) const {
+    return frontend->pieceFits(x, y, z);
+  }
 
 public:
 
@@ -61,8 +78,10 @@ public:
   } errState;
 
   /* initialisation, only the things that can be done quickly */
-  assembler_c(void) {}
-  virtual ~assembler_c(void) {}
+  assembler_c(const assemblerFrontend_c * fe) : frontend(fe) {}
+  virtual ~assembler_c(void) {
+    delete frontend;
+  }
 
   /* the part of the initialisation that may take a while */
   virtual errState createMatrix(const puzzle_c * puz, unsigned int problemNum) { return ERR_NONE; }

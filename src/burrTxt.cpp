@@ -166,7 +166,7 @@ int main(int argv, char* args[]) {
       print(&p);
     }
 
-    assembler_0_c *assm = p.getGridType()->getAssembler();
+    assembler_0_c *assm = new assembler_0_c(p.getGridType()->getAssemblerFrontend());
 
     switch (assm->createMatrix(&p, problem)) {
       case assembler_0_c::ERR_TOO_MANY_UNITS:
