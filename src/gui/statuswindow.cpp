@@ -239,4 +239,6 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
 
   fr->setMinimumSize(10, 200);
   fr->weight(1, 1);
+
+  set_modal();
 }
