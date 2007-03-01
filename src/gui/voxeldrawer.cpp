@@ -636,6 +636,9 @@ void voxelDrawer_c::showPlacement(const puzzle_c * puz, unsigned int probNum, un
   setTransformationType(CenterTranslateRoateScale);
   showCoordinateSystem(false);
 
+  int hx, hy, hz;
+  puz->probGetResultShape(probNum)->getHotspot(0, &hx, &hy, &hz);
+
   float cx, cy, cz;
   calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
   setCenter(cx*0.5, cy*0.5, cz*0.5);
@@ -655,7 +658,7 @@ void voxelDrawer_c::showPlacement(const puzzle_c * puz, unsigned int probNum, un
     bt_assert(vx->transform(trans));
     num = addSpace(vx);
 
-    setSpacePosition(num, x, y, z, 1);
+    setSpacePosition(num, x-hx, y-hy, z-hz, 1);
     setSpaceColor(num,
                           pieceColorR(puz->probGetShape(probNum, shape), p),
                           pieceColorG(puz->probGetShape(probNum, shape), p),
