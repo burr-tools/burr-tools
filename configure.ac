@@ -29,14 +29,6 @@ else
   AC_MSG_WARN([FLTK not found, do not build gui])
 fi  
 
-AC_CHECK_PROG(flu_found, flu-config, 1, 0)
-
-if [test $flu_found -eq 1]; then
-  GUI_CPP_ADD="$GUI_CPP_ADD `flu-config --cxxflags --use-gl`"
-  GUI_LD_ADD="$GUI_LD_ADD `flu-config --ldflags --use-gl`"
-  AC_DEFINE(HAVE_FLU)
-fi
-
 AC_CHECK_PROG(xmlwrapp_found, xmlwrapp-config, 1, 0)
 
 if [test $xmlwrapp_found -eq 1]; then
@@ -54,6 +46,24 @@ if [test $libpng_found -eq 1]; then
 else
   AC_MSG_WARN([libpng not found, this libaray is required for the image export])
 fi  
+
+AC_SYS_LARGEFILE
+
+dnl Define largefile options as needed...
+LARGEFILE=""
+if test x$enable_largefile != xno; then
+	LARGEFILE="-D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE"
+
+	if test $ac_cv_sys_large_files -a $ac_cv_sys_large_files = 1; then
+		LARGEFILE="$LARGEFILE -D_LARGE_FILES"
+	fi
+
+	if test $ac_cv_sys_file_offset_bits = 64; then
+		LARGEFILE="$LARGEFILE -D_FILE_OFFSET_BITS=64"
+	fi
+fi
+AC_SUBST(LARGEFILE)
+
 
 AC_SUBST(GUI_CPP_ADD, $GUI_CPP_ADD)
 AC_SUBST(GUI_LD_ADD, $GUI_LD_ADD)

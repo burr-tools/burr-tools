@@ -1,5 +1,5 @@
 bin_PROGRAMS=burrTxt gui/burrGui
-noinst_LIBRARIES=lib/libburr.a
+noinst_LIBRARIES=lib/libburr.a flu/libflu.a
 noinst_PROGRAMS=lib/tabs_0/generator_0 lib/tabs_1/generator_1 lib/tabs_2/generator_2
 
 XML_CPP_ADD=@XML_CPP_ADD@
@@ -7,8 +7,8 @@ XML_LD_ADD=@XML_LD_ADD@
 GUI_CPP_ADD=@GUI_CPP_ADD@
 GUI_LD_ADD=@GUI_LD_ADD@
 
-AM_CPPFLAGS=-Wall $(XML_CPP_ADD) $(GUI_CPP_ADD)
-LDADD=lib/libburr.a $(GUI_LD_ADD) $(XML_LD_ADD)
+AM_CPPFLAGS=-Wall $(XML_CPP_ADD) $(GUI_CPP_ADD) @LARGEFILE@
+LDADD=lib/libburr.a flu/libflu.a $(GUI_LD_ADD) $(XML_LD_ADD)
 lib_tabs_0_generator_0_LDADD=
 lib_tabs_1_generator_1_LDADD=
 lib_tabs_2_generator_2_LDADD=
@@ -116,6 +116,36 @@ lib_tabs_2_generator_2_SOURCES=\
     lib/tabs_2/symmetries.inc \
     lib/tabs_2/tablesizes.inc
 
+flu_libflu_a_SOURCES=\
+    flu/Flu_Button.cpp \
+    flu/Flu_Button.h \
+    flu/Flu_Combo_Box.cpp \
+    flu/Flu_Combo_Box.h \
+    flu/Flu_Combo_List.cpp \
+    flu/Flu_Combo_List.h \
+    flu/Flu_Combo_Tree.cpp \
+    flu/Flu_Combo_Tree.h \
+    flu/Flu_Enumerations.h \
+    flu/flu_export.h \
+    flu/Flu_File_Chooser.cpp \
+    flu/Flu_File_Chooser.h \
+    flu/flu_file_chooser_pixmaps.cpp \
+    flu/flu_file_chooser_pixmaps.h \
+    flu/Flu_Label.h \
+    flu/Flu_Label.cpp \
+    flu/flu_pixmaps.cpp \
+    flu/flu_pixmaps.h \
+    flu/Flu_Return_Button.cpp \
+    flu/Flu_Return_Button.h \
+    flu/Flu_Separator.cpp \
+    flu/Flu_Separator.h \
+    flu/FluSimpleString.cpp \
+    flu/FluSimpleString.h \
+    flu/Flu_Tree_Browser.cpp \
+    flu/Flu_Tree_Browser.h \
+    flu/FluVectorClass.h \
+    flu/Flu_Wrap_Group.cpp \
+    flu/Flu_Wrap_Group.h
 
 gui_burrGui_SOURCES=\
      gui/arcball.cpp \

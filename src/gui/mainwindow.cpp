@@ -57,9 +57,7 @@
 #include "../lib/gridtype.h"
 #include "../lib/disasmtomoves.h"
 
-#ifdef HAVE_FLU
-#include <FLU/Flu_File_Chooser.h>
-#endif
+#include "../flu/Flu_File_Chooser.h"
 
 #include <FL/Fl_Color_Chooser.H>
 #include <FL/Fl_Tooltip.H>
@@ -83,22 +81,6 @@
 #include <xmlwrapp/xmlwrapp.h>
 
 #include <fstream>
-
-static const char * FileSelection(const char * title) {
-#ifdef HAVE_FLU
-    return flu_file_chooser(title, "*.xmpuzzle", "");
-#else
-    return fl_file_chooser(title, "*.xmpuzzle", "");
-#endif
-}
-
-static const char * FileSelection2(const char * title) {
-#ifdef HAVE_FLU
-    return flu_file_chooser(title, "*.puz", "");
-#else
-    return fl_file_chooser(title, "*.puz", "");
-#endif
-}
 
 /* returns true, if file exists, this is not the
  optimal way to do this. It would be better to open
@@ -1243,7 +1225,7 @@ void mainWindow_c::cb_Load(void) {
       if (fl_choice("Puzzle changed are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
-    const char * f = FileSelection("Load Puzzle");
+    const char * f = flu_file_chooser("Load Puzzle", "*.xmpuzzle", "");
 
     tryToLoad(f);
   }
@@ -1258,7 +1240,7 @@ void mainWindow_c::cb_Load_Ps3d(void) {
       if (fl_choice("Puzzle changed are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
-    const char * f = FileSelection2("Load Puzzle");
+    const char * f = flu_file_chooser("Import PuzzleSolver3D File", "*.puz", "");
 
     if (f) {
 
@@ -1316,7 +1298,7 @@ static void cb_SaveAs_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SaveA
 void mainWindow_c::cb_SaveAs(void) {
 
   if (threadStopped()) {
-    const char * f = FileSelection("Save Puzzle As");
+    const char * f = flu_file_chooser("Save Puzzle As", "*.xmpuzzle", "");
 
     if (f) {
 
