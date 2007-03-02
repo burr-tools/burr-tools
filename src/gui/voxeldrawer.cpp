@@ -99,9 +99,9 @@ void voxelDrawer_c::drawVoxelSpace() {
 
       switch(trans) {
       case ScaleRotateTranslate:
-        glTranslatef(shapes[piece].x - hx,
-                     shapes[piece].y - hy,
-                     shapes[piece].z - hz);
+        glTranslatef(shapes[piece].x,
+                     shapes[piece].y,
+                     shapes[piece].z);
         glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
         addRotationTransformation();
         glMultMatrixf(transformMatrix);
@@ -113,9 +113,9 @@ void voxelDrawer_c::drawVoxelSpace() {
         break;
       case TranslateRoateScale:
         addRotationTransformation();
-        glTranslatef(shapes[piece].x - hx,
-                     shapes[piece].y - hy,
-                     shapes[piece].z - hz);
+        glTranslatef(shapes[piece].x,
+                     shapes[piece].y,
+                     shapes[piece].z);
         glMultMatrixf(transformMatrix);
         {
           float cx, cy, cz;
@@ -636,12 +636,19 @@ void voxelDrawer_c::showPlacement(const puzzle_c * puz, unsigned int probNum, un
   setTransformationType(CenterTranslateRoateScale);
   showCoordinateSystem(false);
 
-  int hx, hy, hz;
-  puz->probGetResultShape(probNum)->getHotspot(0, &hx, &hy, &hz);
+  float hx, hy, hz;
+  hx = puz->probGetResultShape(probNum)->getHx();
+  hy = puz->probGetResultShape(probNum)->getHy();
+  hz = puz->probGetResultShape(probNum)->getHz();
+  recalcSpaceCoordinates(&hx, &hy, &hz);
 
   float cx, cy, cz;
   calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
-  setCenter(cx*0.5, cy*0.5, cz*0.5);
+  setCenter(cx*0.5-hx, cy*0.5-hy, cz*0.5-hz);
+
+  hx = puz->probGetResultShape(probNum)->getHx();
+  hy = puz->probGetResultShape(probNum)->getHy();
+  hz = puz->probGetResultShape(probNum)->getHz();
 
   int num;
 
