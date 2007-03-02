@@ -23,14 +23,7 @@
 class puzzle_c;
 
 /**
- * this widget allows to edit voxel spaces. It shows one Z-Layer of the space as a grid
- * of spheres and each of these squares can be toggled between the state filled, variable, empty
- *
- * the callback is issued on on the following occasions:
- *  - Mouse moves inside the area of the widget (for the 3d view to show the cursor
- *  - Changes of voxel states
- *
- *  this is by faaaaar the most ugly code in the whole project, this really needs a clean rewrite
+ * implements grid editor functions to edit the cube grid
  */
 class gridEditor_0_c : public gridEditor_c {
 
