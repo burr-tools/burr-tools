@@ -508,7 +508,7 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
 
                 voxel_c * vx = gt->getVoxel(puzzle->probGetShapeShape(problem, pc));
 
-                if (!vx->transform(sym->transAdd(rot, r))) {
+                if (!vx->transform(rot) || !vx->transform(r)) {
                   delete vx;
                   continue;
                 }
