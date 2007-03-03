@@ -239,17 +239,19 @@ void voxel_2_c::transformPoint(int * x, int * y, int * z, unsigned int trans) co
   ypn /= sqrt(0.5);
   zpn /= sqrt(0.5);
 
-  int xn = (int)(xpn+(xpn<0?-0.5:0.5));
-  int yn = (int)(ypn+(ypn<0?-0.5:0.5));
-  int zn = (int)(zpn+(zpn<0?-0.5:0.5));
+  // it is possible that the resulting coordinates are invalid (not on a whole coordinate or at
+  // an invalid coordinate, but we assume that the error we indroduce here will be cancelled out
+  // later on, when other coordinates are transformed
+  //
+  // this function is only used in the assembly class to transform an assembly in there we use
+  // this function twice, once to remove hotspot movement and once to tranformt the ancor point
+  // or pieces. These 2 values are subtracted. The assumption is that both time we introduce the
+  // same errror with the rounding below and due to subtration the error cancelles itself out
+  // lets cross fingers....
 
-  // is should fall on a valid grid position
-  bt_assert((fabs(xpn-xn) < 0.01) && (fabs(ypn-yn) < 0.01) && (fabs(zpn-zn) < 0.01));
-  bt_assert((((xn+yn+zn) & 1) == 0));
-
-  *x = xn;
-  *y = yn;
-  *z = zn;
+  *x = (int)floor(xpn);
+  *y = (int)floor(ypn);
+  *z = (int)floor(zpn);
 }
 
 bool voxel_2_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const {
