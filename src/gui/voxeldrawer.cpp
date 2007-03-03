@@ -229,6 +229,7 @@ void voxelDrawer_c::drawVoxelSpace() {
 
             if (colors == anaglyphColor) {
               double gr = 0.1*cb + 0.3*cr + 0.6*cg;
+              gr = 1 - (1-gr)/3;
               cr = cg = cb = gr;
             }
 
