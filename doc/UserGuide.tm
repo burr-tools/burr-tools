@@ -1486,6 +1486,13 @@
     mark everything is fine.
   </description-compact>
 
+  Because calculating all this information can take a considerable amount of
+  time <name|BurrTools> pops up a window when it is working on accumulating
+  this table. The window contains a progress bar to guess how much longer it
+  will take. There is also a <with|font-family|ss|<strong|Cancel>> button at
+  the bottom that lets you abort this calculation and view the already
+  gathered results.
+
   <section|Tips and Tricks>
 
   Below are some tips and tricks that can be useful to simplify your designs,

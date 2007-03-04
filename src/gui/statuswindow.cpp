@@ -54,6 +54,8 @@ class StatusProgress : public LFl_Double_Window {
 
     StatusProgress(void) : LFl_Double_Window(false) {
 
+      label("Progress");
+
       (new LFl_Box("Calculating Status information.\n"
                   "This might take some time...", 0, 0, 1, 1))->pitch(3);
 
@@ -68,6 +70,8 @@ class StatusProgress : public LFl_Double_Window {
       btn->callback(cb_Close_stub, this);
 
       end();
+
+      set_modal();
     }
 
     void setProgress(float value) {
