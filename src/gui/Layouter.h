@@ -23,6 +23,7 @@
 
 #include <FL/fl_draw.H>
 
+#include <FL/Fl.H>
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Slider.H>
 #include <FL/Fl_Box.H>
@@ -482,6 +483,14 @@ class LFl_Double_Window : public Fl_Double_Window {
         size_range(wy, hy, wy, hy);
 
       size(wy, hy);
+
+      // center the window
+      {
+        int sw, sh, sx, sy;
+        Fl::screen_xywh(sx, sy, sw, sh);
+
+        position((sw-wy)/2+sx, (sh-hy)/2+sy);
+      }
     }
 
     Fl_Double_Window::show();
