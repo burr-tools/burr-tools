@@ -486,6 +486,10 @@ class LFl_Double_Window : public Fl_Double_Window {
 
     Fl_Double_Window::show();
   }
+
+  void begin() {
+    lay->begin();
+  }
 };
 
 class LFl_Tabs : public Fl_Tabs, public layoutable_c {
