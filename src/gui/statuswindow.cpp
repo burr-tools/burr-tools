@@ -21,6 +21,8 @@
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
 
+#include <FL/Fl.H>
+
 class LFl_Line : public Fl_Box, public layoutable_c {
 
   private:
@@ -42,7 +44,44 @@ class LFl_Line : public Fl_Box, public layoutable_c {
 
 static void cb_Close_stub(Fl_Widget* o, void* v) { ((statusWindow_c*)v)->hide(); }
 
+class StatusProgress : public LFl_Double_Window {
+
+  private:
+
+    LFl_Progress * p;
+
+  public:
+
+    StatusProgress(void) : LFl_Double_Window(false) {
+
+      (new LFl_Box("Calculating Status information.\n"
+                  "This might take some time...", 0, 0, 1, 1))->pitch(3);
+
+      p = new LFl_Progress(0, 1, 1, 1);
+      p->minimum(0);
+      p->maximum(1);
+      p->selection_color((Fl_Color)4);
+      p->pitch(3);
+
+      LFl_Button * btn = new LFl_Button("Cancel", 0, 2, 1, 1);
+      btn->pitch(3);
+      btn->callback(cb_Close_stub, this);
+
+      end();
+    }
+
+    void setProgress(float value) {
+      p->value(value);
+    }
+};
+
+
 statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
+
+  StatusProgress *  stp = new StatusProgress;
+  stp->show();
+
+  begin();
 
   char tmp[200];
 
@@ -94,6 +133,7 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
     snprintf(tmp, 200, "%i", v->countState(voxel_c::VX_VARIABLE) + v->countState(voxel_c::VX_FILLED));
     (new LFl_Box("", col, s+head))->copy_label(tmp);
     col += 2;
+    Fl::wait(0);
 
     for (unsigned int s2 = 0; s2 < s; s2++)
       if (v->identicalWithRots(p->getShape(s2), true, false)) {
@@ -107,6 +147,7 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
         break;
       }
     col += 2;
+    Fl::wait(0);
 
     for (unsigned int s2 = 0; s2 < s; s2++)
       if (v->identicalWithRots(p->getShape(s2), false, false)) {
@@ -120,6 +161,7 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
         break;
       }
     col += 2;
+    Fl::wait(0);
 
     for (unsigned int s2 = 0; s2 < s; s2++)
       if (v->identicalWithRots(p->getShape(s2), false, true)) {
@@ -133,6 +175,7 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
         break;
       }
     col +=2 ;
+    Fl::wait(0);
 
     if (v->connected(0, true, 0)) {
       new LFl_Box("X", col, s+head);
@@ -142,6 +185,7 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
       b->box(FL_FLAT_BOX);
     }
     col += 2;
+    Fl::wait(0);
 
     if (v->connected(1, true, 0)) {
       new LFl_Box("X", col, s+head);
@@ -151,6 +195,7 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
       b->box(FL_FLAT_BOX);
     }
     col += 2;
+    Fl::wait(0);
 
     if (v->connected(2, true, 0)) {
       new LFl_Box("X", col, s+head);
@@ -160,6 +205,7 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
       b->box(FL_FLAT_BOX);
     }
     col += 2;
+    Fl::wait(0);
 
     if (!v->connected(0, false, 0, false)) {
       b = new LFl_Box("X", col, s+head);
@@ -169,6 +215,7 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
       b->box(FL_FLAT_BOX);
     }
     col += 2;
+    Fl::wait(0);
 
     if (!v->connected(0, false, 0)) {
       b = new LFl_Box("X", col, s+head);
@@ -178,6 +225,7 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
       b->box(FL_FLAT_BOX);
     }
     col += 2;
+    Fl::wait(0);
 
     if (!p->getGridType()->getSymmetries()->symmetryKnown(v)) {
       b = new LFl_Box("---", col, s+head);
@@ -192,7 +240,15 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
       b->box(FL_NO_BOX);
     }
     col += 2;
+
+    stp->setProgress(1.0*s/p->shapeNumber());
+    Fl::wait(0);
+    if (!stp->visible())
+      break;
   }
+
+  stp->hide();
+  delete stp;
 
   (new LFl_Box("Shape", 0, 0))->pitch(2);
   new LFl_Line(1, 0, 1, lines+head, 2);
