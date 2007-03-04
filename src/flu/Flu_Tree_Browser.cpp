@@ -2981,12 +2981,12 @@ Flu_Tree_Browser::Node* Flu_Tree_Browser :: add_leaf( const char* path, const ch
   return add( path, p.c_str(), w, showLabel );
 }
 
-unsigned int Flu_Tree_Browser :: remove( const char *fullpath )
+unsigned long Flu_Tree_Browser :: remove( const char *fullpath )
 {
-  return( (unsigned int)root.modify( fullpath, Node::REMOVE, rdata ) );
+  return( (unsigned long)root.modify( fullpath, Node::REMOVE, rdata ) );
 }
 
-unsigned int Flu_Tree_Browser :: remove( const char *path, const char *text )
+unsigned long Flu_Tree_Browser :: remove( const char *path, const char *text )
 {
   // if the path does not end in '/', add it
   FluSimpleString s = path;
@@ -2996,12 +2996,12 @@ unsigned int Flu_Tree_Browser :: remove( const char *path, const char *text )
   return remove( s.c_str() );
 }
 
-unsigned int Flu_Tree_Browser :: remove( unsigned int id )
+unsigned long Flu_Tree_Browser :: remove( unsigned int id )
 {
   return root.remove( id );
 }
 
-unsigned int Flu_Tree_Browser :: Node :: remove( unsigned int id )
+unsigned long Flu_Tree_Browser :: Node :: remove( unsigned int id )
 {
   if( id == 0 )
     return 0;
@@ -3028,12 +3028,12 @@ unsigned int Flu_Tree_Browser :: Node :: remove( unsigned int id )
   return 0;
 }
 
-unsigned int Flu_Tree_Browser :: remove( Fl_Widget *w )
+unsigned long Flu_Tree_Browser :: remove( Fl_Widget *w )
 {
   return root.remove( w );
 }
 
-unsigned int Flu_Tree_Browser :: Node :: remove( Fl_Widget *w )
+unsigned long Flu_Tree_Browser :: Node :: remove( Fl_Widget *w )
 {
   if( !w )
     return 0;
