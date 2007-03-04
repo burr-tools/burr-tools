@@ -1,6 +1,6 @@
 SUBDIRS = src
 
-EXTRA_DIST = doc/UserGuide.tm doc/UserGuide.pdf \
+EXTRA_DIST = doc/UserGuide.tm \
              doc/Pics/Button_Constraints_Colour.png doc/Pics/Button_Constraints_Fixed.png \
              doc/Pics/Button_Constraints_Variable.png doc/Pics/Button_Size_Grid_Align.png \
              doc/Pics/Button_Size_Grid_Center.png doc/Pics/Button_Size_Grid_Minimize.png \
@@ -35,7 +35,10 @@ EXTRA_DIST = doc/UserGuide.tm doc/UserGuide.pdf \
              doc/Pics/Emulation_2Layer.png \
              doc/Pics/Emulation_DiagonalCut.png \
              doc/Pics/Emulation_Pagoda2.png \
-             doc/Pics/Emulation_Pagoda.png \
-             examples/README.TXT examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle \
-             examples/PelikanBurr.xmpuzzle examples/CubeInCage.xmpuzzle examples/Bermuda.xmpuzzle \
-             examples/BallRoom.xmpuzzle
+             doc/Pics/Emulation_Pagoda.png
+
+dist_doc_DATA = doc/UserGuide.pdf \
+                examples/README.TXT examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle \
+                examples/PelikanBurr.xmpuzzle examples/CubeInCage.xmpuzzle examples/Bermuda.xmpuzzle \
+                examples/BallRoom.xmpuzzle \
+                AUTHORS README NEWS ChangeLog
