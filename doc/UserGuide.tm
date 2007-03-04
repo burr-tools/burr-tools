@@ -233,8 +233,7 @@
   a program that use these libraries, but just start programs that use them.
 
   Additionally the following libraries are required:
-  <with|font-family|tt|flkt>, <with|font-family|tt|flu> and
-  <with|font-family|tt|xmlwrapp>.
+  <with|font-family|tt|flkt> and <with|font-family|tt|xmlwrapp>.
 
   <verbatim|Fltk> is the library used for the GUI of <name|BurrTools>. It may
   be included in your <name|Linux> distribution or it may not.
@@ -262,11 +261,6 @@
   library, you just don't get the emergency save feature if there is a bug in
   the GUI of <name|BurrTools>. But as the number of bugs is hopefully quite
   small right now that should not be such a big problem.
-
-  <verbatim|Flu> is not included in most distributions. So you need to
-  install it manually. It is installed in the usual way. Refer to
-  installation instructions of that library. <name|BurrTools> can be compiled
-  without <verbatim|Flu> but then the File Open dialogue is really ugly.
 
   The last library, <verbatim|xmlwrapp>, can be hard to find, so here a link
 
