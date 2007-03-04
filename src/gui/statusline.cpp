@@ -27,10 +27,21 @@ LStatusLine::LStatusLine(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
   text->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
   text->weight(1, 0);
 
+  Fl_Button * b;
+
   mode = new ButtonGroup_c(1, 0, 1, 1);
-  mode->addButton()->image(pm.get(ViewModeNormal_xpm));
-  mode->addButton()->image(pm.get(ViewModeColor_xpm));
-  mode->addButton()->image(pm.get(ViewMode3D_xpm));
+
+  b = mode->addButton();
+  b->image(pm.get(ViewModeNormal_xpm));
+  b->tooltip(" Display normally with shape color ");
+
+  b = mode->addButton();
+  b->image(pm.get(ViewModeColor_xpm));
+  b->tooltip(" Display with colour constraint colors ");
+
+  b = mode->addButton();
+  b->image(pm.get(ViewMode3D_xpm));
+  b->tooltip(" Display in anaglyph mode ");
 
   clear_visible_focus();
 
