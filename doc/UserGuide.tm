@@ -689,11 +689,14 @@
 
   The status line has two parts. On the left information about the task at
   hand is given and on the right are some tools to alter the 3-<no-break>D
-  view. Currently only the option <with|font-family|ss|<strong|Colour 3D
-  View>> is available. When checked all custom colours
-  (<with|mode|math|\<vartriangleright\>><reference|AddingColour>) will be
-  shown in the 3-<no-break>D viewer, whereas the shapes will be represented
-  with their neutral colour if this option is left unchecked.
+  view. Currently you can select there <em|how> the 3-<no-break>D view show
+  the shapes. You have the choice between the normal view where each piece is
+  drawn with its neutral colour, a view where each piece is drawn with its
+  colour constraint color (if it has one assigned<with|mode|math|\<vartriangleright\>><reference|AddingColour>).
+  The third option is an anaglyph called mode. In this mode the pieces are
+  drawn using the red-cyan method to display real 3-<no-break>D. You can view
+  these with a red-green, red-blue or red-cyan glasses. The <em|r>ed glass
+  must be in front of your <em|r>ight eye.
 
   <section|The Tools Section>
 
@@ -1478,8 +1481,9 @@
     have. If a shape turns up that has a kind of symmetry yet unknown to the
     program it can not solve puzzles with this shape. So here is a tool to
     check beforehand and without the need to create a problem. If you ever
-    see a mark in the last column send me the shapes where it turns up. As
-    long as this last column is empty everything is fine.
+    see a coloured mark in the last column send me the shapes where it turns
+    up. As long as this last column contains only numbers without a color
+    mark everything is fine.
   </description-compact>
 
   <section|Tips and Tricks>
