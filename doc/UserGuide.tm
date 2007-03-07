@@ -692,7 +692,7 @@
   view. Currently you can select there <em|how> the 3-<no-break>D view show
   the shapes. You have the choice between the normal view where each piece is
   drawn with its neutral colour, a view where each piece is drawn with its
-  colour constraint color (if it has one assigned<with|mode|math|\<vartriangleright\>><reference|AddingColour>).
+  colour constraint colour (if it has one assigned<with|mode|math|\<vartriangleright\>><reference|AddingColour>).
   The third option is an anaglyph called mode. In this mode the pieces are
   drawn using the red-cyan method to display real 3-<no-break>D. You can view
   these with a red-green, red-blue or red-cyan glasses. The <em|r>ed glass
@@ -1267,6 +1267,14 @@
   hard. The <strong|<with|font-family|ss|Remove>> button will not only
   discard the colour from the list, but will also remove it from any voxel
   that has it as an attribute by replacing it with the neutral colour.
+
+  When you add a colour <name|BurrTools> automatically add a constraint rule
+  that pieces of this colour can be placed into result voxels of this colour.
+  This is done so because this is the most often used usage case of colours.
+  If you don't want this you have to explicitly remove the rules (see
+  <no-break><with|mode|math|\<vartriangleright\>><reference|ColourConstraints>).
+  Also when a new problem is created <name|BurrTools> automatically adds one
+  rule for each colour that will allow placement.
 
   <subsection|Applying Colours><label|BrushTool>
 
@@ -1938,6 +1946,14 @@
   column stays present in the <with|font-family|ss|Group Editor>.
 
   <section|Setting Colour Constraints><label|ColourConstraints>
+
+  <name|BurrTools> automatically adds the probably most used rules for colour
+  constrains when you add a new colour or when a new problem is created. That
+  rule is that each colour can be placed into itself, e.g. a piece with
+  colour C<with|font-shape|italic|x> can go into a Result of colour
+  C<with|font-shape|italic|x>. If you don't want that or if you need
+  additional placement possibilities you can change the colour constraint
+  rules in the colour assignment section.
 
   The <strong|<with|font-family|ss|Colour Assignment>> panel
   (Figure<\float|float|tbf>

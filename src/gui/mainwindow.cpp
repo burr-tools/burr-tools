@@ -110,6 +110,13 @@ void mainWindow_c::cb_AddColor(void) {
 
   if (fl_color_chooser("New colour", r, g, b)) {
     puzzle->addColor(r, g, b);
+
+    // add this color as a default to the matrix, so that
+    // pieces of color x can be plces into cubes of color x
+    int col = puzzle->colorNumber();
+    for (unsigned int p = 0; p < puzzle->problemNumber(); p++)
+      puzzle->probAllowPlacement(p, col, col);
+
     colorSelector->setSelection(puzzle->colorNumber());
     changed = true;
     View3D->showColors(puzzle, Status->getColorMode());
@@ -447,6 +454,9 @@ static void cb_NewProblem_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_N
 void mainWindow_c::cb_NewProblem(void) {
 
   unsigned int prob = puzzle->addProblem();
+
+  for (unsigned int c = 0; c < puzzle->colorNumber(); c++)
+    puzzle->probAllowPlacement(prob, c+1, c+1);
 
   problemSelector->setSelection(prob);
 
