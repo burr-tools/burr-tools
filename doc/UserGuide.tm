@@ -29,10 +29,9 @@
   which allows creation and editing puzzle definitions, solving the puzzle
   and the display and animation of the found solutions. This is probably the
   most interesting part for most people. On the other hand there is a
-  <name|<name|<name|C++>>> library that may help with the search for and
-  design of new puzzles. This library contains all the necessary tools to
-  write programs that do the things that the graphical interface does (and
-  more).
+  <name|C++> library that may help with the search for and design of new
+  puzzles. This library contains all the necessary tools to write programs
+  that do the things that the graphical interface does (and more).
 
   The first part of this document describes the graphical program. It should
   contain descriptions of all concepts and explain how to use them in the GUI
@@ -169,14 +168,13 @@
   location.
 
   <name|Microsoft Windows> users can either download the
-  <with|font-family|tt|Windows Binary<name|<with|font-family|tt|>>> (a zipped
-  file which needs manual extraction and installation) or the self-extracting
+  <with|font-family|tt|Windows Binary> (a zipped file which needs manual
+  extraction and installation) or the self-extracting
   <with|font-family|tt|Windows Installer>. Unless you have a slow connection
   to the internet downloading the installer is probably the best option. To
   use <name|BurrTools> on a <name|Linux> platform you can either download
-  provided pre compiled version or the <with|font-family|tt|Source><name|>
-  files and compile the program on your system (see installation guidelines
-  below).
+  provided pre compiled version or the <with|font-family|tt|Source> files and
+  compile the program on your system (see installation guidelines below).
 
   <subsection|Installation of BurrTools>
 
@@ -420,13 +418,12 @@
     for a particular voxel it is unknown whether it will be filled or empty
     in the final assembly. This is required for puzzles that have holes in
     <em|undetermined> places (like all the higher level six-piece burrs). All
-    voxels that <em|might> be empty <em|<em|<em|<em|must>>>> have the
-    <em|<em|variable>> state in the result shape. Right now the variable
-    state can only be used in <em|<em|result shapes>> and the solver will pop
-    up an error message whenever it encounters a variable state in a normal
-    piece.<next-line>Later on variable voxels might be used in piece shapes
-    as well to define voxels in the shape that the program might alter to
-    create interesting puzzles.
+    voxels that <em|might> be empty <em|must> have the variable state in the
+    result shape. Right now the variable state can only be used in result
+    shapes and the solver will pop up an error message whenever it encounters
+    a variable state in a normal piece.<next-line>Later on variable voxels
+    might be used in piece shapes as well to define voxels in the shape that
+    the program might alter to create interesting puzzles.
   </description-compact>
 
   The question now is: <em|why not always use variable voxels> in the result
@@ -444,8 +441,8 @@
   This is done by assigning a colour to one or more voxels of the piece(s)
   and the result shape (<with|mode|math|\<vartriangleright\>><reference|AddingColour>).
   Then you can set some colour placement conditions for each problem
-  (<with|mode|math|\<vartriangleright\>><with|mode|math|><reference|ColourConstraints>).
-  The program will place pieces only at positions that fulfil the colour
+  (<with|mode|math|\<vartriangleright\>><reference|ColourConstraints>). The
+  program will place pieces only at positions that fulfil the colour
   conditions defined.
 
   These colour conditions currently allow the definition of what coloured
@@ -643,8 +640,7 @@
     <item*|<with|font-family|ss|Quit>>Shuts down <name|BurrTools.><next-line>
   </description-compact>
 
-  <with|mode|math|><with|mode|math|><with|mode|math|><with|mode|math|>Except
-  when the solver is actually <em|running>, saving your work is always
+  Except when the solver is actually <em|running>, saving your work is always
   possible. This means that after stopping (pausing) the solver it is
   possible to save the results found thus far. Later on these partially
   solved puzzles can be loaded again and the solving process may be resumed.
@@ -692,11 +688,12 @@
   view. Currently you can select there <em|how> the 3-<no-break>D view show
   the shapes. You have the choice between the normal view where each piece is
   drawn with its neutral colour, a view where each piece is drawn with its
-  colour constraint colour (if it has one assigned<with|mode|math|\<vartriangleright\>><reference|AddingColour>).
-  The third option is an anaglyph called mode. In this mode the pieces are
-  drawn using the red-cyan method to display real 3-<no-break>D. You can view
-  these with a red-green, red-blue or red-cyan glasses. The <em|r>ed glass
-  must be in front of your <em|r>ight eye.
+  colour constraint colour (if it has one
+  assigned<with|mode|math|\<vartriangleright\>><reference|AddingColour>). The
+  third option is an anaglyph called mode. In this mode the pieces are drawn
+  using the red-cyan method to display real 3-<no-break>D. You can view these
+  with a red-green, red-blue or red-cyan glasses. The <em|r>ed glass must be
+  in front of your <em|r>ight eye.
 
   <section|The Tools Section>
 
@@ -938,15 +935,14 @@
 
   The checkboxes for <em|linking adjustments> - to the right of the spin
   wheels - allow you to adjust two or all dimensions simultaneously. All
-  linked dimensions will <em|<em|increase>> or decrease by the same
-  <em|absolute> amount. However, none of the dimensions can be made smaller
-  than 1 unit. Linked dimensioning is very useful in creating bigger and
-  complex shapes such as the result shape of <name|No Nukes!> (Ronald
-  Kint-Bruynseels), which is easily done by first creating the central burr
-  in a 6<with|mode|math|\<times\>>6<with|mode|math|\<times\>>6 grid and
-  adding the extensions after resizing the grid to
-  14<with|mode|math|\<times\>>14<with|mode|math|\<times\>>14 and centring the
-  'core' in that enlarged grid.
+  linked dimensions will increase or decrease by the same <em|absolute>
+  amount. However, none of the dimensions can be made smaller than 1 unit.
+  Linked dimensioning is very useful in creating bigger and complex shapes
+  such as the result shape of <name|No Nukes!> (Ronald Kint-Bruynseels),
+  which is easily done by first creating the central burr in a
+  6<with|mode|math|\<times\>>6<with|mode|math|\<times\>>6 grid and adding the
+  extensions after resizing the grid to 14<with|mode|math|\<times\>>14<with|mode|math|\<times\>>14
+  and centring the 'core' in that enlarged grid.
 
   <subsection|Advanced Grid and Scaling Functions><label|AdvancedGrid>
 
@@ -986,7 +982,7 @@
   to provide truly centring. The function is most useful in editing
   symmetrical shapes in combination with the compound drawing methods
   (<with|mode|math|\<vartriangleright\>><reference|CompoundDrawing>).<next-line>
-  >>|<row|<cell|<postscript|Pics/Button_Size_Grid_Align.png|*5/8|*5/8||||><strong|>>|<cell|<strong|Align
+  >>|<row|<cell|<postscript|Pics/Button_Size_Grid_Align.png|*5/8|*5/8||||>>|<cell|<strong|Align
   the shape to the origin -> This function brings the shape as close as
   possible to the origin of the grid. It can very useful if you want to make
   a descending series of rectangular blocks by copying the shape and manually
@@ -1024,7 +1020,7 @@
   the scale -> This function is similar to doubling the scale. Only now a
   scaling factor of 3 is used and hence every voxel in the shape will be
   replaced by 27 identical voxels. This can be very useful if you want to
-  introduce <em|'pins and holes'><em|<em|>> into your design.>>>>>
+  introduce <em|'pins and holes'> into your design.>>>>>
 
   <subsection|Adjusting All Shapes><label|AdjustAllShapes>
 
@@ -1042,8 +1038,8 @@
   harmless to the shapes) will affect all grids. On the other hand,
   minimising the grids will be applied to all shapes since it is content
   related. The 1:1 tool won't affect any shape unless <em|all> shapes can be
-  scaled down <em|by the <em|<em|same>> factor>. This to prevent ending up
-  with an unintended mixture of differently scaled shapes.
+  scaled down <em|by the same factor>. This to prevent ending up with an
+  unintended mixture of differently scaled shapes.
 
   <section|Building and Editing Shapes><label|BuildingShapes>
 
@@ -1249,10 +1245,10 @@
   panel of the <with|font-family|ss|<strong|<strong|<with|font-family|rm|<with|font-series|medium|<with|font-family|ss|Entities>>>>>>
   tab. This panel also has a list in which the colours can be
   <with|font-series|medium|selected> to be used in the design or to become
-  edited. <with|color||>The <strong|<with|font|roman|<with|font-family|ss|New>>>
-  button allows you to create a custom colour. A dialogue will pop up and
-  present you the necessary tools to create the colour you need. Accordingly
-  the <with|font-family|ss|<strong|Edit>> button allows you to transform an
+  edited. The <strong|<with|font|roman|<with|font-family|ss|New>>> button
+  allows you to create a custom colour. A dialogue will pop up and present
+  you the necessary tools to create the colour you need. Accordingly the
+  <with|font-family|ss|<strong|Edit>> button allows you to transform an
   already existing colour using a similar dialogue. This dialogue also shows
   the currently selected colour for comparison (unless the neutral colour is
   selected, which makes the dialogue to show the default medium grey). Note
@@ -1706,18 +1702,17 @@
   problems find their place in the problems list below these buttons and are
   identified with a '<with|font-family|ss|<strong|P<em|x>>>' prefix to which
   a more meaningful description can be added by clicking the
-  <with|font-family|ss|<strong|Label>> button.<with|mode|math|> Also the
-  methods for selecting and rearranging problems are similar to their
-  counterparts on the <with|font-family|ss|Entities> tab and need no further
-  explanation here.
+  <with|font-family|ss|<strong|Label>> button. Also the methods for selecting
+  and rearranging problems are similar to their counterparts on the
+  <with|font-family|ss|Entities> tab and need no further explanation here.
 
   <subsection|Piece Assignment><label|PieceAssignment>
 
   Until now we dealt with shapes as rather abstract concepts. Only by
-  <em|<em|<em|assigning>>> these shapes to the pieces or the goal of a puzzle
-  they become meaningful. All available shapes are presented in the top list
-  of the <with|font-family|ss|<strong|Piece Assignment>> panel in which they
-  can be selected and be given their purpose in the puzzle. Since a strict
+  <em|assigning> these shapes to the pieces or the goal of a puzzle they
+  become meaningful. All available shapes are presented in the top list of
+  the <with|font-family|ss|<strong|Piece Assignment>> panel in which they can
+  be selected and be given their purpose in the puzzle. Since a strict
   distinction is made between shapes and pieces, it's not necessary that all
   shapes are used in a single problem or in any problem at all.
 
@@ -1731,17 +1726,17 @@
   shows a smaller example of the currently selected shape) and the status
   line shows some information about the problem at hand. Next, any other
   shape can be assigned to the pieces of the puzzle by selecting it and
-  clicking <with|font-family|ss|<strong|+1>><with|font-family|ss|<strong|>>.
-  This adds a single copy of the shape to the second list which holds all the
-  shapes used as pieces. If multipieces are involved, just add as many
-  instances of the shape as required by the same means. In the list of pieces
-  any multipiece has an instance counter added - between brackets - to its
-  identifier. A single instance of every shape used in the puzzle is shown in
-  the lower part of the 3-<no-break>D viewer. To make corrections, pieces can
-  be removed from the puzzle by selecting them (they also can be selected by
-  clicking them in the pieces list) and clicking
-  <strong|<with|font-family|ss|-<no-break>1>>. Again, this only removes a
-  single instance and needs to be repeated for removing multipieces.
+  clicking <with|font-family|ss|<strong|+1>>. This adds a single copy of the
+  shape to the second list which holds all the shapes used as pieces. If
+  multipieces are involved, just add as many instances of the shape as
+  required by the same means. In the list of pieces any multipiece has an
+  instance counter added - between brackets - to its identifier. A single
+  instance of every shape used in the puzzle is shown in the lower part of
+  the 3-<no-break>D viewer. To make corrections, pieces can be removed from
+  the puzzle by selecting them (they also can be selected by clicking them in
+  the pieces list) and clicking <strong|<with|font-family|ss|-<no-break>1>>.
+  Again, this only removes a single instance and needs to be repeated for
+  removing multipieces.
 
   Most of the time it is necessary to add one instance of all defined shapes
   to the puzzle. If there are a lot of them this can take while. This is what
@@ -1892,7 +1887,7 @@
     S<em|a<with|mode|math|<rsub|1>>>+S<em|a><with|mode|math|<rsub|2>>+S<em|a><with|mode|math|<rsub|3>>+S<em|b>
 
     Group-<no-break>2 <with|mode|math|\<rightarrow\>>
-    S<em|a><with|mode|math|<rsub|1>>+S<em|a><with|mode|math|<rsub|2>><em|>
+    S<em|a><with|mode|math|<rsub|1>>+S<em|a><with|mode|math|<rsub|2>>
   </with>
 
   <no-indent>After the disassembler ran we have the following lists of pieces
@@ -2292,13 +2287,12 @@
   may be needed to show the solutions properly ordered.
 
   This panel has four components: a scrollbar
-  (<with|font-family|ss|<strong|Solution>><with|font-family|ss|<strong|>>) to
-  browse the different solutions, a second scrollbar
-  (<with|font-family|ss|<strong|Move>>) to view the moves involved in the
-  disassembly, an array of buttons with very short labels to organize the
-  solution list and a list of all instances of the pieces in the puzzle
-  problem, which allows you to alter the visibility of particular pieces in
-  the solution(s).
+  (<with|font-family|ss|<strong|Solution>>) to browse the different
+  solutions, a second scrollbar (<with|font-family|ss|<strong|Move>>) to view
+  the moves involved in the disassembly, an array of buttons with very short
+  labels to organize the solution list and a list of all instances of the
+  pieces in the puzzle problem, which allows you to alter the visibility of
+  particular pieces in the solution(s).
 
   <subsection|Selecting Solutions and Animating Disassemblies>
 
@@ -2519,12 +2513,12 @@
   wider to accommodate the horizontal spread of the pieces.
 
   If you have finished with all settings press <with|font-family|ss|Export
-  Image(s)<strong|>>. You will see a flurry of images in the 3-<no-break>D
-  view. The program draws the shapes there and grabs the content from the
-  display. This may take a while. First the size of the images is determined
-  then the images are drawn in the required high resolution for the output.
-  The progress can be seen on the left besides the 2 buttons. You will see
-  how many images are finished and how many there are overall.
+  Image(s)>. You will see a flurry of images in the 3-<no-break>D view. The
+  program draws the shapes there and grabs the content from the display. This
+  may take a while. First the size of the images is determined then the
+  images are drawn in the required high resolution for the output. The
+  progress can be seen on the left besides the 2 buttons. You will see how
+  many images are finished and how many there are overall.
 
   Hint: If you get unexpected results and broken images try to do nothing
   while the images are exported. On Linux it is forbidden to change the
