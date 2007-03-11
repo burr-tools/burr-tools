@@ -106,6 +106,8 @@ void voxel_c::recalcBoundingBox(void) {
   bx1 = by1 = bz1 = sx+sy+sz;
   bx2 = by2 = bz2 = 0;
 
+  bool empty = true;
+
   for (unsigned int x = 0; x < sx; x++)
     for (unsigned int y = 0; y < sy; y++)
       for (unsigned int z = 0; z < sz; z++)
@@ -118,7 +120,12 @@ void voxel_c::recalcBoundingBox(void) {
 
           if (z < bz1) bz1 = z;
           if (z > bz2) bz2 = z;
+
+          empty = false;
         }
+
+  if (empty)
+    bx1 = by1 = bz1 = bx2 = by2 = bz2 = 0;
 }
 
 bool voxel_c::operator ==(const voxel_c & op) const {
