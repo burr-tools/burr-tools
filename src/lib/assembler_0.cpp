@@ -400,67 +400,86 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
        *   2a) all pieces with no mirror symmetries have a mirror partner -> check mirrors, find pairs
        *   2b) at least one piece with no mirror symmetries has no partner -> no mirror check
        */
-      bool allContainMirror = true;
       pc = 0;
 
-      mirrorInfo_c * mir = 0;
+      typedef struct {
+        unsigned int shape;    // the shape of this piece
+        unsigned int mirror;   // the mirror shape of this piece
+        unsigned int trans;
+      } mm;
 
-      for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++) {
+      mm * mirror = new mm[puzzle->probPieceNumber(problem)];
 
-        if (!sym->symmetryContainsMirror(puzzle->probGetShapeShape(problem, i)->selfSymmetries())) {
+      // first initialize
+      for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++)
+        for (unsigned int p = 0; p < puzzle->probGetShapeCount(problem, i); p++) {
+          mirror[pc].shape = i;
+          mirror[pc].mirror = (unsigned int)-1;
+          mirror[pc].trans = 255;
+          pc++;
+        }
+
+      bool mirrorCheck = true;
+
+      // now go over all shapes
+      for (unsigned int i = 0; i < puzzle->probPieceNumber(problem); i++) {
+
+        // we have already found the mirror for this shape
+        if (mirror[i].mirror < puzzle->probPieceNumber(problem))
+          continue;
+
+        if (!sym->symmetryContainsMirror(puzzle->probGetShapeShape(problem, mirror[i].shape)->selfSymmetries())) {
           /* this shape is not self mirroring, so we need to look out
            * for a shape that is the mirror of this shape
            */
-
-          allContainMirror = false;
-          unsigned int pc2 = 0;
-
           bool found = false;
 
           // now see if we can find another shape that is the mirror of the current shape
-          for (unsigned int j = 0; j < puzzle->probShapeNumber(problem); j++) {
-            if ((i != j) && (puzzle->probGetShapeCount(problem, i) == puzzle->probGetShapeCount(problem, j))) {
-              unsigned int trans = puzzle->probGetShapeShape(problem, i)->getMirrorTransform(puzzle->probGetShapeShape(problem, j));
+          for (unsigned int j = i+1; j < puzzle->probPieceNumber(problem); j++) {
 
-              if (trans > 0) {
-                // found a mirror shape
+            if (mirror[j].mirror < puzzle->probPieceNumber(problem))
+              continue;
 
-                // if no mirror shapes exists, create one
-                if (!mir)
-                  mir = new mirrorInfo_c();
+            unsigned int trans = puzzle->probGetShapeShape(problem, mirror[i].shape)->getMirrorTransform(
+                puzzle->probGetShapeShape(problem, mirror[j].shape));
 
-                // and add the shape and it's mirror
-                for (unsigned int p = 0; p < puzzle->probGetShapeCount(problem, i); p++)
-                  mir->addPieces(pc+p, pc2+p, trans);
+            if (trans > 0) {
+              // found a mirror shape
 
-                found = true;
-                break;
-              }
+              mirror[i].mirror = j;
+              mirror[i].trans = trans;
+              mirror[j].mirror = i;
+              mirror[j].trans = puzzle->probGetShapeShape(problem, mirror[j].shape)->getMirrorTransform(
+                  puzzle->probGetShapeShape(problem, mirror[i].shape));
+
+              found = true;
+              break;
             }
-            pc2 += puzzle->probGetShapeCount(problem, j);
           }
 
           // when we could not find a mirror transformation for the non mirrorable piece
           // we can stop and we don't need to make mirror checks
           if (!found) {
-            if (mir) {
-              delete mir;
-              mir = 0;
-            }
+            mirrorCheck = false;
             break;
           }
         }
-        pc += puzzle->probGetShapeCount(problem, i);
       }
 
-      /* when all shapes are self mirroring, we need to do the check but we don't
-       * need to have any entries in the mirror structure, so just create an empty one
-       */
-      if (allContainMirror) {
-        mir = new mirrorInfo_c();
+      if (mirrorCheck) {
+        /* all the shapes are either self mirroring or have a mirror pair
+         * so we create the mirror structure and we do the mirror check
+         */
+        mirrorInfo_c * mir = new mirrorInfo_c();
+
+        for (unsigned int i = 0; i < puzzle->probPieceNumber(problem); i++)
+          if (mirror[i].trans != 255)
+            mir->addPieces(i, mirror[i].mirror, mirror[i].trans);
+
+        checkForTransformedAssemblies(symBreakerPiece, mir);
       }
 
-      checkForTransformedAssemblies(symBreakerPiece, mir);
+      delete [] mirror;
     }
   }
 
