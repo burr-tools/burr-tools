@@ -1,3 +1,56 @@
+------------- Version 0.2.1
+
+- add many new symmetry groups, many thanks to Markus Götz
+  - 3 new cube groups added
+  - 45+4+16 new sphere added
+  - 2 triangle groups removed
+
+- add a red - blue/green/cyan 3D mode
+
+- fix some bugs with sphere puzzles:
+  - placement browser didn't work properly
+  - shapes are now centered and don't jump around when adding new spheres
+  - some puzzles where unsolvable due to internal shortcommings
+
+- add a progress display for the creation of the status window as
+  calculating the information in the status window might take quite
+  some time
+
+- show the actual symmetry group number in the status window and
+  "---" when the group is unknown
+
+- when status window is open you can no longer do anything else, this
+  is better because the status window is not updated when editing
+
+- proper display of the degree symbol in the tooltips for the rotate
+  buttons
+
+- the zoom slider zooms much larger
+
+- huge speedup in preparation time. The program used to do a lot of
+  unnecessary checks at the start. Now only the required ones are
+  left
+
+- lots of internal cleanup in the gui code
+
+- add code that comes from FLU into the source. This will make
+  compilation on UNIX system easier as FLU is not a standard
+  library available on many systems
+
+- improved build system to install the documentation and leave out
+  the headers for the library
+
+- BurrTools now adds a default rule with each added colour and
+  upon creation of the problem it adds rules for all defined colours
+
+- fix an assert, when problems contained empty shapes
+
+- the check for mirrored solutions was not always enabled when it was required
+  resulting in additional solutions
+
+- the mirror check was not able to correctly handle 2 pieces of identical
+  shape. They should not be there but when they are they are now handled right
+
 ------------- Version 0.2.0
 
 - write required base for other space grids and partially implement
