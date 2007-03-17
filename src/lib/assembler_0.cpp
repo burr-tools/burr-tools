@@ -376,10 +376,21 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
 
     bool tmp = sym->symmetriesLeft(resultSym, puzzle->probGetShapeShape(problem, symBreakerShape)->selfSymmetries());
 
-    if (tmp || (puzzle->probGetShapeCount(problem, symBreakerShape) > 1)) {
-      checkForTransformedAssemblies(symBreakerPiece);
 
-      /* FIXME: we need to to the mirror check here, and initialize the mirror
+    if (tmp || (puzzle->probGetShapeCount(problem, symBreakerShape) > 1)) {
+
+      // we can not use the symmetry breaker shape, if there is more than one piece
+      // of this shape in the problem
+      if (puzzle->probGetShapeCount(problem, symBreakerShape) > 1) {
+        symBreakerShape = 0xFFFFFFFF;
+        symBreakerPiece = 0xFFFFFFFF;
+      }
+
+      checkForTransformedAssemblies(symBreakerPiece, 0);
+    }
+
+    if (sym->symmetryContainsMirror(resultSym)) {
+      /* we need to to the mirror check here, and initialize the mirror
        * structure, otherwise no mirror check will be done
        */
 
@@ -392,9 +403,15 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
       bool allContainMirror = true;
       pc = 0;
 
+      mirrorInfo_c * mir = 0;
+
       for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++) {
 
         if (!sym->symmetryContainsMirror(puzzle->probGetShapeShape(problem, i)->selfSymmetries())) {
+          /* this shape is not self mirroring, so we need to look out
+           * for a shape that is the mirror of this shape
+           */
+
           allContainMirror = false;
           unsigned int pc2 = 0;
 
@@ -406,12 +423,15 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
               unsigned int trans = puzzle->probGetShapeShape(problem, i)->getMirrorTransform(puzzle->probGetShapeShape(problem, j));
 
               if (trans > 0) {
+                // found a mirror shape
 
-                if (!avoidTransformedMirror)
-                  avoidTransformedMirror = new mirrorInfo_c();
+                // if no mirror shapes exists, create one
+                if (!mir)
+                  mir = new mirrorInfo_c();
 
+                // and add the shape and it's mirror
                 for (unsigned int p = 0; p < puzzle->probGetShapeCount(problem, i); p++)
-                  avoidTransformedMirror->addPieces(pc+p, pc2+p, trans);
+                  mir->addPieces(pc+p, pc2+p, trans);
 
                 found = true;
                 break;
@@ -423,9 +443,9 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
           // when we could not find a mirror transformation for the non mirrorable piece
           // we can stop and we don't need to make mirror checks
           if (!found) {
-            if (avoidTransformedMirror) {
-              delete avoidTransformedMirror;
-              avoidTransformedMirror = 0;
+            if (mir) {
+              delete mir;
+              mir = 0;
             }
             break;
           }
@@ -433,13 +453,14 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
         pc += puzzle->probGetShapeCount(problem, i);
       }
 
+      /* when all shapes are self mirroring, we need to do the check but we don't
+       * need to have any entries in the mirror structure, so just create an empty one
+       */
       if (allContainMirror) {
-        avoidTransformedMirror = new mirrorInfo_c();
+        mir = new mirrorInfo_c();
       }
-    }
 
-    if (puzzle->probGetShapeCount(problem, symBreakerShape) > 1) {
-      symBreakerShape = 0xFFFFFFFF;
+      checkForTransformedAssemblies(symBreakerPiece, mir);
     }
   }
 
@@ -1108,10 +1129,10 @@ assembly_c * assembler_0_c::getAssembly(void) {
   return assembly;
 }
 
-void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot) {
+void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir) {
   avoidTransformedAssemblies = true;
   avoidTransformedPivot = pivot;
-  avoidTransformedMirror = 0;
+  avoidTransformedMirror = mir;
 }
 
 /* this function handles the assemblies found by the assembler engine

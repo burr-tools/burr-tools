@@ -322,7 +322,7 @@ protected:
    * rotations it should call this function. This will then add an additional check
    * for each found assembly
    */
-  void checkForTransformedAssemblies(unsigned int pivot);
+  void checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir);
 
 public:
 
