@@ -18,11 +18,11 @@ EXTRA_DIST = doc/UserGuide.tm \
              doc/Pics/Button_Transform_Rotate_Y.png doc/Pics/Button_Transform_Rotate_Z.png \
              doc/Pics/Form_Group_Editor.png doc/Pics/NavigationA.png \
              doc/Pics/NavigationB.png doc/Pics/Panel_Colour_Assignment_A.png \
-             doc/Pics/Panel_Colour_Assignment_B.png doc/Pics/Panel_Piece_Assignment.png \
+             doc/Pics/Panel_Colour_Assignment_B.png \
              doc/Pics/RepresentationA.png doc/Pics/RepresentationB.png \
              doc/Pics/RepresentationC.png doc/Pics/RepresentationD.png \
              doc/Pics/RepresentationE.png doc/Pics/RepresentationF.png \
-             doc/Pics/Screen_Problem_Simple.png doc/Pics/SizeBar.png \
+             doc/Pics/SizeBar.png \
              doc/Pics/SolverProgress.png doc/Pics/Subtab_Size.png \
              doc/Pics/Subtab_Tools.png \
              doc/Pics/Subtab_TransformA.png doc/Pics/Subtab_TransformB.png doc/Pics/Subtab_TransformC.png \
