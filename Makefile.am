@@ -35,7 +35,8 @@ EXTRA_DIST = doc/UserGuide.tm \
              doc/Pics/Emulation_2Layer.png \
              doc/Pics/Emulation_DiagonalCut.png \
              doc/Pics/Emulation_Pagoda2.png \
-             doc/Pics/Emulation_Pagoda.png
+             doc/Pics/Emulation_Pagoda.png \
+             doc/Pics/Window_Anaglyph.png
 
 dist_doc_DATA = doc/UserGuide.pdf \
                 examples/README.TXT examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle \

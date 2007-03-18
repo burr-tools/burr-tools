@@ -652,7 +652,7 @@
   <subsection|The Configuration Menu><label|ConfigMenu>
 
   The <with|font-family|ss|<strong|Config>> item on the menu bar opens a new
-  window (Figure<\float|float|hf>
+  window (Figure<\float|float|hftb>
     <big-figure|<postscript|Pics/Window_Config.png|*5/8|*5/8||||>|<label|FigureConfig>The
     configuration window>
   </float> <reference|FigureConfig>) to set some options for the GUI. These
@@ -690,7 +690,10 @@
   drawn with its neutral colour, a view where each piece is drawn with its
   colour constraint colour (if it has one
   assigned<with|mode|math|\<vartriangleright\>><reference|AddingColour>). The
-  third option is an anaglyph called mode. In this mode the pieces are drawn
+  third option is an anaglyph called mode (see figure<\float|float|tbh>
+    <big-figure|<postscript|Pics/Window_Anaglyph.png|*5/8|*5/8||||>|<label|WindowAnaglyph>Disassembler
+    in Anaglyph Mode>
+  </float> <reference|WindowAnaglyph>). In this mode the pieces are drawn
   using the red-cyan method to display real 3-<no-break>D. You can view these
   with a red-green, red-blue or red-cyan glasses. The <em|r>ed glass must be
   in front of your <em|r>ight eye.
