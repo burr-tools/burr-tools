@@ -1620,7 +1620,11 @@
 
   <subsection|Cairos>
 
-  Cairos are pentagons but luckily they have only 4 rotations.
+  Cairos are pentagons but luckily they have only 4 rotations, so it is
+  possible to emulate them using squares. Figure<\float|float|tbh>
+    <big-figure|<postscript|Pics/Emulation_Cairos.png|*5/8|*5/8||||>|<label|EmulCairos>Emulation
+    of Cairos using squares>
+  </float> <reference|EmulCairos> demonstrates how that can be done.
 
   <subsection|Squares with Cuts of Slope 0.5>
 
