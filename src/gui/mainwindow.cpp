@@ -1216,6 +1216,7 @@ void mainWindow_c::cb_New(void) {
     if (fname) {
       delete [] fname;
       fname = 0;
+      label("BurrTools - unknown");
     }
 
     changed = false;
