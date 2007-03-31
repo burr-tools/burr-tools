@@ -2109,13 +2109,6 @@ void mainWindow_c::updateInterface(void) {
         BtnStep->deactivate();
       }
 
-      // the prepare button is only available, when a valid problem is selected
-      // that problem has no assembler assigned and no thread is running
-      if (!puzzle->probGetAssembler(prob) && !assmThread)
-        BtnPrepare->activate();
-      else
-        BtnPrepare->deactivate();
-
       if (puzzle->probSolutionNumber(prob) >= 2) {
         BtnSrtFind->activate();
         BtnSrtLevel->activate();
@@ -2291,6 +2284,7 @@ void mainWindow_c::updateInterface(void) {
 
         // for the actually solved problem we enable the stop button
         BtnStart->deactivate();
+        BtnPrepare->deactivate();
         BtnCont->deactivate();
         BtnStop->activate();
 
@@ -2313,6 +2307,7 @@ void mainWindow_c::updateInterface(void) {
 
         // all other problems can do nothing
         BtnStart->deactivate();
+        BtnPrepare->deactivate();
         BtnCont->deactivate();
         BtnStop->deactivate();
         BtnPrepare->deactivate();
@@ -2353,15 +2348,19 @@ void mainWindow_c::updateInterface(void) {
 
         // if we have a result and at least one piece, we can give it a try
         if ((puzzle->probPieceNumber(prob) > 0) &&
-            (puzzle->probGetResult(prob) < puzzle->shapeNumber()))
+            (puzzle->probGetResult(prob) < puzzle->shapeNumber())) {
           BtnStart->activate();
-        else
+          BtnPrepare->activate();
+        } else {
           BtnStart->deactivate();
+          BtnPrepare->deactivate();
+        }
 
       } else {
 
         // no start possible, when no valid problem selected
         BtnStart->deactivate();
+        BtnPrepare->deactivate();
         BtnCont->deactivate();
         BtnPrepare->deactivate();
       }
