@@ -386,23 +386,23 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
             p2y += hy;
             p2z += hz;
 
-            p1t = puz->probGetShapeShape(prob, i)->normalizeTransformation(sym->transAdd(t, p1t));
-            p2t = puz->probGetShapeShape(prob, i2)->normalizeTransformation(sym->transAdd(t_inv, p2t));
+            p1t = puz->probGetShapeShape(prob, i2)->normalizeTransformation(sym->transAdd(t, p1t));
+            p2t = puz->probGetShapeShape(prob, i)->normalizeTransformation(sym->transAdd(t_inv, p2t));
 
-            puz->probGetShapeShape(prob, i)->getHotspot(p1t, &hx, &hy, &hz);
+            puz->probGetShapeShape(prob, i2)->getHotspot(p1t, &hx, &hy, &hz);
             p1x += hx;
             p1y += hy;
             p1z += hz;
-            puz->probGetShapeShape(prob, i)->getBoundingBox(p1t, &hx, &hy, &hz);
+            puz->probGetShapeShape(prob, i2)->getBoundingBox(p1t, &hx, &hy, &hz);
             p1x -= hx;
             p1y -= hy;
             p1z -= hz;
 
-            puz->probGetShapeShape(prob, i2)->getHotspot(p2t, &hx, &hy, &hz);
+            puz->probGetShapeShape(prob, i)->getHotspot(p2t, &hx, &hy, &hz);
             p2x += hx;
             p2y += hy;
             p2z += hz;
-            puz->probGetShapeShape(prob, i2)->getBoundingBox(p2t, &hx, &hy, &hz);
+            puz->probGetShapeShape(prob, i)->getBoundingBox(p2t, &hx, &hy, &hz);
             p2x -= hx;
             p2y -= hy;
             p2z -= hz;
