@@ -68,6 +68,8 @@ class mainWindow_c : public LFl_Double_Window {
   bool changed;
   int editSymmetries;
 
+  bool expertMode;
+
   pixmapList_c pm;
 
   Fl_Tabs *TaskSelectionTab;

@@ -2104,9 +2104,9 @@ void mainWindow_c::updateInterface(void) {
       // the step button is only active when the placements browser can be active AND when the puzzle is not
       // yet completely solved
       if (puzzle->probGetAssembler(prob) && !assmThread && (puzzle->probGetSolveState(prob) != puzzle_c::SS_SOLVED)) {
-        BtnStep->activate();
+        if (BtnStep) BtnStep->activate();
       } else {
-        BtnStep->deactivate();
+        if (BtnStep) BtnStep->deactivate();
       }
 
       if (puzzle->probSolutionNumber(prob) >= 2) {
@@ -2193,8 +2193,8 @@ void mainWindow_c::updateInterface(void) {
       OutputAssemblies->hide();
 
       BtnPlacement->deactivate();
-      BtnStep->deactivate();
-      BtnPrepare->deactivate();
+      if (BtnStep) BtnStep->deactivate();
+      if (BtnPrepare) BtnPrepare->deactivate();
 
       BtnSrtFind->deactivate();
       BtnSrtLevel->deactivate();
@@ -2284,7 +2284,7 @@ void mainWindow_c::updateInterface(void) {
 
         // for the actually solved problem we enable the stop button
         BtnStart->deactivate();
-        BtnPrepare->deactivate();
+        if (BtnPrepare) BtnPrepare->deactivate();
         BtnCont->deactivate();
         BtnStop->activate();
 
@@ -2307,10 +2307,10 @@ void mainWindow_c::updateInterface(void) {
 
         // all other problems can do nothing
         BtnStart->deactivate();
-        BtnPrepare->deactivate();
+        if (BtnPrepare) BtnPrepare->deactivate();
         BtnCont->deactivate();
         BtnStop->deactivate();
-        BtnPrepare->deactivate();
+        if (BtnPrepare) BtnPrepare->deactivate();
 
       }
 
@@ -2350,19 +2350,19 @@ void mainWindow_c::updateInterface(void) {
         if ((puzzle->probPieceNumber(prob) > 0) &&
             (puzzle->probGetResult(prob) < puzzle->shapeNumber())) {
           BtnStart->activate();
-          BtnPrepare->activate();
+          if (BtnPrepare) BtnPrepare->activate();
         } else {
           BtnStart->deactivate();
-          BtnPrepare->deactivate();
+          if (BtnPrepare) BtnPrepare->deactivate();
         }
 
       } else {
 
         // no start possible, when no valid problem selected
         BtnStart->deactivate();
-        BtnPrepare->deactivate();
+        if (BtnPrepare) BtnPrepare->deactivate();
         BtnCont->deactivate();
-        BtnPrepare->deactivate();
+        if (BtnPrepare) BtnPrepare->deactivate();
       }
     }
   }
@@ -3005,9 +3005,12 @@ void mainWindow_c::CreateSolveTab(void) {
 
     o = new layouter_c(0, 7);
 
-    BtnPrepare = new LFlatButton_c(0, 0, 1, 1, "Prepare", " Do the preparation phase and then stop, this removes old results ", cb_BtnPrepare_stub, this);
-    ((LFlatButton_c*)BtnPrepare)->weight(1, 0);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
+    if (expertMode) {
+      BtnPrepare = new LFlatButton_c(0, 0, 1, 1, "Prepare", " Do the preparation phase and then stop, this removes old results ", cb_BtnPrepare_stub, this);
+      ((LFlatButton_c*)BtnPrepare)->weight(1, 0);
+      (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
+    } else
+      BtnPrepare = 0;
     BtnStart = new LFlatButton_c(2, 0, 1, 1, "Start", " Start new solving process, removing old result ", cb_BtnStart_stub, this);
     ((LFlatButton_c*)BtnStart)->weight(1, 0);
     (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
@@ -3025,9 +3028,12 @@ void mainWindow_c::CreateSolveTab(void) {
 
     BtnPlacement = new LFlatButton_c(0, 0, 1, 1, "Browse Placements", " Browse the calculated placement of pieces ", cb_BtnPlacementBrowser_stub, this);
     ((LFlatButton_c*)BtnPlacement)->weight(1, 0);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
-    BtnStep = new LFlatButton_c(2, 0, 1, 1, "Step", " Make one step in the assembler ", cb_BtnAssemblerStep_stub, this);
-    ((LFlatButton_c*)BtnStep)->weight(1, 0);
+    if (expertMode) {
+      (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
+      BtnStep = new LFlatButton_c(2, 0, 1, 1, "Step", " Make one step in the assembler ", cb_BtnAssemblerStep_stub, this);
+      ((LFlatButton_c*)BtnStep)->weight(1, 0);
+    } else
+      BtnStep = 0;
 
     o->end();
 
@@ -3230,6 +3236,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
   fname = 0;
   disassemble = 0;
   editSymmetries = 0;
+  expertMode = false;
 
   puzzle = new puzzle_c(gt);
   ggt = new guiGridType_c(puzzle->getGridType());
