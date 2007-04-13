@@ -21,5 +21,5 @@
 /* Version number of package */
 #undef VERSION
 
-/* do we have a version of FLU lib or not */
-#undef HAVE_FLU
+/* CPU compiled for */
+#undef TARGET_CPU
