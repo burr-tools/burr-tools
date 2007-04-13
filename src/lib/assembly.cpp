@@ -368,6 +368,12 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
 
             int hx, hy, hz;
 
+            /* this step calculates the position of the origin of the bounding
+             * boxes of the 2 involved pieced. This coordinate is identical
+             * for the mirrored piece and for the replaced pieces, as both pieces
+             * have the same shape at the orientation
+             */
+
             puz->probGetShapeShape(prob, i)->getHotspot(p1t, &hx, &hy, &hz);
             p1x -= hx;
             p1y -= hy;
@@ -386,8 +392,12 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
             p2y += hy;
             p2z += hz;
 
+            /* calculate the new orientation of both pieces */
+
             p1t = puz->probGetShapeShape(prob, i2)->normalizeTransformation(sym->transAdd(t, p1t));
             p2t = puz->probGetShapeShape(prob, i)->normalizeTransformation(sym->transAdd(t_inv, p2t));
+
+            /* now go back from the origin of the bounding box to the hotspot anchor point */
 
             puz->probGetShapeShape(prob, i2)->getHotspot(p1t, &hx, &hy, &hz);
             p1x += hx;
