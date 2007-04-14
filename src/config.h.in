@@ -21,5 +21,9 @@
 /* Version number of package */
 #undef VERSION
 
-/* CPU compiled for */
-#undef TARGET_CPU
+/* Target CPU definitions */
+#undef TARGET_CPU_i386
+#undef TARGET_CPU_i486
+#undef TARGET_CPU_i586
+#undef TARGET_CPU_i686
+
