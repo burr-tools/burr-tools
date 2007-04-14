@@ -681,6 +681,7 @@ void assembler_0_c::cover(register unsigned int col)
   unsigned int tmp;
 
   __asm__ (
+      "push %%ebx                     \n"
       "movl %1, %%esi                 \n"           // esi = upDown
       "movl %2, %%edx                 \n"           // edx = right
       "movl %3, %%ebx                 \n"           // ebx = colCount
@@ -718,9 +719,10 @@ void assembler_0_c::cover(register unsigned int col)
       "jne 1b                         \n"           // cagainloop1
       "                               \n"
 "4:                                   \n"           // cendloop1
+      "pop %%ebx                      \n"
      :
      : "m" (col), "m" (upDown_ptr), "m" (right_ptr), "m" (colCount_ptr), "m" (tmp)
-     : "eax", "ebx", "ecx", "edx", "esi", "edi"
+     : "eax", "ecx", "edx", "esi", "edi"
    );
 
 #else
@@ -754,6 +756,7 @@ void assembler_0_c::uncover(register unsigned int col) {
   unsigned int tmp;
 
   __asm__ (
+      "push %%ebx                     \n"
       "movl %1, %%esi                 \n"           // esi = up
       "movl %2, %%edx                 \n"           // edx = left
       "movl %3, %%ebx                 \n"           // ebx = colCount
@@ -791,9 +794,10 @@ void assembler_0_c::uncover(register unsigned int col) {
       "jne 1b                         \n"           // againloop1
       "                               \n"
 "4:                                   \n"           // endloop1:
+     "pop %%ebx                       \n"
      :
      : "m" (col), "m" (upDown_ptr), "m" (left_ptr), "m" (colCount_ptr), "m" (tmp)
-     : "eax", "ebx", "ecx", "edx", "esi", "edi"
+     : "eax", "ecx", "edx", "esi", "edi"
    );
 
 #else
