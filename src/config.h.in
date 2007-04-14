@@ -26,4 +26,5 @@
 #undef TARGET_CPU_i486
 #undef TARGET_CPU_i586
 #undef TARGET_CPU_i686
+#undef TARGET_CPU_x86_64
 
