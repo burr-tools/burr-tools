@@ -143,7 +143,7 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
 
     for (unsigned int p = 0; p < currentSet.size(); p++) {
 
-      printf("%i / %i puzzlews grown\n", p, currentSet.size());
+      printf("%u / %u puzzlews grown\n", p, currentSet.size());
 
       for (unsigned int i = 0; i < base->probShapeNumber(problem); i++)
         for (unsigned int z = 0; z < base->probGetShapeShape(problem, i)->getXYZ(); z++) {

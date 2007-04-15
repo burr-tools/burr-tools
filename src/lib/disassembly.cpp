@@ -351,7 +351,10 @@ bool separation_c::containsMultiMoves(void) {
 }
 
 int separation_c::movesText(char * txt, int len) {
-  int len2 = snprintf(txt, len, "%i", states.size()-1);
+
+  bt_assert(states.size() > 0);
+
+  int len2 = snprintf(txt, len, "%u", states.size()-1);
 
   if (len2+5 > len)
     return len2;
