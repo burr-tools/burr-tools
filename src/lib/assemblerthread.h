@@ -42,6 +42,8 @@ class assemblerThread_c : public assembler_cb {
   int errParam;
 
   bool stopPressed;
+  bool return_after_prep;  // sometimes it is useful to only prepare and return,
+                           // if this flag is set, the program will return
 
   bool _reduce;
   bool _dropDisassemblies;
@@ -101,7 +103,7 @@ public:
 
   // let the thread start
   // returns true, if everything went well, false otherwise
-  bool start(void);
+  bool start(bool stop_after_prep = false);
 
   // try to stop the thread at the next possible position
   void stop(void);

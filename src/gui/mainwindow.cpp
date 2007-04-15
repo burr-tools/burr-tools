@@ -875,14 +875,11 @@ void mainWindow_c::cb_CCSort(bool byResult) {
 
 static void cb_BtnPrepare_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_BtnPrepare(); }
 void mainWindow_c::cb_BtnPrepare(void) {
-  cb_BtnStart();
-
-  if (assmThread)
-    assmThread->stop();
+  cb_BtnStart(true);
 }
 
-static void cb_BtnStart_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_BtnStart(); }
-void mainWindow_c::cb_BtnStart(void) {
+static void cb_BtnStart_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_BtnStart(false); }
+void mainWindow_c::cb_BtnStart(bool prep_only) {
 
   puzzle->probRemoveAllSolutions(solutionProblem->getSelection());
   SolutionEmpty = true;
@@ -890,11 +887,11 @@ void mainWindow_c::cb_BtnStart(void) {
   for (unsigned int i = 0; i < puzzle->shapeNumber(); i++)
     puzzle->getShape(i)->initHotspot();
 
-  cb_BtnCont();
+  cb_BtnCont(prep_only);
 }
 
-static void cb_BtnCont_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_BtnCont(); }
-void mainWindow_c::cb_BtnCont(void) {
+static void cb_BtnCont_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_BtnCont(false); }
+void mainWindow_c::cb_BtnCont(bool prep_only) {
 
   unsigned int prob = solutionProblem->getSelection();
 
@@ -936,7 +933,7 @@ void mainWindow_c::cb_BtnCont(void) {
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
   assmThread->setDropDisassemblies(DropDisassemblies->value() != 0);
 
-  if (!assmThread->start()) {
+  if (!assmThread->start(prep_only)) {
     fl_message("Could not start the solving process, the thread creation failed, sorry.");
     delete assmThread;
     assmThread = 0;
@@ -3236,7 +3233,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
   fname = 0;
   disassemble = 0;
   editSymmetries = 0;
-  expertMode = false;
+  expertMode = true;
 
   puzzle = new puzzle_c(gt);
   ggt = new guiGridType_c(puzzle->getGridType());

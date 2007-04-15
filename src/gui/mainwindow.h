@@ -244,8 +244,8 @@ public:
   void cb_CCSort(bool byResult);
 
   void cb_BtnPrepare(void);
-  void cb_BtnStart(void);
-  void cb_BtnCont(void);
+  void cb_BtnStart(bool prep_only);
+  void cb_BtnCont(bool prep_only);
   void cb_BtnStop(void);
   void cb_BtnPlacementBrowser(void);
   void cb_BtnAssemblerStep(void);

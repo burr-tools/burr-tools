@@ -82,6 +82,11 @@ void* start_th(void * c)
       }
     }
 
+    if (p->return_after_prep) {
+      p->action = assemblerThread_c::ACT_PAUSING;
+      return 0;
+    }
+
     if (!p->stopPressed) {
 
       p->action = assemblerThread_c::ACT_ASSEMBLING;
@@ -337,9 +342,10 @@ void assemblerThread_c::stop(void) {
   stopPressed = true;
 }
 
-bool assemblerThread_c::start(void) {
+bool assemblerThread_c::start(bool stop_after_prep) {
 
   stopPressed = false;
+  return_after_prep = stop_after_prep;
   startTime = time(0);
 
   // calculate dropMultiplicator
