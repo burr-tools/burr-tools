@@ -1355,6 +1355,9 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
 
   bt_assert(piecenumber == assembly->placementCount());
 
+  if (piecenumber < 2)
+    return 0;
+
   /* create the first node with the start state
    * here all pieces are at position (0; 0; 0)
    */
