@@ -31,6 +31,7 @@
 using namespace std;
 
 bool disassemble;
+bool allProblems;
 bool printDisassemble;
 bool printSolutions;
 bool quiet;
@@ -54,9 +55,6 @@ public:
 
     Assemblies++;
 
-    if (!quiet && ((Assemblies & 0x3f) == 0))
-      cout << Assemblies << " Assembies found so far\n";
-
     if (disassemble) {
 
       separation_c * da = d->disassemble(a);
@@ -67,8 +65,12 @@ public:
         if (printSolutions)
           print(a, puzzle, prob);
 
-        if (!quiet)
-          printf("level: %i\n", da->getMoves());
+        if (!quiet || allProblems)
+	  {
+	    char lev[200];
+	    da->movesText(lev,200);
+	    printf("level: %s\n", lev);
+	  }
 
         if (printDisassemble)
           print(da, a, puzzle, prob);
@@ -95,6 +97,7 @@ void usage(void) {
   cout << "  -q    be quiet and only print statistics\n";
   cout << "  -n    don't print a newline at the end of the line\n";
   cout << "  -o n  select the problem to solve\n";
+  cout << "  -o all solves all problems in file\n";
   cout << "  -x    only redisassemble the given solutions\n";
 }
 
@@ -107,11 +110,14 @@ int main(int argv, char* args[]) {
 
   int state = 0;
   disassemble = false;
+  allProblems = false;
   printDisassemble = false;
   printSolutions = false;
   quiet = false;
   bool assemble = true;
   unsigned int problem = 0;
+  unsigned int firstProblem = 0;
+  unsigned int lastProblem = 0;
   int filenumber = 0;
   bool reduce = false;
   bool newline = true;
@@ -135,7 +141,10 @@ int main(int argv, char* args[]) {
       else if (strcmp(args[i], "-x") == 0)
         assemble = false;
       else if (strcmp(args[i], "-o") == 0) {
-        problem = atoi(args[i+1]);
+	if (strcmp(args[i+1],"all")==0)
+	  allProblems = true;
+	else
+	  problem = atoi(args[i+1]);
         i++;
       } else if (strcmp(args[i], "-q") == 0) {
         quiet = true;
@@ -156,6 +165,16 @@ int main(int argv, char* args[]) {
   xml::tree_parser parser(args[filenumber]);
   puzzle_c p(parser.get_document().get_root_node());
 
+  if (allProblems)
+    {
+      firstProblem = 0;
+      lastProblem = p.problemNumber();
+    }
+  else
+    {
+      firstProblem = problem;
+      lastProblem = problem+1;
+    }
   if (assemble) {
 
     for (unsigned int i = 0; i < p.shapeNumber(); i++)
@@ -166,9 +185,14 @@ int main(int argv, char* args[]) {
       print(&p);
     }
 
-    assembler_0_c *assm = new assembler_0_c(p.getGridType()->getAssemblerFrontend());
 
-    switch (assm->createMatrix(&p, problem)) {
+
+
+    for (problem = firstProblem ; problem < lastProblem ; problem++) {
+      
+      assembler_0_c *assm = new assembler_0_c(p.getGridType()->getAssemblerFrontend());
+      
+      switch (assm->createMatrix(&p, problem)) {
       case assembler_0_c::ERR_TOO_MANY_UNITS:
         printf("%i units too many for the result shape\n", assm->getErrorsParam());
         return 0;
@@ -178,57 +202,63 @@ int main(int argv, char* args[]) {
       case assembler_0_c::ERR_CAN_NOT_PLACE:
         printf("Piece %i can be place nowhere in the result shape\n", assm->getErrorsParam());
         return 0;
+      }
+
+      if (reduce) {
+	if (!quiet)
+	  cout << "start reduce\n\n";
+	assm->reduce();
+	if (!quiet)
+	  cout << "finished reduce\n\n";
+      }
+      
+      if (allProblems)
+	cout << "problem: " << p.probGetName(problem) << endl;
+
+      asm_cb a(&p, problem);
+      
+      d = p.getGridType()->getDisassembler(&p, problem);
+      
+      assm->assemble(&a);
+      
+      cout << a.Assemblies << " assemblies and " << a.Solutions << " solutions found with " << assm->getIterations() << " iterations ";
+      
+      if (newline)
+	cout << endl;
+      
+      delete assm;
+      delete d;
+      d = 0;
+      assm = 0;
     }
-
-    if (reduce) {
-      if (!quiet)
-        cout << "start reduce\n\n";
-      assm->reduce();
-      if (!quiet)
-        cout << "finished reduce\n\n";
-    }
-
-    asm_cb a(&p, problem);
-
-    d = p.getGridType()->getDisassembler(&p, problem);
-
-    assm->assemble(&a);
-
-    cout << a.Assemblies << " assemblies and " << a.Solutions << " solutions found with " << assm->getIterations() << " iterations ";
-
-    if (newline)
-      cout << endl;
-
-    delete assm;
-    delete d;
-    d = 0;
-    assm = 0;
-
   } else {
 
-    d = p.getGridType()->getDisassembler(&p, problem);
+    for (problem = firstProblem ; problem < lastProblem; problem ++) {
 
-    for (int sol = 0; sol < p.probSolutionNumber(problem); sol++) {
+      d = p.getGridType()->getDisassembler(&p, problem);
 
-      if (p.probGetAssembly(problem, sol)) {
+      for (int sol = 0; sol < p.probSolutionNumber(problem); sol++) {
 
-        separation_c * da = d->disassemble(p.probGetAssembly(problem, sol));
-
-        if (da) {
-          if (printSolutions)
-            print(p.probGetAssembly(problem, sol), &p, problem);
-
-          if (!quiet)
-            printf("level: %i\n", da->getMoves());
-
-          if (printDisassemble)
-            print(da, p.probGetAssembly(problem, sol), &p, problem);
-          delete da;
-        }
+	if (p.probGetAssembly(problem, sol)) {
+	  
+	  separation_c * da = d->disassemble(p.probGetAssembly(problem, sol));
+	  
+	  if (da) {
+	    if (printSolutions)
+	      print(p.probGetAssembly(problem, sol), &p, problem);
+	    
+	    if (!quiet)
+	      printf("level: %i\n", da->getMoves());
+	    
+	    if (printDisassemble)
+	      print(da, p.probGetAssembly(problem, sol), &p, problem);
+	    delete da;
+	  }
+	}
       }
+      
+      delete d;
     }
-
-    delete d;
   }
 
   return 0;
