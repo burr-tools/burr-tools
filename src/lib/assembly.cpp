@@ -394,8 +394,15 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
 
             /* calculate the new orientation of both pieces */
 
-            p1t = puz->probGetShapeShape(prob, i2)->normalizeTransformation(sym->transAdd(t, p1t));
-            p2t = puz->probGetShapeShape(prob, i)->normalizeTransformation(sym->transAdd(t_inv, p2t));
+            /* the idea is:
+             * A is the first shape B the second. A_0 means A in the orientation entered by the user, same for B_0
+             * transformation t transforms A_0 -> B_0 (denoted by A_0 -t-> B_0), also B_0 -t_inv->A_0
+             * what we search is is an x so that B_x is identical to A_pt1, this is calulated by
+             * taking first t_inv and then p1t B_0 -t_inv-> A_0 -p1t-> A_p1t
+             * same for the other way around
+             */
+            p1t = puz->probGetShapeShape(prob, i2)->normalizeTransformation(sym->transAdd(t_inv, p1t));
+            p2t = puz->probGetShapeShape(prob, i)->normalizeTransformation(sym->transAdd(t, p2t));
 
             /* now go back from the origin of the bounding box to the hotspot anchor point */
 
