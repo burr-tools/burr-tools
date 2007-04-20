@@ -324,116 +324,117 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
           unsigned int p2 = 0;
           unsigned char t;
 
-          if (mir->getPieceInfo(p, &p2, &t)) {
+          bt_assert(mir->getPieceInfo(p, &p2, &t));
 
-            unsigned int p3;
-            unsigned char t_inv;
+          unsigned int p3;
+          unsigned char t_inv;
 
-            mir->getPieceInfo(p2, &p3, &t_inv);
+          bt_assert(mir->getPieceInfo(p2, &p3, &t_inv));
 
-            bt_assert(p3 == p);
+          bt_assert(p3 == p);
 
-            unsigned int i2 = 0;
+          unsigned int i2 = 0;
 
-            {
-              unsigned int ss = 0;
+          {
+            unsigned int ss = 0;
 
-              while (ss+puz->probGetShapeCount(prob, i2) <= p2) {
-                ss += puz->probGetShapeCount(prob, i2);
-                i2++;
-              }
+            while (ss+puz->probGetShapeCount(prob, i2) <= p2) {
+              ss += puz->probGetShapeCount(prob, i2);
+              i2++;
             }
-
-            /* OK, we found replacement information for piece p,
-             * we are supposed to replace it with piece p2
-             *
-             * so we put the current piece at position p2 and the piece
-             * at position p, we need to find out the target orientations
-             * of the 2 pieces and we need to transform the new positions
-             * with the hotspots
-             */
-
-            int p1x = placements[p].xpos;
-            int p1y = placements[p].ypos;
-            int p1z = placements[p].zpos;
-            unsigned char p1t = placements[p].transformation;
-
-            int p2x = placements[p2].xpos;
-            int p2y = placements[p2].ypos;
-            int p2z = placements[p2].zpos;
-            unsigned char p2t = placements[p2].transformation;
-
-            /* the 2nd piece must also be mirrored */
-            bt_assert(p2t >= sym->getNumTransformations());
-
-            int hx, hy, hz;
-
-            /* this step calculates the position of the origin of the bounding
-             * boxes of the 2 involved pieced. This coordinate is identical
-             * for the mirrored piece and for the replaced pieces, as both pieces
-             * have the same shape at the orientation
-             */
-
-            puz->probGetShapeShape(prob, i)->getHotspot(p1t, &hx, &hy, &hz);
-            p1x -= hx;
-            p1y -= hy;
-            p1z -= hz;
-            puz->probGetShapeShape(prob, i)->getBoundingBox(p1t, &hx, &hy, &hz);
-            p1x += hx;
-            p1y += hy;
-            p1z += hz;
-
-            puz->probGetShapeShape(prob, i2)->getHotspot(p2t, &hx, &hy, &hz);
-            p2x -= hx;
-            p2y -= hy;
-            p2z -= hz;
-            puz->probGetShapeShape(prob, i2)->getBoundingBox(p2t, &hx, &hy, &hz);
-            p2x += hx;
-            p2y += hy;
-            p2z += hz;
-
-            /* calculate the new orientation of both pieces */
-
-            /* the idea is:
-             * A is the first shape B the second. A_0 means A in the orientation entered by the user, same for B_0
-             * transformation t transforms A_0 -> B_0 (denoted by A_0 -t-> B_0), also B_0 -t_inv->A_0
-             * what we search is is an x so that B_x is identical to A_pt1, this is calulated by
-             * taking first t_inv and then p1t B_0 -t_inv-> A_0 -p1t-> A_p1t
-             * same for the other way around
-             */
-            p1t = puz->probGetShapeShape(prob, i2)->normalizeTransformation(sym->transAdd(t_inv, p1t));
-            p2t = puz->probGetShapeShape(prob, i)->normalizeTransformation(sym->transAdd(t, p2t));
-
-            /* now go back from the origin of the bounding box to the hotspot anchor point */
-
-            puz->probGetShapeShape(prob, i2)->getHotspot(p1t, &hx, &hy, &hz);
-            p1x += hx;
-            p1y += hy;
-            p1z += hz;
-            puz->probGetShapeShape(prob, i2)->getBoundingBox(p1t, &hx, &hy, &hz);
-            p1x -= hx;
-            p1y -= hy;
-            p1z -= hz;
-
-            puz->probGetShapeShape(prob, i)->getHotspot(p2t, &hx, &hy, &hz);
-            p2x += hx;
-            p2y += hy;
-            p2z += hz;
-            puz->probGetShapeShape(prob, i)->getBoundingBox(p2t, &hx, &hy, &hz);
-            p2x -= hx;
-            p2y -= hy;
-            p2z -= hz;
-
-            placements[p].xpos = p2x;
-            placements[p].ypos = p2y;
-            placements[p].zpos = p2z;
-            placements[p].transformation = p2t;
-
-            placements[p2].xpos = p1x;
-            placements[p2].ypos = p1y;
-            placements[p2].zpos = p1z;
-            placements[p2].transformation = p1t;
           }
+
+          bt_assert(sym->transAdd(t, t_inv) == 0);
+
+          /* OK, we found replacement information for piece p,
+           * we are supposed to replace it with piece p2
+           *
+           * so we put the current piece at position p2 and the piece
+           * at position p, we need to find out the target orientations
+           * of the 2 pieces and we need to transform the new positions
+           * with the hotspots
+           */
+
+          int p1x = placements[p].xpos;
+          int p1y = placements[p].ypos;
+          int p1z = placements[p].zpos;
+          unsigned char p1t = placements[p].transformation;
+
+          int p2x = placements[p2].xpos;
+          int p2y = placements[p2].ypos;
+          int p2z = placements[p2].zpos;
+          unsigned char p2t = placements[p2].transformation;
+
+          /* the 2nd piece must also be mirrored */
+          bt_assert(p2t >= sym->getNumTransformations());
+
+          int hx, hy, hz;
+
+          /* this step calculates the position of the origin of the bounding
+           * boxes of the 2 involved pieced. This coordinate is identical
+           * for the mirrored piece and for the replaced pieces, as both pieces
+           * have the same shape at the orientation
+           */
+
+          puz->probGetShapeShape(prob, i)->getHotspot(p1t, &hx, &hy, &hz);
+          p1x -= hx;
+          p1y -= hy;
+          p1z -= hz;
+          puz->probGetShapeShape(prob, i)->getBoundingBox(p1t, &hx, &hy, &hz);
+          p1x += hx;
+          p1y += hy;
+          p1z += hz;
+
+          puz->probGetShapeShape(prob, i2)->getHotspot(p2t, &hx, &hy, &hz);
+          p2x -= hx;
+          p2y -= hy;
+          p2z -= hz;
+          puz->probGetShapeShape(prob, i2)->getBoundingBox(p2t, &hx, &hy, &hz);
+          p2x += hx;
+          p2y += hy;
+          p2z += hz;
+
+          /* calculate the new orientation of both pieces */
+
+          /* the idea is:
+           * A is the first shape B the second. A_0 means A in the orientation entered by the user, same for B_0
+           * transformation t transforms A_0 -> B_0 (denoted by A_0 -t-> B_0), also B_0 -t_inv->A_0
+           * what we search is is an x so that B_x is identical to A_pt1, this is calulated by
+           * taking first t_inv and then p1t B_0 -t_inv-> A_0 -p1t-> A_p1t
+           * same for the other way around
+           */
+          p1t = puz->probGetShapeShape(prob, i2)->normalizeTransformation(sym->transAdd(t_inv, p1t));
+          p2t = puz->probGetShapeShape(prob, i)->normalizeTransformation(sym->transAdd(t, p2t));
+
+          /* now go back from the origin of the bounding box to the hotspot anchor point */
+
+          puz->probGetShapeShape(prob, i2)->getHotspot(p1t, &hx, &hy, &hz);
+          p1x += hx;
+          p1y += hy;
+          p1z += hz;
+          puz->probGetShapeShape(prob, i2)->getBoundingBox(p1t, &hx, &hy, &hz);
+          p1x -= hx;
+          p1y -= hy;
+          p1z -= hz;
+
+          puz->probGetShapeShape(prob, i)->getHotspot(p2t, &hx, &hy, &hz);
+          p2x += hx;
+          p2y += hy;
+          p2z += hz;
+          puz->probGetShapeShape(prob, i)->getBoundingBox(p2t, &hx, &hy, &hz);
+          p2x -= hx;
+          p2y -= hy;
+          p2z -= hz;
+
+          placements[p].xpos = p2x;
+          placements[p].ypos = p2y;
+          placements[p].zpos = p2z;
+          placements[p].transformation = p2t;
+
+          placements[p2].xpos = p1x;
+          placements[p2].ypos = p1y;
+          placements[p2].zpos = p1z;
+          placements[p2].transformation = p1t;
         }
 
         p++;
