@@ -672,7 +672,7 @@ void assembler_0_c::cover(register unsigned int col)
   }
 
 #if defined(TARGET_CPU_i368) || defined(TARGET_CPU_i486) || \
-    defined(TARGET_CPU_i586) || defined(TARGET_CPU_i686) || defined(TARGET_CPU_x86_64)
+    defined(TARGET_CPU_i586) || defined(TARGET_CPU_i686)
 
   unsigned int * upDown_ptr = &(upDown[0]);
   unsigned int * right_ptr = &(right[0]);
@@ -747,7 +747,7 @@ void assembler_0_c::cover(register unsigned int col)
 void assembler_0_c::uncover(register unsigned int col) {
 
 #if defined(TARGET_CPU_i368) || defined(TARGET_CPU_i486) || \
-    defined(TARGET_CPU_i586) || defined(TARGET_CPU_i686) || defined(TARGET_CPU_x86_64)
+    defined(TARGET_CPU_i586) || defined(TARGET_CPU_i686)
 
   unsigned int * upDown_ptr = &(upDown[0]);
   unsigned int * left_ptr = &(left[0]);
