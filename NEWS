@@ -1,3 +1,9 @@
+
+------------- Version 0.2.3
+
+- fix another problem that resulted in too many solutions removed for 
+  puzzles with mirrors
+
 ------------- Version 0.2.2
 
 - fix problems with mirror solution detection that somethimes removed too
