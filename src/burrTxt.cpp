@@ -17,7 +17,7 @@
  */
 
 #include "lib/puzzle.h"
-#include "lib/assembler_0.h"
+#include "lib/assembler.h"
 #include "lib/assembly.h"
 #include "lib/disassembler.h"
 #include "lib/disassembly.h"
@@ -189,17 +189,17 @@ int main(int argv, char* args[]) {
 
 
     for (problem = firstProblem ; problem < lastProblem ; problem++) {
-      
-      assembler_0_c *assm = new assembler_0_c(p.getGridType()->getAssemblerFrontend());
-      
+
+      assembler_c *assm = p.getGridType()->findAssembler(&p, problem);
+
       switch (assm->createMatrix(&p, problem)) {
-      case assembler_0_c::ERR_TOO_MANY_UNITS:
+      case assembler_c::ERR_TOO_MANY_UNITS:
         printf("%i units too many for the result shape\n", assm->getErrorsParam());
         return 0;
-      case assembler_0_c::ERR_TOO_FEW_UNITS:
+      case assembler_c::ERR_TOO_FEW_UNITS:
         printf("%i units too few for the result shape\n", assm->getErrorsParam());
         return 0;
-      case assembler_0_c::ERR_CAN_NOT_PLACE:
+      case assembler_c::ERR_CAN_NOT_PLACE:
         printf("Piece %i can be place nowhere in the result shape\n", assm->getErrorsParam());
         return 0;
       }

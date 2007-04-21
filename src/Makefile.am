@@ -17,6 +17,7 @@ burrTxt_SOURCES=burrTxt.cpp
 
 lib_libburr_a_SOURCES=\
     lib/assembler_0.cpp \
+    lib/assembler_1.cpp \
     lib/assemblerfrontend_0.cpp \
     lib/assemblerfrontend_1.cpp \
     lib/assemblerfrontend_2.cpp \
@@ -52,6 +53,7 @@ lib_libburr_a_SOURCES=\
     \
     lib/assembler.h \
     lib/assembler_0.h \
+    lib/assembler_1.h \
     lib/assemblerfrontend_0.h \
     lib/assemblerfrontend_1.h \
     lib/assemblerfrontend_2.h \

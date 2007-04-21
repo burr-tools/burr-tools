@@ -24,6 +24,7 @@
 
 #include <xmlwrapp/node.h>
 
+class assembler_c;
 class assemblerFrontend_c;
 class disassembler_c;
 class symmetries_c;
@@ -111,6 +112,16 @@ class gridType_c {
     voxel_c * getVoxel(const voxel_c * orig) const;
 
     const symmetries_c * getSymmetries(void) const;
+
+    /* this function is different from the above, it is not dependend on the
+     * gridtype of the puzzle but on some of the parameters of the puzzle, e.g
+     * has the puzzle multipieces, has the puzzle piece count ranges, ...
+     * the function tries to find the fastest assembler that can handle
+     * the puzzle.
+     * because we are not dependend on the gridtype this function is static
+     * but it needs to know the puzzle
+     */
+    static assembler_c * findAssembler(const puzzle_c * p, unsigned int problem);
 };
 
 

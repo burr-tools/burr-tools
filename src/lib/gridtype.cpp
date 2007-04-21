@@ -17,6 +17,8 @@
  */
 #include "gridtype.h"
 
+#include "assembler_0.h"
+#include "assembler_1.h"
 #include "assemblerfrontend_0.h"
 #include "assemblerfrontend_1.h"
 #include "assemblerfrontend_2.h"
@@ -27,6 +29,7 @@
 #include "symmetries_0.h"
 #include "symmetries_1.h"
 #include "symmetries_2.h"
+#include "puzzle.h"
 
 #include <xmlwrapp/attributes.h>
 
@@ -203,5 +206,19 @@ unsigned int gridType_c::getCapabilities(void) const {
     case GT_SPHERES:          return CAP_ASSEMBLE;
     default: return 0;
   }
+}
+
+assembler_c * gridType_c::findAssembler(const puzzle_c * p, unsigned int problem) {
+
+  if (assembler_0_c::canHandle(p, problem)) {
+    printf("using assembler 0\n");
+    return new assembler_0_c(p->getGridType()->getAssemblerFrontend());
+  }
+  if (assembler_1_c::canHandle(p, problem)) {
+    printf("using assembler 1\n");
+    return new assembler_1_c(p->getGridType()->getAssemblerFrontend());
+  }
+
+  return 0;
 }
 

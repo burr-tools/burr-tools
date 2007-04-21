@@ -18,7 +18,6 @@
 #include "assemblerthread.h"
 
 #include "disassembly.h"
-#include "assembler_0.h"
 #include "puzzle.h"
 #include "assembly.h"
 
@@ -49,10 +48,10 @@ void* start_th(void * c)
       /* otherwise we have to create a new one
        */
       p->action = assemblerThread_c::ACT_PREPARATION;
-      p->assm = new assembler_0_c(p->puzzle->getGridType()->getAssemblerFrontend());
+      p->assm = p->puzzle->getGridType()->findAssembler(p->puzzle, p->prob);
 
       p->errState = p->assm->createMatrix(p->puzzle, p->prob);
-      if (p->errState != assembler_0_c::ERR_NONE) {
+      if (p->errState != assembler_c::ERR_NONE) {
 
         p->errParam = p->assm->getErrorsParam();
 
@@ -76,7 +75,7 @@ void* start_th(void * c)
        * be saved within the problem
        */
       p->errState = p->puzzle->probSetAssembler(p->prob, p->assm);
-      if (p->errState != assembler_0_c::ERR_NONE) {
+      if (p->errState != assembler_c::ERR_NONE) {
         p->action = assemblerThread_c::ACT_ERROR;
         return 0;
       }

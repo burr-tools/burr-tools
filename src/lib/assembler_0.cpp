@@ -1776,3 +1776,14 @@ void assembler_0_c::debug_step(unsigned long num) {
 
 void assembler_0_c::debug_run(unsigned int level) {
 }
+
+bool assembler_0_c::canHandle(const puzzle_c * p, unsigned int problem) {
+
+  // we can not handle if there is one shape having not a counter of 1
+  for (unsigned int s = 0; s < p->probShapeNumber(problem); s++)
+    if (p->probGetShapeCount(problem, s) > 1)
+      return false;
+
+  return true;
+}
+

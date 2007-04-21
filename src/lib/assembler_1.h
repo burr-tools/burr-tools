@@ -15,8 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#ifndef __DL_ASSEMBLER_H__
-#define __DL_ASSEMBLER_H__
+#ifndef __ASSEMBLER_1_H__
+#define __ASSEMBLER_1_H__
 
 #include "assembler.h"
 
@@ -53,7 +53,7 @@ class mirrorInfo_c;
  *
  */
 
-class assembler_0_c : public assembler_c {
+class assembler_1_c : public assembler_c {
 
 protected:
 
@@ -70,67 +70,12 @@ private:
    */
   std::vector<unsigned int> left;
   std::vector<unsigned int> right;
-  std::vector<unsigned int> upDown;   // this is special, is contains in reality 2 arrays interleaved
-                                      // the even entries (0, 2, 4, ...) are up and the odd (1, 3, 5, ...) are down
-                                      // I've done this to save a register for the assembly versions of the cover
-                                      // and uncover functions and to speed them up by %
+  std::vector<unsigned int> up;
+  std::vector<unsigned int> down;
   std::vector<unsigned int> colCount;
-
-  //to make access to the up and down vectors easier, the following 2 macros are provided
-#define up(x) upDown[2*(x)]
-#define down(x) upDown[2*(x)+1]
-
-  /* used to abort the searching */
-  bool abbort;
-
-  /* used to save if the search is running */
-  bool running;
-
-  /* an array for each piece saying how often this one appears */
-  unsigned int *multiPieceCount;
-  unsigned int *multiPieceIndex;
-
-  /* this array contains the index of the first node of the nodes that
-   * belong to the piece of the array index given
-   */
-  unsigned int *pieceStart;
-
-  /* cover one column:
-   * - remove the column from the column header node list,
-   * - remove all rows where the given column is 1
-   */
-  void cover(register unsigned int col);
-
-  /* uncover the given column
-   * this is the exact inverse operation of cover. It requires that the
-   * matrix has the same state as after the corresponding cover.
-   * so
-   *
-   * cover(i); uncover(i);
-   *
-   * will result in the same matrix as before
-   */
-  void uncover(register unsigned int col);
-
-  /* 2 helper functions that cover and uncover one
-   * selected row
-   */
-  void cover_row(register unsigned int r);
-  void uncover_row(register unsigned int r);
-
-  /* same as cover row, but aborting
-   * as soon as one of the columns does contain a zero
-   * and then uncovering all that was already done
-   */
-  bool try_cover_row(register unsigned int r, unsigned int * columns);
-
-  /* these 2 functions remove and reinsert rows from the matrix
-   * they only remove the given row
-   */
-  void remove_row(register unsigned int r);
-  void reinsert_row(register unsigned int r);
-
-  void remove_column(register unsigned int c);
+  std::vector<unsigned int> weight;
+  std::vector<unsigned int> min;
+  std::vector<unsigned int> max;
 
   /* this function gets called whenever an assembly was found
    * when a callback is available it will call getAssembly to
@@ -142,24 +87,37 @@ private:
    */
   void solution(void);
 
-  /* used to collect the data necessary to construct and for the iterative algorithm
-   * the assembly, it contains the indexes to the selected rows
-   * the columns array contains the indices of the covered columns
-   * the pos value contains the number of pieces placed
-   */
-  unsigned int pos;
-  unsigned int *rows;
-  unsigned int *columns;
-  unsigned int *nodeF;
-  unsigned int *numF;
-  unsigned int *piece;
-  unsigned int *searchState;
-  std::stack<unsigned int> *addRows;
+  /* used to abort the searching */
+  bool abbort;
 
-  void iterativeMultiSearch(void);
+  /* used to save if the search is running */
+  bool running;
 
-  /* this function checks, if the given piece can be placed
-   * at the given position inside the result
+  std::vector<int> rows;
+  std::vector<unsigned int> finished_a;
+  std::vector<unsigned int> finished_b;
+
+  unsigned int headerNodes;  // number of nodes within the header
+
+  bool open_column_conditions_fulfillable(void);
+  int find_best_unclosed_column(void);
+  void cover_column_only(int col);
+  void uncover_column_only(int col);
+  void cover_column_rows(int col);
+  void uncover_column_rows(int col);
+  void hiderow(int r);
+  void unhiderow(int r);
+  bool column_condition_fulfilled(int col);
+  void rec1(void);
+  void rec2(int next_row);
+  void remove_row(register unsigned int r);
+  void remove_column(register unsigned int c);
+  unsigned int clumpify(void);
+
+
+  /**
+   * this function is called by the default implementation of prepare
+   * to check, if the piece fits at the given position
    */
   bool canPlace(const voxel_c * piece, int x, int y, int z) const;
 
@@ -173,60 +131,15 @@ private:
    */
   virtual int prepare(int res_filles, int res_vari);
 
-  /* used by reduce to find out if the given position is a dead end
-   * and will always lead to non solvable positions
-   *
-   * you have 2 parameters to control how thorough the process is carried out
-   * here we have the following idea. If after placing one piece there is a
-   * forced move somewhere (e.g. one piece can now be placed only in one
-   * place, we could continue placing this piece and check if after that
-   * we went into a cul-de-sac. rec gives the number of pieces that are placed
-   * maximally until we assume that it's not a dead end.
-   *
-   * the second value specifies the branch level, meaning: when we placed on piece
-   * and now one other has only very few placements left, we could try all those
-   * and check if all of them lead to dead ends. Branch specifies how many placements
-   * are maximally checked.
-   *
-   * be careful with these values as they may lead to extraordinary long calculation
-   * times if set to high.
-   *
-   * good values are 3-5 for rec and 1 or 2 for branch level.
-   *
-   * it may a complete waste of time for some puzzles to call this function so you
-   * have to decide
-   *
-   * the function returns the accumulated number of placements that were removed
-   */
-  bool checkmatrix(unsigned int rec, unsigned int branch);
-
   /* internal error state */
   errState errorsState;
   int errorsParam;
-
-  /* number of iterations the assemble routine run */
-  unsigned long iterations;
-
-  /* the number of holes the assembles piece will have. Holes are
-   * voxels in the variable voxel set that are not filled. The other
-   * voxels are all filled
-   */
-  int holes;
-
-  /* first and one after last column for the variable voxels */
-  unsigned int varivoxelStart;
-  unsigned int varivoxelEnd;
 
   /* now this isn't hard to guess, is it? */
   unsigned int piecenumber;
 
   /* the message object that gets called with the solutions as param */
   assembler_cb * asm_bc;
-
-  /* this value contains the piecenumber that the reduce procedure is currently working on
-   * the value is only valid, when reduce is running
-   */
-  unsigned int reducePiece;
 
   /* this vector contains the placement (transformation and position) for
    * a piece in a row
@@ -238,9 +151,10 @@ private:
     int x, y, z;
     unsigned char transformation;
     unsigned int row;            // first node in this row
+    unsigned int piece;
 
-    piecePosition(int x_, int y_, int z_, unsigned char transformation_, unsigned int row_) : x(x_), y(y_), z(z_),
-      transformation(transformation_), row(row_) {}
+    piecePosition(unsigned int pc_, int x_, int y_, int z_, unsigned char transformation_, unsigned int row_) : x(x_), y(y_), z(z_),
+      transformation(transformation_), row(row_), piece(pc_) {}
   };
   std::vector<piecePosition> piecePositions;
 
@@ -249,14 +163,6 @@ private:
   bool avoidTransformedAssemblies;
   unsigned int avoidTransformedPivot;
   mirrorInfo_c * avoidTransformedMirror;
-
-  /* the variables for debugging assembling processes
-   */
-  bool debug;         // debugging enabled
-  int debug_loops;    // how many loops to run ?
-  unsigned int debug_pos;      // run until pos is debug_pos
-
-  unsigned int clumpify(void);
 
 protected:
 
@@ -272,9 +178,6 @@ protected:
    */
   void GenerateFirstRow(int unsigned res_filled);
 
-  /* call this whenever you start to add information for a new piece */
-  void nextPiece(unsigned int piece, unsigned int count, unsigned int number);
-
   /* this function adds a node to the matrix that belongs to the first columns that represent
    * the pieces. This is normally the first thing you do, when you start a new line in the matrix
    * The information you provide is required to restore the exact piece in placement that this
@@ -288,7 +191,7 @@ protected:
    * the exact piece and placement the line this node belongs to stands for
    * this function is used in the solution function to restore the placement of the piece
    */
-  void getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z);
+  void getPieceInformation(unsigned int node, unsigned int * piece, unsigned char *tran, int *x, int *y, int *z);
 
   /* this adds a normal node that represents a used voxel within the solution
    * piecenode is the number that you get from AddPieceNode, col is a number
@@ -297,12 +200,8 @@ protected:
   void AddVoxelNode(unsigned int col, unsigned int piecenode);
 
   /* these functions provide access to the cover information for you */
-  unsigned int getRows(int pos) { return rows[pos]; }
   unsigned int getRight(int pos) { return right[pos]; }
-  unsigned int getPiece(int pos) { return piece[pos]; }
   unsigned int getColCount(int pos) { return colCount[pos]; }
-  unsigned int getVarivoxelStart(void) { return varivoxelStart; }
-  unsigned int getPos(void) { return pos; }
 
   /* finally after assembling a puzzle and creating something meaningful from the cover
    * information you need to call the callback of the user, use this function to get the
@@ -326,43 +225,19 @@ protected:
 
 public:
 
-  assembler_0_c(assemblerFrontend_c * fe);
-  ~assembler_0_c(void);
+  assembler_1_c(assemblerFrontend_c * fe);
+  ~assembler_1_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */
   virtual errState createMatrix(const puzzle_c * puz, unsigned int problemNum);
   void assemble(assembler_cb * callback);
-  int getErrorsParam(void) { return errorsParam; }
+  int getErrorsParam(void) { return 0; }
   virtual float getFinished(void);
   virtual void stop(void) { abbort = true; }
   virtual bool stopped(void) const { return !running; }
   virtual errState setPosition(const char * string, const char * version);
   virtual xml::node save(void) const;
   virtual void reduce(void);
-  virtual unsigned int getReducePiece(void) { return reducePiece; }
-  virtual unsigned long getIterations(void) { return iterations; }
-
-  /* some more special information to find out possible piece placements */
-  unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z);
-  unsigned int getPiecePlacementCount(unsigned int piece);
-
-  /* finally some debugging functions that allow to look how, why, and where pieces are placed */
-
-  /* do exactly the given number of rounds in the assembler, and then stop */
-  void debug_step(unsigned long num = 1);
-
-  /* run until we reach the given level */
-  void debug_run(unsigned int level);
-
-  enum {
-    DBG_ACT_START_COL,
-    DBG_ACT_COL_ZERO,
-    DBG_ACT_TOO_MANY_HOLES,
-    DBG_ACT_NEXT_ROW
-  };
-
-  /* returns one of the enum above to tell, what we have done in the last iteration */
-  int debug_activity(void);
 
   /* gets called when a solution is found. This function
    * then assembles the solution and returns an assembly
