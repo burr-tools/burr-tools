@@ -211,21 +211,21 @@ int main(int argv, char* args[]) {
 	if (!quiet)
 	  cout << "finished reduce\n\n";
       }
-      
+
       if (allProblems)
 	cout << "problem: " << p.probGetName(problem) << endl;
 
       asm_cb a(&p, problem);
-      
+
       d = p.getGridType()->getDisassembler(&p, problem);
-      
+
       assm->assemble(&a);
-      
+
       cout << a.Assemblies << " assemblies and " << a.Solutions << " solutions found with " << assm->getIterations() << " iterations ";
-      
+
       if (newline)
 	cout << endl;
-      
+
       delete assm;
       delete d;
       d = 0;
@@ -240,23 +240,23 @@ int main(int argv, char* args[]) {
       for (int sol = 0; sol < p.probSolutionNumber(problem); sol++) {
 
 	if (p.probGetAssembly(problem, sol)) {
-	  
+
 	  separation_c * da = d->disassemble(p.probGetAssembly(problem, sol));
-	  
+
 	  if (da) {
 	    if (printSolutions)
 	      print(p.probGetAssembly(problem, sol), &p, problem);
-	    
+
 	    if (!quiet)
 	      printf("level: %i\n", da->getMoves());
-	    
+
 	    if (printDisassemble)
 	      print(da, p.probGetAssembly(problem, sol), &p, problem);
 	    delete da;
 	  }
 	}
       }
-      
+
       delete d;
     }
   }
