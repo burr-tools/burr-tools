@@ -938,37 +938,40 @@ bool assembler_1_c::column_condition_fulfilled(int col) {
   return (weight[col] >= min[col]) && (weight[col] <= max[col]);
 }
 
-void assembler_1_c::rec1(void) {
+void assembler_1_c::rec(int next_row) {
 
-  // when no column is left we have found a solution
-  if (right[0] == 0) {
-    solution();
+  if (next_row == 0) {
+    // no column selected, so find a new one
+
+    // when no column is left we have found a solution
+    if (right[0] == 0) {
+      solution();
+      return;
+    }
+
+    /* probably the same criterium as in the old dancing link algorithm
+     * leads to good guesses here, so find the column, with the least
+     * number of nodes > 0 in it
+     */
+    int col = find_best_unclosed_column();
+
+    if (col == -1) {
+      return;
+    }
+
+    // remove this column from the column list
+    // do not yet remove the rows of this column, this will be done
+    // shortly before we recursively call this function again
+    cover_column_only(col);
+
+    // try to find all row sets that fulfill this columns condition
+    rec(down[col]);
+
+    // reinsert this column and all its rows
+    uncover_column_only(col);
+
     return;
   }
-
-  /* probably the same criterium as in the old dancing link algorithm
-   * leads to good guesses here, so find the column, with the least
-   * number of nodes > 0 in it
-   */
-  int col = find_best_unclosed_column();
-
-  if (col == -1) {
-    return;
-  }
-
-  // remove this column from the column list
-  // do not yet remove the rows of this column, this will be done
-  // shortly before we recursively call this function again
-  cover_column_only(col);
-
-  // try to find all row sets that fulfill this columns condition
-  rec2(down[col]);
-
-  // reinsert this column and all its rows
-  uncover_column_only(col);
-}
-
-void assembler_1_c::rec2(int next_row) {
 
   unsigned int col = next_row;
   if (col >= headerNodes)
@@ -987,7 +990,7 @@ void assembler_1_c::rec2(int next_row) {
     // this way we make sure we are _not_ changing this columns value any more
     cover_column_rows(col);
 
-    rec1();
+    rec(0);
 
     // reinsert rows of this column
     uncover_column_rows(col);
@@ -1062,7 +1065,7 @@ void assembler_1_c::rec2(int next_row) {
         if (newrow < headerNodes)
           newrow = row;
 
-        rec2(newrow);
+        rec(newrow);
 
         while (!hidden_rows.empty()) {
           unhiderow(hidden_rows.back());
@@ -1102,7 +1105,7 @@ void assembler_1_c::assemble(assembler_cb * callback) {
   if (errorsState == ERR_NONE) {
     asm_bc = callback;
     if (open_column_conditions_fulfillable()) {
-      rec1();
+      rec(0);
     }
   }
 

@@ -108,8 +108,7 @@ private:
   void hiderow(int r);
   void unhiderow(int r);
   bool column_condition_fulfilled(int col);
-  void rec1(void);
-  void rec2(int next_row);
+  void rec(int next_row);
   void remove_row(register unsigned int r);
   void remove_column(register unsigned int c);
   unsigned int clumpify(void);
