@@ -245,6 +245,11 @@ public:
   assembly_c * getAssembly(void);
 
   static bool canHandle(const puzzle_c * p, unsigned int problem);
+
+  /* some more special information to find out possible piece placements */
+  bool getPiecePlacementSupported(void) { return true; }
+  unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z);
+  unsigned int getPiecePlacementCount(unsigned int piece);
 };
 
 #endif

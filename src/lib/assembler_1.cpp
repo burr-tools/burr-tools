@@ -1134,6 +1134,50 @@ xml::node assembler_1_c::save(void) const {
   return nd;
 }
 
+unsigned int assembler_1_c::getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) {
+
+  /* piece 2 shape */
+  unsigned int pp = 0;
+  unsigned int shape = 0;
+  while (pp + puzzle->probGetShapeCount(problem, shape) <= piece) {
+    pp += puzzle->probGetShapeCount(problem, shape);
+    shape++;
+  }
+
+  if (!node)
+    node = down[shape+1];
+
+  while (delta > 0) {
+    node = down[node];
+    delta--;
+  }
+
+  while (delta < 0) {
+    node = up[node];
+    delta++;
+  }
+
+  unsigned int p;
+  getPieceInformation(node, &p, tran, x, y, z);
+
+  bt_assert(p == shape);
+
+  return node;
+}
+
+unsigned int assembler_1_c::getPiecePlacementCount(unsigned int piece) {
+
+  /* piece 2 shape */
+  unsigned int pp = 0;
+  unsigned int shape = 0;
+  while (pp + puzzle->probGetShapeCount(problem, shape) <= piece) {
+    pp += puzzle->probGetShapeCount(problem, shape);
+    shape++;
+  }
+
+  return colCount[shape+1];
+}
+
 bool assembler_1_c::canHandle(const puzzle_c * p, unsigned int problem) {
 
   // right now there are no limits
