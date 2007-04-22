@@ -151,6 +151,23 @@ public:
    */
   virtual xml::node save(void) const { return xml::node("assembler"); }
 
+  /* some more special information to find out possible piece placements */
+  /* it is optional to support this interface. The user alsway has to first check
+   * if the Supported function returns true, if not the functionality is not
+   * supported
+   */
+  virtual bool getPiecePlacementSupported(void) { return false; }
+
+  /* return the number of placements for a given _PIECE_ not the shape */
+  virtual unsigned int getPiecePlacementCount(unsigned int piece) { return 0; }
+
+  /* returns the placement of a piece (orientation, and position). Node gives a current position
+   * inside some internal data structure, the new position is returned as return value, for initialisation
+   * give 0 as node. Delta is the number of placements you want to go back of forward. So
+   * node = getPiecePlacement(0, 10, ...) returns the 11-th placement of the given piece (1st plus 10 forward)
+   */
+  virtual unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) { return 0; }
+
 };
 
 #endif

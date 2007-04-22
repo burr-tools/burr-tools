@@ -787,6 +787,11 @@ void mainWindow_c::cb_BtnPlacementBrowser(void) {
 
   unsigned int prob = solutionProblem->getSelection();
 
+  if (!puzzle->probGetAssembler(prob)->getPiecePlacementSupported()) {
+    fl_message("Sorry no placement browser for this type of puzzle");
+    return;
+  }
+
   placementBrowser_c * plbr = new placementBrowser_c(puzzle, prob, ggt);
 
   plbr->show();

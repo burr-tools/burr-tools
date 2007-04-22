@@ -17,7 +17,7 @@
  */
 #include "placementbrowser.h"
 
-#include "../lib/assembler_0.h"
+#include "../lib/assembler.h"
 #include "../lib/puzzle.h"
 
 #include <FL/Fl.H>
@@ -34,7 +34,7 @@ void placementBrowser_c::cb_piece(Fl_Value_Slider* o) {
   placementSelector->value(0);
 
   unsigned int piece = (int)pieceSelector->value();
-  unsigned int placements = ((assembler_0_c*)puzzle->probGetAssembler(problem))->getPiecePlacementCount(piece);
+  unsigned int placements = puzzle->probGetAssembler(problem)->getPiecePlacementCount(piece);
   unsigned char trans;
   int x, y, z;
 
@@ -42,7 +42,7 @@ void placementBrowser_c::cb_piece(Fl_Value_Slider* o) {
     placementSelector->activate();
     placementSelector->range(0, placements-1);
 
-    node = ((assembler_0_c*)puzzle->probGetAssembler(problem))->getPiecePlacement(0, 0, piece, &trans, &x, &y, &z);
+    node = puzzle->probGetAssembler(problem)->getPiecePlacement(0, 0, piece, &trans, &x, &y, &z);
 
   } else {
 
@@ -64,7 +64,7 @@ void placementBrowser_c::cb_placement(Fl_Value_Slider* o) {
   unsigned char trans;
   int x, y, z;
 
-  node = ((assembler_0_c*)puzzle->probGetAssembler(problem))->getPiecePlacement(node, val-placement, piece, &trans, &x, &y, &z);
+  node = puzzle->probGetAssembler(problem)->getPiecePlacement(node, val-placement, piece, &trans, &x, &y, &z);
   placement = val;
 
   view3d->showPlacement(puzzle, problem, piece, trans, x, y, z);
@@ -75,6 +75,7 @@ placementBrowser_c::placementBrowser_c(puzzle_c * p, unsigned int prob, const gu
   LFl_Double_Window(true), puzzle(p), problem(prob) {
 
   bt_assert(puzzle->probGetAssembler(problem));
+  bt_assert(puzzle->probGetAssembler(problem)->getPiecePlacementSupported());
 
   view3d = new LView3dGroup(1, 1, 1, 1, ggt);
   view3d->weight(1, 1);
