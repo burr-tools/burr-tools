@@ -974,9 +974,14 @@ void assembler_1_c::rec2(int next_row) {
   if (col >= headerNodes)
     col = colCount[next_row];
 
+  unsigned int cnt = 0;
+
   // it might be that the condition for this column is already fulfilled, without adding a single
   // line to the column that is why we do this check here at the start of the function
   if (column_condition_fulfilled(col)) {
+
+    finished_b.push_back(colCount[colCount[next_row]]+1);
+    finished_a.push_back(cnt);
 
     // remove all rows that are left within this column
     // this way we make sure we are _not_ changing this columns value any more
@@ -986,10 +991,16 @@ void assembler_1_c::rec2(int next_row) {
 
     // reinsert rows of this column
     uncover_column_rows(col);
+
+    finished_a.pop_back();
+    cnt++;
+
+  } else {
+
+    finished_b.push_back(colCount[colCount[next_row]]);
+
   }
 
-  unsigned int cnt = 0;
-  finished_b.push_back(colCount[colCount[next_row]]);
 
   for (unsigned int row = next_row; ; row = down[row]) {
 
@@ -1104,13 +1115,9 @@ float assembler_1_c::getFinished(void) {
 
   for (int r = finished_a.size()-1; r >= 0; r--) {
 
-    printf("%i/%i ", finished_a[r], finished_b[r]);
-
     erg += finished_a[r];
     erg /= finished_b[r];
   }
-
-  printf("\n");
 
   return erg;
 }
