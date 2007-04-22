@@ -18,7 +18,7 @@
 #ifndef __ASSEMBLER_FRONTENT_2_H__
 #define __ASSEMBLER_FRONTENT_2_H__
 
-#include "assembler_0.h"
+#include "assembler.h"
 
 class assemblerFrontend_2_c : public assemblerFrontend_c {
 
