@@ -557,18 +557,31 @@ void voxelDrawer_c::showAssembly(const puzzle_c * puz, unsigned int probNum, uns
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
       for (unsigned int q = 0; q < puz->probGetShapeCount(probNum, p); q++) {
 
-        voxel_c * vx = puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, p));
+        if (assm->isPlaced(piece)) {
 
-        bt_assert(vx->transform(assm->getTransformation(piece)));
+          voxel_c * vx = puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, p));
 
-        num = addSpace(vx);
+          bt_assert(vx->transform(assm->getTransformation(piece)));
 
-        setSpacePosition(num, assm->getX(piece), assm->getY(piece), assm->getZ(piece), 1);
+          num = addSpace(vx);
 
-        setSpaceColor(num,
-                              pieceColorR(puz->probGetShape(probNum, p), q),
-                              pieceColorG(puz->probGetShape(probNum, p), q),
-                              pieceColorB(puz->probGetShape(probNum, p), q), 1);
+          setSpacePosition(num, assm->getX(piece), assm->getY(piece), assm->getZ(piece), 1);
+
+          setSpaceColor(num,
+              pieceColorR(puz->probGetShape(probNum, p), q),
+              pieceColorG(puz->probGetShape(probNum, p), q),
+              pieceColorB(puz->probGetShape(probNum, p), q), 1);
+
+        } else {
+
+          voxel_c * vx = puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, p));
+
+          num = addSpace(vx);
+
+          setSpacePosition(num, 0, 0, 0, 1);
+
+          setSpaceColor(num, 0);
+        }
 
         piece++;
       }
@@ -595,7 +608,7 @@ void voxelDrawer_c::showAssemblerState(const puzzle_c * puz, unsigned int probNu
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
       for (unsigned int q = 0; q < puz->probGetShapeCount(probNum, p); q++) {
 
-        if (assm->getTransformation(piece) < 0xff) {
+        if (assm->isPlaced(piece)) {
 
           voxel_c * vx = puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, p));
 
@@ -609,6 +622,7 @@ void voxelDrawer_c::showAssemblerState(const puzzle_c * puz, unsigned int probNu
               pieceColorR(puz->probGetShape(probNum, p), q),
               pieceColorG(puz->probGetShape(probNum, p), q),
               pieceColorB(puz->probGetShape(probNum, p), q), 1);
+
         }
 
         piece++;

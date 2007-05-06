@@ -19,9 +19,10 @@
 
 #include "../lib/disassembly.h"
 
-disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz) : tree(tr), size(sz) {
-  moves = new float[tr->getPieceNumber()*4];
-  mv = new bool[tr->getPieceNumber()];
+disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz, unsigned int max) : tree(tr), size(sz), maxPieceName(max) {
+
+  moves = new float[maxPieceName*4];
+  mv = new bool[maxPieceName];
 }
 
 disasmToMoves_c::~disasmToMoves_c() {
@@ -35,9 +36,9 @@ void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
   float frac = step - s;
 
   // a temporary array, used to save the 2nd placement for the interpolation */
-  float * moves2 = new float[tree->getPieceNumber()*4];
+  float * moves2 = new float[maxPieceName*4];
 
-  for (unsigned int i = 0; i < 4 * tree->getPieceNumber(); i++) {
+  for (unsigned int i = 0; i < 4 * maxPieceName; i++) {
     moves[i] = moves2[i] = 0;
   }
 
@@ -53,7 +54,7 @@ void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
     doRecursive(tree, s+1, moves2, center_active, 0, 0, 0);
 
     // interpolate and check, which piece moves right now
-    for (unsigned int i = 0; i < tree->getPieceNumber(); i++) {
+    for (unsigned int i = 0; i < maxPieceName; i++) {
       mv[i] = ((moves[4*i+0] != moves2[4*i+0]) || (moves[4*i+1] != moves2[4*i+1]) || (moves[4*i+2] != moves2[4*i+2]));
       moves[4*i+0] = (1-frac)*moves[4*i+0] + frac*moves2[4*i+0];
       moves[4*i+1] = (1-frac)*moves[4*i+1] + frac*moves2[4*i+1];
@@ -62,7 +63,7 @@ void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
     }
 
     if (!fadeOut)
-      for (unsigned int i = 0; i < tree->getPieceNumber(); i++)
+      for (unsigned int i = 0; i < maxPieceName; i++)
         if (moves[4*i+3] > 0) moves[4*i+3] = 1;
 
   }
@@ -71,23 +72,23 @@ void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
 }
 
 float disasmToMoves_c::getX(unsigned int piece) {
-  bt_assert(piece < tree->getPieceNumber());
+  bt_assert(piece < maxPieceName);
   return moves[4*piece+0];
 }
 float disasmToMoves_c::getY(unsigned int piece) {
-  bt_assert(piece < tree->getPieceNumber());
+  bt_assert(piece < maxPieceName);
   return moves[4*piece+1];
 }
 float disasmToMoves_c::getZ(unsigned int piece) {
-  bt_assert(piece < tree->getPieceNumber());
+  bt_assert(piece < maxPieceName);
   return moves[4*piece+2];
 }
 float disasmToMoves_c::getA(unsigned int piece) {
-  bt_assert(piece < tree->getPieceNumber());
+  bt_assert(piece < maxPieceName);
   return moves[4*piece+3];
 }
 bool disasmToMoves_c::moving(unsigned int piece) {
-  bt_assert(piece < tree->getPieceNumber());
+  bt_assert(piece < maxPieceName);
   return mv[piece];
 }
 

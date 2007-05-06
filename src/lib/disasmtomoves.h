@@ -60,6 +60,11 @@ class disasmToMoves_c : public piecePositions_c {
   /* this array contains the information, if a piece is currently moving, or not */
   bool * mv;
 
+  /* the number of the last used piece this is NOT identical with
+   * pieceNumber of tree because there might be gaps
+   */
+  unsigned int maxPieceName;
+
   /* this function walks the tree and sets the piece positions */
   int doRecursive(const separation_c * tree, int step, float * array, bool center_active, int cx, int cy, int cz);
 
@@ -69,7 +74,7 @@ public:
    * assembled puzzle. The larger the further away the pieces will be
    * moved
    */
-  disasmToMoves_c(const separation_c * tr, unsigned int sz);
+  disasmToMoves_c(const separation_c * tr, unsigned int sz, unsigned int maxPiece);
 
   virtual ~disasmToMoves_c();
 

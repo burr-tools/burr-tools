@@ -1743,7 +1743,8 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->value(levelText);
 
       disassemble = new disasmToMoves_c(puzzle->probGetDisassembly(prob, num),
-                                      2*puzzle->probGetResultShape(prob)->getBiggestDimension());
+                                      2*puzzle->probGetResultShape(prob)->getBiggestDimension(),
+                                      puzzle->probPieceNumber(prob));
       disassemble->setStep(SolutionAnim->value(), config.useBlendedRemoving());
 
       View3D->showAssembly(puzzle, prob, num);

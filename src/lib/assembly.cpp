@@ -135,13 +135,13 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces, const gridTy
 assembly_c::assembly_c(const assembly_c * orig) : sym(orig->sym) {
 
   for (unsigned int i = 0; i < orig->placements.size(); i++)
-    placements.push_back(placement_c(orig->getTransformation(i), orig->getX(i), orig->getY(i), orig->getZ(i)));
+    placements.push_back(placement_c(orig->placements[i]));
 
 }
 
 assembly_c::assembly_c(const assembly_c * orig, unsigned char trans, const puzzle_c * puz, unsigned int prob, const mirrorInfo_c * mir) : sym(orig->sym) {
   for (unsigned int i = 0; i < orig->placements.size(); i++)
-    placements.push_back(placement_c(orig->getTransformation(i), orig->getX(i), orig->getY(i), orig->getZ(i)));
+    placements.push_back(placement_c(orig->placements[i]));
 
   transform(trans, puz, prob, mir);
 
@@ -270,6 +270,12 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
   for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
     for (unsigned int j = 0; j < puz->probGetShapeCount(prob, i); j++) {
 
+      // if a piece has a transformation == 255 it is NOT placed so we don't need to do anything
+      if (!isPlaced(p)) {
+        p++;
+        continue;
+      }
+
       puz->probGetResultShape(prob)->transformPoint(&placements[p].xpos, &placements[p].ypos, &placements[p].zpos, trans);
 
       placements[p].xpos += rx;
@@ -318,13 +324,18 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
     for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
       for (unsigned int j = 0; j < puz->probGetShapeCount(prob, i); j++) {
 
+        // if a piece is NOT placed so we don't need to do anything
         // only check, if the current piece is mirrored
-        if (placements[p].transformation >= sym->getNumTransformations()) {
+        if (placements[p].transformation >= sym->getNumTransformations() && isPlaced(p)) {
 
           unsigned int p2 = 0;
           unsigned char t;
 
           bt_assert(mir->getPieceInfo(p, &p2, &t));
+
+          // when the 2nd piece is not available inside the assembly, we can
+          // not swap
+          if (!isPlaced(p2)) continue;
 
           unsigned int p3;
           unsigned char t_inv;

@@ -259,9 +259,15 @@ solution_c::solution_c(const xml::node & node, unsigned int pieces, const gridTy
   assembly = new assembly_c(*it, pieces, gt);
 
   it = node.find("separation");
-  if (it != node.end())
-    tree = new separation_c(*it, pieces);
-  else {
+  if (it != node.end()) {
+
+    // find the number of really placed pieces
+    unsigned int pl = 0;
+    for (unsigned int i = 0; i < assembly->placementCount(); i++)
+      if (assembly->isPlaced(i))
+        pl++;
+    tree = new separation_c(*it, pl);
+  } else {
 
     it = node.find("separationInfo");
     if (it != node.end())
@@ -1265,7 +1271,6 @@ const std::string & puzzle_c::probGetName(unsigned int prob) const {
 
 void puzzle_c::probAddSolution(unsigned int prob, assembly_c * assm) {
   bt_assert(prob < problems.size());
-  bt_assert(problems[prob]->assm);
 
   unsigned int a = problems[prob]->numAssemblies;
   if (a == 0xFFFFFFFF) a = 0;

@@ -26,6 +26,9 @@
 
 #include <vector>
 
+// this vailue is used for transformation to specify unplaced pieces
+#define UNPLACED_TRANS 0xff
+
 class puzzle_c;
 
 /* this class contains the information for the placement of
@@ -37,13 +40,14 @@ class placement_c {
 
 public:
 
-  // transformation 0xFF means that the piece is NOT inside the solution
+  // transformation UNPLACED_TRANS means that the piece is NOT inside the solution
   unsigned char transformation;
 
   int xpos, ypos, zpos;
 
   placement_c(unsigned char tran, int x, int y, int z) : transformation(tran), xpos(x), ypos(y), zpos(z) {}
   placement_c(const placement_c * orig) : transformation(orig->transformation), xpos(orig->xpos), ypos(orig->ypos), zpos(orig->zpos) {}
+  placement_c(const placement_c & orig) : transformation(orig.transformation), xpos(orig.xpos), ypos(orig.ypos), zpos(orig.zpos) {}
 
   int getX(void) const { return xpos; }
   int getY(void) const { return ypos; }
@@ -143,32 +147,41 @@ public:
 
   void addPlacement(unsigned char tran, int x, int y, int z) {
     bt_assert(tran < sym->getNumTransformations());
+    bt_assert(tran != UNPLACED_TRANS);
     placements.push_back(placement_c(tran, x, y, z));
   }
 
   void addNonPlacement(void) {
-    placements.push_back(placement_c(0xff, 0, 0, 0));
+    placements.push_back(placement_c(UNPLACED_TRANS, 0, 0, 0));
   }
 
   unsigned int placementCount(void) const { return placements.size(); }
 
-  unsigned char getTransformation(unsigned char num) const {
+  bool isPlaced(unsigned int num) const {
+    return placements[num].getTransformation() != UNPLACED_TRANS;
+  }
+
+  unsigned char getTransformation(unsigned int num) const {
     bt_assert(num < placements.size());
+    bt_assert(placements[num].getTransformation() != UNPLACED_TRANS);
     return placements[num].getTransformation();
   }
 
-  int getX(unsigned char num) const {
+  int getX(unsigned int num) const {
     bt_assert(num < placements.size());
+    bt_assert(placements[num].getTransformation() != UNPLACED_TRANS);
     return placements[num].getX();
   }
 
-  int getY(unsigned char num) const {
+  int getY(unsigned int num) const {
     bt_assert(num < placements.size());
+    bt_assert(placements[num].getTransformation() != UNPLACED_TRANS);
     return placements[num].getY();
   }
 
-  int getZ(unsigned char num) const {
+  int getZ(unsigned int num) const {
     bt_assert(num < placements.size());
+    bt_assert(placements[num].getTransformation() != UNPLACED_TRANS);
     return placements[num].getZ();
   }
 

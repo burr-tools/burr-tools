@@ -418,7 +418,7 @@ void imageExport_c::cb_Export(void) {
     if (!t) return;
 
     for (unsigned int step = 0; step < t->sumMoves(); step++) {
-      disasmToMoves_c * dtm = new disasmToMoves_c(t, 20);
+      disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, puzzle->probPieceNumber(ProblemSelect->getSelection()));
       dtm->setStep(step, false, true);
       images.push_back(new ImageInfo(puzzle, getColorMode(),
            prob, s, view3D->getView(), dtm, DimStatic->value()));

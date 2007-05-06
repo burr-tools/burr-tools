@@ -809,7 +809,8 @@ assembly_c * assembler_1_c::getAssembly(void) {
    * placed and unplaced pieces
    */
 
-  for (unsigned int pc = 0; pc < getPiecenumber(); pc++)
+  for (unsigned int pc = 0; pc < puzzle->probShapeNumber(problem); pc++) {
+    unsigned int placed = 0;
     for (unsigned int i = 0; i < rows.size(); i++) {
       unsigned char tran;
       int x, y, z;
@@ -819,8 +820,15 @@ assembly_c * assembler_1_c::getAssembly(void) {
 
       if (piece == pc) {
         assembly->addPlacement(tran, x, y, z);
+        placed++;
       }
     }
+
+    while (placed < puzzle->probGetShapeCount(problem, pc)) {
+      assembly->addNonPlacement();
+      placed++;
+    }
+  }
 
   assembly->sort(puzzle, problem);
 

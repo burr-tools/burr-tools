@@ -1355,30 +1355,37 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
 
   bt_assert(piecenumber == assembly->placementCount());
 
-  if (piecenumber < 2)
-    return 0;
-
   /* create the first node with the start state
    * here all pieces are at position (0; 0; 0)
    */
-  node0_c * start = new node0_c(piecenumber, 0, 0, 0);
+  unsigned int pc = 0;
+  for (unsigned int j = 0; j < piecenumber; j++)
+    if (assembly->isPlaced(j))
+      pc++;
 
-  for (unsigned int i = 0; i < piecenumber; i++)
-    start->set(i, assembly->getX(i), assembly->getY(i), assembly->getZ(i), assembly->getTransformation(i));
+  if (pc < 2)
+    return 0;
+
+  node0_c * start = new node0_c(pc, 0, 0, 0);
 
   /* create pieces field. This field contains the
    * names of all present pieces. Because at the start
    * all pieces are still there we fill the array
    * with all the numbers
    */
-  voxel_type * pieces = new voxel_type[piecenumber];
+  voxel_type * pieces = new voxel_type[pc];
+  pc = 0;
   for (unsigned int j = 0; j < piecenumber; j++)
-    pieces[j] = j;
+    if (assembly->isPlaced(j)) {
+      start->set(pc, assembly->getX(j), assembly->getY(j), assembly->getZ(j), assembly->getTransformation(j));
+      pieces[pc] = j;
+      pc++;
+    }
 
   /* reset the grouping class */
   groups->reSet();
 
-  separation_c * s = disassemble_rec(piecenumber, pieces, start, weights);
+  separation_c * s = disassemble_rec(pc, pieces, start, weights);
 
   delete [] pieces;
 
