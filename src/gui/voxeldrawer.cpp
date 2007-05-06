@@ -555,7 +555,7 @@ void voxelDrawer_c::showAssembly(const puzzle_c * puz, unsigned int probNum, uns
 
     // and now the shapes
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
-      for (unsigned int q = 0; q < puz->probGetShapeCount(probNum, p); q++) {
+      for (unsigned int q = 0; q < puz->probGetShapeMax(probNum, p); q++) {
 
         if (assm->isPlaced(piece)) {
 
@@ -606,7 +606,7 @@ void voxelDrawer_c::showAssemblerState(const puzzle_c * puz, unsigned int probNu
 
     // and now the shapes
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
-      for (unsigned int q = 0; q < puz->probGetShapeCount(probNum, p); q++) {
+      for (unsigned int q = 0; q < puz->probGetShapeMax(probNum, p); q++) {
 
         if (assm->isPlaced(piece)) {
 
@@ -671,8 +671,8 @@ void voxelDrawer_c::showPlacement(const puzzle_c * puz, unsigned int probNum, un
 
     int shape = 0;
     unsigned int p = piece;
-    while (p >= puz->probGetShapeCount(probNum, shape)) {
-      p -= puz->probGetShapeCount(probNum, shape);
+    while (p >= puz->probGetShapeMax(probNum, shape)) {
+      p -= puz->probGetShapeMax(probNum, shape);
       shape++;
     }
 

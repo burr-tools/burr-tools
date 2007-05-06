@@ -358,7 +358,7 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
      * or select one with 400 placements of which 23/24th can be dropped
      */
     unsigned int symBreakerPiece = 0;
-    unsigned int pc = puzzle->probGetShapeCount(problem, 0);
+    unsigned int pc = puzzle->probGetShapeMax(problem, 0);
     unsigned int bestFound = sym->countSymmetryIntersection(resultSym, puzzle->probGetShapeShape(problem, 0)->selfSymmetries());
     symBreakerShape = 0;
 
@@ -366,24 +366,23 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
 
       unsigned int cnt = sym->countSymmetryIntersection(resultSym, puzzle->probGetShapeShape(problem, i)->selfSymmetries());
 
-      if ((puzzle->probGetShapeCount(problem, i) < puzzle->probGetShapeCount(problem, symBreakerShape)) ||
-          (puzzle->probGetShapeCount(problem, i) == puzzle->probGetShapeCount(problem, symBreakerShape)) && (cnt < bestFound)) {
+      if ((puzzle->probGetShapeMax(problem, i) < puzzle->probGetShapeMax(problem, symBreakerShape)) ||
+          (puzzle->probGetShapeMax(problem, i) == puzzle->probGetShapeMax(problem, symBreakerShape)) && (cnt < bestFound)) {
         bestFound = cnt;
         symBreakerShape = i;
         symBreakerPiece = pc;
       }
 
-      pc += puzzle->probGetShapeCount(problem, i);
+      pc += puzzle->probGetShapeMax(problem, i);
     }
 
     bool tmp = sym->symmetriesLeft(resultSym, puzzle->probGetShapeShape(problem, symBreakerShape)->selfSymmetries());
 
-
-    if (tmp || (puzzle->probGetShapeCount(problem, symBreakerShape) > 1)) {
+    if (tmp || (puzzle->probGetShapeMax(problem, symBreakerShape) > 1)) {
 
       // we can not use the symmetry breaker shape, if there is more than one piece
       // of this shape in the problem
-      if (puzzle->probGetShapeCount(problem, symBreakerShape) > 1) {
+      if (puzzle->probGetShapeMax(problem, symBreakerShape) > 1) {
         symBreakerShape = 0xFFFFFFFF;
         symBreakerPiece = 0xFFFFFFFF;
       }
@@ -414,7 +413,7 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
 
       // first initialize
       for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++)
-        for (unsigned int p = 0; p < puzzle->probGetShapeCount(problem, i); p++) {
+        for (unsigned int p = 0; p < puzzle->probGetShapeMax(problem, i); p++) {
           mirror[pc].shape = i;
           mirror[pc].mirror = (unsigned int)-1;
           mirror[pc].trans = 255;
@@ -502,9 +501,9 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
 
   /* now we insert one shape after another */
   for (unsigned int pc = 0; pc < puzzle->probShapeNumber(problem); pc++)
-    for (unsigned int piececount = 0; piececount < puzzle->probGetShapeCount(problem, pc); piececount++, piece++) {
+    for (unsigned int piececount = 0; piececount < puzzle->probGetShapeMax(problem, pc); piececount++, piece++) {
 
-      nextPiece(piece, puzzle->probGetShapeCount(problem, pc), piececount);
+      nextPiece(piece, puzzle->probGetShapeMax(problem, pc), piececount);
 
       /* this array contains all the pieces found so far, this will help us
        * to not add two times the same piece to the structure */
@@ -610,7 +609,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   int h = res_filled;
 
   for (unsigned int j = 0; j < puz->probShapeNumber(prob); j++)
-    h -= puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED) * puz->probGetShapeCount(prob, j);
+    h -= puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED) * puz->probGetShapeMax(prob, j);
 
   if (h < 0) {
     errorsState = ERR_TOO_MANY_UNITS;
@@ -1781,7 +1780,9 @@ bool assembler_0_c::canHandle(const puzzle_c * p, unsigned int problem) {
 
   // we can not handle if there is one shape having not a counter of 1
   for (unsigned int s = 0; s < p->probShapeNumber(problem); s++)
-    if (p->probGetShapeCount(problem, s) > 1)
+    if ((p->probGetShapeMax(problem, s) > 1) ||
+        (p->probGetShapeMax(problem, s) != p->probGetShapeMin(problem, s)))
+
       return false;
 
   return true;

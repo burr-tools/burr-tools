@@ -353,19 +353,20 @@ public:
 
   public:
 
-    shape_c(unsigned short id, unsigned short cnt, unsigned short grp) : shapeId(id), count(cnt) {
+    shape_c(unsigned short id, unsigned short mn, unsigned short mx, unsigned short grp) : shapeId(id), min(mn), max(mx) {
       if (grp)
-        groups.push_back(group_c(grp, cnt));
+        groups.push_back(group_c(grp, max));
     }
 
-    shape_c(unsigned short id, unsigned short cnt) : shapeId(id), count(cnt) { }
+    shape_c(unsigned short id, unsigned short mn, unsigned short mx) : shapeId(id), min(mn), max(mx) { }
 
     void addGroup(unsigned short grp, unsigned short cnt) {
       groups.push_back(group_c(grp, cnt));
     }
 
     unsigned short shapeId;
-    unsigned short count;
+    unsigned short min;
+    unsigned short max;
 
     vector<group_c> groups;
   };
@@ -505,13 +506,20 @@ xml::node problem_c::save(void) const {
     snprintf(tmp, 50, "%i", shapes[i].shapeId );
     it2->get_attributes().insert("id", tmp);
 
-    snprintf(tmp, 50, "%i", shapes[i].count);
-    it2->get_attributes().insert("count", tmp);
+    if (shapes[i].min == shapes[i].max) {
+      snprintf(tmp, 50, "%i", shapes[i].min);
+      it2->get_attributes().insert("count", tmp);
+    } else {
+      snprintf(tmp, 50, "%i", shapes[i].min);
+      it2->get_attributes().insert("min", tmp);
+      snprintf(tmp, 50, "%i", shapes[i].max);
+      it2->get_attributes().insert("max", tmp);
+    }
 
     if (shapes[i].groups.size() == 0) {
       // do nothing, we don't need to save anything in this case
     } else if ((shapes[i].groups.size() == 1) &&
-               (shapes[i].groups[0].count == shapes[i].count)) {
+               (shapes[i].groups[0].count == shapes[i].max)) {
       // this is the case when all pieces are in the same group
       // we only need to save the group, if it is not 0,
       // the loader takes 0 as default anyway
@@ -572,29 +580,36 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
     for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
       if ((i->get_type() == xml::node::type_element) &&
           (strcmp(i->get_name(), "shape") == 0)) {
-        unsigned short id, cnt, grp;
+        unsigned short id, min, max, grp;
 
         if (i->get_attributes().find("id") == i->get_attributes().end())
           throw load_error("a shape node must have an 'idt' attribute", *i);
 
-        if (i->get_attributes().find("count") == i->get_attributes().end())
-          throw load_error("a shape node must have a 'count' attribute", *i);
-
         id = atoi(i->get_attributes().find("id")->get_value());
-        cnt = atoi(i->get_attributes().find("count")->get_value());
+
+        if (i->get_attributes().find("count") != i->get_attributes().end())
+          min = max = atoi(i->get_attributes().find("count")->get_value());
+        else if (i->get_attributes().find("min") != i->get_attributes().end() &&
+                 i->get_attributes().find("max") != i->get_attributes().end()) {
+          min = atoi(i->get_attributes().find("min")->get_value());
+          max = atoi(i->get_attributes().find("max")->get_value());
+          if (min > max)
+            throw load_error("min of shape count must by <= max", node);
+        } else
+          min = max = 1;
 
         if (i->get_attributes().find("group") != i->get_attributes().end())
           grp = atoi(i->get_attributes().find("group")->get_value());
         else
           grp = 0;
 
-        pieces += cnt;
+        pieces += max;
 
         if (id >= shape)
           throw load_error("the shape ids must be for valid shapes", *i);
 
         if (grp)
-          shapes.push_back(shape_c(id, cnt, grp));
+          shapes.push_back(shape_c(id, min, max, grp));
 
         else {
           /* OK we have 2 ways to specify groups for pieces, either
@@ -605,7 +620,7 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
            */
           i->get_content();
 
-          shapes.push_back(shape_c(id, cnt));
+          shapes.push_back(shape_c(id, min, max));
 
           for (xml::node::const_iterator i2 = i->begin(); i2 != i->end(); i2++)
           if ((i2->get_type() == xml::node::type_element) &&
@@ -617,7 +632,7 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
             if (i2->get_attributes().find("count") == i2->get_attributes().end())
               throw load_error("a group node must have a count attribute", *i2);
 
-            cnt = atoi(i2->get_attributes().find("count")->get_value());
+            unsigned int cnt = atoi(i2->get_attributes().find("count")->get_value());
             grp = atoi(i2->get_attributes().find("group")->get_value());
 
             shapes.rbegin()->addGroup(grp, cnt);
@@ -724,13 +739,13 @@ void problem_c::exchangeShape(unsigned int s1, unsigned int s2) {
   p1Start = p2Start = 0;
 
   for (unsigned int i = 0; i < s1; i++)
-    p1Start += shapes[i].count;
+    p1Start += shapes[i].max;
 
   for (unsigned int i = 0; i < s2; i++)
-    p2Start += shapes[i].count;
+    p2Start += shapes[i].max;
 
-  p1Count = shapes[s1].count;
-  p2Count = shapes[s2].count;
+  p1Count = shapes[s1].max;
+  p2Count = shapes[s2].max;
 
   bt_assert(p1Start+p1Count == p2Start);
 
@@ -1034,7 +1049,7 @@ puzzle_c::puzzle_c(const xml::node & node) {
 	if (problems[p]->solutions[s]->assembly) {
 	  int pc = 0;
 	  for (unsigned int c = 0; c < problems[p]->shapes.size(); c++)
-	    for (unsigned int i = 0; i < problems[p]->shapes[c].count; i++) {
+	    for (unsigned int i = 0; i < problems[p]->shapes[c].max; i++) {
 	      int x, y, z;
 	      shapes[problems[p]->shapes[c].shapeId]->getHotspot(problems[p]->solutions[s]->assembly->getTransformation(pc), &x, &y, &z);
 	      problems[p]->solutions[s]->assembly->shiftPiece(pc, x, y, z);
@@ -1044,7 +1059,7 @@ puzzle_c::puzzle_c(const xml::node & node) {
 	if (problems[p]->solutions[s]->tree) {
 	  int pc = 0;
 	  for (unsigned int c = 0; c < problems[p]->shapes.size(); c++)
-	    for (unsigned int i = 0; i < problems[p]->shapes[c].count; i++) {
+	    for (unsigned int i = 0; i < problems[p]->shapes[c].max; i++) {
 	      int x, y, z;
 	      shapes[problems[p]->shapes[c].shapeId]->getHotspot(problems[p]->solutions[s]->assembly->getTransformation(pc), &x, &y, &z);
 	      problems[p]->solutions[s]->tree->shiftPiece(pc, x, y, z);
@@ -1179,15 +1194,26 @@ voxel_c * puzzle_c::probGetResultShape(unsigned int prob) {
 void puzzle_c::probAddShape(unsigned int prob, unsigned int shape, unsigned int count) {
   bt_assert(prob < problems.size());
 
-  problems[prob]->shapes.push_back(problem_c::shape_c(shape, count, 0));
+  problems[prob]->shapes.push_back(problem_c::shape_c(shape, count, count, 0));
 }
 
 /* change the instance count for one shape of the problem */
-void puzzle_c::probSetShapeCount(unsigned int prob, unsigned int shapeID, unsigned int count) {
+void puzzle_c::probSetShapeMin(unsigned int prob, unsigned int shapeID, unsigned int count) {
   bt_assert(prob < problems.size());
   bt_assert(shapeID < problems[prob]->shapes.size());
 
-  problems[prob]->shapes[shapeID].count = count;
+  problems[prob]->shapes[shapeID].min = count;
+  if (problems[prob]->shapes[shapeID].min > problems[prob]->shapes[shapeID].max)
+    problems[prob]->shapes[shapeID].max = count;
+}
+
+void puzzle_c::probSetShapeMax(unsigned int prob, unsigned int shapeID, unsigned int count) {
+  bt_assert(prob < problems.size());
+  bt_assert(shapeID < problems[prob]->shapes.size());
+
+  problems[prob]->shapes[shapeID].max = count;
+  if (problems[prob]->shapes[shapeID].min > problems[prob]->shapes[shapeID].max)
+    problems[prob]->shapes[shapeID].min = count;
 }
 
 /* remove the shape from the problem */
@@ -1211,7 +1237,7 @@ unsigned int puzzle_c::probPieceNumber(unsigned int prob) const {
   unsigned int result = 0;
 
   for (vector<problem_c::shape_c>::iterator i = problems[prob]->shapes.begin(); i != problems[prob]->shapes.end(); i++)
-    result += i->count;
+    result += i->max;
 
   return result;
 }
@@ -1254,11 +1280,17 @@ voxel_c * puzzle_c::probGetShapeShape(unsigned int prob, unsigned int shapeID) {
 }
 
 /* return the instance count for one shape of the problem */
-unsigned int puzzle_c::probGetShapeCount(unsigned int prob, unsigned int shapeID) const {
+unsigned int puzzle_c::probGetShapeMin(unsigned int prob, unsigned int shapeID) const {
   bt_assert(prob < problems.size());
   bt_assert(shapeID < problems[prob]->shapes.size());
 
-  return problems[prob]->shapes[shapeID].count;
+  return problems[prob]->shapes[shapeID].min;
+}
+unsigned int puzzle_c::probGetShapeMax(unsigned int prob, unsigned int shapeID) const {
+  bt_assert(prob < problems.size());
+  bt_assert(shapeID < problems[prob]->shapes.size());
+
+  return problems[prob]->shapes[shapeID].max;
 }
 
 void puzzle_c::probSetName(unsigned int prob, std::string name) {

@@ -642,7 +642,7 @@ void mainWindow_c::cb_AddShapeToProblem(void) {
   // first see, if there is already a selected shape inside
   for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
     if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
-      puzzle->probSetShapeCount(prob, i, puzzle->probGetShapeCount(prob, i) + 1);
+      puzzle->probSetShapeMax(prob, i, puzzle->probGetShapeMax(prob, i) + 1);
       PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
       StatProblemInfo(problemSelector->getSelection());
       return;
@@ -679,7 +679,7 @@ void mainWindow_c::cb_AddAllShapesToProblem(void) {
     // first see, if there is already a selected shape inside
     for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
       if (puzzle->probGetShape(prob, i) == j) {
-        puzzle->probSetShapeCount(prob, i, puzzle->probGetShapeCount(prob, i) + 1);
+        puzzle->probSetShapeMax(prob, i, puzzle->probGetShapeMax(prob, i) + 1);
         found = true;
         break;
       }
@@ -708,10 +708,10 @@ void mainWindow_c::cb_RemoveShapeFromProblem(void) {
   // first see, find the shape, and only if there is one, we decrement its count out remove it
   for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
     if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
-      if (puzzle->probGetShapeCount(prob, i) == 1)
+      if (puzzle->probGetShapeMax(prob, i) == 1)
         puzzle->probRemoveShape(prob, i);
       else
-        puzzle->probSetShapeCount(prob, i, puzzle->probGetShapeCount(prob, i) - 1);
+        puzzle->probSetShapeMax(prob, i, puzzle->probGetShapeMax(prob, i) - 1);
 
       changed = true;
       PiecesCountList->redraw();
@@ -764,7 +764,7 @@ void mainWindow_c::cb_ShapeGroup(void) {
     unsigned int i = 0;
     while (i < puzzle->probShapeNumber(prob)) {
 
-      if (puzzle->probGetShapeCount(prob, i))
+      if (puzzle->probGetShapeMax(prob, i))
         i++;
       else
         puzzle->probRemoveShape(prob, i);
@@ -1488,9 +1488,9 @@ void mainWindow_c::StatProblemInfo(unsigned int pr) {
     unsigned int cnt = 0;
 
     for (unsigned int i = 0; i < puzzle->probShapeNumber(pr); i++)
-      cnt += puzzle->probGetShapeShape(pr, i)->countState(voxel_c::VX_FILLED) * puzzle->probGetShapeCount(pr, i);
+      cnt += puzzle->probGetShapeShape(pr, i)->countState(voxel_c::VX_FILLED) * puzzle->probGetShapeMax(pr, i);
 
-    snprintf(txt, 100, "Problem P%i result can contain %i - %i cubes, pieces (n = %i) contain %i cubes", pr+1,
+    snprintf(txt, 100, "Problem P%i result can contain %i - %i cubes, pieces (n = %i) contain up to %i cubes", pr+1,
              puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
              puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
              puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE),

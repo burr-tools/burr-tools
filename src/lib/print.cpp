@@ -68,8 +68,10 @@ void print(const puzzle_c * p) {
     printf(" result shape: %i\n", p->probGetResult(pr));
 
     for (unsigned int sh = 0; sh < p->probShapeNumber(pr); sh++)
-      if (p->probGetShapeCount(pr, sh) > 1)
-        printf(" piece shape: %i times shape number %i\n", p->probGetShapeCount(pr, sh), p->probGetShape(pr, sh));
+      if (p->probGetShapeMin(pr, sh) != p->probGetShapeMax(pr, sh))
+        printf(" piece shape: %i-%i times shape number %i\n", p->probGetShapeMin(pr, sh), p->probGetShapeMax(pr, sh), p->probGetShape(pr, sh));
+      else if (p->probGetShapeMin(pr, sh) != 1)
+        printf(" piece shape: %i times shape number %i\n", p->probGetShapeMin(pr, sh), p->probGetShape(pr, sh));
       else
         printf(" piece shape: %i\n", p->probGetShape(pr, sh));
 
@@ -161,7 +163,7 @@ void print(const separation_c * s, const assembly_c * a, const puzzle_c * p, uns
   unsigned int pc = 0;
 
   for (unsigned int i = 0; i < p->probShapeNumber(prob); i++)
-    for (unsigned int j = 0; j < p->probGetShapeCount(prob, i); j++) {
+    for (unsigned int j = 0; j < p->probGetShapeMax(prob, i); j++) {
 
       pieces[pc] = p->getGridType()->getVoxel(p->probGetShapeShape(prob, i));
       bt_assert(pieces[pc]->transform(a->getTransformation(pc)));
@@ -191,7 +193,7 @@ void print(const assembly_c * a, const puzzle_c * p, unsigned int prob) {
   unsigned int pc = 0;
 
   for (unsigned int i = 0; i < p->probShapeNumber(prob); i++)
-    for (unsigned int j = 0; j < p->probGetShapeCount(prob, i); j++) {
+    for (unsigned int j = 0; j < p->probGetShapeMax(prob, i); j++) {
 
       pieces[pc] = p->getGridType()->getVoxel(p->probGetShapeShape(prob, i));
       bt_assert(pieces[pc]->transform(a->getTransformation(pc)));

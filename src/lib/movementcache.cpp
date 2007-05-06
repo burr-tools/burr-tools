@@ -245,7 +245,7 @@ movementCache_c::movementCache_c(const puzzle_c * puzzle, unsigned int problem) 
   int pos = 0;
 
   for (unsigned int s = 0; s < puzzle->probShapeNumber(problem); s++)
-    for (unsigned int i = 0; i < puzzle->probGetShapeCount(problem, s); i++)
+    for (unsigned int i = 0; i < puzzle->probGetShapeMax(problem, s); i++)
       pieces[pos++] = s;
 
 #ifdef MV_CACHE_DEBUG

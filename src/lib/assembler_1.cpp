@@ -319,7 +319,7 @@ int assembler_1_c::prepare(int res_filled, int res_vari) {
      * or select one with 400 placements of which 23/24th can be dropped
      */
     unsigned int symBreakerPiece = 0;
-    unsigned int pc = puzzle->probGetShapeCount(problem, 0);
+    unsigned int pc = puzzle->probGetShapeMax(problem, 0);
     unsigned int bestFound = sym->countSymmetryIntersection(resultSym, puzzle->probGetShapeShape(problem, 0)->selfSymmetries());
     symBreakerShape = 0;
 
@@ -327,24 +327,30 @@ int assembler_1_c::prepare(int res_filled, int res_vari) {
 
       unsigned int cnt = sym->countSymmetryIntersection(resultSym, puzzle->probGetShapeShape(problem, i)->selfSymmetries());
 
-      if ((puzzle->probGetShapeCount(problem, i) < puzzle->probGetShapeCount(problem, symBreakerShape)) ||
-          (puzzle->probGetShapeCount(problem, i) == puzzle->probGetShapeCount(problem, symBreakerShape)) && (cnt < bestFound)) {
+      if ((puzzle->probGetShapeMax(problem, i) < puzzle->probGetShapeMax(problem, symBreakerShape)) ||
+          (puzzle->probGetShapeMax(problem, i) == puzzle->probGetShapeMax(problem, symBreakerShape)) && (cnt < bestFound)) {
         bestFound = cnt;
         symBreakerShape = i;
         symBreakerPiece = pc;
       }
 
-      pc += puzzle->probGetShapeCount(problem, i);
+      pc += puzzle->probGetShapeMax(problem, i);
     }
 
     bool tmp = sym->symmetriesLeft(resultSym, puzzle->probGetShapeShape(problem, symBreakerShape)->selfSymmetries());
 
+    bool pieceRanges = false;
+    for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++)
+      if (puzzle->probGetShapeMin(problem, i) != puzzle->probGetShapeMax(problem, i)) {
+        pieceRanges = true;
+        break;
+      }
 
-    if (tmp || (puzzle->probGetShapeCount(problem, symBreakerShape) > 1)) {
+    if (tmp || (puzzle->probGetShapeMax(problem, symBreakerShape) > 1) || pieceRanges) {
 
       // we can not use the symmetry breaker shape, if there is more than one piece
       // of this shape in the problem
-      if (puzzle->probGetShapeCount(problem, symBreakerShape) > 1) {
+      if (pieceRanges || puzzle->probGetShapeMax(problem, symBreakerShape) > 1) {
         symBreakerShape = 0xFFFFFFFF;
         symBreakerPiece = 0xFFFFFFFF;
       }
@@ -375,7 +381,7 @@ int assembler_1_c::prepare(int res_filled, int res_vari) {
 
       // first initialize
       for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++)
-        for (unsigned int p = 0; p < puzzle->probGetShapeCount(problem, i); p++) {
+        for (unsigned int p = 0; p < puzzle->probGetShapeMax(problem, i); p++) {
           mirror[pc].shape = i;
           mirror[pc].mirror = (unsigned int)-1;
           mirror[pc].trans = 255;
@@ -429,7 +435,8 @@ int assembler_1_c::prepare(int res_filled, int res_vari) {
         }
       }
 
-      if (mirrorCheck) {
+      // TODO: also add when piece ranges are used
+      if (mirrorCheck || pieceRanges) {
         /* all the shapes are either self mirroring or have a mirror pair
          * so we create the mirror structure and we do the mirror check
          */
@@ -463,8 +470,8 @@ int assembler_1_c::prepare(int res_filled, int res_vari) {
 
     // setup weight values so that they do fit the number of pieces for this
     // shape
-    min[pc+1] = max[pc+1] = puzzle->probGetShapeCount(problem, pc);
-//    printf("set min max for column %i to %i\n", pc+1, max[pc+1]);
+    max[pc+1] = puzzle->probGetShapeMax(problem, pc);
+    min[pc+1] = puzzle->probGetShapeMin(problem, pc);
 
     /* this array contains all the pieces found so far, this will help us
      * to not add two times the same piece to the structure */
@@ -568,7 +575,7 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
   int h = res_filled;
 
   for (unsigned int j = 0; j < puz->probShapeNumber(prob); j++)
-    h -= puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED) * puz->probGetShapeCount(prob, j);
+    h -= puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED) * puz->probGetShapeMax(prob, j);
 
   if (h < 0) {
     errorsState = ERR_TOO_MANY_UNITS;
@@ -824,7 +831,7 @@ assembly_c * assembler_1_c::getAssembly(void) {
       }
     }
 
-    while (placed < puzzle->probGetShapeCount(problem, pc)) {
+    while (placed < puzzle->probGetShapeMax(problem, pc)) {
       assembly->addNonPlacement();
       placed++;
     }
@@ -1150,8 +1157,8 @@ unsigned int assembler_1_c::getPiecePlacement(unsigned int node, int delta, unsi
   /* piece 2 shape */
   unsigned int pp = 0;
   unsigned int shape = 0;
-  while (pp + puzzle->probGetShapeCount(problem, shape) <= piece) {
-    pp += puzzle->probGetShapeCount(problem, shape);
+  while (pp + puzzle->probGetShapeMax(problem, shape) <= piece) {
+    pp += puzzle->probGetShapeMax(problem, shape);
     shape++;
   }
 
@@ -1181,8 +1188,8 @@ unsigned int assembler_1_c::getPiecePlacementCount(unsigned int piece) {
   /* piece 2 shape */
   unsigned int pp = 0;
   unsigned int shape = 0;
-  while (pp + puzzle->probGetShapeCount(problem, shape) <= piece) {
-    pp += puzzle->probGetShapeCount(problem, shape);
+  while (pp + puzzle->probGetShapeMax(problem, shape) <= piece) {
+    pp += puzzle->probGetShapeMax(problem, shape);
     shape++;
   }
 

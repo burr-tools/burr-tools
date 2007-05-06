@@ -1330,7 +1330,7 @@ disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) :
   piece2shape = new unsigned short[piecenumber];
   int p = 0;
   for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++)
-    for (unsigned int j = 0; j < puz->probGetShapeCount(prob, i); j++)
+    for (unsigned int j = 0; j < puz->probGetShapeMax(prob, i); j++)
       piece2shape[p++] = i;
 
   /* create the weights array */

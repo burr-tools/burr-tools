@@ -174,7 +174,7 @@ void assembly_c::sort(const puzzle_c * puz, unsigned int prob) {
 
   for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
 
-    unsigned int cnt = puz->probGetShapeCount(prob, i);
+    unsigned int cnt = puz->probGetShapeMax(prob, i);
 
     /* now we need to sort pieces to that they are sorted by placement */
     if (cnt > 1) {
@@ -268,7 +268,7 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
   int p = 0;
 
   for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
-    for (unsigned int j = 0; j < puz->probGetShapeCount(prob, i); j++) {
+    for (unsigned int j = 0; j < puz->probGetShapeMax(prob, i); j++) {
 
       // if a piece has a transformation == 255 it is NOT placed so we don't need to do anything
       if (!isPlaced(p)) {
@@ -322,7 +322,7 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
     unsigned int p = 0;
 
     for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
-      for (unsigned int j = 0; j < puz->probGetShapeCount(prob, i); j++) {
+      for (unsigned int j = 0; j < puz->probGetShapeMax(prob, i); j++) {
 
         // if a piece is NOT placed so we don't need to do anything
         // only check, if the current piece is mirrored
@@ -349,8 +349,8 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
           {
             unsigned int ss = 0;
 
-            while (ss+puz->probGetShapeCount(prob, i2) <= p2) {
-              ss += puz->probGetShapeCount(prob, i2);
+            while (ss+puz->probGetShapeMax(prob, i2) <= p2) {
+              ss += puz->probGetShapeMax(prob, i2);
               i2++;
             }
           }

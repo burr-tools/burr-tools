@@ -179,7 +179,8 @@ public:
   void probAddShape(unsigned int prob, unsigned int shape, unsigned int count);
 
   /* change the instance count for one shape of the problem */
-  void probSetShapeCount(unsigned int prob, unsigned int shapeID, unsigned int count);
+  void probSetShapeMin(unsigned int prob, unsigned int shapeID, unsigned int count);
+  void probSetShapeMax(unsigned int prob, unsigned int shapeID, unsigned int count);
 
   /* remove the shape from the problem */
   void probRemoveShape(unsigned int prob, unsigned int shapeID);
@@ -187,7 +188,7 @@ public:
   /* return the number of shapes in the problem */
   unsigned int probShapeNumber(unsigned int prob) const;
 
-  /* return the number of pieces in the problem (sum of all counts of all shapes */
+  /* return the maximum number of pieces in the problem (sum of all max counts of all shapes) */
   unsigned int probPieceNumber(unsigned int prob) const;
 
   /* return the shape id of the given shape (index into the shape array of the puzzle */
@@ -201,7 +202,8 @@ public:
   voxel_c * probGetShapeShape(unsigned int prob, unsigned int shapeID);
 
   /* return the instance count for one shape of the problem */
-  unsigned int probGetShapeCount(unsigned int prob, unsigned int shapeID) const;
+  unsigned int probGetShapeMin(unsigned int prob, unsigned int shapeID) const;
+  unsigned int probGetShapeMax(unsigned int prob, unsigned int shapeID) const;
 
   /* functions to handle the solver and the solutions */
 

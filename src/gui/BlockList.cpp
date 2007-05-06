@@ -373,15 +373,17 @@ void PiecesList::getText(unsigned int block, char * text) {
   txtLen -= len;
 
   /* now how many pieces of that shape are available */
-  if (puzzle->probGetShapeCount(problem, block) != 1) {
-    len = snprintf(text, txtLen, "(%i)", puzzle->probGetShapeCount(problem, block));
+  if (puzzle->probGetShapeMin(problem, block) != puzzle->probGetShapeMax(problem, block)) {
+    len = snprintf(text, txtLen, "(%i-%i)", puzzle->probGetShapeMin(problem, block), puzzle->probGetShapeMax(problem, block));
+  } else if (puzzle->probGetShapeMin(problem, block) != 1) {
+    len = snprintf(text, txtLen, "(%i)", puzzle->probGetShapeMin(problem, block));
     text += len;
     txtLen -= len;
   }
 
   /* finally the group information */
   for (int i = 0; i < puzzle->probGetShapeGroupNumber(problem, block); i++) {
-    if (puzzle->probGetShapeGroupCount(problem, block, i) != puzzle->probGetShapeCount(problem, block))
+    if (puzzle->probGetShapeGroupCount(problem, block, i) != puzzle->probGetShapeMax(problem, block))
       len = snprintf(text, txtLen, ", G%i(%i)", puzzle->probGetShapeGroup(problem, block, i), puzzle->probGetShapeGroupCount(problem, block, i));
     else
       len = snprintf(text, txtLen, ", G%i", puzzle->probGetShapeGroup(problem, block, i));
@@ -422,19 +424,19 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
 
   unsigned int subBlock = block;
 
-  while (subBlock >= puzzle->probGetShapeCount(problem, shape)) {
-    subBlock -= puzzle->probGetShapeCount(problem, shape);
+  while (subBlock >= puzzle->probGetShapeMax(problem, shape)) {
+    subBlock -= puzzle->probGetShapeMax(problem, shape);
     shape++;
   }
   int shapeID = puzzle->probGetShape(problem, shape);
 
   if (puzzle->probGetShapeShape(problem, shape)->getName().length()) {
-    if (puzzle->probGetShapeCount(problem, shape) > 1)
+    if (puzzle->probGetShapeMax(problem, shape) > 1)
       snprintf(txt, 199, "S%i.%i - %s", shapeID+1, subBlock+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
     else
       snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
   } else {
-    if (puzzle->probGetShapeCount(problem, shape) > 1)
+    if (puzzle->probGetShapeMax(problem, shape) > 1)
       snprintf(txt, 199, "S%i.%i", shapeID+1, subBlock+1);
     else
       snprintf(txt, 199, "S%i", shapeID+1);
@@ -491,20 +493,20 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
 
   int shape = 0;
 
-  while (block >= puzzle->probGetShapeCount(problem, shape)) {
-    block -= puzzle->probGetShapeCount(problem, shape);
+  while (block >= puzzle->probGetShapeMax(problem, shape)) {
+    block -= puzzle->probGetShapeMax(problem, shape);
     shape++;
   }
 
   int shapeID = puzzle->probGetShape(problem, shape);
 
   if (puzzle->probGetShapeShape(problem, shape)->getName().length()) {
-    if (puzzle->probGetShapeCount(problem, shape) > 1)
+    if (puzzle->probGetShapeMax(problem, shape) > 1)
       snprintf(txt, 199, "S%i.%i - %s", shapeID+1, block+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
     else
       snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
   } else {
-    if (puzzle->probGetShapeCount(problem, shape) > 1)
+    if (puzzle->probGetShapeMax(problem, shape) > 1)
       snprintf(txt, 199, "S%i.%i", shapeID+1, block+1);
     else
       snprintf(txt, 199, "S%i", shapeID+1);
