@@ -643,6 +643,7 @@ void mainWindow_c::cb_AddShapeToProblem(void) {
   for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
     if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
       puzzle->probSetShapeMax(prob, i, puzzle->probGetShapeMax(prob, i) + 1);
+      puzzle->probSetShapeMin(prob, i, puzzle->probGetShapeMin(prob, i) + 1);
       PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
       StatProblemInfo(problemSelector->getSelection());
       return;
@@ -710,8 +711,11 @@ void mainWindow_c::cb_RemoveShapeFromProblem(void) {
     if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
       if (puzzle->probGetShapeMax(prob, i) == 1)
         puzzle->probRemoveShape(prob, i);
-      else
+      else {
         puzzle->probSetShapeMax(prob, i, puzzle->probGetShapeMax(prob, i) - 1);
+        if (puzzle->probGetShapeMin(prob, i) > 0)
+          puzzle->probSetShapeMin(prob, i, puzzle->probGetShapeMin(prob, i) - 1);
+      }
 
       changed = true;
       PiecesCountList->redraw();
@@ -721,6 +725,33 @@ void mainWindow_c::cb_RemoveShapeFromProblem(void) {
   activateProblem(problemSelector->getSelection());
   StatProblemInfo(problemSelector->getSelection());
 }
+
+
+static void cb_SetShapeMinimumToZero_stub (Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SetShapeMinimumToZero(); }
+void mainWindow_c::cb_SetShapeMinimumToZero(void) {
+
+  if (problemSelector->getSelection() >= puzzle->problemNumber()) {
+    fl_message("First create a problem");
+    return;
+  }
+
+  unsigned int prob = problemSelector->getSelection();
+  changeProblem(prob);
+
+  // first see, find the shape, and only if there is one, we decrement its count out remove it
+  for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
+    if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
+      puzzle->probSetShapeMin(prob, i, 0);
+
+      changed = true;
+      PiecesCountList->redraw();
+      PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+    }
+
+  activateProblem(problemSelector->getSelection());
+  StatProblemInfo(problemSelector->getSelection());
+}
+
 
 static void cb_RemoveAllShapesFromProblem_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_RemoveAllShapesFromProblem(); }
 void mainWindow_c::cb_RemoveAllShapesFromProblem(void) {
@@ -1486,15 +1517,30 @@ void mainWindow_c::StatProblemInfo(unsigned int pr) {
     char txt[100];
 
     unsigned int cnt = 0;
+    unsigned int cntMin = 0;
 
-    for (unsigned int i = 0; i < puzzle->probShapeNumber(pr); i++)
+    for (unsigned int i = 0; i < puzzle->probShapeNumber(pr); i++) {
       cnt += puzzle->probGetShapeShape(pr, i)->countState(voxel_c::VX_FILLED) * puzzle->probGetShapeMax(pr, i);
+      cntMin += puzzle->probGetShapeShape(pr, i)->countState(voxel_c::VX_FILLED) * puzzle->probGetShapeMin(pr, i);
+    }
 
-    snprintf(txt, 100, "Problem P%i result can contain %i - %i cubes, pieces (n = %i) contain up to %i cubes", pr+1,
-             puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
-             puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
-             puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE),
-             puzzle->probPieceNumber(pr), cnt);
+    if (cnt == cntMin) {
+
+      snprintf(txt, 100, "Problem P%i result can contain %i - %i cubes, pieces (n = %i) contain %i cubes", pr+1,
+          puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
+          puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
+          puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE),
+          puzzle->probPieceNumber(pr), cnt);
+
+    } else {
+
+      snprintf(txt, 100, "Problem P%i result can contain %i - %i cubes, pieces (n = %i) contain %i-%i cubes", pr+1,
+          puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
+          puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
+          puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE),
+          puzzle->probPieceNumber(pr), cntMin, cnt);
+    }
+
     Status->setText(txt);
 
   } else
@@ -2004,14 +2050,17 @@ void mainWindow_c::updateInterface(void) {
 
       if (found) {
         BtnRemShape->activate();
+        BtnMinZero->activate();
       } else {
         BtnRemShape->deactivate();
+        BtnMinZero->deactivate();
       }
 
     } else {
       BtnSetResult->deactivate();
       BtnAddShape->deactivate();
       BtnRemShape->deactivate();
+      BtnMinZero->deactivate();
     }
 
     // we can edit the groups, when we have a problem with at least one shape and
@@ -2849,6 +2898,9 @@ void mainWindow_c::CreateProblemTab(void) {
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnRemShape = new LFlatButton_c(xp++, 0, 1, 1, "-1", " Remove one of the selected shapes ", cb_RemoveShapeFromProblem_stub, this);
     ((LFlatButton_c*)BtnRemShape)->weight(1, 0);
+    (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnMinZero = new LFlatButton_c(xp++, 0, 1, 1, "min=0", " Set minimum number of pieces to 0 ", cb_SetShapeMinimumToZero_stub, this);
+    ((LFlatButton_c*)BtnMinZero)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnAddAll = new LFlatButton_c(xp++, 0, 1, 1, "+1 each", " Add one of all shapes except result ", cb_AddAllShapesToProblem_stub, this);
     ((LFlatButton_c*)BtnAddAll)->weight(1, 0);

@@ -100,7 +100,7 @@ class mainWindow_c : public LFl_Double_Window {
   FlatButton *BtnNewColor, *BtnDelColor, *BtnChnColor;
   FlatButton *BtnNewProb, *BtnDelProb, *BtnCpyProb, *BtnRenProb, *BtnProbLeft, *BtnProbRight;
   FlatButton *BtnColSrtPc, *BtnColSrtRes, *BtnColAdd, *BtnColRem;
-  FlatButton *BtnSetResult, *BtnAddShape, *BtnRemShape, *BtnAddAll, *BtnRemAll, *BtnGroup, *BtnProbShapeLeft, *BtnProbShapeRight;
+  FlatButton *BtnSetResult, *BtnAddShape, *BtnRemShape, *BtnMinZero, *BtnAddAll, *BtnRemAll, *BtnGroup, *BtnProbShapeLeft, *BtnProbShapeRight;
 
   Fl_Progress *SolvingProgress;
   Fl_Value_Output *OutputAssemblies;
@@ -220,6 +220,7 @@ public:
 
   void cb_SelectProblemShape(void);
   void cb_AddShapeToProblem(void);
+  void cb_SetShapeMinimumToZero(void);
   void cb_AddAllShapesToProblem(void);
   void cb_RemoveShapeFromProblem(void);
   void cb_RemoveAllShapesFromProblem(void);
