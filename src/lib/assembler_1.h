@@ -128,7 +128,7 @@ private:
    *
    * return error codes
    */
-  virtual int prepare(int res_filles, int res_vari);
+  virtual int prepare(void);
 
   /* internal error state */
   errState errorsState;

@@ -256,7 +256,7 @@ bool assembler_1_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
  * negative result show there is something wrong: the place -result has not
  * possible position inside the result
  */
-int assembler_1_c::prepare(int res_filled, int res_vari) {
+int assembler_1_c::prepare(void) {
 
   const voxel_c * result = puzzle->probGetResultShape(problem);
 
@@ -590,7 +590,7 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
   }
 
   /* fill the nodes arrays */
-  int error = prepare(res_filled, res_vari);
+  int error = prepare();
 
   // check, if there is one piece not placeable
   if (error <= 0) {
