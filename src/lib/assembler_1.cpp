@@ -808,13 +808,6 @@ assembly_c * assembler_1_c::getAssembly(void) {
 
   assembly_c * assembly = new assembly_c(puzzle->getGridType());
 
-  // if no pieces are placed, or we finished return an empty assembly
-  if (rows.size() < getPiecenumber()) {
-    for (unsigned int i = 0; i < getPiecenumber(); i++)
-      assembly->addNonPlacement();
-    return assembly;
-  }
-
   /* fill the array with 0xff, so that we can distinguish between
    * placed and unplaced pieces
    */
