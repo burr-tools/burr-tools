@@ -21,6 +21,7 @@
 
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
+#include "../lib/assembly.h"
 
 #include <FL/fl_draw.H>
 #include <FL/Fl.H>
@@ -402,8 +403,11 @@ PieceVisibility::PieceVisibility(int x, int y, int w, int h, puzzle_c * p) : Blo
   bt_assert(p);
   if (p->problemNumber() > 0) {
     visState = new unsigned char[p->probPieceNumber(0)];
-    for (unsigned int i = 0; i < p->probPieceNumber(0); i++)
+    useState = new bool[p->probPieceNumber(0)];
+    for (unsigned int i = 0; i < p->probPieceNumber(0); i++) {
       visState[i] = 0;
+      useState[i] = 1;
+    }
   } else
     visState = 0;
 }
@@ -430,16 +434,21 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
   }
   int shapeID = puzzle->probGetShape(problem, shape);
 
-  if (puzzle->probGetShapeShape(problem, shape)->getName().length()) {
-    if (puzzle->probGetShapeMax(problem, shape) > 1)
-      snprintf(txt, 199, "S%i.%i - %s", shapeID+1, subBlock+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
-    else
-      snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
+  if (useState[block]) {
+
+    if (puzzle->probGetShapeShape(problem, shape)->getName().length()) {
+      if (puzzle->probGetShapeMax(problem, shape) > 1)
+        snprintf(txt, 199, "S%i.%i - %s", shapeID+1, subBlock+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
+      else
+        snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
+    } else {
+      if (puzzle->probGetShapeMax(problem, shape) > 1)
+        snprintf(txt, 199, "S%i.%i", shapeID+1, subBlock+1);
+      else
+        snprintf(txt, 199, "S%i", shapeID+1);
+    }
   } else {
-    if (puzzle->probGetShapeMax(problem, shape) > 1)
-      snprintf(txt, 199, "S%i.%i", shapeID+1, subBlock+1);
-    else
-      snprintf(txt, 199, "S%i", shapeID+1);
+    snprintf(txt, 199, " ");
   }
 
   r = pieceColorRi(shapeID, subBlock);
@@ -493,6 +502,8 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
 
   int shape = 0;
 
+  int blockNr = block;
+
   while (block >= puzzle->probGetShapeMax(problem, shape)) {
     block -= puzzle->probGetShapeMax(problem, shape);
     shape++;
@@ -500,16 +511,22 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
 
   int shapeID = puzzle->probGetShape(problem, shape);
 
-  if (puzzle->probGetShapeShape(problem, shape)->getName().length()) {
-    if (puzzle->probGetShapeMax(problem, shape) > 1)
-      snprintf(txt, 199, "S%i.%i - %s", shapeID+1, block+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
-    else
-      snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
+  if (useState[blockNr]) {
+
+    if (puzzle->probGetShapeShape(problem, shape)->getName().length()) {
+      if (puzzle->probGetShapeMax(problem, shape) > 1)
+        snprintf(txt, 199, "S%i.%i - %s", shapeID+1, block+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
+      else
+        snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
+    } else {
+      if (puzzle->probGetShapeMax(problem, shape) > 1)
+        snprintf(txt, 199, "S%i.%i", shapeID+1, block+1);
+      else
+        snprintf(txt, 199, "S%i", shapeID+1);
+    }
+
   } else {
-    if (puzzle->probGetShapeMax(problem, shape) > 1)
-      snprintf(txt, 199, "S%i.%i", shapeID+1, block+1);
-    else
-      snprintf(txt, 199, "S%i", shapeID+1);
+    snprintf(txt, 199, " ");
   }
 
   int wi, hi;
@@ -539,17 +556,32 @@ void PieceVisibility::setPuzzle(puzzle_c *pz, unsigned int prob) {
 
   visState = 0;
 
+  if (useState)
+    delete [] useState;
+
+  useState = 0;
+
   /* set up new visibility when a valid problem is available */
   if (c) {
     visState = new unsigned char[c];
+    useState = new bool[c];
 
-    for (unsigned int i = 0; i < c; i++)
+    for (unsigned int i = 0; i < c; i++) {
       visState[i] = 0;
+      useState[i] = 1;
+    }
 
     count = c;
   }
 
   redraw();
+}
+
+void PieceVisibility::setAssembly(assembly_c *assm) {
+  bt_assert(assm->placementCount() == count);
+
+  for (unsigned int i = 0; i < count; i++)
+    useState[i] = assm->isPlaced(i);
 }
 
 void PieceVisibility::push(unsigned int block) {

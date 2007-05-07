@@ -23,6 +23,7 @@
 #include <FL/Fl_Widget.H>
 
 class puzzle_c;
+class assembly_c;
 /**
  * blocklist is a widget that displays a list of items in blocks. These blocks
  * have the size, so that the label of the item fits. The blocks are arranged
@@ -322,6 +323,7 @@ private:
 
   unsigned int count;
   unsigned char * visState;
+  bool * useState;
 
 public:
 
@@ -337,9 +339,14 @@ public:
       delete [] visState;
       visState = 0;
     }
+    if (useState) {
+      delete [] useState;
+      useState = 0;
+    }
   }
 
   void setPuzzle(puzzle_c *pz, unsigned int prob);
+  void setAssembly(assembly_c * assm);
   unsigned int virtual blockNumber(void);
   void virtual blockDraw(unsigned int block, int x, int y);
   void virtual blockSize(unsigned int block, unsigned int *w, unsigned int *h);

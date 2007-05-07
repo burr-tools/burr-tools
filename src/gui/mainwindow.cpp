@@ -1723,6 +1723,7 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
   if ((prob < puzzle->problemNumber()) && (num < puzzle->probSolutionNumber(prob))) {
 
     PcVis->setPuzzle(puzzle, prob);
+    PcVis->setAssembly(puzzle->probGetAssembly(prob, num));
     AssemblyNumber->show();
     AssemblyNumber->value(puzzle->probGetAssemblyNum(prob, num)+1);
 
