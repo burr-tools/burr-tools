@@ -62,8 +62,8 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces, const gridTy
     if (*c == ' ') {
       if (state == 3) {
 
-        if ((trans != 255) && ((trans < 0) || ((unsigned int)trans >= sym->getNumTransformations())))
-          throw load_error("transformations need to be either 255 or between 0 and NUM_TRANSFORMATIONS", node);
+        if ((trans != UNPLACED_TRANS) && ((trans < 0) || ((unsigned int)trans >= sym->getNumTransformations())))
+          throw load_error("transformations need to be between 0 and NUM_TRANSFORMATIONS", node);
 
         placements.push_back(placement_c(trans, x, y, z));
         x = y = z = trans = state = 0;
@@ -72,10 +72,16 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces, const gridTy
         state++;
       }
 
+    } else if (*c == 'x' && state == 0) {
+
+      x = y = z = 0;
+      trans = UNPLACED_TRANS;
+      state = 3;
+
     } else {
 
       if ((*c != '-') && ((*c < '0') || (*c > '9')))
-        throw load_error("nun number character found where number is expected", node);
+        throw load_error("non number character found where number is expected", node);
 
       switch(state) {
       case 0:
@@ -123,8 +129,8 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces, const gridTy
   if (state != 3)
     throw load_error("not the right number of numbers in assembly", node);
 
-  if ((trans != 255) && ((trans < 0) || ((unsigned int)trans >= sym->getNumTransformations())))
-    throw load_error("transformations need to be either 255 or between 0 and NUM_TRANSFORMATIONS", node);
+  if ((trans != UNPLACED_TRANS) && ((trans < 0) || ((unsigned int)trans >= sym->getNumTransformations())))
+    throw load_error("transformations need to be between 0 and NUM_TRANSFORMATIONS", node);
 
   placements.push_back(placement_c(trans, x, y, z));
 
@@ -155,7 +161,11 @@ xml::node assembly_c::save(void) const {
   char tmp[50];
 
   for (unsigned int i = 0; i < placements.size(); i++) {
-    snprintf(tmp, 50, "%i %i %i %i", placements[i].getX(), placements[i].getY(), placements[i].getZ(), placements[i].getTransformation());
+
+    if (placements[i].getTransformation() != UNPLACED_TRANS)
+      snprintf(tmp, 50, "%i %i %i %i", placements[i].getX(), placements[i].getY(), placements[i].getZ(), placements[i].getTransformation());
+    else
+      snprintf(tmp, 50, "x");
 
     cont += tmp;
 
