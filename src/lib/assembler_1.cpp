@@ -572,20 +572,23 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
 
   // check if number of filled voxels in result
   // is not bigger than number of voxels in pieces
-  int h = res_filled;
+  unsigned int min = 0;
+  unsigned int max = 0;
 
-  for (unsigned int j = 0; j < puz->probShapeNumber(prob); j++)
-    h -= puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED) * puz->probGetShapeMax(prob, j);
+  for (unsigned int j = 0; j < puz->probShapeNumber(prob); j++) {
+    min += puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED) * puz->probGetShapeMin(prob, j);
+    max += puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED) * puz->probGetShapeMax(prob, j);
+  }
 
-  if (h < 0) {
+  if (min > res_filled) {
     errorsState = ERR_TOO_MANY_UNITS;
-    errorsParam = -h;
+    errorsParam = min-res_filled;
     return errorsState;
   }
 
-  if (h > res_vari) {
+  if (max < res_filled-res_vari) {
     errorsState = ERR_TOO_FEW_UNITS;
-    errorsParam = h-res_vari;
+    errorsParam = res_filled-res_vari-max;
     return errorsState;
   }
 
