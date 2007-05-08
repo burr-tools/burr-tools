@@ -365,7 +365,14 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
             }
           }
 
-          bt_assert(sym->transAdd(t, t_inv) == 0);
+          /* when applying the 2 found transformations to the 2 pieces we must return to the
+           * original piece. I used to assume the t and t_inv are really inverse transformations
+           * but that is not necessarily so because the piece might have symmetries and we might
+           * arrive at an orientation that is not 0 but a one of the orientations within the
+           * symmetry of the piece. Thats why the normalize operation
+           */
+          bt_assert(puz->probGetShapeShape(prob, i)->normalizeTransformation(sym->transAdd(t, t_inv)) == 0);
+          bt_assert(puz->probGetShapeShape(prob, i2)->normalizeTransformation(sym->transAdd(t_inv, t)) == 0);
 
           /* OK, we found replacement information for piece p,
            * we are supposed to replace it with piece p2
