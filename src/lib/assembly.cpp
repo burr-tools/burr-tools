@@ -505,7 +505,7 @@ bool assembly_c::containsMirroredPieces(void) const {
 
   for (unsigned int i = 0; i < placements.size(); i++) {
 
-    if (placements[i].transformation >= sym->getNumTransformations())
+    if (isPlaced(i) && placements[i].transformation >= sym->getNumTransformations())
       return true;
   }
 
