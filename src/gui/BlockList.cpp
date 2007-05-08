@@ -408,8 +408,10 @@ PieceVisibility::PieceVisibility(int x, int y, int w, int h, puzzle_c * p) : Blo
       visState[i] = 0;
       useState[i] = 1;
     }
-  } else
+  } else {
     visState = 0;
+    useState = 0;
+  }
 }
 
 unsigned int PieceVisibility::blockNumber(void) {
