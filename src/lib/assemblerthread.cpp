@@ -149,6 +149,9 @@ assemblerThread_c::~assemblerThread_c(void) {
 bool assemblerThread_c::assembly(assembly_c * a) {
 
   switch(_solutionAction) {
+  case SOL_COUNT_ASM:
+    delete a;
+    break;
   case SOL_SAVE_ASM:
 
     if (puzzle->probGetNumAssemblies(prob) % (solutionDrop*dropMultiplicator) == 0)
