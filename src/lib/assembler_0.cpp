@@ -670,8 +670,10 @@ void assembler_0_c::cover(register unsigned int col)
     right[l] = r;
   }
 
-#if defined(TARGET_CPU_i368) || defined(TARGET_CPU_i486) || \
-    defined(TARGET_CPU_i586) || defined(TARGET_CPU_i686)
+#if 0
+  // the assembly code below is ca 20% faster than the gcc code
+  // but not really portable, so if you feel adventourous
+  // you can try it
 
   unsigned int * upDown_ptr = &(upDown[0]);
   unsigned int * right_ptr = &(right[0]);
@@ -745,8 +747,10 @@ void assembler_0_c::cover(register unsigned int col)
 
 void assembler_0_c::uncover(register unsigned int col) {
 
-#if defined(TARGET_CPU_i368) || defined(TARGET_CPU_i486) || \
-    defined(TARGET_CPU_i586) || defined(TARGET_CPU_i686)
+#if 0
+  // the assembly code below is ca 20% faster than the gcc code
+  // but not really portable, so if you feel adventourous
+  // you can try it
 
   unsigned int * upDown_ptr = &(upDown[0]);
   unsigned int * left_ptr = &(left[0]);
