@@ -36,3 +36,10 @@ the checkbox in the statusline at the bottom right.
 Pelikan Burr: Designed by Dic Sonneveld
 This is a _very_ high level burr. It takes 98 moves to get the first piece out
 of the box. This is just a demonstration of what is possible.
+
+Solid 6-Piece Burr:
+This file demonstrates the usage of piece ranges. It is possible to let BurrTools
+search for all possible assemlies with a set of pieces by telling it that a piece
+might be used 0-x times within the solution. The file included contains all pieces
+that might be used in a solid 6-piece burr and says that each piece might be used
+0-6 times.

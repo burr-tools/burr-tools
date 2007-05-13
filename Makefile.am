@@ -41,5 +41,5 @@ EXTRA_DIST = doc/UserGuide.tm \
 dist_doc_DATA = doc/UserGuide.pdf \
                 examples/README.TXT examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle \
                 examples/PelikanBurr.xmpuzzle examples/CubeInCage.xmpuzzle examples/Bermuda.xmpuzzle \
-                examples/BallRoom.xmpuzzle \
+                examples/BallRoom.xmpuzzle examples/SolidSixPieceBurrs.xmpuzzle \
                 AUTHORS README NEWS ChangeLog
