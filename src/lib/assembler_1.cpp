@@ -949,6 +949,12 @@ bool assembler_1_c::column_condition_fulfilled(int col) {
   return (weight[col] >= min[col]) && (weight[col] <= max[col]);
 }
 
+bool assembler_1_c::column_condition_unfulfillable(int col) {
+  if (weight[col] > max[col]) return true;
+  if (weight[col] + colCount[col] < min[col]) return true;
+  return false;
+}
+
 void assembler_1_c::rec(int next_row) {
 
   if (next_row == 0) {
@@ -989,6 +995,9 @@ void assembler_1_c::rec(int next_row) {
     col = colCount[next_row];
 
   unsigned int cnt = 0;
+
+  if (column_condition_unfulfillable(col))
+    return;
 
   // it might be that the condition for this column is already fulfilled, without adding a single
   // line to the column that is why we do this check here at the start of the function
