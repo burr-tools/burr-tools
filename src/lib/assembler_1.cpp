@@ -723,76 +723,143 @@ void assembler_1_c::reduce(void) {
 
   unsigned int col_rem = clumpify();
 
+#if 0
+  for (unsigned int col = right[0]; col; col = right[col]) {
+
+    // this is taken from the assembler 0 reduce
+    // as I don't know how to generalize the approach
+    // we do it only on columns with min = max = 1
+    if (min[col] != 1 || max[col] != 1) continue;
+
+    memset(columns, 0, varivoxelEnd * sizeof(unsigned int));
+
+    unsigned int placements = 0;
+    for (unsigned int r = down(col); r != col; r = down(r)) {
+      for (unsigned int j = right[r]; j != r; j = right[j])
+        columns[colCount[j]]++;
+      placements++;
+    }
+
+    /* now columns contains the number of times the voxel is filled
+     * with this piece and placements contains the number of placements
+     * for the current piece. If the number of times a voxel is filled
+     * equal to the total number of placements for that piece the
+     * piece fills that unit in every possible of its placements, so no other
+     * piece can fill that unit and all placements of other pieces that fill
+     * that unit can be removed
+     */
+    for (unsigned int c = right[0]; c; c = right[c]) {
+      if (columns[c] == placements) {
+
+        rowsToRemove.clear();
+
+        for (unsigned int r = down(c); r != c; r = down(r)) {
+
+          /* find the column col */
+          unsigned int c2 = right[r];
+          while ((colCount[c2] != col) && (c2 != r)) c2 = right[c2];
+
+          if (c2 == r)
+            rowsToRemove.push_back(r);
+        }
+
+        /* remove the rows found */
+        for (unsigned int rem = 0; rem < rowsToRemove.size(); rem++) {
+          remove_row(rowsToRemove[rem]);
+        }
+
+        removed += rowsToRemove.size();
+      }
+    }
+  }
+#endif
+
   printf("checking %i lines\n", piecePositions.size());
 
-  for (unsigned int pp = 0; pp < piecePositions.size(); pp++) {
+  bool dosth;
 
-    unsigned int row = piecePositions[pp].row;
+  do {
 
-    weight[colCount[row]] += weight[row];
+    for (unsigned int pp = 0; pp < piecePositions.size(); pp++) {
 
-    unsigned int r;
+      unsigned int row = piecePositions[pp].row;
 
-    // add row to rowset
-    for (r = right[row]; r != row; r = right[r]) {
-      int col = colCount[r];
+      // if row is no longer in there skip
+      if (up[down[row]] != row || down[up[row]] != row) continue;
 
-      weight[col] += weight[r];
+      weight[colCount[row]] += weight[row];
+
+      unsigned int r;
+
+      // add row to rowset
+      for (r = right[row]; r != row; r = right[r]) {
+        int col = colCount[r];
+
+        weight[col] += weight[r];
+      }
+
+      std::vector<unsigned int>hidden_rows;
+
+      for (r = right[row]; r != row; r = right[r]) {
+        int col = colCount[r];
+
+        // remove all rows from the matrix that would exceed the maximum weight
+        // in an open column when added to the current weight
+        // this can be sped up by sorting the entries and stopping removal
+        // as soon as we reach a valid value, but we have to start from the top
+        // we only need to check columns that have a non zero value in the current row
+        // as ony those weights have changed
+
+        // now check all rows of this column for too big weights
+        for (int rr = down[col]; rr != col; rr = down[rr])
+          if (weight[rr] + weight[col] > max[col]) {
+            hiderow(rr);
+            hidden_rows.push_back(rr);
+          }
+      }
+
+      //    printtable(left, right, up, down, colCount, weight);
+
+      if (!open_column_conditions_fulfillable())
+        toRemove.push_back(row);
+
+      while (!hidden_rows.empty()) {
+        unhiderow(hidden_rows.back());
+        hidden_rows.pop_back();
+      }
+
+      r = left[row];
+
+      // remove row from rowset
+      // we only need to restart adding the row from the place we stopped
+      // when we added
+      for (; r != row; r = left[r]) {
+        int col = colCount[r];
+
+        weight[col] -= weight[r];
+      }
+
+      weight[colCount[row]] -= weight[row];
     }
 
-    std::vector<unsigned int>hidden_rows;
+    dosth = toRemove.size() != 0;
 
-    for (r = right[row]; r != row; r = right[r]) {
-      int col = colCount[r];
+    printf("removing %i rows\n", toRemove.size());
 
-      // remove all rows from the matrix that would exceed the maximum weight
-      // in an open column when added to the current weight
-      // this can be sped up by sorting the entries and stopping removal
-      // as soon as we reach a valid value, but we have to start from the top
-      // we only need to check columns that have a non zero value in the current row
-      // as ony those weights have changed
-
-      // now check all rows of this column for too big weights
-      for (int rr = down[col]; rr != col; rr = down[rr])
-        if (weight[rr] + weight[col] > max[col]) {
-          hiderow(rr);
-          hidden_rows.push_back(rr);
-        }
+    while (!toRemove.empty()) {
+      remove_row(toRemove.back());
+      toRemove.pop_back();
     }
 
-//    printtable(left, right, up, down, colCount, weight);
+  } while (dosth);
 
-    if (!open_column_conditions_fulfillable())
-      toRemove.push_back(row);
-
-    while (!hidden_rows.empty()) {
-      unhiderow(hidden_rows.back());
-      hidden_rows.pop_back();
-    }
-
-    r = left[row];
-
-    // remove row from rowset
-    // we only need to restart adding the row from the place we stopped
-    // when we added
-    for (; r != row; r = left[r]) {
-      int col = colCount[r];
-
-      weight[col] -= weight[r];
-    }
-
-    weight[colCount[row]] -= weight[row];
-  }
-
-  printf("removing %i rows\n", toRemove.size());
-
-  while (!toRemove.empty()) {
-    remove_row(toRemove.back());
-    toRemove.pop_back();
-  }
 //  printtable(left, right, up, down, colCount, weight);
 
   col_rem += clumpify();
+
+  printf("clumpify\n");
+
+//  printtable(left, right, up, down, colCount, weight);
 
   printf("%i columns removed\n", col_rem);
 
