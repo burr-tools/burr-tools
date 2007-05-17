@@ -96,6 +96,9 @@ private:
   std::vector<int> rows;
   std::vector<unsigned int> finished_a;
   std::vector<unsigned int> finished_b;
+  std::vector<unsigned int> hidden_rows;  // rows that nodes to rows that are currently hidden
+  // because there are several batched of rows that need hiding these batches are separated
+  // by a zero because the header row will never get hidden...
 
   unsigned int headerNodes;  // number of nodes within the header
 
@@ -107,6 +110,8 @@ private:
   void uncover_column_rows(int col);
   void hiderow(int r);
   void unhiderow(int r);
+  void hiderows(unsigned int r);
+  void unhiderows(void);
   bool column_condition_fulfilled(int col);
   bool column_condition_fulfillable(int col);
   void rec(unsigned int next_row);

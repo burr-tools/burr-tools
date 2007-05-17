@@ -1012,6 +1012,47 @@ void assembler_1_c::unhiderow(int r) {
   }
 }
 
+// remove all rows from the matrix that would exceed the maximum weight
+// in an open column when added to the current weight
+// the columns to check are defined by the riven node, all columns
+// that are occupiec by this row are checked
+//
+// each time the function is called the hidden rows are saved and
+// can be unhidden by calling the unhiderows function below
+// they must come in pairs but can be stacked
+void assembler_1_c::hiderows(unsigned int row) {
+
+  // put in the separator
+  hidden_rows.push_back(0);
+
+  for (unsigned int r = right[row]; r != row; r = right[r]) {
+    int col = colCount[r];
+
+    // this can be sped up by sorting the entries and stopping removal
+    // as soon as we reach a valid value, but we have to start from the top
+    // we only need to check columns that have a non zero value in the current row
+    // as ony those weights have changed
+
+    // now check all rows of this column for too big weights
+    for (int rr = down[col]; rr != col; rr = down[rr])
+      if (weight[rr] + weight[col] > max[col]) {
+        hiderow(rr);
+        hidden_rows.push_back(rr);
+      }
+  }
+}
+
+void assembler_1_c::unhiderows(void) {
+
+  while (hidden_rows.back()) {
+    unhiderow(hidden_rows.back());
+    hidden_rows.pop_back();
+  }
+
+  // remvoe separator
+  hidden_rows.pop_back();
+}
+
 bool assembler_1_c::column_condition_fulfilled(int col) {
   return (weight[col] >= min[col]) && (weight[col] <= max[col]);
 }
@@ -1081,7 +1122,6 @@ void assembler_1_c::rec(unsigned int next_row) {
       }
     }
 
-
     return;
   }
 
@@ -1136,25 +1176,7 @@ void assembler_1_c::rec(unsigned int next_row) {
     // fulfillable, so we don't even need to check
     if (open_column_conditions_fulfillable()) {
 
-      std::vector<unsigned int>hidden_rows;
-
-      for (unsigned int r = right[row]; r != row; r = right[r]) {
-        int col = colCount[r];
-
-        // remove all rows from the matrix that would exceed the maximum weight
-        // in an open column when added to the current weight
-        // this can be sped up by sorting the entries and stopping removal
-        // as soon as we reach a valid value, but we have to start from the top
-        // we only need to check columns that have a non zero value in the current row
-        // as ony those weights have changed
-
-        // now check all rows of this column for too big weights
-        for (int rr = down[col]; rr != col; rr = down[rr])
-          if (weight[rr] + weight[col] > max[col]) {
-            hiderow(rr);
-            hidden_rows.push_back(rr);
-          }
-      }
+      hiderows(row);
 
       if (colCount[col] == 0) {
 
@@ -1177,10 +1199,7 @@ void assembler_1_c::rec(unsigned int next_row) {
         }
       }
 
-      while (!hidden_rows.empty()) {
-        unhiderow(hidden_rows.back());
-        hidden_rows.pop_back();
-      }
+      unhiderows();
     }
 
     // remove row from rowset
