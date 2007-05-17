@@ -1161,6 +1161,10 @@ void assembler_1_c::rec(unsigned int next_row) {
 
   }
 
+  // add a unhiderows marker, so that the rows hidden in the loop
+  // below can be unhidden properly
+  hidden_rows.push_back(0);
+
   // now try all rows starting with the row given as parametet
   // and go down until we are in the header. When we go up
   // from the header we actually end in a node with a higher
@@ -1224,7 +1228,16 @@ void assembler_1_c::rec(unsigned int next_row) {
     rows.pop_back();
 
     (finished_a.back())++;
+
+    // after we finished with this row, we will never use it again, so
+    // remove it from the matrix
+    hiderow(row);
+    hidden_rows.push_back(row);
   }
+
+  // reinsert all the rows that were remove over the course of the
+  // row by row inspection
+  unhiderows();
 
   finished_a.pop_back();
   finished_b.pop_back();
