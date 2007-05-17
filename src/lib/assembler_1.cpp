@@ -1016,13 +1016,19 @@ bool assembler_1_c::column_condition_fulfilled(int col) {
   return (weight[col] >= min[col]) && (weight[col] <= max[col]);
 }
 
-bool assembler_1_c::column_condition_unfulfillable(int col) {
-  if (weight[col] > max[col]) return true;
-  if (weight[col] + colCount[col] < min[col]) return true;
-  return false;
+bool assembler_1_c::column_condition_fulfillable(int col) {
+  if (weight[col] > max[col]) return false;
+  if (weight[col] + colCount[col] < min[col]) return false;
+  return true;
 }
 
-void assembler_1_c::rec(int next_row) {
+
+// this function gets the number of a node
+// of the node is 0 then a new column must be selected and covered
+// of the node is not 0 then it is a node in the selected column and
+// in the row that has to be worked on next
+
+void assembler_1_c::rec(unsigned int next_row) {
 
   if (next_row == 0) {
     // no column selected, so find a new one
@@ -1043,26 +1049,44 @@ void assembler_1_c::rec(int next_row) {
       return;
     }
 
-    // remove this column from the column list
-    // do not yet remove the rows of this column, this will be done
-    // shortly before we recursively call this function again
-    cover_column_only(col);
 
-    // try to find all row sets that fulfill this columns condition
-    rec(down[col]);
+    // when there are no rows in the selected column, we don't need to find
+    // any row set and can continue right on with a new column
+    if (colCount[col] == 0) {
 
-    // reinsert this column and all its rows
-    uncover_column_only(col);
+      if (column_condition_fulfilled(col)) {
+        // remove this column from the column list
+        // do not yet remove the rows of this column, this will be done
+        // shortly before we recursively call this function again
+        cover_column_only(col);
+
+        rec(0);
+
+        // reinsert this column and all its rows
+        uncover_column_only(col);
+      }
+
+    } else {
+      // remove this column from the column list
+      // do not yet remove the rows of this column, this will be done
+      // shortly before we recursively call this function again
+      cover_column_only(col);
+
+      // try to find all row sets that fulfill this columns condition
+      rec(down[col]);
+
+      // reinsert this column and all its rows
+      uncover_column_only(col);
+    }
+
 
     return;
   }
 
-  unsigned int col = next_row;
-  if (col >= headerNodes)
-    col = colCount[next_row];
+  bt_assert(next_row >= headerNodes);
+  unsigned int col = colCount[next_row];
 
-  if (column_condition_unfulfillable(col))
-    return;
+  bt_assert(column_condition_fulfillable(col));
 
   finished_a.push_back(0);
 
@@ -1141,15 +1165,27 @@ void assembler_1_c::rec(int next_row) {
             }
         }
 
-        unsigned int newrow = down[row];
 
-        // do gown until we hit a row that is still inside the matrix
-        while ((down[newrow] >= headerNodes) && up[down[newrow]] != newrow) newrow = down[newrow];
+        if (colCount[col] == 0) {
 
-        if (newrow < headerNodes)
-          newrow = row;
+          if (column_condition_fulfilled(col))
+            rec(0);
 
-        rec(newrow);
+        } else {
+
+          if (column_condition_fulfillable(col)) {
+
+            unsigned int newrow = down[row];
+
+            // do gown until we hit a row that is still inside the matrix
+            while ((down[newrow] >= headerNodes) && up[down[newrow]] != newrow) newrow = down[newrow];
+
+            if (newrow < headerNodes)
+              newrow = row;
+
+            rec(newrow);
+          }
+        }
 
         while (!hidden_rows.empty()) {
           unhiderow(hidden_rows.back());
