@@ -1108,18 +1108,20 @@ void assembler_1_c::rec(unsigned int next_row) {
 
     } else {
 
-      if (column_condition_fulfillable(col)) {
-        // remove this column from the column list
-        // do not yet remove the rows of this column, this will be done
-        // shortly before we recursively call this function again
-        cover_column_only(col);
+      // we can assume here that the columns condition is fulfillable
+      // because whenever we call this function all columns that are left
+      // must be fulfillable
 
-        // try to find all row sets that fulfill this columns condition
-        rec(down[col]);
+      // remove this column from the column list
+      // do not yet remove the rows of this column, this will be done
+      // shortly before we recursively call this function again
+      cover_column_only(col);
 
-        // reinsert this column
-        uncover_column_only(col);
-      }
+      // try to find all row sets that fulfill this columns condition
+      rec(down[col]);
+
+      // reinsert this column
+      uncover_column_only(col);
     }
 
     return;
@@ -1172,33 +1174,45 @@ void assembler_1_c::rec(unsigned int next_row) {
     for (unsigned int r = right[row]; r != row; r = right[r])
       weight[colCount[r]] += weight[r];
 
-    // if we stopped the loop there is a column that is not
-    // fulfillable, so we don't even need to check
+    // if there are unfulfillable columns we don't even need to check any further
     if (open_column_conditions_fulfillable()) {
 
+      // remove useless rows (that are rows that have too much weight
+      // in one of their nodes that would overflow the expected weight
       hiderows(row);
 
-      if (colCount[col] == 0) {
+      if (open_column_conditions_fulfillable()) {
 
-        if (column_condition_fulfilled(col) && open_column_conditions_fulfillable())
-          rec(0);
+        if (colCount[col] == 0) {
 
-      } else {
+          // when there are no more rows in the current column
+          // we can immeadetly start a new column
+          // if the current column condition is really fulfilled
+          if (column_condition_fulfilled(col))
+            rec(0);
 
-        if (column_condition_fulfillable(col) && open_column_conditions_fulfillable()) {
+        } else {
 
-          unsigned int newrow = down[row];
+          // we need to recurse, if there are rows left and the current
+          // column condition is still fulfillable, we need to check
+          // the current column again because this column is no longer open,
+          // is was removed on selection
+          if (column_condition_fulfillable(col)) {
 
-          // do gown until we hit a row that is still inside the matrix
-          while ((down[newrow] >= headerNodes) && up[down[newrow]] != newrow) newrow = down[newrow];
+            unsigned int newrow = down[row];
 
-          if (newrow < headerNodes)
-            newrow = row;
+            // do gown until we hit a row that is still inside the matrix
+            while ((down[newrow] >= headerNodes) && up[down[newrow]] != newrow) newrow = down[newrow];
 
-          rec(newrow);
+            if (newrow < headerNodes)
+              newrow = row;
+
+            rec(newrow);
+          }
         }
       }
 
+      // reinsert the rows removed above
       unhiderows();
     }
 
