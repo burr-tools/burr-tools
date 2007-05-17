@@ -1203,7 +1203,7 @@ void assembler_1_c::rec(unsigned int next_row) {
           // is was removed on selection
           if (column_condition_fulfillable(col)) {
 
-            unsigned int newrow = down[row];
+            unsigned int newrow = row;
 
             // do gown until we hit a row that is still inside the matrix
             while ((down[newrow] >= headerNodes) && up[down[newrow]] != newrow) newrow = down[newrow];
