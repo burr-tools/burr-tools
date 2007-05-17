@@ -1024,8 +1024,8 @@ bool assembler_1_c::column_condition_fulfillable(int col) {
 
 
 // this function gets the number of a node
-// of the node is 0 then a new column must be selected and covered
-// of the node is not 0 then it is a node in the selected column and
+// if the node is 0 then a new column must be selected and covered
+// if the node is not 0 then it is the node in the selected column and
 // in the row that has to be worked on next
 
 void assembler_1_c::rec(unsigned int next_row) {
@@ -1049,43 +1049,48 @@ void assembler_1_c::rec(unsigned int next_row) {
       return;
     }
 
-
     // when there are no rows in the selected column, we don't need to find
     // any row set and can continue right on with a new column
     if (colCount[col] == 0) {
 
       if (column_condition_fulfilled(col)) {
         // remove this column from the column list
-        // do not yet remove the rows of this column, this will be done
-        // shortly before we recursively call this function again
+        // we don not need to remove the rows, as there are no
+        // and we start a new column
         cover_column_only(col);
 
         rec(0);
 
-        // reinsert this column and all its rows
+        // reinsert this column
         uncover_column_only(col);
       }
 
     } else {
-      // remove this column from the column list
-      // do not yet remove the rows of this column, this will be done
-      // shortly before we recursively call this function again
-      cover_column_only(col);
 
-      // try to find all row sets that fulfill this columns condition
-      rec(down[col]);
+      if (column_condition_fulfillable(col)) {
+        // remove this column from the column list
+        // do not yet remove the rows of this column, this will be done
+        // shortly before we recursively call this function again
+        cover_column_only(col);
 
-      // reinsert this column and all its rows
-      uncover_column_only(col);
+        // try to find all row sets that fulfill this columns condition
+        rec(down[col]);
+
+        // reinsert this column
+        uncover_column_only(col);
+      }
     }
 
 
     return;
   }
 
+  // make shure the given node belongs to a valid row and not the header
   bt_assert(next_row >= headerNodes);
   unsigned int col = colCount[next_row];
 
+  // make sure wan can actualla achieve something, the false case sould
+  // have been checked before calling this function
   bt_assert(column_condition_fulfillable(col));
 
   finished_a.push_back(0);
@@ -1100,7 +1105,8 @@ void assembler_1_c::rec(unsigned int next_row) {
     // this way we make sure we are _not_ changing this columns value any more
     cover_column_rows(col);
 
-    rec(0);
+    if (open_column_conditions_fulfillable())
+      rec(0);
 
     // reinsert rows of this column
     uncover_column_rows(col);
@@ -1113,100 +1119,73 @@ void assembler_1_c::rec(unsigned int next_row) {
 
   }
 
-
-  for (unsigned int row = next_row; ; row = down[row]) {
-
-    if (up[row] >= row) break;
+  // now try all rows starting with the row given as parametet
+  // and go down until we are in the header. When we go up
+  // from the header we actually end in a node with a higher
+  // number, that's the end check
+  for (unsigned int row = next_row; up[row] < row ; row = down[row]) {
 
     rows.push_back(row);
 
-    weight[colCount[row]] += weight[row];
-
-    unsigned int r;
-
     // add row to rowset
-    for (r = right[row]; r != row; r = right[r]) {
-      int col = colCount[r];
-
-      weight[col] += weight[r];
-
-      // if we find a unfulfillable column, we stop the loop
-      // this hoefully saves us some hiderow and unhiderow
-      if (weight[col] > max[col]) break;
-      if (weight[col] + colCount[col] < min[col]) break;
-    }
+    weight[colCount[row]] += weight[row];
+    for (unsigned int r = right[row]; r != row; r = right[r])
+      weight[colCount[r]] += weight[r];
 
     // if we stopped the loop there is a column that is not
     // fulfillable, so we don't even need to check
-    if (r == row) {
+    if (open_column_conditions_fulfillable()) {
 
-      // but we need to check all columns now, as it might be
-      // possible that another column, where we have removed a row
-      // is not fulfillable any longer
-      if (open_column_conditions_fulfillable()) {
+      std::vector<unsigned int>hidden_rows;
 
-        std::vector<unsigned int>hidden_rows;
+      for (unsigned int r = right[row]; r != row; r = right[r]) {
+        int col = colCount[r];
 
-        for (r = right[row]; r != row; r = right[r]) {
-          int col = colCount[r];
+        // remove all rows from the matrix that would exceed the maximum weight
+        // in an open column when added to the current weight
+        // this can be sped up by sorting the entries and stopping removal
+        // as soon as we reach a valid value, but we have to start from the top
+        // we only need to check columns that have a non zero value in the current row
+        // as ony those weights have changed
 
-          // remove all rows from the matrix that would exceed the maximum weight
-          // in an open column when added to the current weight
-          // this can be sped up by sorting the entries and stopping removal
-          // as soon as we reach a valid value, but we have to start from the top
-          // we only need to check columns that have a non zero value in the current row
-          // as ony those weights have changed
-
-          // now check all rows of this column for too big weights
-          for (int rr = down[col]; rr != col; rr = down[rr])
-            if (weight[rr] + weight[col] > max[col]) {
-              hiderow(rr);
-              hidden_rows.push_back(rr);
-            }
-        }
-
-
-        if (colCount[col] == 0) {
-
-          if (column_condition_fulfilled(col))
-            rec(0);
-
-        } else {
-
-          if (column_condition_fulfillable(col)) {
-
-            unsigned int newrow = down[row];
-
-            // do gown until we hit a row that is still inside the matrix
-            while ((down[newrow] >= headerNodes) && up[down[newrow]] != newrow) newrow = down[newrow];
-
-            if (newrow < headerNodes)
-              newrow = row;
-
-            rec(newrow);
+        // now check all rows of this column for too big weights
+        for (int rr = down[col]; rr != col; rr = down[rr])
+          if (weight[rr] + weight[col] > max[col]) {
+            hiderow(rr);
+            hidden_rows.push_back(rr);
           }
-        }
+      }
 
-        while (!hidden_rows.empty()) {
-          unhiderow(hidden_rows.back());
-          hidden_rows.pop_back();
+      if (colCount[col] == 0) {
+
+        if (column_condition_fulfilled(col) && open_column_conditions_fulfillable())
+          rec(0);
+
+      } else {
+
+        if (column_condition_fulfillable(col) && open_column_conditions_fulfillable()) {
+
+          unsigned int newrow = down[row];
+
+          // do gown until we hit a row that is still inside the matrix
+          while ((down[newrow] >= headerNodes) && up[down[newrow]] != newrow) newrow = down[newrow];
+
+          if (newrow < headerNodes)
+            newrow = row;
+
+          rec(newrow);
         }
       }
 
-      // when we have completely finished adding the row, we need to
-      // set this row counter back one step to make sure we undo properly
-      r = left[r];
+      while (!hidden_rows.empty()) {
+        unhiderow(hidden_rows.back());
+        hidden_rows.pop_back();
+      }
     }
 
     // remove row from rowset
-    // we only need to restart adding the row from the place we stopped
-    // when we added
-    for (; r != row; r = left[r]) {
-      int col = colCount[r];
-
-      weight[col] -= weight[r];
-    }
-
+    for (unsigned int r = left[row]; r != row; r = left[r])
+      weight[colCount[r]] -= weight[r];
     weight[colCount[row]] -= weight[row];
 
     rows.pop_back();
