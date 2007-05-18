@@ -783,6 +783,7 @@ void assembler_1_c::reduce(void) {
     for (unsigned int pp = 0; pp < piecePositions.size(); pp++) {
 
       unsigned int row = piecePositions[pp].row;
+      reducePiece = piecePositions[pp].piece;
 
       // if row is no longer in there skip
       if (up[down[row]] != row || down[up[row]] != row) continue;

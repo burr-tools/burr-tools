@@ -228,6 +228,8 @@ protected:
    */
   void checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir);
 
+  unsigned int reducePiece;
+
 public:
 
   assembler_1_c(assemblerFrontend_c * fe);
@@ -243,6 +245,7 @@ public:
   virtual errState setPosition(const char * string, const char * version);
   virtual xml::node save(void) const;
   virtual void reduce(void);
+  virtual unsigned int getReducePiece(void) { return reducePiece; }
 
   /* gets called when a solution is found. This function
    * then assembles the solution and returns an assembly
