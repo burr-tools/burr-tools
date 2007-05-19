@@ -681,6 +681,7 @@ void mainWindow_c::cb_AddAllShapesToProblem(void) {
     for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
       if (puzzle->probGetShape(prob, i) == j) {
         puzzle->probSetShapeMax(prob, i, puzzle->probGetShapeMax(prob, i) + 1);
+        puzzle->probSetShapeMin(prob, i, puzzle->probGetShapeMin(prob, i) + 1);
         found = true;
         break;
       }
@@ -2902,7 +2903,7 @@ void mainWindow_c::CreateProblemTab(void) {
     BtnMinZero = new LFlatButton_c(xp++, 0, 1, 1, "min=0", " Set minimum number of pieces to 0 ", cb_SetShapeMinimumToZero_stub, this);
     ((LFlatButton_c*)BtnMinZero)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
-    BtnAddAll = new LFlatButton_c(xp++, 0, 1, 1, "+1 each", " Add one of all shapes except result ", cb_AddAllShapesToProblem_stub, this);
+    BtnAddAll = new LFlatButton_c(xp++, 0, 1, 1, "all+1", " Add one of all shapes except result ", cb_AddAllShapesToProblem_stub, this);
     ((LFlatButton_c*)BtnAddAll)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnRemAll = new LFlatButton_c(xp++, 0, 1, 1, "Clr", " Remove all pieces ", cb_RemoveAllShapesFromProblem_stub, this);
