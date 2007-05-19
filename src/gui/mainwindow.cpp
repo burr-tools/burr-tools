@@ -956,14 +956,14 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
 
   if (SolveDisasm->value() != 0)
     if (JustCount->value() != 0)
-      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_COUNT_DISASM, true);
+      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_COUNT_DISASM, true, KeepMirrors->value() != 0);
     else
-      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_DISASM, true);
+      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_DISASM, true, KeepMirrors->value() != 0);
   else
     if (JustCount->value() != 0)
-      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_COUNT_ASM, true);
+      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_COUNT_ASM, true, KeepMirrors->value() != 0);
     else
-      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_SAVE_ASM, true);
+      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_SAVE_ASM, true, KeepMirrors->value() != 0);
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
@@ -3008,13 +3008,17 @@ void mainWindow_c::CreateSolveTab(void) {
     SolveDisasm->tooltip(" Do also try to disassemble the assembled puzzles. Only puzzles that can be disassembled will be added to solutions ");
     SolveDisasm->clear_visible_focus();
 
-    JustCount = new LFl_Check_Button("Just Count", 1, 0, 1, 1);
+    JustCount = new LFl_Check_Button("Just Count", 0, 1, 1, 1);
     JustCount->tooltip(" Don\'t save the solutions, just count the number of them ");
     JustCount->clear_visible_focus();
 
-    DropDisassemblies = new LFl_Check_Button("Drop Disassm.", 2, 0, 1, 1);
+    DropDisassemblies = new LFl_Check_Button("Drop Disassemblies", 1, 0, 1, 1);
     DropDisassemblies->tooltip(" Don\'t save the Disassemblies, just the information about them ");
     DropDisassemblies->clear_visible_focus();
+
+    KeepMirrors = new LFl_Check_Button("Keep Mirror Solutions", 1, 1, 1, 1);
+    KeepMirrors->tooltip(" Don't remove solutions that are mirrors of another solution ");
+    KeepMirrors->clear_visible_focus();
 
     o->end();
 

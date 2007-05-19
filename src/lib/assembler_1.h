@@ -236,7 +236,7 @@ public:
   ~assembler_1_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */
-  virtual errState createMatrix(const puzzle_c * puz, unsigned int problemNum);
+  virtual errState createMatrix(const puzzle_c * puz, unsigned int problemNum, bool keepMirror);
   void assemble(assembler_cb * callback);
   int getErrorsParam(void) { return errorsParam; }
   virtual float getFinished(void);

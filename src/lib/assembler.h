@@ -83,8 +83,11 @@ public:
     delete frontend;
   }
 
-  /* the part of the initialisation that may take a while */
-  virtual errState createMatrix(const puzzle_c * puz, unsigned int problemNum) { return ERR_NONE; }
+  /* the part of the initialisation that may take a while
+   * when keep mirror is true, the assembler must not throw away mirror solutions
+   * but it still removes solutions that are rotations.
+   */
+  virtual errState createMatrix(const puzzle_c * puz, unsigned int problemNum, bool keepMirror) { return ERR_NONE; }
 
   /* after the constructor call check this function. It return 0 if everything is
    * OK, or a pointer to a string, that you should display providing a message

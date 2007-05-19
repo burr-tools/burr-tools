@@ -50,7 +50,7 @@ void* start_th(void * c)
       p->action = assemblerThread_c::ACT_PREPARATION;
       p->assm = p->puzzle->getGridType()->findAssembler(p->puzzle, p->prob);
 
-      p->errState = p->assm->createMatrix(p->puzzle, p->prob);
+      p->errState = p->assm->createMatrix(p->puzzle, p->prob, p->_keepMirrors);
       if (p->errState != assembler_c::ERR_NONE) {
 
         p->errParam = p->assm->getErrorsParam();
@@ -114,13 +114,14 @@ void* start_th(void * c)
   return 0;
 }
 
-assemblerThread_c::assemblerThread_c(puzzle_c * puz, unsigned int problemNum, unsigned int solAction, bool red) :
+assemblerThread_c::assemblerThread_c(puzzle_c * puz, unsigned int problemNum, unsigned int solAction, bool red, bool keepMirrors) :
 action(ACT_PREPARATION),
 _solutionAction(solAction),
 puzzle(puz),
 prob(problemNum),
 _reduce(red),
 _dropDisassemblies(false),
+_keepMirrors(keepMirrors),
 disassm(puz->getGridType()->getDisassembler(puz, problemNum)),
 ae(0),
 sortMethod(SRT_COMPLETE_MOVES),
