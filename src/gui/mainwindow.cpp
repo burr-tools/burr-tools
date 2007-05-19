@@ -3108,34 +3108,32 @@ void mainWindow_c::CreateSolveTab(void) {
     o = new layouter_c(0, 12);
 
     (new LFl_Box("Activity: ", 0, 0, 1, 1))->stretchRight();
-    OutputActivity = new LFl_Output(1, 0, 1, 1);
+    OutputActivity = new LFl_Output(1, 0, 3, 1);
     OutputActivity->box(FL_FLAT_BOX);
     OutputActivity->color(FL_BACKGROUND_COLOR);
     OutputActivity->tooltip(" What is currently done ");
     OutputActivity->clear_visible_focus();
-
-    ((LFl_Output*)OutputActivity)->weight(1, 0);
 
     (new LFl_Box("Assemblies: ", 0, 1, 1, 1))->stretchRight();
     OutputAssemblies = new LFl_Value_Output(1, 1, 1, 1);
     OutputAssemblies->box(FL_FLAT_BOX);
     OutputAssemblies->step(1);   // make output NOT use scientific presentation for big numbers
     OutputAssemblies->tooltip(" Number of assemblies found so far ");
+    ((LFl_Value_Output*)OutputAssemblies)->weight(1, 0);
 
-    (new LFl_Box("Solutions: ", 0, 2, 1, 1))->stretchRight();
-    OutputSolutions = new LFl_Value_Output(1, 2, 1, 1);
+    (new LFl_Box("Solutions: ", 2, 1, 1, 1))->stretchRight();
+    OutputSolutions = new LFl_Value_Output(3, 1, 1, 1);
     OutputSolutions->box(FL_FLAT_BOX);
     OutputSolutions->step(1);    // make output NOT use scientific presentation for big numbers
     OutputSolutions->tooltip(" Number of solutions (assemblies that can be disassembled) found so far ");
+    ((LFl_Value_Output*)OutputSolutions)->weight(1, 0);
 
-    (new LFl_Box(0, 3))->setMinimumSize(0, SZ_GAP);
-
-    (new LFl_Box("Time used: ", 0, 4, 1, 1))->stretchRight();
-    TimeUsed = new LFl_Output(1, 4, 1, 1);
+    (new LFl_Box("Time used: ", 0, 2, 1, 1))->stretchRight();
+    TimeUsed = new LFl_Output(1, 2, 1, 1);
     TimeUsed->box(FL_NO_BOX);
 
-    (new LFl_Box("Time left: ", 0, 5, 1, 1))->stretchRight();
-    TimeEst = new LFl_Output(1, 5, 1, 1);
+    (new LFl_Box("Time left: ", 2, 2, 1, 1))->stretchRight();
+    TimeEst = new LFl_Output(3, 2, 1, 1);
     TimeEst->box(FL_NO_BOX);
     TimeEst->tooltip(" This is a very approximate estimate and can be totally wrong, to take with a grain of salt ");
 
