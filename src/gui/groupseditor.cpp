@@ -104,9 +104,11 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
       if (c == 0)
         snprintf(s, 40, "Shape");
       else if (c == 1)
-        snprintf(s, 40, "n");
+        snprintf(s, 40, "Min");
+      else if (c == 2)
+        snprintf(s, 40, "Max");
       else
-        snprintf(s, 40, "Gr %i", c-1);
+        snprintf(s, 40, "Gr %i", c-2);
 
       /* output the text */
       fl_color(FL_BLACK);
@@ -145,14 +147,17 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
 
       } else if (c == 1) {
 
-        /* the 2nd column, display the count for this shape */
+        /* the 2nd column, display the min count for this shape */
 
         type = 1;
+        snprintf(s, 40, "%i", puzzle->probGetShapeMin(prob, r));
 
-        if (puzzle->probGetShapeMin(prob, r) == puzzle->probGetShapeMax(prob, r))
-          snprintf(s, 40, "%i", puzzle->probGetShapeMin(prob, r));
-        else
-          snprintf(s, 40, "%i-%i", puzzle->probGetShapeMin(prob, r), puzzle->probGetShapeMax(prob, r));
+      } else if (c == 2) {
+
+        /* the 3rd column, display the max count for this shape */
+
+        type = 1;
+        snprintf(s, 40, "%i", puzzle->probGetShapeMax(prob, r));
 
       } else {
 
@@ -161,7 +166,7 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
          */
 
         for (unsigned int j = 0; j < puzzle->probGetShapeGroupNumber(prob, r); j++)
-          if (puzzle->probGetShapeGroup(prob, r, j) == (c - 1)) {
+          if (puzzle->probGetShapeGroup(prob, r, j) == (c - 2)) {
             type = 1;
             snprintf(s, 40, "%i", puzzle->probGetShapeGroupCount(prob, r, j));
             break;
@@ -229,12 +234,15 @@ void groupsEditorTab_c::cb_input(void) {
 
   /* we have either changed the count for the shape, or the group count */
   if (editGroup == 0)
+    puzzle->probSetShapeMin(prob, editShape, atoi(input->value()));
+  else if (editGroup == 1)
     puzzle->probSetShapeMax(prob, editShape, atoi(input->value()));
   else
-    puzzle->probSetShapeGroup(prob, editShape, editGroup, atoi(input->value()));
+    puzzle->probSetShapeGroup(prob, editShape, editGroup-1, atoi(input->value()));
 
   /* hide the edit line */
   input->hide();
+  redraw();
   changed = true;
 }
 
@@ -271,10 +279,12 @@ void groupsEditorTab_c::cb_tab(void)
       int count = 0;
 
       if (editGroup == 0)
+        count = puzzle->probGetShapeMin(prob, row);
+      else if (editGroup == 1)
         count = puzzle->probGetShapeMax(prob, row);
       else
         for (unsigned int j = 0; j < puzzle->probGetShapeGroupNumber(prob, row); j++)
-          if (puzzle->probGetShapeGroup(prob, row, j) == (col - 1))
+          if (puzzle->probGetShapeGroup(prob, row, j) == (col - 2))
             count = puzzle->probGetShapeGroupCount(prob, row, j);
 
       snprintf(s, 30, "%d", count);
@@ -305,15 +315,16 @@ groupsEditorTab_c::groupsEditorTab_c(int x, int y, int w, int h, puzzle_c * puzz
       if (puzzle->probGetShapeGroup(prob, i, j) > maxGroup)
         maxGroup = puzzle->probGetShapeGroup(prob, i, j);
 
-  cols(maxGroup + 2);
+  cols(maxGroup + 3);
   col_header(1);
   row_height_all(20);
 
   /* set the widths of the columns */
   col_width(0, 150);
   col_width(1, 35);
+  col_width(2, 35);
   for (unsigned int i = 0; i < maxGroup; i++)
-    col_width(i+2, 35);
+    col_width(i+3, 35);
 
   when(FL_WHEN_RELEASE);
   callback(cb_tab_stub, this);
@@ -331,10 +342,10 @@ void groupsEditorTab_c::addGroup(void) {
 
   maxGroup++;
 
-  cols(maxGroup + 2);
+  cols(maxGroup + 3);
   row_height_all(20);
 
-  col_width(maxGroup+1, 35);
+  col_width(maxGroup+2, 35);
 }
 
 void groupsEditorTab_c::finishEdit(void) {
