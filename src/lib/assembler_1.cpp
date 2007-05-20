@@ -726,20 +726,40 @@ void assembler_1_c::reduce(void) {
 
   unsigned int col_rem = clumpify();
 
-#if 0
+
+  /* this is a quick impossible row removal code, is is not at thorough
+   * as the code below but way faster and it is used to quickly remove
+   * obviously impossible rows
+   *
+   * what it does is:
+   * check for each column c, where at least one row must be selected (min > 0)
+   *    check each row r that might be selected to fulfill this column c conditions
+   *       if this row results for another column c2 that that column reaches the
+   *       maximum possible value (max) then increase counter
+   *    also count the number of rows in this column
+   *
+   *    now check for all columns c2 != c if the number if the counter is equal
+   *    to number of rows. If this is the case then that means that
+   *    all possibile rows that make column c condition true, also make
+   *    column c2 condition so that no other row will come there, so all
+   *    rows that are not in the c set but contribute to c2 can be removed
+   */
+  unsigned int *columns = new unsigned int[headerNodes];
+
   for (unsigned int col = right[0]; col; col = right[col]) {
 
     // this is taken from the assembler 0 reduce
     // as I don't know how to generalize the approach
     // we do it only on columns with min = max = 1
-    if (min[col] != 1 || max[col] != 1) continue;
+    if (min[col] == 0) continue;
 
-    memset(columns, 0, varivoxelEnd * sizeof(unsigned int));
+    memset(columns, 0, headerNodes * sizeof(unsigned int));
 
     unsigned int placements = 0;
-    for (unsigned int r = down(col); r != col; r = down(r)) {
+    for (unsigned int r = down[col]; r != col; r = down[r]) {
       for (unsigned int j = right[r]; j != r; j = right[j])
-        columns[colCount[j]]++;
+        if (weight[j] == max[colCount[j]])
+          columns[colCount[j]]++;
       placements++;
     }
 
@@ -754,30 +774,33 @@ void assembler_1_c::reduce(void) {
     for (unsigned int c = right[0]; c; c = right[c]) {
       if (columns[c] == placements) {
 
-        rowsToRemove.clear();
+        toRemove.clear();
 
-        for (unsigned int r = down(c); r != c; r = down(r)) {
+        for (unsigned int r = down[c]; r != c; r = down[r]) {
 
           /* find the column col */
           unsigned int c2 = right[r];
           while ((colCount[c2] != col) && (c2 != r)) c2 = right[c2];
 
           if (c2 == r)
-            rowsToRemove.push_back(r);
+            toRemove.push_back(r);
         }
 
         /* remove the rows found */
-        for (unsigned int rem = 0; rem < rowsToRemove.size(); rem++) {
-          remove_row(rowsToRemove[rem]);
+        for (unsigned int rem = 0; rem < toRemove.size(); rem++) {
+          remove_row(toRemove[rem]);
         }
 
-        removed += rowsToRemove.size();
+//        if (toRemove.size())
+//          printf("removed %i columns\n", toRemove.size());
       }
     }
   }
-#endif
 
-  printf("checking %i lines\n", piecePositions.size());
+  toRemove.clear();
+  delete [] columns;
+
+//  printf("checking %i lines\n", piecePositions.size());
 
   bool dosth;
 
