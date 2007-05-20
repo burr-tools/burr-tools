@@ -1098,7 +1098,9 @@ bool assembler_1_c::column_condition_fulfillable(int col) {
 
 void assembler_1_c::rec(unsigned int next_row) {
 
-  if (next_row == 0) {
+  // when we get called with a header node (including 0)
+  // we have done all rows and need to select a new column
+  if (next_row < headerNodes) {
     // no column selected, so find a new one
 
     // when no column is left we have found a solution
@@ -1235,9 +1237,6 @@ void assembler_1_c::rec(unsigned int next_row) {
 
             // do gown until we hit a row that is still inside the matrix
             while ((down[newrow] >= headerNodes) && up[down[newrow]] != newrow) newrow = down[newrow];
-
-            if (newrow < headerNodes)
-              newrow = row;
 
             rec(newrow);
           }
