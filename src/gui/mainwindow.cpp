@@ -3120,18 +3120,18 @@ void mainWindow_c::CreateSolveTab(void) {
     OutputAssemblies->box(FL_FLAT_BOX);
     OutputAssemblies->step(1);   // make output NOT use scientific presentation for big numbers
     OutputAssemblies->tooltip(" Number of assemblies found so far ");
-    ((LFl_Value_Output*)OutputAssemblies)->weight(1, 0);
+    ((LFl_Value_Output*)OutputAssemblies)->weight(2, 0);
 
-    (new LFl_Box("Solutions: ", 2, 1, 1, 1))->stretchRight();
-    OutputSolutions = new LFl_Value_Output(3, 1, 1, 1);
+    (new LFl_Box("Solutions: ", 0, 2, 1, 1))->stretchRight();
+    OutputSolutions = new LFl_Value_Output(1, 2, 1, 1);
     OutputSolutions->box(FL_FLAT_BOX);
     OutputSolutions->step(1);    // make output NOT use scientific presentation for big numbers
     OutputSolutions->tooltip(" Number of solutions (assemblies that can be disassembled) found so far ");
-    ((LFl_Value_Output*)OutputSolutions)->weight(1, 0);
 
-    (new LFl_Box("Time used: ", 0, 2, 1, 1))->stretchRight();
-    TimeUsed = new LFl_Output(1, 2, 1, 1);
+    (new LFl_Box("Time used: ", 2, 1, 1, 1))->stretchRight();
+    TimeUsed = new LFl_Output(3, 1, 1, 1);
     TimeUsed->box(FL_NO_BOX);
+    ((LFl_Output*)TimeUsed)->weight(4, 0);
 
     (new LFl_Box("Time left: ", 2, 2, 1, 1))->stretchRight();
     TimeEst = new LFl_Output(3, 2, 1, 1);
