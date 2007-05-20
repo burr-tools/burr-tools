@@ -1162,13 +1162,13 @@ void assembler_1_c::rec(unsigned int next_row) {
   // have been checked before calling this function
   bt_assert(column_condition_fulfillable(col));
 
-  finished_a.push_back(0);
 
   // it might be that the condition for this column is already fulfilled, without adding a single
   // line to the column that is why we do this check here at the start of the function
   if (column_condition_fulfilled(col)) {
 
     finished_b.push_back(colCount[colCount[next_row]]+1);
+    finished_a.push_back(0);
 
     // remove all rows that are left within this column
     // this way we make sure we are _not_ changing this columns value any more
@@ -1185,6 +1185,7 @@ void assembler_1_c::rec(unsigned int next_row) {
   } else {
 
     finished_b.push_back(colCount[colCount[next_row]]);
+    finished_a.push_back(0);
 
   }
 
@@ -1274,12 +1275,18 @@ void assembler_1_c::assemble(assembler_cb * callback) {
 
   running = true;
 
+  finished_a.clear();
+  finished_b.clear();
+
   if (errorsState == ERR_NONE) {
     asm_bc = callback;
     if (open_column_conditions_fulfillable()) {
       rec(0);
     }
   }
+
+  finished_b.push_back(1);
+  finished_a.push_back(1);
 
   running = false;
 }
