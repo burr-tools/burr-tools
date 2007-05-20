@@ -378,7 +378,8 @@ void PiecesList::getText(unsigned int block, char * text) {
     len = snprintf(text, txtLen, "(%i-%i)", puzzle->probGetShapeMin(problem, block), puzzle->probGetShapeMax(problem, block));
   } else if (puzzle->probGetShapeMin(problem, block) != 1) {
     len = snprintf(text, txtLen, "(%i)", puzzle->probGetShapeMin(problem, block));
-  }
+  } else
+    len = 0;
   text += len;
   txtLen -= len;
 
