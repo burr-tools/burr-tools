@@ -99,6 +99,9 @@ private:
   std::vector<unsigned int> hidden_rows;  // rows that nodes to rows that are currently hidden
   // because there are several batched of rows that need hiding these batches are separated
   // by a zero because the header row will never get hidden...
+  std::vector<unsigned int>task_stack;
+  std::vector<unsigned int>next_row_stack;
+  std::vector<unsigned int>column_stack;
 
   unsigned int headerNodes;  // number of nodes within the header
 
@@ -114,7 +117,8 @@ private:
   void unhiderows(void);
   bool column_condition_fulfilled(int col);
   bool column_condition_fulfillable(int col);
-  void rec(unsigned int next_row);
+//  void rec(unsigned int next_row);
+  void iterative(void);
   void remove_row(register unsigned int r);
   void remove_column(register unsigned int c);
   unsigned int clumpify(void);
