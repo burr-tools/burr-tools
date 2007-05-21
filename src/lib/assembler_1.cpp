@@ -905,18 +905,21 @@ assembly_c * assembler_1_c::getAssembly(void) {
   /* fill the array with 0xff, so that we can distinguish between
    * placed and unplaced pieces
    */
+  unsigned int *piece = new unsigned int[rows.size()];
+  unsigned char *tran = new unsigned char[rows.size()];
+  int *x = new int[rows.size()];
+  int *y = new int[rows.size()];
+  int *z = new int[rows.size()];
+
+  for (unsigned int i = 0; i < rows.size(); i++)
+    getPieceInformation(rows[i], piece+i, tran+i, x+i, y+i, z+i);
 
   for (unsigned int pc = 0; pc < puzzle->probShapeNumber(problem); pc++) {
     unsigned int placed = 0;
     for (unsigned int i = 0; i < rows.size(); i++) {
-      unsigned char tran;
-      int x, y, z;
-      unsigned int piece;
 
-      getPieceInformation(rows[i], &piece, &tran, &x, &y, &z);
-
-      if (piece == pc) {
-        assembly->addPlacement(tran, x, y, z);
+      if (piece[i] == pc) {
+        assembly->addPlacement(tran[i], x[i], y[i], z[i]);
         placed++;
       }
     }
@@ -928,6 +931,12 @@ assembly_c * assembler_1_c::getAssembly(void) {
   }
 
   assembly->sort(puzzle, problem);
+
+  delete [] piece;
+  delete [] tran;
+  delete [] x;
+  delete [] y;
+  delete [] z;
 
   return assembly;
 }
