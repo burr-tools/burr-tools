@@ -1,3 +1,18 @@
+------------- Version 0.3.0
+
+- a new assembly algorithm that is much faster with puzzles with many
+  multipieces and that has many new possibilities for the future. The
+  old onle will stay for simple puzzles because it is faster in those
+  situations
+
+- piece ranges. It is now possible to specify a range of pieces to use
+  to solve the puzzle
+
+- fix memory leak when counting assemblies
+
+- fix some more problems with certain kind of mirror solutions
+
+- it is now possible to keep mirror solutions, if you wish
 
 ------------- Version 0.2.3
 
