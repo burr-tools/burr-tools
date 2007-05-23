@@ -713,9 +713,9 @@ void mainWindow_c::cb_RemoveShapeFromProblem(void) {
       if (puzzle->probGetShapeMax(prob, i) == 1)
         puzzle->probRemoveShape(prob, i);
       else {
-        puzzle->probSetShapeMax(prob, i, puzzle->probGetShapeMax(prob, i) - 1);
         if (puzzle->probGetShapeMin(prob, i) > 0)
           puzzle->probSetShapeMin(prob, i, puzzle->probGetShapeMin(prob, i) - 1);
+        puzzle->probSetShapeMax(prob, i, puzzle->probGetShapeMax(prob, i) - 1);
       }
 
       changed = true;
