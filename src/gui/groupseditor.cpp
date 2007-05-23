@@ -382,7 +382,7 @@ groupsEditor_c::groupsEditor_c(puzzle_c * p, unsigned int pr) : Fl_Double_Window
   new FlatButton(SZ_GAP, SZ_WINDOW_Y-SZ_GAP-SZ_BUTTON_Y, (SZ_WINDOW_X-3*SZ_GAP)/2, SZ_BUTTON_Y, "Add Group", "Add another group", cb_AddGroup_stub, this);
   new FlatButton((SZ_GAP+SZ_WINDOW_X)/2, SZ_WINDOW_Y-SZ_GAP-SZ_BUTTON_Y, (SZ_WINDOW_X-3*SZ_GAP)/2, SZ_BUTTON_Y, "Close", "Close Window", cb_CloseWindow_stub, this);
 
-  label("Group Editor");
+  label("Problem Details");
 
   set_modal();
   size_range(SZ_WINDOW_X, SZ_WINDOW_Y, 0, 0);

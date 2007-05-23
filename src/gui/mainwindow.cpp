@@ -2909,7 +2909,7 @@ void mainWindow_c::CreateProblemTab(void) {
     BtnRemAll = new LFlatButton_c(xp++, 0, 1, 1, "Clr", " Remove all pieces ", cb_RemoveAllShapesFromProblem_stub, this);
     ((LFlatButton_c*)BtnRemAll)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
-    BtnGroup =    new LFlatButton_c(xp++, 0, 1, 1, "Group", " Create or edit groups ", cb_ShapeGroup_stub, this);
+    BtnGroup =    new LFlatButton_c(xp++, 0, 1, 1, "Detail", " Edit details of the problem ", cb_ShapeGroup_stub, this);
     ((LFlatButton_c*)BtnGroup)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnProbShapeLeft = new LFlatButton_c(xp++, 0, 1, 1, "@-14->", " Exchange current shape with previous shape ", cb_ProbShapeLeft_stub, this);
