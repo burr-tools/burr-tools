@@ -2306,11 +2306,11 @@ void mainWindow_c::updateInterface(void) {
       case assemblerThread_c::ACT_REDUCE:
         if (puzzle->probGetAssembler(prob)) {
           char tmp[20];
-          snprintf(tmp, 20, "optimize piece %i", puzzle->probGetAssembler(prob)->getReducePiece());
+          snprintf(tmp, 20, "optimize piece %i", puzzle->probGetAssembler(prob)->getReducePiece()+1);
           OutputActivity->value(tmp);
         } else {
           char tmp[20];
-          snprintf(tmp, 20, "optimize piece %i", assmThread->currentActionParameter());
+          snprintf(tmp, 20, "optimize piece %i", assmThread->currentActionParameter()+1);
           OutputActivity->value(tmp);
         }
         break;
