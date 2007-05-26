@@ -1311,7 +1311,17 @@ void assembler_1_c::iterative(void) {
 
   unsigned int row, col;
 
-  while (!abbort && task_stack.size() > 0) {
+  while (task_stack.size() > 0) {
+
+    // wan can only restore the states 1, 2 and 5. Internal states will alway
+    // be one of those, but the last state might differ, so continue looping
+    // until the final state is 1, 2 or 5
+    if (abbort) {
+      if (task_stack.back() == 1 ||
+          task_stack.back() == 2 ||
+          task_stack.back() == 5)
+        break;
+    }
 
     // the cases in this switch are marked in the function above
     switch (task_stack.back()) {
@@ -1617,14 +1627,135 @@ float assembler_1_c::getFinished(void) {
   return erg;
 }
 
+static unsigned int getInt(const char * s, unsigned int * i) {
+
+  char * s2;
+
+  *i = strtol (s, &s2, 10);
+
+  if (s2)
+    return s2-s;
+  else
+    return 500000;
+}
+
+static int stringToVector(const char * string, std::vector<unsigned int> & v) {
+
+  unsigned int pos = 0;
+
+  unsigned int count;
+
+  // first get number of entries
+  pos += getInt(string+pos, &count);
+
+  v.clear();
+
+  // now get vetor content
+
+  for (int i = 0; i < count; i++) {
+    unsigned int val;
+    pos += getInt(string+pos, &val);
+    v.push_back(val);
+  }
+
+  return pos;
+}
+
 assembler_c::errState assembler_1_c::setPosition(const char * string, const char * version) {
 
-  return ERR_CAN_NOT_RESTORE_VERSION;
+  unsigned int len = strlen(string);
+
+  unsigned int pos = 0;
+
+  pos += stringToVector(string+pos, rows);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  pos += stringToVector(string+pos, task_stack);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  pos += stringToVector(string+pos, next_row_stack); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  pos += stringToVector(string+pos, column_stack);   if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  pos += stringToVector(string+pos, hidden_rows);    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  pos += stringToVector(string+pos, finished_a);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  pos += stringToVector(string+pos, finished_b);
+
+  // not we need to restore the matrix to the right state
+
+  unsigned int column_stack_pos = 0;
+  unsigned int next_row_pos = 0;
+  unsigned int col, row;
+  unsigned int hiderows_pos = 0;
+  unsigned int row_pos = 0;
+
+  for (int i = 0; i < task_stack.size(); i++) {
+
+    switch (task_stack[i]) {
+
+      case 1:
+        cover_column_only(column_stack[column_stack_pos++]);
+        break;
+      case 2:
+        if (column_stack_pos == 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        col = column_stack[column_stack_pos-1];
+        cover_column_rows(col);
+        break;
+      case 5:
+        hiderows_pos++;
+        while (hiderows_pos < hidden_rows.size() && hidden_rows[hiderows_pos] > 0) {
+          hiderow(hidden_rows[hiderows_pos++]);
+        }
+
+        row = rows[row_pos++];
+        // add row to rowset
+        weight[colCount[row]] += weight[row];
+        for (unsigned int r = right[row]; r != row; r = right[r])
+          weight[colCount[r]] += weight[r];
+
+        hiderows_pos++;
+        while (hiderows_pos < hidden_rows.size() && hidden_rows[hiderows_pos] > 0) {
+          hiderow(hidden_rows[hiderows_pos++]);
+        }
+
+        break;
+
+      default:
+        return ERR_CAN_NOT_RESTORE_SYNTAX;
+    }
+  }
+
+  return ERR_NONE;
+}
+
+static std::string vectorToString(const std::vector<unsigned int> & v) {
+
+  std::string cont;
+
+  char tmp[100];
+
+  snprintf(tmp, 100, "%i ", v.size());
+  cont += tmp;
+
+  for (int i = 0; i < v.size(); i++) {
+    snprintf(tmp, 100, "%i ", v[i]);
+    cont += tmp;
+  }
+
+  return cont;
 }
 
 xml::node assembler_1_c::save(void) const {
 
-  xml::node nd;
+  xml::node nd("assembler");
+
+  nd.get_attributes().insert("version", ASSEMBLER_VERSION);
+
+  std::string cont;
+
+  cont += vectorToString(rows);
+  cont += vectorToString(task_stack);
+  cont += vectorToString(next_row_stack);
+  cont += vectorToString(column_stack);
+  cont += vectorToString(hidden_rows);
+  cont += vectorToString(finished_a);
+  cont += vectorToString(finished_b);
+
+  nd.set_content(cont.c_str());
 
   return nd;
 }

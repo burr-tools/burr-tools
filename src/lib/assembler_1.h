@@ -93,7 +93,7 @@ private:
   /* used to save if the search is running */
   bool running;
 
-  std::vector<int> rows;
+  std::vector<unsigned int> rows;
   std::vector<unsigned int> finished_a;
   std::vector<unsigned int> finished_b;
   std::vector<unsigned int> hidden_rows;  // rows that nodes to rows that are currently hidden
