@@ -31,78 +31,6 @@
 
 #define ASSEMBLER_VERSION "2.0"
 
-/* output the whole table for debug reasons */
-static void printtable(const std::vector<unsigned int> & left,
-    const std::vector<unsigned int> & right,
-    const std::vector<unsigned int> & up,
-    const std::vector<unsigned int> & down,
-    const std::vector<unsigned int> & colCount,
-    const std::vector<unsigned int> & weight) {
-
-  printf("============\n");
-
-  printf("        ");
-  int cc = 1;
-  for (int c = right[0]; c != 0; c = right[c]) {
-    while (cc < c) {
-      printf("  d");
-      cc++;
-    }
-    cc++;
-    printf("%3i", c);
-  }
-  printf("\n        ");
-  cc = 1;
-  for (int c = right[0]; c != 0; c = right[c]) {
-    while (cc < c) {
-      printf("  d");
-      cc++;
-    }
-    cc++;
-    printf("%3i", colCount[c]);
-  }
-  printf("\n        ");
-  cc = 1;
-  for (int c = right[0]; c != 0; c = right[c]) {
-    while (cc < c) {
-      printf("  d");
-      cc++;
-    }
-    cc++;
-    printf("%3i", weight[c]);
-  }
-  printf("\n");
-  printf("------------\n");
-
-  for (int c = right[0]; c != 0; c = right[c]) {
-    for (int r = down[c]; r != c; r = down[r]) {
-
-      if (left[r] < r) return;
-
-      cc = 1;
-      int c2 = r;
-
-      printf("%8i", r);
-      do {
-
-        int ccn = colCount[c2];
-
-        while (cc < ccn) {
-          printf("   ");
-          cc++;
-        }
-
-        printf("%3i", weight[c2]);
-        c2 = right[c2];
-        cc++;
-      } while (c2 != r);
-      printf("\n");
-    }
-  }
-}
-
-
-
 void assembler_1_c::GenerateFirstRow(unsigned int columns) {
 
   for (unsigned int i = 0; i < columns+1; i++) {
@@ -465,8 +393,6 @@ int assembler_1_c::prepare(void) {
 
   voxel_c ** cache = new voxel_c *[sym->getNumTransformationsMirror()];
 
-//  printf("matrix creation\n");
-
   /* now we insert one shape after another */
   for (unsigned int pc = 0; pc < puzzle->probShapeNumber(problem); pc++) {
 
@@ -530,8 +456,6 @@ int assembler_1_c::prepare(void) {
 
     for (unsigned int i = 0; i < cachefill; i++)  delete cache[i];
 
-//    printf("piece %i has %i placements\n", pc, placements);
-
     /* check, if the current piece has at least one placement */
     if (placements == 0) {
       delete [] cache;
@@ -542,10 +466,6 @@ int assembler_1_c::prepare(void) {
 
   delete [] cache;
   delete [] columns;
-
-//  printf("%i %i %i %i %i %i %i %i\n", up.size(), down.size(), left.size(), right.size(), colCount.size(), weight.size(), min.size(), max.size());
-
-//  printf("%i %i %i\n", colCount[1], colCount[2], colCount[3]);
 
   return 1;
 }
@@ -603,8 +523,6 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
     errorsParam = -error;
     return errorsState;
   }
-
-//  printtable(left, right, up, down, colCount, weight);
 
   if (keepMirror)
     avoidTransformedMirror = 0;
@@ -723,11 +641,9 @@ void assembler_1_c::remove_row(register unsigned int r) {
 
 void assembler_1_c::reduce(void) {
 
-//  printtable(left, right, up, down, colCount, weight);
   std::vector<unsigned int> toRemove;
 
   unsigned int col_rem = clumpify();
-
 
   /* this is a quick impossible row removal code, is is not at thorough
    * as the code below but way faster and it is used to quickly remove
@@ -792,17 +708,12 @@ void assembler_1_c::reduce(void) {
         for (unsigned int rem = 0; rem < toRemove.size(); rem++) {
           remove_row(toRemove[rem]);
         }
-
-//        if (toRemove.size())
-//          printf("removed %i columns\n", toRemove.size());
       }
     }
   }
 
   toRemove.clear();
   delete [] columns;
-
-//  printf("checking %i lines\n", piecePositions.size());
 
   bool dosth;
 
@@ -847,8 +758,6 @@ void assembler_1_c::reduce(void) {
           }
       }
 
-      //    printtable(left, right, up, down, colCount, weight);
-
       if (!open_column_conditions_fulfillable())
         toRemove.push_back(row);
 
@@ -873,8 +782,6 @@ void assembler_1_c::reduce(void) {
 
     dosth = toRemove.size() != 0;
 
-    printf("removing %i rows\n", toRemove.size());
-
     while (!toRemove.empty()) {
       remove_row(toRemove.back());
       toRemove.pop_back();
@@ -882,16 +789,7 @@ void assembler_1_c::reduce(void) {
 
   } while (dosth);
 
-//  printtable(left, right, up, down, colCount, weight);
-
   col_rem += clumpify();
-
-  printf("clumpify\n");
-
-//  printtable(left, right, up, down, colCount, weight);
-
-  printf("%i columns removed\n", col_rem);
-
 }
 
 void assembler_1_c::checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir) {
@@ -1329,7 +1227,6 @@ void assembler_1_c::iterative(void) {
       case 0:
         // standard entry into function
 
-
         // when we get called with a header node (including 0)
         // we have done all rows and need to select a new column
         if (next_row_stack.back() < headerNodes) {
@@ -1428,7 +1325,6 @@ void assembler_1_c::iterative(void) {
 
           finished_b.push_back(colCount[colCount[next_row_stack.back()]]);
           finished_a.push_back(0);
-
         }
 
         task_stack.back() = 3;
@@ -1568,9 +1464,8 @@ void assembler_1_c::iterative(void) {
           rows.push_back(row);
           task_stack.back() = 4;
           break;
-        } else {
-          // fall through to state 7
         }
+          // else fall through to state 7
 
         // fall through to state 7
 
