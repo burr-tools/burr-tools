@@ -196,12 +196,12 @@ void assembly_c::sort(const puzzle_c * puz, unsigned int prob) {
       for (unsigned int a = 0; a < cnt - 1; a++) {
         bool swapped = false;
 
-        for (unsigned int b = a + 1; b < cnt; b++)
-          if (placements[p+b] < placements[p+a]) {
+        for (unsigned int b = cnt-1; b > a; b--)
+          if (placements[p+b] < placements[p+b-1]) {
 
             placement_c tmp(placements[p+b]);
-            placements[p+b] = placements[p+a];
-            placements[p+a] = tmp;
+            placements[p+b] = placements[p+b-1];
+            placements[p+b-1] = tmp;
 
             swapped = true;
           }
