@@ -189,6 +189,8 @@ assembler_1_c::assembler_1_c(assemblerFrontend_c * fe) :
   assembler_c(fe),
   avoidTransformedAssemblies(0), avoidTransformedMirror(0)
 {
+  next_row_stack.push_back(0);
+  task_stack.push_back(0);
 }
 
 assembler_1_c::~assembler_1_c() {
@@ -1584,28 +1586,21 @@ void assembler_1_c::assemble(assembler_cb * callback) {
   running = true;
   abbort = false;
 
-  finished_a.clear();
-  finished_b.clear();
-
   if (errorsState == ERR_NONE) {
-    asm_bc = callback;
-    if (open_column_conditions_fulfillable()) {
-#if 0
-      rec(0);
-#endif
-      task_stack.push_back(0);
-      next_row_stack.push_back(0);
+
+    // run, when something to do
+    if (next_row_stack.size()) {
+      asm_bc = callback;
       iterative();
     }
   }
-
-  finished_b.push_back(1);
-  finished_a.push_back(1);
 
   running = false;
 }
 
 float assembler_1_c::getFinished(void) {
+
+  if (next_row_stack.size() == 0) return 1;
 
   float erg = 0;
 
