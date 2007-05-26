@@ -718,6 +718,8 @@ void assembler_1_c::reduce(void) {
   toRemove.clear();
   delete [] columns;
 
+  col_rem += clumpify();
+
   bool dosth;
 
   do {
@@ -730,20 +732,15 @@ void assembler_1_c::reduce(void) {
       // if row is no longer in there skip
       if (up[down[row]] != row || down[up[row]] != row) continue;
 
-      weight[colCount[row]] += weight[row];
-
-      unsigned int r;
 
       // add row to rowset
-      for (r = right[row]; r != row; r = right[r]) {
-        int col = colCount[r];
-
-        weight[col] += weight[r];
-      }
+      weight[colCount[row]] += weight[row];
+      for (unsigned int r = right[row]; r != row; r = right[r])
+        weight[colCount[r]] += weight[r];
 
       std::vector<unsigned int>hidden_rows;
 
-      for (r = right[row]; r != row; r = right[r]) {
+      for (unsigned int r = right[row]; r != row; r = right[r]) {
         int col = colCount[r];
 
         // remove all rows from the matrix that would exceed the maximum weight
@@ -769,17 +766,11 @@ void assembler_1_c::reduce(void) {
         hidden_rows.pop_back();
       }
 
-      r = left[row];
-
       // remove row from rowset
       // we only need to restart adding the row from the place we stopped
       // when we added
-      for (; r != row; r = left[r]) {
-        int col = colCount[r];
-
-        weight[col] -= weight[r];
-      }
-
+      for (unsigned int r = left[row]; r != row; r = left[r])
+        weight[colCount[r]] -= weight[r];
       weight[colCount[row]] -= weight[row];
     }
 
