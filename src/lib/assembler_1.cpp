@@ -1441,8 +1441,7 @@ void assembler_1_c::iterative(void) {
 
         (finished_a.back())++;
 
-        task_stack.back() = 3;
-        break;
+        // fall through to state 3
 
       case 3:
 
@@ -1454,12 +1453,13 @@ void assembler_1_c::iterative(void) {
 
         if (up[row] < row) {
           rows.push_back(row);
-          task_stack.back() = 4;
+          // fall through to state 4
         } else {
           task_stack.back() = 7;
+          break;
         }
 
-        break;
+        // fall through to state 4
 
       case 4:
 
@@ -1518,18 +1518,21 @@ void assembler_1_c::iterative(void) {
             }
           }
 
-          task_stack.back() = 5;
+          // fall through to state 5
+
+        } else {
+
+          task_stack.back() = 6;
           break;
         }
 
-        task_stack.back() = 6;
-        break;
+        // fall through to state 5
 
       case 5:
 
         unhiderows();
-        task_stack.back() = 6;
-        break;
+
+        // fall through to state 6
 
       case 6:
 
@@ -1554,11 +1557,12 @@ void assembler_1_c::iterative(void) {
         if (up[row] < row) {
           rows.push_back(row);
           task_stack.back() = 4;
+          break;
         } else {
-          task_stack.back() = 7;
+          // fall through to state 7
         }
 
-        break;
+        // fall through to state 7
 
       case 7:
 
