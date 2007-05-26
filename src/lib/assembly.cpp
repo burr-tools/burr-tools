@@ -189,15 +189,26 @@ void assembly_c::sort(const puzzle_c * puz, unsigned int prob) {
     /* now we need to sort pieces to that they are sorted by placement */
     if (cnt > 1) {
 
-      /* as we normally only have a few identical pieces that need sorting we use bubble sort */
-      for (unsigned int a = 0; a < cnt - 1; a++)
+      /* as we normally only have a few identical pieces that need sorting we use bubble sort
+       * with one addition, because many times only a fiew pieces will actually be placed
+       * we check, if something was done and bail out, if not
+       */
+      for (unsigned int a = 0; a < cnt - 1; a++) {
+        bool swapped = false;
+
         for (unsigned int b = a + 1; b < cnt; b++)
           if (placements[p+b] < placements[p+a]) {
 
             placement_c tmp(placements[p+b]);
             placements[p+b] = placements[p+a];
             placements[p+a] = tmp;
+
+            swapped = true;
           }
+
+        if (!swapped)
+          break;
+      }
     }
 
     p += cnt;
