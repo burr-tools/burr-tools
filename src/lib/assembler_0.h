@@ -86,10 +86,6 @@ private:
   /* used to save if the search is running */
   bool running;
 
-  /* an array for each piece saying how often this one appears */
-  unsigned int *multiPieceCount;
-  unsigned int *multiPieceIndex;
-
   /* this array contains the index of the first node of the nodes that
    * belong to the piece of the array index given
    */
@@ -150,11 +146,6 @@ private:
   unsigned int pos;
   unsigned int *rows;
   unsigned int *columns;
-  unsigned int *nodeF;
-  unsigned int *numF;
-  unsigned int *piece;
-  unsigned int *searchState;
-  std::stack<unsigned int> *addRows;
 
   void iterativeMultiSearch(void);
 
@@ -238,9 +229,10 @@ private:
     int x, y, z;
     unsigned char transformation;
     unsigned int row;            // first node in this row
+    unsigned int piece;
 
-    piecePosition(int x_, int y_, int z_, unsigned char transformation_, unsigned int row_) : x(x_), y(y_), z(z_),
-      transformation(transformation_), row(row_) {}
+    piecePosition(int x_, int y_, int z_, unsigned char transformation_, unsigned int row_, unsigned int pc) : x(x_), y(y_), z(z_),
+      transformation(transformation_), row(row_), piece(pc) {}
   };
   std::vector<piecePosition> piecePositions;
 
@@ -273,7 +265,7 @@ protected:
   void GenerateFirstRow(int unsigned res_filled);
 
   /* call this whenever you start to add information for a new piece */
-  void nextPiece(unsigned int piece, unsigned int count, unsigned int number);
+  void nextPiece(unsigned int piece);
 
   /* this function adds a node to the matrix that belongs to the first columns that represent
    * the pieces. This is normally the first thing you do, when you start a new line in the matrix
@@ -288,7 +280,7 @@ protected:
    * the exact piece and placement the line this node belongs to stands for
    * this function is used in the solution function to restore the placement of the piece
    */
-  void getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z);
+  void getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z, unsigned int *pc);
 
   /* this adds a normal node that represents a used voxel within the solution
    * piecenode is the number that you get from AddPieceNode, col is a number
@@ -299,7 +291,6 @@ protected:
   /* these functions provide access to the cover information for you */
   unsigned int getRows(int pos) { return rows[pos]; }
   unsigned int getRight(int pos) { return right[pos]; }
-  unsigned int getPiece(int pos) { return piece[pos]; }
   unsigned int getColCount(int pos) { return colCount[pos]; }
   unsigned int getVarivoxelStart(void) { return varivoxelStart; }
   unsigned int getPos(void) { return pos; }

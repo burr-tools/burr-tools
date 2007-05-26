@@ -31,7 +31,7 @@
 #define snprintf _snprintf
 #endif
 
-#define ASSEMBLER_VERSION "1.3"
+#define ASSEMBLER_VERSION "1.4"
 
 void assembler_0_c::GenerateFirstRow(unsigned int res_filled) {
 
@@ -77,12 +77,12 @@ int assembler_0_c::AddPieceNode(unsigned int piece, unsigned int rot, unsigned i
   colCount.push_back(piece+1);
   colCount[piece+1]++;
 
-  piecePositions.push_back(piecePosition(x, y, z, rot, piecenode));
+  piecePositions.push_back(piecePosition(x, y, z, rot, piecenode, piece));
 
   return piecenode;
 }
 
-void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z) {
+void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z, unsigned int *piece) {
 
   for (int i = piecePositions.size()-1; i >= 0; i--)
     if (piecePositions[i].row <= node) {
@@ -90,6 +90,7 @@ void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, 
       *x = piecePositions[i].x;
       *y = piecePositions[i].y;
       *z = piecePositions[i].z;
+      *piece = piecePositions[i].piece;
 
       return;
     }
@@ -193,31 +194,22 @@ void assembler_0_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
   colCount[col]++;
 }
 
-void assembler_0_c::nextPiece(unsigned int piece, unsigned int count, unsigned int number) {
-  multiPieceCount[piece] = count;
-  multiPieceIndex[piece] = number;
+void assembler_0_c::nextPiece(unsigned int piece) {
   pieceStart[piece] = left.size();
 }
 
 assembler_0_c::assembler_0_c(assemblerFrontend_c * fe) :
   assembler_c(fe),
-  multiPieceCount(0), multiPieceIndex(0), pieceStart(0),
-  pos(0), rows(0), columns(0), nodeF(0), numF(0),
-  piece(0), searchState(0), addRows(0), avoidTransformedAssemblies(0), avoidTransformedMirror(0)
+  pieceStart(0),
+  pos(0), rows(0), columns(0),
+  avoidTransformedAssemblies(0), avoidTransformedMirror(0)
 {
 }
 
 assembler_0_c::~assembler_0_c() {
   if (rows) delete [] rows;
   if (columns) delete [] columns;
-  if (multiPieceCount) delete [] multiPieceCount;
   if (pieceStart) delete [] pieceStart;
-  if (multiPieceIndex) delete [] multiPieceIndex;
-  if (nodeF) delete [] nodeF;
-  if (numF) delete [] numF;
-  if (piece) delete [] piece;
-  if (searchState) delete [] searchState;
-  if (addRows) delete [] addRows;
 
   if (avoidTransformedMirror) delete avoidTransformedMirror;
 }
@@ -358,7 +350,7 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
      * or select one with 400 placements of which 23/24th can be dropped
      */
     unsigned int symBreakerPiece = 0;
-    unsigned int pc = puzzle->probGetShapeMax(problem, 0);
+    unsigned int pc = 1;
     unsigned int bestFound = sym->countSymmetryIntersection(resultSym, puzzle->probGetShapeShape(problem, 0)->selfSymmetries());
     symBreakerShape = 0;
 
@@ -366,27 +358,18 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
 
       unsigned int cnt = sym->countSymmetryIntersection(resultSym, puzzle->probGetShapeShape(problem, i)->selfSymmetries());
 
-      if ((puzzle->probGetShapeMax(problem, i) < puzzle->probGetShapeMax(problem, symBreakerShape)) ||
-          (puzzle->probGetShapeMax(problem, i) == puzzle->probGetShapeMax(problem, symBreakerShape)) && (cnt < bestFound)) {
+      if (cnt < bestFound) {
         bestFound = cnt;
         symBreakerShape = i;
         symBreakerPiece = pc;
       }
 
-      pc += puzzle->probGetShapeMax(problem, i);
+      pc++;
     }
 
     bool tmp = sym->symmetriesLeft(resultSym, puzzle->probGetShapeShape(problem, symBreakerShape)->selfSymmetries());
 
-    if (tmp || (puzzle->probGetShapeMax(problem, symBreakerShape) > 1)) {
-
-      // we can not use the symmetry breaker shape, if there is more than one piece
-      // of this shape in the problem
-      if (puzzle->probGetShapeMax(problem, symBreakerShape) > 1) {
-        symBreakerShape = 0xFFFFFFFF;
-        symBreakerPiece = 0xFFFFFFFF;
-      }
-
+    if (tmp) {
       checkForTransformedAssemblies(symBreakerPiece, 0);
     }
 
@@ -412,13 +395,11 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
       mm * mirror = new mm[puzzle->probPieceNumber(problem)];
 
       // first initialize
-      for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++)
-        for (unsigned int p = 0; p < puzzle->probGetShapeMax(problem, i); p++) {
-          mirror[pc].shape = i;
-          mirror[pc].mirror = (unsigned int)-1;
-          mirror[pc].trans = 255;
-          pc++;
-        }
+      for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++) {
+        mirror[i].shape = i;
+        mirror[i].mirror = (unsigned int)-1;
+        mirror[i].trans = 255;
+      }
 
       bool mirrorCheck = true;
 
@@ -495,80 +476,77 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
   /* nodes 1..n are the columns nodes */
   GenerateFirstRow(res_filled);
 
-  int piece = 0;
-
   voxel_c ** cache = new voxel_c *[sym->getNumTransformationsMirror()];
 
   /* now we insert one shape after another */
-  for (unsigned int pc = 0; pc < puzzle->probShapeNumber(problem); pc++)
-    for (unsigned int piececount = 0; piececount < puzzle->probGetShapeMax(problem, pc); piececount++, piece++) {
+  for (unsigned int pc = 0; pc < puzzle->probShapeNumber(problem); pc++) {
 
-      nextPiece(piece, puzzle->probGetShapeMax(problem, pc), piececount);
+    nextPiece(pc);
 
-      /* this array contains all the pieces found so far, this will help us
-       * to not add two times the same piece to the structure */
-      unsigned int cachefill = 0;
-      unsigned int placements = 0;
+    /* this array contains all the pieces found so far, this will help us
+     * to not add two times the same piece to the structure */
+    unsigned int cachefill = 0;
+    unsigned int placements = 0;
 
-      /* go through all possible rotations of the piece
-       * if shape is new to cache, add it to the cache and also
-       * add the shape to the matrix, in all positions that it fits
-       */
-      for (unsigned int rot = 0; rot < sym->getNumTransformations(); rot++) {
+    /* go through all possible rotations of the piece
+     * if shape is new to cache, add it to the cache and also
+     * add the shape to the matrix, in all positions that it fits
+     */
+    for (unsigned int rot = 0; rot < sym->getNumTransformations(); rot++) {
 
-        voxel_c * rotation = gt->getVoxel(puzzle->probGetShapeShape(problem, pc));
-        if (!rotation->transform(rot)) {
-          delete rotation;
-          continue;
-        }
-
-        rotation = addToCache(cache, &cachefill, rotation);
-
-        if (rotation) {
-          for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
-            for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
-              for (int z = (int)result->boundZ1()-(int)rotation->boundZ1(); z <= (int)result->boundZ2()-(int)rotation->boundZ2(); z++)
-                if (canPlace(rotation, x, y, z)) {
-
-                  int piecenode = AddPieceNode(piece, rot, x+rotation->getHx(), y+rotation->getHy(), z+rotation->getHz());
-                  placements = 1;
-
-                  /* now add the used cubes of the piece */
-                  for (unsigned int pz = rotation->boundZ1(); pz <= rotation->boundZ2(); pz++)
-                    for (unsigned int py = rotation->boundY1(); py <= rotation->boundY2(); py++)
-                      for (unsigned int px = rotation->boundX1(); px <= rotation->boundX2(); px++)
-                        if (rotation->getState(px, py, pz) != voxel_c::VX_EMPTY)
-                          AddVoxelNode(columns[result->getIndex(x+px, y+py, z+pz)], piecenode);
-                }
-
-
-          /* for the symmetry breaker piece we also add all symmetries of the box */
-          if ((pc == symBreakerShape) && (piececount == 0))
-            for (unsigned int r = 1; r < sym->getNumTransformationsMirror(); r++)
-              if (sym->symmetrieContainsTransformation(resultSym, r)) {
-
-                voxel_c * vx = gt->getVoxel(puzzle->probGetShapeShape(problem, pc));
-
-                if (!vx->transform(rot) || !vx->transform(r)) {
-                  delete vx;
-                  continue;
-                }
-
-                addToCache(cache, &cachefill, vx);
-              }
-        }
+      voxel_c * rotation = gt->getVoxel(puzzle->probGetShapeShape(problem, pc));
+      if (!rotation->transform(rot)) {
+        delete rotation;
+        continue;
       }
 
-      for (unsigned int i = 0; i < cachefill; i++)  delete cache[i];
+      rotation = addToCache(cache, &cachefill, rotation);
 
-      /* check, if the current piece has at least one placement */
-      if (placements == 0) {
-        delete [] cache;
-        delete [] columns;
-        delete [] voxelindex;
-        return -puzzle->probGetShape(problem, pc);
+      if (rotation) {
+        for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
+          for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
+            for (int z = (int)result->boundZ1()-(int)rotation->boundZ1(); z <= (int)result->boundZ2()-(int)rotation->boundZ2(); z++)
+              if (canPlace(rotation, x, y, z)) {
+
+                int piecenode = AddPieceNode(pc, rot, x+rotation->getHx(), y+rotation->getHy(), z+rotation->getHz());
+                placements = 1;
+
+                /* now add the used cubes of the piece */
+                for (unsigned int pz = rotation->boundZ1(); pz <= rotation->boundZ2(); pz++)
+                  for (unsigned int py = rotation->boundY1(); py <= rotation->boundY2(); py++)
+                    for (unsigned int px = rotation->boundX1(); px <= rotation->boundX2(); px++)
+                      if (rotation->getState(px, py, pz) != voxel_c::VX_EMPTY)
+                        AddVoxelNode(columns[result->getIndex(x+px, y+py, z+pz)], piecenode);
+              }
+
+
+        /* for the symmetry breaker piece we also add all symmetries of the box */
+        if (pc == symBreakerShape)
+          for (unsigned int r = 1; r < sym->getNumTransformationsMirror(); r++)
+            if (sym->symmetrieContainsTransformation(resultSym, r)) {
+
+              voxel_c * vx = gt->getVoxel(puzzle->probGetShapeShape(problem, pc));
+
+              if (!vx->transform(rot) || !vx->transform(r)) {
+                delete vx;
+                continue;
+              }
+
+              addToCache(cache, &cachefill, vx);
+            }
       }
     }
+
+    for (unsigned int i = 0; i < cachefill; i++)  delete cache[i];
+
+    /* check, if the current piece has at least one placement */
+    if (placements == 0) {
+      delete [] cache;
+      delete [] columns;
+      delete [] voxelindex;
+      return -puzzle->probGetShape(problem, pc);
+    }
+  }
 
   delete [] cache;
   delete [] columns;
@@ -612,7 +590,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   int h = res_filled;
 
   for (unsigned int j = 0; j < puz->probShapeNumber(prob); j++)
-    h -= puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED) * puz->probGetShapeMax(prob, j);
+    h -= puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED);
 
   if (h < 0) {
     errorsState = ERR_TOO_MANY_UNITS;
@@ -631,17 +609,8 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   /* allocate all the required memory */
   rows = new unsigned int[piecenumber];
   columns = new unsigned int [piecenumber];
-  nodeF = new unsigned int [piecenumber];
-  numF = new unsigned int [piecenumber];
-  piece = new unsigned int [piecenumber];
-  addRows = new std::stack<unsigned int> [piecenumber];
-  searchState = new unsigned int [piecenumber + 1];
-
-  searchState[0] = 0;
 
   pieceStart = new unsigned int[piecenumber];
-  multiPieceCount = new unsigned int[piecenumber];
-  multiPieceIndex = new unsigned int[piecenumber];
 
   /* fill the nodes arrays */
   int error = prepare(res_filled, res_vari);
@@ -1134,8 +1103,14 @@ assembly_c * assembler_0_c::getAssembly(void) {
     return assembly;
   }
 
+  bt_assert(getPos() <= getPiecenumber());
+
   /* first we need to find the order the piece are in */
   unsigned int * pieces = new unsigned int[getPiecenumber()];
+  unsigned char * trans = new unsigned char[getPiecenumber()];
+  int * xs = new int[getPiecenumber()];
+  int * ys = new int[getPiecenumber()];
+  int * zs = new int[getPiecenumber()];
 
   /* fill the array with 0xff, so that we can distinguish between
    * placed and unplaced pieces
@@ -1143,24 +1118,33 @@ assembly_c * assembler_0_c::getAssembly(void) {
   memset(pieces, 0xff, sizeof(unsigned int) * getPiecenumber());
 
   for (unsigned int i = 0; i < getPos(); i++) {
-    bt_assert(getPiece(i) < getPiecenumber());
-    pieces[getPiece(i)] = i;
+    unsigned char tran;
+    int x, y, z;
+    unsigned int piece;
+
+    getPieceInformation(getRows(i), &tran, &x, &y, &z, &piece);
+
+    pieces[piece] = i;
+    trans[piece] = tran;
+    xs[piece] = x;
+    ys[piece] = y;
+    zs[piece] = z;
   }
 
   for (unsigned int i = 0; i < getPiecenumber(); i++)
     if (pieces[i] >= getPos())
       assembly->addNonPlacement();
-    else {
-      unsigned char tran;
-      int x, y, z;
-
-      getPieceInformation(getRows(pieces[i]), &tran, &x, &y, &z);
-      assembly->addPlacement(tran, x, y, z);
-    }
+    else
+      assembly->addPlacement(trans[i], xs[i], ys[i], zs[i]);
 
   delete [] pieces;
+  delete [] trans;
+  delete [] xs;
+  delete [] ys;
+  delete [] zs;
 
-  assembly->sort(puzzle, problem);
+  // sort is not necessary because there is only one of each piece
+  // assembly->sort(puzzle, problem);
 
   return assembly;
 }
@@ -1189,20 +1173,6 @@ void assembler_0_c::solution(void) {
 
 /* to understand this function you need to first completely understand the
  * dancing link algorithm.
- * The next thing to know is how this alg. Avoids finding the solutions
- * with identical pieces with all permutations. This is done by enforcing
- * an order of the pieces. The placements and the pieces are enumerated and
- * pieces with a smaller number must have a placement with a smaller number.
- * Then you need to know the layout of the matrix used here. It's exactly as
- * describes by Knuth. First columns for pieces. Followed by the columns for
- * the normal result voxels followed by the columns for the variable
- * pieces. All placements for one piece are one below the other. One piece
- * follows after another. The nodes are enumerated line by line.
- * This fixed order allows for simple checks of the placement numbers against
- * each other (only relative comparisons are possible and necessary) by
- * knowing the piece this row belongs to and knowing the first node that
- * belongs to this piece and comparing the distances to this first node
- * for the two placements of the two pieces
  */
 void assembler_0_c::iterativeMultiSearch(void) {
 
@@ -1253,143 +1223,64 @@ void assembler_0_c::iterativeMultiSearch(void) {
     if (!rows[pos]) {
 
       // start with a new column
-      if (searchState[pos] == 0) {
-        /* search the best column for the next recursion step
-         *
-         * we actually do a bit more:
-         * we find the column with the smallest column count. This column is selected
-         * from the piece columns and the normal result columns
-         *
-         * we also look for piece and result columns that have a count of 0 that value
-         * will lead to impossible arrangements
-         */
-        unsigned int c = right[0];
-        unsigned int s = colCount[c];
 
-        if (s) {
-          register unsigned int j = right[c];
+      /* search the best column for the next recursion step
+       *
+       * we actually do a bit more:
+       * we find the column with the smallest column count. This column is selected
+       * from the piece columns and the normal result columns
+       *
+       * we also look for piece and result columns that have a count of 0 that value
+       * will lead to impossible arrangements
+       */
+      unsigned int c = right[0];
+      unsigned int s = colCount[c];
 
-          while (j) {
+      if (s) {
+        register unsigned int j = right[c];
 
-            if (colCount[j] < s) {
-              c = j;
-              s = colCount[c];
+        while (j) {
 
-              if (!s)
-                break;
-            }
+          if (colCount[j] < s) {
+            c = j;
+            s = colCount[c];
 
-            // multi pieces need to have at least num-1 placements
-            // as we are not currently in the process of placing a multi
-            // piece either all of a group of multipieces have been placed and
-            // the columns removed or none of them. So we can check the columns
-            // that are still there and force the counters above the number
-            // of pieces in the group of multipieces
-            // num-1 because the first piece has the first placement the other instances
-            // might have this placement already removed, so we check only against that
-            // smaller number
-            if ((j <= piecenumber) && (colCount[j] < multiPieceCount[j-1]-1) && (multiPieceIndex[j-1] > 0)) {
-              s = 0;
+            if (!s)
               break;
-            }
-
-
-            j = right[j];
-          }
-        }
-
-        // now check for the holes, only the variable columns can be unfillable
-        // but there must not be more unfillable voxels than there are holes
-        // if that is the case we can backtrack
-        // sometimes this doesn't help much, but it also seems like
-        // it doesn't cost a lot of time, so let's keep it in for the moment
-        if (s) {
-          unsigned int currentHoles = holes;
-          register unsigned int j = right[varivoxelEnd];
-
-          while (j != varivoxelEnd) {
-            if (colCount[j] == 0) {
-              if (currentHoles == 0) {
-                s = 0;
-                break;
-              }
-              currentHoles--;
-            }
-            j = right[j];
-          }
-        }
-
-        if (s) {
-
-          // we have found a valid column, start a search
-          columns[pos] = c;
-          rows[pos] = down(columns[pos]);
-
-          // find out the piece number for the first row, for the piece
-          // columns we can take a short cut, because here the piecenumber
-          // equals the column number
-          if (c <= piecenumber)
-            piece[pos] = c-1;
-          else {
-            // for the other columns we need to search for the piece number
-            piece[pos] = 0;
-            while ((piece[pos] < piecenumber-1) && (rows[pos] >= pieceStart[piece[pos]+1])) piece[pos]++;
-          }
-
-          // we must either have hit a single piece or the first
-          // piece of a multi-piece. Every time the index is 0
-          //
-          // shh... we can hit a later piece of a multi piece here after
-          // all, that can happen, when we have selected the multi-piece
-          // as a symmetry breaker, and the search selects a voxel to fill
-          // and that voxel can not be filled with the first piece of the multi-
-          // piece because of its limits in orientation because of it being the
-          // symmetry breaker.
-          bt_assert(multiPieceIndex[piece[pos]] == 0);
-
-          cont = true;
-        }
-      } else {
-        // this is the branch for the case we are forced to place certain pieces
-        // this happens, if we placed a piece with a shape used by more than one piece
-        // we do not need to search for a good column here as we already know which
-        // column we are going to place, but we must check, if there is one column
-        // with a count of 0 so we can back track
-        unsigned int j = right[0];
-
-        do {
-
-          // if we find a column with count 0 backtrack
-          if (!colCount[j]) {
-            break;
-          }
-
-          // check that multi pieces can still be places the required number of times. En detail:
-          // if we have a piece column that is for the current multi piece group and the
-          // counter is smaller than the number of pieces still required to place, break
-          if ((piece[pos]+1 <= j-1) && (piece[pos]+numF[pos] > j-1) && (colCount[j] < numF[pos])) {
-            break;
-          }
-
-          // if we have a column for a piece and that piece is NOT the currently placed multi-piece
-          // the number of possible placements needs to be at least the size of the multi piece group
-          if ((j <= piecenumber) && ((piece[pos] > j-1) || (piece[pos]+numF[pos] <= j-1)) && (colCount[j] < multiPieceCount[j-1])) {
-            break;
           }
 
           j = right[j];
-        } while (j);
-
-        // FIXME: we should also do the hole check in here
-
-        if (!j) {
-          // select the column.
-          // we have a fixed column given by the last recursion step, so take this column
-          // the piece array has already been initialized in the last loop, see below
-          columns[pos] = piece[pos] + 1;
-          rows[pos] = down(columns[pos]);
-          cont = true;
         }
+      }
+
+      // now check for the holes, only the variable columns can be unfillable
+      // but there must not be more unfillable voxels than there are holes
+      // if that is the case we can backtrack
+      // sometimes this doesn't help much, but it also seems like
+      // it doesn't cost a lot of time, so let's keep it in for the moment
+      if (s) {
+        unsigned int currentHoles = holes;
+        register unsigned int j = right[varivoxelEnd];
+
+        while (j != varivoxelEnd) {
+          if (colCount[j] == 0) {
+            if (currentHoles == 0) {
+              s = 0;
+              break;
+            }
+            currentHoles--;
+          }
+          j = right[j];
+        }
+      }
+
+      if (s) {
+
+        // we have found a valid column, start a search
+        columns[pos] = c;
+        rows[pos] = down(columns[pos]);
+
+        cont = true;
       }
 
       // found no fitting row, or column with zero count
@@ -1403,113 +1294,27 @@ void assembler_0_c::iterativeMultiSearch(void) {
 
     } else {
 
-
       // continue on a column we have already started, this is inside the loop in the
       // recursive function, after we return from the recursive call
       // we uncover our row, find the next one and continue, if there is a new row
       uncover_row(rows[pos]);
       cont = true;
 
-      do {
-        rows[pos] = down(rows[pos]);
+      rows[pos] = down(rows[pos]);
 
-        if (rows[pos] == columns[pos]) {
-          cont = false;
-          break;
-        }
-
-        // find out the piece for the current column
-        // the piece can only change for non piece columns
-        if (columns[pos] > piecenumber)
-          while ((piece[pos] < piecenumber-1) && (rows[pos] >= pieceStart[piece[pos]+1])) piece[pos]++;
-
-        if (searchState[pos] == 1) break;
-
-      } while (multiPieceIndex[piece[pos]] > 0);
+      if (rows[pos] == columns[pos])
+        cont = false;
     }
 
     // check, if we continue, if we have found a new row to cover
     if (cont) {
 
       // cover the row
-
-      // the next lines with the crazy if-nesting sets up the parameters for the next
-      // recursion step, this is different depending on the state we are in if there
-      // are more pieces in front or behind us...
-
-      // now depending on the properties of the current piece set up the variables for the
-      // next recursion step.
-      if ((searchState[pos] == 0) && (multiPieceCount[piece[pos]] != 1)) {
-
-        // this is the case when we are in normal mode but want to place a multipiece
-
-        bt_assert(multiPieceIndex[piece[pos]] == 0);
-
-        // is is a multi piece, so we have to at least go forward until we have placed all
-        // the multi pieces
-
-        if (columns[pos] != piece[pos]+1)
-          nodeF[pos+1] = 0;
-        else
-          nodeF[pos+1] = rows[pos] - pieceStart[piece[pos]];
-
-        numF[pos+1] = multiPieceCount[piece[pos]] - 1 - multiPieceIndex[piece[pos]];
-        piece[pos+1] = piece[pos] + 1;
-        searchState[pos+1] = 1;
-
-      } else if ((searchState[pos] == 1) && (numF[pos] > 1)) {
-
-        // this is the case that we are in moving forward mode and
-        // there are more pieces to place, so let's do another forward step
-
-        nodeF[pos+1] = rows[pos]-pieceStart[piece[pos]];
-        numF[pos+1] = numF[pos] - 1;
-        piece[pos+1] = piece[pos] + 1;
-        searchState[pos+1] = 1;
-
-      } else {
-
-        // nothing special continue in normal mode
-        searchState[pos+1] = 0;
-      }
-
-      if ((searchState[pos+1] == 1) && (nodeF[pos+1] > 0)) {
-        /* we cover all rows in all multi pieces that are still available
-         * whose row number is forbidden
-         * problem: how to uncover?
-         * for this we have the stack addRows, that contains all the additionally covered
-         * rows
-         */
-
-        // for all pieces of this multi-piece set
-        for (unsigned int n = piece[pos+1]; n < piece[pos+1]+numF[pos+1]; n++) {
-          unsigned int r = down(n+1);
-
-          // check all the rows
-          while (r != n+1) {
-
-            // remove the row, if it is forbidden
-            if ((r - pieceStart[n]) < nodeF[pos+1]) {
-              remove_row(r);
-              addRows[pos].push(r);
-            }
-
-            r = down(r);
-          }
-        }
-      }
-
       cover_row(rows[pos]);
 
       pos++;
 
     } else {
-
-      // now uncover the removed rows
-      while (addRows[pos].size()) {
-        reinsert_row(addRows[pos].top());
-        addRows[pos].pop();
-      }
 
       // OK finished this column, uncover it and backtrack
       uncover(columns[pos]);
@@ -1617,28 +1422,8 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
       spos++;
       if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
-      spos += getInt(string+spos, &searchState[i]); if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-
-      /* we have only a valid searchState for pos == piecenumber */
-      if (i == piecenumber) continue;
-
-      switch(searchState[i]) {
-      case 0:
-        spos += getInt(string+spos, &rows[i]);      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        spos += getInt(string+spos, &columns[i]);   if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        spos += getInt(string+spos, &piece[i]);     if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        break;
-      case 1:
-        spos += getInt(string+spos, &rows[i]);      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        spos += getInt(string+spos, &columns[i]);   if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        spos += getInt(string+spos, &nodeF[i]);     if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        spos += getInt(string+spos, &numF[i]);      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        spos += getInt(string+spos, &piece[i]);     if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        break;
-      default:
-        // must not happen, return with error
-        return ERR_CAN_NOT_RESTORE_SYNTAX;
-      }
+      spos += getInt(string+spos, &rows[i]);      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      spos += getInt(string+spos, &columns[i]);   if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
       while ((spos < len) && (*(string+spos) != ')')) spos++;
       spos++;
@@ -1649,14 +1434,6 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
 
   /* check for integrity last read data may contain only preparation for next, so don't check that one */
   for (unsigned int i = 0; i < pos; i++) {
-    // check if the piecenumber and the covered row fit together
-    if (rows[i] < pieceStart[piece[i]])
-      return ERR_CAN_NOT_RESTORE_SYNTAX;
-
-    // except for the last piece we can also check the end row
-    if ((piece[i]+1 < piecenumber) && (rows[i] >= pieceStart[piece[i]+1]))
-      return ERR_CAN_NOT_RESTORE_SYNTAX;
-
     // for the last piece we can check for the number of nodes
     if (rows[i] > left.size())
       return ERR_CAN_NOT_RESTORE_SYNTAX;
@@ -1674,33 +1451,6 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
 
       if ((p < piecenumber) && rows[p]) {
         cover(columns[p]);
-
-        if ((p < pos-1) && (searchState[p+1] == 1) && (nodeF[p+1] > 0)) {
-          /* we cover all rows in all multi pieces that are still available
-           * whose row number is forbidden
-           * problem: how to uncover?
-           * for this we have the stack addRows, that contains all the additionally covered
-           * rows
-           */
-
-          // for all pieces of this multi-piece set
-          for (unsigned int n = piece[p+1]; n < piece[p+1]+numF[p+1]; n++) {
-            unsigned int r = down(n+1);
-
-            // check all the rows
-            while (r != n+1) {
-
-              // remove the row, if it is forbidden
-              if ((r - pieceStart[n]) < nodeF[p+1]) {
-                remove_row(r);
-                addRows[p].push(r);
-              }
-
-              r = down(r);
-            }
-          }
-        }
-
         cover_row(rows[p]);
       }
 
@@ -1730,15 +1480,7 @@ xml::node assembler_0_c::save(void) const {
   if (pos <= piecenumber)
     for (unsigned int j = 0; j <= pos; j++) {
 
-      switch(searchState[j]) {
-      case 0:
-        snprintf(tmp, 100, "(%i %i %i %i)", searchState[j], rows[j], columns[j], piece[j]);
-        break;
-      case 1:
-        snprintf(tmp, 100, "(%i %i %i %i %i %i)", searchState[j], rows[j], columns[j], nodeF[j], numF[j], piece[j]);
-        break;
-      }
-
+      snprintf(tmp, 100, "(%i %i)", rows[j], columns[j]);
       cont += tmp;
 
       if (j < pos)
@@ -1751,6 +1493,8 @@ xml::node assembler_0_c::save(void) const {
 }
 
 unsigned int assembler_0_c::getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) {
+
+  unsigned int pi;
 
   if (!node)
     node = down(piece+1);
@@ -1765,7 +1509,11 @@ unsigned int assembler_0_c::getPiecePlacement(unsigned int node, int delta, unsi
     delta++;
   }
 
-  getPieceInformation(node, tran, x, y, z);
+  getPieceInformation(node, tran, x, y, z, &pi);
+
+  if (pi != piece)
+    printf("oooops\n");
+
   return node;
 }
 
