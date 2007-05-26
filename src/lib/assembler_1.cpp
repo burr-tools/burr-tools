@@ -482,8 +482,8 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
   piecenumber = puz->probPieceNumber(prob);
 
   /* count the filled and variable units */
-  int res_vari = puz->probGetResultShape(prob)->countState(voxel_c::VX_VARIABLE);
-  int res_filled = puz->probGetResultShape(prob)->countState(voxel_c::VX_FILLED) + res_vari;
+  unsigned int res_vari = puz->probGetResultShape(prob)->countState(voxel_c::VX_VARIABLE);
+  unsigned int res_filled = puz->probGetResultShape(prob)->countState(voxel_c::VX_FILLED) + res_vari;
 
   for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++)
     if (puz->probGetShapeShape(prob, i)->countState(voxel_c::VX_VARIABLE)) {
@@ -1550,7 +1550,7 @@ static int stringToVector(const char * string, std::vector<unsigned int> & v) {
 
   // now get vetor content
 
-  for (int i = 0; i < count; i++) {
+  for (unsigned int i = 0; i < count; i++) {
     unsigned int val;
     pos += getInt(string+pos, &val);
     v.push_back(val);
@@ -1576,12 +1576,11 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   // not we need to restore the matrix to the right state
 
   unsigned int column_stack_pos = 0;
-  unsigned int next_row_pos = 0;
   unsigned int col, row;
   unsigned int hiderows_pos = 0;
   unsigned int row_pos = 0;
 
-  for (int i = 0; i < task_stack.size(); i++) {
+  for (unsigned int i = 0; i < task_stack.size(); i++) {
 
     switch (task_stack[i]) {
 
@@ -1629,7 +1628,7 @@ static std::string vectorToString(const std::vector<unsigned int> & v) {
   snprintf(tmp, 100, "%i ", v.size());
   cont += tmp;
 
-  for (int i = 0; i < v.size(); i++) {
+  for (unsigned int i = 0; i < v.size(); i++) {
     snprintf(tmp, 100, "%i ", v[i]);
     cont += tmp;
   }
