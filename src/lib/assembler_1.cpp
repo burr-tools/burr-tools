@@ -475,6 +475,9 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
   puzzle = puz;
   problem = prob;
 
+  if (!canHandle(puzzle, problem))
+    return ERR_PUZZLE_UNHANDABLE;
+
   /* get and save piece number of puzzle */
   piecenumber = puz->probPieceNumber(prob);
 

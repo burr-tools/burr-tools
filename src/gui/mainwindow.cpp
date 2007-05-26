@@ -2485,6 +2485,10 @@ void mainWindow_c::update(void) {
         fl_message("Shape %i is used as piece and contains variable cubes, that is not allowed", assmThread->getErrorParam()+1);
         selectShape = assmThread->getErrorParam();
         break;
+      case assembler_c::ERR_PUZZLE_UNHANDABLE:
+        fl_message("Something went wrong the program can not solve your puzzle definitions.\n"
+                   "You should send the puzzle file to the programmer!");
+        break;
       default:
         break;
       }

@@ -74,7 +74,8 @@ public:
     ERR_CAN_NOT_PLACE,
     ERR_CAN_NOT_RESTORE_VERSION,
     ERR_CAN_NOT_RESTORE_SYNTAX,
-    ERR_PIECE_WITH_VARICUBE
+    ERR_PIECE_WITH_VARICUBE,
+    ERR_PUZZLE_UNHANDABLE        // the puzzle contains definitions that can not be (like ranges, multipieces, ...)
   } errState;
 
   /* initialisation, only the things that can be done quickly */
