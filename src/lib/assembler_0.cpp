@@ -343,8 +343,6 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
      * as its a difference if we select a piece that has only one placement anyway
      * or select one with 400 placements of which 23/24th can be dropped
      */
-    unsigned int symBreakerPiece = 0;
-    unsigned int pc = 1;
     unsigned int bestFound = sym->countSymmetryIntersection(resultSym, puzzle->probGetShapeShape(problem, 0)->selfSymmetries());
     symBreakerShape = 0;
 
@@ -355,17 +353,11 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
       if (cnt < bestFound) {
         bestFound = cnt;
         symBreakerShape = i;
-        symBreakerPiece = pc;
       }
-
-      pc++;
     }
 
-    bool tmp = sym->symmetriesLeft(resultSym, puzzle->probGetShapeShape(problem, symBreakerShape)->selfSymmetries());
-
-    if (tmp) {
-      checkForTransformedAssemblies(symBreakerPiece, 0);
-    }
+    if (sym->symmetriesLeft(resultSym, puzzle->probGetShapeShape(problem, symBreakerShape)->selfSymmetries()))
+      checkForTransformedAssemblies(symBreakerShape, 0);
 
     if (sym->symmetryContainsMirror(resultSym)) {
       /* we need to to the mirror check here, and initialize the mirror
@@ -378,7 +370,6 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
        *   2a) all pieces with no mirror symmetries have a mirror partner -> check mirrors, find pairs
        *   2b) at least one piece with no mirror symmetries has no partner -> no mirror check
        */
-      pc = 0;
 
       typedef struct {
         unsigned int shape;    // the shape of this piece
@@ -452,7 +443,7 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
           if (mirror[i].trans != 255)
             mir->addPieces(i, mirror[i].mirror, mirror[i].trans);
 
-        checkForTransformedAssemblies(symBreakerPiece, mir);
+        checkForTransformedAssemblies(symBreakerShape, mir);
       }
 
       delete [] mirror;
