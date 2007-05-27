@@ -194,13 +194,8 @@ void assembler_0_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
   colCount[col]++;
 }
 
-void assembler_0_c::nextPiece(unsigned int piece) {
-  pieceStart[piece] = left.size();
-}
-
 assembler_0_c::assembler_0_c(assemblerFrontend_c * fe) :
   assembler_c(fe),
-  pieceStart(0),
   pos(0), rows(0), columns(0),
   avoidTransformedAssemblies(0), avoidTransformedMirror(0)
 {
@@ -209,7 +204,6 @@ assembler_0_c::assembler_0_c(assemblerFrontend_c * fe) :
 assembler_0_c::~assembler_0_c() {
   if (rows) delete [] rows;
   if (columns) delete [] columns;
-  if (pieceStart) delete [] pieceStart;
 
   if (avoidTransformedMirror) delete avoidTransformedMirror;
 }
@@ -481,8 +475,6 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
   /* now we insert one shape after another */
   for (unsigned int pc = 0; pc < puzzle->probShapeNumber(problem); pc++) {
 
-    nextPiece(pc);
-
     /* this array contains all the pieces found so far, this will help us
      * to not add two times the same piece to the structure */
     unsigned int cachefill = 0;
@@ -609,8 +601,6 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   /* allocate all the required memory */
   rows = new unsigned int[piecenumber];
   columns = new unsigned int [piecenumber];
-
-  pieceStart = new unsigned int[piecenumber];
 
   /* fill the nodes arrays */
   int error = prepare(res_filled, res_vari);
@@ -1064,13 +1054,13 @@ void assembler_0_c::reduce(void) {
 
           rowsToRemove.clear();
 
-          unsigned int piece = 0;
+          unsigned int i = 0;
           for (unsigned int r = down(c); r != c; r = down(r)) {
 
             /* find out to which piece this row belongs */
-            while ((piece < piecenumber-1) && (r >= pieceStart[piece+1])) piece++;
+            while ((i+1) < piecePositions.size() && piecePositions[i+1].row <= r) i++;
 
-            if (piece != p)
+            if (piecePositions[i].piece != p)
               rowsToRemove.push_back(r);
           }
 

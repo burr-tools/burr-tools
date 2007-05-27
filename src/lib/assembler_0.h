@@ -86,11 +86,6 @@ private:
   /* used to save if the search is running */
   bool running;
 
-  /* this array contains the index of the first node of the nodes that
-   * belong to the piece of the array index given
-   */
-  unsigned int *pieceStart;
-
   /* cover one column:
    * - remove the column from the column header node list,
    * - remove all rows where the given column is 1
@@ -263,9 +258,6 @@ protected:
    * in prepare
    */
   void GenerateFirstRow(int unsigned res_filled);
-
-  /* call this whenever you start to add information for a new piece */
-  void nextPiece(unsigned int piece);
 
   /* this function adds a node to the matrix that belongs to the first columns that represent
    * the pieces. This is normally the first thing you do, when you start a new line in the matrix
