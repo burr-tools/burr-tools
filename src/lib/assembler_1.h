@@ -77,6 +77,13 @@ private:
   std::vector<unsigned int> min;
   std::vector<unsigned int> max;
 
+  /* this vector contains all columns that are used for the hole
+   * optimisation: up to "holes" instances of these columns might
+   * be zero
+   */
+  std::vector<unsigned int> holeColumns;
+  unsigned int holes;
+
   /* this function gets called whenever an assembly was found
    * when a callback is available it will call getAssembly to
    * obtain the assembly for the found solution when the

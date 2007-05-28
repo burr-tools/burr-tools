@@ -209,6 +209,7 @@ int assembler_1_c::prepare(void) {
       switch(result->getState(i)) {
       case voxel_c::VX_VARIABLE:
         min[c] = 0;
+        holeColumns.push_back(c);
       case voxel_c::VX_FILLED:
         columns[i] = c++;
         break;
@@ -504,6 +505,11 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
     min += puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED) * puz->probGetShapeMin(prob, j);
     max += puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED) * puz->probGetShapeMax(prob, j);
   }
+
+  if (min == max)
+    holes = res_filled - min;
+  else
+    holes = 0xFFFFFF;
 
   if (min > res_filled) {
     errorsState = ERR_TOO_MANY_UNITS;
@@ -894,6 +900,7 @@ void assembler_1_c::uncover_column_only(int col) {
 void assembler_1_c::cover_column_rows(int col) {
 
   for (int r = down[col]; r != col; r = down[r]) {
+    colCount[col] -= weight[r];
     for (int c = right[r]; c != r; c = right[c]) {
       up[down[c]] = up[c];
       down[up[c]] = down[c];
@@ -910,6 +917,7 @@ void assembler_1_c::uncover_column_rows(int col) {
       up[down[c]] = c;
       down[up[c]] = c;
     }
+    colCount[col] += weight[r];
   }
 }
 
@@ -1009,16 +1017,29 @@ void assembler_1_c::rec(unsigned int next_row) {
 
   //-------> case 0
 
+  // check holes, if there are too many holes, we return
+  if (holes < holeColumns.size()) {
+    unsigned int cnt = holes;
+    for (int i = 0; i < holeColumns.size(); i++)
+      if (colCount[holeColumns[i]] == 0 && weight[holeColumns[i]] == 0)
+        if (cnt == 0)
+          return;
+        else
+          cnt--;
+  }
+
   // when we get called with a header node (including 0)
   // we have done all rows and need to select a new column
   if (next_row < headerNodes) {
     // no column selected, so find a new one
+
 
     // when no column is left we have found a solution
     if (right[0] == 0) {
       solution();
       return;
     }
+
 
     /* probably the same criterium as in the old dancing link algorithm
      * leads to good guesses here, so find the column, with the least
@@ -1233,10 +1254,33 @@ void assembler_1_c::iterative(void) {
       case 0:
         // standard entry into function
 
+        // check holes, if there are too many holes, we return
+        if (holes < holeColumns.size()) {
+          unsigned int cnt = holes;
+          bool ret = false;
+          unsigned int i;
+          for (i = 0; i < holeColumns.size(); i++) {
+            if (colCount[holeColumns[i]] == 0 && weight[holeColumns[i]] == 0) {
+              if (cnt == 0) {
+                next_row_stack.pop_back();
+                task_stack.pop_back();
+                ret = true;
+                break;
+              } else {
+                cnt--;
+              }
+            }
+          }
+          bt_assert(ret == (i < holeColumns.size()));
+          if (ret)
+            break;
+        }
+
         // when we get called with a header node (including 0)
         // we have done all rows and need to select a new column
         if (next_row_stack.back() < headerNodes) {
           // no column selected, so find a new one
+
 
           // when no column is left we have found a solution
           if (right[0] == 0) {
