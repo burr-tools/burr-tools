@@ -172,6 +172,17 @@ public:
    */
   virtual unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) { return 0; }
 
+
+  /* finally some debugging functions that allow to look how, why, and where pieces are placed */
+
+  /* do exactly the given number of rounds in the assembler, and then stop */
+  virtual void debug_step(unsigned long num = 1) {};
+
+  /* returns the assembly for the current state of the assembler or the solution assembly, if
+   * the assembler is currently at a solution
+   */
+  virtual assembly_c * getAssembly(void) = 0;
+
 };
 
 #endif

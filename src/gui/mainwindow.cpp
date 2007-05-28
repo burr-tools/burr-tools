@@ -51,7 +51,7 @@
 #include "../lib/ps3dloader.h"
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
-#include "../lib/assembler_0.h"
+#include "../lib/assembler.h"
 #include "../lib/assemblerthread.h"
 #include "../lib/disassembly.h"
 #include "../lib/gridtype.h"
@@ -839,7 +839,7 @@ void mainWindow_c::cb_BtnAssemblerStep(void) {
 
   bt_assert(assmThread == 0);
 
-  assembler_0_c * assm = (assembler_0_c*)puzzle->probGetAssembler(solutionProblem->getSelection());
+  assembler_c * assm = (assembler_c*)puzzle->probGetAssembler(solutionProblem->getSelection());
 
   bt_assert(assm);
 

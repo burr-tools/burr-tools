@@ -1215,6 +1215,18 @@ void assembler_1_c::iterative(void) {
         break;
     }
 
+    // the debugger
+    if (debug) {
+      if (task_stack.back() == 1 ||
+          task_stack.back() == 2 ||
+          task_stack.back() == 5) {
+        if (debug_loops <= 0)
+          break;
+
+        debug_loops --;
+      }
+    }
+
     // the cases in this switch are marked in the function above
     switch (task_stack.back()) {
 
@@ -1488,6 +1500,7 @@ void assembler_1_c::assemble(assembler_cb * callback) {
 
   running = true;
   abbort = false;
+  debug = false;
 
   if (errorsState == ERR_NONE) {
 
@@ -1690,6 +1703,15 @@ unsigned int assembler_1_c::getPiecePlacementCount(unsigned int piece) {
   }
 
   return colCount[shape+1];
+}
+
+void assembler_1_c::debug_step(unsigned long num) {
+  debug = true;
+  debug_loops = 1;
+  abbort = false;
+  asm_bc = 0;
+  iterative();
+  debug = false;
 }
 
 bool assembler_1_c::canHandle(const puzzle_c * p, unsigned int problem) {

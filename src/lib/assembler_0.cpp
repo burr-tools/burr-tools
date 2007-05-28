@@ -1187,9 +1187,6 @@ void assembler_0_c::iterativeMultiSearch(void) {
         break;
 
       debug_loops --;
-
-      if (debug_pos == pos)
-        break;
     }
 
     // if all pieces are placed we can not go on even if there are
@@ -1507,12 +1504,8 @@ unsigned int assembler_0_c::getPiecePlacementCount(unsigned int piece) {
 void assembler_0_c::debug_step(unsigned long num) {
   debug = true;
   debug_loops = 1;
-  debug_pos = (unsigned int)-1;
   asm_bc = 0;
   iterativeMultiSearch();
-}
-
-void assembler_0_c::debug_run(unsigned int level) {
 }
 
 bool assembler_0_c::canHandle(const puzzle_c * p, unsigned int problem) {

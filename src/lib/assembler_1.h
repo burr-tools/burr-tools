@@ -173,6 +173,11 @@ private:
   unsigned int avoidTransformedPivot;
   mirrorInfo_c * avoidTransformedMirror;
 
+  /* the variables for debugging assembling processes
+   */
+  bool debug;         // debugging enabled
+  int debug_loops;    // how many loops to run ?
+
 protected:
 
   /* as this is only a back end doing the processing on the matrix, there needs to
@@ -250,10 +255,7 @@ public:
   virtual xml::node save(void) const;
   virtual void reduce(void);
   virtual unsigned int getReducePiece(void) { return reducePiece; }
-
-  /* gets called when a solution is found. This function
-   * then assembles the solution and returns an assembly
-   */
+  void debug_step(unsigned long num = 1);
   assembly_c * getAssembly(void);
 
   static bool canHandle(const puzzle_c * p, unsigned int problem);
