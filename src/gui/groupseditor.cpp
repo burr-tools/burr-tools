@@ -370,21 +370,63 @@ void groupsEditor_c::cb_CloseWindow(void) {
   hide();
 }
 
+static void cb_MaxHoles_stub(Fl_Widget* o, void* v) { ((groupsEditor_c*)v)->cb_MaxHoles(); }
+void groupsEditor_c::cb_MaxHoles(void) {
+
+  if (maxHoles->value()[0])
+    puzzle->probSetMaxHoles(problem, atoi(maxHoles->value()));
+  else
+    puzzle->probSetMaxHoles(problem, 0, true);
+
+  if (puzzle->probMaxHolesDefined(problem)) {
+    char tmp[20];
+    snprintf(tmp, 20, "%i", puzzle->probGetMaxHoles(problem));
+    maxHoles->value(tmp);
+  } else
+    maxHoles->value("");
+
+  _changed = true;
+}
+
 /* when hiding the window, first close active editing tasks */
 void groupsEditor_c::hide(void) {
   tab->finishEdit();
+
+  if (maxHoles->value()[0])
+    puzzle->probSetMaxHoles(problem, atoi(maxHoles->value()));
+  else
+    puzzle->probSetMaxHoles(problem, 0, true);
+
   Fl_Double_Window::hide();
 }
 
 #define SZ_GAP 5                               // gap between elements
 
-groupsEditor_c::groupsEditor_c(puzzle_c * p, unsigned int pr) : LFl_Double_Window(true) {
+groupsEditor_c::groupsEditor_c(puzzle_c * p, unsigned int pr) : LFl_Double_Window(true), puzzle(p), problem(pr), _changed(false) {
 
   tab = new groupsEditorTab_c(0, 0, 1, 1, p, pr);
   tab->pitch(SZ_GAP);
   tab->weight(1, 1);
 
   layouter_c * o = new layouter_c(0, 1, 1, 1);
+  o->pitch(SZ_GAP);
+
+  new LFl_Box("Maximum Number of Holes:", 0, 0, 1, 1);
+  maxHoles = new LFl_Input(1, 0, 1, 1);
+  maxHoles->weight(1, 0);
+  maxHoles->tooltip(" Use to define the maximum number of holes alowed in the final solution. This is only"
+                    "useful, when having pieceranges and will be disabled if you don't. ");
+  maxHoles->callback(cb_MaxHoles_stub, this);
+  if (p->probMaxHolesDefined(pr)) {
+    char tmp[20];
+    snprintf(tmp, 20, "%i", p->probGetMaxHoles(pr));
+    maxHoles->value(tmp);
+  } else
+    maxHoles->value("");
+
+  o->end();
+
+  o = new layouter_c(0, 2, 2, 1);
 
   LFl_Button * btn;
 
@@ -406,6 +448,6 @@ groupsEditor_c::groupsEditor_c(puzzle_c * p, unsigned int pr) : LFl_Double_Windo
 
 
 bool groupsEditor_c::changed(void) {
-  return tab->getChanged();
+  return tab->getChanged() || _changed;
 }
 

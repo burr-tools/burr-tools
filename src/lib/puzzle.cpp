@@ -455,10 +455,19 @@ public:
    * the time used up to get to the current state in the solving progress (in seconds)
    */
   unsigned long usedTime;
+
+  /**
+   * number of holes maximally allowed
+   * this value *may* be used to limit the number of holes, if you have piece ranges
+   * in your puzzle. As soon as there are no piece ranges, this value can be calculated
+   * exaclty and there is no need to limit the number
+   * the value 0xFFFFFFFF is used for undefined maximum number
+   */
+  unsigned int maxHoles;
 };
 
 problem_c::problem_c(problem_c * orig) : result(orig->result), colorConstraints(orig->colorConstraints.getColors()),
-solveState(puzzle_c::SS_UNSOLVED), numAssemblies(0xFFFFFFFF), numSolutions(0xFFFFFFFF), usedTime(0xFFFFFFFF)
+solveState(puzzle_c::SS_UNSOLVED), numAssemblies(0xFFFFFFFF), numSolutions(0xFFFFFFFF), usedTime(0xFFFFFFFF), maxHoles(0xFFFFFFFF)
 {
   assm = 0;
 
@@ -496,6 +505,11 @@ xml::node problem_c::save(void) const {
   if (usedTime != 0xFFFFFFFF) {
     snprintf(tmp, 50, "%li", usedTime);
     nd.get_attributes().insert("time", tmp);
+  }
+
+  if (maxHoles != 0xFFFFFFFF) {
+    snprintf(tmp, 50, "%i", maxHoles);
+    nd.get_attributes().insert("maxHoles", tmp);
   }
 
   it = nd.insert(xml::node("shapes"));
@@ -679,6 +693,11 @@ problem_c::problem_c(const xml::node & node, unsigned int color, unsigned int sh
     usedTime = atoi(node.get_attributes().find("time")->get_value());
   else
     usedTime = 0xFFFFFFFF;
+
+  if (node.get_attributes().find("maxHoles") != node.get_attributes().end())
+    maxHoles = atoi(node.get_attributes().find("maxHoles")->get_value());
+  else
+    maxHoles = 0xFFFFFFFF;
 
   it = node.find("bitmap");
   if (it != node.end())
@@ -1635,3 +1654,24 @@ void puzzle_c::setComment(const std::string & com) {
 const std::string & puzzle_c::getComment(void) const {
   return comment;
 }
+
+bool puzzle_c::probMaxHolesDefined(unsigned int prob) const {
+  bt_assert(prob < problems.size());
+  return problems[prob]->maxHoles != 0xFFFFFFFF;
+}
+
+unsigned int puzzle_c::probGetMaxHoles(unsigned int prob) const {
+  bt_assert(prob < problems.size());
+  bt_assert(problems[prob]->maxHoles != 0xFFFFFFFF);
+  return problems[prob]->maxHoles;
+}
+
+void puzzle_c::probSetMaxHoles(unsigned int prob, unsigned int value, bool invalid) {
+  bt_assert(prob < problems.size());
+
+  if (invalid)
+    problems[prob]->maxHoles = 0xFFFFFFFF;
+  else
+    problems[prob]->maxHoles = value;
+}
+

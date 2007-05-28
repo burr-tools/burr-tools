@@ -508,6 +508,8 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
 
   if (min == max)
     holes = res_filled - min;
+  else if (puz->probMaxHolesDefined(prob))
+    holes = puz->probGetMaxHoles(prob);
   else
     holes = 0xFFFFFF;
 

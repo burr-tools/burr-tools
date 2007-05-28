@@ -28,6 +28,10 @@ class groupsEditorTab_c;
 class groupsEditor_c : public LFl_Double_Window {
 
   groupsEditorTab_c * tab;
+  LFl_Input * maxHoles;
+  puzzle_c * puzzle;
+  unsigned int problem;
+  bool _changed;
 
 public:
 
@@ -35,6 +39,7 @@ public:
 
   void cb_AddGroup(void);
   void cb_CloseWindow(void);
+  void cb_MaxHoles(void);
 
   bool changed(void);
 

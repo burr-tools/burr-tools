@@ -322,6 +322,13 @@ public:
    * solutions if this is not the case
    */
   void orthogonalize(void);
+
+  /* function to ask for the number of holes permitted in the solutions */
+  bool probMaxHolesDefined(unsigned int prob) const;
+  unsigned int probGetMaxHoles(unsigned int prob) const;
+  // set invalid to true and value to anything to have an unset value
+  void probSetMaxHoles(unsigned int prob, unsigned int value, bool invalid = false);
+
 };
 
 #endif
