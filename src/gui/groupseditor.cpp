@@ -29,7 +29,7 @@
 
 /* this is the groups editor table
  */
-class groupsEditorTab_c : public Fl_Table {
+class groupsEditorTab_c : public Fl_Table, public layoutable_c {
 
   /* the puzzle and the problem to edit */
   puzzle_c * puzzle;
@@ -74,6 +74,11 @@ public:
    * close the edit line
    */
   void finishEdit(void);
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 300;
+    *height = 200;
+  }
 
 };
 
@@ -300,7 +305,8 @@ void groupsEditorTab_c::cb_tab(void)
   }
 }
 
-groupsEditorTab_c::groupsEditorTab_c(int x, int y, int w, int h, puzzle_c * puzzle, unsigned int problem) : Fl_Table(x, y, w, h), changed(false) {
+groupsEditorTab_c::groupsEditorTab_c(int x, int y, int w, int h, puzzle_c * puzzle, unsigned int problem) :
+  Fl_Table(10, 10, 200, 200), layoutable_c(x, y, w, h), changed(false) {
 
   this->puzzle = puzzle;
   this->prob = problem;
@@ -370,23 +376,32 @@ void groupsEditor_c::hide(void) {
   Fl_Double_Window::hide();
 }
 
-#define SZ_WINDOW_X 300                        // initial size of the window
-#define SZ_WINDOW_Y 200
 #define SZ_GAP 5                               // gap between elements
-#define SZ_BUTTON_Y 20
 
-groupsEditor_c::groupsEditor_c(puzzle_c * p, unsigned int pr) : Fl_Double_Window(SZ_WINDOW_X, SZ_WINDOW_Y) {
+groupsEditor_c::groupsEditor_c(puzzle_c * p, unsigned int pr) : LFl_Double_Window(true) {
 
-  tab = new groupsEditorTab_c(SZ_GAP, SZ_GAP, SZ_WINDOW_X-2*SZ_GAP, SZ_WINDOW_Y-3*SZ_GAP-SZ_BUTTON_Y, p, pr);
+  tab = new groupsEditorTab_c(0, 0, 1, 1, p, pr);
+  tab->pitch(SZ_GAP);
+  tab->weight(1, 1);
 
-  new FlatButton(SZ_GAP, SZ_WINDOW_Y-SZ_GAP-SZ_BUTTON_Y, (SZ_WINDOW_X-3*SZ_GAP)/2, SZ_BUTTON_Y, "Add Group", "Add another group", cb_AddGroup_stub, this);
-  new FlatButton((SZ_GAP+SZ_WINDOW_X)/2, SZ_WINDOW_Y-SZ_GAP-SZ_BUTTON_Y, (SZ_WINDOW_X-3*SZ_GAP)/2, SZ_BUTTON_Y, "Close", "Close Window", cb_CloseWindow_stub, this);
+  layouter_c * o = new layouter_c(0, 1, 1, 1);
+
+  LFl_Button * btn;
+
+  btn = new LFl_Button("Add Group", 0, 0, 1, 1);
+  btn->callback(cb_AddGroup_stub, this);
+  btn->tooltip("Add another group");
+  btn->pitch(SZ_GAP);
+  btn = new LFl_Button("Close", 1, 0, 1, 1);
+  btn->callback(cb_CloseWindow_stub, this);
+  btn->tooltip("Close Window");
+  btn->pitch(SZ_GAP);
+
+  o->end();
 
   label("Problem Details");
 
   set_modal();
-  size_range(SZ_WINDOW_X, SZ_WINDOW_Y, 0, 0);
-  resizable(tab);
 }
 
 
