@@ -725,7 +725,7 @@ void ColorConstraintsEdit::draw(void) {
                     x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR + CC_HORIZ_LENGTH);
 
           fl_xyline(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR, yp2 + CC_ADD_LENGTH,
-                    x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR - CC_HORIZ_LENGTH);
+                    x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR - CC_HORIZ_LENGTH - 1);
 
           fl_line(x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR + CC_HORIZ_LENGTH, yp1 + CC_ADD_LENGTH,
                   x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR - CC_HORIZ_LENGTH, yp2 + CC_ADD_LENGTH);
@@ -752,7 +752,7 @@ void ColorConstraintsEdit::draw(void) {
                     x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR + CC_HORIZ_LENGTH);
 
           fl_xyline(x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR, yp1 + CC_ADD_LENGTH,
-                    x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR - CC_HORIZ_LENGTH);
+                    x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR - CC_HORIZ_LENGTH - 1);
 
           fl_line(x() + CC_LR_GAP + CC_BLOCK_WIDTH + CC_ARROW_LR + CC_HORIZ_LENGTH, yp2 + CC_ADD_LENGTH,
                   x()+w()-CC_BLOCK_WIDTH-CC_LR_GAP - CC_ARROW_LR - CC_HORIZ_LENGTH, yp1 + CC_ADD_LENGTH);
