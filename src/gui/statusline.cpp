@@ -43,6 +43,10 @@ LStatusLine::LStatusLine(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
   b->image(pm.get(ViewMode3D_xpm));
   b->tooltip(" Display in anaglyph mode ");
 
+#ifdef __APPLE__
+  (new LFl_Box(0, 2, 0, 1, 1))->setMinimumSize(20, 0);
+#endif
+
   clear_visible_focus();
 
   end();

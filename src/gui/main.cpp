@@ -61,6 +61,8 @@ int main(int argc, char ** argv) {
   Fl::set_boxtype(FL_UP_FRAME, FL_THIN_UP_FRAME);
   Fl::set_boxtype(FL_DOWN_FRAME, FL_THIN_DOWN_FRAME);
 
+  Fl::get_system_colors();
+
   mainWindow_c *ui = new mainWindow_c(new gridType_c());
 
   int res = 0;
