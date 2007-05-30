@@ -249,6 +249,8 @@ void groupsEditorTab_c::cb_input(void) {
   input->hide();
   redraw();
   changed = true;
+
+  do_callback(CONTEXT_NONE, 0, 0);
 }
 
 /* handle mouse events for the tables */
@@ -371,6 +373,29 @@ void groupsEditor_c::cb_CloseWindow(void) {
   hide();
 }
 
+static void cb_UpdateInterface_stub(Fl_Widget* o, void *v) { ((groupsEditor_c*)v)->cb_UpdateInterface(); }
+void groupsEditor_c::cb_UpdateInterface(void) {
+
+  if (tab->callback_context() != groupsEditorTab_c::CONTEXT_NONE) {
+    tab->cb_tab();
+    return;
+  }
+
+  /* check, if the maxHoles field makes any sense */
+  bool useMaxHoles = false;
+
+  for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++)
+    if (puzzle->probGetShapeMin(problem, i) != puzzle->probGetShapeMax(problem, i)) {
+      useMaxHoles = true;
+      break;
+    }
+
+  if (useMaxHoles)
+    maxHoles->activate();
+  else
+    maxHoles->deactivate();
+}
+
 static void cb_MaxHoles_stub(Fl_Widget* o, void* v) { ((groupsEditor_c*)v)->cb_MaxHoles(); }
 void groupsEditor_c::cb_MaxHoles(void) {
 
@@ -408,6 +433,7 @@ groupsEditor_c::groupsEditor_c(puzzle_c * p, unsigned int pr) : LFl_Double_Windo
   tab = new groupsEditorTab_c(0, 0, 1, 1, p, pr);
   tab->pitch(SZ_GAP);
   tab->weight(1, 1);
+  tab->callback(cb_UpdateInterface_stub, this);
 
   layouter_c * o = new layouter_c(0, 1, 1, 1);
   o->pitch(SZ_GAP);
@@ -445,6 +471,8 @@ groupsEditor_c::groupsEditor_c(puzzle_c * p, unsigned int pr) : LFl_Double_Windo
   label("Problem Details");
 
   set_modal();
+
+  cb_UpdateInterface();
 }
 
 

@@ -40,6 +40,7 @@ public:
   void cb_AddGroup(void);
   void cb_CloseWindow(void);
   void cb_MaxHoles(void);
+  void cb_UpdateInterface(void);
 
   bool changed(void);
 
