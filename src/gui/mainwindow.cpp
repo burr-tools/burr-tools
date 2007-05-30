@@ -2067,7 +2067,6 @@ void mainWindow_c::updateInterface(void) {
     // we can edit the groups, when we have a problem with at least one shape and
     // the assembler is not working on the current problem
     if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
-        (puzzle->probShapeNumber(problemSelector->getSelection()) > 0) &&
         (!assmThread || (assmThread->getProblem() != problemSelector->getSelection()))) {
       BtnGroup->activate();
     } else {
