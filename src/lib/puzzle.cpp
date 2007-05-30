@@ -467,7 +467,7 @@ public:
 };
 
 problem_c::problem_c(problem_c * orig) : result(orig->result), colorConstraints(orig->colorConstraints.getColors()),
-solveState(puzzle_c::SS_UNSOLVED), numAssemblies(0xFFFFFFFF), numSolutions(0xFFFFFFFF), usedTime(0xFFFFFFFF), maxHoles(0xFFFFFFFF)
+solveState(puzzle_c::SS_UNSOLVED), numAssemblies(0xFFFFFFFF), numSolutions(0xFFFFFFFF), usedTime(0xFFFFFFFF)
 {
   assm = 0;
 
@@ -477,6 +477,8 @@ solveState(puzzle_c::SS_UNSOLVED), numAssemblies(0xFFFFFFFF), numSolutions(0xFFF
 
   for (unsigned int i = 0; i < orig->shapes.size(); i++)
     shapes.push_back(orig->shapes[i]);
+
+  maxHoles = orig->maxHoles;
 }
 
 xml::node problem_c::save(void) const {
