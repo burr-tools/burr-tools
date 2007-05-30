@@ -357,6 +357,7 @@ void groupsEditorTab_c::addGroup(void) {
 void groupsEditorTab_c::finishEdit(void) {
   if (input->visible()) {
     cb_input();
+    redraw();
   }
 }
 
