@@ -97,8 +97,8 @@
   input is very welcome and crucial to the further development of the
   program.
 
-  All this work has taken nearly 3 years to reach the current state, I hope
-  it was worth it and you have a lot of fun with the program.
+  All this work has taken nearly many years to reach the current state, I
+  hope it was worth it and you have a lot of fun with the program.
 
   \;
 
@@ -500,7 +500,10 @@
 
     <item><name|BurrTools> supports another gridspace besides the cube space
     supported by <name|PuzzleSolver3D>. This allows the design and analysis
-    of completely new puzzles<next-line>
+    of completely new puzzles
+
+    <item><name|BurrTools> knows piece ranges which enable you to search for
+    puzzles and not just solve them.<next-line>
   </enumerate-numeric>
 
   <subsection|Importing <name|PuzzleSolver3D> files>
@@ -1661,9 +1664,9 @@
   the other case but those cubes can not be in the middle. They are at one
   side so that the cube from an outer bulge can go into a gap created by an
   inner bulge. The resulting shape for one unit contains 4 cubes along a
-  zig-zag line. You can see it by looking for the lighter cubes in the
-  turquoise shape above. This ways has the additional advantage of avoiding
-  flips because when the piece is flipped over the orientation of the bulges
+  zig-zag line. You can see it by looking for the lighter cubes in the cyan
+  shape above. This ways has the additional advantage of avoiding flips
+  because when the piece is flipped over the orientation of the bulges
   changes and the cubes do not mesh.
 
   <\with|par-mode|right>
@@ -1747,7 +1750,7 @@
 
   Most of the time it is necessary to add one instance of all defined shapes
   to the puzzle. If there are a lot of them this can take while. This is what
-  the <with|font-family|ss|<strong|+1 each>> button is for. It increases the
+  the <with|font-family|ss|<strong|all +1>> button is for. It increases the
   piece counter for each shape (except the one assigned for the result) by
   one. Or it adds a first instance of the shape to the problem. The
   <with|font-family|ss|<strong|Clr>> button removes all pieces from the
@@ -1762,6 +1765,36 @@
   set by the result shape (which can be inspected on the status line) this
   kind of simple puzzle problems can be taken to the solver. Note that the
   solver won't run when one or more pieces contain any variable voxels.
+
+  <section|Piece Ranges>
+
+  <name|BurrTools> is capable of handling piece ranges instead of a fixed
+  number of pieces. This feature is useful when you want to search for
+  puzzles instead of solving a given one. If there is a range defined for one
+  or more pieces then <name|BurrTools> finds all ways to assemble the defined
+  result using the number of pieces within the given range. As an example
+  let's take Ronald Kint-Bruynseels Clarissa-Burr (see
+  <verbatim|http://www.asahi-net.or.jp/~rh5k-isn/Puzzle/ClarissaBurr>). This
+  puzzle consists of 2 different shapes. When Ronald defined this puzzle he
+  had to try all possible combinations of the 2 pieces, beginning with 6
+  pieces of shape A and zero of shape B, over 5 times A and one B up to 6
+  times B. This can now be done way more easily with piece ranges. Simply tell
+  <name|BurrTools> that the result should be made out of 0-6 pieces of shape
+  A and 0-6 pieces of shape B, or if you want to ensure that at least one of
+  each shape is used, use ranges 1-6. Then solve.
+
+  Piece ranges can be easily defined using the
+  <with|font-family|ss|<with|font-series|bold|min=0>> button. This will set
+  the minimum of the piece range for the current shape to zero. With that you
+  can define the range by first adding <with|mode|math|max-min> pieces, then
+  set the minimum to zero and then add the missing <with|mode|math|min>
+  pieces. This should cover the most used usage cases. Except for the
+  <with|font-family|ss|<with|font-series|bold|min=0>> button, all other
+  buttons always change the minimum and the maximum of the piece range.
+
+  If this calculation is too hard for you, you can use the problem detail
+  dialogue (see section <reference|SectionProblemDetails>) to enter the 
+  ranges directly without the need for calculations.
 
   <section|Grouping Pieces>
 
@@ -1919,20 +1952,27 @@
   maybe this feature will help in the design of lots of puzzles new and crazy
   ideas.
 
-  <subsection|Creating Piece Groups>
+  <section|Editing Problem Details><label|SectionProblemDetails>
 
-  Although the above may sound complicated, implementing piece groups is
-  actually very simple. All actions take place in the
-  <with|font-family|ss|<strong|Group Editor>> (Figure<\float|float|tbh>
+  All settings that can not be set directly on the main problem tab can be
+  set within the <with|font-family|ss|<with|font-series|bold|Problem
+  Details>> window (Figure<\float|float|tbh>
     <big-figure|<postscript|Pics/Form_Group_Editor.png|*5/8|*5/8||||>|<label|FigureGroupEditor>The
-    Group Editor>
-  </float> <reference|FigureGroupEditor>) which becomes activated by clicking
-  the <with|font-family|ss|<strong|Group>> button. Initially the
+    Problem Details Editor>
+  </float> <reference|FigureGroupEditor>) which opens by clicking the
+  <with|font-family|ss|<with|font-series|bold|Detail>> button. This window
+  allows you to define groups and to define piece ranges without having to
+  subtract values. The window also contains rarely used parameters.
+
+  Let's first see how piece groups are defined using this window. Although
+  the above section may sound complicated, implementing piece groups is
+  actually very simple. All actions take place in the
+  <with|font-family|ss|<strong|Problem Details Editor>>. Initially the
   <with|font-family|ss|Group Editor> shows a tabulated overview of the pieces
   used in the problem. The first column (<with|font-family|ss|Shape>) lists
-  the pieces by their prefix and name, the second (<with|font-family|ss|n>)
-  enumerates the instances of each. Note that it is possible to add or remove
-  instances by changing these <with|font-family|ss|n>-values.
+  the pieces by their prefix and name, the second and third
+  (<with|font-family|ss|min> and <with|font-family|ss|max>) show the
+  instances range of each.
 
   Creating piece groups is straightforward as the
   <with|font-family|ss|<strong|Add Group>> button simply adds a new group to
@@ -1946,6 +1986,26 @@
   deleted on closing the <with|font-family|ss|Group Editor>. Hence, deleting
   all the values of a previously made group will remove the group even if its
   column stays present in the <with|font-family|ss|Group Editor>.
+
+  Now to the piece ranges. It is possible to enter the values directly into
+  the min and max columns of the table. You just have to keep in mind when
+  editing, that min has to be less of equal to max. This is enforced by the
+  program, so that max will change, when you enter a value in min that is
+  larger than the current maximum. The same holds true for the minimum, when
+  changing the value in the max column. You also need to keep in mind that
+  the table only contains entries for shapes that are already used in the
+  current problem. You can not (yet) add another shape to the problem using
+  this dialogue, but you can remove a shape by setting the minimum and the
+  maximum to zero.
+
+  Finally this window also contains an entry field called
+  <with|font-family|ss|<with|font-series|bold|Maximum Number of Holes>> this
+  value is used by the program, when piece ranges are used. In that case it
+  is not possible by the program to find out how many holes (empty variable
+  cubes) there will be in the final solution. Because this missing
+  information results in a huge slowdown as many more possibilities have to
+  be tried, it is possible to define the maximum number of holes allowed. If
+  the number of holes should not be limited the field should be left empty.
 
   <section|Setting Colour Constraints><label|ColourConstraints>
 
@@ -2001,6 +2061,14 @@
   advanced managing procedures may be added in the future.
 
   <section|Tips and Tricks>
+
+  <\description-compact>
+    <item*|Maximum Number of Holes >Keep this value as small as possible,
+    because the more holes a puzzle may contain the longer the solving will
+    take. Normally the value is undefined, meaning the number of holes is
+    <em|not> limited. So if you know the number of holes you want, want to
+    limit them or the solving takes too long, use this field
+  </description-compact>
 
   Some tricks and tips will be added to the next update of the user guide.
 
@@ -2072,6 +2140,18 @@
     lot of memory within the computer so it is useful to just save some
     information while solving the puzzle and then later on, when everything
     is finished recalculate the disassemblies for the interesting solutions.
+
+    <item*|Keep Mirror Solutions>When this box is checked the program will
+    not remove mirror solutions. Two solutions are mirror solutions are
+    solutions, when one solution is a real mirror of the other solution. This
+    can only happen, when either all pieces are self mirroring (which means
+    they look the same or rotated, when you mirror them <emdash> all flat
+    pieces are self mirroring) or they have a mirror pair, which is a
+    (possibly rotated) mirror of itself. Sometimes it is possible to create
+    the mirror solution by flipping the solution over. These are <em|not>
+    mirror solutions to <name|BurrTools> and are still removed. This option
+    is useful when using piece ranges as the mirror removal would remove too
+    many solutions, like solutions with different piece sets.
 
     <with|font-family|ss|<item*|Sort by>>This option lets you choose in which
     way the found solutions are ordered. There are 3 possibilities:
@@ -2159,7 +2239,10 @@
   immediately below the solver control buttons (Figure<\float|float|tbh>
     <big-figure|<postscript|Pics/SolverProgress.png|*5/8|*5/8||||>|<label|FigureSolverInformation>The
     solver information>
-  </float> <reference|FigureSolverInformation>).
+  </float> <reference|FigureSolverInformation>). Keep in mind that the
+  estimated time to finish can be off by a very big amount. It happens often
+  that the figure starts with ages and millennia and then the solving is
+  finished within a few seconds, so be carefully when giving up too soon.
 
   <subsubsection|Solver Progress Information>
 
@@ -2415,6 +2498,12 @@
   clear view on what's going on. This can be avoided by unchecking
   <strong|<with|font-family|ss|Fade Out Pieces>> on the options window
   (activated through <with|font-family|ss|<strong|Config>> on the menu bar).
+
+  As not all pieces are used in all solution the list of pieces only shows
+  the names of those pieces that are really used in the currently selected
+  assembly. All other boxes become very small and do contain no name. This
+  should help to quickly find out which pieces are used and which piece on
+  screen corresponds to what section in the piece visibility selector.
 
   <\with|par-mode|right>
     <chapter|Reporting with BurrTools>
@@ -3257,6 +3346,19 @@
     display the box as a wire frame. This can be done by clicking at the blue
     rectangle at the lower end of the tools. The rectangle with the text
     ``S1-Box'' in it.
+  </description-compact>
+
+  <section|All Solid 6-Piece Burrs>
+
+  <\description-compact>
+    <item*|File><verbatim|SolidSixPieceBurr.xmpuzzle>
+
+    <item*|Remarks>This file uses the piece range feature and the solutions
+    contains all solid 6-piece burrs. This is done by having all notchable
+    pieces in the problem and having a 0-6 range for all of them. Now each of
+    the pieces may be between 0 and 6 times in the solutions. If you want to
+    get the well known 314 solutions you have to include the mirror
+    solutions.
   </description-compact>
 
   <section|Ball Room>
