@@ -669,11 +669,13 @@ imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Doub
     ShapeSelect->setSelection(0);
     ProblemSelect->setSelection(0);
 
-    Fl_Group * gr = new LBlockListGroup_c(0, 0, 1, 1, ShapeSelect);
+    LBlockListGroup_c * gr = new LBlockListGroup_c(0, 0, 1, 1, ShapeSelect);
     gr->callback(cb_ImageExport3DUpdate_stub, this);
+    gr->setMinimumSize(200, 100);
 
     gr = new LBlockListGroup_c(1, 0, 1, 1, ProblemSelect);
     gr->callback(cb_ImageExport3DUpdate_stub, this);
+    gr->setMinimumSize(200, 100);
 
     l->end();
   }
