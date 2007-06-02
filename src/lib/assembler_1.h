@@ -145,7 +145,7 @@ private:
    *
    * return error codes
    */
-  virtual int prepare(void);
+  int prepare(bool hasRange, unsigned int rangeMin, unsigned int rangeMax);
 
   /* internal error state */
   errState errorsState;
@@ -207,6 +207,11 @@ protected:
    * it contains the number of the node that is created with this function
    */
   int AddPieceNode(unsigned int piece, unsigned int rot, unsigned int x, unsigned int y, unsigned int z);
+
+  /* adds a node with a vertain weight, for piece range node counting
+   */
+  void AddRangeNode(unsigned int col, unsigned int piecenode, unsigned int weight);
+
 
   /* this is in a way the inverse of the function above. You give a node number and get
    * the exact piece and placement the line this node belongs to stands for

@@ -113,6 +113,26 @@ void assembler_1_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
   colCount[col]++;
 }
 
+void assembler_1_c::AddRangeNode(unsigned int col, unsigned int piecenode, unsigned int wg) {
+
+  unsigned long newnode = left.size();
+
+  right.push_back(piecenode);
+  left.push_back(left[piecenode]);
+  right[left[piecenode]] = newnode;
+  left[piecenode] = newnode;
+
+  up.push_back(up[col]);
+  down.push_back(col);
+  down[up[col]] = newnode;
+  up[col] = newnode;
+
+  colCount.push_back(col);
+
+  weight.push_back(wg);
+  colCount[col] += wg;
+}
+
 assembler_1_c::assembler_1_c(assemblerFrontend_c * fe) :
   assembler_c(fe),
   avoidTransformedAssemblies(0), avoidTransformedMirror(0)
@@ -186,12 +206,15 @@ bool assembler_1_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
  * negative result show there is something wrong: the place -result has not
  * possible position inside the result
  */
-int assembler_1_c::prepare(void) {
+int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int rangeMax) {
 
   const voxel_c * result = puzzle->probGetResultShape(problem);
 
   /* nodes 1..n are the columns nodes */
-  GenerateFirstRow(result->countState(voxel_c::VX_FILLED)+result->countState(voxel_c::VX_VARIABLE)+puzzle->probShapeNumber(problem));
+  GenerateFirstRow(result->countState(voxel_c::VX_FILLED)+
+      result->countState(voxel_c::VX_VARIABLE)+
+      puzzle->probShapeNumber(problem)+
+      (hasRange?1:0));
 
   /* this array contains the column in our matrix that corresponds with
    * the voxel position inside the result. We use this matrix because
@@ -201,6 +224,7 @@ int assembler_1_c::prepare(void) {
    * from 5 to 0.5 seconds for TheLostDay puzzle
    */
   unsigned int * columns = new unsigned int[result->getXYZ()];
+  unsigned int rangeColumn;
 
   {
     int c = 1 + puzzle->probShapeNumber(problem);
@@ -216,6 +240,12 @@ int assembler_1_c::prepare(void) {
       default:
         columns[i] = 0;
       }
+    }
+
+    if (hasRange) {
+      min[c] = rangeMin;
+      max[c] = rangeMax;
+      rangeColumn = c;
     }
   }
 
@@ -402,6 +432,8 @@ int assembler_1_c::prepare(void) {
     max[pc+1] = puzzle->probGetShapeMax(problem, pc);
     min[pc+1] = puzzle->probGetShapeMin(problem, pc);
 
+    unsigned int voxels = puzzle->probGetShapeShape(problem, pc)->countState(voxel_c::VX_FILLED);
+
     /* this array contains all the pieces found so far, this will help us
      * to not add two times the same piece to the structure */
     unsigned int cachefill = 0;
@@ -437,6 +469,11 @@ int assembler_1_c::prepare(void) {
                       if (rotation->getState(px, py, pz) != voxel_c::VX_EMPTY) {
                         AddVoxelNode(columns[result->getIndex(x+px, y+py, z+pz)], piecenode);
                       }
+
+                // if we use the range counting and the piece is using a range, add it to
+                // the column
+                if (hasRange && (min[pc+1] != max[pc+1]))
+                  AddRangeNode(rangeColumn, piecenode, voxels);
               }
         /* for the symmetry breaker piece we also add all symmetries of the box */
         if (pc == symBreakerShape)
@@ -525,8 +562,29 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
     return errorsState;
   }
 
+  /* in some cases it is useful to count the number of clocks the range pieces contribute
+   * this is calulated here
+   *
+   * the result will contain between res_filled-res_vari   and res_filled voxels
+   * now we can subtract all voxels contributed by fixed placed pieces (with no range)
+   * and get the range of voxels that must be occupied by the range pieces
+   *
+   * This additional check prevents adding too many pieces from the ranges and so making placement of
+   * pieces that have to be placed impossible
+   */
+  unsigned int RangeMin = res_filled-res_vari;
+  unsigned int RangeMax = res_filled;
+
+  for (unsigned int j = 0; j < puz->probShapeNumber(prob); j++) {
+    if (puz->probGetShapeMin(prob, j) == puz->probGetShapeMax(prob, j)) {
+      RangeMin -= puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED) * puz->probGetShapeMin(prob, j);
+      RangeMax -= puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED) * puz->probGetShapeMin(prob, j);
+    }
+  }
+
+
   /* fill the nodes arrays */
-  int error = prepare();
+  int error = prepare(min != max, RangeMin, RangeMax);
 
   // check, if there is one piece not placeable
   if (error <= 0) {
