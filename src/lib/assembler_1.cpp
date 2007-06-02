@@ -712,6 +712,7 @@ void assembler_1_c::reduce(void) {
 
   std::vector<unsigned int> toRemove;
 
+  unsigned int row_rem = 0;
   unsigned int col_rem = clumpify();
 
   /* this is a quick impossible row removal code, is is not at thorough
@@ -772,6 +773,8 @@ void assembler_1_c::reduce(void) {
           if (c2 == r)
             toRemove.push_back(r);
         }
+
+        row_rem += toRemove.size();
 
         /* remove the rows found */
         for (unsigned int rem = 0; rem < toRemove.size(); rem++) {
@@ -841,6 +844,7 @@ void assembler_1_c::reduce(void) {
     }
 
     dosth = toRemove.size() != 0;
+    row_rem += toRemove.size();
 
     while (!toRemove.empty()) {
       remove_row(toRemove.back());
@@ -850,6 +854,8 @@ void assembler_1_c::reduce(void) {
   } while (dosth);
 
   col_rem += clumpify();
+
+//  printf("removed %i rows and %i columns\n", row_rem, col_rem);
 }
 
 void assembler_1_c::checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir) {
