@@ -471,6 +471,46 @@ void imageExport_c::cb_Export(void) {
 static void cb_ImageExport3DUpdate_stub(Fl_Widget* o, void* v) { ((imageExport_c*)(v))->cb_Update3DView(); }
 void imageExport_c::cb_Update3DView(void) {
 
+  bool assemblies = false;
+  bool solutions = false;
+
+  unsigned int prob = ProblemSelect->getSelection();
+
+  if (prob < puzzle->problemNumber())
+    for (unsigned int j = 0; j < puzzle->probSolutionNumber(prob); j++) {
+      if (puzzle->probGetAssembly(prob, j)) assemblies = true;
+      if (puzzle->probGetDisassembly(prob, j)) solutions = true;
+    }
+
+  if (!solutions) {
+    ExpSolutionDisassm->deactivate();
+    if (ExpSolutionDisassm->value())
+        ExpAssembly->setonly();
+  } else
+    ExpSolutionDisassm->activate();
+  if (!solutions) {
+    ExpSolution->deactivate();
+    if (ExpSolution->value())
+      ExpAssembly->setonly();
+  } else
+    ExpSolution->activate();
+  if (!assemblies) {
+    ExpAssembly->deactivate();
+    if (ExpAssembly->value())
+      ExpProblem->setonly();
+  } else
+    ExpAssembly->activate();
+  if (puzzle->problemNumber() == 0) {
+    ExpProblem->deactivate();
+    if (ExpProblem->value())
+      ExpShape->setonly();
+  } else
+    ExpProblem->activate();
+  if (puzzle->shapeNumber() == 0)
+    ExpShape->deactivate();
+  else
+    ExpShape->activate();
+
   if (ExpShape->value()) {
     view3D->showSingleShape(puzzle, ShapeSelect->getSelection());
   } else if (ExpAssembly->value()) {
@@ -655,24 +695,7 @@ imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Doub
     ExpAssembly = new LFl_Radio_Button("Export Assembly", 0, 2);
     ExpSolution = new LFl_Radio_Button("Export Solution (Assembly)", 0, 3);
     ExpSolutionDisassm = new LFl_Radio_Button("Export Solution (Disassembly)", 0, 4);
-
-    bool assemblies = false;
-    bool solutions = false;
-
-    for (unsigned int i = 0; i < puzzle->problemNumber(); i++) {
-      for (unsigned int j = 0; j < puzzle->probSolutionNumber(i); j++) {
-        if (puzzle->probGetAssembly(i, j)) assemblies = true;
-        if (puzzle->probGetDisassembly(i, j)) solutions = true;
-        if (assemblies || solutions) break;
-      }
-      if (assemblies || solutions) break;
-    }
-
-    if (puzzle->shapeNumber() == 0)   ExpShape->deactivate();     else ExpShape->setonly();
-    if (puzzle->problemNumber() == 0) ExpProblem->deactivate();   else ExpProblem->setonly();
-    if (!assemblies)                  ExpAssembly->deactivate();  else ExpAssembly->setonly();
-    if (!solutions)                   ExpSolution->deactivate();  else ExpSolution->setonly();
-    if (!solutions)                   ExpSolutionDisassm->deactivate();  else ExpSolutionDisassm->setonly();
+    ExpSolution->setonly();
 
     (new LFl_Box(0, 5))->weight(0, 1);
 
