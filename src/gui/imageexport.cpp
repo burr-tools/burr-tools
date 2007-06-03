@@ -409,7 +409,7 @@ void imageExport_c::cb_Export(void) {
     images.push_back(new ImageInfo(puzzle, getColorMode(),
         ProblemSelect->getSelection(), 0, view3D->getView()));
 
-  } else if (ExpSolution->value()) {
+  } else if (ExpSolutionDisassm->value()) {
 
     // generate an image for each step (for the moment only for the last solution)
     unsigned int s = puzzle->probSolutionNumber(ProblemSelect->getSelection()) - 1;
@@ -423,6 +423,26 @@ void imageExport_c::cb_Export(void) {
       images.push_back(new ImageInfo(puzzle, getColorMode(),
            prob, s, view3D->getView(), dtm, DimStatic->value()));
     }
+
+  } else if (ExpSolution->value()) {
+
+    // generate an image for each step (for the moment only for the last solution)
+    unsigned int s = puzzle->probSolutionNumber(ProblemSelect->getSelection()) - 1;
+    separation_c * t = puzzle->probGetDisassembly(ProblemSelect->getSelection(), s);
+    unsigned int prob = ProblemSelect->getSelection();
+    if (!t) return;
+
+    for (unsigned int step = t->sumMoves(); step > 0; step--) {
+      disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, puzzle->probPieceNumber(ProblemSelect->getSelection()));
+      dtm->setStep(step, false, true);
+      images.push_back(new ImageInfo(puzzle, getColorMode(),
+           prob, s, view3D->getView(), dtm, DimStatic->value()));
+    }
+
+    disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, puzzle->probPieceNumber(ProblemSelect->getSelection()));
+    dtm->setStep(0, false, true);
+    images.push_back(new ImageInfo(puzzle, getColorMode(),
+          prob, s, view3D->getView(), dtm, false));
 
   } else if (ExpProblem->value()) {
     // generate an image for each piece in the problem
@@ -456,6 +476,8 @@ void imageExport_c::cb_Update3DView(void) {
   } else if (ExpAssembly->value()) {
     view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
   } else if (ExpSolution->value()) {
+    view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
+  } else if (ExpSolutionDisassm->value()) {
     view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
   } else if (ExpProblem->value()) {
     view3D->showSingleShape(puzzle, puzzle->probGetResult(ProblemSelect->getSelection()));
@@ -631,7 +653,8 @@ imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Doub
     ExpShape = new LFl_Radio_Button("Export Shape", 0, 0);
     ExpProblem = new LFl_Radio_Button("Export Problem", 0, 1);
     ExpAssembly = new LFl_Radio_Button("Export Assembly", 0, 2);
-    ExpSolution = new LFl_Radio_Button("Export Solution", 0, 3);
+    ExpSolution = new LFl_Radio_Button("Export Solution (Assembly)", 0, 3);
+    ExpSolutionDisassm = new LFl_Radio_Button("Export Solution (Disassembly)", 0, 4);
 
     bool assemblies = false;
     bool solutions = false;
@@ -649,13 +672,15 @@ imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Doub
     if (puzzle->problemNumber() == 0) ExpProblem->deactivate();   else ExpProblem->setonly();
     if (!assemblies)                  ExpAssembly->deactivate();  else ExpAssembly->setonly();
     if (!solutions)                   ExpSolution->deactivate();  else ExpSolution->setonly();
+    if (!solutions)                   ExpSolutionDisassm->deactivate();  else ExpSolutionDisassm->setonly();
 
-    (new LFl_Box(0, 4))->weight(0, 1);
+    (new LFl_Box(0, 5))->weight(0, 1);
 
     ExpShape->callback(cb_ImageExport3DUpdate_stub, this);
     ExpProblem->callback(cb_ImageExport3DUpdate_stub, this);
     ExpAssembly->callback(cb_ImageExport3DUpdate_stub, this);
     ExpSolution->callback(cb_ImageExport3DUpdate_stub, this);
+    ExpSolutionDisassm->callback(cb_ImageExport3DUpdate_stub, this);
 
     fr->end();
   }
