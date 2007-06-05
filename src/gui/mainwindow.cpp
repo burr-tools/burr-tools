@@ -1871,7 +1871,30 @@ const char * timeToString(float time) {
   return tmp;
 }
 
+int mainWindow_c::findMenuEntry(const char * txt) {
+
+  int found = -1;
+
+  for (unsigned int i = 0; i < (sizeof(menu_MainMenu) / sizeof(menu_MainMenu[0])); i++)
+    if (menu_MainMenu[i].text && (strcmp(menu_MainMenu[i].label(), txt) == 0)) {
+      bt_assert(found == -1);
+      found = i;
+    }
+
+  bt_assert(found >= 0);
+  return found;
+}
+
 void mainWindow_c::updateInterface(void) {
+
+  // update the menu items activate state
+
+  // there must be at least one shape before there is something to export...
+  if (puzzle->shapeNumber() > 0)
+    menu_MainMenu[findMenuEntry("Images")].activate();
+  else
+    menu_MainMenu[findMenuEntry("Images")].deactivate();
+  MainMenu->copy(menu_MainMenu, this);
 
   unsigned int prob = solutionProblem->getSelection();
 

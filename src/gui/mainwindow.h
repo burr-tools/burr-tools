@@ -191,6 +191,9 @@ public:
    */
   void update(void);
 
+  /* return an index into the main menu array with the given text */
+  int findMenuEntry(const char * txt);
+
   /* the callback functions, as they are called from normal functions we need
    * to make them public, even though they should not be used from the outside
    */
