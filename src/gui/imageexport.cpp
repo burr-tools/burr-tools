@@ -477,9 +477,9 @@ void imageExport_c::cb_Update3DView(void) {
   unsigned int prob = ProblemSelect->getSelection();
 
   if (prob < puzzle->problemNumber())
-    for (unsigned int j = 0; j < puzzle->probSolutionNumber(prob); j++) {
-      if (puzzle->probGetAssembly(prob, j)) assemblies = true;
-      if (puzzle->probGetDisassembly(prob, j)) solutions = true;
+    if (puzzle->probSolutionNumber(prob) > 0) {
+      if (puzzle->probGetAssembly(prob, 0)) assemblies = true;
+      if (puzzle->probGetDisassembly(prob, 0)) solutions = true;
     }
 
   if (!solutions) {
