@@ -150,7 +150,7 @@ bool ImageInfo::getPreviewImage(void) {
   if (!i->getOpenGlImagePart()) {
 
     i->transparentize(255, 255, 255);
-    i->minimizeWidth(10);
+    i->minimizeWidth(0);
 
     return false;
   } else
@@ -179,7 +179,7 @@ image_c * ImageInfo::getImage(void) {
   if (!i2->getOpenGlImagePart()) {
 
     i2->transparentize(255, 255, 255);
-    i2->minimizeWidth(i->h()/60, i2aa);
+    i2->minimizeWidth(0, i2aa);
     i2->scaleDown(i2aa);
 
     return i2;
@@ -217,8 +217,7 @@ bool imageExport_c::PreDraw(void) {
         snprintf(statText, 50, "create image %u / %u", im, images.size());
         status->label(statText);
 
-        unsigned int pageHeight = atoi(SizePixelY->value());
-        unsigned int w = (unsigned int)((pageHeight / linesPerPage) * images[im]->ratio() + 0.9);
+        unsigned int w = (unsigned int)(imgHeight * images[im]->ratio() + 0.9);
 
         // calculate anti-aliasing factor
         int aa = 1;
@@ -227,7 +226,7 @@ bool imageExport_c::PreDraw(void) {
         if (AA4->value()) aa = 4;
         if (AA5->value()) aa = 5;
 
-        images[im]->generateImage(w, pageHeight / linesPerPage, aa);
+        images[im]->generateImage(w, imgHeight, aa);
       }
 
       images[im]->prepareImage();
@@ -287,12 +286,13 @@ void imageExport_c::PostDraw(void) {
 
           // now find out in how many lines the images need to be put onto the pages to
           // get them all onto the available space
-          linesPerPage = 1;
 
           unsigned int pageWidth = atoi(SizePixelX->value());
+          imgHeight = atoi(SizePixelY->value());
 
           // if we have less images than pages, lower pages
           unsigned int pages = atoi(NumPages->value());
+          if (pages == 0) pages = 1;
           if (pages > images.size()) pages = images.size();
 
           while (true) {
@@ -301,19 +301,20 @@ void imageExport_c::PostDraw(void) {
             curLine = 0;
             curPage = 0;
 
-            unsigned int imgHeight = atoi(SizePixelY->value()) / linesPerPage;
+            unsigned int linesPerPage = atoi(SizePixelY->value()) / imgHeight;
 
             // check, if everything fits with the current number of lines
             for (unsigned int im = 0; im < images.size(); im++) {
               // calculate width of the image when it has the current line hight
               unsigned int w = (unsigned int)(imgHeight * images[im]->ratio() + 0.9);
 
-              if (curWidth + w < pageWidth) {
+              if (curWidth + w < pageWidth || (curWidth == 0)) {
                 // image fits onto the line
-                curWidth += w;
+                curWidth += w + pageWidth/60;
+
               } else {
                 // image on the next line
-                curWidth = w;
+                curWidth = w + pageWidth/60;
                 curLine++;
                 if (curLine >= linesPerPage) {
                   curLine = 0;
@@ -323,10 +324,10 @@ void imageExport_c::PostDraw(void) {
             }
 
             // check if we fit
-            if ((curPage <= pages) || ((curPage == pages+1) && (curLine == 0) && (curWidth == 0)))
+            if ((curPage < pages) || ((curPage == pages) && (curLine == 0) && (curWidth == 0)))
               break;
 
-            linesPerPage++;
+            imgHeight--;
           }
 
           // OK, now lets setup the variable for output
@@ -350,17 +351,16 @@ void imageExport_c::PostDraw(void) {
       if (i2) {
 
         unsigned int pageWidth = atoi(SizePixelX->value());
-        unsigned int imgHeight = atoi(SizePixelY->value()) / linesPerPage;
+        unsigned int linesPerPage = atoi(SizePixelY->value()) / imgHeight;
 
         unsigned int w = i2->w();
-
-        if (curWidth + w < pageWidth) {
+        if (curWidth + w < pageWidth || (curWidth == 0)) {
           // image fits onto the line
           i->blit(i2, curWidth, curLine * imgHeight);
-          curWidth += w;
+          curWidth += w + pageWidth/60;
         } else {
           // image on the next line
-          curWidth = w;
+          curWidth = w + pageWidth/60;
           curLine++;
           if (curLine >= linesPerPage) {
             curLine = 0;

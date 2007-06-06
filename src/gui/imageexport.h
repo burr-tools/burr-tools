@@ -93,7 +93,7 @@ class imageExport_c : public LFl_Double_Window, public VoxelViewCallbacks {
     unsigned int curLine;      /* current line number */
     unsigned int curPage;      /* number of the current page */
     unsigned int im;           /* number of the image int images that is worked on */
-    unsigned int linesPerPage; /* how many lines must be on a page to fit everything on it */
+    unsigned int imgHeight;    /* how many pixels high is one line */
 
     void nextImage(bool finish);
 
