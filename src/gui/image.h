@@ -37,6 +37,8 @@ class image_c {
      */
     unsigned char * bitmap;
 
+    GLubyte * tile;
+
     /* this structure is used, when an OpenGl image_c is accumulated, otherwise it's 0
      */
     TRcontext *tr;
@@ -47,10 +49,10 @@ class image_c {
     image_c(unsigned int width, unsigned int height, unsigned char r, unsigned char g, unsigned char b, unsigned char a);
 
     /* create new image with given bitmap, this bitmap must be the right format */
-    image_c(unsigned int w, unsigned int h, unsigned char *b) : width(w), height(h), bitmap(b), tr(0) { }
+    image_c(unsigned int w, unsigned int h, unsigned char *b) : width(w), height(h), bitmap(b), tile(0), tr(0) { }
 
     /* just create the required memory for an image of the given size */
-    image_c(unsigned int w, unsigned int h) : width(w), height(h), bitmap(new unsigned char[w*h*4]), tr(0) { }
+    image_c(unsigned int w, unsigned int h) : width(w), height(h), bitmap(new unsigned char[w*h*4]), tile(0), tr(0) { }
 
     ~image_c(void);
 

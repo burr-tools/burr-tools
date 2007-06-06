@@ -32,7 +32,9 @@
 #include <GL/gl.h>
 #endif
 
-image_c::image_c(unsigned int w, unsigned int h, unsigned char r, unsigned char g, unsigned char b, unsigned char a) : width(w), height(h), bitmap(new unsigned char[w*h*4]), tr(0) {
+#define TILE_BORDER 0
+
+image_c::image_c(unsigned int w, unsigned int h, unsigned char r, unsigned char g, unsigned char b, unsigned char a) : width(w), height(h), bitmap(new unsigned char[w*h*4*sizeof(GLubyte)]), tile(0), tr(0) {
 
   /* initialize image bitmap */
   for (unsigned int x = 0; x < w*h; x++) {
@@ -51,11 +53,19 @@ void image_c::prepareOpenGlImagePart(voxelDrawer_c * dr) {
 
     tr = trNew();
 
-    trTileSize(tr, dr->w(), dr->h(), 0);
+    int tw = dr->w() & 0xFFFFFFF0;
+    int th = dr->h() & 0xFFFFFFF0;
+
+    tile = new GLubyte[tw*th*4];
+
+    trTileSize(tr, tw, th, 0);
+    trTileBuffer(tr, GL_RGBA, GL_UNSIGNED_BYTE, tile);
     trImageSize(tr, width, height);
+    trRowOrder(tr, TR_TOP_TO_BOTTOM);
+
     trPerspective(tr, 25, (double)width/height, dr->getSize(), dr->getSize()+100);
 
-    trImageBuffer(tr, GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
   }
 
   /* prepare camera for next tile */
@@ -65,23 +75,41 @@ void image_c::prepareOpenGlImagePart(voxelDrawer_c * dr) {
 bool image_c::getOpenGlImagePart(void) {
 
   /* grep the next tile */
-  if (trEndTile(tr))
-    /* there are more tiles that need to be done */
-    return true;
 
-  /* we have finished all tiles, so delete the tile render context */
-  trDelete(tr);
-  tr = 0;
+  bool more = trEndTile(tr);
 
-  /* flip vertically, as the tile renderer generates an image that is bottom up */
-  for (unsigned int y = 0; y < height/2; y++)
-    for (unsigned int x = 0; x < width*4; x++) {
-      unsigned char tmp = bitmap[y*4*width+x];
-      bitmap[y*4*width+x] = bitmap[(height-y-1)*4*width+x];
-      bitmap[(height-y-1)*4*width+x] = tmp;
-    }
+  int curColumn = trGet(tr, TR_CURRENT_COLUMN);
+  int curTileWidth = trGet(tr, TR_CURRENT_TILE_WIDTH);
+  int bytesPerImageRow = width*4;
+  int bytesPerTileRow = (trGet(tr, TR_TILE_WIDTH)-2*TILE_BORDER) * 4;
+  int xOffset = curColumn * bytesPerTileRow + bytesPerImageRow * trGet(tr, TR_CURRENT_ROW) * trGet(tr, TR_TILE_HEIGHT);
+  int bytesPerCurrentTileRow = (curTileWidth-2*TILE_BORDER)*4*sizeof(GLubyte);
+  int curTileHeight = trGet(tr, TR_CURRENT_TILE_HEIGHT);
 
-  return false;
+  for (int i = 0; i < curTileHeight; i++) {
+    memcpy(bitmap + i*bytesPerImageRow + xOffset, /* Dest */
+        tile + i*bytesPerTileRow,              /* Src */
+        bytesPerCurrentTileRow);               /* Byte count*/
+  }
+
+  if (!more) {
+
+    /* we have finished all tiles, so delete the tile render context */
+    trDelete(tr);
+    tr = 0;
+    delete [] tile;
+    tile = 0;
+
+    /* flip vertically, as the tile renderer generates an image that is bottom up */
+    for (unsigned int y = 0; y < height/2; y++)
+      for (unsigned int x = 0; x < width*4; x++) {
+        unsigned char tmp = bitmap[y*4*width+x];
+        bitmap[y*4*width+x] = bitmap[(height-y-1)*4*width+x];
+        bitmap[(height-y-1)*4*width+x] = tmp;
+      }
+  }
+
+  return more;
 }
 
 
@@ -92,6 +120,7 @@ image_c::~image_c(void) {
    * must be deleted, too
    */
   if (tr) trDelete(tr);
+  if (tile) delete [] tile;
 }
 
 int image_c::saveToPNG(const char * fname) const {

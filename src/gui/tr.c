@@ -211,15 +211,9 @@ GLint trGet(TRcontext *tr, TRenum param)
       case TR_COLUMNS:
          return tr->Columns;
       case TR_CURRENT_ROW:
-         if (tr->CurrentTile<0)
-            return -1;
-         else
-            return tr->CurrentRow;
+         return tr->CurrentRow;
       case TR_CURRENT_COLUMN:
-         if (tr->CurrentTile<0)
-            return -1;
-         else
-            return tr->CurrentColumn;
+         return tr->CurrentColumn;
       case TR_CURRENT_TILE_WIDTH:
          return tr->CurrentTileWidth;
       case TR_CURRENT_TILE_HEIGHT:
