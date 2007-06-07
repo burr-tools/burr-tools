@@ -63,7 +63,8 @@ void image_c::prepareOpenGlImagePart(voxelDrawer_c * dr) {
     trImageSize(tr, width, height);
     trRowOrder(tr, TR_TOP_TO_BOTTOM);
 
-    trPerspective(tr, 25, (double)width/height, dr->getSize(), dr->getSize()+100);
+    // this call has to be the identical one as in
+    trPerspective(tr, 15, 1.0*width/height, dr->getSize()+1, 3*dr->getSize()+1);
 
     glPixelStorei(GL_PACK_ALIGNMENT, 4);
   }
