@@ -432,7 +432,7 @@ void imageExport_c::cb_Export(void) {
     unsigned int prob = ProblemSelect->getSelection();
     if (!t) return;
 
-    for (unsigned int step = t->sumMoves(); step > 0; step--) {
+    for (unsigned int step = t->sumMoves() - 1; step > 0; step--) {
       disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, puzzle->probPieceNumber(ProblemSelect->getSelection()));
       dtm->setStep(step, false, true);
       images.push_back(new ImageInfo(puzzle, getColorMode(),

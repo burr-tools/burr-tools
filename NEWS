@@ -14,6 +14,12 @@
 
 - it is now possible to keep mirror solutions, if you wish
 
+- improvements to image export:
+  - better layouting of images
+  - easier adjustment of zoom level
+  - generate assembly and disassemly image sequences
+  - fix bug with problem selection
+
 ------------- Version 0.2.3
 
 - fix another problem that resulted in too many solutions removed for 
