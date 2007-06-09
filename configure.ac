@@ -22,13 +22,15 @@ AM_PROG_CC_C_O
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 
+ACX_PTHREAD(, AC_MSG_ERROR([pthread library required for burrtools]))
+
 AC_CHECK_PROG(fltk_found, fltk-config, 1, 0)
 
 if [test $fltk_found -eq 1]; then
   GUI_CPP_ADD=`fltk-config --cxxflags --use-gl`
   GUI_LD_ADD=`fltk-config --ldflags --use-gl`
 else
-  AC_MSG_WARN([FLTK not found, do not build gui])
+  AC_MSG_ERROR([FLTK not found, do not build gui])
 fi  
 
 AC_CHECK_PROG(xmlwrapp_found, xmlwrapp-config, 1, 0)
@@ -37,7 +39,7 @@ if [test $xmlwrapp_found -eq 1]; then
   XML_CPP_ADD=`xmlwrapp-config --cxxflags`
   XML_LD_ADD=`xmlwrapp-config --libs`
 else
-  AC_MSG_WARN([XMLwrapp not found, required for the library])
+  AC_MSG_ERROR([XMLwrapp not found, required for the library])
 fi  
 
 AC_CHECK_PROG(libpng_found, libpng-config, 1, 0)
@@ -46,7 +48,7 @@ if [test $libpng_found -eq 1]; then
   GUI_CPP_ADD="$GUI_CPP_ADD `libpng-config --cppflags`"
   GUI_LD_ADD="$GUI_LD_ADD `libpng-config --libs`"
 else
-  AC_MSG_WARN([libpng not found, this libaray is required for the image export])
+  AC_MSG_ERROR([libpng not found, this libaray is required for the image export])
 fi  
 
 AC_SYS_LARGEFILE
@@ -71,5 +73,7 @@ AC_SUBST(GUI_CPP_ADD, $GUI_CPP_ADD)
 AC_SUBST(GUI_LD_ADD, $GUI_LD_ADD)
 AC_SUBST(XML_CPP_ADD, $XML_CPP_ADD)
 AC_SUBST(XML_LD_ADD, $XML_LD_ADD)
+AC_SUBST(PTHREAD_CPP_ADD, $PTHREAD_CFLAGS)
+AC_SUBST(PTHREAD_LD_ADD, $PTHREAD_LIBS)
 
 AC_OUTPUT
