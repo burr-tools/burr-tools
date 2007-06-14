@@ -53,6 +53,12 @@ else
   AC_MSG_ERROR([libpng not found, please install that library])
 fi  
 
+MDL_HAVE_OPENGL
+
+if test x$have_GL != xyes -o x$have_GLU != xyes; then
+  AC_MSG_ERROR([no openGL found, openGL is needed for burrtools])
+fi
+
 AC_SYS_LARGEFILE
 
 dnl Define largefile options as needed...
@@ -71,11 +77,11 @@ fi
 AC_SUBST(LARGEFILE)
 
 
-AC_SUBST(GUI_CPP_ADD, $GUI_CPP_ADD)
-AC_SUBST(GUI_LD_ADD, $GUI_LD_ADD)
+AC_SUBST(GUI_CPP_ADD, ["$GUI_CPP_ADD $GL_CFLAGS"])
+AC_SUBST(GUI_LD_ADD, ["$GUI_LD_ADD $GL_LIBS"])
 AC_SUBST(XML_CPP_ADD, $XML_CPP_ADD)
 AC_SUBST(XML_LD_ADD, $XML_LD_ADD)
 AC_SUBST(PTHREAD_CPP_ADD, $PTHREAD_CFLAGS)
-AC_SUBST(PTHREAD_LD_ADD, [$PTHREAD_CFLAGS $PTHREAD_LIBS])
+AC_SUBST(PTHREAD_LD_ADD, ["$PTHREAD_CFLAGS $PTHREAD_LIBS"])
 
 AC_OUTPUT
