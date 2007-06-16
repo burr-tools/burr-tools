@@ -48,6 +48,24 @@ static int vi[SPHERE_COORDINATES][3][3] = {
   {{-1, 0, 0}, {0, 0, -1}, {0, -1, 0}},
   {{-1, 0, 0}, {0, 1, 0}, {0, 0, -1}}};
 
+static int att[12][3] = {
+  {-1, -1, 0}, {-1, 1, 0}, {1, -1, 0}, {1, 1, 0},
+  {-1, 0, -1}, {-1, 0, 1}, {1, 0, -1}, {1, 0, 1},
+  {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}};
+
+int atatchment_check(double &x, double &y, double &z) {
+
+  for (unsigned int i = 0; i < 12; i++) {
+
+    double d = (x-att[i][0])*(x-att[i][0]) + (y-att[i][1])*(y-att[i][1]) + (z-att[i][2])*(z-att[i][2]);
+
+    if (d < 0.20)
+      return i;
+  }
+
+  return 12;
+}
+
 
 // some functions to draw sections of spheres
 
@@ -93,27 +111,64 @@ static void draw_sphere_section(double x1, double y1, double z1,
 
   } else {
 
-    glBegin(GL_TRIANGLES);
+    /* check, if we are close to a attatchment point */
+    int a1 = atatchment_check(x1, y1, z1);
+    int a2 = atatchment_check(x2, y2, z2);
+    int a3 = atatchment_check(x3, y3, z3);
 
-    // calculate normal for the triangle
+    /* count number of points in atachment area */
+    int act = 0;
+    if (a1 != 12) act++;
+    if (a2 != 12) act++;
+    if (a2 != 12) act++;
 
-    double v1x = x2-x1; double v1y = y2-y1; double v1z = z2-z1;
-    double v2x = x3-x1; double v2y = y3-y1; double v2z = z3-z1;
+    if (act < 1) {
 
-    double nx = v1y*v2z - v1z*v2y;
-    double ny = v1z*v2x - v1x*v2z;
-    double nz = v1x*v2y - v1y*v2x;
+      /* draw the normal triangle with the points */
+      glLoadName(12);
 
-    double l = sqrt(nx*nx + ny*ny + nz*nz);
-    nx /= l; ny /= l; nz /= l;
+      glBegin(GL_TRIANGLES);
 
-    glNormal3f(nx, ny, nz);
+      // calculate normal for the triangle
 
-    glVertex3f(x1, y1, z1);
-    glVertex3f(x2, y2, z2);
-    glVertex3f(x3, y3, z3);
+      double v1x = x2-x1; double v1y = y2-y1; double v1z = z2-z1;
+      double v2x = x3-x1; double v2y = y3-y1; double v2z = z3-z1;
 
-    glEnd();
+      double nx = v1y*v2z - v1z*v2y;
+      double ny = v1z*v2x - v1x*v2z;
+      double nz = v1x*v2y - v1y*v2x;
+
+      double l = sqrt(nx*nx + ny*ny + nz*nz);
+      nx /= l; ny /= l; nz /= l;
+
+      glNormal3f(nx, ny, nz);
+
+      glVertex3f(x1, y1, z1);
+      glVertex3f(x2, y2, z2);
+      glVertex3f(x3, y3, z3);
+
+      glEnd();
+
+    } else {
+
+      int a = 12;
+
+      if (a1 != 12) a = a1;
+      if (a2 != 12) a = a2;
+      if (a3 != 12) a = a3;
+
+      glLoadName(a);
+
+      glBegin(GL_TRIANGLES);
+
+      glNormal3f(att[a][0], att[a][1], att[a][2]);
+
+      glVertex3f(x1, y1, z1);
+      glVertex3f(x2, y2, z2);
+      glVertex3f(x3, y3, z3);
+
+      glEnd();
+    }
   }
 }
 
@@ -279,6 +334,8 @@ void voxelDrawer_2_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 // draws a box with borders depending on the neighbour boxes
 void voxelDrawer_2_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge) {
 
+  glPushName(12);
+
   if (((x+y+z) & 1) != 0) return;
 
   // first calculate center
@@ -294,10 +351,14 @@ void voxelDrawer_2_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
   draw_sphere();
 
   glPopMatrix();
+
+  glPopName();
 }
 
 // draw a cube that is smaller than 1
 void voxelDrawer_2_c::drawVariableMarkers(const voxel_c * space, int x, int y, int z) {
+
+  glPushName(12);
 
   if (((x+y+z) & 1) != 0) return;
 
@@ -312,6 +373,8 @@ void voxelDrawer_2_c::drawVariableMarkers(const voxel_c * space, int x, int y, i
   glScalef(0.5+MY, 0.5+MY, 0.5+MY);
 
   draw_markers();
+
+  glPopName();
 
   glPopMatrix();
 }

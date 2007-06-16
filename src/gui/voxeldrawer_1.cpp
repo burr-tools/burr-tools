@@ -54,10 +54,12 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
   if (fabs(edge) < 0.00001) return;
 
-  glBegin(GL_QUADS);
+  glPushName(2);
 
   // bottom triangle
   if (space->isEmpty2(x, y, z-1)) {
+
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, 0.0f, -1.0f);
 
     if ((x+y) & 1) {
@@ -99,10 +101,14 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       }
 
     }
+    glEnd();
   }
 
   // top triangle
   if (space->isEmpty2(x, y, z+1)) {
+
+    glLoadName(3);
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, 0.0f, 1.0f);
 
     if ((x+y) & 1) {
@@ -144,6 +150,7 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       }
 
     }
+    glEnd();
   }
 
   // the left square
@@ -151,6 +158,8 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
     float x1, y1, x3, y3;
 
+    glLoadName(0);
+    glBegin(GL_QUADS);
     if ((x+y) & 1) {
 
       glNormal3f( -EDGEMULT2, -EDGEMULT, 0.0f);
@@ -205,6 +214,7 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       glVertex3f(x1, y1, z); glVertex3f(x3, y3, z);
       glVertex3f(x3, y3, z+edge); glVertex3f(x1, y1, z+edge);
     }
+    glEnd();
   }
 
   // the right square
@@ -212,6 +222,8 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
     float x1, y1, x3, y3;
 
+    glLoadName(1);
+    glBegin(GL_QUADS);
     if ((x+y) & 1) {
 
       glNormal3f( EDGEMULT2, -EDGEMULT, 0.0f);
@@ -266,9 +278,13 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       glVertex3f(x1, y1, z); glVertex3f(x3, y3, z);
       glVertex3f(x3, y3, z+edge); glVertex3f(x1, y1, z+edge);
     }
+    glEnd();
   }
 
   // the square above or below (depending on the triangle type)
+
+  glLoadName(4);
+  glBegin(GL_QUADS);
   if ((x+y) & 1) {
 
     if (space->isEmpty2(x, y+1, z)) {
@@ -340,8 +356,9 @@ void voxelDrawer_1_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
       }
     }
   }
-
   glEnd();
+
+  glPopName();
 }
 
 // draws a box with borders depending on the neighbour boxes
@@ -378,7 +395,7 @@ void voxelDrawer_1_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
     n3x = cos(M_PI/180*30); n3y = sin(M_PI/180*30);
   }
 
-  glBegin(GL_QUADS);
+  glPushName(4);
 
   // top or bottom square
   if (((x+y) & 1) && space->isEmpty2(x, y+1, z) ||
@@ -420,8 +437,10 @@ void voxelDrawer_1_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
       z1p += edge;
     }
 
+    glBegin(GL_QUADS);
     glNormal3f(n1x, n1y, 0.0f);
     glVertex3f(x1p, y1p, z1p); glVertex3f(x2p, y2p, z1p); glVertex3f(x2p, y2p, z2p); glVertex3f(x1p, y1p, z2p);
+    glEnd();
   }
 
   if (space->isEmpty2(x-1, y, z)) {
@@ -472,8 +491,11 @@ void voxelDrawer_1_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
       z1p += edge;
     }
 
+    glLoadName(0);
+    glBegin(GL_QUADS);
     glNormal3f(n2x, n2y, 0.0f);
     glVertex3f(x1p, y1p, z1p); glVertex3f(x3p, y3p, z1p); glVertex3f(x3p, y3p, z3p); glVertex3f(x1p, y1p, z3p);
+    glEnd();
   }
 
   // right triangle
@@ -525,13 +547,15 @@ void voxelDrawer_1_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
       z2p += edge;
     }
 
+    glLoadName(1);
+    glBegin(GL_QUADS);
     glNormal3f( n3x, n3y, 0.0f);
     glVertex3f(x2p, y2p, z2p); glVertex3f(x3p, y3p, z2p); glVertex3f(x3p, y3p, z3p); glVertex3f(x2p, y2p, z3p);
+    glEnd();
   }
 
   glEnd();
 
-  glBegin(GL_TRIANGLES);
 
   // bottom triangle
   if (space->isEmpty2(x, y, z-1)) {
@@ -568,8 +592,12 @@ void voxelDrawer_1_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
       }
 
     }
+
+    glLoadName(2);
+    glBegin(GL_TRIANGLES);
     glNormal3f( 0.0f, 0.0f, -1.0f);
     glVertex3f(x1p, y1p, z); glVertex3f(x2p, y2p, z); glVertex3f(x3p, y3p, z);
+    glEnd();
   }
 
   // top triangle
@@ -607,11 +635,14 @@ void voxelDrawer_1_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
       }
     }
 
+    glLoadName(3);
+    glBegin(GL_TRIANGLES);
     glNormal3f( 0.0f, 0.0f, 1.0f);
     glVertex3f(x1p, y1p, z+1); glVertex3f(x2p, y2p, z+1); glVertex3f(x3p, y3p, z+1);
+    glEnd();
   }
 
-  glEnd();
+  glPopName();
 
   glColor4f(0, 0, 0, alpha);
   drawFrame(space, x, y, z, edge);
@@ -649,53 +680,62 @@ void voxelDrawer_1_c::drawVariableMarkers(const voxel_c * space, int x, int y, i
     n3x = cos(M_PI/180*30); n3y = sin(M_PI/180*30);
   }
 
-  glBegin(GL_QUADS);
+  glPushName(4);
 
   if (((x+y) & 1) && space->isEmpty2(x, y+1, z) ||
       !((x+y) & 1) && space->isEmpty2(x, y-1, z)) {
+    glBegin(GL_QUADS);
     glNormal3f(n1x, n1y, 0.0f);
     glVertex3f(x1+(x2-x1)*0.2+MY*n1x, y1+(y2-y1)*0.2+MY*n1y, z+0.2);
     glVertex3f(x2+(x1-x2)*0.2+MY*n1x, y2+(y1-y2)*0.2+MY*n1y, z+0.2);
     glVertex3f(x2+(x1-x2)*0.2+MY*n1x, y2+(y1-y2)*0.2+MY*n1y, z+0.8);
     glVertex3f(x1+(x2-x1)*0.2+MY*n1x, y1+(y2-y1)*0.2+MY*n1y, z+0.8);
+    glEnd();
   }
 
   if (space->isEmpty2(x-1, y, z)) {
+    glLoadName(0);
+    glBegin(GL_QUADS);
     glNormal3f(n2x, n2y, 0.0f);
     glVertex3f(x1+(x3-x1)*0.2+MY*n2x, y1+(y3-y1)*0.2+MY*n2y, z+0.2);
     glVertex3f(x3+(x1-x3)*0.2+MY*n2x, y3+(y1-y3)*0.2+MY*n2y, z+0.2);
     glVertex3f(x3+(x1-x3)*0.2+MY*n2x, y3+(y1-y3)*0.2+MY*n2y, z+0.8);
     glVertex3f(x1+(x3-x1)*0.2+MY*n2x, y1+(y3-y1)*0.2+MY*n2y, z+0.8);
+    glEnd();
   }
 
   if (space->isEmpty2(x+1, y, z)) {
+    glLoadName(1);
+    glBegin(GL_QUADS);
     glNormal3f(n3x, n3y, 0.0f);
     glVertex3f(x2+(x3-x2)*0.2+MY*n3x, y2+(y3-y2)*0.2+MY*n3y, z+0.2);
     glVertex3f(x3+(x2-x3)*0.2+MY*n3x, y3+(y2-y3)*0.2+MY*n3y, z+0.2);
     glVertex3f(x3+(x2-x3)*0.2+MY*n3x, y3+(y2-y3)*0.2+MY*n3y, z+0.8);
     glVertex3f(x2+(x3-x2)*0.2+MY*n3x, y2+(y3-y2)*0.2+MY*n3y, z+0.8);
+    glEnd();
   }
 
-  glEnd();
-
-  glBegin(GL_TRIANGLES);
-
   if (space->isEmpty2(x, y, z-1)) {
+    glLoadName(2);
+    glBegin(GL_TRIANGLES);
     glNormal3f(0.0f, 0.0f, -1.0f);
     glVertex3f(x1+sqrt(0.1)*n3x, y1+sqrt(0.1)*n3y, z-MY);
     glVertex3f(x2+sqrt(0.1)*n2x, y2+sqrt(0.1)*n2y, z-MY);
     glVertex3f(x3+sqrt(0.1)*n1x, y3+sqrt(0.1)*n1y, z-MY);
+    glEnd();
   }
 
   if (space->isEmpty2(x, y, z+1)) {
+    glLoadName(3);
+    glBegin(GL_TRIANGLES);
     glNormal3f(0.0f, 0.0f, 1.0f);
     glVertex3f(x1+sqrt(0.1)*n3x, y1+sqrt(0.1)*n3y, z+1+MY);
     glVertex3f(x2+sqrt(0.1)*n2x, y2+sqrt(0.1)*n2y, z+1+MY);
     glVertex3f(x3+sqrt(0.1)*n1x, y3+sqrt(0.1)*n1y, z+1+MY);
+    glEnd();
   }
 
-  glEnd();
-
+  glPopName();
 }
 
 void voxelDrawer_1_c::drawCursor(unsigned int sx, unsigned int sy, unsigned int sz) {
