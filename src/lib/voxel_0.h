@@ -39,6 +39,7 @@ class voxel_0_c : public voxel_c {
 
     void scale(unsigned int amount);
     bool scaleDown(unsigned char by, bool action);
+    void resizeInclude(int & px, int & py, int & pz);
 };
 
 #endif

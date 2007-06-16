@@ -39,6 +39,7 @@ class voxel_1_c : public voxel_c {
     bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const;
 
     void scale(unsigned int amount);
+    void resizeInclude(int & px, int & py, int & pz);
 };
 
 #endif

@@ -455,6 +455,11 @@ public:
    */
   void resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel_type filler);
 
+  /* resizes and translates the space so that the the given voxel can be included
+   * the function returns the new coordinate of the point
+   */
+  virtual void resizeInclude(int & px, int & py, int & pz) = 0;
+
   /**
    * scale the space, making x by x by x cubes out of single cubes
    */

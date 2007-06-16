@@ -341,3 +341,47 @@ void voxel_1_c::scale(unsigned int amount) {
   recalcBoundingBox();
 }
 
+void voxel_1_c::resizeInclude(int & px, int & py, int & pz) {
+
+  int nsx = getX();
+  int nsy = getY();
+  int nsz = getZ();
+  int tx = 0;
+  int ty = 0;
+  int tz = 0;
+
+  if (px < 0) {
+
+    nsx -= px;
+    tx -= px;
+    if (px & 1) {
+      nsx ++;
+      tx ++;
+    }
+  }
+  if (py < 0) {
+
+    nsy -= py;
+    ty -= py;
+    if (py & 1) {
+      nsy ++;
+      ty ++;
+    }
+  }
+  if (pz < 0) {
+
+    nsz -= pz;
+    tz -= pz;
+  }
+  if (px >= (int)getX()) nsx += (px-getX()+1);
+  if (py >= (int)getY()) nsy += (py-getY()+1);
+  if (pz >= (int)getZ()) nsz += (pz-getZ()+1);
+
+  resize(nsx, nsy, nsz, 0);
+  translate(tx, ty, tz, 0);
+
+  px += tx;
+  py += ty;
+  pz += tz;
+}
+
