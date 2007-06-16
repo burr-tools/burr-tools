@@ -269,6 +269,8 @@ public:
     return x + sx * (y + sy * z);
   }
 
+  bool indexToXYZ(unsigned int index, unsigned int *x, unsigned int *y, unsigned int *z) const;
+
   /**
    * Get the value of the voxel at position \f$(x; y; z)\f$
    */

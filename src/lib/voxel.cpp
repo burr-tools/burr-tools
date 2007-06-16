@@ -711,3 +711,19 @@ void voxel_c::initHotspot(void) {
   setHotspot(0, 0, 0);
 }
 
+bool voxel_c::indexToXYZ(unsigned int index, unsigned int *x, unsigned int *y, unsigned int *z) const {
+
+  *x = index % sx;
+  index -= *x;
+  index /= sx;
+
+  *y = index % sy;
+  index -= *y;
+  index /= sy;
+
+  *z = index;
+
+  return *z < sz;
+}
+
+
