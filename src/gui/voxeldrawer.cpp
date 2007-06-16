@@ -1056,7 +1056,6 @@ bool voxelDrawer_c::pickShape(int x, int y, unsigned int *shape, unsigned long *
 
   GLuint sbuffer[500];
 
-
   glSelectBuffer(500, sbuffer);
   glRenderMode(GL_SELECT);
 
@@ -1074,22 +1073,21 @@ bool voxelDrawer_c::pickShape(int x, int y, unsigned int *shape, unsigned long *
     return false;
   }
 
-  unsigned frontHit = 0;
+  int frontHit = -1;
 
-  bt_assert(sbuffer[0] == 3);
-  unsigned int pos = 3 + sbuffer[0];
+  int pos = 0;
 
   /* find entry with smallest z */
   for (int i = 1; i < hits; i++) {
 
-    bt_assert(sbuffer[pos] == 3);
+    if (sbuffer[pos] == 3)
+      if ((frontHit < 0) || sbuffer[pos+1] < sbuffer[frontHit+1])
+        frontHit = pos;
 
-    if (sbuffer[pos+1] < sbuffer[frontHit+1])
-      frontHit = pos;
-
-    /* skip z */
     pos += 3 + sbuffer[pos];
   }
+
+  if (frontHit < 0) return false;
 
   if (shape) *shape = sbuffer[frontHit+3];
   if (voxel) *voxel = sbuffer[frontHit+4];
