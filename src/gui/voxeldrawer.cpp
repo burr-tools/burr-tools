@@ -1015,6 +1015,8 @@ int voxelDrawer_c::handle(int event) {
 
     if (Fl::event_button() == 2)
       arcBall->click(Fl::event_x(), Fl::event_y());
+    else
+      do_callback();
 
     return 1;
 

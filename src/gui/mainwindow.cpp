@@ -1230,6 +1230,67 @@ void mainWindow_c::cb_Status(void) {
   View3D->showColors(puzzle, Status->getColorMode());
 }
 
+static void cb_3dClick_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_3dClick(); }
+void mainWindow_c::cb_3dClick(void) {
+
+
+  if (TaskSelectionTab->value() == TabPieces) {
+
+    if (Fl::event_ctrl()) {
+      unsigned int shape, face;
+      unsigned long voxel;
+
+      voxel_c * sh = puzzle->getShape(PcSel->getSelection());
+
+      if (View3D->getView()->pickShape(Fl::event_x(),
+            View3D->getView()->h()-Fl::event_y(),
+            &shape, &voxel, &face))
+        sh->setState(voxel, voxel_c::VX_EMPTY);
+
+      View3D->showSingleShape(puzzle, PcSel->getSelection());
+      StatPieceInfo(PcSel->getSelection());
+      changeShape(PcSel->getSelection());
+      redraw();
+      changed = true;
+
+    } else {
+
+      unsigned int shape, face;
+      unsigned long voxel;
+
+      voxel_c * sh = puzzle->getShape(PcSel->getSelection());
+
+      if (View3D->getView()->pickShape(Fl::event_x(),
+            View3D->getView()->h()-Fl::event_y(),
+            &shape, &voxel, &face)) {
+
+        unsigned int x, y, z;
+        if (sh->indexToXYZ(voxel, &x, &y, &z)) {
+
+          int nx, ny, nz;
+
+          if (sh->getNeighbor(face, 0, x, y, z, &nx, &ny, &nz)) {
+
+            sh->resizeInclude(nx, ny, nz);
+
+            if (Fl::event_shift())
+              sh->setState(nx, ny, nz, voxel_c::VX_VARIABLE);
+            else
+              sh->setState(nx, ny, nz, voxel_c::VX_FILLED);
+
+            View3D->showSingleShape(puzzle, PcSel->getSelection());
+            StatPieceInfo(PcSel->getSelection());
+            changeShape(PcSel->getSelection());
+            activateShape(PcSel->getSelection());
+            redraw();
+            changed = true;
+          }
+        }
+      }
+    }
+  }
+}
+
 static void cb_New_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_New(); }
 void mainWindow_c::cb_New(void) {
 
@@ -3345,6 +3406,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
   lay->end();
   lay->setMinimumSize(400, 400);
   View3D->weight(0, 1);
+  View3D->callback(cb_3dClick_stub, this);
 
   // this box paints the background behind the tab, because the tabs are partly transparent
   (new LFl_Box(0, 0, 1, 1))->color(FL_BACKGROUND_COLOR);

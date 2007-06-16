@@ -260,6 +260,7 @@ public:
   void cb_PcVis(void);
 
   void cb_Status(void);
+  void cb_3dClick(void);
 
   void cb_New(void);
   void cb_Load(void);

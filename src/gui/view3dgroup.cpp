@@ -35,6 +35,7 @@ void LView3dGroup::cb_slider(void) {
   View3D->setSize(exp(6-slider->value()));
 }
 
+static void cb_View3dGroupVoxel_stub(Fl_Widget* o, void* v) { ((LView3dGroup*)(o->parent()))->do_callback(); }
 
 LView3dGroup::LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt) : Fl_Group(0, 0, 50, 50), layoutable_c(x, y, w, h) {
 
@@ -46,6 +47,7 @@ LView3dGroup::LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt
   View3D = ggt->getVoxelDrawer(x, y, w-15, h);
   View3D->tooltip(" Rotate the puzzle by dragging with the mouse ");
   View3D->box(FL_NO_BOX);
+  View3D->callback(cb_View3dGroupVoxel_stub, this);
 
   slider = new Fl_Slider(x+w-15, y, 15, h);
   slider->tooltip("Zoom view.");
@@ -79,6 +81,7 @@ void LView3dGroup::newGridType(const guiGridType_c * ggt) {
 
   View3D = nv;
   add(View3D);
+  View3D->callback(cb_View3dGroupVoxel_stub, this);
 
   cb_slider();
 
