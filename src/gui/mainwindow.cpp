@@ -1288,6 +1288,28 @@ void mainWindow_c::cb_3dClick(void) {
         }
       }
     }
+  } else if (TaskSelectionTab->value() == TabProblems) {
+
+    unsigned int shape;
+
+    if (View3D->getView()->pickShape(Fl::event_x(),
+        View3D->getView()->h()-Fl::event_y(),
+        &shape, 0, 0)) {
+
+      bt_assert(shape >= 2);
+      shapeAssignmentSelector->setSelection(puzzle->probGetShape(problemSelector->getSelection(), shape-2));
+    }
+  } else if (TaskSelectionTab->value() == TabSolve) {
+    unsigned int shape;
+
+    if (View3D->getView()->pickShape(Fl::event_x(),
+        View3D->getView()->h()-Fl::event_y(),
+        &shape, 0, 0)) {
+
+      PcVis->hidePiece(shape);
+      View3D->updateVisibility(PcVis);
+      redraw();
+    }
   }
 }
 

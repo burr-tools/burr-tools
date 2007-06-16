@@ -603,6 +603,12 @@ unsigned char PieceVisibility::getVisibility(unsigned int piece) {
   return visState[piece];
 }
 
+void PieceVisibility::hidePiece(unsigned int s) {
+  bt_assert(s < puzzle->probPieceNumber(problem));
+
+  visState[s] = 2;
+}
+
 #define CC_ADD_LENGTH 10
 #define CC_BLOCK_GAP 2
 #define CC_GROUP_GAP 4

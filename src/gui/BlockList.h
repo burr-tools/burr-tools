@@ -359,6 +359,8 @@ public:
    * it's up to you to say what these values mean
    */
   unsigned char getVisibility(unsigned int piece);
+
+  void hidePiece(unsigned int s);
 };
 
 /**
