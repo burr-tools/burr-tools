@@ -40,58 +40,81 @@ void voxelDrawer_0_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 
   if (fabs(edge) < 0.00001) return;
 
-  glBegin(GL_QUADS);
 
+  glPushName(2);
   if (space->isEmpty2(x, y, z-1)) {
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, 0.0f, -1.0f);
 
     if (space->isEmpty2(x-1, y, z) || !space->isEmpty2(x-1, y, z-1)) { glVertex3f(x+0, y+0, z); glVertex3f(x+edge, y+0, z); glVertex3f(x+edge, y+1, z); glVertex3f(x+0, y+1, z); }
     if (space->isEmpty2(x+1, y, z) || !space->isEmpty2(x+1, y, z-1)) { glVertex3f(x+1, y+0, z); glVertex3f(x+(1-edge), y+0, z); glVertex3f(x+(1-edge), y+1, z); glVertex3f(x+1, y+1, z); }
     if (space->isEmpty2(x, y-1, z) || !space->isEmpty2(x, y-1, z-1)) { glVertex3f(x+0, y+0, z); glVertex3f(x+0, y+edge, z); glVertex3f(x+1, y+edge, z); glVertex3f(x+1, y+0, z); }
     if (space->isEmpty2(x, y+1, z) || !space->isEmpty2(x, y+1, z-1)) { glVertex3f(x+0, y+1, z); glVertex3f(x+0, y+(1-edge), z); glVertex3f(x+1, y+(1-edge), z); glVertex3f(x+1, y+1, z); }
+    glEnd();
   }
+
+  glLoadName(0);
   if (space->isEmpty2(x-1, y, z)) {
+    glBegin(GL_QUADS);
     glNormal3f( -1.0f, 0.0f, 0.0f);
 
     if (space->isEmpty2(x, y-1, z) || !space->isEmpty2(x-1, y-1, z)) { glVertex3f(x, y+0, z+0); glVertex3f(x, y+edge, z+0); glVertex3f(x, y+edge, z+1); glVertex3f(x, y+0, z+1); }
     if (space->isEmpty2(x, y+1, z) || !space->isEmpty2(x-1, y+1, z)) { glVertex3f(x, y+1, z+0); glVertex3f(x, y+1, z+1); glVertex3f(x, y+(1-edge), z+1); glVertex3f(x, y+(1-edge), z+0); }
     if (space->isEmpty2(x, y, z-1) || !space->isEmpty2(x-1, y, z-1)) { glVertex3f(x, y+0, z+edge); glVertex3f(x, y+0, z+0); glVertex3f(x, y+1, z+0); glVertex3f(x, y+1, z+edge); }
     if (space->isEmpty2(x, y, z+1) || !space->isEmpty2(x-1, y, z+1)) { glVertex3f(x, y+0, z+1); glVertex3f(x, y+0, z+(1-edge)); glVertex3f(x, y+1, z+(1-edge)); glVertex3f(x, y+1, z+1); }
+    glEnd();
   }
+
+  glLoadName(3);
   if (space->isEmpty2(x+1, y, z)) {
+    glBegin(GL_QUADS);
     glNormal3f( 1.0f, 0.0f, 0.0f);
 
     if (space->isEmpty2(x, y-1, z) || !space->isEmpty2(x+1, y-1, z)) { glVertex3f(x+1-MY, y+0, z+0); glVertex3f(x+1-MY, y+0, z+1); glVertex3f(x+1-MY, y+edge, z+1); glVertex3f(x+1-MY, y+edge, z+0); }
     if (space->isEmpty2(x, y+1, z) || !space->isEmpty2(x+1, y+1, z)) { glVertex3f(x+1-MY, y+(1-edge), z+0); glVertex3f(x+1-MY, y+(1-edge), z+1); glVertex3f(x+1-MY, y+1, z+1); glVertex3f(x+1-MY, y+1, z+0); }
     if (space->isEmpty2(x, y, z-1) || !space->isEmpty2(x+1, y, z-1)) { glVertex3f(x+1-MY, y+1, z+edge); glVertex3f(x+1-MY, y+1, z+0); glVertex3f(x+1-MY, y+0, z+0); glVertex3f(x+1-MY, y+0, z+edge); }
     if (space->isEmpty2(x, y, z+1) || !space->isEmpty2(x+1, y, z+1)) { glVertex3f(x+1-MY, y+1, z+1); glVertex3f(x+1-MY, y+1, z+(1-edge)); glVertex3f(x+1-MY, y+0, z+(1-edge)); glVertex3f(x+1-MY, y+0, z+1); }
+    glEnd();
   }
+
+  glLoadName(5);
   if (space->isEmpty2(x, y, z+1)) {
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, 0.0f, 1.0f);
 
     if (space->isEmpty2(x-1, y, z) || !space->isEmpty2(x-1, y, z+1)) { glVertex3f(x+edge, y+0, z+1-MY); glVertex3f(x+edge, y+1, z+1-MY); glVertex3f(x+0, y+1, z+1-MY); glVertex3f(x+0, y+0, z+1-MY); }
     if (space->isEmpty2(x+1, y, z) || !space->isEmpty2(x+1, y, z+1)) { glVertex3f(x+1, y+0, z+1-MY); glVertex3f(x+1, y+1, z+1-MY); glVertex3f(x+(1-edge), y+1, z+1-MY); glVertex3f(x+(1-edge), y+0, z+1-MY); }
     if (space->isEmpty2(x, y-1, z) || !space->isEmpty2(x, y-1, z+1)) { glVertex3f(x+0, y+edge, z+1-MY); glVertex3f(x+0, y+0, z+1-MY); glVertex3f(x+1, y+0, z+1-MY); glVertex3f(x+1, y+edge, z+1-MY); }
     if (space->isEmpty2(x, y+1, z) || !space->isEmpty2(x, y+1, z+1)) { glVertex3f(x+0, y+1, z+1-MY); glVertex3f(x+0, y+(1-edge), z+1-MY); glVertex3f(x+1, y+(1-edge), z+1-MY); glVertex3f(x+1, y+1, z+1-MY); }
+    glEnd();
   }
+
+  glLoadName(1);
   if (space->isEmpty2(x, y-1, z)) {
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, -1.0f, 0.0f);
 
     if (space->isEmpty2(x-1, y, z) || !space->isEmpty2(x-1, y-1, z)) { glVertex3f(x+edge, y, z+0); glVertex3f(x+0, y, z+0); glVertex3f(x+0, y, z+1); glVertex3f(x+edge, y, z+1); }
     if (space->isEmpty2(x+1, y, z) || !space->isEmpty2(x+1, y-1, z)) { glVertex3f(x+1, y, z+0); glVertex3f(x+(1-edge), y, z+0); glVertex3f(x+(1-edge), y, z+1); glVertex3f(x+1, y, z+1); }
     if (space->isEmpty2(x, y, z-1) || !space->isEmpty2(x, y-1, z-1)) { glVertex3f(x+0, y, z+edge); glVertex3f(x+1, y, z+edge); glVertex3f(x+1, y, z+0); glVertex3f(x+0, y, z+0); }
     if (space->isEmpty2(x, y, z+1) || !space->isEmpty2(x, y-1, z+1)) { glVertex3f(x+0, y, z+1); glVertex3f(x+1, y, z+1); glVertex3f(x+1, y, z+(1-edge)); glVertex3f(x+0, y, z+(1-edge)); }
+    glEnd();
   }
+
+  glLoadName(4);
   if (space->isEmpty2(x, y+1, z)) {
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, 1.0f, 0.0f);
 
     if (space->isEmpty2(x-1, y, z) || !space->isEmpty2(x-1, y+1, z)) { glVertex3f(x+edge, y+1-MY, z+0); glVertex3f(x+edge, y+1-MY, z+1); glVertex3f(x+0, y+1-MY, z+1); glVertex3f(x+0, y+1-MY, z+0); }
     if (space->isEmpty2(x+1, y, z) || !space->isEmpty2(x+1, y+1, z)) { glVertex3f(x+1, y+1-MY, z+0); glVertex3f(x+1, y+1-MY, z+1); glVertex3f(x+(1-edge), y+1-MY, z+1); glVertex3f(x+(1-edge), y+1-MY, z+0); }
     if (space->isEmpty2(x, y, z-1) || !space->isEmpty2(x, y+1, z-1)) { glVertex3f(x+0, y+1-MY, z+edge); glVertex3f(x+0, y+1-MY, z+0); glVertex3f(x+1, y+1-MY, z+0); glVertex3f(x+1, y+1-MY, z+edge); }
     if (space->isEmpty2(x, y, z+1) || !space->isEmpty2(x, y+1, z+1)) { glVertex3f(x+0, y+1-MY, z+1); glVertex3f(x+0, y+1-MY, z+(1-edge)); glVertex3f(x+1, y+1-MY, z+(1-edge)); glVertex3f(x+1, y+1-MY, z+1); }
+    glEnd();
   }
 
-  glEnd();
+
+  glPopName();
 }
 
 // draws a box with borders depending on the neighbour boxes
@@ -99,8 +122,9 @@ void voxelDrawer_0_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
 
   GLfloat a0, b0, a1, b1;
 
-  glBegin(GL_QUADS);
+  glPushName(2);
   if (space->isEmpty2(x, y, z-1)) {
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, 0.0f, -1.0f);
 
     if (!space->isEmpty2(x-1, y, z) && space->isEmpty2(x-1, y, z-1)) a0 = 0; else a0 = edge;
@@ -109,8 +133,12 @@ void voxelDrawer_0_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
     if (!space->isEmpty2(x, y+1, z) && space->isEmpty2(x, y+1, z-1)) b1 = 1; else b1 = (1-edge);
 
     glVertex3f(x+a0, y+b0, z); glVertex3f(x+a0, y+b1, z); glVertex3f(x+a1, y+b1, z); glVertex3f(x+a1, y+b0, z);
+    glEnd();
   }
+
+  glLoadName(0);
   if (space->isEmpty2(x-1, y, z)) {
+    glBegin(GL_QUADS);
     glNormal3f( -1.0f, 0.0f, 0.0f);
 
     if (!space->isEmpty2(x, y-1, z) && space->isEmpty2(x-1, y-1, z)) a0 = 0; else a0 = edge;
@@ -119,8 +147,12 @@ void voxelDrawer_0_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
     if (!space->isEmpty2(x, y, z+1) && space->isEmpty2(x-1, y, z+1)) b1 = 1; else b1 = (1-edge);
 
     glVertex3f(x, y+a0, z+b0); glVertex3f(x, y+a0, z+b1); glVertex3f(x, y+a1, z+b1); glVertex3f(x, y+a1, z+b0);
+    glEnd();
   }
+
+  glLoadName(3);
   if (space->isEmpty2(x+1, y, z)) {
+    glBegin(GL_QUADS);
     glNormal3f( 1.0f, 0.0f, 0.0f);
 
     if (!space->isEmpty2(x, y-1, z) && space->isEmpty2(x+1, y-1, z)) a0 = 0; else a0 = edge;
@@ -129,8 +161,12 @@ void voxelDrawer_0_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
     if (!space->isEmpty2(x, y, z+1) && space->isEmpty2(x+1, y, z+1)) b1 = 1; else b1 = (1-edge);
 
     glVertex3f(x+1-MY, y+a1, z+b0); glVertex3f(x+1-MY, y+a1, z+b1); glVertex3f(x+1-MY, y+a0, z+b1); glVertex3f(x+1-MY, y+a0, z+b0);
+    glEnd();
   }
+
+  glLoadName(5);
   if (space->isEmpty2(x, y, z+1)) {
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, 0.0f, 1.0f);
 
     if (!space->isEmpty2(x-1, y, z) && space->isEmpty2(x-1, y, z+1)) a0 = 0; else a0 = edge;
@@ -139,8 +175,12 @@ void voxelDrawer_0_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
     if (!space->isEmpty2(x, y+1, z) && space->isEmpty2(x, y+1, z+1)) b1 = 1; else b1 = (1-edge);
 
     glVertex3f(x+a0, y+b0, z+1-MY); glVertex3f(x+a0, y+b1, z+1-MY); glVertex3f(x+a1, y+b1, z+1-MY); glVertex3f(x+a1, y+b0, z+1-MY);
+    glEnd();
   }
+
+  glLoadName(1);
   if (space->isEmpty2(x, y-1, z)) {
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, -1.0f, 0.0f);
 
     if (!space->isEmpty2(x-1, y, z) && space->isEmpty2(x-1, y-1, z)) a0 = 0; else a0 = edge;
@@ -149,8 +189,12 @@ void voxelDrawer_0_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
     if (!space->isEmpty2(x, y, z+1) && space->isEmpty2(x, y-1, z+1)) b1 = 1; else b1 = (1-edge);
 
     glVertex3f(x+a0, y  , z+b0); glVertex3f(x+a1, y  , z+b0); glVertex3f(x+a1, y  , z+b1); glVertex3f(x+a0, y  , z+b1);
+    glEnd();
   }
+
+  glLoadName(4);
   if (space->isEmpty2(x, y+1, z)) {
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, 1.0f, 0.0f);
 
     if (!space->isEmpty2(x-1, y, z) && space->isEmpty2(x-1, y+1, z)) a0 = 0; else a0 = edge;
@@ -159,43 +203,69 @@ void voxelDrawer_0_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
     if (!space->isEmpty2(x, y, z+1) && space->isEmpty2(x, y+1, z+1)) b1 = 1; else b1 = (1-edge);
 
     glVertex3f(x+a0, y+1-MY, z+b0); glVertex3f(x+a0, y+1-MY, z+b1); glVertex3f(x+a1, y+1-MY, z+b1); glVertex3f(x+a1, y+1-MY, z+b0);
+    glEnd();
   }
 
-  glEnd();
-
   glColor4f(0, 0, 0, alpha);
+
+  glPopName();
 
   drawFrame(space, x, y, z, edge);
 }
 
 // draw a cube that is smaller than 1
 void voxelDrawer_0_c::drawVariableMarkers(const voxel_c * space, int x, int y, int z) {
-  glBegin(GL_QUADS);
+
+
+  glPushName(2);
   if (space->isEmpty2(x, y, z-1)) {
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, 0.0f, -1.0f);
     glVertex3f(x+0.2, y+0.2, z-MY); glVertex3f(x+0.2, y+0.8, z-MY); glVertex3f(x+0.8, y+0.8, z-MY); glVertex3f(x+0.8, y+0.2, z-MY);
+    glEnd();
   }
+
+  glLoadName(0);
   if (space->isEmpty2(x-1, y, z)) {
+    glBegin(GL_QUADS);
     glNormal3f( -1.0f, 0.0f, 0.0f);
     glVertex3f(x-MY, y+0.2, z+0.2); glVertex3f(x-MY, y+0.2, z+0.8); glVertex3f(x-MY, y+0.8, z+0.8); glVertex3f(x-MY, y+0.8, z+0.2);
+    glEnd();
   }
+
+  glLoadName(3);
   if (space->isEmpty2(x+1, y, z)) {
+    glBegin(GL_QUADS);
     glNormal3f( 1.0f, 0.0f, 0.0f);
     glVertex3f(x+1+MY, y+0.8, z+0.2); glVertex3f(x+1+MY, y+0.8, z+0.8); glVertex3f(x+1+MY, y+0.2, z+0.8); glVertex3f(x+1+MY, y+0.2, z+0.2);
+    glEnd();
   }
+
+  glLoadName(5);
   if (space->isEmpty2(x, y, z+1)) {
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, 0.0f, 1.0f);
     glVertex3f(x+0.2, y+0.2, z+1+MY); glVertex3f(x+0.2, y+0.8, z+1+MY); glVertex3f(x+0.8, y+0.8, z+1+MY); glVertex3f(x+0.8, y+0.2, z+1.02);
+    glEnd();
   }
+
+  glLoadName(1);
   if (space->isEmpty2(x, y-1, z)) {
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, -1.0f, 0.0f);
     glVertex3f(x+0.2, y-MY, z+0.2); glVertex3f(x+0.8, y-MY, z+0.2); glVertex3f(x+0.8, y-MY, z+0.8); glVertex3f(x+0.2, y-MY, z+0.8);
+    glEnd();
   }
+
+  glLoadName(4);
   if (space->isEmpty2(x, y+1, z)) {
+    glBegin(GL_QUADS);
     glNormal3f( 0.0f, 1.0f, 0.0f);
     glVertex3f(x+0.2, y+1+MY, z+0.2); glVertex3f(x+0.2, y+1+MY, z+0.8); glVertex3f(x+0.8, y+1+MY, z+0.8); glVertex3f(x+0.8, y+1+MY, z+0.2);
+    glEnd();
   }
-  glEnd();
+
+  glPopName();
 }
 
 void voxelDrawer_0_c::drawCursor(unsigned int sx, unsigned int sy, unsigned int sz) {

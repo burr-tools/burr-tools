@@ -215,6 +215,9 @@ private:
   // set to true, when the grid type changed and the transformation matrix is not yet updated
   bool _gtChanged;
 
+  // when picking shapes, this is the coordinate to use
+  int pickx, picky;
+
 public:
 
   void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
@@ -270,6 +273,9 @@ public:
   const arcBall_c * getArcBall(void) const { return arcBall; }
 
   void setCallback(VoxelViewCallbacks *c = 0) { cb = c; }
+
+
+  bool pickShape(int x, int y, unsigned int *shape, unsigned long *voxel, unsigned int *face);
 };
 
 #endif

@@ -47,7 +47,8 @@ voxelDrawer_c::voxelDrawer_c(int x,int y,int w,int h) :
   doUpdates(true), size(10), cb(0),
   colors(pieceColor),
   _useLightning(true),
-  _gtChanged(true)
+  _gtChanged(true),
+  pickx(-1)
 {
 };
 
@@ -78,11 +79,15 @@ void voxelDrawer_c::drawVoxelSpace() {
 
   glShadeModel(GL_FLAT);
 
+  glPushName(0);
+
   for (unsigned int run = 0; run < 2; run++) {
     for (unsigned int piece = 0; piece < shapes.size(); piece++) {
 
       if (shapes[piece].a == 0)
         continue;
+
+      glLoadName(piece);
 
       // in run 0 we only paint opaque objects and in run 1 only transparent ones
       // this lets the transparent objects be always in front of the others
@@ -176,12 +181,16 @@ void voxelDrawer_c::drawVoxelSpace() {
 
       const shapeInfo * shape = &shapes[piece];
 
+      glPushName(0);
+
       for (unsigned int x = 0; x < shape->shape->getX(); x++)
         for (unsigned int y = 0; y < shape->shape->getY(); y++)
           for (unsigned int z = 0; z < shape->shape->getZ(); z++) {
 
             if (shape->shape->isEmpty(x, y , z))
               continue;
+
+            glLoadName(shape->shape->getIndex(x, y, z));
 
             float cr, cg, cb, ca;
             cr = cg = cb = 0;
@@ -258,6 +267,8 @@ void voxelDrawer_c::drawVoxelSpace() {
             }
           }
 
+      glPopName();
+
       // the marker should be only active, when only one shape is there
       // otherwise it's drawn for every shape
       if ((markerType >= 0) && (mX1 <= mX2) && (mY1 <= mY2)) {
@@ -279,6 +290,7 @@ void voxelDrawer_c::drawVoxelSpace() {
     glDepthMask(GL_FALSE);
   }
 
+  glPopName();
   glDepthMask(GL_TRUE);
 }
 
@@ -898,6 +910,13 @@ static void gluPerspective(double fovy, double aspect, double zNear, double zFar
   glFrustum(xmin, xmax, ymin, ymax, zNear, zFar);
 }
 
+static void gluPickMatrix(double x, double y, double deltax, double deltay, GLint viewport[4]) {
+
+  glTranslatef((viewport[2]-2*(x-viewport[0]))/deltax,
+      (viewport[3]-2*(y-viewport[1]))/deltay, 0);
+  glScalef(viewport[2]/deltax, viewport[3]/deltay, 1.0);
+}
+
 void voxelDrawer_c::draw() {
 
   if (!doUpdates)
@@ -940,6 +959,13 @@ void voxelDrawer_c::draw() {
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
+
+    if (pickx >= 0) {
+      GLint viewport[4];
+
+      glGetIntegerv(GL_VIEWPORT, viewport);
+      gluPickMatrix(pickx, picky, 3, 3, viewport);
+    }
 
     // this call has to be identical to the one in image_c::prepareOpenGlImagePart
     gluPerspective(15, 1.0*w()/h(), size+1, 3*size+1);
@@ -1015,3 +1041,48 @@ void voxelDrawer_c::setSize(double sz) {
   redraw();
 }
 
+bool voxelDrawer_c::pickShape(int x, int y, unsigned int *shape, unsigned long *voxel, unsigned int *face) {
+
+  GLuint sbuffer[500];
+
+
+  glSelectBuffer(500, sbuffer);
+  glRenderMode(GL_SELECT);
+
+  glInitNames();
+
+  pickx = x;
+  picky = y;
+
+  draw();
+
+  GLint hits = glRenderMode(GL_RENDER);
+  pickx = -1;
+
+  if (hits <= 0) {
+    return false;
+  }
+
+  unsigned frontHit = 0;
+
+  bt_assert(sbuffer[0] == 3);
+  unsigned int pos = 3 + sbuffer[0];
+
+  /* find entry with smallest z */
+  for (int i = 1; i < hits; i++) {
+
+    bt_assert(sbuffer[pos] == 3);
+
+    if (sbuffer[pos+1] < sbuffer[frontHit+1])
+      frontHit = pos;
+
+    /* skip z */
+    pos += 3 + sbuffer[pos];
+  }
+
+  if (shape) *shape = sbuffer[frontHit+3];
+  if (voxel) *voxel = sbuffer[frontHit+4];
+  if (face)  *face  = sbuffer[frontHit+5];
+
+  return true;
+}
