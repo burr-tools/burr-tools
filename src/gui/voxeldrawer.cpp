@@ -1078,10 +1078,10 @@ bool voxelDrawer_c::pickShape(int x, int y, unsigned int *shape, unsigned long *
   int pos = 0;
 
   /* find entry with smallest z */
-  for (int i = 1; i < hits; i++) {
+  for (int i = 0; i < hits; i++) {
 
     if (sbuffer[pos] == 3)
-      if ((frontHit < 0) || sbuffer[pos+1] < sbuffer[frontHit+1])
+      if ((frontHit < 0) || (sbuffer[pos+1] < sbuffer[frontHit+1]))
         frontHit = pos;
 
     pos += 3 + sbuffer[pos];
