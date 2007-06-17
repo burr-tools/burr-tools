@@ -1296,8 +1296,8 @@ void mainWindow_c::cb_3dClick(void) {
         View3D->getView()->h()-Fl::event_y(),
         &shape, 0, 0)) {
 
-      bt_assert(shape >= 2);
-      shapeAssignmentSelector->setSelection(puzzle->probGetShape(problemSelector->getSelection(), shape-2));
+      if (shape >= 2)
+        shapeAssignmentSelector->setSelection(puzzle->probGetShape(problemSelector->getSelection(), shape-2));
     }
   } else if (TaskSelectionTab->value() == TabSolve) {
     unsigned int shape;
