@@ -53,10 +53,14 @@ else
   AC_MSG_ERROR([libpng not found, please install that library])
 fi  
 
+if test "$target_os" != "mingw32"; then
+
 MDL_HAVE_OPENGL
 
 if test x$have_GL != xyes -o x$have_GLU != xyes; then
   AC_MSG_ERROR([no openGL found, openGL is needed for burrtools])
+fi
+
 fi
 
 AC_SYS_LARGEFILE
