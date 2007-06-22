@@ -452,33 +452,33 @@ void voxelDrawer_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsi
 
   if (probNum < puz->problemNumber()) {
 
-    // first find out how to arrange the pieces:
-    unsigned int square = 3;
-    while (square * (square-2) < puz->probShapeNumber(probNum)) square++;
-
-    unsigned int num;
-
     float diagonal = 0;
 
     // now find a scaling factor, so that all pieces fit into their square
-    if (puz->probGetResult(probNum) < puz->shapeNumber()) {
 
-      if (puz->probGetResultShape(probNum)->getDiagonal() > diagonal)
-        diagonal = puz->probGetResultShape(probNum)->getDiagonal();
-    }
-
-    // check the selected shape
-    if (selShape < puz->shapeNumber()) {
-
-      if (puz->getShape(selShape)->getDiagonal() > diagonal)
-        diagonal = puz->getShape(selShape)->getDiagonal();
-    }
-
+    // find the biggest piece shape
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
       if (puz->probGetShapeShape(probNum, p)->getDiagonal() > diagonal)
         diagonal = puz->probGetShapeShape(probNum, p)->getDiagonal();
 
-    diagonal = sqrt(diagonal)/1.5;
+    // find out how much bigger the result is compared to the shapes
+    unsigned int factor;
+    if (puz->probGetResult(probNum) < puz->shapeNumber()) {
+
+      factor = (sqrt(puz->probGetResultShape(probNum)->getDiagonal()) + 0.5)/sqrt(diagonal);
+    } else
+      factor = 1;
+
+    if (factor < 1)
+      factor = 1;
+
+    diagonal = sqrt(diagonal);
+
+    // first find out how to arrange the pieces:
+    unsigned int square = 2*factor+1;
+    while (square * (square-2*factor) < puz->probShapeNumber(probNum)) square++;
+
+    unsigned int num;
 
     // now place the result shape
     if (puz->probGetResult(probNum) < puz->shapeNumber()) {
@@ -489,8 +489,8 @@ void voxelDrawer_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsi
                             pieceColorG(puz->probGetResult(probNum)),
                             pieceColorB(puz->probGetResult(probNum)), 1);
       setSpacePosition(num,
-                               0.5* (square*diagonal) * (1.0/square - 0.5),
-                               0.5* (square*diagonal) * (0.5 - 1.0/square), -20, 1.0);
+          0.5* (square*diagonal) * (factor*1.0/square - 0.5),
+          0.5* (square*diagonal) * (0.5 - factor*1.0/square), -20, 1.0);
     }
 
     // now place the selected shape
@@ -502,12 +502,12 @@ void voxelDrawer_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsi
                             pieceColorG(selShape),
                             pieceColorB(selShape), 1);
       setSpacePosition(num,
-                               0.5* (square*diagonal) * (0.5 - 0.5/square),
-                               0.5* (square*diagonal) * (0.5 - 0.5/square), -20, 0.5);
+          0.5* (square*diagonal) * (0.5 - 0.5/square),
+          0.5* (square*diagonal) * (0.5 - 0.5/square), -20, 0.5);
     }
 
     // and now the shapes
-    int unsigned line = 2;
+    int unsigned line = 2*factor;
     int unsigned col = 0;
     for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++) {
       num = addSpace(puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, p)));
