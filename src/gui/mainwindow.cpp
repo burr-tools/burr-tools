@@ -978,6 +978,7 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   } else {
 
     updateInterface();
+    changed = true;
   }
 }
 
@@ -1018,6 +1019,8 @@ void mainWindow_c::cb_SortSolutions(unsigned int by) {
 
   if (sol < 2)
     return;
+
+  changed = true;
 
   // this is bubble sort, so it might be a bit slow
   // for larger number of solutions but is has the advantage
@@ -1067,6 +1070,8 @@ void mainWindow_c::cb_DeleteSolutions(unsigned int which) {
     return;
 
   unsigned int cnt;
+
+  changed = true;
 
   switch (which) {
   case 0:
@@ -1126,6 +1131,8 @@ void mainWindow_c::cb_DeleteDisasm(void) {
 
   puzzle->probRemoveDisassm(prob, sol);
 
+  changed = true;
+
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
 }
@@ -1138,6 +1145,8 @@ void mainWindow_c::cb_DeleteAllDisasm(void) {
     return;
 
   puzzle->probRemoveAllDisassm(prob);
+
+  changed = true;
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
@@ -1164,6 +1173,8 @@ void mainWindow_c::cb_AddDisasm(void) {
 
   separation_c * d = dis->disassemble(puzzle->probGetAssembly(prob, sol));
 
+  changed = true;
+
   if (d)
     puzzle->probAddDisasmToSolution(prob, sol, d);
 
@@ -1185,6 +1196,8 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
     fl_message("Sorry this space grid doesn't have a disassembler (yet)!");
     return;
   }
+
+  changed = true;
 
   disassembler_c * dis = puzzle->getGridType()->getDisassembler(puzzle, prob);
 
