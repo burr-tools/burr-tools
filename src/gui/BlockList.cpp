@@ -65,7 +65,8 @@ void BlockList::draw() {
     if (hi > maxz) maxz = hi;
 
     /* draw */
-    blockDraw(i, x()+xpos, y()+zpos-shift);
+    if (((int)zpos >= (int)shift-(int)hi) && (zpos < shift+h()))
+      blockDraw(i, x()+xpos, y()+zpos-shift);
 
     xpos += wi;
   }
