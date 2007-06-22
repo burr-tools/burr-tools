@@ -1266,7 +1266,7 @@ void mainWindow_c::cb_3dClick(void) {
       redraw();
       changed = true;
 
-    } else {
+    } else if (Fl::event_shift() || Fl::event_alt()) {
 
       unsigned int shape, face;
       unsigned long voxel;
@@ -1286,7 +1286,7 @@ void mainWindow_c::cb_3dClick(void) {
 
             sh->resizeInclude(nx, ny, nz);
 
-            if (Fl::event_shift())
+            if (Fl::event_alt())
               sh->setState(nx, ny, nz, voxel_c::VX_VARIABLE);
             else
               sh->setState(nx, ny, nz, voxel_c::VX_FILLED);

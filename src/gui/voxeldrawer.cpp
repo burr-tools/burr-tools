@@ -1013,25 +1013,20 @@ int voxelDrawer_c::handle(int event) {
   switch(event) {
   case FL_PUSH:
 
-    if (Fl::event_button() == 2)
-      arcBall->click(Fl::event_x(), Fl::event_y());
-    else
-      do_callback();
+    arcBall->click(Fl::event_x(), Fl::event_y());
+    do_callback();
 
     return 1;
 
   case FL_DRAG:
-    if (Fl::event_button2()) {
-      arcBall->drag(Fl::event_x(), Fl::event_y());
-      redraw();
-    }
+    arcBall->drag(Fl::event_x(), Fl::event_y());
+    redraw();
 
     return 1;
 
   case FL_RELEASE:
 
-    if (Fl::event_button() == 2)
-      arcBall->clack(Fl::event_x(), Fl::event_y());
+    arcBall->clack(Fl::event_x(), Fl::event_y());
 
     return 1;
   }
