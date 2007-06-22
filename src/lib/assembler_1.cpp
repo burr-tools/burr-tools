@@ -562,7 +562,7 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
     return errorsState;
   }
 
-  /* in some cases it is useful to count the number of clocks the range pieces contribute
+  /* in some cases it is useful to count the number of blocks the range pieces contribute
    * this is calulated here
    *
    * the result will contain between res_filled-res_vari   and res_filled voxels
@@ -572,8 +572,8 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
    * This additional check prevents adding too many pieces from the ranges and so making placement of
    * pieces that have to be placed impossible
    */
-  unsigned int RangeMin = res_filled-res_vari;
-  unsigned int RangeMax = res_filled;
+  int RangeMin = res_filled-res_vari;
+  int RangeMax = res_filled;
 
   for (unsigned int j = 0; j < puz->probShapeNumber(prob); j++) {
     if (puz->probGetShapeMin(prob, j) == puz->probGetShapeMax(prob, j)) {
@@ -582,6 +582,7 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
     }
   }
 
+  if (RangeMin < 0) RangeMin = 0;
 
   /* fill the nodes arrays */
   int error = prepare(min != max, RangeMin, RangeMax);
