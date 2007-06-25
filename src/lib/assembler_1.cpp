@@ -935,6 +935,22 @@ bool assembler_1_c::open_column_conditions_fulfillable(void) {
   return true;
 }
 
+
+static bool betterParams(int n_sum, int n_min, int n_max, int o_sum, int o_min, int o_max) {
+
+  // we need to find that column that
+  // will result in the fewest number of possibilities fo
+  // fulfill the column condition. It is not simple to find that
+  // in the old version it was simple the number of rows (sum)
+  // what was used, now something a bit more scientific
+
+
+//  if (n_min < 0) n_min = 0;
+//  if (o_min < 0) o_min = 0;
+
+  return n_sum*n_max < o_sum*o_max;
+}
+
 int assembler_1_c::find_best_unclosed_column(void) {
   int col = right[0];
 
@@ -946,8 +962,14 @@ int assembler_1_c::find_best_unclosed_column(void) {
   col = right[col];
 
   while (col) {
-    if (colCount[col] < colCount[bestcol])
+    if (betterParams(colCount[col], min[col]-weight[col], max[col]-weight[col],
+          colCount[bestcol], min[bestcol]-weight[bestcol], max[bestcol]-weight[bestcol]))
+
       bestcol = col;
+
+    if (colCount[col] == 0)
+      return col;
+
     col = right[col];
   }
 
