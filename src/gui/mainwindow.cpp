@@ -56,6 +56,7 @@
 #include "../lib/disassembly.h"
 #include "../lib/gridtype.h"
 #include "../lib/disasmtomoves.h"
+#include "../lib/assembly.h"
 
 #include "../flu/Flu_File_Chooser.h"
 
@@ -1009,6 +1010,7 @@ void mainWindow_c::cb_SolutionAnim(Fl_Value_Slider* o) {
 static void cb_SrtFind_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SortSolutions(0); }
 static void cb_SrtLevel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SortSolutions(1); }
 static void cb_SrtMoves_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SortSolutions(2); }
+static void cb_SrtPieces_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SortSolutions(3); }
 void mainWindow_c::cb_SortSolutions(unsigned int by) {
   unsigned int prob = solutionProblem->getSelection();
 
@@ -1041,6 +1043,9 @@ void mainWindow_c::cb_SortSolutions(unsigned int by) {
         case 2:
           exchange = puzzle->probGetDisassemblyInfo(prob, a) && puzzle->probGetDisassemblyInfo(prob, b) &&
             (puzzle->probGetDisassemblyInfo(prob, a)->sumMoves() > puzzle->probGetDisassemblyInfo(prob, b)->sumMoves());
+          break;
+        case 3:
+          exchange = puzzle->probGetAssembly(prob, a)->comparePieces(puzzle->probGetAssembly(prob, b)) < 0;
           break;
       }
 
@@ -2285,10 +2290,12 @@ void mainWindow_c::updateInterface(void) {
         BtnSrtFind->activate();
         BtnSrtLevel->activate();
         BtnSrtMoves->activate();
+        BtnSrtPieces->activate();
       } else {
         BtnSrtFind->deactivate();
         BtnSrtLevel->deactivate();
         BtnSrtMoves->deactivate();
+        BtnSrtPieces->deactivate();
       }
 
       if (puzzle->probSolutionNumber(prob) > 0) {
@@ -2371,6 +2378,7 @@ void mainWindow_c::updateInterface(void) {
       BtnSrtFind->deactivate();
       BtnSrtLevel->deactivate();
       BtnSrtMoves->deactivate();
+      BtnSrtPieces->deactivate();
       BtnDelAll->deactivate();
       BtnDelBefore->deactivate();
       BtnDelAt->deactivate();
@@ -2464,6 +2472,7 @@ void mainWindow_c::updateInterface(void) {
         BtnSrtFind->deactivate();
         BtnSrtLevel->deactivate();
         BtnSrtMoves->deactivate();
+        BtnSrtPieces->deactivate();
         BtnDelAll->deactivate();
         BtnDelBefore->deactivate();
         BtnDelAt->deactivate();
@@ -3332,14 +3341,19 @@ void mainWindow_c::CreateSolveTab(void) {
 
     o = new layouter_c(0, 5);
 
-    BtnSrtFind =  new LFlatButton_c(0, 0, 1, 1, "Sort by Finding", " Sort in the order the solutions were found ", cb_SrtFind_stub, this);
+    new LFl_Box("Sort by: ", 0, 0);
+
+    BtnSrtFind =  new LFlatButton_c(1, 0, 1, 1, "Number", " Sort in the order the solutions were found ", cb_SrtFind_stub, this);
     ((LFlatButton_c*)BtnSrtFind)->weight(1, 0);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
-    BtnSrtLevel = new LFlatButton_c(2, 0, 1, 1, "Sort by Level", " Sort in the order of increasing level ", cb_SrtLevel_stub, this);
+    (new LFl_Box(2, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnSrtLevel = new LFlatButton_c(3, 0, 1, 1, "Level", " Sort in the order of increasing level ", cb_SrtLevel_stub, this);
     ((LFlatButton_c*)BtnSrtLevel)->weight(1, 0);
-    (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
-    BtnSrtMoves = new LFlatButton_c(4, 0, 1, 1, "Sort by Disasm", " Sort in the order of increasing moves for complete disassembly ", cb_SrtMoves_stub, this);
+    (new LFl_Box(4, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnSrtMoves = new LFlatButton_c(5, 0, 1, 1, "Disasm", " Sort in the order of increasing moves for complete disassembly ", cb_SrtMoves_stub, this);
     ((LFlatButton_c*)BtnSrtMoves)->weight(1, 0);
+    (new LFl_Box(6, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnSrtPieces = new LFlatButton_c(7, 0, 1, 1, "Pieces", " Sort in the order of used pieces ", cb_SrtPieces_stub, this);
+    ((LFlatButton_c*)BtnSrtPieces)->weight(1, 0);
 
     o->end();
 
@@ -3347,19 +3361,21 @@ void mainWindow_c::CreateSolveTab(void) {
 
     o = new layouter_c(0, 7);
 
-    BtnDelAll =    new LFlatButton_c(0, 0, 1, 1, "Del All", " Delete all solutions ", cb_DelAll_stub, this);
+    new LFl_Box("Delete: ", 0, 0);
+
+    BtnDelAll =    new LFlatButton_c(1, 0, 1, 1, "All", " Delete all solutions ", cb_DelAll_stub, this);
     ((LFlatButton_c*)BtnDelAll)->weight(1, 0);
-    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
-    BtnDelBefore = new LFlatButton_c(2, 0, 1, 1, "Del Before", " Delete all before the currently selected one ", cb_DelBefore_stub, this);
+    (new LFl_Box(2, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnDelBefore = new LFlatButton_c(3, 0, 1, 1, "Before", " Delete all before the currently selected one ", cb_DelBefore_stub, this);
     ((LFlatButton_c*)BtnDelBefore)->weight(1, 0);
-    (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
-    BtnDelAt =     new LFlatButton_c(4, 0, 1, 1, "Del At", " Delete current solution ", cb_DelAt_stub, this);
+    (new LFl_Box(4, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnDelAt =     new LFlatButton_c(5, 0, 1, 1, "At", " Delete current solution ", cb_DelAt_stub, this);
     ((LFlatButton_c*)BtnDelAt)->weight(1, 0);
-    (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, 0);
-    BtnDelAfter =  new LFlatButton_c(6, 0, 1, 1, "Del After", " Delete all solutions after the currently selected one ", cb_DelAfter_stub, this);
+    (new LFl_Box(6, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnDelAfter =  new LFlatButton_c(7, 0, 1, 1, "After", " Delete all solutions after the currently selected one ", cb_DelAfter_stub, this);
     ((LFlatButton_c*)BtnDelAfter)->weight(1, 0);
-    (new LFl_Box(7, 0))->setMinimumSize(SZ_GAP, 0);
-    BtnDelDisasm = new LFlatButton_c(8, 0, 1, 1, "Del w/o DA", " Delete all solutions without valid disassembly ", cb_DelDisasmless_stub, this);
+    (new LFl_Box(8, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnDelDisasm = new LFlatButton_c(9, 0, 1, 1, "w/o DA", " Delete all solutions without valid disassembly ", cb_DelDisasmless_stub, this);
     ((LFlatButton_c*)BtnDelDisasm)->weight(1, 0);
 
     o->end();

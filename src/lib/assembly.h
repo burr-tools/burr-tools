@@ -230,6 +230,8 @@ public:
   void shiftPiece(unsigned int pc, int dx, int dy, int dz);
 
   void exchangeShape(unsigned int s1, unsigned int s2);
+
+  int comparePieces(const assembly_c * b) const;
 };
 
 #endif

@@ -130,7 +130,7 @@ class mainWindow_c : public LFl_Double_Window {
 
   Fl_Value_Output *SolutionNumber, *AssemblyNumber;
 
-  FlatButton *BtnSrtFind, *BtnSrtLevel, *BtnSrtMoves;
+  FlatButton *BtnSrtFind, *BtnSrtLevel, *BtnSrtMoves, *BtnSrtPieces;
   FlatButton *BtnDelAll, *BtnDelBefore, *BtnDelAt, *BtnDelAfter, *BtnDelDisasm;
   FlatButton *BtnDisasmDel, *BtnDisasmDelAll, *BtnDisasmAdd, *BtnDisasmAddAll, *BtnDisasmAddMissing;
 

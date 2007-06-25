@@ -635,3 +635,26 @@ void assembly_c::exchangeShape(unsigned int s1, unsigned int s2) {
   placements[s1] = placements[s2];
   placements[s2] = p;
 }
+
+int assembly_c::comparePieces(const assembly_c * b) const {
+
+  // returns 0 if both assemblies use the same pieces
+  // 1 if the piece string (AAABBCDE) of this is smaller
+  // -1 if the piece string of this is larger
+
+  bt_assert(placements.size() == b->placements.size());
+
+  for (unsigned int piece = 0; piece < placements.size(); piece++) {
+
+    if (placements[piece].transformation == UNPLACED_TRANS &&
+        b->placements[piece].transformation != UNPLACED_TRANS)
+      return -1;
+
+    if (placements[piece].transformation != UNPLACED_TRANS &&
+        b->placements[piece].transformation == UNPLACED_TRANS)
+      return 1;
+  }
+
+  return 0;
+}
+
