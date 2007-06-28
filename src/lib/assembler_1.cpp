@@ -400,6 +400,8 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
       if (mirrorCheck || pieceRanges) {
         /* all the shapes are either self mirroring or have a mirror pair
          * so we create the mirror structure and we do the mirror check
+         * we also need to that when ranges are used because the final solution
+         * might use only mirrorable pieces and then we need this information
          */
         mirrorInfo_c * mir = new mirrorInfo_c();
 
@@ -594,8 +596,11 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
     return errorsState;
   }
 
-  if (keepMirror)
+  if (keepMirror) {
+    if (avoidTransformedMirror)
+      delete avoidTransformedMirror;
     avoidTransformedMirror = 0;
+  }
 
   errorsState = ERR_NONE;
   return errorsState;

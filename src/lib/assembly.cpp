@@ -352,7 +352,13 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
           unsigned int p2 = 0;
           unsigned char t;
 
-          bt_assert(mir->getPieceInfo(p, &p2, &t));
+          /* when no mirror piece exists we can stop, this might happen for
+           * wne piece ranges are used because then we don't know what pieces
+           * are used in the final solution and have to add all known information
+           * and then check, if things work out
+           */
+          if (!mir->getPieceInfo(p, &p2, &t))
+            break;
 
           unsigned int p3;
           unsigned char t_inv;
