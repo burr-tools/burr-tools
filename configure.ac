@@ -63,23 +63,48 @@ fi
 
 fi
 
-AC_SYS_LARGEFILE
+AC_CHECK_TOOL([NMPROG], [nm], [nm])
 
-dnl Define largefile options as needed...
-LARGEFILE=""
-if test x$enable_largefile != xno; then
-	LARGEFILE="-D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE"
+dnl fltk file function 64 bit usage
+AC_MSG_CHECKING([whether FLTK file function use 64 bit structures])
+which nm > /dev/null
 
-	if test $ac_cv_sys_large_files -a $ac_cv_sys_large_files = 1; then
-		LARGEFILE="$LARGEFILE -D_LARGE_FILES"
-	fi
+if test $? != 0
+then
+  AC_MSG_RESULT([undeterminded, assuming yes])
+else
 
-	if test $ac_cv_sys_file_offset_bits = 64; then
-		LARGEFILE="$LARGEFILE -D_FILE_OFFSET_BITS=64"
-	fi
+  # check the libraries by searching for scandir64 symbol within them
+  $NMPROG `fltk-config --libs` 2>/dev/null | grep scandir64 > /dev/null
+  if test $? = 0
+  then
+    AC_MSG_RESULT([yes])
+
+    AC_SYS_LARGEFILE
+
+    dnl Define largefile options as needed...
+    LARGEFILE=""
+    if test x$enable_largefile != xno
+    then
+      LARGEFILE="-D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE"
+
+      if test $ac_cv_sys_large_files -a $ac_cv_sys_large_files = 1
+      then
+        LARGEFILE="$LARGEFILE -D_LARGE_FILES"
+      fi
+
+      if test $ac_cv_sys_file_offset_bits = 64
+      then
+        LARGEFILE="$LARGEFILE -D_FILE_OFFSET_BITS=64"
+      fi
+    fi
+  else
+    AC_MSG_RESULT([no])
+    LARGEFILE=""
+  fi
 fi
-AC_SUBST(LARGEFILE)
 
+AC_SUBST(LARGEFILE)
 
 AC_SUBST(GUI_CPP_ADD, ["$GUI_CPP_ADD $GL_CFLAGS"])
 AC_SUBST(GUI_LD_ADD, ["$GUI_LD_ADD $GL_LIBS"])
