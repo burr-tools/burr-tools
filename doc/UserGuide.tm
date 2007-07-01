@@ -23,57 +23,56 @@
 
   \;
 
-  <no-indent>What are <name|BurrTools>? <name|BurrTools> contain two main
+  <no-indent>What are <name|BurrTools>? <name|BurrTools> consists of two main
   parts. On the one hand there is a program that assembles and disassembles
   burr-type puzzles. That program contains a graphical user interface (GUI)
-  which allows creation and editing puzzle definitions, solving the puzzle
-  and the display and animation of the found solutions. This is probably the
-  most interesting part for most people. On the other hand there is a
+  which allows creating and editing puzzle definitions, solving the puzzle,
+  and the display and animation of the solutions found. This is probably the
+  most interesting part for most people. On the other hand there is also a
   <name|C++> library that may help with the search for and design of new
   puzzles. This library contains all the necessary tools to write programs
-  that do the things that the graphical interface does (and more).
+  that do what the graphical interface does (and more).
 
-  The first part of this document describes the graphical program. It should
-  contain descriptions of all concepts and explain how to use them in the GUI
-  program. The second section will contain a description of the library and
-  some internals. Also, some of the used algorithms are explained. This
-  section is probably only interesting for people wanting to use the library
+  The first part of this document describes the graphical program. It
+  contains descriptions of all concepts and explains how to use them in the
+  GUI program. The second section contains a description of the library and
+  some internals. Also, some of the algorithms used are explained. This
+  section is probably interesting only for people wanting to use the library
   for their own puzzle design explorations.
 
   But first a little bit of history of this program. There are already two
-  programs that do the same that <name|BurrTools> can do. One is
-  <name|BCPBox/Genda> written by Bill Cutler. Cutler's programs are very
-  versatile, they even can handle space grids different from cubes. The other
-  one is <name|PuzzleSolver3D> by André van Kammen. I had bought this program
-  a while ago and have generally been quite satisfied with it. I have taken
+  programs similar to <name|BurrTools> can do. One is <name|BCPBox/Genda>
+  written by Bill Cutler. Cutler's programs are very versatile, they even can
+  handle space grids different from cubes. The other one is
+  <name|PuzzleSolver3D> by André van Kammen. I had bought this program a
+  while ago and have generally been quite satisfied with it. I have taken
   over quite some ideas from the GUI that André developed. So why another
-  program you might ask. Here are a few reasons:
+  program, you might ask. Here are a few reasons:
 
   <\enumerate-numeric>
     <item>The available programs are not for <name|Linux>, which is my
     operating system of choice,
 
     <item>the available programs are binary only programs and hence it is
-    quite hard to do more interesting things like burr growing in an
-    automated way,
+    quite hard to do more complex research or design tasks,
 
     <item>the programs do cost money,
 
     <item><name|PuzzleSolver3D> seems to be abandoned. There hasn't been any
     update for quite a while, and
 
-    <item><name|PuzzleSolver3D> has some nasty limits to the shape sizes and
-    the number of possible placements.
+    <item><name|PuzzleSolver3D> has some nasty limits to the shape, sizes,
+    and the number of possible placements.
   </enumerate-numeric>
 
   Anyway, I was not completely satisfied with the available software. Then in
-  summer 2003 a German computer magazine, started a competition to write a
-  program that counts the number of solutions to a merchandising puzzle of
-  them as fast as possible. My program wasn't the fastest but it was the
-  starting point for the <name|BurrTools>.
+  summer 2003 a German computer magazine started a competition to write a
+  program that counts the number of solutions to a merchandising puzzle as
+  fast as possible. My program wasn't the fastest but it was the starting
+  point for the <name|BurrTools>.
 
   As there are many people out there that are a lot more creative than I am
-  and that could use a program like this to design nice puzzles I decided to
+  and that could use a program like this to design nice puzzles, I decided to
   make it public and free<\footnote>
     Free as in free speech and as in free beer (see
     <verbatim|http://www.gnu.org>)
@@ -97,8 +96,8 @@
   input is very welcome and crucial to the further development of the
   program.
 
-  All this work has taken nearly many years to reach the current state, I
-  hope it was worth it and you have a lot of fun with the program.
+  All this work has taken many years to reach the current state, I hope it
+  was worth it and that you have a lot of fun with the program.
 
   \;
 
@@ -117,8 +116,8 @@
   The first part of this user guide is written from a <em|procedural>
   approach. Rather than sequentially describing the elements of the GUI and
   their functions, this manual guides you through the program the way you
-  should create your first design. Terms may be briefly repeated in several
-  places of the text. Although too much redundancy has been avoided.
+  should create your first design. Terms may be briefly repeated at several
+  places in the text.
 
   Throughout the text the following fonts and notations are used:
 
@@ -141,8 +140,8 @@
       examples.>>|<row|<cell|<with|font-family|tt|[Typewriter]>>|<cell|Between
       square brackets. Denotes a keyboard
       command.>>|<row|<cell|<with|mode|math|\<vartriangleright\>>>|<cell|Followed
-      by a number. A reference to another part in the text that provides more
-      detailed information on the subject. To be read as '<em|see (also)
+      by a number. A reference to another point in the text that provides
+      more detailed information on the subject. To be read as '<em|see (also)
       ...>'.>>>>>
     </with>
   </with>
@@ -162,27 +161,27 @@
   \;
 
   <no-indent>At the bottom of that page you can select the proper download
-  for your operation system. This will bring you to the download page where
+  for your operating system. This will bring you to the download page where
   you have to select a mirror site to start the downloading. It's highly
   recommended to select the mirror site on the server nearest to your
   location.
 
-  <name|Microsoft Windows> users can either download the
+  <name|Microsoft Windows> users can download either the
   <with|font-family|tt|Windows Binary> (a zipped file which needs manual
   extraction and installation) or the self-extracting
   <with|font-family|tt|Windows Installer>. Unless you have a slow connection
-  to the internet downloading the installer is probably the best option. To
-  use <name|BurrTools> on a <name|Linux> platform you can either download
-  provided pre compiled version or the <with|font-family|tt|Source> files and
-  compile the program on your system (see installation guidelines below).
+  to the internet, downloading the installer is probably the best option. To
+  use <name|BurrTools> on a <name|Unix> platform you have to download the
+  <with|font-family|tt|Source> files and compile the program on your system
+  (see installation guidelines below). An OSX package is provided.
 
   <subsection|Installation of BurrTools>
 
   <subsubsection|Microsoft Windows>
 
   If you downloaded the <with|font-family|tt|Widows Binary>, just extract the
-  file into the directory of your choice and the GUI is ready to be used.
-  When you opted for the <with|font-family|tt|Windows Installer>, start the
+  file into the directory of your choice and the GUI is ready to be used. If
+  you opted for the <with|font-family|tt|Windows Installer>, start the
   executable and follow the instructions on your screen.
 
   <subsubsection|Mac OS X>
@@ -191,32 +190,6 @@
   files of your operating system.
 
   <subsubsection|Linux / Unix>
-
-  For <name|Linux> users <name|BurrTools> comes in two versions: a pre
-  compiled binary and source code.
-
-  The binary is provided in the hope that it is working on many variants of
-  the <name|Linux> OS. It is compiled for Intel processors and requires a
-  more or less modern <name|Linux> system. As distinct versions of
-  <name|Unixes> differ widely it is likely that the binary will not work for
-  your system. In that case you need to compile <name|BurrTools> yourself.
-
-  <paragraph|Using the Pre compiled Binary>
-
-  If you want to try the binary, just download the archive with the current
-  version. Decompress the archive into a directory of your choice and start
-  <verbatim|burrGui> within that directory. It either works or it doesn't.
-
-  If it doesn't make sure you have at least the following libraries installed
-  on your system: <verbatim|zlib>, <verbatim|libpng>, <verbatim|libxml2> and
-  <verbatim|libxslt>. Of course you also need a working X windowing system.
-  If the program still doesn't work call <verbatim|ldd burrGui> from the
-  console within the path where you decompressed the files. This will list
-  all libraries required by the binary and where the system could find them.
-  If one of the listed binaries is not available try to install that. If all
-  that doesn't work you should consider compiling on your own or mail me.
-
-  <paragraph|Compiling from Source>
 
   These installation instructions just contain some hints for the compilation
   of <name|BurrTools>. As <name|BurrTools> requires a few not so widespread
@@ -228,7 +201,7 @@
   <with|font-family|tt|libxslt>. These libraries are usually installed on
   every <name|Linux> system. You just have to make sure that you have
   installed the development packages, otherwise it is not possible to compile
-  a program that use these libraries, but just start programs that use them.
+  a program that uses these libraries, but just start programs that use them.
 
   Additionally the following libraries are required:
   <with|font-family|tt|flkt> and <with|font-family|tt|xmlwrapp>.
@@ -251,7 +224,7 @@
     <item>Remove <verbatim|-fno-exceptions> from the file
     <verbatim|makeinclude>
 
-    <item>Finish normally be calling <verbatim|make> and <samp|<verbatim|make
+    <item>Finish normally by calling <verbatim|make> and <samp|<verbatim|make
     install>>
   </itemize-dot>
 
@@ -260,7 +233,8 @@
   the GUI of <name|BurrTools>. But as the number of bugs is hopefully quite
   small right now that should not be such a big problem.
 
-  The last library, <verbatim|xmlwrapp>, can be hard to find, so here a link
+  The last library, <verbatim|xmlwrapp>, can be hard to find, so here is a
+  link
 
   <\with|par-mode|center>
     <verbatim|xmlwrapp.sf.net>
@@ -321,22 +295,23 @@
   <\description>
     <item*|Voxel>A voxel <em|(volume pixel)> is a space unit in the
     3-<no-break>D space. The shape of the voxels is defined by the space grid
-    type. Currently <name|BurrTools> only supports cubic voxels. Each voxel
-    has one of the following three states: <em|Empty>, <em|Fixed>
-    (<em|Filled>) and <em|Variable> (<with|mode|math|\<vartriangleright\>><reference|Concepts>).
-    Additional to that each voxel can also contain supplementary information
-    in the form of colours that are attached to the whole or parts of that
-    voxel. Currently <name|BurrTools> can only attach one single colour to
-    the voxel as a whole.
+    type. Currently <name|BurrTools> supports cubic voxels, triangular prisms
+    and tightly packed spheres. Each voxel has one of the following three
+    states: <em|Empty>, <em|Fixed> (<em|Filled>) and <em|Variable>
+    (<with|mode|math|\<vartriangleright\>><reference|Concepts>). Additionally
+    each voxel can also contain supplementary information in the form of
+    colours that are attached to the whole or parts of that voxel. Currently
+    <name|BurrTools> can only attach one single colour to the voxel as a
+    whole.
 
     <item*|Spacegrid>The spacegrid defines the shape and orientation and
     arrangement of the voxels. Right now there are 3 space grids available in
-    <name|BurrTools>: cubes, prisms with a equilateral triangle as base and
+    <name|BurrTools>: cubes, prisms with a equilateral triangle as base, and
     tightly packed spheres. Spacegrids are always fixed and periodic. That
     means that a voxel in a certain position will always have the same shape
     and orientation. So a spacegrid defining, for example, all Penrose
-    patters is not possible because this is neither a fixed nor a periodic
-    pattern.
+    patterns is not possible because these are neither a fixed nor a periodic
+    patterns.
 
     <item*|Shape>This is a definition of a 3-<no-break>dimensional object.
     Shapes are assembled out of voxels.\ 
@@ -357,7 +332,7 @@
 
     <item*|Problem>A problem in <name|BurrTools> consists of a list of pieces
     and/or multipieces, a result shape and possibly some constraints. You can
-    have more than one problem in a file as it may be possible to have more
+    have more than one problem in a file, as it may be possible to have more
     than a single task with the same set of pieces (e.g. Piet Hein's
     <name|Soma Cube>). In other words, a problem is a statement about
     <em|what to do> with the pieces.
@@ -371,8 +346,8 @@
     number. The letter is different for all items that required identifiers,
     e.g. it is S for shapes, P for problems and C for colours.
 
-    <item*|Assembly>An assembly is a physically possible (meaning the pieces
-    do not overlap in space) arrangement of pieces so that the resulting
+    <item*|Assembly>An assembly is a physically possible arrangement of
+    pieces (meaning the pieces do not overlap in space) so that the resulting
     shape is formed. It is not guaranteed that it is actually possible to get
     the pieces into the positions of the assembly without using advanced
     technologies like Star Trek beaming.
@@ -386,8 +361,11 @@
     <item*|Disassembler>The part of the program that tries to find out how
     the pieces must be moved to assemble the puzzle. It does this by trying
     to disassemble an assembly. Some puzzles like <name|Pentominoes> don't
-    require checking for disassemblability, they are always constructible.
-    That's why these two tasks are separated.
+    require separate instruction how to assemble the pieces. It suffices to
+    know where the pieces are in the assembly. Other puzzles require detailed
+    instructions how to move the pieces to assemble the final shape. That is
+    why the task of finding the assemblies and creating assembly/disassembly
+    instructions are separated from one another.
 
     <item*|Solver>A short name to refer to the assembler and disassembler as
     a unit or just one of these without specifying which one.
@@ -395,7 +373,7 @@
 
   <subsection|Concepts><label|Concepts>
 
-  As described above <name|BurrTools> works with shapes which are merely a
+  As described above, <name|BurrTools> works with shapes which are merely a
   collection of voxels that each can have either one of three different
   states: <em|empty>, <em|fixed> or <em|variable>. Particularly the
   difference between fixed and variable voxels has a great impact on the way
@@ -426,15 +404,6 @@
     the program might alter to create interesting puzzles.
   </description-compact>
 
-  The question now is: <em|why not always use variable voxels> in the result
-  shape? This is a matter of speed. When the program tries to find assemblies
-  and encounters a voxel that it is unable to fill with the available shapes
-  it can immediately abort, if that voxel has the filled state in the result
-  shape as the algorithm is instructed that it <em|must> fill this particular
-  voxel but it cannot do so, so something is wrong. On the other hand, if the
-  state of that voxel is variable the algorithm knows nothing and has to
-  carry on.
-
   <subsubsection|Colour Constraints>
 
   Colours allow you to add constraints to the possible placement of pieces.
@@ -447,38 +416,39 @@
 
   These colour conditions currently allow the definition of what coloured
   voxels of the pieces may go into what coloured voxels in the result shape.
-  The <em|neutral> <em|colour> is different, since it always fits. Voxels in
-  a piece that are in the neutral colour fit everywhere and neutral coloured
-  voxels in the result shape can accommodate for every piece voxel,
+  The <em|neutral> <em|colour> is special: it always makes a color match.
+  Voxels in a piece that are in the neutral colour fit everywhere and neutral
+  coloured voxels in the result shape can accommodate any piece voxel,
   independent of its custom colour.
 
-  Currently the assigned colour is used just like painting the whole voxel
+  Currently the assigned colour is interpreted as painting the whole voxel
   with this colour, but in the future more advanced possibilities for
   colouring and conditions may be added.
 
   <section|Notes for PuzzleSolver3D Users><label|PS3DUsers>
 
   <name|BurrTools> was initially very much based on <name|PuzzleSolver3D> by
-  André van Kammen but diverged quite a bit from that. We strongly advise you
-  to read this user guide since there are some features in <name|BurrTools>
-  that work somewhat different as their counterparts in <name|PuzzleSolver3D>
-  and there are also some functions that PuzzleSolver3D doesn't have. Below
-  are the most prominent differences that need your attention:
+  André van Kammen but, by now has diverged quite a bit from that. We
+  strongly advise you to read this user guide since there are some features
+  in <name|BurrTools> that work somewhat differently to their counterparts in
+  <name|PuzzleSolver3D> and there are also some functions that PuzzleSolver3D
+  doesn't have. Below are the most prominent differences that need your
+  attention:
 
   <\enumerate-numeric>
     <item><name|BurrTools> doesn't handle holes automatically as
     <name|PuzzleSolver3D> does. This may at first sound like a disadvantage
     but in fact it isn't. Unless you select <em|'Outer limits of result must
     be filled'> on the solve tab, <name|PuzzleSolver3D> treats all cubes of
-    the target shape as cubes that might be filled but don't need to be.
-    Cubes that <em|must> be filled however speed up the search process. The
+    the target shape as cubes that might be filled but don't need to be. But
+    knowing which cubes <em|must> be filled speeds up the search process. The
     more there are of these (as compared to the total number of cubes), the
-    faster the solver will run as fewer possibilities are left to test.
+    faster the solver will run, as fewer possibilities are left to test.
     <name|BurrTools> requires you to specify exactly which cubes in the
     result shape must be filled and which ones may be empty.
 
     <item>The <name|BurrTools> solver doesn't automatically detect multiple
-    identical pieces. You need to specify, if a piece is used more than once.
+    identical pieces. You need to specify if a piece is used more than once.
     If you just copy them the way you do in <name|PuzzleSolver3D> the program
     will find way too many solutions. For example, with Bruce Love's
     <name|Lovely 18 Piece Burr> it will find nearly 40,000,000 times as many
@@ -493,7 +463,7 @@
     grid of 24<with|mode|math|\<times\>>24<with|mode|math|\<times\>>24.
 
     <item>There is no limit to the number of possible positions for the
-    pieces. So it won't happen that <name|BurrTools> complains about too many
+    pieces. So <name|BurrTools> won't stop and complain about too many
     placements. As long as your computer has sufficient memory the program
     will merrily continue working -- even if it would take longer than the
     universe exists -- to complete the search.
@@ -502,29 +472,29 @@
     supported by <name|PuzzleSolver3D>. This allows the design and analysis
     of completely new puzzles
 
-    <item><name|BurrTools> knows piece ranges which enable you to search for
-    puzzles and not just solve them.<next-line>
+    <item><name|BurrTools> knows piece ranges, which enables you to search
+    for puzzles and not just solve them.<next-line>
   </enumerate-numeric>
 
   <subsection|Importing <name|PuzzleSolver3D> files>
 
-  <name|BurrTools> also has capabilities for <em|importing>
-  <name|PuzzleSolver3D> files. So there's no need to redo your designs from
-  scratch, although some postediting may be required because of the
-  differences in handling duplicates of pieces and holes in the puzzle.
+  <name|BurrTools> has capabilities for <em|importing> <name|PuzzleSolver3D>
+  files. So there's no need to redo your designs from scratch, although some
+  postediting may be required because of the differences in handling
+  duplicates of pieces and holes in the puzzle.
 
   There are 2 possibilities for the holes. Depending on whether the option
   ``Fill outer Cubes'' is enabled or not when you solve the puzzle with
-  <name|PuzzleSolver3D> you must either make the inner cubes of the result
-  shape or the whole shape variable when you want to get the same results
-  with <name|BurrTools>. This can be done with the tools described in section
-  <reference|ChapterConstrainingTools>. With these tools you can make inner
-  and outer cubes of a shape variable.
+  <name|PuzzleSolver3D>, you must either make the inner cubes of the result
+  shape or the whole shape variable if you want to get the same results with
+  <name|BurrTools>. This can be done with the tools described in section
+  <reference|ChapterConstrainingTools>. With these tools you can make a
+  shapes inner or outer cubes variable.
 
   The duplicate pieces are handled automatically. <name|BurrTools> adds all
   shapes to the new puzzle but does not add duplicates to the problem instead
   the counter for the original is increased. The unused shapes are marked as
-  unused and can be deleted when they are not required.
+  unused and can be deleted if they are not required.
 
   <\with|par-mode|right>
     <chapter|The BurrTools Interface>
@@ -536,10 +506,10 @@
     main window on start-up>
   </float> <reference|FigureMainWindowStart> which shows the main window.
   Although some small variations may occur depending on your operating
-  system, screen resolution and display preferences settings. The GUI has
+  system, screen resolution, and display preferences settings. The GUI has
   four major parts. On top there is a <em|menu bar> that allows handling of
   files and offers extra functionality as well as some preferences settings
-  for the program. At the bottom there is a traditional <em|status line>
+  for the program. At the bottom there is a traditional <em|status bar>
   presenting relevant information about the task at hand. In between there is
   a <em|tools section> on the left and a <em|3-<no-break>D viewport> on the
   right.
@@ -571,7 +541,7 @@
     grids support parameters.
 
     <item*|<with|font-family|ss|Status>>This opens up a window containing
-    lots of maybe useful information about the shapes of the puzzles
+    lots of possibly useful information about the shapes of the puzzles
     (<with|mode|math|\<vartriangleright\>><reference|ChapterStatus>).
 
     <item*|<with|font-family|ss|Edit Comment>>Allows appending textual
@@ -588,8 +558,8 @@
 
   The <with|font-family|ss|<strong|File>> menu has all the traditional
   entries for handling files. Many of these are well known from other
-  software and need not much explanation. Some of the items also have
-  keyboard short cuts as indicated in the menus. Prior to executing most of
+  software and don't need much explanation. Some of the items also have
+  keyboard shortcuts as indicated in the menus. Prior to executing most of
   these commands a warning (and option to cancel) is given whenever changes
   to the current design haven't been saved yet.
 
@@ -597,9 +567,8 @@
     <item*|<with|font-family|ss|New>>Starts a new design after removing all
     the information of the current one. The first thing that happens when you
     start a new puzzle is that you will be asked which spacegrid to use. When
-    <name|BurrTools> is started it always starts with a puzzle that uses the
-    cubes spacegrid, so when you want to use another grid you need to use
-    this menu.
+    <name|BurrTools> is started it defaults to using the cubes spacegrid, so
+    if you want to use another grid you need to use this menu.
 
     <item*|<with|font-family|ss|Load>>Opens a <name|BurrTools>
     <with|font-family|tt|*.xmpuzzle> file. A notification will pop up when a
@@ -611,8 +580,8 @@
     (<with|font-family|tt|*.puz>) into <name|BurrTools.> Although these
     imported designs often can be subjected to the solver right away, some
     postediting may be required because of the differences in the way
-    <name|BurrTools> handles holes in the result and uses duplicates of
-    pieces. BurrTools will import <em|all> the pieces from the
+    <name|BurrTools> handles holes in the result and duplicated pieces.
+    BurrTools will import <em|all> the pieces from the
     <with|font-family|tt|*.puz> file and assign them to the shapes S1 to
     S<em|n>-<no-break>1. Accordingly, the <em|result> from the
     <name|PuzzleSolver3D> file will be assigned to the last shape (S<em|n>).
@@ -623,13 +592,12 @@
     <no-indent>Since all imported shapes consist only of fixed voxels, the
     result shape may need some editing (puzzles that have internal holes or
     pieces not filling the outskirts of the result shape) to make the solver
-    run. Also duplicated pieces are preferably deleted from the
+    run. Also, duplicated pieces should preferably be deleted from the
     <with|font-family|ss|Shapes> list (<with|mode|math|\<vartriangleright\>><reference|CreatingShapes>)
     but certainly from the <with|font-family|ss|Piece Assignment> list
     (<with|mode|math|\<vartriangleright\>><reference|PieceAssignment>),
-    otherwise <name|BurrTools> will find way too many solutions as it will
-    differentiate between all the possible permutations of these identical
-    pieces.
+    otherwise <name|BurrTools> will find way too many solutions (as it will
+    distinguish all permutations of these identical pieces).
 
     <item*|<with|font-family|ss|Save>>Saves your work into a
     <with|font-family|tt|*.xmpuzzle> file. If the design had not been saved
@@ -638,7 +606,7 @@
     activated. Short cut: <with|font-family|tt|[F2]>.
 
     <item*|<with|font-family|ss|Save As>>Allows you to save any changes to a
-    new file and thus keeping the original design the way it was.
+    new file, thus keeping the original design the way it was.
 
     <item*|<with|font-family|ss|Quit>>Shuts down <name|BurrTools.><next-line>
   </description-compact>
@@ -666,31 +634,31 @@
   <\description-compact>
     <item*|<with|font-family|ss|Fade Out Pieces>>This option affects the way
     pieces that <em|become> <em|separated> from the rest are depicted. Hence,
-    the effects are only visible after running the solver
+    the effects are visible only after running the solver
     (<with|mode|math|\<vartriangleright\>><reference|VisibilityOfPieces>).
 
     <item*|<with|font-family|ss|Use Lights in 3D View>>This option toggles
-    the use of a spotlight in the 3-<no-break>D viewer. When disabled the
+    the use of a spotlight in the 3-<no-break>D viewer. When disabled, the
     items in the 3-<no-break>D viewport get a uniform (high) illumination,
     whereas enabling this option provides a more rendered appearance of the
     objects by adding a spotlight in the upper right corner of the
     3-<no-break>D viewport and shading the faces of the objects. However, on
     some systems this may result in a relatively dark left bottom corner that
-    can hamper a clear view on the objects.
+    can hamper a clear view of the objects.
 
     <item*|<with|font-family|ss|Use Tooltips>>By default <name|BurrTools>
     shows tooltips for most of its controls, but to the more experienced user
-    these become soon very annoying. This option allows you to switch these
+    these soon become very annoying. This option allows you to switch these
     tooltips off.
   </description-compact>
 
-  <section|The Status Line>
+  <section|The Status Bar>
 
-  The status line has two parts. On the left information about the task at
-  hand is given and on the right are some tools to alter the 3-<no-break>D
-  view. Currently you can select there <em|how> the 3-<no-break>D view show
+  The status bar has two parts. On the left is given information about the
+  task at hand, and on the right are some tools to alter the 3-<no-break>D
+  view. Currently you can select there <em|how> the 3-<no-break>D view shows
   the shapes. You have the choice between the normal view where each piece is
-  drawn with its neutral colour, a view where each piece is drawn with its
+  drawn with its neutral colour, or a view where each piece is drawn with its
   colour constraint colour (if it has one
   assigned<with|mode|math|\<vartriangleright\>><reference|AddingColour>). The
   third option is an anaglyph called mode (see figure<\float|float|tbh>
@@ -698,28 +666,28 @@
     in Anaglyph Mode>
   </float> <reference|WindowAnaglyph>). In this mode the pieces are drawn
   using the red-cyan method to display real 3-<no-break>D. You can view these
-  with a red-green, red-blue or red-cyan glasses. The <em|r>ed glass must be
+  with a red-green, red-blue, or red-cyan glasses. The <em|r>ed glass must be
   in front of your <em|r>ight eye.
 
   <section|The Tools Section>
 
   In between the menu bar and the status line is the most important part of
-  <name|BurrTools.> The section that allows you to submit existing puzzles to
+  <name|BurrTools>: The section that allows you to submit existing puzzles to
   the solver, but more even important lets you create and test your own
   designs.
 
   <subsection|The Puzzle People>
 
-  The tools section has three major tabs that somewhat can be compared with
-  real people in the world of mechanical puzzles. First there is the
-  <with|font-family|ss|Entities> tab, which can be seen as the craftsman who
-  <em|creates> different <em|shapes> but hasn't to bother about the purpose
-  of these (<with|mode|math|\<vartriangleright\>>Chapter
+  The tools section has three major tabs that might can be thought of by
+  analogy with real people in the world of mechanical puzzles. First there is
+  the <with|font-family|ss|Entities> tab, which can be seen as the craftsman
+  who <em|creates> different <em|shapes> but is not concerned with their
+  purpose of these (<with|mode|math|\<vartriangleright\>>Chapter
   <reference|ChapterShapes>). As long as his saw blade is sharp he's the
   happiest man in the whole wide world. Next, we have the
   <with|font-family|ss|Puzzle> tab. This is the weirdo who thinks it's fun to
   come up with completely insane <em|problems> to be solved with the
-  otherwise very innocent objects of our craftsman
+  otherwise very innocent objects produced by our craftsman
   (<with|mode|math|\<vartriangleright\>>Chapter <reference|ChapterPuzzles>).
   However, his contribution to the preservation of our planet is
   considerable... by saving a lot of wood scraps from the incinerator. And
@@ -735,10 +703,10 @@
   <subsection|Resizing the Elements>
 
   Although the layout of the GUI is designed to suit the needs of most users,
-  it sometimes may be useful to resize some elements to enhance the comfort
-  in using <name|BurrTools.> Besides the traditional resizing of the main
-  window, <name|BurrTools> has a couple of features to alter the relative
-  importance of its controls.
+  it sometimes may be useful to resize some elements for convenience in using
+  <name|BurrTools.> Besides the traditional resizing of the main window,
+  <name|BurrTools> has a couple of features to alter the relative importance
+  of its controls.
 
   First, the tools tabs can be made wider or narrower (thus making the
   3-<no-break>D viewport more or less important) by dragging the right edge
@@ -755,8 +723,8 @@
     <big-figure|<postscript|Pics/SizeBar.png|*5/8|*5/8||||>|<label|FigureResize>Resize
     handles>
   </float> <reference|FigureResize>). The separators that allow resizing are
-  easily recognised by a little bevelled square on their right end. Hover
-  your mouse pointer over the lines until it changes into an up-down arrow,
+  easily recognised by a little beveled square on their right end. Hover your
+  mouse pointer over the lines until it changes into an up-down arrow,
   indicating that you can drag the separator up or down to resize the panel.
 
   Note that each section has a minimum size. It is not possible to make it
@@ -774,11 +742,11 @@
   overview of the current problem is presented: the result shape (double
   sized) on top and a single instance of each shape used as pieces below it.
   Finally, for the <with|font-family|ss|Solver> tab, the 3-<no-break>D viewer
-  can be used to browse all found assemblies and/or show an animation of the
+  can be used to browse all assemblies found and/or show an animation of the
   moves involved in the disassembly of the puzzle.
 
   Any object in the 3-<no-break>D view can be <em|rotated> by simply dragging
-  it and the scrollbar on the right allows <em|zooming> in or out on that
+  it, and the scrollbar on the right allows <em|zooming> in or out on that
   object by respectively moving the slider down or up. Note that the zoom
   settings are independent for each of the three tools tabs.
 
@@ -793,16 +761,15 @@
   definition of an object in 3-<no-break>D space and consists of a collection
   of voxels (space units). These voxels in turn may have their own
   characteristics such as <em|state> and <em|colour>. Note that this
-  definition also includes shapes made out of voxels that are only attached
-  to each other by a single edge, just a corner or even are completely
+  definition also includes shapes made out of voxels that are attached to
+  each other by only a single edge, just a corner, or even are completely
   separated in space. The solver certainly won't bother... but how these
   shapes could be crafted in the workshop is beyond the scope of the program.
 
   All functions and tools for creating and editing shapes - once the grid
   type is set - are located on the <with|font-family|ss|<strong|Entities>>
-  tab (shapes are the <em|physical> <em|entities> that can make a puzzle when
-  subjected to certain rules) which has - from top to bottom - three main
-  sections (Figure<\float|float|tbh>
+  tab which has - from top to bottom - three main sections
+  (Figure<\float|float|tbh>
     <big-figure|<postscript|Pics/Window_DDD_0.png|*5/8|*5/8||||>|<label|FigureEntitiesTab>Creating
     shapes on the Entities tab>
   </float> <reference|FigureEntitiesTab>):
@@ -818,7 +785,7 @@
     a series of subtabs with several tools for adjusting the
     <with|font-family|ss|<strong|<with|font-series|medium|Size>>> of the
     shapes, <with|font-family|ss|<strong|<with|font-series|medium|Transform>>>
-    them in 3-<no-break>D space and some extra editing
+    them in 3-<no-break>D space, and some extra editing
     <strong|<with|font-family|ss|<with|font-series|medium|Tools>>>. Below
     these subtabs there's a toolbar with the devices for actually
     constructing the shapes in the 2-<no-break>D grid at the bottom of the
@@ -835,33 +802,30 @@
   <section|Spacegrids>
 
   Currently <name|BurrTools> handles cubic grids, grids that use prisms with
-  a base shape that is a equilateral triangle and tightly packed spheres. The
-  spacegrid is used for all shapes that are used within a puzzle so you can
-  not have one shape made out of cubes and one using another grid. The
-  spacegrid needs to be set <em|before> you start with the puzzle. It can not
+  a base shape that is an equilateral triangle, and tightly packed spheres.
+  The spacegrid is used for all shapes within a puzzle, so you cannot have
+  one shape made out of cubes together with one using another grid. The
+  spacegrid needs to be set <em|before> you start with the puzzle. It cannot
   be changed later on. The gridtype is selected when you use the
-  <with|font-family|ss|<strong|New>> option. Some gridtypes support it to set
-  some parameters of the grid, like scaling or skew. These parameter can be
-  used to suppress certain orientations for shapes but not to create new
-  puzzle shapes. E.g the sphere grid might some time support a switch to turn
-  it into a space of rhombic dodecahedra. This space is very similar except
-  that some orientations that are possible with spheres can not be done with
-  the dodecahedra.
+  <with|font-family|ss|<strong|New>> option. Some gridtypes support setting
+  some parameters of the grid, like scaling or skew. These parameters can be
+  used to suppress certain orientations for shapes but, not to create new
+  puzzle shapes.
 
   Same for cubes: there might be a parameter that scales the cubes in
   y-direction. If that values differs from the x-direction value it will be
-  only possible to turn the cubes by 180<degreesign> when rotated around the
+  possible to turn the cubes only by 180<degreesign> when rotated around the
   x-axis.
 
   <section|Creating Shapes><label|CreatingShapes>
 
-  The very first step is to initialise the shapes that can be used in your
-  puzzle design. All the tools to do so are just below the
+  The very first step is to draw the shapes that can be used in your puzzle
+  design. All the tools to do so are just below the
   <with|font-family|ss|<strong|Shapes>> caption (Figure
   <reference|FigureEntitiesTab>). Clicking the
-  <with|font-family|ss|<strong|New>> button starts a completely new one with
-  an empty grid, while <with|font-family|ss|<strong|Copy>> allows you to edit
-  a previously entered shape without destroying the first. Obsolete and
+  <with|font-family|ss|<strong|New>> button starts a completely new shape
+  with an empty grid, while <with|font-family|ss|<strong|Copy>> allows you to
+  edit a previously entered shape without destroying the first. Obsolete and
   redundant shapes can be discarded with the
   <with|font-family|ss|<strong|Delete>> button.
 
@@ -869,10 +833,10 @@
   prefix. This prefix serves as a unique identifier for the shape throughout
   the GUI and cannot be removed or altered, but
   <with|font-family|ss|<strong|Label>> allows you to add a more meaningful
-  name. Note that on the status line the shapes will only be referred to by
+  name. Note that on the status line the shapes will be referred to only by
   their prefixes.
 
-  By clicking an identifier in the list the shape becomes selected and ready
+  By clicking an identifier in the list, the shape becomes selected and ready
   to be edited. Also a short description of that shape appears on the status
   line. The currently selected shape is indicated with a white border around
   its identifier in the shapes list.
@@ -880,27 +844,27 @@
   The buttons with the arrows pointing left and right allow you to change the
   position of the shape in the list. The first one moves the selected shape
   toward the front of the list, whereas the other button moves the shape
-  toward the end of the list. Note that rearranging shapes will cause to
-  change their prefix but not the additional name.
+  toward the end of the list. Note that rearranging shapes will cause their
+  prefix to change but not the additional name.
 
-  Unlike the pieces in <name|PuzzleSolver3D> shapes don't need to be part of
+  Unlike the pieces in <name|PuzzleSolver3D>, shapes don't need to be part of
   the puzzle. This means that you can build a file that contains a vast
   number of shapes, e.g. all 59 notchable six-piece burr pieces, of which you
   assign only 6 to the pieces of your puzzle design.
 
-  Finally the shapes have an additional parameter: the weight. This value is
+  Finally, the shapes have an additional parameter: the weight. This value is
   used when constructing the disassembly animations. When the disassembler
   has found 2 groups of pieces that can be moved against each other it needs
   to decide which group to actually move and which to keep where it is. This
-  decision can be influenced with the weight. The program searches the
-  maximum weight in both groups and the one group that has the bigger maximum
-  weight will be kept in place and the other group will be moved. If both
-  groups have the same maximum weight the group with the smaller number of
-  pieces will be used.
+  decision can be influenced by the weight. The program searches the maximum
+  weight in both groups and the one group that has the bigger maximum weight
+  will be kept in place and the other group will be moved. If both groups
+  have the same maximum weight the group with the smaller number of pieces
+  will be used.
 
   <section|Grid Functions><label|GridFunctions>
 
-  Since shapes are defined as objects in 3-<no-break>D space and
+  Since shapes are defined as objects in 3-<no-break>D space, and
   theoretically 3-<no-break>D space is unlimited in size, it's convenient
   somehow to be able to define a more feasible subspace to work with. This,
   and some more advanced scalings of the shapes, can be accomplished with the
@@ -913,7 +877,7 @@
 
   Note that the tab might look slightly different for different gridtypes.
   For example the sphere grid doesn't have the shape buttons as those are
-  useless with this grid.
+  useless with that grid.
 
   <subsection|Adjusting the Grid Size><label|AdjustingGridSize>
 
@@ -924,14 +888,13 @@
   restricted with respect to certain dimensions (e.g. all pentacubes that fit
   in a 3<with|mode|math|\<times\>>3<with|mode|math|\<times\>>3 grid).
   Selecting the proper shape before creating a new one often can save a
-  considerable amount of time by avoiding otherwise necessary grid
-  adjustments.
+  considerable amount of time by avoiding grid adjustments.
 
   Adjusting the grid size to your needs can be done either by entering values
-  in the input boxes next to the axis labels or by dragging the spin wheels.
-  When you enter values the grid will be updated as soon as you select one of
-  the other input boxes (either by a mouse click or by the
-  <with|font-family|tt|[Tab]> key) or when you press the
+  in the input boxes next to the axis labels, or by dragging the spin wheels.
+  When you enter values, the grid will be updated as soon as you select one
+  of the other input boxes (either by a mouse click or by the
+  <with|font-family|tt|[Tab]> key), or when you press the
   <with|font-family|tt|[Return]> key. Note that the grid is also updated by
   simply clicking in or next to the 2-<no-break>D grid. To avoid unexpected
   results it's recommended always to confirm the entered values with the
@@ -952,17 +915,17 @@
 
   <subsection|Advanced Grid and Scaling Functions><label|AdvancedGrid>
 
-  <name|BurrTools> has some powerful time saving functions to manipulate the
+  <name|BurrTools> has some powerful time-saving functions to manipulate the
   position of the shape in its grid or to rescale a shape together with the
   grid. These features are grouped below the captions
   <with|font-family|ss|<strong|Grid>> and
-  <with|font-family|ss|<strong|Shape>> on right side of the
-  <with|font-family|ss|Size> subtab. The first set of three will only affect
+  <with|font-family|ss|<strong|Shape>> on the right side of the
+  <with|font-family|ss|Size> subtab. The first set of three will affect only
   the grid and/or the position of the shape in the grid, the other procedures
-  however will have an impact on the shape as such by scaling it up or down.
+  however will have an impact on the shape itself by scaling it up or down.
 
-  Below is an overview of these functions, explaining what they precisely do
-  and with an indication of the purpose they were introduced in
+  Below is an overview of these functions, explaining precisely what they do
+  and with an indication of the reason they were introduced into
   <name|BurrTools>. No doubt you'll soon find other situations in which these
   tools can prove to be valuable.
 
@@ -985,7 +948,7 @@
   the shape in the grid -> This function centres the shape in the surrounding
   grid thus allowing you to edit all sides of the shape. In some cases this
   will also <em|increase> one or more dimensions of the grid by a single unit
-  to provide truly centring. The function is most useful in editing
+  to provide true centring. The function is most useful in editing
   symmetrical shapes in combination with the compound drawing methods
   (<with|mode|math|\<vartriangleright\>><reference|CompoundDrawing>).<next-line>
   >>|<row|<cell|<postscript|Pics/Button_Size_Grid_Align.png|*5/8|*5/8||||>>|<cell|<strong|Align
@@ -996,15 +959,14 @@
 
   <no-indent><strong|<with|font-family|ss|Shape> tools.> Use the following
   functions wisely because unnecessary and extreme scaling up of the shapes
-  will bear a heavy load on your system resources and can increase solving
+  will put a heavy load on your system resources and can increase solving
   time dramatically. Also, trying to undo such 'ridiculous' upscalings with
-  the 1:1 tool can take a considerably long time. So, <em|think twice, click
-  once...>
+  the 1:1 tool can take a long time. So, <em|think twice, click once...>
 
-  These tools only make sense for spacegrids where a group of voxels can be
-  group to make a upscaled shape that looks like a voxel of the grid, e.g. a
-  group of 2x2x2 cubes looks like a bigger cube. As this is not working with
-  spheres, those tools are not available there.
+  These tools make sense only for spacegrids where a group of voxels can be
+  grouped to make an upscaled shape that looks like a voxel of the grid, e.g.
+  a group of 2x2x2 cubes looks like a bigger cube. As this doesn't work with
+  spheres, these tools are not available there.
 
   \;
 
@@ -1014,8 +976,8 @@
   of information and at the same time scales down the grid by the same
   factor. Use this function to check the design for oversized shapes which
   would slow down the solver. Note that although this function can undo the
-  effects of both the next scaling functions, the result cannot be guaranteed
-  since the algorithm may scale down beyond the initial
+  effects of both of the next scaling functions, the result cannot be
+  guaranteed since the algorithm may scale down beyond the initial
   size.<next-line>>>|<row|<cell|<postscript|Pics/Button_Size_Shape_x2.png|*5/8|*5/8||||>>|<cell|<strong|Double
   the scale -> This function will double the scale of the shape (and its
   grid). In other words, it will replace every voxel in the shape with a
@@ -1023,7 +985,7 @@
   as the original voxel. This can be very useful to introduce half-unit
   notches or colouring into the design without having to redraw the
   shape(s).<next-line>>>|<row|<cell|<postscript|Pics/Button_Size_Shape_x3.png|*5/8|*5/8||||>>|<cell|<strong|Triple
-  the scale -> This function is similar to doubling the scale. Only now a
+  the scale -> This function is similar to doubling the scale, only now a
   scaling factor of 3 is used and hence every voxel in the shape will be
   replaced by 27 identical voxels. This can be very useful if you want to
   introduce <em|'pins and holes'> into your design.>>>>>
@@ -1031,27 +993,28 @@
   <subsection|Adjusting All Shapes><label|AdjustAllShapes>
 
   A last, but certainly not least, item to mention is the
-  <strong|<with|font-family|ss|Apply to All Shapes>> checkbox. When checked
-  <em|all> shapes, whether they are selected or not, will be affected by the
-  settings and procedures on the <with|font-family|ss|<strong|<with|font-series|medium|Size>>>
-  subtab. This is very useful and time saving when a certain adaptation needs
-  to be done to all the shapes, e.g. transforming a six-piece burr with
-  length 6 into one with length 8.
+  <strong|<with|font-family|ss|Apply to All Shapes>> checkbox. When checked,
+  <em|all> shapes <emdash> whether they are selected or not <emdash> will be
+  affected by the settings and procedures on the
+  <with|font-family|ss|<strong|<with|font-series|medium|Size>>> subtab. This
+  is very useful and time saving when a certain adaptation needs to be done
+  to all the shapes, e.g. transforming a six-piece burr with length 6 into
+  one with length 8.
 
-  However, some precautions are build in to prevent unnoticed destroying of
-  shapes. Manually reducing any grid dimension will still only be performed
+  However, some precautions are built in to prevent accidental destruction of
+  shapes. Manually reducing any grid dimension will still be performed only
   on the currently selected shape, whereas increasing (which is completely
   harmless to the shapes) will affect all grids. On the other hand,
   minimising the grids will be applied to all shapes since it is content
   related. The 1:1 tool won't affect any shape unless <em|all> shapes can be
-  scaled down <em|by the same factor>. This to prevent ending up with an
+  scaled down <em|by the same factor>. This prevents ending up with an
   unintended mixture of differently scaled shapes.
 
   <section|Building and Editing Shapes><label|BuildingShapes>
 
   <\with|par-par-sep|0>
-    Once a shape has been initialised the 2-<no-break>D grid wherein it can
-    be build becomes accessible on the <with|font-family|ss|<strong|Edit>>
+    Once a shape has been initialised, the 2-<no-break>D grid in which it can
+    be built becomes accessible on the <with|font-family|ss|<strong|Edit>>
     panel. Basically one needs only three tools to create any shape, but some
     more features are added to make life easy. All these are on the toolbar
     right above the 2-<no-break>D grid (Figure<\float|float|bhft>
@@ -1060,8 +1023,8 @@
     </float> <reference|FigureToolbarGrid>). The first four buttons are the
     <em|basic drawing tools> and <em|colouring tool>. These are all toggle
     buttons, meaning that enabling one will disable the others. They affect
-    the presence and/or the state and colour of the voxels by clicking in, or
-    dragging over the cells in the 2-<no-break>D grid.
+    the presence and/or the state and colour of the voxels drawn by clicking
+    in or dragging over the cells in the 2-<no-break>D grid.
   </with>
 
   Next come two toggle buttons that allow you to select the <em|drawing
@@ -1073,8 +1036,8 @@
   <subsection|Navigating in 2-<no-break>D and
   3-<no-break>D><label|Navigating2D3D>
 
-  Building and editing takes almost exclusively place in the 2-<no-break>D
-  grid to which the 3-<no-break>D viewport only acts as a visual aid. Both
+  Building and editing takes place almost exclusively in the 2-<no-break>D
+  grid, to which the 3-<no-break>D viewport acts only as a visual aid. Both
   have their corresponding axes in the same colour: <em|red> for the
   x-<no-break>axis, <em|green> for the y-<no-break>axis and <em|blue> for the
   z-<no-break>axis. For the 2-<no-break>D grid, which actually can show only
@@ -1107,14 +1070,14 @@
   inconvenience the 2-<no-break>D grid and the 3-<no-break>D viewport can be
   exchanged. To do so, click the <strong|<with|font-family|ss|Toggle 3D>>
   item on the menu bar or press <with|font-family|tt|[F4]>. Note that this
-  only affects the position of the 3-<no-break>D viewport for the
+  affects only the position of the 3-<no-break>D viewport for the
   <with|font-family|ss|Entities> tab.
 
   <subsection|Basic Drawing Tools>
 
-  The basic drawing tools affect only the presence and/or the state of a
-  particular voxel in the shape. In fact they're - together with the brush
-  tool (<with|mode|math|\<vartriangleright\>><reference|BrushTool>) - all
+  The basic drawing tools affect the presence and/or the state of a
+  particular voxel in the shape. In fact, together with the brush tool
+  (<with|mode|math|\<vartriangleright\>><reference|BrushTool>) they are all
   that's needed to create any shape in <name|BurrTools>. The following is a
   description of these tools. Note that each is also accessible through a
   keyboard short cut.
@@ -1134,7 +1097,7 @@
   (<with|mode|math|\<vartriangleright\>><reference|Representations>).
   Variable voxels instruct the solver that these particular places may be
   <em|either> <em|filled or empty> in the final result. So variable voxels
-  are only allowed in result shapes and the solver will give a warning
+  are allowed only in result shapes, and the solver will give a warning
   whenever it encounters any variable voxels in a shape used as a piece.
   Short cut: <with|font-family|tt|[F6]>.<next-line>>>|<row|<cell|<postscript|Pics/Button_Toolbar_Draw_Eraser.png|*5/8|*5/8||||>>|<cell|<strong|Eraser
   -> The eraser will remove voxels from the shape. Note that clicking or
@@ -1153,13 +1116,13 @@
 
   <tabular|<tformat|<cwith|1|2|1|1|cell-hyphen|t>|<cwith|1|2|1|1|cell-valign|t>|<cwith|1|2|1|1|cell-halign|r>|<cwith|1|2|2|2|cell-hyphen|t>|<cwith|1|2|2|2|cell-valign|t>|<cwith|1|1|2|2|cell-width|13cm>|<cwith|1|1|1|1|cell-width|2cm>|<table|<row|<cell|<postscript|Pics/Button_Toolbar_Drag_Rubber.png|*5/8|*5/8||||>>|<cell|<strong|Rectangular
   dragging style ('rubber band') -> On dragging over the 2-<no-break>D grid
-  with the mouse just a <em|rectangular> <em|selection> of cells will be
-  made. This is shown with a heavy border around the selected cells and the
-  voxels will only be altered on releasing the mouse button. Releasing the
-  mouse button outside the actual grid however will make the whole operation
-  void and can serve as some kind of 'undo'. This style not only proves its
-  use in drawing rectangular shapes or parts, but is extremely useful for
-  adding colour to (large areas of) the shape.<next-line>>>|<row|<cell|<postscript|Pics/Button_Toolbar_Drag_Free.png|*5/8|*5/8||||>>|<cell|<strong|Free
+  with the mouse, a <em|rectangular> <em|selection> of cells will be made.
+  This is shown with a heavy border around the selected cells and the voxels
+  will only be altered on releasing the mouse button. But releasing the mouse
+  button outside the actual grid will make the whole operation void and can
+  serve as a sort of 'undo'. This style is useful not only for drawing
+  rectangular shapes or parts, but also for adding colour to (large areas of)
+  the shape.<next-line>>>|<row|<cell|<postscript|Pics/Button_Toolbar_Drag_Free.png|*5/8|*5/8||||>>|<cell|<strong|Free
   dragging style -> All drawing and colouring operations will be performed on
   a single cell basis and <em|as soon as> the mouse cursor is dragged over
   that particular cell. This drawing style is very useful for creating
@@ -1176,23 +1139,23 @@
   compound drawing tools can be added <em|cumulatively> to the basic drawing
   tools and only extend the range of action for the latter ones.
 
-  Note that these tools always go along the 3 orthogonal axes, so they are
-  very useful for cubes but might needs a bit getting use to for the other
-  spaces as they might behave differently along the 3 axes. The triangular
-  prisms for for example are stacked along the z-axis, side by side along the
-  x-axis and tip by tip along the y-axis.
+  Note that these tools always function along the 3 orthogonal axes, so they
+  are very useful for cubes but might need a bit of getting used to for the
+  other spaces as they might behave differently along the 3 axes. The
+  triangular prisms for example are stacked along the z-axis, side by side
+  along the x-axis and tip by tip along the y-axis.
 
   \;
 
   <tabular|<tformat|<cwith|1|3|1|1|cell-halign|r>|<cwith|1|3|1|1|cell-valign|t>|<cwith|1|3|2|2|cell-hyphen|t>|<cwith|1|3|2|2|cell-valign|t>|<cwith|1|1|1|1|cell-hyphen|t>|<cwith|2|2|1|1|cell-hyphen|t>|<cwith|1|1|1|1|cell-width|2cm>|<cwith|1|1|2|2|cell-width|13cm>|<table|<row|<cell|<postscript|Pics/Button_Toolbar_Symm_X.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Toolbar_Symm_Y.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Toolbar_Symm_Z.png|*5/8|*5/8||||>>|<cell|<strong|Symmetrical
-  drawing methods -> For every voxel drawn, erased or coloured its
+  drawing methods -> For every voxel drawn, erased, or coloured its
   symmetrically placed counterpart (with respect to the centre of the grid
   and along one of the space axes) will be affected as well. Activating only
   one of these options will double the number of edited cells, whereas
   activating two or all three will affect respectively four times and eight
   times as many cells simultaneously. These options are not only useful for
   drawing symmetrical shapes, but they are also very well suited for finding
-  the centre of the grid and (temporarily) setting the extends of a
+  the centre of the grid and (temporarily) setting the extents of a
   shape.<next-line> >>|<row|<cell|<postscript|Pics/Button_Toolbar_Cols_X.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Toolbar_Cols_Y.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Toolbar_Cols_Z.png|*5/8|*5/8||||>>|<cell|<strong|Column
   drawing methods -> These options - possibly combined with the symmetrical
   drawing tools - can really speed up drawing shapes as they will affect
@@ -1204,10 +1167,10 @@
   <section|Adding Colour><label|AddingColour>
 
   There are basically two reasons for using colours in your puzzle designs.
-  The first is merely <em|aesthetically> and colours are only used to explore
-  the looks of the puzzle. This can help you selecting the proper species of
+  The first is merely <em|aesthetic>: colours are used only to explore the
+  looks of the puzzle. This can help you selecting the proper species of
   woods or stains before taking your design to the workshop. The second
-  however is far more important as it uses colours to force c.q. prevent
+  however is far more important, as it uses colours to force or prevent
   certain positions of particular pieces in the assembly. These
   <em|constraining> techniques can be very useful to pursue a unique solution
   for a puzzle design. Of course one can try to achieve both the aesthetic
@@ -1218,29 +1181,29 @@
   <name|Dracula's Dental Disaster> (Ronald Kint-Bruynseels) in which colours
   serve both. The red and black voxels are meant to impose constraints on the
   placements of the pieces, whereas the white colour of the parts on the
-  inside of the pieces is only used to make them look nice.
+  inside of the pieces is used only to make them look nice.
 
   <subsection|The Neutral Colour and Custom Colours >
 
-  Even when no 'special' colours at all are used, all created shapes do look
-  different with respect to their 'colour'. This is the so called <em|neutral
-  colour> and is only there to <em|distinguish> the shapes from one another.
+  Even when no 'special' colours at all are used, the program assigns each
+  shape its own different nominal color. This is the so-called <em|neutral
+  colour> and is there only to <em|distinguish> the shapes from one another.
   These neutral colours are standard for each newly created shape (the first
   one in the shapes list is always blue, the second one green, the third one
   red, etc...) and cannot be altered.
 
-  As far as the solver is concerned, the neutral colour doesn't even exist as
-  all appearances of it are fully interchangeable. So any voxel in the pieces
-  that has only the neutral colour can go into any voxel of the result shape
-  and every voxel in the result that has no other colour than the neutral can
-  accommodate for any voxel of the pieces, independent of its colour.
+  As far as the solver is concerned, the neutral colour doesn't even exist,
+  as all appearances of it are fully interchangeable. So any voxel in the
+  pieces that has only the neutral colour can go into any voxel of the result
+  shape, and every voxel in the result that has no other colour than the
+  neutral can accommodate any voxel of the pieces, independent of its colour.
 
   Independent from their neutral colour, voxels can have customised colours
-  as extra attributes. To avoid confusion, it's recommended to have these
+  as extra attributes. To avoid confusion, it's recommended to make these
   colours well distinguishable from the neutral colours in use, since a
   custom colour that is identical to one of the neutral colours will have a
   completely different effect on the way the solver behaves. Almost without
-  exceptions custom colours need some constraint settings
+  exception custom colours need some constraint settings
   (<with|mode|math|\<vartriangleright\>><reference|ColourConstraints>) to
   make the solver run.
 
@@ -1250,7 +1213,7 @@
   <with|font-family|ss|<strong|<with|color|blue|<with|color|black|Colours>>>>
   panel of the <with|font-family|ss|<strong|<strong|<with|font-family|rm|<with|font-series|medium|<with|font-family|ss|Entities>>>>>>
   tab. This panel also has a list in which the colours can be
-  <with|font-series|medium|selected> to be used in the design or to become
+  <with|font-series|medium|selected> to be used in the design or to be
   edited. The <strong|<with|font|roman|<with|font-family|ss|New>>> button
   allows you to create a custom colour. A dialogue will pop up and present
   you the necessary tools to create the colour you need. Accordingly the
@@ -1258,25 +1221,25 @@
   already existing colour using a similar dialogue. This dialogue also shows
   the currently selected colour for comparison (unless the neutral colour is
   selected, which makes the dialogue to show the default medium grey). Note
-  that the neutral colour can be neither removed or changed. It's important
-  to realise that the <name|BurrTools> engine only discriminates custom
-  colours by number as indicated in their prefix
+  that the neutral colour can be neither removed nor changed. It's important
+  to realise that the <name|BurrTools> engine discriminates custom colours
+  only by number as indicated in their prefix
   '<with|font-family|ss|<strong|C<em|x>>>' and not by the actual colours
   themselves. Hence it is possible to create identical colours that
-  nevertheless will be treated as different colours. So, it's strongly
-  advised to introduce only colours for which the difference can easily be
-  discerned. Otherwise, finding out why a puzzle has no solutions can be very
-  hard. The <strong|<with|font-family|ss|Remove>> button will not only
-  discard the colour from the list, but will also remove it from any voxel
-  that has it as an attribute by replacing it with the neutral colour.
+  nevertheless will be treated as different. So, it's strongly advised to
+  introduce only colours whose difference can easily be discerned. Otherwise,
+  finding out why a puzzle has no solutions can be very hard. The
+  <strong|<with|font-family|ss|Remove>> button will not only discard the
+  colour from the list, but will also remove it from any voxel that has it as
+  an attribute by replacing it with the neutral colour.
 
-  When you add a colour <name|BurrTools> automatically add a constraint rule
-  that pieces of this colour can be placed into result voxels of this colour.
-  This is done so because this is the most often used usage case of colours.
-  If you don't want this you have to explicitly remove the rules (see
-  <no-break><with|mode|math|\<vartriangleright\>><reference|ColourConstraints>).
-  Also when a new problem is created <name|BurrTools> automatically adds one
-  rule for each colour that will allow placement.
+  When you add a colour, <name|BurrTools> automatically adds a constraint
+  rule that pieces of this colour can be placed into result voxels of this
+  colour. This is done by default because it is the way colours are most
+  often used. If you don't want this constraint you have to explicitly remove
+  the rules (see <no-break><with|mode|math|\<vartriangleright\>><reference|ColourConstraints>).
+  Also, when a new problem is created <name|BurrTools> automatically adds one
+  such rule for each existing colour.
 
   <subsection|Applying Colours><label|BrushTool>
 
@@ -1299,10 +1262,10 @@
 
   <section|Representations><label|Representations>
 
-  Voxels can either be fixed or variable and each of these can come with or
-  without an additional custom colour. In <name|BurrTools> all of these have
-  their own specific representations in the 2-<no-break>D grid as well as in
-  the 3-<no-break>D viewport. Figure<\float|float|tbh>
+  Voxels can be either fixed or variable, and each of these can come with or
+  without an additional custom colour. In <name|BurrTools> all of these cases
+  have their own specific representations in the 2-<no-break>D grid as well
+  as in the 3-<no-break>D viewport. Figure<\float|float|tbh>
     <\big-figure>
       <postscript|Pics/RepresentationA.png|*5/8|*5/8||||>
       \ \ \ \ <postscript|Pics/RepresentationC.png|*5/8|*5/8||||>
@@ -1313,14 +1276,14 @@
       \ \ \ \ <postscript|Pics/RepresentationF.png|*5/8|*5/8||||>
     </big-figure|<label|FigureRepresentations>Representations in
     2-<no-break>D and 3-<no-break>D>
-  </float> <reference|FigureRepresentations> shows an overview of these. In
-  this picture the neutral colour is red (= shape S3) and the custom colour
-  is green (RGB = 0.600, 0.753, 0).
+  </float> <reference|FigureRepresentations> shows an overview of these
+  possibilities. In this picture the neutral colour is red (= shape S3) and
+  the custom colour is green (RGB = 0.600, 0.753, 0).
 
   Fixed voxels always fill the cell completely in the 2-<no-break>D grid as
   well as in the 3-<no-break>D grid. In all the pictures of Figure
   <reference|FigureRepresentations> the voxels on the left are fixed voxels.
-  Variable voxels only fill the cell partially in 2-<no-break>D and have a
+  Variable voxels only partially fill the cell in 2-<no-break>D and have a
   black inset in 3-<no-break>D (the voxels on the right in Figure
   <reference|FigureRepresentations>).
 
@@ -1331,7 +1294,7 @@
   <strong|<with|font-family|ss|Colour 3D View>> on the status line is
   checked, otherwise they will be painted in the neutral colour). Note that
   in both grids the neutral colours also have a slightly checkered pattern
-  which can assist navigating in space (except for the spheres, they have no
+  which can assist navigating in space (except for the spheres, which have no
   checkering).
 
   <section|Transformation Tools><label|TransformationTools>
@@ -1778,10 +1741,10 @@
   puzzle consists of 2 different shapes. When Ronald defined this puzzle he
   had to try all possible combinations of the 2 pieces, beginning with 6
   pieces of shape A and zero of shape B, over 5 times A and one B up to 6
-  times B. This can now be done way more easily with piece ranges. Simply tell
-  <name|BurrTools> that the result should be made out of 0-6 pieces of shape
-  A and 0-6 pieces of shape B, or if you want to ensure that at least one of
-  each shape is used, use ranges 1-6. Then solve.
+  times B. This can now be done way more easily with piece ranges. Simply
+  tell <name|BurrTools> that the result should be made out of 0-6 pieces of
+  shape A and 0-6 pieces of shape B, or if you want to ensure that at least
+  one of each shape is used, use ranges 1-6. Then solve.
 
   Piece ranges can be easily defined using the
   <with|font-family|ss|<with|font-series|bold|min=0>> button. This will set
@@ -1793,7 +1756,7 @@
   buttons always change the minimum and the maximum of the piece range.
 
   If this calculation is too hard for you, you can use the problem detail
-  dialogue (see section <reference|SectionProblemDetails>) to enter the 
+  dialogue (see section <reference|SectionProblemDetails>) to enter the
   ranges directly without the need for calculations.
 
   <section|Grouping Pieces>
