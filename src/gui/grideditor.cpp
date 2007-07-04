@@ -207,7 +207,7 @@ int gridEditor_c::handle(int event) {
       // mouse released, update the rubberband area
 
       int x, y;
-      calcGridPosition(Fl::event_x(), Fl::event_y(), currentZ, &x, &y);
+      if (!calcGridPosition(Fl::event_x(), Fl::event_y(), currentZ, &x, &y)) break;
 
       // check, if the current position is inside the grid, only if so carry out action, we don't
       // need to to this if we are not in rubberband modus, but it doesn't hurt either
@@ -249,7 +249,7 @@ int gridEditor_c::handle(int event) {
     {
       /* find out where the mouse cursor is */
       int x, y;
-      calcGridPosition(Fl::event_x(), Fl::event_y(), currentZ, &x, &y);
+      if (!calcGridPosition(Fl::event_x(), Fl::event_y(), currentZ, &x, &y)) break;
 
       // clip the coordinates to the size of the space
       if (x < 0) x = 0;

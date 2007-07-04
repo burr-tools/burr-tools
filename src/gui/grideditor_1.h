@@ -33,7 +33,7 @@ private:
   // top right corner position
   void calcParameters(int *s, int *s2, int *tx, int *ty);
 
-  void calcGridPosition(int x, int y, int z, int *gx, int *gy);
+  bool calcGridPosition(int x, int y, int z, int *gx, int *gy);
 
   void drawNormalTile(int x, int y, int z, int tx, int ty, int sx, int sy);
   void drawVariableTile(int x, int y, int z, int tx, int ty, int sx, int sy);

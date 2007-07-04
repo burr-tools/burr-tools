@@ -234,12 +234,14 @@ void gridEditor_1_c::drawTileCursor(int x, int y, int, int x1, int y1, int x2, i
   }
 }
 
-void gridEditor_1_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
+bool gridEditor_1_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
 
   voxel_c * space = puzzle->getShape(piecenumber);
 
   int s, s2, tx, ty;
   calcParameters(&s, &s2, &tx, &ty);
+
+  if (s == 0 || s2 == 0) return false;
 
   x -= tx;
   y -= ty;
@@ -274,5 +276,7 @@ void gridEditor_1_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
 
   *gx = xp;
   *gy = space->getY()-yp-1;
+
+  return true;
 }
 

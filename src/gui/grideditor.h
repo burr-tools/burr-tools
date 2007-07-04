@@ -148,8 +148,11 @@ public:
   /* each grid editor has to provide this function
    * is calculates the grid position gx and gy inside the voxel
    * for the given screen position x, y and the current z layer
+   *
+   * return false, if the position can not be calculated, (because
+   * of division by zero, or so) true, if you can
    */
-  virtual void calcGridPosition(int x, int y, int z, int *gx, int *gy) = 0;
+  virtual bool calcGridPosition(int x, int y, int z, int *gx, int *gy) = 0;
 
   /* calculate the x and sy scaling and the x and y translation for
    * the current shape so that it fits into the available space and
