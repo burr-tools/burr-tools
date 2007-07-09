@@ -1318,15 +1318,17 @@ void mainWindow_c::cb_3dClick(void) {
         shapeAssignmentSelector->setSelection(puzzle->probGetShape(problemSelector->getSelection(), shape-2));
     }
   } else if (TaskSelectionTab->value() == TabSolve) {
-    unsigned int shape;
+    if (Fl::event_shift()) {
+      unsigned int shape;
 
-    if (View3D->getView()->pickShape(Fl::event_x(),
-        View3D->getView()->h()-Fl::event_y(),
-        &shape, 0, 0)) {
+      if (View3D->getView()->pickShape(Fl::event_x(),
+            View3D->getView()->h()-Fl::event_y(),
+            &shape, 0, 0)) {
 
-      PcVis->hidePiece(shape);
-      View3D->updateVisibility(PcVis);
-      redraw();
+        PcVis->hidePiece(shape);
+        View3D->updateVisibility(PcVis);
+        redraw();
+      }
     }
   }
 }
