@@ -251,6 +251,8 @@ void voxel_0_c::scale(unsigned int amount) {
 
   voxels = sx*sy*sz;
 
+  hx = hy = hz = 0;
+
   recalcBoundingBox();
 }
 
