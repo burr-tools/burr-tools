@@ -22,9 +22,13 @@ AM_PROG_CC_C_O
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 
-if [test "$target_os" != "mingw32"]; then
-  ACX_PTHREAD(, AC_MSG_ERROR([pthread library required for burrtools]))
-fi
+case "$target_os" in
+  mingw*)
+    ;;
+  *)
+    ACX_PTHREAD(, AC_MSG_ERROR([pthread library required for burrtools]))
+    ;;
+esac
 
 AC_CHECK_PROG(fltk_found, fltk-config, 1, 0)
 
@@ -53,15 +57,17 @@ else
   AC_MSG_ERROR([libpng not found, please install that library])
 fi  
 
-if test "$target_os" != "mingw32"; then
+case "$target_os" in
+  mingw*)
+    ;;
+  *)
+    MDL_HAVE_OPENGL
 
-MDL_HAVE_OPENGL
-
-if test x$have_GL != xyes -o x$have_GLU != xyes; then
-  AC_MSG_ERROR([no openGL found, openGL is needed for burrtools])
-fi
-
-fi
+    if test x$have_GL != xyes -o x$have_GLU != xyes; then
+      AC_MSG_ERROR([no openGL found, openGL is needed for burrtools])
+    fi
+    ;;
+esac
 
 AC_CHECK_TOOL([NMPROG], [nm], [nm])
 
