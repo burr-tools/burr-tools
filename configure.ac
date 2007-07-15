@@ -31,26 +31,33 @@ case "$target_os" in
 esac
 
 
-AC_PATH_PROG(FLTK_CONFIG, fltk-config)
 AC_ARG_WITH(fltk-config,
         [  --with-fltk-config      absolute path to fltk-config],
         FLTK_CONFIG=$withval)
+if test -z "$FLTK_CONFIG"; then
+  AC_PATH_PROG(FLTK_CONFIG, fltk-config)
+fi
+
 GUI_CPP_ADD=`$FLTK_CONFIG --cxxflags --use-gl`
 GUI_LD_ADD=`$FLTK_CONFIG --ldflags --use-gl`
 
 
-AC_PATH_PROG(XMLWRAPP_CONFIG, xmlwrapp-config)
 AC_ARG_WITH(xmlwrapp-config,
         [  --with-xmlwrapp-config  absolute path to xmlwrapp-config],
         XMLWRAPP_CONFIG=$withval)
+if test -z "$XMLWRAPP_CONFIG"; then
+  AC_PATH_PROG(XMLWRAPP_CONFIG, xmlwrapp-config)
+fi
 XML_CPP_ADD=`$XMLWRAPP_CONFIG --cxxflags`
 XML_LD_ADD=`$XMLWRAPP_CONFIG --libs`
 
 
-AC_PATH_PROG(LIBPNG_CONFIG, libpng-config)
 AC_ARG_WITH(libpng-config,
         [  --with-libpng-config    absolute path to libpng-config],
         LIBPNG_CONFIG=$withval)
+if test -z "$LIBPNG_CONFIG"; then
+  AC_PATH_PROG(LIBPNG_CONFIG, libpng-config)
+fi
 GUI_CPP_ADD="$GUI_CPP_ADD `$LIBPNG_CONFIG --cppflags`"
 GUI_LD_ADD="$GUI_LD_ADD `$LIBPNG_CONFIG --libs`"
 
