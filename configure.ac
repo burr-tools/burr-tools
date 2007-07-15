@@ -30,32 +30,29 @@ case "$target_os" in
     ;;
 esac
 
-AC_CHECK_PROG(fltk_found, fltk-config, 1, 0)
 
-if [test $fltk_found -eq 1]; then
-  GUI_CPP_ADD=`fltk-config --cxxflags --use-gl`
-  GUI_LD_ADD=`fltk-config --ldflags --use-gl`
-else
-  AC_MSG_ERROR([FLTK not found, please install that libraray with development package])
-fi  
+AC_PATH_PROG(FLTK_CONFIG, fltk-config)
+AC_ARG_WITH(fltk-config,
+        [  --with-fltk-config      absolute path to fltk-config],
+        FLTK_CONFIG=$withval)
+GUI_CPP_ADD=`$FLTK_CONFIG --cxxflags --use-gl`
+GUI_LD_ADD=`$FLTK_CONFIG --ldflags --use-gl`
 
-AC_CHECK_PROG(xmlwrapp_found, xmlwrapp-config, 1, 0)
 
-if [test $xmlwrapp_found -eq 1]; then
-  XML_CPP_ADD=`xmlwrapp-config --cxxflags`
-  XML_LD_ADD=`xmlwrapp-config --libs`
-else
-  AC_MSG_ERROR([XMLwrapp not found, please install that library])
-fi  
+AC_PATH_PROG(XMLWRAPP_CONFIG, xmlwrapp-config)
+AC_ARG_WITH(xmlwrapp-config,
+        [  --with-xmlwrapp-config  absolute path to xmlwrapp-config],
+        XMLWRAPP_CONFIG=$withval)
+XML_CPP_ADD=`$XMLWRAPP_CONFIG --cxxflags`
+XML_LD_ADD=`$XMLWRAPP_CONFIG --libs`
 
-AC_CHECK_PROG(libpng_found, libpng-config, 1, 0)
 
-if [test $libpng_found -eq 1]; then
-  GUI_CPP_ADD="$GUI_CPP_ADD `libpng-config --cppflags`"
-  GUI_LD_ADD="$GUI_LD_ADD `libpng-config --libs`"
-else
-  AC_MSG_ERROR([libpng not found, please install that library])
-fi  
+AC_PATH_PROG(LIBPNG_CONFIG, libpng-config)
+AC_ARG_WITH(libpng-config,
+        [  --with-libpng-config    absolute path to libpng-config],
+        LIBPNG_CONFIG=$withval)
+GUI_CPP_ADD="$GUI_CPP_ADD `$LIBPNG_CONFIG --cppflags`"
+GUI_LD_ADD="$GUI_LD_ADD `$LIBPNG_CONFIG --libs`"
 
 case "$target_os" in
   mingw*)
