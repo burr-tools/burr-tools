@@ -230,9 +230,9 @@ void multTranformationsMatrix(void) {
 
         if (mequal(m, t)) {
           if (tr2 < NUM_TRANSFORMATIONS_MIRROR-1)
-            fprintf(out, "%2i, ", t);
+            fprintf(out, "%3i,", t);
           else
-            fprintf(out, "%2i", t);
+            fprintf(out, "%3i", t);
           transMult[tr1][tr2] = t;
           found = true;
           break;
@@ -241,9 +241,9 @@ void multTranformationsMatrix(void) {
 
       if (!found) {
         if (tr2 < NUM_TRANSFORMATIONS_MIRROR-1)
-          fprintf(out, "%2i, ", -1);
+          fprintf(out, "TND,");
         else
-          fprintf(out, "%2i", -1);
+          fprintf(out, "TND");
         transMult[tr1][tr2] = -1;
       }
 

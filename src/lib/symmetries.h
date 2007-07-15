@@ -24,6 +24,9 @@
 
 // this modules contains just some helper functions for transformations and symmetry handling
 
+// this define is used for undefined transformations in the transformation multiplication matrix
+#define TND (unsigned int)(-1)
+
 /* this type is used to collect all the symmetries that a piece can have. For each symmetry
  * the corresponding bit is set
  */
