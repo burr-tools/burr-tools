@@ -1,6 +1,5 @@
 bin_PROGRAMS=burrTxt gui/burrGui
 noinst_LIBRARIES=lib/libburr.a flu/libflu.a
-noinst_PROGRAMS=lib/tabs_0/generator_0 lib/tabs_1/generator_1 lib/tabs_2/generator_2
 
 XML_CPP_ADD=@XML_CPP_ADD@
 XML_LD_ADD=@XML_LD_ADD@
@@ -11,9 +10,6 @@ PTHREAD_LD_ADD=@PTHREAD_LD_ADD@
 
 AM_CPPFLAGS=-Wall $(XML_CPP_ADD) $(GUI_CPP_ADD) $(PTHREAD_CPP_ADD) @LARGEFILE@
 LDADD=lib/libburr.a flu/libflu.a $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
-lib_tabs_0_generator_0_LDADD=
-lib_tabs_1_generator_1_LDADD=
-lib_tabs_2_generator_2_LDADD=
 
 burrTxt_SOURCES=burrTxt.cpp
 
@@ -90,34 +86,29 @@ BUILT_SOURCES=\
     lib/tabs_1/symcalc.inc lib/tabs_1/transformmini.inc lib/tabs_1/transmult.inc lib/tabs_1/unifiedsym.inc \
     lib/tabs_2/symcalc.inc lib/tabs_2/transformmini.inc lib/tabs_2/transmult.inc lib/tabs_2/unifiedsym.inc
 
-lib/tabs_0/symcalc.inc lib/tabs_0/transformmini.inc lib/tabs_0/transmult.inc lib/tabs_0/unifiedsym.inc : lib/tabs_0/generator_0
-	cd lib/tabs_0; ./generator_0
+lib/tabs_0/symcalc.inc lib/tabs_0/transmult.inc lib/tabs_0/unifiedsym.inc lib/tabs_0/transformmini.inc: lib/tabs_0/rotmatrix.inc \
+                                                                                                        lib/tabs_0/symmetries.inc \
+                                                                                                        lib/tabs_0/tablesizes.inc \
+                                                                                                        lib/tabs_0/generator_0.cpp
+	$(CXX) lib/tabs_0/generator_0.cpp -o lib/tabs_0/generator
+	cd lib/tabs_0 && ./generator
+	$(RM) lib/tabs_0/generator
 
-lib/tabs_1/symcalc.inc lib/tabs_1/transformmini.inc lib/tabs_1/transmult.inc lib/tabs_1/unifiedsym.inc : lib/tabs_1/generator_1
-	cd lib/tabs_1; ./generator_1
+lib/tabs_1/symcalc.inc lib/tabs_1/transmult.inc lib/tabs_1/unifiedsym.inc lib/tabs_1/transformmini.inc: lib/tabs_1/rotmatrix.inc \
+                                                                                                        lib/tabs_1/symmetries.inc \
+                                                                                                        lib/tabs_1/tablesizes.inc \
+                                                                                                        lib/tabs_1/generator_1.cpp
+	$(CXX) lib/tabs_1/generator_1.cpp -o lib/tabs_1/generator
+	cd lib/tabs_1 && ./generator
+	$(RM) lib/tabs_1/generator
 
-lib/tabs_2/symcalc.inc lib/tabs_2/transformmini.inc lib/tabs_2/transmult.inc lib/tabs_2/unifiedsym.inc : lib/tabs_2/generator_2
-	cd lib/tabs_2; ./generator_2
-
-
-lib_tabs_0_generator_0_SOURCES=\
-    lib/tabs_0/generator_0.cpp \
-    lib/tabs_0/rotmatrix.inc \
-    lib/tabs_0/symmetries.inc \
-    lib/tabs_0/tablesizes.inc
-
-lib_tabs_1_generator_1_SOURCES=\
-    lib/tabs_1/generator_1.cpp \
-    lib/tabs_1/rotmatrix.inc \
-    lib/tabs_1/symmetries.inc \
-    lib/tabs_1/tablesizes.inc
-
-lib_tabs_2_generator_2_SOURCES=\
-    lib/tabs_2/generator_2.cpp \
-    lib/tabs_2/rotmatrix.inc \
-    lib/bitfield.h \
-    lib/tabs_2/symmetries.inc \
-    lib/tabs_2/tablesizes.inc
+lib/tabs_2/symcalc.inc lib/tabs_2/transmult.inc lib/tabs_2/unifiedsym.inc lib/tabs_2/transformmini.inc: lib/tabs_2/rotmatrix.inc \
+                                                                                                        lib/tabs_2/symmetries.inc \
+                                                                                                        lib/tabs_2/tablesizes.inc \
+                                                                                                        lib/tabs_2/generator_2.cpp
+	$(CXX) lib/tabs_2/generator_2.cpp -o lib/tabs_2/generator
+	cd lib/tabs_2 && ./generator
+	$(RM) lib/tabs_2/generator
 
 flu_libflu_a_SOURCES=\
     flu/Flu_Button.cpp \
