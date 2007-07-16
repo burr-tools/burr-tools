@@ -3,7 +3,7 @@ are owned by their corresponding designers and that you need to ask them if you
 want to produce one of them commercially. They all have been so kind and
 allowed me to bundle them here with the program.
 Each design also demonstrates some of the features of the program so I will
-tell a few words to each of them.
+tell a few words about each of them.
 
 AlPackino: Designed by Ronald Kint-Bruynseels
 This puzzle shows how to properly make packing puzzles. You always should
