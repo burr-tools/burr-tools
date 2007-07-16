@@ -41,9 +41,9 @@ lib_libburr_a_SOURCES=\
     lib/voxel_1.cpp \
     lib/voxel_2.cpp \
     \
-    lib/tabs_0/rotmatrix.inc lib/tabs_0/symmetries.inc lib/tabs_0/tablesizes.inc \
-    lib/tabs_1/rotmatrix.inc lib/tabs_1/symmetries.inc lib/tabs_1/tablesizes.inc \
-    lib/tabs_2/rotmatrix.inc lib/tabs_2/symmetries.inc lib/tabs_2/tablesizes.inc \
+    lib/tabs_0/rotmatrix.inc lib/tabs_0/symmetries.inc lib/tabs_0/tablesizes.inc lib/tabs_0/generator_0.cpp \
+    lib/tabs_1/rotmatrix.inc lib/tabs_1/symmetries.inc lib/tabs_1/tablesizes.inc lib/tabs_1/generator_1.cpp \
+    lib/tabs_2/rotmatrix.inc lib/tabs_2/symmetries.inc lib/tabs_2/tablesizes.inc lib/tabs_2/generator_2.cpp \
     \
     lib/tabs_0/symcalc.inc lib/tabs_0/transformmini.inc lib/tabs_0/transmult.inc lib/tabs_0/unifiedsym.inc \
     lib/tabs_1/symcalc.inc lib/tabs_1/transformmini.inc lib/tabs_1/transmult.inc lib/tabs_1/unifiedsym.inc \
@@ -282,5 +282,3 @@ gui_burrGui_SOURCES=\
      gui/images/Rescale_Disabled_X1.xpm gui/images/Rescale_Disabled_X2.xpm gui/images/Rescale_Disabled_X3.xpm \
      gui/images/Rescale_Monochrome_X1.xpm gui/images/Rescale_Monochrome_X2.xpm gui/images/Rescale_Monochrome_X3.xpm \
      gui/images/ViewMode3D.xpm gui/images/ViewModeColor.xpm gui/images/ViewModeNormal.xpm
-
-

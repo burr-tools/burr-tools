@@ -1,0 +1,100 @@
+!define NAME "@FULLNAME@"
+!define PACKAGE "@PACKAGE@"
+!define VERSION "@VERSION@"
+!define URL "@URL@"
+!define FLATDIR "@PACKAGE@-@VERSION@-win32"
+!define OUTFILE "${FLATDIR}.exe"
+!define MAINPROG "burrGui.exe"
+!define SMDIR "$SMPROGRAMS\${NAME}"
+!define UNINSTPROG "uninstall.exe"
+!define LICENSE "COPYING.txt"
+
+Name "${NAME}"
+OutFile "${OUTFILE}"
+InstallDir "$PROGRAMFILES\${PACKAGE}"
+InstallDirRegKey HKLM "Software\${PACKAGE}" "Install_Dir"
+SetCompressor LZMA
+XPStyle off
+
+Page license
+Page components
+Page directory
+Page instfiles
+UninstPage uninstConfirm
+UninstPage instfiles
+
+LicenseData "${FLATDIR}\${LICENSE}"
+
+InstType "Full"
+
+Section "-Install Uninstaller"
+  SetOutPath "$INSTDIR"
+
+  WriteUninstaller "$INSTDIR\${UNINSTPROG}"
+  WriteRegStr HKLM \
+              "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PACKAGE}" \
+              "DisplayName" "${NAME}"
+  WriteRegStr HKLM \
+              "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PACKAGE}" \
+              "UninstallString" '"$INSTDIR\${UNINSTPROG}"'
+SectionEnd
+
+Section "!${NAME} - ${VERSION}"
+  SectionIn 1
+  SetOutPath "$INSTDIR"
+
+  File "${FLATDIR}\*.exe"
+  File "${FLATDIR}\*.txt"
+  File "${FLATDIR}\*.pdf"
+
+  SetOutPath "$INSTDIR\examples"
+  File "${FLATDIR}\examples\README.txt"
+  File "${FLATDIR}\examples\*.xmpuzzle"
+SectionEnd
+
+Section "Start Menu Entry"
+  SectionIn 1
+  SetOutPath "$INSTDIR"
+
+  CreateDirectory "${SMDIR}"
+  CreateShortCut "${SMDIR}\${NAME}.lnk" "$INSTDIR\${MAINPROG}"
+  WriteINIStr "${SMDIR}\Homepage.url" "InternetShortcut" "URL" "${URL}"
+  CreateShortCut "${SMDIR}\User Guide.lnk" "$INSTDIR\UserGuide.pdf"
+  CreateShortCut "${SMDIR}\Uninstall.lnk" "$INSTDIR\${UNINSTPROG}"
+SectionEnd
+
+Section "Desktop Entry"
+  SectionIn 1
+  SetOutPath "$INSTDIR"
+
+  CreateShortCut "$DESKTOP\${NAME}.lnk" "$INSTDIR\${MAINPROG}"
+SectionEnd
+
+UninstallText "This will uninstall ${NAME} from your system:"
+
+Section "Uninstall"
+  Delete "$DESKTOP\${NAME}.lnk"
+
+  Delete "${SMDIR}\${NAME}.lnk"
+  Delete "${SMDIR}\Homepage.url"
+  Delete "${SMDIR}\User Guide.lnk"
+  Delete "${SMDIR}\Uninstall.lnk"
+  RMDir  "${SMDIR}"
+
+  Delete $INSTDIR\*.exe
+  Delete $INSTDIR\*.txt
+  Delete $INSTDIR\*.pdf
+  Delete $INSTDIR\examples\*
+  RMDir  $INSTDIR\examples
+  Delete $INSTDIR\${UNINSTPROG}
+  RMDir  $INSTDIR
+
+  DeleteRegKey HKLM \
+               "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PACKAGE}"
+SectionEnd
+
+Function .onInstSuccess
+  SetOutPath "$INSTDIR"
+
+  ExecShell open "$INSTDIR\README.txt"
+FunctionEnd

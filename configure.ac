@@ -1,4 +1,9 @@
-AC_INIT(burrTools, 0.3.0)
+AC_INIT(burrtools, 0.3.0)
+
+AC_SUBST(FULLNAME,"Burr Tools")
+AC_SUBST(URL,"http://burrtools.sourceforge.net/")
+AC_DEFINE_UNQUOTED([FULLNAME],["$FULLNAME"],[Define to the full name of this package.])
+AC_DEFINE_UNQUOTED([URL],["$URL"],[Define to the URL of this package's homepage.])
 
 AC_CONFIG_SRCDIR(src/burrTxt.cpp)
 AC_CONFIG_AUX_DIR(admin)
@@ -20,7 +25,7 @@ AC_PROG_CC
 AC_PROG_CXX
 AM_PROG_CC_C_O
 
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile burrtools.nsi])
 
 case "$target_os" in
   mingw*)
@@ -30,34 +35,30 @@ case "$target_os" in
     ;;
 esac
 
-
-AC_ARG_WITH(fltk-config,
-        [  --with-fltk-config      absolute path to fltk-config],
-        FLTK_CONFIG=$withval)
-if test -z "$FLTK_CONFIG"; then
-  AC_PATH_PROG(FLTK_CONFIG, fltk-config)
-fi
-
+AC_ARG_WITH(fltk,
+        [  --with-fltk             prefix of FLTK     (where to find bin/fltk-config)],
+        FLTK_CONFIG_PATH=$withval/bin,
+        FLTK_CONFIG_PATH=$PATH)
+AC_PATH_PROG(FLTK_CONFIG, fltk-config, [], [$FLTK_CONFIG_PATH])
+test -z "$FLTK_CONFIG" && AC_MSG_ERROR([unable to find FLTK])
 GUI_CPP_ADD=`$FLTK_CONFIG --cxxflags --use-gl`
 GUI_LD_ADD=`$FLTK_CONFIG --ldflags --use-gl`
 
-
-AC_ARG_WITH(xmlwrapp-config,
-        [  --with-xmlwrapp-config  absolute path to xmlwrapp-config],
-        XMLWRAPP_CONFIG=$withval)
-if test -z "$XMLWRAPP_CONFIG"; then
-  AC_PATH_PROG(XMLWRAPP_CONFIG, xmlwrapp-config)
-fi
+AC_ARG_WITH(xmlwrapp,
+        [  --with-xmlwrapp         prefix of xmlwrapp (where to find bin/xmlwrapp-config)],
+        XMLWRAPP_CONFIG_PATH=$withval/bin,
+        XMLWRAPP_CONFIG_PATH=$PATH)
+AC_PATH_PROG(XMLWRAPP_CONFIG, xmlwrapp-config, [], [$XMLWRAPP_CONFIG_PATH])
+test -z "$XMLWRAPP_CONFIG" && AC_MSG_ERROR([unable to find xmlwrapp])
 XML_CPP_ADD=`$XMLWRAPP_CONFIG --cxxflags`
 XML_LD_ADD=`$XMLWRAPP_CONFIG --libs`
 
-
-AC_ARG_WITH(libpng-config,
-        [  --with-libpng-config    absolute path to libpng-config],
-        LIBPNG_CONFIG=$withval)
-if test -z "$LIBPNG_CONFIG"; then
-  AC_PATH_PROG(LIBPNG_CONFIG, libpng-config)
-fi
+AC_ARG_WITH(libpng,
+        [  --with-libpng           prefix of libpng   (where to find bin/libpng-config)],
+        LIBPNG_CONFIG_PATH=$withval/bin,
+        LIBPNG_CONFIG_PATH=$PATH)
+AC_PATH_PROG(LIBPNG_CONFIG, libpng-config, [], [$LIBPNG_CONFIG_PATH])
+test -z "$LIBPNG_CONFIG" && AC_MSG_ERROR([unable to find libpng])
 GUI_CPP_ADD="$GUI_CPP_ADD `$LIBPNG_CONFIG --cppflags`"
 GUI_LD_ADD="$GUI_LD_ADD `$LIBPNG_CONFIG --libs`"
 

@@ -39,7 +39,27 @@ EXTRA_DIST = doc/UserGuide.tm \
              doc/Pics/Window_Anaglyph.png
 
 dist_doc_DATA = doc/UserGuide.pdf \
-                examples/README.TXT examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle \
+                examples/README examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle \
                 examples/PelikanBurr.xmpuzzle examples/CubeInCage.xmpuzzle examples/Bermuda.xmpuzzle \
                 examples/BallRoom.xmpuzzle examples/SolidSixPieceBurrs.xmpuzzle \
-                AUTHORS README NEWS ChangeLog
+                AUTHORS COPYING README NEWS ChangeLog
+
+win32dir = $(PACKAGE)-$(VERSION)-win32
+
+dist-win32: all
+	$(RM) -r $(win32dir)
+	$(INSTALL) -d                        $(win32dir)
+	$(INSTALL) -d                        $(win32dir)/examples
+	$(INSTALL) -m755 src/burrTxt.exe     $(win32dir)/
+	$(INSTALL) -m755 src/gui/burrGui.exe $(win32dir)/
+	$(STRIP) $(win32dir)/*.exe
+	upx      $(win32dir)/*.exe
+	for FILE in $(dist_doc_DATA); do case $$FILE in \
+	    *.xmpuzzle) $(INSTALL) -m644 $$FILE $(win32dir)/examples/ ;; \
+	    *.*)        $(INSTALL) -m644 $$FILE $(win32dir)/ ;; \
+	    *)   sed 's,$$,\r,' < $$FILE > $(win32dir)/$$FILE.txt ;; \
+	    esac; done
+	$(RM)   $(win32dir).zip
+	zip -r9 $(win32dir).zip $(win32dir)
+	makensis $(PACKAGE).nsi
+	$(RM) -r $(win32dir)
