@@ -44,6 +44,14 @@ dist_doc_DATA = doc/UserGuide.pdf \
                 examples/BallRoom.xmpuzzle examples/SolidSixPieceBurrs.xmpuzzle \
                 AUTHORS COPYING README NEWS ChangeLog
 
+%.pdf: %.tm
+	texmacs '$<' -x " \
+	    (generate-all-aux) (update-buffer) (print-to-file \"$*.ps\") \
+	    (generate-all-aux) (update-buffer) (print-to-file \"$*.ps\") \
+	    (generate-all-aux) (update-buffer) (print-to-file \"$*.ps\") \
+	    (quit-TeXmacs)"
+	ps2pdf -dPDFSETTINGS=/prepress -dEncodeColorImages=false '$*.ps' '$@'
+
 win32dir = $(PACKAGE)-$(VERSION)-win32
 
 dist-win32: all
