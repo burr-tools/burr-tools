@@ -23,7 +23,7 @@
 #include "assembly.h"
 #include "gridtype.h"
 
-#include "../config.h"
+#include <config.h>
 
 #include <xmlwrapp/attributes.h>
 

@@ -46,7 +46,7 @@
 
 #include "LFl_Tile.h"
 
-#include "../config.h"
+#include <config.h>
 
 #include "../lib/ps3dloader.h"
 #include "../lib/voxel.h"
