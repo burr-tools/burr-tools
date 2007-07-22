@@ -262,7 +262,7 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
   new LFl_Line(3, 1, 1, lines+head-1, 1);
   (new LFl_Box("Variable", 4, 1))->pitch(2);
   new LFl_Line(5, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Sum", 6, 1))->pitch(2);
+  (new LFl_Box("Total", 6, 1))->pitch(2);
   new LFl_Line(7, 0, 1, lines+head, 2);
 
   (new LFl_Box("Identical", 8, 0, 5))->pitch(2);

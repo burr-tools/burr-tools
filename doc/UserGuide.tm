@@ -1299,7 +1299,7 @@
 
   <section|Transformation Tools><label|TransformationTools>
 
-  Editing complex shapes can be very cumbersome and requires often a lot of
+  Editing complex shapes can be very cumbersome and often requires a lot of
   navigating through the 2-<no-break>D grid. So, properly positioning and/or
   orientating the shape in the 2-<no-break>D grid can save a lot of time.
   <name|BurrTools> comes with a set of functions that help you adjust the
@@ -1315,25 +1315,25 @@
     </big-figure|<label|FigureTransformationTools>Transformation tools>
   </float> <reference|FigureTransformationTools>). The first thing to see is
   that the transform tab looks quite different for all 3 available gridtypes.
-  On the top of the figure you see the tab for cubes, blow for the triangles
+  At the top of the figure you see the tab for cubes, below for triangles,
   and at the bottom for spheres.
 
   \;
 
   <tabular|<tformat|<cwith|1|3|1|2|cell-hyphen|t>|<cwith|1|3|2|2|cell-valign|t>|<cwith|1|3|1|1|cell-valign|t>|<cwith|1|3|1|1|cell-halign|r>|<cwith|1|3|2|2|cell-width|13cm>|<cwith|1|3|1|1|cell-width|2cm>|<cwith|1|1|1|1|cell-width|2cm>|<table|<row|<cell|<postscript|Pics/Button_Transform_Flip_X.png|*5/8|*5/8||||><line-break><postscript|Pics/Button_Transform_Flip_Y.png|*5/8|*5/8||||><line-break><postscript|Pics/Button_Transform_Flip_Z.png|*5/8|*5/8||||>>|<cell|<strong|Flip
-  -> These 'three' functions are merely <em|one single mirroring tool> and
-  the only difference is the orientation of the mirrored shape they provide.
-  The first will mirror the shape along the x-axis (or in a plane through the
-  centre of the grid and parallel to the YZ-plane). The other do perform the
+  -> These 'three' functions are merely <em|one single mirroring tool>, the
+  only difference is the orientation of the mirrored shape they provide. The
+  first will mirror the shape along the x-axis (or in a plane through the
+  centre of the grid and parallel to the YZ-plane). The others perform the
   same task, but along the y-axis (XZ-plane) or the z-axis (XY-plane)
-  respectively. Note that each button can either undo its own action as well
-  as the actions of the other buttons since the result of each function can
-  be obtained by simply rotating the outcome of any other. However, there are
+  respectively. Note that each button can undo its own action as well as the
+  actions of the other buttons, since the result of each function can be
+  obtained by simply rotating the outcome of any other. However, there are
   three buttons to provide some control over the orientation of the mirrored
-  shape in the grid space, which can have a time saving effect if the shape
-  needs further editing.<next-line>>>|<row|<cell|<postscript|Pics/Button_Transform_Nudge_X.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Transform_Nudge_Y.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Transform_Nudge_Z.png|*5/8|*5/8||||><next-line>and
+  shape in the grid space, which can save time if the shape needs further
+  editing.<next-line>>>|<row|<cell|<postscript|Pics/Button_Transform_Nudge_X.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Transform_Nudge_Y.png|*5/8|*5/8||||><next-line><postscript|Pics/Button_Transform_Nudge_Z.png|*5/8|*5/8||||><next-line>and
   more>|<cell|<strong|Nudge - >These functions provide <em|translations>
-  (along the x-axis, y-axis or z-axis for the cubes or along different axes
+  (along the x-axis, y-axis or z-axis for the cubes, or along different axes
   for other gridtypes) of the shapes in their surrounding grids. These
   buttons have two parts, of which the left part will shift the shape towards
   the origin of the grid and the right part will move it away from the
@@ -1345,9 +1345,9 @@
   parallel to the x-axis, y-axis or the z-axis. Again, these buttons have two
   parts, of which the left rotates the shape 90<degreesign> anti-clockwise
   (viewed towards the origin) and the right button turns the shape
-  90<degreesign> clockwise. To avoid destroying shapes by rotating them the
-  grid may become rotated as well.<next-line>The triangle space has only one
-  rotation button for the x and y-axis because it is only possible to rotate
+  90<degreesign> clockwise. To avoid destroying shapes by rotating them, the
+  grid may be rotated as well.<next-line>The triangle space has only one
+  rotation button for the x and y-axis because it is possible to rotate only
   by 180<degreesign> around these axes.>>>>>
 
   <section|Miscellaneous Editing Tools>
@@ -1360,12 +1360,11 @@
 
   <subsection|Constraining Tools><label|ChapterConstrainingTools>
 
-  These tools are <em|mass editing> tools that somehow have an impact on the
-  possible placements of the pieces in the final result. They act either on
-  the inside or the outside of the shape. Voxels that are considered to be on
-  the inside are voxels that have another voxel adjacent to <em|all> of their
-  faces. Consequently, outside voxels have at least one empty voxel
-  neighbouring.
+  These tools are <em|mass editing> tools that have an impact on the possible
+  placements of the pieces in the final result. They act either on the inside
+  or the outside of the shape. Voxels that are considered to be on the inside
+  are voxels that have another voxel adjacent to <em|all> of their faces.
+  Consequently, outside voxels have at least one empty voxel neighbouring.
 
   <tabular|<tformat|<cwith|1|1|2|2|cell-hyphen|t>|<cwith|1|1|1|1|cell-valign|t>|<cwith|1|1|1|1|cell-halign|r>|<cwith|2|2|1|1|cell-valign|t>|<cwith|2|2|1|1|cell-halign|r>|<cwith|3|3|1|1|cell-valign|t>|<cwith|3|3|1|1|cell-halign|r>|<cwith|2|2|2|2|cell-hyphen|t>|<cwith|3|3|2|2|cell-hyphen|t>|<cwith|1|3|2|2|cell-valign|t>|<cwith|1|1|2|2|cell-width|13cm>|<cwith|1|1|1|1|cell-width|2cm>|<table|<row|<cell|<postscript|Pics/Button_Constraints_Fixed.png|*5/8|*5/8||||>>|<cell|<strong|Fixed
   Inside/Outside -> These functions allow you to change the state of the
@@ -1376,23 +1375,23 @@
   Inside/Outside -> These functions will respectively make all the voxels on
   the inside or the outside of the shape variable. Making the inside variable
   is very useful for puzzles with internal holes in undetermined places. On
-  the other hand making the outside variable can prove its use in a lot of
+  the other hand making the outside variable can be halpful in a lot of
   design situations (e.g. adding extensions to the pieces). Clicking both
-  buttons will make the shape completely build out of variable voxels. Use
+  buttons will make the shape completely built out of variable voxels. Use
   these wisely as the more variable voxels there are, the slower the solver
   will run.<next-line>>>|<row|<cell|<postscript|Pics/Button_Constraints_Colour.png|*5/8|*5/8||||>>|<cell|<strong|Colour
   Remover -> These buttons will remove any custom colours from the voxels
-  that are either on the inside or the outside of the shape and replaces them
+  that are either on the inside or the outside of the shape, and replace them
   with the neutral colour. Removing the colour from the inside can prevent
   having to apply complex colouring to the result shape in situations were
-  the colour constraints are only relevant to the overall appearance of the
+  the colour constraints are relevant only to the overall appearance of the
   puzzle. >>>>>
 
   <section|Managing Shapes and Colours>
 
-  Currently only the shapes can be rearranged with the left and right arrow
+  Currently the shapes can only be rearranged with the left and right arrow
   buttons of the <with|font-family|ss|Shapes> section, but more advanced
-  managing procedures will be added in the future.
+  management procedures will be added in the future.
 
   <section|Shape Information><label|ChapterStatus>
 
@@ -1411,40 +1410,47 @@
     <item*|Units Variable>Contains the number of voxel inside the shape that
     have the state variable.
 
-    <item*|Units Sum>Contains the number of voxels inside the shape that are
-    either fixed or variable.
+    <item*|Units Total>Contains the number of voxels inside the shape that
+    are either fixed or variable.
 
     <item*|Identical>If the shape is identical to another shape with smaller
-    number the first one of these number is displayed, so if shape 3, 4 and 5
-    are identical shape 4 and 5 will point to shape 3 but shape 3 will show
-    none. So the table only points to a shape above.
+    number, the first such number is displayed; so if shape 3, 4, and 5 are
+    identical, shape 4 and 5 will point to shape 3 but shape 3 will show no
+    indication.
 
-    <item*|Identical Mirror>A shape is entered, if the shapes can somehow be
-    transformed into the other including the mirror transformation
+    <item*|Identical Mirror>A previous shape is cited, if the shapes can
+    somehow be transformed into the other including the mirror
+    transformation.
 
-    <item*|Identical Shape>A shape is entered, if the shape is identical
-    without including mirrored shapes.
+    <item*|Identical Shape>A previous shape is cited, if the shapes are
+    identical without mirroring.\ 
 
     <item*|Identical Complete>In this case shapes must be completely
     identical including colours and not only the appearance of the shape.
 
     <item*|Connectivity>This part of the table shows if the shape is
-    completely connected and doesn't contain any separate voxels
+    completely connected, i.e. doesn't contain any separate voxels.
 
     <item*|Connectivity Face>This part is marked with an X when all parts of
-    the shape are connected via the faces of the voxels
+    the shape are connected via the faces of the voxels. A face is a surface
+    of a voxel. Cubes have 6 such faces, the triangular voxels have 5, and
+    spheres have 12 faces.
 
     <item*|Connectivity Edge>This part is marked with an X when all parts of
-    the shape are connected via an edge or a face of the voxel
+    the shape are connected via an edge or a face of the voxel. An edge is
+    the connection between 2 corners of a voxel. A cube has 12 edges and the
+    triangular voxel have 9. Spheres have no edges.
 
     <item*|Connectivity Corner>This part is marked with an X when all parts
-    of the shape are connected via a corner, an edge or a face
+    of the shape are connected via a corner, an edge, or a face. A corner is
+    the end of an edge. Cubes have 8 corners, the triangular voxel have 6
+    corners, and spheres have none.
 
     <item*|Holes>This part of the table contains information about possible
     holes inside the shapes.
 
-    <item*|Holes 2D>A 2D hole is a hole in the shape, if the shape would be 2
-    dimensional. So the o-octomino has a 2D hole.
+    <item*|Holes 2D>A 2D hole is a hole in a 2-dimensional shape. So the
+    o-octomino has a 2D hole.
 
     <item*|Holes 3D>A 3D hole is a completely surrounded region inside a
     shape.
@@ -1452,19 +1458,19 @@
     <item*|Sym>This is a column that is mainly there for my help.
     <name|BurrTools> needs to know about all kinds of symmetries a shape can
     have. If a shape turns up that has a kind of symmetry yet unknown to the
-    program it can not solve puzzles with this shape. So here is a tool to
+    program it cannot solve puzzles with this shape. So here is a tool to
     check beforehand and without the need to create a problem. If you ever
     see a coloured mark in the last column send me the shapes where it turns
-    up. As long as this last column contains only numbers without a color
+    up. As long as this last column contains only numbers without a coloured
     mark everything is fine.
   </description-compact>
 
   Because calculating all this information can take a considerable amount of
-  time <name|BurrTools> pops up a window when it is working on accumulating
+  time, <name|BurrTools> pops up a window when it is working on accumulating
   this table. The window contains a progress bar to guess how much longer it
   will take. There is also a <with|font-family|ss|<strong|Cancel>> button at
-  the bottom that lets you abort this calculation and view the already
-  gathered results.
+  the bottom that lets you abort this calculation and view the results
+  already gathered.
 
   <section|Tips and Tricks>
 
@@ -1477,18 +1483,18 @@
   <subsection|Voxel State and Size Tips>
 
   <\description-compact>
-    <item*|State and Solver Speed>The more variable voxels (as compared to
-    the total number of voxels) there are in the result shape the slower the
-    solver will run. Also the number of pieces has an impact on the solving
-    time. Hence, replacing variable voxels with empty spaces for determined
-    holes in the puzzle is to be considered. Also leaving out a piece in
-    complex packing puzzles (and making its position in the result empty) can
-    reduce the solving time considerably.
+    <item*|State and Solver Speed>The greater the proportion of variable
+    voxels in the result shape, the slower the solver will run. Also, the
+    number of pieces has an impact on the solving time. Hence, replacing
+    variable voxels with empty spaces for known holes in the puzzle is to be
+    considered. Also, leaving out a piece in complex packing puzzles (and
+    making its position empty in the result) can reduce the solving time
+    considerably.
 
-    <item*|Size and Solver Speed>Also the size of the shapes has an effect on
-    the solving speed, since bigger shapes inevitably lead to more
-    possibilities: for a 1<with|mode|math|\<times\>>1<with|mode|math|\<times\>>1
-    cube there's only one possible placement in a
+    <item*|Size and Solver Speed>The size of the shapes has an effect on the
+    solving speed, since bigger shapes inevitably lead to more possibilities:
+    for a 1<with|mode|math|\<times\>>1<with|mode|math|\<times\>>1 cube
+    there's only one possible placement in a
     2<with|mode|math|\<times\>>2<with|mode|math|\<times\>>2 grid (excluding
     symmetries), but for a 2<with|mode|math|\<times\>>2<with|mode|math|\<times\>>2
     cube there are four of them in a 4<with|mode|math|\<times\>>4<with|mode|math|\<times\>>4
@@ -1512,58 +1518,59 @@
     the brush tool in combination with the rectangle dragging style and
     z-<no-break>columns switched on.
 
-    <item*|Aesthetic Colours>When colours are solely used for aesthetic
-    reasons make sure that the <em|result> shape has only the neutral colour.
-    This will prevent having to set a lot of constraint conditions.
+    <item*|Aesthetic Colours>When colours are used solely for aesthetic
+    reasons, make sure that the <em|result> shape has only the neutral
+    colour. This will prevent having to set a lot of constraint conditions.
 
     <item*|One-Sided Polyominoes>Polyominoes can be made one-sided by having
-    them two layers high and adding different constraint colours to both the
+    them two layers thick and adding different constraint colours to the two
     layers. The constraint settings (<with|mode|math|\<vartriangleright\>><reference|ColourConstraints>)
     should simply be a 'one-<no-break>to-<no-break>one' relationship.
 
     <item*|Hiding Pieces>For puzzles in which the goal is to hide a certain
-    piece on the inside of the assembly (e.g. Trevor Wood's <name|Woodworm>)
-    <em|two> constraint colours should be used. One for the exterior and one
-    for the voxels on the inside of the result shape. Also colour the piece
-    that must be hidden with this 'inside' colour and apply the 'outside'
-    colour to all other pieces. The constraint settings
-    (<with|mode|math|\<vartriangleright\>><reference|ColourConstraints>) must
-    then be such that the piece to be hidden is only allowed to go into the
-    'inside' colour and the other pieces may go into either colour.
+    piece on the inside of the assembly (e.g. Trevor Wood's <name|Woodworm>),
+    <em|two> constraint colours should be used in the result shape: one for
+    the exterior and one for the voxels on the inside and one for those on
+    the outside. Also colour the piece that must be hidden with the 'inside'
+    colour, and apply the 'outside' colour to all other pieces. The
+    constraint settings (<with|mode|math|\<vartriangleright\>><reference|ColourConstraints>)
+    must then be such that the piece to be hidden is allowed to go only into
+    the 'inside' colour, while the other pieces may go into either colour.
   </description-compact>
 
   <section|Simulating non-cubic spacegrids>
 
   It is possible to emulate spacegrids different from cubes by just using
   cubes. This way <name|BurrTools> can solve different kind of puzzles. This
-  section will give hints of how to things. It will not contain obvious
+  section will give hints on how to such things. It will not contain obvious
   emulation possibilities like hexagons with 6 triangles or x by y rectangles
-  using several squares, but rather the more complicated possibilities. The
-  chapter can not be complete but it rather wants to show what can be done
-  and give you some initial ideas. If you come up with a cool idea you are
-  welcome to send it to me and I will include it in here.
+  using several squares, but rather some of the more complicated
+  possibilities. The chapter cannot be complete but rather it wants to
+  suggest what can be done and give you some initial ideas. If you come up
+  with a cool idea you are welcome to send it to me and I will include it
+  here.
 
-  Generally this emulation requires to use more cubes for one basic unit.
-  This will probably result in a slowdown of the solving process. But this
-  slowdown is not always that grave. <name|BurrTools> knows how to merge
-  voxels that are always occupied by the same piece into one, so if there is
-  for example a puzzle that uses hexagonal pieces made out of the triangular
-  prisms and these hexagons are always within a hexagonal grid
-  <name|BurrTools> will merge the 6 triangle together and work with the
-  resulting shapes. This only takes some time at the initialisation phase. On
-  the other hand there might be many placements of pieces that fit the
-  underlying cube to triangle grid that are not proper placements and that
-  need to be sorted out first. This can take a long time. <name|Major Chaos>
-  by Kevin Holmes for example has a lot of illegal placements for pieces that
-  need to be sorted out. That takes a very long time, but once that is done
-  the solving is actually very fast.
+  Generally this emulation requires using <with|mode|math|N> cubes for one
+  basic unit. This will probably result in a slowdown of the solving process,
+  but the slowdown is not always that grave. <name|BurrTools> knows how to
+  merge voxels that are always occupied by the same piece into one, so if
+  there is for example a puzzle that uses hexagonal pieces made out of the
+  triangular prisms and these hexagons are always aligned on a hexagonal
+  grid, <name|BurrTools> will merge the 6 triangles together and work with
+  the resulting shapes. This takes some time only at the initialisation
+  phase. On the other hand, there might be many placements of pieces that fit
+  the underlying cube to triangle grid that are not proper placements and
+  that need to be sorted out first. This can take a long time. <name|Major
+  Chaos> by Kevin Holmes for example has a lot of illegal placements for
+  pieces that need to be sorted out. That takes a very long time, but once
+  that is done the solving is actually very fast.
 
   <subsection|Two-Sided Pieces>
 
   <\float|float|tbhf>
     <big-figure|<postscript|Pics/Emulation_2Layer.png|*7/8|*7/8||||>|Emulate
     2 Sided Piece<label|Emul2Sided>>
-  </float>If you have pieces that have a top and a bottom there are several
+  </float>If you have pieces that have a top and a bottom, there are several
   possibilities to model that in <name|BurrTools>. One possibility is to use
   colours. Make the piece and the result 2 layers thick. The bottom layer of
   both will get a special colour.
@@ -1577,12 +1584,11 @@
 
   <subsection|Diagonally Cut Cubes and Squares>
 
-  Cubes can be cut in many different ways, the cut that results in shapes
-  such as given in Figure <\float|float|tbh>
+  Cubes can be cut in many different ways, to approximate shapes such as
+  given in Figure<\float|float|tbh>
     <big-figure|<postscript|Pics/Emulation_DiagonalCut.png|*7/8|*7/8||||>|<label|EmulDiagCut>Diagonally
     cut cube>
-  </float> <reference|EmulDiagCut> can be emulated using cubes as seen in the
-  image.
+  </float> <reference|EmulDiagCut> use the 2x2x2 cube displayed there.
 
   It is, of course, also possible to simulate diagonally cut squares this
   way. The squares need to be 2 layers thick.
@@ -1597,6 +1603,8 @@
 
   <subsection|Squares with Cuts of Slope 0.5>
 
+  To be done.
+
   <subsection|Edge Matching>
 
   Sometimes it is possible to emulate edge matching problems by using notches
@@ -1609,26 +1617,26 @@
   Figure<\float|float|tbh>
     <big-figure|<postscript|Pics/Emulation_Pagoda.png|*6/8|*6/8||||>|<label|EmulPagoda1>The
     Knit Pagoda>
-  </float> <reference|EmulPagoda1>). Additionally to the shape the pieces
-  have an upside and a bottom. Figure<\float|float|tbh>
+  </float> <reference|EmulPagoda1>). Besides their shape the pieces have a
+  top side and a bottom. Figure<\float|float|tbh>
     <big-figure|<postscript|Pics/Emulation_Pagoda2.png|*7/8|*7/8||||>|<label|EmulPagoda2>Emulation
     for one of the <name|Knit Pagoda> Pieces>
   </float> <reference|EmulPagoda2> shows 2 possible ways to emulate these
-  pieces. Both shapes emulate the T-shaped piece seen on the right bottom.
+  pieces. Both shapes emulate the T-shaped piece seen on the bottom right.
 
-  It is quite easy to see that the pink shape working. It is constructed
-  starting with a 3x3x1 square and adding a cube at the centre of one shape
-  if that side is bulged outward and removing one cube, when the side is
-  bulging inwards. Finally add a cube at the centre of the 3x3 square to make
-  it unflippable.
+  It is quite easy to see how the pink shape works. It is constructed
+  starting with a 3x3x1 square, and for each side adding a cube at the centre
+  at the centre to represent eachside that bulged outward, and removing one
+  cube for each side that bulges inward. Finally add a cube atop the centre
+  of the 3x3 square to make it unflippable.
 
   The second is quite a bit more complicated to understand. Here the starting
   point is a 2x2 square. A cube is added or removed for the bulges just as in
-  the other case but those cubes can not be in the middle. They are at one
+  the other case but those cubes cannot be in the middle. They are at one
   side so that the cube from an outer bulge can go into a gap created by an
   inner bulge. The resulting shape for one unit contains 4 cubes along a
   zig-zag line. You can see it by looking for the lighter cubes in the cyan
-  shape above. This ways has the additional advantage of avoiding flips
+  shape above. This way has the additional advantage of avoiding flips
   because when the piece is flipped over the orientation of the bulges
   changes and the cubes do not mesh.
 
@@ -1655,23 +1663,23 @@
   <section|Defining Simple Problems>
 
   As defined above, a simple puzzle problem consists only of a collection of
-  pieces and a result shape that can be assembled (and preferably also be
+  pieces and a result shape that can be assembled (and preferably also
   disassembled) with these pieces (Figure
   <reference|FigureSimplePuzzleProblem>). Bear in mind that a simple problem
-  also implicates that <em|all> the pieces can be separated from one another.
-  It takes only two steps (which are also required for complex problems) to
+  also implies that <em|all> the pieces can be separated from one another. It
+  takes only two steps (which are also required for complex problems) to
   create such a problem: <em|initialising> the problem and <em|assigning>
   shapes to the pieces and the result.
 
   <subsection|Initialising Problems><label|InitialisingProblems>
 
   The first step is to <em|initialise> the problem(s). All the tools to do so
-  are just below the <with|font-family|ss|<strong|Problems>> caption. Just
-  like with shapes this can be done by clicking the
+  are just below the <with|font-family|ss|<strong|Problems>> caption. Just as
+  with shapes, this can be done by clicking the
   <with|font-family|ss|<strong|New>> button to start a completely new one, or
   by using <with|font-family|ss|<strong|Copy>> to edit a previously created
-  problem definition without destroying the first. Accordingly, problems can
-  be removed with the <with|font-family|ss|<strong|Delete>> button. All
+  problem definition without destroying the original. Accordingly, problems
+  can be removed with the <with|font-family|ss|<strong|Delete>> button. All
   problems find their place in the problems list below these buttons and are
   identified with a '<with|font-family|ss|<strong|P<em|x>>>' prefix to which
   a more meaningful description can be added by clicking the
@@ -1682,12 +1690,12 @@
   <subsection|Piece Assignment><label|PieceAssignment>
 
   Until now we dealt with shapes as rather abstract concepts. Only by
-  <em|assigning> these shapes to the pieces or the goal of a puzzle they
+  <em|assigning> these shapes to the pieces or the goal of a puzzle do they
   become meaningful. All available shapes are presented in the top list of
-  the <with|font-family|ss|<strong|Piece Assignment>> panel in which they can
-  be selected and be given their purpose in the puzzle. Since a strict
+  the <with|font-family|ss|<strong|Piece Assignment>> panel, in which they
+  can be selected and be given their purpose in the puzzle. Since a strict
   distinction is made between shapes and pieces, it's not necessary that all
-  shapes are used in a single problem or in any problem at all.
+  shapes be used in a single problem or in any problem at all.
 
   <\float|float|tb>
     <big-figure|<postscript|Pics/Window_Clarissa.png|*5/8|*5/8||||>|<label|FigureSimplePuzzleProblem>A
@@ -1697,19 +1705,21 @@
   <with|font-family|ss|<strong|Set Result>>. The result shape is then
   depicted in the top left part of the 3-<no-break>D viewport (which also
   shows a smaller example of the currently selected shape) and the status
-  line shows some information about the problem at hand. Next, any other
-  shape can be assigned to the pieces of the puzzle by selecting it and
-  clicking <with|font-family|ss|<strong|+1>>. This adds a single copy of the
-  shape to the second list which holds all the shapes used as pieces. If
-  multipieces are involved, just add as many instances of the shape as
-  required by the same means. In the list of pieces any multipiece has an
-  instance counter added - between brackets - to its identifier. A single
-  instance of every shape used in the puzzle is shown in the lower part of
-  the 3-<no-break>D viewer. To make corrections, pieces can be removed from
-  the puzzle by selecting them (they also can be selected by clicking them in
-  the pieces list) and clicking <strong|<with|font-family|ss|-<no-break>1>>.
-  Again, this only removes a single instance and needs to be repeated for
-  removing multipieces.
+  line shows some information about the problem at hand.
+
+  Next, any other shape can be assigned to the pieces of the puzzle by
+  selecting it and clicking <with|font-family|ss|<strong|+1>>. This adds a
+  single copy of the shape to the second list which holds all the shapes used
+  as pieces. If multipieces are involved, just add as many instances of the
+  shape as required by the same means.
+
+  In the list of pieces any multipiece has an instance counter added (in
+  parentheses) to its identifier. A single instance of every shape used in
+  the puzzle is shown in the lower part of the 3-<no-break>D viewer. To make
+  corrections, pieces can be removed from the puzzle by selecting them (they
+  also can be selected by clicking them in the pieces list) and clicking
+  <strong|<with|font-family|ss|-<no-break>1>>. Again, this removes only a
+  single instance and needs to be repeated for removing multipieces.
 
   Most of the time it is necessary to add one instance of all defined shapes
   to the puzzle. If there are a lot of them this can take while. This is what
@@ -1719,15 +1729,15 @@
   <with|font-family|ss|<strong|Clr>> button removes all pieces from the
   problem.
 
-  Since it doesn't make sense to have a certain shape to be result and piece
+  Since it doesn't make sense for any shape to be both the result and a piece
   at the same time, the shape set as result cannot be added to the list of
   pieces. Consequently, assigning a shape that's already in the list of
   pieces to the result will remove it from the list.
 
   Whenever the total number of cubes in the pieces is within the boundaries
-  set by the result shape (which can be inspected on the status line) this
+  set by the result shape (which can be inspected on the status line), this
   kind of simple puzzle problems can be taken to the solver. Note that the
-  solver won't run when one or more pieces contain any variable voxels.
+  solver won't run if one or more pieces contain any variable voxels.
 
   <section|Piece Ranges>
 
@@ -1735,8 +1745,8 @@
   number of pieces. This feature is useful when you want to search for
   puzzles instead of solving a given one. If there is a range defined for one
   or more pieces then <name|BurrTools> finds all ways to assemble the defined
-  result using the number of pieces within the given range. As an example
-  let's take Ronald Kint-Bruynseels Clarissa-Burr (see
+  result using a number of pieces within the given range. As an example let's
+  take Ronald Kint-Bruynseels Clarissa-Burr (see
   <verbatim|http://www.asahi-net.or.jp/~rh5k-isn/Puzzle/ClarissaBurr>). This
   puzzle consists of 2 different shapes. When Ronald defined this puzzle he
   had to try all possible combinations of the 2 pieces, beginning with 6
@@ -1749,11 +1759,20 @@
   Piece ranges can be easily defined using the
   <with|font-family|ss|<with|font-series|bold|min=0>> button. This will set
   the minimum of the piece range for the current shape to zero. With that you
-  can define the range by first adding <with|mode|math|max-min> pieces, then
-  set the minimum to zero and then add the missing <with|mode|math|min>
-  pieces. This should cover the most used usage cases. Except for the
-  <with|font-family|ss|<with|font-series|bold|min=0>> button, all other
-  buttons always change the minimum and the maximum of the piece range.
+  can define the range by first adding <with|mode|math|max-min> pieces
+  (meaning the difference between the maximum and the minimum number of
+  pieces), then set the minimum to zero and then add the missing
+  <with|mode|math|min> pieces. This should cover the most used usage cases.
+
+  For example: suppose you want to add a piece that you want to use 3, 4, 5
+  or 6 times in your puzzle. The piece range is 3--6. To enter those values
+  you first add <with|mode|math|6-3=3> pieces. Then you press the
+  <with|font-family|ss|<with|font-series|bold|min=0>> button getting a piece
+  range 0--3. Now you add another 3 pieces and you get the range you want.
+
+  Except for the <with|font-family|ss|<with|font-series|bold|min=0>> button,
+  all other buttons always change the minimum and the maximum of the piece
+  range.
 
   If this calculation is too hard for you, you can use the problem detail
   dialogue (see section <reference|SectionProblemDetails>) to enter the
@@ -1766,42 +1785,43 @@
   pieces from each other. In other words, the solver will attempt to separate
   <em|all> the pieces from each other and reports that no solution exists
   when it fails to do so. This is just what is required for most puzzles as
-  you need to have single pieces as a starting point. But there are a few
-  puzzles for which you have groups of pieces that are <em|movable> but
-  <em|not separable>. Here the piece groups come in handy. Probably everyone
-  familiar with <name|PuzzleSolver3D> ever experienced the futile attempts of
-  that program trying to solve such designs by nearly endlessly shifting the
-  entangled pieces back and forth. Not so with <name|BurrTools> as piece
-  groups allow you to tell the disassembler that it is OK when it cannot
-  separate a few pieces from one another.
+  you need to have single pieces as a starting point.
+
+  But there are a few puzzles for which you have groups of pieces that are
+  <em|movable> but <em|not separable>. Here the piece groups come in handy.
+  Probably everyone familiar with <name|PuzzleSolver3D> ever experienced the
+  futile attempts of that program trying to solve such designs by nearly
+  endlessly shifting the entangled pieces back and forth. Not so with
+  <name|BurrTools>, as piece groups allow you to tell the disassembler that
+  it is OK when it cannot separate a few pieces from one another.
 
   <subsection|Concept>
 
   When the disassembler finds two or more pieces that cannot be taken apart
-  it checks whether all of the involved pieces are in the same group. If
+  it checks whether all of the pieces involved are in the same group. If
   that's the case it rests assured and continues. If the pieces are <em|not>
-  in the same group the disassembler aborts its work and reports that the
-  assembly can not be disassembled. This is the basic idea, but there is a
-  bit more to it.
+  in the same group, the disassembler aborts its work and reports that the
+  assembly cannot be disassembled. This is the basic idea, but there is a bit
+  more to it.
 
   <subsubsection|Complete Disassembly>
 
   A special case is <em|'Group-<no-break>0'>. All pieces in this group
   <em|need to be separated> from each other. This group is included so that
-  it is not required to place all the pieces into their own group, when you
-  want to completely disassemble the puzzle. Pieces automatically go into
+  it is not necessary to place all the pieces into their own group when you
+  want the puzzle to completely disassemble. Pieces automatically go into
   Group-<no-break>0, so you don't need to take care of that. As a matter of
   fact you won't even find any reference to that Group-<no-break>0 in the
   GUI.
 
   <subsubsection|Basic Piece Grouping>
 
-  On the other hand, when dealing with puzzles of which is known that certain
-  pieces (say S<em|a> and S<em|b>) can't be separated from each other,
-  grouping these pieces will cause the solver to report a valid disassembly
-  for which the grouped pieces are treated as a single piece. Be it not a
-  rigid piece since the parts can freely (within certain boundaries) move
-  with respect to each other.
+  On the other hand, when dealing with puzzles of which it is known that
+  certain pieces (say S<em|a> and S<em|b>) can't be separated from each
+  other, grouping these pieces will cause the solver to report a valid
+  disassembly in which the grouped pieces are treated as a single piece. But
+  it is not a rigid piece since the parts can freely (within certain
+  boundaries) move with respect to each other.
 
   <\with|par-mode|center>
     {S<em|a>, S<em|b>}
@@ -1809,8 +1829,8 @@
     Group-<no-break>1 <with|mode|math|\<rightarrow\>> S<em|a>+S<em|b>
   </with>
 
-  Of course this technique can also be used (in a truly designing situation)
-  for pieces that <em|may> be entangled. If these pieces are indeed
+  This technique can also be used for pieces that may be entangled, in case
+  one is searching for possible designs. If these pieces are indeed
   inseparable the solver will report so, but if they can be separated the
   solver may report the complete disassembly as well:\ 
 
@@ -1847,7 +1867,7 @@
   <subsubsection|Grouping Multipieces>
 
   All instances of a multipiece need to have the same group assignment, but
-  you can instruct how many of these may be in a group <em|maximally>. That
+  you can specify how many of these may be in a group <em|maximally>. That
   means you can make statements like 'not more than 3 pieces of S<em|n>
   <em|may> be in Group-<no-break>1':
 
@@ -1862,21 +1882,20 @@
   Now how does it all come together? The disassembler starts to do its work.
   For each subproblem (a subproblem is a few pieces that it somehow has to
   get apart) it first checks if there is a unique group assignment for all
-  involved pieces - i.e. all pieces have exactly one group assigned and that
-  group is the same for all of them - it doesn't even attempt to disassemble
+  pieces involved -- i.e. all pieces have exactly one group assigned and that
+  group is the same for all of them -- it doesn't even attempt to disassemble
   that subproblem.
 
   \ If this is not the case it tries to disassemble. In case of a failure it
   adds the pieces that are in this subproblem to a table of lists of pieces.
-  This is an array and each entry contains a list of pieces. Once done with
-  the disassembler the program comes back to this table and tries to assign a
-  group to each of the lists of pieces in the array. It just checks all
+  Once done with the disassembler, the program comes back to this table and
+  tries to assign a group to each of the lists of pieces. It just checks all
   possibilities by comparing the entries of the table with the group
   assignments made by the user. Whenever the sum of pieces (of a certain
   shape S<em|x>) in such a 'problematic' table entry is bigger than the value
   the user designated to that particular piece, no valid group assignment can
   be made. If the program can find a valid assignment the puzzle is
-  disassembled, if it can not the puzzle is assumed to be not disassemblable.
+  disassembled; if it cannot, the puzzle is assumed to be not disassemblable.
 
   <subsubsection|Example>
 
@@ -1893,8 +1912,8 @@
     S<em|a><with|mode|math|<rsub|1>>+S<em|a><with|mode|math|<rsub|2>>
   </with>
 
-  <no-indent>After the disassembler ran we have the following lists of pieces
-  in the table:\ 
+  <no-indent>After the disassembler has run we have the following lists of
+  pieces in the table:\ 
 
   <\enumerate-numeric>
     <item>S<em|a>, S<em|a>
@@ -1910,22 +1929,22 @@
   Group-<no-break>2. But it would be possible to have another piece S<em|a>
   in the second set.
 
-  We have no idea how useful this might be with puzzles as most of the
+  We have no idea how useful this might be in practice as most of the
   currently available puzzles require a complete disassembly. But who knows,
   maybe this feature will help in the design of lots of puzzles new and crazy
   ideas.
 
   <section|Editing Problem Details><label|SectionProblemDetails>
 
-  All settings that can not be set directly on the main problem tab can be
-  set within the <with|font-family|ss|<with|font-series|bold|Problem
-  Details>> window (Figure<\float|float|tbh>
+  All settings that cannot be set directly on the main problem tab can be set
+  within the <with|font-family|ss|<with|font-series|bold|Problem Details>>
+  window (Figure<\float|float|tbh>
     <big-figure|<postscript|Pics/Form_Group_Editor.png|*5/8|*5/8||||>|<label|FigureGroupEditor>The
     Problem Details Editor>
   </float> <reference|FigureGroupEditor>) which opens by clicking the
   <with|font-family|ss|<with|font-series|bold|Detail>> button. This window
   allows you to define groups and to define piece ranges without having to
-  subtract values. The window also contains rarely used parameters.
+  subtract values. The window also contains rarely-used parameters.
 
   Let's first see how piece groups are defined using this window. Although
   the above section may sound complicated, implementing piece groups is
@@ -1951,33 +1970,34 @@
   column stays present in the <with|font-family|ss|Group Editor>.
 
   Now to the piece ranges. It is possible to enter the values directly into
-  the min and max columns of the table. You just have to keep in mind when
-  editing, that min has to be less of equal to max. This is enforced by the
-  program, so that max will change, when you enter a value in min that is
-  larger than the current maximum. The same holds true for the minimum, when
-  changing the value in the max column. You also need to keep in mind that
-  the table only contains entries for shapes that are already used in the
-  current problem. You can not (yet) add another shape to the problem using
-  this dialogue, but you can remove a shape by setting the minimum and the
-  maximum to zero.
+  the min and max columns of the table. You just have to keep in mind, that
+  min has to be less than or equal to max. This is enforced by the program,
+  so that max will change, if you enter a value in min that is larger than
+  the current maximum. The same holds true for the minimum, when changing the
+  value in the max column. You also need to keep in mind that the table
+  contains entries only for shapes that are already used in the current
+  problem. You cannot (yet) add another shape to the problem using this
+  dialogue, but you can remove a shape by setting the minimum and the maximum
+  to zero.
 
-  Finally this window also contains an entry field called
-  <with|font-family|ss|<with|font-series|bold|Maximum Number of Holes>> this
-  value is used by the program, when piece ranges are used. In that case it
-  is not possible by the program to find out how many holes (empty variable
-  cubes) there will be in the final solution. Because this missing
-  information results in a huge slowdown as many more possibilities have to
-  be tried, it is possible to define the maximum number of holes allowed. If
-  the number of holes should not be limited the field should be left empty.
+  Finally, this window also contains an entry field called
+  <with|font-family|ss|<with|font-series|bold|Maximum Number of Holes>>
+  (empty variable cubes). This value is used by the program, when piece
+  ranges are used, in which case it is not possible for the program to
+  determine many holes there will be in the final solution. Because this
+  missing information results in a huge slowdown as many more possibilities
+  have to be tried, it is possible to use this field to specify the maximum
+  number of holes allowed. If the number of holes should not be limited, the
+  field should be left empty.
 
   <section|Setting Colour Constraints><label|ColourConstraints>
 
-  <name|BurrTools> automatically adds the probably most used rules for colour
-  constrains when you add a new colour or when a new problem is created. That
-  rule is that each colour can be placed into itself, e.g. a piece with
-  colour C<with|font-shape|italic|x> can go into a Result of colour
+  <name|BurrTools> automatically adds the most probable rules for colour
+  constraint when you add a new colour or when a new problem is created,
+  namely that each colour can be mapped into itself, i.e. a piece voxel with
+  colour C<with|font-shape|italic|x> can go into a result voxel of colour
   C<with|font-shape|italic|x>. If you don't want that or if you need
-  additional placement possibilities you can change the colour constraint
+  additional placement possibilities, you can change the colour constraint
   rules in the colour assignment section.
 
   The <strong|<with|font-family|ss|Colour Assignment>> panel
@@ -1985,26 +2005,26 @@
     <big-figure|<postscript|Pics/Panel_Colour_Assignment_A.png|*5/8|*5/8||||>
     \ \ \ \ <postscript|Pics/Panel_Colour_Assignment_B.png|*5/8|*5/8||||>|<label|FigureColourAssignment>Colour
     assignment>
-  </float> <reference|FigureColourAssignment>) also has two lists. The first
-  one shows all the available custom colours and allows selecting a certain
+  </float> <reference|FigureColourAssignment>) has two lists. The first one
+  shows all the available custom colours and allows selecting a certain
   colour for which then some relations can be set. These relations simply
-  indicate which colour(s) in the result can accommodate for which colour(s)
-  in the pieces. By allowing certain combinations (which is in fact
-  prohibiting all other combinations) constraints are imposed on the
-  theoretically possible placements of the pieces. These relationships are
-  shown and constructed in the second list. This list has three columns of
-  which the first shows the 'piece colours', the last shows the 'result
-  colours' and the one in between clearly depicts the relationships by a
-  series of arrows pointing from the piece colours to the result colours. The
-  list is either sorted by the piece colours or by the result colours. The
-  buttons <with|font-family|ss|<strong|Sort by Piece>> and
+  indicate which colour(s) in the result can accommodate which colour(s) in
+  the pieces. By allowing certain combinations (which is in fact prohibiting
+  all other combinations), constraints are imposed on the possible placements
+  of the pieces. These relationships are shown and constructed in the second
+  list. This list has three columns, of which the first shows the 'piece
+  colours', the last shows the 'result colours', and the one in between
+  clearly depicts the relationships by a series of arrows pointing from the
+  piece colours to the result colours. The list is sorted either by the piece
+  colours or by the result colours. The buttons
+  <with|font-family|ss|<strong|Sort by Piece>> and
   <with|font-family|ss|<strong|Sort by Result>> switch between these two
   views.
 
   When <em|sorted by piece> (the left part of Figure
   <reference|FigureColourAssignment>), the bottom list is showing you that
   every voxel of the pieces with colour C<em|x> can go into every voxel of
-  the result that has one of the colours on the end points of the arrows
+  the result that has one of the colours at the end points of the arrows
   starting from Cx. When <em|sorted by result> (on the right in Figure
   <reference|FigureColourAssignment>), the list shows which piece colours
   will be allowed to go in a particular colour of the result.
@@ -2019,18 +2039,18 @@
 
   <section|Managing Problems>
 
-  Currently puzzle problems can only be rearranged with the left and right
+  Currently puzzle problems can \ be rearranged only with the left and right
   arrow buttons of the <with|font-family|ss|Problems> section, but more
-  advanced managing procedures may be added in the future.
+  advanced management procedures may be added in the future.
 
   <section|Tips and Tricks>
 
   <\description-compact>
     <item*|Maximum Number of Holes >Keep this value as small as possible,
-    because the more holes a puzzle may contain the longer the solving will
+    because the more holes a puzzle contains the longer the solving will
     take. Normally the value is undefined, meaning the number of holes is
-    <em|not> limited. So if you know the number of holes you want, want to
-    limit them or the solving takes too long, use this field
+    <em|not> limited. So if you know the number of holes you want, or you
+    want to limit them, or the solving takes too long, use this field.
   </description-compact>
 
   Some tricks and tips will be added to the next update of the user guide.
@@ -2052,160 +2072,158 @@
   <with|font-family|ss|<strong|Solver>> tab (Figure<\float|float|tbf>
     <big-figure|<postscript|Pics/Window_DDD_3.png|*5/8|*5/8||||>|<label|FigureSolver>Solving
     puzzles>
-  </float> <reference|FigureSolver>) has quite a some controls. On top there
-  is the <with|font-family|ss|Parameters> panel, that contains a list
-  allowing you to select a specific problem to be solved, provides option
-  settings for the solver and has a series of buttons to direct the solving
-  process. Finally, some information of the ongoing solving process is
-  presented.
+  </float> <reference|FigureSolver>) has quite a few controls. On top there
+  is the <with|font-family|ss|Parameters> panel that contains a list allowing
+  you to select a specific problem to be solved, provides option settings for
+  the solver, and has a series of buttons to direct the solving process.
+  Finally, some information on the ongoing solving process is presented.
 
   A second panel (<with|font-family|ss|Solutions>) has the tools to browse
   the different solutions found, animate the moves to disassemble the puzzle
-  to <em|inspect> the solutions in detail and to organize found solutions.
+  to <em|inspect> the solutions in detail, and to organize the solutions that
+  have been found.
 
   <section|Solver Settings>
 
-  In order to make the solver run a problem must be selected first. A list of
-  all previously defined problems is available right below the
+  In order to make the solver run, a problem must be selected first. A list
+  of all previously defined problems is available right below the
   <with|font-family|ss|<strong|Parameters>> caption. Selecting problems to be
-  solved is \ similar to selecting shapes, colours or problems on the other
-  tabs. Note that only the selected problem will be solved and that solving
+  solved is similar to selecting shapes, colours, or problems on the other
+  tabs. Note that only the selected problem will be solved, and that solving
   one problem will preserve the results of any already solved or partially
   solved problem. Currently there are the following options for the solver.
   All deal with the kind of information the solver will report.
 
   <\description-compact>
-    <item*|<with|font-family|ss|Solve Disassembly>>When checked the solver
-    will also try to disassemble the assemblies found and only those that
-    indeed can be disassembled will be added to the list of solutions. If
-    this option is left unchecked, the solver will merely search for all
+    <item*|<with|font-family|ss|Solve Disassembly>>When checked, the solver
+    will try to disassemble any assemblies found, and only those that indeed
+    can be disassembled will be added to the list of solutions. If this
+    option is left unchecked, the solver will merely search for all
     <em|theoretically> possible assemblies, i.e. assemblies for which the
     pieces do not overlap. Since solving disassemblies takes time (and often
     far more than assembling), it's recommended to leave this option
     unchecked for puzzles that always can be disassembled (e.g.
     <name|Pentomino> problems and other packing problems). For that kind of
-    puzzles running the disassembler would only slow down the process without
-    any gain in information. Also saving and loading the disassembly
-    instructions takes a lot of time and memory, so if they are not really
-    needed they are just a waste of time.
+    puzzles, running the disassembler would only slow down the process
+    without any gain in information.
 
-    <item*|<with|font-family|ss|Just Count>>When checked the solver will only
-    count the number of solutions it will drop the found solutions right
-    after they were found. Check this option if you're only interested in the
+    <item*|<with|font-family|ss|Just Count>>When checked, the solver will
+    only count the number of solutions; it will drop the solutions right
+    after they are found. Check this option if you're interested only in the
     number of solutions and not in the solutions themselves.\ 
 
-    <with|font-family|ss|<item*|Drop Disassm>>When checked the program
-    checks, if the found assembly is disassembable and discards the solution
-    if it is not disassembable. But the disassembly is <em|not> stored, only
-    the assembly and some information <em|about> the disassembly (like its
+    <with|font-family|ss|<item*|Drop Disassm>>When checked, the program
+    functions the same as with <with|font-family|ss|Solve Disassembly>
+    enabled, except that the disassembly is <em|not> stored, only the
+    assemblies and some information <em|about> the disassemblies (like their
     level). This is useful if you have a problem that has many solutions and
     you want to find the most interesting solutions. Disassemblies take up a
     lot of memory within the computer so it is useful to just save some
     information while solving the puzzle and then later on, when everything
-    is finished recalculate the disassemblies for the interesting solutions.
+    is finished, recalculate the disassemblies for the interesting solutions.
 
-    <item*|Keep Mirror Solutions>When this box is checked the program will
+    <item*|Keep Mirror Solutions>When this box is checked, the program will
     not remove mirror solutions. Two solutions are mirror solutions are
-    solutions, when one solution is a real mirror of the other solution. This
-    can only happen, when either all pieces are self mirroring (which means
-    they look the same or rotated, when you mirror them <emdash> all flat
-    pieces are self mirroring) or they have a mirror pair, which is a
-    (possibly rotated) mirror of itself. Sometimes it is possible to create
-    the mirror solution by flipping the solution over. These are <em|not>
-    mirror solutions to <name|BurrTools> and are still removed. This option
-    is useful when using piece ranges as the mirror removal would remove too
-    many solutions, like solutions with different piece sets.
+    solutions when one solution is a real mirror of the other. This can
+    happen only, when either all pieces are self mirroring (note that all
+    flat pieces are self mirroring) or they have a mirror pair in the piece
+    set. Sometimes it is possible to create the mirror solution by flipping
+    the solution over. These are <em|not> mirror solutions to
+    <name|BurrTools> and are still removed. This option is useful when using
+    piece ranges, as the mirror removal would remove too many solutions, like
+    solutions with different piece sets.
 
-    <with|font-family|ss|<item*|Sort by>>This option lets you choose in which
-    way the found solutions are ordered. There are 3 possibilities:
+    <with|font-family|ss|<item*|Sort by>>This option lets you choose the
+    order in which the solutions are presented while the solver runs. There
+    are 3 possibilities:
 
     <\enumerate-numeric>
-      <item>Unsorted: The solutions are sorted into the list in the order in
-      they are found.
+      <item>unsorted: The solutions are sorted in the order in which they
+      were found.
 
-      <item>by Level: The solutions are sorted by the level. First the number
-      of moves to remove the first piece, if that is identical then by the
-      moves for the second piece, and so on.
+      <item>by level: The solutions are sorted by the level. First by the
+      number of moves to remove the first piece, if that is identical then by
+      the moves for the second piece, and so on.
 
       <item>by number of moves to disassemble: The solutions are sorted by
       the sum of all moves required to completely disassemble the puzzle.
     </enumerate-numeric>
 
-    <with|font-family|ss|<item*|Drop>>If a puzzle has very many solutions it
-    might not be possible or even necessary to save all of them. E.g for
-    polyomino-like puzzles it might be nice to keep just every 1000 of the
-    millions of solutions to have a profile of the possible solutions. Here
-    you can specify every how many-th solution you want to keep. A 1 means
-    you keep every solution, a 100 means you keep the first and the 101st and
-    the 201st and so on.
+    <with|font-family|ss|<item*|Drop>>If a puzzle has very many solutions, it
+    might not be necessary or even possible to save all of them. E.g for
+    polyomino-like puzzles it might be nice to keep just every 1000th of the
+    millions of solutions, so as to have a profile of the possible solutions.
+    Here you can specify every how many-th solution you want to keep. A 1
+    means you keep every solution, a 100 means you keep the first and the
+    101st and the 201st and so on.
 
     <with|font-family|ss|<item*|Limit>>Limits the number of solutions to be
-    saved. There will never be more than the specified amount of solutions in
+    saved. There will never be more than the specified number of solutions in
     the list. When the list is full the program has 2 choices:\ 
 
     <\enumerate-numeric>
       <item>Solutions are sorted: The programs throws away the solutions at
-      the end. So low level solutions are removed
+      the end. So low level solutions are removed.
 
       <item>Solutions are unsorted: The program starts to throw away every
-      second solution. So when you started with a drop-value of one and the
-      list is full the program starts to drop every 2nd solution is finds and
+      2nd solution. So if you started with a drop-value of one and the list
+      is full, the program starts to drop every 2nd solution it finds, and
       only adds every 2nd solution to the list. But for each added solution
-      it also removes every 2nd solution that already has been added to the
-      list. After a while the list contains only every 2nd solution then the
-      program only adds every fourth solution and removes again every 2nd
-      solution in the list which result in only every fourth solution ending
-      in the list. This sounds complicated but what is does is that is makes
-      sure you have an nice crossection of all the solutions found until then
-      and not just the first or last.
+      it also removes every 2nd solution that was already added to the list.
+      After a while the list contains only every 2nd solution <emdash> then
+      the program only adds every 4th solution and removes again every 2nd
+      solution that had been on the list, and so on. This sounds complicated
+      but what is does is ensure you have an nice crossection of all the
+      solutions, and not just the first or last N found.
     </enumerate-numeric>
   </description-compact>
 
   <section|Solving Puzzles>
 
   Next to the solver options are some buttons to direct the solving process.
-  Problems can be solved either in an automatic way or in a (manually)
-  step-<no-break>by-<no-break>step manner.
+  Problems can be solved either in an automatic way or (manually)
+  step-<no-break>by-<no-break>step.
 
   <subsection|Automatic Solving>
 
   An automatic search will proceed until all solutions, i.e. assemblies and
-  disassemblies (when requested) are found. To begin an automated search
+  disassemblies (when requested), are found. To begin an automated search,
   click the <with|font-family|ss|<strong|Start>> button. Typically the
   solving process consists of a preparation phase followed by several cycles
-  of assembling and disassembling. The latter one is of course omitted when
-  the <with|font-family|ss|Solve Disassembly> option is left unchecked.
+  of assembling and disassembling. The latter is of course omitted when the
+  <with|font-family|ss|Solve Disassembly> option is left unchecked.
 
-  The automatic solving process can also be interrupted by clicking
+  The automatic solving process can be interrupted by clicking
   <with|font-family|ss|<strong|Stop>>, but often the solver needs to finish
   some tasks first before it can actually halt
   (<with|mode|math|\<vartriangleright\>><reference|SolverInformation>). Any
   interrupted solving process can be saved to the puzzle file and be resumed
   in another session with <name|BurrTools>. In fact, on loading such a
   partially solved puzzle <name|BurrTools> will inform you about the
-  possibility to continue with the search for solutions. When the solver is
-  interrupted the shapes (<with|mode|math|\<vartriangleright\>>Chapter
-  <reference|ChapterShapes>) and/or the problems
-  (<with|mode|math|\<vartriangleright\>>Chapter <reference|ChapterPuzzles>)
-  can be edited. If no editing whatsoever of these has been done the solving
-  process can be simply resumed (<with|font-family|ss|<strong|Continue>>),
-  otherwise you need to start all over again. But keep in mind the this
-  saving of the internal state of the solver is very version dependent. So it
-  is likely that a new version of <name|BurrTools> can not resume solving a
-  puzzle saved with an older version. So it is good practice to finish
-  solving jobs with one version of <name|BurrTools> before updating to the
-  next.
+  possibility to continue with the search for solutions.
 
-  When the solver is running it provides a lot of information about its
-  current state (what it is doing) and an estimate of the time it will need
-  to finish the search. All this information is presented on six lines
-  immediately below the solver control buttons (Figure<\float|float|tbh>
+  When the solver is interrupted, the shapes
+  (<with|mode|math|\<vartriangleright\>>Chapter <reference|ChapterShapes>)
+  and/or the problems (<with|mode|math|\<vartriangleright\>>Chapter
+  <reference|ChapterPuzzles>) can be edited. If no editing whatsoever of
+  these has been done, the solving process can be simply resumed
+  (<with|font-family|ss|<strong|Continue>>), otherwise you need to start all
+  over again. But keep in mind that the saving of the internal state of the
+  solver is very version dependent. So it is likely that a new version of
+  <name|BurrTools> cannot resume solving a puzzle saved with an older
+  version. So it is good practice to finish solving jobs with one version of
+  <name|BurrTools> before updating to the next.
+
+  When the solver is running it provides a lot of information about what it
+  is doing and an estimate of the time it will need to finish the search. All
+  this information is presented on six lines immediately below the solver
+  control buttons (Figure<\float|float|tbh>
     <big-figure|<postscript|Pics/SolverProgress.png|*5/8|*5/8||||>|<label|FigureSolverInformation>The
     solver information>
   </float> <reference|FigureSolverInformation>). Keep in mind that the
   estimated time to finish can be off by a very big amount. It happens often
   that the figure starts with ages and millennia and then the solving is
-  finished within a few seconds, so be carefully when giving up too soon.
+  finished within a few seconds, so be careful not to give up too soon.
 
   <subsubsection|Solver Progress Information>
 
@@ -2213,21 +2231,20 @@
   percentage of work it has done. The fifth
   (<with|font-family|ss|<strong|Time Used>>) and the sixth
   (<with|font-family|ss|<strong|Time Left>>) line respectively show the time
-  already spend on the search and an estimate of the time still needed to
-  finish the solving process. Note that the latter one and also the
-  information about the percentage done are <em|very rough estimates> since
-  these are based on the possible placements of the pieces already tested and
-  still to test. However, the possible placements to be tested are constantly
-  fluctuating as they are determined by the positions of previously placed
-  pieces (<with|mode|math|\<vartriangleright\>><reference|BrowsingPlacements>).
+  already spent on the search and an estimate of the time still needed to
+  finish the solving process. Note that these are <em|very rough estimates>
+  since these are based on the possible placements of the pieces already
+  tested and still to test. However, the possible placements to be tested are
+  constantly fluctuating as they are determined by the positions of
+  previously placed pieces (<with|mode|math|\<vartriangleright\>><reference|BrowsingPlacements>).
 
   <subsubsection|Solver State Information><label|SolverInformation>
 
   Probably most important is the <with|font-family|ss|<strong|Activity>> and
   result information provided by the solver. The
-  <with|font-family|ss|Activity> line not only tells you what the solver is
-  currently doing, but it also whether the solver can be interrupted or not.
-  The following is an overview of the activities of the solver:
+  <with|font-family|ss|Activity> line tells you not only what the solver is
+  currently doing, but also whether the solver can be interrupted or not. The
+  following is an overview of the activities of the solver:
 
   <\description-compact>
     <item*|nothing>This indicates that the solver is ready to be started
@@ -2236,53 +2253,53 @@
 
     <item*|prepare>The solver is creating the internal data structure for the
     assembler. This structure is more or less a listing of all the possible
-    places that all the pieces can go to.
+    places that all the pieces can go.
 
-    <item*|optimize piece <em|n>>In this second stage of the preparation the
+    <item*|optimize piece <em|n>>In this second stage of the preparation, the
     placements for each piece are tested for plausibility. Some placements
-    are just nonsense in a way that they result in unfillable holes or
-    prevent the placement of other pieces. These placements are removed from
-    the data structure (<with|mode|math|\<vartriangleright\>><reference|BrowsingPlacements>).
+    are just nonsense in that they result in unfillable holes or prevent the
+    placement of other pieces. These placements are removed from the data
+    structure (<with|mode|math|\<vartriangleright\>><reference|BrowsingPlacements>).
 
     <item*|assemble>The program is currently searching for assemblies.
 
-    <item*|disassemble>An assembly was found and is now tested for
+    <item*|disassemble>An assembly was found and is now being tested for
     disasembability.
 
     <item*|pause>A search was started and interrupted.
 
-    <item*|finished>The search was completed, all found solutions, ordered by
-    the set up sorting criterium, can be inspected
+    <item*|finished>The search has been completed, all the solutions found,
+    ordered by the set up sorting criterium, can be inspected
     (<with|mode|math|\<vartriangleright\>><reference|InspectingResults>).
 
     <item*|please wait>The user wanted to stop the search, but the program
     still has to finish what it is doing right now. Only the assembler is
     interruptible. The preparation and optimisation stages need to be
-    finished. The disassembly search also has to be finish first.
+    finished. The disassembly search also has to be finish before halting.
 
     <item*|error>Something is wrong with the puzzle and an error message,
     providing more specific information on the error, is usually
     displayed.<next-line>
   </description-compact>
 
-  Finally the solver gives information about the thus far found
-  <with|font-family|ss|<strong|Assemblies>> (i.e. assemblies for which the
-  pieces do not overlap in 3-<no-break>D space) and
+  Finally, the solver gives information about the
+  <with|font-family|ss|<strong|Assemblies>> found thus far (i.e. assemblies
+  for which the pieces do not overlap in 3-<no-break>D space) and
   <with|font-family|ss|<strong|Solutions>> or disassemblies (i.e. assemblies
   that also can be constructed in real life using the particular pieces of
-  the puzzle). Note that the <with|font-family|ss|Solutions> are only
-  reported (and in fact tested) when the <with|font-family|ss|Solve
-  Disassembly> option is enabled.
+  the puzzle). Note that the <with|font-family|ss|Solutions> are reported
+  (and in fact tested) only if the <with|font-family|ss|Solve Disassembly>
+  option is enabled.
 
   <subsection|Manually Solving>
 
-  Besides the automated search <with|font-family|ss|BurrTools> allows you to
+  Besides the automated search, <with|font-family|ss|BurrTools> allows you to
   run the solver step-by-step. Note that this feature is still under
   construction and that it has a lot of shortcomings. For instance, it won't
-  add the found solutions to the list or update the solver information. So it
-  certainly needs a lot of improvements in a future release of the program.
-  For the time being it is only useful to check the assembly process when
-  something went wrong with the automated search.
+  add the solutions it finds to the list or update the solver information. So
+  it certainly needs a lot of improvements in a future release of the
+  program. For the time being it is useful only to check the assembly process
+  when something went wrong with the automated search.
 
   A manual search needs the initial preparation phase as well as an automatic
   search. This can be accomplished by clicking
@@ -2302,56 +2319,63 @@
   placements displayed in this window are the possible positions left in the
   current state of the assembler. So if the assembler has placed a piece
   S<em|a> and this prevents placing another piece S<em|b> at some positions,
-  these positions of piece S<em|b> will <em|not> be visible in the list. If
-  you want to see every placement tried you either have to initialise a
+  those positions of piece S<em|b> will <em|not> be visible in the list. If
+  you want to see every placement tried, you have to either initialise a
   manual search (click the <with|font-family|ss|Prepare> button), stop the
   assembler before is starts to do anything (click <with|font-family|ss|Stop>
-  while in preparation or optimisation stage) or you have to wait until the
-  assembler has finished its work.
+  while in preparation or optimisation stage), or wait until the assembler
+  has finished its work.
 
   The <strong|<with|font-family|ss|Placement Browser>> window (Figure
   <reference|FigurePlacementBrowser>) has a very simple layout and consist
   mainly of a 3-<no-break>D viewer and some additional scrollbars. This
-  3-<no-break>D viewport, that shows the outline of the result shape and
+  3-<no-break>D viewport, which shows the outline of the result shape and
   therein the shape for which the possible positions are to be analysed,
-  behaves similar to the one of the main window. Drag the piece to rotate it
-  in space and use the scrollbar on the right to zoom in or out.
+  behaves similar to the viewport in the main window. Drag the piece to
+  rotate it in space and use the scrollbar on the right to zoom in or out.
 
-  Each piece in the problem (note that each instance of a multipiece is
-  available) can be selected with the scrollbar on top of the window. The
-  left scrollbar allows browsing all the different placements for the
-  selected piece. Both these scrollbars can also be controlled with the
-  cursor keys on the keyboard: <kbd|[Up]> and [<kbd|Down]> for the left
-  scrollbar and <kbd|[Left]> and <kbd|[Right]> to select the piece. Be
-  careful though, the first stroke on the keyboard that doesn't fit the
-  current scrollbar will just select the other one and the following
-  keystroke will start to move the slider.
+  Each piece in the problem (including each instance of a multipiece) can be
+  selected with the scrollbar on top of the window. The left scrollbar allows
+  browsing all the different placements for the selected piece. Both these
+  scrollbars can also be controlled with the cursor keys on the keyboard:
+  <kbd|[Up]> and [<kbd|Down]> for the left scrollbar and <kbd|[Left]> and
+  <kbd|[Right]> to select the piece. Be careful though, the first stroke on
+  the keyboard that doesn't fit the current scrollbar will just select the
+  other one and the following keystroke will start to move the slider.
 
   <section|Inspecting Results><label|InspectingResults>
 
-  As soon as any result is found the solutions list becomes available on the
+  As soon as any result is found, the solutions list becomes available on the
   <with|font-family|ss|<strong|Solutions>> panel and the 3-<no-break>D viewer
   shows the first solution in the list. Note that subsequent solutions are
-  simply added to that list and that they only can get sorted by the total
-  number of moves (in case disassembly was requested) after the search is
-  completed. Already found solutions can at any time be inspected and this
-  does not interfere with the ongoing solving process, but bear in mind that
-  on completing the search resetting the scrollbar for browsing the solutions
-  may be needed to show the solutions properly ordered.
+  simply added to that list, and that they can get sorted by the total number
+  of moves (in case disassembly was requested) after the search is completed.
+  All solutions that have been found can be inspected at any time, this does
+  not interfere with the ongoing solving process. But completing the search
+  and resetting the scrollbar for browsing the solutions may be needed to
+  show the solutions properly ordered.
 
-  This panel has four components: a scrollbar
-  (<with|font-family|ss|<strong|Solution>>) to browse the different
-  solutions, a second scrollbar (<with|font-family|ss|<strong|Move>>) to view
-  the moves involved in the disassembly, an array of buttons with very short
-  labels to organize the solution list and a list of all instances of the
-  pieces in the puzzle problem, which allows you to alter the visibility of
-  particular pieces in the solution(s).
+  This panel has four components:
+
+  <\itemize-dot>
+    <item>a scrollbar (<with|font-family|ss|<strong|Solution>>) to browse the
+    different solutions,
+
+    <item>a second scrollbar (<with|font-family|ss|<strong|Move>>) to view
+    the moves involved in the disassembly,
+
+    <item>an array of buttons with very short labels to organize the solution
+    list, and
+
+    <item>a list of all instances of the pieces in the puzzle problem, which
+    allows you to alter their visibility in the solution(s).
+  </itemize-dot>
 
   <subsection|Selecting Solutions and Animating Disassemblies>
 
   By moving the slider of the top scrollbar
-  (<with|font-family|ss|<strong|Solution>>) any solution from the list can be
-  selected as is indicated by its number in the text box left of the it.
+  (<with|font-family|ss|<strong|Solution>>), any solution from the list can
+  be selected as is indicated by its number in the text box left of the it.
   Above the scrollbar there is an indication of the total number of solutions
   in the list. When the scrollbar is active it can also be controlled by the
   <with|font-family|tt|[Left]> and <with|font-family|tt|[Right]> cursor keys.
@@ -2366,35 +2390,35 @@
   disassembly, moving it to the left will reassemble the pieces in the
   3-<no-break>D viewer. Again, when activated the scrollbar can be controlled
   by the <with|font-family|tt|[Left]> and <with|font-family|tt|[Right]>
-  cursor keys. Above this scrollbar the <em|total> number of moves required
-  for the disassembly is shown followed by the level(s) of the selected
-  solution. Note that this scrollbar is only visible for solutions which have
+  cursor keys. Above this scrollbar is shown the <em|total> number of moves
+  required for the disassembly, followed by the level(s) of the selected
+  solution. Note that this scrollbar is visible only for solutions that have
   disassembly instructions available.
 
   The position of the <with|font-family|ss|Move> scrollbar isn't affected by
-  selecting any other solution and thus allows easily comparing the different
-  solutions at a particular stage in the disassembly process.
+  selecting any other solution, and thus allows easily comparing the
+  different solutions at a particular stage in the disassembly process.
 
   Below the <with|font-family|ss|Move> scrollbar are 2 fields that show you 2
   numbers associated with the currently selected solution. The first is the
   assembly number and the second is the solution number. Both numbers define
-  when a solution was found. The first found assembly gets assembly number
-  one. But that one might not be disassembable so it gets thrown away. The
-  second found assembly gets assembly number two and if it is also
+  when a solution was found. The first assembly found gets assembly number
+  one. But for example that one might not be disassembable so it gets thrown
+  away. The second assembly found gets assembly number two, and if it is also
   disassembable it gets solution number 1. So you will see assembly 2 and
   solution 1 in these 2 fields for the given example.
 
   <subsection|Handling Solutions>
 
   The big button group below the Solution selector and animator lets you
-  modify the solutions. They are only activated when no solver is running.
+  modify the solutions. They are activated only when no solver is running.
 
-  With the buttons in the first row you can resort the found solutions by the
-  same criteria as you can select for the solver. You can sort them in the
-  order they were found (unsorted) or by level or by sum of moves to
-  completely disassemble.
+  With the buttons in the first row you can re-sort the solutions by the same
+  criteria as you can select for the solver. You can sort them in the order
+  they were found (unsorted) or by level or by sum of moves to completely
+  disassemble and additionally be the pieces that are used in the solution.
 
-  The second row buttons allows the deletion of certain solutions from the
+  The second row of buttons allows the deletion of certain solutions from the
   list.
 
   <\description-compact>
@@ -2419,9 +2443,9 @@
 
   <\description-compact>
     <with|font-family|ss|<item*|D DA>>deletes the disassembly of the
-    currently selected solution. The disassembly is replaced by a something
-    containing only information about the disassembly, so you can still sort
-    the solutions
+    currently selected solution. The disassembly is replaced by data
+    containing only information <em|about> the disassembly, so you can still
+    sort the solutions
 
     <with|font-family|ss|<item*|D A DA>>deletes all disassemblies
 
@@ -2438,15 +2462,15 @@
 
   <subsection|Visibility of Pieces><label|VisibilityOfPieces>
 
-  In the list at the bottom of the <with|font-family|ss|Solutions> panel all
+  In the list at the bottom of the <with|font-family|ss|Solutions> panel, all
   pieces used in the problem are represented by their identifier. Instances
   of multipieces have a counter added to their prefix which now takes the
   form '<with|font-family|ss|<strong|Sx.n>>' and their neutral colour may be
   slightly modified to tell them apart.
 
-  By clicking an identifier the visibility state of that particular piece is
+  By clicking an identifier, the visibility state of that particular piece is
   altered in the 3-<no-break>D viewer. Each piece can have three states:
-  <em|visible,> <em|outlined> or <em|invisible.> Clicking an identifier
+  <em|visible>, <em|outlined>, or <em|invisible.> Clicking an identifier
   repeatedly just cycles through these states and also alters the way the
   identifiers are depicted in the list. These features are very useful in
   designs for which the pieces are packed in a box, since the box would hide
@@ -2454,7 +2478,8 @@
   <with|mode|math|\<vartriangleright\>>Appendix
   <reference|AppendixExamples>). Also they are very useful for inspecting the
   interaction of a few pieces and allow comparison between different
-  solutions as the visibility states remain invariant in selecting solutions.
+  solutions, as the visibility states remain invariant in selecting
+  solutions.
 
   By default the pieces that become separated from the rest gradually fade
   out during the final move. Sometimes this is unwanted as it may hinder a
@@ -2462,11 +2487,11 @@
   <strong|<with|font-family|ss|Fade Out Pieces>> on the options window
   (activated through <with|font-family|ss|<strong|Config>> on the menu bar).
 
-  As not all pieces are used in all solution the list of pieces only shows
+  As not all pieces are used in all solutions, the list of pieces shows only
   the names of those pieces that are really used in the currently selected
-  assembly. All other boxes become very small and do contain no name. This
+  assembly. All other boxes become very small and contain no name. This
   should help to quickly find out which pieces are used and which piece on
-  screen corresponds to what section in the piece visibility selector.
+  screen corresponds to what item in the piece visibility selector.
 
   <\with|par-mode|right>
     <chapter|Reporting with BurrTools>
@@ -2477,40 +2502,40 @@
   with your exchange puzzles and commercially produced puzzles. Currently,
   these capabilities are very basic and need to be improved in a future
   update of the program. So, don't expect too much from them right now, but
-  rather consider them to be merely a preview or a teaser to stick to
-  <name|BurrTools>.
+  rather consider them to be merely a preview of comming attractions.
 
   <section|Adding Comments><label|AddingComments>
 
   The <with|font-family|ss|<strong|Edit Comment>> entry on the menu bar opens
   a new window that allows you to add textual information to the puzzle file.
-  It can be used to append extra information to the puzzle such as the name
-  of the designer, or a 'to do' list for your own designs.
+  It can be used to append extra information such as the name of the
+  designer, or a 'to do' list for your own designs.
 
   <section|Exporting Images><label|ExportingImages>
 
   The <with|font-family|ss|<strong|Export - Images>> entry on the menu opens
-  a window that allows you to export a portion of the current puzzle in to (a
+  a window that allows you to export a portion of the current puzzle to (a
   list of) images (see Figure<\float|float|tbf>
     <big-figure|<postscript|Pics/Window_ImageExport.png|*4/8|*4/8||||>|<label|FigureImageExport>The
     image export window>
-  </float> <reference|FigureImageExport>). The window has a 3D view on the
-  right and input elements that control what is being created on the left. On
-  the very bottom of these controls you can select what you want to create
-  images of. Depending on what is present in the puzzle, the following things
-  can be exported:
+  </float> <reference|FigureImageExport>). On the right the window has a 3D
+  view, and on the left it has input elements that control what is being
+  created. On the very bottom of these controls you can select what you want
+  to create images of. Depending on what is present in the puzzle, the
+  following things can be exported:
 
   <\description-compact>
-    <item*|Shape>An image of a single shape is created. You can select which
-    shape with the shape selector below.
+    <item*|Shape>An image of a single shape (a shape that was made on the
+    entities tab) is created. You can select which shape with the shape
+    selector below.
 
     <item*|Problem>An image containing all shapes that are used for a problem
     is created. Again you will find the problem selector below that is used
     to select which problem you are going to create images of.
 
     <item*|Assembly>An image showing the positions of the pieces in an
-    assembly is created. You can select the problem. Of that problem the
-    first assembly is exported.
+    assembly is created. You can select the problem. The first assembly of
+    that problem is exported.
 
     <item*|Solution>An image containing all steps necessary to disassemble a
     problem is created. In this case you also select the problem with the
@@ -2518,73 +2543,72 @@
     problem.
   </description-compact>
 
-  This is the first thing that you have to select. Naturally only the choices
-  are available to which the puzzle has data. So if you have not run the
-  solver on the current puzzle it is impossible to export solutions or
-  assemblies.
+  What to export is the first thing that you have to select. Naturally only
+  the choices are available for which the puzzle has data. So if you have not
+  run the solver on the current puzzle, it is impossible to export solutions
+  or assemblies.
 
-  Above these selector you find the file output parameters. First the name
+  Above these selectors you find the file output parameters. First the name
   and the path to where the images are supposed to be created. If you give no
-  path the images are put into the working directory of the program. The file
-  name is just a prefix, so if you keep 'test' as file name you get files of
-  the form 'test000.png', 'test001.png', <with|mode|math|\<ldots\>>.
+  path, the images are put into the working directory of the program. The
+  file name is just a prefix, so if you keep 'test' as file name you get
+  files of the form 'test000.png', 'test001.png', <with|mode|math|\<ldots\>>.
+  (<name|BurrTools> creates only PNG image files)
 
-  Finally you can say how many images you intend to create. <name|BurrTools>
+  Finally, you can say how many images you intend to create. <name|BurrTools>
   will try to do so, but might use less. If you only have one assembly to
-  export, only one page can be created.
+  export, only one page can be created. The <with|font-family|ss|Number of
+  images> entry is ignored by the software for the time being, it will be
+  used later on.
 
-  The <with|font-family|ss|Number of images> entry is ignored by the software
-  for the time being, it will be used later on.
-
-  Above these input elements you find the last section that defines how you
-  want to output, what you output. You can define the quality and some
-  additional parameters that influence how the images look, but not what is
-  to be seen.
+  Above these input elements you find the last section that defines your
+  output. Here you can define the quality and some additional parameters that
+  influence how the images look, but not what is to be seen.
 
   In the top left corner you find the definition of the background of the
   image. You can choose between transparent or white. Transparent is useful
   if you want to have a background with patterns or want to further edit the
   images.
 
-  Below you find the settings for the oversampling factor. The higher that is
-  the smoother the images will look, but the more memory and calculation time
-  is required.
+  Below you find the settings for the oversampling factor. The higher that
+  is, the smoother the images will look, but the more memory and calculation
+  time is required.
 
-  Below you can select if you want to use the constraint colours for the
+  Below you can choose whether you want to use the constraint colours for the
   output or rather the neutral colour of the shapes.
 
   The checkbox <with|font-family|ss|Dim static pieces> makes <name|BurrTools>
   draw pieces that are not involved in the current move in a lighter colour,
-  so that the actually moving pieces are easier to spot. This, of course,
+  so that the pieces actually moving are easier to spot. This, of course,
   only works when exporting solutions.
 
   Finally there are the parameters for the image size that the program
-  creates. You have 2 possibilities. Either define the pixel size directly,
-  or define the size of the image in millimetres and the DPI printer
-  resolution. If you want to create A4 or letter sized images for printing
-  you can use the predefined sizes.
+  creates. There are 2 choices: either define the pixel size directly, or
+  define the size of the image in millimetres and the DPI printer resolution.
+  If you want to create A4 or letter sized images for printing, you can use
+  the predefined sizes.
 
-  To position the shapes in the output images you can use the 3D view at the
+  To position the shapes in the output images, you can use the 3D view at the
   right of the export window. All images exported will use the same settings
   for angle and zoom as in that 3D view. If the shapes reach above or below
-  the 3D view they will be cut. Left and right is different. The width of the
-  images to generate is not fixed. So the program will make them quite a bit
-  wider to accommodate the horizontal spread of the pieces.
+  the 3D view they will be trimmed. Left and right is different. The width of
+  the images to generate is not fixed. So the program will make them quite a
+  bit wider to accommodate the horizontal spread of the pieces.
 
-  If you have finished with all settings press <with|font-family|ss|Export
+  When you have finished with all settings, press <with|font-family|ss|Export
   Image(s)>. You will see a flurry of images in the 3-<no-break>D view. The
   program draws the shapes there and grabs the content from the display. This
-  may take a while. First the size of the images is determined then the
+  may take a while. First the size of the images is determined, then the
   images are drawn in the required high resolution for the output. The
-  progress can be seen on the left besides the 2 buttons. You will see how
+  progress can be seen on the left beside the 2 buttons. You will see how
   many images are finished and how many there are overall.
 
-  Hint: If you get unexpected results and broken images try to do nothing
+  Hint: If you get unexpected results and broken images, try to do nothing
   while the images are exported. On Linux it is forbidden to change the
   virtual desktop because then nothing is drawn.
 
-  The export is far from what we want it to be, many important features are
-  missing, so you can expect some progress in later versions of
+  The export facilities are far from what we want them to be, many important
+  features are missing, so you can expect some progress in later versions of
   <name|BurrTools>.
 
   <section|Exporting to STL><label|ExportingSTL>
@@ -2592,8 +2616,8 @@
   STL, which stands for Standard Triangulation Language or Standard
   Tesselation Language is a file format used by stereolithography software.
   STL-Files describe the surface of 3-<no-break>dimensional objects.
-  <name|BurrTools> can export single shapes into STL files so that 3D printer
-  can quickly fabricate prototypes of them.
+  <name|BurrTools> can export single shapes into STL files so that 3D
+  printers can quickly fabricate prototypes of them.
 
   The main menu entry <with|font-family|ss|<strong|Export - STL>> opens the
   window seen in Figure<\float|float|tb>
@@ -2601,19 +2625,19 @@
     STL-Export window>
   </float> <reference|stlexportwindow>. The window has shape selector, a
   3-<no-break>D view of the selected shape and some parameters that control
-  the created shapes.
+  the shapes created.
 
   <with|font-family|ss|<strong|Filename>> and
   <with|font-family|ss|<strong|Path>> control the name and position of the
   generated file. <with|font-family|ss|<strong|Cube Size>> controls the base
   length of the created cubes. <with|font-family|ss|<strong|Bevel>> controls
-  the size of the bevel and <with|font-family|ss|<strong|Shrink>> allows to
-  have a gap between different pieces, so that it is actually possible to
-  assemble them. If the shapes were make to correct sizes they would touch
-  and movement impossible.
+  the size of the bevel and <with|font-family|ss|<strong|Shrink>> allows a
+  gap between the pieces, so that it is actually possible to assemble them.
+  If the shapes were made to correct sizes they would touch, making movement
+  impossible.
 
-  The STL-Export does right now only work for cubes. Triangles and spheres
-  are not working. Also the shapes to export must not contain any variable
+  The STL-Export right now works only for cubes. Triangles and spheres are
+  not working. Also the shapes to export must not contain any variable
   voxels.
 
   <\with|par-mode|right>
@@ -2631,7 +2655,7 @@
 
     <item>Add more colour constraint possibilities, e.g. edge matching, ...
 
-    <item>Add different more space grids, add parameters to some grids
+    <item>Add more different space grids, add parameters to some grids
     (lengths and angles).
 
     <item>Add rotation checks to the disassembler.
@@ -2643,16 +2667,11 @@
 
     <item>Add tools for puzzle design (see below).
 
-    <item>Make it possible to divide problems so that they can be solved
-    parallel on several computers and then the solutions are merged back
-    together in one file.
+    <item>Make it possible to divide problems so that they can be solved in
+    parallel on several computers and then the solutions are back together in
+    one file.
 
-    <item>Improve multi threading so that multi-core CPUs are better used.
-
-    <item>Improve assembler to cope with ranges of piece numbers (e.g. 1-5 of
-    piece x) and doesn't need to place all pieces. So that is is possible to
-    solve piece sets and also to create puzzles by defining a set of pieces
-    and let the program find out which of them results in a nice puzzle.
+    <item>Improve multi-threading so that multi-core CPUs are better used.
 
     <item>Better tool for colourization of a piece. E.g. checkering, but it
     needs to be more general than just checkering.
@@ -2664,11 +2683,13 @@
 
     <item>''Unificator'' a tool that makes it easy to check the results of
     adding color constraints. For example: suppose you have designed a puzzle
-    with one interesting solutions and many uninteresting and you want now,
-    by adding color constrains, make that one solution unique. It can be a
-    labor intensive task to do that. The unificator would help here by
-    quickly showing the resulty of adding color here or making a piece that
-    color, ...<next-line>
+    with one interesting solution and many uninteresting ones and you want
+    now, by adding color constrains, make that one solution unique. It can be
+    a labor intensive task to do that. The unificator would help here by
+    quickly showing the results of adding color here or making a piece that
+    color, ...
+
+    <item>exploded view<next-line>
   </itemize-dot>
 
   We would be very happy to get contributions from other people. After all
