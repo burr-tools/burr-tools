@@ -416,8 +416,8 @@
 
   These colour conditions currently allow the definition of what coloured
   voxels of the pieces may go into what coloured voxels in the result shape.
-  The <em|default colour> is special: it always makes a color match.
-  Voxels in a piece that are in the default colour fit everywhere and default
+  The <em|default colour> is special: it always makes a color match. Voxels
+  in a piece that are in the default colour fit everywhere and default
   coloured voxels in the result shape can accommodate any piece voxel,
   independent of its custom colour.
 
@@ -524,7 +524,7 @@
     handling files within <name|BurrTools> and for exiting the program
     (<with|mode|math|\<vartriangleright\>><reference|FileMenu>).
 
-    <item*|<with|font-family|ss|Toggle 3D>>Swaps the 2-<no-break>D and the
+    <item*|<with|font-family|ss|Toggle 3-<no-breakD>>Swaps the 2-<no-break>D and the
     3-<no-break>D grids for the <with|font-family|ss|Entities> tab
     (<with|mode|math|\<vartriangleright\><reference|Navigating2D3D>>).
 
@@ -1163,6 +1163,28 @@
   axes. The number of voxels that will be affected depends on the size
   settings of the grid. Hence, to take fully advantage of these functions the
   grid should be first adjusted to the proper dimensions.>>>>>
+
+  <subsection|Using the 3D-Viewer to Edit>
+
+  It is also possible to do some editing using the 3-<no-breakD view directly by simply
+  clicking onto faces to add the corresponding neighbour voxel. The following
+  actions are possible:
+
+  <\itemize-dot>
+    <item>Add a normal voxel by pressing <verbatim|[Shift]> and clicking onto
+    a face. The neighbour is added.
+
+    <item>Add a variable voxel by pressing <verbatim|[Alt]> and clicking onto
+    a face. Again the neighbour is added.
+
+    <item>Remove a voxel by pressing <verbatim|[Ctrl]> and clicking onto a
+    voxel. This removes the voxel.
+  </itemize-dot>
+
+  As spheres do not really have touching faces the 3-<no-breakD view of them does now
+  contain marks with a slightly different colors around the places where the
+  spheres would tough. Clicking on those places on the sphere addes the
+  corresponding neighbour sphere.
 
   <section|Adding Colour><label|AddingColour>
 
@@ -2480,6 +2502,12 @@
   interaction of a few pieces and allow comparison between different
   solutions, as the visibility states remain invariant in selecting
   solutions.
+
+  Additionally it is possible to set the visibility state of a piece to
+  invisible by pressing <verbatim|[Shift]> and then clicking onto the piece
+  in the 3-D viewer. This is handy when using custom colours and the default
+  colour is not visible or when there are many pieces and the distinction by
+  colour becomes hard.
 
   By default the pieces that become separated from the rest gradually fade
   out during the final move. Sometimes this is unwanted as it may hinder a
