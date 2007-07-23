@@ -416,8 +416,8 @@
 
   These colour conditions currently allow the definition of what coloured
   voxels of the pieces may go into what coloured voxels in the result shape.
-  The <em|neutral> <em|colour> is special: it always makes a color match.
-  Voxels in a piece that are in the neutral colour fit everywhere and neutral
+  The <em|default colour> is special: it always makes a color match.
+  Voxels in a piece that are in the default colour fit everywhere and default
   coloured voxels in the result shape can accommodate any piece voxel,
   independent of its custom colour.
 
@@ -658,7 +658,7 @@
   task at hand, and on the right are some tools to alter the 3-<no-break>D
   view. Currently you can select there <em|how> the 3-<no-break>D view shows
   the shapes. You have the choice between the normal view where each piece is
-  drawn with its neutral colour, or a view where each piece is drawn with its
+  drawn with its default colour, or a view where each piece is drawn with its
   colour constraint colour (if it has one
   assigned<with|mode|math|\<vartriangleright\>><reference|AddingColour>). The
   third option is an anaglyph called mode (see figure<\float|float|tbh>
@@ -1060,7 +1060,7 @@
   will be affected by clicking. These indications are also reflected in the
   3-<no-break>D viewer. Furthermore, to facilitate positioning on different
   layers every non-empty voxel on the 2-<no-break>D layer just below the
-  current one 'shines through' in a very light shade of the neutral colour
+  current one 'shines through' in a very light shade of the default colour
   associated with that shape (Figure <reference|FigureNavigation>). This
   makes building shapes from bottom to top very easy.
 
@@ -1183,25 +1183,25 @@
   placements of the pieces, whereas the white colour of the parts on the
   inside of the pieces is used only to make them look nice.
 
-  <subsection|The Neutral Colour and Custom Colours >
+  <subsection|The Default Colour and Custom Colours>
 
   Even when no 'special' colours at all are used, the program assigns each
-  shape its own different nominal color. This is the so-called <em|neutral
+  shape its own different nominal color. This is the so-called <em|default
   colour> and is there only to <em|distinguish> the shapes from one another.
-  These neutral colours are standard for each newly created shape (the first
+  These default colours are standard for each newly created shape (the first
   one in the shapes list is always blue, the second one green, the third one
   red, etc...) and cannot be altered.
 
-  As far as the solver is concerned, the neutral colour doesn't even exist,
+  As far as the solver is concerned, the default colour doesn't even exist,
   as all appearances of it are fully interchangeable. So any voxel in the
-  pieces that has only the neutral colour can go into any voxel of the result
+  pieces that has only the default colour can go into any voxel of the result
   shape, and every voxel in the result that has no other colour than the
-  neutral can accommodate any voxel of the pieces, independent of its colour.
+  default can accommodate any voxel of the pieces, independent of its colour.
 
-  Independent from their neutral colour, voxels can have customised colours
+  Independent from their default colour, voxels can have customised colours
   as extra attributes. To avoid confusion, it's recommended to make these
-  colours well distinguishable from the neutral colours in use, since a
-  custom colour that is identical to one of the neutral colours will have a
+  colours well distinguishable from the default colours in use, since a
+  custom colour that is identical to one of the default colours will have a
   completely different effect on the way the solver behaves. Almost without
   exception custom colours need some constraint settings
   (<with|mode|math|\<vartriangleright\>><reference|ColourConstraints>) to
@@ -1219,9 +1219,9 @@
   you the necessary tools to create the colour you need. Accordingly the
   <with|font-family|ss|<strong|Edit>> button allows you to transform an
   already existing colour using a similar dialogue. This dialogue also shows
-  the currently selected colour for comparison (unless the neutral colour is
+  the currently selected colour for comparison (unless the default colour is
   selected, which makes the dialogue to show the default medium grey). Note
-  that the neutral colour can be neither removed nor changed. It's important
+  that the default colour can be neither removed nor changed. It's important
   to realise that the <name|BurrTools> engine discriminates custom colours
   only by number as indicated in their prefix
   '<with|font-family|ss|<strong|C<em|x>>>' and not by the actual colours
@@ -1231,7 +1231,7 @@
   finding out why a puzzle has no solutions can be very hard. The
   <strong|<with|font-family|ss|Remove>> button will not only discard the
   colour from the list, but will also remove it from any voxel that has it as
-  an attribute by replacing it with the neutral colour.
+  an attribute by replacing it with the default colour.
 
   When you add a colour, <name|BurrTools> automatically adds a constraint
   rule that pieces of this colour can be placed into result voxels of this
@@ -1277,7 +1277,7 @@
     </big-figure|<label|FigureRepresentations>Representations in
     2-<no-break>D and 3-<no-break>D>
   </float> <reference|FigureRepresentations> shows an overview of these
-  possibilities. In this picture the neutral colour is red (= shape S3) and
+  possibilities. In this picture the default colour is red (= shape S3) and
   the custom colour is green (RGB = 0.600, 0.753, 0).
 
   Fixed voxels always fill the cell completely in the 2-<no-break>D grid as
@@ -1292,8 +1292,8 @@
   2-<no-break>D grid, whereas in the 3-<no-break>D viewer they are completely
   painted with this colour (provided that the
   <strong|<with|font-family|ss|Colour 3D View>> on the status line is
-  checked, otherwise they will be painted in the neutral colour). Note that
-  in both grids the neutral colours also have a slightly checkered pattern
+  checked, otherwise they will be painted in the default colour). Note that
+  in both grids the default colours also have a slightly checkered pattern
   which can assist navigating in space (except for the spheres, which have no
   checkering).
 
@@ -1382,7 +1382,7 @@
   will run.<next-line>>>|<row|<cell|<postscript|Pics/Button_Constraints_Colour.png|*5/8|*5/8||||>>|<cell|<strong|Colour
   Remover -> These buttons will remove any custom colours from the voxels
   that are either on the inside or the outside of the shape, and replace them
-  with the neutral colour. Removing the colour from the inside can prevent
+  with the default colour. Removing the colour from the inside can prevent
   having to apply complex colouring to the result shape in situations were
   the colour constraints are relevant only to the overall appearance of the
   puzzle. >>>>>
@@ -1519,7 +1519,7 @@
     z-<no-break>columns switched on.
 
     <item*|Aesthetic Colours>When colours are used solely for aesthetic
-    reasons, make sure that the <em|result> shape has only the neutral
+    reasons, make sure that the <em|result> shape has only the default
     colour. This will prevent having to set a lot of constraint conditions.
 
     <item*|One-Sided Polyominoes>Polyominoes can be made one-sided by having
@@ -1963,7 +1963,7 @@
   <em|maximum> number of instances of a certain piece that can go in that
   particular group. Just click on a cell and it will become an input box.
   Cells that contain a value <no-break>\<gtr\> <no-break>0 will receive the
-  neutral colour of the corresponding shape, cells with zero are grey and no
+  default colour of the corresponding shape, cells with zero are grey and no
   number is shown. Any group that has no values at all in its column will be
   deleted on closing the <with|font-family|ss|Group Editor>. Hence, deleting
   all the values of a previously made group will remove the group even if its
@@ -2465,7 +2465,7 @@
   In the list at the bottom of the <with|font-family|ss|Solutions> panel, all
   pieces used in the problem are represented by their identifier. Instances
   of multipieces have a counter added to their prefix which now takes the
-  form '<with|font-family|ss|<strong|Sx.n>>' and their neutral colour may be
+  form '<with|font-family|ss|<strong|Sx.n>>' and their default colour may be
   slightly modified to tell them apart.
 
   By clicking an identifier, the visibility state of that particular piece is
@@ -2575,7 +2575,7 @@
   time is required.
 
   Below you can choose whether you want to use the constraint colours for the
-  output or rather the neutral colour of the shapes.
+  output or rather the default colour of the shapes.
 
   The checkbox <with|font-family|ss|Dim static pieces> makes <name|BurrTools>
   draw pieces that are not involved in the current move in a lighter colour,
@@ -2861,7 +2861,7 @@
   Colours can not be attached to empty voxels but to voxels with the other 2
   states. Currently colours are just a number (up to 2 digits) that are
   simply written as a decimal number and are appended to the voxel state. If
-  the colour number is 0 (which is the neutral colour) nothing is appended.
+  the colour number is 0 (which is the default colour) nothing is appended.
 
   <section|The Library>
 
@@ -2891,7 +2891,7 @@
     <verbatim|VX_FILLED> or a variable cube <verbatim|VX_VARIABLE>
 
     <item>The colour constraint colour. Here values between 0 and 64 are
-    possible. 0 is the neutral colour.
+    possible. 0 is the default colour.
   </itemize>
 
   The class provides a set of functions to rotate, translate, mirror, resize

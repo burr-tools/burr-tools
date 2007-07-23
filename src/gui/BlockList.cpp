@@ -287,7 +287,7 @@ void ColorSelector::getText(unsigned int block, char * text) {
     block++;
 
   if (block == 0)
-    snprintf(text, 200, "Neutral");
+    snprintf(text, 200, "Default");
   else
     snprintf(text, 200, "C%i", block);
 }
