@@ -3514,6 +3514,11 @@ mainWindow_c::~mainWindow_c() {
     disassemble = 0;
   }
 
+  if (assmThread) {
+    delete assmThread;
+    assmThread = 0;
+  }
+
   if (ggt)
     delete ggt;
 }
