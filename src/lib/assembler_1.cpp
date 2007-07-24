@@ -135,7 +135,8 @@ void assembler_1_c::AddRangeNode(unsigned int col, unsigned int piecenode, unsig
 
 assembler_1_c::assembler_1_c(assemblerFrontend_c * fe) :
   assembler_c(fe),
-  avoidTransformedAssemblies(0), avoidTransformedMirror(0)
+  avoidTransformedAssemblies(0), avoidTransformedMirror(0),
+  reducePiece(0)
 {
   next_row_stack.push_back(0);
   task_stack.push_back(0);
@@ -651,7 +652,8 @@ unsigned int assembler_1_c::clumpify(void) {
 
     while (row != col) {
 
-      while ((line < piecePositions.size()) && (piecePositions[line+1].row <= row)) line++;
+      while ((line+1 < piecePositions.size()) && (piecePositions[line+1].row <= row))
+        line++;
 
       unsigned int i = 0;
 
@@ -660,7 +662,7 @@ unsigned int assembler_1_c::clumpify(void) {
        */
       while (i < columns.size()) {
         if ((columns[i] < piecePositions[line].row) ||
-            (columns[i] >= piecePositions[line+1].row) ||
+            ((line+1 < piecePositions.size()) && (columns[i] >= piecePositions[line+1].row)) ||
             (weight[row] != weight[columns[i]])  // also remove row, if weights differ
            ) {
           columns.erase(columns.begin()+i);
