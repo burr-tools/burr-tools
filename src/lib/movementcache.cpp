@@ -259,10 +259,10 @@ movementCache_c::movementCache_c(const puzzle_c * puzzle, unsigned int problem) 
 movementCache_c::~movementCache_c() {
 
 #ifdef MV_CACHE_DEBUG
-  printf("cache had %li hits and %f%% successful retrievals \n", cacheRequests, cacheHits*100.0/cacheRequests);
-  printf("longest list ever seen %i\n", maxListLen);
-  printf("%li cache collisions over the whole and %f collisions per request\n", cachCollisions, cachCollisions*1.0/cacheRequests);
-  printf("last cache table is %i entries big and contains %i entries\n", tableSize, entries);
+  fprintf(stderr, "cache had %li hits and %f%% successful retrievals \n", cacheRequests, cacheHits*100.0/cacheRequests);
+  fprintf(stderr, "longest list ever seen %i\n", maxListLen);
+  fprintf(stderr, "%li cache collisions over the whole and %f collisions per request\n", cachCollisions, cachCollisions*1.0/cacheRequests);
+  fprintf(stderr, "last cache table is %i entries big and contains %i entries\n", tableSize, entries);
 #endif
 
 #ifdef MV_CACHE_DEBUG

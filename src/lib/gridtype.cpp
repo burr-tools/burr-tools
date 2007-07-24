@@ -211,11 +211,11 @@ unsigned int gridType_c::getCapabilities(void) const {
 assembler_c * gridType_c::findAssembler(const puzzle_c * p, unsigned int problem) {
 
   if (assembler_0_c::canHandle(p, problem)) {
-    printf("using assembler 0\n");
+    fprintf(stderr, "using assembler 0\n");
     return new assembler_0_c(p->getGridType()->getAssemblerFrontend());
   }
   if (assembler_1_c::canHandle(p, problem)) {
-    printf("using assembler 1\n");
+    fprintf(stderr, "using assembler 1\n");
     return new assembler_1_c(p->getGridType()->getAssemblerFrontend());
   }
 

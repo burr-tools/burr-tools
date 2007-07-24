@@ -1489,8 +1489,7 @@ unsigned int assembler_0_c::getPiecePlacement(unsigned int node, int delta, unsi
 
   getPieceInformation(node, tran, x, y, z, &pi);
 
-  if (pi != piece)
-    printf("oooops\n");
+  bt_assert(pi == piece);
 
   return node;
 }

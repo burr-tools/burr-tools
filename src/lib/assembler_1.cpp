@@ -862,8 +862,6 @@ void assembler_1_c::reduce(void) {
   } while (dosth);
 
   col_rem += clumpify();
-
-//  printf("removed %i rows and %i columns\n", row_rem, col_rem);
 }
 
 void assembler_1_c::checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir) {
@@ -1369,7 +1367,7 @@ void assembler_1_c::iterative(void) {
           }
           bt_assert(ret == (i < holeColumns.size()));
           if (ret) {
-            if (debug) printf("backtrack because of too many holes\n");
+            if (debug) fprintf(stderr, "backtrack because of too many holes\n");
             break;
           }
         }
@@ -1395,13 +1393,13 @@ void assembler_1_c::iterative(void) {
           int col = find_best_unclosed_column();
 
           if (col == -1) {
-            if (debug) printf("backtrack because could not find column\n");
+            if (debug) fprintf(stderr, "backtrack because could not find column\n");
             next_row_stack.pop_back();
             task_stack.pop_back();
             break;
           }
 
-          if (debug) printf("found column %i with count %i\n", col, colCount[col]);
+          if (debug) fprintf(stderr, "found column %i with count %i\n", col, colCount[col]);
 
           // when there are no rows in the selected column, we don't need to find
           // any row set and can continue right on with a new column
@@ -1421,7 +1419,7 @@ void assembler_1_c::iterative(void) {
               break;
             }
 
-            if (debug) printf("backtrack because columns condition not fulfilled\n");
+            if (debug) fprintf(stderr, "backtrack because columns condition not fulfilled\n");
 
           } else {
 
@@ -1457,7 +1455,7 @@ void assembler_1_c::iterative(void) {
         // line to the column that is why we do this check here at the start of the function
         if (column_condition_fulfilled(col)) {
 
-          if (debug) printf("column %i condition fulfilled, recurse\n", col);
+          if (debug) fprintf(stderr, "column %i condition fulfilled, recurse\n", col);
 
           finished_b.push_back(colCount[colCount[next_row_stack.back()]]+1);
           finished_a.push_back(0);
@@ -1488,7 +1486,7 @@ void assembler_1_c::iterative(void) {
       case 1:
 
         // reinsert this column
-        if (debug) printf("reinserting column %i\n", column_stack.back());
+        if (debug) fprintf(stderr, "reinserting column %i\n", column_stack.back());
 
         uncover_column_only(column_stack.back());
 
@@ -1529,7 +1527,7 @@ void assembler_1_c::iterative(void) {
         row = rows.back();
         col = colCount[next_row_stack.back()];
 
-        if (debug) printf("add row %i for columns %i\n", row, col);
+        if (debug) fprintf(stderr, "add row %i for columns %i\n", row, col);
 
         // add row to rowset
         weight[colCount[row]] += weight[row];
@@ -1552,7 +1550,7 @@ void assembler_1_c::iterative(void) {
               // if the current column condition is really fulfilled
               if (column_condition_fulfilled(col)) {
 
-                if (debug) printf("recurse because columns %i condition fulfilled\n", col);
+                if (debug) fprintf(stderr, "recurse because columns %i condition fulfilled\n", col);
 
                 task_stack.back() = 5;
                 task_stack.push_back(0);
@@ -1584,7 +1582,7 @@ void assembler_1_c::iterative(void) {
                 break;
               }
 
-              if (debug) printf("no recurse because columns %i condition fulfillable\n", col);
+              if (debug) fprintf(stderr, "no recurse because columns %i condition fulfillable\n", col);
             }
           }
 
@@ -1592,7 +1590,7 @@ void assembler_1_c::iterative(void) {
 
         } else {
 
-          if (debug) printf("no recurse because one columns condition fulfillable\n");
+          if (debug) fprintf(stderr, "no recurse because one columns condition fulfillable\n");
           task_stack.back() = 6;
           break;
         }
@@ -1610,7 +1608,7 @@ void assembler_1_c::iterative(void) {
         // remove row from rowset
         row = rows.back();
 
-        if (debug) printf("remove row %i\n", row);
+        if (debug) fprintf(stderr, "remove row %i\n", row);
 
         for (unsigned int r = left[row]; r != row; r = left[r])
           weight[colCount[r]] -= weight[r];
