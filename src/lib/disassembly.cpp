@@ -167,6 +167,20 @@ state_c::state_c(const xml::node & node, unsigned int pn) {
   }
 }
 
+state_c::state_c(const state_c * cpy, unsigned int pn)
+#ifndef NDEBUG
+: piecenumber(pn)
+#endif
+{
+  dx = new int[pn];
+  dy = new int[pn];
+  dz = new int[pn];
+
+  memcpy(dx, cpy->dx, pn*sizeof(int));
+  memcpy(dy, cpy->dy, pn*sizeof(int));
+  memcpy(dz, cpy->dz, pn*sizeof(int));
+}
+
 state_c::state_c(unsigned int pn)
 #ifndef NDEBUG
 : piecenumber(pn)
@@ -343,6 +357,26 @@ void separation_c::addstate(state_c *st) {
   bt_assert(st->piecenumber == piecenumber);
   states.push_front(st);
 }
+
+separation_c::separation_c(const separation_c * cpy) : piecenumber(cpy->piecenumber) {
+
+  pieces = new voxel_type[piecenumber];
+  memcpy(pieces, cpy->pieces, piecenumber*sizeof(voxel_type));
+
+  for (unsigned int i = 0; i < cpy->states.size(); i++)
+    states.push_back(new state_c(cpy->states[i], piecenumber));
+
+  if (cpy->left)
+    left = new separation_c(cpy->left);
+  else
+    left = 0;
+
+  if (cpy->removed)
+    removed = new separation_c(cpy->removed);
+  else
+    removed = 0;
+}
+
 
 bool separation_c::containsMultiMoves(void) {
   return (states.size() > 2) ||

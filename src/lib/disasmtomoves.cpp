@@ -19,7 +19,9 @@
 
 #include "../lib/disassembly.h"
 
-disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz, unsigned int max) : tree(tr), size(sz), maxPieceName(max) {
+disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz, unsigned int max) : size(sz), maxPieceName(max) {
+
+  tree = new separation_c(tr);
 
   moves = new float[maxPieceName*4];
   mv = new bool[maxPieceName];
@@ -28,6 +30,7 @@ disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz, unsig
 disasmToMoves_c::~disasmToMoves_c() {
   delete [] moves;
   delete [] mv;
+  delete tree;
 }
 
 void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {

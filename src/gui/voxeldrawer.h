@@ -83,6 +83,8 @@ class voxelDrawer_c : public Fl_Gl_Window {
 
 private:
 
+  assembly_c * curAssembly; // the currently shown assembly (if there is one)
+
   /* Draws the voxelspace. */
   void drawVoxelSpace();
 

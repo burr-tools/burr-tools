@@ -42,6 +42,7 @@
 
 voxelDrawer_c::voxelDrawer_c(int x,int y,int w,int h) :
   Fl_Gl_Window(x,y,w,h),
+  curAssembly(0),
   markerType(-1),
   arcBall(new arcBall_c(w, h)),
   doUpdates(true), size(10), cb(0),
@@ -54,6 +55,10 @@ voxelDrawer_c::voxelDrawer_c(int x,int y,int w,int h) :
 
 voxelDrawer_c::~voxelDrawer_c(void) {
   clearSpaces();
+  if (curAssembly) {
+    delete curAssembly;
+    curAssembly = 0;
+  }
   delete arcBall;
 }
 
@@ -553,6 +558,11 @@ void voxelDrawer_c::showColors(const puzzle_c * puz, colorMode mode) {
 
 void voxelDrawer_c::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
 
+  if (curAssembly) {
+    delete curAssembly;
+    curAssembly = 0;
+  }
+
   hideMarker();
   clearSpaces();
 
@@ -561,7 +571,8 @@ void voxelDrawer_c::showAssembly(const puzzle_c * puz, unsigned int probNum, uns
 
     unsigned int num;
 
-    const assembly_c * assm = puz->probGetAssembly(probNum, solNum);
+    curAssembly = new assembly_c(puz->probGetAssembly(probNum, solNum));
+    const assembly_c * assm = curAssembly;
 
     unsigned int piece = 0;
 

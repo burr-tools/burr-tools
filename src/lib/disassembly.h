@@ -81,6 +81,9 @@ public:
   /* load a separation from an xml node */
   separation_c(const xml::node & node, unsigned int pieces);
 
+  /* copy constructor */
+  separation_c(const separation_c * cpy);
+
   /* save into an xml node */
   xml::node save(void) const;
 
@@ -216,6 +219,9 @@ public:
    * pieces later on, so plan ahead
    */
   state_c(unsigned int pn);
+
+  /* copy constructor */
+  state_c(const state_c * cpy, unsigned int pn);
 
   ~state_c();
 
