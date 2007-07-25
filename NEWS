@@ -1,3 +1,34 @@
+------------- Version 0.3.1
+
+- new edit method. It is now possible to add voxels by clicking into the
+  3d view.
+
+- OpenGl libraries were not properly found on some UNIX systems
+
+- solving a puzzle will trigger save warning when exiting
+
+- fixes in new assembler
+  - sometimes it found no solutions even though there were some
+  - better work selection heuristic resulting in speedup in some cases
+  - fix mirror problem causing calculation abort whith some mirror 
+    constellations
+
+- Joe Becker edited the whole userguide
+
+- fix possible crash with very large grids
+
+- build improvements
+  - better crosscompilation possibilities
+  - don't build table generators, when tables are up to date
+  - nsis script
+
+- add a missing symmetry for triangles
+
+- fix a crash when having empty sphere grids in problems
+
+- fix crash when animating a solution that has been removed by the ongoing
+  solving
+
 ------------- Version 0.3.0
 
 - a new assembly algorithm that is much faster with puzzles with many
