@@ -104,6 +104,10 @@ bool voxel_2_c::transform(unsigned int nr) {
         }
       }
 
+  /* when there are no voxels, we do nothing */
+  if (first)
+    return true;
+
   if ((minx+miny+minz) & 1)
     minx--;
 
