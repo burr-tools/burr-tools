@@ -3165,7 +3165,7 @@ void mainWindow_c::CreateSolveTab(void) {
 
     // be careful the order in here must correspond with the enumeration in assembler thread
     sortMethod->add("Unsorted");
-    sortMethod->add("Moves for Complete Disassemble");
+    sortMethod->add("Moves for Complete Disassembly");
     sortMethod->add("Level");
 
     sortMethod->value(1);
