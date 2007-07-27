@@ -43,7 +43,7 @@ Section "!${NAME} - ${VERSION}"
   SectionIn 1
   SetOutPath "$INSTDIR"
 
-  File "${FLATDIR}\*.exe"
+  File "${FLATDIR}\burrGui.exe"
   File "${FLATDIR}\*.txt"
   File "${FLATDIR}\*.pdf"
 
