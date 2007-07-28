@@ -308,7 +308,7 @@ public:
    * and this function for access
    */
   voxel_type get(unsigned int p) const {
-    bt_assert((p>=0)&&(p<voxels));
+    bt_assert(p<voxels);
     return space[p];
   }
 
@@ -342,7 +342,7 @@ public:
    * The 1-dimensional variant of the set function.
    */
   void set(unsigned int p, voxel_type val) {
-    bt_assert((p>=0)&&(p<voxels));
+    bt_assert(p<voxels);
     space[p] = val;
     recalcBoundingBox();
     symmetries = symmetryInvalid();

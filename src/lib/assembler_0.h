@@ -90,7 +90,7 @@ private:
    * - remove the column from the column header node list,
    * - remove all rows where the given column is 1
    */
-  void cover(register unsigned int col);
+  void cover(unsigned int col);
 
   /* uncover the given column
    * this is the exact inverse operation of cover. It requires that the
@@ -101,7 +101,7 @@ private:
    *
    * will result in the same matrix as before
    */
-  void uncover(register unsigned int col);
+  void uncover(unsigned int col);
 
   /* 2 helper functions that cover and uncover one
    * selected row
@@ -256,7 +256,7 @@ protected:
    * given to you as a parameter to the function prepare. You normally call this function
    * in prepare
    */
-  void GenerateFirstRow(int unsigned res_filled);
+  void GenerateFirstRow(void);
 
   /* this function adds a node to the matrix that belongs to the first columns that represent
    * the pieces. This is normally the first thing you do, when you start a new line in the matrix

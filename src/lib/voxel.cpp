@@ -299,9 +299,9 @@ void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
   for (unsigned int x = 0; x < sx; x++)
     for (unsigned int y = 0; y < sy; y++)
       for (unsigned int z = 0; z < sz; z++)
-        if ((x+dx >= 0) && (x+dx < sx) &&
-            (y+dy >= 0) && (y+dy < sy) &&
-            (z+dz >= 0) && (z+dz < sz))
+        if (((int)x+dx >= 0) && ((int)x+dx < (int)sx) &&
+            ((int)y+dy >= 0) && ((int)y+dy < (int)sy) &&
+            ((int)z+dz >= 0) && ((int)z+dz < (int)sz))
           s2[(x+dx)+sx*((y+dy)+sy*(z+dz))] = get(x, y, z);
 
   delete [] space;

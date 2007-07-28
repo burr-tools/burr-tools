@@ -33,7 +33,7 @@
 
 #define ASSEMBLER_VERSION "1.4"
 
-void assembler_0_c::GenerateFirstRow(unsigned int res_filled) {
+void assembler_0_c::GenerateFirstRow(void) {
 
   for (unsigned int i = 0; i < varivoxelStart; i++) {
     right.push_back(i+1);
@@ -459,7 +459,7 @@ int assembler_0_c::prepare(int res_filled, int res_vari) {
    */
 
   /* nodes 1..n are the columns nodes */
-  GenerateFirstRow(res_filled);
+  GenerateFirstRow();
 
   voxel_c ** cache = new voxel_c *[sym->getNumTransformationsMirror()];
 
@@ -616,7 +616,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
 }
 
 /* remove column from array, and also all the rows, where the column is one */
-void assembler_0_c::cover(register unsigned int col)
+void assembler_0_c::cover(unsigned int col)
 {
   {
     unsigned int l = left[col];
@@ -701,7 +701,7 @@ void assembler_0_c::cover(register unsigned int col)
 
 }
 
-void assembler_0_c::uncover(register unsigned int col) {
+void assembler_0_c::uncover(unsigned int col) {
 
 #if 0
   // the assembly code below is ca 20% faster than the gcc code

@@ -470,7 +470,7 @@ void voxelDrawer_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsi
     unsigned int factor;
     if (puz->probGetResult(probNum) < puz->shapeNumber()) {
 
-      factor = (sqrt(puz->probGetResultShape(probNum)->getDiagonal()) + 0.5)/sqrt(diagonal);
+      factor = (int)((sqrt(puz->probGetResultShape(probNum)->getDiagonal()) + 0.5)/sqrt(diagonal));
     } else
       factor = 1;
 

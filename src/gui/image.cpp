@@ -216,7 +216,7 @@ int image_c::saveToPNG(const char * fname) const {
 void image_c::blit(const image_c * i, int xpos, int ypos) {
   for (unsigned int x = 0; x < i->width; x++)
     for (unsigned int y = 0; y < i->height; y++)
-      if ((x+xpos >= 0) && (x+xpos < width) && (y+ypos >= 0) && (y+ypos < height)) {
+      if (((int)x+xpos >= 0) && ((int)x+xpos < (int)width) && ((int)y+ypos >= 0) && ((int)y+ypos < (int)height)) {
 
         /* get the values of the 2 pixels to blend */
         unsigned char r1 = bitmap[((y+ypos)*width + (x+xpos)) * 4 + 0];

@@ -45,10 +45,10 @@ void gridEditor_c::setPuzzle(puzzle_c * p, unsigned int piecenum) {
   piecenumber = piecenum;
 
   // check if the current z value is in valid regions
-  if ((piecenum < puzzle->shapeNumber()) && (puzzle->getShape(piecenum)->getZ() <= currentZ))
+  if ((piecenum < puzzle->shapeNumber()) && (puzzle->getShape(piecenum)->getZ() <= currentZ)) {
+    bt_assert(puzzle->getShape(piecenum)->getZ() >= 1);
     currentZ = puzzle->getShape(piecenum)->getZ() - 1;
-
-  if (currentZ < 0) currentZ = 0;
+  }
 
   redraw();
 }
