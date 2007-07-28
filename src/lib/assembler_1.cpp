@@ -209,6 +209,10 @@ bool assembler_1_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
  */
 int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int rangeMax) {
 
+  if (hasRange) {
+    fprintf(stderr, "range optimisation used min %i, max %i\n", rangeMin, rangeMax);
+  }
+
   const voxel_c * result = puzzle->probGetResultShape(problem);
 
   /* nodes 1..n are the columns nodes */
@@ -862,6 +866,8 @@ void assembler_1_c::reduce(void) {
   } while (dosth);
 
   col_rem += clumpify();
+
+  fprintf(stderr, "removed %i rows and %i columns\n", row_rem, col_rem);
 }
 
 void assembler_1_c::checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir) {

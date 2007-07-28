@@ -1071,6 +1071,8 @@ void assembler_0_c::reduce(void) {
   delete [] columns;
 
   remCol += clumpify();
+
+  fprintf(stderr, "removed %i rows and %i columns\n", removed, remCol);
 }
 
 assembly_c * assembler_0_c::getAssembly(void) {
