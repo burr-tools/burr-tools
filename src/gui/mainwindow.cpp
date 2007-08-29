@@ -1296,6 +1296,8 @@ void mainWindow_c::cb_3dClick(void) {
             else
               sh->setState(nx, ny, nz, voxel_c::VX_FILLED);
 
+            sh->setColor(nx, ny, nz, colorSelector->getSelection());
+
             View3D->showSingleShape(puzzle, PcSel->getSelection());
             StatPieceInfo(PcSel->getSelection());
             changeShape(PcSel->getSelection());
