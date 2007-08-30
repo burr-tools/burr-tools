@@ -202,6 +202,8 @@ void arcBall_c::click(float x, float y) {
 
 void arcBall_c::clack(float x, float y) {
 
+  if (!mouseDown) return;
+
   mapToSphere(x, y, EnVec);
 
   GLfloat ThisQuat[4];
@@ -219,6 +221,8 @@ void arcBall_c::clack(float x, float y) {
 
 
 void arcBall_c::drag(float x, float y) {
+
+  if (!mouseDown) return;
 
   //Map the point to the sphere
   mapToSphere(x, y, EnVec);

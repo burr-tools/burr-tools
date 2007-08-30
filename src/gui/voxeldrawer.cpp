@@ -1024,7 +1024,9 @@ int voxelDrawer_c::handle(int event) {
   switch(event) {
   case FL_PUSH:
 
-    arcBall->click(Fl::event_x(), Fl::event_y());
+    if (!Fl::event_state(FL_SHIFT | FL_ALT | FL_CTRL))
+      arcBall->click(Fl::event_x(), Fl::event_y());
+
     do_callback();
 
     return 1;
