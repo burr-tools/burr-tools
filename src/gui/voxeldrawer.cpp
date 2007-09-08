@@ -283,7 +283,7 @@ void voxelDrawer_c::drawVoxelSpace() {
 
         glColor4f(0, 0, 0, 1);
 
-        drawCursor(shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ());
+        drawCursor(shapes[piece].shape, shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ());
 
         if (_useLightning) glEnable(GL_LIGHTING);
         glEnable(GL_BLEND);

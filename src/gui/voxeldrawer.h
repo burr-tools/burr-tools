@@ -207,7 +207,7 @@ private:
 
   bool _useLightning;
 
-  virtual void drawCursor(unsigned int sx, unsigned int sy, unsigned int sz) = 0;
+  virtual void drawCursor(const voxel_c * shape, unsigned int sx, unsigned int sy, unsigned int sz) = 0;
 
   virtual void calculateSize(const voxel_c * shape, float * x, float * y, float * z) = 0;
 
