@@ -62,7 +62,7 @@ dist-win32: all
 	$(INSTALL) -m755 src/burrTxt.exe     $(win32dir)/
 	$(INSTALL) -m755 src/gui/burrGui.exe $(win32dir)/
 	$(STRIP) $(win32dir)/*.exe
-	upx      $(win32dir)/*.exe
+	upx --lzma $(win32dir)/*.exe
 	cd $(srcdir) && for FILE in $(dist_doc_DATA); do case $$FILE in \
 	    *.xmpuzzle) $(INSTALL) -m644 $$FILE   $(abs_builddir)/$(win32dir)/examples/ ;; \
 	    *.*)        $(INSTALL) -m644 $$FILE   $(abs_builddir)/$(win32dir)/ ;; \
