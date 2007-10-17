@@ -446,9 +446,9 @@ ChangeSize::ChangeSize(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
   (new LFl_Box("Y", 1, 3, 1, 1))->labelcolor(fl_rgb_color(0, 128, 0));
   (new LFl_Box("Z", 1, 5, 1, 1))->labelcolor(fl_rgb_color(0, 0, 255));
 
-  ConnectX = new LFl_Check_Button("", 6, 1, 1, 1);
-  ConnectY = new LFl_Check_Button("", 6, 3, 1, 1);
-  ConnectZ = new LFl_Check_Button("", 6, 5, 1, 1);
+  ConnectX = new LFl_Check_Button(" ", 6, 1, 1, 1);
+  ConnectY = new LFl_Check_Button(" ", 6, 3, 1, 1);
+  ConnectZ = new LFl_Check_Button(" ", 6, 5, 1, 1);
 
   ConnectX->tooltip(" Link the sizes together so that a change will be done to the other sizes as well ");
   ConnectY->tooltip(" Link the sizes together so that a change will be done to the other sizes as well ");
