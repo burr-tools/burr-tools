@@ -42,7 +42,8 @@ class LFl_Line : public Fl_Box, public layoutable_c {
   }
 };
 
-static void cb_Close_stub(Fl_Widget* o, void* v) { ((statusWindow_c*)v)->hide(); }
+static void cb_Close_stub(Fl_Widget*, void* v) { ((statusWindow_c*)v)->hide(); }
+static void cb_RemoveSelected_stub(Fl_Widget*, void* v) { ((statusWindow_c*)v)->cb_removeSelected(); }
 
 class StatusProgress : public LFl_Double_Window {
 
@@ -79,8 +80,26 @@ class StatusProgress : public LFl_Double_Window {
     }
 };
 
+void statusWindow_c::cb_removeSelected(void) {
 
-statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
+  /* we have to go up from the bottom as otherwise the indixes may shift */
+
+  for (unsigned int s = puz->shapeNumber(); s > 0; s--) {
+
+    for (unsigned int i = 0; i < puz->problemNumber(); i++)
+      if (puz->probContainsShape(i, s))
+        puz->probRemoveAllSolutions(i);
+
+    if (selection[s-1]->value())
+      puz->removeShape(s-1);
+  }
+
+
+  again = true;
+  hide();
+}
+
+statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), again(false) {
 
   StatusProgress *  stp = new StatusProgress;
   stp->show();
@@ -112,6 +131,9 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
     const voxel_c * v = p->getShape(s);
 
     unsigned int col = 0;
+
+    selection.push_back(new LFl_Check_Button(" ", col, s+head));
+    col+=2;
 
     if (v->getName().length())
       snprintf(tmp, 200, "S%i - %s", s+1, v->getName().c_str());
@@ -254,51 +276,66 @@ statusWindow_c::statusWindow_c(const puzzle_c * p) : LFl_Double_Window(true) {
   stp->hide();
   delete stp;
 
-  (new LFl_Box("Shape", 0, 0))->pitch(2);
-  new LFl_Line(1, 0, 1, lines+head, 2);
+  unsigned int col = 1;
 
-  (new LFl_Box("Units", 2, 0, 5))->pitch(2);
-  (new LFl_Box("Normal", 2, 1))->pitch(2);
-  new LFl_Line(3, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Variable", 4, 1))->pitch(2);
-  new LFl_Line(5, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Total", 6, 1))->pitch(2);
-  new LFl_Line(7, 0, 1, lines+head, 2);
+  new LFl_Line(col++, 0, 1, lines+head, 2);
 
-  (new LFl_Box("Identical", 8, 0, 5))->pitch(2);
-  (new LFl_Box("Mirror", 8, 1))->pitch(2);
-  new LFl_Line(9, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Shape", 10, 1))->pitch(2);
-  new LFl_Line(11, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Complete", 12, 1))->pitch(2);
-  new LFl_Line(13, 0, 1, lines+head, 2);
+  (new LFl_Box("Shape", col++, 0))->pitch(2);
+  new LFl_Line(col++, 0, 1, lines+head, 2);
 
-  (new LFl_Box("Connectivity", 14, 0, 5))->pitch(2);
-  (new LFl_Box("Face", 14, 1))->pitch(2);
-  new LFl_Line(15, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Edge", 16, 1))->pitch(2);
-  new LFl_Line(17, 1, 1, lines+head-1, 1);
-  (new LFl_Box("Corner", 18, 1))->pitch(2);
-  new LFl_Line(19, 0, 1, lines+head, 2);
+  (new LFl_Box("Units", col, 0, 5))->pitch(2);
+  (new LFl_Box("Normal", col++, 1))->pitch(2);
+  new LFl_Line(col++, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Variable", col++, 1))->pitch(2);
+  new LFl_Line(col++, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Total", col++, 1))->pitch(2);
+  new LFl_Line(col++, 0, 1, lines+head, 2);
 
-  (new LFl_Box("Holes", 20, 0, 3))->pitch(2);
-  (new LFl_Box("2D", 20, 1))->pitch(2);
-  new LFl_Line(21, 1, 1, lines+head-1, 1);
-  (new LFl_Box("3D", 22, 1))->pitch(2);
+  (new LFl_Box("Identical", col, 0, 5))->pitch(2);
+  (new LFl_Box("Mirror", col++, 1))->pitch(2);
+  new LFl_Line(col++, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Shape", col++, 1))->pitch(2);
+  new LFl_Line(col++, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Complete", col++, 1))->pitch(2);
+  new LFl_Line(col++, 0, 1, lines+head, 2);
 
-  new LFl_Line(23, 0, 1, lines+head, 2);
-  (new LFl_Box("Sym", 24, 0, 1))->pitch(2);
+  (new LFl_Box("Connectivity", col, 0, 5))->pitch(2);
+  (new LFl_Box("Face", col++, 1))->pitch(2);
+  new LFl_Line(col++, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Edge", col++, 1))->pitch(2);
+  new LFl_Line(col++, 1, 1, lines+head-1, 1);
+  (new LFl_Box("Corner", col++, 1))->pitch(2);
+  new LFl_Line(col++, 0, 1, lines+head, 2);
 
-  new LFl_Line(0, 2, 25, 1, 2);
+  (new LFl_Box("Holes", col, 0, 3))->pitch(2);
+  (new LFl_Box("2D", col++, 1))->pitch(2);
+  new LFl_Line(col++, 1, 1, lines+head-1, 1);
+  (new LFl_Box("3D", col++, 1))->pitch(2);
+
+  new LFl_Line(col++, 0, 1, lines+head, 2);
+  (new LFl_Box("Sym", col++, 0, 1))->pitch(2);
+
+  new LFl_Line(0, 2, 27, 1, 2);
+
+  fr->end();
+  fr->setMinimumSize(10, 200);
+  fr->weight(1, 1);
+
+  fr = new layouter_c(0, 1, 1, 1);
+  fr->pitch(7);
+
+  LFl_Button * btn = new LFl_Button("Close", 0, 1);
+  btn->callback(cb_Close_stub, this);
+  btn->weight(1, 0);
+
+  (new LFl_Box(1, 1))->setMinimumSize(5, 0);
+
+  btn = new LFl_Button("Remove selected", 2, 1);
+  btn->callback(cb_RemoveSelected_stub, this);
+  btn->weight(1, 0);
 
   fr->end();
 
-  LFl_Button * btn = new LFl_Button("Close", 0, 1);
-  btn->pitch(7);
-  btn->callback(cb_Close_stub, this);
-
-  fr->setMinimumSize(10, 200);
-  fr->weight(1, 1);
 
   set_modal();
 }

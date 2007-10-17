@@ -20,13 +20,26 @@
 
 #include "Layouter.h"
 
+#include <vector>
+
 class puzzle_c;
 
 class statusWindow_c : public LFl_Double_Window {
 
+  private:
+
+    puzzle_c * puz;
+
+    std::vector<LFl_Check_Button*> selection;
+    bool again;
+
   public:
 
-    statusWindow_c(const puzzle_c * p);
+    statusWindow_c(puzzle_c * p);
+
+    void cb_removeSelected(void);
+
+    bool getAgain(void) { return again; }
 
 };
 

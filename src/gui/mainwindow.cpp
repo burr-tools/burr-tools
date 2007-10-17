@@ -1563,12 +1563,38 @@ void mainWindow_c::cb_GridParameter(void) {
 
 static void cb_StatusWindow_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_StatusWindow(); }
 void mainWindow_c::cb_StatusWindow(void) {
-  statusWindow_c w(puzzle);
-  w.show();
 
-  while (w.visible()) {
-    Fl::wait();
-  }
+  bool again;
+
+  do {
+
+    statusWindow_c w(puzzle);
+    w.show();
+
+    while (w.visible()) {
+      Fl::wait();
+    }
+
+    again = w.getAgain();
+
+    if (again)
+      changed = true;
+
+  } while (again);
+
+  unsigned int current = PcSel->getSelection();
+
+  if (puzzle->shapeNumber() == 0)
+    current = (unsigned int)-1;
+  else
+    while (current >= puzzle->shapeNumber())
+      current--;
+
+  activateShape(current);
+
+  PcSel->setSelection(current);
+
+  updateInterface();
 }
 
 static void cb_Toggle3D_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_Toggle3D(); }
