@@ -320,16 +320,13 @@ void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
   hz += dz;
 }
 
-bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ) const {
+void voxel_c::unionFind(int * tree, char type, bool inverse, voxel_type value, bool outsideZ) const {
 
   /* union find algorithm:
    * 1. put all voxels that matter in an own set
    * 2. unify all sets whose voxels are neighbours
    * 3. check if all voxels are in the same set
    */
-
-  /* allocate enough space for all voxels plus one for the outside */
-  int * tree = new int[voxels+1];
 
   /* initialize tree */
   for (unsigned int i = 0; i < voxels+1; i++)
@@ -341,8 +338,10 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ
   for (unsigned int x = 0; x < sx; x++)
     for (unsigned int y = 0; y < sy; y++)
       for (unsigned int z = 0; z < sz; z++)
-        if ((inverse && (get(x, y, z) != value)) ||
-            (!inverse && (get(x, y, z) == value))) {
+        if (validCoordinate(x, y, z) &&
+
+            ((inverse && (get(x, y, z) != value)) ||
+             (!inverse && (get(x, y, z) == value)))) {
 
           int root1 = getIndex(x, y, z);
           while (tree[root1] >= 0) root1 = tree[root1];
@@ -383,14 +382,28 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ
           }
         }
 
+
+
+}
+
+bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ) const {
+
+  /* allocate enough space for all voxels plus one for the outside */
+  int * tree = new int[voxels+1];
+
+  unionFind(tree, type, inverse, value, outsideZ);
+
   int root = -1;
+
+  bool merge_outside = ((inverse && (value != outside)) || (!inverse && (value == outside)));
 
   /* finally check, if all voxels are in the same set */
   { for (unsigned int x = 0; x < sx; x++)
       for (unsigned int y = 0; y < sy; y++)
         for (unsigned int z = 0; z < sz; z++)
-          if ((inverse && (get(x, y, z) != value)) ||
-              (!inverse && (get(x, y, z) == value))) {
+          if (validCoordinate(x, y, z) &&
+              ((inverse && (get(x, y, z) != value)) ||
+               (!inverse && (get(x, y, z) == value)))) {
             if (root == -1) {
               root = getIndex(x, y, z);
               while (tree[root] >= 0) root = tree[root];
@@ -420,6 +433,34 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ
 
   delete [] tree;
   return true;
+}
+
+void voxel_c::fillHoles(char type) {
+
+  /* allocate enough space for all voxels plus one for the outside */
+  int * tree = new int[voxels+1];
+
+  unionFind(tree, type, true, VX_FILLED, true);
+
+  int root = -1;
+
+  root = tree[voxels];
+  while (tree[root] >= 0) root = tree[root];
+
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++)
+        if (get(x, y, z) != VX_FILLED)  {
+          int root2 = getIndex(x, y, z);
+          while (tree[root2] >= 0) root2 = tree[root2];
+
+          if (root2 != root) {
+            set(x, y, z, VX_FILLED);
+          }
+        }
+
+
+  delete [] tree;
 }
 
 void voxel_c::copy(const voxel_c * orig) {

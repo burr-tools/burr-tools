@@ -39,6 +39,8 @@ class voxel_1_c : public voxel_c {
 
     void scale(unsigned int amount);
     void resizeInclude(int & px, int & py, int & pz);
+
+    virtual bool validCoordinate(int x, int y, int z) const;
 };
 
 #endif

@@ -387,3 +387,9 @@ void voxel_1_c::resizeInclude(int & px, int & py, int & pz) {
   pz += tz;
 }
 
+bool voxel_1_c::validCoordinate(int x, int y, int z) const {
+
+  return true;
+
+}
+

@@ -38,6 +38,8 @@ class voxel_2_c : public voxel_c {
     void initHotspot(void);
 
     void resizeInclude(int & px, int & py, int & pz);
+
+    virtual bool validCoordinate(int x, int y, int z) const;
 };
 
 #endif

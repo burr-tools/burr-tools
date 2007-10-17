@@ -476,6 +476,11 @@ public:
    */
   virtual bool scaleDown(unsigned char by, bool action);
 
+  private:
+  void unionFind(int * tree, char type, bool inverse, voxel_type value, bool outsideZ) const;
+
+  public:
+
   /**
    * checks the voxelspace for connectedness. It is checked
    * if there is no group of voxels, that is disconnected from
@@ -494,6 +499,11 @@ public:
    * for the z-axis by setting outsideZ to false
    */
   bool connected(char type, bool inverse, voxel_type value, bool outsideZ = true) const;
+
+  /**
+   * fills in all empty voxels that are completely surrounded by non empty voxels,
+   */
+  void fillHoles(char type);
 
   /**
    * all possible rotations of one piece can be generated.
@@ -627,6 +637,9 @@ public:
   int getWeight(void) const { return weight; }
   void setWeight(int w) { weight = w; }
   //@}
+
+  virtual bool validCoordinate(int x, int y, int z) const = 0;
+
 };
 
 #endif
