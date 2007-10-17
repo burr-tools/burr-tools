@@ -267,7 +267,7 @@ ToolsButtons::ToolsButtons(int x, int y, int w, int h) : layouter_c(x, y, w, h) 
   (new LFl_Box(0, 6, 1, 1))->setMinimumSize(0, 5);
 
   (new LFl_Box(7, 3, 1, 1))->setMinimumSize(5, 0);
-  new LFlatButton_c(8, 3, 1, 1, "Fill Holes", "", cb_ToolsButtons_stub, 30);
+  new LFlatButton_c(8, 3, 1, 1, "Fill Holes", "", cb_ToolsButtons_stub, 40);
 
   end();
 }
@@ -674,7 +674,7 @@ void ToolTab_0::cb_transform(long task) {
                    space->translate(fx/2 - space->boundX1(), fy/2 - space->boundY1(), fz/2 - space->boundZ1(), 0);
                  }
                  break;
-        case 30: space->fillHoles(0); break;
+        case 40: space->fillHoles(0); break;
       }
       space->initHotspot();
     }
@@ -842,6 +842,7 @@ void ToolTab_1::cb_transform(long task) {
                    space->translate(fx/2 - space->boundX1(), fy/2 - space->boundY1(), fz/2 - space->boundZ1(), 0);
                  }
                  break;
+        case 40: space->fillHoles(0); break;
       }
       space->initHotspot();
     }
@@ -1008,6 +1009,7 @@ void ToolTab_2::cb_transform(long task) {
                    space->translate(fx/2 - space->boundX1(), fy/2 - space->boundY1(), fz/2 - space->boundZ1(), 0);
                  }
                  break;
+        case 40: space->fillHoles(0); break;
       }
       space->initHotspot();
     }

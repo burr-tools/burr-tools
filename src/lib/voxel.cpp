@@ -450,7 +450,8 @@ void voxel_c::fillHoles(char type) {
   for (unsigned int x = 0; x < sx; x++)
     for (unsigned int y = 0; y < sy; y++)
       for (unsigned int z = 0; z < sz; z++)
-        if (get(x, y, z) != VX_FILLED)  {
+        if (validCoordinate(x, y, z) &&
+	    get(x, y, z) != VX_FILLED)  {
           int root2 = getIndex(x, y, z);
           while (tree[root2] >= 0) root2 = tree[root2];
 
