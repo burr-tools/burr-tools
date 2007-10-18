@@ -230,7 +230,7 @@ configuration_c::~configuration_c(void) {
   }
 }
 
-static void cb_ConfigDialog_stub(Fl_Widget* o, void* v) { ((Fl_Double_Window*)v)->hide(); }
+static void cb_ConfigDialog_stub(Fl_Widget* /*o*/, void* v) { ((Fl_Double_Window*)v)->hide(); }
 
 void configuration_c::dialog(void) {
 

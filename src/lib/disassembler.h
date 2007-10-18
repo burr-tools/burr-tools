@@ -41,7 +41,7 @@ public:
    * you need to take care of freeing the disassembly sequence after
    * doing with it whatever you want
    */
-  virtual separation_c * disassemble(const assembly_c * assembly) { return 0; }
+  virtual separation_c * disassemble(const assembly_c * /*assembly*/) { return 0; }
 
 };
 

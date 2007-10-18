@@ -738,7 +738,7 @@ void voxelDrawer_1_c::drawVariableMarkers(const voxel_c * space, int x, int y, i
   glPopName();
 }
 
-void voxelDrawer_1_c::drawCursor(const voxel_c * space, unsigned int sx, unsigned int sy, unsigned int sz) {
+void voxelDrawer_1_c::drawCursor(const voxel_c * /*space*/, unsigned int sx, unsigned int sy, unsigned int sz) {
   // draw the cursor, this is done by iterating over all
   // cubes and checking for the 3 directions (in one direction only as the other
   // direction is done with the next cube), if there is a border in the cursor
@@ -788,7 +788,7 @@ void voxelDrawer_1_c::calculateSize(const voxel_c * shape, float * x, float * y,
   *z = shape->getZ();
 }
 
-void voxelDrawer_1_c::recalcSpaceCoordinates(float * x, float * y, float * z) {
+void voxelDrawer_1_c::recalcSpaceCoordinates(float * x, float * y, float * /*z*/) {
   *x = *x * 0.5;
   *y = *y * HEIGHT;
 }

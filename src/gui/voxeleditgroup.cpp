@@ -75,7 +75,7 @@ class LineSpacer : Fl_Widget {
 };
 
 static void cb_VoxelEditGroupZselect_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup_c*)v)->cb_Zselect((Fl_Slider*)o); }
-static void cb_VoxelEditGroupSqedit_stub(Fl_Widget* o, void* v) { ((VoxelEditGroup_c*)v)->cb_Sqedit((gridEditor_c*)o); }
+static void cb_VoxelEditGroupSqedit_stub(Fl_Widget* /*o*/, void* v) { ((VoxelEditGroup_c*)v)->cb_Sqedit(); }
 
 VoxelEditGroup_c::VoxelEditGroup_c(int x, int y, int w, int h, puzzle_c * puzzle, const guiGridType_c * ggt) : Fl_Group(0, 0, 300, 300), layoutable_c(x, y, w, h) {
 

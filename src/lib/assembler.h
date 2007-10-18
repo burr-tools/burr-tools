@@ -88,7 +88,7 @@ public:
    * when keep mirror is true, the assembler must not throw away mirror solutions
    * but it still removes solutions that are rotations.
    */
-  virtual errState createMatrix(const puzzle_c * puz, unsigned int problemNum, bool keepMirror) { return ERR_NONE; }
+  virtual errState createMatrix(const puzzle_c * /*puz*/, unsigned int /*problemNum*/, bool /*keepMirror*/) { return ERR_NONE; }
 
   /* after the constructor call check this function. It return 0 if everything is
    * OK, or a pointer to a string, that you should display providing a message
@@ -120,7 +120,7 @@ public:
    * call stop to make the assembly thread stop working. It will then return
    * from this function but can be resumed any time
    */
-  virtual void assemble(assembler_cb * callback) {}
+  virtual void assemble(assembler_cb * /*callback*/) {}
 
   /* this function returns a number reflecting the complexity of the
    * puzzle. This could be the number of placements tried, or
@@ -146,7 +146,7 @@ public:
    * the function should only be called when assembly is not running it should be
    * called before calling assemble
    */
-  virtual errState setPosition(const char * string, const char * version) { return ERR_CAN_NOT_RESTORE_VERSION; }
+  virtual errState setPosition(const char * /*string*/, const char * /*version*/) { return ERR_CAN_NOT_RESTORE_VERSION; }
 
   /* this function saves the current state of the assembler into an xml node to
    * write it to an file
@@ -163,20 +163,21 @@ public:
   virtual bool getPiecePlacementSupported(void) { return false; }
 
   /* return the number of placements for a given _PIECE_ not the shape */
-  virtual unsigned int getPiecePlacementCount(unsigned int piece) { return 0; }
+  virtual unsigned int getPiecePlacementCount(unsigned int /*piece*/) { return 0; }
 
   /* returns the placement of a piece (orientation, and position). Node gives a current position
    * inside some internal data structure, the new position is returned as return value, for initialisation
    * give 0 as node. Delta is the number of placements you want to go back of forward. So
    * node = getPiecePlacement(0, 10, ...) returns the 11-th placement of the given piece (1st plus 10 forward)
    */
-  virtual unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) { return 0; }
+  virtual unsigned int getPiecePlacement(unsigned int /*node*/, int /*delta*/,
+      unsigned int /*piece*/, unsigned char * /*ran*/, int * /*x*/, int * /*y*/, int * /*z*/) { return 0; }
 
 
   /* finally some debugging functions that allow to look how, why, and where pieces are placed */
 
   /* do exactly the given number of rounds in the assembler, and then stop */
-  virtual void debug_step(unsigned long num = 1) {};
+  virtual void debug_step(unsigned long /*num*/) {};
 
   /* returns the assembly for the current state of the assembler or the solution assembly, if
    * the assembler is currently at a solution

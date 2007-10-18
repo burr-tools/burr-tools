@@ -18,7 +18,7 @@
 #include "assemblerfrontend_1.h"
 
 /* helper function to check if a piece an go at a position */
-bool assemblerFrontend_1_c::pieceFits(int x, int y, int z) const {
+bool assemblerFrontend_1_c::pieceFits(int x, int y, int /*z*/) const {
 
   // the shape doesn't fit, when the lower left corner doesn't have the right parity
   if ((x+y) & 1) return false;

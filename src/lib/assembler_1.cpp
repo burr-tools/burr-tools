@@ -947,7 +947,7 @@ bool assembler_1_c::open_column_conditions_fulfillable(void) {
 }
 
 
-static bool betterParams(int n_sum, int n_min, int n_max, int o_sum, int o_min, int o_max) {
+static bool betterParams(int n_sum, int /*n_min*/, int n_max, int o_sum, int /*o_min*/, int o_max) {
 
   // we need to find that column that
   // will result in the fewest number of possibilities fo
@@ -1728,7 +1728,7 @@ static int stringToVector(const char * string, std::vector<unsigned int> & v) {
   return pos;
 }
 
-assembler_c::errState assembler_1_c::setPosition(const char * string, const char * version) {
+assembler_c::errState assembler_1_c::setPosition(const char * string, const char * /* version*/) {
 
   unsigned int len = strlen(string);
 
@@ -1872,14 +1872,14 @@ unsigned int assembler_1_c::getPiecePlacementCount(unsigned int piece) {
 
 void assembler_1_c::debug_step(unsigned long num) {
   debug = true;
-  debug_loops = 1;
+  debug_loops = num;
   abbort = false;
   asm_bc = 0;
   iterative();
   debug = false;
 }
 
-bool assembler_1_c::canHandle(const puzzle_c * p, unsigned int problem) {
+bool assembler_1_c::canHandle(const puzzle_c *, unsigned int /*problem*/) {
 
   // right now there are no limits
 

@@ -21,8 +21,8 @@
 
 #include <FL/Fl_Multiline_Input.H>
 
-static void cb_mlWindowClose(Fl_Widget* o, void * v) { ((multiLineWindow_c*)v)->hide(true); }
-static void cb_mlWindowAbort(Fl_Widget* o, void * v) { ((multiLineWindow_c*)v)->hide(false); }
+static void cb_mlWindowClose(Fl_Widget* /*o*/, void * v) { ((multiLineWindow_c*)v)->hide(true); }
+static void cb_mlWindowAbort(Fl_Widget* /*o*/, void * v) { ((multiLineWindow_c*)v)->hide(false); }
 
 #define SZ_MLWIN_X 400
 #define SZ_MLWIN_Y 200

@@ -158,7 +158,7 @@ bool ImageInfo::getPreviewImage(void) {
 }
 
 /* start a new image */
-void ImageInfo::generateImage(unsigned int w, unsigned int h, unsigned char aa) {
+void ImageInfo::generateImage(unsigned int /*w*/, unsigned int h, unsigned char aa) {
   if (i2)
     delete i2;
   i2 = new image_c ((h*3)*aa, h*aa);
@@ -191,7 +191,7 @@ image_c * ImageInfo::getImage(void) {
 
 
 
-static void cb_ImageExportAbort_stub(Fl_Widget* o, void* v) { ((imageExport_c*)(v))->cb_Abort(); }
+static void cb_ImageExportAbort_stub(Fl_Widget* /*o*/, void* v) { ((imageExport_c*)(v))->cb_Abort(); }
 void imageExport_c::cb_Abort(void) {
   hide();
 }
@@ -393,7 +393,7 @@ void imageExport_c::PostDraw(void) {
 }
 
 
-static void cb_ImageExportExport_stub(Fl_Widget* o, void* v) { ((imageExport_c*)(v))->cb_Export(); }
+static void cb_ImageExportExport_stub(Fl_Widget* /*o*/, void* v) { ((imageExport_c*)(v))->cb_Export(); }
 void imageExport_c::cb_Export(void) {
 
   /* this vector contains all the information of all images that need to appear in the output */
@@ -468,7 +468,7 @@ void imageExport_c::cb_Export(void) {
   view3D->getView()->setCallback(this);
 }
 
-static void cb_ImageExport3DUpdate_stub(Fl_Widget* o, void* v) { ((imageExport_c*)(v))->cb_Update3DView(); }
+static void cb_ImageExport3DUpdate_stub(Fl_Widget* /*o*/, void* v) { ((imageExport_c*)(v))->cb_Update3DView(); }
 void imageExport_c::cb_Update3DView(void) {
 
   bool assemblies = false;
@@ -525,7 +525,7 @@ void imageExport_c::cb_Update3DView(void) {
   view3D->showColors(puzzle, getColorMode());
 }
 
-static void cb_ImageExportSzUpdate_stub(Fl_Widget *o, void *v) { ((imageExport_c*)(v))->cb_SzUpdate(); }
+static void cb_ImageExportSzUpdate_stub(Fl_Widget * /*o*/, void *v) { ((imageExport_c*)(v))->cb_SzUpdate(); }
 void imageExport_c::cb_SzUpdate(void) {
 
   if (SzA4Land->value()) {

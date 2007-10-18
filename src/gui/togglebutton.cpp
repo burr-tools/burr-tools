@@ -18,7 +18,7 @@
 
 #include "togglebutton.h"
 
-static void cb_LToggleButton_stub(Fl_Widget* o, void* v) { ((LToggleButton_c*)o)->toggle(); }
+static void cb_LToggleButton_stub(Fl_Widget* o, void* /*v*/) { ((LToggleButton_c*)o)->toggle(); }
 
 LToggleButton_c::LToggleButton_c(int x, int y, int w, int h, Fl_Callback* cb, void * cb_para, long p) : Fl_Button(0, 0, 10, 10), layoutable_c(x, y, w, h) {
   callback = cb;

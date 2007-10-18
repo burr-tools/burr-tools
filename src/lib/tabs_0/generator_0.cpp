@@ -245,7 +245,7 @@ void multTranformationsMatrix(void) {
           fprintf(out, "TND,");
         else
           fprintf(out, "TND");
-        transMult[tr1][tr2] = -1;
+        transMult[tr1][tr2] = (unsigned int)-1;
       }
 
     }
@@ -257,7 +257,7 @@ void multTranformationsMatrix(void) {
   fclose(out);
 }
 
-int main(int argv, char* args[]) {
+int main(int /*argv*/, char* /*args[]*/) {
 
   multTranformationsMatrix();
   outputMinimumSymmetries();

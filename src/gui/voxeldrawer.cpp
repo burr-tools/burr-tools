@@ -374,7 +374,7 @@ void voxelDrawer_c::setSpaceColor(unsigned int nr, float a) {
   updateRequired();
 }
 
-void voxelDrawer_c::recalcSpaceCoordinates(float * x, float * y, float * z) {}
+void voxelDrawer_c::recalcSpaceCoordinates(float * /*x*/, float * /*y*/, float * /*z*/) {}
 
 void voxelDrawer_c::setSpacePosition(unsigned int nr, float x, float y, float z, float scale) {
 

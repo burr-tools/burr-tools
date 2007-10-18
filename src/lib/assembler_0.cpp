@@ -271,7 +271,7 @@ bool assembler_0_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
  * negative result show there is something wrong: the place -result has not
  * possible position inside the result
  */
-int assembler_0_c::prepare(int res_filled, int res_vari) {
+int assembler_0_c::prepare(void) {
 
   const voxel_c * result = puzzle->probGetResultShape(problem);
 
@@ -594,7 +594,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   columns = new unsigned int [piecenumber];
 
   /* fill the nodes arrays */
-  int error = prepare(res_filled, res_vari);
+  int error = prepare();
 
   // check, if there is one piece not placeable
   if (error <= 0) {
@@ -856,7 +856,7 @@ void assembler_0_c::reinsert_row(register unsigned int r) {
   } while (j != r);
 }
 
-bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
+bool assembler_0_c::checkmatrix(void) {
 
   /* check the number of holes, if they are larger than allowed return */
   unsigned int count = holes;
@@ -866,52 +866,6 @@ bool assembler_0_c::checkmatrix(unsigned int rec, unsigned int branch) {
         return true;
       count--;
     }
-
-#if 0
-  unsigned int col = right[0];
-
-  while (col) {
-    /* if there is a column that can not be covered
-     * any longer, the whole problem can't be solved
-     */
-    if (colCount[col] == 0)
-      return true;
-
-    /* if one column must be covered in less than branch
-     * level, check all these possibilities
-     */
-    if (rec && (colCount[col] <= branch)) {
-
-      cover(col);
-
-      unsigned int r = down[col];
-
-      while (r != col) {
-
-        if (!try_cover_row(r)) {
-
-          uncover(col);
-          return true;
-
-        }
-
-        bool ret = checkmatrix(rec - 1, branch);
-        uncover_row(r);
-
-        if (ret) {
-          uncover(col);
-          return true;
-        }
-
-        r = down[r];
-      }
-
-      uncover(col);
-    }
-
-    col = right[col];
-  }
-#endif
 
   return false;
 }
@@ -1005,7 +959,7 @@ void assembler_0_c::reduce(void) {
         } else {
 
           /* and check if that results in a dead end */
-          if (checkmatrix(0, 0))
+          if (checkmatrix())
             rowsToRemove.push_back(r);
 
           uncover_row(r);
@@ -1504,7 +1458,7 @@ unsigned int assembler_0_c::getPiecePlacementCount(unsigned int piece) {
 
 void assembler_0_c::debug_step(unsigned long num) {
   debug = true;
-  debug_loops = 1;
+  debug_loops = num;
   asm_bc = 0;
   iterativeMultiSearch();
 }

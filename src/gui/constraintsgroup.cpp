@@ -19,7 +19,7 @@
 
 #include "BlockList.h"
 
-static void cb_ConstraintsGroupList_stub(Fl_Widget* o, void* v) { ((LConstraintsGroup_c*)(o->parent()))->cb_list(); }
+static void cb_ConstraintsGroupList_stub(Fl_Widget* o, void* /*v*/) { ((LConstraintsGroup_c*)(o->parent()))->cb_list(); }
 void LConstraintsGroup_c::cb_list(void) {
 
   if (List->getReason() == ColorConstraintsEdit::RS_CHANGEDHIGHT) {
@@ -36,7 +36,7 @@ void LConstraintsGroup_c::cb_list(void) {
   }
 }
 
-static void cb_ConstraintsGroupSlider_stub(Fl_Widget* o, void* v) { ((LConstraintsGroup_c*)(o->parent()))->cb_slider(); }
+static void cb_ConstraintsGroupSlider_stub(Fl_Widget* o, void* /*v*/) { ((LConstraintsGroup_c*)(o->parent()))->cb_slider(); }
 void LConstraintsGroup_c::cb_slider(void) { List->setShift((int)Slider->value()); }
 
 

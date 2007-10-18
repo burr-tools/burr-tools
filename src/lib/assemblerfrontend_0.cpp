@@ -18,7 +18,7 @@
 #include "assemblerfrontend_0.h"
 
 /* helper function to check if a piece an go at a position */
-bool assemblerFrontend_0_c::pieceFits(int x, int y, int z) const {
+bool assemblerFrontend_0_c::pieceFits(int /*x*/, int /*y*/, int /*z*/) const {
 
   return true;
 }

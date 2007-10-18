@@ -28,13 +28,13 @@
 #include <FL/Fl.H>
 #include <FL/fl_ask.H>
 
-static void cb_stlExportAbort_stub(Fl_Widget* o, void* v) { ((stlExport_c*)(v))->cb_Abort(); }
+static void cb_stlExportAbort_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Abort(); }
 
 void stlExport_c::cb_Abort(void) {
   hide();
 }
 
-static void cb_stlExportExport_stub(Fl_Widget* o, void* v) { ((stlExport_c*)(v))->cb_Export(); }
+static void cb_stlExportExport_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Export(); }
 
 void stlExport_c::cb_Export(void) {
 
@@ -42,7 +42,7 @@ void stlExport_c::cb_Export(void) {
 
 }
 
-static void cb_stlExport3DUpdate_stub(Fl_Widget* o, void* v) { ((stlExport_c*)(v))->cb_Update3DView(); }
+static void cb_stlExport3DUpdate_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Update3DView(); }
 void stlExport_c::cb_Update3DView(void) {
 
   view3D->showSingleShape(puzzle, ShapeSelect->getSelection());

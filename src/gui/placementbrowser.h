@@ -45,7 +45,7 @@ public:
 
   int handle(int event);
 
-  void cb_piece(Fl_Value_Slider* o);
+  void cb_piece(void);
   void cb_placement(Fl_Value_Slider* o);
 
 };

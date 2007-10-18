@@ -53,7 +53,7 @@ public:
   void setZ(unsigned int val);
   int getZ(void) { return sqedit->getZ(); }
 
-  void cb_Sqedit(gridEditor_c* o) { do_callback(this, user_data()); }
+  void cb_Sqedit(void) { do_callback(this, user_data()); }
 
   int getReason(void) { return sqedit->getReason(); }
 

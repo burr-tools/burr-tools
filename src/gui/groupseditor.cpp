@@ -363,17 +363,17 @@ void groupsEditorTab_c::finishEdit(void) {
   }
 }
 
-static void cb_AddGroup_stub(Fl_Widget* o, void* v) { ((groupsEditor_c*)v)->cb_AddGroup(); }
+static void cb_AddGroup_stub(Fl_Widget* /*o*/, void* v) { ((groupsEditor_c*)v)->cb_AddGroup(); }
 void groupsEditor_c::cb_AddGroup(void) {
   tab->addGroup();
 }
 
-static void cb_CloseWindow_stub(Fl_Widget* o, void* v) { ((groupsEditor_c*)v)->cb_CloseWindow(); }
+static void cb_CloseWindow_stub(Fl_Widget* /*o*/, void* v) { ((groupsEditor_c*)v)->cb_CloseWindow(); }
 void groupsEditor_c::cb_CloseWindow(void) {
   hide();
 }
 
-static void cb_UpdateInterface_stub(Fl_Widget* o, void *v) { ((groupsEditor_c*)v)->cb_UpdateInterface(); }
+static void cb_UpdateInterface_stub(Fl_Widget* /*o*/, void *v) { ((groupsEditor_c*)v)->cb_UpdateInterface(); }
 void groupsEditor_c::cb_UpdateInterface(void) {
 
   if (tab->callback_context() != groupsEditorTab_c::CONTEXT_NONE) {
@@ -396,7 +396,7 @@ void groupsEditor_c::cb_UpdateInterface(void) {
     maxHoles->deactivate();
 }
 
-static void cb_MaxHoles_stub(Fl_Widget* o, void* v) { ((groupsEditor_c*)v)->cb_MaxHoles(); }
+static void cb_MaxHoles_stub(Fl_Widget* /*o*/, void* v) { ((groupsEditor_c*)v)->cb_MaxHoles(); }
 void groupsEditor_c::cb_MaxHoles(void) {
 
   if (maxHoles->value()[0])

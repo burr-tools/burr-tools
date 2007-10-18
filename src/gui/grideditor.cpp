@@ -73,7 +73,7 @@ bool gridEditor_c::setRecursive(unsigned char tools, int x, int y, int z) {
 
     // but first we check, if the current coordinates are valid
     // if not don't change anything
-    if (validCoordinates(x, y, z)) {
+    if (space->validCoordinate(x, y, z)) {
 
       voxel_type v = voxel_c::VX_EMPTY;
 
@@ -497,9 +497,5 @@ bool gridEditor_c::inRegion(int x, int y, int x1, int x2, int y1, int y2, int sx
       inRegion(x, sy-y-1, x1, x2, y1, y2, sx, sy, mode & ~gridEditor_c::TOOL_MIRROR_Y);
 
   return false;
-}
-
-bool gridEditor_c::validCoordinates(int x, int y, int z) {
-  return true;
 }
 

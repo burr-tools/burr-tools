@@ -312,7 +312,7 @@ static void draw_wire_sphere(void) {
 }
 
 // draws a wire frame box depending on the neighbours
-void voxelDrawer_2_c::drawFrame(const voxel_c * space, int x, int y, int z, float edge) {
+void voxelDrawer_2_c::drawFrame(const voxel_c * /*space*/, int x, int y, int z, float /*edge*/) {
 
   if (((x+y+z) & 1) != 0) return;
 
@@ -332,7 +332,7 @@ void voxelDrawer_2_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 }
 
 // draws a box with borders depending on the neighbour boxes
-void voxelDrawer_2_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge) {
+void voxelDrawer_2_c::drawNormalVoxel(const voxel_c * /*space*/, int x, int y, int z, float /*alpha*/, float /*edge*/) {
 
   glPushName(12);
 
@@ -356,7 +356,7 @@ void voxelDrawer_2_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
 }
 
 // draw a cube that is smaller than 1
-void voxelDrawer_2_c::drawVariableMarkers(const voxel_c * space, int x, int y, int z) {
+void voxelDrawer_2_c::drawVariableMarkers(const voxel_c * /*space*/, int x, int y, int z) {
 
   glPushName(12);
 
@@ -379,7 +379,7 @@ void voxelDrawer_2_c::drawVariableMarkers(const voxel_c * space, int x, int y, i
   glPopMatrix();
 }
 
-void voxelDrawer_2_c::drawCursor(const voxel_c * space, unsigned int sx, unsigned int sy, unsigned int sz) {
+void voxelDrawer_2_c::drawCursor(const voxel_c * /*space*/, unsigned int sx, unsigned int sy, unsigned int sz) {
   // draw the cursor, this is done by iterating over all
   // cubes and checking for the 3 directions (in one direction only as the other
   // direction is done with the next cube), if there is a border in the cursor

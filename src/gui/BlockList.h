@@ -50,26 +50,26 @@ protected:
   /**
    * real block lists return the number of blocks with this function
    */
-  unsigned int virtual blockNumber(void) = 0;
+  virtual unsigned int blockNumber(void) = 0;
 
   /**
    * the inherited classes need to draw block number block at the given position
    */
-  void virtual blockDraw(unsigned int block, int x, int y) = 0;
+  virtual void blockDraw(unsigned int block, int x, int y) = 0;
 
   /**
    * the inherited classes need to return the size of the block with the given
    * number in the w and h variables
    */
-  void virtual blockSize(unsigned int block, unsigned int *w, unsigned int *h) = 0;
+  virtual void blockSize(unsigned int block, unsigned int *w, unsigned int *h) = 0;
 
   /**
    * these are functions that can be filled with actions, when the given block is
    * clicked or whatever
    */
-  virtual void push(unsigned int block) {};
-  virtual void release(unsigned int block) {};
-  virtual void drag(unsigned int block, int dx, int dy) {};
+  virtual void push(unsigned int /*block*/) {};
+  virtual void release(unsigned int /*block*/) {};
+  virtual void drag(unsigned int /*block*/, int /*dx*/, int /*dy*/) {};
 
   void do_callback(int reason) {
     callbackReason = reason;
@@ -174,12 +174,12 @@ public:
   SelectableTextList(int x, int y, int w, int h) : SelectableList(x, y, w, h) { }
 
   /* return the colour for the block */
-  void virtual getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) = 0;
+  virtual void getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) = 0;
 
   /* return the text for the block (not more than 20 characters */
-  void virtual getText(unsigned int block, char * text) = 0;
-  void virtual blockDraw(unsigned int block, int x, int y);
-  void virtual blockSize(unsigned int block, unsigned int *w, unsigned int *h);
+  virtual void getText(unsigned int block, char * text) = 0;
+  virtual void blockDraw(unsigned int block, int x, int y);
+  virtual void blockSize(unsigned int block, unsigned int *w, unsigned int *h);
 };
 
 /**
@@ -194,12 +194,12 @@ public:
   TextList(int x, int y, int w, int h) : BlockList(x, y, w, h) { }
 
   /* return the colour for the block */
-  void virtual getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) = 0;
+  virtual void getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) = 0;
 
   /* return the text for the block (not more than 20 characters */
-  void virtual getText(unsigned int block, char * text) = 0;
-  void virtual blockDraw(unsigned int block, int x, int y);
-  void virtual blockSize(unsigned int block, unsigned int *w, unsigned int *h);
+  virtual void getText(unsigned int block, char * text) = 0;
+  virtual void blockDraw(unsigned int block, int x, int y);
+  virtual void blockSize(unsigned int block, unsigned int *w, unsigned int *h);
 };
 
 /**
@@ -219,13 +219,13 @@ public:
 
   void setPuzzle(puzzle_c *pz);
 
-  unsigned int virtual blockNumber(void);
+  virtual unsigned int blockNumber(void);
 
   /* return the colour for the block */
-  void virtual getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
+  virtual void getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
 
   /* return the text for the block (not more than 20 characters */
-  void virtual getText(unsigned int block, char * text);
+  virtual void getText(unsigned int block, char * text);
 };
 
 /**
@@ -247,9 +247,9 @@ public:
   PieceSelector(int x, int y, int w, int h, puzzle_c * p) : SelectableTextList(x, y, w, h), puzzle(p) { bt_assert(p); }
 
   void setPuzzle(puzzle_c *pz);
-  unsigned int virtual blockNumber(void);
-  void virtual getText(unsigned int block, char * text);
-  void virtual getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
+  virtual unsigned int blockNumber(void);
+  virtual void getText(unsigned int block, char * text);
+  virtual void getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
 };
 
 /**
@@ -269,9 +269,9 @@ public:
   { bt_assert(p); }
 
   void setPuzzle(puzzle_c *pz);
-  unsigned int virtual blockNumber(void);
-  void virtual getText(unsigned int block, char * text);
-  void virtual getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
+  virtual unsigned int blockNumber(void);
+  virtual void getText(unsigned int block, char * text);
+  virtual void getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
 };
 
 /**
@@ -297,9 +297,9 @@ public:
   PiecesList(int x, int y, int w, int h, puzzle_c * p) : TextList(x, y, w, h), puzzle(p), problem(0) { bt_assert(p); }
 
   void setPuzzle(puzzle_c *pz, unsigned int prob);
-  unsigned int virtual blockNumber(void);
-  void virtual getText(unsigned int block, char * text);
-  void virtual getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
+  virtual unsigned int blockNumber(void);
+  virtual void getText(unsigned int block, char * text);
+  virtual void getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
 
   virtual void push(unsigned int block) {
     clicked = block;
@@ -347,9 +347,9 @@ public:
 
   void setPuzzle(puzzle_c *pz, unsigned int prob);
   void setAssembly(assembly_c * assm);
-  unsigned int virtual blockNumber(void);
-  void virtual blockDraw(unsigned int block, int x, int y);
-  void virtual blockSize(unsigned int block, unsigned int *w, unsigned int *h);
+  virtual unsigned int blockNumber(void);
+  virtual void blockDraw(unsigned int block, int x, int y);
+  virtual void blockSize(unsigned int block, unsigned int *w, unsigned int *h);
 
   virtual void push(unsigned int block);
 

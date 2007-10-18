@@ -62,7 +62,7 @@ class gridTypeInfos_c {
     gridTypeInfos_c(gridType_c * g) : gt(g), ggt(new guiGridType_c(g)) {}
 };
 
-static void cb_WindowButton_stub(Fl_Widget *o, void *v) { ((Fl_Double_Window*)(v))->hide(); }
+static void cb_WindowButton_stub(Fl_Widget * /*o*/, void *v) { ((Fl_Double_Window*)(v))->hide(); }
 
 gridTypeParameterWindow_c::gridTypeParameterWindow_c(guiGridType_c * ggt) : LFl_Double_Window(false) {
   label("Set parameters for grid type");
@@ -74,7 +74,7 @@ gridTypeParameterWindow_c::gridTypeParameterWindow_c(guiGridType_c * ggt) : LFl_
   b->callback(cb_WindowButton_stub, this);
 }
 
-static void cb_gridTypeSelectorSelect_stub(Fl_Widget *o, void *v) { ((gridTypeSelectorWindow_c*)(v))->select_cb(); }
+static void cb_gridTypeSelectorSelect_stub(Fl_Widget * /*o*/, void *v) { ((gridTypeSelectorWindow_c*)(v))->select_cb(); }
 void gridTypeSelectorWindow_c::select_cb(void) {
   for (unsigned int i = 0; i < gti.size(); i++) {
     if (gti[i]->btn->value()) {

@@ -267,11 +267,11 @@ void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel
   recalcBoundingBox();
 }
 
-void voxel_c::scale(unsigned int amount) {
+void voxel_c::scale(unsigned int /*amount*/) {
   // do nothing by default
 }
 
-bool voxel_c::scaleDown(unsigned char by, bool action) {
+bool voxel_c::scaleDown(unsigned char /*by*/, bool /*action*/) {
   return false;
 }
 

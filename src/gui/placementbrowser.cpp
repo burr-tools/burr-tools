@@ -25,11 +25,11 @@
 
 #include "view3dgroup.h"
 
-static void cb_close_stub(Fl_Widget* o, void* v) { ((placementBrowser_c*)v)->hide(); }
-static void cb_piece_stub(Fl_Widget* o, void* v) { ((placementBrowser_c*)v)->cb_piece((Fl_Value_Slider*)o); }
+static void cb_close_stub(Fl_Widget* /*o*/, void* v) { ((placementBrowser_c*)v)->hide(); }
+static void cb_piece_stub(Fl_Widget* /*o*/, void* v) { ((placementBrowser_c*)v)->cb_piece(); }
 static void cb_placement_stub(Fl_Widget* o, void* v) { ((placementBrowser_c*)v)->cb_placement((Fl_Value_Slider*)o); }
 
-void placementBrowser_c::cb_piece(Fl_Value_Slider* o) {
+void placementBrowser_c::cb_piece(void) {
 
   placementSelector->value(0);
 
@@ -110,7 +110,7 @@ placementBrowser_c::placementBrowser_c(puzzle_c * p, unsigned int prob, const gu
 	       "The displayed placements may not be what you expect\n"
 	       "Read the documentation");
 
-  cb_piece(0);
+  cb_piece();
 
   set_modal();
 }

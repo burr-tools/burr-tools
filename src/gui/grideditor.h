@@ -185,14 +185,6 @@ public:
   virtual void drawTileColor(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;
   virtual void drawTileCursor(int x, int y, int z, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy) = 0;
 
-  /* this function returns true, when the given coordinates are valid
-   * some voxelspace have coordinates that must not be changed, so
-   * you simply return false for them the the class will not touch them
-   *
-   * the default implementation always returns true
-   */
-  virtual bool validCoordinates(int x, int y, int z);
-
 private:
 
   bool setRecursive(unsigned char tools, int x, int y, int z);

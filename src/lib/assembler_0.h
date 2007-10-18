@@ -157,34 +157,12 @@ private:
    *
    * return error codes
    */
-  virtual int prepare(int res_filles, int res_vari);
+  int prepare(void);
 
   /* used by reduce to find out if the given position is a dead end
    * and will always lead to non solvable positions
-   *
-   * you have 2 parameters to control how thorough the process is carried out
-   * here we have the following idea. If after placing one piece there is a
-   * forced move somewhere (e.g. one piece can now be placed only in one
-   * place, we could continue placing this piece and check if after that
-   * we went into a cul-de-sac. rec gives the number of pieces that are placed
-   * maximally until we assume that it's not a dead end.
-   *
-   * the second value specifies the branch level, meaning: when we placed on piece
-   * and now one other has only very few placements left, we could try all those
-   * and check if all of them lead to dead ends. Branch specifies how many placements
-   * are maximally checked.
-   *
-   * be careful with these values as they may lead to extraordinary long calculation
-   * times if set to high.
-   *
-   * good values are 3-5 for rec and 1 or 2 for branch level.
-   *
-   * it may a complete waste of time for some puzzles to call this function so you
-   * have to decide
-   *
-   * the function returns the accumulated number of placements that were removed
    */
-  bool checkmatrix(unsigned int rec, unsigned int branch);
+  bool checkmatrix(void);
 
   /* internal error state */
   errState errorsState;
