@@ -316,13 +316,6 @@ public:
   unsigned short probGetShapeGroup(unsigned int prob, unsigned int shapeID, unsigned int groupID) const;
   unsigned short probGetShapeGroupCount(unsigned int prob, unsigned int shapeID, unsigned int groupID) const;
 
-  /**
-   * makes each shape appear only once and increase the piece counter for that.
-   * this is necessary for the assembler, as it will find multiple
-   * solutions if this is not the case
-   */
-  void orthogonalize(void);
-
   /* function to ask for the number of holes permitted in the solutions */
   bool probMaxHolesDefined(unsigned int prob) const;
   unsigned int probGetMaxHoles(unsigned int prob) const;

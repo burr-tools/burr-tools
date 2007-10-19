@@ -835,31 +835,6 @@ puzzle_c::~puzzle_c(void) {
   delete gt;
 }
 
-void puzzle_c::orthogonalize(void) {
-  // for the moment a simple version not looking for rotated pieces
-
-/* FIXME
-  int p = 1;
-  bool found;
-
-  while (p < getShapeNumber()) {
-
-    found = 0;
-
-    for (int p2 = 0; p2 < p; p2++)
-      if (*(shapes[p].piece) == *(shapes[p2].piece)) {
-        shapes[p2].count++;
-//        shapes.erase(p);  FIXME
-        found = true;
-        break;
-      }
-
-    if (!found)
-      p++;
-      }
-*/
-}
-
 void puzzle_c::addColor(unsigned char r, unsigned char g, unsigned char b) {
 
   colorDef c;
