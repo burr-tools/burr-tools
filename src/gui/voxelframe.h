@@ -77,182 +77,158 @@ class VoxelViewCallbacks {
  */
 class voxelFrame_c : public Fl_Gl_Window {
 
-private:
+  public:
 
-  voxelDrawer_c * drawer;
+    voxelFrame_c(int x,int y,int w,int h);
+    virtual ~voxelFrame_c(void);
 
-  assembly_c * curAssembly; // the currently shown assembly (if there is one)
+    typedef enum {
+      pieceColor,
+      paletteColor,
+      anaglyphColor
+    } colorMode;
+    void setColorMode(colorMode color);
 
-  /* Draws the voxelspace. */
-  void drawVoxelSpace();
+    typedef enum {
+      normal,          // draw normal cubes with a grate at outer edges
+      gridline,        // draw only the outer edges
+      invisible        // draw nothing
+    } drawingMode;
+    void setDrawingMode(unsigned int nr, drawingMode mode);
 
-public:
+    /* only active in single mode
+     * the marker has 2 parts, a white part that shows the complete z layer
+     * and a black part that is only drawn between the given coordinates
+     * if you don't want the black part make x1 >= x2
+     */
+    void setMarker(int x1, int y1, int x2, int y2, int z, int markerType);
+    void hideMarker(void);
 
-  voxelFrame_c(int x,int y,int w,int h);
-  virtual ~voxelFrame_c(void);
+    void useLightning(bool val) {
+      _useLightning = val;
+      redraw();
+    }
 
-  void drawData(void);
+    void showNothing(void);
+    void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
+    void showColors(const puzzle_c * puz, colorMode mode);
+    void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum);
+    void updatePositions(piecePositions_c *shifting);
+    void dimStaticPieces(piecePositions_c *shifting);
+    void showAssemblerState(const puzzle_c * puz, unsigned int probNum, const assembly_c * assm);
+    void updateVisibility(PieceVisibility * pcvis);
+    void showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape);
+    void showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z);
 
-  unsigned int addSpace(const voxel_c * vx);
-  void clearSpaces(void);
+    // this value determines the scaling factor used to draw the cube.
+    void setSize(double sz);
+    double getSize(void) const { return size; }
 
-  unsigned int spaceNumber(void);
+    void setCallback(VoxelViewCallbacks *c = 0) { cb = c; }
+    bool pickShape(int x, int y, unsigned int *shape, unsigned long *voxel, unsigned int *face);
+    void setDrawer(voxelDrawer_c * dr);
 
-  void setSpaceColor(unsigned int nr, float r, float g, float b, float a);
-  void setSpaceColor(unsigned int nr, float a);
+  private:
 
-  void setSpacePosition(unsigned int nr, float x, float y, float z, float scale);
-  void setSpaceDim(unsigned int nr, bool dim);
+    voxelDrawer_c * drawer;
 
-  typedef enum {
-    normal,          // draw normal cubes with a grate at outer edges
-    gridline,        // draw only the outer edges
-    invisible        // draw nothing
-  } drawingMode;
+    assembly_c * curAssembly; // the currently shown assembly (if there is one)
 
-  typedef enum {
-    pieceColor,
-    paletteColor,
-    anaglyphColor
-  } colorMode;
+    /* Draws the voxelspace. */
+    void drawVoxelSpace();
 
-  void setDrawingMode(unsigned int nr, drawingMode mode);
-  void setColorMode(colorMode color);
+    void drawData(void);
 
-  typedef enum {
-    ScaleRotateTranslate,      // for showing problems
-    TranslateRoateScale,       // for showing pieces
-    CenterTranslateRoateScale  // for showing disassembly
-  } transformationType;
+    unsigned int addSpace(const voxel_c * vx);
+    void clearSpaces(void);
 
-  void setTransformationType(transformationType type);
+    unsigned int spaceNumber(void);
 
-  /* some editing tools */
-  enum {
-    TOOL_MIRROR_X = 1,
-    TOOL_MIRROR_Y = 2,
-    TOOL_MIRROR_Z = 4,
-    TOOL_STACK_X = 8,
-    TOOL_STACK_Y = 16,
-    TOOL_STACK_Z = 32
-  };
+    void setSpaceColor(unsigned int nr, float r, float g, float b, float a);
+    void setSpaceColor(unsigned int nr, float a);
 
-  /* only active in single mode
-   * the marker has 2 parts, a white part that shows the complete z layer
-   * and a black part that is only drawn between the given coordinates
-   * if you don't want the black part make x1 >= x2
-   */
-  void setMarker(int x1, int y1, int x2, int y2, int z, int markerType);
-  void hideMarker(void);
-
-  void showCoordinateSystem(bool show) { _showCoordinateSystem = show; updateRequired(); }
-
-  void setCenter(float x, float y, float z) {
-    centerX = x;
-    centerY = y;
-    centerZ = z;
-    updateRequired();
-  }
-
-  void clearPalette(void) { palette.clear(); }
-  void addPaletteEntry(float r, float g, float b);
-
-  void useLightning(bool val) {
-    _useLightning = val;
-    updateRequired();
-  }
-
-protected:
-
-  typedef struct {
-
-    float r, g, b, a;
-    const voxel_c * shape;
-    drawingMode mode;
-    float x, y, z, scale;
-    bool dim;
-
-  } shapeInfo;
-
-  typedef struct {
-    float r, g, b;
-  } colorInfo;
-
-  std::vector<colorInfo> palette;
-
-  /* the marker position */
-  int mX1, mY1, mZ, mX2, mY2;
-  int markerType;
-
-private:
-
-  arcBall_c * arcBall;
-  bool doUpdates;
-  double size;
-
-  VoxelViewCallbacks * cb;
-
-  std::vector<shapeInfo> shapes;
-
-  transformationType trans;
-  colorMode colors;
-
-  bool _showCoordinateSystem;
-
-  float centerX, centerY, centerZ;
-
-  bool _useLightning;
+    void setSpacePosition(unsigned int nr, float x, float y, float z, float scale);
+    void setSpaceDim(unsigned int nr, bool dim);
 
 
-  /* this matrix is used to change the look of the basic unit */
-  GLfloat transformMatrix[16];
+    typedef enum {
+      ScaleRotateTranslate,      // for showing problems
+      TranslateRoateScale,       // for showing pieces
+      CenterTranslateRoateScale  // for showing disassembly
+    } transformationType;
 
-  // set to true, when the grid type changed and the transformation matrix is not yet updated
-  bool _gtChanged;
+    void setTransformationType(transformationType type);
 
-  // when picking shapes, this is the coordinate to use
-  int pickx, picky;
+    /* some editing tools */
+    enum {
+      TOOL_MIRROR_X = 1,
+      TOOL_MIRROR_Y = 2,
+      TOOL_MIRROR_Z = 4,
+      TOOL_STACK_X = 8,
+      TOOL_STACK_Y = 16,
+      TOOL_STACK_Z = 32
+    };
 
-public:
+    void showCoordinateSystem(bool show) { _showCoordinateSystem = show; redraw(); }
 
-  void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
-  void showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape);
-  void showColors(const puzzle_c * puz, colorMode mode);
-  void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum);
-  void showAssemblerState(const puzzle_c * puz, unsigned int probNum, const assembly_c * assm);
-  void showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z);
-  void updatePositions(piecePositions_c *shifting);
-  void updateVisibility(PieceVisibility * pcvis);
-  void dimStaticPieces(piecePositions_c *shifting);
+    void setCenter(float x, float y, float z) {
+      centerX = x;
+      centerY = y;
+      centerZ = z;
+      redraw();
+    }
 
-  void draw();
-  int handle(int event);
+    void clearPalette(void) { palette.clear(); }
+    void addPaletteEntry(float r, float g, float b);
 
-  // if more complex updates are done, this can avoid doing
-  // a screen update each time
-  void update(bool doIt);
+    typedef struct {
 
-  // this value determines the scaling factor used to draw the cube.
-  void setSize(double sz);
-  double getSize(void) const { return size; }
+      float r, g, b, a;
+      const voxel_c * shape;
+      drawingMode mode;
+      float x, y, z, scale;
+      bool dim;
 
-  void addRotationTransformation(void);
-  void updateRequired(void);
+    } shapeInfo;
 
-  arcBall_c * getArcBall(void) { return arcBall; }
-  const arcBall_c * getArcBall(void) const { return arcBall; }
+    typedef struct {
+      float r, g, b;
+    } colorInfo;
 
-  void setCallback(VoxelViewCallbacks *c = 0) { cb = c; }
+    std::vector<colorInfo> palette;
 
+    /* the marker position */
+    int mX1, mY1, mZ, mX2, mY2;
+    int markerType;
 
-  bool pickShape(int x, int y, unsigned int *shape, unsigned long *voxel, unsigned int *face);
+    arcBall_c * arcBall;
+    bool doUpdates;
+    double size;
 
-  /* this function is called whenever the gridType changed, so that the drawer can update
-   * internal structures. Only parameters may have changed, but not the type itself
-   */
-  void gridTypeChanged(void);
+    VoxelViewCallbacks * cb;
 
-  void setDrawer(voxelDrawer_c * dr);
+    std::vector<shapeInfo> shapes;
+
+    transformationType trans;
+    colorMode colors;
+
+    bool _showCoordinateSystem;
+
+    float centerX, centerY, centerZ;
+
+    bool _useLightning;
+
+    // when picking shapes, this is the coordinate to use
+    int pickx, picky;
+
+    void draw();
+    int handle(int event);
+
+    // if more complex updates are done, this can avoid doing
+    // a screen update each time
+    void update(bool doIt);
+
+    void addRotationTransformation(void);
 };
 
 #endif

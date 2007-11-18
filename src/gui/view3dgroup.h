@@ -41,7 +41,7 @@ public:
 
   void cb_slider(void);
 
-  void showNothing(void) { View3D->clearSpaces(); }
+  void showNothing(void) { View3D->showNothing(); }
   void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
   void showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape);
   void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum);

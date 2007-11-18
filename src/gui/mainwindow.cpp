@@ -1558,7 +1558,7 @@ void mainWindow_c::cb_GridParameter(void) {
     Fl::wait();
   }
 
-  View3D->getView()->gridTypeChanged();
+  /* TODO signal to drawer */
 }
 
 static void cb_StatusWindow_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_StatusWindow(); }

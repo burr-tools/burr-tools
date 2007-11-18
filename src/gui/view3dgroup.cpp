@@ -71,46 +71,32 @@ void LView3dGroup::newGridType(const guiGridType_c * ggt) {
 }
 
 void LView3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
-  View3D->update(false);
   View3D->showSingleShape(puz, shapeNum);
-  View3D->update(true);
 }
 
 void LView3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape) {
 
-  View3D->update(false);
   View3D->showProblem(puz, probNum, selShape);
-  View3D->update(true);
 }
 
 void LView3dGroup::showColors(const puzzle_c * puz, voxelFrame_c::colorMode mode) {
-  View3D->update(false);
   View3D->showColors(puz, mode);
-  View3D->update(true);
 }
 
 void LView3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
-  View3D->update(false);
   View3D->showAssembly(puz, probNum, solNum);
-  View3D->update(true);
 }
 
 void LView3dGroup::showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z) {
 
-  View3D->update(false);
   View3D->showPlacement(puz, probNum, piece, trans, x, y, z);
-  View3D->update(true);
 }
 
 void LView3dGroup::updatePositions(piecePositions_c *shifting) {
-  View3D->update(false);
   View3D->updatePositions(shifting);
-  View3D->update(true);
 }
 
 void LView3dGroup::updateVisibility(PieceVisibility * pcvis) {
-  View3D->update(false);
   View3D->updateVisibility(pcvis);
-  View3D->update(true);
 }
 
