@@ -53,7 +53,7 @@ static int att[12][3] = {
   {-1, 0, -1}, {-1, 0, 1}, {1, 0, -1}, {1, 0, 1},
   {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}};
 
-int atatchment_check(double &x, double &y, double &z) {
+static int atatchment_check(double &x, double &y, double &z) {
 
   for (unsigned int i = 0; i < 12; i++) {
 
