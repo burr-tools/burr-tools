@@ -18,7 +18,7 @@
 #ifndef __VIEW3D_GROUP_H__
 #define __VIEW3D_GROUP_H__
 
-#include "voxeldrawer.h"
+#include "voxelframe.h"
 #include "Layouter.h"
 
 #include <FL/Fl_Group.H>

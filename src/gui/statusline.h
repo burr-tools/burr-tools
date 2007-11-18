@@ -20,7 +20,7 @@
 
 #include "Layouter.h"
 #include "Images.h"
-#include "voxeldrawer.h"
+#include "voxelframe.h"
 
 class ButtonGroup_c;
 

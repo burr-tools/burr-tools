@@ -43,7 +43,7 @@
 #define __IMAGE_EXPORT_H__
 
 #include "Layouter.h"
-#include "voxeldrawer.h"
+#include "voxelframe.h"
 
 #include <vector>
 
