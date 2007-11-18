@@ -97,8 +97,8 @@ class imageExport_c : public LFl_Double_Window, public VoxelViewCallbacks {
 
     void nextImage(bool finish);
 
-    voxelDrawer_c::colorMode getColorMode(void) {
-      return (ColConst->value() == 1)?(voxelDrawer_c::paletteColor):(voxelDrawer_c::pieceColor);
+    voxelFrame_c::colorMode getColorMode(void) {
+      return (ColConst->value() == 1)?(voxelFrame_c::paletteColor):(voxelFrame_c::pieceColor);
     }
 
   public:

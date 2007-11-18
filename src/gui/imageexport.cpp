@@ -50,7 +50,7 @@ class ImageInfo {
 
     // parameters for single
     unsigned int shape;
-    voxelDrawer_c::colorMode showColors;
+    voxelFrame_c::colorMode showColors;
 
     // parameters for assembly
     unsigned int problem;
@@ -65,21 +65,21 @@ class ImageInfo {
     unsigned int i2aa;
 
     /* the openGL context to draw to */
-    voxelDrawer_c * vv;
+    voxelFrame_c * vv;
 
   public:
 
     /* create image info to create a single shape image */
-    ImageInfo(puzzle_c * p, voxelDrawer_c::colorMode color,
-        unsigned int s, voxelDrawer_c * v) : setupFunction(SHOW_SINGLE), puzzle(p),
+    ImageInfo(puzzle_c * p, voxelFrame_c::colorMode color,
+        unsigned int s, voxelFrame_c * v) : setupFunction(SHOW_SINGLE), puzzle(p),
                                           shape(s), showColors(color),
                                           i(new image_c(600, 200)), i2(0), vv(v) { }
 
     /* image info for an assembly, if you don't give pos, you will get the standard assembly with
      * no piece shifted
      */
-    ImageInfo(puzzle_c * p, voxelDrawer_c::colorMode color, unsigned int prob,
-        unsigned int sol, voxelDrawer_c * v,
+    ImageInfo(puzzle_c * p, voxelFrame_c::colorMode color, unsigned int prob,
+        unsigned int sol, voxelFrame_c * v,
         disasmToMoves_c * pos = 0, bool d = false) : setupFunction(SHOW_ASSEMBLY), puzzle(p),
                                                    showColors(color), problem(prob),
                                                    solution(sol), dim(d), positions(pos),
@@ -91,7 +91,7 @@ class ImageInfo {
       if (i2) delete i2;
     }
 
-    /* set up the voxelDrawer_c so that is shows the information for this image */
+    /* set up the voxelFrame_c so that is shows the information for this image */
     void setupContent(void);
 
     /* preparation to get a tile for the preview image */

@@ -44,7 +44,8 @@ LView3dGroup::LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt
 
   box(FL_DOWN_BOX);
 
-  View3D = ggt->getVoxelDrawer(x, y, w-15, h);
+  View3D = new voxelFrame_c(x, y, w-15, h);
+  View3D->setDrawer(ggt->getVoxelDrawer());
   View3D->tooltip(" Rotate the puzzle by dragging with the mouse ");
   View3D->box(FL_NO_BOX);
   View3D->callback(cb_View3dGroupVoxel_stub, this);
@@ -66,26 +67,7 @@ LView3dGroup::LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt
 
 void LView3dGroup::newGridType(const guiGridType_c * ggt) {
 
-  View3D->hide();
-
-  voxelDrawer_c * nv;
-
-  nv = ggt->getVoxelDrawer(View3D->x(), View3D->y(), View3D->w(), View3D->h());
-  nv->tooltip(" Rotate the puzzle by dragging with the mouse ");
-  nv->box(FL_NO_BOX);
-
-  resizable(nv);
-
-  remove(View3D);
-  delete View3D;
-
-  View3D = nv;
-  add(View3D);
-  View3D->callback(cb_View3dGroupVoxel_stub, this);
-
-  cb_slider();
-
-  View3D->show();
+  View3D->setDrawer(ggt->getVoxelDrawer());
 }
 
 void LView3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
@@ -101,7 +83,7 @@ void LView3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsig
   View3D->update(true);
 }
 
-void LView3dGroup::showColors(const puzzle_c * puz, voxelDrawer_c::colorMode mode) {
+void LView3dGroup::showColors(const puzzle_c * puz, voxelFrame_c::colorMode mode) {
   View3D->update(false);
   View3D->showColors(puz, mode);
   View3D->update(true);

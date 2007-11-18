@@ -62,6 +62,35 @@ class VoxelViewCallbacks {
     virtual void PostDraw(void) { }
 };
 
+class voxelDrawer_c {
+
+  public:
+
+    voxelDrawer_c(void) {}
+    virtual ~voxelDrawer_c(void) {}
+
+    virtual void recalcSpaceCoordinates(float * x, float * y, float * z);
+
+    virtual void drawCursor(const voxel_c * shape, unsigned int sx, unsigned int sy, unsigned int sz) = 0;
+
+    virtual void calculateSize(const voxel_c * shape, float * x, float * y, float * z) = 0;
+
+    virtual void drawFrame(const voxel_c * space, int x, int y, int z, float edge) = 0;
+    virtual void drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge) = 0;
+    virtual void drawVariableMarkers(const voxel_c * space, int x, int y, int z) = 0;
+
+  protected:
+
+    void drawGridTriangle(double x0, double y0, double z0,
+        double v1x, double v1y, double v1z,
+        double v2x, double v2y, double v2z, int diag);
+    void drawGridRect(double x0, double y0, double z0,
+        double v1x, double v1y, double v1z,
+        double v2x, double v2y, double v2z, int diag);
+
+    bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z2, int sx, int sy, int sz, int mode);
+};
+
 /** this class draws a 3d view of a voxel space.
  * there are 2 modes:
  * single piece: here the value of PieceNumber gives the piecenumber
@@ -79,9 +108,11 @@ class VoxelViewCallbacks {
  *
  * additionally pieces can be transparent
  */
-class voxelDrawer_c : public Fl_Gl_Window {
+class voxelFrame_c : public Fl_Gl_Window {
 
 private:
+
+  voxelDrawer_c * drawer;
 
   assembly_c * curAssembly; // the currently shown assembly (if there is one)
 
@@ -90,10 +121,10 @@ private:
 
 public:
 
-  voxelDrawer_c(int x,int y,int w,int h);
-  virtual ~voxelDrawer_c(void);
+  voxelFrame_c(int x,int y,int w,int h);
+  virtual ~voxelFrame_c(void);
 
-  virtual void drawData(void);
+  void drawData(void);
 
   unsigned int addSpace(const voxel_c * vx);
   void clearSpaces(void);
@@ -102,8 +133,6 @@ public:
 
   void setSpaceColor(unsigned int nr, float r, float g, float b, float a);
   void setSpaceColor(unsigned int nr, float a);
-
-  virtual void recalcSpaceCoordinates(float * x, float * y, float * z);
 
   void setSpacePosition(unsigned int nr, float x, float y, float z, float scale);
   void setSpaceDim(unsigned int nr, bool dim);
@@ -207,9 +236,6 @@ private:
 
   bool _useLightning;
 
-  virtual void drawCursor(const voxel_c * shape, unsigned int sx, unsigned int sy, unsigned int sz) = 0;
-
-  virtual void calculateSize(const voxel_c * shape, float * x, float * y, float * z) = 0;
 
   /* this matrix is used to change the look of the basic unit */
   GLfloat transformMatrix[16];
@@ -232,30 +258,10 @@ public:
   void updateVisibility(PieceVisibility * pcvis);
   void dimStaticPieces(piecePositions_c *shifting);
 
-  /* this function is called whenever the gridType changed, so that the drawer can update
-   * internal structures. Only parameters may have changed, but not the type itself
-   */
-  virtual void gridTypeChanged(void);
-
   /* this function sets a transformations matrix that is used to change the appearance of the
    * basic unit
    */
   void setTransformationMatrix(GLfloat m[16]);
-
-
-  virtual void drawFrame(const voxel_c * space, int x, int y, int z, float edge) = 0;
-  virtual void drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge) = 0;
-  virtual void drawVariableMarkers(const voxel_c * space, int x, int y, int z) = 0;
-
-
-  void drawGridTriangle(double x0, double y0, double z0,
-      double v1x, double v1y, double v1z,
-      double v2x, double v2y, double v2z, int diag);
-  void drawGridRect(double x0, double y0, double z0,
-      double v1x, double v1y, double v1z,
-      double v2x, double v2y, double v2z, int diag);
-
-  bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z2, int sx, int sy, int sz, int mode);
 
   void draw();
   int handle(int event);
@@ -278,6 +284,13 @@ public:
 
 
   bool pickShape(int x, int y, unsigned int *shape, unsigned long *voxel, unsigned int *face);
+
+  /* this function is called whenever the gridType changed, so that the drawer can update
+   * internal structures. Only parameters may have changed, but not the type itself
+   */
+  void gridTypeChanged(void);
+
+  void setDrawer(voxelDrawer_c * dr);
 };
 
 #endif

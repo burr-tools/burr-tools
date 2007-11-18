@@ -30,7 +30,7 @@ class piecePositions_c;
 // the groups with the 3d view and the zoom slider
 class LView3dGroup : public Fl_Group, public layoutable_c {
 
-  voxelDrawer_c * View3D;
+  voxelFrame_c * View3D;
   Fl_Slider * slider;
 
 public:
@@ -52,7 +52,7 @@ public:
 
   void updatePositions(piecePositions_c *shifting);
   void updateVisibility(PieceVisibility * pcvis);
-  void showColors(const puzzle_c * puz, voxelDrawer_c::colorMode mode);
+  void showColors(const puzzle_c * puz, voxelFrame_c::colorMode mode);
 
   void setMarker(int x1, int y1, int x2, int y2, int z, int type) { View3D->setMarker(x1, y1, x2, y2, z, type); }
   void hideMarker(void) { View3D->hideMarker(); }
@@ -63,7 +63,7 @@ public:
 
   void redraw(void) { View3D->redraw(); }
 
-  voxelDrawer_c * getView(void) { return View3D; }
+  voxelFrame_c * getView(void) { return View3D; }
 
   virtual void getMinSize(int * w, int *h) const {
     *w = 40;

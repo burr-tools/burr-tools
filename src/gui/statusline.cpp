@@ -57,12 +57,12 @@ void LStatusLine::setText(const char * t) {
   text->copy_label(t);
 }
 
-voxelDrawer_c::colorMode LStatusLine::getColorMode(void) const {
+voxelFrame_c::colorMode LStatusLine::getColorMode(void) const {
   return mode->getSelected()==0
-    ?voxelDrawer_c::pieceColor
+    ?voxelFrame_c::pieceColor
     :(mode->getSelected()==1
-        ?voxelDrawer_c::paletteColor
-        :voxelDrawer_c::anaglyphColor);
+        ?voxelFrame_c::paletteColor
+        :voxelFrame_c::anaglyphColor);
 }
 
 void LStatusLine::callback(Fl_Callback* fkt, void * dat) { mode->callback(fkt, dat); }

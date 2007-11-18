@@ -39,7 +39,7 @@ public:
   LStatusLine(int x, int y, int w, int h);
 
   void setText(const char * t);
-  voxelDrawer_c::colorMode getColorMode(void) const;
+  voxelFrame_c::colorMode getColorMode(void) const;
   void callback(Fl_Callback* fkt, void * dat);
 
   virtual void getMinSize(int *width, int *height) const {

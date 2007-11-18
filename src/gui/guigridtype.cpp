@@ -40,11 +40,11 @@ gridEditor_c * guiGridType_c::getGridEditor(int x, int y, int w, int h, puzzle_c
   return 0;
 }
 
-voxelDrawer_c * guiGridType_c::getVoxelDrawer(int x, int y, int w, int h) const {
+voxelDrawer_c * guiGridType_c::getVoxelDrawer(void) const {
   switch(gt->getType()) {
-    case gridType_c::GT_BRICKS: return new voxelDrawer_0_c(x, y, w, h, gt);
-    case gridType_c::GT_TRIANGULAR_PRISM: return new voxelDrawer_1_c(x, y, w, h, gt);
-    case gridType_c::GT_SPHERES: return new voxelDrawer_2_c(x, y, w, h, gt);
+    case gridType_c::GT_BRICKS: return new voxelDrawer_0_c();
+    case gridType_c::GT_TRIANGULAR_PRISM: return new voxelDrawer_1_c();
+    case gridType_c::GT_SPHERES: return new voxelDrawer_2_c();
   }
 
   return 0;

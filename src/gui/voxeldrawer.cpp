@@ -40,8 +40,9 @@
 #endif
 
 
-voxelDrawer_c::voxelDrawer_c(int x,int y,int w,int h) :
+voxelFrame_c::voxelFrame_c(int x,int y,int w,int h) :
   Fl_Gl_Window(x,y,w,h),
+  drawer(0),
   curAssembly(0),
   markerType(-1),
   arcBall(new arcBall_c(w, h)),
@@ -53,7 +54,7 @@ voxelDrawer_c::voxelDrawer_c(int x,int y,int w,int h) :
 {
 };
 
-voxelDrawer_c::~voxelDrawer_c(void) {
+voxelFrame_c::~voxelFrame_c(void) {
   clearSpaces();
   if (curAssembly) {
     delete curAssembly;
@@ -62,12 +63,12 @@ voxelDrawer_c::~voxelDrawer_c(void) {
   delete arcBall;
 }
 
-void voxelDrawer_c::setTransformationMatrix(GLfloat m[16]) {
+void voxelFrame_c::setTransformationMatrix(GLfloat m[16]) {
   for (unsigned int i = 0; i < 16; i++)
     transformMatrix[i] = m[i];
 }
 
-void voxelDrawer_c::gridTypeChanged(void) {
+void voxelFrame_c::gridTypeChanged(void) {
   GLfloat m[16] = {
     1, 0, 0, 0,
     0, 1, 0, 0,
@@ -80,7 +81,13 @@ void voxelDrawer_c::gridTypeChanged(void) {
   redraw();
 }
 
-void voxelDrawer_c::drawVoxelSpace() {
+void voxelFrame_c::setDrawer(voxelDrawer_c * dr) {
+  if (drawer) delete drawer;
+  drawer = dr;
+  redraw();
+}
+
+void voxelFrame_c::drawVoxelSpace() {
 
   glShadeModel(GL_FLAT);
 
@@ -105,7 +112,7 @@ void voxelDrawer_c::drawVoxelSpace() {
       hx = shapes[piece].shape->getHx();
       hy = shapes[piece].shape->getHy();
       hz = shapes[piece].shape->getHz();
-      recalcSpaceCoordinates(&hx, &hy, &hz);
+      drawer->recalcSpaceCoordinates(&hx, &hy, &hz);
 
       switch(trans) {
       case ScaleRotateTranslate:
@@ -117,7 +124,7 @@ void voxelDrawer_c::drawVoxelSpace() {
         glMultMatrixf(transformMatrix);
         {
           float cx, cy, cz;
-          calculateSize(shapes[piece].shape, &cx, &cy, &cz);
+          drawer->calculateSize(shapes[piece].shape, &cx, &cy, &cz);
           glTranslatef(-0.5*cx, -0.5*cy, -0.5*cz);
         }
         break;
@@ -129,7 +136,7 @@ void voxelDrawer_c::drawVoxelSpace() {
         glMultMatrixf(transformMatrix);
         {
           float cx, cy, cz;
-          calculateSize(shapes[piece].shape, &cx, &cy, &cz);
+          drawer->calculateSize(shapes[piece].shape, &cx, &cy, &cz);
           glTranslatef(-0.5*cx, -0.5*cy, -0.5*cz);
         }
         glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
@@ -152,7 +159,7 @@ void voxelDrawer_c::drawVoxelSpace() {
         glDisable(GL_BLEND);
         glBegin(GL_LINES);
         float cx, cy, cz;
-        calculateSize(shapes[piece].shape, &cx, &cy, &cz);
+        drawer->calculateSize(shapes[piece].shape, &cx, &cy, &cz);
 
         if (colors == anaglyphColor) {
           glColor3f(0.3, 0.3, 0.3); glVertex3f(-1, -1, -1); glVertex3f(cx+1, -1, -1);
@@ -258,14 +265,14 @@ void voxelDrawer_c::drawVoxelSpace() {
             switch (shape->mode) {
               case normal:
                 if (shape->shape->getState(x, y , z) == voxel_c::VX_VARIABLE) {
-                  drawNormalVoxel(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
+                  drawer->drawNormalVoxel(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
                   glColor4f(0, 0, 0, shape->a);
-                  drawVariableMarkers(shape->shape, x, y, z);
+                  drawer->drawVariableMarkers(shape->shape, x, y, z);
                 } else
-                  drawNormalVoxel(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
+                  drawer->drawNormalVoxel(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
                 break;
               case gridline:
-                drawFrame(shape->shape, x, y, z, 0.05);
+                drawer->drawFrame(shape->shape, x, y, z, 0.05);
                 break;
               case invisible:
                 break;
@@ -283,7 +290,7 @@ void voxelDrawer_c::drawVoxelSpace() {
 
         glColor4f(0, 0, 0, 1);
 
-        drawCursor(shapes[piece].shape, shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ());
+        drawer->drawCursor(shapes[piece].shape, shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ());
 
         if (_useLightning) glEnable(GL_LIGHTING);
         glEnable(GL_BLEND);
@@ -299,7 +306,9 @@ void voxelDrawer_c::drawVoxelSpace() {
   glDepthMask(GL_TRUE);
 }
 
-void voxelDrawer_c::drawData(void) {
+void voxelFrame_c::drawData(void) {
+
+  if (!drawer) return;
 
   if (_gtChanged)
     gridTypeChanged();
@@ -325,7 +334,7 @@ void voxelDrawer_c::drawData(void) {
   glPopMatrix();
 }
 
-unsigned int voxelDrawer_c::addSpace(const voxel_c * vx) {
+unsigned int voxelFrame_c::addSpace(const voxel_c * vx) {
   shapeInfo i;
 
   i.r = i.g = i.b = 1;
@@ -346,7 +355,7 @@ unsigned int voxelDrawer_c::addSpace(const voxel_c * vx) {
   return shapes.size()-1;
 }
 
-void voxelDrawer_c::clearSpaces(void) {
+void voxelFrame_c::clearSpaces(void) {
 
   for (unsigned int i = 0; i < shapes.size(); i++)
     delete shapes[i].shape;
@@ -355,11 +364,11 @@ void voxelDrawer_c::clearSpaces(void) {
   updateRequired();
 }
 
-unsigned int voxelDrawer_c::spaceNumber(void) {
+unsigned int voxelFrame_c::spaceNumber(void) {
   return shapes.size();
 }
 
-void voxelDrawer_c::setSpaceColor(unsigned int nr, float r, float g, float b, float a) {
+void voxelFrame_c::setSpaceColor(unsigned int nr, float r, float g, float b, float a) {
   shapes[nr].r = r;
   shapes[nr].g = g;
   shapes[nr].b = b;
@@ -368,7 +377,7 @@ void voxelDrawer_c::setSpaceColor(unsigned int nr, float r, float g, float b, fl
   updateRequired();
 }
 
-void voxelDrawer_c::setSpaceColor(unsigned int nr, float a) {
+void voxelFrame_c::setSpaceColor(unsigned int nr, float a) {
   shapes[nr].a = a;
 
   updateRequired();
@@ -376,9 +385,9 @@ void voxelDrawer_c::setSpaceColor(unsigned int nr, float a) {
 
 void voxelDrawer_c::recalcSpaceCoordinates(float * /*x*/, float * /*y*/, float * /*z*/) {}
 
-void voxelDrawer_c::setSpacePosition(unsigned int nr, float x, float y, float z, float scale) {
+void voxelFrame_c::setSpacePosition(unsigned int nr, float x, float y, float z, float scale) {
 
-  recalcSpaceCoordinates(&x, &y, &z);
+  drawer->recalcSpaceCoordinates(&x, &y, &z);
 
   shapes[nr].x = x;
   shapes[nr].y = y;
@@ -388,7 +397,7 @@ void voxelDrawer_c::setSpacePosition(unsigned int nr, float x, float y, float z,
   updateRequired();
 }
 
-void voxelDrawer_c::setSpaceDim(unsigned int nr, bool dim) {
+void voxelFrame_c::setSpaceDim(unsigned int nr, bool dim) {
 
   shapes[nr].dim = dim;
 
@@ -396,25 +405,25 @@ void voxelDrawer_c::setSpaceDim(unsigned int nr, bool dim) {
 }
 
 
-void voxelDrawer_c::setDrawingMode(unsigned int nr, drawingMode mode) {
+void voxelFrame_c::setDrawingMode(unsigned int nr, drawingMode mode) {
   shapes[nr].mode = mode;
 
   updateRequired();
 }
 
-void voxelDrawer_c::setColorMode(colorMode color) {
+void voxelFrame_c::setColorMode(colorMode color) {
   colors = color;
 
   updateRequired();
 }
 
-void voxelDrawer_c::setTransformationType(transformationType type) {
+void voxelFrame_c::setTransformationType(transformationType type) {
   trans = type;
 
   updateRequired();
 }
 
-void voxelDrawer_c::addPaletteEntry(float r, float g, float b) {
+void voxelFrame_c::addPaletteEntry(float r, float g, float b) {
 
   colorInfo ci;
 
@@ -425,7 +434,7 @@ void voxelDrawer_c::addPaletteEntry(float r, float g, float b) {
   palette.push_back(ci);
 }
 
-void voxelDrawer_c::setMarker(int x1, int y1, int x2, int y2, int z, int mT) {
+void voxelFrame_c::setMarker(int x1, int y1, int x2, int y2, int z, int mT) {
   markerType = mT;
   mX1 = x1;
   mY1 = y1;
@@ -434,11 +443,11 @@ void voxelDrawer_c::setMarker(int x1, int y1, int x2, int y2, int z, int mT) {
   mZ = z;
 }
 
-void voxelDrawer_c::hideMarker(void) {
+void voxelFrame_c::hideMarker(void) {
   markerType = -1;
 }
 
-void voxelDrawer_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
+void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
 
   hideMarker();
   clearSpaces();
@@ -450,7 +459,7 @@ void voxelDrawer_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum)
   showCoordinateSystem(true);
 }
 
-void voxelDrawer_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape) {
+void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape) {
 
   hideMarker();
   clearSpaces();
@@ -539,7 +548,7 @@ void voxelDrawer_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsi
   }
 }
 
-void voxelDrawer_c::showColors(const puzzle_c * puz, colorMode mode) {
+void voxelFrame_c::showColors(const puzzle_c * puz, colorMode mode) {
 
   if (mode == paletteColor) {
 
@@ -556,7 +565,7 @@ void voxelDrawer_c::showColors(const puzzle_c * puz, colorMode mode) {
 
 }
 
-void voxelDrawer_c::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
+void voxelFrame_c::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
 
   if (curAssembly) {
     delete curAssembly;
@@ -610,14 +619,14 @@ void voxelDrawer_c::showAssembly(const puzzle_c * puz, unsigned int probNum, uns
       }
 
     float cx, cy, cz;
-    calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
+    drawer->calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
     setCenter(cx*0.5, cy*0.5, cz*0.5);
     setTransformationType(CenterTranslateRoateScale);
     showCoordinateSystem(false);
   }
 }
 
-void voxelDrawer_c::showAssemblerState(const puzzle_c * puz, unsigned int probNum, const assembly_c * assm) {
+void voxelFrame_c::showAssemblerState(const puzzle_c * puz, unsigned int probNum, const assembly_c * assm) {
 
   hideMarker();
   clearSpaces();
@@ -652,7 +661,7 @@ void voxelDrawer_c::showAssemblerState(const puzzle_c * puz, unsigned int probNu
       }
 
     float cx, cy, cz;
-    calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
+    drawer->calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
     setCenter(cx*0.5, cy*0.5, cz*0.5);
 
     setTransformationType(CenterTranslateRoateScale);
@@ -667,7 +676,7 @@ void voxelDrawer_c::showAssemblerState(const puzzle_c * puz, unsigned int probNu
   }
 }
 
-void voxelDrawer_c::showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z) {
+void voxelFrame_c::showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z) {
 
   clearSpaces();
   hideMarker();
@@ -678,10 +687,10 @@ void voxelDrawer_c::showPlacement(const puzzle_c * puz, unsigned int probNum, un
   hx = puz->probGetResultShape(probNum)->getHx();
   hy = puz->probGetResultShape(probNum)->getHy();
   hz = puz->probGetResultShape(probNum)->getHz();
-  recalcSpaceCoordinates(&hx, &hy, &hz);
+  drawer->recalcSpaceCoordinates(&hx, &hy, &hz);
 
   float cx, cy, cz;
-  calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
+  drawer->calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
   setCenter(cx*0.5-hx, cy*0.5-hy, cz*0.5-hz);
 
   hx = puz->probGetResultShape(probNum)->getHx();
@@ -720,7 +729,7 @@ void voxelDrawer_c::showPlacement(const puzzle_c * puz, unsigned int probNum, un
 }
 
 
-void voxelDrawer_c::updatePositions(piecePositions_c *shifting) {
+void voxelFrame_c::updatePositions(piecePositions_c *shifting) {
 
   for (unsigned int p = 0; p < spaceNumber(); p++) {
     setSpacePosition(p, shifting->getX(p), shifting->getY(p), shifting->getZ(p), 1);
@@ -728,14 +737,14 @@ void voxelDrawer_c::updatePositions(piecePositions_c *shifting) {
   }
 }
 
-void voxelDrawer_c::dimStaticPieces(piecePositions_c *shifting) {
+void voxelFrame_c::dimStaticPieces(piecePositions_c *shifting) {
 
   for (unsigned int p = 0; p < spaceNumber(); p++) {
     setSpaceDim(p, !shifting->moving(p));
   }
 }
 
-void voxelDrawer_c::updateVisibility(PieceVisibility * pcvis) {
+void voxelFrame_c::updateVisibility(PieceVisibility * pcvis) {
 
   /* savety check, it might be possible to click onto the visibility
    * selector even if no solution is displayed, e.g. when there is no
@@ -877,36 +886,36 @@ bool voxelDrawer_c::inRegion(int x, int y, int z, int x1, int x2, int y1, int y2
 
   if (mode == 0)
     return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2);
-  if (mode == voxelDrawer_c::TOOL_STACK_Y)
+  if (mode == voxelFrame_c::TOOL_STACK_Y)
     return (x1 <= x) && (x <= x2) && (z1 <= z) && (z <= z2);
-  if (mode == voxelDrawer_c::TOOL_STACK_X)
+  if (mode == voxelFrame_c::TOOL_STACK_X)
     return (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2);
-  if (mode == voxelDrawer_c::TOOL_STACK_Z)
+  if (mode == voxelFrame_c::TOOL_STACK_Z)
     return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2);
 
-  if (mode == voxelDrawer_c::TOOL_STACK_X + voxelDrawer_c::TOOL_STACK_Y)
+  if (mode == voxelFrame_c::TOOL_STACK_X + voxelFrame_c::TOOL_STACK_Y)
     return ((x1 <= x) && (x <= x2) || (y1 <= y) && (y <= y2)) && ((z1 <= z) && (z <= z2));
-  if (mode == voxelDrawer_c::TOOL_STACK_X + voxelDrawer_c::TOOL_STACK_Z)
+  if (mode == voxelFrame_c::TOOL_STACK_X + voxelFrame_c::TOOL_STACK_Z)
     return ((x1 <= x) && (x <= x2) || (z1 <= z) && (z <= z2)) && ((y1 <= y) && (y <= y2));
-  if (mode == voxelDrawer_c::TOOL_STACK_Y + voxelDrawer_c::TOOL_STACK_Z)
+  if (mode == voxelFrame_c::TOOL_STACK_Y + voxelFrame_c::TOOL_STACK_Z)
     return ((y1 <= y) && (y <= y2) || (y1 <= y) && (y <= y2)) && ((x1 <= x) && (x <= x2));
 
-  if (mode == voxelDrawer_c::TOOL_STACK_X + voxelDrawer_c::TOOL_STACK_Y + voxelDrawer_c::TOOL_STACK_Z)
+  if (mode == voxelFrame_c::TOOL_STACK_X + voxelFrame_c::TOOL_STACK_Y + voxelFrame_c::TOOL_STACK_Z)
     return ((x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2) ||
         (x1 <= x) && (x <= x2) && (z1 <= z) && (z <= z2) ||
         (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2));
 
-  if (mode & voxelDrawer_c::TOOL_MIRROR_X)
-    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelDrawer_c::TOOL_MIRROR_X) ||
-      inRegion(sx-x-1, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelDrawer_c::TOOL_MIRROR_X);
+  if (mode & voxelFrame_c::TOOL_MIRROR_X)
+    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelFrame_c::TOOL_MIRROR_X) ||
+      inRegion(sx-x-1, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelFrame_c::TOOL_MIRROR_X);
 
-  if (mode & voxelDrawer_c::TOOL_MIRROR_Y)
-    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelDrawer_c::TOOL_MIRROR_Y) ||
-      inRegion(x, sy-y-1, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelDrawer_c::TOOL_MIRROR_Y);
+  if (mode & voxelFrame_c::TOOL_MIRROR_Y)
+    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelFrame_c::TOOL_MIRROR_Y) ||
+      inRegion(x, sy-y-1, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelFrame_c::TOOL_MIRROR_Y);
 
-  if (mode & voxelDrawer_c::TOOL_MIRROR_Z)
-    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelDrawer_c::TOOL_MIRROR_Z) ||
-      inRegion(x, y, sz-z-1, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelDrawer_c::TOOL_MIRROR_Z);
+  if (mode & voxelFrame_c::TOOL_MIRROR_Z)
+    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelFrame_c::TOOL_MIRROR_Z) ||
+      inRegion(x, y, sz-z-1, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelFrame_c::TOOL_MIRROR_Z);
 
   return false;
 }
@@ -928,7 +937,7 @@ static void gluPickMatrix(double x, double y, double deltax, double deltay, GLin
   glScalef(viewport[2]/deltax, viewport[3]/deltay, 1.0);
 }
 
-void voxelDrawer_c::draw() {
+void voxelFrame_c::draw() {
 
   if (!doUpdates)
     return;
@@ -1010,13 +1019,13 @@ void voxelDrawer_c::draw() {
     cb->PostDraw();
 }
 
-void voxelDrawer_c::update(bool doIt) {
+void voxelFrame_c::update(bool doIt) {
   doUpdates = doIt;
   if (doIt)
     redraw();
 }
 
-int voxelDrawer_c::handle(int event) {
+int voxelFrame_c::handle(int event) {
 
   if (Fl_Gl_Window::handle(event))
     return 1;
@@ -1047,20 +1056,20 @@ int voxelDrawer_c::handle(int event) {
   return 0;
 }
 
-void voxelDrawer_c::addRotationTransformation(void) {
+void voxelFrame_c::addRotationTransformation(void) {
   arcBall->addTransform();
 }
 
-void voxelDrawer_c::updateRequired(void) {
+void voxelFrame_c::updateRequired(void) {
   redraw();
 }
 
-void voxelDrawer_c::setSize(double sz) {
+void voxelFrame_c::setSize(double sz) {
   size = sz;
   redraw();
 }
 
-bool voxelDrawer_c::pickShape(int x, int y, unsigned int *shape, unsigned long *voxel, unsigned int *face) {
+bool voxelFrame_c::pickShape(int x, int y, unsigned int *shape, unsigned long *voxel, unsigned int *face) {
 
   GLuint sbuffer[500];
 
@@ -1103,3 +1112,4 @@ bool voxelDrawer_c::pickShape(int x, int y, unsigned int *shape, unsigned long *
 
   return true;
 }
+

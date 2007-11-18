@@ -269,6 +269,9 @@ void voxelDrawer_0_c::drawVariableMarkers(const voxel_c * space, int x, int y, i
 }
 
 void voxelDrawer_0_c::drawCursor(const voxel_c * /*space*/, unsigned int sx, unsigned int sy, unsigned int sz) {
+
+#if 0
+
   // draw the cursor, this is done by iterating over all
   // cubes and checking for the 3 directions (in one direction only as the other
   // direction is done with the next cube), if there is a border in the cursor
@@ -290,6 +293,7 @@ void voxelDrawer_0_c::drawCursor(const voxel_c * /*space*/, unsigned int sx, uns
           drawGridRect(x, y, z, 1, 0, 0, 0, 1, 0, 4);
         }
       }
+#endif
 }
 
 
@@ -304,7 +308,7 @@ void voxelDrawer_0_c::gridTypeChanged(void) {
     0, 0, sz, 0,
     0, 0, 0,  1 };
 
-  setTransformationMatrix(m);
+//  setTransformationMatrix(m);
 }
 
 void voxelDrawer_0_c::calculateSize(const voxel_c * shape, float * x, float * y, float * z) {

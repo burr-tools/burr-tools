@@ -24,24 +24,18 @@ class gridType_c;
 
 class voxelDrawer_0_c : public voxelDrawer_c {
 
-  private:
-
-    const gridType_c * gt;
-
   public:
 
-    voxelDrawer_0_c(int x, int y, int w, int h, const gridType_c * g) : voxelDrawer_c(x, y, w, h), gt(g) {}
+    voxelDrawer_0_c(void) {}
 
-    void drawShape(const shapeInfo * shape, colorMode colors);
+    void drawFrame(const voxel_c * space, int x, int y, int z, float edge);
+    void drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge);
+    void drawVariableMarkers(const voxel_c * space, int x, int y, int z);
     void drawCursor(const voxel_c * space, unsigned int sx, unsigned int sy, unsigned int sz);
 
     void gridTypeChanged(void);
 
     void calculateSize(const voxel_c * shape, float * x, float * y, float * z);
-
-    void drawFrame(const voxel_c * space, int x, int y, int z, float edge);
-    void drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge);
-    void drawVariableMarkers(const voxel_c * space, int x, int y, int z);
 };
 
 #endif
