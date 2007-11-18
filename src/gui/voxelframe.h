@@ -142,14 +142,11 @@ class voxelFrame_c : public Fl_Gl_Window {
     unsigned int addSpace(const voxel_c * vx);
     void clearSpaces(void);
 
-    unsigned int spaceNumber(void);
-
     void setSpaceColor(unsigned int nr, float r, float g, float b, float a);
     void setSpaceColor(unsigned int nr, float a);
 
     void setSpacePosition(unsigned int nr, float x, float y, float z, float scale);
     void setSpaceDim(unsigned int nr, bool dim);
-
 
     typedef enum {
       ScaleRotateTranslate,      // for showing problems
@@ -157,29 +154,12 @@ class voxelFrame_c : public Fl_Gl_Window {
       CenterTranslateRoateScale  // for showing disassembly
     } transformationType;
 
-    void setTransformationType(transformationType type);
-
-    /* some editing tools */
-    enum {
-      TOOL_MIRROR_X = 1,
-      TOOL_MIRROR_Y = 2,
-      TOOL_MIRROR_Z = 4,
-      TOOL_STACK_X = 8,
-      TOOL_STACK_Y = 16,
-      TOOL_STACK_Z = 32
-    };
-
-    void showCoordinateSystem(bool show) { _showCoordinateSystem = show; redraw(); }
-
     void setCenter(float x, float y, float z) {
       centerX = x;
       centerY = y;
       centerZ = z;
       redraw();
     }
-
-    void clearPalette(void) { palette.clear(); }
-    void addPaletteEntry(float r, float g, float b);
 
     typedef struct {
 

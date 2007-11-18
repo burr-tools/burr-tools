@@ -330,10 +330,6 @@ void voxelFrame_c::clearSpaces(void) {
   redraw();
 }
 
-unsigned int voxelFrame_c::spaceNumber(void) {
-  return shapes.size();
-}
-
 void voxelFrame_c::setSpaceColor(unsigned int nr, float r, float g, float b, float a) {
   shapes[nr].r = r;
   shapes[nr].g = g;
@@ -381,23 +377,6 @@ void voxelFrame_c::setColorMode(colorMode color) {
   redraw();
 }
 
-void voxelFrame_c::setTransformationType(transformationType type) {
-  trans = type;
-
-  redraw();
-}
-
-void voxelFrame_c::addPaletteEntry(float r, float g, float b) {
-
-  colorInfo ci;
-
-  ci.r = r;
-  ci.g = g;
-  ci.b = b;
-
-  palette.push_back(ci);
-}
-
 void voxelFrame_c::setMarker(int x1, int y1, int x2, int y2, int z, int mT) {
   markerType = mT;
   mX1 = x1;
@@ -425,8 +404,8 @@ void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) 
 
   setSpaceColor(num, pieceColorR(shapeNum), pieceColorG(shapeNum), pieceColorB(shapeNum), 1);
 
-  setTransformationType(TranslateRoateScale);
-  showCoordinateSystem(true);
+  trans = TranslateRoateScale;
+  _showCoordinateSystem = true;
 
   update(true);
 }
@@ -516,8 +495,8 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsig
       }
     }
 
-    setTransformationType(ScaleRotateTranslate);
-    showCoordinateSystem(false);
+    trans = ScaleRotateTranslate;
+    _showCoordinateSystem = false;
   }
   update(true);
 }
@@ -528,11 +507,19 @@ void voxelFrame_c::showColors(const puzzle_c * puz, colorMode mode) {
 
   if (mode == paletteColor) {
 
-    clearPalette();
+    palette.clear();
+
     for (unsigned int i = 0; i < puz->colorNumber(); i++) {
       unsigned char r, g, b;
       puz->getColor(i, &r, &g, &b);
-      addPaletteEntry(r/255.0, g/255.0, b/255.0);
+
+      colorInfo ci;
+
+      ci.r = r/255.0;
+      ci.g = g/255.0;
+      ci.b = b/255.0;
+
+      palette.push_back(ci);
     }
     setColorMode(paletteColor);
 
@@ -600,8 +587,8 @@ void voxelFrame_c::showAssembly(const puzzle_c * puz, unsigned int probNum, unsi
     float cx, cy, cz;
     drawer->calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
     setCenter(cx*0.5, cy*0.5, cz*0.5);
-    setTransformationType(CenterTranslateRoateScale);
-    showCoordinateSystem(false);
+    trans = CenterTranslateRoateScale;
+    _showCoordinateSystem = false;
   }
   update(true);
 }
@@ -646,8 +633,8 @@ void voxelFrame_c::showAssemblerState(const puzzle_c * puz, unsigned int probNum
     drawer->calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
     setCenter(cx*0.5, cy*0.5, cz*0.5);
 
-    setTransformationType(CenterTranslateRoateScale);
-    showCoordinateSystem(false);
+    trans = CenterTranslateRoateScale;
+    _showCoordinateSystem = false;
 
     num = addSpace(puz->getGridType()->getVoxel(puz->probGetResultShape(probNum)));
     setSpaceColor(num,
@@ -665,8 +652,8 @@ void voxelFrame_c::showPlacement(const puzzle_c * puz, unsigned int probNum, uns
 
   clearSpaces();
   hideMarker();
-  setTransformationType(CenterTranslateRoateScale);
-  showCoordinateSystem(false);
+  trans = CenterTranslateRoateScale;
+  _showCoordinateSystem = false;
 
   float hx, hy, hz;
   hx = puz->probGetResultShape(probNum)->getHx();
@@ -720,7 +707,7 @@ void voxelFrame_c::updatePositions(piecePositions_c *shifting) {
 
   update(false);
 
-  for (unsigned int p = 0; p < spaceNumber(); p++) {
+  for (unsigned int p = 0; p < shapes.size(); p++) {
     setSpacePosition(p, shifting->getX(p), shifting->getY(p), shifting->getZ(p), 1);
     setSpaceColor(p, shifting->getA(p));
   }
@@ -731,7 +718,7 @@ void voxelFrame_c::dimStaticPieces(piecePositions_c *shifting) {
 
   update(false);
 
-  for (unsigned int p = 0; p < spaceNumber(); p++) {
+  for (unsigned int p = 0; p < shapes.size(); p++) {
     setSpaceDim(p, !shifting->moving(p));
   }
 
@@ -749,9 +736,9 @@ void voxelFrame_c::updateVisibility(PieceVisibility * pcvis) {
    * number of blocks inside the visibility selector is smaller
    * than the number of visible voxel spaces, drop out
    */
-  if (pcvis->blockNumber() < spaceNumber()) return;
+  if (pcvis->blockNumber() < shapes.size()) return;
 
-  for (unsigned int p = 0; p < spaceNumber(); p++) {
+  for (unsigned int p = 0; p < shapes.size(); p++) {
 
     switch(pcvis->getVisibility(p)) {
     case 0:
