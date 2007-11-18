@@ -79,6 +79,8 @@ class voxelDrawer_c {
     virtual void drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge) = 0;
     virtual void drawVariableMarkers(const voxel_c * space, int x, int y, int z) = 0;
 
+    virtual void gridTypeChanged(GLfloat transformMatrix[16]) {}
+
   protected:
 
     void drawGridTriangle(double x0, double y0, double z0,

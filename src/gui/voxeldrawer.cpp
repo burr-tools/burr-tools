@@ -69,13 +69,13 @@ void voxelFrame_c::setTransformationMatrix(GLfloat m[16]) {
 }
 
 void voxelFrame_c::gridTypeChanged(void) {
-  GLfloat m[16] = {
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1};
 
-  setTransformationMatrix(m);
+  for (int i = 0; i < 16; i++)
+    transformMatrix[i] = 0;
+  transformMatrix[0] = transformMatrix[5] =
+    transformMatrix[10] = transformMatrix[15] = 1;
+
+  drawer->gridTypeChanged(transformMatrix);
 
   _gtChanged = false;
   redraw();

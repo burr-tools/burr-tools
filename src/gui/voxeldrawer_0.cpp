@@ -296,21 +296,6 @@ void voxelDrawer_0_c::drawCursor(const voxel_c * /*space*/, unsigned int sx, uns
 #endif
 }
 
-
-void voxelDrawer_0_c::gridTypeChanged(void) {
-
-  GLfloat sx, sy, sz;
-  sx = sy = sz = 1;
-
-  GLfloat m[16] = {
-    sx, 0, 0, 0,
-    0, sy, 0, 0,
-    0, 0, sz, 0,
-    0, 0, 0,  1 };
-
-//  setTransformationMatrix(m);
-}
-
 void voxelDrawer_0_c::calculateSize(const voxel_c * shape, float * x, float * y, float * z) {
   *x = shape->getX();
   *y = shape->getY();

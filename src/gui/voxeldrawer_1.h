@@ -33,8 +33,6 @@ class voxelDrawer_1_c : public voxelDrawer_c {
     void drawVariableMarkers(const voxel_c * space, int x, int y, int z);
     void drawCursor(const voxel_c * space, unsigned int sx, unsigned int sy, unsigned int sz);
 
-    void gridTypeChanged(void);
-
     void calculateSize(const voxel_c * shape, float * x, float * y, float * z);
     void recalcSpaceCoordinates(float * x, float * y, float * z);
 };
