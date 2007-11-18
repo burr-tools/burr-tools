@@ -27,7 +27,6 @@
 #include "../lib/disasmtomoves.h"
 
 #include <math.h>
-#include <stdlib.h>
 
 #include <FL/Fl.H>
 
@@ -37,7 +36,7 @@ voxelFrame_c::voxelFrame_c(int x,int y,int w,int h) :
   curAssembly(0),
   markerType(-1),
   arcBall(new arcBall_c(w, h)),
-  doUpdates(true), size(10), cb(0),
+  size(10), cb(0),
   colors(pieceColor),
   _useLightning(true),
   pickx(-1)
@@ -92,7 +91,7 @@ void voxelFrame_c::drawVoxelSpace() {
                      shapes[piece].y,
                      shapes[piece].z);
         glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
-        addRotationTransformation();
+        arcBall->addTransform();
         {
           float cx, cy, cz;
           drawer->calculateSize(shapes[piece].shape, &cx, &cy, &cz);
@@ -100,7 +99,7 @@ void voxelFrame_c::drawVoxelSpace() {
         }
         break;
       case TranslateRoateScale:
-        addRotationTransformation();
+        arcBall->addTransform();
         glTranslatef(shapes[piece].x,
                      shapes[piece].y,
                      shapes[piece].z);
@@ -112,7 +111,7 @@ void voxelFrame_c::drawVoxelSpace() {
         glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
         break;
       case CenterTranslateRoateScale:
-        addRotationTransformation();
+        arcBall->addTransform();
         glTranslatef(shapes[piece].x - hx,
                      shapes[piece].y - hy,
                      shapes[piece].z - hz);
@@ -316,8 +315,6 @@ unsigned int voxelFrame_c::addSpace(const voxel_c * vx) {
 
   shapes.push_back(i);
 
-  redraw();
-
   return shapes.size()-1;
 }
 
@@ -327,7 +324,6 @@ void voxelFrame_c::clearSpaces(void) {
     delete shapes[i].shape;
 
   shapes.clear();
-  redraw();
 }
 
 void voxelFrame_c::setSpaceColor(unsigned int nr, float r, float g, float b, float a) {
@@ -341,8 +337,6 @@ void voxelFrame_c::setSpaceColor(unsigned int nr, float r, float g, float b, flo
 
 void voxelFrame_c::setSpaceColor(unsigned int nr, float a) {
   shapes[nr].a = a;
-
-  redraw();
 }
 
 void voxelFrame_c::setSpacePosition(unsigned int nr, float x, float y, float z, float scale) {
@@ -353,17 +347,7 @@ void voxelFrame_c::setSpacePosition(unsigned int nr, float x, float y, float z, 
   shapes[nr].y = y;
   shapes[nr].z = z;
   shapes[nr].scale = scale;
-
-  redraw();
 }
-
-void voxelFrame_c::setSpaceDim(unsigned int nr, bool dim) {
-
-  shapes[nr].dim = dim;
-
-  redraw();
-}
-
 
 void voxelFrame_c::setDrawingMode(unsigned int nr, drawingMode mode) {
   shapes[nr].mode = mode;
@@ -384,10 +368,12 @@ void voxelFrame_c::setMarker(int x1, int y1, int x2, int y2, int z, int mT) {
   mX2 = x2;
   mY2 = y2;
   mZ = z;
+  redraw();
 }
 
 void voxelFrame_c::hideMarker(void) {
   markerType = -1;
+  redraw();
 }
 
 void voxelFrame_c::showNothing(void) {
@@ -395,8 +381,6 @@ void voxelFrame_c::showNothing(void) {
 }
 
 void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
-
-  update(false);
 
   hideMarker();
   clearSpaces();
@@ -407,11 +391,10 @@ void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) 
   trans = TranslateRoateScale;
   _showCoordinateSystem = true;
 
-  update(true);
+  redraw();
 }
 
 void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape) {
-  update(false);
 
   hideMarker();
   clearSpaces();
@@ -498,12 +481,10 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsig
     trans = ScaleRotateTranslate;
     _showCoordinateSystem = false;
   }
-  update(true);
+  redraw();
 }
 
 void voxelFrame_c::showColors(const puzzle_c * puz, colorMode mode) {
-
-  update(false);
 
   if (mode == paletteColor) {
 
@@ -526,12 +507,10 @@ void voxelFrame_c::showColors(const puzzle_c * puz, colorMode mode) {
   } else
     setColorMode(mode);
 
-  update(true);
+  redraw();
 }
 
 void voxelFrame_c::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
-
-  update(false);
 
   if (curAssembly) {
     delete curAssembly;
@@ -590,12 +569,11 @@ void voxelFrame_c::showAssembly(const puzzle_c * puz, unsigned int probNum, unsi
     trans = CenterTranslateRoateScale;
     _showCoordinateSystem = false;
   }
-  update(true);
+
+  redraw();
 }
 
 void voxelFrame_c::showAssemblerState(const puzzle_c * puz, unsigned int probNum, const assembly_c * assm) {
-
-  update(false);
 
   hideMarker();
   clearSpaces();
@@ -643,12 +621,11 @@ void voxelFrame_c::showAssemblerState(const puzzle_c * puz, unsigned int probNum
                         pieceColorB(puz->probGetResult(probNum)), 1);
     setDrawingMode(num, gridline);
   }
-  update(true);
+
+  redraw();
 }
 
 void voxelFrame_c::showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z) {
-
-  update(false);
 
   clearSpaces();
   hideMarker();
@@ -699,35 +676,30 @@ void voxelFrame_c::showPlacement(const puzzle_c * puz, unsigned int probNum, uns
                         pieceColorB(puz->probGetResult(probNum)), 1);
   setDrawingMode(num, gridline);
 
-  update(true);
+  redraw();
 }
 
 
 void voxelFrame_c::updatePositions(piecePositions_c *shifting) {
 
-  update(false);
-
   for (unsigned int p = 0; p < shapes.size(); p++) {
     setSpacePosition(p, shifting->getX(p), shifting->getY(p), shifting->getZ(p), 1);
     setSpaceColor(p, shifting->getA(p));
   }
-  update(true);
+
+  redraw();
 }
 
 void voxelFrame_c::dimStaticPieces(piecePositions_c *shifting) {
 
-  update(false);
-
   for (unsigned int p = 0; p < shapes.size(); p++) {
-    setSpaceDim(p, !shifting->moving(p));
+    shapes[p].dim = !shifting->moving(p);
   }
 
-  update(true);
+  redraw();
 }
 
 void voxelFrame_c::updateVisibility(PieceVisibility * pcvis) {
-
-  update(false);
 
   /* savety check, it might be possible to click onto the visibility
    * selector even if no solution is displayed, e.g. when there is no
@@ -752,7 +724,8 @@ void voxelFrame_c::updateVisibility(PieceVisibility * pcvis) {
       break;
     }
   }
-  update(true);
+
+  redraw();
 }
 
 static void gluPerspective(double fovy, double aspect, double zNear, double zFar) {
@@ -773,9 +746,6 @@ static void gluPickMatrix(double x, double y, double deltax, double deltay, GLin
 }
 
 void voxelFrame_c::draw() {
-
-  if (!doUpdates)
-    return;
 
   if (!valid()) {
 
@@ -854,12 +824,6 @@ void voxelFrame_c::draw() {
     cb->PostDraw();
 }
 
-void voxelFrame_c::update(bool doIt) {
-  doUpdates = doIt;
-  if (doIt)
-    redraw();
-}
-
 int voxelFrame_c::handle(int event) {
 
   if (Fl_Gl_Window::handle(event))
@@ -889,10 +853,6 @@ int voxelFrame_c::handle(int event) {
   }
 
   return 0;
-}
-
-void voxelFrame_c::addRotationTransformation(void) {
-  arcBall->addTransform();
 }
 
 void voxelFrame_c::setSize(double sz) {

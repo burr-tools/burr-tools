@@ -146,13 +146,13 @@ class voxelFrame_c : public Fl_Gl_Window {
     void setSpaceColor(unsigned int nr, float a);
 
     void setSpacePosition(unsigned int nr, float x, float y, float z, float scale);
-    void setSpaceDim(unsigned int nr, bool dim);
 
     typedef enum {
       ScaleRotateTranslate,      // for showing problems
       TranslateRoateScale,       // for showing pieces
       CenterTranslateRoateScale  // for showing disassembly
     } transformationType;
+    transformationType trans;
 
     void setCenter(float x, float y, float z) {
       centerX = x;
@@ -182,14 +182,12 @@ class voxelFrame_c : public Fl_Gl_Window {
     int markerType;
 
     arcBall_c * arcBall;
-    bool doUpdates;
     double size;
 
     VoxelViewCallbacks * cb;
 
     std::vector<shapeInfo> shapes;
 
-    transformationType trans;
     colorMode colors;
 
     bool _showCoordinateSystem;
@@ -203,12 +201,6 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     void draw();
     int handle(int event);
-
-    // if more complex updates are done, this can avoid doing
-    // a screen update each time
-    void update(bool doIt);
-
-    void addRotationTransformation(void);
 };
 
 #endif
