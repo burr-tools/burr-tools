@@ -54,11 +54,6 @@ voxelFrame_c::~voxelFrame_c(void) {
   delete arcBall;
 }
 
-void voxelFrame_c::setTransformationMatrix(GLfloat m[16]) {
-  for (unsigned int i = 0; i < 16; i++)
-    transformMatrix[i] = m[i];
-}
-
 void voxelFrame_c::gridTypeChanged(void) {
 
   for (int i = 0; i < 16; i++)

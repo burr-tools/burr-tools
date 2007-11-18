@@ -225,11 +225,6 @@ public:
   void updateVisibility(PieceVisibility * pcvis);
   void dimStaticPieces(piecePositions_c *shifting);
 
-  /* this function sets a transformations matrix that is used to change the appearance of the
-   * basic unit
-   */
-  void setTransformationMatrix(GLfloat m[16]);
-
   void draw();
   int handle(int event);
 
