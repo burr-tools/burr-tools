@@ -168,6 +168,7 @@ class voxelFrame_c : public Fl_Gl_Window {
       drawingMode mode;
       float x, y, z, scale;
       bool dim;
+      GLuint list;  // the display list for this shape 0 means no list defined
 
     } shapeInfo;
 

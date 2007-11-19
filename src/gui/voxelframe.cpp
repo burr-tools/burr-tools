@@ -159,95 +159,111 @@ void voxelFrame_c::drawVoxelSpace() {
         glEnable(GL_BLEND);
       }
 
-      const shapeInfo * shape = &shapes[piece];
+      if (shapes[piece].list) {
 
-      glPushName(0);
+        glCallList(shapes[piece].list);
 
-      for (unsigned int x = 0; x < shape->shape->getX(); x++)
-        for (unsigned int y = 0; y < shape->shape->getY(); y++)
-          for (unsigned int z = 0; z < shape->shape->getZ(); z++) {
+      } else {
 
-            if (shape->shape->isEmpty(x, y , z))
-              continue;
+        shapes[piece].list = glGenLists(1);
 
-            glLoadName(shape->shape->getIndex(x, y, z));
+        if (shapes[piece].list)
+          glNewList(shapes[piece].list, GL_COMPILE_AND_EXECUTE);
 
-            float cr, cg, cb, ca;
-            cr = cg = cb = 0;
-            ca = 1;
+        const shapeInfo * shape = &shapes[piece];
 
-            switch (colors) {
-              case pieceColor:
-              case anaglyphColor:
-                if ((x+y+z) & 1) {
-                  cr = lightPieceColor(shape->r);
-                  cg = lightPieceColor(shape->g);
-                  cb = lightPieceColor(shape->b);
-                  ca = shape->a;
-                } else {
-                  cr = darkPieceColor(shape->r);
-                  cg = darkPieceColor(shape->g);
-                  cb = darkPieceColor(shape->b);
-                  ca = shape->a;
-                }
-                break;
-              case paletteColor:
-                {
-                  unsigned int color = shape->shape->getColor(x, y, z);
-                  if ((color == 0) || (color - 1 >= palette.size())) {
-                    if ((x+y+z) & 1) {
-                      cr = lightPieceColor(shape->r);
-                      cg = lightPieceColor(shape->g);
-                      cb = lightPieceColor(shape->b);
-                      ca = shape->a;
-                    } else {
-                      cr = darkPieceColor(shape->r);
-                      cg = darkPieceColor(shape->g);
-                      cb = darkPieceColor(shape->b);
-                      ca = shape->a;
-                    }
+        glPushName(0);
+
+        for (unsigned int x = 0; x < shape->shape->getX(); x++)
+          for (unsigned int y = 0; y < shape->shape->getY(); y++)
+            for (unsigned int z = 0; z < shape->shape->getZ(); z++) {
+
+              if (shape->shape->isEmpty(x, y , z))
+                continue;
+
+              glLoadName(shape->shape->getIndex(x, y, z));
+
+              float cr, cg, cb, ca;
+              cr = cg = cb = 0;
+              ca = 1;
+
+              switch (colors) {
+                case pieceColor:
+                case anaglyphColor:
+                  if ((x+y+z) & 1) {
+                    cr = lightPieceColor(shape->r);
+                    cg = lightPieceColor(shape->g);
+                    cb = lightPieceColor(shape->b);
+                    ca = shape->a;
                   } else {
-                    cr = palette[color-1].r;
-                    cg = palette[color-1].g;
-                    cb = palette[color-1].b;
+                    cr = darkPieceColor(shape->r);
+                    cg = darkPieceColor(shape->g);
+                    cb = darkPieceColor(shape->b);
                     ca = shape->a;
                   }
-                }
-                break;
+                  break;
+                case paletteColor:
+                  {
+                    unsigned int color = shape->shape->getColor(x, y, z);
+                    if ((color == 0) || (color - 1 >= palette.size())) {
+                      if ((x+y+z) & 1) {
+                        cr = lightPieceColor(shape->r);
+                        cg = lightPieceColor(shape->g);
+                        cb = lightPieceColor(shape->b);
+                        ca = shape->a;
+                      } else {
+                        cr = darkPieceColor(shape->r);
+                        cg = darkPieceColor(shape->g);
+                        cb = darkPieceColor(shape->b);
+                        ca = shape->a;
+                      }
+                    } else {
+                      cr = palette[color-1].r;
+                      cg = palette[color-1].g;
+                      cb = palette[color-1].b;
+                      ca = shape->a;
+                    }
+                  }
+                  break;
+              }
+
+              if (colors == anaglyphColor) {
+                double gr = 0.1*cb + 0.3*cr + 0.6*cg;
+                gr = 1 - (1-gr)/3;
+                cr = cg = cb = gr;
+              }
+
+              if (shape->dim) {
+                cr = 1 - (1 - cr) * 0.2;
+                cg = 1 - (1 - cg) * 0.2;
+                cb = 1 - (1 - cb) * 0.2;
+              }
+
+              glColor4f(cr, cg, cb, ca);
+
+              switch (shape->mode) {
+                case normal:
+                  if (shape->shape->getState(x, y , z) == voxel_c::VX_VARIABLE) {
+                    drawer->drawNormalVoxel(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
+                    glColor4f(0, 0, 0, shape->a);
+                    drawer->drawVariableMarkers(shape->shape, x, y, z);
+                  } else
+                    drawer->drawNormalVoxel(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
+                  break;
+                case gridline:
+                  drawer->drawFrame(shape->shape, x, y, z, 0.05);
+                  break;
+                case invisible:
+                  break;
+              }
             }
 
-            if (colors == anaglyphColor) {
-              double gr = 0.1*cb + 0.3*cr + 0.6*cg;
-              gr = 1 - (1-gr)/3;
-              cr = cg = cb = gr;
-            }
+        glPopName();
 
-            if (shape->dim) {
-              cr = 1 - (1 - cr) * 0.2;
-              cg = 1 - (1 - cg) * 0.2;
-              cb = 1 - (1 - cb) * 0.2;
-            }
+        if (shapes[piece].list)
+          glEndList();
 
-            glColor4f(cr, cg, cb, ca);
-
-            switch (shape->mode) {
-              case normal:
-                if (shape->shape->getState(x, y , z) == voxel_c::VX_VARIABLE) {
-                  drawer->drawNormalVoxel(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
-                  glColor4f(0, 0, 0, shape->a);
-                  drawer->drawVariableMarkers(shape->shape, x, y, z);
-                } else
-                  drawer->drawNormalVoxel(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
-                break;
-              case gridline:
-                drawer->drawFrame(shape->shape, x, y, z, 0.05);
-                break;
-              case invisible:
-                break;
-            }
-          }
-
-      glPopName();
+      }
 
       // the marker should be only active, when only one shape is there
       // otherwise it's drawn for every shape
@@ -313,6 +329,8 @@ unsigned int voxelFrame_c::addSpace(const voxel_c * vx) {
 
   i.dim = false;
 
+  i.list = 0;
+
   shapes.push_back(i);
 
   return shapes.size()-1;
@@ -320,8 +338,10 @@ unsigned int voxelFrame_c::addSpace(const voxel_c * vx) {
 
 void voxelFrame_c::clearSpaces(void) {
 
-  for (unsigned int i = 0; i < shapes.size(); i++)
+  for (unsigned int i = 0; i < shapes.size(); i++) {
+    if (shapes[i].list) glDeleteLists(shapes[i].list, 1);
     delete shapes[i].shape;
+  }
 
   shapes.clear();
 }
@@ -332,11 +352,25 @@ void voxelFrame_c::setSpaceColor(unsigned int nr, float r, float g, float b, flo
   shapes[nr].b = b;
   shapes[nr].a = a;
 
+  if (shapes[nr].list) {
+    glDeleteLists(shapes[nr].list, 1);
+    shapes[nr].list = 0;
+  }
+
   redraw();
 }
 
 void voxelFrame_c::setSpaceColor(unsigned int nr, float a) {
-  shapes[nr].a = a;
+
+  if (shapes[nr].a != a) {
+
+    shapes[nr].a = a;
+
+    if (shapes[nr].list) {
+      glDeleteLists(shapes[nr].list, 1);
+      shapes[nr].list = 0;
+    }
+  }
 }
 
 void voxelFrame_c::setSpacePosition(unsigned int nr, float x, float y, float z, float scale) {
@@ -350,13 +384,28 @@ void voxelFrame_c::setSpacePosition(unsigned int nr, float x, float y, float z, 
 }
 
 void voxelFrame_c::setDrawingMode(unsigned int nr, drawingMode mode) {
-  shapes[nr].mode = mode;
+
+  if (shapes[nr].mode != mode) {
+    shapes[nr].mode = mode;
+
+    if (shapes[nr].list) {
+      glDeleteLists(shapes[nr].list, 1);
+      shapes[nr].list = 0;
+    }
+  }
 
   redraw();
 }
 
 void voxelFrame_c::setColorMode(colorMode color) {
   colors = color;
+
+  for (unsigned int nr = 0; nr < shapes.size(); nr++) {
+    if (shapes[nr].list) {
+      glDeleteLists(shapes[nr].list, 1);
+      shapes[nr].list = 0;
+    }
+  }
 
   redraw();
 }
