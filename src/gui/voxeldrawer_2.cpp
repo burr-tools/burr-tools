@@ -18,9 +18,9 @@
 
 #include "voxeldrawer_2.h"
 
-#include "piececolor.h"
-
 #include "../lib/voxel.h"
+
+#include <FL/gl.h>
 
 #include <math.h>
 
@@ -58,7 +58,6 @@ static int atatchment_check(double &x, double &y, double &z) {
 
   return 12;
 }
-
 
 // some functions to draw sections of spheres
 
@@ -120,27 +119,7 @@ static void draw_sphere_section(double x1, double y1, double z1,
       /* draw the normal triangle with the points */
       glLoadName(12);
 
-      glBegin(GL_TRIANGLES);
-
-      // calculate normal for the triangle
-
-      double v1x = x2-x1; double v1y = y2-y1; double v1z = z2-z1;
-      double v2x = x3-x1; double v2y = y3-y1; double v2z = z3-z1;
-
-      double nx = v1y*v2z - v1z*v2y;
-      double ny = v1z*v2x - v1x*v2z;
-      double nz = v1x*v2y - v1y*v2x;
-
-      double l = sqrt(nx*nx + ny*ny + nz*nz);
-      nx /= l; ny /= l; nz /= l;
-
-      glNormal3f(nx, ny, nz);
-
-      glVertex3f(x1, y1, z1);
-      glVertex3f(x2, y2, z2);
-      glVertex3f(x3, y3, z3);
-
-      glEnd();
+      drawTriangle(x1/2, y1/2, z1/2, x2/2, y2/2, z2/2, x3/2, y3/2, z3/2, 0, 0, 0);
 
     } else {
 
@@ -154,19 +133,21 @@ static void draw_sphere_section(double x1, double y1, double z1,
 
       glBegin(GL_TRIANGLES);
 
-      glNormal3f(att[a][0], att[a][1], att[a][2]);
+      glNormal3f(1.5*att[a][0], 1.5*att[a][1], 1.5*att[a][2]);
 
-      glVertex3f(x1, y1, z1);
-      glVertex3f(x2, y2, z2);
-      glVertex3f(x3, y3, z3);
+      glVertex3f(x1/2, y1/2, z1/2);
+      glVertex3f(x2/2, y2/2, z2/2);
+      glVertex3f(x3/2, y3/2, z3/2);
 
       glEnd();
     }
   }
 }
 
+
+
 // draws a sphere using the sphere section function to draw all
-// triangles of a icosahedron
+// triangles of a octahedron
 static void draw_sphere(void) {
 
   for (int i = 0; i < SPHERE_COORDINATES; i++)
@@ -271,12 +252,12 @@ static void draw_sphere_line(double x1, double y1, double z1, double x2, double 
     glBegin(GL_QUADS);
 
     glNormal3f(x1, y1, z1);
-    glVertex3f(x1-xc, y1-yc, z1-zc);
-    glVertex3f(x1+xc, y1+yc, z1+zc);
+    glVertex3f((x1-xc)/2, (y1-yc)/2, (z1-zc)/2);
+    glVertex3f((x1+xc)/2, (y1+yc)/2, (z1+zc)/2);
 
     glNormal3f(x2, y2, z2);
-    glVertex3f(x2+xc, y2+yc, z2+zc);
-    glVertex3f(x2-xc, y2-yc, z2-zc);
+    glVertex3f((x2+xc)/2, (y2+yc)/2, (z2+zc)/2);
+    glVertex3f((x2-xc)/2, (y2-yc)/2, (z2-zc)/2);
 
     glEnd();
   }
@@ -317,7 +298,6 @@ void voxelDrawer_2_c::drawFrame(const voxel_c * /*space*/, int x, int y, int z, 
 
   glPushMatrix();
   glTranslatef(cx, cy, cz);
-  glScalef(0.5, 0.5, 0.5);
 
   draw_wire_sphere();
 
@@ -339,7 +319,6 @@ void voxelDrawer_2_c::drawNormalVoxel(const voxel_c * /*space*/, int x, int y, i
 
   glPushMatrix();
   glTranslatef(cx, cy, cz);
-  glScalef(0.5, 0.5, 0.5);
 
   draw_sphere();
 
@@ -363,7 +342,7 @@ void voxelDrawer_2_c::drawVariableMarkers(const voxel_c * /*space*/, int x, int 
 
   glPushMatrix();
   glTranslatef(cx, cy, cz);
-  glScalef(0.5+MY, 0.5+MY, 0.5+MY);
+  glScalef(1+MY, 1+MY, 1+MY);
 
   draw_markers();
 
@@ -372,9 +351,11 @@ void voxelDrawer_2_c::drawVariableMarkers(const voxel_c * /*space*/, int x, int 
   glPopMatrix();
 }
 
-void voxelDrawer_2_c::drawCursor(const voxel_c * /*space*/, unsigned int sx, unsigned int sy, unsigned int sz) {
+void voxelDrawer_2_c::drawCursor(const voxel_c * space, int mX1, int mX2, int mY1, int mY2, int mZ, int mode) {
 
-#if 0
+  unsigned int sx = space->getX();
+  unsigned int sy = space->getY();
+  unsigned int sz = space->getZ();
 
   // draw the cursor, this is done by iterating over all
   // cubes and checking for the 3 directions (in one direction only as the other
@@ -383,7 +364,7 @@ void voxelDrawer_2_c::drawCursor(const voxel_c * /*space*/, unsigned int sx, uns
   for (unsigned int x = 0; x <= sx; x++)
     for (unsigned int y = 0; y <= sy; y++)
       for (unsigned int z = 0; z <= sz; z++) {
-        bool ins = inRegion(x, y, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType);
+        bool ins = inRegion(x, y, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, mode);
 
         if (ins && (((x+y+z) & 1) == 0)) {
 
@@ -395,14 +376,13 @@ void voxelDrawer_2_c::drawCursor(const voxel_c * /*space*/, unsigned int sx, uns
 
           glPushMatrix();
           glTranslatef(cx, cy, cz);
-          glScalef(0.5+MY, 0.5+MY, 0.5+MY);
+          glScalef(1+MY, 1+MY, 1+MY);
 
           draw_wire_sphere();
 
           glPopMatrix();
         }
       }
-#endif
 }
 
 void voxelDrawer_2_c::calculateSize(const voxel_c * shape, float * x, float * y, float * z) {

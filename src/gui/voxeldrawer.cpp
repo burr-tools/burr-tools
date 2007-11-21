@@ -17,18 +17,17 @@
  */
 #include "voxeldrawer.h"
 
+#include "grideditor.h"
+
 #include "../lib/voxel.h"
-#include "../lib/puzzle.h"
-#include "../lib/assembly.h"
-#include "../lib/disasmtomoves.h"
 
 #include <math.h>
 
-#include <FL/Fl.H>
+#include <FL/gl.h>
 
 void voxelDrawer_c::recalcSpaceCoordinates(float * /*x*/, float * /*y*/, float * /*z*/) {}
 
-void voxelDrawer_c::drawGridRect(double x0, double y0, double z0,
+void drawGridRect(double x0, double y0, double z0,
                      double v1x, double v1y, double v1z,
                      double v2x, double v2y, double v2z, int diag) {
 
@@ -97,7 +96,7 @@ void voxelDrawer_c::drawGridRect(double x0, double y0, double z0,
   glEnd();
 }
 
-void voxelDrawer_c::drawGridTriangle(double x0, double y0, double z0,
+void drawGridTriangle(double x0, double y0, double z0,
                          double v1x, double v1y, double v1z,
                          double v2x, double v2y, double v2z, int diag) {
 
@@ -136,47 +135,80 @@ void voxelDrawer_c::drawGridTriangle(double x0, double y0, double z0,
 
 // this function finds out if a given square is inside the selected region
 // this check includes the symmetric and column edit modes
-bool voxelDrawer_c::inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z2, int sx, int sy, int sz, int mode) {
-
-  /*
+bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z2, int sx, int sy, int sz, int mode) {
 
   if ((x < 0) || (y < 0) || (z < 0) || (x >= sx) || (y >= sy) || (z >= sz)) return false;
 
   if (mode == 0)
     return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2);
-  if (mode == voxelFrame_c::TOOL_STACK_Y)
+  if (mode == gridEditor_c::TOOL_STACK_Y)
     return (x1 <= x) && (x <= x2) && (z1 <= z) && (z <= z2);
-  if (mode == voxelFrame_c::TOOL_STACK_X)
+  if (mode == gridEditor_c::TOOL_STACK_X)
     return (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2);
-  if (mode == voxelFrame_c::TOOL_STACK_Z)
+  if (mode == gridEditor_c::TOOL_STACK_Z)
     return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2);
 
-  if (mode == voxelFrame_c::TOOL_STACK_X + voxelFrame_c::TOOL_STACK_Y)
+  if (mode == gridEditor_c::TOOL_STACK_X + gridEditor_c::TOOL_STACK_Y)
     return ((x1 <= x) && (x <= x2) || (y1 <= y) && (y <= y2)) && ((z1 <= z) && (z <= z2));
-  if (mode == voxelFrame_c::TOOL_STACK_X + voxelFrame_c::TOOL_STACK_Z)
+  if (mode == gridEditor_c::TOOL_STACK_X + gridEditor_c::TOOL_STACK_Z)
     return ((x1 <= x) && (x <= x2) || (z1 <= z) && (z <= z2)) && ((y1 <= y) && (y <= y2));
-  if (mode == voxelFrame_c::TOOL_STACK_Y + voxelFrame_c::TOOL_STACK_Z)
+  if (mode == gridEditor_c::TOOL_STACK_Y + gridEditor_c::TOOL_STACK_Z)
     return ((y1 <= y) && (y <= y2) || (y1 <= y) && (y <= y2)) && ((x1 <= x) && (x <= x2));
 
-  if (mode == voxelFrame_c::TOOL_STACK_X + voxelFrame_c::TOOL_STACK_Y + voxelFrame_c::TOOL_STACK_Z)
+  if (mode == gridEditor_c::TOOL_STACK_X + gridEditor_c::TOOL_STACK_Y + gridEditor_c::TOOL_STACK_Z)
     return ((x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2) ||
         (x1 <= x) && (x <= x2) && (z1 <= z) && (z <= z2) ||
         (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2));
 
-  if (mode & voxelFrame_c::TOOL_MIRROR_X)
-    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelFrame_c::TOOL_MIRROR_X) ||
-      inRegion(sx-x-1, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelFrame_c::TOOL_MIRROR_X);
+  if (mode & gridEditor_c::TOOL_MIRROR_X)
+    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~gridEditor_c::TOOL_MIRROR_X) ||
+      inRegion(sx-x-1, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~gridEditor_c::TOOL_MIRROR_X);
 
-  if (mode & voxelFrame_c::TOOL_MIRROR_Y)
-    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelFrame_c::TOOL_MIRROR_Y) ||
-      inRegion(x, sy-y-1, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelFrame_c::TOOL_MIRROR_Y);
+  if (mode & gridEditor_c::TOOL_MIRROR_Y)
+    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~gridEditor_c::TOOL_MIRROR_Y) ||
+      inRegion(x, sy-y-1, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~gridEditor_c::TOOL_MIRROR_Y);
 
-  if (mode & voxelFrame_c::TOOL_MIRROR_Z)
-    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelFrame_c::TOOL_MIRROR_Z) ||
-      inRegion(x, y, sz-z-1, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~voxelFrame_c::TOOL_MIRROR_Z);
-
-      */
+  if (mode & gridEditor_c::TOOL_MIRROR_Z)
+    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~gridEditor_c::TOOL_MIRROR_Z) ||
+      inRegion(x, y, sz-z-1, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~gridEditor_c::TOOL_MIRROR_Z);
 
   return false;
+}
+
+/* draw a trianle, set the normal so that it is orthogonal and pointing away from p */
+void drawTriangle(double x1, double y1, double z1,
+    double x2, double y2, double z2,
+    double x3, double y3, double z3, double px, double py, double pz) {
+
+  double sx = x1;
+  double sy = y1;
+  double sz = z1;
+  double v1x = x2-x1;
+  double v1y = y2-y1;
+  double v1z = z2-z1;
+  double v2x = x3-x1;
+  double v2y = y3-y1;
+  double v2z = z3-z1;
+
+  float nx = v1y*v2z - v1z*v2y;
+  float ny = v1z*v2x - v1x*v2z;
+  float nz = v1x*v2y - v1y*v2x;
+
+  float l = sqrt(nx*nx+ny*ny+nz*nz);
+  nx /= l;
+  ny /= l;
+  nz /= l;
+
+  if (nx*(px-sx)+ny*(py-sy)+nz*(pz-sz) > 0) {
+    nx = -nx;
+    ny = -ny;
+    nz = -nz;
+  }
+
+  glBegin(GL_TRIANGLES);
+  glNormal3f(nx, ny, nz);
+//  glColor3f(rand()*1.0/RAND_MAX, rand()*1.0/RAND_MAX, rand()*1.0/RAND_MAX);
+  glVertex3f(x1, y1, z1); glVertex3f(x2, y2, z2); glVertex3f(x3, y3, z3);
+  glEnd();
 }
 

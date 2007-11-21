@@ -31,7 +31,8 @@ class voxelDrawer_1_c : public voxelDrawer_c {
     void drawFrame(const voxel_c * space, int x, int y, int z, float edge);
     void drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge);
     void drawVariableMarkers(const voxel_c * space, int x, int y, int z);
-    void drawCursor(const voxel_c * space, unsigned int sx, unsigned int sy, unsigned int sz);
+    void drawCursor(const voxel_c * space, int mX1, int mX2, int mY1, int mY2, int mZ, int mode);
+
 
     void calculateSize(const voxel_c * shape, float * x, float * y, float * z);
     void recalcSpaceCoordinates(float * x, float * y, float * z);

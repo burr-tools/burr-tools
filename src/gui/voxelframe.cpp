@@ -274,7 +274,7 @@ void voxelFrame_c::drawVoxelSpace() {
 
         glColor4f(0, 0, 0, 1);
 
-        drawer->drawCursor(shapes[piece].shape, shapes[piece].shape->getX(), shapes[piece].shape->getY(), shapes[piece].shape->getZ());
+        drawer->drawCursor(shapes[piece].shape, mX1, mX2, mY1, mY2, mZ, markerType);
 
         if (_useLightning) glEnable(GL_LIGHTING);
         glEnable(GL_BLEND);
@@ -288,31 +288,6 @@ void voxelFrame_c::drawVoxelSpace() {
 
   glPopName();
   glDepthMask(GL_TRUE);
-}
-
-void voxelFrame_c::drawData(void) {
-
-  if (!drawer) return;
-
-  glShadeModel(GL_FLAT);
-  glEnable(GL_DEPTH_TEST);
-
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-  glLineWidth(3);
-
-  if (_useLightning)
-    glEnable(GL_LIGHTING);
-  else
-    glDisable(GL_LIGHTING);
-
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  glPushMatrix();
-
-  drawVoxelSpace();
-  glPopMatrix();
 }
 
 unsigned int voxelFrame_c::addSpace(const voxel_c * vx) {
@@ -347,6 +322,7 @@ void voxelFrame_c::clearSpaces(void) {
 }
 
 void voxelFrame_c::setSpaceColor(unsigned int nr, float r, float g, float b, float a) {
+
   shapes[nr].r = r;
   shapes[nr].g = g;
   shapes[nr].b = b;
@@ -796,6 +772,8 @@ static void gluPickMatrix(double x, double y, double deltax, double deltay, GLin
 
 void voxelFrame_c::draw() {
 
+  if (!drawer) return;
+
   if (!valid()) {
 
     GLfloat LightAmbient[]= { 0.2f, 0.2f, 0.2f, 1.0f };
@@ -820,13 +798,20 @@ void voxelFrame_c::draw() {
     glMaterialfv(GL_FRONT, GL_DIFFUSE, DiffuseParams);
     glMaterialfv(GL_FRONT, GL_SPECULAR, SpecularParams);
 
-    glEnable(GL_RESCALE_NORMAL);
-
     arcBall->setBounds(w(), h());
 
     unsigned char r, g, b;
     Fl::get_color(color(), r, g, b);
     glClearColor(r/255.0, g/255.0, b/255.0, 0);
+
+    glShadeModel(GL_FLAT);
+    glEnable(GL_DEPTH_TEST);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glLineWidth(3);
+
   }
 
   if (!cb || !cb->PreDraw()) {
@@ -847,6 +832,11 @@ void voxelFrame_c::draw() {
 
   }
 
+  if (_useLightning)
+    glEnable(GL_LIGHTING);
+  else
+    glDisable(GL_LIGHTING);
+
   glPushMatrix();
   glTranslatef(0, 0, -size*2);
 
@@ -855,14 +845,19 @@ void voxelFrame_c::draw() {
     glTranslatef(-0.04, 0, 0);
     glRotatef(-1, 0, 1, 0);
     glColorMask(GL_TRUE, GL_FALSE, GL_FALSE, GL_TRUE);
-    drawData();
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    drawVoxelSpace();
+
     glPopMatrix();
     glTranslatef(0.04, 0, 0);
     glRotatef(1, 0, 1, 0);
     glColorMask(GL_FALSE, GL_TRUE, GL_TRUE, GL_TRUE);
   }
 
-  drawData();
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  drawVoxelSpace();
+
   glPopMatrix();
 
   if (colors == anaglyphColor) {

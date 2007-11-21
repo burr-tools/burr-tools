@@ -23,14 +23,7 @@
 #include <png.h>
 #include <stdio.h>
 
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#elif WIN32
-#include <GL/gl.h>
-#include <GL/glext.h>
-#else
-#include <GL/gl.h>
-#endif
+#include <FL/gl.h>
 
 #define TILE_BORDER 0
 

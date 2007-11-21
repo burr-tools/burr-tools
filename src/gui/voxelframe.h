@@ -18,10 +18,6 @@
 #ifndef __VOXEL_FRAME_H__
 #define __VOXEL_FRAME_H__
 
-#ifdef WIN32
-#include <windows.h>
-#endif
-
 #include "BlockList.h"
 
 #include <FL/Fl_Gl_Window.H>
@@ -136,8 +132,6 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     /* Draws the voxelspace. */
     void drawVoxelSpace();
-
-    void drawData(void);
 
     unsigned int addSpace(const voxel_c * vx);
     void clearSpaces(void);

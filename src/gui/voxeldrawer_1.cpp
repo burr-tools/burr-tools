@@ -18,9 +18,9 @@
 
 #include "voxeldrawer_1.h"
 
-#include "piececolor.h"
-
 #include "../lib/voxel.h"
+
+#include <FL/gl.h>
 
 #include <math.h>
 
@@ -732,9 +732,11 @@ void voxelDrawer_1_c::drawVariableMarkers(const voxel_c * space, int x, int y, i
   glPopName();
 }
 
-void voxelDrawer_1_c::drawCursor(const voxel_c * /*space*/, unsigned int sx, unsigned int sy, unsigned int sz) {
+void voxelDrawer_1_c::drawCursor(const voxel_c * space, int mX1, int mX2, int mY1, int mY2, int mZ, int mode) {
 
-#if 0
+  unsigned int sx = space->getX();
+  unsigned int sy = space->getY();
+  unsigned int sz = space->getZ();
 
   // draw the cursor, this is done by iterating over all
   // cubes and checking for the 3 directions (in one direction only as the other
@@ -743,27 +745,26 @@ void voxelDrawer_1_c::drawCursor(const voxel_c * /*space*/, unsigned int sx, uns
   for (unsigned int x = 0; x <= sx; x++)
     for (unsigned int y = 0; y <= sy; y++)
       for (unsigned int z = 0; z <= sz; z++) {
-        bool ins = inRegion(x, y, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType);
+        bool ins = inRegion(x, y, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, mode);
 
-        if (ins ^ inRegion(x-1, y, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType)) {
+        if (ins ^ inRegion(x-1, y, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, mode)) {
           if ((x+y) & 1)
             drawGridRect(0.5+x*0.5, y*HEIGHT, z, -0.5, HEIGHT, 0, 0, 0, 1, 4);
           else
             drawGridRect(x*0.5, y*HEIGHT, z, 0.5, HEIGHT, 0, 0, 0, 1, 4);
         }
 
-        if ((((x+y) & 1) == 0) && (ins ^ inRegion(x, y-1, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType))) {
+        if ((((x+y) & 1) == 0) && (ins ^ inRegion(x, y-1, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, mode))) {
           drawGridRect(x*0.5, y*HEIGHT, z, 1, 0, 0, 0, 0, 1, 4);
         }
 
-        if (ins ^ inRegion(x, y, z-1, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType)) {
+        if (ins ^ inRegion(x, y, z-1, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, mode)) {
           if ((x+y) & 1)
             drawGridTriangle(0.5+x*0.5, y*HEIGHT, z, -0.5, HEIGHT, 0, 0.5, HEIGHT, 0, 4);
           else
             drawGridTriangle(0.5+x*0.5, (y+1)*HEIGHT, z, -0.5, -HEIGHT, 0, 0.5, -HEIGHT, 0, 4);
         }
       }
-#endif
 }
 
 void voxelDrawer_1_c::calculateSize(const voxel_c * shape, float * x, float * y, float * z) {
