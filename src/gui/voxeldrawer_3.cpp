@@ -430,33 +430,8 @@ void voxelDrawer_3_c::drawFrame(const voxel_c * space, int x, int y, int z, floa
 }
 
 /* draw a trianle, set the normal so that it is orthogonal and pointing away from p */
-static void drawTriangle(int x1, int y1, int z1, int x2, int y2, int z2, int x3, int y3, int z3, int px, int py, int pz,
+static void drawEdgeTriangle(int x1, int y1, int z1, int x2, int y2, int z2, int x3, int y3, int z3, int px, int py, int pz,
     float edge, uint8_t edgemask) {
-
-  int sx = x1;
-  int sy = y1;
-  int sz = z1;
-  int v1x = x2-x1;
-  int v1y = y2-y1;
-  int v1z = z2-z1;
-  int v2x = x3-x1;
-  int v2y = y3-y1;
-  int v2z = z3-z1;
-
-  float nx = v1y*v2z - v1z*v2y;
-  float ny = v1z*v2x - v1x*v2z;
-  float nz = v1x*v2y - v1y*v2x;
-
-  float l = sqrt(nx*nx+ny*ny+nz*nz);
-  nx /= l;
-  ny /= l;
-  nz /= l;
-
-  if (nx*(px-sx)+ny*(py-sy)+nz*(pz-sz) > 0) {
-    nx = -nx;
-    ny = -ny;
-    nz = -nz;
-  }
 
   float px1, px2, px3, py1, py2, py3, pz1, pz2, pz3;
 
@@ -468,10 +443,7 @@ static void drawTriangle(int x1, int y1, int z1, int x2, int y2, int z2, int x3,
   if (edgemask & 2) moveLine(&px2, &py2, &pz2, &px3, &py3, &pz3, px1, py1, pz1, edge);
   if (edgemask & 4) moveLine(&px3, &py3, &pz3, &px1, &py1, &pz1, px2, py2, pz2, edge);
 
-  glBegin(GL_TRIANGLES);
-  glNormal3f(nx, ny, nz);
-  glVertex3f(px1, py1, pz1); glVertex3f(px2, py2, pz2); glVertex3f(px3, py3, pz3);
-  glEnd();
+  drawTriangle(px1, py1, pz1, px2, py2, pz2, px3, py3, pz3, px, py, pz);
 }
 
 static void drawTetrahedron(int x1, int y1, int z1,
@@ -481,22 +453,22 @@ static void drawTetrahedron(int x1, int y1, int z1,
 
   if (mask & 1) {
     glLoadName(0);
-    drawTriangle(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4, edge, edgemask & 0x7);
+    drawEdgeTriangle(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4, edge, edgemask & 0x7);
   }
 
   if (mask & 2) {
     glLoadName(1);
-    drawTriangle(x1, y1, z1, x2, y2, z2, x4, y4, z4, x3, y3, z3, edge, (edgemask >> 3) & 0x7);
+    drawEdgeTriangle(x1, y1, z1, x2, y2, z2, x4, y4, z4, x3, y3, z3, edge, (edgemask >> 3) & 0x7);
   }
 
   if (mask & 4) {
     glLoadName(2);
-    drawTriangle(x2, y2, z2, x3, y3, z3, x4, y4, z4, x1, y1, z1, edge, (edgemask >> 6) & 0x7);
+    drawEdgeTriangle(x2, y2, z2, x3, y3, z3, x4, y4, z4, x1, y1, z1, edge, (edgemask >> 6) & 0x7);
   }
 
   if (mask & 8) {
     glLoadName(3);
-    drawTriangle(x3, y3, z3, x1, y1, z1, x4, y4, z4, x2, y2, z2, edge, (edgemask >> 9)  & 0x7);
+    drawEdgeTriangle(x3, y3, z3, x1, y1, z1, x4, y4, z4, x2, y2, z2, edge, (edgemask >> 9)  & 0x7);
   }
 }
 
