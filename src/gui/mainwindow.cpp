@@ -1613,7 +1613,7 @@ static void cb_About_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Ab
 void mainWindow_c::cb_About(void) {
 
   fl_message("This is the GUI for BurrTools version " VERSION "\n"
-             "BurrTools (c) 2003-2006 by Andreas Röver\n"
+             "BurrTools (c) 2003-2007 by Andreas Röver\n"
              "The latest version is available at burrtools.sourceforge.net\n"
              "\n"
              "This software is distributed under the GPL\n"
