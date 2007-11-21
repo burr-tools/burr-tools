@@ -30,6 +30,10 @@
 
 #include <FL/Fl.H>
 
+#ifdef WIN32
+#include <GL/ext.h>
+#endif
+
 voxelFrame_c::voxelFrame_c(int x,int y,int w,int h) :
   Fl_Gl_Window(x,y,w,h),
   drawer(0),
@@ -803,6 +807,8 @@ void voxelFrame_c::draw() {
     glMaterialfv(GL_FRONT, GL_AMBIENT, AmbientParams);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, DiffuseParams);
     glMaterialfv(GL_FRONT, GL_SPECULAR, SpecularParams);
+
+    glEnable(GL_RESCALE_NORMAL);
 
     arcBall->setBounds(w(), h());
 
