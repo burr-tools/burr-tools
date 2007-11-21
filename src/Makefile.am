@@ -43,6 +43,7 @@ lib_libburr_a_SOURCES=\
     lib/voxel_0.cpp \
     lib/voxel_1.cpp \
     lib/voxel_2.cpp \
+    lib/voxel_3.cpp \
     \
     lib/tabs_0/rotmatrix.inc lib/tabs_0/symmetries.inc lib/tabs_0/tablesizes.inc lib/tabs_0/generator_0.cpp \
     lib/tabs_1/rotmatrix.inc lib/tabs_1/symmetries.inc lib/tabs_1/tablesizes.inc lib/tabs_1/generator_1.cpp \
@@ -85,7 +86,8 @@ lib_libburr_a_SOURCES=\
     lib/voxel.h \
     lib/voxel_0.h \
     lib/voxel_1.h \
-    lib/voxel_2.h
+    lib/voxel_2.h \
+    lib/voxel_3.h
 
 BUILT_SOURCES=\
     lib/tabs_0/symcalc.inc lib/tabs_0/transformmini.inc lib/tabs_0/transmult.inc lib/tabs_0/unifiedsym.inc \
@@ -180,6 +182,7 @@ gui_burrGui_SOURCES=\
      gui/voxeldrawer_0.cpp \
      gui/voxeldrawer_1.cpp \
      gui/voxeldrawer_2.cpp \
+     gui/voxeldrawer_3.cpp \
      gui/voxelframe.cpp \
      gui/voxeleditgroup.cpp \
      \
@@ -222,6 +225,7 @@ gui_burrGui_SOURCES=\
      gui/voxeldrawer_0.h \
      gui/voxeldrawer_1.h \
      gui/voxeldrawer_2.h \
+     gui/voxeldrawer_3.h \
      gui/voxelframe.h \
      gui/voxeleditgroup.h \
      \

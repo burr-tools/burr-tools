@@ -26,6 +26,7 @@
 #include "voxel_0.h"
 #include "voxel_1.h"
 #include "voxel_2.h"
+#include "voxel_3.h"
 #include "symmetries_0.h"
 #include "symmetries_1.h"
 #include "symmetries_2.h"
@@ -61,6 +62,9 @@ gridType_c::gridType_c(const xml::node & node) {
     case GT_SPHERES:
       break;
 
+    case GT_RHOMBIC:
+      break;
+
     default:
       throw load_error("puzzle with unknown grid type", node);
   }
@@ -86,6 +90,9 @@ xml::node gridType_c::save(void) const {
       break;
 
     case GT_SPHERES:
+      break;
+
+    case GT_RHOMBIC:
       break;
   }
 
@@ -114,6 +121,12 @@ gridType_c::gridType_c(gridType gt) {
 
     case GT_SPHERES:
       break;
+
+    case GT_RHOMBIC:
+      break;
+
+    default:
+      bt_assert(0);
   }
 
   sym = 0;
@@ -135,6 +148,7 @@ assemblerFrontend_c * gridType_c::getAssemblerFrontend(void) const {
     case GT_BRICKS:           return new assemblerFrontend_0_c();
     case GT_TRIANGULAR_PRISM: return new assemblerFrontend_1_c();
     case GT_SPHERES:          return new assemblerFrontend_2_c();
+    case GT_RHOMBIC:          return new assemblerFrontend_0_c();
     default:                  return 0;
   }
 
@@ -153,6 +167,7 @@ voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, v
     case GT_BRICKS:           return new voxel_0_c(x, y, z, this, init, outs);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(x, y, z, this, init, outs);
     case GT_SPHERES:          return new voxel_2_c(x, y, z, this, init, outs);
+    case GT_RHOMBIC:          return new voxel_3_c(x, y, z, this, init, outs);
     default: return 0;
   }
 }
@@ -161,6 +176,7 @@ voxel_c * gridType_c::getVoxel(const xml::node & node) const {
     case GT_BRICKS:           return new voxel_0_c(node, this);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(node, this);
     case GT_SPHERES:          return new voxel_2_c(node, this);
+    case GT_RHOMBIC:          return new voxel_3_c(node, this);
     default: return 0;
   }
 }
@@ -170,6 +186,7 @@ voxel_c * gridType_c::getVoxel(const voxel_c & orig) const {
     case GT_BRICKS:           return new voxel_0_c(orig);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig);
     case GT_SPHERES:          return new voxel_2_c(orig);
+    case GT_RHOMBIC:          return new voxel_3_c(orig);
     default: return 0;
   }
 }
@@ -179,6 +196,7 @@ voxel_c * gridType_c::getVoxel(const voxel_c * orig) const {
     case GT_BRICKS:           return new voxel_0_c(orig);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig);
     case GT_SPHERES:          return new voxel_2_c(orig);
+    case GT_RHOMBIC:          return new voxel_3_c(orig);
     default: return 0;
   }
 }
@@ -195,6 +213,9 @@ const symmetries_c * gridType_c::getSymmetries(void) const {
       case GT_SPHERES:
         const_cast<gridType_c*>(this)->sym = new symmetries_2_c(this);
         break;
+      case GT_RHOMBIC:
+        const_cast<gridType_c*>(this)->sym = new symmetries_0_c(this);
+        break;
     }
   }
 
@@ -205,7 +226,7 @@ unsigned int gridType_c::getCapabilities(void) const {
   switch (type) {
     case GT_BRICKS:           return CAP_ASSEMBLE | CAP_DISASSEMBLE | CAP_STLEXPORT;
     case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE;
-    case GT_SPHERES:          return CAP_ASSEMBLE | CAP_STLEXPORT;
+    case GT_SPHERES:          return CAP_ASSEMBLE;
     default: return 0;
   }
 }

@@ -42,7 +42,7 @@ class gridType_c {
       GT_BRICKS,
       GT_TRIANGULAR_PRISM,
       GT_SPHERES,                  // tightly packed spheres
-//      GT_RHOMBIC_DODECAEDER,
+      GT_RHOMBIC,
     } gridType;
 
     /* capabilities of a given grid space */
