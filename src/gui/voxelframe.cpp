@@ -718,7 +718,13 @@ void voxelFrame_c::updatePositions(piecePositions_c *shifting) {
 void voxelFrame_c::dimStaticPieces(piecePositions_c *shifting) {
 
   for (unsigned int p = 0; p < shapes.size(); p++) {
-    shapes[p].dim = !shifting->moving(p);
+    if (shapes[p].dim != !shifting->moving(p)) {
+      shapes[p].dim = !shifting->moving(p);
+      if (shapes[p].list) {
+        glDeleteLists(shapes[p].list, 1);
+        shapes[p].list = 0;
+      }
+    }
   }
 
   redraw();
