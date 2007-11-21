@@ -207,7 +207,6 @@ void drawTriangle(double x1, double y1, double z1,
 
   glBegin(GL_TRIANGLES);
   glNormal3f(nx, ny, nz);
-//  glColor3f(rand()*1.0/RAND_MAX, rand()*1.0/RAND_MAX, rand()*1.0/RAND_MAX);
   glVertex3f(x1, y1, z1); glVertex3f(x2, y2, z2); glVertex3f(x3, y3, z3);
   glEnd();
 }
