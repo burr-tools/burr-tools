@@ -26,26 +26,26 @@
 #include <FL/Fl_Browser_.H>
 #include <FL/Fl_Image.H>
 
-gridTypeGui_0_c::gridTypeGui_0_c(int x, int y, int w, int h, gridType_c * g) {
+gridTypeGui_0_c::gridTypeGui_0_c(int x, int y, int w, int h, gridType_c * /*gt*/) {
 
   new LFl_Box("In a distant future there might be parameters\n"
       "to stretch and shear the cube into a parallelepiped\n"
-      "but not right now!!", 0, 0);
+      "but not right now!!", x, y, w, h);
 
   end();
 }
 
-gridTypeGui_1_c::gridTypeGui_1_c(int x, int y, int w, int h, gridType_c * gt) {
+gridTypeGui_1_c::gridTypeGui_1_c(int x, int y, int w, int h, gridType_c * /*gt*/) {
   new LFl_Box("There are no parameters for this space grid!\n"
-      "This space grid also has no disassembler (yet)", 0, 0);
+      "This space grid also has no disassembler (yet)", x, y, w, h);
 
   end();
 }
 
-gridTypeGui_2_c::gridTypeGui_2_c(int x, int y, int w, int h, gridType_c * gt) {
+gridTypeGui_2_c::gridTypeGui_2_c(int x, int y, int w, int h, gridType_c * /*gt*/) {
 
   new LFl_Box("There are no parameters for this space grid!\n"
-      "This space grid has no disassembler", 0, 0);
+      "This space grid has no disassembler", x, y, w, h);
 
   end();
 }
