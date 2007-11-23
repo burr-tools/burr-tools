@@ -31,7 +31,7 @@
 #include <FL/Fl.H>
 
 #ifdef WIN32
-#include <GL/ext.h>
+#include <GL/glext.h>
 #endif
 
 voxelFrame_c::voxelFrame_c(int x,int y,int w,int h) :
