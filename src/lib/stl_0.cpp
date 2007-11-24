@@ -563,48 +563,29 @@ void stlExporter_0_c::make_faces(const voxel_c *v, const int x,const int y,const
       }
 }
 
-stlExporter_c::errorCodes stlExporter_0_c::write(const char * fname, voxel_c * v) {
+void stlExporter_0_c::write(const char * fname, voxel_c * v) {
 
-  int x,y,z;
-  char name[1000];
-
-  if (v->countState(voxel_c::VX_VARIABLE))
-    return ERR_VARIABLE_VOXELS_FOUND;
-
-  if (cube_scale < Epsilon)
-    return ERR_SIZE_TOO_SMALL;
-
-  if (shrink < 0)
-    return ERR_OFFSET_NEGATIVE;
-
-  if (bevel < 0)
-    return ERR_BEVEL_NEGATIVE;
-
-  if (cube_scale < (2*bevel + 2*shrink))
-    return ERR_SIZE_OFFSET_BEVEL_DONT_FIT;
-
-  int xsize = v->getX();
-  int ysize = v->getY();
-  int zsize = v->getZ();
+  if (v->countState(voxel_c::VX_VARIABLE)) throw new stlException_c("Shapes with variable voxels cannot be exported");
+  if (cube_scale < Epsilon) throw new stlException_c("Cube size too small");
+  if (shrink < 0) throw new stlException_c("Offset cannot be negative");
+  if (bevel < 0) throw new stlException_c("Bevel cannot be negative");
+  if (cube_scale < (2*bevel + 2*shrink)) throw new stlException_c("Cube size too small for given bevel and offset");
 
   int cost = (int)ceilf(v->countState(voxel_c::VX_FILLED) * cube_scale*cube_scale*cube_scale / 1000.0);
 
+  char name[1000];
   snprintf(name, 1000, "%s_%03i", fname, cost);
-
   open(name);
 
-  for (x=0; x<=xsize; x++)
-    for (y=0; y<=ysize; y++)
-      for (z=0; z<=zsize; z++)
-	{
-	  make_faces(v,x,y,z);
-	  make_edges(v,x,y,z);
-	  make_corners(v,x,y,z);
-	}
+  for (unsigned int x = 0; x <= v->getX(); x++)
+    for (unsigned int y = 0; y <= v->getY(); y++)
+      for (unsigned int z = 0; z <= v->getZ(); z++) {
+        make_faces(v,x,y,z);
+        make_edges(v,x,y,z);
+        make_corners(v,x,y,z);
+      }
 
   close();
-
-  return ERR_NONE;
 }
 
 

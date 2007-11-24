@@ -23,7 +23,7 @@
 
 #define BINARY   // if this is defined binary STL is produced
 
-stlExporter_c::errorCodes stlExporter_c::open(const char * name) {
+void stlExporter_c::open(const char * name) {
 
   char fname[1000];
   snprintf(fname, 1000, "%s.stl", name);
@@ -33,7 +33,7 @@ stlExporter_c::errorCodes stlExporter_c::open(const char * name) {
 
     f = fopen(fname,"wb");
 
-    if (!f) return ERR_COULD_NOT_OPEN_FILE;
+    if (!f) throw new stlException_c("Could not open file");
 
     int pos = 0;
 
@@ -48,16 +48,14 @@ stlExporter_c::errorCodes stlExporter_c::open(const char * name) {
 
     f = fopen(fname,"w");
 
-    if (!f) return ERR_COULD_NOT_OPEN_FILE;
+    if (!f) throw new stlException_c("Could not open file");
 
     fprintf(f, "solid %s\n", title);
 
   }
-
-  return ERR_NONE;
 }
 
-stlExporter_c::errorCodes stlExporter_c::close(void) {
+void stlExporter_c::close(void) {
 
   if (binaryMode) {
 
@@ -72,13 +70,11 @@ stlExporter_c::errorCodes stlExporter_c::close(void) {
   }
 
   fclose(f);
-
-  return ERR_NONE;
 }
 
 #define Epsilon 1.0e-5
 
-stlExporter_c::errorCodes stlExporter_c::outTriangle(
+void stlExporter_c::outTriangle(
         /* the 3 vertexes of the triangle */
         double x1, double y1, double z1,
         double x2, double y2, double z2,
@@ -106,7 +102,7 @@ stlExporter_c::errorCodes stlExporter_c::outTriangle(
   float l = sqrt(nx*nx+ny*ny+nz*nz);
 
   if (l < Epsilon)
-    return ERR_NONE;
+    return;
 
   nx /= l;
   ny /= l;
@@ -161,7 +157,5 @@ stlExporter_c::errorCodes stlExporter_c::outTriangle(
       fprintf(f,"  endfacet\n");
     }
   }
-
-  return ERR_NONE;
 }
 

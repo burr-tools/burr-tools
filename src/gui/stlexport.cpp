@@ -163,23 +163,11 @@ void stlExport_c::exportSTL(int shape)
   else
     idx += snprintf(name+idx, 1000-idx, "_S%d", shape);
 
-  switch (stl->write(name,  v)) {
-    case stlExporter_c::ERR_NONE:
-      break;
-    case stlExporter_c::ERR_COULD_NOT_OPEN_FILE:
-      fl_message("Could not open output file!");
-      break;
-    case stlExporter_c::ERR_VARIABLE_VOXELS_FOUND:
-      fl_message("Shapes with variable voxels can not be exported!");
-      break;
-    default:
-      fl_message("Error!");
-      break;
-      /*
-      ERR_SIZE_TOO_SMALL,
-      ERR_OFFSET_NEGATIVE,
-      ERR_BEVEL_NEGATIVE,
-      ERR_SIZE_OFFSET_BEVEL_DONT_FIT,
-      */
+  try {
+    stl->write(name,  v);
+  }
+
+  catch (stlException_c * e) {
+    fl_message(e->comment);
   }
 }

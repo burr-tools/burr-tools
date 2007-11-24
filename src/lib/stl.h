@@ -22,6 +22,17 @@
 
 class voxel_c;
 
+/* this class gets thrown when something in the export went wrong */
+class stlException_c {
+
+  public:
+
+    const char * comment;
+
+    stlException_c(const char * c) : comment(c) {}
+
+};
+
 class stlExporter_c {
 
   public:
@@ -32,20 +43,7 @@ class stlExporter_c {
         close();
     }
 
-    typedef enum {
-
-      ERR_NONE,
-      ERR_COULD_NOT_OPEN_FILE,
-      ERR_VARIABLE_VOXELS_FOUND,
-      ERR_SIZE_TOO_SMALL,
-      ERR_OFFSET_NEGATIVE,
-      ERR_BEVEL_NEGATIVE,
-      ERR_SIZE_OFFSET_BEVEL_DONT_FIT,
-
-
-    } errorCodes;
-
-    virtual errorCodes write(const char * basename, voxel_c * shape) = 0;
+    virtual void write(const char * basename, voxel_c * shape) = 0;
 
     /* some functions to set some parameters for the output all parameters mus tbe double
      * values
@@ -67,13 +65,13 @@ class stlExporter_c {
      * a new empty one and adds the title, the title may be
      * limited to 80 characters
      */
-    errorCodes open(const char * fname);
+    void open(const char * fname);
 
     /* closes the STL file */
-    errorCodes close(void);
+    void close(void);
 
     /* some helper functions for STL output */
-    errorCodes outTriangle(
+    void outTriangle(
         /* the 3 vertexes of the triangle */
         double x1, double y1, double z1,
         double x2, double y2, double z2,
