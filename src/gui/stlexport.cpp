@@ -117,7 +117,6 @@ stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_W
 
     status = new LFl_Box();
     status->weight(1, 0);
-    status->label("Test");
     status->pitch(7);
     status->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 

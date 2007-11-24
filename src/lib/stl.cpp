@@ -37,8 +37,6 @@ stlExporter_c::errorCodes stlExporter_c::open(const char * name) {
 
     int pos = 0;
 
-
-
     for (int i = 0; i < 84; i++) {
       fwrite(title+pos, 1, 1, f);
       if (title[pos]) pos++;
