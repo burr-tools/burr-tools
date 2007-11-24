@@ -67,7 +67,7 @@ class stlExporter_c {
      * a new empty one and adds the title, the title may be
      * limited to 80 characters
      */
-    errorCodes open(const char * fname, const char * title);
+    errorCodes open(const char * fname);
 
     /* closes the STL file */
     errorCodes close(void);

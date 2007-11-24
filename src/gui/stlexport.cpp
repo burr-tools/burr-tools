@@ -25,6 +25,7 @@
 #include "../lib/stl.h"
 #include "../lib/gridtype.h"
 #include "../lib/bt_assert.h"
+#include "../lib/voxel.h"
 
 #include <FL/Fl.H>
 #include <FL/fl_ask.H>
@@ -149,11 +150,19 @@ void stlExport_c::exportSTL(int shape)
 
   stl->setBinaryMode(Binary->value() != 0);
 
+  int idx = 0;
+
   if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/') {
-      snprintf(name, 1000, "%s/%s", Pname->value(), Fname->value());
+      idx = snprintf(name, 1000, "%s/%s", Pname->value(), Fname->value());
   } else {
-      snprintf(name, 1000, "%s%s", Pname->value(), Fname->value());
+      idx = snprintf(name, 1000, "%s%s", Pname->value(), Fname->value());
   }
+
+  // append name
+  if (v->getName().length())
+    idx += snprintf(name+idx, 1000-idx, "_%s", v->getName().c_str());
+  else
+    idx += snprintf(name+idx, 1000-idx, "_S%d", shape);
 
   switch (stl->write(name,  v)) {
     case stlExporter_c::ERR_NONE:

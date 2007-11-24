@@ -19,10 +19,15 @@
 #include "stl.h"
 
 #include <math.h>
+#include <string.h>
 
 #define BINARY   // if this is defined binary STL is produced
 
-stlExporter_c::errorCodes stlExporter_c::open(const char * fname, const char * title) {
+stlExporter_c::errorCodes stlExporter_c::open(const char * name) {
+
+  char fname[1000];
+  snprintf(fname, 1000, "%s.stl", name);
+  const char * title = basename(name);
 
   if (binaryMode) {
 
@@ -31,6 +36,8 @@ stlExporter_c::errorCodes stlExporter_c::open(const char * fname, const char * t
     if (!f) return ERR_COULD_NOT_OPEN_FILE;
 
     int pos = 0;
+
+
 
     for (int i = 0; i < 84; i++) {
       fwrite(title+pos, 1, 1, f);

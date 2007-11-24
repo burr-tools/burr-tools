@@ -563,7 +563,7 @@ void stlExporter_0_c::make_faces(const voxel_c *v, const int x,const int y,const
       }
 }
 
-stlExporter_c::errorCodes stlExporter_0_c::write(const char * basename, voxel_c * v) {
+stlExporter_c::errorCodes stlExporter_0_c::write(const char * fname, voxel_c * v) {
 
   int x,y,z;
   char name[1000];
@@ -589,19 +589,9 @@ stlExporter_c::errorCodes stlExporter_0_c::write(const char * basename, voxel_c 
 
   int cost = (int)ceilf(v->countState(voxel_c::VX_FILLED) * cube_scale*cube_scale*cube_scale / 1000.0);
 
-  if (v->getName().length())
-    snprintf(name, 1000, "%s_%s_%03i.stl", basename, v->getName().c_str(),cost);
-  else
-    snprintf(name, 1000, "%s_Sx_%03i.stl", basename, cost);
+  snprintf(name, 1000, "%s_%03i", fname, cost);
 
-  char title[80];
-
-  if (v->getName().length())
-    snprintf(title, 80, "solid %s_%s_%03i\n", basename, v->getName().c_str(), cost);
-  else
-    snprintf(title, 80, "solid %s_Sx_%03i\n", basename, cost);
-
-  open(name, title);
+  open(name);
 
   for (x=0; x<=xsize; x++)
     for (y=0; y<=ysize; y++)
