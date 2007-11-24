@@ -33,6 +33,8 @@ lib_libburr_a_SOURCES=\
     lib/print.cpp \
     lib/ps3dloader.cpp \
     lib/puzzle.cpp \
+    lib/stl.cpp \
+    lib/stl_0.cpp \
     lib/symmetries_0.cpp \
     lib/symmetries_1.cpp \
     lib/symmetries_2.cpp \
@@ -71,6 +73,8 @@ lib_libburr_a_SOURCES=\
     lib/print.h \
     lib/ps3dloader.h\
     lib/puzzle.h \
+    lib/stl.h \
+    lib/stl_0.h \
     lib/symmetries.h \
     lib/symmetries_0.h \
     lib/symmetries_1.h \

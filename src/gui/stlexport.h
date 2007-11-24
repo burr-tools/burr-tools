@@ -32,11 +32,15 @@
 
 #include "Layouter.h"
 
+#include <vector>
+
 class LView3dGroup;
 class LBlockListGroup;
 class puzzle_c;
 class guiGridType_c;
 class PieceSelector;
+
+class stlExporter_c;
 
 class stlExport_c : public LFl_Double_Window {
 
@@ -45,10 +49,12 @@ class stlExport_c : public LFl_Double_Window {
     /* the puzzle that is going to be exported */
     puzzle_c * puzzle;
 
+    stlExporter_c * stl;
+
     /* The different window elements */
     LView3dGroup *view3D;
 
-    LFl_Float_Input *Bevel, *Offset, *CubeSize;
+    std::vector<LFl_Float_Input*> params;
     LFl_Input *Fname, *Pname;
     LFl_Box *status;
     LFl_Button *BtnStart, *BtnAbbort;

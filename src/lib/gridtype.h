@@ -30,6 +30,7 @@ class disassembler_c;
 class symmetries_c;
 class voxel_c;
 class puzzle_c;
+class stlExporter_c;
 
 /* this class encapsulates all information required to handle the different grid types
  */
@@ -47,7 +48,8 @@ class gridType_c {
     /* capabilities of a given grid space */
     typedef enum {
       CAP_ASSEMBLE = 1,
-      CAP_DISASSEMBLE = 2
+      CAP_DISASSEMBLE = 2,
+      CAP_STLEXPORT = 4
     } capabilities;
 
   protected:
@@ -112,6 +114,8 @@ class gridType_c {
     voxel_c * getVoxel(const voxel_c * orig) const;
 
     const symmetries_c * getSymmetries(void) const;
+
+    stlExporter_c * getStlExporter(void) const;
 
     /* this function is different from the above, it is not dependend on the
      * gridtype of the puzzle but on some of the parameters of the puzzle, e.g

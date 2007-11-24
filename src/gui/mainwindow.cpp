@@ -2025,6 +2025,13 @@ void mainWindow_c::updateInterface(void) {
     menu_MainMenu[findMenuEntry("Images")].activate();
   else
     menu_MainMenu[findMenuEntry("Images")].deactivate();
+
+  if (ggt->getGridType()->getCapabilities() & gridType_c::CAP_STLEXPORT &&
+      puzzle->shapeNumber() > 0)
+    menu_MainMenu[findMenuEntry("STL")].activate();
+  else
+    menu_MainMenu[findMenuEntry("STL")].deactivate();
+
   MainMenu->copy(menu_MainMenu, this);
 
   unsigned int prob = solutionProblem->getSelection();
