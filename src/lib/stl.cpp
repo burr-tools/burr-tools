@@ -24,47 +24,47 @@
 
 stlExporter_c::errorCodes stlExporter_c::open(const char * fname, const char * title) {
 
-#ifdef BINARY
+  if (binaryMode) {
 
-  f = fopen(fname,"wb");
+    f = fopen(fname,"wb");
 
-  if (!f) return ERR_COULD_NOT_OPEN_FILE;
+    if (!f) return ERR_COULD_NOT_OPEN_FILE;
 
-  int pos = 0;
+    int pos = 0;
 
-  for (int i = 0; i < 84; i++) {
-    fwrite(title+pos, 1, 1, f);
-    if (title[pos]) pos++;
+    for (int i = 0; i < 84; i++) {
+      fwrite(title+pos, 1, 1, f);
+      if (title[pos]) pos++;
+    }
+
+    triangleCount = 0;
+
+  } else {
+
+    f = fopen(fname,"w");
+
+    if (!f) return ERR_COULD_NOT_OPEN_FILE;
+
+    fprintf(f, "solid %s\n", title);
+
   }
-
-  triangleCount = 0;
-
-#else
-
-  f = fopen(fname,"w");
-
-  if (!f) return ERR_COULD_NOT_OPEN_FILE;
-
-  fprintf(f, "solid %s\n", title);
-
-#endif
 
   return ERR_NONE;
 }
 
 stlExporter_c::errorCodes stlExporter_c::close(void) {
 
-#ifdef BINARY
+  if (binaryMode) {
 
-  // write out the triangle count into the header
-  fseek(f, 80, SEEK_SET);
-  fwrite(&triangleCount, 1, 4, f);
+    // write out the triangle count into the header
+    fseek(f, 80, SEEK_SET);
+    fwrite(&triangleCount, 1, 4, f);
 
-#else
+  } else {
 
-  fprintf(f, "endsolid\n");
+    fprintf(f, "endsolid\n");
 
-#endif
+  }
 
   fclose(f);
 
@@ -107,78 +107,55 @@ stlExporter_c::errorCodes stlExporter_c::outTriangle(
   ny /= l;
   nz /= l;
 
-#ifdef BINARY
+  if (binaryMode) {
 
-  float d;
+    float d;
 
-  if (nx*(xp-sx)+ny*(yp-sy)+nz*(zp-sz) > 0) {
+    if (nx*(xp-sx)+ny*(yp-sy)+nz*(zp-sz) > 0) {
 
-    d = -nx; fwrite(&d, 1, 4, f);
-    d = -ny; fwrite(&d, 1, 4, f);
-    d = -nz; fwrite(&d, 1, 4, f);
+      d = -nx; fwrite(&d, 1, 4, f); d = -ny; fwrite(&d, 1, 4, f); d = -nz; fwrite(&d, 1, 4, f);
+      d = x1; fwrite(&d, 1, 4, f); d = y1; fwrite(&d, 1, 4, f); d = z1; fwrite(&d, 1, 4, f);
+      d = x3; fwrite(&d, 1, 4, f); d = y3; fwrite(&d, 1, 4, f); d = z3; fwrite(&d, 1, 4, f);
+      d = x2; fwrite(&d, 1, 4, f); d = y2; fwrite(&d, 1, 4, f); d = z2; fwrite(&d, 1, 4, f);
 
-    d = x1; fwrite(&d, 1, 4, f);
-    d = y1; fwrite(&d, 1, 4, f);
-    d = z1; fwrite(&d, 1, 4, f);
+    } else {
 
-    d = x3; fwrite(&d, 1, 4, f);
-    d = y3; fwrite(&d, 1, 4, f);
-    d = z3; fwrite(&d, 1, 4, f);
+      d = nx; fwrite(&d, 1, 4, f); d = ny; fwrite(&d, 1, 4, f); d = nz; fwrite(&d, 1, 4, f);
+      d = x1; fwrite(&d, 1, 4, f); d = y1; fwrite(&d, 1, 4, f); d = z1; fwrite(&d, 1, 4, f);
+      d = x2; fwrite(&d, 1, 4, f); d = y2; fwrite(&d, 1, 4, f); d = z2; fwrite(&d, 1, 4, f);
+      d = x3; fwrite(&d, 1, 4, f); d = y3; fwrite(&d, 1, 4, f); d = z3; fwrite(&d, 1, 4, f);
 
-    d = x2; fwrite(&d, 1, 4, f);
-    d = y2; fwrite(&d, 1, 4, f);
-    d = z2; fwrite(&d, 1, 4, f);
+    }
 
-  } else {
+    // attribute
+    int i = 0;
+    fwrite(&i, 1, 2, f);
 
-    d = nx; fwrite(&d, 1, 4, f);
-    d = ny; fwrite(&d, 1, 4, f);
-    d = nz; fwrite(&d, 1, 4, f);
-
-    d = x1; fwrite(&d, 1, 4, f);
-    d = y1; fwrite(&d, 1, 4, f);
-    d = z1; fwrite(&d, 1, 4, f);
-
-    d = x2; fwrite(&d, 1, 4, f);
-    d = y2; fwrite(&d, 1, 4, f);
-    d = z2; fwrite(&d, 1, 4, f);
-
-    d = x3; fwrite(&d, 1, 4, f);
-    d = y3; fwrite(&d, 1, 4, f);
-    d = z3; fwrite(&d, 1, 4, f);
-
-  }
-
-  // attribute
-  int i = 0;
-  fwrite(&i, 1, 2, f);
-
-  triangleCount++;
-
-#else
-
-  if (nx*(xp-sx)+ny*(yp-sy)+nz*(zp-sz) > 0) {
-
-    fprintf(f,"  facet normal %9.4e %9.4e %9.4e\n", -nx, -ny, -nz);
-    fprintf(f,"    outer loop\n");
-    fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x1, y1, z1);
-    fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x3, y3, z3);
-    fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x2, y2, z2);
-    fprintf(f,"    endloop\n");
-    fprintf(f,"  endfacet\n");
+    triangleCount++;
 
   } else {
 
-    fprintf(f,"  facet normal %9.4e %9.4e %9.4e\n", nx, ny, nz);
-    fprintf(f,"    outer loop\n");
-    fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x1, y1, z1);
-    fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x2, y2, z2);
-    fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x3, y3, z3);
-    fprintf(f,"    endloop\n");
-    fprintf(f,"  endfacet\n");
-  }
+    if (nx*(xp-sx)+ny*(yp-sy)+nz*(zp-sz) > 0) {
 
-#endif
+      fprintf(f,"  facet normal %9.4e %9.4e %9.4e\n", -nx, -ny, -nz);
+      fprintf(f,"    outer loop\n");
+      fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x1, y1, z1);
+      fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x3, y3, z3);
+      fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x2, y2, z2);
+      fprintf(f,"    endloop\n");
+      fprintf(f,"  endfacet\n");
+
+    } else {
+
+      fprintf(f,"  facet normal %9.4e %9.4e %9.4e\n", nx, ny, nz);
+      fprintf(f,"    outer loop\n");
+      fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x1, y1, z1);
+      fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x2, y2, z2);
+      fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x3, y3, z3);
+      fprintf(f,"    endloop\n");
+      fprintf(f,"  endfacet\n");
+    }
+  }
 
   return ERR_NONE;
 }

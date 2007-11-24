@@ -60,6 +60,7 @@ class stlExport_c : public LFl_Double_Window {
     LFl_Button *BtnStart, *BtnAbbort;
     PieceSelector * ShapeSelect;
     LFl_Radio_Button *ExpShape;
+    LFl_Check_Button *Binary;
 
   public:
 

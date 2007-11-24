@@ -76,6 +76,12 @@ stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_W
     Pname->weight(1, 0);
     Pname->setMinimumSize(50, 0);
 
+    Binary = new LFl_Check_Button("Binary STL", 0, 2, 3, 1);
+    if (stl->getBinaryMode())
+      Binary->value(1);
+    else
+      Binary->value(0);
+
     fr->end();
   }
 
@@ -140,6 +146,8 @@ void stlExport_c::exportSTL(int shape)
 
   for (unsigned int i = 0; i < stl->numParameters(); i++)
     stl->setParameter(i, atof(params[i]->value()));
+
+  stl->setBinaryMode(Binary->value() != 0);
 
   if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/') {
       snprintf(name, 1000, "%s/%s", Pname->value(), Fname->value());

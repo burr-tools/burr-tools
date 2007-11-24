@@ -26,7 +26,7 @@ class stlExporter_c {
 
   public:
 
-    stlExporter_c(void) : f(0) {}
+    stlExporter_c(void) : f(0), binaryMode(true) {}
     virtual ~stlExporter_c(void) {
       if (f)
         close();
@@ -57,6 +57,10 @@ class stlExporter_c {
     virtual double getParameter(unsigned int idx) const = 0;
     virtual void setParameter(unsigned int idx, double value) = 0;
 
+    /* select whether to use binary mode or not */
+    void setBinaryMode(bool on) { binaryMode = on; }
+    bool getBinaryMode(void) { return binaryMode; }
+
   protected:
 
     /* open and overwrites the given file with
@@ -84,6 +88,8 @@ class stlExporter_c {
 
     FILE * f;
     unsigned long triangleCount;
+
+    bool binaryMode;
 };
 
 #endif
