@@ -119,7 +119,6 @@ void stlExporter_0_c::make_tri(float x0, float y0, float z0,
 {
   float p0[3],p1[3],p2[3];
 
-
   rotate_point(&x0,&y0,&z0,rot);
   rotate_point(&x1,&y1,&z1,rot);
   rotate_point(&x2,&y2,&z2,rot);
@@ -128,9 +127,6 @@ void stlExporter_0_c::make_tri(float x0, float y0, float z0,
   int cy = y;
   int cz = z;
 
-//  if (p0[0] < 0 || p1[0] < 0 || p2[0] < 0) cx--;
-//  if (p0[1] < 0 || p1[1] < 0 || p2[1] < 0) cy--;
-//  if (p0[2] < 0 || p1[2] < 0 || p2[2] < 0) cz--;
   if (x0 < 0 || x1 < 0 || x2 < 0) cx--;
   if (y0 < 0 || y1 < 0 || y2 < 0) cy--;
   if (z0 < 0 || z1 < 0 || z2 < 0) cz--;
