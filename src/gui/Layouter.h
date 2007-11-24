@@ -461,39 +461,21 @@ class LFl_Double_Window : public Fl_Double_Window {
 
   layouter_c * lay;
   bool res;
+  bool placed;
 
   public:
 
-  LFl_Double_Window(bool resizab) : Fl_Double_Window(10, 10), res(resizab) {
+  LFl_Double_Window(bool resizab) : Fl_Double_Window(10, 10), res(resizab), placed(false) {
     lay = new layouter_c();
     lay->resize(0, 0, 10, 10);
     resizable(lay);
   }
 
-  void show(void) {
+  void show(void);
 
-    if (!shown()) {
-
-      int wy, hy;
-      lay->getMinSize(&wy, &hy);
-
-      if (res)
-        size_range(wy, hy, 0, 0);
-      else
-        size_range(wy, hy, wy, hy);
-
-      size(wy, hy);
-
-      // center the window
-      {
-        int sw, sh, sx, sy;
-        Fl::screen_xywh(sx, sy, sw, sh);
-
-        position((sw-wy)/2+sx, (sh-hy)/2+sy);
-      }
-    }
-
-    Fl_Double_Window::show();
+  void resize(int x, int y, int w, int h) {
+    placed = true;
+    Fl_Double_Window::resize(x, y, w, h);
   }
 
   void begin() {

@@ -465,3 +465,32 @@ void LFl_Scroll::resize(int x, int y, int w, int h) {
   Fl_Scroll::resize(x, y, w, h);
 }
 
+void LFl_Double_Window::show(void) {
+
+  if (!shown()) {
+
+    int wy, hy;
+    lay->getMinSize(&wy, &hy);
+
+    if (res)
+      size_range(wy, hy, 0, 0);
+    else
+      size_range(wy, hy, wy, hy);
+
+    if (!placed || wy > w() || hy > h()) {
+      size(wy, hy);
+
+      // center the window
+      {
+        int sw, sh, sx, sy;
+        Fl::screen_xywh(sx, sy, sw, sh);
+
+        position((sw-wy)/2+sx, (sh-hy)/2+sy);
+      }
+    }
+  }
+
+  Fl_Double_Window::show();
+}
+
+
