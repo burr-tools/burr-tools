@@ -288,6 +288,81 @@ bool voxel_3_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, in
 }
 
 void voxel_3_c::scale(unsigned int amount) {
+
+  /* the 6 cutting planes */
+  static int planes[6][3] = {
+    {1, 1, 0}, {1, -1, 0},
+    {1, 0, 1}, {1, 0, -1},
+    {0, 1, 1}, {0, 1, -1}};
+
+  unsigned int nsx = ((sx+4)/5)*amount*5;
+  unsigned int nsy = ((sy+4)/5)*amount*5;
+  unsigned int nsz = ((sz+4)/5)*amount*5;
+  voxel_type * s2 = new voxel_type[nsx*nsy*nsz];
+  memset(s2, outside, nsx*nsy*nsz);
+
+  // we scale each 5x5x5 block
+
+  unsigned int bsx = ((sx+4)/5);
+  unsigned int bsy = ((sy+4)/5);
+  unsigned int bsz = ((sz+4)/5);
+
+  /* for each voxel within a 5x5x5 block */
+  for (unsigned int x = 0; x < 5; x++)
+    for (unsigned int y = 0; y < 5; y++)
+      for (unsigned int z = 0; z < 5; z++)
+
+        if (validCoordinate(x, y, z)) {
+
+          /* this bitmask represents the position of the current voxel
+           * relative to the 6 planes */
+          int planeMask = 0;
+          for (int i = 0; i < 6; i++)
+            if ((x-2.5)*planes[i][0] +
+                (y-2.5)*planes[i][1] +
+                (z-2.5)*planes[i][2] < 0)
+              planeMask |= 1<<i;
+
+          /* go through all voxels in the target block */
+          for (unsigned int ax = 0; ax < 5*amount; ax++)
+            for (unsigned int ay = 0; ay < 5*amount; ay++)
+              for (unsigned int az = 0; az < 5*amount; az++)
+                if (validCoordinate(ax, ay, az)) {
+
+                  bool useVoxel = true;
+
+                  for (int i = 0; i < 6; i++)
+                    if (((ax-2.5*amount)*planes[i][0] +
+                          (ay-2.5*amount)*planes[i][1] +
+                          (az-2.5*amount)*planes[i][2] < 0) != (((planeMask & (1<<i)) != 0))) {
+                      useVoxel = false;
+                      break;
+                    }
+
+                  if (useVoxel)
+
+                    /* for each block */
+                    for (unsigned int bx = 0; bx < bsx; bx++)
+                      for (unsigned int by = 0; by < bsy; by++)
+                        for (unsigned int bz = 0; bz < bsz; bz++)
+                          if (!isEmpty2(5*bx+x, 5*by+y, 5*bz+z))
+                            s2[(bx*amount*5+ax) + nsx * ((by*amount*5+ay) + nsy * (bz*amount*5+az))] = get(5*bx+x, 5*by+y, 5*bz+z);
+
+                }
+        }
+
+  delete [] space;
+  space = s2;
+
+  sx = nsx;
+  sy = nsy;
+  sz = nsz;
+
+  hx = hy = hz = 0;
+
+  voxels = sx*sy*sz;
+
+  recalcBoundingBox();
 }
 
 bool voxel_3_c::scaleDown(unsigned char by, bool action) {
