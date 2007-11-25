@@ -90,12 +90,13 @@ stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_W
     fr = new LFl_Frame(0, 1, 1, 1);
 
     for (unsigned int i = 0; i < stl->numParameters(); i++) {
-      (new LFl_Box(stl->getParameterName(i), 0, i))->stretchLeft();
-      (new LFl_Box(0, i))->setMinimumSize(5, 0);
+      (new LFl_Box(stl->getParameterName(i), 0, i))->stretchRight();
+      (new LFl_Box(1, i))->setMinimumSize(5, 0);
       params.push_back(new LFl_Float_Input(2, i, 1, 1));
       char val[10];
       snprintf(val, 10, "%2.2f", stl->getParameter(i));
       (*params.rbegin())->value(val);
+      (*params.rbegin())->weight(1, 0);
     }
 
     fr->end();
