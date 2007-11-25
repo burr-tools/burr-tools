@@ -18,7 +18,6 @@
 #ifndef __VOXEL_EDIT_GROUP_H__
 #define __VOXEL_EDIT_GROUP_H__
 
-#include "voxeldrawer.h"
 #include "BlockList.h"
 #include "grideditor.h"
 
