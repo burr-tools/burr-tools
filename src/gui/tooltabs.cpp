@@ -517,7 +517,8 @@ void ToolTab_0::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
   puzzle = puz;
   shape = sh;
 
-  bt_assert(!puzzle || (puzzle->getGridType()->getType() == gridType_c::GT_BRICKS));
+  bt_assert(!puzzle || (puzzle->getGridType()->getType() == gridType_c::GT_BRICKS)
+                    || (puzzle->getGridType()->getType() == gridType_c::GT_RHOMBIC));
 
   if (puzzle && shape < puzzle->shapeNumber())
     changeSize->setXYZ(puzzle->getShape(shape)->getX(),
