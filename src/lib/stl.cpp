@@ -21,12 +21,27 @@
 #include <math.h>
 #include <string.h>
 
-#define BINARY   // if this is defined binary STL is produced
+#ifdef WIN32
+const char * basename(const char * name) {
+  const char * res1 = strchr(name, '/');
+  const char * res2 = strchr(name, '\\');
+
+  const char * res = res1>res2 ? res1 : res2;
+
+  if (res == 0)
+    res = name;
+  else
+    res++;
+
+  return res;
+}
+#endif
 
 void stlExporter_c::open(const char * name) {
 
   char fname[1000];
   snprintf(fname, 1000, "%s.stl", name);
+
   const char * title = basename(name);
 
   if (binaryMode) {
