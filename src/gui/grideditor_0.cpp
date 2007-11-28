@@ -44,39 +44,38 @@ void gridEditor_0_c::calcParameters(int *szx, int *szy, int *tx, int *ty) {
 
   *szy = *szx;
 
-  *tx = x() + (w() - puzzle->getShape(piecenumber)->getX()*(*szx) - 1) / 2;
-  *ty = y() + (h() - puzzle->getShape(piecenumber)->getY()*(*szy) - 1) / 2;
+  *tx = x()       + (w() - puzzle->getShape(piecenumber)->getX()*(*szx) - 1) / 2;
+  *ty = y()+h()-1 - (h() - puzzle->getShape(piecenumber)->getY()*(*szy) - 1) / 2;
 }
 
 void gridEditor_0_c::drawNormalTile(int x, int y, int, int tx, int ty, int sx, int sy) {
-  fl_rectf(tx+x*sx, ty+y*sy, sx, sy);
+  fl_rectf(tx+x*sx, ty-(y+1)*sy, sx, sy);
 }
 
 void gridEditor_0_c::drawVariableTile(int x, int y, int, int tx, int ty, int sx, int sy) {
-  fl_rectf(tx+x*sx+3, ty+y*sy+3, sx-5, sy-5);
+  fl_rectf(tx+x*sx+3, ty-(y+1)*sy+3, sx-5, sy-5);
 }
 
 void gridEditor_0_c::drawTileFrame(int x, int y, int, int tx, int ty, int sx, int sy) {
-  fl_rect(tx+x*sx, ty+y*sy, sx+1, sy+1);
+  fl_rect(tx+x*sx, ty-(y+1)*sy, sx+1, sy+1);
 }
 
 void gridEditor_0_c::drawTileColor(int x, int y, int, int tx, int ty, int sx, int sy) {
-  fl_rectf(tx+x*sx, ty+y*sy, sx/2, sy/2);
+  fl_rectf(tx+x*sx, ty+(y+2)*sy, sx/2, sy/2);
 }
 
-void gridEditor_0_c::drawTileCursor(int x, int y, int, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy) {
-  voxel_c * space = puzzle->getShape(piecenumber);
+void gridEditor_0_c::drawTileCursor(int x, int y, int, int tx, int ty, int sx, int sy) {
 
-  bool ins = inRegion(x, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools);
+  bool ins = inRegion(x, y);
 
-  if (ins ^ inRegion(x, y-1, x1, x2, y1, y2, space->getX(), space->getY(), activeTools)) {
-    fl_line(tx+sx*x, ty+sy*y+1, tx+sx*x+sx, ty+sy*y+1);
-    fl_line(tx+sx*x, ty+sy*y-1, tx+sx*x+sx, ty+sy*y-1);
+  if (ins ^ inRegion(x, y-1)) {
+    fl_line(tx+sx*x, ty-sy*y+1, tx+sx*x+sx, ty-sy*y+1);
+    fl_line(tx+sx*x, ty-sy*y-1, tx+sx*x+sx, ty-sy*y-1);
   }
 
-  if (ins ^ inRegion(x-1, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools)) {
-    fl_line(tx+sx*x+1, ty+sy*y, tx+sx*x+1, ty+sy*y+sy);
-    fl_line(tx+sx*x-1, ty+sy*y, tx+sx*x-1, ty+sy*y+sy);
+  if (ins ^ inRegion(x-1, y)) {
+    fl_line(tx+sx*x+1, ty-sy*y, tx+sx*x+1, ty-sy*y-sy);
+    fl_line(tx+sx*x-1, ty-sy*y, tx+sx*x-1, ty-sy*y-sy);
   }
 }
 
@@ -90,13 +89,13 @@ bool gridEditor_0_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
   if (sx == 0 || sy == 0) return false;
 
   x -= tx;
-  y -= ty;
+  y -= (ty-sy*space->getY());
 
   x = floordiv(x, sx);
   y = floordiv(y, sy);
 
   *gx = x;
-  *gy = space->getY() - y - 1;
+  *gy = space->getY()-y-1;
 
   return true;
 }

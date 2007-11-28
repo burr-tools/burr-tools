@@ -88,6 +88,9 @@ protected:
   int mX, mY, mZ;
   int startX, startY;
 
+  // area of the marker
+  int markX1, markX2, markY1, markY2;
+
   // is the mouse inside the widget?
   bool inside;
 
@@ -109,7 +112,7 @@ protected:
   /* tool function to calculate, if the given voxel coordinate x;y is inside
    * the specified area
    */
-  bool inRegion(int x, int y, int x1, int x2, int y1, int y2, int sx, int sy, int mode);
+  bool inRegion(int x, int y);
 
 public:
 
@@ -183,7 +186,7 @@ public:
   virtual void drawVariableTile(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;
   virtual void drawTileFrame(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;
   virtual void drawTileColor(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;
-  virtual void drawTileCursor(int x, int y, int z, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy) = 0;
+  virtual void drawTileCursor(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;
 
 private:
 

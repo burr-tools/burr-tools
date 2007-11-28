@@ -49,8 +49,8 @@ void gridEditor_2_c::calcParameters(int *szx, int *szy, int *tx, int *ty) {
 
   *szy = *szx;
 
-  *tx = x() + (w() - 7071*puzzle->getShape(piecenumber)->getX()*(*szx)/10000 - 3) / 2;
-  *ty = y() + (h() - 7071*puzzle->getShape(piecenumber)->getY()*(*szy)/10000 - 3) / 2;
+  *tx = x()       + (w() - 7071*puzzle->getShape(piecenumber)->getX()*(*szx)/10000 - 3) / 2;
+  *ty = y()+h()-1 - (h() - 7071*puzzle->getShape(piecenumber)->getY()*(*szy)/10000 - 3) / 2;
 }
 
 void gridEditor_2_c::drawNormalTile(int x, int y, int z, int tx, int ty, int sx, int sy) {
@@ -58,70 +58,63 @@ void gridEditor_2_c::drawNormalTile(int x, int y, int z, int tx, int ty, int sx,
   voxel_c * space = puzzle->getShape(piecenumber);
   // only draw tiles with x+y+z & 1 == 0
 
-  if (((x+(space->getY()-y)+z-1) & 1) != 0)
-    return;
+  bt_assert(space->validCoordinate(x, y, z));
 
   int sxc = 7071*sx/10000;
   int syc = 7071*sy/10000;
 
-  fl_pie(tx+x*sxc, ty+y*syc, sx, sy, 0, 360);
+  fl_pie(tx+x*sxc, ty-y*syc-syc, sx, sy, 0, 360);
 }
 
 void gridEditor_2_c::drawVariableTile(int x, int y, int z, int tx, int ty, int sx, int sy) {
 
   voxel_c * space = puzzle->getShape(piecenumber);
 
-  if (((x+(space->getY()-y)+z-1) & 1) != 0)
-    return;
+  bt_assert(space->validCoordinate(x, y, z));
 
   int sxc = 7071*sx/10000;
   int syc = 7071*sy/10000;
 
-  fl_pie(tx+x*sxc+2, ty+y*syc+2, sx-4, sy-4, 0, 360);
+  fl_pie(tx+x*sxc+2, ty-y*syc+2-syc, sx-4, sy-4, 0, 360);
 }
 
 void gridEditor_2_c::drawTileFrame(int x, int y, int z, int tx, int ty, int sx, int sy) {
 
   voxel_c * space = puzzle->getShape(piecenumber);
 
-  if (((x+(space->getY()-y)+z-1) & 1) != 0)
-    return;
+  bt_assert(space->validCoordinate(x, y, z));
 
   int sxc = 7071*sx/10000;
   int syc = 7071*sy/10000;
 
-  fl_arc(tx+x*sxc, ty+y*syc, sx, sy, 0, 360);
+  fl_arc(tx+x*sxc, ty-y*syc-syc, sx, sy, 0, 360);
 }
 
 void gridEditor_2_c::drawTileColor(int x, int y, int z, int tx, int ty, int sx, int sy) {
 
   voxel_c * space = puzzle->getShape(piecenumber);
 
-  if (((x+(space->getY()-y)+z-1) & 1) != 0)
-    return;
+  bt_assert(space->validCoordinate(x, y, z));
 
   int sxc = 7071*sx/10000;
   int syc = 7071*sy/10000;
 
-  fl_pie(tx+x*sxc, ty+y*syc, sx/2, sy/2, 0, 360);
+  fl_pie(tx+x*sxc, ty-y*syc-syc, sx/2, sy/2, 0, 360);
 }
 
-void gridEditor_2_c::drawTileCursor(int x, int y, int z, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy) {
-
-  voxel_c * space = puzzle->getShape(piecenumber);
+void gridEditor_2_c::drawTileCursor(int x, int y, int /*z*/, int tx, int ty, int sx, int sy) {
 
   int sxc = 7071*sx/10000;
   int syc = 7071*sy/10000;
 
-  bool ins = inRegion(x, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools);
+  if (inRegion(x, y)) {
 
-  if (ins && (((x+(space->getY()-y-1)+z) & 1) == 0)) {
-    fl_arc(tx+x*sxc-1, ty+y*syc-1, sx+2, sy+2, 0, 360);
+    fl_arc(tx+x*sxc-1, ty-y*syc-syc-1, sx+2, sy+2, 0, 360);
 
-    fl_arc(tx+x*sxc-1, ty+y*syc-1, sx+1, sy+1, 0, 360);
-    fl_arc(tx+x*sxc,   ty+y*syc-1, sx+1, sy+1, 0, 360);
-    fl_arc(tx+x*sxc-1, ty+y*syc,   sx+1, sy+1, 0, 360);
-    fl_arc(tx+x*sxc,   ty+y*syc,   sx+1, sy+1, 0, 360);
+    fl_arc(tx+x*sxc-1, ty-y*syc-syc-1, sx+1, sy+1, 0, 360);
+    fl_arc(tx+x*sxc,   ty-y*syc-syc-1, sx+1, sy+1, 0, 360);
+    fl_arc(tx+x*sxc-1, ty-y*syc-syc,   sx+1, sy+1, 0, 360);
+    fl_arc(tx+x*sxc,   ty-y*syc-syc,   sx+1, sy+1, 0, 360);
   }
 }
 
@@ -133,7 +126,7 @@ bool gridEditor_2_c::calcGridPosition(int x, int y, int /*z*/, int *gx, int *gy)
   calcParameters(&sx, &sy, &tx, &ty);
 
   x -= tx;
-  y -= ty;
+  y -= (ty-7071*sy*space->getY()/10000);
 
   x -= 2929*sx/20000;
   y -= 2929*sy/20000;

@@ -63,8 +63,8 @@ void gridEditor_1_c::calcParameters(int *s, int *s2, int *tx, int *ty) {
   *s = sx;
   *s2 = (int)(sx * HEIGHT + 0.5);
 
-  *tx = x() + ((int)(w() - (1+(xx-1)/2.0) * (*s) - 1)) / 2;
-  *ty = y() + (h() - yy * (*s2) - 1) / 2;
+  *tx = x()       + ((int)(w() - (1+(xx-1)/2.0) * (*s) - 1)) / 2;
+  *ty = y()+h()-1 - (h() - yy * (*s2) - 1) / 2;
 }
 
 void gridEditor_1_c::drawNormalTile(int x, int y, int, int tx, int ty, int s, int s2) {
@@ -77,20 +77,20 @@ void gridEditor_1_c::drawNormalTile(int x, int y, int, int tx, int ty, int s, in
     // triangle with base at the top
 
     x1 = tx+s*x/2;
-    y1 = ty+s2+y*s2;
-    x2 = x1+s;
-    y2 = y1;
-    x3 = x1+s/2;
-    y3 = y1-s2;
-
-  } else {
-
-    x1 = tx+s*x/2;
-    y1 = ty+y*s2;
+    y1 = ty-s2-y*s2;
     x2 = x1+s;
     y2 = y1;
     x3 = x1+s/2;
     y3 = y1+s2;
+
+  } else {
+
+    x1 = tx+s*x/2;
+    y1 = ty-y*s2;
+    x2 = x1+s;
+    y2 = y1;
+    x3 = x1+s/2;
+    y3 = y1-s2;
   }
   fl_polygon(x1, y1, x2, y2, x3, y3);
 }
@@ -105,11 +105,11 @@ void gridEditor_1_c::drawVariableTile(int x, int y, int, int tx, int ty, int s, 
     // triangle with base at the top
 
     x1 = tx+s*x/2;
-    y1 = ty+s2+y*s2;
+    y1 = ty-s2-y*s2;
     x2 = x1+s;
     y2 = y1;
     x3 = x1+s/2;
-    y3 = y1-s2;
+    y3 = y1+s2;
 
     y1v = y2v = y1 - 3;
     x1v = x1 + 5;
@@ -120,11 +120,11 @@ void gridEditor_1_c::drawVariableTile(int x, int y, int, int tx, int ty, int s, 
   } else {
 
     x1 = tx+s*x/2;
-    y1 = ty+y*s2;
+    y1 = ty-y*s2;
     x2 = x1+s;
     y2 = y1;
     x3 = x1+s/2;
-    y3 = y1+s2;
+    y3 = y1-s2;
 
     y1v = y2v = y1 + 3;
     x1v = x1 + 5;
@@ -144,20 +144,20 @@ void gridEditor_1_c::drawTileFrame(int x, int y, int, int tx, int ty, int s, int
     // triangle with base at the top
 
     x1 = tx+s*x/2;
-    y1 = ty+s2+y*s2;
-    x2 = x1+s;
-    y2 = y1;
-    x3 = x1+s/2;
-    y3 = y1-s2;
-
-  } else {
-
-    x1 = tx+s*x/2;
-    y1 = ty+y*s2;
+    y1 = ty-s2-y*s2;
     x2 = x1+s;
     y2 = y1;
     x3 = x1+s/2;
     y3 = y1+s2;
+
+  } else {
+
+    x1 = tx+s*x/2;
+    y1 = ty-y*s2;
+    x2 = x1+s;
+    y2 = y1;
+    x3 = x1+s/2;
+    y3 = y1-s2;
   }
   fl_loop(x1, y1, x2, y2, x3, y3);
 }
@@ -171,25 +171,25 @@ void gridEditor_1_c::drawTileColor(int x, int y, int, int tx, int ty, int s, int
     // triangle with base at the top
 
     x1 = tx+s*x/2;
-    y1 = ty+s2+y*s2;
-    x2 = x1+s;
-    y2 = y1;
-    x3 = x1+s/2;
-    y3 = y1-s2;
-
-  } else {
-
-    x1 = tx+s*x/2;
-    y1 = ty+y*s2;
+    y1 = ty-s2-y*s2;
     x2 = x1+s;
     y2 = y1;
     x3 = x1+s/2;
     y3 = y1+s2;
+
+  } else {
+
+    x1 = tx+s*x/2;
+    y1 = ty-y*s2;
+    x2 = x1+s;
+    y2 = y1;
+    x3 = x1+s/2;
+    y3 = y1-s2;
   }
   fl_polygon(x3, y3, (x1+x3)/2, (y1+y3)/2, (x2+x3)/2, (y2+y3)/2);
 }
 
-void gridEditor_1_c::drawTileCursor(int x, int y, int, int x1, int y1, int x2, int y2, int tx, int ty, int sx, int sy) {
+void gridEditor_1_c::drawTileCursor(int x, int y, int, int tx, int ty, int sx, int sy) {
 
   voxel_c * space = puzzle->getShape(piecenumber);
   int xl1, yl1, xl2, yl2, xl3, yl3;
@@ -198,37 +198,37 @@ void gridEditor_1_c::drawTileCursor(int x, int y, int, int x1, int y1, int x2, i
     // triangle with base at the top
 
     xl1 = tx+sx*x/2;
-    yl1 = ty+sy+y*sy;
-    xl2 = xl1+sx;
-    yl2 = yl1;
-    xl3 = xl1+sx/2;
-    yl3 = yl1-sy;
-
-  } else {
-
-    xl1 = tx+sx*x/2;
-    yl1 = ty+y*sy;
+    yl1 = ty-sy-y*sy;
     xl2 = xl1+sx;
     yl2 = yl1;
     xl3 = xl1+sx/2;
     yl3 = yl1+sy;
 
+  } else {
+
+    xl1 = tx+sx*x/2;
+    yl1 = ty-y*sy;
+    xl2 = xl1+sx;
+    yl2 = yl1;
+    xl3 = xl1+sx/2;
+    yl3 = yl1-sy;
+
   }
 
-  bool ins = inRegion(x, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools);
+  bool ins = inRegion(x, y);
 
 
-  if ((((x+(space->getY()-y))&1)) && (ins ^ inRegion(x, y+1, x1, x2, y1, y2, space->getX(), space->getY(), activeTools))) {
+  if ((((x+(space->getY()-y))&1)) && (ins ^ inRegion(x, y+1))) {
     fl_line(xl1, yl1+1, xl2, yl2+1);
     fl_line(xl1, yl1-1, xl2, yl2-1);
   }
 
-  if ((!((x+(space->getY()-y))&1)) && (ins ^ inRegion(x, y-1, x1, x2, y1, y2, space->getX(), space->getY(), activeTools))) {
+  if ((!((x+(space->getY()-y))&1)) && (ins ^ inRegion(x, y-1))) {
     fl_line(xl1, yl1+1, xl2, yl2+1);
     fl_line(xl1, yl1-1, xl2, yl2-1);
   }
 
-  if (ins ^ inRegion(x-1, y, x1, x2, y1, y2, space->getX(), space->getY(), activeTools)) {
+  if (ins ^ inRegion(x-1, y)) {
     fl_line(xl1+1, yl1, xl3+1, yl3);
     fl_line(xl1-1, yl1, xl3-1, yl3);
   }
@@ -244,7 +244,7 @@ bool gridEditor_1_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
   if (s == 0 || s2 == 0) return false;
 
   x -= tx;
-  y -= ty;
+  y -= (ty-space->getY()*s2);
 
   int xp;
   int yp = floordiv(y, s2);
