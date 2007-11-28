@@ -160,6 +160,7 @@ gui_burrGui_SOURCES=\
      gui/grideditor_0.cpp \
      gui/grideditor_1.cpp \
      gui/grideditor_2.cpp \
+     gui/grideditor_3.cpp \
      gui/gridtypegui.cpp \
      gui/groupseditor.cpp \
      gui/guigridtype.cpp \
@@ -204,6 +205,7 @@ gui_burrGui_SOURCES=\
      gui/grideditor_0.h \
      gui/grideditor_1.h \
      gui/grideditor_2.h \
+     gui/grideditor_3.h \
      gui/gridtypegui.h \
      gui/groupseditor.h \
      gui/guigridtype.h \
