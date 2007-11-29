@@ -33,14 +33,17 @@ public:
   ToolTab(int x, int y, int w, int h) : LFl_Tabs(x, y, w, h) {}
 
   virtual void setVoxelSpace(puzzle_c * puz, unsigned int sh) = 0;
-  virtual bool operationToAll(void) = 0;
+  bool operationToAll(void) { return toAll->value() != 0; }
+
+protected:
+
+  LFl_Check_Button * toAll;
 };
 
 // the class that contains the tool tab
 class ToolTab_0 : public ToolTab {
 
   ChangeSize * changeSize;
-  LFl_Check_Button * toAll;
   puzzle_c * puzzle;
   unsigned int shape;
   pixmapList_c pm;
@@ -53,15 +56,12 @@ public:
 
   void cb_size(void);
   void cb_transform(long task);
-
-  bool operationToAll(void) { return toAll->value() != 0; }
 };
 
 // the class that contains the tool tab
 class ToolTab_1 : public ToolTab {
 
   ChangeSize * changeSize;
-  LFl_Check_Button * toAll;
   puzzle_c * puzzle;
   unsigned int shape;
   pixmapList_c pm;
@@ -74,15 +74,12 @@ public:
 
   void cb_size(void);
   void cb_transform(long task);
-
-  bool operationToAll(void) { return toAll->value() != 0; }
 };
 
 // the class that contains the tool tab
 class ToolTab_2 : public ToolTab {
 
   ChangeSize * changeSize;
-  LFl_Check_Button * toAll;
   puzzle_c * puzzle;
   unsigned int shape;
   pixmapList_c pm;
@@ -95,8 +92,6 @@ public:
 
   void cb_size(void);
   void cb_transform(long task);
-
-  bool operationToAll(void) { return toAll->value() != 0; }
 };
 
 class ToolTabContainer : public layouter_c {
