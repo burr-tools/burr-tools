@@ -57,12 +57,12 @@ void gridEditor_3_c::calcParameters(int *szx, int *szy, int *tx, int *ty) {
 static void getTriangle(int x, int y, int z, int tx, int ty, int sx, int sy,
     int *x1, int *y1, int *x2, int *y2, int *x3, int *y3, int offs) {
 
-  int xc = x / 5;
-  int yc = y / 5;
+  int xc = (x+1000) / 5 -200;
+  int yc = (y+1000) / 5 -200;
 
-  x %= 5;
-  y %= 5;
-  z %= 5;
+  x -= 5*xc;
+  y -= 5*yc;
+  z -= 5*((z+1000)/5-200);
 
   if (z == 2) {
 
@@ -183,19 +183,213 @@ void gridEditor_3_c::drawTileColor(int x, int y, int z, int tx, int ty, int sx, 
   fl_polygon(x1, y1, x2, y2, x3, y3);
 }
 
+static bool findCommonEdge(int xa1, int ya1, int xa2, int ya2, int xa3, int ya3,
+    int xb1, int yb1, int xb2, int yb2, int xb3, int yb3,
+    int * xl1, int * yl1, int * xl2, int * yl2) {
+
+  if (xa1 == xb1 && ya1 == yb1) {
+
+    if (xa2 == xb2 && ya2 == yb2 || xa2 == xb3 && ya2 == yb3) {
+
+      *xl1 = xa1; *yl1 = ya1;
+      *xl2 = xa2; *yl2 = ya2;
+      return true;
+
+    } else if (xa3 == xb2 && ya3 == yb2 || xa3 == xb3 && ya3 == yb3) {
+
+      *xl1 = xa1; *yl1 = ya1;
+      *xl2 = xa3; *yl2 = ya3;
+      return true;
+
+    }
+
+  } else if (xa1 == xb2 && ya1 == yb2) {
+
+    if (xa2 == xb1 && ya2 == yb1 || xa2 == xb3 && ya2 == yb3) {
+
+      *xl1 = xa1; *yl1 = ya1;
+      *xl2 = xa2; *yl2 = ya2;
+      return true;
+
+    } else if (xa3 == xb1 && ya3 == yb1 || xa3 == xb3 && ya3 == yb3) {
+
+      *xl1 = xa1; *yl1 = ya1;
+      *xl2 = xa3; *yl2 = ya3;
+      return true;
+
+    }
+
+  } else if (xa1 == xb3 && ya1 == yb3) {
+
+    if (xa2 == xb1 && ya2 == yb1 || xa2 == xb2 && ya2 == yb2) {
+
+      *xl1 = xa1; *yl1 = ya1;
+      *xl2 = xa2; *yl2 = ya2;
+      return true;
+
+    } else if (xa3 == xb1 && ya3 == yb1 || xa3 == xb2 && ya3 == yb2) {
+
+      *xl1 = xa1; *yl1 = ya1;
+      *xl2 = xa3; *yl2 = ya3;
+      return true;
+
+    }
+  } else if (xa2 == xb1 && ya2 == yb1) {
+
+    if (xa1 == xb2 && ya1 == yb2 || xa1 == xb3 && ya1 == yb3) {
+
+      *xl1 = xa2; *yl1 = ya2;
+      *xl2 = xa1; *yl2 = ya1;
+      return true;
+
+    } else if (xa3 == xb2 && ya3 == yb2 || xa3 == xb3 && ya3 == yb3) {
+
+      *xl1 = xa2; *yl1 = ya2;
+      *xl2 = xa3; *yl2 = ya3;
+      return true;
+
+    }
+
+  } else if (xa2 == xb2 && ya2 == yb2) {
+
+    if (xa1 == xb1 && ya1 == yb1 || xa1 == xb3 && ya1 == yb3) {
+
+      *xl1 = xa1; *yl1 = ya1;
+      *xl2 = xa2; *yl2 = ya2;
+      return true;
+
+    } else if (xa3 == xb1 && ya3 == yb1 || xa3 == xb3 && ya3 == yb3) {
+
+      *xl1 = xa2; *yl1 = ya2;
+      *xl2 = xa3; *yl2 = ya3;
+      return true;
+
+    }
+
+  } else if (xa2 == xb3 && ya2 == yb3) {
+
+    if (xa1 == xb1 && ya1 == yb1 || xa1 == xb2 && ya1 == yb2) {
+
+      *xl1 = xa1; *yl1 = ya1;
+      *xl2 = xa2; *yl2 = ya2;
+      return true;
+
+    } else if (xa3 == xb1 && ya3 == yb1 || xa3 == xb2 && ya3 == yb2) {
+
+      *xl1 = xa2; *yl1 = ya2;
+      *xl2 = xa3; *yl2 = ya3;
+      return true;
+
+    }
+
+  } else if (xa3 == xb1 && ya3 == yb1) {
+
+    if (xa1 == xb2 && ya1 == yb2 || xa1 == xb3 && ya1 == yb3) {
+
+      *xl1 = xa3; *yl1 = ya3;
+      *xl2 = xa1; *yl2 = ya1;
+      return true;
+
+    } else if (xa2 == xb2 && ya2 == yb2 || xa2 == xb3 && ya2 == yb3) {
+
+      *xl1 = xa2; *yl1 = ya2;
+      *xl2 = xa3; *yl2 = ya3;
+      return true;
+
+    }
+
+  } else if (xa3 == xb2 && ya3 == yb2) {
+
+    if (xa1 == xb1 && ya1 == yb1 || xa1 == xb3 && ya1 == yb3) {
+
+      *xl1 = xa1; *yl1 = ya1;
+      *xl2 = xa3; *yl2 = ya3;
+      return true;
+
+    } else if (xa2 == xb1 && ya2 == yb1 || xa2 == xb3 && ya2 == yb3) {
+
+      *xl1 = xa2; *yl1 = ya2;
+      *xl2 = xa3; *yl2 = ya3;
+      return true;
+
+    }
+
+  } else if (xa3 == xb3 && ya3 == yb3) {
+
+    if (xa1 == xb1 && ya1 == yb1 || xa1 == xb2 && ya1 == yb2) {
+
+      *xl1 = xa1; *yl1 = ya1;
+      *xl2 = xa3; *yl2 = ya3;
+      return true;
+
+    } else if (xa2 == xb1 && ya2 == yb1 || xa2 == xb2 && ya2 == yb2) {
+
+      *xl1 = xa2; *yl1 = ya2;
+      *xl2 = xa3; *yl2 = ya3;
+      return true;
+
+    }
+  }
+
+
+  return false;
+}
+
 void gridEditor_3_c::drawTileCursor(int x, int y, int z, int tx, int ty, int sx, int sy) {
+
+  voxel_c * space = puzzle->getShape(piecenumber);
 
   bool ins = inRegion(x, y);
 
-  if (ins) {
-    int xd1, yd1, xd2, yd2, xd3, yd3;
+  int nx, ny, nz, idx;
+  idx = 0;
 
-    getTriangle(x, y, z, tx, ty, sx, sy, &xd1, &yd1, &xd2, &yd2, &xd3, &yd3, 0);
+  int xd1, yd1, xd2, yd2, xd3, yd3;
+  getTriangle(x, y, z, tx, ty, sx, sy, &xd1, &yd1, &xd2, &yd2, &xd3, &yd3, 0);
 
-    fl_loop(xd1-1, yd1, xd2-1, yd2, xd3-1, yd3);
-    fl_loop(xd1+1, yd1, xd2+1, yd2, xd3+1, yd3);
-    fl_loop(xd1, yd1-1, xd2, yd2-1, xd3, yd3-1);
-    fl_loop(xd1, yd1+1, xd2, yd2+1, xd3, yd3+1);
+  while (space->getNeighbor(idx, 0, x, y, z, &nx, &ny, &nz)) {
+    if (nz == z && (ny <= y || ny == y && nx < x) ) {
+
+      if (ins ^ inRegion(nx, ny)) {
+
+        int xo1, yo1, xo2, yo2, xo3, yo3;
+        getTriangle(nx, ny, nz, tx, ty, sx, sy, &xo1, &yo1, &xo2, &yo2, &xo3, &yo3, 0);
+
+        int xl1, yl1, xl2, yl2;
+        if (findCommonEdge(xd1, yd1, xd2, yd2, xd3, yd3, xo1, yo1, xo2, yo2, xo3, yo3, &xl1, &yl1, &xl2, &yl2)) {
+
+          fl_line(xl1-1, yl1, xl2-1, yl2);
+          fl_line(xl1+1, yl1, xl2+1, yl2);
+          fl_line(xl1, yl1-1, xl2, yl2-1);
+          fl_line(xl1, yl1+1, xl2, yl2+1);
+        }
+      }
+    }
+
+    idx++;
+  }
+
+  idx = 0;
+
+  while (space->getNeighbor(idx, 1, x, y, z, &nx, &ny, &nz)) {
+    if (nz == z && (ny <= y || ny == y && nx < x) ) {
+
+      if (ins ^ inRegion(nx, ny)) {
+
+        int xo1, yo1, xo2, yo2, xo3, yo3;
+        getTriangle(nx, ny, nz, tx, ty, sx, sy, &xo1, &yo1, &xo2, &yo2, &xo3, &yo3, 0);
+
+        int xl1, yl1, xl2, yl2;
+        if (findCommonEdge(xd1, yd1, xd2, yd2, xd3, yd3, xo1, yo1, xo2, yo2, xo3, yo3, &xl1, &yl1, &xl2, &yl2)) {
+          fl_line(xl1-1, yl1, xl2-1, yl2);
+          fl_line(xl1+1, yl1, xl2+1, yl2);
+          fl_line(xl1, yl1-1, xl2, yl2-1);
+          fl_line(xl1, yl1+1, xl2, yl2+1);
+        }
+      }
+    }
+
+    idx++;
   }
 }
 

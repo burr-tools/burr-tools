@@ -224,6 +224,52 @@ static int getEdgeNeighbors(const voxel_c * space, int x, int y, int z, int face
 
 static bool edgeVisible(const voxel_c * space, int x, int y, int z, int face, int edge) {
 
+
+#if 0 // this code is used to generate the bit matrix in voxel_3_c::getNeighbor for
+      // the edge neighbors
+
+  static int tttt = 0;
+
+  if (tttt == 0) {
+    tttt = 1;
+
+    for (int xp = 0; xp < 5; xp++)
+      for (int yp = 0; yp < 5; yp++)
+        for (int zp = 0; zp < 5; zp++)
+          if (space->validCoordinate(xp, yp, zp)) {
+
+            printf(" neighbors of %i %i %i:\n", xp, yp, zp);
+
+            for (int ff = 0; ff < 4; ff++)
+              for (int ed = 0; ed < 3; ed++) {
+
+                int nb[8*3];
+                int cnt = getEdgeNeighbors(space, xp, yp, zp, ff, ed, nb);
+
+
+                for (int res = 1; res < cnt; res++) {
+
+                  bool faceN = false;
+
+                  int idx = 0;
+                  int nx, ny, nz;
+
+                  while (space->getNeighbor(idx, 0, xp, yp, zp, &nx, &ny, &nz)) {
+                    if (nx == nb[3*res] && ny == nb[3*res+1] && nz == nb[3*res+2]) {
+                      faceN = true;
+                      break;
+                    }
+                    idx++;
+                  }
+
+                  if (!faceN)
+                    printf("  %i %i %i\n", nb[3*res]-xp, nb[3*res+1]-yp, nb[3*res+2]-zp);
+                }
+              }
+          }
+  }
+#endif
+
   int nb[8*3];
   int cnt = getEdgeNeighbors(space, x, y, z, face, edge, nb);
 
