@@ -517,8 +517,7 @@ void ToolTab_0::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
   puzzle = puz;
   shape = sh;
 
-  bt_assert(!puzzle || (puzzle->getGridType()->getType() == gridType_c::GT_BRICKS)
-                    || (puzzle->getGridType()->getType() == gridType_c::GT_RHOMBIC));
+  bt_assert(!puzzle || (puzzle->getGridType()->getType() == gridType_c::GT_BRICKS));
 
   if (puzzle && shape < puzzle->shapeNumber())
     changeSize->setXYZ(puzzle->getShape(shape)->getX(),
@@ -1021,6 +1020,174 @@ void ToolTab_2::cb_transform(long task) {
 
 
 
+
+void ToolTab_3::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
+  puzzle = puz;
+  shape = sh;
+
+  bt_assert(!puzzle || (puzzle->getGridType()->getType() == gridType_c::GT_RHOMBIC));
+
+  if (puzzle && shape < puzzle->shapeNumber())
+    changeSize->setXYZ(puzzle->getShape(shape)->getX(),
+        puzzle->getShape(shape)->getY(),
+        puzzle->getShape(shape)->getZ());
+  else
+    changeSize->setXYZ(0, 0, 0);
+}
+
+static void cb_ToolTab3Size_stub(Fl_Widget* o, long /*v*/) { ((ToolTab_3*)(o->parent()->parent()->parent()))->cb_size(); }
+static void cb_ToolTab3Transform_stub(Fl_Widget* o, long v) { ((ToolTab_3*)(o->parent()))->cb_transform(v); }
+static void cb_ToolTab3Transform2_stub(Fl_Widget* o, long v) { ((ToolTab_3*)(o->parent()->parent()))->cb_transform(v); }
+
+ToolTab_3::ToolTab_3(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
+
+  {
+    layouter_c * o = new layouter_c(0, 1, 1, 1);
+    o->label("Size");
+    o->pitch(5);
+
+    layouter_c *o2 = new layouter_c(0, 0, 1, 1);
+
+    changeSize = new ChangeSize(0, 1, 1, 1);
+    changeSize->callback(cb_ToolTab3Size_stub);
+
+    toAll = new LFl_Check_Button("Apply to All Shapes", 0, 0, 1, 1);
+    toAll->tooltip(" If this is active, all operations (including transformations and constrains are done to all shapes ");
+    toAll->clear_visible_focus();
+    toAll->stretchHCenter();
+
+    o2->end();
+    o2->weight(1, 0);
+
+    (new LFl_Box(1, 0, 1, 1))->setMinimumSize(5, 0);
+
+    o2 = new SizeButtons(2, 0, 1, 1, true);
+    o2->callback(cb_ToolTab3Transform2_stub);
+
+    o->end();
+  }
+  {
+    Fl_Group* o = new TransformButtons(0, 1, 1, 1, 0);
+    o->callback(cb_ToolTab3Transform_stub);
+    o->hide();
+  }
+  {
+    Fl_Group* o = new ToolsButtons(0, 1, 1, 1);
+    o->callback(cb_ToolTab3Transform_stub);
+    o->hide();
+  }
+
+  end();
+}
+
+void ToolTab_3::cb_size(void) {
+  if (puzzle && shape < puzzle->shapeNumber()) {
+
+    resizeSpace(toAll->value(), changeSize, puzzle, shape);
+    do_callback();
+  }
+}
+
+void ToolTab_3::cb_transform(long task) {
+  if (puzzle && shape < puzzle->shapeNumber()) {
+
+    int ss, se;
+
+    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
+      ss = 0;
+      se = puzzle->shapeNumber();
+    } else {
+      ss = shape;
+      se = shape+1;
+    }
+
+    if (task == 26) {
+
+      unsigned char primes[] = {2, 3, 5, 7, 11, 13, 17, 19, 0};
+
+      // special case for minimisation
+
+      int prime = 0;
+
+      while (primes[prime]) {
+
+        bool canScale = true;
+
+        for (int s = ss; s < se; s++)
+          if (!puzzle->getShape(s)->scaleDown(primes[prime], false)) {
+            canScale = false;
+            break;
+          }
+
+        if (canScale) {
+          for (int s = ss; s < se; s++)
+            puzzle->getShape(s)->scaleDown(primes[prime], true);
+        } else
+          prime++;
+      }
+
+      for (int s = ss; s < se; s++)
+        puzzle->getShape(s)->initHotspot();
+
+      do_callback(this, user_data());
+
+      return;
+    }
+
+    for (int s = ss; s < se; s++) {
+      voxel_c * space = puzzle->getShape(s);
+
+      switch(task) {
+        case  0: space->translate( 5, 0, 0, 0); break;
+        case  1: space->translate(-5, 0, 0, 0); break;
+        case  2: space->translate( 0, 5, 0, 0); break;
+        case  3: space->translate( 0,-5, 0, 0); break;
+        case  4: space->translate( 0, 0, 5, 0); break;
+        case  5: space->translate( 0, 0,-5, 0); break;
+        case  7: space->transform(3); break;
+        case  6: space->transform(1); break;
+        case  9: space->transform(12); break;
+        case  8: space->transform(4); break;
+        case 11: space->transform(20); break;
+        case 10: space->transform(16); break;
+        case 12: space->transform(24); break;
+        case 13: space->transform(34); break;
+        case 14: space->transform(32); break;
+        case 15: space->minimizePiece(); break;
+        case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
+        case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
+        case 18: space->actionOnSpace(voxel_c::ACT_VARIABLE, true); break;
+        case 19: space->actionOnSpace(voxel_c::ACT_VARIABLE, false); break;
+        case 20: space->actionOnSpace(voxel_c::ACT_DECOLOR, true); break;
+        case 21: space->actionOnSpace(voxel_c::ACT_DECOLOR, false); break;
+        case 22: space->scale(2); break;
+        case 23: space->scale(3); break;
+        case 24: space->translate(- (space->boundX1()/5)*5, - (space->boundY1()/5)*5, - (space->boundZ1()/5)*5, 0); break;
+        case 25:
+                 {
+		   // if the space is empty, don't do anything
+		   if (space->boundX2() < space->boundX1())
+		     break;
+
+                   int fx = (space->getX() - (space->boundX2()-space->boundX1()+1))/2 - space->boundX1();
+                   int fy = (space->getY() - (space->boundY2()-space->boundY1()+1))/2 - space->boundY1();
+                   int fz = (space->getZ() - (space->boundZ2()-space->boundZ1()+1))/2 - space->boundZ1();
+
+                   if (fx%5 <= 2) fx -= fx%5; else if (space->boundX2()+(5-fx%5) < space->getX()) fx += (5-fx%5);
+                   if (fy%5 <= 2) fy -= fy%5; else if (space->boundY2()+(5-fy%5) < space->getY()) fy += (5-fy%5);
+                   if (fz%5 <= 2) fz -= fz%5; else if (space->boundZ2()+(5-fz%5) < space->getZ()) fz += (5-fz%5);
+
+                   space->translate(fx, fy, fz, 0);
+                 }
+                 break;
+        case 40: space->fillHoles(0); break;
+      }
+      space->initHotspot();
+    }
+
+    do_callback(this, user_data());
+  }
+}
 
 
 

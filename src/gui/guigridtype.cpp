@@ -97,7 +97,7 @@ ToolTab * guiGridType_c::getToolTab(int x, int y, int w, int h) const {
     case gridType_c::GT_BRICKS: return new ToolTab_0(x, y, w, h);
     case gridType_c::GT_TRIANGULAR_PRISM: return new ToolTab_1(x, y, w, h);
     case gridType_c::GT_SPHERES: return new ToolTab_2(x, y, w, h);
-    case gridType_c::GT_RHOMBIC: return new ToolTab_0(x, y, w, h);
+    case gridType_c::GT_RHOMBIC: return new ToolTab_3(x, y, w, h);
   }
 
   return 0;
