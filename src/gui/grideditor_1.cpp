@@ -70,10 +70,9 @@ void gridEditor_1_c::calcParameters(int *s, int *s2, int *tx, int *ty) {
 void gridEditor_1_c::drawNormalTile(int x, int y, int, int tx, int ty, int s, int s2) {
 
   int x1, y1, x2, y2, x3, y3;
-  voxel_c * space = puzzle->getShape(piecenumber);
 
   /* find out the coordinates of the 3 corners of the triangle */
-  if ((x+(space->getY()-y)) & 1) {
+  if ((x+y) & 1) {
     // triangle with base at the top
 
     x1 = tx+s*x/2;
@@ -98,10 +97,9 @@ void gridEditor_1_c::drawNormalTile(int x, int y, int, int tx, int ty, int s, in
 void gridEditor_1_c::drawVariableTile(int x, int y, int, int tx, int ty, int s, int s2) {
   int x1, y1, x2, y2, x3, y3;
   int x1v, y1v, x2v, y2v, x3v, y3v;
-  voxel_c * space = puzzle->getShape(piecenumber);
 
   /* find out the coordinates of the 3 corners of the triangle */
-  if ((x+(space->getY()-y)) & 1) {
+  if ((x+y) & 1) {
     // triangle with base at the top
 
     x1 = tx+s*x/2;
@@ -137,10 +135,9 @@ void gridEditor_1_c::drawVariableTile(int x, int y, int, int tx, int ty, int s, 
 
 void gridEditor_1_c::drawTileFrame(int x, int y, int, int tx, int ty, int s, int s2) {
   int x1, y1, x2, y2, x3, y3;
-  voxel_c * space = puzzle->getShape(piecenumber);
 
   /* find out the coordinates of the 3 corners of the triangle */
-  if ((x+(space->getY()-y)) & 1) {
+  if ((x+y) & 1) {
     // triangle with base at the top
 
     x1 = tx+s*x/2;
@@ -164,10 +161,9 @@ void gridEditor_1_c::drawTileFrame(int x, int y, int, int tx, int ty, int s, int
 
 void gridEditor_1_c::drawTileColor(int x, int y, int, int tx, int ty, int s, int s2) {
   int x1, y1, x2, y2, x3, y3;
-  voxel_c * space = puzzle->getShape(piecenumber);
 
   /* find out the coordinates of the 3 corners of the triangle */
-  if ((x+(space->getY()-y)) & 1) {
+  if ((x+y) & 1) {
     // triangle with base at the top
 
     x1 = tx+s*x/2;
@@ -191,10 +187,9 @@ void gridEditor_1_c::drawTileColor(int x, int y, int, int tx, int ty, int s, int
 
 void gridEditor_1_c::drawTileCursor(int x, int y, int, int tx, int ty, int sx, int sy) {
 
-  voxel_c * space = puzzle->getShape(piecenumber);
   int xl1, yl1, xl2, yl2, xl3, yl3;
 
-  if ((x+(space->getY()-y)) & 1) {
+  if ((x+y) & 1) {
     // triangle with base at the top
 
     xl1 = tx+sx*x/2;
@@ -217,13 +212,12 @@ void gridEditor_1_c::drawTileCursor(int x, int y, int, int tx, int ty, int sx, i
 
   bool ins = inRegion(x, y);
 
-
-  if ((((x+(space->getY()-y))&1)) && (ins ^ inRegion(x, y+1))) {
+  if ((((x+y)&1)) && (ins ^ inRegion(x, y+1))) {
     fl_line(xl1, yl1+1, xl2, yl2+1);
     fl_line(xl1, yl1-1, xl2, yl2-1);
   }
 
-  if ((!((x+(space->getY()-y))&1)) && (ins ^ inRegion(x, y-1))) {
+  if ((!((x+y)&1)) && (ins ^ inRegion(x, y-1))) {
     fl_line(xl1, yl1+1, xl2, yl2+1);
     fl_line(xl1, yl1-1, xl2, yl2-1);
   }
@@ -251,24 +245,24 @@ bool gridEditor_1_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
 
   int yf = y - yp*s2;
 
-  if ((space->getY()-yp-1) & 1) {
-
-    x -= (int)(yf/sqrt(3)+0.5);
-
-    xp = floordiv(x, s);
-
-    if (1.0*(x - xp*s)/s + (1.0*yf/s2) > 1.0)
-      xp = 2*xp + 1;
-    else
-      xp = 2*xp;
-
-  } else {
+  if (yp & 1) {
 
     x -= (int)((s2-yf) / sqrt(3)+0.5);
 
     xp = floordiv(x, s);
 
     if ((1.0*(x - xp*s)/s + (1.0*(s2-yf)/s2)) > 1.0)
+      xp = 2*xp + 1;
+    else
+      xp = 2*xp;
+
+  } else {
+
+    x -= (int)(yf/sqrt(3)+0.5);
+
+    xp = floordiv(x, s);
+
+    if (1.0*(x - xp*s)/s + (1.0*yf/s2) > 1.0)
       xp = 2*xp + 1;
     else
       xp = 2*xp;
