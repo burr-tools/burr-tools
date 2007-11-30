@@ -244,6 +244,10 @@ void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, 
 }
 
 void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel_type filler) {
+
+  // if size doesn't change, do nothing
+  if (nsx == sx && nsy == sy && nsz == sz) return;
+
   voxel_type * s2 = new voxel_type[nsx*nsy*nsz];
   memset(s2, filler, nsx*nsy*nsz);
 
