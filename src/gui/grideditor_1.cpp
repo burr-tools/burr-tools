@@ -109,11 +109,11 @@ void gridEditor_1_c::drawVariableTile(int x, int y, int, int tx, int ty, int s, 
     x3 = x1+s/2;
     y3 = y1+s2;
 
-    y1v = y2v = y1 - 3;
+    y1v = y2v = y1 + 3;
     x1v = x1 + 5;
     x2v = x2 - 5;
     x3v = x3;
-    y3v = y3 + 6;
+    y3v = y3 - 6;
 
   } else {
 
@@ -124,11 +124,11 @@ void gridEditor_1_c::drawVariableTile(int x, int y, int, int tx, int ty, int s, 
     x3 = x1+s/2;
     y3 = y1-s2;
 
-    y1v = y2v = y1 + 3;
+    y1v = y2v = y1 - 3;
     x1v = x1 + 5;
     x2v = x2 - 5;
     x3v = x3;
-    y3v = y3 - 6;
+    y3v = y3 + 6;
   }
   fl_polygon(x1v, y1v, x2v, y2v, x3v, y3v);
 }

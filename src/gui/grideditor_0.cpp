@@ -61,7 +61,7 @@ void gridEditor_0_c::drawTileFrame(int x, int y, int, int tx, int ty, int sx, in
 }
 
 void gridEditor_0_c::drawTileColor(int x, int y, int, int tx, int ty, int sx, int sy) {
-  fl_rectf(tx+x*sx, ty+(y+2)*sy, sx/2, sy/2);
+  fl_rectf(tx+x*sx, ty-(y+1)*sy, sx/2, sy/2);
 }
 
 void gridEditor_0_c::drawTileCursor(int x, int y, int, int tx, int ty, int sx, int sy) {
