@@ -18,22 +18,19 @@
 #ifndef __VOXEL_3_H__
 #define __VOXEL_3_H__
 
-#include "voxel.h"
+#include "voxel_0.h"
 
-class voxel_3_c : public voxel_c {
+class voxel_3_c : public voxel_0_c {
 
   public:
 
-    voxel_3_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0, voxel_type outs = VX_EMPTY) : voxel_c(x, y, z, gt, init, outs) {}
-    voxel_3_c(const xml::node & node, const gridType_c * gt) : voxel_c(node, gt) {}
-    voxel_3_c(const voxel_c & orig) : voxel_c(orig) { }
-    voxel_3_c(const voxel_c * orig) : voxel_c(orig) { }
+    voxel_3_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0, voxel_type outs = VX_EMPTY) : voxel_0_c(x, y, z, gt, init, outs) {}
+    voxel_3_c(const xml::node & node, const gridType_c * gt) : voxel_0_c(node, gt) {}
+    voxel_3_c(const voxel_c & orig) : voxel_0_c(orig) { }
+    voxel_3_c(const voxel_c * orig) : voxel_0_c(orig) { }
 
-    void transformPoint(int * x, int * y, int * z, unsigned int trans) const;
     virtual bool transform(unsigned int nr);
 
-    virtual void getHotspot(unsigned char trans, int * x, int * y, int * z) const;
-    virtual void getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2 = 0, int * y2 = 0, int * z2 = 0) const;
     bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const;
 
     void scale(unsigned int amount);
