@@ -122,12 +122,15 @@ prob(problemNum),
 _reduce(red),
 _dropDisassemblies(false),
 _keepMirrors(keepMirrors),
-disassm(puz->getGridType()->getDisassembler(puz, problemNum)),
+disassm(0),
 ae(0),
 sortMethod(SRT_COMPLETE_MOVES),
 solutionLimit(10),
 solutionDrop(1)
 {
+
+  if (_solutionAction == SOL_DISASM || _solutionAction == SOL_COUNT_DISASM)
+    disassm = puz->getGridType()->getDisassembler(puz, problemNum);
 }
 
 assemblerThread_c::~assemblerThread_c(void) {
@@ -144,7 +147,10 @@ assemblerThread_c::~assemblerThread_c(void) {
 #endif
   }
 
-  delete disassm;
+  if (disassm) {
+    delete disassm;
+    disassm = 0;
+  }
 }
 
 bool assemblerThread_c::assembly(assembly_c * a) {
