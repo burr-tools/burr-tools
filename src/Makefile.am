@@ -35,6 +35,7 @@ lib_libburr_a_SOURCES=\
     lib/puzzle.cpp \
     lib/stl.cpp \
     lib/stl_0.cpp \
+    lib/stl_2.cpp \
     lib/symmetries_0.cpp \
     lib/symmetries_1.cpp \
     lib/symmetries_2.cpp \
@@ -75,6 +76,7 @@ lib_libburr_a_SOURCES=\
     lib/puzzle.h \
     lib/stl.h \
     lib/stl_0.h \
+    lib/stl_2.h \
     lib/symmetries.h \
     lib/symmetries_0.h \
     lib/symmetries_1.h \

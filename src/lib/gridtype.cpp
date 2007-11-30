@@ -30,6 +30,7 @@
 #include "symmetries_1.h"
 #include "symmetries_2.h"
 #include "stl_0.h"
+#include "stl_2.h"
 #include "puzzle.h"
 
 #include <xmlwrapp/attributes.h>
@@ -204,7 +205,7 @@ unsigned int gridType_c::getCapabilities(void) const {
   switch (type) {
     case GT_BRICKS:           return CAP_ASSEMBLE | CAP_DISASSEMBLE | CAP_STLEXPORT;
     case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE;
-    case GT_SPHERES:          return CAP_ASSEMBLE;
+    case GT_SPHERES:          return CAP_ASSEMBLE | CAP_STLEXPORT;;
     default: return 0;
   }
 }
@@ -226,6 +227,7 @@ assembler_c * gridType_c::findAssembler(const puzzle_c * p, unsigned int problem
 stlExporter_c * gridType_c::getStlExporter(void) const {
   switch (type) {
     case GT_BRICKS:           return new stlExporter_0_c();
+    case GT_SPHERES:          return new stlExporter_2_c();
     default: return 0;
   }
 }
