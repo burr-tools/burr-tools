@@ -162,7 +162,7 @@ void stlExport_c::exportSTL(int shape)
   if (v->getName().length())
     idx += snprintf(name+idx, 1000-idx, "_%s", v->getName().c_str());
   else
-    idx += snprintf(name+idx, 1000-idx, "_S%d", shape);
+    idx += snprintf(name+idx, 1000-idx, "_S%d", shape+1);
 
   try {
     stl->write(name,  v);
