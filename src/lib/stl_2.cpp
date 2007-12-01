@@ -365,7 +365,7 @@ static double radius(double a, double cr, double sphere_rad, double offset, doub
   double px = linex;
   double py = liney;
 
-  if (liney < curvey) {
+  if (liney < curvey && curvey < 10000) {
     px = curvex;
     py = curvey;
   }
@@ -479,7 +479,18 @@ void stlExporter_2_c::drawHole(
   } else {
 
     double holeStart = atan((connection_rad*(sphere_rad-offset)/2)/sphere_rad);
-    drawHolePiece(i, x, y, z, holeStart, 30*M_PI/180, x1, y1, z1, x2, y2, z2, rec2);
+    double lineEnd = M_PI/2-atan2(curvY, curvX-curvRad);
+    double curvEnd = M_PI/2-atan2(curvY, curvX);
+
+    if (lineEnd < holeStart) lineEnd = holeStart;
+    if (curvEnd < lineEnd) curvEnd = lineEnd;
+
+    if (holeStart < lineEnd)
+      drawHolePiece(i, x, y, z, holeStart, lineEnd, x1, y1, z1, x2, y2, z2, 0);
+    if (lineEnd < curvEnd)
+      drawHolePiece(i, x, y, z, lineEnd, curvEnd, x1, y1, z1, x2, y2, z2, rec2);
+    if (curvEnd < 30*M_PI/180)
+      drawHolePiece(i, x, y, z, curvEnd, 30*M_PI/180, x1, y1, z1, x2, y2, z2, rec2);
   }
 
 }
