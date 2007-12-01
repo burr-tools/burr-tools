@@ -1,3 +1,19 @@
+
+- STL export improved
+  - can now export binary STL files which are much smaller
+  - can now export puzzles that use the sphere grid
+
+- shapes can be removed using the status window making it easier
+  to spot duplicats and remove them
+
+- a function to fill holes in shapes
+
+- a lot of internal cleanup this also includes a possible speedup
+  for the 3D view
+
+- the window position was saved at shutdown of the program but not
+  properly restored. Now it is
+
 ------------- Version 0.3.1
 
 - new edit method. It is now possible to add voxels by clicking into the
