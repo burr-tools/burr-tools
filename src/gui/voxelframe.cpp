@@ -654,7 +654,7 @@ void voxelFrame_c::showAssemblerState(const puzzle_c * puz, unsigned int probNum
   redraw();
 }
 
-void voxelFrame_c::showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z) {
+void voxelFrame_c::showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char t, int x, int y, int z) {
 
   clearSpaces();
   hideMarker();
@@ -677,7 +677,7 @@ void voxelFrame_c::showPlacement(const puzzle_c * puz, unsigned int probNum, uns
 
   int num;
 
-  if (trans < puz->getGridType()->getSymmetries()->getNumTransformationsMirror()) {
+  if (t < puz->getGridType()->getSymmetries()->getNumTransformationsMirror()) {
 
     int shape = 0;
     unsigned int p = piece;
@@ -687,7 +687,7 @@ void voxelFrame_c::showPlacement(const puzzle_c * puz, unsigned int probNum, uns
     }
 
     voxel_c * vx = puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, shape));
-    bt_assert(vx->transform(trans));
+    bt_assert(vx->transform(t));
     num = addSpace(vx);
 
     setSpacePosition(num, x-hx, y-hy, z-hz, 1);
