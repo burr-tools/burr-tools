@@ -398,7 +398,7 @@ static void findPointOnArc(double xs, double ys, double zs, double xe, double ye
   double ws = 0;
   double we = 1;
 
-  for (int i = 0; i < 50; i++) {
+  while (fabs(ws-we) > Epsilon*Epsilon) {
 
     double w = (ws+we)/2;
 
