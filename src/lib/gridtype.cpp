@@ -205,7 +205,7 @@ unsigned int gridType_c::getCapabilities(void) const {
   switch (type) {
     case GT_BRICKS:           return CAP_ASSEMBLE | CAP_DISASSEMBLE | CAP_STLEXPORT;
     case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE;
-    case GT_SPHERES:          return CAP_ASSEMBLE | CAP_STLEXPORT;;
+    case GT_SPHERES:          return CAP_ASSEMBLE | CAP_STLEXPORT;
     default: return 0;
   }
 }
