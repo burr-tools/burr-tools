@@ -108,10 +108,10 @@ void gridEditor_2_c::drawTileColor(int x, int y, int z, int tx, int ty, int sx, 
   int sxc = 10000*sx/7072;
   int syc = 10000*sy/7072;
 
-  tx -= 3*sx/10;
-  ty -= 3*sy/10;
+  tx -= 3*sx/20;
+  ty -= 3*sy/20;
 
-  fl_pie(tx+x*sx, ty-y*syc-sy, sxc/2, syc/2, 0, 360);
+  fl_pie(tx+x*sx, ty-y*sy-sy, sxc/2, syc/2, 0, 360);
 }
 
 void gridEditor_2_c::drawTileCursor(int x, int y, int /*z*/, int tx, int ty, int sx, int sy) {
