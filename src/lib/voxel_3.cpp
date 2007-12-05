@@ -333,7 +333,7 @@ void voxel_3_c::scale(unsigned int amount) {
   recalcBoundingBox();
 }
 
-bool voxel_3_c::scaleDown(unsigned char by, bool action) {
+bool voxel_3_c::scaleDown(unsigned char /*by*/, bool /*action*/) {
 
   return false;
 }

@@ -120,6 +120,7 @@ static bool getEdgeFaces(int x, int y, int z, int xa, int ya, int za, int xb, in
       case 1: xt1 = x1; yt1 = y1; zt1 = z1; xt2 = x2; yt2 = y2; zt2 = z2; xt3 = x4; yt3 = y4; zt3 = z4; break;
       case 2: xt1 = x2; yt1 = y2; zt1 = z2; xt2 = x3; yt2 = y3; zt2 = z3; xt3 = x4; yt3 = y4; zt3 = z4; break;
       case 3: xt1 = x3; yt1 = y3; zt1 = z3; xt2 = x1; yt2 = y1; zt2 = z1; xt3 = x4; yt3 = y4; zt3 = z4; break;
+      default: bt_assert(0);
     }
 
     for (int e = 0; e < 3; e++) {
@@ -129,6 +130,7 @@ static bool getEdgeFaces(int x, int y, int z, int xa, int ya, int za, int xb, in
         case 0: xea = xt1; yea = yt1; zea = zt1; xeb = xt2; yeb = yt2; zeb = zt2; break;
         case 1: xea = xt2; yea = yt2; zea = zt2; xeb = xt3; yeb = yt3; zeb = zt3; break;
         case 2: xea = xt3; yea = yt3; zea = zt3; xeb = xt1; yeb = yt1; zeb = zt1; break;
+        default: bt_assert(0);
       }
 
       if (sameEdge(xa, ya, za, xb, yb, zb, xea, yea, zea, xeb, yeb, zeb)) {
@@ -173,11 +175,13 @@ static int getEdgeNeighbors(const voxel_c * space, int x, int y, int z, int face
       case 1: xt1 = x1; yt1 = y1; zt1 = z1; xt2 = x2; yt2 = y2; zt2 = z2; xt3 = x4; yt3 = y4; zt3 = z4; break;
       case 2: xt1 = x2; yt1 = y2; zt1 = z2; xt2 = x3; yt2 = y3; zt2 = z3; xt3 = x4; yt3 = y4; zt3 = z4; break;
       case 3: xt1 = x3; yt1 = y3; zt1 = z3; xt2 = x1; yt2 = y1; zt2 = z1; xt3 = x4; yt3 = y4; zt3 = z4; break;
+      default: bt_assert(0);
     }
     switch (edge) {
       case 0: xa = xt1; ya = yt1; za = zt1; xb = xt2; yb = yt2; zb = zt2; break;
       case 1: xa = xt2; ya = yt2; za = zt2; xb = xt3; yb = yt3; zb = zt3; break;
       case 2: xa = xt3; ya = yt3; za = zt3; xb = xt1; yb = yt1; zb = zt1; break;
+      default: bt_assert(0);
     }
   }
 
