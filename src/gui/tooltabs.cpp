@@ -1101,39 +1101,6 @@ void ToolTab_3::cb_transform(long task) {
       se = shape+1;
     }
 
-    if (task == 26) {
-
-      unsigned char primes[] = {2, 3, 5, 7, 11, 13, 17, 19, 0};
-
-      // special case for minimisation
-
-      int prime = 0;
-
-      while (primes[prime]) {
-
-        bool canScale = true;
-
-        for (int s = ss; s < se; s++)
-          if (!puzzle->getShape(s)->scaleDown(primes[prime], false)) {
-            canScale = false;
-            break;
-          }
-
-        if (canScale) {
-          for (int s = ss; s < se; s++)
-            puzzle->getShape(s)->scaleDown(primes[prime], true);
-        } else
-          prime++;
-      }
-
-      for (int s = ss; s < se; s++)
-        puzzle->getShape(s)->initHotspot();
-
-      do_callback(this, user_data());
-
-      return;
-    }
-
     for (int s = ss; s < se; s++) {
       voxel_c * space = puzzle->getShape(s);
 
@@ -1180,6 +1147,7 @@ void ToolTab_3::cb_transform(long task) {
                    space->translate(fx, fy, fz, 0);
                  }
                  break;
+        case 26: fl_message("Sorry minimizing is not (yet) implemented for the rhombic grid!"); return;
         case 40: space->fillHoles(0); break;
       }
       space->initHotspot();
