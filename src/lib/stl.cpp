@@ -21,7 +21,7 @@
 #include <math.h>
 #include <string.h>
 
-#ifdef WIN32
+#if defined(WIN32) || defined(__APPLE__)
 const char * basename(const char * name) {
   const char * res1 = strchr(name, '/');
   const char * res2 = strchr(name, '\\');
