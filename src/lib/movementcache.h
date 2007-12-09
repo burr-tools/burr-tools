@@ -33,6 +33,9 @@ class gridType_c;
  */
 class movementCache_c {
 
+
+  protected:
+
   /* values are saved within a hash table, this is the
    * entry for the table
    */
@@ -41,14 +44,8 @@ class movementCache_c {
     /* position of piece two relative to piece one */
     int dx, dy, dz;
 
-    /* the possible movement in positive directions */
-    unsigned int mx, my, mz;
-
     /* the 2 shapes */
     unsigned int s1, s2;
-
-    /* for the linked list in the hash table */
-    struct entry * next;
 
     /* the transformations of the 2 involved pieces
      * normally we would need only one transformation, that for piece 2
@@ -56,7 +53,16 @@ class movementCache_c {
      * piece one has a fixed transformation are too expensive
      */
     unsigned short t1, t2;
+
+    /* the possible movement in positive directions */
+    int * move;
+
+    /* for the linked list in the hash table */
+    struct entry * next;
+
   } entry;
+
+  private:
 
   /* the hash table */
   entry ** hash;
@@ -84,10 +90,11 @@ class movementCache_c {
   void rehash(void);
 
   /* when the entry is not inside the table, this function calculates the values */
-  entry * calcValues(unsigned char s1, unsigned char t1, unsigned int s2, unsigned int t2,
-                     int dx, int dy, int dz);
+  virtual void calcValues(entry * e, const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) = 0;
 
   const gridType_c * gt;
+
+  const unsigned int directions;
 
 #ifdef MV_CACHE_DEBUG
 
@@ -103,9 +110,9 @@ public:
   /* create the cache, the cache is then fixed to the puzzle and the problem, it can
    * and should be reused to analyse all assemblies found but can not be used for another puzzle
    */
-  movementCache_c(const puzzle_c * puz, unsigned int problem);
+  movementCache_c(const puzzle_c * puz, unsigned int problem, unsigned int directions);
 
-  ~movementCache_c(void);
+  virtual ~movementCache_c(void);
 
   /* return the values, that are:
    * how far can the 2nd piece be moved in positive x, y and z direction, when
@@ -114,7 +121,7 @@ public:
    * and the 2 pieces are transformed by t1 and t2
    */
   void getValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2,
-                int * mx, int * my, int * mz);
+      unsigned int directions, int * movements);
 
   /* remove all information that involves one shape from the cache */
   void removePieceInfo(unsigned int s);

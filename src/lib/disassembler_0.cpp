@@ -19,7 +19,7 @@
 
 #include "disassembly.h"
 #include "bt_assert.h"
-#include "movementcache.h"
+#include "movementcache_0.h"
 #include "puzzle.h"
 #include "grouping.h"
 #include "assembly.h"
@@ -503,16 +503,22 @@ class countingNodeHash {
  */
 void disassembler_0_c::prepare(int pn, voxel_type * pieces, node0_c * searchnode) {
 
+  int m[3];
+
   unsigned int idx = 0;
   for (int j = 0; j < pn; j++) {
     for (int i = 0; i < pn; i++) {
-      if (i != j)
+      if (i != j) {
         cache->getValue(searchnode->getX(j) - searchnode->getX(i),
                         searchnode->getY(j) - searchnode->getY(i),
                         searchnode->getZ(j) - searchnode->getZ(i),
                         searchnode->getTrans(i), searchnode->getTrans(j),
                         pieces[i], pieces[j],
-                        &matrix[0][idx], &matrix[1][idx], &matrix[2][idx]);
+                        3, m);
+        matrix[0][idx] = m[0];
+        matrix[1][idx] = m[1];
+        matrix[2][idx] = m[2];
+      }
 
       // the diagonals are always zero and will stay that for ever they are initialized
       // to that value in the init function so only the other values need
@@ -1316,7 +1322,7 @@ disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) :
   for (unsigned int i = 0; i < piecenumber; i++)
     matrix[0][i+i*piecenumber] = matrix[1][i+i*piecenumber] = matrix[2][i+i*piecenumber] = 0;
 
-  cache = new movementCache_c(puzzle, problem);
+  cache = new movementCache_0_c(puzzle, problem);
 
   /* initialize the grouping class */
   groups = new grouping_c();

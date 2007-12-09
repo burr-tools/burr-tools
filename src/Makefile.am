@@ -29,6 +29,7 @@ lib_libburr_a_SOURCES=\
     lib/gridtype.cpp \
     lib/grouping.cpp \
     lib/movementcache.cpp \
+    lib/movementcache_0.cpp \
     lib/piecegenerator.cpp \
     lib/print.cpp \
     lib/ps3dloader.cpp \
@@ -71,6 +72,7 @@ lib_libburr_a_SOURCES=\
     lib/gridtype.h \
     lib/grouping.h \
     lib/movementcache.h \
+    lib/movementcache_0.h \
     lib/piecegenerator.h \
     lib/print.h \
     lib/ps3dloader.h\
