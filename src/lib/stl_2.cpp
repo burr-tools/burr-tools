@@ -343,7 +343,8 @@ static double radius(double a, double cr, double sphere_rad, double offset, doub
 
   if (fabs(ap) < Epsilon) {
 
-    curvey = 1000000;
+    curvex = curvey = 1000000;
+
 
   } else {
 
@@ -357,7 +358,7 @@ static double radius(double a, double cr, double sphere_rad, double offset, doub
 
     } else {
 
-      curvey = 1000000;
+      curvex = curvey = 1000000;
 
     }
   }
@@ -628,6 +629,10 @@ void stlExporter_2_c::write(const char * fname, voxel_c * v) {
   if (sphere_rad < Epsilon) throw new stlException_c("Sphere size too small");
   if (offset < 0) throw new stlException_c("Offset cannot be negative");
   if (round < 0) throw new stlException_c("Curvature radius cannot be negative");
+  if (offset > sphere_rad) throw new stlException_c("Offset must be smaller than sphere radius");
+  if (round > 1) throw new stlException_c("The curvature radius is relative and must be between 0 and 1");
+  if (connection_rad < 0 || connection_rad > 1)
+    throw new stlException_c("The connection radius is relative and must be between 0 and 1");
 
   int cost = (int)ceilf(v->countState(voxel_c::VX_FILLED) * sphere_rad*sphere_rad*sphere_rad*M_PI*4/3 / 1000.0);
 
