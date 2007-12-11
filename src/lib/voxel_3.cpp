@@ -257,6 +257,15 @@ bool voxel_3_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, in
 
 void voxel_3_c::scale(unsigned int amount) {
 
+  /* the coordinates of the valid voxels */
+  static int voxelCoords[24][3] = {
+    { 2, 1, 0 }, { 1, 2, 0 }, { 3, 2, 0 }, { 2, 3, 0 },
+    { 2, 0, 1 }, { 0, 2, 1 }, { 4, 2, 1 }, { 2, 4, 1 },
+    { 1, 0, 2 }, { 3, 0, 2 }, { 0, 1, 2 }, { 4, 1, 2 }, { 0, 3, 2 }, { 4, 3, 2 }, { 1, 4, 2 }, { 3, 4, 2 },
+    { 2, 0, 3 }, { 0, 2, 3 }, { 4, 2, 3 }, { 2, 4, 3 },
+    { 2, 1, 4 }, { 1, 2, 4 }, { 3, 2, 4 }, { 2, 3, 4 }
+  };
+
   /* the 6 cutting planes */
   static int planes[6][3] = {
     {1, 1, 0}, {1, -1, 0},
@@ -276,48 +285,52 @@ void voxel_3_c::scale(unsigned int amount) {
   unsigned int bsz = ((sz+4)/5);
 
   /* for each voxel within a 5x5x5 block */
-  for (unsigned int x = 0; x < 5; x++)
-    for (unsigned int y = 0; y < 5; y++)
-      for (unsigned int z = 0; z < 5; z++)
+  for (unsigned int voxel1 = 0; voxel1 < 24; voxel1++) {
+    unsigned int x = voxelCoords[voxel1][0];
+    unsigned int y = voxelCoords[voxel1][1];
+    unsigned int z = voxelCoords[voxel1][2];
 
-        if (validCoordinate(x, y, z)) {
+    /* this bitmask represents the position of the current voxel
+     * relative to the 6 planes */
+    int planeMask = 0;
+    for (int i = 0; i < 6; i++)
+      if ((x-2.5)*planes[i][0] +
+          (y-2.5)*planes[i][1] +
+          (z-2.5)*planes[i][2] < 0)
+        planeMask |= 1<<i;
 
-          /* this bitmask represents the position of the current voxel
-           * relative to the 6 planes */
-          int planeMask = 0;
-          for (int i = 0; i < 6; i++)
-            if ((x-2.5)*planes[i][0] +
-                (y-2.5)*planes[i][1] +
-                (z-2.5)*planes[i][2] < 0)
-              planeMask |= 1<<i;
+    /* go through all voxels in the target block */
+    for (unsigned int amx = 0; amx < amount; amx++)
+      for (unsigned int amy = 0; amy < amount; amy++)
+        for (unsigned int amz = 0; amz < amount; amz++)
 
-          /* go through all voxels in the target block */
-          for (unsigned int ax = 0; ax < 5*amount; ax++)
-            for (unsigned int ay = 0; ay < 5*amount; ay++)
-              for (unsigned int az = 0; az < 5*amount; az++)
-                if (validCoordinate(ax, ay, az)) {
+          for (unsigned int voxel2 = 0; voxel2 < 24; voxel2++) {
 
-                  bool useVoxel = true;
+            unsigned int ax = 5*amx + voxelCoords[voxel2][0];
+            unsigned int ay = 5*amy + voxelCoords[voxel2][1];
+            unsigned int az = 5*amz + voxelCoords[voxel2][2];
 
-                  for (int i = 0; i < 6; i++)
-                    if (((ax-2.5*amount)*planes[i][0] +
-                          (ay-2.5*amount)*planes[i][1] +
-                          (az-2.5*amount)*planes[i][2] < 0) != (((planeMask & (1<<i)) != 0))) {
-                      useVoxel = false;
-                      break;
-                    }
+            bool useVoxel = true;
 
-                  if (useVoxel)
+            for (int i = 0; i < 6; i++)
+              if (((ax-2.5*amount)*planes[i][0] +
+                    (ay-2.5*amount)*planes[i][1] +
+                    (az-2.5*amount)*planes[i][2] < 0) != (((planeMask & (1<<i)) != 0))) {
+                useVoxel = false;
+                break;
+              }
 
-                    /* for each block */
-                    for (unsigned int bx = 0; bx < bsx; bx++)
-                      for (unsigned int by = 0; by < bsy; by++)
-                        for (unsigned int bz = 0; bz < bsz; bz++)
-                          if (!isEmpty2(5*bx+x, 5*by+y, 5*bz+z))
-                            s2[(bx*amount*5+ax) + nsx * ((by*amount*5+ay) + nsy * (bz*amount*5+az))] = get(5*bx+x, 5*by+y, 5*bz+z);
+            if (useVoxel)
 
-                }
-        }
+              /* for each block */
+              for (unsigned int bx = 0; bx < bsx; bx++)
+                for (unsigned int by = 0; by < bsy; by++)
+                  for (unsigned int bz = 0; bz < bsz; bz++)
+                    if (!isEmpty2(5*bx+x, 5*by+y, 5*bz+z))
+                      s2[(bx*amount*5+ax) + nsx * ((by*amount*5+ay) + nsy * (bz*amount*5+az))] = get(5*bx+x, 5*by+y, 5*bz+z);
+
+          }
+  }
 
   delete [] space;
   space = s2;
