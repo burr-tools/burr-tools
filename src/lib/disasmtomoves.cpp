@@ -193,13 +193,15 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
 
     } else {
 
+      const state_c * s2 = tree->getState(tree->getMoves()-1);
+
       /* if there is no removed tree, the pieces need to vanish */
       if (array)
         for (unsigned int p = 0; p < tree->getPieceNumber(); p++)
           if (s->pieceRemoved(p)) {
-            array[4*tree->getPieceName(p)+0] += dx+cx+((mabs(s->getX(p))<10000)?(s->getX(p)):(0));
-            array[4*tree->getPieceName(p)+1] += dy+cy+((mabs(s->getY(p))<10000)?(s->getY(p)):(0));
-            array[4*tree->getPieceName(p)+2] += dz+cz+((mabs(s->getZ(p))<10000)?(s->getZ(p)):(0));
+            array[4*tree->getPieceName(p)+0] += dx+cx+((mabs(s->getX(p))<10000)?(s->getX(p)):(s2->getX(p)));
+            array[4*tree->getPieceName(p)+1] += dy+cy+((mabs(s->getY(p))<10000)?(s->getY(p)):(s2->getY(p)));
+            array[4*tree->getPieceName(p)+2] += dz+cz+((mabs(s->getZ(p))<10000)?(s->getZ(p)):(s2->getZ(p)));
             array[4*tree->getPieceName(p)+3] += 0;
           }
 
