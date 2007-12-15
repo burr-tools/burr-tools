@@ -1,5 +1,5 @@
 /* XPM */
-static char * ViewMode3D_xpm[] = {
+static const char * ViewMode3D_xpm[] = {
 "21 21 10 1",
 " 	c None",
 ".	c #FF3440",

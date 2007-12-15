@@ -1,5 +1,5 @@
 /* XPM */
-static char *Rescale_Disabled_X3_xpm[] = {
+static const char *Rescale_Disabled_X3_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 3 1",
 "  c #00FFFF",

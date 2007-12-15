@@ -1,5 +1,5 @@
 /* XPM */
-static char *Grid_Color_Minimize_xpm[] = {
+static const char *Grid_Color_Minimize_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 6 1",
 "  c black",

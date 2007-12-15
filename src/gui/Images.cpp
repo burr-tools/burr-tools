@@ -150,7 +150,7 @@ pixmapList_c::~pixmapList_c(void) {
     delete list[i];
 }
 
-Fl_Pixmap * pixmapList_c::get(char * data[]) {
+Fl_Pixmap * pixmapList_c::get(const char * data[]) {
   list.push_back(new Fl_Pixmap(data));
   return list[list.size()-1];
 }

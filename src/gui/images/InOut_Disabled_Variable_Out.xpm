@@ -1,5 +1,5 @@
 /* XPM */
-static char *InOut_Disabled_Variable_Out_xpm[] = {
+static const char *InOut_Disabled_Variable_Out_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 3 1",
 "  c #868686",

@@ -1,5 +1,5 @@
 /* XPM */
-static char * ViewModeNormal_xpm[] = {
+static const char * ViewModeNormal_xpm[] = {
 "21 21 4 1",
 " 	c None",
 ".	c #0000E7",

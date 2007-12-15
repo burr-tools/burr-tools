@@ -1,5 +1,5 @@
 /* XPM */
-static char *Transform_Disabled_Rotate_Y_Right_xpm[] = {
+static const char *Transform_Disabled_Rotate_Y_Right_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 3 1",
 "  c #868686",

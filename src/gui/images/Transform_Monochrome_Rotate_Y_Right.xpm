@@ -1,5 +1,5 @@
 /* XPM */
-static char *Transform_Monochrome_Rotate_Y_Right_xpm[] = {
+static const char *Transform_Monochrome_Rotate_Y_Right_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 6 1",
 "  c black",

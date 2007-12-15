@@ -1,5 +1,5 @@
 /* XPM */
-static char *InOut_Color_Fixed_Out_xpm[] = {
+static const char *InOut_Color_Fixed_Out_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 15 1",
 "  c black",

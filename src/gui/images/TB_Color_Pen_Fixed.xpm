@@ -1,5 +1,5 @@
 /* XPM */
-static char *TB_Color_Pen_Fixed_xpm[] = {
+static const char *TB_Color_Pen_Fixed_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "23 23 12 1",
 "  c black",

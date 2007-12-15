@@ -1,5 +1,5 @@
 /* XPM */
-static char *Rescale_Color_X2_xpm[] = {
+static const char *Rescale_Color_X2_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 10 1",
 "  c black",

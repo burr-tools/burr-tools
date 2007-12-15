@@ -1,5 +1,5 @@
 /* XPM */
-static char *Transform_Disabled_Nudge_X_Left_xpm[] = {
+static const char *Transform_Disabled_Nudge_X_Left_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 4 1",
 "  c #868686",

@@ -1,5 +1,5 @@
 /* XPM */
-static char *Grid_Disabled_Center_xpm[] = {
+static const char *Grid_Disabled_Center_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 3 1",
 "  c #00FFFF",

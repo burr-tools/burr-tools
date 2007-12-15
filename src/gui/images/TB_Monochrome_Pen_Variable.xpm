@@ -1,5 +1,5 @@
 /* XPM */
-static char *TB_Monochrome_Pen_Variable_xpm[] = {
+static const char *TB_Monochrome_Pen_Variable_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "23 23 12 1",
 "  c black",

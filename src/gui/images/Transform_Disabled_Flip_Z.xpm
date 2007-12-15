@@ -1,5 +1,5 @@
 /* XPM */
-static char *Transform_Disabled_Flip_Z_xpm[] = {
+static const char *Transform_Disabled_Flip_Z_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "68 23 3 1",
 "  c #868686",

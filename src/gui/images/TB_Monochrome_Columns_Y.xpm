@@ -1,5 +1,5 @@
 /* XPM */
-static char *TB_Monochrome_Columns_Y_xpm[] = {
+static const char *TB_Monochrome_Columns_Y_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "23 23 6 1",
 "  c black",

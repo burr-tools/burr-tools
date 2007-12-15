@@ -1,5 +1,5 @@
 /* XPM */
-static char *TB_Color_Eraser_xpm[] = {
+static const char *TB_Color_Eraser_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "23 23 8 1",
 "  c black",

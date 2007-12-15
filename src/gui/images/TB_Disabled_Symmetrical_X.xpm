@@ -1,5 +1,5 @@
 /* XPM */
-static char *TB_Disabled_Symmetrical_X_xpm[] = {
+static const char *TB_Disabled_Symmetrical_X_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "23 23 3 1",
 "  c #868686",

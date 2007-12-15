@@ -1,5 +1,5 @@
 /* XPM */
-static char *Grid_Monochrome_Origin_xpm[] = {
+static const char *Grid_Monochrome_Origin_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 5 1",
 "  c black",
