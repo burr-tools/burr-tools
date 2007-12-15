@@ -60,6 +60,8 @@
 
 #include "../flu/Flu_File_Chooser.h"
 
+#include "../help/Fl_Help_Dialog.h"
+
 #include <FL/Fl_Color_Chooser.H>
 #include <FL/Fl_Tooltip.H>
 #include <FL/Fl_Choice.H>
@@ -1613,6 +1615,16 @@ void mainWindow_c::cb_Toggle3D(void) {
   }
 }
 
+static void cb_Help_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Help(); }
+void mainWindow_c::cb_Help(void) {
+
+  Fl_Help_Dialog * help = new Fl_Help_Dialog;
+
+  help->load("node2.html");
+
+  help->show();
+}
+
 static void cb_About_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_About(); }
 void mainWindow_c::cb_About(void) {
 
@@ -1842,6 +1854,7 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
   {"Status",           0, cb_StatusWindow_stub,  0, 0, 0, 0, 14, 56},
   {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
   {"Config",           0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
+  {"Help",             0, cb_Help_stub,        0, 0, 0, 0, 14, 56},
   {"About",            0, cb_About_stub,       0, 0, 3, 0, 14, 56},
   {0}
 };

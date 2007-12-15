@@ -1,0 +1,1158 @@
+<HTML>
+<HEAD>
+<TITLE>Creating Shapes</TITLE>
+</HEAD>
+
+<BODY >
+<B>Next:</B> <A NAME="tex2html441" HREF="node7.html">Defining Puzzles</A>
+<B>Up:</B> <A NAME="tex2html437" HREF="node3.html">User Guide</A>
+<B>Previous:</B> <A NAME="tex2html431" HREF="node5.html">The BurrTools Interface</A>
+&nbsp;<B><A NAME="tex2html439" HREF="node1.html">Contents</A></B> 
+<HR>
+<A NAME="CHILD_LINKS"><STRONG>Subsections</STRONG></A>
+
+<UL>
+  <LI><A NAME="tex2html442" HREF="node6.html#SECTION02310000000000000000">Spacegrids</A>
+  <LI><A NAME="tex2html443" HREF="node6.html#SECTION02320000000000000000">Creating Shapes</A>
+  <LI><A NAME="tex2html444" HREF="node6.html#SECTION02330000000000000000">Grid Functions</A>
+  <UL>
+    <LI><A NAME="tex2html445" HREF="node6.html#SECTION02331000000000000000">Adjusting the Grid Size</A>
+    <LI><A NAME="tex2html446" HREF="node6.html#SECTION02332000000000000000">Advanced Grid and Scaling Functions</A>
+    <LI><A NAME="tex2html447" HREF="node6.html#SECTION02333000000000000000">Adjusting All Shapes</A>
+  </UL>
+  <LI><A NAME="tex2html448" HREF="node6.html#SECTION02340000000000000000">Building and Editing Shapes</A>
+  <UL>
+    <LI><A NAME="tex2html449" HREF="node6.html#SECTION02341000000000000000">Navigating in 2-D and 3-D</A>
+    <LI><A NAME="tex2html450" HREF="node6.html#SECTION02342000000000000000">Basic Drawing Tools</A>
+    <LI><A NAME="tex2html451" HREF="node6.html#SECTION02343000000000000000">Drawing Styles</A>
+    <LI><A NAME="tex2html452" HREF="node6.html#SECTION02344000000000000000">Compound Drawing Tools</A>
+    <LI><A NAME="tex2html453" HREF="node6.html#SECTION02345000000000000000">Using the 3D-Viewer to Edit</A>
+  </UL>
+  <LI><A NAME="tex2html454" HREF="node6.html#SECTION02350000000000000000">Adding Colour</A>
+  <UL>
+    <LI><A NAME="tex2html455" HREF="node6.html#SECTION02351000000000000000">The Default Colour and Custom Colours</A>
+    <LI><A NAME="tex2html456" HREF="node6.html#SECTION02352000000000000000">Creating and Editing Custom Colours</A>
+    <LI><A NAME="tex2html457" HREF="node6.html#SECTION02353000000000000000">Applying Colours</A>
+  </UL>
+  <LI><A NAME="tex2html458" HREF="node6.html#SECTION02360000000000000000">Representations</A>
+  <LI><A NAME="tex2html459" HREF="node6.html#SECTION02370000000000000000">Transformation Tools</A>
+  <LI><A NAME="tex2html460" HREF="node6.html#SECTION02380000000000000000">Miscellaneous Editing Tools</A>
+  <UL>
+    <LI><A NAME="tex2html461" HREF="node6.html#SECTION02381000000000000000">Constraining Tools</A>
+  </UL>
+  <LI><A NAME="tex2html462" HREF="node6.html#SECTION02390000000000000000">Managing Shapes and Colours</A>
+  <LI><A NAME="tex2html463" HREF="node6.html#SECTION023100000000000000000">Shape Information</A>
+  <LI><A NAME="tex2html464" HREF="node6.html#SECTION023110000000000000000">Tips and Tricks</A>
+  <UL>
+    <LI><A NAME="tex2html465" HREF="node6.html#SECTION023111000000000000000">Voxel State and Size Tips</A>
+    <LI><A NAME="tex2html466" HREF="node6.html#SECTION023112000000000000000">Colouring Tips</A>
+  </UL>
+  <LI><A NAME="tex2html467" HREF="node6.html#SECTION023120000000000000000">Simulating non-cubic spacegrids</A>
+  <UL>
+    <LI><A NAME="tex2html468" HREF="node6.html#SECTION023121000000000000000">Two-Sided Pieces</A>
+    <LI><A NAME="tex2html469" HREF="node6.html#SECTION023122000000000000000">Diagonally Cut Cubes and Squares</A>
+    <LI><A NAME="tex2html470" HREF="node6.html#SECTION023123000000000000000">Cairos</A>
+    <LI><A NAME="tex2html471" HREF="node6.html#SECTION023124000000000000000">Squares with Cuts of Slope 0.5</A>
+    <LI><A NAME="tex2html472" HREF="node6.html#SECTION023125000000000000000">Edge Matching</A>
+    <LI><A NAME="tex2html473" HREF="node6.html#SECTION023126000000000000000">Other possibilities</A>
+  </UL>
+</UL>
+<!--End of Table of Child-Links-->
+<HR>
+
+<H1><A NAME="SECTION02300000000000000000"></A><A NAME="ChapterShapes"></A>Creating Shapes</H1>
+  
+<P>
+The key concept of B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> is <EM>shapes</EM>. A shape is
+  simply a definition of an object in 3-D space and consists of a
+  collection of voxels (space units). These voxels in turn may have their own
+  characteristics such as <EM>state</EM> and <EM>colour</EM>. Note that this
+  definition also includes shapes made out of voxels that are attached to each
+  other by only a single edge, just a corner, or even are completely separated
+  in space. The solver certainly won't bother... but how these shapes could be
+  crafted in the workshop is beyond the scope of the program.
+
+<P>
+All functions and tools for creating and editing shapes - once the grid type
+  is set - are located on the <I><B>Entities</B></I> tab which has -
+  from top to bottom - three main sections (Figure <A HREF="#FigureEntitiesTab">EntitiesTab</A>):
+
+<CENTER>  
+<A NAME="FigureEntitiesTab"></A><A NAME="1538"></A>
+<IMG SRC="Window_DDD_0.png"><BR>
+<STRONG>Figure:</STRONG>Creating shapes on the Entities tab
+</CENTER>
+
+<P>
+<DL>
+<DT><STRONG>The <I>Shapes</I> panel</STRONG></DT>
+<DD>This section is mainly a list of the
+    available shapes and has the tools for creating and managing the shapes.
+    Shapes to be edited can be selected in this list
+    (&rarr;<A HREF="#CreatingShapes">CreatingShapes</A>).</DD>
+<DT><STRONG>The <I>Edit</I> panel</STRONG></DT>
+<DD>This section provides the tools to build
+    or edit the currently selected shape. This panel contains a series of
+    subtabs with several tools for adjusting the
+    <I><B></I><I>Size</B></I> of the shapes,
+    <I><B></I><I>Transform</B></I> them in 3-D space,
+    and some extra editing <B><I>Tools</I></B>. Below
+    these subtabs there's a toolbar with the devices for actually constructing
+    the shapes in the 2-D grid at the bottom of the panel
+    (&rarr;<A HREF="#BuildingShapes">BuildingShapes</A>).</DD>
+<DT><STRONG>The <I>Colours</I> panel</STRONG></DT>
+<DD>This panel contains - besides a list
+    of the available colours - the tools to create and edit custom colours
+    which can be assigned to the voxels of the shapes. These colours can be
+    merely ornamental or can have a serious impact on the way the solver will
+    work by imposing restrictions on the possible placements of the pieces
+    (&rarr;<A HREF="#AddingColour">AddingColor</A>).</DD>
+</DL>
+
+<H1><A NAME="SECTION02310000000000000000">Spacegrids</A></H1>
+
+<P>
+Currently B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> handles cubic grids, grids that use prisms
+  with a base shape that is an equilateral triangle, and tightly packed
+  spheres. The spacegrid is used for all shapes within a puzzle, so you cannot
+  have one shape made out of cubes together with one using another grid. The
+  spacegrid needs to be set <EM>before</EM> you start with the puzzle. It
+  cannot be changed later on. The gridtype is selected when you use the
+  <I><B>New</B></I> option. Some gridtypes support setting some
+  parameters of the grid, like scaling or skew. These parameters can be used
+  to suppress certain orientations for shapes but, not to create new puzzle
+  shapes.
+
+<P>
+Same for cubes: there might be a parameter that scales the cubes in
+  y-direction. If that values differs from the x-direction value it will be
+  possible to turn the cubes only by 180 °  when rotated around the x-axis.
+
+<H1><A NAME="SECTION02320000000000000000"></A><A NAME="CreatingShapes"></A>Creating Shapes</H1>
+
+<P>
+The very first step is to draw the shapes that can be used in your puzzle
+  design. All the tools to do so are just below the
+  <I><B>Shapes</B></I> caption (Figure <A HREF="#FigureEntitiesTab">EntitiesTab</A>).
+  Clicking the <I><B>New</B></I> button starts a completely new
+  shape with an empty grid, while <I><B>Copy</B></I> allows you to
+  edit a previously entered shape without destroying the first. Obsolete and
+  redundant shapes can be discarded with the <I><B>Delete</B></I>
+  button.
+
+<P>
+All shapes are identified with an '<B><I>S<EM>x</EM></I></B>'
+  prefix. This prefix serves as a unique identifier for the shape throughout
+  the GUI and cannot be removed or altered, but <I><B>Label</B></I>
+  allows you to add a more meaningful name. Note that on the status line the
+  shapes will be referred to only by their prefixes.
+
+<P>
+By clicking an identifier in the list, the shape becomes selected and ready
+  to be edited. Also a short description of that shape appears on the status
+  line. The currently selected shape is indicated with a white border around
+  its identifier in the shapes list.
+
+<P>
+The buttons with the arrows pointing left and right allow you to change the
+  position of the shape in the list. The first one moves the selected shape
+  toward the front of the list, whereas the other button moves the shape
+  toward the end of the list. Note that rearranging shapes will cause their
+  prefix to change but not the additional name.
+
+<P>
+Unlike the pieces in P<SMALL>UZZLE</SMALL>S<SMALL>OLVER3</SMALL>D, shapes don't need to be part
+  of the puzzle. This means that you can build a file that contains a vast
+  number of shapes, e.g. all 59 notchable six-piece burr pieces, of which you
+  assign only 6 to the pieces of your puzzle design.
+
+<P>
+Finally, the shapes have an additional parameter: the weight. This value is
+  used when constructing the disassembly animations. When the disassembler has
+  found 2 groups of pieces that can be moved against each other it needs to
+  decide which group to actually move and which to keep where it is. This
+  decision can be influenced by the weight. The program searches the maximum
+  weight in both groups and the one group that has the bigger maximum weight
+  will be kept in place and the other group will be moved. If both groups have
+  the same maximum weight the group with the smaller number of pieces will be
+  used.
+
+<H1><A NAME="SECTION02330000000000000000"></A><A NAME="GridFunctions"></A>Grid Functions</H1>
+
+<P>
+Since shapes are defined as objects in 3-D space, and
+  theoretically 3-D space is unlimited in size, it's convenient
+  somehow to be able to define a more feasible subspace to work with. This,
+  and some more advanced scalings of the shapes, can be accomplished with the
+  functions on the <I><B>Size</B></I> subtab
+  (Figure <A HREF="#FigureSizeSubtab">SizeSubtab</A>) of the <I><B>Edit</B></I>
+  panel.
+  
+<CENTER>  
+<A NAME="FigureSizeSubtab"></A><A NAME="1553"></A>
+<IMG SRC="Subtab_Size.png"><BR>
+<STRONG>Figure:</STRONG>Grid and scaling functions
+</CENTER>
+
+<P>
+Note that the tab might look slightly different for different gridtypes. For
+  example the sphere grid doesn't have the shape buttons as those are useless
+  with that grid.
+
+<H2><A NAME="SECTION02331000000000000000"></A><A NAME="AdjustingGridSize"></A>Adjusting the Grid Size</H2>
+
+<P>
+When the very first shape is initialised it has a default grid size of
+  6x6x6, but all other new shapes will inherit the grid size of
+  the currently selected shape. This feature can be very useful in creating a
+  series of shapes that are restricted with respect to certain dimensions
+  (e.g. all pentacubes that fit in a 3x3x3 grid). Selecting the
+  proper shape before creating a new one often can save a considerable amount
+  of time by avoiding grid adjustments.
+
+<P>
+Adjusting the grid size to your needs can be done either by entering values
+  in the input boxes next to the axis labels, or by dragging the spin wheels.
+  When you enter values, the grid will be updated as soon as you select one of
+  the other input boxes (either by a mouse click or by the <TT>[Tab]</TT>
+  key), or when you press the <TT>[Return]</TT> key. Note that the grid is
+  also updated by simply clicking in or next to the 2-D grid. To
+  avoid unexpected results it's recommended always to confirm the entered
+  values with the <TT>[Return]</TT> key. Increasing any grid dimension is
+  completely harmless, but decreasing them needs some caution since it can
+  destroy parts of the shape.
+
+<P>
+The checkboxes for <EM>linking adjustments</EM> - to the right of the spin
+  wheels - allow you to adjust two or all dimensions simultaneously. All
+  linked dimensions will increase or decrease by the same <EM>absolute</EM>
+  amount. However, none of the dimensions can be made smaller than 1 unit.
+  Linked dimensioning is very useful in creating bigger and complex shapes
+  such as the result shape of N<SMALL>O </SMALL>N<SMALL>UKES!</SMALL> (Ronald Kint-Bruynseels),
+  which is easily done by first creating the central burr in a
+  6x6x6 grid and adding the extensions after resizing the grid
+  to 14x14x14 and centring the 'core' in that enlarged grid.
+
+<H2><A NAME="SECTION02332000000000000000"></A><A NAME="AdvancedGrid"></A>Advanced Grid and Scaling Functions</H2>
+
+<P>
+B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> has some powerful time-saving functions to manipulate
+  the position of the shape in its grid or to rescale a shape together with
+  the grid. These features are grouped below the captions
+  <I><B>Grid</B></I> and <I><B>Shape</B></I> on the right
+  side of the <I>Size</I> subtab. The first set of three will affect only
+  the grid and/or the position of the shape in the grid, the other procedures
+  however will have an impact on the shape itself by scaling it up or down.
+
+<P>
+Below is an overview of these functions, explaining precisely what they do
+  and with an indication of the reason they were introduced into
+  B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL>. No doubt you'll soon find other situations in which
+  these tools can prove to be valuable.
+
+<P>
+<B><I>Grid</I> tools.</B> Most of these tools are
+  somewhat extended versions of the more general transformation tools
+  (&rarr;<A HREF="#TransformationTools">TransformationTool</A>) and have the advantage that
+  they can act on all shapes at once
+  (&rarr;<A HREF="#AdjustAllShapes">AdjustAllShapes</A>).
+
+<P>
+<TABLE CELLPADDING=3>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Size_Grid_Minimize.png"></TD>
+<TD ALIGN="LEFT"><B>Minimise the grid -</B> This
+    function will minimise the grid to fit the dimensions of the shape it
+    contains. Use it to reduce the disk space occupied by your puzzle files.
+    Note that the result of this function is strictly based on the contents of
+    the grid and will have no effect whatsoever on empty grids.</TD>
+</TR>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Size_Grid_Center.png"></TD>
+<TD ALIGN="LEFT"><B>Centre the shape in the grid
+    -</B> This function centres the shape in the surrounding grid thus allowing
+    you to edit all sides of the shape. In some cases this will also
+    <EM>increase</EM> one or more dimensions of the grid by a single unit to
+    provide true centring. The function is most useful in editing symmetrical
+    shapes in combination with the compound drawing methods
+    (&rarr;<A HREF="#CompoundDrawing">CompoundDrawing</A>).</TD>
+</TR>    
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Size_Grid_Align.png"></TD>
+<TD ALIGN="LEFT"><B>Align the shape to the origin
+    -</B> This function brings the shape as close as possible to the origin of
+    the grid. It can very useful if you want to make a descending series of
+    rectangular blocks by copying the shape and manually adjusting the grid
+    dimensions.</TD>
+</TR>
+</TABLE>
+
+<P>
+<B><I>Shape</I> tools.</B> Use the following functions
+  wisely because unnecessary and extreme scaling up of the shapes will put a
+  heavy load on your system resources and can increase solving time
+  dramatically. Also, trying to undo such 'ridiculous' upscalings with the 1:1
+  tool can take a long time. So, <EM>think twice, click once...</EM>
+
+<P>
+These tools make sense only for spacegrids where a group of voxels can be
+  grouped to make an upscaled shape that looks like a voxel of the grid, e.g.
+  a group of 2x2x2 cubes looks like a bigger cube. As this doesn't work with
+  spheres, these tools are not available there.
+
+<P>
+<TABLE CELLPADDING=3>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Size_Shape_11.png"></TD>
+<TD ALIGN="LEFT"><B>Minimise the size of the shape
+     (1:1 tool) -</B> This function tries to make the shape as small
+    as possible without any loss of information and at the same time scales
+    down the grid by the same factor. Use this function to check the design
+    for oversized shapes which would slow down the solver. Note that although
+    this function can undo the effects of both of the next scaling functions,
+    the result cannot be guaranteed since the algorithm may scale down beyond
+    the initial size.</TD>
+</TR>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Size_Shape_x2.png"></TD>
+<TD ALIGN="LEFT"><B>Double the scale -</B> This
+    function will double the scale of the shape (and its grid). In other
+    words, it will replace every voxel in the shape with a group of voxels
+    that all have the same characteristics (state and colour) as the original
+    voxel. This can be very useful to introduce half-unit notches or colouring
+    into the design without having to redraw the shape(s).</TD>
+</TR>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Size_Shape_x3.png"></TD>
+<TD ALIGN="LEFT"><B>Triple the scale -</B> This
+    function is similar to doubling the scale, only now a scaling factor of 3
+    is used and hence every voxel in the shape will be replaced by 27
+    identical voxels. This can be very useful if you want to introduce
+    <EM>'pins and holes'</EM> into your design.</TD>
+</TR>
+</TABLE>
+
+<H2><A NAME="SECTION02333000000000000000"></A><A NAME="AdjustAllShapes"></A>Adjusting All Shapes</H2>
+
+<P>
+A last, but certainly not least, item to mention is the
+  <B><I>Apply to All Shapes</I></B> checkbox. When checked,
+  <EM>all</EM> shapes -- whether they are selected or not --
+  will be affected by the settings and procedures on the
+  <I><B></I><I>Size</B></I> subtab. This is very useful and time
+  saving when a certain adaptation needs to be done to all the shapes, e.g.
+  transforming a six-piece burr with length 6 into one with length 8.
+
+<P>
+However, some precautions are built in to prevent accidental destruction of
+  shapes. Manually reducing any grid dimension will still be performed only on
+  the currently selected shape, whereas increasing (which is completely
+  harmless to the shapes) will affect all grids. On the other hand, minimising
+  the grids will be applied to all shapes since it is content related. The 1:1
+  tool won't affect any shape unless <EM>all</EM> shapes can be scaled down
+  <EM>by the same factor</EM>. This prevents ending up with an unintended
+  mixture of differently scaled shapes.
+
+<H1><A NAME="SECTION02340000000000000000"></A><A NAME="BuildingShapes"></A><BR>Building and Editing Shapes</H1>
+
+<P>
+Once a shape has been initialised, the 2-D grid in which it can
+    be built becomes accessible on the <I><B>Edit</B></I> panel.
+    Basically one needs only three tools to create any shape, but some more
+    features are added to make life easy. All these are on the toolbar right
+    above the 2-D grid (Figure <A HREF="#FigureToolbarGrid">FigureToolbarGrid</A>). The first four buttons are the
+    <EM>basic drawing tools</EM> and <EM>colouring tool</EM>. These are all
+    toggle buttons, meaning that enabling one will disable the others. They
+    affect the presence and/or the state and colour of the voxels drawn by
+    clicking in or dragging over the cells in the 2-D grid.
+    
+<CENTER>
+<IMG SRC="ToolbarGrid.png"><BR>
+<STRONG>Figure:</STRONG>Toolbar and 2-D grid
+<A NAME="FigureToolbarGrid"></A><A NAME="1579"></A>
+</CENTER>
+  
+<P>
+Next come two toggle buttons that allow you to select the <EM>drawing
+  style</EM>. This is the way the basic drawing tools will respond to dragging
+  the mouse over the grid cells. Finally, a series of <EM>compound drawing
+  tools</EM> follows. These extend the range of the basic drawing tools and can
+  all be cumulatively added to them.
+
+<H2><A NAME="SECTION02341000000000000000"></A><A NAME="Navigating2D3D"></A>Navigating in 2-D and 3-D</H2>
+
+<P>
+Building and editing takes place almost exclusively in the 2-D
+  grid, to which the 3-D viewport acts only as a visual aid. Both
+  have their corresponding axes in the same colour: <EM>red</EM> for the
+  x-axis, <EM>green</EM> for the y-axis and <EM>blue</EM>
+  for the z-axis. For the 2-D grid, which actually can
+  show only a single layer at a time, the z-axis is represented with
+  a scrollbar (Figure <A HREF="#FigureToolbarGrid">FigureToolbarGrid</A>). By default every new shape
+  starts on the bottom layer and the scrollbar allows you to move up and down
+  through the different layers along the z-axis (the number of
+  z-layers is always indicated with the proper number of ticks along
+  the scrollbar). Another way to navigate these z-layers is by
+  pressing <TT>[+]</TT> (moves up one layer) or <TT>[-]</TT> (moves down
+  one layer) on the keyboard.
+  
+<CENTER>  
+<A NAME="FigureNavigation"></A><A NAME="1588"></A>
+<IMG SRC="NavigationA.png"><IMG SRC="NavigationB.png"><BR>
+<STRONG>Figure:</STRONG>Selections of grid cells in 2-D and 3-D
+</CENTER>
+
+<P>
+Moving the mouse cursor over the 2-D grid gives an indication of
+  the cell(s) - depending on the state of the compound drawing tools - that
+  will be affected by clicking. These indications are also reflected in the
+  3-D viewer. Furthermore, to facilitate positioning on different
+  layers every non-empty voxel on the 2-D layer just below the
+  current one 'shines through' in a very light shade of the default colour
+  associated with that shape (Figure <A HREF="#FigureNavigation">FigureNavigation</A>). This makes
+  building shapes from bottom to top very easy.
+
+<P>
+With larger grid sizes the cells of the 2-D grid can become very
+  small, even when the available area for the grid on the <I>Entities</I>
+  tab is maximised. To overcome this inconvenience the 2-D grid and
+  the 3-D viewport can be exchanged. To do so, click the
+  <B><I>Toggle 3D</I></B> item on the menu bar or press
+  <TT>[F4]</TT>. Note that this affects only the position of the
+  3-D viewport for the <I>Entities</I> tab.
+
+<H2><A NAME="SECTION02342000000000000000">Basic Drawing Tools</A></H2>
+
+<P>
+The basic drawing tools affect the presence and/or the state of a particular
+  voxel in the shape. In fact, together with the brush tool
+  (&rarr;<A HREF="#BrushTool">BrushTool</A>) they are all that's needed to create
+  any shape in B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL>. The following is a description of these
+  tools. Note that each is also accessible through a keyboard short cut.
+
+<P>
+<TABLE CELLPADDING=3>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Toolbar_Draw_Fixed.png"></TD>
+<TD ALIGN="LEFT"><B>Fixed pen -</B> Use this tool to
+    draw <EM>normal</EM> or <EM>fixed</EM> voxels. Fixed voxels are
+    represented by completely filled cells in both the 2-D and the
+    3-D grid (&rarr;<A HREF="#Representations">Representation</A>). Remember
+    that these fixed voxels <EM>must be filled</EM> in the final result.
+    Keyboard short cut: <TT>[F5]</TT>.</TD>
+</TR>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Toolbar_Draw_Variable.png"></TD>
+<TD ALIGN="LEFT"><B>Variable pen -</B> This tool
+    allows you to draw <EM>variable</EM> voxels. In the 2-D grid
+    these variable voxels do not completely fill the cells, but have a narrow
+    border showing the background of the grid. In the 3-D viewport
+    the variable voxels have a black inset
+    (&rarr;<A HREF="#Representations">Representation</A>). Variable voxels instruct the
+    solver that these particular places may be <EM>either</EM> <EM>filled
+    or empty</EM> in the final result. So variable voxels are allowed only in
+    result shapes, and the solver will give a warning whenever it encounters
+    any variable voxels in a shape used as a piece. Short cut:
+    <TT>[F6]</TT>.</TD>
+</TR>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Toolbar_Draw_Eraser.png"></TD>
+<TD ALIGN="LEFT"><B>Eraser -</B> The eraser will
+    remove voxels from the shape. Note that clicking or dragging with the
+    right mouse button has the same effect of erasing voxels. The eraser tool
+    however proves its use in minute adaptations of shapes. Short cut:
+    <TT>[F7]</TT>.</TD>
+</TR>
+</TABLE>
+
+<H2><A NAME="SECTION02343000000000000000">Drawing Styles</A></H2>
+
+<P>
+B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> has two different drawing styles. These styles affect
+  the way voxels are drawn/erased or colours are added by <EM>dragging</EM>
+  with the mouse. In drawing shapes by simply clicking
+  'cell-by-cell' both are equivalent.
+
+<P>
+<TABLE CELLPADDING=3>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Toolbar_Drag_Rubber.png"></TD>
+<TD ALIGN="LEFT"><B>Rectangular dragging style
+    ('rubber band') -</B> On dragging over the 2-D grid with the
+    mouse, a <EM>rectangular</EM> <EM>selection</EM> of cells will be made.
+    This is shown with a heavy border around the selected cells and the voxels
+    will only be altered on releasing the mouse button. But releasing the
+    mouse button outside the actual grid will make the whole operation void
+    and can serve as a sort of 'undo'. This style is useful not only for
+    drawing rectangular shapes or parts, but also for adding colour to (large
+    areas of) the shape.</TD>
+</TR>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Toolbar_Drag_Free.png"></TD>
+<TD ALIGN="LEFT"><B>Free dragging style -</B> All
+    drawing and colouring operations will be performed on a single cell basis
+    and <EM>as soon as</EM> the mouse cursor is dragged over that particular
+    cell. This drawing style is very useful for creating complex and irregular
+    shapes and colour patterns.</TD>
+</TR>
+</TABLE>
+
+<P>
+The status of these drawing styles is remembered by
+  B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> so that it always defaults to the drawing style that
+  was active on the last shut down of the program.
+
+<H2><A NAME="SECTION02344000000000000000"></A><A NAME="CompoundDrawing"></A>Compound Drawing Tools</H2>
+
+<P>
+Although the basic drawing tools are all that is needed for creating shapes,
+  some compound drawing tools are added to speed up the process. The compound
+  drawing tools can be added <EM>cumulatively</EM> to the basic drawing tools
+  and only extend the range of action for the latter ones.
+
+<P>
+Note that these tools always function along the 3 orthogonal axes, so they
+  are very useful for cubes but might need a bit of getting used to for the
+  other spaces as they might behave differently along the 3 axes. The
+  triangular prisms for example are stacked along the z-axis, side by side
+  along the x-axis and tip by tip along the y-axis.
+
+<P>
+<TABLE CELLPADDING=3>
+<TR><TD ALIGN="LEFT">
+<IMG SRC="Button_Toolbar_Symm_X.png">
+<IMG SRC="Button_Toolbar_Symm_Y.png">
+<IMG SRC="Button_Toolbar_Symm_Z.png"></TD>
+<TD ALIGN="LEFT"><B>Symmetrical drawing methods
+    -</B> For every voxel drawn, erased, or coloured its symmetrically placed
+    counterpart (with respect to the centre of the grid and along one of the
+    space axes) will be affected as well. Activating only one of these options
+    will double the number of edited cells, whereas activating two or all
+    three will affect respectively four times and eight times as many cells
+    simultaneously. These options are not only useful for drawing symmetrical
+    shapes, but they are also very well suited for finding the centre of the
+    grid and (temporarily) setting the extents of a shape.</TD>
+</TR>
+<TR><TD ALIGN="LEFT">
+<IMG SRC="Button_Toolbar_Cols_X.png">
+<IMG SRC="Button_Toolbar_Cols_Y.png">
+<IMG SRC="Button_Toolbar_Cols_Z.png"></TD>
+<TD ALIGN="LEFT"><B>Column drawing methods -</B>
+    These options - possibly combined with the symmetrical drawing tools - can
+    really speed up drawing shapes as they will affect <EM>all</EM> voxels
+    that are in the same row or column along one of the space axes. The number
+    of voxels that will be affected depends on the size settings of the grid.
+    Hence, to take fully advantage of these functions the grid should be first
+    adjusted to the proper dimensions.</TD>
+</TR>
+</TABLE>
+
+<H2><A NAME="SECTION02345000000000000000">Using the 3D-Viewer to Edit</A></H2>
+
+<P>
+It is also possible to do some editing using the 3- view directly by simply
+  clicking onto faces to add the corresponding neighbour voxel. The following
+  actions are possible:
+  
+<UL>
+<LI>Add a normal voxel by pressing <TT>[Shift]</TT> and clicking onto
+    a face. The neighbour is added.
+</LI>
+<LI>Add a variable voxel by pressing <TT>[Alt]</TT> and clicking onto
+    a face. Again the neighbour is added.
+</LI>
+<LI>Remove a voxel by pressing <TT>[Ctrl]</TT> and clicking onto a
+    voxel. This removes the voxel.
+</LI>
+</UL>
+
+As spheres do not really have touching faces the 3- view of them does now
+  contain marks with a slightly different colors around the places where the
+  spheres would tough. Clicking on those places on the sphere addes the
+  corresponding neighbour sphere.
+
+<H1><A NAME="SECTION02350000000000000000"></A><A NAME="AddingColour"></A>Adding Colour</H1>
+
+<P>
+There are basically two reasons for using colours in your puzzle designs.
+  The first is merely <EM>aesthetic</EM>: colours are used only to explore the
+  looks of the puzzle. This can help you selecting the proper species of woods
+  or stains before taking your design to the workshop. The second however is
+  far more important, as it uses colours to force or prevent certain positions
+  of particular pieces in the assembly. These <EM>constraining</EM> techniques
+  can be very useful to pursue a unique solution for a puzzle design. Of
+  course one can try to achieve both the aesthetic and constraining goals at
+  the same time. Figure <A HREF="#FigureCustomColours">FigureCustomColours</A> shows an example of
+  D<SMALL>RACULA'S </SMALL>D<SMALL>ENTAL </SMALL>D<SMALL>ISASTER</SMALL> (Ronald Kint-Bruynseels) in which
+  colours serve both. The red and black voxels are meant to impose constraints
+  on the placements of the pieces, whereas the white colour of the parts on
+  the inside of the pieces is used only to make them look nice.
+  
+  
+<CENTER>
+<A NAME="FigureCustomColours"></A><A NAME="1614"></A>
+<IMG SRC="Window_DDD_1.png"><BR>
+<STRONG>Figure:</STRONG>A shape with custom colours
+</CENTER>
+
+<H2><A NAME="SECTION02351000000000000000">The Default Colour and Custom Colours</A></H2>
+
+<P>
+Even when no 'special' colours at all are used, the program assigns each
+  shape its own different nominal color. This is the so-called <EM>default
+  colour</EM> and is there only to <EM>distinguish</EM> the shapes from one
+  another. These default colours are standard for each newly created shape
+  (the first one in the shapes list is always blue, the second one green, the
+  third one red, etc...) and cannot be altered.
+
+<P>
+As far as the solver is concerned, the default colour doesn't even exist, as
+  all appearances of it are fully interchangeable. So any voxel in the pieces
+  that has only the default colour can go into any voxel of the result shape,
+  and every voxel in the result that has no other colour than the default can
+  accommodate any voxel of the pieces, independent of its colour.
+
+<P>
+Independent from their default colour, voxels can have customised colours as
+  extra attributes. To avoid confusion, it's recommended to make these colours
+  well distinguishable from the default colours in use, since a custom colour
+  that is identical to one of the default colours will have a completely
+  different effect on the way the solver behaves. Almost without exception
+  custom colours need some constraint settings
+  (&rarr;<A HREF="node7.html#ColourConstraints">ColourConstraints</A>) to make the solver run.
+
+<H2><A NAME="SECTION02352000000000000000">Creating and Editing Custom Colours</A></H2>
+
+<P>
+The tools for creating and editing colours are located on the
+  <I><B>Colours</B></I> panel of the
+  <I><B><B></I><I>Entities</I><I></B></B></I>
+  tab. This panel also has a list in which the colours can be
+  selected to be used in the design or to be edited. The
+  <B><I>New</I></B> button allows you to create a custom colour. A
+  dialogue will pop up and present you the necessary tools to create the
+  colour you need. Accordingly the <I><B>Edit</B></I> button allows
+  you to transform an already existing colour using a similar dialogue. This
+  dialogue also shows the currently selected colour for comparison (unless the
+  default colour is selected, which makes the dialogue to show the default
+  medium grey). Note that the default colour can be neither removed nor
+  changed. It's important to realise that the B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> engine
+  discriminates custom colours only by number as indicated in their prefix
+  '<I><B>C<EM>x</EM></B></I>' and not by the actual colours
+  themselves. Hence it is possible to create identical colours that
+  nevertheless will be treated as different. So, it's strongly advised to
+  introduce only colours whose difference can easily be discerned. Otherwise,
+  finding out why a puzzle has no solutions can be very hard. The
+  <B><I>Remove</I></B> button will not only discard the colour from
+  the list, but will also remove it from any voxel that has it as an attribute
+  by replacing it with the default colour.
+
+<P>
+When you add a colour, B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> automatically adds a constraint
+  rule that pieces of this colour can be placed into result voxels of this
+  colour. This is done by default because it is the way colours are most often
+  used. If you don't want this constraint you have to explicitly remove the
+  rules (see &rarr;<A HREF="node7.html#ColourConstraints">ColourConstraints</A>). Also, when a new
+  problem is created B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> automatically adds one such rule for
+  each existing colour.
+
+<H2><A NAME="SECTION02353000000000000000"></A><A NAME="BrushTool"></A>Applying Colours</H2>
+
+<P>
+Colours can be applied while drawing the shape. Just select a colour and it
+  will become an extra attribute of the fixed pen or the variable pen.
+  Additional colouring can be done by using the <EM>Brush</EM> tool.
+
+<P>
+<TABLE CELLPADDING=3>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Toolbar_Draw_Brush.png"></TD>
+<TD ALIGN="LEFT"><B><B>Brush</B> tool -</B>
+    This is a <EM>'colouring only'</EM> device and merely adds the selected
+    colour to the voxels without altering their state. The brush tool can also
+    be activated by pressing <TT>[F8]</TT> on the keyboard.</TD>
+</TR>
+</TABLE>
+
+<P>
+The behaviour of this brush tool is similar to that of the
+  drawing pens. So it obeys the drag styles and can be extended with the
+  compound drawing tools. Note that the right mouse button will still
+  completely erase the voxel.
+
+<H1><A NAME="SECTION02360000000000000000"></A><A NAME="Representations"></A>Representations</H1>
+
+<P>
+Voxels can be either fixed or variable, and each of these can come with or
+  without an additional custom colour. In B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> all of these
+  cases have their own specific representations in the 2-D grid as
+  well as in the 3-D viewport. Figure <A HREF="#FigureRepresentations">Representation</A> shows an overview of these
+  possibilities. In this picture the default colour is red (= shape S3) and
+  the custom colour is green (RGB = 0.600, 0.753, 0).
+  
+<CENTER>  
+<A NAME="FigureRepresentations"></A><A NAME="1631"></A>
+<IMG SRC="RepresentationA.png">
+<IMG SRC="RepresentationC.png">
+<IMG SRC="RepresentationE.png"><BR>
+<IMG SRC="RepresentationB.png">
+<IMG SRC="RepresentationD.png">
+<IMG SRC="RepresentationF.png"><BR>
+<STRONG>Figure:</STRONG>Representations in 2-D and 3-D
+</CENTER>
+
+<P>
+Fixed voxels always fill the cell completely in the 2-D grid as
+  well as in the 3-D grid. In all the pictures of Figure
+  <A HREF="#FigureRepresentations">Representation</A> the voxels on the left are fixed voxels.
+  Variable voxels only partially fill the cell in 2-D and have a
+  black inset in 3-D (the voxels on the right in Figure
+  <A HREF="#FigureRepresentations">Representation</A>).
+
+<P>
+Voxels that have a custom colour added (the yellow voxels in Figure
+  <A HREF="#FigureRepresentations">Representation</A>) show this colour as an inset in the
+  2-D grid, whereas in the 3-D viewer they are completely
+  painted with this colour (provided that the <B><I>Colour 3D
+  View</I></B> on the status line is checked, otherwise they will be painted in the
+  default colour). Note that in both grids the default colours also have a
+  slightly checkered pattern which can assist navigating in space (except for
+  the spheres, which have no checkering).
+
+<H1><A NAME="SECTION02370000000000000000"></A><A NAME="TransformationTools"></A>Transformation Tools</H1>
+
+<P>
+Editing complex shapes can be very cumbersome and often requires a lot of
+  navigating through the 2-D grid. So, properly positioning and/or
+  orientating the shape in the 2-D grid can save a lot of time.
+  B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> comes with a set of functions that help you adjust the
+  position and orientation of the shapes. These functions are grouped on the
+  <I><B>Transform</B></I> subtab of the <B><I>Edit</I></B>
+  panel (Figure <A HREF="#FigureTransformationTools">TransformationTools</A>). The first thing to see is
+  that the transform tab looks quite different for all 3 available gridtypes.
+  At the top of the figure you see the tab for cubes, below for triangles, and
+  at the bottom for spheres.
+  
+<CENTER>
+<A NAME="FigureTransformationTools"></A><A NAME="1636"></A>
+<IMG SRC="Subtab_TransformA.png"><BR>
+<IMG SRC="Subtab_TransformB.png"><BR>
+<IMG SRC="Subtab_TransformC.png"><BR>
+<STRONG>Figure:</STRONG>Transformation tools
+</CENTER>
+
+<P>
+<TABLE CELLPADDING=3>
+<TR><TD ALIGN="LEFT">
+<IMG SRC="Button_Transform_Flip_X.png"><BR>
+<IMG SRC="Button_Transform_Flip_Y.png"><BR>
+<IMG SRC="Button_Transform_Flip_Z.png"><BR></TD>
+<TD ALIGN="LEFT"><B>Flip -</B> These 'three' functions are merely <EM>one single
+    mirroring tool</EM>, the only difference is the orientation of the mirrored
+    shape they provide. The first will mirror the shape along the x-axis (or
+    in a plane through the centre of the grid and parallel to the YZ-plane).
+    The others perform the same task, but along the y-axis (XZ-plane) or the
+    z-axis (XY-plane) respectively. Note that each button can undo its own
+    action as well as the actions of the other buttons, since the result of
+    each function can be obtained by simply rotating the outcome of any other.
+    However, there are three buttons to provide some control over the
+    orientation of the mirrored shape in the grid space, which can save time
+    if the shape needs further editing.</TD>
+</TR>
+<TR><TD ALIGN="LEFT">
+<IMG SRC="Button_Transform_Nudge_X.png"><BR>
+<IMG SRC="Button_Transform_Nudge_Y.png"><BR>
+<IMG SRC="Button_Transform_Nudge_Z.png"><BR>
+and more</TD>
+<TD ALIGN="LEFT"><B>Nudge - </B>These functions provide
+    <EM>translations</EM> (along the x-axis, y-axis or z-axis for the cubes,
+    or along different axes for other gridtypes) of the shapes in their
+    surrounding grids. These buttons have two parts, of which the left part
+    will shift the shape towards the origin of the grid and the right part
+    will move it away from the origin. Note that shifting a shape beyond the
+    boundaries of the grid will (partially) destroy it. So these nudging
+    operations can also be used to erase unwanted parts on the outer limits of
+    the shapes.</TD>
+</TR>
+<TR><TD ALIGN="LEFT">
+<IMG SRC="Button_Transform_Rotate_X.png"><BR>
+<IMG SRC="Button_Transform_Rotate_Y.png"><BR>
+<IMG SRC="Button_Transform_Rotate_Z.png"><BR>
+</TD>
+<TD ALIGN="LEFT"><B>Rotate -</B> These functions
+    allow you to <EM>rotate</EM> the shapes around an axis parallel to the
+    x-axis, y-axis or the z-axis. Again, these buttons have two parts, of
+    which the left rotates the shape 90 °  anti-clockwise (viewed towards the
+    origin) and the right button turns the shape 90 °  clockwise. To avoid
+    destroying shapes by rotating them, the grid may be rotated as well.
+    <P>
+    The triangle space has only one rotation button for the x and y-axis
+    because it is possible to rotate only by 180 °  around these axes.</TD>
+</TR>
+</TABLE>
+
+<H1><A NAME="SECTION02380000000000000000">Miscellaneous Editing Tools</A></H1>
+
+<P>
+The <I><B>Tools</B></I> subtab (Figure <A HREF="#FigureTools">Tools</A>) offers extra editing tools. Currently only
+  some constraint related tools are available.
+  
+<CENTER>  
+<A NAME="FigureTools"></A><A NAME="1644"></A>
+<IMG SRC="Subtab_Tools.png"><BR>
+<STRONG>Figure:</STRONG>Extra editing tools
+</CENTER>
+
+<H2><A NAME="SECTION02381000000000000000"></A><A NAME="ChapterConstrainingTools"></A>Constraining Tools</H2>
+
+<P>
+These tools are <EM>mass editing</EM> tools that have an impact on the
+  possible placements of the pieces in the final result. They act either on
+  the inside or the outside of the shape. Voxels that are considered to be on
+  the inside are voxels that have another voxel adjacent to <EM>all</EM> of
+  their faces. Consequently, outside voxels have at least one empty voxel
+  neighbouring.
+
+<P>
+<TABLE CELLPADDING=3>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Constraints_Fixed.png"></TD>
+<TD ALIGN="LEFT"><B>Fixed Inside/Outside -</B> These
+    functions allow you to change the state of the voxels that are either on
+    the inside (left button) or on the outside (right button) of the shape
+    into fixed voxels. Although one can think of situations in which these can
+    be useful as such, they are mostly used to undo the effects of the next
+    two functions.</TD>
+</TR>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Constraints_Variable.png"></TD>
+<TD ALIGN="LEFT"><B>Variable Inside/Outside -</B>
+    These functions will respectively make all the voxels on the inside or the
+    outside of the shape variable. Making the inside variable is very useful
+    for puzzles with internal holes in undetermined places. On the other hand
+    making the outside variable can be halpful in a lot of design situations
+    (e.g. adding extensions to the pieces). Clicking both buttons will make
+    the shape completely built out of variable voxels. Use these wisely as the
+    more variable voxels there are, the slower the solver will run.</TD>
+</TR>
+<TR><TD ALIGN="LEFT"><IMG SRC="Button_Constraints_Colour.png"></TD>
+<TD ALIGN="LEFT"><B>Colour Remover -</B> These
+    buttons will remove any custom colours from the voxels that are either on
+    the inside or the outside of the shape, and replace them with the default
+    colour. Removing the colour from the inside can prevent having to apply
+    complex colouring to the result shape in situations were the colour
+    constraints are relevant only to the overall appearance of the puzzle.</TD>
+</TR>
+</TABLE>
+
+<H1><A NAME="SECTION02390000000000000000">Managing Shapes and Colours</A></H1>
+
+<P>
+Currently the shapes can only be rearranged with the left and right arrow
+  buttons of the <I>Shapes</I> section, but more advanced management
+  procedures will be added in the future.
+
+<H1><A NAME="SECTION023100000000000000000"></A><A NAME="ChapterStatus"></A>Shape Information</H1>
+
+<P>
+When using the main menu entry <I><B>Status</B></I> a window
+  (Figure <A HREF="#WindowStatus">WindowStatus</A>) like the one above opens and displays all
+  kinds of information about all the shapes available inside the puzzle. The
+  table columns have the following meanings:
+  
+<CENTER>
+<A NAME="WindowStatus"></A><A NAME="1651"></A>
+<IMG SRC="Window_Status.png"><BR>
+<STRONG>Figure:</STRONG>The Status window
+</CENTER>
+
+<P>
+<DL>
+<DT><STRONG>Units Normal</STRONG></DT>
+<DD>Contains the number of voxels inside the shape that
+    have the state fixed.
+</DD>
+<DT><STRONG>Units Variable</STRONG></DT>
+<DD>Contains the number of voxel inside the shape that
+    have the state variable.
+</DD>
+<DT><STRONG>Units Total</STRONG></DT>
+<DD>Contains the number of voxels inside the shape that are
+    either fixed or variable.
+</DD>
+<DT><STRONG>Identical</STRONG></DT>
+<DD>If the shape is identical to another shape with smaller
+    number, the first such number is displayed; so if shape 3, 4, and 5 are
+    identical, shape 4 and 5 will point to shape 3 but shape 3 will show no
+    indication.
+</DD>
+<DT><STRONG>Identical Mirror</STRONG></DT>
+<DD>A previous shape is cited, if the shapes can
+    somehow be transformed into the other including the mirror transformation.
+</DD>
+<DT><STRONG>Identical Shape</STRONG></DT>
+<DD>A previous shape is cited, if the shapes are
+    identical without mirroring.
+</DD>
+<DT><STRONG>Identical Complete</STRONG></DT>
+<DD>In this case shapes must be completely
+    identical including colours and not only the appearance of the shape.
+</DD>
+<DT><STRONG>Connectivity</STRONG></DT>
+<DD>This part of the table shows if the shape is
+    completely connected, i.e. doesn't contain any separate voxels.
+</DD>
+<DT><STRONG>Connectivity Face</STRONG></DT>
+<DD>This part is marked with an X when all parts of
+    the shape are connected via the faces of the voxels. A face is a surface
+    of a voxel. Cubes have 6 such faces, the triangular voxels have 5, and
+    spheres have 12 faces.
+</DD>
+<DT><STRONG>Connectivity Edge</STRONG></DT>
+<DD>This part is marked with an X when all parts of
+    the shape are connected via an edge or a face of the voxel. An edge is the
+    connection between 2 corners of a voxel. A cube has 12 edges and the
+    triangular voxel have 9. Spheres have no edges.
+</DD>
+<DT><STRONG>Connectivity Corner</STRONG></DT>
+<DD>This part is marked with an X when all parts of
+    the shape are connected via a corner, an edge, or a face. A corner is the
+    end of an edge. Cubes have 8 corners, the triangular voxel have 6 corners,
+    and spheres have none.
+</DD>
+<DT><STRONG>Holes</STRONG></DT>
+<DD>This part of the table contains information about possible
+    holes inside the shapes.
+</DD>
+<DT><STRONG>Holes 2D</STRONG></DT>
+<DD>A 2D hole is a hole in a 2-dimensional shape. So the
+    o-octomino has a 2D hole.
+</DD>
+<DT><STRONG>Holes 3D</STRONG></DT>
+<DD>A 3D hole is a completely surrounded region inside a
+    shape.
+</DD>
+<DT><STRONG>Sym</STRONG></DT>
+<DD>This is a column that is mainly there for my help.
+    B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> needs to know about all kinds of symmetries a shape
+    can have. If a shape turns up that has a kind of symmetry yet unknown to
+    the program it cannot solve puzzles with this shape. So here is a tool to
+    check beforehand and without the need to create a problem. If you ever see
+    a coloured mark in the last column send me the shapes where it turns up.
+    As long as this last column contains only numbers without a coloured mark
+    everything is fine.
+</DD>
+</DL>
+
+<P>
+Because calculating all this information can take a considerable amount of
+  time, B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> pops up a window when it is working on
+  accumulating this table. The window contains a progress bar to guess how
+  much longer it will take. There is also a <I><B>Cancel</B></I>
+  button at the bottom that lets you abort this calculation and view the
+  results already gathered.
+
+<H1><A NAME="SECTION023110000000000000000">Tips and Tricks</A></H1>
+
+<P>
+Below are some tips and tricks that can be useful to simplify your designs,
+  speed up the designing and/or solving process, or can be used as workarounds
+  for some limitations of B<SMALL>URR</SMALL>T<SMALL>OOLS.</SMALL> We encourage the reader to
+  share his own tips and tricks with us so that we can incorporate them in a
+  future update of this document.
+
+<H2><A NAME="SECTION023111000000000000000">Voxel State and Size Tips</A></H2>
+
+<P>
+<DL>
+<DT><STRONG>State and Solver Speed</STRONG></DT>
+<DD>The greater the proportion of variable
+    voxels in the result shape, the slower the solver will run. Also, the
+    number of pieces has an impact on the solving time. Hence, replacing
+    variable voxels with empty spaces for known holes in the puzzle is to be
+    considered. Also, leaving out a piece in complex packing puzzles (and
+    making its position empty in the result) can reduce the solving time
+    considerably.
+</DD>
+<DT><STRONG>Size and Solver Speed</STRONG></DT>
+<DD>The size of the shapes has an effect on the
+    solving speed, since bigger shapes inevitably lead to more possibilities:
+    for a 1x1x1 cube there's only one possible placement in a
+    2x2x2 grid (excluding symmetries), but for a
+    2x2x2 cube there are four of them in a 4x4x4
+    grid. So trying to minimise <EM>all</EM> shapes with the 1:1 tool before
+    taking the puzzle to the solver is highly recommended for complex designs.
+</DD>
+<DT><STRONG>Complete sets</STRONG></DT>
+<DD>Often complete sets of pieces (e.g. the hexacubes in
+    H<SMALL>AUBRICH'S </SMALL>C<SMALL>UBE</SMALL>) can be easily made by repeatedly copying the
+    current shape and editing it with the properties of left and right
+    clicking.
+</DD>
+<DT><STRONG>Symmetry</STRONG></DT>
+<DD>A detailed treatment of some symmetry issues will be added
+    to the next update of this document.
+  
+</DD>
+</DL>
+
+<H2><A NAME="SECTION023112000000000000000">Colouring Tips</A></H2>
+
+<P>
+<DL>
+<DT><STRONG>Colouring Shapes</STRONG></DT>
+<DD>Colouring shapes as a whole is easily done with
+    the brush tool in combination with the rectangle dragging style and
+    z-columns switched on.
+</DD>
+<DT><STRONG>Aesthetic Colours</STRONG></DT>
+<DD>When colours are used solely for aesthetic
+    reasons, make sure that the <EM>result</EM> shape has only the default
+    colour. This will prevent having to set a lot of constraint conditions.
+</DD>
+<DT><STRONG>One-Sided Polyominoes</STRONG></DT>
+<DD>Polyominoes can be made one-sided by having
+    them two layers thick and adding different constraint colours to the two
+    layers. The constraint settings
+    (&rarr;<A HREF="node7.html#ColourConstraints">ColourConstraints</A>) should simply be a
+    'one-to-one' relationship.
+</DD>
+<DT><STRONG>Hiding Pieces</STRONG></DT>
+<DD>For puzzles in which the goal is to hide a certain
+    piece on the inside of the assembly (e.g. Trevor Wood's
+    W<SMALL>OODWORM</SMALL>), <EM>two</EM> constraint colours should be used in
+    the result shape: one for the exterior and one for the voxels on the
+    inside and one for those on the outside. Also colour the piece that must
+    be hidden with the 'inside' colour, and apply the 'outside' colour to all
+    other pieces. The constraint settings
+    (&rarr;<A HREF="node7.html#ColourConstraints">ColourConstraints</A>) must then be such that the
+    piece to be hidden is allowed to go only into the 'inside' colour, while
+    the other pieces may go into either colour.
+</DD>
+</DL>
+
+<H1><A NAME="SECTION023120000000000000000">Simulating non-cubic spacegrids</A></H1>
+
+<P>
+It is possible to emulate spacegrids different from cubes by just using
+  cubes. This way B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> can solve different kind of puzzles.
+  This section will give hints on how to such things. It will not contain
+  obvious emulation possibilities like hexagons with 6 triangles or x by y
+  rectangles using several squares, but rather some of the more complicated
+  possibilities. The chapter cannot be complete but rather it wants to suggest
+  what can be done and give you some initial ideas. If you come up with a cool
+  idea you are welcome to send it to me and I will include it here.
+
+<P>
+Generally this emulation requires using N
+ cubes for one basic unit. This
+  will probably result in a slowdown of the solving process, but the slowdown
+  is not always that grave. B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> knows how to merge voxels
+  that are always occupied by the same piece into one, so if there is for
+  example a puzzle that uses hexagonal pieces made out of the triangular
+  prisms and these hexagons are always aligned on a hexagonal grid,
+  B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> will merge the 6 triangles together and work with the
+  resulting shapes. This takes some time only at the initialisation phase. On
+  the other hand, there might be many placements of pieces that fit the
+  underlying cube to triangle grid that are not proper placements and that
+  need to be sorted out first. This can take a long time. M<SMALL>AJOR
+  </SMALL>C<SMALL>HAOS</SMALL> by Kevin Holmes for example has a lot of illegal placements for
+  pieces that need to be sorted out. That takes a very long time, but once
+  that is done the solving is actually very fast.
+
+<H2><A NAME="SECTION023121000000000000000">Two-Sided Pieces</A></H2>
+
+<P>
+If you have pieces that have a top and a bottom, there are
+  several possibilities to model that in B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL>. One possibility
+  is to use colours. Make the piece and the result 2 layers thick. The bottom
+  layer of both will get a special colour.
+  
+<CENTER>
+<A NAME="Emul2Sided"></A><A NAME="1665"></A>
+<IMG SRC="Emulation_2Layer.png"><BR>
+<STRONG>Figure:</STRONG>Emulate 2 Sided Piece
+</CENTER>
+
+<P>
+Another possibility is to add an additional layer that has voxels only in
+  certain places as seen in the picture. The additional voxel prevents the
+  rotation of the shape. But you have to make sure that the allowed rotations
+  are still possible, e.g. if you place the notches in different places
+  rotation around the z-axis is also no longer possible. An example can be
+  seen in Figure <A HREF="#Emul2Sided">Emul2Sided</A>
+
+<H2><A NAME="SECTION023122000000000000000">Diagonally Cut Cubes and Squares</A></H2>
+
+<P>
+Cubes can be cut in many different ways, to approximate shapes such as given
+  in Figure <A HREF="#EmulDiagCut">EmulDiagCut</A> use the 2x2x2 cube displayed there.
+
+<CENTER>
+<A NAME="EmulDiagCut"></A><A NAME="1667"></A>
+<IMG SRC="Emulation_DiagonalCut.png"><BR>
+<STRONG>Figure:</STRONG>Diagonally cut cube
+</CENTER>
+
+<P>
+It is, of course, also possible to simulate diagonally cut squares this way.
+  The squares need to be 2 layers thick.
+
+<H2><A NAME="SECTION023123000000000000000">Cairos</A></H2>
+
+<P>
+Cairos are pentagons but luckily they have only 4 rotations, so it is
+  possible to emulate them using squares. Figure
+ <A HREF="#EmulCairos">EmulCairos</A> demonstrates how that can be done.
+
+<CENTER>
+<A NAME="EmulCairos"></A><A NAME="1668"></A>
+<IMG SRC="Emulation_Cairos.png"><BR>
+<STRONG>Figure:</STRONG>Emulation of Cairos using squares
+</CENTER>
+
+<H2><A NAME="SECTION023124000000000000000">Squares with Cuts of Slope 0.5</A></H2>
+
+<P>
+To be done.
+
+<H2><A NAME="SECTION023125000000000000000">Edge Matching</A></H2>
+
+<P>
+Sometimes it is possible to emulate edge matching problems by using notches
+  and dents at the outside of the shapes.
+
+<H2><A NAME="SECTION023126000000000000000">Other possibilities</A></H2>
+
+<P>
+There are many other shapes that can be emulated. As one example I will show
+  2 ways to emulate William Waites K<SMALL>NIT </SMALL>P<SMALL>AGODA</SMALL> (see
+  Figure <A HREF="#EmulPagoda1">Pagoda1</A>). Besides their shape the pieces have a top
+  side and a bottom. Figure
+ <A HREF="#EmulPagoda2">Pagoda2</A> shows 2 possible ways to emulate these
+  pieces. Both shapes emulate the T-shaped piece seen on the bottom right.
+  
+  
+<CENTER>
+<A NAME="EmulPagoda1"></A><A NAME="1670"></A>
+<IMG SRC="Emulation_Pagoda.png"><BR>
+<STRONG>Figure:</STRONG>The Knit Pagoda
+</CENTER>
+
+<CENTER>
+<A NAME="EmulPagoda2"></A><A NAME="1931"></A>
+<IMG SRC="Emulation_Pagoda2.png"><BR>
+<STRONG>Figure:</STRONG>Emulation for one of the K<SMALL>NIT</SMALL>P<SMALL>AGODA</SMALL> Pieces
+</CENTER>
+
+<P>
+It is quite easy to see how the pink shape works. It is constructed starting
+  with a 3x3x1 square, and for each side adding a cube at the centre at the
+  centre to represent eachside that bulged outward, and removing one cube for
+  each side that bulges inward. Finally add a cube atop the centre of the 3x3
+  square to make it unflippable.
+
+<P>
+The second is quite a bit more complicated to understand. Here the starting
+  point is a 2x2 square. A cube is added or removed for the bulges just as in
+  the other case but those cubes cannot be in the middle. They are at one side
+  so that the cube from an outer bulge can go into a gap created by an inner
+  bulge. The resulting shape for one unit contains 4 cubes along a zig-zag
+  line. You can see it by looking for the lighter cubes in the cyan shape
+  above. This way has the additional advantage of avoiding flips because when
+  the piece is flipped over the orientation of the bulges changes and the
+  cubes do not mesh.
+
+<HR>
+<B>Next:</B> <A NAME="tex2html441" HREF="node7.html">Defining Puzzles</A>
+<B>Up:</B> <A NAME="tex2html437" HREF="node3.html">User Guide</A>
+<B>Previous:</B> <A NAME="tex2html431" HREF="node5.html">The BurrTools Interface</A>
+&nbsp;<B><A NAME="tex2html439" HREF="node1.html">Contents</A></B> 
+</BODY>
+</HTML>

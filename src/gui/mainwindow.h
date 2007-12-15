@@ -269,6 +269,7 @@ public:
   void cb_SaveAs(void);
   void cb_Quit(void);
   void cb_About(void);
+  void cb_Help(void);
   void cb_Config(void);
   void cb_Coment(void);
   void cb_Toggle3D(void);

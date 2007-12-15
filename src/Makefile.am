@@ -1,5 +1,5 @@
 bin_PROGRAMS=burrTxt gui/burrGui
-noinst_LIBRARIES=lib/libburr.a flu/libflu.a
+noinst_LIBRARIES=lib/libburr.a flu/libflu.a help/libhelp.a
 
 XML_CPP_ADD=@XML_CPP_ADD@
 XML_LD_ADD=@XML_LD_ADD@
@@ -9,7 +9,7 @@ PTHREAD_CPP_ADD=@PTHREAD_CPP_ADD@
 PTHREAD_LD_ADD=@PTHREAD_LD_ADD@
 
 AM_CPPFLAGS=-Wall -W $(XML_CPP_ADD) $(GUI_CPP_ADD) $(PTHREAD_CPP_ADD) @LARGEFILE@
-LDADD=lib/libburr.a flu/libflu.a $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
+LDADD=lib/libburr.a flu/libflu.a help/libhelp.a $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
 
 burrTxt_SOURCES=burrTxt.cpp
 
@@ -93,10 +93,31 @@ lib_libburr_a_SOURCES=\
     lib/voxel_2.h \
     lib/voxel_3.h
 
+EXTRA_DIST=\
+    help/data2c.cpp
+
+help_libhelp_a_SOURCES=\
+    help/Fl_Help_Dialog.h \
+    help/Fl_Help_Dialog.cpp \
+    help/Fl_Help_View.h \
+    help/Fl_Help_View.cpp \
+    help/flstring.cpp \
+    help/flstring.h \
+    help/helpdata.h
+
+nodist_help_libhelp_a_SOURCES=\
+    help/helpdata.cpp
+
 BUILT_SOURCES=\
     lib/tabs_0/symcalc.inc lib/tabs_0/transformmini.inc lib/tabs_0/transmult.inc lib/tabs_0/unifiedsym.inc \
     lib/tabs_1/symcalc.inc lib/tabs_1/transformmini.inc lib/tabs_1/transmult.inc lib/tabs_1/unifiedsym.inc \
-    lib/tabs_2/symcalc.inc lib/tabs_2/transformmini.inc lib/tabs_2/transmult.inc lib/tabs_2/unifiedsym.inc
+    lib/tabs_2/symcalc.inc lib/tabs_2/transformmini.inc lib/tabs_2/transmult.inc lib/tabs_2/unifiedsym.inc \
+    help/helpdata.cpp
+
+help/helpdata.cpp: $(EXTRA_DIST) help/data2c.cpp
+	cd help; $(CXX) data2c.cpp -O2 -o data2c `fltk-config --cxxflags --ldflags --use-images`
+	cd help; ./data2c helpdata.cpp ../../doc/*.html - ../../doc/*.png
+	cd help; $(RM) data2c
 
 lib/tabs_0/symcalc.inc lib/tabs_0/transmult.inc lib/tabs_0/unifiedsym.inc lib/tabs_0/transformmini.inc: lib/tabs_0/rotmatrix.inc \
                                                                                                         lib/tabs_0/symmetries.inc \

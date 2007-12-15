@@ -4,10 +4,12 @@ view the found solutions.
 
 Later on BurrTools will also be able to help in designing new puzzles.
 
-The real documentation is inside the provided pdf-File. I've also
-been able to bundle a few puzzles with the program to demonstrate its
-features. Thanks to the designers. You can find these puzzles in the
-examples subdirectory.
+The real documentation is inside the executable-file as online help.
+If you want you can export that help into a bunch of html and png files.
+
+I've also been able to bundle a few puzzles with the program to
+demonstrate its features. Thanks to the designers. You can find these
+puzzles in the examples subdirectory.
 
 Have fun.
 
