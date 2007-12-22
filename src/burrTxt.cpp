@@ -202,6 +202,20 @@ int main(int argv, char* args[]) {
       case assembler_c::ERR_CAN_NOT_PLACE:
         printf("Piece %i can be place nowhere in the result shape\n", assm->getErrorsParam());
         return 0;
+      case assembler_c::ERR_PIECE_WITH_VARICUBE:
+        printf("Piece %i contains variable cubes, puzzle can not be solved\n", assm->getErrorsParam());
+        return 0;
+      case assembler_c::ERR_NONE:
+        /* no error case */
+        break;
+      case assembler_c::ERR_PUZZLE_UNHANDABLE:
+        printf("The puzzles contains features not yet supported by burrTxt\n");
+        return 0;
+      case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
+      case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
+        /* all other errors should not occur */
+        printf("Oops internal error\n");
+        return 0;
       }
 
       if (reduce) {
@@ -237,7 +251,7 @@ int main(int argv, char* args[]) {
 
       d = p.getGridType()->getDisassembler(&p, problem);
 
-      for (int sol = 0; sol < p.probSolutionNumber(problem); sol++) {
+      for (unsigned int sol = 0; sol < p.probSolutionNumber(problem); sol++) {
 
 	if (p.probGetAssembly(problem, sol)) {
 
