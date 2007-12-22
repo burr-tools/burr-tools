@@ -515,7 +515,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
   return 1;
 }
 
-assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsigned int prob, bool keepMirror) {
+assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsigned int prob, bool keepMirror, bool keepRotations) {
 
   puzzle = puz;
   problem = prob;
@@ -606,6 +606,9 @@ assembler_1_c::errState assembler_1_c::createMatrix(const puzzle_c * puz, unsign
       delete avoidTransformedMirror;
     avoidTransformedMirror = 0;
   }
+
+  if (keepRotations)
+    avoidTransformedAssemblies = false;
 
   errorsState = ERR_NONE;
   return errorsState;

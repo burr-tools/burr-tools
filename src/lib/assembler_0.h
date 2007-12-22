@@ -290,7 +290,7 @@ public:
   ~assembler_0_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */
-  virtual errState createMatrix(const puzzle_c * puz, unsigned int problemNum, bool keepMirror);
+  errState createMatrix(const puzzle_c * puz, unsigned int problemNum, bool keepMirror, bool keepRotations);
   void assemble(assembler_cb * callback);
   int getErrorsParam(void) { return errorsParam; }
   virtual float getFinished(void);

@@ -88,7 +88,7 @@ public:
    * when keep mirror is true, the assembler must not throw away mirror solutions
    * but it still removes solutions that are rotations.
    */
-  virtual errState createMatrix(const puzzle_c * /*puz*/, unsigned int /*problemNum*/, bool /*keepMirror*/) { return ERR_NONE; }
+  virtual errState createMatrix(const puzzle_c * /*puz*/, unsigned int /*problemNum*/, bool /*keepMirror*/, bool /*keepRotations*/) { return ERR_NONE; }
 
   /* after the constructor call check this function. It return 0 if everything is
    * OK, or a pointer to a string, that you should display providing a message

@@ -956,16 +956,20 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
 
   bt_assert(assmThread == 0);
 
+  int par = assemblerThread_c::PAR_REDUCE;
+  if (KeepMirrors->value() != 0) par |= assemblerThread_c::PAR_KEEP_MIRROR;
+  if (KeepRotations->value() != 0) par |= assemblerThread_c::PAR_KEEP_ROTATIONS;
+
   if (SolveDisasm->value() != 0)
     if (JustCount->value() != 0)
-      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_COUNT_DISASM, true, KeepMirrors->value() != 0);
+      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_COUNT_DISASM, par);
     else
-      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_DISASM, true, KeepMirrors->value() != 0);
+      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_DISASM, par);
   else
     if (JustCount->value() != 0)
-      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_COUNT_ASM, true, KeepMirrors->value() != 0);
+      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_COUNT_ASM, par);
     else
-      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_SAVE_ASM, true, KeepMirrors->value() != 0);
+      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_SAVE_ASM, par);
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
@@ -3188,6 +3192,10 @@ void mainWindow_c::CreateSolveTab(void) {
     KeepMirrors = new LFl_Check_Button("Keep Mirror Solutions", 1, 1, 1, 1);
     KeepMirrors->tooltip(" Don't remove solutions that are mirrors of another solution ");
     KeepMirrors->clear_visible_focus();
+
+    KeepRotations = new LFl_Check_Button("Keep Rotated Solutions", 1, 2, 1, 1);
+    KeepRotations->tooltip(" Don't remove solutions that are rotations of other solutions ");
+    KeepRotations->clear_visible_focus();
 
     o->end();
 

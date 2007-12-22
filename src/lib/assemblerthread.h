@@ -48,6 +48,7 @@ class assemblerThread_c : public assembler_cb {
   bool _reduce;
   bool _dropDisassemblies;
   bool _keepMirrors;
+  bool _keepRotations;
 
   time_t startTime;
 
@@ -78,8 +79,12 @@ public:
     SOL_DISASM
   };
 
+  static const int PAR_REDUCE = 1;
+  static const int PAR_KEEP_MIRROR = 2;
+  static const int PAR_KEEP_ROTATIONS = 4;
+
   // create all the necessary data structures to start the thread later on
-  assemblerThread_c(puzzle_c * puz, unsigned int problemNum, unsigned int solAction, bool reduce = false, bool keepMirrors = false);
+  assemblerThread_c(puzzle_c * puz, unsigned int problemNum, unsigned int solAction, int par);
 
   // stop and exit
   virtual ~assemblerThread_c(void);

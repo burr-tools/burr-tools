@@ -93,7 +93,7 @@ class mainWindow_c : public LFl_Double_Window {
   ButtonGroup_c *editMode;
 
   layouter_c *TabSolve;
-  Fl_Check_Button *SolveDisasm, *JustCount, *DropDisassemblies, *KeepMirrors;
+  Fl_Check_Button *SolveDisasm, *JustCount, *DropDisassemblies, *KeepMirrors, *KeepRotations;
 
   FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape, *BtnShapeLeft, *BtnShapeRight, *BtnWeightInc, *BtnWeightDec;
