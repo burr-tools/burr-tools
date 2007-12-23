@@ -145,9 +145,7 @@ assembly_c::assembly_c(const assembly_c * orig) : sym(orig->sym) {
 
 }
 
-assembly_c::assembly_c(const assembly_c * orig, unsigned char trans, const puzzle_c * puz, unsigned int prob, const mirrorInfo_c * mir) : sym(orig->sym) {
-  for (unsigned int i = 0; i < orig->placements.size(); i++)
-    placements.push_back(placement_c(orig->placements[i]));
+assembly_c::assembly_c(const assembly_c * orig, unsigned char trans, const puzzle_c * puz, unsigned int prob, const mirrorInfo_c * mir) : placements(orig->placements), sym(orig->sym) {
 
   transform(trans, puz, prob, mir);
 
@@ -186,17 +184,22 @@ void assembly_c::sort(const puzzle_c * puz, unsigned int prob) {
 
     unsigned int cnt = puz->probGetShapeMax(prob, i);
 
+    /* find out how many pieces are actually placed:
+     */
+    unsigned int cnt2 = 0;
+    while (cnt2 < cnt && isPlaced(p+cnt2)) cnt2++;
+
     /* now we need to sort pieces to that they are sorted by placement */
-    if (cnt > 1) {
+    if (cnt2 > 1) {
 
       /* as we normally only have a few identical pieces that need sorting we use bubble sort
        * with one addition, because many times only a fiew pieces will actually be placed
        * we check, if something was done and bail out, if not
        */
-      for (unsigned int a = 0; a < cnt - 1; a++) {
+      for (unsigned int a = 0; a < cnt2 - 1; a++) {
         bool swapped = false;
 
-        for (unsigned int b = cnt-1; b > a; b--)
+        for (unsigned int b = cnt2-1; b > a; b--)
           if (placements[p+b] < placements[p+b-1]) {
 
             placement_c tmp(placements[p+b]);
@@ -286,14 +289,16 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
     rz += dz - cz;
   }
 
-  int p = 0;
+  unsigned int p = 0;
 
   for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
     for (unsigned int j = 0; j < puz->probGetShapeMax(prob, i); j++) {
 
       // if a piece has a transformation == 255 it is NOT placed so we don't need to do anything
+      // we even do leave the shape loop as no more pieces of that shape will be placed..
       if (!isPlaced(p)) {
-        p++;
+        p += puz->probGetShapeMax(prob, i)-j;
+        j = puz->probGetShapeMax(prob, i);
         continue;
       }
 
@@ -340,14 +345,22 @@ void assembly_c::transform(unsigned char trans, const puzzle_c * puz, unsigned i
 
   if (mir) {
 
-    unsigned int p = 0;
+    p = 0;
 
     for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
       for (unsigned int j = 0; j < puz->probGetShapeMax(prob, i); j++) {
 
+        // if a piece has a transformation == 255 it is NOT placed so we don't need to do anything
+        // we even do leave the shape loop as no more pieces of that shape will be placed..
+        if (!isPlaced(p)) {
+          p += puz->probGetShapeMax(prob, i)-j;
+          j = puz->probGetShapeMax(prob, i);
+          continue;
+        }
+
         // if a piece is NOT placed so we don't need to do anything
         // only check, if the current piece is mirrored
-        if (placements[p].transformation >= sym->getNumTransformations() && isPlaced(p)) {
+        if (placements[p].transformation >= sym->getNumTransformations()) {
 
           unsigned int p2 = 0;
           unsigned char t;
