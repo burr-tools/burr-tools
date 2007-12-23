@@ -430,7 +430,7 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsig
 
   if (probNum < puz->problemNumber()) {
 
-    float diagonal = 0;
+    float diagonal = 1;
 
     // now find a scaling factor, so that all pieces fit into their square
 
