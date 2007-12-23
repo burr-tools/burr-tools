@@ -147,6 +147,17 @@ protected:
    */
   int weight;
 
+  /**
+   * calculating the hotspot and bounding box can be expensive
+   * and as this information is required extremely often for the assembly
+   * transformation we will cache this information
+   *
+   * the cache is simple, for each transformation is contains 3+6=9 values
+   * if the first value is -30000 then the information for that transformation
+   * is not yet available and needs to be calculated
+   */
+  int * BbHsCache;
+
 protected:
 
   /**
@@ -397,7 +408,7 @@ public:
   /**
    * get the bounding box of a rotated voxel space
    */
-  virtual void getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2 = 0, int * y2 = 0, int * z2 = 0) const;
+  void getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2 = 0, int * y2 = 0, int * z2 = 0) const;
 
   /**
    * Comparison of two voxel spaces.
@@ -607,7 +618,7 @@ public:
   int getHx(void) const { return hx; }
   int getHy(void) const { return hy; }
   int getHz(void) const { return hz; }
-  void setHotspot(int x, int y, int z) { hx = x; hy = y; hz = z; }
+  void setHotspot(int x, int y, int z);
   /* in some voxelspaces the hotspot needs to be in special
    * places to stay valid after all possible transformations
    * this function sets the hotspot so, that is has this
@@ -621,7 +632,7 @@ public:
   /**
    * this function returns the hotspot of the rotated space.
    */
-  virtual void getHotspot(unsigned char trans, int * x, int * y, int * z) const;
+  void getHotspot(unsigned char trans, int * x, int * y, int * z) const;
 
   /** functions to set the name */
   const std::string & getName(void) const { return name; }

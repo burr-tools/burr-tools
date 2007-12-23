@@ -32,8 +32,6 @@ class voxel_0_c : public voxel_c {
     void transformPoint(int * x, int * y, int * z, unsigned int trans) const;
     virtual bool transform(unsigned int nr);
 
-    virtual void getHotspot(unsigned char trans, int * x, int * y, int * z) const;
-    virtual void getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2 = 0, int * y2 = 0, int * z2 = 0) const;
     bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const;
 
     void scale(unsigned int amount);

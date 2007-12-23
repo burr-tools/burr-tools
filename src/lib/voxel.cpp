@@ -23,7 +23,11 @@
 
 #include <xmlwrapp/attributes.h>
 
-using namespace std;
+#define MAX_TRANSFORMATIONS 240  // this is the maximum number of transformations possible
+// as there is right now no way to check, what the number of transformations in each subclass
+// is we simply use the maximum. It just wastes a bit of memory and a little bit of time for
+// initialisation
+#define BBHSCACHE_UNINIT -30000  // the value tha signifies uninitialized values
 
 voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * g, voxel_type init, voxel_type outs) : gt(g), sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), hx(0), hy(0), hz(0), weight(1) {
 
@@ -48,6 +52,8 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_
   doRecalc = true;
 
   symmetries = symmetryInvalid();
+
+  BbHsCache = new int[9*MAX_TRANSFORMATIONS];
 }
 
 voxel_c::voxel_c(const voxel_c & orig) : gt(orig.gt), sx(orig.sx), sy(orig.sy), sz(orig.sz),
@@ -70,6 +76,8 @@ voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz), weight(orig.weight) 
   doRecalc = true;
 
   symmetries = symmetryInvalid();
+
+  BbHsCache = new int[9*MAX_TRANSFORMATIONS];
 }
 
 voxel_c::voxel_c(const voxel_c * orig) : gt(orig->gt), sx(orig->sx), sy(orig->sy), sz(orig->sz),
@@ -92,10 +100,13 @@ voxels(orig->voxels), hx(orig->hx), hy(orig->hy), hz(orig->hz), weight(orig->wei
   doRecalc = true;
 
   symmetries = symmetryInvalid();
+
+  BbHsCache = new int[9*MAX_TRANSFORMATIONS];
 }
 
 voxel_c::~voxel_c() {
   delete [] space;
+  delete [] BbHsCache;
 }
 
 void voxel_c::recalcBoundingBox(void) {
@@ -126,6 +137,10 @@ void voxel_c::recalcBoundingBox(void) {
 
   if (empty)
     bx1 = by1 = bz1 = bx2 = by2 = bz2 = 0;
+
+  /* we also clear the bounding box and hotspot cache */
+  for (int i = 0; i < MAX_TRANSFORMATIONS; i++)
+    BbHsCache[9*i+0] = BbHsCache[9*i+3] = BBHSCACHE_UNINIT;
 }
 
 bool voxel_c::operator ==(const voxel_c & op) const {
@@ -202,45 +217,57 @@ unsigned char voxel_c::getMirrorTransform(const voxel_c * op) const {
 
 void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 
-  /* this version always works, but also is quite slow
-   */
-  voxel_c * tmp = gt->getVoxel(this);
+  bt_assert(trans < MAX_TRANSFORMATIONS);
 
-  bt_assert(tmp->transform(trans));
+  /* if the cache values don't exist calculate them */
+  if (BbHsCache[9*trans] == BBHSCACHE_UNINIT) {
 
-  *x = tmp->getHx();
-  *y = tmp->getHy();
-  *z = tmp->getHz();
+    /* this version always works, but also is quite slow
+    */
+    voxel_c * tmp = gt->getVoxel(this);
 
-  delete tmp;
+    bt_assert(tmp->transform(trans));
+
+    BbHsCache[9*trans+0] = tmp->getHx();
+    BbHsCache[9*trans+1] = tmp->getHy();
+    BbHsCache[9*trans+2] = tmp->getHz();
+
+    delete tmp;
+  }
+
+  *x = BbHsCache[9*trans+0];
+  *y = BbHsCache[9*trans+1];
+  *z = BbHsCache[9*trans+2];
+
 }
 
 void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2, int * y2, int * z2) const {
 
-  if (trans == 0) {
+  bt_assert(trans < MAX_TRANSFORMATIONS);
 
-    if (x1) *x1 = boundX1();
-    if (x2) *x2 = boundX2();
-    if (y1) *y1 = boundY1();
-    if (y2) *y2 = boundY2();
-    if (z1) *z1 = boundZ1();
-    if (z2) *z2 = boundZ2();
-
-  } else {
+  /* if the cache values don't exist calculate them */
+  if (BbHsCache[9*trans+3] == BBHSCACHE_UNINIT) {
 
     /* this version always works, but it is quite slow */
     voxel_c * tmp = gt->getVoxel(this);
     bt_assert(tmp->transform(trans));
 
-    if (x1) *x1 = tmp->boundX1();
-    if (x2) *x2 = tmp->boundX2();
-    if (y1) *y1 = tmp->boundY1();
-    if (y2) *y2 = tmp->boundY2();
-    if (z1) *z1 = tmp->boundZ1();
-    if (z2) *z2 = tmp->boundZ2();
+    BbHsCache[9*trans+3] = tmp->boundX1();
+    BbHsCache[9*trans+4] = tmp->boundX2();
+    BbHsCache[9*trans+5] = tmp->boundY1();
+    BbHsCache[9*trans+6] = tmp->boundY2();
+    BbHsCache[9*trans+7] = tmp->boundZ1();
+    BbHsCache[9*trans+8] = tmp->boundZ2();
 
     delete tmp;
   }
+
+  if (x1) *x1 = BbHsCache[9*trans+3];
+  if (x2) *x2 = BbHsCache[9*trans+4];
+  if (y1) *y1 = BbHsCache[9*trans+5];
+  if (y2) *y2 = BbHsCache[9*trans+6];
+  if (z1) *z1 = BbHsCache[9*trans+7];
+  if (z2) *z2 = BbHsCache[9*trans+8];
 }
 
 void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel_type filler) {
@@ -661,6 +688,8 @@ xml::node voxel_c::save(void) const {
 
 voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), hy(0), hz(0), weight(1) {
 
+  BbHsCache = new int[9*MAX_TRANSFORMATIONS];
+
   // we must have a real node and the following attributes
   if ((node.get_type() != xml::node::type_element) ||
       (strcmp(node.get_name(), "voxel") != 0))
@@ -751,6 +780,13 @@ voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), h
   skipRecalcBoundingBox(false);
 
   symmetries = symmetryInvalid();
+}
+
+void voxel_c::setHotspot(int x, int y, int z) {
+  hx = x; hy = y; hz = z;
+
+  for (int i = 0; i < MAX_TRANSFORMATIONS; i++)
+    BbHsCache[9*i+0] = BBHSCACHE_UNINIT;
 }
 
 void voxel_c::initHotspot(void) {
