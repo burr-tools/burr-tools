@@ -22,6 +22,7 @@
 #include "assemblerfrontend_0.h"
 #include "assemblerfrontend_1.h"
 #include "assemblerfrontend_2.h"
+#include "assemblerfrontend_3.h"
 #include "disassembler_0.h"
 #include "voxel_0.h"
 #include "voxel_1.h"
@@ -148,7 +149,7 @@ assemblerFrontend_c * gridType_c::getAssemblerFrontend(void) const {
     case GT_BRICKS:           return new assemblerFrontend_0_c();
     case GT_TRIANGULAR_PRISM: return new assemblerFrontend_1_c();
     case GT_SPHERES:          return new assemblerFrontend_2_c();
-    case GT_RHOMBIC:          return new assemblerFrontend_0_c();
+    case GT_RHOMBIC:          return new assemblerFrontend_3_c();
     default:                  return 0;
   }
 

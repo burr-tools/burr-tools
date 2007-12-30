@@ -19,6 +19,7 @@ lib_libburr_a_SOURCES=\
     lib/assemblerfrontend_0.cpp \
     lib/assemblerfrontend_1.cpp \
     lib/assemblerfrontend_2.cpp \
+    lib/assemblerfrontend_3.cpp \
     lib/assembly.cpp \
     lib/assemblerthread.cpp \
     lib/bt_assert.cpp \
@@ -60,6 +61,7 @@ lib_libburr_a_SOURCES=\
     lib/assemblerfrontend_0.h \
     lib/assemblerfrontend_1.h \
     lib/assemblerfrontend_2.h \
+    lib/assemblerfrontend_3.h \
     lib/assembly.h \
     lib/assemblerthread.h \
     lib/bitfield.h \
