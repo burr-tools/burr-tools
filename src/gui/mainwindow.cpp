@@ -172,7 +172,7 @@ void mainWindow_c::cb_NewShape(void) {
     const voxel_c * v = puzzle->getShape(PcSel->getSelection());
     PcSel->setSelection(puzzle->addShape(v->getX(), v->getY(), v->getZ()));
   } else
-    PcSel->setSelection(puzzle->addShape(6, 6, 6));
+    PcSel->setSelection(puzzle->addShape(ggt->defaultSize(), ggt->defaultSize(), ggt->defaultSize()));
   pieceEdit->setZ(0);
   updateInterface();
   StatPieceInfo(PcSel->getSelection());

@@ -52,6 +52,9 @@ class guiGridType_c {
 
     /* return the tool tab for the current grid type */
     ToolTab * getToolTab(int x, int y, int w, int h) const;
+
+    /* return the default size a new shape should have when adding it to puzzle */
+    unsigned int defaultSize(void) const;
 };
 
 #endif

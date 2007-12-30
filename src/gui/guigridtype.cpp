@@ -102,3 +102,11 @@ ToolTab * guiGridType_c::getToolTab(int x, int y, int w, int h) const {
 
   return 0;
 }
+
+unsigned int guiGridType_c::defaultSize(void) const {
+  switch(gt->getType()) {
+    case gridType_c::GT_RHOMBIC: return 5;
+    case gridType_c::GT_SPHERES: return 3;
+    default:                     return 6;
+  }
+}

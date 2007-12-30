@@ -401,6 +401,10 @@ void voxel_3_c::minimizePiece(void) {
     resize(sx+x, sy+y, sz+z, 0);
     translate(x, y, z, 0);
   }
+
+  /* make sure that the new size is a multiple of 5 */
+  if (sx%5 || sy%5 || sz%5)
+    resize(sx+(5-sx%5)%5, sy+(5-sy%5)%5, sz+(5-sz%5)%5, 0);
 }
 
 bool voxel_3_c::validCoordinate(int x, int y, int z) const {

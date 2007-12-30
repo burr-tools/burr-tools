@@ -474,15 +474,15 @@ void ChangeSize::setXYZ(long x, long y, long z) {
 }
 
 
-static void resizeSpace(bool toAll, const ChangeSize *changeSize, puzzle_c * puzzle, unsigned int shape) {
+static void resizeSpace(bool toAll, const ChangeSize *changeSize, puzzle_c * puzzle, unsigned int shape, unsigned int factor = 1) {
 
   if (toAll) {
 
     int dx, dy, dz;
 
-    dx = changeSize->getX() - puzzle->getShape(shape)->getX();
-    dy = changeSize->getY() - puzzle->getShape(shape)->getY();
-    dz = changeSize->getZ() - puzzle->getShape(shape)->getZ();
+    dx = factor*changeSize->getX() - puzzle->getShape(shape)->getX();
+    dy = factor*changeSize->getY() - puzzle->getShape(shape)->getY();
+    dz = factor*changeSize->getZ() - puzzle->getShape(shape)->getZ();
 
     if (dx < 0) dx = 0;
     if (dy < 0) dy = 0;
@@ -497,15 +497,21 @@ static void resizeSpace(bool toAll, const ChangeSize *changeSize, puzzle_c * puz
       if (ny < 1) ny = 1;
       if (nz < 1) nz = 1;
 
+      /* make sure the new size is a multiple of factor */
+      nx = factor * ((nx+factor-1)/factor);
+      ny = factor * ((ny+factor-1)/factor);
+      nz = factor * ((nz+factor-1)/factor);
+
       puzzle->getShape(s)->resize(nx, ny, nz, 0);
     }
 
-  }
+  } else
 
-  // we always do this, is may be that the shape is not changed in the loop above because
-  // that loop and only increase the size, so smaller sizes for the selected shape must be done
-  // here
-  puzzle->getShape(shape)->resize(changeSize->getX(), changeSize->getY(), changeSize->getZ(), 0);
+    // we always do this, is may be that the shape is not changed in the loop above because
+    // that loop and only increase the size, so smaller sizes for the selected shape must be done
+    // here
+    puzzle->getShape(shape)->resize(
+        factor*changeSize->getX(), factor*changeSize->getY(), factor*changeSize->getZ(), 0);
 }
 
 
@@ -1028,9 +1034,10 @@ void ToolTab_3::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
   bt_assert(!puzzle || (puzzle->getGridType()->getType() == gridType_c::GT_RHOMBIC));
 
   if (puzzle && shape < puzzle->shapeNumber())
-    changeSize->setXYZ(puzzle->getShape(shape)->getX(),
-        puzzle->getShape(shape)->getY(),
-        puzzle->getShape(shape)->getZ());
+    changeSize->setXYZ(
+        (puzzle->getShape(shape)->getX()+4)/5,
+        (puzzle->getShape(shape)->getY()+4)/5,
+        (puzzle->getShape(shape)->getZ()+4)/5);
   else
     changeSize->setXYZ(0, 0, 0);
 }
@@ -1083,7 +1090,7 @@ ToolTab_3::ToolTab_3(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 void ToolTab_3::cb_size(void) {
   if (puzzle && shape < puzzle->shapeNumber()) {
 
-    resizeSpace(toAll->value(), changeSize, puzzle, shape);
+    resizeSpace(toAll->value(), changeSize, puzzle, shape, 5);
     do_callback();
   }
 }
