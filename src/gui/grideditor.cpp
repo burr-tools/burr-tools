@@ -507,6 +507,6 @@ static bool inRegionRec(int x, int y, int x1, int x2, int y1, int y2, int sx, in
 
 bool gridEditor_c::inRegion(int x, int y) {
   voxel_c * space = puzzle->getShape(piecenumber);
-  return inRegionRec(x, y, markX1, markX2, markY1, markY2, space->getX(), space->getY(), activeTools);
+  return space->validCoordinate(x, y, currentZ) && inRegionRec(x, y, markX1, markX2, markY1, markY2, space->getX(), space->getY(), activeTools);
 }
 

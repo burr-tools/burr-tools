@@ -77,6 +77,17 @@ void gridEditor_0_c::drawTileCursor(int x, int y, int, int tx, int ty, int sx, i
     fl_line(tx+sx*x+1, ty-sy*y, tx+sx*x+1, ty-sy*y-sy);
     fl_line(tx+sx*x-1, ty-sy*y, tx+sx*x-1, ty-sy*y-sy);
   }
+
+  if (ins ^ inRegion(x, y+1)) {
+    fl_line(tx+sx*x, ty-sy*(y+1)+1, tx+sx*x+sx, ty-sy*(y+1)+1);
+    fl_line(tx+sx*x, ty-sy*(y+1)-1, tx+sx*x+sx, ty-sy*(y+1)-1);
+  }
+
+  if (ins ^ inRegion(x+1, y)) {
+    fl_line(tx+sx*(x+1)+1, ty-sy*y, tx+sx*(x+1)+1, ty-sy*y-sy);
+    fl_line(tx+sx*(x+1)-1, ty-sy*y, tx+sx*(x+1)-1, ty-sy*y-sy);
+  }
+
 }
 
 bool gridEditor_0_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
