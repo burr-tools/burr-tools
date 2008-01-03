@@ -17,7 +17,7 @@
  */
 #include "disasmtomoves.h"
 
-#include "../lib/disassembly.h"
+#include "disassembly.h"
 
 disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz, unsigned int max) : size(sz), maxPieceName(max) {
 
