@@ -808,4 +808,39 @@ bool voxel_c::indexToXYZ(unsigned int index, unsigned int *x, unsigned int *y, u
   return *z < sz;
 }
 
+bool voxel_c::unionintersect(
+      const voxel_c * va, int xa, int ya, int za,
+      const voxel_c * vb, int xb, int yb, int zb
+      ) {
+
+  /* first make sure wa can accommodate the complete 2nd voxel space */
+  bool do_resize = false;
+  int nx = sx;
+  int ny = sy;
+  int nz = sz;
+
+  if (xa+(int)va->sx > nx) { nx = xa+(int)va->sx; do_resize = true; }
+  if (ya+(int)va->sy > ny) { ny = ya+(int)va->sy; do_resize = true; }
+  if (za+(int)va->sz > nz) { nz = za+(int)va->sz; do_resize = true; }
+
+  if (xb+(int)vb->sx > nx) { nx = xb+(int)vb->sx; do_resize = true; }
+  if (yb+(int)vb->sy > ny) { ny = yb+(int)vb->sy; do_resize = true; }
+  if (zb+(int)vb->sz > nz) { nz = zb+(int)vb->sz; do_resize = true; }
+
+  if (do_resize)
+    resize(nx, ny, nz, VX_EMPTY);
+
+  bool result = false;
+
+  for (unsigned int x = 0; x < sx; x++)
+    for (unsigned int y = 0; y < sy; y++)
+      for (unsigned int z = 0; z < sz; z++)
+        if (va->getState2(x-xa, y-ya, z-za) == VX_FILLED &&
+            vb->getState2(x-xb, y-yb, z-zb) == VX_FILLED) {
+          set(x, y, z, VX_FILLED);
+          result = true;
+        }
+
+  return result;
+}
 

@@ -592,6 +592,12 @@ void voxelFrame_c::showAssembly(const puzzle_c * puz, unsigned int probNum, unsi
         piece++;
       }
 
+    /* at the end add an empty voxel space that might be used for intersections */
+    num = addSpace(puz->getGridType()->getVoxel(1, 1, 1, voxel_c::VX_EMPTY, voxel_c::VX_EMPTY));
+    setSpacePosition(num, 0, 0, 0, 1);
+    setSpaceColor(num, 1, 0, 0, 1);   // bright red
+    setDrawingMode(num, invisible);
+
     float cx, cy, cz;
     drawer->calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
     setCenter(cx*0.5, cy*0.5, cz*0.5);
@@ -711,7 +717,97 @@ void voxelFrame_c::showPlacement(const puzzle_c * puz, unsigned int probNum, uns
 
 void voxelFrame_c::updatePositions(piecePositions_c *shifting) {
 
-  for (unsigned int p = 0; p < shapes.size(); p++) {
+  for (unsigned int p = 0; p < shapes.size()-1; p++) {
+    setSpacePosition(p, shifting->getX(p), shifting->getY(p), shifting->getZ(p), 1);
+    setSpaceColor(p, shifting->getA(p));
+  }
+
+  redraw();
+}
+
+void voxelFrame_c::updatePositionsOverlap(piecePositions_c *shifting) {
+
+  /* in this case all the positions must be on the raster, so check that first */
+  for (unsigned int p = 0; p < shapes.size()-1; p++) {
+    if ( (int)(shifting->getX(p)) != shifting->getX(p) ||
+         (int)(shifting->getY(p)) != shifting->getY(p) ||
+         (int)(shifting->getZ(p)) != shifting->getZ(p)
+      ) {
+      bt_assert(0);
+    }
+  }
+
+  /* first find the most negatively valued coordinates */
+  int negx = 0;
+  int negy = 0;
+  int negz = 0;
+  for (unsigned int p = 0; p < shapes.size()-1; p++) {
+    if ((int)shifting->getX(p) < negx) negx = (int)shifting->getX(p);
+    if ((int)shifting->getY(p) < negy) negy = (int)shifting->getY(p);
+    if ((int)shifting->getZ(p) < negz) negz = (int)shifting->getZ(p);
+  }
+
+  /* now find all the voxels where something overlaps
+   * we do this with the last piece within the piece list
+   */
+  voxel_c * inter = const_cast<voxel_c*>(shapes.rbegin()->shape);
+  inter->setAll(voxel_c::VX_EMPTY);
+
+  bool involved[shapes.size()];
+  for (unsigned int p = 0; p < shapes.size(); p++)
+    involved[p] = false;
+
+  /* intersect each with everybody */
+  for (unsigned int a = 0; a < shapes.size()-2; a++)
+    for (unsigned int b = a+1; b < shapes.size()-1; b++)
+
+      if (inter->unionintersect(
+            shapes[a].shape,
+            (int)shifting->getX(a)-negx - shapes[a].shape->getHx(),
+            (int)shifting->getY(a)-negy - shapes[a].shape->getHy(),
+            (int)shifting->getZ(a)-negz - shapes[a].shape->getHz(),
+            shapes[b].shape,
+            (int)shifting->getX(b)-negx - shapes[b].shape->getHx(),
+            (int)shifting->getY(b)-negy - shapes[b].shape->getHy(),
+            (int)shifting->getZ(b)-negz - shapes[b].shape->getHz())) {
+        involved[a] = true;
+        involved[b] = true;
+      }
+
+  /* now there are 2 possibilities */
+  if (inter->countState(voxel_c::VX_FILLED) > 0) {
+
+    /* we have some intersection then all involved pieces will be drawn as wireframe
+     * not involved pieces will become invisible
+     * the intersection piece will be visible
+     */
+
+    for (unsigned int p = 0; p < shapes.size()-1; p++) {
+      if (involved[p]) {
+        setDrawingMode(p, gridline);
+      } else {
+        setDrawingMode(p, invisible);
+      }
+    }
+    setDrawingMode(shapes.size()-1, normal);
+    setSpacePosition(shapes.size()-1, negx, negy, negz, 1);
+
+    if (shapes[shapes.size()-1].list) {
+      glDeleteLists(shapes[shapes.size()-1].list, 1);
+      shapes[shapes.size()-1].list = 0;
+    }
+
+  } else {
+    /* no intersection, all pieces are drawn normally
+     * interset piece is invisible
+     */
+    for (unsigned int p = 0; p < shapes.size()-1; p++)
+      setDrawingMode(p, normal);
+
+    setDrawingMode(shapes.size()-1, invisible);
+  }
+
+  for (unsigned int p = 0; p < shapes.size()-1; p++) {
     setSpacePosition(p, shifting->getX(p), shifting->getY(p), shifting->getZ(p), 1);
     setSpaceColor(p, shifting->getA(p));
   }
@@ -721,7 +817,7 @@ void voxelFrame_c::updatePositions(piecePositions_c *shifting) {
 
 void voxelFrame_c::dimStaticPieces(piecePositions_c *shifting) {
 
-  for (unsigned int p = 0; p < shapes.size(); p++) {
+  for (unsigned int p = 0; p < shapes.size()-1; p++) {
     if (shapes[p].dim != !shifting->moving(p)) {
       shapes[p].dim = !shifting->moving(p);
       if (shapes[p].list) {
@@ -743,9 +839,9 @@ void voxelFrame_c::updateVisibility(PieceVisibility * pcvis) {
    * number of blocks inside the visibility selector is smaller
    * than the number of visible voxel spaces, drop out
    */
-  if (pcvis->blockNumber() < shapes.size()) return;
+  if (pcvis->blockNumber() < shapes.size()-1) return;
 
-  for (unsigned int p = 0; p < shapes.size(); p++) {
+  for (unsigned int p = 0; p < shapes.size()-1; p++) {
 
     switch(pcvis->getVisibility(p)) {
     case 0:

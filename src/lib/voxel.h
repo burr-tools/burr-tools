@@ -651,6 +651,16 @@ public:
 
   virtual bool validCoordinate(int x, int y, int z) const = 0;
 
+  /* creates the intersection of the 2 given voxel spaces and
+   * unifies the result with this voxel space
+   *
+   * it returns true, if there were voxels added
+   */
+  bool unionintersect(
+      const voxel_c * va, int xa, int ya, int za,
+      const voxel_c * vb, int xb, int yb, int zb
+      );
+
 };
 
 #endif

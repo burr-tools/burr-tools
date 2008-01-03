@@ -110,6 +110,7 @@ class voxelFrame_c : public Fl_Gl_Window {
     void showColors(const puzzle_c * puz, colorMode mode);
     void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum);
     void updatePositions(piecePositions_c *shifting);
+    void updatePositionsOverlap(piecePositions_c *shifting);
     void dimStaticPieces(piecePositions_c *shifting);
     void showAssemblerState(const puzzle_c * puz, unsigned int probNum, const assembly_c * assm);
     void updateVisibility(PieceVisibility * pcvis);
