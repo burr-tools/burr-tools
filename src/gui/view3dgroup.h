@@ -51,6 +51,7 @@ public:
   }
 
   void updatePositions(piecePositions_c *shifting);
+  void updatePositionsOverlap(piecePositions_c *shifting);
   void updateVisibility(PieceVisibility * pcvis);
   void showColors(const puzzle_c * puz, voxelFrame_c::colorMode mode);
 

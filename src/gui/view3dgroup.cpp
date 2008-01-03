@@ -96,6 +96,10 @@ void LView3dGroup::updatePositions(piecePositions_c *shifting) {
   View3D->updatePositions(shifting);
 }
 
+void LView3dGroup::updatePositionsOverlap(piecePositions_c *shifting) {
+  View3D->updatePositionsOverlap(shifting);
+}
+
 void LView3dGroup::updateVisibility(PieceVisibility * pcvis) {
   View3D->updateVisibility(pcvis);
 }
