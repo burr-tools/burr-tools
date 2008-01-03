@@ -758,8 +758,13 @@ void voxelFrame_c::updatePositionsOverlap(piecePositions_c *shifting) {
     involved[p] = false;
 
   /* intersect each with everybody */
-  for (unsigned int a = 0; a < shapes.size()-2; a++)
-    for (unsigned int b = a+1; b < shapes.size()-1; b++)
+  for (unsigned int a = 0; a < shapes.size()-2; a++) {
+
+    if (!shifting->getA(a)) continue;
+
+    for (unsigned int b = a+1; b < shapes.size()-1; b++) {
+
+      if (!shifting->getA(b)) continue;
 
       if (inter->unionintersect(
             shapes[a].shape,
@@ -773,6 +778,8 @@ void voxelFrame_c::updatePositionsOverlap(piecePositions_c *shifting) {
         involved[a] = true;
         involved[b] = true;
       }
+    }
+  }
 
   /* now there are 2 possibilities */
   if (inter->countState(voxel_c::VX_FILLED) > 0) {
