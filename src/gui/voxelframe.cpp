@@ -819,6 +819,8 @@ void voxelFrame_c::updatePositionsOverlap(piecePositions_c *shifting) {
     setSpaceColor(p, shifting->getA(p));
   }
 
+  _showCoordinateSystem = true;
+
   redraw();
 }
 
