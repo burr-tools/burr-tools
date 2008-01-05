@@ -742,6 +742,12 @@ void voxelFrame_c::updatePositionsOverlap(piecePositions_c *shifting) {
   int negy = 0;
   int negz = 0;
   for (unsigned int p = 0; p < shapes.size()-1; p++) {
+
+    if (!shifting->getA(p) ||
+        fabs(shifting->getX(p)) > 10000 ||
+        fabs(shifting->getY(p)) > 10000 ||
+        fabs(shifting->getZ(p)) > 10000) continue;
+
     if ((int)shifting->getX(p) < negx) negx = (int)shifting->getX(p);
     if ((int)shifting->getY(p) < negy) negy = (int)shifting->getY(p);
     if ((int)shifting->getZ(p) < negz) negz = (int)shifting->getZ(p);
@@ -760,11 +766,17 @@ void voxelFrame_c::updatePositionsOverlap(piecePositions_c *shifting) {
   /* intersect each with everybody */
   for (unsigned int a = 0; a < shapes.size()-2; a++) {
 
-    if (!shifting->getA(a)) continue;
+    if (!shifting->getA(a) ||
+        fabs(shifting->getX(a)) > 10000 ||
+        fabs(shifting->getY(a)) > 10000 ||
+        fabs(shifting->getZ(a)) > 10000) continue;
 
     for (unsigned int b = a+1; b < shapes.size()-1; b++) {
 
-      if (!shifting->getA(b)) continue;
+      if (!shifting->getA(b) ||
+          fabs(shifting->getX(b)) > 10000 ||
+          fabs(shifting->getY(b)) > 10000 ||
+          fabs(shifting->getZ(b)) > 10000) continue;
 
       if (inter->unionintersect(
             shapes[a].shape,

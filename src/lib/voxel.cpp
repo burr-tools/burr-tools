@@ -813,6 +813,13 @@ bool voxel_c::unionintersect(
       const voxel_c * vb, int xb, int yb, int zb
       ) {
 
+  /* first make sure that the 2 given voxels bounding boxes do overlap
+   * if they don't we don't need to to anything
+   */
+  if (va->bx1+xa > vb->bx2+xb || va->bx2+xa < vb->bx1+xb) return false;
+  if (va->by1+ya > vb->by2+yb || va->by2+ya < vb->by1+yb) return false;
+  if (va->bz1+za > vb->bz2+zb || va->bz2+za < vb->bz1+zb) return false;
+
   /* first make sure wa can accommodate the complete 2nd voxel space */
   bool do_resize = false;
   int nx = sx;
