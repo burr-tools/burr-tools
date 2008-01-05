@@ -124,6 +124,7 @@ _dropDisassemblies(false),
 _keepMirrors((par & PAR_KEEP_MIRROR) != 0),
 _keepRotations((par & PAR_KEEP_ROTATIONS) != 0),
 disassm(0),
+assm(0),
 ae(0),
 sortMethod(SRT_COMPLETE_MOVES),
 solutionLimit(10),
@@ -392,7 +393,11 @@ unsigned int assemblerThread_c::currentActionParameter(void) {
 
   switch(action) {
   case ACT_REDUCE:
-    return assm->getReducePiece();
+  case ACT_PREPARATION:
+    if (assm)
+      return assm->getReducePiece();
+    else
+      return 0;
 
   default:
     return 0;

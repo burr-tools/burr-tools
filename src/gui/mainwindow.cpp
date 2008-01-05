@@ -2468,7 +2468,11 @@ void mainWindow_c::updateInterface(void) {
 
       switch(assmThread->currentAction()) {
       case assemblerThread_c::ACT_PREPARATION:
-        OutputActivity->value("prepare");
+        {
+          char tmp[20];
+          snprintf(tmp, 20, "prepare piece %i", assmThread->currentActionParameter()+1);
+          OutputActivity->value(tmp);
+        }
         break;
       case assemblerThread_c::ACT_REDUCE:
         if (puzzle->probGetAssembler(prob)) {

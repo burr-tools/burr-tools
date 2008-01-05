@@ -434,6 +434,8 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
   /* now we insert one shape after another */
   for (unsigned int pc = 0; pc < puzzle->probShapeNumber(problem); pc++) {
 
+    reducePiece = pc;
+
     // setup weight values so that they do fit the number of pieces for this
     // shape
     max[pc+1] = puzzle->probGetShapeMax(problem, pc);

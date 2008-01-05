@@ -466,6 +466,8 @@ int assembler_0_c::prepare(void) {
   /* now we insert one shape after another */
   for (unsigned int pc = 0; pc < puzzle->probShapeNumber(problem); pc++) {
 
+    reducePiece = pc;
+
     /* this array contains all the pieces found so far, this will help us
      * to not add two times the same piece to the structure */
     unsigned int cachefill = 0;
