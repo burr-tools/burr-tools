@@ -1200,14 +1200,14 @@ class FLU_EXPORT Flu_Tree_Browser : public Fl_Group
       int currentY; // needed for animation
       unsigned short currentH;
 
-      inline static void _widgetCB( Fl_Widget* w, void* arg )
+      inline static void _widgetCB( Fl_Widget* /*w*/, void* arg )
 	{ ((Node*)arg)->widgetCB(); }
       void widgetCB();
      };
 
  protected:
 
-  inline static void _scrollCB( Fl_Widget* w, void* arg )
+  inline static void _scrollCB( Fl_Widget* /*w*/, void* arg )
     { ((Flu_Tree_Browser*)arg)->redraw(); }
 
   inline static void _timerRedrawCB( void *arg )

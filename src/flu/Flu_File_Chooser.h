@@ -251,7 +251,7 @@ class FLU_EXPORT Flu_File_Chooser : public Fl_Double_Window
     { selectionType = t; rescan(); }
 
   //! Get the type of the chooser
-  inline int type( int t ) const
+  inline int type( int /*t*/ ) const
     { return selectionType; }
 
   //! Unselect all entries
@@ -304,11 +304,11 @@ class FLU_EXPORT Flu_File_Chooser : public Fl_Double_Window
   Fl_Check_Button *hiddenFiles;
   Flu_Combo_Tree *location;
 
-  inline static void _backCB( Fl_Widget *w, void *arg )
+  inline static void _backCB( Fl_Widget * /*w*/, void *arg )
     { ((Flu_File_Chooser*)arg)->backCB(); }
   void backCB();
 
-  inline static void _forwardCB( Fl_Widget *w, void *arg )
+  inline static void _forwardCB( Fl_Widget * /*w*/, void *arg )
     { ((Flu_File_Chooser*)arg)->forwardCB(); }
   void forwardCB();
 
@@ -320,11 +320,11 @@ class FLU_EXPORT Flu_File_Chooser : public Fl_Double_Window
     { ((Flu_File_Chooser*)arg)->previewCB(); }
   void previewCB();
 
-  inline static void _listModeCB( Fl_Widget *w, void *arg )
+  inline static void _listModeCB( Fl_Widget * /*w*/, void *arg )
     { ((Flu_File_Chooser*)arg)->listModeCB(); }
   void listModeCB();
 
-  inline static void _filenameCB( Fl_Widget *w, void *arg )
+  inline static void _filenameCB( Fl_Widget * /*w*/, void *arg )
     { ((Flu_File_Chooser*)arg)->filenameCB(); }
   void filenameCB();
 
@@ -429,7 +429,7 @@ class FLU_EXPORT Flu_File_Chooser : public Fl_Double_Window
       int nameW, typeW, sizeW, dateW;
       bool details;
 
-      inline static void _inputCB( Fl_Widget *w, void *arg )
+      inline static void _inputCB( Fl_Widget * /*w*/, void *arg )
 	{ ((Entry*)arg)->inputCB(); }
       void inputCB();
 
