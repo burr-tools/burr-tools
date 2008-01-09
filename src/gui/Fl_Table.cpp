@@ -637,7 +637,7 @@ void Fl_Table::table_resized()
 }
 
 // Someone moved a scrollbar
-void Fl_Table::scroll_cb(Fl_Widget*w, void *data)
+void Fl_Table::scroll_cb(Fl_Widget* /*w*/, void *data)
 {
     Fl_Table *o = (Fl_Table*)data;
     o->recalc_dimensions();	// recalc tix, tiy, etc.

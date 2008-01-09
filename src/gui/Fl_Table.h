@@ -189,8 +189,8 @@ protected:
     						// clamp r/c to known universe
 
     // Called to draw cells
-    virtual void draw_cell(TableContext context, int R=0, int C=0,
-    			   int X=0, int Y=0, int W=0, int H=0)
+    virtual void draw_cell(TableContext /*context*/, int /*R=0*/, int /*C=0*/,
+    			   int /*X=0*/, int /*Y=0*/, int /*W=0*/, int /*H=0*/)
 	{ }					// overridden by deriving class
 
     long row_scroll_position(int row);		// find scroll position of row (in pixels)
