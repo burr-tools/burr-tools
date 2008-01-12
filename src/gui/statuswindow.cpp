@@ -142,9 +142,8 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
 
     b = new LFl_Box("", col, s+head);
     b->copy_label(tmp);
-    b->color(fl_rgb_color(pieceColorRi(s), pieceColorGi(s), pieceColorBi(s)));
-    if (3*pieceColorRi(s) + 6*pieceColorGi(s) + pieceColorBi(s) < 1275)
-      b->labelcolor(fl_rgb_color(255, 255, 255));
+    b->color(fltkPieceColor(s));
+    b->labelcolor(contrastPieceColor(s));
     b->box(FL_FLAT_BOX);
     col += 2;
 
@@ -194,9 +193,8 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
         snprintf(tmp, 200, "%i", s2+1);
         b = new LFl_Box("", col, s+head);
         b->copy_label(tmp);
-        b->color(fl_rgb_color(pieceColorRi(s2), pieceColorGi(s2), pieceColorBi(s2)));
-        if (3*pieceColorRi(s2) + 6*pieceColorGi(s2) + pieceColorBi(s2) < 1275)
-          b->labelcolor(fl_rgb_color(255, 255, 255));
+        b->color(fltkPieceColor(s2));
+        b->labelcolor(contrastPieceColor(s2));
         b->box(FL_FLAT_BOX);
         break;
       }
@@ -235,9 +233,8 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
 
     if (!v->connected(0, false, 0, false)) {
       b = new LFl_Box("X", col, s+head);
-      b->color(fl_rgb_color(pieceColorRi(s), pieceColorGi(s), pieceColorBi(s)));
-      if (3*pieceColorRi(s) + 6*pieceColorGi(s) + pieceColorBi(s) < 1275)
-        b->labelcolor(fl_rgb_color(255, 255, 255));
+      b->color(fltkPieceColor(s));
+      b->labelcolor(contrastPieceColor(s));
       b->box(FL_FLAT_BOX);
     }
     col += 2;
@@ -245,9 +242,8 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
 
     if (!v->connected(0, false, 0)) {
       b = new LFl_Box("X", col, s+head);
-      b->color(fl_rgb_color(pieceColorRi(s), pieceColorGi(s), pieceColorBi(s)));
-      if (3*pieceColorRi(s) + 6*pieceColorGi(s) + pieceColorBi(s) < 1275)
-        b->labelcolor(fl_rgb_color(255, 255, 255));
+      b->color(fltkPieceColor(s));
+      b->labelcolor(contrastPieceColor(s));
       b->box(FL_FLAT_BOX);
     }
     col += 2;
@@ -255,9 +251,8 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
 
     if (!p->getGridType()->getSymmetries()->symmetryKnown(v)) {
       b = new LFl_Box("---", col, s+head);
-      b->color(fl_rgb_color(pieceColorRi(s), pieceColorGi(s), pieceColorBi(s)));
-      if (3*pieceColorRi(s) + 6*pieceColorGi(s) + pieceColorBi(s) < 1275)
-        b->labelcolor(fl_rgb_color(255, 255, 255));
+      b->color(fltkPieceColor(s));
+      b->labelcolor(contrastPieceColor(s));
       b->box(FL_FLAT_BOX);
     } else {
       snprintf(tmp, 200, "%i", p->getGridType()->getSymmetries()->calculateSymmetry(v));

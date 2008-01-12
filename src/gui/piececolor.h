@@ -57,4 +57,9 @@ float lightPieceColor(float f);
 #define fltkSubPieceColor(x,y) fl_rgb_color(pieceColorRi(x, y), pieceColorGi(x, y), pieceColorBi(x, y))
 #define fltkPieceColor(x) fl_rgb_color(pieceColorRi(x), pieceColorGi(x), pieceColorBi(x))
 
+/* a function that returns an fltk color (either black or white) with a big contrast
+ * to the piece color
+ */
+Fl_Color contrastPieceColor(int x);
+
 #endif

@@ -56,12 +56,8 @@ void ResultViewer_c::draw(void) {
     g = pieceColorGi(result);
     b = pieceColorBi(result);
 
-    color(fl_rgb_color(r, g, b));
-
-    if ((int)3*r + 6*g + 1*b > 1275)
-      labelcolor(fl_rgb_color(0, 0, 0));
-    else
-      labelcolor(fl_rgb_color(255, 255, 255));
+    color(fltkPieceColor(result));
+    labelcolor(contrastPieceColor(result));
 
     label(txt);
   }
