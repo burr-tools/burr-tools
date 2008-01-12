@@ -18,6 +18,8 @@
 #ifndef __PIECECOLOR_H__
 #define __PIECECOLOR_H__
 
+#include <FL/fl_draw.H>
+
 /* this module provides the colours for the pieces. The first few colours are defined within
  * a table, the following colours use a function that hopefully delivers ever changing
  * nice colour values
@@ -50,5 +52,9 @@ unsigned int pieceColorBi(int x, int sub);
  */
 float darkPieceColor(float f);
 float lightPieceColor(float f);
+
+/* two macros to directly get the fltk color */
+#define fltkSubPieceColor(x,y) fl_rgb_color(pieceColorRi(x, y), pieceColorGi(x, y), pieceColorBi(x, y))
+#define fltkPieceColor(x) fl_rgb_color(pieceColorRi(x), pieceColorGi(x), pieceColorBi(x))
 
 #endif
