@@ -1854,7 +1854,7 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
   {"Status",           0, cb_StatusWindow_stub,  0, 0, 0, 0, 14, 56},
   {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
   {"Config",           0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
-  {"Help",             0, cb_Help_stub,        0, 0, 0, 0, 14, 56},
+  {"Help",      FL_F + 1, cb_Help_stub,        0, 0, 0, 0, 14, 56},
   {"About",            0, cb_About_stub,       0, 0, 3, 0, 14, 56},
   {0}
 };
