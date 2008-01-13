@@ -29,7 +29,7 @@
 #  define flstring_h
 
 #  include <FL/Fl_Export.H>
-#  include <config.h>
+//#  include <config.h>
 #  include <stdio.h>
 #  include <stdarg.h>
 #  include <string.h>

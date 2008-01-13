@@ -1,5 +1,6 @@
 bin_PROGRAMS=burrTxt gui/burrGui
 noinst_LIBRARIES=lib/libburr.a flu/libflu.a help/libhelp.a
+noinst_PROGRAMS=help/helpviewer
 
 XML_CPP_ADD=@XML_CPP_ADD@
 XML_LD_ADD=@XML_LD_ADD@
@@ -10,6 +11,17 @@ PTHREAD_LD_ADD=@PTHREAD_LD_ADD@
 
 AM_CPPFLAGS=-Wall -W $(XML_CPP_ADD) $(GUI_CPP_ADD) $(PTHREAD_CPP_ADD) @LARGEFILE@
 LDADD=lib/libburr.a flu/libflu.a help/libhelp.a $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
+
+help_helpviewer_CPPFLAGS=-DBT_EXTERNAL $(GUI_HELP_CPP_ADD) @LARGEFILE@
+help_helpviewer_LDADD=flu/libflu.a $(GUI_LD_ADD) $(GUI_HELP_LD_ADD)
+help_helpviewer_SOURCES=\
+    help/helpviewer.cpp \
+    help/Fl_Help_Dialog.h \
+    help/Fl_Help_Dialog.cpp \
+    help/Fl_Help_View.h \
+    help/Fl_Help_View.cpp \
+    help/flstring.cpp \
+    help/flstring.h
 
 burrTxt_SOURCES=burrTxt.cpp
 

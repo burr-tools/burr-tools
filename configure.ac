@@ -44,6 +44,9 @@ test -z "$FLTK_CONFIG" && AC_MSG_ERROR([unable to find FLTK])
 GUI_CPP_ADD=`$FLTK_CONFIG --cxxflags --use-gl`
 GUI_LD_ADD=`$FLTK_CONFIG --ldflags --use-gl`
 
+GUI_HELP_CPP_ADD=`$FLTK_CONFIG --cxxflags --use-images`
+GUI_HELP_LD_ADD=`$FLTK_CONFIG --ldflags --use-images`
+
 AC_ARG_WITH(xmlwrapp,
         [  --with-xmlwrapp         prefix of xmlwrapp (where to find bin/xmlwrapp-config)],
         XMLWRAPP_CONFIG_PATH=$withval/bin,
@@ -119,6 +122,8 @@ AC_SUBST(LARGEFILE)
 
 AC_SUBST(GUI_CPP_ADD, ["$GUI_CPP_ADD $GL_CFLAGS"])
 AC_SUBST(GUI_LD_ADD, ["$GUI_LD_ADD $GL_LIBS"])
+AC_SUBST(GUI_HELP_CPP_ADD, ["$GUI_HELP_CPP_ADD"])
+AC_SUBST(GUI_HELP_LD_ADD, ["$GUI_HELP_LD_ADD"])
 AC_SUBST(XML_CPP_ADD, $XML_CPP_ADD)
 AC_SUBST(XML_LD_ADD, $XML_LD_ADD)
 AC_SUBST(PTHREAD_CPP_ADD, $PTHREAD_CFLAGS)

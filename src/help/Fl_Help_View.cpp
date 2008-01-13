@@ -63,9 +63,10 @@
 #include <errno.h>
 #include <math.h>
 
+#ifndef BT_EXTERNAL
 #include "helpdata.h"
-
 #include <vector>
+#endif
 
 #if defined(WIN32) && ! defined(__CYGWIN__)
 #  include <io.h>
@@ -2305,7 +2306,7 @@ Fl_Help_View::get_color(const char *n,	// I - Color name
 //
 // 'Fl_Help_View::get_image()' - Get an inline image.
 //
-
+#ifndef BT_EXTERNAL
 Fl_Image *
 Fl_Help_View::get_image(const char *name, int W, int H) {
 
@@ -2334,7 +2335,55 @@ Fl_Help_View::get_image(const char *name, int W, int H) {
 
   return ip;
 }
+#else
+Fl_Image *
+Fl_Help_View::get_image(const char *name, int W, int H) {
+  const char	*localname;		// Local filename
+  char		dir[1024];		// Current directory
+  char		temp[1024],		// Temporary filename
+		*tempptr;		// Pointer into temporary name
+  Fl_Shared_Image *ip;			// Image pointer...
 
+  // See if the image can be found...
+  if (strchr(directory_, ':') != NULL && strchr(name, ':') == NULL) {
+    if (name[0] == '/') {
+      strlcpy(temp, directory_, sizeof(temp));
+
+      if ((tempptr = strrchr(strchr(directory_, ':') + 3, '/')) != NULL) {
+        strlcpy(tempptr, name, sizeof(temp) - (tempptr - temp));
+      } else {
+        strlcat(temp, name, sizeof(temp));
+      }
+    } else {
+      snprintf(temp, sizeof(temp), "%s/%s", directory_, name);
+    }
+
+    if (link_) localname = (*link_)(this, temp);
+    else localname = temp;
+  } else if (name[0] != '/' && strchr(name, ':') == NULL) {
+    if (directory_[0]) snprintf(temp, sizeof(temp), "%s/%s", directory_, name);
+    else {
+      getcwd(dir, sizeof(dir));
+      snprintf(temp, sizeof(temp), "file:%s/%s", dir, name);
+    }
+
+    if (link_) localname = (*link_)(this, temp);
+    else localname = temp;
+  } else if (link_) localname = (*link_)(this, name);
+  else localname = name;
+
+  if (!localname) return 0;
+
+  if (strncmp(localname, "file:", 5) == 0) localname += 5;
+  
+  printf("loading file %s\n", localname);
+
+  if ((ip = Fl_Shared_Image::get(localname, W, H)) == NULL)
+    ip = (Fl_Shared_Image *)&broken_image;
+
+  return ip;
+}
+#endif
 
 //
 // 'Fl_Help_View::get_length()' - Get a length value, either absolute or %.
@@ -2441,8 +2490,11 @@ Fl_Help_View::handle(int event)	// I - Event to handle
 	else
 	{
 	  getcwd(dir, sizeof(dir));
-//	  snprintf(temp, sizeof(temp), "file:%s/%s", dir, linkp->filename);
+#ifndef BT_EXTERNAL
 	  snprintf(temp, sizeof(temp), "%s", linkp->filename);
+#else
+	  snprintf(temp, sizeof(temp), "file:%s/%s", dir, linkp->filename);
+#endif
 	}
       }
       else
@@ -2554,6 +2606,10 @@ Fl_Help_View::~Fl_Help_View()
 int				// O - 0 on success, -1 on error
 Fl_Help_View::load(const char *f)// I - Filename to load (may also have target)
 {
+#ifdef BT_EXTERNAL
+  FILE		*fp;		// File to read from
+  long		len;		// Length of file
+#endif
   char		*target;	// Target in file
   char		*slash;		// Directory separator
   const char	*localname;	// Local filename
@@ -2609,7 +2665,7 @@ Fl_Help_View::load(const char *f)// I - Filename to load (may also have target)
   {
     if (strncmp(localname, "file:", 5) == 0)
       localname += 5;	// Adjust for local filename...
-
+#ifndef BT_EXTERNAL
     int i = 0;
 
     while (filelist[i].name && strcmp(filelist[i].name, localname)) i++;
@@ -2619,7 +2675,20 @@ Fl_Help_View::load(const char *f)// I - Filename to load (may also have target)
 
       value_ = (char *)calloc(filelist[i].size, 1);
       strcpy(value_, filelist[i].data);
-    } else {
+    }
+#else
+    if ((fp = fopen(localname, "rb")) != NULL)
+    {
+      fseek(fp, 0, SEEK_END);
+      len = ftell(fp);
+      rewind(fp);
+
+      value_ = (char *)calloc(len + 1, 1);
+      fread((void *)value_, 1, len, fp);
+      fclose(fp);
+    }
+#endif
+    else {
       snprintf(error, sizeof(error),
                "<HTML><HEAD><TITLE>Error</TITLE></HEAD>"
                "<BODY><H1>Error</H1>"
