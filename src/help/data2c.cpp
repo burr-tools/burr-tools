@@ -20,7 +20,7 @@ void printStringChar(FILE *out, unsigned char c) {
     fprintf(out, "\\\\");
   else if (c == 0)
     fprintf(out, "\\0");
-  else 
+  else
 #endif
     fprintf(out, "\\x%02x", c);
 }
@@ -118,7 +118,7 @@ int main(int argv, char * args[]) {
       argpos++;
       break;
     }
-    
+
     Fl_Shared_Image * in = Fl_Shared_Image::get(args[argpos]);
 
     if (in) {

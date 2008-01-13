@@ -375,7 +375,7 @@ Fl_Help_View::draw()
 
   // Draw all visible blocks...
   for (i = 0, block = blocks_; i < nblocks_; i ++, block ++)
-    if ((block->y + block->h) >= topline_ && block->y < (topline_ + h()))
+    if ((block->y + block->h - y()) >= topline_ && (block->y - y()) < (topline_ + h()))
     {
       line      = 0;
       xx        = block->line[line];
@@ -527,8 +527,8 @@ Fl_Help_View::draw()
 	  }
 	  else if (strcasecmp(buf, "HR") == 0)
 	  {
-	    fl_line(block->x + x(), yy + y(), block->w + x(),
-	            yy + y());
+	    fl_line(block->x + x(), yy + y() - fl_height(), block->w + x(),
+	            yy + y() - fl_height());
 
 	    if (line < 31)
 	      line ++;
@@ -559,7 +559,7 @@ Fl_Help_View::draw()
 	    }
 	    else if (strcasecmp(buf, "DT") == 0)
 	    {
-	      font  = (uchar)(textfont_ | FL_ITALIC);
+	      font  = (uchar)(textfont_ | FL_BOLD);
 	      fsize = textsize_;
 	    }
 	    else if (strcasecmp(buf, "PRE") == 0)
@@ -1197,7 +1197,11 @@ Fl_Help_View::format()
 	      strcasecmp(buf, "DL") == 0)
           {
 	    block->h += fsize + 2;
-	    xx       += 4 * fsize;
+	    xx       += 2 * fsize;
+	  }
+          else if (strcasecmp(buf, "DD") == 0)
+          {
+	    xx       += 2 * fsize;
 	  }
           else if (strcasecmp(buf, "TABLE") == 0)
 	  {
@@ -1247,7 +1251,7 @@ Fl_Help_View::format()
 	  }
 	  else if (strcasecmp(buf, "DT") == 0)
 	  {
-	    font  = (uchar)(textfont_ | FL_ITALIC);
+	    font  = (uchar)(textfont_ | FL_BOLD);
 	    fsize = textsize_;
 	  }
 	  else if (strcasecmp(buf, "PRE") == 0)
@@ -1268,7 +1272,6 @@ Fl_Help_View::format()
           hh = 0;
 
           if ((tolower(buf[0]) == 'h' && isdigit(buf[1])) ||
-	      strcasecmp(buf, "DD") == 0 ||
 	      strcasecmp(buf, "DT") == 0 ||
 	      strcasecmp(buf, "P") == 0)
             yy += fsize + 2;
@@ -1276,6 +1279,10 @@ Fl_Help_View::format()
 	  {
 	    hh += 2 * fsize;
 	    yy += fsize;
+	  }
+	  else if (strcasecmp(buf, "DD") == 0)
+	  {
+	    yy += fsize/2;
 	  }
 
           if (row)
@@ -1303,6 +1310,7 @@ Fl_Help_View::format()
 		 strcasecmp(buf, "/UL") == 0 ||
 		 strcasecmp(buf, "/OL") == 0 ||
 		 strcasecmp(buf, "/DL") == 0 ||
+		 strcasecmp(buf, "/DD") == 0 ||
 		 strcasecmp(buf, "/TABLE") == 0)
 	{
           line       = do_align(block, line, xx, newalign, links);
@@ -1311,10 +1319,11 @@ Fl_Help_View::format()
 
           if (strcasecmp(buf, "/UL") == 0 ||
 	      strcasecmp(buf, "/OL") == 0 ||
+	      strcasecmp(buf, "/DD") == 0 ||
 	      strcasecmp(buf, "/DL") == 0)
 	  {
-	    xx       -= 4 * fsize;
-	    block->h += fsize + 2;
+	    xx       -= 2 * fsize;
+//	    block->h += fsize + 2;
 	  }
           else if (strcasecmp(buf, "/TABLE") == 0)
           {
@@ -2375,7 +2384,7 @@ Fl_Help_View::get_image(const char *name, int W, int H) {
   if (!localname) return 0;
 
   if (strncmp(localname, "file:", 5) == 0) localname += 5;
-  
+
   printf("loading file %s\n", localname);
 
   if ((ip = Fl_Shared_Image::get(localname, W, H)) == NULL)
