@@ -69,7 +69,7 @@ private:
 
   typedef struct config_data {
     config_data *next;
-    char     *cnf_name;  // name of entry in configuration file
+    const char *cnf_name;  // name of entry in configuration file
     cnf_type  cnf_typ;   // data type of the variable
     void     *cnf_var;   // pointer to the variable
     long      maxlen;    // maximum length (for strings)
