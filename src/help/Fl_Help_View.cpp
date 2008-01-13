@@ -623,7 +623,7 @@ Fl_Help_View::draw()
 	  }
           if (strcasecmp(buf, "SMALL") == 0)
           {
-	      pushfont(font, 3*fsize/4);
+	      pushfont(font, fsize=4*fsize/5);
 	  }
 	  else if (strcasecmp(buf, "/FONT") == 0)
 	  {
@@ -1518,9 +1518,10 @@ Fl_Help_View::format()
 	else if (strcasecmp(buf, "B") == 0 ||
         	 strcasecmp(buf, "STRONG") == 0)
 	  pushfont(font |= FL_BOLD, fsize);
-	else if (strcasecmp(buf, "I") == 0 ||
-        	 strcasecmp(buf, "EM") == 0)
+	else if (strcasecmp(buf, "EM") == 0)
 	  pushfont(font |= FL_ITALIC, fsize);
+	else if (strcasecmp(buf, "I") == 0)
+	  pushfont(font = font & (FL_BOLD | FL_ITALIC) | FL_HELVETICA, fsize);
 	else if (strcasecmp(buf, "CODE") == 0 ||
 	         strcasecmp(buf, "TT") == 0)
 	  pushfont(font = FL_COURIER, fsize);
@@ -1528,6 +1529,8 @@ Fl_Help_View::format()
 	  pushfont(font = FL_COURIER_BOLD, fsize);
 	else if (strcasecmp(buf, "VAR") == 0)
 	  pushfont(font = FL_COURIER_ITALIC, fsize);
+	else if (strcasecmp(buf, "SMALL") == 0)
+	  pushfont(font, fsize=4*fsize/5);
 	else if (strcasecmp(buf, "/B") == 0 ||
 		 strcasecmp(buf, "/STRONG") == 0 ||
 		 strcasecmp(buf, "/I") == 0 ||
@@ -1535,6 +1538,7 @@ Fl_Help_View::format()
 		 strcasecmp(buf, "/CODE") == 0 ||
 		 strcasecmp(buf, "/TT") == 0 ||
 		 strcasecmp(buf, "/KBD") == 0 ||
+		 strcasecmp(buf, "/SMALL") == 0 ||
 		 strcasecmp(buf, "/VAR") == 0)
 	  popfont(font, fsize);
 	else if (strcasecmp(buf, "IMG") == 0)
@@ -1845,7 +1849,7 @@ Fl_Help_View::format_table(int        *table_width,	// O - Total table width
 	}
 	else if (strcasecmp(buf, "DT") == 0)
 	{
-	  font  = (uchar)(textfont_ | FL_ITALIC);
+	  font  = (uchar)(textfont_ | FL_BOLD);
 	  fsize = textsize_;
 	}
 	else if (strcasecmp(buf, "PRE") == 0)
@@ -1979,9 +1983,10 @@ Fl_Help_View::format_table(int        *table_width,	// O - Total table width
       else if (strcasecmp(buf, "B") == 0 ||
                strcasecmp(buf, "STRONG") == 0)
 	pushfont(font |= FL_BOLD, fsize);
-      else if (strcasecmp(buf, "I") == 0 ||
-               strcasecmp(buf, "EM") == 0)
-	pushfont(font |= FL_ITALIC, fsize);
+      else if (strcasecmp(buf, "EM") == 0)
+        pushfont(font |= FL_ITALIC, fsize);
+      else if (strcasecmp(buf, "I") == 0)
+        pushfont(font = font & (FL_BOLD | FL_ITALIC) | FL_HELVETICA, fsize);
       else if (strcasecmp(buf, "CODE") == 0 ||
                strcasecmp(buf, "TT") == 0)
 	pushfont(font = FL_COURIER, fsize);
@@ -1989,6 +1994,8 @@ Fl_Help_View::format_table(int        *table_width,	// O - Total table width
 	pushfont(font = FL_COURIER_BOLD, fsize);
       else if (strcasecmp(buf, "VAR") == 0)
 	pushfont(font = FL_COURIER_ITALIC, fsize);
+      else if (strcasecmp(buf, "SMALL") == 0)
+	pushfont(font, fsize=4*fsize/5);
       else if (strcasecmp(buf, "/B") == 0 ||
 	       strcasecmp(buf, "/STRONG") == 0 ||
 	       strcasecmp(buf, "/I") == 0 ||
@@ -1996,6 +2003,7 @@ Fl_Help_View::format_table(int        *table_width,	// O - Total table width
 	       strcasecmp(buf, "/CODE") == 0 ||
 	       strcasecmp(buf, "/TT") == 0 ||
 	       strcasecmp(buf, "/KBD") == 0 ||
+	       strcasecmp(buf, "/SMALL") == 0 ||
 	       strcasecmp(buf, "/VAR") == 0)
 	popfont(font, fsize);
       else if (strcasecmp(buf, "IMG") == 0 && incell)
@@ -2548,7 +2556,7 @@ Fl_Help_View::Fl_Help_View(int        xx,	// I - Left position
   textcolor_    = FL_FOREGROUND_COLOR;
   linkcolor_    = FL_SELECTION_COLOR;
   textfont_     = FL_TIMES;
-  textsize_     = 12;
+  textsize_     = 14;
   value_        = NULL;
 
   ablocks_      = 0;
@@ -2952,7 +2960,7 @@ quote_char(const char *p) {	// I - Quoted string
     { "yacute;", 7, 253 },
     { "yen;",    4, 165 },
     { "yuml;",   5, 255 },
-    { "rarr;",   5, '>' }
+    { "rarr;",   5, 187 }
   };
 
   if (!strchr(p, ';')) return -1;
