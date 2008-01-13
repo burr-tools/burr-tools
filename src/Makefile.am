@@ -127,7 +127,7 @@ BUILT_SOURCES=\
     help/helpdata.cpp
 
 help/helpdata.cpp: $(EXTRA_DIST) help/data2c.cpp
-	cd help; $(CXX) data2c.cpp -O2 -o data2c `fltk-config --cxxflags --ldflags --use-images`
+	cd help; gcc data2c.cpp -O2 -o data2c `fltk-config --cxxflags --ldflags --use-images`
 	cd help; ./data2c helpdata.cpp ../../doc/*.html - ../../doc/*.png
 	cd help; $(RM) data2c
 
