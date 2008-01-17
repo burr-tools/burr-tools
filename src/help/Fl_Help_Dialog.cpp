@@ -38,7 +38,12 @@
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Input.H>
 
+#include "../flu/Flu_File_Chooser.h"
+#include "../help/helpdata.h"
+
+#include <png.h>
 #include <string.h>
+#include <stdio.h>
 
 void cb_view_(Fl_Help_View* /*o*/, void* v) { ((Fl_Help_Dialog*)v)->cb_view__i(); }
 void Fl_Help_Dialog::cb_view__i(void) {
@@ -80,8 +85,127 @@ void Fl_Help_Dialog::cb_view__i(void) {
   }
 }
 
+void cb_Save(Fl_Button* /*o*/, void* v) { ((Fl_Help_Dialog*)(v))->cb_save__i(); }
+void Fl_Help_Dialog::cb_save__i(void) {
 
-void cb_Close(Fl_Button* /*o*/, void* v) { ((Fl_Help_Dialog*)(v))->hide(); }
+#ifndef BT_EXTERNAL
+  const char * path = flu_dir_chooser("Select directory to save files to", "./");
+
+  int i = 0;
+
+  while (filelist[i].name) {
+
+    char n[10000];
+    snprintf(n, 10000, "%s/%s", path, filelist[i].name);
+
+    FILE * f = fopen(n, "wb");
+
+    fwrite(filelist[i].data, filelist[i].size, 1, f);
+
+    fclose(f);
+
+    i++;
+  }
+
+  // now the images
+
+  i = 0;
+
+  while (imagelist[i].name) {
+
+    char n[10000];
+    snprintf(n, 10000, "%s/%s", path, imagelist[i].name);
+
+    int sx = imagelist[i].w;
+    int sy = imagelist[i].h;
+    const unsigned char * buffer = imagelist[i].data;
+
+    png_structp png_ptr;
+    png_infop info_ptr;
+    unsigned char ** png_rows = 0;
+    int x, y;
+
+    FILE *fi = fopen(n, "wb");
+    png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+
+    if (png_ptr == NULL)
+    {
+      fclose(fi);
+      png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
+      fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", n);
+      return;
+    }
+
+    info_ptr = png_create_info_struct(png_ptr);
+    if (info_ptr == NULL)
+    {
+      fclose(fi);
+      png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
+      fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", n);
+      return;
+    }
+
+    if (setjmp(png_jmpbuf(png_ptr)))
+    {
+
+      /* if we have already instantiated the png_rows, we need to free them */
+      if (png_rows) {
+        for (y = 0; y < sy; y++)
+          delete [] png_rows[y];
+
+        delete [] png_rows;
+      }
+
+      fclose(fi);
+      png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
+      fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", n);
+      return;
+    }
+
+    png_init_io(png_ptr, fi);
+    info_ptr->width = sx;
+    info_ptr->height = sy;
+    info_ptr->bit_depth = 8;
+    info_ptr->color_type = PNG_COLOR_TYPE_RGB;
+    info_ptr->interlace_type = PNG_INTERLACE_NONE;
+    info_ptr->valid = 0;
+
+    png_write_info(png_ptr, info_ptr);
+
+    /* Save the picture: */
+
+    png_rows = new unsigned char*[sy];
+    for (y = 0; y < sy; y++)
+    {
+      png_rows[y] = new unsigned char[4*sx];
+
+      for (x = 0; x < sx; x++)
+      {
+        png_rows[y][x * 3 + 0] = buffer[(y*sx+x)*3+0];
+        png_rows[y][x * 3 + 1] = buffer[(y*sx+x)*3+1];
+        png_rows[y][x * 3 + 2] = buffer[(y*sx+x)*3+2];
+      }
+    }
+
+    png_write_image(png_ptr, png_rows);
+
+    for (y = 0; y < sy; y++)
+      delete [] png_rows[y];
+
+    delete [] png_rows;
+
+    png_write_end(png_ptr, NULL);
+
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+    fclose(fi);
+
+    i++;
+  }
+
+#else
+  fl_message("This button only works in the internal BurrTools help");
+#endif
+}
 
 void cb_back_(Fl_Button* /*o*/, void* v) { ((Fl_Help_Dialog*)v)->cb_back__i(); }
 void Fl_Help_Dialog::cb_back__i(void) {
@@ -146,9 +270,8 @@ Fl_Help_Dialog::Fl_Help_Dialog() : Fl_Double_Window(530, 385, "Help Dialog") {
       Fl_Group::current()->resizable(o);
     }
     { Fl_Group* o = new Fl_Group(10, 348, 510, 27);
-      { Fl_Button* o = new Fl_Button(456, 350, 64, 25, "Close");
-        o->callback((Fl_Callback*)cb_Close, this);
-        o->label(fl_close);
+      { Fl_Button* o = save_ = new Fl_Button(456, 350, 64, 25, "Save");
+        o->callback((Fl_Callback*)cb_Save, this);
       }
       { Fl_Button* o = back_ = new Fl_Button(386, 350, 25, 25, "@<-");
         o->tooltip("Show the previous help page.");

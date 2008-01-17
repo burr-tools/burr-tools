@@ -48,6 +48,7 @@ class Fl_Help_Dialog : public Fl_Double_Window {
   Fl_Button *forward_;
   Fl_Button *smaller_;
   Fl_Button *larger_;
+  Fl_Button *save_;
   Fl_Input *find_;
 
 public:
@@ -66,6 +67,7 @@ public:
   void cb_forward__i(void);
   void cb_textsize__i(int inc);
   void cb_find__i(void);
+  void cb_save__i(void);
 };
 #endif
 
