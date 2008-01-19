@@ -279,7 +279,6 @@ public:
   void cb_ImageExport(void);
   void cb_ImageExportVector(void);
   void cb_STLExport(void);
-  void cb_GridParameter(void);
   void cb_StatusWindow(void);
 
   void cb_SortSolutions(unsigned int by);

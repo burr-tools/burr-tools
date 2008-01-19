@@ -1558,27 +1558,8 @@ void mainWindow_c::cb_STLExport(void) {
   w.show();
 
   while (w.visible()) {
-      Fl::wait();
-      /*
-	w.update();
-	if (w.isWorking())
-	Fl::wait(0);
-	else
-	Fl::wait(1);
-      */
-  }
-}
-
-static void cb_GridParameter_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_GridParameter(); }
-void mainWindow_c::cb_GridParameter(void) {
-  gridTypeParameterWindow_c w(ggt);
-  w.show();
-
-  while (w.visible()) {
     Fl::wait();
   }
-
-  /* TODO signal to drawer */
 }
 
 static void cb_StatusWindow_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_StatusWindow(); }
@@ -1868,7 +1849,6 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
     {"Vector Image",       0, cb_ImageExportVector_stub, 0, 0, 0, 0, 14, 56},
     {"STL",             0, cb_STLExport_stub, 0, 0, 0, 0, 14, 56},
     { 0 },
-  {"Grid Parameter",   0, cb_GridParameter_stub, 0, 0, 0, 0, 14, 56},
   {"Status",           0, cb_StatusWindow_stub,  0, 0, 0, 0, 14, 56},
   {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
   {"Config",           0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
