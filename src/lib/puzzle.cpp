@@ -822,6 +822,7 @@ puzzle_c::puzzle_c(const puzzle_c * orig) {
     colors.push_back(orig->colors[i]);
 
   comment = orig->comment;
+  commentPopup = orig->commentPopup;
 }
 
 puzzle_c::~puzzle_c(void) {
@@ -959,8 +960,11 @@ xml::node puzzle_c::save(void) const {
   for (unsigned int i = 0; i < problems.size(); i++)
     it->insert(problems[i]->save());
 
-  if (comment.length())
+  if (comment.length()) {
     it = nd.insert(xml::node("comment", comment.c_str()));
+    if (commentPopup)
+      it->get_attributes().insert("popup", "");
+  }
 
   return nd;
 }
@@ -1031,9 +1035,11 @@ puzzle_c::puzzle_c(const xml::node & node) {
         problems.push_back(new problem_c(*i, colors.size(), shapes.size(), gt));
 
   it = node.find("comment");
-  if (it != node.end() && it->get_type() == xml::node::type_element)
+  if (it != node.end() && it->get_type() == xml::node::type_element) {
     comment = it->get_content();
-
+    commentPopup = it->get_attributes().find("popup") != it->get_attributes().end();
+  } else
+    commentPopup = false;
 
   /* from here on there are only corrections for older puzzle file version */
 
@@ -1630,6 +1636,14 @@ void puzzle_c::setComment(const std::string & com) {
 
 const std::string & puzzle_c::getComment(void) const {
   return comment;
+}
+
+bool puzzle_c::getCommentPopup(void) const {
+  return commentPopup;
+}
+
+void puzzle_c::setComemntPopup(bool val) {
+  commentPopup = val;
 }
 
 bool puzzle_c::probMaxHolesDefined(unsigned int prob) const {

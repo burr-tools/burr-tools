@@ -72,6 +72,8 @@ private:
 
   /* some information about the puzzle */
   std::string comment;
+  /* flat to signify if the comment should open on load */
+  bool commentPopup;
 
 public:
 
@@ -294,6 +296,12 @@ public:
   /* some additional information about the puzzle */
   void setComment(const std::string & comment);
   const std::string & getComment(void) const;
+
+  /* a flag for the comment, if set it is supposed that
+   * the comment will open when the file is loaded within the gui
+   */
+  bool getCommentPopup(void) const;
+  void setComemntPopup(bool val);
 
   void probAddTime(unsigned int prob, unsigned long time);
   bool probUsedTimeKnown(unsigned int prob) const;

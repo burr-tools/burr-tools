@@ -1787,6 +1787,9 @@ bool mainWindow_c::tryToLoad(const char * f) {
   if (containsStarted)
     fl_message("This puzzle file contains started but not finished search for solutions.");
 
+  if (puzzle->getCommentPopup())
+    fl_message(puzzle->getComment().c_str());
+
   return true;
 }
 
