@@ -125,6 +125,18 @@ class voxelFrame_c : public Fl_Gl_Window {
     bool pickShape(int x, int y, unsigned int *shape, unsigned long *voxel, unsigned int *face);
     void setDrawer(voxelDrawer_c * dr);
 
+    typedef enum {
+
+      VFT_PS = 0,
+      VFT_EPS = 1,
+      VFT_TEX = 2,
+      VFT_PDF = 3,
+      VFT_SVG = 4,
+      VFT_PGF = 5
+    } VectorFiletype;
+
+    void exportToVector(const char * fname, VectorFiletype vt);
+
   private:
 
     voxelDrawer_c * drawer;

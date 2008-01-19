@@ -277,6 +277,7 @@ public:
 
   void cb_ShapeGroup(void);
   void cb_ImageExport(void);
+  void cb_ImageExportVector(void);
   void cb_STLExport(void);
   void cb_GridParameter(void);
   void cb_StatusWindow(void);

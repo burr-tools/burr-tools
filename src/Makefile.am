@@ -215,6 +215,7 @@ gui_burrGui_SOURCES=\
      gui/stlexport.cpp \
      gui/togglebutton.cpp \
      gui/tooltabs.cpp \
+     gui/vectorexportwindow.cpp \
      gui/view3dgroup.cpp \
      gui/voxeldrawer.cpp \
      gui/voxeldrawer_0.cpp \
@@ -230,6 +231,7 @@ gui_burrGui_SOURCES=\
      gui/LFl_Tile.cpp \
      gui/Layouter.cpp \
      gui/tr.c \
+     gui/gl2ps.c \
      gui/Images.cpp \
      \
      gui/arcball.h \
@@ -259,6 +261,7 @@ gui_burrGui_SOURCES=\
      gui/stlexport.h \
      gui/togglebutton.h \
      gui/tooltabs.h \
+     gui/vectorexportwindow.h \
      gui/view3dgroup.h \
      gui/voxeldrawer.h \
      gui/voxeldrawer_0.h \
@@ -275,6 +278,7 @@ gui_burrGui_SOURCES=\
      gui/LFl_Tile.h \
      gui/Layouter.h \
      gui/tr.h \
+     gui/gl2ps.h \
      gui/Images.h \
      \
      gui/images/TB_Color_Brush.xpm gui/images/TB_Color_Eraser.xpm \

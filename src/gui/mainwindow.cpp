@@ -43,6 +43,7 @@
 #include "buttongroup.h"
 #include "constraintsgroup.h"
 #include "blocklistgroup.h"
+#include "vectorexportwindow.h"
 
 #include "LFl_Tile.h"
 
@@ -1524,6 +1525,19 @@ void mainWindow_c::cb_Coment(void) {
   }
 }
 
+static void cb_ImageExportVector_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExportVector(); }
+void mainWindow_c::cb_ImageExportVector(void) {
+
+  vectorExportWindow_c w;
+
+  w.show();
+  while (w.visible())
+    Fl::wait();
+
+  if (!w.cancelled)
+    View3D->getView()->exportToVector(w.getFileName(), w.getVectorType());
+}
+
 static void cb_ImageExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExport(); }
 void mainWindow_c::cb_ImageExport(void) {
   imageExport_c w(puzzle, ggt);
@@ -1851,6 +1865,7 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
   {"Toggle 3D", FL_F + 4, cb_Toggle3D_stub,    0, 0, 0, 0, 14, 56},
   { "&Export",         0, 0, 0, FL_SUBMENU },
     {"Images",             0, cb_ImageExport_stub, 0, 0, 0, 0, 14, 56},
+    {"Vector Image",       0, cb_ImageExportVector_stub, 0, 0, 0, 0, 14, 56},
     {"STL",             0, cb_STLExport_stub, 0, 0, 0, 0, 14, 56},
     { 0 },
   {"Grid Parameter",   0, cb_GridParameter_stub, 0, 0, 0, 0, 14, 56},

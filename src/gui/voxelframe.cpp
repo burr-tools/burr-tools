@@ -34,6 +34,8 @@
 #include <GL/glext.h>
 #endif
 
+#include "gl2ps.h"
+
 voxelFrame_c::voxelFrame_c(int x,int y,int w,int h) :
   Fl_Gl_Window(x,y,w,h),
   drawer(0),
@@ -1075,5 +1077,38 @@ bool voxelFrame_c::pickShape(int x, int y, unsigned int *shape, unsigned long *v
   if (face)  *face  = sbuffer[frontHit+5];
 
   return true;
+}
+
+void voxelFrame_c::exportToVector(const char * fname, VectorFiletype vt) {
+
+
+#if 0
+#if (VFT_PS  != GL2PS_PS  || VFT_EPS != GL2PS_EPS || \
+     VFT_TEX != GL2PS_TEX || VFT_PDF != GL2PS_PDF || \
+     VFT_SVG != GL2PS_SVG || VFT_PGF != GL2PS_PGF)
+
+#error vector file types don't fit to GL2PS file types
+#endif
+#endif
+
+  FILE * of = fopen(fname, "wb");
+
+  int state = GL2PS_OVERFLOW;
+  int bufsize = 0;
+
+  while (state == GL2PS_OVERFLOW) {
+
+    bufsize += 1024*1024;
+
+    gl2psBeginPage("BurrTools", "BurrTools", NULL, vt, GL2PS_BSP_SORT,
+        GL2PS_USE_CURRENT_VIEWPORT | GL2PS_OCCLUSION_CULL, GL_RGBA, 0, NULL, 0, 0, 0,
+        bufsize, of, fname);
+
+    draw();
+
+    state = gl2psEndPage();
+  }
+
+  fclose(of);
 }
 
