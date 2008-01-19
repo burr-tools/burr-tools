@@ -25,14 +25,14 @@ void printStringChar(FILE *out, unsigned char c) {
     fprintf(out, "\\x%02x", c);
 }
 
-#ifdef WIN32
+#if defined(WIN32) || defined(__APPLE__)
 const char * basename(const char * n) {
 
   size_t pos = strlen(n)-1;
 
   while (pos) {
     if (n[pos] == '/' || n[pos] == '\\')
-      return n+pos;
+      return n+pos+1;
     pos--;
   }
 
