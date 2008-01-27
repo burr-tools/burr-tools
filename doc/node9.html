@@ -14,6 +14,7 @@
 <UL>
 <LI><A NAME="tex2html537" HREF="node9.html#SECTION02610000000000000000">Adding Comments</A>
 <LI><A NAME="tex2html538" HREF="node9.html#SECTION02620000000000000000">Exporting Images</A>
+<LI><A NAME="tex2html538a" HREF="node9.html#SECTION02625000000000000000">Exporting Vector Images</A>
 <LI><A NAME="tex2html539" HREF="node9.html#SECTION02630000000000000000">Exporting to STL</A>
 </UL>
 <HR>
@@ -155,6 +156,23 @@ Hint: If you get unexpected results and broken images, try to do nothing
 The export facilities are far from what we want them to be, many important
   features are missing, so you can expect some progress in later versions of
   B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL>.
+  
+<H1><A NAME="SECTION02625000000000000000"></A><A NAME="ExportingVectorImages"></A>Exporting Vector Images</H1>
+
+<P>
+As well as the bitmap images explained in the section above B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL>
+can also export vector images in various different formats. These images have the advantage
+of beeing freely scalable without loss of precision.
+
+The vector image export doesn't have functionality to export a complete assembly or disassembly
+sequence, but only one image. The image exported is the one currently visible in the 3D view.
+
+To export that display into a vecotr image select <I>Vector Image</I> from the <I>Export</I>
+menu. A small window will open which lets you select the possible image format and the filename.
+You have to append the right extension to the filename on your own.
+
+The export may take a while (a few seconds up to a minute or so) and within that time the application
+is unresponsive so please be patient.
 
 <H1><A NAME="SECTION02630000000000000000"></A><A NAME="ExportingSTL"></A>Exporting to STL</H1>
 
