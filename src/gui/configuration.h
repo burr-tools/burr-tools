@@ -43,6 +43,8 @@ public:
   bool useBlendedRemoving(void) { return i_use_blendedRemoving; }
   void useBlendedRemoving(bool val) { i_use_blendedRemoving = val; }
 
+  bool useDisplayLists(void) { return i_use_displayLists; }
+
   int windowPosX(void) { return i_window_pos_x; }
   int windowPosY(void) { return i_window_pos_y; }
   int windowPosW(void) { return i_window_pos_w; }
@@ -84,6 +86,7 @@ private:
   bool i_use_lightning;
   bool i_use_rubberband;
   bool i_use_blendedRemoving;
+  bool i_use_displayLists;
 
   int i_window_pos_x;
   int i_window_pos_y;

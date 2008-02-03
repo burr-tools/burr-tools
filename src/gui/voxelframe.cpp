@@ -20,6 +20,7 @@
 #include "voxeldrawer.h"
 
 #include "piececolor.h"
+#include "configuration.h"
 
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
@@ -171,10 +172,14 @@ void voxelFrame_c::drawVoxelSpace() {
 
       } else {
 
-        shapes[piece].list = glGenLists(1);
+        if (config.useDisplayLists()) {
 
-        if (shapes[piece].list)
-          glNewList(shapes[piece].list, GL_COMPILE_AND_EXECUTE);
+          shapes[piece].list = glGenLists(1);
+
+          if (shapes[piece].list)
+            glNewList(shapes[piece].list, GL_COMPILE_AND_EXECUTE);
+
+        }
 
         const shapeInfo * shape = &shapes[piece];
 

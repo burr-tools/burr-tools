@@ -164,6 +164,7 @@ configuration_c::configuration_c(void) {
   i_use_lightning = true;
   i_use_blendedRemoving = true;
   i_use_rubberband = false;
+  i_use_displayLists = true;
 
   i_window_pos_x = 30;
   i_window_pos_y = 30;
@@ -175,6 +176,7 @@ configuration_c::configuration_c(void) {
   CNF_BOOL_D("tooltips",          &i_use_tooltips, "Use Tooltips");
   CNF_BOOL_D("lightning",         &i_use_lightning, "Use Lights in 3D View");
   CNF_BOOL_D("fadeout",           &i_use_blendedRemoving, "Fade Out Pieces");
+  CNF_BOOL_D("displaylists",      &i_use_displayLists, "Use openGL display lists");
   CNF_BOOL("rubberband",          &i_use_rubberband);
   CNF_INT("windowposx",           &i_window_pos_x);
   CNF_INT("windowposy",           &i_window_pos_y);
