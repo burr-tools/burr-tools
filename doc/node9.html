@@ -188,7 +188,8 @@ The main menu entry <I><B>Export - STL</B></I> opens the window
 seen in Figure <A HREF="#stlexportwindow">StlExportWindow</A>. 
 The window has shape selector, a
   3-D view of the selected shape and some parameters that control
-  the shapes created.
+  the shapes created. The exact parameters depend on the grid of the
+  current puzzle.
 
 <CENTER>
 <A NAME="stlexportwindow"></A><A NAME="1855"></A>
@@ -204,10 +205,41 @@ The window has shape selector, a
   <I><B>Shrink</B></I> allows a gap between the pieces, so that it
   is actually possible to assemble them. If the shapes were made to correct
   sizes they would touch, making movement impossible.
+<P>
+For spheres the parameters are as follows:
+
+<UL>
+    <LI><I><B>Sphere radius:</B></I> controls the gap between the
+    centers of the single spheres. It also is the maximum radius
+    the spheres can have. This value is in output units
+    <LI><I><B>Connection radius:></B></I> controls the radius the
+    connection of the spheres has. As the spheres mathematically only
+    touch in one point connectors need to be added. Those connectors
+    are cylinders. The radius of those cylinders can maximally be so
+    that they touch one another. If this value is 1 then the cylinders
+    have their maximal radius, 0 would mean no connection
+    <LI><I><B>Curvature radius:</B></I> controls the radius of the
+    transition between sphere surface and cylinder surface. If this
+    value is 0 no transition is done and there will be a bend in the
+    surface. If the value is 1 the maximally possible area will be used
+    to go from sphere surface to cylinder syrface. When there is only
+    little or no space for the transition (e.g. when the connection
+    radius is close to 1) there might be a bend, even when this value
+    is close to 1.
+    <LI><I><B>Offset:</B></I> just like with the cubes this makes the
+    spheres smaller to make the puzzle actually assembable. This is in
+    output units. Keep the values small if you want to have working
+    puzzles.
+    <LI><I><B>Recursions:</B></I> controls the number of used triangles
+    to approximate the surfaces. A value one bigger will reslt in
+    approximately 4 times as many triangles and accordingly smoother
+    surface. Don't make it too big!
+</UL>
 
 <P>
-The STL-Export right now works only for cubes. Triangles and spheres are not
-  working. Also the shapes to export must not contain any variable voxels.
+The STL-Export right now works only for cubes and shperes. Triangles and
+the rhombic grid are not supported.
+Also the shapes to export must not contain any variable voxels.
 
 <HR>
 <B>Next:</B> <A NAME="tex2html536" HREF="node10.html">Future Plans</A>
