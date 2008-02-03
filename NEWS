@@ -1,3 +1,6 @@
+- a new space grid: rhombic tetraedras. With this grid it is possible
+  to build a lot of the Stewart Coffin puzzles and also puzzles with
+  diagonally cut cubes
 
 - STL export improved
   - can now export binary STL files which are much smaller
@@ -5,6 +8,14 @@
 
 - shapes can be removed using the status window making it easier
   to spot duplicats and remove them
+
+- a new possibility to export images. It is now possible to export the
+  current display within the 3D window into a vector graphic file like SVG
+
+- the help is now available within the program instead of a separate PDF
+  file. It includes the complete texts from the UserGuide including all
+  images. For those that want to print the texts it is possible to export
+  the help to the harddisk.
 
 - a function to fill holes in shapes
 
