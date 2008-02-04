@@ -164,7 +164,7 @@ configuration_c::configuration_c(void) {
   i_use_lightning = true;
   i_use_blendedRemoving = true;
   i_use_rubberband = false;
-  i_use_displayLists = true;
+  i_use_displayLists = false;
 
   i_window_pos_x = 30;
   i_window_pos_y = 30;
