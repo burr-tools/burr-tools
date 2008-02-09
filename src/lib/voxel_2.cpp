@@ -42,13 +42,14 @@ bool voxel_2_c::transform(unsigned int nr) {
   double shx, shy, shz;
   shx = shy = shz = 0;
 
-  for (unsigned int x = 0; x < sx; x++)
+  unsigned int index = 0;
+  for (unsigned int z = 0; z < sz; z++)
     for (unsigned int y = 0; y < sy; y++)
-      for (unsigned int z = 0; z < sz; z++) {
+      for (unsigned int x = 0; x < sx; x++) {
 
         if (((x+y+z) & 1) == 0) {
 
-          if (!isEmpty(x, y, z)) {
+          if (!isEmpty(index)) {
 
             double xp = x * sqrt(0.5);
             double yp = y * sqrt(0.5);
@@ -102,6 +103,7 @@ bool voxel_2_c::transform(unsigned int nr) {
             if (zn < minz) minz = zn;
           }
         }
+        index++;
       }
 
   /* when there are no voxels, we do nothing */
@@ -148,13 +150,14 @@ bool voxel_2_c::transform(unsigned int nr) {
   voxel_type *s = new voxel_type[voxelsn];
   memset(s, outside, voxelsn);
 
-  for (unsigned int x = 0; x < sx; x++)
+  index = 0;
+  for (unsigned int z = 0; z < sz; z++)
     for (unsigned int y = 0; y < sy; y++)
-      for (unsigned int z = 0; z < sz; z++) {
+      for (unsigned int x = 0; x < sx; x++) {
 
         if (((x+y+z) & 1) == 0) {
 
-          if (!isEmpty(x, y, z)) {
+          if (!isEmpty(index)) {
 
             double xp = x * sqrt(0.5);
             double yp = y * sqrt(0.5);
@@ -178,9 +181,10 @@ bool voxel_2_c::transform(unsigned int nr) {
             int yn = (int)(ypn+(ypn<0?-0.5:0.5));
             int zn = (int)(zpn+(zpn<0?-0.5:0.5));
 
-            s[(xn-minx) + nsx*((yn-miny) + nsy*(zn-minz))] = space[x + sx*(y + sy*z)];
+            s[(xn-minx) + nsx*((yn-miny) + nsy*(zn-minz))] = space[index];
           }
         }
+        index++;
       }
 
 

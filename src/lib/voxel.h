@@ -562,10 +562,13 @@ public:
    */
   bool isEmpty(unsigned int x, unsigned int y, unsigned int z) const { return getState(x, y, z) == VX_EMPTY; }
   bool isEmpty2(int x, int y, int z) const { return getState2(x, y, z) == VX_EMPTY; }
+  bool isEmpty(unsigned int i) const { return getState(i) == VX_EMPTY; }
   bool isFilled(unsigned int x, unsigned int y, unsigned int z) const { return getState(x, y, z) == VX_FILLED; }
   bool isFilled2(int x, int y, int z) const { return getState2(x, y, z) == VX_FILLED; }
+  bool isFilled(unsigned int i) const { return getState(i) == VX_FILLED; }
   bool isVariable(unsigned int x, unsigned int y, unsigned int z) const { return getState(x, y, z) == VX_VARIABLE; }
   bool isVariable2(int x, int y, int z) const { return getState2(x, y, z) == VX_VARIABLE; }
+  bool isVariable(unsigned int i) const { return getState(i) == VX_VARIABLE; }
   //@}
 
   //@{

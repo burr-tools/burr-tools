@@ -51,10 +51,11 @@ bool voxel_1_c::transform(unsigned int nr) {
   int maxy = -100000;
   int maxz = -100000;
 
-  for (unsigned int x = 0; x < sx; x++)
+  unsigned int index = 0;
+  for (unsigned int z = 0; z < sz; z++)
     for (unsigned int y = 0; y < sy; y++)
-      for (unsigned int z = 0; z < sz; z++)
-        if (!isEmpty(x, y, z)) {
+      for (unsigned int x = 0; x < sx; x++) {
+        if (!isEmpty(index)) {
 
           double xp = 0.5 + 0.5 * x;
           double yp = y * sqrt(0.75);
@@ -87,6 +88,8 @@ bool voxel_1_c::transform(unsigned int nr) {
           if (yn < miny) miny = yn;
           if (zn < minz) minz = zn;
         }
+        index++;
+      }
 
   // empty space, do nothing
   if (minx == 100000)
@@ -132,10 +135,11 @@ bool voxel_1_c::transform(unsigned int nr) {
   voxel_type *s = new voxel_type[voxelsn];
   memset(s, outside, voxelsn);
 
-  for (unsigned int x = 0; x < sx; x++)
+  index = 0;
+  for (unsigned int z = 0; z < sz; z++)
     for (unsigned int y = 0; y < sy; y++)
-      for (unsigned int z = 0; z < sz; z++)
-        if (!isEmpty(x, y, z)) {
+      for (unsigned int x = 0; x < sx; x++) {
+        if (!isEmpty(index)) {
 
           double xp = 0.5 + 0.5 * x;
           double yp = y * sqrt(0.75);
@@ -160,8 +164,10 @@ bool voxel_1_c::transform(unsigned int nr) {
           int yn = (int)floor(ypn);
           int zn = (int)(zpn+(zpn<0?-0.5:0.5));
 
-          s[(xn-minx) + nsx*((yn-miny) + nsy*(zn-minz))] = space[x + sx*(y + sy*z)];
+          s[(xn-minx) + nsx*((yn-miny) + nsy*(zn-minz))] = space[index];
         }
+        index++;
+      }
 
   // calculate the new hotspot position
   double xp = 0.5 +  hx * 0.5;
