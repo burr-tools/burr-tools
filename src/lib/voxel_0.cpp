@@ -45,18 +45,24 @@ bool voxel_0_c::transform(unsigned int nr) {
   int nsz = abs(tz)+1;
 
   voxel_type * s = new voxel_type[nsx*nsy*nsz];
-  for (unsigned int x = 0; x < sx; x++)
+  memset(s, VX_EMPTY, nsx*nsy*nsz);
+
+  unsigned int index = 0;
+  for (unsigned int z = 0; z < sz; z++)
     for (unsigned int y = 0; y < sy; y++)
-      for (unsigned int z = 0; z < sz; z++) {
-        tx = rotationMatrices[nr][0]*x + rotationMatrices[nr][1]*y + rotationMatrices[nr][2]*z + shx;
-        ty = rotationMatrices[nr][3]*x + rotationMatrices[nr][4]*y + rotationMatrices[nr][5]*z + shy;
-        tz = rotationMatrices[nr][6]*x + rotationMatrices[nr][7]*y + rotationMatrices[nr][8]*z + shz;
+      for (unsigned int x = 0; x < sx; x++) {
+        if (space[index]) {
+          tx = rotationMatrices[nr][0]*x + rotationMatrices[nr][1]*y + rotationMatrices[nr][2]*z + shx;
+          ty = rotationMatrices[nr][3]*x + rotationMatrices[nr][4]*y + rotationMatrices[nr][5]*z + shy;
+          tz = rotationMatrices[nr][6]*x + rotationMatrices[nr][7]*y + rotationMatrices[nr][8]*z + shz;
 
-        bt_assert(tx >= 0);
-        bt_assert(ty >= 0);
-        bt_assert(tz >= 0);
+          bt_assert(tx >= 0);
+          bt_assert(ty >= 0);
+          bt_assert(tz >= 0);
 
-        s[tx + nsx*(ty + nsy*tz)] = space[x + sx*(y + sy*z)];
+          s[tx + nsx*(ty + nsy*tz)] = space[index];
+        }
+        index++;
       }
 
   delete [] space;
