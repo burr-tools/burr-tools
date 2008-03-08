@@ -254,6 +254,7 @@ void assembler_1_c::AddRangeNode(unsigned int col, unsigned int piecenode, unsig
 assembler_1_c::assembler_1_c(assemblerFrontend_c * fe) :
   assembler_c(fe),
   avoidTransformedAssemblies(0), avoidTransformedMirror(0),
+  iterations(0),
   reducePiece(0)
 {
   next_row_stack.push_back(0);
@@ -1448,6 +1449,8 @@ void assembler_1_c::iterative(void) {
   unsigned int row, col;
 
   while (task_stack.size() > 0) {
+
+    iterations++;
 
     // wan can only restore the states 1, 2 and 5. Internal states will alway
     // be one of those, but the last state might differ, so continue looping

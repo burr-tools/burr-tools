@@ -185,6 +185,8 @@ private:
   bool debug;         // debugging enabled
   int debug_loops;    // how many loops to run ?
 
+  unsigned long iterations;
+
 protected:
 
   /* as this is only a back end doing the processing on the matrix, there needs to
@@ -276,6 +278,7 @@ public:
   bool getPiecePlacementSupported(void) { return true; }
   unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z);
   unsigned int getPiecePlacementCount(unsigned int piece);
+  unsigned long getIterations(void) { return iterations; }
 };
 
 #endif
