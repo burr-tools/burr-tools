@@ -195,8 +195,12 @@ void print(const assembly_c * a, const puzzle_c * p, unsigned int prob) {
   for (unsigned int i = 0; i < p->probShapeNumber(prob); i++)
     for (unsigned int j = 0; j < p->probGetShapeMax(prob, i); j++) {
 
-      pieces[pc] = p->getGridType()->getVoxel(p->probGetShapeShape(prob, i));
-      bt_assert(pieces[pc]->transform(a->getTransformation(pc)));
+      if (a->isPlaced(pc)) {
+
+        pieces[pc] = p->getGridType()->getVoxel(p->probGetShapeShape(prob, i));
+        bt_assert(pieces[pc]->transform(a->getTransformation(pc)));
+      } else
+        pieces[pc] = 0;
       pc++;
     }
 
@@ -214,12 +218,20 @@ void print(const assembly_c * a, const puzzle_c * p, unsigned int prob) {
       for (unsigned int x = 0; x < res->getX(); x++) {
         char c = ' ';
 
-        for (unsigned int pc = 0; pc < a->placementCount(); pc++)
-          if (pieces[pc]->isFilled2(x - (a->getX(pc) - pieces[pc]->getHx()),
-                                    y - (a->getY(pc) - pieces[pc]->getHy()),
-                                    z - (a->getZ(pc) - pieces[pc]->getHz()))) {
-            c = 'a' + pc;
-            break;
+        unsigned int pc = 0;
+
+        for (unsigned int p = 0; p < a->placementCount(); p++)
+
+          if (a->isPlaced(p)) {
+
+            if (pieces[p]->isFilled2(x - (a->getX(p) - pieces[p]->getHx()),
+                                     y - (a->getY(p) - pieces[p]->getHy()),
+                                     z - (a->getZ(p) - pieces[p]->getHz()))) {
+              c = 'a' + pc;
+              break;
+            }
+
+            pc++;
           }
 
         printf("%c", c);
@@ -239,7 +251,8 @@ void print(const assembly_c * a, const puzzle_c * p, unsigned int prob) {
   printf("\n");
 
   for (unsigned int pc = 0; pc < a->placementCount(); pc++)
-    delete pieces[pc];
+    if (pieces[pc])
+      delete pieces[pc];
 
   delete [] pieces;
 }
