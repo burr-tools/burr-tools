@@ -31,6 +31,124 @@
 
 #define ASSEMBLER_VERSION "2.0"
 
+void printMatrix(
+    const std::vector<unsigned int> & up,
+    const std::vector<unsigned int> & down,
+    const std::vector<unsigned int> & left,
+    const std::vector<unsigned int> & right,
+    const std::vector<unsigned int> & colCount,
+    const std::vector<unsigned int> & weight,
+    const std::vector<unsigned int> & min,
+    const std::vector<unsigned int> & max
+  ) {
+
+  // check consistency of matrix
+  {
+
+    unsigned long cnt = 0;
+
+    unsigned int c = right[0];
+    while (c) {
+
+      if (left[right[c]] != c) printf("lr %i\n", c);
+      if (right[left[c]] != c) printf("rl %i\n", c);
+      if (up[down[c]] != c) printf("ud %i\n", c);
+      if (down[up[c]] != c) printf("du %i\n", c);
+      cnt++;
+
+      unsigned int r = down[c];
+
+      while (r != c) {
+
+        if (left[right[r]] != r) printf("lr %i\n", r);
+        if (right[left[r]] != r) printf("rl %i\n", r);
+        if (up[down[r]] != r) printf("ud %i\n", r);
+        if (down[up[r]] != r) printf("du %i\n", r);
+        cnt++;
+
+        r = down[r];
+
+      }
+
+      c = right[c];
+    }
+
+    printf("checked %li nodes for consistency\n", cnt);
+  }
+
+  /* first find all the columns */
+  std::vector<unsigned int> columns;
+
+  unsigned int c = right[0];
+
+  while (c) {
+    columns.push_back(c);
+    c = right[c];
+
+    printf("n");
+  }
+
+  printf("\n");
+
+  for (unsigned int i = 0; i < columns.size(); i++) if (columns[i] > 100) printf("%i", columns[i] / 100); else printf(" "); printf("\n");
+  for (unsigned int i = 0; i < columns.size(); i++) if (columns[i] > 10)  printf("%i", (columns[i] / 10)%10); else printf(" "); printf("\n");
+  for (unsigned int i = 0; i < columns.size(); i++) printf("%i", columns[i] % 10); printf("\n");
+
+  for (unsigned int i = 0; i < columns.size(); i++) printf("%i", min[columns[i]]); printf("\n");
+  for (unsigned int i = 0; i < columns.size(); i++) printf("%i", max[columns[i]]); printf("\n");
+
+  std::vector<unsigned int> rows;
+
+  for (unsigned int i = 0; i < columns.size(); i++)
+    rows.push_back(down[columns[i]]);
+
+  /* all nodes are now in the first row below the header */
+  while (true) {
+
+    /* find the smallest real node ( must be > varivoxelEnd */
+    int r = -1;
+
+    for (unsigned int i = 0; i < rows.size(); i++)
+      if (rows[i] > left[0])
+        if (r == -1 || rows[i] < rows[r])
+          r = i;
+
+    if (r == -1) break;
+
+    unsigned int nodeS = rows[r];
+    unsigned int node = nodeS;
+
+    std::vector<int>matrixline;
+
+    matrixline.resize(rows.size());
+
+    do {
+
+      unsigned int col = colCount[node];
+
+      for (unsigned int i = 0; i < columns.size(); i++) {
+        if (columns[i] == col) {
+          col = i;
+          break;
+        }
+      }
+
+      matrixline[col] = weight[node];
+
+      node = right[node];
+
+      rows[col] = down[rows[col]];
+
+    } while (node != nodeS);
+
+    for (unsigned int i = 0; i < matrixline.size(); i++)
+      printf("%i", matrixline[i]);
+
+    printf("\n");
+
+  }
+}
+
 void assembler_1_c::GenerateFirstRow(unsigned int columns) {
 
   for (unsigned int i = 0; i < columns+1; i++) {
