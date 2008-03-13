@@ -21,17 +21,9 @@
 #include "puzzle.h"
 #include "assembly.h"
 
-#ifdef WIN32
-#include <windows.h>
-#else
 #include <pthread.h>
-#endif
 
-#ifdef WIN32
-unsigned long __stdcall start_th(void * c)
-#else
 void* start_th(void * c)
-#endif
 {
   assemblerThread_c * p = (assemblerThread_c*)c;
 
@@ -380,13 +372,8 @@ bool assemblerThread_c::start(bool stop_after_prep) {
     a = (a+1) / 2;
   }
 
-#ifdef WIN32
-  DWORD threadID;
-  return CreateThread(NULL, 0, start_th, this, 0, &threadID) != NULL;
-#else
   pthread_t th;
   return pthread_create(&th, 0, start_th, this) == 0;
-#endif
 }
 
 unsigned int assemblerThread_c::currentActionParameter(void) {

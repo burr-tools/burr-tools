@@ -27,13 +27,7 @@ AM_PROG_CC_C_O
 
 AC_CONFIG_FILES([Makefile src/Makefile burrtools.nsi])
 
-case "$target_os" in
-  mingw*)
-    ;;
-  *)
-    ACX_PTHREAD(, AC_MSG_ERROR([pthread library required for burrtools]))
-    ;;
-esac
+ACX_PTHREAD(, AC_MSG_ERROR([pthread library required for burrtools]))
 
 AC_ARG_WITH(fltk,
         [  --with-fltk             prefix of FLTK     (where to find bin/fltk-config)],
