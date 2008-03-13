@@ -45,7 +45,6 @@ Section "!${NAME} - ${VERSION}"
 
   File "${FLATDIR}\burrGui.exe"
   File "${FLATDIR}\*.txt"
-  File "${FLATDIR}\*.pdf"
 
   SetOutPath "$INSTDIR\examples"
   File "${FLATDIR}\examples\README.txt"
@@ -59,7 +58,6 @@ Section "Start Menu Entry"
   CreateDirectory "${SMDIR}"
   CreateShortCut "${SMDIR}\${NAME}.lnk" "$INSTDIR\${MAINPROG}"
   WriteINIStr "${SMDIR}\Homepage.url" "InternetShortcut" "URL" "${URL}"
-  CreateShortCut "${SMDIR}\User Guide.lnk" "$INSTDIR\UserGuide.pdf"
   CreateShortCut "${SMDIR}\Uninstall.lnk" "$INSTDIR\${UNINSTPROG}"
 SectionEnd
 
@@ -83,7 +81,6 @@ Section "Uninstall"
 
   Delete $INSTDIR\*.exe
   Delete $INSTDIR\*.txt
-  Delete $INSTDIR\*.pdf
   Delete $INSTDIR\examples\*
   RMDir  $INSTDIR\examples
   Delete $INSTDIR\${UNINSTPROG}
