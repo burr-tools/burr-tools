@@ -5,6 +5,13 @@ EXTRA_DIST = doc
 dist_doc_DATA = examples/README examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle \
                 examples/PelikanBurr.xmpuzzle examples/CubeInCage.xmpuzzle examples/Bermuda.xmpuzzle \
                 examples/BallRoom.xmpuzzle examples/SolidSixPieceBurrs.xmpuzzle \
+                examples/12PieceSeparation.xmpuzzle \
+                examples/AugmentedSecondStellation.xmpuzzle \
+                examples/BrokenSticks.xmpuzzle \
+                examples/DiagonalCube.xmpuzzle \
+                examples/HexSticks.xmpuzzle \
+                examples/PermutatedThirdStellation.xmpuzzle \
+                examples/PiecesOfEight.xmpuzzle \
                 AUTHORS COPYING README NEWS ChangeLog
 
 abs_builddir = @abs_builddir@
