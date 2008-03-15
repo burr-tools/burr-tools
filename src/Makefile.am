@@ -53,6 +53,7 @@ lib_libburr_a_SOURCES=\
     lib/symmetries_0.cpp \
     lib/symmetries_1.cpp \
     lib/symmetries_2.cpp \
+    lib/thread.cpp \
     lib/voxel.cpp \
     lib/voxel_0.cpp \
     lib/voxel_1.cpp \
@@ -98,6 +99,7 @@ lib_libburr_a_SOURCES=\
     lib/symmetries_0.h \
     lib/symmetries_1.h \
     lib/symmetries_2.h \
+    lib/thread.h \
     lib/types.h \
     lib/voxel.h \
     lib/voxel_0.h \

@@ -21,6 +21,7 @@
 #include "assembler.h"
 #include "disassembler.h"
 #include "bt_assert.h"
+#include "thread.h"
 
 class puzzle_c;
 class gridType_c;
@@ -29,7 +30,7 @@ class gridType_c;
  * be used to continue an already started solution, so that you can save you results
  * and continue later on
  */
-class assemblerThread_c : public assembler_cb {
+class assemblerThread_c : public assembler_cb, public thread_c {
 
   unsigned int action;
   unsigned int _solutionAction;
@@ -144,12 +145,7 @@ public:
 
   void setDropDisassemblies(bool drop) { _dropDisassemblies = drop; }
 
-#ifdef WIN32
-  friend unsigned long __stdcall start_th(void * c);
-#else
-  friend void* start_th(void * c);
-#endif
-
+  void run(void);
 };
 
 #endif

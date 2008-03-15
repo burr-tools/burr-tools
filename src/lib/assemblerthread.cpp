@@ -21,44 +21,40 @@
 #include "puzzle.h"
 #include "assembly.h"
 
-#include <pthread.h>
-
-void* start_th(void * c)
-{
-  assemblerThread_c * p = (assemblerThread_c*)c;
+void assemblerThread_c::run(void){
 
   try {
 
     /* first check, if there is an assembler available with the
      * problem, if there is one take that
      */
-    if (p->puzzle->probGetAssembler(p->prob))
-      p->assm = p->puzzle->probGetAssembler(p->prob);
+    if (puzzle->probGetAssembler(prob))
+      assm = puzzle->probGetAssembler(prob);
 
     else {
 
       /* otherwise we have to create a new one
        */
-      p->action = assemblerThread_c::ACT_PREPARATION;
-      p->assm = p->puzzle->getGridType()->findAssembler(p->puzzle, p->prob);
+      action = assemblerThread_c::ACT_PREPARATION;
+      assm = puzzle->getGridType()->findAssembler(puzzle, prob);
 
-      p->errState = p->assm->createMatrix(p->puzzle, p->prob, p->_keepMirrors, p->_keepRotations);
-      if (p->errState != assembler_c::ERR_NONE) {
+      errState = assm->createMatrix(puzzle, prob, _keepMirrors, _keepRotations);
+      if (errState != assembler_c::ERR_NONE) {
 
-        p->errParam = p->assm->getErrorsParam();
+        errParam = assm->getErrorsParam();
 
-        p->action = assemblerThread_c::ACT_ERROR;
+        action = assemblerThread_c::ACT_ERROR;
 
-        delete p->assm;
-        return 0;
+        delete assm;
+        return;
       }
 
-      if (p->_reduce) {
+      if (_reduce) {
 
-        if (!p->stopPressed)
-          p->action = assemblerThread_c::ACT_REDUCE;
+        if (!stopPressed)
+          action = assemblerThread_c::ACT_REDUCE;
 
-        p->assm->reduce();
+        assm->reduce();
       }
 
       /* set the assembler to the problem as soon as it is finished
@@ -66,44 +62,42 @@ void* start_th(void * c)
        * also restores the assembler state to a state that might
        * be saved within the problem
        */
-      p->errState = p->puzzle->probSetAssembler(p->prob, p->assm);
-      if (p->errState != assembler_c::ERR_NONE) {
-        p->action = assemblerThread_c::ACT_ERROR;
-        return 0;
+      errState = puzzle->probSetAssembler(prob, assm);
+      if (errState != assembler_c::ERR_NONE) {
+        action = assemblerThread_c::ACT_ERROR;
+        return;
       }
     }
 
-    if (p->return_after_prep) {
-      p->action = assemblerThread_c::ACT_PAUSING;
-      return 0;
+    if (return_after_prep) {
+      action = assemblerThread_c::ACT_PAUSING;
+      return;
     }
 
-    if (!p->stopPressed) {
+    if (!stopPressed) {
 
-      p->action = assemblerThread_c::ACT_ASSEMBLING;
-      p->assm->assemble(p);
+      action = assemblerThread_c::ACT_ASSEMBLING;
+      assm->assemble(this);
 
-      if (p->assm->getFinished() >= 1) {
-        p->action = assemblerThread_c::ACT_FINISHED;
-        p->puzzle->probFinishedSolving(p->prob);
+      if (assm->getFinished() >= 1) {
+        action = assemblerThread_c::ACT_FINISHED;
+        puzzle->probFinishedSolving(prob);
       } else
-        p->action = assemblerThread_c::ACT_PAUSING;
+        action = assemblerThread_c::ACT_PAUSING;
 
     } else
-      p->action = assemblerThread_c::ACT_PAUSING;
+      action = assemblerThread_c::ACT_PAUSING;
 
-    p->puzzle->probAddTime(p->prob, time(0)-p->startTime);
+    puzzle->probAddTime(prob, time(0)-startTime);
   }
 
   catch (assert_exception *a) {
 
-    p->ae = a;
-    p->action = assemblerThread_c::ACT_ERROR;
-    if (p->puzzle->probGetAssembler(p->prob))
-      p->puzzle->probRemoveAllSolutions(p->prob);
+    ae = a;
+    action = assemblerThread_c::ACT_ERROR;
+    if (puzzle->probGetAssembler(prob))
+      puzzle->probRemoveAllSolutions(prob);
   }
-
-  return 0;
 }
 
 assemblerThread_c::assemblerThread_c(puzzle_c * puz, unsigned int problemNum, unsigned int solAction, int par) :
@@ -129,17 +123,7 @@ solutionDrop(1)
 
 assemblerThread_c::~assemblerThread_c(void) {
 
-  if (puzzle->probGetAssembler(prob)) {
-
-    puzzle->probGetAssembler(prob)->stop();
-
-    while (!puzzle->probGetAssembler(prob)->stopped())
-#ifdef WIN32
-      Sleep(1);
-#else
-      usleep(10000);
-#endif
-  }
+  kill();
 
   if (disassm) {
     delete disassm;
@@ -372,8 +356,7 @@ bool assemblerThread_c::start(bool stop_after_prep) {
     a = (a+1) / 2;
   }
 
-  pthread_t th;
-  return pthread_create(&th, 0, start_th, this) == 0;
+  return thread_c::start();
 }
 
 unsigned int assemblerThread_c::currentActionParameter(void) {
@@ -389,5 +372,4 @@ unsigned int assemblerThread_c::currentActionParameter(void) {
   default:
     return 0;
   }
-
 }
