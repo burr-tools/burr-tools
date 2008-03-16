@@ -962,21 +962,14 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   int par = assemblerThread_c::PAR_REDUCE;
   if (KeepMirrors->value() != 0) par |= assemblerThread_c::PAR_KEEP_MIRROR;
   if (KeepRotations->value() != 0) par |= assemblerThread_c::PAR_KEEP_ROTATIONS;
+  if (DropDisassemblies->value() != 0) par |= assemblerThread_c::PAR_DROP_DISASSEMBLIES;
+  if (SolveDisasm->value() != 0) par |= assemblerThread_c::PAR_DISASSM;
+  if (JustCount->value() != 0) par |= assemblerThread_c::PAR_JUST_COUNT;
 
-  if (SolveDisasm->value() != 0)
-    if (JustCount->value() != 0)
-      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_COUNT_DISASM, par);
-    else
-      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_DISASM, par);
-  else
-    if (JustCount->value() != 0)
-      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_COUNT_ASM, par);
-    else
-      assmThread = new assemblerThread_c(puzzle, prob, assemblerThread_c::SOL_SAVE_ASM, par);
+  assmThread = new assemblerThread_c(puzzle, prob, par);
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
-  assmThread->setDropDisassemblies(DropDisassemblies->value() != 0);
 
   if (!assmThread->start(prep_only)) {
     fl_message("Could not start the solving process, the thread creation failed, sorry.");
