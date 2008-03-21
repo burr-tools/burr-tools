@@ -81,7 +81,8 @@ class voxelFrame_c : public Fl_Gl_Window {
     typedef enum {
       pieceColor,
       paletteColor,
-      anaglyphColor
+      anaglyphColor,
+      anaglyphColorL
     } colorMode;
     void setColorMode(colorMode color);
 

@@ -144,6 +144,7 @@
 #include "images/ViewModeNormal.xpm"
 #include "images/ViewModeColor.xpm"
 #include "images/ViewMode3D.xpm"
+#include "images/ViewMode3DL.xpm"
 
 pixmapList_c::~pixmapList_c(void) {
   for (unsigned int i = 0; i < list.size(); i++)

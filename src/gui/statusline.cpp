@@ -43,6 +43,10 @@ LStatusLine::LStatusLine(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
   b->image(pm.get(ViewMode3D_xpm));
   b->tooltip(" Display in anaglyph mode ");
 
+  b = mode->addButton();
+  b->image(pm.get(ViewMode3DL_xpm));
+  b->tooltip(" Display in anaglyph mode with glasses swapped ");
+
 #ifdef __APPLE__
   (new LFl_Box(0, 2, 0, 1, 1))->setMinimumSize(20, 0);
 #endif
@@ -58,11 +62,14 @@ void LStatusLine::setText(const char * t) {
 }
 
 voxelFrame_c::colorMode LStatusLine::getColorMode(void) const {
-  return mode->getSelected()==0
-    ?voxelFrame_c::pieceColor
-    :(mode->getSelected()==1
-        ?voxelFrame_c::paletteColor
-        :voxelFrame_c::anaglyphColor);
+
+  switch (mode->getSelected()) {
+    case 0: return voxelFrame_c::pieceColor;
+    case 1: return voxelFrame_c::paletteColor;
+    case 2: return voxelFrame_c::anaglyphColor;
+    case 3: return voxelFrame_c::anaglyphColorL;
+    default: return voxelFrame_c::pieceColor;
+  }
 }
 
 void LStatusLine::callback(Fl_Callback* fkt, void * dat) { mode->callback(fkt, dat); }

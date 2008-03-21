@@ -136,7 +136,7 @@ void voxelFrame_c::drawVoxelSpace() {
         float cx, cy, cz;
         drawer->calculateSize(shapes[piece].shape, &cx, &cy, &cz);
 
-        if (colors == anaglyphColor) {
+        if (colors == anaglyphColor || colors == anaglyphColorL) {
           glColor3f(0.3, 0.3, 0.3); glVertex3f(-1, -1, -1); glVertex3f(cx+1, -1, -1);
           glColor3f(0.6, 0.6, 0.6); glVertex3f(-1, -1, -1); glVertex3f(-1, cy+1, -1);
           glColor3f(0.1, 0.1, 0.1); glVertex3f(-1, -1, -1); glVertex3f(-1, -1, cz+1);
@@ -201,6 +201,7 @@ void voxelFrame_c::drawVoxelSpace() {
               switch (colors) {
                 case pieceColor:
                 case anaglyphColor:
+                case anaglyphColorL:
                   if ((x+y+z) & 1) {
                     cr = lightPieceColor(shape->r);
                     cg = lightPieceColor(shape->g);
@@ -238,7 +239,7 @@ void voxelFrame_c::drawVoxelSpace() {
                   break;
               }
 
-              if (colors == anaglyphColor) {
+              if (colors == anaglyphColor || colors == anaglyphColorL) {
                 double gr = 0.1*cb + 0.3*cr + 0.6*cg;
                 gr = 1 - (1-gr)/3;
                 cr = cg = cb = gr;
@@ -991,12 +992,27 @@ void voxelFrame_c::draw() {
     glColorMask(GL_FALSE, GL_TRUE, GL_TRUE, GL_TRUE);
   }
 
+  if (colors == anaglyphColorL) {
+    glPushMatrix();
+    glTranslatef(-0.04, 0, 0);
+    glRotatef(-1, 0, 1, 0);
+    glColorMask(GL_FALSE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    drawVoxelSpace();
+
+    glPopMatrix();
+    glTranslatef(0.04, 0, 0);
+    glRotatef(1, 0, 1, 0);
+    glColorMask(GL_TRUE, GL_FALSE, GL_FALSE, GL_TRUE);
+  }
+
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   drawVoxelSpace();
 
   glPopMatrix();
 
-  if (colors == anaglyphColor) {
+  if (colors == anaglyphColor || colors == anaglyphColorL) {
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
   }
 
