@@ -245,7 +245,7 @@ bool gridEditor_1_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
 
   int yf = y - yp*s2;
 
-  if (yp & 1) {
+  if ((yp+space->getY()) & 1) {
 
     x -= (int)((s2-yf) / sqrt(3)+0.5);
 
