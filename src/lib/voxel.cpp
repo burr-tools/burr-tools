@@ -119,10 +119,12 @@ void voxel_c::recalcBoundingBox(void) {
 
   bool empty = true;
 
-  for (unsigned int x = 0; x < sx; x++)
+  unsigned int index = 0;
+
+  for (unsigned int z = 0; z < sz; z++)
     for (unsigned int y = 0; y < sy; y++)
-      for (unsigned int z = 0; z < sz; z++)
-        if (get(x, y, z) != outside) {
+      for (unsigned int x = 0; x < sx; x++) {
+        if ((space[index] & 3) != VX_EMPTY) {
           if (x < bx1) bx1 = x;
           if (x > bx2) bx2 = x;
 
@@ -133,7 +135,11 @@ void voxel_c::recalcBoundingBox(void) {
           if (z > bz2) bz2 = z;
 
           empty = false;
-        }
+        } else {
+	  space[index] = 0;  // clear away all colors that might be left
+	}
+        index++;
+      }
 
   if (empty)
     bx1 = by1 = bz1 = bx2 = by2 = bz2 = 0;
