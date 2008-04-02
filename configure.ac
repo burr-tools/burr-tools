@@ -68,6 +68,10 @@ GUI_LD_ADD="$GUI_LD_ADD `$LIBPNG_CONFIG --libs`"
 case "$target_os" in
   mingw*)
     ;;
+  darwin*)
+   AX_CHECK_GL
+    ;;
+
   *)
     MDL_HAVE_OPENGL
 
