@@ -24,7 +24,12 @@ thread_c::~thread_c(void) {
   kill();
 }
 
-void * start_thread(void *dat) {
+#ifdef WIN32
+unsigned long __stdcall start_thread(void * dat)
+#else
+void* start_thread(void * dat)
+#endif
+{
 
   thread_c * th = (thread_c*)dat;
 
@@ -37,16 +42,26 @@ void * start_thread(void *dat) {
 
 bool thread_c::start() {
 
+#ifdef WIN32
+  DWORD ii;
+  id = CreateThread(NULL, 0, start_thread, this, 0, &ii);
+  return id != NULL;
+#else
   return pthread_create(&id, 0, start_thread, this) == 0;
+#endif
 }
 
 void thread_c::kill() {
 
+#ifdef WIN32
+  TerminateThread(id, 0);
+#else
   if (pthread_kill(id, SIGTERM) == 0) {
 
     pthread_join(id, 0);
 
     running = false;
   }
+#endif
 }
 

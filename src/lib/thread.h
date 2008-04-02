@@ -18,14 +18,23 @@
 #ifndef __THREAD_H__
 #define __THREAD_H__
 
+#ifdef WIN32
+#include <windows.h>
+#else
 #include <pthread.h>
+#endif
 
 /* this class encapsulates a single thread */
 class thread_c {
 
   private:
 
+#ifdef WIN32
+    HANDLE id;
+#else
     pthread_t id;
+#endif
+
     bool running;
 
   public:
@@ -54,7 +63,11 @@ class thread_c {
      */
     virtual void run(void) = 0;
 
-    friend void * start_thread(void *dat);
+#ifdef WIN32
+    friend unsigned long __stdcall start_thread(void * dat);
+#else
+    friend void * start_thread(void * dat);
+#endif
 
 };
 
