@@ -13,6 +13,9 @@
 
 <UL>
   <LI><A NAME="tex2html442" HREF="node6.html#SECTION02310000000000000000">Spacegrids</A>
+  <UL>
+    <LI><A NAME="tex2html445" HREF="node6.html#SECTION0231100000000000000">Sphere Grid Limitations</A>
+  </UL>
   <LI><A NAME="tex2html443" HREF="node6.html#SECTION02320000000000000000">Creating Shapes</A>
   <LI><A NAME="tex2html444" HREF="node6.html#SECTION02330000000000000000">Grid Functions</A>
   <UL>
@@ -59,6 +62,81 @@
 </UL>
 <!--End of Table of Child-Links-->
 <HR>
+
+<H1><A NAME="SECTION02310000000000000000">Spacegrids</A></H1>
+
+<P>
+Currently B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> handles cubic grids, grids that use prisms
+  with a base shape that is an equilateral triangle, and tightly packed
+  spheres. The spacegrid is used for all shapes within a puzzle, so you cannot
+  have one shape made out of cubes together with one using another grid. The
+  spacegrid needs to be set <EM>before</EM> you start with the puzzle. It
+  cannot be changed later on. The gridtype is selected when you use the
+  <I><B>New</B></I> option. Some gridtypes support setting some
+  parameters of the grid, like scaling or skew. These parameters can be used
+  to suppress certain orientations for shapes but, not to create new puzzle
+  shapes.
+
+<P>
+Same for cubes: there might be a parameter that scales the cubes in
+  y-direction. If that values differs from the x-direction value it will be
+  possible to turn the cubes only by 180°  when rotated around the x-axis.
+
+  <P>The following chapters will explain some details regardins some of the available grids.
+
+  <H2><A NAME="SECTION0231100000000000000">Sphere Grid Limitations</H2>
+
+  <P>Actually there is just one important thing to know about the sphere
+  grid: It has a relatively severe limitation. This limitation makes it
+  impossible to properly handle shapes with disconnected units.
+  <P>I don't want to go into too much detail here but the limitation
+  comes from the fact that BT can only handle a finite number of
+  symmetries.
+  <P>Internally BT has a list of all possible transformation matrices
+  that might transform a shape back onto itself, e.g the shape looks
+  identical to the original untransformed shape. This list of
+  transformations needs to be finite (and as small as possible, because
+  longer lists make the program slower).
+  <P>The sphere grid doesn't have this property. To display the problem
+  let's assume we use the sphere grid in just 2 dimensions and use a
+  square arrangement of spheres. We place one sphere at the origin and
+  add 2 more spheres so that both of those additional spheres have the
+  same distance from the sphere in the origin. If we now place one of
+  the 2 spheres at coordinate (a;a) and the other at (a;-a) them both of
+  them will have the same distance from the sphere in the origin.
+  <P>The 3 spheres form a triangle with a right angle at the origin.
+  This triangle has a symmetry axis which is a horizontal line from
+  the origin. That means a rotation of 180 degrees around the axis y=0
+  will result in an identical looking triangle with the outer spheres
+  swapped. This is one of the transformations mentioned above that BT
+  has to check. (See <A HREF="FigureSphereGridProblem">Sphere Grid Problem</A> left image)
+  <P>If we now move the 2 outer spheres by one unit each. One to the
+  right and the other down. Which results in those spheres at positions
+  (a+1;a-1) and (a-1;-a-1). We again get a rectangular triangle of a slightly
+  different size. This triangle again has a symmetry axis but this axis
+  is slightly rotated clock wise. This would be a different
+  transformation BT has to handle. (See <A HREF="FigureSphereGridProblem">Sphere Grid Problem</A> right image)
+  <P>You can imagine that there is an infinite number of possibilities
+  to place the spheres, resulting in an infinite number of possible
+  rotation axis and thus an infinite number of transformation matrices.
+  <P>BurrTools can only handle a finite number of possibilities. I have
+  limited those to the possibilities that you can encounter when you use
+  only completely connected shapes. This problem only occurs because
+  the sphere itself has an infinite number of possible rotation axes.
+  <P>Connected in this context means that that it is possible to get
+  from each sphere to each other sphere by just jumping from one sphere
+  to the 12 possible neighbours and the further on via the neighbours.
+  <P>Some of the unconnected shapes might be possible as well but there
+  is no warrant, so if you want to be sure stay with "proper" sphere
+  shapes.
+
+<CENTER>
+<A NAME="FigureSphereGridProblem"></A><A NAME="1538"></A>
+<IMG SRC="SphereGridProblem.png"><BR>
+<STRONG>Figure:</STRONG>Sphere Grid Limitation
+</CENTER>
+
+
 
 <H1><A NAME="SECTION02300000000000000000"></A><A NAME="ChapterShapes"></A>Creating Shapes</H1>
   
@@ -108,25 +186,6 @@ All functions and tools for creating and editing shapes - once the grid type
     work by imposing restrictions on the possible placements of the pieces
     (&rarr;<A HREF="#AddingColour">AddingColor</A>).</DD>
 </DL>
-
-<H1><A NAME="SECTION02310000000000000000">Spacegrids</A></H1>
-
-<P>
-Currently B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> handles cubic grids, grids that use prisms
-  with a base shape that is an equilateral triangle, and tightly packed
-  spheres. The spacegrid is used for all shapes within a puzzle, so you cannot
-  have one shape made out of cubes together with one using another grid. The
-  spacegrid needs to be set <EM>before</EM> you start with the puzzle. It
-  cannot be changed later on. The gridtype is selected when you use the
-  <I><B>New</B></I> option. Some gridtypes support setting some
-  parameters of the grid, like scaling or skew. These parameters can be used
-  to suppress certain orientations for shapes but, not to create new puzzle
-  shapes.
-
-<P>
-Same for cubes: there might be a parameter that scales the cubes in
-  y-direction. If that values differs from the x-direction value it will be
-  possible to turn the cubes only by 180 °  when rotated around the x-axis.
 
 <H1><A NAME="SECTION02320000000000000000"></A><A NAME="CreatingShapes"></A>Creating Shapes</H1>
 
@@ -185,7 +244,7 @@ Since shapes are defined as objects in 3-D space, and
   somehow to be able to define a more feasible subspace to work with. This,
   and some more advanced scalings of the shapes, can be accomplished with the
   functions on the <I><B>Size</B></I> subtab
-  (Figure <A HREF="#FigureSizeSubtab">SizeSubtab</A>) of the <I><B>Edit</B></I>
+  (Figure <A HREF="FigureSizeSubtab">SizeSubtab</A>) of the <I><B>Edit</B></I>
   panel.
   
 <CENTER>  
