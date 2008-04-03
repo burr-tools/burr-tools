@@ -957,6 +957,11 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
     return;
   }
 
+  if (puzzle->probPieceNumber(prob) > 255) {
+    fl_message("Sorry currently BurrTools can not handle more than 255 pieces per problem");
+    return;
+  }
+
   bt_assert(assmThread == 0);
 
   int par = assemblerThread_c::PAR_REDUCE;
