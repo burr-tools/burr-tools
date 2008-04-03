@@ -24,11 +24,7 @@
 
 #include <math.h>
 
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#else
-#include <GL/gl.h>
-#endif
+#include <FL/gl.h>
 
 // this is used to shift one side of the cubes so that they slightly differ
 // from the side of the next cube, so that (in case of frames) the sides
