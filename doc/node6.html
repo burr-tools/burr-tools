@@ -1172,7 +1172,32 @@ To be done.
 
 <P>
 Sometimes it is possible to emulate edge matching problems by using notches
-  and dents at the outside of the shapes.
+and dents at the outside of the shapes.
+
+<P>
+As example let us have a look at a puzzle designed by Marcel Gillen:
+"Octopuz". This puzzle has pieces that are made out of 2 quatrominos. Those 2
+quatrominos are connected to each other with a link and they can be turned so
+that in the end each piece has 4 possible shapes depending on how you rotate
+one halve against the other.
+
+<P>
+These shapes can be modeled using edge matching simply taking the shapes apart
+into their 2 halves, and colorize the touching sufaces of she 2 shapes of one
+piece with the same color and a different color for each shape.
+
+<P>
+To model such a color edge matching problem we need to scale up by at least 3.
+With this scaling we are able to add dents and grooves to the basic cube so
+that always 2 and only those 4 cubes match independent of the rotation of one
+cube relative to the other. Figure <A HREF="#EmulEdge">Edge mathing</A> shows 5 possible such pairs of cubes.
+The 2 cubes in one column always are a matching pair.
+
+<CENTER>
+<A NAME="EmulEdge"></A><A NAME="1931"></A>
+<IMG SRC="Emulation_EdgeMatching.png"><BR>
+<STRONG>Figure:</STRONG>Emulation edge matching cubes
+</CENTER>
 
 <H2><A NAME="SECTION023126000000000000000">Other possibilities</A></H2>
 
