@@ -474,7 +474,7 @@ Flu_File_Chooser :: Flu_File_Chooser( const char *pathname, const char *pat, int
 
   lastSelected = NULL;
   filename.labelsize( 12 );
-  filename.when( FL_WHEN_ENTER_KEY_ALWAYS );
+  filename.when( FL_WHEN_ENTER_KEY );
   filename.callback( _filenameCB, this );
   filename.value( "" );
 
@@ -1043,7 +1043,6 @@ void Flu_File_Chooser :: recursiveScan( const char *dir, FluStringVector *files 
   for( int i = 0; i < num; i++ )
     {
       name = e[i]->d_name;
-      printf("%s\n", name);
 
       // if 'name' ends in '/' or '\', remove it
       if( name[strlen(name)-1] == '/' || name[strlen(name)-1] == '\\' )
@@ -1296,6 +1295,8 @@ Flu_File_Chooser :: FileInput :: ~FileInput()
 
 int Flu_File_Chooser :: FileInput :: handle( int event )
 {
+  set_changed();
+
   if( event == FL_KEYDOWN )
     {
       if( Fl::event_key(FL_Tab) )
@@ -1787,11 +1788,14 @@ void Flu_File_Chooser :: okCB()
 		return;
 	      }
 
-	  // prepend the path
-	  FluSimpleString path = currentDir + filename.value();
-	  filename.value( path.c_str() );
-	  filename.position( filename.size(), filename.size() );
-	  do_callback();
+	  // prepend the path but only if we have not yet done so
+          FluSimpleString path = filename.value();
+          if ( path.substr( 0, currentDir.size()) != currentDir) {
+  	    path = currentDir + filename.value();
+	    filename.value( path.c_str() );
+	    filename.position( filename.size(), filename.size() );
+	    do_callback();
+          }
 	  hide();
 	}
     }
@@ -4099,7 +4103,6 @@ void Flu_File_Chooser :: cd( const char *path )
   // see if the user pushed <Enter> in the filename input field
   if( filenameEnterCallback )
     {
-      printf( "filenameEnterCallback\n" );
       filenameEnterCallback = false;
 
 #ifdef WIN32
