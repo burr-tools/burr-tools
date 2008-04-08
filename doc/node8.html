@@ -103,7 +103,7 @@ In order to make the solver run, a problem must be selected first. A list of
     within the computer so it is useful to just save some information while
     solving the puzzle and then later on, when everything is finished,
     recalculate the disassemblies for the interesting solutions.</DD>
-<DT><STRONG>Keep Mirror Solutions</STRONG></DT>
+<DT><STRONG><I>Keep Mirror Solutions</I></STRONG></DT>
 <DD>When this box is checked, the program will
     not remove mirror solutions. Two solutions are mirror solutions are
     solutions when one solution is a real mirror of the other. This can happen
@@ -114,7 +114,14 @@ In order to make the solver run, a problem must be selected first. A list of
     are still removed. This option is useful when using piece ranges, as the
     mirror removal would remove too many solutions, like solutions with
     different piece sets.</DD>
-<DT><STRONG>Sort by</STRONG></DT>
+<DT><STRONG><I>Keep Rotated Solutions</I></STRONG></DT>
+<DD>When this box is checked, the program will not exclude solutions that are
+only mirrors of other solutions. So the final solution count will be wrong. It
+will even be completely unpredictable somewhere in the range of the right
+number of solutions and a 120 fold of that value (for spheres). This option is
+useful if you just want to know if there are any solutions <EM>at all</EM>.
+</DD>
+<DT><STRONG><I>Sort by</I></STRONG></DT>
 
 <DD>This option lets you choose the order in which
     the solutions are presented while the solver runs. There are 3
@@ -129,7 +136,7 @@ In order to make the solver run, a problem must be selected first. A list of
       sum of all moves required to completely disassemble the puzzle.
 </OL>    
 </DD>
-</DT><STRONG>Drop</STRONG></DT>
+</DT><STRONG><I>Drop</I></STRONG></DT>
 <DD>If a puzzle has very many solutions, it might not
     be necessary or even possible to save all of them. E.g for polyomino-like
     puzzles it might be nice to keep just every 1000th of the millions of
@@ -138,7 +145,7 @@ In order to make the solver run, a problem must be selected first. A list of
     every solution, a 100 means you keep the first and the 101st and the 201st
     and so on.
 </DD>
-<DT><STRONG>Limit</STRONG></DT>
+<DT><STRONG><I>Limit</I></STRONG></DT>
 <DD>Limits the number of solutions to be saved. There
     will never be more than the specified number of solutions in the list.
     When the list is full the program has 2 choices:
