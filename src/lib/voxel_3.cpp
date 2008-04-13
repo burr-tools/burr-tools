@@ -17,15 +17,7 @@
  */
 #include "voxel_3.h"
 
-#include "tabs_0/tablesizes.inc"
-
-static const int rotationMatrices[NUM_TRANSFORMATIONS_MIRROR][9] = {
-#include "tabs_0/rotmatrix.inc"
-};
-
 bool voxel_3_c::transform(unsigned int nr) {
-
-  bt_assert(nr < NUM_TRANSFORMATIONS_MIRROR);
 
   // the first thing to do here is to ensure that all 3 dimensions are a multiple of 5
   {
