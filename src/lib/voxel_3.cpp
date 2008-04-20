@@ -374,6 +374,10 @@ void voxel_3_c::resizeInclude(int & px, int & py, int & pz) {
   if (py >= (int)getY()) nsy += (py-getY()+1);
   if (pz >= (int)getZ()) nsz += (pz-getZ()+1);
 
+  if (nsx % 5) nsx += 5-nsx%5;
+  if (nsy % 5) nsy += 5-nsy%5;
+  if (nsz % 5) nsz += 5-nsz%5;
+
   resize(nsx, nsy, nsz, 0);
   translate(tx, ty, tz, 0);
 }
