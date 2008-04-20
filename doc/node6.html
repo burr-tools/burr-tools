@@ -15,6 +15,12 @@
   <LI><A NAME="tex2html442" HREF="node6.html#SECTION02310000000000000000">Spacegrids</A>
   <UL>
     <LI><A NAME="tex2html445" HREF="node6.html#SECTION0231100000000000000">Sphere Grid Limitations</A>
+    <LI><A NAME="tex2html445A" HREF="SECTION0231110000000000000">The rhombic grid</A>
+    <UL>
+      <LI><A NAME="tex2html445A" HREF="SECTION0231111000000000000">Structure of the rhombic grid</A>
+      <LI><A NAME="tex2html445B" HREF="SECTION0231112000000000000">The basic building blocks</A>
+      <LI><A NAME="tex2html445C" HREF="SECTION0231113000000000000">The shape dualism</A>
+    </UL>
   </UL>
   <LI><A NAME="tex2html443" HREF="node6.html#SECTION02320000000000000000">Creating Shapes</A>
   <LI><A NAME="tex2html444" HREF="node6.html#SECTION02330000000000000000">Grid Functions</A>
@@ -136,7 +142,122 @@ Same for cubes: there might be a parameter that scales the cubes in
 <STRONG>Figure:</STRONG>Sphere Grid Limitation
 </CENTER>
 
+<H2><A NAME="SECTION0231110000000000000">The rhombic grid</H2>
 
+<P>This grid allows the modelling puzzles that have diagonally cut cubes, but
+more importantly it allows modelling a lot of rhombic dodecahedral based
+puzzles like Stewart Coffin designs.
+
+<P>The rhombic grid is much more intricate compared to basic grids like the cube
+grid. So please read this part of the manual thoroughly to avoid problems.
+
+<P>Many of the text below only talks about the rhombic based puzzles and
+indeed puzzles that just have diagonally cut cubes don't suffer the complexity
+but I still suggest to read on because it might shed some light on some not so
+obvious behaviour of the program.
+
+<H3><A NAME="SECTION0231111000000000000">Structure of the rhombic grid</H3>
+
+The basic unit of the rhombic grid is a tetrahedron that results when cutting
+the cube along the 6 45 degree diagonal planes. The result are 24 identical
+but irregular tetrahedra. To see what I mean have a look at the image below.
+It contains 2 different versions of the cut up cube. One where the tetrahedron
+assemble the complete cube and another exploded version of the same cube. To
+make distinction of the tetrahedra easier I have colourized the tetrahedra
+layer by layer, always 4 with the same colour. Additionally I made the voxels
+variable in the first cube so that is is easier to see what shapes they have.
+
+<P>Those variable voxels are a nice trick to see the inner structure of
+shapes.
+
+<CENTER>  
+<A NAME="RhombicCubeCutting"></A><A NAME="1538"></A>
+<IMG SRC="rhTetrahedra.png"><BR>
+<STRONG>Figure:</STRONG>Cutting of the cubes into the units of the rhombic grid
+</CENTER>
+
+<P>The next important thing to know is how are these 24 tetrahedra managed. The
+picture below shows how it is done. 
+
+<CENTER>  
+<A NAME="RhombicCubeGrid"></A><A NAME="1538"></A>
+<IMG SRC="rh555grid.png"><BR>
+<STRONG>Figure:</STRONG>Mapping of the rhombic tetrahedra to a cube grid
+</CENTER>
+
+<P>It can be seen that the 25 voxels of the rhombic grid are mapped onto a 5x5x5
+cube of little cubes. Each tetrahedron is represented by exactly one cube.
+
+<P>Between those 24 cubes are 125-24 = 101 empty cubes that don't belong
+anywhere. It you ever do something manually and modify the grid directly you
+must take care to always leave those cubes empty or
+B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> will crash. But as long as you only
+use the program it will take care that that doesn't happen.
+
+<P>Now given those basic units how to we build a rhombic dodecahedron from it?
+
+<H3><A NAME="SECTION0231112000000000000">The basic building blocks</H3>
+
+<P>The basic building blocks are basic units that Stewart Coffin used in his
+puzzle books to describe the shape of the pieces for his puzzles. This was
+necessary because of the limited information that can be given using 2
+dimensional drawings. But those blocks are still useful to gain an
+understanding in the mechanics of the rhombic grid.
+
+<P>So let's start with the Rhombic Dodecahedron (RD). From that shape we can derive
+all other building blocks.
+
+<P>The rhombic dodecahedron is best built starting with a cube of size 2x2x2.
+That cube can be easily made my creating a 1x1x1 cube (24 voxels) and scaling
+is up by 2. Now "cut" away the outer corners of the cube so that all that is
+left is a diamond shaped square rod. Repeat the same process for the other
+axes. (More details in the RD-Tutorial)
+
+<CENTER>  
+<A NAME="RhombicRDConstruction"></A><A NAME="1538"></A>
+<IMG SRC="rhRdconstruction.png"><BR>
+<STRONG>Figure:</STRONG>How to make a rhombic dodecahedron
+</CENTER>
+
+<P>Don't create the dodecahedron by adding 4 pyramids to the 6 sides of the
+1x1x1 sized cube. Why that doesn't work is explained below.
+
+<P>If you rotate the rhombic dodecahedron so that you can see only a square
+can be seen and then remove 3 quarters of the square so that you get a square
+with halve of the length you will get a six-sided centre block. 6 Pieces of this 
+block will nearly always be the centre of the puzzle. Other blocks will be
+"glued" to the faces of those 6 six-sided centre blocks.
+
+<P>Cutting up the block further will result in the other blocks like the 2
+prism blocks, square octahedron, square pyramid, tetrahedral building block.
+
+<H3><A NAME="SECTION0231113000000000000">The shape dualism</H3>
+
+<P>Have a look at the image blow. You can see 2 connected identical shapes. They
+are 2 diagonal star pieces. On the right image the voxels are also made
+variable to make the inner structure of the shapes visible. What can be seen
+is that both shapes do have the same outer appearance but a completely
+different inner structure.
+
+<CENTER>  
+<A NAME="RhombicRDConstruction"></A><A NAME="1538"></A>
+<IMG SRC="rhShapeDualism1.png"><IMG SRC="rhShapeDualism2.png"><BR>
+<STRONG>Figure:</STRONG>The shape dualism
+</CENTER>
+
+<P>This can only result in problems and it sure does. All building blocks down
+to the tetrahedral building block can be made in 2 different ways.
+B<SMALL>URR</SMALL>T<SMALL>OOLS</SMALL> will not be able to match those 2
+ways to build a shape. If you make a problem with 2 shapes that are made those
+2 different ways and choose one to be the piece and one to be the result you
+will get no solutions.
+
+<P>This all sounds like a severe problem but luckily it can be solved in a
+very simple way by scaling all shapes up by 2. The program will then make
+sure that all shapes are build the same way.
+
+<P>So keep in mind: When something doesn't work as expected or to make a final
+check of the results scale up by two and check again.
 
 <H1><A NAME="SECTION02300000000000000000"></A><A NAME="ChapterShapes"></A>Creating Shapes</H1>
   
