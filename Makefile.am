@@ -21,7 +21,6 @@ dist-win32: all
 	$(RM) -r $(win32dir)
 	$(INSTALL) -d                        $(win32dir)
 	$(INSTALL) -d                        $(win32dir)/examples
-	$(INSTALL) -m755 src/burrTxt.exe     $(win32dir)/
 	$(INSTALL) -m755 src/gui/burrGui.exe $(win32dir)/
 	$(STRIP) $(win32dir)/*.exe
 	upx --lzma $(win32dir)/*.exe
