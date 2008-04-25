@@ -1,3 +1,5 @@
+------------- Version 0.4.0 Apr 04 2008
+
 - a new space grid: rhombic tetraedras. With this grid it is possible
   to build a lot of the Stewart Coffin puzzles and also puzzles with
   diagonally cut cubes
@@ -25,7 +27,7 @@
 - the window position was saved at shutdown of the program but not
   properly restored. Now it is
 
-------------- Version 0.3.1
+------------- Version 0.3.1 Jul 29 2007
 
 - new edit method. It is now possible to add voxels by clicking into the
   3d view.
@@ -56,7 +58,7 @@
 - fix crash when animating a solution that has been removed by the ongoing
   solving
 
-------------- Version 0.3.0
+------------- Version 0.3.0 Jun 13 2007
 
 - a new assembly algorithm that is much faster with puzzles with many
   multipieces and that has many new possibilities for the future. The
@@ -78,12 +80,12 @@
   - generate assembly and disassemly image sequences
   - fix bug with problem selection
 
-------------- Version 0.2.3
+------------- Version 0.2.3 Apr 21 2007
 
 - fix another problem that resulted in too many solutions removed for 
   puzzles with mirrors
 
-------------- Version 0.2.2
+------------- Version 0.2.2 Apr 15 2007
 
 - fix problems with mirror solution detection that somethimes removed too
   many solutions
@@ -94,7 +96,7 @@
 - (hopefully) fix a hanging program that sometimes occured when the prepare
   button was used
 
-------------- Version 0.2.1
+------------- Version 0.2.1 Mar 21 2007
 
 - add many new symmetry groups, many thanks to Markus Götz
   - 3 new cube groups added
@@ -147,7 +149,7 @@
 - the mirror check was not able to correctly handle 2 pieces of identical
   shape. They should not be there but when they are they are now handled right
 
-------------- Version 0.2.0
+------------- Version 0.2.0 Feb 11 2007
 
 - write required base for other space grids and partially implement
   triangular prisms (no disassembling right now)
@@ -186,7 +188,7 @@
 - smaller optimisations for preparation and assembly phase (around 10%
   speed improvement)
 
-------------- Version 0.1.9
+------------- Version 0.1.9 May 06 2006
 
 - the fade out of pieces that are removed in the assembly animation can be
   turned on and off
@@ -272,7 +274,7 @@
   data. So if you have files like that that didn't load properly you
   can give it a new try with this version
 
-------------- Version 0.1.8b
+------------- Version 0.1.8b Nov 27 2005
 
 - Fix Bug found by Markus Götz that made the program crash, when all 
   piece were cubes
