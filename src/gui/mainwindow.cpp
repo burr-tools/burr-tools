@@ -1646,7 +1646,7 @@ void mainWindow_c::StatPieceInfo(unsigned int pc) {
     unsigned int fx = puzzle->getShape(pc)->countState(voxel_c::VX_FILLED);
     unsigned int vr = puzzle->getShape(pc)->countState(voxel_c::VX_VARIABLE);
 
-    snprintf(txt, 100, "Shape S%i has %i cubes (%i fixed, %i variable)", pc+1, fx+vr, fx, vr);
+    snprintf(txt, 100, "Shape S%i has %i voxels (%i fixed, %i variable)", pc+1, fx+vr, fx, vr);
     Status->setText(txt);
   }
 }
@@ -1667,7 +1667,7 @@ void mainWindow_c::StatProblemInfo(unsigned int pr) {
 
     if (cnt == cntMin) {
 
-      snprintf(txt, 100, "Problem P%i result can contain %i - %i cubes, pieces (n = %i) contain %i cubes", pr+1,
+      snprintf(txt, 100, "Problem P%i result can contain %i - %i voxels, pieces (n = %i) contain %i voxels", pr+1,
           puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
           puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
           puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE),
@@ -1675,7 +1675,7 @@ void mainWindow_c::StatProblemInfo(unsigned int pr) {
 
     } else {
 
-      snprintf(txt, 100, "Problem P%i result can contain %i - %i cubes, pieces (n = %i) contain %i-%i cubes", pr+1,
+      snprintf(txt, 100, "Problem P%i result can contain %i - %i voxels, pieces (n = %i) contain %i-%i voxels", pr+1,
           puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
           puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
           puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE),
@@ -2663,7 +2663,7 @@ void mainWindow_c::update(void) {
                    "You have to start from the beginning, sorry");
         break;
       case assembler_c::ERR_PIECE_WITH_VARICUBE:
-        fl_message("Shape %i is used as piece and contains variable cubes, that is not allowed", assmThread->getErrorParam()+1);
+        fl_message("Shape %i is used as piece and contains variable voxels, that is not allowed", assmThread->getErrorParam()+1);
         selectShape = assmThread->getErrorParam();
         break;
       case assembler_c::ERR_PUZZLE_UNHANDABLE:

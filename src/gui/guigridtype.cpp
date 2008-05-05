@@ -86,7 +86,7 @@ const char * guiGridType_c::getName(void) const {
     case gridType_c::GT_BRICKS: return "Brick";
     case gridType_c::GT_TRIANGULAR_PRISM: return "Triangular Prism";
     case gridType_c::GT_SPHERES: return "Spheres";
-    case gridType_c::GT_RHOMBIC: return "Rhombic Tetraedra";
+    case gridType_c::GT_RHOMBIC: return "Rhombic Tetrahedra";
   }
 
   return 0;

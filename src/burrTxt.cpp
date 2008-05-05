@@ -203,7 +203,7 @@ int main(int argv, char* args[]) {
         printf("Piece %i can be place nowhere in the result shape\n", assm->getErrorsParam());
         return 0;
       case assembler_c::ERR_PIECE_WITH_VARICUBE:
-        printf("Piece %i contains variable cubes, puzzle can not be solved\n", assm->getErrorsParam());
+        printf("Piece %i contains variable voxels, puzzle can not be solved\n", assm->getErrorsParam());
         return 0;
       case assembler_c::ERR_NONE:
         /* no error case */

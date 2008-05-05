@@ -253,14 +253,14 @@ ToolsButtons::ToolsButtons(int x, int y, int w, int h) : layouter_c(x, y, w, h) 
   new LFlatButton_c(3, 5, 1, 1, pm.get(InOut_Color_Variable_In_xpm), pm.get(InOut_Disabled_Variable_In_xpm),
       " Make inside variable ", cb_ToolsButtons_stub, 18);
   new LFlatButton_c(3, 7, 1, 1, pm.get(InOut_Color_RemoveColor_In_xpm), pm.get(InOut_Disabled_RemoveColor_In_xpm),
-      " Remove Colours from inside cubes ", cb_ToolsButtons_stub, 20);
+      " Remove Colours from inside voxels ", cb_ToolsButtons_stub, 20);
 
   new LFlatButton_c(4, 3, 1, 1, pm.get(InOut_Color_Fixed_Out_xpm), pm.get(InOut_Disabled_Fixed_Out_xpm),
       " Make outside fixed ", cb_ToolsButtons_stub, 17);
   new LFlatButton_c(4, 5, 1, 1, pm.get(InOut_Color_Variable_Out_xpm), pm.get(InOut_Disabled_Variable_Out_xpm),
       " Make outside variable ", cb_ToolsButtons_stub, 19);
   new LFlatButton_c(4, 7, 1, 1, pm.get(InOut_Color_RemoveColor_Out_xpm), pm.get(InOut_Disabled_RemoveColor_Out_xpm),
-      " Remove Colours from outside cubes ", cb_ToolsButtons_stub, 21);
+      " Remove Colours from outside voxels ", cb_ToolsButtons_stub, 21);
 
   (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
   (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
