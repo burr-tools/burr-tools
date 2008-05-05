@@ -929,6 +929,9 @@ void mainWindow_c::cb_BtnStart(bool prep_only) {
     puzzle->getShape(i)->initHotspot();
 
   cb_BtnCont(prep_only);
+
+  updateInterface();
+  changed = true;
 }
 
 static void cb_BtnCont_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_BtnCont(false); }
