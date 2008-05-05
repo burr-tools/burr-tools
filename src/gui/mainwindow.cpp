@@ -960,8 +960,8 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
     return;
   }
 
-  if (puzzle->probPieceNumber(prob) > 255) {
-    fl_message("Sorry currently BurrTools can not handle more than 255 pieces per problem");
+  if (puzzle->probPieceNumber(prob) > 255 && SolveDisasm->value() != 0) {
+    fl_message("Sorry currently BurrTools can not handle more than 255 pieces per problem in the disassembler");
     return;
   }
 
@@ -1182,6 +1182,11 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
   }
 
+  if (puzzle->probPieceNumber(prob) > 255) {
+    fl_message("Sorry currently BurrTools can not handle more than 255 pieces per problem in the disassembler");
+    return;
+  }
+
   disassembler_c * dis = puzzle->getGridType()->getDisassembler(puzzle, prob);
 
   separation_c * d = dis->disassemble(puzzle->probGetAssembly(prob, sol));
@@ -1207,6 +1212,11 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
   if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
     fl_message("Sorry this space grid doesn't have a disassembler (yet)!");
+    return;
+  }
+
+  if (puzzle->probPieceNumber(prob) > 255) {
+    fl_message("Sorry currently BurrTools can not handle more than 255 pieces per problem in the disassembler");
     return;
   }
 
