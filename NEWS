@@ -1,3 +1,12 @@
+------------- Version 0.4.2 Jan 2009
+
+- Fix a bug in symmetry avoidance algorithm that could result in too
+  few solutions found. The problem occures if you have result shapes
+  that don't have a direct mirror (only mirrors + rotations) symmetry
+
+- Fix a crash that happened when selecting a z-layer when no shape is
+  there
+
 ------------- Version 0.4.1 May 11 2008
 
 - Fix bug in rhombic grid solver. The solver could not solve the trivial case.
