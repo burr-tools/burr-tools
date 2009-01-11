@@ -637,7 +637,7 @@ int assembler_0_c::prepare(void) {
 
         /* for the symmetry breaker piece we also add all symmetries of the box */
         if (pc == symBreakerShape)
-          for (unsigned int r = 1; r < sym->getNumTransformationsMirror(); r++)
+          for (unsigned int r = 1; r < sym->getNumTransformations(); r++)
             if (sym->symmetrieContainsTransformation(resultSym, r)) {
 
               voxel_c * vx = gt->getVoxel(puzzle->probGetShapeShape(problem, pc));
