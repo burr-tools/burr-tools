@@ -26,6 +26,8 @@
 
 void gridEditor_c::setZ(unsigned int z) {
 
+  if (piecenumber >= puzzle->shapeNumber()) return;
+
   // clamp the value to valid values
   if (z >= puzzle->getShape(piecenumber)->getZ()) z = puzzle->getShape(piecenumber)->getZ()-1;
 
