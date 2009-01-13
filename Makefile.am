@@ -12,6 +12,7 @@ dist_doc_DATA = examples/README examples/AlPackino.xmpuzzle examples/DraculasDen
                 examples/HexSticks.xmpuzzle \
                 examples/PermutatedThirdStellation.xmpuzzle \
                 examples/PiecesOfEight.xmpuzzle \
+                burricons.ico \
                 AUTHORS COPYING README NEWS ChangeLog
 
 abs_builddir = @abs_builddir@
@@ -21,6 +22,7 @@ dist-win32: all
 	$(RM) -r $(win32dir)
 	$(INSTALL) -d                        $(win32dir)
 	$(INSTALL) -d                        $(win32dir)/examples
+	$(INSTALL) -m755 burricons.ico       $(win32dir)/burricons.ico
 	$(INSTALL) -m755 src/gui/burrGui.exe $(win32dir)/
 	$(STRIP) $(win32dir)/*.exe
 	upx --lzma $(win32dir)/*.exe
