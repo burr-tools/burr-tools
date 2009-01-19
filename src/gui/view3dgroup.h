@@ -70,6 +70,8 @@ public:
     *w = 40;
     *h = 40;
   }
+
+  int handle(int event);
 };
 
 #endif
