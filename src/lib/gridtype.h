@@ -26,7 +26,6 @@
 
 class assembler_c;
 class assemblerFrontend_c;
-class disassembler_c;
 class symmetries_c;
 class voxel_c;
 class puzzle_c;
