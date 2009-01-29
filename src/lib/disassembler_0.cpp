@@ -29,7 +29,7 @@
 #include <queue>
 #include <vector>
 
-void disassembler_0_c::init_find(disassemblerNode_c * nd, int piecenumber, voxel_type * pieces) {
+void disassembler_0_c::init_find(disassemblerNode_c * nd, int piecenumber, unsigned int * pieces) {
 
   /* when a new search has been started we need to first calculate
    * the movement matrices, this is a table that contains one 2 dimensional
@@ -182,7 +182,7 @@ disassemblerNode_c * disassembler_0_c::find(disassemblerNode_c * searchnode, con
   return n;
 }
 
-separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, disassemblerNode_c * st, bool left, bool * ok, const int * weights) {
+separation_c * disassembler_0_c::checkSubproblem(int pieceCount, unsigned int * pieces, int piecenumber, disassemblerNode_c * st, bool left, bool * ok, const int * weights) {
 
   separation_c * res = 0;
 
@@ -193,7 +193,7 @@ separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pi
   } else {
 
     disassemblerNode_c *n;
-    voxel_type * pn;
+    unsigned int * pn;
     int * nw;
     create_new_params(st, &n, &pn, &nw, piecenumber, pieces, weights, pieceCount, left);
     res = disassemble_rec(pieceCount, pn, n, nw);
@@ -223,7 +223,7 @@ separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pi
  * the function takes over the ownership of the node and pieces. They are deleted at the end
  * of the function, so you must allocate them with new
  */
-separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * pieces, disassemblerNode_c * start, const int * weights) {
+separation_c * disassembler_0_c::disassemble_rec(int piecenumber, unsigned int * pieces, disassemblerNode_c * start, const int * weights) {
 
   std::queue<disassemblerNode_c *> openlist[2];
   nodeHash closed[3];
@@ -431,7 +431,7 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
    * all pieces are still there we fill the array
    * with all the numbers
    */
-  voxel_type * pieces = new voxel_type[pc];
+  unsigned int * pieces = new unsigned int[pc];
   pc = 0;
   for (unsigned int j = 0; j < assembly->placementCount(); j++)
     if (assembly->isPlaced(j)) {

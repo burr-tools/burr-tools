@@ -19,7 +19,6 @@
 #define __DISASSEMBLER_0_H__
 
 #include "disassembler_a.h"
-#include "voxel.h"
 
 class puzzle_c;
 class assembly_c;
@@ -45,7 +44,7 @@ private:
   disassemblerNode_c * state99node;
 
   /* create matrix */
-  void init_find(disassemblerNode_c * nd, int piecenumber, voxel_type * pieces);
+  void init_find(disassemblerNode_c * nd, int piecenumber, unsigned int * pieces);
 
   /* find all possible movements of starting from the state given to init_find
    * the functions returns the next possible state or 0 if no other state was found
@@ -60,8 +59,8 @@ private:
    * pieces contains the names of all the pieces that are still inside the
    * subpuzzle puzzle, start defines the starting position of these pieces
    */
-  separation_c * checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, disassemblerNode_c * st, bool left, bool * ok, const int * weights);
-  separation_c * disassemble_rec(int piecenumber, voxel_type * pieces, disassemblerNode_c * start, const int * weights);
+  separation_c * checkSubproblem(int pieceCount, unsigned int * pieces, int piecenumber, disassemblerNode_c * st, bool left, bool * ok, const int * weights);
+  separation_c * disassemble_rec(int piecenumber, unsigned int * pieces, disassemblerNode_c * start, const int * weights);
 
 public:
 

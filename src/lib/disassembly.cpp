@@ -17,6 +17,8 @@
  */
 #include "disassembly.h"
 
+#include "voxel.h"
+
 #include <xmlwrapp/attributes.h>
 
 #include <string.h>
@@ -277,7 +279,7 @@ separation_c::separation_c(const xml::node & node, unsigned int pieceCnt) {
   if (piecenumber != pieceCnt)
     throw load_error("the number of pieces in the count array is not as expected", *it);
 
-  pieces = new voxel_type[piecenumber];
+  pieces = new unsigned int[piecenumber];
 
   if (pieces == 0)
     throw load_error("could not allocate the required memory", *it);
@@ -329,9 +331,9 @@ separation_c::separation_c(const xml::node & node, unsigned int pieceCnt) {
   }
 }
 
-separation_c::separation_c(separation_c * r, separation_c * l, unsigned int pn, voxel_type * pcs) : piecenumber(pn), removed(r), left(l) {
-  pieces = new voxel_type[pn];
-  memcpy(pieces, pcs, pn*sizeof(voxel_type));
+separation_c::separation_c(separation_c * r, separation_c * l, unsigned int pn, unsigned int * pcs) : piecenumber(pn), removed(r), left(l) {
+  pieces = new unsigned int[pn];
+  memcpy(pieces, pcs, pn*sizeof(unsigned int));
 }
 
 separation_c::~separation_c() {
@@ -360,8 +362,8 @@ void separation_c::addstate(state_c *st) {
 
 separation_c::separation_c(const separation_c * cpy) : piecenumber(cpy->piecenumber) {
 
-  pieces = new voxel_type[piecenumber];
-  memcpy(pieces, cpy->pieces, piecenumber*sizeof(voxel_type));
+  pieces = new unsigned int[piecenumber];
+  memcpy(pieces, cpy->pieces, piecenumber*sizeof(unsigned int));
 
   for (unsigned int i = 0; i < cpy->states.size(); i++)
     states.push_back(new state_c(cpy->states[i], piecenumber));

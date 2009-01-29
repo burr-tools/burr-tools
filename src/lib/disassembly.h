@@ -21,9 +21,9 @@
 /* this module contains the datastructures to store the instruction how to assemble
  * and disassemble a puzzle
  */
-#include "voxel.h"
-
 #include "bt_assert.h"
+
+#include <xmlwrapp/node.h>
 
 #include <deque>
 #include <vector>
@@ -46,7 +46,7 @@ class separation_c {
   /* this array is here to identify the piecenumber for the given pieces
    * that are in this part of the tree
    */
-  voxel_type * pieces;
+  unsigned int * pieces;
 
   /* vector with all the states that finally lead to 2 separate
    * subpuzzles one state represents the  position of
@@ -76,7 +76,7 @@ public:
    * and the pieces in the array pcs
    * the array is copied
    */
-  separation_c(separation_c * r, separation_c * l, unsigned int pn, voxel_type * pcs);
+  separation_c(separation_c * r, separation_c * l, unsigned int pn, unsigned int * pcs);
 
   /* load a separation from an xml node */
   separation_c(const xml::node & node, unsigned int pieces);
@@ -140,7 +140,7 @@ public:
   unsigned int getPieceNumber(void) const { return piecenumber; }
 
   /* get the number for the num-th piece that is in this separation */
-  voxel_type getPieceName(unsigned int num) const {
+  unsigned int getPieceName(unsigned int num) const {
     bt_assert(num < piecenumber);
     return pieces[num];
   }

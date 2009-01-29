@@ -23,6 +23,7 @@
 #include "lib/disassembler_0.h"
 #include "lib/disassembly.h"
 #include "lib/print.h"
+#include "lib/voxel.h"
 
 #include <fstream>
 #include <iostream>

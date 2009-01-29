@@ -22,6 +22,7 @@
 #include "puzzle.h"
 #include "grouping.h"
 #include "disassemblernode.h"
+#include "voxel.h"
 
 /* so, this isn't the function as described by Bill but rather a
  * bit optimized. For each pair of 2 different pieces and for
@@ -33,7 +34,7 @@
  *    and find the shortest distance the first piece follows
  *    the second and the second piece follows the first
  */
-void disassembler_a_c::prepare(int pn, voxel_type * pieces, disassemblerNode_c * searchnode) {
+void disassembler_a_c::prepare(int pn, unsigned int * pieces, disassemblerNode_c * searchnode) {
 
   int m[cache->numDirections()];
 
@@ -448,10 +449,10 @@ disassemblerNode_c * disassembler_a_c::newNodeMerge(const disassemblerNode_c *n0
 /* create all the necessary parameters for one of the two possible subproblems
  * our current problems divides into
  */
-void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, voxel_type ** pn, int ** nw, int piecenumber, voxel_type * pieces, const int * weights, int part, bool cond) {
+void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, unsigned int ** pn, int ** nw, int piecenumber, unsigned int * pieces, const int * weights, int part, bool cond) {
 
   *n = new disassemblerNode_c(part, 0, 0, 0);
-  *pn = new voxel_type[part];
+  *pn = new unsigned int[part];
   *nw = new int[part];
 
   int num = 0;
@@ -481,7 +482,7 @@ void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, voxel_t
   bt_assert(num == part);
 }
 
-unsigned short disassembler_a_c::subProbGroup(disassemblerNode_c * st, voxel_type * pn, bool cond, int piecenumber) {
+unsigned short disassembler_a_c::subProbGroup(disassemblerNode_c * st, unsigned int * pn, bool cond, int piecenumber) {
 
   unsigned short group = 0;
 
@@ -497,7 +498,7 @@ unsigned short disassembler_a_c::subProbGroup(disassemblerNode_c * st, voxel_typ
   return group;
 }
 
-bool disassembler_a_c::subProbGrouping(voxel_type * pn, int piecenumber) {
+bool disassembler_a_c::subProbGrouping(unsigned int * pn, int piecenumber) {
 
   groups->newSet();
 

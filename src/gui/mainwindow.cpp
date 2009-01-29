@@ -1184,11 +1184,6 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
   }
 
-  if (puzzle->probPieceNumber(prob) > 255) {
-    fl_message("Sorry currently BurrTools can not handle more than 255 pieces per problem in the disassembler");
-    return;
-  }
-
   disassembler_c * dis = new disassembler_0_c(puzzle->getGridType()->getMovementCache(puzzle, prob), puzzle, prob);
 
   separation_c * d = dis->disassemble(puzzle->probGetAssembly(prob, sol));
