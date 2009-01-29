@@ -33,6 +33,9 @@ class movementCache_0_c : public movementCache_c {
   private:
 
     void calcValues(entry * e, const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz);
+
+    virtual unsigned int numDirections(void);
+    virtual void getDirection(unsigned int dir, int * x, int * y, int * z);
 };
 
 #endif

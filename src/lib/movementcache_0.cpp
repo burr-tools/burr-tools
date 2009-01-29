@@ -119,3 +119,15 @@ void movementCache_0_c::calcValues(movementCache_c::entry * e, const voxel_c * s
   e->move[1] = my;
   e->move[2] = mz;
 }
+
+
+unsigned int movementCache_0_c::numDirections(void) { return 3; }
+void movementCache_0_c::getDirection(unsigned int dir, int * x, int * y, int * z) {
+
+  switch (dir) {
+    case 0: *x = 1; *y = *z = 0; break;
+    case 1: *y = 1; *x = *z = 0; break;
+    case 2: *z = 1; *x = *y = 0; break;
+    default: bt_assert(0);
+  }
+}

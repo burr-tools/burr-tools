@@ -44,7 +44,8 @@ private:
   /* these variables are used for the routine that looks
    * for the pieces to move find, checkmovement
    */
-  int nextpiece, nextstep, nextdir, next_pn, nextstate, nextpiece2, state99nextState;
+  int nextpiece, nextstep, next_pn, nextstate, nextpiece2, state99nextState;
+  unsigned int nextdir;
   node0_c * state99node;
   int * movement;
   bool * check;
@@ -55,7 +56,7 @@ private:
    * transposition (m[i][j] == m[j][i]) we save the calculation or copying
    * and rather do the transposition inside the checkmovement function
    */
-  int * matrix[3];
+  int ** matrix;
 
   /* this is the cache with the already calculated movements */
   movementCache_c * cache;

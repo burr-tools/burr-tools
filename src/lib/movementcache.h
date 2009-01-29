@@ -33,7 +33,6 @@ class gridType_c;
  */
 class movementCache_c {
 
-
   protected:
 
   /* values are saved within a hash table, this is the
@@ -125,6 +124,15 @@ public:
 
   /* remove all information that involves one shape from the cache */
   void removePieceInfo(unsigned int s);
+
+  /* return the number of different directions of movement that are possible within
+   * the space grid that that movement cache is for
+   */
+  virtual unsigned int numDirections(void) = 0;
+
+  /* return the movement vector of the given direction */
+  virtual void getDirection(unsigned int dir, int * x, int * y, int * z) = 0;
+
 };
 
 #endif

@@ -167,6 +167,14 @@ public:
     trans[i] = tr;
     hashValue = 0;
   }
+  void set(int i, const node0_c * n, int tx, int ty, int tz) {
+    bt_assert(i < piecenumber);
+    dx[i] = n->dx[i]+tx;
+    dy[i] = n->dy[i]+ty;
+    dz[i] = n->dz[i]+tz;
+    trans[i] = n->trans[i];
+    hashValue = 0;
+  }
 
   /* check if the given piece is at a position outside
    * of the rest of the puzzle
@@ -503,7 +511,7 @@ class countingNodeHash {
  */
 void disassembler_0_c::prepare(int pn, voxel_type * pieces, node0_c * searchnode) {
 
-  int m[3];
+  int m[cache->numDirections()];
 
   unsigned int idx = 0;
   for (int j = 0; j < pn; j++) {
@@ -514,10 +522,10 @@ void disassembler_0_c::prepare(int pn, voxel_type * pieces, node0_c * searchnode
                         searchnode->getZ(j) - searchnode->getZ(i),
                         searchnode->getTrans(i), searchnode->getTrans(j),
                         pieces[i], pieces[j],
-                        3, m);
-        matrix[0][idx] = m[0];
-        matrix[1][idx] = m[1];
-        matrix[2][idx] = m[2];
+                        cache->numDirections(), m);
+
+        for (unsigned int x = 0; x < cache->numDirections(); x++)
+          matrix[x][idx] = m[x];
       }
 
       // the diagonals are always zero and will stay that for ever they are initialized
@@ -543,7 +551,7 @@ void disassembler_0_c::prepare2(int pn) {
 
   unsigned int again = 0;
 
-  for (int d = 0; d < 3; d++) {
+  for (unsigned int d = 0; d < cache->numDirections(); d++) {
     do {
       again = 0;
 
@@ -662,7 +670,8 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int ne
   check[nextpiece] = true;
 
   bool finished;
-  int nd = nextdir >> 1;
+  unsigned int nd = nextdir >> 1;
+  bt_assert(nd < cache->numDirections());
 
   // the idea here is the following, if we want to move
   // a piece the matrix tells us if we can do that with respecto to
@@ -772,7 +781,7 @@ static int max(int a, int b) {
     return b;
 }
 
-static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * movement, const int * weights, int amount) {
+static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * movement, const int * weights, int amount, movementCache_c * cache) {
 
   // calculate the weight of the all the stationary and all the
   // moving pieces
@@ -810,15 +819,23 @@ static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * m
   node0_c * n = new node0_c(next_pn, searchnode, nextdir, amount);
 
   /* create a new state with the pieces moved */
-  for (int i = 0; i < next_pn; i++)
-    switch(nextdir) {
-      case 0: n->set(i, searchnode->getX(i) + movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
-      case 1: n->set(i, searchnode->getX(i) - movement[i], searchnode->getY(i), searchnode->getZ(i), searchnode->getTrans(i)); break;
-      case 2: n->set(i, searchnode->getX(i), searchnode->getY(i) + movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
-      case 3: n->set(i, searchnode->getX(i), searchnode->getY(i) - movement[i], searchnode->getZ(i), searchnode->getTrans(i)); break;
-      case 4: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) + movement[i], searchnode->getTrans(i)); break;
-      case 5: n->set(i, searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i) - movement[i], searchnode->getTrans(i)); break;
+  for (int i = 0; i < next_pn; i++) {
+    int mx, my, mz;
+
+    cache->getDirection(nextdir >> 1, &mx, &my, &mz);
+
+    mx *= movement[i];
+    my *= movement[i];
+    mz *= movement[i];
+
+    if (nextdir & 1) {
+      mx = -mx;
+      my = -my;
+      mz = -mz;
     }
+
+    n->set(i, searchnode, mx, my, mz);
+  }
 
   return n;
 }
@@ -832,7 +849,7 @@ static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * m
  * also the amount must be identical in both nodes, so if piece a moves 1 unit
  * in node n0 and andother piece move 2 units in node n1 0 is returned
  */
-static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, node0_c * searchnode, int next_pn, int nextdir, int * movement, const int * weights) {
+static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, node0_c * searchnode, int next_pn, int nextdir, int * movement, const int * weights, movementCache_c * cache) {
 
   // assert that direction are along the same axis
   bt_assert((nextdir | 1) == (n0->getDirection() | 1));
@@ -856,26 +873,12 @@ static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, node0_c * se
 
     // calculate the movement of the merged node by first finding out if the
     // piece has been moved within one node
-    switch(nextdir) {
-      case 0:
-      case 1:
-        move0 = (n0->getX(i) != searchnode->getX(i)) ^ invert0;
-        move1 = (n1->getX(i) != searchnode->getX(i)) ^ invert1;
-        break;
-      case 2:
-      case 3:
-        move0 = (n0->getY(i) != searchnode->getY(i)) ^ invert0;
-        move1 = (n1->getY(i) != searchnode->getY(i)) ^ invert1;
-        break;
-      case 4:
-      case 5:
-        move0 = (n0->getZ(i) != searchnode->getZ(i)) ^ invert0;
-        move1 = (n1->getZ(i) != searchnode->getZ(i)) ^ invert1;
-        break;
-      default:
-        bt_assert(0);
-        break;
-    }
+    move0 = ((n0->getX(i) != searchnode->getX(i)) ||
+             (n0->getY(i) != searchnode->getY(i)) ||
+             (n0->getZ(i) != searchnode->getZ(i))) ^ invert0;
+    move1 = ((n1->getX(i) != searchnode->getX(i)) ||
+             (n1->getY(i) != searchnode->getY(i)) ||
+             (n1->getZ(i) != searchnode->getZ(i))) ^ invert1;
 
     // and if it has been moved in one of them, it needs
     // to be moved in the new node
@@ -897,7 +900,7 @@ static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, node0_c * se
   // if the new node is equal to n0 or n1, exit
   if (!different0 || !different1) return 0;
 
-  return newNode(next_pn, nextdir, searchnode, movement, weights, amount);
+  return newNode(next_pn, nextdir, searchnode, movement, weights, amount, cache);
 }
 
 
@@ -918,13 +921,13 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
       case 0:
         // check, if a single piece can be removed
         if (checkmovement(1, nextdir, next_pn, nextpiece, 30000))
-          n = newNode(next_pn, nextdir, searchnode, movement, weights, 30000);
+          n = newNode(next_pn, nextdir, searchnode, movement, weights, 30000, cache);
 
         nextpiece++;
         if (nextpiece >= next_pn) {
           nextpiece = 0;
           nextdir++;
-          if (nextdir >= 6) {
+          if (nextdir >= 2*cache->numDirections()) {
             nextstate++;
             nextdir = 0;
           }
@@ -933,13 +936,13 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
       case 1:
         // check, if a group of pieces can be removed
         if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, 30000))
-          n = newNode(next_pn, nextdir, searchnode, movement, weights, 30000);
+          n = newNode(next_pn, nextdir, searchnode, movement, weights, 30000, cache);
 
         nextpiece++;
         if (nextpiece >= next_pn) {
           nextpiece = 0;
           nextdir++;
-          if (nextdir >= 6) {
+          if (nextdir >= 2*cache->numDirections()) {
             nextstate++;
             nextdir = 0;
             nodes.clear();
@@ -949,7 +952,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
       case 2:
         // check, if pieces can be moved
         if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep)) {
-          n = newNode(next_pn, nextdir, searchnode, movement, weights, nextstep);
+          n = newNode(next_pn, nextdir, searchnode, movement, weights, nextstep, cache);
           bt_assert(n);
 
           // we need to merge the gained node with all already found
@@ -982,7 +985,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
             nextpiece = 0;
             nextdir++;
             nodes.clear();
-            if (nextdir >= 6) {
+            if (nextdir >= 2*cache->numDirections()) {
               return 0;
             }
           }
@@ -1006,7 +1009,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
           const node0_c * nd2 = nodes.nextScan();
 
           if (nd2) {
-            n = newNodeMerge(state99node, nd2, searchnode, next_pn, nextdir, movement, weights);
+            n = newNodeMerge(state99node, nd2, searchnode, next_pn, nextdir, movement, weights, cache);
 
             // if the node is valid check if we already know that node, if so
             // delete it
@@ -1316,13 +1319,15 @@ disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) :
   movement = new int[piecenumber];
   check = new bool[piecenumber];
 
-  for (int j = 0; j < 3; j++)
-    matrix[j] = new int[piecenumber * piecenumber];
-
-  for (unsigned int i = 0; i < piecenumber; i++)
-    matrix[0][i+i*piecenumber] = matrix[1][i+i*piecenumber] = matrix[2][i+i*piecenumber] = 0;
-
   cache = new movementCache_0_c(puzzle, problem);
+
+  matrix = new int*[cache->numDirections()];
+
+  for (unsigned int j = 0; j < cache->numDirections(); j++) {
+    matrix[j] = new int[piecenumber * piecenumber];
+    for (unsigned int i = 0; i < piecenumber; i++)
+      matrix[j][i+i*piecenumber] = 0;
+  }
 
   /* initialize the grouping class */
   groups = new grouping_c();
@@ -1348,8 +1353,9 @@ disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) :
 disassembler_0_c::~disassembler_0_c() {
   delete [] movement;
   delete [] check;
-  for (unsigned int k = 0; k < 3; k++)
+  for (unsigned int k = 0; k < cache->numDirections(); k++)
     delete [] matrix[k];
+  delete [] matrix;
 
   delete cache;
   delete groups;
