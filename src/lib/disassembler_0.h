@@ -27,7 +27,7 @@ class movementCache_c;
 class assembly_c;
 class separation_c;
 
-class node0_c;
+class disassemblerNode_c;
 
 /* this class is a disassembler for the cube space.
  *
@@ -46,7 +46,7 @@ private:
    */
   int nextpiece, nextstep, next_pn, nextstate, nextpiece2, state99nextState;
   unsigned int nextdir;
-  node0_c * state99node;
+  disassemblerNode_c * state99node;
   int * movement;
   bool * check;
 
@@ -65,19 +65,19 @@ private:
   grouping_c * groups;
 
   /* create matrix */
-  void prepare(int pn, voxel_type * pieces, node0_c * searchnode);
+  void prepare(int pn, voxel_type * pieces, disassemblerNode_c * searchnode);
   void prepare2(int pn);
-  void init_find(node0_c * nd, int piecenumber, voxel_type * pieces);
+  void init_find(disassemblerNode_c * nd, int piecenumber, voxel_type * pieces);
 
   /* find all possible movements of starting from the state given to init_find
    * the functions returns the next possible state or 0 if no other state was found
    */
-  node0_c * find(node0_c * searchnode, const int * weights);
+  disassemblerNode_c * find(disassemblerNode_c * searchnode, const int * weights);
   bool checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep);
 
-  unsigned short subProbGroup(node0_c * st, voxel_type * pn, bool cond, int piecenumber);
+  unsigned short subProbGroup(disassemblerNode_c * st, voxel_type * pn, bool cond, int piecenumber);
   bool subProbGrouping(voxel_type * pn, int piecenumber);
-  separation_c * checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, node0_c * st, bool left, bool * ok, const int * weights);
+  separation_c * checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, disassemblerNode_c * st, bool left, bool * ok, const int * weights);
 
   /* the real disassembly routine. It separates the puzzle into 2 parts
    * and gets called recursively with each subpart to disassemble
@@ -87,7 +87,7 @@ private:
    * pieces contains the names of all the pieces that are still inside the
    * subpuzzle puzzle, start defines the starting position of these pieces
    */
-  separation_c * disassemble_rec(int piecenumber, voxel_type * pieces, node0_c * start, const int * weights);
+  separation_c * disassemble_rec(int piecenumber, voxel_type * pieces, disassemblerNode_c * start, const int * weights);
 
   const puzzle_c * puzzle;
   unsigned int problem;

@@ -23,196 +23,10 @@
 #include "puzzle.h"
 #include "grouping.h"
 #include "assembly.h"
+#include "disassemblernode.h"
 
 #include <queue>
 #include <vector>
-
-/* node is used to build the search tree for the breadth first search of the
- * state tree each node contains the position of all the pieces relative
- * to their position in the assembled puzzle
- */
-class node0_c {
-
-private:
-
-  /* the nodes are used to save the shortest way from the start to each
-   * node. So each node saves where the way to the start is
-   */
-  node0_c * comefrom;
-
-  /* number of pieces this node is handling */
-  int piecenumber;
-
-  /* the position of the piece inside the cube
-   * and the transformation of that piece
-   */
-  int *dx, *dy, *dz;
-  unsigned int *trans;
-
-  /* contains the number of pointers that point to this node
-   * most of there pointers are comefrom pointers from other nodes
-   * but one increment results from the pointer inside the node lists
-   */
-  unsigned int refcount;
-
-  /* with regard to the parent node this node defines a movement
-   * of a set of pieces along a certain axis by a certain amount,
-   * because this information is required often, we save it in here
-   */
-  int dir;    // the interpretation of dir is up to the user, but is the same as nextdir
-  int amount;
-
-  unsigned int hashValue;
-
-public:
-
-  node0_c(int pn, node0_c * comf, int _dir, int _amount) : comefrom(comf), piecenumber(pn), refcount(1), dir(_dir), amount(_amount) {
-    dx = new int[piecenumber];
-    dy = new int[piecenumber];
-    dz = new int[piecenumber];
-    trans = new unsigned int[piecenumber];
-
-    if (comefrom)
-      comefrom->refcount++;
-
-    hashValue = 0;
-  }
-
-  ~node0_c() {
-    delete [] dx;
-    delete [] dy;
-    delete [] dz;
-    delete [] trans;
-
-    if (comefrom) {
-      comefrom->refcount--;
-      if (comefrom->refcount == 0)
-        delete comefrom;
-    }
-  }
-
-  /* this function is used by outsiders to free
-   * their own pointers to this node, if the function
-   * returs true, delete the node
-   */
-  bool decRefCount(void) {
-    bt_assert(refcount > 0);
-    refcount--;
-    return refcount == 0;
-  }
-
-  void incRefCount(void) {
-    refcount++;
-  }
-
-  unsigned int hash(void) const {
-
-    if (hashValue) return hashValue;
-
-    unsigned int h = 0x17fe3b3c;
-
-    for (int i = 1; i < piecenumber; i++) {
-      h += (dx[i]-dx[0]);
-      h *= 1343;
-      h += (dy[i]-dy[0]);
-      h *= 923;
-      h += (dz[i]-dz[0]);
-      h *= 113;
-    }
-
-    const_cast<node0_c*>(this)->hashValue = h;
-    return h;
-  }
-
-  /* the comparison operations use "normalized" positions,
-   * meaning all the pieces are shifted so, that the position
-   * of piece 0 is (0; 0; 0). This prevents us from shifting
-   * the whole set around without movement of the pieces
-   * relative to each other because all nodes with all pieces
-   * shifted by the same mount do are equal
-   */
-  bool operator == (const node0_c &b) const {
-
-    for (int i = 1; i < piecenumber; i++) {
-      if (dx[i] - dx[0] != b.dx[i] - b.dx[0]) return false;
-      if (dy[i] - dy[0] != b.dy[i] - b.dy[0]) return false;
-      if (dz[i] - dz[0] != b.dz[i] - b.dz[0]) return false;
-      // FIXME: transformation is missing
-    }
-
-    return true;
-  }
-
-  int getX(int i) const {
-    bt_assert(i < piecenumber);
-    return dx[i];
-  }
-  int getY(int i) const {
-    bt_assert(i < piecenumber);
-    return dy[i];
-  }
-  int getZ(int i) const {
-    bt_assert(i < piecenumber);
-    return dz[i];
-  }
-  unsigned int getTrans(int i) const {
-    bt_assert(i < piecenumber);
-    return trans[i];
-  }
-  void set(int i, int x, int y, int z, unsigned int tr) {
-    bt_assert(i < piecenumber);
-    dx[i] = x;
-    dy[i] = y;
-    dz[i] = z;
-    trans[i] = tr;
-    hashValue = 0;
-  }
-  void set(int i, const node0_c * n, int tx, int ty, int tz) {
-    bt_assert(i < piecenumber);
-    dx[i] = n->dx[i]+tx;
-    dy[i] = n->dy[i]+ty;
-    dz[i] = n->dz[i]+tz;
-    trans[i] = n->trans[i];
-    hashValue = 0;
-  }
-
-  /* check if the given piece is at a position outside
-   * of the rest of the puzzle
-   */
-  bool is_piece_removed(int nr) const {
-    bt_assert(nr < piecenumber);
-    return ((abs(dx[nr]) > 10000) || (abs(dy[nr]) > 10000) || (abs(dz[nr]) > 10000));
-  }
-
-  /* check if this node is for a state that separates
-   * the puzzle into 2 pieces. This is the case if there
-   * is one piece that is removed
-   */
-  bool is_separation() const {
-    for (int i = 0; i < piecenumber; i++)
-      if (is_piece_removed(i))
-        return true;
-
-    return false;
-  }
-
-  const node0_c * getComefrom(void) const {
-    return comefrom;
-  }
-
-  int getAmount(void) const {
-    return amount;
-  }
-
-  int getDirection(void) const {
-    return dir;
-  }
-
-  /* for the links in the hashtable we use this
-   * pointer
-   */
-  node0_c * next;
-};
 
 /* this is a hashtable that stores nodes */
 class nodeHash {
@@ -222,7 +36,7 @@ class nodeHash {
     unsigned long tab_size;
     unsigned long tab_entries;
 
-    node0_c ** tab;
+    disassemblerNode_c ** tab;
 
   public:
 
@@ -231,9 +45,9 @@ class nodeHash {
       tab_size = 11;
       tab_entries = 0;
 
-      tab = new node0_c* [tab_size];
+      tab = new disassemblerNode_c* [tab_size];
 
-      memset(tab, 0, tab_size*sizeof(node0_c*));
+      memset(tab, 0, tab_size*sizeof(disassemblerNode_c*));
     }
 
     ~nodeHash(void) {
@@ -246,7 +60,7 @@ class nodeHash {
     void clear(bool reset = true) {
       for (unsigned int i = 0; i < tab_size; i++) {
         while (tab[i]) {
-          node0_c * n = tab[i];
+          disassemblerNode_c * n = tab[i];
           tab[i] = n->next;
 
           if (n->decRefCount())
@@ -255,7 +69,7 @@ class nodeHash {
       }
 
       if (reset) {
-        memset(tab, 0, tab_size*sizeof(node0_c*));
+        memset(tab, 0, tab_size*sizeof(disassemblerNode_c*));
         tab_entries = 0;
       }
     }
@@ -263,11 +77,11 @@ class nodeHash {
     /* add a new node  returns true, if the given node has already been
      * in the table, false if the node is inserted
      */
-    bool insert(node0_c * n) {
+    bool insert(disassemblerNode_c * n) {
 
       unsigned long h = n->hash() % tab_size;
 
-      node0_c * hn = tab[h];
+      disassemblerNode_c * hn = tab[h];
 
       while (hn) {
         if (*hn == *n)
@@ -287,12 +101,12 @@ class nodeHash {
 
         unsigned long new_size = tab_size * 4 + 1;
 
-        node0_c ** new_tab = new node0_c* [new_size];
-        memset(new_tab, 0, new_size*sizeof(node0_c*));
+        disassemblerNode_c ** new_tab = new disassemblerNode_c* [new_size];
+        memset(new_tab, 0, new_size*sizeof(disassemblerNode_c*));
 
         for (unsigned int i = 0; i < tab_size; i++) {
           while (tab[i]) {
-            node0_c * n = tab[i];
+            disassemblerNode_c * n = tab[i];
             tab[i] = n->next;
             unsigned long h = n->hash() % new_size;
             n->next = new_tab[h];
@@ -309,10 +123,10 @@ class nodeHash {
     }
 
     /* check, if a node is in the map */
-    bool contains(const node0_c * n) const {
+    bool contains(const disassemblerNode_c * n) const {
       unsigned long h = n->hash() % tab_size;
 
-      node0_c * hn = tab[h];
+      disassemblerNode_c * hn = tab[h];
 
       while (hn) {
         if (*hn == *n)
@@ -342,7 +156,7 @@ class countingNodeHash {
     unsigned long tab_entries;
 
     struct hashNode {
-      node0_c * dat;
+      disassemblerNode_c * dat;
       hashNode * next;
       hashNode * link;
     };
@@ -403,7 +217,7 @@ class countingNodeHash {
     /* add a new node  returns true, if the given node has already been
      * in the table, false if the node is inserted
      */
-    bool insert(node0_c * n) {
+    bool insert(disassemblerNode_c * n) {
 
       unsigned long h = n->hash() % tab_size;
 
@@ -481,7 +295,7 @@ class countingNodeHash {
       scanActive = true;
     }
 
-    const node0_c * nextScan(void) {
+    const disassemblerNode_c * nextScan(void) {
 
       bt_assert(scanActive);
 
@@ -491,7 +305,7 @@ class countingNodeHash {
 
       } else {
 
-        node0_c * res = scanPtr->dat;
+        disassemblerNode_c * res = scanPtr->dat;
         scanPtr = scanPtr->link;
 
         return res;
@@ -509,7 +323,7 @@ class countingNodeHash {
  *    and find the shortest distance the first piece follows
  *    the second and the second piece follows the first
  */
-void disassembler_0_c::prepare(int pn, voxel_type * pieces, node0_c * searchnode) {
+void disassembler_0_c::prepare(int pn, voxel_type * pieces, disassemblerNode_c * searchnode) {
 
   int m[cache->numDirections()];
 
@@ -749,7 +563,7 @@ bool disassembler_0_c::checkmovement(unsigned int maxPieces, int nextdir, int ne
   return true;
 }
 
-void disassembler_0_c::init_find(node0_c * nd, int piecenumber, voxel_type * pieces) {
+void disassembler_0_c::init_find(disassemblerNode_c * nd, int piecenumber, voxel_type * pieces) {
 
   /* when a new search has been started we need to first calculate
    * the movement matrices, this is a table that contains one 2 dimensional
@@ -781,7 +595,7 @@ static int max(int a, int b) {
     return b;
 }
 
-static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * movement, const int * weights, int amount, movementCache_c * cache) {
+static disassemblerNode_c * newNode(int next_pn, int nextdir, disassemblerNode_c * searchnode, int * movement, const int * weights, int amount, movementCache_c * cache) {
 
   // calculate the weight of the all the stationary and all the
   // moving pieces
@@ -816,7 +630,7 @@ static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * m
     nextdir ^= 1;
   }
 
-  node0_c * n = new node0_c(next_pn, searchnode, nextdir, amount);
+  disassemblerNode_c * n = new disassemblerNode_c(next_pn, searchnode, nextdir, amount);
 
   /* create a new state with the pieces moved */
   for (int i = 0; i < next_pn; i++) {
@@ -849,7 +663,7 @@ static node0_c * newNode(int next_pn, int nextdir, node0_c * searchnode, int * m
  * also the amount must be identical in both nodes, so if piece a moves 1 unit
  * in node n0 and andother piece move 2 units in node n1 0 is returned
  */
-static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, node0_c * searchnode, int next_pn, int nextdir, int * movement, const int * weights, movementCache_c * cache) {
+static disassemblerNode_c * newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1, disassemblerNode_c * searchnode, int next_pn, int nextdir, int * movement, const int * weights, movementCache_c * cache) {
 
   // assert that direction are along the same axis
   bt_assert((nextdir | 1) == (n0->getDirection() | 1));
@@ -908,9 +722,9 @@ static node0_c * newNodeMerge(const node0_c *n0, const node0_c *n1, node0_c * se
  * the next thing to do is to check if something can be removed, and finally we look for longer
  * movements in the actual direction
  */
-node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
+disassemblerNode_c * disassembler_0_c::find(disassemblerNode_c * searchnode, const int * weights) {
 
-  node0_c * n = 0;
+  disassemblerNode_c * n = 0;
 
   static countingNodeHash nodes;
 
@@ -1006,7 +820,7 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
         // the same time but rather one after the other
 
         {
-          const node0_c * nd2 = nodes.nextScan();
+          const disassemblerNode_c * nd2 = nodes.nextScan();
 
           if (nd2) {
             n = newNodeMerge(state99node, nd2, searchnode, next_pn, nextdir, movement, weights, cache);
@@ -1036,9 +850,9 @@ node0_c * disassembler_0_c::find(node0_c * searchnode, const int * weights) {
 /* create all the necessary parameters for one of the two possible subproblems
  * our current problems divides into
  */
-static void create_new_params(node0_c * st, node0_c ** n, voxel_type ** pn, int ** nw, int piecenumber, voxel_type * pieces, const int * weights, int part, bool cond) {
+static void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, voxel_type ** pn, int ** nw, int piecenumber, voxel_type * pieces, const int * weights, int part, bool cond) {
 
-  *n = new node0_c(part, 0, 0, 0);
+  *n = new disassemblerNode_c(part, 0, 0, 0);
   *pn = new voxel_type[part];
   *nw = new int[part];
 
@@ -1069,7 +883,7 @@ static void create_new_params(node0_c * st, node0_c ** n, voxel_type ** pn, int 
   bt_assert(num == part);
 }
 
-unsigned short disassembler_0_c::subProbGroup(node0_c * st, voxel_type * pn, bool cond, int piecenumber) {
+unsigned short disassembler_0_c::subProbGroup(disassemblerNode_c * st, voxel_type * pn, bool cond, int piecenumber) {
 
   unsigned short group = 0;
 
@@ -1096,7 +910,7 @@ bool disassembler_0_c::subProbGrouping(voxel_type * pn, int piecenumber) {
   return true;
 }
 
-separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, node0_c * st, bool left, bool * ok, const int * weights) {
+separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, disassemblerNode_c * st, bool left, bool * ok, const int * weights) {
 
   separation_c * res = 0;
 
@@ -1106,7 +920,7 @@ separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pi
     *ok = true;
   } else {
 
-    node0_c *n;
+    disassemblerNode_c *n;
     voxel_type * pn;
     int * nw;
     create_new_params(st, &n, &pn, &nw, piecenumber, pieces, weights, pieceCount, left);
@@ -1137,9 +951,9 @@ separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pi
  * the function takes over the ownership of the node and pieces. They are deleted at the end
  * of the function, so you must allocate them with new
  */
-separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * pieces, node0_c * start, const int * weights) {
+separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * pieces, disassemblerNode_c * start, const int * weights) {
 
-  std::queue<node0_c *> openlist[2];
+  std::queue<disassemblerNode_c *> openlist[2];
   nodeHash closed[3];
 
   int curListFront = 0;
@@ -1176,7 +990,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
   while (!openlist[curListFront].empty()) {
 
     /* remove the node from the open list and start examining */
-    node0_c * node = openlist[curListFront].front();
+    disassemblerNode_c * node = openlist[curListFront].front();
     openlist[curListFront].pop();
 
     /* if the current list is now empty, we need to toggle everything after we have finished
@@ -1185,7 +999,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 
     init_find(node, piecenumber, pieces);
 
-    node0_c * st;
+    disassemblerNode_c * st;
 
     while ((st = find(node, weights))) {
 
@@ -1270,7 +1084,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 
           erg->addstate(s);
 
-          st = (node0_c*)st->getComefrom();
+          st = (disassemblerNode_c*)st->getComefrom();
         } while (st);
 
       } else {
@@ -1378,7 +1192,7 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
   if (pc < 2)
     return 0;
 
-  node0_c * start = new node0_c(pc, 0, 0, 0);
+  disassemblerNode_c * start = new disassemblerNode_c(pc, 0, 0, 0);
 
   /* create pieces field. This field contains the
    * names of all present pieces. Because at the start
