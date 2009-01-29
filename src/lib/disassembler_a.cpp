@@ -62,10 +62,9 @@ disassembler_a_c::~disassembler_a_c() {
 /* create all the necessary parameters for one of the two possible subproblems
  * our current problems divides into
  */
-void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, unsigned int ** pn, int ** nw, int piecenumber, unsigned int * pieces, const int * weights, int part, bool cond) {
+void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, std::vector<unsigned int> & pn, int ** nw, const std::vector<unsigned int> & pieces, const int * weights, int part, bool cond) {
 
   *n = new disassemblerNode_c(part, 0, 0, 0);
-  *pn = new unsigned int[part];
   *nw = new int[part];
 
   int num = 0;
@@ -73,7 +72,7 @@ void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, unsigne
 
   dx = dy = dz = 0;
 
-  for (int i = 0; i < piecenumber; i++)
+  for (unsigned int i = 0; i < pieces.size(); i++)
     if (st->is_piece_removed(i) == cond) {
       if (num == 0) {
         /* find the direction, the first piece was moved out of the puzzle
@@ -87,7 +86,7 @@ void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, unsigne
                 st->getY(i) - dy,
                 st->getZ(i) - dz,
                 st->getTrans(i));
-      (*pn)[num] = pieces[i];
+      pn.push_back(pieces[i]);
       (*nw)[num] = weights[i];
       num++;
     }
@@ -95,11 +94,11 @@ void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, unsigne
   bt_assert(num == part);
 }
 
-unsigned short disassembler_a_c::subProbGroup(disassemblerNode_c * st, unsigned int * pn, bool cond, int piecenumber) {
+unsigned short disassembler_a_c::subProbGroup(disassemblerNode_c * st, const std::vector<unsigned int> & pn, bool cond) {
 
   unsigned short group = 0;
 
-  for (int i = 0; i < piecenumber; i++)
+  for (unsigned int i = 0; i < pn.size(); i++)
     if (st->is_piece_removed(i) == cond)
       if (puzzle->probGetShapeGroupNumber(problem, piece2shape[pn[i]]) != 1)
         return 0;
@@ -111,11 +110,11 @@ unsigned short disassembler_a_c::subProbGroup(disassemblerNode_c * st, unsigned 
   return group;
 }
 
-bool disassembler_a_c::subProbGrouping(unsigned int * pn, int piecenumber) {
+bool disassembler_a_c::subProbGrouping(const std::vector<unsigned int> & pn) {
 
   groups->newSet();
 
-  for (int i = 0; i < piecenumber; i++)
+  for (unsigned int i = 0; i < pn.size(); i++)
     if (!groups->addPieceToSet(piece2shape[pn[i]]))
       return false;
 

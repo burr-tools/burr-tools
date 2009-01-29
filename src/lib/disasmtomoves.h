@@ -18,6 +18,8 @@
 #ifndef __DISASSMTOMOVES_H__
 #define __DISASSMTOMOVES_H__
 
+#include <vector>
+
 class separation_c;
 class disassemblerNode_c;
 
@@ -103,7 +105,7 @@ class fixedPositions_c : public piecePositions_c {
 
   public:
 
-    fixedPositions_c(const disassemblerNode_c * nd, unsigned int piecenum, unsigned int * pieces);
+    fixedPositions_c(const disassemblerNode_c * nd, const std::vector<unsigned int> & pieces);
     fixedPositions_c(const fixedPositions_c * nd);
     ~fixedPositions_c(void);
 

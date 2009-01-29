@@ -50,7 +50,7 @@ class AddMovementDialog : public LFl_Double_Window {
       hide();
     }
 
-    AddMovementDialog(movementCache_c * c, unsigned int pieceNum, unsigned int * pieces);
+    AddMovementDialog(movementCache_c * c, const std::vector<unsigned int> & pieces);
 
 
     unsigned int getDir(void) {
@@ -72,7 +72,7 @@ class AddMovementDialog : public LFl_Double_Window {
 static void cb_BtnDone_stub(Fl_Widget* /*o*/, void* v) { ((AddMovementDialog*)v)->cb_Buttons(0); }
 static void cb_BtnCancel_stub(Fl_Widget* /*o*/, void* v) { ((AddMovementDialog*)v)->cb_Buttons(1); }
 
-AddMovementDialog::AddMovementDialog(movementCache_c * c, unsigned int pieceNum, unsigned int * pieces) : LFl_Double_Window(false) {
+AddMovementDialog::AddMovementDialog(movementCache_c * c, const std::vector<unsigned int> & pieces) : LFl_Double_Window(false) {
 
   layouter_c * o = new layouter_c(0, 0, 1, 1);
 
@@ -114,14 +114,14 @@ AddMovementDialog::AddMovementDialog(movementCache_c * c, unsigned int pieceNum,
 
   new LFl_Box("Pieces", 0, 0, 1, 1);
 
-  for (unsigned int i = 0; i < pieceNum; i++) {
+  for (unsigned int i = 0; i < pieces.size(); i++) {
     char label[20];
     snprintf(label, 20, "%i", pieces[i]);
     pces.push_back(new LFl_Check_Button(label, 0, i+1, 1, 1));
     (*pces.rbegin())->copy_label(label);
   }
 
-  (new LFl_Box("", 0, pieceNum+1, 1, 1))->weight(1, 1);
+  (new LFl_Box("", 0, pieces.size()+1, 1, 1))->weight(1, 1);
 
   o->end();
 
@@ -136,8 +136,7 @@ AddMovementDialog::AddMovementDialog(movementCache_c * c, unsigned int pieceNum,
 
 typedef struct nodeData_s {
 
-  unsigned int pieceNum;
-  unsigned int * pieces;
+  std::vector<unsigned int> pieces;
   disassemblerNode_c * node;
 
 } nodeData_s;
@@ -159,7 +158,7 @@ LTreeBrowser::Node * movementBrowser_c::addNode(LTreeBrowser::Node *nd, disassem
   bt_assert(s);
 
   /* we don't add the removal nodes */
-  for (unsigned int i = 0; i < s->pieceNum; i++)
+  for (unsigned int i = 0; i < s->pieces.size(); i++)
     if (fabs(mv->getX(i)) > 10000 ||
         fabs(mv->getY(i)) > 10000 ||
         fabs(mv->getZ(i)) > 10000) return 0;
@@ -168,7 +167,7 @@ LTreeBrowser::Node * movementBrowser_c::addNode(LTreeBrowser::Node *nd, disassem
   char * t = label;
   bool firstpiece = true;
 
-  for (unsigned int p = 0; p < s->pieceNum; p++) {
+  for (unsigned int p = 0; p < s->pieces.size(); p++) {
 
     if (t == label) {
       if (s->node->getX(p) > mv->getX(p)) t += snprintf(t, 200-(t-label), "-x");
@@ -203,7 +202,6 @@ LTreeBrowser::Node * movementBrowser_c::addNode(LTreeBrowser::Node *nd, disassem
    * with all the numbers
    */
   dat->pieces = s->pieces;
-  dat->pieceNum = s->pieceNum;
 
   nnew->user_data(dat);
 
@@ -220,7 +218,7 @@ void movementBrowser_c::cb_NodeChange(void) {
 
   nodeData_s * s = (nodeData_s *)(tree->get_selected(1)->user_data());
 
-  fixedPositions_c fp(s->node, s->pieceNum, s->pieces);
+  fixedPositions_c fp(s->node, s->pieces);
 
   view3d->updatePositionsOverlap(&fp);
 }
@@ -259,7 +257,7 @@ void movementBrowser_c::cb_AddMovement(void) {
 
   movementCache_c * c = puz->getGridType()->getMovementCache(puz, problem);
 
-  AddMovementDialog dlg(c, s->pieceNum, s->pieces);
+  AddMovementDialog dlg(c, s->pieces);
 
   dlg.show();
 
@@ -275,9 +273,9 @@ void movementBrowser_c::cb_AddMovement(void) {
     z = -z;
   }
 
-  disassemblerNode_c * n = new disassemblerNode_c(s->pieceNum, s->node, 0, 0);
+  disassemblerNode_c * n = new disassemblerNode_c(s->pieces.size(), s->node, 0, 0);
 
-  for (unsigned int i = 0; i < s->pieceNum; i++)
+  for (unsigned int i = 0; i < s->pieces.size(); i++)
     if (dlg.pieceSelected(i))
       n->set(i, s->node, x, y, z);
     else
@@ -303,7 +301,7 @@ void movementBrowser_c::cb_NodeAnalyze(unsigned int level) {
   /* find all possible movements and add them to the current node */
 
   movementAnalysator_c mv(puz, problem);
-  mv.init_find0(s->node, s->pieceNum, s->pieces);
+  mv.init_find0(s->node, s->pieces);
 
   std::vector<disassemblerNode_c*> res;
 
@@ -373,13 +371,11 @@ movementBrowser_c::movementBrowser_c(puzzle_c * puzzle, unsigned int prob, unsig
    * all pieces are still there we fill the array
    * with all the numbers
    */
-  dat->pieces = new unsigned int[pc];
-  dat->pieceNum = pc;
   pc = 0;
   for (unsigned int j = 0; j < assembly->placementCount(); j++)
     if (assembly->isPlaced(j)) {
       dat->node->set(pc, assembly->getX(j), assembly->getY(j), assembly->getZ(j), assembly->getTransformation(j));
-      dat->pieces[pc] = j;
+      dat->pieces.push_back(j);
       pc++;
     }
 

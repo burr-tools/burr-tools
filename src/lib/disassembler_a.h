@@ -20,6 +20,8 @@
 
 #include "disassembler.h"
 
+#include <vector>
+
 class grouping_c;
 class puzzle_c;
 class disassemblerNode_c;
@@ -50,8 +52,8 @@ class disassembler_a_c : public disassembler_c {
 
   protected:
 
-    unsigned short subProbGroup(disassemblerNode_c * st, unsigned int * pn, bool cond, int piecenumber);
-    bool subProbGrouping(unsigned int * pn, int piecenumber);
+    unsigned short subProbGroup(disassemblerNode_c * st, const std::vector<unsigned int> & pn, bool cond);
+    bool subProbGrouping(const std::vector<unsigned int> & pn);
 
     void groupReset(void);
 
@@ -72,7 +74,7 @@ class disassembler_a_c : public disassembler_c {
 };
 
 
-void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, unsigned int ** pn, int ** nw, int piecenumber, unsigned int * pieces, const int * weights, int part, bool cond);
+void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, std::vector<unsigned int> & pn, int ** nw, const std::vector<unsigned int> & pieces, const int * weights, int part, bool cond);
 
 
 #endif

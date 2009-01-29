@@ -35,13 +35,13 @@
  *    and find the shortest distance the first piece follows
  *    the second and the second piece follows the first
  */
-void movementAnalysator_c::prepare(int pn, unsigned int * pieces, disassemblerNode_c * searchnode) {
+void movementAnalysator_c::prepare(const std::vector<unsigned int> & pieces, disassemblerNode_c * searchnode) {
 
   int m[cache->numDirections()];
 
   unsigned int idx = 0;
-  for (int j = 0; j < pn; j++) {
-    for (int i = 0; i < pn; i++) {
+  for (unsigned int j = 0; j < pieces.size(); j++) {
+    for (unsigned int i = 0; i < pieces.size(); i++) {
       if (i != j) {
         cache->getValue(searchnode->getX(j) - searchnode->getX(i),
                         searchnode->getY(j) - searchnode->getY(i),
@@ -58,7 +58,7 @@ void movementAnalysator_c::prepare(int pn, unsigned int * pieces, disassemblerNo
       // to that value in the init function so only the other values need
       idx++;
     }
-    idx = idx - pn + piecenumber;
+    idx = idx - pieces.size() + piecenumber;
   }
 
   /* having a look at this algorithm in more detail
@@ -112,15 +112,15 @@ void movementAnalysator_c::prepare(int pn, unsigned int * pieces, disassemblerNo
 #endif
 
       int * pos1 = matrix[d];           // y * piecenumber;
-      int idx, i;
+      unsigned int idx, i;
 
-      for (int y = 0; y < pn; y++) {
+      for (unsigned int y = 0; y < pieces.size(); y++) {
         int * pos2 = matrix[d];           // x
 
-        for (int x = 0; x < pn; x++) {
+        for (unsigned int x = 0; x < pieces.size(); x++) {
           int min = *pos2 + *pos1;
 
-          for (i = 1, idx = piecenumber; i < pn; i++, idx += piecenumber) {
+          for (i = 1, idx = piecenumber; i < pieces.size(); i++, idx += piecenumber) {
             int l = pos2[idx] + pos1[i];
             if (l < min) min = l;
           }
@@ -132,7 +132,7 @@ void movementAnalysator_c::prepare(int pn, unsigned int * pieces, disassemblerNo
 
               int * pos3 = matrix[d];
 
-              for (int i = 0; i < y; i++) {
+              for (unsigned int i = 0; i < y; i++) {
                 if (min + pos3[y] < pos3[x]) {
                   again = true;
                   break;
@@ -144,7 +144,7 @@ void movementAnalysator_c::prepare(int pn, unsigned int * pieces, disassemblerNo
 
                 pos3 = matrix[d] + x*piecenumber;
 
-                for (int i = 0; i < x; i++)
+                for (unsigned int i = 0; i < x; i++)
                   if (pos3[i] + min < pos1[i]) {
                     again = true;
                     break;
@@ -427,7 +427,7 @@ disassemblerNode_c * movementAnalysator_c::newNodeMerge(const disassemblerNode_c
 }
 
 
-void movementAnalysator_c::init_find0(disassemblerNode_c * nd, int piecenumber, unsigned int * pieces) {
+void movementAnalysator_c::init_find0(disassemblerNode_c * nd, const std::vector<unsigned int> & pieces) {
 
   /* when a new search has been started we need to first calculate
    * the movement matrices, this is a table that contains one 2 dimensional
@@ -440,7 +440,7 @@ void movementAnalysator_c::init_find0(disassemblerNode_c * nd, int piecenumber, 
    * the algorithm used here is describes in Bill Cutlers booklet
    * "Computer Analysis of All 6 Piece Burrs"
    */
-  prepare(piecenumber, pieces, nd);
+  prepare(pieces, nd);
 
   /* initialize the state machine for the find routine
    */
@@ -448,7 +448,7 @@ void movementAnalysator_c::init_find0(disassemblerNode_c * nd, int piecenumber, 
   nextpiece = 0;
   nextstep = 1;
   nextstate = 0;
-  next_pn = piecenumber;
+  next_pn = pieces.size();
 }
 
 /* at first we check if movement is possible at all in the current direction, if so

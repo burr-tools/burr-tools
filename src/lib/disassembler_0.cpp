@@ -29,25 +29,24 @@
 #include <queue>
 #include <vector>
 
-separation_c * disassembler_0_c::checkSubproblem(int pieceCount, unsigned int * pieces, int piecenumber, disassemblerNode_c * st, bool left, bool * ok, const int * weights) {
+separation_c * disassembler_0_c::checkSubproblem(int pieceCount, const std::vector<unsigned int> & pieces, disassemblerNode_c * st, bool left, bool * ok, const int * weights) {
 
   separation_c * res = 0;
 
   if (pieceCount == 1) {
     *ok = true;
-  } else if (subProbGroup(st, pieces, left, piecenumber)) {
+  } else if (subProbGroup(st, pieces, left)) {
     *ok = true;
   } else {
 
     disassemblerNode_c *n;
-    unsigned int * pn;
+    std::vector<unsigned int> pn;
     int * nw;
-    create_new_params(st, &n, &pn, &nw, piecenumber, pieces, weights, pieceCount, left);
-    res = disassemble_rec(pieceCount, pn, n, nw);
+    create_new_params(st, &n, pn, &nw, pieces, weights, pieceCount, left);
+    res = disassemble_rec(pn, n, nw);
 
-    *ok = res || subProbGrouping(pn, pieceCount);
+    *ok = res || subProbGrouping(pn);
 
-    delete [] pn;
     delete [] nw;
   }
 
@@ -70,7 +69,7 @@ separation_c * disassembler_0_c::checkSubproblem(int pieceCount, unsigned int * 
  * the function takes over the ownership of the node and pieces. They are deleted at the end
  * of the function, so you must allocate them with new
  */
-separation_c * disassembler_0_c::disassemble_rec(int piecenumber, unsigned int * pieces, disassemblerNode_c * start, const int * weights) {
+separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int> &pieces, disassemblerNode_c * start, const int * weights) {
 
   std::queue<disassemblerNode_c *> openlist[2];
   nodeHash closed[3];
@@ -116,7 +115,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, unsigned int *
      * searching this node
      */
 
-    analyse->init_find0(node, piecenumber, pieces);
+    analyse->init_find0(node, pieces);
 
     disassemblerNode_c * st;
 
@@ -158,7 +157,7 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, unsigned int *
       /* count the pieces in both parts */
       int part1 = 0, part2 = 0;
 
-      for (int i = 0; i < piecenumber; i++)
+      for (unsigned int i = 0; i < pieces.size(); i++)
         if (st->is_piece_removed(i))
           part2++;
         else
@@ -181,11 +180,11 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, unsigned int *
        * else try to disassemble, if that fails, try to
        * group the involved pieces into an identical group
        */
-      remove = checkSubproblem(part1, pieces, piecenumber, st, false, &remove_ok, weights);
+      remove = checkSubproblem(part1, pieces, st, false, &remove_ok, weights);
 
       /* only check the left over part, when the removed part is OK */
       if (remove_ok)
-        left = checkSubproblem(part2, pieces, piecenumber, st, true, &left_ok, weights);
+        left = checkSubproblem(part2, pieces, st, true, &left_ok, weights);
 
       /* if both subproblems are either trivial or solvable, return the
        * result, otherwise return 0
@@ -193,12 +192,12 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, unsigned int *
       if (remove_ok && left_ok) {
 
         /* both subproblems are solvable -> construct tree */
-        erg = new separation_c(left, remove, piecenumber, pieces);
+        erg = new separation_c(left, remove, pieces);
 
         do {
-          state_c *s = new state_c(piecenumber);
+          state_c *s = new state_c(pieces.size());
 
-          for (int i = 0; i < piecenumber; i++)
+          for (unsigned int i = 0; i < pieces.size(); i++)
             s->set(i, st->getX(i), st->getY(i), st->getZ(i));
 
           erg->addstate(s);
@@ -272,27 +271,24 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
 
   disassemblerNode_c * start = new disassemblerNode_c(pc, 0, 0, 0);
 
-
   /* create pieces field. This field contains the
    * names of all present pieces. Because at the start
    * all pieces are still there we fill the array
    * with all the numbers
    */
-  unsigned int * pieces = new unsigned int[pc];
+  std::vector<unsigned int> pieces;
   pc = 0;
   for (unsigned int j = 0; j < assembly->placementCount(); j++)
     if (assembly->isPlaced(j)) {
       start->set(pc, assembly->getX(j), assembly->getY(j), assembly->getZ(j), assembly->getTransformation(j));
-      pieces[pc] = j;
+      pieces.push_back(j);
       pc++;
     }
 
   /* reset the grouping class */
   groupReset();
 
-  separation_c * s = disassemble_rec(pc, pieces, start, weights);
-
-  delete [] pieces;
+  separation_c * s = disassemble_rec(pieces, start, weights);
 
   return s;
 }

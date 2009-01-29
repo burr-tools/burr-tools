@@ -76,7 +76,7 @@ public:
    * and the pieces in the array pcs
    * the array is copied
    */
-  separation_c(separation_c * r, separation_c * l, unsigned int pn, unsigned int * pcs);
+  separation_c(separation_c * r, separation_c * l, const std::vector<unsigned int> & pcs);
 
   /* load a separation from an xml node */
   separation_c(const xml::node & node, unsigned int pieces);

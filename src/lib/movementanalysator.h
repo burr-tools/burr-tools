@@ -58,7 +58,7 @@ class movementAnalysator_c {
     unsigned int maxstep;
     disassemblerNode_c * state99node;
 
-    void prepare(int pn, unsigned int * pieces, disassemblerNode_c * searchnode);
+    void prepare(const std::vector<unsigned int> & pieces, disassemblerNode_c * searchnode);
     bool checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep);
 
     disassemblerNode_c * newNode(int next_pn, int nextdir, disassemblerNode_c * searchnode, const int * weights, int amount);
@@ -83,7 +83,7 @@ class movementAnalysator_c {
     ~movementAnalysator_c(void);
 
     /* 2 sets of functions, one including coordinated motion, and one that doesn't */
-    void init_find0(disassemblerNode_c * nd, int piecenumber, unsigned int * pieces);
+    void init_find0(disassemblerNode_c * nd, const std::vector<unsigned int> & pieces);
     disassemblerNode_c * find0(disassemblerNode_c * searchnode, const int * weights);
     void completeFind0(disassemblerNode_c * searchnode, const int * weights, std::vector<disassemblerNode_c*> * result);
 

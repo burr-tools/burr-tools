@@ -331,9 +331,10 @@ separation_c::separation_c(const xml::node & node, unsigned int pieceCnt) {
   }
 }
 
-separation_c::separation_c(separation_c * r, separation_c * l, unsigned int pn, unsigned int * pcs) : piecenumber(pn), removed(r), left(l) {
-  pieces = new unsigned int[pn];
-  memcpy(pieces, pcs, pn*sizeof(unsigned int));
+separation_c::separation_c(separation_c * r, separation_c * l, const std::vector<unsigned int> & pcs) : piecenumber(pcs.size()), removed(r), left(l) {
+  pieces = new unsigned int[piecenumber];
+  for (unsigned int i = 0; i < piecenumber; i++)
+    pieces[i] = pcs[i];
 }
 
 separation_c::~separation_c() {
