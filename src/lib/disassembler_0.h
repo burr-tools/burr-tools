@@ -18,7 +18,7 @@
 #ifndef __DISASSEMBLER_0_H__
 #define __DISASSEMBLER_0_H__
 
-#include "disassembler.h"
+#include "disassembler_a.h"
 #include "voxel.h"
 
 class puzzle_c;
@@ -34,11 +34,9 @@ class disassemblerNode_c;
  * in case you are interested how it works. The comments are written with
  * the thought that you know his algorithm
  */
-class disassembler_0_c : public disassembler_c {
+class disassembler_0_c : public disassembler_a_c {
 
 private:
-
-  unsigned int piecenumber;
 
   /* these variables are used for the routine that looks
    * for the pieces to move find, checkmovement
@@ -46,8 +44,6 @@ private:
   int nextpiece, nextstep, next_pn, nextstate, nextpiece2, state99nextState;
   unsigned int nextdir;
   disassemblerNode_c * state99node;
-  int * movement;
-  bool * check;
 
   /* matrix should normally have 6 subarrays, for each of the 6 possible
    * directions (positive x negative x, positive y, ...) one, but because
@@ -61,15 +57,12 @@ private:
   grouping_c * groups;
 
   /* create matrix */
-  void prepare(int pn, voxel_type * pieces, disassemblerNode_c * searchnode);
-  void prepare2(int pn);
   void init_find(disassemblerNode_c * nd, int piecenumber, voxel_type * pieces);
 
   /* find all possible movements of starting from the state given to init_find
    * the functions returns the next possible state or 0 if no other state was found
    */
   disassemblerNode_c * find(disassemblerNode_c * searchnode, const int * weights);
-  bool checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep);
 
   unsigned short subProbGroup(disassemblerNode_c * st, voxel_type * pn, bool cond, int piecenumber);
   bool subProbGrouping(voxel_type * pn, int piecenumber);
