@@ -98,7 +98,7 @@ class gridType_c {
     ~gridType_c(void);
 
     /* get the grid type */
-    gridType getType(void) { return type; }
+    gridType getType(void) const { return type; }
 
     unsigned int getCapabilities(void) const;
 

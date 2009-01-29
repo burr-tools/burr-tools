@@ -36,6 +36,7 @@ lib_libburr_a_SOURCES=\
     lib/assemblerthread.cpp \
     lib/bt_assert.cpp \
     lib/burrgrower.cpp \
+    lib/converter.cpp \
     lib/disassembler_0.cpp \
     lib/disassembler_a.cpp \
     lib/disassemblerhashes.cpp \
@@ -83,6 +84,7 @@ lib_libburr_a_SOURCES=\
     lib/bitfield.h \
     lib/bt_assert.h \
     lib/burrgrower.h \
+    lib/converter.h \
     lib/disassembler.h \
     lib/disassembler_0.h \
     lib/disassembler_a.h \

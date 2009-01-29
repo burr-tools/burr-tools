@@ -1666,3 +1666,8 @@ void puzzle_c::probSetMaxHoles(unsigned int prob, unsigned int value, bool inval
     problems[prob]->maxHoles = value;
 }
 
+void puzzle_c::setGridType(gridType_c * newGt) {
+  delete gt;
+  gt = newGt;
+}
+

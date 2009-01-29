@@ -111,6 +111,12 @@ public:
   gridType_c * getGridType(void) { return gt; }
 
   /**
+   * set a new gridType, you should really know what you do, when
+   * you call this function, as it may change a lot
+   */
+  void setGridType(gridType_c * newGt);
+
+  /**
    * add a shape to the puzzle
    */
   unsigned int addShape(voxel_c * p);

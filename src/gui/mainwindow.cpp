@@ -59,6 +59,7 @@
 #include "../lib/gridtype.h"
 #include "../lib/disasmtomoves.h"
 #include "../lib/assembly.h"
+#include "../lib/converter.h"
 
 #include "../flu/Flu_File_Chooser.h"
 
@@ -1463,6 +1464,14 @@ void mainWindow_c::cb_Save(void) {
   }
 }
 
+static void cb_Convert_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Convert(); }
+void mainWindow_c::cb_Convert(void) {
+
+  doConvert(puzzle, gridType_c::GT_RHOMBIC);
+  ReplacePuzzle(puzzle);
+
+}
+
 static void cb_SaveAs_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SaveAs(); }
 void mainWindow_c::cb_SaveAs(void) {
 
@@ -1818,8 +1827,10 @@ void mainWindow_c::ReplacePuzzle(puzzle_c * NewPuzzle) {
   SolutionSel->value(1);
   SolutionAnim->value(0);
 
-  delete puzzle;
-  puzzle = NewPuzzle;
+  if (NewPuzzle != puzzle) {
+    delete puzzle;
+    puzzle = NewPuzzle;
+  }
 
   guiGridType_c * nggt = new guiGridType_c(puzzle->getGridType());
 
@@ -1853,6 +1864,7 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
     {"Import",         0, cb_Load_Ps3d_stub,   0, 0, 0, 0, 14, 56},
     {"Save",    FL_F + 2, cb_Save_stub,        0, 0, 0, 0, 14, 56},
     {"Save As",        0, cb_SaveAs_stub,      0, FL_MENU_DIVIDER, 0, 0, 14, 56},
+    {"Convert",        0, cb_Convert_stub,     0, 0, 0, 0, 14, 56},
     {"Quit",           0, cb_Quit_stub,        0, 0, 3, 0, 14, 56},
     { 0 },
   {"Toggle 3D", FL_F + 4, cb_Toggle3D_stub,    0, 0, 0, 0, 14, 56},
