@@ -95,7 +95,7 @@ class mainWindow_c : public LFl_Double_Window {
   layouter_c *TabSolve;
   Fl_Check_Button *SolveDisasm, *JustCount, *DropDisassemblies, *KeepMirrors, *KeepRotations;
 
-  FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep;
+  FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep, *BtnMovement;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape, *BtnShapeLeft, *BtnShapeRight, *BtnWeightInc, *BtnWeightDec;
   FlatButton *BtnNewColor, *BtnDelColor, *BtnChnColor;
   FlatButton *BtnNewProb, *BtnDelProb, *BtnCpyProb, *BtnRenProb, *BtnProbLeft, *BtnProbRight;
@@ -252,6 +252,7 @@ public:
   void cb_BtnCont(bool prep_only);
   void cb_BtnStop(void);
   void cb_BtnPlacementBrowser(void);
+  void cb_BtnMovementBrowser(void);
   void cb_BtnAssemblerStep(void);
 
   void cb_SolutionSel(Fl_Value_Slider*);

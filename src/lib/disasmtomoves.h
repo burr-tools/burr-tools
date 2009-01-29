@@ -19,6 +19,7 @@
 #define __DISASSMTOMOVES_H__
 
 class separation_c;
+class disassemblerNode_c;
 
 /* this is an abstract class used to give that piece positions to the voxel
  * space widget
@@ -95,6 +96,28 @@ public:
   virtual float getZ(unsigned int piece);
   virtual float getA(unsigned int piece);
   virtual bool moving(unsigned int piece);
+};
+
+/* a piece position class with fixed positions */
+class fixedPositions_c : public piecePositions_c {
+
+  public:
+
+    fixedPositions_c(const disassemblerNode_c * nd, unsigned int piecenum, unsigned int * pieces);
+    fixedPositions_c(const fixedPositions_c * nd);
+    ~fixedPositions_c(void);
+
+    virtual float getX(unsigned int piece);
+    virtual float getY(unsigned int piece);
+    virtual float getZ(unsigned int piece);
+    virtual float getA(unsigned int piece);
+    virtual bool moving(unsigned int piece);
+
+  private:
+
+    int *x, *y, *z;
+    bool *visible;
+    unsigned int pieces;
 };
 
 #endif

@@ -18,6 +18,7 @@
 #include "disasmtomoves.h"
 
 #include "disassembly.h"
+#include "disassemblernode.h"
 
 disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz, unsigned int max) : size(sz), maxPieceName(max) {
 
@@ -271,3 +272,62 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
 
   return tree->getMoves() + steps + steps2;
 }
+
+
+
+
+
+
+
+fixedPositions_c::fixedPositions_c(const disassemblerNode_c * nd, unsigned int piecenum, unsigned int * pc) {
+
+  pieces = nd->getPiecenumber();
+  x = new int[pieces];
+  y = new int[pieces];
+  z = new int[pieces];
+  visible = new bool[pieces];
+
+  for (unsigned int p = 0; p < pieces; p++)
+    visible[p] = false;
+
+  for (unsigned int p = 0; p < piecenum; p++) {
+
+    unsigned int pi = pc[p];
+
+    x[pi] = (int)nd->getX(p);
+    y[pi] = (int)nd->getY(p);
+    z[pi] = (int)nd->getZ(p);
+
+    visible[pi] = true;
+  }
+}
+
+fixedPositions_c::fixedPositions_c(const fixedPositions_c * nd) {
+
+  pieces = nd->pieces;
+  x = new int[pieces];
+  y = new int[pieces];
+  z = new int[pieces];
+  visible = new bool[pieces];
+
+  for (unsigned int p = 0; p < pieces; p++) {
+    x[p] = nd->x[p];
+    y[p] = nd->y[p];
+    z[p] = nd->z[p];
+    visible[p] = nd->visible[p];
+  }
+}
+
+fixedPositions_c::~fixedPositions_c(void) {
+  delete [] x;
+  delete [] y;
+  delete [] z;
+  delete [] visible;
+}
+
+float fixedPositions_c::getX(unsigned int piece) { bt_assert(piece < pieces); return x[piece]; }
+float fixedPositions_c::getY(unsigned int piece) { bt_assert(piece < pieces); return y[piece]; }
+float fixedPositions_c::getZ(unsigned int piece) { bt_assert(piece < pieces); return z[piece]; }
+float fixedPositions_c::getA(unsigned int piece) { return visible[piece] ? 1 : 0; }
+bool fixedPositions_c::moving(unsigned int /*piece*/) { return false; }
+

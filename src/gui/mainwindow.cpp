@@ -21,6 +21,7 @@
 #include "configuration.h"
 #include "groupseditor.h"
 #include "placementbrowser.h"
+#include "movementbrowser.h"
 #include "imageexport.h"
 #include "stlexport.h"
 #include "guigridtype.h"
@@ -838,6 +839,29 @@ void mainWindow_c::cb_BtnPlacementBrowser(void) {
     Fl::wait();
 
   delete plbr;
+}
+
+static void cb_BtnMovementBrowser_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_BtnMovementBrowser(); }
+void mainWindow_c::cb_BtnMovementBrowser(void) {
+
+  unsigned int prob = solutionProblem->getSelection();
+
+  if (prob >= puzzle->problemNumber())
+    return;
+
+  unsigned int sol = (int)SolutionSel->value()-1;
+
+  if (sol >= puzzle->probSolutionNumber(prob))
+    return;
+
+  movementBrowser_c * mvbr = new movementBrowser_c(puzzle, prob, sol);
+
+  mvbr->show();
+
+  while (mvbr->visible())
+    Fl::wait();
+
+  delete mvbr;
 }
 
 static void cb_BtnAssemblerStep_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_BtnAssemblerStep(); }
@@ -3297,8 +3321,10 @@ void mainWindow_c::CreateSolveTab(void) {
 
     o = new layouter_c(0, 9);
 
-    BtnPlacement = new LFlatButton_c(0, 0, 1, 1, "Browse Placements", " Browse the calculated placement of pieces ", cb_BtnPlacementBrowser_stub, this);
+    BtnPlacement = new LFlatButton_c(0, 0, 1, 1, "Placements", " Browse the calculated placement of pieces ", cb_BtnPlacementBrowser_stub, this);
     ((LFlatButton_c*)BtnPlacement)->weight(1, 0);
+
+    BtnMovement = new LFlatButton_c(1, 0, 1, 1, "Movements", " Browse the possible movements for an assembly ", cb_BtnMovementBrowser_stub, this);
     if (expertMode) {
       (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
       BtnStep = new LFlatButton_c(2, 0, 1, 1, "Step", " Make one step in the assembler ", cb_BtnAssemblerStep_stub, this);
