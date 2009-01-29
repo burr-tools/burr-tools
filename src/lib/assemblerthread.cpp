@@ -115,7 +115,7 @@ solutionDrop(1)
 {
 
   if (par & PAR_DISASSM)
-    disassm = new disassembler_0_c(puz->getGridType()->getMovementCache(puz, problemNum), puz, problemNum);
+    disassm = new disassembler_0_c(puz, problemNum);
 }
 
 assemblerThread_c::~assemblerThread_c(void) {

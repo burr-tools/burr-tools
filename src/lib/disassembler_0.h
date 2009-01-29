@@ -36,21 +36,6 @@ class disassembler_0_c : public disassembler_a_c {
 
 private:
 
-  /* these variables are used for the routine that looks
-   * for the pieces to move find, checkmovement
-   */
-  int nextpiece, nextstep, next_pn, nextstate, nextpiece2, state99nextState;
-  unsigned int nextdir;
-  disassemblerNode_c * state99node;
-
-  /* create matrix */
-  void init_find(disassemblerNode_c * nd, int piecenumber, unsigned int * pieces);
-
-  /* find all possible movements of starting from the state given to init_find
-   * the functions returns the next possible state or 0 if no other state was found
-   */
-  disassemblerNode_c * find(disassemblerNode_c * searchnode, const int * weights);
-
   /* the real disassembly routine. It separates the puzzle into 2 parts
    * and gets called recursively with each subpart to disassemble
    *
@@ -68,7 +53,7 @@ public:
    * changed, once you done that but you can analyse many assemblies for
    * disassembability
    */
-  disassembler_0_c(movementCache_c * cache, const puzzle_c * puz, unsigned int prob);
+  disassembler_0_c(const puzzle_c * puz, unsigned int prob);
 
   ~disassembler_0_c();
 

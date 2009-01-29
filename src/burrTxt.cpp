@@ -233,7 +233,7 @@ int main(int argv, char* args[]) {
 
       asm_cb a(&p, problem);
 
-      d = new disassembler_0_c(p.getGridType()->getMovementCache(&p, problem), &p, problem);
+      d = new disassembler_0_c(&p, problem);
 
       assm->assemble(&a);
 
@@ -251,7 +251,7 @@ int main(int argv, char* args[]) {
 
     for (problem = firstProblem ; problem < lastProblem; problem ++) {
 
-      d = new disassembler_0_c(p.getGridType()->getMovementCache(&p, problem), &p, problem);
+      d = new disassembler_0_c(&p, problem);
 
       for (unsigned int sol = 0; sol < p.probSolutionNumber(problem); sol++) {
 

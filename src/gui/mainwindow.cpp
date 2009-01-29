@@ -1184,7 +1184,7 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
   }
 
-  disassembler_c * dis = new disassembler_0_c(puzzle->getGridType()->getMovementCache(puzzle, prob), puzzle, prob);
+  disassembler_c * dis = new disassembler_0_c(puzzle, prob);
 
   separation_c * d = dis->disassemble(puzzle->probGetAssembly(prob, sol));
 
@@ -1219,7 +1219,7 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
   changed = true;
 
-  disassembler_c * dis = new disassembler_0_c(puzzle->getGridType()->getMovementCache(puzzle, prob), puzzle, prob);
+  disassembler_c * dis = new disassembler_0_c(puzzle, prob);
 
   Fl_Double_Window * w = new Fl_Double_Window(20, 20, 300, 30);
   Fl_Box * b = new Fl_Box(0, 0, 300, 30);

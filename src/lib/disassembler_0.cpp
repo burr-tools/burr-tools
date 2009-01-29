@@ -19,168 +19,15 @@
 
 #include "disassembly.h"
 #include "bt_assert.h"
-#include "movementcache_0.h"
 #include "puzzle.h"
 #include "assembly.h"
+#include "movementanalysator.h"
 
 #include "disassemblernode.h"
 #include "disassemblerhashes.h"
 
 #include <queue>
 #include <vector>
-
-void disassembler_0_c::init_find(disassemblerNode_c * nd, int piecenumber, unsigned int * pieces) {
-
-  /* when a new search has been started we need to first calculate
-   * the movement matrices, this is a table that contains one 2 dimensional
-   * matrix for each of the 6 directions where movement is possible
-   *
-   * the matrices contains possible movement of one piece if other pieces
-   * are not moved. So a one in column 2 row 4 means that piece nr. 2 can
-   * be moved one unit it we fix piece nr. 4
-   *
-   * the algorithm used here is describes in Bill Cutlers booklet
-   * "Computer Analysis of All 6 Piece Burrs"
-   */
-  prepare(piecenumber, pieces, nd);
-
-  /* initialize the state machine for the find routine
-   */
-  nextdir = 0;
-  nextpiece = 0;
-  nextstep = 1;
-  nextstate = 0;
-  next_pn = piecenumber;
-}
-
-/* at first we check if movement is possible at all in the current direction, if so
- * the next thing to do is to check if something can be removed, and finally we look for longer
- * movements in the actual direction
- */
-disassemblerNode_c * disassembler_0_c::find(disassemblerNode_c * searchnode, const int * weights) {
-
-  disassemblerNode_c * n = 0;
-
-  static countingNodeHash nodes;
-
-  // repeat until we either find a movement or have checked everything
-  while (!n) {
-
-    switch (nextstate) {
-      case 0:
-        // check, if a single piece can be removed
-        if (checkmovement(1, nextdir, next_pn, nextpiece, 30000))
-          n = newNode(next_pn, nextdir, searchnode, weights, 30000);
-
-        nextpiece++;
-        if (nextpiece >= next_pn) {
-          nextpiece = 0;
-          nextdir++;
-          if (nextdir >= 2*cache->numDirections()) {
-            nextstate++;
-            nextdir = 0;
-          }
-        }
-        break;
-      case 1:
-        // check, if a group of pieces can be removed
-        if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, 30000))
-          n = newNode(next_pn, nextdir, searchnode, weights, 30000);
-
-        nextpiece++;
-        if (nextpiece >= next_pn) {
-          nextpiece = 0;
-          nextdir++;
-          if (nextdir >= 2*cache->numDirections()) {
-            nextstate++;
-            nextdir = 0;
-            nodes.clear();
-          }
-        }
-        break;
-      case 2:
-        // check, if pieces can be moved
-        if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep)) {
-          n = newNode(next_pn, nextdir, searchnode, weights, nextstep);
-          bt_assert(n);
-
-          // we need to merge the gained node with all already found
-          // nodes with the same step and if that leads to valid new nodes
-          // we also need to return those
-
-          // but first we check, if we have this node already found (maybe via a merger)
-          // and if so we delete it
-          if (nodes.insert(n)) {
-            delete n;
-            n = 0;
-
-          } else {
-
-            nextstate = 99;
-            state99node = n;
-            nodes.initScan();
-            state99nextState = 2;
-          }
-
-          // if we can move something, we try larger steps
-          nextstep++;
-
-        } else {
-
-          // if not, lets try the next piece
-          nextstep = 1;
-          nextpiece++;
-          if (nextpiece >= next_pn) {
-            nextpiece = 0;
-            nextdir++;
-            nodes.clear();
-            if (nextdir >= 2*cache->numDirections()) {
-              return 0;
-            }
-          }
-        }
-        break;
-
-      case 99:
-
-        // this is a special state that takes the last found node and creates mergers with all
-        // the already found nodes.
-        // a merger is a new node that contains the movement of one node AND the movement of
-        // the 2nd node at the same time. Of course both nodes need to point into the same
-        // direction and in both nodes the pieces need to be moved by
-        // the same amount
-        //
-        // This is needed because when moving groups of pieces and both pieces are independent of
-        // one another the code above alone wont find movements where both pieces are moved at
-        // the same time but rather one after the other
-
-        {
-          const disassemblerNode_c * nd2 = nodes.nextScan();
-
-          if (nd2) {
-            n = newNodeMerge(state99node, nd2, searchnode, next_pn, nextdir, weights);
-
-            // if the node is valid check if we already know that node, if so
-            // delete it
-            if (n && nodes.insert(n)) {
-              delete n;
-              n = 0;
-            }
-
-          } else
-            nextstate = state99nextState;
-        }
-
-        break;
-
-      default:
-        // endstate, do nothing
-        return 0;
-    }
-  }
-
-  return n;
-}
 
 separation_c * disassembler_0_c::checkSubproblem(int pieceCount, unsigned int * pieces, int piecenumber, disassemblerNode_c * st, bool left, bool * ok, const int * weights) {
 
@@ -269,11 +116,11 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, unsigned int *
      * searching this node
      */
 
-    init_find(node, piecenumber, pieces);
+    analyse->init_find0(node, piecenumber, pieces);
 
     disassemblerNode_c * st;
 
-    while ((st = find(node, weights))) {
+    while ((st = analyse->find0(node, weights))) {
 
       /* check all closed nodelists and also insert the node into the newFront list
        * insert has the same return value as contains, but also inserts the node
@@ -398,8 +245,8 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, unsigned int *
   return 0;
 }
 
-disassembler_0_c::disassembler_0_c(movementCache_c * c, const puzzle_c * puz, unsigned int prob) :
-  disassembler_a_c(c, puz, prob) {
+disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) :
+  disassembler_a_c(puz, prob) {
 
 
 }

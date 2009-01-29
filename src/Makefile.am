@@ -45,6 +45,7 @@ lib_libburr_a_SOURCES=\
     lib/disasmtomoves.cpp \
     lib/gridtype.cpp \
     lib/grouping.cpp \
+    lib/movementanalysator.cpp \
     lib/movementcache.cpp \
     lib/movementcache_0.cpp \
     lib/piecegenerator.cpp \
@@ -94,6 +95,7 @@ lib_libburr_a_SOURCES=\
     lib/disasmtomoves.h \
     lib/gridtype.h \
     lib/grouping.h \
+    lib/movementanalysator.h \
     lib/movementcache.h \
     lib/movementcache_0.h \
     lib/piecegenerator.h \

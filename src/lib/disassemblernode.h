@@ -115,6 +115,10 @@ public:
     return trans[i];
   }
 
+  int getPiecenumber(void) const {
+    return piecenumber;
+  }
+
   void set(int i, int x, int y, int z, unsigned int tr) {
     bt_assert(i < piecenumber);
     dx[i] = x;

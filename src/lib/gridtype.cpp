@@ -23,7 +23,6 @@
 #include "assemblerfrontend_1.h"
 #include "assemblerfrontend_2.h"
 #include "assemblerfrontend_3.h"
-#include "disassembler_0.h"
 #include "movementcache_0.h"
 #include "voxel_0.h"
 #include "voxel_1.h"

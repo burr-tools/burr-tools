@@ -63,7 +63,7 @@ puzzleSol_c::puzzleSol_c(const puzzleSol_c * p) {
 bool puzzleSol_c::assembly(assembly_c* a) {
 
 
-  disassembler_c * d = new disassembler_0_c(puzzle->getGridType()->getMovementCache(puzzle, prob), puzzle, prob);
+  disassembler_c * d = new disassembler_0_c(puzzle, prob);
   separation_c * da = d->disassemble(a);
 
   if (da) {

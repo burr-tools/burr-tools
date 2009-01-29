@@ -18,8 +18,6 @@
 #ifndef __DISASSEMBLER_H__
 #define __DISASSEMBLER_H__
 
-#include "movementcache.h"
-
 class separation_c;
 class assembly_c;
 
@@ -32,19 +30,10 @@ class assembly_c;
  */
 class disassembler_c {
 
-  protected:
-
-    movementCache_c * cache;
-
 public:
 
-  disassembler_c(movementCache_c *c) : cache(c) {}
-
-  virtual ~disassembler_c(void) {
-
-    delete cache;
-
-  }
+  disassembler_c(void) {}
+  virtual ~disassembler_c(void) {}
 
   /* because we can only have or don't have a disassembly sequence
    * we don't need the same complicated callback interface. The function

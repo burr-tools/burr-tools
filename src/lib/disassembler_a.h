@@ -23,6 +23,7 @@
 class grouping_c;
 class puzzle_c;
 class disassemblerNode_c;
+class movementAnalysator_c;
 
 /* this class is a disassembler for the cube space.
  *
@@ -34,14 +35,6 @@ class disassembler_a_c : public disassembler_c {
 
   private:
 
-    /* matrix should normally have 6 subarrays, for each of the 6 possible
-     * directions (positive x negative x, positive y, ...) one, but because
-     * the matrix for the negative direction in the same dimension is the
-     * transposition (m[i][j] == m[j][i]) we save the calculation or copying
-     * and rather do the transposition inside the checkmovement function
-     */
-    int ** matrix;
-    int * movement;
     unsigned int piecenumber;
 
     /* here we can group pieces together */
@@ -56,22 +49,6 @@ class disassembler_a_c : public disassembler_c {
     unsigned int problem;
 
   protected:
-    void prepare(int pn, unsigned int * pieces, disassemblerNode_c * searchnode);
-    bool checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep);
-
-
-
-    disassemblerNode_c * newNode(int next_pn, int nextdir, disassemblerNode_c * searchnode, const int * weights, int amount);
-
-    /* creates a new node that contains the merged movements of the given 2 nodes
-     * merged movement means that a piece is moved the maximum amount specified in
-     * both nodes. But only one direction is allowed, so if one piece moves this
-     * way and another piece that way 0 i sreturned
-     * the function also returns zero, if the new node would be identical to n1 or n0
-     * also the amount must be identical in both nodes, so if piece a moves 1 unit
-     * in node n0 and andother piece move 2 units in node n1 0 is returned
-     */
-    disassemblerNode_c * newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1, disassemblerNode_c * searchnode, int next_pn, int nextdir, const int * weights);
 
     unsigned short subProbGroup(disassemblerNode_c * st, unsigned int * pn, bool cond, int piecenumber);
     bool subProbGrouping(unsigned int * pn, int piecenumber);
@@ -80,7 +57,7 @@ class disassembler_a_c : public disassembler_c {
 
     const int * weights;
 
-    unsigned int getPiecenumber(void);
+    movementAnalysator_c *analyse;
 
   public:
 
@@ -88,8 +65,10 @@ class disassembler_a_c : public disassembler_c {
      * changed, once you done that but you can analyse many assemblies for
      * disassembability
      */
-    disassembler_a_c(movementCache_c * cache, const puzzle_c *puz, unsigned int problem);
+    disassembler_a_c(const puzzle_c *puz, unsigned int problem);
     ~disassembler_a_c(void);
+
+    unsigned int getPiecenumber(void);
 };
 
 
