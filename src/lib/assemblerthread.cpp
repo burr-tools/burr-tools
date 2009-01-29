@@ -20,6 +20,7 @@
 #include "disassembly.h"
 #include "puzzle.h"
 #include "assembly.h"
+#include "disassembler_0.h"
 
 void assemblerThread_c::run(void){
 
@@ -114,7 +115,7 @@ solutionDrop(1)
 {
 
   if (par & PAR_DISASSM)
-    disassm = puz->getGridType()->getDisassembler(puz, problemNum);
+    disassm = new disassembler_0_c(puz->getGridType()->getMovementCache(puz, problemNum), puz, problemNum);
 }
 
 assemblerThread_c::~assemblerThread_c(void) {

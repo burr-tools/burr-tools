@@ -23,7 +23,6 @@
 
 class puzzle_c;
 class grouping_c;
-class movementCache_c;
 class assembly_c;
 class separation_c;
 
@@ -57,9 +56,6 @@ private:
    * and rather do the transposition inside the checkmovement function
    */
   int ** matrix;
-
-  /* this is the cache with the already calculated movements */
-  movementCache_c * cache;
 
   /* here we can group pieces together */
   grouping_c * groups;
@@ -100,15 +96,13 @@ private:
   /* this array contains the weights of all the shapes involved in this problem */
   int * weights;
 
+public:
+
   /* construct the disassembler for this concrete problem, is can not be
    * changed, once you done that but you can analyse many assemblies for
    * disassembability
    */
-  disassembler_0_c(const puzzle_c * puz, unsigned int prob);
-
-  friend disassembler_c * gridType_c::getDisassembler(const puzzle_c * puz, unsigned int prob) const;
-
-public:
+  disassembler_0_c(movementCache_c * cache, const puzzle_c * puz, unsigned int prob);
 
   ~disassembler_0_c();
 

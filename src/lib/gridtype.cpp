@@ -24,6 +24,7 @@
 #include "assemblerfrontend_2.h"
 #include "assemblerfrontend_3.h"
 #include "disassembler_0.h"
+#include "movementcache_0.h"
 #include "voxel_0.h"
 #include "voxel_1.h"
 #include "voxel_2.h"
@@ -154,10 +155,11 @@ assemblerFrontend_c * gridType_c::getAssemblerFrontend(void) const {
   }
 
 }
-disassembler_c * gridType_c::getDisassembler(const puzzle_c * puz, unsigned int prob) const {
+
+movementCache_c * gridType_c::getMovementCache(const puzzle_c * puz, unsigned int prob) const {
 
   switch (type) {
-    case GT_BRICKS: return new disassembler_0_c(puz, prob);
+    case GT_BRICKS:           return new movementCache_0_c(puz, prob);
     default: return 0;
   }
 }

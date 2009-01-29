@@ -23,6 +23,7 @@
 #include "puzzle.h"
 #include "grouping.h"
 #include "assembly.h"
+
 #include "disassemblernode.h"
 #include "disassemblerhashes.h"
 
@@ -839,14 +840,13 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
   return 0;
 }
 
-disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) :
+disassembler_0_c::disassembler_0_c(movementCache_c * c, const puzzle_c * puz, unsigned int prob) :
+  disassembler_c(c),
   piecenumber(puz->probPieceNumber(prob)), puzzle(puz), problem(prob) {
 
   /* allocate the necessary arrays */
   movement = new int[piecenumber];
   check = new bool[piecenumber];
-
-  cache = new movementCache_0_c(puzzle, problem);
 
   matrix = new int*[cache->numDirections()];
 
@@ -885,7 +885,6 @@ disassembler_0_c::~disassembler_0_c() {
     delete [] matrix[k];
   delete [] matrix;
 
-  delete cache;
   delete groups;
   delete [] piece2shape;
   delete [] weights;

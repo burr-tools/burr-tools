@@ -20,6 +20,7 @@
 #include "lib/assembler.h"
 #include "lib/assembly.h"
 #include "lib/disassembler.h"
+#include "lib/disassembler_0.h"
 #include "lib/disassembly.h"
 #include "lib/print.h"
 
@@ -231,7 +232,7 @@ int main(int argv, char* args[]) {
 
       asm_cb a(&p, problem);
 
-      d = p.getGridType()->getDisassembler(&p, problem);
+      d = new disassembler_0_c(p.getGridType()->getMovementCache(&p, problem), &p, problem);
 
       assm->assemble(&a);
 
@@ -249,7 +250,7 @@ int main(int argv, char* args[]) {
 
     for (problem = firstProblem ; problem < lastProblem; problem ++) {
 
-      d = p.getGridType()->getDisassembler(&p, problem);
+      d = new disassembler_0_c(p.getGridType()->getMovementCache(&p, problem), &p, problem);
 
       for (unsigned int sol = 0; sol < p.probSolutionNumber(problem); sol++) {
 
