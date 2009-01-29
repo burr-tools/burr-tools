@@ -22,7 +22,6 @@
 #include "voxel.h"
 
 class puzzle_c;
-class grouping_c;
 class assembly_c;
 class separation_c;
 
@@ -45,17 +44,6 @@ private:
   unsigned int nextdir;
   disassemblerNode_c * state99node;
 
-  /* matrix should normally have 6 subarrays, for each of the 6 possible
-   * directions (positive x negative x, positive y, ...) one, but because
-   * the matrix for the negative direction in the same dimension is the
-   * transposition (m[i][j] == m[j][i]) we save the calculation or copying
-   * and rather do the transposition inside the checkmovement function
-   */
-  int ** matrix;
-
-  /* here we can group pieces together */
-  grouping_c * groups;
-
   /* create matrix */
   void init_find(disassemblerNode_c * nd, int piecenumber, voxel_type * pieces);
 
@@ -63,10 +51,6 @@ private:
    * the functions returns the next possible state or 0 if no other state was found
    */
   disassemblerNode_c * find(disassemblerNode_c * searchnode, const int * weights);
-
-  unsigned short subProbGroup(disassemblerNode_c * st, voxel_type * pn, bool cond, int piecenumber);
-  bool subProbGrouping(voxel_type * pn, int piecenumber);
-  separation_c * checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, disassemblerNode_c * st, bool left, bool * ok, const int * weights);
 
   /* the real disassembly routine. It separates the puzzle into 2 parts
    * and gets called recursively with each subpart to disassemble
@@ -76,18 +60,8 @@ private:
    * pieces contains the names of all the pieces that are still inside the
    * subpuzzle puzzle, start defines the starting position of these pieces
    */
+  separation_c * checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, disassemblerNode_c * st, bool left, bool * ok, const int * weights);
   separation_c * disassemble_rec(int piecenumber, voxel_type * pieces, disassemblerNode_c * start, const int * weights);
-
-  const puzzle_c * puzzle;
-  unsigned int problem;
-
-  /* this array is used to convert piece number to the corresponding
-   * shape number, as these are needed for the grouping functions
-   */
-  unsigned short * piece2shape;
-
-  /* this array contains the weights of all the shapes involved in this problem */
-  int * weights;
 
 public:
 

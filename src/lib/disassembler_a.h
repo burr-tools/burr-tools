@@ -21,8 +21,8 @@
 #include "disassembler.h"
 #include "voxel.h"
 
+class grouping_c;
 class puzzle_c;
-
 class disassemblerNode_c;
 
 /* this class is a disassembler for the cube space.
@@ -45,6 +45,17 @@ class disassembler_a_c : public disassembler_c {
     int * movement;
     unsigned int piecenumber;
 
+    /* here we can group pieces together */
+    grouping_c * groups;
+
+    /* this array is used to convert piece number to the corresponding
+     * shape number, as these are needed for the grouping functions
+     */
+    unsigned short * piece2shape;
+
+    const puzzle_c * puzzle;
+    unsigned int problem;
+
   protected:
     void prepare(int pn, voxel_type * pieces, disassemblerNode_c * searchnode);
     bool checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep);
@@ -63,6 +74,15 @@ class disassembler_a_c : public disassembler_c {
      */
     disassemblerNode_c * newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1, disassemblerNode_c * searchnode, int next_pn, int nextdir, const int * weights);
 
+    unsigned short subProbGroup(disassemblerNode_c * st, voxel_type * pn, bool cond, int piecenumber);
+    bool subProbGrouping(voxel_type * pn, int piecenumber);
+
+    void groupReset(void);
+
+    const int * weights;
+
+    unsigned int getPiecenumber(void);
+
   public:
 
     /* construct the disassembler for this concrete problem, is can not be
@@ -74,6 +94,7 @@ class disassembler_a_c : public disassembler_c {
 };
 
 
+void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, voxel_type ** pn, int ** nw, int piecenumber, voxel_type * pieces, const int * weights, int part, bool cond);
 
 
 #endif

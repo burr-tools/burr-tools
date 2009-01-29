@@ -21,7 +21,6 @@
 #include "bt_assert.h"
 #include "movementcache_0.h"
 #include "puzzle.h"
-#include "grouping.h"
 #include "assembly.h"
 
 #include "disassemblernode.h"
@@ -181,69 +180,6 @@ disassemblerNode_c * disassembler_0_c::find(disassemblerNode_c * searchnode, con
   }
 
   return n;
-}
-
-/* create all the necessary parameters for one of the two possible subproblems
- * our current problems divides into
- */
-static void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, voxel_type ** pn, int ** nw, int piecenumber, voxel_type * pieces, const int * weights, int part, bool cond) {
-
-  *n = new disassemblerNode_c(part, 0, 0, 0);
-  *pn = new voxel_type[part];
-  *nw = new int[part];
-
-  int num = 0;
-  int dx, dy, dz;
-
-  dx = dy = dz = 0;
-
-  for (int i = 0; i < piecenumber; i++)
-    if (st->is_piece_removed(i) == cond) {
-      if (num == 0) {
-        /* find the direction, the first piece was moved out of the puzzle
-         * and shift it back along this axis */
-        if ((st->getX(i) > 10000) || (st->getX(i) < -10000)) dx = st->getX(i);
-        if ((st->getY(i) > 10000) || (st->getY(i) < -10000)) dy = st->getY(i);
-        if ((st->getZ(i) > 10000) || (st->getZ(i) < -10000)) dz = st->getZ(i);
-      }
-      (*n)->set(num,
-                st->getX(i) - dx,
-                st->getY(i) - dy,
-                st->getZ(i) - dz,
-                st->getTrans(i));
-      (*pn)[num] = pieces[i];
-      (*nw)[num] = weights[i];
-      num++;
-    }
-
-  bt_assert(num == part);
-}
-
-unsigned short disassembler_0_c::subProbGroup(disassemblerNode_c * st, voxel_type * pn, bool cond, int piecenumber) {
-
-  unsigned short group = 0;
-
-  for (int i = 0; i < piecenumber; i++)
-    if (st->is_piece_removed(i) == cond)
-      if (puzzle->probGetShapeGroupNumber(problem, piece2shape[pn[i]]) != 1)
-        return 0;
-      else if (group == 0)
-        group = puzzle->probGetShapeGroup(problem, piece2shape[pn[i]], 0);
-      else if (group != puzzle->probGetShapeGroup(problem, piece2shape[pn[i]], 0))
-        return 0;
-
-  return group;
-}
-
-bool disassembler_0_c::subProbGrouping(voxel_type * pn, int piecenumber) {
-
-  groups->newSet();
-
-  for (int i = 0; i < piecenumber; i++)
-    if (!groups->addPieceToSet(piece2shape[pn[i]]))
-      return false;
-
-  return true;
 }
 
 separation_c * disassembler_0_c::checkSubproblem(int pieceCount, voxel_type * pieces, int piecenumber, disassemblerNode_c * st, bool left, bool * ok, const int * weights) {
@@ -463,40 +399,18 @@ separation_c * disassembler_0_c::disassemble_rec(int piecenumber, voxel_type * p
 }
 
 disassembler_0_c::disassembler_0_c(movementCache_c * c, const puzzle_c * puz, unsigned int prob) :
-  disassembler_a_c(c, puz, prob),
-  puzzle(puz), problem(prob) {
+  disassembler_a_c(c, puz, prob) {
 
-  /* initialize the grouping class */
-  groups = new grouping_c();
-  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++)
-    for (unsigned int j = 0; j < puz->probGetShapeGroupNumber(prob, i); j++)
-      groups->addPieces(puz->probGetShape(prob, i),
-                        puz->probGetShapeGroup(prob, i, j),
-                        puz->probGetShapeGroupCount(prob, i, j));
 
-  /* initialize piece 2 shape transformation */
-  piece2shape = new unsigned short[puz->probPieceNumber(prob)];
-  int p = 0;
-  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++)
-    for (unsigned int j = 0; j < puz->probGetShapeMax(prob, i); j++)
-      piece2shape[p++] = i;
-
-  /* create the weights array */
-  weights = new int[puz->probPieceNumber(prob)];
-  for (unsigned int i = 0; i < puz->probPieceNumber(prob); i++)
-    weights[i] = puzzle->probGetShapeShape(prob, piece2shape[i])->getWeight();
 }
 
 disassembler_0_c::~disassembler_0_c() {
 
-  delete groups;
-  delete [] piece2shape;
-  delete [] weights;
 }
 
 separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
 
-  bt_assert(assembly->placementCount() == puzzle->probPieceNumber(problem));
+  bt_assert(getPiecenumber() == assembly->placementCount());
 
   /* create the first node with the start state
    * here all pieces are at position (0; 0; 0)
@@ -510,6 +424,7 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
     return 0;
 
   disassemblerNode_c * start = new disassemblerNode_c(pc, 0, 0, 0);
+
 
   /* create pieces field. This field contains the
    * names of all present pieces. Because at the start
@@ -526,7 +441,7 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
     }
 
   /* reset the grouping class */
-  groups->reSet();
+  groupReset();
 
   separation_c * s = disassemble_rec(pc, pieces, start, weights);
 

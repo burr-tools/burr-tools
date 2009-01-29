@@ -20,7 +20,7 @@
 #include "bt_assert.h"
 #include "movementcache.h"
 #include "puzzle.h"
-
+#include "grouping.h"
 #include "disassemblernode.h"
 
 /* so, this isn't the function as described by Bill but rather a
@@ -274,7 +274,7 @@ bool disassembler_a_c::checkmovement(unsigned int maxPieces, int nextdir, int ne
 
 disassembler_a_c::disassembler_a_c(movementCache_c * c, const puzzle_c * puz, unsigned int prob) :
   disassembler_c(c),
-  piecenumber(puz->probPieceNumber(prob)) {
+  piecenumber(puz->probPieceNumber(prob)), puzzle(puz), problem(prob) {
 
   /* allocate the necessary arrays */
   movement = new int[piecenumber];
@@ -287,6 +287,26 @@ disassembler_a_c::disassembler_a_c(movementCache_c * c, const puzzle_c * puz, un
     for (unsigned int i = 0; i < piecenumber; i++)
       matrix[j][i+i*piecenumber] = 0;
   }
+
+  /* initialize the grouping class */
+  groups = new grouping_c();
+  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++)
+    for (unsigned int j = 0; j < puz->probGetShapeGroupNumber(prob, i); j++)
+      groups->addPieces(puz->probGetShape(prob, i),
+                        puz->probGetShapeGroup(prob, i, j),
+                        puz->probGetShapeGroupCount(prob, i, j));
+
+  /* initialize piece 2 shape transformation */
+  piece2shape = new unsigned short[puz->probPieceNumber(prob)];
+  int p = 0;
+  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++)
+    for (unsigned int j = 0; j < puz->probGetShapeMax(prob, i); j++)
+      piece2shape[p++] = i;
+
+  /* create the weights array */
+  weights = new int[puz->probPieceNumber(prob)];
+  for (unsigned int i = 0; i < puz->probPieceNumber(prob); i++)
+    (const_cast<int*>(weights))[i] = puzzle->probGetShapeShape(prob, piece2shape[i])->getWeight();
 }
 
 disassembler_a_c::~disassembler_a_c() {
@@ -294,6 +314,10 @@ disassembler_a_c::~disassembler_a_c() {
   for (unsigned int k = 0; k < cache->numDirections(); k++)
     delete [] matrix[k];
   delete [] matrix;
+
+  delete groups;
+  delete [] piece2shape;
+  delete [] weights;
 }
 
 static int max(int a, int b) { if (a > b) return a; else return b; }
@@ -419,4 +443,72 @@ disassemblerNode_c * disassembler_a_c::newNodeMerge(const disassemblerNode_c *n0
 
   return newNode(next_pn, nextdir, searchnode, weights, amount);
 }
+
+
+/* create all the necessary parameters for one of the two possible subproblems
+ * our current problems divides into
+ */
+void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, voxel_type ** pn, int ** nw, int piecenumber, voxel_type * pieces, const int * weights, int part, bool cond) {
+
+  *n = new disassemblerNode_c(part, 0, 0, 0);
+  *pn = new voxel_type[part];
+  *nw = new int[part];
+
+  int num = 0;
+  int dx, dy, dz;
+
+  dx = dy = dz = 0;
+
+  for (int i = 0; i < piecenumber; i++)
+    if (st->is_piece_removed(i) == cond) {
+      if (num == 0) {
+        /* find the direction, the first piece was moved out of the puzzle
+         * and shift it back along this axis */
+        if ((st->getX(i) > 10000) || (st->getX(i) < -10000)) dx = st->getX(i);
+        if ((st->getY(i) > 10000) || (st->getY(i) < -10000)) dy = st->getY(i);
+        if ((st->getZ(i) > 10000) || (st->getZ(i) < -10000)) dz = st->getZ(i);
+      }
+      (*n)->set(num,
+                st->getX(i) - dx,
+                st->getY(i) - dy,
+                st->getZ(i) - dz,
+                st->getTrans(i));
+      (*pn)[num] = pieces[i];
+      (*nw)[num] = weights[i];
+      num++;
+    }
+
+  bt_assert(num == part);
+}
+
+unsigned short disassembler_a_c::subProbGroup(disassemblerNode_c * st, voxel_type * pn, bool cond, int piecenumber) {
+
+  unsigned short group = 0;
+
+  for (int i = 0; i < piecenumber; i++)
+    if (st->is_piece_removed(i) == cond)
+      if (puzzle->probGetShapeGroupNumber(problem, piece2shape[pn[i]]) != 1)
+        return 0;
+      else if (group == 0)
+        group = puzzle->probGetShapeGroup(problem, piece2shape[pn[i]], 0);
+      else if (group != puzzle->probGetShapeGroup(problem, piece2shape[pn[i]], 0))
+        return 0;
+
+  return group;
+}
+
+bool disassembler_a_c::subProbGrouping(voxel_type * pn, int piecenumber) {
+
+  groups->newSet();
+
+  for (int i = 0; i < piecenumber; i++)
+    if (!groups->addPieceToSet(piece2shape[pn[i]]))
+      return false;
+
+  return true;
+}
+
+void disassembler_a_c::groupReset(void) { groups->reSet(); }
+
+unsigned int disassembler_a_c::getPiecenumber(void) { return puzzle->probPieceNumber(problem); }
 
