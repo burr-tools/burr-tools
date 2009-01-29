@@ -1,0 +1,256 @@
+#include "disassemblerhashes.h"
+
+#include "disassemblernode.h"
+
+nodeHash::nodeHash(void) {
+
+  tab_size = 11;
+  tab_entries = 0;
+
+  tab = new disassemblerNode_c* [tab_size];
+
+  memset(tab, 0, tab_size*sizeof(disassemblerNode_c*));
+}
+
+nodeHash::~nodeHash(void) {
+  clear(false);
+
+  delete [] tab;
+}
+
+/* delete all nodes and empty table for new usage */
+void nodeHash::clear(bool reset) {
+  for (unsigned int i = 0; i < tab_size; i++) {
+    while (tab[i]) {
+      disassemblerNode_c * n = tab[i];
+      tab[i] = n->next;
+
+      if (n->decRefCount())
+        delete n;
+    }
+  }
+
+  if (reset) {
+    memset(tab, 0, tab_size*sizeof(disassemblerNode_c*));
+    tab_entries = 0;
+  }
+}
+
+/* add a new node  returns true, if the given node has already been
+ * in the table, false if the node is inserted
+ */
+bool nodeHash::insert(disassemblerNode_c * n) {
+
+  unsigned long h = n->hash() % tab_size;
+
+  disassemblerNode_c * hn = tab[h];
+
+  while (hn) {
+    if (*hn == *n) {
+
+      // let's see, a node for this state already exists, if the found way to this
+      // node is longer than the current way, we replace it with the data of the current
+      // node
+      if (hn->getWaylength() > n->getWaylength())
+        hn->replaceNode(n);
+
+      return true;
+    }
+
+    hn = hn->next;
+  }
+
+  /* node not in table, insert */
+
+  n->next = tab[h];
+  tab[h] = n;
+
+  tab_entries++;
+  if (tab_entries > tab_size) {
+    // rehash
+
+    unsigned long new_size = tab_size * 4 + 1;
+
+    disassemblerNode_c ** new_tab = new disassemblerNode_c* [new_size];
+    memset(new_tab, 0, new_size*sizeof(disassemblerNode_c*));
+
+    for (unsigned int i = 0; i < tab_size; i++) {
+      while (tab[i]) {
+        disassemblerNode_c * n = tab[i];
+        tab[i] = n->next;
+        unsigned long h = n->hash() % new_size;
+        n->next = new_tab[h];
+        new_tab[h] = n;
+      }
+    }
+
+    delete[] tab;
+    tab = new_tab;
+    tab_size = new_size;
+  }
+
+  return false;
+}
+
+/* check, if a node is in the map */
+bool nodeHash::contains(const disassemblerNode_c * n) const {
+  unsigned long h = n->hash() % tab_size;
+
+  disassemblerNode_c * hn = tab[h];
+
+  while (hn) {
+    if (*hn == *n)
+      return true;
+
+    hn = hn->next;
+  }
+
+  return false;
+}
+
+
+
+countingNodeHash::countingNodeHash(void) {
+
+  tab_size = 100;
+  tab_entries = 0;
+
+  tab = new hashNode * [tab_size];
+
+  memset(tab, 0, tab_size*sizeof(hashNode*));
+
+  scanPtr = 0;
+  scanActive = false;
+
+  linkStart = 0;
+}
+
+countingNodeHash::~countingNodeHash(void) {
+  clear(false);
+
+  delete [] tab;
+}
+
+/* delete all nodes and empty table for new usage */
+void countingNodeHash::clear(bool reset) {
+
+  hashNode * hn = linkStart;
+
+  while (hn) {
+    hashNode * hn2 = hn->link;
+
+    if (hn->dat->decRefCount())
+      delete hn->dat;
+
+    delete hn;
+
+    hn = hn2;
+  }
+
+  if (reset) {
+    memset(tab, 0, tab_size*sizeof(hashNode*));
+    tab_entries = 0;
+  }
+
+  linkStart = 0;
+}
+
+/* add a new node  returns true, if the given node has already been
+ * in the table, false if the node is inserted
+ */
+bool countingNodeHash::insert(disassemblerNode_c * n) {
+
+  unsigned long h = n->hash() % tab_size;
+
+  hashNode * hn = tab[h];
+
+  while (hn) {
+    if (*(hn->dat) == *n)
+      return true;
+
+    hn = hn->next;
+  }
+
+  /* node not in table, insert */
+
+  // the reason why we do increase the reference count in here but
+  // not in the other table is because this is an additional place to store
+  // the pointer to a node. The node gets created with a reference count of
+  // one and that is valid if it gets included in one of the hashtables
+  // of the main loop but if we include it in the additional table inside
+  // the find state mashine we need to increase the count
+  n->incRefCount();
+
+  hn = new hashNode;
+  hn->dat = n;
+
+  hn->next = tab[h];
+  tab[h] = hn;
+
+  hn->link = linkStart;
+  linkStart = hn;
+
+  tab_entries++;
+  if (tab_entries > tab_size) {
+
+    unsigned long new_size = tab_size * 4 + 1;
+
+    hashNode ** new_tab = new hashNode* [new_size];
+    memset(new_tab, 0, new_size*sizeof(hashNode*));
+
+    for (unsigned int i = 0; i < tab_size; i++) {
+      while (tab[i]) {
+        hashNode * hn = tab[i];
+        tab[i] = hn->next;
+        unsigned long h = hn->dat->hash() % new_size;
+        hn->next = new_tab[h];
+        new_tab[h] = hn;
+      }
+    }
+
+    delete[] tab;
+    tab = new_tab;
+    tab_size = new_size;
+  }
+
+  return false;
+}
+
+/* with the following 2 functions it is possible to
+ * scan through all nodes that are currently in the
+ * hashhable, first you call initScan to start
+ * it end then nextScan. This function returns one
+ * node after the other until nothing is left and then
+ * returns 0.
+ * You can add new nodes to the hashtable while a scan
+ * is running. The new nodes will not influence a running
+ * scan, only the nodes that were present when calling initScan
+ * will be returned.
+ * The nodes will be returned in the revers order they were inserted
+ */
+void countingNodeHash::initScan(void) {
+
+  bt_assert(!scanActive);
+
+  scanPtr = linkStart;
+  scanActive = true;
+}
+
+const disassemblerNode_c * countingNodeHash::nextScan(void) {
+
+  bt_assert(scanActive);
+
+  if (!scanPtr) {
+    scanActive = false;
+    return 0;
+
+  } else {
+
+    disassemblerNode_c * res = scanPtr->dat;
+    scanPtr = scanPtr->link;
+
+    return res;
+  }
+}
+
+

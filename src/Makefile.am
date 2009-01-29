@@ -37,6 +37,7 @@ lib_libburr_a_SOURCES=\
     lib/bt_assert.cpp \
     lib/burrgrower.cpp \
     lib/disassembler_0.cpp \
+    lib/disassemblerhashes.cpp \
     lib/disassemblernode.cpp \
     lib/disassembly.cpp \
     lib/disasmtomoves.cpp \
@@ -83,6 +84,7 @@ lib_libburr_a_SOURCES=\
     lib/burrgrower.h \
     lib/disassembler.h \
     lib/disassembler_0.h \
+    lib/disassemblerhashes.h \
     lib/disassemblernode.h \
     lib/disassembly.h \
     lib/disasmtomoves.h \
