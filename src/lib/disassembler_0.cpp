@@ -30,6 +30,8 @@
 #include <vector>
 
 
+static int max(int a, int b) { if (a > b) return a; else return b; }
+
 /* so, this isn't the function as described by Bill but rather a
  * bit optimized. For each pair of 2 different pieces and for
  * each of the three dimensions I do the following:
@@ -86,7 +88,7 @@ void disassembler_0_c::prepare2(int pn) {
     do {
       again = 0;
 
-/*
+#if 0
       // this is just for commentaty reasons it show the same algorithmus as below
       // just a bit more understandable
 
@@ -114,9 +116,10 @@ void disassembler_0_c::prepare2(int pn) {
                     again = true;
                     break;
                   }
+            }
           }
         }
-*/
+#endif
 
       int * pos1 = matrix[d];           // y * piecenumber;
       int idx, i;
@@ -303,13 +306,6 @@ void disassembler_0_c::init_find(disassemblerNode_c * nd, int piecenumber, voxel
   nextstep = 1;
   nextstate = 0;
   next_pn = piecenumber;
-}
-
-static int max(int a, int b) {
-  if (a > b)
-    return a;
-  else
-    return b;
 }
 
 static disassemblerNode_c * newNode(int next_pn, int nextdir, disassemblerNode_c * searchnode, int * movement, const int * weights, int amount, movementCache_c * cache) {
@@ -856,6 +852,7 @@ disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) :
 
   for (unsigned int j = 0; j < cache->numDirections(); j++) {
     matrix[j] = new int[piecenumber * piecenumber];
+
     for (unsigned int i = 0; i < piecenumber; i++)
       matrix[j][i+i*piecenumber] = 0;
   }
