@@ -318,8 +318,15 @@ xml::node problem_c::save(void) const {
     it2->get_attributes().insert("result", tmp);
   }
 
-  if (solveState == SS_SOLVING)
-    nd.insert(assm->save());
+  if (solveState == SS_SOLVING) {
+    if (assm)
+      nd.insert(assm->save());
+    else if (assemblerState != "" && assemblerVersion != "") {
+      xml::node::iterator it2 = nd.insert(xml::node("assembler"));
+      it2->get_attributes().insert("version", assemblerVersion.c_str());
+      it2->set_content(assemblerState.c_str());
+    }
+  }
 
   if (solutions.size()) {
     it = nd.insert(xml::node("solutions"));
