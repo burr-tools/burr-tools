@@ -101,6 +101,10 @@ void usage(void) {
   cout << "  -o n  select the problem to solve\n";
   cout << "  -o all solves all problems in file\n";
   cout << "  -x    only redisassemble the given solutions\n";
+  cout << "  -a    ask for information about the current puzzle, the next letters must be:\n";
+  cout << "     s0 print solutions with the only the used pieces\n";
+  cout << "     s1 print solutions including the assemblies\n";
+  cout << "     c  print comment\n";
 }
 
 int main(int argv, char* args[]) {
@@ -123,6 +127,13 @@ int main(int argv, char* args[]) {
   int filenumber = 0;
   bool reduce = false;
   bool newline = true;
+  bool ask = false;
+  enum {
+    W_NUM_SOLUTIONS,
+    W_SOLUTION_PIECES,
+    W_SOLUTION_ASSM,
+    W_COMMENT
+  } what;
 
   for(int i = 1; i < argv; i++) {
 
@@ -152,6 +163,20 @@ int main(int argv, char* args[]) {
         quiet = true;
         printDisassemble = false;
         printSolutions = false;
+      } else if (strcmp(args[i], "-a") == 0) {
+
+        ask = true;
+        what = W_NUM_SOLUTIONS;
+
+        if (strcmp(args[i+1], "s0") == 0)
+          what = W_SOLUTION_PIECES;
+        else if (strcmp(args[i+1], "s1") == 0)
+          what = W_SOLUTION_ASSM;
+        else if (strcmp(args[i+1], "c") == 0)
+          what = W_COMMENT;
+
+        i++;
+
       } else
         filenumber = i;
 
@@ -166,6 +191,50 @@ int main(int argv, char* args[]) {
 
   xml::tree_parser parser(args[filenumber]);
   puzzle_c p(parser.get_document().get_root_node());
+
+  if (ask) {
+
+    switch (what) {
+      case W_COMMENT:
+        printf("%s\n", p.getComment().c_str());
+        break;
+      case W_NUM_SOLUTIONS:
+        for (unsigned int i = 0; i < p.problemNumber(); i++)
+          printf("number of solutions for problem %i: %li\n", i, p.getProblem(i)->getNumSolutions());
+        break;
+      case W_SOLUTION_PIECES:
+      case W_SOLUTION_ASSM:
+        for (unsigned int i = 0; i < p.problemNumber(); i++) {
+          printf("problem %i\n", i);
+          for (unsigned int s = 0; s < p.getProblem(i)->getNumSolutions(); s++) {
+
+            printf("%03i: ", s+1);
+            const assembly_c * a = p.getProblem(i)->getAssembly(s);
+
+            unsigned int pnum = 0;
+
+            for (unsigned int pie = 0; pie < p.getProblem(i)->shapeNumber(); pie++) {
+              for (unsigned int pp = 0; pp < p.getProblem(i)->getShapeMax(pie); pp++) {
+                if (a->isPlaced(pnum)) {
+                  printf("S%i ", p.getProblem(i)->getShape(pie)+1);
+                }
+                pnum++;
+              }
+            }
+
+            printf("\n");
+            if (what == W_SOLUTION_ASSM)
+              print(a, p.getProblem(i));
+          }
+        }
+
+
+        break;
+
+    }
+
+    return 0;
+  }
 
   if (allProblems)
     {
