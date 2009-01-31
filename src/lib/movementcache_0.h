@@ -25,11 +25,11 @@ class movementCache_0_c : public movementCache_c {
 
   public:
 
-    movementCache_0_c(const problem_c * puz) : movementCache_c(puz, 3) {}
+    movementCache_0_c(const problem_c * puz);
 
   private:
 
-    void calcValues(entry * e, const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz);
+    void moCalcValues(entry * e, const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz);
 
     virtual unsigned int numDirections(void);
     virtual void getDirection(unsigned int dir, int * x, int * y, int * z);

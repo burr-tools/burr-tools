@@ -22,11 +22,6 @@ class voxel_c;
 class problem_c;
 class gridType_c;
 
-/* when this is defined the cache will collect some information while
- * running and print some statistics when destructed
- */
-#undef MV_CACHE_DEBUG
-
 /* this class calculates the possible movement between 2 pieces
  * because that calculation is relatively expensive it caches
  * that value. That's the reason for the name
@@ -59,16 +54,17 @@ class movementCache_c {
     /* for the linked list in the hash table */
     struct entry * next;
 
-  } entry;
+  } moEntry;
 
   private:
 
   /* the hash table */
-  entry ** hash;
+  entry ** moHash;
 
   /* the size of the table and the number of entries within the table */
-  unsigned int tableSize;
-  unsigned int entries;
+  unsigned int moTableSize;
+  unsigned int moEntries;
+
 
   /* the shapes in all possible transformations. The voxel spaces are
    * calculated on demand. The entry at the zero-th position are
@@ -86,23 +82,14 @@ class movementCache_c {
   unsigned int num_transformations;
 
   /* this function resizes the hash table to roughly twice the size */
-  void rehash(void);
+  void moRehash(void);
 
   /* when the entry is not inside the table, this function calculates the values */
-  virtual void calcValues(entry * e, const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) = 0;
+  virtual void moCalcValues(entry * e, const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) = 0;
 
   const gridType_c * gt;
 
   const unsigned int directions;
-
-#ifdef MV_CACHE_DEBUG
-
-  unsigned long maxListLen;
-  unsigned long cacheHits;
-  unsigned long cacheRequests;
-  unsigned long cachCollisions;
-
-#endif
 
 public:
 
@@ -119,11 +106,7 @@ public:
    * the 2 pieces are the pieces p1 and p2 from the puzzle and problem defined in the constructor
    * and the 2 pieces are transformed by t1 and t2
    */
-  void getValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2,
-      unsigned int directions, int * movements);
-
-  /* remove all information that involves one shape from the cache */
-  void removePieceInfo(unsigned int s);
+  void getMoValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2, unsigned int directions, int * movements);
 
   /* return the number of different directions of movement that are possible within
    * the space grid that that movement cache is for
@@ -132,7 +115,7 @@ public:
 
   /* return the movement vector of the given direction */
   virtual void getDirection(unsigned int dir, int * x, int * y, int * z) = 0;
-
 };
 
 #endif
+

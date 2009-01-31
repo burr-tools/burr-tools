@@ -19,11 +19,16 @@
 
 #include "voxel.h"
 
+#define NUM_DIRECTIONS 3
+
+movementCache_0_c::movementCache_0_c(const problem_c * puz) : movementCache_c(puz, NUM_DIRECTIONS) {
+}
+
 static int min(int a, int b) { if (a < b) return a; else return b; }
 static int max(int a, int b) { if (a > b) return a; else return b; }
 
 /* calculate the required movement possibilities */
-void movementCache_0_c::calcValues(movementCache_c::entry * e, const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) {
+void movementCache_0_c::moCalcValues(movementCache_c::entry * e, const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) {
 
   /* because the dx, dy and dz values are calculated using the hotspot we need to reverse
    * that process
@@ -121,7 +126,7 @@ void movementCache_0_c::calcValues(movementCache_c::entry * e, const voxel_c * s
 }
 
 
-unsigned int movementCache_0_c::numDirections(void) { return 3; }
+unsigned int movementCache_0_c::numDirections(void) { return NUM_DIRECTIONS; }
 void movementCache_0_c::getDirection(unsigned int dir, int * x, int * y, int * z) {
 
   switch (dir) {

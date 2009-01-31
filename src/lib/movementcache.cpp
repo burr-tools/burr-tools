@@ -21,7 +21,7 @@
 #include "problem.h"
 
 /* the hash function. I don't know how well it performs, but it seems to be okay */
-static unsigned int hashValue(unsigned int s1, unsigned int s2, int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int tableSize) {
+static unsigned int moHashValue(unsigned int s1, unsigned int s2, int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int tableSize) {
   unsigned int val = dx * 0x10101010;
   val +=             dy * 0x14814814;
   val +=             dz * 0x95145951;
@@ -35,57 +35,44 @@ static unsigned int hashValue(unsigned int s1, unsigned int s2, int dx, int dy, 
 /* double the hash table size and copy the old elements into
  * the new table
  */
-void movementCache_c::rehash(void) {
-  unsigned int oldSize = tableSize;
+void movementCache_c::moRehash(void) {
+  unsigned int oldSize = moTableSize;
 
   /* the new size, roughly twice the old size but odd */
-  tableSize = 2* tableSize + 1;
+  moTableSize = 2*moTableSize + 1;
 
   /* allocate new table */
-  entry ** newHash = new entry * [tableSize];
-  memset(newHash, 0, tableSize * sizeof(entry*));
+  moEntry ** newHash = new moEntry * [moTableSize];
+  memset(newHash, 0, moTableSize * sizeof(moEntry*));
 
   /* copy the elements */
   for (unsigned int i = 0; i < oldSize; i++) {
 
-#ifdef MV_CACHE_DEBUG
-    unsigned long listLen = 0;
-#endif
-
-    while (hash[i]) {
+    while (moHash[i]) {
 
       /* remove from old table */
-      entry * e = hash[i];
-      hash[i] = e->next;
+      moEntry * e = moHash[i];
+      moHash[i] = e->next;
 
       /* enter into new one */
-      unsigned int h = hashValue(e->s1, e->s2, e->dx, e->dy, e->dz, e->t1, e->t2, tableSize);
+      unsigned int h = moHashValue(e->s1, e->s2, e->dx, e->dy, e->dz, e->t1, e->t2, moTableSize);
       e->next = newHash[h];
       newHash[h] = e;
-
-#ifdef MV_CACHE_DEBUG
-      listLen++;
-#endif
     }
-
-#ifdef MV_CACHE_DEBUG
-    if (listLen > maxListLen) maxListLen = listLen;
-#endif
   }
 
   /* delete the old table and make the new table the current one */
-  delete [] hash;
-  hash = newHash;
+  delete [] moHash;
+  moHash = newHash;
 }
 
 movementCache_c::movementCache_c(const problem_c * puzzle, unsigned int dirs) : gt(puzzle->getGridType()), directions(dirs) {
 
   /* initial table */
-  tableSize = 101;
-  hash = new entry * [tableSize];
-  memset(hash, 0, tableSize * sizeof(entry*));
-
-  entries = 0;
+  moTableSize = 101;
+  moHash = new moEntry * [moTableSize];
+  memset(moHash, 0, moTableSize * sizeof(moEntry*));
+  moEntries = 0;
 
   /* initialize the shape array with the shapes from the
    * puzzle problem. The shape with transformation 0 is just
@@ -111,56 +98,22 @@ movementCache_c::movementCache_c(const problem_c * puzzle, unsigned int dirs) : 
     for (unsigned int i = 0; i < puzzle->getShapeMax(s); i++)
       pieces[pos++] = s;
 
-#ifdef MV_CACHE_DEBUG
-  cacheRequests = 0;
-  cacheHits = 0;
-  maxListLen = 0;
-  cachCollisions = 0;
-#endif
 }
 
 movementCache_c::~movementCache_c() {
 
-#ifdef MV_CACHE_DEBUG
-  fprintf(stderr, "cache had %li hits and %f%% successful retrievals \n", cacheRequests, cacheHits*100.0/cacheRequests);
-  fprintf(stderr, "longest list ever seen %i\n", maxListLen);
-  fprintf(stderr, "%li cache collisions over the whole and %f collisions per request\n", cachCollisions, cachCollisions*1.0/cacheRequests);
-  fprintf(stderr, "last cache table is %i entries big and contains %i entries\n", tableSize, entries);
-
-  maxListLen = 0;
-  float avgListLen = 0;
-#endif
-
   /* delete the hash nodes */
-  for (unsigned int i = 0; i < tableSize; i++) {
+  for (unsigned int i = 0; i < moTableSize; i++) {
 
-#ifdef MV_CACHE_DEBUG
-    unsigned int listLen = 0;
-#endif
-
-    while (hash[i]) {
-      entry * e = hash[i];
-      hash[i] = e->next;
-
-#ifdef MV_CACHE_DEBUG
-      listLen++;
-#endif
+    while (moHash[i]) {
+      moEntry * e = moHash[i];
+      moHash[i] = e->next;
 
       delete [] e->move;
       delete e;
     }
-
-#ifdef MV_CACHE_DEBUG
-    if (listLen > maxListLen) maxListLen = listLen;
-    avgListLen += listLen;
-#endif
   }
-
-#ifdef MV_CACHE_DEBUG
-  printf("last hashtable has average list len %f, max list len %li\n",
-      avgListLen/tableSize,
-      maxListLen);
-#endif
+  delete [] moHash;
 
   /* the shape with transformation 0 is just
    * a pointer into the puzzle, so don't delete them
@@ -175,11 +128,10 @@ movementCache_c::~movementCache_c() {
   }
 
   delete [] shapes;
-  delete [] hash;
   delete [] pieces;
 }
 
-void movementCache_c::getValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2,
+void movementCache_c::getMoValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2,
     unsigned int dirs, int * movements) {
 
   bt_assert(dirs == directions);
@@ -188,19 +140,14 @@ void movementCache_c::getValue(int dx, int dy, int dz, unsigned char t1, unsigne
   unsigned int s1 = pieces[p1];
   unsigned int s2 = pieces[p2];
 
-  unsigned int h = hashValue(s1, s2, dx, dy, dz, t1, t2, tableSize);
+  unsigned int h = moHashValue(s1, s2, dx, dy, dz, t1, t2, moTableSize);
 
-  entry * e = hash[h];
+  moEntry * e = moHash[h];
 
   /* check the list of nodes in the current hash bucket */
   while (e && ((e->dx != dx) || (e->dy != dy) || (e->dz != dz) ||
                (e->t1 != t1) || (e->t2 != t2) || (e->s1 != s1) || (e->s2 != s2))) {
     e = e->next;
-
-#ifdef MV_CACHE_DEBUG
-    cachCollisions++;
-#endif
-
   }
 
   /* check, if we found the required node */
@@ -210,15 +157,15 @@ void movementCache_c::getValue(int dx, int dy, int dz, unsigned char t1, unsigne
 
     /* first increase the number of entries, in also the table
      * size, if required */
-    entries++;
-    if (entries > tableSize) {
-      rehash();
+    moEntries++;
+    if (moEntries > moTableSize) {
+      moRehash();
       /* after the resize we need to recalculate the hash for the
        * new table size */
-      h = hashValue(s1, s2, dx, dy, dz, t1, t2, tableSize);
+      h = moHashValue(s1, s2, dx, dy, dz, t1, t2, moTableSize);
     }
 
-    e = new entry;
+    e = new moEntry;
     e->move = new int[directions];
 
     /* first get the shapes, create them when they are not available */
@@ -251,44 +198,14 @@ void movementCache_c::getValue(int dx, int dy, int dz, unsigned char t1, unsigne
     e->s2 = s2;
 
     /* calculate values and enter them into the table */
-    calcValues(e, sh1, sh2, dx, dy, dz);
+    moCalcValues(e, sh1, sh2, dx, dy, dz);
 
-    e->next = hash[h];
-    hash[h] = e;
-
-  } else {
-#ifdef MV_CACHE_DEBUG
-    cacheHits++;
-#endif
+    e->next = moHash[h];
+    moHash[h] = e;
   }
-#ifdef MV_CACHE_DEBUG
-  cacheRequests++;
-#endif
 
   /* return the values */
   for (unsigned int i = 0; i < directions; i++)
     movements[i] = e->move[i];
 }
 
-void movementCache_c::removePieceInfo(unsigned int s) {
-  /* go through the complete cache and free entries that contain the piece */
-
-  for (unsigned int i = 0; i < tableSize; i++) {
-    entry * e = hash[i];
-    entry * l = 0;
-    while (e) {
-      if ((e->s1 == s) || (e->s2 == s)) {
-	if (l) {
-	  l->next = e->next;
-	} else {
-	  hash[i] = e->next;
-	}
-
-	delete e;
-        entries--;
-      }
-      l = e;
-      e = e->next;
-    }
-  }
-}

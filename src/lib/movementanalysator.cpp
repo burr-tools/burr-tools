@@ -43,12 +43,12 @@ void movementAnalysator_c::prepare(void) {
   for (unsigned int j = 0; j < pieces->size(); j++) {
     for (unsigned int i = 0; i < pieces->size(); i++) {
       if (i != j) {
-        cache->getValue(searchnode->getX(j) - searchnode->getX(i),
-                        searchnode->getY(j) - searchnode->getY(i),
-                        searchnode->getZ(j) - searchnode->getZ(i),
-                        searchnode->getTrans(i), searchnode->getTrans(j),
-                        (*pieces)[i], (*pieces)[j],
-                        cache->numDirections(), m);
+        cache->getMoValue(searchnode->getX(j) - searchnode->getX(i),
+                          searchnode->getY(j) - searchnode->getY(i),
+                          searchnode->getZ(j) - searchnode->getZ(i),
+                          searchnode->getTrans(i), searchnode->getTrans(j),
+                          (*pieces)[i], (*pieces)[j],
+                          cache->numDirections(), m);
 
         for (unsigned int x = 0; x < cache->numDirections(); x++)
           matrix[x][idx] = m[x];
