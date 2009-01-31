@@ -21,14 +21,14 @@
 
 #define NUM_DIRECTIONS 3
 
-movementCache_0_c::movementCache_0_c(const problem_c * puz) : movementCache_c(puz, NUM_DIRECTIONS) {
+movementCache_0_c::movementCache_0_c(const problem_c * puz) : movementCache_c(puz) {
 }
 
 static int min(int a, int b) { if (a < b) return a; else return b; }
 static int max(int a, int b) { if (a > b) return a; else return b; }
 
 /* calculate the required movement possibilities */
-void movementCache_0_c::moCalcValues(movementCache_c::entry * e, const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) {
+int* movementCache_0_c::moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) {
 
   /* because the dx, dy and dz values are calculated using the hotspot we need to reverse
    * that process
@@ -36,6 +36,8 @@ void movementCache_0_c::moCalcValues(movementCache_c::entry * e, const voxel_c *
   dx += (sh1->getHx() - sh2->getHx());
   dy += (sh1->getHy() - sh2->getHy());
   dz += (sh1->getHz() - sh2->getHz());
+
+  int * move = new int[NUM_DIRECTIONS];
 
   /* calculate some bounding boxes for the intersecting and union boxes of the 2 pieces */
   int x1i, x2i, y1i, y2i, z1i, z2i;
@@ -120,9 +122,11 @@ void movementCache_0_c::moCalcValues(movementCache_c::entry * e, const voxel_c *
   /* check the result and put it into the hash node */
   bt_assert((mx >= 0) && (my >= 0) && (mz >= 0));
 
-  e->move[0] = mx;
-  e->move[1] = my;
-  e->move[2] = mz;
+  move[0] = mx;
+  move[1] = my;
+  move[2] = mz;
+
+  return move;
 }
 
 

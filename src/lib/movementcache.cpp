@@ -66,7 +66,7 @@ void movementCache_c::moRehash(void) {
   moHash = newHash;
 }
 
-movementCache_c::movementCache_c(const problem_c * puzzle, unsigned int dirs) : gt(puzzle->getGridType()), directions(dirs) {
+movementCache_c::movementCache_c(const problem_c * puzzle) : gt(puzzle->getGridType()) {
 
   /* initial table */
   moTableSize = 101;
@@ -134,8 +134,6 @@ movementCache_c::~movementCache_c() {
 void movementCache_c::getMoValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2,
     unsigned int dirs, int * movements) {
 
-  bt_assert(dirs == directions);
-
   /* find out the shapes that the pieces have */
   unsigned int s1 = pieces[p1];
   unsigned int s2 = pieces[p2];
@@ -166,7 +164,6 @@ void movementCache_c::getMoValue(int dx, int dy, int dz, unsigned char t1, unsig
     }
 
     e = new moEntry;
-    e->move = new int[directions];
 
     /* first get the shapes, create them when they are not available */
     const voxel_c * sh1 = shapes[s1][t1];
@@ -198,14 +195,16 @@ void movementCache_c::getMoValue(int dx, int dy, int dz, unsigned char t1, unsig
     e->s2 = s2;
 
     /* calculate values and enter them into the table */
-    moCalcValues(e, sh1, sh2, dx, dy, dz);
+    e->move = moCalcValues(sh1, sh2, dx, dy, dz);
 
     e->next = moHash[h];
     moHash[h] = e;
   }
 
+  bt_assert(dirs == numDirections());
+
   /* return the values */
-  for (unsigned int i = 0; i < directions; i++)
+  for (unsigned int i = 0; i < dirs; i++)
     movements[i] = e->move[i];
 }
 

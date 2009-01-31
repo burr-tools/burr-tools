@@ -40,12 +40,12 @@ class gridType_c;
  */
 class movementCache_c {
 
-  protected:
+  private:
 
   /**
    * values are saved within a hash table, this is the entry for the table for the movement data
    */
-  typedef struct entry {
+  typedef struct moEntry {
 
     int dx; ///< relative x position of the 2nd piece
     int dy; ///< relative y position of the 2nd piece
@@ -65,19 +65,16 @@ class movementCache_c {
     /** the possible movement in positive directions */
     int * move;
 
-    /* for the linked list in the hash table */
-    struct entry * next;
+    /** next in the linked list of the hash table */
+    struct moEntry * next;
 
   } moEntry;
 
-  private:
+  /** the hash table */
+  moEntry ** moHash;
 
-  /* the hash table */
-  entry ** moHash;
-
-  /* the size of the table and the number of entries within the table */
-  unsigned int moTableSize;
-  unsigned int moEntries;
+  unsigned int moTableSize; ///< size of the hash table
+  unsigned int moEntries;   ///< number of entries in the table
 
   /**
    * Saves the shapes in all orientations.
@@ -97,20 +94,18 @@ class movementCache_c {
 
   void moRehash(void); ///< this function resizes the hash table to roughly twice the size
 
-  /* when the entry is not inside the table, this function calculates the values */
-  virtual void moCalcValues(entry * e, const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) = 0;
+  /** when the entry is not inside the table, this function calculates the values for the movement info */
+  virtual int* moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) = 0;
 
   /// the gridtype used. We need this to make copies and transformations of the shapes
   const gridType_c * gt;
-
-  const unsigned int directions;
 
 public:
 
   /** create the cache. The cache is then fixed to the puzzle and the problem, it can
    * and should be reused to analyse all assemblies found but can not be used for another puzzle
    */
-  movementCache_c(const problem_c * puz, unsigned int directions);
+  movementCache_c(const problem_c * puz);
 
   virtual ~movementCache_c(void);
 
