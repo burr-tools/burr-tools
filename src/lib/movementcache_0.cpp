@@ -51,11 +51,11 @@ unsigned int* movementCache_0_c::moCalcValues(const voxel_c * sh1, const voxel_c
 
   int x1u, x2u, y1u, y2u, z1u, z2u;
 
-  x1u = min(sh1->boundX1(), sh2->boundX1() + dx);
+  x1u = sh1->boundX1();
   x2u = max(sh1->boundX2(), sh2->boundX2() + dx);
-  y1u = min(sh1->boundY1(), sh2->boundY1() + dy);
+  y1u = sh1->boundY1();
   y2u = max(sh1->boundY2(), sh2->boundY2() + dy);
-  z1u = min(sh1->boundZ1(), sh2->boundZ1() + dz);
+  z1u = sh1->boundZ1();
   z2u = max(sh1->boundZ2(), sh2->boundZ2() + dz);
 
   /* these will contain the result assume free movement for the beginning */
