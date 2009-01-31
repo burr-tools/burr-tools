@@ -2,22 +2,23 @@ SUBDIRS = src
 
 EXTRA_DIST = doc
 
-dist_doc_DATA = examples/README examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle \
-                examples/PelikanBurr.xmpuzzle examples/CubeInCage.xmpuzzle examples/Bermuda.xmpuzzle \
-                examples/BallRoom.xmpuzzle examples/SolidSixPieceBurrs.xmpuzzle \
-                examples/12PieceSeparation.xmpuzzle \
-                examples/AugmentedSecondStellation.xmpuzzle \
-                examples/BrokenSticks.xmpuzzle \
-                examples/DiagonalCube.xmpuzzle \
-                examples/HexSticks.xmpuzzle \
-                examples/PermutatedThirdStellation.xmpuzzle \
-                examples/PiecesOfEight.xmpuzzle \
-                burricons.ico \
-                AUTHORS COPYING README NEWS ChangeLog \
-                doxygen.cfg \
-                src/lib/tabs_0/generator_0.cpp \
-                src/lib/tabs_1/generator_1.cpp \
-                src/lib/tabs_2/generator_2.cpp
+dist_doc_DATA =
+dist_doc_DATA += examples/README examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle
+dist_doc_DATA += examples/PelikanBurr.xmpuzzle examples/CubeInCage.xmpuzzle examples/Bermuda.xmpuzzle
+dist_doc_DATA += examples/BallRoom.xmpuzzle examples/SolidSixPieceBurrs.xmpuzzle
+dist_doc_DATA += examples/12PieceSeparation.xmpuzzle
+dist_doc_DATA += examples/AugmentedSecondStellation.xmpuzzle
+dist_doc_DATA += examples/BrokenSticks.xmpuzzle
+dist_doc_DATA += examples/DiagonalCube.xmpuzzle
+dist_doc_DATA += examples/HexSticks.xmpuzzle
+dist_doc_DATA += examples/PermutatedThirdStellation.xmpuzzle
+dist_doc_DATA += examples/PiecesOfEight.xmpuzzle
+dist_doc_DATA += burricons.ico
+dist_doc_DATA += AUTHORS COPYING README NEWS ChangeLog
+dist_doc_DATA += doxygen.cfg
+dist_doc_DATA += src/lib/tabs_0/generator_0.cpp
+dist_doc_DATA += src/lib/tabs_1/generator_1.cpp
+dist_doc_DATA += src/lib/tabs_2/generator_2.cpp
 
 abs_builddir = @abs_builddir@
 win32dir = $(PACKAGE)-$(VERSION)-win32
