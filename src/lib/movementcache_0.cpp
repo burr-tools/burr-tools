@@ -80,16 +80,22 @@ unsigned int* movementCache_0_c::moCalcValues(const voxel_c * sh1, const voxel_c
   for (int y = y1i; y <= y2i; y++)
     for (int z = z1i; z <= z2i; z++) {
 
-      int last = -32000;
+      unsigned int gap = 32000;
 
-      for (int x = x1u; x <= x2u; x++) {
-
-        bt_assert(sh1->isEmpty2(x, y, z) || sh2->isEmpty2(x-dx, y-dy, z-dz));
-
+      for (int x = x1u; x <= x2u; x++)
+      {
         if (sh1->isFilled2(x, y, z))
-          last = x;
-        else if (sh2->isFilled2(x-dx, y-dy, z-dz) && (x-last-1 < mx))
-          mx = x-last-1;
+        {
+          gap = 0;
+        }
+        else if (sh2->isFilled2(x-dx, y-dy, z-dz))
+        {
+          if (gap < mx) mx = gap;
+        }
+        else
+        {
+          gap++;
+        }
       }
     }
 
@@ -97,26 +103,46 @@ unsigned int* movementCache_0_c::moCalcValues(const voxel_c * sh1, const voxel_c
   for (int x = x1i; x <= x2i; x++)
     for (int z = z1i; z <= z2i; z++) {
 
-      int last = -32000;
+      unsigned int gap = 32000;
 
       for (int y = y1u; y <= y2u; y++)
+      {
         if (sh1->isFilled2(x, y, z))
-          last = y;
-        else if (sh2->isFilled2(x-dx, y-dy, z-dz) && (y-last-1 < my))
-          my = y-last-1;
+        {
+          gap = 0;
+        }
+        else if (sh2->isFilled2(x-dx, y-dy, z-dz))
+        {
+          if (gap < my) my = gap;
+        }
+        else
+        {
+          gap++;
+        }
+      }
     }
 
   /* finally the z direction */
   for (int x = x1i; x <= x2i; x++)
     for (int y = y1i; y <= y2i; y++) {
 
-      int last = -32000;
+      unsigned int gap = 32000;
 
       for (int z = z1u; z <= z2u; z++)
+      {
         if (sh1->isFilled2(x, y, z))
-          last = z;
-        else if (sh2->isFilled2(x-dx, y-dy, z-dz) && (z-last-1 < mz))
-          mz = z-last-1;
+        {
+          gap = 0;
+        }
+        else if (sh2->isFilled2(x-dx, y-dy, z-dz))
+        {
+          if (gap < mz) mz = gap;
+        }
+        else
+        {
+          gap++;
+        }
+      }
     }
 
   move[0] = mx;
