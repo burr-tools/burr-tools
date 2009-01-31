@@ -660,7 +660,8 @@ void mainWindow_c::cb_AddShapeToProblem(void) {
     if (pr->getShape(i) == shapeAssignmentSelector->getSelection()) {
       pr->setShapeMax(i, pr->getShapeMax(i) + 1);
       pr->setShapeMin(i, pr->getShapeMin(i) + 1);
-      PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
+      if (solutionProblem->getSelection() < puzzle->problemNumber())
+        PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
       StatProblemInfo(problemSelector->getSelection());
       return;
     }
