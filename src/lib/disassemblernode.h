@@ -40,9 +40,19 @@ private:
 
   /* the position of the piece inside the cube
    * and the transformation of that piece
+   *
+   * for more memory performance I will try to limit the
+   * amount of memory required by allocating only one big
+   * chunk of memory with interleaved data
+   * at position x%4 == 0 is x, ==1 is y ==2 is z ==3 is trans
+   *
+   * a piece NOT inside the rest is signified by
+   * trans == 0xFF, the direction the pieces were move out
+   * should be obtained from dir below, when trans is 0xFF
+   * then the data fields also contain the direction, not the
+   * position of the piece
    */
-  int *dx, *dy, *dz;
-  unsigned int *trans;
+  signed char * dat;
 
   /* contains the number of pointers that point to this node
    * most of there pointers are comefrom pointers from other nodes
@@ -102,22 +112,22 @@ public:
 
   int getX(int i) const {
     bt_assert(i < piecenumber);
-    return dx[i];
+    return dat[4*i+0];
   }
 
   int getY(int i) const {
     bt_assert(i < piecenumber);
-    return dy[i];
+    return dat[4*i+1];
   }
 
   int getZ(int i) const {
     bt_assert(i < piecenumber);
-    return dz[i];
+    return dat[4*i+2];
   }
 
   unsigned int getTrans(int i) const {
     bt_assert(i < piecenumber);
-    return trans[i];
+    return (unsigned char)dat[4*i+3];
   }
 
   int getPiecenumber(void) const {
@@ -126,19 +136,26 @@ public:
 
   void set(int i, int x, int y, int z, unsigned int tr) {
     bt_assert(i < piecenumber);
-    dx[i] = x;
-    dy[i] = y;
-    dz[i] = z;
-    trans[i] = tr;
+    bt_assert(abs(x) < 128 && abs(y) < 128 && abs(z) < 128);
+
+    dat[4*i+0] = x;
+    dat[4*i+1] = y;
+    dat[4*i+2] = z;
+    dat[4*i+3] = tr;
     hashValue = 0;
   }
 
   void set(int i, const disassemblerNode_c * n, int tx, int ty, int tz) {
     bt_assert(i < piecenumber);
-    dx[i] = n->dx[i]+tx;
-    dy[i] = n->dy[i]+ty;
-    dz[i] = n->dz[i]+tz;
-    trans[i] = n->trans[i];
+
+    bt_assert(abs(n->dat[4*i+0]+tx) < 128 &&
+              abs(n->dat[4*i+1]+ty) < 128 &&
+              abs(n->dat[4*i+2]+tz) < 128);
+
+    dat[4*i+0] = n->dat[4*i+0]+tx;
+    dat[4*i+1] = n->dat[4*i+1]+ty;
+    dat[4*i+2] = n->dat[4*i+2]+tz;
+    dat[4*i+3] = n->dat[4*i+3];
     hashValue = 0;
   }
 
@@ -147,7 +164,7 @@ public:
    */
   bool is_piece_removed(int nr) const {
     bt_assert(nr < piecenumber);
-    return ((abs(dx[nr]) > 10000) || (abs(dy[nr]) > 10000) || (abs(dz[nr]) > 10000));
+    return ((unsigned char)dat[4*nr+3] == 0xFF);
   }
 
   /* check if this node is for a state that separates

@@ -328,6 +328,7 @@ disassemblerNode_c * movementAnalysator_c::newNode(unsigned int amount) {
   // moving pieces
   int moveWeight = 0;
   int stilWeight = 0;
+  int nd = nextdir;
 
   for (unsigned int i = 0; i < pieces->size(); i++) {
     if (movement[i]) {
@@ -354,28 +355,54 @@ disassemblerNode_c * movementAnalysator_c::newNode(unsigned int amount) {
         movement[i] = amount;
 
     // and the direction changes to the opposite direction
-    nextdir ^= 1;
+    nd ^= 1;
   }
 
-  disassemblerNode_c * n = new disassemblerNode_c(pieces->size(), searchnode, nextdir, amount);
+  disassemblerNode_c * n = new disassemblerNode_c(pieces->size(), searchnode, nd, amount);
 
   /* create a new state with the pieces moved */
   for (unsigned int i = 0; i < pieces->size(); i++) {
-    int mx, my, mz;
 
-    cache->getDirection(nextdir >> 1, &mx, &my, &mz);
+    if (movement[i]) {
 
-    mx *= movement[i];
-    my *= movement[i];
-    mz *= movement[i];
+      if (movement[i] == 30000) {
 
-    if (nextdir & 1) {
-      mx = -mx;
-      my = -my;
-      mz = -mz;
+        int mx, my, mz;
+
+        cache->getDirection(nd >> 1, &mx, &my, &mz);
+
+        if (nd & 1) {
+          mx = -mx;
+          my = -my;
+          mz = -mz;
+        }
+
+        n->set(i, mx, my, mz, 0xff);
+
+      } else {
+
+        int mx, my, mz;
+
+        cache->getDirection(nd >> 1, &mx, &my, &mz);
+
+        mx *= movement[i];
+        my *= movement[i];
+        mz *= movement[i];
+
+        if (nd & 1) {
+          mx = -mx;
+          my = -my;
+          mz = -mz;
+        }
+
+        n->set(i, searchnode, mx, my, mz);
+      }
+
+    } else {
+
+      n->set(i, searchnode, 0, 0, 0);
+
     }
-
-    n->set(i, searchnode, mx, my, mz);
   }
 
   return n;

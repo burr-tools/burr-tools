@@ -55,7 +55,7 @@ disassembler_a_c::~disassembler_a_c() {
 /* create all the necessary parameters for one of the two possible subproblems
  * our current problems divides into
  */
-void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, std::vector<unsigned int> & pn, const std::vector<unsigned int> & pieces, int part, bool cond) {
+void create_new_params(const disassemblerNode_c * st, disassemblerNode_c ** n, std::vector<unsigned int> & pn, const std::vector<unsigned int> & pieces, int part, bool cond) {
 
   *n = new disassemblerNode_c(part, 0, 0, 0);
 
@@ -66,18 +66,14 @@ void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, std::ve
 
   for (unsigned int i = 0; i < pieces.size(); i++)
     if (st->is_piece_removed(i) == cond) {
-      if (num == 0) {
-        /* find the direction, the first piece was moved out of the puzzle
-         * and shift it back along this axis */
-        if ((st->getX(i) > 10000) || (st->getX(i) < -10000)) dx = st->getX(i);
-        if ((st->getY(i) > 10000) || (st->getY(i) < -10000)) dy = st->getY(i);
-        if ((st->getZ(i) > 10000) || (st->getZ(i) < -10000)) dz = st->getZ(i);
-      }
+      // we take the data from the node before the current, because the current node contains
+      // the disassembled positions, which are not interesting, we want to have the position
+      // before the puzzle falls apart but just take the halve of the pieces that matter
       (*n)->set(num,
-                st->getX(i) - dx,
-                st->getY(i) - dy,
-                st->getZ(i) - dz,
-                st->getTrans(i));
+                st->getComefrom()->getX(i),
+                st->getComefrom()->getY(i),
+                st->getComefrom()->getZ(i),
+                st->getComefrom()->getTrans(i));
       pn.push_back(pieces[i]);
       num++;
     }

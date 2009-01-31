@@ -191,16 +191,31 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
         /* both subproblems are solvable -> construct tree */
         erg = new separation_c(left, remove, pieces);
 
+        const disassemblerNode_c * st2 = st;
+
         do {
           state_c *s = new state_c(pieces.size());
 
           for (unsigned int i = 0; i < pieces.size(); i++)
-            s->set(i, st->getX(i), st->getY(i), st->getZ(i));
+
+            if (st2->is_piece_removed(i)) {
+
+              /* when the piece is removed in here there must be a
+               * predecessor node
+               */
+              bt_assert(st2->getComefrom());
+
+              s->set(i, st2->getComefrom()->getX(i) + 20000*st2->getX(i),
+                        st2->getComefrom()->getY(i) + 20000*st2->getY(i),
+                        st2->getComefrom()->getZ(i) + 20000*st2->getZ(i));
+
+            } else
+              s->set(i, st2->getX(i), st2->getY(i), st2->getZ(i));
 
           erg->addstate(s);
 
-          st = (disassemblerNode_c*)st->getComefrom();
-        } while (st);
+          st2 = st2->getComefrom();
+        } while (st2);
 
       } else {
 

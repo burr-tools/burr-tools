@@ -20,10 +20,7 @@
 #include "assembly.h"
 
 disassemblerNode_c::disassemblerNode_c(int pn, disassemblerNode_c * comf, int _dir, int _amount, int step) : comefrom(comf), piecenumber(pn), refcount(1), dir(_dir), amount(_amount) {
-  dx = new int[piecenumber];
-  dy = new int[piecenumber];
-  dz = new int[piecenumber];
-  trans = new unsigned int[piecenumber];
+  dat = new signed char[4*piecenumber];
 
   if (comefrom)
     comefrom->refcount++;
@@ -45,10 +42,7 @@ disassemblerNode_c::disassemblerNode_c(const assembly_c * assm) : comefrom(0), p
     if (assm->isPlaced(j))
       piecenumber++;
 
-  dx = new int[piecenumber];
-  dy = new int[piecenumber];
-  dz = new int[piecenumber];
-  trans = new unsigned int[piecenumber];
+  dat = new signed char[4*piecenumber];
 
   hashValue = 0;
 
@@ -60,19 +54,22 @@ disassemblerNode_c::disassemblerNode_c(const assembly_c * assm) : comefrom(0), p
   unsigned int pc = 0;
   for (unsigned int j = 0; j < assm->placementCount(); j++)
     if (assm->isPlaced(j)) {
-      dx[pc] = assm->getX(j);
-      dy[pc] = assm->getY(j);
-      dz[pc] = assm->getZ(j);
-      trans[pc] = assm->getTransformation(j);
+      bt_assert(
+          abs(assm->getX(j)) < 128 &&
+          abs(assm->getY(j)) < 128 &&
+          abs(assm->getZ(j)) < 128);
+
+      dat[4*pc+0] = assm->getX(j);
+      dat[4*pc+1] = assm->getY(j);
+      dat[4*pc+2] = assm->getZ(j);
+      dat[4*pc+3] = assm->getTransformation(j);
       pc++;
     }
 }
 
 disassemblerNode_c::~disassemblerNode_c() {
-  delete [] dx;
-  delete [] dy;
-  delete [] dz;
-  delete [] trans;
+
+  delete [] dat;
 
   if (comefrom) {
     comefrom->refcount--;
@@ -84,10 +81,7 @@ disassemblerNode_c::~disassemblerNode_c() {
 void disassemblerNode_c::replaceNode(const disassemblerNode_c *n) {
   bt_assert(piecenumber = n->piecenumber);
 
-  memcpy(dx, n->dx, piecenumber*sizeof(int));
-  memcpy(dy, n->dy, piecenumber*sizeof(int));
-  memcpy(dz, n->dz, piecenumber*sizeof(int));
-  memcpy(trans, n->trans, piecenumber*sizeof(int));
+  memcpy(dat, n->dat, 4*piecenumber*sizeof(unsigned char));
 
   dir = n->dir;
   amount = n->amount;
@@ -112,12 +106,14 @@ unsigned int disassemblerNode_c::hash(void) const {
   unsigned int h = 0x17fe3b3c;
 
   for (int i = 1; i < piecenumber; i++) {
-    h += (dx[i]-dx[0]);
+    h += (dat[4*i+0]-dat[0]);
     h *= 1343;
-    h += (dy[i]-dy[0]);
+    h += (dat[4*i+1]-dat[1]);
     h *= 923;
-    h += (dz[i]-dz[0]);
+    h += (dat[4*i+2]-dat[2]);
     h *= 113;
+    h += (dat[4*i+3]);
+    h *= 23;
   }
 
   const_cast<disassemblerNode_c*>(this)->hashValue = h;
@@ -127,10 +123,10 @@ unsigned int disassemblerNode_c::hash(void) const {
 bool disassemblerNode_c::operator == (const disassemblerNode_c &b) const {
 
   for (int i = 1; i < piecenumber; i++) {
-    if (dx[i] - dx[0] != b.dx[i] - b.dx[0]) return false;
-    if (dy[i] - dy[0] != b.dy[i] - b.dy[0]) return false;
-    if (dz[i] - dz[0] != b.dz[i] - b.dz[0]) return false;
-    // FIXME: transformation is missing
+    if (dat[4*i+0] - dat[0] != b.dat[4*i+0] - b.dat[0]) return false;
+    if (dat[4*i+1] - dat[1] != b.dat[4*i+1] - b.dat[1]) return false;
+    if (dat[4*i+2] - dat[2] != b.dat[4*i+2] - b.dat[2]) return false;
+    if (dat[4*i+3] != b.dat[4*i+3]) return false;
   }
 
   return true;
