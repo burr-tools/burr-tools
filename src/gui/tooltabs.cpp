@@ -82,7 +82,7 @@ class ChangeSize : public layouter_c {
 
 public:
 
-  ChangeSize(int w, int y, int w, int h);
+  ChangeSize(int x, int y, int w, int h);
 
   void cb_roll(void);
   void cb_input(void);
