@@ -223,7 +223,7 @@ void movementBrowser_c::cb_NodeChange(void) {
 
   nodeData_s * s = (nodeData_s *)(tree->get_selected(1)->user_data());
 
-  fixedPositions_c fp(s->node, s->pieces);
+  fixedPositions_c fp(s->node, s->pieces, puz->probPieceNumber(problem));
 
   view3d->updatePositionsOverlap(&fp);
 }

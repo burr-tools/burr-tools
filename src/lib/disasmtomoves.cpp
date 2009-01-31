@@ -279,20 +279,24 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
 
 
 
-fixedPositions_c::fixedPositions_c(const disassemblerNode_c * nd, const std::vector<unsigned int> & pc) {
+fixedPositions_c::fixedPositions_c(const disassemblerNode_c * nd, const std::vector<unsigned int> & pc, unsigned int pcs) {
 
-  pieces = nd->getPiecenumber();
-  x = new int[pc.size()];
-  y = new int[pc.size()];
-  z = new int[pc.size()];
-  visible = new bool[pc.size()];
+  pieces = pcs;
+  x = new int[pieces];
+  y = new int[pieces];
+  z = new int[pieces];
+  visible = new bool[pieces];
 
-  for (unsigned int p = 0; p < pc.size(); p++)
+  for (unsigned int p = 0; p < pieces; p++) {
     visible[p] = false;
+    x[p] = y[p] = z[p] = 0;
+  }
 
   for (unsigned int p = 0; p < pc.size(); p++) {
 
     unsigned int pi = pc[p];
+
+    bt_assert(pi < pieces);
 
     x[pi] = (int)nd->getX(p);
     y[pi] = (int)nd->getY(p);

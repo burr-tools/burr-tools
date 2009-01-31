@@ -105,7 +105,7 @@ class fixedPositions_c : public piecePositions_c {
 
   public:
 
-    fixedPositions_c(const disassemblerNode_c * nd, const std::vector<unsigned int> & pieces);
+    fixedPositions_c(const disassemblerNode_c * nd, const std::vector<unsigned int> & pieces, unsigned int pc);
     fixedPositions_c(const fixedPositions_c * nd);
     ~fixedPositions_c(void);
 
