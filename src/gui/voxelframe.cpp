@@ -433,27 +433,29 @@ void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) 
   redraw();
 }
 
-void voxelFrame_c::showProblem(const problem_c * puz, unsigned int selShape) {
+void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int problem, unsigned int selShape) {
 
   hideMarker();
   clearSpaces();
 
-  if (puz) {
+  if (puz && problem < puz->problemNumber()) {
+
+    const problem_c * pr = puz->getProblem(problem);
 
     float diagonal = 1;
 
     // now find a scaling factor, so that all pieces fit into their square
 
     // find the biggest piece shape
-    for (unsigned int p = 0; p < puz->shapeNumber(); p++)
-      if (puz->getShapeShape(p)->getDiagonal() > diagonal)
-        diagonal = puz->getShapeShape(p)->getDiagonal();
+    for (unsigned int p = 0; p < pr->shapeNumber(); p++)
+      if (pr->getShapeShape(p)->getDiagonal() > diagonal)
+        diagonal = pr->getShapeShape(p)->getDiagonal();
 
     // find out how much bigger the result is compared to the shapes
     unsigned int factor;
-    if (!puz->resultInvalid()) {
+    if (!pr->resultInvalid()) {
 
-      factor = (int)((sqrt(puz->getResultShape()->getDiagonal()) + 0.5)/sqrt(diagonal));
+      factor = (int)((sqrt(pr->getResultShape()->getDiagonal()) + 0.5)/sqrt(diagonal));
     } else
       factor = 1;
 
@@ -464,24 +466,23 @@ void voxelFrame_c::showProblem(const problem_c * puz, unsigned int selShape) {
 
     // first find out how to arrange the pieces:
     unsigned int square = 2*factor+1;
-    while (square * (square-2*factor) < puz->shapeNumber()) square++;
+    while (square * (square-2*factor) < pr->shapeNumber()) square++;
 
     unsigned int num;
 
     // now place the result shape
-    if (!puz->resultInvalid()) {
+    if (!pr->resultInvalid()) {
 
-      num = addSpace(puz->getGridType()->getVoxel(puz->getResultShape()));
+      num = addSpace(pr->getGridType()->getVoxel(pr->getResultShape()));
       setSpaceColor(num,
-                            pieceColorR(puz->getResult()),
-                            pieceColorG(puz->getResult()),
-                            pieceColorB(puz->getResult()), 1);
+                            pieceColorR(pr->getResult()),
+                            pieceColorG(pr->getResult()),
+                            pieceColorB(pr->getResult()), 1);
       setSpacePosition(num,
           0.5* (square*diagonal) * (factor*1.0/square - 0.5),
           0.5* (square*diagonal) * (0.5 - factor*1.0/square), -20, 1.0);
     }
 
-#if 0
     // now place the selected shape
     if (selShape < puz->shapeNumber()) {
 
@@ -494,18 +495,17 @@ void voxelFrame_c::showProblem(const problem_c * puz, unsigned int selShape) {
           0.5* (square*diagonal) * (0.5 - 0.5/square),
           0.5* (square*diagonal) * (0.5 - 0.5/square), -20, 0.5);
     }
-#endif
 
     // and now the shapes
     int unsigned line = 2*factor;
     int unsigned col = 0;
-    for (unsigned int p = 0; p < puz->shapeNumber(); p++) {
-      num = addSpace(puz->getGridType()->getVoxel(puz->getShapeShape(p)));
+    for (unsigned int p = 0; p < pr->shapeNumber(); p++) {
+      num = addSpace(pr->getGridType()->getVoxel(pr->getShapeShape(p)));
 
       setSpaceColor(num,
-                            pieceColorR(puz->getShape(p)),
-                            pieceColorG(puz->getShape(p)),
-                            pieceColorB(puz->getShape(p)), 1);
+                            pieceColorR(pr->getShape(p)),
+                            pieceColorG(pr->getShape(p)),
+                            pieceColorB(pr->getShape(p)), 1);
 
       setSpacePosition(num,
                                0.5* (square*diagonal) * ((col+0.5)/square - 0.5),

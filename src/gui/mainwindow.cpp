@@ -1955,7 +1955,7 @@ void mainWindow_c::activateShape(unsigned int number) {
 void mainWindow_c::activateProblem(unsigned int prob) {
 
   if (prob < puzzle->problemNumber())
-    View3D->showProblem(puzzle->getProblem(prob), shapeAssignmentSelector->getSelection());
+    View3D->showProblem(puzzle, prob, shapeAssignmentSelector->getSelection());
   else
     View3D->showNothing();
 

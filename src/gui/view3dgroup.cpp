@@ -74,9 +74,8 @@ void LView3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) 
   View3D->showSingleShape(puz, shapeNum);
 }
 
-void LView3dGroup::showProblem(const problem_c * puz, unsigned int selShape) {
-
-  View3D->showProblem(puz, selShape);
+void LView3dGroup::showProblem(const puzzle_c * puz, unsigned int problem, unsigned int selShape) {
+  View3D->showProblem(puz, problem, selShape);
 }
 
 void LView3dGroup::showColors(const puzzle_c * puz, voxelFrame_c::colorMode mode) {
@@ -88,7 +87,6 @@ void LView3dGroup::showAssembly(const problem_c * puz, unsigned int solNum) {
 }
 
 void LView3dGroup::showPlacement(const problem_c * puz, unsigned int piece, unsigned char trans, int x, int y, int z) {
-
   View3D->showPlacement(puz, piece, trans, x, y, z);
 }
 

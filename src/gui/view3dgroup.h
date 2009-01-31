@@ -43,7 +43,7 @@ public:
 
   void showNothing(void) { View3D->showNothing(); }
   void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
-  void showProblem(const problem_c * puz, unsigned int selShape);
+  void showProblem(const puzzle_c * puz, unsigned int problem, unsigned int selShape);
   void showAssembly(const problem_c * puz, unsigned int solNum);
   void showPlacement(const problem_c * puz, unsigned int piece, unsigned char trans, int x, int y, int z);
   void showAssemblerState(const problem_c * puz, const assembly_c * assm) {

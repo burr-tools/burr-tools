@@ -116,7 +116,7 @@ class voxelFrame_c : public Fl_Gl_Window {
     void dimStaticPieces(piecePositions_c *shifting);
     void showAssemblerState(const problem_c * puz, const assembly_c * assm);
     void updateVisibility(PieceVisibility * pcvis);
-    void showProblem(const problem_c * puz, unsigned int selShape);
+    void showProblem(const puzzle_c * puz, unsigned int problem, unsigned int selShape);
     void showPlacement(const problem_c * puz, unsigned int piece, unsigned char trans, int x, int y, int z);
 
     // this value determines the scaling factor used to draw the cube.
