@@ -164,7 +164,7 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val, FILE * o
       }
     }
 
-  fprintf(out, "voxel_0_c v(pp);\nv.transform(%i);\nif (pp->identicalInBB(&v)) {\n", best_bit);
+  fprintf(out, "voxel_c * v = pp->getGridType()->getVoxel(pp);\nv->transform(%i);\nif (pp->identicalInBB(v)) {\n", best_bit);
 
   makeSymmetryTree(taken | ((unsigned long long)1 << best_bit), val | ((unsigned long long)1 << best_bit), out);
 
@@ -172,7 +172,7 @@ void makeSymmetryTree(unsigned long long taken, unsigned long long val, FILE * o
 
   makeSymmetryTree(taken | ((unsigned long long)1 << best_bit), val, out);
 
-  fprintf(out, "}\n");
+  fprintf(out, "}\ndelete v;\n");
 
 }
 

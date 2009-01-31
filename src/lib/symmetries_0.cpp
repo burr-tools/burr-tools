@@ -115,10 +115,11 @@ bool symmetries_0_c::symmetryKnown(const voxel_c * pp) const {
   int i;
 
   for (int j = 1; j < NUM_TRANSFORMATIONS_MIRROR; j++) {
-    voxel_0_c v(pp);
-    if (!v.transform(j)) continue;
-    if (pp->identicalInBB(&v))
+    voxel_c * v = pp->getGridType()->getVoxel(pp);
+    if (!v->transform(j)) continue;
+    if (pp->identicalInBB(v))
       s |= ((unsigned long long)1) << j;
+    delete v;
   }
 
   for (i = 0; i < NUM_SYMMETRY_GROUPS; i++)

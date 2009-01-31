@@ -260,6 +260,8 @@ public:
   unsigned int getZ(void) const { return sz; }
   //@}
 
+  const gridType_c * getGridType(void) const { return gt; }
+
   /**
    * Returns the squared diagonal of the space
    */
