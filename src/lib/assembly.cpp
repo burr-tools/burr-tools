@@ -639,13 +639,6 @@ bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot
   return false;
 }
 
-void assembly_c::shiftPiece(unsigned int pc, int dx, int dy, int dz) {
-  bt_assert(pc < placements.size());
-  placements[pc].xpos += dx;
-  placements[pc].ypos += dy;
-  placements[pc].zpos += dz;
-}
-
 void assembly_c::exchangeShape(unsigned int s1, unsigned int s2) {
   bt_assert(s1 < placements.size());
   bt_assert(s2 < placements.size());
