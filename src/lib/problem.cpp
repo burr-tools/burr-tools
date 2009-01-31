@@ -639,34 +639,66 @@ voxel_c * problem_c::getResultShape(void) {
   return puzzle.getShape(result);
 }
 
-/* add a shape to the pieces of the problem */
-unsigned int problem_c::addShape(unsigned int shape, unsigned int count) {
-  shapes.push_back(new shape_c(shape, count, count, 0));
-  return shapes.size()-1;
+void problem_c::setShapeCountMin(unsigned int shape, unsigned int count) {
+  bt_assert(shape < puzzle.shapeNumber());
+
+  for (unsigned int id = 0; id < shapes.size(); id++) {
+    if (shapes[id]->shapeId == shape) {
+
+      shapes[id]->min = count;
+      if (shapes[id]->min > shapes[id]->max)
+        shapes[id]->max = count;
+
+      return;
+    }
+  }
+
+  // when we get here there is no piece with the required puzzle shape, so add it
+  if (count)
+    shapes.push_back(new shape_c(shape, count, count, 0));
 }
 
-/* change the instance count for one shape of the problem */
-void problem_c::setShapeMin(unsigned int shapeID, unsigned int count) {
-  bt_assert(shapeID < shapes.size());
+void problem_c::setShapeCountMax(unsigned int shape, unsigned int count) {
+  bt_assert(shape < puzzle.shapeNumber());
 
-  shapes[shapeID]->min = count;
-  if (shapes[shapeID]->min > shapes[shapeID]->max)
-    shapes[shapeID]->max = count;
+  for (unsigned int id = 0; id < shapes.size(); id++) {
+    if (shapes[id]->shapeId == shape) {
+
+      if (count == 0) {
+        shapes.erase(shapes.begin()+id);
+        return;
+      }
+
+      shapes[id]->max = count;
+      if (shapes[id]->max < shapes[id]->min)
+        shapes[id]->min = count;
+
+      return;
+    }
+  }
+
+  if (count)
+    shapes.push_back(new shape_c(shape, 0, count, 0));
 }
 
-void problem_c::setShapeMax(unsigned int shapeID, unsigned int count) {
-  bt_assert(shapeID < shapes.size());
+unsigned int problem_c::getShapeCountMin(unsigned int shape) const {
+  bt_assert(shape < puzzle.shapeNumber());
 
-  shapes[shapeID]->max = count;
-  if (shapes[shapeID]->min > shapes[shapeID]->max)
-    shapes[shapeID]->min = count;
+  for (unsigned int id = 0; id < shapes.size(); id++)
+    if (shapes[id]->shapeId == shape)
+      return shapes[id]->min;
+
+  return 0;
 }
 
-/* remove the shape from the problem */
-void problem_c::removeShape(unsigned int shapeID) {
-  bt_assert(shapeID < shapes.size());
+unsigned int problem_c::getShapeCountMax(unsigned int shape) const {
+  bt_assert(shape < puzzle.shapeNumber());
 
-  shapes.erase(shapes.begin() + shapeID);
+  for (unsigned int id = 0; id < shapes.size(); id++)
+    if (shapes[id]->shapeId == shape)
+      return shapes[id]->max;
+
+  return 0;
 }
 
 /* return the number of pieces in the problem (sum of all counts of all shapes */
@@ -684,6 +716,17 @@ unsigned int problem_c::getShape(unsigned int shapeID) const {
   bt_assert(shapeID < shapes.size());
 
   return shapes[shapeID]->shapeId;
+}
+
+unsigned int problem_c::getShapeId(unsigned int shape) const {
+  bt_assert(shape < puzzle.shapeNumber());
+
+  for (unsigned int i = 0; i < shapes.size(); i++)
+    if (shapes[i]->shapeId == shape)
+      return i;
+
+  bt_assert(0);
+  return 0;
 }
 
 bool problem_c::containsShape(unsigned int shape) const {

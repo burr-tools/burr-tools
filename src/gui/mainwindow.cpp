@@ -601,16 +601,14 @@ void mainWindow_c::cb_ShapeToResult(void) {
     return;
   }
 
+  if (shapeAssignmentSelector->getSelection() >= puzzle->shapeNumber())
+    return;
+
   unsigned int prob = problemSelector->getSelection();
   problem_c * pr = puzzle->getProblem(prob);
 
   // check if this shape is already a piece of the problem
-  for (unsigned int i = 0; i < pr->shapeNumber(); i++) {
-    if (pr->getShape(i) == shapeAssignmentSelector->getSelection()) {
-      pr->removeShape(i);
-      break;
-    }
-  }
+  pr->setShapeCountMax(shapeAssignmentSelector->getSelection(), 0);
 
   changeProblem(prob);
   pr->setResult(shapeAssignmentSelector->getSelection());
@@ -646,6 +644,9 @@ void mainWindow_c::cb_AddShapeToProblem(void) {
     fl_message("First create a problem");
     return;
   }
+  unsigned int shape = shapeAssignmentSelector->getSelection();
+  if (shape >= puzzle->shapeNumber())
+    return;
 
   unsigned int prob = problemSelector->getSelection();
 
@@ -656,17 +657,9 @@ void mainWindow_c::cb_AddShapeToProblem(void) {
   problem_c * pr = puzzle->getProblem(prob);
 
   // first see, if there is already a selected shape inside
-  for (unsigned int i = 0; i < pr->shapeNumber(); i++)
-    if (pr->getShape(i) == shapeAssignmentSelector->getSelection()) {
-      pr->setShapeMax(i, pr->getShapeMax(i) + 1);
-      pr->setShapeMin(i, pr->getShapeMin(i) + 1);
-      if (solutionProblem->getSelection() < puzzle->problemNumber())
-        PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
-      StatProblemInfo(problemSelector->getSelection());
-      return;
-    }
+  pr->setShapeCountMax(shape, pr->getShapeMax(shape) + 1);
+  pr->setShapeCountMin(shape, pr->getShapeMin(shape) + 1);
 
-  pr->addShape(shapeAssignmentSelector->getSelection(), 1);
   activateProblem(problemSelector->getSelection());
   updateInterface();
   StatProblemInfo(problemSelector->getSelection());
@@ -686,27 +679,16 @@ void mainWindow_c::cb_AddAllShapesToProblem(void) {
   PiecesCountList->redraw();
   changeProblem(prob);
 
-  for (unsigned int j = 0; j < puzzle->shapeNumber(); j++) {
+  problem_c * pr = puzzle->getProblem(prob);
 
-    problem_c * pr = puzzle->getProblem(prob);
+  for (unsigned int j = 0; j < puzzle->shapeNumber(); j++) {
 
     // we don't add the result shape
     if (j == pr->getResult())
       continue;
 
-    bool found = false;
-
-    // first see, if there is already a selected shape inside
-    for (unsigned int i = 0; i < puzzle->getProblem(prob)->shapeNumber(); i++)
-      if (pr->getShape(i) == j) {
-        pr->setShapeMax(i, pr->getShapeMax(i) + 1);
-        pr->setShapeMin(i, pr->getShapeMin(i) + 1);
-        found = true;
-        break;
-      }
-
-    if (!found)
-      pr->addShape(j, 1);
+    pr->setShapeCountMax(j, pr->getShapeCountMax(j) + 1);
+    pr->setShapeCountMin(j, pr->getShapeCountMin(j) + 1);
   }
 
   activateProblem(problemSelector->getSelection());
@@ -723,26 +705,22 @@ void mainWindow_c::cb_RemoveShapeFromProblem(void) {
     return;
   }
 
+  unsigned int shape = shapeAssignmentSelector->getSelection();
+
+  if (shape >= puzzle->shapeNumber())
+    return;
+
   unsigned int prob = problemSelector->getSelection();
   changeProblem(prob);
 
   problem_c * pr = puzzle->getProblem(prob);
 
-  // first see, find the shape, and only if there is one, we decrement its count out remove it
-  for (unsigned int i = 0; i < pr->shapeNumber(); i++)
-    if (pr->getShape(i) == shapeAssignmentSelector->getSelection()) {
-      if (pr->getShapeMax(i) == 1)
-        pr->removeShape(i);
-      else {
-        if (pr->getShapeMin(i) > 0)
-          pr->setShapeMin(i, pr->getShapeMin(i) - 1);
-        pr->setShapeMax(i, pr->getShapeMax(i) - 1);
-      }
+  if (pr->getShapeCountMin(shape) > 0) pr->setShapeCountMin(shape, pr->getShapeCountMin(shape)-1);
+  if (pr->getShapeCountMax(shape) > 0) pr->setShapeCountMax(shape, pr->getShapeCountMax(shape)-1);
 
-      changed = true;
-      PiecesCountList->redraw();
-      PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
-    }
+  changed = true;
+  PiecesCountList->redraw();
+  PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
 
   activateProblem(problemSelector->getSelection());
   StatProblemInfo(problemSelector->getSelection());
@@ -757,20 +735,21 @@ void mainWindow_c::cb_SetShapeMinimumToZero(void) {
     return;
   }
 
+  unsigned int shape = shapeAssignmentSelector->getSelection();
+
+  if (shape >= puzzle->shapeNumber())
+    return;
+
   unsigned int prob = problemSelector->getSelection();
   changeProblem(prob);
 
   problem_c * pr = puzzle->getProblem(prob);
 
-  // first see, find the shape, and only if there is one, we decrement its count out remove it
-  for (unsigned int i = 0; i < pr->shapeNumber(); i++)
-    if (pr->getShape(i) == shapeAssignmentSelector->getSelection()) {
-      pr->setShapeMin(i, 0);
+  pr->setShapeCountMin(shape, 0);
 
-      changed = true;
-      PiecesCountList->redraw();
-      PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
-    }
+  changed = true;
+  PiecesCountList->redraw();
+  PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
 
   activateProblem(problemSelector->getSelection());
   StatProblemInfo(problemSelector->getSelection());
@@ -790,8 +769,8 @@ void mainWindow_c::cb_RemoveAllShapesFromProblem(void) {
 
   problem_c * pr = puzzle->getProblem(prob);
 
-  while (pr->shapeNumber())
-    pr->removeShape(0);
+  for (unsigned int i = 0; i < puzzle->shapeNumber(); i++)
+    pr->setShapeCountMax(i, 0);
 
   changed = true;
   PiecesCountList->redraw();
@@ -806,7 +785,7 @@ void mainWindow_c::cb_ShapeGroup(void) {
 
   unsigned int prob = problemSelector->getSelection();
 
-  groupsEditor_c * groupEditWin = new groupsEditor_c(puzzle->getProblem(prob));
+  groupsEditor_c * groupEditWin = new groupsEditor_c(puzzle, prob);
 
   groupEditWin->show();
 
@@ -815,19 +794,16 @@ void mainWindow_c::cb_ShapeGroup(void) {
 
   if (groupEditWin->changed()) {
 
-    /* as the user may have reset the counts of one shape to zero, go
-     * through the list and remove entries of zero count */
     problem_c * pr = puzzle->getProblem(prob);
 
-    unsigned int i = 0;
-    while (i < pr->shapeNumber()) {
+    /* if the user added the result shape to the problem, we inform him and
+     * remove that shape again
+     */
+    if (!pr->resultInvalid() && pr->getShapeCountMax(pr->getResult()) > 0)
+      pr->setShapeCountMax(pr->getResult(), 0);
 
-      if (pr->getShapeMax(i))
-        i++;
-      else
-        pr->removeShape(i);
-    }
-
+    /* as the user may have reset the counts of one shape to zero, go
+     * through the list and remove entries of zero count */
     PiecesCountList->redraw();
     PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
     changed = true;

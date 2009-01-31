@@ -20,7 +20,7 @@
 
 #include "Layouter.h"
 
-class problem_c;
+class puzzle_c;
 
 class groupsEditorTab_c;
 
@@ -29,12 +29,13 @@ class groupsEditor_c : public LFl_Double_Window {
 
   groupsEditorTab_c * tab;
   LFl_Input * maxHoles;
-  problem_c * puzzle;
+  puzzle_c * puzzle;
+  unsigned int problem;
   bool _changed;
 
 public:
 
-  groupsEditor_c(problem_c * p);
+  groupsEditor_c(puzzle_c * p, unsigned int problem);
 
   void cb_AddGroup(void);
   void cb_CloseWindow(void);

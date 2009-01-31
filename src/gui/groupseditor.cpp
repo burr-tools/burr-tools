@@ -21,6 +21,7 @@
 
 #include "../lib/voxel.h"
 #include "../lib/problem.h"
+#include "../lib/puzzle.h"
 
 #include "Fl_Table.h"
 
@@ -32,7 +33,8 @@
 class groupsEditorTab_c : public Fl_Table, public layoutable_c {
 
   /* the puzzle and the problem to edit */
-  problem_c * puzzle;
+  puzzle_c * puzzle;
+  unsigned int problem;
 
   /* the input line where the user inputs the value
    * it is places over the cell the user clicks onto
@@ -58,7 +60,7 @@ class groupsEditorTab_c : public Fl_Table, public layoutable_c {
 
 public:
 
-  groupsEditorTab_c(int x, int y, int w, int h, problem_c * puzzle);
+  groupsEditorTab_c(int x, int y, int w, int h, puzzle_c * puzzle, unsigned int problem);
 
   /* add a group to the puzzle and a column to the table
    */
@@ -83,6 +85,8 @@ public:
 
 /* draw a cell of the table */
 void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int y, int w, int h) {
+
+  problem_c * pr = puzzle->getProblem(problem);
 
   switch(context) {
 
@@ -143,39 +147,39 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
 
         type = 1;
 
-        int num = puzzle->getShape(r);
-        if (puzzle->getShapeShape(r)->getName().length())
-          snprintf(s, 40, " S%i - %s", num+1, puzzle->getShapeShape(r)->getName().c_str());
+        if (puzzle->getShape(r)->getName().length())
+          snprintf(s, 40, " S%i - %s", r+1, puzzle->getShape(r)->getName().c_str());
         else
-          snprintf(s, 40, " S%i", num+1);
+          snprintf(s, 40, " S%i", r+1);
 
       } else if (c == 1) {
 
         /* the 2nd column, display the min count for this shape */
 
         type = 1;
-        snprintf(s, 40, "%i", puzzle->getShapeMin(r));
+        snprintf(s, 40, "%i", pr->getShapeCountMin(r));
 
       } else if (c == 2) {
 
         /* the 3rd column, display the max count for this shape */
 
         type = 1;
-        snprintf(s, 40, "%i", puzzle->getShapeMax(r));
+        snprintf(s, 40, "%i", pr->getShapeCountMax(r));
 
       } else {
 
         /* the group columns, only display, when an entry for this
          * group exists
          */
-
-        for (unsigned int j = 0; j < puzzle->getShapeGroupNumber(r); j++)
-          if (puzzle->getShapeGroup(r, j) == (c - 2)) {
+        if (pr->containsShape(r) && (pr->resultInvalid() || pr->getResult() != r)) {
+          unsigned int sh = pr->getShapeId(r);
+          for (unsigned int j = 0; j < pr->getShapeGroupNumber(sh); j++)
+            if (pr->getShapeGroup(sh, j) == (c - 2)) {
             type = 1;
-            snprintf(s, 40, "%i", puzzle->getShapeGroupCount(r, j));
+            snprintf(s, 40, "%i", pr->getShapeGroupCount(sh, j));
             break;
           }
-
+        }
       }
 
       /* draw the cell */
@@ -193,16 +197,15 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
           /* a cell with a background corresponding with the shape colour */
           {
             /* get the colour for the cell */
-            int p = puzzle->getShape(r);
-            unsigned char r, g, b;
-            r = pieceColorRi(p);
-            g = pieceColorGi(p);
-            b = pieceColorBi(p);
+            unsigned char rd, gr, bl;
+            rd = pieceColorRi(r);
+            gr = pieceColorGi(r);
+            bl = pieceColorBi(r);
 
             /* draw background */
-            fl_color(r, g, b);
+            fl_color(rd, gr, bl);
             fl_rectf(x, y, w, h);
-            if ((int)3*r + 6*g + 1*b > 1275)
+            if ((int)3*rd + 6*gr + 1*bl > 1275)
               fl_color(0, 0, 0);
             else
               fl_color(255, 255, 255);
@@ -236,13 +239,15 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
 static void cb_input_stub(Fl_Widget*, void* v) { ((groupsEditorTab_c*)v)->cb_input(); }
 void groupsEditorTab_c::cb_input(void) {
 
+  problem_c * pr = puzzle->getProblem(problem);
+
   /* we have either changed the count for the shape, or the group count */
   if (editGroup == 0)
-    puzzle->setShapeMin(editShape, atoi(input->value()));
+    pr->setShapeCountMin(editShape, atoi(input->value()));
   else if (editGroup == 1)
-    puzzle->setShapeMax(editShape, atoi(input->value()));
+    pr->setShapeCountMax(editShape, atoi(input->value()));
   else
-    puzzle->setShapeGroup(editShape, editGroup-1, atoi(input->value()));
+    pr->setShapeGroup(pr->getShapeId(editShape), editGroup-1, atoi(input->value()));
 
   /* hide the edit line */
   input->hide();
@@ -266,11 +271,28 @@ void groupsEditorTab_c::cb_tab(void)
       /* no editing in column 0 */
       if (col == 0) return;
 
-      /* if there is an active edit line, finish it */
-      if (input->visible()) input->do_callback();
+      int count = 0;
+      problem_c * pr = puzzle->getProblem(problem);
 
       editShape = row;
       editGroup = col-1;
+
+      if (editGroup == 0)
+        count = pr->getShapeCountMin(row);
+      else if (editGroup == 1)
+        count = pr->getShapeCountMax(row);
+      else {
+        if (pr->containsShape(row) && (pr->resultInvalid() || pr->getResult() != row)) {
+          unsigned int sh = pr->getShapeId(row);
+          for (unsigned int j = 0; j < pr->getShapeGroupNumber(sh); j++)
+            if (pr->getShapeGroup(sh, j) == (col - 2))
+              count = pr->getShapeGroupCount(sh, j);
+        } else
+          return;  // shape not used in problem -> no group editing possible
+      }
+
+      /* if there is an active edit line, finish it */
+      if (input->visible()) input->do_callback();
 
       /* calculate the cell the user has clicked into */
       int x, y, w, h;
@@ -282,16 +304,6 @@ void groupsEditorTab_c::cb_tab(void)
 
       /* the text that should be initially in the input line */
       char s[30];
-      int count = 0;
-
-      if (editGroup == 0)
-        count = puzzle->getShapeMin(row);
-      else if (editGroup == 1)
-        count = puzzle->getShapeMax(row);
-      else
-        for (unsigned int j = 0; j < puzzle->getShapeGroupNumber(row); j++)
-          if (puzzle->getShapeGroup(row, j) == (col - 2))
-            count = puzzle->getShapeGroupCount(row, j);
 
       snprintf(s, 30, "%d", count);
 
@@ -306,20 +318,23 @@ void groupsEditorTab_c::cb_tab(void)
   }
 }
 
-groupsEditorTab_c::groupsEditorTab_c(int x, int y, int w, int h, problem_c * p) :
+groupsEditorTab_c::groupsEditorTab_c(int x, int y, int w, int h, puzzle_c * p, unsigned int prob) :
   Fl_Table(10, 10, 200, 200), layoutable_c(x, y, w, h), changed(false) {
 
   this->puzzle = p;
+  this->problem = prob;
 
   rows(puzzle->shapeNumber());
 
   /* find out the number of groups */
   maxGroup = 0;
 
-  for (unsigned int i = 0; i < puzzle->shapeNumber(); i++)
-    for (unsigned int j = 0; j < puzzle->getShapeGroupNumber(i); j++)
-      if (puzzle->getShapeGroup(i, j) > maxGroup)
-        maxGroup = puzzle->getShapeGroup(i, j);
+  problem_c * pr = puzzle->getProblem(problem);
+
+  for (unsigned int i = 0; i < pr->shapeNumber(); i++)
+    for (unsigned int j = 0; j < pr->getShapeGroupNumber(i); j++)
+      if (pr->getShapeGroup(i, j) > maxGroup)
+        maxGroup = pr->getShapeGroup(i, j);
 
   cols(maxGroup + 3);
   col_header(1);
@@ -374,16 +389,16 @@ void groupsEditor_c::cb_CloseWindow(void) {
 static void cb_UpdateInterface_stub(Fl_Widget* /*o*/, void *v) { ((groupsEditor_c*)v)->cb_UpdateInterface(); }
 void groupsEditor_c::cb_UpdateInterface(void) {
 
-  if (tab->callback_context() != groupsEditorTab_c::CONTEXT_NONE) {
+  if (tab->callback_context() != groupsEditorTab_c::CONTEXT_NONE)
     tab->cb_tab();
-    return;
-  }
 
   /* check, if the maxHoles field makes any sense */
   bool useMaxHoles = false;
 
+  problem_c * pr = puzzle->getProblem(problem);
+
   for (unsigned int i = 0; i < puzzle->shapeNumber(); i++)
-    if (puzzle->getShapeMin(i) != puzzle->getShapeMax(i)) {
+    if (pr->getShapeCountMin(i) != pr->getShapeCountMax(i)) {
       useMaxHoles = true;
       break;
     }
@@ -398,13 +413,13 @@ static void cb_MaxHoles_stub(Fl_Widget* /*o*/, void* v) { ((groupsEditor_c*)v)->
 void groupsEditor_c::cb_MaxHoles(void) {
 
   if (maxHoles->value()[0])
-    puzzle->setMaxHoles(atoi(maxHoles->value()));
+    puzzle->getProblem(problem)->setMaxHoles(atoi(maxHoles->value()));
   else
-    puzzle->setMaxHolesInvalid();
+    puzzle->getProblem(problem)->setMaxHolesInvalid();
 
-  if (puzzle->maxHolesDefined()) {
+  if (puzzle->getProblem(problem)->maxHolesDefined()) {
     char tmp[20];
-    snprintf(tmp, 20, "%i", puzzle->getMaxHoles());
+    snprintf(tmp, 20, "%i", puzzle->getProblem(problem)->getMaxHoles());
     maxHoles->value(tmp);
   } else
     maxHoles->value("");
@@ -417,18 +432,18 @@ void groupsEditor_c::hide(void) {
   tab->finishEdit();
 
   if (maxHoles->value()[0])
-    puzzle->setMaxHoles(atoi(maxHoles->value()));
+    puzzle->getProblem(problem)->setMaxHoles(atoi(maxHoles->value()));
   else
-    puzzle->setMaxHolesInvalid();
+    puzzle->getProblem(problem)->setMaxHolesInvalid();
 
   Fl_Double_Window::hide();
 }
 
 #define SZ_GAP 5                               // gap between elements
 
-groupsEditor_c::groupsEditor_c(problem_c * p) : LFl_Double_Window(true), puzzle(p), _changed(false) {
+groupsEditor_c::groupsEditor_c(puzzle_c * p, unsigned int pr) : LFl_Double_Window(true), puzzle(p), problem(pr), _changed(false) {
 
-  tab = new groupsEditorTab_c(0, 0, 1, 1, p);
+  tab = new groupsEditorTab_c(0, 0, 1, 1, p, pr);
   tab->pitch(SZ_GAP);
   tab->weight(1, 1);
   tab->callback(cb_UpdateInterface_stub, this);
@@ -442,9 +457,9 @@ groupsEditor_c::groupsEditor_c(problem_c * p) : LFl_Double_Window(true), puzzle(
   maxHoles->tooltip(" Use to define the maximum number of holes alowed in the final solution. This is only"
                     "useful, when having pieceranges and will be disabled if you don't. ");
   maxHoles->callback(cb_MaxHoles_stub, this);
-  if (puzzle->maxHolesDefined()) {
+  if (puzzle->getProblem(problem)->maxHolesDefined()) {
     char tmp[20];
-    snprintf(tmp, 20, "%i", puzzle->getMaxHoles());
+    snprintf(tmp, 20, "%i", puzzle->getProblem(problem)->getMaxHoles());
     maxHoles->value(tmp);
   } else
     maxHoles->value("");

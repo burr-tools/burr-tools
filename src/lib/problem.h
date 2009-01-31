@@ -206,47 +206,48 @@ public:
    * problem, there can be several pieces of the same shape, ...)
    * each shape has a min and max count atatched to define how many times
    * this shape is (may) be used
-   * - use the puzzl shape with given index within this puzzle the min max
-   *   counter are both initialized to count
-   * - don't use that shape any more, as a piece
    * - when a shape is removed from the puzzle this function is called, it
    *   removes all occurences of this shape in the problem and also updates
    *   the indices because the larger ones have shifted
+   * - get and set the min and max values for a puzzle shape
+   * - find out, if a puzzle shape is used in the problem (as piece or as result)
    * - how many different puzzle shapes have been used in this problem (its
-   *   NOT the piece number of piece number
-   * - set and get the min and max counter for the given shapeID. This shape
-   *   id is the index of the shapes of the problem, not the shape index in
-   *   the puzzle
-   * - the piece number counts the MAXIMAL number of pieces possible for
-   *   this problem
+   *   NOT the number of pieces in the problem
+   * - getShapeMin Max similar as the getShapeCount functions but this time using
+   *   the shape id instead of the puzzle shape
+   * - getShape: get the puzzle shape for a problem shape id
+   * - get the problem shape id for a puzzle shape, only call with actually
+   *   used puzzle shapes
    * - get the shape for a given index within the problem, also get the
    *   voxel shape for that shape
-   * - find out if a given puzzle shape is used as a piece within the problem
    * - swap 2 pieces in the order of pieces of the problem
    * - 2 shapes have been swaped in the puzzle, swap them in the problem
    *   as well
    */
-  unsigned int addShape(unsigned int shape, unsigned int count);
-  void removeShape(unsigned int shapeID);
   void shapeIdRemoved(unsigned short idx);
+  void setShapeCountMin(unsigned int shape, unsigned int count);
+  void setShapeCountMax(unsigned int shape, unsigned int count);
+  unsigned int getShapeCountMin(unsigned int shape) const;
+  unsigned int getShapeCountMax(unsigned int shape) const;
+  bool containsShape(unsigned int shape) const;
   unsigned int shapeNumber(void) const { return shapes.size(); }
-  void setShapeMin(unsigned int shapeID, unsigned int count);
-  void setShapeMax(unsigned int shapeID, unsigned int count);
   unsigned int getShapeMin(unsigned int shapeID) const;
   unsigned int getShapeMax(unsigned int shapeID) const;
-  unsigned int pieceNumber(void) const;
   unsigned int getShape(unsigned int shapeID) const;
+  unsigned int getShapeId(unsigned int shape) const;
   const voxel_c * getShapeShape(unsigned int shapeID) const;
   voxel_c * getShapeShape(unsigned int shapeID);
-  bool containsShape(unsigned int shape) const;
   void exchangeShape(unsigned int s1, unsigned int s2);
   void exchangeShapeId(unsigned int s1, unsigned int s2);
 
-  /* find out what puzzle shape is behind a piece number in a given problem
-   * be careful to only supply valid piece numbers
-   *
-   * the function is slow so don't use it in time relevant places
+  /**
+   * find out what puzzle shape is behind a piece number in a given problem
+   * - find out how many pieces there are. This is the maximum valid value for the
+   *   other 2 functions
+   * - find out which shape id (index in the problem shapes is behind a given piece
+   * - find out the how manieth of a shape one piece is
    */
+  unsigned int pieceNumber(void) const;
   unsigned int pieceToShape(unsigned int piece) const;
   unsigned int pieceToSubShape(unsigned int piece) const;
 
@@ -290,7 +291,6 @@ public:
   unsigned int getMaxHoles(void) const { bt_assert(maxHoles != 0xFFFFFFFF); return maxHoles; }
   void setMaxHoles(unsigned int value) { bt_assert(value < 0xFFFFFFFF); maxHoles = value; }
   void setMaxHolesInvalid(void) { maxHoles = 0xFFFFFFFF; }
-
 
   /**
    * remove all known solutions, reset time, counter, assembler, ...

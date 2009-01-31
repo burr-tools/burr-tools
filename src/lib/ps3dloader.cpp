@@ -73,7 +73,7 @@ puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
         if (state == 2)
           pr->setResult(piece);
         else
-          pr->addShape(piece, 1);
+          pr->setShapeCountMin(piece, 1);
 
         linenum = 0;
       }
@@ -109,10 +109,12 @@ puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
   for (unsigned int s1 = 0; s1 < s-1; s1++)
     for (unsigned int s2 = s1+1; s2 < s; s2++)
       if (pr->getShapeShape(s1)->identicalWithRots(pr->getShapeShape(s2), false, false)) {
-        pr->setShapeMax(s1, pr->getShapeMax(s1) + pr->getShapeMax(s2));
-        pr->setShapeMin(s1, pr->getShapeMin(s1) + pr->getShapeMin(s2));
+        unsigned int sh1 = pr->getShape(s1);
+        unsigned int sh2 = pr->getShape(s2);
+        pr->setShapeCountMax(sh1, pr->getShapeCountMax(sh1) + pr->getShapeCountMax(sh2));
+        pr->setShapeCountMin(sh1, pr->getShapeCountMin(sh1) + pr->getShapeCountMin(sh2));
         pr->getShapeShape(s2)->setName("Duplicate");
-        pr->removeShape(s2);
+        pr->setShapeCountMax(sh2, 0);
         s2--;
         s--;
       }
