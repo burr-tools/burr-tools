@@ -1,3 +1,28 @@
+- add scrollwheel support for 3D view zoom
+- a lot of cleanup in the disassembler functions
+- converte from cube to rhombic grid
+- remove 256 piece limitation for disassembler
+- add a simple movement brower to analyze the movements of pieces
+  in an assembled puzzle
+- more memory efficient disassembler, which means you can
+  analyze bigger puzzles without running out of memory
+- the command line tool (not in the windows binary distribution)
+  can now print some information about a puzzle file
+- add lots and lots of code comments in the hope someone may
+  need it, doxygen comments for the library are added
+- different config file format, the old one is thrown away)
+- convert all assemblies of a problem into shapes and add
+  those shapes to another problem
+- faster sorting method for solution sorting
+- fix a cursor drawing bug in the rhombic grid
+- a new console application that can solve puzzles and actually saves them
+  (this application is not included in the windows binary)
+- fix potential symmetry calculation problem with the rhombic grid
+- cube disassembly analysis should be a tiny bit faster
+- limit colors to 63
+- better compression for XML files, should result in smaller files
+  although not that much
+
 ------------- Version 0.4.2 Jan 2009
 
 - Fix a bug in symmetry avoidance algorithm that could result in too
