@@ -657,8 +657,8 @@ void mainWindow_c::cb_AddShapeToProblem(void) {
   problem_c * pr = puzzle->getProblem(prob);
 
   // first see, if there is already a selected shape inside
-  pr->setShapeCountMax(shape, pr->getShapeMax(shape) + 1);
-  pr->setShapeCountMin(shape, pr->getShapeMin(shape) + 1);
+  pr->setShapeCountMax(shape, pr->getShapeCountMax(shape) + 1);
+  pr->setShapeCountMin(shape, pr->getShapeCountMin(shape) + 1);
 
   activateProblem(problemSelector->getSelection());
   updateInterface();
