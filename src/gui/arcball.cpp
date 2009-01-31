@@ -20,11 +20,7 @@
 #include <math.h>
 #include <assert.h>
 
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#else
-#include <GL/gl.h>
-#endif
+#include <FL/gl.h>
 
 #define Epsilon 1.0e-5
 
@@ -289,11 +285,11 @@ void arcBall_c::addTransform(void) const {
     Matrix3fSetRotationFromQuat4f(ThisRot, ThisQuat);               // Convert Quaternion Into Matrix3fT
     Matrix3fMulMatrix3f(ThisRot, LastRot);                          // Accumulate Last Rotation Into This One
     Matrix4fSetRotationFromMatrix3f(Transform, ThisRot);            // Set Our Final Transformations Rotation From This One
-    glMultMatrixf(Transform);                                       // NEW: Apply Dynamic Transform
 
   } else {
 
     Matrix4fSetRotationFromMatrix3f(Transform, LastRot);            // Set Our Final Transformations Rotation From This One
-    glMultMatrixf(Transform);                                       // NEW: Apply Dynamic Transform
   }
+
+  glMultMatrixf(Transform);                                       // NEW: Apply Dynamic Transform
 }
