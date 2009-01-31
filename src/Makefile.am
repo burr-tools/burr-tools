@@ -1,4 +1,4 @@
-bin_PROGRAMS=burrTxt gui/burrGui
+bin_PROGRAMS=burrTxt burrTxt2 gui/burrGui
 noinst_LIBRARIES=lib/libburr.a flu/libflu.a help/libhelp.a lua/liblua.a
 noinst_PROGRAMS=help/helpviewer
 
@@ -71,6 +71,8 @@ help_helpviewer_SOURCES=\
     help/flstring.h
 
 burrTxt_SOURCES=burrTxt.cpp
+
+burrTxt2_SOURCES=burrTxt2.cpp
 
 lib_libburr_a_SOURCES=\
     lib/assembler_0.cpp \
