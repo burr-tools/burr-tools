@@ -21,10 +21,3 @@
 /* Version number of package */
 #undef VERSION
 
-/* Target CPU definitions */
-#undef TARGET_CPU_i386
-#undef TARGET_CPU_i486
-#undef TARGET_CPU_i586
-#undef TARGET_CPU_i686
-#undef TARGET_CPU_x86_64
-
