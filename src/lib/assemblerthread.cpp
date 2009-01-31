@@ -107,12 +107,12 @@ assemblerThread_c::assemblerThread_c(problem_c * puz, int par) :
 action(ACT_PREPARATION),
 puzzle(puz),
 parameters(par),
-disassm(0),
-assm(0),
-ae(0),
 sortMethod(SRT_COMPLETE_MOVES),
 solutionLimit(10),
-solutionDrop(1)
+solutionDrop(1),
+ae(0),
+disassm(0),
+assm(0)
 {
 
   if (par & PAR_DISASSM)
