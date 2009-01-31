@@ -1671,3 +1671,37 @@ void puzzle_c::setGridType(gridType_c * newGt) {
   gt = newGt;
 }
 
+unsigned int puzzle_c::probPieceToShape(unsigned int prob, unsigned int piece) const {
+
+  bt_assert(prob < problems.size());
+
+  unsigned int shape = 0;
+
+  bt_assert(shape < problems[prob]->shapes.size());
+
+  while (piece >= problems[prob]->shapes[shape].max) {
+    piece -= problems[prob]->shapes[shape].max;
+    shape++;
+    bt_assert(shape < problems[prob]->shapes.size());
+  }
+
+  return problems[prob]->shapes[shape].shapeId;
+}
+
+unsigned int puzzle_c::probPieceToSubShape(unsigned int prob, unsigned int piece) const {
+
+  bt_assert(prob < problems.size());
+
+  unsigned int shape = 0;
+
+  bt_assert(shape < problems[prob]->shapes.size());
+
+  while (piece >= problems[prob]->shapes[shape].max) {
+    piece -= problems[prob]->shapes[shape].max;
+    shape++;
+    bt_assert(shape < problems[prob]->shapes.size());
+  }
+
+  return piece;
+}
+

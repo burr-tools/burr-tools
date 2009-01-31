@@ -336,6 +336,15 @@ public:
   // set invalid to true and value to anything to have an unset value
   void probSetMaxHoles(unsigned int prob, unsigned int value, bool invalid = false);
 
+  /* find out what shape is behind a piece number in a given problem
+   * be careful to only supply valid piece numbers
+   *
+   * the function is slow so don't use it in time relevant places
+   */
+  unsigned int probPieceToShape(unsigned int prob, unsigned int piece) const;
+  unsigned int probPieceToSubShape(unsigned int prob, unsigned int piece) const;
+
+
 };
 
 #endif
