@@ -606,10 +606,12 @@ void movementAnalysator_c::completeFind(disassemblerNode_c * searchnode, const s
 
   maxstep = 1;
 
+  std::vector<disassemblerNode_c*> toremove;
+
   while ((nd = find()) != 0) {
     for (unsigned int i = 0; i < result->size(); i++) {
       if (*(*result)[i] == *nd) {
-        delete nd;
+        toremove.push_back(nd);
         nd = 0;
         break;
       }
@@ -620,6 +622,9 @@ void movementAnalysator_c::completeFind(disassemblerNode_c * searchnode, const s
   }
 
   maxstep = (unsigned int)-1;
+
+  for (unsigned int i = 0; i < toremove.size(); i++)
+    delete toremove[i];
 }
 
 void movementAnalysator_c::prepareAssembly(const assembly_c * a) {

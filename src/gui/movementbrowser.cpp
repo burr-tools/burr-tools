@@ -161,7 +161,10 @@ LTreeBrowser::Node * movementBrowser_c::addNode(LTreeBrowser::Node *nd, disassem
   for (unsigned int i = 0; i < s->pieces.size(); i++)
     if (fabs(mv->getX(i)) > 10000 ||
         fabs(mv->getY(i)) > 10000 ||
-        fabs(mv->getZ(i)) > 10000) return 0;
+        fabs(mv->getZ(i)) > 10000) {
+      delete mv;
+      return 0;
+    }
 
   char label[200];
   char * t = label;
@@ -193,8 +196,10 @@ LTreeBrowser::Node * movementBrowser_c::addNode(LTreeBrowser::Node *nd, disassem
   LTreeBrowser::Node * nnew = tree->add(nd, label);
 
   nodeData_s * dat = new nodeData_s;
+  nodes.push_back(dat);
 
   dat->node = mv;
+  dat->node->incRefCount();
 
   /* create pieces field. This field contains the
    * names of all present pieces. Because at the start
@@ -324,6 +329,8 @@ movementBrowser_c::movementBrowser_c(puzzle_c * puzzle, unsigned int prob, unsig
   view3d->weight(1, 1);
   view3d->setMinimumSize(300, 300);
 
+  delete ggt;
+
   layouter_c * lay = new layouter_c(0, 0, 1, 1);
 
   tree = new LTreeBrowser(0, 0, 1, 1);
@@ -350,29 +357,21 @@ movementBrowser_c::movementBrowser_c(puzzle_c * puzzle, unsigned int prob, unsig
 
   /* the user data for a node is the structure nodeData_s */
   nodeData_s * dat = new nodeData_s;
+  nodes.push_back(dat);
 
   assembly_c * assembly = puz->probGetAssembly(prob, solNum);
 
-  unsigned int pc = 0;
-  for (unsigned int j = 0; j < assembly->placementCount(); j++)
-    if (assembly->isPlaced(j))
-      pc++;
-
-  dat->node = new disassemblerNode_c(pc, 0, 0, 0);
-
+  dat->node = new disassemblerNode_c(assembly);
+  dat->node->incRefCount();
 
   /* create pieces field. This field contains the
    * names of all present pieces. Because at the start
    * all pieces are still there we fill the array
    * with all the numbers
    */
-  pc = 0;
   for (unsigned int j = 0; j < assembly->placementCount(); j++)
-    if (assembly->isPlaced(j)) {
-      dat->node->set(pc, assembly->getX(j), assembly->getY(j), assembly->getZ(j), assembly->getTransformation(j));
+    if (assembly->isPlaced(j))
       dat->pieces.push_back(j);
-      pc++;
-    }
 
   n->user_data(dat);
 
@@ -381,4 +380,12 @@ movementBrowser_c::movementBrowser_c(puzzle_c * puzzle, unsigned int prob, unsig
   tree->get_root()->select_only();
 }
 
+movementBrowser_c::~movementBrowser_c() {
+
+  /* we have to delete from the end because otherwise we delete nodes that others point to */
+  for (unsigned int i = 0; i < nodes.size(); i++) {
+    delete nodes[nodes.size()-1-i]->node;
+    delete nodes[nodes.size()-1-i];
+  }
+}
 

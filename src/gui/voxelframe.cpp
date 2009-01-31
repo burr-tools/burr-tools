@@ -57,6 +57,7 @@ voxelFrame_c::~voxelFrame_c(void) {
     curAssembly = 0;
   }
   delete arcBall;
+  if (drawer) delete drawer;
 }
 
 void voxelFrame_c::setDrawer(voxelDrawer_c * dr) {

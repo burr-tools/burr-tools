@@ -29,6 +29,8 @@ class assembly_c;
 class puzzle_c;
 class disassemblerNode_c;
 
+struct nodeData_s;
+
 /* layoutable tree browser */
 class LTreeBrowser : public Flu_Tree_Browser, public layoutable_c {
 
@@ -59,11 +61,18 @@ class movementBrowser_c : public LFl_Double_Window {
     puzzle_c * puz;
     unsigned int problem;
 
+    /* this vector contains all the nodes that have been created
+     * as we can not delete them we save them in here and remove
+     * them updon window closing
+     */
+    std::vector<nodeData_s*> nodes;
+
     LTreeBrowser::Node * addNode(LTreeBrowser::Node *nd, disassemblerNode_c *mv);
 
   public:
 
     movementBrowser_c(puzzle_c * puz, unsigned int prob, unsigned int solNum);
+    ~movementBrowser_c();
 
 
     /* callback functions */
