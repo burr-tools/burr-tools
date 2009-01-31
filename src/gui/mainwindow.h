@@ -269,6 +269,7 @@ public:
   void cb_Save(void);
   void cb_SaveAs(void);
   void cb_Convert(void);
+  void cb_AssembliesToShapes(void);
   void cb_Quit(void);
   void cb_About(void);
   void cb_Help(void);

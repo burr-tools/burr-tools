@@ -30,6 +30,7 @@
 #define UNPLACED_TRANS 0xff
 
 class problem_c;
+class voxel_c;
 
 /* this class contains the information for the placement of
  * one piece within the assembly.
@@ -235,6 +236,12 @@ public:
    * piece at a "smaller" position
    */
   void sort(const problem_c * puz);
+
+  /* calculate a voxelspace that is identical to the assembly with
+   * all pieces put into the space
+   */
+  voxel_c * createSpace(const problem_c * puz) const;
+
 };
 
 #endif

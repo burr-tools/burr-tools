@@ -1493,6 +1493,31 @@ void mainWindow_c::cb_Convert(void) {
 
 }
 
+static void cb_AssembliesToShapes_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AssembliesToShapes(); }
+void mainWindow_c::cb_AssembliesToShapes(void) {
+
+  // is uses the problem that is selected in the solution tab
+
+  problem_c * pr = puzzle->getProblem(solutionProblem->getSelection());
+
+  std::vector<voxel_c *>sh;
+
+  for (unsigned int s = 0; s < pr->solutionNumber(); s++)
+    sh.push_back(pr->getAssembly(s)->createSpace(pr));
+
+  // add the shapes to the problem of the problem tab
+  for (unsigned int s = 0; s < sh.size(); s++) {
+    int i = puzzle->addShape(sh[s]);
+    puzzle->getProblem(problemSelector->getSelection())->setShapeCountMax(i, 1);
+    puzzle->getProblem(problemSelector->getSelection())->setShapeCountMin(i, 0);
+  }
+
+  changed = true;
+  PiecesCountList->redraw();
+
+  updateInterface();
+}
+
 static void cb_SaveAs_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SaveAs(); }
 void mainWindow_c::cb_SaveAs(void) {
 
@@ -1894,6 +1919,7 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
     {"Save",    FL_F + 2, cb_Save_stub,        0, 0, 0, 0, 14, 56},
     {"Save As",        0, cb_SaveAs_stub,      0, FL_MENU_DIVIDER, 0, 0, 14, 56},
     {"Convert",        0, cb_Convert_stub,     0, 0, 0, 0, 14, 56},
+    {"Import Assms",   0, cb_AssembliesToShapes_stub,     0, 0, 0, 0, 14, 56},
     {"Quit",           0, cb_Quit_stub,        0, 0, 3, 0, 14, 56},
     { 0 },
   {"Toggle 3D", FL_F + 4, cb_Toggle3D_stub,    0, 0, 0, 0, 14, 56},

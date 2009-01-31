@@ -670,3 +670,38 @@ int assembly_c::comparePieces(const assembly_c * b) const {
   return 0;
 }
 
+voxel_c * assembly_c::createSpace(const problem_c * puz) const {
+
+  const voxel_c * tmp = puz->getResultShape();
+
+  // create a shape identical in size with the result shape of the problem
+  voxel_c * res = puz->getGridType()->getVoxel(tmp->getX(), tmp->getY(), tmp->getZ(), 0);
+
+  // now iterate over all shapes in the assembly and place them into the result
+  for (unsigned int i = 0; i < placements.size(); i++)
+    if (placements[i].transformation != UNPLACED_TRANS) {
+
+      unsigned int j = puz->pieceToShape(i);
+      printf("%i  %i\n", i, j);
+
+      voxel_c * pc = puz->getGridType()->getVoxel(puz->getShapeShape(j));
+
+      pc->transform(placements[i].transformation);
+
+      int dx = placements[i].xpos - pc->getHx();
+      int dy = placements[i].ypos - pc->getHy();
+      int dz = placements[i].zpos - pc->getHz();
+
+      for (unsigned int x = 0; x < pc->getX(); x++)
+        for (unsigned int y = 0; y < pc->getY(); y++)
+          for (unsigned int z = 0; z < pc->getZ(); z++) {
+            if (pc->getState(x, y, z) != voxel_c::VX_EMPTY)
+              res->set(x+dx, y+dy, z+dz, pc->get(x, y, z));
+          }
+
+      delete pc;
+    }
+
+  return res;
+}
+
