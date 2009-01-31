@@ -103,7 +103,7 @@ void puzzle_c::changeColor(unsigned int idx, unsigned char r, unsigned char g, u
 
   bt_assert(idx < colors.size());
 
-  colors[idx] = r || (uint32_t)g << 8 | (uint32_t)b << 16;
+  colors[idx] = r | (uint32_t)g << 8 | (uint32_t)b << 16;
 }
 
 void puzzle_c::getColor(unsigned int idx, unsigned char * r, unsigned char * g, unsigned char * b) const {
