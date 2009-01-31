@@ -371,12 +371,14 @@ public:
    * - add disassembly information to a solution within the list replacing already
    *   available information
    * - swap to solutions in the list, this is useful for sorting the solutions
+   * - sort solutions by 0=assembly, 1=level, 2=sumMoves, 3=pieces
    */
   void removeSolution(unsigned int sol);
   void removeAllDisassm(void);
   void removeDisassm(unsigned int sol);
   void addDisasmToSolution(unsigned int sol, separation_c * disasm);
   void swapSolutions(unsigned int sol1, unsigned int sol2);
+  void sortSolutions(int by);
 
 };
 

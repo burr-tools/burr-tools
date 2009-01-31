@@ -23,6 +23,7 @@
 #include <xmlwrapp/attributes.h>
 #include <vector>
 #include <stdio.h>
+#include <algorithm>
 
 puzzle_c::puzzle_c(const puzzle_c * orig) {
 

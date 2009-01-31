@@ -23,6 +23,8 @@
 #include "disassembly.h"
 #include "puzzle.h"
 
+#include <algorithm>
+
 #include <stdio.h>
 
 #include <xmlwrapp/attributes.h>
@@ -1034,4 +1036,42 @@ unsigned int problem_c::pieceToSubShape(unsigned int piece) const {
 
 const gridType_c * problem_c::getGridType(void) const { return puzzle.getGridType(); }
 gridType_c * problem_c::getGridType(void) { return puzzle.getGridType(); }
+
+
+static bool comp_0_assembly(const solution_c * s1, const solution_c * s2)
+{
+  return s1->assemblyNum < s2->assemblyNum;
+}
+
+static bool comp_1_level(solution_c * s1, solution_c * s2)
+{
+  if (!s1->treeInfo && s1->tree) s1->treeInfo = new separationInfo_c(s1->tree);
+  if (!s2->treeInfo && s2->tree) s2->treeInfo = new separationInfo_c(s2->tree);
+
+  if (s1->treeInfo->compare(s2->treeInfo) < 0) printf("oops\n");
+
+  return s1->treeInfo && s2->treeInfo && (s1->treeInfo->compare(s2->treeInfo) < 0);
+}
+
+static bool comp_2_moves(solution_c * s1, solution_c * s2)
+{
+  if (!s1->treeInfo && s1->tree) s1->treeInfo = new separationInfo_c(s1->tree);
+  if (!s2->treeInfo && s2->tree) s2->treeInfo = new separationInfo_c(s2->tree);
+
+  return s1->treeInfo && s2->treeInfo && (s1->treeInfo->sumMoves() < s2->treeInfo->sumMoves());
+}
+
+static bool comp_3_pieces(const solution_c * s1, const solution_c * s2)
+{
+  return s1->assembly->comparePieces(s2->assembly) > 0;
+}
+
+void problem_c::sortSolutions(int by) {
+  switch (by) {
+    case 0: stable_sort(solutions.begin(), solutions.end(), comp_0_assembly); break;
+    case 1: stable_sort(solutions.begin(), solutions.end(), comp_1_level   ); break;
+    case 2: stable_sort(solutions.begin(), solutions.end(), comp_2_moves   ); break;
+    case 3: stable_sort(solutions.begin(), solutions.end(), comp_3_pieces  ); break;
+  }
+}
 

@@ -1053,37 +1053,7 @@ void mainWindow_c::cb_SortSolutions(unsigned int by) {
   if (sol < 2)
     return;
 
-  changed = true;
-
-  // this is bubble sort, so it might be a bit slow
-  // for larger number of solutions but is has the advantage
-  // of being a stable sort method
-  for (unsigned int a = 0; a < sol-1; a++)
-    for (unsigned int b = a+1; b < sol; b++) {
-
-      bool exchange = false;
-
-      switch (by) {
-        case 0:
-          exchange = pr->getAssemblyNum(a) > pr->getAssemblyNum(b);
-          break;
-        case 1:
-          exchange = pr->getDisassemblyInfo(a) && pr->getDisassemblyInfo(b) &&
-            (pr->getDisassemblyInfo(a)->compare(pr->getDisassemblyInfo(b)) > 0);
-          break;
-        case 2:
-          exchange = pr->getDisassemblyInfo(a) && pr->getDisassemblyInfo(b) &&
-            (pr->getDisassemblyInfo(a)->sumMoves() > pr->getDisassemblyInfo(b)->sumMoves());
-          break;
-        case 3:
-          exchange = pr->getAssembly(a)->comparePieces(pr->getAssembly(b)) < 0;
-          break;
-      }
-
-      if (exchange)
-        pr->swapSolutions(a, b);
-    }
-
+  pr->sortSolutions(by);
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
 }
