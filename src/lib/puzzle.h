@@ -85,7 +85,7 @@ public:
    * ownership of the given gridtype is taken over, the memory
    * is freed on destruction of this class
    */
-  puzzle_c(gridType_c * gt);
+  puzzle_c(gridType_c * g) : gt(g) { }
 
   /**
    * load the puzzle from the XML file
@@ -122,8 +122,8 @@ public:
   unsigned int addShape(int sx, int sy, int sz);
 
   /* return the pointer to voxel space with the id */
-  const voxel_c * getShape(unsigned int) const;
-  voxel_c * getShape(unsigned int);
+  const voxel_c * getShape(unsigned int idx) const { bt_assert(idx < shapes.size()); return shapes[idx]; }
+  voxel_c * getShape(unsigned int idx) { bt_assert(idx < shapes.size()); return shapes[idx]; }
 
   /* remove the num-th shape
    * be careful this changes all ids and so all problems must be updated
@@ -131,7 +131,7 @@ public:
   void removeShape(unsigned int);
 
   /* return how many shapes there are */
-  unsigned int shapeNumber(void) const;
+  unsigned int shapeNumber(void) const { return shapes.size(); }
 
   /* exchange 2 shapes in the list of shapes */
   void exchangeShape(unsigned int s1, unsigned int s2);
@@ -143,13 +143,13 @@ public:
   void removeColor(unsigned int idx);
   void changeColor(unsigned int idx, unsigned char r, unsigned char g, unsigned char b);
   void getColor(unsigned int idx, unsigned char * r, unsigned char * g, unsigned char * b) const;
-  unsigned int colorNumber(void) const;
+  unsigned int colorNumber(void) const { return colors.size(); }
 
   /* add a new empty problem */
   unsigned int addProblem(void);
 
   /* return number of problems */
-  unsigned int problemNumber(void) const;
+  unsigned int problemNumber(void) const { return problems.size(); }
 
   /* remove one problem */
   void removeProblem(unsigned int p);
@@ -163,25 +163,18 @@ public:
   /* get the problem, don't keep the pointer as the problem
    * might get deleted from the puzzle
    */
-  const problem_c * getProblem(unsigned int p) const {
-    bt_assert(p < problems.size());
-    return problems[p];
-  }
-
-  problem_c * getProblem(unsigned int p) {
-    bt_assert(p < problems.size());
-    return problems[p];
-  }
+  const problem_c * getProblem(unsigned int p) const { bt_assert(p < problems.size()); return problems[p]; }
+  problem_c * getProblem(unsigned int p) { bt_assert(p < problems.size()); return problems[p]; }
 
   /* some additional information about the puzzle */
-  void setComment(const std::string & comment);
-  const std::string & getComment(void) const;
+  void setComment(const std::string & com) { comment = com; }
+  const std::string & getComment(void) const { return comment; }
 
   /* a flag for the comment, if set it is supposed that
    * the comment will open when the file is loaded within the gui
    */
-  bool getCommentPopup(void) const;
-  void setComemntPopup(bool val);
+  bool getCommentPopup(void) const { return commentPopup; }
+  void setComemntPopup(bool val) { commentPopup = val; }
 };
 
 #endif

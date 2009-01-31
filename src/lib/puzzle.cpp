@@ -18,20 +18,11 @@
 #include "puzzle.h"
 
 #include "problem.h"
-#include "assembler.h"
-#include "bt_assert.h"
 #include "voxel.h"
-#include "assembly.h"
-#include "disassembly.h"
-
-#include <stdio.h>
 
 #include <xmlwrapp/attributes.h>
-
 #include <vector>
-
-puzzle_c::puzzle_c(gridType_c * g) : gt(g) {
-}
+#include <stdio.h>
 
 puzzle_c::puzzle_c(const puzzle_c * orig) {
 
@@ -128,10 +119,6 @@ void puzzle_c::getColor(unsigned int idx, unsigned char * r, unsigned char * g, 
   *r = colors[idx].r;
   *g = colors[idx].g;
   *b = colors[idx].b;
-}
-
-unsigned int puzzle_c::colorNumber(void) const {
-  return colors.size();
 }
 
 xml::node puzzle_c::save(void) const {
@@ -247,39 +234,6 @@ puzzle_c::puzzle_c(const xml::node & node) {
     commentPopup = it->get_attributes().find("popup") != it->get_attributes().end();
   } else
     commentPopup = false;
-
-  /* from here on there are only corrections for older puzzle file version */
-
-  // for puzzles with version 1 we need to correct the positions of pieces
-  // to handle the new hotspot behaviour
-#if 0
-
-  if (version == 1) {
-    for (unsigned int p = 0; p < problems.size(); p++)
-      for (unsigned int s = 0; s < problems[p]->solutions.size(); s++) {
-	if (problems[p]->solutions[s]->assembly) {
-	  int pc = 0;
-	  for (unsigned int c = 0; c < problems[p]->shapes.size(); c++)
-	    for (unsigned int i = 0; i < problems[p]->shapes[c].max; i++) {
-	      int x, y, z;
-	      shapes[problems[p]->shapes[c].shapeId]->getHotspot(problems[p]->solutions[s]->assembly->getTransformation(pc), &x, &y, &z);
-	      problems[p]->solutions[s]->assembly->shiftPiece(pc, x, y, z);
-	      pc++;
-	    }
-	}
-	if (problems[p]->solutions[s]->tree) {
-	  int pc = 0;
-	  for (unsigned int c = 0; c < problems[p]->shapes.size(); c++)
-	    for (unsigned int i = 0; i < problems[p]->shapes[c].max; i++) {
-	      int x, y, z;
-	      shapes[problems[p]->shapes[c].shapeId]->getHotspot(problems[p]->solutions[s]->assembly->getTransformation(pc), &x, &y, &z);
-	      problems[p]->solutions[s]->tree->shiftPiece(pc, x, y, z);
-	      pc++;
-	    }
-	}
-      }
-  }
-#endif
 }
 
 unsigned int puzzle_c::addShape(voxel_c * p) {
@@ -291,17 +245,6 @@ unsigned int puzzle_c::addShape(voxel_c * p) {
 unsigned int puzzle_c::addShape(int sx, int sy, int sz) {
   shapes.push_back(gt->getVoxel(sx, sy, sz, voxel_c::VX_EMPTY, voxel_c::VX_EMPTY));
   return shapes.size()-1;
-}
-
-/* return the pointer to voxel space with the id */
-const voxel_c * puzzle_c::getShape(unsigned int idx) const {
-  bt_assert(idx < shapes.size());
-  return shapes[idx];
-}
-
-voxel_c * puzzle_c::getShape(unsigned int idx) {
-  bt_assert(idx < shapes.size());
-  return shapes[idx];
 }
 
 /* remove the num-th shape
@@ -316,9 +259,6 @@ void puzzle_c::removeShape(unsigned int idx) {
   for (unsigned int i = 0; i < problems.size(); i++)
     problems[i]->shapeIdRemoved(idx);
 }
-
-/* return how many shapes there are */
-unsigned int puzzle_c::shapeNumber(void) const { return shapes.size(); }
 
 void puzzle_c::exchangeShape(unsigned int s1, unsigned int s2) {
   bt_assert(s1 < shapes.size());
@@ -339,9 +279,6 @@ unsigned int puzzle_c::addProblem(void) {
   problems.push_back(new problem_c(*this));
   return problems.size()-1;
 }
-
-/* return number of problems */
-unsigned int puzzle_c::problemNumber(void) const { return problems.size(); }
 
 /* remove one problem */
 void puzzle_c::removeProblem(unsigned int idx) {
@@ -367,22 +304,6 @@ void puzzle_c::exchangeProblem(unsigned int p1, unsigned int p2) {
   problem_c * p = problems[p1];
   problems[p1] = problems[p2];
   problems[p2] = p;
-}
-
-void puzzle_c::setComment(const std::string & com) {
-  comment = com;
-}
-
-const std::string & puzzle_c::getComment(void) const {
-  return comment;
-}
-
-bool puzzle_c::getCommentPopup(void) const {
-  return commentPopup;
-}
-
-void puzzle_c::setComemntPopup(bool val) {
-  commentPopup = val;
 }
 
 void puzzle_c::setGridType(gridType_c * newGt) {
