@@ -219,7 +219,6 @@ bool disassembler_a_c::subProbGrouping(const std::vector<unsigned int> & pn) {
 void disassembler_a_c::prepareForAssembly(const assembly_c * assm) {
 
   bt_assert(puzzle->pieceNumber() == assm->placementCount());
-  analyse->prepareAssembly(assm);
   groups->reSet();
 }
 

@@ -75,12 +75,6 @@ class movementAnalysator_c {
     movementAnalysator_c(const problem_c *puz);
     ~movementAnalysator_c(void);
 
-    /* when you start with a new assembly you first have to call this function before performing any
-     * find operations but it is only necessary once per assembly
-     * and then you can do as many find operations as you want
-     */
-    void prepareAssembly(const assembly_c * a);
-
     /* you use either the 2 functions below, or complete Find
      * the below functions return one possible movement after another and you can stop as soon
      * as you want, while complete Find will always find all possible movements

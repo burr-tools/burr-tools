@@ -658,6 +658,3 @@ void movementAnalysator_c::completeFind(disassemblerNode_c * searchnode, const s
     delete toremove[i];
 }
 
-void movementAnalysator_c::prepareAssembly(const assembly_c * a) {
-}
-
