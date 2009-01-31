@@ -132,7 +132,7 @@ public:
   /**
    * returns the currently selected block, starting from 0
    */
-  unsigned int getSelection(void) { return currentSelect; }
+  unsigned int getSelection(void);
 
   /**
    * sets the currently selected block

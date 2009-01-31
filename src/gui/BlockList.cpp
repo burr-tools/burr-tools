@@ -152,6 +152,13 @@ int BlockList::handle(int event) {
   return 0;
 }
 
+unsigned int SelectableList::getSelection(void) {
+  if (currentSelect == -1)
+    if (blockNumber() > 0)
+      currentSelect = 0;
+  return currentSelect;
+}
+
 /* draw a selectable text block with a background colour */
 void SelectableTextList::blockDraw(unsigned int block, int x, int y) {
   int w, h;
@@ -210,6 +217,7 @@ void SelectableTextList::blockSize(unsigned int block, unsigned int *w, unsigned
   *w = wi + 8;
   *h = hi + 4;
 }
+
 
 /* draw a non selectable text block with background colour */
 void TextList::blockDraw(unsigned int block, int x, int y) {

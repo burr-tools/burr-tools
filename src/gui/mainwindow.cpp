@@ -710,7 +710,7 @@ void mainWindow_c::cb_AddAllShapesToProblem(void) {
   }
 
   activateProblem(problemSelector->getSelection());
-//  PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
+  PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
   updateInterface();
   StatProblemInfo(problemSelector->getSelection());
 }
