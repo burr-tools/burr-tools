@@ -79,7 +79,7 @@ disassemblerNode_c::~disassemblerNode_c() {
 }
 
 void disassemblerNode_c::replaceNode(const disassemblerNode_c *n) {
-  bt_assert(piecenumber = n->piecenumber);
+  bt_assert(piecenumber == n->piecenumber);
 
   memcpy(dat, n->dat, 4*piecenumber*sizeof(unsigned char));
 

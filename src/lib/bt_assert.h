@@ -57,6 +57,8 @@ extern assert_log_c * assert_log;
 
 void bt_assert_init(void);
 
+void bt_te(const char * expr, const char * file, unsigned int line, const char * funktion);
+
 #ifdef NDEBUG
 
 #define bt_assert(expr)
@@ -68,7 +70,11 @@ void bt_assert_init(void);
 #define __STRING(s) #s
 #endif
 
-#define bt_assert(expr)  (expr) ? 0 : throw new assert_exception(__STRING(expr), __FILE__, __LINE__, __PRETTY_FUNCTION__)
+#ifdef BT_ASSERT_NO_FUNC
+#define bt_assert(expr)  if (!(expr)) throw new assert_exception(__STRING(expr), __FILE__, __LINE__, __PRETTY_FUNCTION__)
+#else
+#define bt_assert(expr)  if (!(expr)) bt_te(__STRING(expr), __FILE__, __LINE__, __PRETTY_FUNCTION__)
+#endif
 #define bt_assert_line(line) assert_log->addLine(line)
 
 #endif

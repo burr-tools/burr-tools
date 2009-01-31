@@ -29,3 +29,7 @@ void bt_assert_init(void) {
   assert_log = new assert_log_c();
 }
 
+void bt_te(const char * expr, const char * file, unsigned int line, const char * function) {
+  throw new assert_exception(expr, file, line, function);
+}
+

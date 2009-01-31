@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
+#define BT_ASSERT_NO_FUNC
 
 #include "../bitfield.h"
 
