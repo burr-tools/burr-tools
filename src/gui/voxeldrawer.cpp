@@ -113,19 +113,23 @@ void drawGridTriangle(double x0, double y0, double z0,
   float y2 = y0;
   float z2 = z0;
 
-  float xe = x0 + v1x;
-  float ye = y0 + v1y;
-  float ze = z0 + v1z;
+  v1x /= diag;
+  v1y /= diag;
+  v1z /= diag;
 
-  while ((fabs(x1 - xe) > 0.01) || (fabs(y1 - ye) > 0.01) || (fabs(z1 - ze) > 0.01)) {
+  v2x /= diag;
+  v2y /= diag;
+  v2z /= diag;
 
-    x1 += v1x/diag;
-    y1 += v1y/diag;
-    z1 += v1z/diag;
+  for (int i = 0; i < diag; i++)
+  {
+    x1 += v1x;
+    y1 += v1y;
+    z1 += v1z;
 
-    x2 += v2x/diag;
-    y2 += v2y/diag;
-    z2 += v2z/diag;
+    x2 += v2x;
+    y2 += v2y;
+    z2 += v2z;
 
     glVertex3f(x1, y1, z1); glVertex3f(x2, y2, z2);
   }
