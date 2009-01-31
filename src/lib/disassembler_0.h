@@ -26,7 +26,8 @@ class separation_c;
 
 class disassemblerNode_c;
 
-/* this class is a disassembler for the cube space.
+/* this class is a disassembler especially tunes for puzzles with no
+ * coordinated motion
  *
  * is is implemented using Bill Cuttlers algorithm, so please read there
  * in case you are interested how it works. The comments are written with

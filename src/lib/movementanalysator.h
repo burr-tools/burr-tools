@@ -24,6 +24,7 @@ class puzzle_c;
 class disassemblerNode_c;
 class movementCache_c;
 class assembly_c;
+class countingNodeHash;
 
 /* this class is can do analysation of movements within a puzzle
  *
@@ -41,37 +42,29 @@ class movementAnalysator_c {
      * transposition (m[i][j] == m[j][i]) we save the calculation or copying
      * and rather do the transposition inside the checkmovement function
      */
-    int ** matrix;
-    int * movement;
+    unsigned int ** matrix;
+    unsigned int * movement;
     int * weights;
     unsigned int piecenumber;
 
     movementCache_c * cache;
 
+    countingNodeHash * nodes;
+
     /* these variables are used for the routine that looks
      * for the pieces to move find, checkmovement
      */
-    int nextpiece, nextstep, next_pn, nextstate, nextpiece2, state99nextState;
+    int nextpiece, next_pn, nextstate, nextpiece2, state99nextState;
     unsigned int nextdir;
-    unsigned int maxstep;
+    unsigned int maxstep, nextstep;
     disassemblerNode_c * state99node;
     disassemblerNode_c * searchnode;
     const std::vector<unsigned int> * pieces;
 
     void prepare(void);
-    bool checkmovement(unsigned int maxPieces, int nextstep);
-
-    disassemblerNode_c * newNode(int nextdir, int amount);
-
-    /* creates a new node that contains the merged movements of the given 2 nodes
-     * merged movement means that a piece is moved the maximum amount specified in
-     * both nodes. But only one direction is allowed, so if one piece moves this
-     * way and another piece that way 0 i sreturned
-     * the function also returns zero, if the new node would be identical to n1 or n0
-     * also the amount must be identical in both nodes, so if piece a moves 1 unit
-     * in node n0 and andother piece move 2 units in node n1 0 is returned
-     */
-    disassemblerNode_c * newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1, int nextdir);
+    bool checkmovement(unsigned int maxPieces, unsigned int nextstep);
+    disassemblerNode_c * newNode(unsigned int amount);
+    disassemblerNode_c * newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1);
 
   public:
 
@@ -82,12 +75,24 @@ class movementAnalysator_c {
     movementAnalysator_c(const puzzle_c *puz, unsigned int problem);
     ~movementAnalysator_c(void);
 
+    /* when you start with a new assembly you first have to call this function before performing any
+     * find operations but it is only necessary once per assembly
+     * and then you can do as many find operations as you want
+     */
+    void prepareAssembly(const assembly_c * a);
+
+    /* you use either the 2 functions below, or complete Find
+     * the below functions return one possible movement after another and you can stop as soon
+     * as you want, while complete Find will always find all possible movements
+     *
+     * to use the functions below first call init_find and then repeatedly find until
+     * either you don't want no more, or find returns 0
+     */
     void init_find(disassemblerNode_c * nd, const std::vector<unsigned int> & pieces);
     disassemblerNode_c * find(void);
 
     void completeFind(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces, std::vector<disassemblerNode_c*> * result);
 
-    void prepareAssembly(const assembly_c * a);
 };
 
 #endif

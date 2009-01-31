@@ -111,17 +111,17 @@ void movementAnalysator_c::prepare(void) {
         }
 #endif
 
-      int * pos1 = matrix[d];           // y * piecenumber;
+      unsigned int * pos1 = matrix[d];           // y * piecenumber;
       unsigned int idx, i;
 
       for (unsigned int y = 0; y < pieces->size(); y++) {
-        int * pos2 = matrix[d];           // x
+        unsigned int * pos2 = matrix[d];           // x
 
         for (unsigned int x = 0; x < pieces->size(); x++) {
-          int min = *pos2 + *pos1;
+          unsigned int min = *pos2 + *pos1;
 
           for (i = 1, idx = piecenumber; i < pieces->size(); i++, idx += piecenumber) {
-            int l = pos2[idx] + pos1[i];
+            unsigned int l = pos2[idx] + pos1[i];
             if (l < min) min = l;
           }
 
@@ -130,7 +130,7 @@ void movementAnalysator_c::prepare(void) {
 
             if (!again) {
 
-              int * pos3 = matrix[d];
+              unsigned int * pos3 = matrix[d];
 
               for (unsigned int i = 0; i < y; i++) {
                 if (min + pos3[y] < pos3[x]) {
@@ -174,7 +174,7 @@ void movementAnalysator_c::prepare(void) {
  * to distinguish "good" and "bad" moves the function returns true, if less maxPieces
  * have to be moved, this value should not be larger than halve of the pieces in the puzzle
  */
-bool movementAnalysator_c::checkmovement(unsigned int maxPieces, int nextstep) {
+bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int nextstep) {
 
   /* we count the number of pieces that need to be moved, if this number
    * gets bigger than halve of the pieces of the current problem we
@@ -280,12 +280,12 @@ movementAnalysator_c::movementAnalysator_c(const puzzle_c * puz, unsigned int pr
   cache = puz->getGridType()->getMovementCache(puz, prob);
 
   /* allocate the necessary arrays */
-  movement = new int[piecenumber];
+  movement = new unsigned int[piecenumber];
 
-  matrix = new int*[cache->numDirections()];
+  matrix = new unsigned int*[cache->numDirections()];
 
   for (unsigned int j = 0; j < cache->numDirections(); j++) {
-    matrix[j] = new int[piecenumber * piecenumber];
+    matrix[j] = new unsigned int[piecenumber * piecenumber];
 
     for (unsigned int i = 0; i < piecenumber; i++)
       matrix[j][i+i*piecenumber] = 0;
@@ -300,6 +300,8 @@ movementAnalysator_c::movementAnalysator_c(const puzzle_c * puz, unsigned int pr
   }
 
   nextstate = -1;
+
+  nodes = new countingNodeHash();
 }
 
 movementAnalysator_c::~movementAnalysator_c() {
@@ -311,11 +313,16 @@ movementAnalysator_c::~movementAnalysator_c() {
 
   delete cache;
   delete [] weights;
+  delete nodes;
 }
 
 static int max(int a, int b) { if (a > b) return a; else return b; }
 
-disassemblerNode_c * movementAnalysator_c::newNode(int nextdir, int amount) {
+/* creates a new node with the information from the movement array
+ * where the pieces move by amount in direction nextdir
+ * staring point is the searchnode
+ */
+disassemblerNode_c * movementAnalysator_c::newNode(unsigned int amount) {
 
   // calculate the weight of the all the stationary and all the
   // moving pieces
@@ -374,7 +381,6 @@ disassemblerNode_c * movementAnalysator_c::newNode(int nextdir, int amount) {
   return n;
 }
 
-
 /* creates a new node that contains the merged movements of the given 2 nodes
  * merged movement means that a piece is moved the maximum amount specified in
  * both nodes. But only one direction is allowed, so if one piece moves this
@@ -383,7 +389,7 @@ disassemblerNode_c * movementAnalysator_c::newNode(int nextdir, int amount) {
  * also the amount must be identical in both nodes, so if piece a moves 1 unit
  * in node n0 and andother piece move 2 units in node n1 0 is returned
  */
-disassemblerNode_c * movementAnalysator_c::newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1, int nextdir) {
+disassemblerNode_c * movementAnalysator_c::newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1) {
 
   // assert that direction are along the same axis
   bt_assert((nextdir | 1) == (n0->getDirection() | 1));
@@ -434,7 +440,7 @@ disassemblerNode_c * movementAnalysator_c::newNodeMerge(const disassemblerNode_c
   // if the new node is equal to n0 or n1, exit
   if (!different0 || !different1) return 0;
 
-  return newNode(nextdir, amount);
+  return newNode(amount);
 }
 
 
@@ -473,8 +479,6 @@ disassemblerNode_c * movementAnalysator_c::find(void) {
 
   disassemblerNode_c * n = 0;
 
-  static countingNodeHash nodes;
-
   // repeat until we either find a movement or have checked everything
   while (!n) {
 
@@ -482,7 +486,7 @@ disassemblerNode_c * movementAnalysator_c::find(void) {
       case 0:
         // check, if a single piece can be removed
         if (checkmovement(1, 30000))
-          n = newNode(nextdir, 30000);
+          n = newNode(30000);
 
         nextpiece++;
         if (nextpiece >= next_pn) {
@@ -497,7 +501,7 @@ disassemblerNode_c * movementAnalysator_c::find(void) {
       case 1:
         // check, if a group of pieces can be removed
         if (checkmovement(next_pn/2, 30000))
-          n = newNode(nextdir, 30000);
+          n = newNode(30000);
 
         nextpiece++;
         if (nextpiece >= next_pn) {
@@ -506,14 +510,14 @@ disassemblerNode_c * movementAnalysator_c::find(void) {
           if (nextdir >= 2*cache->numDirections()) {
             nextstate++;
             nextdir = 0;
-            nodes.clear();
+            nodes->clear();
           }
         }
         break;
       case 2:
         // check, if pieces can be moved
         if ((nextstep <= maxstep) && checkmovement(next_pn/2, nextstep)) {
-          n = newNode(nextdir, nextstep);
+          n = newNode(nextstep);
           bt_assert(n);
 
           // we need to merge the gained node with all already found
@@ -522,7 +526,7 @@ disassemblerNode_c * movementAnalysator_c::find(void) {
 
           // but first we check, if we have this node already found (maybe via a merger)
           // and if so we delete it
-          if (nodes.insert(n)) {
+          if (nodes->insert(n)) {
             delete n;
             n = 0;
 
@@ -530,7 +534,7 @@ disassemblerNode_c * movementAnalysator_c::find(void) {
 
             nextstate = 99;
             state99node = n;
-            nodes.initScan();
+            nodes->initScan();
             state99nextState = 2;
           }
 
@@ -545,7 +549,7 @@ disassemblerNode_c * movementAnalysator_c::find(void) {
           if (nextpiece >= next_pn) {
             nextpiece = 0;
             nextdir++;
-            nodes.clear();
+            nodes->clear();
             if (nextdir >= 2*cache->numDirections()) {
               nextstate++;
             }
@@ -567,14 +571,14 @@ disassemblerNode_c * movementAnalysator_c::find(void) {
         // the same time but rather one after the other
 
         {
-          const disassemblerNode_c * nd2 = nodes.nextScan();
+          const disassemblerNode_c * nd2 = nodes->nextScan();
 
           if (nd2) {
-            n = newNodeMerge(state99node, nd2, nextdir);
+            n = newNodeMerge(state99node, nd2);
 
             // if the node is valid check if we already know that node, if so
             // delete it
-            if (n && nodes.insert(n)) {
+            if (n && nodes->insert(n)) {
               delete n;
               n = 0;
             }

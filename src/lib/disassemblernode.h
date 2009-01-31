@@ -54,7 +54,7 @@ private:
    * of a set of pieces along a certain axis by a certain amount,
    * because this information is required often, we save it in here
    */
-  int dir;    // the interpretation of dir is up to the user, but is the same as nextdir
+  unsigned int dir;    // the interpretation of dir is up to the user, but is the same as nextdir
   int amount;
 
   unsigned int hashValue;
@@ -164,7 +164,7 @@ public:
     return amount;
   }
 
-  int getDirection(void) const {
+  unsigned int getDirection(void) const {
     return dir;
   }
 
