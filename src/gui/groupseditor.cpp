@@ -171,7 +171,7 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
         /* the group columns, only display, when an entry for this
          * group exists
          */
-        if (pr->containsShape(r) && (pr->resultInvalid() || pr->getResult() != r)) {
+        if (pr->containsShape(r) && (pr->resultInvalid() || pr->getResult() != (unsigned int)r)) {
           unsigned int sh = pr->getShapeId(r);
           for (unsigned int j = 0; j < pr->getShapeGroupNumber(sh); j++)
             if (pr->getShapeGroup(sh, j) == (c - 2)) {
@@ -261,8 +261,8 @@ void groupsEditorTab_c::cb_input(void) {
 static void cb_tab_stub(Fl_Widget*, void *v) { ((groupsEditorTab_c*)v)->cb_tab(); }
 void groupsEditorTab_c::cb_tab(void)
 {
-  int row = callback_row();
-  int col = callback_col();
+  unsigned int row = callback_row();
+  unsigned int col = callback_col();
   TableContext context = callback_context();
 
   switch ( context ) {
