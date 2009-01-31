@@ -20,6 +20,8 @@
 
 #include "symmetries.h"
 
+class gridType_c;
+
 /* this is the symmetries class for cubes and other cube based grids (like rhombic) */
 class symmetries_0_c : public symmetries_c {
 
@@ -35,12 +37,9 @@ class symmetries_0_c : public symmetries_c {
      */
     const gridType_c * gt;
 
+  public:
 
     symmetries_0_c(const gridType_c * gt);
-
-    friend const symmetries_c * gridType_c::getSymmetries(void) const;
-
-  public:
 
     unsigned int getNumTransformations(void) const;
     unsigned int getNumTransformationsMirror(void) const;

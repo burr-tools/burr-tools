@@ -20,6 +20,8 @@
 
 #include "symmetries.h"
 
+class gridType_c;
+
 /* this is the symmetries class for spheres */
 class symmetries_2_c : public symmetries_c {
 
@@ -35,11 +37,9 @@ class symmetries_2_c : public symmetries_c {
      */
     const gridType_c * gt;
 
-    symmetries_2_c(const gridType_c * gt);
-
-    friend const symmetries_c * gridType_c::getSymmetries(void) const;
-
   public:
+
+    symmetries_2_c(const gridType_c * gt);
 
     unsigned int getNumTransformations(void) const;
     unsigned int getNumTransformationsMirror(void) const;

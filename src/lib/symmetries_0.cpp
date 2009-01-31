@@ -18,6 +18,7 @@
 #include "symmetries_0.h"
 
 #include "voxel_0.h"
+#include "gridtype.h"
 
 #include "bt_assert.h"
 

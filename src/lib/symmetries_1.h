@@ -20,6 +20,8 @@
 
 #include "symmetries.h"
 
+class gridType_c;
+
 /* this is the symmetries class for triangles */
 class symmetries_1_c : public symmetries_c {
 
@@ -35,12 +37,9 @@ class symmetries_1_c : public symmetries_c {
      */
     const gridType_c * gt;
 
+  public:
 
     symmetries_1_c(const gridType_c * gt);
-
-    friend const symmetries_c * gridType_c::getSymmetries(void) const;
-
-  public:
 
     unsigned int getNumTransformations(void) const;
     unsigned int getNumTransformationsMirror(void) const;

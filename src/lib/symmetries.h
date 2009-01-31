@@ -18,8 +18,6 @@
 #ifndef __SYMMETRIES_H__
 #define __SYMMETRIES_H__
 
-#include "gridtype.h"
-
 #include <inttypes.h>
 
 // this modules contains just some helper functions for transformations and symmetry handling
