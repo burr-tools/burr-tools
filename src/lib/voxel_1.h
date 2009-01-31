@@ -31,7 +31,7 @@ class voxel_1_c : public voxel_c {
     voxel_1_c(const voxel_c * orig) : voxel_c(orig) { }
 
     void transformPoint(int * x, int * y, int * z, unsigned int trans) const;
-    virtual bool transform(unsigned int nr);
+    bool transform(unsigned int nr);
 
     void minimizePiece(void);
     bool identicalInBB(const voxel_c * op, bool includeColors = true) const;

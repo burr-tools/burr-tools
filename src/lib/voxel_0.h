@@ -44,7 +44,7 @@ class voxel_0_c : public voxel_c {
     voxel_0_c(const voxel_c * orig) : voxel_c(orig) { }
 
     void transformPoint(int * x, int * y, int * z, unsigned int trans) const;
-    virtual bool transform(unsigned int nr);
+    bool transform(unsigned int nr);
 
     bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const;
 
