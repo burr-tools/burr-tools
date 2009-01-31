@@ -51,18 +51,28 @@ class disassembler_a_c : public disassembler_c {
 
     movementAnalysator_c *analyse;
 
-  protected:
-
-    unsigned short subProbGroup(disassemblerNode_c * st, const std::vector<unsigned int> & pn, bool cond);
+    unsigned short subProbGroup(const disassemblerNode_c * st, const std::vector<unsigned int> & pn, bool cond);
     bool subProbGrouping(const std::vector<unsigned int> & pn);
 
     void prepareForAssembly(const assembly_c * assm);
+
+    separation_c * checkSubproblem(int pieceCount, const std::vector<unsigned int> & pieces, const disassemblerNode_c * st, bool left, bool * ok);
+
+  protected:
 
     void init_find(disassemblerNode_c * nd, const std::vector<unsigned int> & pieces) {
       analyse->init_find(nd, pieces);
     }
 
     disassemblerNode_c * find(void) { return analyse->find(); }
+
+    /* one a separating node has been found by the disassemble_rec function, it should call this function
+     * to analyze the sub-problems
+     */
+    separation_c * checkSubproblems(const disassemblerNode_c * st, const std::vector<unsigned int> &pieces);
+
+    /* this function must be implemented by the real disassemblers */
+    virtual separation_c * disassemble_rec(const std::vector<unsigned int> & pieces, disassemblerNode_c * start) = 0;
 
   public:
 
@@ -72,6 +82,14 @@ class disassembler_a_c : public disassembler_c {
      */
     disassembler_a_c(const puzzle_c *puz, unsigned int problem);
     ~disassembler_a_c(void);
+
+    /* because we can only have or don't have a disassembly sequence
+     * we don't need the same complicated callback interface. The function
+     * returns either the disassembly sequence or a null pointer.
+     * you need to take care of freeing the disassembly sequence after
+     * doing with it whatever you want
+     */
+    separation_c * disassemble(const assembly_c * assembly);
 };
 
 

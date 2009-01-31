@@ -17,38 +17,13 @@
  */
 #include "disassembler_0.h"
 
-#include "disassembly.h"
 #include "bt_assert.h"
-#include "puzzle.h"
-#include "assembly.h"
-#include "movementanalysator.h"
 
 #include "disassemblernode.h"
 #include "disassemblerhashes.h"
 
 #include <queue>
 #include <vector>
-
-separation_c * disassembler_0_c::checkSubproblem(int pieceCount, const std::vector<unsigned int> & pieces, disassemblerNode_c * st, bool left, bool * ok) {
-
-  separation_c * res = 0;
-
-  if (pieceCount == 1) {
-    *ok = true;
-  } else if (subProbGroup(st, pieces, left)) {
-    *ok = true;
-  } else {
-
-    disassemblerNode_c *n;
-    std::vector<unsigned int> pn;
-    create_new_params(st, &n, pn, pieces, pieceCount, left);
-    res = disassemble_rec(pn, n);
-
-    *ok = res || subProbGrouping(pn);
-  }
-
-  return res;
-}
 
 /* this is a breadth first search function that analyses the movement of
  * an assembled problem. When the problem falls apart into 2 pieces the function
@@ -79,8 +54,6 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
 
   closed[curFront].insert(start);
   openlist[curListFront].push(start);
-
-  separation_c * erg = 0;
 
   /* the algorithm works with 3 sets of nodes. All nodes in one set do have the same distance
    * from the start node. The 3 sets are the current frontier (cf), the new frontier (nf) and the line
@@ -146,86 +119,6 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
         continue;
       }
 
-      /* if we get here we have found a node that separated the puzzle into
-       * 2 pieces. So we recursively solve the subpuzzles and create a tree
-       * with them that needs to be returned
-       */
-
-      /* count the pieces in both parts */
-      int part1 = 0, part2 = 0;
-
-      for (unsigned int i = 0; i < pieces.size(); i++)
-        if (st->is_piece_removed(i))
-          part2++;
-        else
-          part1++;
-
-      /* each subpart must contain at least 1 piece,
-       * otherwise there is something wrong
-       */
-      bt_assert((part1 > 0) && (part2 > 0));
-
-      separation_c * left, *remove;
-      bool left_ok = false;
-      bool remove_ok = false;
-      left = remove = 0;
-
-      /* all right, the following thing come twice, maybe I should
-       * put it into a function, anyway:
-       * if the subproblem to check has only one piece, it's solved
-       * if all the pieces belong to the same group, we can stop
-       * else try to disassemble, if that fails, try to
-       * group the involved pieces into an identical group
-       */
-      remove = checkSubproblem(part1, pieces, st, false, &remove_ok);
-
-      /* only check the left over part, when the removed part is OK */
-      if (remove_ok)
-        left = checkSubproblem(part2, pieces, st, true, &left_ok);
-
-      /* if both subproblems are either trivial or solvable, return the
-       * result, otherwise return 0
-       */
-      if (remove_ok && left_ok) {
-
-        /* both subproblems are solvable -> construct tree */
-        erg = new separation_c(left, remove, pieces);
-
-        const disassemblerNode_c * st2 = st;
-
-        do {
-          state_c *s = new state_c(pieces.size());
-
-          for (unsigned int i = 0; i < pieces.size(); i++)
-
-            if (st2->is_piece_removed(i)) {
-
-              /* when the piece is removed in here there must be a
-               * predecessor node
-               */
-              bt_assert(st2->getComefrom());
-
-              s->set(i, st2->getComefrom()->getX(i) + 20000*st2->getX(i),
-                        st2->getComefrom()->getY(i) + 20000*st2->getY(i),
-                        st2->getComefrom()->getZ(i) + 20000*st2->getZ(i));
-
-            } else
-              s->set(i, st2->getX(i), st2->getY(i), st2->getZ(i));
-
-          erg->addstate(s);
-
-          st2 = st2->getComefrom();
-        } while (st2);
-
-      } else {
-
-        /* one of the subproblems was unsolvable in this case the whole
-         * puzzle is unsolvable, so we can as well stop here
-         */
-        if (left) delete left;
-        if (remove) delete remove;
-      }
-
       /* if we get here we can stop, even if we didn't find a solution
        * so we empty the openlist and se stop the currently running
        * search process
@@ -233,7 +126,8 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
 
       /* nodes inside the closed hashtables are freed automagically */
 
-      return erg;
+      /* check the possible sub problems, this function call disassemble rec recursivly */
+      return checkSubproblems(st, pieces);
     }
 
     // if the current front is completely checked, open up the new front
@@ -256,38 +150,3 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
   return 0;
 }
 
-disassembler_0_c::disassembler_0_c(const puzzle_c * puz, unsigned int prob) :
-  disassembler_a_c(puz, prob) {
-
-
-}
-
-disassembler_0_c::~disassembler_0_c() {
-
-}
-
-separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
-
-  prepareForAssembly(assembly);
-
-  disassemblerNode_c * start = new disassemblerNode_c(assembly);
-
-  if (start->getPiecenumber() < 2) {
-    delete start;
-    return 0;
-  }
-
-  /* create pieces field. This field contains the
-   * names of all present pieces. Because at the start
-   * all pieces are still there we fill the array
-   * with all the numbers
-   */
-  std::vector<unsigned int> pieces;
-  for (unsigned int j = 0; j < assembly->placementCount(); j++)
-    if (assembly->isPlaced(j))
-      pieces.push_back(j);
-
-  separation_c * s = disassemble_rec(pieces, start);
-
-  return s;
-}

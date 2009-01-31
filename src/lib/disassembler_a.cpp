@@ -23,6 +23,7 @@
 #include "disassemblernode.h"
 #include "movementanalysator.h"
 #include "assembly.h"
+#include "disassembly.h"
 
 disassembler_a_c::disassembler_a_c(const puzzle_c * puz, unsigned int prob) :
   disassembler_c(), puzzle(puz), problem(prob) {
@@ -81,7 +82,114 @@ void create_new_params(const disassemblerNode_c * st, disassemblerNode_c ** n, s
   bt_assert(num == part);
 }
 
-unsigned short disassembler_a_c::subProbGroup(disassemblerNode_c * st, const std::vector<unsigned int> & pn, bool cond) {
+separation_c * disassembler_a_c::checkSubproblem(int pieceCount, const std::vector<unsigned int> & pieces, const disassemblerNode_c * st, bool left, bool * ok) {
+
+  separation_c * res = 0;
+
+  if (pieceCount == 1) {
+    *ok = true;
+  } else if (subProbGroup(st, pieces, left)) {
+    *ok = true;
+  } else {
+
+    disassemblerNode_c *n;
+    std::vector<unsigned int> pn;
+    create_new_params(st, &n, pn, pieces, pieceCount, left);
+    res = disassemble_rec(pn, n);
+
+    *ok = res || subProbGrouping(pn);
+  }
+
+  return res;
+}
+
+separation_c * disassembler_a_c::checkSubproblems(const disassemblerNode_c * st, const std::vector<unsigned int> &pieces) {
+
+  /* if we get here we have found a node that separated the puzzle into
+   * 2 pieces. So we recursively solve the subpuzzles and create a tree
+   * with them that needs to be returned
+   */
+  separation_c * erg = 0;
+
+  /* count the pieces in both parts */
+  int part1 = 0, part2 = 0;
+
+  for (unsigned int i = 0; i < pieces.size(); i++)
+    if (st->is_piece_removed(i))
+      part2++;
+    else
+      part1++;
+
+  /* each subpart must contain at least 1 piece,
+   * otherwise there is something wrong
+   */
+  bt_assert((part1 > 0) && (part2 > 0));
+
+  separation_c * left, *remove;
+  bool left_ok = false;
+  bool remove_ok = false;
+  left = remove = 0;
+
+  /* all right, the following thing come twice, maybe I should
+   * put it into a function, anyway:
+   * if the subproblem to check has only one piece, it's solved
+   * if all the pieces belong to the same group, we can stop
+   * else try to disassemble, if that fails, try to
+   * group the involved pieces into an identical group
+   */
+  remove = checkSubproblem(part1, pieces, st, false, &remove_ok);
+
+  /* only check the left over part, when the removed part is OK */
+  if (remove_ok)
+    left = checkSubproblem(part2, pieces, st, true, &left_ok);
+
+  /* if both subproblems are either trivial or solvable, return the
+   * result, otherwise return 0
+   */
+  if (remove_ok && left_ok) {
+
+    /* both subproblems are solvable -> construct tree */
+    erg = new separation_c(left, remove, pieces);
+
+    const disassemblerNode_c * st2 = st;
+
+    do {
+      state_c *s = new state_c(pieces.size());
+
+      for (unsigned int i = 0; i < pieces.size(); i++)
+
+        if (st2->is_piece_removed(i)) {
+
+          /* when the piece is removed in here there must be a
+           * predecessor node
+           */
+          bt_assert(st2->getComefrom());
+
+          s->set(i, st2->getComefrom()->getX(i) + 20000*st2->getX(i),
+              st2->getComefrom()->getY(i) + 20000*st2->getY(i),
+              st2->getComefrom()->getZ(i) + 20000*st2->getZ(i));
+
+        } else
+          s->set(i, st2->getX(i), st2->getY(i), st2->getZ(i));
+
+        erg->addstate(s);
+
+        st2 = st2->getComefrom();
+    } while (st2);
+
+  } else {
+
+    /* one of the subproblems was unsolvable in this case the whole
+     * puzzle is unsolvable, so we can as well stop here
+     */
+    if (left) delete left;
+    if (remove) delete remove;
+  }
+
+  return erg;
+}
+
+unsigned short disassembler_a_c::subProbGroup(const disassemblerNode_c * st, const std::vector<unsigned int> & pn, bool cond) {
 
   unsigned short group = 0;
 
@@ -113,5 +221,31 @@ void disassembler_a_c::prepareForAssembly(const assembly_c * assm) {
   bt_assert(puzzle->probPieceNumber(problem) == assm->placementCount());
   analyse->prepareAssembly(assm);
   groups->reSet();
+}
+
+separation_c * disassembler_a_c::disassemble(const assembly_c * assembly) {
+
+  prepareForAssembly(assembly);
+
+  disassemblerNode_c * start = new disassemblerNode_c(assembly);
+
+  if (start->getPiecenumber() < 2) {
+    delete start;
+    return 0;
+  }
+
+  /* create pieces field. This field contains the
+   * names of all present pieces. Because at the start
+   * all pieces are still there we fill the array
+   * with all the numbers
+   */
+  std::vector<unsigned int> pieces;
+  for (unsigned int j = 0; j < assembly->placementCount(); j++)
+    if (assembly->isPlaced(j))
+      pieces.push_back(j);
+
+  separation_c * s = disassemble_rec(pieces, start);
+
+  return s;
 }
 

@@ -21,7 +21,6 @@
 #include "disassembler_a.h"
 
 class puzzle_c;
-class assembly_c;
 class separation_c;
 
 class disassemblerNode_c;
@@ -45,7 +44,6 @@ private:
    * pieces contains the names of all the pieces that are still inside the
    * subpuzzle puzzle, start defines the starting position of these pieces
    */
-  separation_c * checkSubproblem(int pieceCount, const std::vector<unsigned int> & pieces, disassemblerNode_c * st, bool left, bool * ok);
   separation_c * disassemble_rec(const std::vector<unsigned int> & pieces, disassemblerNode_c * start);
 
 public:
@@ -54,17 +52,9 @@ public:
    * changed, once you done that but you can analyse many assemblies for
    * disassembability
    */
-  disassembler_0_c(const puzzle_c * puz, unsigned int prob);
+  disassembler_0_c(const puzzle_c * puz, unsigned int prob) : disassembler_a_c(puz, prob) { }
 
-  ~disassembler_0_c();
-
-  /* because we can only have or don't have a disassembly sequence
-   * we don't need the same complicated callback interface. The function
-   * returns either the disassembly sequence or a null pointer.
-   * you need to take care of freeing the disassembly sequence after
-   * doing with it whatever you want
-   */
-  separation_c * disassemble(const assembly_c * assembly);
+  ~disassembler_0_c() { }
 };
 
 #endif
