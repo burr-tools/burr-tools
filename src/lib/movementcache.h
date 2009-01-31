@@ -22,33 +22,47 @@ class voxel_c;
 class problem_c;
 class gridType_c;
 
-/* this class calculates the possible movement between 2 pieces
- * because that calculation is relatively expensive it caches
- * that value. That's the reason for the name
+/**
+ * Calculates and stores the information required for movement analysis
+ *
+ * The movement cache calculates the following value:
+ * - How far can one piece be moved relative to another piece, used by normal movement analysis
+ *
+ * Because calculating this information is expensive all the values
+ * gained are stored in a table for later retrieval. That is why it
+ * is called cache
+ *
+ * Internally this class holds a hash table for the stored values and
+ * calls abstract functions for the calculation of the values, when they
+ * are not inside the table.
+ *
+ * So only the derived classes do actually calculate something.
  */
 class movementCache_c {
 
   protected:
 
-  /* values are saved within a hash table, this is the
-   * entry for the table
+  /**
+   * values are saved within a hash table, this is the entry for the table for the movement data
    */
   typedef struct entry {
 
-    /* position of piece two relative to piece one */
-    int dx, dy, dz;
+    int dx; ///< relative x position of the 2nd piece
+    int dy; ///< relative y position of the 2nd piece
+    int dz; ///< relative z position of the 2nd piece
 
-    /* the 2 shapes */
-    unsigned int s1, s2;
+    unsigned int s1; ///< id of the first involved shape
+    unsigned int s2; ///< id of the second involved shape
 
     /* the transformations of the 2 involved pieces
      * normally we would need only one transformation, that for piece 2
      * but the calculations involved to transform the 2 pieces so that
      * piece one has a fixed transformation are too expensive
      */
-    unsigned short t1, t2;
+    unsigned short t1; ///< orientation of the first shape
+    unsigned short t2; ///< orientation of the second shape
 
-    /* the possible movement in positive directions */
+    /** the possible movement in positive directions */
     int * move;
 
     /* for the linked list in the hash table */
@@ -65,42 +79,43 @@ class movementCache_c {
   unsigned int moTableSize;
   unsigned int moEntries;
 
-
-  /* the shapes in all possible transformations. The voxel spaces are
-   * calculated on demand. The entry at the zero-th position are
+  /**
+   * Saves the shapes in all orientations.
+   * The voxel spaces are calculated on demand. The entry at the zero-th position are
    * pointers into the puzzle, so we must not free them
    */
   const voxel_c *** shapes;
 
-  /* the mapping of pieces to shape numbers */
+  /** the mapping of piece numbers to shape ids */
   unsigned int * pieces;
 
-  /* number of shapes */
+  /** number of shapes */
   unsigned int num_shapes;
 
-  /* number of possible transformations for each shape */
+  /** number of possible transformations for each shape */
   unsigned int num_transformations;
 
-  /* this function resizes the hash table to roughly twice the size */
-  void moRehash(void);
+  void moRehash(void); ///< this function resizes the hash table to roughly twice the size
 
   /* when the entry is not inside the table, this function calculates the values */
   virtual void moCalcValues(entry * e, const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) = 0;
 
+  /// the gridtype used. We need this to make copies and transformations of the shapes
   const gridType_c * gt;
 
   const unsigned int directions;
 
 public:
 
-  /* create the cache, the cache is then fixed to the puzzle and the problem, it can
+  /** create the cache. The cache is then fixed to the puzzle and the problem, it can
    * and should be reused to analyse all assemblies found but can not be used for another puzzle
    */
   movementCache_c(const problem_c * puz, unsigned int directions);
 
   virtual ~movementCache_c(void);
 
-  /* return the values, that are:
+  /**
+   * return the values, that are:
    * how far can the 2nd piece be moved in positive x, y and z direction, when
    * the 2nd piece is offset by dx, dy and dz relative to the first,
    * the 2 pieces are the pieces p1 and p2 from the puzzle and problem defined in the constructor
@@ -108,12 +123,13 @@ public:
    */
   void getMoValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2, unsigned int directions, int * movements);
 
-  /* return the number of different directions of movement that are possible within
+  /**
+   * return the number of different directions of movement that are possible within
    * the space grid that that movement cache is for
    */
   virtual unsigned int numDirections(void) = 0;
 
-  /* return the movement vector of the given direction */
+  /** return the movement vector of the given direction */
   virtual void getDirection(unsigned int dir, int * x, int * y, int * z) = 0;
 };
 

@@ -21,6 +21,20 @@
 #include <math.h>
 #include <string.h>
 
+/** \page STL Surface Tessellation Language
+ *
+ * STL is a file format allowing to define 3D-Objects using just triangles. The
+ * format is used for 3D rapid prototyping machines.
+ *
+ * See http://en.wikipedia.org/wiki/STL_(file_format) for details in the file format.
+ *
+ * BurrTools supports text mode STL as well as binary mode STL file export. The working
+ * is again similar to all. You have the base class and a derived class for concrete
+ * grid types (e.g. one for bricks, one for spheres...)
+ *
+ * The concrete classes do the grid dependend stuff and add lots of triangles to the file
+ */
+
 #if defined(WIN32) || defined(__APPLE__)
 const char * basename(const char * name) {
   const char * res1 = strchr(name, '/');
