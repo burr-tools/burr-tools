@@ -20,6 +20,8 @@
 #include "voxel.h"
 #include "problem.h"
 
+#include <string.h>
+
 /* the hash function. I don't know how well it performs, but it seems to be okay */
 static unsigned int moHashValue(unsigned int s1, unsigned int s2, int dx, int dy, int dz, unsigned char t1, unsigned char t2) {
   unsigned int val = dx * 0x10101010;
@@ -147,7 +149,7 @@ const voxel_c * movementCache_c::getTransformedShape(unsigned int s, unsigned ch
   return shapes[s][t];
 }
 
-void movementCache_c::getMoValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2, unsigned int dirs, int * movements)
+void movementCache_c::getMoValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2, unsigned int * movements)
 {
   /* find out the shapes that the pieces have */
   unsigned int s1 = pieces[p1];
@@ -179,6 +181,5 @@ void movementCache_c::getMoValue(int dx, int dy, int dz, unsigned char t1, unsig
   }
 
   /* return the values */
-  for (unsigned int i = 0; i < dirs; i++)
-    movements[i] = e->move[i];
+  memcpy(movements, e->move, numDirections()*sizeof(unsigned int));
 }

@@ -28,7 +28,7 @@ static int min(int a, int b) { if (a < b) return a; else return b; }
 static int max(int a, int b) { if (a > b) return a; else return b; }
 
 /* calculate the required movement possibilities */
-int* movementCache_0_c::moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) {
+unsigned int* movementCache_0_c::moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) {
 
   /* because the dx, dy and dz values are calculated using the hotspot we need to reverse
    * that process
@@ -37,7 +37,7 @@ int* movementCache_0_c::moCalcValues(const voxel_c * sh1, const voxel_c * sh2, i
   dy += (sh1->getHy() - sh2->getHy());
   dz += (sh1->getHz() - sh2->getHz());
 
-  int * move = new int[NUM_DIRECTIONS];
+  unsigned int * move = new unsigned int[NUM_DIRECTIONS];
 
   /* calculate some bounding boxes for the intersecting and union boxes of the 2 pieces */
   int x1i, x2i, y1i, y2i, z1i, z2i;
@@ -59,7 +59,7 @@ int* movementCache_0_c::moCalcValues(const voxel_c * sh1, const voxel_c * sh2, i
   z2u = max(sh1->boundZ2(), sh2->boundZ2() + dz);
 
   /* these will contain the result assume free movement for the beginning */
-  int mx, my, mz;
+  unsigned int mx, my, mz;
   mx = my = mz = 32000;
 
   /* now we want to calculate the movement possibilities for the x-axis
@@ -118,9 +118,6 @@ int* movementCache_0_c::moCalcValues(const voxel_c * sh1, const voxel_c * sh2, i
         else if (sh2->isFilled2(x-dx, y-dy, z-dz) && (z-last-1 < mz))
           mz = z-last-1;
     }
-
-  /* check the result and put it into the hash node */
-  bt_assert((mx >= 0) && (my >= 0) && (mz >= 0));
 
   move[0] = mx;
   move[1] = my;

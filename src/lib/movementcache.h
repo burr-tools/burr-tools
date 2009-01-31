@@ -63,7 +63,7 @@ class movementCache_c {
     unsigned short t2; ///< orientation of the second shape
 
     /** the possible movement in positive directions */
-    int * move;
+    unsigned int * move;
 
     /** next in the linked list of the hash table */
     struct moEntry * next;
@@ -95,7 +95,7 @@ class movementCache_c {
   void moRehash(void); ///< this function resizes the hash table to roughly twice the size
 
   /** when the entry is not inside the table, this function calculates the values for the movement info */
-  virtual int* moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) = 0;
+  virtual unsigned int* moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) = 0;
 
   /// the gridtype used. We need this to make copies and transformations of the shapes
   const gridType_c * gt;
@@ -119,7 +119,7 @@ public:
    * the 2 pieces are the pieces p1 and p2 from the puzzle and problem defined in the constructor
    * and the 2 pieces are transformed by t1 and t2
    */
-  void getMoValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2, unsigned int directions, int * movements);
+  void getMoValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2, unsigned int * movements);
 
   /**
    * return the number of different directions of movement that are possible within
