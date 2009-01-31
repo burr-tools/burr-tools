@@ -424,3 +424,9 @@ bool voxel_3_c::identicalInBB(const voxel_c * op, bool includeColors) const {
   return bx1 % 5 == op->boundX1() % 5 && by1 % 5 == op->boundY1() % 5 && bz1 % 5 == op->boundZ1() % 5 && voxel_c::identicalInBB(op, includeColors);
 }
 
+bool voxel_3_c::onGrid(int x, int y, int z) const {
+
+  // the shape doesn't fit, when not within the 5 raster
+  return x%5 == 0 && y%5 == 0 && z%5 == 0;
+}
+

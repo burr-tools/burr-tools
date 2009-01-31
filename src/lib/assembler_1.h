@@ -241,7 +241,7 @@ protected:
 
 public:
 
-  assembler_1_c(assemblerFrontend_c * fe);
+  assembler_1_c(void);
   ~assembler_1_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */

@@ -252,8 +252,8 @@ void assembler_1_c::AddRangeNode(unsigned int col, unsigned int piecenode, unsig
   colCount[col] += wg;
 }
 
-assembler_1_c::assembler_1_c(assemblerFrontend_c * fe) :
-  assembler_c(fe),
+assembler_1_c::assembler_1_c(void) :
+  assembler_c(),
   avoidTransformedAssemblies(0), avoidTransformedMirror(0),
   iterations(0),
   reducePiece(0)
@@ -284,7 +284,7 @@ static voxel_c * addToCache(voxel_c * cache[], unsigned int * fill, voxel_c * pi
 
 bool assembler_1_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
 
-  if (!pieceFits(x, y, z))
+  if (!piece->onGrid(x, y, z))
     return false;
 
   const voxel_c * result = puzzle->getResultShape();

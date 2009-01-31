@@ -52,7 +52,8 @@ class voxel_0_c : public voxel_c {
     bool scaleDown(unsigned char by, bool action);
     void resizeInclude(int & px, int & py, int & pz);
 
-    virtual bool validCoordinate(int x, int y, int z) const;
+    bool validCoordinate(int x, int y, int z) const;
+    bool onGrid(int x, int y, int z) const;
 };
 
 #endif

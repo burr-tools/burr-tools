@@ -271,7 +271,7 @@ protected:
 
 public:
 
-  assembler_0_c(assemblerFrontend_c * fe);
+  assembler_0_c(void);
   ~assembler_0_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */

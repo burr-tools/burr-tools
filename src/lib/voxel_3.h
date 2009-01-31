@@ -41,6 +41,7 @@ class voxel_3_c : public voxel_0_c {
 
     virtual bool validCoordinate(int x, int y, int z) const;
     bool identicalInBB(const voxel_c * op, bool includeColors = true) const;
+    bool onGrid(int x, int y, int z) const;
 };
 
 #endif

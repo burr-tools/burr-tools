@@ -41,6 +41,7 @@ class voxel_2_c : public voxel_c {
     void resizeInclude(int & px, int & py, int & pz);
 
     virtual bool validCoordinate(int x, int y, int z) const;
+    bool onGrid(int x, int y, int z) const;
 };
 
 #endif

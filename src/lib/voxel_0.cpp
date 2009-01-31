@@ -316,3 +316,8 @@ bool voxel_0_c::validCoordinate(int /*x*/, int /*y*/, int /*z*/) const {
   return true;
 }
 
+bool voxel_0_c::onGrid(int /*x*/, int /*y*/, int /*z*/) const
+{
+  return true;
+}
+

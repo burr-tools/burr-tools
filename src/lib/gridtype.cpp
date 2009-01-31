@@ -19,10 +19,6 @@
 
 #include "assembler_0.h"
 #include "assembler_1.h"
-#include "assemblerfrontend_0.h"
-#include "assemblerfrontend_1.h"
-#include "assemblerfrontend_2.h"
-#include "assemblerfrontend_3.h"
 #include "movementcache_0.h"
 #include "voxel_0.h"
 #include "voxel_1.h"
@@ -141,24 +137,8 @@ gridType_c::~gridType_c(void) {
     delete sym;
 }
 
-
-/* these functions return assembler and disassemble for the current space grid
- * if the required functionality is not available, return 0
- */
-assemblerFrontend_c * gridType_c::getAssemblerFrontend(void) const {
-
-  switch (type) {
-    case GT_BRICKS:           return new assemblerFrontend_0_c();
-    case GT_TRIANGULAR_PRISM: return new assemblerFrontend_1_c();
-    case GT_SPHERES:          return new assemblerFrontend_2_c();
-    case GT_RHOMBIC:          return new assemblerFrontend_3_c();
-    default:                  return 0;
-  }
-
-}
-
-movementCache_c * gridType_c::getMovementCache(const problem_c * puz) const {
-
+movementCache_c * gridType_c::getMovementCache(const problem_c * puz) const
+{
   switch (type) {
     case GT_BRICKS:           return new movementCache_0_c(puz);
     default: return 0;
@@ -236,15 +216,15 @@ unsigned int gridType_c::getCapabilities(void) const {
   }
 }
 
-assembler_c * gridType_c::findAssembler(const problem_c * p) {
-
+assembler_c * gridType_c::findAssembler(const problem_c * p)
+{
   if (assembler_0_c::canHandle(p)) {
     fprintf(stderr, "using assembler 0\n");
-    return new assembler_0_c(p->getGridType()->getAssemblerFrontend());
+    return new assembler_0_c();
   }
   if (assembler_1_c::canHandle(p)) {
     fprintf(stderr, "using assembler 1\n");
-    return new assembler_1_c(p->getGridType()->getAssemblerFrontend());
+    return new assembler_1_c();
   }
 
   return 0;

@@ -729,6 +729,16 @@ public:
       const voxel_c * vb, int xb, int yb, int zb
       );
 
+  /**
+   * this function is used to find out if the given
+   * position is of the same voxel type as the voxel
+   * at position 0.
+   *
+   * This is used to find out if a piece can be placed
+   * at a certain position in a voxel grid
+   */
+  virtual bool onGrid(int x, int y, int z) const = 0;
+
 };
 
 #endif

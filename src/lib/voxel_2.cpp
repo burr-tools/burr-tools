@@ -372,3 +372,9 @@ bool voxel_2_c::validCoordinate(int x, int y, int z) const {
 
 }
 
+bool voxel_2_c::onGrid(int x, int y, int z) const {
+
+  // the shape doesn't fit, when the lower left corner doesn't have the right parity
+  return ((x+y+z) & 1) == 0;
+}
+

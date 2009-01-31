@@ -25,7 +25,6 @@
 #include <xmlwrapp/node.h>
 
 class assembler_c;
-class assemblerFrontend_c;
 class symmetries_c;
 class voxel_c;
 class problem_c;
@@ -101,10 +100,7 @@ class gridType_c {
 
     unsigned int getCapabilities(void) const;
 
-    /* these functions return assembler and disassemble for the current space grid
-     * if the required functionality is not available, return 0
-     */
-    assemblerFrontend_c * getAssemblerFrontend(void) const;
+    /// return a movement cache instance for this grid type
     movementCache_c * getMovementCache(const problem_c * puz) const;
 
     /* voxel spaces have different implementations for rotation, and mirror functions */
