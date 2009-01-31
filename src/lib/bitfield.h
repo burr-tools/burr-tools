@@ -22,46 +22,59 @@
 
 #include "bt_assert.h"
 
-// this is a fast class to have a bit vector with a constant number of bits
-// the number it dependend on the template parameter
+/** \file bitfield.h
+ * contains the template class bitfield_c
+ */
+
 template<int bits>
 
+/**
+ * this is a fast class to have a bit vector with a constant number of bits
+ * the number it dependend on the template parameter
+ */
 class bitfield_c {
 
   private:
 
-    uint64_t field[(bits+63)/64]; // the bitfield
+    uint64_t field[(bits+63)/64]; ///< the bitfield
 
   public:
 
+    /// constructor, all bits are cleared at the beginning
     bitfield_c() {
       clear();
     }
 
+    /// constructor, the bits are initialized to the value of the string
     bitfield_c(const char * val) {
       clear();
       operator=(val);
     }
 
+    /// get a bit
     bool get(uint16_t pos) const {
       bt_assert(pos < bits);
       return field[pos >> 6] & (1ll << (pos & 63));
     }
 
+    /// set a bit to one
     void set(uint16_t pos) {
       bt_assert(pos < bits);
       field[pos >> 6] |= (1ll << (pos & 63));
     }
 
+    /// set a bit to zero
     void reset(uint16_t pos) {
       bt_assert(pos < bits);
       field[pos >> 6] &= ~(1ll << (pos & 63));
     }
 
+    /// set all bits to zero
     void clear(void) {
       memset(field, 0, 8*((bits+63)/64));
     }
 
+    /// check, if at least one bit is set to 1
     bool notNull(void) {
       for (int i = 0; i < ((bits+63)/64); i++)
         if (field[i] > 0)
@@ -70,6 +83,17 @@ class bitfield_c {
       return false;
     }
 
+    /**
+     *  assign the the string repesentation of a value to
+     *  the bits of this bitfield
+     *
+     *  The string must be a hexadecimal value, no prefix no
+     *  suffix, you can use upper and lower case letters.
+     *
+     *  The string must not be larget than allowed. If the string
+     *  is shorter than necessary the remaining values are left untouched,
+     *  so it's up to you to clear them before calling this function
+     */
     const bitfield_c<bits> & operator=(const char * val) {
 
       size_t l = strlen(val);
@@ -105,6 +129,7 @@ class bitfield_c {
       return *this;
     }
 
+    /// comparison of 2 bitfields
     bool operator==(const bitfield_c<bits> & op) const {
 
       for (int i = 0; i < ((bits+63)/64); i++)
@@ -114,6 +139,7 @@ class bitfield_c {
       return true;
     }
 
+    /// inequality test of 2 bitfields
     bool operator!=(const bitfield_c<bits> & op) const {
 
       for (int i = 0; i < ((bits+63)/64); i++)
@@ -123,6 +149,14 @@ class bitfield_c {
       return false;
     }
 
+    /**
+     * find the number of set bits in the bitfield
+     *
+     * The method add up the number of set bits in
+     * each 64 bit entry of the bitvector. This value is
+     * calculated using a method similar to this:
+     * http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+     */
     unsigned int countbits(void) const {
 
       unsigned int res = 0;
@@ -143,6 +177,9 @@ class bitfield_c {
       return res;
     }
 
+    /** put the value of the bitfield into the string str.
+     * not more than len characters are written
+     */
     void print(char * str, unsigned int len) const {
 
       int idx = 0;
@@ -151,12 +188,18 @@ class bitfield_c {
         idx += snprintf(str+idx, len-idx, "%016llx", field[i]);
     }
 
+    /**
+     * use printf to display the content of the string
+     */
     void print(void) const {
 
       for (int i = ((bits+63)/64)-1; i >= 0; i--)
         printf("%016llx", field[i]);
     }
 
+    /**
+     * bitwise and of 2 bitfields
+     */
     const bitfield_c<bits> operator&(const bitfield_c<bits> & right) const {
       bitfield_c<bits> res;
 
