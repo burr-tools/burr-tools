@@ -123,9 +123,41 @@ class mirrorInfo_c {
  */
 class assembly_c {
 
+private:
 
   std::vector<placement_c> placements;
   const symmetries_c * sym;
+
+
+  /* to be able to put assemblies into sets we need to have 2 operators
+   * on assemblies, the == and the <
+   */
+  bool operator == (const assembly_c & b) const {
+    /* two assemblies are equal if all placements and transformations
+     * of all pieces are identical
+     * Comparisons are only possible, when the two assemblies
+     * have the same number of pieces
+     */
+    bt_assert(placements.size() == b.placements.size());
+
+    for (unsigned int i = 0; i < placements.size(); i++)
+      if (!(placements[i] == b.placements[i]))
+        return false;
+
+    return true;
+  }
+
+  bool compare(const assembly_c & b, unsigned int pivot) const;
+
+  /**
+   * returns true, if one of the pieces within this assembly is
+   * a mirror orientation
+   *
+   * this is used by the smaller rotation exists check,
+   * to see, if the mirrored orientation can be achieved
+   * with the given pieces
+   */
+  bool containsMirroredPieces(void) const;
 
 public:
 
@@ -192,43 +224,17 @@ public:
    */
   void transform(unsigned char trans, const problem_c * puz, const mirrorInfo_c * mir);
 
-  /**
-   * returns true, if one of the pieces within this assembly is
-   * a mirror orientation
-   *
-   * this is used by the smaller rotation exists check,
-   * to see, if the mirrored orientation can be achieved
-   * with the given pieces
-   */
-  bool containsMirroredPieces(void) const;
-
-  /* to be able to put assemblies into sets we need to have 2 operators
-   * on assemblies, the == and the <
-   */
-  bool operator == (const assembly_c & b) const {
-    /* two assemblies are equal if all placements and transformations
-     * of all pieces are identical
-     * Comparisons are only possible, when the two assemblies
-     * have the same number of pieces
-     */
-    bt_assert(placements.size() == b.placements.size());
-
-    for (unsigned int i = 0; i < placements.size(); i++)
-      if (!(placements[i] == b.placements[i]))
-        return false;
-
-    return true;
-  }
-
-  bool compare(const assembly_c & b, unsigned int pivot) const;
-
-  void sort(const problem_c * puz);
 
   bool smallerRotationExists(const problem_c * puz, unsigned int pivot, const mirrorInfo_c * mir) const;
 
   void exchangeShape(unsigned int s1, unsigned int s2);
 
   int comparePieces(const assembly_c * b) const;
+
+  /* sort the pieces within the assembly so that they do have the intended order, first
+   * piece at a "smaller" position
+   */
+  void sort(const problem_c * puz);
 };
 
 #endif
