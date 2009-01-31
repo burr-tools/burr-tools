@@ -22,6 +22,7 @@
 #include "guigridtype.h"
 #include "view3dgroup.h"
 #include "WindowWidgets.h"
+#include "piececolor.h"
 
 #include "../lib/assembly.h"
 #include "../lib/puzzle.h"
@@ -29,6 +30,7 @@
 #include "../lib/disassemblernode.h"
 #include "../lib/movementanalysator.h"
 #include "../lib/movementcache.h"
+#include "../lib/voxel.h"
 
 #include "../flu/Flu_Tree_Browser.h"
 
@@ -50,7 +52,7 @@ class AddMovementDialog : public LFl_Double_Window {
       hide();
     }
 
-    AddMovementDialog(movementCache_c * c, const std::vector<unsigned int> & pieces);
+    AddMovementDialog(movementCache_c * c, const std::vector<unsigned int> & pieces, const puzzle_c * puz, unsigned int prob);
 
 
     unsigned int getDir(void) {
@@ -72,11 +74,13 @@ class AddMovementDialog : public LFl_Double_Window {
 static void cb_BtnDone_stub(Fl_Widget* /*o*/, void* v) { ((AddMovementDialog*)v)->cb_Buttons(0); }
 static void cb_BtnCancel_stub(Fl_Widget* /*o*/, void* v) { ((AddMovementDialog*)v)->cb_Buttons(1); }
 
-AddMovementDialog::AddMovementDialog(movementCache_c * c, const std::vector<unsigned int> & pieces) : LFl_Double_Window(false) {
+AddMovementDialog::AddMovementDialog(movementCache_c * c, const std::vector<unsigned int> & pieces, const puzzle_c * puz, unsigned int problem) : LFl_Double_Window(false) {
 
   layouter_c * o = new layouter_c(0, 0, 1, 1);
 
   new LFl_Box("Direction", 0, 0, 1, 1);
+
+  bool twoColumns = 2*c->numDirections() > pieces.size();
 
   for (unsigned int i = 0; i < c->numDirections(); i++) {
     char label[20];
@@ -90,7 +94,11 @@ AddMovementDialog::AddMovementDialog(movementCache_c * c, const std::vector<unsi
     if (y < 0) t += snprintf(t, 20 - (t-label), "-y");
     if (z > 0) t += snprintf(t, 20 - (t-label), "z");
     if (z < 0) t += snprintf(t, 20 - (t-label), "-z");
-    dirs.push_back(new LFl_Radio_Button(label, 0, 2*i+1, 1, 1));
+
+    if (twoColumns)
+      dirs.push_back(new LFl_Radio_Button(label, 0, i+1, 1, 1));
+    else
+      dirs.push_back(new LFl_Radio_Button(label, 0, 2*i+1, 1, 1));
     (*dirs.rbegin())->copy_label(label);
 
     t = label;
@@ -100,7 +108,11 @@ AddMovementDialog::AddMovementDialog(movementCache_c * c, const std::vector<unsi
     if (y < 0) t += snprintf(t, 20 - (t-label), "y");
     if (z > 0) t += snprintf(t, 20 - (t-label), "-z");
     if (z < 0) t += snprintf(t, 20 - (t-label), "z");
-    dirs.push_back(new LFl_Radio_Button(label, 0, 2*i+2, 1, 1));
+
+    if (twoColumns)
+      dirs.push_back(new LFl_Radio_Button(label, 1, i+1, 1, 1));
+    else
+      dirs.push_back(new LFl_Radio_Button(label, 0, 2*i+2, 1, 1));
     (*dirs.rbegin())->copy_label(label);
   }
 
@@ -116,9 +128,17 @@ AddMovementDialog::AddMovementDialog(movementCache_c * c, const std::vector<unsi
 
   for (unsigned int i = 0; i < pieces.size(); i++) {
     char label[20];
-    snprintf(label, 20, "%i", pieces[i]);
+    unsigned int shape = puz->probPieceToShape(problem, pieces[i]);
+    unsigned int subShape = puz->probPieceToSubShape(problem, pieces[i]);
+    if (puz->getShape(shape)->getName().length())
+      snprintf(label, 20, "S%i - %s", shape+1, puz->getShape(shape)->getName().c_str());
+    else
+      snprintf(label, 20, "S%i", shape+1);
     pces.push_back(new LFl_Check_Button(label, 0, i+1, 1, 1));
     (*pces.rbegin())->copy_label(label);
+
+    (*pces.rbegin())->color(fltkSubPieceColor(shape, subShape));
+    (*pces.rbegin())->box(FL_FLAT_BOX);
   }
 
   (new LFl_Box("", 0, pieces.size()+1, 1, 1))->weight(1, 1);
@@ -127,9 +147,12 @@ AddMovementDialog::AddMovementDialog(movementCache_c * c, const std::vector<unsi
 
   o = new layouter_c(0, 1, 2, 1);
 
-  new LFlatButton_c(0, 0, 1, 1, "Done", "", cb_BtnDone_stub, this);
+  (new LFlatButton_c(0, 0, 1, 1, "Done", "", cb_BtnDone_stub, this))->weight(1, 0);
   (new LFl_Box("", 1, 0, 1, 1))->setMinimumSize(5, 0);
-  new LFlatButton_c(2, 0, 1, 1, "Cancel", "", cb_BtnCancel_stub, this);
+  (new LFlatButton_c(2, 0, 1, 1, "Cancel", "", cb_BtnCancel_stub, this))->weight(1, 0);
+
+  o->pitch(5);
+  o->end();
 
   donePressed = false;
 }
@@ -185,12 +208,17 @@ LTreeBrowser::Node * movementBrowser_c::addNode(LTreeBrowser::Node *nd, disassem
 
     if ((s->node->getX(p) != mv->getX(p)) ||
         (s->node->getY(p) != mv->getY(p)) ||
-        (s->node->getZ(p) != mv->getZ(p)))
+        (s->node->getZ(p) != mv->getZ(p))) {
       if (firstpiece) {
-        t += snprintf(t, 200-(t-label), ": %i", s->pieces[p]);
+        t += snprintf(t, 200-(t-label), ": S%i", puz->probPieceToShape(problem, s->pieces[p])+1);
         firstpiece = false;
       } else
-        t += snprintf(t, 200-(t-label), ", %i", s->pieces[p]);
+        t += snprintf(t, 200-(t-label), ", S%i", puz->probPieceToShape(problem, s->pieces[p])+1);
+
+      if (puz->probPieceToSubShape(problem, s->pieces[p]))
+        t += snprintf(t, 200-(t-label), ".%i", puz->probPieceToSubShape(problem, s->pieces[p])+1);
+    }
+
   }
 
   LTreeBrowser::Node * nnew = tree->add(nd, label);
@@ -262,12 +290,22 @@ void movementBrowser_c::cb_AddMovement(void) {
 
   movementCache_c * c = puz->getGridType()->getMovementCache(puz, problem);
 
-  AddMovementDialog dlg(c, s->pieces);
+  AddMovementDialog dlg(c, s->pieces, puz, problem);
 
   dlg.show();
 
   while (dlg.visible())
     Fl::wait();
+
+  if (!dlg.done()) return;
+
+  /* count moved pieces, if 0 then return */
+  unsigned int moved = 0;
+  for (unsigned int i = 0; i < s->pieces.size(); i++)
+    if (dlg.pieceSelected(i))
+      moved++;
+
+  if (moved == 0) return;
 
   int x, y, z;
 
@@ -347,7 +385,13 @@ movementBrowser_c::movementBrowser_c(puzzle_c * puzzle, unsigned int prob, unsig
   addMovement =       new LFlatButton_c(0, 1, 1, 1, "Add Movement", " Add a fixed movement to current node and see what happens ", cb_AddMovement_stub, this);
   pruneTree =         new LFlatButton_c(1, 1, 1, 1, "Prune Tree", " Remove All Nodes exept the ones that lead to the selected one ", cb_Prune_stub, this);
 
+  analyzeNode->pitch(2);
+  analyzeNextLevels->pitch(2);
+  addMovement->pitch(2);
+  pruneTree->pitch(2);
+
   o->end();
+  o->pitch(2);
 
   lay->end();
 
