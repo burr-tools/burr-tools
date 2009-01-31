@@ -23,11 +23,7 @@
 
 #include <xmlwrapp/attributes.h>
 
-#define MAX_TRANSFORMATIONS 240  // this is the maximum number of transformations possible
-// as there is right now no way to check, what the number of transformations in each subclass
-// is we simply use the maximum. It just wastes a bit of memory and a little bit of time for
-// initialisation
-#define BBHSCACHE_UNINIT -30000  // the value tha signifies uninitialized values
+#define BBHSCACHE_UNINIT -30000  // the value tha signifies uninitialized values for the hotspot and bounding box cache
 
 voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * g, voxel_type init) : gt(g), sx(x), sy(y), sz(z), voxels(x*y*z), hx(0), hy(0), hz(0), weight(1) {
 
@@ -53,7 +49,7 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_
 
   symmetries = symmetryInvalid();
 
-  BbHsCache = new int[9*MAX_TRANSFORMATIONS];
+  BbHsCache = new int[9*gt->getSymmetries()->getNumTransformationsMirror()];
 }
 
 voxel_c::voxel_c(const voxel_c & orig) : gt(orig.gt), sx(orig.sx), sy(orig.sy), sz(orig.sz),
@@ -75,7 +71,7 @@ voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz), weight(orig.weight) 
 
   symmetries = symmetryInvalid();
 
-  BbHsCache = new int[9*MAX_TRANSFORMATIONS];
+  BbHsCache = new int[9*gt->getSymmetries()->getNumTransformationsMirror()];
 }
 
 voxel_c::voxel_c(const voxel_c * orig) : gt(orig->gt), sx(orig->sx), sy(orig->sy), sz(orig->sz),
@@ -97,7 +93,7 @@ voxels(orig->voxels), hx(orig->hx), hy(orig->hy), hz(orig->hz), weight(orig->wei
 
   symmetries = symmetryInvalid();
 
-  BbHsCache = new int[9*MAX_TRANSFORMATIONS];
+  BbHsCache = new int[9*gt->getSymmetries()->getNumTransformationsMirror()];
 }
 
 voxel_c::~voxel_c() {
@@ -141,7 +137,7 @@ void voxel_c::recalcBoundingBox(void) {
     bx1 = by1 = bz1 = bx2 = by2 = bz2 = 0;
 
   /* we also clear the bounding box and hotspot cache */
-  for (int i = 0; i < MAX_TRANSFORMATIONS; i++)
+  for (unsigned int i = 0; i < gt->getSymmetries()->getNumTransformationsMirror(); i++)
     BbHsCache[9*i+0] = BbHsCache[9*i+3] = BBHSCACHE_UNINIT;
 }
 
@@ -219,7 +215,7 @@ unsigned char voxel_c::getMirrorTransform(const voxel_c * op) const {
 
 void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 
-  bt_assert(trans < MAX_TRANSFORMATIONS);
+  bt_assert(trans < gt->getSymmetries()->getNumTransformationsMirror());
 
   /* if the cache values don't exist calculate them */
   if (BbHsCache[9*trans] == BBHSCACHE_UNINIT) {
@@ -245,7 +241,7 @@ void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 
 void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2, int * y2, int * z2) const {
 
-  bt_assert(trans < MAX_TRANSFORMATIONS);
+  bt_assert(trans < gt->getSymmetries()->getNumTransformationsMirror());
 
   /* if the cache values don't exist calculate them */
   if (BbHsCache[9*trans+3] == BBHSCACHE_UNINIT) {
@@ -690,7 +686,7 @@ xml::node voxel_c::save(void) const {
 
 voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), hy(0), hz(0), weight(1) {
 
-  BbHsCache = new int[9*MAX_TRANSFORMATIONS];
+  BbHsCache = new int[9*gt->getSymmetries()->getNumTransformationsMirror()];
 
   // we must have a real node and the following attributes
   if ((node.get_type() != xml::node::type_element) ||
@@ -786,7 +782,7 @@ voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), h
 void voxel_c::setHotspot(int x, int y, int z) {
   hx = x; hy = y; hz = z;
 
-  for (int i = 0; i < MAX_TRANSFORMATIONS; i++)
+  for (unsigned int i = 0; i < gt->getSymmetries()->getNumTransformationsMirror(); i++)
     BbHsCache[9*i+0] = BBHSCACHE_UNINIT;
 }
 
