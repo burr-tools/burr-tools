@@ -20,8 +20,7 @@
 
 #include "voxeldrawer.h"
 
-class gridType_c;
-
+/* voxel drawer for cube grid */
 class voxelDrawer_0_c : public voxelDrawer_c {
 
   public:

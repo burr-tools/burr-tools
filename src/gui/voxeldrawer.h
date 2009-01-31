@@ -22,6 +22,7 @@
 
 class voxel_c;
 
+/* abstract baseclass for all voxel drawers */
 class voxelDrawer_c {
 
   public:

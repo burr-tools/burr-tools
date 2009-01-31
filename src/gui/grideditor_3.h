@@ -23,7 +23,7 @@
 class puzzle_c;
 
 /**
- * implements grid editor functions to edit the cube grid
+ * implements grid editor functions to edit the rhombic grid
  */
 class gridEditor_3_c : public gridEditor_c {
 

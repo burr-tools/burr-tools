@@ -20,8 +20,7 @@
 
 #include "voxeldrawer.h"
 
-class gridType_c;
-
+/* voxel drawer for sphere grid */
 class voxelDrawer_2_c : public voxelDrawer_c {
 
   public:

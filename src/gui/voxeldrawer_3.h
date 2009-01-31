@@ -20,8 +20,7 @@
 
 #include "voxeldrawer.h"
 
-class gridType_c;
-
+/* voxeldrawer for rhombic grid */
 class voxelDrawer_3_c : public voxelDrawer_c {
 
   public:

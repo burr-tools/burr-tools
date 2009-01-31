@@ -20,8 +20,7 @@
 
 #include "voxeldrawer.h"
 
-class gridType_c;
-
+/* voxel drawer for triangle grid */
 class voxelDrawer_1_c : public voxelDrawer_c {
 
   public:
