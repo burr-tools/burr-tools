@@ -41,6 +41,8 @@
 #include <unistd.h>
 #endif
 
+#include "../lua/luaclass.h"
+
 // returns either the home directory or the current
 // directory on system that don't know home directories
 static char * homedir() {
@@ -84,56 +86,67 @@ static FILE *create_local_config_file(void) {
 
 }
 
-static FILE *open_local_config_file(void) {
+static void open_local_config_file(luaClass_c & L) {
 
   char n[200];
   snprintf(n, 199, "%s.burrtools.rc", homedir());
-  return fopen(n, "r");
+  L.doFile(n);
 
 }
 
-static bool str2bool(char *s) {
-  if (s) {
-    if (!strcmp("yes", s) || !strcmp("true", s)) return true;
-    else return (atoi(s) != 0);
+void configuration_c::parse() {
+
+  luaClass_c L;
+
+  /* first initialize the variables with their default value */
+  config_data * t = first_data;
+
+  while (t) {
+
+    char command[200];
+
+    snprintf(command, 200, "%s = %s", t->cnf_name, t->defaultValue);
+    L.doString(command);
+
+    t = t->next;
   }
-  return false;
-}
 
-void configuration_c::parse(FILE * in) {
-  char line[201], param[201];
+  /* parse config file */
+  open_local_config_file(L);
 
-  while (!feof(in)) {
-    if (fscanf(in, "%200s%*[\t ]%200s\n", line, param) == 2) {
+  /* read out data */
+  t = first_data;
 
-      config_data *t = first_data;
+  while (t) {
 
-      while (t) {
-        if (strstr(line, t->cnf_name)) {
-          switch (t->cnf_typ) {
-          case CT_BOOL:
-            *(bool *)t->cnf_var = str2bool(param);
-            break;
-          case CT_STRING:
-            if (strlen(param) > 1) {
-              param[strlen(param)-1] = '\0';
-              strncpy((char *)t->cnf_var, param+1, t->maxlen);
-            }
-            break;
-          case CT_INT:
-            *(int *)t->cnf_var = atoi(param);
-            break;
-          default: bt_assert(0);
-          }
+    try {
+
+      switch (t->cnf_typ) {
+        case CT_BOOL:
+          *(bool *)t->cnf_var = L.getBool(t->cnf_name);
           break;
-        }
-        t = t->next;
+          /*
+             case CT_STRING:
+             if (strlen(param) > 1) {
+             param[strlen(param)-1] = '\0';
+             strncpy((char *)t->cnf_var, param+1, t->maxlen);
+             }
+             break;
+             */
+        case CT_INT:
+          *(int *)t->cnf_var = (int)L.getNumber(t->cnf_name);
+          break;
+        default: bt_assert(0);
       }
     }
+
+    catch (...) {
+    };
+    t = t->next;
   }
 }
 
-void configuration_c::register_entry(char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, char * dtext) {
+void configuration_c::register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * def) {
   config_data *t = new config_data;
 
   t->next = first_data;
@@ -145,49 +158,33 @@ void configuration_c::register_entry(char *cnf_name, cnf_type cnf_typ, void *cnf
   t->maxlen = maxlen;
   t->dialog = dialog;
   t->dialogText = dtext;
+
+  t->defaultValue = def;
 }
 
-#define CNF_BOOL(a,b) register_entry(a, CT_BOOL, b, 0, false, 0)
-#define CNF_CHAR(a,b,c) register_entry(a, CT_STRING, b, c, false, 0)
-#define CNF_INT(a,b) register_entry(a, CT_INT, b, 0, false, 0)
+#define CNF_BOOL(a,b, def) register_entry(a, CT_BOOL, b, 0, false, 0, def)
+#define CNF_CHAR(a,b,c, def) register_entry(a, CT_STRING, b, c, false, 0, def)
+#define CNF_INT(a,b, def) register_entry(a, CT_INT, b, 0, false, 0, def)
 
-#define CNF_BOOL_D(a,b,text) register_entry(a, CT_BOOL, b, 0, true, text)
-#define CNF_CHAR_D(a,b,c,text) register_entry(a, CT_STRING, b, c, true, text)
-#define CNF_INT_D(a,b,text) register_entry(a, CT_INT, b, 0, true, text)
-
-#define SZ_WINDOW_X 800                        // initial size of the window
-#define SZ_WINDOW_Y 600
+#define CNF_BOOL_D(a,b,text, def) register_entry(a, CT_BOOL, b, 0, true, text, def)
+#define CNF_CHAR_D(a,b,c,text, def) register_entry(a, CT_STRING, b, c, true, text, def)
+#define CNF_INT_D(a,b,text, def) register_entry(a, CT_INT, b, 0, true, text, def)
 
 configuration_c::configuration_c(void) {
 
-  i_use_tooltips = true;
-  i_use_lightning = true;
-  i_use_blendedRemoving = true;
-  i_use_rubberband = false;
-  i_use_displayLists = false;
-
-  i_window_pos_x = 30;
-  i_window_pos_y = 30;
-  i_window_pos_w = SZ_WINDOW_X;
-  i_window_pos_h = SZ_WINDOW_Y;
-
   first_data = 0;
 
-  CNF_BOOL_D("tooltips",          &i_use_tooltips, "Use Tooltips");
-  CNF_BOOL_D("lightning",         &i_use_lightning, "Use Lights in 3D View");
-  CNF_BOOL_D("fadeout",           &i_use_blendedRemoving, "Fade Out Pieces");
-  CNF_BOOL_D("displaylists",      &i_use_displayLists, "Use openGL display lists");
-  CNF_BOOL("rubberband",          &i_use_rubberband);
-  CNF_INT("windowposx",           &i_window_pos_x);
-  CNF_INT("windowposy",           &i_window_pos_y);
-  CNF_INT("windowposw",           &i_window_pos_w);
-  CNF_INT("windowposh",           &i_window_pos_h);
+  CNF_BOOL_D("tooltips",          &i_use_tooltips, "Use Tooltips", "true");
+  CNF_BOOL_D("lightning",         &i_use_lightning, "Use Lights in 3D View", "true");
+  CNF_BOOL_D("fadeout",           &i_use_blendedRemoving, "Fade Out Pieces", "true");
+  CNF_BOOL_D("displaylists",      &i_use_displayLists, "Use openGL display lists", "false");
+  CNF_BOOL("rubberband",          &i_use_rubberband, "false");
+  CNF_INT("windowposx",           &i_window_pos_x, "30");
+  CNF_INT("windowposy",           &i_window_pos_y, "30");
+  CNF_INT("windowposw",           &i_window_pos_w, "800");
+  CNF_INT("windowposh",           &i_window_pos_h, "600");
 
-  FILE * f = open_local_config_file();
-  if (f) {
-    parse(f);
-    fclose(f);
-  }
+  parse();
 }
 
 configuration_c::~configuration_c(void) {
@@ -201,11 +198,11 @@ configuration_c::~configuration_c(void) {
   config_data *t = first_data;
 
   while(t) {
-    fprintf(f, "%s: ", t->cnf_name);
+    fprintf(f, "%s = ", t->cnf_name);
 
     switch (t->cnf_typ) {
     case CT_BOOL:
-      fprintf(f, "%s", (*(bool *)t->cnf_var)?("yes"):("no"));
+      fprintf(f, "%s", (*(bool *)t->cnf_var)?("true"):("false"));
       break;
     case CT_STRING:
       fprintf(f, "\"%s\"", (char *)(t->cnf_var));

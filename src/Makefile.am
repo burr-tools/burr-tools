@@ -1,5 +1,5 @@
 bin_PROGRAMS=burrTxt gui/burrGui
-noinst_LIBRARIES=lib/libburr.a flu/libflu.a help/libhelp.a
+noinst_LIBRARIES=lib/libburr.a flu/libflu.a help/libhelp.a lua/liblua.a
 noinst_PROGRAMS=help/helpviewer
 
 XML_CPP_ADD=@XML_CPP_ADD@
@@ -10,7 +10,54 @@ PTHREAD_CPP_ADD=@PTHREAD_CPP_ADD@
 PTHREAD_LD_ADD=@PTHREAD_LD_ADD@
 
 AM_CPPFLAGS=-Wall -W $(XML_CPP_ADD) $(GUI_CPP_ADD) $(PTHREAD_CPP_ADD) @LARGEFILE@
-LDADD= -Llib -lburr -Lflu -lflu -Lhelp -lhelp $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
+LDADD= -Llib -lburr -Lflu -lflu -Lhelp -lhelp -Llua -llua $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
+
+lua_liblua_a_SOURCES=\
+    lua/lapi.c \
+    lua/lauxlib.c \
+    lua/lcode.c \
+    lua/ldebug.c \
+    lua/ldo.c \
+    lua/ldump.c \
+    lua/lfunc.c \
+    lua/lgc.c \
+    lua/llex.c \
+    lua/lmem.c \
+    lua/lobject.c \
+    lua/lopcodes.c \
+    lua/lparser.c \
+    lua/lstate.c \
+    lua/lstring.c \
+    lua/ltable.c \
+    lua/ltm.c \
+    lua/lundump.c \
+    lua/lvm.c \
+    lua/lzio.c \
+    lua/luaclass.cpp \
+    \
+    lua/lapi.h \
+    lua/lauxlib.h \
+    lua/lcode.h \
+    lua/ldebug.h \
+    lua/ldo.h \
+    lua/lfunc.h \
+    lua/lgc.h \
+    lua/llex.h \
+    lua/llimits.h \
+    lua/lmem.h \
+    lua/lobject.h \
+    lua/lopcodes.h \
+    lua/lparser.h \
+    lua/lstate.h \
+    lua/lstring.h \
+    lua/ltable.h \
+    lua/ltm.h \
+    lua/luaclass.h \
+    lua/luaconf.h \
+    lua/lua.h \
+    lua/lundump.h \
+    lua/lvm.h \
+    lua/lzio.h
 
 help_helpviewer_CPPFLAGS=-DBT_EXTERNAL $(GUI_HELP_CPP_ADD) @LARGEFILE@
 help_helpviewer_LDADD=flu/libflu.a $(GUI_LD_ADD) $(GUI_HELP_LD_ADD)
