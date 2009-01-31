@@ -437,15 +437,19 @@ problem_c::problem_c(puzzle_c & puz, const xml::node & node) :
 
   if (solveState != SS_UNSOLVED) {
     if (node.get_attributes().find("assemblies") == node.get_attributes().end())
-      throw load_error("a problem node must have a assemblies attribute, when solving or solved", node);
-    if (node.get_attributes().find("solutions") == node.get_attributes().end())
-      throw load_error("a problem node must have a solutions attribute, when solving or solved", node);
-    if (node.get_attributes().find("time") == node.get_attributes().end())
-      throw load_error("a problem node must have a time attribute, when solving or solved", node);
+      numAssemblies = 0;
+    else
+      numAssemblies = atoi(node.get_attributes().find("assemblies")->get_value());
 
-    numAssemblies = atoi(node.get_attributes().find("assemblies")->get_value());
-    numSolutions = atoi(node.get_attributes().find("solutions")->get_value());
-    usedTime = atoi(node.get_attributes().find("time")->get_value());
+    if (node.get_attributes().find("solutions") == node.get_attributes().end())
+      numSolutions = 0;
+    else
+      numSolutions = atoi(node.get_attributes().find("solutions")->get_value());
+
+    if (node.get_attributes().find("time") == node.get_attributes().end())
+      usedTime = 0;
+    else
+      usedTime = atoi(node.get_attributes().find("time")->get_value());
 
   } else {
     numAssemblies = 0;
