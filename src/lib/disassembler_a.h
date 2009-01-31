@@ -28,11 +28,16 @@ class problem_c;
 class disassemblerNode_c;
 class assembly_c;
 
-/* this class is a disassembler for the cube space.
+/* this class is a baseclass for disassemblers. it provides commong functionality
+ * for both the disassembler_0 and disassembler_1
  *
  * is is implemented using Bill Cuttlers algorithm, so please read there
  * in case you are interested how it works. The comments are written with
  * the thought that you know his algorithm
+ *
+ * the space grid dependend information is collected from movementCache classes.
+ * those are like the assemblerFrontends for the assembler (a bit more complicated
+ * though)
  */
 class disassembler_a_c : public disassembler_c {
 

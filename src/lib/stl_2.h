@@ -21,6 +21,7 @@
 #include "stl.h"
 #include "types.h"
 
+/* stl exporter for spheres */
 class stlExporter_2_c : public stlExporter_c {
 
   public:

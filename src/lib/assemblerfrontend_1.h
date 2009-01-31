@@ -20,6 +20,7 @@
 
 #include "assembler.h"
 
+/* assembler frontend for the triangle grid */
 class assemblerFrontend_1_c : public assemblerFrontend_c {
 
 public:

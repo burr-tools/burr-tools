@@ -20,6 +20,7 @@
 
 #include "voxel_0.h"
 
+/* voxel class for rhombic grid */
 class voxel_3_c : public voxel_0_c {
 
   public:

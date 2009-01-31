@@ -20,6 +20,10 @@
 
 #include "voxel.h"
 
+/* voxel space class for cube based grids:
+ * that are cubes themselfes but also grid like the rhombic grid, which
+ * use functionality of this class (mainly the transform methods)
+ */
 class voxel_0_c : public voxel_c {
 
   public:

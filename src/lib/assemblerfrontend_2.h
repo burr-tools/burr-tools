@@ -20,6 +20,7 @@
 
 #include "assembler.h"
 
+/* assembler frontend for the sphere grid */
 class assemblerFrontend_2_c : public assemblerFrontend_c {
 
 public:

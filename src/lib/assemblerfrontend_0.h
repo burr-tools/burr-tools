@@ -20,6 +20,7 @@
 
 #include "assembler.h"
 
+/* frontend for the cube grid */
 class assemblerFrontend_0_c : public assemblerFrontend_c {
 
 public:

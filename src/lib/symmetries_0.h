@@ -20,7 +20,7 @@
 
 #include "symmetries.h"
 
-/* this is the symmetries class for cubes */
+/* this is the symmetries class for cubes and other cube based grids (like rhombic) */
 class symmetries_0_c : public symmetries_c {
 
   private:

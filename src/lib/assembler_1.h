@@ -28,29 +28,16 @@ class problem_c;
 class gridType_c;
 class mirrorInfo_c;
 
-/* this class is only a base class containing the functionality for the matrix
- * the functions in here don't know anything about the meaning of the matrix
- * for them it mainly consists of a set of one and empty nodes
- *
- * for a real puzzle assembler this class must be derived from and some functions
- * need to be overloaded. These are:
- *
- * countNodes, prepare and solution
+/* this class is an assembler class. It provides the dancing link implementation
+ * for a real assembler an assembler frontend must be given
  *
  * when a new puzzle has to be solved the user calls createMatrix. This function
- * does some initialisation and then calls prepare. Here you have to fill in
- * the matrix with your node (including the header).
+ * creates the internal data structures for the solver.
  *
- * In this preparation you are asked to try to make the algorithm avoid finding
- * rotated solutions (its for your own speed). But if you can not do so, you
- * need to call checkForTransformedAssemblies(symBreakerPiece). This tells
- * this base class to check each found solution, if it may be a rotation of
- * another one and drop it automatically.
+ * whenever a solution is found the callback is called
  *
- * When assembling the function in this class calls solution, whenever a solution
- * is found. It's now your task to transform the gained information into a format
- * valuable for your interpretation format.
- *
+ * this class is an improved dancing link assembler, it can handle all BurrTools features
+ * for the simple tasks assembler_0_c is used
  */
 
 class assembler_1_c : public assembler_c {

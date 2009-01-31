@@ -20,6 +20,7 @@
 
 #include "voxel.h"
 
+/* voxel class for sphere grid */
 class voxel_2_c : public voxel_c {
 
   public:

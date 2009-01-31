@@ -20,6 +20,7 @@
 
 #include "voxel.h"
 
+/* voxel class for triangle grid */
 class voxel_1_c : public voxel_c {
 
   public:

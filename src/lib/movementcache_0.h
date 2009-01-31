@@ -20,10 +20,7 @@
 
 #include "movementcache.h"
 
-/* this class calculates the possible movement between 2 pieces
- * because that calculation is relatively expensive it caches
- * that value. That's the reason for the name
- */
+/* the movement cache for the cube grid */
 class movementCache_0_c : public movementCache_c {
 
   public:

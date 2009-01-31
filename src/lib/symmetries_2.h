@@ -20,7 +20,7 @@
 
 #include "symmetries.h"
 
-/* this is the symmetries class for cubes */
+/* this is the symmetries class for spheres */
 class symmetries_2_c : public symmetries_c {
 
   private:
