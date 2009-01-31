@@ -115,9 +115,9 @@ lib_libburr_a_SOURCES=\
     lib/voxel_2.cpp \
     lib/voxel_3.cpp \
     \
-    lib/tabs_0/rotmatrix.inc lib/tabs_0/symmetries.inc lib/tabs_0/tablesizes.inc lib/tabs_0/generator_0.cpp \
-    lib/tabs_1/rotmatrix.inc lib/tabs_1/symmetries.inc lib/tabs_1/tablesizes.inc lib/tabs_1/generator_1.cpp \
-    lib/tabs_2/rotmatrix.inc lib/tabs_2/symmetries.inc lib/tabs_2/tablesizes.inc lib/tabs_2/generator_2.cpp \
+    lib/tabs_0/rotmatrix.inc lib/tabs_0/symmetries.inc lib/tabs_0/tablesizes.inc \
+    lib/tabs_1/rotmatrix.inc lib/tabs_1/symmetries.inc lib/tabs_1/tablesizes.inc \
+    lib/tabs_2/rotmatrix.inc lib/tabs_2/symmetries.inc lib/tabs_2/tablesizes.inc \
     \
     lib/tabs_0/symcalc.inc lib/tabs_0/transformmini.inc lib/tabs_0/transmult.inc lib/tabs_0/unifiedsym.inc \
     lib/tabs_1/symcalc.inc lib/tabs_1/transformmini.inc lib/tabs_1/transmult.inc lib/tabs_1/unifiedsym.inc \
@@ -184,39 +184,12 @@ nodist_help_libhelp_a_SOURCES=\
     help/helpdata.cpp
 
 BUILT_SOURCES=\
-    lib/tabs_0/symcalc.inc lib/tabs_0/transformmini.inc lib/tabs_0/transmult.inc lib/tabs_0/unifiedsym.inc \
-    lib/tabs_1/symcalc.inc lib/tabs_1/transformmini.inc lib/tabs_1/transmult.inc lib/tabs_1/unifiedsym.inc \
-    lib/tabs_2/symcalc.inc lib/tabs_2/transformmini.inc lib/tabs_2/transmult.inc lib/tabs_2/unifiedsym.inc \
     help/helpdata.cpp
 
 help/helpdata.cpp: $(EXTRA_DIST) help/data2c.cpp
 	cd help; g++ data2c.cpp -O2 -o data2c `fltk-config --cxxflags --ldflags --use-images`
 	cd help; ./data2c helpdata.cpp ../../doc/*.html - ../../doc/*.png
 	cd help; $(RM) data2c
-
-lib/tabs_0/symcalc.inc lib/tabs_0/transmult.inc lib/tabs_0/unifiedsym.inc lib/tabs_0/transformmini.inc: lib/tabs_0/rotmatrix.inc \
-                                                                                                        lib/tabs_0/symmetries.inc \
-                                                                                                        lib/tabs_0/tablesizes.inc \
-                                                                                                        lib/tabs_0/generator_0.cpp
-	$(CXX) lib/tabs_0/generator_0.cpp -o lib/tabs_0/generator $(CXXFLAGS)
-	cd lib/tabs_0 && ./generator
-	$(RM) lib/tabs_0/generator
-
-lib/tabs_1/symcalc.inc lib/tabs_1/transmult.inc lib/tabs_1/unifiedsym.inc lib/tabs_1/transformmini.inc: lib/tabs_1/rotmatrix.inc \
-                                                                                                        lib/tabs_1/symmetries.inc \
-                                                                                                        lib/tabs_1/tablesizes.inc \
-                                                                                                        lib/tabs_1/generator_1.cpp
-	$(CXX) lib/tabs_1/generator_1.cpp -o lib/tabs_1/generator $(CXXFLAGS)
-	cd lib/tabs_1 && ./generator
-	$(RM) lib/tabs_1/generator
-
-lib/tabs_2/symcalc.inc lib/tabs_2/transmult.inc lib/tabs_2/unifiedsym.inc lib/tabs_2/transformmini.inc: lib/tabs_2/rotmatrix.inc \
-                                                                                                        lib/tabs_2/symmetries.inc \
-                                                                                                        lib/tabs_2/tablesizes.inc \
-                                                                                                        lib/tabs_2/generator_2.cpp
-	$(CXX) lib/tabs_2/generator_2.cpp -o lib/tabs_2/generator $(CXXFLAGS)
-	cd lib/tabs_2 && ./generator
-	$(RM) lib/tabs_2/generator
 
 flu_libflu_a_SOURCES=\
     flu/Flu_Button.cpp \

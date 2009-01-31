@@ -13,7 +13,10 @@ dist_doc_DATA = examples/README examples/AlPackino.xmpuzzle examples/DraculasDen
                 examples/PermutatedThirdStellation.xmpuzzle \
                 examples/PiecesOfEight.xmpuzzle \
                 burricons.ico \
-                AUTHORS COPYING README NEWS ChangeLog
+                AUTHORS COPYING README NEWS ChangeLog \
+                src/lib/tabs_0/generator_0.cpp \
+                src/lib/tabs_1/generator_1.cpp \
+                src/lib/tabs_2/generator_2.cpp
 
 abs_builddir = @abs_builddir@
 win32dir = $(PACKAGE)-$(VERSION)-win32
