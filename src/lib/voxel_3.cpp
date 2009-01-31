@@ -50,7 +50,7 @@ static void coordinateToggling(int a, int b, int as, int bs, int * an, int * bn)
 bool voxel_3_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const {
 
   // the following table was created with a helper function
-  // and the edge detection code in the voxeldrawer_3
+  // and the edge detection code in the voxeldrawer_a
   static const int edgeNeighbors[24][14+1][3] = {
     { {0, 1, 2}, // cube position
       {-1, -3, 0}, {-1, 1, -1}, {-1, 1, 1}, {-2, -1, 0}, {-2, -2, 0}, {0, -3, 0}, {0, 2, 0},
