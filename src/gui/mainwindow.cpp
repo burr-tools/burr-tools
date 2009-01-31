@@ -684,7 +684,7 @@ void mainWindow_c::cb_AddAllShapesToProblem(void) {
   for (unsigned int j = 0; j < puzzle->shapeNumber(); j++) {
 
     // we don't add the result shape
-    if (j == pr->getResult())
+    if (!pr->resultInvalid() && j == pr->getResult())
       continue;
 
     pr->setShapeCountMax(j, pr->getShapeCountMax(j) + 1);
