@@ -18,7 +18,7 @@
 
 #include "lib/puzzle.h"
 #include "lib/problem.h"
-#include "lib/assemblerthread.h"
+#include "lib/solvethread.h"
 #include "lib/voxel.h"
 
 #include <fstream>
@@ -71,7 +71,7 @@ int main(int argv, char* args[]) {
     return 2;
   }
 
-  int par = assemblerThread_c::PAR_REDUCE;
+  int par = solveThread_c::PAR_REDUCE;
   bool restart = false;
   int filenumber = 0;
   int firstProblem = 0;
@@ -82,15 +82,15 @@ int main(int argv, char* args[]) {
     if (strcmp(args[i], "-R") == 0)
       restart = true;
     else if (strcmp(args[i], "-d") == 0)
-      par |= assemblerThread_c::PAR_DISASSM;
+      par |= solveThread_c::PAR_DISASSM;
     else if (strcmp(args[i], "-c") == 0)
-      par |= assemblerThread_c::PAR_JUST_COUNT;
+      par |= solveThread_c::PAR_JUST_COUNT;
     else if (strcmp(args[i], "-m") == 0)
-      par |= assemblerThread_c::PAR_KEEP_MIRROR;
+      par |= solveThread_c::PAR_KEEP_MIRROR;
     else if (strcmp(args[i], "-r") == 0)
-      par |= assemblerThread_c::PAR_KEEP_ROTATIONS;
+      par |= solveThread_c::PAR_KEEP_ROTATIONS;
     else if (strcmp(args[i], "-p") == 0)
-      par |= assemblerThread_c::PAR_DROP_DISASSEMBLIES;
+      par |= solveThread_c::PAR_DROP_DISASSEMBLIES;
     else if (strcmp(args[i], "-b") == 0) {
       firstProblem = atoi(args[i+1]);
       lastProblem = firstProblem + 1;
@@ -129,23 +129,23 @@ int main(int argv, char* args[]) {
       p.getProblem(pr)->removeAllSolutions();
 
 
-    assemblerThread_c assmThread(p.getProblem(pr), par);
+    solveThread_c assmThread(p.getProblem(pr), par);
 
     if (!assmThread.start(false)) {
       cout << "Could not start Solver\n";
       continue;
     }
 
-    while (assmThread.currentAction() != assemblerThread_c::ACT_FINISHED &&
-        assmThread.currentAction() != assemblerThread_c::ACT_ERROR) {
+    while (assmThread.currentAction() != solveThread_c::ACT_FINISHED &&
+        assmThread.currentAction() != solveThread_c::ACT_ERROR) {
 
       if (checkInput()) {
         cout << "abborting \n";
         assmThread.stop();
 
-        while (assmThread.currentAction() != assemblerThread_c::ACT_FINISHED &&
-            assmThread.currentAction() != assemblerThread_c::ACT_ERROR &&
-            assmThread.currentAction() != assemblerThread_c::ACT_PAUSING)
+        while (assmThread.currentAction() != solveThread_c::ACT_FINISHED &&
+            assmThread.currentAction() != solveThread_c::ACT_ERROR &&
+            assmThread.currentAction() != solveThread_c::ACT_PAUSING)
 #ifdef WIN32
           Sleep(1);
 #else
@@ -170,22 +170,22 @@ int main(int argv, char* args[]) {
         : 0;
 
       switch (assmThread.currentAction()) {
-        case assemblerThread_c::ACT_PREPARATION:
+        case solveThread_c::ACT_PREPARATION:
           cout << "\rpreparing piece " << assmThread.currentActionParameter()+1;
           break;
-        case assemblerThread_c::ACT_REDUCE:
+        case solveThread_c::ACT_REDUCE:
           cout << "\rreducing piece " << assmThread.currentActionParameter()+1;
           break;
-        case assemblerThread_c::ACT_ASSEMBLING:
+        case solveThread_c::ACT_ASSEMBLING:
           cout << "\rassembling " << finished*100 << "% done";
           break;
-        case assemblerThread_c::ACT_DISASSEMBLING:
+        case solveThread_c::ACT_DISASSEMBLING:
           cout << "\rdisassembling " << finished*100 << "% done";
           break;
-        case assemblerThread_c::ACT_WAIT_TO_STOP:
+        case solveThread_c::ACT_WAIT_TO_STOP:
           cout << "\rwaitin";
           break;
-        case assemblerThread_c::ACT_ERROR:
+        case solveThread_c::ACT_ERROR:
           cout << "\rerror: ";
           switch (assmThread.getErrorState()) {
             case assembler_c::ERR_TOO_MANY_UNITS:
@@ -216,7 +216,7 @@ int main(int argv, char* args[]) {
               break;
           }
           break;
-        case assemblerThread_c::ACT_FINISHED:
+        case solveThread_c::ACT_FINISHED:
           cout << "\rdone";
           break;
       }

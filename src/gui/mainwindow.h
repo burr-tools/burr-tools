@@ -26,7 +26,7 @@ class VoxelEditGroup_c;
 class ChangeSize;
 class ToolTab;
 class puzzle_c;
-class assemblerThread_c;
+class solveThread_c;
 class disasmToMoves_c;
 class gridType_c;
 class guiGridType_c;
@@ -63,7 +63,7 @@ class mainWindow_c : public LFl_Double_Window {
   guiGridType_c * ggt;  // this is the guigridtype for the puzzle, is must always be in sync
   char * fname;
   disasmToMoves_c * disassemble;
-  assemblerThread_c *assmThread;
+  solveThread_c *assmThread;
   bool SolutionEmpty;
   bool changed;
   int editSymmetries;

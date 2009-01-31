@@ -15,8 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#ifndef __ASSEMBLERTHREAD_H__
-#define __ASSEMBLERTHREAD_H__
+#ifndef __SOLVETHREAD_H__
+#define __SOLVETHREAD_H__
 
 #include "assembler.h"
 #include "disassembler.h"
@@ -31,7 +31,7 @@ class problem_c;
  * be used to continue an already started solution, so that you can save you results
  * and continue later on
  */
-class assemblerThread_c : public assembler_cb, public thread_c {
+class solveThread_c : public assembler_cb, public thread_c {
 
   public:
 
@@ -97,7 +97,7 @@ class assemblerThread_c : public assembler_cb, public thread_c {
     static const int PAR_JUST_COUNT =         0x20;  // just count the solutions, don't save them
 
     // create all the necessary data structures to start the thread later on
-    assemblerThread_c(problem_c * puz, int par);
+    solveThread_c(problem_c * puz, int par);
     const problem_c * getProblem(void) const { return puzzle; }
 
   private:
@@ -167,7 +167,7 @@ public:
 
 
   // stop and exit
-  virtual ~assemblerThread_c(void);
+  virtual ~solveThread_c(void);
 
 private:
 

@@ -55,7 +55,7 @@
 #include "../lib/puzzle.h"
 #include "../lib/problem.h"
 #include "../lib/assembler.h"
-#include "../lib/assemblerthread.h"
+#include "../lib/solvethread.h"
 #include "../lib/disassembly.h"
 #include "../lib/disassembler_0.h"
 #include "../lib/gridtype.h"
@@ -988,14 +988,14 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
 
   bt_assert(assmThread == 0);
 
-  int par = assemblerThread_c::PAR_REDUCE;
-  if (KeepMirrors->value() != 0) par |= assemblerThread_c::PAR_KEEP_MIRROR;
-  if (KeepRotations->value() != 0) par |= assemblerThread_c::PAR_KEEP_ROTATIONS;
-  if (DropDisassemblies->value() != 0) par |= assemblerThread_c::PAR_DROP_DISASSEMBLIES;
-  if (SolveDisasm->value() != 0) par |= assemblerThread_c::PAR_DISASSM;
-  if (JustCount->value() != 0) par |= assemblerThread_c::PAR_JUST_COUNT;
+  int par = solveThread_c::PAR_REDUCE;
+  if (KeepMirrors->value() != 0) par |= solveThread_c::PAR_KEEP_MIRROR;
+  if (KeepRotations->value() != 0) par |= solveThread_c::PAR_KEEP_ROTATIONS;
+  if (DropDisassemblies->value() != 0) par |= solveThread_c::PAR_DROP_DISASSEMBLIES;
+  if (SolveDisasm->value() != 0) par |= solveThread_c::PAR_DISASSM;
+  if (JustCount->value() != 0) par |= solveThread_c::PAR_JUST_COUNT;
 
-  assmThread = new assemblerThread_c(puzzle->getProblem(prob), par);
+  assmThread = new solveThread_c(puzzle->getProblem(prob), par);
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
@@ -2558,14 +2558,14 @@ void mainWindow_c::updateInterface(void) {
       problem_c * pr = puzzle->getProblem(prob);
 
       switch(assmThread->currentAction()) {
-      case assemblerThread_c::ACT_PREPARATION:
+      case solveThread_c::ACT_PREPARATION:
         {
           char tmp[20];
           snprintf(tmp, 20, "prepare piece %i", assmThread->currentActionParameter()+1);
           OutputActivity->value(tmp);
         }
         break;
-      case assemblerThread_c::ACT_REDUCE:
+      case solveThread_c::ACT_REDUCE:
         if (pr->getAssembler()) {
           char tmp[20];
           snprintf(tmp, 20, "optimize piece %i", pr->getAssembler()->getReducePiece()+1);
@@ -2576,22 +2576,22 @@ void mainWindow_c::updateInterface(void) {
           OutputActivity->value(tmp);
         }
         break;
-      case assemblerThread_c::ACT_ASSEMBLING:
+      case solveThread_c::ACT_ASSEMBLING:
         OutputActivity->value("assemble");
         break;
-      case assemblerThread_c::ACT_DISASSEMBLING:
+      case solveThread_c::ACT_DISASSEMBLING:
         OutputActivity->value("disassemble");
         break;
-      case assemblerThread_c::ACT_PAUSING:
+      case solveThread_c::ACT_PAUSING:
         OutputActivity->value("pause");
         break;
-      case assemblerThread_c::ACT_FINISHED:
+      case solveThread_c::ACT_FINISHED:
         OutputActivity->value("finished");
         break;
-      case assemblerThread_c::ACT_WAIT_TO_STOP:
+      case solveThread_c::ACT_WAIT_TO_STOP:
         OutputActivity->value("please wait");
         break;
-      case assemblerThread_c::ACT_ERROR:
+      case solveThread_c::ACT_ERROR:
         OutputActivity->value("error");
         break;
       }
@@ -2712,13 +2712,13 @@ void mainWindow_c::update(void) {
     }
 
     // check, if the thread has stopped, if so then delete the object
-    if ((assmThread->currentAction() == assemblerThread_c::ACT_PAUSING) ||
-        (assmThread->currentAction() == assemblerThread_c::ACT_FINISHED)) {
+    if ((assmThread->currentAction() == solveThread_c::ACT_PAUSING) ||
+        (assmThread->currentAction() == solveThread_c::ACT_FINISHED)) {
 
       delete assmThread;
       assmThread = 0;
 
-    } else if (assmThread->currentAction() == assemblerThread_c::ACT_ERROR) {
+    } else if (assmThread->currentAction() == solveThread_c::ACT_ERROR) {
 
       unsigned int selectShape = 0xFFFFFFFF;
 

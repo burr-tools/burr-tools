@@ -15,14 +15,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "assemblerthread.h"
+#include "solvethread.h"
 
 #include "disassembly.h"
 #include "problem.h"
 #include "assembly.h"
 #include "disassembler_0.h"
 
-void assemblerThread_c::run(void){
+void solveThread_c::run(void){
 
   try {
 
@@ -36,7 +36,7 @@ void assemblerThread_c::run(void){
 
       /* otherwise we have to create a new one
        */
-      action = assemblerThread_c::ACT_PREPARATION;
+      action = solveThread_c::ACT_PREPARATION;
       assm = puzzle->getGridType()->findAssembler(puzzle);
 
       errState = assm->createMatrix(puzzle, parameters & PAR_KEEP_MIRROR, parameters & PAR_KEEP_ROTATIONS);
@@ -44,7 +44,7 @@ void assemblerThread_c::run(void){
 
         errParam = assm->getErrorsParam();
 
-        action = assemblerThread_c::ACT_ERROR;
+        action = solveThread_c::ACT_ERROR;
 
         delete assm;
         return;
@@ -53,7 +53,7 @@ void assemblerThread_c::run(void){
       if (parameters & PAR_REDUCE) {
 
         if (!stopPressed)
-          action = assemblerThread_c::ACT_REDUCE;
+          action = solveThread_c::ACT_REDUCE;
 
         assm->reduce();
       }
@@ -65,30 +65,30 @@ void assemblerThread_c::run(void){
        */
       errState = puzzle->setAssembler(assm);
       if (errState != assembler_c::ERR_NONE) {
-        action = assemblerThread_c::ACT_ERROR;
+        action = solveThread_c::ACT_ERROR;
         return;
       }
     }
 
     if (return_after_prep) {
-      action = assemblerThread_c::ACT_PAUSING;
+      action = solveThread_c::ACT_PAUSING;
       return;
     }
 
     if (!stopPressed) {
 
-      action = assemblerThread_c::ACT_ASSEMBLING;
+      action = solveThread_c::ACT_ASSEMBLING;
       assm->assemble(this);
       puzzle->addTime(time(0)-startTime);
 
       if (assm->getFinished() >= 1) {
-        action = assemblerThread_c::ACT_FINISHED;
+        action = solveThread_c::ACT_FINISHED;
         puzzle->finishedSolving();
       } else
-        action = assemblerThread_c::ACT_PAUSING;
+        action = solveThread_c::ACT_PAUSING;
 
     } else {
-      action = assemblerThread_c::ACT_PAUSING;
+      action = solveThread_c::ACT_PAUSING;
       puzzle->addTime(time(0)-startTime);
     }
 
@@ -97,13 +97,13 @@ void assemblerThread_c::run(void){
   catch (assert_exception *a) {
 
     ae = a;
-    action = assemblerThread_c::ACT_ERROR;
+    action = solveThread_c::ACT_ERROR;
     if (puzzle->getAssembler())
       puzzle->removeAllSolutions();
   }
 }
 
-assemblerThread_c::assemblerThread_c(problem_c * puz, int par) :
+solveThread_c::solveThread_c(problem_c * puz, int par) :
 action(ACT_PREPARATION),
 puzzle(puz),
 parameters(par),
@@ -119,7 +119,7 @@ assm(0)
     disassm = new disassembler_0_c(puz);
 }
 
-assemblerThread_c::~assemblerThread_c(void) {
+solveThread_c::~solveThread_c(void) {
 
   kill();
 
@@ -129,7 +129,7 @@ assemblerThread_c::~assemblerThread_c(void) {
   }
 }
 
-bool assemblerThread_c::assembly(assembly_c * a) {
+bool solveThread_c::assembly(assembly_c * a) {
 
   enum {
     SOL_COUNT_ASM,
@@ -321,7 +321,7 @@ bool assemblerThread_c::assembly(assembly_c * a) {
   return true;
 }
 
-void assemblerThread_c::stop(void) {
+void solveThread_c::stop(void) {
 
   if ((action != ACT_ASSEMBLING) &&
       (action != ACT_REDUCE) &&
@@ -338,7 +338,7 @@ void assemblerThread_c::stop(void) {
   stopPressed = true;
 }
 
-bool assemblerThread_c::start(bool stop_after_prep) {
+bool solveThread_c::start(bool stop_after_prep) {
 
   stopPressed = false;
   return_after_prep = stop_after_prep;
@@ -373,7 +373,7 @@ bool assemblerThread_c::start(bool stop_after_prep) {
   return thread_c::start();
 }
 
-unsigned int assemblerThread_c::currentActionParameter(void) {
+unsigned int solveThread_c::currentActionParameter(void) {
 
   switch(action) {
   case ACT_REDUCE:
