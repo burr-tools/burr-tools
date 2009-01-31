@@ -21,21 +21,28 @@
 class separation_c;
 class assembly_c;
 
-/* this class implements a burr disassembler. The interface is simple:
- * 1) construct the class with whatever parameters the concrete subclass requires
- * 2) call diassemble for each assembly found and evaluate the result
+/**
+ * Base class for a disassembler.
+ *
+ * The interface is simple:
+ * -# construct the class with whatever parameters the concrete subclass requires
+ * -# call diassemble for each assembly found and evaluate the result
  *
  * some subclasses may be able to handle several assemblies, others may only
- * disassembler one, that depends on the concrete disassembler you use
+ * disassemble one, that depends on the concrete disassembler you use
  */
 class disassembler_c {
 
 public:
 
   disassembler_c(void) {}
+
   virtual ~disassembler_c(void) {}
 
-  /* because we can only have or don't have a disassembly sequence
+  /**
+   * Try to disassemble an assembly.
+   *
+   * Because we can only have or don't have a disassembly sequence
    * we don't need the same complicated callback interface. The function
    * returns either the disassembly sequence or a null pointer.
    * you need to take care of freeing the disassembly sequence after

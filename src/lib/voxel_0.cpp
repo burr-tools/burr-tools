@@ -20,10 +20,31 @@
 
 #include "tabs_0/tablesizes.inc"
 
+/// this array contains all rotation and mirror rotation matrices for the cubic \ref grid
 static const int rotationMatrices[NUM_TRANSFORMATIONS_MIRROR][9] = {
 #include "tabs_0/rotmatrix.inc"
 };
 
+/** \page grid
+ *
+ * Grids in BurrTools define how the space is separated into the different volume
+ * elements (voxels). There are many different ways how to do that.
+ *
+ * BurrTools poses a few restrictions on how those grids can look:
+ *
+ * - The grids must be periodical in all directions (so no Penrose Tiling)
+ * - The number of transformations must be limited (this is a problem with the sphere grid)
+ */
+
+/** the transformation function for cubic grids
+ *
+ * The nice thing about the cubic grid is that we can easily calculate how big the
+ * grid will be after the transformation, we can also easily calculate the new
+ * bounding box and the now position for the hotspot.
+ *
+ * This makes this transformation function faster than the other 2 variations for
+ * spheres and triangles
+ */
 bool voxel_0_c::transform(unsigned int nr) {
 
   bt_assert(nr < NUM_TRANSFORMATIONS_MIRROR);

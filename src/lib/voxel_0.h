@@ -20,9 +20,19 @@
 
 #include "voxel.h"
 
-/* voxel space class for cube based grids:
+/** \file voxel_0.h
+ * Contains the declaration of \ref voxel_0_c
+ */
+
+/** voxel space class for cube based grids.
  * that are cubes themselfes but also grid like the rhombic grid, which
  * use functionality of this class (mainly the transform methods)
+ *
+ * The additional function comments contain mainly implementation details
+ *
+ * Compared to the other 2 basic voxel grids (triangles and spheres) this grid
+ * is special as it implements many functions in a more efficient way because
+ * the cubic grid is so simple
  */
 class voxel_0_c : public voxel_c {
 
