@@ -54,6 +54,7 @@ puzzle_c::~puzzle_c(void) {
 }
 
 unsigned int puzzle_c::addColor(unsigned char r, unsigned char g, unsigned char b) {
+  bt_assert(colors.size() < 63);  // only 63 colors are allowed, color 0 is special
   colors.push_back(r | (uint32_t)g << 8 | (uint32_t)b << 16);
   return colors.size()-1;
 }

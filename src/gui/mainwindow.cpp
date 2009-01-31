@@ -2167,6 +2167,11 @@ void mainWindow_c::updateInterface(void) {
     else
       pieceEdit->activate();
 
+    if (puzzle->colorNumber() < 63)
+      BtnNewColor->activate();
+    else
+      BtnNewColor->deactivate();
+
   } else if (TaskSelectionTab->value() == TabProblems) {
 
     problem_c * pr = (problemSelector->getSelection() < puzzle->problemNumber())
