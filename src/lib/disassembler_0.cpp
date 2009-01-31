@@ -112,11 +112,11 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
      * searching this node
      */
 
-    analyse->init_find0(node, pieces);
+    init_find(node, pieces);
 
     disassemblerNode_c * st;
 
-    while ((st = analyse->find0(node, pieces))) {
+    while ((st = find())) {
 
       /* check all closed nodelists and also insert the node into the newFront list
        * insert has the same return value as contains, but also inserts the node
@@ -253,20 +253,14 @@ disassembler_0_c::~disassembler_0_c() {
 
 separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
 
-  bt_assert(getPiecenumber() == assembly->placementCount());
+  prepareForAssembly(assembly);
 
-  /* create the first node with the start state
-   * here all pieces are at position (0; 0; 0)
-   */
-  unsigned int pc = 0;
-  for (unsigned int j = 0; j < assembly->placementCount(); j++)
-    if (assembly->isPlaced(j))
-      pc++;
+  disassemblerNode_c * start = new disassemblerNode_c(assembly);
 
-  if (pc < 2)
+  if (start->getPiecenumber() < 2) {
+    delete start;
     return 0;
-
-  disassemblerNode_c * start = new disassemblerNode_c(pc, 0, 0, 0);
+  }
 
   /* create pieces field. This field contains the
    * names of all present pieces. Because at the start
@@ -274,16 +268,9 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
    * with all the numbers
    */
   std::vector<unsigned int> pieces;
-  pc = 0;
   for (unsigned int j = 0; j < assembly->placementCount(); j++)
-    if (assembly->isPlaced(j)) {
-      start->set(pc, assembly->getX(j), assembly->getY(j), assembly->getZ(j), assembly->getTransformation(j));
+    if (assembly->isPlaced(j))
       pieces.push_back(j);
-      pc++;
-    }
-
-  /* reset the grouping class */
-  groupReset();
 
   separation_c * s = disassemble_rec(pieces, start);
 

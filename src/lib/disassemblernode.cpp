@@ -17,6 +17,8 @@
  */
 #include "disassemblernode.h"
 
+#include "assembly.h"
+
 disassemblerNode_c::disassemblerNode_c(int pn, disassemblerNode_c * comf, int _dir, int _amount, int step) : comefrom(comf), piecenumber(pn), refcount(1), dir(_dir), amount(_amount) {
   dx = new int[piecenumber];
   dy = new int[piecenumber];
@@ -32,6 +34,38 @@ disassemblerNode_c::disassemblerNode_c(int pn, disassemblerNode_c * comf, int _d
     waylength = comf->waylength + step;
   else
     waylength = step;
+}
+
+disassemblerNode_c::disassemblerNode_c(const assembly_c * assm) : comefrom(0), piecenumber(0), refcount(1), dir(0), amount(0), waylength(0) {
+
+  /* create the first node with the start state
+   * here all pieces are at position (0; 0; 0)
+   */
+  for (unsigned int j = 0; j < assm->placementCount(); j++)
+    if (assm->isPlaced(j))
+      piecenumber++;
+
+  dx = new int[piecenumber];
+  dy = new int[piecenumber];
+  dz = new int[piecenumber];
+  trans = new unsigned int[piecenumber];
+
+  hashValue = 0;
+
+  /* create pieces field. This field contains the
+   * names of all present pieces. Because at the start
+   * all pieces are still there we fill the array
+   * with all the numbers
+   */
+  unsigned int pc = 0;
+  for (unsigned int j = 0; j < assm->placementCount(); j++)
+    if (assm->isPlaced(j)) {
+      dx[pc] = assm->getX(j);
+      dy[pc] = assm->getY(j);
+      dz[pc] = assm->getZ(j);
+      trans[pc] = assm->getTransformation(j);
+      pc++;
+    }
 }
 
 disassemblerNode_c::~disassemblerNode_c() {

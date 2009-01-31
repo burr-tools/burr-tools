@@ -300,12 +300,10 @@ void movementBrowser_c::cb_NodeAnalyze(unsigned int level) {
 
   /* find all possible movements and add them to the current node */
 
-  movementAnalysator_c mv(puz, problem);
-  mv.init_find0(s->node, s->pieces);
-
   std::vector<disassemblerNode_c*> res;
 
-  mv.completeFind0(s->node, s->pieces, &res);
+  movementAnalysator_c mv(puz, problem);
+  mv.completeFind(s->node, s->pieces, &res);
 
   for (unsigned int i = 0; i < res.size(); i++)
     addNode(nd, res[i]);

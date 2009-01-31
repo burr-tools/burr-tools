@@ -19,13 +19,14 @@
 #define __DISASSEMBLER_A_H__
 
 #include "disassembler.h"
+#include "movementanalysator.h"
 
 #include <vector>
 
 class grouping_c;
 class puzzle_c;
 class disassemblerNode_c;
-class movementAnalysator_c;
+class assembly_c;
 
 /* this class is a disassembler for the cube space.
  *
@@ -36,8 +37,6 @@ class movementAnalysator_c;
 class disassembler_a_c : public disassembler_c {
 
   private:
-
-    unsigned int piecenumber;
 
     /* here we can group pieces together */
     grouping_c * groups;
@@ -50,14 +49,20 @@ class disassembler_a_c : public disassembler_c {
      */
     unsigned short * piece2shape;
 
+    movementAnalysator_c *analyse;
+
   protected:
 
     unsigned short subProbGroup(disassemblerNode_c * st, const std::vector<unsigned int> & pn, bool cond);
     bool subProbGrouping(const std::vector<unsigned int> & pn);
 
-    void groupReset(void);
+    void prepareForAssembly(const assembly_c * assm);
 
-    movementAnalysator_c *analyse;
+    void init_find(disassemblerNode_c * nd, const std::vector<unsigned int> & pieces) {
+      analyse->init_find(nd, pieces);
+    }
+
+    disassemblerNode_c * find(void) { return analyse->find(); }
 
   public:
 
@@ -67,8 +72,6 @@ class disassembler_a_c : public disassembler_c {
      */
     disassembler_a_c(const puzzle_c *puz, unsigned int problem);
     ~disassembler_a_c(void);
-
-    unsigned int getPiecenumber(void);
 };
 
 

@@ -21,12 +21,11 @@
 #include "puzzle.h"
 #include "grouping.h"
 #include "disassemblernode.h"
-#include "voxel.h"
 #include "movementanalysator.h"
+#include "assembly.h"
 
 disassembler_a_c::disassembler_a_c(const puzzle_c * puz, unsigned int prob) :
-  disassembler_c(),
-  piecenumber(puz->probPieceNumber(prob)), puzzle(puz), problem(prob) {
+  disassembler_c(), puzzle(puz), problem(prob) {
 
   /* initialize the grouping class */
   groups = new grouping_c();
@@ -113,7 +112,10 @@ bool disassembler_a_c::subProbGrouping(const std::vector<unsigned int> & pn) {
   return true;
 }
 
-void disassembler_a_c::groupReset(void) { groups->reSet(); }
+void disassembler_a_c::prepareForAssembly(const assembly_c * assm) {
 
-unsigned int disassembler_a_c::getPiecenumber(void) { return puzzle->probPieceNumber(problem); }
+  bt_assert(puzzle->probPieceNumber(problem) == assm->placementCount());
+  analyse->prepareAssembly(assm);
+  groups->reSet();
+}
 

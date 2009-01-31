@@ -20,6 +20,8 @@
 
 #include "bt_assert.h"
 
+class assembly_c;
+
 /* node is used to build the search tree for the breadth first search of the
  * state tree each node contains the position of all the pieces relative
  * to their position in the assembled puzzle
@@ -65,6 +67,9 @@ private:
 public:
 
   disassemblerNode_c(int pn, disassemblerNode_c * comf, int _dir, int _amount, int step = 1);
+
+  /* creates a root node from an assembly */
+  disassemblerNode_c(const assembly_c * assm);
 
   ~disassemblerNode_c();
 

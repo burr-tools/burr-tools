@@ -46,9 +46,6 @@ class movementAnalysator_c {
     int * weights;
     unsigned int piecenumber;
 
-    const puzzle_c * puzzle;
-    unsigned int problem;
-
     movementCache_c * cache;
 
     /* these variables are used for the routine that looks
@@ -58,11 +55,13 @@ class movementAnalysator_c {
     unsigned int nextdir;
     unsigned int maxstep;
     disassemblerNode_c * state99node;
+    disassemblerNode_c * searchnode;
+    const std::vector<unsigned int> * pieces;
 
-    void prepare(const std::vector<unsigned int> & pieces, disassemblerNode_c * searchnode);
-    bool checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep);
+    void prepare(void);
+    bool checkmovement(unsigned int maxPieces, int nextstep);
 
-    disassemblerNode_c * newNode(int nextdir, disassemblerNode_c * searchnode, int amount, const std::vector<unsigned int> & pieces);
+    disassemblerNode_c * newNode(int nextdir, int amount);
 
     /* creates a new node that contains the merged movements of the given 2 nodes
      * merged movement means that a piece is moved the maximum amount specified in
@@ -72,7 +71,7 @@ class movementAnalysator_c {
      * also the amount must be identical in both nodes, so if piece a moves 1 unit
      * in node n0 and andother piece move 2 units in node n1 0 is returned
      */
-    disassemblerNode_c * newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1, disassemblerNode_c * searchnode, int nextdir, const std::vector<unsigned int> & pieces);
+    disassemblerNode_c * newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1, int nextdir);
 
   public:
 
@@ -83,10 +82,12 @@ class movementAnalysator_c {
     movementAnalysator_c(const puzzle_c *puz, unsigned int problem);
     ~movementAnalysator_c(void);
 
-    /* 2 sets of functions, one including coordinated motion, and one that doesn't */
-    void init_find0(disassemblerNode_c * nd, const std::vector<unsigned int> & pieces);
-    disassemblerNode_c * find0(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces);
-    void completeFind0(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces, std::vector<disassemblerNode_c*> * result);
+    void init_find(disassemblerNode_c * nd, const std::vector<unsigned int> & pieces);
+    disassemblerNode_c * find(void);
+
+    void completeFind(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces, std::vector<disassemblerNode_c*> * result);
+
+    void prepareAssembly(const assembly_c * a);
 };
 
 #endif
