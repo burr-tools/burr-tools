@@ -133,6 +133,24 @@ protected:
    * The hotspot is in the centre of the given voxel for most of he defined
    * voxel spaces. This has the advantage that it is not necessary to calculate
    * the exact corner where is is, but it requires rotation independent centre definition
+   *
+   * a different interpretation of the hotspot:
+   *
+   * Observe, that a shape must always be in the first octant (x, y and z positive) regarding
+   * the coordinate system because of the way the coordinates are handled. This means that rotations
+   * can never be exact mathematical rotations around the source of the coordinate system
+   * there is always a translation added that brind the shape back into the first octant.
+   *
+   * This added translation adds a major headache because it is dependent on the shape itself
+   * its size and shape. It is easy to calculate for cubes, but impossible to easily find out
+   * for the more obscure grids like the triangles.
+   *
+   * To make the roation appear to be around the center the hotspot contains the added translation
+   * that shifted the whole shape into the first quadrant.
+   *
+   * Now it becomes simple to rotate voxel spaces in space without knowing their exact position.
+   * All you do it rotate the position round the source
+   *
    */
   int hx, hy, hz;
 
