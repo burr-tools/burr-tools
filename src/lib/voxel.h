@@ -26,6 +26,10 @@
 
 #include <xmlwrapp/node.h>
 
+/** \file voxel.h
+ * Contains the voxel base class and the class that gets thrown on load errors
+ */
+
 /**
  * This class gets thrown when there is an error while loading something from an xml node.
  *
@@ -54,6 +58,7 @@ public:
    * Returns the error message.
    */
   const char * getText(void) const { return text.c_str(); }
+
   /**
    * Returns the node where the error occured.
    */
@@ -80,14 +85,9 @@ protected:
    */
   const gridType_c *gt;
 
-  //@{
-  /**
-   * The size of the space.
-   */
-  unsigned int sx;
-  unsigned int sy;
-  unsigned int sz;
-  //@}
+  unsigned int sx; ///< The x size of the space.
+  unsigned int sy; ///< The y size of the space.
+  unsigned int sz; ///< The z size of the space.
 
   /**
    * The number of voxel inside the space.
@@ -103,24 +103,31 @@ protected:
    */
   voxel_type * space;
 
-  /**
-   * the voxel space has a bounding box, that encloses a region inside
+  /** \page BoundingBox Bounding Box
+   *
+   * A bounding box is a box that encloses the non-empty voxels within a voxel space.
+   *
+   * The bounding box is used in all different kind of situation to speed things up because
+   * only non empty voxels need to be handled
    */
-  unsigned int bx1, bx2;
-  unsigned int by1, by2;
-  unsigned int bz1, bz2;
-  bool doRecalc;
+  unsigned int bx1; ///< lower x-coordinate of the \ref BoundingBox
+  unsigned int bx2; ///< upper x-coordinate of the \ref BoundingBox
+  unsigned int by1; ///< lower y-coordinate of the \ref BoundingBox
+  unsigned int by2; ///< upper y-coordinate of the \ref BoundingBox
+  unsigned int bz1; ///< lower z-coordinate of the \ref BoundingBox
+  unsigned int bz2; ///< upper z-coordinate of the \ref BoundingBox
+  bool doRecalc;    ///< bounding box recalculation is only done when this is true
 
   /**
    * the self symmetries of this voxel space.
-   * this value is only valid when the lowest bit 1 is set
-   * if the bit is not set the symmetries need to be calculated
+   * The value may be invalid, meaning that the self symmetries
+   * of the space are unknown and need to be calculated
    */
   symmetries_t symmetries;
 
-  /**
-   * this is the hot spot of the voxel.
-   * when a piece is placed somewhere it is always done relative to this
+  /** \page Hotspot The Hot Spot
+   *
+   * When a piece is placed somewhere it is always done relative to this
    * point. This is necessary to be able to rotate assemblies.
    * just place the hotspot somewhere inside the voxelspace and it will
    * be possible to rotate a voxel space and place it at the same position without
@@ -148,34 +155,51 @@ protected:
    * All you do it rotate the position round the source
    *
    */
-  int hx, hy, hz;
+
+  int hx; ///< x-coordinate of \ref Hotspot
+  int hy; ///< y-coordinate of \ref Hotspot
+  int hz; ///< z-coordinate of \ref Hotspot
 
   /**
-   * shapes can be named
+   * The name of the shape
    */
   std::string name;
 
   /**
-   * shapes have a weight. this weight is used by the disassembler to
+   * Weight of the shape. This weight is used by the disassembler to
    * decide which piece of groups to move and which to keep still
    */
   int weight;
 
   /**
+   * A cache for hotspot and bounding box coordinates of the rotated voxel
+   *
    * calculating the hotspot and bounding box can be expensive
    * and as this information is required extremely often for the assembly
    * transformation we will cache this information
    *
-   * the cache is simple, for each transformation is contains 3+6=9 values
-   * if the first value is -30000 then the information for that transformation
-   * is not yet available and needs to be calculated
+   * the cache is simple, for each transformation it contains 3+6=9 values
+   * if the first value is BBHSCACHE_UNINIT then the information for that
+   * transformation is not yet available and needs to be calculated
+   * the first 3 values are the hot spot position and the following 6 the
+   * bounding box for the given transformation
    */
   int * BbHsCache;
 
 protected:
 
   /**
-   * updates the bounding box to fit the current shape inside the space
+   * updates the bounding box to fit the current shape inside the space.
+   *
+   * This function does nothing, when doRecalc is false see \ref skipRecalcBoundingBox.
+   * This is useful when a lot of operations are done on the space and only at the end the
+   * bounding box needs to be recalculated.
+   *
+   * As a side effect the function sets all color values of empty voxels to 0.
+   *
+   * When the space is empty the bounding box is set to all 0.
+   *
+   * The bounding box and hotspot cache is cleared by this function
    */
   void recalcBoundingBox(void);
 
@@ -222,7 +246,7 @@ public:
   voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0);
 
   /**
-   * load from xml node
+   * Load a voxel space from xml node
    */
   voxel_c(const xml::node & node, const gridType_c * gt);
 
@@ -245,21 +269,16 @@ public:
   virtual ~voxel_c();
 
   /**
-   * make this voxelspace be identical to the one given
+   * make this voxelspace be identical to the one givenm except for the name \ref name field
+   * everything is copied
    */
   void copy(const voxel_c * orig);
 
-  //@{
-  /**
-   * Get the size of the space.
-   * These functions return the size of the voxel space not the size
-   * of the object within the space
-   */
-  unsigned int getX(void) const { return sx; }
-  unsigned int getY(void) const { return sy; }
-  unsigned int getZ(void) const { return sz; }
-  //@}
+  unsigned int getX(void) const { return sx; } ///< Return x-size of the voxel space
+  unsigned int getY(void) const { return sy; } ///< Return y-size of the voxel space
+  unsigned int getZ(void) const { return sz; } ///< Return z-size of the voxel space
 
+  /** get the gridtype of this voxel space */
   const gridType_c * getGridType(void) const { return gt; }
 
   /**
@@ -289,13 +308,17 @@ public:
   unsigned int getXYZ(void) const { return voxels; }
 
   /**
-   * this function returns the index for a given triple of x, y and z
+   * This function returns the index for a given triple of x, y and z
    */
   int getIndex(unsigned int x, unsigned int y, unsigned int z) const {
     bt_assert((x<sx)&&(y<sy)&&(z<sz));
     return x + sx * (y + sy * z);
   }
 
+  /** The inverse of getIndex \ref getIndex.
+   *
+   * For a given index the x, y and z coordinates inside this voxel space is returned
+   */
   bool indexToXYZ(unsigned int index, unsigned int *x, unsigned int *y, unsigned int *z) const;
 
   /**
@@ -306,7 +329,7 @@ public:
   }
 
   /**
-   * same as get but returns the outside value for each voxel outside
+   * same as get but returns VX_EMPTY for each voxel outside
    * the space
    */
   voxel_type get2(int x, int y, int z) const {
@@ -343,6 +366,9 @@ public:
    * x, y, z coordinate for the source
    * xn, yn, zn, coordinate for the neighbour
    * return true, when a valid neighbour with that index exists
+   *
+   * This function is different for different grids. There is no default implementation, so each grid
+   * has to define its own version of this function
    */
   virtual bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const = 0;
 
@@ -396,23 +422,24 @@ public:
   /**
    * changes the size of the voxel space to the smallest size
    * so that all voxels whose value is not 0 can be contained.
+   *
+   * as in some grids there are special conditions to consider
+   * when doing this operation the function can be overloaded.
+   * This default implementation will minimize to the bounding box.
    */
   virtual void minimizePiece(void);
 
-  //@{
-  /**
-   * Return the coordinates of the bounding box
-   */
-  unsigned int boundX1(void) const { return bx1; }
-  unsigned int boundX2(void) const { return bx2; }
-  unsigned int boundY1(void) const { return by1; }
-  unsigned int boundY2(void) const { return by2; }
-  unsigned int boundZ1(void) const { return bz1; }
-  unsigned int boundZ2(void) const { return bz2; }
-  //@}
+  unsigned int boundX1(void) const { return bx1; } ///< Get the coordinate of the \ref BoundingBox
+  unsigned int boundX2(void) const { return bx2; } ///< Get the coordinate of the \ref BoundingBox
+  unsigned int boundY1(void) const { return by1; } ///< Get the coordinate of the \ref BoundingBox
+  unsigned int boundY2(void) const { return by2; } ///< Get the coordinate of the \ref BoundingBox
+  unsigned int boundZ1(void) const { return bz1; } ///< Get the coordinate of the \ref BoundingBox
+  unsigned int boundZ2(void) const { return bz2; } ///< Get the coordinate of the \ref BoundingBox
 
   /**
    * get the bounding box of a rotated voxel space
+   *
+   * If the return pointers are 0 the value is not returned
    */
   void getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2 = 0, int * y2 = 0, int * z2 = 0) const;
 
@@ -433,6 +460,10 @@ public:
    * if includeColors is true, the colours are included in the
    * comparison, meaning when the colours differ the
    * shapes are not equal, otherwise only the states are compared
+   *
+   * There are special conditions to take care in different grid (e.g
+   * alignment along a bigger grid) so this function can be overloaded.
+   * The default implementation simply treats all voxels equal
    */
   virtual bool identicalInBB(const voxel_c * op, bool includeColors = true) const;
 
@@ -472,13 +503,21 @@ public:
    */
   void resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel_type filler);
 
-  /* resizes and translates the space so that the the given voxel can be included
-   * the function returns the new coordinate of the point
+  /**
+   * resizes and translates the space so that the the given voxel can be included
+   * the function returns the new coordinate of the point.
+   *
+   * Each grid has to implement it's own version because there are different
+   * kinds of supergrids that are imposed on the normal grid
    */
   virtual void resizeInclude(int & px, int & py, int & pz) = 0;
 
   /**
    * scale the space, making x by x by x cubes out of single cubes
+   *
+   * This must be done differently by all grids. The default implementation
+   * doesn't do anything. It's just there to allow grids without scaling as not
+   * all grid have such a possibility (e.g. spheres can't be scaled)
    */
   virtual void scale(unsigned int amount);
 
@@ -490,10 +529,24 @@ public:
    * by a certain factor and then do it. If action is true, then
    * the shape is really scaled, otherwise you only get the fact
    * if it is scalable by the given amount
+   *
+   * This must be done differently by all grids. The default implementation
+   * doesn't do anything. It's just there to allow grids without scaling as not
+   * all grid have such a possibility (e.g. spheres can't be scaled)
    */
   virtual bool scaleDown(unsigned char by, bool action);
 
   private:
+
+  /**
+   * This function is used by conneced and fill holes.
+   *
+   * It finds out what groups of voxel spaces touch one another
+   * Type: defines in which way the voxels touch (faces, edges, corners)
+   * Inverse: defines whether to work on the voxlels defines by value or the other voxels
+   * value: which voxels to work on
+   * outsiudeZ: how to tread the Z direction outside: as empty for 3D pieces or as non existent for 2D pieces
+   */
   void unionFind(int * tree, char type, bool inverse, voxel_type value, bool outsideZ) const;
 
   public:
@@ -523,19 +576,22 @@ public:
   void fillHoles(char type);
 
   /**
-   * all possible rotations of one piece can be generated.
+   * all possible orientations of one piece can be generated.
    * using this function by iterating nr from 0 to NUM_TRANSFORMATIONS (24 for cubes) excluding
    * because in some spacegrids there might be transformations that do
    * not exist with certain shapes, this function returns a bool showing
    * if the transformation action has succeeded
+   *
+   * This must be implmented by all grids separately
    */
   virtual bool transform(unsigned int nr) = 0;
 
   /**
    * This function returns the self symmetries of this voxel
-   * space. The returned value is a bitfieled containing a one
-   * for each transformations that maps the voxel space
-   * into itself
+   * space.
+   *
+   * Self symmetries are a list of transformations that transform the
+   * voxel space into an identical shape.
    */
   symmetries_t selfSymmetries(void) const;
 
@@ -620,15 +676,15 @@ public:
    */
   xml::node save(void) const;
 
-  //@{
+  int getHx(void) const { return hx; } ///< Get the hotspot
+  int getHy(void) const { return hy; } ///< Get the hotspot
+  int getHz(void) const { return hz; } ///< Get the hotspot
+  void setHotspot(int x, int y, int z); ///< Set the hotspot
+
   /**
-   * functions for hotspot management
-   */
-  int getHx(void) const { return hx; }
-  int getHy(void) const { return hy; }
-  int getHz(void) const { return hz; }
-  void setHotspot(int x, int y, int z);
-  /* in some voxelspaces the hotspot needs to be in special
+   * Initialized the hotspot to a valid position.
+   *
+   * in some voxelspaces the hotspot needs to be in special
    * places to stay valid after all possible transformations
    * this function sets the hotspot so, that is has this
    * property. As many spaces do not have this requirement
@@ -636,14 +692,13 @@ public:
    * at 0;0;0 if you need something special, overwrite this function
    */
   virtual void initHotspot(void);
-  //@}
 
   /**
    * this function returns the hotspot of the rotated space.
    */
   void getHotspot(unsigned char trans, int * x, int * y, int * z) const;
 
-  /** functions to set the name */
+  /** function to get the name */
   const std::string & getName(void) const { return name; }
 
   /**
@@ -652,12 +707,16 @@ public:
    */
   void setName(const std::string & n) { name = n; }
 
-  //@{
-  /* functions for the weight */
-  int getWeight(void) const { return weight; }
-  void setWeight(int w) { weight = w; }
-  //@}
+  int getWeight(void) const { return weight; } ///< get the weight of this space
+  void setWeight(int w) { weight = w; }        ///< set the weight of this space
 
+  /**
+   * Return if a given coordinate is valid to use.
+   *
+   * In some voxel spaces not all possible coordinates are valid. For example
+   * in the sphere grid only the coordinates with (x+y+z) % 2 == 0 are valid
+   * This function does that calculation
+   */
   virtual bool validCoordinate(int x, int y, int z) const = 0;
 
   /* creates the intersection of the 2 given voxel spaces and

@@ -24,7 +24,51 @@
 
 #include <xmlwrapp/attributes.h>
 
-#define BBHSCACHE_UNINIT -30000  // the value tha signifies uninitialized values for the hotspot and bounding box cache
+/** \mainpage The BurrTools Library documentation
+ *
+ * \section Introduction
+ *
+ * This documentation tries to achieve two goals: it tries to explain how to
+ * use the BurrTools Library and it also explains the algorithms used and generally
+ * how things are implemented and done inside the library.
+ *
+ * I hope this will help everyone to understand the inner workings of this
+ * complex piece of software.
+ *
+ * To get started it is best to begin reading the information for the voxel \ref voxel_c classes.
+ * Then continue to the assembly \ref assembly_c. The assemblers \assembler_c are probably not
+ * necessary to read. They contain too much complicated stuff. Then read the disassembly
+ * \ref disassembly_c class documentation. Finally the grid type \ref gridType_c class will
+ * glue things together.
+ *
+ * You should now be able to use the library.
+ *
+ * If you want to understand how things work you will need to read the documentation for the
+ * assembler \ref assembler_c and disassembler \ref disassembler_c classses.
+ */
+
+/** \file voxel.cpp
+ * Contains the implementation for the voxel base class
+ */
+
+/** \class voxel_c
+ *
+ * For the transformation of a voxel space all the grid types use transformation matrices
+ * that are in the corresponding tabs_x directory in the file rotmatrix.inc
+ *
+ * These tables contain all rotation matrices for all orientations of the grid. More
+ * in \ref transformationDetails
+ *
+ * The base class of the voxel space is not suitable for any grid because it misses
+ * functions. The derived classes implement those missing functions.
+ *
+ * The glasses for the tetrahedral-octahedral and for the rhombic grid are derrived
+ * from the cube grid (voxel_0_c) because they just superimpose another larger grid
+ * onto the standard cube grid to achieve their goals
+ */
+
+/// the value tha signifies uninitialized values for the hotspot and bounding box cache
+#define BBHSCACHE_UNINIT -30000
 
 voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * g, voxel_type init) : gt(g), sx(x), sy(y), sz(z), voxels(x*y*z), hx(0), hy(0), hz(0), weight(1) {
 
@@ -350,6 +394,30 @@ void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
   hz += dz;
 }
 
+/** \page unionfinddetails Union Find Details
+ *
+ * Please read http://en.wikipedia.org/wiki/Union_find first.
+ *
+ * Now the method in the unionFind function is similar.
+ * Each node in the tree corresponds to one voxel of the voxel space.
+ * The tree array contains
+ * all indices to the perent node of the tree. The tree is initialied with NULL
+ * pinter equivalents (-1 in this case) then we loop over all voxels and all neighbors
+ * of a voxel ar found and the corresponding trees are unified.
+ *
+ * In the end all nodes that are somehow connected are within a single tree within the forrest.
+ *
+ * The 2 functions that use this function now evaluate the tree forrest in 2 ways:
+ *
+ * The \ref voxel_c::connected function will check if all non empty voxels in the space
+ * are within the same tree
+ *
+ * The \ref voxel_c::fillHoles function uses the unionFind function differently. It lets
+ * the function connect the empty voxels instead of the filled. Now we will find isolated
+ * voids  because they are in separate trees.
+ */
+
+/** \ref unionfinddetails */
 void voxel_c::unionFind(int * tree, char type, bool inverse, voxel_type value, bool outsideZ) const {
 
   /* union find algorithm:
@@ -411,9 +479,6 @@ void voxel_c::unionFind(int * tree, char type, bool inverse, voxel_type value, b
             curTyp++;
           }
         }
-
-
-
 }
 
 bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ) const {
@@ -546,8 +611,9 @@ bool voxel_c::neighbour(unsigned int p, voxel_type val) const {
 
 symmetries_t voxel_c::selfSymmetries(void) const {
 
-  if (isSymmetryInvalid(symmetries)) {
-
+  // if we have not calculated the symmetries, yet we calclate it
+  if (isSymmetryInvalid(symmetries))
+  {
     ((voxel_c*)this)->symmetries = gt->getSymmetries()->calculateSymmetry(this);
   }
 
