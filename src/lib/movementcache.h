@@ -100,6 +100,9 @@ class movementCache_c {
   /// the gridtype used. We need this to make copies and transformations of the shapes
   const gridType_c * gt;
 
+  /// get the transformed shape from the shapes array, calculating missing ones
+  const voxel_c * getTransformedShape(unsigned int s, unsigned char t);
+
 public:
 
   /** create the cache. The cache is then fixed to the puzzle and the problem, it can
