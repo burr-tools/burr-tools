@@ -42,7 +42,7 @@ class movementAnalysator_c {
      * transposition (m[i][j] == m[j][i]) we save the calculation or copying
      * and rather do the transposition inside the checkmovement function
      */
-    unsigned int ** matrix;
+    unsigned int * matrix;
     unsigned int * movement;
     int * weights;
     unsigned int piecenumber;

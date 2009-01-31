@@ -25,6 +25,8 @@
 #include "disassemblerhashes.h"
 #include "gridtype.h"
 
+#include <string.h>
+
 /* so, this isn't the function as described by Bill but rather a
  * bit optimized. For each pair of 2 different pieces and for
  * each of the three dimensions I do the following:
@@ -37,28 +39,25 @@
  */
 void movementAnalysator_c::prepare(void) {
 
-  int m[cache->numDirections()];
+  unsigned int * idx = matrix;
 
-  unsigned int idx = 0;
+  int idxCol = cache->numDirections();
+  int idxRow = cache->numDirections() * (piecenumber- pieces->size());
+
   for (unsigned int j = 0; j < pieces->size(); j++) {
     for (unsigned int i = 0; i < pieces->size(); i++) {
-      if (i != j) {
+      if (i != j)
         cache->getMoValue(searchnode->getX(j) - searchnode->getX(i),
                           searchnode->getY(j) - searchnode->getY(i),
                           searchnode->getZ(j) - searchnode->getZ(i),
                           searchnode->getTrans(i), searchnode->getTrans(j),
-                          (*pieces)[i], (*pieces)[j],
-                          cache->numDirections(), m);
-
-        for (unsigned int x = 0; x < cache->numDirections(); x++)
-          matrix[x][idx] = m[x];
-      }
+                          (*pieces)[i], (*pieces)[j], idx);
 
       // the diagonals are always zero and will stay that for ever they are initialized
       // to that value in the init function so only the other values need
-      idx++;
+      idx += idxCol;
     }
-    idx = idx - pieces->size() + piecenumber;
+    idx += idxRow;
   }
 
   /* having a look at this algorithm in more detail
@@ -72,37 +71,41 @@ void movementAnalysator_c::prepare(void) {
 
   /* second part of Bills algorithm. */
 
-  unsigned int again = 0;
+  unsigned int dirs = cache->numDirections();
+  unsigned int rowStep = dirs*piecenumber;
+  unsigned int size = dirs*pieces->size();
 
-  for (unsigned int d = 0; d < cache->numDirections(); d++) {
+  bool again = false;
+
+  for (unsigned int d = 0; d < dirs; d++) {
     do {
-      again = 0;
+      again = false;
 
 #if 0
       // this is just for commentaty reasons it show the same algorithmus as below
       // just a bit more understandable
 
-      for (int y = 0; y < pn; y++)
-        for (int x = 0; x < pn; x++) {
-          int min = matrix[d][x] + matrix[d][y*piecenumber];
+      for (unsigned int y = 0; y < pieces->size(); y++)
+        for (unsigned int x = 0; x < pieces->size(); x++) {
+          unsigned int min = matrix[x*dirs+d] + matrix[y*piecenumber*dirs+d];
 
-          for (int i = 1; i < pn; i++) {
-            int l = matrix[d][x + i*piecenumber] + matrix[d][i + y*piecenumber];
+          for (unsigned int i = 1; i < pieces->size(); i++) {
+            unsigned int l = matrix[(x + i*piecenumber)*dirs+d] + matrix[(i + y*piecenumber)*dirs+d];
             if (l < min) min = l;
           }
 
-          if (min < matrix[d][x + y*piecenumber]) {
-            matrix[d][x + y*piecenumber] = min;
+          if (min < matrix[(x + y*piecenumber)*dirs+d]) {
+            matrix[(x + y*piecenumber)*dirs+d] = min;
             if (!again) {
-              for (int i = 0; i < y; i++)
-                if (min + matrix[d][y + i*piecenumber] < matrix[d][x + i*piecenumber]) {
+              for (unsigned int i = 0; i < y; i++)
+                if (min + matrix[(y + i*piecenumber)*dirs+d] < matrix[(x + i*piecenumber)*dirs+d]) {
                   again = true;
                   break;
                 }
 
               if (!again)
-                for (int i = 0; i < x; i++)
-                  if (matrix[d][i + x*piecenumber] + min < matrix[d][i + y*piecenumber]) {
+                for (unsigned int i = 0; i < x; i++)
+                  if (matrix[(i + x*piecenumber)*dirs+d] + min < matrix[(i + y*piecenumber)*dirs+d]) {
                     again = true;
                     break;
                   }
@@ -111,16 +114,16 @@ void movementAnalysator_c::prepare(void) {
         }
 #endif
 
-      unsigned int * pos1 = matrix[d];           // y * piecenumber;
+      unsigned int * pos1 = matrix + d;           // y * piecenumber;
       unsigned int idx, i;
 
-      for (unsigned int y = 0; y < pieces->size(); y++) {
-        unsigned int * pos2 = matrix[d];           // x
+      for (unsigned int y = 0; y < size; y+=dirs) {
+        unsigned int * pos2 = matrix + d;           // x
 
-        for (unsigned int x = 0; x < pieces->size(); x++) {
+        for (unsigned int x = 0; x < size; x+=dirs) {
           unsigned int min = *pos2 + *pos1;
 
-          for (i = 1, idx = piecenumber; i < pieces->size(); i++, idx += piecenumber) {
+          for (i = dirs, idx = rowStep; i < size; i+=dirs, idx += rowStep) {
             unsigned int l = pos2[idx] + pos1[i];
             if (l < min) min = l;
           }
@@ -130,21 +133,21 @@ void movementAnalysator_c::prepare(void) {
 
             if (!again) {
 
-              unsigned int * pos3 = matrix[d];
+              unsigned int * pos3 = matrix + d;
 
-              for (unsigned int i = 0; i < y; i++) {
+              for (i = 0; i < y; i+=dirs) {
                 if (min + pos3[y] < pos3[x]) {
                   again = true;
                   break;
                 }
-                pos3 += piecenumber;
+                pos3 += rowStep;
               }
 
               if (!again) {
 
-                pos3 = matrix[d] + x*piecenumber;
+                pos3 = matrix + d + piecenumber*x;
 
-                for (unsigned int i = 0; i < x; i++)
+                for (i = 0; i < x; i+=dirs)
                   if (pos3[i] + min < pos1[i]) {
                     again = true;
                     break;
@@ -152,10 +155,10 @@ void movementAnalysator_c::prepare(void) {
               }
             }
           }
-          pos2++;
+          pos2+=dirs;
         }
 
-        pos1 += piecenumber;
+        pos1 += rowStep;
       }
     } while (again > 0);
   }
@@ -196,7 +199,11 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
 
   bool finished;
   unsigned int nd = nextdir >> 1;
-  bt_assert(nd < cache->numDirections());
+  unsigned int dirs = cache->numDirections();
+  bt_assert(nd < dirs);
+  unsigned int rowIdx = (piecenumber-next_pn)*dirs;
+  unsigned int rowIdx2 = piecenumber*dirs;
+  unsigned int rowIdx3 = (piecenumber*next_pn-1)*dirs;
 
   // the idea here is the following, if we want to move
   // a piece the matrix tells us if we can do that with respecto to
@@ -210,20 +217,25 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
     do {
 
       finished = true;
+      unsigned int * idx = matrix + nd;
 
       // go over all pieces
       for (int i = 0; i < next_pn; i++)
+      {
         // if the piece needs to be checked
-        if (check[i]) {
+        if (check[i])
+        {
           // check it against all other pieces
           for (int j = 0; j < next_pn; j++)
+          {
             // if it is another piece that is still stationary (if it is already
             // moving it moves by the same amount as the other piece, so there
             // will be no problems here
             if ((i != j) && (movement[j] == 0)) {
               // if the requested movement is more than the matrix alows
               // we must also move the new piece
-              if (movement[i] > matrix[nd][j + piecenumber * i]) {
+
+              if (movement[i] > *idx) {  // idx points to matrix[(j+piecenumber*i)*dirs+nd]
                 // count the number of moved pieces, if there are more
                 // than halve, we bail out because it doesn't make sense
                 // to move more than that amount
@@ -239,10 +251,17 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
                 finished = false;
               }
             }
+            idx += dirs;
+          }
           // the current piece is now checked, so we don't need to do that again
           check[i] = false;
+          idx += rowIdx;
         }
-
+        else
+        {
+          idx += rowIdx2;
+        }
+      }
     } while (!finished);
 
   } else {
@@ -250,12 +269,15 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
     do {
 
       finished = true;
+      unsigned int * idx = matrix + nd;
 
       for (int i = 0; i < next_pn; i++)
-        if (check[i]) {
-          for (int j = 0; j < next_pn; j++)
+      {
+        if (check[i])
+        {
+          for (int j = 0; j < next_pn; j++) {
             if ((i != j) && (movement[j] == 0)) {
-              if (movement[i] > matrix[nd][i + piecenumber * j]) {
+              if (movement[i] > *idx) {  // idx should point to matrix[(i + piecenumber * j)*dirs+nr]
                 moved_pieces++;
                 if (moved_pieces > maxPieces)
                   return false;
@@ -265,8 +287,16 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
                 finished = false;
               }
             }
+            idx += rowIdx2;
+          }
           check[i] = false;
+          idx -= rowIdx3;
         }
+        else
+        {
+          idx += dirs;
+        }
+      }
 
     } while (!finished);
   }
@@ -282,14 +312,8 @@ movementAnalysator_c::movementAnalysator_c(const problem_c * puz) :
   /* allocate the necessary arrays */
   movement = new unsigned int[piecenumber];
 
-  matrix = new unsigned int*[cache->numDirections()];
-
-  for (unsigned int j = 0; j < cache->numDirections(); j++) {
-    matrix[j] = new unsigned int[piecenumber * piecenumber];
-
-    for (unsigned int i = 0; i < piecenumber; i++)
-      matrix[j][i+i*piecenumber] = 0;
-  }
+  matrix = new unsigned int[cache->numDirections() * piecenumber * piecenumber];
+  memset(matrix, 0, cache->numDirections() * piecenumber * piecenumber * sizeof(unsigned int));
 
   /* create the weights array */
   weights = new int[puz->pieceNumber()];
@@ -307,8 +331,6 @@ movementAnalysator_c::movementAnalysator_c(const problem_c * puz) :
 movementAnalysator_c::~movementAnalysator_c() {
 
   delete [] movement;
-  for (unsigned int k = 0; k < cache->numDirections(); k++)
-    delete [] matrix[k];
   delete [] matrix;
 
   delete cache;
