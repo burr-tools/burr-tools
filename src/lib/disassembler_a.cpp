@@ -216,15 +216,10 @@ bool disassembler_a_c::subProbGrouping(const std::vector<unsigned int> & pn) {
   return true;
 }
 
-void disassembler_a_c::prepareForAssembly(const assembly_c * assm) {
-
-  bt_assert(puzzle->pieceNumber() == assm->placementCount());
-  groups->reSet();
-}
-
 separation_c * disassembler_a_c::disassemble(const assembly_c * assembly) {
 
-  prepareForAssembly(assembly);
+  bt_assert(puzzle->pieceNumber() == assembly->placementCount());
+  groups->reSet();
 
   disassemblerNode_c * start = new disassemblerNode_c(assembly);
 

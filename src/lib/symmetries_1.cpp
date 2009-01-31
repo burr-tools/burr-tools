@@ -112,7 +112,7 @@ bool symmetries_1_c::symmetryKnown(const voxel_c * pp) const {
 
   for (int j = 1; j < NUM_TRANSFORMATIONS_MIRROR; j++) {
     voxel_1_c v(pp);
-    bt_assert(v.transform(j));
+    bt_assert2(v.transform(j));
     if (pp->identicalInBB(&v))
       s |= ((unsigned long long)1) << j;
   }

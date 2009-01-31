@@ -140,7 +140,7 @@ const voxel_c * movementCache_c::getTransformedShape(unsigned int s, unsigned ch
     // our required orientation doesn't exist, so we calculate it
 
     voxel_c * sh = gt->getVoxel(shapes[s][0]);
-    bt_assert(sh->transform(t));
+    bt_assert2(sh->transform(t));
 
     // in the single threaded case simply enter our new shape
     shapes[s][t] = sh;

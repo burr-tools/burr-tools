@@ -376,7 +376,7 @@ void assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
           unsigned int p3;
           unsigned char t_inv;
 
-          bt_assert(mir->getPieceInfo(p2, &p3, &t_inv));
+          bt_assert2(mir->getPieceInfo(p2, &p3, &t_inv));
 
           bt_assert(p3 == p);
 

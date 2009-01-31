@@ -579,7 +579,7 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
 
           voxel_c * vx = puz->getGridType()->getVoxel(puz->getShapeShape(p));
 
-          bt_assert(vx->transform(assm->getTransformation(piece)));
+          bt_assert2(vx->transform(assm->getTransformation(piece)));
 
           num = addSpace(vx);
 
@@ -638,7 +638,7 @@ void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * 
 
           voxel_c * vx = puz->getGridType()->getVoxel(puz->getShapeShape(p));
 
-          bt_assert(vx->transform(assm->getTransformation(piece)));
+          bt_assert2(vx->transform(assm->getTransformation(piece)));
 
           num = addSpace(vx);
 
@@ -705,7 +705,7 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
     }
 
     voxel_c * vx = puz->getGridType()->getVoxel(puz->getShapeShape(shape));
-    bt_assert(vx->transform(t));
+    bt_assert2(vx->transform(t));
     num = addSpace(vx);
 
     setSpacePosition(num, x-hx, y-hy, z-hz, 1);

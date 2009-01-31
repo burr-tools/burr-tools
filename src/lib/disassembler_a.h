@@ -58,8 +58,6 @@ class disassembler_a_c : public disassembler_c {
     unsigned short subProbGroup(const disassemblerNode_c * st, const std::vector<unsigned int> & pn, bool cond);
     bool subProbGrouping(const std::vector<unsigned int> & pn);
 
-    void prepareForAssembly(const assembly_c * assm);
-
     separation_c * checkSubproblem(int pieceCount, const std::vector<unsigned int> & pieces, const disassemblerNode_c * st, bool left, bool * ok);
 
   protected:

@@ -43,7 +43,7 @@ static bool sameEdge(int xa, int ya, int za, int xb, int yb, int zb,
 bool voxelDrawer_a_c::getEdgeFaces(int x, int y, int z, int xa, int ya, int za, int xb, int yb, int zb, int *f1, int *f2) {
 
   int x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4;
-  bt_assert(getTetrahedron(x, y, z, &x1, &y1, &z1, &x2, &y2, &z2, &x3, &y3, &z3, &x4, &y4, &z4));
+  bt_assert2(getTetrahedron(x, y, z, &x1, &y1, &z1, &x2, &y2, &z2, &x3, &y3, &z3, &x4, &y4, &z4));
 
   int xt1, xt2, xt3, yt1, yt2, yt3, zt1, zt2, zt3;
   bool foundFirst = false;
@@ -101,7 +101,7 @@ int voxelDrawer_a_c::getEdgeNeighbors(const voxel_c * space, int x, int y, int z
   {
     /* get current tetrahedron and extract the edge we are interested in */
     int x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4;
-    bt_assert(getTetrahedron(x, y, z, &x1, &y1, &z1, &x2, &y2, &z2, &x3, &y3, &z3, &x4, &y4, &z4));
+    bt_assert2(getTetrahedron(x, y, z, &x1, &y1, &z1, &x2, &y2, &z2, &x3, &y3, &z3, &x4, &y4, &z4));
 
     int xt1, xt2, xt3, yt1, yt2, yt3, zt1, zt2, zt3;
 
@@ -137,12 +137,12 @@ int voxelDrawer_a_c::getEdgeNeighbors(const voxel_c * space, int x, int y, int z
     vx[3*nCnt+1] = ny;
     vx[3*nCnt+2] = nz;
 
-    bt_assert(getEdgeFaces(nx, ny, nz, xa, ya, za, xb, yb, zb, &f1, &f2));
+    bt_assert2(getEdgeFaces(nx, ny, nz, xa, ya, za, xb, yb, zb, &f1, &f2));
 
-    bt_assert(space->getNeighbor(f1, 0, vx[3*nCnt+0], vx[3*nCnt+1], vx[3*nCnt+2], &nx, &ny, &nz));
+    bt_assert2(space->getNeighbor(f1, 0, vx[3*nCnt+0], vx[3*nCnt+1], vx[3*nCnt+2], &nx, &ny, &nz));
 
     if (nx == vx[3*nCnt-3] && ny == vx[3*nCnt-2] && nz == vx[3*nCnt-1])
-      bt_assert(space->getNeighbor(f2, 0, vx[3*nCnt+0], vx[3*nCnt+1], vx[3*nCnt+2], &nx, &ny, &nz));
+      bt_assert2(space->getNeighbor(f2, 0, vx[3*nCnt+0], vx[3*nCnt+1], vx[3*nCnt+2], &nx, &ny, &nz));
 
     bt_assert(nx != vx[3*nCnt-3] || ny != vx[3*nCnt-2] || nz != vx[3*nCnt-1]);
 

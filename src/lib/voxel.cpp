@@ -269,7 +269,7 @@ void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
     */
     voxel_c * tmp = gt->getVoxel(this);
 
-    bt_assert(tmp->transform(trans));
+    bt_assert2(tmp->transform(trans));
 
     BbHsCache[9*trans+0] = tmp->getHx();
     BbHsCache[9*trans+1] = tmp->getHy();
@@ -293,7 +293,7 @@ void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, 
 
     /* this version always works, but it is quite slow */
     voxel_c * tmp = gt->getVoxel(this);
-    bt_assert(tmp->transform(trans));
+    bt_assert2(tmp->transform(trans));
 
     BbHsCache[9*trans+3] = tmp->boundX1();
     BbHsCache[9*trans+4] = tmp->boundX2();

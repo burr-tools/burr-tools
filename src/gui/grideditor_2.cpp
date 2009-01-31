@@ -56,9 +56,7 @@ void gridEditor_2_c::calcParameters(int *szx, int *szy, int *tx, int *ty) {
 
 void gridEditor_2_c::drawNormalTile(int x, int y, int z, int tx, int ty, int sx, int sy) {
 
-  voxel_c * space = puzzle->getShape(piecenumber);
-
-  bt_assert(space->validCoordinate(x, y, z));
+  bt_assert(puzzle->getShape(piecenumber)->validCoordinate(x, y, z));
 
   int sxc = 10000*sx/7072;
   int syc = 10000*sy/7072;
@@ -71,9 +69,7 @@ void gridEditor_2_c::drawNormalTile(int x, int y, int z, int tx, int ty, int sx,
 
 void gridEditor_2_c::drawVariableTile(int x, int y, int z, int tx, int ty, int sx, int sy) {
 
-  voxel_c * space = puzzle->getShape(piecenumber);
-
-  bt_assert(space->validCoordinate(x, y, z));
+  bt_assert(puzzle->getShape(piecenumber)->validCoordinate(x, y, z));
 
   int sxc = 10000*sx/7072;
   int syc = 10000*sy/7072;
@@ -86,9 +82,7 @@ void gridEditor_2_c::drawVariableTile(int x, int y, int z, int tx, int ty, int s
 
 void gridEditor_2_c::drawTileFrame(int x, int y, int z, int tx, int ty, int sx, int sy) {
 
-  voxel_c * space = puzzle->getShape(piecenumber);
-
-  bt_assert(space->validCoordinate(x, y, z));
+  bt_assert(puzzle->getShape(piecenumber)->validCoordinate(x, y, z));
 
   int sxc = 10000*sx/7072;
   int syc = 10000*sy/7072;
@@ -101,9 +95,7 @@ void gridEditor_2_c::drawTileFrame(int x, int y, int z, int tx, int ty, int sx, 
 
 void gridEditor_2_c::drawTileColor(int x, int y, int z, int tx, int ty, int sx, int sy) {
 
-  voxel_c * space = puzzle->getShape(piecenumber);
-
-  bt_assert(space->validCoordinate(x, y, z));
+  bt_assert(puzzle->getShape(piecenumber)->validCoordinate(x, y, z));
 
   int sxc = 10000*sx/7072;
   int syc = 10000*sy/7072;

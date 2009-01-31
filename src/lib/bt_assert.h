@@ -63,6 +63,7 @@ void bt_te(const char * expr, const char * file, unsigned int line, const char *
 #ifdef NDEBUG
 
 #define bt_assert(expr)
+#define bt_assert2(expr) if (expr)
 #define bt_assert_line(line)
 
 #else
@@ -73,8 +74,10 @@ void bt_te(const char * expr, const char * file, unsigned int line, const char *
 
 #ifdef BT_ASSERT_NO_FUNC
 #define bt_assert(expr)  if (!(expr)) throw new assert_exception(__STRING(expr), __FILE__, __LINE__, __PRETTY_FUNCTION__)
+#define bt_assert2(expr)  if (!(expr)) throw new assert_exception(__STRING(expr), __FILE__, __LINE__, __PRETTY_FUNCTION__)
 #else
 #define bt_assert(expr)  if (!(expr)) bt_te(__STRING(expr), __FILE__, __LINE__, __PRETTY_FUNCTION__)
+#define bt_assert2(expr)  if (!(expr)) bt_te(__STRING(expr), __FILE__, __LINE__, __PRETTY_FUNCTION__)
 #endif
 #define bt_assert_line(line) assert_log->addLine(line)
 
