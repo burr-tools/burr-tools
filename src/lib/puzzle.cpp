@@ -227,6 +227,7 @@ puzzle_c::puzzle_c(const xml::node & node) {
 }
 
 unsigned int puzzle_c::addShape(voxel_c * p) {
+  bt_assert(gt->getType() == p->getGridType()->getType());
   shapes.push_back(p);
   return shapes.size()-1;
 }
