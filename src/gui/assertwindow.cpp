@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "assertwindow.h"
+#include <stdio.h>
 
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Button.H>

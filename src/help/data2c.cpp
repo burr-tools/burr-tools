@@ -20,6 +20,7 @@
 /* simple program to convert a datafile to C code */
 
 #include <stdio.h>
+#include <libgen.h>
 
 #include <vector>
 

@@ -22,6 +22,8 @@
 #include "voxel.h"
 #include "assembly.h"
 #include "gridtype.h"
+#include <cstdlib>
+#include <cstring>
 
 #include <config.h>
 
@@ -1442,7 +1444,7 @@ static unsigned int getInt(const char * s, unsigned int * i) {
 
   char * s2;
 
-  *i = strtol (s, &s2, 10);
+  *i = std::strtol (s, &s2, 10);
 
   if (s2)
     return s2-s;
@@ -1454,7 +1456,7 @@ static unsigned int getLong(const char * s, unsigned long * i) {
 
   char * s2;
 
-  *i = strtol (s, &s2, 10);
+  *i = std::strtol (s, &s2, 10);
 
   if (s2)
     return s2-s;

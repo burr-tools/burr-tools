@@ -256,7 +256,7 @@ void multTranformationsMatrix(void) {
   fclose(out);
 }
 
-int main(int /*argv*/, char* /*args[]*/) {
+int main(int /*argv*/, char** /*args[]*/) {
 
   multTranformationsMatrix();
   outputMinimumSymmetries();

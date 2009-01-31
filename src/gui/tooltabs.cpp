@@ -22,6 +22,7 @@
 #include "../lib/voxel.h"
 #include "WindowWidgets.h"
 #include "guigridtype.h"
+#include <stdlib.h>
 
 #include "FL/fl_ask.H"
 

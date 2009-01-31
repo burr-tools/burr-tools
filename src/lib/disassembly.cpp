@@ -22,6 +22,7 @@
 #include <xmlwrapp/attributes.h>
 
 #include <string.h>
+#include <stdlib.h>
 
 /* template function to get space separated integer values
  * from a string and enter these into an iterator

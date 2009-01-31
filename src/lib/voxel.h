@@ -22,6 +22,7 @@
 #include "symmetries.h"
 #include "gridtype.h"
 #include "types.h"
+#include <stdio.h>
 
 #include <xmlwrapp/node.h>
 

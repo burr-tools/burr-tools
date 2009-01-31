@@ -37,6 +37,8 @@
 
 #include <xmlwrapp/attributes.h>
 
+#include <stdlib.h>
+
 /**
  * load from xml node
  */

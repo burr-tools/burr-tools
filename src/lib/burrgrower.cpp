@@ -25,6 +25,7 @@
 #include "puzzle.h"
 #include "voxel.h"
 #include "gridtype.h"
+#include "stdlib.h"
 
 #include <fstream>
 

@@ -24,6 +24,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 double matrix[NUM_TRANSFORMATIONS_MIRROR][9] = {
 #include "rotmatrix.inc"
@@ -270,7 +271,7 @@ void multTranformationsMatrix(void) {
   fclose(out);
 }
 
-int main(int /*argv*/, char* /*args[]*/) {
+int main(int /*argv*/, char** /*args[]*/) {
 
   multTranformationsMatrix();
   outputMinimumSymmetries();

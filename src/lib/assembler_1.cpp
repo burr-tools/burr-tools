@@ -22,6 +22,7 @@
 #include "voxel.h"
 #include "assembly.h"
 #include "gridtype.h"
+#include <cstdlib>
 
 #include <xmlwrapp/attributes.h>
 
@@ -1823,7 +1824,7 @@ static unsigned int getInt(const char * s, unsigned int * i) {
 
   char * s2;
 
-  *i = strtol (s, &s2, 10);
+  *i = std::strtol (s, &s2, 10);
 
   if (s2)
     return s2-s;

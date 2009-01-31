@@ -26,6 +26,8 @@
 #include "lib/print.h"
 #include "lib/voxel.h"
 
+#include <stdlib.h>
+
 #include <fstream>
 #include <iostream>
 

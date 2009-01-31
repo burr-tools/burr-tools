@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "voxel_0.h"
+#include <stdlib.h>
 
 #include "tabs_0/tablesizes.inc"
 

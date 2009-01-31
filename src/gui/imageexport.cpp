@@ -21,6 +21,7 @@
 #include "view3dgroup.h"
 #include "Layouter.h"
 #include "blocklistgroup.h"
+#include <stdlib.h>
 
 #include "../lib/puzzle.h"
 #include "../lib/problem.h"

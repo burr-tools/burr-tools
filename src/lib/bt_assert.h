@@ -24,6 +24,7 @@
 #define __ASSERT_H__
 
 #include <vector>
+#include <string.h>
 
 class assert_log_c {
 
