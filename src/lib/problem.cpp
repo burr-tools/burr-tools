@@ -219,6 +219,12 @@ problem_c::problem_c(problem_c * orig) :
     shapes.push_back(new shape_c(orig->shapes[i]));
 
   maxHoles = orig->maxHoles;
+
+  // solutions are NOT copied including the fields assm, solve state is set to unsolved
+  // number of solutions and time to find them are unknown...
+
+  // the name is also left intentionally empty because the user will
+  // likely give a new name any way
 }
 
 xml::node problem_c::save(void) const {
@@ -923,7 +929,6 @@ void problem_c::setShapeGroup(unsigned int shapeID, unsigned short group, unsign
 }
 
 unsigned short problem_c::getShapeGroupNumber(unsigned int shapeID) const {
-
   bt_assert(shapeID < shapes.size());
 
   return shapes[shapeID]->groups.size();
@@ -931,12 +936,14 @@ unsigned short problem_c::getShapeGroupNumber(unsigned int shapeID) const {
 
 unsigned short problem_c::getShapeGroup(unsigned int shapeID, unsigned int groupID) const {
   bt_assert(shapeID < shapes.size());
+  bt_assert(groupID < shapes[shapeID]->groups.size());
 
   return shapes[shapeID]->groups[groupID].group;
 }
 
 unsigned short problem_c::getShapeGroupCount(unsigned int shapeID, unsigned int groupID) const {
   bt_assert(shapeID < shapes.size());
+  bt_assert(groupID < shapes[shapeID]->groups.size());
 
   return shapes[shapeID]->groups[groupID].count;
 }

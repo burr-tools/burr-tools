@@ -52,15 +52,9 @@ puzzle_c::~puzzle_c(void) {
   delete gt;
 }
 
-void puzzle_c::addColor(unsigned char r, unsigned char g, unsigned char b) {
-
-  colorDef c;
-
-  c.r = r;
-  c.g = g;
-  c.b = b;
-
-  colors.push_back(c);
+unsigned int puzzle_c::addColor(unsigned char r, unsigned char g, unsigned char b) {
+  colors.push_back(r | (uint32_t)g << 8 | (uint32_t)b << 16);
+  return colors.size()-1;
 }
 
 void puzzle_c::removeColor(unsigned int col) {
@@ -107,18 +101,16 @@ void puzzle_c::changeColor(unsigned int idx, unsigned char r, unsigned char g, u
 
   bt_assert(idx < colors.size());
 
-  colors[idx].r = r;
-  colors[idx].g = g;
-  colors[idx].b = b;
+  colors[idx] = r || (uint32_t)g << 8 | (uint32_t)b << 16;
 }
 
 void puzzle_c::getColor(unsigned int idx, unsigned char * r, unsigned char * g, unsigned char * b) const {
 
   bt_assert(idx < colors.size());
 
-  *r = colors[idx].r;
-  *g = colors[idx].g;
-  *b = colors[idx].b;
+  *r = (colors[idx] >>  0) & 0xFF;
+  *g = (colors[idx] >>  8) & 0xFF;
+  *b = (colors[idx] >> 16) & 0xFF;
 }
 
 xml::node puzzle_c::save(void) const {
@@ -136,13 +128,13 @@ xml::node puzzle_c::save(void) const {
   for (unsigned int i = 0; i < colors.size(); i++) {
     xml::node::iterator it2 = it->insert(xml::node("color"));
 
-    snprintf(tmp, 50, "%i", colors[i].r);
+    snprintf(tmp, 50, "%i", (colors[i] >>  0) & 0xFF);
     it2->get_attributes().insert("red", tmp);
 
-    snprintf(tmp, 50, "%i", colors[i].g);
+    snprintf(tmp, 50, "%i", (colors[i] >>  8) & 0xFF);
     it2->get_attributes().insert("green", tmp);
 
-    snprintf(tmp, 50, "%i", colors[i].b);
+    snprintf(tmp, 50, "%i", (colors[i] >> 16) & 0xFF);
     it2->get_attributes().insert("blue", tmp);
   }
 
@@ -203,13 +195,11 @@ puzzle_c::puzzle_c(const xml::node & node) {
         if (i->get_attributes().find("blue") == i->get_attributes().end())
           throw load_error("color nodes must have a 'blue' attribute", *i);
 
-        colorDef c;
 
-        c.r = atoi(i->get_attributes().find("red")->get_value());
-        c.g = atoi(i->get_attributes().find("green")->get_value());
-        c.b = atoi(i->get_attributes().find("blue")->get_value());
-
-        colors.push_back(c);
+        colors.push_back(
+            ((uint32_t)atoi(i->get_attributes().find(  "red")->get_value()) & 0xFF <<  0) ||
+            ((uint32_t)atoi(i->get_attributes().find("green")->get_value()) & 0xFF <<  8) ||
+            ((uint32_t)atoi(i->get_attributes().find( "blue")->get_value()) & 0xFF << 16));
       }
     }
   }
@@ -242,7 +232,7 @@ unsigned int puzzle_c::addShape(voxel_c * p) {
 }
 
 /* add empty shape of given size */
-unsigned int puzzle_c::addShape(int sx, int sy, int sz) {
+unsigned int puzzle_c::addShape(unsigned int sx, unsigned int sy, unsigned int sz) {
   shapes.push_back(gt->getVoxel(sx, sy, sz, voxel_c::VX_EMPTY, voxel_c::VX_EMPTY));
   return shapes.size()-1;
 }
@@ -251,9 +241,9 @@ unsigned int puzzle_c::addShape(int sx, int sy, int sz) {
  * be careful this changes all ids and so all problems must be updated
  */
 void puzzle_c::removeShape(unsigned int idx) {
-  std::vector<voxel_c*>::iterator i(shapes.begin()+idx);
-  delete *i;
-  shapes.erase(i);
+  bt_assert(idx < shapes.size());
+  delete shapes[idx];
+  shapes.erase(shapes.begin()+idx);
 
   /* now remove the shapes from the problem shape list, if that is the one that got deleted */
   for (unsigned int i = 0; i < problems.size(); i++)
@@ -282,9 +272,9 @@ unsigned int puzzle_c::addProblem(void) {
 
 /* remove one problem */
 void puzzle_c::removeProblem(unsigned int idx) {
-  std::vector<problem_c*>::iterator i(problems.begin() + idx);
-  delete *i;
-  problems.erase(i);
+  bt_assert(idx < problems.size());
+  delete problems[idx];
+  problems.erase(problems.begin()+idx);
 }
 
 unsigned int puzzle_c::copyProblem(unsigned int prob) {
