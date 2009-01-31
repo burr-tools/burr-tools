@@ -124,7 +124,7 @@ protected:
 
   /**
    * this is the hot spot of the voxel.
-   * when a piece is places somewhere it is always done relative to this
+   * when a piece is placed somewhere it is always done relative to this
    * point. This is necessary to be able to rotate assemblies.
    * just place the hotspot somewhere inside the voxelspace and it will
    * be possible to rotate a voxel space and place it at the same position without
