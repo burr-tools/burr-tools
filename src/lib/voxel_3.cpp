@@ -268,7 +268,7 @@ void voxel_3_c::scale(unsigned int amount) {
   unsigned int nsy = ((sy+4)/5)*amount*5;
   unsigned int nsz = ((sz+4)/5)*amount*5;
   voxel_type * s2 = new voxel_type[nsx*nsy*nsz];
-  memset(s2, outside, nsx*nsy*nsz);
+  memset(s2, VX_EMPTY, nsx*nsy*nsz);
 
   // we scale each 5x5x5 block
 

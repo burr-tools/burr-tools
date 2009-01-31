@@ -29,7 +29,7 @@
 // initialisation
 #define BBHSCACHE_UNINIT -30000  // the value tha signifies uninitialized values
 
-voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * g, voxel_type init, voxel_type outs) : gt(g), sx(x), sy(y), sz(z), voxels(x*y*z), outside(outs), hx(0), hy(0), hz(0), weight(1) {
+voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * g, voxel_type init) : gt(g), sx(x), sy(y), sz(z), voxels(x*y*z), hx(0), hy(0), hz(0), weight(1) {
 
   space = new voxel_type[voxels];
   bt_assert(space);
@@ -71,8 +71,6 @@ voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz), weight(orig.weight) 
   bz1 = orig.bz1;
   bz2 = orig.bz2;
 
-  outside = orig.outside;
-
   doRecalc = true;
 
   symmetries = symmetryInvalid();
@@ -94,8 +92,6 @@ voxels(orig->voxels), hx(orig->hx), hy(orig->hy), hz(orig->hz), weight(orig->wei
   by2 = orig->by2;
   bz1 = orig->bz1;
   bz2 = orig->bz2;
-
-  outside = orig->outside;
 
   doRecalc = true;
 
@@ -369,7 +365,7 @@ void voxel_c::unionFind(int * tree, char type, bool inverse, voxel_type value, b
   for (unsigned int i = 0; i < voxels+1; i++)
     tree[i] = -1;
 
-  bool merge_outside = ((inverse && (value != outside)) || (!inverse && (value == outside)));
+  bool merge_outside = ((inverse && (value != 0)) || (!inverse && (value == 0)));
 
   /* merge all neighbouring voxels */
   for (unsigned int x = 0; x < sx; x++)
@@ -432,7 +428,7 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ
 
   int root = -1;
 
-  bool merge_outside = ((inverse && (value != outside)) || (!inverse && (value == outside)));
+  bool merge_outside = ((inverse && (value != 0)) || (!inverse && (value == 0)));
 
   /* finally check, if all voxels are in the same set */
   { for (unsigned int x = 0; x < sx; x++)
@@ -782,7 +778,6 @@ voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), h
       throw load_error("not enough voxels defined in voxelspace", node);
   }
 
-  setOutside(VX_EMPTY);
   skipRecalcBoundingBox(false);
 
   symmetries = symmetryInvalid();

@@ -233,7 +233,7 @@ unsigned int puzzle_c::addShape(voxel_c * p) {
 
 /* add empty shape of given size */
 unsigned int puzzle_c::addShape(unsigned int sx, unsigned int sy, unsigned int sz) {
-  shapes.push_back(gt->getVoxel(sx, sy, sz, voxel_c::VX_EMPTY, voxel_c::VX_EMPTY));
+  shapes.push_back(gt->getVoxel(sx, sy, sz, voxel_c::VX_EMPTY));
   return shapes.size()-1;
 }
 

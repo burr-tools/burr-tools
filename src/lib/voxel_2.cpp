@@ -148,7 +148,7 @@ bool voxel_2_c::transform(unsigned int nr) {
   int voxelsn = nsx*nsy*nsz;
 
   voxel_type *s = new voxel_type[voxelsn];
-  memset(s, outside, voxelsn);
+  memset(s, VX_EMPTY, voxelsn);
 
   index = 0;
   for (unsigned int z = 0; z < sz; z++)

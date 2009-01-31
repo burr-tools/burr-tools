@@ -164,12 +164,12 @@ movementCache_c * gridType_c::getMovementCache(const problem_c * puz) const {
 }
 
 /* voxel spaces have different implementations for rotation, and mirror functions */
-voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const {
+voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init) const {
   switch (type) {
-    case GT_BRICKS:           return new voxel_0_c(x, y, z, this, init, outs);
-    case GT_TRIANGULAR_PRISM: return new voxel_1_c(x, y, z, this, init, outs);
-    case GT_SPHERES:          return new voxel_2_c(x, y, z, this, init, outs);
-    case GT_RHOMBIC:          return new voxel_3_c(x, y, z, this, init, outs);
+    case GT_BRICKS:           return new voxel_0_c(x, y, z, this, init);
+    case GT_TRIANGULAR_PRISM: return new voxel_1_c(x, y, z, this, init);
+    case GT_SPHERES:          return new voxel_2_c(x, y, z, this, init);
+    case GT_RHOMBIC:          return new voxel_3_c(x, y, z, this, init);
     default: return 0;
   }
 }

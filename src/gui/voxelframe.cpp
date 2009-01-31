@@ -605,7 +605,7 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
       }
 
     /* at the end add an empty voxel space that might be used for intersections */
-    num = addSpace(puz->getGridType()->getVoxel(1, 1, 1, voxel_c::VX_EMPTY, voxel_c::VX_EMPTY));
+    num = addSpace(puz->getGridType()->getVoxel(1, 1, 1, voxel_c::VX_EMPTY));
     setSpacePosition(num, 0, 0, 0, 1);
     setSpaceColor(num, 1, 0, 0, 1);   // bright red
     setDrawingMode(num, invisible);

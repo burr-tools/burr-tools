@@ -103,11 +103,6 @@ protected:
   voxel_type * space;
 
   /**
-   * the value get2 should return for values outside of the space
-   */
-  voxel_type outside;
-
-  /**
    * the voxel space has a bounding box, that encloses a region inside
    */
   unsigned int bx1, bx2;
@@ -223,7 +218,7 @@ public:
    * Creates a new voxel space. Its of given size and
    * initializes all values to init.
    */
-  voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0, voxel_type outs = VX_EMPTY);
+  voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0);
 
   /**
    * load from xml node
@@ -308,16 +303,6 @@ public:
   }
 
   /**
-   * sets the value of the outside.
-   * Outside is returned whenever a get2 is used with a coordinate outside the voxel space
-   */
-  void setOutside(voxel_type val) {
-    outside = val;
-    recalcBoundingBox();
-    symmetries = symmetryInvalid();
-  }
-
-  /**
    * same as get but returns the outside value for each voxel outside
    * the space
    */
@@ -325,7 +310,7 @@ public:
     if ((x>=0)&&(y>=0)&&(z>=0)&&((long)x<(long)sx)&&((long)y<(long)sy)&&((long)z<(long)sz))
       return space[getIndex(x, y, z)];
     else
-      return outside;
+      return VX_EMPTY;
   }
 
   /**

@@ -133,7 +133,7 @@ bool voxel_1_c::transform(unsigned int nr) {
   int voxelsn = nsx*nsy*nsz;
 
   voxel_type *s = new voxel_type[voxelsn];
-  memset(s, outside, voxelsn);
+  memset(s, VX_EMPTY, voxelsn);
 
   index = 0;
   for (unsigned int z = 0; z < sz; z++)
@@ -312,7 +312,7 @@ void voxel_1_c::scale(unsigned int amount) {
   unsigned int nsy = sy*amount;
   unsigned int nsz = sz*amount;
   voxel_type * s2 = new voxel_type[nsx*nsy*nsz];
-  memset(s2, outside, nsx*nsy*nsz);
+  memset(s2, VX_EMPTY, nsx*nsy*nsz);
 
   for (unsigned int x = 0; x < sx; x++)
     for (unsigned int y = 0; y < sy; y++)

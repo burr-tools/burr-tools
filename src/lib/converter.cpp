@@ -37,7 +37,7 @@ void doConvert(puzzle_c * p, gridType_c::gridType type) {
     const voxel_c * v = p->getShape(i);
 
     // this is now conversion specific....
-    voxel_c * vn = gt->getVoxel(v->getX()*5, v->getY()*5, v->getZ()*5, 0, 0);
+    voxel_c * vn = gt->getVoxel(v->getX()*5, v->getY()*5, v->getZ()*5, voxel_c::VX_EMPTY);
 
     for (unsigned int x = 0; x < v->getX(); x++)
       for (unsigned int y = 0; y < v->getY(); y++)

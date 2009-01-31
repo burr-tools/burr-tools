@@ -108,7 +108,7 @@ class gridType_c {
     movementCache_c * getMovementCache(const problem_c * puz) const;
 
     /* voxel spaces have different implementations for rotation, and mirror functions */
-    voxel_c * getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const;
+    voxel_c * getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init) const;
     voxel_c * getVoxel(const xml::node & node) const;
     voxel_c * getVoxel(const voxel_c & orig) const;
     voxel_c * getVoxel(const voxel_c * orig) const;
