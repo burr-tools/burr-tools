@@ -14,6 +14,7 @@ dist_doc_DATA = examples/README examples/AlPackino.xmpuzzle examples/DraculasDen
                 examples/PiecesOfEight.xmpuzzle \
                 burricons.ico \
                 AUTHORS COPYING README NEWS ChangeLog \
+                doxygen.cfg \
                 src/lib/tabs_0/generator_0.cpp \
                 src/lib/tabs_1/generator_1.cpp \
                 src/lib/tabs_2/generator_2.cpp
