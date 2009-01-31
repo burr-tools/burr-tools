@@ -121,8 +121,7 @@ public:
 
   /**
    * functions to add shapes to the puzzle
-   * - add a shape, the voxel space is taken over, be sure the space has the right
-   *   grid type there can be no check for that. The space is taken over, and freed
+   * - add a shape, the voxel space is taken over. The space is taken over, and freed
    *   when the puzzle is destroyed
    * - the 2nd function adds empty shape of given size
    * all functions return the index of the added shape
@@ -141,13 +140,15 @@ public:
   const voxel_c * getShape(unsigned int idx) const { bt_assert(idx < shapes.size()); return shapes[idx]; }
   voxel_c * getShape(unsigned int idx) { bt_assert(idx < shapes.size()); return shapes[idx]; }
 
-  /* remove the num-th shape
+  /**
+   * remove the num-th shape.
    * be careful this changes all ids and so all problems must be updated
+   * changing them, removing solutions, result shapes or pieces in problems...
    */
   void removeShape(unsigned int);
 
   /**
-   *  exchange 2 shapes in the list of shapes
+   *  exchange 2 shapes in the list of shapes.
    *  this function takes care to update all the problems and solutions
    *  because they only index into the shape list and exchangin shapes requires
    *  updating tose indices
@@ -205,3 +206,4 @@ public:
 };
 
 #endif
+
