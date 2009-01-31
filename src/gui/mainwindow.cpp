@@ -3451,7 +3451,7 @@ void mainWindow_c::CreateSolveTab(void) {
     SolutionAnim = new LFl_Value_Slider(0, 5, 3, 1);
     SolutionAnim->tooltip(" Animate the disassembly ");
     SolutionAnim->type(1);
-    SolutionAnim->step(0.1);
+    SolutionAnim->step(0.02);
     SolutionAnim->callback(cb_SolutionAnim_stub, this);
     SolutionAnim->align(FL_ALIGN_TOP_LEFT);
 
