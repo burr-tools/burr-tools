@@ -17,6 +17,7 @@
  */
 
 #include "lib/puzzle.h"
+#include "lib/problem.h"
 #include "lib/assembler.h"
 #include "lib/assembly.h"
 #include "lib/disassembler.h"
@@ -47,10 +48,9 @@ public:
   int Assemblies;
   int Solutions;
   int pn;
-  puzzle_c * puzzle;
-  int prob;
+  problem_c * puzzle;
 
-  asm_cb(puzzle_c * p, int pr) : Assemblies(0), Solutions(0), pn(p->probPieceNumber(pr)), puzzle(p), prob(pr) {}
+  asm_cb(problem_c * p) : Assemblies(0), Solutions(0), pn(p->pieceNumber()), puzzle(p) {}
 
   bool assembly(assembly_c * a) {
 
@@ -65,7 +65,7 @@ public:
         Solutions++;
 
         if (printSolutions)
-          print(a, puzzle, prob);
+          print(a, puzzle);
 
         if (!quiet || allProblems)
 	  {
@@ -75,12 +75,12 @@ public:
 	  }
 
         if (printDisassemble)
-          print(da, a, puzzle, prob);
+          print(da, a, puzzle);
         delete da;
       }
 
     } else if (printSolutions)
-      print(a, puzzle, prob);
+      print(a, puzzle);
 
     delete a;
 
@@ -259,11 +259,13 @@ int main(int argv, char* args[]) {
 
 
 
-    for (problem = firstProblem ; problem < lastProblem ; problem++) {
+    for (unsigned int pr = firstProblem ; pr < lastProblem ; pr++) {
 
-      assembler_c *assm = p.getGridType()->findAssembler(&p, problem);
+      problem_c * problem = p.getProblem(pr);
 
-      switch (assm->createMatrix(&p, problem, false, false)) {
+      assembler_c *assm = p.getGridType()->findAssembler(problem);
+
+      switch (assm->createMatrix(problem, false, false)) {
       case assembler_c::ERR_TOO_MANY_UNITS:
         printf("%i units too many for the result shape\n", assm->getErrorsParam());
         return 0;
@@ -298,11 +300,11 @@ int main(int argv, char* args[]) {
       }
 
       if (allProblems)
-	cout << "problem: " << p.probGetName(problem) << endl;
+	cout << "problem: " << problem->getName() << endl;
 
-      asm_cb a(&p, problem);
+      asm_cb a(problem);
 
-      d = new disassembler_0_c(&p, problem);
+      d = new disassembler_0_c(problem);
 
       assm->assemble(&a);
 
@@ -318,25 +320,27 @@ int main(int argv, char* args[]) {
     }
   } else {
 
-    for (problem = firstProblem ; problem < lastProblem; problem ++) {
+    for (unsigned int pr = firstProblem ; pr < lastProblem; pr ++) {
 
-      d = new disassembler_0_c(&p, problem);
+      problem_c * problem = p.getProblem(pr);
 
-      for (unsigned int sol = 0; sol < p.probSolutionNumber(problem); sol++) {
+      d = new disassembler_0_c(problem);
 
-	if (p.probGetAssembly(problem, sol)) {
+      for (unsigned int sol = 0; sol < problem->solutionNumber(); sol++) {
 
-	  separation_c * da = d->disassemble(p.probGetAssembly(problem, sol));
+	if (problem->getAssembly(sol)) {
+
+	  separation_c * da = d->disassemble(problem->getAssembly(sol));
 
 	  if (da) {
 	    if (printSolutions)
-	      print(p.probGetAssembly(problem, sol), &p, problem);
+	      print(problem->getAssembly(sol), problem);
 
 	    if (!quiet)
 	      printf("level: %i\n", da->getMoves());
 
 	    if (printDisassemble)
-	      print(da, p.probGetAssembly(problem, sol), &p, problem);
+	      print(da, problem->getAssembly(sol),problem);
 	    delete da;
 	  }
 	}

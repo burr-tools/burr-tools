@@ -18,32 +18,32 @@
 #include "disassembler_a.h"
 
 #include "bt_assert.h"
-#include "puzzle.h"
+#include "problem.h"
 #include "grouping.h"
 #include "disassemblernode.h"
 #include "movementanalysator.h"
 #include "assembly.h"
 #include "disassembly.h"
 
-disassembler_a_c::disassembler_a_c(const puzzle_c * puz, unsigned int prob) :
-  disassembler_c(), puzzle(puz), problem(prob) {
+disassembler_a_c::disassembler_a_c(const problem_c * puz) :
+  disassembler_c(), puzzle(puz) {
 
   /* initialize the grouping class */
   groups = new grouping_c();
-  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++)
-    for (unsigned int j = 0; j < puz->probGetShapeGroupNumber(prob, i); j++)
-      groups->addPieces(puz->probGetShape(prob, i),
-                        puz->probGetShapeGroup(prob, i, j),
-                        puz->probGetShapeGroupCount(prob, i, j));
+  for (unsigned int i = 0; i < puz->shapeNumber(); i++)
+    for (unsigned int j = 0; j < puz->getShapeGroupNumber(i); j++)
+      groups->addPieces(puz->getShape(i),
+                        puz->getShapeGroup(i, j),
+                        puz->getShapeGroupCount(i, j));
 
   /* initialize piece 2 shape transformation */
-  piece2shape = new unsigned short[puz->probPieceNumber(prob)];
+  piece2shape = new unsigned short[puz->pieceNumber()];
   int p = 0;
-  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++)
-    for (unsigned int j = 0; j < puz->probGetShapeMax(prob, i); j++)
+  for (unsigned int i = 0; i < puz->shapeNumber(); i++)
+    for (unsigned int j = 0; j < puz->getShapeMax(i); j++)
       piece2shape[p++] = i;
 
-  analyse = new movementAnalysator_c(puzzle, prob);
+  analyse = new movementAnalysator_c(puzzle);
 }
 
 disassembler_a_c::~disassembler_a_c() {
@@ -195,11 +195,11 @@ unsigned short disassembler_a_c::subProbGroup(const disassemblerNode_c * st, con
 
   for (unsigned int i = 0; i < pn.size(); i++)
     if (st->is_piece_removed(i) == cond)
-      if (puzzle->probGetShapeGroupNumber(problem, piece2shape[pn[i]]) != 1)
+      if (puzzle->getShapeGroupNumber(piece2shape[pn[i]]) != 1)
         return 0;
       else if (group == 0)
-        group = puzzle->probGetShapeGroup(problem, piece2shape[pn[i]], 0);
-      else if (group != puzzle->probGetShapeGroup(problem, piece2shape[pn[i]], 0))
+        group = puzzle->getShapeGroup(piece2shape[pn[i]], 0);
+      else if (group != puzzle->getShapeGroup(piece2shape[pn[i]], 0))
         return 0;
 
   return group;
@@ -218,7 +218,7 @@ bool disassembler_a_c::subProbGrouping(const std::vector<unsigned int> & pn) {
 
 void disassembler_a_c::prepareForAssembly(const assembly_c * assm) {
 
-  bt_assert(puzzle->probPieceNumber(problem) == assm->placementCount());
+  bt_assert(puzzle->pieceNumber() == assm->placementCount());
   analyse->prepareAssembly(assm);
   groups->reSet();
 }

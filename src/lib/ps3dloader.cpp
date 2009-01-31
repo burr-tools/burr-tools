@@ -19,6 +19,7 @@
 
 #include "voxel.h"
 #include "puzzle.h"
+#include "problem.h"
 #include "gridtype.h"
 
 #include <fstream>
@@ -29,8 +30,9 @@ puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
 
   puzzle_c * p = new puzzle_c(new gridType_c());
 
-  p->addProblem();
-  p->probSetName(0, "Problem");
+  problem_c * pr = p->getProblem(p->addProblem());
+
+  pr->setName("Problem");
 
   std::string line;
 
@@ -69,9 +71,9 @@ puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
         piece = p->addShape(sx, sy, sz);
 
         if (state == 2)
-          p->probSetResult(0, piece);
+          pr->setResult(piece);
         else
-          p->probAddShape(0, piece, 1);
+          pr->addShape(piece, 1);
 
         linenum = 0;
       }
@@ -102,15 +104,15 @@ puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
   }
 
   // find mark and remove dublicate shapes from problem
-  unsigned s = p->probShapeNumber(0);
+  unsigned s = pr->shapeNumber();
 
   for (unsigned int s1 = 0; s1 < s-1; s1++)
     for (unsigned int s2 = s1+1; s2 < s; s2++)
-      if (p->probGetShapeShape(0, s1)->identicalWithRots(p->probGetShapeShape(0, s2), false, false)) {
-        p->probSetShapeMax(0, s1, p->probGetShapeMax(0, s1) + p->probGetShapeMax(0, s2));
-        p->probSetShapeMin(0, s1, p->probGetShapeMin(0, s1) + p->probGetShapeMin(0, s2));
-        p->probGetShapeShape(0, s2)->setName("Duplicate");
-        p->probRemoveShape(0, s2);
+      if (pr->getShapeShape(s1)->identicalWithRots(pr->getShapeShape(s2), false, false)) {
+        pr->setShapeMax(s1, pr->getShapeMax(s1) + pr->getShapeMax(s2));
+        pr->setShapeMin(s1, pr->getShapeMin(s1) + pr->getShapeMin(s2));
+        pr->getShapeShape(s2)->setName("Duplicate");
+        pr->removeShape(s2);
         s2--;
         s--;
       }

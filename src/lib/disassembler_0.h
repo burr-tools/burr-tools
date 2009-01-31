@@ -20,7 +20,6 @@
 
 #include "disassembler_a.h"
 
-class puzzle_c;
 class separation_c;
 
 class disassemblerNode_c;
@@ -52,7 +51,7 @@ public:
    * changed, once you done that but you can analyse many assemblies for
    * disassembability
    */
-  disassembler_0_c(const puzzle_c * puz, unsigned int prob) : disassembler_a_c(puz, prob) { }
+  disassembler_0_c(const problem_c * puz) : disassembler_a_c(puz) { }
 
   ~disassembler_0_c() { }
 };

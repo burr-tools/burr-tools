@@ -28,7 +28,7 @@ class movementCache_0_c : public movementCache_c {
 
   public:
 
-    movementCache_0_c(const puzzle_c * puz, unsigned int problem) : movementCache_c(puz, problem, 3) {}
+    movementCache_0_c(const problem_c * puz) : movementCache_c(puz, 3) {}
 
   private:
 

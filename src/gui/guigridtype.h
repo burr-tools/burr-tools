@@ -24,6 +24,7 @@ class gridEditor_c;
 class voxelDrawer_c;
 class gridTypeGui_c;
 class ToolTab;
+class puzzle_c;
 
 class guiGridType_c {
 

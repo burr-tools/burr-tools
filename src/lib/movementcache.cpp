@@ -18,7 +18,7 @@
 #include "movementcache.h"
 
 #include "voxel.h"
-#include "puzzle.h"
+#include "problem.h"
 
 /* the hash function. I don't know how well it performs, but it seems to be okay */
 static unsigned int hashValue(unsigned int s1, unsigned int s2, int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int tableSize) {
@@ -78,7 +78,7 @@ void movementCache_c::rehash(void) {
   hash = newHash;
 }
 
-movementCache_c::movementCache_c(const puzzle_c * puzzle, unsigned int problem, unsigned int dirs) : gt(puzzle->getGridType()), directions(dirs) {
+movementCache_c::movementCache_c(const problem_c * puzzle, unsigned int dirs) : gt(puzzle->getGridType()), directions(dirs) {
 
   /* initial table */
   tableSize = 101;
@@ -91,7 +91,7 @@ movementCache_c::movementCache_c(const puzzle_c * puzzle, unsigned int problem, 
    * puzzle problem. The shape with transformation 0 is just
    * a pointer into the puzzle, so don't delete them later on
    */
-  num_shapes = puzzle->probShapeNumber(problem);
+  num_shapes = puzzle->shapeNumber();
 
   num_transformations = puzzle->getGridType()->getSymmetries()->getNumTransformations();
 
@@ -99,16 +99,16 @@ movementCache_c::movementCache_c(const puzzle_c * puzzle, unsigned int problem, 
   for (unsigned int s = 0; s < num_shapes; s++) {
     shapes[s] = new const voxel_c * [num_transformations];
     memset(shapes[s], 0, num_transformations * sizeof(voxel_c*));
-    shapes[s][0] = puzzle->probGetShapeShape(problem, s);
+    shapes[s][0] = puzzle->getShapeShape(s);
   }
 
   /* initialize the piece array */
-  pieces = new unsigned int [puzzle->probPieceNumber(problem)];
+  pieces = new unsigned int [puzzle->pieceNumber()];
 
   int pos = 0;
 
-  for (unsigned int s = 0; s < puzzle->probShapeNumber(problem); s++)
-    for (unsigned int i = 0; i < puzzle->probGetShapeMax(problem, s); i++)
+  for (unsigned int s = 0; s < puzzle->shapeNumber(); s++)
+    for (unsigned int i = 0; i < puzzle->getShapeMax(s); i++)
       pieces[pos++] = s;
 
 #ifdef MV_CACHE_DEBUG

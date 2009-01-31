@@ -23,6 +23,7 @@
 #include "blocklistgroup.h"
 
 #include "../lib/puzzle.h"
+#include "../lib/problem.h"
 #include "../lib/disassembly.h"
 #include "../lib/disasmtomoves.h"
 
@@ -125,7 +126,7 @@ void ImageInfo::setupContent(void) {
 
       break;
     case SHOW_ASSEMBLY:
-      vv->showAssembly(puzzle, problem, solution);
+      vv->showAssembly(puzzle->getProblem(problem), solution);
       vv->showColors(puzzle, showColors);
 
       if (positions) {
@@ -411,14 +412,16 @@ void imageExport_c::cb_Export(void) {
 
   } else if (ExpSolutionDisassm->value()) {
 
-    // generate an image for each step (for the moment only for the last solution)
-    unsigned int s = puzzle->probSolutionNumber(ProblemSelect->getSelection()) - 1;
-    separation_c * t = puzzle->probGetDisassembly(ProblemSelect->getSelection(), s);
     unsigned int prob = ProblemSelect->getSelection();
+    problem_c * pr = puzzle->getProblem(prob);
+
+    // generate an image for each step (for the moment only for the last solution)
+    unsigned int s = pr->solutionNumber() - 1;
+    separation_c * t = pr->getDisassembly(s);
     if (!t) return;
 
     for (unsigned int step = 0; step < t->sumMoves(); step++) {
-      disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, puzzle->probPieceNumber(ProblemSelect->getSelection()));
+      disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, pr->pieceNumber());
       dtm->setStep(step, false, true);
       images.push_back(new ImageInfo(puzzle, getColorMode(),
            prob, s, view3D->getView(), dtm, DimStatic->value()));
@@ -426,20 +429,22 @@ void imageExport_c::cb_Export(void) {
 
   } else if (ExpSolution->value()) {
 
-    // generate an image for each step (for the moment only for the last solution)
-    unsigned int s = puzzle->probSolutionNumber(ProblemSelect->getSelection()) - 1;
-    separation_c * t = puzzle->probGetDisassembly(ProblemSelect->getSelection(), s);
     unsigned int prob = ProblemSelect->getSelection();
+    problem_c * pr = puzzle->getProblem(prob);
+
+    // generate an image for each step (for the moment only for the last solution)
+    unsigned int s = pr->solutionNumber() - 1;
+    separation_c * t = pr->getDisassembly(s);
     if (!t) return;
 
     for (unsigned int step = t->sumMoves() - 1; step > 0; step--) {
-      disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, puzzle->probPieceNumber(ProblemSelect->getSelection()));
+      disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, pr->pieceNumber());
       dtm->setStep(step, false, true);
       images.push_back(new ImageInfo(puzzle, getColorMode(),
            prob, s, view3D->getView(), dtm, DimStatic->value()));
     }
 
-    disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, puzzle->probPieceNumber(ProblemSelect->getSelection()));
+    disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, pr->pieceNumber());
     dtm->setStep(0, false, true);
     images.push_back(new ImageInfo(puzzle, getColorMode(),
           prob, s, view3D->getView(), dtm, false));
@@ -447,13 +452,14 @@ void imageExport_c::cb_Export(void) {
   } else if (ExpProblem->value()) {
     // generate an image for each piece in the problem
     unsigned int prob = ProblemSelect->getSelection();
+    problem_c * pr = puzzle->getProblem(prob);
 
     images.push_back(new ImageInfo(puzzle, getColorMode(),
-          puzzle->probGetResult(prob), view3D->getView()));
+          pr->getResult(), view3D->getView()));
 
-    for (unsigned int p = 0; p < puzzle->probShapeNumber(prob); p++)
+    for (unsigned int p = 0; p < pr->shapeNumber(); p++)
       images.push_back(new ImageInfo(puzzle, getColorMode(),
-            puzzle->probGetShape(prob, p), view3D->getView()));
+            pr->getShape(p), view3D->getView()));
 
   } else
 
@@ -475,11 +481,12 @@ void imageExport_c::cb_Update3DView(void) {
   bool solutions = false;
 
   unsigned int prob = ProblemSelect->getSelection();
+  problem_c * pr = puzzle->getProblem(prob);
 
   if (prob < puzzle->problemNumber())
-    if (puzzle->probSolutionNumber(prob) > 0) {
-      if (puzzle->probGetAssembly(prob, 0)) assemblies = true;
-      if (puzzle->probGetDisassembly(prob, 0)) solutions = true;
+    if (pr->solutionNumber() > 0) {
+      if (pr->getAssembly(0)) assemblies = true;
+      if (pr->getDisassembly(0)) solutions = true;
     }
 
   if (!solutions) {
@@ -514,13 +521,13 @@ void imageExport_c::cb_Update3DView(void) {
   if (ExpShape->value()) {
     view3D->showSingleShape(puzzle, ShapeSelect->getSelection());
   } else if (ExpAssembly->value()) {
-    view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
+    view3D->showAssembly(puzzle->getProblem(ProblemSelect->getSelection()), 0);
   } else if (ExpSolution->value()) {
-    view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
+    view3D->showAssembly(puzzle->getProblem(ProblemSelect->getSelection()), 0);
   } else if (ExpSolutionDisassm->value()) {
-    view3D->showAssembly(puzzle, ProblemSelect->getSelection(), 0);
+    view3D->showAssembly(puzzle->getProblem(ProblemSelect->getSelection()), 0);
   } else if (ExpProblem->value()) {
-    view3D->showSingleShape(puzzle, puzzle->probGetResult(ProblemSelect->getSelection()));
+    view3D->showSingleShape(puzzle, pr->getResult());
   }
   view3D->showColors(puzzle, getColorMode());
 }

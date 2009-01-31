@@ -24,7 +24,7 @@
 #include <vector>
 
 class grouping_c;
-class puzzle_c;
+class problem_c;
 class disassemblerNode_c;
 class assembly_c;
 
@@ -41,8 +41,7 @@ class disassembler_a_c : public disassembler_c {
     /* here we can group pieces together */
     grouping_c * groups;
 
-    const puzzle_c * puzzle;
-    unsigned int problem;
+    const problem_c * puzzle;
 
     /* this array is used to convert piece number to the corresponding
      * shape number, as these are needed for the grouping functions
@@ -80,7 +79,7 @@ class disassembler_a_c : public disassembler_c {
      * changed, once you done that but you can analyse many assemblies for
      * disassembability
      */
-    disassembler_a_c(const puzzle_c *puz, unsigned int problem);
+    disassembler_a_c(const problem_c *puz);
     ~disassembler_a_c(void);
 
     /* because we can only have or don't have a disassembly sequence

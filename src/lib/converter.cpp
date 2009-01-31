@@ -1,6 +1,7 @@
 #include "converter.h"
 
 #include "puzzle.h"
+#include "problem.h"
 #include "voxel.h"
 
 bool canConvert(const puzzle_c * p, gridType_c::gridType type) {
@@ -26,7 +27,7 @@ void doConvert(puzzle_c * p, gridType_c::gridType type) {
 
   // first remove all solutions, as they will no longer be valid
   for (unsigned int pr = 0; pr < p->problemNumber(); pr++)
-    p->probRemoveAllSolutions(pr);
+    p->getProblem(pr)->removeAllSolutions();
 
   std::vector<voxel_c*> cvoxels;
 

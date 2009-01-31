@@ -17,6 +17,8 @@
  */
 #include "burrgrower.h"
 
+#if 0
+
 #include "disassembler_0.h"
 #include "disassembly.h"
 #include "assembler_0.h"
@@ -338,3 +340,5 @@ void burrGrower_c::addToLists(puzzleSol_c * pz) {
     printf("\n");
   }
 }
+
+#endif

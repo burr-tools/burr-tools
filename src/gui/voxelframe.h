@@ -27,6 +27,7 @@
 
 class voxel_c;
 class puzzle_c;
+class problem_c;
 class assembly_c;
 class piecePositions_c;
 class voxelDrawer_c;
@@ -109,14 +110,14 @@ class voxelFrame_c : public Fl_Gl_Window {
     void showNothing(void);
     void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
     void showColors(const puzzle_c * puz, colorMode mode);
-    void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum);
+    void showAssembly(const problem_c * puz, unsigned int solNum);
     void updatePositions(piecePositions_c *shifting);
     void updatePositionsOverlap(piecePositions_c *shifting);
     void dimStaticPieces(piecePositions_c *shifting);
-    void showAssemblerState(const puzzle_c * puz, unsigned int probNum, const assembly_c * assm);
+    void showAssemblerState(const problem_c * puz, const assembly_c * assm);
     void updateVisibility(PieceVisibility * pcvis);
-    void showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape);
-    void showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z);
+    void showProblem(const problem_c * puz, unsigned int selShape);
+    void showPlacement(const problem_c * puz, unsigned int piece, unsigned char trans, int x, int y, int z);
 
     // this value determines the scaling factor used to draw the cube.
     void setSize(double sz);

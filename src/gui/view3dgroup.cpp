@@ -74,22 +74,22 @@ void LView3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) 
   View3D->showSingleShape(puz, shapeNum);
 }
 
-void LView3dGroup::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape) {
+void LView3dGroup::showProblem(const problem_c * puz, unsigned int selShape) {
 
-  View3D->showProblem(puz, probNum, selShape);
+  View3D->showProblem(puz, selShape);
 }
 
 void LView3dGroup::showColors(const puzzle_c * puz, voxelFrame_c::colorMode mode) {
   View3D->showColors(puz, mode);
 }
 
-void LView3dGroup::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
-  View3D->showAssembly(puz, probNum, solNum);
+void LView3dGroup::showAssembly(const problem_c * puz, unsigned int solNum) {
+  View3D->showAssembly(puz, solNum);
 }
 
-void LView3dGroup::showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z) {
+void LView3dGroup::showPlacement(const problem_c * puz, unsigned int piece, unsigned char trans, int x, int y, int z) {
 
-  View3D->showPlacement(puz, probNum, piece, trans, x, y, z);
+  View3D->showPlacement(puz, piece, trans, x, y, z);
 }
 
 void LView3dGroup::updatePositions(piecePositions_c *shifting) {

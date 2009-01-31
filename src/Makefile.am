@@ -51,6 +51,7 @@ lib_libburr_a_SOURCES=\
     lib/piecegenerator.cpp \
     lib/print.cpp \
     lib/ps3dloader.cpp \
+    lib/problem.cpp \
     lib/puzzle.cpp \
     lib/stl.cpp \
     lib/stl_0.cpp \
@@ -101,6 +102,7 @@ lib_libburr_a_SOURCES=\
     lib/piecegenerator.h \
     lib/print.h \
     lib/ps3dloader.h\
+    lib/problem.h \
     lib/puzzle.h \
     lib/stl.h \
     lib/stl_0.h \

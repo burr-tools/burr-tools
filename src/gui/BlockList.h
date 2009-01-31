@@ -23,6 +23,7 @@
 #include <FL/Fl_Widget.H>
 
 class puzzle_c;
+class problem_c;
 class assembly_c;
 /**
  * blocklist is a widget that displays a list of items in blocks. These blocks
@@ -282,8 +283,7 @@ class PiecesList : public TextList {
 
 private:
 
-  puzzle_c * puzzle;
-  unsigned int problem;
+  const problem_c * puzzle;
 
   unsigned int clicked;
 
@@ -294,9 +294,9 @@ public:
     RS_PIECES_LAST
   };
 
-  PiecesList(int x, int y, int w, int h, puzzle_c * p) : TextList(x, y, w, h), puzzle(p), problem(0) { bt_assert(p); }
+  PiecesList(int x, int y, int w, int h) : TextList(x, y, w, h), puzzle(0) { }
 
-  void setPuzzle(puzzle_c *pz, unsigned int prob);
+  void setPuzzle(const problem_c *pz);
   virtual unsigned int blockNumber(void);
   virtual void getText(unsigned int block, char * text);
   virtual void getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
@@ -318,8 +318,7 @@ class PieceVisibility : public BlockList {
 
 private:
 
-  puzzle_c * puzzle;
-  unsigned int problem;
+  const problem_c * puzzle;
 
   unsigned int count;
   unsigned char * visState;
@@ -332,7 +331,7 @@ public:
     RS_VISIBILITY_LAST
   };
 
-  PieceVisibility(int x, int y, int w, int h, puzzle_c * p);
+  PieceVisibility(int x, int y, int w, int h);
 
   ~PieceVisibility(void) {
     if (visState) {
@@ -345,7 +344,7 @@ public:
     }
   }
 
-  void setPuzzle(puzzle_c *pz, unsigned int prob);
+  void setPuzzle(const problem_c *pz);
   void setAssembly(assembly_c * assm);
   virtual unsigned int blockNumber(void);
   virtual void blockDraw(unsigned int block, int x, int y);

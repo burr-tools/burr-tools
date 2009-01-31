@@ -20,7 +20,7 @@
 
 #include <vector>
 
-class puzzle_c;
+class problem_c;
 class disassemblerNode_c;
 class movementCache_c;
 class assembly_c;
@@ -72,7 +72,7 @@ class movementAnalysator_c {
      * changed, once you done that but you can analyse many assemblies for
      * disassembability
      */
-    movementAnalysator_c(const puzzle_c *puz, unsigned int problem);
+    movementAnalysator_c(const problem_c *puz);
     ~movementAnalysator_c(void);
 
     /* when you start with a new assembly you first have to call this function before performing any

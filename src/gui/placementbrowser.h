@@ -20,7 +20,7 @@
 
 #include "Layouter.h"
 
-class puzzle_c;
+class problem_c;
 
 class guiGridType_c;
 
@@ -33,15 +33,14 @@ class placementBrowser_c : public LFl_Double_Window {
   LFl_Value_Slider * pieceSelector;
   LFl_Value_Slider * placementSelector;
 
-  puzzle_c * puzzle;
-  unsigned int problem;
+  problem_c * puzzle;
 
   unsigned int node;
   unsigned int placement;
 
 public:
 
-  placementBrowser_c(puzzle_c * p, unsigned int prob, const guiGridType_c * ggt);
+  placementBrowser_c(problem_c * p, const guiGridType_c * ggt);
 
   int handle(int event);
 

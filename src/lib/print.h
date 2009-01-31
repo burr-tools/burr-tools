@@ -26,12 +26,13 @@
 
 class voxel_c;
 class puzzle_c;
+class problem_c;
 class assembly_c;
 class separation_c;
 
 void print(const voxel_c * v, char base = 'a');
 void print(const puzzle_c * p);
-void print(const assembly_c * a, const puzzle_c * p, unsigned int prob);
-void print(const separation_c * s, const assembly_c * a, const puzzle_c * p, unsigned int prob);
+void print(const assembly_c * a, const problem_c * p);
+void print(const separation_c * s, const assembly_c * a, const problem_c * p);
 
 #endif

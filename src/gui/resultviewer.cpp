@@ -18,35 +18,32 @@
 #include "resultviewer.h"
 #include "piececolor.h"
 
-#include "../lib/puzzle.h"
+#include "../lib/problem.h"
 #include "../lib/voxel.h"
 
-ResultViewer_c::ResultViewer_c(int x, int y, int w, int h, puzzle_c * p) : Fl_Box(0, 0, 10, 10), layoutable_c(x, y, w, h), puzzle(p), problem(0) {
-  bt_assert(p);
+ResultViewer_c::ResultViewer_c(int x, int y, int w, int h) : Fl_Box(0, 0, 10, 10), layoutable_c(x, y, w, h), puzzle(0) {
   bg = color();
   box(FL_BORDER_BOX);
   clear_visible_focus();
 }
 
-void ResultViewer_c::setPuzzle(puzzle_c * p, unsigned int prob) {
+void ResultViewer_c::setPuzzle(problem_c * p) {
   puzzle = p;
-  problem = prob;
   redraw();
 }
 
 void ResultViewer_c::draw(void) {
-  if (problem >= puzzle->problemNumber() ||
-      (puzzle->probGetResult(problem) > puzzle->shapeNumber())) {
+  if (!puzzle || puzzle->resultInvalid()) {
     label("No Result");
     color(bg);
     labelcolor(fl_rgb_color(255, 0, 0));
   } else {
     static char txt[120];
 
-    unsigned int result = puzzle->probGetResult(problem);
+    unsigned int result = puzzle->getResult();
 
-    if (puzzle->probGetResultShape(problem)->getName().length())
-      snprintf(txt, 120, "Result: S%i - %s", result+1, puzzle->probGetResultShape(problem)->getName().c_str());
+    if (puzzle->getResultShape()->getName().length())
+      snprintf(txt, 120, "Result: S%i - %s", result+1, puzzle->getResultShape()->getName().c_str());
     else
       snprintf(txt, 19, "Result: S%i", result + 1);
 

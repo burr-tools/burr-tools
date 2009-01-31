@@ -43,11 +43,11 @@ public:
 
   void showNothing(void) { View3D->showNothing(); }
   void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
-  void showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape);
-  void showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum);
-  void showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char trans, int x, int y, int z);
-  void showAssemblerState(const puzzle_c * puz, unsigned int probNum, const assembly_c * assm) {
-    View3D->showAssemblerState(puz, probNum, assm);
+  void showProblem(const problem_c * puz, unsigned int selShape);
+  void showAssembly(const problem_c * puz, unsigned int solNum);
+  void showPlacement(const problem_c * puz, unsigned int piece, unsigned char trans, int x, int y, int z);
+  void showAssemblerState(const problem_c * puz, const assembly_c * assm) {
+    View3D->showAssemblerState(puz, assm);
   }
 
   void updatePositions(piecePositions_c *shifting);

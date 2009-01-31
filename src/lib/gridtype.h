@@ -28,7 +28,7 @@ class assembler_c;
 class assemblerFrontend_c;
 class symmetries_c;
 class voxel_c;
-class puzzle_c;
+class problem_c;
 class stlExporter_c;
 class movementCache_c;
 
@@ -105,7 +105,7 @@ class gridType_c {
      * if the required functionality is not available, return 0
      */
     assemblerFrontend_c * getAssemblerFrontend(void) const;
-    movementCache_c * getMovementCache(const puzzle_c * puz, unsigned int prob) const;
+    movementCache_c * getMovementCache(const problem_c * puz) const;
 
     /* voxel spaces have different implementations for rotation, and mirror functions */
     voxel_c * getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init, voxel_type outs) const;
@@ -125,7 +125,7 @@ class gridType_c {
      * because we are not dependend on the gridtype this function is static
      * but it needs to know the puzzle
      */
-    static assembler_c * findAssembler(const puzzle_c * p, unsigned int problem);
+    static assembler_c * findAssembler(const problem_c * p);
 };
 
 

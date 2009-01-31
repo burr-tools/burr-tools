@@ -23,7 +23,7 @@
 #include "bt_assert.h"
 #include "thread.h"
 
-class puzzle_c;
+class problem_c;
 
 /* this class will handle the solving of one problem of the puzzle, it can also
  * be used to continue an already started solution, so that you can save you results
@@ -82,8 +82,7 @@ class assemblerThread_c : public assembler_cb, public thread_c {
 
   private:
 
-    puzzle_c * puzzle;
-    unsigned int prob;
+    problem_c * puzzle;
     int parameters;
 
   public:
@@ -96,8 +95,8 @@ class assemblerThread_c : public assembler_cb, public thread_c {
     static const int PAR_JUST_COUNT =         0x20;  // just count the solutions, don't save them
 
     // create all the necessary data structures to start the thread later on
-    assemblerThread_c(puzzle_c * puz, unsigned int problemNum, int par);
-    unsigned int getProblem(void) { return prob; }
+    assemblerThread_c(problem_c * puz, int par);
+    const problem_c * getProblem(void) const { return puzzle; }
 
   private:
 

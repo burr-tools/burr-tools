@@ -24,7 +24,6 @@
 #include <set>
 #include <stack>
 
-class puzzle_c;
 class gridType_c;
 class mirrorInfo_c;
 
@@ -57,8 +56,7 @@ class assembler_0_c : public assembler_c {
 
 protected:
 
-  const puzzle_c * puzzle;
-  unsigned int problem;
+  const problem_c * puzzle;
 
 private:
 
@@ -290,7 +288,7 @@ public:
   ~assembler_0_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */
-  errState createMatrix(const puzzle_c * puz, unsigned int problemNum, bool keepMirror, bool keepRotations);
+  errState createMatrix(const problem_c * puz, bool keepMirror, bool keepRotations);
   void assemble(assembler_cb * callback);
   int getErrorsParam(void) { return errorsParam; }
   virtual float getFinished(void);
@@ -310,7 +308,7 @@ public:
   void debug_step(unsigned long num = 1);
   assembly_c * getAssembly(void);
 
-  static bool canHandle(const puzzle_c * p, unsigned int problem);
+  static bool canHandle(const problem_c * p);
 };
 
 #endif

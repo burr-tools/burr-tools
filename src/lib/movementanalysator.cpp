@@ -19,7 +19,7 @@
 
 #include "bt_assert.h"
 #include "movementcache.h"
-#include "puzzle.h"
+#include "problem.h"
 #include "disassemblernode.h"
 #include "voxel.h"
 #include "disassemblerhashes.h"
@@ -274,10 +274,10 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
   return true;
 }
 
-movementAnalysator_c::movementAnalysator_c(const puzzle_c * puz, unsigned int prob) :
-  piecenumber(puz->probPieceNumber(prob)), maxstep((unsigned int) -1) {
+movementAnalysator_c::movementAnalysator_c(const problem_c * puz) :
+  piecenumber(puz->pieceNumber()), maxstep((unsigned int) -1) {
 
-  cache = puz->getGridType()->getMovementCache(puz, prob);
+  cache = puz->getGridType()->getMovementCache(puz);
 
   /* allocate the necessary arrays */
   movement = new unsigned int[piecenumber];
@@ -292,11 +292,11 @@ movementAnalysator_c::movementAnalysator_c(const puzzle_c * puz, unsigned int pr
   }
 
   /* create the weights array */
-  weights = new int[puz->probPieceNumber(prob)];
+  weights = new int[puz->pieceNumber()];
   unsigned int pc = 0;
-  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
-    for (unsigned int j = 0; j < puz->probGetShapeMax(prob, i); j++)
-      weights[pc++] = puz->probGetShapeShape(prob, i)->getWeight();
+  for (unsigned int i = 0; i < puz->shapeNumber(); i++) {
+    for (unsigned int j = 0; j < puz->getShapeMax(i); j++)
+      weights[pc++] = puz->getShapeShape(i)->getWeight();
   }
 
   nextstate = -1;

@@ -29,7 +29,7 @@
 // this vailue is used for transformation to specify unplaced pieces
 #define UNPLACED_TRANS 0xff
 
-class puzzle_c;
+class problem_c;
 
 /* this class contains the information for the placement of
  * one piece within the assembly.
@@ -135,7 +135,7 @@ public:
    * copy constructor
    */
   assembly_c(const assembly_c * orig);
-  assembly_c(const assembly_c * orig, unsigned char trans, const puzzle_c * puz, unsigned int prob, const mirrorInfo_c * mir);
+  assembly_c(const assembly_c * orig, unsigned char trans, const problem_c * puz, const mirrorInfo_c * mir);
 
   /**
    * load the assembly from xml file
@@ -190,7 +190,7 @@ public:
    * placements we need to know the sizes of the shapes because
    * the given position is always the corner with the lowest coordinates
    */
-  void transform(unsigned char trans, const puzzle_c * puz, unsigned int prob, const mirrorInfo_c * mir);
+  void transform(unsigned char trans, const problem_c * puz, const mirrorInfo_c * mir);
 
   /**
    * returns true, if one of the pieces within this assembly is
@@ -222,9 +222,9 @@ public:
 
   bool compare(const assembly_c & b, unsigned int pivot) const;
 
-  void sort(const puzzle_c * puz, unsigned int prob);
+  void sort(const problem_c * puz);
 
-  bool smallerRotationExists(const puzzle_c * puz, unsigned int prob, unsigned int pivot, const mirrorInfo_c * mir) const;
+  bool smallerRotationExists(const problem_c * puz, unsigned int pivot, const mirrorInfo_c * mir) const;
 
   /* shifts a piece around by a certain amount */
   void shiftPiece(unsigned int pc, int dx, int dy, int dz);

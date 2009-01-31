@@ -33,7 +33,7 @@
 #include "symmetries_2.h"
 #include "stl_0.h"
 #include "stl_2.h"
-#include "puzzle.h"
+#include "problem.h"
 
 #include <xmlwrapp/attributes.h>
 
@@ -155,10 +155,10 @@ assemblerFrontend_c * gridType_c::getAssemblerFrontend(void) const {
 
 }
 
-movementCache_c * gridType_c::getMovementCache(const puzzle_c * puz, unsigned int prob) const {
+movementCache_c * gridType_c::getMovementCache(const problem_c * puz) const {
 
   switch (type) {
-    case GT_BRICKS:           return new movementCache_0_c(puz, prob);
+    case GT_BRICKS:           return new movementCache_0_c(puz);
     default: return 0;
   }
 }
@@ -234,13 +234,13 @@ unsigned int gridType_c::getCapabilities(void) const {
   }
 }
 
-assembler_c * gridType_c::findAssembler(const puzzle_c * p, unsigned int problem) {
+assembler_c * gridType_c::findAssembler(const problem_c * p) {
 
-  if (assembler_0_c::canHandle(p, problem)) {
+  if (assembler_0_c::canHandle(p)) {
     fprintf(stderr, "using assembler 0\n");
     return new assembler_0_c(p->getGridType()->getAssemblerFrontend());
   }
-  if (assembler_1_c::canHandle(p, problem)) {
+  if (assembler_1_c::canHandle(p)) {
     fprintf(stderr, "using assembler 1\n");
     return new assembler_1_c(p->getGridType()->getAssemblerFrontend());
   }

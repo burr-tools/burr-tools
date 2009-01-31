@@ -26,7 +26,7 @@ class LView3dGroup;
 class LFlatButton_c;
 
 class assembly_c;
-class puzzle_c;
+class problem_c;
 class disassemblerNode_c;
 
 struct nodeData_s;
@@ -58,8 +58,7 @@ class movementBrowser_c : public LFl_Double_Window {
     LFlatButton_c * addMovement;
     LFlatButton_c * pruneTree;
 
-    puzzle_c * puz;
-    unsigned int problem;
+    problem_c * puz;
 
     /* this vector contains all the nodes that have been created
      * as we can not delete them we save them in here and remove
@@ -71,7 +70,7 @@ class movementBrowser_c : public LFl_Double_Window {
 
   public:
 
-    movementBrowser_c(puzzle_c * puz, unsigned int prob, unsigned int solNum);
+    movementBrowser_c(problem_c * puz, unsigned int solNum);
     ~movementBrowser_c();
 
 

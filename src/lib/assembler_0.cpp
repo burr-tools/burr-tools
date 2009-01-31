@@ -18,7 +18,7 @@
 #include "assembler_0.h"
 
 #include "bt_assert.h"
-#include "puzzle.h"
+#include "problem.h"
 #include "voxel.h"
 #include "assembly.h"
 #include "gridtype.h"
@@ -360,7 +360,7 @@ bool assembler_0_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
   if (!pieceFits(x, y, z))
     return false;
 
-  const voxel_c * result = puzzle->probGetResultShape(problem);
+  const voxel_c * result = puzzle->getResultShape();
 
   for (unsigned int pz = piece->boundZ1(); pz <= piece->boundZ2(); pz++)
     for (unsigned int py = piece->boundY1(); py <= piece->boundY2(); py++)
@@ -371,7 +371,7 @@ bool assembler_0_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
              (result->getState(x+px, y+py, z+pz) == voxel_c::VX_EMPTY)) ||
 
             // the piece can also not be placed when the colour constraints don't fit
-            !puzzle->probPlacementAllowed(problem, piece->getColor(px, py, pz), result->getColor(x+px, y+py, z+pz))
+            !puzzle->placementAllowed(piece->getColor(px, py, pz), result->getColor(x+px, y+py, z+pz))
 
            )
           return false;
@@ -403,7 +403,7 @@ bool assembler_0_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
  */
 int assembler_0_c::prepare(void) {
 
-  const voxel_c * result = puzzle->probGetResultShape(problem);
+  const voxel_c * result = puzzle->getResultShape();
 
   /* this array contains the column in our matrix that corresponds with
    * the voxel position inside the result. We use this matrix because
@@ -413,7 +413,7 @@ int assembler_0_c::prepare(void) {
    * from 5 to 0.5 seconds for TheLostDay puzzle
    */
   unsigned int * columns = new unsigned int[result->getXYZ()];
-  unsigned int piecenumber = puzzle->probPieceNumber(problem);
+  unsigned int piecenumber = puzzle->pieceNumber();
 
   /* voxelindex is the inverse of the function column. It returns
    * the index (not x, y, z) of a given column in the matrix
@@ -473,12 +473,12 @@ int assembler_0_c::prepare(void) {
      * as its a difference if we select a piece that has only one placement anyway
      * or select one with 400 placements of which 23/24th can be dropped
      */
-    unsigned int bestFound = sym->countSymmetryIntersection(resultSym, puzzle->probGetShapeShape(problem, 0)->selfSymmetries());
+    unsigned int bestFound = sym->countSymmetryIntersection(resultSym, puzzle->getShapeShape(0)->selfSymmetries());
     symBreakerShape = 0;
 
-    for (unsigned int i = 1; i < puzzle->probShapeNumber(problem); i++) {
+    for (unsigned int i = 1; i < puzzle->shapeNumber(); i++) {
 
-      unsigned int cnt = sym->countSymmetryIntersection(resultSym, puzzle->probGetShapeShape(problem, i)->selfSymmetries());
+      unsigned int cnt = sym->countSymmetryIntersection(resultSym, puzzle->getShapeShape(i)->selfSymmetries());
 
       if (cnt < bestFound) {
         bestFound = cnt;
@@ -486,7 +486,7 @@ int assembler_0_c::prepare(void) {
       }
     }
 
-    if (sym->symmetriesLeft(resultSym, puzzle->probGetShapeShape(problem, symBreakerShape)->selfSymmetries()))
+    if (sym->symmetriesLeft(resultSym, puzzle->getShapeShape(symBreakerShape)->selfSymmetries()))
       checkForTransformedAssemblies(symBreakerShape, 0);
 
     if (sym->symmetryContainsMirror(resultSym)) {
@@ -507,10 +507,10 @@ int assembler_0_c::prepare(void) {
         unsigned int trans;
       } mm;
 
-      mm * mirror = new mm[puzzle->probPieceNumber(problem)];
+      mm * mirror = new mm[puzzle->pieceNumber()];
 
       // first initialize
-      for (unsigned int i = 0; i < puzzle->probShapeNumber(problem); i++) {
+      for (unsigned int i = 0; i < puzzle->shapeNumber(); i++) {
         mirror[i].shape = i;
         mirror[i].mirror = (unsigned int)-1;
         mirror[i].trans = 255;
@@ -519,26 +519,26 @@ int assembler_0_c::prepare(void) {
       bool mirrorCheck = true;
 
       // now go over all shapes
-      for (unsigned int i = 0; i < puzzle->probPieceNumber(problem); i++) {
+      for (unsigned int i = 0; i < puzzle->pieceNumber(); i++) {
 
         // we have already found the mirror for this shape
-        if (mirror[i].mirror < puzzle->probPieceNumber(problem))
+        if (mirror[i].mirror < puzzle->pieceNumber())
           continue;
 
-        if (!sym->symmetryContainsMirror(puzzle->probGetShapeShape(problem, mirror[i].shape)->selfSymmetries())) {
+        if (!sym->symmetryContainsMirror(puzzle->getShapeShape(mirror[i].shape)->selfSymmetries())) {
           /* this shape is not self mirroring, so we need to look out
            * for a shape that is the mirror of this shape
            */
           bool found = false;
 
           // now see if we can find another shape that is the mirror of the current shape
-          for (unsigned int j = i+1; j < puzzle->probPieceNumber(problem); j++) {
+          for (unsigned int j = i+1; j < puzzle->pieceNumber(); j++) {
 
-            if (mirror[j].mirror < puzzle->probPieceNumber(problem))
+            if (mirror[j].mirror < puzzle->pieceNumber())
               continue;
 
-            unsigned int trans = puzzle->probGetShapeShape(problem, mirror[i].shape)->getMirrorTransform(
-                puzzle->probGetShapeShape(problem, mirror[j].shape));
+            unsigned int trans = puzzle->getShapeShape(mirror[i].shape)->getMirrorTransform(
+                puzzle->getShapeShape(mirror[j].shape));
 
             if (trans > 0) {
               // found a mirror shape
@@ -546,8 +546,8 @@ int assembler_0_c::prepare(void) {
               mirror[i].mirror = j;
               mirror[i].trans = trans;
               mirror[j].mirror = i;
-              mirror[j].trans = puzzle->probGetShapeShape(problem, mirror[j].shape)->getMirrorTransform(
-                  puzzle->probGetShapeShape(problem, mirror[i].shape));
+              mirror[j].trans = puzzle->getShapeShape(mirror[j].shape)->getMirrorTransform(
+                  puzzle->getShapeShape(mirror[i].shape));
 
               found = true;
               break;
@@ -569,7 +569,7 @@ int assembler_0_c::prepare(void) {
          */
         mirrorInfo_c * mir = new mirrorInfo_c();
 
-        for (unsigned int i = 0; i < puzzle->probPieceNumber(problem); i++)
+        for (unsigned int i = 0; i < puzzle->pieceNumber(); i++)
           if (mirror[i].trans != 255)
             mir->addPieces(i, mirror[i].mirror, mirror[i].trans);
 
@@ -594,7 +594,7 @@ int assembler_0_c::prepare(void) {
   voxel_c ** cache = new voxel_c *[sym->getNumTransformationsMirror()];
 
   /* now we insert one shape after another */
-  for (unsigned int pc = 0; pc < puzzle->probShapeNumber(problem); pc++) {
+  for (unsigned int pc = 0; pc < puzzle->shapeNumber(); pc++) {
 
     reducePiece = pc;
 
@@ -609,7 +609,7 @@ int assembler_0_c::prepare(void) {
      */
     for (unsigned int rot = 0; rot < sym->getNumTransformations(); rot++) {
 
-      voxel_c * rotation = gt->getVoxel(puzzle->probGetShapeShape(problem, pc));
+      voxel_c * rotation = gt->getVoxel(puzzle->getShapeShape(pc));
       if (!rotation->transform(rot)) {
         delete rotation;
         continue;
@@ -640,7 +640,7 @@ int assembler_0_c::prepare(void) {
           for (unsigned int r = 1; r < sym->getNumTransformations(); r++)
             if (sym->symmetrieContainsTransformation(resultSym, r)) {
 
-              voxel_c * vx = gt->getVoxel(puzzle->probGetShapeShape(problem, pc));
+              voxel_c * vx = gt->getVoxel(puzzle->getShapeShape(pc));
 
               if (!vx->transform(rot) || !vx->transform(r)) {
                 delete vx;
@@ -659,7 +659,7 @@ int assembler_0_c::prepare(void) {
       delete [] cache;
       delete [] columns;
       delete [] voxelindex;
-      return -puzzle->probGetShape(problem, pc);
+      return -puzzle->getShape(pc);
     }
   }
 
@@ -672,24 +672,23 @@ int assembler_0_c::prepare(void) {
 
 
 
-assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsigned int prob, bool keepMirror, bool keepRotations) {
+assembler_0_c::errState assembler_0_c::createMatrix(const problem_c * puz, bool keepMirror, bool keepRotations) {
 
   puzzle = puz;
-  problem = prob;
 
-  if (!canHandle(puzzle, problem))
+  if (!canHandle(puzzle))
     return ERR_PUZZLE_UNHANDABLE;
 
   /* get and save piece number of puzzle */
-  piecenumber = puz->probPieceNumber(prob);
+  piecenumber = puz->pieceNumber();
 
   /* count the filled and variable units */
-  int res_vari = puz->probGetResultShape(prob)->countState(voxel_c::VX_VARIABLE);
-  int res_filled = puz->probGetResultShape(prob)->countState(voxel_c::VX_FILLED) + res_vari;
+  int res_vari = puz->getResultShape()->countState(voxel_c::VX_VARIABLE);
+  int res_filled = puz->getResultShape()->countState(voxel_c::VX_FILLED) + res_vari;
 
-  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++)
-    if (puz->probGetShapeShape(prob, i)->countState(voxel_c::VX_VARIABLE)) {
-      errorsParam = puz->probGetShape(prob, i);
+  for (unsigned int i = 0; i < puz->shapeNumber(); i++)
+    if (puz->getShapeShape(i)->countState(voxel_c::VX_VARIABLE)) {
+      errorsParam = puz->getShape(i);
       errorsState = ERR_PIECE_WITH_VARICUBE;
       return errorsState;
     }
@@ -704,8 +703,8 @@ assembler_0_c::errState assembler_0_c::createMatrix(const puzzle_c * puz, unsign
   // is not bigger than number of voxels in pieces
   int h = res_filled;
 
-  for (unsigned int j = 0; j < puz->probShapeNumber(prob); j++)
-    h -= puz->probGetShapeShape(prob, j)->countState(voxel_c::VX_FILLED);
+  for (unsigned int j = 0; j < puz->shapeNumber(); j++)
+    h -= puz->getShapeShape(j)->countState(voxel_c::VX_FILLED);
 
   if (h < 0) {
     errorsState = ERR_TOO_MANY_UNITS;
@@ -1235,7 +1234,7 @@ void assembler_0_c::solution(void) {
 
     assembly_c * assembly = getAssembly();
 
-    if (avoidTransformedAssemblies && assembly->smallerRotationExists(puzzle, problem, avoidTransformedPivot, avoidTransformedMirror))
+    if (avoidTransformedAssemblies && assembly->smallerRotationExists(puzzle, avoidTransformedPivot, avoidTransformedMirror))
       delete assembly;
     else {
       getCallback()->assembly(assembly);
@@ -1598,12 +1597,12 @@ void assembler_0_c::debug_step(unsigned long num) {
   iterativeMultiSearch();
 }
 
-bool assembler_0_c::canHandle(const puzzle_c * p, unsigned int problem) {
+bool assembler_0_c::canHandle(const problem_c * p) {
 
   // we can not handle if there is one shape having not a counter of 1
-  for (unsigned int s = 0; s < p->probShapeNumber(problem); s++)
-    if ((p->probGetShapeMax(problem, s) > 1) ||
-        (p->probGetShapeMax(problem, s) != p->probGetShapeMin(problem, s)))
+  for (unsigned int s = 0; s < p->shapeNumber(); s++)
+    if ((p->getShapeMax(s) > 1) ||
+        (p->getShapeMax(s) != p->getShapeMin(s)))
 
       return false;
 

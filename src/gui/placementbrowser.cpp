@@ -18,7 +18,7 @@
 #include "placementbrowser.h"
 
 #include "../lib/assembler.h"
-#include "../lib/puzzle.h"
+#include "../lib/problem.h"
 
 #include <FL/Fl.H>
 #include <FL/fl_ask.H>
@@ -34,7 +34,7 @@ void placementBrowser_c::cb_piece(void) {
   placementSelector->value(0);
 
   unsigned int piece = (int)pieceSelector->value();
-  unsigned int placements = puzzle->probGetAssembler(problem)->getPiecePlacementCount(piece);
+  unsigned int placements = puzzle->getAssembler()->getPiecePlacementCount(piece);
   unsigned char trans;
   int x, y, z;
 
@@ -42,7 +42,7 @@ void placementBrowser_c::cb_piece(void) {
     placementSelector->activate();
     placementSelector->range(0, placements-1);
 
-    node = puzzle->probGetAssembler(problem)->getPiecePlacement(0, 0, piece, &trans, &x, &y, &z);
+    node = puzzle->getAssembler()->getPiecePlacement(0, 0, piece, &trans, &x, &y, &z);
 
   } else {
 
@@ -53,7 +53,7 @@ void placementBrowser_c::cb_piece(void) {
   }
 
   placement = 0;
-  view3d->showPlacement(puzzle, problem, piece, trans, x, y, z);
+  view3d->showPlacement(puzzle, piece, trans, x, y, z);
 }
 
 void placementBrowser_c::cb_placement(Fl_Value_Slider* o) {
@@ -64,18 +64,18 @@ void placementBrowser_c::cb_placement(Fl_Value_Slider* o) {
   unsigned char trans;
   int x, y, z;
 
-  node = puzzle->probGetAssembler(problem)->getPiecePlacement(node, val-placement, piece, &trans, &x, &y, &z);
+  node = puzzle->getAssembler()->getPiecePlacement(node, val-placement, piece, &trans, &x, &y, &z);
   placement = val;
 
-  view3d->showPlacement(puzzle, problem, piece, trans, x, y, z);
+  view3d->showPlacement(puzzle, piece, trans, x, y, z);
 }
 
 
-placementBrowser_c::placementBrowser_c(puzzle_c * p, unsigned int prob, const guiGridType_c * ggt) :
-  LFl_Double_Window(true), puzzle(p), problem(prob) {
+placementBrowser_c::placementBrowser_c(problem_c * p, const guiGridType_c * ggt) :
+  LFl_Double_Window(true), puzzle(p) {
 
-  bt_assert(puzzle->probGetAssembler(problem));
-  bt_assert(puzzle->probGetAssembler(problem)->getPiecePlacementSupported());
+  bt_assert(puzzle->getAssembler());
+  bt_assert(puzzle->getAssembler()->getPiecePlacementSupported());
 
   view3d = new LView3dGroup(1, 1, 1, 1, ggt);
   view3d->weight(1, 1);
@@ -83,7 +83,7 @@ placementBrowser_c::placementBrowser_c(puzzle_c * p, unsigned int prob, const gu
 
   pieceSelector = new LFl_Value_Slider(0, 0, 2, 1);
   pieceSelector->type(FL_HOR_SLIDER);
-  pieceSelector->range(0, puzzle->probPieceNumber(problem)-1);
+  pieceSelector->range(0, puzzle->pieceNumber()-1);
   pieceSelector->precision(0);
   pieceSelector->callback(cb_piece_stub, this);
   pieceSelector->tooltip(" Select the piece whose placements you want to see ");
@@ -104,8 +104,8 @@ placementBrowser_c::placementBrowser_c(puzzle_c * p, unsigned int prob, const gu
 
   end();
 
-  if ((puzzle->probGetAssembler(problem)->getFinished() > 0) &&
-      (puzzle->probGetAssembler(problem)->getFinished() < 1))
+  if ((puzzle->getAssembler()->getFinished() > 0) &&
+      (puzzle->getAssembler()->getFinished() < 1))
     fl_message("Attention: The assembler is neither in initial nor in final position\n"
 	       "The displayed placements may not be what you expect\n"
 	       "Read the documentation");

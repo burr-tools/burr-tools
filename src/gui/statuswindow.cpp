@@ -20,6 +20,7 @@
 
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
+#include "../lib/problem.h"
 
 #include <FL/Fl.H>
 
@@ -87,8 +88,8 @@ void statusWindow_c::cb_removeSelected(void) {
   for (unsigned int s = puz->shapeNumber(); s > 0; s--) {
 
     for (unsigned int i = 0; i < puz->problemNumber(); i++)
-      if (puz->probContainsShape(i, s))
-        puz->probRemoveAllSolutions(i);
+      if (puz->getProblem(i)->containsShape(s))
+        puz->getProblem(i)->removeAllSolutions();
 
     if (selection[s-1]->value())
       puz->removeShape(s-1);

@@ -24,6 +24,7 @@
 
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
+#include "../lib/problem.h"
 #include "../lib/assembly.h"
 #include "../lib/disasmtomoves.h"
 
@@ -432,27 +433,27 @@ void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) 
   redraw();
 }
 
-void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsigned int selShape) {
+void voxelFrame_c::showProblem(const problem_c * puz, unsigned int selShape) {
 
   hideMarker();
   clearSpaces();
 
-  if (probNum < puz->problemNumber()) {
+  if (puz) {
 
     float diagonal = 1;
 
     // now find a scaling factor, so that all pieces fit into their square
 
     // find the biggest piece shape
-    for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
-      if (puz->probGetShapeShape(probNum, p)->getDiagonal() > diagonal)
-        diagonal = puz->probGetShapeShape(probNum, p)->getDiagonal();
+    for (unsigned int p = 0; p < puz->shapeNumber(); p++)
+      if (puz->getShapeShape(p)->getDiagonal() > diagonal)
+        diagonal = puz->getShapeShape(p)->getDiagonal();
 
     // find out how much bigger the result is compared to the shapes
     unsigned int factor;
-    if (puz->probGetResult(probNum) < puz->shapeNumber()) {
+    if (!puz->resultInvalid()) {
 
-      factor = (int)((sqrt(puz->probGetResultShape(probNum)->getDiagonal()) + 0.5)/sqrt(diagonal));
+      factor = (int)((sqrt(puz->getResultShape()->getDiagonal()) + 0.5)/sqrt(diagonal));
     } else
       factor = 1;
 
@@ -463,23 +464,24 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsig
 
     // first find out how to arrange the pieces:
     unsigned int square = 2*factor+1;
-    while (square * (square-2*factor) < puz->probShapeNumber(probNum)) square++;
+    while (square * (square-2*factor) < puz->shapeNumber()) square++;
 
     unsigned int num;
 
     // now place the result shape
-    if (puz->probGetResult(probNum) < puz->shapeNumber()) {
+    if (!puz->resultInvalid()) {
 
-      num = addSpace(puz->getGridType()->getVoxel(puz->probGetResultShape(probNum)));
+      num = addSpace(puz->getGridType()->getVoxel(puz->getResultShape()));
       setSpaceColor(num,
-                            pieceColorR(puz->probGetResult(probNum)),
-                            pieceColorG(puz->probGetResult(probNum)),
-                            pieceColorB(puz->probGetResult(probNum)), 1);
+                            pieceColorR(puz->getResult()),
+                            pieceColorG(puz->getResult()),
+                            pieceColorB(puz->getResult()), 1);
       setSpacePosition(num,
           0.5* (square*diagonal) * (factor*1.0/square - 0.5),
           0.5* (square*diagonal) * (0.5 - factor*1.0/square), -20, 1.0);
     }
 
+#if 0
     // now place the selected shape
     if (selShape < puz->shapeNumber()) {
 
@@ -492,17 +494,18 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int probNum, unsig
           0.5* (square*diagonal) * (0.5 - 0.5/square),
           0.5* (square*diagonal) * (0.5 - 0.5/square), -20, 0.5);
     }
+#endif
 
     // and now the shapes
     int unsigned line = 2*factor;
     int unsigned col = 0;
-    for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++) {
-      num = addSpace(puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, p)));
+    for (unsigned int p = 0; p < puz->shapeNumber(); p++) {
+      num = addSpace(puz->getGridType()->getVoxel(puz->getShapeShape(p)));
 
       setSpaceColor(num,
-                            pieceColorR(puz->probGetShape(probNum, p)),
-                            pieceColorG(puz->probGetShape(probNum, p)),
-                            pieceColorB(puz->probGetShape(probNum, p)), 1);
+                            pieceColorR(puz->getShape(p)),
+                            pieceColorG(puz->getShape(p)),
+                            pieceColorB(puz->getShape(p)), 1);
 
       setSpacePosition(num,
                                0.5* (square*diagonal) * ((col+0.5)/square - 0.5),
@@ -548,7 +551,7 @@ void voxelFrame_c::showColors(const puzzle_c * puz, colorMode mode) {
   redraw();
 }
 
-void voxelFrame_c::showAssembly(const puzzle_c * puz, unsigned int probNum, unsigned int solNum) {
+void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
 
   if (curAssembly) {
     delete curAssembly;
@@ -558,23 +561,23 @@ void voxelFrame_c::showAssembly(const puzzle_c * puz, unsigned int probNum, unsi
   hideMarker();
   clearSpaces();
 
-  if ((probNum < puz->problemNumber()) &&
-      (solNum < puz->probSolutionNumber(probNum))) {
+  if (puz &&
+      (solNum < puz->solutionNumber())) {
 
     unsigned int num;
 
-    curAssembly = new assembly_c(puz->probGetAssembly(probNum, solNum));
+    curAssembly = new assembly_c(puz->getAssembly(solNum));
     const assembly_c * assm = curAssembly;
 
     unsigned int piece = 0;
 
     // and now the shapes
-    for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
-      for (unsigned int q = 0; q < puz->probGetShapeMax(probNum, p); q++) {
+    for (unsigned int p = 0; p < puz->shapeNumber(); p++)
+      for (unsigned int q = 0; q < puz->getShapeMax(p); q++) {
 
         if (assm->isPlaced(piece)) {
 
-          voxel_c * vx = puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, p));
+          voxel_c * vx = puz->getGridType()->getVoxel(puz->getShapeShape(p));
 
           bt_assert(vx->transform(assm->getTransformation(piece)));
 
@@ -583,13 +586,13 @@ void voxelFrame_c::showAssembly(const puzzle_c * puz, unsigned int probNum, unsi
           setSpacePosition(num, assm->getX(piece), assm->getY(piece), assm->getZ(piece), 1);
 
           setSpaceColor(num,
-              pieceColorR(puz->probGetShape(probNum, p), q),
-              pieceColorG(puz->probGetShape(probNum, p), q),
-              pieceColorB(puz->probGetShape(probNum, p), q), 1);
+              pieceColorR(puz->getShape(p), q),
+              pieceColorG(puz->getShape(p), q),
+              pieceColorB(puz->getShape(p), q), 1);
 
         } else {
 
-          voxel_c * vx = puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, p));
+          voxel_c * vx = puz->getGridType()->getVoxel(puz->getShapeShape(p));
 
           num = addSpace(vx);
 
@@ -608,7 +611,7 @@ void voxelFrame_c::showAssembly(const puzzle_c * puz, unsigned int probNum, unsi
     setDrawingMode(num, invisible);
 
     float cx, cy, cz;
-    drawer->calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
+    drawer->calculateSize(puz->getResultShape(), &cx, &cy, &cz);
     setCenter(cx*0.5, cy*0.5, cz*0.5);
     trans = CenterTranslateRoateScale;
     _showCoordinateSystem = false;
@@ -617,23 +620,23 @@ void voxelFrame_c::showAssembly(const puzzle_c * puz, unsigned int probNum, unsi
   redraw();
 }
 
-void voxelFrame_c::showAssemblerState(const puzzle_c * puz, unsigned int probNum, const assembly_c * assm) {
+void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * assm) {
 
   hideMarker();
   clearSpaces();
 
-  if (probNum < puz->problemNumber()) {
+  if (puz) {
 
     unsigned int num;
     unsigned int piece = 0;
 
     // and now the shapes
-    for (unsigned int p = 0; p < puz->probShapeNumber(probNum); p++)
-      for (unsigned int q = 0; q < puz->probGetShapeMax(probNum, p); q++) {
+    for (unsigned int p = 0; p < puz->shapeNumber(); p++)
+      for (unsigned int q = 0; q < puz->getShapeMax(p); q++) {
 
         if (assm->isPlaced(piece)) {
 
-          voxel_c * vx = puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, p));
+          voxel_c * vx = puz->getGridType()->getVoxel(puz->getShapeShape(p));
 
           bt_assert(vx->transform(assm->getTransformation(piece)));
 
@@ -642,9 +645,9 @@ void voxelFrame_c::showAssemblerState(const puzzle_c * puz, unsigned int probNum
           setSpacePosition(num, assm->getX(piece), assm->getY(piece), assm->getZ(piece), 1);
 
           setSpaceColor(num,
-              pieceColorR(puz->probGetShape(probNum, p), q),
-              pieceColorG(puz->probGetShape(probNum, p), q),
-              pieceColorB(puz->probGetShape(probNum, p), q), 1);
+              pieceColorR(puz->getShape(p), q),
+              pieceColorG(puz->getShape(p), q),
+              pieceColorB(puz->getShape(p), q), 1);
 
         }
 
@@ -652,24 +655,24 @@ void voxelFrame_c::showAssemblerState(const puzzle_c * puz, unsigned int probNum
       }
 
     float cx, cy, cz;
-    drawer->calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
+    drawer->calculateSize(puz->getResultShape(), &cx, &cy, &cz);
     setCenter(cx*0.5, cy*0.5, cz*0.5);
 
     trans = CenterTranslateRoateScale;
     _showCoordinateSystem = false;
 
-    num = addSpace(puz->getGridType()->getVoxel(puz->probGetResultShape(probNum)));
+    num = addSpace(puz->getGridType()->getVoxel(puz->getResultShape()));
     setSpaceColor(num,
-                        pieceColorR(puz->probGetResult(probNum)),
-                        pieceColorG(puz->probGetResult(probNum)),
-                        pieceColorB(puz->probGetResult(probNum)), 1);
+                        pieceColorR(puz->getResult()),
+                        pieceColorG(puz->getResult()),
+                        pieceColorB(puz->getResult()), 1);
     setDrawingMode(num, gridline);
   }
 
   redraw();
 }
 
-void voxelFrame_c::showPlacement(const puzzle_c * puz, unsigned int probNum, unsigned int piece, unsigned char t, int x, int y, int z) {
+void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsigned char t, int x, int y, int z) {
 
   clearSpaces();
   hideMarker();
@@ -677,18 +680,18 @@ void voxelFrame_c::showPlacement(const puzzle_c * puz, unsigned int probNum, uns
   _showCoordinateSystem = false;
 
   float hx, hy, hz;
-  hx = puz->probGetResultShape(probNum)->getHx();
-  hy = puz->probGetResultShape(probNum)->getHy();
-  hz = puz->probGetResultShape(probNum)->getHz();
+  hx = puz->getResultShape()->getHx();
+  hy = puz->getResultShape()->getHy();
+  hz = puz->getResultShape()->getHz();
   drawer->recalcSpaceCoordinates(&hx, &hy, &hz);
 
   float cx, cy, cz;
-  drawer->calculateSize(puz->probGetResultShape(probNum), &cx, &cy, &cz);
+  drawer->calculateSize(puz->getResultShape(), &cx, &cy, &cz);
   setCenter(cx*0.5-hx, cy*0.5-hy, cz*0.5-hz);
 
-  hx = puz->probGetResultShape(probNum)->getHx();
-  hy = puz->probGetResultShape(probNum)->getHy();
-  hz = puz->probGetResultShape(probNum)->getHz();
+  hx = puz->getResultShape()->getHx();
+  hy = puz->getResultShape()->getHy();
+  hz = puz->getResultShape()->getHz();
 
   int num;
 
@@ -696,28 +699,28 @@ void voxelFrame_c::showPlacement(const puzzle_c * puz, unsigned int probNum, uns
 
     int shape = 0;
     unsigned int p = piece;
-    while (p >= puz->probGetShapeMax(probNum, shape)) {
-      p -= puz->probGetShapeMax(probNum, shape);
+    while (p >= puz->getShapeMax(shape)) {
+      p -= puz->getShapeMax(shape);
       shape++;
     }
 
-    voxel_c * vx = puz->getGridType()->getVoxel(puz->probGetShapeShape(probNum, shape));
+    voxel_c * vx = puz->getGridType()->getVoxel(puz->getShapeShape(shape));
     bt_assert(vx->transform(t));
     num = addSpace(vx);
 
     setSpacePosition(num, x-hx, y-hy, z-hz, 1);
     setSpaceColor(num,
-                          pieceColorR(puz->probGetShape(probNum, shape), p),
-                          pieceColorG(puz->probGetShape(probNum, shape), p),
-                          pieceColorB(puz->probGetShape(probNum, shape), p), 1);
+                          pieceColorR(puz->getShape(shape), p),
+                          pieceColorG(puz->getShape(shape), p),
+                          pieceColorB(puz->getShape(shape), p), 1);
     setDrawingMode(num, normal);
   }
 
-  num = addSpace(puz->getGridType()->getVoxel(puz->probGetResultShape(probNum)));
+  num = addSpace(puz->getGridType()->getVoxel(puz->getResultShape()));
   setSpaceColor(num,
-                        pieceColorR(puz->probGetResult(probNum)),
-                        pieceColorG(puz->probGetResult(probNum)),
-                        pieceColorB(puz->probGetResult(probNum)), 1);
+                        pieceColorR(puz->getResult()),
+                        pieceColorG(puz->getResult()),
+                        pieceColorB(puz->getResult()), 1);
   setDrawingMode(num, gridline);
 
   redraw();

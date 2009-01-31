@@ -53,6 +53,7 @@
 #include "../lib/ps3dloader.h"
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
+#include "../lib/problem.h"
 #include "../lib/assembler.h"
 #include "../lib/assemblerthread.h"
 #include "../lib/disassembly.h"
@@ -122,7 +123,7 @@ void mainWindow_c::cb_AddColor(void) {
     // pieces of color x can be plces into cubes of color x
     int col = puzzle->colorNumber();
     for (unsigned int p = 0; p < puzzle->problemNumber(); p++)
-      puzzle->probAllowPlacement(p, col, col);
+      puzzle->getProblem(p)->allowPlacement(col, col);
 
     colorSelector->setSelection(puzzle->colorNumber());
     changed = true;
@@ -300,7 +301,7 @@ void mainWindow_c::cb_TaskSelectionTab(Fl_Tabs* o) {
       solutionProblem->setSelection(puzzle->problemNumber()-1);
 
     if ((solutionProblem->getSelection() < puzzle->problemNumber()) &&
-        (SolutionSel->value()-1 < puzzle->probSolutionNumber(solutionProblem->getSelection()))) {
+        (SolutionSel->value()-1 < puzzle->getProblem(solutionProblem->getSelection())->solutionNumber())) {
       activateSolution(solutionProblem->getSelection(), int(SolutionSel->value()-1));
     }
     Big3DView();
@@ -400,8 +401,8 @@ void mainWindow_c::cb_SolProbSel(LBlockListGroup_c* grp) {
     if (prob < puzzle->problemNumber()) {
 
       /* check the number of solutions on this tab and lower the slider value if necessary */
-      if (SolutionSel->value() > puzzle->probSolutionNumber(prob))
-        SolutionSel->value(puzzle->probSolutionNumber(prob));
+      if (SolutionSel->value() > puzzle->getProblem(prob)->solutionNumber())
+        SolutionSel->value(puzzle->getProblem(prob)->solutionNumber());
 
       updateInterface();
       activateSolution(prob, (int)SolutionSel->value()-1);
@@ -463,7 +464,7 @@ void mainWindow_c::cb_NewProblem(void) {
   unsigned int prob = puzzle->addProblem();
 
   for (unsigned int c = 0; c < puzzle->colorNumber(); c++)
-    puzzle->probAllowPlacement(prob, c+1, c+1);
+    puzzle->getProblem(prob)->allowPlacement(c+1, c+1);
 
   problemSelector->setSelection(prob);
 
@@ -515,11 +516,12 @@ void mainWindow_c::cb_RenameProblem(void) {
 
   if (problemSelector->getSelection() < puzzle->problemNumber()) {
 
-    const char * name = fl_input("Enter name for the problem", puzzle->probGetName(problemSelector->getSelection()).c_str());
+    const char * name = fl_input("Enter name for the problem",
+        puzzle->getProblem(problemSelector->getSelection())->getName().c_str());
 
     if (name) {
 
-      puzzle->probSetName(problemSelector->getSelection(), name);
+      puzzle->getProblem(problemSelector->getSelection())->setName(name);
       changed = true;
       updateInterface();
       activateProblem(problemSelector->getSelection());
@@ -562,17 +564,19 @@ void mainWindow_c::cb_ProbShapeExchange(int with) {
   unsigned int p = problemSelector->getSelection();
   unsigned int s = shapeAssignmentSelector->getSelection();
 
+  problem_c * pr = puzzle->getProblem(p);
+
   // find out the index in the problem table
   unsigned int current;
 
-  for (current = 0; current < puzzle->probShapeNumber(p); current++)
-    if (puzzle->probGetShape(p, current) == s)
+  for (current = 0; current < pr->shapeNumber(); current++)
+    if (pr->getShape(current) == s)
       break;
 
   unsigned int other = current + with;
 
-  if ((current < puzzle->probShapeNumber(p)) && (other < puzzle->probShapeNumber(p))) {
-    puzzle->probExchangeShape(p, current, other);
+  if ((current < pr->shapeNumber()) && (other < pr->shapeNumber())) {
+    pr->exchangeShape(current, other);
     changed = true;
     updateInterface();
     activateProblem(problemSelector->getSelection());
@@ -598,18 +602,19 @@ void mainWindow_c::cb_ShapeToResult(void) {
   }
 
   unsigned int prob = problemSelector->getSelection();
+  problem_c * pr = puzzle->getProblem(prob);
 
   // check if this shape is already a piece of the problem
-  for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++) {
-    if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
-      puzzle->probRemoveShape(prob, i);
+  for (unsigned int i = 0; i < pr->shapeNumber(); i++) {
+    if (pr->getShape(i) == shapeAssignmentSelector->getSelection()) {
+      pr->removeShape(i);
       break;
     }
   }
 
   changeProblem(prob);
-  puzzle->probSetResult(prob, shapeAssignmentSelector->getSelection());
-  problemResult->setPuzzle(puzzle, prob);
+  pr->setResult(shapeAssignmentSelector->getSelection());
+  problemResult->setPuzzle(puzzle->getProblem(prob));
   activateProblem(prob);
   StatProblemInfo(prob);
   updateInterface();
@@ -626,7 +631,9 @@ void mainWindow_c::cb_SelectProblemShape(void) {
 static void cb_PiecesClicked_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_PiecesClicked(); }
 void mainWindow_c::cb_PiecesClicked(void) {
 
-  shapeAssignmentSelector->setSelection(puzzle->probGetShape(problemSelector->getSelection(), PiecesCountList->getClicked()));
+  problem_c * pr = puzzle->getProblem(problemSelector->getSelection());
+
+  shapeAssignmentSelector->setSelection(pr->getShape(PiecesCountList->getClicked()));
 
   updateInterface();
   activateProblem(problemSelector->getSelection());
@@ -646,17 +653,19 @@ void mainWindow_c::cb_AddShapeToProblem(void) {
   PiecesCountList->redraw();
   changeProblem(prob);
 
+  problem_c * pr = puzzle->getProblem(prob);
+
   // first see, if there is already a selected shape inside
-  for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
-    if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
-      puzzle->probSetShapeMax(prob, i, puzzle->probGetShapeMax(prob, i) + 1);
-      puzzle->probSetShapeMin(prob, i, puzzle->probGetShapeMin(prob, i) + 1);
-      PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+  for (unsigned int i = 0; i < pr->shapeNumber(); i++)
+    if (pr->getShape(i) == shapeAssignmentSelector->getSelection()) {
+      pr->setShapeMax(i, pr->getShapeMax(i) + 1);
+      pr->setShapeMin(i, pr->getShapeMin(i) + 1);
+      PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
       StatProblemInfo(problemSelector->getSelection());
       return;
     }
 
-  puzzle->probAddShape(prob, shapeAssignmentSelector->getSelection(), 1);
+  pr->addShape(shapeAssignmentSelector->getSelection(), 1);
   activateProblem(problemSelector->getSelection());
   updateInterface();
   StatProblemInfo(problemSelector->getSelection());
@@ -678,27 +687,29 @@ void mainWindow_c::cb_AddAllShapesToProblem(void) {
 
   for (unsigned int j = 0; j < puzzle->shapeNumber(); j++) {
 
+    problem_c * pr = puzzle->getProblem(prob);
+
     // we don't add the result shape
-    if (j == puzzle->probGetResult(prob))
+    if (j == pr->getResult())
       continue;
 
     bool found = false;
 
     // first see, if there is already a selected shape inside
-    for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
-      if (puzzle->probGetShape(prob, i) == j) {
-        puzzle->probSetShapeMax(prob, i, puzzle->probGetShapeMax(prob, i) + 1);
-        puzzle->probSetShapeMin(prob, i, puzzle->probGetShapeMin(prob, i) + 1);
+    for (unsigned int i = 0; i < puzzle->getProblem(prob)->shapeNumber(); i++)
+      if (pr->getShape(i) == j) {
+        pr->setShapeMax(i, pr->getShapeMax(i) + 1);
+        pr->setShapeMin(i, pr->getShapeMin(i) + 1);
         found = true;
         break;
       }
 
     if (!found)
-      puzzle->probAddShape(prob, j, 1);
+      pr->addShape(j, 1);
   }
 
   activateProblem(problemSelector->getSelection());
-  PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+//  PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
   updateInterface();
   StatProblemInfo(problemSelector->getSelection());
 }
@@ -714,20 +725,22 @@ void mainWindow_c::cb_RemoveShapeFromProblem(void) {
   unsigned int prob = problemSelector->getSelection();
   changeProblem(prob);
 
+  problem_c * pr = puzzle->getProblem(prob);
+
   // first see, find the shape, and only if there is one, we decrement its count out remove it
-  for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
-    if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
-      if (puzzle->probGetShapeMax(prob, i) == 1)
-        puzzle->probRemoveShape(prob, i);
+  for (unsigned int i = 0; i < pr->shapeNumber(); i++)
+    if (pr->getShape(i) == shapeAssignmentSelector->getSelection()) {
+      if (pr->getShapeMax(i) == 1)
+        pr->removeShape(i);
       else {
-        if (puzzle->probGetShapeMin(prob, i) > 0)
-          puzzle->probSetShapeMin(prob, i, puzzle->probGetShapeMin(prob, i) - 1);
-        puzzle->probSetShapeMax(prob, i, puzzle->probGetShapeMax(prob, i) - 1);
+        if (pr->getShapeMin(i) > 0)
+          pr->setShapeMin(i, pr->getShapeMin(i) - 1);
+        pr->setShapeMax(i, pr->getShapeMax(i) - 1);
       }
 
       changed = true;
       PiecesCountList->redraw();
-      PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+      PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
     }
 
   activateProblem(problemSelector->getSelection());
@@ -746,14 +759,16 @@ void mainWindow_c::cb_SetShapeMinimumToZero(void) {
   unsigned int prob = problemSelector->getSelection();
   changeProblem(prob);
 
+  problem_c * pr = puzzle->getProblem(prob);
+
   // first see, find the shape, and only if there is one, we decrement its count out remove it
-  for (unsigned int i = 0; i < puzzle->probShapeNumber(prob); i++)
-    if (puzzle->probGetShape(prob, i) == shapeAssignmentSelector->getSelection()) {
-      puzzle->probSetShapeMin(prob, i, 0);
+  for (unsigned int i = 0; i < pr->shapeNumber(); i++)
+    if (pr->getShape(i) == shapeAssignmentSelector->getSelection()) {
+      pr->setShapeMin(i, 0);
 
       changed = true;
       PiecesCountList->redraw();
-      PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+      PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
     }
 
   activateProblem(problemSelector->getSelection());
@@ -772,12 +787,14 @@ void mainWindow_c::cb_RemoveAllShapesFromProblem(void) {
   unsigned int prob = problemSelector->getSelection();
   changeProblem(prob);
 
-  while (puzzle->probShapeNumber(prob))
-    puzzle->probRemoveShape(prob, 0);
+  problem_c * pr = puzzle->getProblem(prob);
+
+  while (pr->shapeNumber())
+    pr->removeShape(0);
 
   changed = true;
   PiecesCountList->redraw();
-  PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+  PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
 
   activateProblem(problemSelector->getSelection());
   StatProblemInfo(problemSelector->getSelection());
@@ -788,7 +805,7 @@ void mainWindow_c::cb_ShapeGroup(void) {
 
   unsigned int prob = problemSelector->getSelection();
 
-  groupsEditor_c * groupEditWin = new groupsEditor_c(puzzle, prob);
+  groupsEditor_c * groupEditWin = new groupsEditor_c(puzzle->getProblem(prob));
 
   groupEditWin->show();
 
@@ -799,18 +816,19 @@ void mainWindow_c::cb_ShapeGroup(void) {
 
     /* as the user may have reset the counts of one shape to zero, go
      * through the list and remove entries of zero count */
+    problem_c * pr = puzzle->getProblem(prob);
 
     unsigned int i = 0;
-    while (i < puzzle->probShapeNumber(prob)) {
+    while (i < pr->shapeNumber()) {
 
-      if (puzzle->probGetShapeMax(prob, i))
+      if (pr->getShapeMax(i))
         i++;
       else
-        puzzle->probRemoveShape(prob, i);
+        pr->removeShape(i);
     }
 
     PiecesCountList->redraw();
-    PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+    PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
     changed = true;
     changeProblem(problemSelector->getSelection());
     activateProblem(problemSelector->getSelection());
@@ -826,12 +844,15 @@ void mainWindow_c::cb_BtnPlacementBrowser(void) {
 
   unsigned int prob = solutionProblem->getSelection();
 
-  if (!puzzle->probGetAssembler(prob)->getPiecePlacementSupported()) {
+  if (prob >= puzzle->problemNumber())
+    return;
+
+  if (!puzzle->getProblem(prob)->getAssembler()->getPiecePlacementSupported()) {
     fl_message("Sorry no placement browser for this type of puzzle");
     return;
   }
 
-  placementBrowser_c * plbr = new placementBrowser_c(puzzle, prob, ggt);
+  placementBrowser_c * plbr = new placementBrowser_c(puzzle->getProblem(prob), ggt);
 
   plbr->show();
 
@@ -851,10 +872,10 @@ void mainWindow_c::cb_BtnMovementBrowser(void) {
 
   unsigned int sol = (int)SolutionSel->value()-1;
 
-  if (sol >= puzzle->probSolutionNumber(prob))
+  if (sol >= puzzle->getProblem(prob)->solutionNumber())
     return;
 
-  movementBrowser_c * mvbr = new movementBrowser_c(puzzle, prob, sol);
+  movementBrowser_c * mvbr = new movementBrowser_c(puzzle->getProblem(prob), sol);
 
   mvbr->show();
 
@@ -869,18 +890,18 @@ void mainWindow_c::cb_BtnAssemblerStep(void) {
 
   bt_assert(assmThread == 0);
 
-  assembler_c * assm = (assembler_c*)puzzle->probGetAssembler(solutionProblem->getSelection());
+  assembler_c * assm = (assembler_c*)puzzle->getProblem(solutionProblem->getSelection())->getAssembler();
 
   bt_assert(assm);
 
   assm->debug_step(1);
 
   if (assm->getFinished() >= 1)
-    puzzle->probFinishedSolving(solutionProblem->getSelection());
+    puzzle->getProblem(solutionProblem->getSelection())->finishedSolving();
 
   updateInterface();
 
-  View3D->showAssemblerState(puzzle, solutionProblem->getSelection(), assm->getAssembly());
+  View3D->showAssemblerState(puzzle->getProblem(solutionProblem->getSelection()), assm->getAssembly());
 }
 
 static void cb_AllowColor_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AllowColor(); }
@@ -891,14 +912,15 @@ void mainWindow_c::cb_AllowColor(void) {
     return;
   }
 
+  unsigned int prob = problemSelector->getSelection();
+  problem_c * pr = puzzle->getProblem(prob);
+
   if (colconstrList->GetSortByResult())
-    puzzle->probAllowPlacement(problemSelector->getSelection(),
-                               colorAssignmentSelector->getSelection()+1,
-                               colconstrList->getSelection()+1);
+    pr->allowPlacement(colorAssignmentSelector->getSelection()+1,
+                       colconstrList->getSelection()+1);
   else
-    puzzle->probAllowPlacement(problemSelector->getSelection(),
-                               colconstrList->getSelection()+1,
-                               colorAssignmentSelector->getSelection()+1);
+    pr->allowPlacement(colconstrList->getSelection()+1,
+                       colorAssignmentSelector->getSelection()+1);
   changed = true;
   changeProblem(problemSelector->getSelection());
   updateInterface();
@@ -912,14 +934,15 @@ void mainWindow_c::cb_DisallowColor(void) {
     return;
   }
 
+  unsigned int prob = problemSelector->getSelection();
+  problem_c * pr = puzzle->getProblem(prob);
+
   if (colconstrList->GetSortByResult())
-    puzzle->probDisallowPlacement(problemSelector->getSelection(),
-                                  colorAssignmentSelector->getSelection()+1,
-                                  colconstrList->getSelection()+1);
+    pr->disallowPlacement(colorAssignmentSelector->getSelection()+1,
+                              colconstrList->getSelection()+1);
   else
-    puzzle->probDisallowPlacement(problemSelector->getSelection(),
-                                  colconstrList->getSelection()+1,
-                                  colorAssignmentSelector->getSelection()+1);
+    pr->disallowPlacement(colconstrList->getSelection()+1,
+                          colorAssignmentSelector->getSelection()+1);
 
   changed = true;
   changeProblem(problemSelector->getSelection());
@@ -948,7 +971,7 @@ void mainWindow_c::cb_BtnPrepare(void) {
 static void cb_BtnStart_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_BtnStart(false); }
 void mainWindow_c::cb_BtnStart(bool prep_only) {
 
-  puzzle->probRemoveAllSolutions(solutionProblem->getSelection());
+  puzzle->getProblem(solutionProblem->getSelection())->removeAllSolutions();
   SolutionEmpty = true;
 
   for (unsigned int i = 0; i < puzzle->shapeNumber(); i++)
@@ -981,13 +1004,8 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
     return;
   }
 
-  if (puzzle->probGetResult(prob) > puzzle->shapeNumber()) {
+  if (puzzle->getProblem(prob)->getResult() > puzzle->shapeNumber()) {
     fl_message("A result shape must be defined");
-    return;
-  }
-
-  if (puzzle->probPieceNumber(prob) > 255 && SolveDisasm->value() != 0) {
-    fl_message("Sorry currently BurrTools can not handle more than 255 pieces per problem in the disassembler");
     return;
   }
 
@@ -1000,7 +1018,7 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   if (SolveDisasm->value() != 0) par |= assemblerThread_c::PAR_DISASSM;
   if (JustCount->value() != 0) par |= assemblerThread_c::PAR_JUST_COUNT;
 
-  assmThread = new assemblerThread_c(puzzle, prob, par);
+  assmThread = new assemblerThread_c(puzzle->getProblem(prob), par);
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
@@ -1051,7 +1069,9 @@ void mainWindow_c::cb_SortSolutions(unsigned int by) {
   if (prob >= puzzle->problemNumber())
     return;
 
-  unsigned int sol = puzzle->probSolutionNumber(prob);
+  problem_c * pr = puzzle->getProblem(prob);
+
+  unsigned int sol = pr->solutionNumber();
 
   if (sol < 2)
     return;
@@ -1068,23 +1088,23 @@ void mainWindow_c::cb_SortSolutions(unsigned int by) {
 
       switch (by) {
         case 0:
-          exchange = puzzle->probGetAssemblyNum(prob, a) > puzzle->probGetAssemblyNum(prob, b);
+          exchange = pr->getAssemblyNum(a) > pr->getAssemblyNum(b);
           break;
         case 1:
-          exchange = puzzle->probGetDisassemblyInfo(prob, a) && puzzle->probGetDisassemblyInfo(prob, b) &&
-            (puzzle->probGetDisassemblyInfo(prob, a)->compare(puzzle->probGetDisassemblyInfo(prob, b)) > 0);
+          exchange = pr->getDisassemblyInfo(a) && pr->getDisassemblyInfo(b) &&
+            (pr->getDisassemblyInfo(a)->compare(pr->getDisassemblyInfo(b)) > 0);
           break;
         case 2:
-          exchange = puzzle->probGetDisassemblyInfo(prob, a) && puzzle->probGetDisassemblyInfo(prob, b) &&
-            (puzzle->probGetDisassemblyInfo(prob, a)->sumMoves() > puzzle->probGetDisassemblyInfo(prob, b)->sumMoves());
+          exchange = pr->getDisassemblyInfo(a) && pr->getDisassemblyInfo(b) &&
+            (pr->getDisassemblyInfo(a)->sumMoves() > pr->getDisassemblyInfo(b)->sumMoves());
           break;
         case 3:
-          exchange = puzzle->probGetAssembly(prob, a)->comparePieces(puzzle->probGetAssembly(prob, b)) < 0;
+          exchange = pr->getAssembly(a)->comparePieces(pr->getAssembly(b)) < 0;
           break;
       }
 
       if (exchange)
-        puzzle->probSwapSolutions(prob, a, b);
+        pr->swapSolutions(a, b);
     }
 
   activateSolution(prob, (int)SolutionSel->value()-1);
@@ -1105,7 +1125,9 @@ void mainWindow_c::cb_DeleteSolutions(unsigned int which) {
 
   unsigned int sol = (int)SolutionSel->value()-1;
 
-  if (sol >= puzzle->probSolutionNumber(prob))
+  problem_c * pr = puzzle->getProblem(prob);
+
+  if (sol >= pr->solutionNumber())
     return;
 
   unsigned int cnt;
@@ -1114,32 +1136,32 @@ void mainWindow_c::cb_DeleteSolutions(unsigned int which) {
 
   switch (which) {
   case 0:
-    cnt = puzzle->probSolutionNumber(prob);
+    cnt = pr->solutionNumber();
     for (unsigned int i = 0; i < cnt; i++)
-      puzzle->probRemoveSolution(prob, 0);
+      pr->removeSolution(0);
     break;
   case 1:
     for (unsigned int i = 0; i < sol; i++)
-      puzzle->probRemoveSolution(prob, 0);
+      pr->removeSolution(0);
     SolutionSel->value(1);
     break;
   case 2:
-    puzzle->probRemoveSolution(prob, sol);
+    pr->removeSolution(sol);
     break;
   case 3:
-    cnt = puzzle->probSolutionNumber(prob) - sol - 1;
+    cnt = pr->solutionNumber() - sol - 1;
     for (unsigned int i = 0; i < cnt; i++)
-      puzzle->probRemoveSolution(prob, sol+1);
+      pr->removeSolution(sol+1);
     break;
   case 4:
-    cnt = puzzle->probSolutionNumber(prob);
+    cnt = pr->solutionNumber();
     {
       unsigned int i = 0;
       while (i < cnt) {
-        if (puzzle->probGetDisassembly(prob, i) || puzzle->probGetDisassemblyInfo(prob, i))
+        if (pr->getDisassembly(i) || pr->getDisassemblyInfo(i))
           i++;
         else {
-          puzzle->probRemoveSolution(prob, i);
+          pr->removeSolution(i);
           cnt--;
           if (SolutionSel->value() > i)
             SolutionSel->value(SolutionSel->value()-1);
@@ -1149,8 +1171,8 @@ void mainWindow_c::cb_DeleteSolutions(unsigned int which) {
     break;
   }
 
-  if (SolutionSel->value() > puzzle->probSolutionNumber(prob))
-    SolutionSel->value(puzzle->probSolutionNumber(prob));
+  if (SolutionSel->value() > pr->solutionNumber())
+    SolutionSel->value(pr->solutionNumber());
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
@@ -1163,12 +1185,14 @@ void mainWindow_c::cb_DeleteDisasm(void) {
   if (prob >= puzzle->problemNumber())
     return;
 
+  problem_c * pr = puzzle->getProblem(prob);
+
   unsigned int sol = (int)SolutionSel->value()-1;
 
-  if (sol >= puzzle->probSolutionNumber(prob))
+  if (sol >= pr->solutionNumber())
     return;
 
-  puzzle->probRemoveDisassm(prob, sol);
+  pr->removeDisassm(sol);
 
   changed = true;
 
@@ -1183,7 +1207,9 @@ void mainWindow_c::cb_DeleteAllDisasm(void) {
   if (prob >= puzzle->problemNumber())
     return;
 
-  puzzle->probRemoveAllDisassm(prob);
+  problem_c * pr = puzzle->getProblem(prob);
+
+  pr->removeAllDisassm();
 
   changed = true;
 
@@ -1198,9 +1224,11 @@ void mainWindow_c::cb_AddDisasm(void) {
   if (prob >= puzzle->problemNumber())
     return;
 
+  problem_c * pr = puzzle->getProblem(prob);
+
   unsigned int sol = (int)SolutionSel->value()-1;
 
-  if (sol >= puzzle->probSolutionNumber(prob))
+  if (sol >= pr->solutionNumber())
     return;
 
   if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
@@ -1208,14 +1236,14 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
   }
 
-  disassembler_c * dis = new disassembler_0_c(puzzle, prob);
+  disassembler_c * dis = new disassembler_0_c(pr);
 
-  separation_c * d = dis->disassemble(puzzle->probGetAssembly(prob, sol));
+  separation_c * d = dis->disassemble(pr->getAssembly(sol));
 
   changed = true;
 
   if (d)
-    puzzle->probAddDisasmToSolution(prob, sol, d);
+    pr->addDisasmToSolution(sol, d);
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
@@ -1236,14 +1264,11 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
     return;
   }
 
-  if (puzzle->probPieceNumber(prob) > 255) {
-    fl_message("Sorry currently BurrTools can not handle more than 255 pieces per problem in the disassembler");
-    return;
-  }
+  problem_c * pr = puzzle->getProblem(prob);
 
   changed = true;
 
-  disassembler_c * dis = new disassembler_0_c(puzzle, prob);
+  disassembler_c * dis = new disassembler_0_c(pr);
 
   Fl_Double_Window * w = new Fl_Double_Window(20, 20, 300, 30);
   Fl_Box * b = new Fl_Box(0, 0, 300, 30);
@@ -1253,19 +1278,19 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
   char txt[100];
   w->show();
 
-  for (unsigned int sol = 0; sol < puzzle->probSolutionNumber(prob); sol++) {
+  for (unsigned int sol = 0; sol < pr->solutionNumber(); sol++) {
 
-    snprintf(txt, 100, "solved %i of %i disassemblies\n", sol, puzzle->probSolutionNumber(prob));
+    snprintf(txt, 100, "solved %i of %i disassemblies\n", sol, pr->solutionNumber());
     b->label(txt);
 
     Fl::wait(0);
 
-    if (all || !puzzle->probGetDisassembly(prob, sol)) {
+    if (all || !pr->getDisassembly(sol)) {
 
-      separation_c * d = dis->disassemble(puzzle->probGetAssembly(prob, sol));
+      separation_c * d = dis->disassemble(pr->getAssembly(sol));
 
       if (d)
-        puzzle->probAddDisasmToSolution(prob, sol, d);
+        pr->addDisasmToSolution(sol, d);
     }
   }
 
@@ -1356,7 +1381,7 @@ void mainWindow_c::cb_3dClick(void) {
         &shape, 0, 0)) {
 
       if (shape >= 2)
-        shapeAssignmentSelector->setSelection(puzzle->probGetShape(problemSelector->getSelection(), shape-2));
+        shapeAssignmentSelector->setSelection(puzzle->getProblem(problemSelector->getSelection())->getShape(shape-2));
     }
   } else if (TaskSelectionTab->value() == TabSolve) {
     if (Fl::event_shift()) {
@@ -1693,35 +1718,37 @@ void mainWindow_c::StatPieceInfo(unsigned int pc) {
   }
 }
 
-void mainWindow_c::StatProblemInfo(unsigned int pr) {
+void mainWindow_c::StatProblemInfo(unsigned int prob) {
 
-  if ((pr < puzzle->problemNumber()) && (puzzle->probGetResult(pr) < puzzle->shapeNumber())) {
+  if ((prob < puzzle->problemNumber()) && (!puzzle->getProblem(prob)->resultInvalid())) {
+
+    problem_c * pr = puzzle->getProblem(prob);
 
     char txt[100];
 
     unsigned int cnt = 0;
     unsigned int cntMin = 0;
 
-    for (unsigned int i = 0; i < puzzle->probShapeNumber(pr); i++) {
-      cnt += puzzle->probGetShapeShape(pr, i)->countState(voxel_c::VX_FILLED) * puzzle->probGetShapeMax(pr, i);
-      cntMin += puzzle->probGetShapeShape(pr, i)->countState(voxel_c::VX_FILLED) * puzzle->probGetShapeMin(pr, i);
+    for (unsigned int i = 0; i < pr->shapeNumber(); i++) {
+      cnt += pr->getShapeShape(i)->countState(voxel_c::VX_FILLED) * pr->getShapeMax(i);
+      cntMin += pr->getShapeShape(i)->countState(voxel_c::VX_FILLED) * pr->getShapeMin(i);
     }
 
     if (cnt == cntMin) {
 
-      snprintf(txt, 100, "Problem P%i result can contain %i - %i voxels, pieces (n = %i) contain %i voxels", pr+1,
-          puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
-          puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
-          puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE),
-          puzzle->probPieceNumber(pr), cnt);
+      snprintf(txt, 100, "Problem P%i result can contain %i - %i voxels, pieces (n = %i) contain %i voxels", prob+1,
+          pr->getResultShape()->countState(voxel_c::VX_FILLED),
+          pr->getResultShape()->countState(voxel_c::VX_FILLED) +
+          pr->getResultShape()->countState(voxel_c::VX_VARIABLE),
+          pr->pieceNumber(), cnt);
 
     } else {
 
-      snprintf(txt, 100, "Problem P%i result can contain %i - %i voxels, pieces (n = %i) contain %i-%i voxels", pr+1,
-          puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED),
-          puzzle->probGetResultShape(pr)->countState(voxel_c::VX_FILLED) +
-          puzzle->probGetResultShape(pr)->countState(voxel_c::VX_VARIABLE),
-          puzzle->probPieceNumber(pr), cntMin, cnt);
+      snprintf(txt, 100, "Problem P%i result can contain %i - %i voxels, pieces (n = %i) contain %i-%i voxels", prob+1,
+          pr->getResultShape()->countState(voxel_c::VX_FILLED),
+          pr->getResultShape()->countState(voxel_c::VX_FILLED) +
+          pr->getResultShape()->countState(voxel_c::VX_VARIABLE),
+          pr->pieceNumber(), cntMin, cnt);
     }
 
     Status->setText(txt);
@@ -1743,12 +1770,12 @@ void mainWindow_c::changeColor(unsigned int nr) {
 
 void mainWindow_c::changeShape(unsigned int nr) {
   for (unsigned int i = 0; i < puzzle->problemNumber(); i++)
-    if (puzzle->probContainsShape(i, nr))
-      puzzle->probRemoveAllSolutions(i);
+    if (puzzle->getProblem(i)->containsShape(nr))
+      puzzle->getProblem(i)->removeAllSolutions();
 }
 
 void mainWindow_c::changeProblem(unsigned int nr) {
-  puzzle->probRemoveAllSolutions(nr);
+  puzzle->getProblem(nr)->removeAllSolutions();
 }
 
 bool mainWindow_c::threadStopped(void) {
@@ -1813,7 +1840,7 @@ bool mainWindow_c::tryToLoad(const char * f) {
   bool containsStarted = false;
 
   for (unsigned int p = 0; p < puzzle->problemNumber(); p++) {
-    if (puzzle->probGetSolveState(p) == puzzle_c::SS_SOLVING) {
+    if (puzzle->getProblem(p)->getSolveState() == SS_SOLVING) {
       containsStarted = true;
       break;
     }
@@ -1837,11 +1864,17 @@ void mainWindow_c::ReplacePuzzle(puzzle_c * NewPuzzle) {
   problemSelector->setPuzzle(NewPuzzle);
   colorAssignmentSelector->setPuzzle(NewPuzzle);
   colconstrList->setPuzzle(NewPuzzle, 0);
-  problemResult->setPuzzle(NewPuzzle, 0);
+  if (NewPuzzle->problemNumber() > 0) {
+    problemResult->setPuzzle(NewPuzzle->getProblem(0));
+    PiecesCountList->setPuzzle(NewPuzzle->getProblem(0));
+    PcVis->setPuzzle(NewPuzzle->getProblem(0));
+  } else {
+    problemResult->setPuzzle(0);
+    PiecesCountList->setPuzzle(0);
+    PcVis->setPuzzle(0);
+  }
   shapeAssignmentSelector->setPuzzle(NewPuzzle);
-  PiecesCountList->setPuzzle(NewPuzzle, 0);
   solutionProblem->setPuzzle(NewPuzzle);
-  PcVis->setPuzzle(NewPuzzle, 0);
 
   SolutionSel->value(1);
   SolutionAnim->value(0);
@@ -1944,7 +1977,10 @@ void mainWindow_c::activateShape(unsigned int number) {
 
 void mainWindow_c::activateProblem(unsigned int prob) {
 
-  View3D->showProblem(puzzle, prob, shapeAssignmentSelector->getSelection());
+  if (prob < puzzle->problemNumber())
+    View3D->showProblem(puzzle->getProblem(prob), shapeAssignmentSelector->getSelection());
+  else
+    View3D->showNothing();
 
   SolutionEmpty = true;
 }
@@ -1956,42 +1992,44 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
     disassemble = 0;
   }
 
-  if ((prob < puzzle->problemNumber()) && (num < puzzle->probSolutionNumber(prob))) {
+  if ((prob < puzzle->problemNumber()) && (num < puzzle->getProblem(prob)->solutionNumber())) {
 
-    PcVis->setPuzzle(puzzle, prob);
-    PcVis->setAssembly(puzzle->probGetAssembly(prob, num));
+    problem_c * pr = puzzle->getProblem(prob);
+
+    PcVis->setPuzzle(puzzle->getProblem(prob));
+    PcVis->setAssembly(pr->getAssembly(num));
     AssemblyNumber->show();
-    AssemblyNumber->value(puzzle->probGetAssemblyNum(prob, num)+1);
+    AssemblyNumber->value(pr->getAssemblyNum(num)+1);
 
-    if (puzzle->probGetDisassembly(prob, num)) {
+    if (pr->getDisassembly(num)) {
       SolutionAnim->show();
-      SolutionAnim->range(0, puzzle->probGetDisassembly(prob, num)->sumMoves());
+      SolutionAnim->range(0, pr->getDisassembly(num)->sumMoves());
 
       SolutionsInfo->show();
 
       MovesInfo->show();
 
       char levelText[50];
-      int len = snprintf(levelText, 50, "%i (", puzzle->probGetDisassembly(prob, num)->sumMoves());
-      puzzle->probGetDisassembly(prob, num)->movesText(levelText + len, 50-len);
+      int len = snprintf(levelText, 50, "%i (", pr->getDisassembly(num)->sumMoves());
+      pr->getDisassembly(num)->movesText(levelText + len, 50-len);
       levelText[strlen(levelText)+1] = 0;
       levelText[strlen(levelText)] = ')';
 
       MovesInfo->value(levelText);
 
-      disassemble = new disasmToMoves_c(puzzle->probGetDisassembly(prob, num),
-                                      2*puzzle->probGetResultShape(prob)->getBiggestDimension(),
-                                      puzzle->probPieceNumber(prob));
+      disassemble = new disasmToMoves_c(pr->getDisassembly(num),
+                                      2*pr->getResultShape()->getBiggestDimension(),
+                                      pr->pieceNumber());
       disassemble->setStep(SolutionAnim->value(), config.useBlendedRemoving(), true);
 
-      View3D->showAssembly(puzzle, prob, num);
+      if (prob < puzzle->problemNumber()) View3D->showAssembly(puzzle->getProblem(prob), num);
       View3D->updatePositions(disassemble);
       View3D->updateVisibility(PcVis);
 
       SolutionNumber->show();
-      SolutionNumber->value(puzzle->probGetSolutionNum(prob, num)+1);
+      SolutionNumber->value(pr->getSolutionNum(num)+1);
 
-    } else if (puzzle->probGetDisassemblyInfo(prob, num)) {
+    } else if (pr->getDisassemblyInfo(num)) {
 
       SolutionAnim->range(0, 0);
       SolutionAnim->hide();
@@ -2001,18 +2039,18 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->show();
 
       char levelText[50];
-      int len = snprintf(levelText, 50, "%i (", puzzle->probGetDisassemblyInfo(prob, num)->sumMoves());
-      puzzle->probGetDisassemblyInfo(prob, num)->movesText(levelText + len, 50-len);
+      int len = snprintf(levelText, 50, "%i (", pr->getDisassemblyInfo(num)->sumMoves());
+      pr->getDisassemblyInfo(num)->movesText(levelText + len, 50-len);
       levelText[strlen(levelText)+1] = 0;
       levelText[strlen(levelText)] = ')';
 
       MovesInfo->value(levelText);
 
-      View3D->showAssembly(puzzle, prob, num);
+      if (prob < puzzle->problemNumber()) View3D->showAssembly(puzzle->getProblem(prob), num);
       View3D->updateVisibility(PcVis);
 
       SolutionNumber->show();
-      SolutionNumber->value(puzzle->probGetSolutionNum(prob, num)+1);
+      SolutionNumber->value(pr->getSolutionNum(num)+1);
 
     } else {
 
@@ -2021,7 +2059,7 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->value(0);
       MovesInfo->hide();
 
-      View3D->showAssembly(puzzle, prob, num);
+      if (prob < puzzle->problemNumber()) View3D->showAssembly(puzzle->getProblem(prob), num);
       View3D->updateVisibility(PcVis);
 
       SolutionNumber->hide();
@@ -2037,7 +2075,7 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
     SolutionAnim->hide();
     MovesInfo->hide();
 
-    PcVis->setPuzzle(puzzle, solutionProblem->getSelection());
+    PcVis->setPuzzle(0);
 
     AssemblyNumber->hide();
     SolutionNumber->hide();
@@ -2139,27 +2177,32 @@ void mainWindow_c::updateInterface(void) {
       BtnDelShape->deactivate();
     }
 
+    const problem_c * pr = (assmThread) ? assmThread->getProblem() : 0;
+
     // we can only edit shapes, when something valid is selected and
     // either no assembler is running or the shape is not in the problem that the assembler works on
     if ((PcSel->getSelection() < puzzle->shapeNumber()) &&
-        (!assmThread || !puzzle->probContainsShape(assmThread->getProblem(), PcSel->getSelection()))) {
+        (!assmThread || !pr->containsShape(PcSel->getSelection()))) {
       pieceTools->activate();
     } else {
       pieceTools->deactivate();
     }
 
     // when the current shape is in the assembler we lock the editor, only viewing is possible
-    if (assmThread && (puzzle->probContainsShape(assmThread->getProblem(), PcSel->getSelection())))
+    if (assmThread && (pr->containsShape(PcSel->getSelection())))
       pieceEdit->deactivate();
     else
       pieceEdit->activate();
 
   } else if (TaskSelectionTab->value() == TabProblems) {
 
+    problem_c * pr = (problemSelector->getSelection() < puzzle->problemNumber())
+      ? puzzle->getProblem(problemSelector->getSelection()) : 0;
+
     // problem tab
-    PiecesCountList->setPuzzle(puzzle, problemSelector->getSelection());
+    PiecesCountList->setPuzzle(pr);
     colconstrList->setPuzzle(puzzle, problemSelector->getSelection());
-    problemResult->setPuzzle(puzzle, problemSelector->getSelection());
+    problemResult->setPuzzle(pr);
 
     // problems can only be renames and copied, when something valid is selected
     if (problemSelector->getSelection() < puzzle->problemNumber()) {
@@ -2187,15 +2230,17 @@ void mainWindow_c::updateInterface(void) {
       unsigned int p = problemSelector->getSelection();
       unsigned int s = shapeAssignmentSelector->getSelection();
 
-      for (current = 0; current < puzzle->probShapeNumber(p); current++)
-        if (puzzle->probGetShape(p, current) == s)
+      problem_c * pr = puzzle->getProblem(p);
+
+      for (current = 0; current < pr->shapeNumber(); current++)
+        if (pr->getShape(current) == s)
           break;
 
-      if (current && (current < puzzle->probShapeNumber(p)))
+      if (current && (current < pr->shapeNumber()))
         BtnProbShapeLeft->activate();
       else
         BtnProbShapeLeft->deactivate();
-      if (current+1 < puzzle->probShapeNumber(p))
+      if (current+1 < pr->shapeNumber())
         BtnProbShapeRight->activate();
       else
         BtnProbShapeRight->deactivate();
@@ -2217,13 +2262,14 @@ void mainWindow_c::updateInterface(void) {
     // the assembler is not running or not busy with the selected problem
     if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
         (colorAssignmentSelector->getSelection() < puzzle->colorNumber()) &&
-        (!assmThread || (assmThread->getProblem() != problemSelector->getSelection()))) {
+        (!assmThread || (assmThread->getProblem() != puzzle->getProblem(problemSelector->getSelection())))) {
+
+      problem_c * pr = puzzle->getProblem(problemSelector->getSelection());
 
       // check, if the given colour is already added
       if (colconstrList->GetSortByResult()) {
-        if (puzzle->probPlacementAllowed(problemSelector->getSelection(),
-                                         colorAssignmentSelector->getSelection()+1,
-                                         colconstrList->getSelection()+1)) {
+        if (pr->placementAllowed(colorAssignmentSelector->getSelection()+1,
+                                 colconstrList->getSelection()+1)) {
           BtnColAdd->deactivate();
           BtnColRem->activate();
         } else {
@@ -2231,9 +2277,8 @@ void mainWindow_c::updateInterface(void) {
           BtnColRem->deactivate();
         }
       } else {
-        if (puzzle->probPlacementAllowed(problemSelector->getSelection(),
-                                         colconstrList->getSelection()+1,
-                                         colorAssignmentSelector->getSelection()+1)) {
+        if (pr->placementAllowed(colconstrList->getSelection()+1,
+                                 colorAssignmentSelector->getSelection()+1)) {
           BtnColAdd->deactivate();
           BtnColRem->activate();
         } else {
@@ -2251,19 +2296,21 @@ void mainWindow_c::updateInterface(void) {
     // the assembler is not running or not busy with out problem
     if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
         (shapeAssignmentSelector->getSelection() < puzzle->shapeNumber()) &&
-        (!assmThread || (assmThread->getProblem() != problemSelector->getSelection()))) {
+        (!assmThread || (assmThread->getProblem() != puzzle->getProblem(problemSelector->getSelection())))) {
       BtnSetResult->activate();
 
+      problem_c * pr = puzzle->getProblem(problemSelector->getSelection());
+
       // we can only add a shape, when it's not the result of the current problem
-      if (puzzle->probGetResult(problemSelector->getSelection()) != shapeAssignmentSelector->getSelection())
+      if (pr->resultInvalid() || pr->getResult() != shapeAssignmentSelector->getSelection())
         BtnAddShape->activate();
       else
         BtnAddShape->deactivate();
 
       bool found = false;
 
-      for (unsigned int p = 0; p < puzzle->probShapeNumber(problemSelector->getSelection()); p++)
-        if (puzzle->probGetShape(problemSelector->getSelection(), p) == shapeAssignmentSelector->getSelection()) {
+      for (unsigned int p = 0; p < pr->shapeNumber(); p++)
+        if (pr->getShape(p) == shapeAssignmentSelector->getSelection()) {
           found = true;
           break;
         }
@@ -2286,14 +2333,14 @@ void mainWindow_c::updateInterface(void) {
     // we can edit the groups, when we have a problem with at least one shape and
     // the assembler is not working on the current problem
     if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
-        (!assmThread || (assmThread->getProblem() != problemSelector->getSelection()))) {
+        (!assmThread || (assmThread->getProblem() != puzzle->getProblem(problemSelector->getSelection())))) {
       BtnGroup->activate();
     } else {
       BtnGroup->deactivate();
     }
 
     if ((problemSelector->getSelection() < puzzle->problemNumber()) &&
-        (!assmThread || (assmThread->getProblem() != problemSelector->getSelection()))) {
+        (!assmThread || (assmThread->getProblem() != puzzle->getProblem(problemSelector->getSelection())))) {
       BtnAddAll->activate();
       BtnRemAll->activate();
     } else {
@@ -2303,12 +2350,17 @@ void mainWindow_c::updateInterface(void) {
 
   } else {
 
-    // solution tab
-    PcVis->setPuzzle(puzzle, prob);
-
-    float finished = ((prob < puzzle->problemNumber()) && puzzle->probGetAssembler(prob)) ? puzzle->probGetAssembler(prob)->getFinished() : 0;
+    float finished = ((prob < puzzle->problemNumber()) &&
+        puzzle->getProblem(prob)->getAssembler())
+          ? puzzle->getProblem(prob)->getAssembler()->getFinished()
+          : 0;
 
     if (prob < puzzle->problemNumber()) {
+
+      problem_c * pr = puzzle->getProblem(prob);
+
+      // solution tab
+      PcVis->setPuzzle(pr);
 
       // we have a valid problem selected, so update the information visible
 
@@ -2321,7 +2373,7 @@ void mainWindow_c::updateInterface(void) {
         SolvingProgress->label(tmp);
       }
 
-      unsigned long numSol = puzzle->probSolutionNumber(prob);
+      unsigned long numSol = pr->solutionNumber();
 
       if (numSol > 0) {
 
@@ -2352,22 +2404,22 @@ void mainWindow_c::updateInterface(void) {
         SolutionNumber->hide();
       }
 
-      if (puzzle->probNumAssembliesKnown(prob)) {
-        OutputAssemblies->value(puzzle->probGetNumAssemblies(prob));
+      if (pr->numAssembliesKnown()) {
+        OutputAssemblies->value(pr->getNumAssemblies());
         OutputAssemblies->show();
       } else {
         OutputAssemblies->hide();
       }
 
-      if (puzzle->probNumSolutionsKnown(prob)) {
-        OutputSolutions->value(puzzle->probGetNumSolutions(prob));
+      if (pr->numSolutionsKnown()) {
+        OutputSolutions->value(pr->getNumSolutions());
         OutputSolutions->show();
       } else {
         OutputSolutions->hide();
       }
 
       // the placement browser can only be activated when an assembler is available and not assembling is active
-      if (puzzle->probGetAssembler(prob) && !assmThread) {
+      if (pr->getAssembler() && !assmThread) {
         BtnPlacement->activate();
       } else {
         BtnPlacement->deactivate();
@@ -2375,13 +2427,13 @@ void mainWindow_c::updateInterface(void) {
 
       // the step button is only active when the placements browser can be active AND when the puzzle is not
       // yet completely solved
-      if (puzzle->probGetAssembler(prob) && !assmThread && (puzzle->probGetSolveState(prob) != puzzle_c::SS_SOLVED)) {
+      if (pr->getAssembler() && !assmThread && (pr->getSolveState() != SS_SOLVED)) {
         if (BtnStep) BtnStep->activate();
       } else {
         if (BtnStep) BtnStep->deactivate();
       }
 
-      if (puzzle->probSolutionNumber(prob) >= 2) {
+      if (pr->solutionNumber() >= 2) {
         BtnSrtFind->activate();
         BtnSrtLevel->activate();
         BtnSrtMoves->activate();
@@ -2393,7 +2445,7 @@ void mainWindow_c::updateInterface(void) {
         BtnSrtPieces->deactivate();
       }
 
-      if (puzzle->probSolutionNumber(prob) > 0) {
+      if (pr->solutionNumber() > 0) {
         BtnDelAll->activate();
         if (SolutionSel->value() > 1)
           BtnDelBefore->activate();
@@ -2402,7 +2454,7 @@ void mainWindow_c::updateInterface(void) {
 
         BtnDelAt->activate();
 
-        if ((SolutionSel->value()-1) < (puzzle->probSolutionNumber(prob)-1))
+        if ((SolutionSel->value()-1) < (pr->solutionNumber()-1))
           BtnDelAfter->activate();
         else
           BtnDelAfter->deactivate();
@@ -2417,14 +2469,14 @@ void mainWindow_c::updateInterface(void) {
       }
 
       if ((SolutionSel->value() >= 1) &&
-          ((int)SolutionSel->value()-1) < (int)puzzle->probSolutionNumber(prob) &&
-          puzzle->probGetDisassembly(prob, (int)SolutionSel->value()-1)) {
+          ((int)SolutionSel->value()-1) < (int)pr->solutionNumber() &&
+          pr->getDisassembly((int)SolutionSel->value()-1)) {
         BtnDisasmDel->activate();
       } else {
         BtnDisasmDel->deactivate();
       }
 
-      if (puzzle->probSolutionNumber(prob) > 0) {
+      if (pr->solutionNumber() > 0) {
         BtnDisasmDelAll->activate();
       } else {
         BtnDisasmDelAll->deactivate();
@@ -2432,7 +2484,7 @@ void mainWindow_c::updateInterface(void) {
 
       if (ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE) {
 
-        if (puzzle->probSolutionNumber(prob) > 0) {
+        if (pr->solutionNumber() > 0) {
           BtnDisasmAdd->activate();
           BtnDisasmAddAll->activate();
           BtnDisasmAddMissing->activate();
@@ -2484,16 +2536,20 @@ void mainWindow_c::updateInterface(void) {
       BtnDisasmAdd->deactivate();
       BtnDisasmAddAll->deactivate();
       BtnDisasmAddMissing->deactivate();
+
+      PcVis->setPuzzle(0);
     }
 
 
-    if (assmThread && (assmThread->getProblem() == prob)) {
+    if (assmThread && (assmThread->getProblem() == puzzle->getProblem(prob))) {
+
+      problem_c * pr = puzzle->getProblem(prob);
 
       // a thread is currently running
 
       unsigned int ut;
-      if (puzzle->probUsedTimeKnown(prob))
-        ut = puzzle->probGetUsedTime(prob) + assmThread->getTime();
+      if (pr->usedTimeKnown())
+        ut = pr->getUsedTime() + assmThread->getTime();
       else
         ut = assmThread->getTime();
 
@@ -2508,8 +2564,9 @@ void mainWindow_c::updateInterface(void) {
 
     } else {
 
-      if ((prob < puzzle->problemNumber()) && puzzle->probUsedTimeKnown(prob)) {
-        TimeUsed->value(timeToString(puzzle->probGetUsedTime(prob)));
+      if ((prob < puzzle->problemNumber()) && puzzle->getProblem(prob)->usedTimeKnown()) {
+        problem_c * pr = puzzle->getProblem(prob);
+        TimeUsed->value(timeToString(pr->getUsedTime()));
         TimeUsed->show();
       } else {
         TimeUsed->hide();
@@ -2520,6 +2577,8 @@ void mainWindow_c::updateInterface(void) {
 
     if (assmThread) {
 
+      problem_c * pr = puzzle->getProblem(prob);
+
       switch(assmThread->currentAction()) {
       case assemblerThread_c::ACT_PREPARATION:
         {
@@ -2529,9 +2588,9 @@ void mainWindow_c::updateInterface(void) {
         }
         break;
       case assemblerThread_c::ACT_REDUCE:
-        if (puzzle->probGetAssembler(prob)) {
+        if (pr->getAssembler()) {
           char tmp[20];
-          snprintf(tmp, 20, "optimize piece %i", puzzle->probGetAssembler(prob)->getReducePiece()+1);
+          snprintf(tmp, 20, "optimize piece %i", pr->getAssembler()->getReducePiece()+1);
           OutputActivity->value(tmp);
         } else {
           char tmp[20];
@@ -2559,7 +2618,7 @@ void mainWindow_c::updateInterface(void) {
         break;
       }
 
-      if (assmThread->getProblem() == prob) {
+      if (assmThread->getProblem() == puzzle->getProblem(prob)) {
 
         // for the actually solved problem we enable the stop button
         BtnStart->deactivate();
@@ -2609,26 +2668,27 @@ void mainWindow_c::updateInterface(void) {
 
       if (prob < puzzle->problemNumber()) {
 
+        problem_c * pr = puzzle->getProblem(prob);
         // a valid problem is selected
 
-        switch(puzzle->probGetSolveState(prob)) {
-        case puzzle_c::SS_UNSOLVED:
+        switch(pr->getSolveState()) {
+        case SS_UNSOLVED:
           OutputActivity->value("nothing");
           BtnCont->deactivate();
           break;
-        case puzzle_c::SS_SOLVED:
+        case SS_SOLVED:
           OutputActivity->value("finished");
           BtnCont->deactivate();
           break;
-        case puzzle_c::SS_SOLVING:
+        case SS_SOLVING:
           OutputActivity->value("pause");
           BtnCont->activate();
           break;
         }
 
         // if we have a result and at least one piece, we can give it a try
-        if ((puzzle->probPieceNumber(prob) > 0) &&
-            (puzzle->probGetResult(prob) < puzzle->shapeNumber())) {
+        if ((pr->pieceNumber() > 0) &&
+            (pr->getResult() < puzzle->shapeNumber())) {
           BtnStart->activate();
           if (BtnPrepare) BtnPrepare->activate();
         } else {
@@ -2733,7 +2793,7 @@ void mainWindow_c::update(void) {
 
     // update the window, either when the thread stopped and so the buttons need to
     // be updated, or then the thread works for the currently selected problem
-    if (!assmThread || assmThread->getProblem() == solutionProblem->getSelection())
+    if (!assmThread || assmThread->getProblem() == puzzle->getProblem(solutionProblem->getSelection()))
       updateInterface();
   }
 }
@@ -3093,7 +3153,7 @@ void mainWindow_c::CreateProblemTab(void) {
 
     layouter_c * o = new layouter_c(0, 1);
 
-    problemResult = new ResultViewer_c(0, 0, 1, 1, puzzle);
+    problemResult = new ResultViewer_c(0, 0, 1, 1);
     problemResult->tooltip(" The result shape for the current problem ");
     problemResult->weight(1, 0);
 
@@ -3150,7 +3210,7 @@ void mainWindow_c::CreateProblemTab(void) {
 
     (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    PiecesCountList = new PiecesList(0, 0, 100, 100, puzzle);
+    PiecesCountList = new PiecesList(0, 0, 100, 100);
     LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 3, 1, 1, PiecesCountList);
     shapeGroup->callback(cb_PiecesClicked_stub, this);
     shapeGroup->tooltip(" Show which shapes are used in the current problem and how often they are used, can be used to select shapes ");
@@ -3508,7 +3568,7 @@ void mainWindow_c::CreateSolveTab(void) {
 
     (new LFl_Box(0, 10))->setMinimumSize(0, SZ_GAP);
 
-    PcVis = new PieceVisibility(0, 0, 100, 100, puzzle);
+    PcVis = new PieceVisibility(0, 0, 100, 100);
     LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 11, 1, 1, PcVis);
     shapeGroup->callback(cb_PcVis_stub, this);
     shapeGroup->tooltip(" Change appearance of the pieces between normal, grid and invisible ");

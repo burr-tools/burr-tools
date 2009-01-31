@@ -18,7 +18,7 @@
 #include "assemblerthread.h"
 
 #include "disassembly.h"
-#include "puzzle.h"
+#include "problem.h"
 #include "assembly.h"
 #include "disassembler_0.h"
 
@@ -29,17 +29,17 @@ void assemblerThread_c::run(void){
     /* first check, if there is an assembler available with the
      * problem, if there is one take that
      */
-    if (puzzle->probGetAssembler(prob))
-      assm = puzzle->probGetAssembler(prob);
+    if (puzzle->getAssembler())
+      assm = puzzle->getAssembler();
 
     else {
 
       /* otherwise we have to create a new one
        */
       action = assemblerThread_c::ACT_PREPARATION;
-      assm = puzzle->getGridType()->findAssembler(puzzle, prob);
+      assm = puzzle->getGridType()->findAssembler(puzzle);
 
-      errState = assm->createMatrix(puzzle, prob, parameters & PAR_KEEP_MIRROR, parameters & PAR_KEEP_ROTATIONS);
+      errState = assm->createMatrix(puzzle, parameters & PAR_KEEP_MIRROR, parameters & PAR_KEEP_ROTATIONS);
       if (errState != assembler_c::ERR_NONE) {
 
         errParam = assm->getErrorsParam();
@@ -63,7 +63,7 @@ void assemblerThread_c::run(void){
        * also restores the assembler state to a state that might
        * be saved within the problem
        */
-      errState = puzzle->probSetAssembler(prob, assm);
+      errState = puzzle->setAssembler(assm);
       if (errState != assembler_c::ERR_NONE) {
         action = assemblerThread_c::ACT_ERROR;
         return;
@@ -79,32 +79,33 @@ void assemblerThread_c::run(void){
 
       action = assemblerThread_c::ACT_ASSEMBLING;
       assm->assemble(this);
+      puzzle->addTime(time(0)-startTime);
 
       if (assm->getFinished() >= 1) {
         action = assemblerThread_c::ACT_FINISHED;
-        puzzle->probFinishedSolving(prob);
+        puzzle->finishedSolving();
       } else
         action = assemblerThread_c::ACT_PAUSING;
 
-    } else
+    } else {
       action = assemblerThread_c::ACT_PAUSING;
+      puzzle->addTime(time(0)-startTime);
+    }
 
-    puzzle->probAddTime(prob, time(0)-startTime);
   }
 
   catch (assert_exception *a) {
 
     ae = a;
     action = assemblerThread_c::ACT_ERROR;
-    if (puzzle->probGetAssembler(prob))
-      puzzle->probRemoveAllSolutions(prob);
+    if (puzzle->getAssembler())
+      puzzle->removeAllSolutions();
   }
 }
 
-assemblerThread_c::assemblerThread_c(puzzle_c * puz, unsigned int problemNum, int par) :
+assemblerThread_c::assemblerThread_c(problem_c * puz, int par) :
 action(ACT_PREPARATION),
 puzzle(puz),
-prob(problemNum),
 parameters(par),
 disassm(0),
 assm(0),
@@ -115,7 +116,7 @@ solutionDrop(1)
 {
 
   if (par & PAR_DISASSM)
-    disassm = new disassembler_0_c(puz, problemNum);
+    disassm = new disassembler_0_c(puz);
 }
 
 assemblerThread_c::~assemblerThread_c(void) {
@@ -147,8 +148,8 @@ bool assemblerThread_c::assembly(assembly_c * a) {
     break;
   case SOL_SAVE_ASM:
 
-    if (puzzle->probGetNumAssemblies(prob) % (solutionDrop*dropMultiplicator) == 0)
-      puzzle->probAddSolution(prob, a);
+    if (puzzle->getNumAssemblies() % (solutionDrop*dropMultiplicator) == 0)
+      puzzle->addSolution(a);
     else
       delete a;
 
@@ -164,8 +165,8 @@ bool assemblerThread_c::assembly(assembly_c * a) {
 
         // only one piece, that is always a solution, so increment number
         // of solutions but save only the assembly
-        puzzle->probAddSolution(prob, a);
-        puzzle->probIncNumSolutions(prob);
+        puzzle->addSolution(a);
+        puzzle->incNumSolutions();
 
         break;
       }
@@ -191,7 +192,7 @@ bool assemblerThread_c::assembly(assembly_c * a) {
         delete a;
 
         // yes, the puzzle is disassembable count solutions
-        puzzle->probIncNumSolutions(prob);
+        puzzle->incNumSolutions();
 
         break;
       }
@@ -206,17 +207,17 @@ bool assemblerThread_c::assembly(assembly_c * a) {
           {
             unsigned int lev = s->sumMoves();
 
-            for (unsigned int i = 0; i < puzzle->probSolutionNumber(prob); i++) {
+            for (unsigned int i = 0; i < puzzle->solutionNumber(); i++) {
 
-              const separationInfo_c * s2 = puzzle->probGetDisassemblyInfo(prob, i);
+              const separationInfo_c * s2 = puzzle->getDisassemblyInfo(i);
 
               if (s2 && s2->sumMoves() > lev) {
                 if (parameters & PAR_DROP_DISASSEMBLIES) {
                   separationInfo_c * si = new separationInfo_c(s);
-                  puzzle->probAddSolution(prob, a, si, i);
+                  puzzle->addSolution(a, si, i);
                   delete s;
                 } else
-                  puzzle->probAddSolution(prob, a, s, i);
+                  puzzle->addSolution(a, s, i);
                 ins = true;
                 break;
               }
@@ -226,34 +227,34 @@ bool assemblerThread_c::assembly(assembly_c * a) {
           if (!ins) {
             if (parameters & PAR_DROP_DISASSEMBLIES) {
               separationInfo_c * si = new separationInfo_c(s);
-              puzzle->probAddSolution(prob, a, si);
+              puzzle->addSolution(a, si);
               delete s;
             } else
-              puzzle->probAddSolution(prob, a, s);
+              puzzle->addSolution(a, s);
           }
 
           // remove the front most solution, if we only want to save
           // a limited number of solutions, as the front most
           // solutions are the more unimportant ones
-          if (solutionLimit && (puzzle->probSolutionNumber(prob) > solutionLimit))
-            puzzle->probRemoveSolution(prob, 0);
+          if (solutionLimit && (puzzle->solutionNumber() > solutionLimit))
+            puzzle->removeSolution(0);
 
           break;
         case SRT_LEVEL:
           {
             separationInfo_c * si = new separationInfo_c(s);
 
-            for (unsigned int i = 0; i < puzzle->probSolutionNumber(prob); i++) {
+            for (unsigned int i = 0; i < puzzle->solutionNumber(); i++) {
 
-              const separationInfo_c * s2 = puzzle->probGetDisassemblyInfo(prob, i);
+              const separationInfo_c * s2 = puzzle->getDisassemblyInfo(i);
 
               if (s2 && (s2->compare(si) > 0)) {
                 if (parameters & PAR_DROP_DISASSEMBLIES) {
-                  puzzle->probAddSolution(prob, a, si, i);
+                  puzzle->addSolution(a, si, i);
                   delete s;
                   si = 0;
                 } else
-                  puzzle->probAddSolution(prob, a, s, i);
+                  puzzle->addSolution(a, s, i);
                 ins = true;
                 break;
               }
@@ -261,11 +262,11 @@ bool assemblerThread_c::assembly(assembly_c * a) {
 
             if (!ins)  {
               if (parameters & PAR_DROP_DISASSEMBLIES) {
-                puzzle->probAddSolution(prob, a, si);
+                puzzle->addSolution(a, si);
                 si = 0;
                 delete s;
               } else
-                puzzle->probAddSolution(prob, a, s);
+                puzzle->addSolution(a, s);
             }
 
             if (si) delete si;
@@ -274,19 +275,19 @@ bool assemblerThread_c::assembly(assembly_c * a) {
           // remove the front most solution, if we only want to save
           // a limited number of solutions, as the front most
           // solutions are the more unimportant ones
-          if (solutionLimit && (puzzle->probSolutionNumber(prob) > solutionLimit))
-            puzzle->probRemoveSolution(prob, 0);
+          if (solutionLimit && (puzzle->solutionNumber() > solutionLimit))
+            puzzle->removeSolution(0);
 
           break;
         case SRT_UNSORT:
           /* only save every solutionDrop-th solution */
-          if (puzzle->probGetNumSolutions(prob) % (solutionDrop * dropMultiplicator) == 0) {
+          if (puzzle->getNumSolutions() % (solutionDrop * dropMultiplicator) == 0) {
             if (parameters & PAR_DROP_DISASSEMBLIES) {
               separationInfo_c * si = new separationInfo_c(s);
-              puzzle->probAddSolution(prob, a, si);
+              puzzle->addSolution(a, si);
               delete s;
             } else
-              puzzle->probAddSolution(prob, a, s);
+              puzzle->addSolution(a, s);
           } else {
             delete a;
             delete s;
@@ -296,25 +297,25 @@ bool assemblerThread_c::assembly(assembly_c * a) {
       }
 
       // yes, the puzzle is disassembably, count solutions
-      puzzle->probIncNumSolutions(prob);
+      puzzle->incNumSolutions();
     }
     break;
   }
 
-  puzzle->probIncNumAssemblies(prob);
+  puzzle->incNumAssemblies();
 
   // this is the case for assembly only or unsorted disassembly solutions
   // we need to thin out the list
-  if (solutionLimit && (puzzle->probSolutionNumber(prob) > solutionLimit)) {
-    unsigned int idx = (_solutionAction == SOL_SAVE_ASM) ? puzzle->probGetNumAssemblies(prob)-1
-                                                         : puzzle->probGetNumSolutions(prob)-1;
+  if (solutionLimit && (puzzle->solutionNumber() > solutionLimit)) {
+    unsigned int idx = (_solutionAction == SOL_SAVE_ASM) ? puzzle->getNumAssemblies()-1
+                                                         : puzzle->getNumSolutions()-1;
 
     idx = (idx % (solutionLimit * solutionDrop * dropMultiplicator)) / (solutionDrop * dropMultiplicator);
 
     if (idx == solutionLimit-1)
       dropMultiplicator *= 2;
 
-    puzzle->probRemoveSolution(prob, idx+1);
+    puzzle->removeSolution(idx+1);
   }
 
   return true;
@@ -331,8 +332,8 @@ void assemblerThread_c::stop(void) {
 
   action = ACT_WAIT_TO_STOP;
 
-  if (puzzle->probGetAssembler(prob))
-    puzzle->probGetAssembler(prob)->stop();
+  if (puzzle->getAssembler())
+    puzzle->getAssembler()->stop();
 
   stopPressed = true;
 }
@@ -352,13 +353,16 @@ bool assemblerThread_c::start(bool stop_after_prep) {
   // only when we save count the possible assemblies we use the assembly counter, in all
   // other cases we use the solution counter
   if ((parameters & (PAR_JUST_COUNT | PAR_DISASSM)) == 0) {
-    a = puzzle->probGetNumAssemblies(prob);
-    if (!puzzle->probNumAssembliesKnown(prob))
+
+    if (!puzzle->numAssembliesKnown())
       a = 0;
+    else
+      a = puzzle->getNumAssemblies();
   } else {
-    a = puzzle->probGetNumSolutions(prob);
-    if (!puzzle->probNumSolutionsKnown(prob))
+    if (!puzzle->numSolutionsKnown())
       a = 0;
+    else
+      a = puzzle->getNumSolutions();
   }
 
   while (a+solutionDrop > 2 * solutionLimit * solutionDrop) {

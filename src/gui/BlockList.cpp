@@ -20,6 +20,7 @@
 #include "piececolor.h"
 
 #include "../lib/puzzle.h"
+#include "../lib/problem.h"
 #include "../lib/voxel.h"
 #include "../lib/assembly.h"
 
@@ -335,8 +336,8 @@ unsigned int ProblemSelector::blockNumber(void) {
 }
 
 void ProblemSelector::getText(unsigned int block, char * text) {
-  if (puzzle->probGetName(block).length())
-    snprintf(text, 200, "P%i - %s", block+1, puzzle->probGetName(block).c_str());
+  if (puzzle->getProblem(block)->getName().length())
+    snprintf(text, 200, "P%i - %s", block+1, puzzle->getProblem(block)->getName().c_str());
   else
     snprintf(text, 200, "P%i", block+1);
 }
@@ -347,78 +348,71 @@ void ProblemSelector::getColor(unsigned int block, unsigned char *r,  unsigned c
   *b = pieceColorBi(block);
 }
 
-void PiecesList::setPuzzle(puzzle_c *pz, unsigned int prob) {
-  bt_assert(pz);
+void PiecesList::setPuzzle(const problem_c *pz) {
   puzzle = pz;
-  problem = prob;
   redraw();
 }
 
 unsigned int PiecesList::blockNumber(void) {
-  if (problem >= puzzle->problemNumber())
+  if (!puzzle)
     return 0;
 
-  return puzzle->probShapeNumber(problem);
+  return puzzle->shapeNumber();
 }
 
 void PiecesList::getText(unsigned int block, char * text) {
+
+  if (!puzzle) return;
 
   int txtLen = 200;
   int len;
 
   /* first the shape name */
-  if (puzzle->probGetShapeShape(problem, block)->getName().length())
-    len = snprintf(text, txtLen, "S%i - %s", puzzle->probGetShape(problem, block)+1, puzzle->probGetShapeShape(problem, block)->getName().c_str());
+  if (puzzle->getShapeShape(block)->getName().length())
+    len = snprintf(text, txtLen, "S%i - %s", puzzle->getShape(block)+1, puzzle->getShapeShape(block)->getName().c_str());
   else
-    len = snprintf(text, txtLen, "S%i", puzzle->probGetShape(problem, block)+1);
+    len = snprintf(text, txtLen, "S%i", puzzle->getShape(block)+1);
   text += len;
   txtLen -= len;
 
   /* now how many pieces of that shape are available */
-  if (puzzle->probGetShapeMin(problem, block) != puzzle->probGetShapeMax(problem, block)) {
-    len = snprintf(text, txtLen, "(%i-%i)", puzzle->probGetShapeMin(problem, block), puzzle->probGetShapeMax(problem, block));
-  } else if (puzzle->probGetShapeMin(problem, block) != 1) {
-    len = snprintf(text, txtLen, "(%i)", puzzle->probGetShapeMin(problem, block));
+  if (puzzle->getShapeMin(block) != puzzle->getShapeMax(block)) {
+    len = snprintf(text, txtLen, "(%i-%i)", puzzle->getShapeMin(block), puzzle->getShapeMax(block));
+  } else if (puzzle->getShapeMin(block) != 1) {
+    len = snprintf(text, txtLen, "(%i)", puzzle->getShapeMin(block));
   } else
     len = 0;
   text += len;
   txtLen -= len;
 
   /* finally the group information */
-  for (int i = 0; i < puzzle->probGetShapeGroupNumber(problem, block); i++) {
-    if (puzzle->probGetShapeGroupCount(problem, block, i) != puzzle->probGetShapeMax(problem, block))
-      len = snprintf(text, txtLen, ", G%i(%i)", puzzle->probGetShapeGroup(problem, block, i), puzzle->probGetShapeGroupCount(problem, block, i));
+  for (int i = 0; i < puzzle->getShapeGroupNumber(block); i++) {
+    if (puzzle->getShapeGroupCount(block, i) != puzzle->getShapeMax(block))
+      len = snprintf(text, txtLen, ", G%i(%i)", puzzle->getShapeGroup(block, i), puzzle->getShapeGroupCount(block, i));
     else
-      len = snprintf(text, txtLen, ", G%i", puzzle->probGetShapeGroup(problem, block, i));
+      len = snprintf(text, txtLen, ", G%i", puzzle->getShapeGroup(block, i));
     text += len;
     txtLen -= len;
   }
 }
 
 void PiecesList::getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) {
-  *r = pieceColorRi(puzzle->probGetShape(problem, block));
-  *g = pieceColorGi(puzzle->probGetShape(problem, block));
-  *b = pieceColorBi(puzzle->probGetShape(problem, block));
+
+  if (!puzzle) return;
+
+  *r = pieceColorRi(puzzle->getShape(block));
+  *g = pieceColorGi(puzzle->getShape(block));
+  *b = pieceColorBi(puzzle->getShape(block));
 }
 
-PieceVisibility::PieceVisibility(int x, int y, int w, int h, puzzle_c * p) : BlockList(x, y, w, h), puzzle(p), problem(0), count(0) {
-  bt_assert(p);
-  if (p->problemNumber() > 0) {
-    visState = new unsigned char[p->probPieceNumber(0)];
-    useState = new bool[p->probPieceNumber(0)];
-    for (unsigned int i = 0; i < p->probPieceNumber(0); i++) {
-      visState[i] = 0;
-      useState[i] = 1;
-    }
-  } else {
-    visState = 0;
-    useState = 0;
-  }
+PieceVisibility::PieceVisibility(int x, int y, int w, int h) : BlockList(x, y, w, h), puzzle(0), count(0) {
+  visState = 0;
+  useState = 0;
 }
 
 unsigned int PieceVisibility::blockNumber(void) {
-  if (problem < puzzle->problemNumber())
-    return puzzle->probPieceNumber(problem);
+  if (puzzle)
+    return puzzle->pieceNumber();
   else
     return 0;
 }
@@ -432,21 +426,21 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
 
   unsigned int subBlock = block;
 
-  while (subBlock >= puzzle->probGetShapeMax(problem, shape)) {
-    subBlock -= puzzle->probGetShapeMax(problem, shape);
+  while (subBlock >= puzzle->getShapeMax(shape)) {
+    subBlock -= puzzle->getShapeMax(shape);
     shape++;
   }
-  int shapeID = puzzle->probGetShape(problem, shape);
+  int shapeID = puzzle->getShape(shape);
 
   if (useState[block]) {
 
-    if (puzzle->probGetShapeShape(problem, shape)->getName().length()) {
-      if (puzzle->probGetShapeMax(problem, shape) > 1)
-        snprintf(txt, 199, "S%i.%i - %s", shapeID+1, subBlock+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
+    if (puzzle->getShapeShape(shape)->getName().length()) {
+      if (puzzle->getShapeMax(shape) > 1)
+        snprintf(txt, 199, "S%i.%i - %s", shapeID+1, subBlock+1, puzzle->getShapeShape(shape)->getName().c_str());
       else
-        snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
+        snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->getShapeShape(shape)->getName().c_str());
     } else {
-      if (puzzle->probGetShapeMax(problem, shape) > 1)
+      if (puzzle->getShapeMax(shape) > 1)
         snprintf(txt, 199, "S%i.%i", shapeID+1, subBlock+1);
       else
         snprintf(txt, 199, "S%i", shapeID+1);
@@ -508,22 +502,22 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
 
   int blockNr = block;
 
-  while (block >= puzzle->probGetShapeMax(problem, shape)) {
-    block -= puzzle->probGetShapeMax(problem, shape);
+  while (block >= puzzle->getShapeMax(shape)) {
+    block -= puzzle->getShapeMax(shape);
     shape++;
   }
 
-  int shapeID = puzzle->probGetShape(problem, shape);
+  int shapeID = puzzle->getShape(shape);
 
   if (useState[blockNr]) {
 
-    if (puzzle->probGetShapeShape(problem, shape)->getName().length()) {
-      if (puzzle->probGetShapeMax(problem, shape) > 1)
-        snprintf(txt, 199, "S%i.%i - %s", shapeID+1, block+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
+    if (puzzle->getShapeShape(shape)->getName().length()) {
+      if (puzzle->getShapeMax(shape) > 1)
+        snprintf(txt, 199, "S%i.%i - %s", shapeID+1, block+1, puzzle->getShapeShape(shape)->getName().c_str());
       else
-        snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->probGetShapeShape(problem, shape)->getName().c_str());
+        snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->getShapeShape(shape)->getName().c_str());
     } else {
-      if (puzzle->probGetShapeMax(problem, shape) > 1)
+      if (puzzle->getShapeMax(shape) > 1)
         snprintf(txt, 199, "S%i.%i", shapeID+1, block+1);
       else
         snprintf(txt, 199, "S%i", shapeID+1);
@@ -541,19 +535,15 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
   *h = hi + 4;
 }
 
-void PieceVisibility::setPuzzle(puzzle_c *pz, unsigned int prob) {
-  bt_assert(pz);
+void PieceVisibility::setPuzzle(const problem_c *pz) {
 
-  unsigned int c = 0;
-  if (prob < pz->problemNumber())
-    c = pz->probPieceNumber(prob);
+  unsigned int c = pz ? pz->pieceNumber() : 0;
 
   /* if nothing changes, don't reset piece visibility */
-  if ((pz == puzzle) && (prob == problem) && visState && (c == count))
+  if ((pz == puzzle) && visState && (c == count))
     return;
 
   puzzle = pz;
-  problem = prob;
 
   if (visState)
     delete [] visState;
@@ -600,12 +590,12 @@ void PieceVisibility::push(unsigned int block) {
 }
 
 unsigned char PieceVisibility::getVisibility(unsigned int piece) {
-  bt_assert(piece < puzzle->probPieceNumber(problem));
+  bt_assert(piece < puzzle->pieceNumber());
   return visState[piece];
 }
 
 void PieceVisibility::hidePiece(unsigned int s) {
-  bt_assert(s < puzzle->probPieceNumber(problem));
+  bt_assert(s < puzzle->pieceNumber());
 
   visState[s] = 2;
 }
@@ -664,8 +654,8 @@ void ColorConstraintsEdit::draw(void) {
     unsigned int cnt = 0;
     unsigned int c2;
     for (c2 = 0; c2 < puzzle->colorNumber(); c2++)
-      if ((!sortByResult && puzzle->probPlacementAllowed(problem, c1+1, c2+1)) ||
-          (sortByResult && puzzle->probPlacementAllowed(problem, c2+1, c1+1)))
+      if ((!sortByResult && puzzle->getProblem(problem)->placementAllowed(c1+1, c2+1)) ||
+          (sortByResult && puzzle->getProblem(problem)->placementAllowed(c2+1, c1+1)))
         cnt++;
 
     unsigned int height;
@@ -714,8 +704,8 @@ void ColorConstraintsEdit::draw(void) {
 
     /* draw the colours on the "other" side */
     for (c2 = 0; c2 < puzzle->colorNumber(); c2++)
-      if ((!sortByResult && puzzle->probPlacementAllowed(problem, c1+1, c2+1)) ||
-          (sortByResult && puzzle->probPlacementAllowed(problem, c2+1, c1+1))) {
+      if ((!sortByResult && puzzle->getProblem(problem)->placementAllowed(c1+1, c2+1)) ||
+          (sortByResult && puzzle->getProblem(problem)->placementAllowed(c2+1, c1+1))) {
 
         if (sortByResult) {
 
@@ -818,8 +808,8 @@ int ColorConstraintsEdit::handle(int event) {
     unsigned int cnt = 0;
     unsigned int c2;
     for (c2 = 0; c2 < puzzle->colorNumber(); c2++)
-      if ((!sortByResult && puzzle->probPlacementAllowed(problem, c1+1, c2+1)) ||
-          (sortByResult && puzzle->probPlacementAllowed(problem, c2+1, c1+1)))
+      if ((!sortByResult && puzzle->getProblem(problem)->placementAllowed(c1+1, c2+1)) ||
+          (sortByResult && puzzle->getProblem(problem)->placementAllowed(c2+1, c1+1)))
         cnt++;
 
     unsigned int height;

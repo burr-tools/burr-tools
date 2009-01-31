@@ -19,7 +19,7 @@
 #define __MOVEMENTCACHE_H__
 
 class voxel_c;
-class puzzle_c;
+class problem_c;
 class gridType_c;
 
 /* when this is defined the cache will collect some information while
@@ -109,7 +109,7 @@ public:
   /* create the cache, the cache is then fixed to the puzzle and the problem, it can
    * and should be reused to analyse all assemblies found but can not be used for another puzzle
    */
-  movementCache_c(const puzzle_c * puz, unsigned int problem, unsigned int directions);
+  movementCache_c(const problem_c * puz, unsigned int directions);
 
   virtual ~movementCache_c(void);
 
