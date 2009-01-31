@@ -43,18 +43,12 @@ disassembler_a_c::disassembler_a_c(const puzzle_c * puz, unsigned int prob) :
     for (unsigned int j = 0; j < puz->probGetShapeMax(prob, i); j++)
       piece2shape[p++] = i;
 
-  /* create the weights array */
-  weights = new int[puz->probPieceNumber(prob)];
-  for (unsigned int i = 0; i < puz->probPieceNumber(prob); i++)
-    (const_cast<int*>(weights))[i] = puzzle->probGetShapeShape(prob, piece2shape[i])->getWeight();
-
   analyse = new movementAnalysator_c(puzzle, prob);
 }
 
 disassembler_a_c::~disassembler_a_c() {
   delete groups;
   delete [] piece2shape;
-  delete [] weights;
 
   delete analyse;
 }
@@ -62,10 +56,9 @@ disassembler_a_c::~disassembler_a_c() {
 /* create all the necessary parameters for one of the two possible subproblems
  * our current problems divides into
  */
-void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, std::vector<unsigned int> & pn, int ** nw, const std::vector<unsigned int> & pieces, const int * weights, int part, bool cond) {
+void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, std::vector<unsigned int> & pn, const std::vector<unsigned int> & pieces, int part, bool cond) {
 
   *n = new disassemblerNode_c(part, 0, 0, 0);
-  *nw = new int[part];
 
   int num = 0;
   int dx, dy, dz;
@@ -87,7 +80,6 @@ void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, std::ve
                 st->getZ(i) - dz,
                 st->getTrans(i));
       pn.push_back(pieces[i]);
-      (*nw)[num] = weights[i];
       num++;
     }
 

@@ -29,7 +29,7 @@
 #include <queue>
 #include <vector>
 
-separation_c * disassembler_0_c::checkSubproblem(int pieceCount, const std::vector<unsigned int> & pieces, disassemblerNode_c * st, bool left, bool * ok, const int * weights) {
+separation_c * disassembler_0_c::checkSubproblem(int pieceCount, const std::vector<unsigned int> & pieces, disassemblerNode_c * st, bool left, bool * ok) {
 
   separation_c * res = 0;
 
@@ -41,13 +41,10 @@ separation_c * disassembler_0_c::checkSubproblem(int pieceCount, const std::vect
 
     disassemblerNode_c *n;
     std::vector<unsigned int> pn;
-    int * nw;
-    create_new_params(st, &n, pn, &nw, pieces, weights, pieceCount, left);
-    res = disassemble_rec(pn, n, nw);
+    create_new_params(st, &n, pn, pieces, pieceCount, left);
+    res = disassemble_rec(pn, n);
 
     *ok = res || subProbGrouping(pn);
-
-    delete [] nw;
   }
 
   return res;
@@ -69,7 +66,7 @@ separation_c * disassembler_0_c::checkSubproblem(int pieceCount, const std::vect
  * the function takes over the ownership of the node and pieces. They are deleted at the end
  * of the function, so you must allocate them with new
  */
-separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int> &pieces, disassemblerNode_c * start, const int * weights) {
+separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int> &pieces, disassemblerNode_c * start) {
 
   std::queue<disassemblerNode_c *> openlist[2];
   nodeHash closed[3];
@@ -119,7 +116,7 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
 
     disassemblerNode_c * st;
 
-    while ((st = analyse->find0(node, weights))) {
+    while ((st = analyse->find0(node, pieces))) {
 
       /* check all closed nodelists and also insert the node into the newFront list
        * insert has the same return value as contains, but also inserts the node
@@ -180,11 +177,11 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
        * else try to disassemble, if that fails, try to
        * group the involved pieces into an identical group
        */
-      remove = checkSubproblem(part1, pieces, st, false, &remove_ok, weights);
+      remove = checkSubproblem(part1, pieces, st, false, &remove_ok);
 
       /* only check the left over part, when the removed part is OK */
       if (remove_ok)
-        left = checkSubproblem(part2, pieces, st, true, &left_ok, weights);
+        left = checkSubproblem(part2, pieces, st, true, &left_ok);
 
       /* if both subproblems are either trivial or solvable, return the
        * result, otherwise return 0
@@ -288,7 +285,7 @@ separation_c * disassembler_0_c::disassemble(const assembly_c * assembly) {
   /* reset the grouping class */
   groupReset();
 
-  separation_c * s = disassemble_rec(pieces, start, weights);
+  separation_c * s = disassemble_rec(pieces, start);
 
   return s;
 }

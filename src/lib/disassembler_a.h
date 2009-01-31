@@ -42,13 +42,13 @@ class disassembler_a_c : public disassembler_c {
     /* here we can group pieces together */
     grouping_c * groups;
 
+    const puzzle_c * puzzle;
+    unsigned int problem;
+
     /* this array is used to convert piece number to the corresponding
      * shape number, as these are needed for the grouping functions
      */
     unsigned short * piece2shape;
-
-    const puzzle_c * puzzle;
-    unsigned int problem;
 
   protected:
 
@@ -56,8 +56,6 @@ class disassembler_a_c : public disassembler_c {
     bool subProbGrouping(const std::vector<unsigned int> & pn);
 
     void groupReset(void);
-
-    const int * weights;
 
     movementAnalysator_c *analyse;
 
@@ -74,7 +72,7 @@ class disassembler_a_c : public disassembler_c {
 };
 
 
-void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, std::vector<unsigned int> & pn, int ** nw, const std::vector<unsigned int> & pieces, const int * weights, int part, bool cond);
+void create_new_params(disassemblerNode_c * st, disassemblerNode_c ** n, std::vector<unsigned int> & pn, const std::vector<unsigned int> & pieces, int part, bool cond);
 
 
 #endif

@@ -290,6 +290,14 @@ movementAnalysator_c::movementAnalysator_c(const puzzle_c * puz, unsigned int pr
     for (unsigned int i = 0; i < piecenumber; i++)
       matrix[j][i+i*piecenumber] = 0;
   }
+
+  /* create the weights array */
+  weights = new int[puz->probPieceNumber(prob)];
+  unsigned int pc = 0;
+  for (unsigned int i = 0; i < puz->probShapeNumber(prob); i++) {
+    for (unsigned int j = 0; j < puz->probGetShapeMax(prob, i); j++)
+      weights[pc++] = puzzle->probGetShapeShape(prob, i)->getWeight();
+  }
 }
 
 movementAnalysator_c::~movementAnalysator_c() {
@@ -300,25 +308,26 @@ movementAnalysator_c::~movementAnalysator_c() {
   delete [] matrix;
 
   delete cache;
+  delete [] weights;
 }
 
 static int max(int a, int b) { if (a > b) return a; else return b; }
 
-disassemblerNode_c * movementAnalysator_c::newNode(int next_pn, int nextdir, disassemblerNode_c * searchnode, const int * weights, int amount) {
+disassemblerNode_c * movementAnalysator_c::newNode(int nextdir, disassemblerNode_c * searchnode, int amount, const std::vector<unsigned int> & pieces) {
 
   // calculate the weight of the all the stationary and all the
   // moving pieces
   int moveWeight = 0;
   int stilWeight = 0;
 
-  for (int i = 0; i < next_pn; i++) {
+  for (unsigned int i = 0; i < pieces.size(); i++) {
     if (movement[i]) {
       bt_assert(amount == movement[i]);
 
-      moveWeight = max(moveWeight, weights[i]);
+      moveWeight = max(moveWeight, weights[pieces[i]]);
 
     } else {
-      stilWeight = max(stilWeight, weights[i]);
+      stilWeight = max(stilWeight, weights[pieces[i]]);
     }
   }
 
@@ -329,7 +338,7 @@ disassemblerNode_c * movementAnalysator_c::newNode(int next_pn, int nextdir, dis
   if (stilWeight < moveWeight) {
 
     // stationary pieces become moved, moved piece become stationary
-    for (int i = 0; i < next_pn; i++)
+    for (unsigned int i = 0; i < pieces.size(); i++)
       if (movement[i])
         movement[i] = 0;
       else
@@ -339,10 +348,10 @@ disassemblerNode_c * movementAnalysator_c::newNode(int next_pn, int nextdir, dis
     nextdir ^= 1;
   }
 
-  disassemblerNode_c * n = new disassemblerNode_c(next_pn, searchnode, nextdir, amount);
+  disassemblerNode_c * n = new disassemblerNode_c(pieces.size(), searchnode, nextdir, amount);
 
   /* create a new state with the pieces moved */
-  for (int i = 0; i < next_pn; i++) {
+  for (unsigned int i = 0; i < pieces.size(); i++) {
     int mx, my, mz;
 
     cache->getDirection(nextdir >> 1, &mx, &my, &mz);
@@ -372,7 +381,7 @@ disassemblerNode_c * movementAnalysator_c::newNode(int next_pn, int nextdir, dis
  * also the amount must be identical in both nodes, so if piece a moves 1 unit
  * in node n0 and andother piece move 2 units in node n1 0 is returned
  */
-disassemblerNode_c * movementAnalysator_c::newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1, disassemblerNode_c * searchnode, int next_pn, int nextdir, const int * weights) {
+disassemblerNode_c * movementAnalysator_c::newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1, disassemblerNode_c * searchnode, int nextdir, const std::vector<unsigned int> & pieces) {
 
   // assert that direction are along the same axis
   bt_assert((nextdir | 1) == (n0->getDirection() | 1));
@@ -423,7 +432,7 @@ disassemblerNode_c * movementAnalysator_c::newNodeMerge(const disassemblerNode_c
   // if the new node is equal to n0 or n1, exit
   if (!different0 || !different1) return 0;
 
-  return newNode(next_pn, nextdir, searchnode, weights, amount);
+  return newNode(nextdir, searchnode, amount, pieces);
 }
 
 
@@ -455,7 +464,7 @@ void movementAnalysator_c::init_find0(disassemblerNode_c * nd, const std::vector
  * the next thing to do is to check if something can be removed, and finally we look for longer
  * movements in the actual direction
  */
-disassemblerNode_c * movementAnalysator_c::find0(disassemblerNode_c * searchnode, const int * weights) {
+disassemblerNode_c * movementAnalysator_c::find0(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces) {
 
   disassemblerNode_c * n = 0;
 
@@ -468,7 +477,7 @@ disassemblerNode_c * movementAnalysator_c::find0(disassemblerNode_c * searchnode
       case 0:
         // check, if a single piece can be removed
         if (checkmovement(1, nextdir, next_pn, nextpiece, 30000))
-          n = newNode(next_pn, nextdir, searchnode, weights, 30000);
+          n = newNode(nextdir, searchnode, 30000, pieces);
 
         nextpiece++;
         if (nextpiece >= next_pn) {
@@ -483,7 +492,7 @@ disassemblerNode_c * movementAnalysator_c::find0(disassemblerNode_c * searchnode
       case 1:
         // check, if a group of pieces can be removed
         if (checkmovement(next_pn/2, nextdir, next_pn, nextpiece, 30000))
-          n = newNode(next_pn, nextdir, searchnode, weights, 30000);
+          n = newNode(nextdir, searchnode, 30000, pieces);
 
         nextpiece++;
         if (nextpiece >= next_pn) {
@@ -499,7 +508,7 @@ disassemblerNode_c * movementAnalysator_c::find0(disassemblerNode_c * searchnode
       case 2:
         // check, if pieces can be moved
         if ((nextstep <= maxstep) && checkmovement(next_pn/2, nextdir, next_pn, nextpiece, nextstep)) {
-          n = newNode(next_pn, nextdir, searchnode, weights, nextstep);
+          n = newNode(nextdir, searchnode, nextstep, pieces);
           bt_assert(n);
 
           // we need to merge the gained node with all already found
@@ -556,7 +565,7 @@ disassemblerNode_c * movementAnalysator_c::find0(disassemblerNode_c * searchnode
           const disassemblerNode_c * nd2 = nodes.nextScan();
 
           if (nd2) {
-            n = newNodeMerge(state99node, nd2, searchnode, next_pn, nextdir, weights);
+            n = newNodeMerge(state99node, nd2, searchnode, nextdir, pieces);
 
             // if the node is valid check if we already know that node, if so
             // delete it
@@ -580,8 +589,7 @@ disassemblerNode_c * movementAnalysator_c::find0(disassemblerNode_c * searchnode
   return n;
 }
 
-
-void movementAnalysator_c::completeFind0(disassemblerNode_c * searchnode, const int * weights, std::vector<disassemblerNode_c*> * result) {
+void movementAnalysator_c::completeFind0(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces, std::vector<disassemblerNode_c*> * result) {
 
   for (unsigned int i = 0; i < result->size(); i++)
     delete (*result)[i];
@@ -591,7 +599,7 @@ void movementAnalysator_c::completeFind0(disassemblerNode_c * searchnode, const 
 
   maxstep = 1;
 
-  while ((nd = find0(searchnode, weights)) != 0) {
+  while ((nd = find0(searchnode, pieces)) != 0) {
     for (unsigned int i = 0; i < result->size(); i++) {
       if (*(*result)[i] == *nd) {
         delete nd;

@@ -43,6 +43,7 @@ class movementAnalysator_c {
      */
     int ** matrix;
     int * movement;
+    int * weights;
     unsigned int piecenumber;
 
     const puzzle_c * puzzle;
@@ -61,7 +62,7 @@ class movementAnalysator_c {
     void prepare(const std::vector<unsigned int> & pieces, disassemblerNode_c * searchnode);
     bool checkmovement(unsigned int maxPieces, int nextdir, int next_pn, int nextpiece, int nextstep);
 
-    disassemblerNode_c * newNode(int next_pn, int nextdir, disassemblerNode_c * searchnode, const int * weights, int amount);
+    disassemblerNode_c * newNode(int nextdir, disassemblerNode_c * searchnode, int amount, const std::vector<unsigned int> & pieces);
 
     /* creates a new node that contains the merged movements of the given 2 nodes
      * merged movement means that a piece is moved the maximum amount specified in
@@ -71,7 +72,7 @@ class movementAnalysator_c {
      * also the amount must be identical in both nodes, so if piece a moves 1 unit
      * in node n0 and andother piece move 2 units in node n1 0 is returned
      */
-    disassemblerNode_c * newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1, disassemblerNode_c * searchnode, int next_pn, int nextdir, const int * weights);
+    disassemblerNode_c * newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1, disassemblerNode_c * searchnode, int nextdir, const std::vector<unsigned int> & pieces);
 
   public:
 
@@ -84,9 +85,8 @@ class movementAnalysator_c {
 
     /* 2 sets of functions, one including coordinated motion, and one that doesn't */
     void init_find0(disassemblerNode_c * nd, const std::vector<unsigned int> & pieces);
-    disassemblerNode_c * find0(disassemblerNode_c * searchnode, const int * weights);
-    void completeFind0(disassemblerNode_c * searchnode, const int * weights, std::vector<disassemblerNode_c*> * result);
-
+    disassemblerNode_c * find0(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces);
+    void completeFind0(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces, std::vector<disassemblerNode_c*> * result);
 };
 
 #endif

@@ -44,8 +44,8 @@ private:
    * pieces contains the names of all the pieces that are still inside the
    * subpuzzle puzzle, start defines the starting position of these pieces
    */
-  separation_c * checkSubproblem(int pieceCount, const std::vector<unsigned int> & pieces, disassemblerNode_c * st, bool left, bool * ok, const int * weights);
-  separation_c * disassemble_rec(const std::vector<unsigned int> & pieces, disassemblerNode_c * start, const int * weights);
+  separation_c * checkSubproblem(int pieceCount, const std::vector<unsigned int> & pieces, disassemblerNode_c * st, bool left, bool * ok);
+  separation_c * disassemble_rec(const std::vector<unsigned int> & pieces, disassemblerNode_c * start);
 
 public:
 

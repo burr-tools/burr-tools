@@ -305,10 +305,7 @@ void movementBrowser_c::cb_NodeAnalyze(unsigned int level) {
 
   std::vector<disassemblerNode_c*> res;
 
-  int w[100];
-  for (int i = 0; i < 100; i++) w[i] = 1;
-
-  mv.completeFind0(s->node, w, &res);
+  mv.completeFind0(s->node, s->pieces, &res);
 
   for (unsigned int i = 0; i < res.size(); i++)
     addNode(nd, res[i]);
