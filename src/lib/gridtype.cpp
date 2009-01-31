@@ -35,9 +35,6 @@
 
 #include <stdlib.h>
 
-/**
- * load from xml node
- */
 gridType_c::gridType_c(const xml::node & node) {
   // we must have a real node and the following attributes
   if ((node.get_type() != xml::node::type_element) ||
@@ -71,7 +68,6 @@ gridType_c::gridType_c(const xml::node & node) {
   sym = 0;
 }
 
-/* used to save to XML */
 xml::node gridType_c::save(void) const {
   xml::node nd("gridType");
 
@@ -98,9 +94,6 @@ xml::node gridType_c::save(void) const {
   return nd;
 }
 
-/* some specializes constructors */
-
-/* create a cube grid */
 gridType_c::gridType_c(void) {
   type = GT_BRICKS;
 
@@ -131,7 +124,6 @@ gridType_c::gridType_c(gridType gt) {
   sym = 0;
 }
 
-
 gridType_c::~gridType_c(void) {
   if (sym)
     delete sym;
@@ -145,8 +137,8 @@ movementCache_c * gridType_c::getMovementCache(const problem_c * puz) const
   }
 }
 
-/* voxel spaces have different implementations for rotation, and mirror functions */
-voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init) const {
+voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init) const
+{
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(x, y, z, this, init);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(x, y, z, this, init);
@@ -155,7 +147,9 @@ voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, v
     default: return 0;
   }
 }
-voxel_c * gridType_c::getVoxel(const xml::node & node) const {
+
+voxel_c * gridType_c::getVoxel(const xml::node & node) const
+{
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(node, this);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(node, this);
@@ -165,7 +159,8 @@ voxel_c * gridType_c::getVoxel(const xml::node & node) const {
   }
 }
 
-voxel_c * gridType_c::getVoxel(const voxel_c & orig) const {
+voxel_c * gridType_c::getVoxel(const voxel_c & orig) const
+{
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(orig);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig);
@@ -175,7 +170,8 @@ voxel_c * gridType_c::getVoxel(const voxel_c & orig) const {
   }
 }
 
-voxel_c * gridType_c::getVoxel(const voxel_c * orig) const {
+voxel_c * gridType_c::getVoxel(const voxel_c * orig) const
+{
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(orig);
     case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig);
@@ -185,7 +181,8 @@ voxel_c * gridType_c::getVoxel(const voxel_c * orig) const {
   }
 }
 
-const symmetries_c * gridType_c::getSymmetries(void) const {
+const symmetries_c * gridType_c::getSymmetries(void) const
+{
   if (!sym) {
     switch(type) {
       case GT_BRICKS:
@@ -206,7 +203,8 @@ const symmetries_c * gridType_c::getSymmetries(void) const {
   return sym;
 }
 
-unsigned int gridType_c::getCapabilities(void) const {
+unsigned int gridType_c::getCapabilities(void) const
+{
   switch (type) {
     case GT_BRICKS:           return CAP_ASSEMBLE | CAP_DISASSEMBLE | CAP_STLEXPORT;
     case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE;
@@ -230,7 +228,8 @@ assembler_c * gridType_c::findAssembler(const problem_c * p)
   return 0;
 }
 
-stlExporter_c * gridType_c::getStlExporter(void) const {
+stlExporter_c * gridType_c::getStlExporter(void) const
+{
   switch (type) {
     case GT_BRICKS:           return new stlExporter_0_c();
     case GT_SPHERES:          return new stlExporter_2_c();

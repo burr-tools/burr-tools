@@ -31,40 +31,48 @@ class problem_c;
 class stlExporter_c;
 class movementCache_c;
 
-/* this class encapsulates all information required to handle the different grid types
+/**
+ * This class encapsulates all information required to handle the different grid types.
+ *
+ * That means this class knows about the capabilities of the different grids. It
+ * know how to create assembler disassembler, STL-exporter, or voxelspaces for the
+ * different grid, ...
+ *
+ * This is a factory (see http://en.wikipedia.org/wiki/Factory_method_pattern)
  */
 class gridType_c {
 
   public:
 
+    /// the available grid types
     typedef enum {
-      GT_BRICKS,
-      GT_TRIANGULAR_PRISM,
-      GT_SPHERES,                  // tightly packed spheres
-      GT_RHOMBIC,
+      GT_BRICKS,                   ///< cubes
+      GT_TRIANGULAR_PRISM,         ///< triangles stacked in Z-direction
+      GT_SPHERES,                  ///< tightly packed spheres
+      GT_RHOMBIC,                  ///< complicated cut cube to build rhombic dodecahrdra
     } gridType;
 
-    /* capabilities of a given grid space */
+    /// capabilities of a given grid space
     typedef enum {
-      CAP_ASSEMBLE = 1,
-      CAP_DISASSEMBLE = 2,
-      CAP_STLEXPORT = 4
+      CAP_ASSEMBLE = 1,            ///< the grid has an assembler
+      CAP_DISASSEMBLE = 2,         ///< the grid has a disassembler
+      CAP_STLEXPORT = 4            ///< the grid can export to SDL
     } capabilities;
 
   protected:
 
+    /// the grid type of this instance
     gridType type;
 
+    /// parameters for each grid type, unused right now
     union {
 
-      /* the parameter for the GT_BRICKS type
-       */
       struct {
         bool nothing;
       } brick;
 
       struct {
-        bool nothgin;    // nothing for now
+        bool nothgin;
       } triangularPrism;
 
       struct {
@@ -73,6 +81,13 @@ class gridType_c {
 
     } parameters;
 
+    /**
+     * The symmetry object for this grid type.
+     *
+     * As we only need one symmetry object for a grid type we create a local
+     * instance here and just return a pointer to it for the application to
+     * use
+     */
     symmetries_c * sym;
 
   public:
@@ -82,20 +97,20 @@ class gridType_c {
      */
     gridType_c(const xml::node & node);
 
-    /* used to save to XML */
+    /** used to save to XML */
     xml::node save(void) const;
 
     /* some specializes constructors */
 
-    /* create a cube grid */
+    /** create a cube grid */
     gridType_c(void);
 
-    /* create a grid of the given type with its standard parameters */
+    /** create a grid of the given type with its standard parameters */
     gridType_c(gridType gt);
 
     ~gridType_c(void);
 
-    /* get the grid type */
+    /** get the grid type */
     gridType getType(void) const { return type; }
 
     unsigned int getCapabilities(void) const;
@@ -103,17 +118,28 @@ class gridType_c {
     /// return a movement cache instance for this grid type
     movementCache_c * getMovementCache(const problem_c * puz) const;
 
-    /* voxel spaces have different implementations for rotation, and mirror functions */
+    /// create a new voxel space of this grid type with the given dimensions
     voxel_c * getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init) const;
+    /// create a new voxel space of this grid type, which is loaded from the XML node
     voxel_c * getVoxel(const xml::node & node) const;
+    /// create a new voxel space of this grid type, which is a copy of the given space
     voxel_c * getVoxel(const voxel_c & orig) const;
+    /// create a new voxel space of this grid type, which is a copy of the given space
     voxel_c * getVoxel(const voxel_c * orig) const;
 
+    /**
+     * Return a pointer to the symmetry class for this grid.
+     * Don't free this instance the ownership stays with the gridType_c class
+     * You just use the class and forget about it
+     */
     const symmetries_c * getSymmetries(void) const;
 
+    /// return an STL exporter for this grid
     stlExporter_c * getStlExporter(void) const;
 
-    /* this function is different from the above, it is not dependend on the
+    /**
+     * Find a suitable assembler for the given problem.
+     * This function is different from the above, it is not dependend on the
      * gridtype of the puzzle but on some of the parameters of the puzzle, e.g
      * has the puzzle multipieces, has the puzzle piece count ranges, ...
      * the function tries to find the fastest assembler that can handle
@@ -124,6 +150,5 @@ class gridType_c {
     static assembler_c * findAssembler(const problem_c * p);
 };
 
-
-
 #endif
+

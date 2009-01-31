@@ -20,16 +20,22 @@
 
 #include <xmlwrapp/node.h>
 
+/** \file assembler.h
+ * contains the classes used for the assembler
+ */
+
 class voxel_c;
 class assembly_c;
 class problem_c;
 
-/* here we have a callback class, meaning a class that you give
+/**
+ * The callback class used to return found assemblies to the caller
+ *
+ * here we have a callback class, meaning a class that you give
  * as parameter to a function and this function finally calls the
  * method inside this class. I decided to use this approach because
  * inheritance doesn't allow to change the actions to be taken quickly
  */
-
 class assembler_cb {
 
 public:
@@ -43,21 +49,25 @@ public:
   virtual ~assembler_cb(void) {}
 };
 
-/* as the assembly could be done using different routines we provide an
+/**
+ * The assembler.
+ *
+ * As the assembly could be done using different routines we provide an
  * general interface to the assemblers using this abstract base class
  */
 class assembler_c {
 
 public:
 
+  /// the possible error conditions that can be found while preparing the puzzle
   typedef enum {
-    ERR_NONE,
-    ERR_TOO_MANY_UNITS,
-    ERR_TOO_FEW_UNITS,
-    ERR_CAN_NOT_PLACE,
-    ERR_CAN_NOT_RESTORE_VERSION,
-    ERR_CAN_NOT_RESTORE_SYNTAX,
-    ERR_PIECE_WITH_VARICUBE,
+    ERR_NONE,                    ///< no error
+    ERR_TOO_MANY_UNITS,          ///< pieces contain too many units
+    ERR_TOO_FEW_UNITS,           ///< pieces contain too few units
+    ERR_CAN_NOT_PLACE,           ///< one piece has not placement
+    ERR_CAN_NOT_RESTORE_VERSION, ///< happens on restore, when the versions of the saved information mismatches
+    ERR_CAN_NOT_RESTORE_SYNTAX,  ///< happens on restore, when the information seems wrong
+    ERR_PIECE_WITH_VARICUBE,     ///< there is a piece shape that has a variable cube
     ERR_PUZZLE_UNHANDABLE        // the puzzle contains definitions that can not be (like ranges, multipieces, ...)
   } errState;
 
@@ -68,19 +78,22 @@ public:
 
   virtual ~assembler_c(void) { }
 
-  /* the part of the initialisation that may take a while
+  /**
+   * the part of the initialisation that may take a while.
    * when keep mirror is true, the assembler must not throw away mirror solutions
    * but it still removes solutions that are rotations.
    */
   virtual errState createMatrix(const problem_c * /*puz*/, bool /*keepMirror*/, bool /*keepRotations*/) { return ERR_NONE; }
 
-  /* after the constructor call check this function. It return 0 if everything is
-   * OK, or a pointer to a string, that you should display providing a message
-   * why the puzzle is not solvable
+  /**
+   * when createMatrix returns an error you can call this function to
+   * find out which piece is involved, or other additional information
    */
   virtual int getErrorsParam(void) { return 0; }
 
-  /* the function tries to remove possible piece placements by checking if, after
+  /**
+   * Try to optimize piece placement.
+   * the function tries to remove possible piece placements by checking if, after
    * the piece has been placed somewhere, that all the other pieces still can be
    * placed and all holes can still be filled.
    * if this is not the case then this placement can be removed
@@ -89,7 +102,9 @@ public:
    */
   virtual void reduce(void) { }
 
-  /* because the reduce process can take a long time it is nice to
+  /**
+   * Then running in an extra thread it is possible to find out which piece is worked on by reduce.
+   * Because the reduce process can take a long time it is nice to
    * give some feedback to the user. With this function the user can
    * get a number to display with the information that the program is
    * currently reducing. The intended interpretation is that the program
@@ -98,7 +113,7 @@ public:
    */
   virtual unsigned int getReducePiece(void) { return 0; }
 
-  /* start the assembly process
+  /** start the assembly process.
    * it is intended that the assembly process runs in a different thread from
    * the controlling thread. When this is the case the controlling thread can
    * call stop to make the assembly thread stop working. It will then return
@@ -106,25 +121,28 @@ public:
    */
   virtual void assemble(assembler_cb * /*callback*/) {}
 
-  /* this function returns a number reflecting the complexity of the
+  /**
+   * this function returns a number reflecting the complexity of the
    * puzzle. This could be the number of placements tried, or
    * some other value
    */
   virtual unsigned long getIterations(void) { return 0; }
 
-  /* a function that returns the finished percentage in the range
+  /**
+   * a function that returns the finished percentage in the range
    * between 0 and 1. It must be possible to call this function
    * while assemble is running
    */
   virtual float getFinished(void) { return 0; }
 
-  /* stops the assembly process sometimes in the near future. */
+  /** stops the assembly process sometimes in the near future. */
   virtual void stop(void) {}
 
-  /* returns true, as soon as the process really has stopped */
+  /** returns true, as soon as the process really has stopped */
   virtual bool stopped(void) const { return false; }
 
-  /* sets the position of the assembly process, so that it continues exactly
+  /**
+   * sets the position of the assembly process, so that it continues exactly
    * where it stood, when getPosition was called
    *
    * the function should only be called when assembly is not running it should be
@@ -132,14 +150,16 @@ public:
    */
   virtual errState setPosition(const char * /*string*/, const char * /*version*/) { return ERR_CAN_NOT_RESTORE_VERSION; }
 
-  /* this function saves the current state of the assembler into an xml node to
-   * write it to an file
+  /**
+   * this function saves the current state of the assembler into an xml node to
+   * write it to an file.
    * this state must be such that the class can restore this state and continue
    * from there by getting this and the puzzle given to the constructor
    */
   virtual xml::node save(void) const { return xml::node("assembler"); }
 
   /* some more special information to find out possible piece placements */
+
   /* it is optional to support this interface. The user alsway has to first check
    * if the Supported function returns true, if not the functionality is not
    * supported
