@@ -81,7 +81,7 @@ class bitfield_c {
       field[0] = 0;
 
       for (int i = l-1; i >= 0; i--) {
-        uint64_t cval;
+        uint64_t cval = 0;
 
         if ((val[i] >= '0') && (val[i] <= '9'))
           cval = val[i]-'0';
