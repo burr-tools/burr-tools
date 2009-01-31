@@ -634,7 +634,7 @@ void voxelDrawer_a_c::drawCursor(const voxel_c * space, int mX1, int mX2, int mY
             if (mask & 1) drawGridTriangle(x1, y1, z1, x2-x1, y2-y1, z2-z1, x3-x1, y3-y1, z3-z1, 4);
             if (mask & 2) drawGridTriangle(x1, y1, z1, x2-x1, y2-y1, z2-z1, x4-x1, y4-y1, z4-z1, 4);
             if (mask & 4) drawGridTriangle(x2, y2, z2, x3-x2, y3-y2, z3-z2, x4-x2, y4-y2, z4-z2, 4);
-            if (mask & 8) drawGridTriangle(x3, y3, z3, x1-x3, y1-y3, z1-z3, x4-x3, y4-y4, z4-z3, 4);
+            if (mask & 8) drawGridTriangle(x3, y3, z3, x1-x3, y1-y3, z1-z3, x4-x3, y4-y3, z4-z3, 4);
           }
         }
       }
