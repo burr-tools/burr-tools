@@ -10,7 +10,7 @@ PTHREAD_CPP_ADD=@PTHREAD_CPP_ADD@
 PTHREAD_LD_ADD=@PTHREAD_LD_ADD@
 
 AM_CPPFLAGS=-Wall -W $(XML_CPP_ADD) $(GUI_CPP_ADD) $(PTHREAD_CPP_ADD) @LARGEFILE@
-LDADD=lib/libburr.a flu/libflu.a help/libhelp.a $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
+LDADD= -Llib -lburr -Lflu -lflu -Lhelp -lhelp $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
 
 help_helpviewer_CPPFLAGS=-DBT_EXTERNAL $(GUI_HELP_CPP_ADD) @LARGEFILE@
 help_helpviewer_LDADD=flu/libflu.a $(GUI_LD_ADD) $(GUI_HELP_LD_ADD)
