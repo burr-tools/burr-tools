@@ -145,7 +145,11 @@ int main(int argv, char* args[]) {
         while (assmThread.currentAction() != assemblerThread_c::ACT_FINISHED &&
             assmThread.currentAction() != assemblerThread_c::ACT_ERROR &&
             assmThread.currentAction() != assemblerThread_c::ACT_PAUSING)
+#ifdef WIN32
+          Sleep(1);
+#else
           sleep(1);
+#endif
 
         break;
       }
