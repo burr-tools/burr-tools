@@ -195,11 +195,10 @@ puzzle_c::puzzle_c(const xml::node & node) {
         if (i->get_attributes().find("blue") == i->get_attributes().end())
           throw load_error("color nodes must have a 'blue' attribute", *i);
 
-
         colors.push_back(
-            ((uint32_t)atoi(i->get_attributes().find(  "red")->get_value()) & 0xFF <<  0) ||
-            ((uint32_t)atoi(i->get_attributes().find("green")->get_value()) & 0xFF <<  8) ||
-            ((uint32_t)atoi(i->get_attributes().find( "blue")->get_value()) & 0xFF << 16));
+            (((uint32_t)atoi(i->get_attributes().find(  "red")->get_value()) & 0xFF) <<  0) |
+            (((uint32_t)atoi(i->get_attributes().find("green")->get_value()) & 0xFF) <<  8) |
+            (((uint32_t)atoi(i->get_attributes().find( "blue")->get_value()) & 0xFF) << 16));
       }
     }
   }
