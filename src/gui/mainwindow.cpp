@@ -3642,6 +3642,11 @@ mainWindow_c::~mainWindow_c() {
 
   config.windowPos(x(), y(), w(), h());
 
+  if (assmThread) {
+    delete assmThread;
+    assmThread = 0;
+  }
+
   delete puzzle;
 
   if (fname) {
@@ -3652,11 +3657,6 @@ mainWindow_c::~mainWindow_c() {
   if (disassemble) {
     delete disassemble;
     disassemble = 0;
-  }
-
-  if (assmThread) {
-    delete assmThread;
-    assmThread = 0;
   }
 
   if (ggt)
