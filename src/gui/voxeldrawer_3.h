@@ -18,22 +18,23 @@
 #ifndef __VOXEL_DRAWER_3_H__
 #define __VOXEL_DRAWER_3_H__
 
-#include "voxeldrawer.h"
+#include "voxeldrawer_a.h"
 
 /* voxeldrawer for rhombic grid */
-class voxelDrawer_3_c : public voxelDrawer_c {
+class voxelDrawer_3_c : public voxelDrawer_a_c {
 
   public:
 
     voxelDrawer_3_c(void) {}
 
-    void drawFrame(const voxel_c * space, int x, int y, int z, float edge);
-    void drawNormalVoxel(const voxel_c * space, int x, int y, int z, float alpha, float edge);
-    void drawVariableMarkers(const voxel_c * space, int x, int y, int z);
-    void drawCursor(const voxel_c * space, int mX1, int mX2, int mY1, int mY2, int mZ, int mode);
-
     void calculateSize(const voxel_c * shape, float * x, float * y, float * z);
     void recalcSpaceCoordinates(float * x, float * y, float * z);
+
+    bool getTetrahedron(int x, int y, int z,
+        int *x1, int *y1, int *z1,
+        int *x2, int *y2, int *z2,
+        int *x3, int *y3, int *z3,
+        int *x4, int *y4, int *z4);
 };
 
 #endif

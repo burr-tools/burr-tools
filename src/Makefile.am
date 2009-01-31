@@ -237,6 +237,7 @@ gui_burrGui_SOURCES=\
      gui/voxeldrawer_1.cpp \
      gui/voxeldrawer_2.cpp \
      gui/voxeldrawer_3.cpp \
+     gui/voxeldrawer_a.cpp \
      gui/voxelframe.cpp \
      gui/voxeleditgroup.cpp \
      \
@@ -284,6 +285,7 @@ gui_burrGui_SOURCES=\
      gui/voxeldrawer_1.h \
      gui/voxeldrawer_2.h \
      gui/voxeldrawer_3.h \
+     gui/voxeldrawer_a.h \
      gui/voxelframe.h \
      gui/voxeleditgroup.h \
      \
