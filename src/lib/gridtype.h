@@ -50,6 +50,7 @@ class gridType_c {
       GT_TRIANGULAR_PRISM,         ///< triangles stacked in Z-direction
       GT_SPHERES,                  ///< tightly packed spheres
       GT_RHOMBIC,                  ///< complicated cut cube to build rhombic dodecahrdra
+      GT_TETRA_OCTA,               ///< spacegrid for with tetraedra and octrahera, also a cut cube
     } gridType;
 
     /// capabilities of a given grid space

@@ -1169,6 +1169,149 @@ void ToolTab_3::cb_transform(long task) {
 
 
 
+void ToolTab_4::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
+  puzzle = puz;
+  shape = sh;
+
+  bt_assert(!puzzle || (puzzle->getGridType()->getType() == gridType_c::GT_TETRA_OCTA));
+
+  if (puzzle && shape < puzzle->shapeNumber())
+    changeSize->setXYZ(
+        (puzzle->getShape(shape)->getX()+2)/3,
+        (puzzle->getShape(shape)->getY()+2)/3,
+        (puzzle->getShape(shape)->getZ()+2)/3);
+  else
+    changeSize->setXYZ(0, 0, 0);
+}
+
+static void cb_ToolTab4Size_stub(Fl_Widget* o, long /*v*/) { ((ToolTab_4*)(o->parent()->parent()->parent()))->cb_size(); }
+static void cb_ToolTab4Transform_stub(Fl_Widget* o, long v) { ((ToolTab_4*)(o->parent()))->cb_transform(v); }
+static void cb_ToolTab4Transform2_stub(Fl_Widget* o, long v) { ((ToolTab_4*)(o->parent()->parent()))->cb_transform(v); }
+
+ToolTab_4::ToolTab_4(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
+
+  {
+    layouter_c * o = new layouter_c(0, 1, 1, 1);
+    o->label("Size");
+    o->pitch(3);
+
+    layouter_c *o2 = new layouter_c(0, 0, 1, 1);
+
+    changeSize = new ChangeSize(0, 1, 1, 1);
+    changeSize->callback(cb_ToolTab4Size_stub);
+
+    toAll = new LFl_Check_Button("Apply to All Shapes", 0, 0, 1, 1);
+    toAll->tooltip(" If this is active, all operations (including transformations and constrains are done to all shapes ");
+    toAll->clear_visible_focus();
+    toAll->stretchHCenter();
+
+    o2->end();
+    o2->weight(1, 0);
+
+    (new LFl_Box(1, 0, 1, 1))->setMinimumSize(5, 0);
+
+    o2 = new SizeButtons(2, 0, 1, 1, true);
+    o2->callback(cb_ToolTab4Transform2_stub);
+
+    o->end();
+  }
+  {
+    Fl_Group* o = new TransformButtons(0, 1, 1, 1, 0);
+    o->callback(cb_ToolTab4Transform_stub);
+    o->hide();
+  }
+  {
+    Fl_Group* o = new ToolsButtons(0, 1, 1, 1);
+    o->callback(cb_ToolTab4Transform_stub);
+    o->hide();
+  }
+
+  end();
+}
+
+void ToolTab_4::cb_size(void) {
+  if (puzzle && shape < puzzle->shapeNumber()) {
+
+    resizeSpace(toAll->value(), changeSize, puzzle, shape, 3);
+    do_callback();
+  }
+}
+
+void ToolTab_4::cb_transform(long task) {
+  if (puzzle && shape < puzzle->shapeNumber()) {
+
+    int ss, se;
+
+    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
+      ss = 0;
+      se = puzzle->shapeNumber();
+    } else {
+      ss = shape;
+      se = shape+1;
+    }
+
+    for (int s = ss; s < se; s++) {
+      voxel_c * space = puzzle->getShape(s);
+
+      switch(task) {
+        case  0: space->translate( 6, 0, 0, 0); break;
+        case  1: space->translate(-6, 0, 0, 0); break;
+        case  2: space->translate( 0, 6, 0, 0); break;
+        case  3: space->translate( 0,-6, 0, 0); break;
+        case  4: space->translate( 0, 0, 6, 0); break;
+        case  5: space->translate( 0, 0,-6, 0); break;
+        case  7: space->transform(3); break;
+        case  6: space->transform(1); break;
+        case  9: space->transform(12); break;
+        case  8: space->transform(4); break;
+        case 11: space->transform(20); break;
+        case 10: space->transform(16); break;
+        case 12: space->transform(24); break;
+        case 13: space->transform(34); break;
+        case 14: space->transform(32); break;
+        case 15: space->minimizePiece(); break;
+        case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
+        case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
+        case 18: space->actionOnSpace(voxel_c::ACT_VARIABLE, true); break;
+        case 19: space->actionOnSpace(voxel_c::ACT_VARIABLE, false); break;
+        case 20: space->actionOnSpace(voxel_c::ACT_DECOLOR, true); break;
+        case 21: space->actionOnSpace(voxel_c::ACT_DECOLOR, false); break;
+        case 22: space->scale(2); break;
+        case 23: space->scale(3); break;
+        case 24: space->translate(- (space->boundX1()/6)*6, - (space->boundY1()/6)*6, - (space->boundZ1()/6)*6, 0); break;
+        case 25:
+                 {
+		   // if the space is empty, don't do anything
+		   if (space->boundX2() < space->boundX1())
+		     break;
+
+                   int fx = (space->getX() - (space->boundX2()-space->boundX1()+1))/2 - space->boundX1();
+                   int fy = (space->getY() - (space->boundY2()-space->boundY1()+1))/2 - space->boundY1();
+                   int fz = (space->getZ() - (space->boundZ2()-space->boundZ1()+1))/2 - space->boundZ1();
+
+                   if (fx%6 <= 3) fx -= fx%6; else if (space->boundX2()+(6-fx%6) < space->getX()) fx += (6-fx%6);
+                   if (fy%6 <= 3) fy -= fy%6; else if (space->boundY2()+(6-fy%6) < space->getY()) fy += (6-fy%6);
+                   if (fz%6 <= 3) fz -= fz%6; else if (space->boundZ2()+(6-fz%6) < space->getZ()) fz += (6-fz%6);
+
+                   printf("%i %i %i\n", fx, fy, fz);
+
+                   space->translate(fx, fy, fz, 0);
+                 }
+                 break;
+        case 26: fl_message("Sorry minimizing is not (yet) implemented for the rhombic grid!"); return;
+        case 40: space->fillHoles(0); break;
+      }
+      space->initHotspot();
+    }
+
+    do_callback(this, user_data());
+  }
+}
+
+
+
+
+
 static void cb_ToolTabContainer_stub(Fl_Widget* /*o*/, void*v) {
   ToolTabContainer *vv = (ToolTabContainer*)v;
   vv->do_callback(vv, vv->user_data());

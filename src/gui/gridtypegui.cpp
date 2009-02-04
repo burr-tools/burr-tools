@@ -98,6 +98,7 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) : LFl_Double_Window(fal
   gti.push_back(new gridTypeInfos_c(new gridType_c(gridType_c::GT_TRIANGULAR_PRISM)));
   gti.push_back(new gridTypeInfos_c(new gridType_c(gridType_c::GT_SPHERES)));
   gti.push_back(new gridTypeInfos_c(new gridType_c(gridType_c::GT_RHOMBIC)));
+  gti.push_back(new gridTypeInfos_c(new gridType_c(gridType_c::GT_TETRA_OCTA)));
 
   /* from here on the code should not need changes when new grid types are added */
 

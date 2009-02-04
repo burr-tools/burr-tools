@@ -112,6 +112,23 @@ public:
   void cb_transform(long task);
 };
 
+class ToolTab_4 : public ToolTab {
+
+  ChangeSize * changeSize;
+  puzzle_c * puzzle;
+  unsigned int shape;
+  pixmapList_c pm;
+
+public:
+
+  ToolTab_4(int x, int y, int w, int h);
+
+  void setVoxelSpace(puzzle_c * puz, unsigned int sh);
+
+  void cb_size(void);
+  void cb_transform(long task);
+};
+
 class ToolTabContainer : public layouter_c {
 
   ToolTab * tt;
