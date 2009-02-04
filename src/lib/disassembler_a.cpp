@@ -194,13 +194,23 @@ unsigned short disassembler_a_c::subProbGroup(const disassemblerNode_c * st, con
   unsigned short group = 0;
 
   for (unsigned int i = 0; i < pn.size(); i++)
+  {
     if (st->is_piece_removed(i) == cond)
+    {
       if (puzzle->getShapeGroupNumber(piece2shape[pn[i]]) != 1)
+      {
         return 0;
+      }
       else if (group == 0)
+      {
         group = puzzle->getShapeGroup(piece2shape[pn[i]], 0);
+      }
       else if (group != puzzle->getShapeGroup(piece2shape[pn[i]], 0))
+      {
         return 0;
+      }
+    }
+  }
 
   return group;
 }

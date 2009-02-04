@@ -414,7 +414,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
       unsigned int cnt = sym->countSymmetryIntersection(resultSym, puzzle->getShapeShape(i)->selfSymmetries());
 
       if ((puzzle->getShapeMax(i) < puzzle->getShapeMax(symBreakerShape)) ||
-          (puzzle->getShapeMax(i) == puzzle->getShapeMax(symBreakerShape)) && (cnt < bestFound)) {
+          ((puzzle->getShapeMax(i) == puzzle->getShapeMax(symBreakerShape)) && (cnt < bestFound))) {
         bestFound = cnt;
         symBreakerShape = i;
         symBreakerPiece = pc;
