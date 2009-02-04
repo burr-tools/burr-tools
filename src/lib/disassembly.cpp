@@ -227,12 +227,12 @@ xml::node separation_c::save(void) const {
   // first save the pieces array
   it = nd.insert(xml::node("pieces"));
 
-  snprintf(tmp, 50, "%i", piecenumber);
+  snprintf(tmp, 50, "%i", pieces.size());
   it->get_attributes().insert("count", tmp);
 
   std::string cont;
 
-  for (unsigned int ii = 0; ii < piecenumber; ii++) {
+  for (unsigned int ii = 0; ii < pieces.size(); ii++) {
     snprintf(tmp, 50, "%i", pieces[ii]);
     if (cont.length()) cont += ' ';
     cont += tmp;
@@ -241,7 +241,7 @@ xml::node separation_c::save(void) const {
 
   // now add all the states
   for (unsigned int jj = 0; jj < states.size(); jj++)
-    nd.insert(states[jj]->save(piecenumber));
+    nd.insert(states[jj]->save(pieces.size()));
 
   // finally save the removed and left over part
   // we add an attribute to the node of the subseparations to later distinguish
@@ -275,18 +275,15 @@ separation_c::separation_c(const xml::node & node, unsigned int pieceCnt) {
   if (it->get_attributes().find("count") == it->get_attributes().end())
     throw load_error("pieces node needs a 'count' attribute", *it);
 
-  piecenumber = atoi(it->get_attributes().find("count")->get_value());
+  unsigned int piecenumber = atoi(it->get_attributes().find("count")->get_value());
 
   if (piecenumber != pieceCnt)
     throw load_error("the number of pieces in the count array is not as expected", *it);
 
-  pieces = new unsigned int[piecenumber];
-
-  if (pieces == 0)
-    throw load_error("could not allocate the required memory", *it);
+  pieces.resize(piecenumber);
 
   try {
-    getNumbers(it->get_content(), pieces, pieces+piecenumber, false);
+    getNumbers(it->get_content(), pieces.begin(), pieces.begin()+piecenumber, false);
   }
   catch (load_error e) {
     throw load_error(e.getText(), node);
@@ -332,10 +329,8 @@ separation_c::separation_c(const xml::node & node, unsigned int pieceCnt) {
   }
 }
 
-separation_c::separation_c(separation_c * r, separation_c * l, const std::vector<unsigned int> & pcs) : piecenumber(pcs.size()), removed(r), left(l) {
-  pieces = new unsigned int[piecenumber];
-  for (unsigned int i = 0; i < piecenumber; i++)
-    pieces[i] = pcs[i];
+separation_c::separation_c(separation_c * r, separation_c * l, const std::vector<unsigned int> & pcs) : removed(r), left(l) {
+  pieces = pcs;
 }
 
 separation_c::~separation_c() {
@@ -343,7 +338,6 @@ separation_c::~separation_c() {
   delete left;
   for (unsigned int i = 0; i < states.size(); i++)
     delete states[i];
-  delete [] pieces;
 }
 
 unsigned int separation_c::sumMoves(void) const {
@@ -358,17 +352,16 @@ unsigned int separation_c::sumMoves(void) const {
 }
 
 void separation_c::addstate(state_c *st) {
-  bt_assert(st->piecenumber == piecenumber);
+  bt_assert(st->piecenumber == pieces.size());
   states.push_front(st);
 }
 
-separation_c::separation_c(const separation_c * cpy) : piecenumber(cpy->piecenumber) {
+separation_c::separation_c(const separation_c * cpy) {
 
-  pieces = new unsigned int[piecenumber];
-  memcpy(pieces, cpy->pieces, piecenumber*sizeof(unsigned int));
+  pieces = cpy->pieces;
 
   for (unsigned int i = 0; i < cpy->states.size(); i++)
-    states.push_back(new state_c(cpy->states[i], piecenumber));
+    states.push_back(new state_c(cpy->states[i], pieces.size()));
 
   if (cpy->left)
     left = new separation_c(cpy->left);
@@ -443,23 +436,9 @@ int separation_c::compare(const separation_c * s2) const {
   }
 }
 
-
-void separation_c::shiftPiece(unsigned int pc, int dx, int dy, int dz) {
-  for (unsigned int p = 0; p < piecenumber; p++)
-    if (pieces[p] == pc)
-      for (unsigned int s = 0; s < states.size(); s++)
-  	states[s]->set(p, states[s]->getX(p)+dx, states[s]->getY(p)+dy, states[s]->getZ(p)+dz);
-
-  if (removed)
-    removed->shiftPiece(pc, dx, dy, dz);
-
-  if (left)
-    left->shiftPiece(pc, dx, dy, dz);
-}
-
 void separation_c::exchangeShape(unsigned int s1, unsigned int s2) {
 
-  for (unsigned int i = 0; i < piecenumber; i++)
+  for (unsigned int i = 0; i < pieces.size(); i++)
     if (pieces[i] == s1) pieces[i] = s2;
     else if (pieces[i] == s2) pieces[i] = s1;
 

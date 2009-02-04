@@ -31,25 +31,25 @@
 /* forward declaration, the definition is below */
 class state_c;
 
-/* a list of states that lead to a separation of the
- * puzzle into 2 parts
- * the separation of a puzzle into lots of single pieces consists
+/**
+ * A list of states that lead to a separation of the
+ * puzzle into 2 parts.
+ * The separation of a puzzle into lots of single pieces consists
  * of a tree of such separations. The root class starts with the assembled
  * puzzle and the lower parts divide the puzzle more and more until only
  * single pieces are left
  */
 class separation_c {
 
-  /* number of pieces that are in this subsection of the puzzle */
-  unsigned int piecenumber;
-
-  /* this array is here to identify the piecenumber for the given pieces
+  /**
+   * this array is here to identify the piecenumber for the given pieces
    * that are in this part of the tree
    */
-  unsigned int * pieces;
+  std::vector<unsigned int> pieces;
 
-  /* vector with all the states that finally lead to 2 separate
-   * subpuzzles one state represents the  position of
+  /**
+   * vector with all the states that finally lead to 2 separate
+   * subpuzzles. one state represents the  position of
    * all the pieces inside this subpuzzle relative to their
    * position in the completely assembled puzzle
    *
@@ -72,39 +72,44 @@ class separation_c {
 
 public:
 
-  /* create a separation with sub separations r and l, pn pieces
+  /**
+   * create a separation with sub separations r and l
    * and the pieces in the array pcs
-   * the array is copied
    */
   separation_c(separation_c * r, separation_c * l, const std::vector<unsigned int> & pcs);
 
-  /* load a separation from an xml node */
+  /** load a separation from an xml node */
   separation_c(const xml::node & node, unsigned int pieces);
 
-  /* copy constructor */
+  /** copy constructor */
   separation_c(const separation_c * cpy);
 
-  /* save into an xml node */
+  /** save into an xml node */
   xml::node save(void) const;
 
   ~separation_c();
 
-  /* return the number of moves that are required to separate the puzzle
+  /**
+   * return the number of moves that are required to separate the puzzle.
    * this number is one smaller than the number of states
    */
   unsigned int getMoves(void) const { return states.size() - 1; }
 
-  /* the number of moves to completely disassemble the puzzle, including
+  /**
+   * the number of moves to completely disassemble the puzzle, including
    * all sub separations
    */
   unsigned int sumMoves(void) const;
 
-  /* fill a string with dot separated numbers containing the moves
+  /**
+   * fill a string with dot separated numbers containing the moves
    * required to disassemble the puzzle
+   * not more than len characters are written
    */
   int movesText(char * txt, int len);
 
-  /* compares this and the given separation, for a higher level
+  /**
+   * compares this and the given separation, for a higher level.
    * one separation is bigger than the other if all levels
    * up to branch n are equal and on n+1 the level is larger then
    * the level of the other
@@ -114,20 +119,20 @@ public:
    */
   int compare(const separation_c * s2) const;
 
-  /* get one state from the separation process */
+  /** get one state from the separation process */
   const state_c * getState(unsigned int num) const {
     bt_assert(num < states.size());
     return states[num];
   }
 
-  /* get the separation for the pieces that were removed
-   * and for the pieces that were left
-   */
+  /** get the separation for the pieces that were removed */
   const separation_c * getLeft(void) const { return left; }
+
+  /** get the separation for the pieces that were left over */
   const separation_c * getRemoved(void) const { return removed; }
 
   /**
-   * add a new state to the FRONT of the current state list
+   * add a new state to the FRONT of the current state list.
    * this is necessary because the list is generated when back
    * tracking from the graph search, so we visit the states in
    * the wrong order
@@ -136,26 +141,22 @@ public:
    */
   void addstate(state_c *st);
 
-  /* return the number of pieces that are in this separation */
-  unsigned int getPieceNumber(void) const { return piecenumber; }
+  /** return the number of pieces that are in this separation */
+  unsigned int getPieceNumber(void) const { return pieces.size(); }
 
-  /* get the number for the num-th piece that is in this separation */
+  /** get the number for the num-th piece that is in this separation */
   unsigned int getPieceName(unsigned int num) const {
-    bt_assert(num < piecenumber);
+    bt_assert(num < pieces.size());
     return pieces[num];
   }
 
-  /* shift one piece by the given amount in all movement states and all
-   * supseparations
-   */
-  void shiftPiece(unsigned int pc, int dx, int dy, int dz);
-
-  /* 2 pieces have exchanged their place in the problem list */
+  /** 2 pieces have exchanged their place in the problem list */
   void exchangeShape(unsigned int s1, unsigned int s2);
 
 };
 
-/* this class is used to store the complexity of a disassembly, it
+/**
+ * this class is used to store the complexity of a disassembly. it
  * is used as a memory efficient replacement for the basic information
  * in separation_c without the detailed disassembly instructions
  */
@@ -198,7 +199,8 @@ class separationInfo_c {
     int compare(const separationInfo_c * s2) const;
 };
 
-/* defines one step in the separation process,
+/**
+ * defines one step in the separation process.
  * one state of relative piece positions on your way
  */
 class state_c {
