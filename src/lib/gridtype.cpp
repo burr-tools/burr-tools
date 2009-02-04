@@ -20,6 +20,7 @@
 #include "assembler_0.h"
 #include "assembler_1.h"
 #include "movementcache_0.h"
+#include "movementcache_1.h"
 #include "voxel_0.h"
 #include "voxel_1.h"
 #include "voxel_2.h"
@@ -143,6 +144,7 @@ movementCache_c * gridType_c::getMovementCache(const problem_c * puz) const
 {
   switch (type) {
     case GT_BRICKS:           return new movementCache_0_c(puz);
+    case GT_TRIANGULAR_PRISM: return new movementCache_1_c(puz);
     default: return 0;
   }
 }
@@ -220,7 +222,7 @@ unsigned int gridType_c::getCapabilities(void) const
 {
   switch (type) {
     case GT_BRICKS:           return CAP_ASSEMBLE | CAP_DISASSEMBLE | CAP_STLEXPORT;
-    case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE;
+    case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE | CAP_DISASSEMBLE;
     case GT_SPHERES:          return CAP_ASSEMBLE | CAP_STLEXPORT;
     case GT_RHOMBIC:          return CAP_ASSEMBLE;
     case GT_TETRA_OCTA:       return CAP_ASSEMBLE;

@@ -72,6 +72,7 @@ lib_libburr_a_SOURCES += lib/grouping.cpp lib/grouping.h
 lib_libburr_a_SOURCES += lib/movementanalysator.cpp lib/movementanalysator.h
 lib_libburr_a_SOURCES += lib/movementcache.cpp lib/movementcache.h
 lib_libburr_a_SOURCES += lib/movementcache_0.cpp lib/movementcache_0.h
+lib_libburr_a_SOURCES += lib/movementcache_1.cpp lib/movementcache_1.h
 lib_libburr_a_SOURCES += lib/piecegenerator.cpp lib/piecegenerator.h
 lib_libburr_a_SOURCES += lib/print.cpp lib/print.h
 lib_libburr_a_SOURCES += lib/ps3dloader.cpp lib/ps3dloader.h
