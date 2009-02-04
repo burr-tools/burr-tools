@@ -23,6 +23,8 @@
 #include "bt_assert.h"
 #include "thread.h"
 
+#include <time.h>
+
 class problem_c;
 
 /* this class will handle the solving of one problem of the puzzle, it can also

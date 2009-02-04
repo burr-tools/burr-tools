@@ -20,6 +20,8 @@
 
 #include "bt_assert.h"
 
+#include <stdlib.h>
+
 class assembly_c;
 
 /* node is used to build the search tree for the breadth first search of the
