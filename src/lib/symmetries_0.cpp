@@ -50,7 +50,7 @@ static const unsigned char transformationMinimizer[NUM_SYMMETRY_GROUPS][NUM_TRAN
 #include "tabs_0/transformmini.inc"
 };
 
-symmetries_0_c::symmetries_0_c(const gridType_c * g) : gt(g) {
+symmetries_0_c::symmetries_0_c(void) {
 }
 
 unsigned int symmetries_0_c::getNumTransformations(void) const { return NUM_TRANSFORMATIONS; }

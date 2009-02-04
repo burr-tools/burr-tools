@@ -25,21 +25,9 @@ class gridType_c;
 /* this is the symmetries class for triangles */
 class symmetries_1_c : public symmetries_c {
 
-  private:
-
-    /* this variable contains the symmetries that are available because
-     * of the subsetting of the cube because of skewing and scaling along the different axes
-     * this is used to suppress certain symmetries for the placement and symmetry checks
-     *
-     * this value influences the rotx y z functions to only return those transformations
-     * that are really available, also getNumTransformations and getNumTransformationsMirror are
-     * influenced to only return the number of symmetries within this field, ...
-     */
-    const gridType_c * gt;
-
   public:
 
-    symmetries_1_c(const gridType_c * gt);
+    symmetries_1_c(void);
 
     unsigned int getNumTransformations(void) const;
     unsigned int getNumTransformationsMirror(void) const;

@@ -89,6 +89,7 @@ xml::node gridType_c::save(void) const {
 
     case GT_RHOMBIC:
       break;
+
   }
 
   return nd;
@@ -186,16 +187,14 @@ const symmetries_c * gridType_c::getSymmetries(void) const
   if (!sym) {
     switch(type) {
       case GT_BRICKS:
-        const_cast<gridType_c*>(this)->sym = new symmetries_0_c(this);
+      case GT_RHOMBIC:
+        const_cast<gridType_c*>(this)->sym = new symmetries_0_c();
         break;
       case GT_TRIANGULAR_PRISM:
-        const_cast<gridType_c*>(this)->sym = new symmetries_1_c(this);
+        const_cast<gridType_c*>(this)->sym = new symmetries_1_c();
         break;
       case GT_SPHERES:
-        const_cast<gridType_c*>(this)->sym = new symmetries_2_c(this);
-        break;
-      case GT_RHOMBIC:
-        const_cast<gridType_c*>(this)->sym = new symmetries_0_c(this);
+        const_cast<gridType_c*>(this)->sym = new symmetries_2_c();
         break;
     }
   }
