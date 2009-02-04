@@ -61,9 +61,9 @@ void drawGridRect(double x0, double y0, double z0,
       y1 -= v1y/diag;
       z1 -= v1z/diag;
 
-      if ((v1x) && (fabs(x1 - x0) < 0.01) ||
-          (v1y) && (fabs(y1 - y0) < 0.01) ||
-          (v1z) && (fabs(z1 - z0) < 0.01)) {
+      if (((v1x) && (fabs(x1 - x0) < 0.01)) ||
+          ((v1y) && (fabs(y1 - y0) < 0.01)) ||
+          ((v1z) && (fabs(z1 - z0) < 0.01))) {
         state1 = 1;
       }
     } else {
@@ -78,9 +78,9 @@ void drawGridRect(double x0, double y0, double z0,
       y2 += v2y/diag;
       z2 += v2z/diag;
 
-      if ((v2x) && (fabs(x2 - (x0+v2x+v1x)) < 0.01) ||
-          (v2y) && (fabs(y2 - (y0+v2y+v1y)) < 0.01) ||
-          (v2z) && (fabs(z2 - (z0+v2z+v1z)) < 0.01)) {
+      if (((v2x) && (fabs(x2 - (x0+v2x+v1x)) < 0.01)) ||
+          ((v2y) && (fabs(y2 - (y0+v2y+v1y)) < 0.01)) ||
+          ((v2z) && (fabs(z2 - (z0+v2z+v1z)) < 0.01))) {
         state2 = 1;
       }
     } else {
@@ -153,16 +153,16 @@ bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z
     return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2);
 
   if (mode == gridEditor_c::TOOL_STACK_X + gridEditor_c::TOOL_STACK_Y)
-    return ((x1 <= x) && (x <= x2) || (y1 <= y) && (y <= y2)) && ((z1 <= z) && (z <= z2));
+    return (((x1 <= x) && (x <= x2)) || ((y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2)));
   if (mode == gridEditor_c::TOOL_STACK_X + gridEditor_c::TOOL_STACK_Z)
-    return ((x1 <= x) && (x <= x2) || (z1 <= z) && (z <= z2)) && ((y1 <= y) && (y <= y2));
+    return (((x1 <= x) && (x <= x2)) || ((z1 <= z) && (z <= z2) && (y1 <= y) && (y <= y2)));
   if (mode == gridEditor_c::TOOL_STACK_Y + gridEditor_c::TOOL_STACK_Z)
-    return ((y1 <= y) && (y <= y2) || (y1 <= y) && (y <= y2)) && ((x1 <= x) && (x <= x2));
+    return (((y1 <= y) && (y <= y2)) || ((y1 <= y) && (y <= y2) && (x1 <= x) && (x <= x2)));
 
   if (mode == gridEditor_c::TOOL_STACK_X + gridEditor_c::TOOL_STACK_Y + gridEditor_c::TOOL_STACK_Z)
-    return ((x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2) ||
-        (x1 <= x) && (x <= x2) && (z1 <= z) && (z <= z2) ||
-        (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2));
+    return (((x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2)) ||
+            ((x1 <= x) && (x <= x2) && (z1 <= z) && (z <= z2)) ||
+            ((y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2)));
 
   if (mode & gridEditor_c::TOOL_MIRROR_X)
     return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~gridEditor_c::TOOL_MIRROR_X) ||

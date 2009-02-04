@@ -34,8 +34,8 @@
 static bool sameEdge(int xa, int ya, int za, int xb, int yb, int zb,
                      int xc, int yc, int zc, int xd, int yd, int zd) {
 
-  return (xa == xc && ya == yc && za == zc && xb == xd && yb == yd && zb == zd ||
-          xa == xd && ya == yd && za == zd && xb == xc && yb == yc && zb == zc);
+  return ((xa == xc && ya == yc && za == zc && xb == xd && yb == yd && zb == zd) ||
+          (xa == xd && ya == yd && za == zd && xb == xc && yb == yc && zb == zc));
 }
 
 /* for a given voxel it returns the 2 faces that are at a given edge with 2 coodinates */

@@ -189,13 +189,13 @@ static bool findCommonEdge(int xa1, int ya1, int xa2, int ya2, int xa3, int ya3,
 
   if (xa1 == xb1 && ya1 == yb1) {
 
-    if (xa2 == xb2 && ya2 == yb2 || xa2 == xb3 && ya2 == yb3) {
+    if ((xa2 == xb2 && ya2 == yb2) || (xa2 == xb3 && ya2 == yb3)) {
 
       *xl1 = xa1; *yl1 = ya1;
       *xl2 = xa2; *yl2 = ya2;
       return true;
 
-    } else if (xa3 == xb2 && ya3 == yb2 || xa3 == xb3 && ya3 == yb3) {
+    } else if ((xa3 == xb2 && ya3 == yb2) || (xa3 == xb3 && ya3 == yb3)) {
 
       *xl1 = xa1; *yl1 = ya1;
       *xl2 = xa3; *yl2 = ya3;
@@ -205,13 +205,13 @@ static bool findCommonEdge(int xa1, int ya1, int xa2, int ya2, int xa3, int ya3,
 
   } else if (xa1 == xb2 && ya1 == yb2) {
 
-    if (xa2 == xb1 && ya2 == yb1 || xa2 == xb3 && ya2 == yb3) {
+    if ((xa2 == xb1 && ya2 == yb1) || (xa2 == xb3 && ya2 == yb3)) {
 
       *xl1 = xa1; *yl1 = ya1;
       *xl2 = xa2; *yl2 = ya2;
       return true;
 
-    } else if (xa3 == xb1 && ya3 == yb1 || xa3 == xb3 && ya3 == yb3) {
+    } else if ((xa3 == xb1 && ya3 == yb1) || (xa3 == xb3 && ya3 == yb3)) {
 
       *xl1 = xa1; *yl1 = ya1;
       *xl2 = xa3; *yl2 = ya3;
@@ -221,13 +221,13 @@ static bool findCommonEdge(int xa1, int ya1, int xa2, int ya2, int xa3, int ya3,
 
   } else if (xa1 == xb3 && ya1 == yb3) {
 
-    if (xa2 == xb1 && ya2 == yb1 || xa2 == xb2 && ya2 == yb2) {
+    if ((xa2 == xb1 && ya2 == yb1) || (xa2 == xb2 && ya2 == yb2)) {
 
       *xl1 = xa1; *yl1 = ya1;
       *xl2 = xa2; *yl2 = ya2;
       return true;
 
-    } else if (xa3 == xb1 && ya3 == yb1 || xa3 == xb2 && ya3 == yb2) {
+    } else if ((xa3 == xb1 && ya3 == yb1) || (xa3 == xb2 && ya3 == yb2)) {
 
       *xl1 = xa1; *yl1 = ya1;
       *xl2 = xa3; *yl2 = ya3;
@@ -236,13 +236,13 @@ static bool findCommonEdge(int xa1, int ya1, int xa2, int ya2, int xa3, int ya3,
     }
   } else if (xa2 == xb1 && ya2 == yb1) {
 
-    if (xa1 == xb2 && ya1 == yb2 || xa1 == xb3 && ya1 == yb3) {
+    if ((xa1 == xb2 && ya1 == yb2) || (xa1 == xb3 && ya1 == yb3)) {
 
       *xl1 = xa2; *yl1 = ya2;
       *xl2 = xa1; *yl2 = ya1;
       return true;
 
-    } else if (xa3 == xb2 && ya3 == yb2 || xa3 == xb3 && ya3 == yb3) {
+    } else if ((xa3 == xb2 && ya3 == yb2) || (xa3 == xb3 && ya3 == yb3)) {
 
       *xl1 = xa2; *yl1 = ya2;
       *xl2 = xa3; *yl2 = ya3;
@@ -252,13 +252,13 @@ static bool findCommonEdge(int xa1, int ya1, int xa2, int ya2, int xa3, int ya3,
 
   } else if (xa2 == xb2 && ya2 == yb2) {
 
-    if (xa1 == xb1 && ya1 == yb1 || xa1 == xb3 && ya1 == yb3) {
+    if ((xa1 == xb1 && ya1 == yb1) || (xa1 == xb3 && ya1 == yb3)) {
 
       *xl1 = xa1; *yl1 = ya1;
       *xl2 = xa2; *yl2 = ya2;
       return true;
 
-    } else if (xa3 == xb1 && ya3 == yb1 || xa3 == xb3 && ya3 == yb3) {
+    } else if ((xa3 == xb1 && ya3 == yb1) || (xa3 == xb3 && ya3 == yb3)) {
 
       *xl1 = xa2; *yl1 = ya2;
       *xl2 = xa3; *yl2 = ya3;
@@ -268,13 +268,13 @@ static bool findCommonEdge(int xa1, int ya1, int xa2, int ya2, int xa3, int ya3,
 
   } else if (xa2 == xb3 && ya2 == yb3) {
 
-    if (xa1 == xb1 && ya1 == yb1 || xa1 == xb2 && ya1 == yb2) {
+    if ((xa1 == xb1 && ya1 == yb1) || (xa1 == xb2 && ya1 == yb2)) {
 
       *xl1 = xa1; *yl1 = ya1;
       *xl2 = xa2; *yl2 = ya2;
       return true;
 
-    } else if (xa3 == xb1 && ya3 == yb1 || xa3 == xb2 && ya3 == yb2) {
+    } else if ((xa3 == xb1 && ya3 == yb1) || (xa3 == xb2 && ya3 == yb2)) {
 
       *xl1 = xa2; *yl1 = ya2;
       *xl2 = xa3; *yl2 = ya3;
@@ -284,13 +284,13 @@ static bool findCommonEdge(int xa1, int ya1, int xa2, int ya2, int xa3, int ya3,
 
   } else if (xa3 == xb1 && ya3 == yb1) {
 
-    if (xa1 == xb2 && ya1 == yb2 || xa1 == xb3 && ya1 == yb3) {
+    if ((xa1 == xb2 && ya1 == yb2) || (xa1 == xb3 && ya1 == yb3)) {
 
       *xl1 = xa3; *yl1 = ya3;
       *xl2 = xa1; *yl2 = ya1;
       return true;
 
-    } else if (xa2 == xb2 && ya2 == yb2 || xa2 == xb3 && ya2 == yb3) {
+    } else if ((xa2 == xb2 && ya2 == yb2) || (xa2 == xb3 && ya2 == yb3)) {
 
       *xl1 = xa2; *yl1 = ya2;
       *xl2 = xa3; *yl2 = ya3;
@@ -300,13 +300,13 @@ static bool findCommonEdge(int xa1, int ya1, int xa2, int ya2, int xa3, int ya3,
 
   } else if (xa3 == xb2 && ya3 == yb2) {
 
-    if (xa1 == xb1 && ya1 == yb1 || xa1 == xb3 && ya1 == yb3) {
+    if ((xa1 == xb1 && ya1 == yb1) || (xa1 == xb3 && ya1 == yb3)) {
 
       *xl1 = xa1; *yl1 = ya1;
       *xl2 = xa3; *yl2 = ya3;
       return true;
 
-    } else if (xa2 == xb1 && ya2 == yb1 || xa2 == xb3 && ya2 == yb3) {
+    } else if ((xa2 == xb1 && ya2 == yb1) || (xa2 == xb3 && ya2 == yb3)) {
 
       *xl1 = xa2; *yl1 = ya2;
       *xl2 = xa3; *yl2 = ya3;
@@ -316,13 +316,13 @@ static bool findCommonEdge(int xa1, int ya1, int xa2, int ya2, int xa3, int ya3,
 
   } else if (xa3 == xb3 && ya3 == yb3) {
 
-    if (xa1 == xb1 && ya1 == yb1 || xa1 == xb2 && ya1 == yb2) {
+    if ((xa1 == xb1 && ya1 == yb1) || (xa1 == xb2 && ya1 == yb2)) {
 
       *xl1 = xa1; *yl1 = ya1;
       *xl2 = xa3; *yl2 = ya3;
       return true;
 
-    } else if (xa2 == xb1 && ya2 == yb1 || xa2 == xb2 && ya2 == yb2) {
+    } else if ((xa2 == xb1 && ya2 == yb1) || (xa2 == xb2 && ya2 == yb2)) {
 
       *xl1 = xa2; *yl1 = ya2;
       *xl2 = xa3; *yl2 = ya3;
@@ -348,7 +348,7 @@ void gridEditor_3_c::drawTileCursor(int x, int y, int z, int tx, int ty, int sx,
   getTriangle(x, y, z, tx, ty, sx, sy, &xd1, &yd1, &xd2, &yd2, &xd3, &yd3, 0);
 
   while (space->getNeighbor(idx, 0, x, y, z, &nx, &ny, &nz)) {
-    if (nz == z && (ny <= y || ny == y && nx < x) ) {
+    if (nz == z && (ny <= y || (ny == y && nx < x)) ) {
 
       if (ins ^ inRegion(nx, ny)) {
 
@@ -372,7 +372,7 @@ void gridEditor_3_c::drawTileCursor(int x, int y, int z, int tx, int ty, int sx,
   idx = 0;
 
   while (space->getNeighbor(idx, 1, x, y, z, &nx, &ny, &nz)) {
-    if (nz == z && (ny <= y || ny == y && nx < x) ) {
+    if (nz == z && (ny <= y || (ny == y && nx < x)) ) {
 
       if (ins ^ inRegion(nx, ny)) {
 

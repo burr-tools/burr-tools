@@ -153,7 +153,7 @@ int BlockList::handle(int event) {
 }
 
 unsigned int SelectableList::getSelection(void) {
-  if (currentSelect == -1)
+  if (currentSelect == (unsigned int)-1)
     if (blockNumber() > 0)
       currentSelect = 0;
   return currentSelect;

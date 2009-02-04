@@ -491,7 +491,7 @@ static bool inRegionRec(int x, int y, int x1, int x2, int y1, int y2, int sx, in
     return (y1 <= y) && (y <= y2);
   if (mode == gridEditor_c::TOOL_STACK_X + gridEditor_c::TOOL_STACK_Y)
     // x and y stack active, we need to be either in the row or the column
-    return (x1 <= x) && (x <= x2) || (y1 <= y) && (y <= y2);
+    return ((x1 <= x) && (x <= x2)) || ((y1 <= y) && (y <= y2));
 
   // symmetric modes, recursive call with the same coordinates and also
   // with the corresponding mirrored coordinate and the symmetry bit removed

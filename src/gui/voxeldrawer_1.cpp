@@ -392,8 +392,8 @@ void voxelDrawer_1_c::drawNormalVoxel(const voxel_c * space, int x, int y, int z
   glPushName(4);
 
   // top or bottom square
-  if (((x+y) & 1) && space->isEmpty2(x, y+1, z) ||
-      !((x+y) & 1) && space->isEmpty2(x, y-1, z)) {
+  if ( (((x+y) & 1) && space->isEmpty2(x, y+1, z)) ||
+      !(((x+y) & 1) && space->isEmpty2(x, y-1, z))) {
 
     float x1p = x1;
     float y1p = y1;
@@ -676,8 +676,8 @@ void voxelDrawer_1_c::drawVariableMarkers(const voxel_c * space, int x, int y, i
 
   glPushName(4);
 
-  if (((x+y) & 1) && space->isEmpty2(x, y+1, z) ||
-      !((x+y) & 1) && space->isEmpty2(x, y-1, z)) {
+  if ( (((x+y) & 1) && space->isEmpty2(x, y+1, z)) ||
+      !(((x+y) & 1) && space->isEmpty2(x, y-1, z))) {
     glBegin(GL_QUADS);
     glNormal3f(n1x, n1y, 0.0f);
     glVertex3f(x1+(x2-x1)*0.2+MY*n1x, y1+(y2-y1)*0.2+MY*n1y, z+0.2);
