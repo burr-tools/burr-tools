@@ -19,7 +19,7 @@
 
 #include "assembly.h"
 
-disassemblerNode_c::disassemblerNode_c(int pn, disassemblerNode_c * comf, int _dir, int _amount, int step) : comefrom(comf), piecenumber(pn), refcount(1), dir(_dir), amount(_amount) {
+disassemblerNode_c::disassemblerNode_c(unsigned int pn, disassemblerNode_c * comf, int _dir, int _amount, int step) : comefrom(comf), piecenumber(pn), refcount(1), dir(_dir), amount(_amount) {
   dat = new signed char[4*piecenumber];
 
   if (comefrom)
@@ -105,7 +105,7 @@ unsigned int disassemblerNode_c::hash(void) const {
 
   unsigned int h = 0x17fe3b3c;
 
-  for (int i = 1; i < piecenumber; i++) {
+  for (unsigned int i = 1; i < piecenumber; i++) {
     h += (dat[4*i+0]-dat[0]);
     h *= 1343;
     h += (dat[4*i+1]-dat[1]);
@@ -122,7 +122,7 @@ unsigned int disassemblerNode_c::hash(void) const {
 
 bool disassemblerNode_c::operator == (const disassemblerNode_c &b) const {
 
-  for (int i = 1; i < piecenumber; i++) {
+  for (unsigned int i = 1; i < piecenumber; i++) {
     if (dat[4*i+0] - dat[0] != b.dat[4*i+0] - b.dat[0]) return false;
     if (dat[4*i+1] - dat[1] != b.dat[4*i+1] - b.dat[1]) return false;
     if (dat[4*i+2] - dat[2] != b.dat[4*i+2] - b.dat[2]) return false;
@@ -133,7 +133,7 @@ bool disassemblerNode_c::operator == (const disassemblerNode_c &b) const {
 }
 
 bool disassemblerNode_c::is_separation() const {
-  for (int i = 0; i < piecenumber; i++)
+  for (unsigned int i = 0; i < piecenumber; i++)
     if (is_piece_removed(i))
       return true;
 

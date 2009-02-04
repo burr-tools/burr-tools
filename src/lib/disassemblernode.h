@@ -38,7 +38,7 @@ private:
   disassemblerNode_c * comefrom;
 
   /* number of pieces this node is handling */
-  int piecenumber;
+  unsigned int piecenumber;
 
   /* the position of the piece inside the cube
    * and the transformation of that piece
@@ -78,7 +78,7 @@ private:
 
 public:
 
-  disassemblerNode_c(int pn, disassemblerNode_c * comf, int _dir, int _amount, int step = 1);
+  disassemblerNode_c(unsigned int pn, disassemblerNode_c * comf, int _dir, int _amount, int step = 1);
 
   /* creates a root node from an assembly */
   disassemblerNode_c(const assembly_c * assm);
@@ -112,31 +112,31 @@ public:
    */
   bool operator == (const disassemblerNode_c &b) const;
 
-  int getX(int i) const {
+  int getX(unsigned int i) const {
     bt_assert(i < piecenumber);
     return dat[4*i+0];
   }
 
-  int getY(int i) const {
+  int getY(unsigned int i) const {
     bt_assert(i < piecenumber);
     return dat[4*i+1];
   }
 
-  int getZ(int i) const {
+  int getZ(unsigned int i) const {
     bt_assert(i < piecenumber);
     return dat[4*i+2];
   }
 
-  unsigned int getTrans(int i) const {
+  unsigned int getTrans(unsigned int i) const {
     bt_assert(i < piecenumber);
     return (unsigned char)dat[4*i+3];
   }
 
-  int getPiecenumber(void) const {
+  unsigned int getPiecenumber(void) const {
     return piecenumber;
   }
 
-  void set(int i, int x, int y, int z, unsigned int tr) {
+  void set(unsigned int i, int x, int y, int z, unsigned int tr) {
     bt_assert(i < piecenumber);
     bt_assert(abs(x) < 128 && abs(y) < 128 && abs(z) < 128);
 
@@ -147,7 +147,7 @@ public:
     hashValue = 0;
   }
 
-  void set(int i, const disassemblerNode_c * n, int tx, int ty, int tz) {
+  void set(unsigned int i, const disassemblerNode_c * n, int tx, int ty, int tz) {
     bt_assert(i < piecenumber);
 
     bt_assert(abs(n->dat[4*i+0]+tx) < 128 &&
@@ -164,7 +164,7 @@ public:
   /* check if the given piece is at a position outside
    * of the rest of the puzzle
    */
-  bool is_piece_removed(int nr) const {
+  bool is_piece_removed(unsigned int nr) const {
     bt_assert(nr < piecenumber);
     return ((unsigned char)dat[4*nr+3] == 0xFF);
   }
