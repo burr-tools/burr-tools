@@ -32,7 +32,8 @@
 class problem_c;
 class voxel_c;
 
-/* this class contains the information for the placement of
+/**
+ * this class contains the information for the placement of
  * one piece within the assembly.
  *
  * That is the position and the orientation of that piece
