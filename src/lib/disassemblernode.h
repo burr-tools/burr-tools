@@ -32,6 +32,8 @@ class disassemblerNode_c {
 
 private:
 
+  static const int16_t maxMove = 32767;
+
   /* the nodes are used to save the shortest way from the start to each
    * node. So each node saves where the way to the start is
    */
@@ -54,7 +56,7 @@ private:
    * then the data fields also contain the direction, not the
    * position of the piece
    */
-  signed char * dat;
+  int16_t * dat;
 
   /* contains the number of pointers that point to this node
    * most of there pointers are comefrom pointers from other nodes
@@ -136,23 +138,34 @@ public:
     return piecenumber;
   }
 
-  void set(unsigned int i, int x, int y, int z, unsigned int tr) {
+  void setRemove(unsigned int i, int x, int y, int z) {
     bt_assert(i < piecenumber);
-    bt_assert(abs(x) < 128 && abs(y) < 128 && abs(z) < 128);
+    bt_assert(abs(x) < maxMove && abs(y) < maxMove && abs(z) < maxMove);
 
     dat[4*i+0] = x;
     dat[4*i+1] = y;
     dat[4*i+2] = z;
-    dat[4*i+3] = tr;
+    dat[4*i+3] = (int16_t)0xFFFF;
+    hashValue = 0;
+  }
+
+  void set(unsigned int i, int x, int y, int z, unsigned int tr) {
+    bt_assert(i < piecenumber);
+    bt_assert(abs(x) < maxMove && abs(y) < maxMove && abs(z) < maxMove);
+
+    dat[4*i+0] = x;
+    dat[4*i+1] = y;
+    dat[4*i+2] = z;
+    dat[4*i+3] = (int16_t)tr;
     hashValue = 0;
   }
 
   void set(unsigned int i, const disassemblerNode_c * n, int tx, int ty, int tz) {
     bt_assert(i < piecenumber);
 
-    bt_assert(abs(n->dat[4*i+0]+tx) < 128 &&
-              abs(n->dat[4*i+1]+ty) < 128 &&
-              abs(n->dat[4*i+2]+tz) < 128);
+    bt_assert(abs(n->dat[4*i+0]+tx) < maxMove &&
+              abs(n->dat[4*i+1]+ty) < maxMove &&
+              abs(n->dat[4*i+2]+tz) < maxMove);
 
     dat[4*i+0] = n->dat[4*i+0]+tx;
     dat[4*i+1] = n->dat[4*i+1]+ty;
@@ -166,7 +179,7 @@ public:
    */
   bool is_piece_removed(unsigned int nr) const {
     bt_assert(nr < piecenumber);
-    return ((unsigned char)dat[4*nr+3] == 0xFF);
+    return (dat[4*nr+3] == (int16_t)0xFFFF);
   }
 
   /* check if this node is for a state that separates

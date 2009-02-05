@@ -20,7 +20,7 @@
 #include "assembly.h"
 
 disassemblerNode_c::disassemblerNode_c(unsigned int pn, disassemblerNode_c * comf, int _dir, int _amount, int step) : comefrom(comf), piecenumber(pn), refcount(1), dir(_dir), amount(_amount) {
-  dat = new signed char[4*piecenumber];
+  dat = new int16_t[4*piecenumber];
 
   if (comefrom)
     comefrom->refcount++;
@@ -42,7 +42,7 @@ disassemblerNode_c::disassemblerNode_c(const assembly_c * assm) : comefrom(0), p
     if (assm->isPlaced(j))
       piecenumber++;
 
-  dat = new signed char[4*piecenumber];
+  dat = new int16_t[4*piecenumber];
 
   hashValue = 0;
 
@@ -81,7 +81,7 @@ disassemblerNode_c::~disassemblerNode_c() {
 void disassemblerNode_c::replaceNode(const disassemblerNode_c *n) {
   bt_assert(piecenumber == n->piecenumber);
 
-  memcpy(dat, n->dat, 4*piecenumber*sizeof(unsigned char));
+  memcpy(dat, n->dat, 4*piecenumber*sizeof(int16_t));
 
   dir = n->dir;
   amount = n->amount;
