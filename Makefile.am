@@ -14,6 +14,7 @@ dist_doc_DATA += examples/HexSticks.xmpuzzle
 dist_doc_DATA += examples/PermutatedThirdStellation.xmpuzzle
 dist_doc_DATA += examples/PiecesOfEight.xmpuzzle
 dist_doc_DATA += examples/Prisgon.xmpuzzle
+dist_doc_DATA += examples/FourPieceTetrahedron.xmpuzzle
 dist_doc_DATA += burricons.ico
 dist_doc_DATA += AUTHORS COPYING README NEWS ChangeLog
 dist_doc_DATA += doxygen.cfg
