@@ -306,7 +306,9 @@ int main(int argv, char* args[]) {
 
       asm_cb a(problem);
 
-      d = new disassembler_0_c(problem);
+      d = 0;
+      if (disassemble)
+        d = new disassembler_0_c(problem);
 
       assm->assemble(&a);
 
