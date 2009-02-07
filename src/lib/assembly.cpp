@@ -603,6 +603,26 @@ bool assembly_c::containsMirroredPieces(void) const {
   return false;
 }
 
+bool assembly_c::validSolution(const problem_c * puz) const {
+
+  unsigned int pos = 0;
+
+  for (unsigned int i = 0; i < puz->shapeNumber(); i++)
+  {
+    unsigned int placed = 0;
+
+    while (placed < puz->getShapeMax(i) && isPlaced(pos+placed))
+      placed++;
+
+    if (placed < puz->getShapeMin(i))
+      return false;
+
+    pos += puz->getShapeMax(i);
+  }
+
+  return true;
+}
+
 bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot, const mirrorInfo_c * mir) const {
 
   symmetries_t s = puz->getResultShape()->selfSymmetries();
@@ -626,7 +646,14 @@ bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot
       // FIXME: we should check, if we can exchange 2 shapes that are
       // mirrors of one another to see, if we can remove the mirror
       // problem
-      if ((t >= sym->getNumTransformations()) && tmp.containsMirroredPieces()) {
+      //
+      // we also need to make sure that the new found assembly uses the right amount
+      // of pieces from each shape. Because it is possible that the mirror
+      // shape is allowed with a different intervall it is possible that
+      // after mirroring the number of instances for some shapes is wrong
+      if ((t >= sym->getNumTransformations()) &&
+          (tmp.containsMirroredPieces() || !tmp.validSolution(puz)))
+      {
         continue;
       }
 

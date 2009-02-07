@@ -161,6 +161,12 @@ private:
    */
   bool containsMirroredPieces(void) const;
 
+  /**
+   * returns true, if all shapes are at least the minimum required times
+   * inside the assembly
+   */
+  bool validSolution(const problem_c * puz) const;
+
 public:
 
   assembly_c(const gridType_c * gt) : sym(gt->getSymmetries()) {}
