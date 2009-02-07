@@ -308,6 +308,11 @@ movementAnalysator_c::movementAnalysator_c(const problem_c * puz) :
   piecenumber(puz->pieceNumber()), maxstep((unsigned int) -1) {
 
   cache = puz->getGridType()->getMovementCache(puz);
+  /* we assert that there must be a cache, otherwise no disassembly
+   * analysis is possible anyway and this should not
+   * have been called
+   */
+  bt_assert(cache);
 
   /* allocate the necessary arrays */
   movement = new unsigned int[piecenumber];
