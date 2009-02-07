@@ -1,3 +1,8 @@
+- fix problem in the rotation filter when 2 mirror shapes were assigned to
+  a problem with different ranges. In that case some solutions were not
+  found when the mirror check was enabled
+- new grid: tetrahedra-octahedron
+- basic movement analysis for triangle grid
 - add scrollwheel support for 3D view zoom
 - a lot of cleanup in the disassembler functions
 - converte from cube to rhombic grid
