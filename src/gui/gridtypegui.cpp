@@ -94,11 +94,8 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) : LFl_Double_Window(fal
    * vector. This vector will be later on the one
    * with all required information
    */
-  gti.push_back(new gridTypeInfos_c(new gridType_c()));
-  gti.push_back(new gridTypeInfos_c(new gridType_c(gridType_c::GT_TRIANGULAR_PRISM)));
-  gti.push_back(new gridTypeInfos_c(new gridType_c(gridType_c::GT_SPHERES)));
-  gti.push_back(new gridTypeInfos_c(new gridType_c(gridType_c::GT_RHOMBIC)));
-  gti.push_back(new gridTypeInfos_c(new gridType_c(gridType_c::GT_TETRA_OCTA)));
+  for (int i = 0; i < gridType_c::GT_NUM_GRIDS; i++)
+    gti.push_back(new gridTypeInfos_c(new gridType_c(gridType_c::gridType(i))));
 
   /* from here on the code should not need changes when new grid types are added */
 

@@ -41,9 +41,8 @@ gridEditor_c * guiGridType_c::getGridEditor(int x, int y, int w, int h, puzzle_c
     case gridType_c::GT_SPHERES: return new gridEditor_2_c(x, y, w, h, puzzle);
     case gridType_c::GT_RHOMBIC: return new gridEditor_3_c(x, y, w, h, puzzle);
     case gridType_c::GT_TETRA_OCTA: return new gridEditor_4_c(x, y, w, h, puzzle);
+    default: return 0;
   }
-
-  return 0;
 }
 
 voxelDrawer_c * guiGridType_c::getVoxelDrawer(void) const {
@@ -53,9 +52,8 @@ voxelDrawer_c * guiGridType_c::getVoxelDrawer(void) const {
     case gridType_c::GT_SPHERES: return new voxelDrawer_2_c();
     case gridType_c::GT_RHOMBIC: return new voxelDrawer_3_c();
     case gridType_c::GT_TETRA_OCTA: return new voxelDrawer_4_c();
+    default: return 0;
   }
-
-  return 0;
 }
 
 /* returns a group to edit the parameters for this grid type
@@ -69,9 +67,8 @@ gridTypeGui_c * guiGridType_c::getConfigurationDialog(int x, int y, int w, int h
     case gridType_c::GT_SPHERES: return new gridTypeGui_2_c(x, y, w, h, gt);
     case gridType_c::GT_RHOMBIC: return new gridTypeGui_0_c(x, y, w, h, gt);
     case gridType_c::GT_TETRA_OCTA: return new gridTypeGui_0_c(x, y, w, h, gt);
+    default: return 0;
   }
-
-  return 0;
 }
 
 /* return icon and text for the current grid type */
@@ -82,9 +79,8 @@ char * guiGridType_c::getIcon(void) const {
     case gridType_c::GT_SPHERES: return 0;
     case gridType_c::GT_RHOMBIC: return 0;
     case gridType_c::GT_TETRA_OCTA: return 0;
+    default: return 0;
   }
-
-  return 0;
 }
 
 const char * guiGridType_c::getName(void) const {
@@ -94,9 +90,8 @@ const char * guiGridType_c::getName(void) const {
     case gridType_c::GT_SPHERES: return "Spheres";
     case gridType_c::GT_RHOMBIC: return "Rhombic Tetrahedra";
     case gridType_c::GT_TETRA_OCTA: return "Tetrahedra-Octahera";
+    default: return 0;
   }
-
-  return 0;
 }
 
 ToolTab * guiGridType_c::getToolTab(int x, int y, int w, int h) const {
@@ -106,9 +101,8 @@ ToolTab * guiGridType_c::getToolTab(int x, int y, int w, int h) const {
     case gridType_c::GT_SPHERES: return new ToolTab_2(x, y, w, h);
     case gridType_c::GT_RHOMBIC: return new ToolTab_3(x, y, w, h);
     case gridType_c::GT_TETRA_OCTA: return new ToolTab_4(x, y, w, h);
+    default: return 0;
   }
-
-  return 0;
 }
 
 unsigned int guiGridType_c::defaultSize(void) const {

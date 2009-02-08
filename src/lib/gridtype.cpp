@@ -52,17 +52,9 @@ gridType_c::gridType_c(const xml::node & node) {
   switch (type) {
 
     case GT_BRICKS:
-      break;
-
     case GT_TRIANGULAR_PRISM:
-      break;
-
     case GT_SPHERES:
-      break;
-
     case GT_RHOMBIC:
-      break;
-
     case GT_TETRA_OCTA:
       break;
 
@@ -80,24 +72,6 @@ xml::node gridType_c::save(void) const {
 
   snprintf(tmp, 50, "%i", type);
   nd.get_attributes().insert("type", tmp);
-
-  switch (type) {
-
-    case GT_BRICKS:
-      break;
-
-    case GT_TRIANGULAR_PRISM:
-      break;
-
-    case GT_SPHERES:
-      break;
-
-    case GT_RHOMBIC:
-      break;
-
-    case GT_TETRA_OCTA:
-      break;
-  }
 
   return nd;
 }
@@ -211,6 +185,8 @@ const symmetries_c * gridType_c::getSymmetries(void) const
         break;
       case GT_SPHERES:
         const_cast<gridType_c*>(this)->sym = new symmetries_2_c();
+        break;
+      default:
         break;
     }
   }
