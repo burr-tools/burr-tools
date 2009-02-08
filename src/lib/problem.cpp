@@ -208,8 +208,8 @@ problem_c::~problem_c(void) {
     delete assm;
 }
 
-problem_c::problem_c(problem_c * orig) :
-  puzzle(orig->puzzle), result(orig->result),
+problem_c::problem_c(const problem_c * orig, puzzle_c & puz) :
+  puzzle(puz), result(orig->result),
   solveState(SS_UNSOLVED), numAssemblies(0), numSolutions(0), usedTime(0)
 {
   assm = 0;

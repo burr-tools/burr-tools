@@ -32,6 +32,6 @@ bool canConvert(const puzzle_c * p, gridType_c::gridType type);
  * the shapes inside the puzzle will be converted and then the
  * gridtype within the puzzle will be changed
  */
-void doConvert(puzzle_c * p, gridType_c::gridType type);
+puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type);
 
 #endif

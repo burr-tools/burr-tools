@@ -111,13 +111,10 @@ public:
   ~puzzle_c(void);
 
   /**
-   * fome functions to set and return the current set grid type for this puzzle
-   * if you set a new gridType, you should really know what you do
-   * it may break a lot
+   * some functions to get the current set grid type for this puzzle
    */
   const gridType_c * getGridType(void) const { return gt; }
   gridType_c * getGridType(void) { return gt; }
-  void setGridType(gridType_c * newGt);
 
   /**
    * functions to add shapes to the puzzle
@@ -175,16 +172,16 @@ public:
   /**
    * handle problems:
    * - add a new empty problem return its index
+   * - add a new problem as copy from another problem (from another puzzle)
    * - return the number of problems within this puzzle
    * - remove problem with the given index freeing all its ressources
-   * - copy a problem, doubling all except the label and the solutions
    * - exchange problem at indes p1 with problem at index p2
    * - get the problem at index p
    */
   unsigned int addProblem(void);
+  unsigned int addProblem(const problem_c * prob);
   unsigned int problemNumber(void) const { return problems.size(); }
   void removeProblem(unsigned int p);
-  unsigned int copyProblem(unsigned int);
   void exchangeProblem(unsigned int p1, unsigned int p2);
   const problem_c * getProblem(unsigned int p) const { bt_assert(p < problems.size()); return problems[p]; }
   problem_c * getProblem(unsigned int p) { bt_assert(p < problems.size()); return problems[p]; }
@@ -202,7 +199,7 @@ public:
    * the comment will open when the file is loaded within the gui
    */
   bool getCommentPopup(void) const { return commentPopup; }
-  void setComemntPopup(bool val) { commentPopup = val; }
+  void setCommentPopup(bool val) { commentPopup = val; }
 };
 
 #endif

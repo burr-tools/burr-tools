@@ -33,24 +33,20 @@ bool canConvert(const puzzle_c * p, gridType_c::gridType type) {
  * the shapes inside the puzzle will be converted and then the
  * gridtype within the puzzle will be changed
  */
-void doConvert(puzzle_c * p, gridType_c::gridType type) {
+puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type) {
 
-  if (!canConvert(p, type)) return;
+  if (!canConvert(p, type)) return 0;
 
   // for now only the conversion from brick to rhombic is available
 
   // create a gridType for the target grid
   gridType_c * gt = new gridType_c(type);
 
-  // first remove all solutions, as they will no longer be valid
-  for (unsigned int pr = 0; pr < p->problemNumber(); pr++)
-    p->getProblem(pr)->removeAllSolutions();
-
-  std::vector<voxel_c*> cvoxels;
+  puzzle_c * pNew = new puzzle_c(gt);
 
   // now convert all shapes
-  for (unsigned int i = 0; i < p->shapeNumber(); i++) {
-
+  for (unsigned int i = 0; i < p->shapeNumber(); i++)
+  {
     const voxel_c * v = p->getShape(i);
 
     // this is now conversion specific....
@@ -61,26 +57,39 @@ void doConvert(puzzle_c * p, gridType_c::gridType type) {
         for (unsigned int z = 0; z < v->getZ(); z++) {
           voxel_type st = v->get(x, y, z);
 
-          for (int ax = 0; ax < 5; ax++)
-            for (int ay = 0; ay < 5; ay++)
-              for (int az = 0; az < 5; az++)
-                if (vn->validCoordinate(ax, ay, az))
-                  vn->set(5*x+ax, 5*y+ay, 5*z+az, st);
+          if (st != 0)
+            for (int ax = 0; ax < 5; ax++)
+              for (int ay = 0; ay < 5; ay++)
+                for (int az = 0; az < 5; az++)
+                  if (vn->validCoordinate(5*x+ax, 5*y+ay, 5*z+az))
+                    vn->set(5*x+ax, 5*y+ay, 5*z+az, st);
         }
 
-    cvoxels.push_back(vn);
+    vn->setName(v->getName());
+    pNew->addShape(vn);
   }
 
-  // now replace the gridType within puzzle
+  // copy over colours
+  for (unsigned int i = 0; i < p->colorNumber(); i++)
+  {
+    unsigned char r, g, b;
+    p->getColor(i, &r, &g, &b);
+    pNew->addColor(r, g, b);
+  }
 
-  p->setGridType(gt);
+  // copy comment
+  pNew->setComment(p->getComment());
+  pNew->setCommentPopup(p->getCommentPopup());
 
-  // remove all shapes and add the new ones
+  // create the problems as copies from the old puzzle
+  for (unsigned int i = 0; i < p->problemNumber(); i++)
+  {
+    const problem_c * prob = p->getProblem(i);
+    problem_c * probNew = pNew->getProblem(pNew->addProblem(prob));
 
-  while (p->shapeNumber() > 0)
-    p->removeShape(0);
+    probNew->setName(prob->getName());
+  }
 
-  for (unsigned int i = 0; i < cvoxels.size(); i++)
-    p->addShape(cvoxels[i]);
+  return pNew;
 }
 

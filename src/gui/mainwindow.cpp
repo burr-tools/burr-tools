@@ -501,7 +501,7 @@ void mainWindow_c::cb_CopyProblem(void) {
 
   if (problemSelector->getSelection() < puzzle->problemNumber()) {
 
-    unsigned int prob = puzzle->copyProblem(problemSelector->getSelection());
+    unsigned int prob = puzzle->addProblem(puzzle->getProblem(problemSelector->getSelection()));
     problemSelector->setSelection(prob);
 
     changed = true;
@@ -1458,9 +1458,15 @@ void mainWindow_c::cb_Save(void) {
 static void cb_Convert_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Convert(); }
 void mainWindow_c::cb_Convert(void) {
 
-  doConvert(puzzle, gridType_c::GT_RHOMBIC);
-  ReplacePuzzle(puzzle);
+  puzzle_c * p = doConvert(puzzle, gridType_c::GT_RHOMBIC);
 
+  if (p)
+  {
+    ReplacePuzzle(p);
+    updateInterface();
+    activateShape(0);
+    changed = true;
+  }
 }
 
 static void cb_AssembliesToShapes_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AssembliesToShapes(); }

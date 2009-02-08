@@ -158,7 +158,7 @@ public:
    */
   problem_c(puzzle_c & puz);
   problem_c(puzzle_c & puz, const xml::node & node);
-  problem_c(problem_c * prob);
+  problem_c(const problem_c * prob, puzzle_c & puz);
 
   /**
    * destructor: free all ressources

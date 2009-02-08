@@ -33,7 +33,7 @@ puzzle_c::puzzle_c(const puzzle_c * orig) {
     shapes.push_back(gt->getVoxel(orig->shapes[i]));
 
   for (unsigned int i = 0; i < orig->problems.size(); i++)
-    problems.push_back(new problem_c(orig->problems[i]));
+    problems.push_back(new problem_c(orig->problems[i], *this));
 
   for (unsigned int i = 0; i < orig->colors.size(); i++)
     colors.push_back(orig->colors[i]);
@@ -272,20 +272,18 @@ unsigned int puzzle_c::addProblem(void) {
   return problems.size()-1;
 }
 
+unsigned int puzzle_c::addProblem(const problem_c * prob) {
+
+  problems.push_back(new problem_c(prob, *this));
+
+  return problems.size()-1;
+}
+
 /* remove one problem */
 void puzzle_c::removeProblem(unsigned int idx) {
   bt_assert(idx < problems.size());
   delete problems[idx];
   problems.erase(problems.begin()+idx);
-}
-
-unsigned int puzzle_c::copyProblem(unsigned int prob) {
-
-  bt_assert(prob < problems.size());
-
-  problems.push_back(new problem_c(problems[prob]));
-
-  return problems.size()-1;
 }
 
 void puzzle_c::exchangeProblem(unsigned int p1, unsigned int p2) {
@@ -296,10 +294,5 @@ void puzzle_c::exchangeProblem(unsigned int p1, unsigned int p2) {
   problem_c * p = problems[p1];
   problems[p1] = problems[p2];
   problems[p2] = p;
-}
-
-void puzzle_c::setGridType(gridType_c * newGt) {
-  delete gt;
-  gt = newGt;
 }
 
