@@ -57,6 +57,7 @@ puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type) {
     if (p->getGridType()->getType() == gridType_c::GT_BRICKS && type == gridType_c::GT_RHOMBIC)
     {
       vn = gt->getVoxel(v->getX()*5, v->getY()*5, v->getZ()*5, voxel_c::VX_EMPTY);
+      vn->skipRecalcBoundingBox(true);
 
       for (unsigned int x = 0; x < v->getX(); x++)
         for (unsigned int y = 0; y < v->getY(); y++)
@@ -74,6 +75,7 @@ puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type) {
     else if (p->getGridType()->getType() == gridType_c::GT_BRICKS && type == gridType_c::GT_TETRA_OCTA)
     {
       vn = gt->getVoxel(v->getX()*3, v->getY()*3, v->getZ()*3, voxel_c::VX_EMPTY);
+      vn->skipRecalcBoundingBox(true);
 
       for (unsigned int x = 0; x < v->getX(); x++)
         for (unsigned int y = 0; y < v->getY(); y++)
@@ -91,6 +93,7 @@ puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type) {
     else
       bt_assert(0);
 
+    vn->skipRecalcBoundingBox(false);
     vn->setName(v->getName());
     pNew->addShape(vn);
   }
