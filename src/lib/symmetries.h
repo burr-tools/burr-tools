@@ -23,7 +23,7 @@
 // this modules contains just some helper functions for transformations and symmetry handling
 
 /// this define is used for undefined transformations in the transformation multiplication matrix
-#define TND (unsigned int)(-1)
+#define TND (unsigned char)(-1)
 
 /** \page Transformations and Symmetries in BurTools
  *
@@ -114,6 +114,8 @@ class symmetries_c {
     /**
      * returns the transformation that results, when you first carry out transformation t1
      * and then transformation t2
+     *
+     * the function might return TND, when the new required transformation doesn't exist
      */
     virtual unsigned char transAdd(unsigned char t1, unsigned char t2) const = 0;
 

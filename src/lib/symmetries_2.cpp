@@ -28,7 +28,7 @@
  * if you first transform the piece around t1 and then around t2
  * you can as well transform around transMult[t1][t2]
  */
-static const unsigned int transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATIONS_MIRROR] = {
+static const unsigned char transMult[NUM_TRANSFORMATIONS_MIRROR][NUM_TRANSFORMATIONS_MIRROR] = {
 #include "tabs_2/transmult.inc"
 };
 
