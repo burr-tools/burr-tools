@@ -162,6 +162,7 @@ gui_burrGui_SOURCES += gui/blocklistgroup.cpp gui/blocklistgroup.h
 gui_burrGui_SOURCES += gui/buttongroup.cpp gui/buttongroup.h
 gui_burrGui_SOURCES += gui/configuration.cpp gui/configuration.h
 gui_burrGui_SOURCES += gui/constraintsgroup.cpp gui/constraintsgroup.h
+gui_burrGui_SOURCES += gui/convertwindow.cpp gui/convertwindow.h
 gui_burrGui_SOURCES += gui/grideditor.cpp gui/grideditor.h
 gui_burrGui_SOURCES += gui/grideditor_0.cpp gui/grideditor_0.h
 gui_burrGui_SOURCES += gui/grideditor_1.cpp gui/grideditor_1.h

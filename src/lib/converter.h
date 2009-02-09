@@ -25,7 +25,7 @@ class puzzle_c;
 /* returns true, if it is possible to convert this class to the
  * given gridType
  */
-bool canConvert(const puzzle_c * p, gridType_c::gridType type);
+bool canConvert(gridType_c::gridType src, gridType_c::gridType dst);
 
 /* do the conversion, if it can't be done (you should check first)
  * nothing will happen.

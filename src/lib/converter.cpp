@@ -21,11 +21,13 @@
 #include "problem.h"
 #include "voxel.h"
 
-bool canConvert(const puzzle_c * p, gridType_c::gridType type) {
-
-  return (p->getGridType()->getType() == gridType_c::GT_BRICKS &&
-      type == gridType_c::GT_RHOMBIC);
-
+bool canConvert(gridType_c::gridType src, gridType_c::gridType dst)
+{
+  return (
+          (src == gridType_c::GT_BRICKS && dst == gridType_c::GT_RHOMBIC)
+	  ||
+          (src == gridType_c::GT_BRICKS && dst == gridType_c::GT_TETRA_OCTA)
+         );
 }
 
 /* do the conversion, if it can't be done (you should check first)
@@ -35,7 +37,7 @@ bool canConvert(const puzzle_c * p, gridType_c::gridType type) {
  */
 puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type) {
 
-  if (!canConvert(p, type)) return 0;
+  if (!canConvert(p->getGridType()->getType(), type)) return 0;
 
   // for now only the conversion from brick to rhombic is available
 
@@ -49,21 +51,45 @@ puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type) {
   {
     const voxel_c * v = p->getShape(i);
 
+    voxel_c * vn = 0;
     // this is now conversion specific....
-    voxel_c * vn = gt->getVoxel(v->getX()*5, v->getY()*5, v->getZ()*5, voxel_c::VX_EMPTY);
 
-    for (unsigned int x = 0; x < v->getX(); x++)
-      for (unsigned int y = 0; y < v->getY(); y++)
-        for (unsigned int z = 0; z < v->getZ(); z++) {
-          voxel_type st = v->get(x, y, z);
+    if (p->getGridType()->getType() == gridType_c::GT_BRICKS && type == gridType_c::GT_RHOMBIC)
+    {
+      vn = gt->getVoxel(v->getX()*5, v->getY()*5, v->getZ()*5, voxel_c::VX_EMPTY);
 
-          if (st != 0)
-            for (int ax = 0; ax < 5; ax++)
-              for (int ay = 0; ay < 5; ay++)
-                for (int az = 0; az < 5; az++)
-                  if (vn->validCoordinate(5*x+ax, 5*y+ay, 5*z+az))
-                    vn->set(5*x+ax, 5*y+ay, 5*z+az, st);
-        }
+      for (unsigned int x = 0; x < v->getX(); x++)
+        for (unsigned int y = 0; y < v->getY(); y++)
+          for (unsigned int z = 0; z < v->getZ(); z++) {
+            voxel_type st = v->get(x, y, z);
+
+            if (st != 0)
+              for (int ax = 0; ax < 5; ax++)
+                for (int ay = 0; ay < 5; ay++)
+                  for (int az = 0; az < 5; az++)
+                    if (vn->validCoordinate(5*x+ax, 5*y+ay, 5*z+az))
+                      vn->set(5*x+ax, 5*y+ay, 5*z+az, st);
+          }
+    }
+    else if (p->getGridType()->getType() == gridType_c::GT_BRICKS && type == gridType_c::GT_TETRA_OCTA)
+    {
+      vn = gt->getVoxel(v->getX()*3, v->getY()*3, v->getZ()*3, voxel_c::VX_EMPTY);
+
+      for (unsigned int x = 0; x < v->getX(); x++)
+        for (unsigned int y = 0; y < v->getY(); y++)
+          for (unsigned int z = 0; z < v->getZ(); z++) {
+            voxel_type st = v->get(x, y, z);
+
+            if (st != 0)
+              for (int ax = 0; ax < 3; ax++)
+                for (int ay = 0; ay < 3; ay++)
+                  for (int az = 0; az < 3; az++)
+                    if (vn->validCoordinate(3*x+ax, 3*y+ay, 3*z+az))
+                      vn->set(3*x+ax, 3*y+ay, 3*z+az, st);
+          }
+    }
+    else
+      bt_assert(0);
 
     vn->setName(v->getName());
     pNew->addShape(vn);

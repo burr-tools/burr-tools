@@ -45,6 +45,7 @@
 #include "constraintsgroup.h"
 #include "blocklistgroup.h"
 #include "vectorexportwindow.h"
+#include "convertwindow.h"
 
 #include "LFl_Tile.h"
 
@@ -1458,14 +1459,24 @@ void mainWindow_c::cb_Save(void) {
 static void cb_Convert_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Convert(); }
 void mainWindow_c::cb_Convert(void) {
 
-  puzzle_c * p = doConvert(puzzle, gridType_c::GT_RHOMBIC);
+  convertWindow_c win(puzzle->getGridType()->getType());
 
-  if (p)
+  win.show();
+
+  while (win.visible())
+    Fl::wait();
+
+  if (win.okSelected())
   {
-    ReplacePuzzle(p);
-    updateInterface();
-    activateShape(0);
-    changed = true;
+    puzzle_c * p = doConvert(puzzle, win.getTargetType());
+
+    if (p)
+    {
+      ReplacePuzzle(p);
+      updateInterface();
+      activateShape(0);
+      changed = true;
+    }
   }
 }
 
