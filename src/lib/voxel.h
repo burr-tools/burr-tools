@@ -441,7 +441,7 @@ public:
    *
    * If the return pointers are 0 the value is not returned
    */
-  void getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2 = 0, int * y2 = 0, int * z2 = 0) const;
+  bool getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2 = 0, int * y2 = 0, int * z2 = 0) const;
 
   /**
    * Comparison of two voxel spaces.
@@ -696,7 +696,7 @@ public:
   /**
    * this function returns the hotspot of the rotated space.
    */
-  void getHotspot(unsigned char trans, int * x, int * y, int * z) const;
+  bool getHotspot(unsigned char trans, int * x, int * y, int * z) const;
 
   /** function to get the name */
   const std::string & getName(void) const { return name; }

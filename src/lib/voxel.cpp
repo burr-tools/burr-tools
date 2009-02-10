@@ -69,6 +69,9 @@
 
 /// the value tha signifies uninitialized values for the hotspot and bounding box cache
 #define BBHSCACHE_UNINIT -30000
+/// the value means that this entry for the bounding box hotspot cache is not defines
+/// due to an undefined orientation of the piece
+#define BBHSCACHE_NOT_DEF -30001
 
 voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * g, voxel_type init) : gt(g), sx(x), sy(y), sz(z), voxels(x*y*z), hx(0), hy(0), hz(0), weight(1) {
 
@@ -258,9 +261,10 @@ unsigned char voxel_c::getMirrorTransform(const voxel_c * op) const {
   return 0;
 }
 
-void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
+bool voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 
   bt_assert(trans < gt->getSymmetries()->getNumTransformationsMirror());
+  bt_assert(x && y && z);
 
   /* if the cache values don't exist calculate them */
   if (BbHsCache[9*trans] == BBHSCACHE_UNINIT) {
@@ -269,7 +273,11 @@ void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
     */
     voxel_c * tmp = gt->getVoxel(this);
 
-    bt_assert2(tmp->transform(trans));
+    if (!tmp->transform(trans))
+    {
+      BbHsCache[9*trans+0] = BBHSCACHE_NOT_DEF;
+      BbHsCache[9*trans+3] = BBHSCACHE_NOT_DEF;
+    }
 
     BbHsCache[9*trans+0] = tmp->getHx();
     BbHsCache[9*trans+1] = tmp->getHy();
@@ -278,13 +286,20 @@ void voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
     delete tmp;
   }
 
-  *x = BbHsCache[9*trans+0];
-  *y = BbHsCache[9*trans+1];
-  *z = BbHsCache[9*trans+2];
-
+  if (BbHsCache[9*trans] == BBHSCACHE_NOT_DEF)
+  {
+     return false;
+  }
+  else
+  {
+    *x = BbHsCache[9*trans+0];
+    *y = BbHsCache[9*trans+1];
+    *z = BbHsCache[9*trans+2];
+    return true;
+  }
 }
 
-void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2, int * y2, int * z2) const {
+bool voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, int * x2, int * y2, int * z2) const {
 
   bt_assert(trans < gt->getSymmetries()->getNumTransformationsMirror());
 
@@ -293,24 +308,39 @@ void voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, 
 
     /* this version always works, but it is quite slow */
     voxel_c * tmp = gt->getVoxel(this);
-    bt_assert2(tmp->transform(trans));
 
-    BbHsCache[9*trans+3] = tmp->boundX1();
-    BbHsCache[9*trans+4] = tmp->boundX2();
-    BbHsCache[9*trans+5] = tmp->boundY1();
-    BbHsCache[9*trans+6] = tmp->boundY2();
-    BbHsCache[9*trans+7] = tmp->boundZ1();
-    BbHsCache[9*trans+8] = tmp->boundZ2();
+    if (!tmp->transform(trans))
+    {
+      BbHsCache[9*trans+3] = BBHSCACHE_NOT_DEF;
+      BbHsCache[9*trans+0] = BBHSCACHE_NOT_DEF;
+    }
+    else
+    {
+      BbHsCache[9*trans+3] = tmp->boundX1();
+      BbHsCache[9*trans+4] = tmp->boundX2();
+      BbHsCache[9*trans+5] = tmp->boundY1();
+      BbHsCache[9*trans+6] = tmp->boundY2();
+      BbHsCache[9*trans+7] = tmp->boundZ1();
+      BbHsCache[9*trans+8] = tmp->boundZ2();
+    }
 
     delete tmp;
   }
 
-  if (x1) *x1 = BbHsCache[9*trans+3];
-  if (x2) *x2 = BbHsCache[9*trans+4];
-  if (y1) *y1 = BbHsCache[9*trans+5];
-  if (y2) *y2 = BbHsCache[9*trans+6];
-  if (z1) *z1 = BbHsCache[9*trans+7];
-  if (z2) *z2 = BbHsCache[9*trans+8];
+  if (BbHsCache[9*trans+3] == BBHSCACHE_NOT_DEF)
+  {
+    return false;
+  }
+  else
+  {
+    if (x1) *x1 = BbHsCache[9*trans+3];
+    if (x2) *x2 = BbHsCache[9*trans+4];
+    if (y1) *y1 = BbHsCache[9*trans+5];
+    if (y2) *y2 = BbHsCache[9*trans+6];
+    if (z1) *z1 = BbHsCache[9*trans+7];
+    if (z2) *z2 = BbHsCache[9*trans+8];
+    return true;
+  }
 }
 
 void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel_type filler) {
