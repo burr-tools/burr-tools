@@ -637,9 +637,10 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
   return 1;
 }
 
-assembler_1_c::errState assembler_1_c::createMatrix(const problem_c * puz, bool keepMirror, bool keepRotations) {
+assembler_1_c::errState assembler_1_c::createMatrix(const problem_c * puz, bool keepMirror, bool keepRotations, bool comp) {
 
   puzzle = puz;
+  complete = comp;
 
   if (!canHandle(puzzle))
     return ERR_PUZZLE_UNHANDABLE;
@@ -1051,7 +1052,7 @@ void assembler_1_c::solution(void) {
 
     assembly_c * assembly = getAssembly();
 
-    if (avoidTransformedAssemblies && assembly->smallerRotationExists(puzzle, avoidTransformedPivot, avoidTransformedMirror))
+    if (avoidTransformedAssemblies && assembly->smallerRotationExists(puzzle, avoidTransformedPivot, avoidTransformedMirror, complete))
       delete assembly;
     else {
       getCallback()->assembly(assembly);

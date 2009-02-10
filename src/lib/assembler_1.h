@@ -166,6 +166,9 @@ private:
   unsigned int avoidTransformedPivot;
   mirrorInfo_c * avoidTransformedMirror;
 
+  /// set to true, when complete analysis is requested
+  bool complete;
+
   /* the variables for debugging assembling processes
    */
   bool debug;         // debugging enabled
@@ -245,7 +248,7 @@ public:
   ~assembler_1_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */
-  errState createMatrix(const problem_c * puz, bool keepMirror, bool keepRotations);
+  errState createMatrix(const problem_c * puz, bool keepMirror, bool keepRotations, bool complete);
   void assemble(assembler_cb * callback);
   int getErrorsParam(void) { return errorsParam; }
   virtual float getFinished(void);

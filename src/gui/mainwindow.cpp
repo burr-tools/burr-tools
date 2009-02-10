@@ -995,6 +995,7 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   if (DropDisassemblies->value() != 0) par |= solveThread_c::PAR_DROP_DISASSEMBLIES;
   if (SolveDisasm->value() != 0) par |= solveThread_c::PAR_DISASSM;
   if (JustCount->value() != 0) par |= solveThread_c::PAR_JUST_COUNT;
+  if (CompleteRotations->value() != 0) par |= solveThread_c::PAR_COMPLETE_ROTATIONS;
 
   assmThread = new solveThread_c(puzzle->getProblem(prob), par);
 
@@ -1490,7 +1491,13 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
   std::vector<voxel_c *>sh;
 
   for (unsigned int s = 0; s < pr->solutionNumber(); s++)
-    sh.push_back(pr->getAssembly(s)->createSpace(pr));
+  {
+    voxel_c * shape = pr->getAssembly(s)->createSpace(pr);
+    if (shape->connected(0, true, voxel_c::VX_EMPTY))
+      sh.push_back(shape);
+    else
+      delete shape;
+  }
 
   // add the shapes to the problem of the problem tab
   for (unsigned int s = 0; s < sh.size(); s++) {
@@ -3297,6 +3304,10 @@ void mainWindow_c::CreateSolveTab(void) {
     JustCount = new LFl_Check_Button("Just Count", 0, 1, 1, 1);
     JustCount->tooltip(" Don\'t save the solutions, just count the number of them ");
     JustCount->clear_visible_focus();
+
+    CompleteRotations = new LFl_Check_Button("Expensive Rot Check", 0, 2, 1, 1);
+    CompleteRotations->tooltip(" Do expensive and thorough rotation check, eliminating translations and rotations not in symmetry of the result shape ");
+    CompleteRotations->clear_visible_focus();
 
     DropDisassemblies = new LFl_Check_Button("Drop Disassemblies", 1, 0, 1, 1);
     DropDisassemblies->tooltip(" Don\'t save the Disassemblies, just the information about them ");

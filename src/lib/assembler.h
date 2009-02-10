@@ -83,7 +83,7 @@ public:
    * when keep mirror is true, the assembler must not throw away mirror solutions
    * but it still removes solutions that are rotations.
    */
-  virtual errState createMatrix(const problem_c * /*puz*/, bool /*keepMirror*/, bool /*keepRotations*/) { return ERR_NONE; }
+  virtual errState createMatrix(const problem_c * /*puz*/, bool /*keepMirror*/, bool /*keepRotations*/, bool /*complete*/) { return ERR_NONE; }
 
   /**
    * when createMatrix returns an error you can call this function to

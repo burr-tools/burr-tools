@@ -39,7 +39,7 @@ void solveThread_c::run(void){
       action = solveThread_c::ACT_PREPARATION;
       assm = puzzle->getGridType()->findAssembler(puzzle);
 
-      errState = assm->createMatrix(puzzle, parameters & PAR_KEEP_MIRROR, parameters & PAR_KEEP_ROTATIONS);
+      errState = assm->createMatrix(puzzle, parameters & PAR_KEEP_MIRROR, parameters & PAR_KEEP_ROTATIONS, parameters & PAR_COMPLETE_ROTATIONS);
       if (errState != assembler_c::ERR_NONE) {
 
         errParam = assm->getErrorsParam();

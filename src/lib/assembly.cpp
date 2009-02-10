@@ -621,9 +621,7 @@ bool assembly_c::validSolution(const problem_c * puz) const {
   return true;
 }
 
-bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot, const mirrorInfo_c * mir) const {
-
-  symmetries_t s = puz->getResultShape()->selfSymmetries();
+bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot, const mirrorInfo_c * mir, bool complete) const {
 
   /* we only need to check for mirrored transformations, if mirrorInfo is given
    * if not we assume that the piece set contains at least one piece that has no
@@ -631,33 +629,119 @@ bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot
    */
   unsigned int endTrans = mir ? sym->getNumTransformationsMirror() : sym->getNumTransformations();
 
-  for (unsigned char t = 1; t < endTrans; t++) {
-
-    if (sym->symmetrieContainsTransformation(s, t)) {
-
+  if (complete)
+  {
+    for (unsigned char t = 0; t < endTrans; t++)
+    {
       assembly_c tmp(this);
-      bt_assert2(tmp.transform(t, puz, mir));
 
-      // if the assembly orientation requires mirrored pieces
-      // it is invalid, that should be the case for most assemblies
-      // when checking for mirrored
-      //
-      // FIXME: we should check, if we can exchange 2 shapes that are
-      // mirrors of one another to see, if we can remove the mirror
-      // problem
-      //
-      // we also need to make sure that the new found assembly uses the right amount
-      // of pieces from each shape. Because it is possible that the mirror
-      // shape is allowed with a different intervall it is possible that
-      // after mirroring the number of instances for some shapes is wrong
+      // if we can not create the transformation we can continue to
+      // the next orientation
+      if (!tmp.transform(t, puz, mir))
+      {
+        continue;
+      }
+
+      // check, if the found transformation is valid, if not
+      // we can continue to the next
       if ((t >= sym->getNumTransformations()) &&
           (tmp.containsMirroredPieces() || !tmp.validSolution(puz)))
       {
         continue;
       }
 
-      if (tmp.compare(*this, pivot)) {
-        return true;
+      // ok, we have found the rotated assembly and it exists, we now need to
+      // find out if the whole arrangement can be shifted to the lower positions
+      // if that is the case we don't keep the stuff
+
+      // now we create a voxel space of the given assembly shape/ and shift that one around
+      voxel_c * assm = tmp.createSpace(puz);
+      const voxel_c * res = puz->getResultShape();
+
+      for (int x = (int)res->boundX1()-(int)assm->boundX1(); (int)assm->boundX2()+x <= (int)res->boundX2(); x++)
+        for (int y = (int)res->boundY1()-(int)assm->boundY1(); (int)assm->boundY2()+y <= (int)res->boundY2(); y++)
+          for (int z = (int)res->boundZ1()-(int)assm->boundZ1(); (int)assm->boundZ2()+z <= (int)res->boundZ2(); z++)
+          {
+            if (assm->onGrid(x, y, z))
+            {
+              bool fits = true;
+
+              for (int pz = (int)assm->boundZ1(); pz <= (int)assm->boundZ2(); pz++)
+                for (int py = (int)assm->boundY1(); py <= (int)assm->boundY2(); py++)
+                  for (int px = (int)assm->boundX1(); px <= (int)assm->boundX2(); px++)
+                  {
+                    if (
+                        // the piece can not be place if the result is empty and the piece is filled at a given voxel
+                        ((assm->getState(px, py, pz) != voxel_c::VX_EMPTY) &&
+                         (res->getState2(x+px, y+py, z+pz) == voxel_c::VX_EMPTY)) ||
+
+                        // the piece can also not be placed when the colour constraints don't fit
+                        !puz->placementAllowed(assm->getColor(px, py, pz), res->getColor2(x+px, y+py, z+pz))
+
+                       )
+                      fits = false;
+                  }
+
+              if (fits)
+              {
+                // well the assembly fits at the current position, so let us see...
+                for (unsigned int i = 0; i < tmp.placements.size(); i++)
+                {
+                  tmp.placements[i].xpos += x;
+                  tmp.placements[i].ypos += y;
+                  tmp.placements[i].zpos += z;
+                }
+
+                if (tmp.compare(*this, pivot)) {
+                  delete assm;
+                  return true;
+                }
+
+                for (unsigned int i = 0; i < tmp.placements.size(); i++)
+                {
+                  tmp.placements[i].xpos -= x;
+                  tmp.placements[i].ypos -= y;
+                  tmp.placements[i].zpos -= z;
+                }
+              }
+            }
+          }
+
+      delete assm;
+    }
+  }
+  else
+  {
+    for (unsigned char t = 0; t < endTrans; t++)
+    {
+      symmetries_t s = puz->getResultShape()->selfSymmetries();
+
+      if (sym->symmetrieContainsTransformation(s, t))
+      {
+        assembly_c tmp(this);
+        bt_assert2(tmp.transform(t, puz, mir));
+
+        // if the assembly orientation requires mirrored pieces
+        // it is invalid, that should be the case for most assemblies
+        // when checking for mirrored
+        //
+        // FIXME: we should check, if we can exchange 2 shapes that are
+        // mirrors of one another to see, if we can remove the mirror
+        // problem
+        //
+        // we also need to make sure that the new found assembly uses the right amount
+        // of pieces from each shape. Because it is possible that the mirror
+        // shape is allowed with a different intervall it is possible that
+        // after mirroring the number of instances for some shapes is wrong
+        if ((t >= sym->getNumTransformations()) &&
+            (tmp.containsMirroredPieces() || !tmp.validSolution(puz)))
+        {
+          continue;
+        }
+
+        if (tmp.compare(*this, pivot)) {
+          return true;
+        }
       }
     }
   }

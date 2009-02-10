@@ -244,7 +244,7 @@ public:
   bool transform(unsigned char trans, const problem_c * puz, const mirrorInfo_c * mir);
 
 
-  bool smallerRotationExists(const problem_c * puz, unsigned int pivot, const mirrorInfo_c * mir) const;
+  bool smallerRotationExists(const problem_c * puz, unsigned int pivot, const mirrorInfo_c * mir, bool complete) const;
 
   void exchangeShape(unsigned int s1, unsigned int s2);
 

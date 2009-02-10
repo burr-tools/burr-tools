@@ -95,6 +95,7 @@ class solveThread_c : public assembler_cb, public thread_c {
     static const int PAR_DROP_DISASSEMBLIES = 0x08;  // remove disassembly instructions after analysis
     static const int PAR_DISASSM =            0x10;  // do the disassembly analysis
     static const int PAR_JUST_COUNT =         0x20;  // just count the solutions, don't save them
+    static const int PAR_COMPLETE_ROTATIONS = 0x40;  // do a thorough rotation check
 
     // create all the necessary data structures to start the thread later on
     solveThread_c(problem_c * puz, int par);
