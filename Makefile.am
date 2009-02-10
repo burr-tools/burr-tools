@@ -42,3 +42,6 @@ dist-win32: all
 	zip -r9 $(win32dir).zip $(win32dir)
 	makensis $(PACKAGE).nsi
 	$(RM) -r $(win32dir)
+
+Makefile: Makefile.am configure.ac src/Makefile.am
+	./bootstrap
