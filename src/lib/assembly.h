@@ -175,7 +175,6 @@ public:
    * copy constructor
    */
   assembly_c(const assembly_c * orig);
-  assembly_c(const assembly_c * orig, unsigned char trans, const problem_c * puz, const mirrorInfo_c * mir);
 
   /**
    * load the assembly from xml file
@@ -229,8 +228,20 @@ public:
    * transform the assembly, the problem is that to rotate the
    * placements we need to know the sizes of the shapes because
    * the given position is always the corner with the lowest coordinates
+   *
+   * The function returns true, when the transformation has been done
+   * successfully and false if not.
+   *
+   * when complete is true, then the symmetry of the solution shape
+   * is NOT used to find out which symmetries to check for
+   * instead all possible orientations are checked, also all possible
+   * translations are checked
+   *
+   * When the function returns false it will leave the assembly in an undefined state
+   * maybe some pieces have already been replaced while other are still in their
+   * initial position, so you have to throw away the assembly when that happens
    */
-  void transform(unsigned char trans, const problem_c * puz, const mirrorInfo_c * mir);
+  bool transform(unsigned char trans, const problem_c * puz, const mirrorInfo_c * mir);
 
 
   bool smallerRotationExists(const problem_c * puz, unsigned int pivot, const mirrorInfo_c * mir) const;
