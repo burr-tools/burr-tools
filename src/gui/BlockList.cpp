@@ -333,7 +333,7 @@ void PieceSelector::getColor(unsigned int block, unsigned char *r,  unsigned cha
   *b = pieceColorBi(block);
 }
 
-void ProblemSelector::setPuzzle(puzzle_c *pz) {
+void ProblemSelector::setPuzzle(const puzzle_c *pz) {
   bt_assert(pz);
   puzzle = pz;
   setSelection(0);

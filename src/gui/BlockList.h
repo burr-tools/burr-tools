@@ -260,16 +260,16 @@ class ProblemSelector : public SelectableTextList {
 
 private:
 
-  puzzle_c * puzzle;
+  const puzzle_c * puzzle;
 
 public:
 
-  ProblemSelector(int x, int y, int w, int h, puzzle_c * p) :
+  ProblemSelector(int x, int y, int w, int h, const puzzle_c * p) :
     SelectableTextList(x, y, w, h),
     puzzle(p)
   { bt_assert(p); }
 
-  void setPuzzle(puzzle_c *pz);
+  void setPuzzle(const puzzle_c *pz);
   virtual unsigned int blockNumber(void);
   virtual void getText(unsigned int block, char * text);
   virtual void getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
