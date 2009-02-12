@@ -624,7 +624,8 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
     for (unsigned int i = 0; i < cachefill; i++)  delete cache[i];
 
     /* check, if the current piece has at least one placement */
-    if (placements == 0) {
+    if (placements == 0 && puzzle->getShapeMin(pc) > 0)
+    {
       delete [] cache;
       delete [] columns;
       return -puzzle->getShape(pc);
