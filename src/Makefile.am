@@ -158,6 +158,7 @@ flu_libflu_a_SOURCES=\
 gui_burrGui_SOURCES =
 gui_burrGui_SOURCES += gui/arcball.cpp gui/arcball.h
 gui_burrGui_SOURCES += gui/assertwindow.cpp gui/assertwindow.h
+gui_burrGui_SOURCES += gui/assmimportwindow.cpp gui/assmimportwindow.h
 gui_burrGui_SOURCES += gui/blocklistgroup.cpp gui/blocklistgroup.h
 gui_burrGui_SOURCES += gui/buttongroup.cpp gui/buttongroup.h
 gui_burrGui_SOURCES += gui/configuration.cpp gui/configuration.h

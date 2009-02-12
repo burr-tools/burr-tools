@@ -46,6 +46,7 @@
 #include "blocklistgroup.h"
 #include "vectorexportwindow.h"
 #include "convertwindow.h"
+#include "assmimportwindow.h"
 
 #include "LFl_Tile.h"
 
@@ -1484,32 +1485,74 @@ void mainWindow_c::cb_Convert(void) {
 static void cb_AssembliesToShapes_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AssembliesToShapes(); }
 void mainWindow_c::cb_AssembliesToShapes(void) {
 
-  // is uses the problem that is selected in the solution tab
+  assmImportWindow_c win(puzzle);
 
-  problem_c * pr = puzzle->getProblem(solutionProblem->getSelection());
+  win.show();
 
-  std::vector<voxel_c *>sh;
+  while (win.visible())
+    Fl::wait();
 
-  for (unsigned int s = 0; s < pr->solutionNumber(); s++)
+  if (win.okSelected())
   {
-    voxel_c * shape = pr->getAssembly(s)->createSpace(pr);
-    if (shape->connected(0, true, voxel_c::VX_EMPTY))
+    // is uses the problem that is selected in the solution tab
+    problem_c * pr = puzzle->getProblem(win.getSrcProblem());
+
+    std::vector<voxel_c *>sh;
+
+    unsigned int filter = win.getFilter();
+
+    for (unsigned int s = 0; s < pr->solutionNumber(); s++)
+    {
+      voxel_c * shape = pr->getAssembly(s)->createSpace(pr);
+
+      if ((filter & assmImportWindow_c::dropDisconnected) && !shape->connected(0, true, voxel_c::VX_EMPTY))
+      {
+        delete shape;
+        continue;
+      }
+
+      symmetries_t sym = shape->selfSymmetries();
+
+      if ((filter & assmImportWindow_c::dropMirror) && shape->getGridType()->getSymmetries()->symmetryContainsMirror(sym))
+      {
+        delete shape;
+        continue;
+      }
+
+      if ((filter & assmImportWindow_c::dropSymmetric) && !unSymmetric(sym))
+      {
+        delete shape;
+        continue;
+      }
+
+      // TODO NonMillable and Identical is missing
+
+
       sh.push_back(shape);
-    else
-      delete shape;
+    }
+
+    if (win.getAction() == assmImportWindow_c::A_ADD_NEW)
+      pr = puzzle->getProblem(puzzle->addProblem());
+    else if (win.getAction() == assmImportWindow_c::A_ADD_DST)
+      pr = puzzle->getProblem(win.getDstProblem());
+
+    // add the shapes to the problem of the problem tab
+    for (unsigned int s = 0; s < sh.size(); s++)
+    {
+      int i = puzzle->addShape(sh[s]);
+
+      if (win.getAction() == assmImportWindow_c::A_ADD_DST || win.getAction() == assmImportWindow_c::A_ADD_NEW)
+      {
+        pr->setShapeCountMax(i, win.getMax());
+        pr->setShapeCountMin(i, win.getMin());
+      }
+    }
+
+    changed = true;
+    PiecesCountList->redraw();
+
+    updateInterface();
   }
-
-  // add the shapes to the problem of the problem tab
-  for (unsigned int s = 0; s < sh.size(); s++) {
-    int i = puzzle->addShape(sh[s]);
-    puzzle->getProblem(problemSelector->getSelection())->setShapeCountMax(i, 1);
-    puzzle->getProblem(problemSelector->getSelection())->setShapeCountMin(i, 0);
-  }
-
-  changed = true;
-  PiecesCountList->redraw();
-
-  updateInterface();
 }
 
 static void cb_SaveAs_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SaveAs(); }
