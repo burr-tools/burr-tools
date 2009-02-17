@@ -553,6 +553,8 @@ void voxelFrame_c::showColors(const puzzle_c * puz, colorMode mode) {
 
 void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
 
+  bt_assert(!puz->resultInvalid());
+
   if (curAssembly) {
     delete curAssembly;
     curAssembly = 0;
@@ -622,6 +624,8 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
 
 void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * assm) {
 
+  bt_assert(!puz->resultInvalid());
+
   hideMarker();
   clearSpaces();
 
@@ -673,6 +677,8 @@ void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * 
 }
 
 void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsigned char t, int x, int y, int z) {
+
+  bt_assert(!puz->resultInvalid());
 
   clearSpaces();
   hideMarker();

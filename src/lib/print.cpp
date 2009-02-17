@@ -22,6 +22,7 @@
 #include "problem.h"
 #include "disassembly.h"
 #include "assembly.h"
+#include "assert.h"
 
 void print(const voxel_c * v, char base) {
   for (unsigned int z = 0; z < v->getZ(); z++) {
@@ -69,7 +70,10 @@ void print(const puzzle_c * p) {
     const problem_c * prob = p->getProblem(pr);
 
     printf("problem %i (%s):\n", pr, prob->getName().c_str());
-    printf(" result shape: %i\n", prob->getResult());
+    if (prob->resultInvalid())
+      printf(" result shape: not defined\n");
+    else
+      printf(" result shape: %i\n", prob->getResult());
 
     for (unsigned int sh = 0; sh < prob->shapeNumber(); sh++)
       if (prob->getShapeMin(sh) != prob->getShapeMax(sh))
@@ -160,6 +164,8 @@ static void print_rec(const separation_c * s, voxel_c ** pieces, int sx, int sy,
 
 void print(const separation_c * s, const assembly_c * a, const problem_c * p) {
 
+  bt_assert(!p->resultInvalid());
+
   const voxel_c * res = p->getResultShape();
 
   voxel_c ** pieces = new voxel_c*[a->placementCount()];
@@ -189,8 +195,9 @@ void print(const separation_c * s, const assembly_c * a, const problem_c * p) {
 
 void print(const assembly_c * a, const problem_c * p) {
 
-  const voxel_c * res = p->getResultShape();
+  bt_assert(!p->resultInvalid());
 
+  const voxel_c * res = p->getResultShape();
 
   voxel_c ** pieces = new voxel_c*[a->placementCount()];
 

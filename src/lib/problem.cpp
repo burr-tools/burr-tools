@@ -645,10 +645,12 @@ bool problem_c::resultInvalid(void) const {
 
 /* get the result shape voxel space */
 const voxel_c * problem_c::getResultShape(void) const {
+  bt_assert(result < puzzle.shapeNumber());
   return puzzle.getShape(result);
 }
 
 voxel_c * problem_c::getResultShape(void) {
+  bt_assert(result < puzzle.shapeNumber());
   return puzzle.getShape(result);
 }
 

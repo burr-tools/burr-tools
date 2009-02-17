@@ -984,7 +984,7 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
     return;
   }
 
-  if (puzzle->getProblem(prob)->getResult() > puzzle->shapeNumber()) {
+  if (puzzle->getProblem(prob)->resultInvalid()) {
     fl_message("A result shape must be defined");
     return;
   }
@@ -2743,8 +2743,7 @@ void mainWindow_c::updateInterface(void) {
         }
 
         // if we have a result and at least one piece, we can give it a try
-        if ((pr->pieceNumber() > 0) &&
-            (pr->getResult() < puzzle->shapeNumber())) {
+        if ((pr->pieceNumber() > 0) && (!pr->resultInvalid())) {
           BtnStart->activate();
           if (BtnPrepare) BtnPrepare->activate();
         } else {
