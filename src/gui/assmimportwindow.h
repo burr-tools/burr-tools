@@ -41,7 +41,7 @@ class assmImportWindow_c : public LFl_Double_Window {
 
     ProblemSelector *problemSelectorSrc, *problemSelectorDst;
     Fl_Round_Button *rdDontAdd, *rdAddNew, *rdAddDst;
-    Fl_Check_Button *ckDrpDisconnected, *ckDrpMirror, *ckDrpSymm, *ckDrpMillable, *ckDrpIdentical;
+    Fl_Check_Button *ckDrpDisconnected, *ckDrpMirror, *ckDrpSymm, *ckDrpMillable, *ckDrpNotchable, *ckDrpIdentical;
     Fl_Int_Input *min, *max;
 
   public:
@@ -68,7 +68,8 @@ class assmImportWindow_c : public LFl_Double_Window {
     static const int dropMirror       = 0x02;
     static const int dropSymmetric    = 0x04;
     static const int dropNonMillable  = 0x08;
-    static const int dropIdentical    = 0x10;
+    static const int dropNonNotchable = 0x10;
+    static const int dropIdentical    = 0x20;
 
     unsigned int getFilter(void);
 

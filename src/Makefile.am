@@ -68,6 +68,7 @@ lib_libburr_a_SOURCES += lib/disassembly.cpp lib/disassembly.h
 lib_libburr_a_SOURCES += lib/disasmtomoves.cpp lib/disasmtomoves.h
 lib_libburr_a_SOURCES += lib/gridtype.cpp lib/gridtype.h
 lib_libburr_a_SOURCES += lib/grouping.cpp lib/grouping.h
+lib_libburr_a_SOURCES += lib/millable.cpp lib/millable.h
 lib_libburr_a_SOURCES += lib/movementanalysator.cpp lib/movementanalysator.h
 lib_libburr_a_SOURCES += lib/movementcache.cpp lib/movementcache.h
 lib_libburr_a_SOURCES += lib/movementcache_0.cpp lib/movementcache_0.h

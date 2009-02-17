@@ -64,6 +64,7 @@
 #include "../lib/disasmtomoves.h"
 #include "../lib/assembly.h"
 #include "../lib/converter.h"
+#include "../lib/millable.h"
 
 #include "../flu/Flu_File_Chooser.h"
 
@@ -1494,7 +1495,6 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
 
   if (win.okSelected())
   {
-    // is uses the problem that is selected in the solution tab
     problem_c * pr = puzzle->getProblem(win.getSrcProblem());
 
     std::vector<voxel_c *>sh;
@@ -1525,8 +1525,19 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
         continue;
       }
 
-      // TODO NonMillable and Identical is missing
+      if ((filter & assmImportWindow_c::dropNonMillable) && !isMillable(shape))
+      {
+        delete shape;
+        continue;
+      }
 
+      if ((filter & assmImportWindow_c::dropNonNotchable) && !isNotchable(shape))
+      {
+        delete shape;
+        continue;
+      }
+
+      // TODO NonMillable and Identical is missing
 
       sh.push_back(shape);
     }

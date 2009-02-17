@@ -67,6 +67,8 @@ assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Win
     (new LFl_Box("", 1, 0))->setMinimumSize(5, 0);
     min = new LFl_Int_Input(2, 0);
     max = new LFl_Int_Input(2, 1);
+    min->value("0");
+    max->value("1");
 
     ((LFl_Int_Input*)min)->weight(1, 0);
 
@@ -80,7 +82,12 @@ assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Win
   ckDrpDisconnected = new LFl_Check_Button("Drop disonnected shapes", 0, ypos++, 1, 1);
   ckDrpMirror = new LFl_Check_Button("Drop shapes with mirror symmetry", 0, ypos++, 1, 1);
   ckDrpSymm = new LFl_Check_Button("Drop all shapes with a symmetry", 0, ypos++, 1, 1);
-//  ckDrpMillable = new LFl_Check_Button("Drop non millable shapes", 0, ypos++, 1, 1);
+  if (puzzle->getGridType()->getType() == gridType_c::GT_BRICKS)
+  {
+    ckDrpMillable = new LFl_Check_Button("Drop non millable shapes", 0, ypos++, 1, 1);
+    ckDrpNotchable = new LFl_Check_Button("Drop non notchable shapes", 0, ypos++, 1, 1);
+  }
+
 //  ckDrpIdentical = new LFl_Check_Button("Remove identical shapes", 0, ypos++, 1, 1);
   ckDrpDisconnected->value(1);
   ckDrpIdentical->value(1);
@@ -114,12 +121,6 @@ int assmImportWindow_c::getAction(void) {
   return A_DONT_ADD;
 }
 
-    static const int dropDisconnected = 0x01;
-    static const int dropMirror       = 0x02;
-    static const int dropSymmetric    = 0x04;
-    static const int dropNonMillable  = 0x08;
-    static const int dropIdentical    = 0x10;
-
 unsigned int assmImportWindow_c::getFilter(void)
 {
   unsigned int filter = 0;
@@ -127,8 +128,9 @@ unsigned int assmImportWindow_c::getFilter(void)
   if (ckDrpDisconnected->value()) filter |= dropDisconnected;
   if (ckDrpMirror->value()) filter |= dropMirror;
   if (ckDrpSymm->value()) filter |= dropSymmetric;
-  if (ckDrpMillable->value()) filter |= dropNonMillable;
-  if (ckDrpIdentical->value()) filter |= dropIdentical;
+  if (ckDrpMillable && ckDrpMillable->value()) filter |= dropNonMillable;
+  if (ckDrpNotchable && ckDrpNotchable->value()) filter |= dropNonNotchable;
+//  if (ckDrpIdentical->value()) filter |= dropIdentical;
 
   return filter;
 }
