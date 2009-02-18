@@ -80,6 +80,7 @@ assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Win
 
   // The filter group
   ckDrpDisconnected = new LFl_Check_Button("Drop disonnected shapes", 0, ypos++, 1, 1);
+  ckDrpDisconnected->value(1);
   ckDrpMirror = new LFl_Check_Button("Drop shapes with mirror symmetry", 0, ypos++, 1, 1);
   ckDrpSymm = new LFl_Check_Button("Drop all shapes with a symmetry", 0, ypos++, 1, 1);
   if (puzzle->getGridType()->getType() == gridType_c::GT_BRICKS)
@@ -89,8 +90,7 @@ assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Win
   }
 
 //  ckDrpIdentical = new LFl_Check_Button("Remove identical shapes", 0, ypos++, 1, 1);
-  ckDrpDisconnected->value(1);
-  ckDrpIdentical->value(1);
+//  ckDrpIdentical->value(1);
 
   new LSeparator_c(0, ypos++, 1, 1, "", false);
 
