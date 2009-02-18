@@ -83,18 +83,25 @@ class StatusProgress : public LFl_Double_Window {
 
 void statusWindow_c::cb_removeSelected(void) {
 
-  /* we have to go up from the bottom as otherwise the indixes may shift */
+  bt_assert(selection.size() <= puz->shapeNumber());
 
-  for (unsigned int s = puz->shapeNumber(); s > 0; s--) {
-
-    for (unsigned int i = 0; i < puz->problemNumber(); i++)
-      if (puz->getProblem(i)->containsShape(s))
-        puz->getProblem(i)->removeAllSolutions();
-
+  /* we have to go up from the bottom as otherwise the indixes may shift
+   *
+   * we hafe to use the selection size as starting point as
+   * the user may have pressed cancel during calculation leaving us
+   * with an incomplete list
+   */
+  for (unsigned int s = selection.size(); s > 0; s--)
+  {
     if (selection[s-1]->value())
-      puz->removeShape(s-1);
-  }
+    {
+      for (unsigned int i = 0; i < puz->problemNumber(); i++)
+        if (puz->getProblem(i)->containsShape(s-1))
+          puz->getProblem(i)->removeAllSolutions();
 
+      puz->removeShape(s-1);
+    }
+  }
 
   again = true;
   hide();
