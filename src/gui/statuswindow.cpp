@@ -21,6 +21,7 @@
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
 #include "../lib/problem.h"
+#include "../lib/millable.h"
 
 #include <FL/Fl.H>
 
@@ -126,12 +127,18 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
 
   (new LFl_Scroll(0, 0, 1, 1))->type(Fl_Scroll::VERTICAL_ALWAYS);
 
+  unsigned int cols = 27;
+
+  // 2 more columns for notchable and millable
+  if (p->getGridType()->getType() == gridType_c::GT_BRICKS)
+    cols += 4;
+
   for (unsigned int s = 0; s < p->shapeNumber(); s++) {
 
     LFl_Box * b;
 
     if (s & 1) {
-      b = new LFl_Box("", 1, s+head, 25, 1);
+      b = new LFl_Box("", 0, s+head, cols, 1);
       b->color(fl_rgb_color(150, 150, 150));
       b->box(FL_FLAT_BOX);
     }
@@ -257,6 +264,18 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
     col += 2;
     Fl::wait(0);
 
+    if (p->getGridType()->getType() == gridType_c::GT_BRICKS) {
+      if (isNotchable(v))
+        b = new LFl_Box("X", col, s+head);
+
+      col += 2;
+
+      if (isMillable(v))
+        b = new LFl_Box("X", col, s+head);
+
+      col += 2;
+    }
+
     if (!p->getGridType()->getSymmetries()->symmetryKnown(v)) {
       b = new LFl_Box("---", col, s+head);
       b->color(fltkPieceColor(s));
@@ -314,11 +333,20 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
   (new LFl_Box("2D", col++, 1))->pitch(2);
   new LFl_Line(col++, 1, 1, lines+head-1, 1);
   (new LFl_Box("3D", col++, 1))->pitch(2);
-
   new LFl_Line(col++, 0, 1, lines+head, 2);
+
+  if (p->getGridType()->getType() == gridType_c::GT_BRICKS) {
+
+    (new LFl_Box("Tools", col, 0, 3))->pitch(2);
+    (new LFl_Box("Notch", col++, 1))->pitch(2);
+    new LFl_Line(col++, 1, 1, lines+head-1, 1);
+    (new LFl_Box("Mill", col++, 1))->pitch(2);
+    new LFl_Line(col++, 0, 1, lines+head, 2);
+  }
+
   (new LFl_Box("Sym", col++, 0, 1))->pitch(2);
 
-  new LFl_Line(0, 2, 27, 1, 2);
+  new LFl_Line(0, 2, cols, 1, 2);
 
   fr->end();
   fr->setMinimumSize(10, 200);
