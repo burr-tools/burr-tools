@@ -5,7 +5,7 @@
 - basic movement analysis for triangle grid
 - add scrollwheel support for 3D view zoom
 - a lot of cleanup in the disassembler functions
-- converte from cube to rhombic grid
+- converter from cube to rhombic grid and from cube to tetra-octa grid
 - remove 256 piece limitation for disassembler
 - add a simple movement brower to analyze the movements of pieces
   in an assembled puzzle
@@ -24,9 +24,11 @@
   (this application is not included in the windows binary)
 - fix potential symmetry calculation problem with the rhombic grid
 - cube disassembly analysis should be a tiny bit faster
-- limit colors to 63
+- explicitly limit colors to 63, the user could add more but it didn't work
+  in older verions
 - better compression for XML files, should result in smaller files
   although not that much
+- millability and anotchability in status window
 
 ------------- Version 0.4.2 Jan 2009
 
