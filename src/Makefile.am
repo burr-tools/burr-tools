@@ -10,7 +10,7 @@ PTHREAD_CPP_ADD=@PTHREAD_CPP_ADD@
 PTHREAD_LD_ADD=@PTHREAD_LD_ADD@
 
 AM_CPPFLAGS=-Wall -W $(XML_CPP_ADD) $(GUI_CPP_ADD) $(PTHREAD_CPP_ADD) @LARGEFILE@
-LDADD= -Llib -lburr -Lflu -lflu -Lhelp -lhelp -Llua -llua $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
+LDADD= $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
 
 lua_liblua_a_SOURCES =
 lua_liblua_a_SOURCES += lua/lapi.c lua/lapi.h
@@ -46,8 +46,10 @@ help_helpviewer_SOURCES += help/Fl_Help_Dialog.cpp help/Fl_Help_Dialog.h
 help_helpviewer_SOURCES += help/Fl_Help_View.cpp help/Fl_Help_View.h
 help_helpviewer_SOURCES += help/flstring.cpp help/flstring.h
 
+burrTxt_LDADD = lib/libburr.a lua/liblua.a $(LDADD)
 burrTxt_SOURCES=burrTxt.cpp
 
+burrTxt2_LDADD = lib/libburr.a lua/liblua.a $(LDADD)
 burrTxt2_SOURCES=burrTxt2.cpp
 
 lib_libburr_a_SOURCES =
@@ -156,6 +158,7 @@ flu_libflu_a_SOURCES=\
     flu/Flu_Wrap_Group.cpp \
     flu/Flu_Wrap_Group.h
 
+gui_burrGui_LDADD = lib/libburr.a help/libhelp.a flu/libflu.a lua/liblua.a $(LDADD)
 gui_burrGui_SOURCES =
 gui_burrGui_SOURCES += gui/arcball.cpp gui/arcball.h
 gui_burrGui_SOURCES += gui/assertwindow.cpp gui/assertwindow.h
