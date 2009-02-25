@@ -4,7 +4,13 @@ set -ex
 export DARCS_DONT_ESCAPE_ISPRINT=1
 darcs changes > ChangeLog
 
-aclocal
+if test -d /usr/share/autoconf-archive; then
+    # workaround for Debian
+    aclocal -I /usr/share/autoconf-archive
+else
+    aclocal
+fi
+
 automake --gnu --add-missing
 autoconf
 ./configure "$@"
