@@ -26,6 +26,8 @@
 
 #include "../lib/puzzle.h"
 
+#include <stdlib.h>
+
 static void cb_WindowButton_stub(Fl_Widget * /*o*/, void *v) { ((Fl_Double_Window*)(v))->hide(); }
 static void cb_WindowButton_stub2(Fl_Widget * /*o*/, void *v) { ((assmImportWindow_c*)(v))->okay_cb(); }
 void assmImportWindow_c::okay_cb(void) {

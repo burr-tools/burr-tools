@@ -21,6 +21,7 @@
 #include "bt_assert.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 
 class assembly_c;
 
