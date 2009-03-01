@@ -17,6 +17,12 @@
  */
 #include "voxel_4.h"
 
+/**
+ * special transformation function for this grid.
+ *
+ * All the function has to do is to make sure that the grid is a multiple
+ * size of 6 and then it can use the brick transformation function
+ */
 bool voxel_4_c::transform(unsigned int nr) {
 
   // the first thing to do here is to ensure that all 3 dimensions are a multiple of 6
@@ -169,6 +175,13 @@ bool voxel_4_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, in
   return false;
 }
 
+/**
+ * scale up.
+ *
+ * The idea is to use cutting planes that cut the cube into its parts
+ * the first thing is to find out on which side of each plane a voxel is
+ * and then use the same planes scaled up for the upscaled space.
+ */
 void voxel_4_c::scale(unsigned int amount) {
 
   /* the coordinates of the valid voxels */
@@ -274,11 +287,23 @@ void voxel_4_c::scale(unsigned int amount) {
 
 }
 
+/**
+ * Scale down voxel space
+ *
+ * Not implemented
+ */
 bool voxel_4_c::scaleDown(unsigned char /*by*/, bool /*action*/) {
 
   return false;
 }
 
+/**
+ * resize space to include a certain coordinate.
+ *
+ * maybe changing the coordinate itself in the process.
+ * make sure that we add a multiple of 6, when we add at the base
+ * that's all there is to it
+ */
 void voxel_4_c::resizeInclude(int & px, int & py, int & pz) {
 
   int nsx = getX();

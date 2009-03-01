@@ -20,7 +20,31 @@
 
 #include "voxel_0.h"
 
-/** voxel space class for tetra-octa grid */
+/**
+ * voxel space class for tetra-octa grid.
+ *
+ * This builds on top of the brick grid as this grid is implemented
+ * using the normal bricks. So this class can use many of the brick
+ * functions it just has to ensure certain alignments.
+ *
+ * The emulation is working like this: Imagine a tetrahedron enscribed
+ * into a cube so that 2 corners of the tetrahedron are in the opposite
+ * 2 top corners of the cube and the other 2 corners of the tetrahedron
+ * are in the other bottom 2 corners. This leaves 4 little irregular
+ * tetrahedrons to complete the cube. 4 of those smaller tetrahedron
+ * can be assembled into an octahedron.
+ *
+ * There are 2 possible orientations for this cube. The complete
+ * space is filled with a checkerboard pattern of those 2 cubes.
+ *
+ * Each of these cubes is represented as one 3x3x3 cube in the normal
+ * cube grid. The regular tetrahedron is the center cube and the 4
+ * irregular tetrahedrons are represented by voxels in the corresponding
+ * corners of the 3x3x3 cube
+ *
+ * To better unserstand this grid, it is best best is to play a bit
+ * with it in the GUI.
+ */
 class voxel_4_c : public voxel_0_c {
 
   public:
