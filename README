@@ -2,14 +2,18 @@ BurrTools is a library to solve burr-type puzzles. Bundled with the
 library comes a graphical program that lets you edit the puzzles and
 view the found solutions.
 
-Later on BurrTools will also be able to help in designing new puzzles.
-
 The real documentation is inside the executable-file as online help.
-If you want you can export that help into a bunch of html and png files.
+And also as a pdf for offline reading or printouts.
 
 I've also been able to bundle a few puzzles with the program to
 demonstrate its features. Thanks to the designers. You can find these
 puzzles in the examples subdirectory.
+
+The library that contains all the mathematical and algorithmical stuff
+is documented using doxygen. You can generate that documentation using
+the doxygen.cfg file that is in the sourcecode of the program. I tried
+to include algorithmic as well as organisatorical comments into the
+doxygen documentation.
 
 Have fun.
 
