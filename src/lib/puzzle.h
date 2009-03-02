@@ -25,12 +25,13 @@
 #include "bt_assert.h"
 
 #include <vector>
-
-#include <xmlwrapp/node.h>
+#include <string>
 
 class voxel_c;
 class gridType_c;
 class problem_c;
+class xmlWriter_c;
+class xmlParser_c;
 
 /**
  * This class defines the puzzle
@@ -97,12 +98,12 @@ public:
   /**
    * load the puzzle from the XML file
    */
-  puzzle_c(const xml::node & node);
+  puzzle_c(xmlParser_c & pars);
 
   /**
    * save the puzzle into a XML node that is returned
    */
-  xml::node save(void) const;
+  void save(xmlWriter_c & xml) const;
 
   /**
    * Destructor.

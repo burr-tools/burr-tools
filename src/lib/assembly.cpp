@@ -20,7 +20,7 @@
 #include "problem.h"
 #include "bt_assert.h"
 #include "voxel.h"
-
+#include "xml.h"
 
 void mirrorInfo_c::addPieces(unsigned int p1, unsigned int p2, unsigned char trans) {
   entry e;
@@ -43,27 +43,30 @@ bool mirrorInfo_c::getPieceInfo(unsigned int p, unsigned int * p_out, unsigned c
 }
 
 
-assembly_c::assembly_c(const xml::node & node, unsigned int pieces, const gridType_c * gt) : sym(gt->getSymmetries()) {
+assembly_c::assembly_c(xmlParser_c & pars, unsigned int pieces, const gridType_c * gt) : sym(gt->getSymmetries())
+{
+  pars.require(xmlParser_c::START_TAG, "assembly");
 
-  // we must have a real node and the following attributes
-  if ((node.get_type() != xml::node::type_element) ||
-      (strcmp(node.get_name(), "assembly") != 0))
-    throw load_error("not the right node for assembly", node);
-
-  const char * c = node.get_content();
+  pars.next();
+  pars.require(xmlParser_c::TEXT, "");
+  std::string str = pars.getText();
+  pars.next();
+  pars.require(xmlParser_c::END_TAG, "assembly");
 
   int x, y, z, trans, state, sign;
 
   x = y = z = trans = state = 0;
   sign = 1;
 
-  while (*c) {
+  for (unsigned int pos = 0; pos < str.length(); pos++)
+  {
+    char c = str[pos];
 
-    if (*c == ' ') {
+    if (c == ' ') {
       if (state == 3) {
 
         if ((trans != UNPLACED_TRANS) && ((trans < 0) || ((unsigned int)trans >= sym->getNumTransformations())))
-          throw load_error("transformations need to be between 0 and NUM_TRANSFORMATIONS", node);
+          pars.exception("transformations need to be between 0 and NUM_TRANSFORMATIONS");
 
         placements.push_back(placement_c(trans, x, y, z));
         x = y = z = trans = state = 0;
@@ -72,7 +75,7 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces, const gridTy
         state++;
       }
 
-    } else if (*c == 'x' && state == 0) {
+    } else if (c == 'x' && state == 0) {
 
       x = y = z = 0;
       trans = UNPLACED_TRANS;
@@ -80,91 +83,91 @@ assembly_c::assembly_c(const xml::node & node, unsigned int pieces, const gridTy
 
     } else {
 
-      if ((*c != '-') && ((*c < '0') || (*c > '9')))
-        throw load_error("non number character found where number is expected", node);
+      if ((c != '-') && ((c < '0') || (c > '9')))
+        pars.exception("non number character found where number is expected");
 
       switch(state) {
       case 0:
-        if (*c == '-') {
-          if (x) throw load_error("assembly placements minus in number", node);
+        if (c == '-') {
+          if (x) pars.exception("assembly placements minus in number");
           sign = -1;
         } else {
           x *= 10;
-          x += sign*(*c - '0');
+          x += sign*(c - '0');
         }
         break;
       case 1:
-        if (*c == '-') {
-          if (y) throw load_error("assembly placements minus in number", node);
+        if (c == '-') {
+          if (y) pars.exception("assembly placements minus in number");
           sign = -1;
         } else {
           y *= 10;
-          y += sign*(*c - '0');
+          y += sign*(c - '0');
         }
         break;
       case 2:
-        if (*c == '-') {
-          if (z) throw load_error("assembly placements minus in number", node);
+        if (c == '-') {
+          if (z) pars.exception("assembly placements minus in number");
           sign = -1;
         } else {
           z *= 10;
-          z += sign*(*c - '0');
+          z += sign*(c - '0');
         }
         break;
       case 3:
-        if (*c == '-') {
-          if (trans) throw load_error("assembly placements minus in number", node);
+        if (c == '-') {
+          if (trans) pars.exception("assembly placements minus in number");
           sign = -1;
         } else {
           trans *= 10;
-          trans += sign*(*c - '0');
+          trans += sign*(c - '0');
         }
         break;
       }
     }
-
-    c++;
   }
 
   if (state != 3)
-    throw load_error("not the right number of numbers in assembly", node);
+    pars.exception("not the right number of numbers in assembly");
 
   if ((trans != UNPLACED_TRANS) && ((trans < 0) || ((unsigned int)trans >= sym->getNumTransformations())))
-    throw load_error("transformations need to be between 0 and NUM_TRANSFORMATIONS", node);
+    pars.exception("transformations need to be between 0 and NUM_TRANSFORMATIONS");
 
   placements.push_back(placement_c(trans, x, y, z));
 
   if (placements.size() != pieces)
-    throw load_error("not the right number of placements in assembly", node);
+    pars.exception("not the right number of placements in assembly");
 }
 
 assembly_c::assembly_c(const assembly_c * orig) : placements(orig->placements), sym(orig->sym) {
 }
 
 
-xml::node assembly_c::save(void) const {
+void assembly_c::save(xmlWriter_c & xml) const
+{
+  xml.newTag("assembly");
 
-  xml::node nd("assembly");
+  std::ostream & str = xml.addContent();
 
-  std::string cont;
-  char tmp[50];
-
-  for (unsigned int i = 0; i < placements.size(); i++) {
-
+  for (unsigned int i = 0; i < placements.size(); i++)
+  {
     if (placements[i].getTransformation() != UNPLACED_TRANS)
-      snprintf(tmp, 50, "%i %i %i %i", placements[i].getX(), placements[i].getY(), placements[i].getZ(), placements[i].getTransformation());
+    {
+      str << placements[i].getX() << " "
+          << placements[i].getY() << " "
+          << placements[i].getZ() << " "
+          << (int)placements[i].getTransformation();
+    }
     else
-      snprintf(tmp, 50, "x");
-
-    cont += tmp;
+    {
+      str << "x";
+    }
 
     if (i < placements.size() - 1)
-      cont += " ";
+      str << " ";
   }
 
-  nd.set_content(cont.c_str());
-
-  return nd;
+  xml.endTag("assembly");
 }
 
 void assembly_c::sort(const problem_c * puz) {

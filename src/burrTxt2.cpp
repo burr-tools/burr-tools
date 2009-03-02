@@ -20,11 +20,11 @@
 #include "lib/problem.h"
 #include "lib/solvethread.h"
 #include "lib/voxel.h"
+#include "lib/xml.h"
+#include "lib/gzstream.h"
 
 #include <fstream>
 #include <iostream>
-
-#include <xmlwrapp/xmlwrapp.h>
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -105,8 +105,10 @@ int main(int argv, char* args[]) {
     return 1;
   }
 
-  xml::tree_parser parser(args[filenumber]);
-  puzzle_c p(parser.get_document().get_root_node());
+  std::istream * str = openGzFile(args[filenumber]);
+  xmlParser_c pars(*str);
+  puzzle_c p(pars);
+  delete str;
 
   std::string outname = args[filenumber];
   outname += "ttt";
@@ -226,7 +228,8 @@ int main(int argv, char* args[]) {
     }
   }
 
-  ostr << p.save();
+  xmlWriter_c xml(ostr);
+  p.save(xml);
 
   return 0;
 }

@@ -18,8 +18,6 @@
 #ifndef __ASSEMBLER_H__
 #define __ASSEMBLER_H__
 
-#include <xmlwrapp/node.h>
-
 /** \file assembler.h
  * contains the classes used for the assembler
  */
@@ -27,6 +25,7 @@
 class voxel_c;
 class assembly_c;
 class problem_c;
+class xmlWriter_c;
 
 /**
  * The callback class used to return found assemblies to the caller
@@ -83,7 +82,7 @@ public:
    * when keep mirror is true, the assembler must not throw away mirror solutions
    * but it still removes solutions that are rotations.
    */
-  virtual errState createMatrix(const problem_c * /*puz*/, bool /*keepMirror*/, bool /*keepRotations*/, bool /*complete*/) { return ERR_NONE; }
+  virtual errState createMatrix(const problem_c * /*puz*/, bool /*keepMirror*/, bool /*keepRotations*/, bool /*complete*/);
 
   /**
    * when createMatrix returns an error you can call this function to
@@ -148,7 +147,7 @@ public:
    * the function should only be called when assembly is not running it should be
    * called before calling assemble
    */
-  virtual errState setPosition(const char * /*string*/, const char * /*version*/) { return ERR_CAN_NOT_RESTORE_VERSION; }
+  virtual errState setPosition(const char * string, const char * version);
 
   /**
    * this function saves the current state of the assembler into an xml node to
@@ -156,7 +155,7 @@ public:
    * this state must be such that the class can restore this state and continue
    * from there by getting this and the puzzle given to the constructor
    */
-  virtual xml::node save(void) const { return xml::node("assembler"); }
+  virtual void save(xmlWriter_c & xml) const;
 
   /* some more special information to find out possible piece placements */
 
@@ -191,3 +190,4 @@ public:
 };
 
 #endif
+

@@ -19,8 +19,8 @@
 
 #include "problem.h"
 #include "voxel.h"
+#include "xml.h"
 
-#include <xmlwrapp/attributes.h>
 #include <vector>
 #include <stdio.h>
 #include <algorithm>
@@ -115,116 +115,169 @@ void puzzle_c::getColor(unsigned int idx, unsigned char * r, unsigned char * g, 
   *b = (colors[idx] >> 16) & 0xFF;
 }
 
-xml::node puzzle_c::save(void) const {
+void puzzle_c::save(xmlWriter_c & xml) const
+{
+  xml.newTag("puzzle");
+  xml.newAttrib("version", "2");
 
-  xml::node nd("puzzle");
-  nd.get_attributes().insert("version", "2");
+  gt->save(xml);
 
-  char tmp[50];
+  xml.newTag("colors");
+  for (unsigned int i = 0; i < colors.size(); i++)
+  {
+    xml.newTag("color");
 
-  xml::node::iterator it;
+    xml.newAttrib("red",   (colors[i] >>  0) & 0xFF);
+    xml.newAttrib("green", (colors[i] >>  8) & 0xFF);
+    xml.newAttrib("blue",  (colors[i] >> 16) & 0xFF);
 
-  nd.insert(gt->save());
-
-  it = nd.insert(xml::node("colors"));
-  for (unsigned int i = 0; i < colors.size(); i++) {
-    xml::node::iterator it2 = it->insert(xml::node("color"));
-
-    snprintf(tmp, 50, "%i", (colors[i] >>  0) & 0xFF);
-    it2->get_attributes().insert("red", tmp);
-
-    snprintf(tmp, 50, "%i", (colors[i] >>  8) & 0xFF);
-    it2->get_attributes().insert("green", tmp);
-
-    snprintf(tmp, 50, "%i", (colors[i] >> 16) & 0xFF);
-    it2->get_attributes().insert("blue", tmp);
+    xml.endTag("color");
   }
+  xml.endTag("colors");
 
-  it = nd.insert(xml::node("shapes"));
+  xml.newTag("shapes");
   for (unsigned int i = 0; i < shapes.size(); i++)
-    it->insert(shapes[i]->save());
+    shapes[i]->save(xml);
+  xml.endTag("shapes");
 
-  it = nd.insert(xml::node("problems"));
+  xml.newTag("problems");
   for (unsigned int i = 0; i < problems.size(); i++)
-    it->insert(problems[i]->save());
+    problems[i]->save(xml);
+  xml.endTag("problems");
 
-  if (comment.length()) {
-    it = nd.insert(xml::node("comment", comment.c_str()));
+  xml.newTag("comment");
+  if (comment.length())
+  {
     if (commentPopup)
-      it->get_attributes().insert("popup", "");
+      xml.newAttrib("popup", "");
+    xml.addContent(comment);
   }
+  xml.endTag("comment");
 
-  return nd;
+  xml.endTag("puzzle");
 }
 
-puzzle_c::puzzle_c(const xml::node & node) {
+puzzle_c::puzzle_c(xmlParser_c & pars)
+{
+  pars.nextTag();
 
-  if ((node.get_type() != xml::node::type_element) ||
-      (strcmp(node.get_name(), "puzzle") != 0))
-    throw load_error("not the right node type for the puzzle", node);
+  pars.require(xmlParser_c::START_TAG, "puzzle");
 
-  if (node.get_attributes().find("version") == node.get_attributes().end())
-    throw load_error("puzzle node must have a 'version' attribute", node);
+  std::string versionStr = pars.getAttributeValue("version");
+  if (!versionStr.length())
+    pars.exception("puzzle node must have a 'version' attribute");
 
-  unsigned int version;
-  version = atoi(node.get_attributes().find("version")->get_value());
+  unsigned int version = atoi(versionStr.c_str());
 
   if ((version != 1) && (version != 2))
-    throw load_error("can only load files of version 1 and 2", node);
+    pars.exception("can only load files of version 1 and 2");
 
-  xml::node::const_iterator it;
+  gt = 0;
+  commentPopup = false;
 
-  it = node.find("gridType");
-  if (it != node.end())
-    gt = new gridType_c(*it);
-  else
-    // this creates a grid type for cubes, so all puzzle filed
-    // that do contain no grid type definition are build out of cubes
-    gt = new gridType_c();
+  do {
+    int state = pars.nextTag();
 
-  it = node.find("colors");
-  if (it != node.end()) {
-    for (xml::node::const_iterator i = it->begin(); i != it->end(); i++) {
-      if ((i->get_type() == xml::node::type_element) &&
-          (strcmp(i->get_name(), "color") == 0)) {
+    if (state == xmlParser_c::END_TAG) break;
+    pars.require(xmlParser_c::START_TAG, "");
 
-        if (i->get_attributes().find("red") == i->get_attributes().end())
-          throw load_error("color nodes must have a 'red' attribute", *i);
+    if (pars.getName() == "gridType")
+    {
+      if (gt != 0)
+        pars.exception("only one gridtype can be defined, and it must be before the first shape");
 
-        if (i->get_attributes().find("green") == i->get_attributes().end())
-          throw load_error("color nodes must have a 'green' attribute", *i);
-
-        if (i->get_attributes().find("blue") == i->get_attributes().end())
-          throw load_error("color nodes must have a 'blue' attribute", *i);
-
-        colors.push_back(
-            (((uint32_t)atoi(i->get_attributes().find(  "red")->get_value()) & 0xFF) <<  0) |
-            (((uint32_t)atoi(i->get_attributes().find("green")->get_value()) & 0xFF) <<  8) |
-            (((uint32_t)atoi(i->get_attributes().find( "blue")->get_value()) & 0xFF) << 16));
-      }
+      gt = new gridType_c(pars);
     }
-  }
+    else if (pars.getName() == "colors")
+    {
+      do
+      {
+        state = pars.nextTag();
 
-  it = node.find("shapes");
-  if (it != node.end())
-    for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
-      if ((i->get_type() == xml::node::type_element) &&
-          (strcmp(i->get_name(), "voxel") == 0))
-        shapes.push_back(gt->getVoxel(*i));
+        if (state == xmlParser_c::END_TAG) break;
+	pars.require(xmlParser_c::START_TAG, "");
 
-  it = node.find("problems");
-  if (it != node.end())
-    for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
-      if ((i->get_type() == xml::node::type_element) &&
-          (strcmp(i->get_name(), "problem") == 0))
-        problems.push_back(new problem_c(*this, *i));
+        if (pars.getName() == "color")
+        {
+          colors.push_back(
+              (((uint32_t)atoi(pars.getAttributeValue("red").c_str()) & 0xFF) <<  0) |
+              (((uint32_t)atoi(pars.getAttributeValue("green").c_str()) & 0xFF) <<  8) |
+              (((uint32_t)atoi(pars.getAttributeValue("blue").c_str()) & 0xFF) << 16));
+        }
 
-  it = node.find("comment");
-  if (it != node.end() && it->get_type() == xml::node::type_element) {
-    comment = it->get_content();
-    commentPopup = it->get_attributes().find("popup") != it->get_attributes().end();
-  } else
-    commentPopup = false;
+        pars.skipSubTree();
+
+      } while (true);
+
+      pars.require(xmlParser_c::END_TAG, "colors");
+    }
+    else if (pars.getName() == "shapes")
+    {
+      // if no gridtype has been defined, we assume cubes
+      if (!gt) gt = new gridType_c(gridType_c::GT_BRICKS);
+
+      do
+      {
+        state = pars.nextTag();
+
+        if (state == xmlParser_c::END_TAG) break;
+	pars.require(xmlParser_c::START_TAG, "");
+
+        if (pars.getName() == "voxel")
+	{
+          shapes.push_back(gt->getVoxel(pars));
+	  pars.require(xmlParser_c::END_TAG, "voxel");
+	}
+        else
+          pars.skipSubTree();
+
+      } while (true);
+
+      pars.require(xmlParser_c::END_TAG, "shapes");
+    }
+    else if (pars.getName() == "problems")
+    {
+      do
+      {
+        state = pars.nextTag();
+
+        if (state == xmlParser_c::END_TAG) break;
+        if (state != xmlParser_c::START_TAG)
+          pars.exception("a new tag required, but something else found");
+
+        if (pars.getName() == "problem")
+	{
+          problems.push_back(new problem_c(*this, pars));
+ 	  pars.require(xmlParser_c::END_TAG, "problem");
+	}
+        else
+          pars.skipSubTree();
+
+      } while (true);
+
+      pars.require(xmlParser_c::END_TAG, "problems");
+    }
+    else if (pars.getName() == "comment")
+    {
+      for (int a = 0; a < pars.getAttributeCount(); a++)
+        if (pars.getAttributeName(a) == "popup")
+          commentPopup = true;
+
+      state = pars.next();
+      if (state == xmlParser_c::TEXT)
+        comment = pars.getText();
+
+      state = pars.next();
+      pars.require(xmlParser_c::END_TAG, "comment");
+    }
+    else
+      pars.skipSubTree();
+
+    pars.require(xmlParser_c::END_TAG, "");
+
+  } while (true);
+
+  pars.require(xmlParser_c::END_TAG, "puzzle");
 }
 
 unsigned int puzzle_c::addShape(voxel_c * p) {

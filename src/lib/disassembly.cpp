@@ -18,8 +18,7 @@
 #include "disassembly.h"
 
 #include "voxel.h"
-
-#include <xmlwrapp/attributes.h>
+#include "xml.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -30,33 +29,35 @@
  * defined by the 2 iterators
  */
 template<typename iter>
-void getNumbers(const char * c, iter start, iter end, bool neg_allowed) {
+void getNumbers(std::string str, iter start, iter end, bool neg_allowed) {
 
   int val = 0;
   bool gotNum = false;
   bool negative = false;
 
-  while (*c) {
+  for (unsigned int pos = 0; pos < str.length(); pos++)
+  {
+    char c = str[pos];
 
-    if (*c == '-' && neg_allowed) {
+    if (c == '-' && neg_allowed) {
 
       // only one - and not number must have been there
       if (negative || gotNum)
-        throw load_error("too many '-' signs in disassembly number");
+        throw xmlParserException_c("too many '-' signs in disassembly number");
 
       negative = true;
 
-    } else if ((*c >= '0') && (*c <= '9')) {
+    } else if ((c >= '0') && (c <= '9')) {
 
-      val = val * 10 + *c - '0';
+      val = val * 10 + c - '0';
       gotNum = true;
 
-    } else if (*c == ' ') {
+    } else if (c == ' ') {
 
       if (gotNum) {
 
         if (start == end)
-          throw load_error("too many numbers in disassembly");
+          throw xmlParserException_c("too many numbers in disassembly");
 
         if (negative) val = -val;
         *start = val;
@@ -66,14 +67,13 @@ void getNumbers(const char * c, iter start, iter end, bool neg_allowed) {
       }
 
       if (negative)
-        throw load_error("only '-' encountered in disassembly");
+        throw xmlParserException_c("only '-' encountered in disassembly");
 
     } else {
 
-      throw load_error("not allowed character in disassembly");
+      throw xmlParserException_c("not allowed character in disassembly");
 
     }
-    c++;
   }
 
   /* if we have got a last number, enter it
@@ -83,7 +83,7 @@ void getNumbers(const char * c, iter start, iter end, bool neg_allowed) {
   if (gotNum) {
 
     if (start == end)
-      throw load_error("too many numbers in disassembly");
+      throw xmlParserException_c("too many numbers in disassembly");
 
     if (negative) val = -val;
     *start = val;
@@ -92,82 +92,115 @@ void getNumbers(const char * c, iter start, iter end, bool neg_allowed) {
 
   // check, if we filled the range
   if (start != end)
-    throw load_error("too few number in disassembly");
+    throw xmlParserException_c("too few number in disassembly");
 }
 
 /************************************************************************
  * State
  ************************************************************************/
 
-xml::node state_c::save(unsigned int piecenumber) const {
+void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
+{
+  xml.newTag("state");
 
-  xml::node nd("state");
-  std::string w;
-  xml::node::iterator it;
-  char tmp[50];
-
-  it = nd.insert(xml::node("dx"));
-
-  for (unsigned int ii = 0; ii < piecenumber; ii++) {
-    if (w.length()) w += ' ';
-    snprintf(tmp, 49, "%i", dx[ii]);
-    w += tmp;
+  xml.newTag("dx");
+  {
+    std::ostream & str = xml.addContent();
+    for (unsigned int ii = 0; ii < piecenumber; ii++)
+    {
+      str << dx[ii];
+      if (ii < piecenumber-1)
+        str << " ";
+    }
   }
-  it->set_content(w.c_str());
+  xml.endTag("dx");
 
-  w = "";
-  it = nd.insert(xml::node("dy"));
-
-  for (unsigned int ii = 0; ii < piecenumber; ii++) {
-    if (w.length()) w += ' ';
-    snprintf(tmp, 49, "%i", dy[ii]);
-    w += tmp;
+  xml.newTag("dy");
+  {
+    std::ostream & str = xml.addContent();
+    for (unsigned int ii = 0; ii < piecenumber; ii++)
+    {
+      str << dy[ii];
+      if (ii < piecenumber-1)
+        str << " ";
+    }
   }
-  it->set_content(w.c_str());
+  xml.endTag("dy");
 
-  w = "";
-  it = nd.insert(xml::node("dz"));
-
-  for (unsigned int ii = 0; ii < piecenumber; ii++) {
-    if (w.length()) w += ' ';
-    snprintf(tmp, 49, "%i", dz[ii]);
-    w += tmp;
+  xml.newTag("dz");
+  {
+    std::ostream & str = xml.addContent();
+    for (unsigned int ii = 0; ii < piecenumber; ii++)
+    {
+      str << dz[ii];
+      if (ii < piecenumber-1)
+        str << " ";
+    }
   }
-  it->set_content(w.c_str());
+  xml.endTag("dz");
 
-  return nd;
+  xml.endTag("state");
 }
 
-state_c::state_c(const xml::node & node, unsigned int pn) {
-
-  if ((node.get_type() != xml::node::type_element) ||
-      (strcmp(node.get_name(), "state") != 0))
-    throw load_error("not the right node for disassembly state", node);
-
-  if ((node.find("dx") == node.end()) ||
-      (node.find("dy") == node.end()) ||
-      (node.find("dz") == node.end()))
-    throw load_error("disassembly state needs dx, dy and dz subnode", node);
-
-  dx = new int[pn];
-  dy = new int[pn];
-  dz = new int[pn];
-
-  if (!dx || !dy || !dz)
-    throw load_error("could not allocate memory for disassembly state", node);
+state_c::state_c(xmlParser_c & pars, unsigned int pn)
+{
+  pars.require(xmlParser_c::START_TAG, "state");
 
 #ifndef NDEBUG
   piecenumber = pn;
 #endif
 
-  try {
-    getNumbers(node.find("dx")->get_content(), dx, dx+pn, true);
-    getNumbers(node.find("dy")->get_content(), dy, dy+pn, true);
-    getNumbers(node.find("dz")->get_content(), dz, dz+pn, true);
+  dx = dy = dz = 0;
+
+  try
+  {
+    do
+    {
+      int state = pars.nextTag();
+
+      if (state == xmlParser_c::END_TAG) break;
+      if (state != xmlParser_c::START_TAG)
+        pars.exception("expected new tag but dounf something else");
+
+      if (pars.getName() == "dx")
+      {
+        dx = new int[pn];
+        pars.next();
+        getNumbers(pars.getText(), dx, dx+pn, true);
+        pars.next();
+        pars.require(xmlParser_c::END_TAG, "dx");
+      }
+      else if (pars.getName() == "dy")
+      {
+        dy = new int[pn];
+        pars.next();
+        getNumbers(pars.getText(), dy, dy+pn, true);
+        pars.next();
+        pars.require(xmlParser_c::END_TAG, "dy");
+      }
+      else if (pars.getName() == "dz")
+      {
+        dz = new int[pn];
+        pars.next();
+        getNumbers(pars.getText(), dz, dz+pn, true);
+        pars.next();
+        pars.require(xmlParser_c::END_TAG, "dz");
+      }
+    } while (true);
+
+    if (!dx || !dy || !dz)
+      pars.exception("disassembly state needs dx, dy and dz subnode");
   }
-  catch (load_error e) {
-    throw load_error(e.getText(), node);
+
+  catch (xmlParserException_c e)
+  {
+    if (dx) delete [] dx;
+    if (dy) delete [] dy;
+    if (dz) delete [] dz;
+    pars.exception(e.description);
   }
+
+  pars.require(xmlParser_c::END_TAG, "state");
 }
 
 state_c::state_c(const state_c * cpy, unsigned int pn)
@@ -217,116 +250,133 @@ bool state_c::pieceRemoved(unsigned int i) const {
  * Separation
  ************************************************************************/
 
-xml::node separation_c::save(void) const {
+void separation_c::save(xmlWriter_c & xml, int type) const
+{
+  xml.newTag("separation");
 
-  xml::node nd("separation");
-
-  xml::node::iterator it;
-  char tmp[50];
+  switch (type)
+  {
+    case 0: break;
+    case 1: xml.newAttrib("type", "left"); break;
+    case 2: xml.newAttrib("type", "removed"); break;
+  }
 
   // first save the pieces array
-  it = nd.insert(xml::node("pieces"));
-
-  snprintf(tmp, 50, "%i", pieces.size());
-  it->get_attributes().insert("count", tmp);
-
-  std::string cont;
+  xml.newTag("pieces");
+  xml.newAttrib("count", pieces.size());
 
   for (unsigned int ii = 0; ii < pieces.size(); ii++) {
-    snprintf(tmp, 50, "%i", pieces[ii]);
-    if (cont.length()) cont += ' ';
-    cont += tmp;
+    xml.addContent(pieces[ii]);
+    if (ii < pieces.size()-1)
+      xml.addContent(" ");
   }
-  it->set_content(cont.c_str());
+
+  xml.endTag("pieces");
 
   // now add all the states
   for (unsigned int jj = 0; jj < states.size(); jj++)
-    nd.insert(states[jj]->save(pieces.size()));
+    states[jj]->save(xml, pieces.size());
 
   // finally save the removed and left over part
   // we add an attribute to the node of the subseparations to later distinguish
   // between the removed and the left over separation
-  if (removed)
-    nd.insert(removed->save())->get_attributes().insert("type", "removed");
+  if (removed) removed->save(xml, 2);
+  if (left)    left->save(xml, 1);
 
-  if (left)
-    nd.insert(left->save())->get_attributes().insert("type", "left");
-
-  return nd;
+  xml.endTag("separation");
 }
 
-separation_c::separation_c(const xml::node & node, unsigned int pieceCnt) {
+separation_c::separation_c(xmlParser_c & pars, unsigned int pieceCnt)
+{
+  pars.require(xmlParser_c::START_TAG, "separation");
 
-  if ((node.get_type() != xml::node::type_element) ||
-      (strcmp(node.get_name(), "separation") != 0))
-    throw load_error("wrong node for separation", node);
-
-  if (node.find("pieces") == node.end())
-    throw load_error("separation needs subnode 'pieces'", node);
-
-  if (node.find("state") == node.end())
-    throw load_error("separation needs subnode 'state'", node);
-
-  xml::node::const_iterator it;
-
-  // load the pieces array
-  it = node.find("pieces");
-
-  if (it->get_attributes().find("count") == it->get_attributes().end())
-    throw load_error("pieces node needs a 'count' attribute", *it);
-
-  unsigned int piecenumber = atoi(it->get_attributes().find("count")->get_value());
-
-  if (piecenumber != pieceCnt)
-    throw load_error("the number of pieces in the count array is not as expected", *it);
-
-  pieces.resize(piecenumber);
-
-  try {
-    getNumbers(it->get_content(), pieces.begin(), pieces.begin()+piecenumber, false);
-  }
-  catch (load_error e) {
-    throw load_error(e.getText(), node);
-  }
-
-  // get the states
-  for (it = node.begin(); it != node.end(); it++) {
-    if ((it->get_type() == xml::node::type_element) &&
-        (strcmp(it->get_name(), "state") == 0))
-      states.push_back(new state_c(*it, piecenumber));
-  }
-
+  unsigned int piecenumber = 0;
+  std::string str;
   unsigned int removedPc = 0, leftPc = 0;
-
-  for (unsigned int i = 0; i < pieceCnt; i++)
-    if (states[states.size()-1]->pieceRemoved(i))
-      removedPc++;
-    else
-      leftPc++;
-
-  if ((removedPc == 0) || (leftPc == 0))
-    throw load_error("there need to be pieces in both parts of the tree", node);
-
-  // get the left and removed subseparation
   removed = left = 0;
 
-  for (it = node.begin(); it != node.end(); it++) {
-    if ((it->get_type() == xml::node::type_element) &&
-        (strcmp(it->get_name(), "separation") == 0)) {
+  do
+  {
+    int state = pars.nextTag();
 
-      bt_assert(it->get_attributes().find("type") != it->get_attributes().end());
-      if (!strcmp(it->get_attributes().find("type")->get_value(), "left")) {
-        if (left)
-          throw load_error("more than one left branch in disassembly", node);
-        left = new separation_c(*it, leftPc);
-      } else if (!strcmp(it->get_attributes().find("type")->get_value(), "removed")) {
-        if (removed)
-          throw load_error("more than one removed branch in disassembly", node);
-        removed = new separation_c(*it, removedPc);
-      } else
-        throw load_error("subnodes most be either left or removed", node);
+    if (state == xmlParser_c::END_TAG) break;
+    pars.require(xmlParser_c::START_TAG, "");
+
+    if (pars.getName() == "pieces")
+    {
+      // load the pieces array
+      str = pars.getAttributeValue("count");
+      if (!str.length())
+        pars.exception("pieces node needs a 'count' attribute");
+
+      piecenumber = atoi(str.c_str());
+
+      if (piecenumber != pieceCnt)
+        pars.exception("the number of pieces in the count array is not as expected");
+
+      pieces.resize(piecenumber);
+
+      pars.next();
+      pars.require(xmlParser_c::TEXT, "");
+      getNumbers(pars.getText(), pieces.begin(), pieces.begin()+piecenumber, false);
+      pars.next();
+      pars.require(xmlParser_c::END_TAG, "pieces");
     }
-  }
+    else if (pars.getName() == "state")
+    {
+      if (piecenumber == 0)
+        pars.exception("there must be a pieces array before the states");
+
+      if (removed || left)
+        pars.exception("there are states behind the sub separations");
+
+      // get the states
+      states.push_back(new state_c(pars, piecenumber));
+    }
+    else if (pars.getName() == "separation")
+    {
+      if (removedPc == 0)
+      {
+        for (unsigned int i = 0; i < pieceCnt; i++)
+          if (states[states.size()-1]->pieceRemoved(i))
+            removedPc++;
+          else
+            leftPc++;
+
+        if ((removedPc == 0) || (leftPc == 0))
+          pars.exception("there need to be pieces in both parts of the tree");
+      }
+
+      // get the left and removed subseparation
+
+      str = pars.getAttributeValue("type");
+      if (!str.length())
+        pars.exception("sub-sepatations need to have a type field");
+
+      if (str == "left")
+      {
+        if (left)
+          pars.exception("more than one left branch in disassembly");
+        left = new separation_c(pars, leftPc);
+      }
+      else if (str == "removed")
+      {
+        if (removed)
+          pars.exception("more than one removed branch in disassembly");
+        removed = new separation_c(pars, removedPc);
+      }
+      else
+        pars.exception("subnodes must have either left or removed type");
+    }
+    else
+      pars.skipSubTree();
+
+  } while(true);
+
+  if (states.size() == 0)
+    pars.exception("there are no state nodes in the separation");
+
+  pars.require(xmlParser_c::END_TAG, "separation");
 }
 
 separation_c::separation_c(separation_c * r, separation_c * l, const std::vector<unsigned int> & pcs) : removed(r), left(l) {
@@ -450,27 +500,35 @@ void separation_c::exchangeShape(unsigned int s1, unsigned int s2) {
 }
 
 
-separationInfo_c::separationInfo_c(const xml::node & node) {
+separationInfo_c::separationInfo_c(xmlParser_c & pars)
+{
+  pars.require(xmlParser_c::START_TAG, "separationInfo");
 
-  const char * c = node.get_content();
+  pars.next();
+  pars.require(xmlParser_c::TEXT, "");
+
+  std::string str = pars.getText();
 
   unsigned int pos = 0;
   unsigned int num = 0;
 
-  while (c[pos]) {
+  while (pos < str.length()) {
 
-    if (c[pos] == ' ') {
+    if (str[pos] == ' ') {
       values.push_back(num);
       num = 0;
     }
 
-    if (c[pos] >= '0' && (c[pos] <= '9'))
-      num = 10*num + c[pos] - '0';
+    if (str[pos] >= '0' && (str[pos] <= '9'))
+      num = 10*num + str[pos] - '0';
 
     pos++;
   }
 
   values.push_back(num);
+
+  pars.next();
+  pars.require(xmlParser_c::END_TAG, "separationInfo");
 
   // check consistency of the tree (does it end?)
 
@@ -486,7 +544,7 @@ separationInfo_c::separationInfo_c(const xml::node & node) {
 
   while (branches) {
     if (pos >= values.size())
-      throw load_error("the tree in the disassemblyInformation tag is incomplete", node);
+      pars.exception("the tree in the disassemblyInformation tag is incomplete");
 
     if (values[pos])
       branches++;
@@ -517,25 +575,18 @@ separationInfo_c::separationInfo_c(const separation_c * sep) {
   recursiveConstruction(sep);
 }
 
-xml::node separationInfo_c::save(void) const {
+void separationInfo_c::save(xmlWriter_c & xml) const
+{
+  xml.newTag("separationInfo");
 
-  char tmp[50];
-
-  xml::node nd("separationInfo");
-
-  std::string cont;
-
-  for (unsigned int i = 0; i < values.size(); i++) {
-    if (cont.length() > 0)
-      cont += " ";
-
-    snprintf(tmp, 49, "%i", values[i]);
-    cont += tmp;
+  for (unsigned int i = 0; i < values.size(); i++)
+  {
+    xml.addContent(values[i]);
+    if (i < values.size()-1)
+      xml.addContent(" ");
   }
 
-  nd.set_content(cont.c_str());
-
-  return nd;
+  xml.endTag("separationInfo");
 }
 
 unsigned int separationInfo_c::sumMoves(void) const {

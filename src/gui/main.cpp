@@ -19,17 +19,16 @@
 
 #include "mainwindow.h"
 #include "assertwindow.h"
-#include "gzstream.h"
 
 #include <FL/Fl.H>
 
 #include <time.h>
 
-#include <xmlwrapp/xmlwrapp.h>
-
 #include "../lib/bt_assert.h"
 #include "../lib/gridtype.h"
 #include "../lib/puzzle.h"
+#include "../lib/xml.h"
+#include "../lib/gzstream.h"
 
 class my_Fl : public Fl {
 
@@ -53,7 +52,6 @@ public:
 
 int main(int argc, char ** argv) {
 
-  xml::init xmlinit;
   bt_assert_init();
 
   Fl::set_boxtype(FL_UP_BOX, FL_THIN_UP_BOX);
@@ -90,7 +88,10 @@ int main(int argc, char ** argv) {
     ogzstream ostr("__rescue.xmpuzzle");
 
     if (ostr)
-      ostr << ui->getPuzzle()->save();
+    {
+      xmlWriter_c xml(ostr);
+      ui->getPuzzle()->save(xml);
+    }
 
     return -1;
   }

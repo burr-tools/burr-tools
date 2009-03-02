@@ -17,7 +17,6 @@
  */
 #include "mainwindow.h"
 
-#include "gzstream.h"
 #include "configuration.h"
 #include "groupseditor.h"
 #include "placementbrowser.h"
@@ -65,6 +64,8 @@
 #include "../lib/assembly.h"
 #include "../lib/converter.h"
 #include "../lib/millable.h"
+#include "../lib/xml.h"
+#include "../lib/gzstream.h"
 
 #include "../flu/Flu_File_Chooser.h"
 
@@ -88,8 +89,6 @@
 #include <FL/Fl_Choice.H>
 #include <FL/Fl_Value_Input.H>
 #include <FL/fl_ask.H>
-
-#include <xmlwrapp/xmlwrapp.h>
 
 #include <fstream>
 
@@ -1448,8 +1447,10 @@ void mainWindow_c::cb_Save(void) {
     else {
       ogzstream ostr(fname);
 
-      if (ostr)
-        ostr << puzzle->save();
+      if (ostr) {
+        xmlWriter_c xml(ostr);
+        puzzle->save(xml);
+      }
 
       if (!ostr)
         fl_alert("puzzle NOT saved!!");
@@ -1589,7 +1590,10 @@ void mainWindow_c::cb_SaveAs(void) {
         ogzstream ostr(f2);
 
         if (ostr)
-          ostr << puzzle->save();
+	{
+	  xmlWriter_c xml(ostr);
+          puzzle->save(xml);
+	}
 
         if (!ostr)
           fl_alert("puzzle NOT saved!!!");
@@ -1845,28 +1849,24 @@ bool mainWindow_c::tryToLoad(const char * f) {
   if (!f) return false;
   if (!fileExists(f)) return false;
 
-  xml::tree_parser parser(f);
-
-  if (!parser) {
-
-    fl_message("Error parsing xml puzzle file, xml-syntax incorrect:\n %s", parser.get_error_message().c_str());
-
-    return false;
-  }
-
-  xml::document &doc = parser.get_document();
+  std::istream * str = openGzFile(f);
+  xmlParser_c pars(*str);
 
   puzzle_c * newPuzzle;
 
   try {
-    newPuzzle = new puzzle_c(doc.get_root_node());
+    newPuzzle = new puzzle_c(pars);
   }
 
-  catch (load_error e) {
-    fl_message(e.getText());
-    std::cout << e.getNode();
+  catch (xmlParserException_c e)
+  {
+    fl_message(("load error: " + e.description).c_str());
+    std::cout << "xml error in state: " << e.state << " at position: " << e.line << "; " << e.col << std::endl;
+    delete str;
     return false;
   }
+
+  delete str;
 
   if (fname) delete [] fname;
   fname = new char[strlen(f)+1];

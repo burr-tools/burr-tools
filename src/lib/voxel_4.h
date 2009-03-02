@@ -50,7 +50,7 @@ class voxel_4_c : public voxel_0_c {
   public:
 
     voxel_4_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0) : voxel_0_c(x, y, z, gt, init) {}
-    voxel_4_c(const xml::node & node, const gridType_c * gt) : voxel_0_c(node, gt) {}
+    voxel_4_c(xmlParser_c & pars, const gridType_c * gt) : voxel_0_c(pars, gt) {}
     voxel_4_c(const voxel_c & orig) : voxel_0_c(orig) { }
     voxel_4_c(const voxel_c * orig) : voxel_0_c(orig) { }
 

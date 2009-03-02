@@ -29,6 +29,8 @@
 - better compression for XML files, should result in smaller files
   although not that much
 - millability and anotchability in status window
+- rewrite XML loading and writing code, this code is faster and compacter
+  and uses much less memory
 
 ------------- Version 0.4.2 Jan 2009
 

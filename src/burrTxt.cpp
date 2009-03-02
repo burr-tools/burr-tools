@@ -25,13 +25,13 @@
 #include "lib/disassembly.h"
 #include "lib/print.h"
 #include "lib/voxel.h"
+#include "lib/xml.h"
+#include "lib/gzstream.h"
 
 #include <stdlib.h>
 
 #include <fstream>
 #include <iostream>
-
-#include <xmlwrapp/xmlwrapp.h>
 
 using namespace std;
 
@@ -191,8 +191,10 @@ int main(int argv, char* args[]) {
     return 1;
   }
 
-  xml::tree_parser parser(args[filenumber]);
-  puzzle_c p(parser.get_document().get_root_node());
+  std::istream * str = openGzFile(args[filenumber]);
+  xmlParser_c pars(*str);
+  puzzle_c p(pars);
+  delete str;
 
   if (ask) {
 

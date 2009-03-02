@@ -285,7 +285,7 @@ public:
   virtual void stop(void) { abbort = true; }
   virtual bool stopped(void) const { return !running; }
   virtual errState setPosition(const char * string, const char * version);
-  virtual xml::node save(void) const;
+  virtual void save(xmlWriter_c & xml) const;
   virtual void reduce(void);
   virtual unsigned int getReducePiece(void) { return reducePiece; }
   virtual unsigned long getIterations(void) { return iterations; }

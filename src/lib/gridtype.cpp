@@ -32,22 +32,21 @@
 #include "stl_0.h"
 #include "stl_2.h"
 #include "problem.h"
-
-#include <xmlwrapp/attributes.h>
+#include "xml.h"
 
 #include <stdlib.h>
 
-gridType_c::gridType_c(const xml::node & node) {
-  // we must have a real node and the following attributes
-  if ((node.get_type() != xml::node::type_element) ||
-      (strcmp(node.get_name(), "gridType") != 0))
-    throw load_error("not the right type of node for a grid type", node);
+gridType_c::gridType_c(xmlParser_c & pars)
+{
+  pars.require(xmlParser_c::START_TAG, "gridType");
 
-  if (node.get_attributes().find("type") == node.get_attributes().end())
-    throw load_error("grid type with no type attribute encountered", node);
+  std::string typeStr = pars.getAttributeValue("type");
+
+  if (!typeStr.length())
+    pars.exception("grid type needs a valid 'type' attribute");
 
   // set to the correct size
-  type = (gridType)atoi(node.get_attributes().find("type")->get_value());
+  type = (gridType)atoi(typeStr.c_str());
 
   switch (type) {
 
@@ -59,21 +58,21 @@ gridType_c::gridType_c(const xml::node & node) {
       break;
 
     default:
-      throw load_error("puzzle with unknown grid type", node);
+      pars.exception("puzzle with unknown grid type");
   }
+
+  pars.skipSubTree();
 
   sym = 0;
 }
 
-xml::node gridType_c::save(void) const {
-  xml::node nd("gridType");
+void gridType_c::save(xmlWriter_c & xml) const
+{
+  xml.newTag("gridType");
 
-  char tmp[50];
+  xml.newAttrib("type", (unsigned long)type);
 
-  snprintf(tmp, 50, "%i", type);
-  nd.get_attributes().insert("type", tmp);
-
-  return nd;
+  xml.endTag("gridType");
 }
 
 gridType_c::gridType_c(void) {
@@ -135,14 +134,14 @@ voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, v
   }
 }
 
-voxel_c * gridType_c::getVoxel(const xml::node & node) const
+voxel_c * gridType_c::getVoxel(xmlParser_c & pars) const
 {
   switch (type) {
-    case GT_BRICKS:           return new voxel_0_c(node, this);
-    case GT_TRIANGULAR_PRISM: return new voxel_1_c(node, this);
-    case GT_SPHERES:          return new voxel_2_c(node, this);
-    case GT_RHOMBIC:          return new voxel_3_c(node, this);
-    case GT_TETRA_OCTA:       return new voxel_4_c(node, this);
+    case GT_BRICKS:           return new voxel_0_c(pars, this);
+    case GT_TRIANGULAR_PRISM: return new voxel_1_c(pars, this);
+    case GT_SPHERES:          return new voxel_2_c(pars, this);
+    case GT_RHOMBIC:          return new voxel_3_c(pars, this);
+    case GT_TETRA_OCTA:       return new voxel_4_c(pars, this);
     default: return 0;
   }
 }

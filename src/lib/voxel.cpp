@@ -18,11 +18,11 @@
 
 #include "voxel.h"
 
+#include "xml.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <xmlwrapp/attributes.h>
 
 /** \mainpage The BurrTools Library documentation
  *
@@ -710,170 +710,166 @@ void voxel_c::actionOnSpace(VoxelAction action, bool inside) {
         }
 }
 
-xml::node voxel_c::save(void) const {
+void voxel_c::save(xmlWriter_c & xml) const {
 
-  xml::node nd("voxel");
+  xml.newTag("voxel");
 
-  char tmp[50];
+  xml.newAttrib("x", sx);
+  xml.newAttrib("y", sy);
+  xml.newAttrib("z", sz);
 
-  snprintf(tmp, 50, "%i", sx);
-  nd.get_attributes().insert("x", tmp);
+  if (hx) xml.newAttrib("hx", hx);
+  if (hy) xml.newAttrib("hy", hy);
+  if (hz) xml.newAttrib("hz", hz);
 
-  snprintf(tmp, 50, "%i", sy);
-  nd.get_attributes().insert("y", tmp);
-
-  snprintf(tmp, 50, "%i", sz);
-  nd.get_attributes().insert("z", tmp);
-
-  /* save the hotspot, but only when it is not zero */
-  if (hx) {
-    snprintf(tmp, 50, "%i", hx);
-    nd.get_attributes().insert("hx", tmp);
-  }
-  if (hy) {
-    snprintf(tmp, 50, "%i", hy);
-    nd.get_attributes().insert("hy", tmp);
-  }
-  if (hz) {
-    snprintf(tmp, 50, "%i", hz);
-    nd.get_attributes().insert("hz", tmp);
-  }
-  if (weight != 1) {
-    snprintf(tmp, 50, "%i", weight);
-    nd.get_attributes().insert("weight", tmp);
-  }
+  if (weight != 1)
+    xml.newAttrib("weight", weight);
 
   if (name.length())
-    nd.get_attributes().insert("name", name.c_str());
+    xml.newAttrib("name", name);
 
   // this might allow us to later add another format
-  nd.get_attributes().insert("type", "0");
+  xml.newAttrib("type", 0);
 
-  std::string cont;
+  std::ostream & str = xml.addContent();
 
   for (unsigned int i = 0; i < getXYZ(); i++)
-    switch(getState(i)) {
-    case VX_EMPTY:
-      cont += "_";
-      break;
-    case VX_VARIABLE:
-      cont += "+";
-      if (getColor(i)) {
-        bt_assert(getColor(i) < 100);
-        if (getColor(i) > 9)
-          cont += ('0' + (getColor(i) / 10));
-        cont += ('0' + (getColor(i) % 10));
-      }
-      break;
-    case VX_FILLED:
-      cont += "#";
-      if (getColor(i)) {
-        bt_assert(getColor(i) < 100);
-        if (getColor(i) > 9)
-          cont += ('0' + (getColor(i) / 10));
-        cont += ('0' + (getColor(i) % 10));
-      }
-      break;
+  {
+    // output state
+    switch(getState(i))
+    {
+      case VX_EMPTY:    str << "_"; break;
+      case VX_FILLED:   str << "#"; break;
+      case VX_VARIABLE: str << "+"; break;
     }
 
-  nd.set_content(cont.c_str());
+    // output color postfix, but only vor nonempty voxels
+    switch(getState(i))
+    {
+      case VX_VARIABLE:
+      case VX_FILLED:
+        // output color, only when color is not zero
+        if (getColor(i))
+          str << getColor(i);
+        break;
 
-  return nd;
+      default:
+        break;
+    }
+  }
+
+  xml.endTag("voxel");
 }
 
-voxel_c::voxel_c(const xml::node & node, const gridType_c * g) : gt(g), hx(0), hy(0), hz(0), weight(1) {
-
-  BbHsCache = new int[9*gt->getSymmetries()->getNumTransformationsMirror()];
-
-  // we must have a real node and the following attributes
-  if ((node.get_type() != xml::node::type_element) ||
-      (strcmp(node.get_name(), "voxel") != 0))
-    throw load_error("not the right type of node for a voxel space", node);
-
-  if (node.get_attributes().find("x") == node.get_attributes().end())
-    throw load_error("piece Voxel with no attribute 'x' encountered", node);
-  if (node.get_attributes().find("y") == node.get_attributes().end())
-    throw load_error("piece Voxel with no attribute 'y' encountered", node);
-  if (node.get_attributes().find("z") == node.get_attributes().end())
-    throw load_error("piece Voxel with no attribute 'z' encountered", node);
-  if (node.get_attributes().find("type") == node.get_attributes().end())
-    throw load_error("piece Voxel with no attribute 'type' encountered", node);
+voxel_c::voxel_c(xmlParser_c & pars, const gridType_c * g) : gt(g), hx(0), hy(0), hz(0), weight(1)
+{
+  pars.require(xmlParser_c::START_TAG, "voxel");
 
   skipRecalcBoundingBox(true);
 
+  std::string szStr;
+
+  szStr = pars.getAttributeValue("x");
+  if (!szStr.length())
+    pars.exception("voxel space requires 'x' attribute");
+  sx = atoi(szStr.c_str());
+
+  szStr = pars.getAttributeValue("y");
+  if (!szStr.length())
+    pars.exception("voxel space requires 'y' attribute");
+  sy = atoi(szStr.c_str());
+
+  szStr = pars.getAttributeValue("z");
+  if (!szStr.length())
+    pars.exception("voxel space requires 'z' attribute");
+  sz = atoi(szStr.c_str());
+
+  szStr = pars.getAttributeValue("type");
+  if (!szStr.length())
+    pars.exception("voxel space requires 'type' attribute");
+
+  unsigned int type = atoi(szStr.c_str());
+
   // set to the correct size
-  sx = atoi(node.get_attributes().find("x")->get_value());
-  sy = atoi(node.get_attributes().find("y")->get_value());
-  sz = atoi(node.get_attributes().find("z")->get_value());
   voxels = sx*sy*sz;
 
-  if (node.get_attributes().find("hx") != node.get_attributes().end())
-    hx = atoi(node.get_attributes().find("hx")->get_value());
-  if (node.get_attributes().find("hy") != node.get_attributes().end())
-    hy = atoi(node.get_attributes().find("hy")->get_value());
-  if (node.get_attributes().find("hz") != node.get_attributes().end())
-    hz = atoi(node.get_attributes().find("hz")->get_value());
-  if (node.get_attributes().find("name") != node.get_attributes().end())
-    name = node.get_attributes().find("name")->get_value();
-  if (node.get_attributes().find("weight") != node.get_attributes().end())
-    weight = atoi(node.get_attributes().find("weight")->get_value());
+  szStr = pars.getAttributeValue("hx");
+  hx = atoi(szStr.c_str());
+  szStr = pars.getAttributeValue("hy");
+  hy = atoi(szStr.c_str());
+  szStr = pars.getAttributeValue("hz");
+  hz = atoi(szStr.c_str());
+
+  name = pars.getAttributeValue("name");
+
+  szStr = pars.getAttributeValue("weight");
+  if (szStr != "")
+    weight = atoi(szStr.c_str());
 
   space = new voxel_type[voxels];
-  bt_assert(space);
 
-  unsigned int type = atoi(node.get_attributes().find("type")->get_value());
+  if (pars.next() != xmlParser_c::TEXT)
+    pars.exception("voxel space requires content");
 
-  const char * c = node.get_content();
+  std::string c = pars.getText();
+
   unsigned int idx = 0;
   unsigned int color = 0;
 
-  if (c) {
-
+  if (c.length())
+  {
     if (type != 0)
-      throw load_error("piece Voxel with type not equal to 0 encountered", node);
+      pars.exception("unknown voxel type");
 
-    while (*c) {
-      switch(*c) {
-      case '#':
-        setState(idx++, VX_FILLED);
-        color = 0;
-        break;
-      case '+':
-        setState(idx++, VX_VARIABLE);
-        color = 0;
-        break;
-      case '_':
-        setState(idx++, VX_EMPTY);
-        color = 0;
-        break;
-      case '0': color = color * 10 + 0; break;
-      case '1': color = color * 10 + 1; break;
-      case '2': color = color * 10 + 2; break;
-      case '3': color = color * 10 + 3; break;
-      case '4': color = color * 10 + 4; break;
-      case '5': color = color * 10 + 5; break;
-      case '6': color = color * 10 + 6; break;
-      case '7': color = color * 10 + 7; break;
-      case '8': color = color * 10 + 8; break;
-      case '9': color = color * 10 + 9; break;
-      default:
-        throw load_error("unrecognised character in piece voxel space", node);
+    for (unsigned int pos = 0; pos < c.length(); pos++)
+    {
+      switch (c[pos])
+      {
+        case '#':
+          setState(idx++, VX_FILLED);
+          color = 0;
+          break;
+        case '+':
+          setState(idx++, VX_VARIABLE);
+          color = 0;
+          break;
+        case '_':
+          setState(idx++, VX_EMPTY);
+          color = 0;
+          break;
+        case '0': color = color * 10 + 0; break;
+        case '1': color = color * 10 + 1; break;
+        case '2': color = color * 10 + 2; break;
+        case '3': color = color * 10 + 3; break;
+        case '4': color = color * 10 + 4; break;
+        case '5': color = color * 10 + 5; break;
+        case '6': color = color * 10 + 6; break;
+        case '7': color = color * 10 + 7; break;
+        case '8': color = color * 10 + 8; break;
+        case '9': color = color * 10 + 9; break;
+        default : pars.exception("unrecognised character in piece voxel space");
       }
+
+      if (color > 63)
+        pars.exception("constraint color too big > 63");
 
       if (idx > 0)
         setColor(idx-1, color);
 
-      c++;
       if (idx > getXYZ())
-        throw load_error("too many voxels defined in voxelspace", node);
+        pars.exception("too many voxels defined for voxelspace");
     }
     if (idx < getXYZ())
-      throw load_error("not enough voxels defined in voxelspace", node);
+      pars.exception("not enough voxels defined for voxelspace");
   }
+
+  symmetries = symmetryInvalid();
+  BbHsCache = new int[9*gt->getSymmetries()->getNumTransformationsMirror()];
 
   skipRecalcBoundingBox(false);
 
-  symmetries = symmetryInvalid();
+  pars.next();
+  pars.require(xmlParser_c::END_TAG, "voxel");
 }
 
 void voxel_c::setHotspot(int x, int y, int z) {

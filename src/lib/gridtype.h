@@ -22,14 +22,14 @@
 
 #include "bt_assert.h"
 
-#include <xmlwrapp/node.h>
-
 class assembler_c;
 class symmetries_c;
 class voxel_c;
 class problem_c;
 class stlExporter_c;
 class movementCache_c;
+class xmlWriter_c;
+class xmlParser_c;
 
 /**
  * This class encapsulates all information required to handle the different grid types.
@@ -98,10 +98,10 @@ class gridType_c {
     /**
      * load from xml node
      */
-    gridType_c(const xml::node & node);
+    gridType_c(xmlParser_c & pars);
 
     /** used to save to XML */
-    xml::node save(void) const;
+    void save(xmlWriter_c & xml) const;
 
     /* some specializes constructors */
 
@@ -124,7 +124,7 @@ class gridType_c {
     /// create a new voxel space of this grid type with the given dimensions
     voxel_c * getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init) const;
     /// create a new voxel space of this grid type, which is loaded from the XML node
-    voxel_c * getVoxel(const xml::node & node) const;
+    voxel_c * getVoxel(xmlParser_c & pars) const;
     /// create a new voxel space of this grid type, which is a copy of the given space
     voxel_c * getVoxel(const voxel_c & orig) const;
     /// create a new voxel space of this grid type, which is a copy of the given space

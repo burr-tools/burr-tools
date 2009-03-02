@@ -21,12 +21,14 @@
 /* this module contains the datastructures to store the instruction how to assemble
  * and disassemble a puzzle
  */
-#include "bt_assert.h"
 
-#include <xmlwrapp/node.h>
+#include "bt_assert.h"
 
 #include <deque>
 #include <vector>
+
+class xmlWriter_c;
+class xmlParser_c;
 
 /* forward declaration, the definition is below */
 class state_c;
@@ -79,13 +81,13 @@ public:
   separation_c(separation_c * r, separation_c * l, const std::vector<unsigned int> & pcs);
 
   /** load a separation from an xml node */
-  separation_c(const xml::node & node, unsigned int pieces);
+  separation_c(xmlParser_c & pars, unsigned int pieces);
 
   /** copy constructor */
   separation_c(const separation_c * cpy);
 
-  /** save into an xml node */
-  xml::node save(void) const;
+  /* save into an xml node, please always call with just xml, the type is for internal use */
+  void save(xmlWriter_c & xml, int type = 0) const;
 
   ~separation_c();
 
@@ -185,11 +187,11 @@ class separationInfo_c {
     /* separationInfo classes can only be created from normal disassemblies or
      * loaded from xml file
      */
-    separationInfo_c(const xml::node & node);
+    separationInfo_c(xmlParser_c & pars);
     separationInfo_c(const separation_c * sep);
 
     /* save into an xml node */
-    xml::node save(void) const;
+    void save(xmlWriter_c & xml) const;
 
     /* the following 3 functions return the exact same information
      * as the corresponding information in separation_c
@@ -248,10 +250,10 @@ public:
   bool pieceRemoved(unsigned int i) const;
 
   /* save into an xml node */
-  xml::node save(unsigned int piecenumber) const;
+  void save(xmlWriter_c & xml, unsigned int piecenumber) const;
 
   /* load from an xml node */
-  state_c(const xml::node & node, unsigned int pn);
+  state_c(xmlParser_c & pars, unsigned int pn);
 
 #ifndef NDEBUG
   /* on assert needs to check the piecenumber */

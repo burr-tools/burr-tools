@@ -22,48 +22,16 @@
 #include "symmetries.h"
 #include "gridtype.h"
 #include "types.h"
-#include <stdio.h>
 
-#include <xmlwrapp/node.h>
+#include <stdio.h>
+#include <string>
+
+class xmlWriter_c;
+class xmlParser_c;
 
 /** \file voxel.h
  * Contains the voxel base class and the class that gets thrown on load errors
  */
-
-/**
- * This class gets thrown when there is an error while loading something from an xml node.
- *
- * This class may get thrown by the constructors in other classes that initialise the class
- * via an xml node. It gets thrown whenever an error occured while loading from the
- * given xml node.
- */
-class load_error {
-
-  const xml::node node;    ///< the node where the error occured
-  const std::string text;  ///< error text provided by the code that found the error
-
-public:
-
-  /**
-   * This constructor creates the error with the xml node and text
-   */
-  load_error(const std::string & arg, const xml::node & nd) : node(nd), text(arg) {};
-
-  /**
-   * This constructor creates an error with an empty xml node and only text
-   */
-  load_error(const std::string & arg) : text(arg) {};
-
-  /**
-   * Returns the error message.
-   */
-  const char * getText(void) const { return text.c_str(); }
-
-  /**
-   * Returns the node where the error occured.
-   */
-  const xml::node getNode(void) const { return node; }
-};
 
 /**
  * This class handles one voxel space. A voxel space
@@ -248,7 +216,7 @@ public:
   /**
    * Load a voxel space from xml node
    */
-  voxel_c(const xml::node & node, const gridType_c * gt);
+  voxel_c(xmlParser_c & pars, const gridType_c * gt);
 
   /**
    * Copy constructor using reference. Transformation allows to
@@ -674,7 +642,7 @@ public:
   /**
    *  used to save to XML
    */
-  xml::node save(void) const;
+  void save(xmlWriter_c & xml) const;
 
   int getHx(void) const { return hx; } ///< Get the hotspot
   int getHy(void) const { return hy; } ///< Get the hotspot

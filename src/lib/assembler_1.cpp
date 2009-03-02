@@ -20,11 +20,10 @@
 #include "bt_assert.h"
 #include "problem.h"
 #include "voxel.h"
+#include "xml.h"
 #include "assembly.h"
 #include "gridtype.h"
 #include <cstdlib>
-
-#include <xmlwrapp/attributes.h>
 
 #ifdef WIN32
 #define snprintf _snprintf
@@ -1918,42 +1917,30 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   return ERR_NONE;
 }
 
-static std::string vectorToString(const std::vector<unsigned int> & v) {
+static void vectorToStream(const std::vector<unsigned int> & v, std::ostream & str) {
 
-  std::string cont;
+  str << v.size() << " ";
 
-  char tmp[100];
-
-  snprintf(tmp, 100, "%i ", v.size());
-  cont += tmp;
-
-  for (unsigned int i = 0; i < v.size(); i++) {
-    snprintf(tmp, 100, "%i ", v[i]);
-    cont += tmp;
-  }
-
-  return cont;
+  for (unsigned int i = 0; i < v.size(); i++)
+    str << v[i] << " ";
 }
 
-xml::node assembler_1_c::save(void) const {
+void assembler_1_c::save(xmlWriter_c & xml) const
+{
+  xml.newTag("assembler");
+  xml.newAttrib("version", ASSEMBLER_VERSION);
 
-  xml::node nd("assembler");
+  std::ostream & str = xml.addContent();
 
-  nd.get_attributes().insert("version", ASSEMBLER_VERSION);
+  vectorToStream(rows, str);
+  vectorToStream(task_stack, str);
+  vectorToStream(next_row_stack, str);
+  vectorToStream(column_stack, str);
+  vectorToStream(hidden_rows, str);
+  vectorToStream(finished_a, str);
+  vectorToStream(finished_b, str);
 
-  std::string cont;
-
-  cont += vectorToString(rows);
-  cont += vectorToString(task_stack);
-  cont += vectorToString(next_row_stack);
-  cont += vectorToString(column_stack);
-  cont += vectorToString(hidden_rows);
-  cont += vectorToString(finished_a);
-  cont += vectorToString(finished_b);
-
-  nd.set_content(cont.c_str());
-
-  return nd;
+  xml.endTag("assembler");
 }
 
 unsigned int assembler_1_c::getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) {

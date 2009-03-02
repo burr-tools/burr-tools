@@ -22,8 +22,6 @@
 #include "symmetries.h"
 #include "gridtype.h"
 
-#include <xmlwrapp/node.h>
-
 #include <vector>
 
 // this vailue is used for transformation to specify unplaced pieces
@@ -31,6 +29,8 @@
 
 class problem_c;
 class voxel_c;
+class xmlWriter_c;
+class xmlParser_c;
 
 /**
  * this class contains the information for the placement of
@@ -179,10 +179,10 @@ public:
   /**
    * load the assembly from xml file
    */
-  assembly_c(const xml::node & node, unsigned int pieces, const gridType_c * gt);
+  assembly_c(xmlParser_c & pars, unsigned int pieces, const gridType_c * gt);
 
   /* used to save to XML */
-  xml::node save(void) const;
+  void save(xmlWriter_c & xml) const;
 
   void addPlacement(unsigned char tran, int x, int y, int z) {
     bt_assert(tran < sym->getNumTransformations());

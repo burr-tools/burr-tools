@@ -20,14 +20,13 @@
 #include "bt_assert.h"
 #include "problem.h"
 #include "voxel.h"
+#include "xml.h"
 #include "assembly.h"
 #include "gridtype.h"
 #include <cstdlib>
 #include <cstring>
 
 #include <config.h>
-
-#include <xmlwrapp/attributes.h>
 
 #ifdef WIN32
 #define snprintf _snprintf
@@ -1534,35 +1533,24 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   return ERR_NONE;
 }
 
-xml::node assembler_0_c::save(void) const {
+void assembler_0_c::save(xmlWriter_c & xml) const
+{
+  xml.newTag("assembler");
+  xml.newAttrib("version", ASSEMBLER_VERSION);
 
-  xml::node nd("assembler");
+  std::ostream & str = xml.addContent();
 
-  nd.get_attributes().insert("version", ASSEMBLER_VERSION);
-
-  std::string cont;
-
-  char tmp[100];
-
-  snprintf(tmp, 100, "%i ", pos);
-  cont += tmp;
-
-  snprintf(tmp, 100, "%li ", iterations);
-  cont += tmp;
+  str << pos << " " << iterations << " ";
 
   if (pos <= piecenumber)
-    for (unsigned int j = 0; j <= pos; j++) {
+    for (unsigned int j = 0; j <= pos; j++)
+    {
+      str << "(" << rows[j] << " " << columns[j] << ")";
 
-      snprintf(tmp, 100, "(%i %i)", rows[j], columns[j]);
-      cont += tmp;
-
-      if (j < pos)
-        cont += " ";
+      if (j < pos) str << " ";
     }
 
-  nd.set_content(cont.c_str());
-
-  return nd;
+  xml.endTag("assembler");
 }
 
 unsigned int assembler_0_c::getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) {

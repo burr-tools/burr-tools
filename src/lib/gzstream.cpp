@@ -27,12 +27,7 @@
 // ============================================================================
 
 #include "gzstream.h"
-#include <iostream>
 #include <string.h>  // for memcpy
-
-#ifdef GZSTREAM_NAMESPACE
-namespace GZSTREAM_NAMESPACE {
-#endif
 
 // ----------------------------------------------------------------------------
 // Internal classes to implement gzstream. See header file for user classes.
@@ -158,9 +153,17 @@ void gzstreambase::close() {
             clear( rdstate() | std::ios::badbit);
 }
 
-#ifdef GZSTREAM_NAMESPACE
-} // namespace GZSTREAM_NAMESPACE
-#endif
 
-// ============================================================================
-// EOF //
+std::istream * openGzFile(const char * name)
+{
+  igzstream * gz = new igzstream(name);
+
+  if (!gz)
+  {
+    delete gz;
+    return new std::ifstream(name);
+  }
+
+  return gz;
+}
+

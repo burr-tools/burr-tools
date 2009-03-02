@@ -24,10 +24,9 @@
 #include "assembler.h"
 #include "bt_assert.h"
 
-#include <xmlwrapp/node.h>
-
 #include <vector>
 #include <set>
+#include <string>
 
 class voxel_c;
 class separation_c;
@@ -37,6 +36,8 @@ class gridType_c;
 class puzzle_c;
 class shape_c;
 class solution_c;
+class xmlWriter_c;
+class xmlParser_c;
 
 /**
  * this state reflects how far we are with solving this problem
@@ -157,7 +158,7 @@ public:
    * - copy the given problem, except for label and solutions
    */
   problem_c(puzzle_c & puz);
-  problem_c(puzzle_c & puz, const xml::node & node);
+  problem_c(puzzle_c & puz, xmlParser_c & pars);
   problem_c(const problem_c * prob, puzzle_c & puz);
 
   /**
@@ -168,7 +169,7 @@ public:
   /**
    * save the problem into the returned XML node
    */
-  xml::node save(void) const;
+  void save(xmlWriter_c & xml) const;
 
   /**
    * return the current set grid type for this puzzle

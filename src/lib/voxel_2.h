@@ -26,7 +26,7 @@ class voxel_2_c : public voxel_c {
   public:
 
     voxel_2_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0) : voxel_c(x, y, z, gt, init) {}
-    voxel_2_c(const xml::node & node, const gridType_c * gt) : voxel_c(node, gt) {}
+    voxel_2_c(xmlParser_c & pars, const gridType_c * gt) : voxel_c(pars, gt) {}
     voxel_2_c(const voxel_c & orig) : voxel_c(orig) { }
     voxel_2_c(const voxel_c * orig) : voxel_c(orig) { }
 

@@ -22,12 +22,11 @@
 #include "assembly.h"
 #include "disassembly.h"
 #include "puzzle.h"
+#include "xml.h"
 
 #include <algorithm>
 
 #include <stdio.h>
-
-#include <xmlwrapp/attributes.h>
 
 /* ********* SOLUTION ************** */
 
@@ -44,7 +43,7 @@ public:
   solution_c(assembly_c * assm, unsigned int assmNum) :
     assembly(assm), tree(0), treeInfo(0), assemblyNum(assmNum), solutionNum(0) {}
 
-  solution_c(const xml::node & node, unsigned int pieces, const gridType_c * gt);
+  solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c * gt);
 
   ~solution_c(void);
 
@@ -71,7 +70,7 @@ public:
   unsigned int assemblyNum;
   unsigned int solutionNum;
 
-  xml::node save(void) const;
+  void save(xmlWriter_c & xml) const;
 
   void exchangeShape(unsigned int s1, unsigned int s2) {
     if (assembly)
@@ -81,66 +80,88 @@ public:
   }
 };
 
-solution_c::solution_c(const xml::node & node, unsigned int pieces, const gridType_c * gt) :
-  tree(0), treeInfo(0), assemblyNum(0), solutionNum(0) {
+solution_c::solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c * gt) :
+  tree(0), treeInfo(0), assemblyNum(0), solutionNum(0)
+{
+  pars.require(xmlParser_c::START_TAG, "solution");
 
-  if ((node.get_type() != xml::node::type_element) ||
-      (strcmp(node.get_name(), "solution") != 0))
-    throw load_error("wrong node type for solution", node);
+  std::string str;
 
-  if (node.find("assembly") == node.end())
-    throw load_error("solution does not contain an assembly", node);
+  str = pars.getAttributeValue("asmNum");
+  if (str.length())
+    assemblyNum = atoi(str.c_str());
 
-  xml::node::const_iterator it;
+  str = pars.getAttributeValue("solNum");
+  if (str.length())
+    solutionNum = atoi(str.c_str());
 
-  it = node.find("assembly");
-  assembly = new assembly_c(*it, pieces, gt);
+  do {
+    int state = pars.nextTag();
 
-  it = node.find("separation");
-  if (it != node.end()) {
+    if (state == xmlParser_c::END_TAG) break;
+    pars.require(xmlParser_c::START_TAG, "");
 
-    // find the number of really placed pieces
-    unsigned int pl = 0;
-    for (unsigned int i = 0; i < assembly->placementCount(); i++)
-      if (assembly->isPlaced(i))
-        pl++;
-    tree = new separation_c(*it, pl);
-  } else {
+    if (pars.getName() == "assembly")
+    {
+      assembly = new assembly_c(pars, pieces, gt);
+      pars.require(xmlParser_c::END_TAG, "assembly");
+    }
+    else if (pars.getName() == "separation")
+    {
+      if (!assembly)
+        pars.exception("an assembly must always be before a separation in a solution");
 
-    it = node.find("separationInfo");
-    if (it != node.end())
-      treeInfo = new separationInfo_c(*it);
+      // find the number of really placed pieces
+      unsigned int pl = 0;
+      for (unsigned int i = 0; i < assembly->placementCount(); i++)
+        if (assembly->isPlaced(i))
+          pl++;
+      tree = new separation_c(pars, pl);
+
+      pars.require(xmlParser_c::END_TAG, "separation");
+    }
+    else if (pars.getName() == "separationInfo")
+    {
+      treeInfo = new separationInfo_c(pars);
+      pars.require(xmlParser_c::END_TAG, "separationInfo");
+    }
+    else
+      pars.skipSubTree();
+
+    pars.require(xmlParser_c::END_TAG, "");
+
+  } while (true);
+
+  pars.require(xmlParser_c::END_TAG, "solution");
+
+  if (!assembly)
+    pars.exception("no assembly in solution");
+
+  if (tree && treeInfo)
+  {
+    delete treeInfo;
+    treeInfo = 0;
   }
-
-  if (node.get_attributes().find("asmNum") != node.get_attributes().end())
-    assemblyNum = atoi(node.get_attributes().find("asmNum")->get_value());
-
-  if ((tree || treeInfo) && (node.get_attributes().find("solNum") != node.get_attributes().end()))
-    solutionNum = atoi(node.get_attributes().find("solNum")->get_value());
 }
 
-xml::node solution_c::save(void) const {
-  xml::node nd("solution");
-
-  char tmp[50];
+void solution_c::save(xmlWriter_c & xml) const
+{
+  xml.newTag("solution");
 
   if (assemblyNum) {
-    snprintf(tmp, 50, "%i", assemblyNum);
-    nd.get_attributes().insert("asmNum", tmp);
+    xml.newAttrib("asmNum", assemblyNum);
   }
 
-  nd.insert(assembly->save());
+  if ((tree || treeInfo) && solutionNum)
+    xml.newAttrib("solNum", solutionNum);
 
-  if (tree) {            nd.insert(tree->save());
-  } else if (treeInfo) { nd.insert(treeInfo->save());
+  assembly->save(xml);
+
+  if (tree) {            tree->save(xml);
+  } else if (treeInfo) { treeInfo->save(xml);
   }
 
-  if ((tree || treeInfo) && solutionNum) {
-    snprintf(tmp, 50, "%i", solutionNum);
-    nd.get_attributes().insert("solNum", tmp);
-  }
-
-  return nd;
+  xml.endTag("solution");
 }
 
 solution_c::~solution_c(void) {
@@ -229,272 +250,328 @@ problem_c::problem_c(const problem_c * orig, puzzle_c & puz) :
   // likely give a new name any way
 }
 
-xml::node problem_c::save(void) const {
-  xml::node nd("problem");
+void problem_c::save(xmlWriter_c & xml) const
+{
+  xml.newTag("problem");
 
   if (name.length() > 0)
-    nd.get_attributes().insert("name", name.c_str());
+    xml.newAttrib("name", name);
 
-  char tmp[50];
+  xml.newAttrib("state", solveState);
 
-  xml::node::iterator it;
-
-  snprintf(tmp, 50, "%i", solveState);
-  nd.get_attributes().insert("state", tmp);
-
-  if (solveState != SS_UNSOLVED) {
-    snprintf(tmp, 50, "%li", numAssemblies);
-    nd.get_attributes().insert("assemblies", tmp);
-
-    snprintf(tmp, 50, "%li", numSolutions);
-    nd.get_attributes().insert("solutions", tmp);
-
-    snprintf(tmp, 50, "%li", usedTime);
-    nd.get_attributes().insert("time", tmp);
+  if (solveState != SS_UNSOLVED)
+  {
+    xml.newAttrib("assemblies", numAssemblies);
+    xml.newAttrib("solutions", numSolutions);
+    xml.newAttrib("time", usedTime);
   }
 
-  if (maxHoles != 0xFFFFFFFF) {
-    snprintf(tmp, 50, "%i", maxHoles);
-    nd.get_attributes().insert("maxHoles", tmp);
-  }
+  if (maxHoles != 0xFFFFFFFF)
+    xml.newAttrib("maxHoles", maxHoles);
 
-  it = nd.insert(xml::node("shapes"));
+  xml.newTag("shapes");
 
   for (unsigned int i = 0; i < shapes.size(); i++) {
-    xml::node::iterator it2 = it->insert(xml::node("shape"));
+    xml.newTag("shape");
 
-    snprintf(tmp, 50, "%i", shapes[i]->shapeId );
-    it2->get_attributes().insert("id", tmp);
+    xml.newAttrib("id", shapes[i]->shapeId);
 
-    if (shapes[i]->min == shapes[i]->max) {
-      snprintf(tmp, 50, "%i", shapes[i]->min);
-      it2->get_attributes().insert("count", tmp);
-    } else {
-      snprintf(tmp, 50, "%i", shapes[i]->min);
-      it2->get_attributes().insert("min", tmp);
-      snprintf(tmp, 50, "%i", shapes[i]->max);
-      it2->get_attributes().insert("max", tmp);
+    if (shapes[i]->min == shapes[i]->max)
+    {
+      xml.newAttrib("count", shapes[i]->min);
+    }
+    else
+    {
+      xml.newAttrib("min", shapes[i]->min);
+      xml.newAttrib("max", shapes[i]->max);
     }
 
-    if (shapes[i]->groups.size() == 0) {
+    if (shapes[i]->groups.size() == 0)
+    {
       // do nothing, we don't need to save anything in this case
-    } else if ((shapes[i]->groups.size() == 1) &&
-               (shapes[i]->groups[0].count == shapes[i]->max)) {
+    }
+    else if ((shapes[i]->groups.size() == 1) &&
+             (shapes[i]->groups[0].count == shapes[i]->max))
+    {
       // this is the case when all pieces are in the same group
       // we only need to save the group, if it is not 0,
       // the loader takes 0 as default anyway
-      if (shapes[i]->groups[0].group != 0) {
-        snprintf(tmp, 50, "%i", shapes[i]->groups[0].group);
-        it2->get_attributes().insert("group", tmp);
-      }
-
-    } else {
-
+      if (shapes[i]->groups[0].group != 0)
+        xml.newAttrib("group", shapes[i]->groups[0].group);
+    }
+    else
+    {
       for (unsigned int j = 0; j < shapes[i]->groups.size(); j++)
-        if (shapes[i]->groups[j].group != 0) {
-
-          xml::node::iterator it3 = it2->insert(xml::node("group"));
-
-          snprintf(tmp, 50, "%i", shapes[i]->groups[j].group);
-          it3->get_attributes().insert("group", tmp);
-
-          snprintf(tmp, 50, "%i", shapes[i]->groups[j].count);
-          it3->get_attributes().insert("count", tmp);
+        if (shapes[i]->groups[j].group != 0)
+        {
+          xml.newTag("group");
+          xml.newAttrib("group", shapes[i]->groups[j].group);
+          xml.newAttrib("count", shapes[i]->groups[j].count);
+          xml.endTag("group");
         }
     }
+    xml.endTag("shape");
   }
 
-  it = nd.insert(xml::node("result"));
-  snprintf(tmp, 50, "%i", result);
-  it->get_attributes().insert("id", tmp);
+  xml.endTag("shapes");
 
-  it = nd.insert(xml::node("bitmap"));
+  xml.newTag("result");
+  xml.newAttrib("id", result);
+  xml.endTag("result");
 
-  for (std::set<uint32_t>::iterator i = colorConstraints.begin(); i != colorConstraints.end(); i++) {
-    xml::node::iterator it2 = it->insert(xml::node("pair"));
-
-    snprintf(tmp, 50, "%i", *i >> 16);
-    it2->get_attributes().insert("piece", tmp);
-
-    snprintf(tmp, 50, "%i", *i & 0xFFFF);
-    it2->get_attributes().insert("result", tmp);
+  xml.newTag("bitmap");
+  for (std::set<uint32_t>::iterator i = colorConstraints.begin(); i != colorConstraints.end(); i++)
+  {
+    xml.newTag("pair");
+    xml.newAttrib("piece", *i >> 16);
+    xml.newAttrib("result", *i & 0xFFFF);
+    xml.endTag("pair");
   }
+  xml.endTag("bitmap");
 
-  if (solveState == SS_SOLVING) {
+  if (solveState == SS_SOLVING)
+  {
     if (assm)
-      nd.insert(assm->save());
-    else if (assemblerState != "" && assemblerVersion != "") {
-      xml::node::iterator it2 = nd.insert(xml::node("assembler"));
-      it2->get_attributes().insert("version", assemblerVersion.c_str());
-      it2->set_content(assemblerState.c_str());
+    {
+      assm->save(xml);
+    }
+    else if (assemblerState != "" && assemblerVersion != "")
+    {
+      xml.newTag("assembler");
+      xml.newAttrib("version", assemblerVersion);
+      xml.addContent(assemblerState);
+      xml.endTag("assembler");
     }
   }
 
   if (solutions.size()) {
-    it = nd.insert(xml::node("solutions"));
+    xml.newTag("solutions");
     for (unsigned int i = 0; i < solutions.size(); i++)
-      it->insert(solutions[i]->save());
+      solutions[i]->save(xml);
+    xml.endTag("solutions");
   }
 
-  return nd;
+  xml.endTag("problem");
 }
 
-problem_c::problem_c(puzzle_c & puz, const xml::node & node) :
-  puzzle(puz), result(0xFFFFFFFF),
-  assm(0) {
+problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0xFFFFFFFF), assm(0)
+{
+  pars.require(xmlParser_c::START_TAG, "problem");
 
-  if ((node.get_type() != xml::node::type_element) ||
-      (strcmp(node.get_name(), "problem") != 0))
-    throw load_error("not the right node for the puzzle problem", node);
+  name = pars.getAttributeValue("name");
+  solveState = SS_UNSOLVED;
+  numAssemblies = numSolutions = usedTime = 0;
+  maxHoles = 0xFFFFFFFF;
 
-  if (node.get_attributes().find("name") != node.get_attributes().end())
-    name = node.get_attributes().find("name")->get_value();
+  std::string str = pars.getAttributeValue("maxHoles");
+  if (str.length())
+    maxHoles = atoi(str.c_str());
 
-  xml::node::const_iterator it;
+  str = pars.getAttributeValue("state");
+  if (str.length())
+    solveState = (solveState_e)atoi(str.c_str());
+
+  if (solveState != SS_UNSOLVED)
+  {
+    str = pars.getAttributeValue("assemblies");
+    if (str.length())
+      numAssemblies = atoi(str.c_str());
+
+    str = pars.getAttributeValue("solutions");
+    if (str.length())
+      numSolutions = atoi(str.c_str());
+
+    str = pars.getAttributeValue("time");
+    if (str.length())
+      usedTime = atoi(str.c_str());
+  }
 
   unsigned int pieces = 0;
 
-  it = node.find("shapes");
-  if (it != node.end())
-    for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
-      if ((i->get_type() == xml::node::type_element) &&
-          (strcmp(i->get_name(), "shape") == 0)) {
-        unsigned short id, min, max, grp;
+  do
+  {
+    int state = pars.nextTag();
 
-        if (i->get_attributes().find("id") == i->get_attributes().end())
-          throw load_error("a shape node must have an 'idt' attribute", *i);
+    if (state == xmlParser_c::END_TAG) break;
+    pars.require(xmlParser_c::START_TAG, "");
 
-        id = atoi(i->get_attributes().find("id")->get_value());
+    if (pars.getName() == "shapes")
+    {
+      do
+      {
+        int state = pars.nextTag();
 
-        if (i->get_attributes().find("count") != i->get_attributes().end())
-          min = max = atoi(i->get_attributes().find("count")->get_value());
-        else if (i->get_attributes().find("min") != i->get_attributes().end() &&
-                 i->get_attributes().find("max") != i->get_attributes().end()) {
-          min = atoi(i->get_attributes().find("min")->get_value());
-          max = atoi(i->get_attributes().find("max")->get_value());
-          if (min > max)
-            throw load_error("min of shape count must by <= max", node);
-        } else
-          min = max = 1;
+        if (state == xmlParser_c::END_TAG) break;
+        pars.require(xmlParser_c::START_TAG, "");
 
-        if (i->get_attributes().find("group") != i->get_attributes().end())
-          grp = atoi(i->get_attributes().find("group")->get_value());
-        else
-          grp = 0;
+        if (pars.getName() == "shape")
+        {
+          unsigned short id, min, max, grp;
 
-        pieces += max;
+          str = pars.getAttributeValue("id");
+          if (str.length() == 0)
+            pars.exception("a shape node must have an 'idt' attribute");
 
-        if (id >= puzzle.shapeNumber())
-          throw load_error("the shape ids must be for valid shapes", *i);
+          id = atoi(str.c_str());
 
-        if (grp)
-          shapes.push_back(new shape_c(id, min, max, grp));
+          str = pars.getAttributeValue("count");
 
-        else {
-          /* OK we have 2 ways to specify groups for pieces, either
-           * a group attribute in the tag. Then all pieces are
-           * in the given group, or you specify a list of group
-           * tags inside the tag. Each of the group tag gives a
-           * group and a count
-           */
-          i->get_content();
+          if (str.length())
+            min = max = atoi(str.c_str());
+          else if (pars.getAttributeValue("min").length() &&
+                   pars.getAttributeValue("max").length()) {
+            min = atoi(pars.getAttributeValue("min").c_str());
+            max = atoi(pars.getAttributeValue("max").c_str());
+            if (min > max)
+              pars.exception("min of shape count must by <= max");
+          } else
+            min = max = 1;
 
-          shapes.push_back(new shape_c(id, min, max));
+          str = pars.getAttributeValue("group");
+          grp = atoi(str.c_str());
 
-          for (xml::node::const_iterator i2 = i->begin(); i2 != i->end(); i2++)
-          if ((i2->get_type() == xml::node::type_element) &&
-              (strcmp(i2->get_name(), "group") == 0)) {
+          pieces += max;
 
-            if (i2->get_attributes().find("group") == i2->get_attributes().end())
-              throw load_error("a group node must have a group attribute", *i2);
+          if (id >= puzzle.shapeNumber())
+            pars.exception("the shape ids must be for valid shapes");
 
-            if (i2->get_attributes().find("count") == i2->get_attributes().end())
-              throw load_error("a group node must have a count attribute", *i2);
+          if (grp)
+          {
+            shapes.push_back(new shape_c(id, min, max, grp));
+            pars.skipSubTree();
+          }
+          else
+          {
+            /* OK we have 2 ways to specify groups for pieces, either
+             * a group attribute in the tag. Then all pieces are
+             * in the given group, or you specify a list of group
+             * tags inside the tag. Each of the group tag gives a
+             * group and a count
+             */
+            shapes.push_back(new shape_c(id, min, max));
 
-            unsigned int cnt = atoi(i2->get_attributes().find("count")->get_value());
-            grp = atoi(i2->get_attributes().find("group")->get_value());
+            do
+            {
+              int state = pars.nextTag();
 
-            (*shapes.rbegin())->addGroup(grp, cnt);
+              if (state == xmlParser_c::END_TAG) break;
+              pars.require(xmlParser_c::START_TAG, "");
+
+              if (pars.getName() == "group")
+              {
+                str = pars.getAttributeValue("group");
+                if (!str.length())
+                  pars.exception("a group node must have a valid group attribute");
+                grp = atoi(str.c_str());
+
+                str = pars.getAttributeValue("count");
+                if (!str.length())
+                  pars.exception("a group node must have a valid count attribute");
+                unsigned int cnt = atoi(str.c_str());
+
+                (*shapes.rbegin())->addGroup(grp, cnt);
+              }
+
+            } while (true);
           }
         }
+        else
+          pars.skipSubTree();
+
+	pars.require(xmlParser_c::END_TAG, "shape");
+
+      } while (true);
+
+      pars.require(xmlParser_c::END_TAG, "shapes");
+    }
+    else if (pars.getName() == "result")
+    {
+      str = pars.getAttributeValue("id");
+      if (!str.length())
+        pars.exception("the result node must have an 'id' attribute with content");
+      result = atoi(str.c_str());
+      pars.skipSubTree();
+    }
+    else if (pars.getName() == "solutions")
+    {
+      do
+      {
+        int state = pars.nextTag();
+
+        if (state == xmlParser_c::END_TAG) break;
+        pars.require(xmlParser_c::START_TAG, "");
+
+        if (pars.getName() == "solution")
+          solutions.push_back(new solution_c(pars, pieces, puzzle.getGridType()));
+        else
+          pars.skipSubTree();
+
+        pars.require(xmlParser_c::END_TAG, "solution");
+
+      } while (true);
+
+      pars.require(xmlParser_c::END_TAG, "solutions");
+    }
+    else if (pars.getName() == "bitmap")
+    {
+      do
+      {
+        int state = pars.nextTag();
+
+        if (state == xmlParser_c::END_TAG) break;
+        pars.require(xmlParser_c::START_TAG, "");
+
+        if (pars.getName() == "pair")
+        {
+          str = pars.getAttributeValue("piece");
+          if (str.length() == 0)
+            pars.exception("a pair node must have a piece attribute");
+          unsigned int piece = atoi(str.c_str());
+
+          str = pars.getAttributeValue("result");
+          if (str.length() == 0)
+            pars.exception("a pair node must have a result attribute");
+          unsigned int result = atoi(str.c_str());
+
+          colorConstraints.insert(piece << 16 | result);
+        }
+
+        pars.skipSubTree();
+
+      } while (true);
+
+      pars.require(xmlParser_c::END_TAG, "bitmap");
+    }
+    else if (pars.getName() == "assembler")
+    {
+      str = pars.getAttributeValue("version");
+      if (str.length())
+      {
+        assemblerVersion = str;
+        pars.next();
+        assemblerState = pars.getText();
+        pars.next();
+        pars.require(xmlParser_c::END_TAG, "assembler");
       }
+      else
+        pars.skipSubTree();
 
-  it = node.find("result");
-  if (it != node.end()) {
-    if (it->get_attributes().find("id") == it->get_attributes().end())
-      throw load_error("the result node must have an 'id' attribute", *it);
-
-    result = atoi(it->get_attributes().find("id")->get_value());
-
-    // if, for whatever reasons the shape is was not right, we reset it to an empty shape
-    if (result >= puzzle.shapeNumber())
-      result = 0xFFFFFFFF;
-  }
-
-  it = node.find("solutions");
-  if (it != node.end()) {
-    for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
-      if ((i->get_type() == xml::node::type_element) &&
-          (strcmp(i->get_name(), "solution") == 0))
-        solutions.push_back(new solution_c(*i, pieces, puzzle.getGridType()));
-  }
-
-  if (node.get_attributes().find("state") != node.get_attributes().end())
-    solveState = (solveState_e)atoi(node.get_attributes().find("state")->get_value());
-  else
-    solveState = SS_UNSOLVED;
-
-  if (solveState != SS_UNSOLVED) {
-    if (node.get_attributes().find("assemblies") == node.get_attributes().end())
-      numAssemblies = 0;
+      pars.require(xmlParser_c::END_TAG, "assembler");
+    }
     else
-      numAssemblies = atoi(node.get_attributes().find("assemblies")->get_value());
+    {
+      pars.skipSubTree();
+    }
 
-    if (node.get_attributes().find("solutions") == node.get_attributes().end())
-      numSolutions = 0;
-    else
-      numSolutions = atoi(node.get_attributes().find("solutions")->get_value());
+  } while (true);
 
-    if (node.get_attributes().find("time") == node.get_attributes().end())
-      usedTime = 0;
-    else
-      usedTime = atoi(node.get_attributes().find("time")->get_value());
+  // some post processing after the loading of values
 
-  } else {
-    numAssemblies = 0;
-    numSolutions = 0;
-    usedTime = 0;
-  }
+  // if, for whatever reasons the shape is was not right, we reset it to an empty shape
+  if (result >= puzzle.shapeNumber())
+    result = 0xFFFFFFFF;
 
-  if (node.get_attributes().find("maxHoles") != node.get_attributes().end())
-    maxHoles = atoi(node.get_attributes().find("maxHoles")->get_value());
-  else
-    maxHoles = 0xFFFFFFFF;
-
-  it = node.find("bitmap");
-  if (it != node.end()) {
-    for (xml::node::const_iterator i = it->begin(); i != it->end(); i++)
-      if ((i->get_type() == xml::node::type_element) &&
-          (strcmp(i->get_name(), "pair") == 0)) {
-
-        if (i->get_attributes().find("piece") == i->get_attributes().end())
-          throw load_error("a pair node must have a piece attribute", *i);
-
-        if (i->get_attributes().find("result") == i->get_attributes().end())
-          throw load_error("a pair node must have a result attribute", *i);
-
-        unsigned int piece = atoi(i->get_attributes().find("piece")->get_value());
-        unsigned int result = atoi(i->get_attributes().find("result")->get_value());
-
-        colorConstraints.insert(piece << 16 | result);
-      }
-  }
-
-  it = node.find("assembler");
-  if ((it != node.end()) && (it->get_attributes().find("version") != it->get_attributes().end())) {
-    assemblerState = it->get_content();
-    assemblerVersion = it->get_attributes().find("version")->get_value();
-  }
+  pars.require(xmlParser_c::END_TAG, "problem");
 }
 
 /************** PROBLEM ****************/

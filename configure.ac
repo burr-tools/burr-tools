@@ -47,15 +47,6 @@ GUI_LD_ADD=`$FLTK_CONFIG --ldflags --use-gl`
 GUI_HELP_CPP_ADD=`$FLTK_CONFIG --cxxflags --use-images`
 GUI_HELP_LD_ADD=`$FLTK_CONFIG --ldflags --use-images`
 
-AC_ARG_WITH(xmlwrapp,
-        [  --with-xmlwrapp         prefix of xmlwrapp (where to find bin/xmlwrapp-config)],
-        XMLWRAPP_CONFIG_PATH=$withval/bin,
-        XMLWRAPP_CONFIG_PATH=$PATH)
-AC_PATH_PROG(XMLWRAPP_CONFIG, xmlwrapp-config, [], [$XMLWRAPP_CONFIG_PATH])
-test -z "$XMLWRAPP_CONFIG" && AC_MSG_ERROR([unable to find xmlwrapp])
-XML_CPP_ADD=`$XMLWRAPP_CONFIG --cxxflags`
-XML_LD_ADD=`$XMLWRAPP_CONFIG --libs`
-
 AC_ARG_WITH(libpng,
         [  --with-libpng           prefix of libpng   (where to find bin/libpng-config)],
         LIBPNG_CONFIG_PATH=$withval/bin,

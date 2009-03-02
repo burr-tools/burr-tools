@@ -53,7 +53,7 @@ burrTxt2_LDADD = lib/libburr.a lua/liblua.a $(LDADD)
 burrTxt2_SOURCES=burrTxt2.cpp
 
 lib_libburr_a_SOURCES =
-lib_libburr_a_SOURCES += lib/assembler.h
+lib_libburr_a_SOURCES += lib/assembler.cpp lib/assembler.h
 lib_libburr_a_SOURCES += lib/assembler_0.cpp lib/assembler_0.h
 lib_libburr_a_SOURCES += lib/assembler_1.cpp lib/assembler_1.h
 lib_libburr_a_SOURCES += lib/assembly.cpp lib/assembly.h
@@ -70,6 +70,7 @@ lib_libburr_a_SOURCES += lib/disassembly.cpp lib/disassembly.h
 lib_libburr_a_SOURCES += lib/disasmtomoves.cpp lib/disasmtomoves.h
 lib_libburr_a_SOURCES += lib/gridtype.cpp lib/gridtype.h
 lib_libburr_a_SOURCES += lib/grouping.cpp lib/grouping.h
+lib_libburr_a_SOURCES += lib/gzstream.cpp lib/gzstream.h
 lib_libburr_a_SOURCES += lib/millable.cpp lib/millable.h
 lib_libburr_a_SOURCES += lib/movementanalysator.cpp lib/movementanalysator.h
 lib_libburr_a_SOURCES += lib/movementcache.cpp lib/movementcache.h
@@ -95,6 +96,7 @@ lib_libburr_a_SOURCES += lib/voxel_1.cpp lib/voxel_1.h
 lib_libburr_a_SOURCES += lib/voxel_2.cpp lib/voxel_2.h
 lib_libburr_a_SOURCES += lib/voxel_3.cpp lib/voxel_3.h
 lib_libburr_a_SOURCES += lib/voxel_4.cpp lib/voxel_4.h
+lib_libburr_a_SOURCES += lib/xml.cpp lib/xml.h
 
 lib_libburr_a_SOURCES += lib/tabs_0/rotmatrix.inc lib/tabs_0/symmetries.inc lib/tabs_0/tablesizes.inc
 lib_libburr_a_SOURCES += lib/tabs_1/rotmatrix.inc lib/tabs_1/symmetries.inc lib/tabs_1/tablesizes.inc
@@ -206,7 +208,6 @@ gui_burrGui_SOURCES += gui/voxeleditgroup.cpp gui/voxeleditgroup.h
 
 gui_burrGui_SOURCES += gui/BlockList.cpp gui/BlockList.h
 gui_burrGui_SOURCES += gui/WindowWidgets.h
-gui_burrGui_SOURCES += gui/gzstream.cpp gui/gzstream.h
 gui_burrGui_SOURCES += gui/Fl_Table.cpp gui/Fl_Table.h
 gui_burrGui_SOURCES += gui/LFl_Tile.cpp gui/LFl_Tile.h
 gui_burrGui_SOURCES += gui/Layouter.cpp gui/Layouter.h
