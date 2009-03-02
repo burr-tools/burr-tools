@@ -265,9 +265,11 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
 
       state = pars.next();
       if (state == xmlParser_c::TEXT)
+      {
         comment = pars.getText();
+        state = pars.next();
+      }
 
-      state = pars.next();
       pars.require(xmlParser_c::END_TAG, "comment");
     }
     else
