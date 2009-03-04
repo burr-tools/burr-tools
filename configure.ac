@@ -47,6 +47,9 @@ GUI_LD_ADD=`$FLTK_CONFIG --ldflags --use-gl`
 GUI_HELP_CPP_ADD=`$FLTK_CONFIG --cxxflags --use-images`
 GUI_HELP_LD_ADD=`$FLTK_CONFIG --ldflags --use-images`
 
+AC_CHECK_LIB(z, uncompress, ,
+	AC_MSG_ERROR([Can't find libz. BurrTools needs it to uncompress the data files]))
+
 AC_ARG_WITH(libpng,
         [  --with-libpng           prefix of libpng   (where to find bin/libpng-config)],
         LIBPNG_CONFIG_PATH=$withval/bin,
