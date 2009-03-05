@@ -93,7 +93,7 @@ public:
    * ownership of the given gridtype is taken over, the memory
    * is freed on destruction of this class
    */
-  puzzle_c(gridType_c * g) : gt(g) { }
+  puzzle_c(gridType_c * g) : gt(g) , commentPopup(false) { }
 
   /**
    * load the puzzle from the XML file
