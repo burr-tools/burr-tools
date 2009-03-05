@@ -94,6 +94,22 @@ assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Win
 //  ckDrpIdentical = new LFl_Check_Button("Remove identical shapes", 0, ypos++, 1, 1);
 //  ckDrpIdentical->value(1);
 
+  {
+    layouter_c * o = new layouter_c(0, ypos++);
+
+    (new LFl_Box("Shape min", 0, 0))->stretchRight();
+    (new LFl_Box("Shape max", 0, 1))->stretchRight();
+    (new LFl_Box("", 1, 0))->setMinimumSize(5, 0);
+    shapeMin = new LFl_Int_Input(2, 0);
+    shapeMax = new LFl_Int_Input(2, 1);
+    shapeMin->value("0");
+    shapeMax->value("100");
+
+    ((LFl_Int_Input*)shapeMin)->weight(1, 0);
+
+    o->end();
+  }
+
   new LSeparator_c(0, ypos++, 1, 1, "", false);
 
   o->end();
@@ -139,4 +155,7 @@ unsigned int assmImportWindow_c::getFilter(void)
 
 unsigned int assmImportWindow_c::getMin(void) { return atoi(min->value()); }
 unsigned int assmImportWindow_c::getMax(void) { return atoi(max->value()); }
+
+unsigned int assmImportWindow_c::getShapeMin(void) { return atoi(shapeMin->value()); }
+unsigned int assmImportWindow_c::getShapeMax(void) { return atoi(shapeMax->value()); }
 

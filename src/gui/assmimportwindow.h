@@ -42,7 +42,7 @@ class assmImportWindow_c : public LFl_Double_Window {
     ProblemSelector *problemSelectorSrc, *problemSelectorDst;
     Fl_Round_Button *rdDontAdd, *rdAddNew, *rdAddDst;
     Fl_Check_Button *ckDrpDisconnected, *ckDrpMirror, *ckDrpSymm, *ckDrpMillable, *ckDrpNotchable, *ckDrpIdentical;
-    Fl_Int_Input *min, *max;
+    Fl_Int_Input *min, *max, *shapeMin, *shapeMax;
 
   public:
 
@@ -75,6 +75,9 @@ class assmImportWindow_c : public LFl_Double_Window {
 
     unsigned int getMin(void);
     unsigned int getMax(void);
+
+    unsigned int getShapeMin(void);
+    unsigned int getShapeMax(void);
 };
 
 #endif

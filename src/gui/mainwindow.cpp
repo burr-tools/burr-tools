@@ -1538,6 +1538,13 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
         continue;
       }
 
+      unsigned int voxels = shape->countState(voxel_c::VX_FILLED);
+      if (voxels < win.getShapeMin() || voxels > win.getShapeMax())
+      {
+        delete shape;
+        continue;
+      }
+
       // TODO NonMillable and Identical is missing
 
       sh.push_back(shape);
