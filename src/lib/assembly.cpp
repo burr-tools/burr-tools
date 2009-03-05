@@ -788,9 +788,9 @@ voxel_c * assembly_c::createSpace(const problem_c * puz) const {
   std::vector<voxel_c *>pieces;
   pieces.resize(placements.size());
 
-  int maxX = 0;
-  int maxY = 0;
-  int maxZ = 0;
+  int maxX = 1;
+  int maxY = 1;
+  int maxZ = 1;
 
   // now iterate over all shapes in the assembly and dounf out their  placement
   // to create the proper sized result voxel space
