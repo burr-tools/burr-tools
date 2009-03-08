@@ -3365,7 +3365,7 @@ void mainWindow_c::CreateSolveTab(void) {
     JustCount->tooltip(" Don\'t save the solutions, just count the number of them ");
     JustCount->clear_visible_focus();
 
-    CompleteRotations = new LFl_Check_Button("Expensive Rot Check", 0, 2, 1, 1);
+    CompleteRotations = new LFl_Check_Button("Expnsv Rot Check", 0, 2, 1, 1);
     CompleteRotations->tooltip(" Do expensive and thorough rotation check, eliminating translations and rotations not in symmetry of the result shape ");
     CompleteRotations->clear_visible_focus();
 
@@ -3450,10 +3450,16 @@ void mainWindow_c::CreateSolveTab(void) {
     BtnPlacement = new LFlatButton_c(0, 0, 1, 1, "Placements", " Browse the calculated placement of pieces ", cb_BtnPlacementBrowser_stub, this);
     ((LFlatButton_c*)BtnPlacement)->weight(1, 0);
 
-    BtnMovement = new LFlatButton_c(1, 0, 1, 1, "Movements", " Browse the possible movements for an assembly ", cb_BtnMovementBrowser_stub, this);
-    if (expertMode) {
-      (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
-      BtnStep = new LFlatButton_c(2, 0, 1, 1, "Step", " Make one step in the assembler ", cb_BtnAssemblerStep_stub, this);
+    (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
+
+    BtnMovement = new LFlatButton_c(2, 0, 1, 1, "Movements", " Browse the possible movements for an assembly ", cb_BtnMovementBrowser_stub, this);
+    ((LFlatButton_c*)BtnMovement)->weight(1, 0);
+
+    if (expertMode)
+    {
+      (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
+
+      BtnStep = new LFlatButton_c(4, 0, 1, 1, "Step", " Make one step in the assembler ", cb_BtnAssemblerStep_stub, this);
       ((LFlatButton_c*)BtnStep)->weight(1, 0);
     } else
       BtnStep = 0;
