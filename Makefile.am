@@ -1,6 +1,12 @@
 SUBDIRS = src
 
-EXTRA_DIST = doc
+EXTRA_DIST =
+EXTRA_DIST += doc_src
+EXTRA_DIST += doxygen.cfg
+EXTRA_DIST += src/lib/tabs_0/generator_0.cpp
+EXTRA_DIST += src/lib/tabs_1/generator_1.cpp
+EXTRA_DIST += src/lib/tabs_2/generator_2.cpp
+EXTRA_DIST += doc/convert.sh
 
 dist_doc_DATA =
 dist_doc_DATA += examples/README examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle
@@ -17,10 +23,6 @@ dist_doc_DATA += examples/Prisgon.xmpuzzle
 dist_doc_DATA += examples/FourPieceTetrahedron.xmpuzzle
 dist_doc_DATA += burricons.ico
 dist_doc_DATA += AUTHORS COPYING README NEWS ChangeLog
-dist_doc_DATA += doxygen.cfg
-dist_doc_DATA += src/lib/tabs_0/generator_0.cpp
-dist_doc_DATA += src/lib/tabs_1/generator_1.cpp
-dist_doc_DATA += src/lib/tabs_2/generator_2.cpp
 
 abs_builddir = @abs_builddir@
 win32dir = $(PACKAGE)-$(VERSION)-win32
