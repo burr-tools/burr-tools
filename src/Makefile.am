@@ -126,7 +126,7 @@ BUILT_SOURCES=\
 
 help/helpdata.cpp: $(EXTRA_DIST) help/data2c.cpp
 	cd help; g++ data2c.cpp -O2 -o data2c `fltk-config --cxxflags --ldflags --use-images`
-	cd help; ./data2c helpdata.cpp ../../doc/*.html - ../../doc/*.png
+	cd help; ./data2c helpdata.cpp ../../doc/html/*.html - ../../doc/html/*.png
 	cd help; $(RM) data2c
 
 flu_libflu_a_SOURCES=\

@@ -31,6 +31,7 @@ dist-win32: all
 	$(INSTALL) -d                        $(win32dir)/examples
 	$(INSTALL) -m755 burricons.ico       $(win32dir)/burricons.ico
 	$(INSTALL) -m755 src/gui/burrGui.exe $(win32dir)/
+	$(INSTALL) -m755 doc/userGuide.pdf   $(win32dir)/
 	$(STRIP) $(win32dir)/*.exe
 	upx --lzma $(win32dir)/*.exe
 	cd $(srcdir) && for FILE in $(dist_doc_DATA); do case $$FILE in \

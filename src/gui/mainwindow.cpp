@@ -1741,7 +1741,7 @@ void mainWindow_c::cb_Help(void) {
 
   Fl_Help_Dialog * help = new Fl_Help_Dialog;
 
-  help->load("node2.html");
+  help->load("Prologue.html");
 
   help->show();
 }
