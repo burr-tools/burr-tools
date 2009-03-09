@@ -458,9 +458,6 @@ r"""\documentclass[11pt,a4paper]{book}
 \usepackage[pdfstartview=FitH,urlcolor=blue,colorlinks=true,bookmarks=true]{hyperref}
 \usepackage[%(ENCODING)s]{inputenc}  %% char encoding
 \usepackage{%(STYLE)s}  %% user defined package
-\pagestyle{plain}   %% do page numbering ('empty' turns off)
-%%\frenchspacing      %% no aditional spaces after periods
-%%\setlength{\parskip}{8pt}\parindent=0pt  %% no paragraph indentation
 \tolerance=10000
 \usepackage{sectsty}
 \allsectionsfont{\sffamily}
