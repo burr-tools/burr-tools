@@ -1071,7 +1071,12 @@ This grid is, just like the rhombic grid, a grid made out of just tetrahedrons.
 But here we have 2 different kind of of them. One regular and 4 irregular forming
 together a cube. The 4 irregular tatrahedrons can be assembled into an octahedron.
 They have one side with an equilateral triangle and 3 sides that are a diagonally
-cut square.
+cut square. You can see one of those cubes in an exploded view in image
+[Exploded Tetrahedral Octahedral view FigTetraOctaConstr] In that image you can
+see the regular tetrahedron red in the middle and the other blue surrounding it.
+
+@F@FigTetraOctaConstr|toConstruction.png|Exploded Tetrahedral Octahedral view@F@
+@F@FigTetraOctaGrid|to333grid.png|The grid representation of Tetrahedral Octahedral grid@F@
 
 There are 2 ways to align the cube assembly of the regular and the 4 irregular
 tetrahedrons in space. One is a rotation of the other. These 2 possible cubes
@@ -1080,7 +1085,12 @@ fill the space of this grid in a checkerboard pattern.
 Internally this grid is, again just like the rhombic grid, represented by the
 cube grid. Each cube in the tetra-octa grid uses a 3x3x3 cube in the cube grid.
 The central regular tetrahedron occupies the central cube while the 4 irregular
-cubes are placed in the diagonally opposite corners of the cube.
+cubes are placed in the diagonally opposite corners of the cube (see Figure
+[Tetra-Octa Grid FigTetraOctaGrid]). In the image the red cube represents the
+regular tetrahedron while the blue cubes represent the other parts.
+
+And just like the rhombic grid this grid also has a problem that might require
+upscaling in certain situations, so keep that in mind.
 
 ==Creating Shapes==[ChCreatingShapes]
 
