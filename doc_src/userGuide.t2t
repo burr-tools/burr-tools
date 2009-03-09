@@ -428,44 +428,150 @@ conditions may be added.
 
 ===Symmetry Considerations===
 
-The way BURRTOOLS handles symmetries in the result shape and the found assemblies
-tries to be as close to "normally expected behaviour" as possible. But sometimes
-it does strangely, unexpected things. So here are some remarks.
+This chapter contains some advanced material that might not be suitable or
+understandable for first time readers. So you might skip it for the moment. It
+is advisable though that you finally read and understand the information given
+in the following sections as otherwise you might get into trouble interpreting
+analysis results.
 
-The symmetry of the defined result shape is used to drop rotated assemblies. That
-means that if you define a non-symmetric result and the assembler finds a solution
-that is symmetric it will find all possible orientations of that solution.
+The way BURRTOOLS handles symmetries in the result shape and the found
+assemblies tries to be as close to "normally expected behaviour" as possible.
+But sometimes it does strangely, unexpected things. To understand that you
+need to know how BURRTOOLS goes on removing rotated solutions.
+
+====Rotation Removal Algorithm====
+
+BURRTOOLS tries to avoid finding rotations of solutions in the first place by
+placing certain pieces in only a few of its possible rotations. But this method
+doesn't work in all cases so a more general solution needs to be found that can
+detect rotated or inflected solutions and drop them when they are found by the
+assembler.
+
+As said this filter is placed after the assembler and before further processing
+(disassembling, sorting into solution lists) of the found assemblies is done.
+To be usable the filter must have one important property: it must be
+independent of the already found assemblies. So what is not working is to save
+a list of all found assemblies and compare the new one with the entries of this
+list.
+
+Apart from getting very slow when the list is becoming long, it requires that
+all assemblies are saved and this can be a real problem when there is a huge
+amount of assemblies for a problem.
+
+So an other approach had to be used. This method works by "normalizing"
+assemblies and only allowing normal assemblies to pass the filter all other
+assemblies are blocked.
+
+Normalizing in this case means to be able to always find one special
+orientation out of all possible orientations of an assembly. If we, for
+example, start with 2 assemblies that are identical assemblies with different
+orientations. Each of these 2 assemblies has a list of other possible
+orientations. The list do contain the same entries but in a different order due
+to the different starting orientation. We must now be able to independently
+identify one special orientation from both lists. And those selected
+orientations must be identical.
+
+This is achieved by applying a comparison operation on the assemblies and
+choosing the smallest or the biggest assembly.
+
+Once we have this operation we implement our filter by only letting through
+assemblies that are identical to the "smallest" orientation out of all of its
+orientations.
+
+It is obvious that this filter blocks all bot one assembly when fed with all
+possible orientations of one assembly.
+
+This filter also works when removing inflections (mirror solutions) of an
+assembly. For that it needs an additional thought though. After mirroring an
+assembly it might happen that pieces that are not mirror symmetric become
+invalid. They changed shape and became their own mirror shape.
+
+This, of course, is a different assembly, maybe even a different puzzle so we
+need to try to rectify this by replacing pieces with their mirror shape, if
+that shape is available. So what we do is that we go through all pieces in the
+assemblies and check if a piece is placed in a mirror orientations. If that is
+the case we search if we have a piece with mirror shape for the current piece
+and exchange those 2 pieces. The new piece is then placed in a non-mirror
+orientation. If we have been able to remove all mirror orientated pieces from
+the assembly we got a valid new orientation that will go into the comparison
+operation. If there are pieces left in mirror orientation, the whole assembly
+is invalid and will not go to the comparison.
+
+Now all this sounds like a good thing and it works pretty well, but it has some
+important consequences that will be explained in the next section.
 
 ====The Mirror Paradox====[ChMirrorParadox]
 
-This section contains the same information as the CFF article in CFF 76. So if you
-have read that article you can skip to the next section.
+This is probably the most important consequence of the rotation removal
+algorithm. When not considered it will result in useless statistics about
+puzzle solutions and generally rubbish puzzle analyses.
 
-All puzzle programs (including BURRTOOLS that allow analysis the type "Can a subset
-of this set of pieces be used to build the following shape?" require the user to
-know about the following things. 
+As we have seen BURRTOOLS will exchange pieces in the process of trying
+to eliminate mirror solutions from a list of assemblies. This manipulation
+will lead to unexpected results like missing solutions or different counts
+of solutions containing a certain piece.
 
-When a puzzle program finds a solution it will check, if that solution is identical
-to another solution and just a rotation or mirror of it. If that is the case the
-found solution is dropped.
+To understand that have a look at the figure
+[Mirror Paradox Example FigMirrorParadoxExample] You can see 2 solutions to a
+simple puzzle. Each solution contains 2 pieces. On closer inspection you will
+see that each solution uses 2 identical pieces but the 2 solutions each use
+2 different sets of 2 pieces each. The 2 piece pairs of the 2 solutions are
+mirror shapes of one another.
 
-To achieve that all possible rotations mirrors of the found solution are created
-and compared. The problem here is the mirror assemblies. A mirror assembly may
-use different pieces
+@F@FigMirrorParadoxExample|MirrorParadox1.png \n MirrorParadox2.png|Pieces, Resuls and solutions for a Puzzle@F@
 
-TBD
+When the mirror removal of BURRTOOLS is enabled BURRTOOLS will only display one
+of the 2 solutions. To explore this you can have a look at the demo file
+``demoMirrorParadox.xmpuzzle`` included in the examples of BurrTools.
 
-====Rotation Removal====[ChRotationRemoval]
+This explains different numbers of solutions that contain the various pieces.
+The overall number of solutions will be constant but the number of solutions
+that contain a certain piece may vary depending on the actual implementation
+of the "smaller" operation of the rotation removal filter.
 
-The chapter on the [mirror paradox ChMirrorParadox] explained how BURRTOOLS avoids
-rotational and mirror solutions. But the method used is not really complete. It
-is done so that it works for normal puzzles and is pretty fast.
+To avoid this problem it is best to know when exactly is may happen and when
+not. Here is a list of conditions:
 
-In some situations though it is necessary to do a more complete analysis and remove
-more solutions. For example: imagine are single cube is to be put into a 4x4 
-square. Everybody will agree that there is just one solution. BURRTOOLS will
-find 3. In one solution the cube is in the corner, one solution has the cube on the 
-edge and one solution places the cube into the middle of the square.
+- it will not happen when you have at least one shape in your puzzle that
+  doesn't has a mirror symmetry. This shape needs to be always in the
+  assemblies.
+- it only happens when you use ranges because we need to be able to //not//
+  use pieces. When always all pieces are used it can not happen
+
+
+And now we need to know what to do about it. The first possibility is to
+change your puzzle so that the problem can not happen. If that is not possible
+you //must// check the checkbox @A@Keep Mirror Solutions@A@.
+
+====Shorten Waiting Times====
+
+Due to the nature of the rotation removal algorithm is may happen that the first
+solutions found don't pass the filter. For big solutions with a big number of
+pieces this waiting time might even be very long.
+
+If you just want to know //if// there are solutions and don't need the precise
+number you can check the checkbox @A@Keep Rotated Solutions@A@. In this
+case the rotation removal filter is disabled and all found assemblies pass.
+
+====Rotation Removal 2====[ChRotationRemoval2]
+
+When I explained the Rotation Removal Algorithm I intentionally left out one
+fact: BURRTOOLS will not create all possible orientations of the assemblies but
+only those orientations that are required. Required are the rotations that are
+in the symmetry of the result shape.
+
+Normally a found rotation will fill up the result shape pretty well, it will
+also normally have an identical outer appearance which means that the found
+assemblies will have the same symmetry as the result shape. This fact is used
+to save some work. Only those orientations are considered that are part of
+the symmetry of the result shape.
+
+Now this works pretty well in most situations. In some cases though it is
+necessary to do a more complete analysis and remove more solutions. For
+example: imagine are single cube is to be put into a 4x4 square. Everybody will
+agree that there is just one solution. BURRTOOLS will find 3. In one solution
+the cube is in the corner, one solution has the cube on the edge and one
+solution places the cube into the middle of the square.
 
 All 3 solutions are identical in external appearance. For BURRTOOLS though they
 are different because BURRTOOLS always looks at the found solution in relation
@@ -474,12 +580,15 @@ to the result shape.
 Sometimes this is not what we need. In that case you will need a more thorough
 analysis that will remove all possible orientations and also translations of
 the solution so that no 2 solutions exist that are just a translation, rotation,
-mirror or a combination of those 3 of one another (the mirroring can be switched
-off just like needed for the [mirror paradox ChMirrorParadox] solution required.
+mirror or a combination of those 3 of one another.
+
+For this the above explained filter will //always// create all possible
+rotations and additionally will shift those orientations so that they are
+closest to the origin before submitting the result to the comparison operation.
 
 BURRTOOLS can do that. See chapter [Solver Settings ChSolverSettings] for how
 to activate this functionality and chapter [Piece Generation ChPieceGeneration]
-for an example of its use
+for an example of its use.
 
 ==Notes for PuzzleSolver3D Users==
 
@@ -3289,4 +3398,22 @@ Wayne Daniel, USA.
 : **Remarks**
 This is a puzzle using the Tetrahedral-Octahedral Spacegrid.
 
+
+==Demonstrations==[ChDemonstrations]
+
+In this section you will find all puzzles that are included to demonstrate
+something explained in the manual. All demonstration puzzles start with
+``demo`` in their file name.
+
+===Mirror Paradox Demonstration===
+
+: **File**
+``demoMirrorParadox.xmpuzzle``
+
+: **Remarks**
+This file contains the puzzle that demonstrates the problem explained in the
+[mirror paradox chapter ChMirrorParadox]. You see a simple result shape and 2
+piece shapes that are mirror shapes on one another. The problem contains 0-2
+instances of the 2 piece shapes. Now solve the problem with and without the
+checkbox "Keep Mirror Solutions" checked. Look at the 2 solutions.
 
