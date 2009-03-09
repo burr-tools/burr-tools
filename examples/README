@@ -5,6 +5,9 @@ allowed me to bundle them here with the program.
 Each design also demonstrates some of the features of the program so I will
 tell a few words about each of them.
 
+Additionally you find some demonstrations that are used in connection with the
+user guide. Those files start with "Demo".
+
 AlPackino: Designed by Ronald Kint-Bruynseels
 This puzzle shows how to properly make packing puzzles. You always should
 include the box as a piece so that the program can also check, if the pieces
