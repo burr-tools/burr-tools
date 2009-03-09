@@ -56,7 +56,7 @@ roever@users.sf.net
 %!postproc(tex): "@x@(\S\S*) (.*)@x@" "\\includegraphics{\1}@x@\2@x@"
 %!postproc(tex): "@x@(.*)@x@" "\\includegraphics{\1}"
 
-=Prologue= 
+=Prologue=
 
 //to my mother (1950-2005)//
 
@@ -73,7 +73,7 @@ This document describes the graphical program. It contains
 descriptions of all concepts and explains how to use them in the GUI program.
 
 For those that want to use or just look at the library part of BURRTOOLS there
-are doxygen comments within the library sorce code. Besides the user interface
+are doxygen comments within the library source code. Besides the user interface
 they explain the basic ideas of the library and also some of the algorithms
 used. But this is only for the interested and not required for the understanding
 of the GUI.
@@ -206,9 +206,9 @@ of your operating system.
 
 ====Linux / Unix====
 
-There are no precompiled binaries for Linux available. You have to compile
-BURRTOOLS youself. These installation instructions just contain some hints for 
-the compilation of BURRTOOLS. As BURRTOOLS requires a few not so widespread 
+There are no pre-compiled binaries for Linux available. You have to compile
+BURRTOOLS yourself. These installation instructions just contain some hints for
+the compilation of BURRTOOLS. As BURRTOOLS requires a few not so widespread
 libraries it is not the easiest task to do this.
 
 To install BURRTOOLS for UNIX you first need to make sure you have the
@@ -305,7 +305,7 @@ BURRTOOLS can only attach one single colour to the voxel as a whole.
 : **Spacegrid**
 The spacegrid defines the shape and orientation and arrangement of the voxels.
 Right now there are 5 space grids available in BURRTOOLS: cubes, prisms with a
-equilateral triangle as base, tightly packed spheres, rhombic and 
+equilateral triangle as base, tightly packed spheres, rhombic and
 tetrahedral-octahedral tetrahedrons. Spacegrids are always fixed and periodic.
 That means that a voxel in a certain position will always have the same shape
 and orientation. So a spacegrid defining, for example, all Penrose patterns is
@@ -380,8 +380,8 @@ of these without specifying which one.
 
 As described above, BURRTOOLS works with shapes which are merely a collection
 of voxels that each can have either one of three different states: //empty//,
-//fixed// or //variable//. Particularly the difference between fixed and 
-variable voxels has a great impact on the way the solver works and which 
+//fixed// or //variable//. Particularly the difference between fixed and
+variable voxels has a great impact on the way the solver works and which
 assemblies are considered to be valid and which are not. Besides that, the
 validity of solutions can be further restricted by imposing colour constraints.
 
@@ -399,10 +399,10 @@ it is not considered to be a valid assembly.
 : **Variable**
 The variable state is used to instruct the program that for a particular voxel
 it is unknown whether it will be filled or empty in the final assembly. This is
-required for puzzles that have holes in //undetermined// places (like all the 
-higher level six-piece burrs). All voxels that //might// be empty //must// have 
-the variable state in the result shape. Right now the variable state can only be 
-used in result shapes and the solver will pop up an error message whenever it 
+required for puzzles that have holes in //undetermined// places (like all the
+higher level six-piece burrs). All voxels that //might// be empty //must// have
+the variable state in the result shape. Right now the variable state can only be
+used in result shapes and the solver will pop up an error message whenever it
 encounters a variable state in a normal piece.
 
 
@@ -487,7 +487,7 @@ BURRTOOLS was initially very much based on PUZZLESOLVER3D by André van Kammen
 but, by now has diverged quite a bit from that. We strongly advise you to read
 this user guide since there are some features in BURRTOOLS that work somewhat
 differently to their counterparts in PUZZLESOLVER3D and there are also some
-functions that PuzzleSolver3D doesn't have. Below are the most prominent
+functions that PUZZLESOLVER3D doesn't have. Below are the most prominent
 differences that need your attention:
 
 - BURRTOOLS doesn't handle holes automatically as PUZZLESOLVER3D does. This may
@@ -519,7 +519,7 @@ differences that need your attention:
   even if it would take longer than the universe exists - to complete the
   search.
 
-- BURRTOOLS supports another gridspace besides the cube space supported by
+- BURRTOOLS supports other spacegrids besides the cube space supported by
   PUZZLESOLVER3D. This allows the design and analysis of completely new puzzles.
 
 - BURRTOOLS knows piece ranges, which enables you to search for puzzles and not
@@ -541,7 +541,7 @@ with the tools described in section [Constraining Tools ChConstrainingTools].
 With these tools you can make a shapes inner or outer cubes variable.
 
 The duplicate pieces are handled automatically. BURRTOOLS adds all shapes to
-the new puzzle and marks the duplicates. The unused shapes are marked as unused 
+the new puzzle and marks the duplicates. The unused shapes are marked as unused
 and can be deleted if they are not required.
 
 =The BurrTools Interface=
@@ -571,7 +571,7 @@ exiting the program (--/[File Menu ChFileMenu]).
 Swaps the 2-D and the 3-D grids for the @A@Entities@A@ tab (--/[Navigating in 2-D and 3-D ChNavigating).
 
 : @B@Export@B@
-Contains a submenu with 3 entries. One allows you to export the contents of the
+Contains a sub-menu with 3 entries. One allows you to export the contents of the
 3-D viewer that can be used to create high quality solution sheets
 (--/[Exporting Images ChExportingImages]). The next allows you to
 create STL files for 3-D printers (--/[Exporting to STL ChExportingSTL]).
@@ -588,11 +588,11 @@ This opens up a window containing lots of possibly useful information about the
 shapes of the puzzles (--/[Chapter Status ChStatus]).
 
 : @B@Edit Comment@B@
-Allows appending textual information to the puzzle file 
+Allows appending textual information to the puzzle file
 (--/[Adding Comments ChAddingComments]).
 
 : @B@Config@B@
-This menu item provides some preferences settings 
+This menu item provides some preferences settings
 (--/ [Config Menu ChConfigMenu]).
 
 : @B@About@B@
@@ -631,7 +631,7 @@ the //result// from the PUZZLESOLVER3D file will be assigned to the last shape
 Since all imported shapes consist only of fixed voxels, the result shape may
 need some editing (puzzles that have internal holes or pieces not filling the
 outskirts of the result shape) to make the solver run. Also, duplicated pieces
-should preferably be deleted from the @A@Shapes@A@ list 
+should preferably be deleted from the @A@Shapes@A@ list
 (--/[Creating Shapes ChCreatingShapes]).
 
 : @B@Save@B@
@@ -649,7 +649,7 @@ grid type (--/Chapter [Converting Shapes ChConvert]
 
 : @B@Import Assms@B@
 With this menu entry you can import a set of existing assembly solutions of one
-problem as new shapes into your puzzle 
+problem as new shapes into your puzzle
 (--/Chapter [Importing Assemblies as Shapes ChImportAssms])
 
 : @B@Quit@B@
@@ -666,7 +666,7 @@ your computer for other tasks.
 
 ===The Configuration Menu===[ChConfigMenu]
 
-The @B@Config@B@ item on the menu bar opens a new window (Figure 
+The @B@Config@B@ item on the menu bar opens a new window (Figure
 [Config FigConfig]) to set some options for the GUI. These settings will be
 stored in a file that is either in your home directory (UNIX) or in your
 profile (WINDOWS). The program will use these settings each time it is started.
@@ -682,7 +682,7 @@ this option.
 
 : @B@Fade Out Pieces@B@
 This option affects the way pieces that //become// //separated// from the rest
-are depicted. Hence, the effects are visible only after running the solver 
+are depicted. Hence, the effects are visible only after running the solver
 (--/[Visibility of Pieces ChVisibilityOfPieces]).
 
 : @B@Use Lights in 3D View@B@
@@ -724,9 +724,9 @@ solver, but more even important lets you create and test your own designs.
 
 The tools section has three major tabs that might can be thought of by analogy
 with real people in the world of mechanical puzzles. First there is the
-@A@Entities@A@ tab, which can be seen as the craftsman who //creates// 
-different //shapes// but is not concerned with their purpose of these 
-(--/Chapter [Shapes ChShapes]). As long as his saw blade is sharp he's the 
+@A@Entities@A@ tab, which can be seen as the craftsman who //creates//
+different //shapes// but is not concerned with their purpose of these
+(--/Chapter [Shapes ChShapes]). As long as his saw blade is sharp he's the
 happiest man in the whole wide world. Next, we have the @A@Puzzle@A@ tab. This
 is the weirdo who thinks it's fun to come up with completely insane
 //problems// to be solved with the otherwise very innocent objects produced by
@@ -785,7 +785,7 @@ scrollbar on the right allows //zooming// in or out on that object by
 respectively moving the slider down or up. Note that the zoom settings are
 independent for each of the three tools tabs.
 
-Extra options for the 3-D viewer are available in the @A@Config@A@ menu 
+Extra options for the 3-D viewer are available in the @A@Config@A@ menu
 (--/[Config Menu ChConfigMenu]).
 
 =Shapes=[ChShapes]
@@ -798,7 +798,7 @@ based on different tetrahedrons: the rhombic and the tetra-octa grid. The
 spacegrid is used for all shapes within a puzzle, so you cannot have one shape
 made out of cubes together with one using another grid. The spacegrid needs to
 be set //before// you start with the puzzle. It cannot be changed later on,
-except in some situations it is possible to loslessly convert the complete
+except in some situations it is possible to losslessly convert the complete
 puzzle (--/[Converting Puzzles ChConvert]). The
 gridtype is selected when you use the @B@New@B@ option.
 
@@ -831,14 +831,14 @@ The 3 spheres form a triangle with a right angle at the origin. This triangle
 has a symmetry axis which is a horizontal line from the origin. That means a
 rotation of 180 degrees around the axis y=0 will result in an identical looking
 triangle with the outer spheres swapped. This is one of the transformations
-mentioned above that BT has to check. (See 
+mentioned above that BT has to check. (See
 [Sphere Grid Problem FigSphereGridProblem] left image)
 
 If we now move the 2 outer spheres by one unit each. One to the right and the
 other down. Which results in those spheres at positions (a+1;a-1) and
 (a-1;-a-1). We again get a rectangular triangle of a slightly different size.
 This triangle again has a symmetry axis but this axis is slightly rotated clock
-wise. This would be a different transformation BT has to handle. (See 
+wise. This would be a different transformation BT has to handle. (See
 [Sphere Grid Problem FigSphereGridProblem] right image)
 
 You can imagine that there is an infinite number of possibilities to place the
@@ -889,7 +889,7 @@ Those variable voxels are a nice trick to see the inner structure of shapes.
 @F@FigCuttingTheCube|rhTetrahedra.png|Cutting of the cubes into the units of the rhombic grid@F@
 
 The next important thing to know is how are these 24 tetrahedra managed. The
-picture below shows how it is done. 
+picture below shows how it is done.
 
 @F@FigMappingRhombicVoxels|rh555grid.png|Mapping of the rhombic tetrahedra to a cube grid@F@
 
@@ -979,7 +979,7 @@ cubes are placed in the diagonally opposite corners of the cube.
 The key concept of BURRTOOLS is //shapes//. A shape is simply a definition of
 an object in 3-D space and consists of a collection of voxels (space units).
 These voxels in turn may have their own characteristics such as //state// and
-//colour//. Note that this definition also includes shapes made out of voxels 
+//colour//. Note that this definition also includes shapes made out of voxels
 that are attached to each other by only a single edge, just a corner, or even
 are completely separated in space. The solver certainly won't bother... but how
 these shapes could be crafted in the workshop is beyond the scope of the
@@ -1009,7 +1009,7 @@ This panel contains - besides a list of the available colours - the tools to
 create and edit custom colours which can be assigned to the voxels of the
 shapes. These colours can be merely ornamental or can have a serious impact on
 the way the solver will work by imposing restrictions on the possible
-placements of the pieces (--/[Adding Color ChAddingColour]).
+placements of the pieces (--/[Adding Colour ChAddingColour]).
 
 
 ==Creating Shapes==
@@ -1109,7 +1109,7 @@ valuable.
 
 **@A@Grid@A@ tools.** Most of these tools are somewhat extended versions of the
 more general transformation tools (--/[TransformationTool ChTransformationTools])
-and have the advantage that they can act on all shapes at once 
+and have the advantage that they can act on all shapes at once
 (--/[AdjustAllShapes ChAdjustAllShapes]).
 
 : [Button_Size_Grid_Minimize.png]
@@ -1136,7 +1136,7 @@ adjusting the grid dimensions.
 **@A@Shape@A@ tools.** Use the following functions wisely because unnecessary
 and extreme scaling up of the shapes will put a heavy load on your system
 resources and can increase solving time dramatically. Also, trying to undo such
-'ridiculous' upscalings with the 1:1 tool can take a long time. 
+'ridiculous' upscalings with the 1:1 tool can take a long time.
 So, //think twice, click once...//
 
 These tools make sense only for spacegrids where a group of voxels can be
@@ -1170,7 +1170,7 @@ introduce //'pins and holes'// into your design.
 ===Adjusting All Shapes===[ChAdjustAllShapes]
 
 A last, but certainly not least, item to mention is the @B@Apply to All Shapes@B@
-checkbox. When checked, //all// shapes -- whether they are selected 
+checkbox. When checked, //all// shapes -- whether they are selected
 or not -- will be affected by the settings and procedures on the @B@Size@B@
 subtab. This is very useful and time saving when a certain adaptation needs to
 be done to all the shapes, e.g. transforming a six-piece burr with length 6
@@ -1210,8 +1210,8 @@ to them.
 Building and editing takes place almost exclusively in the 2-D grid, to which
 the 3-D viewport acts only as a visual aid. Both have their corresponding axes
 in the same colour: //red// for the x-axis, //green// for the y-axis and //blue//
-for the z-axis. For the 2-D grid, which actually can show only a single layer at 
-a time, the z-axis is represented with a scrollbar (Figure 
+for the z-axis. For the 2-D grid, which actually can show only a single layer at
+a time, the z-axis is represented with a scrollbar (Figure
 [FigureToolbarGrid FigToolbarGrid]). By default every new shape
 starts on the bottom layer and the scrollbar allows you to move up and down
 through the different layers along the z-axis (the number of z-layers is always
@@ -1226,8 +1226,8 @@ depending on the state of the compound drawing tools - that will be affected by
 clicking. These indications are also reflected in the 3-D viewer. Furthermore,
 to facilitate positioning on different layers every non-empty voxel on the 2-D
 layer just below the current one 'shines through' in a very light shade of the
-default colour associated with that shape (Figure 
-[FigureNavigation FigNavigation]). This makes building shapes from bottom to 
+default colour associated with that shape (Figure
+[FigureNavigation FigNavigation]). This makes building shapes from bottom to
 top very easy.
 
 With larger grid sizes the cells of the 2-D grid can become very small, even
@@ -1240,7 +1240,7 @@ Note that this affects only the position of the 3-D viewport for the
 ===Basic Drawing Tools===
 
 The basic drawing tools affect the presence and/or the state of a particular
-voxel in the shape. In fact, together with the brush tool (--/[BrushTool ChApplyingColours])
+voxel in the shape. In fact, together with the brush tool (--/[Brush Tool ChApplyingColours])
 they are all that's needed to create any shape in BURRTOOLS. The
 following is a description of these tools. Note that each is also accessible
 through a keyboard short cut.
@@ -1342,8 +1342,8 @@ grid is quite hard. The following actions are possible:
 
 
 As spheres do not really have touching faces the 3-D view of them does now
-contain marks with a slightly different color around the places where the
-spheres would tough. Clicking on those places on the sphere addes the
+contain marks with a slightly different colour around the places where the
+spheres would tough. Clicking on those places on the sphere adds the
 corresponding neighbour sphere.
 
 To avoid having to click all that often you can wiggle the mouse around to get
@@ -1372,7 +1372,7 @@ used only to make them look nice.
 ===The Default Colour and Custom Colours===
 
 Even when no 'special' colours at all are used, the program assigns each shape
-its own different nominal color. This is the so-called //default colour// and
+its own different nominal colour. This is the so-called //default colour// and
 is there only to //distinguish// the shapes from one another. These default
 colours are standard for each newly created shape (the first one in the shapes
 list is always blue, the second one green, the third one red, etc...) and
@@ -1416,7 +1416,7 @@ it with the default colour.
 When you add a colour, BURRTOOLS automatically adds a constraint rule that
 pieces of this colour can be placed into result voxels of this colour. This is
 done by default because it is the way colours are most often used. If you don't
-want this constraint you have to explicitly remove the rules 
+want this constraint you have to explicitly remove the rules
 (--/[ColourConstraints ChColourConstraints]). Also, when a new problem
 is created BURRTOOLS automatically adds one such rule for each existing colour.
 
@@ -1533,7 +1533,7 @@ the next two functions.
 **Variable Inside/Outside -** These functions will respectively make all the
 voxels on the inside or the outside of the shape variable. Making the inside
 variable is very useful for puzzles with internal holes in undetermined places.
-On the other hand making the outside variable can be halpful in a lot of design
+On the other hand making the outside variable can be helpful in a lot of design
 situations (e.g. adding extensions to the pieces). Clicking both buttons will
 make the shape completely built out of variable voxels. Use these wisely as the
 more variable voxels there are, the slower the solver will run.
@@ -1606,7 +1606,7 @@ Shapes that have a mirror symmetry, that means shapes that can be flipped over
 and still look identical are dropped
 
 : Drop all shapes with a symmetry
-Only copletely non symmetric pieces are kept
+Only completely non symmetric pieces are kept
 
 : Drop non millable shapes
 Only pieces that contain no inside corners are kept. This option is only
@@ -1632,7 +1632,7 @@ buttons of the @A@Shapes@A@ section.
 
 ==Shape Information==[ChStatus]
 
-When using the main menu entry @B@Status@B@ a window (Figure 
+When using the main menu entry @B@Status@B@ a window (Figure
 [WindowStatus FigWindowStatus]) like the one above opens and displays all kinds
 of information about all the shapes available inside the puzzle. The table
 columns have the following meanings:
@@ -1778,7 +1778,7 @@ must then be such that the piece to be hidden is allowed to go only into the
 ==Piece Generation==[ChPieceGeneration]
 
 Sometimes you want to use a whole mathematical set of pieces for designing a
-puzzle or for analyzing one. Creating such a complete set is and tedious and
+puzzle or for analysing one. Creating such a complete set is and tedious and
 error prone process.
 
 BURRTOOLS provides tools that may in many cases do a lot of the work you need.
@@ -1796,7 +1796,7 @@ create the L-Quatromino out of normal voxels.
 Now create a problem. Choose the variable cube as result and add 2
 L-Quatrominos.
 
-Go ahaed and solve this problem. Here you should tag the 
+Go ahaed and solve this problem. Here you should tag the
 @B@Expensive rot. check@B@ checkbox (--/ [Rotation considerations ChRotationRemoval])
 and also the @B@Keep Mirror Solutions@B@ checkbox. Set the limit high enough to
 keep all solutions (1000 is enough).
@@ -1808,7 +1808,7 @@ shapes to a new problem as destination. Also tag the @B@Filter disconnected piec
 checkbox. We end up with a problem with 214 pieces.
 
 Choose @B@Status@B@ from the Main Menu. You will see that we have a few mirror
-shapes but also some identical shapes. Those shapes need to be deleted. 
+shapes but also some identical shapes. Those shapes need to be deleted.
 
 Normally you'd think that there should be no identical shapes, but there are
 some shapes that can be made out of 2 L-Quatrominos in different ways. Those
@@ -1819,10 +1819,10 @@ in our new problem
 Now we have our piece set and the result shape defined and can go on solving.
 Select the box out of normal voxels as a result for the new problem. Don't
 forget to uncheck the @B@Expensive rot. Check@B@ checkbox and solve. You should
-end up with 104 solutions. 95 of those can be disassembled. 
+end up with 104 solutions. 95 of those can be disassembled.
 
-For analyzing the found assembles it is always good to sort the solutions by
-pieces. 
+For analysing the assembles found it is always good to sort the solutions by
+pieces.
 
 ==Simulating non-cubic spacegrids==
 
@@ -1904,14 +1904,14 @@ are connected to each other with a link and they can be turned so that in the
 end each piece has 4 possible shapes depending on how you rotate one halve
 against the other.
 
-These shapes can be modeled using edge matching simply taking the shapes apart
-into their 2 halves, and colorize the touching sufaces of she 2 shapes of one
-piece with the same color and a different color for each shape.
+These shapes can be modelled using edge matching simply taking the shapes apart
+into their 2 halves, and colourize the touching surfaces of she 2 shapes of one
+piece with the same colour and a different colour for each shape.
 
-To model such a color edge matching problem we need to scale up by at least 3.
+To model such a colour edge matching problem we need to scale up by at least 3.
 With this scaling we are able to add dents and grooves to the basic cube so
-that always 2 and only those 4 cubes match independent of the rotation of one
-cube relative to the other. Figure [Edge mathing FigEmulEdgeMatching] shows 5 possible
+that always 2 and only those 2 cubes match independent of the rotation of one
+cube relative to the other. Figure [Edge matching FigEmulEdgeMatching] shows 5 possible
 such pairs of cubes. The 2 cubes in one column always are a matching pair.
 
 
@@ -1919,17 +1919,17 @@ such pairs of cubes. The 2 cubes in one column always are a matching pair.
 
 There are many other shapes that can be emulated. As one example I will show 2
 ways to emulate William Waites KNIT PAGODA (see Figure [Pagoda1 FigEmulPagoda1]).
-Besides their shape the pieces have a top side and a bottom. Figure 
+Besides their shape the pieces have a top side and a bottom. Figure
 [Pagoda2 FigEmulPagoda2] shows 2 possible ways to emulate these pieces. Both shapes
 emulate the T-shaped piece seen on the bottom right.
 
 @F@FigEmulPagoda1|Emulation_Pagoda.png|The Knit Pagoda@F@
 
-@F@FigEmulPagoda2|Emulation_Pagoda2.png|Emulation for one of the KNITPAGODA Pieces@F@
+@F@FigEmulPagoda2|Emulation_Pagoda2.png|Emulation for one of the KNIT PAGODA Pieces@F@
 
 It is quite easy to see how the pink shape works. It is constructed starting
 with a 3x3x1 square, and for each side adding a cube at the centre at the
-centre to represent eachside that bulged outward, and removing one cube for
+centre to represent each side that bulged outward, and removing one cube for
 each side that bulges inward. Finally add a cube atop the centre of the 3x3
 square to make it unflippable.
 
@@ -2049,7 +2049,7 @@ Piece ranges can be easily defined using the @B@min=0@B@ button. This will set
 the minimum of the piece range for the current shape to zero. With that you can
 define the range by first adding max-min pieces (meaning the difference between
 the maximum and the minimum number of pieces), then set the minimum to zero and
-then add the missing min pieces. This should cover the most used usage cases.
+then add the missing minimum pieces. This should cover the most used usage cases.
 
 For example: suppose you want to add a piece that you want to use 3, 4, 5 or 6
 times in your puzzle. The piece range is 3-6. To enter those values you first
@@ -2072,7 +2072,7 @@ the pieces from each other and reports that no solution exists when it fails to
 do so. This is just what is required for most puzzles as you need to have
 single pieces as a starting point.
 
-But there are a few puzzles for which you have groups of pieces that are 
+But there are a few puzzles for which you have groups of pieces that are
 //movable// but //not separable//. Here the piece groups come in handy.
 Probably everyone familiar with PUZZLESOLVER3D ever experienced the futile
 attempts of that program trying to solve such designs by nearly endlessly
@@ -2090,7 +2090,7 @@ disassembled. This is the basic idea, but there is a bit more to it.
 
 ====Complete Disassembly====
 
-A special case is //'Group-0'//. All pieces in this group //need to be separated// 
+A special case is //'Group-0'//. All pieces in this group //need to be separated//
 from each other. This group is included so that it is not necessary to place
 all the pieces into their own group when you want the puzzle to completely
 disassemble. Pieces automatically go into Group-0, so you don't need to take
@@ -2196,7 +2196,7 @@ feature will help in the design of lots of puzzles new and crazy ideas.
 ==Editing Problem Details==[ChProblemDetails]
 
 All settings that cannot be set directly on the main problem tab can be set
-within the @B@Problem Details@B@ window (Figure [GroupEditor FigGroupEditor]) 
+within the @B@Problem Details@B@ window (Figure [GroupEditor FigGroupEditor])
 which opens by clicking the @B@Detail@B@ button. This window allows you to
 define groups and to define piece ranges without having to subtract values. The
 window also contains rarely-used parameters.
@@ -2249,7 +2249,7 @@ a result voxel of colour C@A@x@A@. If you don't want that or if you need
 additional placement possibilities, you can change the colour constraint rules
 in the colour assignment section.
 
-The @B@Colour Assignment@B@ panel (Figure [ColourAssignment FigColourAssignment]) 
+The @B@Colour Assignment@B@ panel (Figure [ColourAssignment FigColourAssignment])
 has two lists. The first one shows all the available custom colours and allows
 selecting a certain colour for which then some relations can be set. These
 relations simply indicate which colour(s) in the result can accommodate which
@@ -2341,7 +2341,7 @@ report.
 When checked, the solver will try to disassemble any assemblies found, and only
 those that indeed can be disassembled will be added to the list of solutions.
 If this option is left unchecked, the solver will merely search for all
-//theoretically// possible assemblies, i.e. assemblies for which the pieces do 
+//theoretically// possible assemblies, i.e. assemblies for which the pieces do
 not overlap. Since solving disassemblies takes time (and often far more than
 assembling), it's recommended to leave this option unchecked for puzzles that
 always can be disassembled (e.g. PENTOMINO problems and other packing
@@ -2384,7 +2384,7 @@ you just want to know if there are any solutions //at all//.
 : @B@Expensive rotation check@B@
 When this box is checked, BURRTOOLS will do a more thorough but also more CPU time
 consuming check for double solutions. The basic idea behind it is explained
-in the chapter about [Rotation Removal ChRotationRemoval]. A use of this
+in the chapter about [Rotation Removal ChRotationRemoval2]. A use of this
 switch is explained in the [piece generation example ChPieceGeneration]
 
 : @B@Sort by@B@
@@ -2421,7 +2421,7 @@ has 2 choices:
   solution that was already added to the list. After a while the list contains
   only every 2nd solution -- then the program only adds every 4th solution and
   removes again every 2nd solution that had been on the list, and so on. This
-  sounds complicated but what is does is ensure you have an nice crossection of
+  sounds complicated but what is does is ensure you have an nice cross-section of
   all the solutions, and not just the first or last N found.
 
 
@@ -2446,7 +2446,7 @@ BURRTOOLS. In fact, on loading such a partially solved puzzle BURRTOOLS will
 inform you about the possibility to continue with the search for solutions.
 
 When the solver is interrupted, the shapes (--/ Chapter [Shapes ChShapes])
-and/or the problems (--/ Chapter [Puzzles ChPuzzles]) can be 
+and/or the problems (--/ Chapter [Puzzles ChPuzzles]) can be
 edited. If no editing whatsoever of these has been done, the solving process
 can be simply resumed (@B@Continue@B@), otherwise you need to start all over
 again. But keep in mind that the saving of the internal state of the solver is
@@ -2510,7 +2510,7 @@ A search was started and interrupted.
 
 : finished
 The search has been completed, all the solutions found, ordered by the set up
-sorting criterium, can be inspected (--/ [Inspecting Results ChInspectingResults]).
+sorting criterion, can be inspected (--/ [Inspecting Results ChInspectingResults]).
 
 : please wait
 The user wanted to stop the search, but the program still has to finish what it
@@ -2527,7 +2527,7 @@ Finally, the solver gives information about the @B@Assemblies@B@ found thus far
 (i.e. assemblies for which the pieces do not overlap in 3-D space) and
 @B@Solutions@B@ or disassemblies (i.e. assemblies that also can be constructed
 in real life using the particular pieces of the puzzle). Note that the
-@A@Solutions@A@ are reported (and in fact tested) only if the 
+@A@Solutions@A@ are reported (and in fact tested) only if the
 @A@Solve Disassembly@A@ option is enabled.
 
 ===Manually Solving===
@@ -2538,7 +2538,7 @@ has a lot of shortcomings. For instance, it won't add the solutions it finds to
 the list or update the solver information. So it certainly needs a lot of
 improvements in a future release of the program. For the time being it is
 useful only to check the assembly process when something went wrong with the
-automated search. 
+automated search.
 
 It is also very useful to check, if your colour constraints are correctly
 defined as you can quickly see what placements are checked by the program. So
@@ -2552,7 +2552,7 @@ seen in the 3-D viewer by clicking the @B@Step@B@ button.
 
 ==Browsing Placements==[ChBrowsingPlacements]
 
-The @B@Browse Placements@B@ button opens a window (Figure 
+The @B@Browse Placements@B@ button opens a window (Figure
 [Placement Browser FigPlacementBrowser]) that lets you examine the
 positions for each piece that will by tried by the assembler. The placements
 displayed in this window are the possible positions left in the current state
@@ -2673,7 +2673,7 @@ list of puzzles.
 
 : @A@D DA@A@
 deletes the disassembly of the currently selected solution. The disassembly is
-replaced by data containing only information //about// the disassembly, so you 
+replaced by data containing only information //about// the disassembly, so you
 can still sort the solutions
 
 : @A@D A DA@A@
@@ -2699,8 +2699,8 @@ counter added to their prefix which now takes the form '@B@Sx.n@B@' and their
 default colour may be slightly modified to tell them apart.
 
 By clicking an identifier, the visibility state of that particular piece is
-altered in the 3-D viewer. Each piece can have three states: //visible//, 
-//outlined//, or //invisible.// Clicking an identifier repeatedly just cycles 
+altered in the 3-D viewer. Each piece can have three states: //visible//,
+//outlined//, or //invisible.// Clicking an identifier repeatedly just cycles
 through these states and also alters the way the identifiers are depicted in
 the list. These features are very useful in designs for which the pieces are
 packed in a box, since the box would hide most of the action that is going on
@@ -2732,7 +2732,7 @@ solution sheets, either for your personal archives or to be issued with your
 exchange puzzles and commercially produced puzzles. Currently, these
 capabilities are very basic and need to be improved in a future update of the
 program. So, don't expect too much from them right now, but rather consider
-them to be merely a preview of comming attractions.
+them to be merely a preview of coming attractions.
 
 ==Adding Comments==[ChAddingComments]
 
@@ -2841,16 +2841,16 @@ BURRTOOLS.
 
 As well as the bitmap images explained in the section above BURRTOOLS can also
 export vector images in various different formats. These images have the
-advantage of beeing freely scalable without loss of precision.
+advantage of being freely scalable without loss of precision.
 
 The vector image export doesn't have functionality to export a complete
 assembly or disassembly sequence, but only one image. The image exported is the
 one currently visible in the 3D view.
 
-To export that display into a vecotr image select @A@Vector Image@A@ from the
+To export that display into a vector image select @A@Vector Image@A@ from the
 @A@Export@A@ menu. A small window will open which lets you select the possible
-image format and the filename. You have to append the right extension to the
-filename on your own.
+image format and the file name. You have to append the right extension to the
+file name on your own.
 
 The export may take a while (a few seconds up to a minute or so) and within
 that time the application is unresponsive so please be patient.
@@ -2885,7 +2885,7 @@ generated pieces
 
 For spheres the parameters are as follows:
 
-- @B@Sphere radius:@B@ controls the gap between the centers of the single
+- @B@Sphere radius:@B@ controls the gap between the centres of the single
   spheres. It also is the maximum radius the spheres can have. This value is in
   output units
 - @B@Connection radius:@B@ controls the radius the connection of the spheres
@@ -2896,19 +2896,19 @@ For spheres the parameters are as follows:
 - @B@Curvature radius:@B@ controls the radius of the transition between sphere
   surface and cylinder surface. If this value is 0 no transition is done and
   there will be a bend in the surface. If the value is 1 the maximally possible
-  area will be used to go from sphere surface to cylinder syrface. When there is
+  area will be used to go from sphere surface to cylinder surface. When there is
   only little or no space for the transition (e.g. when the connection radius is
   close to 1) there might be a bend, even when this value is close to 1.
 - @B@Offset:@B@ just like with the cubes this makes the spheres smaller to make
   the puzzle actually assembable. This is in output units. Keep the values
   small if you want to have working puzzles.
 - @B@Recursions:@B@ controls the number of used triangles to approximate the
-  surfaces. A value one bigger will reslt in approximately 4 times as many
-  triangles and accordingly smoother surface but also bigger STL files. Don't 
+  surfaces. A value one bigger will result in approximately 4 times as many
+  triangles and accordingly smoother surface but also bigger STL files. Don't
   make it too big as it will result in long calculation times and huge files!
 
 
-The STL-Export right now works only for cubes and shperes. Triangles and the
+The STL-Export right now works only for cubes and spheres. Triangles and the
 rhombic grid are not supported. Also the shapes to export must not contain any
 variable voxels.
 
@@ -2937,12 +2937,12 @@ interesting to implement are the following:
 - Create a debug window to make it possible to find out why there is no
   assembly or why an assembly can not be taken apart.
 - Speed improvements.
-- ''Unificator'' a tool that makes it easy to check the results of adding color
+- ''Unificator'' a tool that makes it easy to check the results of adding colour
   constraints. For example: suppose you have designed a puzzle with one
   interesting solution and many uninteresting ones and you want now, by adding
-  color constrains, make that one solution unique. It can be a labor intensive
+  colour constrains, make that one solution unique. It can be a labour intensive
   task to do that. The unificator would help here by quickly showing the results
-  of adding color here or making a piece that color, ...
+  of adding colour here or making a piece that colour, ...
 - exploded view
 
 
@@ -3105,7 +3105,7 @@ Stewart Coffin, #197-A, USA
 ``BallRoom.xmpuzzle``
 
 : **Remarks**
-This puzzle shows off the sphere gridspace. It also demonstrates that is is
+This puzzle shows off the sphere spacegrid. It also demonstrates that is is
 possible and useful to include more than one problem within one file.
 
 
@@ -3147,7 +3147,7 @@ Ronald Kint-Bruynseels, 2003, Belgium.
 ``DraculasDentalDisaster.xmpuzzle``
 
 : **Remarks**
-This puzzle demonstrates the use of colour contraints. Halve of the result
+This puzzle demonstrates the use of colour constraints. Halve of the result
 must be red and the other halve black. You can see the colours if you enable
 the checkbox in the status line at the bottom right.
 
@@ -3231,7 +3231,7 @@ Stewart Coffin, Bill Cutler, USA (both independently).
 : **Remarks**
 This is an old classic. It can be seen that the pieces can be assembled in 33
 ways, of those only 2 can really be assembled. It can also be seen that the
-shapes of the sticks can not be modeled correctly. The ends can not be cut
+shapes of the sticks can not be modelled correctly. The ends can not be cut
 straight. But as that doesn't destroy the symmetry of the whole shape it
 doesn't matter. See Broken Sticks for an example where it does matter.
 
@@ -3246,7 +3246,7 @@ Stewart Coffin, USA.
 
 : **Remarks**
 A puzzle that shows the rhombic grid. The pieces are formed by adding
-additional pieces to the pieces of the Four Corner puzle. Those additional
+additional pieces to the pieces of the Four Corner puzzle. Those additional
 pieces are colourized.
 
 
