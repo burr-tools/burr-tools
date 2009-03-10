@@ -1891,6 +1891,20 @@ pieces. The constraint settings (--/[ColourConstraints ChColourConstraints])
 must then be such that the piece to be hidden is allowed to go only into the
 'inside' colour, while the other pieces may go into either colour.
 
+: **Marks On Shapes**
+Colours can also be helpful to give orientation on pieces. When trying to add
+additional voxels to a given shape add them with a new constraint colour.  This
+way you will easily find it again. Once everything is done remove the colour
+from the colour list and the marks will be gone as well.
+
+Also having marks on the pieces will ease orientation between the transformed
+piece in the solution and the original piece in the piece editor.
+
+Finally marks will help other people understanding how pieces are made. If you
+generate pieces by merging 2 shapes you could colourize one shape so that other
+people quickly see the construction rule (see the Broken Sticks puzzle in the
+[examples ChExamples]).
+
 
 ==Piece Generation==[ChPieceGeneration]
 
@@ -2424,7 +2438,22 @@ TBD
 
 ===Constraint Tips===
 
-TBD
+====The "At Least 2 Colours" Rule====
+
+There is one error that happens quite often to people (including me) when
+working with colour constraints. I want to force certain pieces or parts of
+pieces in certain positions. To do that I colourize the pieces and the target
+positions.
+
+When I solve I observe, that the pieces are still placed all over the place.
+The problem is the neutral colour. It can accommodate all possible other
+colours. So:
+
+	**You need at least 2 colours for a placement constraint**
+
+For a real placement constraint you need to use at least 2 colours. One colour
+on its own can be only usable for marks on the pieces, or to colourize the
+pieces for a nicer display.
 
 =Solving Puzzles=[ChSolver]
 
