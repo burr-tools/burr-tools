@@ -2786,6 +2786,30 @@ gets assembly number two, and if it is also disassembable it gets solution
 number 1. So you will see assembly 2 and solution 1 in these 2 fields for the
 given example.
 
+===Optimizing Disassembly Animations===[ChOptimizingDisasmSequences]
+
+When BURRTOOLS generates the assembly animation it tries to optimize the piece
+movement by always moving as few pieces as possible. So if you have a puzzle
+made out of 7 pieces and in one move a group needs to move in one direction
+BURRTOOLS will check if that group contains at most 3 pieces. If so it will
+move those 3 pieces in the required direction. If it finds though that there
+are more than 3 pieces it will rather move the other smaller group in the
+opposite direction.
+
+This "smallest group selection" can be overwritten with the weight parameter
+of shapes. Each weight has a weight attached. Normally this weight is 1. Now
+BURRTOOLS will always look for the group containing the shape with the biggest
+weight and that group will stay put while the other group will move
+disregarding the number of pieces in those groups.
+
+This is useful if you have box packing puzzles. When generating disassembly
+animations for those puzzles you normally want the box to not move while the
+pieces inside the box move around. Simply give the box a weight of 2 and leave
+the weight of the pieces as 1 and you will have a rock solid box.
+
+To see examples of this look at the Pelikan Puzzle or Al Packino from the
+[examples ChExamples].
+
 ===Handling Solutions===
 
 The big button group below the Solution selector and animator lets you modify
