@@ -207,8 +207,8 @@ of your operating system.
 
 There are no pre-compiled binaries for Linux available. You have to compile
 BURRTOOLS yourself. These installation instructions just contain some hints for
-the compilation of BURRTOOLS. As BURRTOOLS requires a few not so widespread
-libraries it is not the easiest task to do this.
+the compilation of BURRTOOLS. As BURRTOOLS requires a not so widespread
+library it is not the easiest task to do this.
 
 To install BURRTOOLS for UNIX you first need to make sure you have the
 following libraries installed: ``zlib`` and ``libpng``. These libraries are
@@ -302,7 +302,7 @@ of colours that are attached to the whole or parts of that voxel. Currently
 BURRTOOLS can only attach one single colour to the voxel as a whole.
 
 : **Spacegrid**
-The spacegrid defines the shape and orientation and arrangement of the voxels.
+The spacegrid defines the shape, orientation and arrangement of the voxels.
 Right now there are 5 space grids available in BURRTOOLS: cubes, prisms with a
 equilateral triangle as base, tightly packed spheres, rhombic and
 tetrahedral-octahedral tetrahedrons. Spacegrids are always fixed and periodic.
@@ -594,7 +594,7 @@ for an example of its use.
 BURRTOOLS was initially very much based on PUZZLESOLVER3D by André van Kammen
 but, by now has diverged quite a bit from that. We strongly advise you to read
 this user guide since there are some features in BURRTOOLS that work somewhat
-differently to their counterparts in PUZZLESOLVER3D and there are also some
+differently to their counterparts in PUZZLESOLVER3D and there are also a lot of
 functions that PUZZLESOLVER3D doesn't have. Below are the most prominent
 differences that need your attention:
 
@@ -683,13 +683,8 @@ Contains a sub-menu with 3 entries. One allows you to export the contents of the
 3-D viewer that can be used to create high quality solution sheets
 (--/[Exporting Images ChExportingImages]). The next allows you to
 create STL files for 3-D printers (--/[Exporting to STL ChExportingSTL]).
-The final exports the current content of the 3D-view
+The final entry exports the current content of the 3D-view
 to a vector image (--/[Exporting vector images ChExportingVectors])
-
-: @B@Grid Parameters@B@
-This menu entry will allow you to change parameters for the currently used
-space grid. These parameters include things like scaling of axes or skew. Not
-all space grids support parameters.
 
 : @B@Status@B@
 This opens up a window containing lots of possibly useful information about the
@@ -814,11 +809,11 @@ at hand, and on the right are some tools to alter the 3-D view. Currently you
 can select there //how// the 3-D view shows the shapes. You have the choice
 between the normal view where each piece is drawn with its default colour, or a
 view where each piece is drawn with its colour constraint colour (if it has one
-assigned --/[Adding Colour ChAddingColour]). The third option is an
-anaglyph called mode (see figure [Window Anaglyph FigWindowAnaglyph]). In this
+assigned --/[Adding Colour ChAddingColour]). The last two options are for a mode
+called //anaglyph// (see figure [Window Anaglyph FigWindowAnaglyph]). In this
 mode the pieces are drawn using the red-cyan method to display real 3-D. You
-can view these with a red-green, red-blue, or red-cyan glasses. The //r//ed
-glass must be in front of your //r//ight eye.
+can view these with red-green, red-blue, or red-cyan glasses. The icon shows
+you which way around the colours must be in front of your eyes.
 
 @F@FigWindowAnaglyph|Window_Anaglyph.png|Disassembler in Anaglyph Mode@F@
 
@@ -927,12 +922,13 @@ transform a shape back onto itself, e.g the shape looks identical to the
 original untransformed shape. This list of transformations needs to be finite
 (and as small as possible, because longer lists make the program slower).
 
-The sphere grid doesn't have this property. To display the problem let's assume
+Unfortunately the sphere grid has an infinite number of transformations that
+might transform the shape onto itself. To display the problem let's assume
 we use the sphere grid in just 2 dimensions and use a square arrangement of
 spheres. We place one sphere at the origin and add 2 more spheres so that both
 of those additional spheres have the same distance from the sphere in the
 origin. If we now place one of the 2 spheres at coordinate (a;a) and the other
-at (a;-a) them both of them will have the same distance from the sphere in the
+at (a;-a) then both of them will have the same distance from the sphere in the
 origin.
 
 The 3 spheres form a triangle with a right angle at the origin. This triangle
@@ -960,7 +956,7 @@ infinite number of possible rotation axes.
 
 Connected in this context means that that it is possible to get from each
 sphere to each other sphere by just jumping from one sphere to the 12 possible
-neighbours and the further on via the neighbours.
+neighbours and then further on via the neighbours.
 
 Some of the unconnected shapes might be possible as well but there is no
 warrant, so if you want to be sure stay with "proper" sphere shapes.
@@ -1069,7 +1065,7 @@ check of the results scale up by two and check again.
 
 This grid is, just like the rhombic grid, a grid made out of just tetrahedrons.
 But here we have 2 different kind of of them. One regular and 4 irregular forming
-together a cube. The 4 irregular tatrahedrons can be assembled into an octahedron.
+together a cube. The 4 irregular tetrahedrons can be assembled into an octahedron.
 They have one side with an equilateral triangle and 3 sides that are a diagonally
 cut square. You can see one of those cubes in an exploded view in image
 [Exploded Tetrahedral Octahedral view FigTetraOctaConstr] In that image you can
@@ -1168,6 +1164,9 @@ decision can be influenced by the weight. The program searches the maximum
 weight in both groups and the one group that has the bigger maximum weight will
 be kept in place and the other group will be moved. If both groups have the
 same maximum weight the group with the smaller number of pieces will be used.
+
+Have a look at the chapter about
+[optimizing the disassembly animation ChOptimizingDisasmSequences].
 
 ==Grid Functions==
 
@@ -2192,11 +2191,14 @@ single pieces as a starting point.
 
 But there are a few puzzles for which you have groups of pieces that are
 //movable// but //not separable//. Here the piece groups come in handy.
-Probably everyone familiar with PUZZLESOLVER3D ever experienced the futile
-attempts of that program trying to solve such designs by nearly endlessly
-shifting the entangled pieces back and forth. Not so with BURRTOOLS, as piece
-groups allow you to tell the disassembler that it is OK when it cannot separate
-a few pieces from one another.
+Probably some of you know how frustrating is is to not be able to analyse
+a puzzle just because there are 2 pieces that are supposed to not go apart.
+Not so with BURRTOOLS, as piece groups allow you to tell the disassembler that
+it is OK when it cannot separate a few pieces from one another.
+
+Another usage of this function is if you have 2 pieces that require a rotation
+to come apart. BURRTOOLS will not be able to separate them, so you tell it that
+those pieces may stay together.
 
 ===Concept===
 
