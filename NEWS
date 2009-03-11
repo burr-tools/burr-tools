@@ -1,150 +1,132 @@
-- fix problem in the rotation filter when 2 mirror shapes were assigned to
-  a problem with different ranges. In that case some solutions were not
-  found when the mirror check was enabled
+- fix problem in the rotation filter when 2 mirror shapes were assigned to a
+  problem with different ranges. In that case some solutions were not found
+  when the mirror check was enabled
 - new grid: tetrahedra-octahedron
-- basic movement analysis for triangle grid
+- basic movement analysis for triangle grid allowing to analyse puzzles without
+  coordinated motion
 - add scrollwheel support for 3D view zoom
 - a lot of cleanup in the disassembler functions
 - converter from cube to rhombic grid and from cube to tetra-octa grid
 - remove 256 piece limitation for disassembler
-- add a simple movement brower to analyze the movements of pieces
-  in an assembled puzzle
-- more memory efficient disassembler, which means you can
-  analyze bigger puzzles without running out of memory
-- the command line tool (not in the windows binary distribution)
-  can now print some information about a puzzle file
-- add lots and lots of code comments in the hope someone may
-  need it, doxygen comments for the library are added
+- add a simple movement browser to analyse the movements of pieces in an
+  assembled puzzle
+- more memory efficient disassembler, which means you can analyse puzzles with
+  more movement without running out of memory
+- the command line tool (not in the windows binary distribution) can now print
+  some information about a puzzle file
+- add lots and lots of code comments in the hope someone may need it, doxygen
+  comments for the library are added in many places
 - different config file format, the old one is thrown away)
-- convert all assemblies of a problem into shapes and add
-  those shapes to another problem
+- convert all assemblies of a problem into shapes and add those shapes to
+  another problem
 - faster sorting method for solution sorting
 - fix a cursor drawing bug in the rhombic grid
 - a new console application that can solve puzzles and actually saves them
-  (this application is not included in the windows binary)
+  (this application is not included in the windows binary package)
 - fix potential symmetry calculation problem with the rhombic grid
 - cube disassembly analysis should be a tiny bit faster
-- explicitly limit colors to 63, the user could add more but it didn't work
-  in older verions
-- better compression for XML files, should result in smaller files
-  although not that much
-- millability and anotchability in status window
-- rewrite XML loading and writing code, this code is faster and compacter
-  and uses much less memory
+- explicitly limit colours to 63, the user could add more but it didn't work in
+  older versions
+- better compression for XML files, should result in smaller files although not
+  that much
+- millability and notchability in status window
+- rewrite XML loading and writing code, this code is faster and compacter and
+  uses much less memory so saving and loading puzzles is much quicker now
+- the printable userguide is back download it separately from the burrtools
+  website it is better than ever
+- remove windows installer (it was buggy and noone cared to tell me, so now
+  only the zip is left, which I can verify)
+- add a function to convert assemblies into shapes and add those to the puzzle
+  various filters can be applied
+- add a new, more CPU intensive but more thorough check for rotated, translated
+  solutions, which can be used with the assembly import to get a usable piece
+  generator
 
 ------------- Version 0.4.2 Jan 2009
 
-- Fix a bug in symmetry avoidance algorithm that could result in too
-  few solutions found. The problem occures if you have result shapes
-  that don't have a direct mirror (only mirrors + rotations) symmetry
-
-- Fix a crash that happened when selecting a z-layer when no shape is
-  there
+- Fix a bug in symmetry avoidance algorithm that could result in too few
+  solutions found. The problem occurs if you have result shapes that don't have
+  a direct mirror (only mirrors + rotations) symmetry
+- Fix a crash that happened when selecting a z-layer when no shape is there
 
 ------------- Version 0.4.1 May 11 2008
 
 - Fix bug in rhombic grid solver. The solver could not solve the trivial case.
   This could lead to not found solutions with very simple pieces
-
 - Less restrictive 255 piece limitation. Assembly is now allowed again
-
 - Fix some typos
 
 ------------- Version 0.4.0 Apr 04 2008
 
-- a new space grid: rhombic tetraedras. With this grid it is possible
-  to build a lot of the Stewart Coffin puzzles and also puzzles with
-  diagonally cut cubes
-
+- a new space grid: rhombic tetrahedrons. With this grid it is possible to
+  build a lot of the Stewart Coffin puzzles and also puzzles with diagonally
+  cut cubes
 - STL export improved
   - can now export binary STL files which are much smaller
   - can now export puzzles that use the sphere grid
-
-- shapes can be removed using the status window making it easier
-  to spot duplicats and remove them
-
-- a new possibility to export images. It is now possible to export the
-  current display within the 3D window into a vector graphic file like SVG
-
-- the help is now available within the program instead of a separate PDF
-  file. It includes the complete texts from the UserGuide including all
-  images. For those that want to print the texts it is possible to export
-  the help to the harddisk.
-
+- shapes can be removed using the status window making it easier to spot
+  duplicates and remove them
+- a new possibility to export images. It is now possible to export the current
+  display within the 3D window into a vector graphic file like SVG
+- the help is now available within the program instead of a separate PDF file.
+  It includes the complete texts from the UserGuide including all images. For
+  those that want to print the texts it is possible to export the help to the
+  harddisk.
 - a function to fill holes in shapes
-
-- a lot of internal cleanup this also includes a possible speedup
-  for the 3D view
-
-- the window position was saved at shutdown of the program but not
-  properly restored. Now it is
+- a lot of internal cleanup this also includes a possible speedup for the 3D
+  view
+- the window position was saved at shutdown of the program but not properly
+  restored. Now it is
 
 ------------- Version 0.3.1 Jul 29 2007
 
-- new edit method. It is now possible to add voxels by clicking into the
-  3d view.
-
+- new edit method. It is now possible to add voxels by clicking into the 3d
+  view.
 - OpenGl libraries were not properly found on some UNIX systems
-
 - solving a puzzle will trigger save warning when exiting
-
 - fixes in new assembler
   - sometimes it found no solutions even though there were some
   - better work selection heuristic resulting in speedup in some cases
-  - fix mirror problem causing calculation abort whith some mirror 
+  - fix mirror problem causing calculation abort with some mirror
     constellations
-
 - Joe Becker edited the whole userguide
-
 - fix possible crash with very large grids
-
 - build improvements
   - better crosscompilation possibilities
   - don't build table generators, when tables are up to date
-  - nsis script
-
+  - NSIS script
 - add a missing symmetry for triangles
-
 - fix a crash when having empty sphere grids in problems
-
 - fix crash when animating a solution that has been removed by the ongoing
   solving
 
 ------------- Version 0.3.0 Jun 13 2007
 
 - a new assembly algorithm that is much faster with puzzles with many
-  multipieces and that has many new possibilities for the future. The
-  old onle will stay for simple puzzles because it is faster in those
-  situations
-
-- piece ranges. It is now possible to specify a range of pieces to use
-  to solve the puzzle
-
+  multipieces and that has many new possibilities for the future. The old one
+  will stay for simple puzzles because it is faster in those situations
+- piece ranges. It is now possible to specify a range of pieces to use to solve
+  the puzzle
 - fix memory leak when counting assemblies
-
 - fix some more problems with certain kind of mirror solutions
-
 - it is now possible to keep mirror solutions, if you wish
-
 - improvements to image export:
   - better layouting of images
   - easier adjustment of zoom level
-  - generate assembly and disassemly image sequences
+  - generate assembly and disassembly image sequences
   - fix bug with problem selection
 
 ------------- Version 0.2.3 Apr 21 2007
 
-- fix another problem that resulted in too many solutions removed for 
-  puzzles with mirrors
+- fix another problem that resulted in too many solutions removed for puzzles
+  with mirrors
 
 ------------- Version 0.2.2 Apr 15 2007
 
-- fix problems with mirror solution detection that somethimes removed too
-  many solutions
-
-- fix compilation on non x86 CPUs, properly use the canonical system name
-  and enable assembly functions only when the code works on that CPU
-
+- fix problems with mirror solution detection that sometimes removed too many
+  solutions
+- fix compilation on non x86 CPUs, properly use the canonical system name and
+  enable assembly functions only when the code works on that CPU
 - (hopefully) fix a hanging program that sometimes occured when the prepare
   button was used
 
@@ -154,74 +136,50 @@
   - 3 new cube groups added
   - 45+4+16 new sphere added
   - 2 triangle groups removed
-
 - add a red - blue/green/cyan 3D mode
-
 - fix some bugs with sphere puzzles:
   - placement browser didn't work properly
-  - shapes are now centered and don't jump around when adding new spheres
+  - shapes are now centred and don't jump around when adding new spheres
   - some puzzles where unsolvable due to internal shortcommings
-
-- add a progress display for the creation of the status window as
-  calculating the information in the status window might take quite
-  some time
-
-- show the actual symmetry group number in the status window and
-  "---" when the group is unknown
-
-- when status window is open you can no longer do anything else, this
-  is better because the status window is not updated when editing
-
-- proper display of the degree symbol in the tooltips for the rotate
-  buttons
-
+- add a progress display for the creation of the status window as calculating
+  the information in the status window might take quite some time
+- show the actual symmetry group number in the status window and "---" when the
+  group is unknown
+- when status window is open you can no longer do anything else, this is better
+  because the status window is not updated when editing
+- proper display of the degree symbol in the tooltips for the rotate buttons
 - the zoom slider zooms much larger
-
-- huge speedup in preparation time. The program used to do a lot of
-  unnecessary checks at the start. Now only the required ones are
-  left
-
+- huge speedup in preparation time. The program used to do a lot of unnecessary
+  checks at the start. Now only the required ones are left
 - lots of internal cleanup in the gui code
-
-- add code that comes from FLU into the source. This will make
-  compilation on UNIX system easier as FLU is not a standard
-  library available on many systems
-
-- improved build system to install the documentation and leave out
-  the headers for the library
-
-- BurrTools now adds a default rule with each added colour and
-  upon creation of the problem it adds rules for all defined colours
-
+- add code that comes from FLU into the source. This will make compilation on
+  UNIX system easier as FLU is not a standard library available on many systems
+- improved build system to install the documentation and leave out the headers
+  for the library
+- BurrTools now adds a default rule with each added colour and upon creation of
+  the problem it adds rules for all defined colours
 - fix an assert, when problems contained empty shapes
-
 - the check for mirrored solutions was not always enabled when it was required
   resulting in additional solutions
-
 - the mirror check was not able to correctly handle 2 pieces of identical
   shape. They should not be there but when they are they are now handled right
 
 ------------- Version 0.2.0 Feb 11 2007
 
-- write required base for other space grids and partially implement
-  triangular prisms (no disassembling right now)
-
+- write required base for other space grids and partially implement triangular
+  prisms (no disassembling right now)
 - STL (3D printer format) export. It is now possible to export cubes into a
   file suitable for 3D printer for rapid prototyping
-
-- implement a status window that displays all kinds of useful and not so
-  useful information for all the shapes in the puzzle
-
+- implement a status window that displays all kinds of useful and not so useful
+  information for all the shapes in the puzzle
 - new functionality for solver tab:
     - sort solutions in different ways while solving
     - sort after the solving has finished
     - remove single and multiple solutions
     - add and remove disassemblies to save memory
-
 - give pieces a weight so that the disassembler knows which pieces have
-  priority when they get moved. This way you can make the box fixed for
-  the disassembly animation
-
+  priority when they get moved. This way you can make the box fixed for the
+  disassembly animation
 - new disassembler, for complex disassemblies it is quite a bit faster and
   consumes less memory. But this will probably not show in most puzzles.
   This disassembler also never moves 2 pieces by different amounts at
@@ -229,310 +187,212 @@
   now all possibilities to move groups of pieces. The old one used to
   oversee a few chances to move 2 or more pieces at the same time. This
   might slow down the disassembler when many choices exist.
-
-- new datastructure for the disassembler. This structur should make the
+- new data structure for the disassembler. This structure should make the
   disassembler a bit faster
-
-- new disassembly animation. This is used in the image export to produce
-  image sequences where the action always takes place in the middle and
-  thus is much better visible
-
-- smaller optimisations for preparation and assembly phase (around 10%
-  speed improvement)
+- new disassembly animation. This is used in the image export to produce image
+  sequences where the action always takes place in the middle and thus is much
+  better visible
+- smaller optimisations for preparation and assembly phase (around 10% speed
+  improvement)
 
 ------------- Version 0.1.9 May 06 2006
 
 - the fade out of pieces that are removed in the assembly animation can be
   turned on and off
-
 - Add possibility to GUI to edit the comment included in a puzzle
-
 - another 3 symmetry groups were missing
-
 - fix: don't try to disassemble 1 piece puzzles
-
 - properly exit when pressing the close x in the window header
-
 - fix crash when removing the last colour
-
 - the marker in the block lists is better visible
-
 - drawing modes from PuzzleSolver3D
-
 - ticks for the z layer selector in the grid editor
-
 - better cursor in 3D view
-
-- disassembler improvements (better move generation, merge, when x pieces
-  move the same amount in the same direction, unmerge, when they move a
-  different amount
-
-- lots interface changes with icons from Ronald Kint-Bruynseels and many
-  new functions to ease the drawing of puzzles
-
+- disassembler improvements (better move generation, merge, when x pieces move
+  the same amount in the same direction, unmerge, when they move a different
+  amount
+- lots interface changes with icons from Ronald Kint-Bruynseels and many new
+  functions to ease the drawing of puzzles
 - independent zoom levels for the 3 tabs
-
 - when making the piece numbers start with 1 I missed a few places
-
 - plug a memory leak that hit when having a lot of assemblies
-
-- make it possible to exchange shapes, problems and positions of shapes 
-  inside problems without destroying found solutions
-
-- shapes can be named. If they have a name it is used in most places, 
-  where the name is useful. If no name is given shapes keep the numbers
-  as usual. If you want the remove a given name just enter an empty text
-  Problems are treated the same way. They don't need to have a name.
-
+- make it possible to exchange shapes, problems and positions of shapes inside
+  problems without destroying found solutions
+- shapes can be named. If they have a name it is used in most places, where the
+  name is useful. If no name is given shapes keep the numbers as usual. If you
+  want the remove a given name just enter an empty text Problems are treated
+  the same way. They don't need to have a name.
 - huge speed improvement for the assembling of puzzles with many identical
-  pieces. The time for JayCube, for example, dropped on my machine from
-  2.5 hours to 7 minutes. The disadvantage is that you can not continue
-  old saved puzzles.
-
-- Implement "Automatic Clumps". The idea is taken from an article by Frans
-  in the CFF 69. It comes from Bill Cutlers puzzle programs. The idea is
-  to join cubes that always have the same state: meaning they are always
-  all empty or all contain piece x or all contain piece y and so on.
-  Instead of treating them one by one, they are now joined.
-
-- Huge speed improvement in the preparation phase. This is especially
-  visible to puzzle where many "false" placements of pieces are possible
-  when you just look at the result shape and the piece. A "false"
-  placement is a placement like the middle position in a 6 piece burr that
-  can never result in a proper solution. These false placements can now
-  be removed much more efficiently before the more expensive check starts
-  resulting in less work for the expensive checks and in speedup.
-  
-- handwritten mashine level code for time important functions giving 
-  another 20% speed gain for calculation intensive assemblies
-
-- pieces are no longer minimised when a puzzle is solved. This has been
-  in the program only because the program couldn't handle that properly
-
-- fixed bug in rotation suppression. Sometimes the program would find
-  rotated solutions. Even worse, that was dependent on the orientation
-  of the pieces
-
-- improvements to 3D view: no wideangle distortion when viewing big
-  puzzles, no colour changes when zooming objects, slightly transparent
-  pieces no longer "hide" some pieces behind them
-
-- image export to create images of shapes, problems or solutions with
-  complete assembly instructions with a few options to influence the
-  resulting image(s). More development is going to come here.
-
-- sometime loading of saved assembly states failed making a resume
-  impossible, the saving was ok, there was an error when reading the
-  data. So if you have files like that that didn't load properly you
-  can give it a new try with this version
+  pieces. The time for JayCube, for example, dropped on my machine from 2.5
+  hours to 7 minutes. The disadvantage is that you can not continue old saved
+  puzzles.
+- Implement "Automatic Clumps". The idea is taken from an article by Frans in
+  the CFF 69. It comes from Bill Cutlers puzzle programs. The idea is to join
+  cubes that always have the same state: meaning they are always all empty or
+  all contain piece x or all contain piece y and so on.  Instead of treating
+  them one by one, they are now joined.
+- Huge speed improvement in the preparation phase. This is especially visible
+  to puzzle where many "false" placements of pieces are possible when you just
+  look at the result shape and the piece. A "false" placement is a placement
+  like the middle position in a 6 piece burr that can never result in a proper
+  solution. These false placements can now be removed much more efficiently
+  before the more expensive check starts resulting in less work for the
+  expensive checks and in speedup.
+- handwritten machine level code for time important functions giving another
+  20% speed gain for calculation intensive assemblies
+- pieces are no longer minimised when a puzzle is solved. This has been in the
+  program only because the program couldn't handle that properly
+- fixed bug in rotation suppression. Sometimes the program would find rotated
+  solutions. Even worse, that was dependent on the orientation of the pieces
+- improvements to 3D view: no wideangle distortion when viewing big puzzles, no
+  colour changes when zooming objects, slightly transparent pieces no longer
+  "hide" some pieces behind them
+- image export to create images of shapes, problems or solutions with complete
+  assembly instructions with a few options to influence the resulting image(s).
+  More development is going to come here.
+- sometime loading of saved assembly states failed making a resume impossible,
+  the saving was ok, there was an error when reading the data. So if you have
+  files like that that didn't load properly you can give it a new try with this
+  version
 
 ------------- Version 0.1.8b Nov 27 2005
 
-- Fix Bug found by Markus Götz that made the program crash, when all 
-  piece were cubes
-
-- Fix a bug found by Primitivo Familiar Ramos. The problem- slider on 
-  the solve tab didn't work
-
-- also implement some suggestions by Primitivo: start counting from 1,
-  unify tool tips, fix some spelling errors
-
-- empty status bar when activating solve tab, as the information got 
-  stale (found by Peter Knoppers)
+- Fix Bug found by Markus Götz that made the program crash, when all piece
+  were cubes
+- Fix a bug found by Primitivo Familiar Ramos. The problem- slider on the solve
+  tab didn't work
+- also implement some suggestions by Primitivo: start counting from 1, unify
+  tool tips, fix some spelling errors
+- empty status bar when activating solve tab, as the information got stale
+  (found by Peter Knoppers)
 
 ------------- Version 0.1.8a Nov 13 2005
 
-- when the program crashes it tries to show some information and it also
-  tries to save the current puzzle into __rescue.xmpuzzle. Please follow 
-  the instructions in this window and send me the information.
-
-- when reducing show the piece that is worked on to show that something
-  is going on
-
-- Placement browser lets you see at what positions a certain piece fits
-  into the resulting shape. Attention, read the documentation about this
-
-- Documentation updates. Some of the internals are described. I was also
-  able to bundle some puzzle designs with the program so that you
-  have something to play with right after installing the program.
-  Many thanks to the designers for allowing me to include their designs.
-
-- Suppression of rotated and mirrored solutions. The program now
-  wont find rotated and mirrored solutions any longer (at leat I hope
-  that it does
-
-- configuration file. The position of the window is saved, you can also
-  toggle tooltips and switch off the light in 3D view resulting in a
-  completely even and very light colors for the pieces
-
-- better groupings. It is not possible to assign mutliple groups with a
-  count to each (set of) pieces. The meaning is defined like this. There
-  can be UP TO the specified number of pieces in this group. This is not
-  required, but when needed it is used. This may be useful if you don't
-  know which pieces belong to which group. Say you have a puzzle of n
-  identical pieces and all you know is that it can be disassembled into 2
-  groups but you don't know how large these groups are. Then you simply
-  assign 2 groups to the pieces and in each of these 2 groups can go n-1
-  pieces.
-
-- add possibility to swap 3D view and edit grid in the shape edit tab.
-  This gives you a bigger grid to edit bigger puzzles
-
+- when the program crashes it tries to show some information and it also tries
+  to save the current puzzle into __rescue.xmpuzzle. Please follow the
+  instructions in this window and send me the information.
+- when reducing show the piece that is worked on to show that something is
+  going on
+- Placement browser lets you see at what positions a certain piece fits into
+  the resulting shape. Attention, read the documentation about this
+- Documentation updates. Some of the internals are described. I was also able
+  to bundle some puzzle designs with the program so that you have something to
+  play with right after installing the program.  Many thanks to the designers
+  for allowing me to include their designs.
+- Suppression of rotated and mirrored solutions. The program now wont find
+  rotated and mirrored solutions any longer (at least I hope that it does
+- configuration file. The position of the window is saved, you can also toggle
+  tooltips and switch off the light in 3D view resulting in a completely even
+  and very light colours for the pieces
+- better groupings. It is not possible to assign multiple groups with a count
+  to each (set of) pieces. The meaning is defined like this. There can be UP TO
+  the specified number of pieces in this group. This is not required, but when
+  needed it is used. This may be useful if you don't know which pieces belong
+  to which group. Say you have a puzzle of n identical pieces and all you know
+  is that it can be disassembled into 2 groups but you don't know how large
+  these groups are. Then you simply assign 2 groups to the pieces and in each
+  of these 2 groups can go n-1 pieces.
+- add possibility to swap 3D view and edit grid in the shape edit tab.  This
+  gives you a bigger grid to edit bigger puzzles
 - reverse meaning of the slider in the grid editor
-
 - fix bug in minimise causing crash when executed on empty shapes
-
-- solution selector can take the focus, so you can use the cursor keys
-  to go through solutions
-
-- more clean design for the grid editor, no more left and right mouse
-  clicking
-
-- some key-shortcuts: F4 toggles 3d and grid view, + and - change edit
-  layer, F2 saves and F3 loads a file
-
+- solution selector can take the focus, so you can use the cursor keys to go
+  through solutions
+- more clean design for the grid editor, no more left and right mouse clicking
+- some key-shortcuts: F4 toggles 3d and grid view, + and - change edit layer,
+  F2 saves and F3 loads a file
 - sort solutions by number of moves required the completely disassemble
-
-- show the complete number of moves required to disassembler, and the
-  level of the puzzle
-
+- show the complete number of moves required to disassembler, and the level of
+  the puzzle
 - cursor for 3D-View
-
 - Variable cubes are now normal sized cubes with a black square
-
-- remove a color deletion problem
-
-- when the tab was dragged so that the 3D-view became invisible (0
-  pixel width) the programm abborted
+- remove a colour deletion problem
+- when the tab was dragged so that the 3D-view became invisible (0 pixel width)
+  the programm abborted
 
 ------------- Version 0.1.7 Aug 19 2005
 
-- last version missed the placement optimisations for pieces
-  resulting in an eternal solving time for some more complex
-  puzzles like Bill Cuttlers SM or Lovley18. This version
-  switches the optimisations back on, that makes some puzzles
-  a bit slower but on the other hand the solving time for some
-  complex puzzles drops down considerable (from years to hours)
-
-- huge speedup for the disassembler for puzzles that have lots of
-  assemblies for EasyLiving for example only 25% of the time is left
-  (time dropped from 24 to 6 seconds) and also for complex puzzles like
-  Pelikan Burr time dropped to 66% (from 5.5 to 3.6 seconds)
-
-- new editing possibilities: drag to fill rectangles and a button that
-  makes your changes not just to the current layer but to all
-
-- add possibility to load PuzzleSolver3D filed (this can be done
-  with the "Import" entry in the main menu
-
-- add function to make it possible to not completely disassemble
-  the puzzles. This is done by putting pieces into groups. All
-  pieces that are in the same group can stay together and the
-  puzzle is still considered as disassembled.
-    Group 0 is different. All pieces in group 0 need to be
-  taken apart until single. You can set the group for each piece
-  with the G+ and G- buttons in the problem tab
-
-- when puzzles where saved before a result shape was defined the
-  program refused to load the file. This works now. Old filed
-  can be loaded as well
-
-- small correction to the 3d view. Cubes besides variable cubes had
-  missing faces
+- last version missed the placement optimisations for pieces resulting in an
+  eternal solving time for some more complex puzzles like Bill Cutlers SM or
+  Lovley18. This version switches the optimisations back on, that makes some
+  puzzles a bit slower but on the other hand the solving time for some complex
+  puzzles drops down considerable (from years to hours)
+- huge speedup for the disassembler for puzzles that have lots of assemblies
+  for EasyLiving for example only 25% of the time is left (time dropped from 24
+  to 6 seconds) and also for complex puzzles like Pelikan Burr time dropped to
+  66% (from 5.5 to 3.6 seconds)
+- new editing possibilities: drag to fill rectangles and a button that makes
+  your changes not just to the current layer but to all
+- add possibility to load PuzzleSolver3D filed (this can be done with the
+  "Import" entry in the main menu
+- add function to make it possible to not completely disassemble the puzzles.
+  This is done by putting pieces into groups. All pieces that are in the same
+  group can stay together and the puzzle is still considered as disassembled.
+    Group 0 is different. All pieces in group 0 need to be taken apart until
+  single. You can set the group for each piece with the G+ and G- buttons in
+  the problem tab
+- when puzzles where saved before a result shape was defined the program
+  refused to load the file. This works now. Old filed can be loaded as well
+- small correction to the 3d view. Cubes besides variable cubes had missing
+  faces
 
 ------------- Version 0.1.6 Jul 10 2005
 
-- add button to change color
-
+- add button to change colour
 - documentation update
-
 - add a lot of comments
-
 - make "just count" work
-
 - enable time display and estimation
-
 - thread fix for win 9x
-
-- load of bad files no longer abborts program but show message
+- load of bad files no longer aborts program but show message
 
 ------------- Version 0.1.5 Jul 10 2005
 
 - no editing of problem while solving
-
 - assembler status in file contains version
-
 - error message, when failed to load
-
 - remove solutions when editing
-
 - variable cubes are not allowed in piece shapes
-
 - memory leaks, uninitialized variables, other misc. valgrind messages
-
 - update interface when solution has anded and reenable everything
-
 
 ------------- Version 0.1.4 Jul 6 2005
 
-- more agressive reduce, may take a bit longer but still faster than
-the original one that took ages for some puzzles
-
+- more aggressive reduce, may take a bit longer but still faster than the
+  original one that took ages for some puzzles
 - valgrind fixes for memory frees and uninitialized memory
-
 - the assembly state can now be saved and resumed so you can top the
-calculation save and resume where you left off the next day
-
-- new disassembly engine that is much faster for complex puzzles but a
-bit slower for simple to disassemble puzzles
-
-- faster disassembler preparation making the disassembling for simple
-problems much faster
-
+  calculation save and resume where you left off the next day
+- new disassembly engine that is much faster for complex puzzles but a bit
+  slower for simple to disassemble puzzles
+- faster disassembler preparation making the disassembling for simple problems
+  much faster
 - better voxel space drawing, including all edges
-
-- voxel space can now also draw the constraint colors besides the shape
-color
-
-- add toggle button on a status bar to toggle between piece and
-constraint color
-
+- voxel space can now also draw the constraint colours besides the shape colour
+- add toggle button on a status bar to toggle between piece and constraint
+  colour
 - separator text size was sometimes calculates wrong
-
-- add web adress to about dialog
-
+- add web address to about dialogue
 - populate the status line with some information
-
 
 ------------- Version 0.1.3 Jun 26 2005
 
 - buttons use up frame now
-
 - doc update
-
-- make it possible to stop while preparing the assembler, you just have
-to wait for it to finish. Bevore that the stop button was ignored while
-in preparation
-
+- make it possible to stop while preparing the assembler, you just have to wait
+  for it to finish. Before that the stop button was ignored while in
+  preparation
 - piece fit test speedup. This should improve preparation speed
-
-- when selecting a shape in the list that lists the piece and the piece
-count for the current problem, the corresponding piece gets selected
-
+- when selecting a shape in the list that lists the piece and the piece count
+  for the current problem, the corresponding piece gets selected
 - about box
-
 - problem renaming
-
-- when something is not right with the puzzle a message box appears now
-instad of a hang in the GUI
-
+- when something is not right with the puzzle a message box appears now instead
+  of a hang in the GUI
 - set the z-layer of the shape editor to 0 on new shape
-
 - bugfixes
-
 
 ------------- Version 0.1.2 Jun 21 2005
 
 old versions
-
 
