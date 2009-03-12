@@ -90,6 +90,10 @@ assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Win
     ckDrpMillable = new LFl_Check_Button("Drop non millable shapes", 0, ypos++, 1, 1);
     ckDrpNotchable = new LFl_Check_Button("Drop non notchable shapes", 0, ypos++, 1, 1);
   }
+  else
+  {
+    ckDrpMillable = ckDrpNotchable = 0;
+  }
 
 //  ckDrpIdentical = new LFl_Check_Button("Remove identical shapes", 0, ypos++, 1, 1);
 //  ckDrpIdentical->value(1);
@@ -103,7 +107,7 @@ assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Win
     shapeMin = new LFl_Int_Input(2, 0);
     shapeMax = new LFl_Int_Input(2, 1);
     shapeMin->value("0");
-    shapeMax->value("100");
+    shapeMax->value("1000000");
 
     ((LFl_Int_Input*)shapeMin)->weight(1, 0);
 
