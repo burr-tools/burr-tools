@@ -49,6 +49,10 @@ static const unsigned char transformationMinimizer[NUM_SYMMETRY_GROUPS][NUM_TRAN
 #include "tabs_1/transformmini.inc"
 };
 
+static const unsigned long long uniqueSymmetries[NUM_SYMMETRY_GROUPS] = {
+#include "tabs_1/uniquesym.inc"
+};
+
 symmetries_1_c::symmetries_1_c(void) {
 }
 
@@ -80,6 +84,14 @@ unsigned char symmetries_1_c::minimizeTransformation(symmetries_t s, unsigned ch
   bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
 
   return transformationMinimizer[s][trans];
+}
+
+bool symmetries_1_c::isTransformationUnique(symmetries_t s, unsigned int t) const {
+
+  bt_assert(s < NUM_SYMMETRY_GROUPS);
+  bt_assert(t < NUM_TRANSFORMATIONS_MIRROR);
+
+  return ((uniqueSymmetries[s] & ((unsigned long long)1 << t)) != 0);
 }
 
 unsigned int symmetries_1_c::countSymmetryIntersection(symmetries_t res, symmetries_t s2) const {

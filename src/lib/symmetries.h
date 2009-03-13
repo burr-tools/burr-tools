@@ -112,6 +112,13 @@ class symmetries_c {
     virtual bool symmetrieContainsTransformation(symmetries_t s, unsigned int t) const = 0;
 
     /**
+     * When you apply all the transformations to the shape with a given symmetry
+     * s for which this function returns true, you get all possible
+     * orientations that that shape can have
+     */
+    virtual bool isTransformationUnique(symmetries_t s, unsigned int t) const = 0;
+
+    /**
      * returns the transformation that results, when you first carry out transformation t1
      * and then transformation t2
      *

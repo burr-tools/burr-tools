@@ -128,6 +128,38 @@ void outputCompleteSymmetries(void) {
   fclose(fout);
 }
 
+/* this function only one bit is set for each possible transformation that results in one possible orientation
+ * of the shape
+ */
+void outputUniqueSymmetries(void) {
+
+  FILE * fout = fopen("uniquesym.inc", "w");
+
+  for (int sy = 0; sy < NUM_SYMMETRY_GROUPS; sy++) {
+
+    unsigned long long s = symmetries[sy];
+    unsigned long long ttt = 0;
+    unsigned long long out = 0;
+
+    for (int r = 0; r < NUM_TRANSFORMATIONS_MIRROR; r++)
+    {
+      if (!((ttt >> r) & 1))
+      {
+        out |= 1ll << r;
+
+	for (int r2 = 0; r2 < NUM_TRANSFORMATIONS_MIRROR; r2++)
+	{
+	  if ((s >> r2) & 1)
+	    ttt |= 1ll << transMult[r2][r];
+	}
+      }
+    }
+    fprintf(fout, "0x%012llXLL,\n", out);
+  }
+
+  fclose(fout);
+}
+
 /* this function creates a decision tree for symmetry creation trying to optimize for the
  * lowest number of checks (6-7 should be possible, if we can subdivide each time#
  * with nearly equal subparts
@@ -262,6 +294,7 @@ int main(int /*argv*/, char** /*args[]*/) {
   multTranformationsMatrix();
   outputMinimumSymmetries();
   outputCompleteSymmetries();
+  outputUniqueSymmetries();
 
   FILE * out = fopen("symcalc.inc", "w");
   fprintf(out, "voxel_c * v;\nbool res;\n");

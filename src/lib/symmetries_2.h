@@ -39,6 +39,7 @@ class symmetries_2_c : public symmetries_c {
     symmetries_t calculateSymmetry(const voxel_c * pp) const;
     bool symmetryContainsMirror(symmetries_t sym) const;
     bool symmetryKnown(const voxel_c * pp) const;
+    bool isTransformationUnique(symmetries_t s, unsigned int trans) const;
 };
 
 #endif

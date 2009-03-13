@@ -101,9 +101,9 @@ lib_libburr_a_SOURCES += lib/xml.cpp lib/xml.h
 lib_libburr_a_SOURCES += lib/tabs_0/rotmatrix.inc lib/tabs_0/symmetries.inc lib/tabs_0/tablesizes.inc
 lib_libburr_a_SOURCES += lib/tabs_1/rotmatrix.inc lib/tabs_1/symmetries.inc lib/tabs_1/tablesizes.inc
 lib_libburr_a_SOURCES += lib/tabs_2/rotmatrix.inc lib/tabs_2/symmetries.inc lib/tabs_2/tablesizes.inc
-lib_libburr_a_SOURCES += lib/tabs_0/symcalc.inc lib/tabs_0/transformmini.inc lib/tabs_0/transmult.inc lib/tabs_0/unifiedsym.inc
-lib_libburr_a_SOURCES += lib/tabs_1/symcalc.inc lib/tabs_1/transformmini.inc lib/tabs_1/transmult.inc lib/tabs_1/unifiedsym.inc
-lib_libburr_a_SOURCES += lib/tabs_2/symcalc.inc lib/tabs_2/transformmini.inc lib/tabs_2/transmult.inc lib/tabs_2/unifiedsym.inc
+lib_libburr_a_SOURCES += lib/tabs_0/symcalc.inc lib/tabs_0/transformmini.inc lib/tabs_0/transmult.inc lib/tabs_0/unifiedsym.inc lib/tabs_0/uniquesym.inc
+lib_libburr_a_SOURCES += lib/tabs_1/symcalc.inc lib/tabs_1/transformmini.inc lib/tabs_1/transmult.inc lib/tabs_1/unifiedsym.inc lib/tabs_1/uniquesym.inc
+lib_libburr_a_SOURCES += lib/tabs_2/symcalc.inc lib/tabs_2/transformmini.inc lib/tabs_2/transmult.inc lib/tabs_2/unifiedsym.inc lib/tabs_2/uniquesym.inc
 
 
 EXTRA_DIST=\

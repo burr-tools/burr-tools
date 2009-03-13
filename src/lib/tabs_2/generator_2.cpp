@@ -143,6 +143,46 @@ void outputCompleteSymmetries(void) {
   fclose(fout);
 }
 
+/* this function only one bit is set for each possible transformation that results in one possible orientation
+ * of the shape
+ */
+void outputUniqueSymmetries(void) {
+
+  FILE * fout = fopen("uniquesym.inc", "w");
+
+  for (int sy = 0; sy < NUM_SYMMETRY_GROUPS; sy++) {
+
+    bitfield_c<NUM_TRANSFORMATIONS_MIRROR> s = symmetries[sy];
+    bitfield_c<NUM_TRANSFORMATIONS_MIRROR> ttt;
+    bitfield_c<NUM_TRANSFORMATIONS_MIRROR> out;
+
+    for (int r = 0; r < NUM_TRANSFORMATIONS_MIRROR; r++)
+    {
+      if (!ttt.get(r))
+      {
+        out.set(r);
+
+	for (int r2 = 0; r2 < NUM_TRANSFORMATIONS_MIRROR; r2++)
+	{
+	  if (s.get(r2))
+          {
+	    if (transMult[r2][r] >= 0)
+              ttt.set(transMult[r2][r]);
+          }
+	}
+      }
+    }
+    char line[100];
+    out.print(line, 100);
+
+    fprintf(fout, "  \"%s\",\n", line+4);
+  }
+
+  fclose(fout);
+}
+
+
+
 /* this function creates a decision tree for symmetry creation trying to optimize for the
  * lowest number of checks (6-7 should be possible, if we can subdivide each time#
  * with nearly equal subparts
@@ -276,6 +316,7 @@ int main(int /*argv*/, char** /*args[]*/) {
   multTranformationsMatrix();
   outputMinimumSymmetries();
   outputCompleteSymmetries();
+  outputUniqueSymmetries();
 
   FILE * out = fopen("symcalc.inc", "w");
   makeSymmetryTree("0", "0", out);
