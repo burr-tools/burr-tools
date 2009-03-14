@@ -1733,6 +1733,11 @@ available on the cube grid
 Only shapes that can be made with a saw are kept. This option is only available
 on the cube grid
 
+: Drop identical shapes
+Only import shapes that are different from one another. It might be that the
+same shape can be build in different ways with the building blocks you defined.
+If you don't want those identical looking shapes check this box.
+
 : Range
 You can choose a range out of how many voxels the shape must consist. If the
 new shape contains more or less voxels it will be dropped and not get added to

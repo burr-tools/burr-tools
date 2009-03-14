@@ -41,6 +41,8 @@
 - add a new, more CPU intensive but more thorough check for rotated, translated
   solutions, which can be used with the assembly import to get a usable piece
   generator
+- status window information calculation is much much faster and will not longer
+  get slower with more shapes
 
 ------------- Version 0.4.2 Jan 2009
 
