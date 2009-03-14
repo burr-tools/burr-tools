@@ -96,6 +96,7 @@ lib_libburr_a_SOURCES += lib/voxel_1.cpp lib/voxel_1.h
 lib_libburr_a_SOURCES += lib/voxel_2.cpp lib/voxel_2.h
 lib_libburr_a_SOURCES += lib/voxel_3.cpp lib/voxel_3.h
 lib_libburr_a_SOURCES += lib/voxel_4.cpp lib/voxel_4.h
+lib_libburr_a_SOURCES += lib/voxeltable.cpp lib/voxeltable.h
 lib_libburr_a_SOURCES += lib/xml.cpp lib/xml.h
 
 lib_libburr_a_SOURCES += lib/tabs_0/rotmatrix.inc lib/tabs_0/symmetries.inc lib/tabs_0/tablesizes.inc
