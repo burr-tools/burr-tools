@@ -50,11 +50,11 @@ static unsigned long calcHashValue(const voxel_c * v)
 {
   unsigned long res = 101;
 
-  res *= v->getX();
+  res *= v->boundX2()-v->boundX1();
   res += 11;
-  res *= v->getY();
+  res *= v->boundY2()-v->boundY1();
   res += 13;
-  res *= v->getZ();
+  res *= v->boundZ2()-v->boundZ1();
   res += 17;
 
   for (unsigned int z = v->boundZ1(); z <= v->boundZ2(); z++)
@@ -72,11 +72,11 @@ static unsigned long calcColourHashValue(const voxel_c * v)
 {
   unsigned long res = 101;
 
-  res *= v->getX();
+  res *= v->boundX2()-v->boundX1();
   res += 11;
-  res *= v->getY();
+  res *= v->boundY2()-v->boundY1();
   res += 13;
-  res *= v->getZ();
+  res *= v->boundZ2()-v->boundZ1();
   res += 17;
 
   for (unsigned int z = v->boundZ1(); z <= v->boundZ2(); z++)
@@ -84,7 +84,12 @@ static unsigned long calcColourHashValue(const voxel_c * v)
       for (unsigned int x = v->boundX1(); x <= v->boundX2(); x++)
       {
         res *= 101;
-        res += v->get(x, y, z);
+        res += v->getState(x, y, z);
+        if (v->getState(x, y, z) != voxel_c::VX_EMPTY)
+        {
+          res *= 3;
+          res += v->getColor(x, y, z);
+        }
       }
 
   return res;
@@ -154,7 +159,7 @@ bool voxelTable_c::getSpaceColour(const voxel_c *v, unsigned int *index, unsigne
 
   while (n)
   {
-    if (n->hash == hash)
+    if (n->hash == hash && (n->transformation < v->getGridType()->getSymmetries()->getNumTransformations()))
     {
       voxel_c * v2 = v->getGridType()->getVoxel(findSpace(n->index));
       bool found = v2->transform(n->transformation) && v->identicalInBB(v2, true);
@@ -187,7 +192,7 @@ void voxelTable_c::addSpace(const voxel_c * v, unsigned int index)
   if (tableEntries >= tableSize) {
     // rehash table
 
-    unsigned long newSize = 2*tableSize + 1;
+    unsigned long newSize = 3*tableSize + 1;
     hashNode ** t2 = new hashNode * [newSize];
 
     for (unsigned long i = 0; i < newSize; i++)
