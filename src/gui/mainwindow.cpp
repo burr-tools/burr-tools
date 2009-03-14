@@ -66,6 +66,7 @@
 #include "../lib/millable.h"
 #include "../lib/xml.h"
 #include "../lib/gzstream.h"
+#include "../lib/voxeltable.h"
 
 #include "../flu/Flu_File_Chooser.h"
 
@@ -1484,6 +1485,21 @@ void mainWindow_c::cb_Convert(void) {
   }
 }
 
+class voxelTableVector_c : public voxelTable_c
+{
+  private:
+
+    const std::vector<voxel_c *> *shapes;
+
+  public:
+
+    voxelTableVector_c(const std::vector<voxel_c *> *s) : voxelTable_c(false), shapes(s) {}
+
+  protected:
+
+    const voxel_c * findSpace(unsigned int index) const { return (*shapes)[index]; }
+};
+
 static void cb_AssembliesToShapes_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AssembliesToShapes(); }
 void mainWindow_c::cb_AssembliesToShapes(void) {
 
@@ -1498,9 +1514,11 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
   {
     problem_c * pr = puzzle->getProblem(win.getSrcProblem());
 
-    std::vector<voxel_c *>sh;
+    std::vector<voxel_c *> sh;
 
     unsigned int filter = win.getFilter();
+
+    voxelTableVector_c voxelTab(&sh);
 
     for (unsigned int s = 0; s < pr->solutionNumber(); s++)
     {
@@ -1545,9 +1563,25 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
         continue;
       }
 
-      // TODO NonMillable and Identical is missing
+      // if the user wants no identical shapes, we look up the current
+      // shape in the known shapes table and drop it if we find it
+      if (filter & assmImportWindow_c::dropIdentical)
+      {
+        if (voxelTab.getSpace(shape))
+        {
+          delete shape;
+          continue;
+        }
+      }
 
       sh.push_back(shape);
+
+      // we only need to add the current shape to the shape table
+      // if the user wants to drop identical shapes and we use the table
+      if (filter & assmImportWindow_c::dropIdentical)
+      {
+        voxelTab.addSpace(shape, sh.size()-1);
+      }
     }
 
     if (win.getAction() == assmImportWindow_c::A_ADD_NEW)

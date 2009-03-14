@@ -95,8 +95,9 @@ assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Win
     ckDrpMillable = ckDrpNotchable = 0;
   }
 
-//  ckDrpIdentical = new LFl_Check_Button("Remove identical shapes", 0, ypos++, 1, 1);
-//  ckDrpIdentical->value(1);
+  ckDrpIdentical = new LFl_Check_Button("Remove identical shapes", 0, ypos++, 1, 1);
+  ckDrpIdentical->value(1);
+  ckDrpIdentical->set();
 
   {
     layouter_c * o = new layouter_c(0, ypos++);
@@ -152,7 +153,7 @@ unsigned int assmImportWindow_c::getFilter(void)
   if (ckDrpSymm->value()) filter |= dropSymmetric;
   if (ckDrpMillable && ckDrpMillable->value()) filter |= dropNonMillable;
   if (ckDrpNotchable && ckDrpNotchable->value()) filter |= dropNonNotchable;
-//  if (ckDrpIdentical->value()) filter |= dropIdentical;
+  if (ckDrpIdentical->value()) filter |= dropIdentical;
 
   return filter;
 }
