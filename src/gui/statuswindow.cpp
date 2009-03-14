@@ -22,6 +22,7 @@
 #include "../lib/puzzle.h"
 #include "../lib/problem.h"
 #include "../lib/millable.h"
+#include "../lib/voxeltable.h"
 
 #include <FL/Fl.H>
 
@@ -133,6 +134,8 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
   if (p->getGridType()->getType() == gridType_c::GT_BRICKS)
     cols += 4;
 
+  voxelTablePuzzle_c shapeTab(p, true);
+
   for (unsigned int s = 0; s < p->shapeNumber(); s++) {
 
     LFl_Box * b;
@@ -175,44 +178,47 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
     col += 2;
     Fl::wait(0);
 
-    for (unsigned int s2 = 0; s2 < s; s2++)
-      if (v->identicalWithRots(p->getShape(s2), true, false)) {
-        snprintf(tmp, 200, "%i", s2+1);
-        b = new LFl_Box("", col, s+head);
-        b->copy_label(tmp);
-        b->color(fl_rgb_color(pieceColorRi(s2), pieceColorGi(s2), pieceColorBi(s2)));
-        if (3*pieceColorRi(s2) + 6*pieceColorGi(s2) + pieceColorBi(s2) < 1275)
-          b->labelcolor(fl_rgb_color(255, 255, 255));
-        b->box(FL_FLAT_BOX);
-        break;
-      }
+    unsigned int shapeIdx;
+    unsigned char shapeTrans;
+    bool shapeKnown = shapeTab.getSpace(v, &shapeIdx, &shapeTrans);
+
+    if (shapeKnown)
+    {
+      snprintf(tmp, 200, "%i", shapeIdx+1);
+      b = new LFl_Box("", col, s+head);
+      b->copy_label(tmp);
+      b->color(fltkPieceColor(shapeIdx));
+      b->labelcolor(contrastPieceColor(shapeIdx));
+      b->box(FL_FLAT_BOX);
+    }
     col += 2;
     Fl::wait(0);
 
-    for (unsigned int s2 = 0; s2 < s; s2++)
-      if (v->identicalWithRots(p->getShape(s2), false, false)) {
-        snprintf(tmp, 200, "%i", s2+1);
-        b = new LFl_Box("", col, s+head);
-        b->copy_label(tmp);
-        b->color(fl_rgb_color(pieceColorRi(s2), pieceColorGi(s2), pieceColorBi(s2)));
-        if (3*pieceColorRi(s2) + 6*pieceColorGi(s2) + pieceColorBi(s2) < 1275)
-          b->labelcolor(fl_rgb_color(255, 255, 255));
-        b->box(FL_FLAT_BOX);
-        break;
-      }
+    shapeKnown = shapeTab.getSpaceNoRot(v, &shapeIdx, &shapeTrans);
+
+    if (shapeKnown)
+    {
+      snprintf(tmp, 200, "%i", shapeIdx+1);
+      b = new LFl_Box("", col, s+head);
+      b->copy_label(tmp);
+      b->color(fltkPieceColor(shapeIdx));
+      b->labelcolor(contrastPieceColor(shapeIdx));
+      b->box(FL_FLAT_BOX);
+    }
     col += 2;
     Fl::wait(0);
 
-    for (unsigned int s2 = 0; s2 < s; s2++)
-      if (v->identicalWithRots(p->getShape(s2), false, true)) {
-        snprintf(tmp, 200, "%i", s2+1);
-        b = new LFl_Box("", col, s+head);
-        b->copy_label(tmp);
-        b->color(fltkPieceColor(s2));
-        b->labelcolor(contrastPieceColor(s2));
-        b->box(FL_FLAT_BOX);
-        break;
-      }
+    shapeKnown = shapeTab.getSpaceColour(v, &shapeIdx, &shapeTrans);
+
+    if (shapeKnown && shapeTrans < p->getGridType()->getSymmetries()->getNumTransformations())
+    {
+      snprintf(tmp, 200, "%i", shapeIdx+1);
+      b = new LFl_Box("", col, s+head);
+      b->copy_label(tmp);
+      b->color(fltkPieceColor(shapeIdx));
+      b->labelcolor(contrastPieceColor(shapeIdx));
+      b->box(FL_FLAT_BOX);
+    }
     col +=2 ;
     Fl::wait(0);
 
@@ -293,6 +299,8 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
     Fl::wait(0);
     if (!stp->visible())
       break;
+
+    shapeTab.addSpace(v, s);
   }
 
   stp->hide();
