@@ -209,6 +209,18 @@ class bitfield_c {
       return res;
     }
 
+    /**
+     * bitwise or of 2 bitfields
+     */
+    const bitfield_c<bits> operator|(const bitfield_c<bits> & right) const {
+      bitfield_c<bits> res;
+
+      for (int i = 0; i < ((bits+63)/64); i++)
+        res.field[i] = field[i] | right.field[i];
+
+      return res;
+    }
+
 };
 
 
