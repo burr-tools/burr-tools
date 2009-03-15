@@ -54,6 +54,10 @@ roever@users.sf.net
 %!postproc(tex): "@x@\$\\backslash\$n (.*)@x@" "\\linebreak{}@x@\1@x@"
 %!postproc(tex): "@x@(\S\S*) (.*)@x@" "\\includegraphics{\1}@x@\2@x@"
 %!postproc(tex): "@x@(.*)@x@" "\\includegraphics{\1}"
+%!postproc(html): "@Hyp@" ""
+%!postproc(tex):  "@Hyp@" "\\hyphenation{burr-tools}"
+
+@Hyp@
 
 =Prologue=
 
