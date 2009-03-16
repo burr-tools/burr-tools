@@ -392,7 +392,7 @@ disassemblerNode_c * movementAnalysator_c::newNode(unsigned int amount) {
 
     if (movement[i]) {
 
-      if (movement[i] == 30000) {
+      if (movement[i] >= 10000) {
 
         int mx, my, mz;
 

@@ -99,11 +99,15 @@ void disassemblerNode_c::replaceNode(const disassemblerNode_c *n) {
   comefrom->incRefCount();
 }
 
-unsigned int disassemblerNode_c::hash(void) const {
-
+unsigned int disassemblerNode_c::hash(void) const
+{
   if (hashValue) return hashValue;
 
   unsigned int h = 0x17fe3b3c;
+
+  // as the zero-th entry of the transformation
+  // is not included in the loop below add it manually
+  h += dat[3];
 
   for (unsigned int i = 1; i < piecenumber; i++) {
     h += (dat[4*i+0]-dat[0]);
@@ -116,11 +120,17 @@ unsigned int disassemblerNode_c::hash(void) const {
     h *= 23;
   }
 
+  if (h == 0) h = 1;
+
   const_cast<disassemblerNode_c*>(this)->hashValue = h;
   return h;
 }
 
-bool disassemblerNode_c::operator == (const disassemblerNode_c &b) const {
+bool disassemblerNode_c::operator == (const disassemblerNode_c &b) const
+{
+  // as the zero-th entry of the transformation
+  // is not included in the loop below add it manually
+  if (dat[3] != b.dat[3]) return false;
 
   for (unsigned int i = 1; i < piecenumber; i++) {
     if (dat[4*i+0] - dat[0] != b.dat[4*i+0] - b.dat[0]) return false;
