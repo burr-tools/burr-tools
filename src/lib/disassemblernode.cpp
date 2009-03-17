@@ -55,9 +55,9 @@ disassemblerNode_c::disassemblerNode_c(const assembly_c * assm) : comefrom(0), p
   for (unsigned int j = 0; j < assm->placementCount(); j++)
     if (assm->isPlaced(j)) {
       bt_assert(
-          abs(assm->getX(j)) < 128 &&
-          abs(assm->getY(j)) < 128 &&
-          abs(assm->getZ(j)) < 128);
+          abs(assm->getX(j)) < maxMove &&
+          abs(assm->getY(j)) < maxMove &&
+          abs(assm->getZ(j)) < maxMove);
 
       dat[4*pc+0] = assm->getX(j);
       dat[4*pc+1] = assm->getY(j);
