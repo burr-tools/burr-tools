@@ -19,18 +19,14 @@
 
 #include "assembly.h"
 
-disassemblerNode_c::disassemblerNode_c(unsigned int pn, disassemblerNode_c * comf, int _dir, int _amount, int step) : comefrom(comf), piecenumber(pn), refcount(1), dir(_dir), amount(_amount) {
-  dat = new int16_t[4*piecenumber];
+disassemblerNode_c::disassemblerNode_c(unsigned int pn, disassemblerNode_c * comf, int _dir, int _amount, int step) :
+    comefrom(comf), piecenumber(pn), dat(new int16_t[4*piecenumber]),
+    refcount(1), dir(_dir), amount(_amount), hashValue(0)
+{
+  bt_assert(comefrom);
 
-  if (comefrom)
-    comefrom->refcount++;
-
-  hashValue = 0;
-
-  if (comf)
-    waylength = comf->waylength + step;
-  else
-    waylength = step;
+  comefrom->incRefCount();
+  waylength = comf->waylength+step;
 }
 
 disassemblerNode_c::disassemblerNode_c(unsigned int pn) :
