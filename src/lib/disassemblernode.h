@@ -144,6 +144,9 @@ public:
   /** creates a root node from an assembly */
   disassemblerNode_c(const assembly_c * assm);
 
+  /** create a new root node with pn pieces */
+  disassemblerNode_c(unsigned int pn);
+
   ~disassemblerNode_c();
 
   /**

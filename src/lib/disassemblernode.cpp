@@ -33,8 +33,15 @@ disassemblerNode_c::disassemblerNode_c(unsigned int pn, disassemblerNode_c * com
     waylength = step;
 }
 
-disassemblerNode_c::disassemblerNode_c(const assembly_c * assm) : comefrom(0), piecenumber(0), refcount(1), dir(0), amount(0), waylength(0) {
+disassemblerNode_c::disassemblerNode_c(unsigned int pn) :
+    comefrom(0), piecenumber(pn), dat(new int16_t[4*piecenumber]),
+    refcount(1), dir(0), amount(0), hashValue(0), waylength(0)
+{
+}
 
+disassemblerNode_c::disassemblerNode_c(const assembly_c * assm) :
+    comefrom(0), piecenumber(0), refcount(1), dir(0), amount(0), hashValue(0), waylength(0)
+{
   /* create the first node with the start state
    * here all pieces are at position (0; 0; 0)
    */
@@ -43,8 +50,6 @@ disassemblerNode_c::disassemblerNode_c(const assembly_c * assm) : comefrom(0), p
       piecenumber++;
 
   dat = new int16_t[4*piecenumber];
-
-  hashValue = 0;
 
   /* create pieces field. This field contains the
    * names of all present pieces. Because at the start
