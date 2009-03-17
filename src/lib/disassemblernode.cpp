@@ -71,11 +71,8 @@ disassemblerNode_c::~disassemblerNode_c() {
 
   delete [] dat;
 
-  if (comefrom) {
-    comefrom->refcount--;
-    if (comefrom->refcount == 0)
-      delete comefrom;
-  }
+  if (comefrom && comefrom->decRefCount())
+    delete comefrom;
 }
 
 void disassemblerNode_c::replaceNode(const disassemblerNode_c *n) {
@@ -90,13 +87,13 @@ void disassemblerNode_c::replaceNode(const disassemblerNode_c *n) {
 
   waylength = n->waylength;
 
-  if (comefrom) {
-    comefrom->refcount--;
-    if (comefrom->refcount == 0)
-      delete comefrom;
-  }
+  if (comefrom && comefrom->decRefCount())
+    delete comefrom;
+
   comefrom = n->comefrom;
-  comefrom->incRefCount();
+
+  if (comefrom)
+    comefrom->incRefCount();
 }
 
 unsigned int disassemblerNode_c::hash(void) const
