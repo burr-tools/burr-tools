@@ -81,15 +81,14 @@ disassemblerNode_c::~disassemblerNode_c() {
 }
 
 void disassemblerNode_c::replaceNode(const disassemblerNode_c *n) {
-  bt_assert(piecenumber == n->piecenumber);
 
-  memcpy(dat, n->dat, 4*piecenumber*sizeof(int16_t));
+  // both nodes must be equal, in the sense that they represent the same state
+  bt_assert(piecenumber == n->piecenumber);
+  bt_assert(memcmp(dat, n->dat, 4*piecenumber*sizeof(int16_t)) == 0);
+  bt_assert(hashValue == n->hashValue);
 
   dir = n->dir;
   amount = n->amount;
-
-  hashValue = n->hashValue;
-
   waylength = n->waylength;
 
   if (comefrom && comefrom->decRefCount())
