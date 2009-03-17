@@ -116,6 +116,10 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
          * and the open list for later examination and go on to the next node
          */
         openlist[newListFront].push(st);
+
+        if (st->decRefCount())
+          delete st;
+
         continue;
       }
 
@@ -127,7 +131,12 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
       /* nodes inside the closed hashtables are freed automagically */
 
       /* check the possible sub problems, this function call disassemble rec recursivly */
-      return checkSubproblems(st, pieces);
+      separation_c * res = checkSubproblems(st, pieces);
+
+      if (st->decRefCount())
+        delete st;
+
+      return res;
     }
 
     // if the current front is completely checked, open up the new front

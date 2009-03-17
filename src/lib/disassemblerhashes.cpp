@@ -72,6 +72,7 @@ bool nodeHash::insert(disassemblerNode_c * n) {
   }
 
   /* node not in table, insert */
+  n->incRefCount();
 
   n->next = tab[h];
   tab[h] = n;
@@ -176,13 +177,6 @@ bool countingNodeHash::insert(disassemblerNode_c * n) {
   }
 
   /* node not in table, insert */
-
-  // the reason why we do increase the reference count in here but
-  // not in the other table is because this is an additional place to store
-  // the pointer to a node. The node gets created with a reference count of
-  // one and that is valid if it gets included in one of the hashtables
-  // of the main loop but if we include it in the additional table inside
-  // the find state mashine we need to increase the count
   n->incRefCount();
 
   hn = new hashNode;

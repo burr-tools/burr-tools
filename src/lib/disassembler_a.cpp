@@ -97,6 +97,9 @@ separation_c * disassembler_a_c::checkSubproblem(int pieceCount, const std::vect
     create_new_params(st, &n, pn, pieces, pieceCount, left);
     res = disassemble_rec(pn, n);
 
+    if (n->decRefCount())
+      delete n;
+
     *ok = res || subProbGrouping(pn);
   }
 
@@ -249,6 +252,9 @@ separation_c * disassembler_a_c::disassemble(const assembly_c * assembly) {
       pieces.push_back(j);
 
   separation_c * s = disassemble_rec(pieces, start);
+
+  if (start->decRefCount())
+    delete start;
 
   return s;
 }
