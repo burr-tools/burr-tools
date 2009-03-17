@@ -46,8 +46,8 @@ class nodeHash {
 
     ~nodeHash(void);
 
-    /* delete all nodes and empty table for new usage */
-    void clear(bool reset = true);
+    /** delete all nodes and empty table for new usage */
+    void clear(void);
 
     /**
      * add a new node.
@@ -117,8 +117,8 @@ class countingNodeHash {
     countingNodeHash(void);
     ~countingNodeHash(void);
 
-    /* delete all nodes and empty table for new usage */
-    void clear(bool reset = true);
+    /** delete all nodes and empty table for new usage */
+    void clear(void);
 
     /**
      * add a new node.

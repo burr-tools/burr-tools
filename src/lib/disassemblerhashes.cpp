@@ -30,13 +30,13 @@ nodeHash::nodeHash(void) {
 }
 
 nodeHash::~nodeHash(void) {
-  clear(false);
+  clear();
 
   delete [] tab;
 }
 
-/* delete all nodes and empty table for new usage */
-void nodeHash::clear(bool reset) {
+void nodeHash::clear(void)
+{
   for (unsigned int i = 0; i < tab_size; i++) {
     while (tab[i]) {
       disassemblerNode_c * n = tab[i];
@@ -47,10 +47,7 @@ void nodeHash::clear(bool reset) {
     }
   }
 
-  if (reset) {
-    memset(tab, 0, tab_size*sizeof(disassemblerNode_c*));
-    tab_entries = 0;
-  }
+  tab_entries = 0;
 }
 
 bool nodeHash::insert(disassemblerNode_c * n) {
@@ -138,15 +135,15 @@ countingNodeHash::countingNodeHash(void) {
   linkStart = 0;
 }
 
-countingNodeHash::~countingNodeHash(void) {
-  clear(false);
-
+countingNodeHash::~countingNodeHash(void)
+{
+  clear();
   delete [] tab;
 }
 
 /* delete all nodes and empty table for new usage */
-void countingNodeHash::clear(bool reset) {
-
+void countingNodeHash::clear(void)
+{
   hashNode * hn = linkStart;
 
   while (hn) {
@@ -160,11 +157,8 @@ void countingNodeHash::clear(bool reset) {
     hn = hn2;
   }
 
-  if (reset) {
-    memset(tab, 0, tab_size*sizeof(hashNode*));
-    tab_entries = 0;
-  }
-
+  memset(tab, 0, tab_size*sizeof(hashNode*));
+  tab_entries = 0;
   linkStart = 0;
 }
 
