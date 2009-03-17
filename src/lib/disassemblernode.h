@@ -264,17 +264,18 @@ public:
   /**
    * set position of piece i in this node relative to the position in the come-from node
    */
-  void set(unsigned int i, const disassemblerNode_c * n, int tx, int ty, int tz) {
+  void set(unsigned int i, int tx, int ty, int tz)
+  {
     bt_assert(i < piecenumber);
+    bt_assert(comefrom);
+    bt_assert(abs(comefrom->dat[4*i+0]+tx) < maxMove &&
+              abs(comefrom->dat[4*i+1]+ty) < maxMove &&
+              abs(comefrom->dat[4*i+2]+tz) < maxMove);
 
-    bt_assert(abs(n->dat[4*i+0]+tx) < maxMove &&
-              abs(n->dat[4*i+1]+ty) < maxMove &&
-              abs(n->dat[4*i+2]+tz) < maxMove);
-
-    dat[4*i+0] = n->dat[4*i+0]+tx;
-    dat[4*i+1] = n->dat[4*i+1]+ty;
-    dat[4*i+2] = n->dat[4*i+2]+tz;
-    dat[4*i+3] = n->dat[4*i+3];
+    dat[4*i+0] = comefrom->dat[4*i+0]+tx;
+    dat[4*i+1] = comefrom->dat[4*i+1]+ty;
+    dat[4*i+2] = comefrom->dat[4*i+2]+tz;
+    dat[4*i+3] = comefrom->dat[4*i+3];
     hashValue = 0;
   }
 

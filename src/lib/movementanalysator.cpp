@@ -422,12 +422,12 @@ disassemblerNode_c * movementAnalysator_c::newNode(unsigned int amount) {
           mz = -mz;
         }
 
-        n->set(i, searchnode, mx, my, mz);
+        n->set(i, mx, my, mz);
       }
 
     } else {
 
-      n->set(i, searchnode, 0, 0, 0);
+      n->set(i, 0, 0, 0);
 
     }
   }

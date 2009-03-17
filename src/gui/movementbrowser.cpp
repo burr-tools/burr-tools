@@ -321,9 +321,9 @@ void movementBrowser_c::cb_AddMovement(void) {
 
   for (unsigned int i = 0; i < s->pieces.size(); i++)
     if (dlg.pieceSelected(i))
-      n->set(i, s->node, x, y, z);
+      n->set(i, x, y, z);
     else
-      n->set(i, s->node, 0, 0, 0);
+      n->set(i, 0, 0, 0);
 
   addNode(nd, n)->select_only();
 
