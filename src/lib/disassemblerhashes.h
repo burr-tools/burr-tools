@@ -21,14 +21,23 @@
 class disassemblerNode_c;
 
 
-/* this is a hashtable that stores nodes */
+/**
+ * This is a hashtable that stores disassemblerNode_c pointer
+ *
+ * The nodes will not become owned by the hashtable, but the table
+ * will use the reference counting system of the node
+ */
 class nodeHash {
 
   private:
 
+    /** current table size */
     unsigned long tab_size;
+
+    /** current number of entries */
     unsigned long tab_entries;
 
+    /** the hashtable */
     disassemblerNode_c ** tab;
 
   public:
@@ -40,40 +49,67 @@ class nodeHash {
     /* delete all nodes and empty table for new usage */
     void clear(bool reset = true);
 
-    /* add a new node  returns true, if the given node has already been
-     * in the table, false if the node is inserted
+    /**
+     * add a new node.
+     *
+     * Returns
+     * true, if the given node has already been in the table and nothing has changed
+     * false if the node is inserted
      */
     bool insert(disassemblerNode_c * n);
 
-    /* check, if a node is in the map */
+    /** check, if a node is in the hashtable */
     bool contains(const disassemblerNode_c * n) const;
 };
 
 
 
-/* this is a hashtable that stores nodes but is also
- * alows traversal of all nodes added at a given point in
- * time, only one such traversal can be active at one time
- * and the nodes are scanned in the reverse order they
- * were added
+/**
+ * Hastable like nodeHash with the additional feature
+ * of scanning through all elements
+ *
+ * this is a hashtable that stores nodes but is also
+ * alows traversal of all nodes hat are within the
+ * table at a given point in time, only one such traversal
+ * can be active at one time and the nodes are scanned in
+ * the reverse order they were added
  */
 class countingNodeHash {
 
   private:
 
+    /** current table size */
     unsigned long tab_size;
+    /** current number of entries */
     unsigned long tab_entries;
 
+    /**
+     * hash node data structur
+     *
+     * this hash table is non intrusive, it stores a pointer
+     * to the disassembler node.
+     *
+     * This is more suitable here because the nodes normally live only
+     * a short time inside this table, while they stay for a very long
+     * time in the other table
+     */
     struct hashNode {
+      /** the data of the node */
       disassemblerNode_c * dat;
+      /** next entry in the bucket list */
       hashNode * next;
+      /** the next entry of the all element link list */
       hashNode * link;
     };
 
+    /** the hash table */
     hashNode ** tab;
+    /** pointer to the inverse linked list of all added elements */
     hashNode * linkStart;
 
+    /** current scan position */
     hashNode * scanPtr;
+    /** is there a scan active? */
     bool scanActive;
 
   public:
@@ -84,24 +120,30 @@ class countingNodeHash {
     /* delete all nodes and empty table for new usage */
     void clear(bool reset = true);
 
-    /* add a new node  returns true, if the given node has already been
-     * in the table, false if the node is inserted
+    /**
+     * add a new node.
+     *
+     * Returns
+     * true, if the given node has already been in the table and nothing has changed
+     * false if the node is inserted
      */
     bool insert(disassemblerNode_c * n);
 
-    /* with the following 2 functions it is possible to
-     * scan through all nodes that are currently in the
-     * hashhable, first you call initScan to start
-     * it end then nextScan. This function returns one
-     * node after the other until nothing is left and then
-     * returns 0.
-     * You can add new nodes to the hashtable while a scan
-     * is running. The new nodes will not influence a running
-     * scan, only the nodes that were present when calling initScan
-     * will be returned.
-     * The nodes will be returned in the revers order they were inserted
-     */
+    /** initialize a new scan.
+     *
+     * You can only do that one the currently active scan is
+     * over
+     * */
     void initScan(void);
+
+    /**
+     * return next disassembler node of the current scan.
+     *
+     * The nodes are returned one after the other in reverse order.
+     * Once the last node has been returned you will get NULL. Then
+     * you must not call this function any mode. You may then start
+     * a new scan with initScan
+     */
     const disassemblerNode_c * nextScan(void);
 };
 

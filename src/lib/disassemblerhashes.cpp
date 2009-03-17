@@ -53,9 +53,6 @@ void nodeHash::clear(bool reset) {
   }
 }
 
-/* add a new node  returns true, if the given node has already been
- * in the table, false if the node is inserted
- */
 bool nodeHash::insert(disassemblerNode_c * n) {
 
   unsigned long h = n->hash() % tab_size;
@@ -109,7 +106,6 @@ bool nodeHash::insert(disassemblerNode_c * n) {
   return false;
 }
 
-/* check, if a node is in the map */
 bool nodeHash::contains(const disassemblerNode_c * n) const {
   unsigned long h = n->hash() % tab_size;
 
@@ -172,9 +168,6 @@ void countingNodeHash::clear(bool reset) {
   linkStart = 0;
 }
 
-/* add a new node  returns true, if the given node has already been
- * in the table, false if the node is inserted
- */
 bool countingNodeHash::insert(disassemblerNode_c * n) {
 
   unsigned long h = n->hash() % tab_size;
@@ -233,18 +226,6 @@ bool countingNodeHash::insert(disassemblerNode_c * n) {
   return false;
 }
 
-/* with the following 2 functions it is possible to
- * scan through all nodes that are currently in the
- * hashhable, first you call initScan to start
- * it end then nextScan. This function returns one
- * node after the other until nothing is left and then
- * returns 0.
- * You can add new nodes to the hashtable while a scan
- * is running. The new nodes will not influence a running
- * scan, only the nodes that were present when calling initScan
- * will be returned.
- * The nodes will be returned in the revers order they were inserted
- */
 void countingNodeHash::initScan(void) {
 
   bt_assert(!scanActive);
