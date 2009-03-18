@@ -24,18 +24,21 @@ class separation_c;
 
 class disassemblerNode_c;
 
-/* this class is a disassembler especially tunes for puzzles with no
- * coordinated motion
+/**
+ * This class is a disassembler especially tuned for simple analysis
  *
- * is is implemented using Bill Cuttlers algorithm, so please read there
- * in case you are interested how it works. The comments are written with
- * the thought that you know his algorithm
+ * All involved steps are of size one. This enables us to use a simple
+ * tree search instead of A* which would normally be required for
+ * a graph search
  */
 class disassembler_0_c : public disassembler_a_c {
 
 private:
 
-  /* the real disassembly routine. It separates the puzzle into 2 parts
+  /**
+   * The real disassembly routine.
+   *
+   * It separates the puzzle into 2 parts
    * and gets called recursively with each subpart to disassemble
    *
    * the return is the disassembly tree for that part
@@ -47,13 +50,9 @@ private:
 
 public:
 
-  /* construct the disassembler for this concrete problem, is can not be
-   * changed, once you done that but you can analyse many assemblies for
-   * disassembability
-   */
   disassembler_0_c(const problem_c * puz) : disassembler_a_c(puz) { }
-
   ~disassembler_0_c() { }
 };
 
 #endif
+

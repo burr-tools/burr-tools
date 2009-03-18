@@ -26,9 +26,13 @@ class movementCache_c;
 class assembly_c;
 class countingNodeHash;
 
-/* this class is can do analysation of movements within a puzzle
+/**
+ * this class is can do analysation of movements within a puzzle.
  *
- * is is implemented using Bill Cuttlers algorithm, so please read there
+ * It takes a position of pieces and then tries to find all other
+ * positions that can be reached directly from that starting point.
+ *
+ * It is implemented using Bill Cuttlers algorithm, so please read there
  * in case you are interested how it works. The comments are written with
  * the thought that you know his algorithm
  */
@@ -68,9 +72,10 @@ class movementAnalysator_c {
 
   public:
 
-    /* construct the disassembler for this concrete problem, is can not be
-     * changed, once you done that but you can analyse many assemblies for
-     * disassembability
+    /**
+     * construct the analysator for this concrete problem.
+     * Ts can not be changed, once you done that but you can analyse
+     * many positions
      */
     movementAnalysator_c(const problem_c *puz);
     ~movementAnalysator_c(void);
@@ -90,3 +95,4 @@ class movementAnalysator_c {
 };
 
 #endif
+

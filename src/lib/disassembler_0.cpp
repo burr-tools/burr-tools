@@ -31,73 +31,82 @@
  * completely and otherwise the disassembly tree
  *
  * the parameters are:
- *  - piecenumber: the number of pieces of the current problem. Because we can have
- *                 subproblems this number is not identical to the number of pieces
- *                 in the assembly voxel space
  *  - pieces: defines which pieces of the assembly voxel space are actually really present
  *            in the current subproblem
  *  - start: the start position of each piece
  *
- * the function takes over the ownership of the node and pieces. They are deleted at the end
- * of the function, so you must allocate them with new
+ * A lof of stuff happens automatically, e.g the disassemblerNode_c class is reference counted
+ * and the nodeHashs will automatically decrease that count and free the nodes
  */
 separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int> &pieces, disassemblerNode_c * start) {
 
+  // openlist is a list of nodes that need to be analyzed. They wew found
+  // as neighbours of nodes that were analyzed and not yet known
   std::queue<disassemblerNode_c *> openlist[2];
+  // closed nodes are nodes that were analyzed. We don't want to keep all
+  // those nodes around because we only need to keep them, when they could
+  // be on a shortest path. That means we only keep the nodes, when they
+  // lead to a node from the open list
+  //
+  // But we need to keep the nodes long enough to be sure we don't walk back
+  // in our movement tree. So we organize the closed nodes in 3 fronts. All nodes
+  // on each front have the same distance from the root node. old is one step less
+  // than current which again is one step less than new front away from root
+  //
+  // when we start analysing a new front all nodes in the open list are also in the
+  // current front. The new front is empty. now we take one node adfter the other from
+  // the open list, analyze them. When the new found nodes are in oldfront, then they
+  // are a step back towards root and can be dropped. When they are in the current
+  // front, then they are a step sideways to another node with the same distance and
+  // can be dropped, when the new node is in new front, it is a step away from the
+  // root, but we already do know a way to that node and we can drop this node.
+  // Only when the new node is unknown it is something interesting. We insert the
+  // new node into the new front.
+  //
+  // That way we slowly empty the openList and build up a new open list with nodes
+  // that we didn't know about before
+  //
+  // Once the current open list is empty, we have completely analyzed the current front
+  // that means we don't need the old front any more because we can no longer reach those
+  // nodes directly by analyzing a node from the open list because those nodes are now at
+  // least 2 steps away, so we release them. The reference counting will make sure no longer
+  // needed nodes will get freed.
+  // The current front will becom the old front, the new front the current front and we
+  // open up a new empty new front. The new built up open list will be used to get
+  // the new nodes to analyze and an other open list will be started.
   nodeHash closed[3];
 
+  // setup the fronts and the open List indices
   int curListFront = 0;
   int newListFront = 1;
   int oldFront = 0;
   int curFront = 1;
   int newFront = 2;
 
+  // insert the start node
   closed[curFront].insert(start);
   openlist[curListFront].push(start);
 
-  /* the algorithm works with 3 sets of nodes. All nodes in one set do have the same distance
-   * from the start node. The 3 sets are the current frontier (cf), the new frontier (nf) and the line
-   * behind the current frontier (of).
-   * The nodes in the cf list are taken one by one and examined and all neighbour nodes are generated. Now
-   * there are 3 possibilities: 1) the node is one way further from the start, then the new node belongs to
-   * nf, if the node has the same distance from the start as the currently examined node, if belongs into the
-   * cf list and if it is nearer to the start is must be in of.
-   * How do we find out where it belongs? By checking, if that node is already there. We check if the node is
-   * in of or in cf or in nf, only if it is nowhere to be found, we add it to nf.
-   * After all nodes in cf are checked, all nodes in of are dropped, cf becomes of, and nf becomes cf. nf is empty.
-   * And we restart.
-   * "Dropping" of the old frontier doesn't mean the nodes are deleted. They can only be deleted, when they are not
-   * part of the used shortest way to one of the nodes in cf. This is done by reference counting. So dropping
-   * means, check if there is an other node using a node, if not we can delete the node. This deletion may even
-   * result in more deletion as this might drop the reference counter of another node to 0
-   * This reference counter is increased for each node whose comefrom pointer points to that node. The counter
-   * is also increased by one as long as it is inside one of the frontier lists.
-   */
-
-  /* while there are nodes left we should look at and we have not found a solution */
+  /* while there are nodes left we should look at */
   while (!openlist[curListFront].empty()) {
 
     /* remove the node from the open list and start examining */
     disassemblerNode_c * node = openlist[curListFront].front();
     openlist[curListFront].pop();
 
-    /* if the current list is now empty, we need to toggle everything after we have finished
-     * searching this node
-     */
-
+    // initialize a movement analysis for the current node
     init_find(node, pieces);
 
     disassemblerNode_c * st;
 
     while ((st = find())) {
 
-      /* check all closed nodelists and also insert the node into the newFront list
-       * insert has the same return value as contains, but also inserts the node
-       * when it is not yet inside the hashtable
+      /* check the different fronts and also try to insert into the new
+       * front, if it is known in either front, ...
        */
       if (closed[oldFront].contains(st) || closed[curFront].contains(st) || closed[newFront].insert(st)) {
 
-        /* the new node is already here. We have found a new longer way to that
+        /* the new node is already here. We have found a new longer or equal long way to that
          * node, so we can safely delete the new node and continue to the next
          *
          * we use the reference count mechanism of the node class, so if the node
@@ -109,26 +118,25 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
         continue;
       }
 
+      // when we get here the new found node was not known before
+
       if (!st->is_separation()) {
 
-        /* the new node is no solution so insert the
-         * new state into the known state table
-         * and the open list for later examination and go on to the next node
+        /* the new node is no solution so insert the node into
+         * the open list for later examination and go on to the next node
          */
         openlist[newListFront].push(st);
 
+        // we need to dec-ref-count because we will overwrite st in the next step
+        // and st hold one count of the node, once we get to use boost smart
+        // ponters this here will become simpler
         if (st->decRefCount())
           delete st;
 
         continue;
       }
 
-      /* if we get here we can stop, even if we didn't find a solution
-       * so we empty the openlist and se stop the currently running
-       * search process
-       */
-
-      /* nodes inside the closed hashtables are freed automagically */
+      /* when we get here the new found node is a solution */
 
       /* check the possible sub problems, this function call disassemble rec recursivly */
       separation_c * res = checkSubproblems(st, pieces);
@@ -137,6 +145,8 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
         delete st;
 
       return res;
+
+      /* nodes inside the closed hashtables are freed automagically */
     }
 
     // if the current front is completely checked, open up the new front
@@ -149,13 +159,16 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
       // free the oldFront nodes
       closed[oldFront].clear();
 
+      // circle the fronts
       oldFront = curFront;
       curFront = newFront;
       newFront = (newFront + 1) % 3;
     }
   }
 
-  // the nodes inside the hashtables are freed automatically
+  // we have not found a node that separated the problem, so return 0
   return 0;
+
+  // the nodes inside the hashtables are freed automatically
 }
 

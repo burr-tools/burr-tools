@@ -28,31 +28,45 @@ class problem_c;
 class disassemblerNode_c;
 class assembly_c;
 
-/* this class is a baseclass for disassemblers. it provides commong functionality
- * for both the disassembler_0 and disassembler_1
+/**
+ * this class is a baseclass for disassemblers.
  *
- * is is implemented using Bill Cuttlers algorithm, so please read there
- * in case you are interested how it works. The comments are written with
- * the thought that you know his algorithm
+ * It provides common functionality for both all disassemblers.
+ * This is mainly bookkeeping of disassemblerNode_c objects
  *
  * the space grid dependend information is collected from movementCache classes.
  * those are like the assemblerFrontends for the assembler (a bit more complicated
  * though)
+ *
+ * All that the real disassemblers need to to is implement the disassemble_rec function
+ * which analyzes one piece of the puzzle until it falls apart
  */
 class disassembler_a_c : public disassembler_c {
 
   private:
 
-    /* here we can group pieces together */
+    /**
+     * For grouping pieces
+     */
     grouping_c * groups;
 
+    /**
+     * the problem we solve
+     */
     const problem_c * puzzle;
 
-    /* this array is used to convert piece number to the corresponding
-     * shape number, as these are needed for the grouping functions
+    /**
+     * Converts piece number to the corresponding shape number.
+     *
+     * These are needed for the grouping functions
      */
     unsigned short * piece2shape;
 
+    /**
+     * the movement analysator we use.
+     *
+     * The movement analysator will return the possible moves from a given position
+     */
     movementAnalysator_c *analyse;
 
     unsigned short subProbGroup(const disassemblerNode_c * st, const std::vector<unsigned int> & pn, bool cond);
@@ -62,36 +76,46 @@ class disassembler_a_c : public disassembler_c {
 
   protected:
 
+    /** start analysing the position given in the disassemblerNode */
     void init_find(disassemblerNode_c * nd, const std::vector<unsigned int> & pieces) {
       analyse->init_find(nd, pieces);
     }
 
+    /** get one possible next position for the currently running analysis */
     disassemblerNode_c * find(void) { return analyse->find(); }
 
-    /* one a separating node has been found by the disassemble_rec function, it should call this function
-     * to analyze the sub-problems
+    /**
+     * Analyze a sub-problem.
+     *
+     * once a separating node has been found by the disassemble_rec function,
+     * it should call this function to analyze the sub-problems
      */
     separation_c * checkSubproblems(const disassemblerNode_c * st, const std::vector<unsigned int> &pieces);
 
-    /* this function must be implemented by the real disassemblers */
+    /** this function must be implemented by the real disassemblers */
     virtual separation_c * disassemble_rec(const std::vector<unsigned int> & pieces, disassemblerNode_c * start) = 0;
 
   public:
 
-    /* construct the disassembler for this concrete problem, is can not be
-     * changed, once you done that but you can analyse many assemblies for
-     * disassembability
+    /**
+     * construct the disassembler for this concrete problem.
+     * The problem can not be changed, once you done that but
+     * you can analyse many assemblies for disassembability
      */
     disassembler_a_c(const problem_c *puz);
     ~disassembler_a_c(void);
 
-    /* because we can only have or don't have a disassembly sequence
+    /**
+     * Disassemble an assembly of the puzzle.
+     *
+     * Because we can only have or don't have a disassembly sequence
      * we don't need the same complicated callback interface. The function
      * returns either the disassembly sequence or a null pointer.
-     * you need to take care of freeing the disassembly sequence after
-     * doing with it whatever you want
+     * you need to take care of deleting the disassembly sequence after
+     * doing with it whatever you want.
      */
     separation_c * disassemble(const assembly_c * assembly);
 };
 
 #endif
+

@@ -20,10 +20,20 @@
 
 class voxel_c;
 
-/* a piece is notchable, if it can be made purely by cutting */
+/**
+ * Check, if a piece is notchable.
+ * a piece is notchable, if it can be made purely by cutting
+ *
+ * This function only works for cube voxel spaces right now
+ */
 bool isNotchable(const voxel_c * v);
 
-/* a piece is millable, if it contains no inside corners */
+/**
+ * Check, if a shape is millable.
+ * a piece is millable, if it contains no inside corners
+ *
+ * This function only works for cube voxel spaces right now
+ */
 bool isMillable(const voxel_c * v);
 
 #endif
