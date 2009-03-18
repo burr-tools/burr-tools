@@ -54,4 +54,3 @@ class convertWindow_c : public LFl_Double_Window {
 };
 
 #endif
-

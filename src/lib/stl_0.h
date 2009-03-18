@@ -65,4 +65,3 @@ class stlExporter_0_c : public stlExporter_c {
 };
 
 #endif
-

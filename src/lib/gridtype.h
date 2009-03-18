@@ -154,4 +154,3 @@ class gridType_c {
 };
 
 #endif
-

@@ -74,4 +74,3 @@ class stlExporter_2_c : public stlExporter_c {
 };
 
 #endif
-

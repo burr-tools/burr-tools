@@ -81,4 +81,3 @@ class assmImportWindow_c : public LFl_Double_Window {
 };
 
 #endif
-

@@ -37,4 +37,3 @@ bool canConvert(gridType_c::gridType src, gridType_c::gridType dst);
 puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type);
 
 #endif
-

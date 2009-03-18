@@ -95,4 +95,3 @@ class movementAnalysator_c {
 };
 
 #endif
-

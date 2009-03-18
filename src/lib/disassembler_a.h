@@ -118,4 +118,3 @@ class disassembler_a_c : public disassembler_c {
 };
 
 #endif
-

@@ -125,4 +125,3 @@ class stlExporter_c {
 };
 
 #endif
-

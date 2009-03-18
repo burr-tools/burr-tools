@@ -148,4 +148,3 @@ class countingNodeHash {
 };
 
 #endif
-
