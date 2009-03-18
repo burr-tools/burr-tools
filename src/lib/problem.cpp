@@ -1127,8 +1127,6 @@ static bool comp_1_level(solution_c * s1, solution_c * s2)
   if (!s1->treeInfo && s1->tree) s1->treeInfo = new separationInfo_c(s1->tree);
   if (!s2->treeInfo && s2->tree) s2->treeInfo = new separationInfo_c(s2->tree);
 
-  if (s1->treeInfo->compare(s2->treeInfo) < 0) printf("oops\n");
-
   return s1->treeInfo && s2->treeInfo && (s1->treeInfo->compare(s2->treeInfo) < 0);
 }
 

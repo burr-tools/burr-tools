@@ -1293,8 +1293,6 @@ void ToolTab_4::cb_transform(long task) {
                    if (fy%6 <= 3) fy -= fy%6; else if (space->boundY2()+(6-fy%6) < space->getY()) fy += (6-fy%6);
                    if (fz%6 <= 3) fz -= fz%6; else if (space->boundZ2()+(6-fz%6) < space->getZ()) fz += (6-fz%6);
 
-                   printf("%i %i %i\n", fx, fy, fz);
-
                    space->translate(fx, fy, fz, 0);
                  }
                  break;
