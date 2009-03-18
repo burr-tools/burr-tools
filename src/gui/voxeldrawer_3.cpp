@@ -20,15 +20,18 @@
 
 #include "../lib/voxel.h"
 
+#include "../tools/intdiv.h"
+
 bool voxelDrawer_3_c::getTetrahedron(int x, int y, int z,
     int *x1, int *y1, int *z1,
     int *x2, int *y2, int *z2,
     int *x3, int *y3, int *z3,
     int *x4, int *y4, int *z4) {
 
-  int xc = (x+100) / 5 -20;   // this is supposed to make shure we round towards -inf. It works up to -100
-  int yc = (y+100) / 5 -20;
-  int zc = (z+100) / 5 -20;
+
+  int xc = intdiv_inf(x, 5);
+  int yc = intdiv_inf(y, 5);
+  int zc = intdiv_inf(z, 5);
 
   int xs = x - 5*xc;
   int ys = y - 5*yc;

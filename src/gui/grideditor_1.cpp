@@ -20,19 +20,13 @@
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
 
+#include "../tools/intdiv.h"
+
 #include <FL/fl_draw.H>
 
 #include <math.h>
 
 #define HEIGHT 0.8660254     // sqrt(3)/2
-
-// round towards -inf instead of 0
-static int floordiv(int a, int b) {
-  if (a > 0)
-    return a/b;
-  else
-    return (a-b+1)/b;
-}
 
 // this function calculates the size of the squares and the starting position
 // for the grid inside the available space of the widget
@@ -241,7 +235,7 @@ bool gridEditor_1_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
   y -= (ty-space->getY()*s2);
 
   int xp;
-  int yp = floordiv(y, s2);
+  int yp = intdiv_inf(y, s2);
 
   int yf = y - yp*s2;
 
@@ -249,7 +243,7 @@ bool gridEditor_1_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
 
     x -= (int)((s2-yf) / sqrt(3)+0.5);
 
-    xp = floordiv(x, s);
+    xp = intdiv_inf(x, s);
 
     if ((1.0*(x - xp*s)/s + (1.0*(s2-yf)/s2)) > 1.0)
       xp = 2*xp + 1;
@@ -260,7 +254,7 @@ bool gridEditor_1_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
 
     x -= (int)(yf/sqrt(3)+0.5);
 
-    xp = floordiv(x, s);
+    xp = intdiv_inf(x, s);
 
     if (1.0*(x - xp*s)/s + (1.0*yf/s2) > 1.0)
       xp = 2*xp + 1;

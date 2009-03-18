@@ -17,6 +17,8 @@
  */
 #include "voxel_4.h"
 
+#include "../tools/intdiv.h"
+
 /**
  * special transformation function for this grid.
  *
@@ -121,9 +123,9 @@ bool voxel_4_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, in
     }
   };
 
-  int xc = (x+60) / 3 -20;   // this is supposed to make shure we round towards -inf. It works up to -100
-  int yc = (y+60) / 3 -20;
-  int zc = (z+60) / 3 -20;
+  int xc = intdiv_inf(x, 3);
+  int yc = intdiv_inf(y, 3);
+  int zc = intdiv_inf(z, 3);
 
   int xs = x - 3*xc;
   int ys = y - 3*yc;
@@ -366,9 +368,9 @@ void voxel_4_c::minimizePiece(void) {
 
 bool voxel_4_c::validCoordinate(int x, int y, int z) const {
 
-  int xc = (x+60)/3-20;
-  int yc = (y+60)/3-20;
-  int zc = (z+60)/3-20;
+  int xc = intdiv_inf(x, 3);
+  int yc = intdiv_inf(y, 3);
+  int zc = intdiv_inf(z, 3);
 
   int xs = x - 3*xc;
   int ys = y - 3*yc;

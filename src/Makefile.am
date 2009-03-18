@@ -1,5 +1,5 @@
 bin_PROGRAMS=burrTxt burrTxt2 gui/burrGui
-noinst_LIBRARIES=lib/libburr.a flu/libflu.a help/libhelp.a lua/liblua.a
+noinst_LIBRARIES=lib/libburr.a flu/libflu.a help/libhelp.a lua/liblua.a tools/libtools.a
 noinst_PROGRAMS=help/helpviewer
 
 XML_CPP_ADD=@XML_CPP_ADD@
@@ -11,6 +11,9 @@ PTHREAD_LD_ADD=@PTHREAD_LD_ADD@
 
 AM_CPPFLAGS=-Wall -W $(XML_CPP_ADD) $(GUI_CPP_ADD) $(PTHREAD_CPP_ADD) @LARGEFILE@
 LDADD= $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
+
+tools_libtools_a_SOURCES =
+tools_libtools_a_SOURCES += tools/intdiv.h
 
 lua_liblua_a_SOURCES =
 lua_liblua_a_SOURCES += lua/lapi.c lua/lapi.h

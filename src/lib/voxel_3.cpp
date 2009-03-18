@@ -17,6 +17,8 @@
  */
 #include "voxel_3.h"
 
+#include "../tools/intdiv.h"
+
 bool voxel_3_c::transform(unsigned int nr) {
 
   // the first thing to do here is to ensure that all 3 dimensions are a multiple of 5
@@ -150,9 +152,9 @@ bool voxel_3_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, in
     },
   };
 
-  int xc = (x+100)/5-20;
-  int yc = (y+100)/5-20;
-  int zc = (z+100)/5-20;
+  int xc = intdiv_inf(x, 5);
+  int yc = intdiv_inf(y, 5);
+  int zc = intdiv_inf(z, 5);
 
   int xs = x - 5*xc;
   int ys = y - 5*yc;

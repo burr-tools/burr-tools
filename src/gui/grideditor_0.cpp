@@ -20,15 +20,9 @@
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
 
-#include <FL/fl_draw.H>
+#include "../tools/intdiv.h"
 
-// round towards -inf instead of 0
-static int floordiv(int a, int b) {
-  if (a > 0)
-    return a/b;
-  else
-    return (a-b+1)/b;
-}
+#include <FL/fl_draw.H>
 
 // this function calculates the size of the squares and the starting position
 // for the grid inside the available space of the widget
@@ -102,8 +96,8 @@ bool gridEditor_0_c::calcGridPosition(int x, int y, int, int *gx, int *gy) {
   x -= tx;
   y -= (ty-sy*space->getY());
 
-  x = floordiv(x, sx);
-  y = floordiv(y, sy);
+  x = intdiv_inf(x, sx);
+  y = intdiv_inf(y, sy);
 
   *gx = x;
   *gy = space->getY()-y-1;

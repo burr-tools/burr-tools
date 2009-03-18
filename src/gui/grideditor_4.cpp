@@ -20,15 +20,9 @@
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
 
-#include <FL/fl_draw.H>
+#include "../tools/intdiv.h"
 
-// round towards -inf instead of 0
-static int floordiv(int a, int b) {
-  if (a > 0)
-    return a/b;
-  else
-    return (a-b+1)/b;
-}
+#include <FL/fl_draw.H>
 
 // this function calculates the size of the squares and the starting position
 // for the grid inside the available space of the widget
@@ -57,9 +51,9 @@ void gridEditor_4_c::calcParameters(int *szx, int *szy, int *tx, int *ty) {
 static int getPolygon(int x, int y, int z, int tx, int ty, int sx, int sy,
     int *x1, int *y1, int *x2, int *y2, int *x3, int *y3, int *x4, int *y4, int offs) {
 
-  int xc = floordiv(x, 3);
-  int yc = floordiv(y, 3);
-  int zc = floordiv(z, 3);
+  int xc = intdiv_inf(x, 3);
+  int yc = intdiv_inf(y, 3);
+  int zc = intdiv_inf(z, 3);
 
   x -= 3*xc;
   y -= 3*yc;
@@ -318,8 +312,8 @@ void gridEditor_4_c::drawTileCursor(int x, int y, int z, int tx, int ty, int sx,
 
   if (z%3 == 1)
   {
-    int xc = floordiv(x, 3);
-    int yc = floordiv(y, 3);
+    int xc = intdiv_inf(x, 3);
+    int yc = intdiv_inf(y, 3);
 
     if (ins ^ inRegion(x-3, y))
     {
@@ -415,8 +409,8 @@ bool gridEditor_4_c::calcGridPosition(int x, int y, int z, int *gx, int *gy) {
   int xp = x;
   int yp = y;
 
-  x = floordiv(x, sx);
-  y = floordiv(y, sy);
+  x = intdiv_inf(x, sx);
+  y = intdiv_inf(y, sy);
 
   xp -= x*sx;
   yp -= y*sy;
