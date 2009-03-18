@@ -22,16 +22,19 @@
 
 class puzzle_c;
 
-/* returns true, if it is possible to convert this class to the
+/**
+ * returns true, if it is possible to convert this puzzle to the
  * given gridType
  */
 bool canConvert(gridType_c::gridType src, gridType_c::gridType dst);
 
-/* do the conversion, if it can't be done (you should check first)
- * nothing will happen.
- * the shapes inside the puzzle will be converted and then the
- * gridtype within the puzzle will be changed
+/**
+ * Create a new puzzle with a new gridtype but identical shapes.
+ *
+ * If the conversion can't be done (you should check first with canConvert)
+ * a NULL pointer will be returned
  */
 puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type);
 
 #endif
+
