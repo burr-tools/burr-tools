@@ -94,8 +94,4 @@ class disassembler_a_c : public disassembler_c {
     separation_c * disassemble(const assembly_c * assembly);
 };
 
-
-void create_new_params(const disassemblerNode_c * st, disassemblerNode_c ** n, std::vector<unsigned int> & pn, const std::vector<unsigned int> & pieces, int part, bool cond);
-
-
 #endif

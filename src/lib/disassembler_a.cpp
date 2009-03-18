@@ -56,7 +56,7 @@ disassembler_a_c::~disassembler_a_c() {
 /* create all the necessary parameters for one of the two possible subproblems
  * our current problems divides into
  */
-void create_new_params(const disassemblerNode_c * st, disassemblerNode_c ** n, std::vector<unsigned int> & pn, const std::vector<unsigned int> & pieces, int part, bool cond) {
+static void create_new_params(const disassemblerNode_c * st, disassemblerNode_c ** n, std::vector<unsigned int> & pn, const std::vector<unsigned int> & pieces, int part, bool cond) {
 
   *n = new disassemblerNode_c(part);
 
