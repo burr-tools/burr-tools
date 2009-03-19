@@ -134,7 +134,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
   if (p->getGridType()->getType() == gridType_c::GT_BRICKS)
     cols += 4;
 
-  voxelTablePuzzle_c shapeTab(p, true);
+  voxelTablePuzzle_c shapeTab(p);
 
   for (unsigned int s = 0; s < p->shapeNumber(); s++) {
 
@@ -180,7 +180,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
 
     unsigned int shapeIdx;
     unsigned char shapeTrans;
-    bool shapeKnown = shapeTab.getSpace(v, &shapeIdx, &shapeTrans);
+    bool shapeKnown = shapeTab.getSpace(v, &shapeIdx, &shapeTrans, voxelTable_c::PAR_MIRROR);
 
     if (shapeKnown)
     {
@@ -194,7 +194,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
     col += 2;
     Fl::wait(0);
 
-    shapeKnown = shapeTab.getSpaceNoRot(v, &shapeIdx, &shapeTrans);
+    shapeKnown = shapeTab.getSpace(v, &shapeIdx, &shapeTrans, 0);
 
     if (shapeKnown)
     {
@@ -208,7 +208,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
     col += 2;
     Fl::wait(0);
 
-    shapeKnown = shapeTab.getSpaceColour(v, &shapeIdx, &shapeTrans);
+    shapeKnown = shapeTab.getSpace(v, &shapeIdx, &shapeTrans, voxelTable_c::PAR_COLOUR);
 
     if (shapeKnown && shapeTrans < p->getGridType()->getSymmetries()->getNumTransformations())
     {
@@ -300,7 +300,8 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
     if (!stp->visible())
       break;
 
-    shapeTab.addSpace(v, s);
+    shapeTab.addSpace(s, voxelTable_c::PAR_MIRROR);
+    shapeTab.addSpace(s, voxelTable_c::PAR_MIRROR | voxelTable_c::PAR_COLOUR);
   }
 
   stp->hide();

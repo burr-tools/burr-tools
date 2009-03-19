@@ -1493,7 +1493,7 @@ class voxelTableVector_c : public voxelTable_c
 
   public:
 
-    voxelTableVector_c(const std::vector<voxel_c *> *s) : voxelTable_c(false), shapes(s) {}
+    voxelTableVector_c(const std::vector<voxel_c *> *s) : shapes(s) {}
 
   protected:
 
@@ -1580,7 +1580,7 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
       // if the user wants to drop identical shapes and we use the table
       if (filter & assmImportWindow_c::dropIdentical)
       {
-        voxelTab.addSpace(shape, sh.size()-1);
+        voxelTab.addSpace(sh.size()-1);
       }
     }
 

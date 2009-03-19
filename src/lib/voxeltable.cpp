@@ -1,5 +1,5 @@
 /* Burr Solver
- * Copyright (C) 2003-2008  Andreas Röver
+ * Copyright (C) 2003-2009  Andreas Röver
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,8 +20,8 @@
 #include "voxel.h"
 #include "puzzle.h"
 
-voxelTable_c::voxelTable_c(bool mirrors) : includeMirrors(mirrors) {
-
+voxelTable_c::voxelTable_c(void)
+{
   tableSize = 101;
   hashTable = new hashNode*[tableSize];
 
@@ -95,15 +95,15 @@ static unsigned long calcColourHashValue(const voxel_c * v)
   return res;
 }
 
-bool voxelTable_c::getSpace(const voxel_c *v, unsigned int *index, unsigned char * trans) const
+bool voxelTable_c::getSpace(const voxel_c *v, unsigned int *index, unsigned char * trans, unsigned int params) const
 {
-  unsigned long hash = calcHashValue(v);
+  unsigned long hash = (params & PAR_COLOUR) ? calcColourHashValue(v) : calcHashValue(v);
 
   hashNode * n = hashTable[hash % tableSize];
 
   while (n)
   {
-    if (n->hash == hash)
+    if (n->hash == hash && ((params & PAR_MIRROR) || (n->transformation < v->getGridType()->getSymmetries()->getNumTransformations())))
     {
       voxel_c * v2 = v->getGridType()->getVoxel(findSpace(n->index));
       bool found = v2->transform(n->transformation) && v->identicalInBB(v2, false);
@@ -123,67 +123,13 @@ bool voxelTable_c::getSpace(const voxel_c *v, unsigned int *index, unsigned char
   return false;
 }
 
-bool voxelTable_c::getSpaceNoRot(const voxel_c *v, unsigned int *index, unsigned char * trans) const
+void voxelTable_c::addSpace(unsigned int index, unsigned int params)
 {
-  unsigned long hash = calcHashValue(v);
+  const voxel_c * v = findSpace(index);
 
-  hashNode * n = hashTable[hash % tableSize];
-
-  while (n)
-  {
-    if ((n->hash == hash) && (n->transformation < v->getGridType()->getSymmetries()->getNumTransformations()))
-    {
-      voxel_c * v2 = v->getGridType()->getVoxel(findSpace(n->index));
-      bool found = v2->transform(n->transformation) && v->identicalInBB(v2, false);
-      delete v2;
-
-      if (found)
-      {
-        if (index) *index = n->index;
-        if (trans) *trans = n->transformation;
-
-        return true;
-      }
-    }
-    n = n->next;
-  }
-
-  return false;
-}
-
-bool voxelTable_c::getSpaceColour(const voxel_c *v, unsigned int *index, unsigned char * trans) const
-{
-  unsigned long hash = calcColourHashValue(v);
-
-  hashNode * n = hashTable[hash % tableSize];
-
-  while (n)
-  {
-    if (n->hash == hash && (n->transformation < v->getGridType()->getSymmetries()->getNumTransformations()))
-    {
-      voxel_c * v2 = v->getGridType()->getVoxel(findSpace(n->index));
-      bool found = v2->transform(n->transformation) && v->identicalInBB(v2, true);
-      delete v2;
-
-      if (found)
-      {
-        if (index) *index = n->index;
-        if (trans) *trans = n->transformation;
-
-        return true;
-      }
-    }
-    n = n->next;
-  }
-
-  return false;
-}
-
-void voxelTable_c::addSpace(const voxel_c * v, unsigned int index)
-{
   const symmetries_c * symm = v->getGridType()->getSymmetries();
 
-  unsigned char endTrans = (includeMirrors)
+  unsigned char endTrans = (params & PAR_MIRROR)
     ? symm->getNumTransformationsMirror()
     : symm->getNumTransformations();
 
@@ -216,13 +162,10 @@ void voxelTable_c::addSpace(const voxel_c * v, unsigned int index)
   for (unsigned char trans = 0; trans < endTrans; trans++) {
     if (symm->isTransformationUnique(sym, trans)) {
       // add all transformations of the voxel space to the table, that are actually different
-      // the additional trans==0 is necessary because the symmetry mask always contains the identity
-      // transformation and thus we would not ass the untransformed space
 
       voxel_c * v2 = v->getGridType()->getVoxel(v);
-      v2->transform(trans);
-      unsigned long hash = calcHashValue(v2);
-      unsigned long hashColour = calcColourHashValue(v2);
+      bt_assert2(v2->transform(trans));
+      unsigned long hash = (params & PAR_COLOUR) ? calcColourHashValue(v2) : calcHashValue(v2);
       delete v2;
 
       hashNode * n = new hashNode;
@@ -231,14 +174,6 @@ void voxelTable_c::addSpace(const voxel_c * v, unsigned int index)
       n->hash = hash;
       n->next = hashTable[hash % tableSize];
       hashTable[hash % tableSize] = n;
-      tableEntries++;
-
-      n = new hashNode;
-      n->index = index;
-      n->transformation = trans;
-      n->hash = hashColour;
-      n->next = hashTable[hashColour % tableSize];
-      hashTable[hashColour % tableSize] = n;
       tableEntries++;
     }
   }

@@ -1,5 +1,5 @@
 /* Burr Solver
- * Copyright (C) 2003-2008  Andreas Röver
+ * Copyright (C) 2003-2009  Andreas Röver
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,60 +21,101 @@
 class puzzle_c;
 class voxel_c;
 
-/* this class is a table containing references to voxelspaces
- * the important operation is to find out wheter a certain voxelspace is already
- * within the table. That includes all possible rotations (or even mirrors)
+/**
+ * This class is a table containing references to voxelspaces.
  *
- * The table itself only contains indices to a table of voxel spaces you have to derive
- * from this class an provide a function to actually get the right voxel space
+ * This table can be used to quickly find dublicates of voxel spaces.
+ * The table is a hash-table saving only the hash of the shape to add and then
+ * using a user supplied function to actually get the space and do the comparison
+ *
+ * The idea is to add all possible orientations of the shape to add so that it
+ * becomes easy to actually find something.
+ *
+ * Additionally it is possible to calculate the hash including or disregarding
+ * the colours attatched to the shape.
+ *
+ * It is up to the user to specify which transformations/colour variations to add
+ * to the table, only those will be found at the end
+ *
+ * To use this class you must derive it and provide a means to return the shape
+ * to this table. The table itself only saves an index and with this index
+ * the provided function must return the shape
  */
 
 class voxelTable_c {
 
   private:
 
-    bool includeMirrors;
-
+    /** the hash tabel entry */
     typedef struct hashNode {
-      unsigned int index;
-      unsigned char transformation;
-      unsigned long hash;    // ve save the hash value here for the rehashing as the has value calculation is expensive
-      struct hashNode * next;
+      unsigned int index;           //< the shape index, which is given to the user to get the shape
+      unsigned char transformation; //< which transformation of the shape is saved in here
+      unsigned long hash;           //< the hash value of this transformation of the shape
+      struct hashNode * next;       //< next entry
     } hashNode;
 
-    hashNode ** hashTable;
-    unsigned long tableSize;
-    unsigned long tableEntries;
+    hashNode ** hashTable;          //< the hash table
+    unsigned long tableSize;        //< size of the hash table
+    unsigned long tableEntries;     //< number of entries in hash table
 
   public:
 
-    voxelTable_c(bool mirrors);
+    voxelTable_c(void);
     virtual ~voxelTable_c(void);
 
-    /* gets the index for the given voxel space, and also the transformation that transforms
-     * the voxel space that is inside the table into this voxel space
+    /** Some parameter flags for the get and set function.
+     * You can or them together when required
+     */
+    enum {
+      PAR_MIRROR = 1,  ///< include mirrors of this shape
+      PAR_COLOUR = 2   ///< differenly coloured shapes are different
+    };
+
+    /**
+     * Returns true, if the given shape is inside the table
      *
-     * returns true, if found, else false
+     * The function also returns the index for the shape and the orientation that this shape
+     * has relative to the one found at the returned index
+     *
+     * The parameter work as follows:
+     *  - PAR_MIRROR: when set mirror orientations of the shape may be returned, otherwise
+     *    the function either finds a non mirror orientation or nothing. Will only work
+     *    when the shape is added using PAR_MIRROR
+     *  - PAR_COLOUR: when set, shapes with different colouring will be different
      *
      * you can provide NULL pointer to index and trans when you only want to know if the space
      * is inside the table
      */
-    bool getSpace(const voxel_c *v, unsigned int *index = 0, unsigned char * trans = 0) const;
-    bool getSpaceColour(const voxel_c *v, unsigned int *index = 0, unsigned char * trans = 0) const;
-    bool getSpaceNoRot(const voxel_c *v, unsigned int *index = 0, unsigned char * trans = 0) const;
+    bool getSpace(const voxel_c *v, unsigned int *index = 0, unsigned char * trans = 0, unsigned int params = 0) const;
 
-    /* add a voxel space to the table, the index is the number returned by getSpace and also
-     * given to findSpace */
-    void addSpace(const voxel_c * v, unsigned int index);
+    /**
+     * Add a voxel space to the table.
+     *
+     * The index is the number returned by getSpace and also given to findSpace
+     *
+     * The params parameter works as follows:
+     * - when PAR_MIRROR is set, the shape will be added in all possible orientations
+     *   including mirror orientations, when not set only normal orientations will be used
+     * - PAR_COLOUR: when set the hash will be calculated in a way that differently colourized
+     *   shapes will have a differen hash, when not set, only the shape will go into the hash
+     *
+     * If you want to be able to search for all combinations you must call the function
+     * twice, once with PAR_MIRROR and then again with PAR_MIRROR | PAR_COLOUR.
+     * When PAR_MIRROR is set you can search with and without PAR_MIRROR.
+     */
+    void addSpace(unsigned int index, unsigned int params = 0);
 
   protected:
 
-    /* you must provide this function and return a pointer to the actual voxel space
+    /**
+     * you must provide this function and return a pointer to the actual voxel space:
+     *
+     * For an actual example loot at the class voxelTablePuzzle_c
      */
     virtual const voxel_c * findSpace(unsigned int index) const = 0;
 };
 
-/* a convenient class that already provides findSpace for a puzzle table */
+/** a convenient class that already provides findSpace for a shape list in puzzle_c */
 class voxelTablePuzzle_c : public voxelTable_c {
 
   private:
@@ -83,7 +124,7 @@ class voxelTablePuzzle_c : public voxelTable_c {
 
   public:
 
-    voxelTablePuzzle_c(const puzzle_c * puz, bool mirrors) : voxelTable_c(mirrors), puzzle(puz) {}
+    voxelTablePuzzle_c(const puzzle_c * puz) : puzzle(puz) {}
 
   protected:
 
