@@ -79,10 +79,11 @@ disassemblerNode_c::~disassemblerNode_c() {
 void disassemblerNode_c::replaceNode(const disassemblerNode_c *n) {
 
   // both nodes must be equal, in the sense that they represent the same state
+  // the thing is just that the whole puzzle may be shifted around
   bt_assert(piecenumber == n->piecenumber);
-  bt_assert(memcmp(dat, n->dat, 4*piecenumber*sizeof(int16_t)) == 0);
   bt_assert(hashValue == n->hashValue);
 
+  memcpy(dat, n->dat, 4*piecenumber*sizeof(int16_t));
   dir = n->dir;
   amount = n->amount;
   waylength = n->waylength;
