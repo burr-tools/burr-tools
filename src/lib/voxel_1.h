@@ -20,7 +20,19 @@
 
 #include "voxel.h"
 
-/* voxel class for triangle grid */
+/**
+ * Voxel class for the triangle grid.
+ *
+ * This grid is a bit more irregular then the others. It has in a way (depending
+ * on how you look at it) either 2 different axes, or 4 axes, of which one is different.
+ *
+ * The grid is a stack of planes of tightly packed triangles. The grid in each plane is
+ * identical. But on the plane you have 2 different triangles: one halve points up the
+ * other halve points down.
+ *
+ * This means that you can move along the z-axis (the stacking direction) in one voxel
+ * steps, but in teh other directions only in 2 voxel steps.
+ */
 class voxel_1_c : public voxel_c {
 
   public:

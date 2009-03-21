@@ -20,7 +20,35 @@
 
 #include "voxel_0.h"
 
-/* voxel class for rhombic grid */
+/**
+ * Voxel class for the rhombic grid.
+ *
+ * This grid builds on top of the cube grid. The rhombic grid is emulated using
+ * cubes. So this class uses many functions from the cubes voxel space.
+ *
+ * This class mainly adds alignment functionality for transformations
+ * and the neighbor functionality.
+ *
+ * The rhombic grid emulation is explained in the user guide with some graphics,
+ * here I can place only a textual description which might be hard to understand.
+ *
+ * It is possible to halve a cube in such a way that you get 2 prisms with a triangle
+ * as base face. This triangle has a shape of an rectangular triangle with sides of
+ * length 1, 1 and sqrt(2). There are 2*3 = 6 such cuts possible. If you do all those 6
+ * cuts on a cube you get 24 little irregular but identical tetrahedras. Those are
+ * the building blocks of the rhombic grid.
+ *
+ * The cube with its 24 tetrahedras is emulated in a 5x5x5 sized cube within the
+ * cubic grid. The 24 tetrahedras are located as little diamonds on each of the six
+ * faces of the 5x5x5 cube. That makes 6 faces with 4 cubes each = 24 voxels.
+ *
+ * Have a look at the user guide to see this and play with BurrTools to understand
+ * the grid.
+ *
+ * With this grid it is possible to build rhombic dodecahedrons. The grid needs alignment
+ * of 5 in each direction to ensure voxels don't change parity when the shape is rotated.
+ * Also translations can only be done in multiples of 5 and so on...
+ */
 class voxel_3_c : public voxel_0_c {
 
   public:

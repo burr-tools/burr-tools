@@ -20,7 +20,27 @@
 
 #include "voxel.h"
 
-/* voxel class for sphere grid */
+/**
+ * Voxel class for the sphere grid.
+ *
+ * The sphere grid is something special. It is the only grid where
+ * transformations can fail.
+ *
+ * The grid is done by placing the spheres in a 3-dimensional checker board
+ * pattern. That results in a regular placement of spheres.
+ *
+ * The other possible embedding would be the hexagonal planes, but this
+ * embedding is much more irregular.
+ *
+ * The sphere grid is a lot of transformations but depending on the actual
+ * shape only some of them are actually doable, others would result in spheres
+ * ending up outside the grid positions. Those transformations will not be
+ * done.
+ *
+ * An other irregularity is the neighbor function, which only returns first
+ * grade neighbors (face touching in the other grids). The other neighbors
+ * don't make sense.
+ */
 class voxel_2_c : public voxel_c {
 
   public:
