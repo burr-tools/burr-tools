@@ -37,6 +37,13 @@ void assmImportWindow_c::okay_cb(void) {
 
 assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Window(false), _ok(false)
 {
+  if (puzzle->problemNumber() == 0)
+  {
+    new LFl_Box("You need a problem with solutions to\nimport assemblies.", 0, 0, 1, 1);
+    (new LFl_Button("Abort", 0, 1, 1, 1))->callback(cb_WindowButton_stub, this);
+    return;
+  }
+
   int ypos = 0;
 
   layouter_c * o = new layouter_c(0, 0);
@@ -124,7 +131,6 @@ assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Win
 
   (new LFl_Button("Continue", 0, 0, 1, 1))->callback(cb_WindowButton_stub2, this);
   (new LFl_Button("Abort", 1, 0, 1, 1))->callback(cb_WindowButton_stub, this);
-  (new LFl_Button("Count", 2, 0, 1, 1))->callback(cb_WindowButton_stub, this);
 
   o->end();
 
