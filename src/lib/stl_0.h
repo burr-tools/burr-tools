@@ -20,7 +20,7 @@
 
 #include "stl.h"
 
-/* stl exporter for cubes */
+/** stl exporter for cubes */
 class stlExporter_0_c : public stlExporter_c {
 
   public:

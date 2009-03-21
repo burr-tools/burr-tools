@@ -22,7 +22,7 @@
 
 class gridType_c;
 
-/* this is the symmetries class for triangles */
+/** this is the symmetries class for triangles */
 class symmetries_1_c : public symmetries_c {
 
   public:

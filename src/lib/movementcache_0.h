@@ -20,7 +20,7 @@
 
 #include "movementcache.h"
 
-/* the movement cache for the cube grid */
+/** the movement cache for the cube grid */
 class movementCache_0_c : public movementCache_c {
 
   public:

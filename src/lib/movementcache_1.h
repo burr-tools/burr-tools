@@ -20,7 +20,7 @@
 
 #include "movementcache.h"
 
-/* movement cache for the triangle grid */
+/** movement cache for the triangle grid */
 class movementCache_1_c : public movementCache_c {
 
   public:

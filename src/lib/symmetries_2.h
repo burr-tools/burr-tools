@@ -22,7 +22,12 @@
 
 class gridType_c;
 
-/* this is the symmetries class for spheres */
+/** this is the symmetries class for spheres.
+ * Internally this class differs a bit from the other implementations
+ * because the spheres have so many orientations. To many that they
+ * don't fit into a long long, so we need to use a self made bitfield
+ * class for those things
+ */
 class symmetries_2_c : public symmetries_c {
 
   public:
