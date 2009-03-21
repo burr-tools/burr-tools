@@ -1667,6 +1667,15 @@ having to apply complex colouring to the result shape in situations were the
 colour constraints are relevant only to the overall appearance of the puzzle.
 
 
+Depending on the grid the tab might contain more buttons with more actions.
+Right now the following additional tools are available
+
+: Fill Holes
+This button will fill all internal, which means completely surrounded, voxels
+of the selected shape. This is useful for more complex grids, where is is not
+easy to see in the grid view whether a voxel is on the inside or not.
+
+
 ==Converting Shapes==[ChConvert]
 
 For some grid types it is possible to convert the shapes of a puzzle from one
