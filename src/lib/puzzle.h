@@ -34,7 +34,7 @@ class xmlWriter_c;
 class xmlParser_c;
 
 /**
- * This class defines the puzzle
+ * This class defines the puzzle.
  * A puzzle is a collection of shapes and a set of problems associated
  * with these shapes and finally the color used for color constraint colors
  */
@@ -42,7 +42,7 @@ class puzzle_c {
 
 private:
 
-  /**
+  /** The gridtype of the puzzle.
    * each puzzle has exactly one grid type, this is it
    * normally it doesn't change, except if you convert
    * a puzzle of one grid type into an other with a converter
@@ -59,7 +59,7 @@ private:
    */
   std::vector<problem_c*> problems;
 
-  /**
+  /** The constraint colours.
    * there can be many colours to constrain the placement of pieces
    * these are the actual colours used to display them
    * the red part is in the lowest 8 bit, followed by green and blue in the
@@ -74,7 +74,7 @@ private:
   std::string comment;
 
   /**
-   * bool to signify if the comment should open on load
+   * bool to signify if the comment should open on load.
    * so when the gui loads a puzzle where this is true, it
    * will always display the comment.
    */
@@ -84,12 +84,12 @@ public:
 
   /**
    * copy constructor this will NOT copy the labels and solutions of
-   * the problems...
+   * the problems.
    */
   puzzle_c(const puzzle_c * orig);
 
   /**
-   * Constructor for empty puzzle, no shape, no problem and no colours
+   * Constructor for empty puzzle. no shape, no problem and no colours
    * ownership of the given gridtype is taken over, the memory
    * is freed on destruction of this class
    */
@@ -111,40 +111,34 @@ public:
    */
   ~puzzle_c(void);
 
-  /**
-   * some functions to get the current set grid type for this puzzle
-   */
+  /** \name some functions to get the current set grid type for this puzzle */
+  //@{
   const gridType_c * getGridType(void) const { return gt; }
   gridType_c * getGridType(void) { return gt; }
+  //@}
 
-  /**
-   * functions to add shapes to the puzzle
-   * - add a shape, the voxel space is taken over. The space is taken over, and freed
-   *   when the puzzle is destroyed
-   * - the 2nd function adds empty shape of given size
-   * all functions return the index of the added shape
+
+  /** \name shape handling */
+  //@{
+  /** Add the given shape to the puzzle.
+   * The space is taken over, and freed when the puzzle is destroyed
+   * Returns the index of the new shape
    */
   unsigned int addShape(voxel_c * p);
+  /** add an empty shape of the given size return the index of the new shape */
   unsigned int addShape(unsigned int sx, unsigned int sy, unsigned int sz);
-
-  /**
-   *  return how many shapes there are in the puzzle
-   */
+  /** return how many shapes there are in the puzzle */
   unsigned int shapeNumber(void) const { return shapes.size(); }
-
-  /**
-   *  return the pointer to voxel space with the given index
-   */
+  /** get a shape */
   const voxel_c * getShape(unsigned int idx) const { bt_assert(idx < shapes.size()); return shapes[idx]; }
+  /** get a shape */
   voxel_c * getShape(unsigned int idx) { bt_assert(idx < shapes.size()); return shapes[idx]; }
-
   /**
    * remove the num-th shape.
    * be careful this changes all ids and so all problems must be updated
    * changing them, removing solutions, result shapes or pieces in problems...
    */
   void removeShape(unsigned int);
-
   /**
    *  exchange 2 shapes in the list of shapes.
    *  this function takes care to update all the problems and solutions
@@ -152,55 +146,63 @@ public:
    *  updating tose indices
    */
   void exchangeShape(unsigned int s1, unsigned int s2);
+  //@}
 
-  /**
-   * handle puzzle colours
-   * - add a color, return the index of the new color
-   * - remove a color with given index, all shapes are updated to not use that
-   *   color any more, color constraints are updated for all problems to no
-   *   longer use that color, its your task to make sure the now invalid solutions
-   *   are removed
-   * - change the RGB value of one color
-   * - get the RGB value of one color
-   * - return the number of defined colors
-   */
+
+  /** \name  handle puzzle colours */
+  //@{
+  /** add a color, return the index of the new color */
   unsigned int addColor(unsigned char r, unsigned char g, unsigned char b);
+  /**
+   * remove a color with given index.
+   * All shapes are updated to not use that
+   * color any more, color constraints are updated for all problems to no
+   * longer use that color, its your task to make sure the now invalid solutions
+   * are removed
+   */
   void removeColor(unsigned int idx);
+  /** change the RGB value of one color */
   void changeColor(unsigned int idx, unsigned char r, unsigned char g, unsigned char b);
+  /** get the RGB value of one color */
   void getColor(unsigned int idx, unsigned char * r, unsigned char * g, unsigned char * b) const;
+  /** return the number of defined colors */
   unsigned int colorNumber(void) const { return colors.size(); }
+  //@}
 
-  /**
-   * handle problems:
-   * - add a new empty problem return its index
-   * - add a new problem as copy from another problem (from another puzzle)
-   * - return the number of problems within this puzzle
-   * - remove problem with the given index freeing all its ressources
-   * - exchange problem at indes p1 with problem at index p2
-   * - get the problem at index p
-   */
+
+  /** \name handle problems */
+  //@{
+  /** add a new empty problem return its index */
   unsigned int addProblem(void);
+  /** add a new problem as copy from another problem (from another puzzle).
+   * A copy of the provided problem is created
+   */
   unsigned int addProblem(const problem_c * prob);
+  /** return the number of problems within this puzzle */
   unsigned int problemNumber(void) const { return problems.size(); }
+  /** remove problem with the given index freeing all its ressources */
   void removeProblem(unsigned int p);
+  /** exchange problem at indes p1 with problem at index p2 */
   void exchangeProblem(unsigned int p1, unsigned int p2);
+  /** get the problem at index p */
   const problem_c * getProblem(unsigned int p) const { bt_assert(p < problems.size()); return problems[p]; }
+  /** get the problem at index p */
   problem_c * getProblem(unsigned int p) { bt_assert(p < problems.size()); return problems[p]; }
+  //@}
 
-  /**
-   * the puzzle comment functions:
-   * - set comment there is no limitation in size or characters...
-   * - get comment
-   */
+
+  /** \name the puzzle comment functions */
+  //@{
+  /** set comment there is no limitation in size or characters.  */
   void setComment(const std::string & com) { comment = com; }
+  /** get comment */
   const std::string & getComment(void) const { return comment; }
-
-  /**
-   * a flag for the comment, if set to true it is supposed that
-   * the comment will open when the file is loaded within the gui
-   */
+  /** find out if the comment popup flas is set */
   bool getCommentPopup(void) const { return commentPopup; }
+  /** set or reset comment popup flag */
   void setCommentPopup(bool val) { commentPopup = val; }
+  //@}
+
 };
 
 #endif
