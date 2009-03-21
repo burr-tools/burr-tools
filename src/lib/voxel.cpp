@@ -35,7 +35,9 @@
  * I hope this will help everyone to understand the inner workings of this
  * complex piece of software.
  *
- * To get started it is best to begin reading the information for the voxel \ref voxel_c classes.
+ * To get started it is best to begin reading the userguide. This document will explain
+ * basic concepts of the whole software, even though this is done in a GUI centric way.
+ * Next read the information for the voxel \ref voxel_c classes.
  * Then continue to the assembly \ref assembly_c. The assemblers \assembler_c are probably not
  * necessary to read. They contain too much complicated stuff. Then read the disassembly
  * \ref disassembly_c class documentation. Finally the grid type \ref gridType_c class will
