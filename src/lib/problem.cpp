@@ -30,6 +30,7 @@
 
 /* ********* SOLUTION ************** */
 
+/** internal class of problem storing one solution for a problem */
 class solution_c {
 
 public:
@@ -178,6 +179,7 @@ solution_c::~solution_c(void) {
 
 /******** ORIG PROBLEM ************/
 
+/** internal class of problem storing the grouping information of a shape */
 class group_c {
 
   public:
@@ -188,6 +190,7 @@ class group_c {
     unsigned short count;
 };
 
+/** internal class of problem storing the information attatched to a piece in a problem */
 class shape_c {
 
   public:
