@@ -1010,11 +1010,11 @@ assembly_c * assembler_1_c::getAssembly(void) {
   /* fill the array with 0xff, so that we can distinguish between
    * placed and unplaced pieces
    */
-  unsigned int *piece = new unsigned int[rows.size()];
-  unsigned char *tran = new unsigned char[rows.size()];
-  int *x = new int[rows.size()];
-  int *y = new int[rows.size()];
-  int *z = new int[rows.size()];
+  unsigned int piece[rows.size()];
+  unsigned char tran[rows.size()];
+  int x[rows.size()];
+  int y[rows.size()];
+  int z[rows.size()];
 
   for (unsigned int i = 0; i < rows.size(); i++)
     getPieceInformation(rows[i], piece+i, tran+i, x+i, y+i, z+i);
@@ -1036,12 +1036,6 @@ assembly_c * assembler_1_c::getAssembly(void) {
   }
 
   assembly->sort(puzzle);
-
-  delete [] piece;
-  delete [] tran;
-  delete [] x;
-  delete [] y;
-  delete [] z;
 
   return assembly;
 }
