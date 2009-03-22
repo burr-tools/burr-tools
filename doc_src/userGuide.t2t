@@ -1233,13 +1233,13 @@ more general transformation tools (--/[TransformationTool ChTransformationTools]
 and have the advantage that they can act on all shapes at once
 (--/[AdjustAllShapes ChAdjustAllShapes]).
 
-: [Button_Size_Grid_Minimize.png]
+: [Button_Size_Grid_Minimize.png]:
 **Minimise the grid -** This function will minimise the grid to fit the
 dimensions of the shape it contains. Use it to reduce the disk space occupied
 by your puzzle files. Note that the result of this function is strictly based
 on the contents of the grid and will have no effect whatsoever on empty grids.
 
-: [Button_Size_Grid_Center.png]
+: [Button_Size_Grid_Center.png]:
 **Centre the shape in the grid -** This function centres the shape in the
 surrounding grid thus allowing you to edit all sides of the shape. In some
 cases this will also //increase// one or more dimensions of the grid by a single
@@ -1247,7 +1247,7 @@ unit to provide true centring. The function is most useful in editing
 symmetrical shapes in combination with the compound drawing methods
 (--/[CompoundDrawing ChCompoundDrawing]).
 
-: [Button_Size_Grid_Align.png]
+: [Button_Size_Grid_Align.png]:
 **Align the shape to the origin -** This function brings the shape as close as
 possible to the origin of the grid. It can very useful if you want to make a
 descending series of rectangular blocks by copying the shape and manually
@@ -1265,7 +1265,7 @@ grouped to make an upscaled shape that looks like a voxel of the grid, e.g. a
 group of 2x2x2 cubes looks like a bigger cube. As this doesn't work with
 spheres, these tools are not available there.
 
-: [Button_Size_Shape_11.png]
+: [Button_Size_Shape_11.png]:
 **Minimise the size of the shape (1:1 tool) -** This function tries to make the
 shape as small as possible without any loss of information and at the same time
 scales down the grid by the same factor. Use this function to check the design
@@ -1274,14 +1274,14 @@ function can undo the effects of both of the next scaling functions, the result
 cannot be guaranteed since the algorithm may scale down beyond the initial
 size.
 
-: [Button_Size_Shape_x2.png]
+: [Button_Size_Shape_x2.png]:
 **Double the scale -** This function will double the scale of the shape (and
 its grid). In other words, it will replace every voxel in the shape with a
 group of voxels that all have the same characteristics (state and colour) as
 the original voxel. This can be very useful to introduce half-unit notches or
 colouring into the design without having to redraw the shape(s).
 
-: [Button_Size_Shape_x3.png]
+: [Button_Size_Shape_x3.png]:
 **Triple the scale -** This function is similar to doubling the scale, only now
 a scaling factor of 3 is used and hence every voxel in the shape will be
 replaced by 27 identical voxels. This can be very useful if you want to
@@ -1366,13 +1366,13 @@ they are all that's needed to create any shape in BURRTOOLS. The
 following is a description of these tools. Note that each is also accessible
 through a keyboard short cut.
 
-: [Button_Toolbar_Draw_Fixed.png]
+: [Button_Toolbar_Draw_Fixed.png]:
 **Fixed pen -** Use this tool to draw //normal// or //fixed// voxels. Fixed
 voxels are represented by completely filled cells in both the 2-D and the 3-D
 grid (--/[Representation ChRepresentations]). Remember that these fixed voxels
 //must be filled// in the final result. Keyboard short cut: ``[F5]``.
 
-: [Button_Toolbar_Draw_Variable.png]
+: [Button_Toolbar_Draw_Variable.png]:
 **Variable pen -** This tool allows you to draw //variable// voxels. In the 2-D
 grid these variable voxels do not completely fill the cells, but have a narrow
 border showing the background of the grid. In the 3-D viewport the variable
@@ -1382,7 +1382,7 @@ voxels instruct the solver that these particular places may be //either//
 result shapes, and the solver will give a warning whenever it encounters any
 variable voxels in a shape used as a piece. Short cut: ``[F6]``.
 
-: [Button_Toolbar_Draw_Eraser.png]
+: [Button_Toolbar_Draw_Eraser.png]:
 **Eraser -** The eraser will remove voxels from the shape. Note that clicking
 or dragging with the right mouse button has the same effect of erasing voxels.
 The eraser tool however proves its use in minute adaptations of shapes. Short
@@ -1395,7 +1395,7 @@ BURRTOOLS has two different drawing styles. These styles affect the way voxels
 are drawn/erased or colours are added by //dragging// with the mouse. In
 drawing shapes by simply clicking 'cell-by-cell' both are equivalent.
 
-: [Button_Toolbar_Drag_Rubber.png]
+: [Button_Toolbar_Drag_Rubber.png]:
 **Rectangular dragging style ('rubber band') -** On dragging over the 2-D grid
 with the mouse, a //rectangular selection// of cells will be made. This is
 shown with a heavy border around the selected cells and the voxels will only be
@@ -1404,7 +1404,7 @@ the actual grid will make the whole operation void and can serve as a sort of
 'undo'. This style is useful not only for drawing rectangular shapes or parts,
 but also for adding colour to (large areas of) the shape.
 
-: [Button_Toolbar_Drag_Free.png]
+: [Button_Toolbar_Drag_Free.png]:
 **Free dragging style -** All drawing and colouring operations will be
 performed on a single cell basis and //as soon as// the mouse cursor is dragged
 over that particular cell. This drawing style is very useful for creating
@@ -1428,7 +1428,7 @@ spaces as they might behave differently along the 3 axes. The triangular prisms
 for example are stacked along the z-axis, side by side along the x-axis and tip
 by tip along the y-axis.
 
-: [Button_Toolbar_Symm_X.png][Button_Toolbar_Symm_Y.png][Button_Toolbar_Symm_Z.png]
+: [Button_Toolbar_Symm_X.png][Button_Toolbar_Symm_Y.png][Button_Toolbar_Symm_Z.png]:
 **Symmetrical drawing methods -** For every voxel drawn, erased, or coloured
 its symmetrically placed counterpart (with respect to the centre of the grid
 and along one of the space axes) will be affected as well. Activating only one
@@ -1438,7 +1438,7 @@ simultaneously. These options are not only useful for drawing symmetrical
 shapes, but they are also very well suited for finding the centre of the grid
 and (temporarily) setting the extents of a shape.
 
-: [Button_Toolbar_Cols_X.png][Button_Toolbar_Cols_Y.png][Button_Toolbar_Cols_Z.png]
+: [Button_Toolbar_Cols_X.png][Button_Toolbar_Cols_Y.png][Button_Toolbar_Cols_Z.png]:
 **Column drawing methods -** These options - possibly combined with the
 symmetrical drawing tools - can really speed up drawing shapes as they will
 affect //all// voxels that are in the same row or column along one of the space
@@ -1547,7 +1547,7 @@ Colours can be applied while drawing the shape. Just select a colour and it
 will become an extra attribute of the fixed pen or the variable pen.
 Additional colouring can be done by using the //Brush// tool.
 
-: [Button_Toolbar_Draw_Brush.png]
+: [Button_Toolbar_Draw_Brush.png]:
 **Brush tool -** This is a //'colouring only'// device and merely adds the
 selected colour to the voxels without altering their state. The brush tool can
 also be activated by pressing ``[F8]`` on the keyboard.
@@ -1596,7 +1596,7 @@ for triangles, and at the bottom for spheres.
 
 @F@FigTransformationTools|Subtab_TransformA.png \n Subtab_TransformB.png \n Subtab_TransformC.png|Transformation tools@F@
 
-: [Button_Transform_Flip_X.png][Button_Transform_Flip_Y.png][Button_Transform_Flip_Z.png]
+: [Button_Transform_Flip_X.png][Button_Transform_Flip_Y.png][Button_Transform_Flip_Z.png]:
 **Flip -** These 'three' functions are merely //one single mirroring tool//,
 the only difference is the orientation of the mirrored shape they provide. The
 first will mirror the shape along the x-axis (or in a plane through the centre
@@ -1608,7 +1608,7 @@ the outcome of any other. However, there are three buttons to provide some
 control over the orientation of the mirrored shape in the grid space, which can
 save time if the shape needs further editing.
 
-: [Button_Transform_Nudge_X.png][Button_Transform_Nudge_Y.png][Button_Transform_Nudge_Z.png] and more
+: [Button_Transform_Nudge_X.png][Button_Transform_Nudge_Y.png][Button_Transform_Nudge_Z.png] and more:
 **Nudge -**These functions provide //translations// (along the x-axis, y-axis
 or z-axis for the cubes, or along different axes for other gridtypes) of the
 shapes in their surrounding grids. These buttons have two parts, of which the
@@ -1617,7 +1617,7 @@ part will move it away from the origin. Note that shifting a shape beyond the
 boundaries of the grid will (partially) destroy it. So these nudging operations
 can also be used to erase unwanted parts on the outer limits of the shapes.
 
-: [Button_Transform_Rotate_X.png][Button_Transform_Rotate_Y.png][Button_Transform_Rotate_Z.png]
+: [Button_Transform_Rotate_X.png][Button_Transform_Rotate_Y.png][Button_Transform_Rotate_Z.png]:
 **Rotate -** These functions allow you to //rotate// the shapes around an axis
 parallel to the x-axis, y-axis or the z-axis. Again, these buttons have two
 parts, of which the left rotates the shape 90° anti-clockwise (viewed towards
@@ -1643,14 +1643,14 @@ the outside of the shape. Voxels that are considered to be on the inside are
 voxels that have another voxel adjacent to //all// of their //faces//.
 Consequently, outside voxels have at least one empty voxel neighbouring.
 
-: [Button_Constraints_Fixed.png]
+: [Button_Constraints_Fixed.png]:
 **Fixed Inside/Outside -** These functions allow you to change the state of the
 voxels that are either on the inside (left button) or on the outside (right
 button) of the shape into fixed voxels. Although one can think of situations in
 which these can be useful as such, they are mostly used to undo the effects of
 the next two functions.
 
-: [Button_Constraints_Variable.png]
+: [Button_Constraints_Variable.png]:
 **Variable Inside/Outside -** These functions will respectively make all the
 voxels on the inside or the outside of the shape variable. Making the inside
 variable is very useful for puzzles with internal holes in undetermined places.
@@ -1659,7 +1659,7 @@ situations (e.g. adding extensions to the pieces). Clicking both buttons will
 make the shape completely built out of variable voxels. Use these wisely as the
 more variable voxels there are, the slower the solver will run.
 
-: [Button_Constraints_Colour.png]
+: [Button_Constraints_Colour.png]:
 **Colour Remover -** These buttons will remove any custom colours from the
 voxels that are either on the inside or the outside of the shape, and replace
 them with the default colour. Removing the colour from the inside can prevent
