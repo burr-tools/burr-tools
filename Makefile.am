@@ -2,7 +2,7 @@ SUBDIRS = src
 
 EXTRA_DIST =
 EXTRA_DIST += doc_src
-EXTRA_DIST += doxygen.cfg
+EXTRA_DIST += doxygen.cfg.in
 EXTRA_DIST += src/lib/tabs_0/generator_0.cpp
 EXTRA_DIST += src/lib/tabs_1/generator_1.cpp
 EXTRA_DIST += src/lib/tabs_2/generator_2.cpp
