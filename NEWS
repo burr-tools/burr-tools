@@ -1,3 +1,5 @@
+------------- Version 0.5.0 Jan 2009
+
 - fix problem in the rotation filter when 2 mirror shapes were assigned to a
   problem with different ranges. In that case some solutions were not found
   when the mirror check was enabled
