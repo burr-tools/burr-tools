@@ -52,7 +52,10 @@ public:
  * The assembler.
  *
  * As the assembly could be done using different routines we provide an
- * general interface to the assemblers using this abstract base class
+ * general interface to the assemblers using this abstract base class.
+ *
+ * But all must provide the same interface: as describes here. All must
+ * use the callback for each found assembly.
  */
 class assembler_c {
 
@@ -67,7 +70,7 @@ public:
     ERR_CAN_NOT_RESTORE_VERSION, ///< happens on restore, when the versions of the saved information mismatches
     ERR_CAN_NOT_RESTORE_SYNTAX,  ///< happens on restore, when the information seems wrong
     ERR_PIECE_WITH_VARICUBE,     ///< there is a piece shape that has a variable cube
-    ERR_PUZZLE_UNHANDABLE        // the puzzle contains definitions that can not be (like ranges, multipieces, ...)
+    ERR_PUZZLE_UNHANDABLE        ///< the puzzle contains definitions that can not be (like ranges, multipieces, ...)
   } errState;
 
   /**

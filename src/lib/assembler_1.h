@@ -28,16 +28,17 @@ class problem_c;
 class gridType_c;
 class mirrorInfo_c;
 
-/* this class is an assembler class. It provides the dancing link implementation
- * for a real assembler an assembler frontend must be given
+/**
+ * This class is an assembler class.
  *
- * when a new puzzle has to be solved the user calls createMatrix. This function
- * creates the internal data structures for the solver.
+ * This assembler is written with ideas from Wei-Hwa Huang. It can handle ranges for the piece
+ * numbers and thus also multiple instances of one piece.
  *
- * whenever a solution is found the callback is called
+ * But for simple cases it is not really optimal.
  *
- * this class is an improved dancing link assembler, it can handle all BurrTools features
- * for the simple tasks assembler_0_c is used
+ * It also has a problem with guessing how much of the analysis it done. This number is growing exponentially
+ * meaning in the beginning it is growing very slowly resulting in huge time-left numbers while at the
+ * end it is getting very fast and the time-left value dropping really fast.
  */
 
 class assembler_1_c : public assembler_c {

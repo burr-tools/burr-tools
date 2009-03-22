@@ -27,18 +27,15 @@
 class gridType_c;
 class mirrorInfo_c;
 
-/* this class is an assembler class. It provides the dancing link implementation
- * for a real assembler an assembler frontend must be given
+/**
+ * This is an assembler class.
  *
- * when a new puzzle has to be solved the user calls createMatrix. This function
- * creates the internal data structures for the solver.
+ * It is mor or less identical to Don Knuths idea. Some changes have been done though
+ * to provide for holes. This class can not handle ranges or multi-pieces.
  *
- * whenever a solution is found the callback is called
- *
- * this class is a basic dancing link assembler, besides variable cells it is very
- * simple, no ranges or even multi pieces, assembler_1_c is responsible for those
+ * All involved pieces must be there exactly one time. But in that case it is a bit
+ * faster than assembler_1.
  */
-
 class assembler_0_c : public assembler_c {
 
 protected:
