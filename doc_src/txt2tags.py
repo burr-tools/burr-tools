@@ -453,7 +453,7 @@ HEADER_TEMPLATE = {
 """,
 
   'tex': \
-r"""\documentclass[11pt,a4paper]{book}
+r"""\documentclass[11pt,a4paper]{scrbook}
 \usepackage{amsfonts,graphicx}
 \usepackage[pdfstartview=FitH,urlcolor=blue,colorlinks=true,bookmarks=true]{hyperref}
 \usepackage[%(ENCODING)s]{inputenc}  %% char encoding
