@@ -166,16 +166,20 @@ class separationInfo_c {
 
   private:
 
-    /* this array contains the whole disassembly tree in prefix order, root, left, removed
-     * when a certain subtree is empty a zero is included, otherwise the number is the number
+    /**
+     * this array contains the whole disassembly tree in prefix order, root, left, removed.
+     * When a certain subtree is empty a zero is included, otherwise the number is the number
      * of states within this tree node
      *
-     * example, 3 2 1 0 0 0 0     tree root 3 --> 2 --> 1
+     * example:
+     * \verbatim
+       3 2 1 0 0 0 0     tree root 3 --> 2 --> 1 \endverbatim
      *
      * another example
      *
-     *          3 1 1 0 0 0 1 1 0 0 0   tree root  3 --> 1 --> 1
-     *                                              \--> 1 --> 1
+     * \verbatim
+       3 1 1 0 0 0 1 1 0 0 0   tree root  3 --> 1 --> 1
+                                           \--> 1 --> 1 \endverbatim
      */
     std::vector<unsigned int> values;
 
@@ -184,20 +188,23 @@ class separationInfo_c {
 
   public:
 
-    /* separationInfo classes can only be created from normal disassemblies or
-     * loaded from xml file
+    /**
+     * constructor to load separation into
      */
     separationInfo_c(xmlParser_c & pars);
+    /**
+     * constructor to create a separation info from a normal separation
+     */
     separationInfo_c(const separation_c * sep);
 
-    /* save into an xml node */
+    /** save into an xml node */
     void save(xmlWriter_c & xml) const;
 
-    /* the following 3 functions return the exact same information
-     * as the corresponding information in separation_c
-     */
+    /** same as separation_c::sumMoves just for separationInfor_c */
     unsigned int sumMoves(void) const;
+    /** same as separation_c::movesText just for separationInfor_c */
     int movesText(char * txt, int len, unsigned int idx = 0);
+    /** same as separation_c::compare just for separationInfor_c */
     int compare(const separationInfo_c * s2) const;
 };
 
@@ -207,56 +214,60 @@ class separationInfo_c {
  */
 class state_c {
 
-  /* arrays containing the positions of all the pieces
-   * that are handled
-   */
-  int *dx, *dy, *dz;
+  /** contains the x positions of all the pieces that are handled */
+  int *dx;
+  /** contains the y positions of all the pieces that are handled */
+  int *dy;
+  /** contains the z positions of all the pieces that are handled */
+  int *dz;
 
 #ifndef NDEBUG
-  // we only keep the piecenumber for checking purposes
+  /** we only keep the piecenumber for checking purposes */
   unsigned int piecenumber;
 #endif
 
 public:
 
-  /* create a new spate for pn pieces, you can not add more
+  /**
+   * create a new spate for pn pieces. you can not add more
    * pieces later on, so plan ahead
    */
   state_c(unsigned int pn);
 
-  /* copy constructor */
+  /** copy constructor */
   state_c(const state_c * cpy, unsigned int pn);
+
+  /** load from an xml node */
+  state_c(xmlParser_c & pars, unsigned int pn);
 
   ~state_c();
 
-  /* set the position of a piece */
+  /** save into an xml node */
+  void save(xmlWriter_c & xml, unsigned int piecenumber) const;
+
+  /** set the position of a piece */
   void set(unsigned int piece, int x, int y, int z);
 
-  /* the x, y or z position of a piece */
+  /** get the x position of a piece */
   int getX(unsigned int i) const {
     bt_assert(i < piecenumber);
     return dx[i];
   }
+  /** get the y position of a piece */
   int getY(unsigned int i) const {
     bt_assert(i < piecenumber);
     return dy[i];
   }
+  /** get the z position of a piece */
   int getZ(unsigned int i) const {
     bt_assert(i < piecenumber);
     return dz[i];
   }
 
-  /* check, if the piece is removed in this state */
+  /** check, if the piece is removed in this state */
   bool pieceRemoved(unsigned int i) const;
 
-  /* save into an xml node */
-  void save(xmlWriter_c & xml, unsigned int piecenumber) const;
-
-  /* load from an xml node */
-  state_c(xmlParser_c & pars, unsigned int pn);
-
 #ifndef NDEBUG
-  /* on assert needs to check the piecenumber */
   friend void separation_c::addstate(state_c *st);
 #endif
 };
