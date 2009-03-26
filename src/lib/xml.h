@@ -31,11 +31,11 @@
  * I used to use xml2 with xmlwrapp, but that got way to bulky and slow
  */
 
-class xmlException {
+class xmlWriterException_c {
 
   public:
 
-    xmlException(const std::string & /*txt*/) {}
+    xmlWriterException_c(const std::string & /*txt*/) {}
 
 };
 

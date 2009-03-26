@@ -52,7 +52,7 @@ xmlWriter_c::xmlWriter_c(std::ostream & str) : stream(str), state(StBase)
 xmlWriter_c::~xmlWriter_c(void)
 {
   if (tagStack.size() > 0)
-    throw xmlException("Not all tags were closed");
+    throw xmlWriterException_c("Not all tags were closed");
 }
 
 void xmlWriter_c::newTag(const std::string & name)
@@ -67,7 +67,7 @@ void xmlWriter_c::newTag(const std::string & name)
       // in Base State we don't need to do anything
       break;
     case StInContent:
-      throw xmlException("Try to add a new node into a node with content...");
+      throw xmlWriterException_c("Try to add a new node into a node with content...");
       break;
   }
 
@@ -88,7 +88,7 @@ void xmlWriter_c::newAttrib(const std::string & attrib, const std::string & valu
       break;
     case StBase:
     case StInContent:
-      throw xmlException("Try to add attribute but not in node");
+      throw xmlWriterException_c("Try to add attribute but not in node");
       break;
   }
 }
@@ -102,7 +102,7 @@ void xmlWriter_c::newAttrib(const std::string & attrib, unsigned long value)
       break;
     case StBase:
     case StInContent:
-      throw xmlException("Try to add attribute but not in node");
+      throw xmlWriterException_c("Try to add attribute but not in node");
       break;
   }
 }
@@ -116,7 +116,7 @@ void xmlWriter_c::newAttrib(const std::string & attrib, signed long value)
       break;
     case StBase:
     case StInContent:
-      throw xmlException("Try to add attribute but not in node");
+      throw xmlWriterException_c("Try to add attribute but not in node");
       break;
   }
 }
@@ -124,7 +124,7 @@ void xmlWriter_c::newAttrib(const std::string & attrib, signed long value)
 void xmlWriter_c::endTag(const std::string & name)
 {
   if (name != *(tagStack.rbegin()))
-    throw xmlException("Try to close tag with wrong name");
+    throw xmlWriterException_c("Try to close tag with wrong name");
 
   switch (state)
   {
@@ -152,7 +152,7 @@ void xmlWriter_c::addContent(const std::string & text)
       stream << ">";
       break;
     case StBase:
-      throw xmlException("Try to add content to a node, where it is not allowed");
+      throw xmlWriterException_c("Try to add content to a node, where it is not allowed");
       break;
     case StInContent:
       break;
@@ -171,7 +171,7 @@ void xmlWriter_c::addContent(unsigned long int val)
       stream << ">";
       break;
     case StBase:
-      throw xmlException("Try to add content to a node, where it is not allowed");
+      throw xmlWriterException_c("Try to add content to a node, where it is not allowed");
       break;
     case StInContent:
       break;
@@ -189,7 +189,7 @@ void xmlWriter_c::addContent(signed long int val)
       stream << ">";
       break;
     case StBase:
-      throw xmlException("Try to add content to a node, where it is not allowed");
+      throw xmlWriterException_c("Try to add content to a node, where it is not allowed");
       break;
     case StInContent:
       break;
@@ -207,7 +207,7 @@ std::ostream & xmlWriter_c::addContent(void)
       stream << ">";
       break;
     case StBase:
-      throw xmlException("Try to add content to a node, where it is not allowed");
+      throw xmlWriterException_c("Try to add content to a node, where it is not allowed");
       break;
     case StInContent:
       break;
