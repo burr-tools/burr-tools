@@ -209,12 +209,11 @@ bool solveThread_c::assembly(assembly_c * a) {
 
             for (unsigned int i = 0; i < puzzle->solutionNumber(); i++) {
 
-              const separationInfo_c * s2 = puzzle->getDisassemblyInfo(i);
+              const disassembly_c * s2 = puzzle->getDisassembly(i);
 
               if (s2 && s2->sumMoves() > lev) {
                 if (parameters & PAR_DROP_DISASSEMBLIES) {
-                  separationInfo_c * si = new separationInfo_c(s);
-                  puzzle->addSolution(a, si, i);
+                  puzzle->addSolution(a, new separationInfo_c(s), i);
                   delete s;
                 } else
                   puzzle->addSolution(a, s, i);
@@ -226,8 +225,7 @@ bool solveThread_c::assembly(assembly_c * a) {
 
           if (!ins) {
             if (parameters & PAR_DROP_DISASSEMBLIES) {
-              separationInfo_c * si = new separationInfo_c(s);
-              puzzle->addSolution(a, si);
+              puzzle->addSolution(a, new separationInfo_c(s));
               delete s;
             } else
               puzzle->addSolution(a, s);
@@ -242,17 +240,14 @@ bool solveThread_c::assembly(assembly_c * a) {
           break;
         case SRT_LEVEL:
           {
-            separationInfo_c * si = new separationInfo_c(s);
-
             for (unsigned int i = 0; i < puzzle->solutionNumber(); i++) {
 
-              const separationInfo_c * s2 = puzzle->getDisassemblyInfo(i);
+              const disassembly_c * s2 = puzzle->getDisassemblyInfo(i);
 
-              if (s2 && (s2->compare(si) > 0)) {
+              if (s2 && (s2->compare(s) > 0)) {
                 if (parameters & PAR_DROP_DISASSEMBLIES) {
-                  puzzle->addSolution(a, si, i);
+                  puzzle->addSolution(a, new separationInfo_c(s), i);
                   delete s;
-                  si = 0;
                 } else
                   puzzle->addSolution(a, s, i);
                 ins = true;
@@ -262,14 +257,11 @@ bool solveThread_c::assembly(assembly_c * a) {
 
             if (!ins)  {
               if (parameters & PAR_DROP_DISASSEMBLIES) {
-                puzzle->addSolution(a, si);
-                si = 0;
+                puzzle->addSolution(a, new separationInfo_c(s));
                 delete s;
               } else
                 puzzle->addSolution(a, s);
             }
-
-            if (si) delete si;
           }
 
           // remove the front most solution, if we only want to save
@@ -283,8 +275,7 @@ bool solveThread_c::assembly(assembly_c * a) {
           /* only save every solutionDrop-th solution */
           if (puzzle->getNumSolutions() % (solutionDrop * dropMultiplicator) == 0) {
             if (parameters & PAR_DROP_DISASSEMBLIES) {
-              separationInfo_c * si = new separationInfo_c(s);
-              puzzle->addSolution(a, si);
+              puzzle->addSolution(a, new separationInfo_c(s));
               delete s;
             } else
               puzzle->addSolution(a, s);

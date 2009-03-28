@@ -247,6 +247,23 @@ bool state_c::pieceRemoved(unsigned int i) const {
 }
 
 /************************************************************************
+ * Disassembly
+ ************************************************************************/
+
+int disassembly_c::compare(const disassembly_c * s2) const
+{
+  unsigned int numSeq = std::max(getNumSequences(), s2->getNumSequences());
+
+  for (unsigned int i = 0; i < numSeq; i++) {
+    if (getSequenceLength(i) < s2->getSequenceLength(i)) return -1;
+    if (getSequenceLength(i) > s2->getSequenceLength(i)) return 1;
+  }
+
+  return 0;
+}
+
+
+/************************************************************************
  * Separation
  ************************************************************************/
 
@@ -377,10 +394,14 @@ separation_c::separation_c(xmlParser_c & pars, unsigned int pieceCnt)
     pars.exception("there are no state nodes in the separation");
 
   pars.require(xmlParser_c::END_TAG, "separation");
+
+  numSequences = left?left->numSequences:0 + removed?removed->numSequences:0 + 1;
 }
 
 separation_c::separation_c(separation_c * r, separation_c * l, const std::vector<unsigned int> & pcs) : removed(r), left(l) {
   pieces = pcs;
+
+  numSequences = l?l->numSequences:0 + r?r->numSequences:0 + 1;
 }
 
 separation_c::~separation_c() {
@@ -402,7 +423,7 @@ unsigned int separation_c::sumMoves(void) const {
 }
 
 void separation_c::addstate(state_c *st) {
-  bt_assert(st->piecenumber == pieces.size());
+  bt_assert(st->getPiecenumber() == pieces.size());
   states.push_front(st);
 }
 
@@ -422,6 +443,8 @@ separation_c::separation_c(const separation_c * cpy) {
     removed = new separation_c(cpy->removed);
   else
     removed = 0;
+
+  numSequences = cpy->numSequences;
 }
 
 
@@ -431,7 +454,7 @@ bool separation_c::containsMultiMoves(void) {
     (removed && removed->containsMultiMoves());
 }
 
-int separation_c::movesText(char * txt, int len) {
+int separation_c::movesText2(char * txt, int len) {
 
   bt_assert(states.size() > 0);
 
@@ -443,7 +466,7 @@ int separation_c::movesText(char * txt, int len) {
   if (left && left->containsMultiMoves()) {
     snprintf(txt+len2, len-len2, ".");
     len2++;
-    len2 += left->movesText(txt+len2, len-len2);
+    len2 += left->movesText2(txt+len2, len-len2);
   }
 
   if (len2+5 > len)
@@ -452,38 +475,10 @@ int separation_c::movesText(char * txt, int len) {
   if (removed && removed->containsMultiMoves()) {
     snprintf(txt+len2, len-len2, ".");
     len2++;
-    len2 += removed->movesText(txt+len2, len-len2);
+    len2 += removed->movesText2(txt+len2, len-len2);
   }
 
   return len2;
-}
-
-int separation_c::compare(const separation_c * s2) const {
-
-  if (!s2) return 1;
-
-  if (states.size() > s2->states.size())
-    return 1;
-  else if (states.size() < s2->states.size())
-    return -1;
-  else {
-    int a;
-    if (left)
-      a = left->compare(s2->left);
-    else if (s2->left)
-      a = -1;
-    else
-      a = 0;
-
-    if (a != 0) return a;
-
-    if (removed)
-      return removed->compare(s2->removed);
-    else if (s2->removed)
-      return -1;
-    else
-      return 0;
-  }
 }
 
 void separation_c::exchangeShape(unsigned int s1, unsigned int s2) {
@@ -499,6 +494,38 @@ void separation_c::exchangeShape(unsigned int s1, unsigned int s2) {
     left->exchangeShape(s1, s2);
 }
 
+unsigned int separation_c::getSequenceLength(unsigned int x) const
+{
+  if (x == 0)
+    return states.size();
+
+  x--;
+
+  if (left)
+  {
+    if (x < left->numSequences)
+      return left->getSequenceLength(x);
+
+    x -= left->numSequences;
+  }
+
+  if (removed)
+  {
+    if (x < removed->numSequences)
+      return removed->getSequenceLength(x);
+  }
+
+  return 0;
+}
+
+unsigned int separation_c::getNumSequences(void) const
+{
+  return numSequences;
+}
+
+/************************************************************************
+ * SeparationInfo
+ ************************************************************************/
 
 separationInfo_c::separationInfo_c(xmlParser_c & pars)
 {
@@ -600,7 +627,7 @@ unsigned int separationInfo_c::sumMoves(void) const {
   return erg;
 }
 
-int separationInfo_c::movesText(char * txt, int len, unsigned int idx) {
+int separationInfo_c::movesText2(char * txt, int len, unsigned int idx) {
 
   int len2 = snprintf(txt, len, "%i", values[idx]-1);
 
@@ -612,7 +639,7 @@ int separationInfo_c::movesText(char * txt, int len, unsigned int idx) {
   if (values[idx] && containsMultiMoves(idx)) {
     snprintf(txt+len2, len-len2, ".");
     len2++;
-    len2 += movesText(txt+len2, len-len2, idx);
+    len2 += movesText2(txt+len2, len-len2, idx);
   }
 
   if (len2+5 > len)
@@ -632,21 +659,10 @@ int separationInfo_c::movesText(char * txt, int len, unsigned int idx) {
   if (values[idx] && containsMultiMoves(idx)) {
     snprintf(txt+len2, len-len2, ".");
     len2++;
-    len2 += movesText(txt+len2, len-len2, idx);
+    len2 += movesText2(txt+len2, len-len2, idx);
   }
 
   return len2;
-}
-
-int separationInfo_c::compare(const separationInfo_c * s2) const {
-
-  for (unsigned int i = 0; i < values.size(); i++) {
-    if (values[i] < s2->values[i]) return -1;
-    if (values[i] > s2->values[i]) return 1;
-  }
-
-  return 0;
-
 }
 
 bool separationInfo_c::containsMultiMoves(unsigned int idx) {
@@ -666,5 +682,18 @@ bool separationInfo_c::containsMultiMoves(unsigned int idx) {
   }
 
   return false;
+}
+
+unsigned int separationInfo_c::getSequenceLength(unsigned int x) const
+{
+  if (x < values.size())
+    return values[x];
+  else
+    return 0;
+}
+
+unsigned int separationInfo_c::getNumSequences(void) const
+{
+  return values.size();
 }
 

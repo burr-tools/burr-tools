@@ -31,6 +31,7 @@
 class voxel_c;
 class separation_c;
 class separationInfo_c;
+class disassembly_c;
 class assembly_c;
 class gridType_c;
 class puzzle_c;
@@ -438,11 +439,11 @@ public:
   /** get the disassembly information for one of the stored solutions.
    * Returns 0 if there is none, Creates one if an disassembly is available
    */
-  separationInfo_c * getDisassemblyInfo(unsigned int sol);
+  disassembly_c * getDisassemblyInfo(unsigned int sol);
   /** get the disassembly information for one of the stored solutions.
    * Returns 0 if there is none, Creates one if an disassembly is available
    **/
-  const separationInfo_c * getDisassemblyInfo(unsigned int sol) const;
+  const disassembly_c * getDisassemblyInfo(unsigned int sol) const;
   /** get the number of the assembly for the saved solution number x */
   unsigned int getAssemblyNum(unsigned int sol) const;
   /** get the number of the solution for the saved solution number x */

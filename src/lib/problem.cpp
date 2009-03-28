@@ -79,6 +79,18 @@ public:
     if (tree)
       tree->exchangeShape(s1, s2);
   }
+
+  const disassembly_c * getDisassemblyInfo(void) const {
+    if (tree) return tree;
+    if (treeInfo) return treeInfo;
+    return 0;
+  }
+
+  disassembly_c * getDisassemblyInfo(void) {
+    if (tree) return tree;
+    if (treeInfo) return treeInfo;
+    return 0;
+  }
 };
 
 solution_c::solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c * gt) :
@@ -917,18 +929,8 @@ void problem_c::removeSolution(unsigned int sol) {
 }
 
 void problem_c::removeAllDisassm(void) {
-  for (unsigned int i = 0; i < solutions.size(); i++) {
-    solution_c * s = solutions[i];
-
-    if (s->tree) {
-
-      if (!s->treeInfo)
-        s->treeInfo = new separationInfo_c(s->tree);
-
-      delete s->tree;
-      s->tree = 0;
-    }
-  }
+  for (unsigned int i = 0; i < solutions.size(); i++)
+    removeDisassm(i);
 }
 
 void problem_c::removeDisassm(unsigned int i) {
@@ -982,22 +984,16 @@ const separation_c * problem_c::getDisassembly(unsigned int sol) const {
   return solutions[sol]->tree;
 }
 
-separationInfo_c * problem_c::getDisassemblyInfo(unsigned int sol) {
+disassembly_c * problem_c::getDisassemblyInfo(unsigned int sol) {
   bt_assert(sol < solutions.size());
 
-  if (!solutions[sol]->treeInfo && solutions[sol]->tree)
-    solutions[sol]->treeInfo = new separationInfo_c(solutions[sol]->tree);
-
-  return solutions[sol]->treeInfo;
+  return solutions[sol]->getDisassemblyInfo();
 }
 
-const separationInfo_c * problem_c::getDisassemblyInfo(unsigned int sol) const {
+const disassembly_c * problem_c::getDisassemblyInfo(unsigned int sol) const {
   bt_assert(sol < solutions.size());
 
-  if (!solutions[sol]->treeInfo && solutions[sol]->tree)
-    solutions[sol]->treeInfo = new separationInfo_c(solutions[sol]->tree);
-
-  return solutions[sol]->treeInfo;
+  return solutions[sol]->getDisassemblyInfo();
 }
 
 unsigned int problem_c::getAssemblyNum(unsigned int sol) const {
@@ -1127,18 +1123,14 @@ static bool comp_0_assembly(const solution_c * s1, const solution_c * s2)
 
 static bool comp_1_level(solution_c * s1, solution_c * s2)
 {
-  if (!s1->treeInfo && s1->tree) s1->treeInfo = new separationInfo_c(s1->tree);
-  if (!s2->treeInfo && s2->tree) s2->treeInfo = new separationInfo_c(s2->tree);
-
-  return s1->treeInfo && s2->treeInfo && (s1->treeInfo->compare(s2->treeInfo) < 0);
+  return s1->getDisassemblyInfo() && s2->getDisassemblyInfo() &&
+      (s1->getDisassemblyInfo()->compare(s2->getDisassemblyInfo()) < 0);
 }
 
 static bool comp_2_moves(solution_c * s1, solution_c * s2)
 {
-  if (!s1->treeInfo && s1->tree) s1->treeInfo = new separationInfo_c(s1->tree);
-  if (!s2->treeInfo && s2->tree) s2->treeInfo = new separationInfo_c(s2->tree);
-
-  return s1->treeInfo && s2->treeInfo && (s1->treeInfo->sumMoves() < s2->treeInfo->sumMoves());
+  return s1->getDisassemblyInfo() && s2->getDisassemblyInfo() &&
+      (s1->getDisassemblyInfo()->sumMoves() < s2->getDisassemblyInfo()->sumMoves());
 }
 
 static bool comp_3_pieces(const solution_c * s1, const solution_c * s2)
