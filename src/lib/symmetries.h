@@ -25,7 +25,7 @@
 /// this define is used for undefined transformations in the transformation multiplication matrix
 #define TND (unsigned char)(-1)
 
-/** \page Transformations and Symmetries in BurTools
+/** \page transformationDetails Transformations and Symmetries in BurrTools
  *
  * A transformation rotates and mirrors a shape inside its spacegrid. That means the
  * transformed shapes again resides completely within the grid. Transformations are

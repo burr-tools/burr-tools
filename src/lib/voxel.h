@@ -237,7 +237,7 @@ public:
   virtual ~voxel_c();
 
   /**
-   * make this voxelspace be identical to the one givenm except for the name \ref name field
+   * make this voxelspace be identical to the one given. except for the name field
    * everything is copied
    */
   void copy(const voxel_c * orig);
@@ -283,7 +283,7 @@ public:
     return x + sx * (y + sy * z);
   }
 
-  /** The inverse of getIndex \ref getIndex.
+  /** The inverse of getIndex.
    *
    * For a given index the x, y and z coordinates inside this voxel space is returned
    */

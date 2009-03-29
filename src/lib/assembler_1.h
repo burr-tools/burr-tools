@@ -189,7 +189,7 @@ protected:
    * given to you as a parameter to the function prepare. You normally call this function
    * in prepare
    */
-  void GenerateFirstRow(int unsigned res_filled);
+  void GenerateFirstRow(unsigned int res_filled);
 
   /* this function adds a node to the matrix that belongs to the first columns that represent
    * the pieces. This is normally the first thing you do, when you start a new line in the matrix

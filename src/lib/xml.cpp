@@ -163,7 +163,7 @@ void xmlWriter_c::addContent(const std::string & text)
   outString(stream, text);
 }
 
-void xmlWriter_c::addContent(unsigned long int val)
+void xmlWriter_c::addContent(unsigned long val)
 {
   switch (state)
   {
@@ -181,7 +181,7 @@ void xmlWriter_c::addContent(unsigned long int val)
   stream << val;
 }
 
-void xmlWriter_c::addContent(signed long int val)
+void xmlWriter_c::addContent(signed long val)
 {
   switch (state)
   {

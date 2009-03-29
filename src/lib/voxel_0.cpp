@@ -25,7 +25,7 @@ static const int rotationMatrices[NUM_TRANSFORMATIONS_MIRROR][9] = {
 #include "tabs_0/rotmatrix.inc"
 };
 
-/** \page grid
+/** \page grid Grids in BurrTools
  *
  * Grids in BurrTools define how the space is separated into the different volume
  * elements (voxels). There are many different ways how to do that.

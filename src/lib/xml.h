@@ -244,7 +244,7 @@ class xmlParser_c
     /** throws XmlPullParserException with the current line and col.
      * You may use this, if you have encounteted a faulty XML, e.g missing attribute or what not.
      */
-    void exception (std::string desc);
+    void exception(std::string desc);
 
   private:
 
