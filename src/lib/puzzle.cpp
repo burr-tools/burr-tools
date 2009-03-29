@@ -25,6 +25,65 @@
 #include <stdio.h>
 #include <algorithm>
 
+/** \page xmpuzzleFormat The xmpuzzle format
+ *
+ * I will try to explain some of the features of the xmpuzzle file format. But please keep
+ * in mind that this will only be a startingpoint and if you need more details please look
+ * at the code.
+ *
+ * The xmpuzzle format is an xml file containing all information regarding a puzzle. It is recursively
+ * structured kust like the different components are structued in the library. I will try to explain the
+ * components bottom up instead of top down.
+ *
+ * Let's start with one of the base structures of the library: the voxel space. Voxel spaces are
+ * stored in voxel nodes. Those nodes need to contain x, y and z attributed with the size in the corresponding
+ * direction, also always available must be the type attribute, which currently has no meaning and is always 0.
+ * It is intended for furture different ways to save a voxel space, and will probably never be used.
+ *
+ * Optional attributes are the weight and the name.
+ *
+ * The content ov the voxel space node is the description of what the voxel space looks like. There must be
+ * content for each voxel in the space, so no shortcuts are possible. There are mainly 3 characters: "_" for
+ * empty voxels, "+" for variable voxels and "#" for fixed voxels. The filled voxels may additionally
+ * have a colour appende. This colour information is simply put behind the voxel information, so #1 stands for a
+ * voxel with colour 1. The colour is save din decimal form.
+ *
+ * The gridtype is a basic class in the library and saved simply by adding a gridtype node with an attribute type.
+ * The type is a number corresponding with the grid.
+ *
+ * Assemblies are saved by simply listing the positions of all involved pieces. These positions are made up of
+ * the orientation and the place, where the hotspot of that piece is inside the solution. If a piece is not used
+ * within an assembly a single x is used to show that fact.
+ *
+ * Orientations in this class are gridtype dependent and simply numbers, where 0 means original orientation and all
+ * other numbers some transformation. The transformation matrixes for the orientations are defined in the tabs_x
+ * subdirectories.
+ *
+ * The assembly itself is now a node with a text content and that text content contains the list of number.
+ *
+ * The disassembly is saved as a recursive structure of nodes. Each instance contains a list of states that describe how
+ * to separate the current puzzle into 2 parts. Then the same structure follows to explain how those 2 parts can be
+ * disassembled.
+ *
+ * The first thing is a list of pieces involved in the current disassembly instruction. That list is normally
+ * the complete list of pieces for the root separation instruction but contains subsets of those for the
+ * sub structures.
+ *
+ * The list first contains a number of pieces followed by the pieces as a text with numbers
+ *
+ * Now come the states. Each state contains the positions that all the pieces have at a certain
+ * step. The states do contain 3 subnodes with the x, y and z coordinates of all pieces
+ *
+ * At last 2 nodes follow with the sub-separation instructions
+ *
+ * Ok, I think that that explains the main complicated structures of the file. The rest is simple xml stuff
+ * with absolutely no magic. If you don't understand some of it have a look at the source. Normally is is quite
+ * simple to find out where the information is loaded as all sub information is placed on the same level. So
+ * for example bitmap node is within the problem node, so have a look in the problem loader, find the bitmap case
+ * and then you find the subclass or code that loads that part.
+ *
+ */
+
 puzzle_c::puzzle_c(const puzzle_c * orig) {
 
   gt = new gridType_c(*orig->gt);
