@@ -53,10 +53,9 @@ class nodeHash {
      * add a new node.
      *
      * Returns
-     * true, if the given node has already been in the table and nothing has changed
-     * false if the node is inserted
+     * the node pointer of the identical node found or 0
      */
-    bool insert(disassemblerNode_c * n);
+    const disassemblerNode_c * insert(disassemblerNode_c * n);
 
     /** check, if a node is in the hashtable */
     bool contains(const disassemblerNode_c * n) const;

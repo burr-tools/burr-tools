@@ -50,7 +50,7 @@ void nodeHash::clear(void)
   tab_entries = 0;
 }
 
-bool nodeHash::insert(disassemblerNode_c * n) {
+const disassemblerNode_c * nodeHash::insert(disassemblerNode_c * n) {
 
   unsigned long h = n->hash() % tab_size;
 
@@ -65,7 +65,7 @@ bool nodeHash::insert(disassemblerNode_c * n) {
       if (hn->getWaylength() > n->getWaylength())
         hn->replaceNode(n);
 
-      return true;
+      return hn;
     }
 
     hn = hn->next;
@@ -101,7 +101,7 @@ bool nodeHash::insert(disassemblerNode_c * n) {
     tab_size = new_size;
   }
 
-  return false;
+  return 0;
 }
 
 bool nodeHash::contains(const disassemblerNode_c * n) const {
