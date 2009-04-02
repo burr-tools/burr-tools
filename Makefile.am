@@ -29,6 +29,9 @@ dist_doc_DATA += AUTHORS COPYING README NEWS ChangeLog
 abs_builddir = @abs_builddir@
 win32dir = $(PACKAGE)-$(VERSION)-win32
 
+dist-hook:
+	rm -rf $(distdir)/doc_src/*~
+
 dist-win32: all
 	$(RM) -r $(win32dir)
 	$(INSTALL) -d                        $(win32dir)
