@@ -22,6 +22,7 @@ dist_doc_DATA += examples/PiecesOfEight.xmpuzzle
 dist_doc_DATA += examples/Prisgon.xmpuzzle
 dist_doc_DATA += examples/FourPieceTetrahedron.xmpuzzle
 dist_doc_DATA += examples/DemoMirrorParadox.xmpuzzle
+dist_doc_DATA += examples/DemoPieceGenerator.xmpuzzle
 dist_doc_DATA += burricons.ico
 dist_doc_DATA += AUTHORS COPYING README NEWS ChangeLog
 

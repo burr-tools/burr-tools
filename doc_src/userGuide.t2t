@@ -1926,52 +1926,50 @@ people quickly see the construction rule (see the Broken Sticks puzzle in the
 
 ==Piece Generation==[ChPieceGeneration]
 
-Sometimes you want to use a whole mathematical set of pieces for designing a
+Sometimes you want to use a complete mathematical set of pieces for designing a
 puzzle or for analysing one. Creating such a complete set is and tedious and
 error prone process.
 
 BURRTOOLS provides tools that may in many cases do a lot of the work you need.
 The tools themselves are explained in their appropriate places here we will
-just do an example.
+just do an example so that you can see how they do fit together.
 
-Suppose you want to know all pieces that consist of 2 L-Quatrominoes connected
-in all different ways. And you want those for a puzzle that will finally make
-a 3x2x4 cube.
+To make things easier an example file is provided:
+``DemoPieceGenerator.xmpuzzle`` if you load this file you will find some of the
+below actions prepared for you.
 
-For that we start by creating 2 2x3x4 boxes. One filled completely with
-variable cubes and the other completely with normal voxels. As a third shape
-create the L-Quatromino out of normal voxels.
+For this example we set us the following task:
 
-Now create a problem. Choose the variable cube as result and add 2
-L-Quatrominos.
+Find all notchable 6-piece-burr pieces.
 
-Go ahaed and solve this problem. Here you should tag the
-@B@Expensive rot. check@B@ checkbox (--/ [Rotation considerations ChRotationRemoval])
-and also the @B@Keep Mirror Solutions@B@ checkbox. Set the limit high enough to
-keep all solutions (1000 is enough).
+To do that let's start by adding the minimal shape for a 6-piece-burr piece and
+a single cube.
 
-You should end up with 322 solutions. Now import those solutions into the 2nd
-problem (--/[Assembly import ChImportAssms]). Use File - @B@Import Assms@B@. In
-the dialog that pops up select the problem as source and choose to add the new
-shapes to a new problem as destination. Also tag the @B@Filter disconnected pieces@B@
-checkbox. We end up with a problem with 214 pieces.
+Now we also need a shape that defines what expanse the final shape can have. This
+is a simple 2x2x6 block in our case. Within this block mark all cubes of the
+minimal bur-shape as filled and the rest as variable.
 
-Choose @B@Status@B@ from the Main Menu. You will see that we have a few mirror
-shapes but also some identical shapes. Those shapes need to be deleted.
+Now define a problem. Add the basic 6-piece-burr shape. We also need to add
+single cubes. As we want all shapes starting from 0 cubes added up to the
+complete block we need to have 0-10 of those single cubes, so set the range for
+the single cube to 0-10.
 
-Normally you'd think that there should be no identical shapes, but there are
-some shapes that can be made out of 2 L-Quatrominos in different ways. Those
-are different assemblies but they result in identical shapes when imported.
-Those need to be removed now. After removal you should end up with 210 pieces
-in our new problem
+Now we have all that we need. All this is prepared in the provided file.
 
-Now we have our piece set and the result shape defined and can go on solving.
-Select the box out of normal voxels as a result for the new problem. Don't
-forget to uncheck the @B@Expensive rot. Check@B@ checkbox and solve. You should
-end up with 104 solutions. 95 of those can be disassembled.
+Go ahead and solve this problem. Here you should tag the @B@Expensive rot. check@B@ 
+check-box (--/ [Rotation considerations ChRotationRemoval]) and also
+the @B@Keep Mirror Solutions@B@ check-box. Set the limit high enough to keep
+all solutions (there will be 1024 solutions).
 
-For analysing the assembles found it is always good to sort the solutions by
-pieces.
+Now solve, you will get 1024 solutions. To import those solutions into a problem
+(--/[Assembly import ChImportAssms]). Use File - @B@Import Assms@B@. In the
+dialogue that pops up select the problem P1 as source for the import and as
+destination for the new shapes choose to add them to a new problem. Also tag
+the @B@Filter disconnected pieces@B@ and the @B@Drop non notchable@B@ check-box.
+We end up with a new problem P2 with 52 pieces.
+
+That's it you can now work with this set of pieces and find your own favourite
+6-piece burr.
 
 ==Simulating non-cubic spacegrids==
 
@@ -3498,4 +3496,14 @@ This file contains the puzzle that demonstrates the problem explained in the
 piece shapes that are mirror shapes on one another. The problem contains 0-2
 instances of the 2 piece shapes. Now solve the problem with and without the
 checkbox "Keep Mirror Solutions" checked. Look at the 2 solutions.
+
+
+===Piece Generation Demonstration===
+
+: **File**
+``demoPieceGeneration.xmpuzzle``
+
+: **Remarks**
+This file contans an example for a setup for the piece generation function
+explained in the chapter about [piece generation ChPieceGeneration].
 
