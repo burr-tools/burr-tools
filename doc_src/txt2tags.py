@@ -459,8 +459,9 @@ r"""\documentclass[11pt,a4paper]{scrbook}
 \usepackage[%(ENCODING)s]{inputenc}  %% char encoding
 \usepackage{%(STYLE)s}  %% user defined package
 \tolerance=10000
-\usepackage{sectsty}
-\allsectionsfont{\sffamily}
+\usepackage{scrpage2}
+\pagestyle{scrheadings}
+\refoot{%(HEADER1)s}
 
 \title{%(HEADER1)s}
 \author{%(HEADER2)s}
