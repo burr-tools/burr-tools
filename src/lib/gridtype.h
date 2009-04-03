@@ -91,7 +91,7 @@ class gridType_c {
      * instance here and just return a pointer to it for the application to
      * use
      */
-    symmetries_c * sym;
+    mutable symmetries_c * sym;
 
   public:
 

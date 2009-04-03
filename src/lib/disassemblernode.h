@@ -118,7 +118,7 @@ private:
    * ofen we cache the value in here. A value of 0 means we don't know
    * the hash value and need to calculate it.
    */
-  unsigned int hashValue;
+  mutable unsigned int hashValue;
 
   /**
    * Waylenth to get from the startnode to this node.

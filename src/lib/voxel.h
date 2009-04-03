@@ -91,7 +91,7 @@ protected:
    * The value may be invalid, meaning that the self symmetries
    * of the space are unknown and need to be calculated
    */
-  symmetries_t symmetries;
+  mutable symmetries_t symmetries;
 
   /** \page Hotspot The Hot Spot
    *

@@ -120,7 +120,7 @@ unsigned int disassemblerNode_c::hash(void) const
 
   if (h == 0) h = 1;
 
-  const_cast<disassemblerNode_c*>(this)->hashValue = h;
+  hashValue = h;
   return h;
 }
 

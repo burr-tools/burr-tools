@@ -177,13 +177,13 @@ const symmetries_c * gridType_c::getSymmetries(void) const
       case GT_BRICKS:
       case GT_RHOMBIC:
       case GT_TETRA_OCTA:
-        const_cast<gridType_c*>(this)->sym = new symmetries_0_c();
+        sym = new symmetries_0_c();
         break;
       case GT_TRIANGULAR_PRISM:
-        const_cast<gridType_c*>(this)->sym = new symmetries_1_c();
+        sym = new symmetries_1_c();
         break;
       case GT_SPHERES:
-        const_cast<gridType_c*>(this)->sym = new symmetries_2_c();
+        sym = new symmetries_2_c();
         break;
       default:
         break;
