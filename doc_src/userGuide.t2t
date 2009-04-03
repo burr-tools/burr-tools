@@ -3132,6 +3132,10 @@ variable voxels.
 
 =Future Plans=
 
+Read this chapter as a list of possible projects that you could do or a list of
+design ideas that I'd like to implement in BurrTools. This is not a list of
+functionality that I will do, but that I'd like to have.
+
 So, what are our future plans? There are a lot of things still missing (or in
 need of improvements) from the current program. A list of things that might be
 interesting to implement are the following:
