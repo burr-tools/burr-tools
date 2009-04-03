@@ -1977,6 +1977,24 @@ We end up with a new problem P2 with 52 pieces.
 That's it you can now work with this set of pieces and find your own favourite
 6-piece burr.
 
+A few remarks to this explanation:
+
+- The result shape of the problem defines the maximum possible expanse of the
+  final shapes you generate, so if you wan all pentominoes that fit into
+  an 3x3x3 cube just define a 3x3x3 cube as result shape
+- This method is not really suitable for really huge numbers of shapes (e.g.
+  creating all octominoes) because you first need to generate all possible
+  arrangements of cubes, which is much much more than the already big number
+  of octominos. Here a filter is required that already filters assemblies,
+  but that is a future project.
+- The @A@Keep Mirror Solution@A@ tag is required as otherwise you'd end up
+  with only one shape out of mirror pairs.
+- The default settings for the assembly import filter is normally good, except
+  if you need special constraints
+- Be careful, as the import can't be undone and removing a huge pile of shapes
+  can be a tedious job, so better save before doing an import
+
+
 ==Simulating non-cubic spacegrids==
 
 It is possible to emulate spacegrids different from cubes by just using cubes.
