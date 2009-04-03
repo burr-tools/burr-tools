@@ -172,6 +172,12 @@ CAPITALS: Used for program names and puzzle names.
 
 --/ Followed by a link: Points to more information on the subject.
 
+A note regarding the screen-shots in this manual. They not always belong to the
+very latest version of the program. Only in the sections where a certain
+element of the GUI is explained you can be reasonably certain that the image is
+recent enough to contain the elements explained. It is just too much work to
+always keep all screen-shots up to date.
+
 ==Installing BurrTools==
 
 ===Downloading BurrTools===
