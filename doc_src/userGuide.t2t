@@ -2860,6 +2860,11 @@ criteria as you can select for the solver. You can sort them in the order they
 were found (unsorted) or by level or by sum of moves to completely disassemble
 and additionally be the pieces that are used in the solution.
 
+Sorting by pieces means that the solutions using the same pieces are next to
+each other in the list, and solutions using the first pieces come in the
+beginning of the list while solutions using the last pieces in the problem are
+at the end.
+
 The second row of buttons allows the deletion of certain solutions from the
 list.
 
