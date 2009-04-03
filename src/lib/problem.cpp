@@ -22,7 +22,8 @@
 #include "assembly.h"
 #include "disassembly.h"
 #include "puzzle.h"
-#include "xml.h"
+
+#include "../tools/xml.h"
 
 #include <algorithm>
 

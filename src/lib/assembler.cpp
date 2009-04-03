@@ -17,7 +17,7 @@
  */
 #include "assembler.h"
 
-#include "xml.h"
+#include "../tools/xml.h"
 
 assembler_c::errState assembler_c::createMatrix(const problem_c * /*puz*/, bool /*keepMirror*/, bool /*keepRotations*/, bool /*complete*/)
 {

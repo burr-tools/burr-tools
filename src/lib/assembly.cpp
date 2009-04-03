@@ -20,7 +20,8 @@
 #include "problem.h"
 #include "bt_assert.h"
 #include "voxel.h"
-#include "xml.h"
+
+#include "../tools/xml.h"
 
 void mirrorInfo_c::addPieces(unsigned int p1, unsigned int p2, unsigned char trans) {
   entry e;

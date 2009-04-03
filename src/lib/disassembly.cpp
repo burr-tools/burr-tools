@@ -18,7 +18,8 @@
 #include "disassembly.h"
 
 #include "voxel.h"
-#include "xml.h"
+
+#include "../tools/xml.h"
 
 #include <string.h>
 #include <stdlib.h>

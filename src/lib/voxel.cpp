@@ -18,7 +18,8 @@
 
 #include "voxel.h"
 
-#include "xml.h"
+
+#include "../tools/xml.h"
 
 #include <string.h>
 #include <stdio.h>

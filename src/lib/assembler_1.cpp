@@ -20,9 +20,11 @@
 #include "bt_assert.h"
 #include "problem.h"
 #include "voxel.h"
-#include "xml.h"
 #include "assembly.h"
 #include "gridtype.h"
+
+#include "../tools/xml.h"
+
 #include <cstdlib>
 
 #ifdef WIN32

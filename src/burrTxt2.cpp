@@ -20,8 +20,8 @@
 #include "lib/problem.h"
 #include "lib/solvethread.h"
 #include "lib/voxel.h"
-#include "lib/xml.h"
-#include "lib/gzstream.h"
+#include "tools/xml.h"
+#include "tools/gzstream.h"
 
 #include <fstream>
 #include <iostream>

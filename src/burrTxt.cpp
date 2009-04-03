@@ -25,8 +25,8 @@
 #include "lib/disassembly.h"
 #include "lib/print.h"
 #include "lib/voxel.h"
-#include "lib/xml.h"
-#include "lib/gzstream.h"
+#include "tools/xml.h"
+#include "tools/gzstream.h"
 
 #include <stdlib.h>
 

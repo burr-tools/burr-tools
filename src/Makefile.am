@@ -14,6 +14,8 @@ LDADD= $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
 
 tools_libtools_a_SOURCES =
 tools_libtools_a_SOURCES += tools/intdiv.h
+tools_libtools_a_SOURCES += tools/xml.cpp tools/xml.h
+tools_libtools_a_SOURCES += tools/gzstream.cpp tools/gzstream.h
 
 lua_liblua_a_SOURCES =
 lua_liblua_a_SOURCES += lua/lapi.c lua/lapi.h
@@ -49,10 +51,10 @@ help_helpviewer_SOURCES += help/Fl_Help_Dialog.cpp help/Fl_Help_Dialog.h
 help_helpviewer_SOURCES += help/Fl_Help_View.cpp help/Fl_Help_View.h
 help_helpviewer_SOURCES += help/flstring.cpp help/flstring.h
 
-burrTxt_LDADD = lib/libburr.a lua/liblua.a $(LDADD)
+burrTxt_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a $(LDADD)
 burrTxt_SOURCES=burrTxt.cpp
 
-burrTxt2_LDADD = lib/libburr.a lua/liblua.a $(LDADD)
+burrTxt2_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a $(LDADD)
 burrTxt2_SOURCES=burrTxt2.cpp
 
 lib_libburr_a_SOURCES =
@@ -73,7 +75,6 @@ lib_libburr_a_SOURCES += lib/disassembly.cpp lib/disassembly.h
 lib_libburr_a_SOURCES += lib/disasmtomoves.cpp lib/disasmtomoves.h
 lib_libburr_a_SOURCES += lib/gridtype.cpp lib/gridtype.h
 lib_libburr_a_SOURCES += lib/grouping.cpp lib/grouping.h
-lib_libburr_a_SOURCES += lib/gzstream.cpp lib/gzstream.h
 lib_libburr_a_SOURCES += lib/millable.cpp lib/millable.h
 lib_libburr_a_SOURCES += lib/movementanalysator.cpp lib/movementanalysator.h
 lib_libburr_a_SOURCES += lib/movementcache.cpp lib/movementcache.h
@@ -100,7 +101,6 @@ lib_libburr_a_SOURCES += lib/voxel_2.cpp lib/voxel_2.h
 lib_libburr_a_SOURCES += lib/voxel_3.cpp lib/voxel_3.h
 lib_libburr_a_SOURCES += lib/voxel_4.cpp lib/voxel_4.h
 lib_libburr_a_SOURCES += lib/voxeltable.cpp lib/voxeltable.h
-lib_libburr_a_SOURCES += lib/xml.cpp lib/xml.h
 
 lib_libburr_a_SOURCES += lib/tabs_0/rotmatrix.inc lib/tabs_0/symmetries.inc lib/tabs_0/tablesizes.inc
 lib_libburr_a_SOURCES += lib/tabs_1/rotmatrix.inc lib/tabs_1/symmetries.inc lib/tabs_1/tablesizes.inc
@@ -164,7 +164,7 @@ flu_libflu_a_SOURCES=\
     flu/Flu_Wrap_Group.cpp \
     flu/Flu_Wrap_Group.h
 
-gui_burrGui_LDADD = lib/libburr.a help/libhelp.a flu/libflu.a lua/liblua.a $(LDADD)
+gui_burrGui_LDADD = lib/libburr.a help/libhelp.a flu/libflu.a lua/liblua.a tools/libtools.a $(LDADD)
 gui_burrGui_SOURCES =
 gui_burrGui_SOURCES += gui/arcball.cpp gui/arcball.h
 gui_burrGui_SOURCES += gui/assertwindow.cpp gui/assertwindow.h

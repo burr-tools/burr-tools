@@ -27,8 +27,9 @@
 #include "../lib/bt_assert.h"
 #include "../lib/gridtype.h"
 #include "../lib/puzzle.h"
-#include "../lib/xml.h"
-#include "../lib/gzstream.h"
+
+#include "../tools/xml.h"
+#include "../tools/gzstream.h"
 
 class my_Fl : public Fl {
 

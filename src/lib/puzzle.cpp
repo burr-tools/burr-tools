@@ -19,7 +19,8 @@
 
 #include "problem.h"
 #include "voxel.h"
-#include "xml.h"
+
+#include "../tools/xml.h"
 
 #include <vector>
 #include <stdio.h>

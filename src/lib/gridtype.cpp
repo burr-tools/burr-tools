@@ -32,7 +32,8 @@
 #include "stl_0.h"
 #include "stl_2.h"
 #include "problem.h"
-#include "xml.h"
+
+#include "../tools/xml.h"
 
 #include <stdlib.h>
 

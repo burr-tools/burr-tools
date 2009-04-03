@@ -64,9 +64,10 @@
 #include "../lib/assembly.h"
 #include "../lib/converter.h"
 #include "../lib/millable.h"
-#include "../lib/xml.h"
-#include "../lib/gzstream.h"
 #include "../lib/voxeltable.h"
+
+#include "../tools/gzstream.h"
+#include "../tools/xml.h"
 
 #include "../flu/Flu_File_Chooser.h"
 
