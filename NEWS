@@ -1,4 +1,4 @@
-------------- Version 0.5.0 Jan 2009
+------------- Version 0.5.0 Apr 2009
 
 - fix problem in the rotation filter when 2 mirror shapes were assigned to a
   problem with different ranges. In that case some solutions were not found
@@ -18,9 +18,8 @@
   some information about a puzzle file
 - add lots and lots of code comments in the hope someone may need it, doxygen
   comments for the library are added in many places
-- different config file format, the old one is thrown away)
-- convert all assemblies of a problem into shapes and add those shapes to
-  another problem
+- different config file format (the old one is thrown away) this new format
+  will allow more easy additions
 - faster sorting method for solution sorting
 - fix a cursor drawing bug in the rhombic grid
 - a new console application that can solve puzzles and actually saves them
@@ -35,7 +34,7 @@
 - rewrite XML loading and writing code, this code is faster and compacter and
   uses much less memory so saving and loading puzzles is much quicker now
 - the printable userguide is back download it separately from the burrtools
-  website it is better than ever
+  website, it is better than ever
 - remove windows installer (it was buggy and noone cared to tell me, so now
   only the zip is left, which I can verify)
 - add a function to convert assemblies into shapes and add those to the puzzle
@@ -44,7 +43,7 @@
   solutions, which can be used with the assembly import to get a usable piece
   generator
 - status window information calculation is much much faster and will not longer
-  get slower with more shapes
+  get slower with each additional shape
 
 ------------- Version 0.4.2 Jan 2009
 
