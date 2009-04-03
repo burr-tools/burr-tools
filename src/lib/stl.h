@@ -122,6 +122,12 @@ class stlExporter_c {
     unsigned long triangleCount;  ///< number of triangles in the file (for binary files)
 
     bool binaryMode;              ///< binary STL export active or not
+
+  private:
+
+    // no copying and assigning
+    stlExporter_c(const stlExporter_c&);
+    void operator=(const stlExporter_c&);
 };
 
 #endif

@@ -33,6 +33,12 @@ class movementCache_1_c : public movementCache_c {
 
     unsigned int numDirections(void);
     void getDirection(unsigned int dir, int * x, int * y, int * z);
+
+  private:
+
+    // no copying and assigning
+    movementCache_1_c(const movementCache_1_c&);
+    void operator=(const movementCache_1_c&);
 };
 
 #endif

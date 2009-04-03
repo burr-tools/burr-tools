@@ -115,6 +115,12 @@ class disassembler_a_c : public disassembler_c {
      * doing with it whatever you want.
      */
     separation_c * disassemble(const assembly_c * assembly);
+
+  private:
+
+    // no copying and assigning
+    disassembler_a_c(const disassembler_a_c&);
+    void operator=(const disassembler_a_c&);
 };
 
 #endif

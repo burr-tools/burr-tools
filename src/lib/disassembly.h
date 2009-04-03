@@ -39,6 +39,7 @@ class disassembly_c
 
   public:
 
+    disassembly_c(void) {}
     virtual ~disassembly_c(void) {}
 
     /**
@@ -74,6 +75,12 @@ class disassembly_c
 
     /** helper function used for "compare" to get the number of move sequences */
     virtual unsigned int getNumSequences(void) const = 0;
+
+  private:
+
+    // no copying and assigning
+    disassembly_c(const disassembly_c&);
+    void operator=(const disassembly_c&);
 };
 
 
@@ -140,6 +147,12 @@ public:
   /** on assert needs to check the piecenumber */
   unsigned int getPiecenumber(void) const { return piecenumber; }
 #endif
+
+private:
+
+  // no copying and assigning
+  state_c(const state_c&);
+  void operator=(const state_c&);
 };
 
 
@@ -256,6 +269,12 @@ public:
   virtual unsigned int getNumSequences(void) const;
   virtual unsigned int sumMoves(void) const;
   virtual void movesText(char * txt, int len) { movesText2(txt, len); }
+
+private:
+
+  // no copying and assigning
+  separation_c(const separation_c&);
+  void operator=(const separation_c&);
 };
 
 /**
@@ -308,6 +327,12 @@ class separationInfo_c : public disassembly_c {
     virtual void movesText(char * txt, int len) { movesText2(txt, len, 0); }
     virtual unsigned int getSequenceLength(unsigned int x) const;
     virtual unsigned int getNumSequences(void) const;
+
+  private:
+
+    // no copying and assigning
+    separationInfo_c(const separationInfo_c&);
+    void operator=(const separationInfo_c&);
 };
 
 

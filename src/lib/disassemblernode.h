@@ -320,6 +320,12 @@ public:
    * that go into the same hash-bucket
    */
   disassemblerNode_c * next;
+
+private:
+
+  // no copying and assigning
+  disassemblerNode_c(const disassemblerNode_c&);
+  void operator=(const disassemblerNode_c&);
 };
 
 #endif

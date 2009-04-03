@@ -50,6 +50,12 @@ public:
    */
   virtual separation_c * disassemble(const assembly_c * /*assembly*/) { return 0; }
 
+private:
+
+  // no copying and assigning
+  disassembler_c(const disassembler_c&);
+  void operator=(const disassembler_c&);
+
 };
 
 #endif

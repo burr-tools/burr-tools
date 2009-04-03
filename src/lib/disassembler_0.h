@@ -52,6 +52,12 @@ public:
 
   disassembler_0_c(const problem_c * puz) : disassembler_a_c(puz) { }
   ~disassembler_0_c() { }
+
+private:
+
+  // no copying and assigning
+  disassembler_0_c(const disassembler_0_c&);
+  void operator=(const disassembler_0_c&);
 };
 
 #endif

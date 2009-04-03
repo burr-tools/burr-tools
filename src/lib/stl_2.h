@@ -71,6 +71,12 @@ class stlExporter_2_c : public stlExporter_c {
         int x, int y, int z, int i,
         double x1, double y1, double z1,
         double x2, double y2, double z2, int rec, int rec2);
+
+  private:
+
+    // no copying and assigning
+    stlExporter_2_c(const stlExporter_2_c&);
+    void operator=(const stlExporter_2_c&);
 };
 
 #endif

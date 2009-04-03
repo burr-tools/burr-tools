@@ -269,6 +269,12 @@ public:
   unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z);
   unsigned int getPiecePlacementCount(unsigned int piece);
   unsigned long getIterations(void) { return iterations; }
+
+private:
+
+  // no copying and assigning
+  assembler_1_c(const assembler_1_c&);
+  void operator=(const assembler_1_c&);
 };
 
 #endif

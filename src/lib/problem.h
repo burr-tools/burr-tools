@@ -477,6 +477,12 @@ public:
   void sortSolutions(int by);
   //@}
 
+private:
+
+  // no copying and assigning
+  problem_c(const problem_c&);
+  void operator=(const problem_c&);
+
 };
 
 #endif

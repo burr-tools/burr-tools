@@ -296,6 +296,12 @@ public:
   assembly_c * getAssembly(void);
 
   static bool canHandle(const problem_c * p);
+
+private:
+
+  // no copying and assigning
+  assembler_0_c(const assembler_0_c&);
+  void operator=(const assembler_0_c&);
 };
 
 #endif

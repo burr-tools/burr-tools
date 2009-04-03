@@ -40,6 +40,12 @@ class symmetries_1_c : public symmetries_c {
     bool symmetryContainsMirror(symmetries_t sym) const;
     bool symmetryKnown(const voxel_c * pp) const;
     bool isTransformationUnique(symmetries_t s, unsigned int trans) const;
+
+  private:
+
+    // no copying and assigning
+    symmetries_1_c(const symmetries_1_c&);
+    void operator=(const symmetries_1_c&);
 };
 
 #endif

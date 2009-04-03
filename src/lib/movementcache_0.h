@@ -33,6 +33,12 @@ class movementCache_0_c : public movementCache_c {
 
     virtual unsigned int numDirections(void);
     virtual void getDirection(unsigned int dir, int * x, int * y, int * z);
+
+  private:
+
+    // no copying and assigning
+    movementCache_0_c(const movementCache_0_c&);
+    void operator=(const movementCache_0_c&);
 };
 
 #endif

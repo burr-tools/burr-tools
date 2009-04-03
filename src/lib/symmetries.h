@@ -88,6 +88,7 @@ class symmetries_c {
 
   public:
 
+    symmetries_c(void) {}
     virtual ~symmetries_c(void) {}
 
     /**
@@ -169,6 +170,12 @@ class symmetries_c {
      * of finding new symmetry groups. I still leave this extra check in just in case
      */
     virtual bool symmetryKnown(const voxel_c * pp) const = 0;
+
+  private:
+
+    // no copying and assigning
+    symmetries_c(const symmetries_c&);
+    void operator=(const symmetries_c&);
 };
 
 #endif

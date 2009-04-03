@@ -51,6 +51,11 @@ class bitfield_c {
       operator=(val);
     }
 
+    /// copy constructor
+    bitfield_c(const bitfield_c<bits>& orig) {
+      memcpy(field, orig.field, 8*((bits+63)/64));
+    }
+
     /// get a bit
     bool get(uint16_t pos) const {
       bt_assert(pos < bits);

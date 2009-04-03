@@ -113,6 +113,12 @@ class voxelTable_c {
      * For an actual example loot at the class voxelTablePuzzle_c
      */
     virtual const voxel_c * findSpace(unsigned int index) const = 0;
+
+  private:
+
+    // no copying and assigning
+    voxelTable_c(const voxelTable_c&);
+    void operator=(const voxelTable_c&);
 };
 
 /** a convenient class that already provides findSpace for a shape list in puzzle_c */
@@ -129,6 +135,12 @@ class voxelTablePuzzle_c : public voxelTable_c {
   protected:
 
     const voxel_c * findSpace(unsigned int index) const;
+
+  private:
+
+    // no copying and assigning
+    voxelTablePuzzle_c(const voxelTable_c&);
+    void operator=(const voxelTablePuzzle_c&);
 
 };
 

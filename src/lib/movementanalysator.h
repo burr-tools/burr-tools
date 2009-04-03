@@ -92,6 +92,12 @@ class movementAnalysator_c {
 
     void completeFind(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces, std::vector<disassemblerNode_c*> * result);
 
+  private:
+
+    // no copying and assigning
+    movementAnalysator_c(const movementAnalysator_c&);
+    void operator=(const movementAnalysator_c&);
+
 };
 
 #endif

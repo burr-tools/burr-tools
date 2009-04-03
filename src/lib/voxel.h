@@ -707,6 +707,11 @@ public:
    */
   virtual bool onGrid(int x, int y, int z) const = 0;
 
+private:
+
+  // no copying and assigning
+  void operator=(const voxel_c&);
+
 };
 
 #endif

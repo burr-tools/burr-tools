@@ -134,6 +134,12 @@ class mirrorInfo_c {
      * returns only true, when valid entry was found
      */
     bool getPieceInfo(unsigned int p, unsigned int * p_out, unsigned char * trans) const;
+
+private:
+
+  // no copying and assigning
+  mirrorInfo_c(const mirrorInfo_c&);
+  void operator=(const mirrorInfo_c&);
 };
 
 /** this class contains the assembly for a puzzle.
@@ -316,6 +322,12 @@ public:
    * all pieces put into the space
    */
   voxel_c * createSpace(const problem_c * puz) const;
+
+private:
+
+  // no copying and assigning
+  assembly_c(const assembly_c&);
+  void operator=(const assembly_c&);
 
 };
 

@@ -62,6 +62,12 @@ class stlExporter_0_c : public stlExporter_c {
     void make_edges(const voxel_c *v, const int x, const int y, const int z);
     void make_faces(const voxel_c *v, const int x,const int y,const int z);
 
+private:
+
+  // no copying and assigning
+  stlExporter_0_c(const stlExporter_0_c&);
+  void operator=(const stlExporter_0_c&);
+
 };
 
 #endif

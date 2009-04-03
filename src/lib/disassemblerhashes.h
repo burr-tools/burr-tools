@@ -59,6 +59,12 @@ class nodeHash {
 
     /** check, if a node is in the hashtable */
     bool contains(const disassemblerNode_c * n) const;
+
+  private:
+
+    // no copying and assigning
+    nodeHash(const nodeHash&);
+    void operator=(const nodeHash&);
 };
 
 
@@ -144,6 +150,12 @@ class countingNodeHash {
      * a new scan with initScan
      */
     const disassemblerNode_c * nextScan(void);
+
+  private:
+
+    // no copying and assigning
+    countingNodeHash(const countingNodeHash&);
+    void operator=(const countingNodeHash&);
 };
 
 #endif

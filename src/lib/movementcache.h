@@ -129,6 +129,12 @@ public:
 
   /** return the movement vector of the given direction */
   virtual void getDirection(unsigned int dir, int * x, int * y, int * z) = 0;
+
+private:
+
+  // no copying and assigning
+  movementCache_c(const movementCache_c&);
+  void operator=(const movementCache_c&);
 };
 
 #endif

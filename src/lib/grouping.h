@@ -110,6 +110,12 @@ public:
    * results after the first false
    */
   bool addPieceToSet(unsigned int pc);
+
+private:
+
+  // no copying and assigning
+  grouping_c(const grouping_c&);
+  void operator=(const grouping_c&);
 };
 
 #endif

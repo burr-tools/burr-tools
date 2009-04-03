@@ -67,6 +67,10 @@ gridType_c::gridType_c(xmlParser_c & pars)
   sym = 0;
 }
 
+gridType_c::gridType_c(const gridType_c & orig) : type(orig.type), sym(0)
+{
+}
+
 void gridType_c::save(xmlWriter_c & xml) const
 {
   xml.newTag("gridType");

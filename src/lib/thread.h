@@ -69,6 +69,12 @@ class thread_c {
     friend void * start_thread(void * dat);
 #endif
 
+  private:
+
+    // no copying and assigning
+    thread_c(const thread_c&);
+    void operator=(const thread_c&);
+
 };
 
 #endif

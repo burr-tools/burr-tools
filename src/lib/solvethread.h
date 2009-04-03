@@ -192,6 +192,12 @@ public:
   }
 
   void run(void);
+
+private:
+
+  // no copying and assigning
+  solveThread_c(const solveThread_c&);
+  void operator=(const solveThread_c&);
 };
 
 #endif

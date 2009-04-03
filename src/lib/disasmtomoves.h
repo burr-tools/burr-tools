@@ -30,6 +30,7 @@ class piecePositions_c {
 
 public:
 
+  piecePositions_c(void) {}
   virtual ~piecePositions_c(void) {}
 
   /** the x-positions of the piece is returned */
@@ -44,6 +45,13 @@ public:
 
   /** piece moving at this time */
   virtual bool moving(unsigned int piece) = 0;
+
+private:
+
+  // no copying and assigning
+  piecePositions_c(const piecePositions_c&);
+  void operator=(const piecePositions_c&);
+
 };
 
 /**
@@ -102,6 +110,12 @@ public:
   virtual float getZ(unsigned int piece);
   virtual float getA(unsigned int piece);
   virtual bool moving(unsigned int piece);
+
+private:
+
+  // no copying and assigning
+  disasmToMoves_c(const disasmToMoves_c&);
+  void operator=(const disasmToMoves_c&);
 };
 
 /** a piece position class with fixed positions */
@@ -124,6 +138,12 @@ class fixedPositions_c : public piecePositions_c {
     int *x, *y, *z;
     bool *visible;
     unsigned int pieces;
+
+  private:
+
+    // no copying and assigning
+    fixedPositions_c(const fixedPositions_c&);
+    void operator=(const fixedPositions_c&);
 };
 
 #endif

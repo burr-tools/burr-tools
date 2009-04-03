@@ -54,6 +54,11 @@ class voxel_0_c : public voxel_c {
 
     bool validCoordinate(int x, int y, int z) const;
     bool onGrid(int x, int y, int z) const;
+
+  private:
+
+    // no copying and assigning
+    void operator=(const voxel_0_c&);
 };
 
 #endif
