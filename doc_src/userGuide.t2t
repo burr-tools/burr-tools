@@ -913,7 +913,7 @@ made out of cubes together with one using another grid. The spacegrid needs to
 be set //before// you start with the puzzle. It cannot be changed later on,
 except in some situations it is possible to losslessly convert the complete
 puzzle (--/[Converting Puzzles ChConvert]). The
-gridtype is selected when you use the @B@New@B@ option.
+gridtype is selected when you use the @A@New@A@ option.
 
 The following chapters will explain some details regarding some of the
 available grids.
@@ -1849,7 +1849,7 @@ coloured mark everything is fine.
 Because calculating all this information can take a considerable amount of
 time, BURRTOOLS pops up a window when it is working on accumulating this table.
 The window contains a progress bar to guess how much longer it will take. There
-is also a @B@Cancel@B@ button at the bottom that lets you abort this
+is also a @A@Cancel@A@ button at the bottom that lets you abort this
 calculation and view the results already gathered.
 
 ==Tips and Tricks==
@@ -1962,16 +1962,16 @@ the single cube to 0-10.
 
 Now we have all that we need. All this is prepared in the provided file.
 
-Go ahead and solve this problem. Here you should tag the @B@Expensive rot. check@B@ 
+Go ahead and solve this problem. Here you should tag the @A@Expensive rot. check@A@
 check-box (--/ [Rotation considerations ChRotationRemoval]) and also
-the @B@Keep Mirror Solutions@B@ check-box. Set the limit high enough to keep
+the @A@Keep Mirror Solutions@A@ check-box. Set the limit high enough to keep
 all solutions (there will be 1024 solutions).
 
 Now solve, you will get 1024 solutions. To import those solutions into a problem
-(--/[Assembly import ChImportAssms]). Use File - @B@Import Assms@B@. In the
+(--/[Assembly import ChImportAssms]). Use File - @A@Import Assms@A@. In the
 dialogue that pops up select the problem P1 as source for the import and as
 destination for the new shapes choose to add them to a new problem. Also tag
-the @B@Filter disconnected pieces@B@ and the @B@Drop non notchable@B@ check-box.
+the @A@Filter disconnected pieces@A@ and the @A@Drop non notchable@A@ check-box.
 We end up with a new problem P2 with 52 pieces.
 
 That's it you can now work with this set of pieces and find your own favourite
@@ -2138,11 +2138,11 @@ for selecting and rearranging problems are similar to their counterparts on the
 
 Until now we dealt with shapes as rather abstract concepts. Only by
 //assigning// these shapes to the pieces or the goal of a puzzle do they become
-meaningful. All available shapes are presented in the top list of the @B@Piece
-Assignment@B@ panel, in which they can be selected and be given their purpose
-in the puzzle. Since a strict distinction is made between shapes and pieces,
-it's not necessary that all shapes be used in a single problem or in any
-problem at all.
+meaningful. All available shapes are presented in the top list of the
+@B@Piece Assignment@B@ panel, in which they can be selected and be given their
+purpose in the puzzle. Since a strict distinction is made between shapes and
+pieces, it's not necessary that all shapes be used in a single problem or in
+any problem at all.
 
 @F@FigClarissa|Window_Clarissa.png|A simple puzzle problem with multipieces@F@
 
@@ -2845,43 +2845,43 @@ and additionally be the pieces that are used in the solution.
 The second row of buttons allows the deletion of certain solutions from the
 list.
 
-: @A@Del All@A@
+: @B@Del All@B@
 removes all solutions
 
-: @A@Del Before@A@
+: @B@Del Before@B@
 removes all solution before the currently selected solution. The selected
 solution is the first one in the list that is not removed
 
-: @A@Del At@A@
+: @B@Del At@B@
 removes the currently selected solution
 
-: @A@Del After@A@
+: @B@Del After@B@
 removes all solutions behind the currently selected one. The selected on is the
 last one that is kept
 
-: @A@Del w/o DA@A@
+: @B@Del w/o DA@B@
 remove all solutions that have no disassembly
 
 
 The last row of buttons allow the addition or removal of disassemblies to the
 list of puzzles.
 
-: @A@D DA@A@
+: @B@D DA@B@
 deletes the disassembly of the currently selected solution. The disassembly is
 replaced by data containing only information //about// the disassembly, so you
 can still sort the solutions
 
-: @A@D A DA@A@
+: @B@D A DA@B@
 deletes all disassemblies
 
-: @A@A DA@A@
+: @B@A DA@B@
 adds the disassembly to the currently selected solution
 
-: @A@A A DA@A@
+: @B@A A DA@B@
 add the disassembly to all solutions. Already existing disassemblies are thrown
 away
 
-: @A@A M DA@A@
+: @B@A M DA@B@
 add the disassembly to all solutions that do not have one. Solutions that
 already have a disassembly are left unchanged
 
@@ -2911,8 +2911,8 @@ or when there are many pieces and the distinction by colour becomes hard.
 
 By default the pieces that become separated from the rest gradually fade out
 during the final move. Sometimes this is unwanted as it may hinder a clear view
-on what's going on. This can be avoided by unchecking @B@Fade Out Pieces@B@ on
-the options window (activated through @B@Config@B@ on the menu bar).
+on what's going on. This can be avoided by unchecking @A@Fade Out Pieces@A@ on
+the options window (activated through @A@Config@A@ on the menu bar).
 
 As not all pieces are used in all solutions, the list of pieces shows only the
 names of those pieces that are really used in the currently selected assembly.
@@ -2948,20 +2948,20 @@ exported:
 
 @F@FigImageExport|Window_ImageExport.png|The image export window@F@
 
-: **Shape**
+: @B@Shape@B@
 An image of a single shape (a shape that was made on the entities tab) is
 created. You can select which shape with the shape selector below.
 
-: **Problem**
+: @B@Problem@B@
 An image containing all shapes that are used for a problem is created. Again
 you will find the problem selector below that is used to select which problem
 you are going to create images of.
 
-: **Assembly**
+: @B@Assembly@B@
 An image showing the positions of the pieces in an assembly is created. You can
 select the problem. The first assembly of that problem is exported.
 
-: **Solution**
+: @B@Solution@B@
 An image containing all steps necessary to disassemble a problem is created. In
 this case you also select the problem with the selector below. The images will
 be created for the last solution of that problem.
@@ -2980,7 +2980,7 @@ just a prefix, so if you keep 'test' as file name you get files of the form
 
 Finally, you can say how many images you intend to create. BURRTOOLS will try
 to do so, but might use less. If you only have one assembly to export, only one
-page can be created. The @A@Number of images@A@ entry is ignored by the
+page can be created. The @B@Number of images@B@ entry is ignored by the
 software for the time being, it will be used later on.
 
 Above these input elements you find the last section that defines your output.
@@ -2998,7 +2998,7 @@ required.
 Below you can choose whether you want to use the constraint colours for the
 output or rather the default colour of the shapes.
 
-The checkbox @A@Dim static pieces@A@ makes BURRTOOLS draw pieces that are not
+The checkbox @B@Dim static pieces@B@ makes BURRTOOLS draw pieces that are not
 involved in the current move in a lighter colour, so that the pieces actually
 moving are easier to spot. This, of course, only works when exporting
 solutions.
@@ -3016,7 +3016,7 @@ view they will be trimmed. Left and right is different. The width of the images
 to generate is not fixed. So the program will make them quite a bit wider to
 accommodate the horizontal spread of the pieces.
 
-When you have finished with all settings, press @A@Export Image(s)@A@. You
+When you have finished with all settings, press @B@Export Image(s)@B@. You
 will see a flurry of images in the 3-D view. The program draws the shapes there
 and grabs the content from the display. This may take a while. First the size
 of the images is determined, then the images are drawn in the required high
@@ -3042,7 +3042,7 @@ The vector image export doesn't have functionality to export a complete
 assembly or disassembly sequence, but only one image. The image exported is the
 one currently visible in the 3D view.
 
-To export that display into a vector image select @A@Vector Image@A@ from the
+To export that display into a vector image select @B@Vector Image@B@ from the
 @A@Export@A@ menu. A small window will open which lets you select the possible
 image format and the file name. You have to append the right extension to the
 file name on your own.
