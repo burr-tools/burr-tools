@@ -274,6 +274,9 @@ void groupsEditorTab_c::cb_tab(void)
       int count = 0;
       problem_c * pr = puzzle->getProblem(problem);
 
+      /* if there is an active edit line, finish it */
+      if (input->visible()) input->do_callback();
+
       editShape = row;
       editGroup = col-1;
 
@@ -290,9 +293,6 @@ void groupsEditorTab_c::cb_tab(void)
         } else
           return;  // shape not used in problem -> no group editing possible
       }
-
-      /* if there is an active edit line, finish it */
-      if (input->visible()) input->do_callback();
 
       /* calculate the cell the user has clicked into */
       int x, y, w, h;
