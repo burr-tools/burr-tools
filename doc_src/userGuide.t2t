@@ -104,7 +104,7 @@ developed. So why another program, you might ask. Here are a few reasons:
 Anyway, I was not completely satisfied with the available software. Then in
 summer 2003 a German computer magazine started a competition to write a program
 that counts the number of solutions to a merchandising puzzle as fast as
-possible. My program wasn't the fastest but it was the starting point for the
+possible. My program wasn't the fastest but it was the starting point for
 BURRTOOLS.
 
 As there are many people out there that are a lot more creative than I am and
@@ -136,8 +136,9 @@ It can produce STL output which can directly go to the 3D printer which become
 more and more sensible priced and which can quickly print out the most
 complicated shapes for quick testing of puzzle ideas.
 
-All this work has taken many years to reach the current state, I hope it was
-worth it and that you enjoy your puzzle experience with BURRTOOLS.
+It has taken all those years since 2003 for BURRTOOLS to reach the current
+state and there is no end in sight for new features that could be added. I hope
+that you enjoy your puzzle experience with BURRTOOLS.
 
 Andreas Röver
 
