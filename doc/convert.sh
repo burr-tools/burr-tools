@@ -28,14 +28,14 @@ pdflatex userGuide.tex
 pdflatex userGuide.tex
 pdflatex userGuide.tex
 pdflatex userGuide.tex
-mv userGuide.pdf burrTools-$title-A4.pdf
+mv userGuide.pdf burrtools-$title-A4.pdf
 
 sed 's/documentclass\[11pt,a4paper\]{book}/documentclass[11pt,letter]{book}/' -i userGuide.tex
 pdflatex userGuide.tex
 pdflatex userGuide.tex
 pdflatex userGuide.tex
 pdflatex userGuide.tex
-mv userGuide.pdf burrTools-$title-letter.pdf
+mv userGuide.pdf burrtools-$title-letter.pdf
 
 # create the html documentation
 # first create the html output dir, or empty it, then convert the t2t to html
