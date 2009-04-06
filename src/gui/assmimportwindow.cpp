@@ -88,7 +88,7 @@ assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Win
   new LSeparator_c(0, ypos++, 1, 1, "Filter", false);
 
   // The filter group
-  ckDrpDisconnected = new LFl_Check_Button("Drop disonnected shapes", 0, ypos++, 1, 1);
+  ckDrpDisconnected = new LFl_Check_Button("Drop disconnected shapes", 0, ypos++, 1, 1);
   ckDrpDisconnected->value(1);
   ckDrpMirror = new LFl_Check_Button("Drop shapes with mirror symmetry", 0, ypos++, 1, 1);
   ckDrpSymm = new LFl_Check_Button("Drop all shapes with a symmetry", 0, ypos++, 1, 1);
