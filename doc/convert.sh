@@ -30,7 +30,7 @@ pdflatex userGuide.tex
 pdflatex userGuide.tex
 mv userGuide.pdf burrtools-$title-A4.pdf
 
-sed 's/documentclass\[11pt,a4paper\]{book}/documentclass[11pt,letter]{book}/' -i userGuide.tex
+sed 's/documentclass\[11pt,a4paper\]{scrbook}/documentclass[11pt,letterpaper]{scrbook}/' -i userGuide.tex
 pdflatex userGuide.tex
 pdflatex userGuide.tex
 pdflatex userGuide.tex
