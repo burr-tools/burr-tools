@@ -191,7 +191,7 @@ int assembler_1_c::AddPieceNode(unsigned int piece, unsigned int rot, unsigned i
   return piecenode;
 }
 
-void assembler_1_c::getPieceInformation(unsigned int node, unsigned int * piece, unsigned char *tran, int *x, int *y, int *z) {
+void assembler_1_c::getPieceInformation(unsigned int node, unsigned int * piece, unsigned char *tran, int *x, int *y, int *z) const {
 
   for (int i = piecePositions.size()-1; i >= 0; i--)
     if (piecePositions[i].row <= node) {
@@ -1804,7 +1804,7 @@ void assembler_1_c::assemble(assembler_cb * callback) {
   running = false;
 }
 
-float assembler_1_c::getFinished(void) {
+float assembler_1_c::getFinished(void) const {
 
   if (next_row_stack.size() == 0) return 1;
 
@@ -1939,7 +1939,7 @@ void assembler_1_c::save(xmlWriter_c & xml) const
   xml.endTag("assembler");
 }
 
-unsigned int assembler_1_c::getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) {
+unsigned int assembler_1_c::getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) const {
 
   /* piece 2 shape */
   unsigned int pp = 0;
@@ -1970,7 +1970,7 @@ unsigned int assembler_1_c::getPiecePlacement(unsigned int node, int delta, unsi
   return node;
 }
 
-unsigned int assembler_1_c::getPiecePlacementCount(unsigned int piece) {
+unsigned int assembler_1_c::getPiecePlacementCount(unsigned int piece) const {
 
   /* piece 2 shape */
   unsigned int pp = 0;

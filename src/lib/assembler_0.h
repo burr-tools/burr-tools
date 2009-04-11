@@ -234,7 +234,7 @@ protected:
    * the exact piece and placement the line this node belongs to stands for
    * this function is used in the solution function to restore the placement of the piece
    */
-  void getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z, unsigned int *pc);
+  void getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z, unsigned int *pc) const;
 
   /* this adds a normal node that represents a used voxel within the solution
    * piecenode is the number that you get from AddPieceNode, col is a number
@@ -278,19 +278,19 @@ public:
   errState createMatrix(const problem_c * puz, bool keepMirror, bool keepRotations, bool complete);
   void assemble(assembler_cb * callback);
   int getErrorsParam(void) { return errorsParam; }
-  virtual float getFinished(void);
+  virtual float getFinished(void) const;
   virtual void stop(void) { abbort = true; }
   virtual bool stopped(void) const { return !running; }
   virtual errState setPosition(const char * string, const char * version);
   virtual void save(xmlWriter_c & xml) const;
   virtual void reduce(void);
-  virtual unsigned int getReducePiece(void) { return reducePiece; }
+  virtual unsigned int getReducePiece(void) const { return reducePiece; }
   virtual unsigned long getIterations(void) { return iterations; }
 
   /* some more special information to find out possible piece placements */
-  bool getPiecePlacementSupported(void) { return true; }
-  unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z);
-  unsigned int getPiecePlacementCount(unsigned int piece);
+  bool getPiecePlacementSupported(void) const { return true; }
+  unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) const;
+  unsigned int getPiecePlacementCount(unsigned int piece) const;
 
   void debug_step(unsigned long num = 1);
   assembly_c * getAssembly(void);

@@ -177,7 +177,7 @@ public:
    * node = getPiecePlacement(0, 10, ...) returns the 11-th placement of the given piece (1st plus 10 forward)
    */
   virtual unsigned int getPiecePlacement(unsigned int /*node*/, int /*delta*/,
-      unsigned int /*piece*/, unsigned char * /*ran*/, int * /*x*/, int * /*y*/, int * /*z*/) { return 0; }
+      unsigned int /*piece*/, unsigned char * /*ran*/, int * /*x*/, int * /*y*/, int * /*z*/) const { return 0; }
 
 
   /* finally some debugging functions that allow to look how, why, and where pieces are placed */

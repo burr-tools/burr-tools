@@ -455,7 +455,7 @@ bool separation_c::containsMultiMoves(void) {
     (removed && removed->containsMultiMoves());
 }
 
-int separation_c::movesText2(char * txt, int len) {
+int separation_c::movesText2(char * txt, int len) const {
 
   bt_assert(states.size() > 0);
 
@@ -628,7 +628,7 @@ unsigned int separationInfo_c::sumMoves(void) const {
   return erg;
 }
 
-int separationInfo_c::movesText2(char * txt, int len, unsigned int idx) {
+int separationInfo_c::movesText2(char * txt, int len, unsigned int idx) const {
 
   int len2 = snprintf(txt, len, "%i", values[idx]-1);
 
@@ -666,7 +666,7 @@ int separationInfo_c::movesText2(char * txt, int len, unsigned int idx) {
   return len2;
 }
 
-bool separationInfo_c::containsMultiMoves(unsigned int idx) {
+bool separationInfo_c::containsMultiMoves(unsigned int idx) const {
 
   unsigned int branches = 1;
 

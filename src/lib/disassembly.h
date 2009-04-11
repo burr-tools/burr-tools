@@ -52,7 +52,7 @@ class disassembly_c
      * required to disassemble the puzzle
      * not more than len characters are written
      */
-    virtual void movesText(char * txt, int len) = 0;
+    virtual void movesText(char * txt, int len) const = 0;
 
     /**
      * compares this and the given separation, for a higher level.
@@ -203,7 +203,7 @@ class separation_c : public disassembly_c
   unsigned int numSequences;
 
   /** helper function for movesTxt */
-  int movesText2(char * txt, int len);
+  int movesText2(char * txt, int len) const;
 
 public:
 
@@ -268,7 +268,7 @@ public:
   virtual unsigned int getSequenceLength(unsigned int x) const;
   virtual unsigned int getNumSequences(void) const;
   virtual unsigned int sumMoves(void) const;
-  virtual void movesText(char * txt, int len) { movesText2(txt, len); }
+  virtual void movesText(char * txt, int len) const { movesText2(txt, len); }
 
 private:
 
@@ -304,12 +304,12 @@ class separationInfo_c : public disassembly_c {
     std::vector<unsigned int> values;
 
     /** used in movesText to find out if a branch has a movesequence longer than 1 */
-    bool containsMultiMoves(unsigned int root);
+    bool containsMultiMoves(unsigned int root) const;
 
     /** used in constructor for create separationInfo from normal separation */
     void recursiveConstruction(const separation_c * sep);
 
-    int movesText2(char * txt, int len, unsigned int idx);
+    int movesText2(char * txt, int len, unsigned int idx) const;
 
   public:
 
@@ -324,7 +324,7 @@ class separationInfo_c : public disassembly_c {
 
     /* implement abstract functions */
     virtual unsigned int sumMoves(void) const;
-    virtual void movesText(char * txt, int len) { movesText2(txt, len, 0); }
+    virtual void movesText(char * txt, int len) const { movesText2(txt, len, 0); }
     virtual unsigned int getSequenceLength(unsigned int x) const;
     virtual unsigned int getNumSequences(void) const;
 

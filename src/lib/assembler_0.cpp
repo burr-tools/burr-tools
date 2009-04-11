@@ -215,7 +215,7 @@ int assembler_0_c::AddPieceNode(unsigned int piece, unsigned int rot, unsigned i
   return piecenode;
 }
 
-void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z, unsigned int *piece) {
+void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z, unsigned int *piece) const {
 
   for (int i = piecePositions.size()-1; i >= 0; i--)
     if (piecePositions[i].row <= node) {
@@ -1411,7 +1411,7 @@ void assembler_0_c::assemble(assembler_cb * callback) {
   }
 }
 
-float assembler_0_c::getFinished(void) {
+float assembler_0_c::getFinished(void) const {
 
   /* we don't need locking, as I hope that I have written the
    * code in a way that updated the data so, that it will never
@@ -1555,7 +1555,7 @@ void assembler_0_c::save(xmlWriter_c & xml) const
   xml.endTag("assembler");
 }
 
-unsigned int assembler_0_c::getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) {
+unsigned int assembler_0_c::getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) const {
 
   unsigned int pi;
 
@@ -1579,7 +1579,7 @@ unsigned int assembler_0_c::getPiecePlacement(unsigned int node, int delta, unsi
   return node;
 }
 
-unsigned int assembler_0_c::getPiecePlacementCount(unsigned int piece) {
+unsigned int assembler_0_c::getPiecePlacementCount(unsigned int piece) const {
 
   return colCount[piece+1];
 }
