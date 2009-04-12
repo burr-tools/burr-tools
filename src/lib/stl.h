@@ -62,7 +62,7 @@ class stlExporter_c {
      *
      * The function has to call open, outTriangle and close to do its work.
      */
-    virtual void write(const char * basename, voxel_c * shape) = 0;
+    virtual void write(const char * basename, const voxel_c * shape) = 0;
 
     /* some functions to set some parameters for the output all parameters mus tbe double
      * values

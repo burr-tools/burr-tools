@@ -113,7 +113,7 @@ public:
    * is currently working on the piece with the returned number, but if
    * you want you can also return something else
    */
-  virtual unsigned int getReducePiece(void) { return 0; }
+  virtual unsigned int getReducePiece(void) const { return 0; }
 
   /** start the assembly process.
    * it is intended that the assembly process runs in a different thread from
@@ -135,7 +135,7 @@ public:
    * between 0 and 1. It must be possible to call this function
    * while assemble is running
    */
-  virtual float getFinished(void) { return 0; }
+  virtual float getFinished(void) const { return 0; }
 
   /** stops the assembly process sometimes in the near future. */
   virtual void stop(void) {}
@@ -166,10 +166,10 @@ public:
    * if the Supported function returns true, if not the functionality is not
    * supported
    */
-  virtual bool getPiecePlacementSupported(void) { return false; }
+  virtual bool getPiecePlacementSupported(void) const { return false; }
 
   /* return the number of placements for a given _PIECE_ not the shape */
-  virtual unsigned int getPiecePlacementCount(unsigned int /*piece*/) { return 0; }
+  virtual unsigned int getPiecePlacementCount(unsigned int /*piece*/) const { return 0; }
 
   /* returns the placement of a piece (orientation, and position). Node gives a current position
    * inside some internal data structure, the new position is returned as return value, for initialisation

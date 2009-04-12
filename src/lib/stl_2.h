@@ -28,7 +28,7 @@ class stlExporter_2_c : public stlExporter_c {
 
     stlExporter_2_c(void) : sphere_rad(10), offset(0), round(1), connection_rad(0.75), recursion(2) {}
 
-    virtual void write(const char * basename, voxel_c * shape);
+    virtual void write(const char * basename, const voxel_c * shape);
 
     /* some functions to set some parameters for the output all parameters mus tbe double
      * values

@@ -559,7 +559,7 @@ void stlExporter_0_c::make_faces(const voxel_c *v, const int x,const int y,const
       }
 }
 
-void stlExporter_0_c::write(const char * fname, voxel_c * v) {
+void stlExporter_0_c::write(const char * fname, const voxel_c * v) {
 
   if (v->countState(voxel_c::VX_VARIABLE)) throw new stlException_c("Shapes with variable voxels cannot be exported");
   if (cube_scale < Epsilon) throw new stlException_c("Cube size too small");

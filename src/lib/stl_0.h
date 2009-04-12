@@ -27,7 +27,7 @@ class stlExporter_0_c : public stlExporter_c {
 
     stlExporter_0_c(void) : bevel(1), cube_scale(10), shrink(0.1) {}
 
-    virtual void write(const char * basename, voxel_c * shape);
+    virtual void write(const char * basename, const voxel_c * shape);
 
     /* some functions to set some parameters for the output all parameters mus tbe double
      * values

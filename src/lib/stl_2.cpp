@@ -623,7 +623,7 @@ static bool curvOk(double curvrad, double cnrad, double sprad, double offset) {
   return true;
 }
 
-void stlExporter_2_c::write(const char * fname, voxel_c * v) {
+void stlExporter_2_c::write(const char * fname, const voxel_c * v) {
 
   if (v->countState(voxel_c::VX_VARIABLE)) throw new stlException_c("Shapes with variable voxels cannot be exported");
   if (sphere_rad < Epsilon) throw new stlException_c("Sphere size too small");
