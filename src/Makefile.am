@@ -13,9 +13,11 @@ AM_CPPFLAGS=-Wall -W $(XML_CPP_ADD) $(GUI_CPP_ADD) $(PTHREAD_CPP_ADD) @LARGEFILE
 LDADD= $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
 
 tools_libtools_a_SOURCES =
+tools_libtools_a_SOURCES += tools/fileexists.cpp tools/fileexists.h
+tools_libtools_a_SOURCES += tools/gzstream.cpp tools/gzstream.h
+tools_libtools_a_SOURCES += tools/homedir.cpp tools/homedir.h
 tools_libtools_a_SOURCES += tools/intdiv.h
 tools_libtools_a_SOURCES += tools/xml.cpp tools/xml.h
-tools_libtools_a_SOURCES += tools/gzstream.cpp tools/gzstream.h
 
 lua_liblua_a_SOURCES =
 lua_liblua_a_SOURCES += lua/lapi.c lua/lapi.h

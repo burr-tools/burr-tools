@@ -21,67 +21,20 @@
 
 #include "../lib/bt_assert.h"
 
+#include "../tools/homedir.h"
+
 #include "Layouter.h"
 
 #include <FL/Fl.H>
 #include <FL/filename.H>
 
-#ifdef WIN32
-#include <windows.h>
-#include <shlobj.h>
-#include <shellapi.h>
-#include <lmcons.h>
-#else
-#define MAX_PATH 1024
-#endif
-
-#if defined WIN32 && !defined CYGWIN
-#include <direct.h>
-#else
-#include <unistd.h>
-#endif
-
 #include "../lua/luaclass.h"
 
-// returns either the home directory or the current
-// directory on system that don't know home directories
-static char * homedir() {
-
-  static char userHome[MAX_PATH];
-
-#ifdef WIN32
-
-  HKEY key;
-  DWORD size = MAX_PATH;
-
-  if (RegOpenKeyEx(HKEY_CURRENT_USER,
-                   "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders",
-                   0, KEY_QUERY_VALUE, &key) != ERROR_SUCCESS)
-    userHome[0] = '\0';
-
-  else if (RegQueryValueEx(key, "Personal", 0, 0, (LPBYTE)userHome, &size ) != ERROR_SUCCESS)
-    userHome[0] = '\0';
-
-  else
-    RegCloseKey(key);
-
-  size = strlen(userHome);
-  userHome[size] = '\\';
-  userHome[size+1] = '\0';
-
-#else
-
-  fl_filename_expand( userHome, MAX_PATH, "~/" );
-
-#endif
-
-  return userHome;
-}
 
 static FILE *create_local_config_file(void) {
 
   char n[200];
-  snprintf(n, 199, "%s.burrtools.rc", homedir());
+  snprintf(n, 199, "%s.burrtools.rc", homedir().c_str());
   return fopen(n, "w");
 
 }
@@ -89,7 +42,7 @@ static FILE *create_local_config_file(void) {
 static void open_local_config_file(luaClass_c & L) {
 
   char n[200];
-  snprintf(n, 199, "%s.burrtools.rc", homedir());
+  snprintf(n, 199, "%s.burrtools.rc", homedir().c_str());
   L.doFile(n);
 
 }
