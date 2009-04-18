@@ -56,6 +56,9 @@ class thread_c {
     /* kill the thread */
     void kill();
 
+    /** return true, if the thread is running */
+    bool isRunning(void) { return running; }
+
   protected:
 
     /* this is the function that gets started for the thread, once this
