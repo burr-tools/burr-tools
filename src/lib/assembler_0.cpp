@@ -330,6 +330,7 @@ void assembler_0_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
 assembler_0_c::assembler_0_c(void) :
   assembler_c(),
   pos(0), rows(0), columns(0),
+  reducePiece(0),
   avoidTransformedAssemblies(0), avoidTransformedMirror(0)
 {
 }
