@@ -414,13 +414,10 @@ void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
   delete [] space;
   space = s2;
 
-  if (dx + bx1 <= 0) bx1 = 0; else if (dx + bx1 >= sx) bx1 = sx-1; else bx1 += dx;
-  if (dy + by1 <= 0) by1 = 0; else if (dy + by1 >= sy) by1 = sy-1; else by1 += dy;
-  if (dz + bz1 <= 0) bz1 = 0; else if (dz + bz1 >= sz) bz1 = sz-1; else bz1 += dz;
-
-  if (dx + bx2 <= 0) bx2 = 0; else if (dx + bx2 >= sx) bx2 = sx-1; else bx2 += dx;
-  if (dy + by2 <= 0) by2 = 0; else if (dy + by2 >= sy) by2 = sy-1; else by2 += dy;
-  if (dz + bz2 <= 0) bz2 = 0; else if (dz + bz2 >= sz) bz2 = sz-1; else bz2 += dz;
+  // initially I thought I could just shift the bounding box, but this doesn't work
+  // as off piece voxels might have been shifted out making the shape smaller
+  // and thus requiring a recalculation...
+  recalcBoundingBox();
 
   hx += dx;
   hy += dy;
