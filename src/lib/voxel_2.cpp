@@ -257,9 +257,9 @@ void voxel_2_c::transformPoint(int * x, int * y, int * z, unsigned int trans) co
   // same errror with the rounding below and due to subtration the error cancelles itself out
   // lets cross fingers....
 
-  *x = (int)floor(xpn);
-  *y = (int)floor(ypn);
-  *z = (int)floor(zpn);
+  *x = (int)floor(xpn+0.5);
+  *y = (int)floor(ypn+0.5);
+  *z = (int)floor(zpn+0.5);
 }
 
 bool voxel_2_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const {
