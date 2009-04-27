@@ -164,17 +164,20 @@ void voxelTable_c::addSpace(unsigned int index, unsigned int params)
       // add all transformations of the voxel space to the table, that are actually different
 
       voxel_c * v2 = v->getGridType()->getVoxel(v);
-      bt_assert2(v2->transform(trans));
-      unsigned long hash = (params & PAR_COLOUR) ? calcColourHashValue(v2) : calcHashValue(v2);
-      delete v2;
+      if (v2->transform(trans))
+      {
+        unsigned long hash = (params & PAR_COLOUR) ? calcColourHashValue(v2) : calcHashValue(v2);
 
-      hashNode * n = new hashNode;
-      n->index = index;
-      n->transformation = trans;
-      n->hash = hash;
-      n->next = hashTable[hash % tableSize];
-      hashTable[hash % tableSize] = n;
-      tableEntries++;
+        hashNode * n = new hashNode;
+        n->index = index;
+        n->transformation = trans;
+        n->hash = hash;
+        n->next = hashTable[hash % tableSize];
+        hashTable[hash % tableSize] = n;
+        tableEntries++;
+      }
+
+      delete v2;
     }
   }
 }
