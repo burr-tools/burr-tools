@@ -2600,6 +2600,18 @@ void mainWindow_c::updateInterface(void) {
         SolveDisasm->value(0);
       }
 
+      if (ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE &&
+          !assmThread &&
+          solutionProblem->getSelection() < puzzle->problemNumber() &&
+          (int)SolutionSel->value()-1 < puzzle->getProblem(solutionProblem->getSelection())->solutionNumber()
+         )
+      {
+        BtnMovement->activate();
+      }
+      else
+      {
+        BtnMovement->deactivate();
+      }
     } else {
 
       // no valid problem available, hide all information
@@ -2617,6 +2629,7 @@ void mainWindow_c::updateInterface(void) {
       OutputAssemblies->hide();
 
       BtnPlacement->deactivate();
+      BtnMovement->deactivate();
       if (BtnStep) BtnStep->deactivate();
       if (BtnPrepare) BtnPrepare->deactivate();
 
