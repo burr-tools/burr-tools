@@ -1,3 +1,12 @@
+------------- Version 0.5.1 Apr 2009
+
+- fix a rounding bug in sphere transformation resulting in missing solutions
+- fix a crash when opening the status windows with sphere grid
+- deactivate movement browser when not available
+- fix possible crash when minimizing shapes
+- fix documentation formatting for legal paper (was still A4)
+- slight update of documentation (e.g. movement browser)
+
 ------------- Version 0.5.0 Apr 2009
 
 - fix problem in the rotation filter when 2 mirror shapes were assigned to a

@@ -1,4 +1,4 @@
-AC_INIT(burrtools, 0.5.0)
+AC_INIT(burrtools, 0.5.1)
 
 AC_SUBST(FULLNAME,"Burr Tools")
 AC_SUBST(URL,"http://burrtools.sourceforge.net/")
