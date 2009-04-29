@@ -2772,6 +2772,38 @@ to select the piece. Be careful though, the first stroke on the keyboard that
 doesn't fit the current scrollbar will just select the other one and the
 following keystroke will start to move the slider.
 
+==Browsing Movements==[ChBrowsingMovements]
+
+Once you have found assemblies it is possible to analyse possible movement
+within those assemblies. This is done with the movement browser. This tools is
+still very simple and will probably be changed completely some time in the
+future, but for now it could already be useful. As the tool will change later
+on just a short introduction.
+
+The tool is opened by pressing the "Movement" button on the solver tab. The
+tool will then start with the currently active assembly.
+
+The browser has a tree (like a directory tree) and some tool buttons on the
+left and the usual 3-D view on the right.
+
+In the tree on the right each node represents the possible states that the
+puzzle can have. Each state is a relative position of all pieces towards each
+other. The root of the tree is the initial state and sub-nodes represent state
+that can be reached from there. The label on sub-nodes tells which pieces are
+moved into what direction.
+
+The button below the tree allow you to analyse one node and add all its
+children.
+
+If you activate a node the 3D view will display the positions of all pieces for
+this node. Normal positions are displayed with filled shapes and coordinate system
+along each piece. If you view invalid states, where pieces overlap you will see
+the piece shapes only as wire-grid and the overlapping region as red voxels.
+
+You can also analyse movements manually by adding a node and specifying which
+pieces should move in which direction. If the pieces then do overlap the 3-D
+view will change and display the overlapping voxels instead of the real shapes.
+
 ==Inspecting Results==[ChInspectingResults]
 
 As soon as any result is found, the solutions list becomes available on the
