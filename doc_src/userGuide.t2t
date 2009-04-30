@@ -1964,7 +1964,7 @@ the single cube to 0-10.
 Now we have all that we need. All this is prepared in the provided file.
 
 Go ahead and solve this problem. Here you should tag the @A@Expensive rot. check@A@
-check-box (--/ [Rotation considerations ChRotationRemoval]) and also
+check-box (--/ [Rotation considerations ChRotationRemoval2]) and also
 the @A@Keep Mirror Solutions@A@ check-box. Set the limit high enough to keep
 all solutions (there will be 1024 solutions).
 
