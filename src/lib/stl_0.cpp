@@ -34,35 +34,35 @@ static int get_mask(const voxel_c *v, int x,int y,int z,int rot, int edgeface)
 	  {
 	  case  0: mask = mask*2 + (v->isFilled2(x+xx-1,y+yy-1,z+zz-1)?1:0); break;
 	  case  1: mask = mask*2 + (v->isFilled2(x-yy,y+xx-1,z+zz-1)?1:0); break;
-	  case  2: mask = mask*2 + (v->isFilled2(x+yy-1,y+zz-1,z+xx-1)?1:0); break;
-	  case  3: mask = mask*2 + (v->isFilled2(x+xx-1,y+zz-1,z-yy)?1:0); break;
-	  case  4: mask = mask*2 + (v->isFilled2(x+zz-1,y+xx-1,z+yy-1)?1:0); break;
-	  case  5: mask = mask*2 + (v->isFilled2(x+zz-1,y-yy,z+xx-1)?1:0); break;
-	  case  6: mask = mask*2 + (v->isFilled2(x-xx,y-yy,z+zz-1)?1:0); break;
-	  case  7: mask = mask*2 + (v->isFilled2(x+yy-1,y-xx,z+zz-1)?1:0); break;
-	  case  8: mask = mask*2 + (v->isFilled2(x-yy,y+zz-1,z-xx)?1:0); break;
-	  case  9: mask = mask*2 + (v->isFilled2(x-xx,y+zz-1,z+yy-1)?1:0); break;
+	  case  2: mask = mask*2 + (v->isFilled2(x-xx,y-yy,z+zz-1)?1:0); break;
+	  case  3: mask = mask*2 + (v->isFilled2(x+yy-1,y-xx,z+zz-1)?1:0); break;
+	  case  4: mask = mask*2 + (v->isFilled2(x+yy-1,y+zz-1,z+xx-1)?1:0); break;
+	  case  5: mask = mask*2 + (v->isFilled2(x+xx-1,y+zz-1,z-yy)?1:0); break;
+	  case  6: mask = mask*2 + (v->isFilled2(x-yy,y+zz-1,z-xx)?1:0); break;
+	  case  7: mask = mask*2 + (v->isFilled2(x-xx,y+zz-1,z+yy-1)?1:0); break;
+	  case  8: mask = mask*2 + (v->isFilled2(x+zz-1,y+xx-1,z+yy-1)?1:0); break;
+	  case  9: mask = mask*2 + (v->isFilled2(x+zz-1,y-yy,z+xx-1)?1:0); break;
 	  case 10: mask = mask*2 + (v->isFilled2(x+zz-1,y-xx,z-yy)?1:0); break;
 	  case 11: mask = mask*2 + (v->isFilled2(x+zz-1,y+yy-1,z-xx)?1:0); break;
 	  case 12: mask = mask*2 + (v->isFilled2(x-xx,y+yy-1,z-zz)?1:0); break;
 	  case 13: mask = mask*2 + (v->isFilled2(x-yy,y-xx,z-zz)?1:0); break;
-	  case 14: mask = mask*2 + (v->isFilled2(x+yy-1,y-zz,z-xx)?1:0); break;
-	  case 15: mask = mask*2 + (v->isFilled2(x-xx,y-zz,z-yy)?1:0); break;
-	  case 16: mask = mask*2 + (v->isFilled2(x-zz,y-xx,z+yy-1)?1:0); break;
-	  case 17: mask = mask*2 + (v->isFilled2(x-zz,y-yy,z-xx)?1:0); break;
-	  case 18: mask = mask*2 + (v->isFilled2(x+xx-1,y-yy,z-zz)?1:0); break;
-	  case 19: mask = mask*2 + (v->isFilled2(x+yy-1,y+xx-1,z-zz)?1:0); break;
-	  case 20: mask = mask*2 + (v->isFilled2(x-yy,y-zz,z+xx-1)?1:0); break;
-	  case 21: mask = mask*2 + (v->isFilled2(x+xx-1,y-zz,z+yy-1)?1:0); break;
+	  case 14: mask = mask*2 + (v->isFilled2(x+xx-1,y-yy,z-zz)?1:0); break;
+	  case 15: mask = mask*2 + (v->isFilled2(x+yy-1,y+xx-1,z-zz)?1:0); break;
+	  case 16: mask = mask*2 + (v->isFilled2(x+yy-1,y-zz,z-xx)?1:0); break;
+	  case 17: mask = mask*2 + (v->isFilled2(x-xx,y-zz,z-yy)?1:0); break;
+	  case 18: mask = mask*2 + (v->isFilled2(x-yy,y-zz,z+xx-1)?1:0); break;
+	  case 19: mask = mask*2 + (v->isFilled2(x+xx-1,y-zz,z+yy-1)?1:0); break;
+	  case 20: mask = mask*2 + (v->isFilled2(x-zz,y-xx,z+yy-1)?1:0); break;
+	  case 21: mask = mask*2 + (v->isFilled2(x-zz,y-yy,z-xx)?1:0); break;
 	  case 22: mask = mask*2 + (v->isFilled2(x-zz,y+xx-1,z-yy)?1:0); break;
 	  case 23: mask = mask*2 + (v->isFilled2(x-zz,y+yy-1,z+xx-1)?1:0); break;
 
 	    // special cases for faces
 	  case 24: mask = mask*2 + (v->isFilled2(x+xx-1,y+yy-1,z+zz-1)?1:0); break;
-	  case 25: mask = mask*2 + (v->isFilled2(x+yy-1,y+zz-1,z+xx-1)?1:0); break;
-	  case 26: mask = mask*2 + (v->isFilled2(x+zz-1,y+xx-1,z+yy-1)?1:0); break;
-	  case 27: mask = mask*2 + (v->isFilled2(x+1-xx,y+yy-1,z+zz-1)?1:0); break;
-	  case 28: mask = mask*2 + (v->isFilled2(x+yy-1,y+zz-1,z+1-xx)?1:0); break;
+	  case 25: mask = mask*2 + (v->isFilled2(x+1-xx,y+yy-1,z+zz-1)?1:0); break;
+	  case 26: mask = mask*2 + (v->isFilled2(x+yy-1,y+zz-1,z+xx-1)?1:0); break;
+	  case 27: mask = mask*2 + (v->isFilled2(x+yy-1,y+zz-1,z+1-xx)?1:0); break;
+	  case 28: mask = mask*2 + (v->isFilled2(x+zz-1,y+xx-1,z+yy-1)?1:0); break;
 	  case 29: mask = mask*2 + (v->isFilled2(x+zz-1,y+1-xx,z+yy-1)?1:0); break;
 	  }
   return mask;
@@ -76,35 +76,35 @@ void stlExporter_0_c::rotate_point(float *x, float *y, float *z, int rot)
     {
     case  0: *x=+xx; *y=+yy; *z=+zz; break;
     case  1: *x=-yy; *y=+xx; *z=+zz; break;
-    case  2: *x=+yy; *y=+zz; *z=+xx; break;
-    case  3: *x=+xx; *y=+zz; *z=-yy; break;
-    case  4: *x=+zz; *y=+xx; *z=+yy; break;
-    case  5: *x=+zz; *y=-yy; *z=+xx; break;
-    case  6: *x=-xx; *y=-yy; *z=+zz; break;
-    case  7: *x=+yy; *y=-xx; *z=+zz; break;
-    case  8: *x=-yy; *y=+zz; *z=-xx; break;
-    case  9: *x=-xx; *y=+zz; *z=+yy; break;
+    case  2: *x=-xx; *y=-yy; *z=+zz; break;
+    case  3: *x=+yy; *y=-xx; *z=+zz; break;
+    case  4: *x=+yy; *y=+zz; *z=+xx; break;
+    case  5: *x=+xx; *y=+zz; *z=-yy; break;
+    case  6: *x=-yy; *y=+zz; *z=-xx; break;
+    case  7: *x=-xx; *y=+zz; *z=+yy; break;
+    case  8: *x=+zz; *y=+xx; *z=+yy; break;
+    case  9: *x=+zz; *y=-yy; *z=+xx; break;
     case 10: *x=+zz; *y=-xx; *z=-yy; break;
     case 11: *x=+zz; *y=+yy; *z=-xx; break;
     case 12: *x=-xx; *y=+yy; *z=-zz; break;
     case 13: *x=-yy; *y=-xx; *z=-zz; break;
-    case 14: *x=+yy; *y=-zz; *z=-xx; break;
-    case 15: *x=-xx; *y=-zz; *z=-yy; break;
-    case 16: *x=-zz; *y=-xx; *z=+yy; break;
-    case 17: *x=-zz; *y=-yy; *z=-xx; break;
-    case 18: *x=+xx; *y=-yy; *z=-zz; break;
-    case 19: *x=+yy; *y=+xx; *z=-zz; break;
-    case 20: *x=-yy; *y=-zz; *z=+xx; break;
-    case 21: *x=+xx; *y=-zz; *z=+yy; break;
+    case 14: *x=+xx; *y=-yy; *z=-zz; break;
+    case 15: *x=+yy; *y=+xx; *z=-zz; break;
+    case 16: *x=+yy; *y=-zz; *z=-xx; break;
+    case 17: *x=-xx; *y=-zz; *z=-yy; break;
+    case 18: *x=-yy; *y=-zz; *z=+xx; break;
+    case 19: *x=+xx; *y=-zz; *z=+yy; break;
+    case 20: *x=-zz; *y=-xx; *z=+yy; break;
+    case 21: *x=-zz; *y=-yy; *z=-xx; break;
     case 22: *x=-zz; *y=+xx; *z=-yy; break;
     case 23: *x=-zz; *y=+yy; *z=+xx; break;
 
       // special cases for faces
     case 24: *x=+xx; *y=+yy; *z=+zz; break;
-    case 25: *x=+yy; *y=+zz; *z=+xx; break;
-    case 26: *x=+zz; *y=+xx; *z=+yy; break;
-    case 27: *x=cube_scale-xx; *y=cube_scale-yy; *z=+zz; break;
-    case 28: *x=cube_scale-yy; *y=+zz; *z=cube_scale-xx; break;
+    case 25: *x=cube_scale-xx; *y=cube_scale-yy; *z=+zz; break;
+    case 26: *x=+yy; *y=+zz; *z=+xx; break;
+    case 27: *x=cube_scale-yy; *y=+zz; *z=cube_scale-xx; break;
+    case 28: *x=+zz; *y=+xx; *z=+yy; break;
     case 29: *x=+zz; *y=cube_scale-xx; *z=cube_scale-yy; break;
     }
 }
@@ -489,15 +489,19 @@ void stlExporter_0_c::make_corners(const voxel_c *v, const int x, const int y, c
 	case 255 : break; // tested
 	default :
 	  match=0;
+	  break;
 	}
     }
 }
 
 void stlExporter_0_c::make_edges(const voxel_c *v, const int x, const int y, const int z)
 {
-  int rot;
-  for (rot=0; rot<12; rot++)
+  int rot1,rot,match;
+
+  for (rot1=0; rot1<12; rot1+=4) // around only each axis once
+    for (rot=rot1, match=0; rot<(rot1+4) && !match; rot++)
     {
+      match=1;
       switch (get_mask(v,x,y,z,rot,1))
 	{
 	case 0 : break;
@@ -540,7 +544,9 @@ void stlExporter_0_c::make_edges(const voxel_c *v, const int x, const int y, con
 		    shrink,+shrink,cube_scale-(bevel+shrink),
 		   rot, x, y, z);
 	  break;
-	default : break;
+	default : 
+	  match=0;
+	  break;
 	}
     }
 }
