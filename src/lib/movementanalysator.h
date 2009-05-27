@@ -91,6 +91,9 @@ class movementAnalysator_c {
     disassemblerNode_c * find(void);
 
     void completeFind(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces, std::vector<disassemblerNode_c*> * result);
+    
+    /* or use findMatching to find a very specific move */
+    disassemblerNode_c * findMatching(disassemblerNode_c * nd, const std::vector<unsigned int> & pcs, int piece, int dx, int dy, int dz);
 
   private:
 
