@@ -375,6 +375,16 @@ void movementBrowser_c::selectSpecificMovement(unsigned int piece, int x, int y,
   }
 }
 
+static void cb_StepBack_stub(Fl_Widget* /*o*/, void* v) { ((movementBrowser_c*)v)->cb_StepBack(); }
+void movementBrowser_c::cb_StepBack(void) {
+  LTreeBrowser::Node * nd = tree->get_selected(1);
+  if (!nd) return;
+  LTreeBrowser::Node * pn = nd->parent();
+  if (!pn) return;
+  pn->select_only();
+  redraw();
+}
+
 static void cb_NodeAnalyze_stub(Fl_Widget* /*o*/, void* v) { ((movementBrowser_c*)v)->cb_NodeAnalyze(1); }
 static void cb_NodeAnalyzeMany_stub(Fl_Widget* /*o*/, void* v) { ((movementBrowser_c*)v)->cb_NodeAnalyze(2); }
 void movementBrowser_c::cb_NodeAnalyze(unsigned int level) {
@@ -469,13 +479,15 @@ movementBrowser_c::movementBrowser_c(problem_c * puzzle, unsigned int solNum) : 
   tree->selection_mode(FLU_SINGLE_SELECT);
   tree->selection_follows_hilight(true);
 
-  layouter_c * o = new layouter_c(0, 1, 1, 1);
+  layouter_c * o = new layouter_c(0, 1, 1, 2);
 
   analyzeNode =       new LFlatButton_c(0, 0, 1, 1, "Analyze", " Analyze this node for possible movement ", cb_NodeAnalyze_stub, this);
   analyzeNextLevels = new LFlatButton_c(1, 0, 1, 1, "Analyze more", " Analyze multiple levels for movement ", cb_NodeAnalyzeMany_stub, this);
   addMovement =       new LFlatButton_c(0, 1, 1, 1, "Add Movement", " Add a fixed movement to current node and see what happens ", cb_AddMovement_stub, this);
   pruneTree =         new LFlatButton_c(1, 1, 1, 1, "Prune Tree", " Remove All Nodes exept the ones that lead to the selected one ", cb_Prune_stub, this);
-
+  stepBack =            new LFlatButton_c(0, 2, 1, 3, "Step Back", " Jump back to the parent of the selected node in the tree ", cb_StepBack_stub, this);
+  
+  stepBack->pitch(2);
   analyzeNode->pitch(2);
   analyzeNextLevels->pitch(2);
   addMovement->pitch(2);

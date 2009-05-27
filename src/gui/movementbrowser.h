@@ -57,6 +57,7 @@ class movementBrowser_c : public LFl_Double_Window {
     LFlatButton_c * analyzeNextLevels;
     LFlatButton_c * addMovement;
     LFlatButton_c * pruneTree;
+    LFlatButton_c * stepBack;
 
     problem_c * puz;
 
@@ -80,6 +81,7 @@ class movementBrowser_c : public LFl_Double_Window {
     void cb_AddMovement(void);
     void addSpecificMovement(unsigned int piece, int x, int y, int z);
     void selectSpecificMovement(unsigned int piece, int x, int y, int z);
+    void cb_StepBack(void);
     void cb_Prune(void);
     void cb_3dClick(void);
 };
