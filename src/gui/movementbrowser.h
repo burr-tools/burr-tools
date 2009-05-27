@@ -78,7 +78,10 @@ class movementBrowser_c : public LFl_Double_Window {
     void cb_NodeChange(void);
     void cb_NodeAnalyze(unsigned int level);
     void cb_AddMovement(void);
+    void addSpecificMovement(unsigned int piece, int x, int y, int z);
+    void selectSpecificMovement(unsigned int piece, int x, int y, int z);
     void cb_Prune(void);
+    void cb_3dClick(void);
 };
 
 #endif
