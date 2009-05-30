@@ -657,12 +657,12 @@ disassemblerNode_c * movementAnalysator_c::find(void) {
   involve the indicated piece and be in the indicated direction
   and we'll do the preparation call from within this routine too, so we only have to call one routine from outside
 */
-disassemblerNode_c * movementAnalysator_c::findMatching(disassemblerNode_c * nd, const std::vector<unsigned int> & pcs, int piece, int dx, int dy, int dz) {
-  
+disassemblerNode_c * movementAnalysator_c::findMatching(disassemblerNode_c * nd, const std::vector<unsigned int> & pcs, unsigned int piece, int dx, int dy, int dz) {
+
   /* note that a language with lightweight threads and pipes could have done the find method as a generator instead of a state machine,
   and then we wouldn't be passing arguments around in these instance variables */
-  
-  
+
+
   // the direction is already determined, but we need to calculate it from the coordinates I guess
   {
     // calculate the direction from (dx,dy,dz)
@@ -681,39 +681,43 @@ disassemblerNode_c * movementAnalysator_c::findMatching(disassemblerNode_c * nd,
         break;
       }
     }
-    
+
     // if there's no matching direction, we can't find any moves
     // note that presently, this may actually happen with odd grid types
     if (!(dirIdx < numDirs)) return 0;  // failed to find a matching direction
   }
-  
+
   // use the piece id mapping array to determine the correct piece id to use in the disassembler
   // but note that it's the inverse of the mapping we need, so we apply it backwards with a loop
   // this routine is presently only called once in response to a user action, so this is fine
   {
-    unsigned int i;
-    for (i = 0; i < pcs.size() && !(pcs[i] == piece); i++);
+    unsigned int i = 0;
+    while (i < pcs.size())
+    {
+      if (pcs[i] == piece) break;
+      i++;
+    }
     bt_assert(i < pcs.size());  // failed to find a matching piece id
     nextpiece = i;
   }
-  
+
   nextstep = 1;           // always 1 for this operation
   nextstate = 2;          // doesn't matter since we're not a state machine
   next_pn = pcs.size();
-  
+
   searchnode = nd;
   pieces = &pcs;
-  
+
   // calculate the movement matrices
   prepare();
-  
+
   if (checkmovement(next_pn/2, nextstep)) {
     // we found a move
     disassemblerNode_c * n = newNode(nextstep);
     bt_assert(n);
     return n;
   }
-  
+
   // indicate no valid move
   return 0;
 }
