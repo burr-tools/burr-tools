@@ -845,6 +845,7 @@ voxel_c * assembly_c::createSpace(const problem_c * puz) const {
     }
 
   res->skipRecalcBoundingBox(false);
+  res->initHotspot();
   return res;
 }
 
