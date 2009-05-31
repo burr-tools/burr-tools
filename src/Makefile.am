@@ -1,6 +1,6 @@
 bin_PROGRAMS=burrTxt burrTxt2 gui/burrGui
 noinst_LIBRARIES=lib/libburr.a flu/libflu.a help/libhelp.a lua/liblua.a tools/libtools.a
-noinst_PROGRAMS=help/helpviewer
+noinst_PROGRAMS=help/helpviewer unitTest
 
 XML_CPP_ADD=@XML_CPP_ADD@
 XML_LD_ADD=@XML_LD_ADD@
@@ -110,6 +110,13 @@ lib_libburr_a_SOURCES += lib/tabs_2/rotmatrix.inc lib/tabs_2/symmetries.inc lib/
 lib_libburr_a_SOURCES += lib/tabs_0/symcalc.inc lib/tabs_0/transformmini.inc lib/tabs_0/transmult.inc lib/tabs_0/unifiedsym.inc lib/tabs_0/uniquesym.inc
 lib_libburr_a_SOURCES += lib/tabs_1/symcalc.inc lib/tabs_1/transformmini.inc lib/tabs_1/transmult.inc lib/tabs_1/unifiedsym.inc lib/tabs_1/uniquesym.inc
 lib_libburr_a_SOURCES += lib/tabs_2/symcalc.inc lib/tabs_2/transformmini.inc lib/tabs_2/transmult.inc lib/tabs_2/unifiedsym.inc lib/tabs_2/uniquesym.inc
+
+# the library tester program
+unitTest_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a $(LDADD) -lboost_test_exec_monitor
+unitTest_SOURCES =
+unitTest_SOURCES += lib/main_test.cpp
+unitTest_SOURCES += lib/bitfield_test.cpp
+unitTest_SOURCES += lib/voxel_0_test.cpp
 
 
 EXTRA_DIST=\
