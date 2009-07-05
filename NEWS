@@ -1,3 +1,7 @@
+- fix an STL export bug resulting in somtimes double face output
+- fix a bug in the assembl import that made sphere amost always crash the program
+- add the possibility in the movement browser to push and pull pieces by clicking onto them
+
 ------------- Version 0.5.1 Apr 2009
 
 - fix a rounding bug in sphere transformation resulting in missing solutions
