@@ -333,9 +333,9 @@ void movementBrowser_c::cb_AddMovement(void) {
 }
 
 void movementBrowser_c::addSpecificMovement(unsigned int piece, int x, int y, int z) {
-  
+
   /* create the requested move and add it to the tree, valid or not */
-  
+
   LTreeBrowser::Node * nd = tree->get_selected(1);
   if (!nd) return;
 
@@ -356,19 +356,19 @@ void movementBrowser_c::addSpecificMovement(unsigned int piece, int x, int y, in
 }
 
 void movementBrowser_c::selectSpecificMovement(unsigned int piece, int x, int y, int z) {
-  
+
   /* find a matching move and add it to the tree */
-  
+
   LTreeBrowser::Node * nd = tree->get_selected(1);
   if (!nd) return;
-  
+
   nodeData_s * s = (nodeData_s *)(nd->user_data());
   if (!s) return;
-  
+
   movementAnalysator_c mv(puz);
-  
+
   disassemblerNode_c * newNode = mv.findMatching(s->node, s->pieces, piece, x, y, z);
-  
+
   if (newNode) {
     addNode(nd, newNode)->select_only();
     redraw();
@@ -413,33 +413,33 @@ void movementBrowser_c::cb_NodeAnalyze(unsigned int level) {
 static void cb_3dClick_movementBrowser_stub(Fl_Widget* /*o*/, void * v) { ((movementBrowser_c*)v)->cb_3dClick(); }
 void movementBrowser_c::cb_3dClick(void) {
   if (Fl::event_shift() || Fl::event_ctrl()) {
-    
+
     // determine the shape and face clicked
-    
+
     unsigned int shape, face;
     unsigned long voxel;
-    
+
     if (view3d->getView()->pickShape(Fl::event_x(),
         view3d->getView()->h()-Fl::event_y(),
         &shape, &voxel, &face)) {
-      
+
       // push/pull the shape
-      
+
       // we just need a shape using the correct grid type in order to find the neighbor voxel
       voxel_c * sh = puz->getResultShape();
-      
+
       unsigned int x, y, z;
       if (sh->indexToXYZ(voxel, &x, &y, &z)) {
-	
+
 	int nx, ny, nz;
-	
+
 	if (sh->getNeighbor(face, 0, x, y, z, &nx, &ny, &nz)) {
 	  // shift means push, ctrl means pull
 	  int sign = Fl::event_shift() ? -1 /* push */ : +1 /* pull */;
 	  int dx = (nx - x) * sign;
 	  int dy = (ny - y) * sign;
 	  int dz = (nz - z) * sign;
-	  
+
 	  if (Fl::event_alt()) {
 	    // the user is holding alt - add the move whether it's valid or not
 	    addSpecificMovement(shape, dx, dy, dz);
@@ -450,7 +450,7 @@ void movementBrowser_c::cb_3dClick(void) {
 	}
       }
     }
-    
+
   } else {
     // nothing special - ignore the click
   }
@@ -486,7 +486,7 @@ movementBrowser_c::movementBrowser_c(problem_c * puzzle, unsigned int solNum) : 
   addMovement =       new LFlatButton_c(0, 1, 1, 1, "Add Movement", " Add a fixed movement to current node and see what happens ", cb_AddMovement_stub, this);
   pruneTree =         new LFlatButton_c(1, 1, 1, 1, "Prune Tree", " Remove All Nodes exept the ones that lead to the selected one ", cb_Prune_stub, this);
   stepBack =            new LFlatButton_c(0, 2, 1, 3, "Step Back", " Jump back to the parent of the selected node in the tree ", cb_StepBack_stub, this);
-  
+
   stepBack->pitch(2);
   analyzeNode->pitch(2);
   analyzeNextLevels->pitch(2);
