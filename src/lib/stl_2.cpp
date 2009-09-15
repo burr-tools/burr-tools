@@ -23,18 +23,27 @@
 
 #define Epsilon 1.0e-5
 
+// Activate this if you want square holes in your hollow spheres.
+// If not defined, the default is for circular holes.
+//#define USESQUAREHOLES
+
+
 /* makes a sphere */
 
-
-/* the order must be the same as in neighbor calculation */
+/* These are the points where the spheres touch,
+ * corresponding to the faces of a rhombic dodecahedron.
+ * The order must be the same as in neighbor calculation.
+ */
 static int connectionPoints[12][3] = {
   {-1,-1, 0}, {-1,+1, 0}, {+1,-1, 0}, {+1,+1, 0},
   {-1, 0,-1}, {-1, 0,+1}, {+1, 0,-1}, {+1, 0,+1},
   { 0,-1,-1}, { 0,-1,+1}, { 0,+1,-1}, { 0,+1,+1}
 };
 
+/* Six points surrounding each touch point that
+ * correspond (roughly) to the connecting cylinder.
+ */
 static int holeTouchPoints[12][6][3] = {
-
   {
     {-1+0, -1-1, 0-1}, // 0+8
     {-1-1, -1+0, 0-1}, // 0+4
@@ -122,6 +131,9 @@ static int holeTouchPoints[12][6][3] = {
   }
 };
 
+/* These correspond to 3 triangles around the eight obtuse
+ * vertices of a rhombic dodecahedron (3 faces meet).
+ */
 static int trianglePoints[8][3][3+1] = {
   {
     {+1+1, +1+0, 0+1,  7}, // 3+7
@@ -158,8 +170,13 @@ static int trianglePoints[8][3][3+1] = {
   }
 };
 
+/* These correspond to 6 triangles areound the six acute
+ * vertices of a rhombic dodecahedron (4 faces meet).
+ * Two of these triangles form a square, the other four
+ * share an edge with each side of the square.
+ * The shape of all 6 triangles form a star-shape.
+ */
 static int squarePoints[6][8][4] = {
-
   {
     {0, +1+0, -1-1,   10},
     {0+1, +1+0, -1-1}, // 10+6
@@ -217,10 +234,12 @@ static int squarePoints[6][8][4] = {
   }
 };
 
-
-/* the given point is shifted away from the given touching
+/* The given point is shifted away from the given touching
  * point until it is on the 60 degree circle around that
- * touching point
+ * touching point.
+ * This gives the maximum size cylinder that can be used to
+ * connect the spheres.  Such cylinders touch at the sphere
+ * surface, and have a diameter equal to the radius of the sphere.
  */
 static void shiftToHoleBorder(int nr, double *x, double *y, double *z) {
 
@@ -300,19 +319,37 @@ void stlExporter_2_c::drawTriangle(
     double yc = 2*sphere_rad*(y+2)*sqrt(0.5);
     double zc = 2*sphere_rad*(z+2)*sqrt(0.5);
 
-    x1 *= (sphere_rad-offset);
-    y1 *= (sphere_rad-offset);
-    z1 *= (sphere_rad-offset);
+    // A point inside the surface to define the outward normal.
+    // For the outside surface we can use the center of the sphere,
+    // for the inside surface we reflect the center outside the triangle.
+    double xn = xc;
+    double yn = yc;
+    double zn = zc;
 
-    x2 *= (sphere_rad-offset);
-    y2 *= (sphere_rad-offset);
-    z2 *= (sphere_rad-offset);
+    double mult = sphere_rad-offset;
 
-    x3 *= (sphere_rad-offset);
-    y3 *= (sphere_rad-offset);
-    z3 *= (sphere_rad-offset);
+    if (!outside) mult = inner_rad-offset;
 
-    outTriangle(xc+x1, yc+y1, zc+z1, xc+x2, yc+y2, zc+z2, xc+x3, yc+y3, zc+z3, xc, yc, zc);
+    x1 *= mult;
+    y1 *= mult;
+    z1 *= mult;
+
+    x2 *= mult;
+    y2 *= mult;
+    z2 *= mult;
+
+    x3 *= mult;
+    y3 *= mult;
+    z3 *= mult;
+
+    // Reflect the center through the triangle, reversing the normal
+    if (!outside) {
+      xn += 2*(x1+x2+x3)/3.0;
+      yn += 2*(y1+y2+y3)/3.0;
+      zn += 2*(z1+z2+z3)/3.0;
+    }
+
+    outTriangle(xc+x1, yc+y1, zc+z1, xc+x2, yc+y2, zc+z2, xc+x3, yc+y3, zc+z3, xn, yn, zn);
   }
 }
 
@@ -486,14 +523,170 @@ void stlExporter_2_c::drawHole(
     if (lineEnd < holeStart) lineEnd = holeStart;
     if (curvEnd < lineEnd) curvEnd = lineEnd;
 
+    // Outermost section of the connection (farthest from center)
     if (holeStart < lineEnd)
       drawHolePiece(i, x, y, z, holeStart, lineEnd, x1, y1, z1, x2, y2, z2, 0);
+
+    // Curvature transition
     if (lineEnd < curvEnd)
       drawHolePiece(i, x, y, z, lineEnd, curvEnd, x1, y1, z1, x2, y2, z2, rec2);
+
+    // Innermost, transition to the connector
     if (curvEnd < 30*M_PI/180)
       drawHolePiece(i, x, y, z, curvEnd, 30*M_PI/180, x1, y1, z1, x2, y2, z2, rec2);
   }
 
+}
+
+void stlExporter_2_c::normalize(double *x, double *y, double *z) {
+  double l = sqrt(*x * *x + *y * *y + *z * *z);
+  *x /= l;
+  *y /= l;
+  *z /= l;
+}
+
+/* Shift the given point along the line connecting (x, y, z) to (px, py, pz) until
+   it is a distance rad from this point (px, py, pz).  */
+void stlExporter_2_c::shiftToConnectingHole(double px, double py, double pz, double rad,
+    double *x, double *y, double *z) {
+  double diff = sqrt((px-*x)*(px-*x)+(py-*y)*(py-*y)+(pz-*z)*(pz-*z));
+  if (diff<Epsilon) return;
+
+  double s = 1.0 - rad/diff;
+
+  *x = *x + s*(px-*x);
+  *y = *y + s*(py-*y);
+  *z = *z + s*(pz-*z);
+
+  normalize(x, y, z);
+}
+
+/* The pattern of squares by variable name (x1,y1,z1), (x5,y5,z5), etc.
+   1  5  2
+   6  7  8
+   3  9  4
+
+   edgeflag & 1 means this square includes the top edge
+   edgeflag & 2 means this square includes the bottom edge
+*/
+void stlExporter_2_c::drawConnectingHole(
+    int x, int y, int z, int i,
+    double hx, double hy, double hz,
+    double x1, double y1, double z1, double x2, double y2, double z2,
+    double x3, double y3, double z3, double x4, double y4, double z4,
+    int edgeflag, int rec) {
+
+  normalize(&x1, &y1, &z1);
+  normalize(&x2, &y2, &z2);
+  normalize(&x3, &y3, &z3);
+  normalize(&x4, &y4, &z4);
+
+  if (rec>0) {
+    double x9 = (x3 + x4)/2;
+    double y9 = (y3 + y4)/2;
+    double z9 = (z3 + z4)/2;
+
+// Do these next lines to make round (circular) holes
+// otherwise they will be square.
+#ifndef USESQUAREHOLES
+    if (edgeflag & 2) {
+      double connectingHoleRadius = 0.5 * hole_diam / sphere_rad;
+      shiftToConnectingHole(hx, hy, hz, connectingHoleRadius, &x9, &y9, &z9);
+    }
+#endif
+
+    double x5 = (x1 + x2)/2;
+    double y5 = (y1 + y2)/2;
+    double z5 = (z1 + z2)/2;
+
+    double x6 = (x1 + x3)/2;
+    double y6 = (y1 + y3)/2;
+    double z6 = (z1 + z3)/2;
+
+    double x8 = (x2 + x4)/2;
+    double y8 = (y2 + y4)/2;
+    double z8 = (z2 + z4)/2;
+
+    double x7 = (x5 + x9)/2;
+    double y7 = (y5 + y9)/2;
+    double z7 = (z5 + z9)/2;
+
+    drawConnectingHole(x, y, z, i, hx, hy, hz,
+      x1, y1, z1, x5, y5, z5, x6, y6, z6, x7, y7, z7, edgeflag & 1, rec-1);
+    drawConnectingHole(x, y, z, i, hx, hy, hz,
+      x5, y5, z5, x2, y2, z2, x7, y7, z7, x8, y8, z8, edgeflag & 1, rec-1);
+    drawConnectingHole(x, y, z, i, hx, hy, hz,
+      x6, y6, z6, x7, y7, z7, x3, y3, z3, x9, y9, z9, edgeflag & 2, rec-1);
+    drawConnectingHole(x, y, z, i, hx, hy, hz,
+      x7, y7, z7, x8, y8, z8, x9, y9, z9, x4, y4, z4, edgeflag & 2, rec-1);
+
+  }
+  else {
+    double diag23 = sqrt((x2-x3)*(x2-x3)+(y2-y3)*(y2-y3)+(z2-z3)*(z2-z3));
+    double diag14 = sqrt((x1-x4)*(x1-x4)+(y1-y4)*(y1-y4)+(z1-z4)*(z1-z4));
+
+    if (diag23 < diag14) {
+      drawTriangle(x, y, z, x1, y1, z1, x2, y2, z2, x3, y3, z3, 0, 0, 0, 0);
+      drawTriangle(x, y, z, x2, y2, z2, x3, y3, z3, x4, y4, z4, 0, 0, 0, 0);
+    }
+    else {
+      drawTriangle(x, y, z, x1, y1, z1, x2, y2, z2, x4, y4, z4, 0, 0, 0, 0);
+      drawTriangle(x, y, z, x1, y1, z1, x3, y3, z3, x4, y4, z4, 0, 0, 0, 0);
+    }
+
+    if ((edgeflag & 2) && outside) {
+      drawConnectingTriangle(x, y, z, hx, hy, hz, x3, y3, z3, x4, y4, z4);
+    }
+  }
+}
+
+/* Draw the connecting faces between the inside and outside of the sphere.
+ * Simply draw two triangles between two pairs of inside and outside points.
+ */
+void stlExporter_2_c::drawConnectingTriangle(
+    int x, int y, int z,
+    double hx, double hy, double hz,
+    double x1, double y1, double z1,
+    double x2, double y2, double z2) {
+
+  double l;
+
+  l = sqrt(x1*x1+y1*y1+z1*z1); x1 /= l; y1 /= l; z1 /= l;
+  l = sqrt(x2*x2+y2*y2+z2*z2); x2 /= l; y2 /= l; z2 /= l;
+
+  double xc = 2*sphere_rad*(x+2)*sqrt(0.5);
+  double yc = 2*sphere_rad*(y+2)*sqrt(0.5);
+  double zc = 2*sphere_rad*(z+2)*sqrt(0.5);
+
+  double xn = xc;
+  double yn = yc;
+  double zn = zc;
+
+  double mult = inner_rad-offset;
+
+  double x3 = x2*(sphere_rad-offset);
+  double y3 = y2*(sphere_rad-offset);
+  double z3 = z2*(sphere_rad-offset);
+
+  x1 *= mult;
+  y1 *= mult;
+  z1 *= mult;
+
+  x2 *= mult;
+  y2 *= mult;
+  z2 *= mult;
+
+  xn += 2*(x1+x2+x3)/3.0 - hx;
+  yn += 2*(y1+y2+y3)/3.0 - hy;
+  zn += 2*(z1+z2+z3)/3.0 - hz;
+
+  outTriangle(xc+x1, yc+y1, zc+z1, xc+x2, yc+y2, zc+z2, xc+x3, yc+y3, zc+z3, xn, yn, zn);
+
+  x2 = x1*(sphere_rad-offset)/mult;
+  y2 = y1*(sphere_rad-offset)/mult;
+  z2 = z1*(sphere_rad-offset)/mult;
+
+  outTriangle(xc+x1, yc+y1, zc+z1, xc+x2, yc+y2, zc+z2, xc+x3, yc+y3, zc+z3, xn, yn, zn);
 }
 
 void stlExporter_2_c::makeSphere(int x, int y, int z, uint16_t neighbors) {
@@ -506,7 +699,7 @@ void stlExporter_2_c::makeSphere(int x, int y, int z, uint16_t neighbors) {
     double p1y = connectionPoints[i][1];
     double p1z = connectionPoints[i][2];
 
-    double l = sqrt(p1x*p1x+p1y*p1y+p1z*p1z); p1x /= l; p1y /= l; p1z /= l;
+    normalize(&p1x, &p1y, &p1z);
 
     /* close the hole using 6 triangles */
 
@@ -523,18 +716,19 @@ void stlExporter_2_c::makeSphere(int x, int y, int z, uint16_t neighbors) {
       shiftToHoleBorder(i, &p2x, &p2y, &p2z);
       shiftToHoleBorder(i, &p3x, &p3y, &p3z);
 
-      if (neighbors & (1<<i)) {
+      if ((neighbors & (1<<i)) && outside) {
 
         /* make a proper hole */
         drawHole(x, y, z, i, p2x, p2y, p2z, p3x, p3y, p3z, (int)recursion, (int)recursion);
 
-      } else {
-
-        /* close the hole using 6 triangles */
+      }
+      else {
         drawTriangle(x, y, z, p1x, p1y, p1z, p2x, p2y, p2z, p3x, p3y, p3z, -1, i, -1, (int)recursion);
       }
-    }
-  }
+
+    } // end loop over t
+
+  } // end loop over i
 
   /* fill the 8 triangular gaps */
   for (int i = 0; i < 8; i++) {
@@ -589,28 +783,76 @@ void stlExporter_2_c::makeSphere(int x, int y, int z, uint16_t neighbors) {
           (int)recursion);
     }
 
-    /* then the center square */
-    for (int k = 0; k < 2; k++) {
-      double p1x = squarePoints[i][(4*k+0)%8][0];
-      double p1y = squarePoints[i][(4*k+0)%8][1];
-      double p1z = squarePoints[i][(4*k+0)%8][2];
+    /* Then the center square */
+    if (!hollow || hole_diam < Epsilon) { // not hollow or no holes
+      for (int k = 0; k < 2; k++) {
+        double p1x = squarePoints[i][(4*k+0)%8][0];
+        double p1y = squarePoints[i][(4*k+0)%8][1];
+        double p1z = squarePoints[i][(4*k+0)%8][2];
 
-      double p2x = squarePoints[i][(4*k+2)%8][0];
-      double p2y = squarePoints[i][(4*k+2)%8][1];
-      double p2z = squarePoints[i][(4*k+2)%8][2];
+        double p2x = squarePoints[i][(4*k+2)%8][0];
+        double p2y = squarePoints[i][(4*k+2)%8][1];
+        double p2z = squarePoints[i][(4*k+2)%8][2];
 
-      double p3x = squarePoints[i][(4*k+4)%8][0];
-      double p3y = squarePoints[i][(4*k+4)%8][1];
-      double p3z = squarePoints[i][(4*k+4)%8][2];
+        double p3x = squarePoints[i][(4*k+4)%8][0];
+        double p3y = squarePoints[i][(4*k+4)%8][1];
+        double p3z = squarePoints[i][(4*k+4)%8][2];
 
-      shiftToHoleBorder(squarePoints[i][(4*k+0)%8][3], &p1x, &p1y, &p1z);
-      shiftToHoleBorder(squarePoints[i][(4*k+2)%8][3], &p2x, &p2y, &p2z);
-      shiftToHoleBorder(squarePoints[i][(4*k+4)%8][3], &p3x, &p3y, &p3z);
+        shiftToHoleBorder(squarePoints[i][(4*k+0)%8][3], &p1x, &p1y, &p1z);
+        shiftToHoleBorder(squarePoints[i][(4*k+2)%8][3], &p2x, &p2y, &p2z);
+        shiftToHoleBorder(squarePoints[i][(4*k+4)%8][3], &p3x, &p3y, &p3z);
 
-      drawTriangle(x, y, z, p1x, p1y, p1z, p2x, p2y, p2z, p3x, p3y, p3z,
-          -1, -1, -1, (int)recursion);
+        drawTriangle(x, y, z, p1x, p1y, p1z, p2x, p2y, p2z, p3x, p3y, p3z,
+            -1, -1, -1, (int)recursion);
+      }
     }
-  }
+
+    else { //hollow with holes
+
+      // hx,hy,hz, location of the center of the hole into the interior
+      double hx = 0.125*(squarePoints[i][0][0] + squarePoints[i][2][0] +
+                      squarePoints[i][4][0] + squarePoints[i][6][0]);
+      double hy = 0.125*(squarePoints[i][0][1] + squarePoints[i][2][1] +
+                      squarePoints[i][4][1] + squarePoints[i][6][1]);
+      double hz = 0.125*(squarePoints[i][0][2] + squarePoints[i][2][2] +
+                      squarePoints[i][4][2] + squarePoints[i][6][2]);
+
+      /* Extend the inner square to the hole */
+      for (int k=0; k < 4; k++) { //Once per side of the square
+        double p1x = squarePoints[i][(2*k+0)%8][0];
+        double p1y = squarePoints[i][(2*k+0)%8][1];
+        double p1z = squarePoints[i][(2*k+0)%8][2];
+        shiftToHoleBorder(squarePoints[i][(2*k+0)%8][3], &p1x, &p1y, &p1z);
+
+        double p2x = squarePoints[i][(2*k+2)%8][0];
+        double p2y = squarePoints[i][(2*k+2)%8][1];
+        double p2z = squarePoints[i][(2*k+2)%8][2];
+        shiftToHoleBorder(squarePoints[i][(2*k+2)%8][3], &p2x, &p2y, &p2z);
+
+        double p3x = p1x;
+        double p3y = p1y;
+        double p3z = p1z;
+
+        double p4x = p2x;
+        double p4y = p2y;
+        double p4z = p2z;
+
+        double connectingHoleRadius = 0.5 * hole_diam / sphere_rad;
+
+        // connectingHoleRadius is a diagonal measurement for square holes.
+        // Thus, enlarge them by sqrt(2) for a side measurement.
+#ifdef USESQUAREHOLES
+        connectingHoleRadius *= sqrt(2.0);
+#endif
+
+        shiftToConnectingHole(hx, hy, hz, connectingHoleRadius, &p3x, &p3y, &p3z);
+        shiftToConnectingHole(hx, hy, hz, connectingHoleRadius, &p4x, &p4y, &p4z);
+
+        drawConnectingHole(x, y, z, i, hx, hy, hz,
+            p1x, p1y, p1z, p2x, p2y, p2z, p3x, p3y, p3z, p4x, p4y, p4z, 3, (int)recursion);
+      }
+    } // End else
+  } // End of loop over i
 }
 
 static bool curvOk(double curvrad, double cnrad, double sprad, double offset) {
@@ -624,7 +866,6 @@ static bool curvOk(double curvrad, double cnrad, double sprad, double offset) {
 }
 
 void stlExporter_2_c::write(const char * fname, const voxel_c * v) {
-
   if (v->countState(voxel_c::VX_VARIABLE)) throw new stlException_c("Shapes with variable voxels cannot be exported");
   if (sphere_rad < Epsilon) throw new stlException_c("Sphere size too small");
   if (offset < 0) throw new stlException_c("Offset cannot be negative");
@@ -633,8 +874,14 @@ void stlExporter_2_c::write(const char * fname, const voxel_c * v) {
   if (round > 1) throw new stlException_c("The curvature radius is relative and must be between 0 and 1");
   if (connection_rad < 0 || connection_rad > 1)
     throw new stlException_c("The connection radius is relative and must be between 0 and 1");
+  if (inner_rad < 0 || inner_rad >= sphere_rad)
+    throw new stlException_c("The inner radius cannot be negative and must be less than the sphere radius");
+  if (hole_diam < 0 || hole_diam > 0.333334*sphere_rad)
+      throw new stlException_c("The hole diameter cannot be negative or greater than 1/3 of the sphere radius");
 
-  int cost = (int)ceilf(v->countState(voxel_c::VX_FILLED) * sphere_rad*sphere_rad*sphere_rad*M_PI*4/3 / 1000.0);
+//  int cost = (int)ceilf(v->countState(voxel_c::VX_FILLED) * sphere_rad*sphere_rad*sphere_rad*M_PI*4/3 / 1000.0);
+// Why not just a count of used voxels?
+  int cost = v->countState(voxel_c::VX_FILLED);
 
   char name[1000];
   snprintf(name, 1000, "%s_%03i", fname, cost);
@@ -678,7 +925,20 @@ void stlExporter_2_c::write(const char * fname, const voxel_c * v) {
             idx++;
           }
 
+          outside = true;
+          hollow = false;
+
+          if (inner_rad > Epsilon) hollow = true;
+
+          // Draw the outside of the sphere.
           makeSphere(x, y, z, neighbors);
+
+          // In the sphere is hollow, draw the inside of the sphere.
+          // The connection between the inner and outer halves is done with the outside.
+          if (hollow) {
+            outside = false;
+            makeSphere(x, y, z, neighbors);
+          }
         }
       }
 
@@ -689,12 +949,13 @@ void stlExporter_2_c::write(const char * fname, const voxel_c * v) {
 const char * stlExporter_2_c::getParameterName(unsigned int idx) const {
 
   switch (idx) {
-
     case 0: return "Sphere radius";
     case 1: return "Connection radius";
     case 2: return "Curvature radius";
     case 3: return "Offset";
     case 4: return "Recursions";
+    case 5: return "Inner radius";
+    case 6: return "Hole diameter";
     default: return 0;
   }
 }
@@ -707,6 +968,8 @@ double stlExporter_2_c::getParameter(unsigned int idx) const {
     case 2: return round;
     case 3: return offset;
     case 4: return recursion;
+    case 5: return inner_rad;
+    case 6: return hole_diam;
     default: return 0;
   }
 }
@@ -719,6 +982,8 @@ void stlExporter_2_c::setParameter(unsigned int idx, double value) {
     case 2: round = value; return;
     case 3: offset = value; return;
     case 4: recursion = value; return;
+    case 5: inner_rad = value; return;
+    case 6: hole_diam = value; return;
     default: return;
   }
 }
