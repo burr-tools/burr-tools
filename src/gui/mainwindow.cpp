@@ -1795,7 +1795,7 @@ void mainWindow_c::cb_About(void) {
              "or see www.fsf.org\n"
              "\n"
              "The program uses\n"
-             "- Fltk, FLU, libZ, libXml2, XmlWrapp, libpng, gzstream, gl2ps\n"
+             "- Fltk, FLU, libZ, libpng, gzstream, gl2ps\n"
              "- Fl_Table (http://3dsite.com/people/erco/Fl_Table/)\n"
              "- tr by Brian Paul (http://www.mesa3d.org/brianp/TR.html)\n"
             );
