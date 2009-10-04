@@ -207,9 +207,6 @@ int main(int argv, char* args[]) {
               cout << "Impossible to restore the saved state because something with the data is wrong.\n";
               cout << "You have to start from the beginning, sorry";
               break;
-            case assembler_c::ERR_PIECE_WITH_VARICUBE:
-              cout << "Shape " << assmThread.getErrorParam()+1 << " is used as piece and contains variable cubes, that is not allowed";
-              break;
             case assembler_c::ERR_PUZZLE_UNHANDABLE:
               cout << "Something went wrong the program can not solve your puzzle definitions.\n";
               cout << "You should send the puzzle file to the programmer!";

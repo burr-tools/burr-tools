@@ -279,9 +279,6 @@ int main(int argv, char* args[]) {
       case assembler_c::ERR_CAN_NOT_PLACE:
         printf("Piece %i can be place nowhere in the result shape\n", assm->getErrorsParam());
         return 0;
-      case assembler_c::ERR_PIECE_WITH_VARICUBE:
-        printf("Piece %i contains variable voxels, puzzle can not be solved\n", assm->getErrorsParam());
-        return 0;
       case assembler_c::ERR_NONE:
         /* no error case */
         break;

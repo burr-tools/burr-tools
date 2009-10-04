@@ -2877,10 +2877,6 @@ void mainWindow_c::update(void) {
         fl_message("Impossible to restore the saved state because something with the data is wrong.\n"
                    "You have to start from the beginning, sorry");
         break;
-      case assembler_c::ERR_PIECE_WITH_VARICUBE:
-        fl_message("Shape %i is used as piece and contains variable voxels, that is not allowed", assmThread->getErrorParam()+1);
-        selectShape = assmThread->getErrorParam();
-        break;
       case assembler_c::ERR_PUZZLE_UNHANDABLE:
         fl_message("Something went wrong the program can not solve your puzzle definitions.\n"
                    "You should send the puzzle file to the programmer!");

@@ -295,7 +295,7 @@ bool assembler_1_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
       for (unsigned int px = piece->boundX1(); px <= piece->boundX2(); px++)
         if (
             // the piece can not be place if the result is empty and the piece is filled at a given voxel
-            ((piece->getState(px, py, pz) != voxel_c::VX_EMPTY) &&
+            ((piece->getState(px, py, pz) == voxel_c::VX_FILLED) &&
              (result->getState(x+px, y+py, z+pz) == voxel_c::VX_EMPTY)) ||
 
             // the piece can also not be placed when the colour constraints don't fit
@@ -596,7 +596,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
                 for (unsigned int pz = rotation->boundZ1(); pz <= rotation->boundZ2(); pz++)
                   for (unsigned int py = rotation->boundY1(); py <= rotation->boundY2(); py++)
                     for (unsigned int px = rotation->boundX1(); px <= rotation->boundX2(); px++)
-                      if (rotation->getState(px, py, pz) != voxel_c::VX_EMPTY) {
+                      if (rotation->getState(px, py, pz) == voxel_c::VX_FILLED) {
                         AddVoxelNode(columns[result->getIndex(x+px, y+py, z+pz)], piecenode);
                       }
 
@@ -655,13 +655,6 @@ assembler_1_c::errState assembler_1_c::createMatrix(const problem_c * puz, bool 
   /* count the filled and variable units */
   unsigned int res_vari = puz->getResultShape()->countState(voxel_c::VX_VARIABLE);
   unsigned int res_filled = puz->getResultShape()->countState(voxel_c::VX_FILLED) + res_vari;
-
-  for (unsigned int i = 0; i < puz->shapeNumber(); i++)
-    if (puz->getShapeShape(i)->countState(voxel_c::VX_VARIABLE)) {
-      errorsParam = puz->getShape(i);
-      errorsState = ERR_PIECE_WITH_VARICUBE;
-      return errorsState;
-    }
 
   // check if number of voxels in pieces is not bigger than
   // number of voxel in result

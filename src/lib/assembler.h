@@ -69,7 +69,6 @@ public:
     ERR_CAN_NOT_PLACE,           ///< one piece has not placement
     ERR_CAN_NOT_RESTORE_VERSION, ///< happens on restore, when the versions of the saved information mismatches
     ERR_CAN_NOT_RESTORE_SYNTAX,  ///< happens on restore, when the information seems wrong
-    ERR_PIECE_WITH_VARICUBE,     ///< there is a piece shape that has a variable cube
     ERR_PUZZLE_UNHANDABLE        ///< the puzzle contains definitions that can not be (like ranges, multipieces, ...)
   } errState;
 
