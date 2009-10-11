@@ -614,7 +614,6 @@ void mainWindow_c::cb_ShapeToResult(void) {
   // check if this shape is already a piece of the problem
   pr->setShapeCountMax(shapeAssignmentSelector->getSelection(), 0);
 
-  changeProblem(prob);
   pr->setResultId(shapeAssignmentSelector->getSelection());
   problemResult->setPuzzle(puzzle->getProblem(prob));
   activateProblem(prob);
