@@ -688,7 +688,7 @@ void mainWindow_c::cb_AddAllShapesToProblem(void) {
   for (unsigned int j = 0; j < puzzle->shapeNumber(); j++) {
 
     // we don't add the result shape
-    if (!pr->resultInvalid() && j == pr->getResult())
+    if (pr->resultValid() && j == pr->getResult())
       continue;
 
     pr->setShapeCountMax(j, pr->getShapeCountMax(j) + 1);
@@ -803,7 +803,7 @@ void mainWindow_c::cb_ShapeGroup(void) {
     /* if the user added the result shape to the problem, we inform him and
      * remove that shape again
      */
-    if (!pr->resultInvalid() && pr->getShapeCountMax(pr->getResult()) > 0)
+    if (pr->resultValid() && pr->getShapeCountMax(pr->getResult()) > 0)
       pr->setShapeCountMax(pr->getResult(), 0);
 
     /* as the user may have reset the counts of one shape to zero, go
@@ -985,7 +985,7 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
     return;
   }
 
-  if (puzzle->getProblem(prob)->resultInvalid()) {
+  if (!puzzle->getProblem(prob)->resultValid()) {
     fl_message("A result shape must be defined");
     return;
   }
@@ -1816,7 +1816,7 @@ void mainWindow_c::StatPieceInfo(unsigned int pc) {
 
 void mainWindow_c::StatProblemInfo(unsigned int prob) {
 
-  if ((prob < puzzle->problemNumber()) && (!puzzle->getProblem(prob)->resultInvalid())) {
+  if ((prob < puzzle->problemNumber()) && (puzzle->getProblem(prob)->resultValid())) {
 
     problem_c * pr = puzzle->getProblem(prob);
 
@@ -2400,7 +2400,7 @@ void mainWindow_c::updateInterface(void) {
       problem_c * pr = puzzle->getProblem(problemSelector->getSelection());
 
       // we can only add a shape, when it's not the result of the current problem
-      if (pr->resultInvalid() || pr->getResult() != shapeAssignmentSelector->getSelection())
+      if (!pr->resultValid() || pr->getResult() != shapeAssignmentSelector->getSelection())
         BtnAddShape->activate();
       else
         BtnAddShape->deactivate();
@@ -2798,7 +2798,7 @@ void mainWindow_c::updateInterface(void) {
         }
 
         // if we have a result and at least one piece, we can give it a try
-        if ((pr->pieceNumber() > 0) && (!pr->resultInvalid())) {
+        if ((pr->pieceNumber() > 0) && (pr->resultValid())) {
           BtnStart->activate();
           if (BtnPrepare) BtnPrepare->activate();
         } else {

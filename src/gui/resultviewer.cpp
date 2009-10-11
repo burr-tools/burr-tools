@@ -33,7 +33,7 @@ void ResultViewer_c::setPuzzle(problem_c * p) {
 }
 
 void ResultViewer_c::draw(void) {
-  if (!puzzle || puzzle->resultInvalid()) {
+  if (!puzzle || !puzzle->resultValid()) {
     label("No Result");
     color(bg);
     labelcolor(fl_rgb_color(255, 0, 0));

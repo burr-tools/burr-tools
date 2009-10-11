@@ -641,7 +641,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
 
 assembler_1_c::errState assembler_1_c::createMatrix(const problem_c * puz, bool keepMirror, bool keepRotations, bool comp) {
 
-  bt_assert(!puz->resultInvalid());
+  bt_assert(puz->resultValid());
 
   puzzle = puz;
   complete = comp;

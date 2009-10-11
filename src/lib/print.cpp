@@ -70,7 +70,7 @@ void print(const puzzle_c * p) {
     const problem_c * prob = p->getProblem(pr);
 
     printf("problem %i (%s):\n", pr, prob->getName().c_str());
-    if (prob->resultInvalid())
+    if (!prob->resultValid())
       printf(" result shape: not defined\n");
     else
       printf(" result shape: %i\n", prob->getResult());
@@ -164,7 +164,7 @@ static void print_rec(const separation_c * s, voxel_c ** pieces, int sx, int sy,
 
 void print(const separation_c * s, const assembly_c * a, const problem_c * p) {
 
-  bt_assert(!p->resultInvalid());
+  bt_assert(p->resultValid());
 
   const voxel_c * res = p->getResultShape();
 
@@ -195,7 +195,7 @@ void print(const separation_c * s, const assembly_c * a, const problem_c * p) {
 
 void print(const assembly_c * a, const problem_c * p) {
 
-  bt_assert(!p->resultInvalid());
+  bt_assert(p->resultValid());
 
   const voxel_c * res = p->getResultShape();
 

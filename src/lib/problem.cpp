@@ -732,8 +732,8 @@ unsigned int problem_c::getResult(void) const {
   bt_assert(result < puzzle.shapeNumber());
   return result;
 }
-bool problem_c::resultInvalid(void) const {
-  return result >= puzzle.shapeNumber();
+bool problem_c::resultValid(void) const {
+  return result < puzzle.shapeNumber();
 }
 
 /* get the result shape voxel space */

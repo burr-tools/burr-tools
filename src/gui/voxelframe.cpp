@@ -453,7 +453,7 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int problem, unsig
 
     // find out how much bigger the result is compared to the shapes
     unsigned int factor;
-    if (!pr->resultInvalid()) {
+    if (pr->resultValid()) {
 
       factor = (int)((sqrt(pr->getResultShape()->getDiagonal()) + 0.5)/sqrt(diagonal));
     } else
@@ -471,7 +471,7 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int problem, unsig
     unsigned int num;
 
     // now place the result shape
-    if (!pr->resultInvalid()) {
+    if (pr->resultValid()) {
 
       num = addSpace(pr->getGridType()->getVoxel(pr->getResultShape()));
       setSpaceColor(num,
@@ -553,7 +553,7 @@ void voxelFrame_c::showColors(const puzzle_c * puz, colorMode mode) {
 
 void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
 
-  bt_assert(!puz->resultInvalid());
+  bt_assert(puz->resultValid());
 
   if (curAssembly) {
     delete curAssembly;
@@ -624,7 +624,7 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
 
 void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * assm) {
 
-  bt_assert(!puz->resultInvalid());
+  bt_assert(puz->resultValid());
 
   hideMarker();
   clearSpaces();
@@ -678,7 +678,7 @@ void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * 
 
 void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsigned char t, int x, int y, int z) {
 
-  bt_assert(!puz->resultInvalid());
+  bt_assert(puz->resultValid());
 
   clearSpaces();
   hideMarker();

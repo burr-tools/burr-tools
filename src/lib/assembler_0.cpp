@@ -678,7 +678,7 @@ int assembler_0_c::prepare(void) {
 
 assembler_0_c::errState assembler_0_c::createMatrix(const problem_c * puz, bool keepMirror, bool keepRotations, bool comp) {
 
-  bt_assert(!puz->resultInvalid());
+  bt_assert(puz->resultValid());
 
   puzzle = puz;
   complete = comp;

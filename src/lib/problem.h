@@ -213,7 +213,7 @@ public:
   /**
    * Check if there is a valid shape set.
    */
-  bool resultInvalid(void) const;
+  bool resultValid(void) const;
   /**
    * Get the puzzle shape id for the result shape of the problem.
    * Make sure to only call getResult[Shape] when you know that the shape is valid

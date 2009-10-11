@@ -455,7 +455,7 @@ void imageExport_c::cb_Export(void) {
     unsigned int prob = ProblemSelect->getSelection();
     problem_c * pr = puzzle->getProblem(prob);
 
-    if (!pr->resultInvalid())
+    if (pr->resultValid())
       images.push_back(new ImageInfo(puzzle, getColorMode(),
             pr->getResult(), view3D->getView()));
 
@@ -528,7 +528,7 @@ void imageExport_c::cb_Update3DView(void) {
     view3D->showAssembly(puzzle->getProblem(ProblemSelect->getSelection()), 0);
   } else if (ExpSolutionDisassm->value()) {
     view3D->showAssembly(puzzle->getProblem(ProblemSelect->getSelection()), 0);
-  } else if (ExpProblem->value() && !pr->resultInvalid()) {
+  } else if (ExpProblem->value() && pr->resultValid()) {
     view3D->showSingleShape(puzzle, pr->getResult());
   }
   view3D->showColors(puzzle, getColorMode());
