@@ -175,7 +175,7 @@ void assembly_c::sort(const problem_c * puz) {
 
   int p = 0;
 
-  for (unsigned int i = 0; i < puz->shapeNumber(); i++) {
+  for (unsigned int i = 0; i < puz->partNumber(); i++) {
 
     unsigned int cnt = puz->getShapeMax(i);
 
@@ -286,7 +286,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
 
   unsigned int p = 0;
 
-  for (unsigned int i = 0; i < puz->shapeNumber(); i++) {
+  for (unsigned int i = 0; i < puz->partNumber(); i++) {
     for (unsigned int j = 0; j < puz->getShapeMax(i); j++) {
 
       // if a piece has a transformation == 255 it is NOT placed so we don't need to do anything
@@ -343,7 +343,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
 
     p = 0;
 
-    for (unsigned int i = 0; i < puz->shapeNumber(); i++) {
+    for (unsigned int i = 0; i < puz->partNumber(); i++) {
       for (unsigned int j = 0; j < puz->getShapeMax(i); j++) {
 
         // if a piece has a transformation == 255 it is NOT placed so we don't need to do anything
@@ -609,7 +609,7 @@ bool assembly_c::validSolution(const problem_c * puz) const {
 
   unsigned int pos = 0;
 
-  for (unsigned int i = 0; i < puz->shapeNumber(); i++)
+  for (unsigned int i = 0; i < puz->partNumber(); i++)
   {
     unsigned int placed = 0;
 

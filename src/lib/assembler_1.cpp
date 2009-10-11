@@ -339,7 +339,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
   /* nodes 1..n are the columns nodes */
   GenerateFirstRow(result->countState(voxel_c::VX_FILLED)+
       result->countState(voxel_c::VX_VARIABLE)+
-      puzzle->shapeNumber()+
+      puzzle->partNumber()+
       (hasRange?1:0));
 
   /* this array contains the column in our matrix that corresponds with
@@ -353,7 +353,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
   unsigned int rangeColumn;
 
   {
-    int c = 1 + puzzle->shapeNumber();
+    int c = 1 + puzzle->partNumber();
 
     for (unsigned int i = 0; i < result->getXYZ(); i++) {
       switch(result->getState(i)) {
@@ -410,7 +410,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
     unsigned int bestFound = sym->countSymmetryIntersection(resultSym, puzzle->getShapeShape(0)->selfSymmetries());
     symBreakerShape = 0;
 
-    for (unsigned int i = 1; i < puzzle->shapeNumber(); i++) {
+    for (unsigned int i = 1; i < puzzle->partNumber(); i++) {
 
       unsigned int cnt = sym->countSymmetryIntersection(resultSym, puzzle->getShapeShape(i)->selfSymmetries());
 
@@ -427,7 +427,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
     bool tmp = sym->symmetriesLeft(resultSym, puzzle->getShapeShape(symBreakerShape)->selfSymmetries());
 
     bool pieceRanges = false;
-    for (unsigned int i = 0; i < puzzle->shapeNumber(); i++)
+    for (unsigned int i = 0; i < puzzle->partNumber(); i++)
       if (puzzle->getShapeMin(i) != puzzle->getShapeMax(i)) {
         pieceRanges = true;
         break;
@@ -467,7 +467,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
       mm * mirror = new mm[puzzle->pieceNumber()];
 
       // first initialize
-      for (unsigned int i = 0; i < puzzle->shapeNumber(); i++)
+      for (unsigned int i = 0; i < puzzle->partNumber(); i++)
         for (unsigned int p = 0; p < puzzle->getShapeMax(i); p++) {
           mirror[pc].shape = i;
           mirror[pc].mirror = (unsigned int)-1;
@@ -553,7 +553,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
   voxel_c ** cache = new voxel_c *[sym->getNumTransformationsMirror()];
 
   /* now we insert one shape after another */
-  for (unsigned int pc = 0; pc < puzzle->shapeNumber(); pc++) {
+  for (unsigned int pc = 0; pc < puzzle->partNumber(); pc++) {
 
     reducePiece = pc;
 
@@ -664,7 +664,7 @@ assembler_1_c::errState assembler_1_c::createMatrix(const problem_c * puz, bool 
   unsigned int min = 0;
   unsigned int max = 0;
 
-  for (unsigned int j = 0; j < puz->shapeNumber(); j++) {
+  for (unsigned int j = 0; j < puz->partNumber(); j++) {
     min += puz->getShapeShape(j)->countState(voxel_c::VX_FILLED) * puz->getShapeMin(j);
     max += puz->getShapeShape(j)->countState(voxel_c::VX_FILLED) * puz->getShapeMax(j);
   }
@@ -701,7 +701,7 @@ assembler_1_c::errState assembler_1_c::createMatrix(const problem_c * puz, bool 
   int RangeMin = res_filled-res_vari;
   int RangeMax = res_filled;
 
-  for (unsigned int j = 0; j < puz->shapeNumber(); j++) {
+  for (unsigned int j = 0; j < puz->partNumber(); j++) {
     if (puz->getShapeMin(j) == puz->getShapeMax(j)) {
       RangeMin -= puz->getShapeShape(j)->countState(voxel_c::VX_FILLED) * puz->getShapeMin(j);
       RangeMax -= puz->getShapeShape(j)->countState(voxel_c::VX_FILLED) * puz->getShapeMin(j);
@@ -1014,7 +1014,7 @@ assembly_c * assembler_1_c::getAssembly(void) {
   for (unsigned int i = 0; i < rows.size(); i++)
     getPieceInformation(rows[i], piece+i, tran+i, x+i, y+i, z+i);
 
-  for (unsigned int pc = 0; pc < puzzle->shapeNumber(); pc++) {
+  for (unsigned int pc = 0; pc < puzzle->partNumber(); pc++) {
     unsigned int placed = 0;
     for (unsigned int i = 0; i < rows.size(); i++) {
 

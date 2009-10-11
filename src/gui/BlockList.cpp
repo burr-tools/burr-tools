@@ -365,7 +365,7 @@ unsigned int PiecesList::blockNumber(void) {
   if (!puzzle)
     return 0;
 
-  return puzzle->shapeNumber();
+  return puzzle->partNumber();
 }
 
 void PiecesList::getText(unsigned int block, char * text) {

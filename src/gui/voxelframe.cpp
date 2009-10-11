@@ -447,7 +447,7 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int problem, unsig
     // now find a scaling factor, so that all pieces fit into their square
 
     // find the biggest piece shape
-    for (unsigned int p = 0; p < pr->shapeNumber(); p++)
+    for (unsigned int p = 0; p < pr->partNumber(); p++)
       if (pr->getShapeShape(p)->getDiagonal() > diagonal)
         diagonal = pr->getShapeShape(p)->getDiagonal();
 
@@ -466,7 +466,7 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int problem, unsig
 
     // first find out how to arrange the pieces:
     unsigned int square = 2*factor+1;
-    while (square * (square-2*factor) < pr->shapeNumber()) square++;
+    while (square * (square-2*factor) < pr->partNumber()) square++;
 
     unsigned int num;
 
@@ -499,7 +499,7 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int problem, unsig
     // and now the shapes
     int unsigned line = 2*factor;
     int unsigned col = 0;
-    for (unsigned int p = 0; p < pr->shapeNumber(); p++) {
+    for (unsigned int p = 0; p < pr->partNumber(); p++) {
       num = addSpace(pr->getGridType()->getVoxel(pr->getShapeShape(p)));
 
       setSpaceColor(num,
@@ -574,7 +574,7 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
     unsigned int piece = 0;
 
     // and now the shapes
-    for (unsigned int p = 0; p < puz->shapeNumber(); p++)
+    for (unsigned int p = 0; p < puz->partNumber(); p++)
       for (unsigned int q = 0; q < puz->getShapeMax(p); q++) {
 
         if (assm->isPlaced(piece)) {
@@ -635,7 +635,7 @@ void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * 
     unsigned int piece = 0;
 
     // and now the shapes
-    for (unsigned int p = 0; p < puz->shapeNumber(); p++)
+    for (unsigned int p = 0; p < puz->partNumber(); p++)
       for (unsigned int q = 0; q < puz->getShapeMax(p); q++) {
 
         if (assm->isPlaced(piece)) {

@@ -252,7 +252,7 @@ public:
    *
    * idx is the shape id form the puzzle, not the index of the shape in the problem.
    */
-  void shapeIdRemoved(unsigned short idx);
+  void shapeRemoved(unsigned short idx);
   /** set the minimum number of times the shape may be used */
   void setShapeCountMin(unsigned int shape, unsigned int count);
   /** set the maximum number of times the shape may be used */
@@ -267,11 +267,11 @@ public:
   unsigned int getShapeCountMax(unsigned int shape) const;
   /** find out, if a shape is used in the problem (as piece or as result) */
   bool containsShape(unsigned int shape) const;
-  /** how many different puzzle shapes have been used in this problem.
+  /** how many different parts have been used in this problem.
    *
    * This is NOT the number of pieces in the problem
    */
-  unsigned int shapeNumber(void) const { return parts.size(); }
+  unsigned int partNumber(void) const { return parts.size(); }
   /** get the minimum number of times a shape is used.
    * This similar as the getShapeCountMin function but this time
    * the piece index instead of the shape index

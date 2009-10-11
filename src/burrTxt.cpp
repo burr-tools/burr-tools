@@ -217,7 +217,7 @@ int main(int argv, char* args[]) {
 
             unsigned int pnum = 0;
 
-            for (unsigned int pie = 0; pie < p.getProblem(i)->shapeNumber(); pie++) {
+            for (unsigned int pie = 0; pie < p.getProblem(i)->partNumber(); pie++) {
               for (unsigned int pp = 0; pp < p.getProblem(i)->getShapeMax(pie); pp++) {
                 if (a->isPlaced(pnum)) {
                   printf("S%i ", p.getProblem(i)->getShape(pie)+1);

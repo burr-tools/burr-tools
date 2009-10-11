@@ -573,13 +573,13 @@ void mainWindow_c::cb_ProbShapeExchange(int with) {
   // find out the index in the problem table
   unsigned int current;
 
-  for (current = 0; current < pr->shapeNumber(); current++)
+  for (current = 0; current < pr->partNumber(); current++)
     if (pr->getShape(current) == s)
       break;
 
   unsigned int other = current + with;
 
-  if ((current < pr->shapeNumber()) && (other < pr->shapeNumber())) {
+  if ((current < pr->partNumber()) && (other < pr->partNumber())) {
     pr->exchangeShape(current, other);
     changed = true;
     updateInterface();
@@ -1824,7 +1824,7 @@ void mainWindow_c::StatProblemInfo(unsigned int prob) {
     unsigned int cnt = 0;
     unsigned int cntMin = 0;
 
-    for (unsigned int i = 0; i < pr->shapeNumber(); i++) {
+    for (unsigned int i = 0; i < pr->partNumber(); i++) {
       cnt += pr->getShapeShape(i)->countState(voxel_c::VX_FILLED) * pr->getShapeMax(i);
       cntMin += pr->getShapeShape(i)->countState(voxel_c::VX_FILLED) * pr->getShapeMin(i);
     }
@@ -2329,15 +2329,15 @@ void mainWindow_c::updateInterface(void) {
 
       problem_c * pr = puzzle->getProblem(p);
 
-      for (current = 0; current < pr->shapeNumber(); current++)
+      for (current = 0; current < pr->partNumber(); current++)
         if (pr->getShape(current) == s)
           break;
 
-      if (current && (current < pr->shapeNumber()))
+      if (current && (current < pr->partNumber()))
         BtnProbShapeLeft->activate();
       else
         BtnProbShapeLeft->deactivate();
-      if (current+1 < pr->shapeNumber())
+      if (current+1 < pr->partNumber())
         BtnProbShapeRight->activate();
       else
         BtnProbShapeRight->deactivate();
@@ -2406,7 +2406,7 @@ void mainWindow_c::updateInterface(void) {
 
       bool found = false;
 
-      for (unsigned int p = 0; p < pr->shapeNumber(); p++)
+      for (unsigned int p = 0; p < pr->partNumber(); p++)
         if (pr->getShape(p) == shapeAssignmentSelector->getSelection()) {
           found = true;
           break;

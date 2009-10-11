@@ -323,7 +323,7 @@ movementAnalysator_c::movementAnalysator_c(const problem_c * puz) :
   /* create the weights array */
   weights = new int[puz->pieceNumber()];
   unsigned int pc = 0;
-  for (unsigned int i = 0; i < puz->shapeNumber(); i++) {
+  for (unsigned int i = 0; i < puz->partNumber(); i++) {
     for (unsigned int j = 0; j < puz->getShapeMax(i); j++)
       weights[pc++] = puz->getShapeShape(i)->getWeight();
   }

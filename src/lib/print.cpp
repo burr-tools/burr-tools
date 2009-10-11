@@ -75,7 +75,7 @@ void print(const puzzle_c * p) {
     else
       printf(" result shape: %i\n", prob->getResultId());
 
-    for (unsigned int sh = 0; sh < prob->shapeNumber(); sh++)
+    for (unsigned int sh = 0; sh < prob->partNumber(); sh++)
       if (prob->getShapeMin(sh) != prob->getShapeMax(sh))
         printf(" piece shape: %i-%i times shape number %i\n", prob->getShapeMin(sh), prob->getShapeMax(sh), prob->getShape(sh));
       else if (prob->getShapeMin(sh) != 1)
@@ -172,7 +172,7 @@ void print(const separation_c * s, const assembly_c * a, const problem_c * p) {
 
   unsigned int pc = 0;
 
-  for (unsigned int i = 0; i < p->shapeNumber(); i++)
+  for (unsigned int i = 0; i < p->partNumber(); i++)
     for (unsigned int j = 0; j < p->getShapeMax(i); j++) {
 
       pieces[pc] = p->getGridType()->getVoxel(p->getShapeShape(i));
@@ -203,7 +203,7 @@ void print(const assembly_c * a, const problem_c * p) {
 
   unsigned int pc = 0;
 
-  for (unsigned int i = 0; i < p->shapeNumber(); i++)
+  for (unsigned int i = 0; i < p->partNumber(); i++)
     for (unsigned int j = 0; j < p->getShapeMax(i); j++) {
 
       if (a->isPlaced(pc)) {

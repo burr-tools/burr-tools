@@ -104,7 +104,7 @@ puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
   }
 
   // find mark and remove dublicate shapes from problem
-  unsigned s = pr->shapeNumber();
+  unsigned s = pr->partNumber();
 
   for (unsigned int s1 = 0; s1 < s-1; s1++)
     for (unsigned int s2 = s1+1; s2 < s; s2++)

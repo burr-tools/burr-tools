@@ -30,7 +30,7 @@ disassembler_a_c::disassembler_a_c(const problem_c * puz) :
 
   /* initialize the grouping class */
   groups = new grouping_c();
-  for (unsigned int i = 0; i < puz->shapeNumber(); i++)
+  for (unsigned int i = 0; i < puz->partNumber(); i++)
     for (unsigned int j = 0; j < puz->getShapeGroupNumber(i); j++)
       groups->addPieces(puz->getShape(i),
                         puz->getShapeGroup(i, j),
@@ -39,7 +39,7 @@ disassembler_a_c::disassembler_a_c(const problem_c * puz) :
   /* initialize piece 2 shape transformation */
   piece2shape = new unsigned short[puz->pieceNumber()];
   int p = 0;
-  for (unsigned int i = 0; i < puz->shapeNumber(); i++)
+  for (unsigned int i = 0; i < puz->partNumber(); i++)
     for (unsigned int j = 0; j < puz->getShapeMax(i); j++)
       piece2shape[p++] = i;
 

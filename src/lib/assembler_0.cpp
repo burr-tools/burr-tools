@@ -480,7 +480,7 @@ int assembler_0_c::prepare(void) {
     unsigned int bestFound = sym->countSymmetryIntersection(resultSym, puzzle->getShapeShape(0)->selfSymmetries());
     symBreakerShape = 0;
 
-    for (unsigned int i = 1; i < puzzle->shapeNumber(); i++) {
+    for (unsigned int i = 1; i < puzzle->partNumber(); i++) {
 
       unsigned int cnt = sym->countSymmetryIntersection(resultSym, puzzle->getShapeShape(i)->selfSymmetries());
 
@@ -514,7 +514,7 @@ int assembler_0_c::prepare(void) {
       mm * mirror = new mm[puzzle->pieceNumber()];
 
       // first initialize
-      for (unsigned int i = 0; i < puzzle->shapeNumber(); i++) {
+      for (unsigned int i = 0; i < puzzle->partNumber(); i++) {
         mirror[i].shape = i;
         mirror[i].mirror = (unsigned int)-1;
         mirror[i].trans = 255;
@@ -598,7 +598,7 @@ int assembler_0_c::prepare(void) {
   voxel_c ** cache = new voxel_c *[sym->getNumTransformationsMirror()];
 
   /* now we insert one shape after another */
-  for (unsigned int pc = 0; pc < puzzle->shapeNumber(); pc++) {
+  for (unsigned int pc = 0; pc < puzzle->partNumber(); pc++) {
 
     reducePiece = pc;
 
@@ -703,7 +703,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(const problem_c * puz, bool 
   // is not bigger than number of voxels in pieces
   int h = res_filled;
 
-  for (unsigned int j = 0; j < puz->shapeNumber(); j++)
+  for (unsigned int j = 0; j < puz->partNumber(); j++)
     h -= puz->getShapeShape(j)->countState(voxel_c::VX_FILLED);
 
   if (h < 0) {
@@ -1589,7 +1589,7 @@ void assembler_0_c::debug_step(unsigned long num) {
 bool assembler_0_c::canHandle(const problem_c * p) {
 
   // we can not handle if there is one shape having not a counter of 1
-  for (unsigned int s = 0; s < p->shapeNumber(); s++)
+  for (unsigned int s = 0; s < p->partNumber(); s++)
     if ((p->getShapeMax(s) > 1) ||
         (p->getShapeMax(s) != p->getShapeMin(s)))
 

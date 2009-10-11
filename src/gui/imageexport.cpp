@@ -459,7 +459,7 @@ void imageExport_c::cb_Export(void) {
       images.push_back(new ImageInfo(puzzle, getColorMode(),
             pr->getResultId(), view3D->getView()));
 
-    for (unsigned int p = 0; p < pr->shapeNumber(); p++)
+    for (unsigned int p = 0; p < pr->partNumber(); p++)
       images.push_back(new ImageInfo(puzzle, getColorMode(),
             pr->getShape(p), view3D->getView()));
 

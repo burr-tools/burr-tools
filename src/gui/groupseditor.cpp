@@ -331,7 +331,7 @@ groupsEditorTab_c::groupsEditorTab_c(int x, int y, int w, int h, puzzle_c * p, u
 
   problem_c * pr = puzzle->getProblem(problem);
 
-  for (unsigned int i = 0; i < pr->shapeNumber(); i++)
+  for (unsigned int i = 0; i < pr->partNumber(); i++)
     for (unsigned int j = 0; j < pr->getShapeGroupNumber(i); j++)
       if (pr->getShapeGroup(i, j) > maxGroup)
         maxGroup = pr->getShapeGroup(i, j);

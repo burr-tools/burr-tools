@@ -592,7 +592,7 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
 
 /************** PROBLEM ****************/
 
-void problem_c::shapeIdRemoved(unsigned short idx) {
+void problem_c::shapeRemoved(unsigned short idx) {
 
   if (result == idx)
     result = 0xFFFFFFFF;
