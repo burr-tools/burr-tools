@@ -35,7 +35,7 @@ class disassembly_c;
 class assembly_c;
 class gridType_c;
 class puzzle_c;
-class shape_c;
+class part_c;
 class solution_c;
 class xmlWriter_c;
 class xmlParser_c;
@@ -74,7 +74,7 @@ private:
    * of each shape are there, the shape class contains indices into the
    * shape list of the puzzle and some counters, ...
    */
-  std::vector<shape_c *> shapes;
+  std::vector<part_c *> parts;
 
   /**
    * the result shape shape as index into the puzzle shapes
@@ -271,7 +271,7 @@ public:
    *
    * This is NOT the number of pieces in the problem
    */
-  unsigned int shapeNumber(void) const { return shapes.size(); }
+  unsigned int shapeNumber(void) const { return parts.size(); }
   /** get the minimum number of times a shape is used.
    * This similar as the getShapeCountMin function but this time
    * the piece index instead of the shape index
