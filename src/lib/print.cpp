@@ -73,7 +73,7 @@ void print(const puzzle_c * p) {
     if (!prob->resultValid())
       printf(" result shape: not defined\n");
     else
-      printf(" result shape: %i\n", prob->getResult());
+      printf(" result shape: %i\n", prob->getResultId());
 
     for (unsigned int sh = 0; sh < prob->shapeNumber(); sh++)
       if (prob->getShapeMin(sh) != prob->getShapeMax(sh))

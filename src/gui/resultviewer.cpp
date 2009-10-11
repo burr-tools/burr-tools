@@ -40,7 +40,7 @@ void ResultViewer_c::draw(void) {
   } else {
     static char txt[120];
 
-    unsigned int result = puzzle->getResult();
+    unsigned int result = puzzle->getResultId();
 
     if (puzzle->getResultShape()->getName().length())
       snprintf(txt, 120, "Result: S%i - %s", result+1, puzzle->getResultShape()->getName().c_str());

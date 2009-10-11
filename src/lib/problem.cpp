@@ -723,12 +723,12 @@ void problem_c::exchangeShape(unsigned int s1, unsigned int s2) {
     }
 }
 
-void problem_c::setResult(unsigned int shape) {
+void problem_c::setResultId(unsigned int shape) {
   bt_assert(shape < puzzle.shapeNumber());
   result = shape;
 }
 
-unsigned int problem_c::getResult(void) const {
+unsigned int problem_c::getResultId(void) const {
   bt_assert(result < puzzle.shapeNumber());
   return result;
 }

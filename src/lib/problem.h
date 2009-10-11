@@ -209,24 +209,24 @@ public:
    * Make sure that it is valid in the puzzle
    * before this function is called the result shape might be invalid
    */
-  void setResult(unsigned int shape);
+  void setResultId(unsigned int shape);
   /**
    * Check if there is a valid shape set.
    */
   bool resultValid(void) const;
   /**
    * Get the puzzle shape id for the result shape of the problem.
-   * Make sure to only call getResult[Shape] when you know that the shape is valid
+   * Make sure to only call getResultId[Shape] when you know that the shape is valid
    */
-  unsigned int getResult(void) const;
+  unsigned int getResultId(void) const;
   /**
    * get the voxel space of the result shape.
-   * Make sure to only call getResult[Shape] when you know that the shape is valid
+   * Make sure to only call getResultId[Shape] when you know that the shape is valid
    */
   const voxel_c * getResultShape(void) const;
   /**
    * get the voxel space of the result shape.
-   * Make sure to only call getResult[Shape] when you know that the shape is valid
+   * Make sure to only call getResultId[Shape] when you know that the shape is valid
    */
   voxel_c * getResultShape(void);
   //@}

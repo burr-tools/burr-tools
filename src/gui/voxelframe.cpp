@@ -475,9 +475,9 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int problem, unsig
 
       num = addSpace(pr->getGridType()->getVoxel(pr->getResultShape()));
       setSpaceColor(num,
-                            pieceColorR(pr->getResult()),
-                            pieceColorG(pr->getResult()),
-                            pieceColorB(pr->getResult()), 1);
+                            pieceColorR(pr->getResultId()),
+                            pieceColorG(pr->getResultId()),
+                            pieceColorB(pr->getResultId()), 1);
       setSpacePosition(num,
           0.5* (square*diagonal) * (factor*1.0/square - 0.5),
           0.5* (square*diagonal) * (0.5 - factor*1.0/square), -20, 1.0);
@@ -667,9 +667,9 @@ void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * 
 
     num = addSpace(puz->getGridType()->getVoxel(puz->getResultShape()));
     setSpaceColor(num,
-                        pieceColorR(puz->getResult()),
-                        pieceColorG(puz->getResult()),
-                        pieceColorB(puz->getResult()), 1);
+                        pieceColorR(puz->getResultId()),
+                        pieceColorG(puz->getResultId()),
+                        pieceColorB(puz->getResultId()), 1);
     setDrawingMode(num, gridline);
   }
 
@@ -724,9 +724,9 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
 
   num = addSpace(puz->getGridType()->getVoxel(puz->getResultShape()));
   setSpaceColor(num,
-                        pieceColorR(puz->getResult()),
-                        pieceColorG(puz->getResult()),
-                        pieceColorB(puz->getResult()), 1);
+                        pieceColorR(puz->getResultId()),
+                        pieceColorG(puz->getResultId()),
+                        pieceColorB(puz->getResultId()), 1);
   setDrawingMode(num, gridline);
 
   redraw();

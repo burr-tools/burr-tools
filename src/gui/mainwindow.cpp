@@ -615,7 +615,7 @@ void mainWindow_c::cb_ShapeToResult(void) {
   pr->setShapeCountMax(shapeAssignmentSelector->getSelection(), 0);
 
   changeProblem(prob);
-  pr->setResult(shapeAssignmentSelector->getSelection());
+  pr->setResultId(shapeAssignmentSelector->getSelection());
   problemResult->setPuzzle(puzzle->getProblem(prob));
   activateProblem(prob);
   StatProblemInfo(prob);
@@ -688,7 +688,7 @@ void mainWindow_c::cb_AddAllShapesToProblem(void) {
   for (unsigned int j = 0; j < puzzle->shapeNumber(); j++) {
 
     // we don't add the result shape
-    if (pr->resultValid() && j == pr->getResult())
+    if (pr->resultValid() && j == pr->getResultId())
       continue;
 
     pr->setShapeCountMax(j, pr->getShapeCountMax(j) + 1);
@@ -803,8 +803,8 @@ void mainWindow_c::cb_ShapeGroup(void) {
     /* if the user added the result shape to the problem, we inform him and
      * remove that shape again
      */
-    if (pr->resultValid() && pr->getShapeCountMax(pr->getResult()) > 0)
-      pr->setShapeCountMax(pr->getResult(), 0);
+    if (pr->resultValid() && pr->getShapeCountMax(pr->getResultId()) > 0)
+      pr->setShapeCountMax(pr->getResultId(), 0);
 
     /* as the user may have reset the counts of one shape to zero, go
      * through the list and remove entries of zero count */
@@ -2400,7 +2400,7 @@ void mainWindow_c::updateInterface(void) {
       problem_c * pr = puzzle->getProblem(problemSelector->getSelection());
 
       // we can only add a shape, when it's not the result of the current problem
-      if (!pr->resultValid() || pr->getResult() != shapeAssignmentSelector->getSelection())
+      if (!pr->resultValid() || pr->getResultId() != shapeAssignmentSelector->getSelection())
         BtnAddShape->activate();
       else
         BtnAddShape->deactivate();

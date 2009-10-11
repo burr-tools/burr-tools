@@ -71,7 +71,7 @@ puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
         piece = p->addShape(sx, sy, sz);
 
         if (state == 2)
-          pr->setResult(piece);
+          pr->setResultId(piece);
         else
           pr->setShapeCountMin(piece, 1);
 
