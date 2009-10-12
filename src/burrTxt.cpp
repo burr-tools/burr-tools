@@ -25,6 +25,7 @@
 #include "lib/disassembly.h"
 #include "lib/print.h"
 #include "lib/voxel.h"
+#include "lib/solution.h"
 #include "tools/xml.h"
 #include "tools/gzstream.h"
 
@@ -213,7 +214,7 @@ int main(int argv, char* args[]) {
           for (unsigned int s = 0; s < p.getProblem(i)->getNumSolutions(); s++) {
 
             printf("%03i: ", s+1);
-            const assembly_c * a = p.getProblem(i)->getAssembly(s);
+            const assembly_c * a = p.getProblem(i)->getSolution(s)->getAssembly();
 
             unsigned int pnum = 0;
 
@@ -331,19 +332,19 @@ int main(int argv, char* args[]) {
 
       for (unsigned int sol = 0; sol < problem->solutionNumber(); sol++) {
 
-	if (problem->getAssembly(sol)) {
+	if (problem->getSolution(sol)->getAssembly()) {
 
-	  separation_c * da = d->disassemble(problem->getAssembly(sol));
+	  separation_c * da = d->disassemble(problem->getSolution(sol)->getAssembly());
 
 	  if (da) {
 	    if (printSolutions)
-	      print(problem->getAssembly(sol), problem);
+	      print(problem->getSolution(sol)->getAssembly(), problem);
 
 	    if (!quiet)
 	      printf("level: %i\n", da->getMoves());
 
 	    if (printDisassemble)
-	      print(da, problem->getAssembly(sol),problem);
+	      print(da, problem->getSolution(sol)->getAssembly(),problem);
 	    delete da;
 	  }
 	}

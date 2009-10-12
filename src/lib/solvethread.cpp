@@ -21,6 +21,7 @@
 #include "problem.h"
 #include "assembly.h"
 #include "disassembler_0.h"
+#include "solution.h"
 
 void solveThread_c::run(void){
 
@@ -209,7 +210,7 @@ bool solveThread_c::assembly(assembly_c * a) {
 
             for (unsigned int i = 0; i < puzzle->solutionNumber(); i++) {
 
-              const disassembly_c * s2 = puzzle->getDisassembly(i);
+              const disassembly_c * s2 = puzzle->getSolution(i)->getDisassembly();
 
               if (s2 && s2->sumMoves() > lev) {
                 if (parameters & PAR_DROP_DISASSEMBLIES) {
@@ -242,7 +243,7 @@ bool solveThread_c::assembly(assembly_c * a) {
           {
             for (unsigned int i = 0; i < puzzle->solutionNumber(); i++) {
 
-              const disassembly_c * s2 = puzzle->getDisassemblyInfo(i);
+              const disassembly_c * s2 = puzzle->getSolution(i)->getDisassemblyInfo();
 
               if (s2 && (s2->compare(s) > 0)) {
                 if (parameters & PAR_DROP_DISASSEMBLIES) {

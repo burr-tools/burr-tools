@@ -27,6 +27,7 @@
 #include "../lib/problem.h"
 #include "../lib/assembly.h"
 #include "../lib/disasmtomoves.h"
+#include "../lib/solution.h"
 
 #include <math.h>
 
@@ -568,7 +569,7 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
 
     unsigned int num;
 
-    curAssembly = new assembly_c(puz->getAssembly(solNum));
+    curAssembly = new assembly_c(puz->getSolution(solNum)->getAssembly());
     const assembly_c * assm = curAssembly;
 
     unsigned int piece = 0;

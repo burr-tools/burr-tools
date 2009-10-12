@@ -65,6 +65,7 @@
 #include "../lib/converter.h"
 #include "../lib/millable.h"
 #include "../lib/voxeltable.h"
+#include "../lib/solution.h"
 
 #include "../tools/gzstream.h"
 #include "../tools/xml.h"
@@ -1109,7 +1110,7 @@ void mainWindow_c::cb_DeleteSolutions(unsigned int which) {
     {
       unsigned int i = 0;
       while (i < cnt) {
-        if (pr->getDisassembly(i) || pr->getDisassemblyInfo(i))
+        if (pr->getSolution(i)->getDisassembly() || pr->getSolution(i)->getDisassemblyInfo())
           i++;
         else {
           pr->removeSolution(i);
@@ -1143,7 +1144,7 @@ void mainWindow_c::cb_DeleteDisasm(void) {
   if (sol >= pr->solutionNumber())
     return;
 
-  pr->removeDisassm(sol);
+  pr->getSolution(sol)->removeDisassembly();
 
   changed = true;
 
@@ -1189,12 +1190,12 @@ void mainWindow_c::cb_AddDisasm(void) {
 
   disassembler_c * dis = new disassembler_0_c(pr);
 
-  separation_c * d = dis->disassemble(pr->getAssembly(sol));
+  separation_c * d = dis->disassemble(pr->getSolution(sol)->getAssembly());
 
   changed = true;
 
   if (d)
-    pr->addDisasmToSolution(sol, d);
+    pr->getSolution(sol)->setDisassembly(d);
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
@@ -1236,12 +1237,12 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
     Fl::wait(0);
 
-    if (all || !pr->getDisassembly(sol)) {
+    if (all || !pr->getSolution(sol)->getDisassembly()) {
 
-      separation_c * d = dis->disassemble(pr->getAssembly(sol));
+      separation_c * d = dis->disassemble(pr->getSolution(sol)->getAssembly());
 
       if (d)
-        pr->addDisasmToSolution(sol, d);
+        pr->getSolution(sol)->setDisassembly(d);
     }
   }
 
@@ -1522,7 +1523,7 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
 
     for (unsigned int s = 0; s < pr->solutionNumber(); s++)
     {
-      voxel_c * shape = pr->getAssembly(s)->createSpace(pr);
+      voxel_c * shape = pr->getSolution(s)->getAssembly()->createSpace(pr);
 
       if ((filter & assmImportWindow_c::dropDisconnected) && !shape->connected(0, true, voxel_c::VX_EMPTY))
       {
@@ -2089,27 +2090,27 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
     problem_c * pr = puzzle->getProblem(prob);
 
     PcVis->setPuzzle(puzzle->getProblem(prob));
-    PcVis->setAssembly(pr->getAssembly(num));
+    PcVis->setAssembly(pr->getSolution(num)->getAssembly());
     AssemblyNumber->show();
-    AssemblyNumber->value(pr->getAssemblyNum(num)+1);
+    AssemblyNumber->value(pr->getSolution(num)->getAssemblyNumber()+1);
 
-    if (pr->getDisassembly(num)) {
+    if (pr->getSolution(num)->getDisassembly()) {
       SolutionAnim->show();
-      SolutionAnim->range(0, pr->getDisassembly(num)->sumMoves());
+      SolutionAnim->range(0, pr->getSolution(num)->getDisassembly()->sumMoves());
 
       SolutionsInfo->show();
 
       MovesInfo->show();
 
       char levelText[50];
-      int len = snprintf(levelText, 50, "%i (", pr->getDisassembly(num)->sumMoves());
-      pr->getDisassembly(num)->movesText(levelText + len, 50-len);
+      int len = snprintf(levelText, 50, "%i (", pr->getSolution(num)->getDisassembly()->sumMoves());
+      pr->getSolution(num)->getDisassembly()->movesText(levelText + len, 50-len);
       levelText[strlen(levelText)+1] = 0;
       levelText[strlen(levelText)] = ')';
 
       MovesInfo->value(levelText);
 
-      disassemble = new disasmToMoves_c(pr->getDisassembly(num),
+      disassemble = new disasmToMoves_c(pr->getSolution(num)->getDisassembly(),
                                       2*pr->getResultShape()->getBiggestDimension(),
                                       pr->pieceNumber());
       disassemble->setStep(SolutionAnim->value(), config.useBlendedRemoving(), true);
@@ -2119,9 +2120,9 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
       View3D->updateVisibility(PcVis);
 
       SolutionNumber->show();
-      SolutionNumber->value(pr->getSolutionNum(num)+1);
+      SolutionNumber->value(pr->getSolution(num)->getSolutionNumber()+1);
 
-    } else if (pr->getDisassemblyInfo(num)) {
+    } else if (pr->getSolution(num)->getDisassemblyInfo()) {
 
       SolutionAnim->range(0, 0);
       SolutionAnim->hide();
@@ -2131,8 +2132,8 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->show();
 
       char levelText[50];
-      int len = snprintf(levelText, 50, "%i (", pr->getDisassemblyInfo(num)->sumMoves());
-      pr->getDisassemblyInfo(num)->movesText(levelText + len, 50-len);
+      int len = snprintf(levelText, 50, "%i (", pr->getSolution(num)->getDisassemblyInfo()->sumMoves());
+      pr->getSolution(num)->getDisassemblyInfo()->movesText(levelText + len, 50-len);
       levelText[strlen(levelText)+1] = 0;
       levelText[strlen(levelText)] = ')';
 
@@ -2142,7 +2143,7 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
       View3D->updateVisibility(PcVis);
 
       SolutionNumber->show();
-      SolutionNumber->value(pr->getSolutionNum(num)+1);
+      SolutionNumber->value(pr->getSolution(num)->getSolutionNumber()+1);
 
     } else {
 
@@ -2567,7 +2568,7 @@ void mainWindow_c::updateInterface(void) {
 
       if ((SolutionSel->value() >= 1) &&
           ((int)SolutionSel->value()-1) < (int)pr->solutionNumber() &&
-          pr->getDisassembly((int)SolutionSel->value()-1)) {
+          pr->getSolution((int)SolutionSel->value()-1)->getDisassembly()) {
         BtnDisasmDel->activate();
       } else {
         BtnDisasmDel->deactivate();

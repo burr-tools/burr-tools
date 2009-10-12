@@ -86,6 +86,7 @@ lib_libburr_a_SOURCES += lib/print.cpp lib/print.h
 lib_libburr_a_SOURCES += lib/ps3dloader.cpp lib/ps3dloader.h
 lib_libburr_a_SOURCES += lib/problem.cpp lib/problem.h
 lib_libburr_a_SOURCES += lib/puzzle.cpp lib/puzzle.h
+lib_libburr_a_SOURCES += lib/solution.cpp lib/solution.h
 lib_libburr_a_SOURCES += lib/solvethread.cpp lib/solvethread.h
 lib_libburr_a_SOURCES += lib/stl.cpp lib/stl.h
 lib_libburr_a_SOURCES += lib/stl_0.cpp lib/stl_0.h

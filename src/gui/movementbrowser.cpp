@@ -32,6 +32,7 @@
 #include "../lib/movementanalysator.h"
 #include "../lib/movementcache.h"
 #include "../lib/voxel.h"
+#include "../lib/solution.h"
 
 #include "../flu/Flu_Tree_Browser.h"
 
@@ -506,7 +507,7 @@ movementBrowser_c::movementBrowser_c(problem_c * puzzle, unsigned int solNum) : 
   nodeData_s * dat = new nodeData_s;
   nodes.push_back(dat);
 
-  assembly_c * assembly = puz->getAssembly(solNum);
+  assembly_c * assembly = puz->getSolution(solNum)->getAssembly();
 
   dat->node = new disassemblerNode_c(assembly);
   dat->node->incRefCount();

@@ -27,6 +27,7 @@
 #include "../lib/problem.h"
 #include "../lib/disassembly.h"
 #include "../lib/disasmtomoves.h"
+#include "../lib/solution.h"
 
 #include <FL/Fl.H>
 
@@ -418,7 +419,7 @@ void imageExport_c::cb_Export(void) {
 
     // generate an image for each step (for the moment only for the last solution)
     unsigned int s = pr->solutionNumber() - 1;
-    separation_c * t = pr->getDisassembly(s);
+    separation_c * t = pr->getSolution(s)->getDisassembly();
     if (!t) return;
 
     for (unsigned int step = 0; step < t->sumMoves(); step++) {
@@ -435,7 +436,7 @@ void imageExport_c::cb_Export(void) {
 
     // generate an image for each step (for the moment only for the last solution)
     unsigned int s = pr->solutionNumber() - 1;
-    separation_c * t = pr->getDisassembly(s);
+    separation_c * t = pr->getSolution(s)->getDisassembly();
     if (!t) return;
 
     for (unsigned int step = t->sumMoves() - 1; step > 0; step--) {
@@ -487,8 +488,8 @@ void imageExport_c::cb_Update3DView(void) {
 
   if (prob < puzzle->problemNumber())
     if (pr->solutionNumber() > 0) {
-      if (pr->getAssembly(0)) assemblies = true;
-      if (pr->getDisassembly(0)) solutions = true;
+      if (pr->getSolution(0)->getAssembly()) assemblies = true;
+      if (pr->getSolution(0)->getDisassembly()) solutions = true;
     }
 
   if (!solutions) {

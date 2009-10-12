@@ -428,26 +428,9 @@ public:
   unsigned long getUsedTime(void) const { bt_assert(solveState != SS_UNSOLVED); return usedTime; }
   /** get number of solutions that were stored */
   unsigned int solutionNumber(void) const { return solutions.size(); }
-  /** get the assembly for one of the stored solutions */
-  assembly_c * getAssembly(unsigned int sol);
-  /** get the assembly for one of the stored solutions */
-  const assembly_c * getAssembly(unsigned int sol) const;
-  /** get the disassembly for one of the stored solutions. Returns 0 if there is none */
-  separation_c * getDisassembly(unsigned int sol);
-  /** get the disassembly for one of the stored solutions. Returns 0 if there is none */
-  const separation_c * getDisassembly(unsigned int sol) const;
-  /** get the disassembly information for one of the stored solutions.
-   * Returns 0 if there is none, Creates one if an disassembly is available
-   */
-  disassembly_c * getDisassemblyInfo(unsigned int sol);
-  /** get the disassembly information for one of the stored solutions.
-   * Returns 0 if there is none, Creates one if an disassembly is available
-   **/
-  const disassembly_c * getDisassemblyInfo(unsigned int sol) const;
-  /** get the number of the assembly for the saved solution number x */
-  unsigned int getAssemblyNum(unsigned int sol) const;
-  /** get the number of the solution for the saved solution number x */
-  unsigned int getSolutionNum(unsigned int sol) const;
+
+  const solution_c * getSolution(unsigned int sol) const { bt_assert(sol < solutions.size()); return solutions[sol]; }
+  solution_c * getSolution(unsigned int sol) { bt_assert(sol < solutions.size()); return solutions[sol]; }
   //@}
 
 
@@ -460,19 +443,11 @@ public:
    * remove disassemblies from saved solutions and replace them
    * with separationInfo objects, that saves quite some memory and still contains
    * the information about the level of the disassembly
+   *
+   * TODO candidate for external
    */
   void removeAllDisassm(void);
-  /** remove the i-th solution from the solution list.
-   *
-   * remove disassemblies from saved solutions and replace them
-   * with separationInfo objects, that saves quite some memory and still contains
-   * the information about the level of the disassembly
-   */
-  void removeDisassm(unsigned int sol);
-  /** add disassembly information to a solution within the list replacing already available information */
-  void addDisasmToSolution(unsigned int sol, separation_c * disasm);
-  /** swap to solutions in the list, this is useful for sorting the solutions */
-  void swapSolutions(unsigned int sol1, unsigned int sol2);
+
   /** sort solutions by 0=assembly, 1=level, 2=sumMoves, 3=pieces */
   void sortSolutions(int by);
   //@}

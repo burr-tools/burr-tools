@@ -22,175 +22,13 @@
 #include "assembly.h"
 #include "disassembly.h"
 #include "puzzle.h"
+#include "solution.h"
 
 #include "../tools/xml.h"
 
 #include <algorithm>
 
 #include <stdio.h>
-
-/* ********* SOLUTION ************** */
-
-/** internal class of problem storing one solution for a problem */
-class solution_c {
-
-public:
-
-  solution_c(assembly_c * assm, unsigned int assmNum, separation_c * t, unsigned int solNum) :
-    assembly(assm), tree(t), treeInfo(0), assemblyNum(assmNum), solutionNum(solNum) {}
-
-  solution_c(assembly_c * assm, unsigned int assmNum, separationInfo_c * ti, unsigned int solNum) :
-    assembly(assm), tree(0), treeInfo(ti), assemblyNum(assmNum), solutionNum(solNum) {}
-
-  solution_c(assembly_c * assm, unsigned int assmNum) :
-    assembly(assm), tree(0), treeInfo(0), assemblyNum(assmNum), solutionNum(0) {}
-
-  solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c * gt);
-
-  ~solution_c(void);
-
-  /* the assembly contains the pieces so that they
-   * do assemble into the result shape */
-  assembly_c * assembly;
-
-  /* the disassembly tree, only not NULL, if we
-   * have disassembled the puzzle
-   */
-  separation_c * tree;
-
-  /* if no separation is given, maybe we have a separationInfo
-   * that contains some of the information in that
-   */
-  separationInfo_c * treeInfo;
-
-  /* as it is now possible to not save all solutions
-   * it might be useful to know the exact number and sequence
-   * how solutions were found
-   *
-   * solutionNum is 0, when tree is 0
-   */
-  unsigned int assemblyNum;
-  unsigned int solutionNum;
-
-  void save(xmlWriter_c & xml) const;
-
-  void exchangeShape(unsigned int s1, unsigned int s2) {
-    if (assembly)
-      assembly->exchangeShape(s1, s2);
-    if (tree)
-      tree->exchangeShape(s1, s2);
-  }
-
-  const disassembly_c * getDisassemblyInfo(void) const {
-    if (tree) return tree;
-    if (treeInfo) return treeInfo;
-    return 0;
-  }
-
-  disassembly_c * getDisassemblyInfo(void) {
-    if (tree) return tree;
-    if (treeInfo) return treeInfo;
-    return 0;
-  }
-};
-
-solution_c::solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c * gt) :
-  tree(0), treeInfo(0), assemblyNum(0), solutionNum(0)
-{
-  pars.require(xmlParser_c::START_TAG, "solution");
-
-  std::string str;
-
-  str = pars.getAttributeValue("asmNum");
-  if (str.length())
-    assemblyNum = atoi(str.c_str());
-
-  str = pars.getAttributeValue("solNum");
-  if (str.length())
-    solutionNum = atoi(str.c_str());
-
-  do {
-    int state = pars.nextTag();
-
-    if (state == xmlParser_c::END_TAG) break;
-    pars.require(xmlParser_c::START_TAG, "");
-
-    if (pars.getName() == "assembly")
-    {
-      assembly = new assembly_c(pars, pieces, gt);
-      pars.require(xmlParser_c::END_TAG, "assembly");
-    }
-    else if (pars.getName() == "separation")
-    {
-      if (!assembly)
-        pars.exception("an assembly must always be before a separation in a solution");
-
-      // find the number of really placed pieces
-      unsigned int pl = 0;
-      for (unsigned int i = 0; i < assembly->placementCount(); i++)
-        if (assembly->isPlaced(i))
-          pl++;
-      tree = new separation_c(pars, pl);
-
-      pars.require(xmlParser_c::END_TAG, "separation");
-    }
-    else if (pars.getName() == "separationInfo")
-    {
-      treeInfo = new separationInfo_c(pars);
-      pars.require(xmlParser_c::END_TAG, "separationInfo");
-    }
-    else
-      pars.skipSubTree();
-
-    pars.require(xmlParser_c::END_TAG, "");
-
-  } while (true);
-
-  pars.require(xmlParser_c::END_TAG, "solution");
-
-  if (!assembly)
-    pars.exception("no assembly in solution");
-
-  if (tree && treeInfo)
-  {
-    delete treeInfo;
-    treeInfo = 0;
-  }
-}
-
-void solution_c::save(xmlWriter_c & xml) const
-{
-  xml.newTag("solution");
-
-  if (assemblyNum) {
-    xml.newAttrib("asmNum", assemblyNum);
-  }
-
-  if ((tree || treeInfo) && solutionNum)
-    xml.newAttrib("solNum", solutionNum);
-
-  assembly->save(xml);
-
-  if (tree) {            tree->save(xml);
-  } else if (treeInfo) { treeInfo->save(xml);
-  }
-
-  xml.endTag("solution");
-}
-
-solution_c::~solution_c(void) {
-  if (tree)
-    delete tree;
-
-  if (assembly)
-    delete assembly;
-
-  if (treeInfo)
-    delete treeInfo;
-}
-
-
-/******** ORIG PROBLEM ************/
 
 /** internal class of problem storing the grouping information of a shape */
 class group_c {
@@ -918,17 +756,6 @@ void problem_c::removeAllSolutions(void) {
   usedTime = 0;
 }
 
-void problem_c::swapSolutions(unsigned int sol1, unsigned int sol2) {
-  bt_assert(sol1 < solutions.size());
-  bt_assert(sol2 < solutions.size());
-
-  if (sol1 == sol2) return;
-
-  solution_c * s = solutions[sol1];
-  solutions[sol1] = solutions[sol2];
-  solutions[sol2] = s;
-}
-
 void problem_c::removeSolution(unsigned int sol) {
   bt_assert(sol < solutions.size());
   delete solutions[sol];
@@ -937,82 +764,7 @@ void problem_c::removeSolution(unsigned int sol) {
 
 void problem_c::removeAllDisassm(void) {
   for (unsigned int i = 0; i < solutions.size(); i++)
-    removeDisassm(i);
-}
-
-void problem_c::removeDisassm(unsigned int i) {
-  bt_assert(i < solutions.size());
-
-  solution_c * s = solutions[i];
-
-  if (s->tree) {
-
-    if (!s->treeInfo)
-      s->treeInfo = new separationInfo_c(s->tree);
-
-    delete s->tree;
-    s->tree = 0;
-  }
-}
-
-void problem_c::addDisasmToSolution(unsigned int sol, separation_c * disasm) {
-  bt_assert(sol < solutions.size());
-
-  solution_c * s = solutions[sol];
-
-  if (s->tree) delete s->tree;
-  if (s->treeInfo) delete s->treeInfo;
-
-  s->treeInfo = 0;
-  s->tree = disasm;
-}
-
-assembly_c * problem_c::getAssembly(unsigned int sol) {
-  bt_assert(sol < solutions.size());
-
-  return solutions[sol]->assembly;
-}
-
-const assembly_c * problem_c::getAssembly(unsigned int sol) const {
-  bt_assert(sol < solutions.size());
-
-  return solutions[sol]->assembly;
-}
-
-separation_c * problem_c::getDisassembly(unsigned int sol) {
-  bt_assert(sol < solutions.size());
-
-  return solutions[sol]->tree;
-}
-
-const separation_c * problem_c::getDisassembly(unsigned int sol) const {
-  bt_assert(sol < solutions.size());
-
-  return solutions[sol]->tree;
-}
-
-disassembly_c * problem_c::getDisassemblyInfo(unsigned int sol) {
-  bt_assert(sol < solutions.size());
-
-  return solutions[sol]->getDisassemblyInfo();
-}
-
-const disassembly_c * problem_c::getDisassemblyInfo(unsigned int sol) const {
-  bt_assert(sol < solutions.size());
-
-  return solutions[sol]->getDisassemblyInfo();
-}
-
-unsigned int problem_c::getAssemblyNum(unsigned int sol) const {
-  bt_assert(sol < solutions.size());
-
-  return solutions[sol]->assemblyNum;
-}
-
-unsigned int problem_c::getSolutionNum(unsigned int sol) const {
-  bt_assert(sol < solutions.size());
-
-  return solutions[sol]->solutionNum;
+    solutions[i]->removeDisassembly();
 }
 
 assembler_c::errState problem_c::setAssembler(assembler_c * assm) {
@@ -1125,7 +877,7 @@ gridType_c * problem_c::getGridType(void) { return puzzle.getGridType(); }
 
 static bool comp_0_assembly(const solution_c * s1, const solution_c * s2)
 {
-  return s1->assemblyNum < s2->assemblyNum;
+  return s1->getAssemblyNumber() < s2->getAssemblyNumber();
 }
 
 static bool comp_1_level(solution_c * s1, solution_c * s2)
@@ -1142,7 +894,7 @@ static bool comp_2_moves(solution_c * s1, solution_c * s2)
 
 static bool comp_3_pieces(const solution_c * s1, const solution_c * s2)
 {
-  return s1->assembly->comparePieces(s2->assembly) > 0;
+  return s1->getAssembly()->comparePieces(s2->getAssembly()) > 0;
 }
 
 void problem_c::sortSolutions(int by) {
