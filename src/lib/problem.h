@@ -438,15 +438,6 @@ public:
   //@{
   /** remove the i-th solution from the solution list */
   void removeSolution(unsigned int sol);
-  /** remove all disassemblies.
-   *
-   * remove disassemblies from saved solutions and replace them
-   * with separationInfo objects, that saves quite some memory and still contains
-   * the information about the level of the disassembly
-   *
-   * TODO candidate for external
-   */
-  void removeAllDisassm(void);
 
   /** sort solutions by 0=assembly, 1=level, 2=sumMoves, 3=pieces */
   void sortSolutions(int by);

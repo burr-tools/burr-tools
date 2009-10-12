@@ -762,11 +762,6 @@ void problem_c::removeSolution(unsigned int sol) {
   solutions.erase(solutions.begin()+sol);
 }
 
-void problem_c::removeAllDisassm(void) {
-  for (unsigned int i = 0; i < solutions.size(); i++)
-    solutions[i]->removeDisassembly();
-}
-
 assembler_c::errState problem_c::setAssembler(assembler_c * assm) {
 
 

@@ -1161,7 +1161,8 @@ void mainWindow_c::cb_DeleteAllDisasm(void) {
 
   problem_c * pr = puzzle->getProblem(prob);
 
-  pr->removeAllDisassm();
+  for (unsigned int i = 0; i < pr->solutionNumber(); i++)
+    pr->getSolution(i)->removeDisassembly();
 
   changed = true;
 
