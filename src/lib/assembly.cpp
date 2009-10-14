@@ -254,10 +254,6 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
     int hy = puz->getResultShape()->getHy();
     int hz = puz->getResultShape()->getHz();
 
-    rx += hx;
-    ry += hy;
-    rz += hz;
-
     puz->getResultShape()->transformPoint(&hx, &hy, &hz, trans);
 
     rx -= hx;
