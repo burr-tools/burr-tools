@@ -1048,6 +1048,22 @@ void assembler_1_c::solution(void) {
     else {
       getCallback()->assembly(assembly);
     }
+
+#if 0
+    // as the below debug code has been way too useful an way too many
+    // situations and I rewrote it again and again and again, I will finally
+    // leave it in here, adapt to your needs
+    assembly_c * assembly = getAssembly();
+
+    for (unsigned int t = 0; t < 8; t++)
+    {
+      assembly_c * a = new assembly_c(assembly);
+      a->transform(t, puzzle, avoidTransformedMirror);
+      getCallback()->assembly(a);
+    }
+
+    delete assembly;
+#endif
   }
 }
 
