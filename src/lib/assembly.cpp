@@ -672,7 +672,7 @@ bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot
                   {
                     if (
                         // the piece can not be place if the result is empty and the piece is filled at a given voxel
-                        ((assm->getState(px, py, pz) != voxel_c::VX_EMPTY) &&
+                        ((assm->getState(px, py, pz) == voxel_c::VX_FILLED) &&
                          (res->getState2(x+px, y+py, z+pz) == voxel_c::VX_EMPTY)) ||
 
                         // the placement is also invalid, when not all "must be filled" voxels are filled
