@@ -269,6 +269,7 @@ ToolsButtons::ToolsButtons(int x, int y, int w, int h) : layouter_c(x, y, w, h) 
 
   (new LFl_Box(7, 3, 1, 1))->setMinimumSize(5, 0);
   new LFlatButton_c(8, 3, 1, 1, "Fill Holes", "", cb_ToolsButtons_stub, 40);
+  new LFlatButton_c(8, 5, 1, 1, "Grid Scale", "", cb_ToolsButtons_stub, 41);
 
   end();
 }
@@ -682,6 +683,7 @@ void ToolTab_0::cb_transform(long task) {
                  }
                  break;
         case 40: space->fillHoles(0); break;
+        case 41: space->scale(5, true); break;
       }
       space->initHotspot();
     }
@@ -850,6 +852,7 @@ void ToolTab_1::cb_transform(long task) {
                  }
                  break;
         case 40: space->fillHoles(0); break;
+        case 41: space->scale(5, true); break;
       }
       space->initHotspot();
     }

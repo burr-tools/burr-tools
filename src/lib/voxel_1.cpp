@@ -306,8 +306,8 @@ bool voxel_1_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, in
   return true;
 }
 
-void voxel_1_c::scale(unsigned int amount) {
-
+void voxel_1_c::scale(unsigned int amount, bool grid)
+{
   unsigned int nsx = amount-1 + sx*amount;
   unsigned int nsy = sy*amount;
   unsigned int nsz = sz*amount;
@@ -319,21 +319,35 @@ void voxel_1_c::scale(unsigned int amount) {
       for (unsigned int z = 0; z < sz; z++)
 
         for (unsigned int ax = 0; ax < 2*amount-1; ax++)
-          for (unsigned int ay = 0; ay < amount; ay++) {
+          for (unsigned int ay = 0; ay < amount; ay++)
+            for (unsigned int az = 0; az < amount; az++)
+            {
+              voxel_type value = 0;
 
-            if (((x+y) & 1) == 0) {
-
+              if (!grid)
+              {
+                 value = get(x, y, z);
+              }
+              else
+              {
+                if ((az == 0 || az == amount-1) && (ay == 0 || ay == ax || ay+1 == ax || ay == 2*amount-2-ax || ay == 2*amount-3-ax)
+                    || (ax == 0 && ay == 0) || (ax == amount-1 && ay == amount-1) || (ax == 2*amount-2 && ay == 0)
+                    || az == 0        && isEmpty2(x, y, z-1)
+                    || az == amount-1 && isEmpty2(x, y, z+1)
+                    || ay == 0        && (((x+y) & 1) == 0 && isEmpty2(x, y-1, z) || ((x+y) & 1) == 1 && isEmpty2(x, y+1, z))
+                    || (ay == ax || ay+1 == ax) && isEmpty2(x-1, y, z)
+                    || (ay == 2*amount-2-ax || ay == 2*amount-3-ax) && isEmpty2(x+1, y, z)
+                   )
+                  value = get(x, y, z);
+                else
+                  value = 0;
+              }
               if ((ay <= ax) && (ay < 2*amount-1-ax))
-                for (unsigned int az = 0; az < amount; az++)
-                  s2[(x*amount+ax) + nsx * ((y*amount+ay) + nsy * (z*amount+az))] = get(x, y, z);
-
-            } else {
-
-              if ((ay <= ax) && (ay < 2*amount-1-ax))
-                for (unsigned int az = 0; az < amount; az++)
-                  s2[(x*amount+ax) + nsx * ((y*amount+amount-1-ay) + nsy * (z*amount+az))] = get(x, y, z);
+                if (((x+y) & 1) == 0)
+                  s2[(x*amount+ax) + nsx * ((y*amount+ay) + nsy * (z*amount+az))] = value;
+                else
+                  s2[(x*amount+ax) + nsx * ((y*amount+amount-1-ay) + nsy * (z*amount+az))] = value;
             }
-          }
 
   delete [] space;
   space = s2;

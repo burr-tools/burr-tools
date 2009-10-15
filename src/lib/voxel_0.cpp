@@ -193,7 +193,8 @@ bool voxel_0_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, in
   return true;
 }
 
-void voxel_0_c::scale(unsigned int amount) {
+void voxel_0_c::scale(unsigned int amount, bool grid)
+{
   voxel_type * s2 = new voxel_type[sx*amount*sy*amount*sz*amount];
 
   for (unsigned int x = 0; x < sx; x++)
@@ -202,7 +203,28 @@ void voxel_0_c::scale(unsigned int amount) {
         for (unsigned int ax = 0; ax < amount; ax++)
           for (unsigned int ay = 0; ay < amount; ay++)
             for (unsigned int az = 0; az < amount; az++)
-              s2[(x*amount+ax) + (sx*amount) * ((y*amount+ay) + (sy*amount) * (z*amount+az))] = get(x, y, z);
+              if (!grid)
+                s2[(x*amount+ax) + (sx*amount) * ((y*amount+ay) + (sy*amount) * (z*amount+az))] = get(x, y, z);
+              else
+              {
+                if (!isEmpty(x, y, z) &&
+                      (
+                        ax == 0        && isEmpty2(x-1, y, z) ||
+                        ax == amount-1 && isEmpty2(x+1, y, z) ||
+                        ay == 0        && isEmpty2(x, y-1, z) ||
+                        ay == amount-1 && isEmpty2(x, y+1, z) ||
+                        az == 0        && isEmpty2(x, y, z-1) ||
+                        az == amount-1 && isEmpty2(x, y, z+1) ||
+                        (ax == 0 || ax == amount-1) && (ay == 0 || ay == amount-1 || az == 0 || az == amount-1) ||
+                        (ay == 0 || ay == amount-1) && (ax == 0 || ax == amount-1 || az == 0 || az == amount-1) ||
+                        (az == 0 || az == amount-1) && (ax == 0 || ax == amount-1 || ay == 0 || ay == amount-1)
+                      )
+                   )
+
+                    s2[(x*amount+ax) + (sx*amount) * ((y*amount+ay) + (sy*amount) * (z*amount+az))] = get(x, y, z);
+                else
+                    s2[(x*amount+ax) + (sx*amount) * ((y*amount+ay) + (sy*amount) * (z*amount+az))] = 0;
+              }
 
   delete [] space;
   space = s2;

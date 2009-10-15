@@ -249,7 +249,7 @@ bool voxel_3_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, in
   return false;
 }
 
-void voxel_3_c::scale(unsigned int amount) {
+void voxel_3_c::scale(unsigned int amount, bool grid) {
 
   /* the coordinates of the valid voxels */
   static int voxelCoords[24][3] = {

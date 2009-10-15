@@ -374,7 +374,7 @@ void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel
   recalcBoundingBox();
 }
 
-void voxel_c::scale(unsigned int /*amount*/) {
+void voxel_c::scale(unsigned int /*amount*/, bool /*grid*/) {
   // do nothing by default
 }
 

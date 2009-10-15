@@ -486,8 +486,10 @@ public:
    * This must be done differently by all grids. The default implementation
    * doesn't do anything. It's just there to allow grids without scaling as not
    * all grid have such a possibility (e.g. spheres can't be scaled)
+   * if grid is true (not all functions need to support this)
+   * the result it not filled, but rather a grid with only the outer edges filled
    */
-  virtual void scale(unsigned int amount);
+  virtual void scale(unsigned int amount, bool grid = false);
 
   /**
    * Scale down voxel space by a certain amount.
