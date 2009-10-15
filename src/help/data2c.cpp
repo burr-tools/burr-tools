@@ -107,15 +107,15 @@ int main(int argv, char * args[]) {
 
         int c = fgetc(in);
 
-	if (col >= 70) {
-	  fprintf(out, "\"\n  \"");
-	  col = 0;
-	}
+        if (col >= 70) {
+          fprintf(out, "\"\n  \"");
+          col = 0;
+        }
 
-	if (!feof(in))
-	  printStringChar(out, c);
+        if (!feof(in))
+          printStringChar(out, c);
 
-	col++;
+        col++;
       }
 
       fprintf(out, "\";\n\n");
@@ -160,14 +160,14 @@ int main(int argv, char * args[]) {
 
         int c = in->data()[0][i];
 
-	if (col >= 30) {
-	  fprintf(out, "\"\n  \"");
-	  col = 0;
-	}
+        if (col >= 30) {
+          fprintf(out, "\"\n  \"");
+          col = 0;
+        }
 
         printStringChar(out, c);
 
-	col++;
+        col++;
       }
 
       fprintf(out, "\";\n\n");

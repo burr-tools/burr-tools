@@ -25,7 +25,7 @@ bool canConvert(gridType_c::gridType src, gridType_c::gridType dst)
 {
   return (
           (src == gridType_c::GT_BRICKS && dst == gridType_c::GT_RHOMBIC)
-	  ||
+          ||
           (src == gridType_c::GT_BRICKS && dst == gridType_c::GT_TETRA_OCTA)
          );
 }

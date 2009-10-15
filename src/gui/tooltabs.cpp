@@ -664,9 +664,9 @@ void ToolTab_0::cb_transform(long task) {
         case 24: space->translate(- space->boundX1(), - space->boundY1(), - space->boundZ1(), 0); break;
         case 25:
                  {
-		   // if the space is empty, don't do anything
-		   if (space->boundX2() < space->boundX1())
-		     break;
+                   // if the space is empty, don't do anything
+                   if (space->boundX2() < space->boundX1())
+                     break;
 
                    int fx = space->getX() - (space->boundX2()-space->boundX1()+1);
                    int fy = space->getY() - (space->boundY2()-space->boundY1()+1);
@@ -828,9 +828,9 @@ void ToolTab_1::cb_transform(long task) {
                  break;
         case 25:
                  {
-		   // if the space is empty, don't do anything
-		   if (space->boundX2() < space->boundX1())
-		     break;
+                   // if the space is empty, don't do anything
+                   if (space->boundX2() < space->boundX1())
+                     break;
 
                    int fx = space->getX() - (space->boundX2()-space->boundX1()+1);
                    int fy = space->getY() - (space->boundY2()-space->boundY1()+1);
@@ -995,9 +995,9 @@ void ToolTab_2::cb_transform(long task) {
                  break;
         case 25:
                  {
-		   // if the space is empty, don't do anything
-		   if (space->boundX2() < space->boundX1())
-		     break;
+                   // if the space is empty, don't do anything
+                   if (space->boundX2() < space->boundX1())
+                     break;
 
                    int fx = space->getX() - (space->boundX2()-space->boundX1()+1);
                    int fy = space->getY() - (space->boundY2()-space->boundY1()+1);
@@ -1140,9 +1140,9 @@ void ToolTab_3::cb_transform(long task) {
         case 24: space->translate(- (space->boundX1()/5)*5, - (space->boundY1()/5)*5, - (space->boundZ1()/5)*5, 0); break;
         case 25:
                  {
-		   // if the space is empty, don't do anything
-		   if (space->boundX2() < space->boundX1())
-		     break;
+                   // if the space is empty, don't do anything
+                   if (space->boundX2() < space->boundX1())
+                     break;
 
                    int fx = (space->getX() - (space->boundX2()-space->boundX1()+1))/2 - space->boundX1();
                    int fy = (space->getY() - (space->boundY2()-space->boundY1()+1))/2 - space->boundY1();
@@ -1281,9 +1281,9 @@ void ToolTab_4::cb_transform(long task) {
         case 24: space->translate(- (space->boundX1()/6)*6, - (space->boundY1()/6)*6, - (space->boundZ1()/6)*6, 0); break;
         case 25:
                  {
-		   // if the space is empty, don't do anything
-		   if (space->boundX2() < space->boundX1())
-		     break;
+                   // if the space is empty, don't do anything
+                   if (space->boundX2() < space->boundX1())
+                     break;
 
                    int fx = (space->getX() - (space->boundX2()-space->boundX1()+1))/2 - space->boundX1();
                    int fy = (space->getY() - (space->boundY2()-space->boundY1()+1))/2 - space->boundY1();

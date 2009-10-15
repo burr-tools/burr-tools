@@ -255,7 +255,7 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
         state = pars.nextTag();
 
         if (state == xmlParser_c::END_TAG) break;
-	pars.require(xmlParser_c::START_TAG, "");
+        pars.require(xmlParser_c::START_TAG, "");
 
         if (pars.getName() == "color")
         {
@@ -281,13 +281,13 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
         state = pars.nextTag();
 
         if (state == xmlParser_c::END_TAG) break;
-	pars.require(xmlParser_c::START_TAG, "");
+        pars.require(xmlParser_c::START_TAG, "");
 
         if (pars.getName() == "voxel")
-	{
+        {
           shapes.push_back(gt->getVoxel(pars));
-	  pars.require(xmlParser_c::END_TAG, "voxel");
-	}
+          pars.require(xmlParser_c::END_TAG, "voxel");
+        }
         else
           pars.skipSubTree();
 
@@ -306,10 +306,10 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
           pars.exception("a new tag required, but something else found");
 
         if (pars.getName() == "problem")
-	{
+        {
           problems.push_back(new problem_c(*this, pars));
- 	  pars.require(xmlParser_c::END_TAG, "problem");
-	}
+          pars.require(xmlParser_c::END_TAG, "problem");
+        }
         else
           pars.skipSubTree();
 

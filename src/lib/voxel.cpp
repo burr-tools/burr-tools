@@ -179,8 +179,8 @@ void voxel_c::recalcBoundingBox(void) {
 
           empty = false;
         } else {
-	  space[index] = 0;  // clear away all colors that might be left
-	}
+          space[index] = 0;  // clear away all colors that might be left
+        }
         index++;
       }
 
@@ -576,7 +576,7 @@ void voxel_c::fillHoles(char type) {
     for (unsigned int y = 0; y < sy; y++)
       for (unsigned int z = 0; z < sz; z++)
         if (validCoordinate(x, y, z) &&
-	    get(x, y, z) != VX_FILLED)  {
+            get(x, y, z) != VX_FILLED)  {
           int root2 = getIndex(x, y, z);
           while (tree[root2] >= 0) root2 = tree[root2];
 

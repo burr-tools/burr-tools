@@ -432,23 +432,23 @@ void movementBrowser_c::cb_3dClick(void) {
       unsigned int x, y, z;
       if (sh->indexToXYZ(voxel, &x, &y, &z)) {
 
-	int nx, ny, nz;
+        int nx, ny, nz;
 
-	if (sh->getNeighbor(face, 0, x, y, z, &nx, &ny, &nz)) {
-	  // shift means push, ctrl means pull
-	  int sign = Fl::event_shift() ? -1 /* push */ : +1 /* pull */;
-	  int dx = (nx - x) * sign;
-	  int dy = (ny - y) * sign;
-	  int dz = (nz - z) * sign;
+        if (sh->getNeighbor(face, 0, x, y, z, &nx, &ny, &nz)) {
+          // shift means push, ctrl means pull
+          int sign = Fl::event_shift() ? -1 /* push */ : +1 /* pull */;
+          int dx = (nx - x) * sign;
+          int dy = (ny - y) * sign;
+          int dz = (nz - z) * sign;
 
-	  if (Fl::event_alt()) {
-	    // the user is holding alt - add the move whether it's valid or not
-	    addSpecificMovement(shape, dx, dy, dz);
-	  } else {
-	    // call on the analysator to select a specific movement matching the one the user requested
-	    selectSpecificMovement(shape, dx, dy, dz);
-	  }
-	}
+          if (Fl::event_alt()) {
+            // the user is holding alt - add the move whether it's valid or not
+            addSpecificMovement(shape, dx, dy, dz);
+          } else {
+            // call on the analysator to select a specific movement matching the one the user requested
+            selectSpecificMovement(shape, dx, dy, dz);
+          }
+        }
       }
     }
 

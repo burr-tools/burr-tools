@@ -60,9 +60,9 @@ unsigned char ssss(int trans, const bitfield_c<NUM_TRANSFORMATIONS_MIRROR> & s) 
   for (int t = 0; t < trans; t++)
     for (int t2 = 0; t2 < NUM_TRANSFORMATIONS_MIRROR; t2++)
       if (s.get(t2)) {
-	int trrr = transMult[t2][t];
-	if (trrr == trans) {
-	  return t;
+        int trrr = transMult[t2][t];
+        if (trrr == trans) {
+          return t;
         }
       }
 
@@ -80,7 +80,7 @@ void outputMinimumSymmetries(void) {
     for (int trans = 0; trans < NUM_TRANSFORMATIONS_MIRROR; trans++) {
       fprintf(out,"%2i", ssss(trans, symmetries[sy]));
       if (trans < NUM_TRANSFORMATIONS_MIRROR-1)
-	fprintf(out, ",");
+        fprintf(out, ",");
     }
     if (sy < NUM_SYMMETRY_GROUPS-1)
       fprintf(out, "},\n");
@@ -162,14 +162,14 @@ void outputUniqueSymmetries(void) {
       {
         out.set(r);
 
-	for (int r2 = 0; r2 < NUM_TRANSFORMATIONS_MIRROR; r2++)
-	{
-	  if (s.get(r2))
+        for (int r2 = 0; r2 < NUM_TRANSFORMATIONS_MIRROR; r2++)
+        {
+          if (s.get(r2))
           {
-	    if (transMult[r2][r] >= 0)
+            if (transMult[r2][r] >= 0)
               ttt.set(transMult[r2][r]);
           }
-	}
+        }
       }
     }
     char line[100];

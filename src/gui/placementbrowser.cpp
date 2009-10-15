@@ -107,8 +107,8 @@ placementBrowser_c::placementBrowser_c(problem_c * p, const guiGridType_c * ggt)
   if ((puzzle->getAssembler()->getFinished() > 0) &&
       (puzzle->getAssembler()->getFinished() < 1))
     fl_message("Attention: The assembler is neither in initial nor in final position\n"
-	       "The displayed placements may not be what you expect\n"
-	       "Read the documentation");
+               "The displayed placements may not be what you expect\n"
+               "Read the documentation");
 
   cb_piece();
 

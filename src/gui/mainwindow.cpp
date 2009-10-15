@@ -1633,10 +1633,10 @@ void mainWindow_c::cb_SaveAs(void) {
         ogzstream ostr(f2);
 
         if (ostr)
-	{
-	  xmlWriter_c xml(ostr);
+        {
+          xmlWriter_c xml(ostr);
           puzzle->save(xml);
-	}
+        }
 
         if (!ostr)
           fl_alert("puzzle NOT saved!!!");

@@ -332,7 +332,7 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
         else
           pars.skipSubTree();
 
-	pars.require(xmlParser_c::END_TAG, "shape");
+        pars.require(xmlParser_c::END_TAG, "shape");
 
       } while (true);
 

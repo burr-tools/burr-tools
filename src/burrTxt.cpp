@@ -71,11 +71,11 @@ public:
           print(a, puzzle);
 
         if (!quiet || allProblems)
-	  {
-	    char lev[200];
-	    da->movesText(lev,200);
-	    printf("level: %s\n", lev);
-	  }
+        {
+          char lev[200];
+          da->movesText(lev,200);
+          printf("level: %s\n", lev);
+        }
 
         if (printDisassemble)
           print(da, a, puzzle);
@@ -157,10 +157,10 @@ int main(int argv, char* args[]) {
       else if (strcmp(args[i], "-x") == 0)
         assemble = false;
       else if (strcmp(args[i], "-o") == 0) {
-	if (strcmp(args[i+1],"all")==0)
-	  allProblems = true;
-	else
-	  problem = atoi(args[i+1]);
+        if (strcmp(args[i+1],"all")==0)
+          allProblems = true;
+        else
+          problem = atoi(args[i+1]);
         i++;
       } else if (strcmp(args[i], "-q") == 0) {
         quiet = true;
@@ -294,15 +294,15 @@ int main(int argv, char* args[]) {
       }
 
       if (reduce) {
-	if (!quiet)
-	  cout << "start reduce\n\n";
-	assm->reduce();
-	if (!quiet)
-	  cout << "finished reduce\n\n";
+        if (!quiet)
+          cout << "start reduce\n\n";
+        assm->reduce();
+        if (!quiet)
+          cout << "finished reduce\n\n";
       }
 
       if (allProblems)
-	cout << "problem: " << problem->getName() << endl;
+        cout << "problem: " << problem->getName() << endl;
 
       asm_cb a(problem);
 
@@ -315,7 +315,7 @@ int main(int argv, char* args[]) {
       cout << a.Assemblies << " assemblies and " << a.Solutions << " solutions found with " << assm->getIterations() << " iterations ";
 
       if (newline)
-	cout << endl;
+        cout << endl;
 
       delete assm;
       delete d;
@@ -332,22 +332,22 @@ int main(int argv, char* args[]) {
 
       for (unsigned int sol = 0; sol < problem->solutionNumber(); sol++) {
 
-	if (problem->getSolution(sol)->getAssembly()) {
+        if (problem->getSolution(sol)->getAssembly()) {
 
-	  separation_c * da = d->disassemble(problem->getSolution(sol)->getAssembly());
+          separation_c * da = d->disassemble(problem->getSolution(sol)->getAssembly());
 
-	  if (da) {
-	    if (printSolutions)
-	      print(problem->getSolution(sol)->getAssembly(), problem);
+          if (da) {
+            if (printSolutions)
+              print(problem->getSolution(sol)->getAssembly(), problem);
 
-	    if (!quiet)
-	      printf("level: %i\n", da->getMoves());
+            if (!quiet)
+              printf("level: %i\n", da->getMoves());
 
-	    if (printDisassemble)
-	      print(da, problem->getSolution(sol)->getAssembly(),problem);
-	    delete da;
-	  }
-	}
+            if (printDisassemble)
+              print(da, problem->getSolution(sol)->getAssembly(),problem);
+            delete da;
+          }
+        }
       }
 
       delete d;

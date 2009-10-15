@@ -56,9 +56,9 @@ unsigned char ssss(unsigned int trans, unsigned long long s) {
   for (unsigned char t = 0; t < trans; t++)
     for (unsigned char t2 = 0; t2 < NUM_TRANSFORMATIONS_MIRROR; t2++)
       if (s & (((unsigned long long)1) << t2)) {
-	unsigned char trrr = transMult[t2][t];
-	if (trrr == trans)
-	  return t;
+        unsigned char trrr = transMult[t2][t];
+        if (trrr == trans)
+          return t;
       }
 
   return trans;
@@ -75,7 +75,7 @@ void outputMinimumSymmetries(void) {
     for (int trans = 0; trans < NUM_TRANSFORMATIONS_MIRROR; trans++) {
       fprintf(out,"%2i", ssss(trans, symmetries[sy]));
       if (trans < NUM_TRANSFORMATIONS_MIRROR-1)
-	fprintf(out, ",");
+        fprintf(out, ",");
     }
     if (sy < NUM_SYMMETRY_GROUPS-1)
       fprintf(out, "},\n");
@@ -147,11 +147,11 @@ void outputUniqueSymmetries(void) {
       {
         out |= 1ll << r;
 
-	for (int r2 = 0; r2 < NUM_TRANSFORMATIONS_MIRROR; r2++)
-	{
-	  if ((s >> r2) & 1)
-	    ttt |= 1ll << transMult[r2][r];
-	}
+        for (int r2 = 0; r2 < NUM_TRANSFORMATIONS_MIRROR; r2++)
+        {
+          if ((s >> r2) & 1)
+            ttt |= 1ll << transMult[r2][r];
+        }
       }
     }
     fprintf(fout, "0x%012llXLL,\n", out);
