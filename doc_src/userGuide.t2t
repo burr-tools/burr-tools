@@ -2804,6 +2804,10 @@ You can also analyse movements manually by adding a node and specifying which
 pieces should move in which direction. If the pieces then do overlap the 3-D
 view will change and display the overlapping voxels instead of the real shapes.
 
+Finally it is possible to add a movement by blicking on faces of shapes in the
+3-D view. If you press the shift key when clicking you will push the piece,
+when pressing ctrl with the click you will pull the piece.
+
 ==Inspecting Results==[ChInspectingResults]
 
 As soon as any result is found, the solutions list becomes available on the
