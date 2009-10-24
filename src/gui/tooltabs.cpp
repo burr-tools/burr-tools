@@ -1160,6 +1160,7 @@ void ToolTab_3::cb_transform(long task) {
                  break;
         case 26: fl_message("Sorry minimizing is not (yet) implemented for the rhombic grid!"); return;
         case 40: space->fillHoles(0); break;
+        case 41: space->scale(7, true); break;
       }
       space->initHotspot();
     }

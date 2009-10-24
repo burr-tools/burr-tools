@@ -19,6 +19,8 @@
 
 #include "../tools/intdiv.h"
 
+#include <math.h>
+
 bool voxel_3_c::transform(unsigned int nr) {
 
   // the first thing to do here is to ensure that all 3 dimensions are a multiple of 5
@@ -262,9 +264,10 @@ void voxel_3_c::scale(unsigned int amount, bool grid) {
 
   /* the 6 cutting planes */
   static int planes[6][3] = {
-    {1, 1, 0}, {1, -1, 0},
+    {0, 1, 1}, {0, 1, -1},
     {1, 0, 1}, {1, 0, -1},
-    {0, 1, 1}, {0, 1, -1}};
+    {1, 1, 0}, {1, -1, 0},
+  };
 
   unsigned int nsx = ((sx+4)/5)*amount*5;
   unsigned int nsy = ((sy+4)/5)*amount*5;
@@ -277,6 +280,8 @@ void voxel_3_c::scale(unsigned int amount, bool grid) {
   unsigned int bsx = ((sx+4)/5);
   unsigned int bsy = ((sy+4)/5);
   unsigned int bsz = ((sz+4)/5);
+
+  bool voxelGrid = true;   // only used when grid is true
 
   /* for each voxel within a 5x5x5 block */
   for (unsigned int voxel1 = 0; voxel1 < 24; voxel1++) {
@@ -308,21 +313,119 @@ void voxel_3_c::scale(unsigned int amount, bool grid) {
 
             for (int i = 0; i < 6; i++)
               if (((ax-2.5*amount)*planes[i][0] +
-                    (ay-2.5*amount)*planes[i][1] +
-                    (az-2.5*amount)*planes[i][2] < 0) != (((planeMask & (1<<i)) != 0))) {
+                   (ay-2.5*amount)*planes[i][1] +
+                   (az-2.5*amount)*planes[i][2] < 0) != (((planeMask & (1<<i)) != 0))) {
                 useVoxel = false;
                 break;
               }
 
             if (useVoxel)
+            {
+              if (grid)
+              {
+                int planeCloseness = 0;
+
+                for (int i = 0; i < 6; i++)
+                  if (fabs(((ax-2.5*amount+0.5)*planes[i][0] +
+                          (ay-2.5*amount+0.5)*planes[i][1] +
+                          (az-2.5*amount+0.5)*planes[i][2])) < 5) {
+                    planeCloseness |= 1 << i;
+                  }
+
+                if (ax < 5)           planeCloseness |= 1 << 6;
+                if (ax >= 5*amount-5) planeCloseness |= 1 << 7;
+                if (ay < 5)           planeCloseness |= 1 << 8;
+                if (ay >= 5*amount-5) planeCloseness |= 1 << 9;
+                if (az < 5)           planeCloseness |= 1 << 10;
+                if (az >= 5*amount-5) planeCloseness |= 1 << 11;
+
+                voxelGrid = false;
+
+                // the diagonals from the center of the cube to the corners
+                if (planeCloseness & 0x03 && planeCloseness & 0x0C && planeCloseness & 0x30)
+                  voxelGrid = true;
+
+
+                // from the center of the cube to the center of the faces
+                // here we need additional information to get a diagonal cut
+                if ((planeCloseness & 0x03) == 0x03)
+                  if (fabs(((ax-2.5*amount+0.5)*planes[0][0] +
+                            (ay-2.5*amount+0.5)*planes[0][1] +
+                            (az-2.5*amount+0.5)*planes[0][2]))
+                      +
+                      fabs(((ax-2.5*amount+0.5)*planes[1][0] +
+                            (ay-2.5*amount+0.5)*planes[1][1] +
+                            (az-2.5*amount+0.5)*planes[1][2]))
+                      < 5)
+                    voxelGrid = true;
+
+                if ((planeCloseness & 0x0C) == 0x0C)
+                  if (fabs(((ax-2.5*amount+0.5)*planes[2][0] +
+                            (ay-2.5*amount+0.5)*planes[2][1] +
+                            (az-2.5*amount+0.5)*planes[2][2]))
+                      +
+                      fabs(((ax-2.5*amount+0.5)*planes[3][0] +
+                            (ay-2.5*amount+0.5)*planes[3][1] +
+                            (az-2.5*amount+0.5)*planes[3][2]))
+                      < 5)
+                    voxelGrid = true;
+                if ((planeCloseness & 0x30) == 0x30)
+                  if (fabs(((ax-2.5*amount+0.5)*planes[4][0] +
+                            (ay-2.5*amount+0.5)*planes[4][1] +
+                            (az-2.5*amount+0.5)*planes[4][2]))
+                      +
+                      fabs(((ax-2.5*amount+0.5)*planes[5][0] +
+                            (ay-2.5*amount+0.5)*planes[5][1] +
+                            (az-2.5*amount+0.5)*planes[5][2]))
+                      < 5)
+                    voxelGrid = true;
+
+                // the connections from the middle of the faces to the corners of the cube
+                if ((planeCloseness & 0x03) && (planeCloseness & 0xC0))
+                  voxelGrid = true;
+                if ((planeCloseness & 0x0C) && (planeCloseness & 0x300))
+                  voxelGrid = true;
+                if ((planeCloseness & 0x30) && (planeCloseness & 0xC00))
+                  voxelGrid = true;
+
+                // connections between the cubes
+                int tmp = planeCloseness & 0xFC0;
+                int count = 0;
+                float diff = 0;
+
+                for (int i = 6; i < 12; i++)
+                  if (tmp & 1 << i)
+                  {
+                    count++;
+                    switch (i)
+                    {
+                      case  6: diff += ax+0.5; break;
+                      case  7: diff += amount*5-ax-0.5; break;
+                      case  8: diff += ay+0.5; break;
+                      case  9: diff += amount*5-ay-0.5; break;
+                      case 10: diff += az+0.5; break;
+                      case 11: diff += amount*5-az-0.5; break;
+                    }
+                  }
+
+                if (count == 2 && diff < 5) voxelGrid = true;
+              }
+
 
               /* for each block */
               for (unsigned int bx = 0; bx < bsx; bx++)
                 for (unsigned int by = 0; by < bsy; by++)
                   for (unsigned int bz = 0; bz < bsz; bz++)
                     if (!isEmpty2(5*bx+x, 5*by+y, 5*bz+z))
-                      s2[(bx*amount*5+ax) + nsx * ((by*amount*5+ay) + nsy * (bz*amount*5+az))] = get(5*bx+x, 5*by+y, 5*bz+z);
+                    {
+                      voxel_type value = get(5*bx+x, 5*by+y, 5*bz+z);
 
+                      if (!voxelGrid)
+                        value = 0;
+
+                      s2[(bx*amount*5+ax) + nsx * ((by*amount*5+ay) + nsy * (bz*amount*5+az))] = value;
+                    }
+            }
           }
   }
 
