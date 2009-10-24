@@ -46,7 +46,8 @@ class xmlParser_c;
 typedef enum {
   SS_UNSOLVED,    ///< nothing done yet
   SS_SOLVING,     ///< started and not finished in this state assm must contain the assembler
-  SS_SOLVED       ///< finished, the assembler has been destroyed and all the information is available
+  SS_SOLVED,      ///< finished, the assembler has been destroyed and all the information is available
+  SS_UNKNOWN
 } solveState_e;
 
 
@@ -156,6 +157,9 @@ private:
    * the value 0xFFFFFFFF is used for undefined maximum number
    */
   unsigned int maxHoles;
+
+  /** called, when the problem gets changed */
+  void editProblem(void);
 
 public:
 
@@ -358,6 +362,28 @@ public:
   //@}
 
   /**
+   * THE PROBLEM STATE
+   *
+   * a problem has 4 states:
+   * SS_UNSOLVED: fresh puzzle, no solving done
+   * SS_SOLVING: solving is in progress, an assembler is present
+   * SS_SOLVED: solving has been done, assembly and solution numbers are correct
+   * SS_FREESTYLE: no assembler, no assembly and solution number, but some solutions are present
+   *
+   * you normally start out in SS_UNSOLVED, then start solving and end in solved and then
+   * you can reset to unsolved. when you do some editing in solving or in solved state
+   * you will end up un FREESTYLE because the already gathered information is likely to
+   * be incomplete, but as it is not completely wrong we simply keep it
+   *
+   * the function resetToUnsolved will reset the problem into the unsolved state, drop all solutions
+   * and remove all information
+   * Then you call startSolving and progress to solving state
+   * Finally finished Solving will end you in solved state
+   * There are a lot of other functions that can make you end up in freestyle mode...
+   */
+
+
+  /**
    * remove all known solutions, reset time, counter, assembler.
    * prepare for solving the problem
    * it also removes maybe saved assembler state so that solving starts
@@ -402,6 +428,9 @@ public:
    * After that call no more modifications are possible, no more addSOlution, incNumAssemblies and so on.
    * */
   void finishedSolving(void) { solveState = SS_SOLVED; }
+
+  /** transfer the problem into the unknown state */
+  void makeUnknown(void);
   //@}
 
   /** \name functions used after solving to get information.

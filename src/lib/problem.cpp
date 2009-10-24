@@ -901,3 +901,22 @@ void problem_c::sortSolutions(int by) {
   }
 }
 
+void problem_c::editProblem(void)
+{
+  if (solveState == SS_SOLVING || solveState == SS_SOLVED)
+    makeUnknown();
+}
+
+void problem_c::makeUnknown(void)
+{
+  solveState = SS_UNKNOWN;
+
+  if (assm) delete assm;
+  assm = 0;
+  assemblerState = "";
+  assemblerVersion = "";
+
+  numAssemblies = 0;
+  numSolutions = 0;
+  usedTime = 0;
+}

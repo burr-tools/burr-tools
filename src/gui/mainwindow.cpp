@@ -2796,6 +2796,11 @@ void mainWindow_c::updateInterface(void) {
           OutputActivity->value("pause");
           BtnCont->activate();
           break;
+        case SS_UNKNOWN:
+          OutputActivity->value("partial");
+          BtnCont->deactivate();
+          break;
+
         }
 
         // if we have a result and at least one piece, we can give it a try
