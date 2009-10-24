@@ -845,3 +845,28 @@ voxel_c * assembly_c::createSpace(const problem_c * puz) const {
   return res;
 }
 
+void assembly_c::removePieces(unsigned int from, unsigned int cnt)
+{
+  if (cnt == 0) return;
+
+  bt_assert(from+cnt < placements.size());
+
+#ifndef NDEBUG
+  for (unsigned int i = 0; i < cnt; i++)
+  {
+    bt_assert(!isPlaced(from+i));
+  }
+#endif
+
+  placements.erase(placements.begin()+from, placements.begin()+from+cnt);
+}
+
+void assembly_c::addNonPlacedPieces(unsigned int from, unsigned int cnt)
+{
+  if (cnt == 0) return;
+
+  bt_assert(from <= placements.size());
+
+  placements.insert(placements.begin()+from, cnt, placement_c(UNPLACED_TRANS, 0, 0, 0));
+}
+

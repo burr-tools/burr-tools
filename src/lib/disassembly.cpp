@@ -524,6 +524,39 @@ unsigned int separation_c::getNumSequences(void) const
   return numSequences;
 }
 
+void separation_c::removePieces(unsigned int from, unsigned int cnt)
+{
+  /* for the moment we assume, that none of the removed pieces is actually used
+   * in this disassembly, because otherwise the whole solution should have been
+   * deleted, so all that is left is to recrease the piece counters
+   */
+
+  for (unsigned int i = 0; i < pieces.size(); i++)
+  {
+    bt_assert(pieces[i] < from || pieces[i] >= from+cnt);
+
+    if (pieces[i] >= from+cnt)
+      pieces[i] -= cnt;
+  }
+
+  if (left) left->removePieces(from, cnt);
+  if (removed) removed->removePieces(from, cnt);
+
+}
+
+void separation_c::addNonPlacedPieces(unsigned int from, unsigned int cnt)
+{
+  /* increase piece numbers accordingly */
+  for (unsigned int i = 0; i < pieces.size(); i++)
+    if (pieces[i] >= from)
+      pieces[i] += cnt;
+
+  if (left) left->addNonPlacedPieces(from, cnt);
+  if (removed) removed->addNonPlacedPieces(from, cnt);
+}
+
+
+
 /************************************************************************
  * SeparationInfo
  ************************************************************************/

@@ -256,33 +256,33 @@ public:
    *
    * idx is the shape id form the puzzle, not the index of the shape in the problem.
    */
-  void shapeRemoved(unsigned short idx);
+  void removeShape(unsigned short shapeId);
   /** set the minimum number of times the shape may be used */
-  void setShapeCountMin(unsigned int shape, unsigned int count);
+  void setShapeMinimum(unsigned int shapeId, unsigned int count);
   /** set the maximum number of times the shape may be used */
-  void setShapeCountMax(unsigned int shape, unsigned int count);
+  void setShapeMaximum(unsigned int shapeId, unsigned int count);
   /** get the minimum number of times the shape may be used.
    * if the shape is not used in the problem, the function returns 0
    */
-  unsigned int getShapeCountMin(unsigned int shape) const;
+  unsigned int getShapeMinimum(unsigned int shapeId) const;
   /** get the maximum number of times the piece may be used.
    * if the shape is not used in the problem, the function returns 0
    */
-  unsigned int getShapeCountMax(unsigned int shape) const;
+  unsigned int getShapeMaximum(unsigned int shapeId) const;
   /** find out, if a shape is used in the problem (as piece or as result) */
-  bool containsShape(unsigned int shape) const;
+  bool usesShape(unsigned int shapeId) const;
   /** how many different parts have been used in this problem.
    *
    * This is NOT the number of pieces in the problem
    */
   unsigned int partNumber(void) const { return parts.size(); }
   /** get the minimum number of times a shape is used.
-   * This similar as the getShapeCountMin function but this time
+   * This similar as the getShapeMinimum function but this time
    * the piece index instead of the shape index
    */
   unsigned int getShapeMin(unsigned int piece) const;
   /** get the maximum number of times a shape is used.
-   * This similar as the getShapeCountMin function but this time
+   * This similar as the getShapeMinimum function but this time
    * the piece index instead of the shape index
    */
   unsigned int getShapeMax(unsigned int piece) const;

@@ -104,6 +104,12 @@ public:
 
   /** change the solution so that shape s1 and s2 are swapped */
   void exchangeShape(unsigned int s1, unsigned int s2);
+
+  /** remove count pieces starting with start from all information within this solution */
+  void removePieces(unsigned int start, unsigned int count);
+
+  /** add count not placed pieces starting at position start */
+  void addNonPlacedPieces(unsigned int start, unsigned int count);
 };
 
 #endif

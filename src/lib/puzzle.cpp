@@ -364,7 +364,7 @@ void puzzle_c::removeShape(unsigned int idx) {
 
   /* now remove the shapes from the problem shape list, if that is the one that got deleted */
   for (unsigned int i = 0; i < problems.size(); i++)
-    problems[i]->shapeRemoved(idx);
+    problems[i]->removeShape(idx);
 }
 
 void puzzle_c::exchangeShape(unsigned int s1, unsigned int s2) {

@@ -270,6 +270,9 @@ public:
   virtual unsigned int sumMoves(void) const;
   virtual void movesText(char * txt, int len) const { movesText2(txt, len); }
 
+  void removePieces(unsigned int from, unsigned int cnt);
+  void addNonPlacedPieces(unsigned int from, unsigned int cnt);
+
 private:
 
   // no copying and assigning

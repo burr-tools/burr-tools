@@ -430,20 +430,16 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
 
 /************** PROBLEM ****************/
 
-void problem_c::shapeRemoved(unsigned short idx) {
+void problem_c::removeShape(unsigned short idx) {
 
   if (result == idx)
+  {
+    editProblem();
     result = 0xFFFFFFFF;
-
-  unsigned int i = 0;
-  while (i < parts.size()) {
-    if (parts[i]->shapeId == idx) {
-      delete parts[i];
-      parts.erase(parts.begin()+i);
-    } else {
-      i++;
-    }
   }
+
+  // remove the shape from the part list
+  setShapeMaximum(idx, 0);
 
   /* now check all shapes, and the result, if their id is larger
    * than the deleted shape, if so decrement to update the number
@@ -591,49 +587,144 @@ voxel_c * problem_c::getResultShape(void) {
   return puzzle.getShape(result);
 }
 
-void problem_c::setShapeCountMin(unsigned int shape, unsigned int count) {
+void problem_c::setShapeMinimum(unsigned int shape, unsigned int count)
+{
   bt_assert(shape < puzzle.shapeNumber());
 
-  for (unsigned int id = 0; id < parts.size(); id++) {
-    if (parts[id]->shapeId == shape) {
+  editProblem();
 
+  unsigned int pieceIdx = 0;
+
+  for (unsigned int id = 0; id < parts.size(); id++) {
+    if (parts[id]->shapeId == shape)
+    {
       parts[id]->min = count;
       if (parts[id]->min > parts[id]->max)
-        parts[id]->max = count;
+        setShapeMaximum(shape, count);
+
+      if (count > 0)
+      {
+        // delete all solutions that have not the required minimum of the pieces
+        unsigned int s = 0;
+        while (s < solutions.size())
+        {
+          if (!solutions[s]->getAssembly()->isPlaced(pieceIdx+count-1))
+          {
+            delete solutions[s];
+            solutions.erase(solutions.begin()+s);
+          }
+          else
+          {
+            s++;
+          }
+        }
+      }
 
       return;
     }
+    pieceIdx += parts[id]->max;
   }
 
   // when we get here there is no piece with the required puzzle shape, so add it
   if (count)
+  {
     parts.push_back(new part_c(shape, count, count, 0));
+
+    // add new placements, pieces are not placed
+    for (unsigned int s = 0; s < solutions.size(); s++)
+      solutions[s]->addNonPlacedPieces(pieceNumber(), count);
+  }
 }
 
-void problem_c::setShapeCountMax(unsigned int shape, unsigned int count) {
+void problem_c::setShapeMaximum(unsigned int shape, unsigned int count)
+{
   bt_assert(shape < puzzle.shapeNumber());
 
-  for (unsigned int id = 0; id < parts.size(); id++) {
-    if (parts[id]->shapeId == shape) {
+  unsigned int pieceIdx = 0;
 
-      if (count == 0) {
+  for (unsigned int id = 0; id < parts.size(); id++)
+  {
+    if (parts[id]->shapeId == shape)
+    {
+      // remove the shape
+      if (count == 0)
+      {
+        editProblem();
+
+        unsigned int s = 0;
+
+        while (s < solutions.size())
+        {
+          if (solutions[s]->getAssembly()->isPlaced(pieceIdx))
+          {
+            delete solutions[s];
+            solutions.erase(solutions.begin()+s);
+          }
+          else
+          {
+            solutions[s]->removePieces(pieceIdx, parts[id]->max);
+            s++;
+          }
+        }
+
         parts.erase(parts.begin()+id);
+
         return;
+      }
+
+      // increase the maximum
+      if (count > parts[id]->max)
+      {
+        editProblem();
+
+        for (unsigned int s = 0; s < solutions.size(); s++)
+          solutions[s]->addNonPlacedPieces(pieceIdx+parts[id]->max, count-parts[id]->max);
+      }
+      else if (count < parts[id]->max)  // cedrease the maximum
+      {
+        editProblem();
+        // go through all solutions, those solutions that use more
+        // than the new max pieces of this shape must be deleted
+        //
+        // the other solutions may stay, but require some
+        // placements removed
+        unsigned int s = 0;
+        while (s < solutions.size())
+        {
+          if (solutions[s]->getAssembly()->isPlaced(pieceIdx+parts[id]->max-1))
+          {
+            // too many pieces placed -> delete solution
+            delete solutions[s];
+            solutions.erase(solutions.begin()+s);
+          }
+          else
+          {
+            solutions[s]->removePieces(pieceIdx+count, parts[id]->max-count);
+            s++;
+          }
+        }
       }
 
       parts[id]->max = count;
       if (parts[id]->max < parts[id]->min)
-        parts[id]->min = count;
+        setShapeMinimum(shape, count);
 
       return;
     }
+    pieceIdx += parts[id]->max;
   }
 
   if (count)
+  {
     parts.push_back(new part_c(shape, 0, count, 0));
+
+    // add new placements, pieces are not placed
+    for (unsigned int s = 0; s < solutions.size(); s++)
+      solutions[s]->addNonPlacedPieces(pieceIdx, count);
+  }
 }
 
-unsigned int problem_c::getShapeCountMin(unsigned int shape) const {
+unsigned int problem_c::getShapeMinimum(unsigned int shape) const {
   bt_assert(shape < puzzle.shapeNumber());
 
   for (unsigned int id = 0; id < parts.size(); id++)
@@ -643,7 +734,7 @@ unsigned int problem_c::getShapeCountMin(unsigned int shape) const {
   return 0;
 }
 
-unsigned int problem_c::getShapeCountMax(unsigned int shape) const {
+unsigned int problem_c::getShapeMaximum(unsigned int shape) const {
   bt_assert(shape < puzzle.shapeNumber());
 
   for (unsigned int id = 0; id < parts.size(); id++)
@@ -681,7 +772,7 @@ unsigned int problem_c::getShapeId(unsigned int shape) const {
   return 0;
 }
 
-bool problem_c::containsShape(unsigned int shape) const {
+bool problem_c::usesShape(unsigned int shape) const {
   if (result == shape)
     return true;
 

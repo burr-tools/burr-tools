@@ -163,3 +163,20 @@ void solution_c::setDisassembly(separation_c * sep)
   treeInfo = 0;
 }
 
+
+void solution_c::removePieces(unsigned int start, unsigned int count)
+{
+  if (assembly)
+    assembly->removePieces(start, count);
+  if (tree)
+    tree->removePieces(start, count);
+}
+
+void solution_c::addNonPlacedPieces(unsigned int start, unsigned int count)
+{
+  if (assembly)
+    assembly->addNonPlacedPieces(start, count);
+  if (tree)
+    tree->addNonPlacedPieces(start, count);
+}
+

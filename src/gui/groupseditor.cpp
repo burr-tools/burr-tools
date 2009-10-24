@@ -157,21 +157,21 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
         /* the 2nd column, display the min count for this shape */
 
         type = 1;
-        snprintf(s, 40, "%i", pr->getShapeCountMin(r));
+        snprintf(s, 40, "%i", pr->getShapeMinimum(r));
 
       } else if (c == 2) {
 
         /* the 3rd column, display the max count for this shape */
 
         type = 1;
-        snprintf(s, 40, "%i", pr->getShapeCountMax(r));
+        snprintf(s, 40, "%i", pr->getShapeMaximum(r));
 
       } else {
 
         /* the group columns, only display, when an entry for this
          * group exists
          */
-        if (pr->containsShape(r) && (!pr->resultValid() || pr->getResultId() != (unsigned int)r)) {
+        if (pr->usesShape(r) && (!pr->resultValid() || pr->getResultId() != (unsigned int)r)) {
           unsigned int sh = pr->getShapeId(r);
           for (unsigned int j = 0; j < pr->getShapeGroupNumber(sh); j++)
             if (pr->getShapeGroup(sh, j) == (c - 2)) {
@@ -243,9 +243,9 @@ void groupsEditorTab_c::cb_input(void) {
 
   /* we have either changed the count for the shape, or the group count */
   if (editGroup == 0)
-    pr->setShapeCountMin(editShape, atoi(input->value()));
+    pr->setShapeMinimum(editShape, atoi(input->value()));
   else if (editGroup == 1)
-    pr->setShapeCountMax(editShape, atoi(input->value()));
+    pr->setShapeMaximum(editShape, atoi(input->value()));
   else
     pr->setShapeGroup(pr->getShapeId(editShape), editGroup-1, atoi(input->value()));
 
@@ -281,11 +281,11 @@ void groupsEditorTab_c::cb_tab(void)
       editGroup = col-1;
 
       if (editGroup == 0)
-        count = pr->getShapeCountMin(row);
+        count = pr->getShapeMinimum(row);
       else if (editGroup == 1)
-        count = pr->getShapeCountMax(row);
+        count = pr->getShapeMaximum(row);
       else {
-        if (pr->containsShape(row) && (!pr->resultValid() || pr->getResultId() != row)) {
+        if (pr->usesShape(row) && (!pr->resultValid() || pr->getResultId() != row)) {
           unsigned int sh = pr->getShapeId(row);
           for (unsigned int j = 0; j < pr->getShapeGroupNumber(sh); j++)
             if (pr->getShapeGroup(sh, j) == (col - 2))
@@ -398,7 +398,7 @@ void groupsEditor_c::cb_UpdateInterface(void) {
   problem_c * pr = puzzle->getProblem(problem);
 
   for (unsigned int i = 0; i < puzzle->shapeNumber(); i++)
-    if (pr->getShapeCountMin(i) != pr->getShapeCountMax(i)) {
+    if (pr->getShapeMinimum(i) != pr->getShapeMaximum(i)) {
       useMaxHoles = true;
       break;
     }

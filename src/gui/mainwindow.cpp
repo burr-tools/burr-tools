@@ -198,8 +198,6 @@ void mainWindow_c::cb_DeleteShape(void) {
 
   if (current < puzzle->shapeNumber()) {
 
-    changeShape(current);
-
     puzzle->removeShape(current);
 
     if (puzzle->shapeNumber() == 0)
@@ -613,7 +611,7 @@ void mainWindow_c::cb_ShapeToResult(void) {
   problem_c * pr = puzzle->getProblem(prob);
 
   // check if this shape is already a piece of the problem
-  pr->setShapeCountMax(shapeAssignmentSelector->getSelection(), 0);
+  pr->setShapeMaximum(shapeAssignmentSelector->getSelection(), 0);
 
   pr->setResultId(shapeAssignmentSelector->getSelection());
   problemResult->setPuzzle(puzzle->getProblem(prob));
@@ -656,13 +654,12 @@ void mainWindow_c::cb_AddShapeToProblem(void) {
 
   changed = true;
   PiecesCountList->redraw();
-  changeProblem(prob);
 
   problem_c * pr = puzzle->getProblem(prob);
 
   // first see, if there is already a selected shape inside
-  pr->setShapeCountMax(shape, pr->getShapeCountMax(shape) + 1);
-  pr->setShapeCountMin(shape, pr->getShapeCountMin(shape) + 1);
+  pr->setShapeMaximum(shape, pr->getShapeMaximum(shape) + 1);
+  pr->setShapeMinimum(shape, pr->getShapeMinimum(shape) + 1);
 
   activateProblem(problemSelector->getSelection());
   updateInterface();
@@ -681,7 +678,6 @@ void mainWindow_c::cb_AddAllShapesToProblem(void) {
 
   changed = true;
   PiecesCountList->redraw();
-  changeProblem(prob);
 
   problem_c * pr = puzzle->getProblem(prob);
 
@@ -691,8 +687,8 @@ void mainWindow_c::cb_AddAllShapesToProblem(void) {
     if (pr->resultValid() && j == pr->getResultId())
       continue;
 
-    pr->setShapeCountMax(j, pr->getShapeCountMax(j) + 1);
-    pr->setShapeCountMin(j, pr->getShapeCountMin(j) + 1);
+    pr->setShapeMaximum(j, pr->getShapeMaximum(j) + 1);
+    pr->setShapeMinimum(j, pr->getShapeMinimum(j) + 1);
   }
 
   activateProblem(problemSelector->getSelection());
@@ -715,12 +711,11 @@ void mainWindow_c::cb_RemoveShapeFromProblem(void) {
     return;
 
   unsigned int prob = problemSelector->getSelection();
-  changeProblem(prob);
 
   problem_c * pr = puzzle->getProblem(prob);
 
-  if (pr->getShapeCountMin(shape) > 0) pr->setShapeCountMin(shape, pr->getShapeCountMin(shape)-1);
-  if (pr->getShapeCountMax(shape) > 0) pr->setShapeCountMax(shape, pr->getShapeCountMax(shape)-1);
+  if (pr->getShapeMinimum(shape) > 0) pr->setShapeMinimum(shape, pr->getShapeMinimum(shape)-1);
+  if (pr->getShapeMaximum(shape) > 0) pr->setShapeMaximum(shape, pr->getShapeMaximum(shape)-1);
 
   changed = true;
   PiecesCountList->redraw();
@@ -749,7 +744,7 @@ void mainWindow_c::cb_SetShapeMinimumToZero(void) {
 
   problem_c * pr = puzzle->getProblem(prob);
 
-  pr->setShapeCountMin(shape, 0);
+  pr->setShapeMinimum(shape, 0);
 
   changed = true;
   PiecesCountList->redraw();
@@ -774,7 +769,7 @@ void mainWindow_c::cb_RemoveAllShapesFromProblem(void) {
   problem_c * pr = puzzle->getProblem(prob);
 
   for (unsigned int i = 0; i < puzzle->shapeNumber(); i++)
-    pr->setShapeCountMax(i, 0);
+    pr->setShapeMaximum(i, 0);
 
   changed = true;
   PiecesCountList->redraw();
@@ -803,15 +798,14 @@ void mainWindow_c::cb_ShapeGroup(void) {
     /* if the user added the result shape to the problem, we inform him and
      * remove that shape again
      */
-    if (pr->resultValid() && pr->getShapeCountMax(pr->getResultId()) > 0)
-      pr->setShapeCountMax(pr->getResultId(), 0);
+    if (pr->resultValid() && pr->getShapeMaximum(pr->getResultId()) > 0)
+      pr->setShapeMaximum(pr->getResultId(), 0);
 
     /* as the user may have reset the counts of one shape to zero, go
      * through the list and remove entries of zero count */
     PiecesCountList->redraw();
     PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
     changed = true;
-    changeProblem(problemSelector->getSelection());
     activateProblem(problemSelector->getSelection());
     StatProblemInfo(problemSelector->getSelection());
     updateInterface();
@@ -1598,8 +1592,8 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
 
       if (win.getAction() == assmImportWindow_c::A_ADD_DST || win.getAction() == assmImportWindow_c::A_ADD_NEW)
       {
-        pr->setShapeCountMax(i, win.getMax());
-        pr->setShapeCountMin(i, win.getMin());
+        pr->setShapeMaximum(i, win.getMax());
+        pr->setShapeMinimum(i, win.getMin());
       }
     }
 
@@ -1867,7 +1861,7 @@ void mainWindow_c::changeColor(unsigned int nr) {
 
 void mainWindow_c::changeShape(unsigned int nr) {
   for (unsigned int i = 0; i < puzzle->problemNumber(); i++)
-    if (puzzle->getProblem(i)->containsShape(nr))
+    if (puzzle->getProblem(i)->usesShape(nr))
       puzzle->getProblem(i)->removeAllSolutions();
 }
 
@@ -2276,14 +2270,14 @@ void mainWindow_c::updateInterface(void) {
     // we can only edit shapes, when something valid is selected and
     // either no assembler is running or the shape is not in the problem that the assembler works on
     if ((PcSel->getSelection() < puzzle->shapeNumber()) &&
-        (!assmThread || !pr->containsShape(PcSel->getSelection()))) {
+        (!assmThread || !pr->usesShape(PcSel->getSelection()))) {
       pieceTools->activate();
     } else {
       pieceTools->deactivate();
     }
 
     // when the current shape is in the assembler we lock the editor, only viewing is possible
-    if (assmThread && (pr->containsShape(PcSel->getSelection())))
+    if (assmThread && (pr->usesShape(PcSel->getSelection())))
       pieceEdit->deactivate();
     else
       pieceEdit->activate();

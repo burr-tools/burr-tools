@@ -323,6 +323,10 @@ public:
    */
   voxel_c * createSpace(const problem_c * puz) const;
 
+  void removePieces(unsigned int from, unsigned int cnt);
+
+  void addNonPlacedPieces(unsigned int from, unsigned int cnt);
+
 private:
 
   // no copying and assigning

@@ -98,7 +98,7 @@ void statusWindow_c::cb_removeSelected(void) {
     if (selection[s-1]->value())
     {
       for (unsigned int i = 0; i < puz->problemNumber(); i++)
-        if (puz->getProblem(i)->containsShape(s-1))
+        if (puz->getProblem(i)->usesShape(s-1))
           puz->getProblem(i)->removeAllSolutions();
 
       puz->removeShape(s-1);
