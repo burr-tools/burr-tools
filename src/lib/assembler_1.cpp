@@ -350,7 +350,10 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
    * from 5 to 0.5 seconds for TheLostDay puzzle
    */
   unsigned int * columns = new unsigned int[result->getXYZ()];
-  unsigned int rangeColumn;
+
+  // only used, when hasRange is true, so we need to initialize it to get rid of warnings
+  // the variable contains the column number where the range checks are done
+  unsigned int rangeColumn = 0;
 
   {
     int c = 1 + puzzle->partNumber();

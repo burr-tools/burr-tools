@@ -128,7 +128,6 @@ void printMatrix(
     if (r == -1) break;
 
     unsigned int nodeS = rows[r];
-    unsigned int column = 0;
     unsigned int node = nodeS;
 
     std::vector<int>matrixline;
