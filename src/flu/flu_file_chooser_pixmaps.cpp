@@ -1,18 +1,18 @@
 // $Id: flu_file_chooser_pixmaps.cpp,v 1.8 2003/12/08 16:25:50 jbryan Exp $
 
 /***************************************************************
- *                FLU - FLTK Utility Widgets 
+ *                FLU - FLTK Utility Widgets
  *  Copyright (C) 2002 Ohio Supercomputer Center, Ohio State University
  *
  * This file and its content is protected by a software license.
  * You should have received a copy of this license with this file.
  * If not, please contact the Ohio Supercomputer Center immediately:
  * Attn: Jason Bryan Re: FLU 1224 Kinnear Rd, Columbus, Ohio 43212
- * 
+ *
  ***************************************************************/
 
 
-char * monalisa_xpm[] = {
+const char * monalisa_xpm[] = {
 "17 21 212 2",
 "  	c None",
 ". 	c #565A2E",
@@ -248,7 +248,7 @@ char * monalisa_xpm[] = {
 ".+.+N.,+Z.'+)+!+~+b.Z.{+U.S.%+.+]+",
 ";+S.;+.+| ^+/+~+(+_+}.}.P.#+#+V.:+"};
 
-char * filedetails_xpm[] = {
+const char * filedetails_xpm[] = {
 "21 21 42 1",
 " 	c None",
 ".	c #000000",
@@ -314,7 +314,7 @@ char * filedetails_xpm[] = {
 "                     ",
 "                     "};
 
-char * filelist_xpm[] = {
+const char * filelist_xpm[] = {
 "21 21 39 1",
 " 	c None",
 ".	c #000000",
@@ -377,7 +377,7 @@ char * filelist_xpm[] = {
 "                     ",
 "                     "};
 
-char * filelistwide_xpm[] = {
+const char * filelistwide_xpm[] = {
 "21 21 39 1",
 " 	c None",
 ".	c #000000",
@@ -442,7 +442,7 @@ char * filelistwide_xpm[] = {
 
 // this xpm is a modification of the KDE home desktop icon
 /* XPM */
-char * bighome_xpm[] = {
+const char * bighome_xpm[] = {
 "44 44 98 2",
 "  	c None",
 ". 	c #32363A",
@@ -588,7 +588,7 @@ char * bighome_xpm[] = {
 "                                                                                        "};
 
 /*
-char * bighome_xpm[] = {
+const char * bighome_xpm[] = {
 "44 44 250 2",
 "  	c None",
 ". 	c #1262C2",
@@ -886,7 +886,7 @@ char * bighome_xpm[] = {
 "                                                                                        "};
 */
 
-char * folder_favorite_xpm[] = {
+const char * folder_favorite_xpm[] = {
 "20 20 78 1",
 " 	c None",
 ".	c #444444",
@@ -987,7 +987,7 @@ char * folder_favorite_xpm[] = {
 "                    ",
 "                    "};
 
-char * bigfavorites_xpm[] = {
+const char * bigfavorites_xpm[] = {
 "44 44 263 2",
 "  	c None",
 ". 	c #DB4848",
@@ -1297,7 +1297,7 @@ char * bigfavorites_xpm[] = {
 "                                                                                        ",
 "                                                                                        "};
 
-char * desktop_xpm[] = {
+const char * desktop_xpm[] = {
 "46 37 247 2",
 "  	c None",
 ". 	c #262626",
@@ -1584,7 +1584,7 @@ char * desktop_xpm[] = {
 ". x+v+&+v+v+4+v+v+*+*+*+v+v+@.v+@.v+@.v+w+v+v+v+v+v+v+w+v+v+v+v+v+v+v+w+v+v+w+v+v+v+v+v+v+. ",
 ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . "};
 
-char * bigtemporary_xpm[] = {
+const char * bigtemporary_xpm[] = {
 "44 44 124 2",
 "  	c None",
 ". 	c #726242",
@@ -1755,7 +1755,7 @@ char * bigtemporary_xpm[] = {
 "                                                                                        ",
 "                                                                                        "};
 
-char * bigdocuments_xpm[] = {
+const char * bigdocuments_xpm[] = {
 "44 44 173 2",
 "  	c None",
 ". 	c #746242",
@@ -1975,7 +1975,7 @@ char * bigdocuments_xpm[] = {
 "                                                                                        ",
 "                                                                                        "};
 
-char * mini_folder_favorites_xpm[] = {
+const char * mini_folder_favorites_xpm[] = {
 "20 16 36 1",
 " 	c None",
 ".	c #A68A5E",
@@ -2030,7 +2030,7 @@ char * mini_folder_favorites_xpm[] = {
 "                    ",
 "                    "};
 
-char * mini_desktop_xpm[] = {
+const char * mini_desktop_xpm[] = {
 "20 16 284 2",
 "  	c None",
 ". 	c #666F7B",
@@ -2333,7 +2333,7 @@ char * mini_desktop_xpm[] = {
 "+   J+K+L+M+N+O+P+Q+R+S+T+U+V+W+X+Y+  + ",
 "+ +   Z+`+ @.@+@@@#@$@%@#@$@%@&@&@  + + "};
 
-char * my_computer_xpm[] = {
+const char * my_computer_xpm[] = {
 "44 32 101 2",
 "  	c None",
 ". 	c #1C2028",
