@@ -67,7 +67,8 @@ void stlExporter_c::open(const char * name) {
     int pos = 0;
 
     for (int i = 0; i < 84; i++) {
-      fwrite(title+pos, 1, 1, f);
+      if (fwrite(title+pos, 1, 1, f) != 1)
+        throw stlException_c("Could not write to file");
       if (title[pos]) pos++;
     }
 
@@ -90,7 +91,8 @@ void stlExporter_c::close(void) {
 
     // write out the triangle count into the header
     fseek(f, 80, SEEK_SET);
-    fwrite(&triangleCount, 1, 4, f);
+    if (fwrite(&triangleCount, 1, 4, f) != 1)
+      throw stlException_c("Could not write to file");
 
   } else {
 
@@ -141,25 +143,31 @@ void stlExporter_c::outTriangle(
 
     float d;
 
+    bool wrOk = true;
+
     if (nx*(xp-sx)+ny*(yp-sy)+nz*(zp-sz) > 0) {
 
-      d = -nx; fwrite(&d, 1, 4, f); d = -ny; fwrite(&d, 1, 4, f); d = -nz; fwrite(&d, 1, 4, f);
-      d = x1; fwrite(&d, 1, 4, f); d = y1; fwrite(&d, 1, 4, f); d = z1; fwrite(&d, 1, 4, f);
-      d = x3; fwrite(&d, 1, 4, f); d = y3; fwrite(&d, 1, 4, f); d = z3; fwrite(&d, 1, 4, f);
-      d = x2; fwrite(&d, 1, 4, f); d = y2; fwrite(&d, 1, 4, f); d = z2; fwrite(&d, 1, 4, f);
+      d = -nx; wrOk &= fwrite(&d, 1, 4, f) == 1; d = -ny; wrOk &= fwrite(&d, 1, 4, f) ==1; d = -nz; wrOk &= fwrite(&d, 1, 4, f) == 1;
+      d = x1; wrOk &= fwrite(&d, 1, 4, f); d = y1; wrOk &= fwrite(&d, 1, 4, f); d = z1; wrOk &= fwrite(&d, 1, 4, f);
+      d = x3; wrOk &= fwrite(&d, 1, 4, f); d = y3; wrOk &= fwrite(&d, 1, 4, f); d = z3; wrOk &= fwrite(&d, 1, 4, f);
+      d = x2; wrOk &= fwrite(&d, 1, 4, f); d = y2; wrOk &= fwrite(&d, 1, 4, f); d = z2; wrOk &= fwrite(&d, 1, 4, f);
 
     } else {
 
-      d = nx; fwrite(&d, 1, 4, f); d = ny; fwrite(&d, 1, 4, f); d = nz; fwrite(&d, 1, 4, f);
-      d = x1; fwrite(&d, 1, 4, f); d = y1; fwrite(&d, 1, 4, f); d = z1; fwrite(&d, 1, 4, f);
-      d = x2; fwrite(&d, 1, 4, f); d = y2; fwrite(&d, 1, 4, f); d = z2; fwrite(&d, 1, 4, f);
-      d = x3; fwrite(&d, 1, 4, f); d = y3; fwrite(&d, 1, 4, f); d = z3; fwrite(&d, 1, 4, f);
+      d = nx; wrOk &= fwrite(&d, 1, 4, f); d = ny; wrOk &= fwrite(&d, 1, 4, f); d = nz; wrOk &= fwrite(&d, 1, 4, f);
+      d = x1; wrOk &= fwrite(&d, 1, 4, f); d = y1; wrOk &= fwrite(&d, 1, 4, f); d = z1; wrOk &= fwrite(&d, 1, 4, f);
+      d = x2; wrOk &= fwrite(&d, 1, 4, f); d = y2; wrOk &= fwrite(&d, 1, 4, f); d = z2; wrOk &= fwrite(&d, 1, 4, f);
+      d = x3; wrOk &= fwrite(&d, 1, 4, f); d = y3; wrOk &= fwrite(&d, 1, 4, f); d = z3; wrOk &= fwrite(&d, 1, 4, f);
 
     }
 
+    if (!wrOk)
+      throw stlException_c("Could not write to file");
+
     // attribute
     int i = 0;
-    fwrite(&i, 1, 2, f);
+    if (fwrite(&i, 1, 2, f) != 1)
+      throw stlException_c("Could not write to file");
 
     triangleCount++;
 
