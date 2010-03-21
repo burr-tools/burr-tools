@@ -184,7 +184,7 @@ bool voxel_4_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, in
  * the first thing is to find out on which side of each plane a voxel is
  * and then use the same planes scaled up for the upscaled space.
  */
-void voxel_4_c::scale(unsigned int amount, bool grid) {
+void voxel_4_c::scale(unsigned int amount, bool /*grid*/) {
 
   /* the coordinates of the valid voxels */
   static int voxelCoords[2][5][3] = {

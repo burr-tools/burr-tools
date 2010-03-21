@@ -209,15 +209,15 @@ void voxel_0_c::scale(unsigned int amount, bool grid)
               {
                 if (!isEmpty(x, y, z) &&
                       (
-                        ax == 0        && isEmpty2(x-1, y, z) ||
-                        ax == amount-1 && isEmpty2(x+1, y, z) ||
-                        ay == 0        && isEmpty2(x, y-1, z) ||
-                        ay == amount-1 && isEmpty2(x, y+1, z) ||
-                        az == 0        && isEmpty2(x, y, z-1) ||
-                        az == amount-1 && isEmpty2(x, y, z+1) ||
-                        (ax == 0 || ax == amount-1) && (ay == 0 || ay == amount-1 || az == 0 || az == amount-1) ||
-                        (ay == 0 || ay == amount-1) && (ax == 0 || ax == amount-1 || az == 0 || az == amount-1) ||
-                        (az == 0 || az == amount-1) && (ax == 0 || ax == amount-1 || ay == 0 || ay == amount-1)
+                        (ax == 0        && isEmpty2(x-1, y, z)) ||
+                        (ax == amount-1 && isEmpty2(x+1, y, z)) ||
+                        (ay == 0        && isEmpty2(x, y-1, z)) ||
+                        (ay == amount-1 && isEmpty2(x, y+1, z)) ||
+                        (az == 0        && isEmpty2(x, y, z-1)) ||
+                        (az == amount-1 && isEmpty2(x, y, z+1)) ||
+                        ((ax == 0 || ax == amount-1) && (ay == 0 || ay == amount-1 || az == 0 || az == amount-1)) ||
+                        ((ay == 0 || ay == amount-1) && (ax == 0 || ax == amount-1 || az == 0 || az == amount-1)) ||
+                        ((az == 0 || az == amount-1) && (ax == 0 || ax == amount-1 || ay == 0 || ay == amount-1))
                       )
                    )
 

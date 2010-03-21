@@ -330,23 +330,29 @@ void voxel_1_c::scale(unsigned int amount, bool grid)
               }
               else
               {
-                if ((az == 0 || az == amount-1) && (ay == 0 || ay == ax || ay+1 == ax || ay == 2*amount-2-ax || ay == 2*amount-3-ax)
+                if (((az == 0 || az == amount-1) && (ay == 0 || ay == ax || ay+1 == ax || ay == 2*amount-2-ax || ay == 2*amount-3-ax))
                     || (ax == 0 && ay == 0) || (ax == amount-1 && ay == amount-1) || (ax == 2*amount-2 && ay == 0)
-                    || az == 0        && isEmpty2(x, y, z-1)
-                    || az == amount-1 && isEmpty2(x, y, z+1)
-                    || ay == 0        && (((x+y) & 1) == 0 && isEmpty2(x, y-1, z) || ((x+y) & 1) == 1 && isEmpty2(x, y+1, z))
-                    || (ay == ax || ay+1 == ax) && isEmpty2(x-1, y, z)
-                    || (ay == 2*amount-2-ax || ay == 2*amount-3-ax) && isEmpty2(x+1, y, z)
+                    || (az == 0        && isEmpty2(x, y, z-1))
+                    || (az == amount-1 && isEmpty2(x, y, z+1))
+                    || (ay == 0        && (((x+y) & 1) == 0 && isEmpty2(x, y-1, z) || ((x+y) & 1) == 1 && isEmpty2(x, y+1, z)))
+                    || ((ay == ax || ay+1 == ax) && isEmpty2(x-1, y, z))
+                    || ((ay == 2*amount-2-ax || ay == 2*amount-3-ax) && isEmpty2(x+1, y, z))
                    )
                   value = get(x, y, z);
                 else
                   value = 0;
               }
               if ((ay <= ax) && (ay < 2*amount-1-ax))
+              {
                 if (((x+y) & 1) == 0)
+                {
                   s2[(x*amount+ax) + nsx * ((y*amount+ay) + nsy * (z*amount+az))] = value;
+                }
                 else
+                {
                   s2[(x*amount+ax) + nsx * ((y*amount+amount-1-ay) + nsy * (z*amount+az))] = value;
+                }
+              }
             }
 
   delete [] space;
