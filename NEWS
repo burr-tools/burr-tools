@@ -1,10 +1,10 @@
 ------------- Version 0.5.2 Oct 2009
 
+- spheres can now be hollow with a hole to the outside (thanks to George Bell)
 - new feature in movement browser: push and pull pieces by clicking tonto them
   (thanks to Barry Downes)
 - fix an STL export bug resulting in somtimes double face output
 - fix a bug in the assembly import that made sphere amost always crash the program
-- add the possibility in the movement browser to push and pull pieces by clicking onto them
 
 ------------- Version 0.5.1 Apr 2009
 
