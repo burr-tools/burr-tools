@@ -17,7 +17,6 @@
  */
 #include "voxel_1.h"
 
-#include <string.h>
 #include <math.h>
 
 void voxel_1_c::minimizePiece(void) {
