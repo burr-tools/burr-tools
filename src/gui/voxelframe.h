@@ -32,7 +32,7 @@ class assembly_c;
 class piecePositions_c;
 class voxelDrawer_c;
 
-class arcBall_c;
+class rotater_c;
 
 /* this callback class defines 2 functions that are called, when
  * the draw function is called in VoxelView
@@ -139,6 +139,8 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     void exportToVector(const char * fname, VectorFiletype vt);
 
+    void setRotaterMethod(int method);
+
   private:
 
     voxelDrawer_c * drawer;
@@ -191,7 +193,8 @@ class voxelFrame_c : public Fl_Gl_Window {
     int mX1, mY1, mZ, mX2, mY2;
     int markerType;
 
-    arcBall_c * arcBall;
+    rotater_c * rotater;
+    int rotMethod;
     double size;
 
     VoxelViewCallbacks * cb;

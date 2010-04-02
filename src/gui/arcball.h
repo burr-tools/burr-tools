@@ -18,6 +18,34 @@
 #ifndef __ARCBALL_H__
 #define __ARCBALL_H__
 
+class rotater_c {
+  public:
+    /**
+     * change the size of the area where the mouse can move to
+     */
+    virtual void setBounds(float NewWidth, float NewHeight) = 0;
+
+    /**
+     * the mouse starts to drag, give the position of the cursor
+     */
+    virtual void click(float x, float y) = 0;
+
+    /**
+     * end the mouse dragging at the given position
+     */
+    virtual void clack(float x, float y) = 0;
+
+    /**
+     * update the position of the mouse cursor, while dragging is active
+     */
+    virtual void drag(float x, float y) = 0;
+
+    /**
+     * adds the current arcball transformation to the OpenGL transformation matrix
+     */
+    virtual void addTransform(void) const = 0;
+};
+
 /**
  * This class provides an implementation of an arcball. The mathematics of this is beyond me.
  * Arcball is an algorithm that allows you to meaningful rotate objects by dragging them.
@@ -27,7 +55,7 @@
  * The class needs to know the size of the area where you can drag, so that it can make sense
  * out of the given mouse positions. The rest of the handling is basic
  */
-class arcBall_c {
+class arcBall_c : public rotater_c {
 
 protected:
   void mapToSphere(float x, float y, float NewVec[3]) const;
@@ -74,6 +102,36 @@ protected:
   float LastRot[9];
 
   bool mouseDown;
+};
+
+// another way to rotate an object, the code for this method has been
+// taken from the GL viewer class of the FOX-Toolkit library and
+// adapted for usage in here...
+class method2_c : public rotater_c {
+
+    float AdjustWidth;       //Mouse bounds width
+    float AdjustHeight;      //Mouse bounds height
+
+    float rotation[4];
+
+    float last_x, last_y;
+
+    bool mouseDown;
+
+  public:
+
+    method2_c(float NewWidth, float NewHeight);
+
+    void setBounds(float NewWidth, float NewHeight);
+    void click(float x, float y);
+    void clack(float x, float y);
+    void drag(float x, float y);
+    void addTransform(void) const;
+
+  private:
+
+    void spherePoint(float px, float py, float v[3]);
+
 };
 
 #endif

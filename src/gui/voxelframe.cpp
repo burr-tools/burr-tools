@@ -44,13 +44,31 @@ voxelFrame_c::voxelFrame_c(int x,int y,int w,int h) :
   drawer(0),
   curAssembly(0),
   markerType(-1),
-  arcBall(new arcBall_c(w, h)),
   size(10), cb(0),
   colors(pieceColor),
   _useLightning(true),
   pickx(-1)
 {
+  if (config.rotationMethod() == 0)
+    rotater = new arcBall_c(w, h);
+  else
+    rotater = new method2_c(w, h);
+  rotMethod = config.rotationMethod();
 };
+
+void voxelFrame_c::setRotaterMethod(int method)
+{
+  if (method == rotMethod) return;
+
+  delete rotater;
+
+  if (method == 0)
+    rotater = new arcBall_c(w(), h());
+  else
+    rotater = new method2_c(w(), h());
+
+  rotMethod = method;
+}
 
 voxelFrame_c::~voxelFrame_c(void) {
   clearSpaces();
@@ -58,7 +76,7 @@ voxelFrame_c::~voxelFrame_c(void) {
     delete curAssembly;
     curAssembly = 0;
   }
-  delete arcBall;
+  delete rotater;
   if (drawer) delete drawer;
 }
 
@@ -101,7 +119,7 @@ void voxelFrame_c::drawVoxelSpace() {
                      shapes[piece].y,
                      shapes[piece].z);
         glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
-        arcBall->addTransform();
+        rotater->addTransform();
         {
           float cx, cy, cz;
           drawer->calculateSize(shapes[piece].shape, &cx, &cy, &cz);
@@ -109,7 +127,7 @@ void voxelFrame_c::drawVoxelSpace() {
         }
         break;
       case TranslateRoateScale:
-        arcBall->addTransform();
+        rotater->addTransform();
         glTranslatef(shapes[piece].x,
                      shapes[piece].y,
                      shapes[piece].z);
@@ -121,7 +139,7 @@ void voxelFrame_c::drawVoxelSpace() {
         glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
         break;
       case CenterTranslateRoateScale:
-        arcBall->addTransform();
+        rotater->addTransform();
         glTranslatef(shapes[piece].x - hx,
                      shapes[piece].y - hy,
                      shapes[piece].z - hz);
@@ -946,7 +964,7 @@ void voxelFrame_c::draw() {
 
     glEnable(GL_RESCALE_NORMAL);
 
-    arcBall->setBounds(w(), h());
+    rotater->setBounds(w(), h());
 
     unsigned char r, g, b;
     Fl::get_color(color(), r, g, b);
@@ -1040,14 +1058,15 @@ int voxelFrame_c::handle(int event) {
   case FL_PUSH:
 
     if (!Fl::event_state(FL_SHIFT | FL_ALT | FL_CTRL))
-      arcBall->click(Fl::event_x(), Fl::event_y());
+      rotater->click(Fl::event_x(), Fl::event_y());
 
     do_callback();
 
     return 1;
 
   case FL_DRAG:
-    arcBall->drag(Fl::event_x(), Fl::event_y());
+
+    rotater->drag(Fl::event_x(), Fl::event_y());
     redraw();
 
     do_callback();
@@ -1056,7 +1075,8 @@ int voxelFrame_c::handle(int event) {
 
   case FL_RELEASE:
 
-    arcBall->clack(Fl::event_x(), Fl::event_y());
+    rotater->clack(Fl::event_x(), Fl::event_y());
+    redraw();
 
     return 1;
   }

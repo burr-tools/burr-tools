@@ -3706,6 +3706,7 @@ void mainWindow_c::activateConfigOptions(void) {
     Fl_Tooltip::disable();
 
   View3D->useLightning(config.useLightning());
+  View3D->getView()->setRotaterMethod(config.rotationMethod());
 }
 
 mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {

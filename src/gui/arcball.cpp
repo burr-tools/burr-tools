@@ -49,7 +49,7 @@ static GLfloat Vector3fDot(const float a[3], const float b[3])
  */
 static float Vector3fLength(const float a[3])
 {
-  return sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2]);
+  return sqrtf(a[0]*a[0] + a[1]*a[1] + a[2]*a[2]);
 }
 
 /**
@@ -293,3 +293,237 @@ void arcBall_c::addTransform(void) const {
 
   glMultMatrixf(Transform);                                       // NEW: Apply Dynamic Transform
 }
+
+
+
+
+method2_c::method2_c(float NewWidth, float NewHeight) : AdjustWidth(NewWidth), AdjustHeight(NewHeight), mouseDown(false)
+{
+  rotation[0] = 0;
+  rotation[1] = 0;
+  rotation[2] = 0;
+  rotation[3] = 1;
+}
+
+void method2_c::setBounds(float NewWidth, float NewHeight)
+{
+  AdjustWidth = NewWidth;
+  AdjustHeight = NewHeight;
+}
+
+void method2_c::click(float x, float y)
+{
+  last_x = x;
+  last_y = y;
+
+  mouseDown = true;
+}
+
+void method2_c::clack(float x, float y)
+{
+  drag(x, y);
+  mouseDown = false;
+}
+
+
+
+void method2_c::spherePoint(float px, float py, float v[3])
+{
+  float screenmin;
+
+  if (AdjustWidth > AdjustHeight)
+  {
+    screenmin = AdjustHeight;
+  }
+  else
+  {
+    screenmin = AdjustWidth;
+  }
+
+  v[0] = 2.0*(px-0.5*AdjustWidth)/screenmin;
+  v[1] = 2.0*(0.5*AdjustHeight-py)/screenmin;
+  float d = v[0]*v[0]+v[1]*v[1];
+
+  if (d < 0.75)
+  {
+    v[2] = sqrt(1.0-d);
+  }
+  else if (d < 3.0)
+  {
+    d = sqrt(3) - sqrt(d);
+    float t = 1.0f - d*d;
+    if (t < 0)
+      t = 0.0f;
+
+    v[2]= 1.0f - sqrt(t);
+  }
+  else
+  {
+    v[2] = 0;
+  }
+
+  float l = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+  l = 1.0f/sqrt(l);
+
+  v[0] *= l;
+  v[1] *= l;
+  v[2] *= l;
+}
+
+
+
+
+void method2_c::drag(float x, float y)
+{
+  if (!mouseDown) return;
+
+  float v1[3], v2[3];
+
+  spherePoint(last_x, last_y, v1);
+  spherePoint(x, y, v2);
+
+  float q[4];
+
+  float dot = Vector3fDot(v1, v2);
+
+  if(dot > 0.999999f)
+  {
+    q[0] = 0.0f;
+    q[1] = 0.0f;
+    q[2] = 0.0f;
+    q[3] = 1.0f;
+  }
+  else if (dot < -0.999999f)
+  {
+    q[0] = 0.0f;
+    q[1] = 0.0f;
+    q[2] = -1.0f;
+    q[3] = 0.0f;
+  }
+  else
+  {
+    float div = sqrtf((dot+1.0f)*2.0f);
+    q[0] = (v1[1]*v2[2]-v1[2]*v2[1])/div;
+    q[1] = (v1[2]*v2[0]-v1[0]*v2[2])/div;
+    q[2] = (v1[0]*v2[1]-v1[1]*v2[0])/div;
+    q[3] = div*0.5f;
+  }
+
+  float p[4];
+
+  p[0] = q[3]*rotation[0]+q[0]*rotation[3]+q[1]*rotation[2]-q[2]*rotation[1];
+  p[1] = q[3]*rotation[1]+q[1]*rotation[3]+q[2]*rotation[0]-q[0]*rotation[2];
+  p[2] = q[3]*rotation[2]+q[2]*rotation[3]+q[0]*rotation[1]-q[1]*rotation[0];
+  p[3] = q[3]*rotation[3]-q[0]*rotation[0]-q[1]*rotation[1]-q[2]*rotation[2];
+
+  rotation[0] = p[0];
+  rotation[1] = p[1];
+  rotation[2] = p[2];
+  rotation[3] = p[3];
+
+  float t=rotation[0]*rotation[0]+rotation[1]*rotation[1]+rotation[2]*rotation[2]+rotation[3]*rotation[3];
+
+  if (t > 0.0f)
+  {
+    float f = 1.0f/sqrtf(t);
+    rotation[0] *= f;
+    rotation[1] *= f;
+    rotation[2] *= f;
+    rotation[3] *= f;
+  }
+
+  last_x = x;
+  last_y = y;
+}
+
+void method2_c::addTransform(void) const
+{
+  /* this is the original code, but as we always
+   * multiply with the unit matrix, we can optimize
+   *
+  GLfloat r[3][3];
+
+  GLfloat tx=2.0*rotation[0];
+  GLfloat ty=2.0*rotation[1];
+  GLfloat tz=2.0*rotation[2];
+  GLfloat twx=tx*rotation[3];
+  GLfloat twy=ty*rotation[3];
+  GLfloat twz=tz*rotation[3];
+  GLfloat txx=tx*rotation[0];
+  GLfloat txy=ty*rotation[0];
+  GLfloat txz=tz*rotation[0];
+  GLfloat tyy=ty*rotation[1];
+  GLfloat tyz=tz*rotation[1];
+  GLfloat tzz=tz*rotation[2];
+
+  r[0][0]=1.0-tyy-tzz;
+  r[0][1]=txy+twz;
+  r[0][2]=txz-twy;
+  r[1][0]=txy-twz;
+  r[1][1]=1.0-txx-tzz;
+  r[1][2]=tyz+twx;
+  r[2][0]=txz+twy;
+  r[2][1]=tyz-twx;
+  r[2][2]=1.0-txx-tyy;
+
+
+  GLfloat m[16];
+
+  m[ 0] = 1; m[ 1] = 0; m[ 2] = 0; m[ 3] = 0;
+  m[ 4] = 0; m[ 5] = 1; m[ 6] = 0; m[ 7] = 0;
+  m[ 8] = 0; m[ 9] = 0; m[10] = 1; m[11] = 0;
+  m[12] = 0; m[13] = 0; m[14] = 0; m[15] = 1;
+
+  x=m[0]; y=m[4]; z=m[8];
+  m[ 0]=x*r[0][0]+y*r[0][1]+z*r[0][2];
+  m[ 4]=x*r[1][0]+y*r[1][1]+z*r[1][2];
+  m[ 8]=x*r[2][0]+y*r[2][1]+z*r[2][2];
+  x=m[1]; y=m[5]; z=m[9];
+  m[ 1]=x*r[0][0]+y*r[0][1]+z*r[0][2];
+  m[ 5]=x*r[1][0]+y*r[1][1]+z*r[1][2];
+  m[ 9]=x*r[2][0]+y*r[2][1]+z*r[2][2];
+  x=m[2]; y=m[6]; z=m[10];
+  m[ 2]=x*r[0][0]+y*r[0][1]+z*r[0][2];
+  m[ 6]=x*r[1][0]+y*r[1][1]+z*r[1][2];
+  m[10]=x*r[2][0]+y*r[2][1]+z*r[2][2];
+  x=m[3]; y=m[7]; z=m[11];
+  m[ 3]=x*r[0][0]+y*r[0][1]+z*r[0][2];
+  m[ 7]=x*r[1][0]+y*r[1][1]+z*r[1][2];
+  m[11]=x*r[2][0]+y*r[2][1]+z*r[2][2];
+  */
+
+  GLfloat tx = 2.0*rotation[0];
+  GLfloat ty = 2.0*rotation[1];
+  GLfloat tz = 2.0*rotation[2];
+  GLfloat twx = tx*rotation[3];
+  GLfloat twy = ty*rotation[3];
+  GLfloat twz = tz*rotation[3];
+  GLfloat txx = tx*rotation[0];
+  GLfloat txy = ty*rotation[0];
+  GLfloat txz = tz*rotation[0];
+  GLfloat tyy = ty*rotation[1];
+  GLfloat tyz = tz*rotation[1];
+  GLfloat tzz = tz*rotation[2];
+
+  GLfloat m[16];
+
+  m[ 0] = 1.0-tyy-tzz;
+  m[ 1] = txy+twz;
+  m[ 2] = txz-twy;
+  m[ 3] = 0;
+  m[ 4] = txy-twz;
+  m[ 5] = 1.0-txx-tzz;
+  m[ 6] = tyz+twx;
+  m[ 7] = 0;
+  m[ 8] = txz+twy;
+  m[ 9] = tyz-twx;
+  m[10] = 1.0-txx-tyy;
+  m[11] = 0;
+  m[12] = 0;
+  m[13] = 0;
+  m[14] = 0;
+  m[15] = 1;
+
+  glMultMatrixf(m);
+}
+
