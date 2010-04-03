@@ -326,6 +326,8 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
                 (*parts.rbegin())->addGroup(grp, cnt);
               }
 
+              pars.skipSubTree();
+
             } while (true);
           }
         }

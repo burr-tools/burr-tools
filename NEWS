@@ -1,3 +1,5 @@
+- fix a problem loading puzzle files with complex groups
+
 ------------- Version 0.5.2 Oct 2009
 
 - spheres can now be hollow with a hole to the outside (thanks to George Bell)
