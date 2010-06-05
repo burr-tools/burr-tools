@@ -19,6 +19,7 @@
 
 #include "voxel.h"
 
+#include "../halfedge/polyhedron.h"
 #include "../halfedge/modifiers.h"
 
 #define Epsilon 1.0e-5
@@ -40,6 +41,20 @@ Polyhedron * stlExporter_0_c::getMesh(const voxel_c & v) const
 
   scalePolyhedron(*poly, cube_scale);
 
+  if (hole > Epsilon)
+  {
+    // TODO when wall thickness is too big, skip this and make the shape solid
+    // problem is how to fins out when it becomes too big
+
+    Polyhedron * holePoly = v.getMesh(0, (hole+shrink)/cube_scale);
+
+    scalePolyhedron(*holePoly, cube_scale);
+
+    joinPolyhedronInverse(*poly, *holePoly);
+
+    delete holePoly;
+  }
+
   return poly;
 }
 
@@ -51,7 +66,7 @@ const char * stlExporter_0_c::getParameterName(unsigned int idx) const
     case 0: return "Unit Size";
     case 1: return "Bevel";
     case 2: return "Offset";
-    case 3: return "Hole Size";
+    case 3: return "Wall Thickness";
     case 4: return "Leave inside grooves";
     case 5: return "Leave outside grooved";
     default: return 0;
@@ -93,7 +108,7 @@ const char * stlExporter_0_c::getParameterTooltip(unsigned int idx) const
     case 0: return " Basic unit size of the voxel ";
     case 1: return " Size of the bevel at the edges ";
     case 2: return " By how much should faces be inset into the voxel ";
-    case 3: return " Size of the void inside of the pieces that are used to save volume ";
+    case 3: return " Thickness of the wall, 0 means the piece is completely filled ";
     case 4: return " Leave the construction grooves on the inside of the generated shape ";
     case 5: return " Leave the construction grooves on the outside of the generated shape ";
 

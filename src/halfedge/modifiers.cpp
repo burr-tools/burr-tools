@@ -7,14 +7,6 @@
 using namespace std;
 #define Epsilon 1.0e-5
 
-void bevelPolyhedron(Polyhedron & poly, float val)
-{
-}
-
-void offsetPolyhedron(Polyhedron & poly, float val)
-{
-}
-
 #ifdef DEBUG
 void dumpVerts(Polyhedron &poly)
 {
@@ -390,5 +382,32 @@ void scalePolyhedron(Polyhedron & poly, float val)
    {
       (*it)->position((*it)->position()*val);
    }
+}
+
+void joinPolyhedronInverse(Polyhedron & poly, const Polyhedron & inv)
+{
+  int vertexOffset = poly.numVertices();
+
+  for (int i = 0; i < inv.numVertices(); i++)
+  {
+    poly.addVertex(inv.vertex(i)->position());
+  }
+
+  for (Polyhedron::const_face_iterator fit = inv.fBegin(); fit != inv.fEnd(); ++fit)
+  {
+    Face::const_edge_circulator ei = (*fit)->begin();
+    Face::const_edge_circulator sentinel=ei;
+
+    std::vector<int> corners;
+
+    do
+    {
+      corners.insert(corners.begin(), vertexOffset + (*ei)->src()->index());
+      ei++;
+    }
+    while (ei != sentinel);
+
+    poly.addFace(corners);
+  }
 }
 
