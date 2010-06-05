@@ -18,6 +18,9 @@
 #ifndef __ARCBALL_H__
 #define __ARCBALL_H__
 
+/* base class for all classes that allow rotating objects by
+ * dragging a point on screen
+ */
 class rotater_c {
   public:
     /**
@@ -47,7 +50,7 @@ class rotater_c {
 };
 
 /**
- * This class provides an implementation of an arcball. The mathematics of this is beyond me.
+ * This class provides an implementation of an arcball. The mathematics of this is explained within the code
  * Arcball is an algorithm that allows you to meaningful rotate objects by dragging them.
  * The problem normally is that you must rotate the objects differently depending on their
  * current rotation, when you want to drag them. This is handled in here.
@@ -55,53 +58,38 @@ class rotater_c {
  * The class needs to know the size of the area where you can drag, so that it can make sense
  * out of the given mouse positions. The rest of the handling is basic
  */
-class arcBall_c : public rotater_c {
+class arcBall_c : public rotater_c
+{
 
-protected:
-  void mapToSphere(float x, float y, float NewVec[3]) const;
-  void getDrag(float NewRot[4]) const;
+  private:
 
-public:
-  /**
-   * create arcball class with an initial size for the drag area
-   */
-  arcBall_c(float NewWidth, float NewHeight);
+    void mapToSphere(float x, float y, float NewVec[3]) const;
+    void getDrag(float NewRot[4]) const;
 
-  /**
-   * change the size of the area where the mouse can move to
-   */
-  void setBounds(float NewWidth, float NewHeight);
+  public:
 
-  /**
-   * the mouse starts to drag, give the position of the cursor
-   */
-  void click(float x, float y);
+    /**
+     * create arcball class with an initial size for the drag area
+     */
+    arcBall_c(float NewWidth, float NewHeight);
 
-  /**
-   * end the mouse dragging at the given position
-   */
-  void clack(float x, float y);
+    void setBounds(float NewWidth, float NewHeight);
+    void click(float x, float y);
+    void clack(float x, float y);
+    void drag(float x, float y);
+    void addTransform(void) const;
 
-  /**
-   * update the position of the mouse cursor, while dragging is active
-   */
-  void drag(float x, float y);
+  private:
 
-  /**
-   * adds the current arcball transformation to the OpenGL transformation matrix
-   */
-  void addTransform(void) const;
+    float AdjustWidth;       //Mouse bounds width
+    float AdjustHeight;      //Mouse bounds height
 
-protected:
-  float AdjustWidth;       //Mouse bounds width
-  float AdjustHeight;      //Mouse bounds height
+    float StVec[3];          //Saved click vector
+    float EnVec[3];          //Saved drag vector
 
-  float StVec[3];          //Saved click vector
-  float EnVec[3];          //Saved drag vector
+    float LastRot[9];
 
-  float LastRot[9];
-
-  bool mouseDown;
+    bool mouseDown;
 };
 
 // another way to rotate an object, the code for this method has been

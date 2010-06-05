@@ -22,6 +22,25 @@
 
 #include <FL/gl.h>
 
+/* The idea behind this is similar for both methods identical
+ *
+ * They put a virtual sphere onto the center of the screen area. The sphere is
+ * as big as the 3D area allows (that is why we need to know about the area size
+ *
+ * When dragging between 2 points the following happens:
+ * 1) the start and end point are "projected" onto the sphere. We find out where on
+ *    the sphere we are (x, y and z) if we are not on the sphere we try to do something
+ *    sensible (this is different for the 2 methods)
+ * 2) we then draw an arc between these 2 points and and rotate the object around this
+ *    arc. This is done by calculating 2 vectors to the center of the sphere. With those
+ *    we calculate the rotation axis as the orthogonal vector to those 2 vectors using the
+ *    cross product. The rotation angle is the angle between those 2 vectors
+ *
+ * internally quaternions are used to handle the rotation. A quaternion contains the
+ * rotation axis in its first 3 values and the angle in the 4th value. It is relatively
+ * easy to connect 2 quaternions and also to find the rotation matrix from a quaternion
+ */
+
 #define Epsilon 1.0e-5
 
 /**
@@ -53,7 +72,7 @@ static float Vector3fLength(const float a[3])
 }
 
 /**
- * Sets the value of this matrix to the matrix conversion of the
+ * Sets the value of this matrix to rotation matrix of the
  * quaternion argument.
  * @param q1 the quaternion to be converted
  */
