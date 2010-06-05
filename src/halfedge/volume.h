@@ -15,26 +15,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#ifndef __VOXEL_DRAWER_3_H__
-#define __VOXEL_DRAWER_3_H__
+#ifndef __VOLUME_H__
+#define __VOLUME_H__
 
-#include "voxeldrawer_a.h"
+class Polyhedron;
 
-/* voxeldrawer for rhombic grid */
-class voxelDrawer_3_c : public voxelDrawer_a_c {
-
-  public:
-
-    voxelDrawer_3_c(void) {}
-
-    void calculateSize(const voxel_c * shape, float * x, float * y, float * z);
-    void recalcSpaceCoordinates(float * x, float * y, float * z);
-
-    bool getTetrahedron(int x, int y, int z,
-        int *x1, int *y1, int *z1,
-        int *x2, int *y2, int *z2,
-        int *x3, int *y3, int *z3,
-        int *x4, int *y4, int *z4);
-};
+float volume(const Polyhedron & poly);
 
 #endif

@@ -22,8 +22,6 @@
 
 class problem_c;
 
-class guiGridType_c;
-
 class LView3dGroup;
 
 class placementBrowser_c : public LFl_Double_Window {
@@ -40,7 +38,7 @@ class placementBrowser_c : public LFl_Double_Window {
 
 public:
 
-  placementBrowser_c(problem_c * p, const guiGridType_c * ggt);
+  placementBrowser_c(problem_c * p);
 
   int handle(int event);
 

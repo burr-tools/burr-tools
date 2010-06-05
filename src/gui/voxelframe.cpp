@@ -17,10 +17,10 @@
  */
 #include "voxelframe.h"
 #include "arcball.h"
-#include "voxeldrawer.h"
 
 #include "piececolor.h"
 #include "configuration.h"
+#include "grideditor.h"
 
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
@@ -28,6 +28,8 @@
 #include "../lib/assembly.h"
 #include "../lib/disasmtomoves.h"
 #include "../lib/solution.h"
+
+#include "../halfedge/polyhedron.h"
 
 #include <math.h>
 
@@ -41,7 +43,6 @@
 
 voxelFrame_c::voxelFrame_c(int x,int y,int w,int h) :
   Fl_Gl_Window(x,y,w,h),
-  drawer(0),
   curAssembly(0),
   markerType(-1),
   size(10), cb(0),
@@ -77,14 +78,333 @@ voxelFrame_c::~voxelFrame_c(void) {
     curAssembly = 0;
   }
   delete rotater;
-  if (drawer) delete drawer;
 }
 
-void voxelFrame_c::setDrawer(voxelDrawer_c * dr) {
-  if (drawer) delete drawer;
-  drawer = dr;
-  redraw();
+// this is used to shift one side of the cubes so that they slightly differ
+// from the side of the next cube, so that (in case of frames) the sides
+// are clearly separated and don't interlock when drawing
+#define MY 0.005f
+
+#define SHRINK 0.13
+
+/* draw a triangle, set the normal so that it is orthogonal and pointing away from p the triangle is
+ * shrunk so that a new smaller triangle whose sides are 0.2 units from the given one and also
+ * moved by MY to the outside along the normal */
+static void drawShrinkTriangle(float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3)
+{
+
+  float v1x = x2-x1;
+  float v1y = y2-y1;
+  float v1z = z2-z1;
+  float v2x = x3-x1;
+  float v2y = y3-y1;
+  float v2z = z3-z1;
+
+  float nx = v1y*v2z - v1z*v2y;
+  float ny = v1z*v2x - v1x*v2z;
+  float nz = v1x*v2y - v1y*v2x;
+
+  float l = sqrt(nx*nx+ny*ny+nz*nz);
+  nx /= l;
+  ny /= l;
+  nz /= l;
+
+  float c = sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
+  float b = sqrt((x3-x1)*(x3-x1)+(y3-y1)*(y3-y1)+(z3-z1)*(z3-z1));
+  float a = sqrt((x2-x3)*(x2-x3)+(y2-y3)*(y2-y3)+(z2-z3)*(z2-z3));
+
+  float cx = x1*a/(a+b+c) + x2*b/(a+b+c) + x3*c/(a+b+c);
+  float cy = y1*a/(a+b+c) + y2*b/(a+b+c) + y3*c/(a+b+c);
+  float cz = z1*a/(a+b+c) + z2*b/(a+b+c) + z3*c/(a+b+c);
+
+  float s = (a+b+c)/2;
+  float r = sqrt(((s-a)*(s-b)*(s-c))/s);
+
+  float p = (r-SHRINK)/r;
+
+  glVertex3f(cx+p*(x1-cx)+MY*nx, cy+p*(y1-cy)+MY*ny, cz+p*(z1-cz)+MY*nz);
+  glVertex3f(cx+p*(x2-cx)+MY*nx, cy+p*(y2-cy)+MY*ny, cz+p*(z2-cz)+MY*nz);
+  glVertex3f(cx+p*(x3-cx)+MY*nx, cy+p*(y3-cy)+MY*ny, cz+p*(z3-cz)+MY*nz);
 }
+
+static void drawShrinkQuadrilateral(float x1a, float y1a, float z1a, float x2a, float y2a, float z2a, float x3a, float y3a, float z3a, float x4a, float y4a, float z4a)
+{
+
+  float v1x = x2a-x1a;
+  float v1y = y2a-y1a;
+  float v1z = z2a-z1a;
+  float v2x = x3a-x1a;
+  float v2y = y3a-y1a;
+  float v2z = z3a-z1a;
+
+  float nx = v1y*v2z - v1z*v2y;
+  float ny = v1z*v2x - v1x*v2z;
+  float nz = v1x*v2y - v1y*v2x;
+
+  float l = sqrt(nx*nx+ny*ny+nz*nz);
+  nx /= l;
+  ny /= l;
+  nz /= l;
+
+  float x1, y1, z1, x2, y2, z2, x3, y3, z3;
+  float px1, py1, pz1, px2, py2, pz2, px3, py3, pz3, px4, py4, pz4;
+
+  {
+    x1 = x1a; y1 = y1a; z1 = z1a;
+    x2 = x2a; y2 = y2a; z2 = z2a;
+    x3 = x3a; y3 = y3a; z3 = z3a;
+
+    float c = sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
+    float b = sqrt((x3-x1)*(x3-x1)+(y3-y1)*(y3-y1)+(z3-z1)*(z3-z1));
+    float a = sqrt((x2-x3)*(x2-x3)+(y2-y3)*(y2-y3)+(z2-z3)*(z2-z3));
+
+    float cx = x1*a/(a+b+c) + x2*b/(a+b+c) + x3*c/(a+b+c);
+    float cy = y1*a/(a+b+c) + y2*b/(a+b+c) + y3*c/(a+b+c);
+    float cz = z1*a/(a+b+c) + z2*b/(a+b+c) + z3*c/(a+b+c);
+
+    float s = (a+b+c)/2;
+    float r = sqrt(((s-a)*(s-b)*(s-c))/s);
+
+    float p = (r-SHRINK)/r;
+
+    px2 = cx+p*(x2-cx)+MY*nx;
+    py2 = cy+p*(y2-cy)+MY*ny;
+    pz2 = cz+p*(z2-cz)+MY*nz;
+  }
+
+  {
+    x1 = x2a; y1 = y2a; z1 = z2a;
+    x2 = x3a; y2 = y3a; z2 = z3a;
+    x3 = x4a; y3 = y4a; z3 = z4a;
+
+    float c = sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
+    float b = sqrt((x3-x1)*(x3-x1)+(y3-y1)*(y3-y1)+(z3-z1)*(z3-z1));
+    float a = sqrt((x2-x3)*(x2-x3)+(y2-y3)*(y2-y3)+(z2-z3)*(z2-z3));
+
+    float cx = x1*a/(a+b+c) + x2*b/(a+b+c) + x3*c/(a+b+c);
+    float cy = y1*a/(a+b+c) + y2*b/(a+b+c) + y3*c/(a+b+c);
+    float cz = z1*a/(a+b+c) + z2*b/(a+b+c) + z3*c/(a+b+c);
+
+    float s = (a+b+c)/2;
+    float r = sqrt(((s-a)*(s-b)*(s-c))/s);
+
+    float p = (r-SHRINK)/r;
+
+    px3 = cx+p*(x2-cx)+MY*nx;
+    py3 = cy+p*(y2-cy)+MY*ny;
+    pz3 = cz+p*(z2-cz)+MY*nz;
+  }
+
+  {
+    x1 = x3a; y1 = y3a; z1 = z3a;
+    x2 = x4a; y2 = y4a; z2 = z4a;
+    x3 = x1a; y3 = y1a; z3 = z1a;
+
+    float c = sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
+    float b = sqrt((x3-x1)*(x3-x1)+(y3-y1)*(y3-y1)+(z3-z1)*(z3-z1));
+    float a = sqrt((x2-x3)*(x2-x3)+(y2-y3)*(y2-y3)+(z2-z3)*(z2-z3));
+
+    float cx = x1*a/(a+b+c) + x2*b/(a+b+c) + x3*c/(a+b+c);
+    float cy = y1*a/(a+b+c) + y2*b/(a+b+c) + y3*c/(a+b+c);
+    float cz = z1*a/(a+b+c) + z2*b/(a+b+c) + z3*c/(a+b+c);
+
+    float s = (a+b+c)/2;
+    float r = sqrt(((s-a)*(s-b)*(s-c))/s);
+
+    float p = (r-SHRINK)/r;
+
+    px4 = cx+p*(x2-cx)+MY*nx;
+    py4 = cy+p*(y2-cy)+MY*ny;
+    pz4 = cz+p*(z2-cz)+MY*nz;
+  }
+
+  {
+    x1 = x4a; y1 = y4a; z1 = z4a;
+    x2 = x1a; y2 = y1a; z2 = z1a;
+    x3 = x2a; y3 = y2a; z3 = z2a;
+
+    float c = sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1));
+    float b = sqrt((x3-x1)*(x3-x1)+(y3-y1)*(y3-y1)+(z3-z1)*(z3-z1));
+    float a = sqrt((x2-x3)*(x2-x3)+(y2-y3)*(y2-y3)+(z2-z3)*(z2-z3));
+
+    float cx = x1*a/(a+b+c) + x2*b/(a+b+c) + x3*c/(a+b+c);
+    float cy = y1*a/(a+b+c) + y2*b/(a+b+c) + y3*c/(a+b+c);
+    float cz = z1*a/(a+b+c) + z2*b/(a+b+c) + z3*c/(a+b+c);
+
+    float s = (a+b+c)/2;
+    float r = sqrt(((s-a)*(s-b)*(s-c))/s);
+
+    float p = (r-SHRINK)/r;
+
+    px1 = cx+p*(x2-cx)+MY*nx;
+    py1 = cy+p*(y2-cy)+MY*ny;
+    pz1 = cz+p*(z2-cz)+MY*nz;
+  }
+
+  glVertex3f(px1, py1, pz1);
+  glVertex3f(px2, py2, pz2);
+  glVertex3f(px3, py3, pz3);
+
+  glVertex3f(px3, py3, pz3);
+  glVertex3f(px4, py4, pz4);
+  glVertex3f(px1, py1, pz1);
+}
+
+static void drawGridRect(double x0, double y0, double z0,
+                     double v1x, double v1y, double v1z,
+                     double v2x, double v2y, double v2z, int diag) {
+
+  glBegin(GL_LINES);
+  glVertex3f(x0, y0, z0); glVertex3f(x0+v1x, y0+v1y, z0+v1z);
+  glVertex3f(x0+v1x, y0+v1y, z0+v1z); glVertex3f(x0+v1x+v2x, y0+v1y+v2y, z0+v1z+v2z);
+  glVertex3f(x0+v1x+v2x, y0+v1y+v2y, z0+v1z+v2z); glVertex3f(x0+v2x, y0+v2y, z0+v2z);
+  glVertex3f(x0+v2x, y0+v2y, z0+v2z); glVertex3f(x0, y0, z0);
+
+  int state1 = 0;
+  int state2 = 0;
+
+
+  float x1 = x0 + v1x;
+  float y1 = y0 + v1y;
+  float z1 = z0 + v1z;
+
+  float x2 = x0 + v1x;
+  float y2 = y0 + v1y;
+  float z2 = z0 + v1z;
+
+  float xe = x0 + v2x;
+  float ye = y0 + v2y;
+  float ze = z0 + v2z;
+
+  while ((fabs(x1 - xe) > 0.01) || (fabs(y1 - ye) > 0.01) || (fabs(z1 - ze) > 0.01)) {
+    // v1=(x1, y1, z1) first goes along vector1 =(v1x, v1y, v1z) and then along vector2
+
+    if (state1 == 0) {
+      x1 -= v1x/diag;
+      y1 -= v1y/diag;
+      z1 -= v1z/diag;
+
+      if (((v1x) && (fabs(x1 - x0) < 0.01)) ||
+          ((v1y) && (fabs(y1 - y0) < 0.01)) ||
+          ((v1z) && (fabs(z1 - z0) < 0.01))) {
+        state1 = 1;
+      }
+    } else {
+
+      x1 += v2x/diag;
+      y1 += v2y/diag;
+      z1 += v2z/diag;
+    }
+
+    if (state2 == 0) {
+      x2 += v2x/diag;
+      y2 += v2y/diag;
+      z2 += v2z/diag;
+
+      if (((v2x) && (fabs(x2 - (x0+v2x+v1x)) < 0.01)) ||
+          ((v2y) && (fabs(y2 - (y0+v2y+v1y)) < 0.01)) ||
+          ((v2z) && (fabs(z2 - (z0+v2z+v1z)) < 0.01))) {
+        state2 = 1;
+      }
+    } else {
+
+      x2 -= v1x/diag;
+      y2 -= v1y/diag;
+      z2 -= v1z/diag;
+    }
+
+    glVertex3f(x1, y1, z1); glVertex3f(x2, y2, z2);
+  }
+
+  glEnd();
+}
+
+static void drawGridTriangle(double x0, double y0, double z0,
+                         double v1x, double v1y, double v1z,
+                         double v2x, double v2y, double v2z, int diag) {
+
+  glBegin(GL_LINES);
+  glVertex3f(x0, y0, z0); glVertex3f(x0+v1x, y0+v1y, z0+v1z);
+  glVertex3f(x0+v1x, y0+v1y, z0+v1z); glVertex3f(x0+v2x, y0+v2y, z0+v2z);
+  glVertex3f(x0+v2x, y0+v2y, z0+v2z); glVertex3f(x0, y0, z0);
+
+  float x1 = x0;
+  float y1 = y0;
+  float z1 = z0;
+
+  float x2 = x0;
+  float y2 = y0;
+  float z2 = z0;
+
+  v1x /= diag;
+  v1y /= diag;
+  v1z /= diag;
+
+  v2x /= diag;
+  v2y /= diag;
+  v2z /= diag;
+
+  for (int i = 0; i < diag; i++)
+  {
+    x1 += v1x;
+    y1 += v1y;
+    z1 += v1z;
+
+    x2 += v2x;
+    y2 += v2y;
+    z2 += v2z;
+
+    glVertex3f(x1, y1, z1); glVertex3f(x2, y2, z2);
+  }
+
+  glEnd();
+}
+
+// this function finds out if a given square is inside the selected region
+// this check includes the symmetric and column edit modes
+bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z2, int sx, int sy, int sz, int mode) {
+
+  if ((x < 0) || (y < 0) || (z < 0) || (x >= sx) || (y >= sy) || (z >= sz)) return false;
+
+  if (mode == 0)
+    return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2);
+  if (mode == gridEditor_c::TOOL_STACK_Y)
+    return (x1 <= x) && (x <= x2) && (z1 <= z) && (z <= z2);
+  if (mode == gridEditor_c::TOOL_STACK_X)
+    return (y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2);
+  if (mode == gridEditor_c::TOOL_STACK_Z)
+    return (x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2);
+
+  if (mode == gridEditor_c::TOOL_STACK_X + gridEditor_c::TOOL_STACK_Y)
+    return (((x1 <= x) && (x <= x2)) || ((y1 <= y) && (y <= y2))) && (z1 <= z) && (z <= z2);
+  if (mode == gridEditor_c::TOOL_STACK_X + gridEditor_c::TOOL_STACK_Z)
+    return (((x1 <= x) && (x <= x2)) || ((z1 <= z) && (z <= z2))) && (y1 <= y) && (y <= y2);
+  if (mode == gridEditor_c::TOOL_STACK_Y + gridEditor_c::TOOL_STACK_Z)
+    return (((y1 <= y) && (y <= y2)) || ((z1 <= z) && (z <= z2))) && (x1 <= x) && (x <= x2);
+
+  if (mode == gridEditor_c::TOOL_STACK_X + gridEditor_c::TOOL_STACK_Y + gridEditor_c::TOOL_STACK_Z)
+    return (((x1 <= x) && (x <= x2) && (y1 <= y) && (y <= y2)) ||
+            ((x1 <= x) && (x <= x2) && (z1 <= z) && (z <= z2)) ||
+            ((y1 <= y) && (y <= y2) && (z1 <= z) && (z <= z2)));
+
+  if (mode & gridEditor_c::TOOL_MIRROR_X)
+    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~gridEditor_c::TOOL_MIRROR_X) ||
+      inRegion(sx-x-1, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~gridEditor_c::TOOL_MIRROR_X);
+
+  if (mode & gridEditor_c::TOOL_MIRROR_Y)
+    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~gridEditor_c::TOOL_MIRROR_Y) ||
+      inRegion(x, sy-y-1, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~gridEditor_c::TOOL_MIRROR_Y);
+
+  if (mode & gridEditor_c::TOOL_MIRROR_Z)
+    return inRegion(x, y, z, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~gridEditor_c::TOOL_MIRROR_Z) ||
+      inRegion(x, y, sz-z-1, x1, x2, y1, y2, z1, z2, sx, sy, sz, mode & ~gridEditor_c::TOOL_MIRROR_Z);
+
+  return false;
+}
+
+
+
+
 
 void voxelFrame_c::drawVoxelSpace() {
 
@@ -95,67 +415,74 @@ void voxelFrame_c::drawVoxelSpace() {
   for (unsigned int run = 0; run < 2; run++) {
     for (unsigned int piece = 0; piece < shapes.size(); piece++) {
 
-      if (shapes[piece].a == 0)
+      shapeInfo * shape = &shapes[piece];
+
+      if (shape->a == 0)
+        continue;
+      if (shape->mode == invisible)
+        continue;
+      if (!shape->shape && !shape->poly)
         continue;
 
       glLoadName(piece);
 
       // in run 0 we only paint opaque objects and in run 1 only transparent ones
       // this lets the transparent objects be always in front of the others
-      if ((run == 0) && (shapes[piece].a != 1)) continue;
-      if ((run == 1) && (shapes[piece].a == 1)) continue;
+      if ((run == 0) && (shape->a != 1)) continue;
+      if ((run == 1) && (shape->a == 1)) continue;
 
       glPushMatrix();
 
-      float hx, hy, hz;
-      hx = shapes[piece].shape->getHx();
-      hy = shapes[piece].shape->getHy();
-      hz = shapes[piece].shape->getHz();
-      drawer->recalcSpaceCoordinates(&hx, &hy, &hz);
+      float hx = 0, hy = 0, hz = 0;
+
+      if (shape->shape)
+      {
+        hx = shape->shape->getHx();
+        hy = shape->shape->getHy();
+        hz = shape->shape->getHz();
+
+        shape->shape->recalcSpaceCoordinates(&hx, &hy, &hz);
+      }
 
       switch(trans) {
       case ScaleRotateTranslate:
-        glTranslatef(shapes[piece].x,
-                     shapes[piece].y,
-                     shapes[piece].z);
-        glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
+        glTranslatef(shape->x, shape->y, shape->z);
+        glScalef(shape->scale, shape->scale, shape->scale);
         rotater->addTransform();
+        if (shape->shape)
         {
           float cx, cy, cz;
-          drawer->calculateSize(shapes[piece].shape, &cx, &cy, &cz);
+          shape->shape->calculateSize(&cx, &cy, &cz);
           glTranslatef(-0.5*cx, -0.5*cy, -0.5*cz);
         }
         break;
       case TranslateRoateScale:
         rotater->addTransform();
-        glTranslatef(shapes[piece].x,
-                     shapes[piece].y,
-                     shapes[piece].z);
+        glTranslatef(shape->x, shape->y, shape->z);
+        if (shape->shape)
         {
           float cx, cy, cz;
-          drawer->calculateSize(shapes[piece].shape, &cx, &cy, &cz);
+          shape->shape->calculateSize(&cx, &cy, &cz);
           glTranslatef(-0.5*cx, -0.5*cy, -0.5*cz);
         }
-        glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
+        glScalef(shape->scale, shape->scale, shape->scale);
         break;
       case CenterTranslateRoateScale:
         rotater->addTransform();
-        glTranslatef(shapes[piece].x - hx,
-                     shapes[piece].y - hy,
-                     shapes[piece].z - hz);
+        glTranslatef(shape->x - hx, shape->y - hy, shape->z - hz);
         glTranslatef(-centerX, -centerY, -centerZ);
-        glScalef(shapes[piece].scale, shapes[piece].scale, shapes[piece].scale);
+        glScalef(shape->scale, shape->scale, shape->scale);
         break;
       default:
         break;
       }
 
-      if (_showCoordinateSystem) {
+      if (_showCoordinateSystem && shape->shape) {
         if (_useLightning) glDisable(GL_LIGHTING);
         glDisable(GL_BLEND);
         glBegin(GL_LINES);
         float cx, cy, cz;
-        drawer->calculateSize(shapes[piece].shape, &cx, &cy, &cz);
+        shape->shape->calculateSize(&cx, &cy, &cz);
 
         if (colors == anaglyphColor || colors == anaglyphColorL) {
           glColor3f(0.3, 0.3, 0.3); glVertex3f(-1, -1, -1); glVertex3f(cx+1, -1, -1);
@@ -187,127 +514,184 @@ void voxelFrame_c::drawVoxelSpace() {
         glEnable(GL_BLEND);
       }
 
-      if (shapes[piece].list) {
+      if (shape->list) {
 
-        glCallList(shapes[piece].list);
+        glCallList(shape->list);
 
       } else {
 
         if (config.useDisplayLists()) {
 
-          shapes[piece].list = glGenLists(1);
+          shape->list = glGenLists(1);
 
-          if (shapes[piece].list)
-            glNewList(shapes[piece].list, GL_COMPILE_AND_EXECUTE);
+          if (shape->list)
+            glNewList(shape->list, GL_COMPILE_AND_EXECUTE);
 
         }
 
-        const shapeInfo * shape = &shapes[piece];
+        if (!shape->poly)
+          shape->poly = shape->shape->getDrawingMesh();
 
-        glPushName(0);
+        if (shape->poly)
+        {
+          float lr = lightPieceColor(shape->r);
+          float lg = lightPieceColor(shape->g);
+          float lb = lightPieceColor(shape->b);
+          float dr = darkPieceColor(shape->r);
+          float dg = darkPieceColor(shape->g);
+          float db = darkPieceColor(shape->b);
 
-        for (unsigned int x = 0; x < shape->shape->getX(); x++)
-          for (unsigned int y = 0; y < shape->shape->getY(); y++)
-            for (unsigned int z = 0; z < shape->shape->getZ(); z++) {
+          if (shape->dim)
+          {
+            lr = 1 - (1 - lr) * 0.2;
+            lg = 1 - (1 - lg) * 0.2;
+            lb = 1 - (1 - lb) * 0.2;
 
-              if (shape->shape->isEmpty(x, y , z))
-                continue;
+            dr = 1 - (1 - dr) * 0.2;
+            dg = 1 - (1 - dg) * 0.2;
+            db = 1 - (1 - db) * 0.2;
+          }
 
-              glLoadName(shape->shape->getIndex(x, y, z));
+          if (colors == anaglyphColorL || colors == anaglyphColor)
+          {
+	    float tmp;
+            tmp = 0.1*lb + 0.3*lr + 0.6*lg;
+            tmp = 1-(1-tmp)/3;
+            lr = lg = lb = tmp;
+	    tmp = 0.1*db + 0.3*dr + 0.6*dg;
+            tmp = 1-(1-tmp)/3;
+            dr = dg = db = tmp;
+          }
 
-              float cr, cg, cb, ca;
-              cr = cg = cb = 0;
-              ca = 1;
+          for(Polyhedron::const_face_iterator it=shape->poly->fBegin(); it!=shape->poly->fEnd(); it++)
+          {
+            const Face* f = *it;
 
-              switch (colors) {
-                case pieceColor:
-                case anaglyphColor:
-                case anaglyphColorL:
-                  if ((x+y+z) & 1) {
-                    cr = lightPieceColor(shape->r);
-                    cg = lightPieceColor(shape->g);
-                    cb = lightPieceColor(shape->b);
-                    ca = shape->a;
-                  } else {
-                    cr = darkPieceColor(shape->r);
-                    cg = darkPieceColor(shape->g);
-                    cb = darkPieceColor(shape->b);
-                    ca = shape->a;
-                  }
-                  break;
-                case paletteColor:
-                  {
-                    unsigned int color = shape->shape->getColor(x, y, z);
-                    if ((color == 0) || (color - 1 >= palette.size())) {
-                      if ((x+y+z) & 1) {
-                        cr = lightPieceColor(shape->r);
-                        cg = lightPieceColor(shape->g);
-                        cb = lightPieceColor(shape->b);
-                        ca = shape->a;
-                      } else {
-                        cr = darkPieceColor(shape->r);
-                        cg = darkPieceColor(shape->g);
-                        cb = darkPieceColor(shape->b);
-                        ca = shape->a;
-                      }
-                    } else {
-                      cr = palette[color-1].r;
-                      cg = palette[color-1].g;
-                      cb = palette[color-1].b;
-                      ca = shape->a;
-                    }
-                  }
-                  break;
-              }
+            if (f->hole())
+              continue;
+            if (shape->mode == gridline && !((f->_flags & FF_WIREFRAME)))
+              continue;
 
-              if (colors == anaglyphColor || colors == anaglyphColorL) {
-                double gr = 0.1*cb + 0.3*cr + 0.6*cg;
-                gr = 1 - (1-gr)/3;
-                cr = cg = cb = gr;
-              }
+            glPushName(f->_fb_index);
+            glPushName(f->_fb_face);
 
-              if (shape->dim) {
-                cr = 1 - (1 - cr) * 0.2;
-                cg = 1 - (1 - cg) * 0.2;
-                cb = 1 - (1 - cb) * 0.2;
-              }
+            glBegin(GL_TRIANGLES);
 
-              glColor4f(cr, cg, cb, ca);
+            glNormal3fv(f->normal().getData());
 
-              switch (shape->mode) {
-                case normal:
-                  if (shape->shape->getState(x, y , z) == voxel_c::VX_VARIABLE) {
-                    drawer->drawNormalVoxel(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
-                    glColor4f(0, 0, 0, shape->a);
-                    drawer->drawVariableMarkers(shape->shape, x, y, z);
-                  } else
-                    drawer->drawNormalVoxel(shape->shape, x, y, z, shape->a, shape->dim ? 0 : 0.05);
-                  break;
-                case gridline:
-                  drawer->drawFrame(shape->shape, x, y, z, 0.05);
-                  break;
-                case invisible:
-                  break;
+
+            if (   colors == paletteColor
+                && f->_color > 0 && f->_color <= palette.size()
+                && !(f->_flags & FF_VARIABLE_FACE))
+                glColor3f(palette[f->_color-1].r, palette[f->_color-1].g, palette[f->_color-1].b);
+            else if (f->_flags & FF_VARIABLE_FACE)
+              glColor3f(0, 0, 0);
+            else if (f->_flags & FF_COLOR_LIGHT && shape->useChecker)
+              glColor3f(lr, lg, lb);
+            else
+              glColor3f(dr, dg, db);
+
+            Face::const_edge_circulator e = f->begin();
+            Face::const_edge_circulator sentinel = e;
+            e++;
+            Vector3Df start = (*e)->dst()->position();
+            e++;
+
+            do {
+              glVertex3fv(start.getData());
+              glVertex3fv((*e)->dst()->position().getData());
+              e++;
+              glVertex3fv((*e)->dst()->position().getData());
+            } while (e != sentinel);
+
+            if (f->_flags & FF_VARIABLE_MARK)
+            {
+              // draw the variable face
+              // TODO, properly draw quadrilaterals (and possibly even more corners, right now only triangles work
+              glColor3f(0, 0, 0);
+              Face::const_edge_circulator e2 = f->begin();
+              float x1 = (*e2)->dst()->position().x();
+              float y1 = (*e2)->dst()->position().y();
+              float z1 = (*e2)->dst()->position().z();
+              e2++;
+              float x2 = (*e2)->dst()->position().x();
+              float y2 = (*e2)->dst()->position().y();
+              float z2 = (*e2)->dst()->position().z();
+              e2++;
+              float x3 = (*e2)->dst()->position().x();
+              float y3 = (*e2)->dst()->position().y();
+              float z3 = (*e2)->dst()->position().z();
+              e2++;
+
+              if (e2 == f->begin())
+                drawShrinkTriangle(x1, y1, z1, x2, y2, z2, x3, y3, z3);
+              else
+              {
+                float x4 = (*e2)->dst()->position().x();
+                float y4 = (*e2)->dst()->position().y();
+                float z4 = (*e2)->dst()->position().z();
+
+                drawShrinkQuadrilateral(x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4);
               }
             }
 
-        glPopName();
+            glEnd();
 
-        if (shapes[piece].list)
+            glPopName();
+            glPopName();
+          }
+        }
+
+        if (shape->list)
           glEndList();
 
       }
 
       // the marker should be only active, when only one shape is there
       // otherwise it's drawn for every shape
-      if ((markerType >= 0) && (mX1 <= mX2) && (mY1 <= mY2)) {
-
+      if ((markerType >= 0) && (mX1 <= mX2) && (mY1 <= mY2))
+      {
         if (_useLightning) glDisable(GL_LIGHTING);
         glDisable(GL_BLEND);
 
         glColor4f(0, 0, 0, 1);
 
-        drawer->drawCursor(shapes[piece].shape, mX1, mX2, mY1, mY2, mZ, markerType);
+        unsigned int sx = shape->shape->getX();
+        unsigned int sy = shape->shape->getY();
+        unsigned int sz = shape->shape->getZ();
+
+        std::vector<float> face;
+
+        // draw the cursor, this is done by iterating over all
+        // voxels and checking for neighbors, when the current
+        // voxel is inside the cursor region and the neighbor isn't,
+        // we draw the dividing face
+        for (unsigned int x = 0; x < sx; x++)
+          for (unsigned int y = 0; y < sy; y++)
+            for (unsigned int z = 0; z < sz; z++)
+              if (shape->shape->validCoordinate(x, y, z) && inRegion(x, y, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType))
+              {
+                int nx, ny, nz;
+                int n = 0;
+
+                while (shape->shape->getNeighbor(n, 0, x, y, z, &nx, &ny, &nz))
+                {
+                  if (!inRegion(nx, ny, nz, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType))
+                  {
+                    face.clear();
+                    shape->shape->getConnectionFace(x, y, z, n, 0, 0, face);
+
+                    if (face.size() == 3*3)
+                      drawGridTriangle(face[0], face[1], face[2], face[3]-face[0], face[4]-face[1], face[5]-face[2], face[6]-face[0], face[7]-face[1], face[8]-face[2], 4);
+                    else if (face.size() == 4*3)
+                      drawGridRect(face[0], face[1], face[2], face[3]-face[0], face[4]-face[1], face[5]-face[2], face[9]-face[0], face[10]-face[1], face[11]-face[2], 4);
+                    else
+                      printf("oops not implemented face shape for 3D cursor %i\n", face.size());
+                  }
+
+                  n++;
+                }
+              }
 
         if (_useLightning) glEnable(GL_LIGHTING);
         glEnable(GL_BLEND);
@@ -329,6 +713,7 @@ unsigned int voxelFrame_c::addSpace(const voxel_c * vx) {
   i.r = i.g = i.b = 1;
   i.a = 1;
   i.shape = vx;
+  i.useChecker = true;
 
   i.mode = normal;
 
@@ -338,6 +723,7 @@ unsigned int voxelFrame_c::addSpace(const voxel_c * vx) {
   i.dim = false;
 
   i.list = 0;
+  i.poly = 0;
 
   shapes.push_back(i);
 
@@ -349,6 +735,9 @@ void voxelFrame_c::clearSpaces(void) {
   for (unsigned int i = 0; i < shapes.size(); i++) {
     if (shapes[i].list) glDeleteLists(shapes[i].list, 1);
     delete shapes[i].shape;
+    if (shapes[i].poly)
+      delete shapes[i].poly;
+    shapes[i].poly = 0;
   }
 
   shapes.clear();
@@ -384,7 +773,7 @@ void voxelFrame_c::setSpaceColor(unsigned int nr, float a) {
 
 void voxelFrame_c::setSpacePosition(unsigned int nr, float x, float y, float z, float scale) {
 
-  drawer->recalcSpaceCoordinates(&x, &y, &z);
+  shapes[nr].shape->recalcSpaceCoordinates(&x, &y, &z);
 
   shapes[nr].x = x;
   shapes[nr].y = y;
@@ -445,6 +834,53 @@ void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) 
   unsigned int num = addSpace(puz->getGridType()->getVoxel(puz->getShape(shapeNum)));
 
   setSpaceColor(num, pieceColorR(shapeNum), pieceColorG(shapeNum), pieceColorB(shapeNum), 1);
+
+  trans = TranslateRoateScale;
+  _showCoordinateSystem = true;
+
+  redraw();
+}
+
+void voxelFrame_c::showMesh(Polyhedron * poly)
+{
+  hideMarker();
+  clearSpaces();
+
+  shapeInfo i;
+
+  i.r = i.g = i.b = 0.5;
+  i.a = 1;
+  i.shape = 0;
+  i.poly = poly;
+  i.useChecker = false;
+
+  i.mode = normal;
+
+  // calculate the bounding box of the polygon to properly center is for display
+  Vector3Df bbox[2];
+  bbox[0] = bbox[1] = (*poly->vBegin())->position();
+  for (Polyhedron::const_vertex_iterator it=poly->vBegin() ; it!=poly->vEnd() ; ++it)
+  {
+    const Vector3Df& v = (*it)->position();
+    for (int i=0 ; i<3 ; i++)
+    {
+      if (v[i] < bbox[0][i])
+        bbox[0][i] = v[i];
+      if (v[i] > bbox[1][i])
+        bbox[1][i] = v[i];
+    }
+  }
+
+  i.x = -0.5*(bbox[0][0]+bbox[1][0]);
+  i.y = -0.5*(bbox[0][1]+bbox[1][1]);
+  i.z = -0.5*(bbox[0][2]+bbox[1][2]);
+  i.scale = 1;
+
+  i.dim = false;
+
+  i.list = 0;
+
+  shapes.push_back(i);
 
   trans = TranslateRoateScale;
   _showCoordinateSystem = true;
@@ -632,7 +1068,7 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
     setDrawingMode(num, invisible);
 
     float cx, cy, cz;
-    drawer->calculateSize(puz->getResultShape(), &cx, &cy, &cz);
+    puz->getResultShape()->calculateSize(&cx, &cy, &cz);
     setCenter(cx*0.5, cy*0.5, cz*0.5);
     trans = CenterTranslateRoateScale;
     _showCoordinateSystem = false;
@@ -678,7 +1114,7 @@ void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * 
       }
 
     float cx, cy, cz;
-    drawer->calculateSize(puz->getResultShape(), &cx, &cy, &cz);
+    puz->getResultShape()->calculateSize(&cx, &cy, &cz);
     setCenter(cx*0.5, cy*0.5, cz*0.5);
 
     trans = CenterTranslateRoateScale;
@@ -708,10 +1144,11 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
   hx = puz->getResultShape()->getHx();
   hy = puz->getResultShape()->getHy();
   hz = puz->getResultShape()->getHz();
-  drawer->recalcSpaceCoordinates(&hx, &hy, &hz);
+
+  puz->getResultShape()->recalcSpaceCoordinates(&hx, &hy, &hz);
 
   float cx, cy, cz;
-  drawer->calculateSize(puz->getResultShape(), &cx, &cy, &cz);
+  puz->getResultShape()->calculateSize(&cx, &cy, &cz);
   setCenter(cx*0.5-hx, cy*0.5-hy, cz*0.5-hz);
 
   hx = puz->getResultShape()->getHx();
@@ -936,8 +1373,6 @@ static void gluPickMatrix(double x, double y, double deltax, double deltay, GLin
 
 void voxelFrame_c::draw() {
 
-  if (!drawer) return;
-
   if (!valid()) {
 
     GLfloat LightAmbient[]= { 0.2f, 0.2f, 0.2f, 1.0f };
@@ -1141,7 +1576,7 @@ void voxelFrame_c::exportToVector(const char * fname, VectorFiletype vt) {
      VFT_TEX != GL2PS_TEX || VFT_PDF != GL2PS_PDF || \
      VFT_SVG != GL2PS_SVG || VFT_PGF != GL2PS_PGF)
 
-#error vector file types don't fit to GL2PS file types
+#error vector file types dont fit to GL2PS file types
 #endif
 #endif
 

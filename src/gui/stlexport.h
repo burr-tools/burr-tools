@@ -37,10 +37,11 @@
 class LView3dGroup;
 class LBlockListGroup;
 class puzzle_c;
-class guiGridType_c;
 class PieceSelector;
 
 class stlExporter_c;
+
+class inputField_c;
 
 class stlExport_c : public LFl_Double_Window {
 
@@ -54,7 +55,7 @@ class stlExport_c : public LFl_Double_Window {
     /* The different window elements */
     LView3dGroup *view3D;
 
-    std::vector<LFl_Float_Input*> params;
+    std::vector<inputField_c*> params;
     LFl_Input *Fname, *Pname;
     LFl_Box *status;
     LFl_Button *BtnStart, *BtnAbbort;
@@ -64,7 +65,7 @@ class stlExport_c : public LFl_Double_Window {
 
   public:
 
-    stlExport_c(puzzle_c * p, const guiGridType_c * ggt);
+    stlExport_c(puzzle_c * p);
 
     void cb_Export(void);
     void cb_Abort(void);

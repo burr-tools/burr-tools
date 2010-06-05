@@ -18,14 +18,13 @@
 #ifndef __VIEW3D_GROUP_H__
 #define __VIEW3D_GROUP_H__
 
-#include "voxelframe.h"
 #include "Layouter.h"
 
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Slider.H>
 
-class guiGridType_c;
 class piecePositions_c;
+class voxelFrame_c;
 
 // the groups with the 3d view and the zoom slider
 class LView3dGroup : public Fl_Group, public layoutable_c {
@@ -35,34 +34,14 @@ class LView3dGroup : public Fl_Group, public layoutable_c {
 
 public:
 
-  LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt);
-
-  void newGridType(const guiGridType_c * ggt);
+  LView3dGroup(int x, int y, int w, int h);
 
   void cb_slider(void);
-
-  void showNothing(void) { View3D->showNothing(); }
-  void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
-  void showProblem(const puzzle_c * puz, unsigned int problem, unsigned int selShape);
-  void showAssembly(const problem_c * puz, unsigned int solNum);
-  void showPlacement(const problem_c * puz, unsigned int piece, unsigned char trans, int x, int y, int z);
-  void showAssemblerState(const problem_c * puz, const assembly_c * assm) {
-    View3D->showAssemblerState(puz, assm);
-  }
-
-  void updatePositions(piecePositions_c *shifting);
-  void updatePositionsOverlap(piecePositions_c *shifting);
-  void updateVisibility(PieceVisibility * pcvis);
-  void showColors(const puzzle_c * puz, voxelFrame_c::colorMode mode);
-
-  void setMarker(int x1, int y1, int x2, int y2, int z, int type) { View3D->setMarker(x1, y1, x2, y2, z, type); }
-  void hideMarker(void) { View3D->hideMarker(); }
-  void useLightning(bool val) { View3D->useLightning(val); }
 
   double getZoom(void) { return slider->value(); }
   void setZoom(double v) { slider->value(v); cb_slider(); }
 
-  void redraw(void) { View3D->redraw(); }
+  void redraw(void);
 
   voxelFrame_c * getView(void) { return View3D; }
 

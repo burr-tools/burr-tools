@@ -1,3 +1,17 @@
+
+- completely rewrote STL-export- and OpenGL-display-code, they do now share a
+  common base.  With this the following features come:
+  - STL export for all grids
+  - STL export preview in the STL export window
+  - the openGL view in the display no longer features those 1 pixel holes
+    between faces
+  - for the programmers: it has become simpler to support new grids all polygon
+    based grids now can create proper STL output and code for the 3D display
+    much easier, grids like the spheres stay complicated, though
+  - bigger sensitive click spots for spheres, they also look better
+  - in the 3D view you can see the natural color and the color constraint color
+- improved STL export window (tooltips, ...)
+- STL export displays the exact volume of the generated object
 - fix a problem loading puzzle files with complex groups
 
 ------------- Version 0.5.2 Oct 2009

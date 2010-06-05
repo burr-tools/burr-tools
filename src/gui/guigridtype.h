@@ -21,7 +21,6 @@
 #include "../lib/gridtype.h"
 
 class gridEditor_c;
-class voxelDrawer_c;
 class gridTypeGui_c;
 class ToolTab;
 class puzzle_c;
@@ -37,7 +36,6 @@ class guiGridType_c {
     guiGridType_c(gridType_c * gt);
 
     gridEditor_c * getGridEditor(int x, int y, int w, int h, puzzle_c * puzzle) const;
-    voxelDrawer_c * getVoxelDrawer(void) const;
 
     /* returns a group to edit the parameters for this grid type
      * is is used in the new puzzle grid selection dialogue

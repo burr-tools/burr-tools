@@ -55,6 +55,9 @@ class voxel_0_c : public voxel_c {
     bool validCoordinate(int x, int y, int z) const;
     bool onGrid(int x, int y, int z) const;
 
+    virtual void getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & faceCorners) const;
+    virtual void calculateSize(float * x, float * y, float * z) const;
+
   private:
 
     // no copying and assigning

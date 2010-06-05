@@ -21,6 +21,8 @@
 
 #include <math.h>
 
+#include "tabs_3/meshverts.inc"
+
 bool voxel_3_c::transform(unsigned int nr) {
 
   // the first thing to do here is to ensure that all 3 dimensions are a multiple of 5
@@ -533,5 +535,97 @@ bool voxel_3_c::onGrid(int x, int y, int z) const {
 
   // the shape doesn't fit, when not within the 5 raster
   return x%5 == 0 && y%5 == 0 && z%5 == 0;
+}
+
+void voxel_3_c::getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & faceCorners) const
+{
+  static const int voxels[5*5*5] = {
+    -1, -1, -1, -1, -1,
+    -1, -1,  0, -1, -1,
+    -1,  1, -1,  2, -1,
+    -1, -1,  3, -1, -1,
+    -1, -1, -1, -1, -1,
+
+    -1, -1,  4, -1, -1,
+    -1, -1, -1, -1, -1,
+     5, -1, -1, -1,  6,
+    -1, -1, -1, -1, -1,
+    -1, -1,  7, -1, -1,
+
+    -1,  8, -1,  9, -1,
+    10, -1, -1, -1, 11,
+    -1, -1, -1, -1, -1,
+    12, -1, -1, -1, 13,
+    -1, 14, -1, 15, -1,
+
+    -1, -1, 16, -1, -1,
+    -1, -1, -1, -1, -1,
+    17, -1, -1, -1, 18,
+    -1, -1, -1, -1, -1,
+    -1, -1, 19, -1, -1,
+
+    -1, -1, -1, -1, -1,
+    -1, -1, 20, -1, -1,
+    -1, 21, -1, 22, -1,
+    -1, -1, 23, -1, -1,
+    -1, -1, -1, -1, -1,
+  };
+
+  int xc = intdiv_inf(x, 5);
+  int yc = intdiv_inf(y, 5);
+  int zc = intdiv_inf(z, 5);
+
+  int xs = x - 5*xc;
+  int ys = y - 5*yc;
+  int zs = z - 5*zc;
+
+  int p = voxels[xs+5*(ys + 5*zs)];
+
+  bt_assert(p != -1);
+
+  xc *= 2;
+  yc *= 2;
+  zc *= 2;
+
+  if (n < 0)
+  {
+    n = -1-n;
+
+    if (n < 10)
+    {
+      for (int i = 0; i < bevelFaces[p][n][0]; i++)
+      {
+        int v = bevelFaces[p][n][i+1];
+        faceCorners.push_back(xc+vertices[v][0][0] + offset*vertices[v][1][0] + bevel*vertices[v][2][0]);
+        faceCorners.push_back(yc+vertices[v][0][1] + offset*vertices[v][1][1] + bevel*vertices[v][2][1]);
+        faceCorners.push_back(zc+vertices[v][0][2] + offset*vertices[v][1][2] + bevel*vertices[v][2][2]);
+      }
+    }
+  }
+  else
+  {
+    if (n < 4)
+    {
+      for (int i = 0; i < 3; i++)
+      {
+        int v = normalFaces[p][n][i];
+        faceCorners.push_back(xc+vertices[v][0][0] + offset*vertices[v][1][0] + bevel*vertices[v][2][0]);
+        faceCorners.push_back(yc+vertices[v][0][1] + offset*vertices[v][1][1] + bevel*vertices[v][2][1]);
+        faceCorners.push_back(zc+vertices[v][0][2] + offset*vertices[v][1][2] + bevel*vertices[v][2][2]);
+      }
+    }
+  }
+}
+
+void voxel_3_c::calculateSize(float * x, float * y, float * z) const {
+  *x = 2*((getX()+4)/5);
+  *y = 2*((getY()+4)/5);
+  *z = 2*((getZ()+4)/5);
+}
+
+void voxel_3_c::recalcSpaceCoordinates(float * x, float * y, float * z) const {
+  *x *= 0.4;
+  *y *= 0.4;
+  *z *= 0.4;
 }
 

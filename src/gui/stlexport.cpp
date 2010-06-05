@@ -21,6 +21,7 @@
 #include "BlockList.h"
 #include "view3dgroup.h"
 #include "blocklistgroup.h"
+#include "voxelframe.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/stl.h"
@@ -28,8 +29,21 @@
 #include "../lib/bt_assert.h"
 #include "../lib/voxel.h"
 
+#include "../halfedge/volume.h"
+
 #include <FL/Fl.H>
 #include <FL/fl_ask.H>
+
+
+// a simple class (structure) containing some information for each input field
+class inputField_c
+{
+  public:
+
+    stlExporter_c::parameterTypes type;
+    Fl_Widget * w;
+};
+
 
 static void cb_stlExportAbort_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Abort(); }
 
@@ -45,13 +59,65 @@ void stlExport_c::cb_Export(void) {
 
 }
 
-static void cb_stlExport3DUpdate_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Update3DView(); }
-void stlExport_c::cb_Update3DView(void) {
-
-  view3D->showSingleShape(puzzle, ShapeSelect->getSelection());
+static void updateParameters(stlExporter_c * stl, const std::vector<inputField_c *> & params)
+{
+  for (unsigned int i = 0; i < stl->numParameters(); i++)
+  {
+    switch (params[i]->type)
+    {
+      case stlExporter_c::PAR_TYP_DOUBLE:
+      case stlExporter_c::PAR_TYP_POS_DOUBLE:
+        stl->setParameter(i, atof(((LFl_Float_Input*)(params[i]->w))->value()));
+        break;
+      case stlExporter_c::PAR_TYP_POS_INTEGER:
+        stl->setParameter(i, atoi(((LFl_Int_Input*)(params[i]->w))->value()));
+        break;
+      case stlExporter_c::PAR_TYP_SWITCH:
+        stl->setParameter(i, ((LFl_Check_Button*)(params[i]->w))->value());
+        break;
+      default:
+        bt_assert(0);
+    }
+  }
 }
 
-stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_Window(false), puzzle(p) {
+static void cb_stlExport3DUpdate_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Update3DView(); }
+void stlExport_c::cb_Update3DView(void)
+{
+  updateParameters(stl, params);
+
+  Polyhedron * p = 0;
+  try
+  {
+    p = stl->getMesh(*puzzle->getShape(ShapeSelect->getSelection()));
+  }
+  catch (stlException_c * e)
+  {
+    fl_message(e->comment);
+    return;
+  }
+  catch (...)
+  {
+    fl_message("The generated mesh is faulty in some way, try to tweak the parameter");
+    return;
+  }
+
+  if (p)
+  {
+    view3D->getView()->showMesh(p);
+    char txt[100];
+    snprintf(txt, 99, "Volume: %1.1f cubic-units\n", volume(*p));
+    status->copy_label(txt);
+  }
+  else
+  {
+    view3D->getView()->showNothing();
+    status->label("");
+  }
+
+}
+
+stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
 
   label("Export STL");
 
@@ -90,14 +156,83 @@ stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_W
   {
     fr = new LFl_Frame(0, 1, 1, 1);
 
-    for (unsigned int i = 0; i < stl->numParameters(); i++) {
-      (new LFl_Box(stl->getParameterName(i), 0, i))->stretchRight();
-      (new LFl_Box(1, i))->setMinimumSize(5, 0);
-      params.push_back(new LFl_Float_Input(2, i, 1, 1));
-      char val[10];
-      snprintf(val, 10, "%2.2f", stl->getParameter(i));
-      (*params.rbegin())->value(val);
-      (*params.rbegin())->weight(1, 0);
+    inputField_c * inp;
+
+    for (unsigned int i = 0; i < stl->numParameters(); i++)
+    {
+      inp = new inputField_c;
+
+      inp->type = stl->getParameterType(i);
+
+      switch (inp->type)
+      {
+        case stlExporter_c::PAR_TYP_DOUBLE:
+          {
+            (new LFl_Box(stl->getParameterName(i), 0, i))->stretchRight();
+            (new LFl_Box(1, i))->setMinimumSize(5, 0);
+            LFl_Float_Input * in = new LFl_Float_Input(2, i, 1, 1);
+            char val[10];
+            snprintf(val, 10, "%2.2f", stl->getParameter(i));
+            in->value(val);
+            in->weight(1, 0);
+
+            inp->w = in;
+          }
+          break;
+
+        case stlExporter_c::PAR_TYP_POS_DOUBLE:
+          {
+            (new LFl_Box(stl->getParameterName(i), 0, i))->stretchRight();
+            (new LFl_Box(1, i))->setMinimumSize(5, 0);
+            LFl_Float_Input * in = new LFl_Float_Input(2, i, 1, 1);
+
+            char val[10];
+            snprintf(val, 10, "%2.2f", stl->getParameter(i));
+            in->value(val);
+            in->weight(1, 0);
+
+            inp->w = in;
+          }
+          break;
+
+        case stlExporter_c::PAR_TYP_POS_INTEGER:
+          {
+            (new LFl_Box(stl->getParameterName(i), 0, i))->stretchRight();
+            (new LFl_Box(1, i))->setMinimumSize(5, 0);
+            LFl_Int_Input * in = new LFl_Int_Input(2, i, 1, 1);
+
+            char val[10];
+            snprintf(val, 10, "%i", (int)stl->getParameter(i));
+            in->value(val);
+            in->weight(1, 0);
+
+            inp->w = in;
+          }
+          break;
+
+        case stlExporter_c::PAR_TYP_SWITCH:
+          {
+            LFl_Check_Button * in = new LFl_Check_Button(stl->getParameterName(i), 0, i, 3, 1);
+
+            if (stl->getParameter(i))
+              in->value(1);
+            else
+              in->value(0);
+
+            in->weight(1, 0);
+
+            inp->w = in;
+          }
+          break;
+
+        default:
+          bt_assert(0);
+      }
+
+      inp->w->callback(cb_stlExport3DUpdate_stub, this);
+      inp->w->tooltip(stl->getParameterTooltip(i));
+
+      params.push_back(inp);
     }
 
     fr->end();
@@ -112,6 +247,7 @@ stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_W
     gr->callback(cb_stlExport3DUpdate_stub, this);
     gr->setMinimumSize(200, 100);
     gr->stretch();
+    gr->weight(0, 1);
   }
 
   {
@@ -133,8 +269,9 @@ stlExport_c::stlExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_W
     l->end();
   }
 
-  view3D = new LView3dGroup(1, 0, 1, 3, ggt);
+  view3D = new LView3dGroup(1, 0, 1, 3);
   view3D->setMinimumSize(400, 400);
+  view3D->weight(1, 0);
   cb_Update3DView();
 
   set_modal();
@@ -146,8 +283,7 @@ void stlExport_c::exportSTL(int shape)
 
   voxel_c *v = puzzle->getShape(shape);
 
-  for (unsigned int i = 0; i < stl->numParameters(); i++)
-    stl->setParameter(i, atof(params[i]->value()));
+  updateParameters(stl, params);
 
   stl->setBinaryMode(Binary->value() != 0);
 
@@ -166,10 +302,14 @@ void stlExport_c::exportSTL(int shape)
     idx += snprintf(name+idx, 1000-idx, "_S%d", shape+1);
 
   try {
-    stl->write(name,  v);
+    stl->write(name, *v);
   }
 
   catch (stlException_c * e) {
     fl_message(e->comment);
+  }
+  catch (...)
+  {
+    fl_message("The generated mesh is faulty in some way, try to tweak the parameter");
   }
 }

@@ -25,42 +25,24 @@ class stlExporter_0_c : public stlExporter_c {
 
   public:
 
-    stlExporter_0_c(void) : bevel(1), cube_scale(10), shrink(0.1) {}
+    stlExporter_0_c(void) : bevel(0.3), cube_scale(10), shrink(0.01), hole(0), leaveGroovesInside(false), leaveGroovesOutside(false) {}
 
-    virtual void write(const char * basename, const voxel_c * shape);
-
-    /* some functions to set some parameters for the output all parameters mus tbe double
-     * values
-     */
-
-    /* return a text to display to the user about the parameter x */
-    virtual unsigned int numParameters(void) const { return 3; }
+    virtual Polyhedron * getMesh(const voxel_c & v) const;
+    virtual unsigned int numParameters(void) const { return 6; }
     virtual const char * getParameterName(unsigned int idx) const;
     virtual double getParameter(unsigned int idx) const;
     virtual void setParameter(unsigned int idx, double value);
+    virtual const char * getParameterTooltip(unsigned int idx) const;
+    virtual parameterTypes getParameterType(unsigned int idx) const;
 
   private:
 
     double bevel;
     double cube_scale;
     double shrink;
-
-    void rotate_point(float *x, float *y, float *z, int rot);
-
-    void make_tri(float x0, float y0, float z0,
-        float x1, float y1, float z1,
-        float x2, float y2, float z2,
-        int rot, int x, int y, int z);
-
-    void make_quad(float x0, float y0, float z0,
-        float x1, float y1, float z1,
-        float x2, float y2, float z2,
-        float x3, float y3, float z3,
-        int rot, int x, int y, int z);
-
-    void make_corners(const voxel_c *v, const int x, const int y, const int z);
-    void make_edges(const voxel_c *v, const int x, const int y, const int z);
-    void make_faces(const voxel_c *v, const int x,const int y,const int z);
+    double hole;
+    bool leaveGroovesInside;
+    bool leaveGroovesOutside;
 
 private:
 

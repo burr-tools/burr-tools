@@ -1458,8 +1458,8 @@ be first adjusted to the proper dimensions.
 
 It is also possible to do some editing using the 3-D view directly by simply
 clicking onto faces to add the corresponding neighbour voxel. This is especially
-useful in the more complicated tetrahedral base grids as orientation with the 2-D
-grid is quite hard. The following actions are possible:
+useful in the more complicated tetrahedral based grids as orientation within the
+2-D grid is quite hard. The following actions are possible:
 
 - Add a normal voxel by pressing ``[Shift]`` and clicking onto a face. The
   neighbour is added.
@@ -1469,10 +1469,10 @@ grid is quite hard. The following actions are possible:
   the voxel.
 
 
-As spheres do not really have touching faces the 3-D view of them does now
-contain marks with a slightly different colour around the places where the
-spheres would tough. Clicking on those places on the sphere adds the
-corresponding neighbour sphere.
+As spheres do not really have touching faces the 3-D view of them does contain
+circles with a slightly different colour around the places where the spheres
+would tough. Clicking on those circles on the sphere adds the corresponding
+neighbour sphere.
 
 To avoid having to click all that often you can wiggle the mouse around to get
 a repeated action. So if you want to "drill" a hole into a shape place your
@@ -1579,7 +1579,8 @@ Fixed voxels always fill the cell completely in the 2-D grid as well as in the
 3-D grid. In all the pictures of Figure [Representation FigRepresentations]
 the voxels on the left are fixed voxels. Variable voxels only partially fill
 the cell in 2-D and have a black inset in 3-D (the voxels on the right in
-Figure [Representation FigRepresentations]).
+Figure [Representation FigRepresentations]). For spheres the insed is simply
+a part of the surface.
 
 Voxels that have a custom colour added (the yellow voxels in Figure
 [Representation FigRepresentations]) show this colour as an inset in the
@@ -3118,22 +3119,47 @@ describe the surface of 3-dimensional objects. BURRTOOLS can export single
 shapes into STL files so that 3D printers can quickly fabricate prototypes of
 them.
 
+===Introduction to 3-D printing===
+
+There are two popular forms of 3D printing: SLS and FDM.
+
+The SLS (ShapeWays and TNO) laser sinters nylon. ShapeWays currently charges by
+the volume of sintered nylon. SLS pieces are always white.
+
+FDM (Stratasys) charges by the time it takes to make the piece. It has two
+modes: solid and sparse. Sparse mode is quicker and uses less material. In
+sparse mode the interior of the pieces are honeycombed.
+
+Having a hollowed piece will be cheaper and quicker for SLS - it will be the
+same cost and speed for FDM because a hollow piece will still have a support
+structure inside the hollow, but it will be of a different material. The thing
+to realize is that with SLS, if there are no holes to the hollow part of the
+piece, the nylon "sand" will be captured. This should not be a problem except
+for the weight of the piece.
+
+===Exporting===
+
 The main menu entry @B@Export - STL@B@ opens the window seen in Figure
 [StlExportWindow FigSTLExportWindow]. The window has shape selector, a 3-D view
 of the selected shape and some parameters that control the shapes created. The
-exact parameters depend on the grid of the current puzzle.
+exact parameters depend on the grid of the current puzzle. The 3-D view displays
+the shape the same way as it will be exported into the STL file, so you can see 
+what the shape will look like.
+
+On the bottom in the status line you can see what volume the current shape with
+the current settings has.
 
 @F@FigSTLExportWindow|Window_StlExport.png|The STL-Export window@F@
 
 @B@Filename@B@ and @B@Path@B@ control the name and position of the generated
 file. Those are common parameters for all grids.
 
-For cubes there are the following parameters that control the shape of the
-generated pieces
+For polyhedron based grids there are the following parameters that control the
+shape of the generated pieces
 
-- @B@Cube Size:@B@ controls the base length of the created cubes.
+- @B@Unit Size:@B@ controls the base length of the created voxels.
 - @B@Bevel:@B@ controls the size of the bevel
-- @B@Shrink:@B@ allows a gap between the pieces, so that it is actually
+- @B@Offset:@B@ allows a gap between the pieces, so that it is actually
   possible to assemble them. If the shapes were made to correct sizes they
   would touch, making movement impossible.
 
@@ -3143,29 +3169,40 @@ For spheres the parameters are as follows:
 - @B@Sphere radius:@B@ controls the gap between the centres of the single
   spheres. It also is the maximum radius the spheres can have. This value is in
   output units
-- @B@Connection radius:@B@ controls the radius the connection of the spheres
-  has. As the spheres mathematically only touch in one point connectors need to
-  be added. Those connectors are cylinders. The radius of those cylinders can
-  maximally be so that they touch one another. If this value is 1 then the
-  cylinders have their maximal radius, 0 would mean no connection
+- @B@Connection radius:@B@ controls the radius of the connection cylinder
+  between the spheres. As the spheres mathematically only touch in one point
+  connectors need to be added. Those connectors are cylinders. The radius of
+  those cylinders can maximally be so that they touch one another. If this value
+  is 1 then the cylinders have their maximal radius, 0 would mean no connection.
 - @B@Curvature radius:@B@ controls the radius of the transition between sphere
   surface and cylinder surface. If this value is 0 no transition is done and
   there will be a bend in the surface. If the value is 1 the maximally possible
   area will be used to go from sphere surface to cylinder surface. When there is
   only little or no space for the transition (e.g. when the connection radius is
   close to 1) there might be a bend, even when this value is close to 1.
-- @B@Offset:@B@ just like with the cubes this makes the spheres smaller to make
-  the puzzle actually assembable. This is in output units. Keep the values
-  small if you want to have working puzzles.
+- @B@Offset:@B@ just like with the other grids this makes the spheres smaller
+  to make the puzzle actually assembable. This is in output units. Keep the
+  values small if you want to have working puzzles. Most puzzles might not even
+  require a value larger than zero. But you can get cool mathematical objects
+  with a bigger offset
 - @B@Recursions:@B@ controls the number of used triangles to approximate the
   surfaces. A value one bigger will result in approximately 4 times as many
   triangles and accordingly smoother surface but also bigger STL files. Don't
   make it too big as it will result in long calculation times and huge files!
+  Normally a value of 3 or 4 is enough.
+- @B@Inner radius:@B@ controls the radius of the hole inside the sphere. This
+  radius must be smaller than the sphere radius from above. The difference of
+  these 2 values defines the wall thickness of the sphere. The Offset is
+  applied to both values in the same way so that the wall thickness stays
+  constant.
+- @B@Hole diameter:@B@ controls the diameter of the hole that connects the void
+  inside the sphere with the outside world. If you leave that value 0 the
+  inside of the sphere will be completely surrounded by the sphere itself and
+  material inside the sphere can not get out. Depending on the printing process
+  that might not be a wise choice.
+- @B@Square Hole:@B@ the hole from above can be round or square. This is mainly
+  a matter of taste, so make your choice.
 
-
-The STL-Export right now works only for cubes and spheres. Triangles and the
-rhombic grid are not supported. Also the shapes to export must not contain any
-variable voxels.
 
 =Future Plans=
 

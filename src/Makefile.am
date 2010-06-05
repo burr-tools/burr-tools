@@ -1,5 +1,5 @@
 bin_PROGRAMS=burrTxt burrTxt2 gui/burrGui
-noinst_LIBRARIES=lib/libburr.a flu/libflu.a help/libhelp.a lua/liblua.a tools/libtools.a
+noinst_LIBRARIES=lib/libburr.a flu/libflu.a help/libhelp.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a
 noinst_PROGRAMS=help/helpviewer unitTest
 
 XML_CPP_ADD=@XML_CPP_ADD@
@@ -12,12 +12,25 @@ PTHREAD_LD_ADD=@PTHREAD_LD_ADD@
 AM_CPPFLAGS=-Wall -W -Wextra $(XML_CPP_ADD) $(GUI_CPP_ADD) $(PTHREAD_CPP_ADD) @LARGEFILE@
 LDADD= $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
 
+EXTRA_DIST =
+
 tools_libtools_a_SOURCES =
 tools_libtools_a_SOURCES += tools/fileexists.cpp tools/fileexists.h
 tools_libtools_a_SOURCES += tools/gzstream.cpp tools/gzstream.h
 tools_libtools_a_SOURCES += tools/homedir.cpp tools/homedir.h
 tools_libtools_a_SOURCES += tools/intdiv.h
 tools_libtools_a_SOURCES += tools/xml.cpp tools/xml.h
+
+halfedge_libhalfedge_a_SOURCES =
+halfedge_libhalfedge_a_SOURCES += halfedge/face.cpp halfedge/face.h
+halfedge_libhalfedge_a_SOURCES += halfedge/halfedge.cpp halfedge/halfedge.h
+halfedge_libhalfedge_a_SOURCES += halfedge/modifiers.cpp halfedge/modifiers.h
+halfedge_libhalfedge_a_SOURCES += halfedge/polyhedron.cpp halfedge/polyhedron.h 
+halfedge_libhalfedge_a_SOURCES += halfedge/polyhedron_iterators.h 
+halfedge_libhalfedge_a_SOURCES += halfedge/vector3.cpp halfedge/vector3.h
+halfedge_libhalfedge_a_SOURCES += halfedge/vertex.cpp halfedge/vertex.h
+halfedge_libhalfedge_a_SOURCES += halfedge/volume.cpp halfedge/volume.h
+EXTRA_DIST += halfedge/README
 
 lua_liblua_a_SOURCES =
 lua_liblua_a_SOURCES += lua/lapi.c lua/lapi.h
@@ -53,10 +66,10 @@ help_helpviewer_SOURCES += help/Fl_Help_Dialog.cpp help/Fl_Help_Dialog.h
 help_helpviewer_SOURCES += help/Fl_Help_View.cpp help/Fl_Help_View.h
 help_helpviewer_SOURCES += help/flstring.cpp help/flstring.h
 
-burrTxt_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a $(LDADD)
+burrTxt_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a $(LDADD)
 burrTxt_SOURCES=burrTxt.cpp
 
-burrTxt2_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a $(LDADD)
+burrTxt2_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a $(LDADD)
 burrTxt2_SOURCES=burrTxt2.cpp
 
 lib_libburr_a_SOURCES =
@@ -100,7 +113,7 @@ lib_libburr_a_SOURCES += lib/types.h
 lib_libburr_a_SOURCES += lib/voxel.cpp lib/voxel.h
 lib_libburr_a_SOURCES += lib/voxel_0.cpp lib/voxel_0.h
 lib_libburr_a_SOURCES += lib/voxel_1.cpp lib/voxel_1.h
-lib_libburr_a_SOURCES += lib/voxel_2.cpp lib/voxel_2.h
+lib_libburr_a_SOURCES += lib/voxel_2.cpp lib/voxel_2_mesh.cpp lib/voxel_2.h
 lib_libburr_a_SOURCES += lib/voxel_3.cpp lib/voxel_3.h
 lib_libburr_a_SOURCES += lib/voxel_4.cpp lib/voxel_4.h
 lib_libburr_a_SOURCES += lib/voxeltable.cpp lib/voxeltable.h
@@ -111,17 +124,20 @@ lib_libburr_a_SOURCES += lib/tabs_2/rotmatrix.inc lib/tabs_2/symmetries.inc lib/
 lib_libburr_a_SOURCES += lib/tabs_0/symcalc.inc lib/tabs_0/transformmini.inc lib/tabs_0/transmult.inc lib/tabs_0/unifiedsym.inc lib/tabs_0/uniquesym.inc
 lib_libburr_a_SOURCES += lib/tabs_1/symcalc.inc lib/tabs_1/transformmini.inc lib/tabs_1/transmult.inc lib/tabs_1/unifiedsym.inc lib/tabs_1/uniquesym.inc
 lib_libburr_a_SOURCES += lib/tabs_2/symcalc.inc lib/tabs_2/transformmini.inc lib/tabs_2/transmult.inc lib/tabs_2/unifiedsym.inc lib/tabs_2/uniquesym.inc
+lib_libburr_a_SOURCES += lib/tabs_0/meshverts.inc
+lib_libburr_a_SOURCES += lib/tabs_1/meshverts.inc
+lib_libburr_a_SOURCES += lib/tabs_3/meshverts.inc
+lib_libburr_a_SOURCES += lib/tabs_4/meshverts.inc
 
 # the library tester program
-unitTest_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a $(LDADD) -lboost_test_exec_monitor
+unitTest_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a $(LDADD) -lboost_test_exec_monitor
 unitTest_SOURCES =
 unitTest_SOURCES += lib/main_test.cpp
 unitTest_SOURCES += lib/bitfield_test.cpp
 unitTest_SOURCES += lib/voxel_0_test.cpp
 
 
-EXTRA_DIST=\
-    help/data2c.cpp
+EXTRA_DIST += help/data2c.cpp
 
 help_libhelp_a_SOURCES=\
     help/Fl_Help_Dialog.h \
@@ -174,7 +190,7 @@ flu_libflu_a_SOURCES=\
     flu/Flu_Wrap_Group.cpp \
     flu/Flu_Wrap_Group.h
 
-gui_burrGui_LDADD = lib/libburr.a help/libhelp.a flu/libflu.a lua/liblua.a tools/libtools.a $(LDADD)
+gui_burrGui_LDADD = lib/libburr.a help/libhelp.a flu/libflu.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a $(LDADD)
 gui_burrGui_SOURCES =
 gui_burrGui_SOURCES += gui/arcball.cpp gui/arcball.h
 gui_burrGui_SOURCES += gui/assertwindow.cpp gui/assertwindow.h
@@ -210,13 +226,6 @@ gui_burrGui_SOURCES += gui/togglebutton.cpp gui/togglebutton.h
 gui_burrGui_SOURCES += gui/tooltabs.cpp gui/tooltabs.h
 gui_burrGui_SOURCES += gui/vectorexportwindow.cpp gui/vectorexportwindow.h
 gui_burrGui_SOURCES += gui/view3dgroup.cpp gui/view3dgroup.h
-gui_burrGui_SOURCES += gui/voxeldrawer.cpp gui/voxeldrawer.h
-gui_burrGui_SOURCES += gui/voxeldrawer_0.cpp gui/voxeldrawer_0.h
-gui_burrGui_SOURCES += gui/voxeldrawer_1.cpp gui/voxeldrawer_1.h
-gui_burrGui_SOURCES += gui/voxeldrawer_2.cpp gui/voxeldrawer_2.h
-gui_burrGui_SOURCES += gui/voxeldrawer_3.cpp gui/voxeldrawer_3.h
-gui_burrGui_SOURCES += gui/voxeldrawer_4.cpp gui/voxeldrawer_4.h
-gui_burrGui_SOURCES += gui/voxeldrawer_a.cpp gui/voxeldrawer_a.h
 gui_burrGui_SOURCES += gui/voxelframe.cpp gui/voxelframe.h
 gui_burrGui_SOURCES += gui/voxeleditgroup.cpp gui/voxeleditgroup.h
 

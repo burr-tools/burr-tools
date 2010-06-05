@@ -37,6 +37,8 @@ static double rotationMatrices[NUM_TRANSFORMATIONS_MIRROR][9] = {
 #include "tabs_1/rotmatrix.inc"
 };
 
+#include "tabs_1/meshverts.inc"
+
 bool voxel_1_c::transform(unsigned int nr) {
 
   if (nr == 0) return true;
@@ -424,5 +426,61 @@ bool voxel_1_c::onGrid(int x, int y, int /*z*/) const {
   if ((x+y) & 1) return false;
 
   return true;
+}
+
+#define HEIGHT (sqrt(3)/2)
+
+void voxel_1_c::getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & faceCorners) const
+{
+  int p;
+
+  if (((x+y) & 1) == 0)
+  {
+    p = 0;
+  }
+  else
+  {
+    p = 1;
+  }
+
+  if (n < 0)
+  {
+    n = -1-n;
+
+    if (n < 15)
+    {
+      for (int i = 0; i < bevelFaces[p][n][0]; i++)
+      {
+        int v = bevelFaces[p][n][i+1];
+        faceCorners.push_back(   0.5*x+vertices[v][0][0] + offset*vertices[v][1][0] + bevel*vertices[v][2][0]);
+        faceCorners.push_back(HEIGHT*y+vertices[v][0][1] + offset*vertices[v][1][1] + bevel*vertices[v][2][1]);
+        faceCorners.push_back(       z+vertices[v][0][2] + offset*vertices[v][1][2] + bevel*vertices[v][2][2]);
+      }
+    }
+  }
+  else
+  {
+    if (n < 5)
+    {
+      for (int i = 0; i < normalFaces[p][n][0]; i++)
+      {
+        int v = normalFaces[p][n][i+1];
+        faceCorners.push_back(   0.5*x+vertices[v][0][0] + offset*vertices[v][1][0] + bevel*vertices[v][2][0]);
+        faceCorners.push_back(HEIGHT*y+vertices[v][0][1] + offset*vertices[v][1][1] + bevel*vertices[v][2][1]);
+        faceCorners.push_back(       z+vertices[v][0][2] + offset*vertices[v][1][2] + bevel*vertices[v][2][2]);
+      }
+    }
+  }
+}
+
+void voxel_1_c::calculateSize(float * x, float * y, float * z) const {
+  *x = 1 + (getX()-1)*0.5;
+  *y = getY()*HEIGHT;
+  *z = getZ();
+}
+
+void voxel_1_c::recalcSpaceCoordinates(float * x, float * y, float * /*z*/) const {
+  *x = *x * 0.5;
+  *y = *y * HEIGHT;
 }
 

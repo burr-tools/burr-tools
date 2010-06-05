@@ -23,6 +23,7 @@
 #include "view3dgroup.h"
 #include "WindowWidgets.h"
 #include "piececolor.h"
+#include "voxelframe.h"
 
 #include "../lib/assembly.h"
 #include "../lib/problem.h"
@@ -255,7 +256,7 @@ void movementBrowser_c::cb_NodeChange(void) {
 
   fixedPositions_c fp(s->node, s->pieces, puz->pieceNumber());
 
-  view3d->updatePositionsOverlap(&fp);
+  view3d->getView()->updatePositionsOverlap(&fp);
 }
 
 static void cb_Prune_stub(Fl_Widget* /*o*/, void* v) { ((movementBrowser_c*)v)->cb_Prune(); }
@@ -462,14 +463,10 @@ movementBrowser_c::movementBrowser_c(problem_c * puzzle, unsigned int solNum) : 
 
   LFl_Tile * tile = new LFl_Tile(0, 0, 1, 1);
 
-  guiGridType_c * ggt = new guiGridType_c(puz->getGridType());
-
-  view3d = new LView3dGroup(1, 0, 1, 1, ggt);
+  view3d = new LView3dGroup(1, 0, 1, 1);
   view3d->weight(1, 1);
   view3d->setMinimumSize(300, 300);
   view3d->callback(cb_3dClick_movementBrowser_stub, this);
-
-  delete ggt;
 
   layouter_c * lay = new layouter_c(0, 0, 1, 1);
 
@@ -523,7 +520,7 @@ movementBrowser_c::movementBrowser_c(problem_c * puzzle, unsigned int solNum) : 
 
   n->user_data(dat);
 
-  view3d->showAssembly(puz, solNum);
+  view3d->getView()->showAssembly(puz, solNum);
 
   tree->get_root()->select_only();
 }

@@ -18,8 +18,11 @@
 
 #include "voxel.h"
 
-
 #include "../tools/xml.h"
+
+#include "../halfedge/polyhedron.h"
+#include "../halfedge/vector3.h"
+#include "../halfedge/modifiers.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -940,4 +943,191 @@ bool voxel_c::unionintersect(
 
   return result;
 }
+
+Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) const
+{
+  Polyhedron * res = new Polyhedron();
+
+  vertexList_c vl(res);
+  std::vector<int> face3(3);
+  std::vector<int> face4(4);
+  std::vector<float> faceCorners;
+  std::vector<float> faceCorners2;
+
+  // make shure the 2 parameters are positive or zero and have a valid minimum size
+  if (bevel < 1e-5) bevel = 0;
+  if (offset < 1e-5) offset = 0;
+
+  for (unsigned int z = 0; z < getZ(); z++)
+    for (unsigned int y = 0; y < getY(); y++)
+      for (unsigned int x = 0; x < getX(); x++)
+        if (!isEmpty(x, y, z))
+        {
+          uint32_t type = (((x+y+z) & 1) == 0) ? FF_COLOR_LIGHT : 0;
+          uint32_t idx = getIndex(x, y, z);
+
+          int n = 1;
+          int nx, ny, nz;
+
+          // first t the voxel polyhedron that is fixed
+
+          if (bevel > 0)
+          {
+            do {
+              faceCorners.clear();
+              getConnectionFace(x, y, z, -n, bevel, offset, faceCorners);
+
+              Face * f = 0;
+
+              if (faceCorners.size() == 9)
+              {
+                face3[0] = vl.get(faceCorners[0], faceCorners[1], faceCorners[2]);
+                face3[1] = vl.get(faceCorners[3], faceCorners[4], faceCorners[5]);
+                face3[2] = vl.get(faceCorners[6], faceCorners[7], faceCorners[8]);
+                f = res->addFace(face3);
+              }
+              else if (faceCorners.size() == 12)
+              {
+                face4[0] = vl.get(faceCorners[0], faceCorners[1], faceCorners[2]);
+                face4[1] = vl.get(faceCorners[3], faceCorners[4], faceCorners[5]);
+                face4[2] = vl.get(faceCorners[6], faceCorners[7], faceCorners[8]);
+                face4[3] = vl.get(faceCorners[9], faceCorners[10], faceCorners[11]);
+                f = res->addFace(face4);
+              }
+              else if (faceCorners.size() == 0)
+              {
+              }
+              else
+              {
+                bt_assert(0);
+              }
+
+              n++;
+
+              if (f)
+              {
+                f->_flags = FF_WIREFRAME | type | FF_BEVEL_FACE;
+                f->_fb_index = idx;
+                f->_fb_face = -1;
+                f->_color = 0;
+              }
+
+            } while (faceCorners.size() > 0);
+          }
+
+          n = 0;
+
+          while (getNeighbor(n, 0, x, y, z, &nx, &ny, &nz))
+          {
+            if (isEmpty2(nx, ny, nz))
+            {
+              faceCorners.clear();
+              getConnectionFace(x, y, z, n, bevel, offset, faceCorners);
+
+              Face * f = 0;
+
+              if (faceCorners.size() == 9)
+              {
+                face3[0] = vl.get(faceCorners[0], faceCorners[1], faceCorners[2]);
+                face3[1] = vl.get(faceCorners[3], faceCorners[4], faceCorners[5]);
+                face3[2] = vl.get(faceCorners[6], faceCorners[7], faceCorners[8]);
+                f = res->addFace(face3);
+              }
+              else if (faceCorners.size() == 12)
+              {
+                face4[0] = vl.get(faceCorners[0], faceCorners[1], faceCorners[2]);
+                face4[1] = vl.get(faceCorners[3], faceCorners[4], faceCorners[5]);
+                face4[2] = vl.get(faceCorners[6], faceCorners[7], faceCorners[8]);
+                face4[3] = vl.get(faceCorners[9], faceCorners[10], faceCorners[11]);
+                f = res->addFace(face4);
+              }
+              else
+              {
+                bt_assert(0);
+              }
+
+              f->_flags = type;
+              if (isVariable(x, y, z)) f->_flags |= FF_VARIABLE_MARK;
+              f->_fb_index = idx;
+              f->_fb_face = n;
+              f->_color = getColor(x, y, z);
+            }
+            else
+            {
+              if ((offset > 0) && ((nx > x) || (nx == x && ny > y) || (nx == x && ny == y && nz > z)))
+              {
+                // add connection prisms
+
+                // first find out which neighbor we are relative to our neighbor n
+
+                int n2 = 0;
+                bool found = false;
+                int mx, my, mz;
+
+                while (getNeighbor(n2, 0, nx, ny, nz, &mx, &my, &mz))
+                {
+                  if (mx == x && my == y && mz == z)
+                  {
+                    found = true;
+                    break;
+                  }
+                  n2++;
+                }
+
+                bt_assert(found);
+
+                faceCorners.clear();
+                getConnectionFace(x, y, z, n, bevel, offset, faceCorners);
+
+                faceCorners2.clear();
+                getConnectionFace(nx, ny, nz, n2, bevel, offset, faceCorners2);
+
+                bt_assert(faceCorners.size() == faceCorners2.size());
+                bt_assert(faceCorners.size() % 3 == 0);
+
+                int corners = faceCorners.size() / 3;
+
+                for (int i = 0; i < corners; i++)
+                {
+                  int f1c1 = 3*i;
+                  int f1c2 = 3*((i+1) % corners);
+                  int f2c1 = 3*((-i+corners) % corners);
+                  int f2c2 = 3*((-i+corners-1) % corners);
+
+                  face4[0] = vl.get(faceCorners[f1c1+0],  faceCorners[f1c1+1],  faceCorners[f1c1+2]);
+                  face4[1] = vl.get(faceCorners[f1c2+0],  faceCorners[f1c2+1],  faceCorners[f1c2+2]);
+                  face4[2] = vl.get(faceCorners2[f2c2+0], faceCorners2[f2c2+1], faceCorners2[f2c2+2]);
+                  face4[3] = vl.get(faceCorners2[f2c1+0], faceCorners2[f2c1+1], faceCorners2[f2c1+2]);
+
+                  Face * f = res->addFace(face4);
+
+                  f->_flags = FF_WIREFRAME | type | FF_OFFSET_FACE;
+                  f->_fb_index = idx;
+                  f->_fb_face = n;
+                  f->_color = 0;
+                }
+              }
+            }
+            n++;
+          }
+        }
+
+  if (!fast)
+  {
+    res->finalize();
+  }
+
+  return res;
+}
+
+Polyhedron * voxel_c::getMesh(double bevel, double offset) const
+{
+  return getMeshInternal(bevel, offset, false);
+}
+
+Polyhedron * voxel_c::getDrawingMesh(void) const
+{
+  return getMeshInternal(0.03, 0.005, true);
+}
+
 

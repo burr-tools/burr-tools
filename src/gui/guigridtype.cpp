@@ -22,11 +22,6 @@
 #include "grideditor_2.h"
 #include "grideditor_3.h"
 #include "grideditor_4.h"
-#include "voxeldrawer_0.h"
-#include "voxeldrawer_1.h"
-#include "voxeldrawer_2.h"
-#include "voxeldrawer_3.h"
-#include "voxeldrawer_4.h"
 #include "gridtypegui.h"
 #include "tooltabs.h"
 
@@ -41,17 +36,6 @@ gridEditor_c * guiGridType_c::getGridEditor(int x, int y, int w, int h, puzzle_c
     case gridType_c::GT_SPHERES: return new gridEditor_2_c(x, y, w, h, puzzle);
     case gridType_c::GT_RHOMBIC: return new gridEditor_3_c(x, y, w, h, puzzle);
     case gridType_c::GT_TETRA_OCTA: return new gridEditor_4_c(x, y, w, h, puzzle);
-    default: return 0;
-  }
-}
-
-voxelDrawer_c * guiGridType_c::getVoxelDrawer(void) const {
-  switch(gt->getType()) {
-    case gridType_c::GT_BRICKS: return new voxelDrawer_0_c();
-    case gridType_c::GT_TRIANGULAR_PRISM: return new voxelDrawer_1_c();
-    case gridType_c::GT_SPHERES: return new voxelDrawer_2_c();
-    case gridType_c::GT_RHOMBIC: return new voxelDrawer_3_c();
-    case gridType_c::GT_TETRA_OCTA: return new voxelDrawer_4_c();
     default: return 0;
   }
 }

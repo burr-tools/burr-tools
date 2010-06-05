@@ -18,7 +18,9 @@
 
 #include "stl.h"
 
-#include <math.h>
+#include "../halfedge/polyhedron.h"
+#include "../halfedge/vector3.h"
+
 #include <string.h>
 
 /** \page STL Surface Tessellation Language
@@ -51,148 +53,123 @@ const char * basename(const char * name) {
 }
 #endif
 
-void stlExporter_c::open(const char * name) {
 
-  char fname[1000];
-  snprintf(fname, 1000, "%s.stl", name);
+void stlExporter_c::write(const char * fname, const voxel_c & v)
+{
+  FILE * f;
+  unsigned long triangleCount = 0;
+
+  char name[1000];
+  snprintf(name, 1000, "%s.stl", fname);
 
   const char * title = basename(name);
 
-  if (binaryMode) {
-
-    f = fopen(fname,"wb");
+  if (binaryMode)
+  {
+    f = fopen(name,"wb");
 
     if (!f) throw new stlException_c("Could not open file");
 
     int pos = 0;
 
-    for (int i = 0; i < 84; i++) {
-      if (fwrite(title+pos, 1, 1, f) != 1)
-        throw stlException_c("Could not write to file");
+    for (int i = 0; i < 84; i++)
+    {
+      fwrite(title+pos, 1, 1, f);
       if (title[pos]) pos++;
     }
-
-    triangleCount = 0;
-
-  } else {
-
-    f = fopen(fname,"w");
+  }
+  else
+  {
+    f = fopen(name,"w");
 
     if (!f) throw new stlException_c("Could not open file");
 
     fprintf(f, "solid %s\n", title);
-
   }
-}
 
-void stlExporter_c::close(void) {
+  // try to generate the polyhedron, there might be problems along the way,
+  // like wrong parameters, or things like that, so we need to catch those
+  // cases and close the file, if that happens
 
-  if (binaryMode) {
+  Polyhedron * poly = 0;
 
+  try
+  {
+    poly = getMesh(v);
+    if (!poly) throw new stlException_c("Something went wrong when generating the STL polyhedron");
+  }
+  catch (stlException_c * e)
+  {
+    fclose(f);
+    throw e;
+  }
+
+  // write out the generated polyhedron
+  for(Polyhedron::const_face_iterator it=poly->fBegin(); it!=poly->fEnd(); it++)
+  {
+    const Face* fc = *it;
+
+    if (fc->hole())
+      continue;
+
+    const float * normal = fc->normal().getData();
+
+    Face::const_edge_circulator e = fc->begin();
+    Face::const_edge_circulator sentinel = e;
+    e++;
+    Vector3Df start = (*e)->dst()->position();
+    e++;
+
+    do
+    {
+      const float * v1 = start.getData();
+      const float * v2 = (*e)->dst()->position().getData();
+      e++;
+      const float * v3 = (*e)->dst()->position().getData();
+
+      if (binaryMode)
+      {
+        // write normal vector
+        fwrite(normal, 3, 4, f);
+
+        // write the 3 vertices
+        fwrite(v1, 3, 4, f);
+        fwrite(v2, 3, 4, f);
+        fwrite(v3, 3, 4, f);
+
+        // attribute
+        int i = 0;
+        fwrite(&i, 1, 2, f);
+
+        triangleCount++;
+      }
+      else
+      {
+        fprintf(f,"  facet normal %9.4e %9.4e %9.4e\n", normal[0], normal[1], normal[2]);
+        fprintf(f,"    outer loop\n");
+        fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", v1[0], v1[1], v1[2]);
+        fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", v2[0], v2[1], v2[2]);
+        fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", v3[0], v3[1], v3[2]);
+        fprintf(f,"    endloop\n");
+        fprintf(f,"  endfacet\n");
+      }
+    } while (e != sentinel);
+  }
+
+  delete poly;
+
+  if (binaryMode)
+  {
     // write out the triangle count into the header
     fseek(f, 80, SEEK_SET);
-    if (fwrite(&triangleCount, 1, 4, f) != 1)
-      throw stlException_c("Could not write to file");
-
-  } else {
-
+    fwrite(&triangleCount, 1, 4, f);
+  }
+  else
+  {
     fprintf(f, "endsolid\n");
-
   }
 
   fclose(f);
 }
 
-#define Epsilon 1.0e-5
-
-void stlExporter_c::outTriangle(
-        /* the 3 vertexes of the triangle */
-        double x1, double y1, double z1,
-        double x2, double y2, double z2,
-        double x3, double y3, double z3,
-        /* a point that is on the _INSIDE_ of the plane of thr triangle
-         * this is used to calculate the proper normal and reorientate the
-         * points anti clockwise
-         */
-        double xp, double yp, double zp) {
-
-  double sx = x1;
-  double sy = y1;
-  double sz = z1;
-  double v1x = x2-x1;
-  double v1y = y2-y1;
-  double v1z = z2-z1;
-  double v2x = x3-x1;
-  double v2y = y3-y1;
-  double v2z = z3-z1;
-
-  float nx = v1y*v2z - v1z*v2y;
-  float ny = v1z*v2x - v1x*v2z;
-  float nz = v1x*v2y - v1y*v2x;
-
-  float l = sqrt(nx*nx+ny*ny+nz*nz);
-
-  if (l < Epsilon)
-    return;
-
-  nx /= l;
-  ny /= l;
-  nz /= l;
-
-  if (binaryMode) {
-
-    float d;
-
-    bool wrOk = true;
-
-    if (nx*(xp-sx)+ny*(yp-sy)+nz*(zp-sz) > 0) {
-
-      d = -nx; wrOk &= fwrite(&d, 1, 4, f) == 1; d = -ny; wrOk &= fwrite(&d, 1, 4, f) ==1; d = -nz; wrOk &= fwrite(&d, 1, 4, f) == 1;
-      d = x1; wrOk &= fwrite(&d, 1, 4, f); d = y1; wrOk &= fwrite(&d, 1, 4, f); d = z1; wrOk &= fwrite(&d, 1, 4, f);
-      d = x3; wrOk &= fwrite(&d, 1, 4, f); d = y3; wrOk &= fwrite(&d, 1, 4, f); d = z3; wrOk &= fwrite(&d, 1, 4, f);
-      d = x2; wrOk &= fwrite(&d, 1, 4, f); d = y2; wrOk &= fwrite(&d, 1, 4, f); d = z2; wrOk &= fwrite(&d, 1, 4, f);
-
-    } else {
-
-      d = nx; wrOk &= fwrite(&d, 1, 4, f); d = ny; wrOk &= fwrite(&d, 1, 4, f); d = nz; wrOk &= fwrite(&d, 1, 4, f);
-      d = x1; wrOk &= fwrite(&d, 1, 4, f); d = y1; wrOk &= fwrite(&d, 1, 4, f); d = z1; wrOk &= fwrite(&d, 1, 4, f);
-      d = x2; wrOk &= fwrite(&d, 1, 4, f); d = y2; wrOk &= fwrite(&d, 1, 4, f); d = z2; wrOk &= fwrite(&d, 1, 4, f);
-      d = x3; wrOk &= fwrite(&d, 1, 4, f); d = y3; wrOk &= fwrite(&d, 1, 4, f); d = z3; wrOk &= fwrite(&d, 1, 4, f);
-
-    }
-
-    if (!wrOk)
-      throw stlException_c("Could not write to file");
-
-    // attribute
-    int i = 0;
-    if (fwrite(&i, 1, 2, f) != 1)
-      throw stlException_c("Could not write to file");
-
-    triangleCount++;
-
-  } else {
-
-    if (nx*(xp-sx)+ny*(yp-sy)+nz*(zp-sz) > 0) {
-
-      fprintf(f,"  facet normal %9.4e %9.4e %9.4e\n", -nx, -ny, -nz);
-      fprintf(f,"    outer loop\n");
-      fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x1, y1, z1);
-      fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x3, y3, z3);
-      fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x2, y2, z2);
-      fprintf(f,"    endloop\n");
-      fprintf(f,"  endfacet\n");
-
-    } else {
-
-      fprintf(f,"  facet normal %9.4e %9.4e %9.4e\n", nx, ny, nz);
-      fprintf(f,"    outer loop\n");
-      fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x1, y1, z1);
-      fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x2, y2, z2);
-      fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", x3, y3, z3);
-      fprintf(f,"    endloop\n");
-      fprintf(f,"  endfacet\n");
-    }
-  }
-}
 

@@ -27,19 +27,21 @@ class stlExporter_2_c : public stlExporter_c {
   public:
 
     stlExporter_2_c(void) : sphere_rad(10), offset(0), round(1.0), connection_rad(0.75),
-      recursion(2.0), inner_rad(0), hole_diam(0) {}
+      recursion(2.0), inner_rad(0), hole_diam(0), square_hole(false) {}
 
-    virtual void write(const char * basename, const voxel_c * shape);
+    virtual Polyhedron * getMesh(const voxel_c & v) const;
 
     /* some functions to set some parameters for the output,
      * all parameters must be double values.
      */
 
     /* return a text to display to the user about the parameter x */
-    virtual unsigned int numParameters(void) const { return 7; }
+    virtual unsigned int numParameters(void) const { return 8; }
     virtual const char * getParameterName(unsigned int idx) const;
     virtual double getParameter(unsigned int idx) const;
     virtual void setParameter(unsigned int idx, double value);
+    virtual const char * getParameterTooltip(unsigned int idx) const;
+    virtual parameterTypes getParameterType(unsigned int idx) const;
 
   private:
 
@@ -51,51 +53,7 @@ class stlExporter_2_c : public stlExporter_c {
     double recursion;
     double inner_rad;
     double hole_diam;
-
-    /* internal variables */
-    double curvRad, curvX, curvY;
-    bool outside; //Flags if we are drawing the outside of a sphere
-    bool hollow; //Flags if the sphere we are drawing is hollow
-
-    void drawTriangle(
-        int x, int y, int z,
-        double x1, double y1, double z1,
-        double x2, double y2, double z2,
-        double x3, double y3, double z3,
-        int edge12, int edge23, int edge31, int rec);
-
-    void makeSphere(int x, int y, int z, uint16_t neighbors);
-
-    void drawHolePiece(int i, int x, int y, int z,
-        double start, double end,
-        double x1, double y1, double z1,
-        double x2, double y2, double z2,
-        int rec);
-
-    void drawHole(
-        int x, int y, int z, int i,
-        double x1, double y1, double z1,
-        double x2, double y2, double z2, int rec, int rec2);
-
-// Next four methods added by George Bell Sept 2009
-
-    void normalize(double *x, double *y, double *z);
-
-    void shiftToConnectingHole(double px, double py, double pz, double rad, double *x, double *y, double *z);
-
-    void drawConnectingHole(
-        int x, int y, int z, int i,
-        double hx, double hy, double hz,
-        double x1, double y1, double z1, double x2, double y2, double z2,
-        double x3, double y3, double z3, double x4, double y4, double z4,
-        int edgeflag, int rec);
-
-    void drawConnectingTriangle(
-        int x, int y, int z,
-        double hx, double hy, double hz,
-        double x1, double y1, double z1,
-        double x2, double y2, double z2);
-
+    bool square_hole;
 
   private:
 

@@ -132,7 +132,7 @@ void mainWindow_c::cb_AddColor(void) {
 
     colorSelector->setSelection(puzzle->colorNumber());
     changed = true;
-    View3D->showColors(puzzle, Status->getColorMode());
+    View3D->getView()->showColors(puzzle, Status->getColorMode());
     updateInterface();
   }
 }
@@ -154,7 +154,7 @@ void mainWindow_c::cb_RemoveColor(void) {
     colorSelector->setSelection(current);
 
     changed = true;
-    View3D->showColors(puzzle, Status->getColorMode());
+    View3D->getView()->showColors(puzzle, Status->getColorMode());
     activateShape(PcSel->getSelection());
     updateInterface();
   }
@@ -171,7 +171,7 @@ void mainWindow_c::cb_ChangeColor(void) {
     if (fl_color_chooser("Change colour", r, g, b)) {
       puzzle->changeColor(colorSelector->getSelection()-1, r, g, b);
       changed = true;
-      View3D->showColors(puzzle, Status->getColorMode());
+      View3D->getView()->showColors(puzzle, Status->getColorMode());
       updateInterface();
     }
   }
@@ -446,12 +446,12 @@ void mainWindow_c::cb_pieceEdit(VoxelEditGroup_c* o) {
   switch (o->getReason()) {
   case gridEditor_c::RS_MOUSEMOVE:
     if (o->getMouse())
-      View3D->setMarker(o->getMouseX1(), o->getMouseY1(), o->getMouseX2(), o->getMouseY2(), o->getMouseZ(), editSymmetries);
+      View3D->getView()->setMarker(o->getMouseX1(), o->getMouseY1(), o->getMouseX2(), o->getMouseY2(), o->getMouseZ(), editSymmetries);
     else
-      View3D->hideMarker();
+      View3D->getView()->hideMarker();
     break;
   case gridEditor_c::RS_CHANGESQUARE:
-    View3D->showSingleShape(puzzle, PcSel->getSelection());
+    View3D->getView()->showSingleShape(puzzle, PcSel->getSelection());
     StatPieceInfo(PcSel->getSelection());
     changeShape(PcSel->getSelection());
     changed = true;
@@ -827,7 +827,7 @@ void mainWindow_c::cb_BtnPlacementBrowser(void) {
     return;
   }
 
-  placementBrowser_c * plbr = new placementBrowser_c(puzzle->getProblem(prob), ggt);
+  placementBrowser_c * plbr = new placementBrowser_c(puzzle->getProblem(prob));
 
   plbr->show();
 
@@ -876,7 +876,7 @@ void mainWindow_c::cb_BtnAssemblerStep(void) {
 
   updateInterface();
 
-  View3D->showAssemblerState(puzzle->getProblem(solutionProblem->getSelection()), assm->getAssembly());
+  View3D->getView()->showAssemblerState(puzzle->getProblem(solutionProblem->getSelection()), assm->getAssembly());
 }
 
 static void cb_AllowColor_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AllowColor(); }
@@ -1031,7 +1031,7 @@ void mainWindow_c::cb_SolutionAnim(Fl_Value_Slider* o) {
   o->take_focus();
   if (disassemble) {
     disassemble->setStep(o->value(), config.useBlendedRemoving(), true);
-    View3D->updatePositions(disassemble);
+    View3D->getView()->updatePositions(disassemble);
   }
 }
 
@@ -1251,12 +1251,12 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
 static void cb_PcVis_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_PcVis(); }
 void mainWindow_c::cb_PcVis(void) {
-  View3D->updateVisibility(PcVis);
+  View3D->getView()->updateVisibility(PcVis);
 }
 
 static void cb_Status_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Status(); }
 void mainWindow_c::cb_Status(void) {
-  View3D->showColors(puzzle, Status->getColorMode());
+  View3D->getView()->showColors(puzzle, Status->getColorMode());
 }
 
 static void cb_3dClick_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_3dClick(); }
@@ -1276,7 +1276,7 @@ void mainWindow_c::cb_3dClick(void) {
             &shape, &voxel, &face))
         sh->setState(voxel, voxel_c::VX_EMPTY);
 
-      View3D->showSingleShape(puzzle, PcSel->getSelection());
+      View3D->getView()->showSingleShape(puzzle, PcSel->getSelection());
       StatPieceInfo(PcSel->getSelection());
       changeShape(PcSel->getSelection());
       redraw();
@@ -1309,7 +1309,7 @@ void mainWindow_c::cb_3dClick(void) {
 
             sh->setColor(nx, ny, nz, colorSelector->getSelection());
 
-            View3D->showSingleShape(puzzle, PcSel->getSelection());
+            View3D->getView()->showSingleShape(puzzle, PcSel->getSelection());
             StatPieceInfo(PcSel->getSelection());
             changeShape(PcSel->getSelection());
             activateShape(PcSel->getSelection());
@@ -1339,7 +1339,7 @@ void mainWindow_c::cb_3dClick(void) {
             &shape, 0, 0)) {
 
         PcVis->hidePiece(shape);
-        View3D->updateVisibility(PcVis);
+        View3D->getView()->updateVisibility(PcVis);
         redraw();
       }
     }
@@ -1696,7 +1696,7 @@ void mainWindow_c::cb_ImageExportVector(void) {
 
 static void cb_ImageExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExport(); }
 void mainWindow_c::cb_ImageExport(void) {
-  imageExport_c w(puzzle, ggt);
+  imageExport_c w(puzzle);
   w.show();
 
   while (w.visible()) {
@@ -1710,7 +1710,7 @@ void mainWindow_c::cb_ImageExport(void) {
 
 static void cb_STLExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_STLExport(); }
 void mainWindow_c::cb_STLExport(void) {
-  stlExport_c w(puzzle, ggt);
+  stlExport_c w(puzzle);
   w.show();
 
   while (w.visible()) {
@@ -1919,7 +1919,7 @@ bool mainWindow_c::tryToLoad(const char * f) {
   TaskSelectionTab->value(TabPieces);
   activateShape(PcSel->getSelection());
   StatPieceInfo(PcSel->getSelection());
-  View3D->showColors(puzzle, Status->getColorMode());
+  View3D->getView()->showColors(puzzle, Status->getColorMode());
 
   changed = false;
 
@@ -1975,7 +1975,6 @@ void mainWindow_c::ReplacePuzzle(puzzle_c * NewPuzzle) {
 
   // now replace all gridtype dependent gui elements with
   // instances from the guigridtype
-  View3D->newGridType(nggt);
   pieceEdit->newGridType(nggt, puzzle);
   pieceTools->newGridType(nggt);
 
@@ -2036,7 +2035,7 @@ void mainWindow_c::show(int argn, char ** argv) {
 }
 
 void mainWindow_c::activateClear(void) {
-  View3D->showNothing();
+  View3D->getView()->showNothing();
   pieceEdit->clearPuzzle();
   pieceTools->setVoxelSpace(0, 0);
 
@@ -2047,7 +2046,7 @@ void mainWindow_c::activateShape(unsigned int number) {
 
   if ((number < puzzle->shapeNumber())) {
 
-    View3D->showSingleShape(puzzle, number);
+    View3D->getView()->showSingleShape(puzzle, number);
     pieceEdit->setPuzzle(puzzle, number);
     pieceTools->setVoxelSpace(puzzle, number);
 
@@ -2055,7 +2054,7 @@ void mainWindow_c::activateShape(unsigned int number) {
 
   } else {
 
-    View3D->showNothing();
+    View3D->getView()->showNothing();
     pieceEdit->clearPuzzle();
     pieceTools->setVoxelSpace(0, 0);
   }
@@ -2066,9 +2065,9 @@ void mainWindow_c::activateShape(unsigned int number) {
 void mainWindow_c::activateProblem(unsigned int prob) {
 
   if (prob < puzzle->problemNumber())
-    View3D->showProblem(puzzle, prob, shapeAssignmentSelector->getSelection());
+    View3D->getView()->showProblem(puzzle, prob, shapeAssignmentSelector->getSelection());
   else
-    View3D->showNothing();
+    View3D->getView()->showNothing();
 
   SolutionEmpty = true;
 }
@@ -2110,9 +2109,9 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
                                       pr->pieceNumber());
       disassemble->setStep(SolutionAnim->value(), config.useBlendedRemoving(), true);
 
-      if (prob < puzzle->problemNumber()) View3D->showAssembly(puzzle->getProblem(prob), num);
-      View3D->updatePositions(disassemble);
-      View3D->updateVisibility(PcVis);
+      if (prob < puzzle->problemNumber()) View3D->getView()->showAssembly(puzzle->getProblem(prob), num);
+      View3D->getView()->updatePositions(disassemble);
+      View3D->getView()->updateVisibility(PcVis);
 
       SolutionNumber->show();
       SolutionNumber->value(pr->getSolution(num)->getSolutionNumber()+1);
@@ -2134,8 +2133,8 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
       MovesInfo->value(levelText);
 
-      if (prob < puzzle->problemNumber()) View3D->showAssembly(puzzle->getProblem(prob), num);
-      View3D->updateVisibility(PcVis);
+      if (prob < puzzle->problemNumber()) View3D->getView()->showAssembly(puzzle->getProblem(prob), num);
+      View3D->getView()->updateVisibility(PcVis);
 
       SolutionNumber->show();
       SolutionNumber->value(pr->getSolution(num)->getSolutionNumber()+1);
@@ -2147,8 +2146,8 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->value(0);
       MovesInfo->hide();
 
-      if (prob < puzzle->problemNumber()) View3D->showAssembly(puzzle->getProblem(prob), num);
-      View3D->updateVisibility(PcVis);
+      if (prob < puzzle->problemNumber()) View3D->getView()->showAssembly(puzzle->getProblem(prob), num);
+      View3D->getView()->updateVisibility(PcVis);
 
       SolutionNumber->hide();
     }
@@ -2157,7 +2156,7 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
   } else {
 
-    View3D->showNothing();
+    View3D->getView()->showNothing();
     SolutionEmpty = true;
 
     SolutionAnim->hide();
@@ -3705,7 +3704,7 @@ void mainWindow_c::activateConfigOptions(void) {
   else
     Fl_Tooltip::disable();
 
-  View3D->useLightning(config.useLightning());
+  View3D->getView()->useLightning(config.useLightning());
   View3D->getView()->setRotaterMethod(config.rotationMethod());
 }
 
@@ -3734,7 +3733,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
   mainTile->weight(0, 1);
 
   layouter_c * lay = new layouter_c(1, 0, 1, 1);
-  View3D = new LView3dGroup(0, 0, 1, 1, ggt);
+  View3D = new LView3dGroup(0, 0, 1, 1);
   lay->weight(1, 0);
   lay->end();
   lay->setMinimumSize(400, 400);

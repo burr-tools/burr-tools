@@ -71,6 +71,10 @@ class voxel_3_c : public voxel_0_c {
     bool identicalInBB(const voxel_c * op, bool includeColors = true) const;
     bool onGrid(int x, int y, int z) const;
 
+    void getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & faceCorners) const;
+    void calculateSize(float * x, float * y, float * z) const;
+    void recalcSpaceCoordinates(float * x, float * y, float * z) const;
+
   private:
 
     // no copying and assigning

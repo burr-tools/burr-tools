@@ -28,6 +28,7 @@
 
 class xmlWriter_c;
 class xmlParser_c;
+class Polyhedron;
 
 /** \file voxel.h
  * Contains the voxel base class and the class that gets thrown on load errors
@@ -709,11 +710,58 @@ public:
    */
   virtual bool onGrid(int x, int y, int z) const = 0;
 
+  /**
+   * this function returns a polyhedron mesh of this shape.
+   * The mesh is then further used for STL export and
+   * the displaying of this shape in the GUI
+   * The Polyhedron is allocated using new, so you have to
+   * delete it, when you no longer need it
+   *
+   */
+  virtual Polyhedron * getMesh(double bevel, double offset) const;
+
+  /**
+   * returns the drawing mesh. ATTENTION for the sake of speed this mesh
+   * will not be a proper halfedge mesh, most edges will be open, meaning
+   * they don't have a pair, which is invalid and makes some
+   * functions not work, but it is ok for drawing
+   */
+  virtual Polyhedron * getDrawingMesh(void) const;
+
+  /**
+   * this function must return a polygon that is the connecting face to the neighbor n for the
+   * voxel at position x, y, z
+   * The function is used by the default implementation of getMesh to generate the default basis mesh
+   * it is also used by the 3D cursor drawing code
+   */
+  virtual void getConnectionFace(int /*x*/, int /*y*/, int /*z*/, int /*n*/, double /*bevel*/, double /*offset*/, std::vector<float> & /*faceCorners*/) const {};
+
+  /**
+   * calculate the size, that the returned mesh has
+   */
+  virtual void calculateSize(float * x, float * y, float * z) const { *x = 0; *y = 0; *z = 0; }
+
+
+  virtual void recalcSpaceCoordinates(float * /*x*/, float * /*y*/, float * /*z*/) const {}
+
 private:
+
+  virtual Polyhedron * getMeshInternal(double bevel, double offset, bool fast) const;
 
   // no copying and assigning
   void operator=(const voxel_c&);
 
 };
+
+/* some defines used for the flags of the faces of the generated meshes
+ */
+
+#define FF_COLOR_LIGHT 1    // this helps with the colorisation
+#define FF_VARIABLE_MARK 2  // when set, the face is supposed to be with a variable marker
+#define FF_VARIABLE_FACE 4  // when set, the face itself is the variable marker only one or none of these 2 should be set
+#define FF_WIREFRAME 8      // when set, the face stays when in wire frame more
+#define FF_BEVEL_FACE 16    // the face got added because the polyhedron has a bevel
+#define FF_OFFSET_FACE 32   // the face is added because the polyhedron has an offset
+#define FF_PROCESSED_FACE 64// tags faces already processed by the polygon fill routine
 
 #endif

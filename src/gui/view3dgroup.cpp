@@ -17,7 +17,7 @@
  */
 #include "view3dgroup.h"
 
-#include "guigridtype.h"
+#include "voxelframe.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/disasmtomoves.h"
@@ -37,7 +37,7 @@ void LView3dGroup::cb_slider(void) {
 
 static void cb_View3dGroupVoxel_stub(Fl_Widget* o, void* /*v*/) { ((LView3dGroup*)(o->parent()))->do_callback(); }
 
-LView3dGroup::LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt) : Fl_Group(0, 0, 50, 50), layoutable_c(x, y, w, h) {
+LView3dGroup::LView3dGroup(int x, int y, int w, int h) : Fl_Group(0, 0, 50, 50), layoutable_c(x, y, w, h) {
 
   x = y = 0;
   w = h = 50;
@@ -45,7 +45,6 @@ LView3dGroup::LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt
   box(FL_DOWN_BOX);
 
   View3D = new voxelFrame_c(x, y, w-15, h);
-  View3D->setDrawer(ggt->getVoxelDrawer());
   View3D->tooltip(" Rotate the puzzle by dragging with the mouse ");
   View3D->box(FL_NO_BOX);
   View3D->callback(cb_View3dGroupVoxel_stub, this);
@@ -65,43 +64,6 @@ LView3dGroup::LView3dGroup(int x, int y, int w, int h, const guiGridType_c * ggt
   end();
 }
 
-void LView3dGroup::newGridType(const guiGridType_c * ggt) {
-
-  View3D->setDrawer(ggt->getVoxelDrawer());
-}
-
-void LView3dGroup::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {
-  View3D->showSingleShape(puz, shapeNum);
-}
-
-void LView3dGroup::showProblem(const puzzle_c * puz, unsigned int problem, unsigned int selShape) {
-  View3D->showProblem(puz, problem, selShape);
-}
-
-void LView3dGroup::showColors(const puzzle_c * puz, voxelFrame_c::colorMode mode) {
-  View3D->showColors(puz, mode);
-}
-
-void LView3dGroup::showAssembly(const problem_c * puz, unsigned int solNum) {
-  View3D->showAssembly(puz, solNum);
-}
-
-void LView3dGroup::showPlacement(const problem_c * puz, unsigned int piece, unsigned char trans, int x, int y, int z) {
-  View3D->showPlacement(puz, piece, trans, x, y, z);
-}
-
-void LView3dGroup::updatePositions(piecePositions_c *shifting) {
-  View3D->updatePositions(shifting);
-}
-
-void LView3dGroup::updatePositionsOverlap(piecePositions_c *shifting) {
-  View3D->updatePositionsOverlap(shifting);
-}
-
-void LView3dGroup::updateVisibility(PieceVisibility * pcvis) {
-  View3D->updateVisibility(pcvis);
-}
-
 int LView3dGroup::handle(int event) {
 
   Fl_Group::handle(event);
@@ -115,5 +77,10 @@ int LView3dGroup::handle(int event) {
   }
 
   return 0;
+}
+
+void LView3dGroup::redraw(void)
+{
+  View3D->redraw();
 }
 

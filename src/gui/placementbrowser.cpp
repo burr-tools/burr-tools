@@ -17,6 +17,8 @@
  */
 #include "placementbrowser.h"
 
+#include "voxelframe.h"
+
 #include "../lib/assembler.h"
 #include "../lib/problem.h"
 
@@ -53,7 +55,7 @@ void placementBrowser_c::cb_piece(void) {
   }
 
   placement = 0;
-  view3d->showPlacement(puzzle, piece, trans, x, y, z);
+  view3d->getView()->showPlacement(puzzle, piece, trans, x, y, z);
 }
 
 void placementBrowser_c::cb_placement(Fl_Value_Slider* o) {
@@ -67,17 +69,17 @@ void placementBrowser_c::cb_placement(Fl_Value_Slider* o) {
   node = puzzle->getAssembler()->getPiecePlacement(node, val-placement, piece, &trans, &x, &y, &z);
   placement = val;
 
-  view3d->showPlacement(puzzle, piece, trans, x, y, z);
+  view3d->getView()->showPlacement(puzzle, piece, trans, x, y, z);
 }
 
 
-placementBrowser_c::placementBrowser_c(problem_c * p, const guiGridType_c * ggt) :
+placementBrowser_c::placementBrowser_c(problem_c * p) :
   LFl_Double_Window(true), puzzle(p) {
 
   bt_assert(puzzle->getAssembler());
   bt_assert(puzzle->getAssembler()->getPiecePlacementSupported());
 
-  view3d = new LView3dGroup(1, 1, 1, 1, ggt);
+  view3d = new LView3dGroup(1, 1, 1, 1);
   view3d->weight(1, 1);
   view3d->setMinimumSize(300, 300);
 

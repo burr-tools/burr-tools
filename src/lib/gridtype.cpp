@@ -202,10 +202,10 @@ unsigned int gridType_c::getCapabilities(void) const
 {
   switch (type) {
     case GT_BRICKS:           return CAP_ASSEMBLE | CAP_DISASSEMBLE | CAP_STLEXPORT;
-    case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE | CAP_DISASSEMBLE;
+    case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE | CAP_DISASSEMBLE | CAP_STLEXPORT;
     case GT_SPHERES:          return CAP_ASSEMBLE | CAP_STLEXPORT;
-    case GT_RHOMBIC:          return CAP_ASSEMBLE;
-    case GT_TETRA_OCTA:       return CAP_ASSEMBLE;
+    case GT_RHOMBIC:          return CAP_ASSEMBLE | CAP_STLEXPORT;
+    case GT_TETRA_OCTA:       return CAP_ASSEMBLE | CAP_STLEXPORT;
     default: return 0;
   }
 }
@@ -228,7 +228,10 @@ stlExporter_c * gridType_c::getStlExporter(void) const
 {
   switch (type) {
     case GT_BRICKS:           return new stlExporter_0_c();
+    case GT_TRIANGULAR_PRISM: return new stlExporter_0_c();
     case GT_SPHERES:          return new stlExporter_2_c();
+    case GT_RHOMBIC:          return new stlExporter_0_c();
+    case GT_TETRA_OCTA:       return new stlExporter_0_c();
     default: return 0;
   }
 }

@@ -522,17 +522,17 @@ void imageExport_c::cb_Update3DView(void) {
     ExpShape->activate();
 
   if (ExpShape->value()) {
-    view3D->showSingleShape(puzzle, ShapeSelect->getSelection());
+    view3D->getView()->showSingleShape(puzzle, ShapeSelect->getSelection());
   } else if (ExpAssembly->value()) {
-    view3D->showAssembly(puzzle->getProblem(ProblemSelect->getSelection()), 0);
+    view3D->getView()->showAssembly(puzzle->getProblem(ProblemSelect->getSelection()), 0);
   } else if (ExpSolution->value()) {
-    view3D->showAssembly(puzzle->getProblem(ProblemSelect->getSelection()), 0);
+    view3D->getView()->showAssembly(puzzle->getProblem(ProblemSelect->getSelection()), 0);
   } else if (ExpSolutionDisassm->value()) {
-    view3D->showAssembly(puzzle->getProblem(ProblemSelect->getSelection()), 0);
+    view3D->getView()->showAssembly(puzzle->getProblem(ProblemSelect->getSelection()), 0);
   } else if (ExpProblem->value() && pr->resultValid()) {
-    view3D->showSingleShape(puzzle, pr->getResultId());
+    view3D->getView()->showSingleShape(puzzle, pr->getResultId());
   }
-  view3D->showColors(puzzle, getColorMode());
+  view3D->getView()->showColors(puzzle, getColorMode());
 }
 
 static void cb_ImageExportSzUpdate_stub(Fl_Widget * /*o*/, void *v) { ((imageExport_c*)(v))->cb_SzUpdate(); }
@@ -573,7 +573,7 @@ void imageExport_c::cb_SzUpdate(void) {
   }
 }
 
-imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Double_Window(false), puzzle(p), working(false), state(0), i(0) {
+imageExport_c::imageExport_c(puzzle_c * p) : LFl_Double_Window(false), puzzle(p), working(false), state(0), i(0) {
 
   label("Export Images");
 
@@ -758,7 +758,7 @@ imageExport_c::imageExport_c(puzzle_c * p, const guiGridType_c * ggt) : LFl_Doub
     l->end();
   }
 
-  view3D = new LView3dGroup(2, 0, 1, 6, ggt);
+  view3D = new LView3dGroup(2, 0, 1, 6);
   view3D->setMinimumSize(400, 400);
   cb_Update3DView();
 

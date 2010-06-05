@@ -52,7 +52,6 @@ class LBlockListGroup;
 class ImageInfo;
 class image_c;
 class puzzle_c;
-class guiGridType_c;
 
 class imageExport_c : public LFl_Double_Window, public VoxelViewCallbacks {
 
@@ -103,7 +102,7 @@ class imageExport_c : public LFl_Double_Window, public VoxelViewCallbacks {
 
   public:
 
-    imageExport_c(puzzle_c * p, const guiGridType_c * ggt);
+    imageExport_c(puzzle_c * p);
 
     /* returns true, when there is currently a image export in progress */
     bool isWorking(void) { return working; }

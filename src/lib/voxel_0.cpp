@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "voxel_0.h"
+
 #include <stdlib.h>
 
 #include "tabs_0/tablesizes.inc"
@@ -24,6 +25,8 @@
 static const int rotationMatrices[NUM_TRANSFORMATIONS_MIRROR][9] = {
 #include "tabs_0/rotmatrix.inc"
 };
+
+#include "tabs_0/meshverts.inc"
 
 /** \page grid Grids in BurrTools
  *
@@ -341,5 +344,43 @@ bool voxel_0_c::validCoordinate(int /*x*/, int /*y*/, int /*z*/) const {
 bool voxel_0_c::onGrid(int /*x*/, int /*y*/, int /*z*/) const
 {
   return true;
+}
+
+void voxel_0_c::getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & faceCorners) const
+{
+  if (n < 0)
+  {
+    n = -1-n;
+
+    if (n < 20)
+    {
+      for (int i = 0; i < bevelFaces[n][0]; i++)
+      {
+        int v = bevelFaces[n][i+1];
+        faceCorners.push_back(x+vertices[v][0][0] + offset*vertices[v][1][0] + bevel*vertices[v][2][0]);
+        faceCorners.push_back(y+vertices[v][0][1] + offset*vertices[v][1][1] + bevel*vertices[v][2][1]);
+        faceCorners.push_back(z+vertices[v][0][2] + offset*vertices[v][1][2] + bevel*vertices[v][2][2]);
+      }
+    }
+  }
+  else
+  {
+    if (n < 6)
+    {
+      for (int i = 0; i < 4; i++)
+      {
+        int v = normalFaces[n][i];
+        faceCorners.push_back(x+vertices[v][0][0] + offset*vertices[v][1][0] + bevel*vertices[v][2][0]);
+        faceCorners.push_back(y+vertices[v][0][1] + offset*vertices[v][1][1] + bevel*vertices[v][2][1]);
+        faceCorners.push_back(z+vertices[v][0][2] + offset*vertices[v][1][2] + bevel*vertices[v][2][2]);
+      }
+    }
+  }
+}
+
+void voxel_0_c::calculateSize(float * x, float * y, float * z) const {
+  *x = getX();
+  *y = getY();
+  *z = getZ();
 }
 

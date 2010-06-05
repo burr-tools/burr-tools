@@ -19,6 +19,10 @@
 
 #include "../tools/intdiv.h"
 
+#include <math.h>
+
+#include "tabs_4/meshverts.inc"
+
 /**
  * special transformation function for this grid.
  *
@@ -408,5 +412,81 @@ bool voxel_4_c::onGrid(int x, int y, int z) const {
 
   // the shape doesn't fit, when not within the 3 raster or the cube parity doesn't match
   return x%3 == 0 && y%3 == 0 && z%3 == 0 && (((x/3 + y/3 + z/3) & 1) == 0);
+}
+
+
+void voxel_4_c::getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & faceCorners) const
+{
+  static const int voxels[] = {
+    -1, -1,  2,   3, -1, -1,
+    -1, -1, -1,  -1, -1, -1,
+     4, -1, -1,  -1, -1,  5,
+
+    -1, -1, -1,  -1, -1, -1,
+    -1,  0, -1,  -1,  1, -1,
+    -1, -1, -1,  -1, -1, -1,
+
+     6, -1, -1,  -1, -1,  7,
+    -1, -1, -1,  -1, -1, -1,
+    -1, -1,  8,   9, -1, -1,
+  };
+
+  int xc = intdiv_inf(x, 3);
+  int yc = intdiv_inf(y, 3);
+  int zc = intdiv_inf(z, 3);
+
+  int xs = x - 3*xc;
+  int ys = y - 3*yc;
+  int zs = z - 3*zc;
+
+  if ((xc+yc+zc) & 1) xs += 3;
+
+  int p = voxels[xs+6*(ys + 3*zs)];
+
+  bt_assert(p != -1);
+
+  if (n < 0)
+  {
+    n = -1-n;
+
+    if (n < 10)
+    {
+      for (int i = 0; i < bevelFaces[p][n][0]; i++)
+      {
+        int v = bevelFaces[p][n][i+1];
+        faceCorners.push_back(xc+vertices[v][0][0] + offset*vertices[v][1][0] + bevel*vertices[v][2][0]);
+        faceCorners.push_back(yc+vertices[v][0][1] + offset*vertices[v][1][1] + bevel*vertices[v][2][1]);
+        faceCorners.push_back(zc+vertices[v][0][2] + offset*vertices[v][1][2] + bevel*vertices[v][2][2]);
+      }
+    }
+  }
+  else
+  {
+    if (n < 4)
+    {
+      for (int i = 0; i < 3; i++)
+      {
+        int v = normalFaces[p][n][i];
+        faceCorners.push_back(xc+vertices[v][0][0] + offset*vertices[v][1][0] + bevel*vertices[v][2][0]);
+        faceCorners.push_back(yc+vertices[v][0][1] + offset*vertices[v][1][1] + bevel*vertices[v][2][1]);
+        faceCorners.push_back(zc+vertices[v][0][2] + offset*vertices[v][1][2] + bevel*vertices[v][2][2]);
+      }
+    }
+  }
+
+
+}
+
+
+void voxel_4_c::calculateSize(float * x, float * y, float * z) const {
+  *x = (getX()+2)/3;
+  *y = (getY()+2)/3;
+  *z = (getZ()+2)/3;
+}
+
+void voxel_4_c::recalcSpaceCoordinates(float * x, float * y, float * z) const {
+  *x /= 3;
+  *y /= 3;
+  *z /= 3;
 }
 

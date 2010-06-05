@@ -30,9 +30,10 @@ class puzzle_c;
 class problem_c;
 class assembly_c;
 class piecePositions_c;
-class voxelDrawer_c;
 
 class rotater_c;
+
+class Polyhedron;
 
 /* this callback class defines 2 functions that are called, when
  * the draw function is called in VoxelView
@@ -118,6 +119,7 @@ class voxelFrame_c : public Fl_Gl_Window {
     void updateVisibility(PieceVisibility * pcvis);
     void showProblem(const puzzle_c * puz, unsigned int problem, unsigned int selShape);
     void showPlacement(const problem_c * puz, unsigned int piece, unsigned char trans, int x, int y, int z);
+    void showMesh(Polyhedron * poly);
 
     // this value determines the scaling factor used to draw the cube.
     void setSize(double sz);
@@ -125,7 +127,6 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     void setCallback(VoxelViewCallbacks *c = 0) { cb = c; }
     bool pickShape(int x, int y, unsigned int *shape, unsigned long *voxel, unsigned int *face);
-    void setDrawer(voxelDrawer_c * dr);
 
     typedef enum {
 
@@ -142,8 +143,6 @@ class voxelFrame_c : public Fl_Gl_Window {
     void setRotaterMethod(int method);
 
   private:
-
-    voxelDrawer_c * drawer;
 
     assembly_c * curAssembly; // the currently shown assembly (if there is one)
 
@@ -179,6 +178,8 @@ class voxelFrame_c : public Fl_Gl_Window {
       drawingMode mode;
       float x, y, z, scale;
       bool dim;
+      bool useChecker;
+      Polyhedron * poly;
       GLuint list;  // the display list for this shape 0 means no list defined
 
     } shapeInfo;

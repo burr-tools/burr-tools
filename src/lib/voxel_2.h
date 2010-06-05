@@ -63,7 +63,15 @@ class voxel_2_c : public voxel_c {
     virtual bool validCoordinate(int x, int y, int z) const;
     bool onGrid(int x, int y, int z) const;
 
+    virtual Polyhedron * getMesh(float sphere_rad, float connection_rad, float round, float offset, int recursion, float inner_rad, float hole_diam) const;
+    virtual Polyhedron * getDrawingMesh(void) const;
+    virtual void getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & /*faceCorners*/) const;
+    virtual void calculateSize(float * x, float * y, float * z) const;
+    virtual void recalcSpaceCoordinates(float * /*x*/, float * /*y*/, float * /*z*/) const;
+
   private:
+
+    virtual Polyhedron * getMeshInternal(float sphere_rad, float connection_rad, float round, float offset, int recursion, float inner_rad, float hole_diam, bool fast) const;
 
     // no copying and assigning
     void operator=(const voxel_2_c&);
