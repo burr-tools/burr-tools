@@ -1,5 +1,8 @@
-/* Burr Solver
- * Copyright (C) 2003-2009  Derek Bosch,  Andreas Röver
+/* BurrTools
+ *
+ * BurrTools is the legal property of its developers, whose
+ * names are listed in the COPYRIGHT file, which is included
+ * within the source distribution.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
