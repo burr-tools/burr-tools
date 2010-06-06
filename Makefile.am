@@ -9,6 +9,8 @@ EXTRA_DIST += src/lib/tabs_2/generator_2.cpp
 EXTRA_DIST += src/lib/tabs_3/generator_mesh_3.cpp
 EXTRA_DIST += src/lib/tabs_4/generator_mesh_4.cpp
 EXTRA_DIST += doc/convert.sh
+EXTRA_DIST += src/flu/README
+EXTRA_DIST += src/halfedge/README
 
 dist_doc_DATA =
 dist_doc_DATA += examples/README examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle
