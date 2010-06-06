@@ -22,6 +22,7 @@
 #include "view3dgroup.h"
 #include "blocklistgroup.h"
 #include "voxelframe.h"
+#include "buttongroup.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/stl.h"
@@ -116,6 +117,18 @@ void stlExport_c::cb_Update3DView(void)
   }
 
 }
+
+static void cb_stlExportViewUpdate_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Update3DViewParams(); }
+void stlExport_c::cb_Update3DViewParams(void)
+{
+  switch (mode->getSelected())
+  {
+    case 0: view3D->getView()->setInsideVisible(false); break;
+    case 1: view3D->getView()->setInsideVisible(true); break;
+    default: break;
+  }
+}
+
 
 stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
 
@@ -251,25 +264,48 @@ stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
   }
 
   {
-    layouter_c * l = new layouter_c(0, 3, 2, 1);
+    fr = new LFl_Frame(0, 3, 1, 1);
 
-    status = new LFl_Box();
-    status->weight(1, 0);
-    status->pitch(7);
-    status->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+    layouter_c * l = new layouter_c(0, 0, 1, 1);
+    l->pitch(5);
 
-    BtnStart = new LFl_Button("Export STL", 1, 0);
-    BtnStart->pitch(7);
+    BtnStart = new LFl_Button("Export STL", 0, 0);
     BtnStart->callback(cb_stlExportExport_stub, this);
 
-    BtnAbbort = new LFl_Button("Abort", 2, 0);
-    BtnAbbort->pitch(7);
+    (new LFl_Box(0, 1))->setMinimumSize(0, 5);
+
+    BtnAbbort = new LFl_Button("Abort", 0, 2);
     BtnAbbort->callback(cb_stlExportAbort_stub, this);
+
+    fr->end();
+  }
+
+  {
+    layouter_c * l = new layouter_c(0, 4, 2, 1);
+
+    status = new LFl_Box(0, 0, 1, 1);
+    status->box(FL_UP_BOX);
+    status->weight(1, 0);
+    status->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+
+    mode = new ButtonGroup_c(1, 0, 1, 1);
+
+    Fl_Button * b;
+
+    b = mode->addButton();
+    b->image(pm.get(ViewModeNormal_xpm));
+    b->tooltip(" Display STL ebject normally ");
+
+    b = mode->addButton();
+    b->image(pm.get(ViewModeInsides_xpm));
+    b->tooltip(" Display the insides of the STL object ");
+
+    mode->callback(cb_stlExportViewUpdate_stub, this);
 
     l->end();
   }
 
-  view3D = new LView3dGroup(1, 0, 1, 3);
+  view3D = new LView3dGroup(1, 0, 1, 4);
   view3D->setMinimumSize(400, 400);
   view3D->weight(1, 0);
   cb_Update3DView();

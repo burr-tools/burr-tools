@@ -407,7 +407,7 @@ void joinPolyhedronInverse(Polyhedron & poly, const Polyhedron & inv)
     }
     while (ei != sentinel);
 
-    poly.addFace(corners);
+    poly.addFace(corners)->_flags |= FF_INSIDE_FACE;
   }
 }
 

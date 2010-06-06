@@ -30,6 +30,7 @@
 #ifndef __STL_EXPORT_H__
 #define __STL_EXPORT_H__
 
+#include "Images.h"
 #include "Layouter.h"
 
 #include <vector>
@@ -38,6 +39,7 @@ class LView3dGroup;
 class LBlockListGroup;
 class puzzle_c;
 class PieceSelector;
+class ButtonGroup_c;
 
 class stlExporter_c;
 
@@ -62,6 +64,9 @@ class stlExport_c : public LFl_Double_Window {
     PieceSelector * ShapeSelect;
     LFl_Radio_Button *ExpShape;
     LFl_Check_Button *Binary;
+    ButtonGroup_c * mode;
+
+    pixmapList_c pm;
 
   public:
 
@@ -70,6 +75,7 @@ class stlExport_c : public LFl_Double_Window {
     void cb_Export(void);
     void cb_Abort(void);
     void cb_Update3DView(void);
+    void cb_Update3DViewParams(void);
     void exportSTL(int shape);
 };
 

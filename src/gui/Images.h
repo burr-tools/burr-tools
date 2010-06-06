@@ -148,6 +148,7 @@ extern const char * ViewModeNormal_xpm[];
 extern const char * ViewModeColor_xpm[];
 extern const char * ViewMode3D_xpm[];
 extern const char * ViewMode3DL_xpm[];
+extern const char * ViewModeInsides_xpm[];
 
 /* just a little cache to make sure the pixmaps are freed after usage
  *

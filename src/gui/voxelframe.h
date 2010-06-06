@@ -142,6 +142,8 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     void setRotaterMethod(int method);
 
+    void setInsideVisible(bool on);
+
   private:
 
     assembly_c * curAssembly; // the currently shown assembly (if there is one)
@@ -215,6 +217,8 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     void draw();
     int handle(int event);
+
+    bool insideVisible;
 };
 
 #endif

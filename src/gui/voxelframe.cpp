@@ -48,7 +48,8 @@ voxelFrame_c::voxelFrame_c(int x,int y,int w,int h) :
   size(10), cb(0),
   colors(pieceColor),
   _useLightning(true),
-  pickx(-1)
+  pickx(-1),
+  insideVisible(false)
 {
   if (config.rotationMethod() == 0)
     rotater = new arcBall_c(w, h);
@@ -554,11 +555,11 @@ void voxelFrame_c::drawVoxelSpace() {
 
           if (colors == anaglyphColorL || colors == anaglyphColor)
           {
-	    float tmp;
+            float tmp;
             tmp = 0.1*lb + 0.3*lr + 0.6*lg;
             tmp = 1-(1-tmp)/3;
             lr = lg = lb = tmp;
-	    tmp = 0.1*db + 0.3*dr + 0.6*dg;
+            tmp = 0.1*db + 0.3*dr + 0.6*dg;
             tmp = 1-(1-tmp)/3;
             dr = dg = db = tmp;
           }
@@ -569,27 +570,51 @@ void voxelFrame_c::drawVoxelSpace() {
 
             if (f->hole())
               continue;
+
+            if ((f->_flags & FF_INSIDE_FACE) && !insideVisible)
+              continue;
+
             if (shape->mode == gridline && !((f->_flags & FF_WIREFRAME)))
               continue;
 
             glPushName(f->_fb_index);
             glPushName(f->_fb_face);
 
+            GLfloat alpha = 1;
+
+            if (f->_flags & FF_INSIDE_FACE)
+            {
+              glNormal3fv((-f->normal()).getData());
+              alpha = 1;
+              glEnable(GL_DEPTH_TEST);
+            }
+            else
+            {
+              glNormal3fv(f->normal().getData());
+              if (insideVisible)
+              {
+                alpha = 0.1;
+                glDisable(GL_DEPTH_TEST);
+              }
+              else
+              {
+                alpha = shape->a;
+                glEnable(GL_DEPTH_TEST);
+              }
+            }
+
             glBegin(GL_TRIANGLES);
-
-            glNormal3fv(f->normal().getData());
-
 
             if (   colors == paletteColor
                 && f->_color > 0 && f->_color <= palette.size()
                 && !(f->_flags & FF_VARIABLE_FACE))
-                glColor3f(palette[f->_color-1].r, palette[f->_color-1].g, palette[f->_color-1].b);
+                glColor4f(palette[f->_color-1].r, palette[f->_color-1].g, palette[f->_color-1].b, alpha);
             else if (f->_flags & FF_VARIABLE_FACE)
-              glColor3f(0, 0, 0);
+              glColor4f(0, 0, 0, alpha);
             else if (f->_flags & FF_COLOR_LIGHT && shape->useChecker)
-              glColor3f(lr, lg, lb);
+              glColor4f(lr, lg, lb, alpha);
             else
-              glColor3f(dr, dg, db);
+              glColor4f(dr, dg, db, alpha);
 
             Face::const_edge_circulator e = f->begin();
             Face::const_edge_circulator sentinel = e;
@@ -825,6 +850,18 @@ void voxelFrame_c::hideMarker(void) {
 
 void voxelFrame_c::showNothing(void) {
   clearSpaces();
+}
+
+void voxelFrame_c::setInsideVisible(bool on)
+{
+  insideVisible = on;
+  for (unsigned int nr = 0; nr < shapes.size(); nr++) {
+    if (shapes[nr].list) {
+      glDeleteLists(shapes[nr].list, 1);
+      shapes[nr].list = 0;
+    }
+  }
+  redraw();
 }
 
 void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) {

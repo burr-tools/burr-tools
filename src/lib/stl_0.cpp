@@ -50,6 +50,11 @@ Polyhedron * stlExporter_0_c::getMesh(const voxel_c & v) const
 
     scalePolyhedron(*holePoly, cube_scale);
 
+    if (smoothVoid)
+    {
+      fillPolyhedronHoles(*holePoly, 0);
+    }
+
     joinPolyhedronInverse(*poly, *holePoly);
 
     delete holePoly;
@@ -69,6 +74,7 @@ const char * stlExporter_0_c::getParameterName(unsigned int idx) const
     case 3: return "Wall Thickness";
     case 4: return "Leave inside grooves";
     case 5: return "Leave outside grooved";
+    case 6: return "Remove grooves in void";
     default: return 0;
   }
 }
@@ -83,6 +89,7 @@ double stlExporter_0_c::getParameter(unsigned int idx) const
     case 3: return hole;
     case 4: return leaveGroovesInside ? 1 : 0;
     case 5: return leaveGroovesOutside ? 1 : 0;
+    case 6: return smoothVoid ? 1 : 0;
     default: return 0;
   }
 }
@@ -97,6 +104,7 @@ void stlExporter_0_c::setParameter(unsigned int idx, double value)
     case 3: hole = value; return;
     case 4: leaveGroovesInside  = (value != 0); return;
     case 5: leaveGroovesOutside = (value != 0); return;
+    case 6: smoothVoid = (value != 0); return;
     default: return;
   }
 }
@@ -111,6 +119,7 @@ const char * stlExporter_0_c::getParameterTooltip(unsigned int idx) const
     case 3: return " Thickness of the wall, 0 means the piece is completely filled ";
     case 4: return " Leave the construction grooves on the inside of the generated shape ";
     case 5: return " Leave the construction grooves on the outside of the generated shape ";
+    case 6: return " Remove the grooves in the insiede void ";
 
     default: return "";
   }
@@ -128,6 +137,7 @@ stlExporter_c::parameterTypes stlExporter_0_c::getParameterType(unsigned int idx
       return PAR_TYP_POS_DOUBLE;
     case 4:
     case 5:
+    case 6:
       return PAR_TYP_SWITCH;
   }
 }

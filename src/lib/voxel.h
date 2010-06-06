@@ -756,12 +756,13 @@ private:
 /* some defines used for the flags of the faces of the generated meshes
  */
 
-#define FF_COLOR_LIGHT 1    // this helps with the colorisation
-#define FF_VARIABLE_MARK 2  // when set, the face is supposed to be with a variable marker
-#define FF_VARIABLE_FACE 4  // when set, the face itself is the variable marker only one or none of these 2 should be set
-#define FF_WIREFRAME 8      // when set, the face stays when in wire frame more
-#define FF_BEVEL_FACE 16    // the face got added because the polyhedron has a bevel
-#define FF_OFFSET_FACE 32   // the face is added because the polyhedron has an offset
-#define FF_PROCESSED_FACE 64// tags faces already processed by the polygon fill routine
+#define FF_COLOR_LIGHT    0x01 // this helps with the colorisation
+#define FF_VARIABLE_MARK  0x02 // when set, the face is supposed to be with a variable marker
+#define FF_VARIABLE_FACE  0x04 // when set, the face itself is the variable marker only one or none of these 2 should be set
+#define FF_WIREFRAME      0x08 // when set, the face stays when in wire frame more
+#define FF_BEVEL_FACE     0x10 // the face got added because the polyhedron has a bevel
+#define FF_OFFSET_FACE    0x20 // the face is added because the polyhedron has an offset
+#define FF_PROCESSED_FACE 0x40 // tags faces already processed by the polygon fill routine
+#define FF_INSIDE_FACE    0x80 // tags faces already processed by the polygon fill routine
 
 #endif
