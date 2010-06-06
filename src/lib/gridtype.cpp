@@ -203,12 +203,29 @@ const symmetries_c * gridType_c::getSymmetries(void) const
 
 unsigned int gridType_c::getCapabilities(void) const
 {
-  switch (type) {
-    case GT_BRICKS:           return CAP_ASSEMBLE | CAP_DISASSEMBLE | CAP_STLEXPORT;
-    case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE | CAP_DISASSEMBLE | CAP_STLEXPORT;
-    case GT_SPHERES:          return CAP_ASSEMBLE | CAP_STLEXPORT;
-    case GT_RHOMBIC:          return CAP_ASSEMBLE | CAP_STLEXPORT;
-    case GT_TETRA_OCTA:       return CAP_ASSEMBLE | CAP_STLEXPORT;
+  switch (type)
+  {
+    case GT_BRICKS:           return CAP_ASSEMBLE
+                                   | CAP_DISASSEMBLE
+                                   | CAP_STLEXPORT
+                                   ;
+
+    case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE
+                                   | CAP_DISASSEMBLE
+                                   | CAP_STLEXPORT
+                                   ;
+
+    case GT_SPHERES:          return CAP_ASSEMBLE
+                                   | CAP_STLEXPORT
+                                   ;
+
+    case GT_RHOMBIC:          return CAP_ASSEMBLE
+                                   | CAP_STLEXPORT
+                                   ;
+
+    case GT_TETRA_OCTA:       return CAP_ASSEMBLE
+                                   | CAP_STLEXPORT
+                                   ;
     default: return 0;
   }
 }
