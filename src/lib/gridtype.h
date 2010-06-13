@@ -70,23 +70,6 @@ class gridType_c {
     /// the grid type of this instance
     gridType type;
 
-    /// parameters for each grid type, unused right now
-    union {
-
-      struct {
-        bool nothing;
-      } brick;
-
-      struct {
-        bool nothgin;
-      } triangularPrism;
-
-      struct {
-        bool nothing;
-      } spheres;
-
-    } parameters;
-
     /**
      * The symmetry object for this grid type.
      *
