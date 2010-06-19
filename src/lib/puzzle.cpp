@@ -362,12 +362,15 @@ unsigned int puzzle_c::addShape(unsigned int sx, unsigned int sy, unsigned int s
  */
 void puzzle_c::removeShape(unsigned int idx) {
   bt_assert(idx < shapes.size());
+
+  /* First remove the shape from the problems */
+  for (unsigned int i = 0; i < problems.size(); i++)
+    problems[i]->removeShape(idx);
+
+  /* now get rid of the voxel space */
   delete shapes[idx];
   shapes.erase(shapes.begin()+idx);
 
-  /* now remove the shapes from the problem shape list, if that is the one that got deleted */
-  for (unsigned int i = 0; i < problems.size(); i++)
-    problems[i]->removeShape(idx);
 }
 
 void puzzle_c::exchangeShape(unsigned int s1, unsigned int s2) {
