@@ -71,7 +71,7 @@ void stlExporter_c::write(const char * fname, const voxel_c & v)
   {
     f = fopen(name,"wb");
 
-    if (!f) throw new stlException_c("Could not open file");
+    if (!f) throw stlException_c("Could not open file");
 
     int pos = 0;
 
@@ -85,7 +85,7 @@ void stlExporter_c::write(const char * fname, const voxel_c & v)
   {
     f = fopen(name,"w");
 
-    if (!f) throw new stlException_c("Could not open file");
+    if (!f) throw stlException_c("Could not open file");
 
     fprintf(f, "solid %s\n", title);
   }
@@ -99,9 +99,9 @@ void stlExporter_c::write(const char * fname, const voxel_c & v)
   try
   {
     poly = getMesh(v);
-    if (!poly) throw new stlException_c("Something went wrong when generating the STL polyhedron");
+    if (!poly) throw stlException_c("Something went wrong when generating the STL polyhedron");
   }
-  catch (stlException_c * e)
+  catch (stlException_c e)
   {
     fclose(f);
     throw e;

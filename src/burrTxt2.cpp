@@ -160,12 +160,12 @@ int main(int argv, char* args[]) {
         break;
       }
 
-      if (assmThread.getAssertException()) {
+      if (assmThread.currentAction() == solveThread_c::ACT_ERROR) {
         cout << "Exception in Solver\n";
-        cout << " file      : " << assmThread.getAssertException()->file;
-        cout << " function  : " << assmThread.getAssertException()->function;
-        cout << " line      : " << assmThread.getAssertException()->line;
-        cout << " expression: " << assmThread.getAssertException()->expr;
+        cout << " file      : " << assmThread.getAssertException().file;
+        cout << " function  : " << assmThread.getAssertException().function;
+        cout << " line      : " << assmThread.getAssertException().line;
+        cout << " expression: " << assmThread.getAssertException().expr;
         return 1;
       }
 

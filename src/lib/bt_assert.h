@@ -55,6 +55,8 @@ public:
 
   assert_exception(const char * e, const char * f, unsigned int l, const char * fkt) : expr(e), file(f), function(fkt), line(l) {}
 
+  assert_exception(void) : expr(0), file(0), function(0), line(0) {}
+
 };
 
 extern assert_log_c * assert_log;

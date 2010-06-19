@@ -33,6 +33,6 @@ void bt_assert_init(void) {
 }
 
 void bt_te(const char * expr, const char * file, unsigned int line, const char * function) {
-  throw new assert_exception(expr, file, line, function);
+  throw assert_exception(expr, file, line, function);
 }
 

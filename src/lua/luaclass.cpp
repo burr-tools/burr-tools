@@ -45,7 +45,7 @@ void luaClass_c::setBool(const char *name, bool value) {
 
 lua_Number luaClass_c::getNumber(const char *name) {
   lua_getglobal(L, name);
-  if (!lua_isnumber(L, -1)) throw new luaTypeException_c();
+  if (!lua_isnumber(L, -1)) throw luaTypeException_c();
   return lua_tointeger(L, -1);
 }
 bool luaClass_c::getBool(const char *name) {

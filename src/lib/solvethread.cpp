@@ -98,7 +98,7 @@ void solveThread_c::run(void){
 
   }
 
-  catch (assert_exception *a) {
+  catch (assert_exception a) {
 
     ae = a;
     action = solveThread_c::ACT_ERROR;
@@ -114,7 +114,6 @@ parameters(par),
 sortMethod(SRT_COMPLETE_MOVES),
 solutionLimit(10),
 solutionDrop(1),
-ae(0),
 disassm(0),
 assm(0)
 {

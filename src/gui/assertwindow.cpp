@@ -35,7 +35,7 @@
 
 static void cb_assertClose_stub(Fl_Widget* /*o*/, void* v) { ((assertWindow_c*)v)->hide(); }
 
-assertWindow_c::assertWindow_c(const char * text, assert_exception * a) : Fl_Double_Window(0, 0, ASSERT_WINDOW_X, ASSERT_WINDOW_Y) {
+assertWindow_c::assertWindow_c(const char * text, const assert_exception * a) : Fl_Double_Window(0, 0, ASSERT_WINDOW_X, ASSERT_WINDOW_Y) {
 
   char txt[100000];
 

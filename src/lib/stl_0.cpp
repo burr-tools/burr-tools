@@ -29,11 +29,11 @@
 
 Polyhedron * stlExporter_0_c::getMesh(const voxel_c & v) const
 {
-  if (v.countState(voxel_c::VX_VARIABLE)) throw new stlException_c("Shapes with variable voxels cannot be exported");
-  if (cube_scale < Epsilon) throw new stlException_c("Unit size too small");
-  if (shrink < 0) throw new stlException_c("Offset cannot be negative");
-  if (bevel < 0) throw new stlException_c("Bevel cannot be negative");
-  if (cube_scale < (2*bevel + 2*shrink)) throw new stlException_c("Unit size too small for given bevel and offset");
+  if (v.countState(voxel_c::VX_VARIABLE)) throw stlException_c("Shapes with variable voxels cannot be exported");
+  if (cube_scale < Epsilon) throw stlException_c("Unit size too small");
+  if (shrink < 0) throw stlException_c("Offset cannot be negative");
+  if (bevel < 0) throw stlException_c("Bevel cannot be negative");
+  if (cube_scale < (2*bevel + 2*shrink)) throw stlException_c("Unit size too small for given bevel and offset");
 
   Polyhedron * poly = v.getMesh(bevel/cube_scale, shrink/cube_scale);
 

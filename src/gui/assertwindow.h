@@ -30,7 +30,7 @@ class assertWindow_c : public Fl_Double_Window {
 
 public:
 
-  assertWindow_c(const char * text, assert_exception * a);
+  assertWindow_c(const char * text, const assert_exception * a);
 
 };
 

@@ -95,9 +95,9 @@ void stlExport_c::cb_Update3DView(void)
   {
     p = stl->getMesh(*puzzle->getShape(ShapeSelect->getSelection()));
   }
-  catch (stlException_c * e)
+  catch (stlException_c e)
   {
-    fl_message(e->comment);
+    fl_message(e.comment);
     return;
   }
   catch (...)
@@ -344,8 +344,8 @@ void stlExport_c::exportSTL(int shape)
     stl->write(name, *v);
   }
 
-  catch (stlException_c * e) {
-    fl_message(e->comment);
+  catch (stlException_c e) {
+    fl_message(e.comment);
   }
   catch (...)
   {

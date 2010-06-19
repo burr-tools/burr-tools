@@ -26,18 +26,18 @@
 
 Polyhedron * stlExporter_2_c::getMesh(const voxel_c & v) const
 {
-  if (v.countState(voxel_c::VX_VARIABLE)) throw new stlException_c("Shapes with variable voxels cannot be exported");
-  if (sphere_rad < Epsilon) throw new stlException_c("Sphere size too small");
-  if (offset < 0) throw new stlException_c("Offset cannot be negative");
-  if (round < 0) throw new stlException_c("Curvature radius cannot be negative");
-  if (offset > sphere_rad) throw new stlException_c("Offset must be smaller than sphere radius");
-  if (round > 1) throw new stlException_c("The curvature radius is relative and must be between 0 and 1");
+  if (v.countState(voxel_c::VX_VARIABLE)) throw stlException_c("Shapes with variable voxels cannot be exported");
+  if (sphere_rad < Epsilon) throw stlException_c("Sphere size too small");
+  if (offset < 0) throw stlException_c("Offset cannot be negative");
+  if (round < 0) throw stlException_c("Curvature radius cannot be negative");
+  if (offset > sphere_rad) throw stlException_c("Offset must be smaller than sphere radius");
+  if (round > 1) throw stlException_c("The curvature radius is relative and must be between 0 and 1");
   if (connection_rad < 0 || connection_rad > 1)
-    throw new stlException_c("The connection radius is relative and must be between 0 and 1");
+    throw stlException_c("The connection radius is relative and must be between 0 and 1");
   if (inner_rad < 0 || inner_rad >= sphere_rad)
-    throw new stlException_c("The inner radius cannot be negative and must be less than the sphere radius");
+    throw stlException_c("The inner radius cannot be negative and must be less than the sphere radius");
   if (hole_diam < 0 || hole_diam > 0.333334*sphere_rad)
-      throw new stlException_c("The hole diameter cannot be negative or greater than 1/3 of the sphere radius");
+      throw stlException_c("The hole diameter cannot be negative or greater than 1/3 of the sphere radius");
 
   const voxel_2_c * v2 = dynamic_cast<const voxel_2_c*>(&v);
   // check cast, otherwise a non voxel_2_c class was given, which is wrong in this case

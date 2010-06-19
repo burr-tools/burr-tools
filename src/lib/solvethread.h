@@ -140,15 +140,12 @@ class solveThread_c : public assembler_cb, public thread_c {
 
   private:
 
-    assert_exception *ae;
+    assert_exception ae;
 
   public:
 
-    assert_exception * getAssertException(void) {
-      if (action == ACT_ERROR)
-        return ae;
-      else
-        return 0;
+    const assert_exception & getAssertException(void) {
+      return ae;
     }
 
   private:
