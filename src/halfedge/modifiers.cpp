@@ -28,77 +28,11 @@ using namespace std;
 
 #define Epsilon 1.0e-5
 
-#ifdef DEBUG
-static void dumpVerts(Polyhedron &poly)
-{
-  printf("vertices=%d\n",poly.numVertices());
-
-  for (Polyhedron::vertex_iterator vit = poly.vBegin(); vit != poly.vEnd(); vit++)
-  {
-    printf("v%d=(%4.2f,%4.2f,%4.2f)\n",(*vit)->index(),
-        (*vit)->position().x(),(*vit)->position().y(),
-        (*vit)->position().z());
-  }
-}
-
-static void dumpFace(Face *f)
-{
-  printf("face(%d:%x): ", f->index(),f->_flags);
-  HalfEdge* he = f->edge();
-  const HalfEdge* const sentinel = he;
-
-  do
-  {
-    printf("e%d,",he->index());
-
-    if (he->twin())
-    {
-      printf("f%d,",he->twin()->face()->index());
-    }
-    else
-    {
-      printf("*");
-    }
-    //printf("(%4.2f,%4.2f,%4.2f) ",he->dst()->position().x(),
-    //       he->dst()->position().y(),he->dst()->position().z());
-    printf("v%d ",he->dst()->index());
-    he=he->next();
-  }
-  while (sentinel != he);
-
-  printf("\n");
-}
-
-static void dumpFaces(Polyhedron &poly, bool chkDisconnect)
-{
-  for (Polyhedron::face_iterator fit = poly.fBegin(); fit != poly.fEnd(); fit++)
-  {
-    if (chkDisconnect)
-    {
-      HalfEdge* he = (*fit)->edge();
-      const HalfEdge* const sentinel = he;
-      do
-      {
-        if (he->twin()==0)
-          break;
-        he = he->next();
-      }
-      while (he != sentinel);
-
-      if (he->twin()==0)
-      {
-        dumpFace(*fit);
-      }
-    }
-    else
-    {
-      dumpFace(*fit);
-    }
-  }
-}
-#endif
-
-static int findBestTri(vector<Vertex*> vs, int &offset)
+/* this routine attempts to find a good quad or triangle in which to
+ * fill part of the hole.  It does so by comparing the normals of the
+ *  border faces against the potential triangles and quads 
+ */
+static int findBestTriOrQuad(vector<Vertex*> vs, int &offset)
 {
   int vsize = vs.size();
 
@@ -108,33 +42,43 @@ static int findBestTri(vector<Vertex*> vs, int &offset)
     return vsize;
   }
 
-  int best_tri = vsize;
   int good_quad = vsize;
-  float best_angle = 999999;
 
   for (offset = 0; offset < vsize; offset++)
   {
+    // get vertex of the potential polygon
     Vector3Df v0 = vs[offset]->position();
-    Vector3Df n0 = vs[(offset+1)%vsize]->edge()->face()->normal();
     Vector3Df v1 = vs[(offset+1)%vsize]->position();
-    Vector3Df n1 = vs[(offset+2)%vsize]->edge()->face()->normal();
     Vector3Df v2 = vs[(offset+2)%vsize]->position();
+
+    // calculate normal for this potential polygon
     Vector3Df n = (v1-v0)^(v2-v0);
 
     if (n.squaredModule()<Epsilon*Epsilon)
     {
+      // hole has string of segments that are colinear
+      // best filled w/ a triangle fan
       return 0;
     }
 
     n.normalize();
+
+    // get normals for neighboring faces and calculate angle again
+    Vector3Df n0 = vs[(offset+1)%vsize]->edge()->face()->normal();
+    Vector3Df n1 = vs[(offset+2)%vsize]->edge()->face()->normal();
+
     float angle0=fabs((n * n0)-1.0);
     float angle1=fabs((n * n1)-1.0);
-    Vector3Df v3=vs[(offset+3)%vsize]->position();
-    float dist = n * (v3-v0);
 
-    if (angle0<Epsilon && angle1<Epsilon) // really good triangl
+    Vector3Df v3=vs[(offset+3)%vsize]->position();
+
+    // calculate distance from 4th point to plane given by first 3 points
+    // it is planar if distance is 0 (or close to it)
+    float dist = fabs(n * (v3-v0));
+
+    if (angle0<Epsilon && angle1<Epsilon) // really good poly
     {
-      if (fabs(dist)<Epsilon) // found a good quad
+      if (dist<Epsilon) // found a good quad
       {
 	return 4;
       }
@@ -143,22 +87,9 @@ static int findBestTri(vector<Vertex*> vs, int &offset)
 	return 3;
       }
     }
-    else
+    else if (dist<Epsilon) // found a good quad
     {
-      if (angle0<best_angle)
-      {
-	best_angle=angle0;
-	best_tri = offset;
-      }
-      if (angle1<best_angle)
-      {
-	best_angle=angle1;
-	best_tri = offset;
-      }
-      if (fabs(dist)<Epsilon) // found a good quad
-      {
-	good_quad = offset;
-      }
+      good_quad = offset;
     }
   }
 
@@ -168,51 +99,38 @@ static int findBestTri(vector<Vertex*> vs, int &offset)
     return 4;
   }
 
+  // couldn't find a really good candidate, best off using tri-fan filling
   return 0;
 }
 
-// this routine tries to find the minimal set of tris and quads to cap the edge list
+// this routine tries to find the best set of tris and quads to cap the edge list
 
 static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
 {
   vector<Vertex*> working_set;
-  vector<int> pts;
 
+  // the hole is given in reverse order, so reverse it into our working set
   for (vector<Vertex*>::const_reverse_iterator rit = corners.rbegin(); rit < corners.rend(); ++rit)
   {
     working_set.push_back(*rit);
   }
 
-#ifdef DEBUG
-  printf("closing hole of %d verts\n",working_set.size());
-#endif
-
+  // finished when no polygons are left
   while (working_set.size()>2)
   {
     int offset;
-    int ret = findBestTri(working_set,offset);
+    int ret = findBestTriOrQuad(working_set,offset);
     int old_size = working_set.size();
-
-#ifdef DEBUG
-    for (int i=0; i<old_size; i++)
-      printf("v%d ",working_set[i]->index());
-    printf("- ret = %d, offset=%d\n",ret,offset);
-#endif
+    vector<int> pts;
 
     if (ret)
     {
+      // create points list of new face
       for (int j = 0; j < ret; j++)
       {
         pts.push_back(working_set[(offset+j) % old_size]->index());
       }
-
-      Face *f = poly.addFace(pts);
-
-#ifdef DEBUG
-      dumpFace(f);
-#endif
-
-      pts.clear();
+      poly.addFace(pts);
 
       if (ret == 4)
       {
@@ -232,10 +150,11 @@ static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
         working_set.erase(working_set.begin()+(offset+1)%old_size);
       }
     }
-    else
+    else // couldn't create a good quad or triangle, fill w/ triangle-fan
     {
-      Vector3Df center;
+      // calculate center of the hole, which for this case is just the average
 
+      Vector3Df center;
       for (unsigned int i=0; i<working_set.size(); i++)
       {
         center += working_set[i]->position();
@@ -244,16 +163,13 @@ static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
       center /= (float) working_set.size();
       Vertex *v = poly.addVertex(center);
 
+      // for an n-sided hole, add n-triangles 
       for (unsigned int j = 0; j < working_set.size(); j++)
       {
         pts.push_back(working_set[j]->index());
         pts.push_back(working_set[(j+1)%working_set.size()]->index());
         pts.push_back(v->index());
-        Face *f = poly.addFace(pts);
-
-#ifdef DEBUG
-        dumpFace(f);
-#endif
+        poly.addFace(pts);
 
         pts.clear();
       }
@@ -262,30 +178,35 @@ static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
   }
 }
 
+/* this routine attempts to simplify the mesh, reducing bevelled and offset
+ * faces into less polygons, filling in the 'grooves' in the surface 
+ */
 void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
 {
   set<Face*> faces_to_remove;
 
-#ifdef DEBUG
-  dumpVerts(poly);
-  printf("faces(before)=%d\n",poly.numFaces());
-#endif
 
   for (Polyhedron::face_iterator fit = poly.fBegin(); fit != poly.fEnd(); ++fit)
   {
-    if (((*fit)->_flags & (FF_OFFSET_FACE | FF_BEVEL_FACE)) == 0) // find untouched face
+    // start at 'real' face (non-bevelled and non-offset)
+    if (((*fit)->_flags & (FF_OFFSET_FACE | FF_BEVEL_FACE)) == 0)
     {
       Face::edge_circulator ei = (*fit)->begin();
       Face::edge_circulator sentinel = ei;
       Face *f = *fit;
       set<Face*> faces;
 
+      // iterate through all edges of the starting face
       do
       {
 	HalfEdge *edge = (*ei);
 	uint32_t newflag = 0;
-        if ((*ei)->twin())
+        if ((*ei)->twin()) // must check - as we can erase faces as we go
         {
+	  /* traverse faces connected to this face, making list of all
+	   * bevelled and offset faces between starting face and next
+           * 'real' face
+           */
           do
           {
             if (    (f->_flags & (FF_OFFSET_FACE | FF_BEVEL_FACE))
@@ -303,8 +224,10 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
           } while (f->_flags & (FF_OFFSET_FACE | FF_BEVEL_FACE));
         }
 
-	if (faces.size()>1) // opportunity to simplify
+	// reduce multiple faces into single face
+	if (faces.size()>1)
 	{
+	  // construct master list of faces to be removed
           for (set<Face*>::const_iterator sit = faces.begin(); sit != faces.end(); ++sit)
           {
 	    faces_to_remove.insert(*sit);
@@ -321,11 +244,6 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
 	  f = poly.addFace(face4);	  // add new one
 	  f->_flags = newflag;
 
-#ifdef DEBUG
-	  printf("adding ");
-	  dumpFace(f);
-#endif
-
 	}
 
 	faces.clear();
@@ -335,22 +253,15 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
     }
   }
 
+  // erase old faces
   if (faces_to_remove.size())
   {
-
-#ifdef DEBUG
-    for (set<Face*>::const_iterator sit=faces_to_remove.begin(); sit!=faces_to_remove.end(); ++sit )
-    {
-      printf("removing ");
-      dumpFace(*sit);
-    }
-#endif
-
-    eraseFaces(&poly, faces_to_remove);	  // erase old faces
+    eraseFaces(&poly, faces_to_remove);
     faces_to_remove.clear();
   }
 
   // remove any unprocessed faces that have detached edges
+ 
   while (1)
   {
     for (Polyhedron::face_iterator fit = poly.fBegin(); fit != poly.fEnd(); ++fit)
@@ -386,14 +297,6 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
     if (faces_to_remove.size())
     {
 
-#ifdef DEBUG
-      for (set<Face*>::const_iterator sit=faces_to_remove.begin(); sit!=faces_to_remove.end(); ++sit )
-      {
-	printf("removing ");
-	dumpFace(*sit);
-      }
-#endif
-
       eraseFaces(&poly, faces_to_remove);	  // erase old faces
       faces_to_remove.clear();
     }
@@ -403,11 +306,14 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
     }
   }
 
-  // construct a list of unpaired edges - these are holes that we need to cap
-  // keep track of their src vertex, as
+  /* construct a list of unpaired edges - these are holes that we need to cap
+   * keep track of their src vertex, as that is needed for addFaces...
+   * mate up any matched pairs that might have been disconnected due to removal
+   * (similar to what finalize does)
+   */
+
   map<pair<Vertex*,Vertex*>,HalfEdge*> conn;
   map<pair<Vertex*,Vertex*>,HalfEdge*>::iterator cit;
-  set<Vertex*> handled;
   vector<Vertex*> pts_list;
   int pairs_fixed = 0;
 
@@ -432,11 +338,9 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
     }
   }
 
-#ifdef DEBUG
-  dumpFaces(poly,1);
-#endif
-
   map<Vertex*,HalfEdge*> seams;
+  set<Vertex*> handled;
+
   // now need to reduce the structure to just Vertex & HalfEdge
   for (cit=conn.begin(); cit!=conn.end(); ++cit)
   {
@@ -444,10 +348,13 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
     seams.insert(pair<Vertex*,HalfEdge*>(vpr.first,(*cit).second));
   }
 
+
   for (map<Vertex*,HalfEdge*>::iterator i=seams.begin(); i!=seams.end(); ++i)
   {
     Vertex *v = (*i).first;
     HalfEdge *e = (*i).second;
+
+    // iterate around half edges until a loop is found
     while (handled.find(v) == handled.end())
     {
       handled.insert(v);
@@ -456,20 +363,16 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
       v = e->dst();
       e = seams.find(v)->second;
     }
+
     if (pts_list.size())
     {
-
-#ifdef DEBUG
-      for (vector<Vertex*>::reverse_iterator rit = pts_list.rbegin(); rit < pts_list.rend(); ++rit)
-	printf("v%d ",(*rit)->index());
-      printf("\n");
-#endif
-
+      // find best capping for hole
       findOptimizedFaces(poly,pts_list);
       pts_list.clear();
     }
   }
 
+  // connect up any unmatched edge pairs created during capping
   poly.finalize();
 
 }
