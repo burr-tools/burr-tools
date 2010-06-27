@@ -30,7 +30,7 @@ using namespace std;
 
 /* this routine attempts to find a good quad or triangle in which to
  * fill part of the hole.  It does so by comparing the normals of the
- *  border faces against the potential triangles and quads 
+ * border faces against the potential triangles and quads
  */
 static int findBestTriOrQuad(vector<Vertex*> vs, int &offset)
 {
@@ -54,7 +54,7 @@ static int findBestTriOrQuad(vector<Vertex*> vs, int &offset)
     // calculate normal for this potential polygon
     Vector3Df n = (v1-v0)^(v2-v0);
 
-    if (n.squaredModule()<Epsilon*Epsilon)
+    if (n.squaredModule() < Epsilon*Epsilon)
     {
       // hole has string of segments that are colinear
       // best filled w/ a triangle fan
@@ -76,15 +76,15 @@ static int findBestTriOrQuad(vector<Vertex*> vs, int &offset)
     // it is planar if distance is 0 (or close to it)
     float dist = fabs(n * (v3-v0));
 
-    if (angle0<Epsilon && angle1<Epsilon) // really good poly
+    if (angle0 < Epsilon && angle1 < Epsilon) // really good poly
     {
-      if (dist<Epsilon) // found a good quad
+      if (dist < Epsilon) // found a good quad
       {
-	return 4;
+        return 4;
       }
       else
       {
-	return 3;
+        return 3;
       }
     }
     else if (dist<Epsilon) // found a good quad
@@ -179,7 +179,7 @@ static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
 }
 
 /* this routine attempts to simplify the mesh, reducing bevelled and offset
- * faces into less polygons, filling in the 'grooves' in the surface 
+ * faces into less polygons, filling in the 'grooves' in the surface
  */
 void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
 {
@@ -199,12 +199,12 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
       // iterate through all edges of the starting face
       do
       {
-	HalfEdge *edge = (*ei);
-	uint32_t newflag = 0;
+        HalfEdge *edge = (*ei);
+        uint32_t newflag = 0;
         if ((*ei)->twin()) // must check - as we can erase faces as we go
         {
-	  /* traverse faces connected to this face, making list of all
-	   * bevelled and offset faces between starting face and next
+          /* traverse faces connected to this face, making list of all
+           * bevelled and offset faces between starting face and next
            * 'real' face
            */
           do
@@ -224,29 +224,29 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
           } while (f->_flags & (FF_OFFSET_FACE | FF_BEVEL_FACE));
         }
 
-	// reduce multiple faces into single face
-	if (faces.size()>1)
-	{
-	  // construct master list of faces to be removed
+        // reduce multiple faces into single face
+        if (faces.size()>1)
+        {
+          // construct master list of faces to be removed
           for (set<Face*>::const_iterator sit = faces.begin(); sit != faces.end(); ++sit)
           {
-	    faces_to_remove.insert(*sit);
+            faces_to_remove.insert(*sit);
           }
 
-	  // construct face to replace facets we're removing
-	  vector<int> face4(4);
+          // construct face to replace facets we're removing
+          vector<int> face4(4);
           face4[0] = (*ei)->dst()->index();
           face4[1] = (*ei)->src()->index();
-	  edge = edge->prev()->prev();
-	  face4[2] = edge->dst()->index();
+          edge = edge->prev()->prev();
+          face4[2] = edge->dst()->index();
           face4[3] = edge->src()->index();
 
-	  f = poly.addFace(face4);	  // add new one
-	  f->_flags = newflag;
+          f = poly.addFace(face4);   // add new one
+          f->_flags = newflag;
 
-	}
+        }
 
-	faces.clear();
+        faces.clear();
         ei++;
       }
       while (ei != sentinel);
@@ -261,43 +261,43 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
   }
 
   // remove any unprocessed faces that have detached edges
- 
+
   while (1)
   {
     for (Polyhedron::face_iterator fit = poly.fBegin(); fit != poly.fEnd(); ++fit)
     {
       if (((*fit)->_flags & FF_PROCESSED_FACE) == 0)
       {
-	if ((*fit)->_flags&FF_BEVEL_FACE) // beveled corners - remove detached...
-	{
-	  Face::edge_circulator ei = (*fit)->begin();
-	  Face::edge_circulator sentinel = ei;
-	  do
-	  {
-	    if ((*ei)->twin() == 0)
+        if ((*fit)->_flags&FF_BEVEL_FACE) // beveled corners - remove detached...
+        {
+          Face::edge_circulator ei = (*fit)->begin();
+          Face::edge_circulator sentinel = ei;
+          do
+          {
+            if ((*ei)->twin() == 0)
             {
-	      break;
+              break;
             }
-	    ei++;
-	  }
-	  while (ei != sentinel);
+            ei++;
+          }
+          while (ei != sentinel);
 
-	  if ((*ei)->twin() == 0)
-	  {
-	    faces_to_remove.insert(*fit);
-	  }
-	}
-	else if ((*fit)->_flags & FF_OFFSET_FACE) // untouched offsets are holes
-	{
-	  faces_to_remove.insert(*fit);
-	}
+          if ((*ei)->twin() == 0)
+          {
+            faces_to_remove.insert(*fit);
+          }
+        }
+        else if ((*fit)->_flags & FF_OFFSET_FACE) // untouched offsets are holes
+        {
+          faces_to_remove.insert(*fit);
+        }
       }
     }
 
     if (faces_to_remove.size())
     {
 
-      eraseFaces(&poly, faces_to_remove);	  // erase old faces
+      eraseFaces(&poly, faces_to_remove);  // erase old faces
       faces_to_remove.clear();
     }
     else
@@ -325,15 +325,15 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
       cit = conn.find(idx);
       if (cit == conn.end())
       {
-	pair<Vertex*,Vertex*> idx2 ((*eit)->prev()->dst(),(*eit)->dst());
-	conn.insert(pair<pair<Vertex*,Vertex*>,HalfEdge*>(idx2,(*eit)));
+        pair<Vertex*,Vertex*> idx2 ((*eit)->prev()->dst(),(*eit)->dst());
+        conn.insert(pair<pair<Vertex*,Vertex*>,HalfEdge*>(idx2,(*eit)));
       }
       else
       {
-	cit->second->twin(*eit);
+        cit->second->twin(*eit);
         (*eit)->twin(cit->second);
-	pairs_fixed++;
-	conn.erase(cit);
+        pairs_fixed++;
+        conn.erase(cit);
       }
     }
   }
