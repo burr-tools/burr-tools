@@ -30,6 +30,8 @@
 #include <vector>
 #include <string>
 
+#include <stdint.h>
+
 class voxel_c;
 class gridType_c;
 class problem_c;

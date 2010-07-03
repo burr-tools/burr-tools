@@ -31,6 +31,8 @@
 #include <set>
 #include <string>
 
+#include <stdint.h>
+
 class voxel_c;
 class separation_c;
 class separationInfo_c;

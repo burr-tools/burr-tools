@@ -24,7 +24,6 @@
 #include "view3dgroup.h"
 #include "Layouter.h"
 #include "blocklistgroup.h"
-#include <stdlib.h>
 
 #include "../lib/puzzle.h"
 #include "../lib/problem.h"
@@ -33,6 +32,9 @@
 #include "../lib/solution.h"
 
 #include <FL/Fl.H>
+
+#include <stdlib.h>
+#include <stdio.h>
 
 /* image info contains the information for one image to be exported
  * this information is the setup required to produce this image, also

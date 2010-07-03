@@ -2717,15 +2717,18 @@ int Flu_File_Chooser :: popupContextMenu( Entry *entry )
   int type = entry ? entry->type : ENTRY_NONE;
   const char *filename = entry ? entry->filename.c_str() : NULL;
   char *ext = NULL;
+  const char *ext2 = NULL;
 
   if( filename )
-    ext = strrchr( filename, '.' );
-  if( ext )
-    {
-      ext = strdup( ext+1 ); // skip the '.'
-      for( unsigned int i = 0; i < strlen(ext); i++ )
-	ext[i] = tolower( ext[i] );
-    }
+  {
+    ext2 = strrchr( filename, '.' );
+  }
+  if( ext2 )
+  {
+    char *ext = strdup( ext2+1 ); // skip the '.'
+    for( unsigned int i = 0; i < strlen(ext); i++ )
+      ext[i] = tolower( ext[i] );
+  }
 
   enum { ACTION_NEW_FOLDER = -1, ACTION_RENAME = -2, ACTION_DELETE = -3 };
 
@@ -3132,7 +3135,7 @@ void Flu_File_Chooser :: cleanupPath( FluSimpleString &s )
 	      newPos--;
 	      newS[newPos] = '\0';
 	      // look for the previous '/'
-	      char *lastSlash = strrchr( newS.c_str(), '/' );
+	      const char *lastSlash = strrchr( newS.c_str(), '/' );
 	      // make the new string position after the slash
 	      newPos = (lastSlash-newS.c_str())+1;
 	      oldPos += 3;
@@ -3213,7 +3216,7 @@ void Flu_File_Chooser :: locationCB( const char *path )
       if( strstr( path, s.c_str() ) == path )
 	{
 	  // seach for '(' and if present, extract the drive name and cd to it
-	  char *paren = strrchr( path, '(' );
+	  const char *paren = strrchr( path, '(' );
 	  if( paren )
 	    {
 	      char drive[] = "A:/";
@@ -3747,7 +3750,7 @@ void Flu_File_Chooser :: cd( const char *path )
   // try to split into path and file
   if( currentDir[currentDir.size()-1] != '/' )
     {
-      char *lastSlash = strrchr( currentDir.c_str(), '/' );
+      char *lastSlash = const_cast<char*>(strrchr( currentDir.c_str(), '/' ));  // TODO this is an ugly ugly ugly hack
       if( lastSlash )
 	{
 	  currentFile = lastSlash+1;
@@ -4180,14 +4183,14 @@ static const char* _flu_file_chooser( const char *message, const char *pattern, 
 	    {
 	      // if pattern is different, remove name but leave old directory:
 	      retname = fc->value();
-	      char *p = strrchr( retname.c_str(), '/' );
+	      const char *p = strrchr( retname.c_str(), '/' );
 	      if( p )
 		{
 		  // If the filename is "/foo", then the directory will be "/", not ""
 		  if( p == retname.c_str() )
 		    retname[1] = '\0';
 		  else
-		    p[1] = '\0';
+		    (const_cast<char*>(p))[1] = '\0';  // TODO another ugly ugly hack
 		}
 	    }
 	  fc->filter( pattern );
