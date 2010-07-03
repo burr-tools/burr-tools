@@ -77,7 +77,7 @@ void stlExporter_c::write(const char * fname, const voxel_c & v)
 
     for (int i = 0; i < 84; i++)
     {
-      fwrite(title+pos, 1, 1, f);
+      if (fwrite(title+pos, 1, 1, f) != 1) throw stlException_c("Could not write file");
       if (title[pos]) pos++;
     }
   }
@@ -133,16 +133,16 @@ void stlExporter_c::write(const char * fname, const voxel_c & v)
       if (binaryMode)
       {
         // write normal vector
-        fwrite(normal, 3, 4, f);
+        if (fwrite(normal, 3, 4, f) != 4) throw stlException_c("Could not write file");
 
         // write the 3 vertices
-        fwrite(v1, 3, 4, f);
-        fwrite(v2, 3, 4, f);
-        fwrite(v3, 3, 4, f);
+        if (fwrite(v1, 3, 4, f) != 4) throw stlException_c("Coult not write file");
+        if (fwrite(v2, 3, 4, f) != 4) throw stlException_c("Coult not write file");
+        if (fwrite(v3, 3, 4, f) != 4) throw stlException_c("Coult not write file");
 
         // attribute
         int i = 0;
-        fwrite(&i, 1, 2, f);
+        if (fwrite(&i, 1, 2, f) != 2) throw stlException_c("Coult not write file");
 
         triangleCount++;
       }
@@ -165,7 +165,7 @@ void stlExporter_c::write(const char * fname, const voxel_c & v)
   {
     // write out the triangle count into the header
     fseek(f, 80, SEEK_SET);
-    fwrite(&triangleCount, 1, 4, f);
+    if (fwrite(&triangleCount, 1, 4, f) != 4) throw stlException_c("Coult not write file");
   }
   else
   {
