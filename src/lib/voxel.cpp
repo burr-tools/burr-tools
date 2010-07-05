@@ -966,13 +966,39 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
       for (unsigned int x = 0; x < getX(); x++)
         if (!isEmpty(x, y, z))
         {
+          int n;
+          int nx, ny, nz;
+
+          // we skip generating this voxel for the fast case,
+          // when the voxel to generate has no empty neighbors
+          if (fast)
+          {
+            bool hasEmptyN = false;
+
+            n = 0;
+
+            while (getNeighbor(n, 0, x, y, z, &nx, &ny, &nz))
+            {
+              if (isEmpty2(nx, ny, nz))
+              {
+                hasEmptyN = true;
+                break;
+              }
+              n++;
+            }
+
+            if (!hasEmptyN)
+            {
+              continue;
+            }
+          }
+
           uint32_t type = (((x+y+z) & 1) == 0) ? FF_COLOR_LIGHT : 0;
           uint32_t idx = getIndex(x, y, z);
 
-          int n = 1;
-          int nx, ny, nz;
-
           // first t the voxel polyhedron that is fixed
+
+          n = 1;
 
           if (bevel > 0)
           {
@@ -1057,7 +1083,7 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
             }
             else
             {
-              if ((offset > 0) && ((nx > x) || (nx == x && ny > y) || (nx == x && ny == y && nz > z)))
+              if (!fast & (offset > 0) && ((nx > x) || (nx == x && ny > y) || (nx == x && ny == y && nz > z)))
               {
                 // add connection prisms
 
