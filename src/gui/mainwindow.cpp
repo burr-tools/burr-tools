@@ -135,7 +135,7 @@ void mainWindow_c::cb_AddColor(void) {
 
     colorSelector->setSelection(puzzle->colorNumber());
     changed = true;
-    View3D->getView()->showColors(puzzle, Status->getColorMode());
+    View3D->getView()->showColors(puzzle, StatusLine->getColorMode());
     updateInterface();
   }
 }
@@ -157,7 +157,7 @@ void mainWindow_c::cb_RemoveColor(void) {
     colorSelector->setSelection(current);
 
     changed = true;
-    View3D->getView()->showColors(puzzle, Status->getColorMode());
+    View3D->getView()->showColors(puzzle, StatusLine->getColorMode());
     activateShape(PcSel->getSelection());
     updateInterface();
   }
@@ -174,7 +174,7 @@ void mainWindow_c::cb_ChangeColor(void) {
     if (fl_color_chooser("Change colour", r, g, b)) {
       puzzle->changeColor(colorSelector->getSelection()-1, r, g, b);
       changed = true;
-      View3D->getView()->showColors(puzzle, Status->getColorMode());
+      View3D->getView()->showColors(puzzle, StatusLine->getColorMode());
       updateInterface();
     }
   }
@@ -311,7 +311,7 @@ void mainWindow_c::cb_TaskSelectionTab(Fl_Tabs* o) {
       activateSolution(solutionProblem->getSelection(), int(SolutionSel->value()-1));
     }
     Big3DView();
-    Status->setText("");
+    StatusLine->setText("");
     ViewSizes[currentTab] = View3D->getZoom();
     if (ViewSizes[2] >= 0)
       View3D->setZoom(ViewSizes[2]);
@@ -1259,7 +1259,7 @@ void mainWindow_c::cb_PcVis(void) {
 
 static void cb_Status_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Status(); }
 void mainWindow_c::cb_Status(void) {
-  View3D->getView()->showColors(puzzle, Status->getColorMode());
+  View3D->getView()->showColors(puzzle, StatusLine->getColorMode());
 }
 
 static void cb_3dClick_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_3dClick(); }
@@ -1374,7 +1374,7 @@ void mainWindow_c::cb_New(void) {
 
     changed = false;
 
-    Status->setText("");
+    StatusLine->setText("");
     updateInterface();
     activateShape(0);
   }
@@ -1808,7 +1808,7 @@ void mainWindow_c::StatPieceInfo(unsigned int pc) {
     unsigned int vr = puzzle->getShape(pc)->countState(voxel_c::VX_VARIABLE);
 
     snprintf(txt, 100, "Shape S%i has %i voxels (%i fixed, %i variable)", pc+1, fx+vr, fx, vr);
-    Status->setText(txt);
+    StatusLine->setText(txt);
   }
 }
 
@@ -1845,11 +1845,11 @@ void mainWindow_c::StatProblemInfo(unsigned int prob) {
           pr->pieceNumber(), cntMin, cnt);
     }
 
-    Status->setText(txt);
+    StatusLine->setText(txt);
 
   } else
 
-    Status->setText("");
+    StatusLine->setText("");
 }
 
 void mainWindow_c::changeColor(unsigned int nr) {
@@ -1922,7 +1922,7 @@ bool mainWindow_c::tryToLoad(const char * f) {
   TaskSelectionTab->value(TabPieces);
   activateShape(PcSel->getSelection());
   StatPieceInfo(PcSel->getSelection());
-  View3D->getView()->showColors(puzzle, Status->getColorMode());
+  View3D->getView()->showColors(puzzle, StatusLine->getColorMode());
 
   changed = false;
 
@@ -3729,8 +3729,8 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
   MainMenu = new LFl_Menu_Bar(0, 0, 1, 1);
   MainMenu->copy(menu_MainMenu, this);
 
-  Status = new LStatusLine(0, 2, 1, 1);
-  Status->callback(cb_Status_stub, this);
+  StatusLine = new LStatusLine(0, 2, 1, 1);
+  StatusLine->callback(cb_Status_stub, this);
 
   LFl_Tile * mainTile = new LFl_Tile(0, 1, 1, 1);
   mainTile->weight(0, 1);

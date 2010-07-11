@@ -121,7 +121,7 @@ class mainWindow_c : public LFl_Double_Window {
 
   Fl_Group *MinSizeTools;
   Fl_Menu_Bar *MainMenu;
-  LStatusLine *Status;
+  LStatusLine *StatusLine;
   static Fl_Menu_Item menu_MainMenu[];
 
   ColorSelector * colorSelector;
