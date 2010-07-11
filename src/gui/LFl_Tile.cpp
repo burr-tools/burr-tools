@@ -49,8 +49,7 @@
 
 void LFl_Tile::position(int oix, int oiy, int newx, int newy) {
   Fl_Widget*const* a = array();
-  short* p = sizes();
-  p += 8; // skip group & resizable's saved size
+  int p = 8;
 
   // first we check, if this action would make one resized widget
   // smaller than allowed, if wo we simply do nothing
@@ -60,18 +59,18 @@ void LFl_Tile::position(int oix, int oiy, int newx, int newy) {
     int X = o->x();
     int R = X+o->w();
     if (oix) {
-      int t = p[0];
-      if (t == oix || t>oix && X<newx || t<oix && X>newx) X = newx;
-      t = p[1];
-      if (t == oix || t>oix && R<newx || t<oix && R>newx) R = newx;
+      int t = sizes()[p+0];
+      if (t == oix || (t>oix && X<newx) || (t<oix && X>newx)) X = newx;
+      t = sizes()[p+1];
+      if (t == oix || (t>oix && R<newx) || (t<oix && R>newx)) R = newx;
     }
     int Y = o->y();
     int B = Y+o->h();
     if (oiy) {
-      int t = p[2];
-      if (t == oiy || t>oiy && Y<newy || t<oiy && Y>newy) Y = newy;
-      t = p[3];
-      if (t == oiy || t>oiy && B<newy || t<oiy && B>newy) B = newy;
+      int t = sizes()[p+2];
+      if (t == oiy || (t>oiy && Y<newy) || (t<oiy && Y>newy)) Y = newy;
+      t = sizes()[p+3];
+      if (t == oiy || (t>oiy && B<newy) || (t<oiy && B>newy)) B = newy;
     }
 
     layoutable_c * widget = dynamic_cast<layoutable_c*>(o);
@@ -101,8 +100,7 @@ void LFl_Tile::position(int oix, int oiy, int newx, int newy) {
   }
 
   a = array();
-  p = sizes();
-  p += 8; // skip group & resizable's saved size
+  p = 8; // skip group & resizable's saved size
 
   for (int i=children(); i--; p += 4) {
     Fl_Widget* o = *a++;
@@ -110,18 +108,18 @@ void LFl_Tile::position(int oix, int oiy, int newx, int newy) {
     int X = o->x();
     int R = X+o->w();
     if (oix) {
-      int t = p[0];
-      if (t == oix || t>oix && X<newx || t<oix && X>newx) X = newx;
-      t = p[1];
-      if (t == oix || t>oix && R<newx || t<oix && R>newx) R = newx;
+      int t = sizes()[p+0];
+      if (t == oix || (t>oix && X<newx) || (t<oix && X>newx)) X = newx;
+      t = sizes()[p+1];
+      if (t == oix || (t>oix && R<newx) || (t<oix && R>newx)) R = newx;
     }
     int Y = o->y();
     int B = Y+o->h();
     if (oiy) {
-      int t = p[2];
-      if (t == oiy || t>oiy && Y<newy || t<oiy && Y>newy) Y = newy;
-      t = p[3];
-      if (t == oiy || t>oiy && B<newy || t<oiy && B>newy) B = newy;
+      int t = sizes()[p+2];
+      if (t == oiy || (t>oiy && Y<newy) || (t<oiy && Y>newy)) Y = newy;
+      t = sizes()[p+3];
+      if (t == oiy || (t>oiy && B<newy) || (t<oiy && B>newy)) B = newy;
     }
     o->damage_resize(X,Y,R-X,B-Y);
   }
@@ -132,74 +130,6 @@ void LFl_Tile::position(int oix, int oiy, int newx, int newy) {
 // move the lower-right corner (sort of):
 void LFl_Tile::resize(int X,int Y,int W,int H) {
 
-#if 0
-  // remember how much to move the child widgets:
-  int dx = X-x();
-  int dy = Y-y();
-  int dw = W-w();
-  int dh = H-h();
-  short* p = sizes();
-  // resize this (skip the Fl_Group resize):
-  Fl_Widget::resize(X,Y,W,H);
-  // find bottom-right of resiable:
-  int OR = p[5];
-  int NR = X+W-(p[1]-OR);
-  int OB = p[7];
-  int NB = Y+H-(p[3]-OB);
-
-  if (!unspoiled) {
-    // move everything to be on correct side of new resizable:
-    Fl_Widget*const* a = array();
-    p += 8;
-    for (int i=children(); i--;) {
-      Fl_Widget* o = *a++;
-      int xx = o->x()+dx;
-      int R = xx+o->w();
-      if (*p++ >= OR) xx += dw; else if (xx > NR) xx = NR;
-      if (*p++ >= OR) R += dw; else if (R > NR) R = NR;
-      int yy = o->y()+dy;
-      int B = yy+o->h();
-      if (*p++ >= OB) yy += dh; else if (yy > NB) yy = NB;
-      if (*p++ >= OB) B += dh; else if (B > NB) B = NB;
-
-      layoutable_c * widget = dynamic_cast<layoutable_c*>(o);
-
-      int minX, minY;
-      widget->getMinSize(&minX, &minY);
-
-      // move the new position so that all
-      // changed widgets still have minimum size
-      if (((R-xx) < minX) || ((B-yy) < minY)) {
-//        unspoiled = true;
-        printf("resizing subwidgets %i %i  (%i)  %i %i\n", R-xx, minX, o->w(), B-yy, minY);
-        break;
-      }
-    }
-  }
-
-  if (unspoiled) {
-    layouter_c::resize(X, Y, W, H);
-    init_sizes();
-    return;
-  }
-
-  Fl_Widget*const* a = array();
-  p += 8;
-  for (int i=children(); i--;) {
-    Fl_Widget* o = *a++;
-    int xx = o->x()+dx;
-    int R = xx+o->w();
-    if (*p++ >= OR) xx += dw; else if (xx > NR) xx = NR;
-    if (*p++ >= OR) R += dw; else if (R > NR) R = NR;
-    int yy = o->y()+dy;
-    int B = yy+o->h();
-    if (*p++ >= OB) yy += dh; else if (yy > NB) yy = NB;
-    if (*p++ >= OB) B += dh; else if (B > NB) B = NB;
-
-    o->resize(xx,yy,R-xx,B-yy); o->redraw();
-  }
-
-#else
   if (unspoiled) {
 
     layouter_c::resize(X, Y, W, H);
@@ -212,27 +142,26 @@ void LFl_Tile::resize(int X,int Y,int W,int H) {
     int dy = Y-y();
     int dw = W-w();
     int dh = H-h();
-    short* p = sizes();
     // resize this (skip the Fl_Group resize):
     Fl_Widget::resize(X,Y,W,H);
     // find bottom-right of resiable:
-    int OR = p[5];
-    int NR = X+W-(p[1]-OR);
-    int OB = p[7];
-    int NB = Y+H-(p[3]-OB);
+    int OR = sizes()[5];
+    int NR = X+W-(sizes()[1]-OR);
+    int OB = sizes()[7];
+    int NB = Y+H-(sizes()[3]-OB);
     // move everything to be on correct side of new resizable:
     Fl_Widget*const* a = array();
-    p += 8;
+    int p = 8;
     for (int i=children(); i--;) {
       Fl_Widget* o = *a++;
       int xx = o->x()+dx;
       int R = xx+o->w();
-      if (*p++ >= OR) xx += dw; else if (xx > NR) xx = NR;
-      if (*p++ >= OR) R += dw; else if (R > NR) R = NR;
+      if (sizes()[p++] >= OR) xx += dw; else if (xx > NR) xx = NR;
+      if (sizes()[p++] >= OR) R += dw; else if (R > NR) R = NR;
       int yy = o->y()+dy;
       int B = yy+o->h();
-      if (*p++ >= OB) yy += dh; else if (yy > NB) yy = NB;
-      if (*p++ >= OB) B += dh; else if (B > NB) B = NB;
+      if (sizes()[p++] >= OB) yy += dh; else if (yy > NB) yy = NB;
+      if (sizes()[p++] >= OB) B += dh; else if (B > NB) B = NB;
 
       layoutable_c * widget = dynamic_cast<layoutable_c*>(o);
 
@@ -249,23 +178,21 @@ void LFl_Tile::resize(int X,int Y,int W,int H) {
       }
     }
 
-    p = sizes();
     a = array();
-    p += 8;
+    p = 8;
     for (int i=children(); i--;) {
       Fl_Widget* o = *a++;
       int xx = o->x()+dx;
       int R = xx+o->w();
-      if (*p++ >= OR) xx += dw; else if (xx > NR) xx = NR;
-      if (*p++ >= OR) R += dw; else if (R > NR) R = NR;
+      if (sizes()[p++] >= OR) xx += dw; else if (xx > NR) xx = NR;
+      if (sizes()[p++] >= OR) R += dw; else if (R > NR) R = NR;
       int yy = o->y()+dy;
       int B = yy+o->h();
-      if (*p++ >= OB) yy += dh; else if (yy > NB) yy = NB;
-      if (*p++ >= OB) B += dh; else if (B > NB) B = NB;
+      if (sizes()[p++] >= OB) yy += dh; else if (yy > NB) yy = NB;
+      if (sizes()[p++] >= OB) B += dh; else if (B > NB) B = NB;
       o->resize(xx,yy,R-xx,B-yy); o->redraw();
     }
   }
-#endif
 }
 
 static void set_cursor(LFl_Tile*t, Fl_Cursor c) {
@@ -306,25 +233,24 @@ int LFl_Tile::handle(int event) {
     int oldx = 0;
     int oldy = 0;
     Fl_Widget*const* a = array();
-    short* q = sizes();
-    short* p = q+8;
+    int p = 8;
     for (int i=children(); i--; p += 4) {
       Fl_Widget* o = *a++;
       if (o == resizable()) continue;
-      if (p[1]<q[1] && o->y()<=my+GRABAREA && o->y()+o->h()>=my-GRABAREA) {
+      if (sizes()[p+1]<sizes()[1] && o->y()<=my+GRABAREA && o->y()+o->h()>=my-GRABAREA) {
 	int t = mx - (o->x()+o->w());
 	if (abs(t) < mindx) {
 	  sdx = t;
 	  mindx = abs(t);
-	  oldx = p[1];
+	  oldx = sizes()[p+1];
 	}
       }
-      if (p[3]<q[3] && o->x()<=mx+GRABAREA && o->x()+o->w()>=mx-GRABAREA) {
+      if (sizes()[p+3]<sizes()[3] && o->x()<=mx+GRABAREA && o->x()+o->w()>=mx-GRABAREA) {
 	int t = my - (o->y()+o->h());
 	if (abs(t) < mindy) {
 	  sdy = t;
 	  mindy = abs(t);
-	  oldy = p[3];
+	  oldy = sizes()[p+3];
 	}
       }
     }
