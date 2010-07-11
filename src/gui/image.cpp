@@ -126,14 +126,17 @@ int image_c::saveToPNG(const char * fname) const {
   int sy = height;
   unsigned char * buffer = bitmap;
 
-  png_structp png_ptr;
-  png_infop info_ptr;
   unsigned char ** png_rows = 0;
   int x, y;
 
   FILE *fi = fopen(fname, "wb");
-  png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+  if (!fi)
+  {
+    fprintf(stderr, "\nError: Couldn't open file!\n%s\n\n", fname);
+    return 0;
+  }
 
+  png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
   if (png_ptr == NULL)
   {
     fclose(fi);
@@ -142,7 +145,7 @@ int image_c::saveToPNG(const char * fname) const {
     return 0;
   }
 
-  info_ptr = png_create_info_struct(png_ptr);
+  png_infop info_ptr = png_create_info_struct(png_ptr);
   if (info_ptr == NULL)
   {
     fclose(fi);
@@ -169,12 +172,15 @@ int image_c::saveToPNG(const char * fname) const {
   }
 
   png_init_io(png_ptr, fi);
-  info_ptr->width = sx;
-  info_ptr->height = sy;
-  info_ptr->bit_depth = 8;
-  info_ptr->color_type = PNG_COLOR_TYPE_RGB_ALPHA;
-  info_ptr->interlace_type = PNG_INTERLACE_NONE;
-  info_ptr->valid = 0;
+  png_set_IHDR(png_ptr, info_ptr,
+      sx,  // width
+      sy,  // height
+      8,   // bit depth
+      PNG_COLOR_TYPE_RGB_ALPHA, // color type
+      PNG_INTERLACE_NONE,       // interlace
+      PNG_COMPRESSION_TYPE_DEFAULT,
+      PNG_FILTER_TYPE_DEFAULT
+      );
 
   png_write_info(png_ptr, info_ptr);
 
