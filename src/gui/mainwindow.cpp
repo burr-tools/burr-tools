@@ -1900,8 +1900,7 @@ bool mainWindow_c::tryToLoad(const char * f) {
 
   catch (xmlParserException_c e)
   {
-    fl_message(("load error: " + e.description).c_str());
-    std::cout << "xml error in state: " << e.state << " at position: " << e.line << "; " << e.col << std::endl;
+    fl_message((std::string("load error: ") + e.what()).c_str());
     delete str;
     return false;
   }

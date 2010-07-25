@@ -201,7 +201,7 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
     if (dx) delete [] dx;
     if (dy) delete [] dy;
     if (dz) delete [] dz;
-    pars.exception(e.description);
+    pars.exception(e.what());
   }
 
   pars.require(xmlParser_c::END_TAG, "state");

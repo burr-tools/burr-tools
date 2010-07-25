@@ -22,6 +22,8 @@
 
 #include <string.h>
 
+#include <sstream>
+
 static const int RESIZE_BUFFER = 16;
 
 static void outIndent(std::ostream & s, size_t cnt)
@@ -219,6 +221,21 @@ std::ostream & xmlWriter_c::addContent(void)
   state = StInContent;
   return stream;
 }
+
+
+xmlParserException_c::xmlParserException_c(std::string desc, std::string state, int line, int col)
+{
+  std::ostringstream str;
+  str << "xml Parser Exception : " << desc << " in state: " + state << "at position: " << line << "; " << col;
+  description = str.str();
+}
+
+xmlParserException_c::xmlParserException_c(std::string desc)
+{
+  description = "Xml Parser Exception : " ;
+  description += desc;
+}
+
 
 
 /////////////////////////

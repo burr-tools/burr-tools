@@ -26,6 +26,7 @@
 #include <iostream>
 
 #include <map>
+#include <exception>
 
 /** \file
  * This file contains the XML load and save stuff.
@@ -35,11 +36,18 @@
  */
 
 /** this exception is thrown by xmlWriter_c, when it is used in a wrong way */
-class xmlWriterException_c {
+class xmlWriterException_c : public std::exception
+{
+  private:
+
+    std::string text;
 
   public:
 
-    xmlWriterException_c(const std::string & /*txt*/) {}
+    xmlWriterException_c(const std::string & txt) : text(txt) {}
+    ~xmlWriterException_c() throw() {}
+
+    const char * what(void) const throw() { return text.c_str(); }
 
 };
 
@@ -114,27 +122,21 @@ class xmlWriter_c
 // this parser is taken from wsdlpull.sf.net, but heavily modified
 
 /** this class is thriown by the xml parser */
-class xmlParserException_c
+class xmlParserException_c : public std::exception
 {
   public:
 
-    xmlParserException_c(std::string desc, std::string STATE, int l, int c) : state (STATE), line(l), col(c)
-    {
-      description = "Xml Parser Exception : " ;
-      description += desc;
-    }
+    xmlParserException_c(std::string desc, std::string state, int line, int col);
 
-    xmlParserException_c(std::string desc) : state("unknown"), line(0), col(0)
-    {
-      description = "Xml Parser Exception : " ;
-      description += desc;
-    }
+    xmlParserException_c(std::string desc);
 
     ~xmlParserException_c() throw() {};
 
-    std::string description, state;
+    const char * what(void) const throw() { return description.c_str(); }
 
-    int line, col;
+  private:
+
+    std::string description;
 };
 
 /** A simple, pull based XML parser.
