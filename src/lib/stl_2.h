@@ -32,7 +32,7 @@ class stlExporter_2_c : public stlExporter_c {
     stlExporter_2_c(void) : sphere_rad(10), offset(0), round(1.0), connection_rad(0.75),
       recursion(2.0), inner_rad(0), hole_diam(0), square_hole(false) {}
 
-    virtual Polyhedron * getMesh(const voxel_c & v) const;
+    virtual Polyhedron * getMesh(const voxel_c & v, const faceList_c & holes) const;
 
     /* some functions to set some parameters for the output,
      * all parameters must be double values.

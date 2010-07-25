@@ -30,7 +30,7 @@ class stlExporter_0_c : public stlExporter_c {
 
     stlExporter_0_c(void) : bevel(0.3), cube_scale(10), shrink(0.01), hole(0), leaveGroovesInside(false), leaveGroovesOutside(false), smoothVoid(false) {}
 
-    virtual Polyhedron * getMesh(const voxel_c & v) const;
+    virtual Polyhedron * getMesh(const voxel_c & v, const faceList_c & holes) const;
     virtual unsigned int numParameters(void) const { return 7; }
     virtual const char * getParameterName(unsigned int idx) const;
     virtual double getParameter(unsigned int idx) const;

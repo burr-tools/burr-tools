@@ -28,7 +28,6 @@
 #include "buttongroup.h"
 
 #include "../lib/puzzle.h"
-#include "../lib/stl.h"
 #include "../lib/gridtype.h"
 #include "../lib/bt_assert.h"
 #include "../lib/voxel.h"
@@ -93,7 +92,7 @@ void stlExport_c::cb_Update3DView(void)
   Polyhedron * p = 0;
   try
   {
-    p = stl->getMesh(*puzzle->getShape(ShapeSelect->getSelection()));
+    p = stl->getMesh(*puzzle->getShape(ShapeSelect->getSelection()), holes);
   }
   catch (stlException_c e)
   {
@@ -132,6 +131,32 @@ void stlExport_c::cb_Update3DViewParams(void)
   }
 }
 
+static void cb_3dClick_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)v)->cb_3dClick(); }
+void stlExport_c::cb_3dClick(void)
+{
+  if (Fl::event_ctrl() || Fl::event_shift())
+  {
+    unsigned int shape, face;
+    unsigned long voxel;
+
+    if (view3D->getView()->pickShape(Fl::event_x(),
+        view3D->getView()->h()-Fl::event_y(),
+        &shape, &voxel, &face))
+    {
+      if (shape == 0)
+      {
+        if (Fl::event_ctrl())
+        {
+          holes.removeFace(voxel, face);
+        }
+        if (Fl::event_shift())
+        {
+          holes.addFace(voxel, face);
+        }
+      }
+    }
+  }
+}
 
 stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
 
@@ -311,6 +336,7 @@ stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
   view3D = new LView3dGroup(1, 0, 1, 4);
   view3D->setMinimumSize(400, 400);
   view3D->weight(1, 0);
+  view3D->callback(cb_3dClick_stub, this);
   cb_Update3DView();
 
   set_modal();
@@ -341,7 +367,7 @@ void stlExport_c::exportSTL(int shape)
     idx += snprintf(name+idx, 1000-idx, "_S%d", shape+1);
 
   try {
-    stl->write(name, *v);
+    stl->write(name, *v, holes);
   }
 
   catch (stlException_c e) {

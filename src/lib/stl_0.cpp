@@ -27,7 +27,7 @@
 
 #define Epsilon 1.0e-5
 
-Polyhedron * stlExporter_0_c::getMesh(const voxel_c & v) const
+Polyhedron * stlExporter_0_c::getMesh(const voxel_c & v, const faceList_c & holes) const
 {
   if (v.countState(voxel_c::VX_VARIABLE)) throw stlException_c("Shapes with variable voxels cannot be exported");
   if (cube_scale < Epsilon) throw stlException_c("Unit size too small");

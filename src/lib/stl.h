@@ -21,6 +21,8 @@
 #ifndef __STL_H__
 #define __STL_H__
 
+#include <vector>
+
 #include <stdio.h>
 
 class voxel_c;
@@ -35,6 +37,28 @@ class stlException_c {
 
     stlException_c(const char * c) : comment(c) {}
 
+};
+
+/** this class contains a list of faces (voxel+facenumer) pairs */
+class faceList_c {
+
+  private:
+
+    typedef struct face {
+      long voxel;
+      int faceNum;
+    } face;
+
+    std::vector<face> faces;
+
+  public:
+
+    faceList_c(void) {}
+
+    void addFace(long voxel, int face);
+    void removeFace(long voxel, int face);
+
+    bool containsFace(long voxel, int face);
 };
 
 /**
@@ -57,7 +81,7 @@ class stlExporter_c {
     /**
      * This function exports one shape.
      */
-    void write(const char * basename, const voxel_c & shape);
+    void write(const char * basename, const voxel_c & shape, const faceList_c & holes);
 
     /** parameters can have different type
      * this enum lists all supported types
@@ -92,7 +116,7 @@ class stlExporter_c {
     /** find out if binary mode is active */
     bool getBinaryMode(void) { return binaryMode; }
 
-    virtual Polyhedron * getMesh(const voxel_c & v) const = 0;
+    virtual Polyhedron * getMesh(const voxel_c & v, const faceList_c & holes) const = 0;
 
   private:
 

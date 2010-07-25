@@ -36,6 +36,8 @@
 #include "Images.h"
 #include "Layouter.h"
 
+#include "../lib/stl.h"
+
 #include <vector>
 
 class LView3dGroup;
@@ -71,6 +73,8 @@ class stlExport_c : public LFl_Double_Window {
 
     pixmapList_c pm;
 
+    faceList_c holes;
+
   public:
 
     stlExport_c(puzzle_c * p);
@@ -80,6 +84,7 @@ class stlExport_c : public LFl_Double_Window {
     void cb_Update3DView(void);
     void cb_Update3DViewParams(void);
     void exportSTL(int shape);
+    void cb_3dClick(void);
 };
 
 #endif
