@@ -469,6 +469,8 @@ static void joinTubePairs(Polyhedron & poly, Face *inside, Face *outside, float 
 
     Face *f = poly.addFace(face4);   // add new one
     f->_flags = inside->_flags;
+    f->_fb_index = inside->_fb_index;
+    f->_fb_face = inside->_fb_face;
   }
 
   // repeat the same idea for the outside face
@@ -514,6 +516,8 @@ static void joinTubePairs(Polyhedron & poly, Face *inside, Face *outside, float 
 
     Face *f = poly.addFace(face4);   // add new one
     f->_flags = outside->_flags;
+    f->_fb_index = outside->_fb_index;
+    f->_fb_face = outside->_fb_face;
   }
   // since edge iterators are arbitrary to the face, need to find closest
   // pair between inside and outside hole
@@ -547,6 +551,8 @@ static void joinTubePairs(Polyhedron & poly, Face *inside, Face *outside, float 
 
     Face *f = poly.addFace(face4);   // add new one
     f->_flags = outside->_flags|inside->_flags;
+    f->_fb_index = outside->_fb_index;
+    f->_fb_face = outside->_fb_face;
   }
 
   // remove original faces
@@ -558,6 +564,7 @@ static void joinTubePairs(Polyhedron & poly, Face *inside, Face *outside, float 
 
 void joinPolyhedronInverse(Polyhedron & poly, const Polyhedron & inv, const faceList_c & holes, float holeSize)
 {
+  std::vector<std::pair<Face*,Face*> > face_pairs;
   int vertexOffset = poly.numVertices();
 
   for (int i = 0; i < inv.numVertices(); i++)
@@ -589,11 +596,15 @@ void joinPolyhedronInverse(Polyhedron & poly, const Polyhedron & inv, const face
       for (Polyhedron::face_iterator fit2 = poly.fBegin(); fit2 != poly.fEnd(); ++fit2)
       {
         if ((*fit2)->_fb_index == fp->_fb_index &&
-            (*fit2)->_fb_face  == fp->_fb_face && fp != (*fit2))
+            (*fit2)->_fb_face  == fp->_fb_face && 
+            fp != (*fit2) && fp->_fb_face!=-1) // no bevel/offset faces
         {
-          joinTubePairs(poly,fp,*fit2, holeSize);
+          face_pairs.push_back(pair<Face *,Face *>(fp,*fit2));
         }
       }
     }
   }
+  for (int i=0; i<face_pairs.size(); i++)
+    joinTubePairs(poly,face_pairs[i].first,face_pairs[i].second, holeSize);
+  face_pairs.clear();
 }
