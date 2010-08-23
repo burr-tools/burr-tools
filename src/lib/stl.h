@@ -39,28 +39,6 @@ class stlException_c {
 
 };
 
-/** this class contains a list of faces (voxel+facenumer) pairs */
-class faceList_c {
-
-  private:
-
-    typedef struct face {
-      long voxel;
-      int faceNum;
-    } face;
-
-    std::vector<face> faces;
-
-  public:
-
-    faceList_c(void) {}
-
-    void addFace(long voxel, int face);
-    void removeFace(long voxel, int face);
-
-    bool containsFace(long voxel, int face);
-};
-
 /**
  * the base class for STL exporters
  *
@@ -70,6 +48,7 @@ class faceList_c {
  * The STL file handling is done in here, so that the concrete exporters only need
  * to write a long list of triangles
  */
+class faceList_c;
 class stlExporter_c {
 
   public:

@@ -148,10 +148,12 @@ void stlExport_c::cb_3dClick(void)
         if (Fl::event_ctrl())
         {
           holes.removeFace(voxel, face);
+          cb_Update3DView();
         }
         if (Fl::event_shift())
         {
           holes.addFace(voxel, face);
+          cb_Update3DView();
         }
       }
     }

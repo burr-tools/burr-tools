@@ -37,6 +37,7 @@
 #include "Layouter.h"
 
 #include "../lib/stl.h"
+#include "../halfedge/modifiers.h"
 
 #include <vector>
 

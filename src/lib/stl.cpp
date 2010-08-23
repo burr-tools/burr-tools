@@ -175,34 +175,3 @@ void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_
   fclose(f);
 }
 
-void faceList_c::addFace(long voxel, int face)
-{
-  if (containsFace(voxel, face)) return;
-
-  struct face f;
-  f.voxel = voxel;
-  f.faceNum = face;
-
-  faces.push_back(f);
-}
-
-void faceList_c::removeFace(long voxel, int face)
-{
-  for (unsigned int i = 0; i < faces.size(); i++)
-    if (faces[i].voxel == voxel && faces[i].faceNum == face)
-    {
-      faces.erase(faces.begin()+i);
-      return;
-    }
-}
-
-bool faceList_c::containsFace(long voxel, int face)
-{
-  for (unsigned int i = 0; i < faces.size(); i++)
-    if (faces[i].voxel == voxel && faces[i].faceNum == face)
-    {
-      return true;
-    }
-
-  return false;
-}

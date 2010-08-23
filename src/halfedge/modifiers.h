@@ -21,12 +21,34 @@
 #ifndef __MODIFIERS_H__
 #define __MODIFIERS_H__
 
+#include <vector>
 class Polyhedron;
+/** this class contains a list of faces (voxel+facenumer) pairs */
+class faceList_c {
+
+  private:
+
+    typedef struct face {
+      long voxel;
+      int faceNum;
+    } face;
+
+    std::vector<face> faces;
+
+  public:
+
+    faceList_c(void) {}
+
+    void addFace(long voxel, int face);
+    void removeFace(long voxel, int face);
+
+    bool containsFace(long voxel, int face) const;
+};
 
 void scalePolyhedron(Polyhedron & poly, float val);
 void fillPolyhedronHoles(Polyhedron &poly, bool fillOutsides);
 
 // inverts the inv polyhedron and adds those faces to poly
-void joinPolyhedronInverse(Polyhedron & poly, const Polyhedron & inv);
+void joinPolyhedronInverse(Polyhedron & poly, const Polyhedron & inv, const faceList_c & holes, float holeSize);
 
 #endif

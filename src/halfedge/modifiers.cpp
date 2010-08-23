@@ -23,10 +23,43 @@
 #include <set>
 #include <map>
 #include "../lib/voxel.h"
+#include "../lib/stl.h"
 
 using namespace std;
 
-#define Epsilon 1.0e-5
+const float Epsilon=1.0e-5;
+
+void faceList_c::addFace(long voxel, int face)
+{
+  if (containsFace(voxel, face)) return;
+
+  struct face f;
+  f.voxel = voxel;
+  f.faceNum = face;
+
+  faces.push_back(f);
+}
+
+void faceList_c::removeFace(long voxel, int face)
+{
+  for (unsigned int i = 0; i < faces.size(); i++)
+    if (faces[i].voxel == voxel && faces[i].faceNum == face)
+    {
+      faces.erase(faces.begin()+i);
+      return;
+    }
+}
+
+bool faceList_c::containsFace(long voxel, int face) const
+{
+  for (unsigned int i = 0; i < faces.size(); i++)
+    if (faces[i].voxel == voxel && faces[i].faceNum == face)
+    {
+      return true;
+    }
+
+  return false;
+}
 
 /* this routine attempts to find a good quad or triangle in which to
  * fill part of the hole.  It does so by comparing the normals of the
@@ -163,7 +196,7 @@ static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
       center /= (float) working_set.size();
       Vertex *v = poly.addVertex(center);
 
-      // for an n-sided hole, add n-triangles 
+      // for an n-sided hole, add n-triangles
       for (unsigned int j = 0; j < working_set.size(); j++)
       {
         pts.push_back(working_set[j]->index());
@@ -296,7 +329,6 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
 
     if (faces_to_remove.size())
     {
-
       eraseFaces(&poly, faces_to_remove);  // erase old faces
       faces_to_remove.clear();
     }
@@ -348,7 +380,6 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
     seams.insert(pair<Vertex*,HalfEdge*>(vpr.first,(*cit).second));
   }
 
-
   for (map<Vertex*,HalfEdge*>::iterator i=seams.begin(); i!=seams.end(); ++i)
   {
     Vertex *v = (*i).first;
@@ -376,6 +407,7 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
   poly.finalize();
 
 }
+
 void scalePolyhedron(Polyhedron & poly, float val)
 {
    for (Polyhedron::vertex_iterator it = poly.vBegin(); it != poly.vEnd(); it++)
@@ -384,7 +416,147 @@ void scalePolyhedron(Polyhedron & poly, float val)
    }
 }
 
-void joinPolyhedronInverse(Polyhedron & poly, const Polyhedron & inv)
+static void joinTubePairs(Polyhedron & poly, Face *inside, Face *outside, float holeSize)
+{
+  unsigned int i;
+  Vector3Df center(0,0,0);
+  std::vector<int> corners;
+  std::vector<int> tube_corners;
+  set<Face*> faces_to_remove;
+  if (inside->size() != outside->size())
+  {
+    return;
+  }
+
+  // calculate center of inside face
+  // by averaging all the vertices of the face
+
+  Face::const_edge_circulator ei = inside->begin();
+  Face::const_edge_circulator sentinel=ei;
+  do
+  {
+    center += (*ei)->dst()->position();
+    ei++;
+  }
+  while (ei!=sentinel);
+
+  center /= (float)inside->size();
+  ei = inside->begin();
+  sentinel=ei;
+
+  // generate "hole" vertices on inside face by interpolating each vertex
+  // towards the center of the face
+
+  do
+  {
+    Vertex *v = poly.addVertex((*ei)->dst()->position()*holeSize+center*(1.0-holeSize));
+    tube_corners.push_back(v->index());
+    corners.push_back(v->index());
+    corners.push_back((*ei)->dst()->index());
+    ei++;
+  }
+  while (ei!=sentinel);
+
+  // create new faces for the inside to create the hole
+
+  for (i = 0; i < corners.size(); i+=2)
+  {
+    vector<int> face4(4);
+    face4[0] = corners[i];
+    face4[1] = corners[i+1];
+    face4[2] = corners[(i+3)%corners.size()];
+    face4[3] = corners[(i+2)%corners.size()];
+
+    Face *f = poly.addFace(face4);   // add new one
+    f->_flags = inside->_flags;
+  }
+
+  // repeat the same idea for the outside face
+  // generate the center (average) of the outside face
+
+  ei=outside->begin();
+  sentinel=ei;
+  center.set(0,0,0);
+
+  do
+  {
+    center += (*ei)->dst()->position();
+    ei++;
+  }
+  while (ei!=sentinel);
+
+  center /= (float)inside->size();
+  ei=outside->begin();
+  sentinel=ei;
+  corners.clear();
+
+  // generate outside "hole" vertices by interpolating vertex towards center
+
+  do
+  {
+    Vertex *v = poly.addVertex((*ei)->dst()->position()*holeSize+center*(1.0-holeSize));
+    tube_corners.push_back(v->index());
+    corners.push_back(v->index());
+    corners.push_back((*ei)->dst()->index());
+    ei++;
+  }
+  while (ei!=sentinel);
+
+  // create new faces for the outside to create the hole
+
+  for (i = 0; i < corners.size(); i+=2)
+  {
+    vector<int> face4(4);
+    face4[0] = corners[i];
+    face4[1] = corners[i+1];
+    face4[2] = corners[(i+3)%corners.size()];
+    face4[3] = corners[(i+2)%corners.size()];
+
+    Face *f = poly.addFace(face4);   // add new one
+    f->_flags = outside->_flags;
+  }
+  // since edge iterators are arbitrary to the face, need to find closest
+  // pair between inside and outside hole
+
+  const unsigned int tube_size = tube_corners.size()/2;
+  double max_dist=1e99;
+  int closest=-1;
+
+  for (i = tube_size; i < tube_size*2; i++)
+  {
+    Vector3Df  temp = poly.vertex(tube_corners[i])->position()-
+                      poly.vertex(tube_corners[0])->position();
+    double temp_dist = temp.squaredModule();
+
+    if (temp_dist < max_dist)
+    {
+      closest=i;
+      max_dist = temp_dist;
+    }
+  }
+
+  // connect the inside and outside holes with an N-sided tube
+
+  for (i = 0; i < tube_size; i++)
+  {
+    vector<int> face4(4);
+    face4[0] = tube_corners[i];
+    face4[1] = tube_corners[(i+1)%tube_size];
+    face4[2] = tube_corners[tube_size+((tube_size+closest-(1+i))%tube_size)];
+    face4[3] = tube_corners[tube_size+((tube_size+closest-i)%tube_size)];
+
+    Face *f = poly.addFace(face4);   // add new one
+    f->_flags = outside->_flags|inside->_flags;
+  }
+
+  // remove original faces
+  faces_to_remove.insert(inside);
+  faces_to_remove.insert(outside);
+  eraseFaces(&poly,faces_to_remove);
+  faces_to_remove.clear();
+}
+
+void joinPolyhedronInverse(Polyhedron & poly, const Polyhedron & inv, const faceList_c & holes, float holeSize)
 {
   int vertexOffset = poly.numVertices();
 
@@ -397,6 +569,7 @@ void joinPolyhedronInverse(Polyhedron & poly, const Polyhedron & inv)
   {
     Face::const_edge_circulator ei = (*fit)->begin();
     Face::const_edge_circulator sentinel=ei;
+    Face *fp;
 
     std::vector<int> corners;
 
@@ -407,7 +580,20 @@ void joinPolyhedronInverse(Polyhedron & poly, const Polyhedron & inv)
     }
     while (ei != sentinel);
 
-    poly.addFace(corners)->_flags |= FF_INSIDE_FACE;
+    fp = poly.addFace(corners);
+    fp->_flags |= FF_INSIDE_FACE;
+    fp->_fb_index = (*fit)->_fb_index;
+    fp->_fb_face = (*fit)->_fb_face;
+    if (holes.containsFace(fp->_fb_index, fp->_fb_face))
+    {
+      for (Polyhedron::face_iterator fit2 = poly.fBegin(); fit2 != poly.fEnd(); ++fit2)
+      {
+        if ((*fit2)->_fb_index == fp->_fb_index &&
+            (*fit2)->_fb_face  == fp->_fb_face && fp != (*fit2))
+        {
+          joinTubePairs(poly,fp,*fit2, holeSize);
+        }
+      }
+    }
   }
 }
-
