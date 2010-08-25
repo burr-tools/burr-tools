@@ -3135,24 +3135,61 @@ same cost and speed for FDM because a hollow piece will still have a support
 structure inside the hollow, but it will be of a different material. The thing
 to realize is that with SLS, if there are no holes to the hollow part of the
 piece, the nylon "sand" will be captured. This should not be a problem except
-for the weight of the piece.
+for the weight of the piece. But keep in mind that some printing services will
+charge you for the surrounded volume as well as the for the actually printed
+volume.
 
 ===Exporting===
 
 The main menu entry @B@Export - STL@B@ opens the window seen in Figure
-[StlExportWindow FigSTLExportWindow]. The window has shape selector, a 3-D view
-of the selected shape and some parameters that control the shapes created. The
-exact parameters depend on the grid of the current puzzle. The 3-D view displays
-the shape the same way as it will be exported into the STL file, so you can see 
-what the shape will look like.
+[StlExportWindow FigSTLExportWindow]. The window has a shape selector, a 3-D
+view of the selected shape and some parameters that control the shapes created.
+The exact parameters depend on the grid of the current puzzle. The 3-D view
+displays the shape the same way as it will be exported into the STL file, so
+you can see what the shape will look like.
 
 On the bottom in the status line you can see what volume the current shape with
 the current settings has.
 
+In the statusline are also two buttons to choose how the shape is displayed.
+Either normally from the outside. The 2nd view will show you the inside of the
+shape. This is useful if you print hollow shapes and need to see what the
+internal void looks like.
+
 @F@FigSTLExportWindow|Window_StlExport.png|The STL-Export window@F@
 
-@B@Filename@B@ and @B@Path@B@ control the name and position of the generated
-file. Those are common parameters for all grids.
+===Hollow Shapes===
+
+There are mainly 2 different exporters. One for the sphere puzzles and one for
+all other polygon based puzzles.
+
+When creating spheres you can simply create hollow shapes by giving the inner
+radius a valud that is different from zero. The resulting shapes will
+automatically have a lot of holes that connect the inside and the outside.
+Those holes will be symmetrically placed and they are in places on the sphere
+where they normally don't interfer with solving.
+
+For polygon based puzzles things are not that simple. Here a hole at the wrong
+place could make pieces stop from sliding or get stuck into one another. That
+is why you can specify where exactly you want the holes. Initially there are no
+holes at all. By shift-clicking onto faces of voxels you can "drill" a hole
+through this face. The hole will always be in the center of the face.
+Ctrl-clicking will remove the hole again.
+
+Don't forget to first set a proper wallsize and tube size to actually see the
+holes.
+
+===Parameters===
+
+The following parameters control the generated shape and file.
+
+@B@Filename@B@ and @B@Path@B@ control the name and path of the generated file.
+Those are common parameters for all grids.
+@B@Binary STL:@B@ controls wheter a binary of a text STL file is created.
+Normally binary files are the right choice because they are much more compact.
+But sometimes it might be useful to use the text form. For example when you
+want to see what is going on on theinside of an STL file, or when you printing
+service has problems with the binary file.
 
 For polyhedron based grids there are the following parameters that control the
 shape of the generated pieces
@@ -3162,6 +3199,28 @@ shape of the generated pieces
 - @B@Offset:@B@ allows a gap between the pieces, so that it is actually
   possible to assemble them. If the shapes were made to correct sizes they
   would touch, making movement impossible.
+- @B@Wall Thickness:@B@ controls how thick the wall of material will be that
+  encloses the internal void. When the wall thickness is zero, then the piece
+  will be solid. The piece will be solid as well, when you make the wall too
+  thick.
+- @B@Tube size:@B@ is the size of the "tubes" that connect the inside void with
+  the outside world. The size is given relative to the size of the shape where
+  the tube is. So 0 means no holes and 1 means tubes as big as the face that
+  the tube is on. The "tube" is actually a hole of the same shape as the face
+  that it is on. So if you put it onto a square face of a voxel you will  get a
+  square hole.
+- @B@Leave inside grooves:@B@ will, when tagged leave a lot of grooves in the
+  generated shape so that the shape looks like it is glues out of a lot of
+  singe voxels.
+- @B@Leave outside groved:@B@ will only leave the grooves on the outside of the
+  shape but will fill all the grooves that will actually go through the
+  generated shape. To understand the difference of these 2 options, build a
+  shape out of 2x2x2 cubes and look at the different shapes. Use a bigger bevel
+  and offset to better see the differences.
+- @B@Remove grooves in void:@B@ controls whether the grooves will be removed
+  from the shape of the inner void. Less grooves will result in less material
+  but more grooves might be a more stable result. So you may need to experiment
+  what the effects of this option are on the printed result.
 
 
 For spheres the parameters are as follows:
