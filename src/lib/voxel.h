@@ -723,6 +723,11 @@ public:
    */
   virtual Polyhedron * getMesh(double bevel, double offset) const;
 
+  /* return true, when the given parameters will result in a usable
+   * polyhedron, when offset or bevel gets too big return false
+   */
+  virtual bool meshParamsValid(double /*bevel*/, double /*offset*/) const { return true; }
+
   /**
    * returns the drawing mesh. ATTENTION for the sake of speed this mesh
    * will not be a proper halfedge mesh, most edges will be open, meaning

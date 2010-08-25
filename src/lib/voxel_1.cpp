@@ -487,3 +487,9 @@ void voxel_1_c::recalcSpaceCoordinates(float * x, float * y, float * /*z*/) cons
   *y = *y * HEIGHT;
 }
 
+bool voxel_1_c::meshParamsValid(double bevel, double offset) const {
+  if (bevel+offset < sqrt(3)/6)
+    return true;
+  else
+    return false;
+}

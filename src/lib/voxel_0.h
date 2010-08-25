@@ -60,6 +60,7 @@ class voxel_0_c : public voxel_c {
 
     virtual void getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & faceCorners) const;
     virtual void calculateSize(float * x, float * y, float * z) const;
+    virtual bool meshParamsValid(double bevel, double offset) const;
 
   private:
 

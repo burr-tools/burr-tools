@@ -387,3 +387,9 @@ void voxel_0_c::calculateSize(float * x, float * y, float * z) const {
   *z = getZ();
 }
 
+bool voxel_0_c::meshParamsValid(double bevel, double offset) const {
+  if (bevel+offset > 0.5)
+    return false;
+  else
+    return true;
+}

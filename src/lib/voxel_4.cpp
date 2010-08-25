@@ -493,3 +493,9 @@ void voxel_4_c::recalcSpaceCoordinates(float * x, float * y, float * z) const {
   *z /= 3;
 }
 
+bool voxel_4_c::meshParamsValid(double bevel, double offset) const {
+  if (((bevel/2.678)+(offset/2.1)) > 1)
+    return false;
+  else
+    return true;
+}
