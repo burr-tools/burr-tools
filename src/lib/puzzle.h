@@ -27,6 +27,7 @@
 
 #include "bt_assert.h"
 
+#include <stdint.h>
 #include <vector>
 #include <string>
 

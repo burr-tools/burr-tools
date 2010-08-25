@@ -27,6 +27,7 @@
 #include "assembler.h"
 #include "bt_assert.h"
 
+#include <stdint.h>
 #include <vector>
 #include <set>
 #include <string>
