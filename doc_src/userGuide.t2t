@@ -10,6 +10,7 @@ roever@users.sf.net
 %!postproc(tex):  \\n ""
 %!postproc(html): --/ &rarr;
 %!postproc(tex):  --/ $\\vartriangleright{}$
+%!postproc(html):  --- &mdash;
 %!postproc(html): '@L@([^@]*)@L@' <A NAME="\1"></A>
 %!postproc(tex):  '@L@([^@]*)@L@' \\label{\1}
 %!postproc(html): @F@(.*)\|(.*)\|(.*)@F@  '<CENTER><A NAME="\1"></A>@x@\2@x@<BR><B>Figure:</B> \3</CENTER>'
@@ -38,6 +39,10 @@ roever@users.sf.net
 %!postproc(tex): @x@(.*)\\_(.*)@x@ "@x@\1_\2@x@"
 %!postproc(tex): @x@(.*)\\_(.*)@x@ "@x@\1_\2@x@"
 %!postproc(tex): @x@(.*)\\_(.*)@x@ "@x@\1_\2@x@"
+%!postproc(tex): "@x@(\S\S*) (.*)@x@" "\\includegraphics{\1}@x@\2@x@"
+%!postproc(tex): "@x@\$\\backslash\$n (.*)@x@" "\\linebreak{}@x@\1@x@"
+%!postproc(tex): "@x@(\S\S*) (.*)@x@" "\\includegraphics{\1}@x@\2@x@"
+%!postproc(tex): "@x@\$\\backslash\$n (.*)@x@" "\\linebreak{}@x@\1@x@"
 %!postproc(tex): "@x@(\S\S*) (.*)@x@" "\\includegraphics{\1}@x@\2@x@"
 %!postproc(tex): "@x@\$\\backslash\$n (.*)@x@" "\\linebreak{}@x@\1@x@"
 %!postproc(tex): "@x@(\S\S*) (.*)@x@" "\\includegraphics{\1}@x@\2@x@"
@@ -193,21 +198,43 @@ operating system. This will bring you to the download page where you have to
 select a mirror site to start the downloading. It's highly recommended to
 select the mirror site on the server nearest to your location.
 
-MICROSOFT WINDOWS users can download either the ``Windows Binary`` (a zipped
-file which needs manual extraction and installation) or the self-extracting
-``Windows Installer``. Unless you have a slow connection to the internet,
-downloading the installer is probably the best option. To use BURRTOOLS on a
-UNIX platform you have to download the ``Source`` files and compile the program
-on your system (see installation guidelines below). An OSX package is provided.
-
 ===Installation of BurrTools===
 
 ====Microsoft Windows====
 
-If you downloaded the ``Widows Binary``, just extract the file into the
-directory of your choice and the GUI is ready to be used. If you opted for the
-``Windows Installer``, start the executable and follow the instructions on your
-screen.
+For Windows you will need to dowlonad the windows binary in a ZIP-archive. This way you can be sure that the program leaves no traces on your system when you delete it. After the installation you will need to add a start menu entry and file extension association on your own.
+
+After installing BURRTOOLS the following files should be on your system:
+
+: ``burrGui.exe``
+The graphical user interface (GUI) to create puzzle files for BURRTOOLS.
+
+: ``COPYING``
+A text file containing the //GNU General Public Licence//. This file may be
+deleted to save on disk space, but should always be included when sharing the
+program. Read it carefully before sharing or modifying the program.
+
+: ``AUTHORS``
+A text file containing information about the contributors to the development of
+BURRTOOLS. This file may be deleted to save on disk space.
+
+: ``ChangeLog``
+An automatically created text file containing an overview of the changes made
+to the program since version 0.0.6. This file may be deleted to save on disk
+space.
+
+: ``NEWS``
+A more readable version of ``ChangeLog``. Here all (more or less important)
+changes to the different versions are collected in a comprehensive list. This
+is probably the place to look for what changed when downloading a new version.
+This file may be deleted to save on disk space.
+
+
+Also a new folder, ``examples``, is created. This subdirectory contains a few
+examples of existing puzzles that illustrate the capabilities and functions of
+BURRTOOLS. A brief overview of the examples is presented in the
+[Example section ChExamples].
+
 
 ====Mac OS X====
 
@@ -254,46 +281,6 @@ should not be such a big problem.
 Now BURRTOOLS can be compiled and installed the usual way with ``configure``,
 ``make``, ``make install``.
 
-===Files and Folders===
-
-After installing BURRTOOLS the following files should be on your system:
-
-: ``burrGui.exe``
-The graphical user interface (GUI) to create puzzle files for BURRTOOLS.
-
-: ``UserGuide.pdf``
-This user guide.
-
-: ``COPYING``
-A text file containing the //GNU General Public Licence//. This file may be
-deleted to save on disk space, but should always be included when sharing the
-program. Read it carefully before sharing or modifying the program.
-
-: ``AUTHORS``
-A text file containing information about the contributors to the development of
-BurrTools. This file may be deleted to save on disk space.
-
-: ``ChangeLog``
-An automatically created text file containing an overview of the changes made
-to the program since version 0.0.6. This file may be deleted to save on disk
-space.
-
-: ``NEWS``
-A more readable version of ``ChangeLog``. Here all (more or less important)
-changes to the different versions are collected in a comprehensive list. This
-is probably the place to look for what changed when downloading a new version.
-This file may be deleted to save on disk space.
-
-: ``uninstall.exe``
-The uninstall program will only be added after installing BURRTOOLS with the
-``Windows Installer``.
-
-
-Also a new folder, ``examples``, is created. This subdirectory contains a few
-examples of existing puzzles that illustrate the capabilities and functions of
-BURRTOOLS. A brief overview of the examples is presented in the
-[Example section ChExamples].
-
 ==Concepts and Definitions==
 
 Before we start describing the functions of BURRTOOLS, let's synchronise our
@@ -309,8 +296,7 @@ voxels, triangular prisms, tightly packed spheres, and two types of grid made
 from tetrahedrons. Each voxel has one of the following three states: //Empty//,
 //Fixed// (//Filled//) and //Variable// (--/ [Concepts ChConcepts]).
 Additionally each voxel can also contain supplementary information in the form
-of colours that are attached to the whole or parts of that voxel. Currently
-BURRTOOLS can only attach one single colour to the voxel as a whole.
+of colours that are attached to the whole of that voxel. 
 
 : **Spacegrid**
 The spacegrid defines the shape, orientation and arrangement of the voxels.
@@ -532,7 +518,7 @@ mirror shapes of one another.
 
 When the mirror removal of BURRTOOLS is enabled BURRTOOLS will only display one
 of the 2 solutions. To explore this you can have a look at the demo file
-``demoMirrorParadox.xmpuzzle`` included in the examples of BurrTools.
+``demoMirrorParadox.xmpuzzle`` included in the examples of BURRTOOLS.
 
 This explains different numbers of solutions that contain the various pieces.
 The overall number of solutions will be constant but the number of solutions
@@ -634,8 +620,8 @@ differences that need your attention:
 
 - There is no limit to the number of possible positions for the pieces. So
   BURRTOOLS won't stop and complain about too many placements. As long as your
-  computer has sufficient memory the program will merrily continue working -
-  even if it would take longer than the universe exists - to complete the
+  computer has sufficient memory the program will merrily continue working ---
+  even if it would take longer than the universe exists --- to complete the
   search.
 
 - BURRTOOLS supports other spacegrids besides the cube space supported by
@@ -665,7 +651,7 @@ and can be deleted if they are not required.
 
 =The BurrTools Interface=
 
-When BurrTools is started for the very first time the GUI will look like Figure
+When BURRTOOLS is started for the very first time the GUI will look like Figure
 [MainWindowStart FigMainWindowStart] which shows the main window. Although
 some small variations may occur depending on your operating system, screen
 resolution, and display preferences settings. The GUI has four major parts. On
@@ -687,7 +673,7 @@ This menu holds the procedures for handling files within BURRTOOLS and for
 exiting the program (--/[File Menu ChFileMenu]).
 
 : @B@Toggle 3-D@B@
-Swaps the 2-D and the 3-D grids for the @A@Entities@A@ tab (--/[Navigating in 2-D and 3-D ChNavigating).
+Swaps the 2-D and the 3-D grids for the @A@Entities@A@ tab (--/[Navigating in 2-D and 3-D ChNavigating]).
 
 : @B@Export@B@
 Contains a sub-menu with 3 entries. One allows you to export the contents of the
@@ -736,7 +722,7 @@ This entry opens a traditional file dialogue that allows importing
 PUZZLESOLVER3D files (``*.puz``) into BURRTOOLS. Although these imported
 designs often can be subjected to the solver right away, some postediting may
 be required because of the differences in the way BURRTOOLS handles holes in
-the result and duplicated pieces. BurrTools will import //all// the pieces from
+the result and duplicated pieces. BURRTOOLS will import //all// the pieces from
 the ``*.puz`` file and assign them to the shapes S1 to Sn-1. Accordingly,
 the //result// from the PUZZLESOLVER3D file will be assigned to the last shape
 (S//n//). Also a problem definition is automatically created (--/Chapter
@@ -750,7 +736,7 @@ should preferably be deleted from the @A@Shapes@A@ list
 
 : @B@Save@B@
 Saves your work into a ``*.xmpuzzle`` file. If the design had not been saved
-before (indicated with '``Unknown``' in the BurrTools windows title bar) the
+before (indicated with '``Unknown``' in the BURRTOOLS windows title bar) the
 @A@Save As@A@ command will be activated. Short cut: ``[F2]``.
 
 : @B@Save As@B@
@@ -786,6 +772,12 @@ stored in a file that is either in your home directory (UNIX) or in your
 profile (WINDOWS). The program will use these settings each time it is started.
 
 @F@FigConfig|Window_Config.png|The configuration window@F@
+
+: @B@Use new rotation method@B@
+This option allows you to toggle between the old way the shapes are rotated and a
+new way. With the old method a shape always returned to the same orientation when
+the mouse was dragged back to the starting position. The new method allows rotating
+a shape by drawing circles on the screen.
 
 : @B@Use openGL display lists@B@
 This option enables an optimisation for the 3-D viewer which makes it faster
@@ -896,8 +888,8 @@ the moves involved in the disassembly of the puzzle.
 
 Any object in the 3-D view can be //rotated// by simply dragging it, and the
 scrollbar on the right allows //zooming// in or out on that object by
-respectively moving the slider down or up. Note that the zoom settings are
-independent for each of the three tools tabs.
+respectively moving the slider down or up or by using your mouse-wheel. Note
+that the zoom settings are independent for each of the three tools tabs.
 
 Extra options for the 3-D viewer are available in the @A@Config@A@ menu
 (--/[Config Menu ChConfigMenu]).
@@ -907,14 +899,14 @@ Extra options for the 3-D viewer are available in the @A@Config@A@ menu
 ==Spacegrids==
 
 Currently BURRTOOLS handles cubic grids, grids that use prisms with a base
-shape that is an equilateral triangle tightly packed spheres and 2 grids
-based on different tetrahedrons: the rhombic and the tetra-octa grid. The
-spacegrid is used for all shapes within a puzzle, so you cannot have one shape
-made out of cubes together with one using another grid. The spacegrid needs to
-be set //before// you start with the puzzle. It cannot be changed later on,
-except in some situations it is possible to losslessly convert the complete
-puzzle (--/[Converting Puzzles ChConvert]). The
-gridtype is selected when you use the @A@New@A@ option.
+shape that is an equilateral triangle tightly packed spheres and 2 grids based
+on different tetrahedrons: the rhombic and the tetra-octa grid. The spacegrid
+is used for all shapes within a puzzle, so you cannot have one shape made out
+of cubes together with one using another grid. The spacegrid needs to be set
+//before// you start with the puzzle. It cannot be changed later on In some
+situations though it is possible to losslessly convert the complete puzzle
+(--/[Converting Puzzles ChConvert]). The gridtype is selected when you use the
+@A@New@A@ option.
 
 The following chapters will explain some details regarding some of the
 available grids.
@@ -926,10 +918,10 @@ has a relatively severe limitation. This limitation makes it impossible to
 properly handle shapes with disconnected units.
 
 I don't want to go into too much detail here but the limitation comes from the
-fact that BT can only handle a finite number of symmetries.
+fact that BURRTOOLS can only handle a finite number of symmetries.
 
-Internally BT has a list of all possible transformation matrices that might
-transform a shape back onto itself, e.g the shape looks identical to the
+Internally BURRTOOLS has a list of all possible transformation matrices that
+might transform a shape back onto itself, e.g the shape looks identical to the
 original untransformed shape. This list of transformations needs to be finite
 (and as small as possible, because longer lists make the program slower).
 
@@ -946,21 +938,21 @@ The 3 spheres form a triangle with a right angle at the origin. This triangle
 has a symmetry axis which is a horizontal line from the origin. That means a
 rotation of 180 degrees around the axis y=0 will result in an identical looking
 triangle with the outer spheres swapped. This is one of the transformations
-mentioned above that BT has to check. (See
+mentioned above that BURRTOOLS has to check. (See
 [Sphere Grid Problem FigSphereGridProblem] left image)
 
 If we now move the 2 outer spheres by one unit each. One to the right and the
 other down. Which results in those spheres at positions (a+1;a-1) and
 (a-1;-a-1). We again get a rectangular triangle of a slightly different size.
 This triangle again has a symmetry axis but this axis is slightly rotated clock
-wise. This would be a different transformation BT has to handle. (See
+wise. This would be a different transformation BURRTOOLS has to handle. (See
 [Sphere Grid Problem FigSphereGridProblem] right image)
 
 You can imagine that there is an infinite number of possibilities to place the
 spheres, resulting in an infinite number of possible rotation axis and thus an
 infinite number of transformation matrices.
 
-BurrTools can only handle a finite number of possibilities. I have limited
+BURRTOOLS can only handle a finite number of possibilities. I have limited
 those to the possibilities that you can encounter when you use only completely
 connected shapes. This problem only occurs because the sphere itself has an
 infinite number of possible rotation axes.
@@ -983,10 +975,10 @@ like Stewart Coffin designs.
 The rhombic grid is much more intricate compared to basic grids like the cube
 grid. So please read this part of the manual thoroughly to avoid problems.
 
-Many of the text below only talks about the rhombic based puzzles and indeed
+Much of the text below only talks about the rhombic based puzzles and indeed
 puzzles that just have diagonally cut cubes don't suffer the complexity but I
-still suggest to read on because it might shed some light on some not so
-obvious behaviour of the program.
+still suggest to read on because it might shed some light on some of the not so
+obvious things that the program does.
 
 ====Structure of the rhombic grid====
 
@@ -999,7 +991,8 @@ make distinction of the tetrahedra easier I have colourized the tetrahedra
 layer by layer, always 4 with the same colour. Additionally I made the voxels
 variable in the first cube so that is is easier to see what shapes they have.
 
-Those variable voxels are a nice trick to see the inner structure of shapes.
+Those variable voxels are a nice trick to see the inner structure of shapes,
+when the bevel edges are not enough.
 
 @F@FigCuttingTheCube|rhTetrahedra.png|Cutting of the cubes into the units of the rhombic grid@F@
 
@@ -1074,12 +1067,12 @@ check of the results scale up by two and check again.
 
 ===The Tetrahedral-Octahedral Grid===
 
-This grid is, just like the rhombic grid, a grid made out of just tetrahedrons.
+This grid is, just like the rhombic grid, a grid purely made out of tetrahedrons.
 But here we have 2 different kind of of them. One regular and 4 irregular forming
 together a cube. The 4 irregular tetrahedrons can be assembled into an octahedron.
 They have one side with an equilateral triangle and 3 sides that are a diagonally
 cut square. You can see one of those cubes in an exploded view in image
-[Exploded Tetrahedral Octahedral view FigTetraOctaConstr] In that image you can
+[Exploded Tetrahedral Octahedral view FigTetraOctaConstr]. In that image you can
 see the regular tetrahedron red in the middle and the other blue surrounding it.
 
 @F@FigTetraOctaConstr|toConstruction.png|Exploded Tetrahedral Octahedral view@F@
@@ -1110,8 +1103,8 @@ are completely separated in space. The solver certainly won't bother... but how
 these shapes could be crafted in the workshop is beyond the scope of the
 program.
 
-All functions and tools for creating and editing shapes - once the grid type is
-set - are located on the @B@Entities@B@ tab which has - from top to bottom -
+All functions and tools for creating and editing shapes --- once the grid type is
+set --- are located on the @B@Entities@B@ tab which has --- from top to bottom ---
 three main sections (Figure [EntitiesTab FigEntitiesTab]):
 
 @F@FigEntitiesTab|Window_DDD_0.png|Creating shapes on the Entities tab@F@
@@ -1130,7 +1123,7 @@ actually constructing the shapes in the 2-D grid at the bottom of the panel
 (--/[BuildingShapes ChBuildingShapes]).
 
 : **The @A@Colours@A@ panel**
-This panel contains - besides a list of the available colours - the tools to
+This panel contains --- besides a list of the available colours --- the tools to
 create and edit custom colours which can be assigned to the voxels of the
 shapes. These colours can be merely ornamental or can have a serious impact on
 the way the solver will work by imposing restrictions on the possible
@@ -1195,12 +1188,14 @@ with that grid.
 
 ===Adjusting the Grid Size===
 
-When the very first shape is initialised it has a default grid size of 6x6x6,
-but all other new shapes will inherit the grid size of the currently selected
-shape. This feature can be very useful in creating a series of shapes that are
-restricted with respect to certain dimensions (e.g. all pentacubes that fit in
-a 3x3x3 grid). Selecting the proper shape before creating a new one often can
-save a considerable amount of time by avoiding grid adjustments.
+When the very first shape is initialised it has a default grid size. This
+default size is different for each grid. For example it is 6x6x6 for cubes.
+But if there is already a shape all other new shapes will inherit the grid size
+of the currently selected shape. This feature can be very useful in creating a
+series of shapes that are restricted with respect to certain dimensions (e.g.
+all pentacubes that fit in a 3x3x3 grid). Selecting the proper shape before
+creating a new one often can save a considerable amount of time by avoiding
+grid adjustments.
 
 Adjusting the grid size to your needs can be done either by entering values in
 the input boxes next to the axis labels, or by dragging the spin wheels. When
@@ -1212,14 +1207,14 @@ recommended always to confirm the entered values with the ``[Return]`` key.
 Increasing any grid dimension is completely harmless, but decreasing them needs
 some caution since it can destroy parts of the shape.
 
-The checkboxes for //linking adjustments// - to the right of the spin wheels -
-allow you to adjust two or all dimensions simultaneously. All linked dimensions
-will increase or decrease by the same //absolute// amount. However, none of the
-dimensions can be made smaller than 1 unit. Linked dimensioning is very useful
-in creating bigger and complex shapes such as the result shape of NO NUKES!
-(Ronald Kint-Bruynseels), which is easily done by first creating the central
-burr in a 6x6x6 grid and adding the extensions after resizing the grid to
-14x14x14 and centring the 'core' in that enlarged grid.
+The checkboxes for //linking adjustments// --- to the right of the spin wheels
+--- allow you to adjust two or all dimensions simultaneously. All linked
+dimensions will increase or decrease by the same //absolute// amount. However,
+none of the dimensions can be made smaller than 1 unit. Linked dimensioning is
+very useful in creating bigger and complex shapes such as the result shape of
+NO NUKES!  (Ronald Kint-Bruynseels), which is easily done by first creating the
+central burr in a 6x6x6 grid and adding the extensions after resizing the grid
+to 14x14x14 and centring the 'core' in that enlarged grid.
 
 ===Advanced Grid and Scaling Functions===
 
@@ -1298,8 +1293,8 @@ introduce //'pins and holes'// into your design.
 ===Adjusting All Shapes===[ChAdjustAllShapes]
 
 A last, but certainly not least, item to mention is the @B@Apply to All Shapes@B@
-checkbox. When checked, //all// shapes -- whether they are selected
-or not -- will be affected by the settings and procedures on the @B@Size@B@
+checkbox. When checked, //all// shapes --- whether they are selected
+or not --- will be affected by the settings and procedures on the @B@Size@B@
 subtab. This is very useful and time saving when a certain adaptation needs to
 be done to all the shapes, e.g. transforming a six-piece burr with length 6
 into one with length 8.
@@ -1325,7 +1320,7 @@ meaning that enabling one will disable the others. They affect the presence
 and/or the state and colour of the voxels drawn by clicking in or dragging over
 the cells in the 2-D grid.
 
-@F@FigToolbarGrid|ToolbarGrid.png|Toolbar and 2-D grid@F@
+@F@FigToolbarGrid|ToolbarGrid.png|Toolbar and 2-D grid für cube space-grid@F@
 
 Next come two toggle buttons that allow you to select the //drawing style//.
 This is the way the basic drawing tools will respond to dragging the mouse over
@@ -1333,28 +1328,35 @@ the grid cells. Finally, a series of //compound drawing tools// follows. These
 extend the range of the basic drawing tools and can all be cumulatively added
 to them.
 
+Keep in mind that the grid looks differently for each space-grid. And for some
+spacegrids this 2-D grid is meant mainly for information as editing sphere shapes
+with the 2-D grid can be troublesome and with the rhombic grid is close
+impossible to properly edit a shape with the 2-D grid. That is why all shapes
+can be directly edited within the 3-D viewer. But nevertheless, the 2-D grid
+has its merits.
+
 ===Navigating in 2-D and 3-D===[ChNavigating]
 
-Building and editing takes place almost exclusively in the 2-D grid, to which
-the 3-D viewport acts only as a visual aid. Both have their corresponding axes
-in the same colour: //red// for the x-axis, //green// for the y-axis and //blue//
-for the z-axis. For the 2-D grid, which actually can show only a single layer at
-a time, the z-axis is represented with a scrollbar (Figure
-[FigureToolbarGrid FigToolbarGrid]). By default every new shape
-starts on the bottom layer and the scrollbar allows you to move up and down
-through the different layers along the z-axis (the number of z-layers is always
-indicated with the proper number of ticks along the scrollbar). Another way to
-navigate these z-layers is by pressing ``[+]`` (moves up one layer) or ``[-]``
-(moves down one layer) on the keyboard.
+Building and editing can take place exclusively in the 2-D grid, and then the
+3-D viewport acts only as a visual aid. Both have their corresponding axes in
+the same colour: //red// for the x-axis, //green// for the y-axis and //blue//
+for the z-axis. For the 2-D grid, which actually can show only a single layer
+at a time, the z-axis is represented with a scrollbar (Figure
+[FigureToolbarGrid FigToolbarGrid]). By default every new shape starts on the
+bottom layer and the scrollbar allows you to move up and down through the
+different layers along the z-axis (the number of z-layers is always indicated
+with the proper number of ticks along the scrollbar). Another way to navigate
+these z-layers is by pressing ``[+]`` (moves up one layer) or ``[-]`` (moves
+down one layer) on the keyboard.
 
 @F@FigNavigation|NavigationA.png NavigationB.png|Selections of grid cells in 2-D and 3-D@F@
 
-Moving the mouse cursor over the 2-D grid gives an indication of the cell(s) -
-depending on the state of the compound drawing tools - that will be affected by
-clicking. These indications are also reflected in the 3-D viewer. Furthermore,
-to facilitate positioning on different layers every non-empty voxel on the 2-D
-layer just below the current one 'shines through' in a very light shade of the
-default colour associated with that shape (Figure
+Moving the mouse cursor over the 2-D grid gives an indication of the cell(s)
+--- depending on the state of the compound drawing tools --- that will be
+affected by clicking. These indications are also reflected in the 3-D viewer.
+Furthermore, to facilitate positioning on different layers every non-empty
+voxel on the 2-D layer just below the current one 'shines through' in a very
+light shade of the default colour associated with that shape (Figure
 [FigureNavigation FigNavigation]). This makes building shapes from bottom to
 top very easy.
 
@@ -1446,8 +1448,8 @@ shapes, but they are also very well suited for finding the centre of the grid
 and (temporarily) setting the extents of a shape.
 
 : [Button_Toolbar_Cols_X.png][Button_Toolbar_Cols_Y.png][Button_Toolbar_Cols_Z.png]:
-**Column drawing methods -** These options - possibly combined with the
-symmetrical drawing tools - can really speed up drawing shapes as they will
+**Column drawing methods -** These options --- possibly combined with the
+symmetrical drawing tools --- can really speed up drawing shapes as they will
 affect //all// voxels that are in the same row or column along one of the space
 axes. The number of voxels that will be affected depends on the size settings
 of the grid. Hence, to take fully advantage of these functions the grid should
@@ -1456,10 +1458,11 @@ be first adjusted to the proper dimensions.
 
 ===Using the 3D-Viewer to Edit===
 
-It is also possible to do some editing using the 3-D view directly by simply
-clicking onto faces to add the corresponding neighbour voxel. This is especially
-useful in the more complicated tetrahedral based grids as orientation within the
-2-D grid is quite hard. The following actions are possible:
+As editing non rectangular shape with the 2-D grid is cumbersome, it is also
+possible to do some editing using the 3-D view directly by simply clicking onto
+faces to add the corresponding neighbour voxel. This will always only add or
+remove single voxels and will not honor the compound drawing settings.  The
+following actions are possible:
 
 - Add a normal voxel by pressing ``[Shift]`` and clicking onto a face. The
   neighbour is added.
@@ -1571,9 +1574,9 @@ without an additional custom colour. In BURRTOOLS all of these cases have their
 own specific representations in the 2-D grid as well as in the 3-D viewport.
 Figure [Representation FigRepresentations] shows an overview of these
 possibilities. In this picture the default colour is red (= shape S3) and the
-custom colour is green (RGB = 0.600, 0.753, 0).
+custom colour is yellow (RGB = 1, 1, 0).
 
-@F@FigRepresentations|RepresentationA.png RepresentationC.png RepresentationE.png RepresentationG.png \n RepresentationB.png RepresentationD.png RepresentationF.png RepresentationH.png|Representations in 2-D and 3-D@F@
+@F@FigRepresentations|RepresentationA.png RepresentationC.png RepresentationE.png RepresentationG.png RepresentationI.png \n RepresentationB.png RepresentationD.png RepresentationF.png RepresentationH.png RepresentationJ.png|Representations in 2-D and 3-D@F@
 
 Fixed voxels always fill the cell completely in the 2-D grid as well as in the
 3-D grid. In all the pictures of Figure [Representation FigRepresentations]
@@ -2048,7 +2051,7 @@ Figure [EmulDiagCut FigEmulDiagCut] use the 2x2x2 cube displayed there.
 It is, of course, also possible to simulate diagonally cut squares this way.
 The squares need to be 2 layers thick.
 
-BurrTools can also handle half cubes with the Rhombic Grid. But that is more
+BURRTOOLS can also handle half cubes with the Rhombic Grid. But that is more
 expensive because you need 24 units for a whole cubes while this emulation only
 needs 8 units for one cube.
 
@@ -2327,9 +2330,9 @@ Group-1 --/ S//a_1//+S//a_2//+S//a_3//
 
 Now how does it all come together? The disassembler starts to do its work. For
 each subproblem (a subproblem is a few pieces that it somehow has to get apart)
-it first checks if there is a unique group assignment for all pieces involved -
-i.e. all pieces have exactly one group assigned and that group is the same for
-all of them - it doesn't even attempt to disassemble that subproblem.
+it first checks if there is a unique group assignment for all pieces involved
+--- i.e. all pieces have exactly one group assigned and that group is the same
+for all of them --- it doesn't even attempt to disassemble that subproblem.
 
 If this is not the case it tries to disassemble. In case of a failure it adds
 the pieces that are in this subproblem to a table of lists of pieces. Once
@@ -2504,7 +2507,7 @@ the program would be nothing more than a simple tool for drawing a very
 specific kind of 3-D objects... a task a lot of other software is no doubt even
 better suited for.
 
-Solving puzzles is very straightforward with BurrTools even if the @B@Solver@B@
+Solving puzzles is very straightforward with BURRTOOLS even if the @B@Solver@B@
 tab (Figure [Solver FigSolver]) has quite a few controls. On top there is
 the @A@Parameters@A@ panel that contains a list allowing you to select a
 specific problem to be solved, provides option settings for the solver, and has
@@ -2610,7 +2613,7 @@ has 2 choices:
   the program starts to drop every 2nd solution it finds, and only adds every 2nd
   solution to the list. But for each added solution it also removes every 2nd
   solution that was already added to the list. After a while the list contains
-  only every 2nd solution -- then the program only adds every 4th solution and
+  only every 2nd solution --- then the program only adds every 4th solution and
   removes again every 2nd solution that had been on the list, and so on. This
   sounds complicated but what is does is ensure you have an nice cross-section of
   all the solutions, and not just the first or last N found.
@@ -2723,7 +2726,7 @@ in real life using the particular pieces of the puzzle). Note that the
 
 ===Manually Solving===
 
-Besides the automated search, @A@BurrTools@A@ allows you to run the solver
+Besides the automated search, @A@BURRTOOLS@A@ allows you to run the solver
 step-by-step. Note that this feature is still under construction and that it
 has a lot of shortcomings. For instance, it won't add the solutions it finds to
 the list or update the solver information. So it certainly needs a lot of
@@ -3121,7 +3124,7 @@ them.
 
 ===Introduction to 3-D printing===
 
-There are two popular forms of 3D printing: SLS and FDM.
+There are two popular forms of 3-D printing: SLS and FDM.
 
 The SLS (ShapeWays and TNO) laser sinters nylon. ShapeWays currently charges by
 the volume of sintered nylon. SLS pieces are always white.
@@ -3130,7 +3133,7 @@ FDM (Stratasys) charges by the time it takes to make the piece. It has two
 modes: solid and sparse. Sparse mode is quicker and uses less material. In
 sparse mode the interior of the pieces are honeycombed.
 
-Having a hollowed piece will be cheaper and quicker for SLS - it will be the
+Having a hollowed piece will be cheaper and quicker for SLS --- it will be the
 same cost and speed for FDM because a hollow piece will still have a support
 structure inside the hollow, but it will be of a different material. The thing
 to realize is that with SLS, if there are no holes to the hollow part of the
@@ -3151,7 +3154,7 @@ you can see what the shape will look like.
 On the bottom in the status line you can see what volume the current shape with
 the current settings has.
 
-In the statusline are also two buttons to choose how the shape is displayed.
+In the status line are also two buttons to choose how the shape is displayed.
 Either normally from the outside. The 2nd view will show you the inside of the
 shape. This is useful if you print hollow shapes and need to see what the
 internal void looks like.
@@ -3164,20 +3167,20 @@ There are mainly 2 different exporters. One for the sphere puzzles and one for
 all other polygon based puzzles.
 
 When creating spheres you can simply create hollow shapes by giving the inner
-radius a valud that is different from zero. The resulting shapes will
+radius a value that is different from zero. The resulting shapes will
 automatically have a lot of holes that connect the inside and the outside.
 Those holes will be symmetrically placed and they are in places on the sphere
-where they normally don't interfer with solving.
+where they normally don't interfere with solving.
 
 For polygon based puzzles things are not that simple. Here a hole at the wrong
 place could make pieces stop from sliding or get stuck into one another. That
 is why you can specify where exactly you want the holes. Initially there are no
 holes at all. By shift-clicking onto faces of voxels you can "drill" a hole
-through this face. The hole will always be in the center of the face.
-Ctrl-clicking will remove the hole again.
+through this face. The hole will always be in the centre of the face.
+Ctrl-clicking on the face will remove the hole again.
 
-Don't forget to first set a proper wallsize and tube size to actually see the
-holes.
+Don't forget to first set a proper wall thickness and tube size to actually see
+the holes.
 
 ===Parameters===
 
@@ -3185,11 +3188,12 @@ The following parameters control the generated shape and file.
 
 @B@Filename@B@ and @B@Path@B@ control the name and path of the generated file.
 Those are common parameters for all grids.
-@B@Binary STL:@B@ controls wheter a binary of a text STL file is created.
+
+@B@Binary STL:@B@ controls whether a binary or a text STL file is created.
 Normally binary files are the right choice because they are much more compact.
 But sometimes it might be useful to use the text form. For example when you
-want to see what is going on on theinside of an STL file, or when you printing
-service has problems with the binary file.
+want to see what is going on in the inside of an STL file, or when your
+printing service has problems with the binary file.
 
 For polyhedron based grids there are the following parameters that control the
 shape of the generated pieces
@@ -3205,12 +3209,12 @@ shape of the generated pieces
   thick.
 - @B@Tube size:@B@ is the size of the "tubes" that connect the inside void with
   the outside world. The size is given relative to the size of the shape where
-  the tube is. So 0 means no holes and 1 means tubes as big as the face that
-  the tube is on. The "tube" is actually a hole of the same shape as the face
-  that it is on. So if you put it onto a square face of a voxel you will  get a
-  square hole.
+  the tube is located. So 0 means no holes and 1 means tubes as big as the face
+  that the tube is on. The "tube" is actually a hole of the same shape as the
+  face that it is on. So if you put it onto a square face of a voxel you will
+  get a square hole.
 - @B@Leave inside grooves:@B@ will, when tagged leave a lot of grooves in the
-  generated shape so that the shape looks like it is glues out of a lot of
+  generated shape so that the shape looks like it is glued out of a lot of
   singe voxels.
 - @B@Leave outside groved:@B@ will only leave the grooves on the outside of the
   shape but will fill all the grooves that will actually go through the
@@ -3266,7 +3270,7 @@ For spheres the parameters are as follows:
 =Future Plans=
 
 Read this chapter as a list of possible projects that you could do or a list of
-design ideas that I'd like to implement in BurrTools. This is not a list of
+design ideas that I'd like to implement in BURRTOOLS. This is not a list of
 functionality that I will do, but that I'd like to have.
 
 So, what are our future plans? There are a lot of things still missing (or in
@@ -3313,7 +3317,7 @@ The following paragraphs are written as if the features were already
 implemented, but this is only done so that the text can be copied into the real
 book without having to rewrite a lot of it.
 
-There are 3 possible design methods implemented in BurrTools
+There are 3 possible design methods implemented in BURRTOOLS
 
 - BurrGrowing after Dic Sonnevelds ideas
 - Constructing, the natural approach
