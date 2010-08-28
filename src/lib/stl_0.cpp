@@ -45,11 +45,11 @@ Polyhedron * stlExporter_0_c::getMesh(const voxel_c & v, const faceList_c & hole
 
   scalePolyhedron(*poly, cube_scale);
 
+  // we create inside void, when wall thickness is more than zero and not too
+  // big to fill out the complete internal void (or better to let the
+  // generated internal polygon become degenerated
   if ((hole > Epsilon) && v.meshParamsValid(0, (hole+shrink)/cube_scale))
   {
-    // TODO when wall thickness is too big, skip this and make the shape solid
-    // problem is how to find out when it becomes too big
-
     Polyhedron * holePoly = v.getMesh(0, (hole+shrink)/cube_scale);
 
     scalePolyhedron(*holePoly, cube_scale);
