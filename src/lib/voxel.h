@@ -737,6 +737,11 @@ public:
   virtual Polyhedron * getDrawingMesh(void) const;
 
   /**
+   * returns the drawing mesh for wrireframe mode.
+   */
+  virtual Polyhedron * getWireframeMesh(void) const;
+
+  /**
    * this function must return a polygon that is the connecting face to the neighbor n for the
    * voxel at position x, y, z
    * The function is used by the default implementation of getMesh to generate the default basis mesh

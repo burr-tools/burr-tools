@@ -534,7 +534,16 @@ void voxelFrame_c::drawVoxelSpace() {
         }
 
         if (!shape->poly)
-          shape->poly = shape->shape->getDrawingMesh();
+        {
+          if (shape->mode == gridline)
+          {
+            shape->poly = shape->shape->getWireframeMesh();
+          }
+          else
+          {
+            shape->poly = shape->shape->getDrawingMesh();
+          }
+        }
 
         if (shape->poly)
         {
@@ -817,6 +826,12 @@ void voxelFrame_c::setDrawingMode(unsigned int nr, drawingMode mode) {
     if (shapes[nr].list) {
       glDeleteLists(shapes[nr].list, 1);
       shapes[nr].list = 0;
+    }
+
+    if (shapes[nr].poly)
+    {
+      delete shapes[nr].poly;
+      shapes[nr].poly = 0;
     }
   }
 

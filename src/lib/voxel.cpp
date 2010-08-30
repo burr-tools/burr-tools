@@ -1159,4 +1159,11 @@ Polyhedron * voxel_c::getDrawingMesh(void) const
   return getMeshInternal(0.03, 0.005, true);
 }
 
+Polyhedron * voxel_c::getWireframeMesh(void) const
+{
+  Polyhedron * p = getMeshInternal(0.03, 0.005, false);
+  fillPolyhedronHoles(*p, 1);
+  return p;
+}
+
 

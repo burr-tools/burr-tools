@@ -141,11 +141,13 @@ static int findBestTriOrQuad(vector<Vertex*> vs, int &offset)
 static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
 {
   vector<Vertex*> working_set;
+  uint32_t flags;
 
   // the hole is given in reverse order, so reverse it into our working set
   for (vector<Vertex*>::const_reverse_iterator rit = corners.rbegin(); rit < corners.rend(); ++rit)
   {
     working_set.push_back(*rit);
+    flags |= (*rit)->edge()->face()->_flags;
   }
 
   // finished when no polygons are left
@@ -163,7 +165,8 @@ static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
       {
         pts.push_back(working_set[(offset+j) % old_size]->index());
       }
-      poly.addFace(pts);
+      Face *f = poly.addFace(pts);
+      f->_flags = flags;
 
       if (ret == 4)
       {
@@ -202,7 +205,8 @@ static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
         pts.push_back(working_set[j]->index());
         pts.push_back(working_set[(j+1)%working_set.size()]->index());
         pts.push_back(v->index());
-        poly.addFace(pts);
+        Face *f = poly.addFace(pts);
+	f->_flags = flags;
 
         pts.clear();
       }
@@ -265,6 +269,10 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
           {
             faces_to_remove.insert(*sit);
           }
+	  // calculate angle between starting and ending face
+	  Vector3Df n0 = f->normal();
+	  Vector3Df n1 = (*fit)->normal();
+	  float angle=fabs((n0 * n1)-1.0);
 
           // construct face to replace facets we're removing
           vector<int> face4(4);
@@ -275,7 +283,11 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
           face4[3] = edge->src()->index();
 
           f = poly.addFace(face4);   // add new one
-          f->_flags = newflag;
+
+	  if (angle<Epsilon) // if face is co-planar, mask wireframe bit
+	    f->_flags = newflag & (~FF_WIREFRAME);
+	  else
+	    f->_flags = newflag;
 
         }
 

@@ -1143,6 +1143,11 @@ Polyhedron * voxel_2_c::getDrawingMesh(void) const
       );
 }
 
+Polyhedron * voxel_2_c::getWireframeMesh(void) const
+{
+  return getDrawingMesh();
+}
+
 void voxel_2_c::getConnectionFace(int x, int y, int z, int n, double /*bevel*/, double /*offset*/, std::vector<float> & faceCorners) const
 {
   static const float A = sqrt(0.5);

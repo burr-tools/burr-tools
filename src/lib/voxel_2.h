@@ -68,6 +68,7 @@ class voxel_2_c : public voxel_c {
 
     virtual Polyhedron * getMesh(float sphere_rad, float connection_rad, float round, float offset, int recursion, float inner_rad, float hole_diam) const;
     virtual Polyhedron * getDrawingMesh(void) const;
+    virtual Polyhedron * getWireframeMesh(void) const;
     virtual void getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & /*faceCorners*/) const;
     virtual void calculateSize(float * x, float * y, float * z) const;
     virtual void recalcSpaceCoordinates(float * /*x*/, float * /*y*/, float * /*z*/) const;
