@@ -13,7 +13,7 @@ title=${title%)}
 
 # now prepend the automatically generated title
 rm -f userGuide.t2t
-echo User Guide for BurrTool $title > userGuide.t2t
+echo User Guide for BurrTools $title > userGuide.t2t
 cat ../doc_src/userGuide.t2t >> userGuide.t2t
 chmod a-w userGuide.t2t   # just to make sure we don't start editing this file
 
