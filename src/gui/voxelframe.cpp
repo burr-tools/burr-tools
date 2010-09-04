@@ -1186,14 +1186,25 @@ void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * 
   redraw();
 }
 
-void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsigned char t, int x, int y, int z) {
-
+void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsigned char t, int x, int y, int z)
+{
   bt_assert(puz->resultValid());
 
-  clearSpaces();
   hideMarker();
   trans = CenterTranslateRoateScale;
   _showCoordinateSystem = false;
+
+  bool placeOnly = true;;
+
+  if (  (shapes.size() != 2)
+      || !(*puz->getResultShape() == *shapes[1].shape)
+     )
+  {
+    // not proper number of shapes in there, letes start from fresh
+    clearSpaces();
+
+    placeOnly = false;
+  }
 
   float hx, hy, hz;
   hx = puz->getResultShape()->getHx();
@@ -1210,8 +1221,6 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
   hy = puz->getResultShape()->getHy();
   hz = puz->getResultShape()->getHz();
 
-  int num;
-
   if (t < puz->getGridType()->getSymmetries()->getNumTransformationsMirror()) {
 
     int shape = 0;
@@ -1223,22 +1232,46 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
 
     voxel_c * vx = puz->getGridType()->getVoxel(puz->getShapeShape(shape));
     bt_assert2(vx->transform(t));
-    num = addSpace(vx);
 
-    setSpacePosition(num, x-hx, y-hy, z-hz, 1);
-    setSpaceColor(num,
-                          pieceColorR(puz->getShape(shape), p),
-                          pieceColorG(puz->getShape(shape), p),
-                          pieceColorB(puz->getShape(shape), p), 1);
-    setDrawingMode(num, normal);
+    // 2 cases, we either add the shape, when we cleared everything
+    // or we only place the shape and only remove the openGL list and polyhedron
+    if (placeOnly)
+    {
+      shapes[0].shape = vx;
+      if (shapes[0].list)
+      {
+        glDeleteLists(shapes[0].list, 1);
+        shapes[0].list = 0;
+      }
+      if (shapes[0].poly)
+      {
+        delete shapes[0].poly;
+        shapes[0].poly = 0;
+      }
+    }
+    else
+    {
+      bt_assert2(addSpace(vx) == 0);
+    }
+
+    setSpacePosition(0, x-hx, y-hy, z-hz, 1);
+    setSpaceColor(0,
+        pieceColorR(puz->getShape(shape), p),
+        pieceColorG(puz->getShape(shape), p),
+        pieceColorB(puz->getShape(shape), p), 1);
+    setDrawingMode(0, normal);
   }
 
-  num = addSpace(puz->getGridType()->getVoxel(puz->getResultShape()));
-  setSpaceColor(num,
-                        pieceColorR(puz->getResultId()),
-                        pieceColorG(puz->getResultId()),
-                        pieceColorB(puz->getResultId()), 1);
-  setDrawingMode(num, gridline);
+  // we only need to create the result shape when we cleared everything
+  if (!placeOnly)
+  {
+    bt_assert2(addSpace(puz->getGridType()->getVoxel(puz->getResultShape())) == 1);
+    setSpaceColor(1,
+        pieceColorR(puz->getResultId()),
+        pieceColorG(puz->getResultId()),
+        pieceColorB(puz->getResultId()), 1);
+    setDrawingMode(1, gridline);
+  }
 
   redraw();
 }

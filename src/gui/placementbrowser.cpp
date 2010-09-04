@@ -85,6 +85,7 @@ placementBrowser_c::placementBrowser_c(problem_c * p) :
   view3d = new LView3dGroup(1, 1, 1, 1);
   view3d->weight(1, 1);
   view3d->setMinimumSize(300, 300);
+  view3d->clear_visible_focus();
 
   pieceSelector = new LFl_Value_Slider(0, 0, 2, 1);
   pieceSelector->type(FL_HOR_SLIDER);
@@ -93,17 +94,20 @@ placementBrowser_c::placementBrowser_c(problem_c * p) :
   pieceSelector->callback(cb_piece_stub, this);
   pieceSelector->tooltip(" Select the piece whose placements you want to see ");
   pieceSelector->setMinimumSize(0, 20);
+  pieceSelector->clear_visible_focus();
 
   placementSelector = new LFl_Value_Slider(0, 1, 1, 1);
   placementSelector->precision(0);
   placementSelector->callback(cb_placement_stub, this);
   placementSelector->tooltip(" Browse the placements ");
   placementSelector->setMinimumSize(20, 0);
+  placementSelector->clear_visible_focus();
 
   LFl_Button * b = new LFl_Button("Close", 0, 2, 2, 1);
   b->tooltip(" Close the window ");
   b->callback(cb_close_stub, this);
   b->pitch(5);
+  b->clear_visible_focus();
 
   label("Placement Browser");
 
@@ -120,28 +124,28 @@ placementBrowser_c::placementBrowser_c(problem_c * p) :
   set_modal();
 }
 
-int placementBrowser_c::handle(int event) {
-
-  if (Fl_Double_Window::handle(event))
-    return 1;
-
+int placementBrowser_c::handle(int event)
+{
   switch(event) {
-  case FL_SHORTCUT:
+  case FL_KEYDOWN:
     switch (Fl::event_key()) {
     case FL_Up:
-      placementSelector->value(placementSelector->value()-1);
+      placementSelector->handle(event);
       return 1;
     case FL_Down:
-      placementSelector->value(placementSelector->value()+1);
+      placementSelector->handle(event);
       return 1;
     case FL_Right:
-      pieceSelector->value(pieceSelector->value()+1);
+      pieceSelector->handle(event);
       return 1;
     case FL_Left:
-      pieceSelector->value(pieceSelector->value()-1);
+      pieceSelector->handle(event);
       return 1;
     }
   }
+
+  if (Fl_Double_Window::handle(event))
+    return 1;
 
   return 0;
 }
