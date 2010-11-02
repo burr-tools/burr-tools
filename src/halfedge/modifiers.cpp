@@ -141,7 +141,7 @@ static int findBestTriOrQuad(vector<Vertex*> vs, int &offset)
 static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
 {
   vector<Vertex*> working_set;
-  uint32_t flags;
+  uint32_t flags=0;
 
   // the hole is given in reverse order, so reverse it into our working set
   for (vector<Vertex*>::const_reverse_iterator rit = corners.rbegin(); rit < corners.rend(); ++rit)
@@ -167,6 +167,7 @@ static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
       }
       Face *f = poly.addFace(pts);
       f->_flags = flags;
+      f->_fb_face = -1;
 
       if (ret == 4)
       {
@@ -207,6 +208,7 @@ static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
         pts.push_back(v->index());
         Face *f = poly.addFace(pts);
 	f->_flags = flags;
+	f->_fb_face = -1;
 
         pts.clear();
       }
@@ -288,7 +290,7 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
 	    f->_flags = newflag & (~FF_WIREFRAME);
 	  else
 	    f->_flags = newflag;
-
+	  f->_fb_face = -1; // prevent tubes being connected here
         }
 
         faces.clear();

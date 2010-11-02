@@ -1132,7 +1132,7 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
 
                   f->_flags = FF_WIREFRAME | type | FF_OFFSET_FACE;
                   f->_fb_index = idx;
-                  f->_fb_face = n;
+                  f->_fb_face = -1;
                   f->_color = 0;
                 }
               }
