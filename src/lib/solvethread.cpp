@@ -101,7 +101,7 @@ void solveThread_c::run(void){
   catch (assert_exception a) {
 
     ae = a;
-    action = solveThread_c::ACT_ERROR;
+    action = solveThread_c::ACT_ASSERT;
     if (puzzle->getAssembler())
       puzzle->removeAllSolutions();
   }

@@ -46,6 +46,7 @@ class solveThread_c : public assembler_cb, public thread_c {
       ACT_PAUSING,
       ACT_FINISHED,
       ACT_ERROR,
+      ACT_ASSERT,
       ACT_WAIT_TO_STOP
     };
 

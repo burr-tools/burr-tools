@@ -2826,7 +2826,7 @@ void mainWindow_c::update(void) {
   if (assmThread) {
 
     // check, if the thread has thrown an exception, if so re-throw it
-    if (assmThread->currentAction() == solveThread_c::ACT_ERROR) {
+    if (assmThread->currentAction() == solveThread_c::ACT_ASSERT) {
 
       assertWindow_c * aw = new assertWindow_c("Because of an internal error the current puzzle\n"
                                                "can not be solved\n",
