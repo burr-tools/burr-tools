@@ -34,6 +34,8 @@
 
 #include "../halfedge/volume.h"
 
+#include "../flu/Flu_File_Chooser.h"
+
 #include <FL/Fl.H>
 #include <FL/fl_ask.H>
 
@@ -120,6 +122,42 @@ void stlExport_c::cb_Update3DView(void)
 
 }
 
+static void cb_stlFileChooser_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_FileChooser(); }
+void stlExport_c::cb_FileChooser(void)
+{
+  char curFile[500];
+  snprintf(curFile, 500, "%s/%s", Pname->value(), Fname->value());
+
+  const char * f = flu_file_chooser("Choose STL File to write", "*.stl", curFile);
+
+  if (f)
+  {
+    const char * div = strrchr(f, '/');
+
+    if (div)
+    {
+      Fname->value(div+1);
+
+      int i = 0;
+      while (true)
+      {
+        curFile[i] = f[i];
+        i++;
+        if (f[i] == 0) break;
+        if (i >= 499) break;
+        if (div == f+i) break;
+      }
+
+      curFile[i] = 0;
+
+      Pname->value(curFile);
+    }
+
+  }
+
+
+}
+
 static void cb_stlExportViewUpdate_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Update3DViewParams(); }
 void stlExport_c::cb_Update3DViewParams(void)
 {
@@ -178,14 +216,17 @@ stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
     (new LFl_Box(1, 0))->setMinimumSize(5, 0);
     (new LFl_Box(3, 0))->setMinimumSize(5, 0);
 
-    Fname = new LFl_Input(2, 0, 3, 1);
+    Fname = new LFl_Input(2, 0, 1, 1);
     Fname->value("test");
     Fname->weight(1, 0);
     Fname->setMinimumSize(50, 0);
-    Pname = new LFl_Input(2, 1, 3, 1);
-    Pname->value("./");
+    Pname = new LFl_Input(2, 1, 1, 1);
+    Pname->value(".");
     Pname->weight(1, 0);
     Pname->setMinimumSize(50, 0);
+
+    Fl_Button * Btn_Dir = new LFl_Button("...", 3, 0, 2, 2);
+    Btn_Dir->callback(cb_stlFileChooser_stub, this);
 
     Binary = new LFl_Check_Button("Binary STL", 0, 2, 3, 1);
     if (stl->getBinaryMode())
