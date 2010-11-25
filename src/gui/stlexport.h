@@ -83,7 +83,7 @@ class stlExport_c : public LFl_Double_Window {
 
     void cb_Export(void);
     void cb_Abort(void);
-    void cb_Update3DView(void);
+    void cb_Update3DView(int type);
     void cb_Update3DViewParams(void);
     void exportSTL(int shape);
     void cb_3dClick(void);

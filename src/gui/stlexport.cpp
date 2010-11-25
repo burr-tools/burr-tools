@@ -86,10 +86,16 @@ static void updateParameters(stlExporter_c * stl, const std::vector<inputField_c
   }
 }
 
-static void cb_stlExport3DUpdate_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Update3DView(); }
-void stlExport_c::cb_Update3DView(void)
+static void cb_stlExport3DUpdate_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Update3DView(1); }
+static void cb_stlExport3DUpdate2_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Update3DView(2); }
+void stlExport_c::cb_Update3DView(int type)
 {
   updateParameters(stl, params);
+
+  if (type == 2)
+  {
+    holes.clear();
+  }
 
   Polyhedron * p = 0;
   try
@@ -186,12 +192,12 @@ void stlExport_c::cb_3dClick(void)
         if (Fl::event_ctrl())
         {
           holes.removeFace(voxel, face);
-          cb_Update3DView();
+          cb_Update3DView(1);
         }
         if (Fl::event_shift())
         {
           holes.addFace(voxel, face);
-          cb_Update3DView();
+          cb_Update3DView(1);
         }
       }
     }
@@ -328,7 +334,7 @@ stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
     ShapeSelect->setSelection(0);
 
     LBlockListGroup_c * gr = new LBlockListGroup_c(0, 2, 1, 1, ShapeSelect);
-    gr->callback(cb_stlExport3DUpdate_stub, this);
+    gr->callback(cb_stlExport3DUpdate2_stub, this);
     gr->setMinimumSize(200, 100);
     gr->stretch();
     gr->weight(0, 1);
@@ -380,7 +386,7 @@ stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
   view3D->setMinimumSize(400, 400);
   view3D->weight(1, 0);
   view3D->callback(cb_3dClick_stub, this);
-  cb_Update3DView();
+  cb_Update3DView(1);
 
   set_modal();
 }
