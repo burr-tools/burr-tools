@@ -421,3 +421,10 @@ void stlExport_c::exportSTL(int shape)
     fl_message("The generated mesh is faulty in some way, try to tweak the parameter");
   }
 }
+
+stlExport_c::~stlExport_c(void)
+{
+  if (stl) delete stl;
+  for (size_t i = 0; i < params.size(); i++)
+    delete params[i];
+}

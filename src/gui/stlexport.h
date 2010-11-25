@@ -79,6 +79,7 @@ class stlExport_c : public LFl_Double_Window {
   public:
 
     stlExport_c(puzzle_c * p);
+    virtual ~stlExport_c(void);
 
     void cb_Export(void);
     void cb_Abort(void);
