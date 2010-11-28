@@ -62,14 +62,11 @@ void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_
   FILE * f;
   unsigned long triangleCount = 0;
 
-  char name[1000];
-  snprintf(name, 1000, "%s.stl", fname);
-
-  const char * title = basename(name);
+  const char * title = basename(fname);
 
   if (binaryMode)
   {
-    f = fopen(name,"wb");
+    f = fopen(fname,"wb");
 
     if (!f) throw stlException_c("Could not open file");
 
@@ -83,7 +80,7 @@ void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_
   }
   else
   {
-    f = fopen(name,"w");
+    f = fopen(fname,"w");
 
     if (!f) throw stlException_c("Could not open file");
 

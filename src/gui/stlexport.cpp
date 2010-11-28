@@ -36,6 +36,8 @@
 
 #include "../flu/Flu_File_Chooser.h"
 
+#include "../tools/fileexists.h"
+
 #include <FL/Fl.H>
 #include <FL/fl_ask.H>
 
@@ -409,11 +411,13 @@ void stlExport_c::exportSTL(int shape)
       idx = snprintf(name, 1000, "%s%s", Pname->value(), Fname->value());
   }
 
-  // append name
-  if (v->getName().length())
-    idx += snprintf(name+idx, 1000-idx, "_%s", v->getName().c_str());
-  else
-    idx += snprintf(name+idx, 1000-idx, "_S%d", shape+1);
+  if (fileExists(name))
+  {
+    if (fl_choice("File exists overwrite?", "Cancel", "Overwrite", 0) == 0)
+    {
+      return;
+    }
+  }
 
   try {
     stl->write(name, *v, holes);
