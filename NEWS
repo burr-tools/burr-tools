@@ -1,4 +1,10 @@
-------------- Version 0.6.0
+------------- Version 0.6.1
+
+- fix crash in STL export
+- fix problem that made all error messages unusabe
+- add a file chooser in the STL export window
+
+------------- Version 0.6.0 Oct 2010
 
 - completely rewrote STL-export- and OpenGL-display-code, they do now share a
   common base.  With this the following features come:
