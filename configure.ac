@@ -51,6 +51,9 @@ GUI_HELP_LD_ADD=`$FLTK_CONFIG --ldflags --use-images`
 AC_CHECK_LIB(z, uncompress, ,
 	AC_MSG_ERROR([Can't find libz. BurrTools needs it to uncompress the data files]))
 
+AX_BOOST_BASE([1.33.1])
+AX_BOOST_TEST_EXEC_MONITOR
+
 AC_ARG_WITH(libpng,
         [  --with-libpng           prefix of libpng   (where to find bin/libpng-config)],
         LIBPNG_CONFIG_PATH=$withval/bin,
@@ -120,7 +123,7 @@ fi
 AC_SUBST(LARGEFILE)
 
 AC_SUBST(GUI_CPP_ADD, ["$GUI_CPP_ADD $GL_CFLAGS"])
-AC_SUBST(GUI_LD_ADD, ["$GUI_LD_ADD $GL_LIBS"])
+AC_SUBST(GUI_LD_ADD, ["$GUI_LD_ADD $GL_LIBS $BOOST_TEST_EXEC_MONITOR_LIB"])
 AC_SUBST(GUI_HELP_CPP_ADD, ["$GUI_HELP_CPP_ADD"])
 AC_SUBST(GUI_HELP_LD_ADD, ["$GUI_HELP_LD_ADD"])
 AC_SUBST(XML_CPP_ADD, $XML_CPP_ADD)

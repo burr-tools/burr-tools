@@ -148,7 +148,7 @@ lib_libburr_a_SOURCES += lib/tabs_3/meshverts.inc
 lib_libburr_a_SOURCES += lib/tabs_4/meshverts.inc
 
 # the library tester program
-unitTest_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a $(LDADD) -lboost_test_exec_monitor
+unitTest_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a $(LDADD)
 unitTest_SOURCES =
 unitTest_SOURCES += lib/main_test.cpp
 unitTest_SOURCES += lib/bitfield_test.cpp
