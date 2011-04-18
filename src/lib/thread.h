@@ -21,22 +21,14 @@
 #ifndef __THREAD_H__
 #define __THREAD_H__
 
-#ifdef WIN32
-#include <windows.h>
-#else
-#include <pthread.h>
-#endif
+#include <boost/thread.hpp>
 
 /* this class encapsulates a single thread */
 class thread_c {
 
   private:
 
-#ifdef WIN32
-    HANDLE id;
-#else
-    pthread_t id;
-#endif
+    boost::thread thread;  // our thread
 
     bool running;
 
@@ -69,13 +61,9 @@ class thread_c {
      */
     virtual void run(void) = 0;
 
-#ifdef WIN32
-    friend unsigned long __stdcall start_thread(void * dat);
-#else
-    friend void * start_thread(void * dat);
-#endif
-
   private:
+
+    void start_thread(void);
 
     // no copying and assigning
     thread_c(const thread_c&);
