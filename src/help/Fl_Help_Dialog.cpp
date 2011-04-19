@@ -163,12 +163,7 @@ void Fl_Help_Dialog::cb_save__i(void) {
     }
 
     png_init_io(png_ptr, fi);
-    info_ptr->width = sx;
-    info_ptr->height = sy;
-    info_ptr->bit_depth = 8;
-    info_ptr->color_type = PNG_COLOR_TYPE_RGB;
-    info_ptr->interlace_type = PNG_INTERLACE_NONE;
-    info_ptr->valid = 0;
+    png_set_IHDR(png_ptr, info_ptr, sx, sy, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
     png_write_info(png_ptr, info_ptr);
 
