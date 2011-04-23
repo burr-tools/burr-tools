@@ -34,6 +34,10 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+#ifdef WIN32
+#include <winsock.h>
+#endif
+
 using namespace std;
 
 void usage(void) {
