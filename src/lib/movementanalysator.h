@@ -35,7 +35,7 @@ class countingNodeHash;
  * It takes a position of pieces and then tries to find all other
  * positions that can be reached directly from that starting point.
  *
- * It is implemented using Bill Cuttlers algorithm, so please read there
+ * It is implemented using Bill Cutlers algorithm, so please read there
  * in case you are interested how it works. The comments are written with
  * the thought that you know his algorithm
  */
@@ -43,9 +43,9 @@ class movementAnalysator_c {
 
   private:
 
-    /* matrix should normally have 6 subarrays, for each of the 6 possible
-     * directions (positive x negative x, positive y, ...) one, but because
-     * the matrix for the negative direction in the same dimension is the
+    /* matrix should normally have one subarray for each direction
+     * (positive x negative x, positive y, ...), but because
+     * the matrix for the negative direction in the same directio is the
      * transposition (m[i][j] == m[j][i]) we save the calculation or copying
      * and rather do the transposition inside the checkmovement function
      */
@@ -77,15 +77,15 @@ class movementAnalysator_c {
 
     /**
      * construct the analysator for this concrete problem.
-     * Ts can not be changed, once you done that but you can analyse
+     * This can not be changed, once you done that but you can analyse
      * many positions
      */
     movementAnalysator_c(const problem_c *puz);
     ~movementAnalysator_c(void);
 
-    /* you use either the 2 functions below, or complete Find
+    /* you use either the 2 functions below, or completeFind
      * the below functions return one possible movement after another and you can stop as soon
-     * as you want, while complete Find will always find all possible movements
+     * as you want, while completeFind will always find all possible movements
      *
      * to use the functions below first call init_find and then repeatedly find until
      * either you don't want no more, or find returns 0
@@ -95,7 +95,12 @@ class movementAnalysator_c {
 
     void completeFind(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces, std::vector<disassemblerNode_c*> * result);
 
-    /* or use findMatching to find a very specific move */
+    /**
+     * or use findMatching to find a very specific move
+     * this involves the pieces in the given vector and the piece must be moved in the given direction
+     * as few pieces as possible will be moved to achieve this
+     * just as completeFind this is complete with init_find, so nothing else needs to be called
+     */
     disassemblerNode_c * findMatching(disassemblerNode_c * nd, const std::vector<unsigned int> & pcs, unsigned int piece, int dx, int dy, int dz);
 
   private:

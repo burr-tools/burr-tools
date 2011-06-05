@@ -30,15 +30,10 @@
 
 #include <string.h>
 
-/* so, this isn't the function as described by Bill but rather a
- * bit optimized. For each pair of 2 different pieces and for
- * each of the three dimensions I do the following:
- *  - check the intersection area area in this direction
- *  - if it's empty the pieces do not interlock and the matrix
- *    is initialized to infinity (32000)
- *  - if we have an intersection we check each column inside this area
- *    and find the shortest distance the first piece follows
- *    the second and the second piece follows the first
+/**
+ * this function fills the matrixx with the movement values of
+ * pairs of pieces
+ * this is done using the movement cache
  */
 void movementAnalysator_c::prepare(void) {
 
