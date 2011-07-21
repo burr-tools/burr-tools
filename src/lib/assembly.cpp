@@ -852,7 +852,7 @@ void assembly_c::removePieces(unsigned int from, unsigned int cnt)
 {
   if (cnt == 0) return;
 
-  bt_assert(from+cnt < placements.size());
+  bt_assert(from+cnt <= placements.size());
 
 #ifndef NDEBUG
   for (unsigned int i = 0; i < cnt; i++)
