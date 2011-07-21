@@ -581,7 +581,7 @@ bool assembly_c::compare(const assembly_c & b, unsigned int pivot) const {
   }
 
   for (unsigned int i = 0; i < placements.size(); i++) {
-    if (i != pivot) {
+    if (i != pivot && placements[i].transformation != UNPLACED_TRANS) {
       if (placements[i] < b.placements[i]) return true;
       /* here it can only be larger or equal, so if it is not
        * equal it must be larger so return false
