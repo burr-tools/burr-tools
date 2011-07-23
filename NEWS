@@ -1,4 +1,9 @@
-------------- Version 0.6.1
+------------- Version 0.6.2 Jul 2011
+
+- fix crash when removing pieces from a problem with solutions
+- fix problem with the "expensive rotation check" making it return the wrong number of results when using piece ranges
+
+------------- Version 0.6.1 Feb 2011
 
 - fix crash in STL export
 - fix problem that made all error messages unusabe
