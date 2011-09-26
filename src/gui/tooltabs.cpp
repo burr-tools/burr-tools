@@ -204,28 +204,28 @@ TransformButtons::TransformButtons(int x, int y, int w, int h, int type) : layou
   if (type == 1) {
 
     new LFlatButton_c(6, 0, 2, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
-        " Rotate 180° along X-Axis ",     cb_TransformButtons_stub,  6);
+        " Rotate 180Â° along X-Axis ",     cb_TransformButtons_stub,  6);
     new LFlatButton_c(6, 1, 2, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
-        " Rotate 180° along Y-Axis ",     cb_TransformButtons_stub,  9);
+        " Rotate 180Â° along Y-Axis ",     cb_TransformButtons_stub,  9);
     new LFlatButton_c(6, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
-        " Rotate 60° clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
+        " Rotate 60Â° clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
     new LFlatButton_c(7, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
-        " Rotate 60° anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
+        " Rotate 60Â° anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
 
   } else {
 
     new LFlatButton_c(6, 0, 1, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
-        " Rotate 90° clockwise along X-Axis ",     cb_TransformButtons_stub,  6);
+        " Rotate 90Â° clockwise along X-Axis ",     cb_TransformButtons_stub,  6);
     new LFlatButton_c(7, 0, 1, 1, pm.get(Transform_Color_Rotate_X_Right_xpm), pm.get(Transform_Disabled_Rotate_X_Right_xpm),
-        " Rotate 90° anticlockwise along X-Axis ", cb_TransformButtons_stub,  7);
+        " Rotate 90Â° anticlockwise along X-Axis ", cb_TransformButtons_stub,  7);
     new LFlatButton_c(6, 1, 1, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
-        " Rotate 90° clockwise along Y-Axis ",     cb_TransformButtons_stub,  9);
+        " Rotate 90Â° clockwise along Y-Axis ",     cb_TransformButtons_stub,  9);
     new LFlatButton_c(7, 1, 1, 1, pm.get(Transform_Color_Rotate_Y_Right_xpm), pm.get(Transform_Disabled_Rotate_Y_Right_xpm),
-        " Rotate 90° anticlockwise along Y-Axis ", cb_TransformButtons_stub,  8);
+        " Rotate 90Â° anticlockwise along Y-Axis ", cb_TransformButtons_stub,  8);
     new LFlatButton_c(6, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
-        " Rotate 90° clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
+        " Rotate 90Â° clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
     new LFlatButton_c(7, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
-        " Rotate 90° anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
+        " Rotate 90Â° anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
   }
 
   o->end();

@@ -248,7 +248,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
   {
     /* in some grid spaces the 0 coordinate doesn stay in place when transformed
      * because a state needs to change which can only be chieve by changing place
-     * (e.g Triangles, when rotating by 60° the orientation of the triangle changes)
+     * (e.g Triangles, when rotating by 60ï¿½ the orientation of the triangle changes)
      * to accommodate this shift we check, where the hotspot moves to, when transformed
      * and accommodate for this change
      */
