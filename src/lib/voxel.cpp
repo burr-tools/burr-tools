@@ -1039,6 +1039,7 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
                 f->_fb_index = idx;
                 f->_fb_face = -1;
                 f->_color = 0;
+              f->_color = getColor(x, y, z);
               }
 
             } while (faceCorners.size() > 0);
@@ -1134,6 +1135,7 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
                   f->_fb_index = idx;
                   f->_fb_face = -1;
                   f->_color = 0;
+              f->_color = getColor(x, y, z);
                 }
               }
             }

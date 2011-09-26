@@ -142,12 +142,15 @@ static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
 {
   vector<Vertex*> working_set;
   uint32_t flags=0;
+  uint8_t color = 0;
 
   // the hole is given in reverse order, so reverse it into our working set
   for (vector<Vertex*>::const_reverse_iterator rit = corners.rbegin(); rit < corners.rend(); ++rit)
   {
     working_set.push_back(*rit);
     flags |= (*rit)->edge()->face()->_flags;
+    if (color == 0 && (*rit)->edge()->face()->_color != 0)
+      color = (*rit)->edge()->face()->_color;
   }
 
   // finished when no polygons are left
@@ -168,6 +171,7 @@ static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
       Face *f = poly.addFace(pts);
       f->_flags = flags;
       f->_fb_face = -1;
+      f->_color = color;
 
       if (ret == 4)
       {
@@ -209,6 +213,7 @@ static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
         Face *f = poly.addFace(pts);
 	f->_flags = flags;
 	f->_fb_face = -1;
+        f->_color = color;
 
         pts.clear();
       }
@@ -234,6 +239,7 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
       Face::edge_circulator sentinel = ei;
       Face *f = *fit;
       set<Face*> faces;
+      uint8_t color = (*fit)->_color;
 
       // iterate through all edges of the starting face
       do
@@ -257,6 +263,7 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
               {
                 faces.insert(f);
               }
+              f->_color = color;
             }
             f = edge->twin()->face();
             edge=edge->twin()->next()->next();
@@ -291,6 +298,7 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
 	  else
 	    f->_flags = newflag;
 	  f->_fb_face = -1; // prevent tubes being connected here
+          f->_color = color;
         }
 
         faces.clear();
@@ -610,7 +618,7 @@ void joinPolyhedronInverse(Polyhedron & poly, const Polyhedron & inv, const face
       for (Polyhedron::face_iterator fit2 = poly.fBegin(); fit2 != poly.fEnd(); ++fit2)
       {
         if ((*fit2)->_fb_index == fp->_fb_index &&
-            (*fit2)->_fb_face  == fp->_fb_face && 
+            (*fit2)->_fb_face  == fp->_fb_face &&
             fp != (*fit2) && fp->_fb_face!=-1) // no bevel/offset faces
         {
           face_pairs.push_back(pair<Face *,Face *>(fp,*fit2));
