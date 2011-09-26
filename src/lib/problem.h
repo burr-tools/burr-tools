@@ -284,14 +284,14 @@ public:
   unsigned int partNumber(void) const { return parts.size(); }
   /** get the minimum number of times a shape is used.
    * This similar as the getShapeMinimum function but this time
-   * the piece index instead of the shape index
+   * the part index is used instead of the shape index
    */
-  unsigned int getShapeMin(unsigned int piece) const;
+  unsigned int getPartMinimum(unsigned int partId) const;
   /** get the maximum number of times a shape is used.
    * This similar as the getShapeMinimum function but this time
-   * the piece index instead of the shape index
+   * the part index instead of the shape index
    */
-  unsigned int getShapeMax(unsigned int piece) const;
+  unsigned int getPartMaximum(unsigned int partId) const;
   /** get the shape of a piece */
   unsigned int getShape(unsigned int piece) const;
   /** piece number that shape has in this problem */

@@ -100,7 +100,7 @@ movementCache_c::movementCache_c(const problem_c * puzzle) : gt(puzzle->getGridT
   int pos = 0;
 
   for (unsigned int s = 0; s < puzzle->partNumber(); s++)
-    for (unsigned int i = 0; i < puzzle->getShapeMax(s); i++)
+    for (unsigned int i = 0; i < puzzle->getPartMaximum(s); i++)
       pieces[pos++] = s;
 
 }

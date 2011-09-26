@@ -79,10 +79,10 @@ void print(const puzzle_c * p) {
       printf(" result shape: %i\n", prob->getResultId());
 
     for (unsigned int sh = 0; sh < prob->partNumber(); sh++)
-      if (prob->getShapeMin(sh) != prob->getShapeMax(sh))
-        printf(" piece shape: %i-%i times shape number %i\n", prob->getShapeMin(sh), prob->getShapeMax(sh), prob->getShape(sh));
-      else if (prob->getShapeMin(sh) != 1)
-        printf(" piece shape: %i times shape number %i\n", prob->getShapeMin(sh), prob->getShape(sh));
+      if (prob->getPartMinimum(sh) != prob->getPartMaximum(sh))
+        printf(" piece shape: %i-%i times shape number %i\n", prob->getPartMinimum(sh), prob->getPartMaximum(sh), prob->getShape(sh));
+      else if (prob->getPartMinimum(sh) != 1)
+        printf(" piece shape: %i times shape number %i\n", prob->getPartMinimum(sh), prob->getShape(sh));
       else
         printf(" piece shape: %i\n", prob->getShape(sh));
 
@@ -176,7 +176,7 @@ void print(const separation_c * s, const assembly_c * a, const problem_c * p) {
   unsigned int pc = 0;
 
   for (unsigned int i = 0; i < p->partNumber(); i++)
-    for (unsigned int j = 0; j < p->getShapeMax(i); j++) {
+    for (unsigned int j = 0; j < p->getPartMaximum(i); j++) {
 
       pieces[pc] = p->getGridType()->getVoxel(p->getShapeShape(i));
       bt_assert2(pieces[pc]->transform(a->getTransformation(pc)));
@@ -207,7 +207,7 @@ void print(const assembly_c * a, const problem_c * p) {
   unsigned int pc = 0;
 
   for (unsigned int i = 0; i < p->partNumber(); i++)
-    for (unsigned int j = 0; j < p->getShapeMax(i); j++) {
+    for (unsigned int j = 0; j < p->getPartMaximum(i); j++) {
 
       if (a->isPlaced(pc)) {
         pieces[pc] = p->getGridType()->getVoxel(p->getShapeShape(i));

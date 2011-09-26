@@ -1085,7 +1085,7 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
 
     // and now the shapes
     for (unsigned int p = 0; p < puz->partNumber(); p++)
-      for (unsigned int q = 0; q < puz->getShapeMax(p); q++) {
+      for (unsigned int q = 0; q < puz->getPartMaximum(p); q++) {
 
         if (assm->isPlaced(piece)) {
 
@@ -1146,7 +1146,7 @@ void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * 
 
     // and now the shapes
     for (unsigned int p = 0; p < puz->partNumber(); p++)
-      for (unsigned int q = 0; q < puz->getShapeMax(p); q++) {
+      for (unsigned int q = 0; q < puz->getPartMaximum(p); q++) {
 
         if (assm->isPlaced(piece)) {
 
@@ -1225,8 +1225,8 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
 
     int shape = 0;
     unsigned int p = piece;
-    while (p >= puz->getShapeMax(shape)) {
-      p -= puz->getShapeMax(shape);
+    while (p >= puz->getPartMaximum(shape)) {
+      p -= puz->getPartMaximum(shape);
       shape++;
     }
 

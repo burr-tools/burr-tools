@@ -1592,8 +1592,8 @@ bool assembler_0_c::canHandle(const problem_c * p) {
 
   // we can not handle if there is one shape having not a counter of 1
   for (unsigned int s = 0; s < p->partNumber(); s++)
-    if ((p->getShapeMax(s) > 1) ||
-        (p->getShapeMax(s) != p->getShapeMin(s)))
+    if ((p->getPartMaximum(s) > 1) ||
+        (p->getPartMaximum(s) != p->getPartMinimum(s)))
 
       return false;
 

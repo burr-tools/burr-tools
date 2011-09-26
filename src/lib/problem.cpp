@@ -799,15 +799,15 @@ voxel_c * problem_c::getShapeShape(unsigned int shapeID) {
 }
 
 /* return the instance count for one shape of the problem */
-unsigned int problem_c::getShapeMin(unsigned int shapeID) const {
-  bt_assert(shapeID < parts.size());
+unsigned int problem_c::getPartMinimum(unsigned int partID) const {
+  bt_assert(partID < parts.size());
 
-  return parts[shapeID]->min;
+  return parts[partID]->min;
 }
-unsigned int problem_c::getShapeMax(unsigned int shapeID) const {
-  bt_assert(shapeID < parts.size());
+unsigned int problem_c::getPartMaximum(unsigned int partID) const {
+  bt_assert(partID < parts.size());
 
-  return parts[shapeID]->max;
+  return parts[partID]->max;
 }
 
 void problem_c::addSolution(assembly_c * assm) {

@@ -180,7 +180,7 @@ void assembly_c::sort(const problem_c * puz) {
 
   for (unsigned int i = 0; i < puz->partNumber(); i++) {
 
-    unsigned int cnt = puz->getShapeMax(i);
+    unsigned int cnt = puz->getPartMaximum(i);
 
     /* find out how many pieces are actually placed:
      */
@@ -286,13 +286,13 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
   unsigned int p = 0;
 
   for (unsigned int i = 0; i < puz->partNumber(); i++) {
-    for (unsigned int j = 0; j < puz->getShapeMax(i); j++) {
+    for (unsigned int j = 0; j < puz->getPartMaximum(i); j++) {
 
       // if a piece has a transformation == 255 it is NOT placed so we don't need to do anything
       // we even do leave the shape loop as no more pieces of that shape will be placed..
       if (!isPlaced(p)) {
-        p += puz->getShapeMax(i)-j;
-        j = puz->getShapeMax(i);
+        p += puz->getPartMaximum(i)-j;
+        j = puz->getPartMaximum(i);
         continue;
       }
 
@@ -343,13 +343,13 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
     p = 0;
 
     for (unsigned int i = 0; i < puz->partNumber(); i++) {
-      for (unsigned int j = 0; j < puz->getShapeMax(i); j++) {
+      for (unsigned int j = 0; j < puz->getPartMaximum(i); j++) {
 
         // if a piece has a transformation == 255 it is NOT placed so we don't need to do anything
         // we even do leave the shape loop as no more pieces of that shape will be placed..
         if (!isPlaced(p)) {
-          p += puz->getShapeMax(i)-j;
-          j = puz->getShapeMax(i);
+          p += puz->getPartMaximum(i)-j;
+          j = puz->getPartMaximum(i);
           continue;
         }
 
@@ -380,8 +380,8 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
           {
             unsigned int ss = 0;
 
-            while (ss+puz->getShapeMax(i2) <= p2) {
-              ss += puz->getShapeMax(i2);
+            while (ss+puz->getPartMaximum(i2) <= p2) {
+              ss += puz->getPartMaximum(i2);
               i2++;
             }
           }
@@ -612,13 +612,13 @@ bool assembly_c::validSolution(const problem_c * puz) const {
   {
     unsigned int placed = 0;
 
-    while (placed < puz->getShapeMax(i) && isPlaced(pos+placed))
+    while (placed < puz->getPartMaximum(i) && isPlaced(pos+placed))
       placed++;
 
-    if (placed < puz->getShapeMin(i))
+    if (placed < puz->getPartMinimum(i))
       return false;
 
-    pos += puz->getShapeMax(i);
+    pos += puz->getPartMaximum(i);
   }
 
   return true;

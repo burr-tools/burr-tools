@@ -43,7 +43,7 @@ disassembler_a_c::disassembler_a_c(const problem_c * puz) :
   piece2shape = new unsigned short[puz->pieceNumber()];
   int p = 0;
   for (unsigned int i = 0; i < puz->partNumber(); i++)
-    for (unsigned int j = 0; j < puz->getShapeMax(i); j++)
+    for (unsigned int j = 0; j < puz->getPartMaximum(i); j++)
       piece2shape[p++] = i;
 
   analyse = new movementAnalysator_c(puzzle);

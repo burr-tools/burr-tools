@@ -1824,8 +1824,8 @@ void mainWindow_c::StatProblemInfo(unsigned int prob) {
     unsigned int cntMin = 0;
 
     for (unsigned int i = 0; i < pr->partNumber(); i++) {
-      cnt += pr->getShapeShape(i)->countState(voxel_c::VX_FILLED) * pr->getShapeMax(i);
-      cntMin += pr->getShapeShape(i)->countState(voxel_c::VX_FILLED) * pr->getShapeMin(i);
+      cnt += pr->getShapeShape(i)->countState(voxel_c::VX_FILLED) * pr->getPartMaximum(i);
+      cntMin += pr->getShapeShape(i)->countState(voxel_c::VX_FILLED) * pr->getPartMinimum(i);
     }
 
     if (cnt == cntMin) {
