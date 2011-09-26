@@ -139,7 +139,7 @@ int main(int argv, char* args[]) {
     W_SOLUTION_PIECES,
     W_SOLUTION_ASSM,
     W_COMMENT
-  } what;
+  } what = W_COMMENT;
 
   for(int i = 1; i < argv; i++) {
 
@@ -180,6 +180,11 @@ int main(int argv, char* args[]) {
           what = W_SOLUTION_ASSM;
         else if (strcmp(args[i+1], "c") == 0)
           what = W_COMMENT;
+        else
+        {
+          usage();
+          return 2;
+        }
 
         i++;
 
