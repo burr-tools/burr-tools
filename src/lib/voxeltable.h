@@ -27,15 +27,15 @@ class voxel_c;
 /**
  * This class is a table containing references to voxelspaces.
  *
- * This table can be used to quickly find dublicates of voxel spaces.
+ * This table can be used to quickly find duplicates of voxel spaces.
  * The table is a hash-table saving only the hash of the shape to add and then
  * using a user supplied function to actually get the space and do the comparison
  *
- * The idea is to add all possible orientations of the shape to add so that it
+ * The idea is to add all possible orientations of the shape so that it
  * becomes easy to actually find something.
  *
  * Additionally it is possible to calculate the hash including or disregarding
- * the colours attatched to the shape.
+ * the colours attached to the shape.
  *
  * It is up to the user to specify which transformations/colour variations to add
  * to the table, only those will be found at the end
@@ -44,12 +44,11 @@ class voxel_c;
  * to this table. The table itself only saves an index and with this index
  * the provided function must return the shape
  */
-
 class voxelTable_c {
 
   private:
 
-    /** the hash tabel entry */
+    /** the hash table entry */
     typedef struct hashNode {
       unsigned int index;           //< the shape index, which is given to the user to get the shape
       unsigned char transformation; //< which transformation of the shape is saved in here
@@ -71,7 +70,7 @@ class voxelTable_c {
      */
     enum {
       PAR_MIRROR = 1,  ///< include mirrors of this shape
-      PAR_COLOUR = 2   ///< differenly coloured shapes are different
+      PAR_COLOUR = 2   ///< differently coloured shapes are different
     };
 
     /**
@@ -80,7 +79,7 @@ class voxelTable_c {
      * The function also returns the index for the shape and the orientation that this shape
      * has relative to the one found at the returned index
      *
-     * The parameter work as follows:
+     * The parameters work as follows:
      *  - PAR_MIRROR: when set mirror orientations of the shape may be returned, otherwise
      *    the function either finds a non mirror orientation or nothing. Will only work
      *    when the shape is added using PAR_MIRROR
@@ -113,7 +112,7 @@ class voxelTable_c {
     /**
      * you must provide this function and return a pointer to the actual voxel space:
      *
-     * For an actual example loot at the class voxelTablePuzzle_c
+     * For an actual example lookt at the class voxelTablePuzzle_c
      */
     virtual const voxel_c * findSpace(unsigned int index) const = 0;
 
