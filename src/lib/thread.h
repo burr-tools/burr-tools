@@ -34,21 +34,19 @@ class thread_c {
 
   public:
 
-    /* create the thread data structure, but don't start the thread */
+    /** create the thread data structure, but don't start the thread */
     thread_c(void) : running(false) {}
 
-    /* try to stop the thread, if that doesn't work, kill it and then
-     * delete data structur
-     */
+    /** kill the thread and then delete data structure */
     virtual ~thread_c(void);
 
-    /* run the thread return true on success */
+    /** run the thread return true on success */
     bool start();
 
-    /* inform the thread to stop running, this is dependent on the thread */
+    /** inform the thread to stop running, this is dependent on the thread */
     virtual void stop() {};
 
-    /* kill the thread */
+    /** kill the thread */
     void kill();
 
     /** return true, if the thread is running */
@@ -56,7 +54,7 @@ class thread_c {
 
   protected:
 
-    /* this is the function that gets started for the thread, once this
+    /** this is the function that gets started for the thread, once this
      * function finishes, the thread will end
      */
     virtual void run(void) = 0;
