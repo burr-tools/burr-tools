@@ -307,14 +307,14 @@ void ColorSelector::getText(unsigned int block, char * text) {
 void PieceSelector::setPuzzle(puzzle_c *pz) {
   bt_assert(pz);
   puzzle = pz;
-  if (pz->shapeNumber())
+  if (pz->getNumberOfShapes())
     setSelection(0);
   else
     setSelection((unsigned int)-1);
 }
 
 unsigned int PieceSelector::blockNumber(void) {
-  return puzzle->shapeNumber();
+  return puzzle->getNumberOfShapes();
 }
 
 void PieceSelector::getText(unsigned int block, char * text) {
@@ -343,7 +343,7 @@ void ProblemSelector::setPuzzle(const puzzle_c *pz) {
 }
 
 unsigned int ProblemSelector::blockNumber(void) {
-  return puzzle->problemNumber();
+  return puzzle->getNumberOfProblems();
 }
 
 void ProblemSelector::getText(unsigned int block, char * text) {
@@ -368,7 +368,7 @@ unsigned int PiecesList::blockNumber(void) {
   if (!puzzle)
     return 0;
 
-  return puzzle->partNumber();
+  return puzzle->getNumberOfParts();
 }
 
 void PiecesList::getText(unsigned int block, char * text) {
@@ -379,10 +379,10 @@ void PiecesList::getText(unsigned int block, char * text) {
   int len;
 
   /* first the shape name */
-  if (puzzle->getShapeShape(block)->getName().length())
-    len = snprintf(text, txtLen, "S%i - %s", puzzle->getShape(block)+1, puzzle->getShapeShape(block)->getName().c_str());
+  if (puzzle->getPartShape(block)->getName().length())
+    len = snprintf(text, txtLen, "S%i - %s", puzzle->getShapeIdOfPart(block)+1, puzzle->getPartShape(block)->getName().c_str());
   else
-    len = snprintf(text, txtLen, "S%i", puzzle->getShape(block)+1);
+    len = snprintf(text, txtLen, "S%i", puzzle->getShapeIdOfPart(block)+1);
   text += len;
   txtLen -= len;
 
@@ -397,11 +397,11 @@ void PiecesList::getText(unsigned int block, char * text) {
   txtLen -= len;
 
   /* finally the group information */
-  for (int i = 0; i < puzzle->getShapeGroupNumber(block); i++) {
-    if (puzzle->getShapeGroupCount(block, i) != puzzle->getPartMaximum(block))
-      len = snprintf(text, txtLen, ", G%i(%i)", puzzle->getShapeGroup(block, i), puzzle->getShapeGroupCount(block, i));
+  for (int i = 0; i < puzzle->getNumberOfPartGroups(block); i++) {
+    if (puzzle->getPartGroupCount(block, i) != puzzle->getPartMaximum(block))
+      len = snprintf(text, txtLen, ", G%i(%i)", puzzle->getPartGroupId(block, i), puzzle->getPartGroupCount(block, i));
     else
-      len = snprintf(text, txtLen, ", G%i", puzzle->getShapeGroup(block, i));
+      len = snprintf(text, txtLen, ", G%i", puzzle->getPartGroupId(block, i));
     text += len;
     txtLen -= len;
   }
@@ -411,9 +411,9 @@ void PiecesList::getColor(unsigned int block, unsigned char *r,  unsigned char *
 
   if (!puzzle) return;
 
-  *r = pieceColorRi(puzzle->getShape(block));
-  *g = pieceColorGi(puzzle->getShape(block));
-  *b = pieceColorBi(puzzle->getShape(block));
+  *r = pieceColorRi(puzzle->getShapeIdOfPart(block));
+  *g = pieceColorGi(puzzle->getShapeIdOfPart(block));
+  *b = pieceColorBi(puzzle->getShapeIdOfPart(block));
 }
 
 PieceVisibility::PieceVisibility(int x, int y, int w, int h) : BlockList(x, y, w, h), puzzle(0), count(0) {
@@ -423,7 +423,7 @@ PieceVisibility::PieceVisibility(int x, int y, int w, int h) : BlockList(x, y, w
 
 unsigned int PieceVisibility::blockNumber(void) {
   if (puzzle)
-    return puzzle->pieceNumber();
+    return puzzle->getNumberOfPieces();
   else
     return 0;
 }
@@ -441,15 +441,15 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
     subBlock -= puzzle->getPartMaximum(shape);
     shape++;
   }
-  int shapeID = puzzle->getShape(shape);
+  int shapeID = puzzle->getShapeIdOfPart(shape);
 
   if (useState[block]) {
 
-    if (puzzle->getShapeShape(shape)->getName().length()) {
+    if (puzzle->getPartShape(shape)->getName().length()) {
       if (puzzle->getPartMaximum(shape) > 1)
-        snprintf(txt, 199, "S%i.%i - %s", shapeID+1, subBlock+1, puzzle->getShapeShape(shape)->getName().c_str());
+        snprintf(txt, 199, "S%i.%i - %s", shapeID+1, subBlock+1, puzzle->getPartShape(shape)->getName().c_str());
       else
-        snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->getShapeShape(shape)->getName().c_str());
+        snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->getPartShape(shape)->getName().c_str());
     } else {
       if (puzzle->getPartMaximum(shape) > 1)
         snprintf(txt, 199, "S%i.%i", shapeID+1, subBlock+1);
@@ -518,15 +518,15 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
     shape++;
   }
 
-  int shapeID = puzzle->getShape(shape);
+  int shapeID = puzzle->getShapeIdOfPart(shape);
 
   if (useState[blockNr]) {
 
-    if (puzzle->getShapeShape(shape)->getName().length()) {
+    if (puzzle->getPartShape(shape)->getName().length()) {
       if (puzzle->getPartMaximum(shape) > 1)
-        snprintf(txt, 199, "S%i.%i - %s", shapeID+1, block+1, puzzle->getShapeShape(shape)->getName().c_str());
+        snprintf(txt, 199, "S%i.%i - %s", shapeID+1, block+1, puzzle->getPartShape(shape)->getName().c_str());
       else
-        snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->getShapeShape(shape)->getName().c_str());
+        snprintf(txt, 199, "S%i - %s", shapeID+1, puzzle->getPartShape(shape)->getName().c_str());
     } else {
       if (puzzle->getPartMaximum(shape) > 1)
         snprintf(txt, 199, "S%i.%i", shapeID+1, block+1);
@@ -548,7 +548,7 @@ void PieceVisibility::blockSize(unsigned int block, unsigned int *w, unsigned in
 
 void PieceVisibility::setPuzzle(const problem_c *pz) {
 
-  unsigned int c = pz ? pz->pieceNumber() : 0;
+  unsigned int c = pz ? pz->getNumberOfPieces() : 0;
 
   /* if nothing changes, don't reset piece visibility */
   if ((pz == puzzle) && visState && (c == count))
@@ -601,12 +601,12 @@ void PieceVisibility::push(unsigned int block) {
 }
 
 unsigned char PieceVisibility::getVisibility(unsigned int piece) {
-  bt_assert(piece < puzzle->pieceNumber());
+  bt_assert(piece < puzzle->getNumberOfPieces());
   return visState[piece];
 }
 
 void PieceVisibility::hidePiece(unsigned int s) {
-  bt_assert(s < puzzle->pieceNumber());
+  bt_assert(s < puzzle->getNumberOfPieces());
 
   visState[s] = 2;
 }
@@ -625,7 +625,7 @@ void PieceVisibility::hidePiece(unsigned int s) {
 void ColorConstraintsEdit::draw(void) {
 
   /* no valid problem -> exit */
-  if (problem >= puzzle->problemNumber())
+  if (problem >= puzzle->getNumberOfProblems())
     return;
 
   /* too small -> exit */
@@ -809,7 +809,7 @@ int ColorConstraintsEdit::handle(int event) {
     return 1;
 
   /* no valid problem available */
-  if (problem >= puzzle->problemNumber())
+  if (problem >= puzzle->getNumberOfProblems())
     return 1;
 
   /* find out the group that we clicked onto */

@@ -37,7 +37,6 @@
 class voxel_c;
 class separation_c;
 class separationInfo_c;
-class disassembly_c;
 class assembly_c;
 class gridType_c;
 class puzzle_c;
@@ -62,8 +61,8 @@ typedef enum {
  *
  * It always has to belong to a puzzle and can not be put somewhere else.
  * A puzzle is a collection of shapes and a set of problems associated
- * with these shapes
- * each problem defines a solution shape and a set of pieces (multiple
+ * with these shapes.
+ * Each problem defines a solution shape and a set of pieces (multiple
  * occurrences are possible) that need to be assembles into the given solution
  * shape the class also handles the solutions that belong to the problem
  */
@@ -73,6 +72,7 @@ private:
 
   /**
    * the puzzle this problem belongs to, it must always be there
+   * a problem can not exist without a puzzle
    */
   puzzle_c & puzzle;
 
@@ -89,7 +89,7 @@ private:
   unsigned int result;
 
   /**
-   * (some of) the found solutions. Not all of even none might be
+   * (some of) the found solutions. Not all or even none might be
    * in this vector if the user decides to only count, or not keep them
    * all. This vector contains the solutions that were kept
    */
@@ -281,7 +281,7 @@ public:
    *
    * This is NOT the number of pieces in the problem
    */
-  unsigned int partNumber(void) const { return parts.size(); }
+  unsigned int getNumberOfParts(void) const { return parts.size(); }
   /** get the minimum number of times a shape is used.
    * This similar as the getShapeMinimum function but this time
    * the part index is used instead of the shape index
@@ -293,17 +293,20 @@ public:
    */
   unsigned int getPartMaximum(unsigned int partId) const;
   /** get the shape of a piece */
-  unsigned int getShape(unsigned int piece) const;
-  /** piece number that shape has in this problem */
-  unsigned int getShapeId(unsigned int shape) const;
+  unsigned int getShapeIdOfPart(unsigned int partId) const;
+  /** part number that shape has in this problem
+   * The function assumes that the shape is actually used, if
+   * not an assert will happen
+   */
+  unsigned int getPartIdForShape(unsigned int shapeId) const;
+  /** get the voxel space for a given part */
+  const voxel_c * getPartShape(unsigned int partId) const;
   /** get the voxel space for a given piece */
-  const voxel_c * getShapeShape(unsigned int piece) const;
-  /** get the voxel space for a given piece */
-  voxel_c * getShapeShape(unsigned int piece);
-  /** swap the 2 pieces in the piece list of the problem */
-  void exchangeShape(unsigned int p1, unsigned int p2);
+  voxel_c * getPartShape(unsigned int partId);
+  /** swap the 2 parts in the parts list of the problem */
+  void exchangeParts(unsigned int partId1, unsigned int partId2);
   /** the 2 shapes have been swapped in the puzzle, swap them here as well */
-  void exchangeShapeId(unsigned int s1, unsigned int s2);
+  void exchangeShapes(unsigned int shapeId1, unsigned int shapeId2);
   //@}
 
   /** \name find out what puzzle shape is behind a piece number in a given problem */
@@ -311,11 +314,11 @@ public:
   /** find out how many pieces there are in this problem.
    * This is the maximum valid value for the other 2 functions in this group
    */
-  unsigned int pieceNumber(void) const;
-  /** find out which shape id (index in the problem shapes) is behind a given piece number */
-  unsigned int pieceToShape(unsigned int pieceNr) const;
-  /** find out the how manieth of a shape one piece is */
-  unsigned int pieceToSubShape(unsigned int pieceNr) const;
+  unsigned int getNumberOfPieces(void) const;
+  /** find out which part (index in the problem parts) is behind a given piece number */
+  unsigned int getPartIdToPieceId(unsigned int pieceId) const;
+  /** find out the how manie-th of a part one piece is */
+  unsigned int getPartIndexToPieceId(unsigned int pieceId) const;
   //@}
 
   /** \name edit color placement constraints.
@@ -345,14 +348,14 @@ public:
    * all the
    */
   //@{
-  /** set the group and a count for the piece */
-  void setShapeGroup(unsigned int piece, unsigned short group, unsigned short count);
-  /** get the number of groups that a piece is a member of */
-  unsigned short getShapeGroupNumber(unsigned int piece) const;
+  /** set the group and a count for the part */
+  void setPartGroup(unsigned int part, unsigned short group, unsigned short count);
+  /** get the number of groups that a ppart is a member of */
+  unsigned short getNumberOfPartGroups(unsigned int part) const;
   /** get the x-th group that a piece is a member of */
-  unsigned short getShapeGroup(unsigned int piece, unsigned int groupID) const;
+  unsigned short getPartGroupId(unsigned int piece, unsigned int groupID) const;
   /** find out how many instances of the piece may be a member of the x-th group */
-  unsigned short getShapeGroupCount(unsigned int piece, unsigned int groupID) const;
+  unsigned short getPartGroupCount(unsigned int piece, unsigned int groupID) const;
   //@}
 
   /** \name functions to limit the number of holes a solution is allowed to have. */
@@ -395,7 +398,7 @@ public:
    * it also removes maybe saved assembler state so that solving starts
    * from the start
    */
-  void removeAllSolutions(void);
+  void removeAllSolutions(void);                                             // resetToUnsolved
 
   /** \name  functions used while solving the puzzle.
    * the assembler engine can be put into the problem to save it together
@@ -409,7 +412,7 @@ public:
    * The set assembler will be reset to a saved state, when that information is
    * available. If not simply set the assembler
    */
-  assembler_c::errState setAssembler(assembler_c * assm);
+  assembler_c::errState setAssembler(assembler_c * assm);                       // startSolving
   /** get the assembler */
   assembler_c * getAssembler(void) { return assm; }
   /** get the assembler */
@@ -462,10 +465,10 @@ public:
   /** find out the time used to solve the puzzle up to the current state. Throws an exception when unknown */
   unsigned long getUsedTime(void) const { bt_assert(solveState != SS_UNSOLVED); return usedTime; }
   /** get number of solutions that were stored */
-  unsigned int solutionNumber(void) const { return solutions.size(); }
+  unsigned int getNumberOfSavedSolutions(void) const { return solutions.size(); }
 
-  const solution_c * getSolution(unsigned int sol) const { bt_assert(sol < solutions.size()); return solutions[sol]; }
-  solution_c * getSolution(unsigned int sol) { bt_assert(sol < solutions.size()); return solutions[sol]; }
+  const solution_c * getSavedSolution(unsigned int sol) const { bt_assert(sol < solutions.size()); return solutions[sol]; }
+  solution_c * getSavedSolution(unsigned int sol) { bt_assert(sol < solutions.size()); return solutions[sol]; }
   //@}
 
 

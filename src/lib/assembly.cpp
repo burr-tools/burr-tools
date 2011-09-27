@@ -178,7 +178,7 @@ void assembly_c::sort(const problem_c * puz) {
 
   int p = 0;
 
-  for (unsigned int i = 0; i < puz->partNumber(); i++) {
+  for (unsigned int i = 0; i < puz->getNumberOfParts(); i++) {
 
     unsigned int cnt = puz->getPartMaximum(i);
 
@@ -285,7 +285,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
 
   unsigned int p = 0;
 
-  for (unsigned int i = 0; i < puz->partNumber(); i++) {
+  for (unsigned int i = 0; i < puz->getNumberOfParts(); i++) {
     for (unsigned int j = 0; j < puz->getPartMaximum(i); j++) {
 
       // if a piece has a transformation == 255 it is NOT placed so we don't need to do anything
@@ -308,7 +308,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
       placements[p].transformation = sym->transAdd(placements[p].transformation, trans);
       if (placements[p].transformation == TND) return false;
 
-      unsigned char tr = puz->getShapeShape(i)->normalizeTransformation(placements[p].transformation);
+      unsigned char tr = puz->getPartShape(i)->normalizeTransformation(placements[p].transformation);
 
       if (tr != placements[p].transformation) {
 
@@ -318,11 +318,11 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
          * this is the easiest solution but by far the slowest
          */
         int ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz;
-        puz->getShapeShape(i)->getHotspot(placements[p].transformation, &ax, &ay, &az);
-        puz->getShapeShape(i)->getHotspot(tr, &bx, &by, &bz);
+        puz->getPartShape(i)->getHotspot(placements[p].transformation, &ax, &ay, &az);
+        puz->getPartShape(i)->getHotspot(tr, &bx, &by, &bz);
 
-        puz->getShapeShape(i)->getBoundingBox(placements[p].transformation, &cx, &cy, &cz);
-        puz->getShapeShape(i)->getBoundingBox(tr, &dx, &dy, &dz);
+        puz->getPartShape(i)->getBoundingBox(placements[p].transformation, &cx, &cy, &cz);
+        puz->getPartShape(i)->getBoundingBox(tr, &dx, &dy, &dz);
 
         placements[p].xpos += bx-ax + cx-dx;
         placements[p].ypos += by-ay + cy-dy;
@@ -342,7 +342,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
 
     p = 0;
 
-    for (unsigned int i = 0; i < puz->partNumber(); i++) {
+    for (unsigned int i = 0; i < puz->getNumberOfParts(); i++) {
       for (unsigned int j = 0; j < puz->getPartMaximum(i); j++) {
 
         // if a piece has a transformation == 255 it is NOT placed so we don't need to do anything
@@ -394,8 +394,8 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
            */
           if (sym->transAdd(t, t_inv) == TND || sym->transAdd(t_inv, t) == TND) return false;
 
-          bt_assert(puz->getShapeShape(i)->normalizeTransformation(sym->transAdd(t, t_inv)) == 0);
-          bt_assert(puz->getShapeShape(i2)->normalizeTransformation(sym->transAdd(t_inv, t)) == 0);
+          bt_assert(puz->getPartShape(i)->normalizeTransformation(sym->transAdd(t, t_inv)) == 0);
+          bt_assert(puz->getPartShape(i2)->normalizeTransformation(sym->transAdd(t_inv, t)) == 0);
 
           /* OK, we found replacement information for piece p,
            * we are supposed to replace it with piece p2
@@ -431,20 +431,20 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
              * have the same shape at the orientation
              */
 
-            puz->getShapeShape(i)->getHotspot(p1t, &hx, &hy, &hz);
+            puz->getPartShape(i)->getHotspot(p1t, &hx, &hy, &hz);
             p1x -= hx;
             p1y -= hy;
             p1z -= hz;
-            puz->getShapeShape(i)->getBoundingBox(p1t, &hx, &hy, &hz);
+            puz->getPartShape(i)->getBoundingBox(p1t, &hx, &hy, &hz);
             p1x += hx;
             p1y += hy;
             p1z += hz;
 
-            puz->getShapeShape(i2)->getHotspot(p2t, &hx, &hy, &hz);
+            puz->getPartShape(i2)->getHotspot(p2t, &hx, &hy, &hz);
             p2x -= hx;
             p2y -= hy;
             p2z -= hz;
-            puz->getShapeShape(i2)->getBoundingBox(p2t, &hx, &hy, &hz);
+            puz->getPartShape(i2)->getBoundingBox(p2t, &hx, &hy, &hz);
             p2x += hx;
             p2y += hy;
             p2z += hz;
@@ -459,25 +459,25 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
              * same for the other way around
              */
             if (sym->transAdd(t_inv, p1t) == TND || sym->transAdd(t, p2t) == TND) return false;
-            p1t = puz->getShapeShape(i2)->normalizeTransformation(sym->transAdd(t_inv, p1t));
-            p2t = puz->getShapeShape(i)->normalizeTransformation(sym->transAdd(t, p2t));
+            p1t = puz->getPartShape(i2)->normalizeTransformation(sym->transAdd(t_inv, p1t));
+            p2t = puz->getPartShape(i)->normalizeTransformation(sym->transAdd(t, p2t));
 
             /* now go back from the origin of the bounding box to the hotspot anchor point */
 
-            puz->getShapeShape(i2)->getHotspot(p1t, &hx, &hy, &hz);
+            puz->getPartShape(i2)->getHotspot(p1t, &hx, &hy, &hz);
             p1x += hx;
             p1y += hy;
             p1z += hz;
-            puz->getShapeShape(i2)->getBoundingBox(p1t, &hx, &hy, &hz);
+            puz->getPartShape(i2)->getBoundingBox(p1t, &hx, &hy, &hz);
             p1x -= hx;
             p1y -= hy;
             p1z -= hz;
 
-            puz->getShapeShape(i)->getHotspot(p2t, &hx, &hy, &hz);
+            puz->getPartShape(i)->getHotspot(p2t, &hx, &hy, &hz);
             p2x += hx;
             p2y += hy;
             p2z += hz;
-            puz->getShapeShape(i)->getBoundingBox(p2t, &hx, &hy, &hz);
+            puz->getPartShape(i)->getBoundingBox(p2t, &hx, &hy, &hz);
             p2x -= hx;
             p2y -= hy;
             p2z -= hz;
@@ -511,11 +511,11 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
              * have the same shape at the orientation
              */
 
-            puz->getShapeShape(i)->getHotspot(p1t, &hx, &hy, &hz);
+            puz->getPartShape(i)->getHotspot(p1t, &hx, &hy, &hz);
             p1x -= hx;
             p1y -= hy;
             p1z -= hz;
-            puz->getShapeShape(i)->getBoundingBox(p1t, &hx, &hy, &hz);
+            puz->getPartShape(i)->getBoundingBox(p1t, &hx, &hy, &hz);
             p1x += hx;
             p1y += hy;
             p1z += hz;
@@ -530,15 +530,15 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
              * same for the other way around
              */
             if (sym->transAdd(t_inv, p1t) == TND) return false;
-            p1t = puz->getShapeShape(i2)->normalizeTransformation(sym->transAdd(t_inv, p1t));
+            p1t = puz->getPartShape(i2)->normalizeTransformation(sym->transAdd(t_inv, p1t));
 
             /* now go back from the origin of the bounding box to the hotspot anchor point */
 
-            puz->getShapeShape(i2)->getHotspot(p1t, &hx, &hy, &hz);
+            puz->getPartShape(i2)->getHotspot(p1t, &hx, &hy, &hz);
             p1x += hx;
             p1y += hy;
             p1z += hz;
-            puz->getShapeShape(i2)->getBoundingBox(p1t, &hx, &hy, &hz);
+            puz->getPartShape(i2)->getBoundingBox(p1t, &hx, &hy, &hz);
             p1x -= hx;
             p1y -= hy;
             p1z -= hz;
@@ -608,7 +608,7 @@ bool assembly_c::validSolution(const problem_c * puz) const {
 
   unsigned int pos = 0;
 
-  for (unsigned int i = 0; i < puz->partNumber(); i++)
+  for (unsigned int i = 0; i < puz->getNumberOfParts(); i++)
   {
     unsigned int placed = 0;
 
@@ -802,9 +802,9 @@ voxel_c * assembly_c::createSpace(const problem_c * puz) const {
   for (unsigned int i = 0; i < placements.size(); i++)
     if (placements[i].transformation != UNPLACED_TRANS) {
 
-      unsigned int j = puz->pieceToShape(i);
+      unsigned int j = puz->getPartIdToPieceId(i);
 
-      voxel_c * pc = puz->getGridType()->getVoxel(puz->getShapeShape(j));
+      voxel_c * pc = puz->getGridType()->getVoxel(puz->getPartShape(j));
 
       bt_assert(pc->transform(placements[i].transformation));
 

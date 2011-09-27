@@ -107,16 +107,16 @@ puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
   }
 
   // find mark and remove dublicate shapes from problem
-  unsigned s = pr->partNumber();
+  unsigned s = pr->getNumberOfParts();
 
   for (unsigned int s1 = 0; s1 < s-1; s1++)
     for (unsigned int s2 = s1+1; s2 < s; s2++)
-      if (pr->getShapeShape(s1)->identicalWithRots(pr->getShapeShape(s2), false, false)) {
-        unsigned int sh1 = pr->getShape(s1);
-        unsigned int sh2 = pr->getShape(s2);
+      if (pr->getPartShape(s1)->identicalWithRots(pr->getPartShape(s2), false, false)) {
+        unsigned int sh1 = pr->getShapeIdOfPart(s1);
+        unsigned int sh2 = pr->getShapeIdOfPart(s2);
         pr->setShapeMaximum(sh1, pr->getShapeMaximum(sh1) + pr->getShapeMaximum(sh2));
         pr->setShapeMinimum(sh1, pr->getShapeMinimum(sh1) + pr->getShapeMinimum(sh2));
-        pr->getShapeShape(s2)->setName("Duplicate");
+        pr->getPartShape(s2)->setName("Duplicate");
         pr->setShapeMaximum(sh2, 0);
         s2--;
         s--;

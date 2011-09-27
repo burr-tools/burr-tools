@@ -373,7 +373,7 @@ void puzzle_c::removeShape(unsigned int idx) {
 
 }
 
-void puzzle_c::exchangeShape(unsigned int s1, unsigned int s2) {
+void puzzle_c::exchangeShapes(unsigned int s1, unsigned int s2) {
   bt_assert(s1 < shapes.size());
   bt_assert(s2 < shapes.size());
 
@@ -382,7 +382,7 @@ void puzzle_c::exchangeShape(unsigned int s1, unsigned int s2) {
   shapes[s2] = v;
 
   for (unsigned int i = 0; i < problems.size(); i++)
-    problems[i]->exchangeShapeId(s1, s2);
+    problems[i]->exchangeShapes(s1, s2);
 }
 
 /**
@@ -407,7 +407,7 @@ void puzzle_c::removeProblem(unsigned int idx) {
   problems.erase(problems.begin()+idx);
 }
 
-void puzzle_c::exchangeProblem(unsigned int p1, unsigned int p2) {
+void puzzle_c::exchangeProblems(unsigned int p1, unsigned int p2) {
 
   bt_assert(p1 < problems.size());
   bt_assert(p2 < problems.size());

@@ -303,7 +303,7 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
 }
 
 movementAnalysator_c::movementAnalysator_c(const problem_c * puz) :
-  piecenumber(puz->pieceNumber()), maxstep((unsigned int) -1) {
+  piecenumber(puz->getNumberOfPieces()), maxstep((unsigned int) -1) {
 
   cache = puz->getGridType()->getMovementCache(puz);
   /* we assert that there must be a cache, otherwise no disassembly
@@ -319,11 +319,11 @@ movementAnalysator_c::movementAnalysator_c(const problem_c * puz) :
   memset(matrix, 0, cache->numDirections() * piecenumber * piecenumber * sizeof(unsigned int));
 
   /* create the weights array */
-  weights = new int[puz->pieceNumber()];
+  weights = new int[puz->getNumberOfPieces()];
   unsigned int pc = 0;
-  for (unsigned int i = 0; i < puz->partNumber(); i++) {
+  for (unsigned int i = 0; i < puz->getNumberOfParts(); i++) {
     for (unsigned int j = 0; j < puz->getPartMaximum(i); j++)
-      weights[pc++] = puz->getShapeShape(i)->getWeight();
+      weights[pc++] = puz->getPartShape(i)->getWeight();
   }
 
   nextstate = -1;

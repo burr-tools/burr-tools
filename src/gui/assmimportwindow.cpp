@@ -40,7 +40,7 @@ void assmImportWindow_c::okay_cb(void) {
 
 assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Window(false), _ok(false)
 {
-  if (puzzle->problemNumber() == 0)
+  if (puzzle->getNumberOfProblems() == 0)
   {
     new LFl_Box("You need a problem with solutions to\nimport assemblies.", 0, 0, 1, 1);
     (new LFl_Button("Abort", 0, 1, 1, 1))->callback(cb_WindowButton_stub, this);

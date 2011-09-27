@@ -493,7 +493,7 @@ static void resizeSpace(bool toAll, const ChangeSize *changeSize, puzzle_c * puz
     if (dy < 0) dy = 0;
     if (dz < 0) dz = 0;
 
-    for (unsigned int s = 0; s < puzzle->shapeNumber(); s++) {
+    for (unsigned int s = 0; s < puzzle->getNumberOfShapes(); s++) {
       int nx = puzzle->getShape(s)->getX()+dx;
       int ny = puzzle->getShape(s)->getY()+dy;
       int nz = puzzle->getShape(s)->getZ()+dz;
@@ -530,7 +530,7 @@ void ToolTab_0::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
 
   bt_assert(!puzzle || (puzzle->getGridType()->getType() == gridType_c::GT_BRICKS));
 
-  if (puzzle && shape < puzzle->shapeNumber())
+  if (puzzle && shape < puzzle->getNumberOfShapes())
     changeSize->setXYZ(puzzle->getShape(shape)->getX(),
         puzzle->getShape(shape)->getY(),
         puzzle->getShape(shape)->getZ());
@@ -584,7 +584,7 @@ ToolTab_0::ToolTab_0(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 }
 
 void ToolTab_0::cb_size(void) {
-  if (puzzle && shape < puzzle->shapeNumber()) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
 
     resizeSpace(toAll->value(), changeSize, puzzle, shape);
     do_callback();
@@ -592,13 +592,13 @@ void ToolTab_0::cb_size(void) {
 }
 
 void ToolTab_0::cb_transform(long task) {
-  if (puzzle && shape < puzzle->shapeNumber()) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
 
     int ss, se;
 
     if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
       ss = 0;
-      se = puzzle->shapeNumber();
+      se = puzzle->getNumberOfShapes();
     } else {
       ss = shape;
       se = shape+1;
@@ -705,7 +705,7 @@ void ToolTab_1::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
 
   bt_assert(!puzzle || (puzzle->getGridType()->getType() == gridType_c::GT_TRIANGULAR_PRISM));
 
-  if (puzzle && shape < puzzle->shapeNumber())
+  if (puzzle && shape < puzzle->getNumberOfShapes())
     changeSize->setXYZ(puzzle->getShape(shape)->getX(),
         puzzle->getShape(shape)->getY(),
         puzzle->getShape(shape)->getZ());
@@ -759,7 +759,7 @@ ToolTab_1::ToolTab_1(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 }
 
 void ToolTab_1::cb_size(void) {
-  if (puzzle && shape < puzzle->shapeNumber()) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
 
     resizeSpace(toAll->value(), changeSize, puzzle, shape);
     do_callback();
@@ -768,13 +768,13 @@ void ToolTab_1::cb_size(void) {
 
 void ToolTab_1::cb_transform(long task) {
 
-  if (puzzle && shape < puzzle->shapeNumber()) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
 
     int ss, se;
 
     if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
       ss = 0;
-      se = puzzle->shapeNumber();
+      se = puzzle->getNumberOfShapes();
     } else {
       ss = shape;
       se = shape+1;
@@ -871,7 +871,7 @@ void ToolTab_2::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
 
   bt_assert(!puzzle || (puzzle->getGridType()->getType() == gridType_c::GT_SPHERES));
 
-  if (puzzle && shape < puzzle->shapeNumber())
+  if (puzzle && shape < puzzle->getNumberOfShapes())
     changeSize->setXYZ(puzzle->getShape(shape)->getX(),
         puzzle->getShape(shape)->getY(),
         puzzle->getShape(shape)->getZ());
@@ -925,7 +925,7 @@ ToolTab_2::ToolTab_2(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 }
 
 void ToolTab_2::cb_size(void) {
-  if (puzzle && shape < puzzle->shapeNumber()) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
 
     resizeSpace(toAll->value(), changeSize, puzzle, shape);
     do_callback();
@@ -933,13 +933,13 @@ void ToolTab_2::cb_size(void) {
 }
 
 void ToolTab_2::cb_transform(long task) {
-  if (puzzle && shape < puzzle->shapeNumber()) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
 
     int ss, se;
 
     if (toAll->value() && ((task == 15) || (task == 24) || (task == 25))) {
       ss = 0;
-      se = puzzle->shapeNumber();
+      se = puzzle->getNumberOfShapes();
     } else {
       ss = shape;
       se = shape+1;
@@ -1040,7 +1040,7 @@ void ToolTab_3::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
 
   bt_assert(!puzzle || (puzzle->getGridType()->getType() == gridType_c::GT_RHOMBIC));
 
-  if (puzzle && shape < puzzle->shapeNumber())
+  if (puzzle && shape < puzzle->getNumberOfShapes())
     changeSize->setXYZ(
         (puzzle->getShape(shape)->getX()+4)/5,
         (puzzle->getShape(shape)->getY()+4)/5,
@@ -1095,7 +1095,7 @@ ToolTab_3::ToolTab_3(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 }
 
 void ToolTab_3::cb_size(void) {
-  if (puzzle && shape < puzzle->shapeNumber()) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
 
     resizeSpace(toAll->value(), changeSize, puzzle, shape, 5);
     do_callback();
@@ -1103,13 +1103,13 @@ void ToolTab_3::cb_size(void) {
 }
 
 void ToolTab_3::cb_transform(long task) {
-  if (puzzle && shape < puzzle->shapeNumber()) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
 
     int ss, se;
 
     if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
       ss = 0;
-      se = puzzle->shapeNumber();
+      se = puzzle->getNumberOfShapes();
     } else {
       ss = shape;
       se = shape+1;
@@ -1182,7 +1182,7 @@ void ToolTab_4::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
 
   bt_assert(!puzzle || (puzzle->getGridType()->getType() == gridType_c::GT_TETRA_OCTA));
 
-  if (puzzle && shape < puzzle->shapeNumber())
+  if (puzzle && shape < puzzle->getNumberOfShapes())
     changeSize->setXYZ(
         (puzzle->getShape(shape)->getX()+2)/3,
         (puzzle->getShape(shape)->getY()+2)/3,
@@ -1237,7 +1237,7 @@ ToolTab_4::ToolTab_4(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 }
 
 void ToolTab_4::cb_size(void) {
-  if (puzzle && shape < puzzle->shapeNumber()) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
 
     resizeSpace(toAll->value(), changeSize, puzzle, shape, 3);
     do_callback();
@@ -1245,13 +1245,13 @@ void ToolTab_4::cb_size(void) {
 }
 
 void ToolTab_4::cb_transform(long task) {
-  if (puzzle && shape < puzzle->shapeNumber()) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
 
     int ss, se;
 
     if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
       ss = 0;
-      se = puzzle->shapeNumber();
+      se = puzzle->getNumberOfShapes();
     } else {
       ss = shape;
       se = shape+1;

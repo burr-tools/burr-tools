@@ -134,12 +134,12 @@ AddMovementDialog::AddMovementDialog(movementCache_c * c, const std::vector<unsi
 
   for (unsigned int i = 0; i < pieces.size(); i++) {
     char label[20];
-    unsigned int shape = puz->pieceToShape(pieces[i]);
-    unsigned int subShape = puz->pieceToSubShape(pieces[i]);
-    if (puz->getShapeShape(shape)->getName().length())
-      snprintf(label, 20, "S%i - %s", puz->getShape(shape)+1, puz->getShapeShape(shape)->getName().c_str());
+    unsigned int shape = puz->getPartIdToPieceId(pieces[i]);
+    unsigned int subShape = puz->getPartIndexToPieceId(pieces[i]);
+    if (puz->getPartShape(shape)->getName().length())
+      snprintf(label, 20, "S%i - %s", puz->getShapeIdOfPart(shape)+1, puz->getPartShape(shape)->getName().c_str());
     else
-      snprintf(label, 20, "S%i", puz->getShape(shape)+1);
+      snprintf(label, 20, "S%i", puz->getShapeIdOfPart(shape)+1);
     pces.push_back(new LFl_Check_Button(label, 0, i+1, 1, 1));
     (*pces.rbegin())->copy_label(label);
 
@@ -216,13 +216,13 @@ LTreeBrowser::Node * movementBrowser_c::addNode(LTreeBrowser::Node *nd, disassem
         (s->node->getY(p) != mv->getY(p)) ||
         (s->node->getZ(p) != mv->getZ(p))) {
       if (firstpiece) {
-        t += snprintf(t, 200-(t-label), ": S%i", puz->getShape(puz->pieceToShape(s->pieces[p]))+1);
+        t += snprintf(t, 200-(t-label), ": S%i", puz->getShapeIdOfPart(puz->getPartIdToPieceId(s->pieces[p]))+1);
         firstpiece = false;
       } else
-        t += snprintf(t, 200-(t-label), ", S%i", puz->getShape(puz->pieceToShape(s->pieces[p]))+1);
+        t += snprintf(t, 200-(t-label), ", S%i", puz->getShapeIdOfPart(puz->getPartIdToPieceId(s->pieces[p]))+1);
 
-      if (puz->pieceToSubShape(s->pieces[p]))
-        t += snprintf(t, 200-(t-label), ".%i", puz->pieceToSubShape(s->pieces[p])+1);
+      if (puz->getPartIndexToPieceId(s->pieces[p]))
+        t += snprintf(t, 200-(t-label), ".%i", puz->getPartIndexToPieceId(s->pieces[p])+1);
     }
 
   }
@@ -257,7 +257,7 @@ void movementBrowser_c::cb_NodeChange(void) {
 
   nodeData_s * s = (nodeData_s *)(tree->get_selected(1)->user_data());
 
-  fixedPositions_c fp(s->node, s->pieces, puz->pieceNumber());
+  fixedPositions_c fp(s->node, s->pieces, puz->getNumberOfPieces());
 
   view3d->getView()->updatePositionsOverlap(&fp);
 }
@@ -507,7 +507,7 @@ movementBrowser_c::movementBrowser_c(problem_c * puzzle, unsigned int solNum) : 
   nodeData_s * dat = new nodeData_s;
   nodes.push_back(dat);
 
-  assembly_c * assembly = puz->getSolution(solNum)->getAssembly();
+  assembly_c * assembly = puz->getSavedSolution(solNum)->getAssembly();
 
   dat->node = new disassemblerNode_c(assembly);
   dat->node->incRefCount();

@@ -83,7 +83,7 @@ movementCache_c::movementCache_c(const problem_c * puzzle) : gt(puzzle->getGridT
    * puzzle problem. The shape with transformation 0 is just
    * a pointer into the puzzle, so don't delete them later on
    */
-  num_shapes = puzzle->partNumber();
+  num_shapes = puzzle->getNumberOfParts();
 
   num_transformations = puzzle->getGridType()->getSymmetries()->getNumTransformations();
 
@@ -91,15 +91,15 @@ movementCache_c::movementCache_c(const problem_c * puzzle) : gt(puzzle->getGridT
   for (unsigned int s = 0; s < num_shapes; s++) {
     shapes[s] = new const voxel_c * [num_transformations];
     memset(shapes[s], 0, num_transformations * sizeof(voxel_c*));
-    shapes[s][0] = puzzle->getShapeShape(s);
+    shapes[s][0] = puzzle->getPartShape(s);
   }
 
   /* initialize the piece array */
-  pieces = new unsigned int [puzzle->pieceNumber()];
+  pieces = new unsigned int [puzzle->getNumberOfPieces()];
 
   int pos = 0;
 
-  for (unsigned int s = 0; s < puzzle->partNumber(); s++)
+  for (unsigned int s = 0; s < puzzle->getNumberOfParts(); s++)
     for (unsigned int i = 0; i < puzzle->getPartMaximum(s); i++)
       pieces[pos++] = s;
 

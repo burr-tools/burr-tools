@@ -89,7 +89,7 @@ placementBrowser_c::placementBrowser_c(problem_c * p) :
 
   pieceSelector = new LFl_Value_Slider(0, 0, 2, 1);
   pieceSelector->type(FL_HOR_SLIDER);
-  pieceSelector->range(0, puzzle->pieceNumber()-1);
+  pieceSelector->range(0, puzzle->getNumberOfPieces()-1);
   pieceSelector->precision(0);
   pieceSelector->callback(cb_piece_stub, this);
   pieceSelector->tooltip(" Select the piece whose placements you want to see ");

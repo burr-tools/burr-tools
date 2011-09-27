@@ -88,7 +88,7 @@ class StatusProgress : public LFl_Double_Window {
 
 void statusWindow_c::cb_removeSelected(void) {
 
-  bt_assert(selection.size() <= puz->shapeNumber());
+  bt_assert(selection.size() <= puz->getNumberOfShapes());
 
   /* we have to go up from the bottom as otherwise the indixes may shift
    *
@@ -100,7 +100,7 @@ void statusWindow_c::cb_removeSelected(void) {
   {
     if (selection[s-1]->value())
     {
-      for (unsigned int i = 0; i < puz->problemNumber(); i++)
+      for (unsigned int i = 0; i < puz->getNumberOfProblems(); i++)
         if (puz->getProblem(i)->usesShape(s-1))
           puz->getProblem(i)->removeAllSolutions();
 
@@ -123,7 +123,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
 
   label("Shape Information");
 
-  unsigned int lines = p->shapeNumber();
+  unsigned int lines = p->getNumberOfShapes();
   unsigned int head = 3;
 
   layouter_c * fr = new layouter_c(0, 0, 1, 1);
@@ -139,7 +139,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
 
   voxelTablePuzzle_c shapeTab(p);
 
-  for (unsigned int s = 0; s < p->shapeNumber(); s++) {
+  for (unsigned int s = 0; s < p->getNumberOfShapes(); s++) {
 
     LFl_Box * b;
 
@@ -298,7 +298,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
     }
     col += 2;
 
-    stp->setProgress(1.0*s/p->shapeNumber());
+    stp->setProgress(1.0*s/p->getNumberOfShapes());
     Fl::wait(0);
     if (!stp->visible())
       break;

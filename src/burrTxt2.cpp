@@ -128,7 +128,7 @@ int main(int argv, char* args[]) {
     return 2;
   }
 
-  for (unsigned int i = 0; i < p.shapeNumber(); i++)
+  for (unsigned int i = 0; i < p.getNumberOfShapes(); i++)
     p.getShape(i)->initHotspot();
 
 

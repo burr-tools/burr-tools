@@ -210,9 +210,9 @@ bool solveThread_c::assembly(assembly_c * a) {
           {
             unsigned int lev = s->sumMoves();
 
-            for (unsigned int i = 0; i < puzzle->solutionNumber(); i++) {
+            for (unsigned int i = 0; i < puzzle->getNumberOfSavedSolutions(); i++) {
 
-              const disassembly_c * s2 = puzzle->getSolution(i)->getDisassembly();
+              const disassembly_c * s2 = puzzle->getSavedSolution(i)->getDisassembly();
 
               if (s2 && s2->sumMoves() > lev) {
                 if (parameters & PAR_DROP_DISASSEMBLIES) {
@@ -237,15 +237,15 @@ bool solveThread_c::assembly(assembly_c * a) {
           // remove the front most solution, if we only want to save
           // a limited number of solutions, as the front most
           // solutions are the more unimportant ones
-          if (solutionLimit && (puzzle->solutionNumber() > solutionLimit))
+          if (solutionLimit && (puzzle->getNumberOfSavedSolutions() > solutionLimit))
             puzzle->removeSolution(0);
 
           break;
         case SRT_LEVEL:
           {
-            for (unsigned int i = 0; i < puzzle->solutionNumber(); i++) {
+            for (unsigned int i = 0; i < puzzle->getNumberOfSavedSolutions(); i++) {
 
-              const disassembly_c * s2 = puzzle->getSolution(i)->getDisassemblyInfo();
+              const disassembly_c * s2 = puzzle->getSavedSolution(i)->getDisassemblyInfo();
 
               if (s2 && (s2->compare(s) > 0)) {
                 if (parameters & PAR_DROP_DISASSEMBLIES) {
@@ -270,7 +270,7 @@ bool solveThread_c::assembly(assembly_c * a) {
           // remove the front most solution, if we only want to save
           // a limited number of solutions, as the front most
           // solutions are the more unimportant ones
-          if (solutionLimit && (puzzle->solutionNumber() > solutionLimit))
+          if (solutionLimit && (puzzle->getNumberOfSavedSolutions() > solutionLimit))
             puzzle->removeSolution(0);
 
           break;
@@ -300,7 +300,7 @@ bool solveThread_c::assembly(assembly_c * a) {
 
   // this is the case for assembly only or unsorted disassembly solutions
   // we need to thin out the list
-  if (solutionLimit && (puzzle->solutionNumber() > solutionLimit)) {
+  if (solutionLimit && (puzzle->getNumberOfSavedSolutions() > solutionLimit)) {
     unsigned int idx = (_solutionAction == SOL_SAVE_ASM) ? puzzle->getNumAssemblies()-1
                                                          : puzzle->getNumSolutions()-1;
 

@@ -50,7 +50,7 @@ puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type) {
   puzzle_c * pNew = new puzzle_c(gt);
 
   // now convert all shapes
-  for (unsigned int i = 0; i < p->shapeNumber(); i++)
+  for (unsigned int i = 0; i < p->getNumberOfShapes(); i++)
   {
     const voxel_c * v = p->getShape(i);
 
@@ -114,7 +114,7 @@ puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type) {
   pNew->setCommentPopup(p->getCommentPopup());
 
   // create the problems as copies from the old puzzle
-  for (unsigned int i = 0; i < p->problemNumber(); i++)
+  for (unsigned int i = 0; i < p->getNumberOfProblems(); i++)
   {
     const problem_c * prob = p->getProblem(i);
     problem_c * probNew = pNew->getProblem(pNew->addProblem(prob));

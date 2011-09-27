@@ -99,7 +99,7 @@ public:
    * ownership of the given gridtype is taken over, the memory
    * is freed on destruction of this class
    */
-  puzzle_c(gridType_c * g) : gt(g) , commentPopup(false) { }
+  puzzle_c(gridType_c * g) : gt(g), commentPopup(false) { }
 
   /**
    * load the puzzle from the XML file
@@ -107,13 +107,13 @@ public:
   puzzle_c(xmlParser_c & pars);
 
   /**
-   * save the puzzle into a XML node that is returned
+   * save the puzzle using the given XML-writer
    */
   void save(xmlWriter_c & xml) const;
 
   /**
    * Destructor.
-   * Deletes all the shapes in the puzzle
+   * Deletes all the shapes and problems in the puzzle
    */
   ~puzzle_c(void);
 
@@ -134,7 +134,7 @@ public:
   /** add an empty shape of the given size return the index of the new shape */
   unsigned int addShape(unsigned int sx, unsigned int sy, unsigned int sz);
   /** return how many shapes there are in the puzzle */
-  unsigned int shapeNumber(void) const { return shapes.size(); }
+  unsigned int getNumberOfShapes(void) const { return shapes.size(); }
   /** get a shape */
   const voxel_c * getShape(unsigned int idx) const { bt_assert(idx < shapes.size()); return shapes[idx]; }
   /** get a shape */
@@ -144,14 +144,14 @@ public:
    * be careful this changes all ids and so all problems must be updated
    * changing them, removing solutions, result shapes or pieces in problems...
    */
-  void removeShape(unsigned int);
+  void removeShape(unsigned int idx);
   /**
    *  exchange 2 shapes in the list of shapes.
    *  this function takes care to update all the problems and solutions
    *  because they only index into the shape list and exchangin shapes requires
    *  updating tose indices
    */
-  void exchangeShape(unsigned int s1, unsigned int s2);
+  void exchangeShapes(unsigned int s1, unsigned int s2);
   //@}
 
 
@@ -185,11 +185,11 @@ public:
    */
   unsigned int addProblem(const problem_c * prob);
   /** return the number of problems within this puzzle */
-  unsigned int problemNumber(void) const { return problems.size(); }
+  unsigned int getNumberOfProblems(void) const { return problems.size(); }
   /** remove problem with the given index freeing all its ressources */
   void removeProblem(unsigned int p);
   /** exchange problem at indes p1 with problem at index p2 */
-  void exchangeProblem(unsigned int p1, unsigned int p2);
+  void exchangeProblems(unsigned int p1, unsigned int p2);
   /** get the problem at index p */
   const problem_c * getProblem(unsigned int p) const { bt_assert(p < problems.size()); return problems[p]; }
   /** get the problem at index p */

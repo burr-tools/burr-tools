@@ -29,7 +29,7 @@
 
 void gridEditor_c::setZ(unsigned int z) {
 
-  if (piecenumber >= puzzle->shapeNumber()) return;
+  if (piecenumber >= puzzle->getNumberOfShapes()) return;
 
   // clamp the value to valid values
   if (z >= puzzle->getShape(piecenumber)->getZ()) z = puzzle->getShape(piecenumber)->getZ()-1;
@@ -50,7 +50,7 @@ void gridEditor_c::setPuzzle(puzzle_c * p, unsigned int piecenum) {
   piecenumber = piecenum;
 
   // check if the current z value is in valid regions
-  if ((piecenum < puzzle->shapeNumber()) && (puzzle->getShape(piecenum)->getZ() <= currentZ)) {
+  if ((piecenum < puzzle->getNumberOfShapes()) && (puzzle->getShape(piecenum)->getZ() <= currentZ)) {
     bt_assert(puzzle->getShape(piecenum)->getZ() >= 1);
     currentZ = puzzle->getShape(piecenum)->getZ() - 1;
   }
@@ -59,7 +59,7 @@ void gridEditor_c::setPuzzle(puzzle_c * p, unsigned int piecenum) {
 }
 
 void gridEditor_c::clearPuzzle() {
-  piecenumber = puzzle->shapeNumber();
+  piecenumber = puzzle->getNumberOfShapes();
   redraw();
 }
 
@@ -188,7 +188,7 @@ bool gridEditor_c::setLayer(unsigned int z) {
 int gridEditor_c::handle(int event) {
 
   // no valid shape, nothing to do
-  if (piecenumber >= puzzle->shapeNumber())
+  if (piecenumber >= puzzle->getNumberOfShapes())
     return 0;
 
   // not active, nothing to do. Normally we wouldn't require this
@@ -328,7 +328,7 @@ void gridEditor_c::draw() {
   fl_rectf(x(), y(), w(), h());
 
   // no valid piece, nothing to draw
-  if (piecenumber >= puzzle->shapeNumber())
+  if (piecenumber >= puzzle->getNumberOfShapes())
     return;
 
   voxel_c * space = puzzle->getShape(piecenumber);

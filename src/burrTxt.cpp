@@ -56,7 +56,7 @@ public:
   int pn;
   problem_c * puzzle;
 
-  asm_cb(problem_c * p) : Assemblies(0), Solutions(0), pn(p->pieceNumber()), puzzle(p) {}
+  asm_cb(problem_c * p) : Assemblies(0), Solutions(0), pn(p->getNumberOfPieces()), puzzle(p) {}
 
   bool assembly(assembly_c * a) {
 
@@ -212,24 +212,24 @@ int main(int argv, char* args[]) {
         printf("%s\n", p.getComment().c_str());
         break;
       case W_NUM_SOLUTIONS:
-        for (unsigned int i = 0; i < p.problemNumber(); i++)
+        for (unsigned int i = 0; i < p.getNumberOfProblems(); i++)
           printf("number of solutions for problem %i: %li\n", i, p.getProblem(i)->getNumSolutions());
         break;
       case W_SOLUTION_PIECES:
       case W_SOLUTION_ASSM:
-        for (unsigned int i = 0; i < p.problemNumber(); i++) {
+        for (unsigned int i = 0; i < p.getNumberOfProblems(); i++) {
           printf("problem %i\n", i);
           for (unsigned int s = 0; s < p.getProblem(i)->getNumSolutions(); s++) {
 
             printf("%03i: ", s+1);
-            const assembly_c * a = p.getProblem(i)->getSolution(s)->getAssembly();
+            const assembly_c * a = p.getProblem(i)->getSavedSolution(s)->getAssembly();
 
             unsigned int pnum = 0;
 
-            for (unsigned int pie = 0; pie < p.getProblem(i)->partNumber(); pie++) {
+            for (unsigned int pie = 0; pie < p.getProblem(i)->getNumberOfParts(); pie++) {
               for (unsigned int pp = 0; pp < p.getProblem(i)->getPartMaximum(pie); pp++) {
                 if (a->isPlaced(pnum)) {
-                  printf("S%i ", p.getProblem(i)->getShape(pie)+1);
+                  printf("S%i ", p.getProblem(i)->getShapeIdOfPart(pie)+1);
                 }
                 pnum++;
               }
@@ -252,7 +252,7 @@ int main(int argv, char* args[]) {
   if (allProblems)
     {
       firstProblem = 0;
-      lastProblem = p.problemNumber();
+      lastProblem = p.getNumberOfProblems();
     }
   else
     {
@@ -261,7 +261,7 @@ int main(int argv, char* args[]) {
     }
   if (assemble) {
 
-    for (unsigned int i = 0; i < p.shapeNumber(); i++)
+    for (unsigned int i = 0; i < p.getNumberOfShapes(); i++)
       p.getShape(i)->initHotspot();
 
     if (!quiet) {
@@ -338,21 +338,21 @@ int main(int argv, char* args[]) {
 
       d = new disassembler_0_c(problem);
 
-      for (unsigned int sol = 0; sol < problem->solutionNumber(); sol++) {
+      for (unsigned int sol = 0; sol < problem->getNumberOfSavedSolutions(); sol++) {
 
-        if (problem->getSolution(sol)->getAssembly()) {
+        if (problem->getSavedSolution(sol)->getAssembly()) {
 
-          separation_c * da = d->disassemble(problem->getSolution(sol)->getAssembly());
+          separation_c * da = d->disassemble(problem->getSavedSolution(sol)->getAssembly());
 
           if (da) {
             if (printSolutions)
-              print(problem->getSolution(sol)->getAssembly(), problem);
+              print(problem->getSavedSolution(sol)->getAssembly(), problem);
 
             if (!quiet)
               printf("level: %i\n", da->getMoves());
 
             if (printDisassemble)
-              print(da, problem->getSolution(sol)->getAssembly(),problem);
+              print(da, problem->getSavedSolution(sol)->getAssembly(),problem);
             delete da;
           }
         }

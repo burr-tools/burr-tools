@@ -175,11 +175,11 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
          * group exists
          */
         if (pr->usesShape(r) && (!pr->resultValid() || pr->getResultId() != (unsigned int)r)) {
-          unsigned int sh = pr->getShapeId(r);
-          for (unsigned int j = 0; j < pr->getShapeGroupNumber(sh); j++)
-            if (pr->getShapeGroup(sh, j) == (c - 2)) {
+          unsigned int sh = pr->getPartIdForShape(r);
+          for (unsigned int j = 0; j < pr->getNumberOfPartGroups(sh); j++)
+            if (pr->getPartGroupId(sh, j) == (c - 2)) {
             type = 1;
-            snprintf(s, 40, "%i", pr->getShapeGroupCount(sh, j));
+            snprintf(s, 40, "%i", pr->getPartGroupCount(sh, j));
             break;
           }
         }
@@ -250,7 +250,7 @@ void groupsEditorTab_c::cb_input(void) {
   else if (editGroup == 1)
     pr->setShapeMaximum(editShape, atoi(input->value()));
   else
-    pr->setShapeGroup(pr->getShapeId(editShape), editGroup-1, atoi(input->value()));
+    pr->setPartGroup(pr->getPartIdForShape(editShape), editGroup-1, atoi(input->value()));
 
   /* hide the edit line */
   input->hide();
@@ -289,10 +289,10 @@ void groupsEditorTab_c::cb_tab(void)
         count = pr->getShapeMaximum(row);
       else {
         if (pr->usesShape(row) && (!pr->resultValid() || pr->getResultId() != row)) {
-          unsigned int sh = pr->getShapeId(row);
-          for (unsigned int j = 0; j < pr->getShapeGroupNumber(sh); j++)
-            if (pr->getShapeGroup(sh, j) == (col - 2))
-              count = pr->getShapeGroupCount(sh, j);
+          unsigned int sh = pr->getPartIdForShape(row);
+          for (unsigned int j = 0; j < pr->getNumberOfPartGroups(sh); j++)
+            if (pr->getPartGroupId(sh, j) == (col - 2))
+              count = pr->getPartGroupCount(sh, j);
         } else
           return;  // shape not used in problem -> no group editing possible
       }
@@ -327,17 +327,17 @@ groupsEditorTab_c::groupsEditorTab_c(int x, int y, int w, int h, puzzle_c * p, u
   this->puzzle = p;
   this->problem = prob;
 
-  rows(puzzle->shapeNumber());
+  rows(puzzle->getNumberOfShapes());
 
   /* find out the number of groups */
   maxGroup = 0;
 
   problem_c * pr = puzzle->getProblem(problem);
 
-  for (unsigned int i = 0; i < pr->partNumber(); i++)
-    for (unsigned int j = 0; j < pr->getShapeGroupNumber(i); j++)
-      if (pr->getShapeGroup(i, j) > maxGroup)
-        maxGroup = pr->getShapeGroup(i, j);
+  for (unsigned int i = 0; i < pr->getNumberOfParts(); i++)
+    for (unsigned int j = 0; j < pr->getNumberOfPartGroups(i); j++)
+      if (pr->getPartGroupId(i, j) > maxGroup)
+        maxGroup = pr->getPartGroupId(i, j);
 
   cols(maxGroup + 3);
   col_header(1);
@@ -400,7 +400,7 @@ void groupsEditor_c::cb_UpdateInterface(void) {
 
   problem_c * pr = puzzle->getProblem(problem);
 
-  for (unsigned int i = 0; i < puzzle->shapeNumber(); i++)
+  for (unsigned int i = 0; i < puzzle->getNumberOfShapes(); i++)
     if (pr->getShapeMinimum(i) != pr->getShapeMaximum(i)) {
       useMaxHoles = true;
       break;

@@ -289,7 +289,7 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
 
           pieces += max;
 
-          if (id >= puzzle.shapeNumber())
+          if (id >= puzzle.getNumberOfShapes())
             pars.exception("the shape ids must be for valid shapes");
 
           if (grp)
@@ -427,7 +427,7 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
   // some post processing after the loading of values
 
   // if, for whatever reasons the shape is was not right, we reset it to an empty shape
-  if (result >= puzzle.shapeNumber())
+  if (result >= puzzle.getNumberOfShapes())
     result = 0xFFFFFFFF;
 
   pars.require(xmlParser_c::END_TAG, "problem");
@@ -456,14 +456,14 @@ void problem_c::removeShape(unsigned short idx) {
     result--;
 }
 
-void problem_c::exchangeShapeId(unsigned int s1, unsigned int s2) {
+void problem_c::exchangeShapes(unsigned int shapeId1, unsigned int shapeId2) {
 
-  if (result == s1) result = s2;
-  else if (result == s2) result = s1;
+  if (result == shapeId1) result = shapeId2;
+  else if (result == shapeId2) result = shapeId1;
 
   for (unsigned int i = 0; i < parts.size(); i++)
-    if (parts[i]->shapeId == s1) parts[i]->shapeId = s2;
-    else if (parts[i]->shapeId == s2) parts[i]->shapeId = s1;
+    if (parts[i]->shapeId == shapeId1) parts[i]->shapeId = shapeId2;
+    else if (parts[i]->shapeId == shapeId2) parts[i]->shapeId = shapeId1;
 }
 
 void problem_c::allowPlacement(unsigned int pc, unsigned int res) {
@@ -499,16 +499,16 @@ bool problem_c::placementAllowed(unsigned int pc, unsigned int res) const {
 }
 
 
-void problem_c::exchangeShape(unsigned int s1, unsigned int s2) {
-  bt_assert(s1 < parts.size());
-  bt_assert(s2 < parts.size());
+void problem_c::exchangeParts(unsigned int partId1, unsigned int partId2) {
+  bt_assert(partId1 < parts.size());
+  bt_assert(partId2 < parts.size());
 
-  if (s1 == s2) return;
+  if (partId1 == partId2) return;
 
-  if (s1 > s2) {
-    unsigned int s = s1;
-    s1 = s2;
-    s2 = s;
+  if (partId1 > partId2) {
+    unsigned int s = partId1;
+    partId1 = partId2;
+    partId2 = s;
   }
 
   unsigned int p1Start;
@@ -518,20 +518,20 @@ void problem_c::exchangeShape(unsigned int s1, unsigned int s2) {
 
   p1Start = p2Start = 0;
 
-  for (unsigned int i = 0; i < s1; i++)
+  for (unsigned int i = 0; i < partId1; i++)
     p1Start += parts[i]->max;
 
-  for (unsigned int i = 0; i < s2; i++)
+  for (unsigned int i = 0; i < partId2; i++)
     p2Start += parts[i]->max;
 
-  p1Count = parts[s1]->max;
-  p2Count = parts[s2]->max;
+  p1Count = parts[partId1]->max;
+  p2Count = parts[partId2]->max;
 
   bt_assert(p1Start+p1Count == p2Start);
 
-  part_c * s = parts[s1];
-  parts[s1] = parts[s2];
-  parts[s2] = s;
+  part_c * s = parts[partId1];
+  parts[partId1] = parts[partId2];
+  parts[partId2] = s;
 
   /* this vector holds the target position of all the involved piece
    * as long as its not in the order 0, 1, 2, ... some pieces must be exchanged
@@ -564,7 +564,7 @@ void problem_c::exchangeShape(unsigned int s1, unsigned int s2) {
 
 void problem_c::setResultId(unsigned int shape)
 {
-  bt_assert(shape < puzzle.shapeNumber());
+  bt_assert(shape < puzzle.getNumberOfShapes());
 
   if (shape != result)
   {
@@ -574,27 +574,27 @@ void problem_c::setResultId(unsigned int shape)
 }
 
 unsigned int problem_c::getResultId(void) const {
-  bt_assert(result < puzzle.shapeNumber());
+  bt_assert(result < puzzle.getNumberOfShapes());
   return result;
 }
 bool problem_c::resultValid(void) const {
-  return result < puzzle.shapeNumber();
+  return result < puzzle.getNumberOfShapes();
 }
 
 /* get the result shape voxel space */
 const voxel_c * problem_c::getResultShape(void) const {
-  bt_assert(result < puzzle.shapeNumber());
+  bt_assert(result < puzzle.getNumberOfShapes());
   return puzzle.getShape(result);
 }
 
 voxel_c * problem_c::getResultShape(void) {
-  bt_assert(result < puzzle.shapeNumber());
+  bt_assert(result < puzzle.getNumberOfShapes());
   return puzzle.getShape(result);
 }
 
 void problem_c::setShapeMinimum(unsigned int shape, unsigned int count)
 {
-  bt_assert(shape < puzzle.shapeNumber());
+  bt_assert(shape < puzzle.getNumberOfShapes());
 
   editProblem();
 
@@ -637,13 +637,13 @@ void problem_c::setShapeMinimum(unsigned int shape, unsigned int count)
 
     // add new placements, pieces are not placed
     for (unsigned int s = 0; s < solutions.size(); s++)
-      solutions[s]->addNonPlacedPieces(pieceNumber(), count);
+      solutions[s]->addNonPlacedPieces(getNumberOfPieces(), count);
   }
 }
 
 void problem_c::setShapeMaximum(unsigned int shape, unsigned int count)
 {
-  bt_assert(shape < puzzle.shapeNumber());
+  bt_assert(shape < puzzle.getNumberOfShapes());
 
   unsigned int pieceIdx = 0;
 
@@ -730,7 +730,7 @@ void problem_c::setShapeMaximum(unsigned int shape, unsigned int count)
 }
 
 unsigned int problem_c::getShapeMinimum(unsigned int shape) const {
-  bt_assert(shape < puzzle.shapeNumber());
+  bt_assert(shape < puzzle.getNumberOfShapes());
 
   for (unsigned int id = 0; id < parts.size(); id++)
     if (parts[id]->shapeId == shape)
@@ -740,7 +740,7 @@ unsigned int problem_c::getShapeMinimum(unsigned int shape) const {
 }
 
 unsigned int problem_c::getShapeMaximum(unsigned int shape) const {
-  bt_assert(shape < puzzle.shapeNumber());
+  bt_assert(shape < puzzle.getNumberOfShapes());
 
   for (unsigned int id = 0; id < parts.size(); id++)
     if (parts[id]->shapeId == shape)
@@ -750,7 +750,7 @@ unsigned int problem_c::getShapeMaximum(unsigned int shape) const {
 }
 
 /* return the number of pieces in the problem (sum of all counts of all shapes */
-unsigned int problem_c::pieceNumber(void) const {
+unsigned int problem_c::getNumberOfPieces(void) const {
   unsigned int result = 0;
 
   for (unsigned int i = 0; i < parts.size(); i++)
@@ -760,17 +760,17 @@ unsigned int problem_c::pieceNumber(void) const {
 }
 
 /* return the shape id of the given shape (index into the shape array of the puzzle */
-unsigned int problem_c::getShape(unsigned int shapeID) const {
+unsigned int problem_c::getShapeIdOfPart(unsigned int shapeID) const {
   bt_assert(shapeID < parts.size());
 
   return parts[shapeID]->shapeId;
 }
 
-unsigned int problem_c::getShapeId(unsigned int shape) const {
-  bt_assert(shape < puzzle.shapeNumber());
+unsigned int problem_c::getPartIdForShape(unsigned int shapeId) const {
+  bt_assert(shapeId < puzzle.getNumberOfShapes());
 
   for (unsigned int i = 0; i < parts.size(); i++)
-    if (parts[i]->shapeId == shape)
+    if (parts[i]->shapeId == shapeId)
       return i;
 
   bt_assert(0);
@@ -788,14 +788,14 @@ bool problem_c::usesShape(unsigned int shape) const {
   return false;
 }
 
-const voxel_c * problem_c::getShapeShape(unsigned int shapeID) const {
-  bt_assert(shapeID < parts.size());
-  return puzzle.getShape(parts[shapeID]->shapeId);
+const voxel_c * problem_c::getPartShape(unsigned int partID) const {
+  bt_assert(partID < parts.size());
+  return puzzle.getShape(parts[partID]->shapeId);
 }
 
-voxel_c * problem_c::getShapeShape(unsigned int shapeID) {
-  bt_assert(shapeID < parts.size());
-  return puzzle.getShape(parts[shapeID]->shapeId);
+voxel_c * problem_c::getPartShape(unsigned int partID) {
+  bt_assert(partID < parts.size());
+  return puzzle.getShape(parts[partID]->shapeId);
 }
 
 /* return the instance count for one shape of the problem */
@@ -892,54 +892,54 @@ assembler_c::errState problem_c::setAssembler(assembler_c * assm) {
   return assembler_c::ERR_NONE;
 }
 
-void problem_c::setShapeGroup(unsigned int shapeID, unsigned short group, unsigned short count) {
-  bt_assert(shapeID < parts.size());
+void problem_c::setPartGroup(unsigned int partID, unsigned short group, unsigned short count) {
+  bt_assert(partID < parts.size());
 
   // not first look, if we already have this group number in our list
-  for (unsigned int i = 0; i < parts[shapeID]->groups.size(); i++)
-    if (parts[shapeID]->groups[i].group == group) {
+  for (unsigned int i = 0; i < parts[partID]->groups.size(); i++)
+    if (parts[partID]->groups[i].group == group) {
 
       /* if we change count, change it, if we set count to 0 remove that entry */
       if (count)
-        parts[shapeID]->groups[i].count = count;
+        parts[partID]->groups[i].count = count;
       else
-        parts[shapeID]->groups.erase(parts[shapeID]->groups.begin()+i);
+        parts[partID]->groups.erase(parts[partID]->groups.begin()+i);
       return;
     }
 
   // not found add, but only groups not equal to 0
   if (group && count)
-    parts[shapeID]->addGroup(group, count);
+    parts[partID]->addGroup(group, count);
 }
 
-unsigned short problem_c::getShapeGroupNumber(unsigned int shapeID) const {
-  bt_assert(shapeID < parts.size());
+unsigned short problem_c::getNumberOfPartGroups(unsigned int partID) const {
+  bt_assert(partID < parts.size());
 
-  return parts[shapeID]->groups.size();
+  return parts[partID]->groups.size();
 }
 
-unsigned short problem_c::getShapeGroup(unsigned int shapeID, unsigned int groupID) const {
+unsigned short problem_c::getPartGroupId(unsigned int shapeID, unsigned int groupID) const {
   bt_assert(shapeID < parts.size());
   bt_assert(groupID < parts[shapeID]->groups.size());
 
   return parts[shapeID]->groups[groupID].group;
 }
 
-unsigned short problem_c::getShapeGroupCount(unsigned int shapeID, unsigned int groupID) const {
+unsigned short problem_c::getPartGroupCount(unsigned int shapeID, unsigned int groupID) const {
   bt_assert(shapeID < parts.size());
   bt_assert(groupID < parts[shapeID]->groups.size());
 
   return parts[shapeID]->groups[groupID].count;
 }
 
-unsigned int problem_c::pieceToShape(unsigned int piece) const {
+unsigned int problem_c::getPartIdToPieceId(unsigned int pieceId) const {
 
   unsigned int shape = 0;
 
   bt_assert(shape < parts.size());
 
-  while (piece >= parts[shape]->max) {
-    piece -= parts[shape]->max;
+  while (pieceId >= parts[shape]->max) {
+    pieceId -= parts[shape]->max;
     shape++;
     bt_assert(shape < parts.size());
   }
@@ -947,19 +947,19 @@ unsigned int problem_c::pieceToShape(unsigned int piece) const {
   return shape;
 }
 
-unsigned int problem_c::pieceToSubShape(unsigned int piece) const {
+unsigned int problem_c::getPartIndexToPieceId(unsigned int pieceId) const {
 
   unsigned int shape = 0;
 
   bt_assert(shape < parts.size());
 
-  while (piece >= parts[shape]->max) {
-    piece -= parts[shape]->max;
+  while (pieceId >= parts[shape]->max) {
+    pieceId -= parts[shape]->max;
     shape++;
     bt_assert(shape < parts.size());
   }
 
-  return piece;
+  return pieceId;
 }
 
 const gridType_c * problem_c::getGridType(void) const { return puzzle.getGridType(); }
