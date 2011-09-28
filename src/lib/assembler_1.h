@@ -48,7 +48,7 @@ class assembler_1_c : public assembler_c {
 
 protected:
 
-  const problem_c * puzzle;
+  const problem_c * problem;
 
 private:
 
