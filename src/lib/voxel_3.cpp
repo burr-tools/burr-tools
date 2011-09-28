@@ -347,7 +347,7 @@ void voxel_3_c::scale(unsigned int amount, bool grid) {
                 voxelGrid = false;
 
                 // the diagonals from the centre of the cube to the corners
-                if (planeCloseness & 0x03 && planeCloseness & 0x0C && planeCloseness & 0x30)
+                if ((planeCloseness & 0x03) && (planeCloseness & 0x0C) && (planeCloseness & 0x30))
                   voxelGrid = true;
 
 

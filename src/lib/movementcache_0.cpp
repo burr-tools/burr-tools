@@ -163,6 +163,6 @@ void movementCache_0_c::getDirection(unsigned int dir, int * x, int * y, int * z
     case 0: *x = 1; *y = *z = 0; break;
     case 1: *y = 1; *x = *z = 0; break;
     case 2: *z = 1; *x = *y = 0; break;
-    default: bt_assert(0);
+    default: bt_assert(0); break;
   }
 }

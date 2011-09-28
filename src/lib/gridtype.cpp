@@ -63,6 +63,7 @@ gridType_c::gridType_c(xmlParser_c & pars)
 
     default:
       pars.exception("puzzle with unknown grid type");
+      break;
   }
 
   pars.skipSubTree();
@@ -111,6 +112,7 @@ gridType_c::gridType_c(gridType gt) {
 
     default:
       bt_assert(0);
+      break;
   }
 
   sym = 0;

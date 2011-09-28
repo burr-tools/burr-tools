@@ -853,7 +853,7 @@ voxel_c::voxel_c(xmlParser_c & pars, const gridType_c * g) : gt(g), hx(0), hy(0)
         case '7': color = color * 10 + 7; break;
         case '8': color = color * 10 + 8; break;
         case '9': color = color * 10 + 9; break;
-        default : pars.exception("unrecognised character in piece voxel space");
+        default : pars.exception("unrecognised character in piece voxel space"); break;
       }
 
       if (color > 63)
@@ -1084,7 +1084,7 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
             }
             else
             {
-              if (!fast & (offset > 0) && ((nx > x) || (nx == x && ny > y) || (nx == x && ny == y && nz > z)))
+              if ((!fast) && (offset > 0) && ((nx > (int)x) || (nx == (int)x && ny > (int)y) || (nx == (int)x && ny == (int)y && nz > (int)z)))
               {
                 // add connection prisms
 
@@ -1096,7 +1096,7 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
 
                 while (getNeighbor(n2, 0, nx, ny, nz, &mx, &my, &mz))
                 {
-                  if (mx == x && my == y && mz == z)
+                  if ((mx == (int)x) && (my == (int)y) && (mz == (int)z))
                   {
                     found = true;
                     break;

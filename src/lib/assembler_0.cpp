@@ -445,6 +445,7 @@ int assembler_0_c::prepare(void) {
         break;
       default:
         columns[i] = 0;
+        break;
       }
     }
   }

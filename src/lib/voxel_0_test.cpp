@@ -29,7 +29,7 @@ BOOST_AUTO_TEST_CASE( voxel_0_test )
 
   BOOST_CHECK( v.getXYZ() == 6 );
 
-  for (int i = 0; i < v.getXYZ(); i++)
+  for (unsigned int i = 0; i < v.getXYZ(); i++)
     BOOST_CHECK( v.getState(i) == voxel_c::VX_EMPTY );
 
 }

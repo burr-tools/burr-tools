@@ -366,11 +366,13 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
       case voxel_c::VX_VARIABLE:
         min[c] = 0;
         holeColumns.push_back(c);
+        // no break;
       case voxel_c::VX_FILLED:
         columns[i] = c++;
         break;
       default:
         columns[i] = 0;
+        break;
       }
     }
 
@@ -1648,7 +1650,7 @@ void assembler_1_c::iterative(void) {
 
         (finished_a.back())++;
 
-        // fall through to state 3
+        // no break, fall through  to state 3
 
       case 3:
 
@@ -1666,7 +1668,7 @@ void assembler_1_c::iterative(void) {
           break;
         }
 
-        // fall through to state 4
+        // no break, fall through to state 4
 
       case 4:
 
@@ -1741,13 +1743,13 @@ void assembler_1_c::iterative(void) {
           break;
         }
 
-        // fall through to state 5
+        // no break, fall through to state 5
 
       case 5:
 
         unhiderows();
 
-        // fall through to state 6
+        // no break, fall through to state 6
 
       case 6:
 
@@ -1778,7 +1780,7 @@ void assembler_1_c::iterative(void) {
         }
           // else fall through to state 7
 
-        // fall through to state 7
+        // no break, fall through to state 7
 
       case 7:
 

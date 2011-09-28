@@ -98,7 +98,7 @@ void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_
     poly = getMesh(v, holes);
     if (!poly) throw stlException_c("Something went wrong when generating the STL polyhedron");
   }
-  catch (stlException_c e)
+  catch (stlException_c & e)
   {
     fclose(f);
     throw e;

@@ -196,7 +196,7 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
       pars.exception("disassembly state needs dx, dy and dz subnode");
   }
 
-  catch (xmlParserException_c e)
+  catch (xmlParserException_c & e)
   {
     if (dx) delete [] dx;
     if (dy) delete [] dy;
@@ -462,7 +462,7 @@ int separation_c::movesText2(char * txt, int len) const {
 
   bt_assert(states.size() > 0);
 
-  int len2 = snprintf(txt, len, "%u", states.size()-1);
+  int len2 = snprintf(txt, len, "%zu", states.size()-1);
 
   if (len2+5 > len)
     return len2;

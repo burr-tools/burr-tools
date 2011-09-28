@@ -24,7 +24,7 @@
 
 #include "../halfedge/polyhedron.h"
 
-#include "math.h"
+#include <math.h>
 
 /* this file contains the mesh generation part of voxel_2. This is so big for the spheres
  * that I didn't want to put it into the normal file
@@ -768,7 +768,7 @@ static void drawConnectingHole(
 
     // Do these next lines to make round (circular) holes
     // otherwise they will be square.
-    if (edgeflag & 2 && par.hole_diam > 0)
+    if ((edgeflag & 2) && (par.hole_diam > 0))
     {
       float connectingHoleRadius = 0.5 * par.hole_diam / par.sphere_rad;
       shiftToConnectingHole(hx, hy, hz, connectingHoleRadius, &x9, &y9, &z9);
