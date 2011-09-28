@@ -46,7 +46,7 @@ public:
    * Try to disassemble an assembly.
    *
    * Because we can only have or don't have a disassembly sequence
-   * we don't need the same complicated callback interface. The function
+   * we don't need the same complicated call-back interface. The function
    * returns either the disassembly sequence or a null pointer.
    * you need to take care of freeing the disassembly sequence after
    * doing with it whatever you want

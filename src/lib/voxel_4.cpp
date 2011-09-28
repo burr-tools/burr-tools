@@ -54,7 +54,7 @@ bool voxel_4_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, in
 
   /* index 0, position of voxel
    * index 1, cube type (position even or not)
-   * index 3, first entry voxel, other entries neighbors
+   * index 3, first entry voxel, other entries neighbours
    * index 4, x,y,z coordinate
    */
 
@@ -221,7 +221,7 @@ void voxel_4_c::scale(unsigned int amount, bool /*grid*/) {
     for (unsigned by = 0; by < bsy; by++)
       for (unsigned bz = 0; bz < bsz; bz++) {
 
-        /* blocktype for the source block */
+        /* block-type for the source block */
         unsigned int blockType = (bx+by+bz) & 1;
 
         /* for all voxels of the source block */

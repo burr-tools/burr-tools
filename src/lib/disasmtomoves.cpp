@@ -226,7 +226,7 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
       else
         steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, array, center_active, cx, cy, cz);
 
-      /* if the steps tell us that we are currenlty animating the removed part
+      /* if the steps tell us that we are currently animating the removed part
        * and there actually _is_ a removed animation, we hide all
        * pieces that are not removed
        */

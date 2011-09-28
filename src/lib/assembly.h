@@ -27,7 +27,7 @@
 
 #include <vector>
 
-// this vailue is used for transformation to specify unplaced pieces
+// this value is used for transformation to specify unplaced pieces
 #define UNPLACED_TRANS 0xff
 
 class problem_c;
@@ -54,7 +54,7 @@ public:
   /** position of the hotspot of the piece */
   int xpos, ypos, zpos;
 
-  /** initialize placement with given values */
+  /** Initialise placement with given values */
   placement_c(unsigned char tran, int x, int y, int z) : transformation(tran), xpos(x), ypos(y), zpos(z) {}
   /** copy constructor */
   placement_c(const placement_c * orig) : transformation(orig->transformation), xpos(orig->xpos), ypos(orig->ypos), zpos(orig->zpos) {}
@@ -85,7 +85,7 @@ public:
     return *this;
   }
 
-  /** comparison operation, this is an arbitrary oerder for placements */
+  /** comparison operation, this is an arbitrary order for placements */
   bool operator < (const placement_c & b) const {
     if (transformation < b.transformation) return true;
     if (transformation > b.transformation) return false;
@@ -310,7 +310,7 @@ public:
   /**
    * compare 2 assemblies according to their used pieces.
    * used to sort assemblies by the pieces they use.
-   * Assemblies wich use pieces with smaller indices are smaller than assemblies
+   * Assemblies which use pieces with smaller indices are smaller than assemblies
    * that use pieces with bigger indices.
    */
   int comparePieces(const assembly_c * b) const;

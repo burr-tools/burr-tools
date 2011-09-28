@@ -37,7 +37,7 @@
  * is again similar to all. You have the base class and a derived class for concrete
  * grid types (e.g. one for bricks, one for spheres...)
  *
- * The concrete classes do the grid dependend stuff and add lots of triangles to the file
+ * The concrete classes do the grid dependent stuff and add lots of triangles to the file
  */
 
 #if defined(WIN32) || defined(__APPLE__)

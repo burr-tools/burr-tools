@@ -51,7 +51,7 @@ static int connectionPoints[12][3] = {
  * As the touch point surrounding circles do have their maximal radius the circles touch, that
  * is where those point given below are.
  *
- * We do not really give the real point but only a vector that is a direction seen from the center
+ * We do not really give the real point but only a vector that is a direction seen from the centre
  * of the sphere, when you scale that vector to the radius of the sphere you will end up at the points
  *
  * As those points are exactly at the middle between 2 touching points all we need to do is take the average
@@ -61,7 +61,7 @@ static int connectionPoints[12][3] = {
  * is not really on the circle but only in the direction where we want the point to be. It works anyway because
  * before using a point we shift coordinates until they are on the circle
  *
- * if you cut the sphere in half so that a touching point is on the cutting plane and then connect center of
+ * if you cut the sphere in half so that a touching point is on the cutting plane and then connect centre of
  * the sphere with the 2 points on the circle of the cut sphere where the touching circle lies you will get
  * an equilateral triangle, to the angle of the circle is 60 degree
  */
@@ -273,11 +273,11 @@ typedef struct
 {
   float sphere_rad;    // Radius of the sphere (outer layer)
   float inner_rad;     // Radius of the sphere (inner layer, radius of the hole)
-  float offset;        // offset by which the sphere radii are made smaller (subtraction)
+  float offset;        // offset by which the sphere radiuses are made smaller (subtraction)
   bool outside;        // is currently drawn sphere the outer or inner sphere
   float hole_diam;     // diameter of the hole between inside and outside > 0 round hole, <0 square hole
   float connection_rad;// radius of the connection between spheres (1 = maximal possible radius)
-  float xc, yc, zc;    // center of the current sphere
+  float xc, yc, zc;    // centre of the current sphere
 
   // some internal values used to calculate the curve that makes up the transition between
   // the sphere surface and the connection cylinder
@@ -344,7 +344,7 @@ static void outTriangle(
   f->_color = par.color;
 }
 
-// normalize a vector
+// normalise a vector
 static void normalize(float *x, float *y, float *z)
 {
   float l = sqrt(*x * *x + *y * *y + *z * *z);
@@ -484,11 +484,11 @@ static void drawTriangle(
 
 
 /* when drawing a connection this function calculates
- * the radius (meaning how far is the surfae away from the center of the sphere
+ * the radius (meaning how far is the surface away from the centre of the sphere
  * for a certain angle from the touching point
  *
  * this value is the sphere radius for the outer rim and will increase as the
- * angle gets smaller and we get closer to the point, where the cylinsers touch
+ * angle gets smaller and we get closer to the point, where the cylinders touch
  * inside of the cylinder the value is not defined
  */
 static float radius(float a, genPar & par)
@@ -671,7 +671,7 @@ static void drawHole(
   }
   else
   {
-    // Outermost section of the connection (farthest from center)
+    // Outermost section of the connection (farthest from centre)
     if (par.holeStart < par.lineEnd)
       drawHolePiece(i, par.holeStart, par.lineEnd, x1, y1, z1, x2, y2, z2, 0, par);
 
@@ -824,11 +824,11 @@ static void drawConnectingHole(
 }
 
 /* create one sphere.
- * neighbors shows, where we need connections to the neibors (each bit set means that
+ * neighbours shows, where we need connections to the neighbours (each bit set means that
  * there must be a connection cylinder, no bit set close the sphere) the bits are in
- * the same order as the neighbors or connection points
+ * the same order as the neighbours or connection points
  *
- * bollow specifies, whether the sphere is supposed to be hollow
+ * hollow specifies, whether the sphere is supposed to be hollow
  * variable, shows, whether the sphere is supposed to be a variable sphere (use the bevel face as variable marker)
  */
 static void makeSphere(uint16_t neighbors, int recursion, bool hollow, bool variable, genPar & par)
@@ -883,7 +883,7 @@ static void makeSphere(uint16_t neighbors, int recursion, bool hollow, bool vari
   else
     par.flags = FF_COLOR_LIGHT;
 
-  // followind faces are supposed to stay, when in wire frame mode
+  // following faces are supposed to stay, when in wire frame mode
   par.flags |= FF_WIREFRAME;
 
   /* fill the 8 triangular gaps */
@@ -940,7 +940,7 @@ static void makeSphere(uint16_t neighbors, int recursion, bool hollow, bool vari
           (int)recursion, par);
     }
 
-    /* Then the center square */
+    /* Then the centre square */
     if (!hollow || fabs(par.hole_diam) < Epsilon)
     { // not hollow or no holes
       for (int k = 0; k < 2; k++)
@@ -968,7 +968,7 @@ static void makeSphere(uint16_t neighbors, int recursion, bool hollow, bool vari
     else
     { //hollow with holes
 
-      // hx,hy,hz, location of the center of the hole into the interior
+      // hx,hy,hz, location of the centre of the hole into the interior
       float hx = 0.125*(squarePoints[i][0][0] + squarePoints[i][2][0] +
                       squarePoints[i][4][0] + squarePoints[i][6][0]);
       float hy = 0.125*(squarePoints[i][0][1] + squarePoints[i][2][1] +
@@ -1075,7 +1075,7 @@ Polyhedron * voxel_2_c::getMeshInternal(float sphere_rad, float connection_rad, 
       for (unsigned int z = 0; z < getZ(); z++) {
         if (validCoordinate(x, y, z) && !isEmpty(x, y, z))
         {
-          /* collect neighbors for a bitmask */
+          /* collect neighbours for a bitmask */
           uint16_t neighbors = 0;
 
           int nx, ny, nz;
@@ -1154,26 +1154,26 @@ void voxel_2_c::getConnectionFace(int x, int y, int z, int n, double /*bevel*/, 
   static const float B = sqrt(0.125);
 
   /* array of
-   * - of the 12 neighbors
+   * - of the 12 neighbours
    * - of the 4 points of a rhombus
    * - x, y, z
    */
   static const float faces[12][4][3] =
   {
-    /* neighbor at -1, -1,  0 */ { {0, -A, 0}, {-B, -B,  B}, {-A, 0, 0}, {-B, -B, -B} },
-    /* neighbor at -1,  1,  0 */ { {0,  A, 0}, {-B,  B, -B}, {-A, 0, 0}, {-B,  B,  B} },
-    /* neighbor at  1, -1,  0 */ { {0, -A, 0}, { B, -B, -B}, { A, 0, 0}, { B, -B,  B} },
-    /* neighbor at  1,  1,  0 */ { {0,  A, 0}, { B,  B,  B}, { A, 0, 0}, { B,  B, -B} },
+    /* neighbour at -1, -1,  0 */ { {0, -A, 0}, {-B, -B,  B}, {-A, 0, 0}, {-B, -B, -B} },
+    /* neighbour at -1,  1,  0 */ { {0,  A, 0}, {-B,  B, -B}, {-A, 0, 0}, {-B,  B,  B} },
+    /* neighbour at  1, -1,  0 */ { {0, -A, 0}, { B, -B, -B}, { A, 0, 0}, { B, -B,  B} },
+    /* neighbour at  1,  1,  0 */ { {0,  A, 0}, { B,  B,  B}, { A, 0, 0}, { B,  B, -B} },
 
-    /* neighbor at -1,  0, -1 */ { {-A, 0, 0}, {-B,  B, -B}, {0, 0, -A}, {-B, -B, -B} },
-    /* neighbor at -1,  0,  1 */ { {-A, 0, 0}, {-B, -B,  B}, {0, 0,  A}, {-B,  B,  B} },
-    /* neighbor at  1,  0, -1 */ { { A, 0, 0}, { B, -B, -B}, {0, 0, -A}, { B,  B, -B} },
-    /* neighbor at  1,  0,  1 */ { { A, 0, 0}, { B,  B,  B}, {0, 0,  A}, { B, -B,  B} },
+    /* neighbour at -1,  0, -1 */ { {-A, 0, 0}, {-B,  B, -B}, {0, 0, -A}, {-B, -B, -B} },
+    /* neighbour at -1,  0,  1 */ { {-A, 0, 0}, {-B, -B,  B}, {0, 0,  A}, {-B,  B,  B} },
+    /* neighbour at  1,  0, -1 */ { { A, 0, 0}, { B, -B, -B}, {0, 0, -A}, { B,  B, -B} },
+    /* neighbour at  1,  0,  1 */ { { A, 0, 0}, { B,  B,  B}, {0, 0,  A}, { B, -B,  B} },
 
-    /* neighbor at  0, -1, -1 */ { {0, 0, -A}, { B, -B, -B}, {0, -A, 0}, {-B, -B, -B} },
-    /* neighbor at  0, -1,  1 */ { {0, 0,  A}, {-B, -B,  B}, {0, -A, 0}, { B, -B,  B} },
-    /* neighbor at  0,  1, -1 */ { {0, 0, -A}, {-B,  B, -B}, {0,  A, 0}, { B,  B, -B} },
-    /* neighbor at  0,  1,  1 */ { {0, 0,  A}, { B,  B,  B}, {0,  A, 0}, {-B,  B,  B} },
+    /* neighbour at  0, -1, -1 */ { {0, 0, -A}, { B, -B, -B}, {0, -A, 0}, {-B, -B, -B} },
+    /* neighbour at  0, -1,  1 */ { {0, 0,  A}, {-B, -B,  B}, {0, -A, 0}, { B, -B,  B} },
+    /* neighbour at  0,  1, -1 */ { {0, 0, -A}, {-B,  B, -B}, {0,  A, 0}, { B,  B, -B} },
+    /* neighbour at  0,  1,  1 */ { {0, 0,  A}, { B,  B,  B}, {0,  A, 0}, {-B,  B,  B} },
   };
 
   bt_assert(n < 12);

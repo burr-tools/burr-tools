@@ -173,7 +173,7 @@ public:
 
 private:
 
-  // the callback
+  // the call-back
   bool assembly(assembly_c* a);
 
 public:

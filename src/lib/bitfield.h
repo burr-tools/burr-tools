@@ -33,7 +33,7 @@ template<int bits>
 
 /**
  * this is a fast class to have a bit vector with a constant number of bits
- * the number it dependend on the template parameter
+ * the number it dependent on the template parameter
  */
 class bitfield_c {
 
@@ -48,7 +48,7 @@ class bitfield_c {
       clear();
     }
 
-    /// constructor, the bits are initialized to the value of the string
+    /// constructor, the bits are initialised to the value of the string
     bitfield_c(const char * val) {
       clear();
       operator=(val);
@@ -92,13 +92,13 @@ class bitfield_c {
     }
 
     /**
-     *  assign the the string repesentation of a value to
+     *  assign the the string representation of a value to
      *  the bits of this bitfield
      *
      *  The string must be a hexadecimal value, no prefix no
      *  suffix, you can use upper and lower case letters.
      *
-     *  The string must not be larget than allowed. If the string
+     *  The string must not be larger than allowed. If the string
      *  is shorter than necessary the remaining values are left untouched,
      *  so it's up to you to clear them before calling this function
      */

@@ -76,7 +76,7 @@ unsigned int* movementCache_0_c::moCalcValues(const voxel_c * sh1, const voxel_c
    * one hit we had, if that value is smaller than the saved one, we save that
    *
    * to avoid the need for a check for the case that we need to hit a
-   * cube 1 first before calculating a gap size I initialize the gap
+   * cube 1 first before calculating a gap size I initialise the gap
    * start marker so that the resulting gap would be so big that it is bigger
    * than the initial value
    */

@@ -33,7 +33,7 @@
  * A transformation rotates and mirrors a shape inside its spacegrid. That means the
  * transformed shapes again resides completely within the grid. Transformations are
  * normally completely opaque to the user. They are simply a number that corresponds
- * to one posible rotation. Some things are rules though
+ * to one possible rotation. Some things are rules though
  *
  * - The lower transformation numbers don't contains mirror transformations
  * - The upper transformations all contain a mirror
@@ -42,7 +42,7 @@
  * symmetry can mean either of 2 possible things:
  *
  * - A transformation that will reorient a shape onto itself
- * - or A list of all transformations that with the above property, sometimes refered to as symmetry group
+ * - or A list of all transformations that with the above property, sometimes referred to as symmetry group
  *
  * For each shape we can calculate such a list of transformations. There are some
  * things to keep in mind:
@@ -83,7 +83,7 @@ class voxel_c;
 /**
  * this class contains all kinds of functions to handle symmetry groups
  *
- * This is an absract base class only the derived classes actually do something.
+ * This is an abstract base class only the derived classes actually do something.
  * If you need an instance of this class you should always use the corresponding
  * gridType_c function
  */

@@ -31,7 +31,7 @@
 #include <string.h>
 
 /**
- * this function fills the matrixx with the movement values of
+ * this function fills the matrix with the movement values of
  * pairs of pieces
  * this is done using the movement cache
  */
@@ -51,7 +51,7 @@ void movementAnalysator_c::prepare(void) {
                           searchnode->getTrans(i), searchnode->getTrans(j),
                           (*pieces)[i], (*pieces)[j], idx);
 
-      // the diagonals are always zero and will stay that for ever they are initialized
+      // the diagonals are always zero and will stay that for ever they are initialised
       // to that value in the init function so only the other values need
       idx += idxCol;
     }
@@ -63,7 +63,7 @@ void movementAnalysator_c::prepare(void) {
    * is much cheaper (usually a few more corrections sometimes
    * event zero) and then it finished
    *
-   * so I change this: alsways look, if a change done leads to other necessary
+   * so I change this: always look, if a change done leads to other necessary
    * changes, and only if that is the case do another loop
    */
 
@@ -80,7 +80,7 @@ void movementAnalysator_c::prepare(void) {
       again = false;
 
 #if 0
-      // this is just for commentaty reasons it show the same algorithmus as below
+      // this is just for commentary reasons it show the same algorithm as below
       // just a bit more understandable
 
       for (unsigned int y = 0; y < pieces->size(); y++)
@@ -184,8 +184,8 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
   unsigned int moved_pieces = 1;
   bool check[piecenumber];
 
-  /* initialize the movement matrix. We want to move 'nextpiece' 'nextstep' units
-   * into the current direction, so we initialize the matrix with all
+  /* Initialise the movement matrix. We want to move 'nextpiece' 'nextstep' units
+   * into the current direction, so we initialise the matrix with all
    * zero except for our piece
    */
   for (int i = 0; i < next_pn; i++) {
@@ -204,7 +204,7 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
   unsigned int rowIdx3 = (piecenumber*next_pn-1)*dirs;
 
   // the idea here is the following, if we want to move
-  // a piece the matrix tells us if we can do that with respecto to
+  // a piece the matrix tells us if we can do that with respect to
   // another piece, if we can't that other piece must be moved as well
   // and with that new moved piece we need to check that piece, too
   //
@@ -230,7 +230,7 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
             // moving it moves by the same amount as the other piece, so there
             // will be no problems here
             if ((i != j) && (movement[j] == 0)) {
-              // if the requested movement is more than the matrix alows
+              // if the requested movement is more than the matrix allows
               // we must also move the new piece
 
               if (movement[i] > *idx) {  // idx points to matrix[(j+piecenumber*i)*dirs+nd]
@@ -436,10 +436,10 @@ disassemblerNode_c * movementAnalysator_c::newNode(unsigned int amount) {
 /* creates a new node that contains the merged movements of the given 2 nodes
  * merged movement means that a piece is moved the maximum amount specified in
  * both nodes. But only one direction is allowed, so if one piece moves this
- * way and another piece that way 0 i sreturned
+ * way and another piece that way 0 is returned
  * the function also returns zero, if the new node would be identical to n1 or n0
  * also the amount must be identical in both nodes, so if piece a moves 1 unit
- * in node n0 and andother piece move 2 units in node n1 0 is returned
+ * in node n0 and another piece move 2 units in node n1 0 is returned
  */
 disassemblerNode_c * movementAnalysator_c::newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1) {
 
@@ -498,7 +498,7 @@ disassemblerNode_c * movementAnalysator_c::newNodeMerge(const disassemblerNode_c
 
 void movementAnalysator_c::init_find(disassemblerNode_c * nd, const std::vector<unsigned int> & pcs) {
 
-  /* initialize the state machine for the find routine
+  /* Initialise the state machine for the find routine
    */
   nextdir = 0;
   nextpiece = 0;

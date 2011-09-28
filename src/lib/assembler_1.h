@@ -79,7 +79,7 @@ private:
    * obtain the assembly for the found solution when the
    * field avoidTransformedAssemblies is true then the assembly
    * is checked, if it has been found before. The assembly
-   * is normalized in inserted into a set of assemblies for
+   * is normalised in inserted into a set of assemblies for
    * later reference
    */
   void solution(void);
@@ -203,7 +203,7 @@ protected:
    */
   int AddPieceNode(unsigned int piece, unsigned int rot, unsigned int x, unsigned int y, unsigned int z);
 
-  /* adds a node with a vertain weight, for piece range node counting
+  /* adds a node with a certain weight, for piece range node counting
    */
   void AddRangeNode(unsigned int col, unsigned int piecenode, unsigned int weight);
 
@@ -215,7 +215,7 @@ protected:
   void getPieceInformation(unsigned int node, unsigned int * piece, unsigned char *tran, int *x, int *y, int *z) const;
 
   /* this adds a normal node that represents a used voxel within the solution
-   * piecenode is the number that you get from AddPieceNode, col is a number
+   * piece-node is the number that you get from AddPieceNode, col is a number
    * that can be calculated from the x, y and z position of the voxel
    */
   void AddVoxelNode(unsigned int col, unsigned int piecenode);
@@ -225,8 +225,8 @@ protected:
   unsigned int getColCount(int pos) { return colCount[pos]; }
 
   /* finally after assembling a puzzle and creating something meaningful from the cover
-   * information you need to call the callback of the user, use this function to get the
-   * callback class
+   * information you need to call the call-back of the user, use this function to get the
+   * call-back class
    */
   assembler_cb * getCallback(void) { return asm_bc; }
 
@@ -235,7 +235,7 @@ protected:
   /* call this function if you think that there might be
    * rotated assemblies found. Here a description of how the whole aspect of
    * rotation avoiding is supposed to work
-   * the front end is supposed to initialize the assembler so that as few as
+   * the front end is supposed to initialise the assembler so that as few as
    * possible double assemblies are found by selecting one piece and not placing
    * this piece in all possible positions. But this will not always work, if
    * the front end is are not absolutely certain that it has avoided all possible

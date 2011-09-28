@@ -52,8 +52,8 @@ class gridType_c {
       GT_BRICKS,                   ///< cubes
       GT_TRIANGULAR_PRISM,         ///< triangles stacked in Z-direction
       GT_SPHERES,                  ///< tightly packed spheres
-      GT_RHOMBIC,                  ///< complicated cut cube to build rhombic dodecahrdra
-      GT_TETRA_OCTA,               ///< spacegrid for with tetraedra and octrahera, also a cut cube
+      GT_RHOMBIC,                  ///< complicated cut cube to build rhombic dodecahedra
+      GT_TETRA_OCTA,               ///< spacegrid for with tetrahedron and octrahera, also a cut cube
 
       GT_NUM_GRIDS                 ///< always the last entry, the number of different grids
     } gridType;
@@ -92,7 +92,7 @@ class gridType_c {
     /** used to save to XML */
     void save(xmlWriter_c & xml) const;
 
-    /* some specializes constructors */
+    /* some specialised constructors */
 
     /** create a cube grid */
     gridType_c(void);
@@ -131,12 +131,12 @@ class gridType_c {
 
     /**
      * Find a suitable assembler for the given problem.
-     * This function is different from the above, it is not dependend on the
+     * This function is different from the above, it is not dependent on the
      * gridtype of the puzzle but on some of the parameters of the puzzle, e.g
      * has the puzzle multipieces, has the puzzle piece count ranges, ...
      * the function tries to find the fastest assembler that can handle
      * the puzzle.
-     * because we are not dependend on the gridtype this function is static
+     * because we are not dependent on the gridtype this function is static
      * but it needs to know the puzzle
      */
     static assembler_c * findAssembler(const problem_c * p);

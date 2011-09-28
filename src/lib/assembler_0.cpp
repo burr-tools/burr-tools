@@ -496,7 +496,7 @@ int assembler_0_c::prepare(void) {
       checkForTransformedAssemblies(symBreakerShape, 0);
 
     if (sym->symmetryContainsMirror(resultSym)) {
-      /* we need to to the mirror check here, and initialize the mirror
+      /* we need to to the mirror check here, and initialise the mirror
        * structure, otherwise no mirror check will be done
        */
 
@@ -588,7 +588,7 @@ int assembler_0_c::prepare(void) {
 
   /* node 0 is the start node for everything */
 
-  /* even thou the matrix has a column for each result voxel and each piece we leave out
+  /* even though the matrix has a column for each result voxel and each piece we leave out
    * the VARIABLE voxels in the ring list of the header. This is to avoid selecting these
    * columns for filling. The columns for the VARIABLE voxels are only there to make sure
    * these voxels are only used once
@@ -1078,7 +1078,7 @@ void assembler_0_c::reduce(void) {
       reducePiece = p;
 
       // place the piece and check, if this leads to some
-      // infillable holes or unplaceable pieces or whatever
+      // unfillable holes or unplaceable pieces or whatever
       // conditions that make a solution impossible
       cover(p+1);
 

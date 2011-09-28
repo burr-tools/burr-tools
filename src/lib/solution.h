@@ -69,7 +69,7 @@ public:
   solution_c(assembly_c * assm, unsigned int assmNum, separationInfo_c * ti, unsigned int solNum) :
     assembly(assm), tree(0), treeInfo(ti), assemblyNum(assmNum), solutionNum(solNum) {}
 
-  /** creat a solution with assembly only, no disassembly */
+  /** create a solution with assembly only, no disassembly */
   solution_c(assembly_c * assm, unsigned int assmNum) :
     assembly(assm), tree(0), treeInfo(0), assemblyNum(assmNum), solutionNum(0) {}
 

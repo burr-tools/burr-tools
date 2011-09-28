@@ -121,7 +121,7 @@ bool voxel_2_c::transform(unsigned int nr) {
   unsigned int nsz = maxz-minz+1;
 
   // don't make the new space smaller than the old one
-  // if the old one was larger center the object inside it
+  // if the old one was larger centre the object inside it
   if ((nsx < sx) || (nsy < sy) || (nsz < sz)) {
     // we must make sure that we shift so that we don't change the
     // state of the voxels, do (dx+dy+dz)&1 must be 0
@@ -251,13 +251,13 @@ void voxel_2_c::transformPoint(int * x, int * y, int * z, unsigned int trans) co
   zpn /= sqrt(0.5);
 
   // it is possible that the resulting coordinates are invalid (not on a whole coordinate or at
-  // an invalid coordinate, but we assume that the error we indroduce here will be cancelled out
+  // an invalid coordinate, but we assume that the error we introduce here will be cancelled out
   // later on, when other coordinates are transformed
   //
   // this function is only used in the assembly class to transform an assembly in there we use
-  // this function twice, once to remove hotspot movement and once to tranformt the ancor point
+  // this function twice, once to remove hotspot movement and once to transform the anchor point
   // or pieces. These 2 values are subtracted. The assumption is that both time we introduce the
-  // same errror with the rounding below and due to subtration the error cancelles itself out
+  // same error with the rounding below and due to subtraction the error cancels itself out
   // lets cross fingers....
 
   *x = (int)floor(xpn+0.5);

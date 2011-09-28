@@ -346,12 +346,12 @@ void voxel_3_c::scale(unsigned int amount, bool grid) {
 
                 voxelGrid = false;
 
-                // the diagonals from the center of the cube to the corners
+                // the diagonals from the centre of the cube to the corners
                 if (planeCloseness & 0x03 && planeCloseness & 0x0C && planeCloseness & 0x30)
                   voxelGrid = true;
 
 
-                // from the center of the cube to the center of the faces
+                // from the centre of the cube to the centre of the faces
                 // here we need additional information to get a diagonal cut
                 if ((planeCloseness & 0x03) == 0x03)
                   if (fabs(((ax-2.5*amount+0.5)*planes[0][0] +

@@ -40,8 +40,8 @@
  * ending up outside the grid positions. Those transformations will not be
  * done.
  *
- * An other irregularity is the neighbor function, which only returns first
- * grade neighbors (face touching in the other grids). The other neighbors
+ * An other irregularity is the neighbour function, which only returns first
+ * grade neighbours (face touching in the other grids). The other neighbours
  * don't make sense.
  */
 class voxel_2_c : public voxel_c {

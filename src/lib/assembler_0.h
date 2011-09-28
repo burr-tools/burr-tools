@@ -33,7 +33,7 @@ class mirrorInfo_c;
 /**
  * This is an assembler class.
  *
- * It is mor or less identical to Don Knuths idea. Some changes have been done though
+ * It is more or less identical to Don Knuths idea. Some changes have been done though
  * to provide for holes. This class can not handle ranges or multi-pieces.
  *
  * All involved pieces must be there exactly one time. But in that case it is a bit
@@ -109,11 +109,11 @@ private:
   void remove_column(register unsigned int c);
 
   /* this function gets called whenever an assembly was found
-   * when a callback is available it will call getAssembly to
+   * when a call-back is available it will call getAssembly to
    * obtain the assembly for the found solution when the
    * field avoidTransformedAssemblies is true then the assembly
    * is checked, if it has been found before. The assembly
-   * is normalized in inserted into a set of assemblies for
+   * is normalised in inserted into a set of assemblies for
    * later reference
    */
   void solution(void);
@@ -263,7 +263,7 @@ protected:
   /* call this function if you think that there might be
    * rotated assemblies found. Here a description of how the whole aspect of
    * rotation avoiding is supposed to work
-   * the front end is supposed to initialize the assembler so that as few as
+   * the front end is supposed to initialise the assembler so that as few as
    * possible double assemblies are found by selecting one piece and not placing
    * this piece in all possible positions. But this will not always work, if
    * the front end is are not absolutely certain that it has avoided all possible

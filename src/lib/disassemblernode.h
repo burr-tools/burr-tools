@@ -139,7 +139,7 @@ public:
    *
    * Create a new node with the given number of pieces the given come-from pointer
    * and the defined values for direction, amount.
-   * Thepsize is added to the waylength of the come-from pointer and the result will be
+   * Stepsize is added to the waylength of the come-from pointer and the result will be
    * saved in our waylength value
    */
   disassemblerNode_c(unsigned int pn, disassemblerNode_c * comf, int _dir, int _amount, int step = 1);
@@ -170,7 +170,7 @@ public:
    * this function is used by outsiders to free
    * their own pointers to this node.
    *
-   * if the function returs true, delete the node
+   * if the function returns true, delete the node
    */
   bool decRefCount(void) {
     bt_assert(refcount > 0);
@@ -195,7 +195,7 @@ public:
   unsigned int hash(void) const;
 
   /**
-   * The comparison operations using "normalized" positions.
+   * The comparison operations using "normalised" positions.
    * This means all the pieces are shifted so, that the position
    * of piece 0 is (0; 0; 0). This prevents us from shifting
    * the whole set around without movement of the pieces

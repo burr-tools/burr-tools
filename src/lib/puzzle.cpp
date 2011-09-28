@@ -32,24 +32,24 @@
 /** \page xmpuzzleFormat The xmpuzzle format
  *
  * I will try to explain some of the features of the xmpuzzle file format. But please keep
- * in mind that this will only be a startingpoint and if you need more details please look
+ * in mind that this will only be a starting point and if you need more details please look
  * at the code.
  *
  * The xmpuzzle format is an xml file containing all information regarding a puzzle. It is recursively
- * structured kust like the different components are structued in the library. I will try to explain the
+ * structured just like the different components are structured in the library. I will try to explain the
  * components bottom up instead of top down.
  *
  * Let's start with one of the base structures of the library: the voxel space. Voxel spaces are
  * stored in voxel nodes. Those nodes need to contain x, y and z attributed with the size in the corresponding
  * direction, also always available must be the type attribute, which currently has no meaning and is always 0.
- * It is intended for furture different ways to save a voxel space, and will probably never be used.
+ * It is intended for future different ways to save a voxel space, and will probably never be used.
  *
  * Optional attributes are the weight and the name.
  *
- * The content ov the voxel space node is the description of what the voxel space looks like. There must be
+ * The content of the voxel space node is the description of what the voxel space looks like. There must be
  * content for each voxel in the space, so no shortcuts are possible. There are mainly 3 characters: "_" for
  * empty voxels, "+" for variable voxels and "#" for fixed voxels. The filled voxels may additionally
- * have a colour appende. This colour information is simply put behind the voxel information, so #1 stands for a
+ * have a colour appended. This colour information is simply put behind the voxel information, so #1 stands for a
  * voxel with colour 1. The colour is save din decimal form.
  *
  * The gridtype is a basic class in the library and saved simply by adding a gridtype node with an attribute type.
@@ -117,7 +117,7 @@ puzzle_c::~puzzle_c(void) {
 }
 
 unsigned int puzzle_c::addColor(unsigned char r, unsigned char g, unsigned char b) {
-  bt_assert(colors.size() < 63);  // only 63 colors are allowed, color 0 is special
+  bt_assert(colors.size() < 63);  // only 63 colours are allowed, colour 0 is special
   colors.push_back(r | (uint32_t)g << 8 | (uint32_t)b << 16);
   return colors.size()-1;
 }
@@ -143,7 +143,7 @@ void puzzle_c::removeColor(unsigned int col) {
       problems[i]->disallowPlacement(c, col);
     }
 
-    /* we need to decrease the colors with numbers > col */
+    /* we need to decrease the colours with numbers > col */
     for (unsigned int c1 = col+1; c1 <= colors.size(); c1++)
       for (unsigned int c2 = 0;  c2 <= colors.size(); c2++)
         if (problems[i]->placementAllowed(c1, c2)) {

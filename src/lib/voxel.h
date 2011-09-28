@@ -45,8 +45,8 @@ class Polyhedron;
  * To have a real voxel space (e.g. made out of unit cubes) you need to inherit
  * from this class and provide functions for rotation and other things.
  *
- * Each voxel has 2 information: its state and its color. State is one of the
- * VoxelState enums values. And color can right now be one of 64 possible values
+ * Each voxel has 2 information: its state and its colour. State is one of the
+ * VoxelState enumerations values. And colour can right now be one of 64 possible values
  */
 class voxel_c {
 
@@ -114,13 +114,13 @@ protected:
    * Observe, that a shape must always be in the first octant (x, y and z positive) regarding
    * the coordinate system because of the way the coordinates are handled. This means that rotations
    * can never be exact mathematical rotations around the source of the coordinate system
-   * there is always a translation added that brind the shape back into the first octant.
+   * there is always a translation added that brings the shape back into the first octant.
    *
    * This added translation adds a major headache because it is dependent on the shape itself
    * its size and shape. It is easy to calculate for cubes, but impossible to easily find out
    * for the more obscure grids like the triangles.
    *
-   * To make the roation appear to be around the center the hotspot contains the added translation
+   * To make the rotation appear to be around the centre the hotspot contains the added translation
    * that shifted the whole shape into the first quadrant.
    *
    * Now it becomes simple to rotate voxel spaces in space without knowing their exact position.
@@ -167,7 +167,7 @@ protected:
    * This is useful when a lot of operations are done on the space and only at the end the
    * bounding box needs to be recalculated.
    *
-   * As a side effect the function sets all color values of empty voxels to 0.
+   * As a side effect the function sets all colour values of empty voxels to 0.
    *
    * When the space is empty the bounding box is set to all 0.
    *
@@ -188,12 +188,12 @@ public:
    */
   typedef enum {
     VX_EMPTY,   ///< This is used for empty voxels
-    VX_FILLED,  ///< This value is used for filled foxels
+    VX_FILLED,  ///< This value is used for filled voxels
     VX_VARIABLE ///< This value is used for voxels with variable content
   } VoxelState;
 
   /**
-   * enable or diable the update of the bounding box after each operation.
+   * enable or disable the update of the bounding box after each operation.
    * Sometimes, when more complex operations are performed it is useful to not
    * update the bounding box every time but rather finish all operations first
    * and then update the box after all is finished. This can be done here
@@ -213,7 +213,7 @@ public:
 
   /**
    * Creates a new voxel space. Its of given size and
-   * initializes all values to init.
+   * Initialises all values to init.
    */
   voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * gt, voxel_type init = 0);
 
@@ -397,7 +397,7 @@ public:
    *
    * as in some grids there are special conditions to consider
    * when doing this operation the function can be overloaded.
-   * This default implementation will minimize to the bounding box.
+   * This default implementation will minimise to the bounding box.
    */
   virtual void minimizePiece(void);
 
@@ -498,7 +498,7 @@ public:
   /**
    * Scale down voxel space by a certain amount.
    *
-   * for the minimize scale function applied to all shapes
+   * for the minimise scale function applied to all shapes
    * we need to first check, if all shapes can be scaled down
    * by a certain factor and then do it. If action is true, then
    * the shape is really scaled, otherwise you only get the fact
@@ -513,11 +513,11 @@ public:
   private:
 
   /**
-   * This function is used by conneced and fill holes.
+   * This function is used by connected and fill holes.
    *
    * It finds out what groups of voxel spaces touch one another
    * Type: defines in which way the voxels touch (faces, edges, corners)
-   * Inverse: defines whether to work on the voxlels defines by value or the other voxels
+   * Inverse: defines whether to work on the voxels defined by value or the other voxels
    * value: which voxels to work on
    * outsiudeZ: how to tread the Z direction outside: as empty for 3D pieces or as non existent for 2D pieces
    */
@@ -556,7 +556,7 @@ public:
    * not exist with certain shapes, this function returns a bool showing
    * if the transformation action has succeeded
    *
-   * This must be implmented by all grids separately
+   * This must be implemented by all grids separately
    */
   virtual bool transform(unsigned int nr) = 0;
 
@@ -609,7 +609,7 @@ public:
 
   //@{
   /**
-   * Functions to set the state or color of a certain voxel.
+   * Functions to set the state or colour of a certain voxel.
    * The position is either given as a coordinate or as an index
    */
   void setState(unsigned int x, unsigned int y, unsigned int z, int state) { set(x, y, z, (get(x, y, z) & ~0x3) | state); }
@@ -620,7 +620,7 @@ public:
 
   /**
    * Counts how many voxels there are of a certain state.
-   * Color markings are ignored with this function, only the state
+   * Colour markings are ignored with this function, only the state
    * is considered
    */
   unsigned int countState(int state) const;
@@ -632,7 +632,7 @@ public:
   typedef enum {
     ACT_FIXED,    ///< Make voxel fixed
     ACT_VARIABLE, ///< Make voxels variable
-    ACT_DECOLOR   ///< Set color to neutral
+    ACT_DECOLOR   ///< Set colour to neutral
   } VoxelAction;
 
   /**
@@ -656,7 +656,7 @@ public:
   void setHotspot(int x, int y, int z); ///< Set the hotspot
 
   /**
-   * Initialized the hotspot to a valid position.
+   * Initialise the hotspot to a valid position.
    *
    * in some voxelspaces the hotspot needs to be in special
    * places to stay valid after all possible transformations
@@ -737,12 +737,12 @@ public:
   virtual Polyhedron * getDrawingMesh(void) const;
 
   /**
-   * returns the drawing mesh for wrireframe mode.
+   * returns the drawing mesh for wire-frame mode.
    */
   virtual Polyhedron * getWireframeMesh(void) const;
 
   /**
-   * this function must return a polygon that is the connecting face to the neighbor n for the
+   * this function must return a polygon that is the connecting face to the neighbour n for the
    * voxel at position x, y, z
    * The function is used by the default implementation of getMesh to generate the default basis mesh
    * it is also used by the 3D cursor drawing code
@@ -769,7 +769,7 @@ private:
 /* some defines used for the flags of the faces of the generated meshes
  */
 
-#define FF_COLOR_LIGHT    0x01 // this helps with the colorisation
+#define FF_COLOR_LIGHT    0x01 // this helps with the colourisation
 #define FF_VARIABLE_MARK  0x02 // when set, the face is supposed to be with a variable marker
 #define FF_VARIABLE_FACE  0x04 // when set, the face itself is the variable marker only one or none of these 2 should be set
 #define FF_WIREFRAME      0x08 // when set, the face stays when in wire frame more

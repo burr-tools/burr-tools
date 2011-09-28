@@ -21,7 +21,7 @@
 #ifndef __DISASSEMBLY_H__
 #define __DISASSEMBLY_H__
 
-/* this module contains the datastructures to store the instruction how to assemble
+/* this module contains the data-structures to store the instruction how to assemble
  * and disassemble a puzzle
  */
 
@@ -197,7 +197,7 @@ class separation_c : public disassembly_c
    */
   separation_c * removed, *left;
 
-  /** used in movesText to find out if a branch has a movesequence longer than 1 */
+  /** used in movesText to find out if a branch has a move sequence longer than 1 */
   bool containsMultiMoves(void);
 
   /** the number of sequences this separation and all its sub
@@ -309,7 +309,7 @@ class separationInfo_c : public disassembly_c {
      */
     std::vector<unsigned int> values;
 
-    /** used in movesText to find out if a branch has a movesequence longer than 1 */
+    /** used in movesText to find out if a branch has a move sequence longer than 1 */
     bool containsMultiMoves(unsigned int root) const;
 
     /** used in constructor for create separationInfo from normal separation */
@@ -322,7 +322,7 @@ class separationInfo_c : public disassembly_c {
     /** load separationInfo from parser */
     separationInfo_c(xmlParser_c & pars);
 
-    /** create a separation infor from a normal separation */
+    /** create a separation info from a normal separation */
     separationInfo_c(const separation_c * sep);
 
     /** save into an xml node */

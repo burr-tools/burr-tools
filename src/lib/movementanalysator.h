@@ -30,7 +30,7 @@ class assembly_c;
 class countingNodeHash;
 
 /**
- * this class is can do analysation of movements within a puzzle.
+ * this class is can do analysis of movements within a puzzle.
  *
  * It takes a position of pieces and then tries to find all other
  * positions that can be reached directly from that starting point.
@@ -45,7 +45,7 @@ class movementAnalysator_c {
 
     /* matrix should normally have one subarray for each direction
      * (positive x negative x, positive y, ...), but because
-     * the matrix for the negative direction in the same directio is the
+     * the matrix for the negative direction in the same direction is the
      * transposition (m[i][j] == m[j][i]) we save the calculation or copying
      * and rather do the transposition inside the checkmovement function
      */
@@ -76,7 +76,7 @@ class movementAnalysator_c {
   public:
 
     /**
-     * construct the analysator for this concrete problem.
+     * construct the analyser for this concrete problem.
      * This can not be changed, once you done that but you can analyse
      * many positions
      */

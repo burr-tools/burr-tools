@@ -62,7 +62,7 @@ bool voxel_0_c::transform(unsigned int nr) {
   int ty = rotationMatrices[nr][3]*(sx-1) + rotationMatrices[nr][4]*(sy-1) + rotationMatrices[nr][5]*(sz-1);
   int tz = rotationMatrices[nr][6]*(sx-1) + rotationMatrices[nr][7]*(sy-1) + rotationMatrices[nr][8]*(sz-1);
 
-  // calculate the amount the rotated coodinates must be shifted up
+  // calculate the amount the rotated coordinates must be shifted up
   int shx = (tx < 0) ? -tx : 0;
   int shy = (ty < 0) ? -ty : 0;
   int shz = (tz < 0) ? -tz : 0;

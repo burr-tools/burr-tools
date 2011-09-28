@@ -191,7 +191,7 @@ void assembly_c::sort(const problem_c * puz) {
     if (cnt2 > 1) {
 
       /* as we normally only have a few identical pieces that need sorting we use bubble sort
-       * with one addition, because many times only a fiew pieces will actually be placed
+       * with one addition, because many times only a few pieces will actually be placed
        * we check, if something was done and bail out, if not
        */
       for (unsigned int a = 0; a < cnt2 - 1; a++) {
@@ -236,7 +236,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
    *
    * this is not all, of course, what we really want to have here is a transformation
    * that is placed in the very same position so that when the result matches itself
-   * in this new orientation the rotated assembly is ecatly at the same place.
+   * in this new orientation the rotated assembly is exactly at the same place.
    * This doesn't work when the result changes place when is corresponding voxel
    * space is rotated, so we need to find out how much it changed place via this
    * rotation. That is done with the bounding box.
@@ -246,9 +246,9 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
    */
 
   {
-    /* in some grid spaces the 0 coordinate doesn stay in place when transformed
-     * because a state needs to change which can only be chieve by changing place
-     * (e.g Triangles, when rotating by 60� the orientation of the triangle changes)
+    /* in some grid spaces the 0 coordinate doesn't stay in place when transformed
+     * because a state needs to change which can only be achieved by changing place
+     * (e.g Triangles, when rotating by 60° the orientation of the triangle changes)
      * to accommodate this shift we check, where the hotspot moves to, when transformed
      * and accommodate for this change
      */
@@ -265,7 +265,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
   }
 
   {
-    /* when the result shape is not minimized, or in space grids that are not
+    /* when the result shape is not minimised, or in space grids that are not
      * cubes is happens that the rotation of the result shape makes it jump
      * around which makes comparisons of rotated assemblies impossible,
      * this code makes the rotation stay in place. This is possible because
@@ -312,9 +312,9 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
 
       if (tr != placements[p].transformation) {
 
-        /* Right, the normalized orientation of the piece is different from the calculated one
+        /* Right, the normalised orientation of the piece is different from the calculated one
          * we now need to change the placement of the piece so, that it is at the right position with
-         * the normalized position
+         * the normalised position
          * this is the easiest solution but by far the slowest
          */
         int ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz;
@@ -361,7 +361,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
           unsigned char t;
 
           /* when no mirror piece exists we can stop, this might happen for
-           * wne piece ranges are used because then we don't know what pieces
+           * when piece ranges are used because then we don't know what pieces
            * are used in the final solution and have to add all known information
            * and then check, if things work out
            */
@@ -390,7 +390,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
            * original piece. I used to assume the t and t_inv are really inverse transformations
            * but that is not necessarily so because the piece might have symmetries and we might
            * arrive at an orientation that is not 0 but a one of the orientations within the
-           * symmetry of the piece. Thats why the normalize operation
+           * symmetry of the piece. Thats why the normalise operation
            */
           if (sym->transAdd(t, t_inv) == TND || sym->transAdd(t_inv, t) == TND) return false;
 
@@ -454,7 +454,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
             /* the idea is:
              * A is the first shape B the second. A_0 means A in the orientation entered by the user, same for B_0
              * transformation t transforms A_0 -> B_0 (denoted by A_0 -t-> B_0), also B_0 -t_inv->A_0
-             * what we search is is an x so that B_x is identical to A_pt1, this is calulated by
+             * what we search is is an x so that B_x is identical to A_pt1, this is calculated by
              * taking first t_inv and then p1t B_0 -t_inv-> A_0 -p1t-> A_p1t
              * same for the other way around
              */
@@ -525,7 +525,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
             /* the idea is:
              * A is the first shape B the second. A_0 means A in the orientation entered by the user, same for B_0
              * transformation t transforms A_0 -> B_0 (denoted by A_0 -t-> B_0), also B_0 -t_inv->A_0
-             * what we search is is an x so that B_x is identical to A_pt1, this is calulated by
+             * what we search is is an x so that B_x is identical to A_pt1, this is calculated by
              * taking first t_inv and then p1t B_0 -t_inv-> A_0 -p1t-> A_p1t
              * same for the other way around
              */
@@ -739,7 +739,7 @@ bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot
         //
         // we also need to make sure that the new found assembly uses the right amount
         // of pieces from each shape. Because it is possible that the mirror
-        // shape is allowed with a different intervall it is possible that
+        // shape is allowed with a different interval it is possible that
         // after mirroring the number of instances for some shapes is wrong
         if ((t >= sym->getNumTransformations()) &&
             (tmp.containsMirroredPieces() || !tmp.validSolution(puz)))
@@ -797,7 +797,7 @@ voxel_c * assembly_c::createSpace(const problem_c * puz) const {
   int maxY = 1;
   int maxZ = 1;
 
-  // now iterate over all shapes in the assembly and dounf out their  placement
+  // now iterate over all shapes in the assembly and find out their placement
   // to create the proper sized result voxel space
   for (unsigned int i = 0; i < placements.size(); i++)
     if (placements[i].transformation != UNPLACED_TRANS) {

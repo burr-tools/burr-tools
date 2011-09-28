@@ -531,7 +531,7 @@ void separation_c::removePieces(unsigned int from, unsigned int cnt)
 {
   /* for the moment we assume, that none of the removed pieces is actually used
    * in this disassembly, because otherwise the whole solution should have been
-   * deleted, so all that is left is to recrease the piece counters
+   * deleted, so all that is left is to decrease the piece counters
    */
 
   for (unsigned int i = 0; i < pieces.size(); i++)

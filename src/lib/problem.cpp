@@ -44,7 +44,7 @@ class group_c {
     unsigned short count;
 };
 
-/** internal class of problem storing the information attatched to a piece in a problem */
+/** internal class of problem storing the information attached to a piece in a problem */
 class part_c {
 
   public:
@@ -685,7 +685,7 @@ void problem_c::setShapeMaximum(unsigned int shape, unsigned int count)
         for (unsigned int s = 0; s < solutions.size(); s++)
           solutions[s]->addNonPlacedPieces(pieceIdx+parts[id]->max, count-parts[id]->max);
       }
-      else if (count < parts[id]->max)  // cedrease the maximum
+      else if (count < parts[id]->max)  // decrease the maximum
       {
         editProblem();
         // go through all solutions, those solutions that use more

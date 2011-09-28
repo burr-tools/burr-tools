@@ -73,11 +73,11 @@ class nodeHash {
 
 
 /**
- * Hastable like nodeHash with the additional feature
+ * Hashtable like nodeHash with the additional feature
  * of scanning through all elements
  *
  * this is a hashtable that stores nodes but is also
- * alows traversal of all nodes hat are within the
+ * allows traversal of all nodes hat are within the
  * table at a given point in time, only one such traversal
  * can be active at one time and the nodes are scanned in
  * the reverse order they were added
@@ -92,7 +92,7 @@ class countingNodeHash {
     unsigned long tab_entries;
 
     /**
-     * hash node data structur
+     * hash node data structure
      *
      * this hash table is non intrusive, it stores a pointer
      * to the disassembler node.
@@ -137,7 +137,7 @@ class countingNodeHash {
      */
     bool insert(disassemblerNode_c * n);
 
-    /** initialize a new scan.
+    /** Initialise a new scan.
      *
      * You can only do that one the currently active scan is
      * over

@@ -34,7 +34,7 @@
  * other halve points down.
  *
  * This means that you can move along the z-axis (the stacking direction) in one voxel
- * steps, but in teh other directions only in 2 voxel steps.
+ * steps, but in the other directions only in 2 voxel steps.
  */
 class voxel_1_c : public voxel_c {
 

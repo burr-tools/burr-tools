@@ -99,7 +99,7 @@ class voxelTable_c {
      * - when PAR_MIRROR is set, the shape will be added in all possible orientations
      *   including mirror orientations, when not set only normal orientations will be used
      * - PAR_COLOUR: when set the hash will be calculated in a way that differently colourized
-     *   shapes will have a differen hash, when not set, only the shape will go into the hash
+     *   shapes will have a different hash, when not set, only the shape will go into the hash
      *
      * If you want to be able to search for all combinations you must call the function
      * twice, once with PAR_MIRROR and then again with PAR_MIRROR | PAR_COLOUR.
@@ -112,7 +112,7 @@ class voxelTable_c {
     /**
      * you must provide this function and return a pointer to the actual voxel space:
      *
-     * For an actual example lookt at the class voxelTablePuzzle_c
+     * For an actual example look at the class voxelTablePuzzle_c
      */
     virtual const voxel_c * findSpace(unsigned int index) const = 0;
 

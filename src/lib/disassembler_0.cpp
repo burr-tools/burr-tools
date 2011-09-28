@@ -38,27 +38,27 @@
  *            in the current subproblem
  *  - start: the start position of each piece
  *
- * A lof of stuff happens automatically, e.g the disassemblerNode_c class is reference counted
+ * A lot of stuff happens automatically, e.g the disassemblerNode_c class is reference counted
  * and the nodeHashs will automatically decrease that count and free the nodes
  */
 separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int> &pieces, disassemblerNode_c * start) {
 
-  // openlist is a list of nodes that need to be analyzed. They wew found
-  // as neighbours of nodes that were analyzed and not yet known
+  // openlist is a list of nodes that need to be analysed. They are found
+  // as neighbours of nodes that were analysed and not yet known
   std::queue<disassemblerNode_c *> openlist[2];
-  // closed nodes are nodes that were analyzed. We don't want to keep all
+  // closed nodes are nodes that were analysed. We don't want to keep all
   // those nodes around because we only need to keep them, when they could
   // be on a shortest path. That means we only keep the nodes, when they
   // lead to a node from the open list
   //
   // But we need to keep the nodes long enough to be sure we don't walk back
-  // in our movement tree. So we organize the closed nodes in 3 fronts. All nodes
+  // in our movement tree. So we organise the closed nodes in 3 fronts. All nodes
   // on each front have the same distance from the root node. old is one step less
   // than current which again is one step less than new front away from root
   //
   // when we start analysing a new front all nodes in the open list are also in the
-  // current front. The new front is empty. now we take one node adfter the other from
-  // the open list, analyze them. When the new found nodes are in oldfront, then they
+  // current front. The new front is empty. now we take one node after the other from
+  // the open list, analyse them. When the new found nodes are in oldfront, then they
   // are a step back towards root and can be dropped. When they are in the current
   // front, then they are a step sideways to another node with the same distance and
   // can be dropped, when the new node is in new front, it is a step away from the
@@ -69,14 +69,14 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
   // That way we slowly empty the openList and build up a new open list with nodes
   // that we didn't know about before
   //
-  // Once the current open list is empty, we have completely analyzed the current front
+  // Once the current open list is empty, we have completely analysed the current front
   // that means we don't need the old front any more because we can no longer reach those
-  // nodes directly by analyzing a node from the open list because those nodes are now at
+  // nodes directly by analysing a node from the open list because those nodes are now at
   // least 2 steps away, so we release them. The reference counting will make sure no longer
   // needed nodes will get freed.
-  // The current front will becom the old front, the new front the current front and we
+  // The current front will become the old front, the new front the current front and we
   // open up a new empty new front. The new built up open list will be used to get
-  // the new nodes to analyze and an other open list will be started.
+  // the new nodes to analyse and an other open list will be started.
   nodeHash closed[3];
 
   // setup the fronts and the open List indices
@@ -97,7 +97,7 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
     disassemblerNode_c * node = openlist[curListFront].front();
     openlist[curListFront].pop();
 
-    // initialize a movement analysis for the current node
+    // Initialise a movement analysis for the current node
     init_find(node, pieces);
 
     disassemblerNode_c * st;
@@ -132,7 +132,7 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
 
         // we need to dec-ref-count because we will overwrite st in the next step
         // and st hold one count of the node, once we get to use boost smart
-        // ponters this here will become simpler
+        // pointers this here will become simpler
         if (st->decRefCount())
           delete st;
 
@@ -141,7 +141,7 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
 
       /* when we get here the new found node is a solution */
 
-      /* check the possible sub problems, this function call disassemble rec recursivly */
+      /* check the possible sub problems, this function call disassemble_rec recursively */
       separation_c * res = checkSubproblems(st, pieces);
 
       if (st->decRefCount())

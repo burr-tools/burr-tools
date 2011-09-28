@@ -319,7 +319,7 @@ bool assembler_1_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
  * corresponding voxels. But we need to have the constraints that these
  * columns place on the solution. This is done by adding these columns
  * to the matrix but behind the normal columns. These additional columns
- * wont be searched by the alg. if it looks for the next task to achieve.
+ * wont be searched by the algorithm if it looks for the next task to achieve.
  *
  * Multiple instances of the same piece is handles in a similar way. To
  * prevent finding the same solution again and again with just the
@@ -354,7 +354,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
    */
   unsigned int * columns = new unsigned int[result->getXYZ()];
 
-  // only used, when hasRange is true, so we need to initialize it to get rid of warnings
+  // only used, when hasRange is true, so we need to initialise it to get rid of warnings
   // the variable contains the column number where the range checks are done
   unsigned int rangeColumn = 0;
 
@@ -452,7 +452,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
     }
 
     if (sym->symmetryContainsMirror(resultSym)) {
-      /* we need to to the mirror check here, and initialize the mirror
+      /* we need to to the mirror check here, and initialise the mirror
        * structure, otherwise no mirror check will be done
        */
 
@@ -550,7 +550,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
 
   /* node 0 is the start node for everything */
 
-  /* even thou the matrix has a column for each result voxel and each piece we leave out
+  /* even though the matrix has a column for each result voxel and each piece we leave out
    * the VARIABLE voxels in the ring list of the header. This is to avoid selecting these
    * columns for filling. The columns for the VARIABLE voxels are only there to make sure
    * these voxels are only used once
@@ -695,7 +695,7 @@ assembler_1_c::errState assembler_1_c::createMatrix(const problem_c * puz, bool 
   }
 
   /* in some cases it is useful to count the number of blocks the range pieces contribute
-   * this is calulated here
+   * this is calculated here
    *
    * the result will contain between res_filled-res_vari   and res_filled voxels
    * now we can subtract all voxels contributed by fixed placed pieces (with no range)
@@ -861,14 +861,14 @@ void assembler_1_c::reduce(void) {
    *
    * what it does is:
    * check for each column c, where at least one row must be selected (min > 0)
-   *    check each row r that might be selected to fulfill this column c conditions
+   *    check each row r that might be selected to fulfil this column c conditions
    *       if this row results for another column c2 that that column reaches the
    *       maximum possible value (max) then increase counter
    *    also count the number of rows in this column
    *
    *    now check for all columns c2 != c if the number if the counter is equal
    *    to number of rows. If this is the case then that means that
-   *    all possibile rows that make column c condition true, also make
+   *    all possible rows that make column c condition true, also make
    *    column c2 condition so that no other row will come there, so all
    *    rows that are not in the c set but contribute to c2 can be removed
    */
@@ -877,7 +877,7 @@ void assembler_1_c::reduce(void) {
   for (unsigned int col = right[0]; col; col = right[col]) {
 
     // this is taken from the assembler 0 reduce
-    // as I don't know how to generalize the approach
+    // as I don't know how to generalise the approach
     // we do it only on columns with min = max = 1
     if (min[col] == 0) continue;
 
@@ -957,7 +957,7 @@ void assembler_1_c::reduce(void) {
         // this can be sped up by sorting the entries and stopping removal
         // as soon as we reach a valid value, but we have to start from the top
         // we only need to check columns that have a non zero value in the current row
-        // as ony those weights have changed
+        // as only those weights have changed
 
         // now check all rows of this column for too big weights
         for (int rr = down[col]; rr != col; rr = down[rr])
@@ -1191,7 +1191,7 @@ void assembler_1_c::unhiderow(int r) {
 // remove all rows from the matrix that would exceed the maximum weight
 // in an open column when added to the current weight
 // the columns to check are defined by the riven node, all columns
-// that are occupiec by this row are checked
+// that are occupied by this row are checked
 //
 // each time the function is called the hidden rows are saved and
 // can be unhidden by calling the unhiderows function below
@@ -1225,7 +1225,7 @@ void assembler_1_c::unhiderows(void) {
     hidden_rows.pop_back();
   }
 
-  // remvoe separator
+  // Remove separator
   hidden_rows.pop_back();
 }
 
@@ -1318,7 +1318,7 @@ void assembler_1_c::rec(unsigned int next_row) {
       // shortly before we recursively call this function again
       cover_column_only(col);
 
-      // try to find all row sets that fulfill this columns condition
+      // try to find all row sets that fulfil this columns condition
       rec(down[col]);
 
       //-------> case 1
@@ -1332,7 +1332,7 @@ void assembler_1_c::rec(unsigned int next_row) {
 
   unsigned int col = colCount[next_row];
 
-  // make sure wan can actualla achieve something, the false case sould
+  // make sure wan can actually achieve something, the false case should
   // have been checked before calling this function
   bt_assert(column_condition_fulfillable(col));
 
@@ -1371,7 +1371,7 @@ void assembler_1_c::rec(unsigned int next_row) {
   // below can be unhidden properly
   hidden_rows.push_back(0);
 
-  // now try all rows starting with the row given as parametet
+  // now try all rows starting with the row given as parameter
   // and go down until we are in the header. When we go up
   // from the header we actually end in a node with a higher
   // number, that's the end check
@@ -1397,7 +1397,7 @@ void assembler_1_c::rec(unsigned int next_row) {
         if (colCount[col] == 0) {
 
           // when there are no more rows in the current column
-          // we can immeadetly start a new column
+          // we can immediately start a new column
           // if the current column condition is really fulfilled
           if (column_condition_fulfilled(col))
             rec(0);
@@ -1593,7 +1593,7 @@ void assembler_1_c::iterative(void) {
 
         col = colCount[next_row_stack.back()];
 
-        // make sure wan can actualla achieve something, the false case sould
+        // make sure wan can actually achieve something, the false case sould
         // have been checked before calling this function
         bt_assert(column_condition_fulfillable(col));
 
@@ -1692,7 +1692,7 @@ void assembler_1_c::iterative(void) {
             if (colCount[col] == 0) {
 
               // when there are no more rows in the current column
-              // we can immeadetly start a new column
+              // we can immediately start a new column
               // if the current column condition is really fulfilled
               if (column_condition_fulfilled(col)) {
 
@@ -1857,7 +1857,7 @@ static int stringToVector(const char * string, std::vector<unsigned int> & v) {
 
   v.clear();
 
-  // now get vetor content
+  // now get vector content
 
   for (unsigned int i = 0; i < count; i++) {
     unsigned int val;

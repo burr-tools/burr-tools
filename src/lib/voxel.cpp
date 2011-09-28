@@ -53,7 +53,7 @@
  * You should now be able to use the library.
  *
  * If you want to understand how things work you will need to read the documentation for the
- * assembler \ref assembler_c and disassembler \ref disassembler_c classses.
+ * assembler \ref assembler_c and disassembler \ref disassembler_c classes.
  */
 
 /** \file voxel.cpp
@@ -71,12 +71,12 @@
  * The base class of the voxel space is not suitable for any grid because it misses
  * functions. The derived classes implement those missing functions.
  *
- * The glasses for the tetrahedral-octahedral and for the rhombic grid are derrived
+ * The glasses for the tetrahedral-octahedral and for the rhombic grid are derived
  * from the cube grid (voxel_0_c) because they just superimpose another larger grid
  * onto the standard cube grid to achieve their goals
  */
 
-/// the value tha signifies uninitialized values for the hotspot and bounding box cache
+/// the value that signifies uninitialised values for the hotspot and bounding box cache
 #define BBHSCACHE_UNINIT -30000
 /// the value means that this entry for the bounding box hotspot cache is not defines
 /// due to an undefined orientation of the piece
@@ -185,7 +185,7 @@ void voxel_c::recalcBoundingBox(void) {
 
           empty = false;
         } else {
-          space[index] = 0;  // clear away all colors that might be left
+          space[index] = 0;  // clear away all colours that might be left
         }
         index++;
       }
@@ -437,13 +437,13 @@ void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
  * Now the method in the unionFind function is similar.
  * Each node in the tree corresponds to one voxel of the voxel space.
  * The tree array contains
- * all indices to the perent node of the tree. The tree is initialied with NULL
- * pinter equivalents (-1 in this case) then we loop over all voxels and all neighbors
- * of a voxel ar found and the corresponding trees are unified.
+ * all indices to the parent node of the tree. The tree is initialised with NULL
+ * pinter equivalents (-1 in this case) then we loop over all voxels and all neighbours
+ * of a voxel are found and the corresponding trees are unified.
  *
- * In the end all nodes that are somehow connected are within a single tree within the forrest.
+ * In the end all nodes that are somehow connected are within a single tree within the forest.
  *
- * The 2 functions that use this function now evaluate the tree forrest in 2 ways:
+ * The 2 functions that use this function now evaluate the tree forest in 2 ways:
  *
  * The \ref voxel_c::connected function will check if all non empty voxels in the space
  * are within the same tree
@@ -462,7 +462,7 @@ void voxel_c::unionFind(int * tree, char type, bool inverse, voxel_type value, b
    * 3. check if all voxels are in the same set
    */
 
-  /* initialize tree */
+  /* Initialise tree */
   for (unsigned int i = 0; i < voxels+1; i++)
     tree[i] = -1;
 
@@ -647,7 +647,7 @@ bool voxel_c::neighbour(unsigned int p, voxel_type val) const {
 
 symmetries_t voxel_c::selfSymmetries(void) const {
 
-  // if we have not calculated the symmetries, yet we calclate it
+  // if we have not calculated the symmetries, yet we calculate it
   if (isSymmetryInvalid(symmetries))
   {
     symmetries = gt->getSymmetries()->calculateSymmetry(this);
@@ -749,12 +749,12 @@ void voxel_c::save(xmlWriter_c & xml) const {
       case VX_VARIABLE: str << "+"; break;
     }
 
-    // output color postfix, but only vor nonempty voxels
+    // output colour postfix, but only for nonempty voxels
     switch(getState(i))
     {
       case VX_VARIABLE:
       case VX_FILLED:
-        // output color, only when color is not zero
+        // output colour, only when colour is not zero
         if (getColor(i))
           str << getColor(i);
         break;
@@ -957,7 +957,7 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
   std::vector<float> faceCorners;
   std::vector<float> faceCorners2;
 
-  // make shure the 2 parameters are positive or zero and have a valid minimum size
+  // make sure the 2 parameters are positive or zero and have a valid minimum size
   if (bevel < 1e-5) bevel = 0;
   if (offset < 1e-5) offset = 0;
 
@@ -970,7 +970,7 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
           int nx, ny, nz;
 
           // we skip generating this voxel for the fast case,
-          // when the voxel to generate has no empty neighbors
+          // when the voxel to generate has no empty neighbours
           if (fast)
           {
             bool hasEmptyN = false;
@@ -1088,7 +1088,7 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
               {
                 // add connection prisms
 
-                // first find out which neighbor we are relative to our neighbor n
+                // first find out which neighbour we are relative to our neighbour n
 
                 int n2 = 0;
                 bool found = false;

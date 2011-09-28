@@ -96,7 +96,7 @@ public:
   virtual int getErrorsParam(void) { return 0; }
 
   /**
-   * Try to optimize piece placement.
+   * Try to optimise piece placement.
    * the function tries to remove possible piece placements by checking if, after
    * the piece has been placed somewhere, that all the other pieces still can be
    * placed and all holes can still be filled.

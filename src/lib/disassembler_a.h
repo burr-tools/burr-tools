@@ -32,17 +32,17 @@ class disassemblerNode_c;
 class assembly_c;
 
 /**
- * this class is a baseclass for disassemblers.
+ * this class is a base-class for disassemblers.
  *
- * It provides common functionality for both all disassemblers.
+ * It provides common functionality for all disassemblers.
  * This is mainly bookkeeping of disassemblerNode_c objects
  *
- * the space grid dependend information is collected from movementCache classes.
+ * the space grid dependent information is collected from movementCache classes.
  * those are like the assemblerFrontends for the assembler (a bit more complicated
  * though)
  *
  * All that the real disassemblers need to to is implement the disassemble_rec function
- * which analyzes one piece of the puzzle until it falls apart
+ * which analyses one piece of the puzzle until it falls apart
  */
 class disassembler_a_c : public disassembler_c {
 
@@ -88,10 +88,10 @@ class disassembler_a_c : public disassembler_c {
     disassemblerNode_c * find(void) { return analyse->find(); }
 
     /**
-     * Analyze a sub-problem.
+     * Analyse a sub-problem.
      *
      * once a separating node has been found by the disassemble_rec function,
-     * it should call this function to analyze the sub-problems
+     * it should call this function to analyse the sub-problems
      */
     separation_c * checkSubproblems(const disassemblerNode_c * st, const std::vector<unsigned int> &pieces);
 
@@ -112,7 +112,7 @@ class disassembler_a_c : public disassembler_c {
      * Disassemble an assembly of the puzzle.
      *
      * Because we can only have or don't have a disassembly sequence
-     * we don't need the same complicated callback interface. The function
+     * we don't need the same complicated call-back interface. The function
      * returns either the disassembly sequence or a null pointer.
      * you need to take care of deleting the disassembly sequence after
      * doing with it whatever you want.

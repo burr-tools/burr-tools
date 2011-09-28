@@ -107,7 +107,7 @@ bool voxel_1_c::transform(unsigned int nr) {
   unsigned int nsz = maxz-minz+1;
 
   // don't make the new space smaller than the old one
-  // if the old one was larger center the object inside it
+  // if the old one was larger centre the object inside it
   if (nsz < sz) {
     minz -= (sz-nsz)/2;
     nsz = sz;

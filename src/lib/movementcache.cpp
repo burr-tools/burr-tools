@@ -79,7 +79,7 @@ movementCache_c::movementCache_c(const problem_c * puzzle) : gt(puzzle->getGridT
   memset(moHash, 0, moTableSize * sizeof(moEntry*));
   moEntries = 0;
 
-  /* initialize the shape array with the shapes from the
+  /* Initialise the shape array with the shapes from the
    * puzzle problem. The shape with transformation 0 is just
    * a pointer into the puzzle, so don't delete them later on
    */
@@ -94,7 +94,7 @@ movementCache_c::movementCache_c(const problem_c * puzzle) : gt(puzzle->getGridT
     shapes[s][0] = puzzle->getPartShape(s);
   }
 
-  /* initialize the piece array */
+  /* Initialise the piece array */
   pieces = new unsigned int [puzzle->getNumberOfPieces()];
 
   int pos = 0;

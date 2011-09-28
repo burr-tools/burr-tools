@@ -42,7 +42,7 @@ class stlException_c {
 /**
  * the base class for STL exporters
  *
- * This clas contains the interface that the STL exporter need to implement as well
+ * This class contains the interface that the STL exporter needs to implement as well
  * as some helper functions for the export.
  *
  * The STL file handling is done in here, so that the concrete exporters only need

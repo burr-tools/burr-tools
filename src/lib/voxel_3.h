@@ -30,7 +30,7 @@
  * cubes. So this class uses many functions from the cubes voxel space.
  *
  * This class mainly adds alignment functionality for transformations
- * and the neighbor functionality.
+ * and the neighbour functionality.
  *
  * The rhombic grid emulation is explained in the user guide with some graphics,
  * here I can place only a textual description which might be hard to understand.

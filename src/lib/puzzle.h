@@ -42,7 +42,7 @@ class xmlParser_c;
 /**
  * This class defines the puzzle.
  * A puzzle is a collection of shapes and a set of problems associated
- * with these shapes and finally the color used for color constraint colors
+ * with these shapes and finally the colour used for colour constraint colours
  */
 class puzzle_c {
 
@@ -148,8 +148,8 @@ public:
   /**
    *  exchange 2 shapes in the list of shapes.
    *  this function takes care to update all the problems and solutions
-   *  because they only index into the shape list and exchangin shapes requires
-   *  updating tose indices
+   *  because they only index into the shape list and exchanging shapes requires
+   *  updating those indices
    */
   void exchangeShapes(unsigned int s1, unsigned int s2);
   //@}
@@ -157,21 +157,21 @@ public:
 
   /** \name  handle puzzle colours */
   //@{
-  /** add a color, return the index of the new color */
+  /** add a colour, return the index of the new colour */
   unsigned int addColor(unsigned char r, unsigned char g, unsigned char b);
   /**
-   * remove a color with given index.
+   * remove a colour with given index.
    * All shapes are updated to not use that
-   * color any more, color constraints are updated for all problems to no
-   * longer use that color, its your task to make sure the now invalid solutions
+   * colour any more, colour constraints are updated for all problems to no
+   * longer use that colour, its your task to make sure the now invalid solutions
    * are removed
    */
   void removeColor(unsigned int idx);
-  /** change the RGB value of one color */
+  /** change the RGB value of one colour */
   void changeColor(unsigned int idx, unsigned char r, unsigned char g, unsigned char b);
-  /** get the RGB value of one color */
+  /** get the RGB value of one colour */
   void getColor(unsigned int idx, unsigned char * r, unsigned char * g, unsigned char * b) const;
-  /** return the number of defined colors */
+  /** return the number of defined colours */
   unsigned int colorNumber(void) const { return colors.size(); }
   //@}
 
@@ -186,9 +186,9 @@ public:
   unsigned int addProblem(const problem_c * prob);
   /** return the number of problems within this puzzle */
   unsigned int getNumberOfProblems(void) const { return problems.size(); }
-  /** remove problem with the given index freeing all its ressources */
+  /** remove problem with the given index freeing all its resources */
   void removeProblem(unsigned int p);
-  /** exchange problem at indes p1 with problem at index p2 */
+  /** exchange problem at index p1 with problem at index p2 */
   void exchangeProblems(unsigned int p1, unsigned int p2);
   /** get the problem at index p */
   const problem_c * getProblem(unsigned int p) const { bt_assert(p < problems.size()); return problems[p]; }
@@ -203,7 +203,7 @@ public:
   void setComment(const std::string & com) { comment = com; }
   /** get comment */
   const std::string & getComment(void) const { return comment; }
-  /** find out if the comment popup flas is set */
+  /** find out if the comment popup flag is set */
   bool getCommentPopup(void) const { return commentPopup; }
   /** set or reset comment popup flag */
   void setCommentPopup(bool val) { commentPopup = val; }

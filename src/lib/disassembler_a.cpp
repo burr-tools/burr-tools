@@ -31,7 +31,7 @@
 disassembler_a_c::disassembler_a_c(const problem_c * puz) :
   disassembler_c(), puzzle(puz) {
 
-  /* initialize the grouping class */
+  /* Initialise the grouping class */
   groups = new grouping_c();
   for (unsigned int i = 0; i < puz->getNumberOfParts(); i++)
     for (unsigned int j = 0; j < puz->getNumberOfPartGroups(i); j++)
