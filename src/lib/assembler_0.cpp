@@ -31,7 +31,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include <config.h>
+#include "../config.h"
 
 #ifdef WIN32
 #define snprintf _snprintf
