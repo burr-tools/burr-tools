@@ -679,22 +679,22 @@ int assembler_0_c::prepare(void) {
 
 
 
-assembler_0_c::errState assembler_0_c::createMatrix(const problem_c * puz, bool keepMirror, bool keepRotations, bool comp) {
+assembler_0_c::errState assembler_0_c::createMatrix(const problem_c * prob, bool keepMirror, bool keepRotations, bool comp) {
 
-  bt_assert(puz->resultValid());
+  bt_assert(prob->resultValid());
 
-  problem = puz;
+  problem = prob;
   complete = comp;
 
   if (!canHandle(problem))
     return ERR_PUZZLE_UNHANDABLE;
 
   /* get and save piece number of puzzle */
-  piecenumber = puz->getNumberOfPieces();
+  piecenumber = prob->getNumberOfPieces();
 
   /* count the filled and variable units */
-  int res_vari = puz->getResultShape()->countState(voxel_c::VX_VARIABLE);
-  int res_filled = puz->getResultShape()->countState(voxel_c::VX_FILLED) + res_vari;
+  int res_vari = prob->getResultShape()->countState(voxel_c::VX_VARIABLE);
+  int res_filled = prob->getResultShape()->countState(voxel_c::VX_FILLED) + res_vari;
 
   varivoxelStart = 1 + piecenumber + res_filled - res_vari;
   varivoxelEnd = 1 + piecenumber + res_filled;
@@ -706,8 +706,8 @@ assembler_0_c::errState assembler_0_c::createMatrix(const problem_c * puz, bool 
   // is not bigger than number of voxels in pieces
   int h = res_filled;
 
-  for (unsigned int j = 0; j < puz->getNumberOfParts(); j++)
-    h -= puz->getPartShape(j)->countState(voxel_c::VX_FILLED);
+  for (unsigned int j = 0; j < prob->getNumberOfParts(); j++)
+    h -= prob->getPartShape(j)->countState(voxel_c::VX_FILLED);
 
   if (h < 0) {
     errorsState = ERR_TOO_MANY_UNITS;
