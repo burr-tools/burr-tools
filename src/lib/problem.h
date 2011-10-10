@@ -220,6 +220,10 @@ public:
    */
   void setResultId(unsigned int shape);
   /**
+   * clear result to invalid shape
+   */
+  void clearResult(void);
+  /**
    * Check if there is a valid shape set.
    */
   bool resultValid(void) const;
@@ -228,16 +232,7 @@ public:
    * Make sure to only call getResultId[Shape] when you know that the shape is valid
    */
   unsigned int getResultId(void) const;
-  /**
-   * get the voxel space of the result shape.
-   * Make sure to only call getResultId[Shape] when you know that the shape is valid
-   */
-  const voxel_c * getResultShape(void) const;
-  /**
-   * get the voxel space of the result shape.
-   * Make sure to only call getResultId[Shape] when you know that the shape is valid
-   */
-  voxel_c * getResultShape(void);
+
   //@}
 
   /** \name problem piece handling
@@ -487,5 +482,21 @@ private:
   void operator=(const problem_c&);
 
 };
+
+// following functions are just some helpers that are implemented using
+// the puzzle class
+
+
+/**
+ * get the voxel space of the result shape.
+ * Make sure to only call getResultId[Shape] when you know that the shape is valid
+ */
+const voxel_c * getResultShape(const problem_c & problem);
+/**
+ * get the voxel space of the result shape.
+ * Make sure to only call getResultId[Shape] when you know that the shape is valid
+ */
+voxel_c * getResultShape(problem_c & problem);
+
 
 #endif

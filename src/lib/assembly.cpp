@@ -225,7 +225,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
   bt_assert((trans < sym->getNumTransformations()) || mir);
 
   int rx, ry, rz;
-  if (!puz->getResultShape()->getHotspot(trans, &rx, &ry, &rz)) return false;
+  if (!getResultShape(*puz)->getHotspot(trans, &rx, &ry, &rz)) return false;
 
   /* the hole idea behind this is:
    *
@@ -254,11 +254,11 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
      * and accommodate for this change
      */
 
-    int hx = puz->getResultShape()->getHx();
-    int hy = puz->getResultShape()->getHy();
-    int hz = puz->getResultShape()->getHz();
+    int hx = getResultShape(*puz)->getHx();
+    int hy = getResultShape(*puz)->getHy();
+    int hz = getResultShape(*puz)->getHz();
 
-    puz->getResultShape()->transformPoint(&hx, &hy, &hz, trans);
+    getResultShape(*puz)->transformPoint(&hx, &hy, &hz, trans);
 
     rx -= hx;
     ry -= hy;
@@ -276,8 +276,8 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
 
     int cx, cy, cz, dx, dy, dz;
 
-    if (!puz->getResultShape()->getBoundingBox(trans, &cx, &cy, &cz)) return false;
-    if (!puz->getResultShape()->getBoundingBox(0, &dx, &dy, &dz)) return false;
+    if (!getResultShape(*puz)->getBoundingBox(trans, &cx, &cy, &cz)) return false;
+    if (!getResultShape(*puz)->getBoundingBox(0, &dx, &dy, &dz)) return false;
 
     rx += dx - cx;
     ry += dy - cy;
@@ -297,7 +297,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
         continue;
       }
 
-      puz->getResultShape()->transformPoint(&placements[p].xpos, &placements[p].ypos, &placements[p].zpos, trans);
+      getResultShape(*puz)->transformPoint(&placements[p].xpos, &placements[p].ypos, &placements[p].zpos, trans);
 
       placements[p].xpos += rx;
       placements[p].ypos += ry;
@@ -660,7 +660,7 @@ bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot
 
       // now we create a voxel space of the given assembly shape/ and shift that one around
       voxel_c * assm = tmp.createSpace(puz);
-      const voxel_c * res = puz->getResultShape();
+      const voxel_c * res = getResultShape(*puz);
 
       for (int x = (int)res->boundX1()-(int)assm->boundX1(); (int)assm->boundX2()+x <= (int)res->boundX2(); x++)
         for (int y = (int)res->boundY1()-(int)assm->boundY1(); (int)assm->boundY2()+y <= (int)res->boundY2(); y++)
@@ -723,7 +723,7 @@ bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot
   {
     for (unsigned char t = 0; t < endTrans; t++)
     {
-      symmetries_t s = puz->getResultShape()->selfSymmetries();
+      symmetries_t s = getResultShape(*puz)->selfSymmetries();
 
       if (sym->symmetrieContainsTransformation(s, t))
       {

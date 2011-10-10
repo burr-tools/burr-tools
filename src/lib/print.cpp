@@ -169,7 +169,7 @@ void print(const separation_c * s, const assembly_c * a, const problem_c * p) {
 
   bt_assert(p->resultValid());
 
-  const voxel_c * res = p->getResultShape();
+  const voxel_c * res = getResultShape(*p);
 
   voxel_c ** pieces = new voxel_c*[a->placementCount()];
 
@@ -200,7 +200,7 @@ void print(const assembly_c * a, const problem_c * p) {
 
   bt_assert(p->resultValid());
 
-  const voxel_c * res = p->getResultShape();
+  const voxel_c * res = getResultShape(*p);
 
   voxel_c ** pieces = new voxel_c*[a->placementCount()];
 

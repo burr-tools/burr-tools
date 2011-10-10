@@ -431,7 +431,7 @@ void movementBrowser_c::cb_3dClick(void) {
       // push/pull the shape
 
       // we just need a shape using the correct grid type in order to find the neighbor voxel
-      voxel_c * sh = puz->getResultShape();
+      voxel_c * sh = getResultShape(*puz);
 
       unsigned int x, y, z;
       if (sh->indexToXYZ(voxel, &x, &y, &z)) {

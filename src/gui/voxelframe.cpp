@@ -965,7 +965,7 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int problem, unsig
     unsigned int factor;
     if (pr->resultValid()) {
 
-      factor = (int)((sqrt(pr->getResultShape()->getDiagonal()) + 0.5)/sqrt(diagonal));
+      factor = (int)((sqrt(getResultShape(*pr)->getDiagonal()) + 0.5)/sqrt(diagonal));
     } else
       factor = 1;
 
@@ -983,7 +983,7 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int problem, unsig
     // now place the result shape
     if (pr->resultValid()) {
 
-      num = addSpace(pr->getPuzzle().getGridType()->getVoxel(pr->getResultShape()));
+      num = addSpace(pr->getPuzzle().getGridType()->getVoxel(getResultShape(*pr)));
       setSpaceColor(num,
                             pieceColorR(pr->getResultId()),
                             pieceColorG(pr->getResultId()),
@@ -1123,7 +1123,7 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
     setDrawingMode(num, invisible);
 
     float cx, cy, cz;
-    puz->getResultShape()->calculateSize(&cx, &cy, &cz);
+    getResultShape(*puz)->calculateSize(&cx, &cy, &cz);
     setCenter(cx*0.5, cy*0.5, cz*0.5);
     trans = CenterTranslateRoateScale;
     _showCoordinateSystem = false;
@@ -1169,13 +1169,13 @@ void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * 
       }
 
     float cx, cy, cz;
-    puz->getResultShape()->calculateSize(&cx, &cy, &cz);
+    getResultShape(*puz)->calculateSize(&cx, &cy, &cz);
     setCenter(cx*0.5, cy*0.5, cz*0.5);
 
     trans = CenterTranslateRoateScale;
     _showCoordinateSystem = false;
 
-    num = addSpace(puz->getPuzzle().getGridType()->getVoxel(puz->getResultShape()));
+    num = addSpace(puz->getPuzzle().getGridType()->getVoxel(getResultShape(*puz)));
     setSpaceColor(num,
                         pieceColorR(puz->getResultId()),
                         pieceColorG(puz->getResultId()),
@@ -1197,7 +1197,7 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
   bool placeOnly = true;;
 
   if (  (shapes.size() != 2)
-      || !(*puz->getResultShape() == *shapes[1].shape)
+      || !(*getResultShape(*puz) == *shapes[1].shape)
      )
   {
     // not proper number of shapes in there, letes start from fresh
@@ -1207,19 +1207,19 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
   }
 
   float hx, hy, hz;
-  hx = puz->getResultShape()->getHx();
-  hy = puz->getResultShape()->getHy();
-  hz = puz->getResultShape()->getHz();
+  hx = getResultShape(*puz)->getHx();
+  hy = getResultShape(*puz)->getHy();
+  hz = getResultShape(*puz)->getHz();
 
-  puz->getResultShape()->recalcSpaceCoordinates(&hx, &hy, &hz);
+  getResultShape(*puz)->recalcSpaceCoordinates(&hx, &hy, &hz);
 
   float cx, cy, cz;
-  puz->getResultShape()->calculateSize(&cx, &cy, &cz);
+  getResultShape(*puz)->calculateSize(&cx, &cy, &cz);
   setCenter(cx*0.5-hx, cy*0.5-hy, cz*0.5-hz);
 
-  hx = puz->getResultShape()->getHx();
-  hy = puz->getResultShape()->getHy();
-  hz = puz->getResultShape()->getHz();
+  hx = getResultShape(*puz)->getHx();
+  hy = getResultShape(*puz)->getHy();
+  hz = getResultShape(*puz)->getHz();
 
   if (t < puz->getPuzzle().getGridType()->getSymmetries()->getNumTransformationsMirror()) {
 
@@ -1265,7 +1265,7 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
   // we only need to create the result shape when we cleared everything
   if (!placeOnly)
   {
-    bt_assert2(addSpace(puz->getPuzzle().getGridType()->getVoxel(puz->getResultShape())) == 1);
+    bt_assert2(addSpace(puz->getPuzzle().getGridType()->getVoxel(getResultShape(*puz))) == 1);
     setSpaceColor(1,
         pieceColorR(puz->getResultId()),
         pieceColorG(puz->getResultId()),

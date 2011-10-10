@@ -292,7 +292,7 @@ bool assembler_1_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
   if (!piece->onGrid(x, y, z))
     return false;
 
-  const voxel_c * result = problem->getResultShape();
+  const voxel_c * result = getResultShape(*problem);
 
   for (unsigned int pz = piece->boundZ1(); pz <= piece->boundZ2(); pz++)
     for (unsigned int py = piece->boundY1(); py <= piece->boundY2(); py++)
@@ -338,7 +338,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
     fprintf(stderr, "range optimisation used min %i, max %i\n", rangeMin, rangeMax);
   }
 
-  const voxel_c * result = problem->getResultShape();
+  const voxel_c * result = getResultShape(*problem);
 
   /* nodes 1..n are the columns nodes */
   GenerateFirstRow(result->countState(voxel_c::VX_FILLED)+
@@ -662,8 +662,8 @@ assembler_1_c::errState assembler_1_c::createMatrix(const problem_c * puz, bool 
   piecenumber = puz->getNumberOfPieces();
 
   /* count the filled and variable units */
-  unsigned int res_vari = puz->getResultShape()->countState(voxel_c::VX_VARIABLE);
-  unsigned int res_filled = puz->getResultShape()->countState(voxel_c::VX_FILLED) + res_vari;
+  unsigned int res_vari = getResultShape(*puz)->countState(voxel_c::VX_VARIABLE);
+  unsigned int res_filled = getResultShape(*puz)->countState(voxel_c::VX_FILLED) + res_vari;
 
   // check if number of voxels in pieces is not bigger than
   // number of voxel in result

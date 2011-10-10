@@ -367,7 +367,7 @@ bool assembler_0_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
   if (!piece->onGrid(x, y, z))
     return false;
 
-  const voxel_c * result = problem->getResultShape();
+  const voxel_c * result = getResultShape(*problem);
 
   for (unsigned int pz = piece->boundZ1(); pz <= piece->boundZ2(); pz++)
     for (unsigned int py = piece->boundY1(); py <= piece->boundY2(); py++)
@@ -410,7 +410,7 @@ bool assembler_0_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
  */
 int assembler_0_c::prepare(void) {
 
-  const voxel_c * result = problem->getResultShape();
+  const voxel_c * result = getResultShape(*problem);
 
   /* this array contains the column in our matrix that corresponds with
    * the voxel position inside the result. We use this matrix because
@@ -694,8 +694,8 @@ assembler_0_c::errState assembler_0_c::createMatrix(const problem_c * prob, bool
   piecenumber = prob->getNumberOfPieces();
 
   /* count the filled and variable units */
-  int res_vari = prob->getResultShape()->countState(voxel_c::VX_VARIABLE);
-  int res_filled = prob->getResultShape()->countState(voxel_c::VX_FILLED) + res_vari;
+  int res_vari = getResultShape(*prob)->countState(voxel_c::VX_VARIABLE);
+  int res_filled = getResultShape(*prob)->countState(voxel_c::VX_FILLED) + res_vari;
 
   varivoxelStart = 1 + piecenumber + res_filled - res_vari;
   varivoxelEnd = 1 + piecenumber + res_filled;

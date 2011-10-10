@@ -1831,17 +1831,17 @@ void mainWindow_c::StatProblemInfo(unsigned int prob) {
     if (cnt == cntMin) {
 
       snprintf(txt, 100, "Problem P%i result can contain %i - %i voxels, pieces (n = %i) contain %i voxels", prob+1,
-          pr->getResultShape()->countState(voxel_c::VX_FILLED),
-          pr->getResultShape()->countState(voxel_c::VX_FILLED) +
-          pr->getResultShape()->countState(voxel_c::VX_VARIABLE),
+          getResultShape(*pr)->countState(voxel_c::VX_FILLED),
+          getResultShape(*pr)->countState(voxel_c::VX_FILLED) +
+          getResultShape(*pr)->countState(voxel_c::VX_VARIABLE),
           pr->getNumberOfPieces(), cnt);
 
     } else {
 
       snprintf(txt, 100, "Problem P%i result can contain %i - %i voxels, pieces (n = %i) contain %i-%i voxels", prob+1,
-          pr->getResultShape()->countState(voxel_c::VX_FILLED),
-          pr->getResultShape()->countState(voxel_c::VX_FILLED) +
-          pr->getResultShape()->countState(voxel_c::VX_VARIABLE),
+          getResultShape(*pr)->countState(voxel_c::VX_FILLED),
+          getResultShape(*pr)->countState(voxel_c::VX_FILLED) +
+          getResultShape(*pr)->countState(voxel_c::VX_VARIABLE),
           pr->getNumberOfPieces(), cntMin, cnt);
     }
 
@@ -2107,7 +2107,7 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->value(levelText);
 
       disassemble = new disasmToMoves_c(pr->getSavedSolution(num)->getDisassembly(),
-                                      2*pr->getResultShape()->getBiggestDimension(),
+                                      2*getResultShape(*pr)->getBiggestDimension(),
                                       pr->getNumberOfPieces());
       disassemble->setStep(SolutionAnim->value(), config.useBlendedRemoving(), true);
 

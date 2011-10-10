@@ -573,6 +573,12 @@ void problem_c::setResultId(unsigned int shape)
   }
 }
 
+void problem_c::clearResult(void)
+{
+  removeAllSolutions();
+  result = 0xFFFFFFFF;
+}
+
 unsigned int problem_c::getResultId(void) const {
   bt_assert(result < puzzle.getNumberOfShapes());
   return result;
@@ -582,14 +588,16 @@ bool problem_c::resultValid(void) const {
 }
 
 /* get the result shape voxel space */
-const voxel_c * problem_c::getResultShape(void) const {
-  bt_assert(result < puzzle.getNumberOfShapes());
-  return puzzle.getShape(result);
+const voxel_c * getResultShape(const problem_c & problem)
+{
+  bt_assert(problem.resultValid());
+  return problem.getPuzzle().getShape(problem.getResultId());
 }
 
-voxel_c * problem_c::getResultShape(void) {
-  bt_assert(result < puzzle.getNumberOfShapes());
-  return puzzle.getShape(result);
+voxel_c * getResultShape(problem_c & problem)
+{
+  bt_assert(problem.resultValid());
+  return problem.getPuzzle().getShape(problem.getResultId());
 }
 
 void problem_c::setShapeMinimum(unsigned int shape, unsigned int count)
@@ -983,6 +991,7 @@ static bool comp_3_pieces(const solution_c * s1, const solution_c * s2)
 {
   return s1->getAssembly()->comparePieces(s2->getAssembly()) > 0;
 }
+
 
 void problem_c::sortSolutions(int by) {
   switch (by) {
