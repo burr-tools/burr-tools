@@ -446,7 +446,7 @@ void problem_c::removeShape(unsigned short idx) {
   // remove the shape from the part list
   setShapeMaximum(idx, 0);
 
-  /* now check all shapes, and the result, if their id is larger
+  /* now check all parts, and the result, if their id is larger
    * than the deleted shape, if so decrement to update the number
    */
   for (unsigned int i = 0; i < parts.size(); i++)
@@ -892,44 +892,44 @@ assembler_c::errState problem_c::setAssembler(assembler_c * assm) {
   return assembler_c::ERR_NONE;
 }
 
-void problem_c::setPartGroup(unsigned int partID, unsigned short group, unsigned short count) {
-  bt_assert(partID < parts.size());
+void problem_c::setPartGroup(unsigned int partId, unsigned short groupId, unsigned short count) {
+  bt_assert(partId < parts.size());
 
   // not first look, if we already have this group number in our list
-  for (unsigned int i = 0; i < parts[partID]->groups.size(); i++)
-    if (parts[partID]->groups[i].group == group) {
+  for (unsigned int i = 0; i < parts[partId]->groups.size(); i++)
+    if (parts[partId]->groups[i].group == groupId) {
 
       /* if we change count, change it, if we set count to 0 remove that entry */
       if (count)
-        parts[partID]->groups[i].count = count;
+        parts[partId]->groups[i].count = count;
       else
-        parts[partID]->groups.erase(parts[partID]->groups.begin()+i);
+        parts[partId]->groups.erase(parts[partId]->groups.begin()+i);
       return;
     }
 
   // not found add, but only groups not equal to 0
-  if (group && count)
-    parts[partID]->addGroup(group, count);
+  if (groupId && count)
+    parts[partId]->addGroup(groupId, count);
 }
 
-unsigned short problem_c::getNumberOfPartGroups(unsigned int partID) const {
-  bt_assert(partID < parts.size());
+unsigned short problem_c::getNumberOfPartGroups(unsigned int partId) const {
+  bt_assert(partId < parts.size());
 
-  return parts[partID]->groups.size();
+  return parts[partId]->groups.size();
 }
 
-unsigned short problem_c::getPartGroupId(unsigned int shapeID, unsigned int groupID) const {
-  bt_assert(shapeID < parts.size());
-  bt_assert(groupID < parts[shapeID]->groups.size());
+unsigned short problem_c::getPartGroupId(unsigned int partId, unsigned int groupId) const {
+  bt_assert(partId < parts.size());
+  bt_assert(groupId < parts[partId]->groups.size());
 
-  return parts[shapeID]->groups[groupID].group;
+  return parts[partId]->groups[groupId].group;
 }
 
-unsigned short problem_c::getPartGroupCount(unsigned int shapeID, unsigned int groupID) const {
-  bt_assert(shapeID < parts.size());
-  bt_assert(groupID < parts[shapeID]->groups.size());
+unsigned short problem_c::getPartGroupCount(unsigned int partId, unsigned int groupId) const {
+  bt_assert(partId < parts.size());
+  bt_assert(groupId < parts[partId]->groups.size());
 
-  return parts[shapeID]->groups[groupID].count;
+  return parts[partId]->groups[groupId].count;
 }
 
 unsigned int problem_c::getPartIdToPieceId(unsigned int pieceId) const {
