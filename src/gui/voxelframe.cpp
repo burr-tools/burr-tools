@@ -983,7 +983,7 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int problem, unsig
     // now place the result shape
     if (pr->resultValid()) {
 
-      num = addSpace(pr->getGridType()->getVoxel(pr->getResultShape()));
+      num = addSpace(pr->getPuzzle().getGridType()->getVoxel(pr->getResultShape()));
       setSpaceColor(num,
                             pieceColorR(pr->getResultId()),
                             pieceColorG(pr->getResultId()),
@@ -1010,7 +1010,7 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int problem, unsig
     int unsigned line = 2*factor;
     int unsigned col = 0;
     for (unsigned int p = 0; p < pr->getNumberOfParts(); p++) {
-      num = addSpace(pr->getGridType()->getVoxel(pr->getPartShape(p)));
+      num = addSpace(pr->getPuzzle().getGridType()->getVoxel(pr->getPartShape(p)));
 
       setSpaceColor(num,
                             pieceColorR(pr->getShapeIdOfPart(p)),
@@ -1089,7 +1089,7 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
 
         if (assm->isPlaced(piece)) {
 
-          voxel_c * vx = puz->getGridType()->getVoxel(puz->getPartShape(p));
+          voxel_c * vx = puz->getPuzzle().getGridType()->getVoxel(puz->getPartShape(p));
 
           bt_assert2(vx->transform(assm->getTransformation(piece)));
 
@@ -1104,7 +1104,7 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
 
         } else {
 
-          voxel_c * vx = puz->getGridType()->getVoxel(puz->getPartShape(p));
+          voxel_c * vx = puz->getPuzzle().getGridType()->getVoxel(puz->getPartShape(p));
 
           num = addSpace(vx);
 
@@ -1117,7 +1117,7 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
       }
 
     /* at the end add an empty voxel space that might be used for intersections */
-    num = addSpace(puz->getGridType()->getVoxel(1, 1, 1, voxel_c::VX_EMPTY));
+    num = addSpace(puz->getPuzzle().getGridType()->getVoxel(1, 1, 1, voxel_c::VX_EMPTY));
     setSpacePosition(num, 0, 0, 0, 1);
     setSpaceColor(num, 1, 0, 0, 1);   // bright red
     setDrawingMode(num, invisible);
@@ -1150,7 +1150,7 @@ void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * 
 
         if (assm->isPlaced(piece)) {
 
-          voxel_c * vx = puz->getGridType()->getVoxel(puz->getPartShape(p));
+          voxel_c * vx = puz->getPuzzle().getGridType()->getVoxel(puz->getPartShape(p));
 
           bt_assert2(vx->transform(assm->getTransformation(piece)));
 
@@ -1175,7 +1175,7 @@ void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * 
     trans = CenterTranslateRoateScale;
     _showCoordinateSystem = false;
 
-    num = addSpace(puz->getGridType()->getVoxel(puz->getResultShape()));
+    num = addSpace(puz->getPuzzle().getGridType()->getVoxel(puz->getResultShape()));
     setSpaceColor(num,
                         pieceColorR(puz->getResultId()),
                         pieceColorG(puz->getResultId()),
@@ -1221,7 +1221,7 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
   hy = puz->getResultShape()->getHy();
   hz = puz->getResultShape()->getHz();
 
-  if (t < puz->getGridType()->getSymmetries()->getNumTransformationsMirror()) {
+  if (t < puz->getPuzzle().getGridType()->getSymmetries()->getNumTransformationsMirror()) {
 
     int shape = 0;
     unsigned int p = piece;
@@ -1230,7 +1230,7 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
       shape++;
     }
 
-    voxel_c * vx = puz->getGridType()->getVoxel(puz->getPartShape(shape));
+    voxel_c * vx = puz->getPuzzle().getGridType()->getVoxel(puz->getPartShape(shape));
     bt_assert2(vx->transform(t));
 
     // 2 cases, we either add the shape, when we cleared everything
@@ -1265,7 +1265,7 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
   // we only need to create the result shape when we cleared everything
   if (!placeOnly)
   {
-    bt_assert2(addSpace(puz->getGridType()->getVoxel(puz->getResultShape())) == 1);
+    bt_assert2(addSpace(puz->getPuzzle().getGridType()->getVoxel(puz->getResultShape())) == 1);
     setSpaceColor(1,
         pieceColorR(puz->getResultId()),
         pieceColorG(puz->getResultId()),

@@ -23,6 +23,7 @@
 #include "bt_assert.h"
 #include "movementcache.h"
 #include "problem.h"
+#include "puzzle.h"
 #include "disassemblernode.h"
 #include "voxel.h"
 #include "disassemblerhashes.h"
@@ -305,7 +306,7 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
 movementAnalysator_c::movementAnalysator_c(const problem_c * problem) :
   piecenumber(problem->getNumberOfPieces()), maxstep((unsigned int) -1) {
 
-  cache = problem->getGridType()->getMovementCache(problem);
+  cache = problem->getPuzzle().getGridType()->getMovementCache(problem);
   /* we assert that there must be a cache, otherwise no disassembly
    * analysis is possible anyway and this should not
    * have been called

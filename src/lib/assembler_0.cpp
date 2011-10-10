@@ -22,6 +22,7 @@
 
 #include "bt_assert.h"
 #include "problem.h"
+#include "puzzle.h"
 #include "voxel.h"
 #include "assembly.h"
 #include "gridtype.h"
@@ -462,8 +463,8 @@ int assembler_0_c::prepare(void) {
    * that are present in the piece
    */
   symmetries_t resultSym = result->selfSymmetries();
-  const gridType_c * gt = problem->getGridType();
-  const symmetries_c * sym = problem->getGridType()->getSymmetries();
+  const gridType_c * gt = problem->getPuzzle().getGridType();
+  const symmetries_c * sym = problem->getPuzzle().getGridType()->getSymmetries();
   unsigned int symBreakerShape = 0xFFFFFFFF;
 
   /* so, if we have just the self-symmetry in the result, everything needs to be tried
@@ -1168,7 +1169,7 @@ void assembler_0_c::reduce(void) {
 
 assembly_c * assembler_0_c::getAssembly(void) {
 
-  assembly_c * assembly = new assembly_c(problem->getGridType());
+  assembly_c * assembly = new assembly_c(problem->getPuzzle().getGridType());
 
   // if no pieces are placed, or we finished return an empty assembly
   if (pos > piecenumber) {

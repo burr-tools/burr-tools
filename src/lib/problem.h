@@ -193,15 +193,14 @@ public:
   void save(xmlWriter_c & xml) const;
 
   /**
-   * return the current set grid type for this puzzle.
-   * the grid type is taken from the puzzle this problem belongs to
+   * return the puzzle that this problem belongs to
    */
-  const gridType_c * getGridType(void) const;
+  const puzzle_c & getPuzzle(void) const { return puzzle; }
+
   /**
-   * return the current set grid type for this puzzle.
-   * the grid type is taken from the puzzle this problem belongs to
+   * return the puzzle that this problem belongs to
    */
-  gridType_c * getGridType(void);
+  puzzle_c & getPuzzle(void) { return puzzle; }
 
   /**
    * get the name of the problem.

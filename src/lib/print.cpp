@@ -178,7 +178,7 @@ void print(const separation_c * s, const assembly_c * a, const problem_c * p) {
   for (unsigned int i = 0; i < p->getNumberOfParts(); i++)
     for (unsigned int j = 0; j < p->getPartMaximum(i); j++) {
 
-      pieces[pc] = p->getGridType()->getVoxel(p->getPartShape(i));
+      pieces[pc] = p->getPuzzle().getGridType()->getVoxel(p->getPartShape(i));
       bt_assert2(pieces[pc]->transform(a->getTransformation(pc)));
       pc++;
     }
@@ -210,7 +210,7 @@ void print(const assembly_c * a, const problem_c * p) {
     for (unsigned int j = 0; j < p->getPartMaximum(i); j++) {
 
       if (a->isPlaced(pc)) {
-        pieces[pc] = p->getGridType()->getVoxel(p->getPartShape(i));
+        pieces[pc] = p->getPuzzle().getGridType()->getVoxel(p->getPartShape(i));
         bt_assert2(pieces[pc]->transform(a->getTransformation(pc)));
       } else
         pieces[pc] = 0;

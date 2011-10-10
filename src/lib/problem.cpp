@@ -962,10 +962,6 @@ unsigned int problem_c::getPartIndexToPieceId(unsigned int pieceId) const {
   return pieceId;
 }
 
-const gridType_c * problem_c::getGridType(void) const { return puzzle.getGridType(); }
-gridType_c * problem_c::getGridType(void) { return puzzle.getGridType(); }
-
-
 static bool comp_0_assembly(const solution_c * s1, const solution_c * s2)
 {
   return s1->getAssemblyNumber() < s2->getAssemblyNumber();

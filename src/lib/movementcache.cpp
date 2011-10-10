@@ -22,6 +22,7 @@
 
 #include "voxel.h"
 #include "problem.h"
+#include "puzzle.h"
 
 #include <string.h>
 
@@ -71,7 +72,7 @@ void movementCache_c::moRehash(void) {
   moHash = newHash;
 }
 
-movementCache_c::movementCache_c(const problem_c * puzzle) : gt(puzzle->getGridType()) {
+movementCache_c::movementCache_c(const problem_c * puzzle) : gt(puzzle->getPuzzle().getGridType()) {
 
   /* initial table */
   moTableSize = 101;
@@ -85,7 +86,7 @@ movementCache_c::movementCache_c(const problem_c * puzzle) : gt(puzzle->getGridT
    */
   num_shapes = puzzle->getNumberOfParts();
 
-  num_transformations = puzzle->getGridType()->getSymmetries()->getNumTransformations();
+  num_transformations = puzzle->getPuzzle().getGridType()->getSymmetries()->getNumTransformations();
 
   shapes = new const voxel_c ** [num_shapes];
   for (unsigned int s = 0; s < num_shapes; s++) {

@@ -22,6 +22,7 @@
 
 #include "disassembly.h"
 #include "problem.h"
+#include "puzzle.h"
 #include "assembly.h"
 #include "disassembler_0.h"
 #include "solution.h"
@@ -41,7 +42,7 @@ void solveThread_c::run(void){
       /* otherwise we have to create a new one
        */
       action = solveThread_c::ACT_PREPARATION;
-      assm = puzzle->getGridType()->findAssembler(puzzle);
+      assm = puzzle->getPuzzle().getGridType()->findAssembler(puzzle);
 
       errState = assm->createMatrix(puzzle, parameters & PAR_KEEP_MIRROR, parameters & PAR_KEEP_ROTATIONS, parameters & PAR_COMPLETE_ROTATIONS);
       if (errState != assembler_c::ERR_NONE) {

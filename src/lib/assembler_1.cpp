@@ -22,6 +22,7 @@
 
 #include "bt_assert.h"
 #include "problem.h"
+#include "puzzle.h"
 #include "voxel.h"
 #include "assembly.h"
 #include "gridtype.h"
@@ -395,8 +396,8 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
    * that are present in the piece
    */
   symmetries_t resultSym = result->selfSymmetries();
-  const gridType_c * gt = problem->getGridType();
-  const symmetries_c * sym = problem->getGridType()->getSymmetries();
+  const gridType_c * gt = problem->getPuzzle().getGridType();
+  const symmetries_c * sym = problem->getPuzzle().getGridType()->getSymmetries();
   unsigned int symBreakerShape = 0xFFFFFFFF;
 
   /* so, if we have just the self-symmetry in the result, everything needs to be tried
@@ -1008,7 +1009,7 @@ void assembler_1_c::checkForTransformedAssemblies(unsigned int pivot, mirrorInfo
 
 assembly_c * assembler_1_c::getAssembly(void) {
 
-  assembly_c * assembly = new assembly_c(problem->getGridType());
+  assembly_c * assembly = new assembly_c(problem->getPuzzle().getGridType());
 
   /* fill the array with 0xff, so that we can distinguish between
    * placed and unplaced pieces

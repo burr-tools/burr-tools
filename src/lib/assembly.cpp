@@ -21,6 +21,7 @@
 #include "assembly.h"
 
 #include "problem.h"
+#include "puzzle.h"
 #include "bt_assert.h"
 #include "voxel.h"
 
@@ -804,7 +805,7 @@ voxel_c * assembly_c::createSpace(const problem_c * puz) const {
 
       unsigned int j = puz->getPartIdToPieceId(i);
 
-      voxel_c * pc = puz->getGridType()->getVoxel(puz->getPartShape(j));
+      voxel_c * pc = puz->getPuzzle().getGridType()->getVoxel(puz->getPartShape(j));
 
       bt_assert(pc->transform(placements[i].transformation));
 
@@ -820,7 +821,7 @@ voxel_c * assembly_c::createSpace(const problem_c * puz) const {
     }
 
   // create a shape identical in size with the result shape of the problem
-  voxel_c * res = puz->getGridType()->getVoxel(maxX, maxY, maxZ, 0);
+  voxel_c * res = puz->getPuzzle().getGridType()->getVoxel(maxX, maxY, maxZ, 0);
   res->skipRecalcBoundingBox(true);
 
   // now iterate over all shapes in the assembly and place them into the result
