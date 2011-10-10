@@ -723,7 +723,7 @@ void voxelFrame_c::drawVoxelSpace() {
                     else if (face.size() == 4*3)
                       drawGridRect(face[0], face[1], face[2], face[3]-face[0], face[4]-face[1], face[5]-face[2], face[9]-face[0], face[10]-face[1], face[11]-face[2], 4);
                     else
-                      printf("oops not implemented face shape for 3D cursor %i\n", face.size());
+                      printf("oops not implemented face shape for 3D cursor %zi\n", face.size());
                   }
 
                   n++;

@@ -211,7 +211,7 @@ bool imageExport_c::PreDraw(void) {
   switch(state) {
     case 0:
 
-      snprintf(statText, 50, "create Preview image %u / %u", im, images.size());
+      snprintf(statText, 50, "create Preview image %u / %zu", im, images.size());
       status->label(statText);
 
       images[im]->preparePreviewImage();
@@ -222,7 +222,7 @@ bool imageExport_c::PreDraw(void) {
 
       if (!images[im]->imageStarted()) {
 
-        snprintf(statText, 50, "create image %u / %u", im, images.size());
+        snprintf(statText, 50, "create image %u / %zu", im, images.size());
         status->label(statText);
 
         unsigned int w = (unsigned int)(imgHeight * images[im]->ratio() + 0.9);
