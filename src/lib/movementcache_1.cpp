@@ -62,7 +62,7 @@ const static int checks[NUM_DIRECTIONS][NUM_VOXELTYPES][NUM_CHECKS][3] = {
   }
 };
 
-movementCache_1_c::movementCache_1_c(const problem_c * puz) : movementCache_c(puz) {
+movementCache_1_c::movementCache_1_c(const problem_c & puz) : movementCache_c(puz) {
 }
 
 /* calculate the required movement possibilities */

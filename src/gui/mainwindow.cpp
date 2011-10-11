@@ -997,7 +997,7 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   if (JustCount->value() != 0) par |= solveThread_c::PAR_JUST_COUNT;
   if (CompleteRotations->value() != 0) par |= solveThread_c::PAR_COMPLETE_ROTATIONS;
 
-  assmThread = new solveThread_c(puzzle->getProblem(prob), par);
+  assmThread = new solveThread_c(*puzzle->getProblem(prob), par);
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
@@ -1186,7 +1186,7 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
   }
 
-  disassembler_c * dis = new disassembler_0_c(pr);
+  disassembler_c * dis = new disassembler_0_c(*pr);
 
   separation_c * d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
@@ -1218,7 +1218,7 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
   changed = true;
 
-  disassembler_c * dis = new disassembler_0_c(pr);
+  disassembler_c * dis = new disassembler_0_c(*pr);
 
   Fl_Double_Window * w = new Fl_Double_Window(20, 20, 300, 30);
   Fl_Box * b = new Fl_Box(0, 0, 300, 30);
@@ -1521,7 +1521,7 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
 
     for (unsigned int s = 0; s < pr->getNumberOfSavedSolutions(); s++)
     {
-      voxel_c * shape = pr->getSavedSolution(s)->getAssembly()->createSpace(pr);
+      voxel_c * shape = pr->getSavedSolution(s)->getAssembly()->createSpace(*pr);
 
       if ((filter & assmImportWindow_c::dropDisconnected) && !shape->connected(0, true, voxel_c::VX_EMPTY))
       {
@@ -2266,7 +2266,7 @@ void mainWindow_c::updateInterface(void) {
       BtnDelShape->deactivate();
     }
 
-    const problem_c * pr = (assmThread) ? assmThread->getProblem() : 0;
+    const problem_c * pr = (assmThread) ? &assmThread->getProblem() : 0;
 
     // we can only edit shapes, when something valid is selected and
     // either no assembler is running or the shape is not in the problem that the assembler works on
@@ -2356,7 +2356,7 @@ void mainWindow_c::updateInterface(void) {
     // the assembler is not running or not busy with the selected problem
     if ((problemSelector->getSelection() < puzzle->getNumberOfProblems()) &&
         (colorAssignmentSelector->getSelection() < puzzle->colorNumber()) &&
-        (!assmThread || (assmThread->getProblem() != puzzle->getProblem(problemSelector->getSelection())))) {
+        (!assmThread || (&(assmThread->getProblem()) != puzzle->getProblem(problemSelector->getSelection())))) {
 
       problem_c * pr = puzzle->getProblem(problemSelector->getSelection());
 
@@ -2390,7 +2390,7 @@ void mainWindow_c::updateInterface(void) {
     // the assembler is not running or not busy with out problem
     if ((problemSelector->getSelection() < puzzle->getNumberOfProblems()) &&
         (shapeAssignmentSelector->getSelection() < puzzle->getNumberOfShapes()) &&
-        (!assmThread || (assmThread->getProblem() != puzzle->getProblem(problemSelector->getSelection())))) {
+        (!assmThread || (&(assmThread->getProblem()) != puzzle->getProblem(problemSelector->getSelection())))) {
       BtnSetResult->activate();
 
       problem_c * pr = puzzle->getProblem(problemSelector->getSelection());
@@ -2427,14 +2427,14 @@ void mainWindow_c::updateInterface(void) {
     // we can edit the groups, when we have a problem with at least one shape and
     // the assembler is not working on the current problem
     if ((problemSelector->getSelection() < puzzle->getNumberOfProblems()) &&
-        (!assmThread || (assmThread->getProblem() != puzzle->getProblem(problemSelector->getSelection())))) {
+        (!assmThread || (&(assmThread->getProblem()) != puzzle->getProblem(problemSelector->getSelection())))) {
       BtnGroup->activate();
     } else {
       BtnGroup->deactivate();
     }
 
     if ((problemSelector->getSelection() < puzzle->getNumberOfProblems()) &&
-        (!assmThread || (assmThread->getProblem() != puzzle->getProblem(problemSelector->getSelection())))) {
+        (!assmThread || (&(assmThread->getProblem()) != puzzle->getProblem(problemSelector->getSelection())))) {
       BtnAddAll->activate();
       BtnRemAll->activate();
     } else {
@@ -2648,7 +2648,7 @@ void mainWindow_c::updateInterface(void) {
     }
 
 
-    if (assmThread && (assmThread->getProblem() == puzzle->getProblem(prob))) {
+    if (assmThread && (&(assmThread->getProblem()) == puzzle->getProblem(prob))) {
 
       problem_c * pr = puzzle->getProblem(prob);
 
@@ -2725,7 +2725,7 @@ void mainWindow_c::updateInterface(void) {
         break;
       }
 
-      if (assmThread->getProblem() == puzzle->getProblem(prob)) {
+      if (&(assmThread->getProblem()) == puzzle->getProblem(prob)) {
 
         // for the actually solved problem we enable the stop button
         BtnStart->deactivate();
@@ -2900,7 +2900,7 @@ void mainWindow_c::update(void) {
 
     // update the window, either when the thread stopped and so the buttons need to
     // be updated, or then the thread works for the currently selected problem
-    if (!assmThread || assmThread->getProblem() == puzzle->getProblem(solutionProblem->getSelection()))
+    if (!assmThread || &(assmThread->getProblem()) == puzzle->getProblem(solutionProblem->getSelection()))
       updateInterface();
   }
 }

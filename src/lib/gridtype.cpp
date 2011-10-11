@@ -123,7 +123,7 @@ gridType_c::~gridType_c(void) {
     delete sym;
 }
 
-movementCache_c * gridType_c::getMovementCache(const problem_c * puz) const
+movementCache_c * gridType_c::getMovementCache(const problem_c & puz) const
 {
   switch (type) {
     case GT_BRICKS:           return new movementCache_0_c(puz);
@@ -232,15 +232,15 @@ unsigned int gridType_c::getCapabilities(void) const
   }
 }
 
-assembler_c * gridType_c::findAssembler(const problem_c * p)
+assembler_c * gridType_c::findAssembler(const problem_c & p)
 {
   if (assembler_0_c::canHandle(p)) {
     fprintf(stderr, "using assembler 0\n");
-    return new assembler_0_c();
+    return new assembler_0_c(p);
   }
   if (assembler_1_c::canHandle(p)) {
     fprintf(stderr, "using assembler 1\n");
-    return new assembler_1_c();
+    return new assembler_1_c(p);
   }
 
   return 0;

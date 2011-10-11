@@ -88,7 +88,7 @@ class solveThread_c : public assembler_cb, public thread_c {
 
   private:
 
-    problem_c * puzzle;
+    problem_c & puzzle;
     int parameters;
 
   public:
@@ -102,8 +102,8 @@ class solveThread_c : public assembler_cb, public thread_c {
     static const int PAR_COMPLETE_ROTATIONS = 0x40;  // do a thorough rotation check
 
     // create all the necessary data structures to start the thread later on
-    solveThread_c(problem_c * puz, int par);
-    const problem_c * getProblem(void) const { return puzzle; }
+    solveThread_c(problem_c & puz, int par);
+    const problem_c & getProblem(void) const { return puzzle; }
 
   private:
 

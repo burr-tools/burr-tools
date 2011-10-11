@@ -111,7 +111,7 @@ public:
   /** create the cache. The cache is then fixed to the puzzle and the problem, it can
    * and should be reused to analyse all assemblies found but can not be used for another puzzle
    */
-  movementCache_c(const problem_c * puz);
+  movementCache_c(const problem_c & puz);
 
   virtual ~movementCache_c(void);
 

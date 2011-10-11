@@ -138,7 +138,7 @@ int main(int argv, char* args[]) {
       p.getProblem(pr)->removeAllSolutions();
 
 
-    solveThread_c assmThread(p.getProblem(pr), par);
+    solveThread_c assmThread(*p.getProblem(pr), par);
 
     if (!assmThread.start(false)) {
       cout << "Could not start Solver\n";

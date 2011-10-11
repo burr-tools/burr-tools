@@ -34,17 +34,17 @@ void solveThread_c::run(void){
     /* first check, if there is an assembler available with the
      * problem, if there is one take that
      */
-    if (puzzle->getAssembler())
-      assm = puzzle->getAssembler();
+    if (puzzle.getAssembler())
+      assm = puzzle.getAssembler();
 
     else {
 
       /* otherwise we have to create a new one
        */
       action = solveThread_c::ACT_PREPARATION;
-      assm = puzzle->getPuzzle().getGridType()->findAssembler(puzzle);
+      assm = puzzle.getPuzzle().getGridType()->findAssembler(puzzle);
 
-      errState = assm->createMatrix(puzzle, parameters & PAR_KEEP_MIRROR, parameters & PAR_KEEP_ROTATIONS, parameters & PAR_COMPLETE_ROTATIONS);
+      errState = assm->createMatrix(parameters & PAR_KEEP_MIRROR, parameters & PAR_KEEP_ROTATIONS, parameters & PAR_COMPLETE_ROTATIONS);
       if (errState != assembler_c::ERR_NONE) {
 
         errParam = assm->getErrorsParam();
@@ -68,7 +68,7 @@ void solveThread_c::run(void){
        * also restores the assembler state to a state that might
        * be saved within the problem
        */
-      errState = puzzle->setAssembler(assm);
+      errState = puzzle.setAssembler(assm);
       if (errState != assembler_c::ERR_NONE) {
         action = solveThread_c::ACT_ERROR;
         return;
@@ -84,17 +84,17 @@ void solveThread_c::run(void){
 
       action = solveThread_c::ACT_ASSEMBLING;
       assm->assemble(this);
-      puzzle->addTime(time(0)-startTime);
+      puzzle.addTime(time(0)-startTime);
 
       if (assm->getFinished() >= 1) {
         action = solveThread_c::ACT_FINISHED;
-        puzzle->finishedSolving();
+        puzzle.finishedSolving();
       } else
         action = solveThread_c::ACT_PAUSING;
 
     } else {
       action = solveThread_c::ACT_PAUSING;
-      puzzle->addTime(time(0)-startTime);
+      puzzle.addTime(time(0)-startTime);
     }
 
   }
@@ -103,12 +103,12 @@ void solveThread_c::run(void){
 
     ae = a;
     action = solveThread_c::ACT_ASSERT;
-    if (puzzle->getAssembler())
-      puzzle->removeAllSolutions();
+    if (puzzle.getAssembler())
+      puzzle.removeAllSolutions();
   }
 }
 
-solveThread_c::solveThread_c(problem_c * puz, int par) :
+solveThread_c::solveThread_c(problem_c & puz, int par) :
 action(ACT_PREPARATION),
 puzzle(puz),
 parameters(par),
@@ -152,8 +152,8 @@ bool solveThread_c::assembly(assembly_c * a) {
     break;
   case SOL_SAVE_ASM:
 
-    if (puzzle->getNumAssemblies() % (solutionDrop*dropMultiplicator) == 0)
-      puzzle->addSolution(a);
+    if (puzzle.getNumAssemblies() % (solutionDrop*dropMultiplicator) == 0)
+      puzzle.addSolution(a);
     else
       delete a;
 
@@ -169,8 +169,8 @@ bool solveThread_c::assembly(assembly_c * a) {
 
         // only one piece, that is always a solution, so increment number
         // of solutions but save only the assembly
-        puzzle->addSolution(a);
-        puzzle->incNumSolutions();
+        puzzle.addSolution(a);
+        puzzle.incNumSolutions();
 
         break;
       }
@@ -196,7 +196,7 @@ bool solveThread_c::assembly(assembly_c * a) {
         delete a;
 
         // yes, the puzzle is disassembable count solutions
-        puzzle->incNumSolutions();
+        puzzle.incNumSolutions();
 
         break;
       }
@@ -211,16 +211,16 @@ bool solveThread_c::assembly(assembly_c * a) {
           {
             unsigned int lev = s->sumMoves();
 
-            for (unsigned int i = 0; i < puzzle->getNumberOfSavedSolutions(); i++) {
+            for (unsigned int i = 0; i < puzzle.getNumberOfSavedSolutions(); i++) {
 
-              const disassembly_c * s2 = puzzle->getSavedSolution(i)->getDisassembly();
+              const disassembly_c * s2 = puzzle.getSavedSolution(i)->getDisassembly();
 
               if (s2 && s2->sumMoves() > lev) {
                 if (parameters & PAR_DROP_DISASSEMBLIES) {
-                  puzzle->addSolution(a, new separationInfo_c(s), i);
+                  puzzle.addSolution(a, new separationInfo_c(s), i);
                   delete s;
                 } else
-                  puzzle->addSolution(a, s, i);
+                  puzzle.addSolution(a, s, i);
                 ins = true;
                 break;
               }
@@ -229,31 +229,31 @@ bool solveThread_c::assembly(assembly_c * a) {
 
           if (!ins) {
             if (parameters & PAR_DROP_DISASSEMBLIES) {
-              puzzle->addSolution(a, new separationInfo_c(s));
+              puzzle.addSolution(a, new separationInfo_c(s));
               delete s;
             } else
-              puzzle->addSolution(a, s);
+              puzzle.addSolution(a, s);
           }
 
           // remove the front most solution, if we only want to save
           // a limited number of solutions, as the front most
           // solutions are the more unimportant ones
-          if (solutionLimit && (puzzle->getNumberOfSavedSolutions() > solutionLimit))
-            puzzle->removeSolution(0);
+          if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit))
+            puzzle.removeSolution(0);
 
           break;
         case SRT_LEVEL:
           {
-            for (unsigned int i = 0; i < puzzle->getNumberOfSavedSolutions(); i++) {
+            for (unsigned int i = 0; i < puzzle.getNumberOfSavedSolutions(); i++) {
 
-              const disassembly_c * s2 = puzzle->getSavedSolution(i)->getDisassemblyInfo();
+              const disassembly_c * s2 = puzzle.getSavedSolution(i)->getDisassemblyInfo();
 
               if (s2 && (s2->compare(s) > 0)) {
                 if (parameters & PAR_DROP_DISASSEMBLIES) {
-                  puzzle->addSolution(a, new separationInfo_c(s), i);
+                  puzzle.addSolution(a, new separationInfo_c(s), i);
                   delete s;
                 } else
-                  puzzle->addSolution(a, s, i);
+                  puzzle.addSolution(a, s, i);
                 ins = true;
                 break;
               }
@@ -261,28 +261,28 @@ bool solveThread_c::assembly(assembly_c * a) {
 
             if (!ins)  {
               if (parameters & PAR_DROP_DISASSEMBLIES) {
-                puzzle->addSolution(a, new separationInfo_c(s));
+                puzzle.addSolution(a, new separationInfo_c(s));
                 delete s;
               } else
-                puzzle->addSolution(a, s);
+                puzzle.addSolution(a, s);
             }
           }
 
           // remove the front most solution, if we only want to save
           // a limited number of solutions, as the front most
           // solutions are the more unimportant ones
-          if (solutionLimit && (puzzle->getNumberOfSavedSolutions() > solutionLimit))
-            puzzle->removeSolution(0);
+          if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit))
+            puzzle.removeSolution(0);
 
           break;
         case SRT_UNSORT:
           /* only save every solutionDrop-th solution */
-          if (puzzle->getNumSolutions() % (solutionDrop * dropMultiplicator) == 0) {
+          if (puzzle.getNumSolutions() % (solutionDrop * dropMultiplicator) == 0) {
             if (parameters & PAR_DROP_DISASSEMBLIES) {
-              puzzle->addSolution(a, new separationInfo_c(s));
+              puzzle.addSolution(a, new separationInfo_c(s));
               delete s;
             } else
-              puzzle->addSolution(a, s);
+              puzzle.addSolution(a, s);
           } else {
             delete a;
             delete s;
@@ -292,25 +292,25 @@ bool solveThread_c::assembly(assembly_c * a) {
       }
 
       // yes, the puzzle is disassembably, count solutions
-      puzzle->incNumSolutions();
+      puzzle.incNumSolutions();
     }
     break;
   }
 
-  puzzle->incNumAssemblies();
+  puzzle.incNumAssemblies();
 
   // this is the case for assembly only or unsorted disassembly solutions
   // we need to thin out the list
-  if (solutionLimit && (puzzle->getNumberOfSavedSolutions() > solutionLimit)) {
-    unsigned int idx = (_solutionAction == SOL_SAVE_ASM) ? puzzle->getNumAssemblies()-1
-                                                         : puzzle->getNumSolutions()-1;
+  if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit)) {
+    unsigned int idx = (_solutionAction == SOL_SAVE_ASM) ? puzzle.getNumAssemblies()-1
+                                                         : puzzle.getNumSolutions()-1;
 
     idx = (idx % (solutionLimit * solutionDrop * dropMultiplicator)) / (solutionDrop * dropMultiplicator);
 
     if (idx == solutionLimit-1)
       dropMultiplicator *= 2;
 
-    puzzle->removeSolution(idx+1);
+    puzzle.removeSolution(idx+1);
   }
 
   return true;
@@ -327,8 +327,8 @@ void solveThread_c::stop(void) {
 
   action = ACT_WAIT_TO_STOP;
 
-  if (puzzle->getAssembler())
-    puzzle->getAssembler()->stop();
+  if (puzzle.getAssembler())
+    puzzle.getAssembler()->stop();
 
   stopPressed = true;
 }
@@ -349,15 +349,15 @@ bool solveThread_c::start(bool stop_after_prep) {
   // other cases we use the solution counter
   if ((parameters & (PAR_JUST_COUNT | PAR_DISASSM)) == 0) {
 
-    if (!puzzle->numAssembliesKnown())
+    if (!puzzle.numAssembliesKnown())
       a = 0;
     else
-      a = puzzle->getNumAssemblies();
+      a = puzzle.getNumAssemblies();
   } else {
-    if (!puzzle->numSolutionsKnown())
+    if (!puzzle.numSolutionsKnown())
       a = 0;
     else
-      a = puzzle->getNumSolutions();
+      a = puzzle.getNumSolutions();
   }
 
   while (a+solutionDrop > 2 * solutionLimit * solutionDrop) {

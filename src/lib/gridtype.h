@@ -108,7 +108,7 @@ class gridType_c {
     unsigned int getCapabilities(void) const;
 
     /// return a movement cache instance for this grid type
-    movementCache_c * getMovementCache(const problem_c * puz) const;
+    movementCache_c * getMovementCache(const problem_c & puz) const;
 
     /// create a new voxel space of this grid type with the given dimensions
     voxel_c * getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init) const;
@@ -139,7 +139,7 @@ class gridType_c {
      * because we are not dependent on the gridtype this function is static
      * but it needs to know the puzzle
      */
-    static assembler_c * findAssembler(const problem_c * p);
+    static assembler_c * findAssembler(const problem_c & p);
 
   private:
 

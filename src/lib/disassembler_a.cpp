@@ -28,22 +28,22 @@
 #include "assembly.h"
 #include "disassembly.h"
 
-disassembler_a_c::disassembler_a_c(const problem_c * puz) :
+disassembler_a_c::disassembler_a_c(const problem_c & puz) :
   disassembler_c(), puzzle(puz) {
 
   /* Initialise the grouping class */
   groups = new grouping_c();
-  for (unsigned int i = 0; i < puz->getNumberOfParts(); i++)
-    for (unsigned int j = 0; j < puz->getNumberOfPartGroups(i); j++)
-      groups->addPieces(puz->getShapeIdOfPart(i),
-                        puz->getPartGroupId(i, j),
-                        puz->getPartGroupCount(i, j));
+  for (unsigned int i = 0; i < puz.getNumberOfParts(); i++)
+    for (unsigned int j = 0; j < puz.getNumberOfPartGroups(i); j++)
+      groups->addPieces(puz.getShapeIdOfPart(i),
+                        puz.getPartGroupId(i, j),
+                        puz.getPartGroupCount(i, j));
 
   /* initialize piece 2 shape transformation */
-  piece2shape = new unsigned short[puz->getNumberOfPieces()];
+  piece2shape = new unsigned short[puz.getNumberOfPieces()];
   int p = 0;
-  for (unsigned int i = 0; i < puz->getNumberOfParts(); i++)
-    for (unsigned int j = 0; j < puz->getPartMaximum(i); j++)
+  for (unsigned int i = 0; i < puz.getNumberOfParts(); i++)
+    for (unsigned int j = 0; j < puz.getPartMaximum(i); j++)
       piece2shape[p++] = i;
 
   analyse = new movementAnalysator_c(puzzle);
@@ -203,15 +203,15 @@ unsigned short disassembler_a_c::subProbGroup(const disassemblerNode_c * st, con
   {
     if (st->is_piece_removed(i) == cond)
     {
-      if (puzzle->getNumberOfPartGroups(piece2shape[pn[i]]) != 1)
+      if (puzzle.getNumberOfPartGroups(piece2shape[pn[i]]) != 1)
       {
         return 0;
       }
       else if (group == 0)
       {
-        group = puzzle->getPartGroupId(piece2shape[pn[i]], 0);
+        group = puzzle.getPartGroupId(piece2shape[pn[i]], 0);
       }
-      else if (group != puzzle->getPartGroupId(piece2shape[pn[i]], 0))
+      else if (group != puzzle.getPartGroupId(piece2shape[pn[i]], 0))
       {
         return 0;
       }
@@ -234,7 +234,7 @@ bool disassembler_a_c::subProbGrouping(const std::vector<unsigned int> & pn) {
 
 separation_c * disassembler_a_c::disassemble(const assembly_c * assembly) {
 
-  bt_assert(puzzle->getNumberOfPieces() == assembly->placementCount());
+  bt_assert(puzzle.getNumberOfPieces() == assembly->placementCount());
   groups->reSet();
 
   disassemblerNode_c * start = new disassemblerNode_c(assembly);

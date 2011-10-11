@@ -80,7 +80,7 @@ class movementAnalysator_c {
      * This can not be changed, once you done that but you can analyse
      * many positions
      */
-    movementAnalysator_c(const problem_c *puz);
+    movementAnalysator_c(const problem_c & puz);
     ~movementAnalysator_c(void);
 
     /* you use either the 2 functions below, or completeFind

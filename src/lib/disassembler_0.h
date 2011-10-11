@@ -53,7 +53,7 @@ private:
 
 public:
 
-  disassembler_0_c(const problem_c * puz) : disassembler_a_c(puz) { }
+  disassembler_0_c(const problem_c & puz) : disassembler_a_c(puz) { }
   ~disassembler_0_c() { }
 
 private:

@@ -276,9 +276,9 @@ int main(int argv, char* args[]) {
 
       problem_c * problem = p.getProblem(pr);
 
-      assembler_c *assm = p.getGridType()->findAssembler(problem);
+      assembler_c *assm = p.getGridType()->findAssembler(*problem);
 
-      switch (assm->createMatrix(problem, false, false, false)) {
+      switch (assm->createMatrix(false, false, false)) {
       case assembler_c::ERR_TOO_MANY_UNITS:
         printf("%i units too many for the result shape\n", assm->getErrorsParam());
         return 0;
@@ -316,7 +316,7 @@ int main(int argv, char* args[]) {
 
       d = 0;
       if (disassemble)
-        d = new disassembler_0_c(problem);
+        d = new disassembler_0_c(*problem);
 
       assm->assemble(&a);
 
@@ -336,7 +336,7 @@ int main(int argv, char* args[]) {
 
       problem_c * problem = p.getProblem(pr);
 
-      d = new disassembler_0_c(problem);
+      d = new disassembler_0_c(*problem);
 
       for (unsigned int sol = 0; sol < problem->getNumberOfSavedSolutions(); sol++) {
 

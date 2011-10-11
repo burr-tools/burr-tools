@@ -175,13 +175,13 @@ void assembly_c::save(xmlWriter_c & xml) const
   xml.endTag("assembly");
 }
 
-void assembly_c::sort(const problem_c * puz) {
+void assembly_c::sort(const problem_c & puz) {
 
   int p = 0;
 
-  for (unsigned int i = 0; i < puz->getNumberOfParts(); i++) {
+  for (unsigned int i = 0; i < puz.getNumberOfParts(); i++) {
 
-    unsigned int cnt = puz->getPartMaximum(i);
+    unsigned int cnt = puz.getPartMaximum(i);
 
     /* find out how many pieces are actually placed:
      */
@@ -217,7 +217,7 @@ void assembly_c::sort(const problem_c * puz) {
   }
 }
 
-bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mirrorInfo_c * mir) {
+bool assembly_c::transform(unsigned char trans, const problem_c & puz, const mirrorInfo_c * mir) {
 
   if (trans == 0) return true;
 
@@ -225,7 +225,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
   bt_assert((trans < sym->getNumTransformations()) || mir);
 
   int rx, ry, rz;
-  if (!getResultShape(*puz)->getHotspot(trans, &rx, &ry, &rz)) return false;
+  if (!getResultShape(puz)->getHotspot(trans, &rx, &ry, &rz)) return false;
 
   /* the hole idea behind this is:
    *
@@ -254,11 +254,11 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
      * and accommodate for this change
      */
 
-    int hx = getResultShape(*puz)->getHx();
-    int hy = getResultShape(*puz)->getHy();
-    int hz = getResultShape(*puz)->getHz();
+    int hx = getResultShape(puz)->getHx();
+    int hy = getResultShape(puz)->getHy();
+    int hz = getResultShape(puz)->getHz();
 
-    getResultShape(*puz)->transformPoint(&hx, &hy, &hz, trans);
+    getResultShape(puz)->transformPoint(&hx, &hy, &hz, trans);
 
     rx -= hx;
     ry -= hy;
@@ -276,8 +276,8 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
 
     int cx, cy, cz, dx, dy, dz;
 
-    if (!getResultShape(*puz)->getBoundingBox(trans, &cx, &cy, &cz)) return false;
-    if (!getResultShape(*puz)->getBoundingBox(0, &dx, &dy, &dz)) return false;
+    if (!getResultShape(puz)->getBoundingBox(trans, &cx, &cy, &cz)) return false;
+    if (!getResultShape(puz)->getBoundingBox(0, &dx, &dy, &dz)) return false;
 
     rx += dx - cx;
     ry += dy - cy;
@@ -286,18 +286,18 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
 
   unsigned int p = 0;
 
-  for (unsigned int i = 0; i < puz->getNumberOfParts(); i++) {
-    for (unsigned int j = 0; j < puz->getPartMaximum(i); j++) {
+  for (unsigned int i = 0; i < puz.getNumberOfParts(); i++) {
+    for (unsigned int j = 0; j < puz.getPartMaximum(i); j++) {
 
       // if a piece has a transformation == 255 it is NOT placed so we don't need to do anything
       // we even do leave the shape loop as no more pieces of that shape will be placed..
       if (!isPlaced(p)) {
-        p += puz->getPartMaximum(i)-j;
-        j = puz->getPartMaximum(i);
+        p += puz.getPartMaximum(i)-j;
+        j = puz.getPartMaximum(i);
         continue;
       }
 
-      getResultShape(*puz)->transformPoint(&placements[p].xpos, &placements[p].ypos, &placements[p].zpos, trans);
+      getResultShape(puz)->transformPoint(&placements[p].xpos, &placements[p].ypos, &placements[p].zpos, trans);
 
       placements[p].xpos += rx;
       placements[p].ypos += ry;
@@ -309,7 +309,7 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
       placements[p].transformation = sym->transAdd(placements[p].transformation, trans);
       if (placements[p].transformation == TND) return false;
 
-      unsigned char tr = puz->getPartShape(i)->normalizeTransformation(placements[p].transformation);
+      unsigned char tr = puz.getPartShape(i)->normalizeTransformation(placements[p].transformation);
 
       if (tr != placements[p].transformation) {
 
@@ -319,11 +319,11 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
          * this is the easiest solution but by far the slowest
          */
         int ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz;
-        puz->getPartShape(i)->getHotspot(placements[p].transformation, &ax, &ay, &az);
-        puz->getPartShape(i)->getHotspot(tr, &bx, &by, &bz);
+        puz.getPartShape(i)->getHotspot(placements[p].transformation, &ax, &ay, &az);
+        puz.getPartShape(i)->getHotspot(tr, &bx, &by, &bz);
 
-        puz->getPartShape(i)->getBoundingBox(placements[p].transformation, &cx, &cy, &cz);
-        puz->getPartShape(i)->getBoundingBox(tr, &dx, &dy, &dz);
+        puz.getPartShape(i)->getBoundingBox(placements[p].transformation, &cx, &cy, &cz);
+        puz.getPartShape(i)->getBoundingBox(tr, &dx, &dy, &dz);
 
         placements[p].xpos += bx-ax + cx-dx;
         placements[p].ypos += by-ay + cy-dy;
@@ -343,14 +343,14 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
 
     p = 0;
 
-    for (unsigned int i = 0; i < puz->getNumberOfParts(); i++) {
-      for (unsigned int j = 0; j < puz->getPartMaximum(i); j++) {
+    for (unsigned int i = 0; i < puz.getNumberOfParts(); i++) {
+      for (unsigned int j = 0; j < puz.getPartMaximum(i); j++) {
 
         // if a piece has a transformation == 255 it is NOT placed so we don't need to do anything
         // we even do leave the shape loop as no more pieces of that shape will be placed..
         if (!isPlaced(p)) {
-          p += puz->getPartMaximum(i)-j;
-          j = puz->getPartMaximum(i);
+          p += puz.getPartMaximum(i)-j;
+          j = puz.getPartMaximum(i);
           continue;
         }
 
@@ -381,8 +381,8 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
           {
             unsigned int ss = 0;
 
-            while (ss+puz->getPartMaximum(i2) <= p2) {
-              ss += puz->getPartMaximum(i2);
+            while (ss+puz.getPartMaximum(i2) <= p2) {
+              ss += puz.getPartMaximum(i2);
               i2++;
             }
           }
@@ -395,8 +395,8 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
            */
           if (sym->transAdd(t, t_inv) == TND || sym->transAdd(t_inv, t) == TND) return false;
 
-          bt_assert(puz->getPartShape(i)->normalizeTransformation(sym->transAdd(t, t_inv)) == 0);
-          bt_assert(puz->getPartShape(i2)->normalizeTransformation(sym->transAdd(t_inv, t)) == 0);
+          bt_assert(puz.getPartShape(i)->normalizeTransformation(sym->transAdd(t, t_inv)) == 0);
+          bt_assert(puz.getPartShape(i2)->normalizeTransformation(sym->transAdd(t_inv, t)) == 0);
 
           /* OK, we found replacement information for piece p,
            * we are supposed to replace it with piece p2
@@ -432,20 +432,20 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
              * have the same shape at the orientation
              */
 
-            puz->getPartShape(i)->getHotspot(p1t, &hx, &hy, &hz);
+            puz.getPartShape(i)->getHotspot(p1t, &hx, &hy, &hz);
             p1x -= hx;
             p1y -= hy;
             p1z -= hz;
-            puz->getPartShape(i)->getBoundingBox(p1t, &hx, &hy, &hz);
+            puz.getPartShape(i)->getBoundingBox(p1t, &hx, &hy, &hz);
             p1x += hx;
             p1y += hy;
             p1z += hz;
 
-            puz->getPartShape(i2)->getHotspot(p2t, &hx, &hy, &hz);
+            puz.getPartShape(i2)->getHotspot(p2t, &hx, &hy, &hz);
             p2x -= hx;
             p2y -= hy;
             p2z -= hz;
-            puz->getPartShape(i2)->getBoundingBox(p2t, &hx, &hy, &hz);
+            puz.getPartShape(i2)->getBoundingBox(p2t, &hx, &hy, &hz);
             p2x += hx;
             p2y += hy;
             p2z += hz;
@@ -460,25 +460,25 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
              * same for the other way around
              */
             if (sym->transAdd(t_inv, p1t) == TND || sym->transAdd(t, p2t) == TND) return false;
-            p1t = puz->getPartShape(i2)->normalizeTransformation(sym->transAdd(t_inv, p1t));
-            p2t = puz->getPartShape(i)->normalizeTransformation(sym->transAdd(t, p2t));
+            p1t = puz.getPartShape(i2)->normalizeTransformation(sym->transAdd(t_inv, p1t));
+            p2t = puz.getPartShape(i)->normalizeTransformation(sym->transAdd(t, p2t));
 
             /* now go back from the origin of the bounding box to the hotspot anchor point */
 
-            puz->getPartShape(i2)->getHotspot(p1t, &hx, &hy, &hz);
+            puz.getPartShape(i2)->getHotspot(p1t, &hx, &hy, &hz);
             p1x += hx;
             p1y += hy;
             p1z += hz;
-            puz->getPartShape(i2)->getBoundingBox(p1t, &hx, &hy, &hz);
+            puz.getPartShape(i2)->getBoundingBox(p1t, &hx, &hy, &hz);
             p1x -= hx;
             p1y -= hy;
             p1z -= hz;
 
-            puz->getPartShape(i)->getHotspot(p2t, &hx, &hy, &hz);
+            puz.getPartShape(i)->getHotspot(p2t, &hx, &hy, &hz);
             p2x += hx;
             p2y += hy;
             p2z += hz;
-            puz->getPartShape(i)->getBoundingBox(p2t, &hx, &hy, &hz);
+            puz.getPartShape(i)->getBoundingBox(p2t, &hx, &hy, &hz);
             p2x -= hx;
             p2y -= hy;
             p2z -= hz;
@@ -512,11 +512,11 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
              * have the same shape at the orientation
              */
 
-            puz->getPartShape(i)->getHotspot(p1t, &hx, &hy, &hz);
+            puz.getPartShape(i)->getHotspot(p1t, &hx, &hy, &hz);
             p1x -= hx;
             p1y -= hy;
             p1z -= hz;
-            puz->getPartShape(i)->getBoundingBox(p1t, &hx, &hy, &hz);
+            puz.getPartShape(i)->getBoundingBox(p1t, &hx, &hy, &hz);
             p1x += hx;
             p1y += hy;
             p1z += hz;
@@ -531,15 +531,15 @@ bool assembly_c::transform(unsigned char trans, const problem_c * puz, const mir
              * same for the other way around
              */
             if (sym->transAdd(t_inv, p1t) == TND) return false;
-            p1t = puz->getPartShape(i2)->normalizeTransformation(sym->transAdd(t_inv, p1t));
+            p1t = puz.getPartShape(i2)->normalizeTransformation(sym->transAdd(t_inv, p1t));
 
             /* now go back from the origin of the bounding box to the hotspot anchor point */
 
-            puz->getPartShape(i2)->getHotspot(p1t, &hx, &hy, &hz);
+            puz.getPartShape(i2)->getHotspot(p1t, &hx, &hy, &hz);
             p1x += hx;
             p1y += hy;
             p1z += hz;
-            puz->getPartShape(i2)->getBoundingBox(p1t, &hx, &hy, &hz);
+            puz.getPartShape(i2)->getBoundingBox(p1t, &hx, &hy, &hz);
             p1x -= hx;
             p1y -= hy;
             p1z -= hz;
@@ -605,27 +605,27 @@ bool assembly_c::containsMirroredPieces(void) const {
   return false;
 }
 
-bool assembly_c::validSolution(const problem_c * puz) const {
+bool assembly_c::validSolution(const problem_c & puz) const {
 
   unsigned int pos = 0;
 
-  for (unsigned int i = 0; i < puz->getNumberOfParts(); i++)
+  for (unsigned int i = 0; i < puz.getNumberOfParts(); i++)
   {
     unsigned int placed = 0;
 
-    while (placed < puz->getPartMaximum(i) && isPlaced(pos+placed))
+    while (placed < puz.getPartMaximum(i) && isPlaced(pos+placed))
       placed++;
 
-    if (placed < puz->getPartMinimum(i))
+    if (placed < puz.getPartMinimum(i))
       return false;
 
-    pos += puz->getPartMaximum(i);
+    pos += puz.getPartMaximum(i);
   }
 
   return true;
 }
 
-bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot, const mirrorInfo_c * mir, bool complete) const {
+bool assembly_c::smallerRotationExists(const problem_c & puz, unsigned int pivot, const mirrorInfo_c * mir, bool complete) const {
 
   /* we only need to check for mirrored transformations, if mirrorInfo is given
    * if not we assume that the piece set contains at least one piece that has no
@@ -660,7 +660,7 @@ bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot
 
       // now we create a voxel space of the given assembly shape/ and shift that one around
       voxel_c * assm = tmp.createSpace(puz);
-      const voxel_c * res = getResultShape(*puz);
+      const voxel_c * res = getResultShape(puz);
 
       for (int x = (int)res->boundX1()-(int)assm->boundX1(); (int)assm->boundX2()+x <= (int)res->boundX2(); x++)
         for (int y = (int)res->boundY1()-(int)assm->boundY1(); (int)assm->boundY2()+y <= (int)res->boundY2(); y++)
@@ -685,7 +685,7 @@ bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot
 
 
                         // the piece can also not be placed when the colour constraints don't fit
-                        !puz->placementAllowed(assm->getColor(px, py, pz), res->getColor2(x+px, y+py, z+pz))
+                        !puz.placementAllowed(assm->getColor(px, py, pz), res->getColor2(x+px, y+py, z+pz))
 
                        )
                       fits = false;
@@ -723,7 +723,7 @@ bool assembly_c::smallerRotationExists(const problem_c * puz, unsigned int pivot
   {
     for (unsigned char t = 0; t < endTrans; t++)
     {
-      symmetries_t s = getResultShape(*puz)->selfSymmetries();
+      symmetries_t s = getResultShape(puz)->selfSymmetries();
 
       if (sym->symmetrieContainsTransformation(s, t))
       {
@@ -789,7 +789,7 @@ int assembly_c::comparePieces(const assembly_c * b) const {
   return 0;
 }
 
-voxel_c * assembly_c::createSpace(const problem_c * puz) const {
+voxel_c * assembly_c::createSpace(const problem_c & puz) const {
 
   std::vector<voxel_c *>pieces;
   pieces.resize(placements.size());
@@ -803,9 +803,9 @@ voxel_c * assembly_c::createSpace(const problem_c * puz) const {
   for (unsigned int i = 0; i < placements.size(); i++)
     if (placements[i].transformation != UNPLACED_TRANS) {
 
-      unsigned int j = puz->getPartIdToPieceId(i);
+      unsigned int j = puz.getPartIdToPieceId(i);
 
-      voxel_c * pc = puz->getPuzzle().getGridType()->getVoxel(puz->getPartShape(j));
+      voxel_c * pc = puz.getPuzzle().getGridType()->getVoxel(puz.getPartShape(j));
 
       bt_assert(pc->transform(placements[i].transformation));
 
@@ -821,7 +821,7 @@ voxel_c * assembly_c::createSpace(const problem_c * puz) const {
     }
 
   // create a shape identical in size with the result shape of the problem
-  voxel_c * res = puz->getPuzzle().getGridType()->getVoxel(maxX, maxY, maxZ, 0);
+  voxel_c * res = puz.getPuzzle().getGridType()->getVoxel(maxX, maxY, maxZ, 0);
   res->skipRecalcBoundingBox(true);
 
   // now iterate over all shapes in the assembly and place them into the result

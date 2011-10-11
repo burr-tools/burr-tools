@@ -56,7 +56,7 @@ class disassembler_a_c : public disassembler_c {
     /**
      * the problem we solve
      */
-    const problem_c * puzzle;
+    const problem_c & puzzle;
 
     /**
      * Converts piece number to the corresponding shape number.
@@ -105,7 +105,7 @@ class disassembler_a_c : public disassembler_c {
      * The problem can not be changed, once you done that but
      * you can analyse many assemblies for disassembability
      */
-    disassembler_a_c(const problem_c *puz);
+    disassembler_a_c(const problem_c & puz);
     ~disassembler_a_c(void);
 
     /**

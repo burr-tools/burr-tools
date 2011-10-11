@@ -48,7 +48,7 @@ class assembler_1_c : public assembler_c {
 
 protected:
 
-  const problem_c * problem;
+  const problem_c & problem;
 
 private:
 
@@ -248,11 +248,11 @@ protected:
 
 public:
 
-  assembler_1_c(void);
+  assembler_1_c(const problem_c & problem);
   ~assembler_1_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */
-  errState createMatrix(const problem_c * puz, bool keepMirror, bool keepRotations, bool complete);
+  errState createMatrix(bool keepMirror, bool keepRotations, bool complete);
   void assemble(assembler_cb * callback);
   int getErrorsParam(void) { return errorsParam; }
   virtual float getFinished(void) const;
@@ -265,7 +265,7 @@ public:
   void debug_step(unsigned long num = 1);
   assembly_c * getAssembly(void);
 
-  static bool canHandle(const problem_c * p);
+  static bool canHandle(const problem_c & p);
 
   /* some more special information to find out possible piece placements */
   bool getPiecePlacementSupported(void) const { return true; }

@@ -22,7 +22,7 @@
 
 #include "../tools/xml.h"
 
-assembler_c::errState assembler_c::createMatrix(const problem_c * /*puz*/, bool /*keepMirror*/, bool /*keepRotations*/, bool /*complete*/)
+assembler_c::errState assembler_c::createMatrix(bool /*keepMirror*/, bool /*keepRotations*/, bool /*complete*/)
 {
   return ERR_NONE;
 }

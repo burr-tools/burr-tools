@@ -203,7 +203,7 @@ private:
    * returns true, if all shapes are at least the minimum required times
    * inside the assembly
    */
-  bool validSolution(const problem_c * puz) const;
+  bool validSolution(const problem_c & puz) const;
 
 public:
 
@@ -293,13 +293,13 @@ public:
    * maybe some pieces have already been replaced while other are still in their
    * initial position, so you have to throw away the assembly when that happens
    */
-  bool transform(unsigned char trans, const problem_c * puz, const mirrorInfo_c * mir);
+  bool transform(unsigned char trans, const problem_c & puz, const mirrorInfo_c * mir);
 
   /**
    * return true, if this is a non-normal assembly.
    * This is used to drop rotated assemblies
    */
-  bool smallerRotationExists(const problem_c * puz, unsigned int pivot, const mirrorInfo_c * mir, bool complete) const;
+  bool smallerRotationExists(const problem_c & puz, unsigned int pivot, const mirrorInfo_c * mir, bool complete) const;
 
   /**
    * exchange 2 shapes.
@@ -319,12 +319,12 @@ public:
    * sort the pieces within the assembly so that multipieces are ordered by
    * ascending placement order.
    */
-  void sort(const problem_c * puz);
+  void sort(const problem_c & puz);
 
   /** calculate a voxelspace that is identical to the assembly with
    * all pieces put into the space
    */
-  voxel_c * createSpace(const problem_c * puz) const;
+  voxel_c * createSpace(const problem_c & puz) const;
 
   void removePieces(unsigned int from, unsigned int cnt);
 

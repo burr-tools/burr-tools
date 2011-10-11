@@ -294,7 +294,7 @@ void movementBrowser_c::cb_AddMovement(void) {
   nodeData_s * s = (nodeData_s *)(nd->user_data());
   if (!s) return;
 
-  movementCache_c * c = puz->getPuzzle().getGridType()->getMovementCache(puz);
+  movementCache_c * c = puz->getPuzzle().getGridType()->getMovementCache(*puz);
 
   AddMovementDialog dlg(c, s->pieces, puz);
 
@@ -370,7 +370,7 @@ void movementBrowser_c::selectSpecificMovement(unsigned int piece, int x, int y,
   nodeData_s * s = (nodeData_s *)(nd->user_data());
   if (!s) return;
 
-  movementAnalysator_c mv(puz);
+  movementAnalysator_c mv(*puz);
 
   disassemblerNode_c * newNode = mv.findMatching(s->node, s->pieces, piece, x, y, z);
 
@@ -404,7 +404,7 @@ void movementBrowser_c::cb_NodeAnalyze(unsigned int level) {
 
   std::vector<disassemblerNode_c*> res;
 
-  movementAnalysator_c mv(puz);
+  movementAnalysator_c mv(*puz);
   mv.completeFind(s->node, s->pieces, &res);
 
   for (unsigned int i = 0; i < res.size(); i++)
