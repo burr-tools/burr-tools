@@ -1,3 +1,10 @@
+------------- Version 0.6.3 May 2013
+
+- fix uninitialized variable problem that sometimes resulted in wrong number of solutions (the
+  problem always went away when saving and reloading
+- fix problem with the rotation removal algorithm that resulted in wrong number of solutions
+  when a problem contained mirror pieces and not all pieces are always used in the solutions
+
 ------------- Version 0.6.2 Jul 2011
 
 - fix crash when removing pieces from a problem with solutions
