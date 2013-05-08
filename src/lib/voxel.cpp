@@ -107,6 +107,9 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_
   symmetries = symmetryInvalid();
 
   BbHsCache = new int[9*gt->getSymmetries()->getNumTransformationsMirror()];
+
+  for (unsigned int i = 0; i < gt->getSymmetries()->getNumTransformationsMirror(); i++)
+    BbHsCache[9*i+0] = BbHsCache[9*i+3] = BBHSCACHE_UNINIT;
 }
 
 voxel_c::voxel_c(const voxel_c & orig) : gt(orig.gt), sx(orig.sx), sy(orig.sy), sz(orig.sz),
@@ -129,6 +132,9 @@ voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz), weight(orig.weight) 
   symmetries = symmetryInvalid();
 
   BbHsCache = new int[9*gt->getSymmetries()->getNumTransformationsMirror()];
+
+  for (unsigned int i = 0; i < gt->getSymmetries()->getNumTransformationsMirror(); i++)
+    BbHsCache[9*i+0] = BbHsCache[9*i+3] = BBHSCACHE_UNINIT;
 }
 
 voxel_c::voxel_c(const voxel_c * orig) : gt(orig->gt), sx(orig->sx), sy(orig->sy), sz(orig->sz),
@@ -151,6 +157,9 @@ voxels(orig->voxels), hx(orig->hx), hy(orig->hy), hz(orig->hz), weight(orig->wei
   symmetries = symmetryInvalid();
 
   BbHsCache = new int[9*gt->getSymmetries()->getNumTransformationsMirror()];
+
+  for (unsigned int i = 0; i < gt->getSymmetries()->getNumTransformationsMirror(); i++)
+    BbHsCache[9*i+0] = BbHsCache[9*i+3] = BBHSCACHE_UNINIT;
 }
 
 voxel_c::~voxel_c() {
