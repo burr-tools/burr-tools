@@ -1,0 +1,28 @@
+
+-----------------------------
+MacOS 10.15.5 bootstrap build
+-----------------------------
+
+   Instructions to build and run burr-tools from Mac OS.  Builds working executables for burrTxt2 and burrGui.
+
+Contact: Bryan Turner (bryan.turner@pobox.com or "brturn" on GitHub)
+
+--------------------------------
+Build Script:
+--------------------------------
+- Requires XCode + command-line tools
+- Requires Homebrew
+
+> git clone https://github.com/burr-tools/burr-tools.git
+> cd burr-tools/
+> brew install autoconf automake libtool autoconf-archive gtk pkg-config fltk
+  *** there were additional packages that I forgot to record, just try brew installing anything it says is missing ***
+> autoreconf -fvi
+> ./configure
+> make
+
+CLI Program:
+   scr/burrTxt2
+
+GUI Program:
+   src/gui/burrGui

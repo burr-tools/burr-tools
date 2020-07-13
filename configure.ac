@@ -8,6 +8,8 @@ AC_DEFINE_UNQUOTED([URL],["$URL"],[Define to the URL of this package's homepage.
 AC_CONFIG_SRCDIR(src/burrTxt.cpp)
 AC_CONFIG_AUX_DIR(admin)
 
+AC_CONFIG_MACRO_DIR([m4])
+
 AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
@@ -32,7 +34,7 @@ case "$target_os" in
   mingw*)
     ;;
   *)
-    ACX_PTHREAD(, AC_MSG_ERROR([pthread library required for burrtools]))
+    AX_PTHREAD(, AC_MSG_ERROR([pthread library required for burrtools]))
     ;;
 esac
 
@@ -54,6 +56,7 @@ AC_CHECK_LIB(z, uncompress, ,
 AX_BOOST_BASE([1.33.1])
 AX_BOOST_TEST_EXEC_MONITOR
 AX_BOOST_THREAD
+AX_BOOST_SYSTEM
 
 AC_ARG_WITH(libpng,
         [  --with-libpng           prefix of libpng   (where to find bin/libpng-config)],
@@ -68,15 +71,13 @@ case "$target_os" in
   mingw*)
     ;;
   darwin*)
-   AX_CHECK_GL
+    AX_CHECK_GL
+    AX_CHECK_GLU
     ;;
 
   *)
-    MDL_HAVE_OPENGL
-
-    if test x$have_GL != xyes -o x$have_GLU != xyes; then
-      AC_MSG_ERROR([no openGL found, openGL is needed for burrtools])
-    fi
+    AX_CHECK_GL
+    AX_CHECK_GLU
     ;;
 esac
 
@@ -124,7 +125,7 @@ fi
 AC_SUBST(LARGEFILE)
 
 AC_SUBST(GUI_CPP_ADD, ["$GUI_CPP_ADD $GL_CFLAGS"])
-AC_SUBST(GUI_LD_ADD, ["$GUI_LD_ADD $GL_LIBS $BOOST_TEST_EXEC_MONITOR_LIB $BOOST_THREAD_LIB"])
+AC_SUBST(GUI_LD_ADD, ["$GUI_LD_ADD $GL_LIBS $BOOST_TEST_EXEC_MONITOR_LIB $BOOST_THREAD_LIB $BOOST_SYSTEM_LIB"])
 AC_SUBST(GUI_HELP_CPP_ADD, ["$GUI_HELP_CPP_ADD"])
 AC_SUBST(GUI_HELP_LD_ADD, ["$GUI_HELP_LD_ADD"])
 AC_SUBST(XML_CPP_ADD, $XML_CPP_ADD)
