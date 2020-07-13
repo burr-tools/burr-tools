@@ -1,0 +1,47 @@
+
+----------------------------------
+AmazonLinux Cloud9 bootstrap build
+----------------------------------
+
+   Instructions to build and run burr-tools from a Cloud9 amazonlinux environment.  This will build the burrTxt2 and burrGui applications, but I have only tested burrTxt2 for functionality, as there is no GUI on amazonlinux.
+
+Contact: Bryan Turner (bryan.turner@pobox.com or "brturn" on GitHub)
+
+--------------------------------
+AmazonLinux Cloud9 Configuration
+--------------------------------
+
+Image : amazonlinux
+Environment type : EC2
+Instance type : t2.micro
+IAM role : AWSServiceRoleForAWSCloud9 (generated)
+
+--------------------------------
+Downloading Packages & Repo
+--------------------------------
+
+> sudo yum -y update
+> sudo yum -y install gcc-c++ fltk fltk-devel boost boost-devel libpng libpng-devel libXmu-devel libXi-devel libXi libXmu
+> git clone https://github.com/burr-tools/burr-tools.git
+> cd burr-tools/
+
+-----------------------------------
+Run Configure & Make
+-----------------------------------
+
+> autoreconf -fvi
+> ./configure --without-boost-test-exec-monitor
+> make
+
+-----------------------------------
+Testing burrTxt2
+-----------------------------------
+
+> src/burrTxt2 -R -d examples/CubeInCage.xmpuzzle 
+> ls -al examples
+
+Results:
+-------------------------
+-rw-rw-r-- 1 ec2-user ec2-user  6487 Jul  7 01:44 SolidSixPieceBurrs.xmpuzzle
+-rw-rw-r-- 1 ec2-user ec2-user 25176 Jul  7 01:49 SolidSixPieceBurrs.xmpuzzlettt
+-------------------------

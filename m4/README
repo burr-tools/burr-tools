@@ -1,0 +1,4 @@
+These macros downloaded from GNU Autoconf-Archive
+> curl --get --output autoconf-archive-2019.01.06.tar.xz https://ftp.gnu.org/gnu/autoconf-archive/autoconf-archive-2019.01.06.tar.xz
+> xz -d autoconf-archive-2019.01.06.tar.xz
+> tar -xf autoconf-archive-2019.01.06.tar
