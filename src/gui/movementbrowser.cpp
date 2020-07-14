@@ -392,7 +392,7 @@ void movementBrowser_c::cb_StepBack(void) {
 
 static void cb_NodeAnalyze_stub(Fl_Widget* /*o*/, void* v) { ((movementBrowser_c*)v)->cb_NodeAnalyze(1); }
 static void cb_NodeAnalyzeMany_stub(Fl_Widget* /*o*/, void* v) { ((movementBrowser_c*)v)->cb_NodeAnalyze(2); }
-void movementBrowser_c::cb_NodeAnalyze(unsigned int /*level*/) {
+void movementBrowser_c::cb_NodeAnalyze(unsigned int level) {
 
   LTreeBrowser::Node * nd = tree->get_selected(1);
   if (!nd) return;
@@ -464,7 +464,7 @@ void movementBrowser_c::cb_3dClick(void) {
 
 movementBrowser_c::movementBrowser_c(problem_c * puzzle, unsigned int solNum) : LFl_Double_Window(true) , puz(puzzle) {
 
-  // LFl_Tile * tile = new LFl_Tile(0, 0, 1, 1);
+  LFl_Tile * tile = new LFl_Tile(0, 0, 1, 1);
 
   view3d = new LView3dGroup(1, 0, 1, 1);
   view3d->weight(1, 1);

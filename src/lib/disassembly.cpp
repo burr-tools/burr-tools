@@ -399,13 +399,13 @@ separation_c::separation_c(xmlParser_c & pars, unsigned int pieceCnt)
 
   pars.require(xmlParser_c::END_TAG, "separation");
 
-  numSequences = (left?left->numSequences:0) + (removed?removed->numSequences:0) + 1;
+  numSequences = left?left->numSequences:0 + removed?removed->numSequences:0 + 1;
 }
 
 separation_c::separation_c(separation_c * r, separation_c * l, const std::vector<unsigned int> & pcs) : removed(r), left(l) {
   pieces = pcs;
 
-  numSequences = (l?l->numSequences:0) + (r?r->numSequences:0) + 1;
+  numSequences = l?l->numSequences:0 + r?r->numSequences:0 + 1;
 }
 
 separation_c::~separation_c() {
