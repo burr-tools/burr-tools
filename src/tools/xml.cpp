@@ -536,7 +536,8 @@ int xmlParser_c::parseLegacy (bool bpush)
   }
   else
   {
-    exception ("illegal: <" + c);
+    std::string ch(1,c);
+    exception ("illegal: <" + ch);
     return -1;
   }
 

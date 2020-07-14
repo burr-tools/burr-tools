@@ -624,7 +624,7 @@ void joinPolyhedronInverse(Polyhedron & poly, const Polyhedron & inv, const face
       }
     }
   }
-  for (int i=0; i<face_pairs.size(); i++)
+  for (std::vector<int>::size_type i=0; i<face_pairs.size(); i++)
     joinTubePairs(poly,face_pairs[i].first,face_pairs[i].second, holeSize);
   face_pairs.clear();
 }
