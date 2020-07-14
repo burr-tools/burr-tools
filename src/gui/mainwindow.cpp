@@ -1900,7 +1900,7 @@ bool mainWindow_c::tryToLoad(const char * f) {
 
   catch (xmlParserException_c e)
   {
-    fl_message((std::string("load error: ") + e.what()).c_str());
+    fl_message("%s",(std::string("load error: ") + e.what()).c_str());
     delete str;
     return false;
   }
@@ -1939,7 +1939,7 @@ bool mainWindow_c::tryToLoad(const char * f) {
     fl_message("This puzzle file contains started but not finished search for solutions.");
 
   if (puzzle->getCommentPopup())
-    fl_message(puzzle->getComment().c_str());
+    fl_message("%s",puzzle->getComment().c_str());
 
   return true;
 }
@@ -2599,7 +2599,7 @@ void mainWindow_c::updateInterface(void) {
       if (ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE &&
           !assmThread &&
           solutionProblem->getSelection() < puzzle->getNumberOfProblems() &&
-          (int)SolutionSel->value()-1 < puzzle->getProblem(solutionProblem->getSelection())->getNumberOfSavedSolutions()
+          SolutionSel->value()-1 < puzzle->getProblem(solutionProblem->getSelection())->getNumberOfSavedSolutions()
          )
       {
         BtnMovement->activate();

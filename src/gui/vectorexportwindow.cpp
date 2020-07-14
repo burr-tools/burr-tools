@@ -22,9 +22,10 @@
 
 #include "../flu/Flu_File_Chooser.h"
 
-static const char * extensions[] = {
-  "ps", "eps", "tex", "pdf", "svg", "pgf"
-};
+// Unused?
+// static const char * extensions[] = {
+//   "ps", "eps", "tex", "pdf", "svg", "pgf"
+// };
 
 static void cb_Button1_stub(Fl_Widget* /*o*/, void* v) {
   ((vectorExportWindow_c*)v)->cancelled = false;

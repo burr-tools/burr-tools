@@ -106,7 +106,7 @@ void stlExport_c::cb_Update3DView(int type)
   }
   catch (stlException_c e)
   {
-    fl_message(e.comment);
+    fl_message("%s",e.comment);
     return;
   }
   catch (...)
@@ -424,7 +424,7 @@ void stlExport_c::exportSTL(int shape)
   }
 
   catch (stlException_c e) {
-    fl_message(e.comment);
+    fl_message("%s",e.comment);
   }
   catch (...)
   {

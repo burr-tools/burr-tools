@@ -68,7 +68,7 @@ class stlExport_c : public LFl_Double_Window {
     LFl_Box *status;
     LFl_Button *BtnStart, *BtnAbbort;
     PieceSelector * ShapeSelect;
-    LFl_Radio_Button *ExpShape;
+    // LFl_Radio_Button *ExpShape; // Unused?
     LFl_Check_Button *Binary;
     ButtonGroup_c * mode;
 
