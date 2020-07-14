@@ -31,7 +31,7 @@
 /*
  * 'fl_strlcat()' - Safely concatenate two strings.
  */
-#ifndef _fl_strlcat
+
 size_t				/* O - Length of string */
 fl_strlcat(char       *dst,	/* O - Destination string */
            const char *src,	/* I - Source string */
@@ -66,13 +66,11 @@ fl_strlcat(char       *dst,	/* O - Destination string */
 
   return (dstlen + srclen);
 }
-#endif
 
 
 /*
  * 'fl_strlcpy()' - Safely copy two strings.
  */
-#ifndef _fl_strlcpy
 
 size_t				/* O - Length of string */
 fl_strlcpy(char       *dst,	/* O - Destination string */
@@ -100,7 +98,7 @@ fl_strlcpy(char       *dst,	/* O - Destination string */
 
   return (srclen);
 }
-#endif
+
 
 /*
  * End of "$Id: flstring.c 4288 2005-04-16 00:13:17Z mike $".
