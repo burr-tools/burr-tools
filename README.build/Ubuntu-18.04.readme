@@ -5,7 +5,8 @@ Ubuntu Server 18.04 Cloud9 bootstrap build
 
    Instructions to build and run burr-tools from a Cloud9 amazonlinux environment.  This will build the burrTxt2 and burrGui applications, but I have only tested burrTxt2 for functionality, as there is no GUI available.
 
-Contact: Bryan Turner (bryan.turner@pobox.com or "brturn" on GitHub)
+Issues/Comments?  Join us on GitHub:
+   https://github.com/burr-tools/burr-tools/issues
 
 --------------------------------
 AmazonLinux Cloud9 Configuration
