@@ -13,10 +13,15 @@
 
 
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
+/* fltk includes */
 #include <FL/Fl.H>
-#include "Flu_Button.h"
-
 #include <FL/fl_draw.H>
+#pragma GCC diagnostic pop
+
+#include "Flu_Button.h"
 
 // taken explicitly from Fl_Return_Button.cpp
 static int flu_return_arrow(int x, int y, int w, int h)

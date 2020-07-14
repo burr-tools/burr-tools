@@ -27,8 +27,12 @@
 #include "../lib/voxel.h"
 #include "../lib/assembly.h"
 
-#include <FL/fl_draw.H>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl.H>
+#include <FL/fl_draw.H>
+#pragma GCC diagnostic pop
 
 /* draw a blocklist */
 void BlockList::draw() {

@@ -23,7 +23,12 @@
 #include "mainwindow.h"
 #include "assertwindow.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
+
 #include <FL/Fl.H>
+#pragma GCC diagnostic pop
 
 #include <time.h>
 

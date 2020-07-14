@@ -27,7 +27,11 @@
 #include "../lib/millable.h"
 #include "../lib/voxeltable.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl.H>
+#pragma GCC diagnostic pop
 
 class LFl_Line : public Fl_Box, public layoutable_c {
 

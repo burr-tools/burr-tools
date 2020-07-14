@@ -21,6 +21,10 @@
 #ifndef __LAYOUTER_H__
 #define __LAYOUTER_H__
 
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
+
 #include <FL/Fl_Widget.H>
 #include <FL/Fl_Group.H>
 
@@ -46,6 +50,8 @@
 #include <FL/Fl_Menu_Bar.H>
 #include <FL/Fl_Scroll.H>
 #include <FL/Fl_Progress.H>
+
+#pragma GCC diagnostic pop
 
 #include <vector>
 

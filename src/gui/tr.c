@@ -46,6 +46,8 @@
 #ifdef WIN32
 #include <windows.h>
 #endif
+
+#define GL_SILENCE_DEPRECATION 1
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>

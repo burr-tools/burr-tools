@@ -34,11 +34,17 @@
 //
 
 #  include <stdio.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
+
 #  include "FL/Fl.H"
 #  include "FL/Fl_Group.H"
 #  include "FL/Fl_Scrollbar.H"
 #  include "FL/fl_draw.H"
 #  include "FL/Fl_Shared_Image.H"
+#pragma GCC diagnostic pop
 
 
 //

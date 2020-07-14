@@ -39,9 +39,14 @@
 
 #include "LFl_Tile.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl.H>
 #include <FL/Fl_Tile.H>
 #include <FL/Fl_Window.H>
+#pragma GCC diagnostic pop
+
 #include <stdlib.h>
 
 // Drag the edges that were initially at oldx,oldy to newx,newy:

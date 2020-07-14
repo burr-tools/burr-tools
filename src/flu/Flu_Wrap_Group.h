@@ -16,11 +16,16 @@
 #ifndef _FLU_WRAP_GROUP_H
 #define _FLU_WRAP_GROUP_H
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
+
 /* fltk includes */
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Scrollbar.H>
+#pragma GCC diagnostic pop
 
 #include "Flu_Enumerations.h"
 

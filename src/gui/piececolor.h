@@ -21,7 +21,11 @@
 #ifndef __PIECECOLOR_H__
 #define __PIECECOLOR_H__
 
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
 #include <FL/fl_draw.H>
+#pragma GCC diagnostic pop 
 
 /* this module provides the colours for the pieces. The first few colours are defined within
  * a table, the following colours use a function that hopefully delivers ever changing

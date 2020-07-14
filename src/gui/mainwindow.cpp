@@ -77,6 +77,9 @@
 
 #include "../help/Fl_Help_Dialog.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl_Color_Chooser.H>
 #include <FL/Fl_Tooltip.H>
 #include <FL/Fl_Choice.H>
@@ -95,6 +98,7 @@
 #include <FL/Fl_Choice.H>
 #include <FL/Fl_Value_Input.H>
 #include <FL/fl_ask.H>
+#pragma GCC diagnostic pop
 
 #include <fstream>
 

@@ -23,8 +23,13 @@
 
 #include "BlockList.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
+
 #include <FL/Fl_Gl_Window.H>
 #include <FL/gl.h>
+#pragma GCC diagnostic pop
 
 #include <vector>
 
