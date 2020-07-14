@@ -5,7 +5,8 @@ MacOS 10.15.5 bootstrap build
 
    Instructions to build and run burr-tools from Mac OS.  Builds working executables for burrTxt2 and burrGui.
 
-Contact: Bryan Turner (bryan.turner@pobox.com or "brturn" on GitHub)
+Issues/Comments?  Join us on GitHub:
+   https://github.com/burr-tools/burr-tools/issues
 
 --------------------------------
 Build Script:

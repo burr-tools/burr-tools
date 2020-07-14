@@ -1,8 +1,5 @@
 #! /bin/sh
-# set -ex
-
-# export DARCS_DONT_ESCAPE_ISPRINT=1
-# darcs changes > ChangeLog
+set -ex
 
 if test -d /usr/share/autoconf-archive; then
     # workaround for Debian
