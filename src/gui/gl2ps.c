@@ -3349,7 +3349,7 @@ static void gl2psPrintTeXFooter(void)
           (gl2ps->options & GL2PS_LANDSCAPE) ? "}" : "");
 }
 
-static void gl2psPrintTeXBeginViewport(GLint viewport[4])
+static void gl2psPrintTeXBeginViewport(GLint /*viewport*/[4])
 {
   glRenderMode(GL_FEEDBACK);
 
