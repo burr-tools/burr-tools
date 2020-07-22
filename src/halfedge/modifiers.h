@@ -28,10 +28,10 @@ class faceList_c {
 
   private:
 
-    typedef struct face {
+    struct face{
       long voxel;
       int faceNum;
-    } face;
+    };
 
     std::vector<face> faces;
 
