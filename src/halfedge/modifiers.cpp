@@ -33,9 +33,7 @@ void faceList_c::addFace(long voxel, int face)
 {
   if (containsFace(voxel, face)) return;
 
-  struct face f;
-  f.voxel = voxel;
-  f.faceNum = face;
+  faceList_c::face f = {voxel, face};
 
   faces.push_back(f);
 }
