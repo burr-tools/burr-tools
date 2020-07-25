@@ -13,7 +13,6 @@ config.log
 config.status
 doxygen.cfg
 src/config.h
-src/config.h.in
 src/stamp-h1
 src/help/helpdata.cpp
 src/burrTxt
@@ -21,4 +20,8 @@ src/burrTxt2
 src/gui/burrGui
 src/help/helpviewer
 src/unitTest
-src/config.h.in
+src/burrTxt.exe
+src/burrTxt2.exe
+src/gui/burrGui.exe
+src/help/helpviewer.exe
+src/unitTest.exe

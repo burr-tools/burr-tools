@@ -1,0 +1,89 @@
+
+------------------------------------------
+Windows 10 (64-bit) bootstrap build
+------------------------------------------
+
+   Instructions to build and run burr-tools from a Windows 10 VM.  This will build the burrTxt2 and burrGui applications.
+
+Issues/Comments?  Join us on GitHub:
+   https://github.com/burr-tools/burr-tools/issues
+
+--------------------------------
+Windows 10 Development VM
+--------------------------------
+
+Download Windows Development VM:
+    https://developer.microsoft.com/en-us/windows/downloads/virtual-machines/
+
+Install MSYS2:
+    https://github.com/msys2/msys2-installer
+
+Use Pacman to install MingW (web page with instructions):
+    https://feaforall.com/install-c-language-gcc-compiler-windows/
+
+--------------------------------
+Downloading Packages
+--------------------------------
+
+> pacman -S base-devel gcc vim cmake
+
+  *** Add PATHs (Start -> Search -> Advanced Control Panel/System Settings -> Environment Variables -> PATH -> Add)
+    C:\msys64\mingw64\bin
+    C:\msys64\usr\bin
+
+> pacman -S 
+    zlib 
+    msys/libpng 
+    msys/zlib-devel 
+    mingw-w64-x86_64-fltk 
+    mingw-w64-x86_64-gcc
+    mingw-w64-x86_64-freeglut 
+    mingw-w64-x86_64-boost 
+    mingw-w64-x86_64-headers-git 
+    mingw-w64-x86_64-winpthreads-git 
+    mingw-w64-x86_64-make
+    mingw-w64-x86_64-libtool
+
+-----------------------------------
+Open MSYS2 - MINGW64 Terminal
+-----------------------------------
+
+  (Start -> MSYS2 64bit -> MSYS2 MinGW 64-bit)
+
+> uname
+MINGW64_NT-10.0-19041
+
+  **** VERIFY uname == MINGW64 ****
+
+--------------------------------
+Download Repo
+--------------------------------
+
+> git clone https://github.com/burr-tools/burr-tools.git
+> cd burr-tools/
+
+-----------------------------------
+Run Configure & Make
+-----------------------------------
+
+> ./bootstrap --with-fltk=/mingw64 --with-libpng=/mingw64 --with-boost=/mingw64
+
+  *** MODIFY:
+     Makefile
+     src/Makefile
+  *** Insert "-lws2_32" after every instance of "-lcomctl32"
+
+> make
+
+-----------------------------------
+Testing burrTxt2
+-----------------------------------
+
+> src/burrTxt2 -R -d examples/CubeInCage.xmpuzzle 
+> ls -al examples
+
+Results:
+-------------------------
+-rw-rw-r-- 1 ec2-user ec2-user  6487 Jul  7 01:44 SolidSixPieceBurrs.xmpuzzle
+-rw-rw-r-- 1 ec2-user ec2-user 25176 Jul  7 01:49 SolidSixPieceBurrs.xmpuzzlettt
+-------------------------

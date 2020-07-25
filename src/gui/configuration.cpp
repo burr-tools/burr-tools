@@ -141,7 +141,7 @@ configuration_c::configuration_c(void) {
   CNF_INT("windowposw",           &i_window_pos_w, "800");
   CNF_INT("windowposh",           &i_window_pos_h, "600");
 
-  parse();
+  // parse();
 }
 
 configuration_c::~configuration_c(void) {
