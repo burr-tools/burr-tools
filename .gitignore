@@ -1,4 +1,4 @@
-*~
+**/*~
 **/.deps
 **/.dirstamp
 **/Makefile
@@ -13,6 +13,7 @@ config.log
 config.status
 doxygen.cfg
 src/config.h
+src/config.h.in
 src/stamp-h1
 src/help/helpdata.cpp
 src/burrTxt
