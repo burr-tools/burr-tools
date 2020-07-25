@@ -55,10 +55,16 @@ bool luaClass_c::getBool(const char *name) {
 
 /* functions to evaluate lua code */
 int luaClass_c::doFile(const char *fname) {
-  luaL_loadfile(L, fname) || lua_pcall(L, 0, 0, 0);
+  if ( luaL_loadfile(L, fname) == 0 ) {
+    return lua_pcall(L, 0, 0, 0);
+  }
+  return 0;
 }
 int luaClass_c::doString(const char *code) {
-  luaL_loadbuffer(L, code, strlen(code), "line") || lua_pcall(L, 0, 0, 0);
+  if ( luaL_loadbuffer(L, code, strlen(code), "line") == 0 ) {
+    return lua_pcall(L, 0, 0, 0);
+  }
+  return 0;
 }
 
 /* functions that allow calling lua functions
