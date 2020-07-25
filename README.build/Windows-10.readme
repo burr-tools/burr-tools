@@ -67,12 +67,6 @@ Run Configure & Make
 -----------------------------------
 
 > ./bootstrap --with-fltk=/mingw64 --with-libpng=/mingw64 --with-boost=/mingw64
-
-  *** MODIFY:
-     Makefile
-     src/Makefile
-  *** Insert "-lws2_32" after every instance of "-lcomctl32"
-
 > make
 
 -----------------------------------
