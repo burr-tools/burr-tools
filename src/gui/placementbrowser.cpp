@@ -25,8 +25,12 @@
 #include "../lib/assembler.h"
 #include "../lib/problem.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl.H>
 #include <FL/fl_ask.H>
+#pragma GCC diagnostic pop
 
 #include "view3dgroup.h"
 

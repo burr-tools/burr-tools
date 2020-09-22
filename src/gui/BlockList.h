@@ -23,6 +23,7 @@
 
 #include "../lib/bt_assert.h"
 
+#define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl_Widget.H>
 
 class puzzle_c;

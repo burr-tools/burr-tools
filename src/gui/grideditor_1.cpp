@@ -25,7 +25,10 @@
 
 #include "../tools/intdiv.h"
 
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <FL/fl_draw.H>
+#pragma GCC diagnostic pop 
 
 #include <math.h>
 

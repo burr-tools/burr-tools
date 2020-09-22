@@ -11,12 +11,16 @@
  * 
  ***************************************************************/
 
+#include <stdlib.h>
 
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
+/* fltk includes */
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
 #include <FL/math.h>
-#include <stdlib.h>
+#pragma GCC diagnostic pop
 
 #include "Flu_Tree_Browser.h"
 #include "flu_pixmaps.h"

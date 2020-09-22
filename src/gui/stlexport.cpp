@@ -38,8 +38,12 @@
 
 #include "../tools/fileexists.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl.H>
 #include <FL/fl_ask.H>
+#pragma GCC diagnostic pop
 
 
 // a simple class (structure) containing some information for each input field

@@ -23,6 +23,7 @@
 #include <math.h>
 #include <assert.h>
 
+#define GL_SILENCE_DEPRECATION 1
 #include <FL/gl.h>
 
 /* The idea behind this is similar for both methods identical

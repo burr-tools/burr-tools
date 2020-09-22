@@ -16,10 +16,15 @@
 #ifndef _FLU_SEPARATOR_H
 #define _FLU_SEPARATOR_H
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
+
 /* fltk includes */
 #include <FL/Fl.H>
 #include <FL/Fl_Widget.H>
 #include <FL/fl_draw.H>
+#pragma GCC diagnostic pop
 
 #include "Flu_Enumerations.h"
 

@@ -22,6 +22,9 @@
 
 //#define USE_FLU_DND
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
 /* fltk includes */
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
@@ -30,6 +33,7 @@
 #include <FL/Fl_Scrollbar.H>
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Menu_Button.H>
+#pragma GCC diagnostic pop
 
 /* flu includes */
 #include "Flu_Enumerations.h"

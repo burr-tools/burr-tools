@@ -29,6 +29,11 @@
 
 #include "Fl_Help_Dialog.h"
 #include "flstring.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
+
 #include <FL/fl_ask.H>
 
 #include <FL/Fl.H>
@@ -37,6 +42,7 @@
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Input.H>
+#pragma GCC diagnostic pop
 
 #include "../flu/Flu_File_Chooser.h"
 #include "../help/helpdata.h"

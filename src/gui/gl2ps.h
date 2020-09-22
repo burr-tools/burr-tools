@@ -57,6 +57,7 @@
 #  define GL2PSDLL_API
 #endif
 
+#define GL_SILENCE_DEPRECATION 1
 #if defined(__APPLE__) || defined(HAVE_OPENGL_GL_H)
 #  include <OpenGL/gl.h>
 #else

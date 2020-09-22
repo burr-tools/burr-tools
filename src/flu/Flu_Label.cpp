@@ -13,7 +13,13 @@
 
 
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
+
 #include <FL/fl_draw.H>
+#pragma GCC diagnostic pop
+
 #include "Flu_Label.h"
 
 Flu_Label :: Flu_Label( int x, int y, int w, int h, const char* l )
