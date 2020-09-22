@@ -35,14 +35,20 @@ void thread_c::start_thread(void)
 bool thread_c::start() {
 
   running = true;
-  thread = boost::thread(&thread_c::start_thread, this);
+  bool result = false;
 
-  bool result = thread.get_id() != boost::thread::id();
+#ifdef NO_THREADING
+  start_thread();
+  result = true;
+#else
+  thread = boost::thread(&thread_c::start_thread, this);
+  result = thread.get_id() != boost::thread::id();
 
   if (!result)
   {
     running = false;
   }
+#endif
 
   return result;
 }
@@ -50,6 +56,9 @@ bool thread_c::start() {
 void thread_c::kill() {
 
   stop();
+
+#ifndef NO_THREADING
   thread.join();
+#endif
 }
 
