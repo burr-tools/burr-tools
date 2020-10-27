@@ -3500,7 +3500,7 @@ Flu_Tree_Browser::Node* Flu_Tree_Browser :: Node :: modify( const char* path, in
 	// if this is the last node, remove it.
 	if( lastNode )
 	  {
-	    int ID = n->id();
+	    uintptr_t ID = n->id();
 	    _children.erase( n );
 	    //if( tree->rdata.cbNode == n )
 	    //tree->rdata.cbNode = NULL;

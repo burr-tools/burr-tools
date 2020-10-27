@@ -64,9 +64,6 @@ static void create_new_params(const disassemblerNode_c * st, disassemblerNode_c 
   *n = new disassemblerNode_c(part);
 
   int num = 0;
-  int dx, dy, dz;
-
-  dx = dy = dz = 0;
 
   for (unsigned int i = 0; i < pieces.size(); i++)
     if (st->is_piece_removed(i) == cond) {
@@ -162,10 +159,9 @@ separation_c * disassembler_a_c::checkSubproblems(const disassemblerNode_c * st,
     do {
       state_c *s = new state_c(pieces.size());
 
-      for (unsigned int i = 0; i < pieces.size(); i++)
+      for (unsigned int i = 0; i < pieces.size(); i++) {
 
         if (st2->is_piece_removed(i)) {
-
           /* when the piece is removed in here there must be a
            * predecessor node
            */
@@ -177,10 +173,10 @@ separation_c * disassembler_a_c::checkSubproblems(const disassemblerNode_c * st,
 
         } else
           s->set(i, st2->getX(i), st2->getY(i), st2->getZ(i));
+      }
+      erg->addstate(s);
 
-        erg->addstate(s);
-
-        st2 = st2->getComefrom();
+      st2 = st2->getComefrom();
     } while (st2);
 
   } else {

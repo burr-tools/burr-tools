@@ -407,12 +407,10 @@ void stlExport_c::exportSTL(int shape)
 
   stl->setBinaryMode(Binary->value() != 0);
 
-  int idx = 0;
-
   if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/') {
-      idx = snprintf(name, 1000, "%s/%s", Pname->value(), Fname->value());
+      snprintf(name, 1000, "%s/%s", Pname->value(), Fname->value());
   } else {
-      idx = snprintf(name, 1000, "%s%s", Pname->value(), Fname->value());
+      snprintf(name, 1000, "%s%s", Pname->value(), Fname->value());
   }
 
   if (fileExists(name))

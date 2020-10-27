@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <cstdint>
 
 //#define USE_FLU_DND
 
@@ -444,7 +445,7 @@ class FLU_EXPORT Flu_Tree_Browser : public Fl_Group
 
   //! Remove the entry identified by unique id \b id from the tree
   /*! \return the unique id of the removed entry, or \c 0 if no matching entry was found */
-  unsigned long remove( unsigned int id );
+  std::uintptr_t remove( std::uintptr_t id );
 
   //! Remove the entry containing the widget \b w from the tree. Note that the widget is automatically destroyed
   /*! \return the unique id of the removed entry, or \c 0 if no matching entry was found */
@@ -920,7 +921,7 @@ class FLU_EXPORT Flu_Tree_Browser : public Fl_Group
 	{ return CHECK(ICON_AT_END); }
 
       //! Get the unique ID of this node
-      inline unsigned int id() const
+      inline std::uintptr_t id() const
 	{ return _id; }
 
       //! Get the index this node is (as a child) in its parent's list
@@ -1073,12 +1074,12 @@ class FLU_EXPORT Flu_Tree_Browser : public Fl_Group
 
       //! Remove the entry identified by path \b fullpath from this node
       /*! \return the unique id of the removed entry, or \c 0 if no matching entry was found */
-      inline unsigned long remove( const char *fullpath )
-	{ return( (unsigned long)modify( fullpath, REMOVE, tree->rdata ) ); }
+      inline std::uintptr_t remove( const char *fullpath )
+        { return( (std::uintptr_t)modify( fullpath, REMOVE, tree->rdata ) ); }
 
       //! Remove the entry identified by unique id \b id from this node
       /*! \return the unique id of the removed entry, or \c 0 if no matching entry was found */
-      unsigned long remove( unsigned int id );
+      std::uintptr_t remove( unsigned int id );
 
       //! Remove the node containing the widget \b w from this node. Note that the widget is automatically destroyed
       /*! \return the unique id of the removed entry, or \c 0 if no matching entry was found */

@@ -372,7 +372,9 @@ bool assembly_c::transform(unsigned char trans, const problem_c & puz, const mir
           unsigned int p3;
           unsigned char t_inv;
 
-          bt_assert2(mir->getPieceInfo(p2, &p3, &t_inv));
+          if (! mir->getPieceInfo(p2, &p3, &t_inv)) {
+	      throw assert_exception("piece info could not be found", __FILE__, __LINE__, __PRETTY_FUNCTION__);
+	    };
 
           bt_assert(p3 == p);
 

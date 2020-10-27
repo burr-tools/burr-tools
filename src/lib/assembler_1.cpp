@@ -96,12 +96,17 @@ void printMatrix(
 
   printf("\n");
 
-  for (unsigned int i = 0; i < columns.size(); i++) if (columns[i] > 100) printf("%i", columns[i] / 100); else printf(" "); printf("\n");
-  for (unsigned int i = 0; i < columns.size(); i++) if (columns[i] > 10)  printf("%i", (columns[i] / 10)%10); else printf(" "); printf("\n");
-  for (unsigned int i = 0; i < columns.size(); i++) printf("%i", columns[i] % 10); printf("\n");
+  for (unsigned int i = 0; i < columns.size(); i++) if (columns[i] > 100) printf("%i", columns[i] / 100); else printf(" ");
+  printf("\n");
+  for (unsigned int i = 0; i < columns.size(); i++) if (columns[i] > 10)  printf("%i", (columns[i] / 10)%10); else printf(" ");
+  printf("\n");
+  for (unsigned int i = 0; i < columns.size(); i++) printf("%i", columns[i] % 10);
+  printf("\n");
 
-  for (unsigned int i = 0; i < columns.size(); i++) printf("%i", min[columns[i]]); printf("\n");
-  for (unsigned int i = 0; i < columns.size(); i++) printf("%i", max[columns[i]]); printf("\n");
+  for (unsigned int i = 0; i < columns.size(); i++) printf("%i", min[columns[i]]);
+  printf("\n");
+  for (unsigned int i = 0; i < columns.size(); i++) printf("%i", max[columns[i]]);
+  printf("\n");
 
   std::vector<unsigned int> rows;
 
@@ -368,7 +373,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
       case voxel_c::VX_VARIABLE:
         min[c] = 0;
         holeColumns.push_back(c);
-        // no break;
+        // fall through
       case voxel_c::VX_FILLED:
         columns[i] = c++;
         break;
@@ -1651,8 +1656,7 @@ void assembler_1_c::iterative(void) {
 
         (finished_a.back())++;
 
-        // no break, fall through  to state 3
-
+        // fall through
       case 3:
 
         // add a unhiderows marker, so that the rows hidden in the loop
@@ -1669,8 +1673,7 @@ void assembler_1_c::iterative(void) {
           break;
         }
 
-        // no break, fall through to state 4
-
+	// fall through
       case 4:
 
         row = rows.back();
@@ -1744,14 +1747,12 @@ void assembler_1_c::iterative(void) {
           break;
         }
 
-        // no break, fall through to state 5
-
+        // fall through
       case 5:
 
         unhiderows();
 
-        // no break, fall through to state 6
-
+        // fall through
       case 6:
 
         // remove row from rowset
@@ -1781,8 +1782,7 @@ void assembler_1_c::iterative(void) {
         }
           // else fall through to state 7
 
-        // no break, fall through to state 7
-
+        // fall through
       case 7:
 
         // reinsert all the rows that were remove over the course of the
