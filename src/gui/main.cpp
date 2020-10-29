@@ -81,7 +81,7 @@ int main(int argc, char ** argv) {
     res = my_Fl::run(ui);
   }
 
-  catch (assert_exception a) {
+  catch (assert_exception& a) {
 
     assertWindow_c * aw = new assertWindow_c("I'm sorry there is a bug in this program. It needs to be closed.\n"
                                              "I try to save the current puzzle in '__rescue.xmpuzzle'\n",

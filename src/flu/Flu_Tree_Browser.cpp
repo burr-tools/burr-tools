@@ -3000,7 +3000,7 @@ unsigned long Flu_Tree_Browser :: remove( const char *path, const char *text )
   return remove( s.c_str() );
 }
 
-unsigned long Flu_Tree_Browser :: remove( unsigned int id )
+std::uintptr_t Flu_Tree_Browser :: remove( std::uintptr_t id )
 {
   return root.remove( id );
 }
@@ -3500,7 +3500,7 @@ Flu_Tree_Browser::Node* Flu_Tree_Browser :: Node :: modify( const char* path, in
 	// if this is the last node, remove it.
 	if( lastNode )
 	  {
-	    int ID = n->id();
+	    uintptr_t ID = n->id();
 	    _children.erase( n );
 	    //if( tree->rdata.cbNode == n )
 	    //tree->rdata.cbNode = NULL;

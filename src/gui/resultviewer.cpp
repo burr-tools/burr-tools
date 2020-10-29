@@ -50,11 +50,11 @@ void ResultViewer_c::draw(void) {
     else
       snprintf(txt, 19, "Result: S%i", result + 1);
 
-    unsigned char r, g, b;
+    // unsigned char r, g, b;
 
-    r = pieceColorRi(result);
-    g = pieceColorGi(result);
-    b = pieceColorBi(result);
+    // r = pieceColorRi(result);
+    // g = pieceColorGi(result);
+    // b = pieceColorBi(result);
 
     color(fltkPieceColor(result));
     labelcolor(contrastPieceColor(result));

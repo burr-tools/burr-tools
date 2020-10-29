@@ -50,6 +50,8 @@ class rotater_c {
      * adds the current arcball transformation to the OpenGL transformation matrix
      */
     virtual void addTransform(void) const = 0;
+
+    virtual ~rotater_c() {};
 };
 
 /**

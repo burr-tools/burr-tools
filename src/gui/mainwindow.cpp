@@ -1902,7 +1902,7 @@ bool mainWindow_c::tryToLoad(const char * f) {
     newPuzzle = new puzzle_c(pars);
   }
 
-  catch (xmlParserException_c e)
+  catch (xmlParserException_c &e)
   {
     fl_message("%s",(std::string("load error: ") + e.what()).c_str());
     delete str;
