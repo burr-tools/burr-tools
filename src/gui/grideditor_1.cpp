@@ -25,7 +25,10 @@
 
 #include "../tools/intdiv.h"
 
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <FL/fl_draw.H>
+#pragma GCC diagnostic pop 
 
 #include <math.h>
 
@@ -92,7 +95,7 @@ void gridEditor_1_c::drawNormalTile(int x, int y, int, int tx, int ty, int s, in
 }
 
 void gridEditor_1_c::drawVariableTile(int x, int y, int, int tx, int ty, int s, int s2) {
-  int x1, y1, x2, y2, x3, y3;
+  int x1, y1, x2, x3, y3;
   int x1v, y1v, x2v, y2v, x3v, y3v;
 
   /* find out the coordinates of the 3 corners of the triangle */
@@ -102,7 +105,6 @@ void gridEditor_1_c::drawVariableTile(int x, int y, int, int tx, int ty, int s, 
     x1 = tx+s*x/2;
     y1 = ty-s2-y*s2;
     x2 = x1+s;
-    y2 = y1;
     x3 = x1+s/2;
     y3 = y1+s2;
 
@@ -117,7 +119,6 @@ void gridEditor_1_c::drawVariableTile(int x, int y, int, int tx, int ty, int s, 
     x1 = tx+s*x/2;
     y1 = ty-y*s2;
     x2 = x1+s;
-    y2 = y1;
     x3 = x1+s/2;
     y3 = y1-s2;
 

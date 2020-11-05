@@ -75,7 +75,7 @@ void bt_te(const char * expr, const char * file, unsigned int line, const char *
 
 #else
 
-#ifdef WIN32
+#if defined(WIN32) || defined(EMSCRIPTEN)
 #define __STRING(s) #s
 #endif
 

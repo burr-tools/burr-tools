@@ -54,7 +54,7 @@ xmlWriter_c::xmlWriter_c(std::ostream & str) : stream(str), state(StBase)
   stream << "<?xml version=\"1.0\"?>\n";
 }
 
-xmlWriter_c::~xmlWriter_c(void)
+xmlWriter_c::~xmlWriter_c(void) noexcept(false)
 {
   if (tagStack.size() > 0)
     throw xmlWriterException_c("Not all tags were closed");
@@ -536,7 +536,8 @@ int xmlParser_c::parseLegacy (bool bpush)
   }
   else
   {
-    exception ("illegal: <" + c);
+    std::string ch(1,c);
+    exception ("illegal: <" + ch);
     return -1;
   }
 
@@ -584,6 +585,8 @@ void xmlParser_c::parseDoctype(bool bpush)
     {
       case -1:
         exception (unexpected_eof);
+	// error, throws exception
+	break; // never reached
       case '\'':
         quoted = !quoted;
         break;

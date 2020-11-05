@@ -31,7 +31,11 @@
 #include "../lib/disasmtomoves.h"
 #include "../lib/solution.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl.H>
+#pragma GCC diagnostic pop
 
 #include <stdlib.h>
 #include <stdio.h>

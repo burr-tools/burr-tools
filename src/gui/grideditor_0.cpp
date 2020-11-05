@@ -25,7 +25,12 @@
 
 #include "../tools/intdiv.h"
 
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
 #include <FL/fl_draw.H>
+#pragma GCC diagnostic pop 
+
 
 // this function calculates the size of the squares and the starting position
 // for the grid inside the available space of the widget

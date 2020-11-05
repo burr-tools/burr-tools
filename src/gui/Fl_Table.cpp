@@ -21,12 +21,18 @@
 //
 
 #include <stdio.h>		// fprintf
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
 #include <FL/fl_draw.H>
-#include "Fl_Table.h"
 
 #if defined(USE_UTF8) && ( defined(MICROSOFT) || defined(LINUX) )
 #include <FL/fl_utf8.h>	// currently only Windows and Linux
 #endif
+#pragma GCC diagnostic pop
+
+#include "Fl_Table.h"
 
 #define SCROLLBAR_SIZE	16
 
@@ -518,12 +524,12 @@ void Fl_Table::recalc_dimensions()
     // Make scroll bars disappear if window large enough
     {
 	// First pass: can hide via window size?
-	int hidev = (table_h <= tih),
+	bool hidev = (table_h <= tih),
 	    hideh = (table_w <= tiw);
 
 	// Second pass: Check for interference
-	if ( !hideh & hidev ) { hidev = (( table_h - tih + SCROLLBAR_SIZE ) <= 0 ); }
-	if ( !hidev & hideh ) { hideh = (( table_w - tiw + SCROLLBAR_SIZE ) <= 0 ); }
+	if ( !hideh && hidev ) { hidev = (( table_h - tih + SCROLLBAR_SIZE ) <= 0 ); }
+	if ( !hidev && hideh ) { hideh = (( table_w - tiw + SCROLLBAR_SIZE ) <= 0 ); }
 
 	// Determine scrollbar visibility, trim ti[xywh]/to[xywh]
 	if ( hidev ) { vscrollbar->hide(); }

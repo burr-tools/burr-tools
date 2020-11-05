@@ -21,8 +21,13 @@
 #ifndef __GRID_EDITOR_H__
 #define __GRID_EDITOR_H__
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
+
 #include <FL/Fl.H>
 #include <FL/Fl_Widget.H>
+#pragma GCC diagnostic pop
 
 class puzzle_c;
 

@@ -55,7 +55,14 @@
 //
 
 #include "Fl_Help_View.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
+
 #include <FL/Fl_Pixmap.H>
+#pragma GCC diagnostic pop
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "flstring.h"

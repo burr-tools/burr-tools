@@ -55,9 +55,9 @@ class luaClass_c {
      * the return value is encoded within the name, the othe parameters
      * should be selected by the ...
      */
-    void callV(const char * fname);
-    void callV(const char * fname, lua_Number p1);
-    lua_Number callN(const char * fname);
-    lua_Number callN(const char * fname, lua_Number p1);
+    // void callV(const char * fname);
+    // void callV(const char * fname, lua_Number p1);
+    // lua_Number callN(const char * fname);
+    // lua_Number callN(const char * fname, lua_Number p1);
 
 };

@@ -36,11 +36,11 @@ luaClass_c::~luaClass_c(void) {
 }
 
 /* functions to get and set variables */
-void luaClass_c::setNumber(const char *name, lua_Number value) {
+void luaClass_c::setNumber(const char * /*name*/, lua_Number /*value*/) {
 }
-void luaClass_c::setString(const char *name, const char *value) {
+void luaClass_c::setString(const char * /*name*/, const char * /*value*/) {
 }
-void luaClass_c::setBool(const char *name, bool value) {
+void luaClass_c::setBool(const char * /*name*/, bool /*value*/) {
 }
 
 lua_Number luaClass_c::getNumber(const char *name) {
@@ -56,14 +56,14 @@ bool luaClass_c::getBool(const char *name) {
 /* functions to evaluate lua code */
 int luaClass_c::doFile(const char *fname) {
   int ret = luaL_loadfile(L, fname);
-  if ( ret == 0 ) {
+  if (ret == 0) {
     return lua_pcall(L, 0, 0, 0);
   }
   return ret;
 }
 int luaClass_c::doString(const char *code) {
   int ret = luaL_loadbuffer(L, code, strlen(code), "line");
-  if ( ret == 0 ) {
+  if (ret == 0) {
     return lua_pcall(L, 0, 0, 0);
   }
   return ret;
@@ -76,12 +76,12 @@ int luaClass_c::doString(const char *code) {
  * the return value is encoded within the name, the othe parameters
  * should be selected by the ...
  */
-void luaClass_c::callV(const char * fname) {
-}
-void luaClass_c::callV(const char * fname, lua_Number p1) {
-}
-lua_Number luaClass_c::callN(const char * fname) {
-}
-lua_Number luaClass_c::callN(const char * fname, lua_Number p1) {
-}
+// void luaClass_c::callV(const char * /*fname*/) {
+// }
+// void luaClass_c::callV(const char * /*fname*/, lua_Number /*p1*/) {
+// }
+// // lua_Number luaClass_c::callN(const char * /*fname*/) {
+// }
+// lua_Number luaClass_c::callN(const char * /*fname*/, lua_Number /*p1*/) {
+// }
 

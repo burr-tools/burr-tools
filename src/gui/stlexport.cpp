@@ -38,8 +38,12 @@
 
 #include "../tools/fileexists.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl.H>
 #include <FL/fl_ask.H>
+#pragma GCC diagnostic pop
 
 
 // a simple class (structure) containing some information for each input field
@@ -106,7 +110,7 @@ void stlExport_c::cb_Update3DView(int type)
   }
   catch (stlException_c e)
   {
-    fl_message(e.comment);
+    fl_message("%s",e.comment);
     return;
   }
   catch (...)
@@ -403,12 +407,10 @@ void stlExport_c::exportSTL(int shape)
 
   stl->setBinaryMode(Binary->value() != 0);
 
-  int idx = 0;
-
   if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/') {
-      idx = snprintf(name, 1000, "%s/%s", Pname->value(), Fname->value());
+      snprintf(name, 1000, "%s/%s", Pname->value(), Fname->value());
   } else {
-      idx = snprintf(name, 1000, "%s%s", Pname->value(), Fname->value());
+      snprintf(name, 1000, "%s%s", Pname->value(), Fname->value());
   }
 
   if (fileExists(name))
@@ -424,7 +426,7 @@ void stlExport_c::exportSTL(int shape)
   }
 
   catch (stlException_c e) {
-    fl_message(e.comment);
+    fl_message("%s",e.comment);
   }
   catch (...)
   {

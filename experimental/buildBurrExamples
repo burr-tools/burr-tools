@@ -1,0 +1,39 @@
+#! /bin/sh
+set -ex
+
+#
+# Total Hack...
+#
+
+rm -fv exampleInC
+rm -fv exampleInSwift
+rm -fv *.o
+rm -fv *.d
+
+#
+# Example of linking with a C program:
+#
+gcc -DNO_THREADING -I. -Wall -W -Wextra -I/usr/local/include -g -O2 -c ../src/lib_example_c.c
+gcc -O2 lib_example_c.o libburr.a -o exampleInC -lz -lstdc++
+
+
+#
+# Example of linking with a Swift program:
+#
+swiftc -DNO_THREADING -c ../src/lib_example_swift.swift -import-objc-header ../src/lib_interface.h
+swiftc -lc++  -o exampleInSwift lib_example_swift.o libburr.a
+
+#
+# Run both programs
+#
+
+./exampleInC
+
+./exampleInSwift
+
+#
+# Cleanup
+#
+
+rm -fv *.o
+rm -fv *.d

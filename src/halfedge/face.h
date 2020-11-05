@@ -138,7 +138,7 @@ class Face
     uint32_t _flags;  /// some additional flags used to draw faces differently
     // feedback information on pieces, which voxel and which face of the voxel
     uint32_t _fb_index;
-    uint32_t _fb_face;
+    int32_t _fb_face;
     uint8_t  _color;  /// this is the color constraint index
 };
 
