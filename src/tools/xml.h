@@ -76,7 +76,7 @@ class xmlWriter_c
     xmlWriter_c(std::ostream & str);
 
     /** all tags must be closed by now, otherwise an exception is thrown */
-    ~xmlWriter_c(void) noexcept(false);
+    ~xmlWriter_c(void);// noexcept(false);
 
     /** start a new tag */
     void newTag(const std::string & name);
