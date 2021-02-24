@@ -1,0 +1,17 @@
+name: check-build
+
+on:
+  push
+  pull_request
+
+jobs:
+  check-build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: update
+      run: sudo apt-get update
+    - name: install other deps
+      run: sudo apt-get install -y libboost-all-dev autoconf automake build-essential freeglut3-dev libevent-pthreads-2.1-6 libfltk1.3-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev
+    - uses: actions/checkout@v1
+    - name: build
+      run: autoreconf && ./configure && make -j4
