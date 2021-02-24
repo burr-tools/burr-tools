@@ -58,6 +58,7 @@ voxelFrame_c::voxelFrame_c(int x,int y,int w,int h) :
   pickx(-1),
   insideVisible(false)
 {
+  Fl::use_high_res_GL(1);
   if (config.rotationMethod() == 0)
     rotater = new arcBall_c(w, h);
   else
@@ -72,9 +73,9 @@ void voxelFrame_c::setRotaterMethod(int method)
   delete rotater;
 
   if (method == 0)
-    rotater = new arcBall_c(w(), h());
+    rotater = new arcBall_c(pixel_w(), pixel_h());
   else
-    rotater = new method2_c(w(), h());
+    rotater = new method2_c(pixel_w(), pixel_h());
 
   rotMethod = method;
 }
@@ -1476,7 +1477,7 @@ void voxelFrame_c::draw() {
     GLfloat SpecularParams[] = {0.4, 0.4, 0.4, 0.5};
 
     glLoadIdentity();
-    glViewport(0,0,w(),h());
+    glViewport(0,0,pixel_w(),pixel_h());
 
     glEnable(GL_COLOR_MATERIAL);
     glLightfv(GL_LIGHT1, GL_AMBIENT, LightAmbient);
@@ -1491,7 +1492,7 @@ void voxelFrame_c::draw() {
 
     glEnable(GL_RESCALE_NORMAL);
 
-    rotater->setBounds(w(), h());
+    rotater->setBounds(pixel_w(), pixel_h());
 
     unsigned char r, g, b;
     Fl::get_color(color(), r, g, b);
@@ -1625,8 +1626,8 @@ bool voxelFrame_c::pickShape(int x, int y, unsigned int *shape, unsigned long *v
 
   glInitNames();
 
-  pickx = x;
-  picky = y;
+  pickx = x*pixels_per_unit();
+  picky = y*pixels_per_unit();
 
   draw();
 
