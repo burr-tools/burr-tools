@@ -13,4 +13,4 @@ jobs:
       run: sudo apt-get install -y libboost-all-dev autoconf automake build-essential freeglut3-dev libevent-pthreads-2.1-6 libfltk1.3-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev
     - uses: actions/checkout@v1
     - name: build
-      run: automake --add-missing && aclocal && autoconf && ./configure && make -j4
+      run: autoreconf -fvi && ./configure && make -j4
