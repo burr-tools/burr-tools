@@ -211,7 +211,7 @@ flu_libflu_a_SOURCES=\
     flu/Flu_Wrap_Group.cpp \
     flu/Flu_Wrap_Group.h
 
-gui_burrGui_CPPFLAGS += $(AM_CPPFLAGS) -Werror
+gui_burrGui_CPPFLAGS = $(AM_CPPFLAGS)
 gui_burrGui_LDADD = lib/libburr.a help/libhelp.a flu/libflu.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a $(LDADD)
 gui_burrGui_SOURCES =
 gui_burrGui_SOURCES += gui/arcball.cpp gui/arcball.h
