@@ -14,6 +14,7 @@ LDADD= $(GUI_LD_ADD) $(XML_LD_ADD) $(PTHREAD_LD_ADD)
 
 EXTRA_DIST =
 
+tools_libtools_a_CPPFLAGS = $(AM_CPPFLAGS) -Werror
 tools_libtools_a_SOURCES =
 tools_libtools_a_SOURCES += tools/fileexists.cpp tools/fileexists.h
 tools_libtools_a_SOURCES += tools/gzstream.cpp tools/gzstream.h
@@ -21,6 +22,7 @@ tools_libtools_a_SOURCES += tools/homedir.cpp tools/homedir.h
 tools_libtools_a_SOURCES += tools/intdiv.h
 tools_libtools_a_SOURCES += tools/xml.cpp tools/xml.h
 
+halfedge_libhalfedge_a_CPPFLAGS = $(AM_CPPFLAGS) -Werror
 halfedge_libhalfedge_a_SOURCES =
 halfedge_libhalfedge_a_SOURCES += halfedge/face.cpp halfedge/face.h
 halfedge_libhalfedge_a_SOURCES += halfedge/halfedge.cpp halfedge/halfedge.h
@@ -72,6 +74,7 @@ burrTxt_SOURCES=burrTxt.cpp
 burrTxt2_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a $(LDADD)
 burrTxt2_SOURCES=burrTxt2.cpp
 
+lib_libburr_a_CPPFLAGS = $(AM_CPPFLAGS) -Werror
 lib_libburr_a_SOURCES =
 lib_libburr_a_SOURCES += lib/assembler.cpp lib/assembler.h
 lib_libburr_a_SOURCES += lib/assembler_0.cpp lib/assembler_0.h
@@ -208,6 +211,7 @@ flu_libflu_a_SOURCES=\
     flu/Flu_Wrap_Group.cpp \
     flu/Flu_Wrap_Group.h
 
+gui_burrGui_CPPFLAGS = $(AM_CPPFLAGS)
 gui_burrGui_LDADD = lib/libburr.a help/libhelp.a flu/libflu.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a $(LDADD)
 gui_burrGui_SOURCES =
 gui_burrGui_SOURCES += gui/arcball.cpp gui/arcball.h
