@@ -22,7 +22,7 @@ tools_libtools_a_SOURCES += tools/homedir.cpp tools/homedir.h
 tools_libtools_a_SOURCES += tools/intdiv.h
 tools_libtools_a_SOURCES += tools/xml.cpp tools/xml.h
 
-halfedge_libhalfedge_a_CPPFLAGS += $(AM_CPPFLAGS) -Werror
+halfedge_libhalfedge_a_CPPFLAGS = $(AM_CPPFLAGS) -Werror
 halfedge_libhalfedge_a_SOURCES =
 halfedge_libhalfedge_a_SOURCES += halfedge/face.cpp halfedge/face.h
 halfedge_libhalfedge_a_SOURCES += halfedge/halfedge.cpp halfedge/halfedge.h
