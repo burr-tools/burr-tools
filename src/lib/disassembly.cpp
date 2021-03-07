@@ -284,7 +284,7 @@ void separation_c::save(xmlWriter_c & xml, int type) const
 
   // first save the pieces array
   xml.newTag("pieces");
-  xml.newAttrib("count", pieces.size());
+  xml.newAttrib("count", (unsigned long)pieces.size());
 
   for (unsigned int ii = 0; ii < pieces.size(); ii++) {
     xml.addContent(pieces[ii]);
