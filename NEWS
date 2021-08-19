@@ -1,3 +1,13 @@
+------------- Version XXX XXX
+
+- switch build system to meson (Arne Köhn)
+- fix HighDPI display on MacOS (Derek Bosch)
+- fix lots of  compiler warnings (Bryan Turner, Arne Köhn)
+- fix infinite loop in lua (Arne Köhn)
+- make BT compile with gcc9 (Arne Köhn)
+- build documentation on different platforms (Bryan Turner)
+- GitHub CI (Arne Köhn)
+
 ------------- Version 0.6.3 May 2013
 
 - fix uninitialized variable problem that sometimes resulted in wrong number of solutions (the

@@ -22,3 +22,7 @@ src/gui/burrGui
 src/help/helpviewer
 src/unitTest
 src/config.h.in
+build/
+GPATH
+GRTAGS
+GTAGS
