@@ -15,7 +15,6 @@ doxygen.cfg
 src/config.h
 src/config.h.in
 src/stamp-h1
-src/help/helpdata.cpp
 src/burrTxt
 src/burrTxt2
 src/gui/burrGui
