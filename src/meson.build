@@ -282,6 +282,19 @@ gui_src = [
   'gui/Images.h',
 ]
 
+# help/helpdata.cpp: $(EXTRA_DIST) help/data2c.cpp
+# 	cd help; g++ data2c.cpp -O2 -o data2c `fltk-config --cxxflags --ldflags --use-images`
+# 	cd help; ./data2c helpdata.cpp ../../doc/html/*.html - ../../doc/html/*.png
+# 	cd help; $(RM) data2c
+
+
+# gen_src = custom_target('gen-output',
+#                         input : ['somefile1.c', 'file2.c'],
+#                         output : ['help/helpdata.cpp'],
+#                         command : [data2c, '@INPUT@',
+#                                    '--c-out', '@OUTPUT0@',
+#                                    '--h-out', '@OUTPUT1@'])	
+	
 help_src = [
   'help/Fl_Help_Dialog.cpp',
   'help/Fl_Help_Dialog.h',
@@ -302,6 +315,11 @@ libpng_dep = dependency('libpng')
 cxx = meson.get_compiler('cpp')
 fltk_dep = cxx.find_library('fltk')
 fltkgl_dep = cxx.find_library('fltk_gl')
+
+fltkimages_dep = cxx.find_library('fltk_images')
+
+data2c = executable('data2c', 'help/data2c.cpp', dependencies: [fltk_dep, fltkimages_dep])
+
 
 
 executable('burrTxt',  tools_src + halfedge_src + libburr_src + ['burrTxt.cpp'],
