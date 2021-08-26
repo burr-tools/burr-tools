@@ -1,3 +1,4 @@
+*#
 *~
 admin/
 doxygen.cfg
@@ -10,3 +11,6 @@ build/
 GPATH
 GRTAGS
 GTAGS
+
+# checked out subprojects
+subprojects/fltk/
