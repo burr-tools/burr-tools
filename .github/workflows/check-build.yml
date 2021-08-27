@@ -10,7 +10,15 @@ jobs:
     - name: update
       run: sudo apt-get update
     - name: install other deps
-      run: sudo apt-get install -y libboost-all-dev meson build-essential freeglut3-dev libfltk1.3-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev
-    - uses: actions/checkout@v1
-    - name: build
-      run: meson build && ninja -C build
+      run: sudo apt-get install -y libboost-all-dev build-essential freeglut3-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v1
+    - uses: BSFishy/meson-build@v1.0.3
+      with:
+        action: build
+        meson-version: 0.58
+        ninja-version: 1.10.2
+
+# removed dependencies: meson libfltk1.3-dev
+#     - name: build
+#      run: meson build && ninja -C build
