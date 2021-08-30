@@ -71,7 +71,7 @@
 #include "../tools/gzstream.h"
 #include "../tools/xml.h"
 
-#include "../flu/Flu_File_Chooser.h"
+#include <FL/Fl_File_Chooser.H>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -1389,7 +1389,7 @@ void mainWindow_c::cb_Load(void) {
       if (fl_choice("Puzzle changed are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
-    const char * f = flu_file_chooser("Load Puzzle", "*.xmpuzzle", "");
+    const char * f = fl_file_chooser("Load Puzzle", "*.xmpuzzle", "", 0);
 
     tryToLoad(f);
   }
@@ -1404,7 +1404,7 @@ void mainWindow_c::cb_Load_Ps3d(void) {
       if (fl_choice("Puzzle changed are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
-    const char * f = flu_file_chooser("Import PuzzleSolver3D File", "*.puz", "");
+    const char * f = fl_file_chooser("Import PuzzleSolver3D File", "*.puz", "", 0);
 
     if (f) {
 
@@ -1611,7 +1611,7 @@ static void cb_SaveAs_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_S
 void mainWindow_c::cb_SaveAs(void) {
 
   if (threadStopped()) {
-    const char * f = flu_file_chooser("Save Puzzle As", "*.xmpuzzle", "");
+    const char * f = fl_file_chooser("Save Puzzle As", "*.xmpuzzle", "", 0);
 
     if (f) {
 

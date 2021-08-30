@@ -89,7 +89,6 @@ flu_src = [
   'src/flu/Flu_Combo_Box.cpp',
   'src/flu/Flu_Combo_List.cpp',
   'src/flu/Flu_Combo_Tree.cpp',
-  'src/flu/Flu_File_Chooser.cpp',
   'src/flu/flu_file_chooser_pixmaps.cpp',
   'src/flu/Flu_Label.cpp',
   'src/flu/flu_pixmaps.cpp',
