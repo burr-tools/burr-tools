@@ -1786,7 +1786,7 @@ void mainWindow_c::cb_About(void) {
              "or see www.fsf.org\n"
              "\n"
              "The program uses\n"
-             "- Fltk, FLU, libZ, libpng, gzstream, gl2ps\n"
+             "- Fltk, libZ, libpng, gzstream, gl2ps\n"
              "- Fl_Table (http://3dsite.com/people/erco/Fl_Table/)\n"
              "- tr by Brian Paul (http://www.mesa3d.org/brianp/TR.html)\n"
             );
@@ -2817,7 +2817,7 @@ void mainWindow_c::update(void) {
 
   if (assmThread) {
 
-    // check, if the thread has thrown an exception, if so re-throw it
+    // check if the thread has thrown an exception. if so, re-throw it
     if (assmThread->currentAction() == solveThread_c::ACT_ASSERT) {
 
       assertWindow_c * aw = new assertWindow_c("Because of an internal error the current puzzle\n"

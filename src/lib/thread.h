@@ -21,18 +21,14 @@
 #ifndef __THREAD_H__
 #define __THREAD_H__
 
-#ifndef NO_THREADING
-#include <boost/thread.hpp>
-#endif
+#include <thread>
 
 /* this class encapsulates a single thread */
 class thread_c {
 
   private:
 
-#ifndef NO_THREADING
-    boost::thread thread;  // our thread
-#endif
+    std::thread t;  // our thread
 
     bool running;
 
