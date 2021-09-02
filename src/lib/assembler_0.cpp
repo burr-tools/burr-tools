@@ -32,7 +32,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#ifdef WIN32
+#ifdef _WIN32
 #define snprintf _snprintf
 #endif
 

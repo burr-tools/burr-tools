@@ -34,7 +34,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <winsock.h>
 #endif
 

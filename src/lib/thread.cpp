@@ -41,8 +41,8 @@ bool thread_c::start() {
   start_thread();
   result = true;
 #else
-  thread = boost::thread(&thread_c::start_thread, this);
-  result = thread.get_id() != boost::thread::id();
+  t = std::thread([this](){ this->start_thread();});
+  result = t.get_id() != std::this_thread::get_id();
 
   if (!result)
   {
@@ -58,7 +58,7 @@ void thread_c::kill() {
   stop();
 
 #ifndef NO_THREADING
-  thread.join();
+  t.join();
 #endif
 }
 

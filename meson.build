@@ -1,4 +1,12 @@
-project('burrtools', 'cpp', 'c')
+project('burrtools', 'cpp', 'c',
+	
+	default_options : [
+	  'c_std=c11',
+	  'build.c_std=c11',
+	  'cpp_std=c++11',
+	  'build.cpp_std=c++11',
+	]
+       )
 
 lua_src = [
   'src/lua/lapi.c',
@@ -84,23 +92,6 @@ libburr_src = [
   'src/lib/voxeltable.cpp',
 ]
 
-flu_src = [
-  'src/flu/Flu_Button.cpp',
-  'src/flu/Flu_Combo_Box.cpp',
-  'src/flu/Flu_Combo_List.cpp',
-  'src/flu/Flu_Combo_Tree.cpp',
-  'src/flu/flu_file_chooser_pixmaps.cpp',
-  'src/flu/Flu_Label.cpp',
-  'src/flu/flu_pixmaps.cpp',
-  'src/flu/Flu_Return_Button.cpp',
-  'src/flu/Flu_Separator.cpp',
-  'src/flu/FluSimpleString.cpp',
-  'src/flu/Flu_Tree_Browser.cpp',
-  'src/flu/Flu_Wrap_Group.cpp',
-]
-
-
-
 gui_src = [
   'src/tools/homedir.cpp',
   
@@ -149,26 +140,35 @@ gui_src = [
   'src/gui/Images.cpp',
 ]
 
-# in case we later on really want to include the html help into the program again
-# help/helpdata.cpp: $(EXTRA_DIST) help/data2c.cpp
-# 	cd help; g++ data2c.cpp -O2 -o data2c `fltk-config --cxxflags --ldflags --use-images`
-# 	cd help; ./data2c helpdata.cpp ../../doc/html/*.html - ../../doc/html/*.png
-# 	cd help; $(RM) data2c
-
-	
 help_src = [
   'src/help/Fl_Help_Dialog.cpp',
   'src/help/Fl_Help_View.cpp',
   'src/help/helpdata.cpp'
 ]
 
-boost_dep = dependency('boost', modules: ['thread'])
-gl_dep = dependency('gl')
-glu_dep = dependency('glu')
-zlib_dep = dependency('zlib')
-libpng_dep = dependency('libpng')
-
 cxx = meson.get_compiler('cpp')
+
+if host_machine.system() == 'windows'
+  wm = import('windows')
+endif
+
+thread_dep = dependency('threads')
+gl_dep = dependency('gl')
+
+if host_machine.system() == 'windows'
+  glu_dep = cxx.find_library('glu32')
+  # glu_dep = dependency('', required: false)
+  zlib_dep = subproject('zlib', default_options: ['default_library=static']).get_variable('zlib_dep')
+  libpng_dep = subproject('libpng', default_options: ['default_library=static']).get_variable('libpng_dep')
+else
+  zlib_dep = dependency('zlib', fallback : ['zlib', 'zlib_dep'])
+  glu_dep = dependency('glu')
+  libpng_dep = dependency('libpng')
+endif
+
+
+
+
 fltk_dep = cxx.find_library('fltk', required: false)
 fltkgl_dep = cxx.find_library('fltk_gl', required: false)
 fltkimages_dep = cxx.find_library('fltk_images', required: false)
@@ -183,11 +183,29 @@ if not fltk_dep.found()
 endif
 
 
+link_args=[]
+
+if host_machine.system() == 'windows'
+  # add_project_arguments('-Wl,-lws2_32', language: ['cpp'])
+  link_args += [
+    '-static'
+    ,'-static-libgcc'
+    ,'-static-libstdc++'
+    ,'-lws2_32'
+    ,'-lcomctl32'
+  ]
+endif
+
+add_project_link_arguments(link_args,
+			   language: ['c', 'cpp', 'objc'])
+
 executable('burrTxt',  tools_src + halfedge_src + libburr_src + ['src/burrTxt.cpp'],
- 	   dependencies: [boost_dep, zlib_dep])
+ 	   dependencies: [thread_dep, zlib_dep])
 
 executable('burrTxt2',  tools_src + halfedge_src + libburr_src + ['src/burrTxt2.cpp'],
- 	   dependencies: [boost_dep, zlib_dep])
+ 	   dependencies: [thread_dep, zlib_dep],
+	  )
 
-executable('burrtools', lua_src + tools_src + flu_src + gui_src + halfedge_src + libburr_src,
- 	   dependencies: [boost_dep, zlib_dep, gl_dep, glu_dep, fltk_dep, fltkgl_dep, libpng_dep])
+executable('burrtools', lua_src + tools_src + gui_src + halfedge_src + libburr_src,
+ 	   dependencies: [thread_dep, zlib_dep, gl_dep, glu_dep, fltk_dep, fltkgl_dep, libpng_dep],
+	  )
