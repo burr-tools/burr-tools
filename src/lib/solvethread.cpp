@@ -125,7 +125,7 @@ assm(0)
 
 solveThread_c::~solveThread_c(void) {
 
-  kill();
+  // kill();
 
   if (disassm) {
     delete disassm;
