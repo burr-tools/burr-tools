@@ -22,7 +22,10 @@
 #include "thread.h"
 
 thread_c::~thread_c(void) {
-  kill();
+  stop();
+#ifndef NO_THREADING
+  t.join();
+#endif
 }
 
 void thread_c::start_thread(void)
@@ -51,14 +54,5 @@ bool thread_c::start() {
 #endif
 
   return result;
-}
-
-void thread_c::kill() {
-
-  stop();
-
-#ifndef NO_THREADING
-  t.join();
-#endif
 }
 

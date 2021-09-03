@@ -46,9 +46,6 @@ class thread_c {
     /** inform the thread to stop running, this is dependent on the thread */
     virtual void stop() {};
 
-    /** kill the thread */
-    void kill();
-
     /** return true, if the thread is running */
     bool isRunning(void) { return running; }
 
