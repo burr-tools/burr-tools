@@ -826,7 +826,7 @@ void mainWindow_c::cb_BtnPlacementBrowser(void) {
     return;
 
   if (!puzzle->getProblem(prob)->getAssembler()->getPiecePlacementSupported()) {
-    fl_message("Sorry no placement browser for this type of puzzle");
+    fl_message("Sorry, no placement browser for this type of puzzle");
     return;
   }
 
@@ -967,12 +967,12 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   unsigned int prob = solutionProblem->getSelection();
 
   if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_ASSEMBLE)) {
-    fl_message("Sorry this space grid doesn't have an assembler (yet)!");
+    fl_message("Sorry, this space grid doesn't have an assembler (yet)!");
     return;
   }
 
   if (SolveDisasm->value() && !(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-    fl_message("Sorry this space grid doesn't have a disassembler (yet)!\n"
+    fl_message("Sorry, this space grid doesn't have a disassembler (yet)!\n"
                "You must disable the disassembler first\n");
     return;
   }
@@ -1182,7 +1182,7 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
 
   if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-    fl_message("Sorry this space grid doesn't have a disassembler (yet)!");
+    fl_message("Sorry, this space grid doesn't have a disassembler (yet)!");
     return;
   }
 
@@ -1210,7 +1210,7 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
     return;
 
   if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-    fl_message("Sorry this space grid doesn't have a disassembler (yet)!");
+    fl_message("Sorry, this space grid doesn't have a disassembler (yet)!");
     return;
   }
 
@@ -1386,7 +1386,7 @@ void mainWindow_c::cb_Load(void) {
   if (threadStopped()) {
 
     if (changed)
-      if (fl_choice("Puzzle changed are you sure?", "Cancel", "Load", 0) == 0)
+      if (fl_choice("Puzzle changed; are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
     const char * f = fl_file_chooser("Load Puzzle", "*.xmpuzzle", "", 0);
@@ -1401,7 +1401,7 @@ void mainWindow_c::cb_Load_Ps3d(void) {
   if (threadStopped()) {
 
     if (changed)
-      if (fl_choice("Puzzle changed are you sure?", "Cancel", "Load", 0) == 0)
+      if (fl_choice("Puzzle changed; are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
     const char * f = fl_file_chooser("Import PuzzleSolver3D File", "*.puz", "", 0);
@@ -1615,7 +1615,7 @@ void mainWindow_c::cb_SaveAs(void) {
 
     if (f) {
 
-      if (!fileExists(f) || fl_choice("File exists overwrite?", "Cancel", "Overwrite", 0)) {
+      if (!fileExists(f) || fl_choice("File exists; overwrite?", "Cancel", "Overwrite", 0)) {
 
         char f2[1000];
 
@@ -1658,7 +1658,7 @@ void mainWindow_c::cb_SaveAs(void) {
 
 static void cb_Quit_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->hide(); }
 void mainWindow_c::hide(void) {
-  if ((!changed) || fl_choice("Puzzle changed do you want to quit and loose the changes?", "Cancel", "Quit", 0))
+  if ((!changed) || fl_choice("Puzzle changed do you want to quit and lose the changes?", "Cancel", "Quit", 0))
     Fl_Double_Window::hide();
 }
 
