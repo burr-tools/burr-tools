@@ -91,22 +91,22 @@ private:
   /* 2 helper functions that cover and uncover one
    * selected row
    */
-  void cover_row(register unsigned int r);
-  void uncover_row(register unsigned int r);
+  void cover_row(unsigned int r);
+  void uncover_row(unsigned int r);
 
   /* same as cover row, but aborting
    * as soon as one of the columns does contain a zero
    * and then uncovering all that was already done
    */
-  bool try_cover_row(register unsigned int r, unsigned int * columns);
+  bool try_cover_row(unsigned int r, unsigned int * columns);
 
   /* these 2 functions remove and reinsert rows from the matrix
    * they only remove the given row
    */
-  void remove_row(register unsigned int r);
-  void reinsert_row(register unsigned int r);
+  void remove_row(unsigned int r);
+  void reinsert_row(unsigned int r);
 
-  void remove_column(register unsigned int c);
+  void remove_column(unsigned int c);
 
   /* this function gets called whenever an assembly was found
    * when a call-back is available it will call getAssembly to

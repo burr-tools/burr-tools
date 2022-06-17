@@ -747,8 +747,8 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
   return errorsState;
 }
 
-void assembler_1_c::remove_column(register unsigned int c) {
-  register unsigned int j = c;
+void assembler_1_c::remove_column(unsigned int c) {
+  unsigned int j = c;
   do {
     right[left[j]] = right[j];
     left[right[j]] = left[j];
@@ -839,10 +839,10 @@ unsigned int assembler_1_c::clumpify(void) {
   return removed;
 }
 
-void assembler_1_c::remove_row(register unsigned int r) {
-  register unsigned int j = r;
+void assembler_1_c::remove_row(unsigned int r) {
+  unsigned int j = r;
   do {
-    register unsigned int u, d;
+    unsigned int u, d;
 
     colCount[colCount[j]] -= weight[j];
 
