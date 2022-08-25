@@ -23,7 +23,7 @@
 
 #include "Layouter.h"
 
-#include "../flu/Flu_Tree_Browser.h"
+#include <FL/Fl_Tree.H>
 
 class LView3dGroup;
 class LFlatButton_c;
@@ -35,11 +35,11 @@ class disassemblerNode_c;
 struct nodeData_s;
 
 /* layoutable tree browser */
-class LTreeBrowser : public Flu_Tree_Browser, public layoutable_c {
+class LTreeBrowser : public Fl_Tree, public layoutable_c {
 
   public:
 
-    LTreeBrowser(int x, int y, int w, int h) : Flu_Tree_Browser(0, 0, 20, 100), layoutable_c(x, y, w, h) {}
+    LTreeBrowser(int x, int y, int w, int h) : Fl_Tree(0, 0, 20, 100), layoutable_c(x, y, w, h) {}
 
     virtual void getMinSize(int *width, int *height) const {
       *width = 20;
@@ -70,7 +70,7 @@ class movementBrowser_c : public LFl_Double_Window {
      */
     std::vector<nodeData_s*> nodes;
 
-    LTreeBrowser::Node * addNode(LTreeBrowser::Node *nd, disassemblerNode_c *mv);
+    Fl_Tree_Item * addNode(Fl_Tree_Item *nd, disassemblerNode_c *mv);
 
   public:
 

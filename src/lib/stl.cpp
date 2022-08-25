@@ -40,7 +40,7 @@
  * The concrete classes do the grid dependent stuff and add lots of triangles to the file
  */
 
-#if defined(WIN32) || defined(__APPLE__) || defined(EMSCRIPTEN)
+#if defined(_WIN32) || defined(__APPLE__) || defined(EMSCRIPTEN)
 const char * basename(const char * name) {
   const char * res1 = strchr(name, '/');
   const char * res2 = strchr(name, '\\');

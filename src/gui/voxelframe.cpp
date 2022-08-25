@@ -42,7 +42,7 @@
 #include <FL/Fl.H>
 #pragma GCC diagnostic pop
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <GL/glext.h>
 #endif
 

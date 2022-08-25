@@ -50,7 +50,7 @@
  * content for each voxel in the space, so no shortcuts are possible. There are mainly 3 characters: "_" for
  * empty voxels, "+" for variable voxels and "#" for fixed voxels. The filled voxels may additionally
  * have a colour appended. This colour information is simply put behind the voxel information, so #1 stands for a
- * voxel with colour 1. The colour is save din decimal form.
+ * voxel with colour 1. The colour is saved in decimal form.
  *
  * The gridtype is a basic class in the library and saved simply by adding a gridtype node with an attribute type.
  * The type is a number corresponding with the grid.
