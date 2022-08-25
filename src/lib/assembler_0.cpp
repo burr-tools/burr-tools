@@ -918,12 +918,12 @@ void assembler_0_c::uncover(unsigned int col) {
 /* remove all the columns from the matrix in which the given
  * row contains ones
  */
-void assembler_0_c::cover_row(register unsigned int r) {
+void assembler_0_c::cover_row(unsigned int r) {
   for (unsigned int j = right[r]; j != r; j = right[j])
     cover(colCount[j]);
 }
 
-bool assembler_0_c::try_cover_row(register unsigned int r, unsigned int * columns) {
+bool assembler_0_c::try_cover_row(unsigned int r, unsigned int * columns) {
 
   memset(columns, 0, varivoxelEnd * sizeof(unsigned int));
 
@@ -950,15 +950,15 @@ bool assembler_0_c::try_cover_row(register unsigned int r, unsigned int * column
   return true;
 }
 
-void assembler_0_c::uncover_row(register unsigned int r) {
+void assembler_0_c::uncover_row(unsigned int r) {
   for (unsigned int j = left[r]; j != r; j = left[j])
     uncover(colCount[j]);
 }
 
-void assembler_0_c::remove_row(register unsigned int r) {
-  register unsigned int j = r;
+void assembler_0_c::remove_row(unsigned int r) {
+  unsigned int j = r;
   do {
-    register unsigned int u, d;
+    unsigned int u, d;
 
     colCount[colCount[j]]--;
 
@@ -972,8 +972,8 @@ void assembler_0_c::remove_row(register unsigned int r) {
   } while (j != r);
 }
 
-void assembler_0_c::remove_column(register unsigned int c) {
-  register unsigned int j = c;
+void assembler_0_c::remove_column(unsigned int c) {
+  unsigned int j = c;
   do {
     right[left[j]] = right[j];
     left[right[j]] = left[j];
@@ -982,8 +982,8 @@ void assembler_0_c::remove_column(register unsigned int c) {
   } while (j != c);
 }
 
-void assembler_0_c::reinsert_row(register unsigned int r) {
-  register unsigned int j = r;
+void assembler_0_c::reinsert_row(unsigned int r) {
+  unsigned int j = r;
   do {
     up(down(j)) = j;
     down(up(j)) = j;
@@ -1309,7 +1309,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
       unsigned int s = colCount[c];
 
       if (s) {
-        register unsigned int j = right[c];
+        unsigned int j = right[c];
 
         while (j) {
 
@@ -1332,7 +1332,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
       // it doesn't cost a lot of time, so let's keep it in for the moment
       if (s) {
         unsigned int currentHoles = holes;
-        register unsigned int j = right[varivoxelEnd];
+        unsigned int j = right[varivoxelEnd];
 
         while (j != varivoxelEnd) {
           if (colCount[j] == 0) {

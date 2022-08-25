@@ -116,8 +116,8 @@ private:
   bool column_condition_fulfillable(int col);
 //  void rec(unsigned int next_row);
   void iterative(void);
-  void remove_row(register unsigned int r);
-  void remove_column(register unsigned int c);
+  void remove_row(unsigned int r);
+  void remove_column(unsigned int c);
   unsigned int clumpify(void);
 
 
