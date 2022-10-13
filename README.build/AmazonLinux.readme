@@ -38,7 +38,7 @@ Run Configure & Make
 Testing burrTxt2
 -----------------------------------
 
-> src/burrTxt2 -R -d examples/CubeInCage.xmpuzzle 
+> src/burrTxt2 -R -d examples/SolidSixPieceBurrs.xmpuzzle 
 > ls -al examples
 
 Results:
