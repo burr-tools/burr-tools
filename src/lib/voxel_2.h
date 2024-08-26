@@ -75,6 +75,7 @@ class voxel_2_c : public voxel_c {
 
   private:
 
+    using voxel_c::getMeshInternal;
     virtual Polyhedron * getMeshInternal(float sphere_rad, float connection_rad, float round, float offset, int recursion, float inner_rad, float hole_diam, bool fast) const;
 
     // no copying and assigning
