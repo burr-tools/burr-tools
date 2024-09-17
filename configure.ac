@@ -28,7 +28,7 @@ AC_PROG_CC
 AC_PROG_CXX
 AM_PROG_CC_C_O
 
-AC_CONFIG_FILES([Makefile src/Makefile doxygen.cfg])
+AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile doxygen.cfg])
 
 case "$target_os" in
   mingw*)
