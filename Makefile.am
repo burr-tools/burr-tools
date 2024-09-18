@@ -32,10 +32,11 @@ dist-win32: all
 	$(STRIP) $(win32dir)/*.exe
 	upx --lzma $(win32dir)/*.exe
 	cd $(srcdir) && for FILE in $(dist_doc_DATA); do case $$FILE in \
-	    *.xmpuzzle) $(INSTALL) -m644 $$FILE   $(abs_builddir)/$(win32dir)/examples/ ;; \
 	    *.*)        $(INSTALL) -m644 $$FILE   $(abs_builddir)/$(win32dir)/ ;; \
 	    *)          sed 's,$$,\r,' < $$FILE > $(abs_builddir)/$(win32dir)/$$FILE.txt ;; \
 	    esac; done
+	cp -r $(srcdir)/examples/*.xmpuzzle $(abs_builddir)/$(win32dir)/examples/
+	cp -r $(srcdir)/examples/README $(abs_builddir)/$(win32dir)/examples/README.txt
 	$(RM)   $(win32dir).zip
 	zip -r9 $(win32dir).zip $(win32dir)
 	$(RM) -r $(win32dir)
