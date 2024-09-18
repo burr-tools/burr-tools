@@ -27,9 +27,15 @@ class const_edge_iterator;
 class const_vertex_iterator;
 
 /// Face iterator for the Polyhedron class. It traverses the faces of the Polyhedron, one at a time.
-class face_iterator : public std::iterator<std::forward_iterator_tag, Face*>
+class face_iterator
 {
   public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = Face*;
+    using difference_type = std::ptrdiff_t;
+    using pointer = value_type*;
+    using reference = value_type&;
+
     friend class const_face_iterator;
     face_iterator(const Polyhedron* p, unsigned f) : _base(p), _here(f) {}
 
@@ -45,9 +51,15 @@ class face_iterator : public std::iterator<std::forward_iterator_tag, Face*>
 };
 
 /// Const Face iterator for the Polyhedron class. It traverses the faces of the Polyhedron, one at a time.
-class const_face_iterator : public std::iterator<std::forward_iterator_tag, const Face*>
+class const_face_iterator
 {
   public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = const Face*;
+    using difference_type = std::ptrdiff_t;
+    using pointer = const value_type*;
+    using reference = const value_type&;
+
     const_face_iterator(const Polyhedron* p, unsigned f) : _base(p), _here(f) {}
     const_face_iterator(const face_iterator& f) : _base(f._base), _here(f._here) {}
 

@@ -1,4 +1,4 @@
-SUBDIRS = src
+SUBDIRS = src examples
 
 EXTRA_DIST =
 EXTRA_DIST += doc_src
@@ -15,20 +15,6 @@ EXTRA_DIST += src/flu/README
 EXTRA_DIST += src/halfedge/README
 
 dist_doc_DATA =
-dist_doc_DATA += examples/README examples/AlPackino.xmpuzzle examples/DraculasDentalDesaster.xmpuzzle
-dist_doc_DATA += examples/PelikanBurr.xmpuzzle examples/CubeInCage.xmpuzzle examples/Bermuda.xmpuzzle
-dist_doc_DATA += examples/BallRoom.xmpuzzle examples/SolidSixPieceBurrs.xmpuzzle
-dist_doc_DATA += examples/12PieceSeparation.xmpuzzle
-dist_doc_DATA += examples/AugmentedSecondStellation.xmpuzzle
-dist_doc_DATA += examples/BrokenSticks.xmpuzzle
-dist_doc_DATA += examples/DiagonalCube.xmpuzzle
-dist_doc_DATA += examples/HexSticks.xmpuzzle
-dist_doc_DATA += examples/PermutatedThirdStellation.xmpuzzle
-dist_doc_DATA += examples/PiecesOfEight.xmpuzzle
-dist_doc_DATA += examples/Prisgon.xmpuzzle
-dist_doc_DATA += examples/FourPieceTetrahedron.xmpuzzle
-dist_doc_DATA += examples/DemoMirrorParadox.xmpuzzle
-dist_doc_DATA += examples/DemoPieceGenerator.xmpuzzle
 dist_doc_DATA += burricons.ico
 dist_doc_DATA += AUTHORS COPYING README NEWS ChangeLog COPYRIGHT
 
@@ -46,13 +32,14 @@ dist-win32: all
 	$(STRIP) $(win32dir)/*.exe
 	upx --lzma $(win32dir)/*.exe
 	cd $(srcdir) && for FILE in $(dist_doc_DATA); do case $$FILE in \
-	    *.xmpuzzle) $(INSTALL) -m644 $$FILE   $(abs_builddir)/$(win32dir)/examples/ ;; \
 	    *.*)        $(INSTALL) -m644 $$FILE   $(abs_builddir)/$(win32dir)/ ;; \
 	    *)          sed 's,$$,\r,' < $$FILE > $(abs_builddir)/$(win32dir)/$$FILE.txt ;; \
 	    esac; done
+	cp -r $(srcdir)/examples/*.xmpuzzle $(abs_builddir)/$(win32dir)/examples/
+	cp -r $(srcdir)/examples/README $(abs_builddir)/$(win32dir)/examples/README.txt
 	$(RM)   $(win32dir).zip
 	zip -r9 $(win32dir).zip $(win32dir)
 	$(RM) -r $(win32dir)
 
-Makefile: Makefile.am configure.ac src/Makefile.am
+Makefile: configure.ac Makefile.am src/Makefile.am examples/Makefile.am
 	./bootstrap
