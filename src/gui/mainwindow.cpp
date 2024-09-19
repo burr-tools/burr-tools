@@ -1328,13 +1328,13 @@ void mainWindow_c::cb_3dClick(void) {
 
     unsigned int shape;
 
-    if (View3D->getView()->pickShape(Fl::event_x(),
-        View3D->getView()->h()-Fl::event_y(),
-        &shape, 0, 0)) {
-
-      if (shape >= 2)
-        shapeAssignmentSelector->setSelection(puzzle->getProblem(problemSelector->getSelection())->getShapeIdOfPart(shape-2));
-    }
+    // if (View3D->getView()->pickShape(Fl::event_x(),
+    //     View3D->getView()->h()-Fl::event_y(),
+    //     &shape, 0, 0)) {
+    //
+    //   if (shape >= 2)
+    //     shapeAssignmentSelector->setSelection(puzzle->getProblem(problemSelector->getSelection())->getShapeIdOfPart(shape-2));
+    // }
   } else if (TaskSelectionTab->value() == TabSolve) {
     if (Fl::event_shift()) {
       unsigned int shape;
