@@ -40,7 +40,7 @@
  * The concrete classes do the grid dependent stuff and add lots of triangles to the file
  */
 
-#if defined(WIN32) || defined(__APPLE__) || defined(EMSCRIPTEN)
+#if defined(_WIN32) || defined(__APPLE__) || defined(EMSCRIPTEN)
 const char * basename(const char * name) {
   const char * res1 = strchr(name, '/');
   const char * res2 = strchr(name, '\\');
@@ -112,7 +112,8 @@ void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_
     if (fc->hole())
       continue;
 
-    const float * normal = fc->normal().getData();
+    Vector3Df normal = fc->normal();
+    const float * n = normal.getData();
 
     Face::const_edge_circulator e = fc->begin();
     Face::const_edge_circulator sentinel = e;
@@ -130,7 +131,7 @@ void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_
       if (binaryMode)
       {
         // write normal vector
-        if (fwrite(normal, 3, 4, f) != 4) throw stlException_c("Could not write file");
+        if (fwrite(n, 3, 4, f) != 4) throw stlException_c("Could not write file");
 
         // write the 3 vertices
         if (fwrite(v1, 3, 4, f) != 4) throw stlException_c("Coult not write file");
@@ -145,7 +146,7 @@ void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_
       }
       else
       {
-        fprintf(f,"  facet normal %9.4e %9.4e %9.4e\n", normal[0], normal[1], normal[2]);
+        fprintf(f,"  facet normal %9.4e %9.4e %9.4e\n", n[0], n[1], n[2]);
         fprintf(f,"    outer loop\n");
         fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", v1[0], v1[1], v1[2]);
         fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", v2[0], v2[1], v2[2]);

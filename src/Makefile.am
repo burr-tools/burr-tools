@@ -1,6 +1,6 @@
 bin_PROGRAMS=burrTxt burrTxt2 gui/burrGui
-noinst_LIBRARIES=lib/libburr.a flu/libflu.a help/libhelp.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a
-noinst_PROGRAMS=help/helpviewer unitTest
+noinst_LIBRARIES=lib/libburr.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a
+noinst_PROGRAMS=unitTest
 
 XML_CPP_ADD=@XML_CPP_ADD@
 XML_LD_ADD=@XML_LD_ADD@
@@ -27,8 +27,8 @@ halfedge_libhalfedge_a_SOURCES =
 halfedge_libhalfedge_a_SOURCES += halfedge/face.cpp halfedge/face.h
 halfedge_libhalfedge_a_SOURCES += halfedge/halfedge.cpp halfedge/halfedge.h
 halfedge_libhalfedge_a_SOURCES += halfedge/modifiers.cpp halfedge/modifiers.h
-halfedge_libhalfedge_a_SOURCES += halfedge/polyhedron.cpp halfedge/polyhedron.h 
-halfedge_libhalfedge_a_SOURCES += halfedge/polyhedron_iterators.h 
+halfedge_libhalfedge_a_SOURCES += halfedge/polyhedron.cpp halfedge/polyhedron.h
+halfedge_libhalfedge_a_SOURCES += halfedge/polyhedron_iterators.h
 halfedge_libhalfedge_a_SOURCES += halfedge/vector3.cpp halfedge/vector3.h
 halfedge_libhalfedge_a_SOURCES += halfedge/vertex.cpp halfedge/vertex.h
 halfedge_libhalfedge_a_SOURCES += halfedge/volume.cpp halfedge/volume.h
@@ -59,14 +59,6 @@ lua_liblua_a_SOURCES += lua/luaclass.cpp lua/luaclass.h
 lua_liblua_a_SOURCES += lua/llimits.h
 lua_liblua_a_SOURCES += lua/luaconf.h
 lua_liblua_a_SOURCES += lua/lua.h
-
-help_helpviewer_CPPFLAGS=-DBT_EXTERNAL $(GUI_HELP_CPP_ADD) @LARGEFILE@
-help_helpviewer_LDADD=flu/libflu.a $(GUI_LD_ADD) $(GUI_HELP_LD_ADD)
-help_helpviewer_SOURCES =
-help_helpviewer_SOURCES += help/helpviewer.cpp
-help_helpviewer_SOURCES += help/Fl_Help_Dialog.cpp help/Fl_Help_Dialog.h
-help_helpviewer_SOURCES += help/Fl_Help_View.cpp help/Fl_Help_View.h
-help_helpviewer_SOURCES += help/flstring.cpp help/flstring.h
 
 burrTxt_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a $(LDADD)
 burrTxt_SOURCES=burrTxt.cpp
@@ -157,62 +149,8 @@ unitTest_SOURCES += lib/main_test.cpp
 unitTest_SOURCES += lib/bitfield_test.cpp
 unitTest_SOURCES += lib/voxel_0_test.cpp
 
-
-EXTRA_DIST += help/data2c.cpp
-
-help_libhelp_a_SOURCES=\
-    help/Fl_Help_Dialog.h \
-    help/Fl_Help_Dialog.cpp \
-    help/Fl_Help_View.h \
-    help/Fl_Help_View.cpp \
-    help/flstring.cpp \
-    help/flstring.h \
-    help/helpdata.h
-
-nodist_help_libhelp_a_SOURCES=\
-    help/helpdata.cpp
-
-BUILT_SOURCES=\
-    help/helpdata.cpp
-
-help/helpdata.cpp: $(EXTRA_DIST) help/data2c.cpp
-	cd help; g++ data2c.cpp -O2 -o data2c `fltk-config --cxxflags --ldflags --use-images`
-	cd help; ./data2c helpdata.cpp ../../doc/html/*.html - ../../doc/html/*.png
-	cd help; $(RM) data2c
-
-flu_libflu_a_SOURCES=\
-    flu/Flu_Button.cpp \
-    flu/Flu_Button.h \
-    flu/Flu_Combo_Box.cpp \
-    flu/Flu_Combo_Box.h \
-    flu/Flu_Combo_List.cpp \
-    flu/Flu_Combo_List.h \
-    flu/Flu_Combo_Tree.cpp \
-    flu/Flu_Combo_Tree.h \
-    flu/Flu_Enumerations.h \
-    flu/flu_export.h \
-    flu/Flu_File_Chooser.cpp \
-    flu/Flu_File_Chooser.h \
-    flu/flu_file_chooser_pixmaps.cpp \
-    flu/flu_file_chooser_pixmaps.h \
-    flu/Flu_Label.h \
-    flu/Flu_Label.cpp \
-    flu/flu_pixmaps.cpp \
-    flu/flu_pixmaps.h \
-    flu/Flu_Return_Button.cpp \
-    flu/Flu_Return_Button.h \
-    flu/Flu_Separator.cpp \
-    flu/Flu_Separator.h \
-    flu/FluSimpleString.cpp \
-    flu/FluSimpleString.h \
-    flu/Flu_Tree_Browser.cpp \
-    flu/Flu_Tree_Browser.h \
-    flu/FluVectorClass.h \
-    flu/Flu_Wrap_Group.cpp \
-    flu/Flu_Wrap_Group.h
-
 gui_burrGui_CPPFLAGS = $(AM_CPPFLAGS)
-gui_burrGui_LDADD = lib/libburr.a help/libhelp.a flu/libflu.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a $(LDADD)
+gui_burrGui_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a $(LDADD)
 gui_burrGui_SOURCES =
 gui_burrGui_SOURCES += gui/arcball.cpp gui/arcball.h
 gui_burrGui_SOURCES += gui/assertwindow.cpp gui/assertwindow.h

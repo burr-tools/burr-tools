@@ -38,8 +38,7 @@
 #include "../lib/voxel.h"
 #include "../lib/solution.h"
 
-#include "../flu/Flu_Tree_Browser.h"
-
+#include <FL/Fl_Tree_Item.H>
 #include <math.h>
 
 class AddMovementDialog : public LFl_Double_Window {
@@ -171,7 +170,7 @@ typedef struct nodeData_s {
 } nodeData_s;
 
 
-LTreeBrowser::Node * movementBrowser_c::addNode(LTreeBrowser::Node *nd, disassemblerNode_c *mv) {
+Fl_Tree_Item * movementBrowser_c::addNode(Fl_Tree_Item *nd, disassemblerNode_c *mv) {
 
   /* at first make sure we do not already have a node with
    * this diassemblerNode
@@ -227,7 +226,7 @@ LTreeBrowser::Node * movementBrowser_c::addNode(LTreeBrowser::Node *nd, disassem
 
   }
 
-  LTreeBrowser::Node * nnew = tree->add(nd, label);
+  Fl_Tree_Item * nnew = tree->add(nd, label);
 
   nodeData_s * dat = new nodeData_s;
   nodes.push_back(dat);
@@ -250,12 +249,12 @@ LTreeBrowser::Node * movementBrowser_c::addNode(LTreeBrowser::Node *nd, disassem
 static void cb_NodeChange_stub(Fl_Widget* /*o*/, void* v) { ((movementBrowser_c*)v)->cb_NodeChange(); }
 void movementBrowser_c::cb_NodeChange(void) {
 
-  if (tree->callback_reason() != FLU_SELECTED) return;
-  if (!tree->get_selected(1)) return;
+  if (tree->callback_reason() != FL_TREE_REASON_SELECTED) return;
+  if (!tree->first_selected_item()) return;
 
   /* when the node has been changed, we need to update the 3d view */
 
-  nodeData_s * s = (nodeData_s *)(tree->get_selected(1)->user_data());
+  nodeData_s * s = (nodeData_s *)(tree->first_selected_item()->user_data());
 
   fixedPositions_c fp(s->node, s->pieces, puz->getNumberOfPieces());
 
@@ -265,16 +264,16 @@ void movementBrowser_c::cb_NodeChange(void) {
 static void cb_Prune_stub(Fl_Widget* /*o*/, void* v) { ((movementBrowser_c*)v)->cb_Prune(); }
 void movementBrowser_c::cb_Prune(void) {
 
-  LTreeBrowser::Node * nd = tree->get_selected(1);
+  Fl_Tree_Item * nd = tree->first_selected_item();
 
-  LTreeBrowser::Node * omit = 0;
+  Fl_Tree_Item * omit = 0;
 
   while (nd) {
 
     int i = 0;
     while (i < nd->children())
       if (nd->child(i) != omit)
-        nd->remove(nd->child(i));
+        nd->remove_child(nd->child(i));
       else
         i++;
 
@@ -288,7 +287,7 @@ void movementBrowser_c::cb_Prune(void) {
 static void cb_AddMovement_stub(Fl_Widget* /*o*/, void* v) { ((movementBrowser_c*)v)->cb_AddMovement(); }
 void movementBrowser_c::cb_AddMovement(void) {
 
-  LTreeBrowser::Node * nd = tree->get_selected(1);
+  Fl_Tree_Item * nd = tree->first_selected_item();
   if (!nd) return;
 
   nodeData_s * s = (nodeData_s *)(nd->user_data());
@@ -330,7 +329,8 @@ void movementBrowser_c::cb_AddMovement(void) {
     else
       n->set(i, 0, 0, 0);
 
-  addNode(nd, n)->select_only();
+  tree->deselect_all();
+  addNode(nd, n)->select();
 
   delete c;
 
@@ -341,7 +341,7 @@ void movementBrowser_c::addSpecificMovement(unsigned int piece, int x, int y, in
 
   /* create the requested move and add it to the tree, valid or not */
 
-  LTreeBrowser::Node * nd = tree->get_selected(1);
+  Fl_Tree_Item * nd = tree->first_selected_item();
   if (!nd) return;
 
   nodeData_s * s = (nodeData_s *)(nd->user_data());
@@ -355,7 +355,8 @@ void movementBrowser_c::addSpecificMovement(unsigned int piece, int x, int y, in
     else
       n->set(i, 0, 0, 0);
 
-  addNode(nd, n)->select_only();
+  tree->deselect_all();
+  addNode(nd, n)->select();
 
   redraw();
 }
@@ -364,7 +365,7 @@ void movementBrowser_c::selectSpecificMovement(unsigned int piece, int x, int y,
 
   /* find a matching move and add it to the tree */
 
-  LTreeBrowser::Node * nd = tree->get_selected(1);
+  Fl_Tree_Item * nd = tree->first_selected_item();
   if (!nd) return;
 
   nodeData_s * s = (nodeData_s *)(nd->user_data());
@@ -375,18 +376,20 @@ void movementBrowser_c::selectSpecificMovement(unsigned int piece, int x, int y,
   disassemblerNode_c * newNode = mv.findMatching(s->node, s->pieces, piece, x, y, z);
 
   if (newNode) {
-    addNode(nd, newNode)->select_only();
+      tree->deselect_all();
+    addNode(nd, newNode)->select();
     redraw();
   }
 }
 
 static void cb_StepBack_stub(Fl_Widget* /*o*/, void* v) { ((movementBrowser_c*)v)->cb_StepBack(); }
 void movementBrowser_c::cb_StepBack(void) {
-  LTreeBrowser::Node * nd = tree->get_selected(1);
+  Fl_Tree_Item * nd = tree->first_selected_item();
   if (!nd) return;
-  LTreeBrowser::Node * pn = nd->parent();
+  Fl_Tree_Item * pn = nd->parent();
   if (!pn) return;
-  pn->select_only();
+  tree->deselect_all();
+  pn->select();
   redraw();
 }
 
@@ -394,7 +397,7 @@ static void cb_NodeAnalyze_stub(Fl_Widget* /*o*/, void* v) { ((movementBrowser_c
 static void cb_NodeAnalyzeMany_stub(Fl_Widget* /*o*/, void* v) { ((movementBrowser_c*)v)->cb_NodeAnalyze(2); }
 void movementBrowser_c::cb_NodeAnalyze(unsigned int /*level*/) {
 
-  LTreeBrowser::Node * nd = tree->get_selected(1);
+  Fl_Tree_Item * nd = tree->first_selected_item();
   if (!nd) return;
 
   nodeData_s * s = (nodeData_s *)(nd->user_data());
@@ -410,7 +413,7 @@ void movementBrowser_c::cb_NodeAnalyze(unsigned int /*level*/) {
   for (unsigned int i = 0; i < res.size(); i++)
     addNode(nd, res[i]);
 
-  nd->open(true);
+  nd->open();
 
   redraw();
 }
@@ -476,9 +479,9 @@ movementBrowser_c::movementBrowser_c(problem_c * puzzle, unsigned int solNum) : 
   tree = new LTreeBrowser(0, 0, 1, 1);
   tree->weight(1, 1);
   tree->callback(cb_NodeChange_stub, this);
-  tree->auto_branches(true);
-  tree->selection_mode(FLU_SINGLE_SELECT);
-  tree->selection_follows_hilight(true);
+  // tree->auto_branches(true);
+  tree->selectmode(FL_TREE_SELECT_SINGLE);
+  // tree->selection_follows_hilight(true);
 
   layouter_c * o = new layouter_c(0, 1, 1, 2);
 
@@ -500,7 +503,7 @@ movementBrowser_c::movementBrowser_c(problem_c * puzzle, unsigned int solNum) : 
   lay->end();
 
   /* now add the root node to the tree */
-  LTreeBrowser::Node * n = tree->get_root();
+  Fl_Tree_Item * n = tree->root();
   n->label("root");
 
   /* the user data for a node is the structure nodeData_s */
@@ -525,7 +528,8 @@ movementBrowser_c::movementBrowser_c(problem_c * puzzle, unsigned int solNum) : 
 
   view3d->getView()->showAssembly(puz, solNum);
 
-  tree->get_root()->select_only();
+  tree->deselect_all();
+  tree->root()->select();
 }
 
 movementBrowser_c::~movementBrowser_c() {
