@@ -112,7 +112,8 @@ void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_
     if (fc->hole())
       continue;
 
-    const float * normal = fc->normal().getData();
+    const Vector3Df normalVector = fc->normal();
+    const float * normal = normalVector.getData();
 
     Face::const_edge_circulator e = fc->begin();
     Face::const_edge_circulator sentinel = e;

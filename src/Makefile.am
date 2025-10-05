@@ -74,7 +74,7 @@ burrTxt_SOURCES=burrTxt.cpp
 burrTxt2_LDADD = lib/libburr.a lua/liblua.a tools/libtools.a halfedge/libhalfedge.a $(LDADD)
 burrTxt2_SOURCES=burrTxt2.cpp
 
-lib_libburr_a_CPPFLAGS = $(AM_CPPFLAGS) -Werror
+lib_libburr_a_CPPFLAGS = $(AM_CPPFLAGS) -Werror -Wno-overloaded-virtual
 lib_libburr_a_SOURCES =
 lib_libburr_a_SOURCES += lib/assembler.cpp lib/assembler.h
 lib_libburr_a_SOURCES += lib/assembler_0.cpp lib/assembler_0.h
