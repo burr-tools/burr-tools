@@ -246,6 +246,7 @@ gui_burrGui_SOURCES += gui/statuswindow.cpp gui/statuswindow.h
 gui_burrGui_SOURCES += gui/stlexport.cpp gui/stlexport.h
 gui_burrGui_SOURCES += gui/togglebutton.cpp gui/togglebutton.h
 gui_burrGui_SOURCES += gui/tooltabs.cpp gui/tooltabs.h
+gui_burrGui_SOURCES += gui/undomanager.cpp gui/undomanager.h
 gui_burrGui_SOURCES += gui/vectorexportwindow.cpp gui/vectorexportwindow.h
 gui_burrGui_SOURCES += gui/view3dgroup.cpp gui/view3dgroup.h
 gui_burrGui_SOURCES += gui/voxelframe.cpp gui/voxelframe.h

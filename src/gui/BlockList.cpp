@@ -806,15 +806,15 @@ int ColorConstraintsEdit::handle(int event) {
   unsigned int ypos = 0;
 
   /* nothing there */
-  if ((w() <= 0) || (h() <= 0)) return 1;
+  if ((w() <= 0) || (h() <= 0)) return 0;
 
   /* only handle push */
   if (event != FL_PUSH)
-    return 1;
+    return 0;
 
   /* no valid problem available */
   if (problem >= puzzle->getNumberOfProblems())
-    return 1;
+    return 0;
 
   /* find out the group that we clicked onto */
   for (unsigned int c1 = 0; c1 < puzzle->colorNumber(); c1++) {
@@ -845,11 +845,11 @@ int ColorConstraintsEdit::handle(int event) {
         redraw();
         do_callback(RS_CHANGEDSELECTION);
       }
-      break;
+      return 1;
     }
   }
 
-  return 1;
+  return 0;
 }
 
 void ColorConstraintsEdit::setSelection(unsigned int num) {
