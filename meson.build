@@ -8,6 +8,11 @@ project('burrtools', 'cpp', 'c',
 	]
        )
 
+# Define WIN32 for Windows builds (FLTK expects this)
+if host_machine.system() == 'windows'
+  add_project_arguments('-DWIN32', language: ['c', 'cpp'])
+endif
+
 lua_src = [
   'src/lua/lapi.c',
   'src/lua/lauxlib.c',
