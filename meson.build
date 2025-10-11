@@ -153,6 +153,13 @@ help_src = [
 
 cxx = meson.get_compiler('cpp')
 
+# macOS specific dependencies
+if host_machine.system() == 'darwin'
+  cocoa_dep = dependency('appleframeworks', modules : ['Cocoa', 'ScreenCaptureKit'])
+else
+  cocoa_dep = dependency('', required: false)
+endif
+
 if host_machine.system() == 'windows'
   wm = import('windows')
 endif
@@ -233,5 +240,5 @@ executable('burrTxt2',  tools_src + halfedge_src + libburr_src + ['src/burrTxt2.
 	  )
 
 executable('burrtools', lua_src + tools_src + gui_src + halfedge_src + libburr_src,
- 	   dependencies: [thread_dep, zlib_dep, gl_dep, glu_dep, fltk_dep, fltkgl_dep, fltkimages_dep, libpng_dep],
+ 	   dependencies: [thread_dep, zlib_dep, gl_dep, glu_dep, fltk_dep, fltkgl_dep, fltkimages_dep, libpng_dep, cocoa_dep],
 	  )
