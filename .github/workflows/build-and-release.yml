@@ -1,0 +1,113 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - master
+      - meson
+  pull_request:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Update package list
+      run: sudo apt-get update
+    
+    - name: Install dependencies
+      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev
+    
+    - name: Setup build directory
+      run: meson setup build --buildtype=release
+    
+    - name: Build
+      run: ninja -C build
+    
+    - name: Strip binaries
+      run: strip build/burrtools build/burrTxt build/burrTxt2
+    
+    - name: Package Linux binaries
+      run: |
+        mkdir -p artifacts/linux
+        cp build/burrtools build/burrTxt build/burrTxt2 artifacts/linux/
+        cd artifacts/linux
+        tar czf ../burrtools-linux-x86_64.tar.gz *
+    
+    - name: Upload Linux artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: burrtools-linux
+        path: artifacts/burrtools-linux-x86_64.tar.gz
+
+  build-windows:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    
+    - name: Update package list
+      run: sudo apt-get update
+    
+    - name: Install dependencies
+      run: sudo apt-get install -y meson ninja-build mingw-w64
+    
+    - name: Setup build directory
+      run: meson setup build-win --cross-file cross-mingw64.txt --buildtype=release
+    
+    - name: Build
+      run: ninja -C build-win
+    
+    - name: Strip binaries
+      run: x86_64-w64-mingw32-strip build-win/burrtools.exe build-win/burrTxt.exe build-win/burrTxt2.exe
+    
+    - name: Package Windows binaries
+      run: |
+        mkdir -p artifacts/windows
+        cp build-win/burrtools.exe build-win/burrTxt.exe build-win/burrTxt2.exe artifacts/windows/
+        cd artifacts/windows
+        zip -r ../burrtools-windows-x86_64.zip *
+    
+    - name: Upload Windows artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: burrtools-windows
+        path: artifacts/burrtools-windows-x86_64.zip
+
+  release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
+    steps:
+    - name: Download Linux artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: burrtools-linux
+        path: artifacts
+    
+    - name: Download Windows artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: burrtools-windows
+        path: artifacts
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: build-${{ github.sha }}
+        name: Build ${{ github.sha }}
+        draft: false
+        prerelease: false
+        files: |
+          artifacts/burrtools-linux-x86_64.tar.gz
+          artifacts/burrtools-windows-x86_64.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
