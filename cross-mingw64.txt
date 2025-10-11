@@ -9,6 +9,14 @@ exe_wrapper = 'wine64'
 
 [properties]
 needs_exe_wrapper = true
+sys_root = '/usr/x86_64-w64-mingw32'
+
+[cmake]
+CMAKE_SYSTEM_NAME = 'Windows'
+CMAKE_FIND_ROOT_PATH_MODE_PROGRAM = 'NEVER'
+CMAKE_FIND_ROOT_PATH_MODE_LIBRARY = 'ONLY'
+CMAKE_FIND_ROOT_PATH_MODE_INCLUDE = 'ONLY'
+CMAKE_FIND_ROOT_PATH_MODE_PACKAGE = 'ONLY'
 
 [host_machine]
 system = 'windows'

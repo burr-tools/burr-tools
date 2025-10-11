@@ -181,7 +181,28 @@ fltkimages_dep = cxx.find_library('fltk_images', required: false)
 if not fltk_dep.found()
   # fetch and build fltk from source
   cmake = import('cmake')
-  fltk_proj = cmake.subproject('fltk')
+  
+  # Configure CMake to skip test programs that require fluid
+  cmake_opts = cmake.subproject_options()
+  cmake_opts.add_cmake_defines({
+    'FLTK_BUILD_TEST': 'OFF',
+    'FLTK_BUILD_EXAMPLES': 'OFF'
+  })
+  
+  # For Windows cross-compilation, disable optional dependencies that might
+  # pull in system headers
+  if host_machine.system() == 'windows'
+    cmake_opts.add_cmake_defines({
+      'FLTK_USE_SYSTEM_LIBJPEG': 'OFF',
+      'FLTK_USE_SYSTEM_LIBPNG': 'OFF',
+      'FLTK_USE_SYSTEM_ZLIB': 'OFF',
+      'FLTK_OPTION_CAIRO': 'OFF',
+      'CMAKE_FIND_ROOT_PATH_MODE_INCLUDE': 'ONLY',
+      'CMAKE_FIND_ROOT_PATH_MODE_LIBRARY': 'ONLY'
+    })
+  endif
+  
+  fltk_proj = cmake.subproject('fltk', options: cmake_opts)
   fltk_dep = fltk_proj.dependency('fltk')
   fltkgl_dep = fltk_proj.dependency('fltk_gl')
   fltkimages_dep = fltk_proj.dependency('fltk_images')
@@ -212,5 +233,5 @@ executable('burrTxt2',  tools_src + halfedge_src + libburr_src + ['src/burrTxt2.
 	  )
 
 executable('burrtools', lua_src + tools_src + gui_src + halfedge_src + libburr_src,
- 	   dependencies: [thread_dep, zlib_dep, gl_dep, glu_dep, fltk_dep, fltkgl_dep, libpng_dep],
+ 	   dependencies: [thread_dep, zlib_dep, gl_dep, glu_dep, fltk_dep, fltkgl_dep, fltkimages_dep, libpng_dep],
 	  )
