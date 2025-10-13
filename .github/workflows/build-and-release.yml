@@ -35,6 +35,7 @@ jobs:
       run: |
         mkdir -p artifacts/linux
         cp build/burrtools build/burrTxt build/burrTxt2 artifacts/linux/
+        cp -r examples artifacts/linux/
         cd artifacts/linux
         tar czf ../burrtools-linux-x86_64.tar.gz *
     
@@ -71,6 +72,7 @@ jobs:
       run: |
         mkdir -p artifacts/windows
         cp build-win/burrtools.exe build-win/burrTxt.exe build-win/burrTxt2.exe artifacts/windows/
+        cp -r examples artifacts/windows/
         cd artifacts/windows
         zip -r ../burrtools-windows-x86_64.zip *
     
@@ -80,8 +82,42 @@ jobs:
         name: burrtools-windows
         path: artifacts/burrtools-windows-x86_64.zip
 
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: brew install meson ninja boost
+    
+    - name: Setup build directory
+      run: meson setup build --buildtype=release
+    
+    - name: Build
+      run: ninja -C build
+    
+    - name: Strip binaries
+      run: strip build/burrtools build/burrTxt build/burrTxt2
+    
+    - name: Package macOS binaries
+      run: |
+        mkdir -p artifacts/macos
+        cp build/burrtools build/burrTxt build/burrTxt2 artifacts/macos/
+        cp -r examples artifacts/macos/
+        cd artifacts/macos
+        tar czf ../burrtools-macos-x86_64.tar.gz *
+    
+    - name: Upload macOS artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-macos
+        path: artifacts/burrtools-macos-x86_64.tar.gz
+
   release:
-    needs: [build-linux, build-windows]
+    needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     permissions:
@@ -99,6 +135,12 @@ jobs:
         name: burrtools-windows
         path: artifacts
     
+    - name: Download macOS artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: burrtools-macos
+        path: artifacts
+    
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
@@ -109,5 +151,6 @@ jobs:
         files: |
           artifacts/burrtools-linux-x86_64.tar.gz
           artifacts/burrtools-windows-x86_64.zip
+          artifacts/burrtools-macos-x86_64.tar.gz
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
