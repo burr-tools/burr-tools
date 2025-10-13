@@ -13,6 +13,14 @@ if host_machine.system() == 'windows'
   add_project_arguments('-DWIN32', language: ['c', 'cpp'])
 endif
 
+# Set macOS deployment target for compatibility with older macOS versions
+if host_machine.system() == 'darwin'
+  # Set minimum macOS version to 11.0 (Big Sur) for broader compatibility
+  # while still supporting modern features
+  add_project_arguments('-mmacosx-version-min=11.0', language: ['c', 'cpp', 'objcpp'])
+  add_project_link_arguments('-mmacosx-version-min=11.0', language: ['c', 'cpp', 'objcpp'])
+endif
+
 lua_src = [
   'src/lua/lapi.c',
   'src/lua/lauxlib.c',
@@ -165,13 +173,23 @@ if host_machine.system() == 'windows'
 endif
 
 thread_dep = dependency('threads')
-gl_dep = dependency('gl')
+if host_machine.system() == 'darwin'
+  # On macOS, use native OpenGL framework, not Mesa
+  gl_dep = dependency('appleframeworks', modules : ['OpenGL'])
+  glu_dep = gl_dep  # OpenGL framework includes GLU on macOS
+else
+  gl_dep = dependency('gl')
+endif
 
 if host_machine.system() == 'windows'
   glu_dep = cxx.find_library('glu32')
   # glu_dep = dependency('', required: false)
   zlib_dep = subproject('zlib', default_options: ['default_library=static']).get_variable('zlib_dep')
   libpng_dep = subproject('libpng', default_options: ['default_library=static']).get_variable('libpng_dep')
+elif host_machine.system() == 'darwin'
+  # On macOS, glu_dep is already set to gl_dep above (OpenGL framework includes GLU)
+  zlib_dep = dependency('zlib', fallback : ['zlib', 'zlib_dep'])
+  libpng_dep = dependency('libpng')
 else
   zlib_dep = dependency('zlib', fallback : ['zlib', 'zlib_dep'])
   glu_dep = dependency('glu')
