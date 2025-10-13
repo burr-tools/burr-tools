@@ -234,6 +234,16 @@ if not fltk_dep.found()
   fltk_dep = fltk_proj.dependency('fltk')
   fltkgl_dep = fltk_proj.dependency('fltk_gl')
   fltkimages_dep = fltk_proj.dependency('fltk_images')
+  
+  # On Windows, FLTK builds bundled PNG and zlib libraries when we disable system libraries
+  # These need to be linked separately
+  if host_machine.system() == 'windows'
+    fltkpng_dep = fltk_proj.dependency('fltk_png')
+    fltkz_dep = fltk_proj.dependency('fltk_z')
+  else
+    fltkpng_dep = dependency('', required: false)
+    fltkz_dep = dependency('', required: false)
+  endif
 endif
 
 
@@ -261,5 +271,5 @@ executable('burrTxt2',  tools_src + halfedge_src + libburr_src + ['src/burrTxt2.
 	  )
 
 executable('burrtools', lua_src + tools_src + gui_src + halfedge_src + libburr_src,
-          dependencies: [thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, libpng_dep, cocoa_dep],
+          dependencies: [thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep],
 	  )
