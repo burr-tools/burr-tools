@@ -202,8 +202,7 @@ gdiplus_dep = dependency('', required: false)
 
 fltk_dep = cxx.find_library('fltk', required: false)
 fltkgl_dep = cxx.find_library('fltk_gl', required: false)
-fltkpng_dep = dependency('', required: false)
-fltkz_dep = dependency('', required: false)
+fltkimages_dep = cxx.find_library('fltk_images', required: false)
 
 if not fltk_dep.found()
   # fetch and build fltk from source
@@ -234,8 +233,7 @@ if not fltk_dep.found()
   fltk_proj = cmake.subproject('fltk', options: cmake_opts)
   fltk_dep = fltk_proj.dependency('fltk')
   fltkgl_dep = fltk_proj.dependency('fltk_gl')
-  fltkpng_dep = fltk_proj.dependency('fltk_png')
-  fltkz_dep = fltk_proj.dependency('fltk_z')
+  fltkimages_dep = fltk_proj.dependency('fltk_images')
 endif
 
 
@@ -263,5 +261,5 @@ executable('burrTxt2',  tools_src + halfedge_src + libburr_src + ['src/burrTxt2.
 	  )
 
 executable('burrtools', lua_src + tools_src + gui_src + halfedge_src + libburr_src,
-          dependencies: [thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep],
+          dependencies: [thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, libpng_dep, cocoa_dep],
 	  )
