@@ -203,6 +203,8 @@ gdiplus_dep = dependency('', required: false)
 fltk_dep = cxx.find_library('fltk', required: false)
 fltkgl_dep = cxx.find_library('fltk_gl', required: false)
 fltkimages_dep = cxx.find_library('fltk_images', required: false)
+fltkpng_dep = dependency('', required: false)
+fltkz_dep = dependency('', required: false)
 
 if not fltk_dep.found()
   # fetch and build fltk from source
