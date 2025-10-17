@@ -5,6 +5,8 @@ project('burrtools', 'cpp', 'c',
 	  'build.c_std=c11',
 	  'cpp_std=c++11',
 	  'build.cpp_std=c++11',
+	  'optimization=2',
+	  'debug=true',
 	]
        )
 
