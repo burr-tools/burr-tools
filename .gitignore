@@ -12,5 +12,6 @@ GPATH
 GRTAGS
 GTAGS
 
-# checked out subprojects
-subprojects/fltk/
+# Meson subprojects (keep only .wrap files in git)
+subprojects/*
+!subprojects/*.wrap
