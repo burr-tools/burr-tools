@@ -81,21 +81,6 @@ meson setup build-win --cross-file cross-mingw64.txt
 ninja -C build-win
 ```
 
-## Known Issues
-
-### GCC 15+ Compilation
-
-When building with GCC 15 or newer, the FLTK subproject may fail to compile due to missing `strdup` declaration. If this occurs, you need to add `#define _POSIX_C_SOURCE 200809L` before the includes in `subprojects/fltk/src/xutf8/utf8Wrap.c`:
-
-```c
-#if !defined(WIN32) && !defined(__APPLE__)
-
-#define _POSIX_C_SOURCE 200809L
-#include "../Xutf8.h"
-```
-
-This issue will be fixed automatically when FLTK is updated or when meson downloads a fresh copy of FLTK.
-
 ## Build Configuration
 
 The project is configured to use:
