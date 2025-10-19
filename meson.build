@@ -276,4 +276,5 @@ executable('burrTxt2',  tools_src + halfedge_src + libburr_src + ['src/burrTxt2.
 
 executable('burrtools', lua_src + tools_src + gui_src + halfedge_src + libburr_src,
           dependencies: [thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep],
+          win_subsystem: 'windows',
 	  )
