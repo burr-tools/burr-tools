@@ -2,7 +2,7 @@
 static const char *Rescale_Color_X3_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 10 1",
-"  c black",
+"  c #010101",
 ". c #006633",
 "X c #33FF99",
 "o c #990000",

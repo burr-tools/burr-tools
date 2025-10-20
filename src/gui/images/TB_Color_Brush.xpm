@@ -2,7 +2,7 @@
 static const char *TB_Color_Brush_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "23 23 12 1",
-"  c black",
+"  c #010101",
 ". c #000099",
 "X c #FF6633",
 "o c #FFCC00",

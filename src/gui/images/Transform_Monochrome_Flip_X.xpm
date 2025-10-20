@@ -2,7 +2,7 @@
 static const char *Transform_Monochrome_Flip_X_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "68 23 6 1",
-"  c black",
+"  c #010101",
 ". c #666666",
 "X c #BBBBBB",
 "o c #99FFFF",

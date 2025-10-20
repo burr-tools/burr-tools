@@ -2,7 +2,7 @@
 static const char *InOut_Color_Fixed_In_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 15 1",
-"  c black",
+"  c #010101",
 ". c #6B6B6B",
 "X c #0066CC",
 "o c #FF3333",
