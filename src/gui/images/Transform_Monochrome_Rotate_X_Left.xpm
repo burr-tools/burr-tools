@@ -2,7 +2,7 @@
 static const char *Transform_Monochrome_Rotate_X_Left_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 6 1",
-"  c black",
+"  c #010101",
 ". c #666666",
 "X c #BBBBBB",
 "o c #99FFFF",

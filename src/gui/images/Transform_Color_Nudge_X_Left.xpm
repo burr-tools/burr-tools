@@ -2,7 +2,7 @@
 static const char *Transform_Color_Nudge_X_Left_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 10 1",
-"  c black",
+"  c #010101",
 ". c #0000FF",
 "X c #009900",
 "o c #990033",

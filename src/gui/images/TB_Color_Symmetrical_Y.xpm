@@ -2,7 +2,7 @@
 static const char *TB_Color_Symmetrical_Y_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "23 23 9 1",
-"  c black",
+"  c #010101",
 ". c #336633",
 "X c #0000FF",
 "o c #009900",

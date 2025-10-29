@@ -52,8 +52,6 @@
 
 #include "LFl_Tile.h"
 
-#include <config.h>
-
 #include "../lib/ps3dloader.h"
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
@@ -73,9 +71,7 @@
 #include "../tools/gzstream.h"
 #include "../tools/xml.h"
 
-#include "../flu/Flu_File_Chooser.h"
-
-#include "../help/Fl_Help_Dialog.h"
+#include <FL/Fl_File_Chooser.H>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -830,7 +826,7 @@ void mainWindow_c::cb_BtnPlacementBrowser(void) {
     return;
 
   if (!puzzle->getProblem(prob)->getAssembler()->getPiecePlacementSupported()) {
-    fl_message("Sorry no placement browser for this type of puzzle");
+    fl_message("Sorry, no placement browser for this type of puzzle");
     return;
   }
 
@@ -971,12 +967,12 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   unsigned int prob = solutionProblem->getSelection();
 
   if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_ASSEMBLE)) {
-    fl_message("Sorry this space grid doesn't have an assembler (yet)!");
+    fl_message("Sorry, this space grid doesn't have an assembler (yet)!");
     return;
   }
 
   if (SolveDisasm->value() && !(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-    fl_message("Sorry this space grid doesn't have a disassembler (yet)!\n"
+    fl_message("Sorry, this space grid doesn't have a disassembler (yet)!\n"
                "You must disable the disassembler first\n");
     return;
   }
@@ -1186,7 +1182,7 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
 
   if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-    fl_message("Sorry this space grid doesn't have a disassembler (yet)!");
+    fl_message("Sorry, this space grid doesn't have a disassembler (yet)!");
     return;
   }
 
@@ -1214,7 +1210,7 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
     return;
 
   if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-    fl_message("Sorry this space grid doesn't have a disassembler (yet)!");
+    fl_message("Sorry, this space grid doesn't have a disassembler (yet)!");
     return;
   }
 
@@ -1390,10 +1386,10 @@ void mainWindow_c::cb_Load(void) {
   if (threadStopped()) {
 
     if (changed)
-      if (fl_choice("Puzzle changed are you sure?", "Cancel", "Load", 0) == 0)
+      if (fl_choice("Puzzle changed; are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
-    const char * f = flu_file_chooser("Load Puzzle", "*.xmpuzzle", "");
+    const char * f = fl_file_chooser("Load Puzzle", "*.xmpuzzle", "", 0);
 
     tryToLoad(f);
   }
@@ -1405,10 +1401,10 @@ void mainWindow_c::cb_Load_Ps3d(void) {
   if (threadStopped()) {
 
     if (changed)
-      if (fl_choice("Puzzle changed are you sure?", "Cancel", "Load", 0) == 0)
+      if (fl_choice("Puzzle changed; are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
-    const char * f = flu_file_chooser("Import PuzzleSolver3D File", "*.puz", "");
+    const char * f = fl_file_chooser("Import PuzzleSolver3D File", "*.puz", "", 0);
 
     if (f) {
 
@@ -1615,11 +1611,11 @@ static void cb_SaveAs_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_S
 void mainWindow_c::cb_SaveAs(void) {
 
   if (threadStopped()) {
-    const char * f = flu_file_chooser("Save Puzzle As", "*.xmpuzzle", "");
+    const char * f = fl_file_chooser("Save Puzzle As", "*.xmpuzzle", "", 0);
 
     if (f) {
 
-      if (!fileExists(f) || fl_choice("File exists overwrite?", "Cancel", "Overwrite", 0)) {
+      if (!fileExists(f) || fl_choice("File exists; overwrite?", "Cancel", "Overwrite", 0)) {
 
         char f2[1000];
 
@@ -1662,7 +1658,7 @@ void mainWindow_c::cb_SaveAs(void) {
 
 static void cb_Quit_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->hide(); }
 void mainWindow_c::hide(void) {
-  if ((!changed) || fl_choice("Puzzle changed do you want to quit and loose the changes?", "Cancel", "Quit", 0))
+  if ((!changed) || fl_choice("Puzzle changed do you want to quit and lose the changes?", "Cancel", "Quit", 0))
     Fl_Double_Window::hide();
 }
 
@@ -1773,22 +1769,13 @@ void mainWindow_c::cb_Toggle3D(void) {
   }
 }
 
-static void cb_Help_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Help(); }
-void mainWindow_c::cb_Help(void) {
-
-  Fl_Help_Dialog * help = new Fl_Help_Dialog;
-
-  help->load("Prologue.html");
-
-  help->show();
-}
-
 static void cb_About_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_About(); }
 void mainWindow_c::cb_About(void) {
 
-  fl_message("This is the GUI for BurrTools version " VERSION "\n"
-             "BurrTools (c) 2003-2011 by Andreas Röver\n"
-             "The latest version is available at burrtools.sourceforge.net\n"
+  fl_message("This is the GUI for BurrTools\n"
+             "BurrTools (c) 2003-2025 by Andreas Röver\n"
+	     "with patches from Arne Köhn, Bryan Turner, Derek Bosch, Michael Brown\n"
+             "The latest version is available at github.com/burr-tools/burr-tools\n"
              "\n"
              "This software is distributed under the GPL\n"
              "You should have received a copy of the GNU General Public License\n"
@@ -1797,7 +1784,7 @@ void mainWindow_c::cb_About(void) {
              "or see www.fsf.org\n"
              "\n"
              "The program uses\n"
-             "- Fltk, FLU, libZ, libpng, gzstream, gl2ps\n"
+             "- Fltk, libZ, libpng, gzstream, gl2ps\n"
              "- Fl_Table (http://3dsite.com/people/erco/Fl_Table/)\n"
              "- tr by Brian Paul (http://www.mesa3d.org/brianp/TR.html)\n"
             );
@@ -2021,7 +2008,6 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
   {"Status",           0, cb_StatusWindow_stub,  0, 0, 0, 0, 14, 56},
   {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
   {"Config",           0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
-  {"Help",      FL_F + 1, cb_Help_stub,        0, 0, 0, 0, 14, 56},
   {"About",            0, cb_About_stub,       0, 0, 3, 0, 14, 56},
   {0}
 };
@@ -2829,7 +2815,7 @@ void mainWindow_c::update(void) {
 
   if (assmThread) {
 
-    // check, if the thread has thrown an exception, if so re-throw it
+    // check if the thread has thrown an exception. if so, re-throw it
     if (assmThread->currentAction() == solveThread_c::ACT_ASSERT) {
 
       assertWindow_c * aw = new assertWindow_c("Because of an internal error the current puzzle\n"

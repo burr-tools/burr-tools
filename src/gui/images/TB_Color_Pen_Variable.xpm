@@ -2,7 +2,7 @@
 static const char *TB_Color_Pen_Variable_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "23 23 12 1",
-"  c black",
+"  c #010101",
 ". c #6B6B6B",
 "X c #0066CC",
 "o c #CC6600",

@@ -1,3 +1,42 @@
+------------- Version 0.7.0 Oct 2025
+
+Build System & Platform Support:
+- Complete switch from autotools to Meson build system (Arne Köhn)
+- Windows cross-compilation support from Linux using MinGW (Arne Köhn)
+- macOS build improvements and compatibility (Arne Köhn, Derek Bosch)
+- GitHub Actions CI for automated Linux, Windows, and macOS builds (Arne Köhn)
+- Fix Windows GUI application to launch without terminal window (Arne Köhn)
+- Update to FLTK 1.4.4 for modern platform support (Arne Köhn)
+- Optimize default build settings (Michael Brown)
+
+Compiler & Code Quality:
+- Fix compilation with GCC 9, GCC 15, and C++17 standard (Arne Köhn, Bryan Turner, Michael Brown)
+- Remove deprecated C++ features (register keyword, std::iterator) (Bryan Turner, Michael Brown)
+- Fix hundreds of compiler warnings across codebase (Bryan Turner, Arne Köhn)
+- Fix uninitialized variable issues and dangling pointers (Bryan Turner, Michael Brown)
+- Add -Werror to build for better code quality (Arne Köhn)
+- Disable problematic -Woverloaded-virtual warnings (Michael Brown)
+
+Bug Fixes:
+- Fix infinite loop in Lua scripting (Arne Köhn)
+- Fix double join of solve threads (Arne Köhn)
+- Fix Windows cross-compilation linking errors (Michael Brown)
+- Fix undefined variable in Meson build (Michael Brown)
+- Correct Lua return values (Bryan Turner)
+- Fix macOS Retina/HighDPI display rendering (Derek Bosch)
+- Fix macOS OpenGL rendering issues (Arne Köhn)
+
+Documentation & Distribution:
+- Complete rewrite of build documentation (BUILD.md) (Arne Köhn)
+- Automated release builds with examples included (Arne Köhn)
+- Update AUTHORS file for recent contributions (Arne Köhn)
+- README organization improvements (Michael Brown)
+
+Dependencies:
+- Replace FLU library with native FLTK file chooser (Arne Köhn)
+- Update libpng from 1.6.37 to 1.6.50 (Arne Köhn)
+- Update zlib from 1.2.11 to 1.3.1 (Arne Köhn)
+
 ------------- Version 0.6.3 May 2013
 
 - fix uninitialized variable problem that sometimes resulted in wrong number of solutions (the

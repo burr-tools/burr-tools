@@ -1,0 +1,227 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g., v0.7.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.tag }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          # Remove 'v' prefix if present
+          VERSION_NUM=${VERSION#v}
+          echo "version=$VERSION_NUM" >> $GITHUB_OUTPUT
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION_NUM"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Extract release notes from NEWS file (between first and second -------)
+          awk '/^-{5,}/{if(++count==1)next; if(count==2)exit} count==1' NEWS > notes_from_news.md
+          
+          # Create full release notes
+          echo "## Changes in this release" > notes.md
+          echo "" >> notes.md
+          cat notes_from_news.md >> notes.md
+          echo "" >> notes.md
+          echo "## Downloads" >> notes.md
+          echo "" >> notes.md
+          echo "- **macOS**: BurrTools-${{ steps.get_version.outputs.version }}-macOS.dmg" >> notes.md
+          echo "- **Windows**: BurrTools-${{ steps.get_version.outputs.version }}-Windows.zip" >> notes.md
+          echo "" >> notes.md
+          echo "### macOS Installation" >> notes.md
+          echo "1. Download the DMG file" >> notes.md
+          echo "2. Open the DMG" >> notes.md
+          echo "3. Drag BurrTools.app to your Applications folder" >> notes.md
+          echo "4. The examples are bundled inside the app (right-click → Show Package Contents → Contents/Resources/examples)" >> notes.md
+          echo "" >> notes.md
+          echo "**Note**: The app is not signed. On first launch, right-click the app and select 'Open' to bypass Gatekeeper." >> notes.md
+          
+          cat notes.md
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag }}
+          release_name: BurrTools ${{ steps.get_version.outputs.version }}
+          body_path: notes.md
+          draft: false
+          prerelease: false
+
+  build-macos:
+    name: Build macOS App Bundle
+    needs: create-release
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          brew install meson ninja fltk libpng zlib
+
+      - name: Setup build directory
+        run: meson setup build
+
+      - name: Build
+        run: ninja -C build
+
+      - name: Create macOS bundle
+        run: |
+          chmod +x scripts/create-macos-bundle.sh
+          scripts/create-macos-bundle.sh
+
+      - name: Create DMG
+        run: |
+          # Install create-dmg
+          brew install create-dmg
+          
+          # Create DMG
+          create-dmg \
+            --volname "BurrTools ${{ needs.create-release.outputs.version }}" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "BurrTools.app" 175 190 \
+            --hide-extension "BurrTools.app" \
+            --app-drop-link 425 185 \
+            "BurrTools-${{ needs.create-release.outputs.version }}-macOS.dmg" \
+            "BurrTools.app" || true
+          
+          # If create-dmg fails, create a simple DMG
+          if [ ! -f "BurrTools-${{ needs.create-release.outputs.version }}-macOS.dmg" ]; then
+            hdiutil create -volname "BurrTools ${{ needs.create-release.outputs.version }}" \
+              -srcfolder "BurrTools.app" \
+              -ov -format UDZO \
+              "BurrTools-${{ needs.create-release.outputs.version }}-macOS.dmg"
+          fi
+
+      - name: Upload macOS DMG
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./BurrTools-${{ needs.create-release.outputs.version }}-macOS.dmg
+          asset_name: BurrTools-${{ needs.create-release.outputs.version }}-macOS.dmg
+          asset_content_type: application/x-apple-diskimage
+
+  build-windows:
+    name: Build Windows Executable
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build mingw-w64 wine wine64
+
+      - name: Setup MinGW cross-compilation
+        run: |
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+
+      - name: Download and build FLTK for Windows
+        run: |
+          wget https://www.fltk.org/pub/fltk/1.3.8/fltk-1.3.8-source.tar.gz
+          tar xzf fltk-1.3.8-source.tar.gz
+          cd fltk-1.3.8
+          
+          ./configure --host=x86_64-w64-mingw32 \
+            --prefix=/usr/x86_64-w64-mingw32 \
+            --disable-shared --enable-static \
+            --disable-gl
+          
+          make -j$(nproc)
+          sudo make install
+
+      - name: Download and build zlib for Windows
+        run: |
+          wget https://zlib.net/zlib-1.3.tar.gz
+          tar xzf zlib-1.3.tar.gz
+          cd zlib-1.3
+          
+          CC=x86_64-w64-mingw32-gcc \
+          AR=x86_64-w64-mingw32-ar \
+          RANLIB=x86_64-w64-mingw32-ranlib \
+          ./configure --prefix=/usr/x86_64-w64-mingw32 --static
+          
+          make -j$(nproc)
+          sudo make install
+
+      - name: Download and build libpng for Windows
+        run: |
+          wget https://download.sourceforge.net/libpng/libpng-1.6.40.tar.gz
+          tar xzf libpng-1.6.40.tar.gz
+          cd libpng-1.6.40
+          
+          ./configure --host=x86_64-w64-mingw32 \
+            --prefix=/usr/x86_64-w64-mingw32 \
+            --disable-shared --enable-static
+          
+          make -j$(nproc)
+          sudo make install
+
+      - name: Build for Windows
+        run: |
+          meson setup build-windows --cross-file cross-mingw64.txt
+          ninja -C build-windows
+
+      - name: Package Windows build
+        run: |
+          mkdir -p BurrTools-Windows
+          cp build-windows/src/gui/burrTool.exe BurrTools-Windows/
+          cp -r examples BurrTools-Windows/
+          cp README.md BurrTools-Windows/
+          cp COPYING BurrTools-Windows/
+          
+          # Create ZIP
+          zip -r "BurrTools-${{ needs.create-release.outputs.version }}-Windows.zip" BurrTools-Windows
+
+      - name: Upload Windows ZIP
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./BurrTools-${{ needs.create-release.outputs.version }}-Windows.zip
+          asset_name: BurrTools-${{ needs.create-release.outputs.version }}-Windows.zip
+          asset_content_type: application/zip

@@ -1,0 +1,152 @@
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    
+    - name: Update package list
+      run: sudo apt-get update
+    
+    - name: Install dependencies
+      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev
+    
+    - name: Setup build directory
+      run: meson setup build --buildtype=release
+    
+    - name: Build
+      run: ninja -C build
+    
+    - name: Strip binaries
+      run: strip build/burrtools build/burrTxt build/burrTxt2
+    
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Detected version: $VERSION"
+    
+    - name: Package Linux binaries
+      run: |
+        mkdir -p artifacts/linux
+        cp build/burrtools build/burrTxt build/burrTxt2 artifacts/linux/
+        cp -r examples artifacts/linux/
+        cd artifacts/linux
+        tar czf ../burrtools-${{ steps.version.outputs.version }}-linux-x86_64.tar.gz *
+    
+    - name: Upload Linux artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-linux
+        path: artifacts/burrtools-${{ steps.version.outputs.version }}-linux-x86_64.tar.gz
+
+  build-windows:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    
+    - name: Update package list
+      run: sudo apt-get update
+    
+    - name: Install dependencies
+      run: sudo apt-get install -y meson ninja-build mingw-w64
+    
+    - name: Setup build directory
+      run: meson setup build-win --cross-file cross-mingw64.txt --buildtype=release
+    
+    - name: Build
+      run: ninja -C build-win
+    
+    - name: Strip binaries
+      run: x86_64-w64-mingw32-strip build-win/burrtools.exe build-win/burrTxt.exe build-win/burrTxt2.exe
+    
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Detected version: $VERSION"
+    
+    - name: Package Windows binaries
+      run: |
+        mkdir -p artifacts/windows
+        cp build-win/burrtools.exe build-win/burrTxt.exe build-win/burrTxt2.exe artifacts/windows/
+        cp -r examples artifacts/windows/
+        cd artifacts/windows
+        zip -r ../burrtools-${{ steps.version.outputs.version }}-windows-x86_64.zip *
+    
+    - name: Upload Windows artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-windows
+        path: artifacts/burrtools-${{ steps.version.outputs.version }}-windows-x86_64.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: brew install meson ninja boost
+    
+    - name: Setup build directory
+      run: meson setup build --buildtype=release
+    
+    - name: Build
+      run: ninja -C build
+    
+    - name: Strip binaries
+      run: strip build/burrtools build/burrTxt build/burrTxt2
+    
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Detected version: $VERSION"
+    
+    - name: Create macOS App Bundle and DMG
+      run: |
+        chmod +x scripts/create-macos-bundle.sh
+        ./scripts/create-macos-bundle.sh
+    
+    - name: Package macOS binaries
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        mkdir -p artifacts/macos
+        # Copy DMG and command-line tools
+        if [ -f "BurrTools-${VERSION}.dmg" ]; then
+          cp "BurrTools-${VERSION}.dmg" artifacts/macos/
+        fi
+        cp build/burrTxt build/burrTxt2 artifacts/macos/
+        # Also create a ZIP of just the app for users who prefer that
+        if [ -d "BurrTools.app" ]; then
+          zip -r "artifacts/macos/BurrTools-${VERSION}-app.zip" BurrTools.app
+        fi
+    
+    - name: Upload macOS artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-macos
+        path: artifacts/macos/*

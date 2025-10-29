@@ -34,7 +34,6 @@
 
 #include "../halfedge/volume.h"
 
-#include "../flu/Flu_File_Chooser.h"
 
 #include "../tools/fileexists.h"
 
@@ -43,6 +42,8 @@
 #define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl.H>
 #include <FL/fl_ask.H>
+#include <FL/Fl_File_Chooser.H>
+
 #pragma GCC diagnostic pop
 
 
@@ -140,7 +141,7 @@ void stlExport_c::cb_FileChooser(void)
   char curFile[500];
   snprintf(curFile, 500, "%s/%s", Pname->value(), Fname->value());
 
-  const char * f = flu_file_chooser("Choose STL File to write", "*.stl", curFile);
+  const char * f = fl_file_chooser("Choose STL File to write", "*.stl", curFile, 0);
 
   if (f)
   {

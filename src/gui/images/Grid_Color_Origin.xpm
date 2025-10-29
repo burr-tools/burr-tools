@@ -2,7 +2,7 @@
 static const char *Grid_Color_Origin_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 7 1",
-"  c black",
+"  c #010101",
 ". c #009900",
 "X c #FF0000",
 "o c #FFCC00",

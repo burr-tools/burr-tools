@@ -18,4 +18,10 @@ doxygen documentation.
 Have fun.
 
 
-    Andreas Röver
+   Andreas Röver
+
+---
+
+* [Build Instructions](BUILD.md)
+* [User Guide](https://burrtools.sourceforge.net/gui-doc/toc.html)
+* [Library documentation](https://burrtools.sourceforge.net/lib-doc/index.html)
