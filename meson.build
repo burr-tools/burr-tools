@@ -1,4 +1,7 @@
 project('burrtools', 'cpp', 'c',
+	version: run_command('sh', '-c', 
+	                     'git describe --tags --always --dirty 2>/dev/null || echo 0.7.0-unknown',
+	                     check: false).stdout().strip(),
 	
 	default_options : [
 	  'c_std=c11',
