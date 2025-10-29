@@ -1,10 +1,16 @@
-name: Build and Test
+name: Build and Release
 
 on:
   push:
     branches:
       - master
+    tags:
+      - 'v*.*.*'
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-linux:
@@ -88,6 +94,7 @@ jobs:
         mkdir -p artifacts/windows
         cp build-win/burrtools.exe build-win/burrTxt.exe build-win/burrTxt2.exe artifacts/windows/
         cp -r examples artifacts/windows/
+        cp README.md COPYING artifacts/windows/
         cd artifacts/windows
         zip -r ../burrtools-${{ steps.version.outputs.version }}-windows-x86_64.zip *
     
@@ -135,14 +142,21 @@ jobs:
         VERSION: ${{ steps.version.outputs.version }}
       run: |
         mkdir -p artifacts/macos
-        # Copy DMG and command-line tools
+        # Copy DMG if it exists
         if [ -f "BurrTools-${VERSION}.dmg" ]; then
           cp "BurrTools-${VERSION}.dmg" artifacts/macos/
         fi
+        # Copy command-line tools
         cp build/burrTxt build/burrTxt2 artifacts/macos/
-        # Also create a ZIP of just the app for users who prefer that
+        # Copy app bundle if it exists
         if [ -d "BurrTools.app" ]; then
           zip -r "artifacts/macos/BurrTools-${VERSION}-app.zip" BurrTools.app
+        else
+          # Fallback: create tar.gz with binaries and examples
+          mkdir -p temp-macos
+          cp build/burrtools build/burrTxt build/burrTxt2 temp-macos/
+          cp -r examples temp-macos/
+          tar czf "artifacts/macos/burrtools-${VERSION}-macos-x86_64.tar.gz" -C temp-macos .
         fi
     
     - name: Upload macOS artifacts
@@ -150,3 +164,49 @@ jobs:
       with:
         name: burrtools-macos
         path: artifacts/macos/*
+
+  release:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Get version
+      id: get_version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        # Extract release notes from NEWS file
+        awk '/^-{5,}/{if(++count==1)next; if(count==2)exit} count==1' NEWS > notes.md
+        echo "" >> notes.md
+        echo "## Downloads" >> notes.md
+        echo "" >> notes.md
+        echo "See the Assets section below for platform-specific downloads." >> notes.md
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.get_version.outputs.version }}
+        name: BurrTools ${{ steps.get_version.outputs.version }}
+        body_path: notes.md
+        draft: false
+        prerelease: false
+        files: |
+          artifacts/**/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
