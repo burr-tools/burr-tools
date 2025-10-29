@@ -1773,8 +1773,8 @@ static void cb_About_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Ab
 void mainWindow_c::cb_About(void) {
 
   fl_message("This is the GUI for BurrTools\n"
-             "BurrTools (c) 2003-2011 by Andreas Röver\n"
-	     "with patches from Arne Köhn, Brian Turner, Derek Bosch\n"
+             "BurrTools (c) 2003-2025 by Andreas Röver\n"
+	     "with patches from Arne Köhn, Bryan Turner, Derek Bosch, Michael Brown\n"
              "The latest version is available at github.com/burr-tools/burr-tools\n"
              "\n"
              "This software is distributed under the GPL\n"
