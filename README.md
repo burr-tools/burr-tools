@@ -1,3 +1,12 @@
+This repository contains the BurrTools code with some modernisations
+to make it run on modern systems. You can download BurrTools from the 
+[Releases page](https://github.com/burr-tools/burr-tools/releases/).
+
+BurrTools was written by Andreas Röver, small patches provided by
+several authors. Original README below.
+
+---
+
 BurrTools is a library to solve burr-type puzzles. Bundled with the
 library comes a graphical program that lets you edit the puzzles and
 view the found solutions.
