@@ -135,6 +135,7 @@ configuration_c::configuration_c(void) {
   first_data = 0;
 
   CNF_BOOL_D("tooltips",          &i_use_tooltips, "Use Tooltips", "true");
+  CNF_BOOL_D("rapid3d",           &i_rapid3d, "Use rapid editing in 3D view", "false");
   CNF_BOOL_D("lightning",         &i_use_lightning, "Use Lights in 3D View", "true");
   CNF_BOOL_D("fadeout",           &i_use_blendedRemoving, "Fade Out Pieces", "true");
   CNF_BOOL_D("displaylists",      &i_use_displayLists, "Use openGL display lists", "false");

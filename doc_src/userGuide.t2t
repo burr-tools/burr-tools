@@ -799,6 +799,13 @@ adding a spotlight in the upper right corner of the 3-D viewport and shading
 the faces of the objects. However, on some systems this may result in a
 relatively dark left bottom corner that can hamper a clear view of the objects.
 
+: @B@Use rapid editing in 3D view@B@
+This option allows adding or removing voxels very quickly in the 3D view.
+Normally a single click will add or remove a voxel
+(--/[Using the 3D-Viewer to Edit ChUsingThe3DViewerToEdit]),
+but with this option enabled every mouse movement will also add or remove a
+voxel.
+
 : @B@Use Tooltips@B@
 By default BURRTOOLS shows tooltips for most of its controls, but to the more
 experienced user these soon become very annoying. This option allows you to
@@ -1456,7 +1463,7 @@ of the grid. Hence, to take fully advantage of these functions the grid should
 be first adjusted to the proper dimensions.
 
 
-===Using the 3D-Viewer to Edit===
+===Using the 3D-Viewer to Edit===[ChUsingThe3DViewerToEdit]
 
 As editing non rectangular shape with the 2-D grid is cumbersome, it is also
 possible to do some editing using the 3-D view directly by simply clicking onto
@@ -1477,10 +1484,11 @@ circles with a slightly different colour around the places where the spheres
 would tough. Clicking on those circles on the sphere adds the corresponding
 neighbour sphere.
 
-To avoid having to click all that often you can wiggle the mouse around to get
-a repeated action. So if you want to "drill" a hole into a shape place your
-mouse there, click and drag over the hole and the voxels will be gone much
-faster than with repeated clicking.
+To avoid having to click all that often there is a config option for rapid
+editing in the 3D view. If enabled, you can wiggle the mouse around to get a
+repeated action. So if you want to "drill" a hole into a shape place your mouse
+there, click and drag over the hole and the voxels will be gone much faster
+than with repeated clicking.
 
 ==Adding Colour==[ChAddingColour]
 
