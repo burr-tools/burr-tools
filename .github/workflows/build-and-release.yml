@@ -123,7 +123,7 @@ jobs:
       run: ninja -C build
     
     - name: Strip binaries
-      run: strip build/burrtools build/burrTxt build/burrTxt2
+      run: strip -x build/burrtools build/burrTxt build/burrTxt2
     
     - name: Extract version
       id: version

@@ -1,3 +1,12 @@
+------------- Version 0.7.1 Nov 2025
+
+Bug Fixes:
+- Fix macOS binary stripping in GitHub Actions build (Arne Köhn)
+  The macOS build workflow was using aggressive symbol stripping that broke
+  the binary. Now uses 'strip -x' to preserve global symbols while still
+  reducing binary size.
+
+------------- 
 ------------- Version 0.7.0 Oct 2025
 
 Build System & Platform Support:
