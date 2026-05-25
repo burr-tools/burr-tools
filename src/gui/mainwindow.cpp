@@ -49,6 +49,7 @@
 #include "vectorexportwindow.h"
 #include "convertwindow.h"
 #include "assmimportwindow.h"
+#include "bulkrangewindow.h"
 
 #include "LFl_Tile.h"
 
@@ -773,6 +774,47 @@ void mainWindow_c::cb_RemoveAllShapesFromProblem(void) {
 
   for (unsigned int i = 0; i < puzzle->getNumberOfShapes(); i++)
     pr->setShapeMaximum(i, 0);
+
+  changed = true;
+  PiecesCountList->redraw();
+  PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
+
+  activateProblem(problemSelector->getSelection());
+  StatProblemInfo(problemSelector->getSelection());
+}
+
+static void cb_SetAllRange_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SetAllRange(); }
+void mainWindow_c::cb_SetAllRange(void) {
+
+  if (problemSelector->getSelection() >= puzzle->getNumberOfProblems()) {
+    fl_message("First create a problem");
+    return;
+  }
+
+  bulkRangeWindow_c win;
+  win.show();
+  while (win.visible())
+    Fl::wait();
+
+  if (!win.okSelected())
+    return;
+
+  unsigned int prob = problemSelector->getSelection();
+  changeProblem(prob);
+
+  problem_c * pr = puzzle->getProblem(prob);
+
+  unsigned int newMin = win.getMin();
+  unsigned int newMax = win.getMax();
+  if (newMin > newMax)
+    newMax = newMin;
+
+  for (unsigned int i = 0; i < puzzle->getNumberOfShapes(); i++) {
+    if (pr->resultValid() && i == pr->getResultId())
+      continue;
+    pr->setShapeMaximum(i, newMax);
+    pr->setShapeMinimum(i, newMin);
+  }
 
   changed = true;
   PiecesCountList->redraw();
@@ -2427,9 +2469,11 @@ void mainWindow_c::updateInterface(void) {
         (!assmThread || (&(assmThread->getProblem()) != puzzle->getProblem(problemSelector->getSelection())))) {
       BtnAddAll->activate();
       BtnRemAll->activate();
+      BtnSetAllRange->activate();
     } else {
       BtnAddAll->deactivate();
       BtnRemAll->deactivate();
+      BtnSetAllRange->deactivate();
     }
 
   } else {
@@ -3295,6 +3339,9 @@ void mainWindow_c::CreateProblemTab(void) {
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnRemAll = new LFlatButton_c(xp++, 0, 1, 1, "Clr", " Remove all pieces ", cb_RemoveAllShapesFromProblem_stub, this);
     ((LFlatButton_c*)BtnRemAll)->weight(1, 0);
+    (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnSetAllRange = new LFlatButton_c(xp++, 0, 1, 1, "Set All", " Set min/max piece count for all shapes in the current problem ", cb_SetAllRange_stub, this);
+    ((LFlatButton_c*)BtnSetAllRange)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnGroup =    new LFlatButton_c(xp++, 0, 1, 1, "Detail", " Edit details of the problem ", cb_ShapeGroup_stub, this);
     ((LFlatButton_c*)BtnGroup)->weight(1, 0);
