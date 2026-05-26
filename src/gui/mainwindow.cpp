@@ -809,11 +809,10 @@ void mainWindow_c::cb_SetAllRange(void) {
   if (newMin > newMax)
     newMax = newMin;
 
-  for (unsigned int i = 0; i < puzzle->getNumberOfShapes(); i++) {
-    if (pr->resultValid() && i == pr->getResultId())
-      continue;
-    pr->setShapeMaximum(i, newMax);
-    pr->setShapeMinimum(i, newMin);
+  for (unsigned int p = 0; p < pr->getNumberOfParts(); p++) {
+    unsigned int shapeId = pr->getShapeIdOfPart(p);
+    pr->setShapeMaximum(shapeId, newMax);
+    pr->setShapeMinimum(shapeId, newMin);
   }
 
   changed = true;
