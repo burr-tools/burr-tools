@@ -55,6 +55,9 @@ class LFl_Line : public Fl_Box, public layoutable_c {
 static void cb_Close_stub(Fl_Widget*, void* v) { ((statusWindow_c*)v)->hide(); }
 static void cb_RemoveSelected_stub(Fl_Widget*, void* v) { ((statusWindow_c*)v)->cb_removeSelected(); }
 static void cb_SelectHoles_stub(Fl_Widget*, void* v) { ((statusWindow_c*)v)->cb_selectHoles(); }
+static void cb_SelectIdenticalShapes_stub(Fl_Widget*, void* v)   { ((statusWindow_c*)v)->cb_selectIdenticalShapes(); }
+static void cb_SelectIdenticalComplete_stub(Fl_Widget*, void* v) { ((statusWindow_c*)v)->cb_selectIdenticalComplete(); }
+static void cb_SelectIdenticalMirror_stub(Fl_Widget*, void* v)   { ((statusWindow_c*)v)->cb_selectIdenticalMirror(); }
 
 class StatusProgress : public LFl_Double_Window {
 
@@ -130,6 +133,27 @@ void statusWindow_c::cb_selectHoles(void) {
   }
 }
 
+void statusWindow_c::cb_selectIdenticalShapes(void) {
+
+  for (unsigned int s = 0; s < selection.size(); s++)
+    if (s < identicalShape.size() && identicalShape[s])
+      selection[s]->value(1);
+}
+
+void statusWindow_c::cb_selectIdenticalComplete(void) {
+
+  for (unsigned int s = 0; s < selection.size(); s++)
+    if (s < identicalComplete.size() && identicalComplete[s])
+      selection[s]->value(1);
+}
+
+void statusWindow_c::cb_selectIdenticalMirror(void) {
+
+  for (unsigned int s = 0; s < selection.size(); s++)
+    if (s < identicalMirror.size() && identicalMirror[s])
+      selection[s]->value(1);
+}
+
 statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), again(false) {
 
   StatusProgress *  stp = new StatusProgress;
@@ -202,6 +226,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
     unsigned int shapeIdx;
     unsigned char shapeTrans;
     bool shapeKnown = shapeTab.getSpace(v, &shapeIdx, &shapeTrans, voxelTable_c::PAR_MIRROR);
+    identicalMirror.push_back(shapeKnown);
 
     if (shapeKnown)
     {
@@ -216,6 +241,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
     Fl::wait(0);
 
     shapeKnown = shapeTab.getSpace(v, &shapeIdx, &shapeTrans, 0);
+    identicalShape.push_back(shapeKnown);
 
     if (shapeKnown)
     {
@@ -230,6 +256,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
     Fl::wait(0);
 
     shapeKnown = shapeTab.getSpace(v, &shapeIdx, &shapeTrans, voxelTable_c::PAR_COLOUR);
+    identicalComplete.push_back(shapeKnown && shapeTrans < p->getGridType()->getSymmetries()->getNumTransformations());
 
     if (shapeKnown && shapeTrans < p->getGridType()->getSymmetries()->getNumTransformations())
     {
@@ -399,6 +426,22 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
 
   btn = new LFl_Button("Remove selected", 4, 1);
   btn->callback(cb_RemoveSelected_stub, this);
+  btn->weight(1, 0);
+
+  btn = new LFl_Button("Select Identical Shapes", 0, 2);
+  btn->callback(cb_SelectIdenticalShapes_stub, this);
+  btn->weight(1, 0);
+
+  (new LFl_Box(1, 2))->setMinimumSize(5, 0);
+
+  btn = new LFl_Button("Select Identical Complete", 2, 2);
+  btn->callback(cb_SelectIdenticalComplete_stub, this);
+  btn->weight(1, 0);
+
+  (new LFl_Box(3, 2))->setMinimumSize(5, 0);
+
+  btn = new LFl_Button("Select Identical Mirror", 4, 2);
+  btn->callback(cb_SelectIdenticalMirror_stub, this);
   btn->weight(1, 0);
 
   fr->end();

@@ -34,6 +34,9 @@ class statusWindow_c : public LFl_Double_Window {
     puzzle_c * puz;
 
     std::vector<LFl_Check_Button*> selection;
+    std::vector<bool> identicalMirror;
+    std::vector<bool> identicalShape;
+    std::vector<bool> identicalComplete;
     bool again;
 
   public:
@@ -42,6 +45,9 @@ class statusWindow_c : public LFl_Double_Window {
 
     void cb_removeSelected(void);
     void cb_selectHoles(void);
+    void cb_selectIdenticalShapes(void);
+    void cb_selectIdenticalComplete(void);
+    void cb_selectIdenticalMirror(void);
 
     bool getAgain(void) { return again; }
 
