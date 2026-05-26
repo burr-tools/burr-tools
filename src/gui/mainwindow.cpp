@@ -3997,7 +3997,7 @@ void mainWindow_c::CreateSolveTab(void) {
 
     o = new layouter_c(0, 11);
 
-    BtnExportSolutionSTL = new LFlatButton_c(0, 0, 1, 1, "Exp STL",
+    BtnExportSolutionSTL = new LFlatButton_c(0, 0, 1, 1, "Export Solution to STL",
         " Export every piece type of the currently selected solution to individual STL files ",
         cb_ExportSolutionSTL_stub, this);
     ((LFlatButton_c*)BtnExportSolutionSTL)->weight(1, 0);
