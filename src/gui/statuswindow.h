@@ -41,6 +41,7 @@ class statusWindow_c : public LFl_Double_Window {
     statusWindow_c(puzzle_c * p);
 
     void cb_removeSelected(void);
+    void cb_selectHoles(void);
 
     bool getAgain(void) { return again; }
 

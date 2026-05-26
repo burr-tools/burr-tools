@@ -54,6 +54,7 @@ class LFl_Line : public Fl_Box, public layoutable_c {
 
 static void cb_Close_stub(Fl_Widget*, void* v) { ((statusWindow_c*)v)->hide(); }
 static void cb_RemoveSelected_stub(Fl_Widget*, void* v) { ((statusWindow_c*)v)->cb_removeSelected(); }
+static void cb_SelectHoles_stub(Fl_Widget*, void* v) { ((statusWindow_c*)v)->cb_selectHoles(); }
 
 class StatusProgress : public LFl_Double_Window {
 
@@ -114,6 +115,19 @@ void statusWindow_c::cb_removeSelected(void) {
 
   again = true;
   hide();
+}
+
+void statusWindow_c::cb_selectHoles(void) {
+
+  bt_assert(selection.size() <= puz->getNumberOfShapes());
+
+  for (unsigned int s = 0; s < selection.size(); s++) {
+    const voxel_c * v = puz->getShape(s);
+    bool has2DHoles = !v->connected(0, false, 0, false);
+    bool has3DHoles = !v->connected(0, false, 0);
+    if (has2DHoles || has3DHoles)
+      selection[s]->value(1);
+  }
 }
 
 statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), again(false) {
@@ -377,7 +391,13 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
 
   (new LFl_Box(1, 1))->setMinimumSize(5, 0);
 
-  btn = new LFl_Button("Remove selected", 2, 1);
+  btn = new LFl_Button("Select holes", 2, 1);
+  btn->callback(cb_SelectHoles_stub, this);
+  btn->weight(1, 0);
+
+  (new LFl_Box(3, 1))->setMinimumSize(5, 0);
+
+  btn = new LFl_Button("Remove selected", 4, 1);
   btn->callback(cb_RemoveSelected_stub, this);
   btn->weight(1, 0);
 
