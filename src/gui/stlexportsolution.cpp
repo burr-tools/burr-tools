@@ -27,12 +27,14 @@
 #include "../lib/puzzle.h"
 #include "../lib/problem.h"
 #include "../lib/solution.h"
+#include "../lib/assembly.h"
 #include "../lib/gridtype.h"
 #include "../lib/voxel.h"
 #include "../lib/bt_assert.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <map>
 #include <string>
 
 #pragma GCC diagnostic push
@@ -87,6 +89,23 @@ namespace stlExportSolutionImpl {
     return out;
   }
 
+  /* Build a map of shapeId -> count for the pieces actually placed in
+   * the given solution's assembly (not just the parts defined in the
+   * problem with non-zero max counts).                                  */
+  static std::map<unsigned int, unsigned int> placedShapeCounts(
+      const problem_c * pr, unsigned int sol)
+  {
+    const assembly_c * assm = pr->getSavedSolution(sol)->getAssembly();
+    std::map<unsigned int, unsigned int> counts;
+    for (unsigned int i = 0; i < assm->placementCount(); i++) {
+      if (!assm->isPlaced(i)) continue;
+      unsigned int partId  = pr->getPartIdToPieceId(i);
+      unsigned int shapeId = pr->getShapeIdOfPart(partId);
+      counts[shapeId]++;
+    }
+    return counts;
+  }
+
 } // namespace stlExportSolutionImpl
 
 using namespace stlExportSolutionImpl;
@@ -128,14 +147,16 @@ void stlExportSolution_c::cb_Export(void)
   const char * folder = Pname->value();
   if (!folder || folder[0] == '\0') folder = ".";
 
-  /* build list of (shapeId, count, safeName) for every part */
+  /* build list of (shapeId, count, path) for pieces actually placed in
+   * the selected solution's assembly                                    */
   struct Entry { unsigned int shapeId; unsigned int count; std::string fname; };
   std::vector<Entry> entries;
 
-  for (unsigned int p = 0; p < pr->getNumberOfParts(); p++) {
-    unsigned int shapeId = pr->getShapeIdOfPart(p);
-    unsigned int count   = pr->getPartMaximum(p);
-    if (count == 0) continue;
+  std::map<unsigned int, unsigned int> placed = placedShapeCounts(pr, sol);
+  for (std::map<unsigned int, unsigned int>::const_iterator it = placed.begin();
+       it != placed.end(); ++it) {
+    unsigned int shapeId = it->first;
+    unsigned int count   = it->second;
 
     const voxel_c * v = puzzle->getShape(shapeId);
     std::string raw = v->getName();
@@ -285,22 +306,25 @@ stlExportSolution_c::stlExportSolution_c(puzzle_c * p,
     std::string info;
     char line[300];
 
-    snprintf(line, 300, "Pieces to export from solution %u:\n", sol + 1);
+    snprintf(line, 300, "Pieces placed in solution %u:\n", sol + 1);
     info += line;
 
+    /* use actual assembly placements rather than the problem's max counts */
+    std::map<unsigned int, unsigned int> placed = placedShapeCounts(pr, sol);
+
     unsigned int total = 0;
-    for (unsigned int i = 0; i < pr->getNumberOfParts(); i++) {
-      unsigned int shapeId = pr->getShapeIdOfPart(i);
-      unsigned int count   = pr->getPartMaximum(i);
-      if (count == 0) continue;
+    for (std::map<unsigned int, unsigned int>::const_iterator it = placed.begin();
+         it != placed.end(); ++it) {
+      unsigned int shapeId = it->first;
+      unsigned int count   = it->second;
 
       const voxel_c * v = p->getShape(shapeId);
       const std::string & name = v->getName();
 
       if (name.empty())
-        snprintf(line, 300, "  S%u  ×%u\n", shapeId + 1, count);
+        snprintf(line, 300, "  S%u  \xc3\x97%u\n", shapeId + 1, count);
       else
-        snprintf(line, 300, "  S%u  %s  ×%u\n", shapeId + 1, name.c_str(), count);
+        snprintf(line, 300, "  S%u  %s  \xc3\x97%u\n", shapeId + 1, name.c_str(), count);
 
       info += line;
       total += count;
