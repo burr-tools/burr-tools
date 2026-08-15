@@ -124,7 +124,16 @@ class solveThread_c : public assembler_cb, public thread_c {
 
     void setSortMethod(int sort) { sortMethod = sort; }
 
+    /* If >= 0, the worker keeps the (limit-bounded) solution list sorted by
+     * this problem_c::sortSolutions method after every solution it adds, so a
+     * sort chosen in the GUI stays applied as new solutions arrive. -1 = off.
+     * Atomic: set from the GUI thread, read by the worker.
+     */
+    void setLiveSort(int method) { liveSort.store(method, std::memory_order_relaxed); }
+
   private:
+
+    std::atomic<int> liveSort;
 
     /* don't save more than this number of solutions 0 means no limit */
     unsigned int solutionLimit;

@@ -122,6 +122,7 @@ action(ACT_PREPARATION),
 puzzle(puz),
 parameters(par),
 sortMethod(SRT_COMPLETE_MOVES),
+liveSort(-1),
 solutionLimit(10),
 solutionDrop(1),
 disassm(0),
@@ -338,6 +339,14 @@ bool solveThread_c::assembly(assembly_c * a) {
 
     puzzle.removeSolution(idx+1);
   }
+
+  /* keep the list sorted by the method the user picked in the GUI, if any, so
+   * the sort stays applied as new solutions arrive. The list is bounded by the
+   * solution limit, so this is cheap. sortSolutions locks the list itself.
+   */
+  int ls = liveSort.load(std::memory_order_relaxed);
+  if (ls >= 0 && puzzle.getNumberOfSavedSolutions() >= 2)
+    puzzle.sortSolutions(ls);
 
   return true;
 }

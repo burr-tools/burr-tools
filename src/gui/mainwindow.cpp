@@ -1056,6 +1056,12 @@ void mainWindow_c::cb_SortSolutions(unsigned int by) {
     return;
 
   pr->sortSolutions(by);
+
+  // if this problem is being solved, keep it sorted this way as new solutions
+  // arrive, so the sort is ongoing rather than a one-off snapshot
+  if (assmThread && (&(assmThread->getProblem()) == pr))
+    assmThread->setLiveSort(by);
+
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
 }
