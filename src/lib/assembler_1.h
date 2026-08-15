@@ -27,6 +27,7 @@
 #include <set>
 #include <stack>
 #include <atomic>
+#include <mutex>
 
 class problem_c;
 class gridType_c;
@@ -94,6 +95,23 @@ private:
   std::vector<unsigned int> rows;
   std::vector<unsigned int> finished_a;
   std::vector<unsigned int> finished_b;
+
+  /* getFinished() (GUI thread) reads finished_a/finished_b while the worker
+   * mutates them. reserve() (see assemble) stops the buffer from moving, but a
+   * concurrent pop_back would shrink the size under the reader and expose the
+   * popped, now-unconstructed slot. This mutex serialises getFinished with the
+   * pop_backs so the reader only ever sees constructed elements; the far more
+   * frequent push_back / back()++ stay lock free (they only ever add or bump a
+   * value the reader can tolerate reading stale).
+   */
+  mutable std::mutex finishedMutex;
+
+  /* push/pop the progress stacks under finishedMutex so getFinished (GUI
+   * thread) never observes a size change while a slot is being constructed or
+   * destructed. back()++ stays lock free - it only bumps an existing value.
+   */
+  void pushFinished(unsigned int b);
+  void popFinished(void);
   std::vector<unsigned int> hidden_rows;  // rows that nodes to rows that are currently hidden
   // because there are several batched of rows that need hiding these batches are separated
   // by a zero because the header row will never get hidden...
