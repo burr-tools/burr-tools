@@ -805,8 +805,21 @@ voxel_c::voxel_c(xmlParser_c & pars, const gridType_c * g) : gt(g), hx(0), hy(0)
 
   unsigned int type = atoi(szStr.c_str());
 
+  // validate the dimensions before computing the size: the attributes come
+  // from an untrusted file and atoi of a negative or huge value wraps into a
+  // large unsigned int. Without this check sx*sy*sz can overflow the 32 bit
+  // voxels field, producing an allocation far too small for the coordinates
+  // that follow (getIndex = x + sx*(y + sy*z)), i.e. heap corruption.
+  if (sx > 0x10000 || sy > 0x10000 || sz > 0x10000)
+    pars.exception("voxel space dimension too large");
+
+  // the per axis limit keeps this product well within 64 bits
+  unsigned long long vox64 = (unsigned long long)sx * sy * sz;
+  if (vox64 > 0x40000000ull)
+    pars.exception("voxel space too large");
+
   // set to the correct size
-  voxels = sx*sy*sz;
+  voxels = (unsigned int)vox64;
 
   szStr = pars.getAttributeValue("hx");
   hx = atoi(szStr.c_str());
@@ -841,14 +854,20 @@ voxel_c::voxel_c(xmlParser_c & pars, const gridType_c * g) : gt(g), hx(0), hy(0)
       switch (c[pos])
       {
         case '#':
+          if (idx >= getXYZ())
+            pars.exception("too many voxels defined for voxelspace");
           setState(idx++, VX_FILLED);
           color = 0;
           break;
         case '+':
+          if (idx >= getXYZ())
+            pars.exception("too many voxels defined for voxelspace");
           setState(idx++, VX_VARIABLE);
           color = 0;
           break;
         case '_':
+          if (idx >= getXYZ())
+            pars.exception("too many voxels defined for voxelspace");
           setState(idx++, VX_EMPTY);
           color = 0;
           break;
@@ -870,9 +889,6 @@ voxel_c::voxel_c(xmlParser_c & pars, const gridType_c * g) : gt(g), hx(0), hy(0)
 
       if (idx > 0)
         setColor(idx-1, color);
-
-      if (idx > getXYZ())
-        pars.exception("too many voxels defined for voxelspace");
     }
     if (idx < getXYZ())
       pars.exception("not enough voxels defined for voxelspace");
