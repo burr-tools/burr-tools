@@ -31,6 +31,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <unordered_map>
 
 #ifdef _WIN32
 #define snprintf _snprintf
@@ -240,72 +241,94 @@ void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, 
  */
 unsigned int assembler_0_c::clumpify(void) {
 
-  unsigned int col = right[0];
-  unsigned int removed = 0;
+  /* two columns are identical, and one of them can be removed, when they
+   * are contained in exactly the same placement rows.
+   *
+   * instead of comparing all pairs of columns we compute a signature for
+   * each column (the sequence of placement rows, the down links enumerate
+   * the nodes in row order because rows are appended in increasing order)
+   * and group the columns by a hash of that signature. Only columns within
+   * the same group are then compared exactly. This is linear in the number
+   * of matrix nodes while the pairwise comparison was quadratic in the
+   * number of columns
+   */
 
-  while (col) {
+  /* the columns in header ring order, the first column of each group of
+   * identical columns is the one that survives, like before */
+  std::vector<unsigned int> cols;
+  for (unsigned int c = right[0]; c; c = right[c])
+    cols.push_back(c);
 
-    /* find all columns that are identical to col
-     */
+  /* all signatures are stored back to back in one vector, per column we
+   * keep the start of its signature within that vector */
+  std::vector<unsigned long> sigData;
+  std::vector<unsigned long> sigStart;
+  std::vector<unsigned long long> sigHash;
 
-    /* this vector will contain all the columns that are not
-     * yet ruled out to be different from col
-     * the vector contains the node index
-     */
-    std::vector<unsigned int>columns;
+  sigStart.reserve(cols.size()+1);
+  sigHash.reserve(cols.size());
 
-    unsigned int c = right[col];
+  for (unsigned int i = 0; i < cols.size(); i++) {
 
-    while (c) {
-      columns.push_back(down(c));
-      c = right[c];
-    }
+    const unsigned int col = cols[i];
 
-    unsigned int row = down(col);
+    sigStart.push_back(sigData.size());
+
+    unsigned long long h = 14695981039346656037ull;
+
     unsigned int line = 0;
 
-    while (row != col) {
+    for (unsigned int row = down(col); row != col; row = down(row)) {
 
-      while ((line < piecePositions.size()) && (piecePositions[line+1].row <= row)) line++;
+      /* find the placement row this node belongs to, the nodes come in
+       * increasing order so the line only ever advances */
+      while ((line+1 < piecePositions.size()) && (piecePositions[line+1].row <= row))
+        line++;
 
-      unsigned int i = 0;
+      sigData.push_back(line);
 
-      /* remove all columns that are not in the same
-       * line as the column
-       */
-      while (i < columns.size()) {
-        if ((columns[i] < piecePositions[line].row) ||
-            (columns[i] >= piecePositions[line+1].row)
-           ) {
-          columns.erase(columns.begin()+i);
-        } else
-          i++;
-      }
+      h = (h ^ line) * 1099511628211ull;
+    }
 
-      if (columns.size() == 0)
+    sigHash.push_back(h);
+  }
+
+  sigStart.push_back(sigData.size());
+
+  /* group by hash, keep the first column of each group, exactly verify
+   * the others against it before removing them */
+  typedef std::unordered_map<unsigned long long, std::vector<unsigned int> > hashMap;
+  hashMap groups;
+
+  unsigned int removed = 0;
+
+  for (unsigned int i = 0; i < cols.size(); i++) {
+
+    std::vector<unsigned int> & group = groups[sigHash[i]];
+
+    bool dup = false;
+
+    for (unsigned int g = 0; g < group.size(); g++) {
+
+      const unsigned int j = group[g];
+
+      const unsigned long leni = sigStart[i+1]-sigStart[i];
+
+      if (leni != sigStart[j+1]-sigStart[j])
+        continue;
+
+      if ((leni == 0) ||
+          (memcmp(&sigData[sigStart[i]], &sigData[sigStart[j]], leni * sizeof(unsigned long)) == 0)) {
+        dup = true;
         break;
-
-      row = down(row);
-
-      for (i = 0; i < columns.size(); i++)
-        columns[i] = down(columns[i]);
+      }
     }
 
-    /* now all the columns need to be in the header again */
-    unsigned int i = 0;
-    while (i < columns.size()) {
-      if (columns[i] >= piecePositions[0].row)
-        columns.erase(columns.begin()+i);
-      else
-        i++;
-    }
-
-    for (unsigned int i = 0; i < columns.size(); i++)
-      remove_column(columns[i]);
-
-    removed += columns.size();
-
-    col = right[col];
+    if (dup) {
+      remove_column(cols[i]);
+      removed++;
+    } else
+      group.push_back(i);
   }
 
   return removed;
@@ -600,6 +623,13 @@ int assembler_0_c::prepare(void) {
 
   voxel_c ** cache = new voxel_c *[sym->getNumTransformationsMirror()];
 
+  placementFinder_c finder(problem, result);
+  std::vector<long> voxelOffsets;
+  std::vector<int> positions;
+
+  const long rsx = result->getX();
+  const long rsy = result->getY();
+
   /* now we insert one shape after another */
   for (unsigned int pc = 0; pc < problem.getNumberOfParts(); pc++) {
 
@@ -625,22 +655,22 @@ int assembler_0_c::prepare(void) {
       rotation = addToCache(cache, &cachefill, rotation);
 
       if (rotation) {
-        for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
-          for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
-            for (int z = (int)result->boundZ1()-(int)rotation->boundZ1(); z <= (int)result->boundZ2()-(int)rotation->boundZ2(); z++)
-              if (canPlace(rotation, x, y, z)) {
+        finder.find(rotation, voxelOffsets, positions);
 
-                int piecenode = AddPieceNode(pc, rot, x+rotation->getHx(), y+rotation->getHy(), z+rotation->getHz());
-                placements = 1;
+        for (unsigned int pos = 0; pos < positions.size(); pos += 3) {
 
-                /* now add the used cubes of the piece */
-                for (unsigned int pz = rotation->boundZ1(); pz <= rotation->boundZ2(); pz++)
-                  for (unsigned int py = rotation->boundY1(); py <= rotation->boundY2(); py++)
-                    for (unsigned int px = rotation->boundX1(); px <= rotation->boundX2(); px++)
-                      if (rotation->getState(px, py, pz) == voxel_c::VX_FILLED)
-                        AddVoxelNode(columns[result->getIndex(x+px, y+py, z+pz)], piecenode);
-              }
+          const int x = positions[pos];
+          const int y = positions[pos+1];
+          const int z = positions[pos+2];
 
+          int piecenode = AddPieceNode(pc, rot, x+rotation->getHx(), y+rotation->getHy(), z+rotation->getHz());
+          placements = 1;
+
+          /* now add the used cubes of the piece */
+          const long base = x + rsx * (y + rsy * (long)z);
+          for (unsigned int v = 0; v < voxelOffsets.size(); v++)
+            AddVoxelNode(columns[base + voxelOffsets[v]], piecenode);
+        }
 
         /* for the symmetry breaker piece we also add all symmetries of the box */
         if (pc == symBreakerShape)
