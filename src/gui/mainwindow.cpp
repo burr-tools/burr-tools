@@ -2071,9 +2071,18 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
     disassemble = 0;
   }
 
-  if ((prob < puzzle->getNumberOfProblems()) && (num < puzzle->getProblem(prob)->getNumberOfSavedSolutions())) {
+  problem_c * pr = (prob < puzzle->getNumberOfProblems()) ? puzzle->getProblem(prob) : 0;
 
-    problem_c * pr = puzzle->getProblem(prob);
+  /* hold the solution lock across the whole read and copy below: the solver
+   * thread may be adding and removing solutions, and everything we read here
+   * (assembly, disassembly) is copied, so once we release the lock we only
+   * hold copies. This also closes the gap between the count check and the
+   * getSavedSolution() dereference.
+   */
+  std::unique_lock<std::recursive_mutex> solGuard;
+  if (pr) solGuard = pr->lockSolutions();
+
+  if (pr && (num < pr->getNumberOfSavedSolutions())) {
 
     PcVis->setPuzzle(puzzle->getProblem(prob));
     PcVis->setAssembly(pr->getSavedSolution(num)->getAssembly());
@@ -2552,12 +2561,18 @@ void mainWindow_c::updateInterface(void) {
         BtnDelDisasm->deactivate();
       }
 
-      if ((SolutionSel->value() >= 1) &&
-          ((int)SolutionSel->value()-1) < (int)pr->getNumberOfSavedSolutions() &&
-          pr->getSavedSolution((int)SolutionSel->value()-1)->getDisassembly()) {
-        BtnDisasmDel->activate();
-      } else {
-        BtnDisasmDel->deactivate();
+      {
+        /* dereferences a saved solution while the solver thread may remove it,
+         * so read it under the solution lock
+         */
+        auto solGuard = pr->lockSolutions();
+        if ((SolutionSel->value() >= 1) &&
+            ((int)SolutionSel->value()-1) < (int)pr->getNumberOfSavedSolutions() &&
+            pr->getSavedSolution((int)SolutionSel->value()-1)->getDisassembly()) {
+          BtnDisasmDel->activate();
+        } else {
+          BtnDisasmDel->deactivate();
+        }
       }
 
       if (pr->getNumberOfSavedSolutions() > 0) {

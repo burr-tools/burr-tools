@@ -31,6 +31,7 @@
 #include <vector>
 #include <set>
 #include <string>
+#include <mutex>
 
 #include <stdint.h>
 
@@ -94,6 +95,14 @@ private:
    * all. This vector contains the solutions that were kept
    */
   std::vector<solution_c*> solutions;
+
+  /**
+   * guards the solutions vector. The solver thread adds and removes solutions
+   * while the GUI thread reads them for display; both must hold this lock.
+   * Recursive so that a GUI call already holding it (see lockSolutions) can
+   * call the locking mutators below without deadlocking.
+   */
+  mutable std::recursive_mutex solutionMutex;
 
   /**
    * this set contains the pairs of colours that are allowed when a piece
@@ -460,6 +469,17 @@ public:
   unsigned long getUsedTime(void) const { bt_assert(solveState != SS_UNSOLVED); return usedTime; }
   /** get number of solutions that were stored */
   unsigned int getNumberOfSavedSolutions(void) const { return solutions.size(); }
+
+  /**
+   * Acquire the lock guarding the solution list. A caller that reads a saved
+   * solution while the solver thread might be running must hold this across
+   * the whole read (and any copy it makes of the solution), so the solver can
+   * not delete or reallocate the list underneath it. Returns a movable RAII
+   * lock; keep it alive for the duration of the access.
+   */
+  std::unique_lock<std::recursive_mutex> lockSolutions(void) const {
+    return std::unique_lock<std::recursive_mutex>(solutionMutex);
+  }
 
   const solution_c * getSavedSolution(unsigned int sol) const { bt_assert(sol < solutions.size()); return solutions[sol]; }
   solution_c * getSavedSolution(unsigned int sol) { bt_assert(sol < solutions.size()); return solutions[sol]; }
