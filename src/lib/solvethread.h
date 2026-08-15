@@ -27,6 +27,7 @@
 #include "thread.h"
 
 #include <time.h>
+#include <atomic>
 
 class problem_c;
 
@@ -51,8 +52,12 @@ class solveThread_c : public assembler_cb, public thread_c {
     };
 
   private:
-    /* what is currently happening the the assembler thread */
-    unsigned int action;
+    /* what is currently happening the the assembler thread. This is written by
+     * the worker thread and read (and written, via stop()) by the GUI thread,
+     * so it must be atomic. It also gates access to errState/errParam/ae which
+     * are published before action is set to ACT_ERROR / ACT_ASSERT.
+     */
+    std::atomic<unsigned int> action;
 
   public:
     /* return the current activity */
@@ -152,14 +157,20 @@ class solveThread_c : public assembler_cb, public thread_c {
   private:
 
 
-  bool stopPressed;
+  std::atomic<bool> stopPressed;  // set by the GUI thread, read by the worker
   bool return_after_prep;  // sometimes it is useful to only prepare and return,
                            // if this flag is set, the program will return
 
 
 
   disassembler_c * disassm;
-  assembler_c * assm;
+
+  /* the worker publishes the assembler here once it is fully constructed so
+   * that currentActionParameter(), called from the GUI thread, can query its
+   * progress. Atomic with release/acquire so the GUI never sees a
+   * half-constructed object (which would be a vptr race on the virtual call).
+   */
+  std::atomic<assembler_c *> assm;
 
 
 

@@ -26,6 +26,7 @@
 #include <vector>
 #include <set>
 #include <stack>
+#include <atomic>
 
 class problem_c;
 class gridType_c;
@@ -85,7 +86,7 @@ private:
   void solution(void);
 
   /* used to abort the searching */
-  bool abbort;
+  std::atomic<bool> abbort;
 
   /* used to save if the search is running */
   bool running;
@@ -178,7 +179,7 @@ private:
   bool debug;         // debugging enabled
   int debug_loops;    // how many loops to run ?
 
-  unsigned long iterations;
+  std::atomic<unsigned long> iterations;  // single-writer counter, read cross-thread by getIterations
 
 protected:
 
@@ -244,7 +245,7 @@ protected:
    */
   void checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir);
 
-  unsigned int reducePiece;
+  std::atomic<unsigned int> reducePiece;  // written by worker, read by GUI via getReducePiece
 
 public:
 
@@ -256,7 +257,7 @@ public:
   void assemble(assembler_cb * callback);
   int getErrorsParam(void) { return errorsParam; }
   virtual float getFinished(void) const;
-  virtual void stop(void) { abbort = true; }
+  virtual void stop(void) { abbort.store(true, std::memory_order_relaxed); }
   virtual bool stopped(void) const { return !running; }
   virtual errState setPosition(const char * string, const char * version);
   virtual void save(xmlWriter_c & xml) const;

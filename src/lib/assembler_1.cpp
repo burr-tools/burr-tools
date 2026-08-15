@@ -1472,12 +1472,12 @@ void assembler_1_c::iterative(void) {
 
   while (task_stack.size() > 0) {
 
-    iterations++;
+    iterations.store(iterations.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
 
     // wan can only restore the states 1, 2 and 5. Internal states will alway
     // be one of those, but the last state might differ, so continue looping
     // until the final state is 1, 2 or 5
-    if (abbort) {
+    if (abbort.load(std::memory_order_relaxed)) {
       if (task_stack.back() == 1 ||
           task_stack.back() == 2 ||
           task_stack.back() == 5)
@@ -1807,8 +1807,18 @@ void assembler_1_c::iterative(void) {
 void assembler_1_c::assemble(assembler_cb * callback) {
 
   running = true;
-  abbort = false;
+  abbort.store(false, std::memory_order_relaxed);
   debug = false;
+
+  /* getFinished() runs on the GUI thread and indexes finished_a / finished_b
+   * while this thread pushes onto them. The search depth can not exceed the
+   * number of columns, so reserving that many entries up front means these
+   * vectors never reallocate during the search: the concurrent read then
+   * sees a stale value at worst (harmless for a progress indicator) instead
+   * of a freed buffer.
+   */
+  finished_a.reserve(headerNodes);
+  finished_b.reserve(headerNodes);
 
   if (errorsState == ERR_NONE) {
 
@@ -2004,7 +2014,7 @@ unsigned int assembler_1_c::getPiecePlacementCount(unsigned int piece) const {
 void assembler_1_c::debug_step(unsigned long num) {
   debug = true;
   debug_loops = num;
-  abbort = false;
+  abbort.store(false, std::memory_order_relaxed);
   asm_bc = 0;
   iterative();
   debug = false;
