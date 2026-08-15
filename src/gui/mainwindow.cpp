@@ -2738,11 +2738,21 @@ void mainWindow_c::updateInterface(void) {
         BtnCont->deactivate();
         BtnStop->activate();
 
-        // we can not edit solutions for a currently solved problem
-        BtnSrtFind->deactivate();
-        BtnSrtLevel->deactivate();
-        BtnSrtMoves->deactivate();
-        BtnSrtPieces->deactivate();
+        // re-sorting the found solutions is safe while solving (the solution
+        // list is mutex protected), so offer it once there are at least two;
+        // deleting/editing solutions is still not offered because the solver
+        // is actively adding to and thinning the list
+        if (pr->getNumberOfSavedSolutions() >= 2) {
+          BtnSrtFind->activate();
+          BtnSrtLevel->activate();
+          BtnSrtMoves->activate();
+          BtnSrtPieces->activate();
+        } else {
+          BtnSrtFind->deactivate();
+          BtnSrtLevel->deactivate();
+          BtnSrtMoves->deactivate();
+          BtnSrtPieces->deactivate();
+        }
         BtnDelAll->deactivate();
         BtnDelBefore->deactivate();
         BtnDelAt->deactivate();

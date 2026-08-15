@@ -222,6 +222,15 @@ bool solveThread_c::assembly(assembly_c * a) {
 
       bool ins = false;
 
+      /* hold the solution lock across the scan-and-insert below: re-sorting
+       * the solution list from the GUI is now allowed while solving, and that
+       * must not reorder the list while we are scanning it to find where this
+       * new solution belongs. addSolution/removeSolution re-lock the same
+       * (recursive) mutex, which is fine.
+       */
+      {
+      std::unique_lock<std::recursive_mutex> solGuard = puzzle.lockSolutions();
+
       switch(sortMethod) {
         case SRT_COMPLETE_MOVES:
           {
@@ -305,6 +314,7 @@ bool solveThread_c::assembly(assembly_c * a) {
           }
 
           break;
+      }
       }
 
       // yes, the puzzle is disassembably, count solutions
