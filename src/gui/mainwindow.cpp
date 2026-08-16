@@ -1077,10 +1077,11 @@ void mainWindow_c::cb_SortSolutions(unsigned int by) {
   bool solvingThis = assmThread && (&(assmThread->getProblem()) == pr);
 
   int viewedAssembly = renderedAssembly;
-  // we were following only if actively solving and followingTail; switching the
-  // sort must NOT change followingTail (so a value<->number/pieces flip keeps
-  // the intent), it only repositions the slider
-  bool wasFollowing = solvingThis && followingTail;
+  // the user was riding the end of the list, either while solving or while
+  // reordering a finished list. Switching the sort must NOT change
+  // followingTail (so a value<->number/pieces flip keeps the intent), it
+  // only repositions the slider
+  bool wasFollowing = followingTail;
 
   followSortBy = (int)by;
 
