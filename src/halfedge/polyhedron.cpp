@@ -212,7 +212,7 @@ void Polyhedron::finalize(void)
     int n = 0;
     {
       map<pair<int,int>, HalfEdge*>::iterator cit2 = cit;
-      while (cit2->first == idx)
+      while (cit2 != connections.end() && cit2->first == idx)
       {
         n++;
         cit2++;
@@ -297,7 +297,7 @@ void Polyhedron::finalize(void)
       projection(cit->second->dst()->position(), A, Ox, Oy);
       float baseA = -1;
 
-      while (cit->first == idx)
+      while (cit != connections.end() && cit->first == idx)
       {
         float Px, Py;
         projection(cit->second->next()->dst()->position(), A, Px, Py);
