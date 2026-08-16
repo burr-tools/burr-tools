@@ -153,6 +153,10 @@ extern const char * ViewMode3D_xpm[];
 extern const char * ViewMode3DL_xpm[];
 extern const char * ViewModeInsides_xpm[];
 
+extern const char * RenderModeVoxel_xpm[];
+extern const char * RenderModeEdges_xpm[];
+extern const char * RenderModeSTL_xpm[];
+
 /* just a little cache to make sure the pixmaps are freed after usage
  *
  * usage is simple, put one instance of this class into your widget that

@@ -1260,6 +1260,8 @@ void mainWindow_c::cb_PcVis(void) {
 static void cb_Status_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Status(); }
 void mainWindow_c::cb_Status(void) {
   View3D->getView()->showColors(puzzle, StatusLine->getColorMode());
+  View3D->getView()->setRenderStyle(StatusLine->getRenderStyle());
+  config.renderStyle(StatusLine->getRenderStyle());
 }
 
 static void cb_3dClick_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_3dClick(); }

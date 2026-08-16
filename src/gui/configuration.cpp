@@ -140,6 +140,7 @@ configuration_c::configuration_c(void) {
   CNF_BOOL_D("displaylists",      &i_use_displayLists, "Use openGL display lists", "false");
   CNF_BOOL_D("rotator",           &i_rotationMethod, "Use new rotation method", "true");
   CNF_BOOL("rubberband",          &i_use_rubberband, "false");
+  CNF_INT("renderstyle",          &i_render_style, "0");
   CNF_INT("windowposx",           &i_window_pos_x, "30");
   CNF_INT("windowposy",           &i_window_pos_y, "30");
   CNF_INT("windowposw",           &i_window_pos_w, "800");

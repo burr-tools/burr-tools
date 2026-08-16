@@ -34,6 +34,7 @@ class LStatusLine : public layouter_c {
 private:
 
   ButtonGroup_c *mode;
+  ButtonGroup_c *rstyle;
   LFl_Box * text;
   pixmapList_c pm;
 
@@ -43,6 +44,7 @@ public:
 
   void setText(const char * t);
   voxelFrame_c::colorMode getColorMode(void) const;
+  voxelFrame_c::renderStyle getRenderStyle(void) const;
   void callback(Fl_Callback* fkt, void * dat);
 
   virtual void getMinSize(int *width, int *height) const {

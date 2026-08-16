@@ -103,6 +103,17 @@ class voxelFrame_c : public Fl_Gl_Window {
     } drawingMode;
     void setDrawingMode(unsigned int nr, drawingMode mode);
 
+    /* how the shapes drawn in mode normal look, this applies to
+     * all shapes of the frame at once
+     */
+    typedef enum {
+      styleVoxel,      // each voxel painted with its own bevel lines
+      styleEdges,      // flat faces with black lines at the real shape edges
+      styleSTL         // the mesh the STL export produces: bevels and gaps between pieces
+    } renderStyle;
+    void setRenderStyle(renderStyle style);
+    renderStyle getRenderStyle(void) const { return curStyle; }
+
     /* only active in single mode
      * the marker has 2 parts, a white part that shows the complete z layer
      * and a black part that is only drawn between the given coordinates
@@ -200,6 +211,8 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     std::vector<colorInfo> palette;
 
+    void drawShape(shapeInfo * shape);
+
     /* the marker position */
     int mX1, mY1, mZ, mX2, mY2;
     int markerType;
@@ -213,6 +226,8 @@ class voxelFrame_c : public Fl_Gl_Window {
     std::vector<shapeInfo> shapes;
 
     colorMode colors;
+
+    renderStyle curStyle;
 
     bool _showCoordinateSystem;
 

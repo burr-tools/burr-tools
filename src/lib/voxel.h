@@ -742,6 +742,20 @@ public:
   virtual Polyhedron * getWireframeMesh(void) const;
 
   /**
+   * returns a mesh with flat faces and no bevel or offset. It is a proper
+   * halfedge mesh, so the drawing code can find the real edges of the shape
+   * (where 2 faces with different normals meet) and paint lines there
+   */
+  virtual Polyhedron * getFlatMesh(void) const;
+
+  /**
+   * returns a mesh that looks like what the STL export produces with
+   * default parameters: bevelled edges and an offset that results in
+   * a small gap between adjacent pieces of an assembly
+   */
+  virtual Polyhedron * getSTLMesh(void) const;
+
+  /**
    * this function must return a polygon that is the connecting face to the neighbour n for the
    * voxel at position x, y, z
    * The function is used by the default implementation of getMesh to generate the default basis mesh
