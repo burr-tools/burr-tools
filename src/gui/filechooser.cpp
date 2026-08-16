@@ -34,6 +34,15 @@
 
 #pragma GCC diagnostic pop
 
+/* the file name the user most recently selected in a native save dialog,
+ * where the system already asked whether an existing file may be replaced */
+static std::string lastNativeSave;
+
+bool fileChooserConfirmedOverwrite(const char * name)
+{
+  return name && !lastNativeSave.empty() && lastNativeSave == name;
+}
+
 const char * fileChooser(const char * title, const char * filterName, const char * pattern, const char * fname, bool save)
 {
 #ifdef __APPLE__
@@ -82,6 +91,10 @@ const char * fileChooser(const char * title, const char * filterName, const char
     return 0;
 
   result = ch.filename();
+
+  if (save)
+    lastNativeSave = result;
+
   return result.c_str();
 
 #else

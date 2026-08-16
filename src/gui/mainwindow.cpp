@@ -1693,7 +1693,8 @@ void mainWindow_c::cb_SaveAs(void) {
 
     if (f) {
 
-      if (!fileExists(f) || fl_choice("File exists; overwrite?", "Cancel", "Overwrite", 0)) {
+      if (!fileExists(f) || fileChooserConfirmedOverwrite(f) ||
+          fl_choice("File exists; overwrite?", "Cancel", "Overwrite", 0)) {
 
         char f2[1000];
 
