@@ -415,7 +415,9 @@ void stlExport_c::exportSTL(int shape)
       snprintf(name, 1000, "%s%s", Pname->value(), Fname->value());
   }
 
-  if (fileExists(name))
+  // no need to ask when the file is the one the user picked in a native
+  // save dialog, that dialog already asked
+  if (fileExists(name) && !fileChooserConfirmedOverwrite(name))
   {
     if (fl_choice("File exists overwrite?", "Cancel", "Overwrite", 0) == 0)
     {
