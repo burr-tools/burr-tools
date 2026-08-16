@@ -142,6 +142,7 @@ gui_src = [
   'src/gui/separator.cpp',
   'src/gui/statusline.cpp',
   'src/gui/statuswindow.cpp',
+  'src/gui/filechooser.cpp',
   'src/gui/stlexport.cpp',
   'src/gui/togglebutton.cpp',
   'src/gui/tooltabs.cpp',
@@ -168,7 +169,7 @@ cxx = meson.get_compiler('cpp')
 
 # macOS specific dependencies
 if host_machine.system() == 'darwin'
-  cocoa_dep = dependency('appleframeworks', modules : ['Cocoa', 'ScreenCaptureKit'])
+  cocoa_dep = dependency('appleframeworks', modules : ['Cocoa', 'ScreenCaptureKit', 'UniformTypeIdentifiers'])
 else
   cocoa_dep = dependency('', required: false)
 endif

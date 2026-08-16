@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "stlexport.h"
+#include "filechooser.h"
 #include <stdlib.h>
 
 #include "BlockList.h"
@@ -141,7 +142,7 @@ void stlExport_c::cb_FileChooser(void)
   char curFile[500];
   snprintf(curFile, 500, "%s/%s", Pname->value(), Fname->value());
 
-  const char * f = fl_file_chooser("Choose STL File to write", "*.stl", curFile, 0);
+  const char * f = fileChooser("Choose STL File to write", "STL", "*.stl", curFile, true);
 
   if (f)
   {
