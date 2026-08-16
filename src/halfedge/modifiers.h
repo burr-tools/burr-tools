@@ -48,6 +48,7 @@ class faceList_c {
 };
 
 void scalePolyhedron(Polyhedron & poly, float val);
+void scalePolyhedron(Polyhedron & poly, float x, float y, float z);
 void fillPolyhedronHoles(Polyhedron &poly, bool fillOutsides);
 
 // inverts the inv polyhedron and adds those faces to poly
