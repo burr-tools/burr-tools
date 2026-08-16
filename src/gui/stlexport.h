@@ -70,6 +70,7 @@ class stlExport_c : public LFl_Double_Window {
     PieceSelector * ShapeSelect;
     // LFl_Radio_Button *ExpShape; // Unused?
     LFl_Check_Button *Binary;
+    LFl_Check_Button *CoplanarMerge;
     ButtonGroup_c * mode;
 
     pixmapList_c pm;

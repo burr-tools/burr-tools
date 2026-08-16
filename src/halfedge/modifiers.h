@@ -50,6 +50,16 @@ class faceList_c {
 void scalePolyhedron(Polyhedron & poly, float val);
 void fillPolyhedronHoles(Polyhedron &poly, bool fillOutsides);
 
+/* returns a new polyhedron where connected groups of coplanar faces are
+ * merged and retriangulated with fewer, larger triangles. All vertices on
+ * the boundary of such a group are kept, so the result stays watertight
+ * with respect to the faces around the group (no t-junctions). Groups
+ * where the retriangulation fails for some reason keep their original
+ * faces. Faces marked as holes are dropped. The source polyhedron must
+ * have its twin links set (finalize)
+ */
+Polyhedron * mergeCoplanarFaces(const Polyhedron & src);
+
 // inverts the inv polyhedron and adds those faces to poly
 void joinPolyhedronInverse(Polyhedron & poly, const Polyhedron & inv, const faceList_c & holes, float holeSize);
 
