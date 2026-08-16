@@ -29,6 +29,7 @@ class VoxelEditGroup_c;
 class ChangeSize;
 class ToolTab;
 class puzzle_c;
+class problem_c;
 class solveThread_c;
 class disasmToMoves_c;
 class gridType_c;
@@ -68,6 +69,32 @@ class mainWindow_c : public LFl_Double_Window {
   disasmToMoves_c * disassemble;
   solveThread_c *assmThread;
   bool SolutionEmpty;
+
+  /* While a problem is being solved the view can track a solution as the list
+   * changes underneath it. Two clear states:
+   *   followingTail - if true, we follow the END of the list. What the end is
+   *                   depends on followSortBy: at -1 (initial, no sort chosen)
+   *                   it is simply the last/newest solution and we ride it; at
+   *                   a value sort (level/moves/pieces) it is the best and we
+   *                   jump to it only when a new solution strictly beats our
+   *                   value (a tie does not bump us). Never true under number
+   *                   sort, whose end is just the ever-newest.
+   *   followAssembly - when NOT followingTail, the assembly number of the one
+   *                   solution we sit on by identity (-1 = tracking nothing).
+   *                   Also holds the tracked end while followingTail.
+   *   followSortBy  - the sort in effect: -1 initial, 0 number, 1 level,
+   *                   2 moves, 3 pieces. Defines "better" and the end.
+   *   renderedAssembly - assembly number currently shown, so we only rebuild
+   *                   the 3D view (which resets the camera) when it changes.
+   */
+  bool followingTail;
+  int followAssembly;
+  int followSortBy;
+  int renderedAssembly;
+
+  // record what the view should track, given the currently selected index
+  void rememberFollow(problem_c * pr, unsigned int idx);
+
   bool changed;
   int editSymmetries;
 
