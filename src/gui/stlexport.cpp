@@ -82,6 +82,23 @@ bool stlExport_c::solutionMode(void) {
   return ExpSolution->value() != 0;
 }
 
+void stlExport_c::selectSolution(unsigned int prob, unsigned int sol) {
+
+  if (prob >= puzzle->getNumberOfProblems())
+    return;
+  if (sol >= puzzle->getProblem(prob)->getNumberOfSavedSolutions())
+    return;
+
+  ExpSolution->setonly();
+  ProblemSelect->setSelection(prob);
+
+  char txt[20];
+  snprintf(txt, 20, "%u", sol+1);
+  SolutionNum->value(txt);
+
+  cb_Update3DView(1);
+}
+
 std::vector<voxel_c *> stlExport_c::solutionSpaces(void) {
 
   std::vector<voxel_c *> res;

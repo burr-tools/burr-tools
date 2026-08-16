@@ -85,6 +85,10 @@ class stlExport_c : public LFl_Double_Window {
     stlExport_c(puzzle_c * p);
     virtual ~stlExport_c(void);
 
+    /* switch the dialog to assembled solution mode with the given
+     * problem and solution preselected */
+    void selectSolution(unsigned int prob, unsigned int sol);
+
     void cb_Export(void);
     void cb_Abort(void);
     void cb_Update3DView(int type);

@@ -1721,6 +1721,17 @@ void mainWindow_c::cb_STLExport(void) {
   }
 }
 
+static void cb_SolutionStlExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SolutionStlExport(); }
+void mainWindow_c::cb_SolutionStlExport(void) {
+  stlExport_c w(puzzle);
+  w.selectSolution(solutionProblem->getSelection(), (unsigned int)SolutionSel->value()-1);
+  w.show();
+
+  while (w.visible()) {
+    Fl::wait();
+  }
+}
+
 static void cb_StatusWindow_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_StatusWindow(); }
 void mainWindow_c::cb_StatusWindow(void) {
 
@@ -2598,6 +2609,19 @@ void mainWindow_c::updateInterface(void) {
       {
         BtnMovement->deactivate();
       }
+
+      if (ggt->getGridType()->getCapabilities() & gridType_c::CAP_STLEXPORT &&
+          !assmThread &&
+          solutionProblem->getSelection() < puzzle->getNumberOfProblems() &&
+          SolutionSel->value()-1 < puzzle->getProblem(solutionProblem->getSelection())->getNumberOfSavedSolutions()
+         )
+      {
+        BtnSolutionSTL->activate();
+      }
+      else
+      {
+        BtnSolutionSTL->deactivate();
+      }
     } else {
 
       // no valid problem available, hide all information
@@ -2616,6 +2640,7 @@ void mainWindow_c::updateInterface(void) {
 
       BtnPlacement->deactivate();
       BtnMovement->deactivate();
+      BtnSolutionSTL->deactivate();
       if (BtnStep) BtnStep->deactivate();
       if (BtnPrepare) BtnPrepare->deactivate();
 
@@ -2738,6 +2763,7 @@ void mainWindow_c::updateInterface(void) {
         BtnDisasmAdd->deactivate();
         BtnDisasmAddAll->deactivate();
         BtnDisasmAddMissing->deactivate();
+        BtnSolutionSTL->deactivate();
 
       } else {
 
@@ -3670,6 +3696,9 @@ void mainWindow_c::CreateSolveTab(void) {
     (new LFl_Box(7, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDisasmAddMissing=new LFlatButton_c(8, 0, 1, 1, "A M DA", " Recalculate the missing disassemblies for all solutions without valid disassembly ", cb_AddMissingDisasm_stub, this);
     ((LFlatButton_c*)BtnDisasmAddMissing)->weight(1, 0);
+    (new LFl_Box(9, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnSolutionSTL = new LFlatButton_c(10, 0, 1, 1, "STL", " Export this solution as STL, all pieces in their assembled arrangement ", cb_SolutionStlExport_stub, this);
+    ((LFlatButton_c*)BtnSolutionSTL)->weight(1, 0);
 
     o->end();
 
