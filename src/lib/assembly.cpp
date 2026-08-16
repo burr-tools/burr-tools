@@ -809,7 +809,7 @@ voxel_c * assembly_c::createSpace(const problem_c & puz) const {
 
       voxel_c * pc = puz.getPuzzle().getGridType()->getVoxel(puz.getPartShape(j));
 
-      bt_assert(pc->transform(placements[i].transformation));
+      bt_assert2(pc->transform(placements[i].transformation));
 
       int dx = (int)placements[i].xpos - (int)pc->getHx();
       int dy = (int)placements[i].ypos - (int)pc->getHy();
