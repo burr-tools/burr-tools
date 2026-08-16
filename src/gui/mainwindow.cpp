@@ -20,6 +20,8 @@
  */
 #include "mainwindow.h"
 
+#include "filechooser.h"
+
 #include "configuration.h"
 #include "groupseditor.h"
 #include "placementbrowser.h"
@@ -1389,7 +1391,7 @@ void mainWindow_c::cb_Load(void) {
       if (fl_choice("Puzzle changed; are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
-    const char * f = fl_file_chooser("Load Puzzle", "*.xmpuzzle", "", 0);
+    const char * f = fileChooser("Load Puzzle", "Puzzle", "*.xmpuzzle", "", false);
 
     tryToLoad(f);
   }
@@ -1404,7 +1406,7 @@ void mainWindow_c::cb_Load_Ps3d(void) {
       if (fl_choice("Puzzle changed; are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
-    const char * f = fl_file_chooser("Import PuzzleSolver3D File", "*.puz", "", 0);
+    const char * f = fileChooser("Import PuzzleSolver3D File", "PuzzleSolver3D", "*.puz", "", false);
 
     if (f) {
 
@@ -1611,7 +1613,7 @@ static void cb_SaveAs_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_S
 void mainWindow_c::cb_SaveAs(void) {
 
   if (threadStopped()) {
-    const char * f = fl_file_chooser("Save Puzzle As", "*.xmpuzzle", "", 0);
+    const char * f = fileChooser("Save Puzzle As", "Puzzle", "*.xmpuzzle", "", true);
 
     if (f) {
 
