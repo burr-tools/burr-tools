@@ -57,54 +57,9 @@ const char * basename(const char * name) {
 #endif
 
 
-void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_c & holes)
+/** write all triangles of one polyhedron to an already opened STL file */
+static void writeTriangles(FILE * f, bool binaryMode, const Polyhedron * poly, unsigned long & triangleCount)
 {
-  FILE * f;
-  unsigned long triangleCount = 0;
-
-  const char * title = basename(fname);
-
-  if (binaryMode)
-  {
-    f = fopen(fname,"wb");
-
-    if (!f) throw stlException_c("Could not open file");
-
-    int pos = 0;
-
-    for (int i = 0; i < 84; i++)
-    {
-      if (fwrite(title+pos, 1, 1, f) != 1) throw stlException_c("Could not write file");
-      if (title[pos]) pos++;
-    }
-  }
-  else
-  {
-    f = fopen(fname,"w");
-
-    if (!f) throw stlException_c("Could not open file");
-
-    fprintf(f, "solid %s\n", title);
-  }
-
-  // try to generate the polyhedron, there might be problems along the way,
-  // like wrong parameters, or things like that, so we need to catch those
-  // cases and close the file, if that happens
-
-  Polyhedron * poly = 0;
-
-  try
-  {
-    poly = getMesh(v, holes);
-    if (!poly) throw stlException_c("Something went wrong when generating the STL polyhedron");
-  }
-  catch (stlException_c & e)
-  {
-    fclose(f);
-    throw e;
-  }
-
-  // write out the generated polyhedron
   for(Polyhedron::const_face_iterator it=poly->fBegin(); it!=poly->fEnd(); it++)
   {
     const Face* fc = *it;
@@ -156,8 +111,69 @@ void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_
       }
     } while (e != sentinel);
   }
+}
 
-  delete poly;
+void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_c & holes)
+{
+  std::vector<const voxel_c *> shapes;
+  shapes.push_back(&v);
+  write(fname, shapes, holes);
+}
+
+void stlExporter_c::write(const char * fname, const std::vector<const voxel_c *> & shapes, const faceList_c & holes)
+{
+  FILE * f;
+  unsigned long triangleCount = 0;
+
+  const char * title = basename(fname);
+
+  if (binaryMode)
+  {
+    f = fopen(fname,"wb");
+
+    if (!f) throw stlException_c("Could not open file");
+
+    int pos = 0;
+
+    for (int i = 0; i < 84; i++)
+    {
+      if (fwrite(title+pos, 1, 1, f) != 1) throw stlException_c("Could not write file");
+      if (title[pos]) pos++;
+    }
+  }
+  else
+  {
+    f = fopen(fname,"w");
+
+    if (!f) throw stlException_c("Could not open file");
+
+    fprintf(f, "solid %s\n", title);
+  }
+
+  // try to generate the polyhedra, there might be problems along the way,
+  // like wrong parameters, or things like that, so we need to catch those
+  // cases and close the file, if that happens
+
+  for (unsigned int s = 0; s < shapes.size(); s++)
+  {
+    Polyhedron * poly = 0;
+
+    try
+    {
+      poly = getMesh(*shapes[s], holes);
+      if (!poly) throw stlException_c("Something went wrong when generating the STL polyhedron");
+    }
+    catch (stlException_c & e)
+    {
+      fclose(f);
+      throw e;
+    }
+
+    // write out the generated polyhedron
+    writeTriangles(f, binaryMode, poly, triangleCount);
+
+    delete poly;
+  }
 
   if (binaryMode)
   {
