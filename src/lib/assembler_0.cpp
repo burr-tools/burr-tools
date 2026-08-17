@@ -771,8 +771,15 @@ assembler_0_c::errState assembler_0_c::createMatrix(bool keepMirror, bool keepRo
   pos = 0;
   iterations = 0;
 
-  if (keepMirror)
+  if (keepMirror) {
+    /* prepare() may already have allocated the mirror info via
+     * checkForTransformedAssemblies; free it before dropping the pointer
+     * (assembler_1_c::createMatrix does the same)
+     */
+    if (avoidTransformedMirror)
+      delete avoidTransformedMirror;
     avoidTransformedMirror = 0;
+  }
 
   if (keepRotations)
     avoidTransformedAssemblies = false;

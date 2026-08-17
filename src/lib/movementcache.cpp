@@ -28,13 +28,18 @@
 
 /* the hash function. I don't know how well it performs, but it seems to be okay */
 static unsigned int moHashValue(unsigned int s1, unsigned int s2, int dx, int dy, int dz, unsigned char t1, unsigned char t2) {
-  unsigned int val = dx * 0x10101010;
-  val +=             dy * 0x14814814;
-  val +=             dz * 0x95145951;
-  val +=             t1 * 0x1A54941A;
-  val +=             t2 * 0x5AA59401;
-  val +=             s1 * 0x01059a04;
-  val +=             s2 * 0x9af42682;
+  /* unsigned constants so the multiplications are done in unsigned
+   * arithmetic; with signed int operands dx/dy/dz these products overflowed,
+   * which is undefined behaviour. The computed hash is unchanged: two's
+   * complement +/- and * agree with unsigned arithmetic modulo 2^32.
+   */
+  unsigned int val = dx * 0x10101010u;
+  val +=             dy * 0x14814814u;
+  val +=             dz * 0x95145951u;
+  val +=             t1 * 0x1A54941Au;
+  val +=             t2 * 0x5AA59401u;
+  val +=             s1 * 0x01059a04u;
+  val +=             s2 * 0x9af42682u;
   return val;
 }
 
