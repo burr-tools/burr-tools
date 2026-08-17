@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<puzzle version="2">
+ <gridType type="0"/>
+ <colors/>
+ <shapes>
+  <voxel x="1" y="1" z="1" type="0">##</voxel>
+ </shapes>
+ <problems/>
+ <comment/>
+</puzzle>
