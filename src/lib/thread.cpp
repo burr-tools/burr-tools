@@ -24,7 +24,14 @@
 thread_c::~thread_c(void) {
   stop();
 #ifndef NO_THREADING
-  t.join();
+  /* guard with joinable(): a derived destructor may already have joined the
+   * thread (the correct place to do it, so it can stop the worker before
+   * freeing data the worker uses), and a thread that was never started is not
+   * joinable either. Joining a non-joinable thread would throw from a
+   * destructor and terminate the program.
+   */
+  if (t.joinable())
+    t.join();
 #endif
 }
 

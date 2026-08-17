@@ -822,12 +822,15 @@ void problem_c::addSolution(assembly_c * assm) {
   bt_assert(assm);
   bt_assert(solveState == SS_SOLVING);
 
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   solutions.push_back(new solution_c(assm, numAssemblies));
 }
 
 void problem_c::addSolution(assembly_c * assm, separation_c * disasm, unsigned int pos) {
   bt_assert(assm);
   bt_assert(solveState == SS_SOLVING);
+
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
 
   // if the given index is behind the number of solutions add at the end
   if (pos < solutions.size())
@@ -840,6 +843,8 @@ void problem_c::addSolution(assembly_c * assm, separationInfo_c * disasm, unsign
   bt_assert(assm);
   bt_assert(solveState == SS_SOLVING);
 
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+
   // if the given index is behind the number of solutions add at the end
   if (pos < solutions.size())
     solutions.insert(solutions.begin()+pos, new solution_c(assm, numAssemblies, disasm, numSolutions));
@@ -848,6 +853,7 @@ void problem_c::addSolution(assembly_c * assm, separationInfo_c * disasm, unsign
 }
 
 void problem_c::removeAllSolutions(void) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   for (unsigned int i = 0; i < solutions.size(); i++)
     delete solutions[i];
   solutions.clear();
@@ -861,6 +867,7 @@ void problem_c::removeAllSolutions(void) {
 }
 
 void problem_c::removeSolution(unsigned int sol) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   bt_assert(sol < solutions.size());
   delete solutions[sol];
   solutions.erase(solutions.begin()+sol);
@@ -994,6 +1001,7 @@ static bool comp_3_pieces(const solution_c * s1, const solution_c * s2)
 
 
 void problem_c::sortSolutions(int by) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   switch (by) {
     case 0: stable_sort(solutions.begin(), solutions.end(), comp_0_assembly); break;
     case 1: stable_sort(solutions.begin(), solutions.end(), comp_1_level   ); break;

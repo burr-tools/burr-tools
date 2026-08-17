@@ -26,6 +26,7 @@
 #include <vector>
 #include <set>
 #include <stack>
+#include <atomic>
 
 class gridType_c;
 class mirrorInfo_c;
@@ -66,7 +67,7 @@ private:
 #define down(x) upDown[2*(x)+1]
 
   /* used to abort the searching */
-  bool abbort;
+  std::atomic<bool> abbort;
 
   /* used to save if the search is running */
   bool running;
@@ -154,7 +155,7 @@ private:
   int errorsParam;
 
   /* number of iterations the assemble routine run */
-  unsigned long iterations;
+  std::atomic<unsigned long> iterations;  // single-writer counter, read cross-thread by getIterations
 
   /* the number of holes the assembles piece will have. Holes are
    * voxels in the variable voxel set that are not filled. The other
@@ -175,7 +176,7 @@ private:
   /* this value contains the piecenumber that the reduce procedure is currently working on
    * the value is only valid, when reduce is running
    */
-  unsigned int reducePiece;
+  std::atomic<unsigned int> reducePiece;  // written by worker, read by GUI via getReducePiece
 
   /* this vector contains the placement (transformation and position) for
    * a piece in a row
@@ -282,7 +283,7 @@ public:
   void assemble(assembler_cb * callback);
   int getErrorsParam(void) { return errorsParam; }
   virtual float getFinished(void) const;
-  virtual void stop(void) { abbort = true; }
+  virtual void stop(void) { abbort.store(true, std::memory_order_relaxed); }
   virtual bool stopped(void) const { return !running; }
   virtual errState setPosition(const char * string, const char * version);
   virtual void save(xmlWriter_c & xml) const;

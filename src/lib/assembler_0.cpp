@@ -769,7 +769,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(bool keepMirror, bool keepRo
   memset(rows, 0, piecenumber * sizeof(int));
   memset(columns, 0, piecenumber * sizeof(int));
   pos = 0;
-  iterations = 0;
+  iterations.store(0, std::memory_order_relaxed);
 
   if (keepMirror) {
     /* prepare() may already have allocated the mirror info via
@@ -1286,14 +1286,14 @@ void assembler_0_c::solution(void) {
  */
 void assembler_0_c::iterativeMultiSearch(void) {
 
-  abbort = false;
+  abbort.store(false, std::memory_order_relaxed);
   running = true;
 
   // this variable is used to store if we continue with our loop over
   // the rows or have finished
   bool cont;
 
-  while (!abbort) {
+  while (!abbort.load(std::memory_order_relaxed)) {
 
     // we have finished if pos negative (or greater than piecenumber because of the
     // overflow
@@ -1325,7 +1325,7 @@ void assembler_0_c::iterativeMultiSearch(void) {
       pos--;
 
     cont = false;
-    iterations++;
+    iterations.store(iterations.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
 
     if (!rows[pos]) {
 
@@ -1520,7 +1520,11 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   spos += getInt(string+spos, &pos);
   if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
-  spos += getLong(string+spos, &iterations);
+  {
+    unsigned long it = 0;
+    spos += getLong(string+spos, &it);
+    iterations.store(it, std::memory_order_relaxed);
+  }
   if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
   if (pos <= piecenumber)

@@ -31,27 +31,36 @@ void solveThread_c::run(void){
 
   try {
 
+    /* local pointer for this thread's own use; the shared member `assm` is
+     * only written (published) here and read by the GUI thread
+     */
+    assembler_c * a = 0;
+
     /* first check, if there is an assembler available with the
      * problem, if there is one take that
      */
-    if (puzzle.getAssembler())
-      assm = puzzle.getAssembler();
+    if (puzzle.getAssembler()) {
+      a = puzzle.getAssembler();
+      assm.store(a, std::memory_order_release);
+    }
 
     else {
 
       /* otherwise we have to create a new one
        */
       action = solveThread_c::ACT_PREPARATION;
-      assm = puzzle.getPuzzle().getGridType()->findAssembler(puzzle);
+      a = puzzle.getPuzzle().getGridType()->findAssembler(puzzle);
+      assm.store(a, std::memory_order_release);
 
-      errState = assm->createMatrix(parameters & PAR_KEEP_MIRROR, parameters & PAR_KEEP_ROTATIONS, parameters & PAR_COMPLETE_ROTATIONS);
+      errState = a->createMatrix(parameters & PAR_KEEP_MIRROR, parameters & PAR_KEEP_ROTATIONS, parameters & PAR_COMPLETE_ROTATIONS);
       if (errState != assembler_c::ERR_NONE) {
 
-        errParam = assm->getErrorsParam();
+        errParam = a->getErrorsParam();
 
         action = solveThread_c::ACT_ERROR;
 
-        delete assm;
+        assm.store(0, std::memory_order_release);
+        delete a;
         return;
       }
 
@@ -60,7 +69,7 @@ void solveThread_c::run(void){
         if (!stopPressed)
           action = solveThread_c::ACT_REDUCE;
 
-        assm->reduce();
+        a->reduce();
       }
 
       /* set the assembler to the problem as soon as it is finished
@@ -68,7 +77,7 @@ void solveThread_c::run(void){
        * also restores the assembler state to a state that might
        * be saved within the problem
        */
-      errState = puzzle.setAssembler(assm);
+      errState = puzzle.setAssembler(a);
       if (errState != assembler_c::ERR_NONE) {
         action = solveThread_c::ACT_ERROR;
         return;
@@ -83,10 +92,10 @@ void solveThread_c::run(void){
     if (!stopPressed) {
 
       action = solveThread_c::ACT_ASSEMBLING;
-      assm->assemble(this);
+      a->assemble(this);
       puzzle.addTime(time(0)-startTime);
 
-      if (assm->getFinished() >= 1) {
+      if (a->getFinished() >= 1) {
         action = solveThread_c::ACT_FINISHED;
         puzzle.finishedSolving();
       } else
@@ -113,6 +122,7 @@ action(ACT_PREPARATION),
 puzzle(puz),
 parameters(par),
 sortMethod(SRT_COMPLETE_MOVES),
+liveSort(-1),
 solutionLimit(10),
 solutionDrop(1),
 disassm(0),
@@ -125,7 +135,14 @@ assm(0)
 
 solveThread_c::~solveThread_c(void) {
 
-  // kill();
+  /* signal the worker to stop and wait for it to actually finish before we
+   * free anything it might still be using. The worker's disassembly step uses
+   * *disassm, so deleting it while the thread is still running (as the old
+   * code did - it relied on the base destructor to join, but the base stop()
+   * is a no-op and by then this override is gone) was a use-after-free.
+   */
+  stop();
+  joinThread();
 
   if (disassm) {
     delete disassm;
@@ -205,6 +222,15 @@ bool solveThread_c::assembly(assembly_c * a) {
       // they are sorted by the complexity of the disassembly
 
       bool ins = false;
+
+      /* hold the solution lock across the scan-and-insert below: re-sorting
+       * the solution list from the GUI is now allowed while solving, and that
+       * must not reorder the list while we are scanning it to find where this
+       * new solution belongs. addSolution/removeSolution re-lock the same
+       * (recursive) mutex, which is fine.
+       */
+      {
+      std::unique_lock<std::recursive_mutex> solGuard = puzzle.lockSolutions();
 
       switch(sortMethod) {
         case SRT_COMPLETE_MOVES:
@@ -290,6 +316,7 @@ bool solveThread_c::assembly(assembly_c * a) {
 
           break;
       }
+      }
 
       // yes, the puzzle is disassembably, count solutions
       puzzle.incNumSolutions();
@@ -312,6 +339,14 @@ bool solveThread_c::assembly(assembly_c * a) {
 
     puzzle.removeSolution(idx+1);
   }
+
+  /* keep the list sorted by the method the user picked in the GUI, if any, so
+   * the sort stays applied as new solutions arrive. The list is bounded by the
+   * solution limit, so this is cheap. sortSolutions locks the list itself.
+   */
+  int ls = liveSort.load(std::memory_order_relaxed);
+  if (ls >= 0 && puzzle.getNumberOfSavedSolutions() >= 2)
+    puzzle.sortSolutions(ls);
 
   return true;
 }
@@ -370,13 +405,16 @@ bool solveThread_c::start(bool stop_after_prep) {
 
 unsigned int solveThread_c::currentActionParameter(void) {
 
-  switch(action) {
+  switch(action.load()) {
   case ACT_REDUCE:
   case ACT_PREPARATION:
-    if (assm)
-      return assm->getReducePiece();
-    else
-      return 0;
+    {
+      assembler_c * a = assm.load(std::memory_order_acquire);
+      if (a)
+        return a->getReducePiece();
+      else
+        return 0;
+    }
 
   default:
     return 0;
