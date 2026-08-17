@@ -94,6 +94,35 @@ static bool insideSnapshot(const triSnapshot_c & snap, float px, float py, float
   return (crossings & 1) != 0;
 }
 
+/* distance from p along direction d (unit) to the nearest snapshot
+ * triangle, or -1 when nothing is hit */
+static float rayDepthSnapshot(const triSnapshot_c & snap, const Vector3Df & p, const Vector3Df & d)
+{
+  float best = -1;
+  for (size_t i = 0; i < snap.size(); i += 9)
+  {
+    Vector3Df a(snap[i  ], snap[i+1], snap[i+2]);
+    Vector3Df b(snap[i+3], snap[i+4], snap[i+5]);
+    Vector3Df c(snap[i+6], snap[i+7], snap[i+8]);
+
+    // Moeller-Trumbore
+    Vector3Df e1 = b - a, e2 = c - a;
+    Vector3Df pv = d ^ e2;
+    float det = e1 * pv;
+    if (det > -1e-9f && det < 1e-9f) continue;
+    float inv = 1.0f / det;
+    Vector3Df tv = p - a;
+    float uu = (tv * pv) * inv;
+    if (uu < -1e-4f || uu > 1.0001f) continue;
+    Vector3Df qv = tv ^ e1;
+    float vv = (d * qv) * inv;
+    if (vv < -1e-4f || uu + vv > 1.0001f) continue;
+    float t = (e2 * qv) * inv;
+    if (t > 1e-5f && (best < 0 || t < best)) best = t;
+  }
+  return best;
+}
+
 /* is a candidate replacement/cap face acceptable? Its surface must lie on
  * the solid: points just below its centre and below each corner have to be
  * inside the snapshot of the original surface. Faces failing this would
@@ -125,10 +154,18 @@ static bool faceOnSolid(const triSnapshot_c & snap, const vector<Vector3Df> & pt
 
   for (size_t pr = 0; pr <= pts.size(); pr++)
   {
-    Vector3Df q = cen;
-    if (pr > 0) q = (cen + pts[pr-1]) * 0.5f;
-    q = q - nrm*eps;
-    if (!insideSnapshot(snap, q.x(), q.y()+1.1e-4f, q.z()+1.7e-4f))
+    Vector3Df q0 = cen;
+    if (pr > 0) q0 = (cen + pts[pr-1]) * 0.5f;
+    Vector3Df q = q0 - nrm*eps;
+    if (insideSnapshot(snap, q.x(), q.y()+1.1e-4f, q.z()+1.7e-4f))
+      continue;
+    /* no material directly below this probe. That is fine when the cap
+     * roofs over a shallow groove (floor close below) and also at a
+     * convex corner where the probe overshoots into open air (no floor
+     * at all); but a distant floor means the face bridges across a
+     * concave junction and would add material outside the solid */
+    float depth = rayDepthSnapshot(snap, q0, -nrm);
+    if (depth >= 0 && depth > 1.5f * mine)
       return false;
   }
   return true;
@@ -407,10 +444,14 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
           face4[2] = edge->dst()->index();
           face4[3] = edge->src()->index();
 
-          /* the replacement face must lie on the surface of the solid: a
-           * point just below its centre has to be inside. At concave
-           * junctions the replacement would bridge across the corner and
-           * add material outside the solid - keep the groove faces there */
+          /* the replacement face may only be used when it does not bridge
+           * across a concave junction - there it would add material
+           * outside the solid, so the groove faces are kept instead.
+           * Concavity is decided exactly from the two rims: at a concave
+           * junction each rim lies above the plane of the opposite rim's
+           * face, at a convex or straight junction on or below it (a
+           * purely local test that cannot give phase-dependent results
+           * along a lattice edge) */
           if (angle >= Epsilon)
           {
             Vector3Df p0 = poly.vertex(face4[0])->position();
@@ -418,10 +459,11 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
             Vector3Df p2 = poly.vertex(face4[2])->position();
             Vector3Df p3 = poly.vertex(face4[3])->position();
 
-            vector<Vector3Df> quad;
-            quad.push_back(p0); quad.push_back(p1);
-            quad.push_back(p2); quad.push_back(p3);
-            if (!faceOnSolid(snap, quad))
+            /* rim p0/p1 borders the face with normal n1, rim p2/p3 the
+             * one with normal n0 */
+            const float tol = 1e-4f;
+            if ((p2 - p1) * n1 > tol || (p3 - p0) * n1 > tol ||
+                (p1 - p2) * n0 > tol || (p0 - p3) * n0 > tol)
             {
               faces.clear();
               ei++;
