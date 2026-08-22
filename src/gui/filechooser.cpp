@@ -26,7 +26,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
 #include <FL/Fl_Native_File_Chooser.H>
 #else
 #include <FL/Fl_File_Chooser.H>
@@ -45,7 +45,7 @@ bool fileChooserConfirmedOverwrite(const char * name)
 
 const char * fileChooser(const char * title, const char * filterName, const char * pattern, const char * fname, bool save)
 {
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
 
   static std::string result;
 
