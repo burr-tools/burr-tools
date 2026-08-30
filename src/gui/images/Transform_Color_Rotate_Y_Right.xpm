@@ -2,7 +2,7 @@
 static const char *Transform_Color_Rotate_Y_Right_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 12 1",
-"  c black",
+"  c #010101",
 ". c #336633",
 "X c #0000FF",
 "o c #009900",

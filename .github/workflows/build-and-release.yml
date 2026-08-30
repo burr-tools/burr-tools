@@ -1,0 +1,212 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*.*.*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    
+    - name: Update package list
+      run: sudo apt-get update
+    
+    - name: Install dependencies
+      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev
+    
+    - name: Setup build directory
+      run: meson setup build --buildtype=release
+    
+    - name: Build
+      run: ninja -C build
+    
+    - name: Strip binaries
+      run: strip build/burrtools build/burrTxt build/burrTxt2
+    
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Detected version: $VERSION"
+    
+    - name: Package Linux binaries
+      run: |
+        mkdir -p artifacts/linux
+        cp build/burrtools build/burrTxt build/burrTxt2 artifacts/linux/
+        cp -r examples artifacts/linux/
+        cd artifacts/linux
+        tar czf ../burrtools-${{ steps.version.outputs.version }}-linux-x86_64.tar.gz *
+    
+    - name: Upload Linux artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-linux
+        path: artifacts/burrtools-${{ steps.version.outputs.version }}-linux-x86_64.tar.gz
+
+  build-windows:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    
+    - name: Update package list
+      run: sudo apt-get update
+    
+    - name: Install dependencies
+      run: sudo apt-get install -y meson ninja-build mingw-w64
+    
+    - name: Setup build directory
+      run: meson setup build-win --cross-file cross-mingw64.txt --buildtype=release
+    
+    - name: Build
+      run: ninja -C build-win
+    
+    - name: Strip binaries
+      run: x86_64-w64-mingw32-strip build-win/burrtools.exe build-win/burrTxt.exe build-win/burrTxt2.exe
+    
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Detected version: $VERSION"
+    
+    - name: Package Windows binaries
+      run: |
+        mkdir -p artifacts/windows
+        cp build-win/burrtools.exe build-win/burrTxt.exe build-win/burrTxt2.exe artifacts/windows/
+        cp -r examples artifacts/windows/
+        cp README.md COPYING artifacts/windows/
+        cd artifacts/windows
+        zip -r ../burrtools-${{ steps.version.outputs.version }}-windows-x86_64.zip *
+    
+    - name: Upload Windows artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-windows
+        path: artifacts/burrtools-${{ steps.version.outputs.version }}-windows-x86_64.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    
+    - name: Install dependencies
+      run: brew install meson ninja boost
+    
+    - name: Setup build directory
+      run: meson setup build --buildtype=release
+    
+    - name: Build
+      run: ninja -C build
+    
+    - name: Strip binaries
+      run: strip -x build/burrtools build/burrTxt build/burrTxt2
+    
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Detected version: $VERSION"
+    
+    - name: Create macOS App Bundle and DMG
+      run: |
+        chmod +x scripts/create-macos-bundle.sh
+        ./scripts/create-macos-bundle.sh
+    
+    - name: Package macOS binaries
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        mkdir -p artifacts/macos
+        # Copy DMG if it exists
+        if [ -f "BurrTools-${VERSION}.dmg" ]; then
+          cp "BurrTools-${VERSION}.dmg" artifacts/macos/
+        fi
+        # Copy command-line tools
+        cp build/burrTxt build/burrTxt2 artifacts/macos/
+        # Copy app bundle if it exists
+        if [ -d "BurrTools.app" ]; then
+          zip -r "artifacts/macos/BurrTools-${VERSION}-app.zip" BurrTools.app
+        else
+          # Fallback: create tar.gz with binaries and examples
+          mkdir -p temp-macos
+          cp build/burrtools build/burrTxt build/burrTxt2 temp-macos/
+          cp -r examples temp-macos/
+          tar czf "artifacts/macos/burrtools-${VERSION}-macos-x86_64.tar.gz" -C temp-macos .
+        fi
+    
+    - name: Upload macOS artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-macos
+        path: artifacts/macos/*
+
+  release:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Get version
+      id: get_version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        # Extract release notes from NEWS file
+        awk '/^-{5,}/{if(++count==1)next; if(count==2)exit} count==1' NEWS > notes.md
+        echo "" >> notes.md
+        echo "## Downloads" >> notes.md
+        echo "" >> notes.md
+        echo "See the Assets section below for platform-specific downloads." >> notes.md
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.get_version.outputs.version }}
+        name: BurrTools ${{ steps.get_version.outputs.version }}
+        body_path: notes.md
+        draft: false
+        prerelease: false
+        files: |
+          artifacts/**/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

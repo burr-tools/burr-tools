@@ -2,7 +2,7 @@
 static const char *InOut_Color_RemoveColor_Out_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 20 1",
-"  c black",
+"  c #010101",
 ". c #6B6B6B",
 "X c #993333",
 "o c #CC0000",

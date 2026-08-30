@@ -21,20 +21,20 @@
 #ifndef __THREAD_H__
 #define __THREAD_H__
 
-#ifndef NO_THREADING
-#include <boost/thread.hpp>
-#endif
+#include <thread>
+#include <atomic>
 
 /* this class encapsulates a single thread */
 class thread_c {
 
   private:
 
-#ifndef NO_THREADING
-    boost::thread thread;  // our thread
-#endif
+    std::thread t;  // our thread
 
-    bool running;
+    /* read from the controlling (GUI) thread via isRunning() while the worker
+     * sets it in start_thread(); must be atomic
+     */
+    std::atomic<bool> running;
 
   public:
 
@@ -50,9 +50,6 @@ class thread_c {
     /** inform the thread to stop running, this is dependent on the thread */
     virtual void stop() {};
 
-    /** kill the thread */
-    void kill();
-
     /** return true, if the thread is running */
     bool isRunning(void) { return running; }
 
@@ -62,6 +59,21 @@ class thread_c {
      * function finishes, the thread will end
      */
     virtual void run(void) = 0;
+
+    /** wait for the worker thread to finish, if it is running.
+     *
+     * A derived class must call this from its own destructor (after signalling
+     * the thread to stop) before it destroys any data the running thread might
+     * still be using. The base destructor can not do this itself: by the time
+     * it runs the derived stop() override and the derived members are already
+     * gone, so it would neither stop the thread nor protect that data.
+     */
+    void joinThread(void) {
+#ifndef NO_THREADING
+      if (t.joinable())
+        t.join();
+#endif
+    }
 
   private:
 

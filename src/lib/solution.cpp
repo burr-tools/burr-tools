@@ -29,7 +29,7 @@
 #include <stdlib.h>
 
 solution_c::solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c * gt) :
-  tree(0), treeInfo(0), assemblyNum(0), solutionNum(0)
+  assembly(0), tree(0), treeInfo(0), assemblyNum(0), solutionNum(0)
 {
   pars.require(xmlParser_c::START_TAG, "solution");
 

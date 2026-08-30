@@ -1,0 +1,49 @@
+/* BurrTools
+ *
+ * BurrTools is the legal property of its developers, whose
+ * names are listed in the COPYRIGHT file, which is included
+ * within the source distribution.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+#ifndef __FILE_CHOOSER_H__
+#define __FILE_CHOOSER_H__
+
+/* a small wrapper around the file selection dialog. On macOS the modern
+ * native dialog is used, on the other platforms the FLTK dialog is kept
+ * as it always was.
+ *
+ * title       the window title of the dialog
+ * filterName  a short description of the file type, e.g. "Puzzle",
+ *             shown by dialogs that display filter names
+ * pattern     the file pattern, e.g. "*.xmpuzzle", empty or 0 for
+ *             no filtering
+ * fname       the preselected path or file name, may be empty or 0
+ * save        true for a save dialog, false for an open dialog
+ *
+ * returns the selected file name or 0 when the user cancelled. The
+ * returned pointer is only valid until the next call (like
+ * fl_file_chooser)
+ */
+const char * fileChooser(const char * title, const char * filterName, const char * pattern, const char * fname, bool save);
+
+/* returns true when name is the file the user most recently picked in a
+ * native save dialog. That dialog already asked whether to replace the
+ * file, so asking again before writing would be redundant. Always false
+ * on platforms where the FLTK dialog (which doesn't ask) is used
+ */
+bool fileChooserConfirmedOverwrite(const char * name);
+
+#endif

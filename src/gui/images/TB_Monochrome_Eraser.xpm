@@ -2,7 +2,7 @@
 static const char *TB_Monochrome_Eraser_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "23 23 8 1",
-"  c black",
+"  c #010101",
 ". c #868686",
 "X c #999999",
 "o c #BBBBBB",

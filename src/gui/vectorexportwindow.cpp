@@ -19,8 +19,9 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "vectorexportwindow.h"
+#include "filechooser.h"
 
-#include "../flu/Flu_File_Chooser.h"
+#include <FL/Fl_File_Chooser.H>
 
 // Unused?
 // static const char * extensions[] = {
@@ -36,7 +37,7 @@ static void cb_Button2_stub(Fl_Widget* /*o*/, void* v) { ((vectorExportWindow_c*
 static void cb_FileChoose_stub(Fl_Widget* /*o*/, void* v) { ((vectorExportWindow_c*)v)->cb_FileChoose(); }
 void vectorExportWindow_c::cb_FileChoose(void) {
 
-  const char * newFile = flu_file_chooser("File to save image to", "", inp->value());
+  const char * newFile = fileChooser("File to save image to", "", "", inp->value(), true);
 
   if (newFile)
     inp->value(newFile);

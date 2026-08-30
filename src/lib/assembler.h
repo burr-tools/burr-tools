@@ -25,10 +25,63 @@
  * contains the classes used for the assembler
  */
 
+#include <vector>
+
 class voxel_c;
 class assembly_c;
 class problem_c;
 class xmlWriter_c;
+
+/**
+ * Helper for the assembler preparation step: enumerates all placements of a
+ * rotated piece inside the result shape.
+ *
+ * Instead of trying every translation of the piece bounding box inside the
+ * result bounding box and rescanning the whole piece for each of them, only
+ * translations that put the first filled voxel of the piece (the anchor) onto
+ * a non empty result voxel are candidates. All other translations can not
+ * result in a valid placement. The remaining voxels are then verified with
+ * single indexed reads. For results or grids where the bounding box is much
+ * bigger than the number of usable voxels this removes a factor proportional
+ * to the bounding box volume / non empty voxel ratio.
+ */
+class placementFinder_c {
+
+public:
+
+  placementFinder_c(const problem_c & problem, const voxel_c * result);
+
+  /**
+   * find all placements of the given rotated piece.
+   *
+   * voxelOffsets receives, for each filled voxel of the piece (in the order
+   * the matrix nodes must be emitted), the result space index offset relative
+   * to a placement, so that resultindex = x + sx*(y + sy*z) + voxelOffsets[i].
+   *
+   * placements receives packed (x, y, z) translation triples of all valid
+   * placements, ordered x, then y, then z ascending, exactly like the
+   * original brute force scan produced them.
+   */
+  void find(const voxel_c * rotation,
+      std::vector<long> & voxelOffsets,
+      std::vector<int> & placements) const;
+
+private:
+
+  typedef struct {
+    int x, y, z;          ///< coordinates of the voxel
+    unsigned long index;  ///< index within the result voxel space
+    unsigned char color;  ///< colour of the result voxel
+  } resultVoxel_s;
+
+  const problem_c & prob;
+  const voxel_c * res;
+
+  std::vector<resultVoxel_s> resultVoxels;  ///< all non empty voxels of the result
+
+  unsigned int colorTableWidth;             ///< number of colours + 1
+  std::vector<unsigned char> colorAllowed;  ///< placementAllowed lookup table
+};
 
 /**
  * The callback class used to return found assemblies to the caller

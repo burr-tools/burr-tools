@@ -22,7 +22,17 @@
 #include "thread.h"
 
 thread_c::~thread_c(void) {
-  kill();
+  stop();
+#ifndef NO_THREADING
+  /* guard with joinable(): a derived destructor may already have joined the
+   * thread (the correct place to do it, so it can stop the worker before
+   * freeing data the worker uses), and a thread that was never started is not
+   * joinable either. Joining a non-joinable thread would throw from a
+   * destructor and terminate the program.
+   */
+  if (t.joinable())
+    t.join();
+#endif
 }
 
 void thread_c::start_thread(void)
@@ -41,8 +51,8 @@ bool thread_c::start() {
   start_thread();
   result = true;
 #else
-  thread = boost::thread(&thread_c::start_thread, this);
-  result = thread.get_id() != boost::thread::id();
+  t = std::thread([this](){ this->start_thread();});
+  result = t.get_id() != std::this_thread::get_id();
 
   if (!result)
   {
@@ -51,14 +61,5 @@ bool thread_c::start() {
 #endif
 
   return result;
-}
-
-void thread_c::kill() {
-
-  stop();
-
-#ifndef NO_THREADING
-  thread.join();
-#endif
 }
 

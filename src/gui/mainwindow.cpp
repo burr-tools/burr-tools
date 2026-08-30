@@ -20,6 +20,8 @@
  */
 #include "mainwindow.h"
 
+#include "filechooser.h"
+
 #include "configuration.h"
 #include "groupseditor.h"
 #include "placementbrowser.h"
@@ -52,8 +54,6 @@
 
 #include "LFl_Tile.h"
 
-#include <config.h>
-
 #include "../lib/ps3dloader.h"
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
@@ -73,9 +73,7 @@
 #include "../tools/gzstream.h"
 #include "../tools/xml.h"
 
-#include "../flu/Flu_File_Chooser.h"
-
-#include "../help/Fl_Help_Dialog.h"
+#include <FL/Fl_File_Chooser.H>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -830,7 +828,7 @@ void mainWindow_c::cb_BtnPlacementBrowser(void) {
     return;
 
   if (!puzzle->getProblem(prob)->getAssembler()->getPiecePlacementSupported()) {
-    fl_message("Sorry no placement browser for this type of puzzle");
+    fl_message("Sorry, no placement browser for this type of puzzle");
     return;
   }
 
@@ -971,12 +969,12 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   unsigned int prob = solutionProblem->getSelection();
 
   if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_ASSEMBLE)) {
-    fl_message("Sorry this space grid doesn't have an assembler (yet)!");
+    fl_message("Sorry, this space grid doesn't have an assembler (yet)!");
     return;
   }
 
   if (SolveDisasm->value() && !(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-    fl_message("Sorry this space grid doesn't have a disassembler (yet)!\n"
+    fl_message("Sorry, this space grid doesn't have a disassembler (yet)!\n"
                "You must disable the disassembler first\n");
     return;
   }
@@ -1006,6 +1004,13 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
 
+  // start by following the tail (newest solution) regardless of the initial
+  // sort: the user hasn't picked a sort yet, and as soon as they do they will
+  // want to be at the best of it
+  followSortBy = -1;
+  followingTail = true;
+  followAssembly = -1;
+
   if (!assmThread->start(prep_only)) {
     fl_message("Could not start the solving process, the thread creation failed, sorry.");
     delete assmThread;
@@ -1029,9 +1034,19 @@ void mainWindow_c::cb_BtnStop(void) {
 static void cb_SolutionSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SolutionSel((Fl_Value_Slider*)o); }
 void mainWindow_c::cb_SolutionSel(Fl_Value_Slider* o) {
   o->take_focus();
-  activateSolution(solutionProblem->getSelection(), int(o->value()-1));
+  unsigned int prob = solutionProblem->getSelection();
+  unsigned int idx = (unsigned int)(o->value()-1);
+  activateSolution(prob, idx);
+  // remember the solution the user selected; rememberFollow sets followingTail
+  // (true only if they landed on the end, and not under number sort) so the
+  // view either rides the tail or sits on this specific solution
+  if (prob < puzzle->getNumberOfProblems())
+    rememberFollow(puzzle->getProblem(prob), idx);
   updateInterface();
 }
+
+// defined further down, near activateSolution
+static int compareSolutionsBy(const solution_c * a, const solution_c * b, int by);
 
 static void cb_SolutionAnim_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SolutionAnim((Fl_Value_Slider*)o); }
 void mainWindow_c::cb_SolutionAnim(Fl_Value_Slider* o) {
@@ -1059,8 +1074,67 @@ void mainWindow_c::cb_SortSolutions(unsigned int by) {
   if (sol < 2)
     return;
 
-  pr->sortSolutions(by);
-  activateSolution(prob, (int)SolutionSel->value()-1);
+  // the solution the user is currently viewing, so we can stay on it (by
+  // identity) after the re-sort rather than on whatever ends up at its index
+  bool solvingThis = assmThread && (&(assmThread->getProblem()) == pr);
+
+  int viewedAssembly = renderedAssembly;
+  // the user was riding the end of the list, either while solving or while
+  // reordering a finished list. Switching the sort must NOT change
+  // followingTail (so a value<->number/pieces flip keeps the intent), it
+  // only repositions the slider
+  bool wasFollowing = followingTail;
+
+  followSortBy = (int)by;
+
+  // Do the whole re-sort -> pick target -> show it under ONE hold of the
+  // solution lock. The solver thread re-sorts and thins the list after every
+  // solution, so if we released the lock between picking an index and showing
+  // it, the worker could reorder the list underneath us and we would flash a
+  // wrong (seemingly random) solution during the switch. activateSolution and
+  // sortSolutions re-lock the same recursive mutex, which is fine.
+  unsigned int idx;
+  {
+    std::unique_lock<std::recursive_mutex> g = pr->lockSolutions();
+
+    pr->sortSolutions(by);
+
+    // if this problem is being solved, keep it sorted this way as new solutions
+    // arrive, so the sort is ongoing rather than a one-off snapshot
+    if (solvingThis)
+      assmThread->setLiveSort(by);
+
+    unsigned int n = pr->getNumberOfSavedSolutions();
+
+    // locate the solution we were viewing in the new order
+    int curIdx = -1;
+    for (unsigned int i = 0; i < n; i++)
+      if ((int)pr->getSavedSolution(i)->getAssemblyNumber() == viewedAssembly) {
+        curIdx = (int)i;
+        break;
+      }
+
+    if (wasFollowing && (by == 1 || by == 2) && n > 0 && curIdx >= 0 &&
+        compareSolutionsBy(pr->getSavedSolution(curIdx), pr->getSavedSolution(n-1), by) < 0) {
+      // were following, switched to a value sort whose best strictly beats our
+      // solution: move to that best. A tie stays put (below). Number and pieces
+      // never follow, so they always stay put.
+      idx = n - 1;
+    } else if (curIdx >= 0) {
+      idx = (unsigned int)curIdx;
+    } else {
+      // the solution we were viewing was thinned away while we sorted; land on
+      // the last one rather than on whatever happens to sit at the old slider
+      // index (which would be a random solution)
+      idx = (n > 0) ? n - 1 : 0;
+    }
+
+    SolutionSel->value(idx+1);
+    activateSolution(prob, idx);
+    // track the shown solution, but leave followingTail as it was
+    followAssembly = renderedAssembly;
+  }
+
   updateInterface();
 }
 
@@ -1186,7 +1260,7 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
 
   if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-    fl_message("Sorry this space grid doesn't have a disassembler (yet)!");
+    fl_message("Sorry, this space grid doesn't have a disassembler (yet)!");
     return;
   }
 
@@ -1214,7 +1288,7 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
     return;
 
   if (!(ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-    fl_message("Sorry this space grid doesn't have a disassembler (yet)!");
+    fl_message("Sorry, this space grid doesn't have a disassembler (yet)!");
     return;
   }
 
@@ -1390,10 +1464,10 @@ void mainWindow_c::cb_Load(void) {
   if (threadStopped()) {
 
     if (changed)
-      if (fl_choice("Puzzle changed are you sure?", "Cancel", "Load", 0) == 0)
+      if (fl_choice("Puzzle changed; are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
-    const char * f = flu_file_chooser("Load Puzzle", "*.xmpuzzle", "");
+    const char * f = fileChooser("Load Puzzle", "Puzzle", "*.xmpuzzle", "", false);
 
     tryToLoad(f);
   }
@@ -1405,10 +1479,10 @@ void mainWindow_c::cb_Load_Ps3d(void) {
   if (threadStopped()) {
 
     if (changed)
-      if (fl_choice("Puzzle changed are you sure?", "Cancel", "Load", 0) == 0)
+      if (fl_choice("Puzzle changed; are you sure?", "Cancel", "Load", 0) == 0)
         return;
 
-    const char * f = flu_file_chooser("Import PuzzleSolver3D File", "*.puz", "");
+    const char * f = fileChooser("Import PuzzleSolver3D File", "PuzzleSolver3D", "*.puz", "", false);
 
     if (f) {
 
@@ -1615,11 +1689,12 @@ static void cb_SaveAs_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_S
 void mainWindow_c::cb_SaveAs(void) {
 
   if (threadStopped()) {
-    const char * f = flu_file_chooser("Save Puzzle As", "*.xmpuzzle", "");
+    const char * f = fileChooser("Save Puzzle As", "Puzzle", "*.xmpuzzle", "", true);
 
     if (f) {
 
-      if (!fileExists(f) || fl_choice("File exists overwrite?", "Cancel", "Overwrite", 0)) {
+      if (!fileExists(f) || fileChooserConfirmedOverwrite(f) ||
+          fl_choice("File exists; overwrite?", "Cancel", "Overwrite", 0)) {
 
         char f2[1000];
 
@@ -1662,7 +1737,7 @@ void mainWindow_c::cb_SaveAs(void) {
 
 static void cb_Quit_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->hide(); }
 void mainWindow_c::hide(void) {
-  if ((!changed) || fl_choice("Puzzle changed do you want to quit and loose the changes?", "Cancel", "Quit", 0))
+  if ((!changed) || fl_choice("Puzzle changed do you want to quit and lose the changes?", "Cancel", "Quit", 0))
     Fl_Double_Window::hide();
 }
 
@@ -1773,22 +1848,13 @@ void mainWindow_c::cb_Toggle3D(void) {
   }
 }
 
-static void cb_Help_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Help(); }
-void mainWindow_c::cb_Help(void) {
-
-  Fl_Help_Dialog * help = new Fl_Help_Dialog;
-
-  help->load("Prologue.html");
-
-  help->show();
-}
-
 static void cb_About_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_About(); }
 void mainWindow_c::cb_About(void) {
 
-  fl_message("This is the GUI for BurrTools version " VERSION "\n"
-             "BurrTools (c) 2003-2011 by Andreas Röver\n"
-             "The latest version is available at burrtools.sourceforge.net\n"
+  fl_message("This is the GUI for BurrTools\n"
+             "BurrTools (c) 2003-2025 by Andreas Röver\n"
+	     "with patches from Arne Köhn, Bryan Turner, Derek Bosch, Michael Brown\n"
+             "The latest version is available at github.com/burr-tools/burr-tools\n"
              "\n"
              "This software is distributed under the GPL\n"
              "You should have received a copy of the GNU General Public License\n"
@@ -1797,7 +1863,7 @@ void mainWindow_c::cb_About(void) {
              "or see www.fsf.org\n"
              "\n"
              "The program uses\n"
-             "- Fltk, FLU, libZ, libpng, gzstream, gl2ps\n"
+             "- Fltk, libZ, libpng, gzstream, gl2ps\n"
              "- Fl_Table (http://3dsite.com/people/erco/Fl_Table/)\n"
              "- tr by Brian Paul (http://www.mesa3d.org/brianp/TR.html)\n"
             );
@@ -2021,7 +2087,6 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
   {"Status",           0, cb_StatusWindow_stub,  0, 0, 0, 0, 14, 56},
   {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
   {"Config",           0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
-  {"Help",      FL_F + 1, cb_Help_stub,        0, 0, 0, 0, 14, 56},
   {"About",            0, cb_About_stub,       0, 0, 3, 0, 14, 56},
   {0}
 };
@@ -2078,6 +2143,51 @@ void mainWindow_c::activateProblem(unsigned int prob) {
   SolutionEmpty = true;
 }
 
+/* compare two solutions under a sort method, mirroring the comparators in
+ * problem.cpp: returns < 0 if a sorts before b (so b is the "greater" one that
+ * ends up later in the list), > 0 if a is greater, 0 if they are equal
+ */
+static int compareSolutionsBy(const solution_c * a, const solution_c * b, int by) {
+  switch (by) {
+    case 1: // level
+      if (a->getDisassemblyInfo() && b->getDisassemblyInfo())
+        return a->getDisassemblyInfo()->compare(b->getDisassemblyInfo());
+      return 0;
+    case 2: // moves for complete disassembly
+      if (a->getDisassemblyInfo() && b->getDisassemblyInfo())
+        return (int)a->getDisassemblyInfo()->sumMoves() - (int)b->getDisassemblyInfo()->sumMoves();
+      return 0;
+    case 3: { // pieces: by how many pieces are actually placed, so solutions
+              // with the same number of pieces are tied (comparePieces orders
+              // by which pieces are used, which is not what "tied" means here)
+      unsigned int ca = 0, cb = 0;
+      for (unsigned int i = 0; i < a->getAssembly()->placementCount(); i++)
+        if (a->getAssembly()->isPlaced(i)) ca++;
+      for (unsigned int i = 0; i < b->getAssembly()->placementCount(); i++)
+        if (b->getAssembly()->isPlaced(i)) cb++;
+      return (int)ca - (int)cb;
+    }
+    case 0: // assembly number (find order)
+    default:
+      return (int)a->getAssemblyNumber() - (int)b->getAssemblyNumber();
+  }
+}
+
+void mainWindow_c::rememberFollow(problem_c * pr, unsigned int idx) {
+  std::unique_lock<std::recursive_mutex> g = pr->lockSolutions();
+  unsigned int n = pr->getNumberOfSavedSolutions();
+  if (idx < n) {
+    followAssembly = (int)pr->getSavedSolution(idx)->getAssemblyNumber();
+    // landing on the last solution means "follow the tail"; anywhere else means
+    // sit on this specific solution. This intent is kept across sort switches;
+    // it just does not act under number/pieces sort.
+    followingTail = (idx + 1 == n);
+  } else {
+    followAssembly = -1;
+    followingTail = false;
+  }
+}
+
 void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
   if (disassemble) {
@@ -2085,18 +2195,35 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
     disassemble = 0;
   }
 
-  if ((prob < puzzle->getNumberOfProblems()) && (num < puzzle->getProblem(prob)->getNumberOfSavedSolutions())) {
+  problem_c * pr = (prob < puzzle->getNumberOfProblems()) ? puzzle->getProblem(prob) : 0;
 
-    problem_c * pr = puzzle->getProblem(prob);
+  /* hold the solution lock across the whole read and copy below: the solver
+   * thread may be adding and removing solutions, and everything we read here
+   * (assembly, disassembly) is copied, so once we release the lock we only
+   * hold copies. This also closes the gap between the count check and the
+   * getSavedSolution() dereference.
+   */
+  std::unique_lock<std::recursive_mutex> solGuard;
+  if (pr) solGuard = pr->lockSolutions();
+
+  if (pr && (num < pr->getNumberOfSavedSolutions())) {
 
     PcVis->setPuzzle(puzzle->getProblem(prob));
     PcVis->setAssembly(pr->getSavedSolution(num)->getAssembly());
     AssemblyNumber->show();
     AssemblyNumber->value(pr->getSavedSolution(num)->getAssemblyNumber()+1);
 
+    // remember which solution is now on screen (see the follow logic)
+    renderedAssembly = (int)pr->getSavedSolution(num)->getAssemblyNumber();
+
     if (pr->getSavedSolution(num)->getDisassembly()) {
       SolutionAnim->show();
-      SolutionAnim->range(0, pr->getSavedSolution(num)->getDisassembly()->sumMoves());
+      unsigned int sumMoves = pr->getSavedSolution(num)->getDisassembly()->sumMoves();
+      SolutionAnim->range(0, sumMoves);
+      // the previous solution may have been animated past this one's last move;
+      // clamp so we don't step off the end of the shorter disassembly
+      if (SolutionAnim->value() > sumMoves)
+        SolutionAnim->value(sumMoves);
 
       SolutionsInfo->show();
 
@@ -2164,6 +2291,7 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
     View3D->getView()->showNothing();
     SolutionEmpty = true;
+    renderedAssembly = -1;
 
     SolutionAnim->hide();
     MovesInfo->hide();
@@ -2483,14 +2611,98 @@ void mainWindow_c::updateInterface(void) {
           SolutionSel->value(numSol);
         SolutionsInfo->value(numSol);
 
-        // if we are in the solve tab and have a valid solution
-        // we can activate that
-        if (SolutionEmpty && (numSol > 0)) {
+        // we only track a solution while this problem is actively being solved
+        // (the list is changing); when browsing a finished puzzle we must not
+        // re-render, which would reset the 3D camera
+        bool solvingThis = assmThread && (&(assmThread->getProblem()) == pr);
+
+        // followingTail only acts on metrics with a meaningful "best": the
+        // initial default (-1), level (1) and moves (2). Number (0) and pieces
+        // (3) never follow - they leave the view on its current solution - but
+        // followingTail is preserved so switching back to a value sort resumes.
+        bool followActive = solvingThis && followingTail &&
+                            (followSortBy == -1 || followSortBy == 1 || followSortBy == 2);
+
+        // Each branch below picks a solution index and shows it. The index is
+        // only meaningful under the solution lock: the solver thread re-sorts
+        // and thins the list after every solution, so we must hold the lock
+        // across both choosing the index AND activateSolution(), or the worker
+        // could reorder the list between and we would show a wrong solution.
+        if (followActive) {
+
+          std::unique_lock<std::recursive_mutex> g = pr->lockSolutions();
+          unsigned int n = pr->getNumberOfSavedSolutions();
+          int idx = -1;
+          int targetAsm = -1;
+          if (n > 0) {
+            if (followSortBy == -1) {
+              // default: sit on the last position (the best per the sort the
+              // solver is inserting in) - stable, not chasing every new one
+              idx = (int)n - 1;
+              targetAsm = (int)pr->getSavedSolution(n-1)->getAssemblyNumber();
+            } else {
+              // value sort: keep our solution, jumping to the end only when a
+              // new one strictly beats it (a tie leaves us put)
+              int curIdx = -1;
+              for (unsigned int i = 0; i < n; i++)
+                if ((int)pr->getSavedSolution(i)->getAssemblyNumber() == followAssembly) {
+                  curIdx = (int)i;
+                  break;
+                }
+              if (curIdx >= 0 &&
+                  compareSolutionsBy(pr->getSavedSolution(curIdx), pr->getSavedSolution(n-1), followSortBy) >= 0) {
+                idx = curIdx;                 // still best (or tied): stay
+                targetAsm = followAssembly;
+              } else {
+                idx = (int)n - 1;             // beaten, or thinned: take the end
+                targetAsm = (int)pr->getSavedSolution(n-1)->getAssemblyNumber();
+              }
+            }
+          }
+          if (idx >= 0) {
+            SolutionSel->value(idx + 1);
+            if (targetAsm != renderedAssembly)
+              activateSolution(prob, idx);
+            followAssembly = targetAsm;
+            SolutionEmpty = false;
+          }
+
+        } else if (SolutionEmpty) {
+
+          // first solution of this solve (not tail-following): show and track it
+          std::unique_lock<std::recursive_mutex> g = pr->lockSolutions();
           activateSolution(prob, 0);
           SolutionSel->value(1);
+          rememberFollow(pr, 0);
+
+        } else if (solvingThis && followAssembly >= 0) {
+
+          // sitting on a specific solution: keep it, moving the slider to its new
+          // position; only re-render when the shown solution actually changes
+          std::unique_lock<std::recursive_mutex> g = pr->lockSolutions();
+          unsigned int n = pr->getNumberOfSavedSolutions();
+          int idx = -1;
+          for (unsigned int i = 0; i < n; i++)
+            if ((int)pr->getSavedSolution(i)->getAssemblyNumber() == followAssembly) {
+              idx = (int)i;
+              break;
+            }
+          if (idx >= 0) {
+            SolutionSel->value(idx + 1);
+            if (followAssembly != renderedAssembly)
+              activateSolution(prob, idx);
+          } else {
+            followAssembly = -1;   // the tracked solution was thinned away
+          }
         }
 
       } else {
+
+        // no solutions (yet): drop the tracked solution, but keep followingTail
+        // so a solve that has not produced its first solution still rides the
+        // tail once solutions start arriving
+        followAssembly = -1;
+        renderedAssembly = -1;
 
         SolutionSel->range(1, 1);
         SolutionSel->hide();
@@ -2566,12 +2778,18 @@ void mainWindow_c::updateInterface(void) {
         BtnDelDisasm->deactivate();
       }
 
-      if ((SolutionSel->value() >= 1) &&
-          ((int)SolutionSel->value()-1) < (int)pr->getNumberOfSavedSolutions() &&
-          pr->getSavedSolution((int)SolutionSel->value()-1)->getDisassembly()) {
-        BtnDisasmDel->activate();
-      } else {
-        BtnDisasmDel->deactivate();
+      {
+        /* dereferences a saved solution while the solver thread may remove it,
+         * so read it under the solution lock
+         */
+        auto solGuard = pr->lockSolutions();
+        if ((SolutionSel->value() >= 1) &&
+            ((int)SolutionSel->value()-1) < (int)pr->getNumberOfSavedSolutions() &&
+            pr->getSavedSolution((int)SolutionSel->value()-1)->getDisassembly()) {
+          BtnDisasmDel->activate();
+        } else {
+          BtnDisasmDel->deactivate();
+        }
       }
 
       if (pr->getNumberOfSavedSolutions() > 0) {
@@ -2737,11 +2955,21 @@ void mainWindow_c::updateInterface(void) {
         BtnCont->deactivate();
         BtnStop->activate();
 
-        // we can not edit solutions for a currently solved problem
-        BtnSrtFind->deactivate();
-        BtnSrtLevel->deactivate();
-        BtnSrtMoves->deactivate();
-        BtnSrtPieces->deactivate();
+        // re-sorting the found solutions is safe while solving (the solution
+        // list is mutex protected), so offer it once there are at least two;
+        // deleting/editing solutions is still not offered because the solver
+        // is actively adding to and thinning the list
+        if (pr->getNumberOfSavedSolutions() >= 2) {
+          BtnSrtFind->activate();
+          BtnSrtLevel->activate();
+          BtnSrtMoves->activate();
+          BtnSrtPieces->activate();
+        } else {
+          BtnSrtFind->deactivate();
+          BtnSrtLevel->deactivate();
+          BtnSrtMoves->deactivate();
+          BtnSrtPieces->deactivate();
+        }
         BtnDelAll->deactivate();
         BtnDelBefore->deactivate();
         BtnDelAt->deactivate();
@@ -2829,7 +3057,7 @@ void mainWindow_c::update(void) {
 
   if (assmThread) {
 
-    // check, if the thread has thrown an exception, if so re-throw it
+    // check if the thread has thrown an exception. if so, re-throw it
     if (assmThread->currentAction() == solveThread_c::ACT_ASSERT) {
 
       assertWindow_c * aw = new assertWindow_c("Because of an internal error the current puzzle\n"
@@ -3721,6 +3949,10 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
   disassemble = 0;
   editSymmetries = 0;
   expertMode = true;
+  followingTail = false;
+  followAssembly = -1;
+  followSortBy = -1;
+  renderedAssembly = -1;
 
   puzzle = new puzzle_c(gt);
   ggt = new guiGridType_c(puzzle->getGridType());

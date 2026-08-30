@@ -26,6 +26,8 @@
 #include <vector>
 #include <set>
 #include <stack>
+#include <atomic>
+#include <mutex>
 
 class problem_c;
 class gridType_c;
@@ -85,7 +87,7 @@ private:
   void solution(void);
 
   /* used to abort the searching */
-  bool abbort;
+  std::atomic<bool> abbort;
 
   /* used to save if the search is running */
   bool running;
@@ -93,6 +95,23 @@ private:
   std::vector<unsigned int> rows;
   std::vector<unsigned int> finished_a;
   std::vector<unsigned int> finished_b;
+
+  /* getFinished() (GUI thread) reads finished_a/finished_b while the worker
+   * mutates them. reserve() (see assemble) stops the buffer from moving, but a
+   * concurrent pop_back would shrink the size under the reader and expose the
+   * popped, now-unconstructed slot. This mutex serialises getFinished with the
+   * pop_backs so the reader only ever sees constructed elements; the far more
+   * frequent push_back / back()++ stay lock free (they only ever add or bump a
+   * value the reader can tolerate reading stale).
+   */
+  mutable std::mutex finishedMutex;
+
+  /* push/pop the progress stacks under finishedMutex so getFinished (GUI
+   * thread) never observes a size change while a slot is being constructed or
+   * destructed. back()++ stays lock free - it only bumps an existing value.
+   */
+  void pushFinished(unsigned int b);
+  void popFinished(void);
   std::vector<unsigned int> hidden_rows;  // rows that nodes to rows that are currently hidden
   // because there are several batched of rows that need hiding these batches are separated
   // by a zero because the header row will never get hidden...
@@ -178,7 +197,7 @@ private:
   bool debug;         // debugging enabled
   int debug_loops;    // how many loops to run ?
 
-  unsigned long iterations;
+  std::atomic<unsigned long> iterations;  // single-writer counter, read cross-thread by getIterations
 
 protected:
 
@@ -244,7 +263,7 @@ protected:
    */
   void checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir);
 
-  unsigned int reducePiece;
+  std::atomic<unsigned int> reducePiece;  // written by worker, read by GUI via getReducePiece
 
 public:
 
@@ -256,7 +275,7 @@ public:
   void assemble(assembler_cb * callback);
   int getErrorsParam(void) { return errorsParam; }
   virtual float getFinished(void) const;
-  virtual void stop(void) { abbort = true; }
+  virtual void stop(void) { abbort.store(true, std::memory_order_relaxed); }
   virtual bool stopped(void) const { return !running; }
   virtual errState setPosition(const char * string, const char * version);
   virtual void save(xmlWriter_c & xml) const;

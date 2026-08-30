@@ -2,7 +2,7 @@
 static const char *Grid_Monochrome_Minimize_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 5 1",
-"  c black",
+"  c #010101",
 ". c #A1A1A1",
 "X c #BBBBBB",
 "o c #FFFFFF",

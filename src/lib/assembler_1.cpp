@@ -30,8 +30,10 @@
 #include "../tools/xml.h"
 
 #include <cstdlib>
+#include <cstring>
+#include <unordered_map>
 
-#ifdef WIN32
+#ifdef _WIN32
 #define snprintf _snprintf
 #endif
 
@@ -567,6 +569,13 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
 
   voxel_c ** cache = new voxel_c *[sym->getNumTransformationsMirror()];
 
+  placementFinder_c finder(problem, result);
+  std::vector<long> voxelOffsets;
+  std::vector<int> positions;
+
+  const long rsx = result->getX();
+  const long rsy = result->getY();
+
   /* now we insert one shape after another */
   for (unsigned int pc = 0; pc < problem.getNumberOfParts(); pc++) {
 
@@ -599,27 +608,27 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
       rotation = addToCache(cache, &cachefill, rotation);
 
       if (rotation) {
-        for (int x = (int)result->boundX1()-(int)rotation->boundX1(); x <= (int)result->boundX2()-(int)rotation->boundX2(); x++)
-          for (int y = (int)result->boundY1()-(int)rotation->boundY1(); y <= (int)result->boundY2()-(int)rotation->boundY2(); y++)
-            for (int z = (int)result->boundZ1()-(int)rotation->boundZ1(); z <= (int)result->boundZ2()-(int)rotation->boundZ2(); z++)
-              if (canPlace(rotation, x, y, z)) {
+        finder.find(rotation, voxelOffsets, positions);
 
-                int piecenode = AddPieceNode(pc, rot, x+rotation->getHx(), y+rotation->getHy(), z+rotation->getHz());
-                placements++;
+        for (unsigned int pos = 0; pos < positions.size(); pos += 3) {
 
-                /* now add the used cubes of the piece */
-                for (unsigned int pz = rotation->boundZ1(); pz <= rotation->boundZ2(); pz++)
-                  for (unsigned int py = rotation->boundY1(); py <= rotation->boundY2(); py++)
-                    for (unsigned int px = rotation->boundX1(); px <= rotation->boundX2(); px++)
-                      if (rotation->getState(px, py, pz) == voxel_c::VX_FILLED) {
-                        AddVoxelNode(columns[result->getIndex(x+px, y+py, z+pz)], piecenode);
-                      }
+          const int x = positions[pos];
+          const int y = positions[pos+1];
+          const int z = positions[pos+2];
 
-                // if we use the range counting and the piece is using a range, add it to
-                // the column
-                if (hasRange && (min[pc+1] != max[pc+1]))
-                  AddRangeNode(rangeColumn, piecenode, voxels);
-              }
+          int piecenode = AddPieceNode(pc, rot, x+rotation->getHx(), y+rotation->getHy(), z+rotation->getHz());
+          placements++;
+
+          /* now add the used cubes of the piece */
+          const long base = x + rsx * (y + rsy * (long)z);
+          for (unsigned int v = 0; v < voxelOffsets.size(); v++)
+            AddVoxelNode(columns[base + voxelOffsets[v]], piecenode);
+
+          // if we use the range counting and the piece is using a range, add it to
+          // the column
+          if (hasRange && (min[pc+1] != max[pc+1]))
+            AddRangeNode(rangeColumn, piecenode, voxels);
+        }
         /* for the symmetry breaker piece we also add all symmetries of the box */
         if (pc == symBreakerShape)
           for (unsigned int r = 1; r < sym->getNumTransformations(); r++)
@@ -765,75 +774,102 @@ void assembler_1_c::remove_column(unsigned int c) {
  */
 unsigned int assembler_1_c::clumpify(void) {
 
-  unsigned int col = right[0];
-  unsigned int removed = 0;
+  /* two columns are identical, and one of them can be removed, when they
+   * have the same min and max values and are contained in exactly the same
+   * placement rows with the same node weights.
+   *
+   * instead of comparing all pairs of columns we compute a signature for
+   * each column (the sequence of (placement row, node weight) pairs, the
+   * down links enumerate the nodes in row order because rows are appended
+   * in increasing order) and group the columns by a hash of that signature.
+   * only columns within the same group are then compared exactly. This
+   * is linear in the number of matrix nodes while the pairwise comparison
+   * was quadratic in the number of columns
+   */
 
-  while (col) {
+  /* the columns in header ring order, the first column of each group of
+   * identical columns is the one that survives, like before */
+  std::vector<unsigned int> cols;
+  for (unsigned int c = right[0]; c; c = right[c])
+    cols.push_back(c);
 
-    /* find all columns that are identical to col
-     */
+  /* all signatures are stored back to back in one vector, per column we
+   * keep the start of its signature within that vector */
+  std::vector<unsigned long> sigData;
+  std::vector<unsigned long> sigStart;
+  std::vector<unsigned long long> sigHash;
 
-    /* this vector will contain all the columns that are not
-     * yet ruled out to be different from col
-     * the vector contains the node index
-     */
-    std::vector<unsigned int>columns;
+  sigStart.reserve(cols.size()+1);
+  sigHash.reserve(cols.size());
 
-    unsigned int c = right[col];
+  for (unsigned int i = 0; i < cols.size(); i++) {
 
-    while (c) {
-      if (min[c] == min[col] && max[c] == max[col])
-        columns.push_back(down[c]);
-      c = right[c];
-    }
+    const unsigned int col = cols[i];
 
-    unsigned int row = down[col];
+    sigStart.push_back(sigData.size());
+
+    unsigned long long h = 14695981039346656037ull;
+    h = (h ^ min[col]) * 1099511628211ull;
+    h = (h ^ max[col]) * 1099511628211ull;
+
     unsigned int line = 0;
 
-    while (row != col) {
+    for (unsigned int row = down[col]; row != col; row = down[row]) {
 
+      /* find the placement row this node belongs to, the nodes come in
+       * increasing order so the line only ever advances */
       while ((line+1 < piecePositions.size()) && (piecePositions[line+1].row <= row))
         line++;
 
-      unsigned int i = 0;
+      sigData.push_back(line);
+      sigData.push_back(weight[row]);
 
-      /* remove all columns that are not in the same
-       * line as the column
-       */
-      while (i < columns.size()) {
-        if ((columns[i] < piecePositions[line].row) ||
-            ((line+1 < piecePositions.size()) && (columns[i] >= piecePositions[line+1].row)) ||
-            (weight[row] != weight[columns[i]])  // also remove row, if weights differ
-           ) {
-          columns.erase(columns.begin()+i);
-        } else
-          i++;
-      }
+      h = (h ^ line) * 1099511628211ull;
+      h = (h ^ (unsigned long long)weight[row]) * 1099511628211ull;
+    }
 
-      if (columns.size() == 0)
+    sigHash.push_back(h);
+  }
+
+  sigStart.push_back(sigData.size());
+
+  /* group by hash, keep the first column of each group, exactly verify
+   * the others against it before removing them */
+  typedef std::unordered_map<unsigned long long, std::vector<unsigned int> > hashMap;
+  hashMap groups;
+
+  unsigned int removed = 0;
+
+  for (unsigned int i = 0; i < cols.size(); i++) {
+
+    std::vector<unsigned int> & group = groups[sigHash[i]];
+
+    bool dup = false;
+
+    for (unsigned int g = 0; g < group.size(); g++) {
+
+      const unsigned int j = group[g];
+
+      if (min[cols[i]] != min[cols[j]] || max[cols[i]] != max[cols[j]])
+        continue;
+
+      const unsigned long leni = sigStart[i+1]-sigStart[i];
+
+      if (leni != sigStart[j+1]-sigStart[j])
+        continue;
+
+      if ((leni == 0) ||
+          (memcmp(&sigData[sigStart[i]], &sigData[sigStart[j]], leni * sizeof(unsigned long)) == 0)) {
+        dup = true;
         break;
-
-      row = down[row];
-
-      for (i = 0; i < columns.size(); i++)
-        columns[i] = down[columns[i]];
+      }
     }
 
-    /* now all the columns need to be in the header again */
-    unsigned int i = 0;
-    while (i < columns.size()) {
-      if (columns[i] >= piecePositions[0].row)
-        columns.erase(columns.begin()+i);
-      else
-        i++;
-    }
-
-    for (unsigned int i = 0; i < columns.size(); i++)
-      remove_column(columns[i]);
-
-    removed += columns.size();
-
-    col = right[col];
+    if (dup) {
+      remove_column(cols[i]);
+      removed++;
+    } else
+      group.push_back(i);
   }
 
   return removed;
@@ -1349,8 +1385,7 @@ void assembler_1_c::rec(unsigned int next_row) {
   // line to the column that is why we do this check here at the start of the function
   if (column_condition_fulfilled(col)) {
 
-    finished_b.push_back(colCount[colCount[next_row]]+1);
-    finished_a.push_back(0);
+    pushFinished(colCount[colCount[next_row]]+1);
 
     // remove all rows that are left within this column
     // this way we make sure we are _not_ changing this columns value any more
@@ -1368,8 +1403,7 @@ void assembler_1_c::rec(unsigned int next_row) {
 
   } else {
 
-    finished_b.push_back(colCount[colCount[next_row]]);
-    finished_a.push_back(0);
+    pushFinished(colCount[colCount[next_row]]);
 
   }
 
@@ -1460,8 +1494,7 @@ void assembler_1_c::rec(unsigned int next_row) {
   // row by row inspection
   unhiderows();
 
-  finished_a.pop_back();
-  finished_b.pop_back();
+  popFinished();
 }
 
 #endif
@@ -1472,12 +1505,12 @@ void assembler_1_c::iterative(void) {
 
   while (task_stack.size() > 0) {
 
-    iterations++;
+    iterations.store(iterations.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
 
     // wan can only restore the states 1, 2 and 5. Internal states will alway
     // be one of those, but the last state might differ, so continue looping
     // until the final state is 1, 2 or 5
-    if (abbort) {
+    if (abbort.load(std::memory_order_relaxed)) {
       if (task_stack.back() == 1 ||
           task_stack.back() == 2 ||
           task_stack.back() == 5)
@@ -1611,8 +1644,7 @@ void assembler_1_c::iterative(void) {
 
           if (debug) fprintf(stderr, "column %i condition fulfilled, recurse\n", col);
 
-          finished_b.push_back(colCount[colCount[next_row_stack.back()]]+1);
-          finished_a.push_back(0);
+          pushFinished(colCount[colCount[next_row_stack.back()]]+1);
 
           // remove all rows that are left within this column
           // this way we make sure we are _not_ changing this columns value any more
@@ -1630,8 +1662,7 @@ void assembler_1_c::iterative(void) {
 
         } else {
 
-          finished_b.push_back(colCount[colCount[next_row_stack.back()]]);
-          finished_a.push_back(0);
+          pushFinished(colCount[colCount[next_row_stack.back()]]);
         }
 
         task_stack.back() = 3;
@@ -1789,8 +1820,7 @@ void assembler_1_c::iterative(void) {
         // row by row inspection
         unhiderows();
 
-        finished_a.pop_back();
-        finished_b.pop_back();
+        popFinished();
 
         next_row_stack.pop_back();
         task_stack.pop_back();
@@ -1807,8 +1837,18 @@ void assembler_1_c::iterative(void) {
 void assembler_1_c::assemble(assembler_cb * callback) {
 
   running = true;
-  abbort = false;
+  abbort.store(false, std::memory_order_relaxed);
   debug = false;
+
+  /* getFinished() runs on the GUI thread and indexes finished_a / finished_b
+   * while this thread pushes onto them. The search depth can not exceed the
+   * number of columns, so reserving that many entries up front means these
+   * vectors never reallocate during the search: the concurrent read then
+   * sees a stale value at worst (harmless for a progress indicator) instead
+   * of a freed buffer.
+   */
+  finished_a.reserve(headerNodes);
+  finished_b.reserve(headerNodes);
 
   if (errorsState == ERR_NONE) {
 
@@ -1822,11 +1862,28 @@ void assembler_1_c::assemble(assembler_cb * callback) {
   running = false;
 }
 
+void assembler_1_c::pushFinished(unsigned int b) {
+  std::lock_guard<std::mutex> guard(finishedMutex);
+  finished_b.push_back(b);
+  finished_a.push_back(0);
+}
+
+void assembler_1_c::popFinished(void) {
+  std::lock_guard<std::mutex> guard(finishedMutex);
+  finished_a.pop_back();
+  finished_b.pop_back();
+}
+
 float assembler_1_c::getFinished(void) const {
 
   if (next_row_stack.size() == 0) return 1;
 
   float erg = 0;
+
+  /* locked against pushFinished/popFinished so the vectors can not change
+   * size (and expose a slot mid construction/destruction) during the read
+   */
+  std::lock_guard<std::mutex> guard(finishedMutex);
 
   for (int r = finished_a.size()-1; r >= 0; r--) {
 
@@ -2004,7 +2061,7 @@ unsigned int assembler_1_c::getPiecePlacementCount(unsigned int piece) const {
 void assembler_1_c::debug_step(unsigned long num) {
   debug = true;
   debug_loops = num;
-  abbort = false;
+  abbort.store(false, std::memory_order_relaxed);
   asm_bc = 0;
   iterative();
   debug = false;

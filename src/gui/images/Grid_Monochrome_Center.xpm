@@ -2,7 +2,7 @@
 static const char *Grid_Monochrome_Center_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 5 1",
-"  c black",
+"  c #010101",
 ". c #A0A0A0",
 "X c #BBBBBB",
 "o c #FFFFFF",

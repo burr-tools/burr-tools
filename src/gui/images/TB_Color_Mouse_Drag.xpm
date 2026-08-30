@@ -2,7 +2,7 @@
 static const char *TB_Color_Mouse_Drag_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "23 23 7 1",
-"  c black",
+"  c #010101",
 ". c #6666FF",
 "X c #999900",
 "o c #FFFF33",

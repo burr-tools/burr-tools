@@ -1,6 +1,7 @@
 #ifndef __VECTOR3D_H__
 #define __VECTOR3D_H__
 
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <iostream>
 

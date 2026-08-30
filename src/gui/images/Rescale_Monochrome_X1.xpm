@@ -2,7 +2,7 @@
 static const char *Rescale_Monochrome_X1_xpm[] = {
 /* columns rows colors chars-per-pixel */
 "33 23 6 1",
-"  c black",
+"  c #010101",
 ". c #666666",
 "X c #00FFFF",
 "o c #BBBBBB",

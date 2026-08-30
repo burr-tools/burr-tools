@@ -192,7 +192,7 @@ void burrGrower_c::grow(std::vector<puzzleSol_c*> currentSet) {
 
 //      printf(" f %f ", f);
 
-#ifdef WIN32
+#ifdef _WIN32
       if (1 < f)
 #else
       if (drand48() < f)

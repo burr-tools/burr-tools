@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "stlexport.h"
+#include "filechooser.h"
 #include <stdlib.h>
 
 #include "BlockList.h"
@@ -34,7 +35,6 @@
 
 #include "../halfedge/volume.h"
 
-#include "../flu/Flu_File_Chooser.h"
 
 #include "../tools/fileexists.h"
 
@@ -43,6 +43,8 @@
 #define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl.H>
 #include <FL/fl_ask.H>
+#include <FL/Fl_File_Chooser.H>
+
 #pragma GCC diagnostic pop
 
 
@@ -140,7 +142,7 @@ void stlExport_c::cb_FileChooser(void)
   char curFile[500];
   snprintf(curFile, 500, "%s/%s", Pname->value(), Fname->value());
 
-  const char * f = flu_file_chooser("Choose STL File to write", "*.stl", curFile);
+  const char * f = fileChooser("Choose STL File to write", "STL", "*.stl", curFile, true);
 
   if (f)
   {
@@ -413,7 +415,9 @@ void stlExport_c::exportSTL(int shape)
       snprintf(name, 1000, "%s%s", Pname->value(), Fname->value());
   }
 
-  if (fileExists(name))
+  // no need to ask when the file is the one the user picked in a native
+  // save dialog, that dialog already asked
+  if (fileExists(name) && !fileChooserConfirmedOverwrite(name))
   {
     if (fl_choice("File exists overwrite?", "Cancel", "Overwrite", 0) == 0)
     {
