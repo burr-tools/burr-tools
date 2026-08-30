@@ -757,9 +757,11 @@ public:
 
   virtual void recalcSpaceCoordinates(float * /*x*/, float * /*y*/, float * /*z*/) const {}
 
-private:
+protected:
 
   virtual Polyhedron * getMeshInternal(double bevel, double offset, bool fast) const;
+
+private:
 
   // no copying and assigning
   void operator=(const voxel_c&);
