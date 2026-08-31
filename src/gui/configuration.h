@@ -37,6 +37,8 @@ public:
   bool useTooltips(void) { return i_use_tooltips; }
   void useTooltips(bool val) { i_use_tooltips = val; }
 
+  bool useRapid3d(void) { return i_rapid3d; }  
+
   bool useLightning(void) { return i_use_lightning; }
   void useLightning(bool val) { i_use_lightning = val; }
 
@@ -94,6 +96,7 @@ private:
   bool i_use_blendedRemoving;
   bool i_use_displayLists;
   bool i_rotationMethod;
+  bool i_rapid3d;
 
   int i_window_pos_x;
   int i_window_pos_y;
