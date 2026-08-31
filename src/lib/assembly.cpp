@@ -809,7 +809,7 @@ voxel_c * assembly_c::createSpace(const problem_c & puz) const {
 
       voxel_c * pc = puz.getPuzzle().getGridType()->getVoxel(puz.getPartShape(j));
 
-      bt_assert(pc->transform(placements[i].transformation));
+      bt_assert2(pc->transform(placements[i].transformation));
 
       int dx = (int)placements[i].xpos - (int)pc->getHx();
       int dy = (int)placements[i].ypos - (int)pc->getHy();
@@ -848,6 +848,69 @@ voxel_c * assembly_c::createSpace(const problem_c & puz) const {
 
   res->skipRecalcBoundingBox(false);
   res->initHotspot();
+  return res;
+}
+
+std::vector<voxel_c *> assembly_c::createPieceSpaces(const problem_c & puz) const {
+
+  std::vector<voxel_c *>pieces;
+  pieces.resize(placements.size());
+
+  int maxX = 1;
+  int maxY = 1;
+  int maxZ = 1;
+
+  // iterate over all shapes in the assembly and find out their placement
+  // to calculate the size of the whole assembly
+  for (unsigned int i = 0; i < placements.size(); i++)
+    if (placements[i].transformation != UNPLACED_TRANS) {
+
+      unsigned int j = puz.getPartIdToPieceId(i);
+
+      voxel_c * pc = puz.getPuzzle().getGridType()->getVoxel(puz.getPartShape(j));
+
+      bt_assert2(pc->transform(placements[i].transformation));
+
+      int dx = (int)placements[i].xpos - (int)pc->getHx();
+      int dy = (int)placements[i].ypos - (int)pc->getHy();
+      int dz = (int)placements[i].zpos - (int)pc->getHz();
+
+      if ((int)pc->getX()+dx > maxX) maxX = (int)pc->getX()+dx;
+      if ((int)pc->getY()+dy > maxY) maxY = (int)pc->getY()+dy;
+      if ((int)pc->getZ()+dz > maxZ) maxZ = (int)pc->getZ()+dz;
+
+      pieces[i] = pc;
+    }
+
+  std::vector<voxel_c *> res;
+
+  // place each piece into its own space of the size of the whole assembly
+  for (unsigned int i = 0; i < placements.size(); i++)
+    if (placements[i].transformation != UNPLACED_TRANS) {
+
+      voxel_c * pc = pieces[i];
+
+      int dx = (int)placements[i].xpos - (int)pc->getHx();
+      int dy = (int)placements[i].ypos - (int)pc->getHy();
+      int dz = (int)placements[i].zpos - (int)pc->getHz();
+
+      voxel_c * space = puz.getPuzzle().getGridType()->getVoxel(maxX, maxY, maxZ, 0);
+      space->skipRecalcBoundingBox(true);
+
+      for (unsigned int x = 0; x < pc->getX(); x++)
+        for (unsigned int y = 0; y < pc->getY(); y++)
+          for (unsigned int z = 0; z < pc->getZ(); z++) {
+            if (pc->getState(x, y, z) != voxel_c::VX_EMPTY)
+              space->set(x+dx, y+dy, z+dz, pc->get(x, y, z));
+          }
+
+      delete pc;
+
+      space->skipRecalcBoundingBox(false);
+      space->initHotspot();
+      res.push_back(space);
+    }
+
   return res;
 }
 

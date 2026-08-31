@@ -44,7 +44,9 @@
 class LView3dGroup;
 class LBlockListGroup;
 class puzzle_c;
+class voxel_c;
 class PieceSelector;
+class ProblemSelector;
 class ButtonGroup_c;
 
 class stlExporter_c;
@@ -68,7 +70,9 @@ class stlExport_c : public LFl_Double_Window {
     LFl_Box *status;
     LFl_Button *BtnStart, *BtnAbbort;
     PieceSelector * ShapeSelect;
-    // LFl_Radio_Button *ExpShape; // Unused?
+    ProblemSelector * ProblemSelect;
+    LFl_Radio_Button *ExpShape, *ExpSolution;
+    LFl_Int_Input *SolutionNum;
     LFl_Check_Button *Binary;
     ButtonGroup_c * mode;
 
@@ -81,13 +85,28 @@ class stlExport_c : public LFl_Double_Window {
     stlExport_c(puzzle_c * p);
     virtual ~stlExport_c(void);
 
+    /* switch the dialog to assembled solution mode with the given
+     * problem and solution preselected */
+    void selectSolution(unsigned int prob, unsigned int sol);
+
     void cb_Export(void);
     void cb_Abort(void);
     void cb_Update3DView(int type);
     void cb_Update3DViewParams(void);
     void exportSTL(int shape);
+    void exportSolutionSTL(void);
     void cb_3dClick(void);
     void cb_FileChooser(void);
+
+  private:
+
+    /* true, when the assembled solution mode is selected */
+    bool solutionMode(void);
+
+    /* the pieces of the selected solution, each in its own voxel space,
+     * all spaces have the size of the whole assembly. Empty when there
+     * is no valid solution selected */
+    std::vector<voxel_c *> solutionSpaces(void);
 };
 
 #endif

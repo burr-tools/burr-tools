@@ -326,6 +326,14 @@ public:
    */
   voxel_c * createSpace(const problem_c & puz) const;
 
+  /** calculate one voxelspace per placed piece of the assembly. All
+   * spaces have the same size (that of the whole assembly) so that
+   * the pieces keep their placement relative to one another. This is
+   * used to export an assembled solution where each piece is handled
+   * separately (e.g. STL export with per piece offset and bevel)
+   */
+  std::vector<voxel_c *> createPieceSpaces(const problem_c & puz) const;
+
   void removePieces(unsigned int from, unsigned int cnt);
 
   void addNonPlacedPieces(unsigned int from, unsigned int cnt);

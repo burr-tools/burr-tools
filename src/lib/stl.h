@@ -62,6 +62,14 @@ class stlExporter_c {
      */
     void write(const char * basename, const voxel_c & shape, const faceList_c & holes);
 
+    /**
+     * This function exports several shapes into one file. Each shape is
+     * meshed on its own (with its own bevel and offset), so this can be
+     * used to export an assembled solution where all the pieces are kept
+     * separate but stay in their place in the assembly
+     */
+    void write(const char * basename, const std::vector<const voxel_c *> & shapes, const faceList_c & holes);
+
     /** parameters can have different type
      * this enum lists all supported types
      */
