@@ -116,6 +116,7 @@ gui_src = [
   'src/gui/arcball.cpp',
   'src/gui/assertwindow.cpp',
   'src/gui/assmimportwindow.cpp',
+  'src/gui/bulkrangewindow.cpp',
   'src/gui/blocklistgroup.cpp',
   'src/gui/buttongroup.cpp',
   'src/gui/configuration.cpp',

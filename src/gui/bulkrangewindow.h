@@ -18,39 +18,33 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#ifndef __STATUS_WINDOW__
-#define __STATUS_WINDOW__
+#ifndef __BULKRANGE_WINDOW_H__
+#define __BULKRANGE_WINDOW_H__
 
 #include "Layouter.h"
 
-#include <vector>
+class Fl_Int_Input;
 
-class puzzle_c;
-
-class statusWindow_c : public LFl_Double_Window {
+/* Dialog that lets the user specify a min/max piece count range and apply
+ * it to every shape in the current problem at once.
+ */
+class bulkRangeWindow_c : public LFl_Double_Window {
 
   private:
 
-    puzzle_c * puz;
-
-    std::vector<LFl_Check_Button*> selection;
-    std::vector<bool> identicalMirror;
-    std::vector<bool> identicalShape;
-    std::vector<bool> identicalComplete;
-    bool again;
+    bool _ok;
+    Fl_Int_Input *minInput, *maxInput;
 
   public:
 
-    statusWindow_c(puzzle_c * p);
+    bulkRangeWindow_c(void);
 
-    void cb_removeSelected(void);
-    void cb_selectHoles(void);
-    void cb_selectIdenticalShapes(void);
-    void cb_selectIdenticalComplete(void);
-    void cb_selectIdenticalMirror(void);
+    bool okSelected(void) const { return _ok; }
 
-    bool getAgain(void) { return again; }
+    void okay_cb(void);
 
+    unsigned int getMin(void) const;
+    unsigned int getMax(void) const;
 };
 
 #endif
