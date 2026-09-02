@@ -29,6 +29,149 @@ using namespace std;
 
 const float Epsilon=1.0e-5;
 
+/* a snapshot of the faces of a polyhedron (as triangle fans) used to test
+ * whether a point lies inside the original solid */
+typedef vector<float> triSnapshot_c;   // 9 floats per triangle
+
+static void snapshotFaces(const Polyhedron & poly, triSnapshot_c & snap)
+{
+  for (Polyhedron::const_face_iterator it = poly.fBegin(); it != poly.fEnd(); ++it)
+  {
+    const Face * f = *it;
+    if (f->hole()) continue;
+
+    Face::const_edge_circulator e = f->begin();
+    Face::const_edge_circulator sentinel = e;
+    e++;
+    Vector3Df start = (*e)->dst()->position();
+    e++;
+    do
+    {
+      const Vector3Df & b = (*e)->dst()->position();
+      e++;
+      const Vector3Df & c = (*e)->dst()->position();
+      const Vector3Df * v[3] = { &start, &b, &c };
+      for (int k = 0; k < 3; k++)
+      {
+        snap.push_back(v[k]->x());
+        snap.push_back(v[k]->y());
+        snap.push_back(v[k]->z());
+      }
+    } while (e != sentinel);
+  }
+}
+
+/* ray parity test along +x against the snapshot. The query points are
+ * slightly jittered by the caller so hitting edges exactly is no concern */
+static bool insideSnapshot(const triSnapshot_c & snap, float px, float py, float pz)
+{
+  int crossings = 0;
+  for (size_t i = 0; i < snap.size(); i += 9)
+  {
+    const float * a = &snap[i];
+    const float * b = &snap[i+3];
+    const float * c = &snap[i+6];
+
+    // intersect ray (px,py,pz)+t*(1,0,0), t>0 with triangle abc:
+    // project on the yz plane
+    float y0 = a[1]-py, z0 = a[2]-pz;
+    float y1 = b[1]-py, z1 = b[2]-pz;
+    float y2 = c[1]-py, z2 = c[2]-pz;
+
+    float d0 = y0*z1 - y1*z0;
+    float d1 = y1*z2 - y2*z1;
+    float d2 = y2*z0 - y0*z2;
+
+    if ((d0 > 0 && d1 > 0 && d2 > 0) || (d0 < 0 && d1 < 0 && d2 < 0))
+    {
+      float area = d0 + d1 + d2;
+      // barycentric interpolation of x at the hit
+      float x = (a[0]*d1 + b[0]*d2 + c[0]*d0) / area;
+      if (x > px)
+        crossings++;
+    }
+  }
+  return (crossings & 1) != 0;
+}
+
+/* distance from p along direction d (unit) to the nearest snapshot
+ * triangle, or -1 when nothing is hit */
+static float rayDepthSnapshot(const triSnapshot_c & snap, const Vector3Df & p, const Vector3Df & d)
+{
+  float best = -1;
+  for (size_t i = 0; i < snap.size(); i += 9)
+  {
+    Vector3Df a(snap[i  ], snap[i+1], snap[i+2]);
+    Vector3Df b(snap[i+3], snap[i+4], snap[i+5]);
+    Vector3Df c(snap[i+6], snap[i+7], snap[i+8]);
+
+    // Moeller-Trumbore
+    Vector3Df e1 = b - a, e2 = c - a;
+    Vector3Df pv = d ^ e2;
+    float det = e1 * pv;
+    if (det > -1e-9f && det < 1e-9f) continue;
+    float inv = 1.0f / det;
+    Vector3Df tv = p - a;
+    float uu = (tv * pv) * inv;
+    if (uu < -1e-4f || uu > 1.0001f) continue;
+    Vector3Df qv = tv ^ e1;
+    float vv = (d * qv) * inv;
+    if (vv < -1e-4f || uu + vv > 1.0001f) continue;
+    float t = (e2 * qv) * inv;
+    if (t > 1e-5f && (best < 0 || t < best)) best = t;
+  }
+  return best;
+}
+
+/* is a candidate replacement/cap face acceptable? Its surface must lie on
+ * the solid: points just below its centre and below each corner have to be
+ * inside the snapshot of the original surface. Faces failing this would
+ * bridge across a concave corner and add material outside the solid */
+static bool faceOnSolid(const triSnapshot_c & snap, const vector<Vector3Df> & pts)
+{
+  Vector3Df cen(0,0,0);
+  for (size_t i = 0; i < pts.size(); i++) cen += pts[i];
+  cen /= (float)pts.size();
+
+  Vector3Df nrm = (pts[1]-pts[0]) ^ (pts[2]-pts[0]);
+  float l = sqrt(nrm*nrm);
+  if (l <= 0) return true;
+  nrm /= l;
+
+  float mine = -1;
+  for (size_t i = 0; i < pts.size(); i++)
+  {
+    Vector3Df d = pts[(i+1)%pts.size()] - pts[i];
+    float e = sqrt(d*d);
+    if (mine < 0 || e < mine) mine = e;
+  }
+  /* probe just below the surface: valid faces have material directly
+   * underneath everywhere; bridging faces hover above a void. The probes
+   * stay in the interior of the face (half way to the corners) and only
+   * a little below it, so bevelled edges of thin material nearby don't
+   * cause false alarms */
+  float eps = 0.08f * mine;
+
+  for (size_t pr = 0; pr <= pts.size(); pr++)
+  {
+    Vector3Df q0 = cen;
+    if (pr > 0) q0 = (cen + pts[pr-1]) * 0.5f;
+    Vector3Df q = q0 - nrm*eps;
+    if (insideSnapshot(snap, q.x(), q.y()+1.1e-4f, q.z()+1.7e-4f))
+      continue;
+    /* no material directly below this probe. That is fine when the cap
+     * roofs over a shallow groove (floor close below) and also at a
+     * convex corner where the probe overshoots into open air (no floor
+     * at all); but a distant floor means the face bridges across a
+     * concave junction and would add material outside the solid */
+    float depth = rayDepthSnapshot(snap, q0, -nrm);
+    if (depth >= 0 && depth > 1.5f * mine)
+      return false;
+  }
+  return true;
+}
+
+
 void faceList_c::addFace(long voxel, int face)
 {
   if (containsFace(voxel, face)) return;
@@ -136,7 +279,7 @@ static int findBestTriOrQuad(vector<Vertex*> vs, int &offset)
 
 // this routine tries to find the best set of tris and quads to cap the edge list
 
-static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
+static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners, const triSnapshot_c & snap)
 {
   vector<Vertex*> working_set;
   uint32_t flags=0;
@@ -158,6 +301,17 @@ static void findOptimizedFaces(Polyhedron &poly, const vector<Vertex*>& corners)
     int ret = findBestTriOrQuad(working_set,offset);
     int old_size = working_set.size();
     vector<int> pts;
+
+    if (ret)
+    {
+      // the cap must lie on the surface of the solid, otherwise it would
+      // bridge across a concave corner; fall back to the triangle fan
+      vector<Vector3Df> cand;
+      for (int j = 0; j < ret; j++)
+        cand.push_back(working_set[(offset+j) % old_size]->position());
+      if (!faceOnSolid(snap, cand))
+        ret = 0;
+    }
 
     if (ret)
     {
@@ -227,6 +381,12 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
 {
   set<Face*> faces_to_remove;
 
+  /* remember the original surface: replacement faces must never add
+   * material outside of it (which used to happen at concave corners,
+   * making stacked pieces of a puzzle interpenetrate) */
+  triSnapshot_c snap;
+  snapshotFaces(poly, snap);
+
 
   for (Polyhedron::face_iterator fit = poly.fBegin(); fit != poly.fEnd(); ++fit)
   {
@@ -271,11 +431,6 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
         // reduce multiple faces into single face
         if (faces.size()>1)
         {
-          // construct master list of faces to be removed
-          for (set<Face*>::const_iterator sit = faces.begin(); sit != faces.end(); ++sit)
-          {
-            faces_to_remove.insert(*sit);
-          }
 	  // calculate angle between starting and ending face
 	  Vector3Df n0 = f->normal();
 	  Vector3Df n1 = (*fit)->normal();
@@ -288,6 +443,39 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
           edge = edge->prev()->prev();
           face4[2] = edge->dst()->index();
           face4[3] = edge->src()->index();
+
+          /* the replacement face may only be used when it does not bridge
+           * across a concave junction - there it would add material
+           * outside the solid, so the groove faces are kept instead.
+           * Concavity is decided exactly from the two rims: at a concave
+           * junction each rim lies above the plane of the opposite rim's
+           * face, at a convex or straight junction on or below it (a
+           * purely local test that cannot give phase-dependent results
+           * along a lattice edge) */
+          if (angle >= Epsilon)
+          {
+            Vector3Df p0 = poly.vertex(face4[0])->position();
+            Vector3Df p1 = poly.vertex(face4[1])->position();
+            Vector3Df p2 = poly.vertex(face4[2])->position();
+            Vector3Df p3 = poly.vertex(face4[3])->position();
+
+            /* rim p0/p1 borders the face with normal n1, rim p2/p3 the
+             * one with normal n0 */
+            const float tol = 1e-4f;
+            if ((p2 - p1) * n1 > tol || (p3 - p0) * n1 > tol ||
+                (p1 - p2) * n0 > tol || (p0 - p3) * n0 > tol)
+            {
+              faces.clear();
+              ei++;
+              continue;
+            }
+          }
+
+          // construct master list of faces to be removed
+          for (set<Face*>::const_iterator sit = faces.begin(); sit != faces.end(); ++sit)
+          {
+            faces_to_remove.insert(*sit);
+          }
 
           f = poly.addFace(face4);   // add new one
 
@@ -418,7 +606,7 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
     if (pts_list.size())
     {
       // find best capping for hole
-      findOptimizedFaces(poly,pts_list);
+      findOptimizedFaces(poly,pts_list,snap);
       pts_list.clear();
     }
   }
