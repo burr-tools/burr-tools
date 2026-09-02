@@ -624,6 +624,15 @@ void scalePolyhedron(Polyhedron & poly, float val)
    }
 }
 
+void scalePolyhedron(Polyhedron & poly, float x, float y, float z)
+{
+   for (Polyhedron::vertex_iterator it = poly.vBegin(); it != poly.vEnd(); it++)
+   {
+      const Vector3Df & p = (*it)->position();
+      (*it)->position(Vector3Df(p.x()*x, p.y()*y, p.z()*z));
+   }
+}
+
 static void joinTubePairs(Polyhedron & poly, Face *inside, Face *outside, float holeSize)
 {
   unsigned int i;

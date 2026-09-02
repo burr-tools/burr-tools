@@ -28,10 +28,10 @@ class stlExporter_0_c : public stlExporter_c {
 
   public:
 
-    stlExporter_0_c(void) : bevel(0.3), cube_scale(10), shrink(0.01), hole(0), tubes(0.05), leaveGroovesInside(false), leaveGroovesOutside(false), smoothVoid(false) {}
+    stlExporter_0_c(void) : bevel(0.3), cube_scale(10), cube_scale_y(0), cube_scale_z(0), shrink(0.01), hole(0), tubes(0.05), leaveGroovesInside(false), leaveGroovesOutside(false), smoothVoid(false) {}
 
     virtual Polyhedron * getMesh(const voxel_c & v, const faceList_c & holes) const;
-    virtual unsigned int numParameters(void) const { return 8; }
+    virtual unsigned int numParameters(void) const { return 10; }
     virtual const char * getParameterName(unsigned int idx) const;
     virtual double getParameter(unsigned int idx) const;
     virtual void setParameter(unsigned int idx, double value);
@@ -42,6 +42,8 @@ class stlExporter_0_c : public stlExporter_c {
 
     double bevel;
     double cube_scale;
+    double cube_scale_y;  // unit size in y direction, 0 = same as cube_scale
+    double cube_scale_z;  // unit size in z direction, 0 = same as cube_scale
     double shrink;
     double hole;
     double tubes;  // size of the tubes that connect inside and outside
