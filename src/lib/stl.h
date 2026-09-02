@@ -54,7 +54,7 @@ class stlExporter_c {
   public:
 
     /** create new exporter, defaults to binary mode active */
-    stlExporter_c(void) : binaryMode(true) {}
+    stlExporter_c(void) : binaryMode(true), coplanarMerge(true) {}
     virtual ~stlExporter_c(void) {}
 
     /**
@@ -95,11 +95,18 @@ class stlExporter_c {
     /** find out if binary mode is active */
     bool getBinaryMode(void) { return binaryMode; }
 
+    /** select whether groups of coplanar faces are merged into fewer,
+     * larger triangles before writing */
+    void setCoplanarMerge(bool on) { coplanarMerge = on; }
+    /** find out if coplanar faces get merged */
+    bool getCoplanarMerge(void) { return coplanarMerge; }
+
     virtual Polyhedron * getMesh(const voxel_c & v, const faceList_c & holes) const = 0;
 
   private:
 
     bool binaryMode;              ///< binary STL export active or not
+    bool coplanarMerge;           ///< merge coplanar faces before writing or not
 
   private:
 

@@ -248,6 +248,13 @@ stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
     else
       Binary->value(0);
 
+    CoplanarMerge = new LFl_Check_Button("Merge flat surfaces", 0, 3, 3, 1);
+    CoplanarMerge->tooltip(" Merge connected coplanar faces into fewer, larger triangles ");
+    if (stl->getCoplanarMerge())
+      CoplanarMerge->value(1);
+    else
+      CoplanarMerge->value(0);
+
     fr->end();
   }
 
@@ -408,6 +415,7 @@ void stlExport_c::exportSTL(int shape)
   updateParameters(stl, params);
 
   stl->setBinaryMode(Binary->value() != 0);
+  stl->setCoplanarMerge(CoplanarMerge->value() != 0);
 
   if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/') {
       snprintf(name, 1000, "%s/%s", Pname->value(), Fname->value());
