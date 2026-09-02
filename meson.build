@@ -145,6 +145,7 @@ gui_src = [
   'src/gui/statuswindow.cpp',
   'src/gui/filechooser.cpp',
   'src/gui/stlexport.cpp',
+  'src/gui/stlexportsolution.cpp',
   'src/gui/togglebutton.cpp',
   'src/gui/tooltabs.cpp',
   'src/gui/vectorexportwindow.cpp',

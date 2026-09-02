@@ -163,6 +163,7 @@ class mainWindow_c : public LFl_Double_Window {
   FlatButton *BtnSrtFind, *BtnSrtLevel, *BtnSrtMoves, *BtnSrtPieces;
   FlatButton *BtnDelAll, *BtnDelBefore, *BtnDelAt, *BtnDelAfter, *BtnDelDisasm;
   FlatButton *BtnDisasmDel, *BtnDisasmDelAll, *BtnDisasmAdd, *BtnDisasmAddAll, *BtnDisasmAddMissing;
+  FlatButton *BtnExportSolutionSTL;
 
   // the zoom levels for all 3 tabs independent, so that the problem
   // tab can have a wider view
@@ -322,6 +323,7 @@ public:
   void cb_DeleteAllDisasm(void);
   void cb_AddDisasm(void);
   void cb_AddAllDisasm(bool all);
+  void cb_ExportSolutionSTL(void);
 
   void activateConfigOptions(void);
 };

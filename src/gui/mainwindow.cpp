@@ -52,6 +52,7 @@
 #include "convertwindow.h"
 #include "assmimportwindow.h"
 #include "bulkrangewindow.h"
+#include "stlexportsolution.h"
 
 #include "LFl_Tile.h"
 
@@ -858,6 +859,23 @@ void mainWindow_c::cb_ShapeGroup(void) {
   }
 
   delete groupEditWin;
+}
+
+static void cb_ExportSolutionSTL_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ExportSolutionSTL(); }
+void mainWindow_c::cb_ExportSolutionSTL(void) {
+
+  unsigned int prob = solutionProblem->getSelection();
+  if (prob >= puzzle->getNumberOfProblems())
+    return;
+
+  unsigned int sol = (unsigned int)SolutionSel->value() - 1;
+  if (sol >= puzzle->getProblem(prob)->getNumberOfSavedSolutions())
+    return;
+
+  stlExportSolution_c w(puzzle, prob, sol);
+  w.show();
+  while (w.visible())
+    Fl::wait();
 }
 
 static void cb_BtnPlacementBrowser_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_BtnPlacementBrowser(); }
@@ -2875,6 +2893,17 @@ void mainWindow_c::updateInterface(void) {
       {
         BtnMovement->deactivate();
       }
+
+      if ((ggt->getGridType()->getCapabilities() & gridType_c::CAP_STLEXPORT) &&
+          pr->getNumberOfSavedSolutions() > 0 &&
+          pr->getNumberOfParts() > 0)
+      {
+        BtnExportSolutionSTL->activate();
+      }
+      else
+      {
+        BtnExportSolutionSTL->deactivate();
+      }
     } else {
 
       // no valid problem available, hide all information
@@ -2910,6 +2939,7 @@ void mainWindow_c::updateInterface(void) {
       BtnDisasmAdd->deactivate();
       BtnDisasmAddAll->deactivate();
       BtnDisasmAddMissing->deactivate();
+      BtnExportSolutionSTL->deactivate();
 
       PcVis->setPuzzle(0);
     }
@@ -3965,8 +3995,19 @@ void mainWindow_c::CreateSolveTab(void) {
 
     (new LFl_Box(0, 10))->setMinimumSize(0, SZ_GAP);
 
+    o = new layouter_c(0, 11);
+
+    BtnExportSolutionSTL = new LFlatButton_c(0, 0, 1, 1, "Export Solution to STL",
+        " Export every piece type of the currently selected solution to individual STL files ",
+        cb_ExportSolutionSTL_stub, this);
+    ((LFlatButton_c*)BtnExportSolutionSTL)->weight(1, 0);
+
+    o->end();
+
+    (new LFl_Box(0, 12))->setMinimumSize(0, SZ_GAP);
+
     PcVis = new PieceVisibility(0, 0, 100, 100);
-    LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 11, 1, 1, PcVis);
+    LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 13, 1, 1, PcVis);
     shapeGroup->callback(cb_PcVis_stub, this);
     shapeGroup->tooltip(" Change appearance of the pieces between normal, grid and invisible ");
     shapeGroup->weight(1, 1);
