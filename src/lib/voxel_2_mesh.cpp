@@ -1148,6 +1148,20 @@ Polyhedron * voxel_2_c::getWireframeMesh(void) const
   return getDrawingMesh();
 }
 
+Polyhedron * voxel_2_c::getSTLMesh(void) const
+{
+  return getMeshInternal(
+      0.5,  // sphere radius
+      0.7,  // connection radius
+      1,    // round
+      0.02, // offset
+      2,    // recursion
+      0,    // inner_rad
+      0,    // hole_diam
+      false
+      );
+}
+
 void voxel_2_c::getConnectionFace(int x, int y, int z, int n, double /*bevel*/, double /*offset*/, std::vector<float> & faceCorners) const
 {
   static const float A = sqrt(0.5);

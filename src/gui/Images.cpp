@@ -150,6 +150,10 @@
 #include "images/ViewMode3DL.xpm"
 #include "images/ViewModeInsides.xpm"
 
+#include "images/RenderModeVoxel.xpm"
+#include "images/RenderModeEdges.xpm"
+#include "images/RenderModeSTL.xpm"
+
 pixmapList_c::~pixmapList_c(void) {
   for (unsigned int i = 0; i < list.size(); i++)
     delete list[i];

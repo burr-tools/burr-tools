@@ -1193,4 +1193,30 @@ Polyhedron * voxel_c::getWireframeMesh(void) const
   return p;
 }
 
+Polyhedron * voxel_c::getFlatMesh(void) const
+{
+  return getMeshInternal(0, 0, false);
+}
+
+Polyhedron * voxel_c::getSTLMesh(void) const
+{
+  double bevel = 0.05;
+  double offset = 0.02;
+
+  if (!meshParamsValid(bevel, offset))
+  {
+    bevel = 0.03;
+    offset = 0.005;
+  }
+
+  Polyhedron * p = getMeshInternal(bevel, offset, false);
+
+  // merge the bevel and offset faces between coplanar faces, so that the
+  // grooves between the voxels of a flat surface disappear and only the
+  // real edges stay bevelled, just like the STL export does by default
+  fillPolyhedronHoles(*p, 1);
+
+  return p;
+}
+
 
