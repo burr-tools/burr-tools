@@ -156,7 +156,9 @@ public:
   // find out the reason why this widget called the callback
   enum {
     RS_MOUSEMOVE,     // the mouse moved, the cursor must be updated
-    RS_CHANGESQUARE   // something was edited, 3D view must be redrawn
+    RS_CHANGESQUARE,  // something was edited, 3D view must be redrawn
+    RS_STROKEBEGIN,   // mouse-down starting a paint stroke
+    RS_STROKEEND      // mouse-up ending a paint stroke
   };
 
   int getReason(void) { return callbackReason; }

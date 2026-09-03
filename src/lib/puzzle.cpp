@@ -399,6 +399,10 @@ void puzzle_c::exchangeShapes(unsigned int s1, unsigned int s2) {
     problems[i]->exchangeShapes(s1, s2);
 }
 
+void puzzle_c::adoptShapes(std::vector<std::unique_ptr<voxel_c>> newShapes) {
+  shapes = std::move(newShapes);
+}
+
 /**
  * similar functions for problems
  */

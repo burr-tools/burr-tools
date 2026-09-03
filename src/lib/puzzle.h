@@ -162,6 +162,8 @@ public:
    *  updating those indices
    */
   void exchangeShapes(unsigned int s1, unsigned int s2);
+  /** Replace shapes array with new ones, freeing old shapes */
+  void adoptShapes(std::vector<std::unique_ptr<voxel_c>> newShapes);
   //@}
 
 
