@@ -212,6 +212,7 @@ class mainWindow_c : public LFl_Double_Window {
   void Small3DView(void);
 
   void StatPieceInfo(unsigned int pc);
+  void StatPieceInfo(unsigned int pc, bool withCoords, int x, int y, int z);
   void StatProblemInfo(unsigned int pr);
 
   void changeShape(unsigned int nr);
