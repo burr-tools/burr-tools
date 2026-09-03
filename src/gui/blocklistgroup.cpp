@@ -22,6 +22,9 @@
 
 #include "BlockList.h"
 
+#include <FL/Fl.H>
+#include <FL/Fl_Slider.H>
+
 // some tool widgets, that may be swapped out later into another file
 
 static void cb_BlockListGroupList_stub(Fl_Widget* o, void* /*v*/) { ((LBlockListGroup_c*)(o->parent()))->cb_list(); }
@@ -43,6 +46,21 @@ void LBlockListGroup_c::cb_list(void) {
 
 static void cb_BlockListGroupSlider_stub(Fl_Widget* o, void* /*v*/) { ((LBlockListGroup_c*)(o->parent()))->cb_slider(); }
 void LBlockListGroup_c::cb_slider(void) { List->setShift((int)Slider->value()); }
+
+int LBlockListGroup_c::handle(int event) {
+
+  if (event == FL_MOUSEWHEEL) {
+    double max = Slider->maximum();
+    double v = Slider->value() + Fl::event_dy() * 24.0;
+    if (v < 0) v = 0;
+    if (v > max) v = max;
+    Slider->value(v);
+    List->setShift((int)v);
+    return 1;
+  }
+
+  return Fl_Group::handle(event);
+}
 
 LBlockListGroup_c::LBlockListGroup_c(int x, int y, int w, int h, BlockList * l) : Fl_Group(0, 0, 100, 100), layoutable_c(x, y, w, h), List(l) {
 

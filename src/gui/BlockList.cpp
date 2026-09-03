@@ -808,6 +808,10 @@ int ColorConstraintsEdit::handle(int event) {
   /* nothing there */
   if ((w() <= 0) || (h() <= 0)) return 1;
 
+  /* let the parent group scroll with the mouse wheel */
+  if (event == FL_MOUSEWHEEL)
+    return 0;
+
   /* only handle push */
   if (event != FL_PUSH)
     return 1;
