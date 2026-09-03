@@ -130,6 +130,8 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     void showNothing(void);
     void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
+    /* Takes ownership of vx and displays it as a single piece. */
+    void showOwnedVoxel(voxel_c * vx, unsigned int colorIndex);
     void showColors(const puzzle_c * puz, colorMode mode);
     void showAssembly(const problem_c * puz, unsigned int solNum);
     void updatePositions(piecePositions_c *shifting);
