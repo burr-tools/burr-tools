@@ -1892,20 +1892,89 @@ void mainWindow_c::cb_Config(void) {
   activateConfigOptions();
 }
 
-static void cb_Comment_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Coment(); }
-void mainWindow_c::cb_Coment(void) {
+static void cb_ToggleNotes_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ToggleNotes(); }
+void mainWindow_c::cb_ToggleNotes(void) {
 
-  multiLineWindow_c win("Edit Comment", "Change the comment for the current puzzle", puzzle->getComment().c_str());
-
-  win.show();
-
-  while (win.visible())
-    Fl::wait();
-
-  if (win.saveChanges()) {
-    puzzle->setComment(win.getText());
-    changed = true;
+  if (notesPanel->visible()) {
+    notesPanel->hide();
+    notesToggle->copy_label("Show Notes");
+  } else {
+    notesPanel->show();
+    notesToggle->copy_label("Hide Notes");
   }
+  notesToggle->redraw();
+  if (contentTile)
+    contentTile->forceLayout();
+  relayoutViewStack();
+}
+
+static void cb_ShowNotes_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ShowNotes(); }
+void mainWindow_c::cb_ShowNotes(void) {
+
+  if (notesPanel->visible())
+    return;
+
+  notesPanel->show();
+  notesToggle->copy_label("Hide Notes");
+  notesToggle->redraw();
+  if (contentTile)
+    contentTile->forceLayout();
+  relayoutViewStack();
+}
+
+static void cb_NotesUpdate_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_NotesUpdate(); }
+void mainWindow_c::cb_NotesUpdate(void) {
+
+  const char * text = notesInput->value();
+  puzzle->setComment(text ? text : "");
+  changed = true;
+  setNotesButtonsEnabled(false);
+}
+
+static void cb_NotesRevert_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_NotesRevert(); }
+void mainWindow_c::cb_NotesRevert(void) {
+  notesInput->value(puzzle->getComment().c_str());
+  setNotesButtonsEnabled(false);
+}
+
+static void cb_NotesChanged_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_NotesChanged(); }
+void mainWindow_c::cb_NotesChanged(void) {
+  const char * text = notesInput->value();
+  const char * saved = puzzle->getComment().c_str();
+  setNotesButtonsEnabled(strcmp(text ? text : "", saved ? saved : "") != 0);
+}
+
+void mainWindow_c::setNotesButtonsEnabled(bool enabled) {
+  if (!notesUpdate || !notesRevert)
+    return;
+  if (enabled) {
+    notesUpdate->activate();
+    notesRevert->activate();
+  } else {
+    notesUpdate->deactivate();
+    notesRevert->deactivate();
+  }
+}
+
+void mainWindow_c::relayoutViewStack(void) {
+  if (notesPanel)
+    notesPanel->invalidateMinSize();
+  if (detailsPanel)
+    detailsPanel->invalidateMinSize();
+  if (rightPane)
+    rightPane->invalidateMinSize();
+
+  if (rightPane)
+    rightPane->resize(rightPane->x(), rightPane->y(), rightPane->w(), rightPane->h());
+
+  layouter_c * root = dynamic_cast<layouter_c*>(resizable());
+  if (root) {
+    root->invalidateMinSize();
+    root->resize(root->x(), root->y(), root->w(), root->h());
+  }
+  if (rightPane)
+    rightPane->resize(rightPane->x(), rightPane->y(), rightPane->w(), rightPane->h());
+  redraw();
 }
 
 static void cb_ImageExportVector_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExportVector(); }
@@ -1988,23 +2057,33 @@ void mainWindow_c::cb_Export_Scad(void) {
 static void cb_StatusWindow_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_StatusWindow(); }
 void mainWindow_c::cb_StatusWindow(void) {
 
-  bool again;
+  if (!detailsPanel)
+    return;
 
-  do {
+  detailsPanel->show();
+  if (rightPane)
+    rightPane->forceLayout();
+  relayoutViewStack();
+  detailsPanel->populate(puzzle);
+  relayoutViewStack();
+}
 
-    statusWindow_c w(puzzle);
-    w.show();
+static void cb_DetailsClose_stub(Fl_Widget*, void* v) { ((mainWindow_c*)v)->cb_DetailsClose(); }
+void mainWindow_c::cb_DetailsClose(void) {
 
-    while (w.visible()) {
-      Fl::wait();
-    }
+  if (!detailsPanel)
+    return;
 
-    again = w.getAgain();
+  detailsPanel->hide();
+  if (rightPane)
+    rightPane->forceLayout();
+  relayoutViewStack();
+}
 
-    if (again)
-      changed = true;
+static void cb_DetailsChanged_stub(Fl_Widget*, void* v) { ((mainWindow_c*)v)->cb_DetailsChanged(); }
+void mainWindow_c::cb_DetailsChanged(void) {
 
-  } while (again);
+  changed = true;
 
   unsigned int current = PcSel->getSelection();
 
@@ -2015,10 +2094,10 @@ void mainWindow_c::cb_StatusWindow(void) {
       current--;
 
   activateShape(current);
-
   PcSel->setSelection(current);
-
   updateInterface();
+  StatPieceInfo(PcSel->getSelection());
+  redraw();
 }
 
 static void cb_Toggle3D_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Toggle3D(); }
@@ -2170,6 +2249,8 @@ void mainWindow_c::applyHistoryRestore(unsigned int selected) {
 
   PcSel->setSelection(selected);
   changed = shapeHistory ? shapeHistory->isModifiedFromSave() : true;
+  if (detailsPanel && detailsPanel->visible())
+    detailsPanel->populate(puzzle);
   updateInterface();
   StatPieceInfo(PcSel->getSelection());
   redraw();
@@ -2255,8 +2336,8 @@ bool mainWindow_c::tryToLoad(const char * f) {
   if (containsStarted)
     fl_message("This puzzle file contains started but not finished search for solutions.");
 
-  if (puzzle->getCommentPopup())
-    fl_message("%s",puzzle->getComment().c_str());
+  if (puzzle->getCommentPopup() && puzzle->getComment().length() > 0)
+    cb_ShowNotes();
 
   return true;
 }
@@ -2292,6 +2373,14 @@ void mainWindow_c::ReplacePuzzle(puzzle_c * NewPuzzle) {
 
   if (shapeHistory)
     shapeHistory->reset(puzzle);
+
+  if (notesInput) {
+    notesInput->value(puzzle->getComment().c_str());
+    setNotesButtonsEnabled(false);
+  }
+
+  if (detailsPanel && detailsPanel->visible())
+    detailsPanel->populate(puzzle);
 
   updateUndoRedoButtons();
 
@@ -2346,7 +2435,7 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
     {"Puzzlecad (SCAD)", 0, cb_Export_Scad_stub, 0, 0, 0, 0, 14, 56},
     { 0 },
   {"Status",           0, cb_StatusWindow_stub,  0, 0, 0, 0, 14, 56},
-  {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
+  {"Notes",            0, cb_ShowNotes_stub,     0, 0, 0, 0, 14, 56},
   {"Config",           0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
   {"About",            0, cb_About_stub,       0, 0, 3, 0, 14, 56},
   {0}
@@ -3480,6 +3569,13 @@ void mainWindow_c::Small3DView(void) {
 
 int mainWindow_c::handle(int event) {
 
+  if (event == FL_SHORTCUT && notesInput && Fl::focus() == notesInput) {
+    unsigned mods = Fl::event_state();
+    int k = Fl::event_key();
+    if ((mods & (FL_CTRL | FL_COMMAND)) && (k == 'z' || k == 'Z' || k == 'y' || k == 'Y'))
+      return notesInput->handle(event);
+  }
+
   if (Fl_Double_Window::handle(event))
     return 1;
 
@@ -3601,6 +3697,9 @@ void mainWindow_c::CreateShapeTab(void) {
     (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, 0);
     BtnShapeRight = new LFlatButton_c(6, 0, 1, 1, "@-16->", " Exchange current shape with next shape ", cb_ShapeRight_stub, this);
     ((LFlatButton_c*)BtnShapeRight)->weight(1, 0);
+    (new LFl_Box(7, 0))->setMinimumSize(SZ_GAP, 0);
+    BtnDetails =    new LFlatButton_c(8, 0, 1, 1, "Details", " Show shape details ", cb_StatusWindow_stub, this);
+    ((LFlatButton_c*)BtnDetails)->weight(1, 0);
 
     o->end();
 
@@ -4278,7 +4377,15 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
   followingTail = false;
   followAssembly = -1;
   followSortBy = -1;
-  renderedAssembly = -1;
+  rightPane = 0;
+  detailsPanel = 0;
+  notesPanel = 0;
+  contentTile = 0;
+  notesInput = 0;
+  notesUpdate = 0;
+  notesRevert = 0;
+  notesToggle = 0;
+  BtnDetails = 0;
 
   puzzle = new puzzle_c(gt);
   shapeHistory = new shapeHistory_c();
@@ -4291,22 +4398,72 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
   label("BurrTools - unknown");
   user_data((void*)(this));
 
+  static const int NOTES_WIDTH = 380;
+  static const int NOTES_SHRINK_W = 120;
+  static const int NOTES_TEXT_MIN_H = 80;
+
+  int notesBtnTw = 0, notesBtnTh = 0;
+  fl_font(FL_HELVETICA, FL_NORMAL_SIZE);
+  fl_measure("Update", notesBtnTw, notesBtnTh);
+  const int notesBtnH = notesBtnTh + 10;
+  const int notesMinH = NOTES_TEXT_MIN_H + 5 + notesBtnH + 8;
+  const int notesButtonsFloorH = notesBtnH + 8;
+
+  layouter_c * menuRow = new layouter_c(0, 0, 1, 1);
+
   MainMenu = new LFl_Menu_Bar(0, 0, 1, 1);
   MainMenu->copy(menu_MainMenu, this);
+  MainMenu->weight(1, 0);
+
+  notesToggle = new LFlatButton_c(1, 0, 1, 1, "Show Notes",
+                                  " Show or hide the puzzle notes panel ",
+                                  cb_ToggleNotes_stub, this);
+  notesToggle->box(FL_FLAT_BOX);
+  notesToggle->down_box(FL_FLAT_BOX);
+  notesToggle->labelsize(14);
+  {
+    int tw = 0, th = 0;
+    fl_font(notesToggle->labelfont(), notesToggle->labelsize());
+    fl_measure("Hide Notes", tw, th);
+    notesToggle->setMinimumSize(tw + 16, 25);
+  }
+
+  menuRow->end();
 
   StatusLine = new LStatusLine(0, 2, 1, 1);
   StatusLine->callback(cb_Status_stub, this);
+  StatusLine->weight(1, 0);
 
-  LFl_Tile * mainTile = new LFl_Tile(0, 1, 1, 1);
-  mainTile->weight(0, 1);
+  layouter_c * contentRow = new LFl_Tile(0, 1, 1, 1);
+  contentTile = (LFl_Tile*)contentRow;
+  contentRow->weight(1, 1);
+  contentRow->setShrinkMinSize(0, notesButtonsFloorH);
 
-  layouter_c * lay = new layouter_c(1, 0, 1, 1);
+  LFl_Tile * mainTile = new LFl_Tile(0, 0, 1, 1);
+  mainTile->weight(1, 1);
+
+  static const int VIEW3D_MIN = 400;
+  static const int VIEW3D_SHRINK_MIN = VIEW3D_MIN * 3 / 10;
+
+  rightPane = new LFl_Tile(1, 0, 1, 1);
+  rightPane->weight(1, 0);
+  rightPane->setMinimumSize(VIEW3D_MIN, VIEW3D_MIN);
+  rightPane->setShrinkMinSize(VIEW3D_SHRINK_MIN, 0);
+  rightPane->shrinkPrio(0, 128);
+
   View3D = new LView3dGroup(0, 0, 1, 1);
-  lay->weight(1, 0);
-  lay->end();
-  lay->setMinimumSize(400, 400);
-  View3D->weight(0, 1);
+  View3D->weight(1, 1);
   View3D->callback(cb_3dClick_stub, this);
+
+  detailsPanel = new statusWindow_c(0, 1, 1, 1);
+  detailsPanel->weight(1, 0);
+  detailsPanel->setMinimumSize(200, 250);
+  detailsPanel->setShrinkMinSize(VIEW3D_SHRINK_MIN, 180);
+  detailsPanel->shrinkPrio(0, 200);
+  detailsPanel->setCallbacks(cb_DetailsClose_stub, cb_DetailsChanged_stub, this);
+  detailsPanel->hide();
+
+  rightPane->end();
 
   // this box paints the background behind the tab, because the tabs are partly transparent
   (new LFl_Box(0, 0, 1, 1))->color(FL_BACKGROUND_COLOR);
@@ -4320,6 +4477,68 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
   CreateShapeTab();
   CreateProblemTab();
   CreateSolveTab();
+
+  TaskSelectionTab->end();
+  mainTile->end();
+
+  notesPanel = new layouter_c(1, 0, 1, 1);
+  notesPanel->setMinimumSize(NOTES_WIDTH, notesMinH);
+  notesPanel->setShrinkMinSize(NOTES_SHRINK_W, notesButtonsFloorH);
+  notesPanel->shrinkPrio(0, 128);
+  notesPanel->pitch(4);
+  notesPanel->weight(0, 1);
+  notesPanel->clip_children(1);
+
+  notesInput = new LFl_Text_Editor(0, 0, 1, 1);
+  notesInput->weight(1, 1);
+  notesInput->setMinimumSize(NOTES_SHRINK_W, NOTES_TEXT_MIN_H);
+  notesInput->setShrinkMinSize(NOTES_SHRINK_W, 1);
+  notesInput->shrinkPrio(0, 0);
+  notesInput->value(puzzle->getComment().c_str());
+  notesInput->when(FL_WHEN_CHANGED);
+  notesInput->callback(cb_NotesChanged_stub, this);
+
+  LFl_Box * notesGap = new LFl_Box(0, 1, 1, 1);
+  notesGap->setMinimumSize(0, 5);
+  notesGap->setShrinkMinSize(0, 1);
+  notesGap->shrinkPrio(0, 64);
+
+  layouter_c * notesButtons = new layouter_c(0, 2, 1, 1);
+  notesButtons->weight(1, 0);
+  notesButtons->setMinimumSize(NOTES_SHRINK_W, notesBtnH);
+  notesButtons->setShrinkMinSize(NOTES_SHRINK_W, notesBtnH);
+  notesButtons->shrinkPrio(255, 255);
+
+  {
+    int bw = 2 * (notesBtnTw + 4);
+
+    LFl_Box * leftPad = new LFl_Box(0, 0);
+    leftPad->weight(1, 0);
+
+    notesUpdate = new LFl_Button("Update", 1, 0);
+    notesUpdate->callback(cb_NotesUpdate_stub, this);
+    notesUpdate->tooltip(" Save the current notes ");
+    notesUpdate->setMinimumSize(bw, notesBtnH);
+
+    (new LFl_Box(2, 0))->setMinimumSize(12, 0);
+
+    notesRevert = new LFl_Button("Revert", 3, 0);
+    notesRevert->callback(cb_NotesRevert_stub, this);
+    notesRevert->tooltip(" Revert notes to the last saved version ");
+    notesRevert->setMinimumSize(bw, notesBtnH);
+
+    LFl_Box * rightPad = new LFl_Box(4, 0);
+    rightPad->weight(1, 0);
+  }
+
+  notesButtons->end();
+  notesPanel->end();
+  notesPanel->hide();
+
+  contentRow->end();
+
+  setNotesButtonsEnabled(false);
+  setResizeMin(100, 100);
 
   currentTab = 0;
   ViewSizes[0] = -1;

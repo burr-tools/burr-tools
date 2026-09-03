@@ -49,6 +49,31 @@
 
 #include <stdlib.h>
 
+static void tileMinSize(Fl_Widget *o, int *minX, int *minY) {
+  layoutable_c * widget = dynamic_cast<layoutable_c*>(o);
+  if (!widget) {
+    *minX = 1;
+    *minY = 1;
+    return;
+  }
+  widget->getMinSize(minX, minY);
+  int sw = widget->getShrinkMinWidth();
+  int sh = widget->getShrinkMinHeight();
+  if (sw > 0 && sw < *minX)
+    *minX = sw;
+  if (sh > 0 && sh < *minY)
+    *minY = sh;
+  if (*minX < 1)
+    *minX = 1;
+  if (*minY < 1)
+    *minY = 1;
+}
+
+void LFl_Tile::forceLayout(void) {
+  unspoiled = true;
+  resize(x(), y(), w(), h());
+}
+
 // Drag the edges that were initially at oldx,oldy to newx,newy:
 // pass zero as oldx or oldy to disable drag in that direction:
 
@@ -60,7 +85,7 @@ void LFl_Tile::position(int oix, int oiy, int newx, int newy) {
   // smaller than allowed, if wo we simply do nothing
   for (int i=children(); i--; p += 4) {
     Fl_Widget* o = *a++;
-    if (o == resizable()) continue;
+    if (o == resizable() || !o->visible()) continue;
     int X = o->x();
     int R = X+o->w();
     if (oix) {
@@ -78,10 +103,8 @@ void LFl_Tile::position(int oix, int oiy, int newx, int newy) {
       if (t == oiy || (t>oiy && B<newy) || (t<oiy && B>newy)) B = newy;
     }
 
-    layoutable_c * widget = dynamic_cast<layoutable_c*>(o);
-
     int minX, minY;
-    widget->getMinSize(&minX, &minY);
+    tileMinSize(o, &minX, &minY);
 
     // move the new position so that all
     // changed widgets still have minimum size
@@ -109,7 +132,7 @@ void LFl_Tile::position(int oix, int oiy, int newx, int newy) {
 
   for (int i=children(); i--; p += 4) {
     Fl_Widget* o = *a++;
-    if (o == resizable()) continue;
+    if (o == resizable() || !o->visible()) continue;
     int X = o->x();
     int R = X+o->w();
     if (oix) {
@@ -168,10 +191,11 @@ void LFl_Tile::resize(int X,int Y,int W,int H) {
       if (sizes()[p++] >= OB) yy += dh; else if (yy > NB) yy = NB;
       if (sizes()[p++] >= OB) B += dh; else if (B > NB) B = NB;
 
-      layoutable_c * widget = dynamic_cast<layoutable_c*>(o);
+      if (!o->visible())
+        continue;
 
       int minX, minY;
-      widget->getMinSize(&minX, &minY);
+      tileMinSize(o, &minX, &minY);
 
       // if we need to make one widget smaller than allowed, go
       // back to layouter mode, this ensured minimum sizes
@@ -241,7 +265,7 @@ int LFl_Tile::handle(int event) {
     int p = 8;
     for (int i=children(); i--; p += 4) {
       Fl_Widget* o = *a++;
-      if (o == resizable()) continue;
+      if (o == resizable() || !o->visible()) continue;
       if (sizes()[p+1]<sizes()[1] && o->y()<=my+GRABAREA && o->y()+o->h()>=my-GRABAREA) {
 	int t = mx - (o->x()+o->w());
 	if (abs(t) < mindx) {

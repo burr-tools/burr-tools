@@ -39,6 +39,9 @@ public:
   LFl_Tile(int X,int Y,int W,int H) : layouter_c(X,Y,W,H), unspoiled(true) {}
   void resize(int, int, int, int);
   void position(int, int, int, int);
+  /* Re-run the grid layout and forget a previous drag split. Used when
+   * a pane is shown or hidden so leftover splitter positions are dropped. */
+  void forceLayout(void);
 };
 
 #endif
