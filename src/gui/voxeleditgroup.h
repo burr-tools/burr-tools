@@ -67,6 +67,10 @@ public:
   int getMouseY2(void) { return sqedit->getMouseY2(); }
   int getMouseZ(void) { return sqedit->getMouseZ(); }
 
+  int getCursorX(void) { return sqedit->getCursorX(); }
+  int getCursorY(void) { return sqedit->getCursorY(); }
+  int getCursorZ(void) { return sqedit->getCursorZ(); }
+
   void setPuzzle(puzzle_c * puzzle, unsigned int num);
 
   void clearPuzzle(void) {
