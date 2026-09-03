@@ -31,7 +31,7 @@ class TestBurrTools(unittest.TestCase):
         self.assertEqual(len(solutions), 1)
         sol = solutions[0]
         self.assertTrue(sol.has_disassembly)
-        self.assertEqual(sol.moves_text, "98.2.4.2")
+        self.assertEqual(sol.moves_text, "99.3.4.2")
         self.assertEqual(sol.level, 98)
         self.assertGreater(sol.total_moves, 0)
         self.assertEqual(len(sol.placements), 7)

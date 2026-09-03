@@ -53,7 +53,16 @@ public:
    */
   virtual std::unique_ptr<separation_c> disassemble(const assembly_c * /*assembly*/) { return nullptr; }
 
-public:
+  /** request abort of an in-progress disassemble call */
+  virtual void stop(void) {}
+
+  /** microseconds spent in 90° rotation move search; default 0 */
+  virtual unsigned long long getRotationSearchUs(void) const { return 0; }
+
+  /** microseconds spent in sliding / linear move search; default 0 */
+  virtual unsigned long long getLinearSearchUs(void) const { return 0; }
+
+private:
 
   // no copying and assigning
   disassembler_c(const disassembler_c&) = delete;

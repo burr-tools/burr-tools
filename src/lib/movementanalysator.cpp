@@ -28,7 +28,11 @@
 #include "voxel.h"
 #include "disassemblerhashes.h"
 #include "gridtype.h"
+#include "rotationmoves_0.h"
+#include "rotationmoves_crowell.h"
+#include "solvertype.h"
 
+#include <chrono>
 #include <string.h>
 
 /**
@@ -302,7 +306,8 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
   return true;
 }
 
-movementAnalysator_c::movementAnalysator_c(const problem_c & problem) :
+movementAnalysator_c::movementAnalysator_c(const problem_c & problem, bool enableRotations,
+                                           solverType_e solverType) :
   cache(problem.getPuzzle().getGridType()->getMovementCache(problem)),
   matrix(cache ? cache->numDirections() * problem.getNumberOfPieces() * problem.getNumberOfPieces() : 0, 0),
   movement(problem.getNumberOfPieces()),
@@ -310,6 +315,14 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem) :
   check(problem.getNumberOfPieces(), 0),
   piecenumber(problem.getNumberOfPieces()),
   nodes(std::make_unique<countingNodeHash>()),
+  checkRotations(false),
+  bricksGrid(problem.getPuzzle().getGridType()->getType() == gridType_c::GT_BRICKS),
+  rotationsActive(false),
+  rotationSearchUs(0),
+  linearSearchUs(0),
+  searchPhaseStartUs(0),
+  searchTimingOpen(false),
+  searchPhaseLinear(true),
   nextstate(-1),
   maxstep((unsigned int) -1) {
 
@@ -325,6 +338,20 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem) :
     for (unsigned int j = 0; j < problem.getPartMaximum(i); j++)
       weights[pc++] = problem.getPartShape(i)->getWeight();
   }
+
+  if (bricksGrid) {
+    if (solverType == SOLVER_CROWELL)
+      rotationMoves = std::make_unique<rotationMoves_crowell_c>(problem, cache.get());
+    else
+      /* Classic and BurrTools 2 share the complete 90° generator. */
+      rotationMoves = std::make_unique<rotationMoves_0_c>(problem, cache.get());
+  }
+
+  setCheckRotations(enableRotations);
+}
+
+void movementAnalysator_c::setCheckRotations(bool enable) {
+  checkRotations = enable && bricksGrid && (rotationMoves != nullptr);
 }
 
 movementAnalysator_c::~movementAnalysator_c() = default;
@@ -483,8 +510,41 @@ disassemblerNode_c * movementAnalysator_c::newNodeMerge(const disassemblerNode_c
   return newNode(amount);
 }
 
+static unsigned long long analysatorNowUs(void) {
+  using namespace std::chrono;
+  return (unsigned long long)duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
+}
+
+void movementAnalysator_c::flushSearchPhase(void) {
+  if (!searchTimingOpen)
+    return;
+  unsigned long long dt = analysatorNowUs() - searchPhaseStartUs;
+  if (searchPhaseLinear)
+    linearSearchUs.fetch_add(dt, std::memory_order_relaxed);
+  else
+    rotationSearchUs.fetch_add(dt, std::memory_order_relaxed);
+  searchTimingOpen = false;
+}
+
+void movementAnalysator_c::beginSearchPhase(bool linear) {
+  flushSearchPhase();
+  searchPhaseLinear = linear;
+  searchPhaseStartUs = analysatorNowUs();
+  searchTimingOpen = true;
+}
+
+void movementAnalysator_c::switchToRotationPhase(void) {
+  if (!searchTimingOpen || !searchPhaseLinear)
+    return;
+  flushSearchPhase();
+  searchPhaseLinear = false;
+  searchPhaseStartUs = analysatorNowUs();
+  searchTimingOpen = true;
+}
 
 void movementAnalysator_c::init_find(disassemblerNode_c * nd, const std::vector<unsigned int> & pcs) {
+
+  beginSearchPhase(true);
 
   /* Initialise the state machine for the find routine
    */
@@ -493,6 +553,7 @@ void movementAnalysator_c::init_find(disassemblerNode_c * nd, const std::vector<
   nextstep = 1;
   nextstate = 0;
   next_pn = pcs.size();
+  rotationsActive = false;
 
   searchnode = nd;
   pieces = &pcs;
@@ -509,6 +570,9 @@ void movementAnalysator_c::init_find(disassemblerNode_c * nd, const std::vector<
    * "Computer Analysis of All 6 Piece Burrs"
    */
   prepare();
+
+  if (checkRotations && rotationMoves)
+    rotationMoves->init_find(nd, pcs);
 }
 
 /* at first we check if movement is possible at all in the current direction, if so
@@ -629,8 +693,20 @@ disassemblerNode_c * movementAnalysator_c::find(void) {
 
         break;
 
+      case 3:
+        /* 90° rotation moves (brick grids only, when enabled) */
+        if (checkRotations && rotationMoves) {
+          switchToRotationPhase();
+          n = rotationMoves->find();
+          if (!n)
+            nextstate++;
+        } else {
+          nextstate++;
+        }
+        break;
+
       default:
-        // endstate, do nothing
+        flushSearchPhase();
         return 0;
     }
   }

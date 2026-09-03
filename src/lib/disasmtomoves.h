@@ -50,6 +50,27 @@ public:
   /** piece moving at this time */
   virtual bool moving(unsigned int piece) = 0;
 
+  /**
+   * Orientation of the piece, or (unsigned int)-1 if unchanged / not provided.
+   * Used when disassembly includes rotation moves.
+   */
+  virtual unsigned int getTrans(unsigned int /*piece*/) { return (unsigned int)-1; }
+
+  /**
+   * If the piece is mid-rotation animation, fill continuous tumble parameters.
+   * angleDeg is the current interpolation angle (0..±90).
+   * Pivot is the world-space voxel used as centre (rotate about its cube centre).
+   * Returns false if the piece is not currently animating a rotation.
+   */
+  virtual bool getRotationAnim(unsigned int /*piece*/,
+                               float * /*angleDeg*/,
+                               float * /*axisX*/, float * /*axisY*/, float * /*axisZ*/,
+                               float * /*pivotX*/, float * /*pivotY*/, float * /*pivotZ*/) {
+    return false;
+  }
+
+private:
+
   // no copying and assigning
   piecePositions_c(const piecePositions_c&) = delete;
   piecePositions_c& operator=(const piecePositions_c&) = delete;
@@ -73,6 +94,18 @@ class disasmToMoves_c : public piecePositions_c {
   /** this array contains the current position and alpha values of all pieces */
   std::vector<float> moves;
 
+  /** orientations for each piece (start mesh while a rotation is in progress) */
+  std::vector<unsigned int> orients;
+
+  /** per-piece mid-rotation animation (angle 0 = inactive) */
+  std::vector<float> rotAngle;
+  std::vector<float> rotAxisX;
+  std::vector<float> rotAxisY;
+  std::vector<float> rotAxisZ;
+  std::vector<float> rotPivotX;
+  std::vector<float> rotPivotY;
+  std::vector<float> rotPivotZ;
+
   /** this array contains the information, if a piece is currently moving, or not */
   std::vector<bool> mv;
 
@@ -83,7 +116,15 @@ class disasmToMoves_c : public piecePositions_c {
   unsigned int maxPieceName;
 
   /** this function walks the tree and sets the piece positions */
-  int doRecursive(const separation_c * tree, int step, float * array, bool center_active, int cx, int cy, int cz);
+  int doRecursive(const separation_c * tree, int step, float * array, unsigned int * orientsOut, bool center_active, int cx, int cy, int cz);
+
+  /** find rotation-arrival metadata for the state at global step index */
+  bool findRotationArrival(int step, unsigned int pieceName,
+                           int * pvx, int * pvy, int * pvz,
+                           unsigned int * axis, unsigned int * sense) const;
+  bool findRotationArrivalRec(const separation_c * tree, int step, unsigned int pieceName,
+                              int * pvx, int * pvy, int * pvz,
+                              unsigned int * axis, unsigned int * sense) const;
 
 public:
 
@@ -111,6 +152,13 @@ public:
   virtual float getZ(unsigned int piece) override;
   virtual float getA(unsigned int piece) override;
   virtual bool moving(unsigned int piece) override;
+  virtual unsigned int getTrans(unsigned int piece) override;
+  virtual bool getRotationAnim(unsigned int piece,
+                               float * angleDeg,
+                               float * axisX, float * axisY, float * axisZ,
+                               float * pivotX, float * pivotY, float * pivotZ) override;
+
+private:
 
   // no copying and assigning
   disasmToMoves_c(const disasmToMoves_c&) = delete;
