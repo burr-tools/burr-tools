@@ -431,7 +431,7 @@ void imageExport_c::cb_Export(void) {
     separation_c * t = pr->getSavedSolution(s)->getDisassembly();
     if (!t) return;
 
-    for (unsigned int step = 0; step < t->sumMoves(); step++) {
+    for (unsigned int step = 0; step < t->sumSteps(); step++) {
       disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, pr->getNumberOfPieces());
       dtm->setStep(step, false, true);
       images.push_back(new ImageInfo(puzzle, getColorMode(),
@@ -448,7 +448,7 @@ void imageExport_c::cb_Export(void) {
     separation_c * t = pr->getSavedSolution(s)->getDisassembly();
     if (!t) return;
 
-    for (unsigned int step = t->sumMoves() - 1; step > 0; step--) {
+    for (unsigned int step = t->sumSteps() - 1; step > 0; step--) {
       disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, pr->getNumberOfPieces());
       dtm->setStep(step, false, true);
       images.push_back(new ImageInfo(puzzle, getColorMode(),
