@@ -21,6 +21,7 @@
 #include "view3dgroup.h"
 
 #include "voxelframe.h"
+#include "configuration.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/disasmtomoves.h"
@@ -84,6 +85,8 @@ int LView3dGroup::handle(int event) {
       return 0;
 
     int dy = Fl::event_dy();
+    if (config.reverseScrollZoom())
+      dy = -dy;
     slider->value(slider->value() + 0.1 * dy);
     View3D->setSize(exp(6 - slider->value()));
     return 1;
