@@ -78,8 +78,12 @@ public:
 
   ~solution_c(void);
 
-  /** save the solution to the XML file */
-  void save(xmlWriter_c & xml) const;
+  /**
+   * Save the solution to the XML file.
+   * @param includeRotationFields when true, persist mid-disassembly orientations
+   *        and rotation metadata (for <solutionsWithRotations>)
+   */
+  void save(xmlWriter_c & xml, bool includeRotationFields = false) const;
 
   /** get the assembly from this solution, it will always be not NULL */
   assembly_c * getAssembly(void) { return assembly; }

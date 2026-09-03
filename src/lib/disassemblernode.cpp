@@ -24,7 +24,8 @@
 
 disassemblerNode_c::disassemblerNode_c(unsigned int pn, disassemblerNode_c * comf, int _dir, int _amount, int step) :
     comefrom(comf), piecenumber(pn), dat(new int16_t[4*piecenumber]),
-    refcount(1), dir(_dir), amount(_amount), hashValue(0)
+    refcount(1), dir(_dir), amount(_amount), hashValue(0),
+    rotPiece(0xFFFF), rotPivotX(0), rotPivotY(0), rotPivotZ(0)
 {
   bt_assert(comefrom);
 
@@ -34,12 +35,14 @@ disassemblerNode_c::disassemblerNode_c(unsigned int pn, disassemblerNode_c * com
 
 disassemblerNode_c::disassemblerNode_c(unsigned int pn) :
     comefrom(0), piecenumber(pn), dat(new int16_t[4*piecenumber]),
-    refcount(1), dir(0), amount(0), hashValue(0), waylength(0)
+    refcount(1), dir(0), amount(0), hashValue(0), waylength(0),
+    rotPiece(0xFFFF), rotPivotX(0), rotPivotY(0), rotPivotZ(0)
 {
 }
 
 disassemblerNode_c::disassemblerNode_c(const assembly_c * assm) :
-    comefrom(0), piecenumber(0), refcount(1), dir(0), amount(0), hashValue(0), waylength(0)
+    comefrom(0), piecenumber(0), refcount(1), dir(0), amount(0), hashValue(0), waylength(0),
+    rotPiece(0xFFFF), rotPivotX(0), rotPivotY(0), rotPivotZ(0)
 {
   /* create the first node with the start state
    * here all pieces are at position (0; 0; 0)
@@ -90,6 +93,10 @@ void disassemblerNode_c::replaceNode(const disassemblerNode_c *n) {
   dir = n->dir;
   amount = n->amount;
   waylength = n->waylength;
+  rotPiece = n->rotPiece;
+  rotPivotX = n->rotPivotX;
+  rotPivotY = n->rotPivotY;
+  rotPivotZ = n->rotPivotZ;
 
   if (comefrom && comefrom->decRefCount())
     delete comefrom;
@@ -149,5 +156,9 @@ bool disassemblerNode_c::is_separation() const {
       return true;
 
   return false;
+}
+
+bool disassemblerNode_c::isRotationMove(void) const {
+  return dir >= 100;
 }
 

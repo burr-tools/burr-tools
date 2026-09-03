@@ -22,6 +22,7 @@
 #define __DISASSEMBLER_0_H__
 
 #include "disassembler_a.h"
+#include "bt_classic_solver.h"
 
 class separation_c;
 
@@ -53,7 +54,7 @@ private:
 
 public:
 
-  disassembler_0_c(const problem_c & puz) : disassembler_a_c(puz) { }
+  disassembler_0_c(const problem_c & puz, bool enableRotations = false) : disassembler_a_c(puz, enableRotations) { }
   ~disassembler_0_c() { }
 
 private:

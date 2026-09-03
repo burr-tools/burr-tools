@@ -26,6 +26,22 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+#include <string>
+
+static std::string doubledPivotAttr(int doubled) {
+  char buf[32];
+  if (doubled % 2 == 0)
+    snprintf(buf, sizeof(buf), "%d", doubled / 2);
+  else
+    snprintf(buf, sizeof(buf), "%.1f", doubled * 0.5);
+  return std::string(buf);
+}
+
+static int parseDoubledPivot(const std::string & s) {
+  return (int)floor(atof(s.c_str()) * 2.0 + 0.5);
+}
 
 /* template function to get space separated integer values
  * from a string and enter these into an iterator
@@ -103,7 +119,7 @@ void getNumbers(std::string str, iter start, iter end, bool neg_allowed) {
  * State
  ************************************************************************/
 
-void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
+void state_c::save(xmlWriter_c & xml, unsigned int piecenumber, bool includeRotationFields) const
 {
   xml.newTag("state");
 
@@ -143,6 +159,35 @@ void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
   }
   xml.endTag("dz");
 
+  /* Only for <solutionsWithRotations>: older BurrTools cannot skip unknown
+   * tags inside <state>, so classic <solutions> must stay dx/dy/dz only. */
+  if (includeRotationFields) {
+    if (dt) {
+      xml.newTag("dt");
+      {
+        std::ostream & str = xml.addContent();
+        for (unsigned int ii = 0; ii < piecenumber; ii++)
+        {
+          str << dt[ii];
+          if (ii < piecenumber-1)
+            str << " ";
+        }
+      }
+      xml.endTag("dt");
+    }
+
+    if (rotPiece != (unsigned int)-1) {
+      xml.newTag("rotation");
+      xml.newAttrib("piece", rotPiece);
+      xml.newAttrib("px", doubledPivotAttr(rotPivotX));
+      xml.newAttrib("py", doubledPivotAttr(rotPivotY));
+      xml.newAttrib("pz", doubledPivotAttr(rotPivotZ));
+      xml.newAttrib("axis", rotAxis);
+      xml.newAttrib("sense", rotSense);
+      xml.endTag("rotation");
+    }
+  }
+
   xml.endTag("state");
 }
 
@@ -154,7 +199,8 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
   piecenumber = pn;
 #endif
 
-  dx = dy = dz = 0;
+  dx = dy = dz = dt = 0;
+  clearRotationArrival();
 
   try
   {
@@ -190,6 +236,27 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
         pars.next();
         pars.require(xmlParser_c::END_TAG, "dz");
       }
+      else if (pars.getName() == "dt")
+      {
+        dt = new int[pn];
+        pars.next();
+        getNumbers(pars.getText(), dt, dt+pn, false);
+        pars.next();
+        pars.require(xmlParser_c::END_TAG, "dt");
+      }
+      else if (pars.getName() == "rotation")
+      {
+        std::string s;
+        s = pars.getAttributeValue("piece");
+        if (!s.length()) pars.exception("rotation needs piece");
+        rotPiece = (unsigned int)atoi(s.c_str());
+        s = pars.getAttributeValue("px"); rotPivotX = parseDoubledPivot(s);
+        s = pars.getAttributeValue("py"); rotPivotY = parseDoubledPivot(s);
+        s = pars.getAttributeValue("pz"); rotPivotZ = parseDoubledPivot(s);
+        s = pars.getAttributeValue("axis"); rotAxis = (unsigned int)atoi(s.c_str());
+        s = pars.getAttributeValue("sense"); rotSense = (unsigned int)atoi(s.c_str());
+        pars.skipSubTree();
+      }
     } while (true);
 
     if (!dx || !dy || !dz)
@@ -201,6 +268,7 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
     if (dx) delete [] dx;
     if (dy) delete [] dy;
     if (dz) delete [] dz;
+    if (dt) delete [] dt;
     pars.exception(e.what());
   }
 
@@ -219,6 +287,20 @@ state_c::state_c(const state_c * cpy, unsigned int pn)
   memcpy(dx, cpy->dx, pn*sizeof(int));
   memcpy(dy, cpy->dy, pn*sizeof(int));
   memcpy(dz, cpy->dz, pn*sizeof(int));
+
+  if (cpy->dt) {
+    dt = new int[pn];
+    memcpy(dt, cpy->dt, pn*sizeof(int));
+  } else {
+    dt = 0;
+  }
+
+  rotPiece = cpy->rotPiece;
+  rotPivotX = cpy->rotPivotX;
+  rotPivotY = cpy->rotPivotY;
+  rotPivotZ = cpy->rotPivotZ;
+  rotAxis = cpy->rotAxis;
+  rotSense = cpy->rotSense;
 }
 
 state_c::state_c(unsigned int pn)
@@ -229,13 +311,17 @@ state_c::state_c(unsigned int pn)
   dx = new int[pn];
   dy = new int[pn];
   dz = new int[pn];
-  bt_assert(dx && dy && dz);
+  dt = new int[pn];
+  memset(dt, 0, pn*sizeof(int));
+  bt_assert(dx && dy && dz && dt);
+  clearRotationArrival();
 }
 
 state_c::~state_c() {
   delete [] dx;
   delete [] dy;
   delete [] dz;
+  delete [] dt;
 }
 
 void state_c::set(unsigned int piece, int x, int y, int z) {
@@ -243,6 +329,38 @@ void state_c::set(unsigned int piece, int x, int y, int z) {
   dx[piece] = x;
   dy[piece] = y;
   dz[piece] = z;
+}
+
+void state_c::set(unsigned int piece, int x, int y, int z, unsigned int orient) {
+  bt_assert(piece < piecenumber);
+  dx[piece] = x;
+  dy[piece] = y;
+  dz[piece] = z;
+  if (!dt) {
+#ifndef NDEBUG
+    dt = new int[piecenumber];
+    memset(dt, 0, piecenumber * sizeof(int));
+#else
+    bt_assert(0 && "orientation set requires dt allocated at construction");
+#endif
+  }
+  dt[piece] = (int)orient;
+}
+
+void state_c::setRotationArrival(unsigned int piece, int px, int py, int pz,
+                                 unsigned int axis, unsigned int sense) {
+  rotPiece = piece;
+  rotPivotX = px;
+  rotPivotY = py;
+  rotPivotZ = pz;
+  rotAxis = axis;
+  rotSense = sense;
+}
+
+void state_c::clearRotationArrival(void) {
+  rotPiece = (unsigned int)-1;
+  rotPivotX = rotPivotY = rotPivotZ = 0;
+  rotAxis = rotSense = 0;
 }
 
 bool state_c::pieceRemoved(unsigned int i) const {
@@ -271,7 +389,7 @@ int disassembly_c::compare(const disassembly_c * s2) const
  * Separation
  ************************************************************************/
 
-void separation_c::save(xmlWriter_c & xml, int type) const
+void separation_c::save(xmlWriter_c & xml, int type, bool includeRotationFields) const
 {
   xml.newTag("separation");
 
@@ -296,13 +414,13 @@ void separation_c::save(xmlWriter_c & xml, int type) const
 
   // now add all the states
   for (unsigned int jj = 0; jj < states.size(); jj++)
-    states[jj]->save(xml, pieces.size());
+    states[jj]->save(xml, pieces.size(), includeRotationFields);
 
   // finally save the removed and left over part
   // we add an attribute to the node of the subseparations to later distinguish
   // between the removed and the left over separation
-  if (removed) removed->save(xml, 2);
-  if (left)    left->save(xml, 1);
+  if (removed) removed->save(xml, 2, includeRotationFields);
+  if (left)    left->save(xml, 1, includeRotationFields);
 
   xml.endTag("separation");
 }
@@ -417,12 +535,45 @@ separation_c::~separation_c() {
 
 unsigned int separation_c::sumMoves(void) const {
   bt_assert(states.size());
-  unsigned int erg = states.size() - 1;
+  unsigned int erg = getSlides();
   if (removed)
     erg += removed->sumMoves();
   if (left)
     erg += left->sumMoves();
 
+  return erg;
+}
+
+static bool stateTransitionIsRotation(const state_c * a, const state_c * b, unsigned int pn) {
+  if (!a->hasOrientations() || !b->hasOrientations())
+    return false;
+  for (unsigned int i = 0; i < pn; i++) {
+    if (a->pieceRemoved(i) || b->pieceRemoved(i))
+      continue;
+    if (a->getOrient(i) != b->getOrient(i))
+      return true;
+  }
+  return false;
+}
+
+unsigned int separation_c::getRotations(void) const {
+  unsigned int rots = 0;
+  for (unsigned int i = 0; i + 1 < states.size(); i++)
+    if (stateTransitionIsRotation(states[i], states[i+1], pieces.size()))
+      rots++;
+  return rots;
+}
+
+unsigned int separation_c::getSlides(void) const {
+  return getMoves() - getRotations();
+}
+
+unsigned int separation_c::sumRotations(void) const {
+  unsigned int erg = getRotations();
+  if (removed)
+    erg += removed->sumRotations();
+  if (left)
+    erg += left->sumRotations();
   return erg;
 }
 
@@ -458,28 +609,63 @@ bool separation_c::containsMultiMoves(void) {
     (removed && removed->containsMultiMoves());
 }
 
-int separation_c::movesText2(char * txt, int len) const {
-
+int separation_c::movesText2(char * txt, int len, bool withRots) const {
   bt_assert(states.size() > 0);
+  return movesTextPieceRemovals(txt, len, withRots, 0, 0);
+}
 
-  int len2 = snprintf(txt, len, "%zu", states.size()-1);
+/**
+ * Each dotted segment is the step count until a single piece leaves the
+ * puzzle. Splitting into two multi-piece chunks does not emit a segment;
+ * those moves are added to the next piece-removal in the removed branch
+ * (same order as the solve animation).
+ */
+int separation_c::movesTextPieceRemovals(char * txt, int len, bool withRots,
+                                        unsigned int carrySlides,
+                                        unsigned int carryRots) const {
 
-  if (len2+5 > len)
+  unsigned int slides = carrySlides + getSlides();
+  unsigned int rots = carryRots + getRotations();
+
+  /* Both sides are multi-piece groups: carry into removed, then left */
+  if (removed && left) {
+    int len2 = removed->movesTextPieceRemovals(txt, len, withRots, slides, rots);
+    if (len2 < 0 || len2 + 5 > len)
+      return len2;
+
+    char cont[256];
+    int clen = left->movesTextPieceRemovals(cont, (int)sizeof(cont), withRots, 0, 0);
+    if (clen > 0) {
+      if (len2 > 0) {
+        snprintf(txt + len2, len - len2, ".");
+        len2++;
+      }
+      snprintf(txt + len2, len - len2, "%s", cont);
+      len2 += clen;
+    }
     return len2;
-
-  if (left && left->containsMultiMoves()) {
-    snprintf(txt+len2, len-len2, ".");
-    len2++;
-    len2 += left->movesText2(txt+len2, len-len2);
   }
 
-  if (len2+5 > len)
+  /* At least one side is a single piece → emit one piece-removal segment */
+  int len2;
+  if (withRots)
+    len2 = snprintf(txt, len, "%uR%u", slides, rots);
+  else
+    len2 = snprintf(txt, len, "%u", slides + rots);
+
+  if (len2 < 0 || len2 + 5 > len)
     return len2;
 
-  if (removed && removed->containsMultiMoves()) {
-    snprintf(txt+len2, len-len2, ".");
-    len2++;
-    len2 += removed->movesText2(txt+len2, len-len2);
+  const separation_c * cont = removed ? removed : left;
+  if (cont) {
+    char buf[256];
+    int clen = cont->movesTextPieceRemovals(buf, (int)sizeof(buf), withRots, 0, 0);
+    if (clen > 0) {
+      snprintf(txt + len2, len - len2, ".");
+      len2++;
+      snprintf(txt + len2, len - len2, "%s", buf);
+      len2 += clen;
+    }
   }
 
   return len2;
@@ -575,11 +761,22 @@ separationInfo_c::separationInfo_c(xmlParser_c & pars)
 
   unsigned int pos = 0;
   unsigned int num = 0;
+  bool inRots = false;
 
   while (pos < str.length()) {
 
+    if (str[pos] == '|') {
+      inRots = true;
+      pos++;
+      while (pos < str.length() && str[pos] == ' ') pos++;
+      continue;
+    }
+
     if (str[pos] == ' ') {
-      values.push_back(num);
+      if (inRots)
+        rotValues.push_back(num);
+      else
+        values.push_back(num);
       num = 0;
     }
 
@@ -589,7 +786,15 @@ separationInfo_c::separationInfo_c(xmlParser_c & pars)
     pos++;
   }
 
-  values.push_back(num);
+  if (inRots)
+    rotValues.push_back(num);
+  else
+    values.push_back(num);
+
+  if (rotValues.size() == 0)
+    rotValues.assign(values.size(), 0);
+  else if (rotValues.size() != values.size())
+    pars.exception("separationInfo rotation counts do not match value counts");
 
   pars.next();
   pars.require(xmlParser_c::END_TAG, "separationInfo");
@@ -619,19 +824,25 @@ separationInfo_c::separationInfo_c(xmlParser_c & pars)
   }
 }
 
-/* this is a simple recursive function to get the separation tree into pre-order */
+/* this is a simple recursive function to get the separation tree into pre-order.
+ * Order matches animation / movesText: removed subtree first, then left. */
 void separationInfo_c::recursiveConstruction(const separation_c * sep) {
   values.push_back(sep->getMoves()+1);
-
-  if (sep->getLeft())
-    recursiveConstruction(sep->getLeft());
-  else
-    values.push_back(0);
+  rotValues.push_back(sep->getRotations());
 
   if (sep->getRemoved())
     recursiveConstruction(sep->getRemoved());
-  else
+  else {
     values.push_back(0);
+    rotValues.push_back(0);
+  }
+
+  if (sep->getLeft())
+    recursiveConstruction(sep->getLeft());
+  else {
+    values.push_back(0);
+    rotValues.push_back(0);
+  }
 }
 
 separationInfo_c::separationInfo_c(const separation_c * sep) {
@@ -639,7 +850,7 @@ separationInfo_c::separationInfo_c(const separation_c * sep) {
   recursiveConstruction(sep);
 }
 
-void separationInfo_c::save(xmlWriter_c & xml) const
+void separationInfo_c::save(xmlWriter_c & xml, bool includeRotationCounts) const
 {
   xml.newTag("separationInfo");
 
@@ -650,6 +861,22 @@ void separationInfo_c::save(xmlWriter_c & xml) const
       xml.addContent(" ");
   }
 
+  if (includeRotationCounts) {
+    bool anyRots = false;
+    for (unsigned int i = 0; i < rotValues.size(); i++)
+      if (rotValues[i]) { anyRots = true; break; }
+
+    if (anyRots) {
+      xml.addContent(" | ");
+      for (unsigned int i = 0; i < rotValues.size(); i++)
+      {
+        xml.addContent(rotValues[i]);
+        if (i < rotValues.size()-1)
+          xml.addContent(" ");
+      }
+    }
+  }
+
   xml.endTag("separationInfo");
 }
 
@@ -658,45 +885,98 @@ unsigned int separationInfo_c::sumMoves(void) const {
   unsigned int erg = 0;
 
   for (unsigned int i = 0; i < values.size(); i++)
-    if (values[i])
-      erg += (values[i] - 1);
+    if (values[i]) {
+      unsigned int steps = values[i] - 1;
+      unsigned int rots = (i < rotValues.size()) ? rotValues[i] : 0;
+      if (steps >= rots)
+        erg += steps - rots;
+    }
 
   return erg;
 }
 
+unsigned int separationInfo_c::sumRotations(void) const {
+
+  unsigned int erg = 0;
+  for (unsigned int i = 0; i < rotValues.size(); i++)
+    erg += rotValues[i];
+  return erg;
+}
+
 int separationInfo_c::movesText2(char * txt, int len, unsigned int idx) const {
+  return movesTextPieceRemovals(txt, len, idx, 0, 0);
+}
 
-  int len2 = snprintf(txt, len, "%i", values[idx]-1);
-
-  if (len2+5 > len)
-    return len2;
-
-  idx++;
-
-  if (values[idx] && containsMultiMoves(idx)) {
-    snprintf(txt+len2, len-len2, ".");
-    len2++;
-    len2 += movesText2(txt+len2, len-len2, idx);
-  }
-
-  if (len2+5 > len)
-    return len2;
-
-  /* skip the left tree the idea is described in the xml node constructor above */
+unsigned int separationInfo_c::skipSubtree(unsigned int idx) const {
+  /* Consume one child slot: either a 0 marker or a full node subtree. */
   unsigned int branches = 1;
-
-  while (branches) {
+  while (branches && idx < values.size()) {
     if (values[idx])
       branches++;
     else
       branches--;
     idx++;
   }
+  return idx;
+}
 
-  if (values[idx] && containsMultiMoves(idx)) {
-    snprintf(txt+len2, len-len2, ".");
-    len2++;
-    len2 += movesText2(txt+len2, len-len2, idx);
+int separationInfo_c::movesTextPieceRemovals(char * txt, int len, unsigned int idx,
+                                            unsigned int carrySlides,
+                                            unsigned int carryRots) const {
+
+  if (idx >= values.size() || !values[idx])
+    return 0;
+
+  bool withRots = (sumRotations() > 0);
+  unsigned int moves = values[idx] - 1;
+  unsigned int nodeRots = (idx < rotValues.size()) ? rotValues[idx] : 0;
+  unsigned int nodeSlides = (moves >= nodeRots) ? (moves - nodeRots) : 0;
+
+  unsigned int slides = carrySlides + nodeSlides;
+  unsigned int rots = carryRots + nodeRots;
+
+  unsigned int remIdx = idx + 1;
+  bool remMulti = (remIdx < values.size() && values[remIdx] != 0);
+  unsigned int leftIdx = skipSubtree(remIdx);
+  bool leftMulti = (leftIdx < values.size() && values[leftIdx] != 0);
+
+  if (remMulti && leftMulti) {
+    int len2 = movesTextPieceRemovals(txt, len, remIdx, slides, rots);
+    if (len2 < 0 || len2 + 5 > len)
+      return len2;
+
+    char cont[256];
+    int clen = movesTextPieceRemovals(cont, (int)sizeof(cont), leftIdx, 0, 0);
+    if (clen > 0) {
+      if (len2 > 0) {
+        snprintf(txt + len2, len - len2, ".");
+        len2++;
+      }
+      snprintf(txt + len2, len - len2, "%s", cont);
+      len2 += clen;
+    }
+    return len2;
+  }
+
+  int len2;
+  if (withRots)
+    len2 = snprintf(txt, len, "%uR%u", slides, rots);
+  else
+    len2 = snprintf(txt, len, "%u", slides + rots);
+
+  if (len2 < 0 || len2 + 5 > len)
+    return len2;
+
+  unsigned int contIdx = remMulti ? remIdx : (leftMulti ? leftIdx : values.size());
+  if (contIdx < values.size() && values[contIdx]) {
+    char buf[256];
+    int clen = movesTextPieceRemovals(buf, (int)sizeof(buf), contIdx, 0, 0);
+    if (clen > 0) {
+      snprintf(txt + len2, len - len2, ".");
+      len2++;
+      snprintf(txt + len2, len - len2, "%s", buf);
+      len2 += clen;
+    }
   }
 
   return len2;

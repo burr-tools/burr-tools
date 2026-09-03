@@ -132,6 +132,14 @@ private:
    */
   unsigned int waylength;
 
+  /**
+   * For rotation edges: which piece (index in this node) rotated, and the
+   * world-space pivot in doubled cell-index units (voxel x centre = 2x).
+   * Invalid when not a rotation (rotPiece == 0xFFFF).
+   */
+  unsigned int rotPiece;
+  int16_t rotPivotX, rotPivotY, rotPivotZ;
+
 public:
 
   /**
@@ -313,6 +321,23 @@ public:
   /** get the waylength from root node to this node */
   unsigned int getWaylength(void) const {
     return waylength;
+  }
+
+  /** true if this edge is a 90° rotation move */
+  bool isRotationMove(void) const;
+
+  /** piece index that rotated (only valid if isRotationMove) */
+  unsigned int getRotPiece(void) const { return rotPiece; }
+
+  int getRotPivotX(void) const { return rotPivotX; }
+  int getRotPivotY(void) const { return rotPivotY; }
+  int getRotPivotZ(void) const { return rotPivotZ; }
+
+  void setRotationInfo(unsigned int piece, int px, int py, int pz) {
+    rotPiece = piece;
+    rotPivotX = (int16_t)px;
+    rotPivotY = (int16_t)py;
+    rotPivotZ = (int16_t)pz;
   }
 
   /**

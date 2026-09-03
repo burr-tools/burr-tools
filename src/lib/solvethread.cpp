@@ -25,6 +25,7 @@
 #include "puzzle.h"
 #include "assembly.h"
 #include "disassembler_0.h"
+#include "disassembler_factory.h"
 #include "solution.h"
 
 void solveThread_c::run(void){
@@ -122,6 +123,7 @@ action(ACT_PREPARATION),
 puzzle(puz),
 parameters(par),
 sortMethod(SRT_COMPLETE_MOVES),
+solverType(SOLVER_CLASSIC),
 liveSort(-1),
 solutionLimit(10),
 solutionDrop(1),
@@ -130,7 +132,15 @@ assm(0)
 {
 
   if (par & PAR_DISASSM)
-    disassm = new disassembler_0_c(puz);
+    disassm = createDisassembler(puz, (par & PAR_CHECK_ROTATIONS) != 0, solverType);
+}
+
+void solveThread_c::setSolverType(solverType_e type) {
+  solverType = type;
+  if (parameters & PAR_DISASSM) {
+    if (disassm) delete disassm;
+    disassm = createDisassembler(puzzle, (parameters & PAR_CHECK_ROTATIONS) != 0, solverType);
+  }
 }
 
 solveThread_c::~solveThread_c(void) {
@@ -218,6 +228,9 @@ bool solveThread_c::assembly(assembly_c * a) {
         break;
       }
 
+      if (parameters & PAR_CHECK_ROTATIONS)
+        puzzle.setSolutionsWithRotations(true);
+
       // find the place to insert and insert the new solution so that
       // they are sorted by the complexity of the disassembly
 
@@ -233,6 +246,37 @@ bool solveThread_c::assembly(assembly_c * a) {
       std::unique_lock<std::recursive_mutex> solGuard = puzzle.lockSolutions();
 
       switch(sortMethod) {
+        case SRT_ROTATIONS:
+          {
+            unsigned int rots = s->sumRotations();
+
+            for (unsigned int i = 0; i < puzzle.getNumberOfSavedSolutions(); i++) {
+
+              const disassembly_c * s2 = puzzle.getSavedSolution(i)->getDisassembly();
+
+              if (s2 && s2->sumRotations() > rots) {
+                if (parameters & PAR_DROP_DISASSEMBLIES) {
+                  puzzle.addSolution(a, new separationInfo_c(s), i);
+                  delete s;
+                } else
+                  puzzle.addSolution(a, s, i);
+                ins = true;
+                break;
+              }
+            }
+
+            if (!ins) {
+              if (parameters & PAR_DROP_DISASSEMBLIES) {
+                puzzle.addSolution(a, new separationInfo_c(s));
+                delete s;
+              } else
+                puzzle.addSolution(a, s);
+            }
+
+            if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit))
+              puzzle.removeSolution(0);
+          }
+          break;
         case SRT_COMPLETE_MOVES:
           {
             unsigned int lev = s->sumMoves();
@@ -364,6 +408,9 @@ void solveThread_c::stop(void) {
 
   if (puzzle.getAssembler())
     puzzle.getAssembler()->stop();
+
+  if (disassm)
+    disassm->stop();
 
   stopPressed = true;
 }

@@ -154,6 +154,9 @@ configuration_c::configuration_c(void) {
   CNF_BOOL_D("reversescrollzoom", &i_reverseScrollZoom, "Reverse scroll zoom direction",
              "Reverse the direction of the preview zoom when the mouse wheel is used.",
              "false");
+  CNF_BOOL_D("debugrotations",    &i_debugRotations, "Debug Rotations",
+             "When Check Rotations is enabled on the Solver tab, and viewing the disassembly animation if there is a rotation move then show all the voxels which would be considered a collision to block that rotation. Only really useful for debugging rotation rules to update the code, isn't useful to help design puzzles.",
+             "false");
   CNF_BOOL("rubberband",          &i_use_rubberband, "false");
   CNF_INT("renderstyle",          &i_render_style, "0");
   CNF_INT("windowposx",           &i_window_pos_x, "30");

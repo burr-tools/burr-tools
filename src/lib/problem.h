@@ -103,6 +103,7 @@ private:
    * call the locking mutators below without deadlocking.
    */
   mutable std::recursive_mutex solutionMutex;
+  bool solutionsWithRotations;
 
   /**
    * this set contains the pairs of colours that are allowed when a piece
@@ -481,6 +482,9 @@ public:
     return std::unique_lock<std::recursive_mutex>(solutionMutex);
   }
 
+  bool getSolutionsWithRotations(void) const { return solutionsWithRotations; }
+  void setSolutionsWithRotations(bool v) { solutionsWithRotations = v; }
+
   const solution_c * getSavedSolution(unsigned int sol) const { bt_assert(sol < solutions.size()); return solutions[sol]; }
   solution_c * getSavedSolution(unsigned int sol) { bt_assert(sol < solutions.size()); return solutions[sol]; }
   //@}
@@ -493,6 +497,9 @@ public:
 
   /** sort solutions by 0=assembly, 1=level, 2=sumMoves, 3=pieces */
   void sortSolutions(int by);
+
+  /** sort solutions using solver "Sort by" indices (0=unsorted, 1=moves, 2=level, 3=rotations), highest first */
+  void sortSolutionsBySolverMethod(int method);
   //@}
 
 private:

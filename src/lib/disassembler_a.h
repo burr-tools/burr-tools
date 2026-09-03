@@ -23,7 +23,9 @@
 
 #include "disassembler.h"
 #include "movementanalysator.h"
+#include "solvertype.h"
 
+#include <atomic>
 #include <vector>
 
 class grouping_c;
@@ -72,12 +74,16 @@ class disassembler_a_c : public disassembler_c {
      */
     movementAnalysator_c *analyse;
 
+    std::atomic<bool> abort;
+
     unsigned short subProbGroup(const disassemblerNode_c * st, const std::vector<unsigned int> & pn, bool cond);
     bool subProbGrouping(const std::vector<unsigned int> & pn);
 
     separation_c * checkSubproblem(int pieceCount, const std::vector<unsigned int> & pieces, const disassemblerNode_c * st, bool left, bool * ok);
 
   protected:
+
+    bool aborted(void) const { return abort.load(std::memory_order_acquire); }
 
     /** start analysing the position given in the disassemblerNode */
     void init_find(disassemblerNode_c * nd, const std::vector<unsigned int> & pieces) {
@@ -105,8 +111,18 @@ class disassembler_a_c : public disassembler_c {
      * The problem can not be changed, once you done that but
      * you can analyse many assemblies for disassembability
      */
-    disassembler_a_c(const problem_c & puz);
+    disassembler_a_c(const problem_c & puz, bool enableRotations = false,
+                     solverType_e solverType = SOLVER_CLASSIC);
     ~disassembler_a_c(void);
+
+    /** enable or disable 90° rotation moves (brick grids only) */
+    void setCheckRotations(bool enable);
+
+    /** abort an in-progress disassembly as soon as possible */
+    virtual void stop(void) { abort.store(true, std::memory_order_release); }
+
+    virtual unsigned long long getRotationSearchUs(void) const;
+    virtual unsigned long long getLinearSearchUs(void) const;
 
     /**
      * Disassemble an assembly of the puzzle.

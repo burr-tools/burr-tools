@@ -103,9 +103,6 @@ class movementCache_c {
   /// the gridtype used. We need this to make copies and transformations of the shapes
   const gridType_c * gt;
 
-  /// get the transformed shape from the shapes array, calculating missing ones
-  const voxel_c * getTransformedShape(unsigned int s, unsigned char t);
-
 public:
 
   /** create the cache. The cache is then fixed to the puzzle and the problem, it can
@@ -132,6 +129,12 @@ public:
 
   /** return the movement vector of the given direction */
   virtual void getDirection(unsigned int dir, int * x, int * y, int * z) = 0;
+
+  /** shape id for a piece index within the problem */
+  unsigned int getShapeOfPiece(unsigned int piece) const { return pieces[piece]; }
+
+  /** transformed shape for shape id s and orientation t (lazily computed) */
+  const voxel_c * getTransformedShape(unsigned int s, unsigned char t);
 
 private:
 

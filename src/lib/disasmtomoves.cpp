@@ -28,11 +28,34 @@ disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz, unsig
   tree = new separation_c(tr);
 
   moves = new float[maxPieceName*4];
+  orients = new unsigned int[maxPieceName];
+  rotAngle = new float[maxPieceName];
+  rotAxisX = new float[maxPieceName];
+  rotAxisY = new float[maxPieceName];
+  rotAxisZ = new float[maxPieceName];
+  rotPivotX = new float[maxPieceName];
+  rotPivotY = new float[maxPieceName];
+  rotPivotZ = new float[maxPieceName];
   mv = new bool[maxPieceName];
+
+  for (unsigned int i = 0; i < maxPieceName; i++) {
+    orients[i] = 0;
+    rotAngle[i] = 0;
+    rotAxisX[i] = rotAxisY[i] = rotAxisZ[i] = 0;
+    rotPivotX[i] = rotPivotY[i] = rotPivotZ[i] = 0;
+  }
 }
 
 disasmToMoves_c::~disasmToMoves_c() {
   delete [] moves;
+  delete [] orients;
+  delete [] rotAngle;
+  delete [] rotAxisX;
+  delete [] rotAxisY;
+  delete [] rotAxisZ;
+  delete [] rotPivotX;
+  delete [] rotPivotY;
+  delete [] rotPivotZ;
   delete [] mv;
   delete tree;
 }
@@ -44,29 +67,65 @@ void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
 
   // a temporary array, used to save the 2nd placement for the interpolation */
   float * moves2 = new float[maxPieceName*4];
+  unsigned int * orients2 = new unsigned int[maxPieceName];
 
   for (unsigned int i = 0; i < 4 * maxPieceName; i++) {
     moves[i] = moves2[i] = 0;
   }
+  for (unsigned int i = 0; i < maxPieceName; i++) {
+    orients[i] = orients2[i] = 0;
+    rotAngle[i] = 0;
+    rotAxisX[i] = rotAxisY[i] = rotAxisZ[i] = 0;
+    rotPivotX[i] = rotPivotY[i] = rotPivotZ[i] = 0;
+  }
 
-  /* what we do is go twice through the tree and linearly interpolate between
-   * the 2 states that we have in in the two nodes that we are currently in between
-   *
-   * this is done with the weight value (1-frac and frac)
-   */
   if (tree) {
 
-    /* get the 2 possible positions between we have to interpolate */
-    doRecursive(tree, s  , moves, center_active, 0, 0, 0);
-    doRecursive(tree, s+1, moves2, center_active, 0, 0, 0);
+    doRecursive(tree, s  , moves, orients, center_active, 0, 0, 0);
+    doRecursive(tree, s+1, moves2, orients2, center_active, 0, 0, 0);
 
-    // interpolate and check, which piece moves right now
+    /* Look up rotation metadata on the destination state inside the active node.
+     * doRecursive only fills positions; fetch rotation arrival from the tree state
+     * that corresponds to step s+1 when we are inside a single separation node.
+     * Simpler approach: if orientation changes, find the state via a helper walk.
+     */
     for (unsigned int i = 0; i < maxPieceName; i++) {
-      mv[i] = ((moves[4*i+0] != moves2[4*i+0]) || (moves[4*i+1] != moves2[4*i+1]) || (moves[4*i+2] != moves2[4*i+2]));
-      moves[4*i+0] = (1-frac)*moves[4*i+0] + frac*moves2[4*i+0];
-      moves[4*i+1] = (1-frac)*moves[4*i+1] + frac*moves2[4*i+1];
-      moves[4*i+2] = (1-frac)*moves[4*i+2] + frac*moves2[4*i+2];
-      moves[4*i+3] = (1-frac)*moves[4*i+3] + frac*moves2[4*i+3];
+      bool rotating = (orients[i] != orients2[i]);
+      mv[i] = ((moves[4*i+0] != moves2[4*i+0]) || (moves[4*i+1] != moves2[4*i+1]) || (moves[4*i+2] != moves2[4*i+2]) || rotating);
+
+      if (rotating) {
+        /* Keep start hotspot + start mesh; drive a continuous OpenGL tumble
+         * about the recorded pivot. At frac==1 the next integer step will
+         * load the end state fully. */
+        float angle = frac * 90.0f;
+        unsigned int axis = 0, sense = 0;
+        int pvx = 0, pvy = 0, pvz = 0;
+        bool havePivot = findRotationArrival(s + 1, i, &pvx, &pvy, &pvz, &axis, &sense);
+
+        if (havePivot) {
+          if (sense != 0) angle = -angle;
+          rotAngle[i] = angle;
+          rotAxisX[i] = (axis == 0) ? 1.0f : 0.0f;
+          rotAxisY[i] = (axis == 1) ? 1.0f : 0.0f;
+          rotAxisZ[i] = (axis == 2) ? 1.0f : 0.0f;
+          rotPivotX[i] = (float)pvx * 0.5f + 0.5f;
+          rotPivotY[i] = (float)pvy * 0.5f + 0.5f;
+          rotPivotZ[i] = (float)pvz * 0.5f + 0.5f;
+        } else if (frac >= 0.5f) {
+          /* Fallback without pivot metadata: snap */
+          moves[4*i+0] = moves2[4*i+0];
+          moves[4*i+1] = moves2[4*i+1];
+          moves[4*i+2] = moves2[4*i+2];
+          moves[4*i+3] = moves2[4*i+3];
+          orients[i] = orients2[i];
+        }
+        /* else keep start moves/orients; rotAngle already set when havePivot */
+      } else {
+        moves[4*i+0] = (1-frac)*moves[4*i+0] + frac*moves2[4*i+0];
+        moves[4*i+1] = (1-frac)*moves[4*i+1] + frac*moves2[4*i+1];
+        moves[4*i+2] = (1-frac)*moves[4*i+2] + frac*moves2[4*i+2];
+        moves[4*i+3] = (1-frac)*moves[4*i+3] + frac*moves2[4*i+3];
+      }
     }
 
     if (!fadeOut)
@@ -76,6 +135,7 @@ void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
   }
 
   delete [] moves2;
+  delete [] orients2;
 }
 
 float disasmToMoves_c::getX(unsigned int piece) {
@@ -97,6 +157,79 @@ float disasmToMoves_c::getA(unsigned int piece) {
 bool disasmToMoves_c::moving(unsigned int piece) {
   bt_assert(piece < maxPieceName);
   return mv[piece];
+}
+unsigned int disasmToMoves_c::getTrans(unsigned int piece) {
+  bt_assert(piece < maxPieceName);
+  return orients[piece];
+}
+
+bool disasmToMoves_c::getRotationAnim(unsigned int piece,
+                                      float * angleDeg,
+                                      float * axisX, float * axisY, float * axisZ,
+                                      float * pivotX, float * pivotY, float * pivotZ) {
+  bt_assert(piece < maxPieceName);
+  if (rotAngle[piece] == 0)
+    return false;
+  *angleDeg = rotAngle[piece];
+  *axisX = rotAxisX[piece];
+  *axisY = rotAxisY[piece];
+  *axisZ = rotAxisZ[piece];
+  *pivotX = rotPivotX[piece];
+  *pivotY = rotPivotY[piece];
+  *pivotZ = rotPivotZ[piece];
+  return true;
+}
+
+bool disasmToMoves_c::findRotationArrival(int step, unsigned int pieceName,
+                                          int * pvx, int * pvy, int * pvz,
+                                          unsigned int * axis, unsigned int * sense) const {
+  if (!tree || step < 0)
+    return false;
+  return findRotationArrivalRec(tree, step, pieceName, pvx, pvy, pvz, axis, sense);
+}
+
+bool disasmToMoves_c::findRotationArrivalRec(const separation_c * t, int step, unsigned int pieceName,
+                                             int * pvx, int * pvy, int * pvz,
+                                             unsigned int * axis, unsigned int * sense) const {
+  /* States of this node occupy global steps [0, getMoves()] relative to this subtree root */
+  if (step >= 0 && (unsigned int)step <= t->getMoves()) {
+    const state_c * st = t->getState((unsigned int)step);
+    if (st->isRotationArrival()) {
+      /* Compound rotations store one primary rotPiece but share pivot/axis/sense.
+       * Any piece in this separation that is actually turning (caller already
+       * checked orientation change) uses the same tumble. */
+      for (unsigned int k = 0; k < t->getPieceNumber(); k++) {
+        if (t->getPieceName(k) != pieceName)
+          continue;
+        *pvx = st->getRotPivotX();
+        *pvy = st->getRotPivotY();
+        *pvz = st->getRotPivotZ();
+        *axis = st->getRotAxis();
+        *sense = st->getRotSense();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (step < (int)t->getMoves())
+    return false;
+
+  int sub = step - (int)t->getMoves();
+
+  /* Subtree lengths match doRecursive: removed first, then left */
+  int removedLen = 0;
+  if (t->getRemoved()) {
+    if (findRotationArrivalRec(t->getRemoved(), sub, pieceName, pvx, pvy, pvz, axis, sense))
+      return true;
+    /* need length of removed subtree in steps — sumSteps of that separation */
+    removedLen = (int)t->getRemoved()->sumSteps();
+  }
+
+  if (t->getLeft())
+    return findRotationArrivalRec(t->getLeft(), sub - removedLen, pieceName, pvx, pvy, pvz, axis, sense);
+
+  return false;
 }
 
 static int mabs(int a) {
@@ -124,7 +257,7 @@ static int mmax(int a, int b) {
  *                values are multiplied by this value and then the 2 end points are added
  *    cx, cy, cz are the centre to display the current tree
  */
-int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * array, bool center_active, int cx, int cy, int cz) {
+int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * array, unsigned int * orientsOut, bool center_active, int cx, int cy, int cz) {
 
   bt_assert(tree);
 
@@ -188,12 +321,12 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
        * otherwise we place the removed part somewhere out of the way
        */
       if (center_active)
-        steps = doRecursive(tree->getRemoved(), step - (int)tree->getMoves(), array, center_active,
+        steps = doRecursive(tree->getRemoved(), step - (int)tree->getMoves(), array, orientsOut, center_active,
             tree->getState(tree->getMoves()-1)->getX(pc) + cx - tree->getRemoved()->getState(0)->getX(0),
             tree->getState(tree->getMoves()-1)->getY(pc) + cy - tree->getRemoved()->getState(0)->getY(0),
             tree->getState(tree->getMoves()-1)->getZ(pc) + cz - tree->getRemoved()->getState(0)->getZ(0));
       else
-        steps = doRecursive(tree->getRemoved(), step - (int)tree->getMoves(), array, center_active, cx+dx, cy+dy, cz+dz);
+        steps = doRecursive(tree->getRemoved(), step - (int)tree->getMoves(), array, orientsOut, center_active, cx+dx, cy+dy, cz+dz);
 
     } else {
 
@@ -207,6 +340,8 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
             array[4*tree->getPieceName(p)+1] += dy+cy+((mabs(s->getY(p))<10000)?(s->getY(p)):(s2->getY(p)));
             array[4*tree->getPieceName(p)+2] += dz+cz+((mabs(s->getZ(p))<10000)?(s->getZ(p)):(s2->getZ(p)));
             array[4*tree->getPieceName(p)+3] += 0;
+            if (orientsOut)
+              orientsOut[tree->getPieceName(p)] = s2->getOrient(p);
           }
 
       steps = 0;
@@ -222,9 +357,9 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
        * if we don't use the center_active option, the left over part stays in the middle
        */
       if (center_active && (step - (int)tree->getMoves() < steps) && (tree->getRemoved()))
-        steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, array, center_active, cx-dx, cy-dy, cz-dz);
+        steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, array, orientsOut, center_active, cx-dx, cy-dy, cz-dz);
       else
-        steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, array, center_active, cx, cy, cz);
+        steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, array, orientsOut, center_active, cx, cy, cz);
 
       /* if the steps tell us that we are currently animating the removed part
        * and there actually _is_ a removed animation, we hide all
@@ -246,6 +381,8 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
             array[4*tree->getPieceName(p)+1] += cy+s->getY(p);
             array[4*tree->getPieceName(p)+2] += cz+s->getZ(p);
             array[4*tree->getPieceName(p)+3] += 0;
+            if (orientsOut)
+              orientsOut[tree->getPieceName(p)] = s->getOrient(p);
           }
 
       steps2 = 0;
@@ -268,10 +405,12 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
       array[4*tree->getPieceName(i)+1] += cy+s->getY(i);
       array[4*tree->getPieceName(i)+2] += cz+s->getZ(i);
       array[4*tree->getPieceName(i)+3] += 1;
+      if (orientsOut)
+        orientsOut[tree->getPieceName(i)] = s->getOrient(i);
     }
 
-  int steps  = tree->getRemoved() ? doRecursive(tree->getRemoved(), step - tree->getMoves()        , 0, center_active, 0, 0, 0) : 0;
-  int steps2 = tree->getLeft()    ? doRecursive(tree->getLeft()   , step - tree->getMoves() - steps, 0, center_active, 0, 0, 0) : 0;
+  int steps  = tree->getRemoved() ? doRecursive(tree->getRemoved(), step - tree->getMoves()        , 0, 0, center_active, 0, 0, 0) : 0;
+  int steps2 = tree->getLeft()    ? doRecursive(tree->getLeft()   , step - tree->getMoves() - steps, 0, 0, center_active, 0, 0, 0) : 0;
 
   return tree->getMoves() + steps + steps2;
 }

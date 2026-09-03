@@ -29,7 +29,7 @@
 #include <stdlib.h>
 
 solution_c::solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c * gt) :
-  assembly(0), tree(0), treeInfo(0), assemblyNum(0), solutionNum(0)
+  tree(0), treeInfo(0), assemblyNum(0), solutionNum(0)
 {
   pars.require(xmlParser_c::START_TAG, "solution");
 
@@ -92,7 +92,7 @@ solution_c::solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c
   }
 }
 
-void solution_c::save(xmlWriter_c & xml) const
+void solution_c::save(xmlWriter_c & xml, bool includeRotationFields) const
 {
   xml.newTag("solution");
 
@@ -105,8 +105,8 @@ void solution_c::save(xmlWriter_c & xml) const
 
   assembly->save(xml);
 
-  if (tree) {            tree->save(xml);
-  } else if (treeInfo) { treeInfo->save(xml);
+  if (tree) {            tree->save(xml, 0, includeRotationFields);
+  } else if (treeInfo) { treeInfo->save(xml, includeRotationFields);
   }
 
   xml.endTag("solution");

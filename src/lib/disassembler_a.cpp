@@ -27,9 +27,11 @@
 #include "movementanalysator.h"
 #include "assembly.h"
 #include "disassembly.h"
+#include "rotationmoves_0.h"
 
-disassembler_a_c::disassembler_a_c(const problem_c & puz) :
-  disassembler_c(), puzzle(puz) {
+disassembler_a_c::disassembler_a_c(const problem_c & puz, bool enableRotations,
+                                   solverType_e solverType) :
+  disassembler_c(), puzzle(puz), abort(false) {
 
   /* Initialise the grouping class */
   groups = new grouping_c();
@@ -46,7 +48,19 @@ disassembler_a_c::disassembler_a_c(const problem_c & puz) :
     for (unsigned int j = 0; j < puz.getPartMaximum(i); j++)
       piece2shape[p++] = i;
 
-  analyse = new movementAnalysator_c(puzzle);
+  analyse = new movementAnalysator_c(puzzle, enableRotations, solverType);
+}
+
+void disassembler_a_c::setCheckRotations(bool enable) {
+  analyse->setCheckRotations(enable);
+}
+
+unsigned long long disassembler_a_c::getRotationSearchUs(void) const {
+  return analyse ? analyse->getRotationSearchUs() : 0;
+}
+
+unsigned long long disassembler_a_c::getLinearSearchUs(void) const {
+  return analyse ? analyse->getLinearSearchUs() : 0;
 }
 
 disassembler_a_c::~disassembler_a_c() {
@@ -169,11 +183,20 @@ separation_c * disassembler_a_c::checkSubproblems(const disassemblerNode_c * st,
 
           s->set(i, st2->getComefrom()->getX(i) + 20000*st2->getX(i),
               st2->getComefrom()->getY(i) + 20000*st2->getY(i),
-              st2->getComefrom()->getZ(i) + 20000*st2->getZ(i));
+              st2->getComefrom()->getZ(i) + 20000*st2->getZ(i),
+              st2->getComefrom()->getTrans(i));
 
         } else
-          s->set(i, st2->getX(i), st2->getY(i), st2->getZ(i));
+          s->set(i, st2->getX(i), st2->getY(i), st2->getZ(i), st2->getTrans(i));
       }
+
+      if (st2->isRotationMove()) {
+        unsigned int code = st2->getDirection() - ROTATION_DIR_BASE;
+        s->setRotationArrival(st2->getRotPiece(),
+                              st2->getRotPivotX(), st2->getRotPivotY(), st2->getRotPivotZ(),
+                              code / 2, code % 2);
+      }
+
       erg->addstate(s);
 
       st2 = st2->getComefrom();

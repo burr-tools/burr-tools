@@ -66,6 +66,8 @@
 #include "../lib/solvethread.h"
 #include "../lib/disassembly.h"
 #include "../lib/disassembler_0.h"
+#include "../lib/disassembler_factory.h"
+#include "../lib/solvertype.h"
 #include "../lib/gridtype.h"
 #include "../lib/disasmtomoves.h"
 #include "../lib/assembly.h"
@@ -1089,11 +1091,16 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   if (KeepRotations->value() != 0) par |= solveThread_c::PAR_KEEP_ROTATIONS;
   if (DropDisassemblies->value() != 0) par |= solveThread_c::PAR_DROP_DISASSEMBLIES;
   if (SolveDisasm->value() != 0) par |= solveThread_c::PAR_DISASSM;
+  if (CheckRotations->value() != 0) par |= solveThread_c::PAR_CHECK_ROTATIONS;
   if (JustCount->value() != 0) par |= solveThread_c::PAR_JUST_COUNT;
   if (CompleteRotations->value() != 0) par |= solveThread_c::PAR_COMPLETE_ROTATIONS;
 
   assmThread = new solveThread_c(*puzzle->getProblem(prob), par);
 
+  solverType_e st = SOLVER_CLASSIC;
+  if (solverTypeChoice)
+    st = solverTypeFromIndex(solverTypeChoice->value());
+  assmThread->setSolverType(st);
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
 
@@ -1148,6 +1155,82 @@ void mainWindow_c::cb_SolutionAnim(Fl_Value_Slider* o) {
     disassemble->setStep(o->value(), config.useBlendedRemoving(), true);
     View3D->getView()->updatePositions(disassemble);
   }
+}
+
+void mainWindow_c::updateSolverOptionCheckboxes(void) {
+
+  const bool justCount = JustCount->value() != 0;
+  const bool justLevels = DropDisassemblies->value() != 0;
+  const bool canDisassemble =
+      (ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE) != 0;
+
+  if (justCount) {
+    DropDisassemblies->value(0);
+    DropDisassemblies->deactivate();
+    SolveDisasm->value(0);
+    SolveDisasm->deactivate();
+    CheckRotations->value(0);
+    CheckRotations->deactivate();
+    JustCount->activate();
+  } else if (justLevels) {
+    JustCount->value(0);
+    JustCount->deactivate();
+    DropDisassemblies->activate();
+    if (canDisassemble) {
+      SolveDisasm->value(1);
+      SolveDisasm->deactivate();
+    } else {
+      SolveDisasm->value(0);
+      SolveDisasm->deactivate();
+    }
+    CheckRotations->activate();
+  } else {
+    JustCount->activate();
+    DropDisassemblies->activate();
+
+    if (canDisassemble)
+      SolveDisasm->activate();
+    else {
+      SolveDisasm->value(0);
+      SolveDisasm->deactivate();
+    }
+
+    if (SolveDisasm->value() == 0 || !canDisassemble) {
+      CheckRotations->value(0);
+      CheckRotations->deactivate();
+    } else {
+      CheckRotations->activate();
+    }
+  }
+}
+
+static void cb_SolverOptions_stub(Fl_Widget* /*o*/, void* v) {
+  ((mainWindow_c*)v)->cb_SolverOptions();
+}
+void mainWindow_c::cb_SolverOptions(void) {
+  updateSolverOptionCheckboxes();
+}
+
+static void cb_SortMethod_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SortMethod(); }
+void mainWindow_c::cb_SortMethod(void) {
+
+  if (assmThread)
+    return;
+
+  unsigned int prob = solutionProblem->getSelection();
+
+  if (prob >= puzzle->getNumberOfProblems())
+    return;
+
+  problem_c * pr = puzzle->getProblem(prob);
+
+  if (pr->getNumberOfSavedSolutions() < 2)
+    return;
+
+  pr->sortSolutionsBySolverMethod(sortMethod->value());
+  SolutionSel->value(1);
+  activateSolution(prob, 0);
+  updateInterface();
 }
 
 static void cb_SrtFind_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SortSolutions(0); }
@@ -1357,14 +1440,19 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
   }
 
-  disassembler_c * dis = new disassembler_0_c(*pr);
+  disassembler_c * dis = createDisassembler(*pr, CheckRotations->value() != 0,
+      solverTypeChoice ? solverTypeFromIndex(solverTypeChoice->value())
+                       : SOLVER_CLASSIC);
 
   separation_c * d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
   changed = true;
 
-  if (d)
+  if (d) {
+    if (CheckRotations->value() != 0)
+      pr->setSolutionsWithRotations(true);
     pr->getSavedSolution(sol)->setDisassembly(d);
+  }
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
@@ -1389,7 +1477,9 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
   changed = true;
 
-  disassembler_c * dis = new disassembler_0_c(*pr);
+  disassembler_c * dis = createDisassembler(*pr, CheckRotations->value() != 0,
+      solverTypeChoice ? solverTypeFromIndex(solverTypeChoice->value())
+                       : SOLVER_CLASSIC);
 
   Fl_Double_Window * w = new Fl_Double_Window(20, 20, 300, 30);
   Fl_Box * b = new Fl_Box(0, 0, 300, 30);
@@ -1410,8 +1500,11 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
       separation_c * d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
-      if (d)
+      if (d) {
+        if (CheckRotations->value() != 0)
+          pr->setSolutionsWithRotations(true);
         pr->getSavedSolution(sol)->setDisassembly(d);
+      }
     }
   }
 
@@ -2538,6 +2631,21 @@ void mainWindow_c::rememberFollow(problem_c * pr, unsigned int idx) {
   }
 }
 
+static void setMovesRotationsMetrics(Fl_Output * movesOut, Fl_Output * rotsOut, const disassembly_c * da)
+{
+  if (!da) {
+    if (movesOut) movesOut->value("");
+    if (rotsOut) rotsOut->value("");
+    return;
+  }
+
+  char buf[32];
+  snprintf(buf, sizeof(buf), "%u", da->sumMoves());
+  if (movesOut) movesOut->value(buf);
+  snprintf(buf, sizeof(buf), "%u", da->sumRotations());
+  if (rotsOut) rotsOut->value(buf);
+}
+
 void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
   if (disassemble) {
@@ -2563,25 +2671,28 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
     AssemblyNumber->show();
     AssemblyNumber->value(pr->getSavedSolution(num)->getAssemblyNumber()+1);
 
+    const disassembly_c * disassemblyMetrics = pr->getSavedSolution(num)->getDisassemblyInfo();
+    setMovesRotationsMetrics(MovesMetric, RotationsMetric, disassemblyMetrics);
+
     // remember which solution is now on screen (see the follow logic)
     renderedAssembly = (int)pr->getSavedSolution(num)->getAssemblyNumber();
 
     if (pr->getSavedSolution(num)->getDisassembly()) {
       SolutionAnim->show();
-      unsigned int sumMoves = pr->getSavedSolution(num)->getDisassembly()->sumMoves();
-      SolutionAnim->range(0, sumMoves);
+      unsigned int sumSteps = pr->getSavedSolution(num)->getDisassembly()->sumSteps();
+      SolutionAnim->range(0, sumSteps);
       // the previous solution may have been animated past this one's last move;
       // clamp so we don't step off the end of the shorter disassembly
-      if (SolutionAnim->value() > sumMoves)
-        SolutionAnim->value(sumMoves);
+      if (SolutionAnim->value() > sumSteps)
+        SolutionAnim->value(sumSteps);
 
       SolutionsInfo->show();
 
       MovesInfo->show();
 
-      char levelText[50];
-      int len = snprintf(levelText, 50, "%i (", pr->getSavedSolution(num)->getDisassembly()->sumMoves());
-      pr->getSavedSolution(num)->getDisassembly()->movesText(levelText + len, 50-len);
+      char levelText[100];
+      int len = snprintf(levelText, sizeof(levelText), "%i (", pr->getSavedSolution(num)->getDisassembly()->sumSteps());
+      pr->getSavedSolution(num)->getDisassembly()->movesText(levelText + len, sizeof(levelText)-len);
       levelText[strlen(levelText)+1] = 0;
       levelText[strlen(levelText)] = ')';
 
@@ -2608,9 +2719,9 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
       MovesInfo->show();
 
-      char levelText[50];
-      int len = snprintf(levelText, 50, "%i (", pr->getSavedSolution(num)->getDisassemblyInfo()->sumMoves());
-      pr->getSavedSolution(num)->getDisassemblyInfo()->movesText(levelText + len, 50-len);
+      char levelText[100];
+      int len = snprintf(levelText, sizeof(levelText), "%i (", pr->getSavedSolution(num)->getDisassemblyInfo()->sumSteps());
+      pr->getSavedSolution(num)->getDisassemblyInfo()->movesText(levelText + len, sizeof(levelText)-len);
       levelText[strlen(levelText)+1] = 0;
       levelText[strlen(levelText)] = ')';
 
@@ -2645,6 +2756,8 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
     SolutionAnim->hide();
     MovesInfo->hide();
+
+    setMovesRotationsMetrics(MovesMetric, RotationsMetric, 0);
 
     PcVis->setPuzzle(0);
 
@@ -4023,6 +4136,200 @@ void mainWindow_c::CreateProblemTab(void) {
   TabProblems->end();
 }
 
+static void cb_SolverTypeHelpClose_stub(Fl_Widget* /*o*/, void* v) { ((Fl_Double_Window*)v)->hide(); }
+static void cb_SolverTypeHelp_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SolverTypeHelp(); }
+static void cb_SortByHelp_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SortByHelp(); }
+
+static void addSolverHelpHeading(int row, const char *name) {
+  class Heading : public LFl_Box {
+  public:
+    Heading(const char *n, int r) : LFl_Box(n, 0, r, 1, 1) {
+      labelfont(FL_HELVETICA_BOLD);
+      labelsize(18);
+      align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+    }
+    void getMinSize(int *width, int *height) const {
+      *width = 400;
+      *height = 24;
+    }
+    void draw() {
+      LFl_Box::draw();
+      const char *t = label();
+      if (!t || !*t)
+        return;
+      fl_font(labelfont(), labelsize());
+      fl_color(labelcolor());
+      int tw = 0, th = 0;
+      fl_measure(t, tw, th);
+      int x0 = x() + Fl::box_dx(box());
+      int y0 = y() + Fl::box_dy(box()) + fl_height() + 2;
+      fl_line(x0, y0, x0 + tw, y0);
+    }
+  };
+  new Heading(name, row);
+}
+
+static void addSolverHelpBody(int row, const char *text) {
+  class Body : public LFl_Box {
+  public:
+    Body(const char *txt, int r) : LFl_Box(txt, 0, r, 1, 1) {
+      labelfont(FL_HELVETICA);
+      labelsize(16);
+      align(FL_ALIGN_TOP | FL_ALIGN_LEFT | FL_ALIGN_INSIDE | FL_ALIGN_WRAP);
+    }
+    void getMinSize(int *width, int *height) const {
+      const int wrap = 620;
+      *width = wrap;
+      int tw = wrap;
+      int th = 0;
+      fl_font(labelfont(), labelsize());
+      fl_measure(label() ? label() : "", tw, th);
+      *height = th + 8;
+    }
+  };
+  new Body(text, row);
+}
+
+void mainWindow_c::cb_SolverTypeHelp(void) {
+
+  LFl_Double_Window win(true);
+  win.label("Explanation of Solver Types");
+
+  layouter_c *body = new layouter_c(0, 0, 1, 1);
+  body->pitch(16);
+  body->weight(1, 1);
+
+  LFl_Box *title = new LFl_Box("Explanation of Solver Types", 0, 0, 1, 1);
+  title->labelfont(FL_HELVETICA_BOLD);
+  title->labelsize(20);
+  title->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+  title->setMinimumSize(0, 32);
+
+  layouter_c *list = new layouter_c(0, 1, 1, 1);
+  list->pitch(4);
+  list->weight(1, 1);
+
+  int row = 0;
+  addSolverHelpHeading(row++, "BurrTools Classic");
+  addSolverHelpBody(row++,
+      "•  The original BurrTools solver, and the complete-search baseline.\n"
+      "•  Assembly uses a single-thread dancing-links (DLX) covering search.\n"
+      "•  Take-apart tries every linear slide and every 90° rotation subset (when Check Rotations is on).\n"
+      "•  Will find every assembly and disassembly the other types can find.\n"
+      "•  Usually the slowest choice on rotation-heavy puzzles, because the 90° search is complete.");
+  (new LFl_Box(0, row++))->setMinimumSize(0, 16);
+
+  addSolverHelpHeading(row++, "Andrew Crowell");
+  addSolverHelpBody(row++,
+      "•  Uses 90° take-apart heuristics from Andrew Crowell's Sliding-Cube solver.\n"
+      "•  Assembly is the same single-thread DLX search as BurrTools Classic.\n"
+      "•  Faster on many rotation puzzles: it does not rotate the largest remaining piece, prunes blocked rotation axes, and caps how many 90° moves are kept.\n"
+      "•  Incomplete: it can miss a disassembly that BurrTools Classic would find.\n"
+      "•  Best when you want a quicker rotation search and can accept a possible miss.");
+
+  list->end();
+  body->end();
+
+  layouter_c *btns = new layouter_c(0, 1, 1, 1);
+  btns->pitch(8);
+  (new LFl_Box(0, 0))->weight(1, 0);
+
+  int tw = 0, th = 0;
+  fl_font(FL_HELVETICA, FL_NORMAL_SIZE);
+  fl_measure("Close", tw, th);
+
+  LFl_Button * closeBtn = new LFl_Button("Close", 1, 0, 1, 1);
+  closeBtn->callback(cb_SolverTypeHelpClose_stub, &win);
+  closeBtn->setMinimumSize(3 * (tw + 4), th + 16);
+
+  (new LFl_Box(2, 0))->weight(1, 0);
+  btns->end();
+
+  win.show();
+  while (win.visible())
+    Fl::wait();
+}
+
+void mainWindow_c::cb_SortByHelp(void) {
+
+  LFl_Double_Window win(true);
+  win.label("Explanation of Sort by");
+
+  layouter_c *body = new layouter_c(0, 0, 1, 1);
+  body->pitch(16);
+  body->weight(1, 1);
+
+  LFl_Box *title = new LFl_Box("Explanation of Sort by", 0, 0, 1, 1);
+  title->labelfont(FL_HELVETICA_BOLD);
+  title->labelsize(20);
+  title->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+  title->setMinimumSize(0, 32);
+
+  layouter_c *list = new layouter_c(0, 1, 1, 1);
+  list->pitch(4);
+  list->weight(1, 1);
+
+  int row = 0;
+  addSolverHelpBody(row++,
+      "Set this before solving. New solutions are inserted in this order. "
+      "If Display Limit is set, the lowest-ranked solutions are dropped so the list keeps the highest-ranked ones. "
+      "Changing it after a solve re-sorts the saved list the same way. Highest first.");
+  (new LFl_Box(0, row++))->setMinimumSize(0, 16);
+
+  addSolverHelpHeading(row++, "Unsorted");
+  addSolverHelpBody(row++,
+      "•  Keep solutions in the order the solver finds them.\n"
+      "•  No ranking by how hard they are to take apart.\n"
+      "•  Display Limit then keeps the first solutions found, not the ones with the most moves.\n"
+      "•  Keep Each still applies: only every Nth solution is saved.");
+  (new LFl_Box(0, row++))->setMinimumSize(0, 16);
+
+  addSolverHelpHeading(row++, "Moves for Complete Disassembly");
+  addSolverHelpBody(row++,
+      "•  Rank by the total number of sliding moves needed to take the whole puzzle apart.\n"
+      "•  That is the Moves count shown for a solution, not rotations.\n"
+      "•  Highest move count first: the longest take-aparts stay at the top of the list.\n"
+      "•  With Display Limit, short take-aparts are the ones dropped first.");
+  (new LFl_Box(0, row++))->setMinimumSize(0, 16);
+
+  addSolverHelpHeading(row++, "Level");
+  addSolverHelpBody(row++,
+      "•  Rank by BurrTools disassembly level: how many moves are needed before each piece can be removed.\n"
+      "•  Shown as the dotted numbers next to Move (for example 5.4.3).\n"
+      "•  The first number is moves until the first piece comes out; later numbers are the rest of the sequence.\n"
+      "•  Highest level first. A 5.4.3 solution ranks above 4.9.9 because 5 is greater than 4.");
+  (new LFl_Box(0, row++))->setMinimumSize(0, 16);
+
+  addSolverHelpHeading(row++, "Rotations");
+  addSolverHelpBody(row++,
+      "•  Rank by how many 90° rotation moves are in the take-apart sequence.\n"
+      "•  That is the Rotations count shown for a solution.\n"
+      "•  Highest rotation count first.\n"
+      "•  Only meaningful when Check Rotations is on; otherwise every solution has zero rotations.");
+
+  list->end();
+  body->end();
+
+  layouter_c *btns = new layouter_c(0, 1, 1, 1);
+  btns->pitch(8);
+  (new LFl_Box(0, 0))->weight(1, 0);
+
+  int tw = 0, th = 0;
+  fl_font(FL_HELVETICA, FL_NORMAL_SIZE);
+  fl_measure("Close", tw, th);
+
+  LFl_Button * closeBtn = new LFl_Button("Close", 1, 0, 1, 1);
+  closeBtn->callback(cb_SolverTypeHelpClose_stub, &win);
+  closeBtn->setMinimumSize(3 * (tw + 4), th + 16);
+
+  (new LFl_Box(2, 0))->weight(1, 0);
+  btns->end();
+
+  win.show();
+  while (win.visible())
+    Fl::wait();
+}
+
 void mainWindow_c::CreateSolveTab(void) {
 
   TabSolve = new layouter_c();
@@ -4051,18 +4358,28 @@ void mainWindow_c::CreateSolveTab(void) {
     SolveDisasm = new LFl_Check_Button("Disassemble", 0, 0, 1, 1);
     SolveDisasm->tooltip(" Do also try to disassemble the assembled puzzles. Only puzzles that can be disassembled will be added to solutions ");
     SolveDisasm->clear_visible_focus();
+    SolveDisasm->callback(cb_SolverOptions_stub, this);
 
-    JustCount = new LFl_Check_Button("Just Count", 0, 1, 1, 1);
+    CheckRotations = new LFl_Check_Button("Check Rotations", 0, 1, 1, 1);
+    CheckRotations->tooltip(" Also try 90 degree piece rotations (brick grids) during disassembly. Requires Disassemble. ");
+    CheckRotations->clear_visible_focus();
+    CheckRotations->callback(cb_SolverOptions_stub, this);
+
+    JustCount = new LFl_Check_Button("Just Count", 0, 2, 1, 1);
     JustCount->tooltip(" Don\'t save the solutions, just count the number of them ");
     JustCount->clear_visible_focus();
+    JustCount->callback(cb_SolverOptions_stub, this);
 
-    CompleteRotations = new LFl_Check_Button("Expnsv Rot Check", 0, 2, 1, 1);
-    CompleteRotations->tooltip(" Do expensive and thorough rotation check, eliminating translations and rotations not in symmetry of the result shape ");
-    CompleteRotations->clear_visible_focus();
-
-    DropDisassemblies = new LFl_Check_Button("Drop Disassemblies", 1, 0, 1, 1);
+    DropDisassemblies = new LFl_Check_Button("Just Levels", 0, 3, 1, 1);
     DropDisassemblies->tooltip(" Don\'t save the Disassemblies, just the information about them ");
     DropDisassemblies->clear_visible_focus();
+    DropDisassemblies->callback(cb_SolverOptions_stub, this);
+
+    updateSolverOptionCheckboxes();
+
+    CompleteRotations = new LFl_Check_Button("Expnsv Rot Check", 1, 0, 1, 1);
+    CompleteRotations->tooltip(" Do expensive and thorough rotation check, eliminating translations and rotations not in symmetry of the result shape ");
+    CompleteRotations->clear_visible_focus();
 
     KeepMirrors = new LFl_Check_Button("Keep Mirror Solutions", 1, 1, 1, 1);
     KeepMirrors->tooltip(" Don't remove solutions that are mirrors of another solution ");
@@ -4076,17 +4393,43 @@ void mainWindow_c::CreateSolveTab(void) {
 
     o = new layouter_c(0, 3);
 
-    new LFl_Box("Sort by: ", 0, 0, 1, 1);
+    LFl_Box * solverTypeCaption = new LFl_Box("Solver Type: ", 0, 0, 1, 1);
+    solverTypeCaption->tooltip(solverTypeTooltip());
 
-    sortMethod = new LFl_Choice(1, 0, 1, 1);
+    solverTypeChoice = new LFl_Choice(1, 0, 1, 1);
+    ((LFl_Choice*)solverTypeChoice)->weight(1, 0);
+    solverTypeChoice->tooltip(solverTypeTooltip());
+    for (unsigned int i = 0; i < solverTypeCount(); i++)
+      solverTypeChoice->add(solverTypeLabel((solverType_e)i));
+    solverTypeChoice->value((int)SOLVER_CLASSIC);
+
+    LFl_Button * solverTypeHelp = new LFl_Button("?", 2, 0, 1, 1);
+    solverTypeHelp->tooltip(" Explanation of solver types ");
+    solverTypeHelp->callback(cb_SolverTypeHelp_stub, this);
+    solverTypeHelp->stretchVCenter();
+    solverTypeHelp->setPadding(10, 4);
+
+    LFl_Box * sortByLabel = new LFl_Box("Sort by: ", 0, 1, 1, 1);
+    sortByLabel->tooltip(" Set before solving to order saved solutions. Click ? for an explanation of each option. ");
+
+    sortMethod = new LFl_Choice(1, 1, 1, 1);
     ((LFl_Choice*)sortMethod)->weight(1, 0);
+    sortMethod->tooltip(" Set before solving to order saved solutions. Click ? for an explanation of each option. ");
 
     // be careful the order in here must correspond with the enumeration in assembler thread
     sortMethod->add("Unsorted");
     sortMethod->add("Moves for Complete Disassembly");
     sortMethod->add("Level");
+    sortMethod->add("Rotations");
 
     sortMethod->value(1);
+    sortMethod->callback(cb_SortMethod_stub, this);
+
+    LFl_Button * sortByHelp = new LFl_Button("?", 2, 1, 1, 1);
+    sortByHelp->tooltip(" Explanation of Sort by options ");
+    sortByHelp->callback(cb_SortByHelp_stub, this);
+    sortByHelp->stretchVCenter();
+    sortByHelp->setPadding(10, 4);
 
     o->end();
 
@@ -4263,6 +4606,20 @@ void mainWindow_c::CreateSolveTab(void) {
     ((LFl_Value_Output*)AssemblyNumber)->weight(1, 0);
     ((LFl_Value_Output*)SolutionNumber)->weight(1, 0);
 
+    new LFl_Box("Moves:", 0, 1, 1, 1);
+    new LFl_Box("Rotations:", 2, 1, 1, 1);
+
+    MovesMetric = new LFl_Output(1, 1, 1, 1);
+    RotationsMetric = new LFl_Output(3, 1, 1, 1);
+    MovesMetric->box(FL_FLAT_BOX);
+    RotationsMetric->box(FL_FLAT_BOX);
+    MovesMetric->color(FL_BACKGROUND_COLOR);
+    RotationsMetric->color(FL_BACKGROUND_COLOR);
+    ((LFl_Output*)MovesMetric)->weight(1, 0);
+    ((LFl_Output*)RotationsMetric)->weight(1, 0);
+    ((LFl_Output*)MovesMetric)->setMinimumSize(48, 0);
+    ((LFl_Output*)RotationsMetric)->setMinimumSize(48, 0);
+
     o->end();
 
     (new LFl_Box(0, 4))->setMinimumSize(0, SZ_GAP);
@@ -4365,6 +4722,7 @@ void mainWindow_c::activateConfigOptions(void) {
 
   View3D->getView()->useLightning(config.useLightning());
   View3D->getView()->setRotaterMethod(config.rotationMethod());
+  View3D->getView()->setDebugRotations(config.debugRotations());
 }
 
 mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {

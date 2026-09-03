@@ -131,7 +131,8 @@ class mainWindow_c : public LFl_Double_Window {
   ButtonGroup_c *editMode;
 
   layouter_c *TabSolve;
-  Fl_Check_Button *SolveDisasm, *JustCount, *DropDisassemblies, *KeepMirrors, *KeepRotations, *CompleteRotations;
+  Fl_Check_Button *SolveDisasm, *CheckRotations, *JustCount, *DropDisassemblies, *KeepMirrors, *KeepRotations, *CompleteRotations;
+  Fl_Choice *solverTypeChoice;
 
   FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep, *BtnMovement;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape, *BtnShapeLeft, *BtnShapeRight, *BtnWeightInc, *BtnWeightDec;
@@ -175,6 +176,7 @@ class mainWindow_c : public LFl_Double_Window {
   Fl_Value_Input *solDrop, *solLimit;
 
   Fl_Value_Output *SolutionNumber, *AssemblyNumber;
+  Fl_Output *MovesMetric, *RotationsMetric;
 
   FlatButton *BtnSrtFind, *BtnSrtLevel, *BtnSrtMoves, *BtnSrtPieces;
   FlatButton *BtnDelAll, *BtnDelBefore, *BtnDelAt, *BtnDelAfter, *BtnDelDisasm;
@@ -314,6 +316,9 @@ public:
   void cb_BtnPlacementBrowser(void);
   void cb_BtnMovementBrowser(void);
   void cb_BtnAssemblerStep(void);
+  void cb_SolverOptions(void);
+  void updateSolverOptionCheckboxes(void);
+  void cb_SortMethod(void);
 
   void cb_SolutionSel(Fl_Value_Slider*);
   void cb_SolutionAnim(Fl_Value_Slider*);
@@ -346,6 +351,8 @@ public:
   void cb_Quit(void);
   void cb_About(void);
   void cb_Help(void);
+  void cb_SolverTypeHelp(void);
+  void cb_SortByHelp(void);
   void cb_Config(void);
   void cb_Toggle3D(void);
   void cb_SolProbSel(LBlockListGroup_c* reason);

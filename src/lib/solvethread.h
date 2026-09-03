@@ -23,6 +23,7 @@
 
 #include "assembler.h"
 #include "disassembler.h"
+#include "solvertype.h"
 #include "bt_assert.h"
 #include "thread.h"
 
@@ -105,6 +106,7 @@ class solveThread_c : public assembler_cb, public thread_c {
     static const int PAR_DISASSM =            0x10;  // do the disassembly analysis
     static const int PAR_JUST_COUNT =         0x20;  // just count the solutions, don't save them
     static const int PAR_COMPLETE_ROTATIONS = 0x40;  // do a thorough rotation check
+    static const int PAR_CHECK_ROTATIONS =    0x80;  // try 90° piece rotations during disassembly
 
     // create all the necessary data structures to start the thread later on
     solveThread_c(problem_c & puz, int par);
@@ -113,16 +115,20 @@ class solveThread_c : public assembler_cb, public thread_c {
   private:
 
     int sortMethod;
+    solverType_e solverType;
 
   public:
 
     enum {
       SRT_UNSORT,
       SRT_COMPLETE_MOVES,
-      SRT_LEVEL
+      SRT_LEVEL,
+      SRT_ROTATIONS
     };
 
     void setSortMethod(int sort) { sortMethod = sort; }
+    void setSolverType(solverType_e type);
+    solverType_e getSolverType(void) const { return solverType; }
 
     /* If >= 0, the worker keeps the (limit-bounded) solution list sorted by
      * this problem_c::sortSolutions method after every solution it adds, so a

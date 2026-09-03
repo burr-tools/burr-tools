@@ -71,6 +71,7 @@ class part_c {
 
 problem_c::problem_c(puzzle_c & puz) :
   puzzle(puz), result(0xFFFFFFFF),
+  solutionsWithRotations(false),
   assm(0),solveState(SS_UNSOLVED), numAssemblies(0),
   numSolutions(0), usedTime(0), maxHoles(0xFFFFFFFF)
 {}
@@ -88,6 +89,7 @@ problem_c::~problem_c(void) {
 
 problem_c::problem_c(const problem_c * orig, puzzle_c & puz) :
   puzzle(puz), result(orig->result),
+  solutionsWithRotations(false),
   solveState(SS_UNSOLVED), numAssemblies(0), numSolutions(0), usedTime(0)
 {
   assm = 0;
@@ -202,16 +204,17 @@ void problem_c::save(xmlWriter_c & xml) const
   }
 
   if (solutions.size()) {
-    xml.newTag("solutions");
+    const char * tag = solutionsWithRotations ? "solutionsWithRotations" : "solutions";
+    xml.newTag(tag);
     for (unsigned int i = 0; i < solutions.size(); i++)
-      solutions[i]->save(xml);
-    xml.endTag("solutions");
+      solutions[i]->save(xml, solutionsWithRotations);
+    xml.endTag(tag);
   }
 
   xml.endTag("problem");
 }
 
-problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0xFFFFFFFF), assm(0)
+problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0xFFFFFFFF), solutionsWithRotations(false), assm(0)
 {
   pars.require(xmlParser_c::START_TAG, "problem");
 
@@ -351,8 +354,23 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
       result = atoi(str.c_str());
       pars.skipSubTree();
     }
-    else if (pars.getName() == "solutions")
+    else if (pars.getName() == "solutions" ||
+             pars.getName() == "solutionsWithRotations")
     {
+      bool fromRotations = (pars.getName() == "solutionsWithRotations");
+      std::string endTag = pars.getName();
+
+      if (fromRotations) {
+        solutionsWithRotations = true;
+        for (unsigned int i = 0; i < solutions.size(); i++)
+          delete solutions[i];
+        solutions.clear();
+      } else if (solutionsWithRotations) {
+        pars.skipSubTree();
+        pars.require(xmlParser_c::END_TAG, endTag);
+        continue;
+      }
+
       do
       {
         int state = pars.nextTag();
@@ -369,7 +387,7 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
 
       } while (true);
 
-      pars.require(xmlParser_c::END_TAG, "solutions");
+      pars.require(xmlParser_c::END_TAG, endTag);
     }
     else if (pars.getName() == "bitmap")
     {
@@ -857,6 +875,7 @@ void problem_c::removeAllSolutions(void) {
   for (unsigned int i = 0; i < solutions.size(); i++)
     delete solutions[i];
   solutions.clear();
+  solutionsWithRotations = false;
   delete assm;
   assm = 0;
   assemblerState = "";
@@ -999,6 +1018,51 @@ static bool comp_3_pieces(const solution_c * s1, const solution_c * s2)
   return s1->getAssembly()->comparePieces(s2->getAssembly()) > 0;
 }
 
+static bool comp_srt_unsort(const solution_c * s1, const solution_c * s2)
+{
+  if (s1->getSolutionNumber() != s2->getSolutionNumber())
+    return s1->getSolutionNumber() > s2->getSolutionNumber();
+  return s1->getAssemblyNumber() > s2->getAssemblyNumber();
+}
+
+static bool comp_srt_moves_desc(const solution_c * s1, const solution_c * s2)
+{
+  const disassembly_c * d1 = s1->getDisassemblyInfo();
+  const disassembly_c * d2 = s2->getDisassemblyInfo();
+
+  if (!d1 && !d2) return comp_srt_unsort(s1, s2);
+  if (!d1) return false;
+  if (!d2) return true;
+  if (d1->sumMoves() != d2->sumMoves())
+    return d1->sumMoves() > d2->sumMoves();
+  return comp_srt_unsort(s1, s2);
+}
+
+static bool comp_srt_level_desc(const solution_c * s1, const solution_c * s2)
+{
+  const disassembly_c * d1 = s1->getDisassemblyInfo();
+  const disassembly_c * d2 = s2->getDisassemblyInfo();
+
+  if (!d1 && !d2) return comp_srt_unsort(s1, s2);
+  if (!d1) return false;
+  if (!d2) return true;
+  if (d1->compare(d2) != 0)
+    return d1->compare(d2) > 0;
+  return comp_srt_unsort(s1, s2);
+}
+
+static bool comp_srt_rotations_desc(const solution_c * s1, const solution_c * s2)
+{
+  const disassembly_c * d1 = s1->getDisassemblyInfo();
+  const disassembly_c * d2 = s2->getDisassemblyInfo();
+
+  if (!d1 && !d2) return comp_srt_unsort(s1, s2);
+  if (!d1) return false;
+  if (!d2) return true;
+  if (d1->sumRotations() != d2->sumRotations())
+    return d1->sumRotations() > d2->sumRotations();
+  return comp_srt_unsort(s1, s2);
+}
 
 void problem_c::sortSolutions(int by) {
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
@@ -1007,6 +1071,16 @@ void problem_c::sortSolutions(int by) {
     case 1: stable_sort(solutions.begin(), solutions.end(), comp_1_level   ); break;
     case 2: stable_sort(solutions.begin(), solutions.end(), comp_2_moves   ); break;
     case 3: stable_sort(solutions.begin(), solutions.end(), comp_3_pieces  ); break;
+  }
+}
+
+void problem_c::sortSolutionsBySolverMethod(int method) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  switch (method) {
+    case 0: stable_sort(solutions.begin(), solutions.end(), comp_srt_unsort); break;
+    case 1: stable_sort(solutions.begin(), solutions.end(), comp_srt_moves_desc); break;
+    case 2: stable_sort(solutions.begin(), solutions.end(), comp_srt_level_desc); break;
+    case 3: stable_sort(solutions.begin(), solutions.end(), comp_srt_rotations_desc); break;
   }
 }
 
