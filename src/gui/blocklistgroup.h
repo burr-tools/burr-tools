@@ -40,6 +40,8 @@ class LBlockListGroup_c : public Fl_Group, public layoutable_c {
   void cb_slider(void);
   void cb_list(void);
 
+  int handle(int event);
+
   int getReason(void) { return callbackReason; }
 
   virtual void getMinSize(int *width, int *height) const {
