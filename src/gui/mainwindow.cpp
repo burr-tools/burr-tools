@@ -57,6 +57,7 @@
 #include "LFl_Tile.h"
 
 #include "../lib/ps3dloader.h"
+#include "../lib/scadloader.h"
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
 #include "../lib/problem.h"
@@ -1555,12 +1556,13 @@ void mainWindow_c::cb_Load_Ps3d(void) {
         return;
       }
 
-      if (fname) delete [] fname;
-      fname = new char[strlen(f)+1];
-      strcpy(fname, f);
+      if (fname) {
+        delete [] fname;
+        fname = 0;
+      }
 
       char nm[300];
-      snprintf(nm, 299, "BurrTools - %s", fname);
+      snprintf(nm, sizeof(nm), "BurrTools - %s (imported)", f);
       label(nm);
 
       ReplacePuzzle(newPuzzle);
@@ -1570,7 +1572,49 @@ void mainWindow_c::cb_Load_Ps3d(void) {
       activateShape(PcSel->getSelection());
       StatPieceInfo(PcSel->getSelection());
 
-      changed = false;
+      changed = true;
+    }
+  }
+}
+
+static void cb_Load_Scad_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Load_Scad(); }
+void mainWindow_c::cb_Load_Scad(void) {
+
+  if (threadStopped()) {
+
+    if (changed)
+      if (fl_choice("Puzzle changed; are you sure?", "Cancel", "Load", 0) == 0)
+        return;
+
+    const char * f = fileChooser("Import Puzzlecad File", "OpenSCAD", "*.scad", "", false);
+
+    if (f) {
+
+      std::ifstream in(f);
+
+      puzzle_c * newPuzzle = loadOpenScadPuzzle(&in);
+      if (!newPuzzle) {
+        fl_alert("Could not load puzzle, sorry!");
+        return;
+      }
+
+      if (fname) {
+        delete [] fname;
+        fname = 0;
+      }
+
+      char nm[300];
+      snprintf(nm, sizeof(nm), "BurrTools - %s (imported)", f);
+      label(nm);
+
+      ReplacePuzzle(newPuzzle);
+      updateInterface();
+
+      TaskSelectionTab->value(TabPieces);
+      activateShape(PcSel->getSelection());
+      StatPieceInfo(PcSel->getSelection());
+
+      changed = true;
     }
   }
 }
@@ -1580,7 +1624,8 @@ void mainWindow_c::cb_Save(void) {
 
   if (threadStopped()) {
 
-    if (!fname)
+    const char * dot = fname ? strrchr(fname, '.') : 0;
+    if (!fname || !dot || strcmp(dot, ".xmpuzzle") != 0)
       cb_SaveAs();
 
     else {
@@ -1861,6 +1906,46 @@ void mainWindow_c::cb_STLExport(void) {
   }
 }
 
+static void cb_Export_Scad_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Export_Scad(); }
+void mainWindow_c::cb_Export_Scad(void) {
+
+  if (puzzle->getNumberOfShapes() == 0) {
+    fl_alert("Nothing to export.");
+    return;
+  }
+
+  const char * preset = "";
+  if (fname && fname[0])
+    preset = fname;
+
+  const char * f = fileChooser("Export Puzzlecad File", "OpenSCAD", "*.scad", preset, true);
+  if (!f)
+    return;
+
+  char f2[1000];
+  const char * dot = strrchr(f, '.');
+  if (dot && strcmp(dot, ".scad") == 0)
+    snprintf(f2, sizeof(f2), "%s", f);
+  else
+    snprintf(f2, sizeof(f2), "%s.scad", f);
+
+  if (!fileChooserConfirmedOverwrite(f) && fileExists(f2)) {
+    if (!fl_choice("File exists; overwrite?", "Cancel", "Overwrite", 0))
+      return;
+  }
+
+  std::ofstream out(f2);
+  unsigned int prob = 0;
+  if (puzzle->getNumberOfProblems() &&
+      problemSelector->getSelection() < puzzle->getNumberOfProblems())
+    prob = problemSelector->getSelection();
+
+  if (!out || !saveOpenScadPuzzle(out, puzzle, fname ? fname : f2, prob)) {
+    fl_alert("Could not export puzzlecad file.");
+    return;
+  }
+}
+
 static void cb_StatusWindow_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_StatusWindow(); }
 void mainWindow_c::cb_StatusWindow(void) {
 
@@ -2132,7 +2217,8 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
   { "&File",           0, 0, 0, FL_SUBMENU },
     {"New",            0, cb_New_stub,         0, 0, 0, 0, 14, 56},
     {"Load",    FL_F + 3, cb_Load_stub,        0, 0, 0, 0, 14, 56},
-    {"Import",         0, cb_Load_Ps3d_stub,   0, 0, 0, 0, 14, 56},
+    {"Import PS3D",    0, cb_Load_Ps3d_stub,   0, 0, 0, 0, 14, 56},
+    {"Import Puzzlecad", 0, cb_Load_Scad_stub, 0, 0, 0, 0, 14, 56},
     {"Save",    FL_F + 2, cb_Save_stub,        0, 0, 0, 0, 14, 56},
     {"Save As",        0, cb_SaveAs_stub,      0, FL_MENU_DIVIDER, 0, 0, 14, 56},
     {"Convert",        0, cb_Convert_stub,     0, 0, 0, 0, 14, 56},
@@ -2144,6 +2230,7 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
     {"Images",             0, cb_ImageExport_stub, 0, 0, 0, 0, 14, 56},
     {"Vector Image",       0, cb_ImageExportVector_stub, 0, 0, 0, 0, 14, 56},
     {"STL",             0, cb_STLExport_stub, 0, 0, 0, 0, 14, 56},
+    {"Puzzlecad (SCAD)", 0, cb_Export_Scad_stub, 0, 0, 0, 0, 14, 56},
     { 0 },
   {"Status",           0, cb_StatusWindow_stub,  0, 0, 0, 0, 14, 56},
   {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
@@ -2409,6 +2496,11 @@ void mainWindow_c::updateInterface(void) {
     menu_MainMenu[findMenuEntry("STL")].activate();
   else
     menu_MainMenu[findMenuEntry("STL")].deactivate();
+
+  if (puzzle->getNumberOfShapes() > 0)
+    menu_MainMenu[findMenuEntry("Puzzlecad (SCAD)")].activate();
+  else
+    menu_MainMenu[findMenuEntry("Puzzlecad (SCAD)")].deactivate();
 
   MainMenu->copy(menu_MainMenu, this);
 

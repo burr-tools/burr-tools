@@ -89,6 +89,7 @@ libburr_src = [
   'src/lib/movementcache_1.cpp',
   'src/lib/print.cpp',
   'src/lib/ps3dloader.cpp',
+  'src/lib/scadloader.cpp',
   'src/lib/problem.cpp',
   'src/lib/puzzle.cpp',
   'src/lib/solution.cpp',
