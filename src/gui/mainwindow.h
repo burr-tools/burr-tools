@@ -28,6 +28,7 @@
 class VoxelEditGroup_c;
 class ChangeSize;
 class ToolTab;
+class shapeHistory_c;
 class voxel_c;
 class puzzle_c;
 class problem_c;
@@ -166,6 +167,14 @@ class mainWindow_c : public LFl_Double_Window {
   FlatButton *BtnDisasmDel, *BtnDisasmDelAll, *BtnDisasmAdd, *BtnDisasmAddAll, *BtnDisasmAddMissing;
   FlatButton *BtnExportSolutionSTL;
 
+  Fl_Button *BtnUndo;
+  Fl_Button *BtnRedo;
+  shapeHistory_c *shapeHistory;
+
+  void updateUndoRedoButtons(void);
+  void recordShapeAction(int kind);
+  void applyHistoryRestore(unsigned int selected);
+
   // the zoom levels for all 3 tabs independent, so that the problem
   // tab can have a wider view
   double ViewSizes[3];
@@ -239,6 +248,8 @@ public:
   void cb_NameShape(void);
   void cb_ShapeExchange(int with);
   void cb_WeightChange(int by);
+  void cb_Undo(void);
+  void cb_Redo(void);
 
   void cb_NewProblem(void);
   void cb_DeleteProblem(void);

@@ -385,6 +385,12 @@ void puzzle_c::exchangeShapes(unsigned int s1, unsigned int s2) {
     problems[i]->exchangeShapes(s1, s2);
 }
 
+void puzzle_c::adoptShapes(const std::vector<voxel_c*> & newShapes) {
+  for (unsigned int i = 0; i < shapes.size(); i++)
+    delete shapes[i];
+  shapes = newShapes;
+}
+
 /**
  * similar functions for problems
  */

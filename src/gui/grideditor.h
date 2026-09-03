@@ -148,10 +148,17 @@ public:
   int getMouseY2(void) { return (startY > mY)?(startY):(mY); }
   int getMouseZ(void) { return mZ; }
 
+  /** Current cell under the cursor (not the rubber-band min/max). */
+  int getCursorX(void) { return mX; }
+  int getCursorY(void) { return mY; }
+  int getCursorZ(void) { return mZ; }
+
   // find out the reason why this widget called the callback
   enum {
     RS_MOUSEMOVE,     // the mouse moved, the cursor must be updated
-    RS_CHANGESQUARE   // something was edited, 3D view must be redrawn
+    RS_CHANGESQUARE,  // something was edited, 3D view must be redrawn
+    RS_STROKEBEGIN,   // mouse-down starting a paint stroke
+    RS_STROKEEND      // mouse-up ending a paint stroke
   };
 
   int getReason(void) { return callbackReason; }

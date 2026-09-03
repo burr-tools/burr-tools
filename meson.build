@@ -142,6 +142,7 @@ gui_src = [
   'src/gui/placementbrowser.cpp',
   'src/gui/resultviewer.cpp',
   'src/gui/separator.cpp',
+  'src/gui/shapehistory.cpp',
   'src/gui/statusline.cpp',
   'src/gui/statuswindow.cpp',
   'src/gui/filechooser.cpp',
