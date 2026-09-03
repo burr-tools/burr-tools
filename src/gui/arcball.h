@@ -51,6 +51,11 @@ class rotater_c {
      */
     virtual void addTransform(void) const = 0;
 
+    /* column-major 3x3, matching the matrix used by addTransform() */
+    virtual void getRotation(float m[9]) const = 0;
+    virtual void setRotation(const float m[9]) = 0;
+    virtual void resetRotation(void) = 0;
+
     virtual ~rotater_c() {};
 };
 
@@ -83,6 +88,9 @@ class arcBall_c : public rotater_c
     void clack(float x, float y);
     void drag(float x, float y);
     void addTransform(void) const;
+    void getRotation(float m[9]) const;
+    void setRotation(const float m[9]);
+    void resetRotation(void);
 
   private:
 
@@ -120,6 +128,9 @@ class method2_c : public rotater_c {
     void clack(float x, float y);
     void drag(float x, float y);
     void addTransform(void) const;
+    void getRotation(float m[9]) const;
+    void setRotation(const float m[9]);
+    void resetRotation(void);
 
   private:
 

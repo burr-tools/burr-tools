@@ -317,6 +317,44 @@ void arcBall_c::addTransform(void) const {
   glMultMatrixf(Transform);                                       // NEW: Apply Dynamic Transform
 }
 
+void arcBall_c::getRotation(float m[9]) const {
+
+  if (mouseDown) {
+
+    float ThisQuat[4];
+    float ThisRot[9];
+
+    getDrag(ThisQuat);
+    Matrix3fSetRotationFromQuat4f(ThisRot, ThisQuat);
+    Matrix3fMulMatrix3f(ThisRot, LastRot);
+
+    for (int i = 0; i < 9; i++)
+      m[i] = ThisRot[i];
+
+  } else {
+
+    for (int i = 0; i < 9; i++)
+      m[i] = LastRot[i];
+  }
+}
+
+void arcBall_c::setRotation(const float m[9]) {
+
+  for (int i = 0; i < 9; i++)
+    LastRot[i] = m[i];
+
+  mouseDown = false;
+}
+
+void arcBall_c::resetRotation(void) {
+
+  LastRot[0] = 1;  LastRot[1] = 0;  LastRot[2] = 0;
+  LastRot[3] = 0;  LastRot[4] = 1;  LastRot[5] = 0;
+  LastRot[6] = 0;  LastRot[7] = 0;  LastRot[8] = 1;
+
+  mouseDown = false;
+}
+
 
 
 
@@ -548,5 +586,91 @@ void method2_c::addTransform(void) const
   m[15] = 1;
 
   glMultMatrixf(m);
+}
+
+void method2_c::getRotation(float m[9]) const
+{
+  GLfloat tx = 2.0*rotation[0];
+  GLfloat ty = 2.0*rotation[1];
+  GLfloat tz = 2.0*rotation[2];
+  GLfloat twx = tx*rotation[3];
+  GLfloat twy = ty*rotation[3];
+  GLfloat twz = tz*rotation[3];
+  GLfloat txx = tx*rotation[0];
+  GLfloat txy = ty*rotation[0];
+  GLfloat txz = tz*rotation[0];
+  GLfloat tyy = ty*rotation[1];
+  GLfloat tyz = tz*rotation[1];
+  GLfloat tzz = tz*rotation[2];
+
+  m[0] = 1.0-tyy-tzz;
+  m[1] = txy+twz;
+  m[2] = txz-twy;
+  m[3] = txy-twz;
+  m[4] = 1.0-txx-tzz;
+  m[5] = tyz+twx;
+  m[6] = txz+twy;
+  m[7] = tyz-twx;
+  m[8] = 1.0-txx-tyy;
+}
+
+void method2_c::setRotation(const float m[9])
+{
+  const float m00 = m[0], m10 = m[1], m20 = m[2];
+  const float m01 = m[3], m11 = m[4], m21 = m[5];
+  const float m02 = m[6], m12 = m[7], m22 = m[8];
+  const float tr = m00 + m11 + m22;
+  float q0, q1, q2, q3;
+
+  if (tr > 0.0f) {
+    float s = sqrtf(tr + 1.0f) * 2.0f;
+    q3 = 0.25f * s;
+    q0 = (m12 - m21) / s;
+    q1 = (m20 - m02) / s;
+    q2 = (m01 - m10) / s;
+  } else if ((m00 > m11) && (m00 > m22)) {
+    float s = sqrtf(1.0f + m00 - m11 - m22) * 2.0f;
+    q3 = (m12 - m21) / s;
+    q0 = 0.25f * s;
+    q1 = (m01 + m10) / s;
+    q2 = (m02 + m20) / s;
+  } else if (m11 > m22) {
+    float s = sqrtf(1.0f + m11 - m00 - m22) * 2.0f;
+    q3 = (m20 - m02) / s;
+    q0 = (m01 + m10) / s;
+    q1 = 0.25f * s;
+    q2 = (m12 + m21) / s;
+  } else {
+    float s = sqrtf(1.0f + m22 - m00 - m11) * 2.0f;
+    q3 = (m01 - m10) / s;
+    q0 = (m02 + m20) / s;
+    q1 = (m12 + m21) / s;
+    q2 = 0.25f * s;
+  }
+
+  float t = q0*q0 + q1*q1 + q2*q2 + q3*q3;
+  if (t > 0.0f) {
+    float f = 1.0f / sqrtf(t);
+    rotation[0] = q0 * f;
+    rotation[1] = q1 * f;
+    rotation[2] = q2 * f;
+    rotation[3] = q3 * f;
+  } else {
+    rotation[0] = 0;
+    rotation[1] = 0;
+    rotation[2] = 0;
+    rotation[3] = 1;
+  }
+
+  mouseDown = false;
+}
+
+void method2_c::resetRotation(void)
+{
+  rotation[0] = 0;
+  rotation[1] = 0;
+  rotation[2] = 0;
+  rotation[3] = 1;
+  mouseDown = false;
 }
 

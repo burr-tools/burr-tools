@@ -36,13 +36,17 @@ class LView3dGroup : public Fl_Group, public layoutable_c {
   Fl_Slider * slider;
 
 public:
-
+ 
+  static const double defaultZoom;
+ 
   LView3dGroup(int x, int y, int w, int h);
 
   void cb_slider(void);
 
   double getZoom(void) { return slider->value(); }
   void setZoom(double v) { slider->value(v); cb_slider(); }
+  void resetZoomToDefault(void) { setZoom(defaultZoom); }
+  void goHome(void);
 
   void redraw(void);
 

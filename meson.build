@@ -150,6 +150,7 @@ gui_src = [
   'src/gui/tooltabs.cpp',
   'src/gui/vectorexportwindow.cpp',
   'src/gui/view3dgroup.cpp',
+  'src/gui/viewcube.cpp',
   'src/gui/voxelframe.cpp',
   'src/gui/voxeleditgroup.cpp',
   'src/gui/BlockList.cpp',
