@@ -32,6 +32,8 @@ class VoxelEditGroup_c;
 class ChangeSize;
 class ToolTab;
 class shapeHistory_c;
+class statusWindow_c;
+class LFl_Text_Editor;
 class voxel_c;
 class puzzle_c;
 class problem_c;
@@ -51,6 +53,10 @@ class ColorConstraintsEdit;
 class ToolTabContainer;
 class ButtonGroup_c;
 class FlatButton;
+class LFlatButton_c;
+class LFl_Tile;
+class LFl_Menu_Bar;
+class LFl_Button;
 class LStatusLine;
 class LBlockListGroup_c;
 class LView3dGroup;
@@ -150,9 +156,17 @@ class mainWindow_c : public LFl_Double_Window {
   Fl_Output *TimeUsed, *TimeEst;
 
   LView3dGroup * View3D;
+  LFl_Tile * rightPane;
+  statusWindow_c * detailsPanel;
 
   Fl_Group *MinSizeTools;
-  Fl_Menu_Bar *MainMenu;
+  LFl_Menu_Bar *MainMenu;
+  LFlatButton_c *notesToggle;
+  layouter_c *notesPanel;
+  LFl_Tile *contentTile;
+  LFl_Text_Editor *notesInput;
+  LFl_Button *notesUpdate;
+  LFl_Button *notesRevert;
   LStatusLine *StatusLine;
   static Fl_Menu_Item menu_MainMenu[];
 
@@ -172,6 +186,7 @@ class mainWindow_c : public LFl_Double_Window {
 
   Fl_Button *BtnUndo;
   Fl_Button *BtnRedo;
+  Fl_Button *BtnDetails;
   std::unique_ptr<shapeHistory_c> shapeHistory;
 
   void updateUndoRedoButtons(void);
@@ -314,6 +329,18 @@ public:
   void cb_Status(void);
   void cb_3dClick(void);
 
+  void cb_StatusWindow(void);
+  void cb_DetailsClose(void);
+  void cb_DetailsChanged(void);
+  void relayoutViewStack(void);
+
+  void cb_ToggleNotes(void);
+  void cb_ShowNotes(void);
+  void cb_NotesUpdate(void);
+  void cb_NotesRevert(void);
+  void cb_NotesChanged(void);
+  void setNotesButtonsEnabled(bool enabled);
+
   void cb_New(void);
   void cb_Load(void);
   void cb_Load_Ps3d(void);
@@ -326,7 +353,6 @@ public:
   void cb_About(void);
   void cb_Help(void);
   void cb_Config(void);
-  void cb_Coment(void);
   void cb_Toggle3D(void);
   void cb_SolProbSel(LBlockListGroup_c* reason);
 
@@ -335,7 +361,6 @@ public:
   void cb_ImageExportVector(void);
   void cb_STLExport(void);
   void cb_Export_Scad(void);
-  void cb_StatusWindow(void);
 
   void cb_SortSolutions(unsigned int by);
   void cb_DeleteSolutions(unsigned int which);
