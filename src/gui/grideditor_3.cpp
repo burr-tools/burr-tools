@@ -46,7 +46,7 @@ void gridEditor_3_c::calcParameters(int *szx, int *szy, int *tx, int *ty) {
 
   *szx = (sx < sy) ? sx : sy;
 
-  if (*szx > 40) *szx = 40;
+  if (*szx > 80) *szx = 80;
 
   *szx &= ~1;
 
