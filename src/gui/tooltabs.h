@@ -27,28 +27,31 @@
 class ChangeSize;
 class puzzle_c;
 class guiGridType_c;
+class voxel_c;
 
 // the class that contains the tool tab
 class ToolTab : public LFl_Tabs {
 
 public:
 
-  ToolTab(int x, int y, int w, int h) : LFl_Tabs(x, y, w, h) {}
+  ToolTab(int x, int y, int w, int h) : LFl_Tabs(x, y, w, h), puzzle(0), shape(0) {}
 
   virtual void setVoxelSpace(puzzle_c * puz, unsigned int sh) = 0;
   bool operationToAll(void) { return toAll->value() != 0; }
+  void previewTransform(long task, bool on);
 
 protected:
 
   LFl_Check_Button * toAll;
+  puzzle_c * puzzle;
+  unsigned int shape;
+  virtual void applyTask(voxel_c * space, long task) = 0;
 };
 
 // the class that contains the tool tab
 class ToolTab_0 : public ToolTab {
 
   ChangeSize * changeSize;
-  puzzle_c * puzzle;
-  unsigned int shape;
   pixmapList_c pm;
 
 public:
@@ -59,14 +62,13 @@ public:
 
   void cb_size(void);
   void cb_transform(long task);
+  void applyTask(voxel_c * space, long task);
 };
 
 // the class that contains the tool tab
 class ToolTab_1 : public ToolTab {
 
   ChangeSize * changeSize;
-  puzzle_c * puzzle;
-  unsigned int shape;
   pixmapList_c pm;
 
 public:
@@ -77,14 +79,13 @@ public:
 
   void cb_size(void);
   void cb_transform(long task);
+  void applyTask(voxel_c * space, long task);
 };
 
 // the class that contains the tool tab
 class ToolTab_2 : public ToolTab {
 
   ChangeSize * changeSize;
-  puzzle_c * puzzle;
-  unsigned int shape;
   pixmapList_c pm;
 
 public:
@@ -95,14 +96,13 @@ public:
 
   void cb_size(void);
   void cb_transform(long task);
+  void applyTask(voxel_c * space, long task);
 };
 
 
 class ToolTab_3 : public ToolTab {
 
   ChangeSize * changeSize;
-  puzzle_c * puzzle;
-  unsigned int shape;
   pixmapList_c pm;
 
 public:
@@ -113,13 +113,12 @@ public:
 
   void cb_size(void);
   void cb_transform(long task);
+  void applyTask(voxel_c * space, long task);
 };
 
 class ToolTab_4 : public ToolTab {
 
   ChangeSize * changeSize;
-  puzzle_c * puzzle;
-  unsigned int shape;
   pixmapList_c pm;
 
 public:
@@ -130,11 +129,16 @@ public:
 
   void cb_size(void);
   void cb_transform(long task);
+  void applyTask(voxel_c * space, long task);
 };
 
 class ToolTabContainer : public layouter_c {
 
   ToolTab * tt;
+  void (*previewHandler)(void * user, voxel_c * preview, unsigned int shapeNum);
+  void * previewUser;
+  unsigned int delayedClearShape;
+  static void previewClearTimeout(void * v);
 
   public:
 
@@ -142,6 +146,11 @@ class ToolTabContainer : public layouter_c {
 
   void setVoxelSpace(puzzle_c * puz, unsigned int sh) { if (tt) tt->setVoxelSpace(puz, sh); }
   bool operationToAll(void) { if (tt) return tt->operationToAll(); else return false; }
+  void setPreviewHandler(void (*cb)(void * user, voxel_c * preview, unsigned int shapeNum), void * user) {
+    previewHandler = cb;
+    previewUser = user;
+  }
+  void emitPreview(voxel_c * preview, unsigned int shapeNum);
 
   void newGridType(const guiGridType_c * ggt);
 };

@@ -1039,6 +1039,22 @@ void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) 
   redraw();
 }
 
+void voxelFrame_c::showOwnedVoxel(voxel_c * vx, unsigned int colorIndex) {
+
+  hideMarker();
+  clearSpaces();
+  if (!vx)
+    return;
+
+  unsigned int num = addSpace(vx);
+  setSpaceColor(num, pieceColorR(colorIndex), pieceColorG(colorIndex), pieceColorB(colorIndex), 1);
+
+  trans = TranslateRoateScale;
+  _showCoordinateSystem = true;
+
+  redraw();
+}
+
 void voxelFrame_c::showMesh(Polyhedron * poly)
 {
   hideMarker();

@@ -28,6 +28,7 @@
 class VoxelEditGroup_c;
 class ChangeSize;
 class ToolTab;
+class voxel_c;
 class puzzle_c;
 class problem_c;
 class solveThread_c;
@@ -268,6 +269,7 @@ public:
   void cb_PiecesClicked(void);
 
   void cb_TransformPiece(void);
+  void cb_TransformPreview(voxel_c * preview, unsigned int shapeNum);
   void cb_pieceEdit(VoxelEditGroup_c* o);
   void cb_EditChoice(void);
   void cb_EditSym(int onoff, int value);

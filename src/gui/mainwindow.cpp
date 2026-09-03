@@ -342,6 +342,25 @@ void mainWindow_c::cb_TransformPiece(void) {
   changed = true;
 }
 
+static void cb_TransformPreview_stub(void* v, voxel_c* preview, unsigned int shapeNum) {
+  ((mainWindow_c*)v)->cb_TransformPreview(preview, shapeNum);
+}
+
+void mainWindow_c::cb_TransformPreview(voxel_c *preview, unsigned int shapeNum) {
+
+  if (preview) {
+    if (TaskSelectionTab->value() != TabPieces) {
+      delete preview;
+      return;
+    }
+    View3D->getView()->showOwnedVoxel(preview, shapeNum);
+    return;
+  }
+
+  if (TaskSelectionTab->value() == TabPieces)
+    activateShape(PcSel->getSelection());
+}
+
 static void cb_EditSym_stub(Fl_Widget* o, void* v) {
   ((mainWindow_c*)v)->cb_EditSym(((LToggleButton_c*)o)->value(), ((LToggleButton_c*)o)->ButtonVal());
 }
@@ -3479,6 +3498,7 @@ void mainWindow_c::CreateShapeTab(void) {
 
     pieceTools = new ToolTabContainer(0, 1, 1, 1, ggt);
     pieceTools->callback(cb_TransformPiece_stub, this);
+    pieceTools->setPreviewHandler(cb_TransformPreview_stub, this);
 
     (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
 

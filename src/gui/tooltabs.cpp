@@ -23,11 +23,13 @@
 
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
+#include "../lib/gridtype.h"
 #include "WindowWidgets.h"
 #include "guigridtype.h"
 #include <stdlib.h>
 
 #include "FL/fl_ask.H"
+#include "FL/Fl.H"
 
 // the transform group
 class TransformButtons : public layouter_c {
@@ -43,6 +45,7 @@ public:
   TransformButtons(int x, int y, int w, int h, int type);
 
   void cb_Press(long button) { do_callback(this, button); }
+  void cb_Preview(long button, bool on);
 };
 
 class ToolsButtons : public layouter_c {
@@ -105,6 +108,42 @@ public:
 
 static void cb_TransformButtons_stub(Fl_Widget* o, long v) { ((TransformButtons*)(o->parent()->parent()))->cb_Press(v); }
 
+void TransformButtons::cb_Preview(long button, bool on) {
+  Fl_Widget *p = parent();
+  while (p) {
+    ToolTab *tab = dynamic_cast<ToolTab*>(p);
+    if (tab) {
+      tab->previewTransform(button, on);
+      return;
+    }
+    p = p->parent();
+  }
+}
+
+class TransformPreviewButton : public LFlatButton_c {
+
+  TransformButtons *owner;
+  long task;
+
+public:
+
+  TransformPreviewButton(int x, int y, int w, int h, Fl_Image *img, Fl_Image *inact, const char *tt, TransformButtons *o, long t)
+    : LFlatButton_c(x, y, w, h, img, inact, tt, cb_TransformButtons_stub, t), owner(o), task(t) {}
+
+  TransformPreviewButton(int x, int y, int w, int h, const char *txt, const char *tt, TransformButtons *o, long t)
+    : LFlatButton_c(x, y, w, h, txt, tt, cb_TransformButtons_stub, t), owner(o), task(t) {}
+
+  int handle(int event) {
+    if (active()) {
+      if (event == FL_ENTER)
+        owner->cb_Preview(task, true);
+      else if (event == FL_LEAVE)
+        owner->cb_Preview(task, false);
+    }
+    return LFlatButton_c::handle(event);
+  }
+};
+
 TransformButtons::TransformButtons(int x, int y, int w, int h, int type) : layouter_c(x, y, w, h) {
 
   label("Transform");
@@ -120,80 +159,80 @@ TransformButtons::TransformButtons(int x, int y, int w, int h, int type) : layou
 
   layouter_c * o = new layouter_c(1, 3, 1, 1);
 
-  new LFlatButton_c(0, 0, 1, 1, pm.get(Transform_Color_Flip_X_xpm)        , pm.get(Transform_Disabled_Flip_X_xpm)        ,
-      " Flip along Y-Z Plane ",              cb_TransformButtons_stub, 12);
-  new LFlatButton_c(0, 1, 1, 1, pm.get(Transform_Color_Flip_Y_xpm)        , pm.get(Transform_Disabled_Flip_Y_xpm)        ,
-      " Flip along X-Z Plane ",              cb_TransformButtons_stub, 13);
-  new LFlatButton_c(0, 2, 1, 1, pm.get(Transform_Color_Flip_Z_xpm)        , pm.get(Transform_Disabled_Flip_Z_xpm)        ,
-      " Flip along X-Y Plane ",              cb_TransformButtons_stub, 14);
+  new TransformPreviewButton(0, 0, 1, 1, pm.get(Transform_Color_Flip_X_xpm)        , pm.get(Transform_Disabled_Flip_X_xpm)        ,
+      " Flip along Y-Z Plane ",              this, 12);
+  new TransformPreviewButton(0, 1, 1, 1, pm.get(Transform_Color_Flip_Y_xpm)        , pm.get(Transform_Disabled_Flip_Y_xpm)        ,
+      " Flip along X-Z Plane ",              this, 13);
+  new TransformPreviewButton(0, 2, 1, 1, pm.get(Transform_Color_Flip_Z_xpm)        , pm.get(Transform_Disabled_Flip_Z_xpm)        ,
+      " Flip along X-Y Plane ",              this, 14);
 
   o->end();
 
   o = new layouter_c(3, 3, 1, 1);
 
   if (type == 0) {
-    new LFlatButton_c(0, 0, 1, 1, pm.get(Transform_Color_Nudge_X_Left_xpm)  , pm.get(Transform_Disabled_Nudge_X_Left_xpm)  ,
-        " Shift down along X ",                cb_TransformButtons_stub,  1);
-    new LFlatButton_c(1, 0, 1, 1, pm.get(Transform_Color_Nudge_X_Right_xpm) , pm.get(Transform_Disabled_Nudge_X_Right_xpm) ,
-        " Shift up along X ",                  cb_TransformButtons_stub,  0);
-    new LFlatButton_c(0, 1, 1, 1, pm.get(Transform_Color_Nudge_Y_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Y_Left_xpm)  ,
-        " Shift down along Y ",                cb_TransformButtons_stub,  3);
-    new LFlatButton_c(1, 1, 1, 1, pm.get(Transform_Color_Nudge_Y_Right_xpm) , pm.get(Transform_Disabled_Nudge_Y_Right_xpm) ,
-        " Shift up along Y ",                  cb_TransformButtons_stub,  2);
-    new LFlatButton_c(0, 2, 1, 1, pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
-        " Shift down along Z ",                cb_TransformButtons_stub,  5);
-    new LFlatButton_c(1, 2, 1, 1, pm.get(Transform_Color_Nudge_Z_Right_xpm) , pm.get(Transform_Disabled_Nudge_Z_Right_xpm) ,
-        " Shift up along Z ",                  cb_TransformButtons_stub,  4);
+    new TransformPreviewButton(0, 0, 1, 1, pm.get(Transform_Color_Nudge_X_Left_xpm)  , pm.get(Transform_Disabled_Nudge_X_Left_xpm)  ,
+        " Shift down along X ",                this,  1);
+    new TransformPreviewButton(1, 0, 1, 1, pm.get(Transform_Color_Nudge_X_Right_xpm) , pm.get(Transform_Disabled_Nudge_X_Right_xpm) ,
+        " Shift up along X ",                  this,  0);
+    new TransformPreviewButton(0, 1, 1, 1, pm.get(Transform_Color_Nudge_Y_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Y_Left_xpm)  ,
+        " Shift down along Y ",                this,  3);
+    new TransformPreviewButton(1, 1, 1, 1, pm.get(Transform_Color_Nudge_Y_Right_xpm) , pm.get(Transform_Disabled_Nudge_Y_Right_xpm) ,
+        " Shift up along Y ",                  this,  2);
+    new TransformPreviewButton(0, 2, 1, 1, pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
+        " Shift down along Z ",                this,  5);
+    new TransformPreviewButton(1, 2, 1, 1, pm.get(Transform_Color_Nudge_Z_Right_xpm) , pm.get(Transform_Disabled_Nudge_Z_Right_xpm) ,
+        " Shift up along Z ",                  this,  4);
 
   } else if (type == 1) {
 
-    new LFlatButton_c(0, 0, 1, 1, "@7->",
-        " Shift up left along XY plane ",  cb_TransformButtons_stub,  1);
-    new LFlatButton_c(1, 0, 1, 1, "@9->",
-        " Shift up right along XY plane ", cb_TransformButtons_stub,  0);
-    new LFlatButton_c(0, 1, 1, 1, "@4->",
-        " Shift left along X ",            cb_TransformButtons_stub,  3);
-    new LFlatButton_c(1, 1, 1, 1, "@6->",
-        " Shift right along X ",           cb_TransformButtons_stub,  2);
-    new LFlatButton_c(0, 2, 1, 1, "@1->",
-        " Shift down left XY plane ",      cb_TransformButtons_stub,  28);
-    new LFlatButton_c(1, 2, 1, 1, "@3->",
-        " Shift down right XY plane ",     cb_TransformButtons_stub,  27);
+    new TransformPreviewButton(0, 0, 1, 1, "@7->",
+        " Shift up left along XY plane ",  this,  1);
+    new TransformPreviewButton(1, 0, 1, 1, "@9->",
+        " Shift up right along XY plane ", this,  0);
+    new TransformPreviewButton(0, 1, 1, 1, "@4->",
+        " Shift left along X ",            this,  3);
+    new TransformPreviewButton(1, 1, 1, 1, "@6->",
+        " Shift right along X ",           this,  2);
+    new TransformPreviewButton(0, 2, 1, 1, "@1->",
+        " Shift down left XY plane ",      this,  28);
+    new TransformPreviewButton(1, 2, 1, 1, "@3->",
+        " Shift down right XY plane ",     this,  27);
 
-    new LFlatButton_c(0, 3, 1, 1, pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
-        " Shift down along Z ",            cb_TransformButtons_stub,  5);
-    new LFlatButton_c(1, 3, 1, 1, pm.get(Transform_Color_Nudge_Z_Right_xpm) , pm.get(Transform_Disabled_Nudge_Z_Right_xpm) ,
-        " Shift up along Z ",              cb_TransformButtons_stub,  4);
+    new TransformPreviewButton(0, 3, 1, 1, pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
+        " Shift down along Z ",            this,  5);
+    new TransformPreviewButton(1, 3, 1, 1, pm.get(Transform_Color_Nudge_Z_Right_xpm) , pm.get(Transform_Disabled_Nudge_Z_Right_xpm) ,
+        " Shift up along Z ",              this,  4);
 
   } else if (type == 2) {
 
-    new LFlatButton_c(0, 0, 1, 1, "u @6->",
-        " Shift up along Z and right along X ",cb_TransformButtons_stub,  0);
-    new LFlatButton_c(1, 0, 1, 1, "u @8->",
-        " Shift up along Z and up along Y ",   cb_TransformButtons_stub,  1);
-    new LFlatButton_c(2, 0, 1, 1, "u @4->",
-        " Shift up along Z and left along X ", cb_TransformButtons_stub,  2);
-    new LFlatButton_c(3, 0, 1, 1, "u @2->",
-        " Shift up along Z and down along Y ", cb_TransformButtons_stub,  3);
+    new TransformPreviewButton(0, 0, 1, 1, "u @6->",
+        " Shift up along Z and right along X ",this,  0);
+    new TransformPreviewButton(1, 0, 1, 1, "u @8->",
+        " Shift up along Z and up along Y ",   this,  1);
+    new TransformPreviewButton(2, 0, 1, 1, "u @4->",
+        " Shift up along Z and left along X ", this,  2);
+    new TransformPreviewButton(3, 0, 1, 1, "u @2->",
+        " Shift up along Z and down along Y ", this,  3);
 
-    new LFlatButton_c(0, 1, 1, 1, "@9->",
-        " Shift up right along XY plane ",     cb_TransformButtons_stub,  4);
-    new LFlatButton_c(1, 1, 1, 1, "@7->",
-        " Shift up left along XY plane ",      cb_TransformButtons_stub,  5);
-    new LFlatButton_c(2, 1, 1, 1, "@1->",
-        " Shift down left along XY plane ",    cb_TransformButtons_stub,  27);
-    new LFlatButton_c(3, 1, 1, 1, "@3->",
-        " Shift down right along XY plane ",   cb_TransformButtons_stub,  28);
+    new TransformPreviewButton(0, 1, 1, 1, "@9->",
+        " Shift up right along XY plane ",     this,  4);
+    new TransformPreviewButton(1, 1, 1, 1, "@7->",
+        " Shift up left along XY plane ",      this,  5);
+    new TransformPreviewButton(2, 1, 1, 1, "@1->",
+        " Shift down left along XY plane ",    this,  27);
+    new TransformPreviewButton(3, 1, 1, 1, "@3->",
+        " Shift down right along XY plane ",   this,  28);
 
 
-    new LFlatButton_c(0, 2, 1, 1, "d @6->",
-        " Shift down along Z and right along X ", cb_TransformButtons_stub, 29);
-    new LFlatButton_c(1, 2, 1, 1, "d @8->",
-        " Shift down along Z and up along Y ",    cb_TransformButtons_stub, 30);
-    new LFlatButton_c(2, 2, 1, 1, "d @4->",
-        " Shift down along Z and left along X ",  cb_TransformButtons_stub, 31);
-    new LFlatButton_c(3, 2, 1, 1, "d @2->",
-        " Shift down along Z and down along Y ",  cb_TransformButtons_stub, 32);
+    new TransformPreviewButton(0, 2, 1, 1, "d @6->",
+        " Shift down along Z and right along X ", this, 29);
+    new TransformPreviewButton(1, 2, 1, 1, "d @8->",
+        " Shift down along Z and up along Y ",    this, 30);
+    new TransformPreviewButton(2, 2, 1, 1, "d @4->",
+        " Shift down along Z and left along X ",  this, 31);
+    new TransformPreviewButton(3, 2, 1, 1, "d @2->",
+        " Shift down along Z and down along Y ",  this, 32);
 
   }
 
@@ -203,29 +242,29 @@ TransformButtons::TransformButtons(int x, int y, int w, int h, int type) : layou
 
   if (type == 1) {
 
-    new LFlatButton_c(6, 0, 2, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
-        " Rotate 180° along X-Axis ",     cb_TransformButtons_stub,  6);
-    new LFlatButton_c(6, 1, 2, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
-        " Rotate 180° along Y-Axis ",     cb_TransformButtons_stub,  9);
-    new LFlatButton_c(6, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
-        " Rotate 60° clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
-    new LFlatButton_c(7, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
-        " Rotate 60° anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
+    new TransformPreviewButton(6, 0, 2, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
+        " Rotate 180° along X-Axis ",     this,  6);
+    new TransformPreviewButton(6, 1, 2, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
+        " Rotate 180° along Y-Axis ",     this,  9);
+    new TransformPreviewButton(6, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
+        " Rotate 60° clockwise along Z-Axis ",     this, 10);
+    new TransformPreviewButton(7, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
+        " Rotate 60° anticlockwise along Z-Axis ", this, 11);
 
   } else {
 
-    new LFlatButton_c(6, 0, 1, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
-        " Rotate 90° clockwise along X-Axis ",     cb_TransformButtons_stub,  6);
-    new LFlatButton_c(7, 0, 1, 1, pm.get(Transform_Color_Rotate_X_Right_xpm), pm.get(Transform_Disabled_Rotate_X_Right_xpm),
-        " Rotate 90° anticlockwise along X-Axis ", cb_TransformButtons_stub,  7);
-    new LFlatButton_c(6, 1, 1, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
-        " Rotate 90° clockwise along Y-Axis ",     cb_TransformButtons_stub,  9);
-    new LFlatButton_c(7, 1, 1, 1, pm.get(Transform_Color_Rotate_Y_Right_xpm), pm.get(Transform_Disabled_Rotate_Y_Right_xpm),
-        " Rotate 90° anticlockwise along Y-Axis ", cb_TransformButtons_stub,  8);
-    new LFlatButton_c(6, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
-        " Rotate 90° clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
-    new LFlatButton_c(7, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
-        " Rotate 90° anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
+    new TransformPreviewButton(6, 0, 1, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
+        " Rotate 90° clockwise along X-Axis ",     this,  6);
+    new TransformPreviewButton(7, 0, 1, 1, pm.get(Transform_Color_Rotate_X_Right_xpm), pm.get(Transform_Disabled_Rotate_X_Right_xpm),
+        " Rotate 90° anticlockwise along X-Axis ", this,  7);
+    new TransformPreviewButton(6, 1, 1, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
+        " Rotate 90° clockwise along Y-Axis ",     this,  9);
+    new TransformPreviewButton(7, 1, 1, 1, pm.get(Transform_Color_Rotate_Y_Right_xpm), pm.get(Transform_Disabled_Rotate_Y_Right_xpm),
+        " Rotate 90° anticlockwise along Y-Axis ", this,  8);
+    new TransformPreviewButton(6, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
+        " Rotate 90° clockwise along Z-Axis ",     this, 10);
+    new TransformPreviewButton(7, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
+        " Rotate 90° anticlockwise along Z-Axis ", this, 11);
   }
 
   o->end();
@@ -591,56 +630,8 @@ void ToolTab_0::cb_size(void) {
   }
 }
 
-void ToolTab_0::cb_transform(long task) {
-  if (puzzle && shape < puzzle->getNumberOfShapes()) {
-
-    int ss, se;
-
-    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
-      ss = 0;
-      se = puzzle->getNumberOfShapes();
-    } else {
-      ss = shape;
-      se = shape+1;
-    }
-
-    if (task == 26) {
-
-      unsigned char primes[] = {2, 3, 5, 7, 11, 13, 17, 19, 0};
-
-      // special case for minimisation
-
-      int prime = 0;
-
-      while (primes[prime]) {
-
-        bool canScale = true;
-
-        for (int s = ss; s < se; s++)
-          if (!puzzle->getShape(s)->scaleDown(primes[prime], false)) {
-            canScale = false;
-            break;
-          }
-
-        if (canScale) {
-          for (int s = ss; s < se; s++)
-            puzzle->getShape(s)->scaleDown(primes[prime], true);
-        } else
-          prime++;
-      }
-
-      for (int s = ss; s < se; s++)
-        puzzle->getShape(s)->initHotspot();
-
-      do_callback(this, user_data());
-
-      return;
-    }
-
-    for (int s = ss; s < se; s++) {
-      voxel_c * space = puzzle->getShape(s);
-
-      switch(task) {
+void ToolTab_0::applyTask(voxel_c * space, long task) {
+  switch(task) {
         case  0: space->translate( 1, 0, 0, 0); break;
         case  1: space->translate(-1, 0, 0, 0); break;
         case  2: space->translate( 0, 1, 0, 0); break;
@@ -688,7 +679,57 @@ void ToolTab_0::cb_transform(long task) {
         case 40: space->fillHoles(0); break;
         case 41: space->scale(5, true); break;
       }
-      space->initHotspot();
+}
+
+void ToolTab_0::cb_transform(long task) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
+
+    int ss, se;
+
+    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
+      ss = 0;
+      se = puzzle->getNumberOfShapes();
+    } else {
+      ss = shape;
+      se = shape+1;
+    }
+
+    if (task == 26) {
+
+      unsigned char primes[] = {2, 3, 5, 7, 11, 13, 17, 19, 0};
+
+      // special case for minimisation
+
+      int prime = 0;
+
+      while (primes[prime]) {
+
+        bool canScale = true;
+
+        for (int s = ss; s < se; s++)
+          if (!puzzle->getShape(s)->scaleDown(primes[prime], false)) {
+            canScale = false;
+            break;
+          }
+
+        if (canScale) {
+          for (int s = ss; s < se; s++)
+            puzzle->getShape(s)->scaleDown(primes[prime], true);
+        } else
+          prime++;
+      }
+
+      for (int s = ss; s < se; s++)
+        puzzle->getShape(s)->initHotspot();
+
+      do_callback(this, user_data());
+
+      return;
+    }
+
+    for (int s = ss; s < se; s++) {
+      applyTask(puzzle->getShape(s), task);
+      puzzle->getShape(s)->initHotspot();
     }
 
     do_callback(this, user_data());
@@ -766,31 +807,8 @@ void ToolTab_1::cb_size(void) {
   }
 }
 
-void ToolTab_1::cb_transform(long task) {
-
-  if (puzzle && shape < puzzle->getNumberOfShapes()) {
-
-    int ss, se;
-
-    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
-      ss = 0;
-      se = puzzle->getNumberOfShapes();
-    } else {
-      ss = shape;
-      se = shape+1;
-    }
-
-    if (task == 26) {
-
-      fl_message("Sorry this is not yet implemented!");
-      return;
-
-    }
-
-    for (int s = ss; s < se; s++) {
-      voxel_c * space = puzzle->getShape(s);
-
-      switch(task) {
+void ToolTab_1::applyTask(voxel_c * space, long task) {
+  switch(task) {
         case  0: space->translate( 1, 1, 0, 0); break;
         case  1: space->translate(-1, 1, 0, 0); break;
         case  2: space->translate( 2, 0, 0, 0); break;
@@ -857,7 +875,32 @@ void ToolTab_1::cb_transform(long task) {
         case 40: space->fillHoles(0); break;
         case 41: space->scale(5, true); break;
       }
-      space->initHotspot();
+}
+
+void ToolTab_1::cb_transform(long task) {
+
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
+
+    int ss, se;
+
+    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
+      ss = 0;
+      se = puzzle->getNumberOfShapes();
+    } else {
+      ss = shape;
+      se = shape+1;
+    }
+
+    if (task == 26) {
+
+      fl_message("Sorry this is not yet implemented!");
+      return;
+
+    }
+
+    for (int s = ss; s < se; s++) {
+      applyTask(puzzle->getShape(s), task);
+      puzzle->getShape(s)->initHotspot();
     }
 
     do_callback(this, user_data());
@@ -932,23 +975,8 @@ void ToolTab_2::cb_size(void) {
   }
 }
 
-void ToolTab_2::cb_transform(long task) {
-  if (puzzle && shape < puzzle->getNumberOfShapes()) {
-
-    int ss, se;
-
-    if (toAll->value() && ((task == 15) || (task == 24) || (task == 25))) {
-      ss = 0;
-      se = puzzle->getNumberOfShapes();
-    } else {
-      ss = shape;
-      se = shape+1;
-    }
-
-    for (int s = ss; s < se; s++) {
-      voxel_c * space = puzzle->getShape(s);
-
-      switch(task) {
+void ToolTab_2::applyTask(voxel_c * space, long task) {
+  switch(task) {
         case  0: space->translate( 1, 0, 1, 0); break;
         case  1: space->translate( 0, 1, 1, 0); break;
         case  2: space->translate(-1, 0, 1, 0); break;
@@ -1024,7 +1052,24 @@ void ToolTab_2::cb_transform(long task) {
                  break;
         case 40: space->fillHoles(0); break;
       }
-      space->initHotspot();
+}
+
+void ToolTab_2::cb_transform(long task) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
+
+    int ss, se;
+
+    if (toAll->value() && ((task == 15) || (task == 24) || (task == 25))) {
+      ss = 0;
+      se = puzzle->getNumberOfShapes();
+    } else {
+      ss = shape;
+      se = shape+1;
+    }
+
+    for (int s = ss; s < se; s++) {
+      applyTask(puzzle->getShape(s), task);
+      puzzle->getShape(s)->initHotspot();
     }
 
     do_callback(this, user_data());
@@ -1102,23 +1147,8 @@ void ToolTab_3::cb_size(void) {
   }
 }
 
-void ToolTab_3::cb_transform(long task) {
-  if (puzzle && shape < puzzle->getNumberOfShapes()) {
-
-    int ss, se;
-
-    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
-      ss = 0;
-      se = puzzle->getNumberOfShapes();
-    } else {
-      ss = shape;
-      se = shape+1;
-    }
-
-    for (int s = ss; s < se; s++) {
-      voxel_c * space = puzzle->getShape(s);
-
-      switch(task) {
+void ToolTab_3::applyTask(voxel_c * space, long task) {
+  switch(task) {
         case  0: space->translate( 5, 0, 0, 0); break;
         case  1: space->translate(-5, 0, 0, 0); break;
         case  2: space->translate( 0, 5, 0, 0); break;
@@ -1165,7 +1195,24 @@ void ToolTab_3::cb_transform(long task) {
         case 40: space->fillHoles(0); break;
         case 41: space->scale(7, true); break;
       }
-      space->initHotspot();
+}
+
+void ToolTab_3::cb_transform(long task) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
+
+    int ss, se;
+
+    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
+      ss = 0;
+      se = puzzle->getNumberOfShapes();
+    } else {
+      ss = shape;
+      se = shape+1;
+    }
+
+    for (int s = ss; s < se; s++) {
+      applyTask(puzzle->getShape(s), task);
+      puzzle->getShape(s)->initHotspot();
     }
 
     do_callback(this, user_data());
@@ -1244,23 +1291,8 @@ void ToolTab_4::cb_size(void) {
   }
 }
 
-void ToolTab_4::cb_transform(long task) {
-  if (puzzle && shape < puzzle->getNumberOfShapes()) {
-
-    int ss, se;
-
-    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
-      ss = 0;
-      se = puzzle->getNumberOfShapes();
-    } else {
-      ss = shape;
-      se = shape+1;
-    }
-
-    for (int s = ss; s < se; s++) {
-      voxel_c * space = puzzle->getShape(s);
-
-      switch(task) {
+void ToolTab_4::applyTask(voxel_c * space, long task) {
+  switch(task) {
         case  0: space->translate( 6, 0, 0, 0); break;
         case  1: space->translate(-6, 0, 0, 0); break;
         case  2: space->translate( 0, 6, 0, 0); break;
@@ -1306,7 +1338,24 @@ void ToolTab_4::cb_transform(long task) {
         case 26: fl_message("Sorry minimizing is not (yet) implemented for the rhombic grid!"); return;
         case 40: space->fillHoles(0); break;
       }
-      space->initHotspot();
+}
+
+void ToolTab_4::cb_transform(long task) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
+
+    int ss, se;
+
+    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
+      ss = 0;
+      se = puzzle->getNumberOfShapes();
+    } else {
+      ss = shape;
+      se = shape+1;
+    }
+
+    for (int s = ss; s < se; s++) {
+      applyTask(puzzle->getShape(s), task);
+      puzzle->getShape(s)->initHotspot();
     }
 
     do_callback(this, user_data());
@@ -1317,15 +1366,50 @@ void ToolTab_4::cb_transform(long task) {
 
 
 
+
+void ToolTab::previewTransform(long task, bool on) {
+  ToolTabContainer *c = dynamic_cast<ToolTabContainer*>(parent());
+  if (!c)
+    return;
+  if (!on || !puzzle || shape >= puzzle->getNumberOfShapes()) {
+    c->emitPreview(0, shape);
+    return;
+  }
+  voxel_c *v = puzzle->getGridType()->getVoxel(puzzle->getShape(shape));
+  applyTask(v, task);
+  v->initHotspot();
+  c->emitPreview(v, shape);
+}
+
 static void cb_ToolTabContainer_stub(Fl_Widget* /*o*/, void*v) {
   ToolTabContainer *vv = (ToolTabContainer*)v;
   vv->do_callback(vv, vv->user_data());
 }
 
-ToolTabContainer::ToolTabContainer(int x, int y, int w, int h, const guiGridType_c * ggt) : layouter_c(x, y, w, h) {
+ToolTabContainer::ToolTabContainer(int x, int y, int w, int h, const guiGridType_c * ggt)
+  : layouter_c(x, y, w, h), previewHandler(0), previewUser(0), delayedClearShape(0) {
   tt = ggt->getToolTab(0, 0, 1, 1);
   tt->callback(cb_ToolTabContainer_stub, this);
   end();
+}
+
+void ToolTabContainer::previewClearTimeout(void *v) {
+  ToolTabContainer *c = (ToolTabContainer*)v;
+  if (c->previewHandler)
+    c->previewHandler(c->previewUser, 0, c->delayedClearShape);
+}
+
+void ToolTabContainer::emitPreview(voxel_c *preview, unsigned int shapeNum) {
+  Fl::remove_timeout(previewClearTimeout, this);
+  if (!preview) {
+    delayedClearShape = shapeNum;
+    Fl::add_timeout(0.06, previewClearTimeout, this);
+    return;
+  }
+  if (previewHandler)
+    previewHandler(previewUser, preview, shapeNum);
+  else
+    delete preview;
 }
 
 void ToolTabContainer::newGridType(const guiGridType_c * ggt) {
