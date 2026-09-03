@@ -58,7 +58,7 @@ void gridEditor_1_c::calcParameters(int *s, int *s2, int *tx, int *ty) {
     if (sx & 1) sx--;
   }
 
-  if (sx > 30) sx = 30;
+  if (sx > 60) sx = 60;
 
   *s = sx;
   *s2 = (int)(sx * HEIGHT + 0.5);
