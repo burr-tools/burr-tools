@@ -50,8 +50,15 @@ void LBlockListGroup_c::cb_slider(void) { List->setShift((int)Slider->value()); 
 int LBlockListGroup_c::handle(int event) {
 
   if (event == FL_MOUSEWHEEL) {
+    if (!Fl::event_inside(this))
+      return 0;
+
+    int dy = Fl::event_dy();
     double max = Slider->maximum();
-    double v = Slider->value() + Fl::event_dy() * 24.0;
+    if (dy == 0 || max <= 0)
+      return 0;
+
+    double v = Slider->value() + dy * 24.0;
     if (v < 0) v = 0;
     if (v > max) v = max;
     Slider->value(v);

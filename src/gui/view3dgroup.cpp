@@ -77,8 +77,11 @@ int LView3dGroup::handle(int event) {
     int dy = Fl::event_dy();
     if (config.reverseScrollZoom())
       dy = -dy;
-    slider->value(slider->value() + 0.1 * dy);
-    View3D->setSize(exp(6 - slider->value()));
+    double v = slider->value() + 0.1 * dy;
+    if (v < slider->minimum()) v = slider->minimum();
+    if (v > slider->maximum()) v = slider->maximum();
+    slider->value(v);
+    View3D->setSize(exp(6 - v));
     return 1;
   }
 
