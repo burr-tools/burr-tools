@@ -53,6 +53,8 @@ public:
   int renderStyle(void) { return i_render_style; }
   void renderStyle(int val) { i_render_style = val; }
 
+  bool reverseScrollZoom(void) { return i_reverseScrollZoom; }
+
   int windowPosX(void) { return i_window_pos_x; }
   int windowPosY(void) { return i_window_pos_y; }
   int windowPosW(void) { return i_window_pos_w; }
@@ -65,6 +67,7 @@ public:
   }
 
   void dialog(void);
+  void restoreDialogDefaults(void);
 
 private:
 
@@ -75,7 +78,7 @@ private:
   } cnf_type;
 
   void parse(void);
-  void register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * def);
+  void register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * dhelp, const char * def);
 
   typedef struct config_data {
     config_data *next;
@@ -85,6 +88,7 @@ private:
     long      maxlen;    // maximum length (for strings)
     bool      dialog;    // shall it be visible in the config dialogue
     const char * dialogText;
+    const char * dialogHelp;
     void *    widget;    // used in the dialogue to save pointer to the widget
     const char * defaultValue; // the variable will have this value, when not initialized in script file
   } config_data;
@@ -98,6 +102,7 @@ private:
   bool i_use_displayLists;
   bool i_rotationMethod;
   int i_render_style;
+  bool i_reverseScrollZoom;
 
   int i_window_pos_x;
   int i_window_pos_y;

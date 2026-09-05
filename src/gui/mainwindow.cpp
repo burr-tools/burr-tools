@@ -452,14 +452,20 @@ void mainWindow_c::cb_pieceEdit(VoxelEditGroup_c* o) {
 
   switch (o->getReason()) {
   case gridEditor_c::RS_MOUSEMOVE:
-    if (o->getMouse())
+    if (o->getMouse()) {
       View3D->getView()->setMarker(o->getMouseX1(), o->getMouseY1(), o->getMouseX2(), o->getMouseY2(), o->getMouseZ(), editSymmetries);
-    else
+      StatPieceInfo(PcSel->getSelection(), true, o->getCursorX(), o->getCursorY(), o->getCursorZ());
+    } else {
       View3D->getView()->hideMarker();
+      StatPieceInfo(PcSel->getSelection());
+    }
     break;
   case gridEditor_c::RS_CHANGESQUARE:
     View3D->getView()->showSingleShape(puzzle, PcSel->getSelection());
-    StatPieceInfo(PcSel->getSelection());
+    if (o->getMouse())
+      StatPieceInfo(PcSel->getSelection(), true, o->getCursorX(), o->getCursorY(), o->getCursorZ());
+    else
+      StatPieceInfo(PcSel->getSelection());
     changeShape(PcSel->getSelection());
     changed = true;
     break;
@@ -1934,14 +1940,25 @@ void mainWindow_c::cb_About(void) {
 }
 
 void mainWindow_c::StatPieceInfo(unsigned int pc) {
+  StatPieceInfo(pc, false, 0, 0, 0);
+}
+
+void mainWindow_c::StatPieceInfo(unsigned int pc, bool withCoords, int x, int y, int z) {
 
   if (pc < puzzle->getNumberOfShapes()) {
-    char txt[100];
+    char txt[160];
 
     unsigned int fx = puzzle->getShape(pc)->countState(voxel_c::VX_FILLED);
     unsigned int vr = puzzle->getShape(pc)->countState(voxel_c::VX_VARIABLE);
 
-    snprintf(txt, 100, "Shape S%i has %i voxels (%i fixed, %i variable)", pc+1, fx+vr, fx, vr);
+    if (withCoords)
+      snprintf(txt, sizeof(txt),
+               "Shape S%i has %i voxels (%i fixed, %i variable) (Coordinates X=%i, Y=%i, Z=%i)",
+               pc+1, fx+vr, fx, vr, x, y, z);
+    else
+      snprintf(txt, sizeof(txt),
+               "Shape S%i has %i voxels (%i fixed, %i variable)",
+               pc+1, fx+vr, fx, vr);
     StatusLine->setText(txt);
   }
 }
@@ -2150,7 +2167,7 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
     { 0 },
   {"Status",           0, cb_StatusWindow_stub,  0, 0, 0, 0, 14, 56},
   {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
-  {"Config",           0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
+  {"Settings",         0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
   {"About",            0, cb_About_stub,       0, 0, 3, 0, 14, 56},
   {0}
 };

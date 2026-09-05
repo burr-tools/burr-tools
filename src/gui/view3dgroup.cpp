@@ -21,6 +21,7 @@
 #include "view3dgroup.h"
 
 #include "voxelframe.h"
+#include "configuration.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/disasmtomoves.h"
@@ -69,17 +70,22 @@ LView3dGroup::LView3dGroup(int x, int y, int w, int h) : Fl_Group(0, 0, 50, 50),
 
 int LView3dGroup::handle(int event) {
 
-  Fl_Group::handle(event);
+  if (event == FL_MOUSEWHEEL) {
+    if (!Fl::event_inside(this))
+      return 0;
 
-  switch(event)
-  {
-    case FL_MOUSEWHEEL:
-      slider->value(slider->value() + 0.1*Fl::e_dy);
-      View3D->setSize(exp(6-slider->value()));
-      return 1;
+    int dy = Fl::event_dy();
+    if (config.reverseScrollZoom())
+      dy = -dy;
+    double v = slider->value() + 0.1 * dy;
+    if (v < slider->minimum()) v = slider->minimum();
+    if (v > slider->maximum()) v = slider->maximum();
+    slider->value(v);
+    View3D->setSize(exp(6 - v));
+    return 1;
   }
 
-  return 0;
+  return Fl_Group::handle(event);
 }
 
 void LView3dGroup::redraw(void)
