@@ -290,7 +290,7 @@ catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_ma
 inc = include_directories('src')
 
 test_burrtools = executable('test_burrtools',
-  tools_src + halfedge_src + libburr_src + ['test/test_solver.cpp'],
+  tools_src + halfedge_src + libburr_src + ['test/test_solver.cpp', 'test/test_burrtxt.cpp'],
   include_directories: inc,
   dependencies: [thread_dep, zlib_dep, catch2_dep],
 )
