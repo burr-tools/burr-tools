@@ -201,3 +201,29 @@ TEST_CASE("Puzzle metadata inspection", "[metadata]") {
   CHECK(p.getComment().find("Pelikan Burr") != std::string::npos);
   CHECK(p.getProblem(0)->getNumberOfPieces() == 7);
 }
+
+TEST_CASE("bt_assert throws assert_exception with C++20 source_location", "[assert]") {
+  try {
+    bt_assert(1 == 2);
+    FAIL("bt_assert should have thrown assert_exception");
+  } catch (const assert_exception & e) {
+    CHECK(std::string(e.expr) == "1 == 2");
+    CHECK(std::string(e.file).ends_with("test_solver.cpp"));
+    CHECK(e.line > 0);
+    CHECK(std::string(e.what()) == "1 == 2");
+  }
+
+  // Passing assertion does not throw
+  CHECK_NOTHROW([&] { bt_assert(2 + 2 == 4); }());
+}
+
+TEST_CASE("assert_log correctly records lines", "[assert]") {
+  REQUIRE(assert_log != nullptr);
+  unsigned int initialLines = assert_log->lines();
+  bt_assert_line("first assert log entry");
+  bt_assert_line("second assert log entry");
+  CHECK(assert_log->lines() == initialLines + 2);
+  CHECK(std::string(assert_log->line(initialLines)) == "first assert log entry");
+  CHECK(std::string(assert_log->line(initialLines + 1)) == "second assert log entry");
+}
+

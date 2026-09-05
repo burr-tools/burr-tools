@@ -25,17 +25,20 @@
  */
 #include "bt_assert.h"
 
-assert_log_c * assert_log;
+static assert_log_c default_assert_log;
+assert_log_c * assert_log = &default_assert_log;
 
-
-void bt_assert_init(void) {
-  assert_log = new assert_log_c();
+void bt_assert_init() {
+  if (!assert_log) {
+    assert_log = &default_assert_log;
+  }
 }
 
-#if __cplusplus >= 201103L
-[[noreturn]]
-#endif
-void bt_te(const char * expr, const char * file, unsigned int line, const char * function) {
+[[noreturn]] void bt_te(const char * expr, std::source_location loc) {
+  throw assert_exception(expr, loc);
+}
+
+[[noreturn]] void bt_te(const char * expr, const char * file, unsigned int line, const char * function) {
   throw assert_exception(expr, file, line, function);
 }
 
