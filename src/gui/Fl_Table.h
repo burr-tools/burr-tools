@@ -97,14 +97,25 @@ private:
 	~IntVector() { if ( arr ) free(arr); arr = NULL; }		// DTOR
 	IntVector(IntVector&o) { init(); copy(o.arr, o._size); }	// COPY CTOR
 	IntVector& operator=(IntVector&o) 				// ASSIGN
-	    { init(); copy(o.arr, o._size); return(*this); }
+	    { if (this != &o) { init(); copy(o.arr, o._size); } return(*this); }
 	int operator[](int x) const { return(arr[x]); }
 	int& operator[](int x) { return(arr[x]); }
 	unsigned int size() { return(_size); }
 	void size(unsigned int count)
 	{
 	    if ( count != _size )
-		{ arr = (int*)realloc(arr, count * sizeof(int)); _size = count; }
+	    {
+		if (count == 0) {
+		    if (arr) { free(arr); arr = NULL; }
+		    _size = 0;
+		} else {
+		    int *new_arr = (int*)realloc(arr, count * sizeof(int));
+		    if (new_arr) {
+			arr = new_arr;
+			_size = count;
+		    }
+		}
+	    }
 	}
 	int pop_back() { int tmp = arr[_size-1]; _size--; return(tmp); }
 	void push_back(int val) { unsigned int x = _size; size(_size+1); arr[x] = val; }

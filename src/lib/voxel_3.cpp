@@ -621,9 +621,9 @@ void voxel_3_c::getConnectionFace(int x, int y, int z, int n, double bevel, doub
 }
 
 void voxel_3_c::calculateSize(float * x, float * y, float * z) const {
-  *x = 2*((getX()+4)/5);
-  *y = 2*((getY()+4)/5);
-  *z = 2*((getZ()+4)/5);
+  *x = (float)(2 * ((getX() + 4) / 5));
+  *y = (float)(2 * ((getY() + 4) / 5));
+  *z = (float)(2 * ((getZ() + 4) / 5));
 }
 
 void voxel_3_c::recalcSpaceCoordinates(float * x, float * y, float * z) const {

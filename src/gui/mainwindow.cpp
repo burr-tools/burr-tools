@@ -1759,13 +1759,16 @@ void mainWindow_c::cb_SaveAs(void) {
 
         char f2[1000];
 
-        // check, if the last characters are ".xmpuzzle"
-        if (strcmp(f + strlen(f) - strlen(".xmpuzzle"), ".xmpuzzle")) {
+        size_t flen = strlen(f);
+        const char ext[] = ".xmpuzzle";
+        size_t extlen = sizeof(ext) - 1;
+
+        // check if the filename ends with ".xmpuzzle"
+        if (flen < extlen || strcmp(f + flen - extlen, ext) != 0) {
           snprintf(f2, 1000, "%s.xmpuzzle", f);
-
-        } else
-
+        } else {
           snprintf(f2, 1000, "%s", f);
+        }
 
         ogzstream ostr(f2);
 

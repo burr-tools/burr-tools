@@ -99,3 +99,27 @@ Or for Windows:
 ```bash
 meson setup build-win --cross-file cross-mingw64.txt --buildtype=release
 ```
+
+## Task Automation & Static Code Checking
+
+A [`justfile`](justfile) is provided for common build, testing, and static analysis workflows using [`just`](https://github.com/casey/just):
+
+```bash
+just               # Show available recipes (default)
+just build         # Build binaries
+just check         # Run fast static analysis (cppcheck) on src/
+just check-tidy    # Run clang-tidy across src/
+just check-scan    # Run Clang Static Analyzer (scan-build)
+just check-analyzer# Build with GCC -fanalyzer
+just check-all     # Run both cppcheck and clang-tidy
+just test          # Run tests
+just clean         # Clean build artifacts
+```
+
+### Runtime Sanitizers
+To build with memory or thread sanitizers:
+```bash
+just build-asan    # AddressSanitizer & UndefinedBehaviorSanitizer
+just build-tsan    # ThreadSanitizer (useful for diagnosing solver data races)
+```
+
