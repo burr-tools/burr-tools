@@ -183,7 +183,6 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
    * stop and return that this movement is rubbish
    */
   unsigned int moved_pieces = 1;
-  bool check[piecenumber];
 
   /* Initialise the movement matrix. We want to move 'nextpiece' 'nextstep' units
    * into the current direction, so we initialise the matrix with all
@@ -315,6 +314,7 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem) :
 
   /* allocate the necessary arrays */
   movement = new unsigned int[piecenumber];
+  check = new bool[piecenumber];
 
   matrix = new unsigned int[cache->numDirections() * piecenumber * piecenumber];
   memset(matrix, 0, cache->numDirections() * piecenumber * piecenumber * sizeof(unsigned int));
@@ -335,6 +335,7 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem) :
 movementAnalysator_c::~movementAnalysator_c() {
 
   delete [] movement;
+  delete [] check;
   delete [] matrix;
 
   delete cache;

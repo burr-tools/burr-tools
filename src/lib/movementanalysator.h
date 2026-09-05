@@ -52,6 +52,10 @@ class movementAnalysator_c {
     unsigned int * matrix;
     unsigned int * movement;
     int * weights;
+    /* scratch buffer for checkmovement; a reused member rather than a local
+     * because checkmovement is on the hot path of the disassembler
+     */
+    bool * check;
     unsigned int piecenumber;
 
     movementCache_c * cache;

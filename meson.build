@@ -164,9 +164,19 @@ gui_src = [
   'src/gui/Fl_Table.cpp',
   'src/gui/LFl_Tile.cpp',
   'src/gui/Layouter.cpp',
+  'src/gui/Images.cpp',
+]
+
+# Vendored third-party C sources, built separately so that their warnings can be
+# relaxed without relaxing them for our own code. gl2ps.c in particular warns
+# under -Wimplicit-const-int-float-conversion at a spot the upstream author
+# already marked with a FIXME; patching vendored source would only be undone by
+# the next import.
+#   tr.c    - Brian Paul's tile rendering library
+#   gl2ps.c - GL2PS, (C) 1999-2009 C. Geuzaine
+vendored_gui_src = [
   'src/gui/tr.c',
   'src/gui/gl2ps.c',
-  'src/gui/Images.cpp',
 ]
 
 help_src = [
@@ -175,6 +185,7 @@ help_src = [
   'src/help/helpdata.cpp'
 ]
 
+cc = meson.get_compiler('c')
 cxx = meson.get_compiler('cpp')
 
 # macOS specific dependencies
@@ -299,7 +310,14 @@ executable('burrTxt2',  tools_src + halfedge_src + libburr_src + ['src/burrTxt2.
  	   dependencies: [thread_dep, zlib_dep],
 	  )
 
+# get_supported_arguments so this stays a no-op on compilers without the flag
+vendored_gui_lib = static_library('vendored_gui', vendored_gui_src,
+          c_args: cc.get_supported_arguments('-Wno-implicit-const-int-float-conversion'),
+          dependencies: [zlib_dep, gl_dep, glu_dep, libpng_dep],
+	  )
+
 executable('burrtools', lua_src + tools_src + gui_src + halfedge_src + libburr_src,
+          link_with: vendored_gui_lib,
           dependencies: [thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep],
           win_subsystem: 'windows',
 	  )
