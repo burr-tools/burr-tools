@@ -26,13 +26,22 @@ jobs:
       run: sudo apt-get update
     
     - name: Install dependencies
-      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev
+      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev cppcheck
+    
+    - name: Install just
+      uses: extractions/setup-just@v2
     
     - name: Setup build directory
       run: meson setup build --buildtype=release
     
     - name: Build
-      run: ninja -C build
+      run: just build
+    
+    - name: Run tests
+      run: just test
+    
+    - name: Run static analysis
+      run: just check
     
     - name: Strip binaries
       run: strip build/burrtools build/burrTxt build/burrTxt2
@@ -116,11 +125,17 @@ jobs:
     - name: Install dependencies
       run: brew install meson ninja boost
     
+    - name: Install just
+      uses: extractions/setup-just@v2
+    
     - name: Setup build directory
       run: meson setup build --buildtype=release
     
     - name: Build
-      run: ninja -C build
+      run: just build
+    
+    - name: Run tests
+      run: just test
     
     - name: Strip binaries
       run: strip -x build/burrtools build/burrTxt build/burrTxt2
