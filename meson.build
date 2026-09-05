@@ -6,8 +6,8 @@ project('burrtools', 'cpp', 'c',
 	default_options : [
 	  'c_std=c11',
 	  'build.c_std=c11',
-	  'cpp_std=c++11',
-	  'build.cpp_std=c++11',
+	  'cpp_std=c++20',
+	  'build.cpp_std=c++20',
 	  'optimization=2',
 	  'debug=true',
 	]
@@ -284,3 +284,15 @@ executable('burrtools', lua_src + tools_src + gui_src + halfedge_src + libburr_s
           dependencies: [thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep],
           win_subsystem: 'windows',
 	  )
+
+catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_main_dep'], default_options: ['tests=false'])
+
+inc = include_directories('src')
+
+test_burrtools = executable('test_burrtools',
+  tools_src + halfedge_src + libburr_src + ['test/test_solver.cpp'],
+  include_directories: inc,
+  dependencies: [thread_dep, zlib_dep, catch2_dep],
+)
+
+test('burrtools_tests', test_burrtools, workdir: meson.project_source_root())

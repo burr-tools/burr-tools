@@ -85,7 +85,7 @@ ninja -C build-win
 
 The project is configured to use:
 - C standard: C11
-- C++ standard: C++11
+- C++ standard: C++20
 - Build type: Debug (by default)
 
 To change the build type to release:
