@@ -23,76 +23,67 @@
  * the assert, this exception can be caught at the end of the program and
  * the information displayed
  */
-#ifndef __ASSERT_H__
-#define __ASSERT_H__
+#ifndef BT_ASSERT_H
+#define BT_ASSERT_H
 
-#include <vector>
-#include <string.h>
-
+#include <cstring>
 #include <exception>
+#include <source_location>
+#include <string>
+#include <string_view>
+#include <vector>
 
 class assert_log_c {
-
-  std::vector<const char *> list;
+  std::vector<std::string> list;
 
 public:
-
-  void addLine(const char * line) {
-    list.push_back(strdup(line));
+  void addLine(std::string_view line) {
+    list.emplace_back(line);
   }
 
-  unsigned int lines(void) const { return list.size(); }
-  const char * line(unsigned int l) const { return list[l]; }
-
+  unsigned int lines() const { return static_cast<unsigned int>(list.size()); }
+  const char * line(unsigned int l) const { return list[l].c_str(); }
 };
 
 class assert_exception : public std::exception {
-
 public:
+  const char * expr{nullptr};
+  const char * file{nullptr};
+  const char * function{nullptr};
+  unsigned int line{0};
+  unsigned int column{0};
 
-  const char * expr;
-  const char * file;
-  const char * function;
-  unsigned int line;
+  assert_exception(const char * e, std::source_location loc = std::source_location::current())
+    : expr(e), file(loc.file_name()), function(loc.function_name()), line(loc.line()), column(loc.column()) {}
 
-  assert_exception(const char * e, const char * f, unsigned int l, const char * fkt) : expr(e), file(f), function(fkt), line(l) {}
+  assert_exception(const char * e, const char * f, unsigned int l, const char * fkt)
+    : expr(e), file(f), function(fkt), line(l), column(0) {}
 
-  assert_exception(void) : expr(0), file(0), function(0), line(0) {}
+  assert_exception() = default;
 
+  const char * what() const noexcept override {
+    return expr ? expr : "assertion failure";
+  }
 };
 
 extern assert_log_c * assert_log;
 
-void bt_assert_init(void);
+void bt_assert_init();
 
-#if __cplusplus >= 201103L
-[[noreturn]] void bt_te(const char * expr, const char * file, unsigned int line, const char * funktion);
-#elif defined(__GNUC__) || defined(__clang__)
-void bt_te(const char * expr, const char * file, unsigned int line, const char * funktion) __attribute__((__noreturn__));
-#else
-void bt_te(const char * expr, const char * file, unsigned int line, const char * funktion);
-#endif
+[[noreturn]] void bt_te(const char * expr, std::source_location loc = std::source_location::current());
+[[noreturn]] void bt_te(const char * expr, const char * file, unsigned int line, const char * function);
 
 #ifdef NDEBUG
 
-#define bt_assert(expr)
-#define bt_assert2(expr) expr
-#define bt_assert_line(line)
+#define bt_assert(...) ((void)0)
+#define bt_assert2(...) ((void)(__VA_ARGS__))
+#define bt_assert_line(line) ((void)0)
 
 #else
 
-#if defined(_WIN32) || defined(EMSCRIPTEN)
-#define __STRING(s) #s
-#endif
-
-#ifdef BT_ASSERT_NO_FUNC
-#define bt_assert(expr)  if (!(expr)) throw assert_exception(__STRING(expr), __FILE__, __LINE__, __PRETTY_FUNCTION__)
-#define bt_assert2(expr)  if (!(expr)) throw assert_exception(__STRING(expr), __FILE__, __LINE__, __PRETTY_FUNCTION__)
-#else
-#define bt_assert(expr)  if (!(expr)) bt_te(__STRING(expr), __FILE__, __LINE__, __PRETTY_FUNCTION__)
-#define bt_assert2(expr)  if (!(expr)) bt_te(__STRING(expr), __FILE__, __LINE__, __PRETTY_FUNCTION__)
-#endif
-#define bt_assert_line(line) assert_log->addLine(line)
+#define bt_assert(...) ((!(__VA_ARGS__)) ? ::bt_te(#__VA_ARGS__) : (void)0)
+#define bt_assert2(...) ((!(__VA_ARGS__)) ? ::bt_te(#__VA_ARGS__) : (void)0)
+#define bt_assert_line(line) (::assert_log ? ::assert_log->addLine(line) : (void)0)
 
 #endif
 
