@@ -2144,7 +2144,7 @@ void mainWindow_c::ReplacePuzzle(puzzle_c * NewPuzzle) {
 }
 
 Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
-  { "&File",           0, 0, 0, FL_SUBMENU },
+  { "&File",           0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
     {"New",            0, cb_New_stub,         0, 0, 0, 0, 14, 56},
     {"Load",    FL_F + 3, cb_Load_stub,        0, 0, 0, 0, 14, 56},
     {"Import",         0, cb_Load_Ps3d_stub,   0, 0, 0, 0, 14, 56},
@@ -2153,18 +2153,18 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
     {"Convert",        0, cb_Convert_stub,     0, 0, 0, 0, 14, 56},
     {"Import Assms",   0, cb_AssembliesToShapes_stub,     0, 0, 0, 0, 14, 56},
     {"Quit",           0, cb_Quit_stub,        0, 0, 3, 0, 14, 56},
-    { 0 },
+    { },
   {"Toggle 3D", FL_F + 4, cb_Toggle3D_stub,    0, 0, 0, 0, 14, 56},
-  { "&Export",         0, 0, 0, FL_SUBMENU },
+  { "&Export",         0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
     {"Images",             0, cb_ImageExport_stub, 0, 0, 0, 0, 14, 56},
     {"Vector Image",       0, cb_ImageExportVector_stub, 0, 0, 0, 0, 14, 56},
     {"STL",             0, cb_STLExport_stub, 0, 0, 0, 0, 14, 56},
-    { 0 },
+    { },
   {"Status",           0, cb_StatusWindow_stub,  0, 0, 0, 0, 14, 56},
   {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
   {"Settings",         0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
   {"About",            0, cb_About_stub,       0, 0, 3, 0, 14, 56},
-  {0}
+  { }
 };
 
 void mainWindow_c::show(int argn, char ** argv) {

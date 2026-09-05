@@ -11,6 +11,14 @@ project('burrtools', 'cpp', 'c',
 	  'optimization=2',
 	  'debug=true',
 	  'werror=false',
+	  # -Wall -Wextra for our own code.
+	  'warning_level=2',
+	  # ...but not for FLTK. cmake.subproject() does not hand the build off to
+	  # CMake; it translates the CMake project into meson targets, which are then
+	  # compiled by meson under our options. Without this override, FLTK's own
+	  # sources build at -Wextra and bury our diagnostics under ~1200 lines of
+	  # third-party noise. Catch2 is clean at level 2 and needs no override.
+	  'fltk:warning_level=0',
 	]
        )
 
@@ -276,7 +284,7 @@ if not fltk_dep.found()
   fltk_dep = fltk_proj.dependency('fltk')
   fltkgl_dep = fltk_proj.dependency('fltk_gl')
   fltkimages_dep = fltk_proj.dependency('fltk_images')
-  
+
   # On Windows, FLTK builds bundled PNG and zlib libraries when we disable system libraries
   # These need to be linked separately
   if host_machine.system() == 'windows'
@@ -312,10 +320,18 @@ executable('burrTxt2',  tools_src + halfedge_src + libburr_src + ['src/burrTxt2.
  	   dependencies: [thread_dep, zlib_dep],
 	  )
 
-# get_supported_arguments so this stays a no-op on compilers without the flag
+# get_supported_arguments so these stay a no-op on compilers without the flag
 vendored_gui_lib = static_library('vendored_gui', vendored_gui_src,
           override_options: ['werror=false'],
-          c_args: cc.get_supported_arguments('-Wno-implicit-const-int-float-conversion'),
+          c_args: cc.get_supported_arguments(
+            # clang
+            '-Wno-implicit-const-int-float-conversion',
+            '-Wno-unused-parameter',
+            # gcc; -Wimplicit-fallthrough is the only one of these that
+            # warning_level=2 introduces, the other is raised at -Wall too
+            '-Wno-implicit-fallthrough',
+            '-Wno-maybe-uninitialized',
+          ),
           dependencies: [zlib_dep, gl_dep, glu_dep, libpng_dep],
 	  )
 
