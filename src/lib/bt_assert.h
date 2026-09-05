@@ -65,7 +65,13 @@ extern assert_log_c * assert_log;
 
 void bt_assert_init(void);
 
+#if __cplusplus >= 201103L
+[[noreturn]] void bt_te(const char * expr, const char * file, unsigned int line, const char * funktion);
+#elif defined(__GNUC__) || defined(__clang__)
+void bt_te(const char * expr, const char * file, unsigned int line, const char * funktion) __attribute__((__noreturn__));
+#else
 void bt_te(const char * expr, const char * file, unsigned int line, const char * funktion);
+#endif
 
 #ifdef NDEBUG
 

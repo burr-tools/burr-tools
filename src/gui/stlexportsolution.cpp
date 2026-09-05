@@ -95,8 +95,12 @@ namespace stlExportSolutionImpl {
   static std::map<unsigned int, unsigned int> placedShapeCounts(
       const problem_c * pr, unsigned int sol)
   {
-    const assembly_c * assm = pr->getSavedSolution(sol)->getAssembly();
     std::map<unsigned int, unsigned int> counts;
+    if (!pr) return counts;
+    const solution_c * sav = pr->getSavedSolution(sol);
+    if (!sav) return counts;
+    const assembly_c * assm = sav->getAssembly();
+    if (!assm) return counts;
     for (unsigned int i = 0; i < assm->placementCount(); i++) {
       if (!assm->isPlaced(i)) continue;
       unsigned int partId  = pr->getPartIdToPieceId(i);

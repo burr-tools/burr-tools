@@ -1509,7 +1509,7 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   bt_assert(pos == 0);
 
   /* check for the right version */
-  if (strcmp(version, ASSEMBLER_VERSION))
+  if (strcmp(version, ASSEMBLER_VERSION) != 0)
     return ERR_CAN_NOT_RESTORE_VERSION;
 
   unsigned int len = strlen(string);

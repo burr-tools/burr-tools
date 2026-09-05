@@ -616,16 +616,21 @@ void xmlParser_c::parseEndTag(void)
   name = readName();
   skip();
   read('>');
-  int sp = (depth - 1) << 2;
-  if (!relaxed)
+  if (depth == 0)
   {
-    if (depth == 0)
+    if (!relaxed)
       exception ("element stack empty");
-    if (name != elementStack[sp + 3])
-      exception ("expected: " + elementStack[sp + 3]);
+    else
+      return;
   }
-  else if (depth == 0 || name != elementStack[sp + 3])
-    return;
+  int sp = (depth - 1) << 2;
+  if (name != elementStack[sp + 3])
+  {
+    if (!relaxed)
+      exception ("expected: " + elementStack[sp + 3]);
+    else
+      return;
+  }
   Ns = elementStack[sp];
   prefix = elementStack[sp + 1];
   name = elementStack[sp + 2];

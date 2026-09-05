@@ -145,7 +145,7 @@ bool symmetries_2_c::symmetryKnown(const voxel_c * pp) const {
     if (symmetries[i] == s)
       break;
 
-  return symmetries[i] == s;
+  return i < NUM_SYMMETRY_GROUPS;
 }
 
 symmetries_t symmetries_2_c::calculateSymmetry(const voxel_c *pp) const {

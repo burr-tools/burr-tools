@@ -36,6 +36,7 @@ class multiLineWindow_c : public Fl_Double_Window {
 
     const char * getText(void);
 
+    using Fl_Double_Window::hide;
     void hide(bool save) {
       _saveChanges = save;
       Fl_Double_Window::hide();

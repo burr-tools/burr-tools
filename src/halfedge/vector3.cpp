@@ -86,6 +86,9 @@ template <class T> void Vector3D<T>::set(const T data[3])
 // Copy operator
 template <class T> Vector3D<T>& Vector3D<T>::operator=(const Vector3D<T>& src)
 {
+  if (this == &src)
+    return *this;
+
   for (unsigned i=0 ; i<3 ; i++)
     _data[i] = src._data[i];
 

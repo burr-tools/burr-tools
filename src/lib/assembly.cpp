@@ -637,7 +637,7 @@ bool assembly_c::smallerRotationExists(const problem_c & puz, unsigned int pivot
 
   if (complete)
   {
-    for (unsigned char t = 0; t < endTrans; t++)
+    for (unsigned int t = 0; t < endTrans; t++)
     {
       assembly_c tmp(this);
 
@@ -723,7 +723,7 @@ bool assembly_c::smallerRotationExists(const problem_c & puz, unsigned int pivot
   }
   else
   {
-    for (unsigned char t = 0; t < endTrans; t++)
+    for (unsigned int t = 0; t < endTrans; t++)
     {
       symmetries_t s = getResultShape(puz)->selfSymmetries();
 
