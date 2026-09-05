@@ -210,6 +210,7 @@ public:
 
   int handle(int event);
 
+  using LFl_Double_Window::show;
   void show(int argn, char ** argv);
 
   // overwrite hide to check for changes in all possible exit situations

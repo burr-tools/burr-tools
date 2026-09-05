@@ -66,6 +66,7 @@ class voxel_2_c : public voxel_c {
     virtual bool validCoordinate(int x, int y, int z) const;
     bool onGrid(int x, int y, int z) const;
 
+    using voxel_c::getMesh;
     virtual Polyhedron * getMesh(float sphere_rad, float connection_rad, float round, float offset, int recursion, float inner_rad, float hole_diam) const;
     virtual Polyhedron * getDrawingMesh(void) const;
     virtual Polyhedron * getWireframeMesh(void) const;

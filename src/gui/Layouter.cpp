@@ -264,16 +264,6 @@ void layouter_c::resize(int xt, int yt, int w, int h) {
 
   calcLayout(1, &widths, &heights, &widgetW, &widgetH, w, h);
 
-  /* check, if we need to make our widget bigger to accommodate all subwidgets */
-  int wi = 0, hi = 0;
-  for (unsigned int i = 0; i < widths.size(); i++)
-    wi += widths[i];
-  for (unsigned int i = 0; i < heights.size(); i++)
-    hi += heights[i];
-
-//  if (wi > w) w = wi;
-//  if (hi > h) h = hi;
-
   Fl_Widget::resize(xt, yt, w, h);
 
   Fl_Widget *const * _widgets = array();

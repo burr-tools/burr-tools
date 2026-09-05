@@ -18,12 +18,20 @@ if host_machine.system() == 'windows'
   add_project_arguments('-DWIN32', language: ['c', 'cpp'])
 endif
 
-# Set macOS deployment target for compatibility with older macOS versions
+# Set macOS deployment target for compatibility with older macOS versions.
+# Minimum macOS version 11.0 (Big Sur) for broader compatibility while still
+# supporting modern features.
+#
+# These are global rather than project arguments deliberately: meson subprojects
+# (catch2, and zlib/libpng on Windows) do not inherit add_project_arguments, so
+# with those their objects get built for the host's macOS version and linked into
+# a binary declaring an older minimum. The CMake subproject (fltk) inherits
+# neither and is handled separately, where it is configured below.
+macos_deployment_target = '11.0'
+
 if host_machine.system() == 'darwin'
-  # Set minimum macOS version to 11.0 (Big Sur) for broader compatibility
-  # while still supporting modern features
-  add_project_arguments('-mmacosx-version-min=11.0', language: ['c', 'cpp', 'objcpp'])
-  add_project_link_arguments('-mmacosx-version-min=11.0', language: ['c', 'cpp', 'objcpp'])
+  add_global_arguments('-mmacosx-version-min=' + macos_deployment_target, language: ['c', 'cpp', 'objcpp'])
+  add_global_link_arguments('-mmacosx-version-min=' + macos_deployment_target, language: ['c', 'cpp', 'objcpp'])
 endif
 
 lua_src = [
@@ -225,6 +233,17 @@ if not fltk_dep.found()
     'FLTK_BUILD_EXAMPLES': 'OFF'
   })
   
+  # FLTK is a CMake subproject and so inherits neither the global nor the project
+  # arguments that carry the deployment target. Without this, libfltk.a objects
+  # are built for the host's macOS version and linking them into a binary that
+  # declares an older minimum produces "built for newer macOS version" warnings -
+  # and a binary that claims a compatibility it does not have.
+  if host_machine.system() == 'darwin'
+    cmake_opts.add_cmake_defines({
+      'CMAKE_OSX_DEPLOYMENT_TARGET': macos_deployment_target
+    })
+  endif
+
   if host_machine.system() == 'windows'
     gdiplus_dep = cxx.find_library('gdiplus')
 

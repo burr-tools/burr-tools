@@ -74,7 +74,6 @@ private:
     unsigned char color;  ///< colour of the result voxel
   } resultVoxel_s;
 
-  const problem_c & prob;
   const voxel_c * res;
 
   std::vector<resultVoxel_s> resultVoxels;  ///< all non empty voxels of the result

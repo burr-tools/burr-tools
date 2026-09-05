@@ -555,7 +555,6 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
   map<pair<Vertex*,Vertex*>,HalfEdge*> conn;
   map<pair<Vertex*,Vertex*>,HalfEdge*>::iterator cit;
   vector<Vertex*> pts_list;
-  int pairs_fixed = 0;
 
   for (Polyhedron::edge_iterator eit = poly.eBegin(); eit != poly.eEnd(); eit++)
   {
@@ -572,7 +571,6 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
       {
         cit->second->twin(*eit);
         (*eit)->twin(cit->second);
-        pairs_fixed++;
         conn.erase(cit);
       }
     }
