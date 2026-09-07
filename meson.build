@@ -24,7 +24,7 @@ endif
 # supporting modern features.
 #
 # These are global rather than project arguments deliberately: meson subprojects
-# (catch2, and zlib/libpng on Windows) do not inherit add_project_arguments, so
+# (catch2, libpng on macOS/Windows, and zlib on Windows) do not inherit add_project_arguments, so
 # with those their objects get built for the host's macOS version and linked into
 # a binary declaring an older minimum. The CMake subproject (fltk) inherits
 # neither and is handled separately, where it is configured below.
@@ -217,7 +217,7 @@ if host_machine.system() == 'windows'
 elif host_machine.system() == 'darwin'
   # On macOS, glu_dep is already set to gl_dep above (OpenGL framework includes GLU)
   zlib_dep = dependency('zlib', fallback : ['zlib', 'zlib_dep'])
-  libpng_dep = dependency('libpng')
+  libpng_dep = subproject('libpng', default_options: ['default_library=static']).get_variable('libpng_dep')
 else
   zlib_dep = dependency('zlib', fallback : ['zlib', 'zlib_dep'])
   glu_dep = dependency('glu')
