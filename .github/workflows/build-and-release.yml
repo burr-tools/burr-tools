@@ -32,7 +32,7 @@ jobs:
       uses: extractions/setup-just@v2
     
     - name: Setup build directory
-      run: meson setup build --buildtype=release
+      run: meson setup build --buildtype=release --werror
     
     - name: Build
       run: just build
@@ -83,7 +83,7 @@ jobs:
       run: sudo apt-get install -y meson ninja-build mingw-w64
     
     - name: Setup build directory
-      run: meson setup build-win --cross-file cross-mingw64.txt --buildtype=release
+      run: meson setup build-win --cross-file cross-mingw64.txt --buildtype=release --werror
     
     - name: Build
       run: ninja -C build-win
@@ -129,7 +129,7 @@ jobs:
       uses: extractions/setup-just@v2
     
     - name: Setup build directory
-      run: meson setup build --buildtype=release
+      run: meson setup build --buildtype=release --werror
     
     - name: Build
       run: just build

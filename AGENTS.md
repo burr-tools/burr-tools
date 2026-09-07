@@ -18,6 +18,7 @@ just check-scan     # Clang Static Analyzer (scan-build)
 just check-analyzer # GCC -fanalyzer static analysis
 just clean          # Clean build artifacts
 just rebuild        # Rebuild from scratch (removes build/ and re-runs meson setup)
+just build-werror   # Build with warnings treated as errors (excluding vendored code)
 ```
 
 For running filtered or verbose test cases directly:

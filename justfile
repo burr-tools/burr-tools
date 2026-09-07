@@ -76,3 +76,9 @@ build-tsan:
 build-win:
     @if [ ! -d "build-win" ]; then meson setup build-win --cross-file cross-mingw64.txt; fi
     ninja -C build-win
+
+# Build with warnings treated as errors (excluding vendored code and subprojects)
+build-werror:
+    @if [ ! -d "build-werror" ]; then meson setup build-werror --werror; fi
+    ninja -C build-werror
+

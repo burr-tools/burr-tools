@@ -101,6 +101,7 @@
 #pragma GCC diagnostic pop
 
 #include <fstream>
+#include <string>
 
 /* returns true, if file exists, this is not the
  optimal way to do this. It would be better to open
@@ -1514,7 +1515,7 @@ void mainWindow_c::cb_New(void) {
     if (fname) {
       delete [] fname;
       fname = 0;
-      label("BurrTools - unknown");
+      copy_label("BurrTools - unknown");
     }
 
     changed = false;
@@ -1565,9 +1566,7 @@ void mainWindow_c::cb_Load_Ps3d(void) {
       fname = new char[strlen(f)+1];
       strcpy(fname, f);
 
-      char nm[300];
-      snprintf(nm, 299, "BurrTools - %s", fname);
-      label(nm);
+      copy_label((std::string("BurrTools - ") + fname).c_str());
 
       ReplacePuzzle(newPuzzle);
       updateInterface();
@@ -1763,7 +1762,7 @@ void mainWindow_c::cb_SaveAs(void) {
       if (!fileExists(f) || fileChooserConfirmedOverwrite(f) ||
           fl_choice("File exists; overwrite?", "Cancel", "Overwrite", 0)) {
 
-        char f2[1000];
+        std::string f2;
 
         size_t flen = strlen(f);
         const char ext[] = ".xmpuzzle";
@@ -1771,12 +1770,12 @@ void mainWindow_c::cb_SaveAs(void) {
 
         // check if the filename ends with ".xmpuzzle"
         if (flen < extlen || strcmp(f + flen - extlen, ext) != 0) {
-          snprintf(f2, 1000, "%s.xmpuzzle", f);
+          f2 = std::string(f) + ext;
         } else {
-          snprintf(f2, 1000, "%s", f);
+          f2 = f;
         }
 
-        ogzstream ostr(f2);
+        ogzstream ostr(f2.c_str());
 
         if (ostr)
         {
@@ -1790,12 +1789,10 @@ void mainWindow_c::cb_SaveAs(void) {
           changed = false;
 
         if (fname) delete [] fname;
-        fname = new char[strlen(f2)+1];
-        strcpy(fname, f2);
+        fname = new char[f2.length()+1];
+        strcpy(fname, f2.c_str());
 
-        char nm[300];
-        snprintf(nm, 299, "BurrTools - %s", fname);
-        label(nm);
+        copy_label((std::string("BurrTools - ") + fname).c_str());
 
       } else {
 
@@ -2062,9 +2059,7 @@ bool mainWindow_c::tryToLoad(const char * f) {
   fname = new char[strlen(f)+1];
   strcpy(fname, f);
 
-  char nm[300];
-  snprintf(nm, 299, "BurrTools - %s", fname);
-  label(nm);
+  copy_label((std::string("BurrTools - ") + fname).c_str());
 
   ReplacePuzzle(newPuzzle);
   updateInterface();
@@ -4067,7 +4062,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
   ggt = new guiGridType_c(puzzle->getGridType());
   changed = false;
 
-  label("BurrTools - unknown");
+  copy_label("BurrTools - unknown");
   user_data((void*)(this));
 
   MainMenu = new LFl_Menu_Bar(0, 0, 1, 1);
