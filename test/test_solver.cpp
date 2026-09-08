@@ -6,6 +6,7 @@
 #include "lib/assembly.h"
 #include "lib/disassembler.h"
 #include "lib/disassembler_0.h"
+#include "lib/disassembler_factory.h"
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
 #include "tools/xml.h"
@@ -53,13 +54,15 @@ struct SolveResult {
   std::string moveLevel;
   std::unique_ptr<assembly_c> firstSolutionAssembly;
   std::unique_ptr<assembly_c> firstAssembly;
+  std::unique_ptr<puzzle_c> puzzleOwner;
   const problem_c * problem{nullptr};
 };
 
-SolveResult solvePuzzle(const char * path, unsigned int problemIdx = 0, bool disassemble = true) {
+SolveResult solvePuzzle(const char * path, unsigned int problemIdx = 0, bool disassemble = true,
+                        bool enableRotations = false,
+                        solverType_e solverType = SOLVER_CLASSIC) {
   auto p = puzzle_c::load(path);
   REQUIRE(p != nullptr);
-
   REQUIRE(problemIdx < p->getNumberOfProblems());
   problem_c * problem = p->getProblem(problemIdx);
   REQUIRE(problem != nullptr);
@@ -74,7 +77,7 @@ SolveResult solvePuzzle(const char * path, unsigned int problemIdx = 0, bool dis
 
   std::unique_ptr<disassembler_c> disasm;
   if (disassemble && (gt->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-    disasm = std::make_unique<disassembler_0_c>(*problem);
+    disasm = createDisassembler(*problem, enableRotations, solverType);
   }
 
   TestAssemblerCallback cb(disasm.get());
@@ -87,6 +90,7 @@ SolveResult solvePuzzle(const char * path, unsigned int problemIdx = 0, bool dis
     cb.lastMoveLevel,
     std::move(cb.firstSolutionAssembly),
     std::move(cb.firstAssembly),
+    std::move(p),
     problem
   };
 }
@@ -221,3 +225,18 @@ TEST_CASE("assert_log correctly records lines", "[assert]") {
   CHECK(std::string(assert_log->line(initialLines + 1)) == "second assert log entry");
 }
 
+TEST_CASE("AAA_most_rotations solver regression with Crowell disassembler", "[solver][crowell][rotations]") {
+  // Without rotations: BurrTools cannot disassemble it
+  SolveResult noRot = solvePuzzle("examples/AAA_most_rotations.xmpuzzle", 0, true, false, SOLVER_CROWELL);
+  CHECK(noRot.assemblies == 1);
+  CHECK(noRot.solutions == 0);
+
+  // With rotations enabled using the new Crowell disassembler
+  SolveResult res = solvePuzzle("examples/AAA_most_rotations.xmpuzzle", 0, true, true, SOLVER_CROWELL);
+  CHECK(res.assemblies == 1);
+  CHECK(res.solutions == 1);
+  CHECK(res.iterations > 0);
+  REQUIRE(res.firstSolutionAssembly != nullptr);
+  CHECK(res.firstSolutionAssembly->placementCount() == 3);
+  CHECK(res.moveLevel == "3R2.2R2");
+}
