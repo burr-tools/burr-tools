@@ -62,6 +62,10 @@ class voxel_0_c : public voxel_c {
     virtual void calculateSize(float * x, float * y, float * z) const;
     virtual bool meshParamsValid(double bevel, double offset) const;
 
+    /* the 3D view's STL render style: the same lookup mesher as the STL
+     * export, with the view's default bevel and offset (cubepoly.h) */
+    virtual Polyhedron * getSTLMesh(void) const;
+
   private:
 
     // no copying and assigning

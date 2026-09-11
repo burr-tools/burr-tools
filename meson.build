@@ -97,6 +97,7 @@ libburr_src = [
   'src/lib/disassemblernode.cpp',
   'src/lib/disassembly.cpp',
   'src/lib/cubemesh.cpp',
+  'src/lib/cubepoly.cpp',
   'src/lib/disasmtomoves.cpp',
   'src/lib/gridtype.cpp',
   'src/lib/grouping.cpp',

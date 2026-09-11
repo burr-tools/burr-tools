@@ -4,6 +4,7 @@
 #include "lib/gridtype.h"
 #include "lib/voxel.h"
 #include "lib/stl.h"
+#include "lib/cubepoly.h"
 #include "halfedge/polyhedron.h"
 #include "halfedge/modifiers.h"
 
@@ -120,4 +121,17 @@ TEST_CASE("cube STL exporter uses the lookup mesher", "[cubemesh][stl]") {
   ex->setParameter(3, 1.0); ex->setParameter(4, 0.5); ex->setParameter(5, 1.5);
   holes.addFace(0, 0);
   CHECK_THROWS_AS(ex->getMesh(*v, holes), stlException_c);
+}
+
+TEST_CASE("the 3D view's STL style uses the lookup mesher on the cube grid", "[cubemesh][view]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+  std::unique_ptr<voxel_c> v(gt.getVoxel(2, 2, 2, voxel_c::VX_EMPTY));
+  for (int i = 0; i < 8; i++)
+    if (23 & (1 << i)) v->setState((i >> 2) & 1, (i >> 1) & 1, i & 1, voxel_c::VX_FILLED);
+  std::unique_ptr<Polyhedron> view(v->getSTLMesh());
+  std::string err;
+  std::unique_ptr<Polyhedron> same(cubePolyhedron(*v, 0.02, 0.05, true, 0, err));
+  REQUIRE(same);
+  CHECK(view->numFaces() == same->numFaces());
+  CHECK(view->numFaces() > 0);
 }

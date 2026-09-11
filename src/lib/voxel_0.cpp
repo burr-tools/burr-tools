@@ -19,6 +19,9 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "voxel_0.h"
+#include "cubepoly.h"
+
+#include <cstdio>
 
 #include <stdlib.h>
 
@@ -392,4 +395,16 @@ bool voxel_0_c::meshParamsValid(double bevel, double offset) const {
     return false;
   else
     return true;
+}
+
+Polyhedron * voxel_0_c::getSTLMesh(void) const
+{
+  /* the base class's defaults, in cell units: bevel 0.05, offset 0.02 */
+  std::string err;
+  Polyhedron * p = cubePolyhedron(*this, 0.02, 0.05, true, 0, err);
+  if (p) return p;
+  /* cannot happen for these parameters; a draw path must not crash, so
+   * say why and show the old mesh */
+  fprintf(stderr, "cube chamfer mesher failed for the 3D view: %s\n", err.c_str());
+  return voxel_c::getSTLMesh();
 }
