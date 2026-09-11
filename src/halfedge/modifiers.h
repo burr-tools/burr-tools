@@ -45,6 +45,7 @@ class faceList_c {
     bool containsFace(long voxel, int face) const;
 
     void clear(void) { faces.clear(); }
+    bool empty(void) const { return faces.empty(); }
 };
 
 void scalePolyhedron(Polyhedron & poly, float val);
