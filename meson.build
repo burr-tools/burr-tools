@@ -391,3 +391,33 @@ test_burrtools = executable('test_burrtools',
 
 test('burrtools_tests', test_burrtools, workdir: meson.project_source_root())
 
+python_opt = get_option('python')
+if not python_opt.disabled()
+  py = import('python').find_installation('python3', required: python_opt)
+  if py.found()
+    pybind11_dep = dependency('pybind11', fallback: ['pybind11', 'pybind11_dep'], required: python_opt)
+    if pybind11_dep.found()
+      python_src = [
+        'src/python/py_shape.cpp',
+        'src/python/py_solution_iterator.cpp',
+        'src/python/py_problem.cpp',
+        'src/python/py_puzzle.cpp',
+        'src/python/module.cpp',
+      ]
+      py.extension_module('burrtools',
+        python_src,
+        include_directories: inc,
+        link_with: libburr_core,
+        dependencies: [pybind11_dep, thread_dep, zlib_dep],
+      )
+
+      test('python_tests',
+        py,
+        args: ['-m', 'unittest', 'discover', '-s', meson.project_source_root() / 'test/python'],
+        env: ['PYTHONPATH=' + meson.current_build_dir()],
+        workdir: meson.project_source_root(),
+      )
+    endif
+  endif
+endif
+

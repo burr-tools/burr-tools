@@ -33,6 +33,10 @@ rebuild:
 test: build
     ninja -C build test
 
+# Run Python wrapper test suite
+test-py: build
+    PYTHONPATH=build python3 -m unittest discover -s test/python -v
+
 # Run fast static analysis (cppcheck) on BurrTools source files
 check-cppcheck: setup
     cppcheck --project=build/compile_commands.json \
