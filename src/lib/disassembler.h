@@ -22,8 +22,8 @@
 #define __DISASSEMBLER_H__
 
 #include <memory>
+#include "disassembly.h"
 
-class separation_c;
 class assembly_c;
 
 /**
