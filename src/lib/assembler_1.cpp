@@ -268,7 +268,7 @@ void assembler_1_c::AddRangeNode(unsigned int col, unsigned int piecenode, unsig
 assembler_1_c::assembler_1_c(const problem_c & prob) :
   assembler_c(),
   problem(prob),
-  avoidTransformedAssemblies(0), avoidTransformedMirror(0),
+  avoidTransformedAssemblies(false), avoidTransformedMirror(nullptr),
   iterations(0),
   reducePiece(0)
 {
@@ -276,9 +276,7 @@ assembler_1_c::assembler_1_c(const problem_c & prob) :
   task_stack.push_back(0);
 }
 
-assembler_1_c::~assembler_1_c() {
-  if (avoidTransformedMirror) delete avoidTransformedMirror;
-}
+assembler_1_c::~assembler_1_c() = default;
 
 /* add a piece to the cache, but only if it is not already there. If it is added return the
  * piece pointer otherwise return null
@@ -460,7 +458,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
         symBreakerPiece = 0xFFFFFFFF;
       }
 
-      checkForTransformedAssemblies(symBreakerPiece, 0);
+      checkForTransformedAssemblies(symBreakerPiece, nullptr);
     }
 
     if (sym->symmetryContainsMirror(resultSym)) {
@@ -547,13 +545,13 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
          * we also need to that when ranges are used because the final solution
          * might use only mirrorable pieces and then we need this information
          */
-        mirrorInfo_c * mir = new mirrorInfo_c();
+        auto mir = std::make_unique<mirrorInfo_c>();
 
         for (unsigned int i = 0; i < problem.getNumberOfPieces(); i++)
           if (mirror[i].trans != 255)
             mir->addPieces(i, mirror[i].mirror, mirror[i].trans);
 
-        checkForTransformedAssemblies(symBreakerPiece, mir);
+        checkForTransformedAssemblies(symBreakerPiece, std::move(mir));
       }
     }
   }
@@ -738,9 +736,7 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
   }
 
   if (keepMirror) {
-    if (avoidTransformedMirror)
-      delete avoidTransformedMirror;
-    avoidTransformedMirror = 0;
+    avoidTransformedMirror.reset();
   }
 
   if (keepRotations)
@@ -1035,10 +1031,10 @@ void assembler_1_c::reduce(void) {
   fprintf(stderr, "removed %i rows and %i columns\n", row_rem, col_rem);
 }
 
-void assembler_1_c::checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir) {
+void assembler_1_c::checkForTransformedAssemblies(unsigned int pivot, std::unique_ptr<mirrorInfo_c> mir) {
   avoidTransformedAssemblies = true;
   avoidTransformedPivot = pivot;
-  avoidTransformedMirror = mir;
+  avoidTransformedMirror = std::move(mir);
 }
 
 std::unique_ptr<assembly_c> assembler_1_c::getAssembly(void) {
@@ -1086,7 +1082,7 @@ void assembler_1_c::solution(void) {
 
     std::unique_ptr<assembly_c> assembly = getAssembly();
 
-    if (avoidTransformedAssemblies && assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror, complete))
+    if (avoidTransformedAssemblies && assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror.get(), complete))
       return;
     else {
       getCallback()->assembly(std::move(assembly));

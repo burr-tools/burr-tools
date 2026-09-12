@@ -126,12 +126,12 @@ sortMethod(SRT_COMPLETE_MOVES),
 liveSort(-1),
 solutionLimit(10),
 solutionDrop(1),
-disassm(0),
+disassm(nullptr),
 assm(0)
 {
 
   if (par & PAR_DISASSM)
-    disassm = new disassembler_0_c(puz);
+    disassm = std::make_unique<disassembler_0_c>(puz);
 }
 
 solveThread_c::~solveThread_c(void) {
@@ -145,10 +145,7 @@ solveThread_c::~solveThread_c(void) {
   stop();
   joinThread();
 
-  if (disassm) {
-    delete disassm;
-    disassm = 0;
-  }
+  disassm.reset();
 }
 
 bool solveThread_c::assembly(std::unique_ptr<assembly_c> a) {

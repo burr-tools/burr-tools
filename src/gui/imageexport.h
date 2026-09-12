@@ -49,6 +49,7 @@
 #include "voxelframe.h"
 
 #include <vector>
+#include <memory>
 
 class LView3dGroup;
 class LBlockListGroup;
@@ -86,11 +87,11 @@ class imageExport_c : public LFl_Double_Window, public VoxelViewCallbacks {
     /* this vector is set up at the beginning of an export with
      * all the images that need to be in the target image
      */
-    std::vector<ImageInfo*> images;
+    std::vector<std::unique_ptr<ImageInfo>> images;
 
     /* some internal variables for the image export */
     unsigned int state;        /* what is currently done, 0: preview, 1: export */
-    image_c *i;                  /* current page that is worked on */
+    std::unique_ptr<image_c> i;  /* current page that is worked on */
     unsigned int curWidth;     /* how much of the current line is filled */
     unsigned int curLine;      /* current line number */
     unsigned int curPage;      /* number of the current page */
@@ -106,6 +107,7 @@ class imageExport_c : public LFl_Double_Window, public VoxelViewCallbacks {
   public:
 
     imageExport_c(puzzle_c * p);
+    ~imageExport_c(void);
 
     /* returns true, when there is currently a image export in progress */
     bool isWorking(void) { return working; }

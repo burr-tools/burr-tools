@@ -67,11 +67,9 @@ gridType_c::gridType_c(xmlParser_c & pars)
   }
 
   pars.skipSubTree();
-
-  sym = 0;
 }
 
-gridType_c::gridType_c(const gridType_c & orig) : type(orig.type), sym(0)
+gridType_c::gridType_c(const gridType_c & orig) : type(orig.type), sym(nullptr)
 {
 }
 
@@ -86,8 +84,6 @@ void gridType_c::save(xmlWriter_c & xml) const
 
 gridType_c::gridType_c(void) {
   type = GT_BRICKS;
-
-  sym = 0;
 }
 
 gridType_c::gridType_c(gridType gt) {
@@ -114,14 +110,9 @@ gridType_c::gridType_c(gridType gt) {
       bt_assert(0);
       break;
   }
-
-  sym = 0;
 }
 
-gridType_c::~gridType_c(void) {
-  if (sym)
-    delete sym;
-}
+gridType_c::~gridType_c(void) = default;
 
 std::unique_ptr<movementCache_c> gridType_c::getMovementCache(const problem_c & puz) const
 {
@@ -187,20 +178,20 @@ const symmetries_c * gridType_c::getSymmetries(void) const
       case GT_BRICKS:
       case GT_RHOMBIC:
       case GT_TETRA_OCTA:
-        sym = new symmetries_0_c();
+        sym = std::make_unique<symmetries_0_c>();
         break;
       case GT_TRIANGULAR_PRISM:
-        sym = new symmetries_1_c();
+        sym = std::make_unique<symmetries_1_c>();
         break;
       case GT_SPHERES:
-        sym = new symmetries_2_c();
+        sym = std::make_unique<symmetries_2_c>();
         break;
       default:
         break;
     }
   }
 
-  return sym;
+  return sym.get();
 }
 
 unsigned int gridType_c::getCapabilities(void) const

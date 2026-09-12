@@ -1544,12 +1544,11 @@ void mainWindow_c::cb_Load_Ps3d(void) {
 
       std::ifstream in(f);
 
-      puzzle_c * rawNewPuzzle = loadPuzzlerSolver3D(&in);
-      if (!rawNewPuzzle) {
+      auto newPuzzle = loadPuzzlerSolver3D(&in);
+      if (!newPuzzle) {
         fl_alert("Could not load puzzle, sorry!");
         return;
       }
-      auto newPuzzle = std::unique_ptr<puzzle_c>(rawNewPuzzle);
 
       fname = f;
 
@@ -1652,7 +1651,7 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
 
     for (unsigned int s = 0; s < pr->getNumberOfSavedSolutions(); s++)
     {
-      auto shape = std::unique_ptr<voxel_c>(pr->getSavedSolution(s)->getAssembly()->createSpace(*pr));
+      auto shape = pr->getSavedSolution(s)->getAssembly()->createSpace(*pr);
 
       if ((filter & assmImportWindow_c::dropDisconnected) && !shape->connected(0, true, voxel_c::VX_EMPTY))
         continue;

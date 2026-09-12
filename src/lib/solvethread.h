@@ -28,6 +28,7 @@
 
 #include <time.h>
 #include <atomic>
+#include <memory>
 
 class problem_c;
 
@@ -172,7 +173,7 @@ class solveThread_c : public assembler_cb, public thread_c {
 
 
 
-  disassembler_c * disassm;
+  std::unique_ptr<disassembler_c> disassm;
 
   /* the worker publishes the assembler here once it is fully constructed so
    * that currentActionParameter(), called from the GUI thread, can query its

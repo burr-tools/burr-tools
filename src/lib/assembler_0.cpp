@@ -356,13 +356,11 @@ assembler_0_c::assembler_0_c(const problem_c & prob) :
   problem(prob),
   pos(0),
   reducePiece(0),
-  avoidTransformedAssemblies(0), avoidTransformedMirror(0)
+  avoidTransformedAssemblies(false), avoidTransformedMirror(nullptr)
 {
 }
 
-assembler_0_c::~assembler_0_c() {
-  if (avoidTransformedMirror) delete avoidTransformedMirror;
-}
+assembler_0_c::~assembler_0_c() = default;
 
 /* add a piece to the cache, but only if it is not already there. If it is added return the
  * piece pointer otherwise return null
@@ -511,7 +509,7 @@ int assembler_0_c::prepare(void) {
     }
 
     if (sym->symmetriesLeft(resultSym, problem.getPartShape(symBreakerShape)->selfSymmetries()))
-      checkForTransformedAssemblies(symBreakerShape, 0);
+      checkForTransformedAssemblies(symBreakerShape, nullptr);
 
     if (sym->symmetryContainsMirror(resultSym)) {
       /* we need to to the mirror check here, and initialise the mirror
@@ -591,13 +589,13 @@ int assembler_0_c::prepare(void) {
         /* all the shapes are either self mirroring or have a mirror pair
          * so we create the mirror structure and we do the mirror check
          */
-        mirrorInfo_c * mir = new mirrorInfo_c();
+        auto mir = std::make_unique<mirrorInfo_c>();
 
         for (unsigned int i = 0; i < problem.getNumberOfPieces(); i++)
           if (mirror[i].trans != 255)
             mir->addPieces(i, mirror[i].mirror, mirror[i].trans);
 
-        checkForTransformedAssemblies(symBreakerShape, mir);
+        checkForTransformedAssemblies(symBreakerShape, std::move(mir));
       }
     }
   }
@@ -758,9 +756,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(bool keepMirror, bool keepRo
      * checkForTransformedAssemblies; free it before dropping the pointer
      * (assembler_1_c::createMatrix does the same)
      */
-    if (avoidTransformedMirror)
-      delete avoidTransformedMirror;
-    avoidTransformedMirror = 0;
+    avoidTransformedMirror.reset();
   }
 
   if (keepRotations)
@@ -1228,10 +1224,10 @@ std::unique_ptr<assembly_c> assembler_0_c::getAssembly(void) {
   return assembly;
 }
 
-void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir) {
+void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot, std::unique_ptr<mirrorInfo_c> mir) {
   avoidTransformedAssemblies = true;
   avoidTransformedPivot = pivot;
-  avoidTransformedMirror = mir;
+  avoidTransformedMirror = std::move(mir);
 }
 
 /* this function handles the assemblies found by the assembler engine
@@ -1242,7 +1238,7 @@ void assembler_0_c::solution(void) {
 
     std::unique_ptr<assembly_c> assembly = getAssembly();
 
-    if (avoidTransformedAssemblies && assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror, complete))
+    if (avoidTransformedAssemblies && assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror.get(), complete))
       return;
     else {
       getCallback()->assembly(std::move(assembly));
