@@ -323,11 +323,11 @@ xmlParser_c::xmlParser_c(void) :
 
 void xmlParser_c::initBuf(void)
 {
-  srcBuf = new char[8192];
+  srcBuf.resize(8192);
   srcBuflength = 8192;
-  txtBuf = new char[256];
+  txtBuf.resize(256);
   txtBufSize = 256;
-  nspCounts = new int[8];
+  nspCounts.assign(8, 0);
   nspSize = 8;
 }
 
@@ -364,12 +364,7 @@ void xmlParser_c::commonInit(void)
 }
 
 
-xmlParser_c::~xmlParser_c(void)
-{
-  delete [] srcBuf;
-  delete [] txtBuf;
-  delete [] nspCounts;
-}
+xmlParser_c::~xmlParser_c(void) = default;
 
 
 std::string xmlParser_c::state(int eventType)
@@ -665,7 +660,7 @@ int xmlParser_c::peekType(void)
 std::string xmlParser_c::get(int pos)
 {
   std::string
-    tmp (txtBuf);
+    tmp (txtBuf.data());
   return tmp.substr (pos, txtPos - pos);
 }
 
@@ -675,10 +670,8 @@ void xmlParser_c::push(int c)
   isWspace &= c <= ' ';
   if (txtPos >= txtBufSize - 1)
   {
-    char *bigger = new char[txtBufSize = txtPos * 4 / 3 + 4];
-    memcpy (bigger, txtBuf, txtPos);
-    delete[] txtBuf;
-    txtBuf = bigger;
+    txtBufSize = txtPos * 4 / 3 + 4;
+    txtBuf.resize(txtBufSize);
   }
   txtBuf[txtPos++] = (char) c;
   txtBuf[txtPos] = 0;
@@ -763,15 +756,8 @@ void xmlParser_c::parseStartTag(bool xmldecl)
   /*    vivek ,avoided the increment array logic..fix later*/
   if (depth >= nspSize)
   {
-    int *bigger = new int[nspSize + 4];
-    int i = 0;
-    for (i = 0; i < nspSize; i++)
-      bigger[i] = nspCounts[i];
-    for (i = nspSize; i < nspSize + 4; i++)
-      bigger[i] = 0;
-    delete [] nspCounts;
-    nspCounts = bigger;
     nspSize += 4;
+    nspCounts.resize(nspSize, 0);
   }
   nspCounts[depth] = nspCounts[depth - 1];
   for (int i = attributeCount - 1; i > 0; i--)
@@ -909,7 +895,7 @@ int xmlParser_c::peekbuf(int pos)
       nw = srcBuf[srcPos++];
     else
     {
-      srcCount = reader.read (srcBuf, srcBuflength).gcount ();
+      srcCount = reader.read (srcBuf.data(), srcBuflength).gcount ();
       if (srcCount <= 0)
         nw = -1;
 
@@ -1021,7 +1007,7 @@ const char * xmlParser_c::getTextCharacters(int *poslen)
     }
     poslen[0] = 0;
     poslen[1] = txtPos;
-    return txtBuf;
+    return txtBuf.data();
   }
   poslen[0] = -1;
   poslen[1] = -1;

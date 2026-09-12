@@ -31,7 +31,7 @@
 
 #define TILE_BORDER 0
 
-image_c::image_c(unsigned int w, unsigned int h, unsigned char r, unsigned char g, unsigned char b, unsigned char a) : width(w), height(h), bitmap(new unsigned char[w*h*4*sizeof(GLubyte)]), tile(0), tr(0) {
+image_c::image_c(unsigned int w, unsigned int h, unsigned char r, unsigned char g, unsigned char b, unsigned char a) : width(w), height(h), bitmap(w*h*4), tr(0) {
 
   /* initialize image bitmap */
   for (unsigned int x = 0; x < w*h; x++) {
@@ -53,10 +53,10 @@ void image_c::prepareOpenGlImagePart(voxelFrame_c * dr) {
     int tw = dr->w() & 0xFFFFFFF0;
     int th = dr->h() & 0xFFFFFFF0;
 
-    tile = new GLubyte[tw*th*4];
+    tile.resize(tw*th*4);
 
     trTileSize(tr, tw, th, 0);
-    trTileBuffer(tr, GL_RGBA, GL_UNSIGNED_BYTE, tile);
+    trTileBuffer(tr, GL_RGBA, GL_UNSIGNED_BYTE, tile.data());
     trImageSize(tr, width, height);
     trRowOrder(tr, TR_TOP_TO_BOTTOM);
 
@@ -85,8 +85,8 @@ bool image_c::getOpenGlImagePart(void) {
   int curTileHeight = trGet(tr, TR_CURRENT_TILE_HEIGHT);
 
   for (int i = 0; i < curTileHeight; i++) {
-    memcpy(bitmap + i*bytesPerImageRow + xOffset, /* Dest */
-        tile + i*bytesPerTileRow,              /* Src */
+    memcpy(bitmap.data() + i*bytesPerImageRow + xOffset, /* Dest */
+        tile.data() + i*bytesPerTileRow,              /* Src */
         bytesPerCurrentTileRow);               /* Byte count*/
   }
 
@@ -95,8 +95,7 @@ bool image_c::getOpenGlImagePart(void) {
     /* we have finished all tiles, so delete the tile render context */
     trDelete(tr);
     tr = 0;
-    delete [] tile;
-    tile = 0;
+    tile.clear();
 
     /* flip vertically, as the tile renderer generates an image that is bottom up */
     for (unsigned int y = 0; y < height/2; y++)
@@ -112,23 +111,17 @@ bool image_c::getOpenGlImagePart(void) {
 
 
 image_c::~image_c(void) {
-  delete [] bitmap;
-
   /* if we delete the image while we are doing an openGl grep, the context
    * must be deleted, too
    */
   if (tr) trDelete(tr);
-  if (tile) delete [] tile;
 }
 
 int image_c::saveToPNG(const char * fname) const {
 
   int sx = width;
   int sy = height;
-  unsigned char * buffer = bitmap;
-
-  unsigned char ** png_rows = 0;
-  int x, y;
+  const unsigned char * buffer = bitmap.data();
 
   FILE *fi = fopen(fname, "wb");
   if (!fi)
@@ -141,7 +134,6 @@ int image_c::saveToPNG(const char * fname) const {
   if (png_ptr == NULL)
   {
     fclose(fi);
-    png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
     fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
     return 0;
   }
@@ -157,17 +149,8 @@ int image_c::saveToPNG(const char * fname) const {
 
   if (setjmp(png_jmpbuf(png_ptr)))
   {
-
-    /* if we have already instantiated the png_rows, we need to free them */
-    if (png_rows) {
-      for (y = 0; y < sy; y++)
-        delete [] png_rows[y];
-
-      delete [] png_rows;
-    }
-
     fclose(fi);
-    png_destroy_write_struct(&png_ptr, (png_infopp) NULL);
+    png_destroy_write_struct(&png_ptr, &info_ptr);
     fprintf(stderr, "\nError: Couldn't save the image!\n%s\n\n", fname);
     return 0;
   }
@@ -186,27 +169,11 @@ int image_c::saveToPNG(const char * fname) const {
   png_write_info(png_ptr, info_ptr);
 
   /* Save the picture: */
+  std::vector<png_bytep> png_rows(sy);
+  for (int y = 0; y < sy; y++)
+    png_rows[y] = const_cast<png_bytep>(buffer + y * sx * 4);
 
-  png_rows = new unsigned char*[sy];
-  for (y = 0; y < sy; y++)
-  {
-    png_rows[y] = new unsigned char[4*sx];
-
-    for (x = 0; x < sx; x++)
-    {
-      png_rows[y][x * 4 + 0] = buffer[(y*sx+x)*4+0];
-      png_rows[y][x * 4 + 1] = buffer[(y*sx+x)*4+1];
-      png_rows[y][x * 4 + 2] = buffer[(y*sx+x)*4+2];
-      png_rows[y][x * 4 + 3] = buffer[(y*sx+x)*4+3];
-    }
-  }
-
-  png_write_image(png_ptr, png_rows);
-
-  for (y = 0; y < sy; y++)
-    delete [] png_rows[y];
-
-  delete [] png_rows;
+  png_write_image(png_ptr, png_rows.data());
 
   png_write_end(png_ptr, NULL);
 
@@ -274,7 +241,7 @@ void image_c::scaleDown(unsigned char by) {
   unsigned int nw = width / by;
   unsigned int nh = height / by;
 
-  unsigned char * nb = new unsigned char [nw*nh*4];
+  std::vector<unsigned char> nb(nw*nh*4);
 
   for (unsigned int x = 0; x < nw; x++)
     for (unsigned int y = 0; y < nh; y++) {
@@ -311,8 +278,7 @@ void image_c::scaleDown(unsigned char by) {
       nb[4*(y*nw+x) + 3] = a / (by*by);
     }
 
-  delete [] bitmap;
-  bitmap = nb;
+  bitmap = std::move(nb);
 
   height = nh;
   width = nw;
@@ -397,7 +363,7 @@ void image_c::minimizeWidth(unsigned int border, unsigned int multiple) {
   }
 
   // create new bitmap
-  unsigned char * nb = new unsigned char[nw*height*4];
+  std::vector<unsigned char> nb(nw*height*4);
 
   // copy image information
   for (unsigned int y = 0; y < height; y++)
@@ -408,8 +374,6 @@ void image_c::minimizeWidth(unsigned int border, unsigned int multiple) {
       nb[(y*nw+x-xmin)*4+3] = bitmap[(y*width+x)*4+3];
     }
 
-  /* delete the old bitmap */
-  delete [] bitmap;
-  bitmap = nb;
+  bitmap = std::move(nb);
   width = nw;
 }
