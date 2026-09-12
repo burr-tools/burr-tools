@@ -61,7 +61,7 @@ voxelFrame_c::voxelFrame_c(int x,int y,int w,int h) :
   mX1(0), mY1(0), mZ(0), mX2(0), mY2(0),
   markerType(-1),
   size(10), cb(0),
-  viewCube(new viewCube_c()),
+  viewCube(std::make_unique<viewCube_c>()),
   homeCb(0),
   homeUser(0),
   colors(pieceColor),
@@ -106,7 +106,6 @@ voxelFrame_c::~voxelFrame_c(void) {
     curAssembly = 0;
   }
   delete rotater;
-  delete viewCube;
 }
 
 // this is used to shift one side of the cubes so that they slightly differ

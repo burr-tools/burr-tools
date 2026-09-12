@@ -32,6 +32,7 @@
 #pragma GCC diagnostic pop
 
 #include <vector>
+#include <memory>
 
 class voxel_c;
 class puzzle_c;
@@ -207,20 +208,20 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     struct shapeInfo {
 
-      float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
-      const voxel_c * shape = nullptr;
-      drawingMode mode = normal;
-      float x = 0.0f, y = 0.0f, z = 0.0f, scale = 1.0f;
-      bool dim = false;
-      bool useChecker = false;
-      Polyhedron * poly = nullptr;
-      Polyhedron * pickPoly = nullptr;  // the flat mesh of the edge-line style, used to pick in the other styles
-      GLuint list = 0;  // the display list for this shape 0 means no list defined
+      float r{1.0f}, g{1.0f}, b{1.0f}, a{1.0f};
+      const voxel_c * shape{nullptr};
+      drawingMode mode{normal};
+      float x{0.0f}, y{0.0f}, z{0.0f}, scale{1.0f};
+      bool dim{false};
+      bool useChecker{false};
+      Polyhedron * poly{nullptr};
+      Polyhedron * pickPoly{nullptr};  // the flat mesh of the edge-line style, used to pick in the other styles
+      GLuint list{0};  // the display list for this shape 0 means no list defined
 
       /* mid-tumble animation (angle==0 means inactive) */
-      float animAngle = 0.0f;
-      float animAxisX = 0.0f, animAxisY = 0.0f, animAxisZ = 0.0f;
-      float animPivotX = 0.0f, animPivotY = 0.0f, animPivotZ = 0.0f;
+      float animAngle{0.0f};
+      float animAxisX{0.0f}, animAxisY{0.0f}, animAxisZ{0.0f};
+      float animPivotX{0.0f}, animPivotY{0.0f}, animPivotZ{0.0f};
     };
 
     struct colorInfo {
@@ -241,7 +242,7 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     VoxelViewCallbacks * cb;
  
-    viewCube_c * viewCube;
+    std::unique_ptr<viewCube_c> viewCube;
     Fl_Callback * homeCb;
     void * homeUser;
 

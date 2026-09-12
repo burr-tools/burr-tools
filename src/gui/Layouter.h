@@ -58,6 +58,8 @@
 
 #include <stdlib.h>
 #include <vector>
+#include <memory>
+#include <string>
 
 class layoutable_c {
 
@@ -425,8 +427,8 @@ class LFl_Multiline_Input : public Fl_Multiline_Input, public layoutable_c {
 /* Wrapping multiline editor with built-in scrollbars. value() matches Fl_Input. */
 class LFl_Text_Editor : public Fl_Text_Editor, public layoutable_c {
 
-  Fl_Text_Buffer *buf;
-  mutable char *textCache;
+  std::unique_ptr<Fl_Text_Buffer> buf;
+  mutable std::string textCache;
   bool suppressCb;
 
   static void modified_cb(int, int nInserted, int nDeleted, int, const char *, void *v) {
@@ -441,8 +443,8 @@ class LFl_Text_Editor : public Fl_Text_Editor, public layoutable_c {
 
   LFl_Text_Editor(int x = 0, int y = 0, int w = 1, int h = 1)
     : Fl_Text_Editor(0, 0, 100, 100), layoutable_c(x, y, w, h),
-      buf(new Fl_Text_Buffer()), textCache(0), suppressCb(false) {
-    buffer(buf);
+      buf(std::make_unique<Fl_Text_Buffer>()), suppressCb(false) {
+    buffer(buf.get());
     wrap_mode(WRAP_AT_BOUNDS, 0);
     scrollbar_align(FL_ALIGN_RIGHT);
     box(FL_DOWN_BOX);
@@ -454,14 +456,13 @@ class LFl_Text_Editor : public Fl_Text_Editor, public layoutable_c {
   ~LFl_Text_Editor() {
     buf->remove_modify_callback(modified_cb, this);
     buffer(0);
-    delete buf;
-    free(textCache);
   }
 
   const char *value() const {
-    free(textCache);
-    textCache = buf->text();
-    return textCache ? textCache : "";
+    char * t = buf->text();
+    textCache = t ? t : "";
+    free(t);
+    return textCache.c_str();
   }
 
   void value(const char *s) {
