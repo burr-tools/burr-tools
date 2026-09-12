@@ -202,12 +202,11 @@ void stlExportSolution_c::cb_Export(void)
 
   /* export */
   int exported = 0, errors = 0;
-  faceList_c holes; /* empty — batch export has no manually-marked holes */
 
   for (size_t i = 0; i < entries.size(); i++) {
     voxel_c * v = puzzle->getShape(entries[i].shapeId);
     try {
-      stl->write(entries[i].fname.c_str(), *v, holes);
+      stl->write(entries[i].fname.c_str(), *v);
       exported++;
     } catch (stlException_c e) {
       fl_message("Error exporting %s:\n%s", entries[i].fname.c_str(), e.comment);

@@ -59,7 +59,7 @@ const char * basename(const char * name) {
 #endif
 
 
-void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_c & holes)
+void stlExporter_c::write(const char * fname, const voxel_c & v)
 {
   FILE * f;
   unsigned long triangleCount = 0;
@@ -97,7 +97,7 @@ void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_
 
   try
   {
-    poly = getMesh(v, holes);
+    poly = getMesh(v);
     if (!poly) throw stlException_c("Something went wrong when generating the STL polyhedron");
   }
   catch (stlException_c & e)
@@ -106,12 +106,11 @@ void stlExporter_c::write(const char * fname, const voxel_c & v, const faceList_
     throw e;
   }
 
-  if (coplanarMerge)
-  {
-    Polyhedron * merged = mergeCoplanarFaces(*poly);
-    delete poly;
-    poly = merged;
-  }
+  /* connected coplanar faces merged and re-triangulated with fewer,
+   * larger triangles: the meshers keep every vertex of a face's outline */
+  Polyhedron * merged = mergeCoplanarFaces(*poly);
+  delete poly;
+  poly = merged;
 
   // write out the generated polyhedron
   for(Polyhedron::const_face_iterator it=poly->fBegin(); it!=poly->fEnd(); it++)

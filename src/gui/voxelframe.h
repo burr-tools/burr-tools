@@ -201,6 +201,7 @@ class voxelFrame_c : public Fl_Gl_Window {
       bool dim;
       bool useChecker;
       Polyhedron * poly;
+      Polyhedron * pickPoly;  // the flat mesh of the edge-line style, used to pick in the other styles
       GLuint list;  // the display list for this shape 0 means no list defined
 
     } shapeInfo;

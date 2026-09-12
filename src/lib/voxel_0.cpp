@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "voxel_0.h"
+#include "gridtype.h"
 #include "cubepoly.h"
 
 #include <cstdio>
@@ -390,21 +391,17 @@ void voxel_0_c::calculateSize(float * x, float * y, float * z) const {
   *z = getZ();
 }
 
-bool voxel_0_c::meshParamsValid(double bevel, double offset) const {
-  if (bevel+offset > 0.5)
-    return false;
-  else
-    return true;
-}
-
 Polyhedron * voxel_0_c::getSTLMesh(void) const
 {
+  /* the rhombic and tetra-octa grids derive from this class but are not
+   * made of cubes: they have their own mesher, reached through the base */
+  if (getGridType()->getType() != gridType_c::GT_BRICKS) return voxel_c::getSTLMesh();
   /* the base class's defaults, in cell units: bevel 0.05, offset 0.02 */
   std::string err;
-  Polyhedron * p = cubePolyhedron(*this, 0.02, 0.05, true, 0, err);
+  Polyhedron * p = cubePolyhedron(*this, 0.02, 0.05, true, err);
   if (p) return p;
   /* cannot happen for these parameters; a draw path must not crash, so
-   * say why and show the old mesh */
+   * say why and show the flat mesh of the edge-line style */
   fprintf(stderr, "cube chamfer mesher failed for the 3D view: %s\n", err.c_str());
-  return voxel_c::getSTLMesh();
+  return getFlatMesh();
 }

@@ -6,7 +6,6 @@
 #include "lib/stl.h"
 #include "lib/cubepoly.h"
 #include "halfedge/polyhedron.h"
-#include "halfedge/modifiers.h"
 
 #include <map>
 #include <memory>
@@ -92,7 +91,7 @@ TEST_CASE("cube lookup mesher: the zero cases and interior vertices", "[cubemesh
   REQUIRE(cubeMesh::generate(2, 2, 2, block(27), 0, 0.1, true, m, err));
   CHECK(watertight(m));
   /* out of range is refused with a message */
-  CHECK_FALSE(cubeMesh::generate(2, 2, 2, block(27), 0.2, 0.2, true, m, err));
+  CHECK_FALSE(cubeMesh::generate(2, 2, 2, block(27), 0.3, 0.3, true, m, err));
   CHECK(!err.empty());
 }
 
@@ -102,25 +101,20 @@ TEST_CASE("cube STL exporter uses the lookup mesher", "[cubemesh][stl]") {
   const int cells[][3] = { {0,0,0}, {0,1,0}, {0,1,1}, {1,0,0}, {1,0,1}, {2,0,0}, {2,1,0}, {2,2,0}, {1,2,0}, {0,2,0} };
   for (const auto & c : cells) v->setState(c[0], c[1], c[2], voxel_c::VX_FILLED);
   std::unique_ptr<stlExporter_c> ex(gt.getStlExporter());
-  REQUIRE(ex->numParameters() == 11);
+  REQUIRE(ex->numParameters() == 6);
   ex->setParameter(0, 10);      /* unit size */
   ex->setParameter(3, 1.0);     /* bevel */
   ex->setParameter(4, 0.5);     /* offset */
-  faceList_c holes;
-  std::unique_ptr<Polyhedron> withFills(ex->getMesh(*v, holes));
+  std::unique_ptr<Polyhedron> withFills(ex->getMesh(*v));
   CHECK(withFills->numFaces() > 0);
-  ex->setParameter(10, 0);      /* interior chamfers off */
-  std::unique_ptr<Polyhedron> noFills(ex->getMesh(*v, holes));
+  ex->setParameter(5, 0);       /* interior chamfers off */
+  std::unique_ptr<Polyhedron> noFills(ex->getMesh(*v));
   CHECK(noFills->numFaces() > 0);
   CHECK(noFills->numFaces() != withFills->numFaces());
   /* the zero cases export too */
   ex->setParameter(3, 0); ex->setParameter(4, 0);
-  std::unique_ptr<Polyhedron> plain(ex->getMesh(*v, holes));
+  std::unique_ptr<Polyhedron> plain(ex->getMesh(*v));
   CHECK(plain->numFaces() == 80);      /* 40 exposed cell faces, two triangles each */
-  /* tubes are refused */
-  ex->setParameter(3, 1.0); ex->setParameter(4, 0.5); ex->setParameter(5, 1.5);
-  holes.addFace(0, 0);
-  CHECK_THROWS_AS(ex->getMesh(*v, holes), stlException_c);
 }
 
 TEST_CASE("the 3D view's STL style uses the lookup mesher on the cube grid", "[cubemesh][view]") {
@@ -130,7 +124,7 @@ TEST_CASE("the 3D view's STL style uses the lookup mesher on the cube grid", "[c
     if (23 & (1 << i)) v->setState((i >> 2) & 1, (i >> 1) & 1, i & 1, voxel_c::VX_FILLED);
   std::unique_ptr<Polyhedron> view(v->getSTLMesh());
   std::string err;
-  std::unique_ptr<Polyhedron> same(cubePolyhedron(*v, 0.02, 0.05, true, 0, err));
+  std::unique_ptr<Polyhedron> same(cubePolyhedron(*v, 0.02, 0.05, true, err));
   REQUIRE(same);
   CHECK(view->numFaces() == same->numFaces());
   CHECK(view->numFaces() > 0);

@@ -1,13 +1,11 @@
 /* Ear clipping of a planar polygon with holes, for the cube grid's lookup
- * mesher (cubemesh.cpp). Extracted from the chamfer tracer's gapmesh.h,
- * where it was written for the same purpose. */
+ * mesher (cubemesh.cpp). */
 #ifndef TRIANGULATE_H
 #define TRIANGULATE_H
 
 #include <vector>
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
 
 namespace cubeMesh {
 
@@ -22,17 +20,17 @@ namespace cubeMesh {
    * remaining polygon passes through the open ear triangle and the
    * ear lies inside the polygon. Tolerances are distances (TOL, in
    * the points' units): mesh vertices carry ~1e-7 of noise. Output:
-   * index triples into pts. Returns false (with a dump on stderr) when
+   * index triples into pts. Returns false, with the reason in why, when
    * a hole is not inside the outline or clipping gets stuck. */
   template <class P2>
   bool triangulateLoops(const std::vector<P2> & pts,
                         const std::vector<std::vector<int> > & loops,
-                        std::vector<int> & tris) {
+                        std::vector<int> & tris, const char * & why) {
     tris.clear();
     if (loops.empty() || loops[0].size() < 3) return true;
     const double TOL = 1e-6;
     std::vector<int> poly = loops[0];
-    bool ok = true; const char * why = "";
+    bool ok = true; why = "";
     struct geo_s {
       const std::vector<P2> & pts; double TOL;
       double X(int v) const { return pts[v].x; }
@@ -81,13 +79,11 @@ namespace cubeMesh {
       int n = (int)poly.size();
       int P = -1;
       /* a hole vertex in the interior of an outline edge (the hole
-       * touches the outline there without a vertex: a hull facet
-       * pinched by a wedge, rhombic mask 3851 at 5g): split that edge
+       * touches the outline there without a vertex): split that edge
        * there, so the touch is at a polygon vertex. Every hole vertex,
        * not just M: a tiny hole touching the outline at a vertex other
-       * than its rightmost one left a T-junction the clipper got stuck
-       * on (two removed stars 1.9e-3 apart, tetoct cells 3,2,3;4,1,4's
-       * complement at 2g) */
+       * than its rightmost one leaves a T-junction the clipper gets
+       * stuck on */
       for (unsigned hv = 0; hv < H.size(); hv++) {
         double Hx = pts[H[hv]].x, Hy = pts[H[hv]].y;
         for (int e = 0; e < n; e++) {
@@ -179,8 +175,6 @@ namespace cubeMesh {
         }
         if (Pp < 0) {
           ok = false; why = "no bridge target copy faces the hole";
-          fprintf(stderr, "triangulateLoops: hole %d M (%.17g,%.17g) hit edge %d t %.3g P %d found %d R (%.17g,%.17g)\n",
-                  order[oq].second, Mx, My, hitE, hitT, P, (int)found, Rx, Ry);
           break;
         }
         P = Pp;
@@ -246,7 +240,7 @@ namespace cubeMesh {
          * the outline has been clipped around, the leftover can be a
          * zero-area slit whose edges all run twice in opposite
          * directions - an ear there passes the edge tests but covers
-         * exterior (rhombic 94375). Winding number of the centroid. */
+         * exterior. Winding number of the centroid. */
         if (clear) {
           double gx = (ax + bx + cx) / 3, gy = (ay + by + cy) / 3;
           int wn = 0;
@@ -264,8 +258,7 @@ namespace cubeMesh {
         if (drop < 0) {
           /* a remainder with no area is finished: a slit whose edges
            * all run along one line (a hole's bridge doubling back on
-           * an outline edge) has nothing left to triangulate (rhombic
-           * 395177's complement at 2g: four collinear points remained) */
+           * an outline edge) has nothing left to triangulate */
           double ex0 = G.X(I[0]), ey0 = G.Y(I[0]), far = 0; int fi = 0;
           for (int q = 1; q < m; q++) {
             double dd = (G.X(I[q]) - ex0) * (G.X(I[q]) - ex0) + (G.Y(I[q]) - ey0) * (G.Y(I[q]) - ey0);
@@ -276,9 +269,6 @@ namespace cubeMesh {
             if (fabs(G.sdist(ex0, ey0, G.X(I[fi]), G.Y(I[fi]), G.X(I[q]), G.Y(I[q]))) > TOL) flatRem = false;
           if (flatRem) break;
           ok = false; why = "no valid ear";
-          fprintf(stderr, "triangulateLoops: remaining polygon:");
-          for (int q = 0; q < m; q++) fprintf(stderr, " (%.17g,%.17g)", G.X(I[q]), G.Y(I[q]));
-          fprintf(stderr, "\n");
           break;
         }
         I.erase(I.begin() + drop);
@@ -306,15 +296,6 @@ namespace cubeMesh {
         ta += ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) / 2;
       }
       if (fabs(la - ta) > 1e-6 * std::max(1.0, fabs(la))) { ok = false; why = "area mismatch"; }
-    }
-    if (!ok) {
-      fprintf(stderr, "triangulateLoops: %s (%zu loops, %zu tris made)\n", why, loops.size(), tris.size() / 3);
-      for (unsigned l = 0; l < loops.size(); l++) {
-        fprintf(stderr, "  loop %u:", l);
-        for (unsigned i = 0; i < loops[l].size(); i++)
-          fprintf(stderr, " (%.17g,%.17g)", (double)pts[loops[l][i]].x, (double)pts[loops[l][i]].y);
-        fprintf(stderr, "\n");
-      }
     }
     return ok;
   }

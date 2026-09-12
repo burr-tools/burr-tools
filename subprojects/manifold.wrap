@@ -1,0 +1,9 @@
+[wrap-file]
+directory = manifold-3.5.2
+source_url = https://github.com/elalish/manifold/archive/refs/tags/v3.5.2.tar.gz
+source_filename = manifold-3.5.2.tar.gz
+source_hash = 35cb5e0d78882f461ec39b17d8f09c2aceca761356f3ce948e3f3908289b8f2e
+method = cmake
+
+[provide]
+manifold = manifold_dep

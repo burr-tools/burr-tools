@@ -28,10 +28,10 @@ class stlExporter_0_c : public stlExporter_c {
 
   public:
 
-    stlExporter_0_c(void) : bevel(0.3), cube_scale(10), cube_scale_y(0), cube_scale_z(0), shrink(0.01), hole(0), tubes(0.05), leaveGroovesInside(false), leaveGroovesOutside(false), smoothVoid(false), interiorChamfers(true) {}
+    stlExporter_0_c(void) : bevel(0.3), cube_scale(10), cube_scale_y(0), cube_scale_z(0), shrink(0.01), interiorChamfers(true) {}
 
-    virtual Polyhedron * getMesh(const voxel_c & v, const faceList_c & holes) const;
-    virtual unsigned int numParameters(void) const { return 11; }
+    virtual Polyhedron * getMesh(const voxel_c & v) const;
+    virtual unsigned int numParameters(void) const { return 6; }
     virtual const char * getParameterName(unsigned int idx) const;
     virtual double getParameter(unsigned int idx) const;
     virtual void setParameter(unsigned int idx, double value);
@@ -45,16 +45,13 @@ class stlExporter_0_c : public stlExporter_c {
     double cube_scale_y;  // unit size in y direction, 0 = same as cube_scale
     double cube_scale_z;  // unit size in z direction, 0 = same as cube_scale
     double shrink;
-    double hole;
-    double tubes;  // size of the tubes that connect inside and outside
-    bool leaveGroovesInside;
-    bool leaveGroovesOutside;
-    bool smoothVoid;
-    bool interiorChamfers;   // chamfer the concave edges too (the cube grid's lookup mesher has both variants)
+    bool interiorChamfers;   // chamfer the concave edges too
 
-    /* the cube grid: the per-vertex lookup mesher (cubemesh.h), both
-     * variants, in place of voxel_c::getMesh; scale_y/scale_z as in getMesh */
-    Polyhedron * getCubeMesh(const voxel_c & v, const faceList_c & holes, double scale_y, double scale_z) const;
+    /* the cube grid: the per-vertex lookup mesher (cubepoly.h); the
+     * other grids: the Minkowski mesher (minkmesh.h); scale_y/scale_z as
+     * in getMesh */
+    Polyhedron * getCubeMesh(const voxel_c & v, double scale_y, double scale_z) const;
+    Polyhedron * getMinkowskiMesh(const voxel_c & v, double scale_y, double scale_z) const;
 
 private:
 

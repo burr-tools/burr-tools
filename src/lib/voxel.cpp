@@ -20,6 +20,7 @@
  */
 
 #include "voxel.h"
+#include "minkmesh.h"
 
 #include "../tools/xml.h"
 
@@ -1176,11 +1177,6 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
   return res;
 }
 
-Polyhedron * voxel_c::getMesh(double bevel, double offset) const
-{
-  return getMeshInternal(bevel, offset, false);
-}
-
 Polyhedron * voxel_c::getDrawingMesh(void) const
 {
   return getMeshInternal(0.03, 0.005, true);
@@ -1200,23 +1196,19 @@ Polyhedron * voxel_c::getFlatMesh(void) const
 
 Polyhedron * voxel_c::getSTLMesh(void) const
 {
-  double bevel = 0.05;
-  double offset = 0.02;
-
-  if (!meshParamsValid(bevel, offset))
+  /* the prism, rhombic and tetra-octa grids: the same Minkowski mesher
+   * as the STL export, at the view's defaults (gap 0.02, bevel 0.05 in
+   * cell units). A draw path must not crash: when the mesher fails the
+   * reason goes to stderr and the flat mesh of the edge-line style is
+   * shown, which looks nothing like a chamfered shape. */
+  std::string err = "grid without a chamfer mesher";
+  if (minkMesh::handles(*this))
   {
-    bevel = 0.03;
-    offset = 0.005;
+    Polyhedron * p = minkMesh::polyhedron(*this, 0.02, 0.05, true, err);
+    if (p) return p;
   }
-
-  Polyhedron * p = getMeshInternal(bevel, offset, false);
-
-  // merge the bevel and offset faces between coplanar faces, so that the
-  // grooves between the voxels of a flat surface disappear and only the
-  // real edges stay bevelled, just like the STL export does by default
-  fillPolyhedronHoles(*p, 1);
-
-  return p;
+  fprintf(stderr, "chamfer mesher failed for the 3D view: %s\n", err.c_str());
+  return getFlatMesh();
 }
 
 

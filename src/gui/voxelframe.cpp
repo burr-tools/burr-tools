@@ -425,13 +425,22 @@ bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z
  * transformation must already be set up
  */
 void voxelFrame_c::drawShape(shapeInfo * shape) {
-  if (shape->list) {
+
+  /* picking in the styles that draw many polygons (the voxel style's
+   * rounded mesh, the STL style's chamfered mesh) goes through the flat
+   * mesh of the edge-line style, so that a click lands on the same voxel
+   * and face as there: those meshes are only looked at, never picked.
+   * The flat mesh is not put in the display list (that holds the drawn
+   * mesh). */
+  bool pickClassic = (pickx >= 0) && (curStyle != styleEdges) && (shape->mode != gridline) && shape->shape;
+
+  if (shape->list && !pickClassic) {
 
     glCallList(shape->list);
 
   } else {
 
-    if (config.useDisplayLists()) {
+    if (config.useDisplayLists() && !pickClassic) {
 
       shape->list = glGenLists(1);
 
@@ -439,6 +448,9 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
         glNewList(shape->list, GL_COMPILE_AND_EXECUTE);
 
     }
+
+    if (pickClassic && !shape->pickPoly)
+      shape->pickPoly = shape->shape->getFlatMesh();
 
     if (!shape->poly)
     {
@@ -460,7 +472,9 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
       }
     }
 
-    if (shape->poly)
+    Polyhedron * poly = pickClassic ? shape->pickPoly : shape->poly;
+
+    if (poly)
     {
       // the checker pattern is only for the voxel style, the other styles
       // paint the whole piece in one colour
@@ -503,7 +517,7 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
         dr = dg = db = tmp;
       }
 
-      for(Polyhedron::const_face_iterator it=shape->poly->fBegin(); it!=shape->poly->fEnd(); it++)
+      for(Polyhedron::const_face_iterator it=poly->fBegin(); it!=poly->fEnd(); it++)
       {
         const Face* f = *it;
 
@@ -618,9 +632,9 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
         glLineWidth(2);
         glBegin(GL_LINES);
 
-        for (int i = 0; i < shape->poly->numHalfEdges(); i++)
+        for (int i = 0; i < poly->numHalfEdges(); i++)
         {
-          const HalfEdge * he = shape->poly->halfedge(i);
+          const HalfEdge * he = poly->halfedge(i);
           const HalfEdge * tw = he->twin();
 
           // draw each edge only once
@@ -645,7 +659,7 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
       }
     }
 
-    if (shape->list)
+    if (shape->list && !pickClassic)
       glEndList();
 
   }
@@ -870,6 +884,7 @@ unsigned int voxelFrame_c::addSpace(const voxel_c * vx) {
   i.dim = false;
 
   i.list = 0;
+  i.pickPoly = 0;
   i.poly = 0;
 
   shapes.push_back(i);
@@ -885,6 +900,8 @@ void voxelFrame_c::clearSpaces(void) {
     if (shapes[i].poly)
       delete shapes[i].poly;
     shapes[i].poly = 0;
+    delete shapes[i].pickPoly;
+    shapes[i].pickPoly = 0;
   }
 
   shapes.clear();
@@ -942,6 +959,8 @@ void voxelFrame_c::setDrawingMode(unsigned int nr, drawingMode mode) {
     {
       delete shapes[nr].poly;
       shapes[nr].poly = 0;
+      delete shapes[nr].pickPoly;
+      shapes[nr].pickPoly = 0;
     }
   }
 
@@ -970,6 +989,8 @@ void voxelFrame_c::setRenderStyle(renderStyle style) {
     if (shapes[nr].poly && shapes[nr].mode != gridline) {
       delete shapes[nr].poly;
       shapes[nr].poly = 0;
+      delete shapes[nr].pickPoly;
+      shapes[nr].pickPoly = 0;
     }
   }
 
@@ -1072,6 +1093,7 @@ void voxelFrame_c::showMesh(Polyhedron * poly)
   i.dim = false;
 
   i.list = 0;
+  i.pickPoly = 0;
 
   shapes.push_back(i);
 
@@ -1385,6 +1407,8 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
       {
         delete shapes[0].poly;
         shapes[0].poly = 0;
+        delete shapes[0].pickPoly;
+        shapes[0].pickPoly = 0;
       }
     }
     else

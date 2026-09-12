@@ -70,12 +70,9 @@ class stlExport_c : public LFl_Double_Window {
     PieceSelector * ShapeSelect;
     // LFl_Radio_Button *ExpShape; // Unused?
     LFl_Check_Button *Binary;
-    LFl_Check_Button *CoplanarMerge;
     ButtonGroup_c * mode;
 
     pixmapList_c pm;
-
-    faceList_c holes;
 
   public:
 
@@ -84,10 +81,9 @@ class stlExport_c : public LFl_Double_Window {
 
     void cb_Export(void);
     void cb_Abort(void);
-    void cb_Update3DView(int type);
+    void cb_Update3DView(void);
     void cb_Update3DViewParams(void);
     void exportSTL(int shape);
-    void cb_3dClick(void);
     void cb_FileChooser(void);
 };
 

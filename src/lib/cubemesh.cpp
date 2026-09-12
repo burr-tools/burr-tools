@@ -12,19 +12,19 @@
 
 namespace cubeMesh {
 
-
 namespace {
 
 /* the regime of a case for this ratio: the interval containing it, or
  * at a tie ratio (skipped by the table generator) the neighbour whose
- * boundary is nearest */
+ * boundary is nearest. The last regime runs to infinity: every regime
+ * boundary is a finite ratio, so beyond the last one the structure is
+ * the g = 0 structure, whatever ratio the table generation stopped at. */
 const cubeRegime_s * regimeOf(const cubeCase_s & c, double ratio) {
   const cubeRegime_s * best = 0;
   double bd = 1e100;
-  if (ratio > 1e299) {                          /* g = 0: the last regime, the r/g -> infinity limit */
-    for (int i = 0; i < c.nRegime; i++) if (!best || c.regime[i].hi > best->hi) best = &c.regime[i];
-    return best;
-  }
+  const cubeRegime_s * last = 0;
+  for (int i = 0; i < c.nRegime; i++) if (!last || c.regime[i].hi > last->hi) last = &c.regime[i];
+  if (last && ratio >= last->lo) return last;
   for (int i = 0; i < c.nRegime; i++) {
     const cubeRegime_s & R = c.regime[i];
     if (ratio >= R.lo && ratio <= R.hi) return &R;
@@ -35,7 +35,7 @@ const cubeRegime_s * regimeOf(const cubeCase_s & c, double ratio) {
 }
 
 /* vertex welding by proximity: a point within TOL of a stored point is
- * that point. Buckets of TOL*4 so a lookup checks at most 8 buckets. */
+ * that point. Buckets of TOL*4, a lookup checks the 27 around it. */
 struct weld_s {
   static constexpr double TOL = 1e-7;
   std::vector<vec3> pts;
@@ -134,7 +134,6 @@ static int pieces(int mask, int out[8]) {
 struct poly_s {
   std::vector<int> loop;
   std::vector<int> tris;
-  int at[3]; int mask;
 };
 
 static vec3 sub(const vec3 & a, const vec3 & b) { vec3 r = { a.x - b.x, a.y - b.y, a.z - b.z }; return r; }
@@ -160,8 +159,8 @@ static vec3 loopNormal(const std::vector<int> & loop, const std::vector<vec3> & 
 static bool triangulateFace(const std::vector<std::vector<int> > & loops, const vec3 & n, const std::vector<vec3> & pts,
                             std::vector<int> & tris, std::string & why) {
   vec3 ax = {1, 0, 0};
-  if (fabs(n.y) < fabs(n.x)) ax = (vec3){0, 1, 0};
-  if (fabs(n.z) < fabs(dot(ax, n))) ax = (vec3){0, 0, 1};
+  if (fabs(n.y) < fabs(n.x)) ax = {0, 1, 0};
+  if (fabs(n.z) < fabs(dot(ax, n))) ax = {0, 0, 1};
   double d = dot(ax, n);
   vec3 u1 = { ax.x - d * n.x, ax.y - d * n.y, ax.z - d * n.z };
   double l1 = len(u1);
@@ -178,9 +177,10 @@ static bool triangulateFace(const std::vector<std::vector<int> > & loops, const 
       p2.push_back(v); flat.push_back(loops[l][q]);
     }
   std::vector<int> tt;
-  if (!triangulateLoops(p2, idx, tt)) {
-    char buf[100];
-    snprintf(buf, sizeof(buf), "a face of %zu loops, %zu vertices would not triangulate", loops.size(), flat.size());
+  const char * reason;
+  if (!triangulateLoops(p2, idx, tt, reason)) {
+    char buf[160];
+    snprintf(buf, sizeof(buf), "a face of %zu loops, %zu vertices would not triangulate: %s", loops.size(), flat.size(), reason);
     why = buf;
     return false;
   }
@@ -272,7 +272,7 @@ static bool consolidate(const std::vector<poly_s> & raw0, mesh_s & out, std::str
   std::vector<face_s> faces;
   for (unsigned p = 0; p < N; p++)
     if (!planar[p]) {
-      face_s f; f.loops.push_back(raw[p].loop); f.n = (vec3){0, 0, 0};
+      face_s f; f.loops.push_back(raw[p].loop); f.n = {0, 0, 0};
       f.tris = raw[p].tris;
       faces.push_back(f);
     }
@@ -338,7 +338,7 @@ static bool consolidate(const std::vector<poly_s> & raw0, mesh_s & out, std::str
         if (off > 1e-6 || t <= 0 || t >= ld * ld) corner[v] = 1;
       }
     }
-  out.polys.clear(); out.polyFace.clear(); out.tris.clear();
+  out.tris.clear();
   for (unsigned fi = 0; fi < faces.size(); fi++) {
     face_s & f = faces[fi];
     for (unsigned l = 0; l < f.loops.size(); l++) {
@@ -346,7 +346,6 @@ static bool consolidate(const std::vector<poly_s> & raw0, mesh_s & out, std::str
       for (unsigned q = 0; q < f.loops[l].size(); q++) if (corner[f.loops[l][q]]) kept.push_back(f.loops[l][q]);
       if (kept.size() < 3) { err = "a face loop lost its corners"; return false; }
       f.loops[l] = kept;
-      out.polys.push_back(kept); out.polyFace.push_back((int)fi);
     }
     if (!f.tris.empty()) { out.tris.insert(out.tris.end(), f.tris.begin(), f.tris.end()); continue; }
     std::string why;
@@ -378,7 +377,6 @@ static bool plainSurface(int nx, int ny, int nz, const std::vector<char> & fille
             vec3 w = { p[0], p[1], p[2] };
             loop.push_back(weld.add(w));
           }
-          out.polys.push_back(loop); out.polyFace.push_back((int)out.polys.size() - 1);
           out.tris.push_back(loop[0]); out.tris.push_back(loop[1]); out.tris.push_back(loop[2]);
           out.tris.push_back(loop[0]); out.tris.push_back(loop[2]); out.tris.push_back(loop[3]);
         }
@@ -391,15 +389,14 @@ static bool plainSurface(int nx, int ny, int nz, const std::vector<char> & fille
 
 bool generate(int nx, int ny, int nz, const std::vector<char> & filled,
               double g, double r, bool fills, mesh_s & out, std::string & err) {
-  out.verts.clear(); out.polys.clear(); out.tris.clear();
+  out.verts.clear(); out.tris.clear();
   /* the table for the variant: with interior (concave) chamfers, or without */
   const cubeCase_s * cases = fills ? cubeCases : cubeNFCases;
   const int nCases = fills ? cubeNumCases : cubeNFNumCases;
   if ((int)filled.size() != nx * ny * nz) { err = "filled has the wrong size"; return false; }
   if (!(g >= 0) || !(r >= 0)) { err = "need g >= 0 and r >= 0"; return false; }
-  if (g + r > 0.35) { err = "g + r must stay below 0.35 of a cell (the table was generated and verified up to there)"; return false; }
-  /* the special cases: r = 0 is the
-   * gap step alone and goes through the tables at ratio 0, where every
+  if (g + r > 0.5) { err = "gap + bevel must stay below half a cell"; return false; }
+  /* the special cases: r = 0 is the gap step alone and goes through the tables at ratio 0, where every
    * regime starts and the collapsed strips are dropped in consolidate();
    * g = 0 is the r/g -> infinity limit: the last regime of each case
    * evaluated at g = 0 (its formulas are affine, and every regime
@@ -492,23 +489,12 @@ bool generate(int nx, int ny, int nz, const std::vector<char> & filled,
               P.tris.push_back(a); P.tris.push_back(b); P.tris.push_back(c2);
             }
           }
-          P.at[0] = i; P.at[1] = j; P.at[2] = k; P.mask = mask;
           raw.push_back(P);
         }
         }   /* pieces */
       }
   out.verts = weld.pts;
   return consolidate(raw, out, err);
-}
-
-bool generate(int nx, int ny, int nz, const std::vector<char> & filled,
-              double g, double r, bool fills, std::vector<vec3> & tris, std::string & err) {
-  mesh_s m;
-  if (!generate(nx, ny, nz, filled, g, r, fills, m, err)) return false;
-  tris.clear();
-  tris.reserve(m.tris.size());
-  for (unsigned t = 0; t < m.tris.size(); t++) tris.push_back(m.verts[m.tris[t]]);
-  return true;
 }
 
 } // namespace cubeMesh

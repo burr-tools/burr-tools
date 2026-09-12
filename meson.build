@@ -98,6 +98,7 @@ libburr_src = [
   'src/lib/disassembly.cpp',
   'src/lib/cubemesh.cpp',
   'src/lib/cubepoly.cpp',
+  'src/lib/minkmesh.cpp',
   'src/lib/disasmtomoves.cpp',
   'src/lib/gridtype.cpp',
   'src/lib/grouping.cpp',
@@ -315,11 +316,31 @@ endif
 add_project_link_arguments(link_args,
 			   language: ['c', 'cpp', 'objc'])
 
+# Manifold (https://github.com/elalish/manifold): the boolean / Minkowski
+# engine behind the chamfered STL export of the non-cube grids. Built from
+# the wrap as a static library, without its 2D cross-section part (which
+# would pull in Clipper2), its tests or its parallel backend.
+cmake_mf = import('cmake')
+manifold_opts = cmake_mf.subproject_options()
+manifold_opts.add_cmake_defines({
+  'MANIFOLD_CROSS_SECTION': 'OFF',
+  'MANIFOLD_TEST': 'OFF',
+  'MANIFOLD_PAR': 'OFF',
+  'MANIFOLD_PYBIND': 'OFF',
+  'MANIFOLD_DEBUG': 'OFF',
+  'BUILD_SHARED_LIBS': 'OFF',
+  'CMAKE_BUILD_TYPE': 'Release',
+})
+manifold_opts.set_override_option('warning_level', '0')
+manifold_opts.set_override_option('werror', 'false')
+manifold_proj = cmake_mf.subproject('manifold', options: manifold_opts)
+manifold_dep = manifold_proj.dependency('manifold')
+
 executable('burrTxt',  tools_src + halfedge_src + libburr_src + ['src/burrTxt.cpp'],
- 	   dependencies: [thread_dep, zlib_dep])
+ 	   dependencies: [manifold_dep, thread_dep, zlib_dep])
 
 executable('burrTxt2',  tools_src + halfedge_src + libburr_src + ['src/burrTxt2.cpp'],
- 	   dependencies: [thread_dep, zlib_dep],
+ 	   dependencies: [manifold_dep, thread_dep, zlib_dep],
 	  )
 
 # get_supported_arguments so these stay a no-op on compilers without the flag
@@ -343,7 +364,7 @@ vendored_lua_lib = static_library('vendored_lua', lua_src,
 
 executable('burrtools', tools_src + gui_src + halfedge_src + libburr_src,
           link_with: [vendored_gui_lib, vendored_lua_lib],
-          dependencies: [thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep],
+          dependencies: [manifold_dep, thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep],
           win_subsystem: 'windows',
 	  )
 
@@ -352,9 +373,9 @@ catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_ma
 inc = include_directories('src')
 
 test_burrtools = executable('test_burrtools',
-  tools_src + halfedge_src + libburr_src + ['test/test_solver.cpp', 'test/test_cubemesh.cpp'],
+  tools_src + halfedge_src + libburr_src + ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp'],
   include_directories: inc,
-  dependencies: [thread_dep, zlib_dep, catch2_dep],
+  dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep],
 )
 
 test('burrtools_tests', test_burrtools, workdir: meson.project_source_root())

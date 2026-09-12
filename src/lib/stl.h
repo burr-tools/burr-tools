@@ -48,19 +48,18 @@ class stlException_c {
  * The STL file handling is done in here, so that the concrete exporters only need
  * to write a long list of triangles
  */
-class faceList_c;
 class stlExporter_c {
 
   public:
 
     /** create new exporter, defaults to binary mode active */
-    stlExporter_c(void) : binaryMode(true), coplanarMerge(true) {}
+    stlExporter_c(void) : binaryMode(true) {}
     virtual ~stlExporter_c(void) {}
 
     /**
      * This function exports one shape.
      */
-    void write(const char * basename, const voxel_c & shape, const faceList_c & holes);
+    void write(const char * basename, const voxel_c & shape);
 
     /** parameters can have different type
      * this enum lists all supported types
@@ -95,18 +94,11 @@ class stlExporter_c {
     /** find out if binary mode is active */
     bool getBinaryMode(void) { return binaryMode; }
 
-    /** select whether groups of coplanar faces are merged into fewer,
-     * larger triangles before writing */
-    void setCoplanarMerge(bool on) { coplanarMerge = on; }
-    /** find out if coplanar faces get merged */
-    bool getCoplanarMerge(void) { return coplanarMerge; }
-
-    virtual Polyhedron * getMesh(const voxel_c & v, const faceList_c & holes) const = 0;
+    virtual Polyhedron * getMesh(const voxel_c & v) const = 0;
 
   private:
 
     bool binaryMode;              ///< binary STL export active or not
-    bool coplanarMerge;           ///< merge coplanar faces before writing or not
 
   private:
 

@@ -1164,53 +1164,41 @@ Polyhedron * voxel_2_c::getSTLMesh(void) const
 
 void voxel_2_c::getConnectionFace(int x, int y, int z, int n, double /*bevel*/, double /*offset*/, std::vector<float> & faceCorners) const
 {
-  static const float A = sqrt(0.5);
-  static const float B = sqrt(0.125);
-
-  /* array of
-   * - of the 12 neighbours
-   * - of the 4 points of a rhombus
-   * - x, y, z
-   */
-  static const float faces[12][4][3] =
+  /* the rhombus towards each of the 12 neighbours, one face of the
+   * rhombic dodecahedron around the ball. Corner coordinates in units of
+   * B = sqrt(1/8), as integers: the ball's centre is at 2x, 2y, 2z (plus
+   * 1/2), a corner 2 or 1 units off it, so a corner shared with the
+   * neighbour is the same integer from both sides and comes out as the
+   * same float; summing the centre and an offset separately did not,
+   * and the flat mesh built from these faces did not close. */
+  static const int faces[12][4][3] =
   {
-    /* neighbour at -1, -1,  0 */ { {0, -A, 0}, {-B, -B,  B}, {-A, 0, 0}, {-B, -B, -B} },
-    /* neighbour at -1,  1,  0 */ { {0,  A, 0}, {-B,  B, -B}, {-A, 0, 0}, {-B,  B,  B} },
-    /* neighbour at  1, -1,  0 */ { {0, -A, 0}, { B, -B, -B}, { A, 0, 0}, { B, -B,  B} },
-    /* neighbour at  1,  1,  0 */ { {0,  A, 0}, { B,  B,  B}, { A, 0, 0}, { B,  B, -B} },
+    /* neighbour at -1, -1,  0 */ { {0, -2, 0}, {-1, -1,  1}, {-2, 0, 0}, {-1, -1, -1} },
+    /* neighbour at -1,  1,  0 */ { {0,  2, 0}, {-1,  1, -1}, {-2, 0, 0}, {-1,  1,  1} },
+    /* neighbour at  1, -1,  0 */ { {0, -2, 0}, { 1, -1, -1}, { 2, 0, 0}, { 1, -1,  1} },
+    /* neighbour at  1,  1,  0 */ { {0,  2, 0}, { 1,  1,  1}, { 2, 0, 0}, { 1,  1, -1} },
 
-    /* neighbour at -1,  0, -1 */ { {-A, 0, 0}, {-B,  B, -B}, {0, 0, -A}, {-B, -B, -B} },
-    /* neighbour at -1,  0,  1 */ { {-A, 0, 0}, {-B, -B,  B}, {0, 0,  A}, {-B,  B,  B} },
-    /* neighbour at  1,  0, -1 */ { { A, 0, 0}, { B, -B, -B}, {0, 0, -A}, { B,  B, -B} },
-    /* neighbour at  1,  0,  1 */ { { A, 0, 0}, { B,  B,  B}, {0, 0,  A}, { B, -B,  B} },
+    /* neighbour at -1,  0, -1 */ { {-2, 0, 0}, {-1,  1, -1}, {0, 0, -2}, {-1, -1, -1} },
+    /* neighbour at -1,  0,  1 */ { {-2, 0, 0}, {-1, -1,  1}, {0, 0,  2}, {-1,  1,  1} },
+    /* neighbour at  1,  0, -1 */ { { 2, 0, 0}, { 1, -1, -1}, {0, 0, -2}, { 1,  1, -1} },
+    /* neighbour at  1,  0,  1 */ { { 2, 0, 0}, { 1,  1,  1}, {0, 0,  2}, { 1, -1,  1} },
 
-    /* neighbour at  0, -1, -1 */ { {0, 0, -A}, { B, -B, -B}, {0, -A, 0}, {-B, -B, -B} },
-    /* neighbour at  0, -1,  1 */ { {0, 0,  A}, {-B, -B,  B}, {0, -A, 0}, { B, -B,  B} },
-    /* neighbour at  0,  1, -1 */ { {0, 0, -A}, {-B,  B, -B}, {0,  A, 0}, { B,  B, -B} },
-    /* neighbour at  0,  1,  1 */ { {0, 0,  A}, { B,  B,  B}, {0,  A, 0}, {-B,  B,  B} },
+    /* neighbour at  0, -1, -1 */ { {0, 0, -2}, { 1, -1, -1}, {0, -2, 0}, {-1, -1, -1} },
+    /* neighbour at  0, -1,  1 */ { {0, 0,  2}, {-1, -1,  1}, {0, -2, 0}, { 1, -1,  1} },
+    /* neighbour at  0,  1, -1 */ { {0, 0, -2}, {-1,  1, -1}, {0,  2, 0}, { 1,  1, -1} },
+    /* neighbour at  0,  1,  1 */ { {0, 0,  2}, { 1,  1,  1}, {0,  2, 0}, {-1,  1,  1} },
   };
 
   bt_assert(n < 12);
 
-  float xc = x*sqrt(0.5)+0.5;
-  float yc = y*sqrt(0.5)+0.5;
-  float zc = z*sqrt(0.5)+0.5;
+  static const float B = sqrt(0.125);
 
-  faceCorners.push_back(xc+faces[n][0][0]);
-  faceCorners.push_back(yc+faces[n][0][1]);
-  faceCorners.push_back(zc+faces[n][0][2]);
-
-  faceCorners.push_back(xc+faces[n][1][0]);
-  faceCorners.push_back(yc+faces[n][1][1]);
-  faceCorners.push_back(zc+faces[n][1][2]);
-
-  faceCorners.push_back(xc+faces[n][2][0]);
-  faceCorners.push_back(yc+faces[n][2][1]);
-  faceCorners.push_back(zc+faces[n][2][2]);
-
-  faceCorners.push_back(xc+faces[n][3][0]);
-  faceCorners.push_back(yc+faces[n][3][1]);
-  faceCorners.push_back(zc+faces[n][3][2]);
+  for (int c = 0; c < 4; c++)
+  {
+    faceCorners.push_back((2 * x + faces[n][c][0]) * B + 0.5f);
+    faceCorners.push_back((2 * y + faces[n][c][1]) * B + 0.5f);
+    faceCorners.push_back((2 * z + faces[n][c][2]) * B + 0.5f);
+  }
 }
 
 void voxel_2_c::calculateSize(float * x, float * y, float * z) const

@@ -714,21 +714,6 @@ public:
   virtual bool onGrid(int x, int y, int z) const = 0;
 
   /**
-   * this function returns a polyhedron mesh of this shape.
-   * The mesh is then further used for STL export and
-   * the displaying of this shape in the GUI
-   * The Polyhedron is allocated using new, so you have to
-   * delete it, when you no longer need it
-   *
-   */
-  virtual Polyhedron * getMesh(double bevel, double offset) const;
-
-  /* return true, when the given parameters will result in a usable
-   * polyhedron, when offset or bevel gets too big return false
-   */
-  virtual bool meshParamsValid(double /*bevel*/, double /*offset*/) const { return true; }
-
-  /**
    * returns the drawing mesh. ATTENTION for the sake of speed this mesh
    * will not be a proper halfedge mesh, most edges will be open, meaning
    * they don't have a pair, which is invalid and makes some
