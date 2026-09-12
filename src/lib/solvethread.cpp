@@ -49,7 +49,8 @@ void solveThread_c::run(void){
       /* otherwise we have to create a new one
        */
       action = solveThread_c::ACT_PREPARATION;
-      a = puzzle.getPuzzle().getGridType()->findAssembler(puzzle).release();
+      std::unique_ptr<assembler_c> new_assm = puzzle.getPuzzle().getGridType()->findAssembler(puzzle);
+      a = new_assm.get();
       assm.store(a, std::memory_order_release);
 
       errState = a->createMatrix(parameters & PAR_KEEP_MIRROR, parameters & PAR_KEEP_ROTATIONS, parameters & PAR_COMPLETE_ROTATIONS);
@@ -60,7 +61,6 @@ void solveThread_c::run(void){
         action = solveThread_c::ACT_ERROR;
 
         assm.store(0, std::memory_order_release);
-        delete a;
         return;
       }
 
@@ -77,8 +77,9 @@ void solveThread_c::run(void){
        * also restores the assembler state to a state that might
        * be saved within the problem
        */
-      errState = puzzle.setAssembler(a);
+      errState = puzzle.setAssembler(std::move(new_assm));
       if (errState != assembler_c::ERR_NONE) {
+        assm.store(0, std::memory_order_release);
         action = solveThread_c::ACT_ERROR;
         return;
       }

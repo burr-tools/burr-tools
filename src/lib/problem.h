@@ -82,7 +82,7 @@ private:
    * of each shape are there, the shape class contains indices into the
    * shape list of the puzzle and some counters, ...
    */
-  std::vector<part_c *> parts;
+  std::vector<std::unique_ptr<part_c>> parts;
 
   /**
    * the result shape shape as index into the puzzle shapes
@@ -94,7 +94,7 @@ private:
    * in this vector if the user decides to only count, or not keep them
    * all. This vector contains the solutions that were kept
    */
-  std::vector<solution_c*> solutions;
+  std::vector<std::unique_ptr<solution_c>> solutions;
 
   /**
    * guards the solutions vector. The solver thread adds and removes solutions
@@ -117,7 +117,7 @@ private:
    * if the pointer is 0 we have never started an assembly process within this session
    * statistics can be found in the assembler, too
    */
-  assembler_c * assm;
+  std::unique_ptr<assembler_c> assm;
 
   /**
    * the name of the problem, so that the user can easily select one
@@ -415,11 +415,12 @@ public:
    * The set assembler will be reset to a saved state, when that information is
    * available. If not simply set the assembler
    */
+  assembler_c::errState setAssembler(std::unique_ptr<assembler_c> assm);
   assembler_c::errState setAssembler(assembler_c * assm);                       // startSolving
   /** get the assembler */
-  assembler_c * getAssembler(void) { return assm; }
+  assembler_c * getAssembler(void) { return assm.get(); }
   /** get the assembler */
-  const assembler_c * getAssembler(void) const { return assm; }
+  const assembler_c * getAssembler(void) const { return assm.get(); }
   /** call this for each found assembly */
   void incNumAssemblies(void) { bt_assert(solveState == SS_SOLVING); numAssemblies++; }
   /** call this for each found solution */
@@ -481,8 +482,8 @@ public:
     return std::unique_lock<std::recursive_mutex>(solutionMutex);
   }
 
-  const solution_c * getSavedSolution(unsigned int sol) const { bt_assert(sol < solutions.size()); return solutions[sol]; }
-  solution_c * getSavedSolution(unsigned int sol) { bt_assert(sol < solutions.size()); return solutions[sol]; }
+  const solution_c * getSavedSolution(unsigned int sol) const { bt_assert(sol < solutions.size()); return solutions[sol].get(); }
+  solution_c * getSavedSolution(unsigned int sol) { bt_assert(sol < solutions.size()); return solutions[sol].get(); }
   //@}
 
 
