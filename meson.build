@@ -393,8 +393,11 @@ test('burrtools_tests', test_burrtools, workdir: meson.project_source_root())
 
 python_opt = get_option('python')
 if not python_opt.disabled()
-  py = import('python').find_installation('python3', required: python_opt)
-  if py.found()
+  if meson.is_cross_build() and python_opt.auto()
+    message('Skipping Python wrapper during cross-compilation with python=auto')
+  else
+    py = import('python').find_installation('python3', required: python_opt)
+    if py.found()
     pybind11_dep = dependency('pybind11', fallback: ['pybind11', 'pybind11_dep'], required: python_opt)
     if pybind11_dep.found()
       python_src = [
@@ -418,6 +421,7 @@ if not python_opt.disabled()
         workdir: meson.project_source_root(),
       )
     endif
+  endif
   endif
 endif
 
