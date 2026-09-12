@@ -261,11 +261,11 @@ public:
    */
   virtual std::unique_ptr<assembly_c> getAssembly(void) = 0;
 
-private:
+public:
 
-    // no copying and assigning
-    assembler_c(const assembler_c&);
-    void operator=(const assembler_c&);
+  // no copying and assigning
+  assembler_c(const assembler_c&) = delete;
+  assembler_c& operator=(const assembler_c&) = delete;
 
 };
 

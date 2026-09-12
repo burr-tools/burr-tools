@@ -142,10 +142,10 @@ class gridType_c {
      */
     static std::unique_ptr<assembler_c> findAssembler(const problem_c & p);
 
-  private:
+  public:
 
-    // no copying and assigning
-    void operator=(const gridType_c&);
+    // no assigning
+    gridType_c & operator=(const gridType_c &) = delete;
 };
 
 #endif

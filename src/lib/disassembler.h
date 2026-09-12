@@ -53,11 +53,11 @@ public:
    */
   virtual std::unique_ptr<separation_c> disassemble(const assembly_c * /*assembly*/) { return nullptr; }
 
-private:
+public:
 
   // no copying and assigning
-  disassembler_c(const disassembler_c&);
-  void operator=(const disassembler_c&);
+  disassembler_c(const disassembler_c&) = delete;
+  disassembler_c& operator=(const disassembler_c&) = delete;
 
 };
 

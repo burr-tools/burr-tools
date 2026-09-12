@@ -45,9 +45,9 @@ class xmlWriterException_c : public std::exception
   public:
 
     xmlWriterException_c(const std::string & txt) : text(txt) {}
-    ~xmlWriterException_c() throw() {}
+    ~xmlWriterException_c() noexcept override = default;
 
-    const char * what(void) const throw() { return text.c_str(); }
+    const char * what(void) const noexcept override { return text.c_str(); }
 
 };
 
@@ -130,9 +130,9 @@ class xmlParserException_c : public std::exception
 
     xmlParserException_c(std::string desc);
 
-    ~xmlParserException_c() throw() {};
+    ~xmlParserException_c() noexcept override = default;
 
-    const char * what(void) const throw() { return description.c_str(); }
+    const char * what(void) const noexcept override { return description.c_str(); }
 
   private:
 
