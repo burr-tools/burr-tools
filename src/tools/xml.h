@@ -315,12 +315,12 @@ class xmlParser_c
     int depth;
     std::vector < std::string > nspStack;
     std::vector < std::string > elementStack;
-    int *nspCounts;
+    std::vector<int> nspCounts;
     int nspSize;
 
 
     std::string encoding;
-    char *srcBuf;
+    std::vector<char> srcBuf;
     int srcPos;
     int srcCount;
     int srcBuflength;
@@ -330,7 +330,7 @@ class xmlParser_c
     int column;
 
     // txtbuffer
-    char *txtBuf;
+    std::vector<char> txtBuf;
     int txtPos;
     int txtBufSize;
 
