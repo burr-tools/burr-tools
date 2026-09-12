@@ -22,3 +22,11 @@ subprojects/*
 *.app
 dmg_contents/
 coverage-html/
+
+# Python artifacts
+__pycache__/
+*.pyc
+
+# Local generated test output
+*.stl
+puzzles/
