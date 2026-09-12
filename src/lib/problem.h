@@ -496,11 +496,11 @@ public:
   void sortSolutions(int by);
   //@}
 
-private:
+public:
 
   // no copying and assigning
-  problem_c(const problem_c&);
-  void operator=(const problem_c&);
+  problem_c(const problem_c&) = delete;
+  problem_c& operator=(const problem_c&) = delete;
 
 };
 

@@ -760,10 +760,10 @@ protected:
 
   virtual Polyhedron * getMeshInternal(double bevel, double offset, bool fast) const;
 
-private:
+public:
 
-  // no copying and assigning
-  void operator=(const voxel_c&);
+  // no assigning
+  voxel_c & operator=(const voxel_c &) = delete;
 
 };
 

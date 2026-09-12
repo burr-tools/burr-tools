@@ -221,11 +221,11 @@ public:
   void setCommentPopup(bool val) { commentPopup = val; }
   //@}
 
-private:
+public:
 
   // no copying and assigning
-  puzzle_c(const puzzle_c&);
-  void operator=(const puzzle_c&);
+  puzzle_c(const puzzle_c&) = delete;
+  puzzle_c& operator=(const puzzle_c&) = delete;
 
 };
 

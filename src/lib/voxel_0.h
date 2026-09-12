@@ -46,29 +46,29 @@ class voxel_0_c : public voxel_c {
     voxel_0_c(const voxel_c & orig) : voxel_c(orig) { }
     voxel_0_c(const voxel_c * orig) : voxel_c(orig) { }
 
-    void transformPoint(int * x, int * y, int * z, unsigned int trans) const;
-    bool transform(unsigned int nr);
+    void transformPoint(int * x, int * y, int * z, unsigned int trans) const override;
+    bool transform(unsigned int nr) override;
 
-    bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const;
+    bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const override;
 
-    virtual void scale(unsigned int amount, bool grid);
-    bool scaleDown(unsigned char by, bool action);
-    void resizeInclude(int & px, int & py, int & pz);
+    void scale(unsigned int amount, bool grid) override;
+    bool scaleDown(unsigned char by, bool action) override;
+    void resizeInclude(int & px, int & py, int & pz) override;
 
-    bool validCoordinate(int x, int y, int z) const;
-    bool onGrid(int x, int y, int z) const;
+    bool validCoordinate(int x, int y, int z) const override;
+    bool onGrid(int x, int y, int z) const override;
 
-    virtual void getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & faceCorners) const;
-    virtual void calculateSize(float * x, float * y, float * z) const;
+    void getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & faceCorners) const override;
+    void calculateSize(float * x, float * y, float * z) const override;
 
     /* the 3D view's STL render style: the same lookup mesher as the STL
      * export, with the view's default bevel and offset (cubepoly.h) */
-    virtual Polyhedron * getSTLMesh(void) const;
+    Polyhedron * getSTLMesh(void) const override;
 
   private:
 
     // no copying and assigning
-    void operator=(const voxel_0_c&);
+    voxel_0_c & operator=(const voxel_0_c &) = delete;
 };
 
 #endif

@@ -57,27 +57,27 @@ class voxel_4_c : public voxel_0_c {
     voxel_4_c(const voxel_c & orig) : voxel_0_c(orig) { }
     voxel_4_c(const voxel_c * orig) : voxel_0_c(orig) { }
 
-    virtual bool transform(unsigned int nr);
+    bool transform(unsigned int nr) override;
 
-    bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const;
+    bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const override;
 
-    void scale(unsigned int amount, bool grid);
-    bool scaleDown(unsigned char by, bool action);
-    void resizeInclude(int & px, int & py, int & pz);
-    void minimizePiece(void);
+    void scale(unsigned int amount, bool grid) override;
+    bool scaleDown(unsigned char by, bool action) override;
+    void resizeInclude(int & px, int & py, int & pz) override;
+    void minimizePiece(void) override;
 
-    virtual bool validCoordinate(int x, int y, int z) const;
-    bool identicalInBB(const voxel_c * op, bool includeColors = true) const;
-    bool onGrid(int x, int y, int z) const;
+    bool validCoordinate(int x, int y, int z) const override;
+    bool identicalInBB(const voxel_c * op, bool includeColors = true) const override;
+    bool onGrid(int x, int y, int z) const override;
 
-    void getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & faceCorners) const;
-    void calculateSize(float * x, float * y, float * z) const;
-    void recalcSpaceCoordinates(float * x, float * y, float * z) const;
+    void getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & faceCorners) const override;
+    void calculateSize(float * x, float * y, float * z) const override;
+    void recalcSpaceCoordinates(float * x, float * y, float * z) const override;
 
   private:
 
     // no copying and assigning
-    void operator=(const voxel_4_c&);
+    voxel_4_c & operator=(const voxel_4_c &) = delete;
 };
 
 #endif
