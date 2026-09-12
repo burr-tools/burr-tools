@@ -27,15 +27,11 @@ nodeHash::nodeHash(void) {
   tab_size = 11;
   tab_entries = 0;
 
-  tab = new disassemblerNode_c* [tab_size];
-
-  memset(tab, 0, tab_size*sizeof(disassemblerNode_c*));
+  tab.assign(tab_size, nullptr);
 }
 
 nodeHash::~nodeHash(void) {
   clear();
-
-  delete [] tab;
 }
 
 void nodeHash::clear(void)
@@ -86,8 +82,7 @@ const disassemblerNode_c * nodeHash::insert(disassemblerNode_c * n) {
 
     unsigned long new_size = tab_size * 4 + 1;
 
-    disassemblerNode_c ** new_tab = new disassemblerNode_c* [new_size];
-    memset(new_tab, 0, new_size*sizeof(disassemblerNode_c*));
+    std::vector<disassemblerNode_c*> new_tab(new_size, nullptr);
 
     for (unsigned int i = 0; i < tab_size; i++) {
       while (tab[i]) {
@@ -99,8 +94,7 @@ const disassemblerNode_c * nodeHash::insert(disassemblerNode_c * n) {
       }
     }
 
-    delete[] tab;
-    tab = new_tab;
+    tab = std::move(new_tab);
     tab_size = new_size;
   }
 
@@ -129,9 +123,7 @@ countingNodeHash::countingNodeHash(void) {
   tab_size = 100;
   tab_entries = 0;
 
-  tab = new hashNode * [tab_size];
-
-  memset(tab, 0, tab_size*sizeof(hashNode*));
+  tab.assign(tab_size, nullptr);
 
   scanPtr = 0;
   scanActive = false;
@@ -142,7 +134,6 @@ countingNodeHash::countingNodeHash(void) {
 countingNodeHash::~countingNodeHash(void)
 {
   clear();
-  delete [] tab;
 }
 
 /* delete all nodes and empty table for new usage */
@@ -161,7 +152,7 @@ void countingNodeHash::clear(void)
     hn = hn2;
   }
 
-  memset(tab, 0, tab_size*sizeof(hashNode*));
+  std::fill(tab.begin(), tab.end(), nullptr);
   tab_entries = 0;
   linkStart = 0;
 }
@@ -196,8 +187,7 @@ bool countingNodeHash::insert(disassemblerNode_c * n) {
 
     unsigned long new_size = tab_size * 4 + 1;
 
-    hashNode ** new_tab = new hashNode* [new_size];
-    memset(new_tab, 0, new_size*sizeof(hashNode*));
+    std::vector<hashNode*> new_tab(new_size, nullptr);
 
     for (unsigned int i = 0; i < tab_size; i++) {
       while (tab[i]) {
@@ -209,8 +199,7 @@ bool countingNodeHash::insert(disassemblerNode_c * n) {
       }
     }
 
-    delete[] tab;
-    tab = new_tab;
+    tab = std::move(new_tab);
     tab_size = new_size;
   }
 

@@ -21,6 +21,8 @@
 #ifndef __DISASSEMBLER_HASHES_H__
 #define __DISASSEMBLER_HASHES_H__
 
+#include <vector>
+
 class disassemblerNode_c;
 
 
@@ -41,7 +43,7 @@ class nodeHash {
     unsigned long tab_entries;
 
     /** the hashtable */
-    disassemblerNode_c ** tab;
+    std::vector<disassemblerNode_c*> tab;
 
   public:
 
@@ -66,8 +68,8 @@ class nodeHash {
   private:
 
     // no copying and assigning
-    nodeHash(const nodeHash&);
-    void operator=(const nodeHash&);
+    nodeHash(const nodeHash&) = delete;
+    nodeHash& operator=(const nodeHash&) = delete;
 };
 
 
@@ -111,7 +113,7 @@ class countingNodeHash {
     };
 
     /** the hash table */
-    hashNode ** tab;
+    std::vector<hashNode*> tab;
     /** pointer to the inverse linked list of all added elements */
     hashNode * linkStart;
 
@@ -157,8 +159,8 @@ class countingNodeHash {
   private:
 
     // no copying and assigning
-    countingNodeHash(const countingNodeHash&);
-    void operator=(const countingNodeHash&);
+    countingNodeHash(const countingNodeHash&) = delete;
+    countingNodeHash& operator=(const countingNodeHash&) = delete;
 };
 
 #endif

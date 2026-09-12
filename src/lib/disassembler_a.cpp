@@ -32,7 +32,7 @@ disassembler_a_c::disassembler_a_c(const problem_c & puz) :
   disassembler_c(), puzzle(puz) {
 
   /* Initialise the grouping class */
-  groups = new grouping_c();
+  groups = std::make_unique<grouping_c>();
   for (unsigned int i = 0; i < puz.getNumberOfParts(); i++)
     for (unsigned int j = 0; j < puz.getNumberOfPartGroups(i); j++)
       groups->addPieces(puz.getShapeIdOfPart(i),
@@ -40,21 +40,16 @@ disassembler_a_c::disassembler_a_c(const problem_c & puz) :
                         puz.getPartGroupCount(i, j));
 
   /* initialize piece 2 shape transformation */
-  piece2shape = new unsigned short[puz.getNumberOfPieces()];
+  piece2shape.resize(puz.getNumberOfPieces());
   int p = 0;
   for (unsigned int i = 0; i < puz.getNumberOfParts(); i++)
     for (unsigned int j = 0; j < puz.getPartMaximum(i); j++)
       piece2shape[p++] = i;
 
-  analyse = new movementAnalysator_c(puzzle);
+  analyse = std::make_unique<movementAnalysator_c>(puzzle);
 }
 
-disassembler_a_c::~disassembler_a_c() {
-  delete groups;
-  delete [] piece2shape;
-
-  delete analyse;
-}
+disassembler_a_c::~disassembler_a_c() = default;
 
 /* create all the necessary parameters for one of the two possible subproblems
  * our current problems divides into
