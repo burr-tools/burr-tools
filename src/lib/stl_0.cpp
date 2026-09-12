@@ -29,6 +29,7 @@
 #include "../halfedge/modifiers.h"
 
 #include <string>
+#include <memory>
 
 #define Epsilon 1.0e-5
 
