@@ -66,7 +66,7 @@ movementCache_1_c::movementCache_1_c(const problem_c & puz) : movementCache_c(pu
 }
 
 /* calculate the required movement possibilities */
-unsigned int* movementCache_1_c::moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) {
+std::vector<unsigned int> movementCache_1_c::moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) {
 
   /* because the dx, dy and dz values are calculated using the hotspot we need to reverse
    * that process
@@ -75,7 +75,7 @@ unsigned int* movementCache_1_c::moCalcValues(const voxel_c * sh1, const voxel_c
   dy += (sh1->getHy() - sh2->getHy());
   dz += (sh1->getHz() - sh2->getHz());
 
-  unsigned int * move = new unsigned int[NUM_DIRECTIONS];
+  std::vector<unsigned int> move(NUM_DIRECTIONS);
 
   for (unsigned int dir = 0; dir < NUM_DIRECTIONS; dir++) {
 

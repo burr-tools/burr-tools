@@ -31,7 +31,7 @@ static int min(int a, int b) { if (a < b) return a; else return b; }
 static int max(int a, int b) { if (a > b) return a; else return b; }
 
 /* calculate the required movement possibilities */
-unsigned int* movementCache_0_c::moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) {
+std::vector<unsigned int> movementCache_0_c::moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) {
 
   /* because the dx, dy and dz values are calculated using the hotspot we need to reverse
    * that process
@@ -40,7 +40,7 @@ unsigned int* movementCache_0_c::moCalcValues(const voxel_c * sh1, const voxel_c
   dy += (sh1->getHy() - sh2->getHy());
   dz += (sh1->getHz() - sh2->getHz());
 
-  unsigned int * move = new unsigned int[NUM_DIRECTIONS];
+  std::vector<unsigned int> move(NUM_DIRECTIONS);
 
   /* calculate some bounding boxes for the intersecting and union boxes of the 2 pieces */
   int x1i, x2i, y1i, y2i, z1i, z2i;

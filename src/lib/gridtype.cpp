@@ -123,12 +123,12 @@ gridType_c::~gridType_c(void) {
     delete sym;
 }
 
-movementCache_c * gridType_c::getMovementCache(const problem_c & puz) const
+std::unique_ptr<movementCache_c> gridType_c::getMovementCache(const problem_c & puz) const
 {
   switch (type) {
-    case GT_BRICKS:           return new movementCache_0_c(puz);
-    case GT_TRIANGULAR_PRISM: return new movementCache_1_c(puz);
-    default: return 0;
+    case GT_BRICKS:           return std::make_unique<movementCache_0_c>(puz);
+    case GT_TRIANGULAR_PRISM: return std::make_unique<movementCache_1_c>(puz);
+    default: return nullptr;
   }
 }
 
