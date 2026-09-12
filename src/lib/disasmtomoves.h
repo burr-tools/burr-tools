@@ -22,6 +22,7 @@
 #define __DISASSMTOMOVES_H__
 
 #include <vector>
+#include <memory>
 
 class separation_c;
 class disassemblerNode_c;
@@ -49,12 +50,9 @@ public:
   /** piece moving at this time */
   virtual bool moving(unsigned int piece) = 0;
 
-private:
-
   // no copying and assigning
-  piecePositions_c(const piecePositions_c&);
-  void operator=(const piecePositions_c&);
-
+  piecePositions_c(const piecePositions_c&) = delete;
+  piecePositions_c& operator=(const piecePositions_c&) = delete;
 };
 
 /**
@@ -64,7 +62,7 @@ private:
 class disasmToMoves_c : public piecePositions_c {
 
   /** the disassembly tree */
-  const separation_c * tree;
+  std::unique_ptr<separation_c> tree;
 
   /**
    * size is used to removed pieces from the puzzle, this value controls
@@ -73,10 +71,10 @@ class disasmToMoves_c : public piecePositions_c {
   unsigned int size;
 
   /** this array contains the current position and alpha values of all pieces */
-  float * moves;
+  std::vector<float> moves;
 
   /** this array contains the information, if a piece is currently moving, or not */
-  bool * mv;
+  std::vector<bool> mv;
 
   /**
    * the number of the last used piece this is NOT identical with
@@ -96,7 +94,7 @@ public:
    */
   disasmToMoves_c(const separation_c * tr, unsigned int sz, unsigned int maxPiece);
 
-  virtual ~disasmToMoves_c();
+  virtual ~disasmToMoves_c() override;
 
   /**
    * sets the moves for the step. if the value is not integer you
@@ -108,17 +106,15 @@ public:
    */
   void setStep(float step, bool fadeOut = true, bool center_active = false);
 
-  virtual float getX(unsigned int piece);
-  virtual float getY(unsigned int piece);
-  virtual float getZ(unsigned int piece);
-  virtual float getA(unsigned int piece);
-  virtual bool moving(unsigned int piece);
-
-private:
+  virtual float getX(unsigned int piece) override;
+  virtual float getY(unsigned int piece) override;
+  virtual float getZ(unsigned int piece) override;
+  virtual float getA(unsigned int piece) override;
+  virtual bool moving(unsigned int piece) override;
 
   // no copying and assigning
-  disasmToMoves_c(const disasmToMoves_c&);
-  void operator=(const disasmToMoves_c&);
+  disasmToMoves_c(const disasmToMoves_c&) = delete;
+  disasmToMoves_c& operator=(const disasmToMoves_c&) = delete;
 };
 
 /** a piece position class with fixed positions */
@@ -128,25 +124,23 @@ class fixedPositions_c : public piecePositions_c {
 
     fixedPositions_c(const disassemblerNode_c * nd, const std::vector<unsigned int> & pieces, unsigned int pc);
     fixedPositions_c(const fixedPositions_c * nd);
-    ~fixedPositions_c(void);
+    virtual ~fixedPositions_c(void) override;
 
-    virtual float getX(unsigned int piece);
-    virtual float getY(unsigned int piece);
-    virtual float getZ(unsigned int piece);
-    virtual float getA(unsigned int piece);
-    virtual bool moving(unsigned int piece);
-
-  private:
-
-    int *x, *y, *z;
-    bool *visible;
-    unsigned int pieces;
-
-  private:
+    virtual float getX(unsigned int piece) override;
+    virtual float getY(unsigned int piece) override;
+    virtual float getZ(unsigned int piece) override;
+    virtual float getA(unsigned int piece) override;
+    virtual bool moving(unsigned int piece) override;
 
     // no copying and assigning
-    fixedPositions_c(const fixedPositions_c&);
-    void operator=(const fixedPositions_c&);
+    fixedPositions_c(const fixedPositions_c&) = delete;
+    fixedPositions_c& operator=(const fixedPositions_c&) = delete;
+
+  private:
+
+    unsigned int pieces;
+    std::vector<int> x, y, z;
+    std::vector<bool> visible;
 };
 
 #endif
