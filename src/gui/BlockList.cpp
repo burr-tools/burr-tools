@@ -421,8 +421,6 @@ void PiecesList::getColor(unsigned int block, unsigned char *r,  unsigned char *
 }
 
 PieceVisibility::PieceVisibility(int x, int y, int w, int h) : BlockList(x, y, w, h), puzzle(0), count(0) {
-  visState = 0;
-  useState = 0;
 }
 
 unsigned int PieceVisibility::blockNumber(void) {
@@ -555,32 +553,20 @@ void PieceVisibility::setPuzzle(const problem_c *pz) {
   unsigned int c = pz ? pz->getNumberOfPieces() : 0;
 
   /* if nothing changes, don't reset piece visibility */
-  if ((pz == puzzle) && visState && (c == count))
+  if ((pz == puzzle) && !visState.empty() && (c == count))
     return;
 
   puzzle = pz;
 
-  if (visState)
-    delete [] visState;
-
-  visState = 0;
-
-  if (useState)
-    delete [] useState;
-
-  useState = 0;
-
   /* set up new visibility when a valid problem is available */
   if (c) {
-    visState = new unsigned char[c];
-    useState = new bool[c];
-
-    for (unsigned int i = 0; i < c; i++) {
-      visState[i] = 0;
-      useState[i] = 1;
-    }
-
+    visState.assign(c, 0);
+    useState.assign(c, true);
     count = c;
+  } else {
+    visState.clear();
+    useState.clear();
+    count = 0;
   }
 
   redraw();

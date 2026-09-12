@@ -40,6 +40,7 @@
 #include "../halfedge/modifiers.h"
 
 #include <vector>
+#include <memory>
 
 class LView3dGroup;
 class LBlockListGroup;
@@ -58,12 +59,12 @@ class stlExport_c : public LFl_Double_Window {
     /* the puzzle that is going to be exported */
     puzzle_c * puzzle;
 
-    stlExporter_c * stl;
+    std::unique_ptr<stlExporter_c> stl;
 
     /* The different window elements */
     LView3dGroup *view3D;
 
-    std::vector<inputField_c*> params;
+    std::vector<std::unique_ptr<inputField_c>> params;
     LFl_Input *Fname, *Pname;
     LFl_Box *status;
     LFl_Button *BtnStart, *BtnAbbort;

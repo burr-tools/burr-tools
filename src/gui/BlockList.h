@@ -23,6 +23,8 @@
 
 #include "../lib/bt_assert.h"
 
+#include <vector>
+
 #define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl_Widget.H>
 
@@ -325,8 +327,8 @@ private:
   const problem_c * puzzle;
 
   unsigned int count;
-  unsigned char * visState;
-  bool * useState;
+  std::vector<unsigned char> visState;
+  std::vector<bool> useState;
 
 public:
 
@@ -337,16 +339,7 @@ public:
 
   PieceVisibility(int x, int y, int w, int h);
 
-  ~PieceVisibility(void) {
-    if (visState) {
-      delete [] visState;
-      visState = 0;
-    }
-    if (useState) {
-      delete [] useState;
-      useState = 0;
-    }
-  }
+  ~PieceVisibility(void) = default;
 
   void setPuzzle(const problem_c *pz);
   void setAssembly(assembly_c * assm);
