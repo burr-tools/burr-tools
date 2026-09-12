@@ -28,6 +28,7 @@
 #include "bt_assert.h"
 
 #include <deque>
+#include <memory>
 #include <vector>
 #include <string>
 
