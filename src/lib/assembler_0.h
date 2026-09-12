@@ -27,6 +27,7 @@
 #include <set>
 #include <stack>
 #include <atomic>
+#include <memory>
 
 class gridType_c;
 class mirrorInfo_c;
@@ -199,7 +200,7 @@ private:
    */
   bool avoidTransformedAssemblies;
   unsigned int avoidTransformedPivot;
-  mirrorInfo_c * avoidTransformedMirror;
+  std::unique_ptr<mirrorInfo_c> avoidTransformedMirror;
 
   /// set to true, when complete rotation analysis is requested
   bool complete;
@@ -271,7 +272,7 @@ protected:
    * rotations it should call this function. This will then add an additional check
    * for each found assembly
    */
-  void checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir);
+  void checkForTransformedAssemblies(unsigned int pivot, std::unique_ptr<mirrorInfo_c> mir);
 
 public:
 

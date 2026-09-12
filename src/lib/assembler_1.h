@@ -28,6 +28,7 @@
 #include <stack>
 #include <atomic>
 #include <mutex>
+#include <memory>
 
 class problem_c;
 class gridType_c;
@@ -187,7 +188,7 @@ private:
    */
   bool avoidTransformedAssemblies;
   unsigned int avoidTransformedPivot;
-  mirrorInfo_c * avoidTransformedMirror;
+  std::unique_ptr<mirrorInfo_c> avoidTransformedMirror;
 
   /// set to true, when complete analysis is requested
   bool complete;
@@ -261,7 +262,7 @@ protected:
    * rotations it should call this function. This will then add an additional check
    * for each found assembly
    */
-  void checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir);
+  void checkForTransformedAssemblies(unsigned int pivot, std::unique_ptr<mirrorInfo_c> mir);
 
   std::atomic<unsigned int> reducePiece;  // written by worker, read by GUI via getReducePiece
 

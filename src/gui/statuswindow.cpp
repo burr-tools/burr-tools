@@ -21,6 +21,8 @@
 #include "statuswindow.h"
 #include "piececolor.h"
 
+#include <memory>
+
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
 #include "../lib/problem.h"
@@ -156,7 +158,7 @@ void statusWindow_c::cb_selectIdenticalMirror(void) {
 
 statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), again(false) {
 
-  StatusProgress *  stp = new StatusProgress;
+  auto stp = std::make_unique<StatusProgress>();
   stp->show();
 
   begin();
@@ -352,8 +354,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
     shapeTab.addSpace(s, voxelTable_c::PAR_MIRROR | voxelTable_c::PAR_COLOUR);
   }
 
-  stp->hide();
-  delete stp;
+  stp.reset();
 
   unsigned int col = 1;
 

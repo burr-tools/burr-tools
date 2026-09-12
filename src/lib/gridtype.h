@@ -78,7 +78,7 @@ class gridType_c {
      * instance here and just return a pointer to it for the application to
      * use
      */
-    mutable symmetries_c * sym;
+    mutable std::unique_ptr<symmetries_c> sym;
 
   public:
 

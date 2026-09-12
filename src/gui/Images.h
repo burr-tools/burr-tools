@@ -22,6 +22,7 @@
 #define __IMAGES_H__
 
 #include <vector>
+#include <memory>
 
 #include <FL/Fl_Pixmap.H>
 
@@ -169,13 +170,13 @@ class pixmapList_c {
 
   private:
 
-    std::vector<Fl_Pixmap*> list;
+    std::vector<std::unique_ptr<Fl_Pixmap>> list;
 
   public:
 
-    pixmapList_c(void) {}
+    pixmapList_c(void) = default;
 
-    ~pixmapList_c(void);
+    ~pixmapList_c(void) = default;
 
     Fl_Pixmap * get(const char * data[]);
 };

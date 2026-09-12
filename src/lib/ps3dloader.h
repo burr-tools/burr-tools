@@ -26,10 +26,11 @@
  */
 
 #include <iostream>
+#include <memory>
 
 class puzzle_c;
 
 /* either return a puzzle, or nil, when failed */
-puzzle_c * loadPuzzlerSolver3D(std::istream * str);
+std::unique_ptr<puzzle_c> loadPuzzlerSolver3D(std::istream * str);
 
 #endif
