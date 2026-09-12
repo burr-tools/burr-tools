@@ -56,7 +56,7 @@ namespace stlExportSolutionImpl {
   };
 
   static void applyParams(stlExporter_c * stl,
-                          const std::vector<Param*> & params)
+                          const std::vector<std::unique_ptr<Param>> & params)
   {
     for (unsigned int i = 0; i < stl->numParameters(); i++) {
       switch (params[i]->type) {
@@ -143,7 +143,7 @@ void stlExportSolution_c::cb_FileChooser(void)
 
 void stlExportSolution_c::cb_Export(void)
 {
-  applyParams(stl, params);
+  applyParams(stl.get(), params);
   stl->setBinaryMode(Binary->value() != 0);
 
   problem_c * pr = puzzle->getProblem(prob);
@@ -234,7 +234,7 @@ stlExportSolution_c::stlExportSolution_c(puzzle_c * p,
 {
   label("Export Solution to STL");
 
-  stl = p->getGridType()->getStlExporter();
+  stl = std::unique_ptr<stlExporter_c>(p->getGridType()->getStlExporter());
   bt_assert(stl);
 
   /* --- STL parameters frame (row 0) --- */
@@ -242,7 +242,7 @@ stlExportSolution_c::stlExportSolution_c(puzzle_c * p,
     LFl_Frame * fr = new LFl_Frame(0, 0, 1, 1);
 
     for (unsigned int i = 0; i < stl->numParameters(); i++) {
-      Param * inp = new Param;
+      auto inp = std::make_unique<Param>();
       inp->type = stl->getParameterType(i);
 
       switch (inp->type) {
@@ -276,7 +276,7 @@ stlExportSolution_c::stlExportSolution_c(puzzle_c * p,
           bt_assert(0);
       }
       inp->w->tooltip(stl->getParameterTooltip(i));
-      params.push_back(inp);
+      params.push_back(std::move(inp));
     }
 
     fr->end();
@@ -378,9 +378,4 @@ stlExportSolution_c::stlExportSolution_c(puzzle_c * p,
 
 /* ---------- destructor ------------------------------------------------- */
 
-stlExportSolution_c::~stlExportSolution_c(void)
-{
-  if (stl) delete stl;
-  for (size_t i = 0; i < params.size(); i++)
-    delete params[i];
-}
+stlExportSolution_c::~stlExportSolution_c(void) = default;
