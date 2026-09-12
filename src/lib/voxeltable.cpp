@@ -23,14 +23,12 @@
 #include "voxel.h"
 #include "puzzle.h"
 
+#include <memory>
+
 voxelTable_c::voxelTable_c(void)
 {
   tableSize = 101;
-  hashTable = new hashNode*[tableSize];
-
-  for (unsigned long i = 0; i < tableSize; i++)
-    hashTable[i] = 0;
-
+  hashTable.assign(tableSize, nullptr);
   tableEntries = 0;
 }
 
@@ -45,8 +43,6 @@ voxelTable_c::~voxelTable_c(void) {
       delete n;
     }
   }
-
-  delete [] hashTable;
 }
 
 static unsigned long calcHashValue(const voxel_c * v)
@@ -108,9 +104,8 @@ bool voxelTable_c::getSpace(const voxel_c *v, unsigned int *index, unsigned char
   {
     if (n->hash == hash && ((params & PAR_MIRROR) || (n->transformation < v->getGridType()->getSymmetries()->getNumTransformations())))
     {
-      voxel_c * v2 = v->getGridType()->getVoxel(findSpace(n->index));
-      bool found = v2->transform(n->transformation) && v->identicalInBB(v2, false);
-      delete v2;
+      std::unique_ptr<voxel_c> v2(v->getGridType()->getVoxel(findSpace(n->index)));
+      bool found = v2->transform(n->transformation) && v->identicalInBB(v2.get(), false);
 
       if (found)
       {
@@ -142,10 +137,7 @@ void voxelTable_c::addSpace(unsigned int index, unsigned int params)
     // rehash table
 
     unsigned long newSize = 3*tableSize + 1;
-    hashNode ** t2 = new hashNode * [newSize];
-
-    for (unsigned long i = 0; i < newSize; i++)
-      t2[i] = 0;
+    std::vector<hashNode*> t2(newSize, nullptr);
 
     for (unsigned int i = 0; i < tableSize; i++) {
       while (hashTable[i]) {
@@ -157,8 +149,7 @@ void voxelTable_c::addSpace(unsigned int index, unsigned int params)
       }
     }
 
-    delete [] hashTable;
-    hashTable = t2;
+    hashTable = std::move(t2);
     tableSize = newSize;
   }
 
@@ -166,10 +157,10 @@ void voxelTable_c::addSpace(unsigned int index, unsigned int params)
     if (symm->isTransformationUnique(sym, trans)) {
       // add all transformations of the voxel space to the table, that are actually different
 
-      voxel_c * v2 = v->getGridType()->getVoxel(v);
+      std::unique_ptr<voxel_c> v2(v->getGridType()->getVoxel(v));
       if (v2->transform(trans))
       {
-        unsigned long hash = (params & PAR_COLOUR) ? calcColourHashValue(v2) : calcHashValue(v2);
+        unsigned long hash = (params & PAR_COLOUR) ? calcColourHashValue(v2.get()) : calcHashValue(v2.get());
 
         hashNode * n = new hashNode;
         n->index = index;
@@ -179,8 +170,6 @@ void voxelTable_c::addSpace(unsigned int index, unsigned int params)
         hashTable[hash % tableSize] = n;
         tableEntries++;
       }
-
-      delete v2;
     }
   }
 }
