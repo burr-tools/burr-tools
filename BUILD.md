@@ -1,8 +1,28 @@
 # BurrTools Build Instructions
 
-BurrTools uses the Meson build system. This document describes how to build the project on Linux and how to cross-compile for Windows.
+BurrTools uses the Meson build system. This document describes how to build the project on Linux and macOS, and how to cross-compile for Windows.
 
 ## Prerequisites
+
+### macOS
+
+Install the required build dependencies using [Homebrew](https://brew.sh/):
+
+```bash
+brew install meson ninja cmake
+```
+
+- **Xcode Command Line Tools**: If not already installed, run `xcode-select --install` to obtain Apple Clang (with C++20 support) and Git.
+- **CMake**: Required by Meson because FLTK is built from source as a CMake subproject.
+- **Libraries**: Dependencies (FLTK 1.4, Catch2, libpng, zlib) are automatically fetched and built as subprojects, and linked against native macOS frameworks (`Cocoa`, `OpenGL`, `ScreenCaptureKit`, `UniformTypeIdentifiers`).
+
+#### Optional Static Analysis Tools (macOS)
+
+To run the static analysis and code quality checks (`just check` and `just check-tidy`):
+
+```bash
+brew install cppcheck llvm just
+```
 
 ### Linux
 
@@ -23,7 +43,7 @@ Install the MinGW cross-compiler:
 sudo apt-get install -y mingw-w64
 ```
 
-## Building on Linux
+## Building on Linux and macOS
 
 1. Setup the build directory:
 
