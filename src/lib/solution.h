@@ -39,18 +39,18 @@ class solution_c
 {
   /* the assembly contains the pieces so that they
    * do assemble into the result shape */
-  assembly_c * assembly;
+  std::unique_ptr<assembly_c> assembly;
 
   /* the disassembly tree, only not NULL, if we
    * have disassembled the puzzle
    */
-  separation_c * tree;
+  std::unique_ptr<separation_c> tree;
 
   /* if no separation is given, maybe we have a separationInfo
    * that contains only some of the information of a full separation
    * but requires a lot less memory
    */
-  separationInfo_c * treeInfo;
+  std::unique_ptr<separationInfo_c> treeInfo;
 
   /* as it is now possible to not save all solutions
    * it might be useful to know the exact number and sequence
@@ -64,16 +64,19 @@ class solution_c
 public:
 
   /** create a solution with a proper separation */
-  solution_c(assembly_c * assm, unsigned int assmNum, separation_c * t, unsigned int solNum) :
-    assembly(assm), tree(t), treeInfo(0), assemblyNum(assmNum), solutionNum(solNum) {}
+  solution_c(std::unique_ptr<assembly_c> assm, unsigned int assmNum, std::unique_ptr<separation_c> t, unsigned int solNum);
+  solution_c(assembly_c * assm, unsigned int assmNum, separation_c * t, unsigned int solNum);
 
   /** create a solution with only separation information */
-  solution_c(assembly_c * assm, unsigned int assmNum, separationInfo_c * ti, unsigned int solNum) :
-    assembly(assm), tree(0), treeInfo(ti), assemblyNum(assmNum), solutionNum(solNum) {}
+  solution_c(std::unique_ptr<assembly_c> assm, unsigned int assmNum, std::unique_ptr<separationInfo_c> ti, unsigned int solNum);
+  solution_c(assembly_c * assm, unsigned int assmNum, separationInfo_c * ti, unsigned int solNum);
 
   /** create a solution with assembly only, no disassembly */
-  solution_c(assembly_c * assm, unsigned int assmNum) :
-    assembly(assm), tree(0), treeInfo(0), assemblyNum(assmNum), solutionNum(0) {}
+  solution_c(std::unique_ptr<assembly_c> assm, unsigned int assmNum);
+  solution_c(assembly_c * assm, unsigned int assmNum);
+
+  solution_c(solution_c &&) noexcept;
+  solution_c & operator=(solution_c &&) noexcept;
 
   /** load a solution from file */
   solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c * gt);
@@ -84,12 +87,12 @@ public:
   void save(xmlWriter_c & xml) const;
 
   /** get the assembly from this solution, it will always be not NULL */
-  assembly_c * getAssembly(void) { return assembly; }
-  const assembly_c * getAssembly(void) const { return assembly; }
+  assembly_c * getAssembly(void) { return assembly.get(); }
+  const assembly_c * getAssembly(void) const { return assembly.get(); }
 
   /** get the full disassembly or 0 if there is none */
-  separation_c * getDisassembly(void) { return tree; }
-  const separation_c * getDisassembly(void) const { return tree; }
+  separation_c * getDisassembly(void) { return tree.get(); }
+  const separation_c * getDisassembly(void) const { return tree.get(); }
 
   /** get either the disassembly or the disassembly information or nothing */
   disassembly_c * getDisassemblyInfo(void);
