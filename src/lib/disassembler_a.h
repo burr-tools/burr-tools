@@ -117,7 +117,7 @@ class disassembler_a_c : public disassembler_c {
      * you need to take care of deleting the disassembly sequence after
      * doing with it whatever you want.
      */
-    separation_c * disassemble(const assembly_c * assembly);
+    std::unique_ptr<separation_c> disassemble(const assembly_c * assembly) override;
 
   private:
 

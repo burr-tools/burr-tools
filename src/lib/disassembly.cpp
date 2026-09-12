@@ -485,6 +485,12 @@ int separation_c::movesText2(char * txt, int len) const {
   return len2;
 }
 
+std::string separation_c::movesText(void) const {
+  char buf[256];
+  movesText2(buf, sizeof(buf));
+  return std::string(buf);
+}
+
 void separation_c::exchangeShape(unsigned int s1, unsigned int s2) {
 
   for (unsigned int i = 0; i < pieces.size(); i++)
@@ -700,6 +706,12 @@ int separationInfo_c::movesText2(char * txt, int len, unsigned int idx) const {
   }
 
   return len2;
+}
+
+std::string separationInfo_c::movesText(void) const {
+  char buf[256];
+  movesText2(buf, sizeof(buf), 0);
+  return std::string(buf);
 }
 
 bool separationInfo_c::containsMultiMoves(unsigned int idx) const {

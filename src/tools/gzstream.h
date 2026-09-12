@@ -32,6 +32,8 @@
 // standard C++ with new header file names and std:: namespace
 #include <iostream>
 #include <fstream>
+#include <memory>
+#include <filesystem>
 #include <zlib.h>
 
 // ----------------------------------------------------------------------------
@@ -110,7 +112,7 @@ public:
 
 // this function tries to open the file using gz
 // if that fails it will open with normal stream
-// after usage the returned streem must be deleted
-std::istream * openGzFile(const char * name);
+std::unique_ptr<std::istream> openGzFile(const char * name);
+std::unique_ptr<std::istream> openGzFile(const std::filesystem::path & path);
 
 #endif

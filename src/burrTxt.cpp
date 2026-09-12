@@ -45,7 +45,7 @@ bool printDisassemble;
 bool printSolutions;
 bool quiet;
 
-disassembler_c * d;
+std::unique_ptr<disassembler_c> d;
 
 class asm_cb : public assembler_cb {
 
@@ -58,39 +58,34 @@ public:
 
   asm_cb(problem_c * p) : Assemblies(0), Solutions(0), pn(p->getNumberOfPieces()), puzzle(p) {}
 
-  bool assembly(assembly_c * a) {
+  bool assembly(std::unique_ptr<assembly_c> a) override {
 
 
     Assemblies++;
 
     if (disassemble) {
 
-      separation_c * da = d->disassemble(a);
+      auto da = d->disassemble(a.get());
 
       if (da) {
         Solutions++;
 
         if (printSolutions)
-          print(a, puzzle);
+          print(a.get(), puzzle);
 
         if (!quiet || allProblems)
         {
-          char lev[200];
-          da->movesText(lev,200);
-          printf("level: %s\n", lev);
+          printf("level: %s\n", da->movesText().c_str());
         }
 
         if (printDisassemble)
-          print(da, a, puzzle);
-        delete da;
+          print(da.get(), a.get(), puzzle);
       }
 
     } else if (printSolutions)
-      print(a, puzzle);
+      print(a.get(), puzzle);
 
-    delete a;
-
-    return true;
+    return false;
   }
 };
 
@@ -200,10 +195,9 @@ int main(int argv, char* args[]) {
     return 1;
   }
 
-  std::istream * str = openGzFile(args[filenumber]);
+  auto str = openGzFile(args[filenumber]);
   xmlParser_c pars(*str);
   puzzle_c p(pars);
-  delete str;
 
   if (ask) {
 
@@ -276,7 +270,7 @@ int main(int argv, char* args[]) {
 
       problem_c * problem = p.getProblem(pr);
 
-      assembler_c *assm = p.getGridType()->findAssembler(*problem);
+      auto assm = p.getGridType()->findAssembler(*problem);
 
       switch (assm->createMatrix(false, false, false)) {
       case assembler_c::ERR_TOO_MANY_UNITS:
@@ -314,9 +308,9 @@ int main(int argv, char* args[]) {
 
       asm_cb a(problem);
 
-      d = 0;
+      d.reset();
       if (disassemble)
-        d = new disassembler_0_c(*problem);
+        d = std::make_unique<disassembler_0_c>(*problem);
 
       assm->assemble(&a);
 
@@ -325,10 +319,7 @@ int main(int argv, char* args[]) {
       if (newline)
         cout << endl;
 
-      delete assm;
-      delete d;
-      d = 0;
-      assm = 0;
+      d.reset();
     }
   } else {
 
@@ -336,13 +327,13 @@ int main(int argv, char* args[]) {
 
       problem_c * problem = p.getProblem(pr);
 
-      d = new disassembler_0_c(*problem);
+      d = std::make_unique<disassembler_0_c>(*problem);
 
       for (unsigned int sol = 0; sol < problem->getNumberOfSavedSolutions(); sol++) {
 
         if (problem->getSavedSolution(sol)->getAssembly()) {
 
-          separation_c * da = d->disassemble(problem->getSavedSolution(sol)->getAssembly());
+          auto da = d->disassemble(problem->getSavedSolution(sol)->getAssembly());
 
           if (da) {
             if (printSolutions)
@@ -352,13 +343,12 @@ int main(int argv, char* args[]) {
               printf("level: %i\n", da->getMoves());
 
             if (printDisassemble)
-              print(da, problem->getSavedSolution(sol)->getAssembly(),problem);
-            delete da;
+              print(da.get(), problem->getSavedSolution(sol)->getAssembly(),problem);
           }
         }
       }
 
-      delete d;
+      d.reset();
     }
   }
 

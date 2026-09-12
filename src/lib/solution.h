@@ -21,6 +21,8 @@
 #ifndef __SOLUTION_H__
 #define __SOLUTION_H__
 
+#include <memory>
+
 class assembly_c;
 class separation_c;
 class separationInfo_c;
@@ -104,6 +106,7 @@ public:
    * case such an old exists
    */
   void setDisassembly(separation_c * sep);
+  void setDisassembly(std::unique_ptr<separation_c> sep);
 
   /** change the solution so that shape s1 and s2 are swapped */
   void exchangeShape(unsigned int s1, unsigned int s2);

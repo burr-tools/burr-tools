@@ -166,6 +166,11 @@ void solution_c::setDisassembly(separation_c * sep)
   treeInfo = 0;
 }
 
+void solution_c::setDisassembly(std::unique_ptr<separation_c> sep)
+{
+  setDisassembly(sep.release());
+}
+
 
 void solution_c::removePieces(unsigned int start, unsigned int count)
 {

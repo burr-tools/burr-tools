@@ -279,25 +279,25 @@ public:
   ~assembler_0_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */
-  errState createMatrix(bool keepMirror, bool keepRotations, bool complete);
-  void assemble(assembler_cb * callback);
-  int getErrorsParam(void) { return errorsParam; }
-  virtual float getFinished(void) const;
-  virtual void stop(void) { abbort.store(true, std::memory_order_relaxed); }
-  virtual bool stopped(void) const { return !running; }
-  virtual errState setPosition(const char * string, const char * version);
-  virtual void save(xmlWriter_c & xml) const;
-  virtual void reduce(void);
-  virtual unsigned int getReducePiece(void) const { return reducePiece; }
-  virtual unsigned long getIterations(void) { return iterations; }
+  errState createMatrix(bool keepMirror, bool keepRotations, bool complete) override;
+  void assemble(assembler_cb * callback) override;
+  int getErrorsParam(void) override { return errorsParam; }
+  float getFinished(void) const override;
+  void stop(void) override { abbort.store(true, std::memory_order_relaxed); }
+  bool stopped(void) const override { return !running; }
+  errState setPosition(const char * string, const char * version) override;
+  void save(xmlWriter_c & xml) const override;
+  void reduce(void) override;
+  unsigned int getReducePiece(void) const override { return reducePiece; }
+  unsigned long getIterations(void) override { return iterations; }
 
   /* some more special information to find out possible piece placements */
-  bool getPiecePlacementSupported(void) const { return true; }
-  unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) const;
-  unsigned int getPiecePlacementCount(unsigned int piece) const;
+  bool getPiecePlacementSupported(void) const override { return true; }
+  unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) const override;
+  unsigned int getPiecePlacementCount(unsigned int piece) const override;
 
-  void debug_step(unsigned long num = 1);
-  assembly_c * getAssembly(void);
+  void debug_step(unsigned long num = 1) override;
+  std::unique_ptr<assembly_c> getAssembly(void) override;
 
   static bool canHandle(const problem_c & p);
 

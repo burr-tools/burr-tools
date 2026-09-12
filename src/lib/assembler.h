@@ -26,6 +26,8 @@
  */
 
 #include <vector>
+#include <memory>
+#include <functional>
 
 class voxel_c;
 class assembly_c;
@@ -98,7 +100,7 @@ public:
    * found by an assembler. It gets the found assembly
    * as parameter
    */
-  virtual bool assembly(assembly_c * a) = 0;
+  virtual bool assembly(std::unique_ptr<assembly_c> a) = 0;
 
   virtual ~assembler_cb(void) {}
 };
@@ -126,6 +128,19 @@ public:
     ERR_CAN_NOT_RESTORE_SYNTAX,  ///< happens on restore, when the information seems wrong
     ERR_PUZZLE_UNHANDABLE        ///< the puzzle contains definitions that can not be (like ranges, multipieces, ...)
   } errState;
+
+  static const char * getErrorMessage(errState err) {
+    switch (err) {
+      case ERR_NONE: return "No error";
+      case ERR_TOO_MANY_UNITS: return "Pieces contain too many units";
+      case ERR_TOO_FEW_UNITS: return "Pieces contain too few units";
+      case ERR_CAN_NOT_PLACE: return "A piece cannot be placed in the target shape";
+      case ERR_CAN_NOT_RESTORE_VERSION: return "Impossible to restore saved state: internal format changed";
+      case ERR_CAN_NOT_RESTORE_SYNTAX: return "Impossible to restore saved state: corrupt data";
+      case ERR_PUZZLE_UNHANDABLE: return "Puzzle contains unhandable definitions";
+      default: return "Unknown error";
+    }
+  }
 
   /**
    * initialisation, only the things that can be done quickly are done here
@@ -176,6 +191,8 @@ public:
    * from this function but can be resumed any time
    */
   virtual void assemble(assembler_cb * /*callback*/) {}
+
+  void assemble(std::function<bool(std::unique_ptr<assembly_c>)> callback_fn);
 
   /**
    * this function returns a number reflecting the complexity of the
@@ -242,7 +259,7 @@ public:
   /* returns the assembly for the current state of the assembler or the solution assembly, if
    * the assembler is currently at a solution
    */
-  virtual assembly_c * getAssembly(void) = 0;
+  virtual std::unique_ptr<assembly_c> getAssembly(void) = 0;
 
 private:
 

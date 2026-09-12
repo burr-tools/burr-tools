@@ -29,6 +29,7 @@
 
 #include <deque>
 #include <vector>
+#include <string>
 
 class xmlWriter_c;
 class xmlParser_c;
@@ -51,11 +52,10 @@ class disassembly_c
      */
     virtual unsigned int sumMoves(void) const = 0;
     /**
-     * fill a string with dot separated numbers containing the moves
+     * return a string with dot separated numbers containing the moves
      * required to disassemble the puzzle
-     * not more than len characters are written
      */
-    virtual void movesText(char * txt, int len) const = 0;
+    virtual std::string movesText(void) const = 0;
 
     /**
      * compares this and the given separation, for a higher level.
@@ -268,10 +268,10 @@ public:
   void exchangeShape(unsigned int s1, unsigned int s2);
 
   /* implementation of the base class functions */
-  virtual unsigned int getSequenceLength(unsigned int x) const;
-  virtual unsigned int getNumSequences(void) const;
-  virtual unsigned int sumMoves(void) const;
-  virtual void movesText(char * txt, int len) const { movesText2(txt, len); }
+  virtual unsigned int getSequenceLength(unsigned int x) const override;
+  virtual unsigned int getNumSequences(void) const override;
+  virtual unsigned int sumMoves(void) const override;
+  virtual std::string movesText(void) const override;
 
   void removePieces(unsigned int from, unsigned int cnt);
   void addNonPlacedPieces(unsigned int from, unsigned int cnt);
@@ -329,10 +329,10 @@ class separationInfo_c : public disassembly_c {
     void save(xmlWriter_c & xml) const;
 
     /* implement abstract functions */
-    virtual unsigned int sumMoves(void) const;
-    virtual void movesText(char * txt, int len) const { movesText2(txt, len, 0); }
-    virtual unsigned int getSequenceLength(unsigned int x) const;
-    virtual unsigned int getNumSequences(void) const;
+    virtual unsigned int sumMoves(void) const override;
+    virtual std::string movesText(void) const override;
+    virtual unsigned int getSequenceLength(unsigned int x) const override;
+    virtual unsigned int getNumSequences(void) const override;
 
   private:
 

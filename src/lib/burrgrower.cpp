@@ -66,11 +66,9 @@ puzzleSol_c::puzzleSol_c(const puzzleSol_c * p) {
   solutions = p->solutions;
 }
 
-bool puzzleSol_c::assembly(assembly_c* a) {
-
-
-  disassembler_c * d = new disassembler_0_c(puzzle, prob);
-  separation_c * da = d->disassemble(a);
+bool puzzleSol_c::assembly(std::unique_ptr<assembly_c> a) {
+  auto d = std::make_unique<disassembler_0_c>(puzzle, prob);
+  auto da = d->disassemble(a.get());
 
   if (da) {
 
@@ -87,11 +85,7 @@ bool puzzleSol_c::assembly(assembly_c* a) {
 
     if (l > maxMoves) maxMoves = l;
     if (l < minMoves) minMoves = l;
-
-    delete da;
   }
-
-  delete d;
 
   return false;
 }

@@ -228,7 +228,7 @@ bool disassembler_a_c::subProbGrouping(const std::vector<unsigned int> & pn) {
   return true;
 }
 
-separation_c * disassembler_a_c::disassemble(const assembly_c * assembly) {
+std::unique_ptr<separation_c> disassembler_a_c::disassemble(const assembly_c * assembly) {
 
   bt_assert(puzzle.getNumberOfPieces() == assembly->placementCount());
   groups->reSet();
@@ -237,7 +237,7 @@ separation_c * disassembler_a_c::disassemble(const assembly_c * assembly) {
 
   if (start->getPiecenumber() < 2) {
     delete start;
-    return 0;
+    return nullptr;
   }
 
   /* create pieces field. This field contains the
@@ -255,6 +255,6 @@ separation_c * disassembler_a_c::disassemble(const assembly_c * assembly) {
   if (start->decRefCount())
     delete start;
 
-  return s;
+  return std::unique_ptr<separation_c>(s);
 }
 

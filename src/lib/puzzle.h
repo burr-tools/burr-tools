@@ -30,8 +30,8 @@
 #include <stdint.h>
 #include <vector>
 #include <string>
-
-#include <stdint.h>
+#include <memory>
+#include <filesystem>
 
 class voxel_c;
 class gridType_c;
@@ -106,10 +106,16 @@ public:
    */
   puzzle_c(xmlParser_c & pars);
 
+  /** load the puzzle from a file (handles gzip and uncompressed) */
+  static std::unique_ptr<puzzle_c> load(const std::filesystem::path & filename);
+
   /**
    * save the puzzle using the given XML-writer
    */
   void save(xmlWriter_c & xml) const;
+
+  /** save the puzzle to a gzip-compressed XML file */
+  void save(const std::filesystem::path & filename) const;
 
   /**
    * Destructor.
@@ -139,6 +145,9 @@ public:
   const voxel_c * getShape(unsigned int idx) const { bt_assert(idx < shapes.size()); return shapes[idx]; }
   /** get a shape */
   voxel_c * getShape(unsigned int idx) { bt_assert(idx < shapes.size()); return shapes[idx]; }
+  /** get all shapes */
+  const std::vector<voxel_c*> & getShapes(void) const { return shapes; }
+  std::vector<voxel_c*> & getShapes(void) { return shapes; }
   /**
    * remove the num-th shape.
    * be careful this changes all ids and so all problems must be updated
@@ -194,6 +203,9 @@ public:
   const problem_c * getProblem(unsigned int p) const { bt_assert(p < problems.size()); return problems[p]; }
   /** get the problem at index p */
   problem_c * getProblem(unsigned int p) { bt_assert(p < problems.size()); return problems[p]; }
+  /** get all problems */
+  const std::vector<problem_c*> & getProblems(void) const { return problems; }
+  std::vector<problem_c*> & getProblems(void) { return problems; }
   //@}
 
 

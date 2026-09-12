@@ -24,10 +24,12 @@
 #include "voxel.h"
 
 #include "../tools/xml.h"
+#include "../tools/gzstream.h"
 
 #include <vector>
 #include <stdio.h>
 #include <algorithm>
+#include <stdexcept>
 
 /** \page xmpuzzleFormat The xmpuzzle format
  *
@@ -218,6 +220,26 @@ void puzzle_c::save(xmlWriter_c & xml) const
   xml.endTag("comment");
 
   xml.endTag("puzzle");
+}
+
+std::unique_ptr<puzzle_c> puzzle_c::load(const std::filesystem::path & filename)
+{
+  auto str = openGzFile(filename);
+  if (!str || !str->good()) {
+    throw std::runtime_error("Could not open puzzle file: " + filename.string());
+  }
+  xmlParser_c pars(*str);
+  return std::make_unique<puzzle_c>(pars);
+}
+
+void puzzle_c::save(const std::filesystem::path & filename) const
+{
+  ogzstream out(filename.string().c_str());
+  if (!out.good()) {
+    throw std::runtime_error("Could not open puzzle file for writing: " + filename.string());
+  }
+  xmlWriter_c xml(out);
+  save(xml);
 }
 
 puzzle_c::puzzle_c(xmlParser_c & pars)

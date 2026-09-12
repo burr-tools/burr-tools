@@ -1049,9 +1049,9 @@ void assembler_1_c::checkForTransformedAssemblies(unsigned int pivot, mirrorInfo
   avoidTransformedMirror = mir;
 }
 
-assembly_c * assembler_1_c::getAssembly(void) {
+std::unique_ptr<assembly_c> assembler_1_c::getAssembly(void) {
 
-  assembly_c * assembly = new assembly_c(problem.getPuzzle().getGridType());
+  auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
 
   /* the placement of each selected row; heap allocated rather than on the
    * stack because rows.size() grows with the puzzle and has no upper bound
@@ -1092,12 +1092,12 @@ void assembler_1_c::solution(void) {
 
   if (getCallback()) {
 
-    assembly_c * assembly = getAssembly();
+    std::unique_ptr<assembly_c> assembly = getAssembly();
 
     if (avoidTransformedAssemblies && assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror, complete))
-      delete assembly;
+      return;
     else {
-      getCallback()->assembly(assembly);
+      getCallback()->assembly(std::move(assembly));
     }
 
 #if 0

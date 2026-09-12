@@ -194,7 +194,7 @@ public:
 private:
 
   // the call-back
-  bool assembly(assembly_c* a);
+  bool assembly(std::unique_ptr<assembly_c> a) override;
 
 public:
 
@@ -203,7 +203,7 @@ public:
   bool start(bool stop_after_prep = false);
 
   // try to stop the thread at the next possible position
-  void stop(void);
+  void stop(void) override;
 
   bool stopped(void) const {
     return ((action == ACT_PAUSING) ||
@@ -212,7 +212,7 @@ public:
            );
   }
 
-  void run(void);
+  void run(void) override;
 
 private:
 
