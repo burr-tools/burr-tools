@@ -21,6 +21,8 @@
 #ifndef __MOVEMENTCACHE_H__
 #define __MOVEMENTCACHE_H__
 
+#include <vector>
+
 class voxel_c;
 class problem_c;
 class gridType_c;
@@ -48,7 +50,7 @@ class movementCache_c {
   /**
    * values are saved within a hash table, this is the entry for the table for the movement data
    */
-  typedef struct moEntry {
+  struct moEntry {
 
     int dx; ///< relative x position of the 2nd piece
     int dy; ///< relative y position of the 2nd piece
@@ -66,15 +68,15 @@ class movementCache_c {
     unsigned short t2; ///< orientation of the second shape
 
     /** the possible movement in positive directions */
-    unsigned int * move;
+    std::vector<unsigned int> move;
 
     /** next in the linked list of the hash table */
     struct moEntry * next;
 
-  } moEntry;
+  };
 
   /** the hash table */
-  moEntry ** moHash;
+  std::vector<moEntry*> moHash;
 
   unsigned int moTableSize; ///< size of the hash table
   unsigned int moEntries;   ///< number of entries in the table
@@ -84,10 +86,10 @@ class movementCache_c {
    * The voxel spaces are calculated on demand. The entry at the zero-th position are
    * pointers into the puzzle, so we must not free them
    */
-  const voxel_c *** shapes;
+  std::vector<std::vector<const voxel_c*>> shapes;
 
   /** the mapping of piece numbers to shape ids */
-  unsigned int * pieces;
+  std::vector<unsigned int> pieces;
 
   /** number of shapes */
   unsigned int num_shapes;
@@ -98,7 +100,7 @@ class movementCache_c {
   void moRehash(void); ///< this function resizes the hash table to roughly twice the size
 
   /** when the entry is not inside the table, this function calculates the values for the movement info */
-  virtual unsigned int* moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) = 0;
+  virtual std::vector<unsigned int> moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) = 0;
 
   /// the gridtype used. We need this to make copies and transformations of the shapes
   const gridType_c * gt;
@@ -133,11 +135,9 @@ public:
   /** return the movement vector of the given direction */
   virtual void getDirection(unsigned int dir, int * x, int * y, int * z) = 0;
 
-private:
-
   // no copying and assigning
-  movementCache_c(const movementCache_c&);
-  void operator=(const movementCache_c&);
+  movementCache_c(const movementCache_c&) = delete;
+  movementCache_c& operator=(const movementCache_c&) = delete;
 };
 
 #endif

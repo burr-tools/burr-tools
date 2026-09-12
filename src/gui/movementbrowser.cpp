@@ -293,9 +293,9 @@ void movementBrowser_c::cb_AddMovement(void) {
   nodeData_s * s = (nodeData_s *)(nd->user_data());
   if (!s) return;
 
-  movementCache_c * c = puz->getPuzzle().getGridType()->getMovementCache(*puz);
+  auto c = puz->getPuzzle().getGridType()->getMovementCache(*puz);
 
-  AddMovementDialog dlg(c, s->pieces, puz);
+  AddMovementDialog dlg(c.get(), s->pieces, puz);
 
   dlg.show();
 
@@ -331,8 +331,6 @@ void movementBrowser_c::cb_AddMovement(void) {
 
   tree->deselect_all();
   addNode(nd, n)->select();
-
-  delete c;
 
   redraw();
 }

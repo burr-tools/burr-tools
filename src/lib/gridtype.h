@@ -109,7 +109,7 @@ class gridType_c {
     unsigned int getCapabilities(void) const;
 
     /// return a movement cache instance for this grid type
-    movementCache_c * getMovementCache(const problem_c & puz) const;
+    std::unique_ptr<movementCache_c> getMovementCache(const problem_c & puz) const;
 
     /// create a new voxel space of this grid type with the given dimensions
     voxel_c * getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init) const;

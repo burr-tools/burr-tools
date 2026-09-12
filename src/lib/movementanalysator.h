@@ -22,6 +22,7 @@
 #define __MOVEMENT_ANALYSATOR_H__
 
 #include <vector>
+#include <memory>
 
 class problem_c;
 class disassemblerNode_c;
@@ -43,29 +44,29 @@ class movementAnalysator_c {
 
   private:
 
+    std::unique_ptr<movementCache_c> cache;
+
     /* matrix should normally have one subarray for each direction
      * (positive x negative x, positive y, ...), but because
      * the matrix for the negative direction in the same direction is the
      * transposition (m[i][j] == m[j][i]) we save the calculation or copying
      * and rather do the transposition inside the checkmovement function
      */
-    unsigned int * matrix;
-    unsigned int * movement;
-    int * weights;
+    std::vector<unsigned int> matrix;
+    std::vector<unsigned int> movement;
+    std::vector<int> weights;
     /* scratch buffer for checkmovement; a reused member rather than a local
      * because checkmovement is on the hot path of the disassembler
      */
-    bool * check;
+    std::vector<char> check;
     unsigned int piecenumber;
 
-    movementCache_c * cache;
-
-    countingNodeHash * nodes;
+    std::unique_ptr<countingNodeHash> nodes;
 
     /* these variables are used for the routine that looks
      * for the pieces to move find, checkmovement
      */
-    int nextpiece, next_pn, nextstate, nextpiece2, state99nextState;
+    int nextpiece, next_pn, nextstate, state99nextState;
     unsigned int nextdir;
     unsigned int maxstep, nextstep;
     disassemblerNode_c * state99node;
@@ -110,8 +111,8 @@ class movementAnalysator_c {
   private:
 
     // no copying and assigning
-    movementAnalysator_c(const movementAnalysator_c&);
-    void operator=(const movementAnalysator_c&);
+    movementAnalysator_c(const movementAnalysator_c&) = delete;
+    movementAnalysator_c& operator=(const movementAnalysator_c&) = delete;
 
 };
 
