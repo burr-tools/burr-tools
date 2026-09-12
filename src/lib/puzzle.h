@@ -53,17 +53,17 @@ private:
    * normally it doesn't change, except if you convert
    * a puzzle of one grid type into an other with a converter
    */
-  gridType_c *gt;
+  std::unique_ptr<gridType_c> gt;
 
   /**
    * The vector with the shapes
    */
-  std::vector<voxel_c*> shapes;
+  std::vector<std::unique_ptr<voxel_c>> shapes;
 
   /**
    * the vector with the problems
    */
-  std::vector<problem_c*> problems;
+  std::vector<std::unique_ptr<problem_c>> problems;
 
   /** The constraint colours.
    * there can be many colours to constrain the placement of pieces
@@ -99,7 +99,8 @@ public:
    * ownership of the given gridtype is taken over, the memory
    * is freed on destruction of this class
    */
-  puzzle_c(gridType_c * g) : gt(g), commentPopup(false) { }
+  puzzle_c(gridType_c * g);
+  puzzle_c(std::unique_ptr<gridType_c> g);
 
   /**
    * load the puzzle from the XML file
@@ -125,8 +126,8 @@ public:
 
   /** \name some functions to get the current set grid type for this puzzle */
   //@{
-  const gridType_c * getGridType(void) const { return gt; }
-  gridType_c * getGridType(void) { return gt; }
+  const gridType_c * getGridType(void) const { return gt.get(); }
+  gridType_c * getGridType(void) { return gt.get(); }
   //@}
 
 
@@ -136,18 +137,18 @@ public:
    * The space is taken over, and freed when the puzzle is destroyed
    * Returns the index of the new shape
    */
+  unsigned int addShape(std::unique_ptr<voxel_c> p);
   unsigned int addShape(voxel_c * p);
   /** add an empty shape of the given size return the index of the new shape */
   unsigned int addShape(unsigned int sx, unsigned int sy, unsigned int sz);
   /** return how many shapes there are in the puzzle */
   unsigned int getNumberOfShapes(void) const { return shapes.size(); }
   /** get a shape */
-  const voxel_c * getShape(unsigned int idx) const { bt_assert(idx < shapes.size()); return shapes[idx]; }
+  const voxel_c * getShape(unsigned int idx) const { bt_assert(idx < shapes.size()); return shapes[idx].get(); }
   /** get a shape */
-  voxel_c * getShape(unsigned int idx) { bt_assert(idx < shapes.size()); return shapes[idx]; }
+  voxel_c * getShape(unsigned int idx) { bt_assert(idx < shapes.size()); return shapes[idx].get(); }
   /** get all shapes */
-  const std::vector<voxel_c*> & getShapes(void) const { return shapes; }
-  std::vector<voxel_c*> & getShapes(void) { return shapes; }
+  const std::vector<std::unique_ptr<voxel_c>> & getShapes(void) const { return shapes; }
   /**
    * remove the num-th shape.
    * be careful this changes all ids and so all problems must be updated
@@ -200,12 +201,11 @@ public:
   /** exchange problem at index p1 with problem at index p2 */
   void exchangeProblems(unsigned int p1, unsigned int p2);
   /** get the problem at index p */
-  const problem_c * getProblem(unsigned int p) const { bt_assert(p < problems.size()); return problems[p]; }
+  const problem_c * getProblem(unsigned int p) const { bt_assert(p < problems.size()); return problems[p].get(); }
   /** get the problem at index p */
-  problem_c * getProblem(unsigned int p) { bt_assert(p < problems.size()); return problems[p]; }
+  problem_c * getProblem(unsigned int p) { bt_assert(p < problems.size()); return problems[p].get(); }
   /** get all problems */
-  const std::vector<problem_c*> & getProblems(void) const { return problems; }
-  std::vector<problem_c*> & getProblems(void) { return problems; }
+  const std::vector<std::unique_ptr<problem_c>> & getProblems(void) const { return problems; }
   //@}
 
 
