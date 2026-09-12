@@ -362,7 +362,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
    * with this lookup I was able to reduce the preparation time
    * from 5 to 0.5 seconds for TheLostDay puzzle
    */
-  unsigned int * columns = new unsigned int[result->getXYZ()];
+  std::vector<unsigned int> columns(result->getXYZ());
 
   // only used, when hasRange is true, so we need to initialise it to get rid of warnings
   // the variable contains the column number where the range checks are done
@@ -482,7 +482,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
         unsigned int trans;
       } mm;
 
-      mm * mirror = new mm[problem.getNumberOfPieces()];
+      std::vector<mm> mirror(problem.getNumberOfPieces());
 
       // first initialize
       for (unsigned int i = 0; i < problem.getNumberOfParts(); i++)
@@ -555,8 +555,6 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
 
         checkForTransformedAssemblies(symBreakerPiece, mir);
       }
-
-      delete [] mirror;
     }
   }
 
@@ -568,7 +566,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
    * these voxels are only used once
    */
 
-  voxel_c ** cache = new voxel_c *[sym->getNumTransformationsMirror()];
+  std::vector<voxel_c *> cache(sym->getNumTransformationsMirror(), nullptr);
 
   placementFinder_c finder(problem, result);
   std::vector<long> voxelOffsets;
@@ -606,7 +604,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
         continue;
       }
 
-      rotation = addToCache(cache, &cachefill, rotation);
+      rotation = addToCache(cache.data(), &cachefill, rotation);
 
       if (rotation) {
         finder.find(rotation, voxelOffsets, positions);
@@ -642,7 +640,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
                 continue;
               }
 
-              addToCache(cache, &cachefill, vx);
+              addToCache(cache.data(), &cachefill, vx);
             }
       }
     }
@@ -652,14 +650,9 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
     /* check, if the current piece has at least one placement */
     if (placements == 0 && problem.getPartMinimum(pc) > 0)
     {
-      delete [] cache;
-      delete [] columns;
       return -problem.getShapeIdOfPart(pc);
     }
   }
-
-  delete [] cache;
-  delete [] columns;
 
   return 1;
 }
@@ -917,7 +910,7 @@ void assembler_1_c::reduce(void) {
    *    column c2 condition so that no other row will come there, so all
    *    rows that are not in the c set but contribute to c2 can be removed
    */
-  unsigned int *columns = new unsigned int[headerNodes];
+  std::vector<unsigned int> columns(headerNodes);
 
   for (unsigned int col = right[0]; col; col = right[col]) {
 
@@ -926,7 +919,7 @@ void assembler_1_c::reduce(void) {
     // we do it only on columns with min = max = 1
     if (min[col] == 0) continue;
 
-    memset(columns, 0, headerNodes * sizeof(unsigned int));
+    memset(columns.data(), 0, headerNodes * sizeof(unsigned int));
 
     unsigned int placements = 0;
     for (unsigned int r = down[col]; r != col; r = down[r]) {
@@ -970,7 +963,6 @@ void assembler_1_c::reduce(void) {
   }
 
   toRemove.clear();
-  delete [] columns;
 
   col_rem += clumpify();
 

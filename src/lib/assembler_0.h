@@ -125,8 +125,8 @@ private:
    * the pos value contains the number of pieces placed
    */
   unsigned int pos;
-  unsigned int *rows;
-  unsigned int *columns;
+  std::vector<unsigned int> rows;
+  std::vector<unsigned int> columns;
 
   void iterativeMultiSearch(void);
 
