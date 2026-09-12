@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 #include <string>
+#include <vector>
 
 class xmlWriter_c;
 class xmlParser_c;
@@ -69,11 +70,10 @@ protected:
   unsigned int voxels;
 
   /**
-   * The space. It's dynamically allocated on construction
-   * and deleted on destruction. The position of a voxel
+   * The space. The position of a voxel
    * inside this 1-dimensional structure is \f$ x + sx*(y + sy*z) \f$
    */
-  voxel_type * space;
+  std::vector<voxel_type> space;
 
   /** \page BoundingBox Bounding Box
    *
@@ -156,7 +156,7 @@ protected:
    * the first 3 values are the hot spot position and the following 6 the
    * bounding box for the given transformation
    */
-  int * BbHsCache;
+  mutable std::vector<int> BbHsCache;
 
 protected:
 
@@ -367,7 +367,7 @@ public:
    * Set all the voxels to the given value
    */
   void setAll(voxel_type val) {
-    memset(space, val, voxels);
+    memset(space.data(), val, voxels);
     recalcBoundingBox();
     symmetries = symmetryInvalid();
   }
