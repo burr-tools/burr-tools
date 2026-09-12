@@ -277,8 +277,7 @@ void voxel_3_c::scale(unsigned int amount, bool grid) {
   unsigned int nsx = ((sx+4)/5)*amount*5;
   unsigned int nsy = ((sy+4)/5)*amount*5;
   unsigned int nsz = ((sz+4)/5)*amount*5;
-  voxel_type * s2 = new voxel_type[nsx*nsy*nsz];
-  memset(s2, VX_EMPTY, nsx*nsy*nsz);
+  std::vector<voxel_type> s2(nsx*nsy*nsz, VX_EMPTY);
 
   // we scale each 5x5x5 block
 
@@ -434,8 +433,7 @@ void voxel_3_c::scale(unsigned int amount, bool grid) {
           }
   }
 
-  delete [] space;
-  space = s2;
+  space = std::move(s2);
 
   sx = nsx;
   sy = nsy;
