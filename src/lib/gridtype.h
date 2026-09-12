@@ -22,8 +22,9 @@
 #define __GRID_TYPE_H__
 
 #include "types.h"
-
 #include "bt_assert.h"
+
+#include <memory>
 
 class assembler_c;
 class symmetries_c;
@@ -139,7 +140,7 @@ class gridType_c {
      * because we are not dependent on the gridtype this function is static
      * but it needs to know the puzzle
      */
-    static assembler_c * findAssembler(const problem_c & p);
+    static std::unique_ptr<assembler_c> findAssembler(const problem_c & p);
 
   private:
 

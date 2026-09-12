@@ -947,7 +947,8 @@ void mainWindow_c::cb_BtnAssemblerStep(void) {
 
   updateInterface();
 
-  View3D->getView()->showAssemblerState(puzzle->getProblem(solutionProblem->getSelection()), assm->getAssembly());
+  auto a = assm->getAssembly();
+  View3D->getView()->showAssemblerState(puzzle->getProblem(solutionProblem->getSelection()), a.get());
 }
 
 static void cb_AllowColor_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AllowColor(); }
@@ -1330,19 +1331,17 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
   }
 
-  disassembler_c * dis = new disassembler_0_c(*pr);
+  auto dis = std::make_unique<disassembler_0_c>(*pr);
 
-  separation_c * d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
+  auto d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
   changed = true;
 
   if (d)
-    pr->getSavedSolution(sol)->setDisassembly(d);
+    pr->getSavedSolution(sol)->setDisassembly(std::move(d));
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
-
-  delete dis;
 }
 
 static void cb_AddAllDisasm_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AddAllDisasm(true); }
@@ -1362,7 +1361,7 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
   changed = true;
 
-  disassembler_c * dis = new disassembler_0_c(*pr);
+  auto dis = std::make_unique<disassembler_0_c>(*pr);
 
   Fl_Double_Window * w = new Fl_Double_Window(20, 20, 300, 30);
   Fl_Box * b = new Fl_Box(0, 0, 300, 30);
@@ -1381,14 +1380,13 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
     if (all || !pr->getSavedSolution(sol)->getDisassembly()) {
 
-      separation_c * d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
+      auto d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
       if (d)
-        pr->getSavedSolution(sol)->setDisassembly(d);
+        pr->getSavedSolution(sol)->setDisassembly(std::move(d));
     }
   }
 
-  delete dis;
   delete w;
 
   activateSolution(prob, (int)SolutionSel->value()-1);
@@ -1665,59 +1663,38 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
 
     for (unsigned int s = 0; s < pr->getNumberOfSavedSolutions(); s++)
     {
-      voxel_c * shape = pr->getSavedSolution(s)->getAssembly()->createSpace(*pr);
+      auto shape = std::unique_ptr<voxel_c>(pr->getSavedSolution(s)->getAssembly()->createSpace(*pr));
 
       if ((filter & assmImportWindow_c::dropDisconnected) && !shape->connected(0, true, voxel_c::VX_EMPTY))
-      {
-        delete shape;
         continue;
-      }
 
       symmetries_t sym = shape->selfSymmetries();
 
       if ((filter & assmImportWindow_c::dropMirror) && shape->getGridType()->getSymmetries()->symmetryContainsMirror(sym))
-      {
-        delete shape;
         continue;
-      }
 
       if ((filter & assmImportWindow_c::dropSymmetric) && !unSymmetric(sym))
-      {
-        delete shape;
         continue;
-      }
 
-      if ((filter & assmImportWindow_c::dropNonMillable) && !isMillable(shape))
-      {
-        delete shape;
+      if ((filter & assmImportWindow_c::dropNonMillable) && !isMillable(shape.get()))
         continue;
-      }
 
-      if ((filter & assmImportWindow_c::dropNonNotchable) && !isNotchable(shape))
-      {
-        delete shape;
+      if ((filter & assmImportWindow_c::dropNonNotchable) && !isNotchable(shape.get()))
         continue;
-      }
 
       unsigned int voxels = shape->countState(voxel_c::VX_FILLED);
       if (voxels < win.getShapeMin() || voxels > win.getShapeMax())
-      {
-        delete shape;
         continue;
-      }
 
       // if the user wants no identical shapes, we look up the current
       // shape in the known shapes table and drop it if we find it
       if (filter & assmImportWindow_c::dropIdentical)
       {
-        if (voxelTab.getSpace(shape))
-        {
-          delete shape;
+        if (voxelTab.getSpace(shape.get()))
           continue;
-        }
       }
 
-      sh.push_back(shape);
+      sh.push_back(shape.release());
 
       // we only need to add the current shape to the shape table
       // if the user wants to drop identical shapes and we use the table
@@ -2037,7 +2014,7 @@ bool mainWindow_c::tryToLoad(const char * f) {
   if (!f) return false;
   if (!fileExists(f)) return false;
 
-  std::istream * str = openGzFile(f);
+  auto str = openGzFile(f);
   xmlParser_c pars(*str);
 
   puzzle_c * newPuzzle;
@@ -2049,11 +2026,8 @@ bool mainWindow_c::tryToLoad(const char * f) {
   catch (xmlParserException_c &e)
   {
     fl_message("%s",(std::string("load error: ") + e.what()).c_str());
-    delete str;
     return false;
   }
-
-  delete str;
 
   if (fname) delete [] fname;
   fname = new char[strlen(f)+1];
@@ -2305,13 +2279,9 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
       MovesInfo->show();
 
-      char levelText[50];
-      int len = snprintf(levelText, 50, "%i (", pr->getSavedSolution(num)->getDisassembly()->sumMoves());
-      pr->getSavedSolution(num)->getDisassembly()->movesText(levelText + len, 50-len);
-      levelText[strlen(levelText)+1] = 0;
-      levelText[strlen(levelText)] = ')';
-
-      MovesInfo->value(levelText);
+      const auto * dis = pr->getSavedSolution(num)->getDisassembly();
+      std::string levelText = std::to_string(dis->sumMoves()) + " (" + dis->movesText() + ")";
+      MovesInfo->value(levelText.c_str());
 
       disassemble = new disasmToMoves_c(pr->getSavedSolution(num)->getDisassembly(),
                                       2*getResultShape(*pr)->getBiggestDimension(),
@@ -2334,13 +2304,9 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
       MovesInfo->show();
 
-      char levelText[50];
-      int len = snprintf(levelText, 50, "%i (", pr->getSavedSolution(num)->getDisassemblyInfo()->sumMoves());
-      pr->getSavedSolution(num)->getDisassemblyInfo()->movesText(levelText + len, 50-len);
-      levelText[strlen(levelText)+1] = 0;
-      levelText[strlen(levelText)] = ')';
-
-      MovesInfo->value(levelText);
+      const auto * disInfo = pr->getSavedSolution(num)->getDisassemblyInfo();
+      std::string levelText = std::to_string(disInfo->sumMoves()) + " (" + disInfo->movesText() + ")";
+      MovesInfo->value(levelText.c_str());
 
       if (prob < puzzle->getNumberOfProblems()) View3D->getView()->showAssembly(puzzle->getProblem(prob), num);
       View3D->getView()->updateVisibility(PcVis);

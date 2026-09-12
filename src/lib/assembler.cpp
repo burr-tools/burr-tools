@@ -23,6 +23,7 @@
 #include "problem.h"
 #include "puzzle.h"
 #include "voxel.h"
+#include "assembly.h"
 
 #include "../tools/xml.h"
 
@@ -225,5 +226,19 @@ void assembler_c::save(xmlWriter_c & xml) const
 {
   xml.newTag("assembler");
   xml.endTag("assembler");
+}
+
+void assembler_c::assemble(std::function<bool(std::unique_ptr<assembly_c>)> callback_fn)
+{
+  class fn_adapter_cb : public assembler_cb {
+    std::function<bool(std::unique_ptr<assembly_c>)> fn;
+  public:
+    explicit fn_adapter_cb(std::function<bool(std::unique_ptr<assembly_c>)> f) : fn(std::move(f)) {}
+    bool assembly(std::unique_ptr<assembly_c> a) override {
+      return fn(std::move(a));
+    }
+  };
+  fn_adapter_cb adapter(std::move(callback_fn));
+  assemble(&adapter);
 }
 

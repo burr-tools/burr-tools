@@ -50,7 +50,7 @@ public:
 
   double fitness(void);
 
-  bool assembly(assembly_c * a);
+  bool assembly(std::unique_ptr<assembly_c> a) override;
 
   bool nosol(void) { return solutions == 0; }
 

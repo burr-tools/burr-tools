@@ -1202,9 +1202,9 @@ void assembler_0_c::reduce(void) {
   fprintf(stderr, "removed %i rows and %i columns\n", removed, remCol);
 }
 
-assembly_c * assembler_0_c::getAssembly(void) {
+std::unique_ptr<assembly_c> assembler_0_c::getAssembly(void) {
 
-  assembly_c * assembly = new assembly_c(problem.getPuzzle().getGridType());
+  auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
 
   // if no pieces are placed, or we finished return an empty assembly
   if (pos > piecenumber) {
@@ -1271,12 +1271,12 @@ void assembler_0_c::solution(void) {
 
   if (getCallback()) {
 
-    assembly_c * assembly = getAssembly();
+    std::unique_ptr<assembly_c> assembly = getAssembly();
 
     if (avoidTransformedAssemblies && assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror, complete))
-      delete assembly;
+      return;
     else {
-      getCallback()->assembly(assembly);
+      getCallback()->assembly(std::move(assembly));
     }
   }
 }

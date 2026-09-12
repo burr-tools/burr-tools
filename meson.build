@@ -336,12 +336,23 @@ manifold_opts.set_override_option('werror', 'false')
 manifold_proj = cmake_mf.subproject('manifold', options: manifold_opts)
 manifold_dep = manifold_proj.dependency('manifold')
 
-executable('burrTxt',  tools_src + halfedge_src + libburr_src + ['src/burrTxt.cpp'],
- 	   dependencies: [manifold_dep, thread_dep, zlib_dep])
+inc = include_directories('src')
 
-executable('burrTxt2',  tools_src + halfedge_src + libburr_src + ['src/burrTxt2.cpp'],
- 	   dependencies: [manifold_dep, thread_dep, zlib_dep],
-	  )
+libburr_core = static_library('burr_core',
+  tools_src + halfedge_src + libburr_src,
+  include_directories: inc,
+  dependencies: [thread_dep, zlib_dep, manifold_dep],
+)
+
+executable('burrTxt', ['src/burrTxt.cpp'],
+  include_directories: inc,
+  link_with: libburr_core,
+  dependencies: [thread_dep, zlib_dep, manifold_dep])
+
+executable('burrTxt2', ['src/burrTxt2.cpp'],
+  include_directories: inc,
+  link_with: libburr_core,
+  dependencies: [thread_dep, zlib_dep, manifold_dep])
 
 # get_supported_arguments so these stay a no-op on compilers without the flag
 vendored_gui_lib = static_library('vendored_gui', vendored_gui_src,
@@ -362,20 +373,21 @@ vendored_lua_lib = static_library('vendored_lua', lua_src,
           override_options: ['werror=false'],
 	  )
 
-executable('burrtools', tools_src + gui_src + halfedge_src + libburr_src,
-          link_with: [vendored_gui_lib, vendored_lua_lib],
+executable('burrtools', gui_src,
+          include_directories: inc,
+          link_with: [libburr_core, vendored_gui_lib, vendored_lua_lib],
           dependencies: [manifold_dep, thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep],
           win_subsystem: 'windows',
 	  )
 
 catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_main_dep'], default_options: ['tests=false'])
 
-inc = include_directories('src')
-
 test_burrtools = executable('test_burrtools',
-  tools_src + halfedge_src + libburr_src + ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_grouping.cpp'],
+  ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_grouping.cpp'],
   include_directories: inc,
+  link_with: libburr_core,
   dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep],
 )
 
 test('burrtools_tests', test_burrtools, workdir: meson.project_source_root())
+
