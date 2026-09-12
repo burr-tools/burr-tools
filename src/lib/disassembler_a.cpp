@@ -157,7 +157,7 @@ separation_c * disassembler_a_c::checkSubproblems(const disassemblerNode_c * st,
     const disassemblerNode_c * st2 = st;
 
     do {
-      state_c *s = new state_c(pieces.size());
+      auto s = std::make_unique<state_c>(pieces.size());
 
       for (unsigned int i = 0; i < pieces.size(); i++) {
 
@@ -174,7 +174,7 @@ separation_c * disassembler_a_c::checkSubproblems(const disassemblerNode_c * st,
         } else
           s->set(i, st2->getX(i), st2->getY(i), st2->getZ(i));
       }
-      erg->addstate(s);
+      erg->addstate(std::move(s));
 
       st2 = st2->getComefrom();
     } while (st2);

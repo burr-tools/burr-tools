@@ -150,103 +150,74 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
 {
   pars.require(xmlParser_c::START_TAG, "state");
 
-#ifndef NDEBUG
-  piecenumber = pn;
-#endif
+  bool has_dx = false, has_dy = false, has_dz = false;
 
-  dx = dy = dz = 0;
-
-  try
+  do
   {
-    do
+    int state = pars.nextTag();
+
+    if (state == xmlParser_c::END_TAG) break;
+    if (state != xmlParser_c::START_TAG)
+      pars.exception("expected new tag but found something else");
+
+    if (pars.getName() == "dx")
     {
-      int state = pars.nextTag();
+      dx.resize(pn);
+      pars.next();
+      getNumbers(pars.getText(), dx.begin(), dx.end(), true);
+      pars.next();
+      pars.require(xmlParser_c::END_TAG, "dx");
+      has_dx = true;
+    }
+    else if (pars.getName() == "dy")
+    {
+      dy.resize(pn);
+      pars.next();
+      getNumbers(pars.getText(), dy.begin(), dy.end(), true);
+      pars.next();
+      pars.require(xmlParser_c::END_TAG, "dy");
+      has_dy = true;
+    }
+    else if (pars.getName() == "dz")
+    {
+      dz.resize(pn);
+      pars.next();
+      getNumbers(pars.getText(), dz.begin(), dz.end(), true);
+      pars.next();
+      pars.require(xmlParser_c::END_TAG, "dz");
+      has_dz = true;
+    }
+  } while (true);
 
-      if (state == xmlParser_c::END_TAG) break;
-      if (state != xmlParser_c::START_TAG)
-        pars.exception("expected new tag but dounf something else");
-
-      if (pars.getName() == "dx")
-      {
-        dx = new int[pn];
-        pars.next();
-        getNumbers(pars.getText(), dx, dx+pn, true);
-        pars.next();
-        pars.require(xmlParser_c::END_TAG, "dx");
-      }
-      else if (pars.getName() == "dy")
-      {
-        dy = new int[pn];
-        pars.next();
-        getNumbers(pars.getText(), dy, dy+pn, true);
-        pars.next();
-        pars.require(xmlParser_c::END_TAG, "dy");
-      }
-      else if (pars.getName() == "dz")
-      {
-        dz = new int[pn];
-        pars.next();
-        getNumbers(pars.getText(), dz, dz+pn, true);
-        pars.next();
-        pars.require(xmlParser_c::END_TAG, "dz");
-      }
-    } while (true);
-
-    if (!dx || !dy || !dz)
-      pars.exception("disassembly state needs dx, dy and dz subnode");
-  }
-
-  catch (xmlParserException_c & e)
-  {
-    if (dx) delete [] dx;
-    if (dy) delete [] dy;
-    if (dz) delete [] dz;
-    pars.exception(e.what());
-  }
+  if (!has_dx || !has_dy || !has_dz)
+    pars.exception("disassembly state needs dx, dy and dz subnode");
 
   pars.require(xmlParser_c::END_TAG, "state");
 }
 
 state_c::state_c(const state_c * cpy, unsigned int pn)
-#ifndef NDEBUG
-: piecenumber(pn)
-#endif
+  : dx(cpy->dx), dy(cpy->dy), dz(cpy->dz)
 {
-  dx = new int[pn];
-  dy = new int[pn];
-  dz = new int[pn];
-
-  memcpy(dx, cpy->dx, pn*sizeof(int));
-  memcpy(dy, cpy->dy, pn*sizeof(int));
-  memcpy(dz, cpy->dz, pn*sizeof(int));
+  (void)pn;
+  bt_assert(dx.size() == pn && dy.size() == pn && dz.size() == pn);
 }
 
 state_c::state_c(unsigned int pn)
-#ifndef NDEBUG
-: piecenumber(pn)
-#endif
+  : dx(pn, 0), dy(pn, 0), dz(pn, 0)
 {
-  dx = new int[pn];
-  dy = new int[pn];
-  dz = new int[pn];
-  bt_assert(dx && dy && dz);
 }
 
-state_c::~state_c() {
-  delete [] dx;
-  delete [] dy;
-  delete [] dz;
-}
+state_c::~state_c() = default;
 
 void state_c::set(unsigned int piece, int x, int y, int z) {
-  bt_assert(piece < piecenumber);
+  bt_assert(piece < dx.size());
   dx[piece] = x;
   dy[piece] = y;
   dz[piece] = z;
 }
 
 bool state_c::pieceRemoved(unsigned int i) const {
-  bt_assert(i < piecenumber);
+  bt_assert(i < dx.size());
   return (abs(dx[i]) > 10000) || (abs(dy[i]) > 10000) || (abs(dz[i]) > 10000);
 }
 
@@ -314,7 +285,6 @@ separation_c::separation_c(xmlParser_c & pars, unsigned int pieceCnt)
   unsigned int piecenumber = 0;
   std::string str;
   unsigned int removedPc = 0, leftPc = 0;
-  removed = left = 0;
 
   do
   {
@@ -352,7 +322,7 @@ separation_c::separation_c(xmlParser_c & pars, unsigned int pieceCnt)
         pars.exception("there are states behind the sub separations");
 
       // get the states
-      states.push_back(new state_c(pars, piecenumber));
+      states.push_back(std::make_unique<state_c>(pars, piecenumber));
     }
     else if (pars.getName() == "separation")
     {
@@ -378,13 +348,13 @@ separation_c::separation_c(xmlParser_c & pars, unsigned int pieceCnt)
       {
         if (left)
           pars.exception("more than one left branch in disassembly");
-        left = new separation_c(pars, leftPc);
+        left = std::make_unique<separation_c>(pars, leftPc);
       }
       else if (str == "removed")
       {
         if (removed)
           pars.exception("more than one removed branch in disassembly");
-        removed = new separation_c(pars, removedPc);
+        removed = std::make_unique<separation_c>(pars, removedPc);
       }
       else
         pars.exception("subnodes must have either left or removed type");
@@ -402,18 +372,17 @@ separation_c::separation_c(xmlParser_c & pars, unsigned int pieceCnt)
   numSequences = (left?left->numSequences:0) + (removed?removed->numSequences:0) + 1;
 }
 
-separation_c::separation_c(separation_c * r, separation_c * l, const std::vector<unsigned int> & pcs) : removed(r), left(l) {
-  pieces = pcs;
-
+separation_c::separation_c(separation_c * r, separation_c * l, const std::vector<unsigned int> & pcs)
+  : pieces(pcs), removed(r), left(l) {
   numSequences = (l?l->numSequences:0) + (r?r->numSequences:0) + 1;
 }
 
-separation_c::~separation_c() {
-  delete removed;
-  delete left;
-  for (unsigned int i = 0; i < states.size(); i++)
-    delete states[i];
+separation_c::separation_c(std::unique_ptr<separation_c> r, std::unique_ptr<separation_c> l, const std::vector<unsigned int> & pcs)
+  : pieces(pcs), removed(std::move(r)), left(std::move(l)) {
+  numSequences = (left?left->numSequences:0) + (removed?removed->numSequences:0) + 1;
 }
+
+separation_c::~separation_c() = default;
 
 unsigned int separation_c::sumMoves(void) const {
   bt_assert(states.size());
@@ -426,9 +395,13 @@ unsigned int separation_c::sumMoves(void) const {
   return erg;
 }
 
-void separation_c::addstate(state_c *st) {
+void separation_c::addstate(std::unique_ptr<state_c> st) {
   bt_assert(st->getPiecenumber() == pieces.size());
-  states.push_front(st);
+  states.push_front(std::move(st));
+}
+
+void separation_c::addstate(state_c *st) {
+  addstate(std::unique_ptr<state_c>(st));
 }
 
 separation_c::separation_c(const separation_c * cpy) {
@@ -436,17 +409,13 @@ separation_c::separation_c(const separation_c * cpy) {
   pieces = cpy->pieces;
 
   for (unsigned int i = 0; i < cpy->states.size(); i++)
-    states.push_back(new state_c(cpy->states[i], pieces.size()));
+    states.push_back(std::make_unique<state_c>(cpy->states[i].get(), pieces.size()));
 
   if (cpy->left)
-    left = new separation_c(cpy->left);
-  else
-    left = 0;
+    left = std::make_unique<separation_c>(cpy->left.get());
 
   if (cpy->removed)
-    removed = new separation_c(cpy->removed);
-  else
-    removed = 0;
+    removed = std::make_unique<separation_c>(cpy->removed.get());
 
   numSequences = cpy->numSequences;
 }

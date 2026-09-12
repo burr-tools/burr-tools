@@ -23,31 +23,24 @@
 #include "disassembly.h"
 #include "disassemblernode.h"
 
-disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz, unsigned int max) : size(sz), maxPieceName(max) {
-
-  tree = new separation_c(tr);
-
-  moves = new float[maxPieceName*4];
-  mv = new bool[maxPieceName];
+disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz, unsigned int max)
+  : tree(tr ? std::make_unique<separation_c>(tr) : nullptr),
+    size(sz),
+    moves(max * 4, 0.0f),
+    mv(max, false),
+    maxPieceName(max) {
 }
 
-disasmToMoves_c::~disasmToMoves_c() {
-  delete [] moves;
-  delete [] mv;
-  delete tree;
-}
+disasmToMoves_c::~disasmToMoves_c() = default;
 
 void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
 
   int s = int(step);
   float frac = step - s;
 
-  // a temporary array, used to save the 2nd placement for the interpolation */
-  float * moves2 = new float[maxPieceName*4];
-
-  for (unsigned int i = 0; i < 4 * maxPieceName; i++) {
-    moves[i] = moves2[i] = 0;
-  }
+  // a temporary array, used to save the 2nd placement for the interpolation
+  std::vector<float> moves2(maxPieceName * 4, 0.0f);
+  std::fill(moves.begin(), moves.end(), 0.0f);
 
   /* what we do is go twice through the tree and linearly interpolate between
    * the 2 states that we have in in the two nodes that we are currently in between
@@ -57,8 +50,8 @@ void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
   if (tree) {
 
     /* get the 2 possible positions between we have to interpolate */
-    doRecursive(tree, s  , moves, center_active, 0, 0, 0);
-    doRecursive(tree, s+1, moves2, center_active, 0, 0, 0);
+    doRecursive(tree.get(), s  , moves.data(), center_active, 0, 0, 0);
+    doRecursive(tree.get(), s+1, moves2.data(), center_active, 0, 0, 0);
 
     // interpolate and check, which piece moves right now
     for (unsigned int i = 0; i < maxPieceName; i++) {
@@ -74,8 +67,6 @@ void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
         if (moves[4*i+3] > 0) moves[4*i+3] = 1;
 
   }
-
-  delete [] moves2;
 }
 
 float disasmToMoves_c::getX(unsigned int piece) {
@@ -282,18 +273,8 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
 
 
 
-fixedPositions_c::fixedPositions_c(const disassemblerNode_c * nd, const std::vector<unsigned int> & pc, unsigned int pcs) {
-
-  pieces = pcs;
-  x = new int[pieces];
-  y = new int[pieces];
-  z = new int[pieces];
-  visible = new bool[pieces];
-
-  for (unsigned int p = 0; p < pieces; p++) {
-    visible[p] = false;
-    x[p] = y[p] = z[p] = 0;
-  }
+fixedPositions_c::fixedPositions_c(const disassemblerNode_c * nd, const std::vector<unsigned int> & pc, unsigned int pcs)
+  : pieces(pcs), x(pcs, 0), y(pcs, 0), z(pcs, 0), visible(pcs, false) {
 
   for (unsigned int p = 0; p < pc.size(); p++) {
 
@@ -309,28 +290,11 @@ fixedPositions_c::fixedPositions_c(const disassemblerNode_c * nd, const std::vec
   }
 }
 
-fixedPositions_c::fixedPositions_c(const fixedPositions_c * nd) {
-
-  pieces = nd->pieces;
-  x = new int[pieces];
-  y = new int[pieces];
-  z = new int[pieces];
-  visible = new bool[pieces];
-
-  for (unsigned int p = 0; p < pieces; p++) {
-    x[p] = nd->x[p];
-    y[p] = nd->y[p];
-    z[p] = nd->z[p];
-    visible[p] = nd->visible[p];
-  }
+fixedPositions_c::fixedPositions_c(const fixedPositions_c * nd)
+  : pieces(nd->pieces), x(nd->x), y(nd->y), z(nd->z), visible(nd->visible) {
 }
 
-fixedPositions_c::~fixedPositions_c(void) {
-  delete [] x;
-  delete [] y;
-  delete [] z;
-  delete [] visible;
-}
+fixedPositions_c::~fixedPositions_c(void) = default;
 
 float fixedPositions_c::getX(unsigned int piece) { bt_assert(piece < pieces); return x[piece]; }
 float fixedPositions_c::getY(unsigned int piece) { bt_assert(piece < pieces); return y[piece]; }
