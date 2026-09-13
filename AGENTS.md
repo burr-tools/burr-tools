@@ -57,7 +57,7 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
 - **`src/gui/`**: FLTK-based graphical user interface and OpenGL 3D viewports (`mainwindow.cpp`, `view3dgroup.cpp`, `arcball.cpp`, `viewcube.cpp`).
 - **`src/halfedge/`**: Half-edge data structure for 3D polyhedron mesh manipulation and STL export.
 - **`src/tools/`**: XML parser/writer (`xml.cpp`), file existence helpers, and gzip stream wrappers (`gzstream.cpp`).
-- **`test/`**: Catch2 v3 automated regression test suite across nine files (`test_solver.cpp`, `test_bitfield.cpp`, `test_cubemesh.cpp`, `test_grouping.cpp`, `test_manifold_smoke.cpp`, `test_minkmesh.cpp`, `test_symmetries.cpp`, `test_voxel.cpp`, `test_voxel_connect.cpp`) testing real-world puzzles across voxel grids, solver engines, malformed input rejection, voxel geometry, grid symmetries, and piece grouping.
+- **`test/`**: Catch2 v3 automated regression test suite
 - **`design/`**: Durable design docs and specs (e.g. the test coverage stack design).
 - **`src/lua/`**: Bundled Lua 5.x C interpreter. **Do not modify.**
 - **`subprojects/`**: External dependencies managed by Meson (`fltk`, `catch2`). **Do not modify.**
