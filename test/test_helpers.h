@@ -6,6 +6,7 @@
 
 #include <initializer_list>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -38,6 +39,23 @@ inline std::unique_ptr<voxel_c> makeVoxel(const gridType_c & gt,
   return std::unique_ptr<voxel_c>(gt.getVoxel(x, y, z, voxel_c::VX_EMPTY));
 }
 
+/* voxel_c stores its grid as a raw `const gridType_c *` (voxel.h:58), not a
+   shared/owned reference. A `const gridType_c &` parameter happily binds to
+   a temporary (e.g. makeVoxel(gridType_c(gridType_c::GT_BRICKS), 2,2,2)),
+   which is destroyed at the end of the full expression, leaving the
+   returned voxel_c's transform()/selfSymmetries()/normalizeTransformation()
+   reading freed memory. Deleting the rvalue overload turns that mistake
+   into a compile error instead of a use-after-free. */
+std::unique_ptr<voxel_c> makeVoxel(gridType_c &&, unsigned int, unsigned int, unsigned int) = delete;
+
+/** a copy of an existing voxel space, built in the given grid; the caller owns it */
+inline std::unique_ptr<voxel_c> copyVoxel(const gridType_c & gt, const voxel_c & orig) {
+  return std::unique_ptr<voxel_c>(gt.getVoxel(orig));
+}
+
+/* same dangling-grid footgun as makeVoxel above. */
+std::unique_ptr<voxel_c> copyVoxel(gridType_c &&, const voxel_c &) = delete;
+
 /**
  * Build a voxel space from ASCII layer art.
  *
@@ -56,6 +74,15 @@ inline std::unique_ptr<voxel_c> fromLayers(const gridType_c & gt,
       if (row.size() > sx) sx = static_cast<unsigned int>(row.size());
   }
 
+  /* an empty layer list (or all-empty rows) yields sx == 0 || sy == 0 ||
+     sz == 0. voxel_c's constructor computes bx1 = x-1 on that unsigned
+     zero, which wraps to UINT_MAX and produces a wild bounding box instead
+     of an obviously-broken shape. Guard here so a fixture typo like
+     fromLayers(gt, {}) fails loudly at the call site instead of silently
+     handing a corrupt voxel_c to the test body. */
+  if (sx == 0 || sy == 0 || sz == 0)
+    throw std::invalid_argument("fromLayers: layer art is empty, which would build a degenerate 0-sized voxel space");
+
   std::unique_ptr<voxel_c> v = makeVoxel(gt, sx, sy, sz);
 
   unsigned int z = 0;
@@ -72,6 +99,9 @@ inline std::unique_ptr<voxel_c> fromLayers(const gridType_c & gt,
 
   return v;
 }
+
+/* same dangling-grid footgun as makeVoxel above. */
+std::unique_ptr<voxel_c> fromLayers(gridType_c &&, std::initializer_list<std::vector<std::string>>) = delete;
 
 } // namespace bttest
 
