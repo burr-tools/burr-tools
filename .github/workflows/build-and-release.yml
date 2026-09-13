@@ -72,6 +72,7 @@ jobs:
     continue-on-error: true
     permissions:
       contents: read
+      pull-requests: write
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
     steps:
     - name: Checkout code
@@ -89,8 +90,39 @@ jobs:
     - name: Install just
       uses: extractions/setup-just@v2
 
+    # `shell: bash` sets pipefail, so a gcovr failure is not masked by tee's
+    # exit status.
     - name: Report coverage and generate HTML report
-      run: just coverage-html
+      shell: bash
+      run: just coverage-html | tee coverage-summary.txt
+
+    - name: Build the coverage report body
+      run: |
+        {
+          echo "## Test coverage"
+          echo
+          echo '```'
+          grep -E '^(lines|functions|branches):' coverage-summary.txt
+          echo '```'
+          echo
+          echo "Measured on ubuntu-latest with gcc. Coverage numbers are"
+          echo "toolchain-specific, so this Linux figure is the canonical one for"
+          echo "comparing across pull requests."
+          echo
+          echo "A per-file breakdown is in the coverage-html artifact on this run."
+        } > coverage-report.md
+        cat coverage-report.md >> "$GITHUB_STEP_SUMMARY"
+
+    # A pull request from a fork is given a read-only token, so posting a
+    # comment is not possible there. Those runs still get the same report in
+    # the run summary written above.
+    - name: Comment the coverage report on the pull request
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh pr comment "${{ github.event.pull_request.number }}" \
+           --body-file coverage-report.md --edit-last --create-if-none
 
     - name: Upload HTML coverage report
       uses: actions/upload-artifact@v4
