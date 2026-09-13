@@ -620,31 +620,20 @@ TEST_CASE("voxel: translate moves the shape and fills the vacated cells", "[voxe
 TEST_CASE("voxel: translating out and back is the identity", "[voxel][bbox]") {
   gridType_c gt(gridType_c::GT_BRICKS);
 
+  /* the shape must sit clear of the boundary in the direction of travel:
+     anything shifted off the edge cannot come back, so a round trip is
+     lossless only when nothing falls off */
   std::unique_ptr<voxel_c> original = fromLayers(gt, {
-    { ".#.",
-      "###",
-      ".#." },
+    { ".#..",
+      ".#..",
+      "...." },
   });
-
   std::unique_ptr<voxel_c> moved(gt.getVoxel(original.get()));
 
   moved->translate(1, 0, 0, voxel_c::VX_EMPTY);
   moved->translate(-1, 0, 0, voxel_c::VX_EMPTY);
 
-  /* the rightmost column was shifted off the edge and cannot come back,
-     so compare only what stayed inside: a 2-wide translate round trip on
-     a shape that fits clear of the boundary is lossless */
-  std::unique_ptr<voxel_c> safe = fromLayers(gt, {
-    { ".#..",
-      ".#..",
-      "...." },
-  });
-  std::unique_ptr<voxel_c> safeMoved(gt.getVoxel(safe.get()));
-
-  safeMoved->translate(1, 0, 0, voxel_c::VX_EMPTY);
-  safeMoved->translate(-1, 0, 0, voxel_c::VX_EMPTY);
-
-  REQUIRE(*safeMoved == *safe);
+  REQUIRE(*moved == *original);
 }
 
 TEST_CASE("voxel: resize keeps the overlapping region", "[voxel][bbox]") {
@@ -733,7 +722,7 @@ TEST_CASE("voxel: a solid block is face connected", "[voxel][connect]") {
   });
 
   /* type 0 is face connectivity; check the filled voxels hang together */
-  REQUIRE(v->connected(0, false, voxel_c::VX_EMPTY, false));
+  REQUIRE(v->connected(0, true, voxel_c::VX_EMPTY));
 }
 
 TEST_CASE("voxel: two separated voxels are not connected", "[voxel][connect]") {
@@ -744,7 +733,7 @@ TEST_CASE("voxel: two separated voxels are not connected", "[voxel][connect]") {
     { "#.#" },
   });
 
-  REQUIRE_FALSE(v->connected(0, false, voxel_c::VX_EMPTY, false));
+  REQUIRE_FALSE(v->connected(0, true, voxel_c::VX_EMPTY));
 }
 
 TEST_CASE("voxel: diagonal voxels are not face connected", "[voxel][connect]") {
@@ -756,7 +745,7 @@ TEST_CASE("voxel: diagonal voxels are not face connected", "[voxel][connect]") {
       ".#" },
   });
 
-  REQUIRE_FALSE(v->connected(0, false, voxel_c::VX_EMPTY, false));
+  REQUIRE_FALSE(v->connected(0, true, voxel_c::VX_EMPTY));
 }
 
 TEST_CASE("voxel: an L shape is connected", "[voxel][connect]") {
@@ -768,7 +757,7 @@ TEST_CASE("voxel: an L shape is connected", "[voxel][connect]") {
       "###" },
   });
 
-  REQUIRE(v->connected(0, false, voxel_c::VX_EMPTY, false));
+  REQUIRE(v->connected(0, true, voxel_c::VX_EMPTY));
 }
 
 TEST_CASE("voxel: connectivity spans layers", "[voxel][connect]") {
@@ -779,14 +768,14 @@ TEST_CASE("voxel: connectivity spans layers", "[voxel][connect]") {
     { "#" },
     { "#" },
   });
-  REQUIRE(stacked->connected(0, false, voxel_c::VX_EMPTY, false));
+  REQUIRE(stacked->connected(0, true, voxel_c::VX_EMPTY));
 
   /* one voxel per layer, offset so they only touch at an edge */
   std::unique_ptr<voxel_c> offset = fromLayers(gt, {
     { "#." },
     { ".#" },
   });
-  REQUIRE_FALSE(offset->connected(0, false, voxel_c::VX_EMPTY, false));
+  REQUIRE_FALSE(offset->connected(0, true, voxel_c::VX_EMPTY));
 }
 
 TEST_CASE("voxel: fillHoles closes an enclosed cavity", "[voxel][connect]") {
@@ -1111,20 +1100,15 @@ sed -n '1,150p' src/lib/grouping.cpp
 
 - [ ] **Step 2: Write the file**
 
+These cases were rewritten after tracing `grouping.cpp` by hand; an earlier
+draft asserted four results that the implementation does not produce. The
+rules each case pins are stated in its comment. `grouping_c` is a
+backtracking assignment solver whose capacity is **global**, not per-set.
+
 ```cpp
 #include <catch2/catch_test_macros.hpp>
 
 #include "lib/grouping.h"
-
-TEST_CASE("grouping: a piece in no group is always accepted", "[grouping]") {
-  grouping_c g;
-
-  g.newSet();
-  /* a piece that was never registered belongs to no group and so has no
-     capacity limit to violate */
-  REQUIRE(g.addPieceToSet(0));
-  REQUIRE(g.addPieceToSet(0));
-}
 
 TEST_CASE("grouping: a group accepts pieces up to its count", "[grouping]") {
   grouping_c g;
@@ -1137,20 +1121,40 @@ TEST_CASE("grouping: a group accepts pieces up to its count", "[grouping]") {
   REQUIRE(g.addPieceToSet(0));
 }
 
-TEST_CASE("grouping: a new set starts the counting over", "[grouping]") {
+TEST_CASE("grouping: exhausting a group's count fails the assignment", "[grouping]") {
   grouping_c g;
 
+  /* only one of piece 0 is available in group 1 */
   g.addPieces(0, 1, 1);
 
   g.newSet();
   REQUIRE(g.addPieceToSet(0));
 
-  /* a fresh set must not inherit the previous set's usage */
-  g.newSet();
-  REQUIRE(g.addPieceToSet(0));
+  /* the second one has nowhere to go: group 1 is spent and there is no
+     other group to back off into */
+  REQUIRE_FALSE(g.addPieceToSet(0));
 }
 
-TEST_CASE("grouping: reSet clears everything back to the start", "[grouping]") {
+TEST_CASE("grouping: group 0 means no group and registers nothing", "[grouping]") {
+  grouping_c g;
+
+  /* addPieces returns early for group 0, so this registers no capacity
+     at all and leaves numGroups at zero */
+  g.addPieces(0, 0, 5);
+
+  g.newSet();
+  REQUIRE_FALSE(g.addPieceToSet(0));
+}
+
+TEST_CASE("grouping: an unregistered piece cannot be placed", "[grouping]") {
+  grouping_c g;
+
+  /* nothing was ever registered, so there is no group to place into */
+  g.newSet();
+  REQUIRE_FALSE(g.addPieceToSet(0));
+}
+
+TEST_CASE("grouping: capacity is global, so a new set does not replenish it", "[grouping]") {
   grouping_c g;
 
   g.addPieces(0, 1, 1);
@@ -1158,21 +1162,26 @@ TEST_CASE("grouping: reSet clears everything back to the start", "[grouping]") {
   g.newSet();
   REQUIRE(g.addPieceToSet(0));
 
+  /* a fresh set draws on the same pool; the single piece is already spent */
+  g.newSet();
+  REQUIRE_FALSE(g.addPieceToSet(0));
+}
+
+TEST_CASE("grouping: reSet does not restore consumed capacity", "[grouping]") {
+  grouping_c g;
+
+  g.addPieces(0, 1, 1);
+
+  g.newSet();
+  REQUIRE(g.addPieceToSet(0));
+
+  /* reSet clears the sets and the failed flag but leaves pieces[].count
+     depleted, so the object cannot in fact be reused. This pins OBSERVED
+     behaviour and may well be a defect in grouping.cpp — it is recorded
+     here rather than fixed, because this PR changes no production code. */
   g.reSet();
   g.newSet();
-  REQUIRE(g.addPieceToSet(0));
-}
-
-TEST_CASE("grouping: a piece can belong to more than one group", "[grouping]") {
-  grouping_c g;
-
-  g.addPieces(0, 1, 1);
-  g.addPieces(0, 2, 1);
-
-  g.newSet();
-  /* with capacity in two groups the piece can be placed twice */
-  REQUIRE(g.addPieceToSet(0));
-  REQUIRE(g.addPieceToSet(0));
+  REQUIRE_FALSE(g.addPieceToSet(0));
 }
 ```
 
