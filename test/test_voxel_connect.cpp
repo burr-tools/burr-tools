@@ -32,16 +32,25 @@ TEST_CASE("voxel: two separated voxels are not connected", "[voxel][connect]") {
   REQUIRE_FALSE(v->connected(0, true, voxel_c::VX_EMPTY));
 }
 
-TEST_CASE("voxel: diagonal voxels are not face connected", "[voxel][connect]") {
+TEST_CASE("voxel: diagonal voxels are not face connected but are edge connected", "[voxel][connect]") {
   gridType_c gt(gridType_c::GT_BRICKS);
 
-  /* corner-to-corner touch only */
+  /* corner-to-corner touch only: (0,0,0) and (1,1,0) share only the edge
+     between them, not a face */
   std::unique_ptr<voxel_c> v = fromLayers(gt, {
     { "#.",
       ".#" },
   });
 
+  /* type 0 is face connectivity: no shared face, so not connected */
   REQUIRE_FALSE(v->connected(0, true, voxel_c::VX_EMPTY));
+
+  /* type 1 is edge connectivity. voxel_0_c::getNeighbor's type-1 branch
+     (src/lib/voxel_0.cpp:172-188) lists the 12 edge neighbours of a cell,
+     including idx 0: (x-1, y-1, z) -- exactly the relationship between
+     (1,1,0) and (0,0,0) in this fixture, so under edge connectivity the
+     SAME shape IS connected. */
+  REQUIRE(v->connected(1, true, voxel_c::VX_EMPTY));
 }
 
 TEST_CASE("voxel: an L shape is connected", "[voxel][connect]") {
