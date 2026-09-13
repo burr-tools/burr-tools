@@ -25,9 +25,16 @@
 
 #include "Layouter.h"
 
+#include <memory>
+#include <string>
+
 class VoxelEditGroup_c;
 class ChangeSize;
 class ToolTab;
+class shapeHistory_c;
+class statusWindow_c;
+class LFl_Text_Editor;
+class voxel_c;
 class puzzle_c;
 class problem_c;
 class solveThread_c;
@@ -46,6 +53,10 @@ class ColorConstraintsEdit;
 class ToolTabContainer;
 class ButtonGroup_c;
 class FlatButton;
+class LFlatButton_c;
+class LFl_Tile;
+class LFl_Menu_Bar;
+class LFl_Button;
 class LStatusLine;
 class LBlockListGroup_c;
 class LView3dGroup;
@@ -63,11 +74,11 @@ class Fl_Progress;
 
 class mainWindow_c : public LFl_Double_Window {
 
-  puzzle_c * puzzle;
-  guiGridType_c * ggt;  // this is the guigridtype for the puzzle, is must always be in sync
-  char * fname;
-  disasmToMoves_c * disassemble;
-  solveThread_c *assmThread;
+  std::unique_ptr<puzzle_c> puzzle;
+  std::unique_ptr<guiGridType_c> ggt;  // this is the guigridtype for the puzzle, is must always be in sync
+  std::string fname;
+  std::unique_ptr<disasmToMoves_c> disassemble;
+  std::unique_ptr<solveThread_c> assmThread;
   bool SolutionEmpty;
 
   /* While a problem is being solved the view can track a solution as the list
@@ -123,7 +134,8 @@ class mainWindow_c : public LFl_Double_Window {
   ButtonGroup_c *editMode;
 
   layouter_c *TabSolve;
-  Fl_Check_Button *SolveDisasm, *JustCount, *DropDisassemblies, *KeepMirrors, *KeepRotations, *CompleteRotations;
+  Fl_Check_Button *SolveDisasm, *CheckRotations, *JustCount, *DropDisassemblies, *KeepMirrors, *KeepRotations, *CompleteRotations;
+  Fl_Choice *solverTypeChoice;
 
   FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep, *BtnMovement;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape, *BtnShapeLeft, *BtnShapeRight, *BtnWeightInc, *BtnWeightDec;
@@ -145,9 +157,17 @@ class mainWindow_c : public LFl_Double_Window {
   Fl_Output *TimeUsed, *TimeEst;
 
   LView3dGroup * View3D;
+  LFl_Tile * rightPane;
+  statusWindow_c * detailsPanel;
 
   Fl_Group *MinSizeTools;
-  Fl_Menu_Bar *MainMenu;
+  LFl_Menu_Bar *MainMenu;
+  LFlatButton_c *notesToggle;
+  layouter_c *notesPanel;
+  LFl_Tile *contentTile;
+  LFl_Text_Editor *notesInput;
+  LFl_Button *notesUpdate;
+  LFl_Button *notesRevert;
   LStatusLine *StatusLine;
   static Fl_Menu_Item menu_MainMenu[];
 
@@ -159,11 +179,21 @@ class mainWindow_c : public LFl_Double_Window {
   Fl_Value_Input *solDrop, *solLimit;
 
   Fl_Value_Output *SolutionNumber, *AssemblyNumber;
+  Fl_Output *MovesMetric, *RotationsMetric;
 
   FlatButton *BtnSrtFind, *BtnSrtLevel, *BtnSrtMoves, *BtnSrtPieces;
   FlatButton *BtnDelAll, *BtnDelBefore, *BtnDelAt, *BtnDelAfter, *BtnDelDisasm;
   FlatButton *BtnDisasmDel, *BtnDisasmDelAll, *BtnDisasmAdd, *BtnDisasmAddAll, *BtnDisasmAddMissing;
   FlatButton *BtnExportSolutionSTL;
+
+  Fl_Button *BtnUndo;
+  Fl_Button *BtnRedo;
+  Fl_Button *BtnDetails;
+  std::unique_ptr<shapeHistory_c> shapeHistory;
+
+  void updateUndoRedoButtons(void);
+  void recordShapeAction(int kind);
+  void applyHistoryRestore(unsigned int selected);
 
   // the zoom levels for all 3 tabs independent, so that the problem
   // tab can have a wider view
@@ -192,7 +222,7 @@ class mainWindow_c : public LFl_Double_Window {
   void changeProblem(unsigned int nr);
   void changeColor(unsigned int nr);
 
-  void ReplacePuzzle(puzzle_c * newPuzzle);
+  void ReplacePuzzle(std::unique_ptr<puzzle_c> newPuzzle);
 
   void activateShape(unsigned int number);
   void activateProblem(unsigned int prob);
@@ -211,13 +241,14 @@ public:
   int handle(int event);
 
   using LFl_Double_Window::show;
+  // cppcheck-suppress duplInheritedMember
   void show(int argn, char ** argv);
 
   // overwrite hide to check for changes in all possible exit situations
   void hide(void);
 
   /* this is used on assert to save the current puzzle */
-  const puzzle_c * getPuzzle(void) const { return puzzle; }
+  const puzzle_c * getPuzzle(void) const { return puzzle.get(); }
 
   /* update the interface to represent the latest state of
    * the solving progress, that works in background
@@ -240,6 +271,8 @@ public:
   void cb_NameShape(void);
   void cb_ShapeExchange(int with);
   void cb_WeightChange(int by);
+  void cb_Undo(void);
+  void cb_Redo(void);
 
   void cb_NewProblem(void);
   void cb_DeleteProblem(void);
@@ -270,6 +303,7 @@ public:
   void cb_PiecesClicked(void);
 
   void cb_TransformPiece(void);
+  void cb_TransformPreview(voxel_c * preview, unsigned int shapeNum);
   void cb_pieceEdit(VoxelEditGroup_c* o);
   void cb_EditChoice(void);
   void cb_EditSym(int onoff, int value);
@@ -288,6 +322,9 @@ public:
   void cb_BtnPlacementBrowser(void);
   void cb_BtnMovementBrowser(void);
   void cb_BtnAssemblerStep(void);
+  void cb_SolverOptions(void);
+  void updateSolverOptionCheckboxes(void);
+  void cb_SortMethod(void);
 
   void cb_SolutionSel(Fl_Value_Slider*);
   void cb_SolutionAnim(Fl_Value_Slider*);
@@ -297,9 +334,22 @@ public:
   void cb_Status(void);
   void cb_3dClick(void);
 
+  void cb_StatusWindow(void);
+  void cb_DetailsClose(void);
+  void cb_DetailsChanged(void);
+  void relayoutViewStack(void);
+
+  void cb_ToggleNotes(void);
+  void cb_ShowNotes(void);
+  void cb_NotesUpdate(void);
+  void cb_NotesRevert(void);
+  void cb_NotesChanged(void);
+  void setNotesButtonsEnabled(bool enabled);
+
   void cb_New(void);
   void cb_Load(void);
   void cb_Load_Ps3d(void);
+  void cb_Load_Scad(void);
   void cb_Save(void);
   void cb_SaveAs(void);
   void cb_Convert(void);
@@ -307,8 +357,9 @@ public:
   void cb_Quit(void);
   void cb_About(void);
   void cb_Help(void);
+  void cb_SolverTypeHelp(void);
+  void cb_SortByHelp(void);
   void cb_Config(void);
-  void cb_Coment(void);
   void cb_Toggle3D(void);
   void cb_SolProbSel(LBlockListGroup_c* reason);
 
@@ -316,7 +367,7 @@ public:
   void cb_ImageExport(void);
   void cb_ImageExportVector(void);
   void cb_STLExport(void);
-  void cb_StatusWindow(void);
+  void cb_Export_Scad(void);
 
   void cb_SortSolutions(unsigned int by);
   void cb_DeleteSolutions(unsigned int which);

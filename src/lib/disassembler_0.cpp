@@ -93,6 +93,9 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
   /* while there are nodes left we should look at */
   while (!openlist[curListFront].empty()) {
 
+    if (aborted())
+      return 0;
+
     /* remove the node from the open list and start examining */
     disassemblerNode_c * node = openlist[curListFront].front();
     openlist[curListFront].pop();
@@ -102,7 +105,7 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
 
     disassemblerNode_c * st;
 
-    while ((st = find())) {
+    while ((st = find()) && !aborted()) {
 
       /* check the different fronts and also try to insert into the new
        * front, if it is known in either front, ...

@@ -39,6 +39,7 @@
 #include <FL/Fl_Round_Button.H>
 #include <FL/Fl_Roller.H>
 #include <FL/Fl_Input.H>
+#include <FL/Fl_Multiline_Input.H>
 #include <FL/Fl_Output.H>
 #include <FL/Fl_Value_Output.H>
 #include <FL/Fl_Value_Input.H>
@@ -50,10 +51,15 @@
 #include <FL/Fl_Menu_Bar.H>
 #include <FL/Fl_Scroll.H>
 #include <FL/Fl_Progress.H>
+#include <FL/Fl_Text_Editor.H>
+#include <FL/Fl_Text_Buffer.H>
 
 #pragma GCC diagnostic pop
 
+#include <stdlib.h>
 #include <vector>
+#include <memory>
+#include <string>
 
 class layoutable_c {
 
@@ -90,14 +96,25 @@ private:
    */
   int _minWidth, _minHeight;
 
+  /* when the parent is smaller than the preferred size, columns/rows
+   * shrink toward these floors (0 = do not shrink below preferred).
+   * Lower _shrinkPrioX/Y values shrink first.
+   */
+  int _shrinkMinWidth, _shrinkMinHeight;
+  unsigned char _shrinkPrioX, _shrinkPrioY;
+
 public:
 
-  layoutable_c(int gx = 0, int gy = 0, int gw = 1, int gh = 1) : _gridX(gx), _gridY(gy), _gridW(gw), _gridH(gh), _stretchX(STRETCH), _stretchY(STRETCH), _pitch(0), _weightX(0), _weightY(0), _minWidth(0), _minHeight(0) {}
+  layoutable_c(int gx = 0, int gy = 0, int gw = 1, int gh = 1) : _gridX(gx), _gridY(gy), _gridW(gw), _gridH(gh), _stretchX(STRETCH), _stretchY(STRETCH), _pitch(0), _weightX(0), _weightY(0), _minWidth(0), _minHeight(0), _shrinkMinWidth(0), _shrinkMinHeight(0), _shrinkPrioX(128), _shrinkPrioY(128) {}
 
   virtual ~layoutable_c(void) {}
 
   int getMinWidth(void) const { return _minWidth; }
   int getMinHeight(void) const { return _minHeight; }
+  int getShrinkMinWidth(void) const { return _shrinkMinWidth; }
+  int getShrinkMinHeight(void) const { return _shrinkMinHeight; }
+  unsigned char getShrinkPrioX(void) const { return _shrinkPrioX; }
+  unsigned char getShrinkPrioY(void) const { return _shrinkPrioY; }
   unsigned char getPitch(void) const { return _pitch; }
   unsigned char getWeightX(void) const { return _weightX; }
   unsigned char getWeightY(void) const { return _weightY; }
@@ -161,18 +178,29 @@ public:
     _minWidth = minWidth;
     _minHeight = minHeight;
   }
+
+  void setShrinkMinSize(unsigned int minWidth, unsigned int minHeight) {
+    _shrinkMinWidth = minWidth;
+    _shrinkMinHeight = minHeight;
+  }
+
+  void shrinkPrio(unsigned char x, unsigned char y) {
+    _shrinkPrioX = x;
+    _shrinkPrioY = y;
+  }
 };
 
 class layouter_c : public Fl_Group, public layoutable_c {
 
   private:
 
-    bool minsizeValid;
-    int mw, mh;
+    bool minsizeValid = false;
+    int mw = 0, mh = 0;
 
   public:
 
   virtual void getMinSize(int *width, int *height) const;
+  void getShrinkMinSize(int *width, int *height) const;
 
   void calcLayout(int task, std::vector<int> *widths, std::vector<int> *heights,
                   std::vector<int> *widgetsW, std::vector<int> *widgetsH, int targetW = 0, int tagetH = 0) const;
@@ -180,12 +208,18 @@ class layouter_c : public Fl_Group, public layoutable_c {
   virtual void resize(int x, int y, int w, int h);
 
   layouter_c(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Group(0, 0, 100, 100),
-              layoutable_c(x, y, w, h), minsizeValid(false) {}
+              layoutable_c(x, y, w, h), minsizeValid(false), mw(0), mh(0) {}
 
+  // cppcheck-suppress duplInheritedMember
   void remove(Fl_Widget &w);
+  // cppcheck-suppress duplInheritedMember
   void remove(Fl_Widget *w);
+  // cppcheck-suppress duplInheritedMember
   void add(Fl_Widget &w);
+  // cppcheck-suppress duplInheritedMember
   void add(Fl_Widget *w);
+
+  void invalidateMinSize(void);
 };
 
 /* now some basic widgets made layoutable */
@@ -355,6 +389,94 @@ class LFl_Input : public Fl_Input, public layoutable_c {
   }
 };
 
+class LFl_Multiline_Input : public Fl_Multiline_Input, public layoutable_c {
+
+  public:
+
+  LFl_Multiline_Input(int x = 0, int y = 0, int w = 1, int h = 1)
+    : Fl_Multiline_Input(0, 0, 0, 0), layoutable_c(x, y, w, h) {
+    tab_nav(0);
+  }
+
+  int handle(int event) {
+    if (event == FL_MOUSEWHEEL) {
+      if (!Fl::event_inside(this))
+        return 0;
+      int dy = Fl::event_dy();
+      if (dy != 0) {
+        fl_font(textfont(), textsize());
+        int step = fl_height();
+        if (step < 1)
+          step = 16;
+        int ny = yscroll() + dy * step;
+        if (ny < 0)
+          ny = 0;
+        yscroll(ny);
+      }
+      return 1;
+    }
+    return Fl_Multiline_Input::handle(event);
+  }
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 30;
+    *height = 20;
+  }
+};
+
+/* Wrapping multiline editor with built-in scrollbars. value() matches Fl_Input. */
+class LFl_Text_Editor : public Fl_Text_Editor, public layoutable_c {
+
+  std::unique_ptr<Fl_Text_Buffer> buf;
+  mutable std::string textCache;
+  bool suppressCb;
+
+  static void modified_cb(int, int nInserted, int nDeleted, int, const char *, void *v) {
+    LFl_Text_Editor *e = (LFl_Text_Editor *)v;
+    if (e->suppressCb)
+      return;
+    if ((nInserted || nDeleted) && (e->when() & FL_WHEN_CHANGED))
+      e->do_callback();
+  }
+
+  public:
+
+  LFl_Text_Editor(int x = 0, int y = 0, int w = 1, int h = 1)
+    : Fl_Text_Editor(0, 0, 100, 100), layoutable_c(x, y, w, h),
+      buf(std::make_unique<Fl_Text_Buffer>()), suppressCb(false) {
+    buffer(buf.get());
+    wrap_mode(WRAP_AT_BOUNDS, 0);
+    scrollbar_align(FL_ALIGN_RIGHT);
+    box(FL_DOWN_BOX);
+    textfont(FL_HELVETICA);
+    textsize(FL_NORMAL_SIZE);
+    buf->add_modify_callback(modified_cb, this);
+  }
+
+  ~LFl_Text_Editor() {
+    buf->remove_modify_callback(modified_cb, this);
+    buffer(0);
+  }
+
+  const char *value() const {
+    char * t = buf->text();
+    textCache = t ? t : "";
+    free(t);
+    return textCache.c_str();
+  }
+
+  void value(const char *s) {
+    suppressCb = true;
+    buf->text(s ? s : "");
+    suppressCb = false;
+  }
+
+  virtual void getMinSize(int *width, int *height) const {
+    *width = 30;
+    *height = 20;
+  }
+};
+
 class LFl_Output : public Fl_Output, public layoutable_c {
 
   public:
@@ -471,13 +593,25 @@ class LFl_Double_Window : public Fl_Double_Window {
   layouter_c * lay;
   bool res;
   bool placed;
+  bool customMinRange;
+  int minRangeW, minRangeH;
 
   public:
 
-  LFl_Double_Window(bool resizab) : Fl_Double_Window(10, 10), res(resizab), placed(false) {
+  LFl_Double_Window(bool resizab) : Fl_Double_Window(10, 10), res(resizab), placed(false), customMinRange(false), minRangeW(0), minRangeH(0) {
     lay = new layouter_c();
     lay->resize(0, 0, 10, 10);
     resizable(lay);
+  }
+
+  /* allow this window to shrink below the layout's preferred minimum.
+   * used so the main window can clip content on the right instead of
+   * being blocked by the 3d view's preferred size.
+   */
+  void setResizeMin(int minW, int minH) {
+    customMinRange = true;
+    minRangeW = minW;
+    minRangeH = minH;
   }
 
   void show(void);
@@ -487,6 +621,7 @@ class LFl_Double_Window : public Fl_Double_Window {
     Fl_Double_Window::resize(x, y, w, h);
   }
 
+  // cppcheck-suppress duplInheritedMember
   void begin() {
     lay->begin();
   }
@@ -500,6 +635,8 @@ class LFl_Tabs : public Fl_Tabs, public layoutable_c {
 
     virtual void getMinSize(int *width, int *height) const;
     virtual void resize(int x, int y, int w, int h);
+
+    int tabStripHeight() const;
 };
 
 class LFl_Menu_Bar : public Fl_Menu_Bar, public layoutable_c {

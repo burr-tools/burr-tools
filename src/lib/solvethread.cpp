@@ -25,6 +25,7 @@
 #include "puzzle.h"
 #include "assembly.h"
 #include "disassembler_0.h"
+#include "disassembler_factory.h"
 #include "solution.h"
 
 void solveThread_c::run(void){
@@ -49,7 +50,8 @@ void solveThread_c::run(void){
       /* otherwise we have to create a new one
        */
       action = solveThread_c::ACT_PREPARATION;
-      a = puzzle.getPuzzle().getGridType()->findAssembler(puzzle);
+      std::unique_ptr<assembler_c> new_assm = puzzle.getPuzzle().getGridType()->findAssembler(puzzle);
+      a = new_assm.get();
       assm.store(a, std::memory_order_release);
 
       errState = a->createMatrix(parameters & PAR_KEEP_MIRROR, parameters & PAR_KEEP_ROTATIONS, parameters & PAR_COMPLETE_ROTATIONS);
@@ -60,7 +62,6 @@ void solveThread_c::run(void){
         action = solveThread_c::ACT_ERROR;
 
         assm.store(0, std::memory_order_release);
-        delete a;
         return;
       }
 
@@ -77,8 +78,9 @@ void solveThread_c::run(void){
        * also restores the assembler state to a state that might
        * be saved within the problem
        */
-      errState = puzzle.setAssembler(a);
+      errState = puzzle.setAssembler(std::move(new_assm));
       if (errState != assembler_c::ERR_NONE) {
+        assm.store(0, std::memory_order_release);
         action = solveThread_c::ACT_ERROR;
         return;
       }
@@ -122,15 +124,23 @@ action(ACT_PREPARATION),
 puzzle(puz),
 parameters(par),
 sortMethod(SRT_COMPLETE_MOVES),
+solverType(SOLVER_CLASSIC),
 liveSort(-1),
 solutionLimit(10),
 solutionDrop(1),
-disassm(0),
+disassm(nullptr),
 assm(0)
 {
 
   if (par & PAR_DISASSM)
-    disassm = new disassembler_0_c(puz);
+    disassm = createDisassembler(puz, (par & PAR_CHECK_ROTATIONS) != 0, solverType);
+}
+
+void solveThread_c::setSolverType(solverType_e type) {
+  solverType = type;
+  if (parameters & PAR_DISASSM) {
+    disassm = createDisassembler(puzzle, (parameters & PAR_CHECK_ROTATIONS) != 0, solverType);
+  }
 }
 
 solveThread_c::~solveThread_c(void) {
@@ -141,16 +151,13 @@ solveThread_c::~solveThread_c(void) {
    * code did - it relied on the base destructor to join, but the base stop()
    * is a no-op and by then this override is gone) was a use-after-free.
    */
-  stop();
+  stopInternal();
   joinThread();
 
-  if (disassm) {
-    delete disassm;
-    disassm = 0;
-  }
+  disassm.reset();
 }
 
-bool solveThread_c::assembly(assembly_c * a) {
+bool solveThread_c::assembly(std::unique_ptr<assembly_c> a) {
 
   enum {
     SOL_COUNT_ASM,
@@ -165,14 +172,11 @@ bool solveThread_c::assembly(assembly_c * a) {
 
   switch(_solutionAction) {
   case SOL_COUNT_ASM:
-    delete a;
     break;
   case SOL_SAVE_ASM:
 
     if (puzzle.getNumAssemblies() % (solutionDrop*dropMultiplicator) == 0)
-      puzzle.addSolution(a);
-    else
-      delete a;
+      puzzle.addSolution(a.release());
 
     break;
 
@@ -186,7 +190,7 @@ bool solveThread_c::assembly(assembly_c * a) {
 
         // only one piece, that is always a solution, so increment number
         // of solutions but save only the assembly
-        puzzle.addSolution(a);
+        puzzle.addSolution(a.release());
         puzzle.incNumSolutions();
 
         break;
@@ -194,29 +198,25 @@ bool solveThread_c::assembly(assembly_c * a) {
 
       // try to disassemble
       action = ACT_DISASSEMBLING;
-      separation_c * s = disassm->disassemble(a);
+      std::unique_ptr<separation_c> s = disassm->disassemble(a.get());
       action = ACT_ASSEMBLING;
 
       // check, if we found a disassembly sequence
       if (!s) {
-        // no disassembly sequence found, delete assembly
-        delete a;
-
+        // no disassembly sequence found
         break;
       }
 
       // if the user wants to save the solution, do it
       if (_solutionAction != SOL_DISASM) {
-
-        // if not, delete disassembly AND assembly
-        delete s;
-        delete a;
-
         // yes, the puzzle is disassembable count solutions
         puzzle.incNumSolutions();
 
         break;
       }
+
+      if (parameters & PAR_CHECK_ROTATIONS)
+        puzzle.setSolutionsWithRotations(true);
 
       // find the place to insert and insert the new solution so that
       // they are sorted by the complexity of the disassembly
@@ -233,6 +233,35 @@ bool solveThread_c::assembly(assembly_c * a) {
       std::unique_lock<std::recursive_mutex> solGuard = puzzle.lockSolutions();
 
       switch(sortMethod) {
+        case SRT_ROTATIONS:
+          {
+            unsigned int rots = s->sumRotations();
+
+            for (unsigned int i = 0; i < puzzle.getNumberOfSavedSolutions(); i++) {
+
+              const disassembly_c * s2 = puzzle.getSavedSolution(i)->getDisassembly();
+
+              if (s2 && s2->sumRotations() > rots) {
+                if (parameters & PAR_DROP_DISASSEMBLIES) {
+                  puzzle.addSolution(a.release(), new separationInfo_c(s.get()), i);
+                } else
+                  puzzle.addSolution(a.release(), s.release(), i);
+                ins = true;
+                break;
+              }
+            }
+
+            if (!ins) {
+              if (parameters & PAR_DROP_DISASSEMBLIES) {
+                puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
+              } else
+                puzzle.addSolution(a.release(), s.release());
+            }
+
+            if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit))
+              puzzle.removeSolution(0);
+          }
+          break;
         case SRT_COMPLETE_MOVES:
           {
             unsigned int lev = s->sumMoves();
@@ -243,10 +272,9 @@ bool solveThread_c::assembly(assembly_c * a) {
 
               if (s2 && s2->sumMoves() > lev) {
                 if (parameters & PAR_DROP_DISASSEMBLIES) {
-                  puzzle.addSolution(a, new separationInfo_c(s), i);
-                  delete s;
+                  puzzle.addSolution(a.release(), new separationInfo_c(s.get()), i);
                 } else
-                  puzzle.addSolution(a, s, i);
+                  puzzle.addSolution(a.release(), s.release(), i);
                 ins = true;
                 break;
               }
@@ -255,10 +283,9 @@ bool solveThread_c::assembly(assembly_c * a) {
 
           if (!ins) {
             if (parameters & PAR_DROP_DISASSEMBLIES) {
-              puzzle.addSolution(a, new separationInfo_c(s));
-              delete s;
+              puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
             } else
-              puzzle.addSolution(a, s);
+              puzzle.addSolution(a.release(), s.release());
           }
 
           // remove the front most solution, if we only want to save
@@ -274,12 +301,11 @@ bool solveThread_c::assembly(assembly_c * a) {
 
               const disassembly_c * s2 = puzzle.getSavedSolution(i)->getDisassemblyInfo();
 
-              if (s2 && (s2->compare(s) > 0)) {
+              if (s2 && (s2->compare(s.get()) > 0)) {
                 if (parameters & PAR_DROP_DISASSEMBLIES) {
-                  puzzle.addSolution(a, new separationInfo_c(s), i);
-                  delete s;
+                  puzzle.addSolution(a.release(), new separationInfo_c(s.get()), i);
                 } else
-                  puzzle.addSolution(a, s, i);
+                  puzzle.addSolution(a.release(), s.release(), i);
                 ins = true;
                 break;
               }
@@ -287,10 +313,9 @@ bool solveThread_c::assembly(assembly_c * a) {
 
             if (!ins)  {
               if (parameters & PAR_DROP_DISASSEMBLIES) {
-                puzzle.addSolution(a, new separationInfo_c(s));
-                delete s;
+                puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
               } else
-                puzzle.addSolution(a, s);
+                puzzle.addSolution(a.release(), s.release());
             }
           }
 
@@ -305,13 +330,9 @@ bool solveThread_c::assembly(assembly_c * a) {
           /* only save every solutionDrop-th solution */
           if (puzzle.getNumSolutions() % (solutionDrop * dropMultiplicator) == 0) {
             if (parameters & PAR_DROP_DISASSEMBLIES) {
-              puzzle.addSolution(a, new separationInfo_c(s));
-              delete s;
+              puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
             } else
-              puzzle.addSolution(a, s);
-          } else {
-            delete a;
-            delete s;
+              puzzle.addSolution(a.release(), s.release());
           }
 
           break;
@@ -351,7 +372,7 @@ bool solveThread_c::assembly(assembly_c * a) {
   return true;
 }
 
-void solveThread_c::stop(void) {
+void solveThread_c::stopInternal(void) {
 
   if ((action != ACT_ASSEMBLING) &&
       (action != ACT_REDUCE) &&
@@ -365,7 +386,14 @@ void solveThread_c::stop(void) {
   if (puzzle.getAssembler())
     puzzle.getAssembler()->stop();
 
+  if (disassm)
+    disassm->stop();
+
   stopPressed = true;
+}
+
+void solveThread_c::stop(void) {
+  stopInternal();
 }
 
 bool solveThread_c::start(bool stop_after_prep) {

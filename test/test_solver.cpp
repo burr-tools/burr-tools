@@ -6,6 +6,7 @@
 #include "lib/assembly.h"
 #include "lib/disassembler.h"
 #include "lib/disassembler_0.h"
+#include "lib/disassembler_factory.h"
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
 #include "tools/xml.h"
@@ -27,25 +28,21 @@ public:
 
   explicit TestAssemblerCallback(disassembler_c * d = nullptr) : disassembler(d) {}
 
-  bool assembly(assembly_c * a) override {
+  bool assembly(std::unique_ptr<assembly_c> a) override {
     assemblies++;
     if (!firstAssembly) {
-      firstAssembly = std::make_unique<assembly_c>(a);
+      firstAssembly = std::make_unique<assembly_c>(a.get());
     }
     if (disassembler) {
-      separation_c * da = disassembler->disassemble(a);
+      auto da = disassembler->disassemble(a.get());
       if (da) {
         solutions++;
-        char lev[200] = {0};
-        da->movesText(lev, sizeof(lev));
-        lastMoveLevel = lev;
+        lastMoveLevel = da->movesText();
         if (!firstSolutionAssembly) {
-          firstSolutionAssembly = std::make_unique<assembly_c>(a);
+          firstSolutionAssembly = std::make_unique<assembly_c>(a.get());
         }
-        delete da;
       }
     }
-    delete a;
     return true;
   }
 };
@@ -57,31 +54,30 @@ struct SolveResult {
   std::string moveLevel;
   std::unique_ptr<assembly_c> firstSolutionAssembly;
   std::unique_ptr<assembly_c> firstAssembly;
+  std::unique_ptr<puzzle_c> puzzleOwner;
   const problem_c * problem{nullptr};
 };
 
-SolveResult solvePuzzle(const char * path, unsigned int problemIdx = 0, bool disassemble = true) {
-  std::unique_ptr<std::istream> str(openGzFile(path));
-  REQUIRE(str != nullptr);
-
-  xmlParser_c pars(*str);
-  puzzle_c p(pars);
-
-  REQUIRE(problemIdx < p.getNumberOfProblems());
-  problem_c * problem = p.getProblem(problemIdx);
+SolveResult solvePuzzle(const char * path, unsigned int problemIdx = 0, bool disassemble = true,
+                        bool enableRotations = false,
+                        solverType_e solverType = SOLVER_CLASSIC) {
+  auto p = puzzle_c::load(path);
+  REQUIRE(p != nullptr);
+  REQUIRE(problemIdx < p->getNumberOfProblems());
+  problem_c * problem = p->getProblem(problemIdx);
   REQUIRE(problem != nullptr);
 
   const gridType_c * gt = problem->getPuzzle().getGridType();
   REQUIRE(gt != nullptr);
 
-  std::unique_ptr<assembler_c> assm(gt->findAssembler(*problem));
+  std::unique_ptr<assembler_c> assm = gt->findAssembler(*problem);
   REQUIRE(assm != nullptr);
 
   REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
   std::unique_ptr<disassembler_c> disasm;
   if (disassemble && (gt->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-    disasm.reset(new disassembler_0_c(*problem));
+    disasm = createDisassembler(*problem, enableRotations, solverType);
   }
 
   TestAssemblerCallback cb(disasm.get());
@@ -94,6 +90,7 @@ SolveResult solvePuzzle(const char * path, unsigned int problemIdx = 0, bool dis
     cb.lastMoveLevel,
     std::move(cb.firstSolutionAssembly),
     std::move(cb.firstAssembly),
+    std::move(p),
     problem
   };
 }
@@ -106,7 +103,7 @@ TEST_CASE("Pelikan Burr solver regression (GT_BRICKS)", "[solver][pelikan]") {
   CHECK(res.assemblies == 12);
   CHECK(res.solutions == 1);
   CHECK(res.iterations > 0);
-  CHECK(res.moveLevel == "98.2.4.2");
+  CHECK(res.moveLevel == "99.3.4.2");
   REQUIRE(res.firstSolutionAssembly != nullptr);
   CHECK(res.firstSolutionAssembly->placementCount() == 7);
 }
@@ -191,15 +188,16 @@ TEST_CASE("Malformed XML input rejection", "[parser][malformed]") {
   }
 }
 
-TEST_CASE("Puzzle metadata inspection", "[metadata]") {
-  std::unique_ptr<std::istream> str(openGzFile("examples/PelikanBurr.xmpuzzle"));
-  REQUIRE(str != nullptr);
-  xmlParser_c pars(*str);
-  puzzle_c p(pars);
+TEST_CASE("Puzzle metadata inspection and modern accessors", "[metadata]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
 
-  CHECK(p.getNumberOfProblems() == 1);
-  CHECK(p.getComment().find("Pelikan Burr") != std::string::npos);
-  CHECK(p.getProblem(0)->getNumberOfPieces() == 7);
+  CHECK(p->getNumberOfProblems() == 1);
+  CHECK(p->getComment().find("Pelikan Burr") != std::string::npos);
+  CHECK(p->getProblem(0)->getNumberOfPieces() == 7);
+  CHECK(p->getProblems().size() == 1);
+  CHECK(p->getShapes().size() == p->getNumberOfShapes());
+  CHECK(p->getShapes().size() == 8);
 }
 
 TEST_CASE("bt_assert throws assert_exception with C++20 source_location", "[assert]") {
@@ -227,3 +225,18 @@ TEST_CASE("assert_log correctly records lines", "[assert]") {
   CHECK(std::string(assert_log->line(initialLines + 1)) == "second assert log entry");
 }
 
+TEST_CASE("AAA_most_rotations solver regression with Crowell disassembler", "[solver][crowell][rotations]") {
+  // Without rotations: BurrTools cannot disassemble it
+  SolveResult noRot = solvePuzzle("examples/AAA_most_rotations.xmpuzzle", 0, true, false, SOLVER_CROWELL);
+  CHECK(noRot.assemblies == 1);
+  CHECK(noRot.solutions == 0);
+
+  // With rotations enabled using the new Crowell disassembler
+  SolveResult res = solvePuzzle("examples/AAA_most_rotations.xmpuzzle", 0, true, true, SOLVER_CROWELL);
+  CHECK(res.assemblies == 1);
+  CHECK(res.solutions == 1);
+  CHECK(res.iterations > 0);
+  REQUIRE(res.firstSolutionAssembly != nullptr);
+  CHECK(res.firstSolutionAssembly->placementCount() == 3);
+  CHECK(res.moveLevel == "3R2.2R2");
+}

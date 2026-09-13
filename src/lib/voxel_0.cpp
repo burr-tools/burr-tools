@@ -76,8 +76,7 @@ bool voxel_0_c::transform(unsigned int nr) {
   int nsy = abs(ty)+1;
   int nsz = abs(tz)+1;
 
-  voxel_type * s = new voxel_type[nsx*nsy*nsz];
-  memset(s, VX_EMPTY, nsx*nsy*nsz);
+  std::vector<voxel_type> s(nsx*nsy*nsz, VX_EMPTY);
 
   unsigned int index = 0;
   for (unsigned int z = 0; z < sz; z++)
@@ -97,8 +96,7 @@ bool voxel_0_c::transform(unsigned int nr) {
         index++;
       }
 
-  delete [] space;
-  space = s;
+  space = std::move(s);
 
   sx = nsx;
   sy = nsy;
@@ -205,7 +203,7 @@ bool voxel_0_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, in
 
 void voxel_0_c::scale(unsigned int amount, bool grid)
 {
-  voxel_type * s2 = new voxel_type[sx*amount*sy*amount*sz*amount];
+  std::vector<voxel_type> s2(sx*amount*sy*amount*sz*amount);
 
   for (unsigned int x = 0; x < sx; x++)
     for (unsigned int y = 0; y < sy; y++)
@@ -236,8 +234,7 @@ void voxel_0_c::scale(unsigned int amount, bool grid)
                     s2[(x*amount+ax) + (sx*amount) * ((y*amount+ay) + (sy*amount) * (z*amount+az))] = 0;
               }
 
-  delete [] space;
-  space = s2;
+  space = std::move(s2);
 
   sx *= amount;
   sy *= amount;
@@ -282,15 +279,14 @@ bool voxel_0_c::scaleDown(unsigned char by, bool action) {
             unsigned int nsy = sy/by;
             unsigned int nsz = sz/by;
 
-            voxel_type * s2 = new voxel_type[nsx*nsy*nsz];
+            std::vector<voxel_type> s2(nsx*nsy*nsz);
 
             for (unsigned int x = 0; x < nsx; x++)
               for (unsigned int y = 0; y < nsy; y++)
                 for (unsigned int z = 0; z < nsz; z++)
                   s2[x + nsx * (y + nsy * z)] = get2(x*by, y*by, z*by);
 
-            delete [] space;
-            space = s2;
+            space = std::move(s2);
 
             sx = nsx;
             sy = nsy;

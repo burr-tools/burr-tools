@@ -28,7 +28,9 @@
 #include "bt_assert.h"
 
 #include <deque>
+#include <memory>
 #include <vector>
+#include <string>
 
 class xmlWriter_c;
 class xmlParser_c;
@@ -46,16 +48,25 @@ class disassembly_c
     virtual ~disassembly_c(void) {}
 
     /**
-     * the number of moves to completely disassemble the puzzle, including
-     * all sub separations
+     * the number of linear (slide) moves to completely disassemble the puzzle
      */
     virtual unsigned int sumMoves(void) const = 0;
+
     /**
-     * fill a string with dot separated numbers containing the moves
-     * required to disassemble the puzzle
-     * not more than len characters are written
+     * the number of rotational moves to completely disassemble the puzzle
      */
-    virtual void movesText(char * txt, int len) const = 0;
+    virtual unsigned int sumRotations(void) const { return 0; }
+
+    /**
+     * total animation / search steps (slides + rotations)
+     */
+    virtual unsigned int sumSteps(void) const { return sumMoves() + sumRotations(); }
+
+    /**
+     * return a string with dot separated numbers containing the moves
+     * required to disassemble the puzzle
+     */
+    virtual std::string movesText(void) const = 0;
 
     /**
      * compares this and the given separation, for a higher level.
@@ -79,11 +90,9 @@ class disassembly_c
     /** helper function used for "compare" to get the number of move sequences */
     virtual unsigned int getNumSequences(void) const = 0;
 
-  private:
-
     // no copying and assigning
-    disassembly_c(const disassembly_c&);
-    void operator=(const disassembly_c&);
+    disassembly_c(const disassembly_c&) = delete;
+    disassembly_c& operator=(const disassembly_c&) = delete;
 };
 
 
@@ -94,16 +103,18 @@ class disassembly_c
 class state_c {
 
   /** contains the x positions of all the pieces that are handled */
-  int *dx;
+  std::vector<int> dx;
   /** contains the y positions of all the pieces that are handled */
-  int *dy;
-  /** contains the z positions of all the pieces that are handled */
-  int *dz;
+  std::vector<int> dy;
+  std::vector<int> dz;
+  /** optional orientations; empty for legacy states without rotation moves */
+  std::vector<int> dt;
 
-#ifndef NDEBUG
-  /** we only keep the piecenumber for checking purposes */
-  unsigned int piecenumber;
-#endif
+  /** rotation that produced this state; rotPiece == (unsigned int)-1 if none.
+   *  Pivot coordinates are doubled cell-index (voxel x centre = 2x). */
+  unsigned int rotPiece;
+  int rotPivotX, rotPivotY, rotPivotZ;
+  unsigned int rotAxis, rotSense;
 
 public:
 
@@ -122,40 +133,67 @@ public:
   ~state_c();
 
   /** save into an xml node */
-  void save(xmlWriter_c & xml, unsigned int piecenumber) const;
+  /**
+   * @param includeRotationFields when false, omit <dt> and <rotation> so the
+   *        file stays readable by older BurrTools
+   */
+  void save(xmlWriter_c & xml, unsigned int piecenumber, bool includeRotationFields = false) const;
 
   /** set the position of a piece */
   void set(unsigned int piece, int x, int y, int z);
 
+  /** set position and orientation of a piece */
+  void set(unsigned int piece, int x, int y, int z, unsigned int orient);
+
   /** get the x position of a piece */
   int getX(unsigned int i) const {
-    bt_assert(i < piecenumber);
+    bt_assert(i < dx.size());
     return dx[i];
   }
   /** get the y position of a piece */
   int getY(unsigned int i) const {
-    bt_assert(i < piecenumber);
+    bt_assert(i < dy.size());
     return dy[i];
   }
   /** get the z position of a piece */
   int getZ(unsigned int i) const {
-    bt_assert(i < piecenumber);
+    bt_assert(i < dz.size());
     return dz[i];
   }
+
+  /** get the orientation of a piece (0 if none stored — older files) */
+  unsigned int getOrient(unsigned int i) const {
+    bt_assert(i < dx.size());
+    return !dt.empty() ? (unsigned int)dt[i] : 0;
+  }
+
+  /** true if this state stores orientations */
+  bool hasOrientations(void) const { return !dt.empty(); }
+
+  /**
+   * If this state was reached by a rotation, describe that move.
+   * rotPiece == (unsigned int)-1 means not a rotation arrival.
+   */
+  void setRotationArrival(unsigned int piece, int px, int py, int pz,
+                          unsigned int axis, unsigned int sense);
+  void clearRotationArrival(void);
+  bool isRotationArrival(void) const { return rotPiece != (unsigned int)-1; }
+  unsigned int getRotPiece(void) const { return rotPiece; }
+  int getRotPivotX(void) const { return rotPivotX; }
+  int getRotPivotY(void) const { return rotPivotY; }
+  int getRotPivotZ(void) const { return rotPivotZ; }
+  unsigned int getRotAxis(void) const { return rotAxis; }
+  unsigned int getRotSense(void) const { return rotSense; }
 
   /** check, if the piece is removed in this state */
   bool pieceRemoved(unsigned int i) const;
 
-#ifndef NDEBUG
-  /** on assert needs to check the piecenumber */
-  unsigned int getPiecenumber(void) const { return piecenumber; }
-#endif
-
-private:
+  /** return the piece count */
+  unsigned int getPiecenumber(void) const { return dx.size(); }
 
   // no copying and assigning
-  state_c(const state_c&);
-  void operator=(const state_c&);
+  state_c(const state_c&) = delete;
+  state_c& operator=(const state_c&) = delete;
 };
 
 
@@ -189,13 +227,13 @@ class separation_c : public disassembly_c
    * for the root node the first state represents the assembles puzzle
    * with all values 0
    */
-  std::deque <state_c *> states;
+  std::deque <std::unique_ptr<state_c>> states;
 
   /* the 2 parts the puzzle gets divided with the
    * last move. If one of this parts consists of only
    * one piece there will be a null pointer
    */
-  separation_c * removed, *left;
+  std::unique_ptr<separation_c> removed, left;
 
   /** used in movesText to find out if a branch has a move sequence longer than 1 */
   bool containsMultiMoves(void);
@@ -205,8 +243,14 @@ class separation_c : public disassembly_c
    */
   unsigned int numSequences;
 
-  /** helper function for movesTxt */
-  int movesText2(char * txt, int len) const;
+  /**
+   * Build dotted level text where each segment is steps until a *single piece*
+   * is removed. Multi-piece group splits do not emit a segment; their moves are
+   * carried into the next piece-removal (removed branch first, matching anim).
+   */
+  int movesText2(char * txt, int len, bool withRots) const;
+  int movesTextPieceRemovals(char * txt, int len, bool withRots,
+                             unsigned int carrySlides, unsigned int carryRots) const;
 
 public:
 
@@ -215,6 +259,7 @@ public:
    * and the pieces in the array pcs
    */
   separation_c(separation_c * r, separation_c * l, const std::vector<unsigned int> & pcs);
+  separation_c(std::unique_ptr<separation_c> r, std::unique_ptr<separation_c> l, const std::vector<unsigned int> & pcs);
 
   /** load a separation from an xml node */
   separation_c(xmlParser_c & pars, unsigned int pieces);
@@ -222,8 +267,9 @@ public:
   /** copy constructor */
   separation_c(const separation_c * cpy);
 
-  /* save into an xml node, please always call with just xml, the type is for internal use */
-  void save(xmlWriter_c & xml, int type = 0) const;
+  /* save into an xml node; type is for internal use (left/removed).
+   * includeRotationFields controls <dt>/<rotation> in states. */
+  void save(xmlWriter_c & xml, int type = 0, bool includeRotationFields = false) const;
 
   ~separation_c();
 
@@ -233,17 +279,23 @@ public:
    */
   unsigned int getMoves(void) const { return states.size() - 1; }
 
+  /** number of rotational steps among the moves in this separation node */
+  unsigned int getRotations(void) const;
+
+  /** number of linear (non-rotation) steps in this separation node */
+  unsigned int getSlides(void) const;
+
   /** get one state from the separation process */
   const state_c * getState(unsigned int num) const {
     bt_assert(num < states.size());
-    return states[num];
+    return states[num].get();
   }
 
   /** get the separation for the pieces that were removed */
-  const separation_c * getLeft(void) const { return left; }
+  const separation_c * getLeft(void) const { return left.get(); }
 
   /** get the separation for the pieces that were left over */
-  const separation_c * getRemoved(void) const { return removed; }
+  const separation_c * getRemoved(void) const { return removed.get(); }
 
   /**
    * add a new state to the FRONT of the current state list.
@@ -253,6 +305,7 @@ public:
    * keep in mind that the new state must have the same number
    * of pieces as all the other states
    */
+  void addstate(std::unique_ptr<state_c> st);
   void addstate(state_c *st);
 
   /** return the number of pieces that are in this separation */
@@ -264,23 +317,26 @@ public:
     return pieces[num];
   }
 
+  /** get the array with all the piece numbers that are in this separation */
+  const std::vector<unsigned int> & getPieces(void) const { return pieces; }
+
   /** 2 pieces have exchanged their place in the problem list */
   void exchangeShape(unsigned int s1, unsigned int s2);
 
   /* implementation of the base class functions */
-  virtual unsigned int getSequenceLength(unsigned int x) const;
-  virtual unsigned int getNumSequences(void) const;
-  virtual unsigned int sumMoves(void) const;
-  virtual void movesText(char * txt, int len) const { movesText2(txt, len); }
+  virtual unsigned int getSequenceLength(unsigned int x) const override;
+  virtual unsigned int getNumSequences(void) const override;
+  virtual unsigned int sumMoves(void) const override;
+  virtual unsigned int sumRotations(void) const override;
+  virtual std::string movesText(void) const override;
+  void movesText(char * txt, int len) const { movesText2(txt, len, sumRotations() > 0); }
 
   void removePieces(unsigned int from, unsigned int cnt);
   void addNonPlacedPieces(unsigned int from, unsigned int cnt);
 
-private:
-
   // no copying and assigning
-  separation_c(const separation_c&);
-  void operator=(const separation_c&);
+  separation_c(const separation_c&) = delete;
+  separation_c& operator=(const separation_c&) = delete;
 };
 
 /**
@@ -299,15 +355,21 @@ class separationInfo_c : public disassembly_c {
      *
      * example:
      * \verbatim
-       3 2 1 0 0 0 0     tree root 3 --> 2 --> 1 \endverbatim
+     *   3 2 1 0 0 0 0     tree root 3 --> 2 --> 1 \endverbatim
      *
      * another example
      *
      * \verbatim
-       3 1 1 0 0 0 1 1 0 0 0   tree root  3 --> 1 --> 1
-                                           \--> 1 --> 1 \endverbatim
+     *   3 1 1 0 0 0 1 1 0 0 0   tree root  3 --> 1 --> 1
+     *                                       \--> 1 --> 1 \endverbatim
      */
     std::vector<unsigned int> values;
+
+    /**
+     * rotation counts parallel to values: for non-zero nodes, number of
+     * rotational steps among (values[i]-1) total steps; 0 for empty markers
+     */
+    std::vector<unsigned int> rotValues;
 
     /** used in movesText to find out if a branch has a move sequence longer than 1 */
     bool containsMultiMoves(unsigned int root) const;
@@ -316,6 +378,10 @@ class separationInfo_c : public disassembly_c {
     void recursiveConstruction(const separation_c * sep);
 
     int movesText2(char * txt, int len, unsigned int idx) const;
+    int movesTextPieceRemovals(char * txt, int len, unsigned int idx,
+                               unsigned int carrySlides, unsigned int carryRots) const;
+    /** index of the node after the subtree rooted at idx */
+    unsigned int skipSubtree(unsigned int idx) const;
 
   public:
 
@@ -325,20 +391,22 @@ class separationInfo_c : public disassembly_c {
     /** create a separation info from a normal separation */
     separationInfo_c(const separation_c * sep);
 
-    /** save into an xml node */
-    void save(xmlWriter_c & xml) const;
+    /** save into an xml node; includeRotationCounts writes the "| r0 r1 …" suffix */
+    void save(xmlWriter_c & xml, bool includeRotationCounts = false) const;
 
     /* implement abstract functions */
-    virtual unsigned int sumMoves(void) const;
-    virtual void movesText(char * txt, int len) const { movesText2(txt, len, 0); }
-    virtual unsigned int getSequenceLength(unsigned int x) const;
-    virtual unsigned int getNumSequences(void) const;
+    virtual unsigned int sumMoves(void) const override;
+    virtual unsigned int sumRotations(void) const override;
+    virtual std::string movesText(void) const override;
+    void movesText(char * txt, int len) const { movesText2(txt, len, 0); }
+    virtual unsigned int getSequenceLength(unsigned int x) const override;
+    virtual unsigned int getNumSequences(void) const override;
 
   private:
 
     // no copying and assigning
-    separationInfo_c(const separationInfo_c&);
-    void operator=(const separationInfo_c&);
+    separationInfo_c(const separationInfo_c&) = delete;
+    separationInfo_c& operator=(const separationInfo_c&) = delete;
 };
 
 

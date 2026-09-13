@@ -45,28 +45,28 @@ class voxel_1_c : public voxel_c {
     voxel_1_c(const voxel_c & orig) : voxel_c(orig) { }
     voxel_1_c(const voxel_c * orig) : voxel_c(orig) { }
 
-    void transformPoint(int * x, int * y, int * z, unsigned int trans) const;
-    bool transform(unsigned int nr);
+    void transformPoint(int * x, int * y, int * z, unsigned int trans) const override;
+    bool transform(unsigned int nr) override;
 
-    void minimizePiece(void);
-    bool identicalInBB(const voxel_c * op, bool includeColors = true) const;
+    void minimizePiece(void) override;
+    bool identicalInBB(const voxel_c * op, bool includeColors = true) const override;
 
-    bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const;
+    bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const override;
 
-    virtual void scale(unsigned int amount, bool grid);
-    void resizeInclude(int & px, int & py, int & pz);
+    void scale(unsigned int amount, bool grid) override;
+    void resizeInclude(int & px, int & py, int & pz) override;
 
-    bool validCoordinate(int x, int y, int z) const;
-    bool onGrid(int x, int y, int z) const;
+    bool validCoordinate(int x, int y, int z) const override;
+    bool onGrid(int x, int y, int z) const override;
 
-    virtual void getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & faceCorners) const;
-    virtual void calculateSize(float * x, float * y, float * z) const;
-    virtual void recalcSpaceCoordinates(float * x, float * y, float * /*z*/) const;
+    void getConnectionFace(int x, int y, int z, int n, double bevel, double offset, std::vector<float> & faceCorners) const override;
+    void calculateSize(float * x, float * y, float * z) const override;
+    void recalcSpaceCoordinates(float * x, float * y, float * /*z*/) const override;
 
   private:
 
     // no copying and assigning
-    void operator=(const voxel_1_c&);
+    voxel_1_c & operator=(const voxel_1_c &) = delete;
 };
 
 #endif

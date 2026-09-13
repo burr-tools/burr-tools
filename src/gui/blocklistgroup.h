@@ -29,9 +29,9 @@ class BlockList;
 
 class LBlockListGroup_c : public Fl_Group, public layoutable_c {
 
-  Fl_Slider * Slider;
-  BlockList * List;
-  int callbackReason;
+  Fl_Slider * Slider = nullptr;
+  BlockList * List = nullptr;
+  int callbackReason = 0;
 
   public:
 

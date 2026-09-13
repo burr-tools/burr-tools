@@ -32,16 +32,14 @@ class movementCache_0_c : public movementCache_c {
 
   private:
 
-    unsigned int* moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz);
+    virtual std::vector<unsigned int> moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) override;
 
-    virtual unsigned int numDirections(void);
-    virtual void getDirection(unsigned int dir, int * x, int * y, int * z);
-
-  private:
+    virtual unsigned int numDirections(void) override;
+    virtual void getDirection(unsigned int dir, int * x, int * y, int * z) override;
 
     // no copying and assigning
-    movementCache_0_c(const movementCache_0_c&);
-    void operator=(const movementCache_0_c&);
+    movementCache_0_c(const movementCache_0_c&) = delete;
+    movementCache_0_c& operator=(const movementCache_0_c&) = delete;
 };
 
 #endif

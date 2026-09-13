@@ -324,7 +324,7 @@ public:
   /** calculate a voxelspace that is identical to the assembly with
    * all pieces put into the space
    */
-  voxel_c * createSpace(const problem_c & puz) const;
+  std::unique_ptr<voxel_c> createSpace(const problem_c & puz) const;
 
   void removePieces(unsigned int from, unsigned int cnt);
 

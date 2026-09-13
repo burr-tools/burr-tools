@@ -349,13 +349,21 @@ public:
     void draw(void);				// fltk draw() override
 
     // Child group
+    // cppcheck-suppress duplInheritedMember
     void init_sizes() { table->init_sizes(); table->redraw(); }
+    // cppcheck-suppress duplInheritedMember
     void add(Fl_Widget& w) { table->add(w); }
+    // cppcheck-suppress duplInheritedMember
     void add(Fl_Widget* w) { table->add(w); }
+    // cppcheck-suppress duplInheritedMember
     void insert(Fl_Widget& w, int n) { table->insert(w,n); }
+    // cppcheck-suppress duplInheritedMember
     void insert(Fl_Widget& w, Fl_Widget* w2) { table->insert(w,w2); }
+    // cppcheck-suppress duplInheritedMember
     void remove(Fl_Widget& w) { table->remove(w); }
+    // cppcheck-suppress duplInheritedMember
     void begin() { table->begin(); }
+    // cppcheck-suppress duplInheritedMember
     void end()
     {
         table->end();
@@ -368,14 +376,19 @@ public:
 
 	Fl_Group::current((Fl_Group*)(Fl_Group::parent()));
     }
+    // cppcheck-suppress duplInheritedMember
     Fl_Widget * const *array()
         { return(table->array()); }
+    // cppcheck-suppress duplInheritedMember
     Fl_Widget *child(int n) const
         { return(table->child(n)); }
+    // cppcheck-suppress duplInheritedMember
     int children() const
         { return(table->children()-2); }    // -2: skip Fl_Scroll's h/v scrollbar widgets
+    // cppcheck-suppress duplInheritedMember
     int find(const Fl_Widget *w) const
         { return(table->find(w)); }
+    // cppcheck-suppress duplInheritedMember
     int find(const Fl_Widget &w) const
         { return(table->find(w)); }
 

@@ -20,6 +20,8 @@
  */
 #include "imageexport.h"
 
+#include <memory>
+
 #include "image.h"
 #include "view3dgroup.h"
 #include "Layouter.h"
@@ -61,20 +63,20 @@ class ImageInfo {
     puzzle_c * puzzle;
 
     // parameters for single
-    unsigned int shape;
+    unsigned int shape = 0;
     voxelFrame_c::colorMode showColors;
 
     // parameters for assembly
-    unsigned int problem;
-    unsigned int solution;
-    bool dim;
+    unsigned int problem = 0;
+    unsigned int solution = 0;
+    bool dim = false;
 
-    disasmToMoves_c * positions;
+    std::unique_ptr<disasmToMoves_c> positions;
 
     // the image data
-    image_c * i;  // image generated with the drawer that is with a fixed hight and the required width
-    image_c * i2; // the final image
-    unsigned int i2aa;
+    std::unique_ptr<image_c> i;  // image generated with the drawer that is with a fixed hight and the required width
+    std::unique_ptr<image_c> i2; // the final image
+    unsigned int i2aa = 0;
 
     /* the openGL context to draw to */
     voxelFrame_c * vv;
@@ -85,23 +87,21 @@ class ImageInfo {
     ImageInfo(puzzle_c * p, voxelFrame_c::colorMode color,
         unsigned int s, voxelFrame_c * v) : setupFunction(SHOW_SINGLE), puzzle(p),
                                           shape(s), showColors(color),
-                                          i(new image_c(600, 200)), i2(0), vv(v) { }
+                                          positions(nullptr),
+                                          i(std::make_unique<image_c>(600, 200)), i2(nullptr), vv(v) { }
 
     /* image info for an assembly, if you don't give pos, you will get the standard assembly with
      * no piece shifted
      */
     ImageInfo(puzzle_c * p, voxelFrame_c::colorMode color, unsigned int prob,
         unsigned int sol, voxelFrame_c * v,
-        disasmToMoves_c * pos = 0, bool d = false) : setupFunction(SHOW_ASSEMBLY), puzzle(p),
+        std::unique_ptr<disasmToMoves_c> pos = nullptr, bool d = false) : setupFunction(SHOW_ASSEMBLY), puzzle(p),
                                                    showColors(color), problem(prob),
-                                                   solution(sol), dim(d), positions(pos),
-                                                   i(new image_c(600, 200)),
-                                                   i2(0), vv(v) { }
+                                                   solution(sol), dim(d), positions(std::move(pos)),
+                                                   i(std::make_unique<image_c>(600, 200)),
+                                                   i2(nullptr), vv(v) { }
 
-    ~ImageInfo() {
-      if (i) delete i;
-      if (i2) delete i2;
-    }
+    ~ImageInfo() = default;
 
     /* set up the voxelFrame_c so that is shows the information for this image */
     void setupContent(void);
@@ -119,7 +119,7 @@ class ImageInfo {
     void generateImage(unsigned int w, unsigned int h, unsigned char aa);
 
     /* returns true, if the image has been started */
-    bool imageStarted(void) { return i2; }
+    bool imageStarted(void) { return i2 != nullptr; }
 
     /* prepare for a new tile of the image */
     void prepareImage(void);
@@ -141,9 +141,9 @@ void ImageInfo::setupContent(void) {
       vv->showColors(puzzle, showColors);
 
       if (positions) {
-        vv->updatePositions(positions);
+        vv->updatePositions(positions.get());
         if (dim)
-          vv->dimStaticPieces(positions);
+          vv->dimStaticPieces(positions.get());
       }
   }
 }
@@ -171,9 +171,7 @@ bool ImageInfo::getPreviewImage(void) {
 
 /* start a new image */
 void ImageInfo::generateImage(unsigned int /*w*/, unsigned int h, unsigned char aa) {
-  if (i2)
-    delete i2;
-  i2 = new image_c ((h*3)*aa, h*aa);
+  i2 = std::make_unique<image_c>((h*3)*aa, h*aa);
   i2aa = aa;
 }
 
@@ -194,9 +192,9 @@ image_c * ImageInfo::getImage(void) {
     i2->minimizeWidth(0, i2aa);
     i2->scaleDown(i2aa);
 
-    return i2;
+    return i2.get();
   } else
-    return 0;
+    return nullptr;
 }
 
 
@@ -255,19 +253,18 @@ void imageExport_c::nextImage(bool finish) {
 
   if (i) {
 
-    snprintf(statText, 20, "save page %i", curPage);
+    snprintf(statText, 20, "save page %u", curPage);
     status->label(statText);
 
     char name[1000];
 
     if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
-      snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
+      snprintf(name, 1000, "%s/%s%03u.png", Pname->value(), Fname->value(), curPage);
     else
-      snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
+      snprintf(name, 1000, "%s%s%03u.png", Pname->value(), Fname->value(), curPage);
 
     i->saveToPNG(name);
-    delete i;
-    i = 0;
+    i.reset();
   }
 
   if (!finish) {
@@ -276,9 +273,9 @@ void imageExport_c::nextImage(bool finish) {
     unsigned int pageWidth = atoi(SizePixelX->value());
 
     if (BgWhite->value()) {
-      i = new image_c(pageWidth, pageHeight, 255, 255, 255, 255);
+      i = std::make_unique<image_c>(pageWidth, pageHeight, 255, 255, 255, 255);
     } else {
-      i = new image_c(pageWidth, pageHeight, 0, 0, 0, 0);
+      i = std::make_unique<image_c>(pageWidth, pageHeight, 0, 0, 0, 0);
     }
   }
 }
@@ -413,12 +410,12 @@ void imageExport_c::cb_Export(void) {
 
   if (ExpShape->value()) {
 
-    images.push_back(new ImageInfo(puzzle, getColorMode(),
+    images.push_back(std::make_unique<ImageInfo>(puzzle, getColorMode(),
         ShapeSelect->getSelection(), view3D->getView()));
 
   } else if (ExpAssembly->value()) {
 
-    images.push_back(new ImageInfo(puzzle, getColorMode(),
+    images.push_back(std::make_unique<ImageInfo>(puzzle, getColorMode(),
         ProblemSelect->getSelection(), 0, view3D->getView()));
 
   } else if (ExpSolutionDisassm->value()) {
@@ -431,11 +428,11 @@ void imageExport_c::cb_Export(void) {
     separation_c * t = pr->getSavedSolution(s)->getDisassembly();
     if (!t) return;
 
-    for (unsigned int step = 0; step < t->sumMoves(); step++) {
-      disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, pr->getNumberOfPieces());
+    for (unsigned int step = 0; step < t->sumSteps(); step++) {
+      auto dtm = std::make_unique<disasmToMoves_c>(t, 20, pr->getNumberOfPieces());
       dtm->setStep(step, false, true);
-      images.push_back(new ImageInfo(puzzle, getColorMode(),
-           prob, s, view3D->getView(), dtm, DimStatic->value()));
+      images.push_back(std::make_unique<ImageInfo>(puzzle, getColorMode(),
+           prob, s, view3D->getView(), std::move(dtm), DimStatic->value()));
     }
 
   } else if (ExpSolution->value()) {
@@ -448,17 +445,17 @@ void imageExport_c::cb_Export(void) {
     separation_c * t = pr->getSavedSolution(s)->getDisassembly();
     if (!t) return;
 
-    for (unsigned int step = t->sumMoves() - 1; step > 0; step--) {
-      disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, pr->getNumberOfPieces());
+    for (unsigned int step = t->sumSteps() - 1; step > 0; step--) {
+      auto dtm = std::make_unique<disasmToMoves_c>(t, 20, pr->getNumberOfPieces());
       dtm->setStep(step, false, true);
-      images.push_back(new ImageInfo(puzzle, getColorMode(),
-           prob, s, view3D->getView(), dtm, DimStatic->value()));
+      images.push_back(std::make_unique<ImageInfo>(puzzle, getColorMode(),
+           prob, s, view3D->getView(), std::move(dtm), DimStatic->value()));
     }
 
-    disasmToMoves_c * dtm = new disasmToMoves_c(t, 20, pr->getNumberOfPieces());
+    auto dtm = std::make_unique<disasmToMoves_c>(t, 20, pr->getNumberOfPieces());
     dtm->setStep(0, false, true);
-    images.push_back(new ImageInfo(puzzle, getColorMode(),
-          prob, s, view3D->getView(), dtm, false));
+    images.push_back(std::make_unique<ImageInfo>(puzzle, getColorMode(),
+          prob, s, view3D->getView(), std::move(dtm), false));
 
   } else if (ExpProblem->value()) {
     // generate an image for each piece in the problem
@@ -466,11 +463,11 @@ void imageExport_c::cb_Export(void) {
     problem_c * pr = puzzle->getProblem(prob);
 
     if (pr->resultValid())
-      images.push_back(new ImageInfo(puzzle, getColorMode(),
+      images.push_back(std::make_unique<ImageInfo>(puzzle, getColorMode(),
             pr->getResultId(), view3D->getView()));
 
     for (unsigned int p = 0; p < pr->getNumberOfParts(); p++)
-      images.push_back(new ImageInfo(puzzle, getColorMode(),
+      images.push_back(std::make_unique<ImageInfo>(puzzle, getColorMode(),
             pr->getShapeIdOfPart(p), view3D->getView()));
 
   } else
@@ -582,7 +579,7 @@ void imageExport_c::cb_SzUpdate(void) {
   }
 }
 
-imageExport_c::imageExport_c(puzzle_c * p) : LFl_Double_Window(false), puzzle(p), working(false), state(0), i(0) {
+imageExport_c::imageExport_c(puzzle_c * p) : LFl_Double_Window(false), puzzle(p), working(false), state(0), i(nullptr) {
 
   label("Export Images");
 
@@ -793,4 +790,6 @@ void imageExport_c::update(void) {
     }
   }
 }
+
+imageExport_c::~imageExport_c(void) = default;
 

@@ -154,16 +154,21 @@ void gzstreambase::close() {
 }
 
 
-std::istream * openGzFile(const char * name)
+std::unique_ptr<std::istream> openGzFile(const char * name)
 {
-  igzstream * gz = new igzstream(name);
-
-  if (!gz)
+  auto gz = std::make_unique<igzstream>(name);
+  if (!gz->rdbuf()->is_open())
   {
-    delete gz;
-    return new std::ifstream(name);
+    auto file = std::make_unique<std::ifstream>(name);
+    if (file->is_open())
+      return file;
   }
 
   return gz;
+}
+
+std::unique_ptr<std::istream> openGzFile(const std::filesystem::path & path)
+{
+  return openGzFile(path.string().c_str());
 }
 

@@ -51,6 +51,11 @@ class rotater_c {
      */
     virtual void addTransform(void) const = 0;
 
+    /* column-major 3x3, matching the matrix used by addTransform() */
+    virtual void getRotation(float m[9]) const = 0;
+    virtual void setRotation(const float m[9]) = 0;
+    virtual void resetRotation(void) = 0;
+
     virtual ~rotater_c() {};
 };
 
@@ -83,18 +88,21 @@ class arcBall_c : public rotater_c
     void clack(float x, float y);
     void drag(float x, float y);
     void addTransform(void) const;
+    void getRotation(float m[9]) const;
+    void setRotation(const float m[9]);
+    void resetRotation(void);
 
   private:
 
-    float AdjustWidth;       //Mouse bounds width
-    float AdjustHeight;      //Mouse bounds height
+    float AdjustWidth = 0.0f;       //Mouse bounds width
+    float AdjustHeight = 0.0f;      //Mouse bounds height
 
-    float StVec[3];          //Saved click vector
-    float EnVec[3];          //Saved drag vector
+    float StVec[3] = {0.0f, 0.0f, 0.0f};          //Saved click vector
+    float EnVec[3] = {0.0f, 0.0f, 0.0f};          //Saved drag vector
 
-    float LastRot[9];
+    float LastRot[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
 
-    bool mouseDown;
+    bool mouseDown = false;
 };
 
 // another way to rotate an object, the code for this method has been
@@ -107,9 +115,9 @@ class method2_c : public rotater_c {
 
     float rotation[4];
 
-    float last_x, last_y;
+    float last_x = 0.0f, last_y = 0.0f;
 
-    bool mouseDown;
+    bool mouseDown = false;
 
   public:
 
@@ -120,6 +128,9 @@ class method2_c : public rotater_c {
     void clack(float x, float y);
     void drag(float x, float y);
     void addTransform(void) const;
+    void getRotation(float m[9]) const;
+    void setRotation(const float m[9]);
+    void resetRotation(void);
 
   private:
 

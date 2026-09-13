@@ -53,8 +53,7 @@ void movementCache_c::moRehash(void) {
   moTableSize = 2*moTableSize + 1;
 
   /* allocate new table */
-  moEntry ** newHash = new moEntry * [moTableSize];
-  memset(newHash, 0, moTableSize * sizeof(moEntry*));
+  std::vector<moEntry*> newHash(moTableSize, nullptr);
 
   /* copy the elements */
   for (unsigned int i = 0; i < oldSize; i++) {
@@ -72,43 +71,33 @@ void movementCache_c::moRehash(void) {
     }
   }
 
-  /* delete the old table and make the new table the current one */
-  delete [] moHash;
-  moHash = newHash;
+  moHash = std::move(newHash);
 }
 
-movementCache_c::movementCache_c(const problem_c & puzzle) : gt(puzzle.getPuzzle().getGridType()) {
-
-  /* initial table */
-  moTableSize = 101;
-  moHash = new moEntry * [moTableSize];
-  memset(moHash, 0, moTableSize * sizeof(moEntry*));
-  moEntries = 0;
+movementCache_c::movementCache_c(const problem_c & puzzle)
+  : moHash(101, nullptr),
+    moTableSize(101),
+    moEntries(0),
+    shapes(puzzle.getNumberOfParts(), std::vector<const voxel_c*>(puzzle.getPuzzle().getGridType()->getSymmetries()->getNumTransformations(), nullptr)),
+    pieces(puzzle.getNumberOfPieces()),
+    num_shapes(puzzle.getNumberOfParts()),
+    num_transformations(puzzle.getPuzzle().getGridType()->getSymmetries()->getNumTransformations()),
+    gt(puzzle.getPuzzle().getGridType()) {
 
   /* Initialise the shape array with the shapes from the
    * puzzle problem. The shape with transformation 0 is just
    * a pointer into the puzzle, so don't delete them later on
    */
-  num_shapes = puzzle.getNumberOfParts();
-
-  num_transformations = puzzle.getPuzzle().getGridType()->getSymmetries()->getNumTransformations();
-
-  shapes = new const voxel_c ** [num_shapes];
   for (unsigned int s = 0; s < num_shapes; s++) {
-    shapes[s] = new const voxel_c * [num_transformations];
-    memset(shapes[s], 0, num_transformations * sizeof(voxel_c*));
     shapes[s][0] = puzzle.getPartShape(s);
   }
 
   /* Initialise the piece array */
-  pieces = new unsigned int [puzzle.getNumberOfPieces()];
-
   int pos = 0;
 
   for (unsigned int s = 0; s < puzzle.getNumberOfParts(); s++)
     for (unsigned int i = 0; i < puzzle.getPartMaximum(s); i++)
       pieces[pos++] = s;
-
 }
 
 movementCache_c::~movementCache_c() {
@@ -120,11 +109,9 @@ movementCache_c::~movementCache_c() {
       moEntry * e = moHash[i];
       moHash[i] = e->next;
 
-      delete [] e->move;
       delete e;
     }
   }
-  delete [] moHash;
 
   /* the shape with transformation 0 is just
    * a pointer into the puzzle, so don't delete them
@@ -135,11 +122,7 @@ movementCache_c::~movementCache_c() {
     for (unsigned int t = 1; t < num_transformations; t++)
       if (shapes[s][t])
         delete shapes[s][t];
-    delete [] shapes[s];
   }
-
-  delete [] shapes;
-  delete [] pieces;
 }
 
 const voxel_c * movementCache_c::getTransformedShape(unsigned int s, unsigned char t) {
@@ -190,5 +173,5 @@ void movementCache_c::getMoValue(int dx, int dy, int dz, unsigned char t1, unsig
   }
 
   /* return the values */
-  memcpy(movements, e->move, numDirections()*sizeof(unsigned int));
+  memcpy(movements, e->move.data(), numDirections()*sizeof(unsigned int));
 }

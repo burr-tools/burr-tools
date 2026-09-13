@@ -27,6 +27,9 @@
 #include "assembly.h"
 #include "assert.h"
 
+#include <vector>
+#include <memory>
+
 void print(const voxel_c * v, char base) {
   for (unsigned int z = 0; z < v->getZ(); z++) {
     printf(" +");
@@ -34,7 +37,7 @@ void print(const voxel_c * v, char base) {
       printf("-");
     printf("+");
   }
-  printf(" bx %i-%i by %i-%i bz %i-%i h: %i %i %i \n", v->boundX1(), v->boundX2(), v->boundY1(), v->boundY2(), v->boundZ1(), v->boundZ2(), v->getHx(), v->getHy(), v->getHz());
+  printf(" bx %u-%u by %u-%u bz %u-%u h: %i %i %i \n", v->boundX1(), v->boundX2(), v->boundY1(), v->boundY2(), v->boundZ1(), v->boundZ2(), v->getHx(), v->getHy(), v->getHz());
 
   for (unsigned int y = 0; y < v->getY(); y++) {
     for (unsigned int z = 0; z < v->getZ(); z++) {
@@ -62,7 +65,7 @@ void print(const voxel_c * v, char base) {
 void print(const puzzle_c * p) {
 
   for (unsigned int s = 0; s < p->getNumberOfShapes(); s++) {
-    printf("shape %i:\n", s);
+    printf("shape %u:\n", s);
     print(p->getShape(s));
   }
 
@@ -72,25 +75,25 @@ void print(const puzzle_c * p) {
 
     const problem_c * prob = p->getProblem(pr);
 
-    printf("problem %i (%s):\n", pr, prob->getName().c_str());
+    printf("problem %u (%s):\n", pr, prob->getName().c_str());
     if (!prob->resultValid())
       printf(" result shape: not defined\n");
     else
-      printf(" result shape: %i\n", prob->getResultId());
+      printf(" result shape: %u\n", prob->getResultId());
 
     for (unsigned int sh = 0; sh < prob->getNumberOfParts(); sh++)
       if (prob->getPartMinimum(sh) != prob->getPartMaximum(sh))
-        printf(" piece shape: %i-%i times shape number %i\n", prob->getPartMinimum(sh), prob->getPartMaximum(sh), prob->getShapeIdOfPart(sh));
+        printf(" piece shape: %u-%u times shape number %u\n", prob->getPartMinimum(sh), prob->getPartMaximum(sh), prob->getShapeIdOfPart(sh));
       else if (prob->getPartMinimum(sh) != 1)
-        printf(" piece shape: %i times shape number %i\n", prob->getPartMinimum(sh), prob->getShapeIdOfPart(sh));
+        printf(" piece shape: %u times shape number %u\n", prob->getPartMinimum(sh), prob->getShapeIdOfPart(sh));
       else
-        printf(" piece shape: %i\n", prob->getShapeIdOfPart(sh));
+        printf(" piece shape: %u\n", prob->getShapeIdOfPart(sh));
 
     printf("-------------------------------------------------------\n");
   }
 }
 
-static void print_rec(const separation_c * s, voxel_c ** pieces, int sx, int sy, int sz, unsigned int * pieceNum) {
+static void print_rec(const separation_c * s, const std::vector<std::unique_ptr<voxel_c>> & pieces, int sx, int sy, int sz, const std::vector<unsigned int> & pieceNum) {
 
   for (unsigned int i = 0; i <= s->getMoves(); i++) {
 
@@ -139,29 +142,23 @@ static void print_rec(const separation_c * s, voxel_c ** pieces, int sx, int sy,
 
   if (s->getRemoved()) {
 
-    unsigned int * pieceNum2 = new unsigned int [s->getPieceNumber()];
+    std::vector<unsigned int> pieceNum2;
 
-    int pos = 0;
     for (unsigned int i = 0; i < s->getPieceNumber(); i++)
       if (s->getState(s->getMoves())->pieceRemoved(i))
-        pieceNum2[pos++] = pieceNum[i];
+        pieceNum2.push_back(pieceNum[i]);
 
     print_rec(s->getRemoved(), pieces, sx, sy, sz, pieceNum2);
-
-    delete [] pieceNum2;
   }
   if (s->getLeft()) {
 
-    unsigned int * pieceNum2 = new unsigned int [s->getPieceNumber()];
+    std::vector<unsigned int> pieceNum2;
 
-    int pos = 0;
     for (unsigned int i = 0; i < s->getPieceNumber(); i++)
       if (!(s->getState(s->getMoves())->pieceRemoved(i)))
-        pieceNum2[pos++] = pieceNum[i];
+        pieceNum2.push_back(pieceNum[i]);
 
     print_rec(s->getLeft(), pieces, sx, sy, sz, pieceNum2);
-
-    delete [] pieceNum2;
   }
 }
 
@@ -171,29 +168,23 @@ void print(const separation_c * s, const assembly_c * a, const problem_c * p) {
 
   const voxel_c * res = getResultShape(*p);
 
-  voxel_c ** pieces = new voxel_c*[a->placementCount()];
+  std::vector<std::unique_ptr<voxel_c>> pieces(a->placementCount());
 
   unsigned int pc = 0;
 
   for (unsigned int i = 0; i < p->getNumberOfParts(); i++)
     for (unsigned int j = 0; j < p->getPartMaximum(i); j++) {
 
-      pieces[pc] = p->getPuzzle().getGridType()->getVoxel(p->getPartShape(i));
+      pieces[pc] = std::unique_ptr<voxel_c>(p->getPuzzle().getGridType()->getVoxel(p->getPartShape(i)));
       bt_assert2(pieces[pc]->transform(a->getTransformation(pc)));
       pc++;
     }
 
-  unsigned int * pieceNum = new unsigned int [a->placementCount()];
+  std::vector<unsigned int> pieceNum(a->placementCount());
   for (unsigned int i = 0; i < a->placementCount(); i++)
     pieceNum[i] = i;
 
   print_rec(s, pieces, res->getX(), res->getY(), res->getZ(), pieceNum);
-
-  for (unsigned int pc = 0; pc < a->placementCount(); pc++)
-    delete pieces[pc];
-
-  delete [] pieceNum;
-  delete [] pieces;
 }
 
 void print(const assembly_c * a, const problem_c * p) {
@@ -202,7 +193,7 @@ void print(const assembly_c * a, const problem_c * p) {
 
   const voxel_c * res = getResultShape(*p);
 
-  voxel_c ** pieces = new voxel_c*[a->placementCount()];
+  std::vector<std::unique_ptr<voxel_c>> pieces(a->placementCount());
 
   unsigned int pc = 0;
 
@@ -210,10 +201,9 @@ void print(const assembly_c * a, const problem_c * p) {
     for (unsigned int j = 0; j < p->getPartMaximum(i); j++) {
 
       if (a->isPlaced(pc)) {
-        pieces[pc] = p->getPuzzle().getGridType()->getVoxel(p->getPartShape(i));
+        pieces[pc] = std::unique_ptr<voxel_c>(p->getPuzzle().getGridType()->getVoxel(p->getPartShape(i)));
         bt_assert2(pieces[pc]->transform(a->getTransformation(pc)));
-      } else
-        pieces[pc] = 0;
+      }
 
       pc++;
     }
@@ -263,10 +253,4 @@ void print(const assembly_c * a, const problem_c * p) {
     }
   }
   printf("\n");
-
-  for (unsigned int pc = 0; pc < a->placementCount(); pc++)
-    if (pieces[pc])
-      delete pieces[pc];
-
-  delete [] pieces;
 }

@@ -21,7 +21,9 @@
 #ifndef __DISASSEMBLER_H__
 #define __DISASSEMBLER_H__
 
-class separation_c;
+#include <memory>
+#include "disassembly.h"
+
 class assembly_c;
 
 /**
@@ -48,16 +50,23 @@ public:
    * Because we can only have or don't have a disassembly sequence
    * we don't need the same complicated call-back interface. The function
    * returns either the disassembly sequence or a null pointer.
-   * you need to take care of freeing the disassembly sequence after
-   * doing with it whatever you want
    */
-  virtual separation_c * disassemble(const assembly_c * /*assembly*/) { return 0; }
+  virtual std::unique_ptr<separation_c> disassemble(const assembly_c * /*assembly*/) { return nullptr; }
+
+  /** request abort of an in-progress disassemble call */
+  virtual void stop(void) {}
+
+  /** microseconds spent in 90° rotation move search; default 0 */
+  virtual unsigned long long getRotationSearchUs(void) const { return 0; }
+
+  /** microseconds spent in sliding / linear move search; default 0 */
+  virtual unsigned long long getLinearSearchUs(void) const { return 0; }
 
 private:
 
   // no copying and assigning
-  disassembler_c(const disassembler_c&);
-  void operator=(const disassembler_c&);
+  disassembler_c(const disassembler_c&) = delete;
+  disassembler_c& operator=(const disassembler_c&) = delete;
 
 };
 

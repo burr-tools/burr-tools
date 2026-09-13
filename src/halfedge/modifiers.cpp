@@ -42,13 +42,13 @@ static void snapshotFaces(const Polyhedron & poly, triSnapshot_c & snap)
 
     Face::const_edge_circulator e = f->begin();
     Face::const_edge_circulator sentinel = e;
-    e++;
+    ++e;
     Vector3Df start = (*e)->dst()->position();
-    e++;
+    ++e;
     do
     {
       const Vector3Df & b = (*e)->dst()->position();
-      e++;
+      ++e;
       const Vector3Df & c = (*e)->dst()->position();
       const Vector3Df * v[3] = { &start, &b, &c };
       for (int k = 0; k < 3; k++)
@@ -435,7 +435,7 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
                 (p1 - p2) * n0 > tol || (p0 - p3) * n0 > tol)
             {
               faces.clear();
-              ei++;
+              ++ei;
               continue;
             }
           }
@@ -457,7 +457,7 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
         }
 
         faces.clear();
-        ei++;
+        ++ei;
       }
       while (ei != sentinel);
     }
@@ -488,7 +488,7 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
             {
               break;
             }
-            ei++;
+            ++ei;
           }
           while (ei != sentinel);
 
@@ -525,7 +525,7 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
   map<pair<Vertex*,Vertex*>,HalfEdge*>::iterator cit;
   vector<Vertex*> pts_list;
 
-  for (Polyhedron::edge_iterator eit = poly.eBegin(); eit != poly.eEnd(); eit++)
+  for (Polyhedron::edge_iterator eit = poly.eBegin(); eit != poly.eEnd(); ++eit)
   {
     if ((*eit)->twin() == 0)
     {
@@ -585,7 +585,7 @@ void fillPolyhedronHoles(Polyhedron & poly, bool fillOutsides)
 
 void scalePolyhedron(Polyhedron & poly, float val)
 {
-   for (Polyhedron::vertex_iterator it = poly.vBegin(); it != poly.vEnd(); it++)
+   for (Polyhedron::vertex_iterator it = poly.vBegin(); it != poly.vEnd(); ++it)
    {
       (*it)->position((*it)->position()*val);
    }
@@ -593,7 +593,7 @@ void scalePolyhedron(Polyhedron & poly, float val)
 
 void scalePolyhedron(Polyhedron & poly, float x, float y, float z)
 {
-   for (Polyhedron::vertex_iterator it = poly.vBegin(); it != poly.vEnd(); it++)
+   for (Polyhedron::vertex_iterator it = poly.vBegin(); it != poly.vEnd(); ++it)
    {
       const Vector3Df & p = (*it)->position();
       (*it)->position(Vector3Df(p.x()*x, p.y()*y, p.z()*z));
@@ -722,7 +722,7 @@ static void copyFace(Polyhedron * dst, vertexList_c & vl, const Face * f)
   {
     const Vector3Df & p = (*e)->dst()->position();
     corners.push_back(vl.get(p.x(), p.y(), p.z()));
-    e++;
+    ++e;
   } while (e != sentinel);
 
   Face * f2 = dst->addFace(corners);
@@ -760,7 +760,7 @@ static bool mergeGroup(Polyhedron * dst, vertexList_c & vl, const std::vector<co
         boundary.insert(std::make_pair(src->index(), std::make_pair(src, he->dst())));
       }
 
-      e++;
+      ++e;
     } while (e != sentinel);
   }
 
@@ -994,7 +994,7 @@ Polyhedron * mergeCoplanarFaces(const Polyhedron & src)
   std::map<const Face *, int> groupOf;
   std::vector<std::vector<const Face *> > groups;
 
-  for (Polyhedron::const_face_iterator it = src.fBegin(); it != src.fEnd(); it++)
+  for (Polyhedron::const_face_iterator it = src.fBegin(); it != src.fEnd(); ++it)
   {
     const Face * f = *it;
 
@@ -1043,7 +1043,7 @@ Polyhedron * mergeCoplanarFaces(const Polyhedron & src)
                 inPlane = false;
                 break;
               }
-              e2++;
+              ++e2;
             } while (e2 != sentinel2);
 
             if (inPlane)
@@ -1054,7 +1054,7 @@ Polyhedron * mergeCoplanarFaces(const Polyhedron & src)
           }
         }
 
-        e++;
+        ++e;
       } while (e != sentinel);
     }
 

@@ -55,7 +55,7 @@ bulkRangeWindow_c::bulkRangeWindow_c(void) : LFl_Double_Window(false), _ok(false
     minInput->value("0");
     maxInput->value("1");
 
-    ((LFl_Int_Input*)minInput)->weight(1, 0);
+    static_cast<LFl_Int_Input*>(minInput)->weight(1, 0);
 
     row->end();
   }

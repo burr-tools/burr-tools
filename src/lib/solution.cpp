@@ -28,8 +28,29 @@
 
 #include <stdlib.h>
 
+solution_c::solution_c(std::unique_ptr<assembly_c> assm, unsigned int assmNum, std::unique_ptr<separation_c> t, unsigned int solNum) :
+  assembly(std::move(assm)), tree(std::move(t)), treeInfo(nullptr), assemblyNum(assmNum), solutionNum(solNum) {}
+
+solution_c::solution_c(assembly_c * assm, unsigned int assmNum, separation_c * t, unsigned int solNum) :
+  assembly(assm), tree(t), treeInfo(nullptr), assemblyNum(assmNum), solutionNum(solNum) {}
+
+solution_c::solution_c(std::unique_ptr<assembly_c> assm, unsigned int assmNum, std::unique_ptr<separationInfo_c> ti, unsigned int solNum) :
+  assembly(std::move(assm)), tree(nullptr), treeInfo(std::move(ti)), assemblyNum(assmNum), solutionNum(solNum) {}
+
+solution_c::solution_c(assembly_c * assm, unsigned int assmNum, separationInfo_c * ti, unsigned int solNum) :
+  assembly(assm), tree(nullptr), treeInfo(ti), assemblyNum(assmNum), solutionNum(solNum) {}
+
+solution_c::solution_c(std::unique_ptr<assembly_c> assm, unsigned int assmNum) :
+  assembly(std::move(assm)), tree(nullptr), treeInfo(nullptr), assemblyNum(assmNum), solutionNum(0) {}
+
+solution_c::solution_c(assembly_c * assm, unsigned int assmNum) :
+  assembly(assm), tree(nullptr), treeInfo(nullptr), assemblyNum(assmNum), solutionNum(0) {}
+
+solution_c::solution_c(solution_c &&) noexcept = default;
+solution_c & solution_c::operator=(solution_c &&) noexcept = default;
+
 solution_c::solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c * gt) :
-  assembly(0), tree(0), treeInfo(0), assemblyNum(0), solutionNum(0)
+  assembly(nullptr), tree(nullptr), treeInfo(nullptr), assemblyNum(0), solutionNum(0)
 {
   pars.require(xmlParser_c::START_TAG, "solution");
 
@@ -51,7 +72,7 @@ solution_c::solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c
 
     if (pars.getName() == "assembly")
     {
-      assembly = new assembly_c(pars, pieces, gt);
+      assembly = std::make_unique<assembly_c>(pars, pieces, gt);
       pars.require(xmlParser_c::END_TAG, "assembly");
     }
     else if (pars.getName() == "separation")
@@ -64,13 +85,13 @@ solution_c::solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c
       for (unsigned int i = 0; i < assembly->placementCount(); i++)
         if (assembly->isPlaced(i))
           pl++;
-      tree = new separation_c(pars, pl);
+      tree = std::make_unique<separation_c>(pars, pl);
 
       pars.require(xmlParser_c::END_TAG, "separation");
     }
     else if (pars.getName() == "separationInfo")
     {
-      treeInfo = new separationInfo_c(pars);
+      treeInfo = std::make_unique<separationInfo_c>(pars);
       pars.require(xmlParser_c::END_TAG, "separationInfo");
     }
     else
@@ -87,12 +108,11 @@ solution_c::solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c
 
   if (tree && treeInfo)
   {
-    delete treeInfo;
-    treeInfo = 0;
+    treeInfo.reset();
   }
 }
 
-void solution_c::save(xmlWriter_c & xml) const
+void solution_c::save(xmlWriter_c & xml, bool includeRotationFields) const
 {
   xml.newTag("solution");
 
@@ -105,23 +125,14 @@ void solution_c::save(xmlWriter_c & xml) const
 
   assembly->save(xml);
 
-  if (tree) {            tree->save(xml);
-  } else if (treeInfo) { treeInfo->save(xml);
+  if (tree) {            tree->save(xml, 0, includeRotationFields);
+  } else if (treeInfo) { treeInfo->save(xml, includeRotationFields);
   }
 
   xml.endTag("solution");
 }
 
-solution_c::~solution_c(void) {
-  if (tree)
-    delete tree;
-
-  if (assembly)
-    delete assembly;
-
-  if (treeInfo)
-    delete treeInfo;
-}
+solution_c::~solution_c(void) = default;
 
 void solution_c::exchangeShape(unsigned int s1, unsigned int s2)
 {
@@ -133,15 +144,15 @@ void solution_c::exchangeShape(unsigned int s1, unsigned int s2)
 
 const disassembly_c * solution_c::getDisassemblyInfo(void) const
 {
-  if (tree) return tree;
-  if (treeInfo) return treeInfo;
+  if (tree) return tree.get();
+  if (treeInfo) return treeInfo.get();
   return 0;
 }
 
 disassembly_c * solution_c::getDisassemblyInfo(void)
 {
-  if (tree) return tree;
-  if (treeInfo) return treeInfo;
+  if (tree) return tree.get();
+  if (treeInfo) return treeInfo.get();
   return 0;
 }
 
@@ -150,20 +161,22 @@ void solution_c::removeDisassembly(void)
   if (tree)
   {
     if (!treeInfo)
-      treeInfo = new separationInfo_c(tree);
+      treeInfo = std::make_unique<separationInfo_c>(tree.get());
 
-    delete tree;
-    tree = 0;
+    tree.reset();
   }
 }
 
 void solution_c::setDisassembly(separation_c * sep)
 {
-  if (tree) delete tree;
-  tree = sep;
+  tree.reset(sep);
+  treeInfo.reset();
+}
 
-  if (treeInfo) delete treeInfo;
-  treeInfo = 0;
+void solution_c::setDisassembly(std::unique_ptr<separation_c> sep)
+{
+  tree = std::move(sep);
+  treeInfo.reset();
 }
 
 

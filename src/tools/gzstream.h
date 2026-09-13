@@ -32,6 +32,8 @@
 // standard C++ with new header file names and std:: namespace
 #include <iostream>
 #include <fstream>
+#include <memory>
+#include <filesystem>
 #include <zlib.h>
 
 // ----------------------------------------------------------------------------
@@ -50,7 +52,7 @@ private:
 
     int flush_buffer();
 public:
-    gzstreambuf() : opened(0) {
+    gzstreambuf() : file(nullptr), opened(0), mode(0) {
         setp( buffer, buffer + (bufferSize-1));
         setg( buffer + 4,     // beginning of putback area
               buffer + 4,     // read position
@@ -90,7 +92,9 @@ public:
     igzstream() : std::istream( &buf) {}
     igzstream( const char* name, int open_mode = std::ios::in)
         : gzstreambase( name, open_mode), std::istream( &buf) {}
+    // cppcheck-suppress duplInheritedMember
     gzstreambuf* rdbuf() { return gzstreambase::rdbuf(); }
+    // cppcheck-suppress duplInheritedMember
     void open( const char* name, int open_mode = std::ios::in) {
         gzstreambase::open( name, open_mode);
     }
@@ -101,7 +105,9 @@ public:
     ogzstream() : std::ostream( &buf) {}
     ogzstream( const char* name, int mode = std::ios::out)
         : gzstreambase( name, mode), std::ostream( &buf) {}
+    // cppcheck-suppress duplInheritedMember
     gzstreambuf* rdbuf() { return gzstreambase::rdbuf(); }
+    // cppcheck-suppress duplInheritedMember
     void open( const char* name, int open_mode = std::ios::out) {
         gzstreambase::open( name, open_mode);
     }
@@ -110,7 +116,7 @@ public:
 
 // this function tries to open the file using gz
 // if that fails it will open with normal stream
-// after usage the returned streem must be deleted
-std::istream * openGzFile(const char * name);
+std::unique_ptr<std::istream> openGzFile(const char * name);
+std::unique_ptr<std::istream> openGzFile(const std::filesystem::path & path);
 
 #endif

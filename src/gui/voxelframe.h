@@ -32,6 +32,7 @@
 #pragma GCC diagnostic pop
 
 #include <vector>
+#include <memory>
 
 class voxel_c;
 class puzzle_c;
@@ -40,6 +41,7 @@ class assembly_c;
 class piecePositions_c;
 
 class rotater_c;
+class viewCube_c;
 
 class Polyhedron;
 
@@ -129,11 +131,18 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     void showNothing(void);
     void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
+    /* Takes ownership of vx and displays it as a single piece. */
+    void showOwnedVoxel(voxel_c * vx, unsigned int colorIndex);
     void showColors(const puzzle_c * puz, colorMode mode);
     void showAssembly(const problem_c * puz, unsigned int solNum);
     void updatePositions(piecePositions_c *shifting);
     void updatePositionsOverlap(piecePositions_c *shifting);
     void dimStaticPieces(piecePositions_c *shifting);
+
+    /** When true, rotation animation highlights clearance / blocking cells. */
+    void setDebugRotations(bool on);
+    bool getDebugRotations(void) const { return debugRotations; }
+
     void showAssemblerState(const problem_c * puz, const assembly_c * assm);
     void updateVisibility(PieceVisibility * pcvis);
     void showProblem(const puzzle_c * puz, unsigned int problem, unsigned int selShape);
@@ -162,10 +171,15 @@ class voxelFrame_c : public Fl_Gl_Window {
     void setRotaterMethod(int method);
 
     void setInsideVisible(bool on);
+ 
+    void setHomeCallback(Fl_Callback * cb, void * user) { homeCb = cb; homeUser = user; }
+    void resetViewRotation(void);
 
   private:
 
     assembly_c * curAssembly; // the currently shown assembly (if there is one)
+    const problem_c * curProblem; // problem for the shown assembly (for orientation updates)
+    std::vector<unsigned int> shapeOrients; // last applied orientation per piece space
 
     /* Draws the voxelspace. */
     void drawVoxelSpace();
@@ -183,7 +197,7 @@ class voxelFrame_c : public Fl_Gl_Window {
       TranslateRoateScale,       // for showing pieces
       CenterTranslateRoateScale  // for showing disassembly
     } transformationType;
-    transformationType trans;
+    transformationType trans = ScaleRotateTranslate;
 
     void setCenter(float x, float y, float z) {
       centerX = x;
@@ -192,30 +206,34 @@ class voxelFrame_c : public Fl_Gl_Window {
       redraw();
     }
 
-    typedef struct {
+    struct shapeInfo {
 
-      float r, g, b, a;
-      const voxel_c * shape;
-      drawingMode mode;
-      float x, y, z, scale;
-      bool dim;
-      bool useChecker;
-      Polyhedron * poly;
-      Polyhedron * pickPoly;  // the flat mesh of the edge-line style, used to pick in the other styles
-      GLuint list;  // the display list for this shape 0 means no list defined
+      float r{1.0f}, g{1.0f}, b{1.0f}, a{1.0f};
+      const voxel_c * shape{nullptr};
+      drawingMode mode{normal};
+      float x{0.0f}, y{0.0f}, z{0.0f}, scale{1.0f};
+      bool dim{false};
+      bool useChecker{false};
+      Polyhedron * poly{nullptr};
+      Polyhedron * pickPoly{nullptr};  // the flat mesh of the edge-line style, used to pick in the other styles
+      GLuint list{0};  // the display list for this shape 0 means no list defined
 
-    } shapeInfo;
+      /* mid-tumble animation (angle==0 means inactive) */
+      float animAngle{0.0f};
+      float animAxisX{0.0f}, animAxisY{0.0f}, animAxisZ{0.0f};
+      float animPivotX{0.0f}, animPivotY{0.0f}, animPivotZ{0.0f};
+    };
 
-    typedef struct {
-      float r, g, b;
-    } colorInfo;
+    struct colorInfo {
+      float r = 0.0f, g = 0.0f, b = 0.0f;
+    };
 
     std::vector<colorInfo> palette;
 
     void drawShape(shapeInfo * shape);
 
     /* the marker position */
-    int mX1, mY1, mZ, mX2, mY2;
+    int mX1 = 0, mY1 = 0, mZ = 0, mX2 = 0, mY2 = 0;
     int markerType;
 
     rotater_c * rotater;
@@ -223,6 +241,10 @@ class voxelFrame_c : public Fl_Gl_Window {
     double size;
 
     VoxelViewCallbacks * cb;
+ 
+    std::unique_ptr<viewCube_c> viewCube;
+    Fl_Callback * homeCb;
+    void * homeUser;
 
     std::vector<shapeInfo> shapes;
 
@@ -230,17 +252,28 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     renderStyle curStyle;
 
-    bool _showCoordinateSystem;
+    bool _showCoordinateSystem = false;
 
-    float centerX, centerY, centerZ;
+    float centerX = 0.0f, centerY = 0.0f, centerZ = 0.0f;
 
     bool _useLightning;
 
+    bool debugRotations = false;
+    std::vector<int> debugBlockX, debugBlockY, debugBlockZ;
+    std::vector<int> debugClearX, debugClearY, debugClearZ;
+    std::vector<int> debugRestrictX, debugRestrictY, debugRestrictZ;
+
     // when picking shapes, this is the coordinate to use
-    int pickx, picky;
+    int pickx = -1, picky = -1;
 
     void draw();
+    void draw(bool withViewCube);
+    void resize(int x, int y, int w, int h);
     int handle(int event);
+    void drawDebugRotationCells();
+    void drawDebugRotationLegend();
+    void clearDebugRotationCells();
+    void updateDebugRotationCells(piecePositions_c *shifting);
 
     bool insideVisible;
 };

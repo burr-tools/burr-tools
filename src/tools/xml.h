@@ -45,9 +45,9 @@ class xmlWriterException_c : public std::exception
   public:
 
     xmlWriterException_c(const std::string & txt) : text(txt) {}
-    ~xmlWriterException_c() throw() {}
+    ~xmlWriterException_c() noexcept override = default;
 
-    const char * what(void) const throw() { return text.c_str(); }
+    const char * what(void) const noexcept override { return text.c_str(); }
 
 };
 
@@ -126,13 +126,13 @@ class xmlParserException_c : public std::exception
 {
   public:
 
-    xmlParserException_c(std::string desc, std::string state, int line, int col);
+    xmlParserException_c(const std::string & desc, const std::string & state, int line, int col);
 
-    xmlParserException_c(std::string desc);
+    xmlParserException_c(const std::string & desc);
 
-    ~xmlParserException_c() throw() {};
+    ~xmlParserException_c() noexcept override = default;
 
-    const char * what(void) const throw() { return description.c_str(); }
+    const char * what(void) const noexcept override { return description.c_str(); }
 
   private:
 
@@ -143,8 +143,7 @@ class xmlParserException_c : public std::exception
  *
  * As this parser is taken from an other project I don't understand it completely
  * I only comment the functions that I used...
- *
- * */
+ */
 class xmlParser_c
 {
   public:
@@ -154,9 +153,9 @@ class xmlParser_c
 
     ~xmlParser_c(void);
 
-    std::string getInputEncoding(void);
+    const std::string & getInputEncoding(void) const;
 
-    void defineEntityReplacementText(std::string entity, std::string value);
+    void defineEntityReplacementText(const std::string & entity, const std::string & value);
 
     int getDepth(void);
 
@@ -172,12 +171,12 @@ class xmlParser_c
     const char *getTextCharacters(int *poslen);
 
     /** get the name of the current tag */
-    std::string getName(void)
+    const std::string & getName(void) const
     {
       return name;
     }
 
-    std::string getPrefix(void)
+    const std::string & getPrefix(void) const
     {
       return prefix;
     }
@@ -199,7 +198,7 @@ class xmlParser_c
     /** get the value of the given attribut.
      * If the attribut doesn't exist an empty string is returned
      */
-    std::string getAttributeValue(std::string name);
+    std::string getAttributeValue(const std::string & name);
 
     int getEventType(void)
     {
@@ -219,7 +218,7 @@ class xmlParser_c
      * \verbatim require(xmlParser_c::START_TAG, "puzzle") \endverbatim
      * to enforce that we are at an open puzzle tag
      */
-    void require(int type, std::string name);
+    void require(int type, const std::string & name);
 
     std::string nextText(void);
 
@@ -249,7 +248,7 @@ class xmlParser_c
     /** throws XmlPullParserException with the current line and col.
      * You may use this, if you have encounteted a faulty XML, e.g missing attribute or what not.
      */
-    void exception(std::string desc);
+    [[noreturn]] void exception(const std::string & desc);
 
   private:
 
@@ -309,40 +308,40 @@ class xmlParser_c
     bool standalone;
 
     //   private bool reportNspAttr;
-    bool processNsp;
-    bool relaxed;
+    bool processNsp = false;
+    bool relaxed = false;
     std::map < std::string, std::string > entityMap;
-    int depth;
+    int depth = 0;
     std::vector < std::string > nspStack;
     std::vector < std::string > elementStack;
-    int *nspCounts;
-    int nspSize;
+    std::vector<int> nspCounts;
+    int nspSize = 0;
 
 
     std::string encoding;
-    char *srcBuf;
-    int srcPos;
-    int srcCount;
-    int srcBuflength;
+    std::vector<char> srcBuf;
+    int srcPos = 0;
+    int srcCount = 0;
+    int srcBuflength = 0;
 
     //    private bool eof;
-    int line;
-    int column;
+    int line = 1;
+    int column = 0;
 
     // txtbuffer
-    char *txtBuf;
-    int txtPos;
-    int txtBufSize;
+    std::vector<char> txtBuf;
+    int txtPos = 0;
+    int txtBufSize = 0;
 
     // Event-related
-    int type;
+    int type = 0;
     std::string text;
-    bool isWspace,skipNextTag;
+    bool isWspace = false, skipNextTag = false;
     std::string Ns;
     std::string prefix;
     std::string name;
-    bool degenerated;
-    int attributeCount;
+    bool degenerated = false;
+    int attributeCount = 0;
     std::vector < std::string > attributes;
     // source
     std::istream & reader;
@@ -350,11 +349,11 @@ class xmlParser_c
     /**
      * A separate peek buffer seems simpler than managing
      * wrap around in the first level read buffer */
-    int peek[2];
-    int peekCount;
-    bool wasCR;
-    bool unresolved;
-    bool token;
+    int peek[2] = {0, 0};
+    int peekCount = 0;
+    bool wasCR = false;
+    bool unresolved = false;
+    bool token = false;
 };
 
 

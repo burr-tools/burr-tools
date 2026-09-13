@@ -30,6 +30,7 @@
 #include "../halfedge/modifiers.h"
 
 #include <vector>
+#include <memory>
 
 class puzzle_c;
 
@@ -45,9 +46,9 @@ class stlExportSolution_c : public LFl_Double_Window {
     unsigned int  prob;
     unsigned int  sol;
 
-    stlExporter_c * stl;
+    std::unique_ptr<stlExporter_c> stl;
 
-    std::vector<stlExportSolutionImpl::Param*> params;
+    std::vector<std::unique_ptr<stlExportSolutionImpl::Param>> params;
 
     LFl_Input        * Pname;
     LFl_Check_Button * Binary;

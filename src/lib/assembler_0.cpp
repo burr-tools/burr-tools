@@ -57,20 +57,20 @@ void printMatrix(
     unsigned int c = right[0];
     while (c) {
 
-      if (left[right[c]] != c) printf("lr %i\n", c);
-      if (right[left[c]] != c) printf("rl %i\n", c);
-      if (up(down(c)) != c) printf("ud %i\n", c);
-      if (down(up(c)) != c) printf("du %i\n", c);
+      if (left[right[c]] != c) printf("lr %u\n", c);
+      if (right[left[c]] != c) printf("rl %u\n", c);
+      if (up(down(c)) != c) printf("ud %u\n", c);
+      if (down(up(c)) != c) printf("du %u\n", c);
       cnt++;
 
       unsigned int r = down(c);
 
       while (r != c) {
 
-        if (left[right[r]] != r) printf("lr %i\n", r);
-        if (right[left[r]] != r) printf("rl %i\n", r);
-        if (up(down(r)) != r) printf("ud %i\n", r);
-        if (down(up(r)) != r) printf("du %i\n", r);
+        if (left[right[r]] != r) printf("lr %u\n", r);
+        if (right[left[r]] != r) printf("rl %u\n", r);
+        if (up(down(r)) != r) printf("ud %u\n", r);
+        if (down(up(r)) != r) printf("du %u\n", r);
         cnt++;
 
         r = down(r);
@@ -80,10 +80,10 @@ void printMatrix(
       c = right[c];
     }
 
-    printf("checked %li nodes for consistency\n", cnt);
+    printf("checked %lu nodes for consistency\n", cnt);
   }
 
-  printf("%i %i\n", varivoxelStart, varivoxelEnd);
+  printf("%u %u\n", varivoxelStart, varivoxelEnd);
 
   /* first find all the columns */
   std::vector<unsigned int> columns;
@@ -354,18 +354,13 @@ void assembler_0_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
 assembler_0_c::assembler_0_c(const problem_c & prob) :
   assembler_c(),
   problem(prob),
-  pos(0), rows(0), columns(0),
+  pos(0),
   reducePiece(0),
-  avoidTransformedAssemblies(0), avoidTransformedMirror(0)
+  avoidTransformedAssemblies(false), avoidTransformedMirror(nullptr)
 {
 }
 
-assembler_0_c::~assembler_0_c() {
-  if (rows) delete [] rows;
-  if (columns) delete [] columns;
-
-  if (avoidTransformedMirror) delete avoidTransformedMirror;
-}
+assembler_0_c::~assembler_0_c() = default;
 
 /* add a piece to the cache, but only if it is not already there. If it is added return the
  * piece pointer otherwise return null
@@ -441,16 +436,13 @@ int assembler_0_c::prepare(void) {
    * with this lookup I was able to reduce the preparation time
    * from 5 to 0.5 seconds for TheLostDay puzzle
    */
-  unsigned int * columns = new unsigned int[result->getXYZ()];
+  std::vector<unsigned int> columns(result->getXYZ());
   unsigned int piecenumber = problem.getNumberOfPieces();
 
   /* voxelindex is the inverse of the function column. It returns
    * the index (not x, y, z) of a given column in the matrix
    */
-  int * voxelindex = new int[result->getXYZ() + piecenumber + 1];
-
-  for (unsigned int i = 0; i < result->getXYZ() + piecenumber + 1; i++)
-    voxelindex[i] = -1;
+  std::vector<int> voxelindex(result->getXYZ() + piecenumber + 1, -1);
 
   {
     int v = 0;
@@ -517,7 +509,7 @@ int assembler_0_c::prepare(void) {
     }
 
     if (sym->symmetriesLeft(resultSym, problem.getPartShape(symBreakerShape)->selfSymmetries()))
-      checkForTransformedAssemblies(symBreakerShape, 0);
+      checkForTransformedAssemblies(symBreakerShape, nullptr);
 
     if (sym->symmetryContainsMirror(resultSym)) {
       /* we need to to the mirror check here, and initialise the mirror
@@ -537,7 +529,7 @@ int assembler_0_c::prepare(void) {
         unsigned int trans;
       } mm;
 
-      mm * mirror = new mm[problem.getNumberOfPieces()];
+      std::vector<mm> mirror(problem.getNumberOfPieces());
 
       // first initialize
       for (unsigned int i = 0; i < problem.getNumberOfParts(); i++) {
@@ -597,16 +589,14 @@ int assembler_0_c::prepare(void) {
         /* all the shapes are either self mirroring or have a mirror pair
          * so we create the mirror structure and we do the mirror check
          */
-        mirrorInfo_c * mir = new mirrorInfo_c();
+        auto mir = std::make_unique<mirrorInfo_c>();
 
         for (unsigned int i = 0; i < problem.getNumberOfPieces(); i++)
           if (mirror[i].trans != 255)
             mir->addPieces(i, mirror[i].mirror, mirror[i].trans);
 
-        checkForTransformedAssemblies(symBreakerShape, mir);
+        checkForTransformedAssemblies(symBreakerShape, std::move(mir));
       }
-
-      delete [] mirror;
     }
   }
 
@@ -621,7 +611,7 @@ int assembler_0_c::prepare(void) {
   /* nodes 1..n are the columns nodes */
   GenerateFirstRow();
 
-  voxel_c ** cache = new voxel_c *[sym->getNumTransformationsMirror()];
+  std::vector<voxel_c*> cache(sym->getNumTransformationsMirror(), nullptr);
 
   placementFinder_c finder(problem, result);
   std::vector<long> voxelOffsets;
@@ -652,7 +642,7 @@ int assembler_0_c::prepare(void) {
         continue;
       }
 
-      rotation = addToCache(cache, &cachefill, rotation);
+      rotation = addToCache(cache.data(), &cachefill, rotation);
 
       if (rotation) {
         finder.find(rotation, voxelOffsets, positions);
@@ -684,7 +674,7 @@ int assembler_0_c::prepare(void) {
                 continue;
               }
 
-              addToCache(cache, &cachefill, vx);
+              addToCache(cache.data(), &cachefill, vx);
             }
       }
     }
@@ -693,16 +683,9 @@ int assembler_0_c::prepare(void) {
 
     /* check, if the current piece has at least one placement */
     if (placements == 0) {
-      delete [] cache;
-      delete [] columns;
-      delete [] voxelindex;
       return -problem.getShapeIdOfPart(pc);
     }
   }
-
-  delete [] cache;
-  delete [] columns;
-  delete [] voxelindex;
 
   return 1;
 }
@@ -753,8 +736,8 @@ assembler_0_c::errState assembler_0_c::createMatrix(bool keepMirror, bool keepRo
   holes = h;
 
   /* allocate all the required memory */
-  rows = new unsigned int[piecenumber];
-  columns = new unsigned int [piecenumber];
+  rows.assign(piecenumber, 0);
+  columns.assign(piecenumber, 0);
 
   /* fill the nodes arrays */
   int error = prepare();
@@ -765,9 +748,6 @@ assembler_0_c::errState assembler_0_c::createMatrix(bool keepMirror, bool keepRo
     errorsParam = -error;
     return errorsState;
   }
-
-  memset(rows, 0, piecenumber * sizeof(int));
-  memset(columns, 0, piecenumber * sizeof(int));
   pos = 0;
   iterations.store(0, std::memory_order_relaxed);
 
@@ -776,9 +756,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(bool keepMirror, bool keepRo
      * checkForTransformedAssemblies; free it before dropping the pointer
      * (assembler_1_c::createMatrix does the same)
      */
-    if (avoidTransformedMirror)
-      delete avoidTransformedMirror;
-    avoidTransformedMirror = 0;
+    avoidTransformedMirror.reset();
   }
 
   if (keepRotations)
@@ -1048,7 +1026,7 @@ void assembler_0_c::reduce(void) {
   /* this array is used in several occasions, where we need to
    * keep some information for all columns
    */
-  unsigned int *columns = new unsigned int[varivoxelEnd];
+  std::vector<unsigned int> columns(varivoxelEnd);
   unsigned int removed = 0;
   unsigned int remCol = 0;
   bool rem_sth;
@@ -1061,7 +1039,7 @@ void assembler_0_c::reduce(void) {
 
   for (unsigned int col = right[0]; col; col = right[col]) {
 
-    memset(columns, 0, varivoxelEnd * sizeof(unsigned int));
+    memset(columns.data(), 0, varivoxelEnd * sizeof(unsigned int));
 
     unsigned int placements = 0;
     for (unsigned int r = down(col); r != col; r = down(r)) {
@@ -1127,7 +1105,7 @@ void assembler_0_c::reduce(void) {
 
         // try to do this placement, if the placing goes
         // wrong already, we don't need to do the deep check
-        if (!try_cover_row(r, columns)) {
+        if (!try_cover_row(r, columns.data())) {
           rowsToRemove.push_back(r);
         } else {
 
@@ -1151,7 +1129,7 @@ void assembler_0_c::reduce(void) {
        * placements, no other piece can be there, all other pieces placements that fill
        * this cube can be removed
        */
-      memset(columns, 0, varivoxelEnd * sizeof(unsigned int));
+      memset(columns.data(), 0, varivoxelEnd * sizeof(unsigned int));
       unsigned int placements = 0;
       for (unsigned int r = down(p+1); r != p+1; r = down(r)) {
         for (unsigned int j = right[r]; j != r; j = right[j])
@@ -1195,16 +1173,14 @@ void assembler_0_c::reduce(void) {
     }
   } while (rem_sth);
 
-  delete [] columns;
-
   remCol += clumpify();
 
-  fprintf(stderr, "removed %i rows and %i columns\n", removed, remCol);
+  fprintf(stderr, "removed %u rows and %u columns\n", removed, remCol);
 }
 
-assembly_c * assembler_0_c::getAssembly(void) {
+std::unique_ptr<assembly_c> assembler_0_c::getAssembly(void) {
 
-  assembly_c * assembly = new assembly_c(problem.getPuzzle().getGridType());
+  auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
 
   // if no pieces are placed, or we finished return an empty assembly
   if (pos > piecenumber) {
@@ -1216,16 +1192,11 @@ assembly_c * assembler_0_c::getAssembly(void) {
   bt_assert(getPos() <= getPiecenumber());
 
   /* first we need to find the order the piece are in */
-  unsigned int * pieces = new unsigned int[getPiecenumber()];
-  unsigned char * trans = new unsigned char[getPiecenumber()];
-  int * xs = new int[getPiecenumber()];
-  int * ys = new int[getPiecenumber()];
-  int * zs = new int[getPiecenumber()];
-
-  /* fill the array with 0xff, so that we can distinguish between
-   * placed and unplaced pieces
-   */
-  memset(pieces, 0xff, sizeof(unsigned int) * getPiecenumber());
+  std::vector<unsigned int> pieces(getPiecenumber(), 0xFFFFFFFF);
+  std::vector<unsigned char> trans(getPiecenumber());
+  std::vector<int> xs(getPiecenumber());
+  std::vector<int> ys(getPiecenumber());
+  std::vector<int> zs(getPiecenumber());
 
   for (unsigned int i = 0; i < getPos(); i++) {
     unsigned char tran;
@@ -1247,22 +1218,16 @@ assembly_c * assembler_0_c::getAssembly(void) {
     else
       assembly->addPlacement(trans[i], xs[i], ys[i], zs[i]);
 
-  delete [] pieces;
-  delete [] trans;
-  delete [] xs;
-  delete [] ys;
-  delete [] zs;
-
   // sort is not necessary because there is only one of each piece
   // assembly->sort(puzzle, problem);
 
   return assembly;
 }
 
-void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir) {
+void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot, std::unique_ptr<mirrorInfo_c> mir) {
   avoidTransformedAssemblies = true;
   avoidTransformedPivot = pivot;
-  avoidTransformedMirror = mir;
+  avoidTransformedMirror = std::move(mir);
 }
 
 /* this function handles the assemblies found by the assembler engine
@@ -1271,12 +1236,12 @@ void assembler_0_c::solution(void) {
 
   if (getCallback()) {
 
-    assembly_c * assembly = getAssembly();
+    std::unique_ptr<assembly_c> assembly = getAssembly();
 
-    if (avoidTransformedAssemblies && assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror, complete))
-      delete assembly;
+    if (avoidTransformedAssemblies && assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror.get(), complete))
+      return;
     else {
-      getCallback()->assembly(assembly);
+      getCallback()->assembly(std::move(assembly));
     }
   }
 }
@@ -1452,7 +1417,7 @@ float assembler_0_c::getFinished(void) const {
    * the value may jump
    */
 
-  if (!rows || !columns || !upDown.size())
+  if (rows.empty() || columns.empty() || upDown.empty())
     return 0;
 
   float erg = 0;

@@ -24,6 +24,9 @@
 
 #include "Layouter.h"
 
+#include <memory>
+#include <vector>
+
 class gridType_c;
 class guiGridType_c;
 
@@ -82,7 +85,7 @@ class gridTypeSelectorWindow_c : public LFl_Double_Window {
 
   private:
 
-    std::vector<gridTypeInfos_c*> gti;
+    std::vector<std::unique_ptr<gridTypeInfos_c>> gti;
 
     /* currently selected grid type from the vector above */
     unsigned int current;
@@ -94,7 +97,7 @@ class gridTypeSelectorWindow_c : public LFl_Double_Window {
 
     /* after the window has been close you can get the created grid type with this function
      */
-    gridType_c * getGridType(void);
+    std::unique_ptr<gridType_c> getGridType(void);
 
 
     void select_cb(void);

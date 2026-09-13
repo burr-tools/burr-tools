@@ -29,9 +29,9 @@ class ColorConstraintsEdit;
 
 class LConstraintsGroup_c : public Fl_Group, public layoutable_c {
 
-  Fl_Slider * Slider;
-  ColorConstraintsEdit * List;
-  int callbackReason;
+  Fl_Slider * Slider = nullptr;
+  ColorConstraintsEdit * List = nullptr;
+  int callbackReason = 0;
 
   public:
 

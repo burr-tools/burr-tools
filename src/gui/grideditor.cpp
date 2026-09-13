@@ -212,16 +212,19 @@ int gridEditor_c::handle(int event) {
       // mouse released, update the rubberband area
 
       int x, y;
-      if (!calcGridPosition(Fl::event_x(), Fl::event_y(), currentZ, &x, &y)) break;
-
-      // check, if the current position is inside the grid, only if so carry out action, we don't
-      // need to to this if we are not in rubberband modus, but it doesn't hurt either
-      if (0 <= x && x < (long)space->getX() && 0 <= y && y < (long)space->getY() && setLayer(currentZ)) {
-        callbackReason = RS_CHANGESQUARE;
-        do_callback();
+      if (calcGridPosition(Fl::event_x(), Fl::event_y(), currentZ, &x, &y)) {
+        // check, if the current position is inside the grid, only if so carry out action, we don't
+        // need to to this if we are not in rubberband modus, but it doesn't hurt either
+        if (0 <= x && x < (long)space->getX() && 0 <= y && y < (long)space->getY() && setLayer(currentZ)) {
+          callbackReason = RS_CHANGESQUARE;
+          do_callback();
+        }
       }
 
       state = 0;
+
+      callbackReason = RS_STROKEEND;
+      do_callback();
 
       redraw();
     }
@@ -246,6 +249,8 @@ int gridEditor_c::handle(int event) {
       set_visible_focus();
       take_focus();
       clear_visible_focus();
+      callbackReason = RS_STROKEBEGIN;
+      do_callback();
     }
 
     // fall through

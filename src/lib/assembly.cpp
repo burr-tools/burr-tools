@@ -661,7 +661,7 @@ bool assembly_c::smallerRotationExists(const problem_c & puz, unsigned int pivot
       // if that is the case we don't keep the stuff
 
       // now we create a voxel space of the given assembly shape/ and shift that one around
-      voxel_c * assm = tmp.createSpace(puz);
+      std::unique_ptr<voxel_c> assm = tmp.createSpace(puz);
       const voxel_c * res = getResultShape(puz);
 
       for (int x = (int)res->boundX1()-(int)assm->boundX1(); (int)assm->boundX2()+x <= (int)res->boundX2(); x++)
@@ -704,7 +704,6 @@ bool assembly_c::smallerRotationExists(const problem_c & puz, unsigned int pivot
                 }
 
                 if (tmp.compare(*this, pivot)) {
-                  delete assm;
                   return true;
                 }
 
@@ -717,8 +716,6 @@ bool assembly_c::smallerRotationExists(const problem_c & puz, unsigned int pivot
               }
             }
           }
-
-      delete assm;
     }
   }
   else
@@ -791,10 +788,9 @@ int assembly_c::comparePieces(const assembly_c * b) const {
   return 0;
 }
 
-voxel_c * assembly_c::createSpace(const problem_c & puz) const {
+std::unique_ptr<voxel_c> assembly_c::createSpace(const problem_c & puz) const {
 
-  std::vector<voxel_c *>pieces;
-  pieces.resize(placements.size());
+  std::vector<std::unique_ptr<voxel_c>> pieces(placements.size());
 
   int maxX = 1;
   int maxY = 1;
@@ -807,7 +803,7 @@ voxel_c * assembly_c::createSpace(const problem_c & puz) const {
 
       unsigned int j = puz.getPartIdToPieceId(i);
 
-      voxel_c * pc = puz.getPuzzle().getGridType()->getVoxel(puz.getPartShape(j));
+      std::unique_ptr<voxel_c> pc(puz.getPuzzle().getGridType()->getVoxel(puz.getPartShape(j)));
 
       bt_assert(pc->transform(placements[i].transformation));
 
@@ -819,18 +815,18 @@ voxel_c * assembly_c::createSpace(const problem_c & puz) const {
       if ((int)pc->getY()+dy > maxY) maxY = (int)pc->getY()+dy;
       if ((int)pc->getZ()+dz > maxZ) maxZ = (int)pc->getZ()+dz;
 
-      pieces[i] = pc;
+      pieces[i] = std::move(pc);
     }
 
   // create a shape identical in size with the result shape of the problem
-  voxel_c * res = puz.getPuzzle().getGridType()->getVoxel(maxX, maxY, maxZ, 0);
+  std::unique_ptr<voxel_c> res(puz.getPuzzle().getGridType()->getVoxel(maxX, maxY, maxZ, 0));
   res->skipRecalcBoundingBox(true);
 
   // now iterate over all shapes in the assembly and place them into the result
   for (unsigned int i = 0; i < placements.size(); i++)
     if (placements[i].transformation != UNPLACED_TRANS) {
 
-      voxel_c * pc = pieces[i];
+      const voxel_c * pc = pieces[i].get();
 
       int dx = (int)placements[i].xpos - (int)pc->getHx();
       int dy = (int)placements[i].ypos - (int)pc->getHy();
@@ -842,8 +838,6 @@ voxel_c * assembly_c::createSpace(const problem_c & puz) const {
             if (pc->getState(x, y, z) != voxel_c::VX_EMPTY)
               res->set(x+dx, y+dy, z+dz, pc->get(x, y, z));
           }
-
-      delete pc;
     }
 
   res->skipRecalcBoundingBox(false);

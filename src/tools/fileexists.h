@@ -21,8 +21,8 @@
 #ifndef __FILE_EXISTS_H__
 #define __FILE_EXISTS_H__
 
-#include <string>
+#include <filesystem>
 
-bool fileExists(const std::string & fname);
+bool fileExists(const std::filesystem::path & fname);
 
 #endif

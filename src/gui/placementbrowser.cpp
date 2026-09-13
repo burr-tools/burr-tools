@@ -34,9 +34,9 @@
 
 #include "view3dgroup.h"
 
-static void cb_close_stub(Fl_Widget* /*o*/, void* v) { ((placementBrowser_c*)v)->hide(); }
-static void cb_piece_stub(Fl_Widget* /*o*/, void* v) { ((placementBrowser_c*)v)->cb_piece(); }
-static void cb_placement_stub(Fl_Widget* o, void* v) { ((placementBrowser_c*)v)->cb_placement((Fl_Value_Slider*)o); }
+static void cb_close_stub(Fl_Widget* /*o*/, void* v) { static_cast<placementBrowser_c*>(v)->hide(); }
+static void cb_piece_stub(Fl_Widget* /*o*/, void* v) { static_cast<placementBrowser_c*>(v)->cb_piece(); }
+static void cb_placement_stub(Fl_Widget* o, void* v) { static_cast<placementBrowser_c*>(v)->cb_placement(static_cast<Fl_Value_Slider*>(o)); }
 
 void placementBrowser_c::cb_piece(void) {
 

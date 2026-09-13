@@ -21,13 +21,18 @@
 #ifndef __MOVEMENT_ANALYSATOR_H__
 #define __MOVEMENT_ANALYSATOR_H__
 
+#include "solvertype.h"
+
+#include <atomic>
 #include <vector>
+#include <memory>
 
 class problem_c;
 class disassemblerNode_c;
 class movementCache_c;
 class assembly_c;
 class countingNodeHash;
+class rotationMoves_c;
 
 /**
  * this class is can do analysis of movements within a puzzle.
@@ -43,36 +48,49 @@ class movementAnalysator_c {
 
   private:
 
+    std::unique_ptr<movementCache_c> cache;
+
     /* matrix should normally have one subarray for each direction
      * (positive x negative x, positive y, ...), but because
      * the matrix for the negative direction in the same direction is the
      * transposition (m[i][j] == m[j][i]) we save the calculation or copying
      * and rather do the transposition inside the checkmovement function
      */
-    unsigned int * matrix;
-    unsigned int * movement;
-    int * weights;
+    std::vector<unsigned int> matrix;
+    std::vector<unsigned int> movement;
+    std::vector<int> weights;
     /* scratch buffer for checkmovement; a reused member rather than a local
      * because checkmovement is on the hot path of the disassembler
      */
-    bool * check;
+    std::vector<char> check;
     unsigned int piecenumber;
 
-    movementCache_c * cache;
+    std::unique_ptr<countingNodeHash> nodes;
 
-    countingNodeHash * nodes;
+    bool checkRotations;
+    bool bricksGrid;
+    std::unique_ptr<rotationMoves_c> rotationMoves;
+    bool rotationsActive;
+    std::atomic<unsigned long long> rotationSearchUs;
+    std::atomic<unsigned long long> linearSearchUs;
+    unsigned long long searchPhaseStartUs;
+    bool searchTimingOpen;
+    bool searchPhaseLinear;
 
     /* these variables are used for the routine that looks
      * for the pieces to move find, checkmovement
      */
-    int nextpiece, next_pn, nextstate, nextpiece2, state99nextState;
-    unsigned int nextdir;
-    unsigned int maxstep, nextstep;
-    disassemblerNode_c * state99node;
-    disassemblerNode_c * searchnode;
-    const std::vector<unsigned int> * pieces;
+    int nextpiece = 0, next_pn = 0, nextstate = -1, state99nextState = 0;
+    unsigned int nextdir = 0;
+    unsigned int maxstep = static_cast<unsigned int>(-1), nextstep = 0;
+    disassemblerNode_c * state99node = nullptr;
+    disassemblerNode_c * searchnode = nullptr;
+    const std::vector<unsigned int> * pieces = nullptr;
 
     void prepare(void);
+    void beginSearchPhase(bool linear);
+    void switchToRotationPhase(void);
+    void flushSearchPhase(void);
     bool checkmovement(unsigned int maxPieces, unsigned int nextstep);
     disassemblerNode_c * newNode(unsigned int amount);
     disassemblerNode_c * newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1);
@@ -84,8 +102,19 @@ class movementAnalysator_c {
      * This can not be changed, once you done that but you can analyse
      * many positions
      */
-    movementAnalysator_c(const problem_c & puz);
+    movementAnalysator_c(const problem_c & puz, bool enableRotations = false,
+                         solverType_e solverType = SOLVER_CLASSIC);
     ~movementAnalysator_c(void);
+
+    void setCheckRotations(bool enable);
+
+    unsigned long long getRotationSearchUs(void) const {
+      return rotationSearchUs.load(std::memory_order_relaxed);
+    }
+
+    unsigned long long getLinearSearchUs(void) const {
+      return linearSearchUs.load(std::memory_order_relaxed);
+    }
 
     /* you use either the 2 functions below, or completeFind
      * the below functions return one possible movement after another and you can stop as soon
@@ -110,8 +139,8 @@ class movementAnalysator_c {
   private:
 
     // no copying and assigning
-    movementAnalysator_c(const movementAnalysator_c&);
-    void operator=(const movementAnalysator_c&);
+    movementAnalysator_c(const movementAnalysator_c&) = delete;
+    movementAnalysator_c& operator=(const movementAnalysator_c&) = delete;
 
 };
 

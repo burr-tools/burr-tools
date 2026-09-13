@@ -24,10 +24,12 @@
 #include "voxel.h"
 
 #include "../tools/xml.h"
+#include "../tools/gzstream.h"
 
 #include <vector>
 #include <stdio.h>
 #include <algorithm>
+#include <stdexcept>
 
 /** \page xmpuzzleFormat The xmpuzzle format
  *
@@ -88,33 +90,25 @@
  *
  */
 
-puzzle_c::puzzle_c(const puzzle_c * orig) {
-
-  gt = new gridType_c(*orig->gt);
+puzzle_c::puzzle_c(const puzzle_c * orig)
+  : gt(std::make_unique<gridType_c>(*orig->gt)),
+    comment(orig->comment),
+    commentPopup(orig->commentPopup) {
 
   for (unsigned int i = 0; i < orig->shapes.size(); i++)
-    shapes.push_back(gt->getVoxel(orig->shapes[i]));
+    shapes.push_back(std::unique_ptr<voxel_c>(gt->getVoxel(orig->shapes[i].get())));
 
   for (unsigned int i = 0; i < orig->problems.size(); i++)
-    problems.push_back(new problem_c(orig->problems[i], *this));
+    problems.push_back(std::make_unique<problem_c>(orig->problems[i].get(), *this));
 
   for (unsigned int i = 0; i < orig->colors.size(); i++)
     colors.push_back(orig->colors[i]);
-
-  comment = orig->comment;
-  commentPopup = orig->commentPopup;
 }
 
-puzzle_c::~puzzle_c(void) {
+puzzle_c::~puzzle_c(void) = default;
 
-  for (unsigned int i = 0; i < shapes.size(); i++)
-    delete shapes[i];
-
-  for (unsigned int i = 0; i < problems.size(); i++)
-    delete problems[i];
-
-  delete gt;
-}
+puzzle_c::puzzle_c(gridType_c * g) : gt(g), commentPopup(false) { }
+puzzle_c::puzzle_c(std::unique_ptr<gridType_c> g) : gt(std::move(g)), commentPopup(false) { }
 
 unsigned int puzzle_c::addColor(unsigned char r, unsigned char g, unsigned char b) {
   bt_assert(colors.size() < 63);  // only 63 colours are allowed, colour 0 is special
@@ -220,6 +214,26 @@ void puzzle_c::save(xmlWriter_c & xml) const
   xml.endTag("puzzle");
 }
 
+std::unique_ptr<puzzle_c> puzzle_c::load(const std::filesystem::path & filename)
+{
+  auto str = openGzFile(filename);
+  if (!str || !str->good()) {
+    throw std::runtime_error("Could not open puzzle file: " + filename.string());
+  }
+  xmlParser_c pars(*str);
+  return std::make_unique<puzzle_c>(pars);
+}
+
+void puzzle_c::save(const std::filesystem::path & filename) const
+{
+  ogzstream out(filename.string().c_str());
+  if (!out.good()) {
+    throw std::runtime_error("Could not open puzzle file for writing: " + filename.string());
+  }
+  xmlWriter_c xml(out);
+  save(xml);
+}
+
 puzzle_c::puzzle_c(xmlParser_c & pars)
 {
   pars.nextTag();
@@ -235,7 +249,7 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
   if ((version != 1) && (version != 2))
     pars.exception("can only load files of version 1 and 2");
 
-  gt = 0;
+  gt.reset();
   commentPopup = false;
 
   do {
@@ -246,10 +260,10 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
 
     if (pars.getName() == "gridType")
     {
-      if (gt != 0)
+      if (gt)
         pars.exception("only one gridtype can be defined, and it must be before the first shape");
 
-      gt = new gridType_c(pars);
+      gt = std::make_unique<gridType_c>(pars);
     }
     else if (pars.getName() == "colors")
     {
@@ -277,7 +291,7 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
     else if (pars.getName() == "shapes")
     {
       // if no gridtype has been defined, we assume cubes
-      if (!gt) gt = new gridType_c(gridType_c::GT_BRICKS);
+      if (!gt) gt = std::make_unique<gridType_c>(gridType_c::GT_BRICKS);
 
       do
       {
@@ -288,7 +302,7 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
 
         if (pars.getName() == "voxel")
         {
-          shapes.push_back(gt->getVoxel(pars));
+          shapes.push_back(std::unique_ptr<voxel_c>(gt->getVoxel(pars)));
           pars.require(xmlParser_c::END_TAG, "voxel");
         }
         else
@@ -310,7 +324,7 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
 
         if (pars.getName() == "problem")
         {
-          problems.push_back(new problem_c(*this, pars));
+          problems.push_back(std::make_unique<problem_c>(*this, pars));
           pars.require(xmlParser_c::END_TAG, "problem");
         }
         else
@@ -346,14 +360,18 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
 }
 
 unsigned int puzzle_c::addShape(voxel_c * p) {
+  return addShape(std::unique_ptr<voxel_c>(p));
+}
+
+unsigned int puzzle_c::addShape(std::unique_ptr<voxel_c> p) {
   bt_assert(gt->getType() == p->getGridType()->getType());
-  shapes.push_back(p);
+  shapes.push_back(std::move(p));
   return shapes.size()-1;
 }
 
 /* add empty shape of given size */
 unsigned int puzzle_c::addShape(unsigned int sx, unsigned int sy, unsigned int sz) {
-  shapes.push_back(gt->getVoxel(sx, sy, sz, voxel_c::VX_EMPTY));
+  shapes.push_back(std::unique_ptr<voxel_c>(gt->getVoxel(sx, sy, sz, voxel_c::VX_EMPTY)));
   return shapes.size()-1;
 }
 
@@ -368,52 +386,46 @@ void puzzle_c::removeShape(unsigned int idx) {
     problems[i]->removeShape(idx);
 
   /* now get rid of the voxel space */
-  delete shapes[idx];
   shapes.erase(shapes.begin()+idx);
-
 }
 
 void puzzle_c::exchangeShapes(unsigned int s1, unsigned int s2) {
   bt_assert(s1 < shapes.size());
   bt_assert(s2 < shapes.size());
 
-  voxel_c * v = shapes[s1];
-  shapes[s1] = shapes[s2];
-  shapes[s2] = v;
+  std::swap(shapes[s1], shapes[s2]);
 
   for (unsigned int i = 0; i < problems.size(); i++)
     problems[i]->exchangeShapes(s1, s2);
+}
+
+void puzzle_c::adoptShapes(std::vector<std::unique_ptr<voxel_c>> newShapes) {
+  shapes = std::move(newShapes);
 }
 
 /**
  * similar functions for problems
  */
 unsigned int puzzle_c::addProblem(void) {
-  problems.push_back(new problem_c(*this));
+  problems.push_back(std::make_unique<problem_c>(*this));
   return problems.size()-1;
 }
 
 unsigned int puzzle_c::addProblem(const problem_c * prob) {
-
-  problems.push_back(new problem_c(prob, *this));
-
+  problems.push_back(std::make_unique<problem_c>(prob, *this));
   return problems.size()-1;
 }
 
 /* remove one problem */
 void puzzle_c::removeProblem(unsigned int idx) {
   bt_assert(idx < problems.size());
-  delete problems[idx];
   problems.erase(problems.begin()+idx);
 }
 
 void puzzle_c::exchangeProblems(unsigned int p1, unsigned int p2) {
-
   bt_assert(p1 < problems.size());
   bt_assert(p2 < problems.size());
 
-  problem_c * p = problems[p1];
-  problems[p1] = problems[p2];
-  problems[p2] = p;
+  std::swap(problems[p1], problems[p2]);
 }
 

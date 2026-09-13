@@ -170,7 +170,7 @@ TEST_CASE("the view's STL mesh tags every face with its voxel on every grid", "[
       /* the cell's faces as outward planes; the centroid inside all of them */
       Vector3Df cen(0, 0, 0);
       int nv = 0;
-      for (Face::const_edge_circulator e = f->begin(), s = e; ; ) { cen = cen + (*e)->dst()->position(); nv++; e++; if (e == s) break; }
+      for (Face::const_edge_circulator e = f->begin(), s = e; ; ) { cen = cen + (*e)->dst()->position(); ++nv; ++e; if (e == s) break; }
       cen = cen / (float)nv;
       std::vector<float> corners;
       int nx, ny, nz;

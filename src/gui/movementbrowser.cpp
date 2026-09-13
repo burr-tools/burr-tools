@@ -136,9 +136,9 @@ AddMovementDialog::AddMovementDialog(movementCache_c * c, const std::vector<unsi
     unsigned int shape = puz->getPartIdToPieceId(pieces[i]);
     unsigned int subShape = puz->getPartIndexToPieceId(pieces[i]);
     if (puz->getPartShape(shape)->getName().length())
-      snprintf(label, 20, "S%i - %s", puz->getShapeIdOfPart(shape)+1, puz->getPartShape(shape)->getName().c_str());
+      snprintf(label, 20, "S%u - %s", puz->getShapeIdOfPart(shape)+1, puz->getPartShape(shape)->getName().c_str());
     else
-      snprintf(label, 20, "S%i", puz->getShapeIdOfPart(shape)+1);
+      snprintf(label, 20, "S%u", puz->getShapeIdOfPart(shape)+1);
     pces.push_back(new LFl_Check_Button(label, 0, i+1, 1, 1));
     (*pces.rbegin())->copy_label(label);
 
@@ -194,7 +194,7 @@ Fl_Tree_Item * movementBrowser_c::addNode(Fl_Tree_Item *nd, disassemblerNode_c *
       return 0;
     }
 
-  char label[200];
+  char label[200] = "";
   char * t = label;
   bool firstpiece = true;
 
@@ -215,13 +215,13 @@ Fl_Tree_Item * movementBrowser_c::addNode(Fl_Tree_Item *nd, disassemblerNode_c *
         (s->node->getY(p) != mv->getY(p)) ||
         (s->node->getZ(p) != mv->getZ(p))) {
       if (firstpiece) {
-        t += snprintf(t, 200-(t-label), ": S%i", puz->getShapeIdOfPart(puz->getPartIdToPieceId(s->pieces[p]))+1);
+        t += snprintf(t, 200-(t-label), ": S%u", puz->getShapeIdOfPart(puz->getPartIdToPieceId(s->pieces[p]))+1);
         firstpiece = false;
       } else
-        t += snprintf(t, 200-(t-label), ", S%i", puz->getShapeIdOfPart(puz->getPartIdToPieceId(s->pieces[p]))+1);
+        t += snprintf(t, 200-(t-label), ", S%u", puz->getShapeIdOfPart(puz->getPartIdToPieceId(s->pieces[p]))+1);
 
       if (puz->getPartIndexToPieceId(s->pieces[p]))
-        t += snprintf(t, 200-(t-label), ".%i", puz->getPartIndexToPieceId(s->pieces[p])+1);
+        t += snprintf(t, 200-(t-label), ".%u", puz->getPartIndexToPieceId(s->pieces[p])+1);
     }
 
   }
@@ -293,9 +293,9 @@ void movementBrowser_c::cb_AddMovement(void) {
   nodeData_s * s = (nodeData_s *)(nd->user_data());
   if (!s) return;
 
-  movementCache_c * c = puz->getPuzzle().getGridType()->getMovementCache(*puz);
+  auto c = puz->getPuzzle().getGridType()->getMovementCache(*puz);
 
-  AddMovementDialog dlg(c, s->pieces, puz);
+  AddMovementDialog dlg(c.get(), s->pieces, puz);
 
   dlg.show();
 
@@ -331,8 +331,6 @@ void movementBrowser_c::cb_AddMovement(void) {
 
   tree->deselect_all();
   addNode(nd, n)->select();
-
-  delete c;
 
   redraw();
 }

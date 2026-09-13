@@ -112,10 +112,9 @@ int main(int argv, char* args[]) {
     return 1;
   }
 
-  std::istream * str = openGzFile(args[filenumber]);
+  auto str = openGzFile(args[filenumber]);
   xmlParser_c pars(*str);
   puzzle_c p(pars);
-  delete str;
 
   std::string outname = args[filenumber];
   outname += "ttt";
