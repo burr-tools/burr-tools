@@ -385,30 +385,44 @@ TEST_CASE("xml parser: a truncated document is rejected", "[xml][parser][malform
 }
 
 TEST_CASE("xml parser: an unterminated attribute value is rejected", "[xml][parser][malformed]") {
-  /* Traced through pushText() (xml.cpp): with no closing '"' anywhere in
-     the remaining input, the attribute scan swallows everything up to and
-     including the trailing "></a>" as if it were all still the attribute's
-     text, then tries to consume one more character for the (nonexistent)
-     closing quote and finds EOF. The exception this throws is therefore
-     "Unexpected EOF" raised while still inside the <a> start tag, not a
-     targeted "attribute never closed" diagnostic -- but it does still
-     throw.
-     This rejection is INCIDENTAL, not principled: BurrTools throws here
-     only because the input stream ran out while the scan for the closing
-     '"' was still hunting. The same class of input -- an attribute value
-     containing an unescaped delimiter-like byte -- parses cleanly with no
-     exception at all once the stream keeps going past that point instead
-     of ending; see "an unquoted '<' inside an attribute value is silently
-     accepted" below for a case where that happens and swallows a whole
-     child element. This case therefore pins "this particular malformed
-     document is rejected", not "unterminated attributes are rejected" in
-     general. */
-  std::istringstream in("<a name=\"unterminated></a>");
-  xmlParser_c pars(in);
+  /* With no closing '"' anywhere in the remaining input, pushText()
+     (xml.cpp) scans into the trailing "></a>" while still hunting for the
+     attribute's closing quote. That text contains a literal '<' (from the
+     "</a>" close tag), which is itself a well-formedness violation inside
+     an attribute value (XML 1.0 3.1: AttValue ::= '"' ([^<&"] | Reference)*
+     '"') -- see "a literal '<' inside an attribute value is rejected"
+     below. So this case is now rejected for a targeted reason: the
+     embedded '<', not merely running out of input. */
+  {
+    std::istringstream in("<a name=\"unterminated></a>");
+    xmlParser_c pars(in);
 
-  REQUIRE_THROWS_AS(([&]{
-    while (pars.next() != xmlParser_c::END_DOCUMENT) { }
-  }()), xmlParserException_c);
+    try {
+      pars.next();
+      FAIL("expected the parser to reject the embedded '<'");
+    }
+    catch (const xmlParserException_c & e) {
+      REQUIRE_THAT(std::string(e.what()),
+          Catch::Matchers::ContainsSubstring("illegal character '<' in attribute value"));
+    }
+  }
+  {
+    /* the embedded '<' guard now catches the case above before the scan
+       ever runs out of input, so nothing in the suite exercised pushText's
+       run-to-EOF path any more. Restore that coverage with an attribute
+       value that has no closing quote AND no '<' anywhere in what remains
+       of the stream, so the scan can only stop by hitting end of input. */
+    std::istringstream in("<a name=\"unterminated");
+    xmlParser_c pars(in);
+
+    try {
+      pars.next();
+      FAIL("expected the parser to reject the unterminated attribute value");
+    }
+    catch (const xmlParserException_c & e) {
+      REQUIRE_THAT(std::string(e.what()), Catch::Matchers::ContainsSubstring("EOF"));
+    }
+  }
 }
 
 TEST_CASE("xml parser: an unquoted '=' inside an attribute value is ordinary text", "[xml][parser][malformed]") {
@@ -453,46 +467,91 @@ TEST_CASE("xml parser: an unquoted '=' inside an attribute value is ordinary tex
   }()));
 }
 
-TEST_CASE("xml parser: an unquoted '<' inside an attribute value is silently accepted", "[xml][parser][malformed]") {
-  /* SUSPECTED DEFECT, recorded as observed behaviour -- not asserted to be
-     correct. This one has earned the label: unlike the case above, this
-     input is NOT well-formed XML.
-     XML 1.0 3.1's AttValue production is:
+TEST_CASE("xml parser: a literal '<' inside an attribute value is rejected", "[xml][parser][malformed]") {
+  /* XML 1.0 3.1's AttValue production is:
        AttValue ::= '"' ([^<&"] | Reference)* '"'
      A literal '<' inside a double-quoted attribute value is explicitly
      excluded ([^<&"]) -- this is a well-formedness constraint, so a
-     conforming parser MUST reject it. pushText() (src/tools/xml.cpp:844)
-     scans for the closing delimiter with:
-       while (next != -1 && next != delimiter)
-     and has no check for '<' in that loop at all, so BurrTools happily
-     accepts a literal '<' inside an attribute value as ordinary text.
-     Measured against this repository's own parser (not assumed):
-       input  <a name="x<y"/>
-       output START <a> empty=1 attrs=1 [name=x<y]; END </a>; clean
-              END_DOCUMENT, no exception
-     Escalating the same gap shows real data loss, not just leniency: if
-     the swallowed text itself contains a full child element's markup, it
-     is absorbed into the attribute value as inert text instead of being
-     parsed as structure --
-       input  <a name="v><b/>" z="2"/>
-       output START <a> empty=1 attrs=2 [name=v><b/>] [z=2]; END </a>;
-              clean END_DOCUMENT, no exception
-     The <b/> element is gone -- not rejected, not visible as a child
-     element, just bytes inside "name"'s value. For a `.xmpuzzle` file,
-     the same mechanism means a stray '<' introduced by truncation or
-     corruption inside an attribute value would not be rejected; it could
-     silently absorb following markup -- up to and including whole
-     elements -- into an attribute string instead of raising a parse
-     error. Production code (xml.cpp:844) is intentionally left unchanged;
-     this case only pins the observed behaviour. */
+     conforming parser MUST reject it. Measured against expat (via Python's
+     xml.parsers.expat), both inputs below are rejected as not well-formed:
+       input  <a name="x<y"/>                  expat: not well-formed (col 10)
+       input  <a name="v><b/>" z="2"/>          expat: not well-formed (col 11)
+     Before this fix, pushText() (src/tools/xml.cpp) scanned for the closing
+     delimiter with `while (next != -1 && next != delimiter)` and had no
+     check for '<' in that loop at all, so BurrTools accepted a literal '<'
+     inside an attribute value as ordinary text. The second input shows why
+     that was more than leniency: the swallowed text contained a whole
+     child element's markup (<b/>), which was absorbed into the "name"
+     attribute's value as inert text instead of being parsed as structure --
+     the child element vanished rather than being rejected or reported. For
+     a `.xmpuzzle` file, the same mechanism meant a stray '<' introduced by
+     truncation or corruption inside an attribute value would not be
+     rejected; it could silently absorb following markup -- up to and
+     including whole elements -- into an attribute string instead of
+     raising a parse error. pushText() now rejects a literal '<' whenever
+     it is scanning an attribute value (delimiter is the quote character,
+     not '<' itself, which is reserved for element content where '<'
+     legitimately ends the run). */
   {
     std::istringstream in("<a name=\"x<y\"/>");
     xmlParser_c pars(in);
 
+    try {
+      pars.next();
+      FAIL("expected the parser to reject the '<' in the attribute value");
+    }
+    catch (const xmlParserException_c & e) {
+      REQUIRE_THAT(std::string(e.what()),
+          Catch::Matchers::ContainsSubstring("illegal character '<' in attribute value"));
+      /* expat (0-based, pointing AT the offending byte) reports column 10
+         for this input; BurrTools' column counts characters already
+         CONSUMED (xml.cpp: column++ happens inside read(), after the
+         character is read), so it points at the character BEFORE the '<'
+         -- these are different conventions that happen to land on the same
+         number here, not a claim that BurrTools' positions match expat's
+         in general. Pinned as a regression check on this specific input. */
+      REQUIRE_THAT(std::string(e.what()), Catch::Matchers::ContainsSubstring("at position: 1; 10"));
+    }
+  }
+  {
+    /* the escalation: an entire child element's markup would otherwise be
+       absorbed whole into the "name" attribute's value */
+    std::istringstream in("<a name=\"v><b/>\" z=\"2\"/>");
+    xmlParser_c pars(in);
+
+    try {
+      pars.next();
+      FAIL("expected the parser to reject the '<' in the attribute value");
+    }
+    catch (const xmlParserException_c & e) {
+      REQUIRE_THAT(std::string(e.what()),
+          Catch::Matchers::ContainsSubstring("illegal character '<' in attribute value"));
+      /* see the position comment on the case above -- expat reports
+         column 11 for this input, and BurrTools' consumed-characters count
+         lands on the same number by convention, not by cross-validation */
+      REQUIRE_THAT(std::string(e.what()), Catch::Matchers::ContainsSubstring("at position: 1; 11"));
+    }
+  }
+}
+
+TEST_CASE("xml parser: an escaped '<' inside an attribute value still resolves", "[xml][parser]") {
+  /* The guard added for the rejection case above sits one line above the
+     '&' handling inside the same pushText() loop (xml.cpp), so it would be
+     easy for a future edit to move the check earlier, or apply it to the
+     entity-resolved buffer instead of the raw input stream, and start
+     rejecting every attribute value that legitimately contains an escaped
+     '<'. Nothing else in the suite pins that acceptance path: :207 covers
+     entities in element CONTENT, :117 covers only the WRITER's escaping,
+     and test_roundtrip.cpp:215 covers a special-character COMMENT -- none
+     of those exercise entity resolution inside an ATTRIBUTE VALUE. Both
+     the named form (&lt;) and the numeric form (&#60;) take the same
+     pushText()/pushEntity() path, so both are pinned here; this documents
+     existing correct behaviour and changes nothing. */
+  {
+    std::istringstream in("<a name=\"x&lt;y\"/>");
+    xmlParser_c pars(in);
+
     REQUIRE(pars.next() == xmlParser_c::START_TAG);
-    REQUIRE(pars.getName() == "a");
-    REQUIRE(pars.isEmptyElementTag());
-    REQUIRE(pars.getAttributeCount() == 1);
     REQUIRE(pars.getAttributeValue("name") == "x<y");
 
     REQUIRE_NOTHROW(([&]{
@@ -500,16 +559,11 @@ TEST_CASE("xml parser: an unquoted '<' inside an attribute value is silently acc
     }()));
   }
   {
-    /* the escalation: an entire child element's markup absorbed whole */
-    std::istringstream in("<a name=\"v><b/>\" z=\"2\"/>");
+    std::istringstream in("<a name=\"x&#60;y\"/>");
     xmlParser_c pars(in);
 
     REQUIRE(pars.next() == xmlParser_c::START_TAG);
-    REQUIRE(pars.getName() == "a");
-    REQUIRE(pars.isEmptyElementTag());
-    REQUIRE(pars.getAttributeCount() == 2);
-    REQUIRE(pars.getAttributeValue("name") == "v><b/>");
-    REQUIRE(pars.getAttributeValue("z") == "2");
+    REQUIRE(pars.getAttributeValue("name") == "x<y");
 
     REQUIRE_NOTHROW(([&]{
       while (pars.next() != xmlParser_c::END_DOCUMENT) { }

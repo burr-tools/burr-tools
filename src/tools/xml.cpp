@@ -836,6 +836,13 @@ void xmlParser_c::pushText(int delimiter, bool resolveEntities)
     if (delimiter == ' ')
       if (next <= ' ' || next == '>')
         break;
+    // AttValue ::= '"' ([^<&"] | Reference)* '"'  (XML 1.0 section 3.1) forbids
+    // a literal '<' inside an attribute value. When delimiter is '<' we are
+    // instead parsing element content, where '<' is what legitimately ends
+    // the run, so only reject it for the attribute-value case (delimiter is
+    // the quote character or the relaxed-mode whitespace sentinel).
+    if (next == '<' && delimiter != '<')
+      exception ("illegal character '<' in attribute value");
     if (next == '&')
     {
       if (!resolveEntities)
