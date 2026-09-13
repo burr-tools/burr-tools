@@ -322,18 +322,27 @@ TEST_CASE("voxel: translate moves the shape and fills the vacated cells", "[voxe
 TEST_CASE("voxel: translating out and back is the identity", "[voxel][bbox]") {
   gridType_c gt(gridType_c::GT_BRICKS);
 
-  /* the shape must sit clear of the boundary in the direction of travel:
-     anything shifted off the edge cannot come back, so a round trip is
-     lossless only when nothing falls off */
+  /* the shape must sit clear of the boundary in the direction of travel on
+     EVERY axis: anything shifted off the edge cannot come back, so a round
+     trip is lossless only when nothing falls off. Two filled cells, one
+     per z-layer, so the round trip genuinely exercises dz (a sign error in
+     translate's z branch would otherwise pass the whole suite unnoticed:
+     no other case here ever passes a non-zero dz). */
   std::unique_ptr<voxel_c> original = fromLayers(gt, {
-    { ".#..",
+    { "....",
       ".#..",
       "...." },
+    { "....",
+      ".#..",
+      "...." },
+    { "....",
+      "....",
+      "...." },
   });
-  std::unique_ptr<voxel_c> moved(gt.getVoxel(original.get()));
+  std::unique_ptr<voxel_c> moved = copyVoxel(gt, *original);
 
-  moved->translate(1, 0, 0, voxel_c::VX_EMPTY);
-  moved->translate(-1, 0, 0, voxel_c::VX_EMPTY);
+  moved->translate(1, -1, 1, voxel_c::VX_EMPTY);
+  moved->translate(-1, 1, -1, voxel_c::VX_EMPTY);
 
   REQUIRE(*moved == *original);
 }
@@ -401,7 +410,7 @@ TEST_CASE("voxel: scaling up then down is the identity", "[voxel][scale]") {
     { "##",
       "#." },
   });
-  std::unique_ptr<voxel_c> roundtrip(gt.getVoxel(original.get()));
+  std::unique_ptr<voxel_c> roundtrip = copyVoxel(gt, *original);
 
   roundtrip->scale(2, false);
   REQUIRE(roundtrip->scaleDown(2, true));
@@ -411,12 +420,34 @@ TEST_CASE("voxel: scaling up then down is the identity", "[voxel][scale]") {
   REQUIRE(roundtrip->identicalInBB(original.get()));
 }
 
-TEST_CASE("voxel: scaleDown refuses a shape that does not divide evenly", "[voxel][scale]") {
+TEST_CASE("voxel: scaleDown refuses a shape smaller than the divisor", "[voxel][scale]") {
   gridType_c gt(gridType_c::GT_BRICKS);
 
-  /* a single voxel cannot be halved */
+  /* a single voxel cannot be halved. This only exercises the size guard at
+     voxel_0.cpp:256 (sx < by || sy < by || sz < by); it never reaches the
+     block-uniformity scan at voxel_0.cpp:258-272, which needs a shape at
+     least as large as the divisor in every dimension. */
   std::unique_ptr<voxel_c> v = fromLayers(gt, {
     { "#" },
+  });
+
+  REQUIRE_FALSE(v->scaleDown(2, false));
+}
+
+TEST_CASE("voxel: scaleDown refuses a block that is not uniform", "[voxel][scale]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  /* a 2x2x2 space, exactly the size of the divisor, so the size guard at
+     voxel_0.cpp:256 passes and the block-uniformity scan at :258-272 is
+     actually reached. Its single candidate 2x2x2 block is one filled cell
+     among seven empty ones, so no shift (shx/shy/shz) can make it uniform:
+     the scan must return false for every shift, and the function as a
+     whole returns false. */
+  std::unique_ptr<voxel_c> v = fromLayers(gt, {
+    { "#.",
+      ".." },
+    { "..",
+      ".." },
   });
 
   REQUIRE_FALSE(v->scaleDown(2, false));
@@ -449,4 +480,22 @@ TEST_CASE("voxel: getMirrorTransform finds the mirror of a chiral shape", "[voxe
       "##" },
   });
   REQUIRE(square->getMirrorTransform(square.get()) != 0);
+}
+
+TEST_CASE("voxel: identicalInBB is colour-sensitive", "[voxel]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  /* two copies with identical geometry, differing only in the colour of
+     one filled cell */
+  std::unique_ptr<voxel_c> a = fromLayers(gt, {
+    { "##" },
+  });
+  std::unique_ptr<voxel_c> b = copyVoxel(gt, *a);
+  b->setColor(0, 0, 0, 1);
+
+  /* state (geometry) alone still matches ... */
+  REQUIRE(a->identicalInBB(b.get(), false));
+  /* ... but with includeColors == true (the default), it does not */
+  REQUIRE_FALSE(a->identicalInBB(b.get(), true));
+  REQUIRE_FALSE(a->identicalInBB(b.get()));
 }
