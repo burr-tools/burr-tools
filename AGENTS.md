@@ -11,7 +11,7 @@ Always use [`just`](justfile) to execute build, test, and quality control tasks.
 ```bash
 just                # Show available recipes (default)
 just build          # Compile BurrTools binaries (build/burrtools, build/burrTxt, build/burrTxt2, build/test_burrtools)
-just test           # Run Catch2 regression test suite (~0.4s)
+just test           # Run Catch2 regression test suite (~9.7s, ~8.4s of which is the pre-existing Minkowski random-shapes case)
 just check          # Fast static code analysis with cppcheck (~5s, always run before finishing tasks)
 just check-tidy     # Deep static analysis with clang-tidy on BurrTools sources
 just check-scan     # Clang Static Analyzer (scan-build)
@@ -57,7 +57,7 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
 - **`src/gui/`**: FLTK-based graphical user interface and OpenGL 3D viewports (`mainwindow.cpp`, `view3dgroup.cpp`, `arcball.cpp`, `viewcube.cpp`).
 - **`src/halfedge/`**: Half-edge data structure for 3D polyhedron mesh manipulation and STL export.
 - **`src/tools/`**: XML parser/writer (`xml.cpp`), file existence helpers, and gzip stream wrappers (`gzstream.cpp`).
-- **`test/`**: Catch2 v3 automated regression test suite (`test_solver.cpp`) testing real-world puzzles across voxel grids, solver engines, and malformed input rejection.
+- **`test/`**: Catch2 v3 automated regression test suite
 - **`design/`**: Durable design docs and specs (e.g. the test coverage stack design).
 - **`src/lua/`**: Bundled Lua 5.x C interpreter. **Do not modify.**
 - **`subprojects/`**: External dependencies managed by Meson (`fltk`, `catch2`). **Do not modify.**
