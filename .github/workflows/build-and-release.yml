@@ -67,6 +67,37 @@ jobs:
         name: burrtools-linux
         path: artifacts/burrtools-${{ steps.version.outputs.version }}-linux-x86_64.tar.gz
 
+  coverage:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Update package list
+      run: sudo apt-get update
+
+    - name: Install dependencies
+      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev gcovr
+
+    - name: Install just
+      uses: extractions/setup-just@v2
+
+    - name: Report coverage
+      run: just coverage
+
+    - name: Generate HTML report
+      run: just coverage-html
+
+    - name: Upload HTML coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-html
+        path: coverage-html/
+
   build-windows:
     runs-on: ubuntu-latest
     steps:
