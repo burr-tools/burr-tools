@@ -2,6 +2,39 @@
 
 #include "lib/grouping.h"
 
+/* KNOWN BUG: src/lib/grouping.cpp:136
+ *
+ *     for (unsigned int p2 = 0; p2 < p; p++)
+ *
+ * This is inside grouping_c::addPieceToSet's newly-tried-group failure
+ * arm. The intent is clearly to undo the pieces already placed into the
+ * group by walking p2 from 0 up to (but not including) the OUTER loop
+ * variable `p` -- but the increment clause advances `p`, not `p2`. `p2`
+ * itself never changes, so once `p > 0` when this line is reached, the
+ * condition `p2 < p` never becomes false: the loop increments the outer
+ * `for` loop's `p` forever instead. The consequence is an infinite loop:
+ * the solver HANGS silently, with no error message, no crash, nothing to
+ * grep for in a log.
+ *
+ * Reachability: src/lib/disassembler_a.cpp:222-226 (subProbGrouping) calls
+ * addPieceToSet() once per piece in a subproblem, which routinely puts
+ * multiple pieces into one set. This line is reached whenever a puzzle
+ * uses part groups with numGroups >= 3 and the newly-tried-group failure
+ * branch runs with more than one piece already placed in the current set
+ * (i.e. `p >= 1` when the failure is hit).
+ *
+ * Invariant this file relies on: EVERY case below keeps `p == 0` at this
+ * line (either by never entering the newly-tried-group failure arm with
+ * more than one piece placed, or by making the very first piece checked
+ * the one that fails). That is why this suite does not hang. Anyone
+ * adding a case with a multi-piece set that can fail on its SECOND or
+ * later piece within a retried group must preserve that invariant, or
+ * they will hang CI with no diagnostic. Do not construct such a scenario
+ * until grouping.cpp:136 is fixed in production code (out of scope for
+ * this test-only PR). Run any new grouping test under a timeout while
+ * developing it, just in case.
+ */
+
 TEST_CASE("grouping: a group accepts pieces up to its count", "[grouping]") {
   grouping_c g;
 
@@ -30,11 +63,20 @@ TEST_CASE("grouping: exhausting a group's count fails the assignment", "[groupin
 TEST_CASE("grouping: group 0 means no group and registers nothing", "[grouping]") {
   grouping_c g;
 
-  /* addPieces returns early for group 0, so this registers no capacity
-     at all and leaves numGroups at zero */
+  /* addPieces returns early for group == 0 (grouping.cpp:27-28), so this
+     registers NO capacity at all -- not "a group numbered 0", but
+     genuinely nothing. To make that observable rather than assumed,
+     register piece 0 in group 0 with a generous count AND, separately, in
+     group 1 with a count of exactly one. If the group-0 call had silently
+     contributed real capacity, more than one placement would succeed
+     below; instead exactly ONE succeeds -- drawn entirely from group 1's
+     count of one -- and the second fails, which is only possible if the
+     group-0 registration added nothing at all. */
   g.addPieces(0, 0, 5);
+  g.addPieces(0, 1, 1);
 
   g.newSet();
+  REQUIRE(g.addPieceToSet(0));
   REQUIRE_FALSE(g.addPieceToSet(0));
 }
 
