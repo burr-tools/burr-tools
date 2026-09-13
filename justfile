@@ -41,7 +41,7 @@ check-cppcheck: setup
              --enable=warning,performance,portability \
              --inline-suppr \
              --quiet \
-             -j$(nproc)
+             -j$(getconf _NPROCESSORS_ONLN)
 
 # Run clang-tidy across BurrTools source files (excluding subprojects and lua)
 check-tidy pattern="burr-tools/src/(?!lua/).*": setup
@@ -61,6 +61,33 @@ check: check-cppcheck
 
 # Run full static check suite (cppcheck + clang-tidy)
 check-all: check-cppcheck check-tidy
+
+# Configure the coverage build directory if not already set up
+setup-cov:
+    @if [ ! -d "build-cov" ]; then meson setup build-cov -Db_coverage=true; fi
+
+# Shared gcovr filters, used by both `coverage` and `coverage-html` so the two
+# recipes can never silently drift and report different numbers. Excluding
+# build-cov/subprojects skips walking vendored coverage data the filters would
+# discard anyway (~44s saved); it must not change the reported TOTAL.
+gcovr_flags := "--root . " + \
+    "--filter 'src/lib/' --filter 'src/tools/' --filter 'src/halfedge/' " + \
+    "--exclude 'src/lua/' " + \
+    "--exclude-directories 'build-cov/subprojects' " + \
+    ( if os() == "macos" { '--gcov-executable "xcrun llvm-cov gcov"' } else { "" } )
+
+# Report test coverage for BurrTools sources (excludes subprojects and lua)
+coverage: setup-cov
+    ninja -C build-cov
+    ./build-cov/test_burrtools
+    gcovr {{ gcovr_flags }} --print-summary build-cov
+
+# Write an HTML coverage report to coverage-html/index.html
+coverage-html: setup-cov
+    ninja -C build-cov
+    ./build-cov/test_burrtools
+    mkdir -p coverage-html
+    gcovr {{ gcovr_flags }} --print-summary --html-details coverage-html/index.html
 
 # Build with AddressSanitizer and UndefinedBehaviorSanitizer
 build-asan:
