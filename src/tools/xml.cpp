@@ -1071,7 +1071,7 @@ int xmlParser_c::next(void)
     nextImpl();
     if (type < minType)
       minType = type;
-  } while (minType > CDSECT                       // ignorable
+  } while (minType > ENTITY_REF                       // ignorable
       || (minType >= TEXT && peekType () >= TEXT));
 
   type = minType;

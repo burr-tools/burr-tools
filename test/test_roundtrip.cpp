@@ -212,6 +212,37 @@ TEST_CASE("puzzle: an in-memory puzzle survives a save and reload", "[roundtrip]
   REQUIRE(bttest::puzzlesRoundtripEqual(original, restored));
 }
 
+TEST_CASE("puzzle: a comment made up only of XML-special characters survives a save and reload", "[roundtrip]") {
+  /* xmlWriter_c::addContent escapes '<', '>', '"', '&' and '\'', so a
+     comment consisting solely of those characters is written as a body
+     that is entirely one or more entity references, e.g. "<&" becomes
+     <comment>&lt;&amp;</comment>. xmlParser_c::next() used to merge a
+     lone entity reference with the immediately following END_TAG and
+     report END_TAG instead of TEXT, so puzzle_c::load() (which only
+     assigns the comment on a TEXT event) silently dropped it on reload.
+     See test_xml.cpp's "an entity that is an element's sole content
+     resolves as text" case for the parser-level mechanism. */
+  puzzle_c original(new gridType_c(gridType_c::GT_BRICKS));
+
+  original.setComment("<&>\"'");
+  original.setCommentPopup(true);
+
+  std::ostringstream saved;
+  {
+    xmlWriter_c xml(saved);
+    original.save(xml);
+  }
+
+  REQUIRE(saved.str().size() > 0);
+
+  std::istringstream reloaded(saved.str());
+  xmlParser_c pars(reloaded);
+  puzzle_c restored(pars);
+
+  REQUIRE(restored.getComment() == "<&>\"'");
+  REQUIRE(bttest::puzzlesRoundtripEqual(original, restored));
+}
+
 TEST_CASE("puzzle: saving a reloaded puzzle reproduces the same document", "[roundtrip]") {
   gridType_c gt(gridType_c::GT_BRICKS);
 

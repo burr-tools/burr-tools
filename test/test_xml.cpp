@@ -269,11 +269,10 @@ TEST_CASE("xml parser: skipSubTree steps over a whole nested element", "[xml][pa
 
 TEST_CASE("xml parser: a custom entity replacement is applied", "[xml][parser]") {
   /* An entity reference that is the *entire* content of an element (no
-     other text alongside it, e.g. "<t>&mine;</t>") does not surface here
-     as TEXT -- see the (BUG) case below for why, and for the data-loss
-     consequence that has in production. Mixing the entity with an
-     ordinary character sidesteps that and still exercises
-     defineEntityReplacementText on its own terms. */
+     other text alongside it, e.g. "<t>&mine;</t>") is exercised on its
+     own below. Mixing the entity with an ordinary character here sidesteps
+     that case and still exercises defineEntityReplacementText on its own
+     terms. */
   std::istringstream in("<t>x&mine;</t>");
   xmlParser_c pars(in);
   pars.defineEntityReplacementText("mine", "replaced");
@@ -283,39 +282,34 @@ TEST_CASE("xml parser: a custom entity replacement is applied", "[xml][parser]")
   REQUIRE(pars.getText() == "xreplaced");
 }
 
-TEST_CASE("xml parser: an entity that is an element's sole content silently discards it (BUG)", "[xml][parser]") {
+TEST_CASE("xml parser: an entity that is an element's sole content resolves as text", "[xml][parser]") {
   /* MECHANISM: next() (xml.cpp) merges "ignorable" events (entity refs,
      comments, whitespace) with whatever follows, taking the minimum
-     event-type code across the run via `while (minType > CDSECT ...)`.
+     event-type code across the run via `while (minType > ENTITY_REF ...)`.
      When an entity reference is followed immediately by the closing tag
-     and nothing else, that minimum comes out as END_TAG rather than TEXT,
-     even though the resolved entity text was buffered internally.
-     getText() then reports "" because it checks (type < TEXT).
+     and nothing else, that minimum now comes out as TEXT, and the
+     resolved entity text buffered internally is surfaced by getText().
 
-     CONSEQUENCE: this is not a cosmetic quirk, it is silent data loss.
-     xmlWriter_c::addContent escapes '<' and '&', so a puzzle comment that
-     is made up entirely of XML-special characters -- addContent("<&")
-     writes exactly <comment>&lt;&amp;</comment> -- round-trips through
-     the escaper as an entity-only element body. puzzle_c::load()
-     (puzzle.cpp:329-336) only assigns `comment` when
-     `state == xmlParser_c::TEXT`; when next() instead reports END_TAG for
-     that body, the branch is skipped and the comment is silently dropped
-     on reload, with no error raised anywhere.
+     This matters beyond the parser: xmlWriter_c::addContent escapes '<'
+     and '&', so a puzzle comment made up entirely of XML-special
+     characters -- addContent("<&") writes exactly
+     <comment>&lt;&amp;</comment> -- round-trips through the escaper as
+     an entity-only element body. puzzle_c::load() (puzzle.cpp:329-336)
+     only assigns `comment` when `state == xmlParser_c::TEXT`, so before
+     this fix such a comment was silently dropped on reload with no error
+     raised anywhere. See test_roundtrip.cpp for the end-to-end case.
 
-     FIX: xml.cpp:1087's loop condition, `minType > CDSECT // ignorable`,
-     should be `minType > ENTITY_REF // ignorable`, matching upstream
-     kXML2 -- the comment was carried over from the original verbatim but
-     the constant it names was not. Applying exactly that one-token change
-     was verified to fix this: <t>&lt;&amp;</t> then yields
-     next() == TEXT and getText() == "<&". Left unapplied here per this
-     PR's test-only scope; production code is unchanged. */
+     FIX: xml.cpp's loop condition is `minType > ENTITY_REF // ignorable`,
+     matching upstream kXML2 -- the comment was carried over from the
+     original verbatim but the constant it named was not (it had drifted
+     to CDSECT). */
   std::istringstream in("<t>&mine;</t>");
   xmlParser_c pars(in);
   pars.defineEntityReplacementText("mine", "replaced");
 
   REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
-  REQUIRE(pars.next() == xmlParser_c::END_TAG);
-  REQUIRE(pars.getText() == "");
+  REQUIRE(pars.next() == xmlParser_c::TEXT);
+  REQUIRE(pars.getText() == "replaced");
 }
 
 TEST_CASE("xml parser: prevTag makes the following nextTag re-read the current tag", "[xml][parser]") {
