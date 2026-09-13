@@ -86,10 +86,7 @@ jobs:
     - name: Install just
       uses: extractions/setup-just@v2
 
-    - name: Report coverage
-      run: just coverage
-
-    - name: Generate HTML report
+    - name: Report coverage and generate HTML report
       run: just coverage-html
 
     - name: Upload HTML coverage report
