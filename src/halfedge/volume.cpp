@@ -71,17 +71,17 @@ static float get_area(const Face & face)
     Face::const_edge_circulator sentinel = eit;
 
     Vector3Df p0 = (*eit)->dst()->position();
-    eit++;
+    ++eit;
 
     Vector3Df v = (*eit)->dst()->position()-p0;
-    eit++;
+    ++eit;
 
     while (eit != sentinel)
     {
         Vector3Df v2 = (*eit)->dst()->position()-p0;
         sum += v ^ v2;
         v = v2;
-        eit++;
+        ++eit;
     }
 
     return sum.module() * 0.5;

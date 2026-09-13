@@ -56,7 +56,7 @@
 class grouping_c {
 
   struct set {
-    unsigned int currentGroup;
+    unsigned int currentGroup = 0;
 
     std::vector<unsigned int> pieces;
   };
@@ -64,9 +64,9 @@ class grouping_c {
   std::vector<set> sets;
 
   struct piece {
-    unsigned int piece;
-    unsigned int group;
-    int count;
+    unsigned int piece = 0;
+    unsigned int group = 0;
+    int count = 0;
   };
 
   std::vector<piece> pieces;

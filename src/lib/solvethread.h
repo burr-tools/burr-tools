@@ -69,8 +69,8 @@ class solveThread_c : public assembler_cb, public thread_c {
 
   private:
 
-    assembler_c::errState errState;
-    int errParam;
+    assembler_c::errState errState = assembler_c::ERR_NONE;
+    int errParam = 0;
 
   public:
 
@@ -85,7 +85,7 @@ class solveThread_c : public assembler_cb, public thread_c {
 
   private:
 
-    time_t startTime;
+    time_t startTime = 0;
 
   public:
 
@@ -145,7 +145,7 @@ class solveThread_c : public assembler_cb, public thread_c {
     /* this is used to increase the drop with time, when the limit is reached
      * and only every 2nd valid solution is taken
      */
-    unsigned int dropMultiplicator;
+    unsigned int dropMultiplicator = 1;
 
   public:
 
@@ -167,8 +167,8 @@ class solveThread_c : public assembler_cb, public thread_c {
   private:
 
 
-  std::atomic<bool> stopPressed;  // set by the GUI thread, read by the worker
-  bool return_after_prep;  // sometimes it is useful to only prepare and return,
+  std::atomic<bool> stopPressed{false};  // set by the GUI thread, read by the worker
+  bool return_after_prep = false;  // sometimes it is useful to only prepare and return,
                            // if this flag is set, the program will return
 
 
@@ -193,6 +193,9 @@ public:
   virtual ~solveThread_c(void);
 
 private:
+
+  // helper to stop without virtual dispatch in destructor
+  void stopInternal(void);
 
   // the call-back
   bool assembly(std::unique_ptr<assembly_c> a) override;

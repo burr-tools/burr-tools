@@ -48,7 +48,7 @@ class BlockList : public Fl_Widget {
   /* the hight that the whole drawing had the last time */
   unsigned int lastHight;
 
-  int callbackReason;
+  int callbackReason = 0;
 
 protected:
 
@@ -85,7 +85,7 @@ protected:
 
 public:
 
-  BlockList(int x, int y, int w, int h) : Fl_Widget(x, y, w, h), shift(0), lastHight(0xFFFFFFFF) {}
+  BlockList(int x, int y, int w, int h) : Fl_Widget(x, y, w, h), shift(0), lastHight(0xFFFFFFFF), callbackReason(0) {}
 
   /**
    * this sets the amount of pixels that the block list is shifted upwards from 0
@@ -291,7 +291,7 @@ private:
 
   const problem_c * puzzle;
 
-  unsigned int clicked;
+  unsigned int clicked = 0;
 
 public:
 
@@ -300,7 +300,7 @@ public:
     RS_PIECES_LAST
   };
 
-  PiecesList(int x, int y, int w, int h) : TextList(x, y, w, h), puzzle(0) { }
+  PiecesList(int x, int y, int w, int h) : TextList(x, y, w, h), puzzle(0), clicked(0) { }
 
   void setPuzzle(const problem_c *pz);
   virtual unsigned int blockNumber(void);
@@ -386,7 +386,7 @@ class ColorConstraintsEdit : public Fl_Widget {
 
   unsigned int currentSelect;
 
-  int callbackReason;
+  int callbackReason = 0;
 
 protected:
 
@@ -395,7 +395,7 @@ protected:
 public:
 
   ColorConstraintsEdit(int x, int y, int w, int h, puzzle_c * p) :
-    Fl_Widget(x, y, w, h), shift(0), lastHight(0), puzzle(p), problem(0), sortByResult(false), currentSelect(0) {}
+    Fl_Widget(x, y, w, h), shift(0), lastHight(0), puzzle(p), problem(0), sortByResult(false), currentSelect(0), callbackReason(0) {}
 
   void setPuzzle(puzzle_c *pz, unsigned int prob);
 

@@ -41,9 +41,18 @@ test-py: build
 check-cppcheck: setup
     cppcheck --project=build/compile_commands.json \
              -i subprojects \
+             -i src/lua \
+             -i test \
              --suppress="*:*subprojects*" \
+             --suppress="*:*src/lua*" \
+             --suppress="*:*test*" \
+             --suppress="*:*/usr/include/*" \
+             --suppress=syntaxError \
+             --suppress=unknownMacro \
+             --suppress="preprocessorErrorDirective:*python*" \
              --enable=warning,performance,portability \
              --inline-suppr \
+             --error-exitcode=1 \
              --quiet \
              -j$(getconf _NPROCESSORS_ONLN)
 

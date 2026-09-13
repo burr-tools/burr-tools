@@ -52,12 +52,16 @@
 voxelFrame_c::voxelFrame_c(int x,int y,int w,int h) :
   Fl_Gl_Window(x,y,w,h),
   curAssembly(0),
+  trans(ScaleRotateTranslate),
+  mX1(0), mY1(0), mZ(0), mX2(0), mY2(0),
   markerType(-1),
   size(10), cb(0),
   colors(pieceColor),
   curStyle(styleVoxel),
+  _showCoordinateSystem(false),
+  centerX(0.0f), centerY(0.0f), centerZ(0.0f),
   _useLightning(true),
-  pickx(-1),
+  pickx(-1), picky(-1),
   insideVisible(false)
 {
   int style = config.renderStyle();
@@ -517,7 +521,7 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
         dr = dg = db = tmp;
       }
 
-      for(Polyhedron::const_face_iterator it=poly->fBegin(); it!=poly->fEnd(); it++)
+      for(Polyhedron::const_face_iterator it=poly->fBegin(); it!=poly->fEnd(); ++it)
       {
         const Face* f = *it;
 
@@ -571,14 +575,14 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
 
         Face::const_edge_circulator e = f->begin();
         Face::const_edge_circulator sentinel = e;
-        e++;
+        ++e;
         Vector3Df start = (*e)->dst()->position();
-        e++;
+        ++e;
 
         do {
           glVertex3fv(start.getData());
           glVertex3fv((*e)->dst()->position().getData());
-          e++;
+          ++e;
           glVertex3fv((*e)->dst()->position().getData());
         } while (e != sentinel);
 
@@ -591,15 +595,15 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
           float x1 = (*e2)->dst()->position().x();
           float y1 = (*e2)->dst()->position().y();
           float z1 = (*e2)->dst()->position().z();
-          e2++;
+          ++e2;
           float x2 = (*e2)->dst()->position().x();
           float y2 = (*e2)->dst()->position().y();
           float z2 = (*e2)->dst()->position().z();
-          e2++;
+          ++e2;
           float x3 = (*e2)->dst()->position().x();
           float y3 = (*e2)->dst()->position().y();
           float z3 = (*e2)->dst()->position().z();
-          e2++;
+          ++e2;
 
           if (e2 == f->begin())
             drawShrinkTriangle(x1, y1, z1, x2, y2, z2, x3, y3, z3);
@@ -1832,6 +1836,8 @@ void voxelFrame_c::exportToVector(const char * fname, VectorFiletype vt) {
 #endif
 
   FILE * of = fopen(fname, "wb");
+  if (!of)
+    return;
 
   int state = GL2PS_OVERFLOW;
   int bufsize = 0;

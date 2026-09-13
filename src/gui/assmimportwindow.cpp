@@ -82,7 +82,7 @@ assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Win
     min->value("0");
     max->value("1");
 
-    ((LFl_Int_Input*)min)->weight(1, 0);
+    static_cast<LFl_Int_Input*>(min)->weight(1, 0);
 
     o->end();
   }
@@ -120,7 +120,7 @@ assmImportWindow_c::assmImportWindow_c(const puzzle_c * puzzle) : LFl_Double_Win
     shapeMin->value("0");
     shapeMax->value("1000000");
 
-    ((LFl_Int_Input*)shapeMin)->weight(1, 0);
+    static_cast<LFl_Int_Input*>(shapeMin)->weight(1, 0);
 
     o->end();
   }

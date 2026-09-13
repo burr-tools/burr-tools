@@ -33,7 +33,7 @@
  * defined by the 2 iterators
  */
 template<typename iter>
-void getNumbers(std::string str, iter start, iter end, bool neg_allowed) {
+void getNumbers(const std::string & str, iter start, iter end, bool neg_allowed) {
 
   int val = 0;
   bool gotNum = false;
@@ -404,9 +404,8 @@ void separation_c::addstate(state_c *st) {
   addstate(std::unique_ptr<state_c>(st));
 }
 
-separation_c::separation_c(const separation_c * cpy) {
-
-  pieces = cpy->pieces;
+separation_c::separation_c(const separation_c * cpy)
+  : pieces(cpy->pieces), numSequences(cpy->numSequences) {
 
   for (unsigned int i = 0; i < cpy->states.size(); i++)
     states.push_back(std::make_unique<state_c>(cpy->states[i].get(), pieces.size()));
@@ -416,8 +415,6 @@ separation_c::separation_c(const separation_c * cpy) {
 
   if (cpy->removed)
     removed = std::make_unique<separation_c>(cpy->removed.get());
-
-  numSequences = cpy->numSequences;
 }
 
 
@@ -641,7 +638,7 @@ unsigned int separationInfo_c::sumMoves(void) const {
 
 int separationInfo_c::movesText2(char * txt, int len, unsigned int idx) const {
 
-  int len2 = snprintf(txt, len, "%i", values[idx]-1);
+  int len2 = snprintf(txt, len, "%u", values[idx]-1);
 
   if (len2+5 > len)
     return len2;

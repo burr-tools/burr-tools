@@ -178,7 +178,7 @@ void placementFinder_c::find(const voxel_c * rotation,
      * slowest, restore that order so the matrix is built up identically
      */
     struct triple_s { int x, y, z; };
-    triple_s * t = (triple_s*)placements.data();
+    triple_s * t = reinterpret_cast<triple_s*>(placements.data());
     std::sort(t, t + placements.size()/3, [](const triple_s & a, const triple_s & b) {
         if (a.x != b.x) return a.x < b.x;
         if (a.y != b.y) return a.y < b.y;

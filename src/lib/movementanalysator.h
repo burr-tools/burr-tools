@@ -66,12 +66,12 @@ class movementAnalysator_c {
     /* these variables are used for the routine that looks
      * for the pieces to move find, checkmovement
      */
-    int nextpiece, next_pn, nextstate, state99nextState;
-    unsigned int nextdir;
-    unsigned int maxstep, nextstep;
-    disassemblerNode_c * state99node;
-    disassemblerNode_c * searchnode;
-    const std::vector<unsigned int> * pieces;
+    int nextpiece = 0, next_pn = 0, nextstate = -1, state99nextState = 0;
+    unsigned int nextdir = 0;
+    unsigned int maxstep = static_cast<unsigned int>(-1), nextstep = 0;
+    disassemblerNode_c * state99node = nullptr;
+    disassemblerNode_c * searchnode = nullptr;
+    const std::vector<unsigned int> * pieces = nullptr;
 
     void prepare(void);
     bool checkmovement(unsigned int maxPieces, unsigned int nextstep);

@@ -75,7 +75,7 @@ private:
    * be zero
    */
   std::vector<unsigned int> holeColumns;
-  unsigned int holes;
+  unsigned int holes = 0;
 
   /* this function gets called whenever an assembly was found
    * when a callback is available it will call getAssembly to
@@ -91,7 +91,7 @@ private:
   std::atomic<bool> abbort;
 
   /* used to save if the search is running */
-  bool running;
+  bool running = false;
 
   std::vector<unsigned int> rows;
   std::vector<unsigned int> finished_a;
@@ -120,7 +120,7 @@ private:
   std::vector<unsigned int>next_row_stack;
   std::vector<unsigned int>column_stack;
 
-  unsigned int headerNodes;  // number of nodes within the header
+  unsigned int headerNodes = 0;  // number of nodes within the header
 
   bool open_column_conditions_fulfillable(void);
   int find_best_unclosed_column(void);
@@ -158,14 +158,14 @@ private:
   int prepare(bool hasRange, unsigned int rangeMin, unsigned int rangeMax);
 
   /* internal error state */
-  errState errorsState;
-  int errorsParam;
+  errState errorsState = ERR_NONE;
+  int errorsParam = 0;
 
   /* now this isn't hard to guess, is it? */
-  unsigned int piecenumber;
+  unsigned int piecenumber = 0;
 
   /* the message object that gets called with the solutions as param */
-  assembler_cb * asm_bc;
+  assembler_cb * asm_bc = nullptr;
 
   /* this vector contains the placement (transformation and position) for
    * a piece in a row
@@ -186,19 +186,19 @@ private:
 
   /* the members for rotations rejection
    */
-  bool avoidTransformedAssemblies;
-  unsigned int avoidTransformedPivot;
+  bool avoidTransformedAssemblies = false;
+  unsigned int avoidTransformedPivot = 0;
   std::unique_ptr<mirrorInfo_c> avoidTransformedMirror;
 
   /// set to true, when complete analysis is requested
-  bool complete;
+  bool complete = false;
 
   /* the variables for debugging assembling processes
    */
-  bool debug;         // debugging enabled
-  int debug_loops;    // how many loops to run ?
+  bool debug = false;         // debugging enabled
+  int debug_loops = 0;    // how many loops to run ?
 
-  std::atomic<unsigned long> iterations;  // single-writer counter, read cross-thread by getIterations
+  std::atomic<unsigned long> iterations{0};  // single-writer counter, read cross-thread by getIterations
 
 protected:
 

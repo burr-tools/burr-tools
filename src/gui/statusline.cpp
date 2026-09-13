@@ -102,6 +102,7 @@ voxelFrame_c::renderStyle LStatusLine::getRenderStyle(void) const {
   }
 }
 
+// cppcheck-suppress duplInheritedMember
 void LStatusLine::callback(Fl_Callback* fkt, void * dat) {
   mode->callback(fkt, dat);
   rstyle->callback(fkt, dat);

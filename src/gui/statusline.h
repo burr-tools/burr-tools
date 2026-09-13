@@ -45,6 +45,7 @@ public:
   void setText(const char * t);
   voxelFrame_c::colorMode getColorMode(void) const;
   voxelFrame_c::renderStyle getRenderStyle(void) const;
+  // cppcheck-suppress duplInheritedMember
   void callback(Fl_Callback* fkt, void * dat);
 
   virtual void getMinSize(int *width, int *height) const {

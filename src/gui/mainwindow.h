@@ -214,6 +214,7 @@ public:
   int handle(int event);
 
   using LFl_Double_Window::show;
+  // cppcheck-suppress duplInheritedMember
   void show(int argn, char ** argv);
 
   // overwrite hide to check for changes in all possible exit situations

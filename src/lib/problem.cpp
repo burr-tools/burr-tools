@@ -81,7 +81,7 @@ problem_c::problem_c(const problem_c * orig, puzzle_c & puz) :
   puzzle(puz), result(orig->result),
   solveState(SS_UNSOLVED), numAssemblies(0), numSolutions(0), usedTime(0)
 {
-  for (std::set<uint32_t>::iterator i = orig->colorConstraints.begin(); i != orig->colorConstraints.end(); i++)
+  for (std::set<uint32_t>::iterator i = orig->colorConstraints.begin(); i != orig->colorConstraints.end(); ++i)
     colorConstraints.insert(*i);
 
   for (unsigned int i = 0; i < orig->parts.size(); i++)
@@ -166,7 +166,7 @@ void problem_c::save(xmlWriter_c & xml) const
   xml.endTag("result");
 
   xml.newTag("bitmap");
-  for (std::set<uint32_t>::iterator i = colorConstraints.begin(); i != colorConstraints.end(); i++)
+  for (std::set<uint32_t>::iterator i = colorConstraints.begin(); i != colorConstraints.end(); ++i)
   {
     xml.newTag("pair");
     xml.newAttrib("piece", *i >> 16);
@@ -932,13 +932,12 @@ unsigned int problem_c::getPartIdToPieceId(unsigned int pieceId) const {
 
   unsigned int shape = 0;
 
-  bt_assert(shape < parts.size());
-
-  while (pieceId >= parts[shape]->max) {
+  while (shape < parts.size() && pieceId >= parts[shape]->max) {
     pieceId -= parts[shape]->max;
     shape++;
-    bt_assert(shape < parts.size());
   }
+
+  bt_assert(shape < parts.size());
 
   return shape;
 }
@@ -947,13 +946,12 @@ unsigned int problem_c::getPartIndexToPieceId(unsigned int pieceId) const {
 
   unsigned int shape = 0;
 
-  bt_assert(shape < parts.size());
-
-  while (pieceId >= parts[shape]->max) {
+  while (shape < parts.size() && pieceId >= parts[shape]->max) {
     pieceId -= parts[shape]->max;
     shape++;
-    bt_assert(shape < parts.size());
   }
+
+  bt_assert(shape < parts.size());
 
   return pieceId;
 }

@@ -45,7 +45,7 @@ public:
   void cb_MaxHoles(void);
   void cb_UpdateInterface(void);
 
-  bool changed(void);
+  bool isChanged(void);
 
   /* finish editing and close window */
   void hide(void);

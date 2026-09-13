@@ -201,9 +201,9 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
     col+=2;
 
     if (v->getName().length())
-      snprintf(tmp, 200, "S%i - %s", s+1, v->getName().c_str());
+      snprintf(tmp, 200, "S%u - %s", s+1, v->getName().c_str());
     else
-      snprintf(tmp, 200, "S%i", s+1);
+      snprintf(tmp, 200, "S%u", s+1);
 
     b = new LFl_Box("", col, s+head);
     b->copy_label(tmp);
@@ -212,15 +212,15 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
     b->box(FL_FLAT_BOX);
     col += 2;
 
-    snprintf(tmp, 200, "%i", v->countState(voxel_c::VX_FILLED));
+    snprintf(tmp, 200, "%u", v->countState(voxel_c::VX_FILLED));
     (new LFl_Box("", col, s+head))->copy_label(tmp);
     col += 2;
 
-    snprintf(tmp, 200, "%i", v->countState(voxel_c::VX_VARIABLE));
+    snprintf(tmp, 200, "%u", v->countState(voxel_c::VX_VARIABLE));
     (new LFl_Box("", col, s+head))->copy_label(tmp);
     col += 2;
 
-    snprintf(tmp, 200, "%i", v->countState(voxel_c::VX_VARIABLE) + v->countState(voxel_c::VX_FILLED));
+    snprintf(tmp, 200, "%u", v->countState(voxel_c::VX_VARIABLE) + v->countState(voxel_c::VX_FILLED));
     (new LFl_Box("", col, s+head))->copy_label(tmp);
     col += 2;
     Fl::wait(0);
@@ -232,7 +232,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
 
     if (shapeKnown)
     {
-      snprintf(tmp, 200, "%i", shapeIdx+1);
+      snprintf(tmp, 200, "%u", shapeIdx+1);
       b = new LFl_Box("", col, s+head);
       b->copy_label(tmp);
       b->color(fltkPieceColor(shapeIdx));
@@ -247,7 +247,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
 
     if (shapeKnown)
     {
-      snprintf(tmp, 200, "%i", shapeIdx+1);
+      snprintf(tmp, 200, "%u", shapeIdx+1);
       b = new LFl_Box("", col, s+head);
       b->copy_label(tmp);
       b->color(fltkPieceColor(shapeIdx));
@@ -262,7 +262,7 @@ statusWindow_c::statusWindow_c(puzzle_c * p) : LFl_Double_Window(true), puz(p), 
 
     if (shapeKnown && shapeTrans < p->getGridType()->getSymmetries()->getNumTransformations())
     {
-      snprintf(tmp, 200, "%i", shapeIdx+1);
+      snprintf(tmp, 200, "%u", shapeIdx+1);
       b = new LFl_Box("", col, s+head);
       b->copy_label(tmp);
       b->color(fltkPieceColor(shapeIdx));

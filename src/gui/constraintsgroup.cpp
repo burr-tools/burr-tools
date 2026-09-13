@@ -25,7 +25,7 @@
 #include <FL/Fl.H>
 #include <FL/Fl_Slider.H>
 
-static void cb_ConstraintsGroupList_stub(Fl_Widget* o, void* /*v*/) { ((LConstraintsGroup_c*)(o->parent()))->cb_list(); }
+static void cb_ConstraintsGroupList_stub(Fl_Widget* o, void* /*v*/) { static_cast<LConstraintsGroup_c*>(o->parent())->cb_list(); }
 void LConstraintsGroup_c::cb_list(void) {
 
   if (List->getReason() == ColorConstraintsEdit::RS_CHANGEDHIGHT) {
@@ -42,7 +42,7 @@ void LConstraintsGroup_c::cb_list(void) {
   }
 }
 
-static void cb_ConstraintsGroupSlider_stub(Fl_Widget* o, void* /*v*/) { ((LConstraintsGroup_c*)(o->parent()))->cb_slider(); }
+static void cb_ConstraintsGroupSlider_stub(Fl_Widget* o, void* /*v*/) { static_cast<LConstraintsGroup_c*>(o->parent())->cb_slider(); }
 void LConstraintsGroup_c::cb_slider(void) { List->setShift((int)Slider->value()); }
 
 int LConstraintsGroup_c::handle(int event) {
@@ -68,7 +68,7 @@ int LConstraintsGroup_c::handle(int event) {
 }
 
 
-LConstraintsGroup_c::LConstraintsGroup_c(int x, int y, int w, int h, ColorConstraintsEdit * l) : Fl_Group(0, 0, 100, 100), layoutable_c(x, y, w, h), List(l) {
+LConstraintsGroup_c::LConstraintsGroup_c(int x, int y, int w, int h, ColorConstraintsEdit * l) : Fl_Group(0, 0, 100, 100), layoutable_c(x, y, w, h), Slider(nullptr), List(l), callbackReason(0) {
 
   box(FL_DOWN_FRAME);
 

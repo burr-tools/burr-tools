@@ -50,14 +50,14 @@ class disassembler_a_c : public disassembler_c {
   private:
 
     /**
-     * For grouping pieces
-     */
-    std::unique_ptr<grouping_c> groups;
-
-    /**
      * the problem we solve
      */
     const problem_c & puzzle;
+
+    /**
+     * For grouping pieces
+     */
+    std::unique_ptr<grouping_c> groups;
 
     /**
      * Converts piece number to the corresponding shape number.

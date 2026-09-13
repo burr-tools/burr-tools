@@ -322,7 +322,7 @@ public:
    * those tables we need a next-pointer to save lists of nodes
    * that go into the same hash-bucket
    */
-  disassemblerNode_c * next;
+  disassemblerNode_c * next = nullptr;
 
 private:
 

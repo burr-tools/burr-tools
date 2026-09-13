@@ -71,7 +71,7 @@ private:
   std::atomic<bool> abbort;
 
   /* used to save if the search is running */
-  bool running;
+  bool running = false;
 
   /* cover one column:
    * - remove the column from the column header node list,
@@ -152,32 +152,32 @@ private:
   bool checkmatrix(void);
 
   /* internal error state */
-  errState errorsState;
-  int errorsParam;
+  errState errorsState = ERR_NONE;
+  int errorsParam = 0;
 
   /* number of iterations the assemble routine run */
-  std::atomic<unsigned long> iterations;  // single-writer counter, read cross-thread by getIterations
+  std::atomic<unsigned long> iterations{0};  // single-writer counter, read cross-thread by getIterations
 
   /* the number of holes the assembles piece will have. Holes are
    * voxels in the variable voxel set that are not filled. The other
    * voxels are all filled
    */
-  int holes;
+  int holes = 0;
 
   /* first and one after last column for the variable voxels */
-  unsigned int varivoxelStart;
-  unsigned int varivoxelEnd;
+  unsigned int varivoxelStart = 0;
+  unsigned int varivoxelEnd = 0;
 
   /* now this isn't hard to guess, is it? */
-  unsigned int piecenumber;
+  unsigned int piecenumber = 0;
 
   /* the message object that gets called with the solutions as param */
-  assembler_cb * asm_bc;
+  assembler_cb * asm_bc = nullptr;
 
   /* this value contains the piecenumber that the reduce procedure is currently working on
    * the value is only valid, when reduce is running
    */
-  std::atomic<unsigned int> reducePiece;  // written by worker, read by GUI via getReducePiece
+  std::atomic<unsigned int> reducePiece{0};  // written by worker, read by GUI via getReducePiece
 
   /* this vector contains the placement (transformation and position) for
    * a piece in a row
@@ -198,17 +198,17 @@ private:
 
   /* the members for rotations rejection
    */
-  bool avoidTransformedAssemblies;
-  unsigned int avoidTransformedPivot;
+  bool avoidTransformedAssemblies = false;
+  unsigned int avoidTransformedPivot = 0;
   std::unique_ptr<mirrorInfo_c> avoidTransformedMirror;
 
   /// set to true, when complete rotation analysis is requested
-  bool complete;
+  bool complete = false;
 
   /* the variables for debugging assembling processes
    */
-  bool debug;         // debugging enabled
-  int debug_loops;    // how many loops to run ?
+  bool debug = false;         // debugging enabled
+  int debug_loops = 0;    // how many loops to run ?
 
   unsigned int clumpify(void);
 

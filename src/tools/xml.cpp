@@ -54,9 +54,11 @@ xmlWriter_c::xmlWriter_c(std::ostream & str) : stream(str), state(StBase)
   stream << "<?xml version=\"1.0\"?>\n";
 }
 
+// cppcheck-suppress exceptThrowInDestructor
 xmlWriter_c::~xmlWriter_c(void) noexcept(false)
 {
   if (tagStack.size() > 0)
+    // cppcheck-suppress exceptThrowInDestructor
     throw xmlWriterException_c("Not all tags were closed");
 }
 
@@ -223,17 +225,16 @@ std::ostream & xmlWriter_c::addContent(void)
 }
 
 
-xmlParserException_c::xmlParserException_c(std::string desc, std::string state, int line, int col)
+xmlParserException_c::xmlParserException_c(const std::string & desc, const std::string & state, int line, int col)
 {
   std::ostringstream str;
   str << "xml Parser Exception : " << desc << " in state: " + state << "at position: " << line << "; " << col;
   description = str.str();
 }
 
-xmlParserException_c::xmlParserException_c(std::string desc)
+xmlParserException_c::xmlParserException_c(const std::string & desc)
+  : description("Xml Parser Exception : " + desc)
 {
-  description = "Xml Parser Exception : " ;
-  description += desc;
 }
 
 
@@ -262,7 +263,7 @@ xmlParserException_c::xmlParserException_c(std::string desc)
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE. */
 
-static int parseInt(std::string s, int radix)
+static int parseInt(const std::string & s, int radix)
 {
   int len = s.size ();
   int value = 0;
@@ -386,7 +387,7 @@ std::string xmlParser_c::state(int eventType)
   }
 }
 
-void xmlParser_c::exception(std::string desc)
+[[noreturn]] void xmlParser_c::exception(const std::string & desc)
 {
   xmlParserException_c e (desc, state (type), line, column);
   throw e;
@@ -962,13 +963,13 @@ void xmlParser_c::skip(void)
 //--------------- public part starts here... ---------------
 
 
-std::string xmlParser_c::getInputEncoding(void)
+const std::string & xmlParser_c::getInputEncoding(void) const
 {
   return encoding;
 }
 
 
-void xmlParser_c::defineEntityReplacementText(std::string entity, std::string value)
+void xmlParser_c::defineEntityReplacementText(const std::string & entity, const std::string & value)
 {
   if (entityMap.empty())
     exception ("entity replacement text must be defined after setInput!");
@@ -1047,7 +1048,7 @@ std::string xmlParser_c::getAttributeValue(int index)
 }
 
 
-std::string xmlParser_c::getAttributeValue(std::string nam)
+std::string xmlParser_c::getAttributeValue(const std::string & nam)
 {
   for (int i = (attributeCount << 2) - 4; i >= 0; i -= 4)
   {
@@ -1117,7 +1118,7 @@ int xmlParser_c::nextTag(void)
 }
 
 
-void xmlParser_c::require (int Type, std::string nam)
+void xmlParser_c::require (int Type, const std::string & nam)
 {
   if (Type != type || (!nam.empty () && nam != getName ()))
     exception ("expected: " + state(Type) + nam);

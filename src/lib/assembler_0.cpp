@@ -57,20 +57,20 @@ void printMatrix(
     unsigned int c = right[0];
     while (c) {
 
-      if (left[right[c]] != c) printf("lr %i\n", c);
-      if (right[left[c]] != c) printf("rl %i\n", c);
-      if (up(down(c)) != c) printf("ud %i\n", c);
-      if (down(up(c)) != c) printf("du %i\n", c);
+      if (left[right[c]] != c) printf("lr %u\n", c);
+      if (right[left[c]] != c) printf("rl %u\n", c);
+      if (up(down(c)) != c) printf("ud %u\n", c);
+      if (down(up(c)) != c) printf("du %u\n", c);
       cnt++;
 
       unsigned int r = down(c);
 
       while (r != c) {
 
-        if (left[right[r]] != r) printf("lr %i\n", r);
-        if (right[left[r]] != r) printf("rl %i\n", r);
-        if (up(down(r)) != r) printf("ud %i\n", r);
-        if (down(up(r)) != r) printf("du %i\n", r);
+        if (left[right[r]] != r) printf("lr %u\n", r);
+        if (right[left[r]] != r) printf("rl %u\n", r);
+        if (up(down(r)) != r) printf("ud %u\n", r);
+        if (down(up(r)) != r) printf("du %u\n", r);
         cnt++;
 
         r = down(r);
@@ -80,10 +80,10 @@ void printMatrix(
       c = right[c];
     }
 
-    printf("checked %li nodes for consistency\n", cnt);
+    printf("checked %lu nodes for consistency\n", cnt);
   }
 
-  printf("%i %i\n", varivoxelStart, varivoxelEnd);
+  printf("%u %u\n", varivoxelStart, varivoxelEnd);
 
   /* first find all the columns */
   std::vector<unsigned int> columns;
@@ -1175,7 +1175,7 @@ void assembler_0_c::reduce(void) {
 
   remCol += clumpify();
 
-  fprintf(stderr, "removed %i rows and %i columns\n", removed, remCol);
+  fprintf(stderr, "removed %u rows and %u columns\n", removed, remCol);
 }
 
 std::unique_ptr<assembly_c> assembler_0_c::getAssembly(void) {
