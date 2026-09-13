@@ -41,7 +41,7 @@ check-cppcheck: setup
              --enable=warning,performance,portability \
              --inline-suppr \
              --quiet \
-             -j{{ num_cpus() }}
+             -j$(getconf _NPROCESSORS_ONLN)
 
 # Run clang-tidy across BurrTools source files (excluding subprojects and lua)
 check-tidy pattern="burr-tools/src/(?!lua/).*": setup
