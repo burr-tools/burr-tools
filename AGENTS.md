@@ -16,10 +16,16 @@ just check          # Fast static code analysis with cppcheck (~5s, always run b
 just check-tidy     # Deep static analysis with clang-tidy on BurrTools sources
 just check-scan     # Clang Static Analyzer (scan-build)
 just check-analyzer # GCC -fanalyzer static analysis
+just coverage       # Report test coverage for BurrTools sources (gcovr)
+just coverage-html  # Write an HTML coverage report to coverage-html/index.html
 just clean          # Clean build artifacts
 just rebuild        # Rebuild from scratch (removes build/ and re-runs meson setup)
 just build-werror   # Build with warnings treated as errors (excluding vendored code)
 ```
+
+Coverage requires `gcovr` (`brew install gcovr` on macOS, `apt-get install gcovr` on Linux).
+On macOS the recipes pass `--gcov-executable "xcrun llvm-cov gcov"` automatically, because
+Apple Clang emits coverage data that plain `gcov` cannot parse.
 
 For running filtered or verbose test cases directly:
 ```bash
