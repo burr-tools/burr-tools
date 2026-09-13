@@ -130,6 +130,9 @@ void xmlWriter_c::newAttrib(const std::string & attrib, signed long value)
 
 void xmlWriter_c::endTag(const std::string & name)
 {
+  if (tagStack.empty())
+    throw xmlWriterException_c("Try to close tag, but no tag is open");
+
   if (name != *(tagStack.rbegin()))
     throw xmlWriterException_c("Try to close tag with wrong name");
 

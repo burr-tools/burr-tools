@@ -171,6 +171,31 @@ TEST_CASE("xml writer: closing a tag with the wrong name throws", "[xml][writer]
   }()), xmlWriterException_c);
 }
 
+TEST_CASE("xml writer: closing a tag when none is open throws", "[xml][writer]") {
+  /* xml.cpp's endTag() used to do `*(tagStack.rbegin())` with no check that
+     tagStack was non-empty -- calling endTag() with no open tag dereferenced
+     the reverse-iterator of an empty vector, which is undefined behaviour,
+     not a clean error. It now checks tagStack.empty() first and throws
+     xmlWriterException_c, matching the style of the mismatched-name throw
+     immediately below it.
+
+     Because tagStack is empty for the whole test -- not a single tag was
+     ever opened -- ~xmlWriter_c has nothing to complain about: its own
+     throw is conditioned on `tagStack.size() > 0` (see the constructor
+     above), so it stays quiet here and only endTag's exception is ever in
+     flight. That is true independent of *how* xml is destroyed, so unlike
+     the two cases above this one needs no lambda to give the destructor a
+     safe, single-exception run point -- but the lambda is used anyway, for
+     the same reason and the same discipline: it keeps that fact obvious
+     from the shape of the test rather than leaving it to be worked out from
+     the implementation. */
+  REQUIRE_THROWS_AS(([]{
+    std::ostringstream out;
+    xmlWriter_c xml(out);
+    xml.endTag("puzzle");
+  }()), xmlWriterException_c);
+}
+
 TEST_CASE("xml parser: walks a document tag by tag", "[xml][parser]") {
   std::istringstream in("<a><b>text</b></a>");
   xmlParser_c pars(in);
