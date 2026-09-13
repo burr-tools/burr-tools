@@ -123,6 +123,10 @@ int image_c::saveToPNG(const char * fname) const {
   int sy = height;
   const unsigned char * buffer = bitmap.data();
 
+  std::vector<png_bytep> png_rows(sy);
+  for (int y = 0; y < sy; y++)
+    png_rows[y] = const_cast<png_bytep>(buffer + y * sx * 4);
+
   FILE *fi = fopen(fname, "wb");
   if (!fi)
   {
@@ -169,10 +173,6 @@ int image_c::saveToPNG(const char * fname) const {
   png_write_info(png_ptr, info_ptr);
 
   /* Save the picture: */
-  std::vector<png_bytep> png_rows(sy);
-  for (int y = 0; y < sy; y++)
-    png_rows[y] = const_cast<png_bytep>(buffer + y * sx * 4);
-
   png_write_image(png_ptr, png_rows.data());
 
   png_write_end(png_ptr, NULL);

@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <memory>
+#include <ranges>
 
 #include "../lib/bt_assert.h"
 
@@ -59,8 +60,12 @@ void configuration_c::parse() {
 
   luaClass_c L;
 
-  /* first initialize the variables with their default value */
-  for (const auto & t : data) {
+  /* first initialize the variables with their default value
+   * Note: in legacy BurrTools, register_entry prepended to a linked list,
+   * so all traversals ran in reverse registration order. We preserve that
+   * order across all operations (parsing, serialization, dialog layout).
+   */
+  for (const auto & t : std::views::reverse(data)) {
     char command[200];
     snprintf(command, 200, "%s = %s", t.cnf_name, t.defaultValue);
     L.doString(command);
@@ -70,7 +75,7 @@ void configuration_c::parse() {
   open_local_config_file(L);
 
   /* read out data */
-  for (auto & t : data) {
+  for (auto & t : std::views::reverse(data)) {
     try {
       switch (t.cnf_typ) {
         case CT_BOOL:
@@ -136,7 +141,7 @@ configuration_c::~configuration_c(void) {
 
   fseek(f, 0, SEEK_SET);
 
-  for (const auto & t : data) {
+  for (const auto & t : std::views::reverse(data)) {
     fprintf(f, "%s = ", t.cnf_name);
 
     switch (t.cnf_typ) {
@@ -190,7 +195,7 @@ public:
 
 void configuration_c::restoreDialogDefaults(void) {
 
-  for (auto & t : data) {
+  for (auto & t : std::views::reverse(data)) {
     if (t.dialog && t.cnf_typ == CT_BOOL && t.widget) {
       bool enable = (strcmp(t.defaultValue, "true") == 0);
       ((Fl_Check_Button*)t.widget)->value(enable ? 1 : 0);
@@ -216,7 +221,7 @@ void configuration_c::dialog(void) {
 
   int y = 1;
 
-  for (auto & t : data) {
+  for (auto & t : std::views::reverse(data)) {
     if (t.dialog) {
 
       switch (t.cnf_typ) {
@@ -291,7 +296,7 @@ void configuration_c::dialog(void) {
   while (win->visible())
     Fl::wait();
 
-  for (auto & t : data) {
+  for (auto & t : std::views::reverse(data)) {
     if (t.dialog) {
 
       switch (t.cnf_typ) {

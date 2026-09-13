@@ -416,7 +416,6 @@ public:
    * available. If not simply set the assembler
    */
   assembler_c::errState setAssembler(std::unique_ptr<assembler_c> assm);
-  assembler_c::errState setAssembler(assembler_c * assm);                       // startSolving
   /** get the assembler */
   assembler_c * getAssembler(void) { return assm.get(); }
   /** get the assembler */

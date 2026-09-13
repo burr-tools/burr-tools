@@ -280,6 +280,7 @@ public:
   ~assembler_0_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */
+  using assembler_c::assemble;
   errState createMatrix(bool keepMirror, bool keepRotations, bool complete) override;
   void assemble(assembler_cb * callback) override;
   int getErrorsParam(void) override { return errorsParam; }

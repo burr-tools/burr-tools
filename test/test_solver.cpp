@@ -3,11 +3,14 @@
 #include "lib/puzzle.h"
 #include "lib/problem.h"
 #include "lib/assembler.h"
+#include "lib/assembler_0.h"
+#include "lib/assembler_1.h"
 #include "lib/assembly.h"
 #include "lib/disassembler.h"
 #include "lib/disassembler_0.h"
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
+#include "lib/voxel.h"
 #include "tools/xml.h"
 #include "tools/gzstream.h"
 
@@ -219,5 +222,89 @@ TEST_CASE("assert_log correctly records lines", "[assert]") {
   CHECK(assert_log->lines() == initialLines + 2);
   CHECK(std::string(assert_log->line(initialLines)) == "first assert log entry");
   CHECK(std::string(assert_log->line(initialLines + 1)) == "second assert log entry");
+}
+
+TEST_CASE("Symmetry calculation for non-cube grids with unaligned bounding boxes", "[symmetry]") {
+  // Test GT_RHOMBIC whose voxel class (voxel_3_c) aligns bounding boxes to multiples of 5
+  {
+    gridType_c gt(gridType_c::GT_RHOMBIC);
+    std::unique_ptr<voxel_c> v(gt.getVoxel(3, 3, 3, voxel_c::VX_EMPTY));
+    REQUIRE(v != nullptr);
+    for (unsigned int z = 0; z < 3; z++) {
+      for (unsigned int y = 0; y < 3; y++) {
+        for (unsigned int x = 0; x < 3; x++) {
+          if (v->validCoordinate(x, y, z)) {
+            v->set(x, y, z, voxel_c::VX_FILLED);
+          }
+        }
+      }
+    }
+    CHECK_NOTHROW(v->selfSymmetries());
+    CHECK(v->selfSymmetries() != 0);
+  }
+
+  // Test GT_TETRA_OCTA whose voxel class (voxel_4_c) aligns bounding boxes to multiples of 3
+  {
+    gridType_c gt(gridType_c::GT_TETRA_OCTA);
+    std::unique_ptr<voxel_c> v(gt.getVoxel(2, 2, 2, voxel_c::VX_EMPTY));
+    REQUIRE(v != nullptr);
+    for (unsigned int z = 0; z < 2; z++) {
+      for (unsigned int y = 0; y < 2; y++) {
+        for (unsigned int x = 0; x < 2; x++) {
+          if (v->validCoordinate(x, y, z)) {
+            v->set(x, y, z, voxel_c::VX_FILLED);
+          }
+        }
+      }
+    }
+    CHECK_NOTHROW(v->selfSymmetries());
+    CHECK(v->selfSymmetries() != 0);
+  }
+}
+
+TEST_CASE("Assembler early stop on false callback return and derived assemble overload visibility", "[assembler]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  // Test assembler_0_c: calls assemble with lambda overload directly on derived assembler_0_c
+  {
+    assembler_0_c assm(*problem);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    int count = 0;
+    assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
+      count++;
+      return false; // Return false to stop immediately
+    });
+    CHECK(count == 1);
+  }
+
+  // Test assembler_1_c: calls assemble with lambda overload directly on derived assembler_1_c
+  {
+    assembler_1_c assm(*problem);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    int count = 0;
+    assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
+      count++;
+      return false; // Return false to stop immediately
+    });
+    CHECK(count == 1);
+  }
+}
+
+TEST_CASE("problem_c::setAssembler takes std::unique_ptr and transfers ownership", "[problem]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+  problem->removeAllSolutions();
+
+  auto assm = std::make_unique<assembler_0_c>(*problem);
+  assembler_c * raw = assm.get();
+  assembler_c::errState err = problem->setAssembler(std::move(assm));
+  CHECK(err == assembler_c::ERR_NONE);
+  CHECK(assm == nullptr);
+  CHECK(problem->getAssembler() == raw);
 }
 

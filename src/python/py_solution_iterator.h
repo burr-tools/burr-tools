@@ -28,7 +28,7 @@ public:
   PySolution next();
 
   void stop();
-  unsigned long get_iterations() const { return iterations.load(); }
+  unsigned long get_iterations() const;
   bool is_finished() const { return finished.load(); }
 
 private:
@@ -47,6 +47,7 @@ private:
 
   std::unique_ptr<assembler_c> assm;
   std::unique_ptr<disassembler_c> disasm;
+  std::atomic<assembler_c*> active_assm{nullptr};
 
   std::atomic<bool> stop_requested{false};
   std::atomic<bool> finished{false};

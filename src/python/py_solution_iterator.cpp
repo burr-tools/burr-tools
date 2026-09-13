@@ -43,13 +43,22 @@ SolutionIterator::~SolutionIterator() {
   stop();
 }
 
+unsigned long SolutionIterator::get_iterations() const {
+  assembler_c * a = active_assm.load(std::memory_order_acquire);
+  if (a) {
+    return a->getIterations();
+  }
+  return iterations.load(std::memory_order_relaxed);
+}
+
 void SolutionIterator::stop() {
   bool expected = false;
   if (!stop_requested.compare_exchange_strong(expected, true)) {
     return;
   }
-  if (assm) {
-    assm->stop();
+  assembler_c * a = active_assm.load(std::memory_order_acquire);
+  if (a) {
+    a->stop();
   }
   {
     std::lock_guard<std::mutex> lock(queue_mutex);
@@ -115,6 +124,10 @@ PySolution SolutionIterator::next() {
 
 void SolutionIterator::worker_run() {
   try {
+    if (stop_requested.load(std::memory_order_acquire)) {
+      return;
+    }
+
     problem_c * problem = puzzle->getProblem(problem_idx);
     const gridType_c * gt = problem->getPuzzle().getGridType();
 
@@ -128,15 +141,33 @@ void SolutionIterator::worker_run() {
       return;
     }
 
+    active_assm.store(assm.get(), std::memory_order_release);
+    if (stop_requested.load(std::memory_order_acquire)) {
+      assm->stop();
+      active_assm.store(nullptr, std::memory_order_release);
+      return;
+    }
+
     assembler_c::errState err = assm->createMatrix(keep_mirror, keep_rotations, false);
     if (err != assembler_c::ERR_NONE) {
+      active_assm.store(nullptr, std::memory_order_release);
       std::string msg = std::string("Matrix creation error in assembler: ") + assembler_c::getErrorMessage(err);
       push_item(QueueItem{QueueItem::ITEM_ERROR, {}, msg});
       return;
     }
 
+    if (stop_requested.load(std::memory_order_acquire)) {
+      active_assm.store(nullptr, std::memory_order_release);
+      return;
+    }
+
     if (reduce) {
       assm->reduce();
+    }
+
+    if (stop_requested.load(std::memory_order_acquire)) {
+      active_assm.store(nullptr, std::memory_order_release);
+      return;
     }
 
     if (disassemble && (gt->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
@@ -147,7 +178,7 @@ void SolutionIterator::worker_run() {
     unsigned int sol_count{0};
 
     assm->assemble([&](std::unique_ptr<assembly_c> a) -> bool {
-      if (stop_requested.load()) {
+      if (stop_requested.load(std::memory_order_relaxed)) {
         return false;
       }
 
@@ -185,22 +216,25 @@ void SolutionIterator::worker_run() {
           sol.level = da->getMoves();
           sol.moves_text = da->movesText();
         } else {
-          return !stop_requested.load();
+          return !stop_requested.load(std::memory_order_relaxed);
         }
       } else {
         sol.solution_number = asm_count;
       }
 
       push_item(QueueItem{QueueItem::ITEM_SOLUTION, std::move(sol), ""});
-      return !stop_requested.load();
+      return !stop_requested.load(std::memory_order_relaxed);
     });
 
-    iterations.store(assm->getIterations());
+    iterations.store(assm->getIterations(), std::memory_order_relaxed);
+    active_assm.store(nullptr, std::memory_order_release);
 
     push_item(QueueItem{QueueItem::ITEM_FINISHED, {}, ""});
   } catch (const std::exception & e) {
+    active_assm.store(nullptr, std::memory_order_release);
     push_item(QueueItem{QueueItem::ITEM_ERROR, {}, e.what()});
   } catch (...) {
+    active_assm.store(nullptr, std::memory_order_release);
     push_item(QueueItem{QueueItem::ITEM_ERROR, {}, "Unknown C++ exception occurred during solving"});
   }
 }

@@ -1241,7 +1241,8 @@ void assembler_0_c::solution(void) {
     if (avoidTransformedAssemblies && assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror.get(), complete))
       return;
     else {
-      getCallback()->assembly(std::move(assembly));
+      if (!getCallback()->assembly(std::move(assembly)))
+        stop();
     }
   }
 }

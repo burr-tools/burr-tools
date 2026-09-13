@@ -884,10 +884,6 @@ assembler_c::errState problem_c::setAssembler(std::unique_ptr<assembler_c> a) {
   return assembler_c::ERR_NONE;
 }
 
-assembler_c::errState problem_c::setAssembler(assembler_c * assm) {
-  return setAssembler(std::unique_ptr<assembler_c>(assm));
-}
-
 void problem_c::setPartGroup(unsigned int partId, unsigned short groupId, unsigned short count) {
   bt_assert(partId < parts.size());
 

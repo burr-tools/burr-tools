@@ -85,7 +85,7 @@ public:
     } else if (printSolutions)
       print(a.get(), puzzle);
 
-    return false;
+    return true;
   }
 };
 

@@ -115,6 +115,26 @@ class TestBurrTools(unittest.TestCase):
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)
 
+    def test_immediate_stop(self):
+        puzzle = burrtools.load(self.puzzle_path)
+        prob = puzzle.problems[0]
+        it = prob.solve(disassemble=False)
+        it.stop()
+        with self.assertRaises(StopIteration):
+            next(it)
+
+    def test_iterator_iterations_live_and_finished(self):
+        puzzle = burrtools.load(self.puzzle_path)
+        prob = puzzle.problems[0]
+        it = prob.solve(disassemble=False)
+        sol = next(it)
+        self.assertIsNotNone(sol)
+        live_iters = it.iterations
+        self.assertGreater(live_iters, 0)
+        for _ in it:
+            pass
+        self.assertGreaterEqual(it.iterations, live_iters)
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -518,9 +518,7 @@ void voxel_c::fillHoles(char type) {
 
   unionFind(tree.data(), type, true, VX_FILLED, true);
 
-  int root = -1;
-
-  root = tree[voxels];
+  int root = voxels;
   while (tree[root] >= 0) root = tree[root];
 
   for (unsigned int x = 0; x < sx; x++)
