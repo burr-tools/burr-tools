@@ -70,6 +70,9 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     continue-on-error: true
+    permissions:
+      contents: read
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
