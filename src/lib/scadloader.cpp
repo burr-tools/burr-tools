@@ -310,7 +310,7 @@ static bool isIdentChar(char c) {
 
 struct ScadCall {
   std::string name;
-  size_t argsPos; /* index of '(' */
+  size_t argsPos = 0; /* index of '(' */
 };
 
 /* Scan the file, skipping comments and strings, and collect puzzlecad calls

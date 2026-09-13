@@ -71,15 +71,15 @@ private:
   };
 
   struct partSnap_c {
-    unsigned int shapeId;
-    unsigned int min;
-    unsigned int max;
+    unsigned int shapeId = 0;
+    unsigned int min = 0;
+    unsigned int max = 0;
     std::vector<groupSnap_c> groups;
   };
 
   struct problemSnap_c {
-    bool resultValid;
-    unsigned int resultId;
+    bool resultValid = false;
+    unsigned int resultId = 0;
     std::vector<partSnap_c> parts;
   };
 

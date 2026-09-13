@@ -4743,7 +4743,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
   StatusLine->weight(1, 0);
 
   layouter_c * contentRow = new LFl_Tile(0, 1, 1, 1);
-  contentTile = (LFl_Tile*)contentRow;
+  contentTile = static_cast<LFl_Tile*>(contentRow);
   contentRow->weight(1, 1);
   contentRow->setShrinkMinSize(0, notesButtonsFloorH);
 
