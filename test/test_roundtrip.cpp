@@ -258,30 +258,11 @@ TEST_CASE("puzzle: saving a reloaded puzzle reproduces the same document", "[rou
     { "#.",
       ".#" },
   });
+  shape->setName("fixpoint shape");
+  shape->setWeight(7);
+  shape->setHotspot(1, 1, 0);
+  shape->setColor(0, 0, 0, 1);
   const unsigned int shapeIdx = original.addShape(original.getGridType()->getVoxel(*shape));
-
-  /* gridType_c::getVoxel(const voxel_c &) above does not copy a shape's
-     name. voxel_c has two copy constructors and BOTH omit `name` from
-     their initializer list: the reference form (voxel.cpp:116-117) and
-     the pointer form (voxel.cpp:141-142) -- both carry gt, sx, sy, sz,
-     voxels, hx, hy, hz and weight, but not name. So a name set on the
-     `shape` local before addShape would be silently lost before save/load
-     ever runs. Set the mutable shape properties on the puzzle's own
-     stored copy instead.
-
-     This is reachable and user-visible today, not just an internal
-     roundtrip footgun: cb_CopyShape() (src/gui/mainwindow.cpp:238) copies
-     a shape through exactly this path when the user presses the GUI's
-     "Copy" button, and PieceSelector::getText()
-     (src/gui/BlockList.cpp:330-331) renders a shape's name in the piece
-     list -- so naming a shape and clicking Copy produces a copy that
-     shows up in the list with no name. No pinning test is added for this
-     here; it belongs with voxel_c's own tests. */
-  voxel_c * ownShape = original.getShape(shapeIdx);
-  ownShape->setName("fixpoint shape");
-  ownShape->setWeight(7);
-  ownShape->setHotspot(1, 1, 0);
-  ownShape->setColor(0, 0, 0, 1);
 
   const unsigned int prob = original.addProblem();
   original.getProblem(prob)->setName("fixpoint problem");
