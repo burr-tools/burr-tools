@@ -103,7 +103,7 @@ public:
 #define SZ_BUTTON2_Y 25
 #define LABEL_FONT_SIZE 12
 
-static void cb_TransformButtons_stub(Fl_Widget* o, long v) { ((TransformButtons*)(o->parent()->parent()))->cb_Press(v); }
+static void cb_TransformButtons_stub(Fl_Widget* o, long v) { static_cast<TransformButtons*>(o->parent()->parent())->cb_Press(v); }
 
 TransformButtons::TransformButtons(int x, int y, int w, int h, int type) : layouter_c(x, y, w, h) {
 
@@ -239,7 +239,7 @@ TransformButtons::TransformButtons(int x, int y, int w, int h, int type) : layou
 }
 
 
-static void cb_ToolsButtons_stub(Fl_Widget* o, long v) { ((ToolsButtons*)(o->parent()))->cb_Press(v); }
+static void cb_ToolsButtons_stub(Fl_Widget* o, long v) { static_cast<ToolsButtons*>(o->parent())->cb_Press(v); }
 
 ToolsButtons::ToolsButtons(int x, int y, int w, int h) : layouter_c(x, y, w, h) {
 
@@ -278,7 +278,7 @@ ToolsButtons::ToolsButtons(int x, int y, int w, int h) : layouter_c(x, y, w, h) 
 }
 
 
-static void cb_SizeButtons_stub(Fl_Widget* o, long v) { ((SizeButtons*)(o->parent()))->cb_Press(v); }
+static void cb_SizeButtons_stub(Fl_Widget* o, long v) { static_cast<SizeButtons*>(o->parent())->cb_Press(v); }
 
 SizeButtons::SizeButtons(int x, int y, int w, int h, bool addScale) : layouter_c(x, y, w, h) {
 
@@ -312,8 +312,8 @@ SizeButtons::SizeButtons(int x, int y, int w, int h, bool addScale) : layouter_c
   end();
 }
 
-static void cb_ChangeSize_stub(Fl_Widget* o, long /*v*/) { ((ChangeSize*)(o->parent()))->cb_roll(); }
-static void cb_InputSize_stub(Fl_Widget* o, long /*v*/) { ((ChangeSize*)(o->parent()))->cb_input(); }
+static void cb_ChangeSize_stub(Fl_Widget* o, long /*v*/) { static_cast<ChangeSize*>(o->parent())->cb_roll(); }
+static void cb_InputSize_stub(Fl_Widget* o, long /*v*/) { static_cast<ChangeSize*>(o->parent())->cb_input(); }
 
 void ChangeSize::cb_roll(void) {
 
@@ -538,9 +538,9 @@ void ToolTab_0::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
     changeSize->setXYZ(0, 0, 0);
 }
 
-static void cb_ToolTab0Size_stub(Fl_Widget* o, long /*v*/) { ((ToolTab_0*)(o->parent()->parent()->parent()))->cb_size(); }
-static void cb_ToolTab0Transform_stub(Fl_Widget* o, long v) { ((ToolTab_0*)(o->parent()))->cb_transform(v); }
-static void cb_ToolTab0Transform2_stub(Fl_Widget* o, long v) { ((ToolTab_0*)(o->parent()->parent()))->cb_transform(v); }
+static void cb_ToolTab0Size_stub(Fl_Widget* o, long /*v*/) { static_cast<ToolTab_0*>(o->parent()->parent()->parent())->cb_size(); }
+static void cb_ToolTab0Transform_stub(Fl_Widget* o, long v) { static_cast<ToolTab_0*>(o->parent())->cb_transform(v); }
+static void cb_ToolTab0Transform2_stub(Fl_Widget* o, long v) { static_cast<ToolTab_0*>(o->parent()->parent())->cb_transform(v); }
 
 ToolTab_0::ToolTab_0(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 
@@ -713,9 +713,9 @@ void ToolTab_1::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
     changeSize->setXYZ(0, 0, 0);
 }
 
-static void cb_ToolTab1Size_stub(Fl_Widget* o, long /*v*/) { ((ToolTab_1*)(o->parent()->parent()->parent()))->cb_size(); }
-static void cb_ToolTab1Transform_stub(Fl_Widget* o, long v) { ((ToolTab_1*)(o->parent()))->cb_transform(v); }
-static void cb_ToolTab1Transform2_stub(Fl_Widget* o, long v) { ((ToolTab_1*)(o->parent()->parent()))->cb_transform(v); }
+static void cb_ToolTab1Size_stub(Fl_Widget* o, long /*v*/) { static_cast<ToolTab_1*>(o->parent()->parent()->parent())->cb_size(); }
+static void cb_ToolTab1Transform_stub(Fl_Widget* o, long v) { static_cast<ToolTab_1*>(o->parent())->cb_transform(v); }
+static void cb_ToolTab1Transform2_stub(Fl_Widget* o, long v) { static_cast<ToolTab_1*>(o->parent()->parent())->cb_transform(v); }
 
 ToolTab_1::ToolTab_1(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 
@@ -879,9 +879,9 @@ void ToolTab_2::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
     changeSize->setXYZ(0, 0, 0);
 }
 
-static void cb_ToolTab2Size_stub(Fl_Widget* o, long /*v*/) { ((ToolTab_2*)(o->parent()->parent()->parent()))->cb_size(); }
-static void cb_ToolTab2Transform_stub(Fl_Widget* o, long v) { ((ToolTab_2*)(o->parent()))->cb_transform(v); }
-static void cb_ToolTab2Transform2_stub(Fl_Widget* o, long v) { ((ToolTab_2*)(o->parent()->parent()))->cb_transform(v); }
+static void cb_ToolTab2Size_stub(Fl_Widget* o, long /*v*/) { static_cast<ToolTab_2*>(o->parent()->parent()->parent())->cb_size(); }
+static void cb_ToolTab2Transform_stub(Fl_Widget* o, long v) { static_cast<ToolTab_2*>(o->parent())->cb_transform(v); }
+static void cb_ToolTab2Transform2_stub(Fl_Widget* o, long v) { static_cast<ToolTab_2*>(o->parent()->parent())->cb_transform(v); }
 
 ToolTab_2::ToolTab_2(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 
@@ -1049,9 +1049,9 @@ void ToolTab_3::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
     changeSize->setXYZ(0, 0, 0);
 }
 
-static void cb_ToolTab3Size_stub(Fl_Widget* o, long /*v*/) { ((ToolTab_3*)(o->parent()->parent()->parent()))->cb_size(); }
-static void cb_ToolTab3Transform_stub(Fl_Widget* o, long v) { ((ToolTab_3*)(o->parent()))->cb_transform(v); }
-static void cb_ToolTab3Transform2_stub(Fl_Widget* o, long v) { ((ToolTab_3*)(o->parent()->parent()))->cb_transform(v); }
+static void cb_ToolTab3Size_stub(Fl_Widget* o, long /*v*/) { static_cast<ToolTab_3*>(o->parent()->parent()->parent())->cb_size(); }
+static void cb_ToolTab3Transform_stub(Fl_Widget* o, long v) { static_cast<ToolTab_3*>(o->parent())->cb_transform(v); }
+static void cb_ToolTab3Transform2_stub(Fl_Widget* o, long v) { static_cast<ToolTab_3*>(o->parent()->parent())->cb_transform(v); }
 
 ToolTab_3::ToolTab_3(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 
@@ -1191,9 +1191,9 @@ void ToolTab_4::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
     changeSize->setXYZ(0, 0, 0);
 }
 
-static void cb_ToolTab4Size_stub(Fl_Widget* o, long /*v*/) { ((ToolTab_4*)(o->parent()->parent()->parent()))->cb_size(); }
-static void cb_ToolTab4Transform_stub(Fl_Widget* o, long v) { ((ToolTab_4*)(o->parent()))->cb_transform(v); }
-static void cb_ToolTab4Transform2_stub(Fl_Widget* o, long v) { ((ToolTab_4*)(o->parent()->parent()))->cb_transform(v); }
+static void cb_ToolTab4Size_stub(Fl_Widget* o, long /*v*/) { static_cast<ToolTab_4*>(o->parent()->parent()->parent())->cb_size(); }
+static void cb_ToolTab4Transform_stub(Fl_Widget* o, long v) { static_cast<ToolTab_4*>(o->parent())->cb_transform(v); }
+static void cb_ToolTab4Transform2_stub(Fl_Widget* o, long v) { static_cast<ToolTab_4*>(o->parent()->parent())->cb_transform(v); }
 
 ToolTab_4::ToolTab_4(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
 

@@ -5933,8 +5933,9 @@ GL2PSDLL_API GLint gl2psDrawImageMap(GLsizei width, GLsizei height,
   glPassThrough((GLfloat)width);
   glPassThrough((GLfloat)height);
   for(i = 0; i < size; i += sizeoffloat){
-    float *value = (float*)imagemap;
-    glPassThrough(*value);
+    float value;
+    memcpy(&value, imagemap, sizeof(float));
+    glPassThrough(value);
     imagemap += sizeoffloat;
   }
   return GL2PS_SUCCESS;

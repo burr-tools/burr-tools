@@ -37,7 +37,7 @@ void print(const voxel_c * v, char base) {
       printf("-");
     printf("+");
   }
-  printf(" bx %i-%i by %i-%i bz %i-%i h: %i %i %i \n", v->boundX1(), v->boundX2(), v->boundY1(), v->boundY2(), v->boundZ1(), v->boundZ2(), v->getHx(), v->getHy(), v->getHz());
+  printf(" bx %u-%u by %u-%u bz %u-%u h: %i %i %i \n", v->boundX1(), v->boundX2(), v->boundY1(), v->boundY2(), v->boundZ1(), v->boundZ2(), v->getHx(), v->getHy(), v->getHz());
 
   for (unsigned int y = 0; y < v->getY(); y++) {
     for (unsigned int z = 0; z < v->getZ(); z++) {
@@ -65,7 +65,7 @@ void print(const voxel_c * v, char base) {
 void print(const puzzle_c * p) {
 
   for (unsigned int s = 0; s < p->getNumberOfShapes(); s++) {
-    printf("shape %i:\n", s);
+    printf("shape %u:\n", s);
     print(p->getShape(s));
   }
 
@@ -75,19 +75,19 @@ void print(const puzzle_c * p) {
 
     const problem_c * prob = p->getProblem(pr);
 
-    printf("problem %i (%s):\n", pr, prob->getName().c_str());
+    printf("problem %u (%s):\n", pr, prob->getName().c_str());
     if (!prob->resultValid())
       printf(" result shape: not defined\n");
     else
-      printf(" result shape: %i\n", prob->getResultId());
+      printf(" result shape: %u\n", prob->getResultId());
 
     for (unsigned int sh = 0; sh < prob->getNumberOfParts(); sh++)
       if (prob->getPartMinimum(sh) != prob->getPartMaximum(sh))
-        printf(" piece shape: %i-%i times shape number %i\n", prob->getPartMinimum(sh), prob->getPartMaximum(sh), prob->getShapeIdOfPart(sh));
+        printf(" piece shape: %u-%u times shape number %u\n", prob->getPartMinimum(sh), prob->getPartMaximum(sh), prob->getShapeIdOfPart(sh));
       else if (prob->getPartMinimum(sh) != 1)
-        printf(" piece shape: %i times shape number %i\n", prob->getPartMinimum(sh), prob->getShapeIdOfPart(sh));
+        printf(" piece shape: %u times shape number %u\n", prob->getPartMinimum(sh), prob->getShapeIdOfPart(sh));
       else
-        printf(" piece shape: %i\n", prob->getShapeIdOfPart(sh));
+        printf(" piece shape: %u\n", prob->getShapeIdOfPart(sh));
 
     printf("-------------------------------------------------------\n");
   }

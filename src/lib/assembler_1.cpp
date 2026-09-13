@@ -59,20 +59,20 @@ void printMatrix(
     unsigned int c = right[0];
     while (c) {
 
-      if (left[right[c]] != c) printf("lr %i\n", c);
-      if (right[left[c]] != c) printf("rl %i\n", c);
-      if (up[down[c]] != c) printf("ud %i\n", c);
-      if (down[up[c]] != c) printf("du %i\n", c);
+      if (left[right[c]] != c) printf("lr %u\n", c);
+      if (right[left[c]] != c) printf("rl %u\n", c);
+      if (up[down[c]] != c) printf("ud %u\n", c);
+      if (down[up[c]] != c) printf("du %u\n", c);
       cnt++;
 
       unsigned int r = down[c];
 
       while (r != c) {
 
-        if (left[right[r]] != r) printf("lr %i\n", r);
-        if (right[left[r]] != r) printf("rl %i\n", r);
-        if (up[down[r]] != r) printf("ud %i\n", r);
-        if (down[up[r]] != r) printf("du %i\n", r);
+        if (left[right[r]] != r) printf("lr %u\n", r);
+        if (right[left[r]] != r) printf("rl %u\n", r);
+        if (up[down[r]] != r) printf("ud %u\n", r);
+        if (down[up[r]] != r) printf("du %u\n", r);
         cnt++;
 
         r = down[r];
@@ -82,7 +82,7 @@ void printMatrix(
       c = right[c];
     }
 
-    printf("checked %li nodes for consistency\n", cnt);
+    printf("checked %lu nodes for consistency\n", cnt);
   }
 
   /* first find all the columns */
@@ -99,16 +99,16 @@ void printMatrix(
 
   printf("\n");
 
-  for (unsigned int i = 0; i < columns.size(); i++) if (columns[i] > 100) printf("%i", columns[i] / 100); else printf(" ");
+  for (unsigned int i = 0; i < columns.size(); i++) if (columns[i] > 100) printf("%u", columns[i] / 100); else printf(" ");
   printf("\n");
-  for (unsigned int i = 0; i < columns.size(); i++) if (columns[i] > 10)  printf("%i", (columns[i] / 10)%10); else printf(" ");
+  for (unsigned int i = 0; i < columns.size(); i++) if (columns[i] > 10)  printf("%u", (columns[i] / 10)%10); else printf(" ");
   printf("\n");
-  for (unsigned int i = 0; i < columns.size(); i++) printf("%i", columns[i] % 10);
+  for (unsigned int i = 0; i < columns.size(); i++) printf("%u", columns[i] % 10);
   printf("\n");
 
-  for (unsigned int i = 0; i < columns.size(); i++) printf("%i", min[columns[i]]);
+  for (unsigned int i = 0; i < columns.size(); i++) printf("%u", min[columns[i]]);
   printf("\n");
-  for (unsigned int i = 0; i < columns.size(); i++) printf("%i", max[columns[i]]);
+  for (unsigned int i = 0; i < columns.size(); i++) printf("%u", max[columns[i]]);
   printf("\n");
 
   std::vector<unsigned int> rows;
@@ -342,7 +342,7 @@ bool assembler_1_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
 int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int rangeMax) {
 
   if (hasRange) {
-    fprintf(stderr, "range optimisation used min %i, max %i\n", rangeMin, rangeMax);
+    fprintf(stderr, "range optimisation used min %u, max %u\n", rangeMin, rangeMax);
   }
 
   const voxel_c * result = getResultShape(problem);
@@ -1028,7 +1028,7 @@ void assembler_1_c::reduce(void) {
 
   col_rem += clumpify();
 
-  fprintf(stderr, "removed %i rows and %i columns\n", row_rem, col_rem);
+  fprintf(stderr, "removed %u rows and %u columns\n", row_rem, col_rem);
 }
 
 void assembler_1_c::checkForTransformedAssemblies(unsigned int pivot, std::unique_ptr<mirrorInfo_c> mir) {
@@ -1575,7 +1575,7 @@ void assembler_1_c::iterative(void) {
             break;
           }
 
-          if (debug) fprintf(stderr, "found column %i with count %i\n", col, colCount[col]);
+          if (debug) fprintf(stderr, "found column %i with count %u\n", col, colCount[col]);
 
           // when there are no rows in the selected column, we don't need to find
           // any row set and can continue right on with a new column
@@ -1631,7 +1631,7 @@ void assembler_1_c::iterative(void) {
         // line to the column that is why we do this check here at the start of the function
         if (column_condition_fulfilled(col)) {
 
-          if (debug) fprintf(stderr, "column %i condition fulfilled, recurse\n", col);
+          if (debug) fprintf(stderr, "column %u condition fulfilled, recurse\n", col);
 
           pushFinished(colCount[colCount[next_row_stack.back()]]+1);
 
@@ -1660,7 +1660,7 @@ void assembler_1_c::iterative(void) {
       case 1:
 
         // reinsert this column
-        if (debug) fprintf(stderr, "reinserting column %i\n", column_stack.back());
+        if (debug) fprintf(stderr, "reinserting column %u\n", column_stack.back());
 
         uncover_column_only(column_stack.back());
 
@@ -1699,7 +1699,7 @@ void assembler_1_c::iterative(void) {
         row = rows.back();
         col = colCount[next_row_stack.back()];
 
-        if (debug) fprintf(stderr, "add row %i for columns %i\n", row, col);
+        if (debug) fprintf(stderr, "add row %u for columns %u\n", row, col);
 
         // add row to rowset
         weight[colCount[row]] += weight[row];
@@ -1722,7 +1722,7 @@ void assembler_1_c::iterative(void) {
               // if the current column condition is really fulfilled
               if (column_condition_fulfilled(col)) {
 
-                if (debug) fprintf(stderr, "recurse because columns %i condition fulfilled\n", col);
+                if (debug) fprintf(stderr, "recurse because columns %u condition fulfilled\n", col);
 
                 task_stack.back() = 5;
                 task_stack.push_back(0);
@@ -1754,7 +1754,7 @@ void assembler_1_c::iterative(void) {
                 break;
               }
 
-              if (debug) fprintf(stderr, "no recurse because columns %i condition fulfillable\n", col);
+              if (debug) fprintf(stderr, "no recurse because columns %u condition fulfillable\n", col);
             }
           }
 
@@ -1778,7 +1778,7 @@ void assembler_1_c::iterative(void) {
         // remove row from rowset
         row = rows.back();
 
-        if (debug) fprintf(stderr, "remove row %i\n", row);
+        if (debug) fprintf(stderr, "remove row %u\n", row);
 
         for (unsigned int r = left[row]; r != row; r = left[r])
           weight[colCount[r]] -= weight[r];

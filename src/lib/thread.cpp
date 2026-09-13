@@ -22,7 +22,6 @@
 #include "thread.h"
 
 thread_c::~thread_c(void) {
-  stop();
 #ifndef NO_THREADING
   /* guard with joinable(): a derived destructor may already have joined the
    * thread (the correct place to do it, so it can stop the worker before

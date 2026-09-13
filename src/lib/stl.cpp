@@ -100,7 +100,7 @@ void stlExporter_c::write(const char * fname, const voxel_c & v)
   poly.reset(mergeCoplanarFaces(*poly));
 
   // write out the generated polyhedron
-  for(Polyhedron::const_face_iterator it=poly->fBegin(); it!=poly->fEnd(); it++)
+  for(Polyhedron::const_face_iterator it=poly->fBegin(); it!=poly->fEnd(); ++it)
   {
     const Face* fc = *it;
 
@@ -114,15 +114,15 @@ void stlExporter_c::write(const char * fname, const voxel_c & v)
 
     Face::const_edge_circulator e = fc->begin();
     Face::const_edge_circulator sentinel = e;
-    e++;
+    ++e;
     Vector3Df start = (*e)->dst()->position();
-    e++;
+    ++e;
 
     do
     {
       const float * v1 = start.getData();
       const float * v2 = (*e)->dst()->position().getData();
-      e++;
+      ++e;
       const float * v3 = (*e)->dst()->position().getData();
 
       if (binaryMode)

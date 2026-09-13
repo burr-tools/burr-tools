@@ -63,20 +63,20 @@ class ImageInfo {
     puzzle_c * puzzle;
 
     // parameters for single
-    unsigned int shape;
+    unsigned int shape = 0;
     voxelFrame_c::colorMode showColors;
 
     // parameters for assembly
-    unsigned int problem;
-    unsigned int solution;
-    bool dim;
+    unsigned int problem = 0;
+    unsigned int solution = 0;
+    bool dim = false;
 
     std::unique_ptr<disasmToMoves_c> positions;
 
     // the image data
     std::unique_ptr<image_c> i;  // image generated with the drawer that is with a fixed hight and the required width
     std::unique_ptr<image_c> i2; // the final image
-    unsigned int i2aa;
+    unsigned int i2aa = 0;
 
     /* the openGL context to draw to */
     voxelFrame_c * vv;
@@ -253,15 +253,15 @@ void imageExport_c::nextImage(bool finish) {
 
   if (i) {
 
-    snprintf(statText, 20, "save page %i", curPage);
+    snprintf(statText, 20, "save page %u", curPage);
     status->label(statText);
 
     char name[1000];
 
     if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/')
-      snprintf(name, 1000, "%s/%s%03i.png", Pname->value(), Fname->value(), curPage);
+      snprintf(name, 1000, "%s/%s%03u.png", Pname->value(), Fname->value(), curPage);
     else
-      snprintf(name, 1000, "%s%s%03i.png", Pname->value(), Fname->value(), curPage);
+      snprintf(name, 1000, "%s%s%03u.png", Pname->value(), Fname->value(), curPage);
 
     i->saveToPNG(name);
     i.reset();

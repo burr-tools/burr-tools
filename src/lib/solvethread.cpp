@@ -142,7 +142,7 @@ solveThread_c::~solveThread_c(void) {
    * code did - it relied on the base destructor to join, but the base stop()
    * is a no-op and by then this override is gone) was a use-after-free.
    */
-  stop();
+  stopInternal();
   joinThread();
 
   disassm.reset();
@@ -331,7 +331,7 @@ bool solveThread_c::assembly(std::unique_ptr<assembly_c> a) {
   return true;
 }
 
-void solveThread_c::stop(void) {
+void solveThread_c::stopInternal(void) {
 
   if ((action != ACT_ASSEMBLING) &&
       (action != ACT_REDUCE) &&
@@ -346,6 +346,10 @@ void solveThread_c::stop(void) {
     puzzle.getAssembler()->stop();
 
   stopPressed = true;
+}
+
+void solveThread_c::stop(void) {
+  stopInternal();
 }
 
 bool solveThread_c::start(bool stop_after_prep) {

@@ -167,8 +167,8 @@ class layouter_c : public Fl_Group, public layoutable_c {
 
   private:
 
-    bool minsizeValid;
-    int mw, mh;
+    bool minsizeValid = false;
+    int mw = 0, mh = 0;
 
   public:
 
@@ -180,11 +180,15 @@ class layouter_c : public Fl_Group, public layoutable_c {
   virtual void resize(int x, int y, int w, int h);
 
   layouter_c(int x = 0, int y = 0, int w = 1, int h = 1) : Fl_Group(0, 0, 100, 100),
-              layoutable_c(x, y, w, h), minsizeValid(false) {}
+              layoutable_c(x, y, w, h), minsizeValid(false), mw(0), mh(0) {}
 
+  // cppcheck-suppress duplInheritedMember
   void remove(Fl_Widget &w);
+  // cppcheck-suppress duplInheritedMember
   void remove(Fl_Widget *w);
+  // cppcheck-suppress duplInheritedMember
   void add(Fl_Widget &w);
+  // cppcheck-suppress duplInheritedMember
   void add(Fl_Widget *w);
 };
 
@@ -487,6 +491,7 @@ class LFl_Double_Window : public Fl_Double_Window {
     Fl_Double_Window::resize(x, y, w, h);
   }
 
+  // cppcheck-suppress duplInheritedMember
   void begin() {
     lay->begin();
   }

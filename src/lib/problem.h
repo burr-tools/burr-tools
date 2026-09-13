@@ -218,7 +218,7 @@ public:
   /**
    * set the name of the problem.
    */
-  void setName(std::string nm) { name = nm; }
+  void setName(const std::string & nm) { name = nm; }
 
   /** \name Result shape handling */
   //@{

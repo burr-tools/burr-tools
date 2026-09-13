@@ -90,9 +90,10 @@
  *
  */
 
-puzzle_c::puzzle_c(const puzzle_c * orig) {
-
-  gt = std::make_unique<gridType_c>(*orig->gt);
+puzzle_c::puzzle_c(const puzzle_c * orig)
+  : gt(std::make_unique<gridType_c>(*orig->gt)),
+    comment(orig->comment),
+    commentPopup(orig->commentPopup) {
 
   for (unsigned int i = 0; i < orig->shapes.size(); i++)
     shapes.push_back(std::unique_ptr<voxel_c>(gt->getVoxel(orig->shapes[i].get())));
@@ -102,9 +103,6 @@ puzzle_c::puzzle_c(const puzzle_c * orig) {
 
   for (unsigned int i = 0; i < orig->colors.size(); i++)
     colors.push_back(orig->colors[i]);
-
-  comment = orig->comment;
-  commentPopup = orig->commentPopup;
 }
 
 puzzle_c::~puzzle_c(void) = default;

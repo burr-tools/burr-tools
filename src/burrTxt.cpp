@@ -207,15 +207,15 @@ int main(int argv, char* args[]) {
         break;
       case W_NUM_SOLUTIONS:
         for (unsigned int i = 0; i < p.getNumberOfProblems(); i++)
-          printf("number of solutions for problem %i: %li\n", i, p.getProblem(i)->getNumSolutions());
+          printf("number of solutions for problem %u: %lu\n", i, p.getProblem(i)->getNumSolutions());
         break;
       case W_SOLUTION_PIECES:
       case W_SOLUTION_ASSM:
         for (unsigned int i = 0; i < p.getNumberOfProblems(); i++) {
-          printf("problem %i\n", i);
+          printf("problem %u\n", i);
           for (unsigned int s = 0; s < p.getProblem(i)->getNumSolutions(); s++) {
 
-            printf("%03i: ", s+1);
+            printf("%03u: ", s+1);
             const assembly_c * a = p.getProblem(i)->getSavedSolution(s)->getAssembly();
 
             unsigned int pnum = 0;
@@ -223,7 +223,7 @@ int main(int argv, char* args[]) {
             for (unsigned int pie = 0; pie < p.getProblem(i)->getNumberOfParts(); pie++) {
               for (unsigned int pp = 0; pp < p.getProblem(i)->getPartMaximum(pie); pp++) {
                 if (a->isPlaced(pnum)) {
-                  printf("S%i ", p.getProblem(i)->getShapeIdOfPart(pie)+1);
+                  printf("S%u ", p.getProblem(i)->getShapeIdOfPart(pie)+1);
                 }
                 pnum++;
               }
@@ -340,7 +340,7 @@ int main(int argv, char* args[]) {
               print(problem->getSavedSolution(sol)->getAssembly(), problem);
 
             if (!quiet)
-              printf("level: %i\n", da->getMoves());
+              printf("level: %u\n", da->getMoves());
 
             if (printDisassemble)
               print(da.get(), problem->getSavedSolution(sol)->getAssembly(),problem);

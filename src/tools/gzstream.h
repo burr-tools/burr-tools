@@ -52,7 +52,7 @@ private:
 
     int flush_buffer();
 public:
-    gzstreambuf() : opened(0) {
+    gzstreambuf() : file(nullptr), opened(0), mode(0) {
         setp( buffer, buffer + (bufferSize-1));
         setg( buffer + 4,     // beginning of putback area
               buffer + 4,     // read position
@@ -92,7 +92,9 @@ public:
     igzstream() : std::istream( &buf) {}
     igzstream( const char* name, int open_mode = std::ios::in)
         : gzstreambase( name, open_mode), std::istream( &buf) {}
+    // cppcheck-suppress duplInheritedMember
     gzstreambuf* rdbuf() { return gzstreambase::rdbuf(); }
+    // cppcheck-suppress duplInheritedMember
     void open( const char* name, int open_mode = std::ios::in) {
         gzstreambase::open( name, open_mode);
     }
@@ -103,7 +105,9 @@ public:
     ogzstream() : std::ostream( &buf) {}
     ogzstream( const char* name, int mode = std::ios::out)
         : gzstreambase( name, mode), std::ostream( &buf) {}
+    // cppcheck-suppress duplInheritedMember
     gzstreambuf* rdbuf() { return gzstreambase::rdbuf(); }
+    // cppcheck-suppress duplInheritedMember
     void open( const char* name, int open_mode = std::ios::out) {
         gzstreambase::open( name, open_mode);
     }

@@ -52,26 +52,26 @@ class movementCache_c {
    */
   struct moEntry {
 
-    int dx; ///< relative x position of the 2nd piece
-    int dy; ///< relative y position of the 2nd piece
-    int dz; ///< relative z position of the 2nd piece
+    int dx = 0; ///< relative x position of the 2nd piece
+    int dy = 0; ///< relative y position of the 2nd piece
+    int dz = 0; ///< relative z position of the 2nd piece
 
-    unsigned int s1; ///< id of the first involved shape
-    unsigned int s2; ///< id of the second involved shape
+    unsigned int s1 = 0; ///< id of the first involved shape
+    unsigned int s2 = 0; ///< id of the second involved shape
 
     /* the transformations of the 2 involved pieces
      * normally we would need only one transformation, that for piece 2
      * but the calculations involved to transform the 2 pieces so that
      * piece one has a fixed transformation are too expensive
      */
-    unsigned short t1; ///< orientation of the first shape
-    unsigned short t2; ///< orientation of the second shape
+    unsigned short t1 = 0; ///< orientation of the first shape
+    unsigned short t2 = 0; ///< orientation of the second shape
 
     /** the possible movement in positive directions */
     std::vector<unsigned int> move;
 
     /** next in the linked list of the hash table */
-    struct moEntry * next;
+    struct moEntry * next = nullptr;
 
   };
 

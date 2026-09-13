@@ -105,8 +105,8 @@ const char * vectorExportWindow_c::getFileName(void) {
 voxelFrame_c::VectorFiletype vectorExportWindow_c::getVectorType(void) {
 
   for (int i = 0; i < radGroup->children(); i++)
-    if (((LFl_Radio_Button*)radGroup->child(i))->value() > 0)
-      return (voxelFrame_c::VectorFiletype)i;
+    if (static_cast<LFl_Radio_Button*>(radGroup->child(i))->value() > 0)
+      return static_cast<voxelFrame_c::VectorFiletype>(i);
 
   return voxelFrame_c::VFT_SVG;
 }

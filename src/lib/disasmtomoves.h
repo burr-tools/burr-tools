@@ -122,7 +122,7 @@ class fixedPositions_c : public piecePositions_c {
 
   public:
 
-    fixedPositions_c(const disassemblerNode_c * nd, const std::vector<unsigned int> & pieces, unsigned int pc);
+    fixedPositions_c(const disassemblerNode_c * nd, const std::vector<unsigned int> & pc, unsigned int pcs);
     fixedPositions_c(const fixedPositions_c * nd);
     virtual ~fixedPositions_c(void) override;
 
