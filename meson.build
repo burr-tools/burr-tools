@@ -373,7 +373,7 @@ catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_ma
 inc = include_directories('src')
 
 test_burrtools = executable('test_burrtools',
-  tools_src + halfedge_src + libburr_src + ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp'],
+  tools_src + halfedge_src + libburr_src + ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_grouping.cpp'],
   include_directories: inc,
   dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep],
 )
