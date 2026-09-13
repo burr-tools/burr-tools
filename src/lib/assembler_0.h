@@ -27,6 +27,7 @@
 #include <set>
 #include <stack>
 #include <atomic>
+#include <memory>
 
 class gridType_c;
 class mirrorInfo_c;
@@ -70,7 +71,7 @@ private:
   std::atomic<bool> abbort;
 
   /* used to save if the search is running */
-  bool running;
+  bool running = false;
 
   /* cover one column:
    * - remove the column from the column header node list,
@@ -125,8 +126,8 @@ private:
    * the pos value contains the number of pieces placed
    */
   unsigned int pos;
-  unsigned int *rows;
-  unsigned int *columns;
+  std::vector<unsigned int> rows;
+  std::vector<unsigned int> columns;
 
   void iterativeMultiSearch(void);
 
@@ -151,32 +152,32 @@ private:
   bool checkmatrix(void);
 
   /* internal error state */
-  errState errorsState;
-  int errorsParam;
+  errState errorsState = ERR_NONE;
+  int errorsParam = 0;
 
   /* number of iterations the assemble routine run */
-  std::atomic<unsigned long> iterations;  // single-writer counter, read cross-thread by getIterations
+  std::atomic<unsigned long> iterations{0};  // single-writer counter, read cross-thread by getIterations
 
   /* the number of holes the assembles piece will have. Holes are
    * voxels in the variable voxel set that are not filled. The other
    * voxels are all filled
    */
-  int holes;
+  int holes = 0;
 
   /* first and one after last column for the variable voxels */
-  unsigned int varivoxelStart;
-  unsigned int varivoxelEnd;
+  unsigned int varivoxelStart = 0;
+  unsigned int varivoxelEnd = 0;
 
   /* now this isn't hard to guess, is it? */
-  unsigned int piecenumber;
+  unsigned int piecenumber = 0;
 
   /* the message object that gets called with the solutions as param */
-  assembler_cb * asm_bc;
+  assembler_cb * asm_bc = nullptr;
 
   /* this value contains the piecenumber that the reduce procedure is currently working on
    * the value is only valid, when reduce is running
    */
-  std::atomic<unsigned int> reducePiece;  // written by worker, read by GUI via getReducePiece
+  std::atomic<unsigned int> reducePiece{0};  // written by worker, read by GUI via getReducePiece
 
   /* this vector contains the placement (transformation and position) for
    * a piece in a row
@@ -197,17 +198,17 @@ private:
 
   /* the members for rotations rejection
    */
-  bool avoidTransformedAssemblies;
-  unsigned int avoidTransformedPivot;
-  mirrorInfo_c * avoidTransformedMirror;
+  bool avoidTransformedAssemblies = false;
+  unsigned int avoidTransformedPivot = 0;
+  std::unique_ptr<mirrorInfo_c> avoidTransformedMirror;
 
   /// set to true, when complete rotation analysis is requested
-  bool complete;
+  bool complete = false;
 
   /* the variables for debugging assembling processes
    */
-  bool debug;         // debugging enabled
-  int debug_loops;    // how many loops to run ?
+  bool debug = false;         // debugging enabled
+  int debug_loops = 0;    // how many loops to run ?
 
   unsigned int clumpify(void);
 
@@ -271,7 +272,7 @@ protected:
    * rotations it should call this function. This will then add an additional check
    * for each found assembly
    */
-  void checkForTransformedAssemblies(unsigned int pivot, mirrorInfo_c * mir);
+  void checkForTransformedAssemblies(unsigned int pivot, std::unique_ptr<mirrorInfo_c> mir);
 
 public:
 
@@ -279,25 +280,26 @@ public:
   ~assembler_0_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */
-  errState createMatrix(bool keepMirror, bool keepRotations, bool complete);
-  void assemble(assembler_cb * callback);
-  int getErrorsParam(void) { return errorsParam; }
-  virtual float getFinished(void) const;
-  virtual void stop(void) { abbort.store(true, std::memory_order_relaxed); }
-  virtual bool stopped(void) const { return !running; }
-  virtual errState setPosition(const char * string, const char * version);
-  virtual void save(xmlWriter_c & xml) const;
-  virtual void reduce(void);
-  virtual unsigned int getReducePiece(void) const { return reducePiece; }
-  virtual unsigned long getIterations(void) { return iterations; }
+  using assembler_c::assemble;
+  errState createMatrix(bool keepMirror, bool keepRotations, bool complete) override;
+  void assemble(assembler_cb * callback) override;
+  int getErrorsParam(void) override { return errorsParam; }
+  float getFinished(void) const override;
+  void stop(void) override { abbort.store(true, std::memory_order_relaxed); }
+  bool stopped(void) const override { return !running; }
+  errState setPosition(const char * string, const char * version) override;
+  void save(xmlWriter_c & xml) const override;
+  void reduce(void) override;
+  unsigned int getReducePiece(void) const override { return reducePiece; }
+  unsigned long getIterations(void) override { return iterations; }
 
   /* some more special information to find out possible piece placements */
-  bool getPiecePlacementSupported(void) const { return true; }
-  unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) const;
-  unsigned int getPiecePlacementCount(unsigned int piece) const;
+  bool getPiecePlacementSupported(void) const override { return true; }
+  unsigned int getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) const override;
+  unsigned int getPiecePlacementCount(unsigned int piece) const override;
 
-  void debug_step(unsigned long num = 1);
-  assembly_c * getAssembly(void);
+  void debug_step(unsigned long num = 1) override;
+  std::unique_ptr<assembly_c> getAssembly(void) override;
 
   static bool canHandle(const problem_c & p);
 

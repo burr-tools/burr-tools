@@ -83,13 +83,11 @@
 /// due to an undefined orientation of the piece
 #define BBHSCACHE_NOT_DEF -30001
 
-voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * g, voxel_type init) : gt(g), sx(x), sy(y), sz(z), voxels(x*y*z), hx(0), hy(0), hz(0), weight(1) {
+voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_c * g, voxel_type init) :
+  gt(g), sx(x), sy(y), sz(z), voxels(x*y*z), space(voxels, init), hx(0), hy(0), hz(0), weight(1),
+  BbHsCache(9 * g->getSymmetries()->getNumTransformationsMirror(), BBHSCACHE_UNINIT) {
 
-  space = new voxel_type[voxels];
-  bt_assert(space);
   bt_assert(gt);
-
-  memset(space, init, voxels);
 
   if (init == 0) {
     bx2 = by2 = bz2 = 0;
@@ -104,69 +102,24 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_
   }
 
   doRecalc = true;
-
   symmetries = symmetryInvalid();
-
-  BbHsCache = new int[9*gt->getSymmetries()->getNumTransformationsMirror()];
-
-  for (unsigned int i = 0; i < gt->getSymmetries()->getNumTransformationsMirror(); i++)
-    BbHsCache[9*i+0] = BbHsCache[9*i+3] = BBHSCACHE_UNINIT;
 }
 
-voxel_c::voxel_c(const voxel_c & orig) : gt(orig.gt), sx(orig.sx), sy(orig.sy), sz(orig.sz),
-voxels(orig.voxels), hx(orig.hx), hy(orig.hy), hz(orig.hz), weight(orig.weight) {
-
-  space = new voxel_type[voxels];
-  bt_assert(space);
-
-  memcpy(space, orig.space, voxels);
-
-  bx1 = orig.bx1;
-  bx2 = orig.bx2;
-  by1 = orig.by1;
-  by2 = orig.by2;
-  bz1 = orig.bz1;
-  bz2 = orig.bz2;
-
-  doRecalc = true;
-
-  symmetries = symmetryInvalid();
-
-  BbHsCache = new int[9*gt->getSymmetries()->getNumTransformationsMirror()];
-
-  for (unsigned int i = 0; i < gt->getSymmetries()->getNumTransformationsMirror(); i++)
-    BbHsCache[9*i+0] = BbHsCache[9*i+3] = BBHSCACHE_UNINIT;
+voxel_c::voxel_c(const voxel_c & orig) :
+  gt(orig.gt), sx(orig.sx), sy(orig.sy), sz(orig.sz), voxels(orig.voxels), space(orig.space),
+  bx1(orig.bx1), bx2(orig.bx2), by1(orig.by1), by2(orig.by2), bz1(orig.bz1), bz2(orig.bz2),
+  doRecalc(true), symmetries(symmetryInvalid()), hx(orig.hx), hy(orig.hy), hz(orig.hz), weight(orig.weight),
+  BbHsCache(9 * orig.gt->getSymmetries()->getNumTransformationsMirror(), BBHSCACHE_UNINIT) {
 }
 
-voxel_c::voxel_c(const voxel_c * orig) : gt(orig->gt), sx(orig->sx), sy(orig->sy), sz(orig->sz),
-voxels(orig->voxels), hx(orig->hx), hy(orig->hy), hz(orig->hz), weight(orig->weight) {
-
-  space = new voxel_type[voxels];
-  bt_assert(space);
-
-  memcpy(space, orig->space, voxels);
-
-  bx1 = orig->bx1;
-  bx2 = orig->bx2;
-  by1 = orig->by1;
-  by2 = orig->by2;
-  bz1 = orig->bz1;
-  bz2 = orig->bz2;
-
-  doRecalc = true;
-
-  symmetries = symmetryInvalid();
-
-  BbHsCache = new int[9*gt->getSymmetries()->getNumTransformationsMirror()];
-
-  for (unsigned int i = 0; i < gt->getSymmetries()->getNumTransformationsMirror(); i++)
-    BbHsCache[9*i+0] = BbHsCache[9*i+3] = BBHSCACHE_UNINIT;
+voxel_c::voxel_c(const voxel_c * orig) :
+  gt(orig->gt), sx(orig->sx), sy(orig->sy), sz(orig->sz), voxels(orig->voxels), space(orig->space),
+  bx1(orig->bx1), bx2(orig->bx2), by1(orig->by1), by2(orig->by2), bz1(orig->bz1), bz2(orig->bz2),
+  doRecalc(true), symmetries(symmetryInvalid()), hx(orig->hx), hy(orig->hy), hz(orig->hz), weight(orig->weight),
+  BbHsCache(9 * orig->gt->getSymmetries()->getNumTransformationsMirror(), BBHSCACHE_UNINIT) {
 }
 
-voxel_c::~voxel_c() {
-  delete [] space;
-  delete [] BbHsCache;
-}
+voxel_c::~voxel_c() = default;
 
 void voxel_c::recalcBoundingBox(void) {
 
@@ -204,8 +157,7 @@ void voxel_c::recalcBoundingBox(void) {
     bx1 = by1 = bz1 = bx2 = by2 = bz2 = 0;
 
   /* we also clear the bounding box and hotspot cache */
-  for (unsigned int i = 0; i < gt->getSymmetries()->getNumTransformationsMirror(); i++)
-    BbHsCache[9*i+0] = BbHsCache[9*i+3] = BBHSCACHE_UNINIT;
+  std::fill(BbHsCache.begin(), BbHsCache.end(), BBHSCACHE_UNINIT);
 }
 
 bool voxel_c::operator ==(const voxel_c & op) const {
@@ -249,14 +201,11 @@ bool voxel_c::identicalWithRots(const voxel_c * op, bool includeMirror, bool inc
   unsigned int maxTrans = includeMirror ? sym->getNumTransformationsMirror() : sym->getNumTransformations();
 
   for (unsigned int t = 0; t < maxTrans; t++) {
-    voxel_c * v = gt->getVoxel(op);
+    auto v = std::unique_ptr<voxel_c>(gt->getVoxel(op));
 
-    if (v->transform(t) && identicalInBB(v, includeColors)) {
-      delete v;
+    if (v->transform(t) && identicalInBB(v.get(), includeColors)) {
       return true;
     }
-
-    delete v;
   }
 
   return false;
@@ -267,14 +216,11 @@ unsigned char voxel_c::getMirrorTransform(const voxel_c * op) const {
   const symmetries_c * sym = gt->getSymmetries();
 
   for (unsigned int t = sym->getNumTransformations(); t < sym->getNumTransformationsMirror(); t++) {
-    voxel_c * v = gt->getVoxel(this);
+    auto v = std::unique_ptr<voxel_c>(gt->getVoxel(this));
 
     if (v->transform(t) && v->identicalInBB(op, true)) {
-      delete v;
       return t;
     }
-
-    delete v;
   }
 
   return 0;
@@ -290,7 +236,7 @@ bool voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
 
     /* this version always works, but also is quite slow
     */
-    voxel_c * tmp = gt->getVoxel(this);
+    auto tmp = std::unique_ptr<voxel_c>(gt->getVoxel(this));
 
     if (!tmp->transform(trans))
     {
@@ -301,8 +247,6 @@ bool voxel_c::getHotspot(unsigned char trans, int * x, int * y, int * z) const {
     BbHsCache[9*trans+0] = tmp->getHx();
     BbHsCache[9*trans+1] = tmp->getHy();
     BbHsCache[9*trans+2] = tmp->getHz();
-
-    delete tmp;
   }
 
   if (BbHsCache[9*trans] == BBHSCACHE_NOT_DEF)
@@ -326,7 +270,7 @@ bool voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, 
   if (BbHsCache[9*trans+3] == BBHSCACHE_UNINIT) {
 
     /* this version always works, but it is quite slow */
-    voxel_c * tmp = gt->getVoxel(this);
+    auto tmp = std::unique_ptr<voxel_c>(gt->getVoxel(this));
 
     if (!tmp->transform(trans))
     {
@@ -342,8 +286,6 @@ bool voxel_c::getBoundingBox(unsigned char trans, int * x1, int * y1, int * z1, 
       BbHsCache[9*trans+7] = tmp->boundZ1();
       BbHsCache[9*trans+8] = tmp->boundZ2();
     }
-
-    delete tmp;
   }
 
   if (BbHsCache[9*trans+3] == BBHSCACHE_NOT_DEF)
@@ -367,8 +309,7 @@ void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel
   // if size doesn't change, do nothing
   if (nsx == sx && nsy == sy && nsz == sz) return;
 
-  voxel_type * s2 = new voxel_type[nsx*nsy*nsz];
-  memset(s2, filler, nsx*nsy*nsz);
+  std::vector<voxel_type> s2(nsx*nsy*nsz, filler);
 
   unsigned int mx = (sx < nsx) ? sx : nsx;
   unsigned int my = (sy < nsy) ? sy : nsy;
@@ -379,8 +320,7 @@ void voxel_c::resize(unsigned int nsx, unsigned int nsy, unsigned int nsz, voxel
       for (unsigned int z = 0; z < mz; z++)
         s2[x + nsx * (y + nsy * z)] = get(x, y, z);
 
-  delete [] space;
-  space = s2;
+  space = std::move(s2);
 
   sx = nsx;
   sy = nsy;
@@ -416,8 +356,7 @@ unsigned int voxel_c::countState(int state) const {
 }
 
 void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
-  voxel_type * s2 = new voxel_type[sx*sy*sz];
-  memset(s2, filler, sx*sy*sz);
+  std::vector<voxel_type> s2(sx*sy*sz, filler);
 
   for (unsigned int x = 0; x < sx; x++)
     for (unsigned int y = 0; y < sy; y++)
@@ -427,8 +366,7 @@ void voxel_c::translate(int dx, int dy, int dz, voxel_type filler) {
             ((int)z+dz >= 0) && ((int)z+dz < (int)sz))
           s2[(x+dx)+sx*((y+dy)+sy*(z+dz))] = get(x, y, z);
 
-  delete [] space;
-  space = s2;
+  space = std::move(s2);
 
   // initially I thought I could just shift the bounding box, but this doesn't work
   // as off piece voxels might have been shifted out making the shape smaller
@@ -530,9 +468,9 @@ void voxel_c::unionFind(int * tree, char type, bool inverse, voxel_type value, b
 bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ) const {
 
   /* allocate enough space for all voxels plus one for the outside */
-  int * tree = new int[voxels+1];
+  std::vector<int> tree(voxels+1);
 
-  unionFind(tree, type, inverse, value, outsideZ);
+  unionFind(tree.data(), type, inverse, value, outsideZ);
 
   int root = -1;
 
@@ -555,7 +493,6 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ
               while (tree[root2] >= 0) root2 = tree[root2];
 
               if (root2 != root) {
-                delete [] tree;
                 return false;
               }
             }
@@ -566,26 +503,22 @@ bool voxel_c::connected(char type, bool inverse, voxel_type value, bool outsideZ
       while (tree[root2] >= 0) root2 = tree[root2];
 
       if (root2 != root) {
-        delete [] tree;
         return false;
       }
     }
   }
 
-  delete [] tree;
   return true;
 }
 
 void voxel_c::fillHoles(char type) {
 
   /* allocate enough space for all voxels plus one for the outside */
-  int * tree = new int[voxels+1];
+  std::vector<int> tree(voxels+1);
 
-  unionFind(tree, type, true, VX_FILLED, true);
+  unionFind(tree.data(), type, true, VX_FILLED, true);
 
-  int root = -1;
-
-  root = tree[voxels];
+  int root = voxels;
   while (tree[root] >= 0) root = tree[root];
 
   for (unsigned int x = 0; x < sx; x++)
@@ -600,18 +533,11 @@ void voxel_c::fillHoles(char type) {
             set(x, y, z, VX_FILLED);
           }
         }
-
-
-  delete [] tree;
 }
 
 void voxel_c::copy(const voxel_c * orig) {
 
-  delete [] space;
-
-  space = new voxel_type [orig->getXYZ()];
-
-  memcpy(space, orig->space, orig->getXYZ());
+  space = orig->space;
 
   sx = orig->sx;
   sy = orig->sy;
@@ -835,7 +761,7 @@ voxel_c::voxel_c(xmlParser_c & pars, const gridType_c * g) : gt(g), hx(0), hy(0)
   if (szStr != "")
     weight = atoi(szStr.c_str());
 
-  space = new voxel_type[voxels];
+  space.assign(voxels, 0);
 
   if (pars.next() != xmlParser_c::TEXT)
     pars.exception("voxel space requires content");
@@ -896,7 +822,7 @@ voxel_c::voxel_c(xmlParser_c & pars, const gridType_c * g) : gt(g), hx(0), hy(0)
   }
 
   symmetries = symmetryInvalid();
-  BbHsCache = new int[9*gt->getSymmetries()->getNumTransformationsMirror()];
+  BbHsCache.assign(9*gt->getSymmetries()->getNumTransformationsMirror(), BBHSCACHE_UNINIT);
 
   skipRecalcBoundingBox(false);
 

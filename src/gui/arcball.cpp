@@ -198,16 +198,14 @@ void arcBall_c::mapToSphere(float x, float y, float NewVec[3]) const
 }
 
 //Create/Destroy
-arcBall_c::arcBall_c(float NewWidth, float NewHeight) {
-
-  LastRot[0] = 1;  LastRot[1] = 0;  LastRot[2] = 0;
-  LastRot[3] = 0;  LastRot[4] = 1;  LastRot[5] = 0;
-  LastRot[6] = 0;  LastRot[7] = 0;  LastRot[8] = 1;
-
+arcBall_c::arcBall_c(float NewWidth, float NewHeight) :
+  AdjustWidth(NewWidth), AdjustHeight(NewHeight),
+  StVec{0.0f, 0.0f, 0.0f}, EnVec{0.0f, 0.0f, 0.0f},
+  LastRot{1, 0, 0, 0, 1, 0, 0, 0, 1},
+  mouseDown(false)
+{
   //Set initial bounds
   setBounds(NewWidth, NewHeight);
-
-  mouseDown = false;
 }
 
 void arcBall_c::click(float x, float y) {
@@ -320,7 +318,7 @@ void arcBall_c::addTransform(void) const {
 
 
 
-method2_c::method2_c(float NewWidth, float NewHeight) : AdjustWidth(NewWidth), AdjustHeight(NewHeight), mouseDown(false)
+method2_c::method2_c(float NewWidth, float NewHeight) : AdjustWidth(NewWidth), AdjustHeight(NewHeight), last_x(0.0f), last_y(0.0f), mouseDown(false)
 {
   rotation[0] = 0;
   rotation[1] = 0;

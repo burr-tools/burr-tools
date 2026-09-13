@@ -57,10 +57,11 @@ meson setup build
 ninja -C build
 ```
 
-3. The executables will be created in the `build/` directory:
+3. The executables and modules will be created in the `build/` directory:
    - `build/burrtools` - Main GUI application
    - `build/burrTxt` - Command-line tool
    - `build/burrTxt2` - Command-line tool
+   - `build/burrtools*.so` - Python wrapper extension module
 
 ## Cross-Compiling for Windows
 
@@ -82,6 +83,66 @@ ninja -C build-win
    - `build-win/burrtools.exe` - Main GUI application
    - `build-win/burrTxt.exe` - Command-line tool
    - `build-win/burrTxt2.exe` - Command-line tool
+
+## Python Wrapper
+
+BurrTools includes a Python C++ extension module that provides an iterator for streaming solutions as they are found.
+
+### Running Python Tests
+```bash
+just test-py
+```
+Or directly:
+```bash
+PYTHONPATH=build python3 -m unittest discover -s test/python -v
+```
+
+### Usage Examples
+
+#### 1. Loading and Solving an Existing Puzzle
+```python
+import burrtools
+
+# Load puzzle from file
+puzzle = burrtools.load("examples/PelikanBurr.xmpuzzle")
+problem = puzzle.problems[0]
+
+# Stream solutions via iterator
+for sol in problem.solve(disassemble=True):
+    print(f"Solution #{sol.solution_number}: level {sol.level}, moves: {sol.moves_text}")
+    for p in sol.placements:
+        if p.is_placed:
+            print(f"  piece {p.piece_id} at ({p.x}, {p.y}, {p.z}) rot {p.transformation}")
+```
+
+#### 2. Creating and Solving a Puzzle Entirely in Python
+```python
+import burrtools
+
+# Create an empty 3D cubic grid puzzle
+puzzle = burrtools.Puzzle()
+puzzle.comment = "2x2x2 cube from two 1x2x2 blocks"
+
+# Define target result shape: 2x2x2 cube
+target = puzzle.add_shape(2, 2, 2, name="cube")
+target.fill([(x, y, z) for x in range(2) for y in range(2) for z in range(2)])
+
+# Define piece shape: 1x2x2 slab
+piece = puzzle.add_shape(1, 2, 2, name="slab")
+piece.fill([(0, y, z) for y in range(2) for z in range(2)])
+
+# Create problem and set piece constraints
+problem = puzzle.add_problem(name="assemble cube")
+problem.set_result(target)
+problem.set_piece_count(piece, 2)
+
+# Solve in-memory without saving to file!
+for sol in problem.solve(disassemble=False):
+    print(f"Assembly found with {len(sol.placements)} pieces")
+
+# Optional: save to .xmpuzzle file
+puzzle.save("my_puzzle.xmpuzzle")
+```
 
 ## Cleaning Build Directories
 

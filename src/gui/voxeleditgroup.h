@@ -81,10 +81,12 @@ public:
     sqedit->setColor(num);
   }
 
+  // cppcheck-suppress duplInheritedMember
   void deactivate(void) {
     sqedit->deactivate();
   }
 
+  // cppcheck-suppress duplInheritedMember
   void activate(void) {
     sqedit->activate();
   }

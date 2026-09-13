@@ -28,7 +28,9 @@
 #include "bt_assert.h"
 
 #include <deque>
+#include <memory>
 #include <vector>
+#include <string>
 
 class xmlWriter_c;
 class xmlParser_c;
@@ -51,11 +53,10 @@ class disassembly_c
      */
     virtual unsigned int sumMoves(void) const = 0;
     /**
-     * fill a string with dot separated numbers containing the moves
+     * return a string with dot separated numbers containing the moves
      * required to disassemble the puzzle
-     * not more than len characters are written
      */
-    virtual void movesText(char * txt, int len) const = 0;
+    virtual std::string movesText(void) const = 0;
 
     /**
      * compares this and the given separation, for a higher level.
@@ -79,11 +80,9 @@ class disassembly_c
     /** helper function used for "compare" to get the number of move sequences */
     virtual unsigned int getNumSequences(void) const = 0;
 
-  private:
-
     // no copying and assigning
-    disassembly_c(const disassembly_c&);
-    void operator=(const disassembly_c&);
+    disassembly_c(const disassembly_c&) = delete;
+    disassembly_c& operator=(const disassembly_c&) = delete;
 };
 
 
@@ -94,16 +93,11 @@ class disassembly_c
 class state_c {
 
   /** contains the x positions of all the pieces that are handled */
-  int *dx;
+  std::vector<int> dx;
   /** contains the y positions of all the pieces that are handled */
-  int *dy;
+  std::vector<int> dy;
   /** contains the z positions of all the pieces that are handled */
-  int *dz;
-
-#ifndef NDEBUG
-  /** we only keep the piecenumber for checking purposes */
-  unsigned int piecenumber;
-#endif
+  std::vector<int> dz;
 
 public:
 
@@ -129,33 +123,29 @@ public:
 
   /** get the x position of a piece */
   int getX(unsigned int i) const {
-    bt_assert(i < piecenumber);
+    bt_assert(i < dx.size());
     return dx[i];
   }
   /** get the y position of a piece */
   int getY(unsigned int i) const {
-    bt_assert(i < piecenumber);
+    bt_assert(i < dy.size());
     return dy[i];
   }
   /** get the z position of a piece */
   int getZ(unsigned int i) const {
-    bt_assert(i < piecenumber);
+    bt_assert(i < dz.size());
     return dz[i];
   }
 
   /** check, if the piece is removed in this state */
   bool pieceRemoved(unsigned int i) const;
 
-#ifndef NDEBUG
-  /** on assert needs to check the piecenumber */
-  unsigned int getPiecenumber(void) const { return piecenumber; }
-#endif
-
-private:
+  /** return the piece count */
+  unsigned int getPiecenumber(void) const { return dx.size(); }
 
   // no copying and assigning
-  state_c(const state_c&);
-  void operator=(const state_c&);
+  state_c(const state_c&) = delete;
+  state_c& operator=(const state_c&) = delete;
 };
 
 
@@ -189,13 +179,13 @@ class separation_c : public disassembly_c
    * for the root node the first state represents the assembles puzzle
    * with all values 0
    */
-  std::deque <state_c *> states;
+  std::deque <std::unique_ptr<state_c>> states;
 
   /* the 2 parts the puzzle gets divided with the
    * last move. If one of this parts consists of only
    * one piece there will be a null pointer
    */
-  separation_c * removed, *left;
+  std::unique_ptr<separation_c> removed, left;
 
   /** used in movesText to find out if a branch has a move sequence longer than 1 */
   bool containsMultiMoves(void);
@@ -215,6 +205,7 @@ public:
    * and the pieces in the array pcs
    */
   separation_c(separation_c * r, separation_c * l, const std::vector<unsigned int> & pcs);
+  separation_c(std::unique_ptr<separation_c> r, std::unique_ptr<separation_c> l, const std::vector<unsigned int> & pcs);
 
   /** load a separation from an xml node */
   separation_c(xmlParser_c & pars, unsigned int pieces);
@@ -236,14 +227,14 @@ public:
   /** get one state from the separation process */
   const state_c * getState(unsigned int num) const {
     bt_assert(num < states.size());
-    return states[num];
+    return states[num].get();
   }
 
   /** get the separation for the pieces that were removed */
-  const separation_c * getLeft(void) const { return left; }
+  const separation_c * getLeft(void) const { return left.get(); }
 
   /** get the separation for the pieces that were left over */
-  const separation_c * getRemoved(void) const { return removed; }
+  const separation_c * getRemoved(void) const { return removed.get(); }
 
   /**
    * add a new state to the FRONT of the current state list.
@@ -253,6 +244,7 @@ public:
    * keep in mind that the new state must have the same number
    * of pieces as all the other states
    */
+  void addstate(std::unique_ptr<state_c> st);
   void addstate(state_c *st);
 
   /** return the number of pieces that are in this separation */
@@ -264,23 +256,24 @@ public:
     return pieces[num];
   }
 
+  /** get the array with all the piece numbers that are in this separation */
+  const std::vector<unsigned int> & getPieces(void) const { return pieces; }
+
   /** 2 pieces have exchanged their place in the problem list */
   void exchangeShape(unsigned int s1, unsigned int s2);
 
   /* implementation of the base class functions */
-  virtual unsigned int getSequenceLength(unsigned int x) const;
-  virtual unsigned int getNumSequences(void) const;
-  virtual unsigned int sumMoves(void) const;
-  virtual void movesText(char * txt, int len) const { movesText2(txt, len); }
+  virtual unsigned int getSequenceLength(unsigned int x) const override;
+  virtual unsigned int getNumSequences(void) const override;
+  virtual unsigned int sumMoves(void) const override;
+  virtual std::string movesText(void) const override;
 
   void removePieces(unsigned int from, unsigned int cnt);
   void addNonPlacedPieces(unsigned int from, unsigned int cnt);
 
-private:
-
   // no copying and assigning
-  separation_c(const separation_c&);
-  void operator=(const separation_c&);
+  separation_c(const separation_c&) = delete;
+  separation_c& operator=(const separation_c&) = delete;
 };
 
 /**
@@ -299,13 +292,13 @@ class separationInfo_c : public disassembly_c {
      *
      * example:
      * \verbatim
-       3 2 1 0 0 0 0     tree root 3 --> 2 --> 1 \endverbatim
+     *   3 2 1 0 0 0 0     tree root 3 --> 2 --> 1 \endverbatim
      *
      * another example
      *
      * \verbatim
-       3 1 1 0 0 0 1 1 0 0 0   tree root  3 --> 1 --> 1
-                                           \--> 1 --> 1 \endverbatim
+     *   3 1 1 0 0 0 1 1 0 0 0   tree root  3 --> 1 --> 1
+     *                                       \--> 1 --> 1 \endverbatim
      */
     std::vector<unsigned int> values;
 
@@ -329,16 +322,14 @@ class separationInfo_c : public disassembly_c {
     void save(xmlWriter_c & xml) const;
 
     /* implement abstract functions */
-    virtual unsigned int sumMoves(void) const;
-    virtual void movesText(char * txt, int len) const { movesText2(txt, len, 0); }
-    virtual unsigned int getSequenceLength(unsigned int x) const;
-    virtual unsigned int getNumSequences(void) const;
-
-  private:
+    virtual unsigned int sumMoves(void) const override;
+    virtual std::string movesText(void) const override;
+    virtual unsigned int getSequenceLength(unsigned int x) const override;
+    virtual unsigned int getNumSequences(void) const override;
 
     // no copying and assigning
-    separationInfo_c(const separationInfo_c&);
-    void operator=(const separationInfo_c&);
+    separationInfo_c(const separationInfo_c&) = delete;
+    separationInfo_c& operator=(const separationInfo_c&) = delete;
 };
 
 

@@ -25,6 +25,7 @@
 #include "movementanalysator.h"
 
 #include <vector>
+#include <memory>
 
 class grouping_c;
 class problem_c;
@@ -49,28 +50,28 @@ class disassembler_a_c : public disassembler_c {
   private:
 
     /**
-     * For grouping pieces
-     */
-    grouping_c * groups;
-
-    /**
      * the problem we solve
      */
     const problem_c & puzzle;
+
+    /**
+     * For grouping pieces
+     */
+    std::unique_ptr<grouping_c> groups;
 
     /**
      * Converts piece number to the corresponding shape number.
      *
      * These are needed for the grouping functions
      */
-    unsigned short * piece2shape;
+    std::vector<unsigned short> piece2shape;
 
     /**
      * the movement analysator we use.
      *
      * The movement analysator will return the possible moves from a given position
      */
-    movementAnalysator_c *analyse;
+    std::unique_ptr<movementAnalysator_c> analyse;
 
     unsigned short subProbGroup(const disassemblerNode_c * st, const std::vector<unsigned int> & pn, bool cond);
     bool subProbGrouping(const std::vector<unsigned int> & pn);
@@ -117,7 +118,7 @@ class disassembler_a_c : public disassembler_c {
      * you need to take care of deleting the disassembly sequence after
      * doing with it whatever you want.
      */
-    separation_c * disassemble(const assembly_c * assembly);
+    std::unique_ptr<separation_c> disassemble(const assembly_c * assembly) override;
 
   private:
 

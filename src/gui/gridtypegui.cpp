@@ -57,12 +57,12 @@ gridTypeGui_2_c::gridTypeGui_2_c(int x, int y, int w, int h, gridType_c * /*gt*/
 class gridTypeInfos_c {
   public:
 
-    gridType_c * gt;
-    guiGridType_c * ggt;
-    LFl_Radio_Button * btn;
-    gridTypeGui_c * gui;
+    std::unique_ptr<gridType_c> gt;
+    std::unique_ptr<guiGridType_c> ggt;
+    LFl_Radio_Button * btn{nullptr};
+    gridTypeGui_c * gui{nullptr};
 
-    gridTypeInfos_c(gridType_c * g) : gt(g), ggt(new guiGridType_c(g)) {}
+    gridTypeInfos_c(std::unique_ptr<gridType_c> g) : gt(std::move(g)), ggt(std::make_unique<guiGridType_c>(gt.get())) {}
 };
 
 static void cb_WindowButton_stub(Fl_Widget * /*o*/, void *v) { ((Fl_Double_Window*)(v))->hide(); }
@@ -98,7 +98,7 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) : LFl_Double_Window(fal
    * with all required information
    */
   for (int i = 0; i < gridType_c::GT_NUM_GRIDS; i++)
-    gti.push_back(new gridTypeInfos_c(new gridType_c(gridType_c::gridType(i))));
+    gti.push_back(std::make_unique<gridTypeInfos_c>(std::make_unique<gridType_c>(gridType_c::gridType(i))));
 
   /* from here on the code should not need changes when new grid types are added */
 
@@ -159,19 +159,9 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) : LFl_Double_Window(fal
   current = 0;
 }
 
-gridTypeSelectorWindow_c::~gridTypeSelectorWindow_c(void) {
-  for (unsigned int i = 0; i < gti.size(); i++) {
-    if (gti[i]->gt)
-      delete gti[i]->gt;
-    delete gti[i]->ggt;
-    delete gti[i];
-  }
-}
+gridTypeSelectorWindow_c::~gridTypeSelectorWindow_c(void) = default;
 
-
-gridType_c * gridTypeSelectorWindow_c::getGridType(void) {
-  gridType_c * tmp = gti[current]->gt;
-  gti[current]->gt = 0;
-  return tmp;
+std::unique_ptr<gridType_c> gridTypeSelectorWindow_c::getGridType(void) {
+  return std::move(gti[current]->gt);
 }
 

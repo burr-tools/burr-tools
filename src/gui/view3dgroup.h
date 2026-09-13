@@ -44,6 +44,7 @@ public:
   double getZoom(void) { return slider->value(); }
   void setZoom(double v) { slider->value(v); cb_slider(); }
 
+  // cppcheck-suppress duplInheritedMember
   void redraw(void);
 
   voxelFrame_c * getView(void) { return View3D; }

@@ -20,7 +20,7 @@
  */
 #include "buttongroup.h"
 
-static void cb_ButtonGroup_stub(Fl_Widget* o, void* v) { ((ButtonGroup_c*)v)->cb_Push((Fl_Button*)o); }
+static void cb_ButtonGroup_stub(Fl_Widget* o, void* v) { static_cast<ButtonGroup_c*>(v)->cb_Push(static_cast<Fl_Button*>(o)); }
 
 ButtonGroup_c::ButtonGroup_c(int x, int y, int w, int h) : layouter_c(x, y, w, h), currentButton(0) {
   end();
@@ -49,21 +49,21 @@ LFl_Button * ButtonGroup_c::addButton(void) {
 
 void ButtonGroup_c::cb_Push(Fl_Button * btn) {
 
-  Fl_Button ** a = (Fl_Button**) array();
-
-  for (int i = 0; i < children(); i++)
-    if (a[i] != btn) {
-      a[i]->clear();
+  for (int i = 0; i < children(); i++) {
+    Fl_Button * b = static_cast<Fl_Button*>(child(i));
+    if (b != btn) {
+      b->clear();
     } else {
-      a[i]->set();
+      b->set();
       currentButton = i;
     }
+  }
 
   do_callback();
 }
 
 void ButtonGroup_c::select(int num) {
   if (num < children())
-    cb_Push((Fl_Button*)array()[num]);
+    cb_Push(static_cast<Fl_Button*>(child(num)));
 }
 

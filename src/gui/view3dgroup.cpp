@@ -33,13 +33,13 @@
 
 // some tool widgets, that may be swapped out later into another file
 
-static void cb_View3dGroupSlider_stub(Fl_Widget* o, void* /*v*/) { ((LView3dGroup*)(o->parent()))->cb_slider(); }
+static void cb_View3dGroupSlider_stub(Fl_Widget* o, void* /*v*/) { static_cast<LView3dGroup*>(o->parent())->cb_slider(); }
 
 void LView3dGroup::cb_slider(void) {
   View3D->setSize(exp(6-slider->value()));
 }
 
-static void cb_View3dGroupVoxel_stub(Fl_Widget* o, void* /*v*/) { ((LView3dGroup*)(o->parent()))->do_callback(); }
+static void cb_View3dGroupVoxel_stub(Fl_Widget* o, void* /*v*/) { static_cast<LView3dGroup*>(o->parent())->do_callback(); }
 
 LView3dGroup::LView3dGroup(int x, int y, int w, int h) : Fl_Group(0, 0, 50, 50), layoutable_c(x, y, w, h) {
 
@@ -88,6 +88,7 @@ int LView3dGroup::handle(int event) {
   return Fl_Group::handle(event);
 }
 
+// cppcheck-suppress duplInheritedMember
 void LView3dGroup::redraw(void)
 {
   View3D->redraw();

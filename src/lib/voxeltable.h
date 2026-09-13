@@ -21,6 +21,8 @@
 #ifndef __VOXEL_TABLE_H__
 #define __VOXEL_TABLE_H__
 
+#include <vector>
+
 class puzzle_c;
 class voxel_c;
 
@@ -56,7 +58,7 @@ class voxelTable_c {
       struct hashNode * next;       //< next entry
     } hashNode;
 
-    hashNode ** hashTable;          //< the hash table
+    std::vector<hashNode*> hashTable; //< the hash table
     unsigned long tableSize;        //< size of the hash table
     unsigned long tableEntries;     //< number of entries in hash table
 

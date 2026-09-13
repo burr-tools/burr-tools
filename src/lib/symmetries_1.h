@@ -32,23 +32,23 @@ class symmetries_1_c : public symmetries_c {
 
     symmetries_1_c(void);
 
-    unsigned int getNumTransformations(void) const;
-    unsigned int getNumTransformationsMirror(void) const;
-    bool symmetrieContainsTransformation(symmetries_t s, unsigned int t) const;
-    unsigned char transAdd(unsigned char t1, unsigned char t2) const;
-    unsigned char minimizeTransformation(symmetries_t s, unsigned char trans) const;
-    unsigned int countSymmetryIntersection(symmetries_t resultSym, symmetries_t s2) const;
-    bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2) const;
-    symmetries_t calculateSymmetry(const voxel_c * pp) const;
-    bool symmetryContainsMirror(symmetries_t sym) const;
-    bool symmetryKnown(const voxel_c * pp) const;
-    bool isTransformationUnique(symmetries_t s, unsigned int trans) const;
+    unsigned int getNumTransformations(void) const override;
+    unsigned int getNumTransformationsMirror(void) const override;
+    bool symmetrieContainsTransformation(symmetries_t s, unsigned int t) const override;
+    unsigned char transAdd(unsigned char t1, unsigned char t2) const override;
+    unsigned char minimizeTransformation(symmetries_t s, unsigned char trans) const override;
+    unsigned int countSymmetryIntersection(symmetries_t resultSym, symmetries_t s2) const override;
+    bool symmetriesLeft(symmetries_t resultSym, symmetries_t s2) const override;
+    symmetries_t calculateSymmetry(const voxel_c * pp) const override;
+    bool symmetryContainsMirror(symmetries_t sym) const override;
+    bool symmetryKnown(const voxel_c * pp) const override;
+    bool isTransformationUnique(symmetries_t s, unsigned int trans) const override;
 
-  private:
+  public:
 
     // no copying and assigning
-    symmetries_1_c(const symmetries_1_c&);
-    void operator=(const symmetries_1_c&);
+    symmetries_1_c(const symmetries_1_c&) = delete;
+    symmetries_1_c& operator=(const symmetries_1_c&) = delete;
 };
 
 #endif

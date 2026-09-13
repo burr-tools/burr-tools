@@ -29,10 +29,9 @@
 #include "disassembly.h"
 
 disassembler_a_c::disassembler_a_c(const problem_c & puz) :
-  disassembler_c(), puzzle(puz) {
+  disassembler_c(), puzzle(puz), groups(std::make_unique<grouping_c>()) {
 
   /* Initialise the grouping class */
-  groups = new grouping_c();
   for (unsigned int i = 0; i < puz.getNumberOfParts(); i++)
     for (unsigned int j = 0; j < puz.getNumberOfPartGroups(i); j++)
       groups->addPieces(puz.getShapeIdOfPart(i),
@@ -40,21 +39,16 @@ disassembler_a_c::disassembler_a_c(const problem_c & puz) :
                         puz.getPartGroupCount(i, j));
 
   /* initialize piece 2 shape transformation */
-  piece2shape = new unsigned short[puz.getNumberOfPieces()];
+  piece2shape.resize(puz.getNumberOfPieces());
   int p = 0;
   for (unsigned int i = 0; i < puz.getNumberOfParts(); i++)
     for (unsigned int j = 0; j < puz.getPartMaximum(i); j++)
       piece2shape[p++] = i;
 
-  analyse = new movementAnalysator_c(puzzle);
+  analyse = std::make_unique<movementAnalysator_c>(puzzle);
 }
 
-disassembler_a_c::~disassembler_a_c() {
-  delete groups;
-  delete [] piece2shape;
-
-  delete analyse;
-}
+disassembler_a_c::~disassembler_a_c() = default;
 
 /* create all the necessary parameters for one of the two possible subproblems
  * our current problems divides into
@@ -157,7 +151,7 @@ separation_c * disassembler_a_c::checkSubproblems(const disassemblerNode_c * st,
     const disassemblerNode_c * st2 = st;
 
     do {
-      state_c *s = new state_c(pieces.size());
+      auto s = std::make_unique<state_c>(pieces.size());
 
       for (unsigned int i = 0; i < pieces.size(); i++) {
 
@@ -174,7 +168,7 @@ separation_c * disassembler_a_c::checkSubproblems(const disassemblerNode_c * st,
         } else
           s->set(i, st2->getX(i), st2->getY(i), st2->getZ(i));
       }
-      erg->addstate(s);
+      erg->addstate(std::move(s));
 
       st2 = st2->getComefrom();
     } while (st2);
@@ -228,7 +222,7 @@ bool disassembler_a_c::subProbGrouping(const std::vector<unsigned int> & pn) {
   return true;
 }
 
-separation_c * disassembler_a_c::disassemble(const assembly_c * assembly) {
+std::unique_ptr<separation_c> disassembler_a_c::disassemble(const assembly_c * assembly) {
 
   bt_assert(puzzle.getNumberOfPieces() == assembly->placementCount());
   groups->reSet();
@@ -237,7 +231,7 @@ separation_c * disassembler_a_c::disassemble(const assembly_c * assembly) {
 
   if (start->getPiecenumber() < 2) {
     delete start;
-    return 0;
+    return nullptr;
   }
 
   /* create pieces field. This field contains the
@@ -255,6 +249,6 @@ separation_c * disassembler_a_c::disassemble(const assembly_c * assembly) {
   if (start->decRefCount())
     delete start;
 
-  return s;
+  return std::unique_ptr<separation_c>(s);
 }
 

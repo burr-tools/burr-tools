@@ -33,13 +33,35 @@ rebuild:
 test: build
     ninja -C build test
 
+# Run Python wrapper test suite
+test-py: build
+    PYTHONPATH=build python3 -m unittest discover -s test/python -v
+
 # Run fast static analysis (cppcheck) on BurrTools source files
+#
+# Every suppression here is scoped to third-party or system code. Deliberately
+# absent are blanket `--suppress=syntaxError` / `--suppress=unknownMacro`: those
+# hide cppcheck *parse* failures anywhere in the tree, so a file cppcheck can no
+# longer parse reports zero warnings and sails through the --error-exitcode=1
+# gate below -- precisely the failure that gate exists to catch. Should a single
+# file ever genuinely need one, use an inline `// cppcheck-suppress <id>` comment
+# (--inline-suppr is on) instead of re-adding a global suppression.
+#
+# Also absent is `--suppress="*:*test*"`, which was a substring glob matching any
+# path merely containing "test", not the test directory; `-i test` above already
+# excludes that directory.
 check-cppcheck: setup
     cppcheck --project=build/compile_commands.json \
              -i subprojects \
+             -i src/lua \
+             -i test \
              --suppress="*:*subprojects*" \
+             --suppress="*:*src/lua*" \
+             --suppress="*:*/usr/include/*" \
+             --suppress="preprocessorErrorDirective:*python*" \
              --enable=warning,performance,portability \
              --inline-suppr \
+             --error-exitcode=1 \
              --quiet \
              -j$(getconf _NPROCESSORS_ONLN)
 

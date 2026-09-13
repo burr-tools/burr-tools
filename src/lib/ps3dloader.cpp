@@ -29,9 +29,9 @@
 #include <sstream>
 
 /* either return a puzzle, or nil, when failed */
-puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
+std::unique_ptr<puzzle_c> loadPuzzlerSolver3D(std::istream * str) {
 
-  puzzle_c * p = new puzzle_c(new gridType_c());
+  auto p = std::make_unique<puzzle_c>(std::make_unique<gridType_c>());
 
   problem_c * pr = p->getProblem(p->addProblem());
 
@@ -67,8 +67,7 @@ puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
         s >> sx >> c >> sy >> c >> sz;
 
         if ((sx > 500) || (sy > 500) || (sz > 500)) {
-          delete p;
-          return 0;
+          return nullptr;
         }
 
         piece = p->addShape(sx, sy, sz);
@@ -90,8 +89,7 @@ puzzle_c * loadPuzzlerSolver3D(std::istream * str) {
         for (int x = 0; x < sx; x++) {
           char c = line[z*(sx+1)+x];
           if (c == ',') {
-            delete p;
-            return 0;
+            return nullptr;
           }
           if (c != ' ')
             p->getShape(piece)->setState(x, linenum, z, voxel_c::VX_FILLED);

@@ -366,19 +366,23 @@ void layouter_c::getMinSize(int *width, int *height) const {
   *height = mh;
 }
 
+// cppcheck-suppress duplInheritedMember
 void layouter_c::remove(Fl_Widget &w) {
   minsizeValid = false;
   Fl_Group::remove(w);
 }
+// cppcheck-suppress duplInheritedMember
 void layouter_c::remove(Fl_Widget *w) {
   minsizeValid = false;
   Fl_Group::remove(w);
 }
+// cppcheck-suppress duplInheritedMember
 void layouter_c::add(Fl_Widget &w) {
   minsizeValid = false;
   Fl_Group::add(w);
 }
 
+// cppcheck-suppress duplInheritedMember
 void layouter_c::add(Fl_Widget *w) {
   minsizeValid = false;
   Fl_Group::add(w);

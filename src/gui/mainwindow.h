@@ -25,6 +25,9 @@
 
 #include "Layouter.h"
 
+#include <memory>
+#include <string>
+
 class VoxelEditGroup_c;
 class ChangeSize;
 class ToolTab;
@@ -63,11 +66,11 @@ class Fl_Progress;
 
 class mainWindow_c : public LFl_Double_Window {
 
-  puzzle_c * puzzle;
-  guiGridType_c * ggt;  // this is the guigridtype for the puzzle, is must always be in sync
-  char * fname;
-  disasmToMoves_c * disassemble;
-  solveThread_c *assmThread;
+  std::unique_ptr<puzzle_c> puzzle;
+  std::unique_ptr<guiGridType_c> ggt;  // this is the guigridtype for the puzzle, is must always be in sync
+  std::string fname;
+  std::unique_ptr<disasmToMoves_c> disassemble;
+  std::unique_ptr<solveThread_c> assmThread;
   bool SolutionEmpty;
 
   /* While a problem is being solved the view can track a solution as the list
@@ -192,7 +195,7 @@ class mainWindow_c : public LFl_Double_Window {
   void changeProblem(unsigned int nr);
   void changeColor(unsigned int nr);
 
-  void ReplacePuzzle(puzzle_c * newPuzzle);
+  void ReplacePuzzle(std::unique_ptr<puzzle_c> newPuzzle);
 
   void activateShape(unsigned int number);
   void activateProblem(unsigned int prob);
@@ -211,13 +214,14 @@ public:
   int handle(int event);
 
   using LFl_Double_Window::show;
+  // cppcheck-suppress duplInheritedMember
   void show(int argn, char ** argv);
 
   // overwrite hide to check for changes in all possible exit situations
   void hide(void);
 
   /* this is used on assert to save the current puzzle */
-  const puzzle_c * getPuzzle(void) const { return puzzle; }
+  const puzzle_c * getPuzzle(void) const { return puzzle.get(); }
 
   /* update the interface to represent the latest state of
    * the solving progress, that works in background

@@ -33,22 +33,22 @@ class ToolTab : public LFl_Tabs {
 
 public:
 
-  ToolTab(int x, int y, int w, int h) : LFl_Tabs(x, y, w, h) {}
+  ToolTab(int x, int y, int w, int h) : LFl_Tabs(x, y, w, h), toAll(nullptr) {}
 
   virtual void setVoxelSpace(puzzle_c * puz, unsigned int sh) = 0;
   bool operationToAll(void) { return toAll->value() != 0; }
 
 protected:
 
-  LFl_Check_Button * toAll;
+  LFl_Check_Button * toAll = nullptr;
 };
 
 // the class that contains the tool tab
 class ToolTab_0 : public ToolTab {
 
-  ChangeSize * changeSize;
-  puzzle_c * puzzle;
-  unsigned int shape;
+  ChangeSize * changeSize = nullptr;
+  puzzle_c * puzzle = nullptr;
+  unsigned int shape = 0;
   pixmapList_c pm;
 
 public:
@@ -64,9 +64,9 @@ public:
 // the class that contains the tool tab
 class ToolTab_1 : public ToolTab {
 
-  ChangeSize * changeSize;
-  puzzle_c * puzzle;
-  unsigned int shape;
+  ChangeSize * changeSize = nullptr;
+  puzzle_c * puzzle = nullptr;
+  unsigned int shape = 0;
   pixmapList_c pm;
 
 public:
@@ -82,9 +82,9 @@ public:
 // the class that contains the tool tab
 class ToolTab_2 : public ToolTab {
 
-  ChangeSize * changeSize;
-  puzzle_c * puzzle;
-  unsigned int shape;
+  ChangeSize * changeSize = nullptr;
+  puzzle_c * puzzle = nullptr;
+  unsigned int shape = 0;
   pixmapList_c pm;
 
 public:
@@ -100,9 +100,9 @@ public:
 
 class ToolTab_3 : public ToolTab {
 
-  ChangeSize * changeSize;
-  puzzle_c * puzzle;
-  unsigned int shape;
+  ChangeSize * changeSize = nullptr;
+  puzzle_c * puzzle = nullptr;
+  unsigned int shape = 0;
   pixmapList_c pm;
 
 public:
@@ -117,9 +117,9 @@ public:
 
 class ToolTab_4 : public ToolTab {
 
-  ChangeSize * changeSize;
-  puzzle_c * puzzle;
-  unsigned int shape;
+  ChangeSize * changeSize = nullptr;
+  puzzle_c * puzzle = nullptr;
+  unsigned int shape = 0;
   pixmapList_c pm;
 
 public:
@@ -134,7 +134,7 @@ public:
 
 class ToolTabContainer : public layouter_c {
 
-  ToolTab * tt;
+  ToolTab * tt = nullptr;
 
   public:
 

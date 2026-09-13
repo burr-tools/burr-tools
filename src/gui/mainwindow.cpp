@@ -140,7 +140,7 @@ void mainWindow_c::cb_AddColor(void) {
 
     colorSelector->setSelection(puzzle->colorNumber());
     changed = true;
-    View3D->getView()->showColors(puzzle, StatusLine->getColorMode());
+    View3D->getView()->showColors(puzzle.get(), StatusLine->getColorMode());
     updateInterface();
   }
 }
@@ -162,7 +162,7 @@ void mainWindow_c::cb_RemoveColor(void) {
     colorSelector->setSelection(current);
 
     changed = true;
-    View3D->getView()->showColors(puzzle, StatusLine->getColorMode());
+    View3D->getView()->showColors(puzzle.get(), StatusLine->getColorMode());
     activateShape(PcSel->getSelection());
     updateInterface();
   }
@@ -179,7 +179,7 @@ void mainWindow_c::cb_ChangeColor(void) {
     if (fl_color_chooser("Change colour", r, g, b)) {
       puzzle->changeColor(colorSelector->getSelection()-1, r, g, b);
       changed = true;
-      View3D->getView()->showColors(puzzle, StatusLine->getColorMode());
+      View3D->getView()->showColors(puzzle.get(), StatusLine->getColorMode());
       updateInterface();
     }
   }
@@ -276,7 +276,7 @@ void mainWindow_c::cb_WeightChange(int by) {
 }
 
 
-static void cb_TaskSelectionTab_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_TaskSelectionTab((Fl_Tabs*)o); }
+static void cb_TaskSelectionTab_stub(Fl_Widget* o, void* v) { static_cast<mainWindow_c*>(v)->cb_TaskSelectionTab(static_cast<Fl_Tabs*>(o)); }
 void mainWindow_c::cb_TaskSelectionTab(Fl_Tabs* o) {
 
   if (o->value() == TabPieces) {
@@ -326,7 +326,7 @@ void mainWindow_c::cb_TaskSelectionTab(Fl_Tabs* o) {
   updateInterface();
 }
 
-static void cb_TransformPiece_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_TransformPiece(); }
+static void cb_TransformPiece_stub(Fl_Widget* /*o*/, void* v) { static_cast<mainWindow_c*>(v)->cb_TransformPiece(); }
 void mainWindow_c::cb_TransformPiece(void) {
 
   if (pieceTools->operationToAll()) {
@@ -343,7 +343,7 @@ void mainWindow_c::cb_TransformPiece(void) {
 }
 
 static void cb_EditSym_stub(Fl_Widget* o, void* v) {
-  ((mainWindow_c*)v)->cb_EditSym(((LToggleButton_c*)o)->value(), ((LToggleButton_c*)o)->ButtonVal());
+  static_cast<mainWindow_c*>(v)->cb_EditSym(static_cast<LToggleButton_c*>(o)->value(), static_cast<LToggleButton_c*>(o)->ButtonVal());
 }
 void mainWindow_c::cb_EditSym(int onoff, int value) {
   if (onoff) {
@@ -355,7 +355,7 @@ void mainWindow_c::cb_EditSym(int onoff, int value) {
   pieceEdit->editSymmetries(editSymmetries);
 }
 
-static void cb_EditChoice_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_EditChoice(); }
+static void cb_EditChoice_stub(Fl_Widget* /*o*/, void* v) { static_cast<mainWindow_c*>(v)->cb_EditChoice(); }
 void mainWindow_c::cb_EditChoice(void) {
   switch(editChoice->getSelected()) {
     case 0:
@@ -373,7 +373,7 @@ void mainWindow_c::cb_EditChoice(void) {
   }
 }
 
-static void cb_EditMode_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_EditMode(); }
+static void cb_EditMode_stub(Fl_Widget* /*o*/, void* v) { static_cast<mainWindow_c*>(v)->cb_EditMode(); }
 void mainWindow_c::cb_EditMode(void) {
   switch(editMode->getSelected()) {
     case 0:
@@ -387,7 +387,7 @@ void mainWindow_c::cb_EditMode(void) {
   }
 }
 
-static void cb_PcSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_PcSel((LBlockListGroup_c*)o); }
+static void cb_PcSel_stub(Fl_Widget* o, void* v) { static_cast<mainWindow_c*>(v)->cb_PcSel(static_cast<LBlockListGroup_c*>(o)); }
 void mainWindow_c::cb_PcSel(LBlockListGroup_c* grp) {
   int reason = grp->getReason();
 
@@ -400,7 +400,7 @@ void mainWindow_c::cb_PcSel(LBlockListGroup_c* grp) {
   }
 }
 
-static void cb_SolProbSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SolProbSel((LBlockListGroup_c*)o); }
+static void cb_SolProbSel_stub(Fl_Widget* o, void* v) { static_cast<mainWindow_c*>(v)->cb_SolProbSel(static_cast<LBlockListGroup_c*>(o)); }
 void mainWindow_c::cb_SolProbSel(LBlockListGroup_c* grp) {
   int reason = grp->getReason();
 
@@ -422,7 +422,7 @@ void mainWindow_c::cb_SolProbSel(LBlockListGroup_c* grp) {
   }
 }
 
-static void cb_ColSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_ColSel((LBlockListGroup_c*)o); }
+static void cb_ColSel_stub(Fl_Widget* o, void* v) { static_cast<mainWindow_c*>(v)->cb_ColSel(static_cast<LBlockListGroup_c*>(o)); }
 void mainWindow_c::cb_ColSel(LBlockListGroup_c* grp) {
   int reason = grp->getReason();
 
@@ -435,7 +435,7 @@ void mainWindow_c::cb_ColSel(LBlockListGroup_c* grp) {
   }
 }
 
-static void cb_ProbSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_ProbSel((LBlockListGroup_c*)o); }
+static void cb_ProbSel_stub(Fl_Widget* o, void* v) { static_cast<mainWindow_c*>(v)->cb_ProbSel(static_cast<LBlockListGroup_c*>(o)); }
 void mainWindow_c::cb_ProbSel(LBlockListGroup_c* grp) {
   int reason = grp->getReason();
 
@@ -448,7 +448,7 @@ void mainWindow_c::cb_ProbSel(LBlockListGroup_c* grp) {
   }
 }
 
-static void cb_pieceEdit_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_pieceEdit((VoxelEditGroup_c*)o); }
+static void cb_pieceEdit_stub(Fl_Widget* o, void* v) { static_cast<mainWindow_c*>(v)->cb_pieceEdit(static_cast<VoxelEditGroup_c*>(o)); }
 void mainWindow_c::cb_pieceEdit(VoxelEditGroup_c* o) {
 
   switch (o->getReason()) {
@@ -462,7 +462,7 @@ void mainWindow_c::cb_pieceEdit(VoxelEditGroup_c* o) {
     }
     break;
   case gridEditor_c::RS_CHANGESQUARE:
-    View3D->getView()->showSingleShape(puzzle, PcSel->getSelection());
+    View3D->getView()->showSingleShape(puzzle.get(), PcSel->getSelection());
     if (o->getMouse())
       StatPieceInfo(PcSel->getSelection(), true, o->getCursorX(), o->getCursorY(), o->getCursorZ());
     else
@@ -838,14 +838,14 @@ void mainWindow_c::cb_ShapeGroup(void) {
 
   unsigned int prob = problemSelector->getSelection();
 
-  groupsEditor_c * groupEditWin = new groupsEditor_c(puzzle, prob);
+  auto groupEditWin = std::make_unique<groupsEditor_c>(puzzle.get(), prob);
 
   groupEditWin->show();
 
   while (groupEditWin->visible())
     Fl::wait();
 
-  if (groupEditWin->changed()) {
+  if (groupEditWin->isChanged()) {
 
     problem_c * pr = puzzle->getProblem(prob);
 
@@ -864,8 +864,6 @@ void mainWindow_c::cb_ShapeGroup(void) {
     StatProblemInfo(problemSelector->getSelection());
     updateInterface();
   }
-
-  delete groupEditWin;
 }
 
 static void cb_ExportSolutionSTL_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ExportSolutionSTL(); }
@@ -879,7 +877,7 @@ void mainWindow_c::cb_ExportSolutionSTL(void) {
   if (sol >= puzzle->getProblem(prob)->getNumberOfSavedSolutions())
     return;
 
-  stlExportSolution_c w(puzzle, prob, sol);
+  stlExportSolution_c w(puzzle.get(), prob, sol);
   w.show();
   while (w.visible())
     Fl::wait();
@@ -898,14 +896,12 @@ void mainWindow_c::cb_BtnPlacementBrowser(void) {
     return;
   }
 
-  placementBrowser_c * plbr = new placementBrowser_c(puzzle->getProblem(prob));
+  auto plbr = std::make_unique<placementBrowser_c>(puzzle->getProblem(prob));
 
   plbr->show();
 
   while (plbr->visible())
     Fl::wait();
-
-  delete plbr;
 }
 
 static void cb_BtnMovementBrowser_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_BtnMovementBrowser(); }
@@ -921,14 +917,12 @@ void mainWindow_c::cb_BtnMovementBrowser(void) {
   if (sol >= puzzle->getProblem(prob)->getNumberOfSavedSolutions())
     return;
 
-  movementBrowser_c * mvbr = new movementBrowser_c(puzzle->getProblem(prob), sol);
+  auto mvbr = std::make_unique<movementBrowser_c>(puzzle->getProblem(prob), sol);
 
   mvbr->show();
 
   while (mvbr->visible())
     Fl::wait();
-
-  delete mvbr;
 }
 
 static void cb_BtnAssemblerStep_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_BtnAssemblerStep(); }
@@ -947,7 +941,8 @@ void mainWindow_c::cb_BtnAssemblerStep(void) {
 
   updateInterface();
 
-  View3D->getView()->showAssemblerState(puzzle->getProblem(solutionProblem->getSelection()), assm->getAssembly());
+  auto a = assm->getAssembly();
+  View3D->getView()->showAssemblerState(puzzle->getProblem(solutionProblem->getSelection()), a.get());
 }
 
 static void cb_AllowColor_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AllowColor(); }
@@ -1065,7 +1060,7 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   if (JustCount->value() != 0) par |= solveThread_c::PAR_JUST_COUNT;
   if (CompleteRotations->value() != 0) par |= solveThread_c::PAR_COMPLETE_ROTATIONS;
 
-  assmThread = new solveThread_c(*puzzle->getProblem(prob), par);
+  assmThread = std::make_unique<solveThread_c>(*puzzle->getProblem(prob), par);
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
@@ -1079,8 +1074,7 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
 
   if (!assmThread->start(prep_only)) {
     fl_message("Could not start the solving process, the thread creation failed, sorry.");
-    delete assmThread;
-    assmThread = 0;
+    assmThread.reset();
 
   } else {
 
@@ -1097,7 +1091,7 @@ void mainWindow_c::cb_BtnStop(void) {
   assmThread->stop();
 }
 
-static void cb_SolutionSel_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SolutionSel((Fl_Value_Slider*)o); }
+static void cb_SolutionSel_stub(Fl_Widget* o, void* v) { static_cast<mainWindow_c*>(v)->cb_SolutionSel(static_cast<Fl_Value_Slider*>(o)); }
 void mainWindow_c::cb_SolutionSel(Fl_Value_Slider* o) {
   o->take_focus();
   unsigned int prob = solutionProblem->getSelection();
@@ -1114,12 +1108,12 @@ void mainWindow_c::cb_SolutionSel(Fl_Value_Slider* o) {
 // defined further down, near activateSolution
 static int compareSolutionsBy(const solution_c * a, const solution_c * b, int by);
 
-static void cb_SolutionAnim_stub(Fl_Widget* o, void* v) { ((mainWindow_c*)v)->cb_SolutionAnim((Fl_Value_Slider*)o); }
+static void cb_SolutionAnim_stub(Fl_Widget* o, void* v) { static_cast<mainWindow_c*>(v)->cb_SolutionAnim(static_cast<Fl_Value_Slider*>(o)); }
 void mainWindow_c::cb_SolutionAnim(Fl_Value_Slider* o) {
   o->take_focus();
   if (disassemble) {
     disassemble->setStep(o->value(), config.useBlendedRemoving(), true);
-    View3D->getView()->updatePositions(disassemble);
+    View3D->getView()->updatePositions(disassemble.get());
   }
 }
 
@@ -1330,19 +1324,17 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
   }
 
-  disassembler_c * dis = new disassembler_0_c(*pr);
+  auto dis = std::make_unique<disassembler_0_c>(*pr);
 
-  separation_c * d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
+  auto d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
   changed = true;
 
   if (d)
-    pr->getSavedSolution(sol)->setDisassembly(d);
+    pr->getSavedSolution(sol)->setDisassembly(std::move(d));
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
-
-  delete dis;
 }
 
 static void cb_AddAllDisasm_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AddAllDisasm(true); }
@@ -1362,9 +1354,9 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
   changed = true;
 
-  disassembler_c * dis = new disassembler_0_c(*pr);
+  auto dis = std::make_unique<disassembler_0_c>(*pr);
 
-  Fl_Double_Window * w = new Fl_Double_Window(20, 20, 300, 30);
+  auto w = std::make_unique<Fl_Double_Window>(20, 20, 300, 30);
   Fl_Box * b = new Fl_Box(0, 0, 300, 30);
   w->end();
   w->label("Disassembling...");
@@ -1374,22 +1366,19 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
   for (unsigned int sol = 0; sol < pr->getNumberOfSavedSolutions(); sol++) {
 
-    snprintf(txt, 100, "solved %i of %i disassemblies\n", sol, pr->getNumberOfSavedSolutions());
+    snprintf(txt, 100, "solved %u of %u disassemblies\n", sol, pr->getNumberOfSavedSolutions());
     b->label(txt);
 
     Fl::wait(0);
 
     if (all || !pr->getSavedSolution(sol)->getDisassembly()) {
 
-      separation_c * d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
+      auto d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
       if (d)
-        pr->getSavedSolution(sol)->setDisassembly(d);
+        pr->getSavedSolution(sol)->setDisassembly(std::move(d));
     }
   }
-
-  delete dis;
-  delete w;
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
@@ -1403,7 +1392,7 @@ void mainWindow_c::cb_PcVis(void) {
 
 static void cb_Status_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Status(); }
 void mainWindow_c::cb_Status(void) {
-  View3D->getView()->showColors(puzzle, StatusLine->getColorMode());
+  View3D->getView()->showColors(puzzle.get(), StatusLine->getColorMode());
   View3D->getView()->setRenderStyle(StatusLine->getRenderStyle());
   config.renderStyle(StatusLine->getRenderStyle());
 }
@@ -1425,7 +1414,7 @@ void mainWindow_c::cb_3dClick(void) {
             &shape, &voxel, &face))
         sh->setState(voxel, voxel_c::VX_EMPTY);
 
-      View3D->getView()->showSingleShape(puzzle, PcSel->getSelection());
+      View3D->getView()->showSingleShape(puzzle.get(), PcSel->getSelection());
       StatPieceInfo(PcSel->getSelection());
       changeShape(PcSel->getSelection());
       redraw();
@@ -1458,7 +1447,7 @@ void mainWindow_c::cb_3dClick(void) {
 
             sh->setColor(nx, ny, nz, colorSelector->getSelection());
 
-            View3D->getView()->showSingleShape(puzzle, PcSel->getSelection());
+            View3D->getView()->showSingleShape(puzzle.get(), PcSel->getSelection());
             StatPieceInfo(PcSel->getSelection());
             changeShape(PcSel->getSelection());
             activateShape(PcSel->getSelection());
@@ -1510,11 +1499,10 @@ void mainWindow_c::cb_New(void) {
     while (w.visible())
       Fl::wait();
 
-    ReplacePuzzle(new puzzle_c(w.getGridType()));
+    ReplacePuzzle(std::make_unique<puzzle_c>(w.getGridType()));
 
-    if (fname) {
-      delete [] fname;
-      fname = 0;
+    if (!fname.empty()) {
+      fname.clear();
       copy_label("BurrTools - unknown");
     }
 
@@ -1556,19 +1544,17 @@ void mainWindow_c::cb_Load_Ps3d(void) {
 
       std::ifstream in(f);
 
-      puzzle_c * newPuzzle = loadPuzzlerSolver3D(&in);
+      auto newPuzzle = loadPuzzlerSolver3D(&in);
       if (!newPuzzle) {
         fl_alert("Could not load puzzle, sorry!");
         return;
       }
 
-      if (fname) delete [] fname;
-      fname = new char[strlen(f)+1];
-      strcpy(fname, f);
+      fname = f;
 
       copy_label((std::string("BurrTools - ") + fname).c_str());
 
-      ReplacePuzzle(newPuzzle);
+      ReplacePuzzle(std::move(newPuzzle));
       updateInterface();
 
       TaskSelectionTab->value(TabPieces);
@@ -1585,11 +1571,11 @@ void mainWindow_c::cb_Save(void) {
 
   if (threadStopped()) {
 
-    if (!fname)
+    if (fname.empty())
       cb_SaveAs();
 
     else {
-      ogzstream ostr(fname);
+      ogzstream ostr(fname.c_str());
 
       if (ostr) {
         xmlWriter_c xml(ostr);
@@ -1616,11 +1602,11 @@ void mainWindow_c::cb_Convert(void) {
 
   if (win.okSelected())
   {
-    puzzle_c * p = doConvert(puzzle, win.getTargetType());
+    puzzle_c * p = doConvert(puzzle.get(), win.getTargetType());
 
     if (p)
     {
-      ReplacePuzzle(p);
+      ReplacePuzzle(std::unique_ptr<puzzle_c>(p));
       updateInterface();
       activateShape(0);
       changed = true;
@@ -1646,7 +1632,7 @@ class voxelTableVector_c : public voxelTable_c
 static void cb_AssembliesToShapes_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AssembliesToShapes(); }
 void mainWindow_c::cb_AssembliesToShapes(void) {
 
-  assmImportWindow_c win(puzzle);
+  assmImportWindow_c win(puzzle.get());
 
   win.show();
 
@@ -1665,59 +1651,38 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
 
     for (unsigned int s = 0; s < pr->getNumberOfSavedSolutions(); s++)
     {
-      voxel_c * shape = pr->getSavedSolution(s)->getAssembly()->createSpace(*pr);
+      auto shape = pr->getSavedSolution(s)->getAssembly()->createSpace(*pr);
 
       if ((filter & assmImportWindow_c::dropDisconnected) && !shape->connected(0, true, voxel_c::VX_EMPTY))
-      {
-        delete shape;
         continue;
-      }
 
       symmetries_t sym = shape->selfSymmetries();
 
       if ((filter & assmImportWindow_c::dropMirror) && shape->getGridType()->getSymmetries()->symmetryContainsMirror(sym))
-      {
-        delete shape;
         continue;
-      }
 
       if ((filter & assmImportWindow_c::dropSymmetric) && !unSymmetric(sym))
-      {
-        delete shape;
         continue;
-      }
 
-      if ((filter & assmImportWindow_c::dropNonMillable) && !isMillable(shape))
-      {
-        delete shape;
+      if ((filter & assmImportWindow_c::dropNonMillable) && !isMillable(shape.get()))
         continue;
-      }
 
-      if ((filter & assmImportWindow_c::dropNonNotchable) && !isNotchable(shape))
-      {
-        delete shape;
+      if ((filter & assmImportWindow_c::dropNonNotchable) && !isNotchable(shape.get()))
         continue;
-      }
 
       unsigned int voxels = shape->countState(voxel_c::VX_FILLED);
       if (voxels < win.getShapeMin() || voxels > win.getShapeMax())
-      {
-        delete shape;
         continue;
-      }
 
       // if the user wants no identical shapes, we look up the current
       // shape in the known shapes table and drop it if we find it
       if (filter & assmImportWindow_c::dropIdentical)
       {
-        if (voxelTab.getSpace(shape))
-        {
-          delete shape;
+        if (voxelTab.getSpace(shape.get()))
           continue;
-        }
       }
 
-      sh.push_back(shape);
+      sh.push_back(shape.release());
 
       // we only need to add the current shape to the shape table
       // if the user wants to drop identical shapes and we use the table
@@ -1788,9 +1753,7 @@ void mainWindow_c::cb_SaveAs(void) {
         else
           changed = false;
 
-        if (fname) delete [] fname;
-        fname = new char[f2.length()+1];
-        strcpy(fname, f2.c_str());
+        fname = f2;
 
         copy_label((std::string("BurrTools - ") + fname).c_str());
 
@@ -1845,7 +1808,7 @@ void mainWindow_c::cb_ImageExportVector(void) {
 
 static void cb_ImageExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExport(); }
 void mainWindow_c::cb_ImageExport(void) {
-  imageExport_c w(puzzle);
+  imageExport_c w(puzzle.get());
   w.show();
 
   while (w.visible()) {
@@ -1859,7 +1822,7 @@ void mainWindow_c::cb_ImageExport(void) {
 
 static void cb_STLExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_STLExport(); }
 void mainWindow_c::cb_STLExport(void) {
-  stlExport_c w(puzzle);
+  stlExport_c w(puzzle.get());
   w.show();
 
   while (w.visible()) {
@@ -1874,7 +1837,7 @@ void mainWindow_c::cb_StatusWindow(void) {
 
   do {
 
-    statusWindow_c w(puzzle);
+    statusWindow_c w(puzzle.get());
     w.show();
 
     while (w.visible()) {
@@ -1950,11 +1913,11 @@ void mainWindow_c::StatPieceInfo(unsigned int pc, bool withCoords, int x, int y,
 
     if (withCoords)
       snprintf(txt, sizeof(txt),
-               "Shape S%i has %i voxels (%i fixed, %i variable) (Coordinates X=%i, Y=%i, Z=%i)",
+               "Shape S%u has %u voxels (%u fixed, %u variable) (Coordinates X=%i, Y=%i, Z=%i)",
                pc+1, fx+vr, fx, vr, x, y, z);
     else
       snprintf(txt, sizeof(txt),
-               "Shape S%i has %i voxels (%i fixed, %i variable)",
+               "Shape S%u has %u voxels (%u fixed, %u variable)",
                pc+1, fx+vr, fx, vr);
     StatusLine->setText(txt);
   }
@@ -1978,7 +1941,7 @@ void mainWindow_c::StatProblemInfo(unsigned int prob) {
 
     if (cnt == cntMin) {
 
-      snprintf(txt, 100, "Problem P%i result can contain %i - %i voxels, pieces (n = %i) contain %i voxels", prob+1,
+      snprintf(txt, 100, "Problem P%u result can contain %u - %u voxels, pieces (n = %u) contain %u voxels", prob+1,
           getResultShape(*pr)->countState(voxel_c::VX_FILLED),
           getResultShape(*pr)->countState(voxel_c::VX_FILLED) +
           getResultShape(*pr)->countState(voxel_c::VX_VARIABLE),
@@ -1986,7 +1949,7 @@ void mainWindow_c::StatProblemInfo(unsigned int prob) {
 
     } else {
 
-      snprintf(txt, 100, "Problem P%i result can contain %i - %i voxels, pieces (n = %i) contain %i-%i voxels", prob+1,
+      snprintf(txt, 100, "Problem P%u result can contain %u - %u voxels, pieces (n = %u) contain %u-%u voxels", prob+1,
           getResultShape(*pr)->countState(voxel_c::VX_FILLED),
           getResultShape(*pr)->countState(voxel_c::VX_FILLED) +
           getResultShape(*pr)->countState(voxel_c::VX_VARIABLE),
@@ -2037,37 +2000,32 @@ bool mainWindow_c::tryToLoad(const char * f) {
   if (!f) return false;
   if (!fileExists(f)) return false;
 
-  std::istream * str = openGzFile(f);
+  auto str = openGzFile(f);
   xmlParser_c pars(*str);
 
-  puzzle_c * newPuzzle;
+  std::unique_ptr<puzzle_c> newPuzzle;
 
   try {
-    newPuzzle = new puzzle_c(pars);
+    newPuzzle = std::make_unique<puzzle_c>(pars);
   }
 
   catch (xmlParserException_c &e)
   {
     fl_message("%s",(std::string("load error: ") + e.what()).c_str());
-    delete str;
     return false;
   }
 
-  delete str;
-
-  if (fname) delete [] fname;
-  fname = new char[strlen(f)+1];
-  strcpy(fname, f);
+  fname = f;
 
   copy_label((std::string("BurrTools - ") + fname).c_str());
 
-  ReplacePuzzle(newPuzzle);
+  ReplacePuzzle(std::move(newPuzzle));
   updateInterface();
 
   TaskSelectionTab->value(TabPieces);
   activateShape(PcSel->getSelection());
   StatPieceInfo(PcSel->getSelection());
-  View3D->getView()->showColors(puzzle, StatusLine->getColorMode());
+  View3D->getView()->showColors(puzzle.get(), StatusLine->getColorMode());
 
   changed = false;
 
@@ -2090,41 +2048,40 @@ bool mainWindow_c::tryToLoad(const char * f) {
   return true;
 }
 
-void mainWindow_c::ReplacePuzzle(puzzle_c * NewPuzzle) {
+void mainWindow_c::ReplacePuzzle(std::unique_ptr<puzzle_c> NewPuzzle) {
+
+  puzzle_c * raw = NewPuzzle.get();
 
   // inform everybody
-  colorSelector->setPuzzle(NewPuzzle);
-  PcSel->setPuzzle(NewPuzzle);
-  pieceEdit->setPuzzle(NewPuzzle, 0);
-  problemSelector->setPuzzle(NewPuzzle);
-  colorAssignmentSelector->setPuzzle(NewPuzzle);
-  colconstrList->setPuzzle(NewPuzzle, 0);
-  if (NewPuzzle->getNumberOfProblems() > 0) {
-    problemResult->setPuzzle(NewPuzzle->getProblem(0));
-    PiecesCountList->setPuzzle(NewPuzzle->getProblem(0));
-    PcVis->setPuzzle(NewPuzzle->getProblem(0));
+  colorSelector->setPuzzle(raw);
+  PcSel->setPuzzle(raw);
+  pieceEdit->setPuzzle(raw, 0);
+  problemSelector->setPuzzle(raw);
+  colorAssignmentSelector->setPuzzle(raw);
+  colconstrList->setPuzzle(raw, 0);
+  if (raw->getNumberOfProblems() > 0) {
+    problemResult->setPuzzle(raw->getProblem(0));
+    PiecesCountList->setPuzzle(raw->getProblem(0));
+    PcVis->setPuzzle(raw->getProblem(0));
   } else {
     problemResult->setPuzzle(0);
     PiecesCountList->setPuzzle(0);
     PcVis->setPuzzle(0);
   }
-  shapeAssignmentSelector->setPuzzle(NewPuzzle);
-  solutionProblem->setPuzzle(NewPuzzle);
+  shapeAssignmentSelector->setPuzzle(raw);
+  solutionProblem->setPuzzle(raw);
 
   SolutionSel->value(1);
   SolutionAnim->value(0);
 
-  if (NewPuzzle != puzzle) {
-    delete puzzle;
-    puzzle = NewPuzzle;
-  }
+  puzzle = std::move(NewPuzzle);
 
-  guiGridType_c * nggt = new guiGridType_c(puzzle->getGridType());
+  auto nggt = std::make_unique<guiGridType_c>(puzzle->getGridType());
 
   // now replace all gridtype dependent gui elements with
   // instances from the guigridtype
-  pieceEdit->newGridType(nggt, puzzle);
-  pieceTools->newGridType(nggt);
+  pieceEdit->newGridType(nggt.get(), puzzle.get());
+  pieceTools->newGridType(nggt.get());
 
   // for the pieceEditor we need to reset all the edit mode fields
   pieceEdit->editSymmetries(editSymmetries);
@@ -2139,8 +2096,7 @@ void mainWindow_c::ReplacePuzzle(puzzle_c * NewPuzzle) {
     case 1: pieceEdit->editType(gridEditor_c::EDT_SINGLE); break;
   }
 
-  delete ggt;
-  ggt = nggt;
+  ggt = std::move(nggt);
 }
 
 Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
@@ -2167,6 +2123,7 @@ Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
   { }
 };
 
+// cppcheck-suppress duplInheritedMember
 void mainWindow_c::show(int argn, char ** argv) {
   LFl_Double_Window::show();
 
@@ -2193,9 +2150,9 @@ void mainWindow_c::activateShape(unsigned int number) {
 
   if ((number < puzzle->getNumberOfShapes())) {
 
-    View3D->getView()->showSingleShape(puzzle, number);
-    pieceEdit->setPuzzle(puzzle, number);
-    pieceTools->setVoxelSpace(puzzle, number);
+    View3D->getView()->showSingleShape(puzzle.get(), number);
+    pieceEdit->setPuzzle(puzzle.get(), number);
+    pieceTools->setVoxelSpace(puzzle.get(), number);
 
     PcSel->setSelection(number);
 
@@ -2212,7 +2169,7 @@ void mainWindow_c::activateShape(unsigned int number) {
 void mainWindow_c::activateProblem(unsigned int prob) {
 
   if (prob < puzzle->getNumberOfProblems())
-    View3D->getView()->showProblem(puzzle, prob, shapeAssignmentSelector->getSelection());
+    View3D->getView()->showProblem(puzzle.get(), prob, shapeAssignmentSelector->getSelection());
   else
     View3D->getView()->showNothing();
 
@@ -2266,10 +2223,7 @@ void mainWindow_c::rememberFollow(problem_c * pr, unsigned int idx) {
 
 void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
-  if (disassemble) {
-    delete disassemble;
-    disassemble = 0;
-  }
+  disassemble.reset();
 
   problem_c * pr = (prob < puzzle->getNumberOfProblems()) ? puzzle->getProblem(prob) : 0;
 
@@ -2305,21 +2259,17 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
       MovesInfo->show();
 
-      char levelText[50];
-      int len = snprintf(levelText, 50, "%i (", pr->getSavedSolution(num)->getDisassembly()->sumMoves());
-      pr->getSavedSolution(num)->getDisassembly()->movesText(levelText + len, 50-len);
-      levelText[strlen(levelText)+1] = 0;
-      levelText[strlen(levelText)] = ')';
+      const auto * dis = pr->getSavedSolution(num)->getDisassembly();
+      std::string levelText = std::to_string(dis->sumMoves()) + " (" + dis->movesText() + ")";
+      MovesInfo->value(levelText.c_str());
 
-      MovesInfo->value(levelText);
-
-      disassemble = new disasmToMoves_c(pr->getSavedSolution(num)->getDisassembly(),
+      disassemble = std::make_unique<disasmToMoves_c>(pr->getSavedSolution(num)->getDisassembly(),
                                       2*getResultShape(*pr)->getBiggestDimension(),
                                       pr->getNumberOfPieces());
       disassemble->setStep(SolutionAnim->value(), config.useBlendedRemoving(), true);
 
       if (prob < puzzle->getNumberOfProblems()) View3D->getView()->showAssembly(puzzle->getProblem(prob), num);
-      View3D->getView()->updatePositions(disassemble);
+      View3D->getView()->updatePositions(disassemble.get());
       View3D->getView()->updateVisibility(PcVis);
 
       SolutionNumber->show();
@@ -2334,13 +2284,9 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
       MovesInfo->show();
 
-      char levelText[50];
-      int len = snprintf(levelText, 50, "%i (", pr->getSavedSolution(num)->getDisassemblyInfo()->sumMoves());
-      pr->getSavedSolution(num)->getDisassemblyInfo()->movesText(levelText + len, 50-len);
-      levelText[strlen(levelText)+1] = 0;
-      levelText[strlen(levelText)] = ')';
-
-      MovesInfo->value(levelText);
+      const auto * disInfo = pr->getSavedSolution(num)->getDisassemblyInfo();
+      std::string levelText = std::to_string(disInfo->sumMoves()) + " (" + disInfo->movesText() + ")";
+      MovesInfo->value(levelText.c_str());
 
       if (prob < puzzle->getNumberOfProblems()) View3D->getView()->showAssembly(puzzle->getProblem(prob), num);
       View3D->getView()->updateVisibility(PcVis);
@@ -2503,7 +2449,7 @@ void mainWindow_c::updateInterface(void) {
 
     // problem tab
     PiecesCountList->setPuzzle(pr);
-    colconstrList->setPuzzle(puzzle, problemSelector->getSelection());
+    colconstrList->setPuzzle(puzzle.get(), problemSelector->getSelection());
     problemResult->setPuzzle(pr);
 
     // problems can only be renames and copied, when something valid is selected
@@ -2712,7 +2658,7 @@ void mainWindow_c::updateInterface(void) {
           unsigned int n = pr->getNumberOfSavedSolutions();
           int idx = -1;
           int targetAsm = -1;
-          if (n > 0) {
+          if (n) {
             if (followSortBy == -1) {
               // default: sit on the last position (the best per the sort the
               // solver is inserting in) - stable, not chasing every new one
@@ -3002,18 +2948,18 @@ void mainWindow_c::updateInterface(void) {
       case solveThread_c::ACT_PREPARATION:
         {
           char tmp[20];
-          snprintf(tmp, 20, "prepare piece %i", assmThread->currentActionParameter()+1);
+          snprintf(tmp, 20, "prepare piece %u", assmThread->currentActionParameter()+1);
           OutputActivity->value(tmp);
         }
         break;
       case solveThread_c::ACT_REDUCE:
         if (pr->getAssembler()) {
           char tmp[20];
-          snprintf(tmp, 20, "optimize piece %i", pr->getAssembler()->getReducePiece()+1);
+          snprintf(tmp, 20, "optimize piece %u", pr->getAssembler()->getReducePiece()+1);
           OutputActivity->value(tmp);
         } else {
           char tmp[20];
-          snprintf(tmp, 20, "optimize piece %i", assmThread->currentActionParameter()+1);
+          snprintf(tmp, 20, "optimize piece %u", assmThread->currentActionParameter()+1);
           OutputActivity->value(tmp);
         }
         break;
@@ -3150,7 +3096,7 @@ void mainWindow_c::update(void) {
     // check if the thread has thrown an exception. if so, re-throw it
     if (assmThread->currentAction() == solveThread_c::ACT_ASSERT) {
 
-      assertWindow_c * aw = new assertWindow_c("Because of an internal error the current puzzle\n"
+      auto aw = std::make_unique<assertWindow_c>("Because of an internal error the current puzzle\n"
                                                "can not be solved\n",
                                                &(assmThread->getAssertException()));
 
@@ -3159,9 +3105,7 @@ void mainWindow_c::update(void) {
       while (aw->visible())
         Fl::wait();
 
-      delete aw;
-      delete assmThread;
-      assmThread = 0;
+      assmThread.reset();
       updateInterface();
       return;
     }
@@ -3170,8 +3114,7 @@ void mainWindow_c::update(void) {
     if ((assmThread->currentAction() == solveThread_c::ACT_PAUSING) ||
         (assmThread->currentAction() == solveThread_c::ACT_FINISHED)) {
 
-      delete assmThread;
-      assmThread = 0;
+      assmThread.reset();
 
     } else if (assmThread->currentAction() == solveThread_c::ACT_ERROR) {
 
@@ -3216,8 +3159,7 @@ void mainWindow_c::update(void) {
         StatPieceInfo(PcSel->getSelection());
       }
 
-      delete assmThread;
-      assmThread = 0;
+      assmThread.reset();
     }
 
     // update the window, either when the thread stopped and so the buttons need to
@@ -3362,16 +3304,16 @@ void mainWindow_c::CreateShapeTab(void) {
     layouter_c * o = new layouter_c(0, 1);
 
     BtnNewShape =   new LFlatButton_c(0, 0, 1, 1, "New", " Add another piece ", cb_NewShape_stub, this);
-    ((LFlatButton_c*)BtnNewShape)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnNewShape)->weight(1, 0);
     (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDelShape =   new LFlatButton_c(2, 0, 1, 1, "Delete", " Delete selected piece ", cb_DeleteShape_stub, this);
-    ((LFlatButton_c*)BtnDelShape)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnDelShape)->weight(1, 0);
     (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
     BtnCpyShape =   new LFlatButton_c(4, 0, 1, 1, "Copy", " Copy selected piece ", cb_CopyShape_stub, this);
-    ((LFlatButton_c*)BtnCpyShape)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnCpyShape)->weight(1, 0);
     (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, 0);
     BtnRenShape =   new LFlatButton_c(6, 0, 1, 1, "Label", " Give the selected shape a name ", cb_NameShape_stub, this);
-    ((LFlatButton_c*)BtnRenShape)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnRenShape)->weight(1, 0);
     (new LFl_Box(7, 0))->setMinimumSize(SZ_GAP, 0);
     BtnWeightInc =  new LFlatButton_c(8, 0, 1, 1, "W+", " Increase Weight of the selected shape ",cb_WeightInc_stub, this);
     (new LFl_Box(9, 0))->setMinimumSize(SZ_GAP, 0);
@@ -3385,7 +3327,7 @@ void mainWindow_c::CreateShapeTab(void) {
 
     (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    PcSel = new PieceSelector(0, 0, 200, 200, puzzle);
+    PcSel = new PieceSelector(0, 0, 200, 200, puzzle.get());
     LBlockListGroup_c * selGroup = new LBlockListGroup_c(0, 3, 1, 1, PcSel);
     selGroup->callback(cb_PcSel_stub, this);
     selGroup->tooltip(" Select the shape that you want to edit ");
@@ -3400,7 +3342,7 @@ void mainWindow_c::CreateShapeTab(void) {
 
     new LSeparator_c(0, 0, 1, 1, "Edit", true);
 
-    pieceTools = new ToolTabContainer(0, 1, 1, 1, ggt);
+    pieceTools = new ToolTabContainer(0, 1, 1, 1, ggt.get());
     pieceTools->callback(cb_TransformPiece_stub, this);
 
     (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
@@ -3478,7 +3420,7 @@ void mainWindow_c::CreateShapeTab(void) {
 
     (new LFl_Box(0, 4, 1, 1))->setMinimumSize(0, 5);
 
-    pieceEdit = new VoxelEditGroup_c(0, 5, 1, 1, puzzle, ggt);
+    pieceEdit = new VoxelEditGroup_c(0, 5, 1, 1, puzzle.get(), ggt.get());
     pieceEdit->callback(cb_pieceEdit_stub, this);
     pieceEdit->end();
     pieceEdit->editType(gridEditor_c::EDT_RUBBER);
@@ -3496,19 +3438,19 @@ void mainWindow_c::CreateShapeTab(void) {
     layouter_c * o = new layouter_c(0, 1);
 
     BtnNewColor = new LFlatButton_c(0, 0, 1, 1, "Add", " Add another colour ", cb_AddColor_stub, this);
-    ((LFlatButton_c*)BtnNewColor)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnNewColor)->weight(1, 0);
     (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDelColor = new LFlatButton_c(2, 0, 1, 1, "Remove", " Remove selected colour ", cb_RemoveColor_stub, this);
-    ((LFlatButton_c*)BtnDelColor)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnDelColor)->weight(1, 0);
     (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
     BtnChnColor = new LFlatButton_c(4, 0, 1, 1, "Edit", " Change selected colour ", cb_ChangeColor_stub, this);
-    ((LFlatButton_c*)BtnChnColor)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnChnColor)->weight(1, 0);
 
     o->end();
 
     (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    colorSelector = new ColorSelector(0, 0, 200, 200, puzzle, true);
+    colorSelector = new ColorSelector(0, 0, 200, 200, puzzle.get(), true);
     LBlockListGroup_c * colGroup = new LBlockListGroup_c(0, 3, 1, 1, colorSelector);
     colGroup->callback(cb_ColSel_stub, this);
     colGroup->tooltip(" Select colour to use for all editing operations ");
@@ -3545,16 +3487,16 @@ void mainWindow_c::CreateProblemTab(void) {
     layouter_c * o = new layouter_c(0, 1);
 
     BtnNewProb = new LFlatButton_c(0, 0, 1, 1, "New", " Add another problem ", cb_NewProblem_stub, this);
-    ((LFlatButton_c*)BtnNewProb)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnNewProb)->weight(1, 0);
     (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDelProb = new LFlatButton_c(2, 0, 1, 1, "Delete", " Delete selected problem ", cb_DeleteProblem_stub, this);
-    ((LFlatButton_c*)BtnDelProb)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnDelProb)->weight(1, 0);
     (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
     BtnCpyProb = new LFlatButton_c(4, 0, 1, 1, "Copy", " Copy selected problem ", cb_CopyProblem_stub, this);
-    ((LFlatButton_c*)BtnCpyProb)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnCpyProb)->weight(1, 0);
     (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, 0);
     BtnRenProb = new LFlatButton_c(6, 0, 1, 1, "Label", " Rename selected problem ", cb_RenameProblem_stub, this);
-    ((LFlatButton_c*)BtnRenProb)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnRenProb)->weight(1, 0);
     (new LFl_Box(7, 0))->setMinimumSize(SZ_GAP, 0);
 
     BtnProbLeft = new LFlatButton_c(8, 0, 1, 1, "@-14->", " Exchange current problem with previous problem ", cb_ProblemLeft_stub, this);
@@ -3565,7 +3507,7 @@ void mainWindow_c::CreateProblemTab(void) {
 
     (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    problemSelector = new ProblemSelector(0, 0, 100, 100, puzzle);
+    problemSelector = new ProblemSelector(0, 0, 100, 100, puzzle.get());
     LBlockListGroup_c * probGroup = new LBlockListGroup_c(0, 3, 1, 1, problemSelector);
     probGroup->callback(cb_ProbSel_stub, this);
     probGroup->tooltip(" Select problem to edit ");
@@ -3594,7 +3536,7 @@ void mainWindow_c::CreateProblemTab(void) {
 
     (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    shapeAssignmentSelector = new PieceSelector(0, 0, 100, 100, puzzle);
+    shapeAssignmentSelector = new PieceSelector(0, 0, 100, 100, puzzle.get());
     LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 3, 1, 1, shapeAssignmentSelector);
     shapeGroup->callback(cb_ShapeSel_stub, this);
     shapeGroup->tooltip(" Select a shape to set as result or to add or remove from problem ");
@@ -3614,25 +3556,25 @@ void mainWindow_c::CreateProblemTab(void) {
     int xp = 0;
 
     BtnAddShape = new LFlatButton_c(xp++, 0, 1, 1, "+1", " Add another one of the selected shape ", cb_AddShapeToProblem_stub, this);
-    ((LFlatButton_c*)BtnAddShape)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnAddShape)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnRemShape = new LFlatButton_c(xp++, 0, 1, 1, "-1", " Remove one of the selected shapes ", cb_RemoveShapeFromProblem_stub, this);
-    ((LFlatButton_c*)BtnRemShape)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnRemShape)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnMinZero = new LFlatButton_c(xp++, 0, 1, 1, "min=0", " Set minimum number of pieces to 0 ", cb_SetShapeMinimumToZero_stub, this);
-    ((LFlatButton_c*)BtnMinZero)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnMinZero)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnAddAll = new LFlatButton_c(xp++, 0, 1, 1, "all+1", " Add one of all shapes except result ", cb_AddAllShapesToProblem_stub, this);
-    ((LFlatButton_c*)BtnAddAll)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnAddAll)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnRemAll = new LFlatButton_c(xp++, 0, 1, 1, "Clr", " Remove all pieces ", cb_RemoveAllShapesFromProblem_stub, this);
-    ((LFlatButton_c*)BtnRemAll)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnRemAll)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnSetAllRange = new LFlatButton_c(xp++, 0, 1, 1, "Set All", " Set min/max piece count for all shapes in the current problem ", cb_SetAllRange_stub, this);
-    ((LFlatButton_c*)BtnSetAllRange)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnSetAllRange)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnGroup =    new LFlatButton_c(xp++, 0, 1, 1, "Detail", " Edit details of the problem ", cb_ShapeGroup_stub, this);
-    ((LFlatButton_c*)BtnGroup)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnGroup)->weight(1, 0);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
     BtnProbShapeLeft = new LFlatButton_c(xp++, 0, 1, 1, "@-14->", " Exchange current shape with previous shape ", cb_ProbShapeLeft_stub, this);
     (new LFl_Box(xp++, 0))->setMinimumSize(SZ_GAP, 0);
@@ -3657,7 +3599,7 @@ void mainWindow_c::CreateProblemTab(void) {
 
     new LSeparator_c(0, 0, 1, 1, "Colour Assignment", true);
 
-    colorAssignmentSelector = new ColorSelector(0, 0, 100, 100, puzzle, false);
+    colorAssignmentSelector = new ColorSelector(0, 0, 100, 100, puzzle.get(), false);
     LBlockListGroup_c * colGroup = new LBlockListGroup_c(0, 1, 1, 1, colorAssignmentSelector);
     colGroup->callback(cb_ColorAssSel_stub, this);
     colGroup->tooltip(" Select colour to add or remove from constraints ");
@@ -3675,19 +3617,19 @@ void mainWindow_c::CreateProblemTab(void) {
     layouter_c * o = new layouter_c(0, 1);
 
     BtnColSrtPc = new LFlatButton_c(0, 0, 1, 1, "Sort by Piece", " Sort colour constraints by piece ", cb_CCSortByPiece_stub, this);
-    ((LFlatButton_c*)BtnColSrtPc)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnColSrtPc)->weight(1, 0);
     (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnColAdd = new LFlatButton_c(2, 0, 1, 1, "@-12->", " Add colour to constraint ", cb_AllowColor_stub, this);
     BtnColRem = new LFlatButton_c(3, 0, 1, 1, "@-18->", " Add colour to constraint ", cb_DisallowColor_stub, this);
     (new LFl_Box(4, 0))->setMinimumSize(SZ_GAP, 0);
     BtnColSrtRes = new LFlatButton_c(5, 0, 1, 1, "Sort by Result", " Sort Colour Constraints by Result ", cb_CCSortByResult_stub, this);
-    ((LFlatButton_c*)BtnColSrtRes)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnColSrtRes)->weight(1, 0);
 
     o->end();
 
     (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    colconstrList = new ColorConstraintsEdit(0, 0, 100, 100, puzzle);
+    colconstrList = new ColorConstraintsEdit(0, 0, 100, 100, puzzle.get());
     LConstraintsGroup_c * colGroup = new LConstraintsGroup_c(0, 3, 1, 1, colconstrList);
     colGroup->callback(cb_ColorConstrSel_stub, this);
     colGroup->tooltip(" Colour constraints for the current problem ");
@@ -3719,7 +3661,7 @@ void mainWindow_c::CreateSolveTab(void) {
 
     new LSeparator_c(0, 0, 1, 1, "Parameters", false);
 
-    solutionProblem = new ProblemSelector(0, 0, 100, 100, puzzle);
+    solutionProblem = new ProblemSelector(0, 0, 100, 100, puzzle.get());
     LBlockListGroup_c * shapeGroup = new LBlockListGroup_c(0, 1, 1, 1, solutionProblem);
     shapeGroup->callback(cb_SolProbSel_stub, this);
     shapeGroup->tooltip(" Select problem to solve ");
@@ -3758,7 +3700,7 @@ void mainWindow_c::CreateSolveTab(void) {
     new LFl_Box("Sort by: ", 0, 0, 1, 1);
 
     sortMethod = new LFl_Choice(1, 0, 1, 1);
-    ((LFl_Choice*)sortMethod)->weight(1, 0);
+    static_cast<LFl_Choice*>(sortMethod)->weight(1, 0);
 
     // be careful the order in here must correspond with the enumeration in assembler thread
     sortMethod->add("Unsorted");
@@ -3787,8 +3729,8 @@ void mainWindow_c::CreateSolveTab(void) {
     solDrop->value(1);
     solLimit->value(100);
 
-    ((LFl_Value_Input*)solDrop)->weight(1, 0);
-    ((LFl_Value_Input*)solLimit)->weight(1, 0);
+    static_cast<LFl_Value_Input*>(solDrop)->weight(1, 0);
+    static_cast<LFl_Value_Input*>(solLimit)->weight(1, 0);
 
     o->end();
 
@@ -3798,18 +3740,18 @@ void mainWindow_c::CreateSolveTab(void) {
 
     if (expertMode) {
       BtnPrepare = new LFlatButton_c(0, 0, 1, 1, "Prepare", " Do the preparation phase and then stop, this removes old results ", cb_BtnPrepare_stub, this);
-      ((LFlatButton_c*)BtnPrepare)->weight(1, 0);
+      static_cast<LFlatButton_c*>(BtnPrepare)->weight(1, 0);
       (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     } else
       BtnPrepare = 0;
     BtnStart = new LFlatButton_c(2, 0, 1, 1, "Start", " Start new solving process, removing old result ", cb_BtnStart_stub, this);
-    ((LFlatButton_c*)BtnStart)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnStart)->weight(1, 0);
     (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
     BtnCont = new LFlatButton_c(4, 0, 1, 1, "Continue", " Continue started process ", cb_BtnCont_stub, this);
-    ((LFlatButton_c*)BtnCont)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnCont)->weight(1, 0);
     (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, 0);
     BtnStop = new LFlatButton_c(6, 0, 1, 1, "Stop", " Stop a currently running solution process ", cb_BtnStop_stub, this);
-    ((LFlatButton_c*)BtnStop)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnStop)->weight(1, 0);
 
     o->end();
 
@@ -3818,19 +3760,19 @@ void mainWindow_c::CreateSolveTab(void) {
     o = new layouter_c(0, 9);
 
     BtnPlacement = new LFlatButton_c(0, 0, 1, 1, "Placements", " Browse the calculated placement of pieces ", cb_BtnPlacementBrowser_stub, this);
-    ((LFlatButton_c*)BtnPlacement)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnPlacement)->weight(1, 0);
 
     (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
 
     BtnMovement = new LFlatButton_c(2, 0, 1, 1, "Movements", " Browse the possible movements for an assembly ", cb_BtnMovementBrowser_stub, this);
-    ((LFlatButton_c*)BtnMovement)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnMovement)->weight(1, 0);
 
     if (expertMode)
     {
       (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
 
       BtnStep = new LFlatButton_c(4, 0, 1, 1, "Step", " Make one step in the assembler ", cb_BtnAssemblerStep_stub, this);
-      ((LFlatButton_c*)BtnStep)->weight(1, 0);
+      static_cast<LFlatButton_c*>(BtnStep)->weight(1, 0);
     } else
       BtnStep = 0;
 
@@ -3858,7 +3800,7 @@ void mainWindow_c::CreateSolveTab(void) {
     OutputAssemblies->box(FL_FLAT_BOX);
     OutputAssemblies->step(1);   // make output NOT use scientific presentation for big numbers
     OutputAssemblies->tooltip(" Number of assemblies found so far ");
-    ((LFl_Value_Output*)OutputAssemblies)->weight(2, 0);
+    static_cast<LFl_Value_Output*>(OutputAssemblies)->weight(2, 0);
 
     (new LFl_Box("Solutions: ", 0, 2, 1, 1))->stretchRight();
     OutputSolutions = new LFl_Value_Output(1, 2, 1, 1);
@@ -3869,7 +3811,7 @@ void mainWindow_c::CreateSolveTab(void) {
     (new LFl_Box("Time used: ", 2, 1, 1, 1))->stretchRight();
     TimeUsed = new LFl_Output(3, 1, 1, 1);
     TimeUsed->box(FL_NO_BOX);
-    ((LFl_Output*)TimeUsed)->weight(4, 0);
+    static_cast<LFl_Output*>(TimeUsed)->weight(4, 0);
 
     (new LFl_Box("Time left: ", 2, 2, 1, 1))->stretchRight();
     TimeEst = new LFl_Output(3, 2, 1, 1);
@@ -3897,7 +3839,7 @@ void mainWindow_c::CreateSolveTab(void) {
     SolutionsInfo = new LFl_Value_Output(2, 0, 1, 1);
     SolutionsInfo->tooltip(" Number of solutions ");
     SolutionsInfo->box(FL_FLAT_BOX);
-    ((LFl_Value_Output*)SolutionsInfo)->weight(1, 0);
+    static_cast<LFl_Value_Output*>(SolutionsInfo)->weight(1, 0);
 
     SolutionSel = new LFl_Value_Slider(0, 1, 3, 1);
     SolutionSel->tooltip(" Select one Solution ");
@@ -3915,7 +3857,7 @@ void mainWindow_c::CreateSolveTab(void) {
     MovesInfo->tooltip(" Steps for complete disassembly ");
     MovesInfo->box(FL_FLAT_BOX);
     MovesInfo->color(FL_BACKGROUND_COLOR);
-    ((LFl_Output*)MovesInfo)->weight(1, 0);
+    static_cast<LFl_Output*>(MovesInfo)->weight(1, 0);
 
     SolutionAnim = new LFl_Value_Slider(0, 5, 3, 1);
     SolutionAnim->tooltip(" Animate the disassembly ");
@@ -3939,8 +3881,8 @@ void mainWindow_c::CreateSolveTab(void) {
     SolutionNumber->box(FL_FLAT_BOX);
     AssemblyNumber->step(1);    // make output NOT use scientific presentation for big numbers
     SolutionNumber->step(1);    // make output NOT use scientific presentation for big numbers
-    ((LFl_Value_Output*)AssemblyNumber)->weight(1, 0);
-    ((LFl_Value_Output*)SolutionNumber)->weight(1, 0);
+    static_cast<LFl_Value_Output*>(AssemblyNumber)->weight(1, 0);
+    static_cast<LFl_Value_Output*>(SolutionNumber)->weight(1, 0);
 
     o->end();
 
@@ -3951,16 +3893,16 @@ void mainWindow_c::CreateSolveTab(void) {
     new LFl_Box("Sort by: ", 0, 0);
 
     BtnSrtFind =  new LFlatButton_c(1, 0, 1, 1, "Number", " Sort in the order the solutions were found ", cb_SrtFind_stub, this);
-    ((LFlatButton_c*)BtnSrtFind)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnSrtFind)->weight(1, 0);
     (new LFl_Box(2, 0))->setMinimumSize(SZ_GAP, 0);
     BtnSrtLevel = new LFlatButton_c(3, 0, 1, 1, "Level", " Sort in the order of increasing level ", cb_SrtLevel_stub, this);
-    ((LFlatButton_c*)BtnSrtLevel)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnSrtLevel)->weight(1, 0);
     (new LFl_Box(4, 0))->setMinimumSize(SZ_GAP, 0);
     BtnSrtMoves = new LFlatButton_c(5, 0, 1, 1, "Disasm", " Sort in the order of increasing moves for complete disassembly ", cb_SrtMoves_stub, this);
-    ((LFlatButton_c*)BtnSrtMoves)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnSrtMoves)->weight(1, 0);
     (new LFl_Box(6, 0))->setMinimumSize(SZ_GAP, 0);
     BtnSrtPieces = new LFlatButton_c(7, 0, 1, 1, "Pieces", " Sort in the order of used pieces ", cb_SrtPieces_stub, this);
-    ((LFlatButton_c*)BtnSrtPieces)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnSrtPieces)->weight(1, 0);
 
     o->end();
 
@@ -3971,19 +3913,19 @@ void mainWindow_c::CreateSolveTab(void) {
     new LFl_Box("Delete: ", 0, 0);
 
     BtnDelAll =    new LFlatButton_c(1, 0, 1, 1, "All", " Delete all solutions ", cb_DelAll_stub, this);
-    ((LFlatButton_c*)BtnDelAll)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnDelAll)->weight(1, 0);
     (new LFl_Box(2, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDelBefore = new LFlatButton_c(3, 0, 1, 1, "Before", " Delete all before the currently selected one ", cb_DelBefore_stub, this);
-    ((LFlatButton_c*)BtnDelBefore)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnDelBefore)->weight(1, 0);
     (new LFl_Box(4, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDelAt =     new LFlatButton_c(5, 0, 1, 1, "At", " Delete current solution ", cb_DelAt_stub, this);
-    ((LFlatButton_c*)BtnDelAt)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnDelAt)->weight(1, 0);
     (new LFl_Box(6, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDelAfter =  new LFlatButton_c(7, 0, 1, 1, "After", " Delete all solutions after the currently selected one ", cb_DelAfter_stub, this);
-    ((LFlatButton_c*)BtnDelAfter)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnDelAfter)->weight(1, 0);
     (new LFl_Box(8, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDelDisasm = new LFlatButton_c(9, 0, 1, 1, "w/o DA", " Delete all solutions without valid disassembly ", cb_DelDisasmless_stub, this);
-    ((LFlatButton_c*)BtnDelDisasm)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnDelDisasm)->weight(1, 0);
 
     o->end();
 
@@ -3992,19 +3934,19 @@ void mainWindow_c::CreateSolveTab(void) {
     o = new layouter_c(0, 9);
 
     BtnDisasmDel    = new LFlatButton_c(0, 0, 1, 1, "D DA", " Remove the disassembly for the current solution ", cb_DelDisasm_stub, this);
-    ((LFlatButton_c*)BtnDisasmDel)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnDisasmDel)->weight(1, 0);
     (new LFl_Box(1, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDisasmDelAll = new LFlatButton_c(2, 0, 1, 1, "D A DA", " Remove the disassemblies for all solutions ", cb_DelAllDisasm_stub, this);
-    ((LFlatButton_c*)BtnDisasmDelAll)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnDisasmDelAll)->weight(1, 0);
     (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDisasmAdd    = new LFlatButton_c(4, 0, 1, 1, "A DA", " Recalculate the disassembly for the current solution ", cb_AddDisasm_stub, this);
-    ((LFlatButton_c*)BtnDisasmAdd)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnDisasmAdd)->weight(1, 0);
     (new LFl_Box(5, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDisasmAddAll = new LFlatButton_c(6, 0, 1, 1, "A A DA", " Recalculate the disassemblies for all solutions ", cb_AddAllDisasm_stub, this);
-    ((LFlatButton_c*)BtnDisasmAddAll)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnDisasmAddAll)->weight(1, 0);
     (new LFl_Box(7, 0))->setMinimumSize(SZ_GAP, 0);
     BtnDisasmAddMissing=new LFlatButton_c(8, 0, 1, 1, "A M DA", " Recalculate the missing disassemblies for all solutions without valid disassembly ", cb_AddMissingDisasm_stub, this);
-    ((LFlatButton_c*)BtnDisasmAddMissing)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnDisasmAddMissing)->weight(1, 0);
 
     o->end();
 
@@ -4015,7 +3957,7 @@ void mainWindow_c::CreateSolveTab(void) {
     BtnExportSolutionSTL = new LFlatButton_c(0, 0, 1, 1, "Export Solution to STL",
         " Export every piece type of the currently selected solution to individual STL files ",
         cb_ExportSolutionSTL_stub, this);
-    ((LFlatButton_c*)BtnExportSolutionSTL)->weight(1, 0);
+    static_cast<LFlatButton_c*>(BtnExportSolutionSTL)->weight(1, 0);
 
     o->end();
 
@@ -4046,21 +3988,18 @@ void mainWindow_c::activateConfigOptions(void) {
   View3D->getView()->setRotaterMethod(config.rotationMethod());
 }
 
-mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
-
-  assmThread = 0;
-  fname = 0;
-  disassemble = 0;
-  editSymmetries = 0;
-  expertMode = true;
-  followingTail = false;
-  followAssembly = -1;
-  followSortBy = -1;
-  renderedAssembly = -1;
-
-  puzzle = new puzzle_c(gt);
-  ggt = new guiGridType_c(puzzle->getGridType());
-  changed = false;
+mainWindow_c::mainWindow_c(gridType_c * gt)
+  : LFl_Double_Window(true),
+    puzzle(std::make_unique<puzzle_c>(gt)),
+    ggt(std::make_unique<guiGridType_c>(puzzle->getGridType())),
+    SolutionEmpty(false),
+    followingTail(false),
+    followAssembly(-1),
+    followSortBy(-1),
+    renderedAssembly(-1),
+    changed(false),
+    editSymmetries(0),
+    expertMode(true) {
 
   copy_label("BurrTools - unknown");
   user_data((void*)(this));
@@ -4122,24 +4061,4 @@ mainWindow_c::mainWindow_c(gridType_c * gt) : LFl_Double_Window(true) {
 mainWindow_c::~mainWindow_c() {
 
   config.windowPos(x(), y(), w(), h());
-
-  if (assmThread) {
-    delete assmThread;
-    assmThread = 0;
-  }
-
-  delete puzzle;
-
-  if (fname) {
-    delete [] fname;
-    fname = 0;
-  }
-
-  if (disassemble) {
-    delete disassemble;
-    disassemble = 0;
-  }
-
-  if (ggt)
-    delete ggt;
 }

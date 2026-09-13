@@ -54,7 +54,7 @@ assertWindow_c::assertWindow_c(const char * text, const assert_exception * a) : 
                      "Assert failed in\n"
                      "file: %s\n"
                      "function: %s\n"
-                     "line: %i\n"
+                     "line: %u\n"
                      "condition: %s\n",
                      a->file, a->function, a->line, a->expr);
 

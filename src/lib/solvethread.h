@@ -28,6 +28,7 @@
 
 #include <time.h>
 #include <atomic>
+#include <memory>
 
 class problem_c;
 
@@ -68,8 +69,8 @@ class solveThread_c : public assembler_cb, public thread_c {
 
   private:
 
-    assembler_c::errState errState;
-    int errParam;
+    assembler_c::errState errState = assembler_c::ERR_NONE;
+    int errParam = 0;
 
   public:
 
@@ -84,7 +85,7 @@ class solveThread_c : public assembler_cb, public thread_c {
 
   private:
 
-    time_t startTime;
+    time_t startTime = 0;
 
   public:
 
@@ -144,7 +145,7 @@ class solveThread_c : public assembler_cb, public thread_c {
     /* this is used to increase the drop with time, when the limit is reached
      * and only every 2nd valid solution is taken
      */
-    unsigned int dropMultiplicator;
+    unsigned int dropMultiplicator = 1;
 
   public:
 
@@ -166,13 +167,13 @@ class solveThread_c : public assembler_cb, public thread_c {
   private:
 
 
-  std::atomic<bool> stopPressed;  // set by the GUI thread, read by the worker
-  bool return_after_prep;  // sometimes it is useful to only prepare and return,
+  std::atomic<bool> stopPressed{false};  // set by the GUI thread, read by the worker
+  bool return_after_prep = false;  // sometimes it is useful to only prepare and return,
                            // if this flag is set, the program will return
 
 
 
-  disassembler_c * disassm;
+  std::unique_ptr<disassembler_c> disassm;
 
   /* the worker publishes the assembler here once it is fully constructed so
    * that currentActionParameter(), called from the GUI thread, can query its
@@ -193,8 +194,11 @@ public:
 
 private:
 
+  // helper to stop without virtual dispatch in destructor
+  void stopInternal(void);
+
   // the call-back
-  bool assembly(assembly_c* a);
+  bool assembly(std::unique_ptr<assembly_c> a) override;
 
 public:
 
@@ -203,7 +207,7 @@ public:
   bool start(bool stop_after_prep = false);
 
   // try to stop the thread at the next possible position
-  void stop(void);
+  void stop(void) override;
 
   bool stopped(void) const {
     return ((action == ACT_PAUSING) ||
@@ -212,7 +216,7 @@ public:
            );
   }
 
-  void run(void);
+  void run(void) override;
 
 private:
 

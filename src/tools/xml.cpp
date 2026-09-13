@@ -54,9 +54,11 @@ xmlWriter_c::xmlWriter_c(std::ostream & str) : stream(str), state(StBase)
   stream << "<?xml version=\"1.0\"?>\n";
 }
 
+// cppcheck-suppress exceptThrowInDestructor
 xmlWriter_c::~xmlWriter_c(void) noexcept(false)
 {
   if (tagStack.size() > 0)
+    // cppcheck-suppress exceptThrowInDestructor
     throw xmlWriterException_c("Not all tags were closed");
 }
 
@@ -223,17 +225,16 @@ std::ostream & xmlWriter_c::addContent(void)
 }
 
 
-xmlParserException_c::xmlParserException_c(std::string desc, std::string state, int line, int col)
+xmlParserException_c::xmlParserException_c(const std::string & desc, const std::string & state, int line, int col)
 {
   std::ostringstream str;
   str << "xml Parser Exception : " << desc << " in state: " + state << "at position: " << line << "; " << col;
   description = str.str();
 }
 
-xmlParserException_c::xmlParserException_c(std::string desc)
+xmlParserException_c::xmlParserException_c(const std::string & desc)
+  : description("Xml Parser Exception : " + desc)
 {
-  description = "Xml Parser Exception : " ;
-  description += desc;
 }
 
 
@@ -262,7 +263,7 @@ xmlParserException_c::xmlParserException_c(std::string desc)
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE. */
 
-static int parseInt(std::string s, int radix)
+static int parseInt(const std::string & s, int radix)
 {
   int len = s.size ();
   int value = 0;
@@ -323,11 +324,11 @@ xmlParser_c::xmlParser_c(void) :
 
 void xmlParser_c::initBuf(void)
 {
-  srcBuf = new char[8192];
+  srcBuf.resize(8192);
   srcBuflength = 8192;
-  txtBuf = new char[256];
+  txtBuf.resize(256);
   txtBufSize = 256;
-  nspCounts = new int[8];
+  nspCounts.assign(8, 0);
   nspSize = 8;
 }
 
@@ -364,12 +365,7 @@ void xmlParser_c::commonInit(void)
 }
 
 
-xmlParser_c::~xmlParser_c(void)
-{
-  delete [] srcBuf;
-  delete [] txtBuf;
-  delete [] nspCounts;
-}
+xmlParser_c::~xmlParser_c(void) = default;
 
 
 std::string xmlParser_c::state(int eventType)
@@ -391,7 +387,7 @@ std::string xmlParser_c::state(int eventType)
   }
 }
 
-void xmlParser_c::exception(std::string desc)
+[[noreturn]] void xmlParser_c::exception(const std::string & desc)
 {
   xmlParserException_c e (desc, state (type), line, column);
   throw e;
@@ -665,7 +661,7 @@ int xmlParser_c::peekType(void)
 std::string xmlParser_c::get(int pos)
 {
   std::string
-    tmp (txtBuf);
+    tmp (txtBuf.data());
   return tmp.substr (pos, txtPos - pos);
 }
 
@@ -675,10 +671,8 @@ void xmlParser_c::push(int c)
   isWspace &= c <= ' ';
   if (txtPos >= txtBufSize - 1)
   {
-    char *bigger = new char[txtBufSize = txtPos * 4 / 3 + 4];
-    memcpy (bigger, txtBuf, txtPos);
-    delete[] txtBuf;
-    txtBuf = bigger;
+    txtBufSize = txtPos * 4 / 3 + 4;
+    txtBuf.resize(txtBufSize);
   }
   txtBuf[txtPos++] = (char) c;
   txtBuf[txtPos] = 0;
@@ -763,15 +757,8 @@ void xmlParser_c::parseStartTag(bool xmldecl)
   /*    vivek ,avoided the increment array logic..fix later*/
   if (depth >= nspSize)
   {
-    int *bigger = new int[nspSize + 4];
-    int i = 0;
-    for (i = 0; i < nspSize; i++)
-      bigger[i] = nspCounts[i];
-    for (i = nspSize; i < nspSize + 4; i++)
-      bigger[i] = 0;
-    delete [] nspCounts;
-    nspCounts = bigger;
     nspSize += 4;
+    nspCounts.resize(nspSize, 0);
   }
   nspCounts[depth] = nspCounts[depth - 1];
   for (int i = attributeCount - 1; i > 0; i--)
@@ -909,7 +896,7 @@ int xmlParser_c::peekbuf(int pos)
       nw = srcBuf[srcPos++];
     else
     {
-      srcCount = reader.read (srcBuf, srcBuflength).gcount ();
+      srcCount = reader.read (srcBuf.data(), srcBuflength).gcount ();
       if (srcCount <= 0)
         nw = -1;
 
@@ -976,13 +963,13 @@ void xmlParser_c::skip(void)
 //--------------- public part starts here... ---------------
 
 
-std::string xmlParser_c::getInputEncoding(void)
+const std::string & xmlParser_c::getInputEncoding(void) const
 {
   return encoding;
 }
 
 
-void xmlParser_c::defineEntityReplacementText(std::string entity, std::string value)
+void xmlParser_c::defineEntityReplacementText(const std::string & entity, const std::string & value)
 {
   if (entityMap.empty())
     exception ("entity replacement text must be defined after setInput!");
@@ -1021,7 +1008,7 @@ const char * xmlParser_c::getTextCharacters(int *poslen)
     }
     poslen[0] = 0;
     poslen[1] = txtPos;
-    return txtBuf;
+    return txtBuf.data();
   }
   poslen[0] = -1;
   poslen[1] = -1;
@@ -1061,7 +1048,7 @@ std::string xmlParser_c::getAttributeValue(int index)
 }
 
 
-std::string xmlParser_c::getAttributeValue(std::string nam)
+std::string xmlParser_c::getAttributeValue(const std::string & nam)
 {
   for (int i = (attributeCount << 2) - 4; i >= 0; i -= 4)
   {
@@ -1131,7 +1118,7 @@ int xmlParser_c::nextTag(void)
 }
 
 
-void xmlParser_c::require (int Type, std::string nam)
+void xmlParser_c::require (int Type, const std::string & nam)
 {
   if (Type != type || (!nam.empty () && nam != getName ()))
     exception ("expected: " + state(Type) + nam);

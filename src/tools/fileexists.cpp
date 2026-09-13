@@ -20,20 +20,11 @@
  */
 #include "fileexists.h"
 
-#include <stdio.h>
+#include <system_error>
 
-bool fileExists(const std::string & n)
+bool fileExists(const std::filesystem::path & p)
 {
-  FILE *f = fopen(n.c_str(), "r");
-
-  if (f)
-  {
-    fclose(f);
-    return true;
-  }
-  else
-  {
-    return false;
-  }
+  std::error_code ec;
+  return std::filesystem::exists(p, ec);
 }
 

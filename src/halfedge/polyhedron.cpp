@@ -215,7 +215,7 @@ void Polyhedron::finalize(void)
       while (cit2 != connections.end() && cit2->first == idx)
       {
         n++;
-        cit2++;
+        ++cit2;
       }
     }
 
@@ -226,7 +226,7 @@ void Polyhedron::finalize(void)
     if (n == 2)
     {
       HalfEdge* he = cit->second;
-      cit++;
+      ++cit;
       HalfEdge* he2 = cit->second;
 
       bt_assert(he != he2);
@@ -316,7 +316,7 @@ void Polyhedron::finalize(void)
         heInfo hi(cit->second, angle);
         info.push_back(hi);
 
-        cit++;
+        ++cit;
       }
 
       // sort the info entries by angle

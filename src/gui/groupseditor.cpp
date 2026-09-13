@@ -160,14 +160,14 @@ void groupsEditorTab_c::draw_cell(TableContext context, int r, int c, int x, int
         /* the 2nd column, display the min count for this shape */
 
         type = 1;
-        snprintf(s, 40, "%i", pr->getShapeMinimum(r));
+        snprintf(s, 40, "%u", pr->getShapeMinimum(r));
 
       } else if (c == 2) {
 
         /* the 3rd column, display the max count for this shape */
 
         type = 1;
-        snprintf(s, 40, "%i", pr->getShapeMaximum(r));
+        snprintf(s, 40, "%u", pr->getShapeMaximum(r));
 
       } else {
 
@@ -422,7 +422,7 @@ void groupsEditor_c::cb_MaxHoles(void) {
 
   if (puzzle->getProblem(problem)->maxHolesDefined()) {
     char tmp[20];
-    snprintf(tmp, 20, "%i", puzzle->getProblem(problem)->getMaxHoles());
+    snprintf(tmp, 20, "%u", puzzle->getProblem(problem)->getMaxHoles());
     maxHoles->value(tmp);
   } else
     maxHoles->value("");
@@ -462,7 +462,7 @@ groupsEditor_c::groupsEditor_c(puzzle_c * p, unsigned int pr) : LFl_Double_Windo
   maxHoles->callback(cb_MaxHoles_stub, this);
   if (puzzle->getProblem(problem)->maxHolesDefined()) {
     char tmp[20];
-    snprintf(tmp, 20, "%i", puzzle->getProblem(problem)->getMaxHoles());
+    snprintf(tmp, 20, "%u", puzzle->getProblem(problem)->getMaxHoles());
     maxHoles->value(tmp);
   } else
     maxHoles->value("");
@@ -492,7 +492,7 @@ groupsEditor_c::groupsEditor_c(puzzle_c * p, unsigned int pr) : LFl_Double_Windo
 }
 
 
-bool groupsEditor_c::changed(void) {
+bool groupsEditor_c::isChanged(void) {
   return tab->getChanged() || _changed;
 }
 

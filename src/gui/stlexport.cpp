@@ -72,7 +72,7 @@ void stlExport_c::cb_Export(void) {
 
 }
 
-static void updateParameters(stlExporter_c * stl, const std::vector<inputField_c *> & params)
+static void updateParameters(stlExporter_c * stl, const std::vector<std::unique_ptr<inputField_c>> & params)
 {
   for (unsigned int i = 0; i < stl->numParameters(); i++)
   {
@@ -97,7 +97,7 @@ static void updateParameters(stlExporter_c * stl, const std::vector<inputField_c
 static void cb_stlExport3DUpdate_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Update3DView(); }
 void stlExport_c::cb_Update3DView(void)
 {
-  updateParameters(stl, params);
+  updateParameters(stl.get(), params);
 
   Polyhedron * p = 0;
   try
@@ -184,7 +184,7 @@ stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
 
   label("Export STL");
 
-  stl = p->getGridType()->getStlExporter();
+  stl = std::unique_ptr<stlExporter_c>(p->getGridType()->getStlExporter());
   bt_assert(stl);
 
   LFl_Frame *fr;
@@ -222,11 +222,9 @@ stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
   {
     fr = new LFl_Frame(0, 1, 1, 1);
 
-    inputField_c * inp;
-
     for (unsigned int i = 0; i < stl->numParameters(); i++)
     {
-      inp = new inputField_c;
+      auto inp = std::make_unique<inputField_c>();
 
       inp->type = stl->getParameterType(i);
 
@@ -298,7 +296,7 @@ stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
       inp->w->callback(cb_stlExport3DUpdate_stub, this);
       inp->w->tooltip(stl->getParameterTooltip(i));
 
-      params.push_back(inp);
+      params.push_back(std::move(inp));
     }
 
     fr->end();
@@ -376,7 +374,7 @@ void stlExport_c::exportSTL(int shape)
 
   voxel_c *v = puzzle->getShape(shape);
 
-  updateParameters(stl, params);
+  updateParameters(stl.get(), params);
 
   stl->setBinaryMode(Binary->value() != 0);
 
@@ -409,9 +407,4 @@ void stlExport_c::exportSTL(int shape)
   }
 }
 
-stlExport_c::~stlExport_c(void)
-{
-  if (stl) delete stl;
-  for (size_t i = 0; i < params.size(); i++)
-    delete params[i];
-}
+stlExport_c::~stlExport_c(void) = default;

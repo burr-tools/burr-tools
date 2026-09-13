@@ -100,7 +100,7 @@ class Face
      * @param e A HalfEdge that is to be associated to the Race.
      * @param hole Indicates whether the Race is actually a hole. By default, false.
      */
-    explicit Face(HalfEdge* e, bool hole=false, int idx=-1) : _edge(e), _hole(hole), _index(idx), _flags(0), _fb_index(0), _fb_face(0) {}
+    explicit Face(HalfEdge* e, bool hole=false, int idx=-1) : _edge(e), _hole(hole), _index(idx), _flags(0), _fb_index(0), _fb_face(0), _color(0) {}
 
     // Set methods
     void hole(bool h) { _hole = h; }       ///< Sets the 'hole' flag of the Race to true of false.

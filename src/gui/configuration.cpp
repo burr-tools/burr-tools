@@ -21,6 +21,8 @@
 #include "configuration.h"
 #include <string.h>
 #include <stdlib.h>
+#include <memory>
+#include <ranges>
 
 #include "../lib/bt_assert.h"
 
@@ -58,70 +60,40 @@ void configuration_c::parse() {
 
   luaClass_c L;
 
-  /* first initialize the variables with their default value */
-  config_data * t = first_data;
-
-  while (t) {
-
+  /* first initialize the variables with their default value
+   * Note: in legacy BurrTools, register_entry prepended to a linked list,
+   * so all traversals ran in reverse registration order. We preserve that
+   * order across all operations (parsing, serialization, dialog layout).
+   */
+  for (const auto & t : std::views::reverse(data)) {
     char command[200];
-
-    snprintf(command, 200, "%s = %s", t->cnf_name, t->defaultValue);
+    snprintf(command, 200, "%s = %s", t.cnf_name, t.defaultValue);
     L.doString(command);
-
-    t = t->next;
   }
 
   /* parse config file */
   open_local_config_file(L);
 
   /* read out data */
-  t = first_data;
-
-  while (t) {
-
+  for (auto & t : std::views::reverse(data)) {
     try {
-
-      switch (t->cnf_typ) {
+      switch (t.cnf_typ) {
         case CT_BOOL:
-          *(bool *)t->cnf_var = L.getBool(t->cnf_name);
+          *(bool *)t.cnf_var = L.getBool(t.cnf_name);
           break;
-          /*
-             case CT_STRING:
-             if (strlen(param) > 1) {
-             param[strlen(param)-1] = '\0';
-             strncpy((char *)t->cnf_var, param+1, t->maxlen);
-             }
-             break;
-             */
         case CT_INT:
-          *(int *)t->cnf_var = (int)L.getNumber(t->cnf_name);
+          *(int *)t.cnf_var = (int)L.getNumber(t.cnf_name);
           break;
         default: bt_assert(0);
       }
     }
-
     catch (...) {
-    };
-    t = t->next;
+    }
   }
 }
 
 void configuration_c::register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * dhelp, const char * def) {
-
-  config_data *t = new config_data;
-
-  t->next = first_data;
-  first_data = t;
-
-  t->cnf_name = cnf_name;
-  t->cnf_typ = cnf_typ;
-  t->cnf_var = cnf_var;
-  t->maxlen = maxlen;
-  t->dialog = dialog;
-  t->dialogText = dtext;
-  t->dialogHelp = dhelp;
-
-  t->defaultValue = def;
+  data.push_back({cnf_name, cnf_typ, cnf_var, maxlen, dialog, dtext, dhelp, nullptr, def});
 }
 
 #define CNF_BOOL(a,b, def) register_entry(a, CT_BOOL, b, 0, false, 0, 0, def)
@@ -133,8 +105,6 @@ void configuration_c::register_entry(const char *cnf_name, cnf_type cnf_typ, voi
 #define CNF_INT_D(a,b,text,help, def) register_entry(a, CT_INT, b, 0, true, text, help, def)
 
 configuration_c::configuration_c(void) {
-
-  first_data = 0;
 
   CNF_BOOL_D("tooltips",          &i_use_tooltips, "Use Tooltips",
              "Show short help text when the mouse rests on buttons and other controls.",
@@ -167,43 +137,30 @@ configuration_c::configuration_c(void) {
 configuration_c::~configuration_c(void) {
 
   FILE * f = create_local_config_file();
-
-  bt_assert(f);
+  if (!f) return;
 
   fseek(f, 0, SEEK_SET);
 
-  config_data *t = first_data;
+  for (const auto & t : std::views::reverse(data)) {
+    fprintf(f, "%s = ", t.cnf_name);
 
-  while(t) {
-    fprintf(f, "%s = ", t->cnf_name);
-
-    switch (t->cnf_typ) {
+    switch (t.cnf_typ) {
     case CT_BOOL:
-      fprintf(f, "%s", (*(bool *)t->cnf_var)?("true"):("false"));
+      fprintf(f, "%s", (*(bool *)t.cnf_var)?("true"):("false"));
       break;
     case CT_STRING:
-      fprintf(f, "\"%s\"", (char *)(t->cnf_var));
+      fprintf(f, "\"%s\"", (char *)(t.cnf_var));
       break;
     case CT_INT:
-      fprintf(f, "%i", *(int *)t->cnf_var);
+      fprintf(f, "%i", *(int *)t.cnf_var);
       break;
     default: bt_assert(0);
     }
 
     fprintf(f, "\n");
-
-    t = t->next;
   }
 
   fclose(f);
-
-  t = first_data;
-
-  while (t) {
-    t = t->next;
-    delete first_data;
-    first_data = t;
-  }
 }
 
 static void cb_ConfigDialog_stub(Fl_Widget* /*o*/, void* v) { ((Fl_Double_Window*)v)->hide(); }
@@ -238,14 +195,11 @@ public:
 
 void configuration_c::restoreDialogDefaults(void) {
 
-  config_data *t = first_data;
-
-  while (t) {
-    if (t->dialog && t->cnf_typ == CT_BOOL && t->widget) {
-      bool enable = (strcmp(t->defaultValue, "true") == 0);
-      ((Fl_Check_Button*)t->widget)->value(enable ? 1 : 0);
+  for (auto & t : std::views::reverse(data)) {
+    if (t.dialog && t.cnf_typ == CT_BOOL && t.widget) {
+      bool enable = (strcmp(t.defaultValue, "true") == 0);
+      ((Fl_Check_Button*)t.widget)->value(enable ? 1 : 0);
     }
-    t = t->next;
   }
 }
 
@@ -257,7 +211,7 @@ void configuration_c::dialog(void) {
   static const int TEXT_PAD_TOP = 8;
   const int wrapW = WINDOW_W - 2 * MARGIN - 2 * TEXT_PAD;
 
-  LFl_Double_Window * win = new LFl_Double_Window(true);
+  auto win = std::make_unique<LFl_Double_Window>(true);
 
   layouter_c * body = new layouter_c(0, 0, 1, 1);
   body->pitch(MARGIN);
@@ -265,30 +219,29 @@ void configuration_c::dialog(void) {
 
   (new LFl_Box(0, 0, 1, 1))->setMinimumSize(0, TEXT_PAD_TOP);
 
-  config_data *t = first_data;
   int y = 1;
 
-  while(t) {
-    if (t->dialog) {
+  for (auto & t : std::views::reverse(data)) {
+    if (t.dialog) {
 
-      switch (t->cnf_typ) {
+      switch (t.cnf_typ) {
       case CT_BOOL:
         {
-          LFl_Check_Button *w = new LFl_Check_Button(t->dialogText, 0, y, 1, 1);
-          t->widget = w;
-          w->value(*((bool*)t->cnf_var) ? 1 : 0);
+          LFl_Check_Button *w = new LFl_Check_Button(t.dialogText, 0, y, 1, 1);
+          t.widget = w;
+          w->value(*((bool*)t.cnf_var) ? 1 : 0);
           w->weight(1, 0);
 
           y++;
 
-          if (t->dialogHelp && t->dialogHelp[0]) {
+          if (t.dialogHelp && t.dialogHelp[0]) {
             (new LFl_Box(0, y, 1, 1))->setMinimumSize(0, TEXT_PAD_TOP);
             y++;
 
             layouter_c * helpRow = new layouter_c(0, y, 1, 1);
             helpRow->weight(1, 0);
             (new LFl_Box(0, 0))->setMinimumSize(TEXT_PAD, 0);
-            new SettingsWrapBox(t->dialogHelp, 1, 0, wrapW);
+            new SettingsWrapBox(t.dialogHelp, 1, 0, wrapW);
             (new LFl_Box(2, 0))->setMinimumSize(TEXT_PAD, 0);
             helpRow->end();
             y++;
@@ -306,8 +259,6 @@ void configuration_c::dialog(void) {
       default: bt_assert(0);
       }
     }
-
-    t = t->next;
   }
 
   layouter_c * btnRow = new layouter_c(0, y, 1, 1);
@@ -330,7 +281,7 @@ void configuration_c::dialog(void) {
 
   LFl_Button * btn = new LFl_Button("Close", 3, 0);
   btn->tooltip("Close window");
-  btn->callback(cb_ConfigDialog_stub, win);
+  btn->callback(cb_ConfigDialog_stub, win.get());
   btn->setMinimumSize(bw, th + 10);
 
   btnRow->end();
@@ -345,19 +296,16 @@ void configuration_c::dialog(void) {
   while (win->visible())
     Fl::wait();
 
-  t = first_data;
+  for (auto & t : std::views::reverse(data)) {
+    if (t.dialog) {
 
-  while(t) {
-
-    if (t->dialog) {
-
-      switch (t->cnf_typ) {
+      switch (t.cnf_typ) {
       case CT_BOOL:
 
-        if (((Fl_Check_Button*)t->widget)->value())
-          *((bool*)t->cnf_var) = true;
+        if (((Fl_Check_Button*)t.widget)->value())
+          *((bool*)t.cnf_var) = true;
         else
-          *((bool*)t->cnf_var) = false;
+          *((bool*)t.cnf_var) = false;
         break;
       case CT_STRING:
         break;
@@ -366,10 +314,7 @@ void configuration_c::dialog(void) {
       default: bt_assert(0);
       }
     }
-    t = t->next;
   }
-
-  delete win;
 }
 
 configuration_c config;

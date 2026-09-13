@@ -86,15 +86,15 @@ class arcBall_c : public rotater_c
 
   private:
 
-    float AdjustWidth;       //Mouse bounds width
-    float AdjustHeight;      //Mouse bounds height
+    float AdjustWidth = 0.0f;       //Mouse bounds width
+    float AdjustHeight = 0.0f;      //Mouse bounds height
 
-    float StVec[3];          //Saved click vector
-    float EnVec[3];          //Saved drag vector
+    float StVec[3] = {0.0f, 0.0f, 0.0f};          //Saved click vector
+    float EnVec[3] = {0.0f, 0.0f, 0.0f};          //Saved drag vector
 
-    float LastRot[9];
+    float LastRot[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
 
-    bool mouseDown;
+    bool mouseDown = false;
 };
 
 // another way to rotate an object, the code for this method has been
@@ -107,9 +107,9 @@ class method2_c : public rotater_c {
 
     float rotation[4];
 
-    float last_x, last_y;
+    float last_x = 0.0f, last_y = 0.0f;
 
-    bool mouseDown;
+    bool mouseDown = false;
 
   public:
 

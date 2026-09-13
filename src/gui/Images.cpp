@@ -154,13 +154,8 @@
 #include "images/RenderModeEdges.xpm"
 #include "images/RenderModeSTL.xpm"
 
-pixmapList_c::~pixmapList_c(void) {
-  for (unsigned int i = 0; i < list.size(); i++)
-    delete list[i];
-}
-
 Fl_Pixmap * pixmapList_c::get(const char * data[]) {
-  list.push_back(new Fl_Pixmap(data));
-  return list[list.size()-1];
+  list.push_back(std::make_unique<Fl_Pixmap>(data));
+  return list.back().get();
 }
 
