@@ -143,9 +143,10 @@ TEST_CASE("xml writer: leaving a tag open throws on destruction", "[xml][writer]
 }
 
 TEST_CASE("xml writer: closing a tag with the wrong name throws", "[xml][writer]") {
-  /* xml.cpp:131-132 throws xmlWriterException_c("Try to close tag with
-     wrong name") when the name passed to endTag() does not match the top
-     of the tag stack, and does so *before* popping that entry.
+  /* the wrong-name throw in endTag() raises xmlWriterException_c("Try to
+     close tag with wrong name") when the name passed to endTag() does not
+     match the top of the tag stack, and does so *before* popping that
+     entry.
 
      ~xmlWriter_c is noexcept(false) and itself throws if the tag stack is
      still non-empty when it runs (see the case above). If the mismatched
@@ -565,10 +566,13 @@ TEST_CASE("xml parser: an escaped '<' inside an attribute value still resolves",
      easy for a future edit to move the check earlier, or apply it to the
      entity-resolved buffer instead of the raw input stream, and start
      rejecting every attribute value that legitimately contains an escaped
-     '<'. Nothing else in the suite pins that acceptance path: :207 covers
-     entities in element CONTENT, :117 covers only the WRITER's escaping,
-     and test_roundtrip.cpp:215 covers a special-character COMMENT -- none
-     of those exercise entity resolution inside an ATTRIBUTE VALUE. Both
+     '<'. Nothing else in the suite pins that acceptance path: "xml parser:
+     entities in content are resolved" covers entities in element CONTENT,
+     "xml writer: all five special characters are escaped in content"
+     covers only the WRITER's escaping, and test_roundtrip.cpp's "puzzle: a
+     comment made up only of XML-special characters survives a save and
+     reload" covers a special-character COMMENT -- none of those exercise
+     entity resolution inside an ATTRIBUTE VALUE. Both
      the named form (&lt;) and the numeric form (&#60;) take the same
      pushText()/pushEntity() path, so both are pinned here; this documents
      existing correct behaviour and changes nothing. */
@@ -607,7 +611,7 @@ TEST_CASE("xml parser: the exception carries a description", "[xml][parser][malf
   catch (const xmlParserException_c & e) {
     /* an empty message (or a single space) would make a real parse failure
        undiagnosable, so check for the actual diagnostic content rather
-       than merely a non-empty string: xml.cpp:630 raises
+       than merely a non-empty string: xmlParser_c::parseEndTag() raises
        "expected: " + elementStack[...] for a mismatched close tag, which
        here names the still-open "a" */
     REQUIRE_THAT(std::string(e.what()), Catch::Matchers::ContainsSubstring("expected: a"));

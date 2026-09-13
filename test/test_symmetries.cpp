@@ -117,7 +117,7 @@ TEST_CASE("symmetries: transAdd composes transformations", "[symmetry]") {
        voxel_2_c::transform() for transformations 0-23 (the 24 plain cube
        rotations; transMult rows 0-23 are exactly the ones with no TND
        entries). Transformations 24-119 either fail transform() on this
-       fixture's cell layout or land on a TND/thrown composition, so they
+       fixture's cell layout or land on a TND composition, so they
        get NO composition coverage here at all -- the 576 sphere pairs
        actually asserted below are precisely t1,t2 in {0..23}, already
        covered three times over by GT_BRICKS/GT_RHOMBIC/GT_TETRA_OCTA.
