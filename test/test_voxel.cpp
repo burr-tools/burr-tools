@@ -101,6 +101,31 @@ TEST_CASE("voxel: get2 returns empty outside the space", "[voxel]") {
   REQUIRE(v->isFilled2(1, 1, 1));
 }
 
+TEST_CASE("voxel: the ASCII fixture helper maps axes without transposition", "[voxel]") {
+  /*
+   * The dimensions here are all different, and the one filled voxel sits
+   * off the diagonal: (2,0,0) is a valid coordinate but its transpose
+   * (0,2,0) is not (Y only goes up to 1). A `fromLayers` that swapped any
+   * two axes -- e.g. setState(y, x, z, ...) -- would either place the
+   * voxel somewhere else entirely or throw building a mis-shaped space,
+   * so this is the case that actually proves the mapping instead of just
+   * being invariant under a transpose.
+   */
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  std::unique_ptr<voxel_c> v = fromLayers(gt, {
+    { "..#",
+      "..." },
+  });
+
+  REQUIRE(v->getX() == 3);
+  REQUIRE(v->getY() == 2);
+  REQUIRE(v->getZ() == 1);
+
+  REQUIRE(v->isFilled(2, 0, 0));
+  REQUIRE(v->isEmpty(0, 1, 0));
+}
+
 TEST_CASE("voxel: the ASCII fixture helper places voxels where it says", "[voxel]") {
   gridType_c gt(gridType_c::GT_BRICKS);
 
@@ -125,4 +150,40 @@ TEST_CASE("voxel: the ASCII fixture helper places voxels where it says", "[voxel
   REQUIRE(v->isEmpty(1, 0, 1));
 
   REQUIRE(v->countState(voxel_c::VX_FILLED) == 4);
+}
+
+TEST_CASE("voxel: fromLayers pads ragged rows and maps '+' to VX_VARIABLE", "[voxel]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  /*
+   * layer 0 has a single 4-char row; layer 1 has three 1-char rows. The
+   * space must be padded out to the widest row (sx=4) and the tallest
+   * layer (sy=3), and every character not supplied by the ragged art
+   * must default to VX_EMPTY rather than being left uninitialized.
+   */
+  std::unique_ptr<voxel_c> v = fromLayers(gt, {
+    { "+..#" },
+    { "#", "+", "." },
+  });
+
+  REQUIRE(v->getX() == 4);
+  REQUIRE(v->getY() == 3);
+  REQUIRE(v->getZ() == 2);
+
+  /* '+' maps to VX_VARIABLE */
+  REQUIRE(v->isVariable(0, 0, 0));
+  REQUIRE(v->isVariable(0, 1, 1));
+
+  /* '#' still maps to VX_FILLED in the same ragged art */
+  REQUIRE(v->isFilled(3, 0, 0));
+  REQUIRE(v->isFilled(0, 0, 1));
+
+  /* a cell past the end of a row shorter than the widest row is padded empty */
+  REQUIRE(v->isEmpty(1, 0, 1));
+
+  /* a row past the end of a layer with fewer rows than the tallest layer is padded empty */
+  REQUIRE(v->isEmpty(0, 2, 0));
+
+  REQUIRE(v->countState(voxel_c::VX_VARIABLE) == 2);
+  REQUIRE(v->countState(voxel_c::VX_FILLED) == 2);
 }
