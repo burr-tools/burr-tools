@@ -109,61 +109,53 @@ TEST_CASE("gzstream: compressing then reading back preserves a longer payload", 
   REQUIRE(got.str() == payload);
 }
 
-TEST_CASE("gzstream: a missing file is silently treated as an empty document (BUG)", "[gzstream]") {
-  /* openGzFile(name) constructs `new igzstream(name)`. igzstream inherits from
-     both gzstreambase and std::istream. gzstreambase's constructor correctly
-     sets badbit when gzopen() fails to find the file, but igzstream's own
-     constructor runs std::istream(&buf) *after* that, and that base
-     constructor calls ios::init(&buf), which resets rdstate() to goodbit
-     because the streambuf pointer is non-null. The badbit set moments
-     earlier is silently wiped out.
-     The net effect, confirmed here, is that openGzFile on a nonexistent
-     path returns a non-null stream that reports good()/fail()/bad()/eof()
-     as if nothing were wrong, both before and after an attempted read, and
-     that read produces zero bytes. Every caller in the application that
-     does `openGzFile(path)` then treats a *missing* puzzle file exactly
-     like a *valid, empty* one -- there is no way for the caller to detect
-     the file did not exist by checking stream state. This is a genuine,
-     pre-existing BurrTools bug in the vendored gzstream wrapper's
-     interaction with the igzstream multiple-inheritance layout, not a
-     mistake in this test.
+TEST_CASE("gzstream: a missing file is reported as such, not as an empty document", "[gzstream]") {
+  /* openGzFile(name) constructs an igzstream, which inherits from
+     both gzstreambase and std::istream, which share the virtual base
+     std::ios. Base initialisers run in declaration order, so gzstreambase's
+     constructor correctly sets badbit when gzopen() fails to find the file,
+     but igzstream's own constructor runs std::istream(&buf) *after* that,
+     and that base constructor calls ios::init(&buf), which resets
+     rdstate() to goodbit because the streambuf pointer is non-null. The
+     badbit set moments earlier is silently wiped out by that reset -- so
+     the stream's own rdstate() can never be trusted to reveal an open
+     failure.
 
-     Two things make it worse than a construction-order curiosity:
-
-     1. The documented fallback for this situation never runs. openGzFile
-        (gzstream.cpp:161-165) reads:
-          igzstream * gz = new igzstream(name);
-          if (!gz) { delete gz; return new std::ifstream(name); }
-        `new` either returns a valid pointer or throws std::bad_alloc; it
-        never returns null. So `!gz` is always false and the plain-
-        std::ifstream fallback is dead code that can never execute -- the
-        badbit-loses-to-goodbit path above is the only one ever taken.
-
-     2. Real call sites have no guard and no recovery. src/burrTxt.cpp:203
-        and src/burrTxt2.cpp:115 both call openGzFile(args[filenumber])
-        directly, with no fileExists() check first (AGENTS.md notes
-        src/tools/ already has file-existence helpers -- unused here) and
-        no try/catch around the xmlParser_c/puzzle_c construction that
-        follows. A mistyped filename does not report "missing"; it is read
-        as an empty document, fails XML parsing instead, and that
-        exception propagates out of main() uncaught, aborting the CLI
-        tool. */
+     openGzFile() sidesteps that trap by asking the underlying gzstreambuf
+     directly whether gzopen() actually succeeded (gzstreambuf::is_open())
+     rather than trusting the istream's rdstate(). When neither that nor the
+     plain-ifstream fallback can open the file it returns nullptr, instead of
+     handing back a stream that reads zero bytes. Callers must check for
+     nullptr before using the stream; src/burrTxt.cpp and src/burrTxt2.cpp
+     do so. */
   TempDir dir;
   const std::string name = dir.file("does-not-exist.xmpuzzle");
 
   std::unique_ptr<std::istream> in(openGzFile(name.c_str()));
-  REQUIRE(in != nullptr);
+  REQUIRE(in == nullptr);
+}
 
-  // Documents the bug: the stream claims to be perfectly fine...
-  REQUIRE(in->good());
+TEST_CASE("gzstream: a present-but-empty file is distinguishable from a missing one", "[gzstream]") {
+  /* This is the exact property openGzFile() must provide: "missing" and
+     "present but empty" are different situations and callers must be able
+     to tell them apart. A file that exists but has zero bytes opens fine
+     (gzstreambuf::is_open() is true, so openGzFile() returns non-null),
+     and reading from it yields zero bytes -- unlike a missing file, which
+     returns nullptr (see the case above). */
+  TempDir dir;
+  const std::string name = dir.file("empty.xmpuzzle");
+
+  {
+    std::ofstream out(name);
+  }
+  REQUIRE(std::filesystem::file_size(name) == 0);
+
+  std::unique_ptr<std::istream> in(openGzFile(name.c_str()));
+  REQUIRE(in != nullptr);
 
   std::ostringstream got;
   got << in->rdbuf();
-
-  // ...yet a read from the nonexistent file silently yields nothing, and the
-  // stream still reports itself as good afterwards.
   REQUIRE(got.str().empty());
-  REQUIRE(in->good());
 }
 
 TEST_CASE("puzzle: an in-memory puzzle survives a save and reload", "[roundtrip]") {

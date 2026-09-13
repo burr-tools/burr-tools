@@ -196,6 +196,10 @@ int main(int argv, char* args[]) {
   }
 
   auto str = openGzFile(args[filenumber]);
+  if (!str) {
+    printf("could not open input file \"%s\"\n", args[filenumber]);
+    return 2;
+  }
   xmlParser_c pars(*str);
   puzzle_c p(pars);
 

@@ -113,6 +113,10 @@ int main(int argv, char* args[]) {
   }
 
   auto str = openGzFile(args[filenumber]);
+  if (!str) {
+    cout << "could not open input file \"" << args[filenumber] << "\"\n";
+    return 2;
+  }
   xmlParser_c pars(*str);
   puzzle_c p(pars);
 
