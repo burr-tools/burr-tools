@@ -231,7 +231,7 @@ std::ostream & xmlWriter_c::addContent(void)
 xmlParserException_c::xmlParserException_c(const std::string & desc, const std::string & state, int line, int col)
 {
   std::ostringstream str;
-  str << "xml Parser Exception : " << desc << " in state: " + state << "at position: " << line << "; " << col;
+  str << "xml Parser Exception : " << desc << " in state: " + state << " at position: " << line << "; " << col;
   description = str.str();
 }
 
