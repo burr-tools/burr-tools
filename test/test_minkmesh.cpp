@@ -30,10 +30,18 @@ std::unique_ptr<voxel_c> shape(const gridType_c & gt, unsigned sx, unsigned sy, 
   return v;
 }
 
+struct grid_test_def_s {
+  gridType_c::gridType g = gridType_c::GT_BRICKS;
+  unsigned sx = 0;
+  unsigned sy = 0;
+  unsigned sz = 0;
+  const char * name = nullptr;
+};
+
 } // namespace
 
 TEST_CASE("Minkowski mesher: prism, rhombic and tetra-octa shapes, both variants", "[minkmesh]") {
-  struct { gridType_c::gridType g; unsigned sx, sy, sz; const char * name; } grids[] = {
+  const grid_test_def_s grids[] = {
     { gridType_c::GT_TRIANGULAR_PRISM, 4, 3, 2, "prism" },
     { gridType_c::GT_RHOMBIC, 5, 5, 5, "rhombic" },
     { gridType_c::GT_TETRA_OCTA, 5, 5, 5, "tetra-octa" },
@@ -71,7 +79,7 @@ TEST_CASE("Minkowski mesher: the exporter and the view use it on the rhombic gri
 TEST_CASE("Minkowski mesher: dump the test shapes as STL", "[minkmesh][dump]") {
   const char * dir = getenv("MINK_DUMP");
   if (!dir) return;
-  struct { gridType_c::gridType g; unsigned sx, sy, sz; const char * name; } grids[] = {
+  const grid_test_def_s grids[] = {
     { gridType_c::GT_TRIANGULAR_PRISM, 4, 3, 2, "prism" },
     { gridType_c::GT_RHOMBIC, 5, 5, 5, "rhombic" },
     { gridType_c::GT_TETRA_OCTA, 5, 5, 5, "tetra-octa" },
@@ -95,7 +103,7 @@ TEST_CASE("Minkowski mesher: dump the test shapes as STL", "[minkmesh][dump]") {
 TEST_CASE("Minkowski mesher: random shapes", "[minkmesh][stress]") {
   int count = getenv("MINK_STRESS") ? atoi(getenv("MINK_STRESS")) : 3;
   std::mt19937 rng(12345);
-  struct { gridType_c::gridType g; unsigned sx, sy, sz; const char * name; } grids[] = {
+  const grid_test_def_s grids[] = {
     { gridType_c::GT_TRIANGULAR_PRISM, 6, 4, 3, "prism" },
     { gridType_c::GT_RHOMBIC, 7, 7, 7, "rhombic" },
     { gridType_c::GT_TETRA_OCTA, 7, 7, 7, "tetra-octa" },
@@ -141,7 +149,7 @@ TEST_CASE("Minkowski mesher: random shapes", "[minkmesh][stress]") {
  * lie in the cell of its voxel, and a tagged cell face must face the
  * neighbour it names */
 TEST_CASE("the view's STL mesh tags every face with its voxel on every grid", "[minkmesh][view]") {
-  struct { gridType_c::gridType g; unsigned sx, sy, sz; const char * name; } grids[] = {
+  const grid_test_def_s grids[] = {
     { gridType_c::GT_BRICKS, 3, 3, 2, "bricks" },
     { gridType_c::GT_TRIANGULAR_PRISM, 4, 3, 2, "prism" },
     { gridType_c::GT_RHOMBIC, 5, 5, 5, "rhombic" },
@@ -152,7 +160,7 @@ TEST_CASE("the view's STL mesh tags every face with its voxel on every grid", "[
     std::unique_ptr<voxel_c> v = shape(gt, gr.sx, gr.sy, gr.sz);
     std::unique_ptr<Polyhedron> view(v->getSTLMesh());
     int tagged = 0, faces = 0;
-    for (Polyhedron::const_face_iterator it = view->fBegin(); it != view->fEnd(); it++) {
+    for (Polyhedron::const_face_iterator it = view->fBegin(); it != view->fEnd(); ++it) {
       const Face * f = *it;
       faces++;
       unsigned int x, y, z;

@@ -268,7 +268,7 @@ static bool consolidate(const std::vector<poly_s> & raw0, mesh_s & out, std::str
   std::map<int, std::vector<int> > groups;
   for (unsigned p = 0; p < N; p++) if (planar[p]) groups[uf_s::find(parent, (int)p)].push_back((int)p);
   /* faces: loops (outer first) + the normal; patches go through as they are */
-  struct face_s { std::vector<std::vector<int> > loops; vec3 n; std::vector<int> tris; };
+  struct face_s { std::vector<std::vector<int> > loops; vec3 n{}; std::vector<int> tris; };
   std::vector<face_s> faces;
   for (unsigned p = 0; p < N; p++)
     if (!planar[p]) {

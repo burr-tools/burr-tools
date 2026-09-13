@@ -128,8 +128,8 @@ struct bits_s {
    * direction), the chamfer bit of the variant without interior chamfers
    * and the one of the variant with them; k and kFill their multipliers */
   std::vector<vec3> offset, chamfer, chamferFill;
-  double k, kFill;
-  bool prism;      /* the prism grid's bits, with their own sequences */
+  double k = 0, kFill = 0;
+  bool prism = false;      /* the prism grid's bits, with their own sequences */
 };
 
 /* rhombic and tetra-octa: cube and cuboctahedron */
@@ -394,7 +394,7 @@ void extractFaces(const Manifold & m, faces_s & out) {
   auto P = [&](size_t t, int c) -> const vec3 & { return pos[tv[3 * t + c]]; };
   std::vector<double> area, altitude;
   std::vector<vec3> nrm;
-  struct plane_s { vec3 n; double d; };
+  struct plane_s { vec3 n{}; double d = 0; };
   std::vector<plane_s> planes;
   const double TOL = 1e-6;
   std::map<std::pair<uint64_t, uint64_t>, size_t> owner;
@@ -909,8 +909,8 @@ bool construct(const Manifold & body, const bits_s & b, double g, double r, bool
 /* one cell of the shape for tagging the faces: its index and its faces
  * as outward planes, in getNeighbor's numbering */
 struct cellFaces_s {
-  unsigned index;
-  struct face_s { int n; vec3 normal; double d; };
+  unsigned index = 0;
+  struct face_s { int n = 0; vec3 normal{}; double d = 0; };
   std::vector<face_s> faces;
 };
 

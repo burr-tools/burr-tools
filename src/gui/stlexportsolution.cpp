@@ -62,13 +62,13 @@ namespace stlExportSolutionImpl {
       switch (params[i]->type) {
         case stlExporter_c::PAR_TYP_DOUBLE:
         case stlExporter_c::PAR_TYP_POS_DOUBLE:
-          stl->setParameter(i, atof(((LFl_Float_Input*)(params[i]->w))->value()));
+          stl->setParameter(i, atof(static_cast<LFl_Float_Input*>(params[i]->w)->value()));
           break;
         case stlExporter_c::PAR_TYP_POS_INTEGER:
-          stl->setParameter(i, atoi(((LFl_Int_Input*)(params[i]->w))->value()));
+          stl->setParameter(i, atoi(static_cast<LFl_Int_Input*>(params[i]->w)->value()));
           break;
         case stlExporter_c::PAR_TYP_SWITCH:
-          stl->setParameter(i, ((LFl_Check_Button*)(params[i]->w))->value());
+          stl->setParameter(i, static_cast<LFl_Check_Button*>(params[i]->w)->value());
           break;
         default:
           bt_assert(0);
@@ -153,8 +153,8 @@ void stlExportSolution_c::cb_Export(void)
 
   /* build list of (shapeId, count, path) for pieces actually placed in
    * the selected solution's assembly                                    */
-  struct Entry { unsigned int shapeId; unsigned int count; std::string fname; };
-  std::vector<Entry> entries;
+  struct SolPieceEntry { unsigned int shapeId = 0; unsigned int count = 0; std::string fname; };
+  std::vector<SolPieceEntry> entries;
 
   std::map<unsigned int, unsigned int> placed = placedShapeCounts(pr, sol);
   for (std::map<unsigned int, unsigned int>::const_iterator it = placed.begin();
@@ -176,7 +176,7 @@ void stlExportSolution_c::cb_Export(void)
     else
       snprintf(pathbuf, 1200, "%s%s.stl",  folder, safeName(raw).c_str());
 
-    Entry e;
+    SolPieceEntry e;
     e.shapeId = shapeId;
     e.count   = count;
     e.fname   = pathbuf;

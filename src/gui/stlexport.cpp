@@ -80,13 +80,13 @@ static void updateParameters(stlExporter_c * stl, const std::vector<inputField_c
     {
       case stlExporter_c::PAR_TYP_DOUBLE:
       case stlExporter_c::PAR_TYP_POS_DOUBLE:
-        stl->setParameter(i, atof(((LFl_Float_Input*)(params[i]->w))->value()));
+        stl->setParameter(i, atof(static_cast<LFl_Float_Input*>(params[i]->w)->value()));
         break;
       case stlExporter_c::PAR_TYP_POS_INTEGER:
-        stl->setParameter(i, atoi(((LFl_Int_Input*)(params[i]->w))->value()));
+        stl->setParameter(i, atoi(static_cast<LFl_Int_Input*>(params[i]->w)->value()));
         break;
       case stlExporter_c::PAR_TYP_SWITCH:
-        stl->setParameter(i, ((LFl_Check_Button*)(params[i]->w))->value());
+        stl->setParameter(i, static_cast<LFl_Check_Button*>(params[i]->w)->value());
         break;
       default:
         bt_assert(0);
