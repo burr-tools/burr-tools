@@ -101,15 +101,14 @@ TEST_CASE("voxel: get2 returns empty outside the space", "[voxel]") {
   REQUIRE(v->isFilled2(1, 1, 1));
 }
 
-TEST_CASE("voxel: the ASCII fixture helper maps axes without transposition", "[voxel]") {
+TEST_CASE("voxel: the ASCII fixture helper maps axis extents without transposition", "[voxel]") {
   /*
-   * The dimensions here are all different, and the one filled voxel sits
-   * off the diagonal: (2,0,0) is a valid coordinate but its transpose
-   * (0,2,0) is not (Y only goes up to 1). A `fromLayers` that swapped any
-   * two axes -- e.g. setState(y, x, z, ...) -- would either place the
-   * voxel somewhere else entirely or throw building a mis-shaped space,
-   * so this is the case that actually proves the mapping instead of just
-   * being invariant under a transpose.
+   * The dimensions here are all different (3, 2, 1), so a fromLayers that
+   * assigned the extents to the wrong axes -- e.g. building a 2x3x1 space
+   * instead of 3x2x1 -- is caught here. This case proves the EXTENT
+   * mapping; it cannot by itself prove the coordinate mapping, because its
+   * one filled voxel has two zero coordinates (see the companion case
+   * below for that).
    */
   gridType_c gt(gridType_c::GT_BRICKS);
 
@@ -121,9 +120,37 @@ TEST_CASE("voxel: the ASCII fixture helper maps axes without transposition", "[v
   REQUIRE(v->getX() == 3);
   REQUIRE(v->getY() == 2);
   REQUIRE(v->getZ() == 1);
+}
 
-  REQUIRE(v->isFilled(2, 0, 0));
-  REQUIRE(v->isEmpty(0, 1, 0));
+TEST_CASE("voxel: the ASCII fixture helper maps axis positions without transposition", "[voxel]") {
+  /*
+   * A cubic 3x3x3 space, so no pairwise axis swap changes the extents (an
+   * extent-only check like the case above would be blind here). The one
+   * filled voxel sits at (x=2, y=1, z=0) -- three mutually distinct
+   * coordinates -- so every one of the three possible pairwise swaps
+   * (X<->Y, X<->Z, Y<->Z) relocates it to a different, still in-bounds,
+   * position:
+   *   X<->Y swap -> (1,2,0)   X<->Z swap -> (0,1,2)   Y<->Z swap -> (2,0,1)
+   * None of those coincide with (2,1,0), so a positional REQUIRE catches
+   * every swap directly, without depending on a bt_assert bounds-check
+   * exception (which compiles away under -DNDEBUG).
+   */
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  std::unique_ptr<voxel_c> v = fromLayers(gt, {
+    { "...",
+      "..#",
+      "..." },
+    { "...",
+      "...",
+      "..." },
+    { "...",
+      "...",
+      "..." },
+  });
+
+  REQUIRE(v->isFilled(2, 1, 0));
+  REQUIRE(v->countState(voxel_c::VX_FILLED) == 1);
 }
 
 TEST_CASE("voxel: the ASCII fixture helper places voxels where it says", "[voxel]") {
