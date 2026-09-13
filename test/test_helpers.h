@@ -2,6 +2,8 @@
 #define BTTEST_TEST_HELPERS_H
 
 #include "lib/gridtype.h"
+#include "lib/problem.h"
+#include "lib/puzzle.h"
 #include "lib/voxel.h"
 
 #include <initializer_list>
@@ -102,6 +104,81 @@ inline std::unique_ptr<voxel_c> fromLayers(const gridType_c & gt,
 
 /* same dangling-grid footgun as makeVoxel above. */
 std::unique_ptr<voxel_c> fromLayers(gridType_c &&, std::initializer_list<std::vector<std::string>>) = delete;
+
+/**
+ * Deep-compare two puzzles for the properties a save/load roundtrip must
+ * preserve: grid type, comment, comment-popup flag, colours, shapes
+ * (including per-voxel state and colour), and problems with their names
+ * and result shapes.
+ *
+ * This is NOT a complete comparison of everything the save format
+ * persists. It deliberately does not look at: a shape's name, weight or
+ * hotspot; a problem's part list (per-shape minimum/maximum), piece
+ * groups, colour placement constraints, maxHoles, solveState, assembler
+ * state, solutions, or a problem's numAssemblies/numSolutions/usedTime
+ * (src/lib/problem.cpp:121-123 persists all three). A field missing from
+ * this list can still be covered directly in a test body with its own
+ * assertions (see the byte-fixpoint case in test_roundtrip.cpp, which
+ * does cover the format in full because it compares the serialized
+ * document rather than the in-memory object).
+ *
+ * Name it for what it checks, not for what it sounds like it checks: this
+ * is a narrow "did the roundtrip preserve the fields we track" probe, not
+ * a general-purpose "are these puzzles the same" comparison -- notably, a
+ * shape's name is the single most conspicuous thing it ignores. Do not
+ * reach for this as an "unchanged" check elsewhere without first checking
+ * the omissions list above.
+ *
+ * A note for whoever extends this: three problem_c accessors assert
+ * before use and are unsafe to call unconditionally --
+ * `getResultId()` asserts `resultValid()`, `getMaxHoles()` asserts
+ * `maxHolesDefined()`, and `getNumAssemblies()`/`getNumSolutions()`/
+ * `getUsedTime()` assert `solveState != SS_UNSOLVED`. Guard each before
+ * reading it, the way the result-id comparison below guards on
+ * `resultValid()`.
+ *
+ * Returns true when they match. Deliberately returns a plain bool rather
+ * than asserting, so a caller can use it inside REQUIRE and get the whole
+ * comparison reported as one assertion.
+ */
+inline bool puzzlesRoundtripEqual(const puzzle_c & a, const puzzle_c & b) {
+  if (a.getGridType()->getType() != b.getGridType()->getType()) return false;
+  if (a.getComment() != b.getComment()) return false;
+  if (a.getCommentPopup() != b.getCommentPopup()) return false;
+
+  if (a.colorNumber() != b.colorNumber()) return false;
+  for (unsigned int i = 0; i < a.colorNumber(); i++) {
+    unsigned char ar, ag, ab, br, bg, bb;
+    a.getColor(i, &ar, &ag, &ab);
+    b.getColor(i, &br, &bg, &bb);
+    if (ar != br || ag != bg || ab != bb) return false;
+  }
+
+  if (a.getNumberOfShapes() != b.getNumberOfShapes()) return false;
+  for (unsigned int s = 0; s < a.getNumberOfShapes(); s++) {
+    const voxel_c * va = a.getShape(s);
+    const voxel_c * vb = b.getShape(s);
+    if (va->getX() != vb->getX()) return false;
+    if (va->getY() != vb->getY()) return false;
+    if (va->getZ() != vb->getZ()) return false;
+    for (unsigned int i = 0; i < va->getXYZ(); i++) {
+      if (va->getState(i) != vb->getState(i)) return false;
+      if (va->getColor(i) != vb->getColor(i)) return false;
+    }
+  }
+
+  if (a.getNumberOfProblems() != b.getNumberOfProblems()) return false;
+  for (unsigned int p = 0; p < a.getNumberOfProblems(); p++) {
+    const problem_c * pa = a.getProblem(p);
+    const problem_c * pb = b.getProblem(p);
+    if (pa->getName() != pb->getName()) return false;
+
+    if (pa->resultValid() != pb->resultValid()) return false;
+    if (pa->resultValid() && pa->getResultId() != pb->getResultId()) return false;
+  }
+
+  return true;
+}
 
 } // namespace bttest
 
