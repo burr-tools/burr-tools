@@ -62,6 +62,31 @@ check: check-cppcheck
 # Run full static check suite (cppcheck + clang-tidy)
 check-all: check-cppcheck check-tidy
 
+# Configure the coverage build directory if not already set up
+setup-cov:
+    @if [ ! -d "build-cov" ]; then meson setup build-cov -Db_coverage=true; fi
+
+# Report test coverage for BurrTools sources (excludes subprojects and lua)
+coverage: setup-cov
+    ninja -C build-cov
+    ./build-cov/test_burrtools
+    gcovr --root . \
+          --filter 'src/lib/' --filter 'src/tools/' --filter 'src/halfedge/' \
+          --exclude 'src/lua/' \
+          {{ if os() == "macos" { '--gcov-executable "xcrun llvm-cov gcov"' } else { "" } }} \
+          --print-summary build-cov
+
+# Write an HTML coverage report to coverage-html/index.html
+coverage-html: setup-cov
+    ninja -C build-cov
+    ./build-cov/test_burrtools
+    mkdir -p coverage-html
+    gcovr --root . \
+          --filter 'src/lib/' --filter 'src/tools/' --filter 'src/halfedge/' \
+          --exclude 'src/lua/' \
+          {{ if os() == "macos" { '--gcov-executable "xcrun llvm-cov gcov"' } else { "" } }} \
+          --html-details coverage-html/index.html
+
 # Build with AddressSanitizer and UndefinedBehaviorSanitizer
 build-asan:
     @if [ ! -d "build-asan" ]; then meson setup build-asan -Db_sanitize=address,undefined; fi

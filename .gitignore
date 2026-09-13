@@ -21,3 +21,4 @@ subprojects/*
 *.dmg
 *.app
 dmg_contents/
+coverage-html/
