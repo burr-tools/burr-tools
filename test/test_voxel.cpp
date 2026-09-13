@@ -6,6 +6,7 @@
 #include "lib/voxel.h"
 
 #include <memory>
+#include <vector>
 
 using namespace bttest;
 
@@ -213,4 +214,239 @@ TEST_CASE("voxel: fromLayers pads ragged rows and maps '+' to VX_VARIABLE", "[vo
 
   REQUIRE(v->countState(voxel_c::VX_VARIABLE) == 2);
   REQUIRE(v->countState(voxel_c::VX_FILLED) == 2);
+}
+
+TEST_CASE("voxel: getIndex and indexToXYZ are inverses over the whole space", "[voxel][index]") {
+  for (gridType_c::gridType t : ALL_GRIDS) {
+    INFO("grid " << gridName(t));
+    gridType_c gt(t);
+    std::unique_ptr<voxel_c> v = makeVoxel(gt, 3, 4, 5);
+
+    for (unsigned int z = 0; z < v->getZ(); z++)
+      for (unsigned int y = 0; y < v->getY(); y++)
+        for (unsigned int x = 0; x < v->getX(); x++) {
+          int idx = v->getIndex(x, y, z);
+          REQUIRE(idx >= 0);
+          REQUIRE(static_cast<unsigned int>(idx) < v->getXYZ());
+
+          unsigned int rx = 0, ry = 0, rz = 0;
+          REQUIRE(v->indexToXYZ(idx, &rx, &ry, &rz));
+          REQUIRE(rx == x);
+          REQUIRE(ry == y);
+          REQUIRE(rz == z);
+        }
+  }
+}
+
+TEST_CASE("voxel: every index maps to a distinct coordinate", "[voxel][index]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+  std::unique_ptr<voxel_c> v = makeVoxel(gt, 3, 4, 5);
+
+  std::vector<bool> seen(v->getXYZ(), false);
+
+  for (unsigned int i = 0; i < v->getXYZ(); i++) {
+    unsigned int x = 0, y = 0, z = 0;
+    REQUIRE(v->indexToXYZ(i, &x, &y, &z));
+
+    int back = v->getIndex(x, y, z);
+    REQUIRE(static_cast<unsigned int>(back) == i);
+
+    REQUIRE_FALSE(seen[i]);
+    seen[i] = true;
+  }
+
+  for (bool s : seen)
+    REQUIRE(s);
+}
+
+TEST_CASE("voxel: the bounding box tracks the filled voxels", "[voxel][bbox]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  /* a single voxel at (1,1,0) in a 3x3x1 space */
+  std::unique_ptr<voxel_c> v = fromLayers(gt, {
+    { "...",
+      ".#.",
+      "..." },
+  });
+
+  REQUIRE(v->boundX1() == 1);
+  REQUIRE(v->boundX2() == 1);
+  REQUIRE(v->boundY1() == 1);
+  REQUIRE(v->boundY2() == 1);
+  REQUIRE(v->boundZ1() == 0);
+  REQUIRE(v->boundZ2() == 0);
+}
+
+TEST_CASE("voxel: minimizePiece crops to the bounding box", "[voxel][bbox]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  std::unique_ptr<voxel_c> v = fromLayers(gt, {
+    { "....",
+      ".##.",
+      "....",
+      "...." },
+  });
+
+  const unsigned int before = v->countState(voxel_c::VX_FILLED);
+  REQUIRE(before == 2);
+
+  v->minimizePiece();
+
+  /* the shape survives, the padding does not */
+  REQUIRE(v->countState(voxel_c::VX_FILLED) == before);
+  REQUIRE(v->getX() == 2);
+  REQUIRE(v->getY() == 1);
+  REQUIRE(v->getZ() == 1);
+  REQUIRE(v->isFilled(0, 0, 0));
+  REQUIRE(v->isFilled(1, 0, 0));
+}
+
+TEST_CASE("voxel: translate moves the shape and fills the vacated cells", "[voxel][bbox]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  std::unique_ptr<voxel_c> v = fromLayers(gt, {
+    { "#..",
+      "...",
+      "..." },
+  });
+
+  REQUIRE(v->isFilled(0, 0, 0));
+
+  v->translate(1, 1, 0, voxel_c::VX_EMPTY);
+
+  REQUIRE(v->isEmpty(0, 0, 0));
+  REQUIRE(v->isFilled(1, 1, 0));
+  REQUIRE(v->countState(voxel_c::VX_FILLED) == 1);
+}
+
+TEST_CASE("voxel: translating out and back is the identity", "[voxel][bbox]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  /* the shape must sit clear of the boundary in the direction of travel:
+     anything shifted off the edge cannot come back, so a round trip is
+     lossless only when nothing falls off */
+  std::unique_ptr<voxel_c> original = fromLayers(gt, {
+    { ".#..",
+      ".#..",
+      "...." },
+  });
+  std::unique_ptr<voxel_c> moved(gt.getVoxel(original.get()));
+
+  moved->translate(1, 0, 0, voxel_c::VX_EMPTY);
+  moved->translate(-1, 0, 0, voxel_c::VX_EMPTY);
+
+  REQUIRE(*moved == *original);
+}
+
+TEST_CASE("voxel: resize keeps the overlapping region", "[voxel][bbox]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  std::unique_ptr<voxel_c> v = fromLayers(gt, {
+    { "##",
+      "##" },
+  });
+
+  REQUIRE(v->countState(voxel_c::VX_FILLED) == 4);
+
+  /* growing keeps every voxel and pads with the filler */
+  v->resize(4, 4, 1, voxel_c::VX_EMPTY);
+  REQUIRE(v->getX() == 4);
+  REQUIRE(v->getY() == 4);
+  REQUIRE(v->countState(voxel_c::VX_FILLED) == 4);
+  REQUIRE(v->isFilled(0, 0, 0));
+  REQUIRE(v->isFilled(1, 1, 0));
+  REQUIRE(v->isEmpty(3, 3, 0));
+
+  /* shrinking discards what falls outside */
+  v->resize(1, 1, 1, voxel_c::VX_EMPTY);
+  REQUIRE(v->getX() == 1);
+  REQUIRE(v->countState(voxel_c::VX_FILLED) == 1);
+}
+
+TEST_CASE("voxel: the hotspot defaults to the origin and moves when set", "[voxel][hotspot]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+  std::unique_ptr<voxel_c> v = makeVoxel(gt, 3, 3, 3);
+
+  REQUIRE(v->getHx() == 0);
+  REQUIRE(v->getHy() == 0);
+  REQUIRE(v->getHz() == 0);
+
+  v->setHotspot(1, 2, 0);
+
+  REQUIRE(v->getHx() == 1);
+  REQUIRE(v->getHy() == 2);
+  REQUIRE(v->getHz() == 0);
+}
+
+TEST_CASE("voxel: scaling up multiplies the filled voxel count", "[voxel][scale]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  std::unique_ptr<voxel_c> v = fromLayers(gt, {
+    { "#." },
+  });
+
+  const unsigned int before = v->countState(voxel_c::VX_FILLED);
+  REQUIRE(before == 1);
+
+  v->scale(2, false);
+
+  /* each voxel becomes a 2x2x2 block */
+  REQUIRE(v->countState(voxel_c::VX_FILLED) == before * 8);
+}
+
+TEST_CASE("voxel: scaling up then down is the identity", "[voxel][scale]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  std::unique_ptr<voxel_c> original = fromLayers(gt, {
+    { "##",
+      "#." },
+  });
+  std::unique_ptr<voxel_c> roundtrip(gt.getVoxel(original.get()));
+
+  roundtrip->scale(2, false);
+  REQUIRE(roundtrip->scaleDown(2, true));
+
+  REQUIRE(roundtrip->countState(voxel_c::VX_FILLED)
+          == original->countState(voxel_c::VX_FILLED));
+  REQUIRE(roundtrip->identicalInBB(original.get()));
+}
+
+TEST_CASE("voxel: scaleDown refuses a shape that does not divide evenly", "[voxel][scale]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  /* a single voxel cannot be halved */
+  std::unique_ptr<voxel_c> v = fromLayers(gt, {
+    { "#" },
+  });
+
+  REQUIRE_FALSE(v->scaleDown(2, false));
+}
+
+TEST_CASE("voxel: getMirrorTransform finds the mirror of a chiral shape", "[voxel][mirror]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  /* an S/Z tetromino pair: chiral in the plane, so one is the other's mirror */
+  std::unique_ptr<voxel_c> s = fromLayers(gt, {
+    { ".##",
+      "##." },
+  });
+  std::unique_ptr<voxel_c> z = fromLayers(gt, {
+    { "##.",
+      ".##" },
+  });
+
+  const unsigned char tr = s->getMirrorTransform(z.get());
+
+  /* 0 means "no mirror transformation relates these two" */
+  INFO("mirror transform " << (int)tr);
+  REQUIRE(tr != 0);
+
+  /* getMirrorTransform searches only the mirror range and returns 0 when no
+     mirror transformation relates the two shapes. An achiral shape IS related
+     to itself by one, so a square also answers non-zero. (voxel.cpp:265) */
+  std::unique_ptr<voxel_c> square = fromLayers(gt, {
+    { "##",
+      "##" },
+  });
+  REQUIRE(square->getMirrorTransform(square.get()) != 0);
 }
