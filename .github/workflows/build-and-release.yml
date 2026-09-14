@@ -38,7 +38,7 @@ jobs:
       run: just build
     
     - name: Run tests
-      run: just test
+      run: just test-all
     
     - name: Run static analysis
       run: just check
@@ -143,14 +143,23 @@ jobs:
       run: sudo apt-get update
     
     - name: Install dependencies
-      run: sudo apt-get install -y meson ninja-build mingw-w64
+      run: sudo apt-get install -y meson ninja-build mingw-w64 wine64
     
     - name: Setup build directory
       run: meson setup build-win --cross-file cross-mingw64.txt --buildtype=release --werror -Dpython=disabled
     
     - name: Build
       run: ninja -C build-win
-    
+
+    # This job cross-compiles with MinGW on a Linux runner, so the test binary
+    # is a Windows executable that the runner cannot execute directly.
+    # cross-mingw64.txt sets exe_wrapper = 'wine64', so meson runs it through
+    # Wine. Both suites must pass before anything is stripped or packaged.
+    - name: Run tests
+      env:
+        WINEDEBUG: -all
+      run: meson test -C build-win --suite fast --suite slow --print-errorlogs
+
     - name: Strip binaries
       run: x86_64-w64-mingw32-strip build-win/burrtools.exe build-win/burrTxt.exe build-win/burrTxt2.exe
     
@@ -198,7 +207,7 @@ jobs:
       run: just build
     
     - name: Run tests
-      run: just test
+      run: just test-all
     
     - name: Strip binaries
       run: strip -x build/burrtools build/burrTxt build/burrTxt2

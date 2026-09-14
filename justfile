@@ -29,9 +29,19 @@ rebuild:
     meson setup build
     ninja -C build
 
-# Run test suite
+# Run the fast test suite (everything but the stress cases)
 test: build
-    ninja -C build test
+    meson test -C build --suite fast --print-errorlogs
+
+# Run only the slow/stress cases
+test-slow: build
+    meson test -C build --suite slow --print-errorlogs
+
+# Run every test, fast and slow. This is what CI runs.
+# Named suites rather than "everything", so a vendored subproject's own test
+# suite (libpng ships one) cannot gate this project's CI.
+test-all: build
+    meson test -C build --suite fast --suite slow --print-errorlogs
 
 # Run Python wrapper test suite
 test-py: build

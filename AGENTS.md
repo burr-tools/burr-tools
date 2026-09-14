@@ -11,7 +11,9 @@ Always use [`just`](justfile) to execute build, test, and quality control tasks.
 ```bash
 just                # Show available recipes (default)
 just build          # Compile BurrTools binaries (build/burrtools, build/burrTxt, build/burrTxt2, build/test_burrtools)
-just test           # Run Catch2 regression test suite (~9.7s, ~8.4s of which is the pre-existing Minkowski random-shapes case)
+just test           # Fast test suite: Catch2 (minus stress cases) + Python wrapper (~1.7s)
+just test-slow      # Stress cases only, chiefly the Minkowski random-shapes case (~9s)
+just test-all       # Everything, fast and slow. This is what CI runs (~9.2s)
 just check          # Fast static code analysis with cppcheck (~5s, always run before finishing tasks)
 just check-tidy     # Deep static analysis with clang-tidy on BurrTools sources
 just check-scan     # Clang Static Analyzer (scan-build)
@@ -84,4 +86,4 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
    - Never edit files inside `subprojects/` or `src/lua/`.
    - Ensure tools and regexes ignore these directories so static analysis and formatting stay focused on BurrTools sources (`burr-tools/src/(?!lua/).*`).
 6. **Quality Verification:**
-   - After making code modifications, always verify that `just build`, `just test` (regression tests), and `just check` (static analysis) pass cleanly.
+   - After making code modifications, always verify that `just build`, `just test-all` (regression tests, fast and slow), and `just check` (static analysis) pass cleanly. `just test` is the quick loop to use while iterating; run `just test-all` before calling a task done, since it is what CI runs.
