@@ -143,7 +143,7 @@ jobs:
       run: sudo apt-get update
     
     - name: Install dependencies
-      run: sudo apt-get install -y meson ninja-build mingw-w64 wine64
+      run: sudo apt-get install -y meson ninja-build mingw-w64 wine
     
     - name: Setup build directory
       run: meson setup build-win --cross-file cross-mingw64.txt --buildtype=release --werror -Dpython=disabled
@@ -153,7 +153,7 @@ jobs:
 
     # This job cross-compiles with MinGW on a Linux runner, so the test binary
     # is a Windows executable that the runner cannot execute directly.
-    # cross-mingw64.txt sets exe_wrapper = 'wine64', so meson runs it through
+    # cross-mingw64.txt sets exe_wrapper = 'wine', so meson runs it through
     # Wine. Both suites must pass before anything is stripped or packaged.
     - name: Run tests
       env:

@@ -5,7 +5,7 @@ ar = 'x86_64-w64-mingw32-ar'
 strip = 'x86_64-w64-mingw32-strip'
 windres = 'x86_64-w64-mingw32-windres'
 pkgconfig = 'x86_64-w64-mingw32-pkg-config'
-exe_wrapper = 'wine64'
+exe_wrapper = 'wine'
 
 [properties]
 needs_exe_wrapper = true
