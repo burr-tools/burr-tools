@@ -118,7 +118,14 @@ unsigned int puzzle_c::addColor(unsigned char r, unsigned char g, unsigned char 
 
 void puzzle_c::removeColor(unsigned int col) {
 
-  bt_assert(col <= colors.size());
+  /* col is a colour id, not an index into `colors`: id 0 is the neutral
+     colour that every shape starts out with and that placement constraints
+     ignore, so the ids of the entries in `colors` run from 1 upwards and
+     the erase below converts with col-1. An id of 0 names no entry and must
+     be rejected here -- `col <= colors.size()` alone let it through, and
+     `colors.begin() + (col - 1)` then wrapped the unsigned subtraction into
+     a wild offset. */
+  bt_assert(col >= 1 && col <= colors.size());
 
   // go through all shapes and remove the deleted colour
   for (unsigned int i = 0; i < shapes.size(); i++)

@@ -362,6 +362,27 @@ TEST_CASE("puzzle: removeColor takes a 1-based colour id and renumbers the ones 
   REQUIRE(b == 255);
 }
 
+
+TEST_CASE("puzzle: removeColor rejects colour id 0 rather than erasing at a wrapped offset",
+          "[model][puzzle][color]") {
+  std::unique_ptr<puzzle_c> p = makePuzzle();
+  p->addColor(255, 0, 0);
+
+#ifndef NDEBUG
+  /* Colour id 0 is the neutral colour: it is not an entry in the list, so
+     there is nothing to erase. The bound removeColor checks used to be
+     `col <= colors.size()`, which admits 0 and then computes
+     `colors.begin() + (col - 1)` on an unsigned -- a wrapped offset far
+     outside the vector. The check now rejects 0 up front, which bt_assert
+     surfaces as assert_exception in a debug build. Guarded because under
+     NDEBUG bt_assert compiles to ((void)0) and nothing is thrown. */
+  REQUIRE_THROWS_AS(p->removeColor(0), assert_exception);
+
+  // and the colour list is untouched by the rejected call
+  REQUIRE(p->colorNumber() == 1);
+#endif
+}
+
 TEST_CASE("puzzle: comment and comment-popup flag round-trip through their setters", "[model][puzzle]") {
   std::unique_ptr<puzzle_c> p = makePuzzle();
 

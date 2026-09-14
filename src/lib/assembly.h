@@ -163,24 +163,6 @@ private:
   /** pointer to the symmetry class for this puzzle */
   const symmetries_c * sym;
 
-  /** the equality operation.
-   * 2 assemblies are equal, if all placements are equal
-   */
-  bool operator == (const assembly_c & b) const {
-    /* two assemblies are equal if all placements and transformations
-     * of all pieces are identical
-     * Comparisons are only possible, when the two assemblies
-     * have the same number of pieces
-     */
-    bt_assert(placements.size() == b.placements.size());
-
-    for (unsigned int i = 0; i < placements.size(); i++)
-      if (!(placements[i] == b.placements[i]))
-        return false;
-
-    return true;
-  }
-
   /**
    * returns true, if assembly b is smaller than this assembly.
    * This function is used in the smallerRotationExists function

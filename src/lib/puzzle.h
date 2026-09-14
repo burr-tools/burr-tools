@@ -170,13 +170,21 @@ public:
   /** add a colour, return the index of the new colour */
   unsigned int addColor(unsigned char r, unsigned char g, unsigned char b);
   /**
-   * remove a colour with given index.
+   * remove the colour with the given colour id.
+   *
+   * `col` is a colour ID, running from 1 upwards, NOT an index into the
+   * colour list the way addColor's return value and changeColor's and
+   * getColor's `idx` are. This is the numbering shapes and problem_c's
+   * colour constraints use, where id 0 is the neutral colour, so
+   * `removeColor(n)` removes the colour `getColor(n-1)` reads. Id 0 names
+   * no colour and cannot be removed.
+   *
    * All shapes are updated to not use that
    * colour any more, colour constraints are updated for all problems to no
    * longer use that colour, its your task to make sure the now invalid solutions
    * are removed
    */
-  void removeColor(unsigned int idx);
+  void removeColor(unsigned int col);
   /** change the RGB value of one colour */
   void changeColor(unsigned int idx, unsigned char r, unsigned char g, unsigned char b);
   /** get the RGB value of one colour */
