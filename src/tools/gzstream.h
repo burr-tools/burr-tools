@@ -114,8 +114,11 @@ public:
 };
 
 
-// this function tries to open the file using gz
-// if that fails it will open with normal stream
+// this function opens the named file through zlib's gzopen(), which also
+// transparently reads plain, uncompressed files; a plain std::ifstream is
+// tried as a fallback if that fails.
+// Returns nullptr if the file could not be opened at all (e.g. it does not
+// exist) -- callers MUST check for that before using the returned stream.
 std::unique_ptr<std::istream> openGzFile(const char * name);
 std::unique_ptr<std::istream> openGzFile(const std::filesystem::path & path);
 

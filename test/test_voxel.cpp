@@ -499,3 +499,32 @@ TEST_CASE("voxel: identicalInBB is colour-sensitive", "[voxel]") {
   REQUIRE_FALSE(a->identicalInBB(b.get(), true));
   REQUIRE_FALSE(a->identicalInBB(b.get()));
 }
+
+TEST_CASE("voxel: copying preserves the name", "[voxel]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+
+  std::unique_ptr<voxel_c> original = fromLayers(gt, {
+    { "#." },
+  });
+  original->setName("original shape");
+
+  /* bttest::copyVoxel(gt, orig) calls gridType_c::getVoxel(const voxel_c &),
+     which binds to the reference overload and constructs the new shape via
+     voxel_0_c(const voxel_c & orig) : voxel_c(orig) { } -- so this exercises
+     voxel_c's REFERENCE copy constructor (voxel.cpp, `voxel_c(const voxel_c &
+     orig)`). */
+  std::unique_ptr<voxel_c> byRef = copyVoxel(gt, *original);
+  REQUIRE(byRef->getName() == "original shape");
+
+  /* gridType_c also has a getVoxel(const voxel_c *) overload, which
+     mainWindow_c::cb_CopyShape() (src/gui/mainwindow.cpp) actually uses --
+     puzzle_c::getShape() returns a voxel_c*, so that call resolves to the
+     pointer overload and constructs the copy via voxel_0_c(const voxel_c *
+     orig) : voxel_c(orig) { }, exercising voxel_c's POINTER copy
+     constructor (voxel.cpp, `voxel_c(const voxel_c * orig)`). copyVoxel()
+     only has a reference overload, so call gt.getVoxel() directly here to
+     reach the pointer constructor and cover the exact path the GUI's Copy
+     button takes. */
+  std::unique_ptr<voxel_c> byPtr(gt.getVoxel(original.get()));
+  REQUIRE(byPtr->getName() == "original shape");
+}

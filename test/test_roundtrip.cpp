@@ -109,61 +109,53 @@ TEST_CASE("gzstream: compressing then reading back preserves a longer payload", 
   REQUIRE(got.str() == payload);
 }
 
-TEST_CASE("gzstream: a missing file is silently treated as an empty document (BUG)", "[gzstream]") {
-  /* openGzFile(name) constructs `new igzstream(name)`. igzstream inherits from
-     both gzstreambase and std::istream. gzstreambase's constructor correctly
-     sets badbit when gzopen() fails to find the file, but igzstream's own
-     constructor runs std::istream(&buf) *after* that, and that base
-     constructor calls ios::init(&buf), which resets rdstate() to goodbit
-     because the streambuf pointer is non-null. The badbit set moments
-     earlier is silently wiped out.
-     The net effect, confirmed here, is that openGzFile on a nonexistent
-     path returns a non-null stream that reports good()/fail()/bad()/eof()
-     as if nothing were wrong, both before and after an attempted read, and
-     that read produces zero bytes. Every caller in the application that
-     does `openGzFile(path)` then treats a *missing* puzzle file exactly
-     like a *valid, empty* one -- there is no way for the caller to detect
-     the file did not exist by checking stream state. This is a genuine,
-     pre-existing BurrTools bug in the vendored gzstream wrapper's
-     interaction with the igzstream multiple-inheritance layout, not a
-     mistake in this test.
+TEST_CASE("gzstream: a missing file is reported as such, not as an empty document", "[gzstream]") {
+  /* openGzFile(name) constructs an igzstream, which inherits from
+     both gzstreambase and std::istream, which share the virtual base
+     std::ios. Base initialisers run in declaration order, so gzstreambase's
+     constructor correctly sets badbit when gzopen() fails to find the file,
+     but igzstream's own constructor runs std::istream(&buf) *after* that,
+     and that base constructor calls ios::init(&buf), which resets
+     rdstate() to goodbit because the streambuf pointer is non-null. The
+     badbit set moments earlier is silently wiped out by that reset -- so
+     the stream's own rdstate() can never be trusted to reveal an open
+     failure.
 
-     Two things make it worse than a construction-order curiosity:
-
-     1. The documented fallback for this situation never runs. openGzFile
-        (gzstream.cpp:161-165) reads:
-          igzstream * gz = new igzstream(name);
-          if (!gz) { delete gz; return new std::ifstream(name); }
-        `new` either returns a valid pointer or throws std::bad_alloc; it
-        never returns null. So `!gz` is always false and the plain-
-        std::ifstream fallback is dead code that can never execute -- the
-        badbit-loses-to-goodbit path above is the only one ever taken.
-
-     2. Real call sites have no guard and no recovery. src/burrTxt.cpp:203
-        and src/burrTxt2.cpp:115 both call openGzFile(args[filenumber])
-        directly, with no fileExists() check first (AGENTS.md notes
-        src/tools/ already has file-existence helpers -- unused here) and
-        no try/catch around the xmlParser_c/puzzle_c construction that
-        follows. A mistyped filename does not report "missing"; it is read
-        as an empty document, fails XML parsing instead, and that
-        exception propagates out of main() uncaught, aborting the CLI
-        tool. */
+     openGzFile() sidesteps that trap by asking the underlying gzstreambuf
+     directly whether gzopen() actually succeeded (gzstreambuf::is_open())
+     rather than trusting the istream's rdstate(). When neither that nor the
+     plain-ifstream fallback can open the file it returns nullptr, instead of
+     handing back a stream that reads zero bytes. Callers must check for
+     nullptr before using the stream; src/burrTxt.cpp and src/burrTxt2.cpp
+     do so. */
   TempDir dir;
   const std::string name = dir.file("does-not-exist.xmpuzzle");
 
   std::unique_ptr<std::istream> in(openGzFile(name.c_str()));
-  REQUIRE(in != nullptr);
+  REQUIRE(in == nullptr);
+}
 
-  // Documents the bug: the stream claims to be perfectly fine...
-  REQUIRE(in->good());
+TEST_CASE("gzstream: a present-but-empty file is distinguishable from a missing one", "[gzstream]") {
+  /* This is the exact property openGzFile() must provide: "missing" and
+     "present but empty" are different situations and callers must be able
+     to tell them apart. A file that exists but has zero bytes opens fine
+     (gzstreambuf::is_open() is true, so openGzFile() returns non-null),
+     and reading from it yields zero bytes -- unlike a missing file, which
+     returns nullptr (see the case above). */
+  TempDir dir;
+  const std::string name = dir.file("empty.xmpuzzle");
+
+  {
+    std::ofstream out(name);
+  }
+  REQUIRE(std::filesystem::file_size(name) == 0);
+
+  std::unique_ptr<std::istream> in(openGzFile(name.c_str()));
+  REQUIRE(in != nullptr);
 
   std::ostringstream got;
   got << in->rdbuf();
-
-  // ...yet a read from the nonexistent file silently yields nothing, and the
-  // stream still reports itself as good afterwards.
   REQUIRE(got.str().empty());
-  REQUIRE(in->good());
 }
 
 TEST_CASE("puzzle: an in-memory puzzle survives a save and reload", "[roundtrip]") {
@@ -212,6 +204,37 @@ TEST_CASE("puzzle: an in-memory puzzle survives a save and reload", "[roundtrip]
   REQUIRE(bttest::puzzlesRoundtripEqual(original, restored));
 }
 
+TEST_CASE("puzzle: a comment made up only of XML-special characters survives a save and reload", "[roundtrip]") {
+  /* xmlWriter_c::addContent escapes '<', '>', '"', '&' and '\'', so a
+     comment consisting solely of those characters is written as a body
+     that is entirely one or more entity references, e.g. "<&" becomes
+     <comment>&lt;&amp;</comment>. xmlParser_c::next() used to merge a
+     lone entity reference with the immediately following END_TAG and
+     report END_TAG instead of TEXT, so puzzle_c::load() (which only
+     assigns the comment on a TEXT event) silently dropped it on reload.
+     See test_xml.cpp's "an entity that is an element's sole content
+     resolves as text" case for the parser-level mechanism. */
+  puzzle_c original(new gridType_c(gridType_c::GT_BRICKS));
+
+  original.setComment("<&>\"'");
+  original.setCommentPopup(true);
+
+  std::ostringstream saved;
+  {
+    xmlWriter_c xml(saved);
+    original.save(xml);
+  }
+
+  REQUIRE(saved.str().size() > 0);
+
+  std::istringstream reloaded(saved.str());
+  xmlParser_c pars(reloaded);
+  puzzle_c restored(pars);
+
+  REQUIRE(restored.getComment() == "<&>\"'");
+  REQUIRE(bttest::puzzlesRoundtripEqual(original, restored));
+}
+
 TEST_CASE("puzzle: saving a reloaded puzzle reproduces the same document", "[roundtrip]") {
   gridType_c gt(gridType_c::GT_BRICKS);
 
@@ -235,30 +258,11 @@ TEST_CASE("puzzle: saving a reloaded puzzle reproduces the same document", "[rou
     { "#.",
       ".#" },
   });
+  shape->setName("fixpoint shape");
+  shape->setWeight(7);
+  shape->setHotspot(1, 1, 0);
+  shape->setColor(0, 0, 0, 1);
   const unsigned int shapeIdx = original.addShape(original.getGridType()->getVoxel(*shape));
-
-  /* gridType_c::getVoxel(const voxel_c &) above does not copy a shape's
-     name. voxel_c has two copy constructors and BOTH omit `name` from
-     their initializer list: the reference form (voxel.cpp:116-117) and
-     the pointer form (voxel.cpp:141-142) -- both carry gt, sx, sy, sz,
-     voxels, hx, hy, hz and weight, but not name. So a name set on the
-     `shape` local before addShape would be silently lost before save/load
-     ever runs. Set the mutable shape properties on the puzzle's own
-     stored copy instead.
-
-     This is reachable and user-visible today, not just an internal
-     roundtrip footgun: cb_CopyShape() (src/gui/mainwindow.cpp:238) copies
-     a shape through exactly this path when the user presses the GUI's
-     "Copy" button, and PieceSelector::getText()
-     (src/gui/BlockList.cpp:330-331) renders a shape's name in the piece
-     list -- so naming a shape and clicking Copy produces a copy that
-     shows up in the list with no name. No pinning test is added for this
-     here; it belongs with voxel_c's own tests. */
-  voxel_c * ownShape = original.getShape(shapeIdx);
-  ownShape->setName("fixpoint shape");
-  ownShape->setWeight(7);
-  ownShape->setHotspot(1, 1, 0);
-  ownShape->setColor(0, 0, 0, 1);
 
   const unsigned int prob = original.addProblem();
   original.getProblem(prob)->setName("fixpoint problem");

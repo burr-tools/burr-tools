@@ -133,7 +133,7 @@ bool grouping_c::addPieceToSet(unsigned int pc) {
         else {
 
           // remove already placed pieces from the group
-          for (unsigned int p2 = 0; p2 < p; p++)
+          for (unsigned int p2 = 0; p2 < p; p2++)
             pieces[findPiece(sets[set].pieces[p2], sets[set].currentGroup)].count++;
 
           set--;

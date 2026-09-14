@@ -108,14 +108,16 @@ voxel_c::voxel_c(unsigned int x, unsigned int y, unsigned int z, const gridType_
 voxel_c::voxel_c(const voxel_c & orig) :
   gt(orig.gt), sx(orig.sx), sy(orig.sy), sz(orig.sz), voxels(orig.voxels), space(orig.space),
   bx1(orig.bx1), bx2(orig.bx2), by1(orig.by1), by2(orig.by2), bz1(orig.bz1), bz2(orig.bz2),
-  doRecalc(true), symmetries(symmetryInvalid()), hx(orig.hx), hy(orig.hy), hz(orig.hz), weight(orig.weight),
+  doRecalc(true), symmetries(symmetryInvalid()), hx(orig.hx), hy(orig.hy), hz(orig.hz),
+  name(orig.name), weight(orig.weight),
   BbHsCache(9 * orig.gt->getSymmetries()->getNumTransformationsMirror(), BBHSCACHE_UNINIT) {
 }
 
 voxel_c::voxel_c(const voxel_c * orig) :
   gt(orig->gt), sx(orig->sx), sy(orig->sy), sz(orig->sz), voxels(orig->voxels), space(orig->space),
   bx1(orig->bx1), bx2(orig->bx2), by1(orig->by1), by2(orig->by2), bz1(orig->bz1), bz2(orig->bz2),
-  doRecalc(true), symmetries(symmetryInvalid()), hx(orig->hx), hy(orig->hy), hz(orig->hz), weight(orig->weight),
+  doRecalc(true), symmetries(symmetryInvalid()), hx(orig->hx), hy(orig->hy), hz(orig->hz),
+  name(orig->name), weight(orig->weight),
   BbHsCache(9 * orig->gt->getSymmetries()->getNumTransformationsMirror(), BBHSCACHE_UNINIT) {
 }
 

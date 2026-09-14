@@ -130,6 +130,9 @@ void xmlWriter_c::newAttrib(const std::string & attrib, signed long value)
 
 void xmlWriter_c::endTag(const std::string & name)
 {
+  if (tagStack.empty())
+    throw xmlWriterException_c("Try to close tag, but no tag is open");
+
   if (name != *(tagStack.rbegin()))
     throw xmlWriterException_c("Try to close tag with wrong name");
 
@@ -228,7 +231,7 @@ std::ostream & xmlWriter_c::addContent(void)
 xmlParserException_c::xmlParserException_c(const std::string & desc, const std::string & state, int line, int col)
 {
   std::ostringstream str;
-  str << "xml Parser Exception : " << desc << " in state: " + state << "at position: " << line << "; " << col;
+  str << "xml Parser Exception : " << desc << " in state: " + state << " at position: " << line << "; " << col;
   description = str.str();
 }
 
@@ -836,6 +839,13 @@ void xmlParser_c::pushText(int delimiter, bool resolveEntities)
     if (delimiter == ' ')
       if (next <= ' ' || next == '>')
         break;
+    // AttValue ::= '"' ([^<&"] | Reference)* '"'  (XML 1.0 section 3.1) forbids
+    // a literal '<' inside an attribute value. When delimiter is '<' we are
+    // instead parsing element content, where '<' is what legitimately ends
+    // the run, so only reject it for the attribute-value case (delimiter is
+    // the quote character or the relaxed-mode whitespace sentinel).
+    if (next == '<' && delimiter != '<')
+      exception ("illegal character '<' in attribute value");
     if (next == '&')
     {
       if (!resolveEntities)
@@ -1071,7 +1081,7 @@ int xmlParser_c::next(void)
     nextImpl();
     if (type < minType)
       minType = type;
-  } while (minType > CDSECT                       // ignorable
+  } while (minType > ENTITY_REF                   // ignorable
       || (minType >= TEXT && peekType () >= TEXT));
 
   type = minType;

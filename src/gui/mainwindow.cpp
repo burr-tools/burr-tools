@@ -2001,6 +2001,11 @@ bool mainWindow_c::tryToLoad(const char * f) {
   if (!fileExists(f)) return false;
 
   auto str = openGzFile(f);
+  // openGzFile() can still return nullptr here even though fileExists()
+  // just passed: TOCTOU (the file was removed/renamed between the two
+  // calls) or a gzopen() allocation failure. Match the fileExists() early
+  // return above rather than dereferencing a null stream.
+  if (!str) return false;
   xmlParser_c pars(*str);
 
   std::unique_ptr<puzzle_c> newPuzzle;

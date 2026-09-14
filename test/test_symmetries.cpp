@@ -2,7 +2,6 @@
 
 #include "test_helpers.h"
 
-#include "lib/bt_assert.h"
 #include "lib/gridtype.h"
 #include "lib/symmetries.h"
 #include "lib/voxel.h"
@@ -118,30 +117,17 @@ TEST_CASE("symmetries: transAdd composes transformations", "[symmetry]") {
        voxel_2_c::transform() for transformations 0-23 (the 24 plain cube
        rotations; transMult rows 0-23 are exactly the ones with no TND
        entries). Transformations 24-119 either fail transform() on this
-       fixture's cell layout or land on a TND/thrown composition, so they
+       fixture's cell layout or land on a TND composition, so they
        get NO composition coverage here at all -- the 576 sphere pairs
        actually asserted below are precisely t1,t2 in {0..23}, already
        covered three times over by GT_BRICKS/GT_RHOMBIC/GT_TETRA_OCTA.
        Building an FCC-aligned fixture to close this gap is out of scope
        for this task; this comment exists so nobody mistakes the loop
        bound `n` for actual coverage of all `n` sphere transformations. */
-    unsigned int thrown = 0, checked = 0;
+    unsigned int checked = 0;
     for (unsigned int t1 = 0; t1 < n; t1++)
       for (unsigned int t2 = 0; t2 < n; t2++) {
-        unsigned char combined;
-        try {
-          combined = sym->transAdd(t1, t2);
-        } catch (const assert_exception &) {
-          /* KNOWN BUG, src/lib/symmetries_2.cpp:80: an extra bt_assert fires
-             instead of returning TND, which src/lib/symmetries.h:129
-             documents as the correct result when a composition does not
-             exist. Debug builds only -- under NDEBUG bt_assert expands to
-             ((void)0) and this branch is never taken, so release builds
-             already return TND correctly. Counted and pinned below so this
-             workaround cannot outlive the bug. */
-          thrown++;
-          continue;
-        }
+        unsigned char combined = sym->transAdd(t1, t2);
         if (combined == TND) continue;
 
         INFO("t1 " << t1 << " t2 " << t2 << " combined " << (int)combined);
@@ -161,21 +147,13 @@ TEST_CASE("symmetries: transAdd composes transformations", "[symmetry]") {
         REQUIRE(stepwise->identicalInBB(direct.get()));
       }
 
-    /* 6912 of the 14400 plain-transformation sphere pairs hold TND in
-       tabs_2/transmult.inc and hit the symmetries_2.cpp:80 bug above. When
-       that bug is fixed, transAdd() starts returning TND for those pairs
-       instead of throwing, the catch above stops firing, thrown drops to 0,
-       and this REQUIRE fails -- which is the signal to delete the try/catch
-       and this REQUIRE together. */
-    REQUIRE(thrown == (t == gridType_c::GT_SPHERES ? 6912u : 0u));
-
     /* REQUIRE(checked > 0) alone floors this branch's most valuable
        coverage at a single assertion: the continues just above skip
        silently on any transform() failure, so a regression that made
        transform() always return false would collapse `checked` from
        thousands down to 1 and this case would still go green. Pin the
-       measured value exactly, the same way `thrown` is pinned above, so a
-       silent collapse in coverage fails loudly instead of passing quietly.
+       measured value exactly, so a silent collapse in coverage fails
+       loudly instead of passing quietly.
        Measured directly from this test body (printf, three repeated runs,
        all identical -- the loop is purely deterministic, no RNG involved)
        before being encoded here. GT_BRICKS, GT_SPHERES, GT_RHOMBIC and
