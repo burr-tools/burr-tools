@@ -11,9 +11,9 @@ Always use [`just`](justfile) to execute build, test, and quality control tasks.
 ```bash
 just                # Show available recipes (default)
 just build          # Compile BurrTools binaries (build/burrtools, build/burrTxt, build/burrTxt2, build/test_burrtools)
-just test           # Fast test suite: Catch2 (minus stress cases) + Python wrapper (~1.7s)
-just test-slow      # Stress cases only, chiefly the Minkowski random-shapes case (~9s)
-just test-all       # Everything, fast and slow. This is what CI runs (~9.2s)
+just test           # Fast test suite: Catch2 (minus stress cases) + Python wrapper
+just test-slow      # Stress cases only, chiefly the Minkowski random-shapes case
+just test-all       # Everything, fast and slow. This is what CI runs
 just check          # Fast static code analysis with cppcheck (~5s, always run before finishing tasks)
 just check-tidy     # Deep static analysis with clang-tidy on BurrTools sources
 just check-scan     # Clang Static Analyzer (scan-build)
@@ -24,6 +24,15 @@ just clean          # Clean build artifacts
 just rebuild        # Rebuild from scratch (removes build/ and re-runs meson setup)
 just build-werror   # Build with warnings treated as errors (excluding vendored code)
 ```
+
+**Test suite timings.** The recipes above build first, so what you wait for is
+compilation plus test execution. Test execution alone is about 1.6s for `just
+test` and about 8.9s for `just test-all`; the difference is almost entirely the
+one Minkowski random-shapes stress case. Compilation is extra and can dominate:
+re-running with nothing changed is 1.6s against 8.9s, editing a single file is
+about 3.4s against 10.0s, and editing a widely-included header is about 13.6s
+against 21.0s. Use `just test` while iterating and `just test-all` before
+calling a task done.
 
 Coverage requires `gcovr` (`brew install gcovr` on macOS, `apt-get install gcovr` on Linux).
 On macOS the recipes pass `--gcov-executable "xcrun llvm-cov gcov"` automatically, because
