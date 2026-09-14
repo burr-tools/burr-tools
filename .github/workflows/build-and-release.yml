@@ -96,7 +96,19 @@ jobs:
       shell: bash
       run: just coverage-html | tee coverage-summary.txt
 
+    # Uploaded before the report body is built, so the body can link to it:
+    # the artifact-url output does not exist until the upload has run.
+    - name: Upload HTML coverage report
+      id: coverage_artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-html
+        path: coverage-html/
+
     - name: Build the coverage report body
+      env:
+        ARTIFACT_URL: ${{ steps.coverage_artifact.outputs.artifact-url }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
         {
           echo "## Test coverage"
@@ -109,7 +121,15 @@ jobs:
           echo "toolchain-specific, so this Linux figure is the canonical one for"
           echo "comparing across pull requests."
           echo
-          echo "A per-file breakdown is in the coverage-html artifact on this run."
+          # artifact-url is empty if the upload was skipped or failed; fall
+          # back to the run, which lists whatever artifacts do exist.
+          if [ -n "$ARTIFACT_URL" ]; then
+            echo "Per-file breakdown: [coverage-html artifact]($ARTIFACT_URL)."
+          else
+            echo "Per-file breakdown: the coverage-html artifact on [this run]($RUN_URL)."
+          fi
+          echo "It is a zip -- GitHub does not serve artifact HTML directly, so"
+          echo "download it and open index.html."
         } > coverage-report.md
         cat coverage-report.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -124,11 +144,6 @@ jobs:
         gh pr comment "${{ github.event.pull_request.number }}" \
            --body-file coverage-report.md --edit-last --create-if-none
 
-    - name: Upload HTML coverage report
-      uses: actions/upload-artifact@v4
-      with:
-        name: coverage-html
-        path: coverage-html/
 
   build-windows:
     runs-on: ubuntu-latest
