@@ -389,7 +389,26 @@ test_burrtools = executable('test_burrtools',
   dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep],
 )
 
-test('burrtools_tests', test_burrtools, workdir: meson.project_source_root())
+# The suite is split so the everyday loop stays quick. Everything except the
+# Minkowski random-shapes stress case runs in well under two seconds; that one
+# case accounts for the large majority of the total runtime on its own, so it
+# is given its own suite rather than being paid for on every run. CI runs both.
+#
+# The stress case is seeded (std::mt19937(12345)) and so is deterministic, but
+# its MINK_STRESS environment variable scales how many shapes it builds, and CI
+# runners are slower than a development machine. Meson's default 30s timeout is
+# too tight for that; give the slow suite room rather than have it fail as a
+# timeout when it is merely busy.
+test('fast', test_burrtools,
+  args: ['~[stress]'],
+  suite: 'fast',
+  workdir: meson.project_source_root())
+
+test('stress', test_burrtools,
+  args: ['[stress]'],
+  suite: 'slow',
+  timeout: 600,
+  workdir: meson.project_source_root())
 
 python_opt = get_option('python')
 if not python_opt.disabled()
@@ -414,10 +433,13 @@ if not python_opt.disabled()
         dependencies: [pybind11_dep, thread_dep, zlib_dep],
       )
 
+      # in the fast suite: it runs in a fraction of a second, and leaving it
+      # out would quietly shrink what `just test` covers
       test('python_tests',
         py,
         args: ['-m', 'unittest', 'discover', '-s', meson.project_source_root() / 'test/python'],
         env: ['PYTHONPATH=' + meson.current_build_dir()],
+        suite: 'fast',
         workdir: meson.project_source_root(),
       )
     endif
