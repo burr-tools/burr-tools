@@ -11,7 +11,9 @@ Always use [`just`](justfile) to execute build, test, and quality control tasks.
 ```bash
 just                # Show available recipes (default)
 just build          # Compile BurrTools binaries (build/burrtools, build/burrTxt, build/burrTxt2, build/test_burrtools)
-just test           # Run Catch2 regression test suite (~9.7s, ~8.4s of which is the pre-existing Minkowski random-shapes case)
+just test           # Fast test suite: Catch2 (minus stress cases) + Python wrapper
+just test-slow      # Stress cases only, chiefly the Minkowski random-shapes case
+just test-all       # Everything, fast and slow. This is what CI runs
 just check          # Fast static code analysis with cppcheck (~5s, always run before finishing tasks)
 just check-tidy     # Deep static analysis with clang-tidy on BurrTools sources
 just check-scan     # Clang Static Analyzer (scan-build)
@@ -22,6 +24,15 @@ just clean          # Clean build artifacts
 just rebuild        # Rebuild from scratch (removes build/ and re-runs meson setup)
 just build-werror   # Build with warnings treated as errors (excluding vendored code)
 ```
+
+**Test suite timings.** The recipes above build first, so what you wait for is
+compilation plus test execution. Test execution alone is about 1.6s for `just
+test` and about 8.9s for `just test-all`; the difference is almost entirely the
+one Minkowski random-shapes stress case. Compilation is extra and can dominate:
+re-running with nothing changed is 1.6s against 8.9s, editing a single file is
+about 3.4s against 10.0s, and editing a widely-included header is about 13.6s
+against 21.0s. Use `just test` while iterating and `just test-all` before
+calling a task done.
 
 Coverage requires `gcovr` (`brew install gcovr` on macOS, `apt-get install gcovr` on Linux).
 On macOS the recipes pass `--gcov-executable "xcrun llvm-cov gcov"` automatically, because
@@ -84,4 +95,4 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
    - Never edit files inside `subprojects/` or `src/lua/`.
    - Ensure tools and regexes ignore these directories so static analysis and formatting stay focused on BurrTools sources (`burr-tools/src/(?!lua/).*`).
 6. **Quality Verification:**
-   - After making code modifications, always verify that `just build`, `just test` (regression tests), and `just check` (static analysis) pass cleanly.
+   - After making code modifications, always verify that `just build`, `just test-all` (regression tests, fast and slow), and `just check` (static analysis) pass cleanly. `just test` is the quick loop to use while iterating; run `just test-all` before calling a task done, since it is what CI runs.
