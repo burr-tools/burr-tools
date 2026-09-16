@@ -237,7 +237,16 @@ template <class T> double Vector3D<T>::distanceToPlane(const Vector3D<T>& P, con
 {
   bt_assert( fabs(N.squaredModule() - 1) < ALMOST_ZERO );
 
-  return (P-*this) * N;
+  /* (*this - P), not (P - *this): the signed distance to a plane is
+   * conventionally positive on the side the normal points to. This used
+   * the other order, so a point above the plane reported a NEGATIVE
+   * distance -- the reverse of what every caller would assume from the
+   * name and from the comment above about positive and negative sides.
+   *
+   * Safe to correct because nothing in the tree calls it: there is no
+   * caller that might have been compensating for the old sign.
+   */
+  return (*this-P) * N;
 }
 
 

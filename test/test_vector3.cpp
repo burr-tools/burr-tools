@@ -499,35 +499,35 @@ TEST_CASE("vector3: projecting onto a plane through the origin lands in that pla
   REQUIRE(nearlyEqual(p.project(n), p));
 }
 
-TEST_CASE("vector3: distanceToPlane is signed -- and its sign is the opposite of the usual "
-          "convention", "[vector3]") {
+TEST_CASE("vector3: distanceToPlane is positive on the side the normal points to", "[vector3]") {
   Vector3Df origin(0, 0, 0);
   Vector3Df up(0, 0, 1);
 
-  /* The implementation is `return (P - *this) * N;` -- it measures from
-     the point TOWARDS the plane's reference point, not from the plane
-     towards the point. So a point on the positive side of the normal gets
-     a NEGATIVE distance, which is the reverse of what "signed distance to
-     a plane" normally means.
+  /* This case used to pin the opposite sign. The implementation computed
+     (P - *this) * N, so a point on the normal's side reported a NEGATIVE
+     distance -- the reverse of the usual convention and of what the
+     function's own comment about positive and negative sides implies. It
+     now computes (*this - P) * N. Nothing called it, so no caller can have
+     been compensating for the old sign. */
+  REQUIRE(Vector3Df(5, -2, 3).distanceToPlane(origin, up) == approx(3.0));
+  REQUIRE(Vector3Df(5, -2, -3).distanceToPlane(origin, up) == approx(-3.0));
 
-     Pinned as it is, not as it ought to be. Anyone reaching for this
-     function needs to know which way round it goes, and a case asserting
-     the conventional sign would just be red. Whether to flip it is a
-     separate question: doing so silently would invert the behaviour of any
-     caller that has already compensated. */
-  REQUIRE(Vector3Df(5, -2, 3).distanceToPlane(origin, up) == approx(-3.0));
-  REQUIRE(Vector3Df(5, -2, -3).distanceToPlane(origin, up) == approx(3.0));
-
-  /* the magnitude is right, whatever the sign: three units from the plane */
+  /* the magnitude is the distance either way, and was never in question */
   REQUIRE(std::fabs(Vector3Df(5, -2, 3).distanceToPlane(origin, up)) == approx(3.0));
 
   /* a point in the plane is at distance zero however far from the centre,
      and zero has no sign to get wrong */
   REQUIRE(Vector3Df(100, -100, 0).distanceToPlane(origin, up) == approx(0.0));
 
-  /* and the plane's reference point need not be the origin */
+  /* the plane's reference point need not be the origin */
   Vector3Df raised(0, 0, 10);
-  REQUIRE(Vector3Df(0, 0, 12).distanceToPlane(raised, up) == approx(-2.0));
+  REQUIRE(Vector3Df(0, 0, 12).distanceToPlane(raised, up) == approx(2.0));
+  REQUIRE(Vector3Df(0, 0, 8).distanceToPlane(raised, up) == approx(-2.0));
+
+  /* and flipping the normal flips the sign, which is what makes this a
+     signed distance rather than a magnitude with a convention bolted on */
+  Vector3Df down(0, 0, -1);
+  REQUIRE(Vector3Df(5, -2, 3).distanceToPlane(origin, down) == approx(-3.0));
 }
 
 TEST_CASE("vector3: closestPointInLine lands on the line and meets it at a right angle",
