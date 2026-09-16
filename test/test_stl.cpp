@@ -329,8 +329,17 @@ TEST_CASE("stl export: the solid name is derived from the path -- and on this pl
 
      (The pointer comparison res1 > res2, on two pointers into different
      objects, is separately undefined, though it happens to give the right
-     answer in the NULL cases. Noted for whoever fixes the strchr.) */
-  REQUIRE(m.name == path.substr(1));
+     answer in the NULL cases. Noted for whoever fixes the strchr.)
+
+     The expected value is computed from the first separator rather than
+     written as path.substr(1). Those coincide only on a POSIX absolute
+     path, where the separator IS character zero; on Windows the path
+     begins "C:\\..." and the first separator is at index 2, so the
+     hardcoded form asserted the wrong string and failed the Windows
+     cross-build while passing on macOS. */
+  const size_t firstSep = path.find_first_of("/\\");
+  REQUIRE(firstSep != std::string::npos);
+  REQUIRE(m.name == path.substr(firstSep + 1));
 #else
   /* POSIX basename: correct */
   REQUIRE(m.name == "named.stl");

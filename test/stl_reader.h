@@ -70,10 +70,28 @@ inline StlMesh readAsciiStl(const std::string & raw) {
   if (!(in >> token) || token != "solid")
     throw std::runtime_error("ascii stl: expected 'solid'");
 
-  /* the rest of the line is the name; it may be empty */
+  /* The rest of the line is the name; it may be empty.
+
+     Trimmed at BOTH ends, and the trailing end is not cosmetic. The writer
+     opens the ASCII file with fopen(fname, "w") -- text mode -- so on
+     Windows the runtime translates the "\n" it prints into "\r\n", while
+     slurp() reads the file back in binary. The carriage return therefore
+     survives into the name and getline leaves it there, which is how a
+     name that plainly ends in "named.stl" failed an assertion saying so
+     under the Windows cross-build while passing everywhere else.
+
+     Stripping it here rather than in each case: the line terminator is the
+     reader's business, and any consumer of a Windows-written ASCII STL
+     faces the same thing. The token-based parsing below is unaffected --
+     operator>> treats \r as whitespace. */
   std::getline(in, mesh.name);
-  while (!mesh.name.empty() && (mesh.name[0] == ' ' || mesh.name[0] == '\t'))
-    mesh.name.erase(0, 1);
+
+  auto isTrim = [](char c) {
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+  };
+
+  while (!mesh.name.empty() && isTrim(mesh.name.front())) mesh.name.erase(0, 1);
+  while (!mesh.name.empty() && isTrim(mesh.name.back()))  mesh.name.pop_back();
 
   while (in >> token) {
     if (token == "endsolid") break;
