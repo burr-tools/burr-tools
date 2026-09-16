@@ -622,21 +622,30 @@ TEST_CASE("assembler: re-solving the bundled puzzles reproduces the assembly cou
 
 TEST_CASE("assembler: relaxing a reduction reports at least as many assemblies",
           "[assembler][stress]") {
-  /* Solid Six Piece Burrs under three combinations of the two reduction
-     flags. Each reduction can only ever merge assemblies, never invent
-     one, so turning one off must report at least as many -- that ordering
-     is the property, and it holds whatever the absolute figures are.
+  /* Each reduction can only ever merge assemblies, never invent one, so
+     turning one off must report at least as many. That ordering is the
+     property, and it holds whatever the absolute figures are.
 
-     This is also what makes the keepMirror column above meaningful rather
-     than a magic constant: 588 with both reductions on, 1063 with mirror
-     solutions kept, more still with rotations kept. The middle figure is
-     the one the file records, asserted below.
+     It takes two puzzles, because no single cheap one exercises both
+     flags. Solid Six Piece Burrs is where mirror reduction bites -- 588
+     with it on, 1063 with mirror solutions kept -- and that second figure
+     is what its file records, which is what makes the keepMirror column in
+     the case above a derived value rather than a magic constant. Hex
+     Sticks is where rotation reduction bites: 33 against 744.
 
-     And it is the only place createMatrix's keepMirror and keepRotations
-     arguments are exercised at all -- every other case in the suite passes
-     false for both. */
-  auto count = [](bool keepMirror, bool keepRotations) {
-    std::unique_ptr<puzzle_c> p = puzzle_c::load("examples/SolidSixPieceBurrs.xmpuzzle");
+     This is also the only place createMatrix's keepMirror and
+     keepRotations arguments are exercised at all; every other case in the
+     suite passes false for both.
+
+     Solid Six Piece Burrs with keepRotations was deliberately dropped from
+     this case. It finds 12,597 assemblies, and under gcov instrumentation
+     the dancing-links inner loop in assembler_1.cpp then accumulates over
+     four billion hits -- past the threshold at which gcovr rejects the
+     counter as a parse error (gcc bug 68080) and `just coverage` fails
+     outright. Hex Sticks demonstrates the same property for a thousandth
+     of the work. */
+  auto count = [](const char * path, bool keepMirror, bool keepRotations) {
+    std::unique_ptr<puzzle_c> p = puzzle_c::load(path);
     REQUIRE(p != nullptr);
 
     problem_c * problem = p->getProblem(0);
@@ -651,25 +660,31 @@ TEST_CASE("assembler: relaxing a reduction reports at least as many assemblies",
     return cb.assemblies;
   };
 
-  const int bothReduced = count(false, false);
-  const int mirrorKept  = count(true,  false);
-  const int rotationsKept = count(false, true);
+  const char * burrs = "examples/SolidSixPieceBurrs.xmpuzzle";
+  const char * sticks = "examples/HexSticks.xmpuzzle";
 
-  REQUIRE(bothReduced > 0);
+  const int burrsReduced = count(burrs, false, false);
+  const int burrsMirrorKept = count(burrs, true, false);
 
-  /* every reduction is a merge, so relaxing one cannot lose an assembly */
-  REQUIRE(mirrorKept >= bothReduced);
-  REQUIRE(rotationsKept >= mirrorKept);
+  REQUIRE(burrsReduced > 0);
 
-  /* ...and on this puzzle each genuinely merges something, so the
-     inequalities above are not holding by equality throughout, which they
-     would against an assembler that ignored both flags */
-  REQUIRE(mirrorKept > bothReduced);
-  REQUIRE(rotationsKept > mirrorKept);
+  /* relaxing cannot lose an assembly... */
+  REQUIRE(burrsMirrorKept >= burrsReduced);
+  /* ...and here it genuinely gains some, so the inequality is not holding
+     by equality -- which it would against an assembler ignoring the flag */
+  REQUIRE(burrsMirrorKept > burrsReduced);
 
   /* the figure the file records is the mirror-kept one */
-  std::unique_ptr<puzzle_c> p = puzzle_c::load("examples/SolidSixPieceBurrs.xmpuzzle");
-  REQUIRE(p->getProblem(0)->getNumAssemblies() == (unsigned int)mirrorKept);
+  std::unique_ptr<puzzle_c> p = puzzle_c::load(burrs);
+  REQUIRE(p != nullptr);
+  REQUIRE(p->getProblem(0)->getNumAssemblies() == (unsigned int)burrsMirrorKept);
+
+  const int sticksReduced = count(sticks, false, false);
+  const int sticksRotationsKept = count(sticks, false, true);
+
+  REQUIRE(sticksReduced > 0);
+  REQUIRE(sticksRotationsKept >= sticksReduced);
+  REQUIRE(sticksRotationsKept > sticksReduced);
 }
 
 TEST_CASE("assembler: the bundled counts span both assemblers and more than one grid",
