@@ -278,6 +278,18 @@ template <class T> void Vector3D<T>::rotateZ(double angle)
   _data[1] = (T) (x*sine + y*cosine);
 }
 
+/* Matrix-vector product, with mat[i] read as row i of a 3x3 matrix.
+ *
+ * The inner line used to be `V[i] += mat[i][j];` -- it never multiplied by
+ * anything, so the result was the matrix's row sums and the vector was
+ * discarded entirely. Every vector multiplied by a given matrix came back
+ * identical.
+ *
+ * Row-major is the reading that makes this consistent with the transpose()
+ * directly below, which swaps mat[i][j] with mat[j][i]: with rows, v * mat
+ * and v * transpose(mat) are the two products one would expect, and the
+ * identity matrix is a no-op either way.
+ */
 template <class T> Vector3D<T> Vector3D<T>::operator*(const Vector3D<T>* mat) const
 {
   Vector3D<T> V;
@@ -285,7 +297,7 @@ template <class T> Vector3D<T> Vector3D<T>::operator*(const Vector3D<T>* mat) co
   {
     V[i] = 0;
     for (unsigned j=0 ; j<3 ; j++)
-      V[i] += mat[i][j];
+      V[i] += mat[i][j] * _data[j];
   }
   return V;
 }
