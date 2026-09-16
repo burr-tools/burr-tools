@@ -10,15 +10,18 @@
 using namespace bttest;
 
 TEST_CASE("voxel: a solid block is face connected", "[voxel][connect]") {
-  gridType_c gt(gridType_c::GT_BRICKS);
+  for (gridType_c::gridType t : ALL_GRIDS) {
+    INFO("grid " << gridName(t));
+    gridType_c gt(t);
 
-  std::unique_ptr<voxel_c> v = fromLayers(gt, {
-    { "##",
-      "##" },
-  });
+    std::unique_ptr<voxel_c> v = fromLayers(gt, {
+      { "##",
+        "##" },
+    });
 
-  /* type 0 is face connectivity; check the filled voxels hang together */
-  REQUIRE(v->connected(0, true, voxel_c::VX_EMPTY));
+    /* type 0 is face connectivity; check the filled voxels hang together */
+    REQUIRE(v->connected(0, true, voxel_c::VX_EMPTY));
+  }
 }
 
 TEST_CASE("voxel: two separated voxels are not connected", "[voxel][connect]") {
@@ -139,5 +142,88 @@ TEST_CASE("voxel: counting states adds up to the whole space", "[voxel][connect]
     REQUIRE(total == v->getXYZ());
     REQUIRE(v->countState(voxel_c::VX_FILLED) == 2);
     REQUIRE(v->countState(voxel_c::VX_VARIABLE) == 1);
+  }
+}
+
+/* The remaining cases above stay on GT_BRICKS.
+
+   Connectivity is not a grid-agnostic property, and parametrizing these
+   does not produce a weaker assertion, it produces a false one. Each grid
+   defines its own neighbour relation through voxel_c::getNeighbor, so two
+   cells that share no face on the cube grid may share one on the rhombic
+   grid and vice versa. Run over ALL_GRIDS, "two separated voxels are not
+   connected" fails because on some grids they are; "an L shape is
+   connected" fails because on some grids it is not; and fillHoles closes a
+   different number of cells because the cavity it is asked about is a
+   different shape.
+
+   The ASCII fixtures compound it: as test_voxel.cpp's note on the sparse
+   grids records, art written for the cube grid does not describe a legal
+   shape on GT_SPHERES, GT_RHOMBIC or GT_TETRA_OCTA at all.
+
+   So the cube-grid cases keep their concrete, checkable claims, and what
+   actually is shared across grids is asserted below on its own terms. */
+
+TEST_CASE("voxel: face connectivity implies edge and corner connectivity on every grid",
+          "[voxel][connect][grid]") {
+  /* The one connectivity property that holds whatever the neighbour
+     relation is, because the three types are nested by construction: cells
+     sharing a face necessarily share an edge and a corner. voxel.h states
+     the nesting ("face, edge or corner") and this is what holds it to it.
+
+     Asserted over a solid block, which is face-connected on every grid --
+     established by the parametrized case above, so this is not assuming
+     it. A shape that were NOT face-connected would satisfy the implication
+     vacuously and the case would be testing nothing, which is why the
+     premise is re-asserted here rather than taken on trust. */
+  for (gridType_c::gridType t : ALL_GRIDS) {
+    INFO("grid " << gridName(t));
+    gridType_c gt(t);
+
+    std::unique_ptr<voxel_c> v = makeVoxel(gt, 3, 3, 3);
+    v->setAll(voxel_c::VX_FILLED);
+
+    REQUIRE(v->connected(0, false, voxel_c::VX_FILLED));   // face -- the premise
+    REQUIRE(v->connected(1, false, voxel_c::VX_FILLED));   // edge
+    REQUIRE(v->connected(2, false, voxel_c::VX_FILLED));   // corner
+  }
+}
+
+TEST_CASE("voxel: a single filled cell is connected under every connectivity type on every grid",
+          "[voxel][connect][grid]") {
+  /* The degenerate case, which no grid may get wrong: one cell has nothing
+     to be disconnected from. Worth pinning because a connectivity search
+     that starts from the wrong seed, or counts a component of size one as
+     no component at all, fails exactly here and nowhere else. */
+  for (gridType_c::gridType t : ALL_GRIDS) {
+    INFO("grid " << gridName(t));
+    gridType_c gt(t);
+
+    for (char type = 0; type < 3; type++) {
+      INFO("connectivity type " << (int)type);
+
+      std::unique_ptr<voxel_c> v = makeVoxel(gt, 3, 3, 3);
+      v->setState(1, 1, 1, voxel_c::VX_FILLED);
+
+      REQUIRE(v->countState(voxel_c::VX_FILLED) == 1);
+      REQUIRE(v->connected(type, false, voxel_c::VX_FILLED));
+    }
+  }
+}
+
+TEST_CASE("voxel: an empty space reports connected rather than crashing on every grid",
+          "[voxel][connect][grid]") {
+  /* connected() has to pick a starting cell; with none to pick it must
+     answer rather than reading past the end. The answer is "yes" -- there
+     is no disconnected group -- which is the vacuous truth, but it is the
+     branch that a search seeding itself unconditionally would fall off. */
+  for (gridType_c::gridType t : ALL_GRIDS) {
+    INFO("grid " << gridName(t));
+    gridType_c gt(t);
+
+    std::unique_ptr<voxel_c> v = makeVoxel(gt, 3, 3, 3);
+    REQUIRE(v->countState(voxel_c::VX_FILLED) == 0);
+
+    REQUIRE(v->connected(0, false, voxel_c::VX_FILLED));
   }
 }
