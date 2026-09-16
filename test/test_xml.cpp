@@ -617,3 +617,404 @@ TEST_CASE("xml parser: the exception carries a description", "[xml][parser][malf
     REQUIRE_THAT(std::string(e.what()), Catch::Matchers::ContainsSubstring("expected: a"));
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* the document prologue, and the token-level parse                    */
+/* ------------------------------------------------------------------ */
+
+/* Everything above drives the parser with next(), which is what BurrTools
+   itself uses: it reports only tags, text and entity references, and
+   quietly swallows comments, CDATA sections, the XML declaration and the
+   doctype. Those four are a third of nextImpl()'s body and none of them had
+   ever been parsed by a test.
+
+   The cases below use nextToken() where the token itself is the subject --
+   it reports every construct rather than folding it away -- and next()
+   where the point is that a construct is correctly IGNORED. Both matter: a
+   saved puzzle written by another tool can perfectly well carry a comment
+   or a declaration, and the loader has to walk past it. */
+
+namespace {
+
+/* run a parser over a literal document */
+std::unique_ptr<xmlParser_c> parse(std::istringstream & src) {
+  return std::make_unique<xmlParser_c>(src);
+}
+
+} // namespace
+
+TEST_CASE("xml parser: an xml declaration is consumed and its version and encoding are reported",
+          "[xml][parser][prologue]") {
+  std::istringstream src("<?xml version=\"1.0\" encoding=\"UTF-8\"?><puzzle/>");
+  xmlParser_c pars(src);
+
+  /* next() walks past the declaration entirely: the first event a caller
+     sees is the root element, which is why every existing loader can ignore
+     the prologue */
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+  REQUIRE(pars.getName() == "puzzle");
+
+  /* the encoding was captured on the way past rather than discarded */
+  REQUIRE(pars.getInputEncoding() == "UTF-8");
+}
+
+TEST_CASE("xml parser: a standalone declaration is accepted in both forms",
+          "[xml][parser][prologue]") {
+  {
+    std::istringstream src("<?xml version=\"1.0\" standalone=\"yes\"?><p/>");
+    xmlParser_c pars(src);
+    REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+  }
+  {
+    std::istringstream src("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?><p/>");
+    xmlParser_c pars(src);
+    REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+    REQUIRE(pars.getInputEncoding() == "UTF-8");
+  }
+}
+
+TEST_CASE("xml parser: a standalone value other than yes or no is rejected",
+          "[xml][parser][prologue][malformed]") {
+  std::istringstream src("<?xml version=\"1.0\" standalone=\"maybe\"?><p/>");
+  xmlParser_c pars(src);
+
+  /* the parser accepts exactly two spellings and refuses anything else
+     rather than treating an unknown value as a default */
+  REQUIRE_THROWS_AS(pars.nextTag(), xmlParserException_c);
+}
+
+TEST_CASE("xml parser: a declaration without a version attribute is rejected",
+          "[xml][parser][prologue][malformed]") {
+  std::istringstream src("<?xml encoding=\"UTF-8\"?><p/>");
+  xmlParser_c pars(src);
+
+  REQUIRE_THROWS_AS(pars.nextTag(), xmlParserException_c);
+}
+
+TEST_CASE("xml parser: a declaration carrying an unknown attribute is rejected",
+          "[xml][parser][prologue][malformed]") {
+  std::istringstream src("<?xml version=\"1.0\" colour=\"red\"?><p/>");
+  xmlParser_c pars(src);
+
+  /* the "illegal xmldecl" branch: every attribute must be one the
+     declaration defines, in order, and a leftover means the document is
+     malformed rather than merely unusual */
+  REQUIRE_THROWS_AS(pars.nextTag(), xmlParserException_c);
+}
+
+TEST_CASE("xml parser: a declaration anywhere but at the very start of the document is rejected",
+          "[xml][parser][prologue][malformed]") {
+  std::istringstream src("<p><?xml version=\"1.0\"?></p>");
+  xmlParser_c pars(src);
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+
+  /* "PI must not start with xml": the declaration is only legal as the
+     first thing in the file, so the same text deeper in is an error rather
+     than an ordinary processing instruction */
+  REQUIRE_THROWS_AS(pars.nextToken(), xmlParserException_c);
+}
+
+TEST_CASE("xml parser: next skips a comment but nextToken reports it", "[xml][parser][prologue]") {
+  {
+    std::istringstream src("<p><!-- a remark --><q/></p>");
+    xmlParser_c pars(src);
+
+    /* the loader's view: the comment is not an event at all */
+    REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+    REQUIRE(pars.getName() == "p");
+    REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+    REQUIRE(pars.getName() == "q");
+  }
+  {
+    std::istringstream src("<p><!-- a remark --><q/></p>");
+    xmlParser_c pars(src);
+
+    /* the token-level view: the same document yields a COMMENT event.
+       Running both over identical input is what makes this a statement
+       about next() vs nextToken() rather than about the document. */
+    REQUIRE(pars.nextToken() == xmlParser_c::START_TAG);
+
+    int t = pars.nextToken();
+    REQUIRE(t == xmlParser_c::COMMENT);
+  }
+}
+
+TEST_CASE("xml parser: a CDATA section is reported as its literal content with no entity "
+          "resolution", "[xml][parser][prologue]") {
+  std::istringstream src("<p><![CDATA[a < b & c]]></p>");
+  xmlParser_c pars(src);
+
+  REQUIRE(pars.nextToken() == xmlParser_c::START_TAG);
+  REQUIRE(pars.nextToken() == xmlParser_c::CDSECT);
+
+  /* the whole point of CDATA: '<' and '&' are ordinary characters inside
+     it, so the text comes back exactly as written rather than rejected as
+     malformed markup or rewritten through the entity table */
+  REQUIRE(pars.getText() == "a < b & c");
+}
+
+TEST_CASE("xml parser: a doctype declaration is reported as a token and skipped by next",
+          "[xml][parser][prologue]") {
+  {
+    std::istringstream src("<!DOCTYPE puzzle><puzzle/>");
+    xmlParser_c pars(src);
+    REQUIRE(pars.nextToken() == xmlParser_c::DOCDECL);
+  }
+  {
+    std::istringstream src("<!DOCTYPE puzzle><puzzle/>");
+    xmlParser_c pars(src);
+
+    REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+    REQUIRE(pars.getName() == "puzzle");
+  }
+}
+
+TEST_CASE("xml parser: a processing instruction is reported as a token and skipped by next",
+          "[xml][parser][prologue]") {
+  {
+    std::istringstream src("<p><?target some data?><q/></p>");
+    xmlParser_c pars(src);
+
+    REQUIRE(pars.nextToken() == xmlParser_c::START_TAG);
+    REQUIRE(pars.nextToken() == xmlParser_c::PROCESSING_INSTRUCTION);
+  }
+  {
+    std::istringstream src("<p><?target some data?><q/></p>");
+    xmlParser_c pars(src);
+
+    REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+    REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+    REQUIRE(pars.getName() == "q");
+  }
+}
+
+TEST_CASE("xml parser: a tag opening with a character that can start no construct is rejected",
+          "[xml][parser][malformed]") {
+  std::istringstream src("<p><=bad/></p>");
+  xmlParser_c pars(src);
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+
+  /* the "illegal: <" branch -- '<' followed by something that is neither a
+     name start, '/', '?' nor '!' */
+  REQUIRE_THROWS_AS(pars.nextTag(), xmlParserException_c);
+}
+
+/* ------------------------------------------------------------------ */
+/* parser accessors                                                    */
+/* ------------------------------------------------------------------ */
+
+TEST_CASE("xml parser: the attribute accessors address attributes by index in document order",
+          "[xml][parser][attributes]") {
+  std::istringstream src("<shape x=\"3\" y=\"4\" z=\"5\"/>");
+  xmlParser_c pars(src);
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+  REQUIRE(pars.getAttributeCount() == 3);
+
+  REQUIRE(pars.getAttributeName(0) == "x");
+  REQUIRE(pars.getAttributeValue(0) == "3");
+  REQUIRE(pars.getAttributeName(2) == "z");
+  REQUIRE(pars.getAttributeValue(2) == "5");
+
+  /* the by-index and by-name readers must agree, which is what rules out an
+     index-to-slot calculation that is off by a stride */
+  REQUIRE(pars.getAttributeValue(pars.getAttributeName(1)) == pars.getAttributeValue(1));
+  REQUIRE(pars.getAttributeValue(1) == "4");
+
+  /* no namespace prefixes in this document, so every prefix is empty --
+     asserted rather than skipped, because getAttributePrefix reads from the
+     same packed array as the other two and a stride error would show here */
+  REQUIRE(pars.getAttributePrefix(0).empty());
+}
+
+TEST_CASE("xml parser: addressing an attribute past the end is rejected rather than read out "
+          "of bounds", "[xml][parser][attributes][malformed]") {
+  std::istringstream src("<shape x=\"3\"/>");
+  xmlParser_c pars(src);
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+  REQUIRE(pars.getAttributeCount() == 1);
+
+  /* all three index-taking accessors bounds-check, and all three are
+     separate function bodies */
+  REQUIRE_THROWS_AS(pars.getAttributeName(1), xmlParserException_c);
+  REQUIRE_THROWS_AS(pars.getAttributeValue(1), xmlParserException_c);
+  REQUIRE_THROWS_AS(pars.getAttributePrefix(1), xmlParserException_c);
+}
+
+TEST_CASE("xml parser: getDepth counts the open elements around the current event",
+          "[xml][parser]") {
+  std::istringstream src("<a><b><c/></b></a>");
+  xmlParser_c pars(src);
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);   // <a>
+  REQUIRE(pars.getDepth() == 1);
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);   // <b>
+  REQUIRE(pars.getDepth() == 2);
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);   // <c/>
+  REQUIRE(pars.getDepth() == 3);
+}
+
+TEST_CASE("xml parser: isEmptyElementTag distinguishes a short tag from an open one and refuses "
+          "to answer anywhere else", "[xml][parser]") {
+  std::istringstream src("<a><b/></a>");
+  xmlParser_c pars(src);
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);   // <a>, a genuine open tag
+  REQUIRE_FALSE(pars.isEmptyElementTag());
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);   // <b/>
+  REQUIRE(pars.isEmptyElementTag());
+
+  REQUIRE(pars.nextTag() == xmlParser_c::END_TAG);     // </b>, synthesised
+
+  /* the question is only meaningful on a START_TAG; asked on anything else
+     it throws rather than returning a stale answer */
+  REQUIRE_THROWS_AS(pars.isEmptyElementTag(), xmlParserException_c);
+}
+
+TEST_CASE("xml parser: isWhitespace reports whether a text node is only whitespace",
+          "[xml][parser]") {
+  {
+    std::istringstream src("<a>   </a>");
+    xmlParser_c pars(src);
+    REQUIRE(pars.nextToken() == xmlParser_c::START_TAG);
+    REQUIRE(pars.nextToken() == xmlParser_c::TEXT);
+    REQUIRE(pars.isWhitespace());
+  }
+  {
+    std::istringstream src("<a>  x </a>");
+    xmlParser_c pars(src);
+    REQUIRE(pars.nextToken() == xmlParser_c::START_TAG);
+    REQUIRE(pars.nextToken() == xmlParser_c::TEXT);
+    REQUIRE_FALSE(pars.isWhitespace());
+  }
+  {
+    /* and it refuses to answer on a tag, where there is no text to judge */
+    std::istringstream src("<a/>");
+    xmlParser_c pars(src);
+    REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+    REQUIRE_THROWS_AS(pars.isWhitespace(), xmlParserException_c);
+  }
+}
+
+TEST_CASE("xml parser: getTextCharacters hands back the text buffer and its length",
+          "[xml][parser]") {
+  std::istringstream src("<a>hello</a>");
+  xmlParser_c pars(src);
+
+  REQUIRE(pars.nextToken() == xmlParser_c::START_TAG);
+
+  /* on a non-text event the position pair is the (-1, -1) sentinel rather
+     than a buffer a caller might read */
+  int poslen[2] = {0, 0};
+  REQUIRE(pars.getTextCharacters(poslen) == nullptr);
+  REQUIRE(poslen[0] == -1);
+  REQUIRE(poslen[1] == -1);
+
+  REQUIRE(pars.nextToken() == xmlParser_c::TEXT);
+
+  const char * txt = pars.getTextCharacters(poslen);
+  REQUIRE(txt != nullptr);
+  REQUIRE(poslen[0] == 0);
+  REQUIRE(poslen[1] == 5);
+
+  /* the buffer is not null-terminated at the reported length, so compare
+     exactly that many characters -- and cross-check against getText(), which
+     is the same content by a different route */
+  REQUIRE(std::string(txt, poslen[1]) == "hello");
+  REQUIRE(pars.getText() == "hello");
+}
+
+TEST_CASE("xml parser: nextText returns an element's text and leaves the parser on its end tag",
+          "[xml][parser]") {
+  std::istringstream src("<a>content</a>");
+  xmlParser_c pars(src);
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+  REQUIRE(pars.nextText() == "content");
+  REQUIRE(pars.getEventType() == xmlParser_c::END_TAG);
+}
+
+TEST_CASE("xml parser: nextText on an empty element returns an empty string", "[xml][parser]") {
+  std::istringstream src("<a></a>");
+  xmlParser_c pars(src);
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+
+  /* the else branch: no TEXT event at all between the tags, which must read
+     as "" rather than falling through to the END_TAG check and throwing */
+  REQUIRE(pars.nextText().empty());
+  REQUIRE(pars.getEventType() == xmlParser_c::END_TAG);
+}
+
+TEST_CASE("xml parser: nextText anywhere but on a start tag is rejected",
+          "[xml][parser][malformed]") {
+  std::istringstream src("<a><b/></a>");
+  xmlParser_c pars(src);
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+  REQUIRE(pars.nextTag() == xmlParser_c::END_TAG);
+
+  REQUIRE_THROWS_AS(pars.nextText(), xmlParserException_c);
+}
+
+TEST_CASE("xml parser: nextText on an element holding a child element rather than text is "
+          "rejected", "[xml][parser][malformed]") {
+  std::istringstream src("<a><b/></a>");
+  xmlParser_c pars(src);
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+
+  /* <a>'s content is an element, so after next() the parser is on a
+     START_TAG, not an END_TAG -- the "END_TAG expected" branch */
+  REQUIRE_THROWS_AS(pars.nextText(), xmlParserException_c);
+}
+
+/* No case for xmlParser_c::getPositionDescription().
+
+   It is declared at xml.h:162 and defined nowhere -- not in xml.cpp, not
+   anywhere else in the tree -- and nothing calls it. A test that does call
+   it fails at link time, not at run time, which is how this was found:
+   "Undefined symbols: xmlParser_c::getPositionDescription()".
+
+   Deleting the declaration is the obvious fix and is deliberately NOT done
+   here, because a coverage change should not carry a production edit a
+   maintainer might reasonably decline (it is a public header, so removing a
+   declaration is an API change, however plainly dead). Raised separately. */
+
+TEST_CASE("xml parser: the five predefined entities resolve with no setup from the caller",
+          "[xml][parser][entity]") {
+  std::istringstream src("<a>&amp;&lt;&gt;&quot;&apos;</a>");
+  xmlParser_c pars(src);
+
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+
+  /* commonInit() seeds the entity map with all five before any input is
+     read, so a document using them needs no defineEntityReplacementText
+     call. Asserting all five in one string rather than one per case: they
+     are populated by five adjacent lines and a gap in that block is what
+     this is for. */
+  REQUIRE(pars.nextText() == "&<>\"'");
+}
+
+/* No case for defineEntityReplacementText's "must be defined after
+   setInput!" guard.
+
+   The guard reads `if (entityMap.empty()) exception(...)`, and the map is
+   never empty: commonInit() -- which BOTH constructors call, including the
+   default one that has no input at all -- seeds it with apos, gt, lt, quot
+   and amp. So the branch cannot be reached through the public API, and a
+   case written to reach it (calling the function on a default-constructed
+   parser) simply returns normally.
+
+   Left alone rather than "covered" by a case asserting the opposite of what
+   the message says, and not fixed here either, for the same reason as
+   getPositionDescription above: deciding whether the guard should go or the
+   seeding should move is a maintainer's call, not a coverage change's. The
+   case above pins the behaviour that makes it dead. */
