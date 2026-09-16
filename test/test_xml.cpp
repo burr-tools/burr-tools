@@ -967,17 +967,16 @@ TEST_CASE("xml parser: nextText on an element holding a child element rather tha
   REQUIRE_THROWS_AS(pars.nextText(), xmlParserException_c);
 }
 
-/* No case for xmlParser_c::getPositionDescription().
+/* No case for xmlParser_c::getPositionDescription(): it no longer exists.
 
-   It is declared at xml.h:162 and defined nowhere -- not in xml.cpp, not
-   anywhere else in the tree -- and nothing calls it. A test that does call
-   it fails at link time, not at run time, which is how this was found:
-   "Undefined symbols: xmlParser_c::getPositionDescription()".
+   It was declared in xml.h and defined nowhere -- not in xml.cpp, not
+   anywhere else in the tree -- and nothing called it. A test that did call
+   it failed at LINK time rather than at run time, which is how it was
+   found, and is why no amount of running the suite would have surfaced it.
 
-   Deleting the declaration is the obvious fix and is deliberately NOT done
-   here, because a coverage change should not carry a production edit a
-   maintainer might reasonably decline (it is a public header, so removing a
-   declaration is an API change, however plainly dead). Raised separately. */
+   The declaration has been removed. Nothing can regress here, because
+   nothing can reference a symbol that has no definition; this note exists
+   so the absence of a case reads as deliberate. */
 
 TEST_CASE("xml parser: the five predefined entities resolve with no setup from the caller",
           "[xml][parser][entity]") {
