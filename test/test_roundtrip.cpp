@@ -453,3 +453,87 @@ TEST_CASE("puzzlesRoundtripEqual detects two different valid results", "[roundtr
 
   REQUIRE_FALSE(bttest::puzzlesRoundtripEqual(*resultZero, *resultOne));
 }
+
+TEST_CASE("gzstream: the filesystem::path overload of openGzFile behaves as the char* one does",
+          "[gzstream]") {
+  TempDir dir;
+  const std::string name = dir.file("viapath.txt");
+
+  {
+    std::ofstream out(name);
+    out << "<puzzle/>";
+  }
+
+  /* the overload is a one-line forward to the char* version, and the only
+     way it can be wrong is by losing the path on the way through -- so the
+     assertion is that both routes reach the same bytes */
+  std::filesystem::path p(name);
+
+  std::unique_ptr<std::istream> viaPath(openGzFile(p));
+  REQUIRE(viaPath != nullptr);
+
+  std::ostringstream got;
+  got << viaPath->rdbuf();
+  REQUIRE(got.str() == "<puzzle/>");
+
+  /* and a missing path reports missing through this route too, rather than
+     the overload accidentally normalising it into something that opens */
+  REQUIRE(openGzFile(std::filesystem::path(dir.file("absent.txt"))) == nullptr);
+}
+
+TEST_CASE("gzstream: an output stream opened in a mode gzstreambuf refuses stays closed",
+          "[gzstream]") {
+  TempDir dir;
+  const std::string name = dir.file("modes.gz");
+
+  /* gzstreambuf::open rejects append, at-end, and simultaneous read/write:
+     zlib's file handle supports none of them, and quietly downgrading would
+     truncate a file the caller meant to extend. The rejection has to be
+     observable as "not open" rather than as a stream that silently writes
+     nowhere. */
+  {
+    ogzstream appendMode(name.c_str(), std::ios::out | std::ios::app);
+    REQUIRE_FALSE(appendMode.rdbuf()->is_open());
+  }
+  {
+    ogzstream atEnd(name.c_str(), std::ios::out | std::ios::ate);
+    REQUIRE_FALSE(atEnd.rdbuf()->is_open());
+  }
+  {
+    ogzstream readWrite(name.c_str(), std::ios::in | std::ios::out);
+    REQUIRE_FALSE(readWrite.rdbuf()->is_open());
+  }
+
+  /* the control: a plain output mode DOES open, which is what rules out
+     "ogzstream never opens anything" */
+  {
+    ogzstream plain(name.c_str());
+    REQUIRE(plain.rdbuf()->is_open());
+  }
+}
+
+TEST_CASE("gzstream: opening an already-open stream is refused rather than leaking the first handle",
+          "[gzstream]") {
+  TempDir dir;
+  const std::string name = dir.file("twice.gz");
+
+  ogzstream out(name.c_str());
+  REQUIRE(out.rdbuf()->is_open());
+
+  /* gzstreambuf::open returns null when it is already open. Without the
+     guard the second gzopen would overwrite `file` and strand the first
+     handle. */
+  REQUIRE(out.rdbuf()->open(name.c_str(), std::ios::out) == nullptr);
+
+  /* and the stream is still usable afterwards -- the refusal must not have
+     disturbed the handle it was protecting */
+  REQUIRE(out.rdbuf()->is_open());
+  out << "still working";
+  out.close();
+
+  std::unique_ptr<std::istream> in(openGzFile(name.c_str()));
+  REQUIRE(in != nullptr);
+  std::ostringstream got;
+  got << in->rdbuf();
+  REQUIRE(got.str() == "still working");
+}

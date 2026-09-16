@@ -1235,3 +1235,324 @@ TEST_CASE("assembly: createSpace assembles a voxel space matching the problem's 
         }
       }
 }
+
+/* ------------------------------------------------------------------ */
+/* the problem list                                                    */
+/* ------------------------------------------------------------------ */
+
+TEST_CASE("puzzle: removeProblem erases exactly the addressed problem -- later ones shift down",
+          "[model][puzzle][problem]") {
+  ProblemFixture f = makeProblemFixture(3);
+
+  /* makeProblemFixture already added one problem; give each a name so a
+     survivor can be identified rather than merely counted */
+  f.problem->setName("first");
+  f.puzzle->getProblem(f.puzzle->addProblem())->setName("second");
+  f.puzzle->getProblem(f.puzzle->addProblem())->setName("third");
+
+  REQUIRE(f.puzzle->getNumberOfProblems() == 3);
+
+  f.puzzle->removeProblem(1);
+
+  REQUIRE(f.puzzle->getNumberOfProblems() == 2);
+  REQUIRE(f.puzzle->getProblem(0)->getName() == "first");
+
+  /* "third" moved down into index 1. Naming the survivor is what separates
+     this from a case that would pass against an erase at the wrong index. */
+  REQUIRE(f.puzzle->getProblem(1)->getName() == "third");
+}
+
+TEST_CASE("puzzle: exchangeProblems swaps two problems and leaves the others alone",
+          "[model][puzzle][problem]") {
+  ProblemFixture f = makeProblemFixture(3);
+
+  f.problem->setName("first");
+  f.puzzle->getProblem(f.puzzle->addProblem())->setName("second");
+  f.puzzle->getProblem(f.puzzle->addProblem())->setName("third");
+
+  f.puzzle->exchangeProblems(0, 2);
+
+  REQUIRE(f.puzzle->getProblem(0)->getName() == "third");
+  REQUIRE(f.puzzle->getProblem(1)->getName() == "second");
+  REQUIRE(f.puzzle->getProblem(2)->getName() == "first");
+}
+
+TEST_CASE("puzzle: addProblem from an existing problem copies its setup but not its name "
+          "or its solutions", "[model][puzzle][problem]") {
+  ProblemFixture f = makeProblemFixture(3);
+
+  f.problem->setName("original");
+  f.problem->setResultId(2);
+  f.problem->setShapeMinimum(0, 1);
+  f.problem->setShapeMaximum(0, 4);
+  f.problem->setMaxHoles(9);
+
+  f.puzzle->addColor(255, 0, 0);
+  f.puzzle->addColor(0, 255, 0);
+  f.problem->allowPlacement(1, 2);
+
+  unsigned int copyIdx = f.puzzle->addProblem(f.problem);
+  const problem_c * copy = f.puzzle->getProblem(copyIdx);
+
+  REQUIRE(f.puzzle->getNumberOfProblems() == 2);
+
+  /* the setup carries over */
+  REQUIRE(copy->resultValid());
+  REQUIRE(copy->getResultId() == 2);
+  REQUIRE(copy->getNumberOfParts() == 1);
+  REQUIRE(copy->getShapeIdOfPart(0) == 0);
+  REQUIRE(copy->getPartMinimum(0) == 1);
+  REQUIRE(copy->getPartMaximum(0) == 4);
+  REQUIRE(copy->maxHolesDefined());
+  REQUIRE(copy->getMaxHoles() == 9);
+  REQUIRE(copy->placementAllowed(1, 2));
+
+  /* ...and the constraint set was copied rather than shared: a later change
+     to the original must not reach the copy */
+  f.problem->disallowPlacement(1, 2);
+  REQUIRE(copy->placementAllowed(1, 2));
+
+  /* the name is deliberately left empty -- the copy constructor's comment
+     says the user will supply a new one */
+  REQUIRE(copy->getName().empty());
+
+  /* and solving state resets rather than being inherited */
+  REQUIRE_FALSE(copy->numAssembliesKnown());
+}
+
+TEST_CASE("puzzle: the parts of a copied problem are independent of the original's",
+          "[model][puzzle][problem]") {
+  ProblemFixture f = makeProblemFixture(3);
+
+  f.problem->setShapeMaximum(0, 2);
+  f.problem->setPartGroup(0, 5, 1);
+
+  const problem_c * copy = f.puzzle->getProblem(f.puzzle->addProblem(f.problem));
+
+  REQUIRE(copy->getNumberOfPartGroups(0) == 1);
+  REQUIRE(copy->getPartGroupId(0, 0) == 5);
+
+  /* part_c is copied by value into a fresh unique_ptr, so editing the
+     original's group table must not show through. Without this the case
+     would hold just as well against a copy that shared its parts. */
+  f.problem->setPartGroup(0, 5, 0);
+
+  REQUIRE(f.problem->getNumberOfPartGroups(0) == 0);
+  REQUIRE(copy->getNumberOfPartGroups(0) == 1);
+}
+
+/* ------------------------------------------------------------------ */
+/* mirror pairing, and the rest of smallerRotationExists               */
+/* ------------------------------------------------------------------ */
+
+TEST_CASE("mirrorInfo: getPieceInfo returns the pairing addPieces recorded and reports a miss for "
+          "a piece that has none", "[model][assembly][mirror]") {
+  mirrorInfo_c mir;
+
+  mir.addPieces(0, 3, 24);
+  mir.addPieces(3, 0, 24);
+
+  unsigned int other = 0xFFFF;
+  unsigned char trans = 0xFF;
+
+  REQUIRE(mir.getPieceInfo(0, &other, &trans));
+  REQUIRE(other == 3);
+  REQUIRE(trans == 24);
+
+  /* the table is directional and both directions were registered separately */
+  other = 0xFFFF; trans = 0xFF;
+  REQUIRE(mir.getPieceInfo(3, &other, &trans));
+  REQUIRE(other == 0);
+  REQUIRE(trans == 24);
+
+  /* piece 1 was never paired. getPieceInfo writes through its out-parameters
+     only on a hit, so a miss must leave them untouched as well as returning
+     false -- a caller that ignored the return value would otherwise read a
+     stale pairing as a live one. */
+  other = 0xFFFF; trans = 0xFF;
+  REQUIRE_FALSE(mir.getPieceInfo(1, &other, &trans));
+  REQUIRE(other == 0xFFFF);
+  REQUIRE(trans == 0xFF);
+}
+
+TEST_CASE("mirrorInfo: the first entry recorded for a piece is the one returned",
+          "[model][assembly][mirror]") {
+  mirrorInfo_c mir;
+
+  mir.addPieces(2, 5, 24);
+  mir.addPieces(2, 7, 30);
+
+  /* getPieceInfo scans in insertion order and returns on the first match, so
+     a second entry for the same piece is unreachable. Pinning that is worth
+     doing because the alternative -- last-one-wins -- is the more common
+     convention and would be a silent behaviour change. */
+  unsigned int other = 0xFFFF;
+  unsigned char trans = 0xFF;
+
+  REQUIRE(mir.getPieceInfo(2, &other, &trans));
+  REQUIRE(other == 5);
+  REQUIRE(trans == 24);
+}
+
+namespace {
+
+/* A problem whose result is a straight bar of `cells` unit cells, using two
+   unit-cube pieces. Everything about it is chosen so the lexicographic
+   question smallerRotationExists answers can be worked out by hand:
+
+   - the pieces are 1x1x1, so every transformation normalises to 0 and the
+     placement comparison reduces to comparing x, then y, then z;
+   - the bar lies along x, so y and z are 0 throughout;
+   - the bar is shorter than the pieces need, deliberately: two pieces in a
+     four-cell result leaves slack, which is what gives the shifting search
+     in the `complete` branch something to find.
+
+   The two pieces are one part with a maximum of two, so piece indices 0 and
+   1 are both instances of the same shape. */
+struct BarFixture {
+  std::unique_ptr<puzzle_c> puzzle;
+  problem_c * problem;
+};
+
+BarFixture makeBarFixture(unsigned int cells) {
+  BarFixture f;
+  f.puzzle = makePuzzle(gridType_c::GT_BRICKS);
+  const gridType_c & gt = *f.puzzle->getGridType();
+
+  unsigned int piece = f.puzzle->addShape(fromLayers(gt, {{"#"}}));
+  unsigned int result = f.puzzle->addShape(makeVoxel(gt, cells, 1, 1).release());
+
+  voxel_c * r = f.puzzle->getShape(result);
+  for (unsigned int x = 0; x < cells; x++)
+    r->setState(x, 0, 0, voxel_c::VX_FILLED);
+
+  f.problem = f.puzzle->getProblem(f.puzzle->addProblem());
+  f.problem->setResultId(result);
+  f.problem->setShapeMaximum(piece, 2);
+
+  return f;
+}
+
+/* an assembly of the bar fixture's two pieces at the given x positions.
+   Returned by pointer because assembly_c's copy constructor is private --
+   the public one takes a `const assembly_c *`, not a reference. */
+std::unique_ptr<assembly_c> barAssembly(const gridType_c & gt, int x0, int x1) {
+  auto a = std::make_unique<assembly_c>(&gt);
+  a->addPlacement(0, x0, 0, 0);
+  a->addPlacement(0, x1, 0, 0);
+  return a;
+}
+
+} // namespace
+
+TEST_CASE("assembly: only the complete smallerRotationExists search finds a translation to a "
+          "smaller position", "[model][assembly]") {
+  BarFixture f = makeBarFixture(4);
+  const gridType_c & gt = *f.puzzle->getGridType();
+  const symmetries_c * sym = gt.getSymmetries();
+
+  /* the two pieces sit in the middle of a four-cell bar, with one free cell
+     on each side */
+  std::unique_ptr<assembly_c> a = barAssembly(gt, 1, 2);
+
+  /* Establish the premise the case turns on, rather than asserting it in a
+     comment: EVERY self-symmetry of the four-cell bar maps this assembly to
+     itself. The non-complete branch tries exactly those transformations and
+     compares without translating, so it has nothing smaller available to
+     find. */
+  symmetries_t s = getResultShape(*f.problem)->selfSymmetries();
+  for (unsigned int t = 0; t < sym->getNumTransformations(); t++) {
+    if (!sym->symmetrieContainsTransformation(s, t)) continue;
+
+    assembly_c tmp(a.get());
+    INFO("self-symmetry transformation " << t);
+    REQUIRE(tmp.transform(t, *f.problem, nullptr));
+    REQUIRE(tmp.getX(0) == 1);
+    REQUIRE(tmp.getX(1) == 2);
+  }
+
+  REQUIRE_FALSE(a->smallerRotationExists(*f.problem, 0, nullptr, false));
+
+  /* The complete branch does translate: it builds the assembly's own voxel
+     space and slides it over every position where it still fits the result.
+     Sliding one cell left gives pieces at x = 0 and 1, which is smaller at
+     the very first placement -- so the answer flips. This is the only thing
+     that separates the two branches, and it is exactly the shifting search
+     `complete` exists to run. */
+  REQUIRE(a->smallerRotationExists(*f.problem, 0, nullptr, true));
+}
+
+TEST_CASE("assembly: the complete search reports nothing smaller for an assembly already pushed "
+          "as far left as it fits", "[model][assembly]") {
+  BarFixture f = makeBarFixture(4);
+  const gridType_c & gt = *f.puzzle->getGridType();
+
+  /* pieces at x = 0 and 1: no translation leaves them inside the result and
+     lands either piece lower, and no rotation of a pair of unit cubes in a
+     bar does either */
+  std::unique_ptr<assembly_c> a = barAssembly(gt, 0, 1);
+
+  REQUIRE_FALSE(a->smallerRotationExists(*f.problem, 0, nullptr, true));
+
+  /* the paired positive case, so this is not merely "the function says no" */
+  std::unique_ptr<assembly_c> b = barAssembly(gt, 2, 3);
+  REQUIRE(b->smallerRotationExists(*f.problem, 0, nullptr, true));
+}
+
+TEST_CASE("assembly: the complete search only accepts a position where the assembly fills the "
+          "result exactly -- an assembly with an interior hole never matches", "[model][assembly]") {
+  BarFixture f = makeBarFixture(4);
+  const gridType_c & gt = *f.puzzle->getGridType();
+
+  /* The complete branch slides the assembly's own voxel space over the
+     result and, at each offset, requires an exact match across the
+     ASSEMBLY's bounding box: a filled assembly cell over an empty result
+     cell is rejected, and so is an empty assembly cell over a filled one.
+
+     Pieces at x = 0 and 2 leave an empty cell at x = 1, inside the
+     assembly's own bounding box. The result bar is solid, so that hole
+     clashes at every offset and no candidate is ever accepted -- the answer
+     is false no matter where the pair sits. */
+  std::unique_ptr<assembly_c> spread = barAssembly(gt, 0, 2);
+  REQUIRE_FALSE(spread->smallerRotationExists(*f.problem, 0, nullptr, true));
+
+  /* the same spread pair moved right, where a translation to a strictly
+     smaller position plainly exists on the geometry alone -- still false,
+     which is what shows the rejection comes from the hole rather than from
+     the pair already being as far left as it goes */
+  std::unique_ptr<assembly_c> spreadRight = barAssembly(gt, 1, 3);
+  REQUIRE_FALSE(spreadRight->smallerRotationExists(*f.problem, 0, nullptr, true));
+
+  /* The control, and the reason the two falses above mean something: the
+     same two pieces made contiguous, with exactly the same leftward slack
+     as the spread pair had, DO find a smaller position. The difference
+     between this and the case above is the interior hole and nothing
+     else. */
+  std::unique_ptr<assembly_c> contiguous = barAssembly(gt, 1, 2);
+  REQUIRE(contiguous->smallerRotationExists(*f.problem, 0, nullptr, true));
+}
+
+TEST_CASE("assembly: the pivot decides the comparison -- the same assembly answers differently "
+          "for pivot 0 and pivot 1", "[model][assembly]") {
+  BarFixture f = makeBarFixture(3);
+  const gridType_c & gt = *f.puzzle->getGridType();
+
+  /* Piece 0 at x = 1, piece 1 at x = 0 -- the pieces are in descending
+     order, which is the case the pivot rule is there to handle.
+
+     With pivot 0 the comparison leads with piece 0. A candidate exists that
+     puts piece 0 at x = 0, which is smaller, so the answer is true.
+
+     With pivot 1 the comparison leads with piece 1, which is ALREADY at
+     x = 0 -- the lowest cell in the result. No candidate can beat that, and
+     a candidate that ties on piece 1 goes on to compare piece 0, where it
+     is worse. So the answer is false.
+
+     Two different answers from one assembly is what makes this a test of
+     the pivot rather than of the search: a version that ignored the pivot
+     argument entirely would have to give the same answer twice. */
+  std::unique_ptr<assembly_c> a = barAssembly(gt, 1, 0);
+
+  REQUIRE(a->smallerRotationExists(*f.problem, 0, nullptr, true));
+  REQUIRE_FALSE(a->smallerRotationExists(*f.problem, 1, nullptr, true));
+}
