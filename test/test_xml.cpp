@@ -634,15 +634,6 @@ TEST_CASE("xml parser: the exception carries a description", "[xml][parser][malf
    saved puzzle written by another tool can perfectly well carry a comment
    or a declaration, and the loader has to walk past it. */
 
-namespace {
-
-/* run a parser over a literal document */
-std::unique_ptr<xmlParser_c> parse(std::istringstream & src) {
-  return std::make_unique<xmlParser_c>(src);
-}
-
-} // namespace
-
 TEST_CASE("xml parser: an xml declaration is consumed and its version and encoding are reported",
           "[xml][parser][prologue]") {
   std::istringstream src("<?xml version=\"1.0\" encoding=\"UTF-8\"?><puzzle/>");
