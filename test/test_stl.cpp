@@ -160,20 +160,39 @@ TEST_CASE("stl export: an ascii file parses back to a non-empty triangle soup", 
   /* the premise every later assertion rests on: something was written */
   REQUIRE(m.triangles.size() > 0);
 
-  /* every coordinate is a real number. NaN coordinates are the failure
-     mode a mesher with a degenerate face produces, and they survive both
-     encodings silently. */
-  for (const StlTriangle & t : m.triangles)
-    for (int v2 = 0; v2 < 3; v2++)
-      for (int i = 0; i < 3; i++)
-        REQUIRE(std::isfinite(t.vertex[v2][i]));
+  /* Every coordinate is a real number, and no triangle collapses to fewer
+     than three distinct corners. NaN coordinates are what a mesher with a
+     degenerate face produces and they survive both encodings silently.
 
-  /* no triangle is degenerate: three distinct corners */
-  for (const StlTriangle & t : m.triangles) {
-    REQUIRE_FALSE(sameVertex(t.vertex[0], t.vertex[1]));
-    REQUIRE_FALSE(sameVertex(t.vertex[1], t.vertex[2]));
-    REQUIRE_FALSE(sameVertex(t.vertex[0], t.vertex[2]));
+     Both scanned to one assertion each rather than asserted per component
+     and per triangle: the meshes here run to dozens of triangles and the
+     per-element form buys no coverage, only assertion count. The INFO
+     still names the offending triangle. */
+  bool allFinite = true, allDistinct = true;
+  size_t firstNonFinite = 0, firstDegenerate = 0;
+
+  for (size_t t = 0; t < m.triangles.size(); t++) {
+    const StlTriangle & tri = m.triangles[t];
+
+    if (allFinite)
+      for (int c = 0; c < 3; c++)
+        for (int i = 0; i < 3; i++)
+          if (!std::isfinite(tri.vertex[c][i])) { allFinite = false; firstNonFinite = t; }
+
+    if (allDistinct &&
+        (sameVertex(tri.vertex[0], tri.vertex[1]) ||
+         sameVertex(tri.vertex[1], tri.vertex[2]) ||
+         sameVertex(tri.vertex[0], tri.vertex[2]))) {
+      allDistinct = false;
+      firstDegenerate = t;
+    }
   }
+
+  INFO("first non-finite coordinate in triangle " << firstNonFinite);
+  REQUIRE(allFinite);
+
+  INFO("first degenerate triangle at " << firstDegenerate);
+  REQUIRE(allDistinct);
 }
 
 TEST_CASE("stl export: the binary file carries the same triangles as the ascii one", "[stl]") {
