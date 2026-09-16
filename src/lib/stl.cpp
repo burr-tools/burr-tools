@@ -45,17 +45,29 @@
 
 #if defined(_WIN32) || defined(__APPLE__) || defined(EMSCRIPTEN)
 const char * basename(const char * name) {
-  const char * res1 = strchr(name, '/');
-  const char * res2 = strchr(name, '\\');
+  /* The LAST separator, not the first: a basename is what follows the
+   * final one. This used strchr, which finds the first, so an absolute
+   * path came back very nearly whole -- "/tmp/a/b.stl" yielded
+   * "tmp/a/b.stl" -- and every STL exported on these platforms carried
+   * most of the user's directory structure in its header. Binary STL's
+   * header is 80 bytes, so a deep path was silently truncated part-way
+   * as well.
+   *
+   * The old code also compared res1 > res2 on two pointers into
+   * different objects, which is undefined behaviour; it happened to give
+   * the right answer only because one side was null. Taking the larger of
+   * the two results is no longer needed -- whichever separator appears
+   * later in the string is found by comparing the two strrchr results,
+   * and null is handled explicitly rather than relied upon.
+   */
+  const char * slash = strrchr(name, '/');
+  const char * backslash = strrchr(name, '\\');
 
-  const char * res = res1>res2 ? res1 : res2;
+  const char * res = slash;
+  if (!res || (backslash && backslash > res))
+    res = backslash;
 
-  if (res == 0)
-    res = name;
-  else
-    res++;
-
-  return res;
+  return res ? res + 1 : name;
 }
 #endif
 

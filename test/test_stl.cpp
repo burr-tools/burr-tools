@@ -325,8 +325,7 @@ TEST_CASE("stl export: a two-cell shape encloses more volume than a one-cell sha
   REQUIRE(two > one * 1.5);
 }
 
-TEST_CASE("stl export: the solid name is derived from the path -- and on this platform the "
-          "derivation is wrong", "[stl][defect]") {
+TEST_CASE("stl export: the solid name is the file's base name on every platform", "[stl]") {
   TempDir dir;
   const std::string path = dir.file("named.stl");
 
@@ -339,53 +338,27 @@ TEST_CASE("stl export: the solid name is derived from the path -- and on this pl
 
   StlMesh m = readAsciiStl(slurp(path));
 
-  /* True whichever basename is in play, and the part a consumer of the
-     file actually relies on. Asserted first so the case still says
-     something if the platform split below is ever removed. */
-  REQUIRE(m.name.size() >= 9);
-  REQUIRE(m.name.compare(m.name.size() - 9, 9, "named.stl") == 0);
+  /* This case used to be split by platform, asserting the base name on
+     Linux and the whole path-bar-one-character everywhere else, because
+     stl.cpp's own basename() -- used where POSIX basename is unavailable --
+     called strchr where it needed strrchr and so returned everything after
+     the FIRST separator. That is fixed, so there is one expectation again.
 
-#if defined(_WIN32) || defined(__APPLE__) || defined(EMSCRIPTEN)
-  /* A defect, pinned rather than fixed.
-
-     stl.cpp supplies its own basename() on Windows, macOS and Emscripten,
-     because those platforms lack the POSIX one. It reads:
-
-         const char * res1 = strchr(name, '/');
-         const char * res2 = strchr(name, 0x5C);
-         const char * res = res1>res2 ? res1 : res2;
-
-     strchr finds the FIRST separator; a basename needs the LAST, which is
-     strrchr. So for an absolute path the function returns everything after
-     the leading slash -- the whole path bar one character -- rather than
-     the file's name.
-
-     The consequence is not entirely cosmetic: the name goes into the
-     exported STL, so every file a macOS or Windows user exports carries
-     most of their directory structure in its header. Binary STL's header
-     is 80 bytes, so a deep path is also silently truncated part-way.
-
-     It has gone unnoticed because CI runs on Linux, where the POSIX
-     basename is used instead and is correct -- which is also why this case
-     splits by platform rather than simply asserting the broken value.
-
-     (The pointer comparison res1 > res2, on two pointers into different
-     objects, is separately undefined, though it happens to give the right
-     answer in the NULL cases. Noted for whoever fixes the strchr.)
-
-     The expected value is computed from the first separator rather than
-     written as path.substr(1). Those coincide only on a POSIX absolute
-     path, where the separator IS character zero; on Windows the path
-     begins "C:\\..." and the first separator is at index 2, so the
-     hardcoded form asserted the wrong string and failed the Windows
-     cross-build while passing on macOS. */
-  const size_t firstSep = path.find_first_of("/\\");
-  REQUIRE(firstSep != std::string::npos);
-  REQUIRE(m.name == path.substr(firstSep + 1));
-#else
-  /* POSIX basename: correct */
+     No platform guard now: the point of the fix is that all of them agree. */
   REQUIRE(m.name == "named.stl");
-#endif
+
+  /* a path with no separator at all must come back unchanged rather than
+     losing its first character -- the branch where strrchr finds nothing */
+  {
+    const std::string bare = "bare.stl";
+    stlExporter_0_c e2;
+    e2.setBinaryMode(false);
+    e2.write(bare.c_str(), *v);
+
+    StlMesh bm = readAsciiStl(slurp(bare));
+    REQUIRE(bm.name == "bare.stl");
+    std::filesystem::remove(bare);
+  }
 }
 
 TEST_CASE("stl export: the binary header carries the name and the true triangle count", "[stl]") {
@@ -402,18 +375,9 @@ TEST_CASE("stl export: the binary header carries the name and the true triangle 
   const std::string raw = slurp(path);
   StlMesh m = readBinaryStl(raw);
 
-  /* The same basename defect as above reaches the binary header too, so
-     only the tail is portable here.
-
-     That also makes this sensitive to how long the system temp path is:
-     the binary header is a fixed 80-byte field, and the whole path is
-     written into it, so a sufficiently long TMPDIR truncates the basename
-     away. Say so directly rather than failing as a confusing string
-     mismatch -- and note the sensitivity disappears once the exporter
-     writes a basename rather than a path. */
-  REQUIRE(path.size() <= 80);
-  REQUIRE(m.name.size() >= 11);
-  REQUIRE(m.name.compare(m.name.size() - 11, 11, "counted.stl") == 0);
+  /* the binary header carries the same base name, now that basename() is
+     fixed -- it was the tail-only comparison before */
+  REQUIRE(m.name == "counted.stl");
 
   /* The count is written LAST, by seeking back to offset 80 once every
      triangle has been emitted. That seek-and-patch is the part that can go
