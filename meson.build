@@ -399,9 +399,23 @@ test_burrtools = executable('test_burrtools',
 # runners are slower than a development machine. Meson's default 30s timeout is
 # too tight for that; give the slow suite room rather than have it fail as a
 # timeout when it is merely busy.
+#
+# The same reasoning now applies to the FAST suite, for a different reason.
+# It runs in about two seconds natively, but the Windows job runs the
+# cross-built binary under wine, where everything is far slower. The phase-2
+# coverage work grew the suite from roughly 190 cases to 380, and that pushed
+# the wine run to 30.01s against meson's default 30s timeout -- so the job
+# failed as a TIMEOUT while reporting "All tests passed (22918 assertions in
+# 378 test cases)" immediately above it.
+#
+# An explicit timeout rather than a faster suite: the cases are not slow, the
+# emulation is. 300s leaves room for a loaded runner without being so large
+# that a genuine hang would sit there for the full ten minutes the slow suite
+# is allowed.
 test('fast', test_burrtools,
   args: ['~[stress]'],
   suite: 'fast',
+  timeout: 300,
   workdir: meson.project_source_root())
 
 test('stress', test_burrtools,
