@@ -4,6 +4,7 @@
 #include "lib/gridtype.h"
 #include "lib/problem.h"
 #include "lib/puzzle.h"
+#include "lib/symmetries.h"
 #include "lib/voxel.h"
 
 #include <initializer_list>
@@ -166,6 +167,43 @@ inline std::unique_ptr<voxel_c> fromLayers(const gridType_c & gt,
 
 /* same dangling-grid footgun as makeVoxel above. */
 std::unique_ptr<voxel_c> fromLayers(gridType_c &&, std::initializer_list<std::vector<std::string>>) = delete;
+
+/**
+ * The chiral tetracube -- the "screw": cells (0,0,0) (1,0,0) (1,1,0) and
+ * (1,1,1). Its mirror image is NOT reachable by any of the 24 proper
+ * rotations of the cube.
+ *
+ * A *planar* shape will not do when chirality is the point, however
+ * L-shaped: any flat shape can be flipped over by a 180-degree rotation
+ * about an in-plane axis, which reproduces its mirror image, so every
+ * planar polyomino is achiral once embedded in 3D. The screw is the
+ * smallest polycube that genuinely is not.
+ */
+inline std::unique_ptr<voxel_c> screw(const gridType_c & gt) {
+  return fromLayers(gt, {{"##",   // z = 0:  (0,0,0) (1,0,0)
+                          ".#"},  //         (1,1,0)
+                         {"..",   // z = 1:  (1,1,1)
+                          ".#"}});
+}
+
+/**
+ * True when some proper (non-mirror) rotation of `orig` reproduces `query`.
+ *
+ * Use it to assert a fixture really is chiral rather than assuming it, and
+ * to check that a transformation something reported is one that genuinely
+ * maps one shape onto the other.
+ */
+inline bool someRotationMatches(const gridType_c & gt, const voxel_c & orig, const voxel_c & query) {
+  const symmetries_c * sym = gt.getSymmetries();
+
+  for (unsigned char t = 0; t < sym->getNumTransformations(); t++) {
+    std::unique_ptr<voxel_c> r = copyVoxel(gt, orig);
+    if (r->transform(t) && query.identicalInBB(r.get(), false))
+      return true;
+  }
+
+  return false;
+}
 
 /**
  * Deep-compare two puzzles for the properties a save/load roundtrip must

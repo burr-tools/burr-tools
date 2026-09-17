@@ -7,6 +7,7 @@
 
 #include <iterator>
 #include <memory>
+#include <string>
 #include <vector>
 
 using namespace bttest;
@@ -581,31 +582,148 @@ TEST_CASE("voxel: scaleDown refuses a block that is not uniform", "[voxel][scale
 
 TEST_CASE("voxel: getMirrorTransform finds the mirror of a chiral shape", "[voxel][mirror]") {
   gridType_c gt(gridType_c::GT_BRICKS);
+  const symmetries_c * sym = gt.getSymmetries();
 
-  /* an S/Z tetromino pair: chiral in the plane, so one is the other's mirror */
-  std::unique_ptr<voxel_c> s = fromLayers(gt, {
-    { ".##",
-      "##." },
-  });
-  std::unique_ptr<voxel_c> z = fromLayers(gt, {
-    { "##.",
-      ".##" },
-  });
+  /* The screw and its mirror. An S/Z tetromino pair will not do, however
+     much it looks chiral on paper: every planar polyomino is achiral once
+     embedded in 3D -- a 180-degree turn about an in-plane axis reproduces
+     the mirror image -- so proper rotations already map S onto Z, and a
+     getMirrorTransform that had stopped searching the mirror range at all
+     would still answer non-zero. */
+  std::unique_ptr<voxel_c> s = screw(gt);
+  std::unique_ptr<voxel_c> mirrored = copyVoxel(gt, *s);
+  REQUIRE(mirrored->transform(sym->getNumTransformations()));
 
-  const unsigned char tr = s->getMirrorTransform(z.get());
+  /* the premise, asserted rather than assumed */
+  REQUIRE_FALSE(someRotationMatches(gt, *s, *mirrored));
+
+  const unsigned char tr = s->getMirrorTransform(mirrored.get());
 
   /* 0 means "no mirror transformation relates these two" */
   INFO("mirror transform " << (int)tr);
   REQUIRE(tr != 0);
 
-  /* getMirrorTransform searches only the mirror range and returns 0 when no
-     mirror transformation relates the two shapes. An achiral shape IS related
-     to itself by one, so a square also answers non-zero. (voxel.cpp:265) */
+  /* and the answer has to BE a mirror transformation. Checking only that it
+     is non-zero is satisfied by any proper rotation, which is exactly what
+     the function must not return -- its two callers use the result to pair
+     mirrored pieces. */
+  REQUIRE(tr >= sym->getNumTransformations());
+  REQUIRE(tr < sym->getNumTransformationsMirror());
+
+  /* an achiral shape IS related to itself by a mirror transformation, so a
+     square answers non-zero too -- and again in the mirror range */
   std::unique_ptr<voxel_c> square = fromLayers(gt, {
     { "##",
       "##" },
   });
-  REQUIRE(square->getMirrorTransform(square.get()) != 0);
+  const unsigned char sq = square->getMirrorTransform(square.get());
+  REQUIRE(sq != 0);
+  REQUIRE(sq >= sym->getNumTransformations());
+}
+
+TEST_CASE("voxel: each grid's lattice predicates are the ones its geometry relies on",
+          "[voxel][grid]") {
+  /* validCoordinate says which cells are real positions on the lattice;
+     onGrid says where a shape's origin may sit. Both are the definition of
+     the grid rather than an implementation detail: fixtures elsewhere in
+     this suite justify their cell choices by appealing to these rules, the
+     connectivity search filters through validCoordinate, and the GUI places
+     shapes with onGrid.
+
+     Neither had a test. A grid could start accepting every coordinate and
+     nothing here would notice -- only an end-to-end solve would, and then
+     for a reason that looks nothing like the cause. */
+  struct Expect {
+    gridType_c::gridType grid;
+    bool (*valid)(int, int, int);
+    bool (*onGrid)(int, int, int);
+  };
+
+  const Expect expected[] = {
+    { gridType_c::GT_BRICKS,
+      [](int, int, int)          { return true; },
+      [](int, int, int)          { return true; } },
+    { gridType_c::GT_TRIANGULAR_PRISM,
+      [](int, int, int)          { return true; },
+      [](int x, int y, int)      { return ((x + y) & 1) == 0; } },
+    { gridType_c::GT_SPHERES,
+      [](int x, int y, int z)    { return ((x + y + z) & 1) == 0; },
+      [](int x, int y, int z)    { return ((x + y + z) & 1) == 0; } },
+    { gridType_c::GT_RHOMBIC,
+      nullptr,   // the fold-and-permute rule is pinned by its own case below
+      [](int x, int y, int z)    { return x % 5 == 0 && y % 5 == 0 && z % 5 == 0; } },
+    { gridType_c::GT_TETRA_OCTA,
+      nullptr,
+      [](int x, int y, int z)    { return x % 3 == 0 && y % 3 == 0 && z % 3 == 0 &&
+                                         (((x / 3 + y / 3 + z / 3) & 1) == 0); } },
+  };
+
+  REQUIRE(std::size(expected) == std::size(ALL_GRIDS));
+
+  for (const Expect & e : expected) {
+    INFO("grid " << gridName(e.grid));
+    gridType_c gt(e.grid);
+    std::unique_ptr<voxel_c> v = makeVoxel(gt, 1, 1, 1);
+
+    unsigned int accepted = 0;
+    for (int x = 0; x < 12; x++)
+      for (int y = 0; y < 12; y++)
+        for (int z = 0; z < 12; z++) {
+          INFO("cell " << x << "," << y << "," << z);
+          if (e.valid) REQUIRE(v->validCoordinate(x, y, z) == e.valid(x, y, z));
+          REQUIRE(v->onGrid(x, y, z) == e.onGrid(x, y, z));
+          if (v->validCoordinate(x, y, z)) accepted++;
+        }
+
+    /* a grid that accepted nothing, or everything, would make the sparse
+       fixtures elsewhere meaningless in opposite directions */
+    REQUIRE(accepted > 0);
+    REQUIRE(accepted <= 12u * 12u * 12u);
+  }
+}
+
+TEST_CASE("voxel: the rhombic and tetra-octa lattices accept only their own cells",
+          "[voxel][grid]") {
+  /* The two sparse grids whose predicate is too involved to restate as a
+     lambda without simply copying the implementation. Pin them by their
+     consequence instead: the exact set of cells accepted inside a small box,
+     which is what every fixture built on these grids actually depends on. */
+  {
+    gridType_c gt(gridType_c::GT_RHOMBIC);
+    std::unique_ptr<voxel_c> v = makeVoxel(gt, 1, 1, 1);
+
+    /* within 0..3 the rhombic grid accepts exactly the permutations of
+       {0,1,2} and {0,2,3} */
+    std::vector<std::string> got;
+    for (int x = 0; x < 4; x++)
+      for (int y = 0; y < 4; y++)
+        for (int z = 0; z < 4; z++)
+          if (v->validCoordinate(x, y, z))
+            got.push_back(std::to_string(x) + std::to_string(y) + std::to_string(z));
+
+    const std::vector<std::string> want = {
+      "012", "021", "023", "032", "102", "120",
+      "201", "203", "210", "230", "302", "320",
+    };
+    REQUIRE(got == want);
+  }
+  {
+    gridType_c gt(gridType_c::GT_TETRA_OCTA);
+    std::unique_ptr<voxel_c> v = makeVoxel(gt, 1, 1, 1);
+
+    std::vector<std::string> got;
+    for (int x = 0; x < 4; x++)
+      for (int y = 0; y < 4; y++)
+        for (int z = 0; z < 4; z++)
+          if (v->validCoordinate(x, y, z))
+            got.push_back(std::to_string(x) + std::to_string(y) + std::to_string(z));
+
+    const std::vector<std::string> want = {
+      "002", "003", "020", "030", "111", "200", "222", "223",
+      "232", "233", "300", "322", "323", "332", "333",
+    };
+    REQUIRE(got == want);
+  }
 }
 
 TEST_CASE("voxel: identicalInBB is colour-sensitive", "[voxel]") {

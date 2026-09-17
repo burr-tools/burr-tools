@@ -56,11 +56,22 @@ TEST_CASE("problem: with no colours defined every placement is allowed", "[probl
 
   REQUIRE(f.puzzle->colorNumber() == 0);
 
-  /* placementAllowed returns early on colorNumber() == 0 (problem.cpp) --
-     a puzzle that does not use colours must not have its assembler
-     constrained by an empty constraint set. Probe a pair that would be
-     DISALLOWED under the allow-list rule the next case establishes, so this
-     is distinguishable from that behaviour rather than compatible with it. */
+  /* A puzzle that does not use colours must not have its assembler
+     constrained by an empty constraint set.
+
+     This case cannot, however, distinguish WHICH rule delivers that.
+     placementAllowed's early return on colorNumber() == 0 is unobservable
+     through the public API: its two bt_asserts require both arguments to be
+     <= colorNumber(), so with no colours the only pair that may legally be
+     passed is (0, 0) -- and (0, 0) is allowed anyway by the `pc == 0 ||
+     res == 0` rule one line further down, which the colour-0 case below
+     pins directly. Delete the early return and this assertion still holds.
+
+     Recorded rather than papered over: an earlier comment here claimed the
+     pair was "DISALLOWED under the allow-list rule", which is the opposite
+     of what the next case asserts. The honest statement is that the early
+     return is redundant with the colour-0 rule for every input reachable
+     from outside the class. */
   REQUIRE(f.problem->placementAllowed(0, 0));
 }
 
@@ -351,6 +362,22 @@ TEST_CASE("problem: a fresh problem holds no assembler", "[problem][assembler]")
   /* and the const overload agrees -- it is a separate function body */
   const problem_c & cp = *f.problem;
   REQUIRE(cp.getAssembler() == nullptr);
+
+  /* Then give it one and read it back through the const overload, because
+     nullptr is exactly what a broken body would return: asserting only the
+     empty answer, here and everywhere else in the suite, is satisfied by
+     `return nullptr;`. The non-const overload is pinned against a real
+     pointer elsewhere; this one was not pinned at all. */
+  assembler_c * raw = nullptr;
+  {
+    auto assm = std::make_unique<assembler_0_c>(*f.problem);
+    raw = assm.get();
+    f.problem->setAssembler(std::move(assm));
+  }
+
+  REQUIRE(raw != nullptr);
+  REQUIRE(cp.getAssembler() == raw);
+  REQUIRE(cp.getAssembler() == f.problem->getAssembler());
 }
 
 /* ------------------------------------------------------------------ */

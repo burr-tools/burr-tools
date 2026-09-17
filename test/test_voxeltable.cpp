@@ -33,40 +33,10 @@ unsigned int addShape(puzzle_c & puz, std::unique_ptr<voxel_c> v) {
   return puz.addShape(v.release());
 }
 
-/* The chiral tetracube -- the "screw": cells (0,0,0) (1,0,0) (1,1,0) and
-   (1,1,1). Its mirror image is NOT reachable by any of the 24 proper
-   rotations of the cube, which is what makes PAR_MIRROR observable at all:
-   a shape equal to its own mirror would report "found" with or without the
-   flag and could distinguish nothing.
-
-   A *planar* shape will not do here, however L-shaped. Any flat shape can
-   be flipped over by a 180-degree rotation about an in-plane axis, which
-   reproduces its mirror image, so every planar polyomino is achiral once
-   embedded in 3D. The screw is the smallest polycube that genuinely is not.
-   Each case that depends on this asserts the chirality rather than assuming
-   it. */
-std::unique_ptr<voxel_c> screw(const gridType_c & gt) {
-  return fromLayers(gt, {{"##",   // z = 0:  (0,0,0) (1,0,0)
-                          ".#"},  //         (1,1,0)
-                         {"..",   // z = 1:  (1,1,1)
-                          ".#"}});
-}
-
-/* true when some proper (non-mirror) rotation of `orig` reproduces `query`.
-   Used both to assert a fixture really is chiral and to check a
-   transformation the table reported is one that genuinely maps one onto the
-   other. */
-bool someRotationMatches(const gridType_c & gt, const voxel_c & orig, const voxel_c & query) {
-  const symmetries_c * sym = gt.getSymmetries();
-
-  for (unsigned char t = 0; t < sym->getNumTransformations(); t++) {
-    std::unique_ptr<voxel_c> r = copyVoxel(gt, orig);
-    if (r->transform(t) && query.identicalInBB(r.get(), false))
-      return true;
-  }
-
-  return false;
-}
+/* screw() and someRotationMatches() live in test_helpers.h: the mirror
+   cases in test_voxel.cpp need the same chiral fixture and the same
+   "is this really chiral?" guard, and a second copy would be a second
+   thing to get wrong. */
 
 } // namespace
 
@@ -167,6 +137,45 @@ TEST_CASE("voxelTable: without PAR_MIRROR a chiral shape's mirror is not found",
   REQUIRE_FALSE(someRotationMatches(*puz.getGridType(), *puz.getShape(idx), *mirrored));
 
   REQUIRE_FALSE(tab.getSpace(mirrored.get(), nullptr, nullptr, voxelTable_c::PAR_MIRROR));
+}
+
+TEST_CASE("voxelTable: a mirrored node is hidden from a query that did not ask for mirrors",
+          "[voxeltable][mirror]") {
+  /* The configuration the filter exists for, and the only one in which it
+     can change an answer: the table HOLDS mirrored orientations, and the
+     caller does NOT want them.
+
+     The two cases either side of this one both leave the guard inert. When
+     the table is built without PAR_MIRROR every stored node already has a
+     proper-rotation transformation, so the filter's second term is true
+     whatever it is asked; when both sides pass the flag the first term
+     short-circuits it. Delete the filter outright and neither notices.
+
+     The GUI does exactly this: statuswindow.cpp fills the table with
+     PAR_MIRROR and then queries with no flags to compute its "identical
+     shape, ignoring mirror" column. Without the guard that column reports
+     mirror images as identical. */
+  puzzle_c puz(new gridType_c(gridType_c::GT_BRICKS));
+
+  unsigned int idx = addShape(puz, screw(*puz.getGridType()));
+
+  const symmetries_c * sym = puz.getGridType()->getSymmetries();
+
+  voxelTablePuzzle_c tab(&puz);
+  tab.addSpace(idx, voxelTable_c::PAR_MIRROR);   // mirrored orientations ARE stored
+
+  std::unique_ptr<voxel_c> mirrored = copyVoxel(*puz.getGridType(), *puz.getShape(idx));
+  REQUIRE(mirrored->transform(sym->getNumTransformations()));
+
+  /* the premise: no proper rotation reproduces this, so the only node that
+     could match it is a mirrored one -- exactly what the query must refuse */
+  REQUIRE_FALSE(someRotationMatches(*puz.getGridType(), *puz.getShape(idx), *mirrored));
+
+  REQUIRE_FALSE(tab.getSpace(mirrored.get(), nullptr, nullptr, 0));
+
+  /* and the shape itself is still found, so the refusal above is the filter
+     at work rather than the table having lost the entry */
+  REQUIRE(tab.getSpace(puz.getShape(idx), nullptr, nullptr, 0));
 }
 
 TEST_CASE("voxelTable: with PAR_MIRROR on both sides a chiral shape's mirror is found", "[voxeltable][mirror]") {
