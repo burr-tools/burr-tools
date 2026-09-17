@@ -79,6 +79,7 @@ public:
   }
 
   std::string file(const char * name) const { return (path_ / name).string(); }
+  const std::filesystem::path & path() const { return path_; }
 
 private:
   static int & counter() { static int n = 0; return n; }
@@ -95,6 +96,41 @@ private:
     return t;
   }
   std::filesystem::path path_;
+};
+
+/**
+ * Moves the process into a directory for the life of the guard, and back
+ * out again afterwards -- including when an assertion throws.
+ *
+ * Needed by exactly one case: the exporter's name handling has a branch
+ * for a path carrying no directory separator, and the only way to reach
+ * it is to hand it a bare file name, which lands wherever the process
+ * happens to be. That is the source tree when the suite runs, so the
+ * case has to move somewhere disposable first rather than write into the
+ * checkout and delete it afterwards.
+ *
+ * The working directory is process-global. This is safe because Catch2
+ * runs the cases in a process sequentially, and unsafe the moment that
+ * stops being true -- so keep the guarded region to the single write it
+ * exists for. Note also that the rest of the suite loads fixtures through
+ * relative paths (examples/...), which only resolve from the source root.
+ */
+class WorkingDirectory {
+public:
+  explicit WorkingDirectory(const std::filesystem::path & to)
+      : previous_(std::filesystem::current_path()) {
+    std::filesystem::current_path(to);
+  }
+  ~WorkingDirectory() {
+    std::error_code ec;
+    std::filesystem::current_path(previous_, ec);
+  }
+
+  WorkingDirectory(const WorkingDirectory &) = delete;
+  WorkingDirectory & operator=(const WorkingDirectory &) = delete;
+
+private:
+  std::filesystem::path previous_;
 };
 
 /** a single filled cube cell on the given grid */
@@ -347,17 +383,23 @@ TEST_CASE("stl export: the solid name is the file's base name on every platform"
      No platform guard now: the point of the fix is that all of them agree. */
   REQUIRE(m.name == "named.stl");
 
-  /* a path with no separator at all must come back unchanged rather than
-     losing its first character -- the branch where strrchr finds nothing */
+  /* A path with no separator at all must come back unchanged rather than
+     losing its first character -- the branch where strrchr finds nothing.
+
+     A bare name is the whole point of the case, so it cannot be moved
+     under the temp dir; the process moves there instead, rather than
+     writing into the source tree and tidying up afterwards. */
   {
     const std::string bare = "bare.stl";
+    TempDir bareDir;
+    WorkingDirectory here(bareDir.path());
+
     stlExporter_0_c e2;
     e2.setBinaryMode(false);
     e2.write(bare.c_str(), *v);
 
     StlMesh bm = readAsciiStl(slurp(bare));
     REQUIRE(bm.name == "bare.stl");
-    std::filesystem::remove(bare);
   }
 }
 
