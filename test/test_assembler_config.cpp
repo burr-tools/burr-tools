@@ -84,6 +84,22 @@ Fixture bars(unsigned int resultCells, std::initializer_list<unsigned int> piece
   return f;
 }
 
+/**
+ * Which implementation an assembler_c actually is.
+ *
+ * The obvious-looking alternative -- calling the static
+ * assembler_0_c::canHandle() next to a findAssembler() call -- asks about
+ * the PROBLEM, not about the object that came back, so it holds whatever
+ * the factory did with the answer. A dynamic_cast is the only thing here
+ * that inspects the returned object, and neither assembler exposes a name
+ * or version to identify itself by.
+ */
+const char * assemblerKind(const assembler_c * a) {
+  if (dynamic_cast<const assembler_0_c *>(a)) return "assembler_0";
+  if (dynamic_cast<const assembler_1_c *>(a)) return "assembler_1";
+  return "neither";
+}
+
 /** counts what an assemble() run produces, and can stop early */
 class CountingCallback : public assembler_cb {
 public:
@@ -160,6 +176,12 @@ TEST_CASE("assembler: a piece that fits nowhere in the result is rejected before
   auto puzzle = std::make_unique<puzzle_c>(std::make_unique<gridType_c>(gridType_c::GT_BRICKS));
   const gridType_c & gt = *puzzle->getGridType();
 
+  /* An unused shape first, so that the bar's shape id (1) and its
+     problem-local part index (0) differ. With the bar added first both
+     are zero and the assertion below cannot tell them apart -- which is
+     what it was previously getting wrong. */
+  puzzle->addShape(fromLayers(gt, {{"#"}}));
+
   /* a 1x3 bar and a single cell: four cells in total */
   unsigned int longBar = puzzle->addShape(fromLayers(gt, {{"###"}}));
   unsigned int single = puzzle->addShape(fromLayers(gt, {{"#"}}));
@@ -179,9 +201,16 @@ TEST_CASE("assembler: a piece that fits nowhere in the result is rejected before
 
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_CAN_NOT_PLACE);
 
-  /* the parameter names WHICH piece could not be placed, so the user is
-     told what to change */
-  REQUIRE(assm.getErrorsParam() == (int)problem->getPartIdForShape(longBar));
+  /* The parameter names WHICH piece could not be placed, so the user is
+     told what to change -- and it names it by SHAPE id, not by the
+     problem-local part index. prepare() returns -getShapeIdOfPart(pc)
+     (assembler_0.cpp:686) and createMatrix negates it back
+     (assembler_0.cpp:748); mainwindow.cpp:3141 then feeds it straight to
+     selectShape. Asserting against getPartIdForShape here would be
+     asserting the wrong identifier, and the fixture above is arranged so
+     that the difference is visible. */
+  REQUIRE(assm.getErrorsParam() == (int)longBar);
+  REQUIRE((int)longBar != (int)problem->getPartIdForShape(longBar));
 }
 
 TEST_CASE("assembler: a well-formed problem passes createMatrix", "[assembler][config]") {
@@ -230,13 +259,19 @@ TEST_CASE("assembler: findAssembler picks assembler_0 when it can and assembler_
   Fixture f = bars(5, {2, 3});
   const gridType_c & gt = *f.puzzle->getGridType();
 
+  /* Both assemblers accept a fixed-count problem, so "assembler_0 could
+     handle this" says nothing about which one the factory chose. The
+     assertions below name the object that came back; asserting
+     eligibility instead would pass even against a findAssembler that had
+     lost its assembler_0 branch altogether. */
   {
     std::unique_ptr<assembler_c> a = gt.findAssembler(*f.problem);
     REQUIRE(a != nullptr);
 
-    /* identified by behaviour rather than by a dynamic_cast: assembler_0
-       is the one that cannot handle ranges */
-    REQUIRE(assembler_0_c::canHandle(*f.problem));
+    REQUIRE(assembler_0_c::canHandle(*f.problem));   // both are eligible...
+    REQUIRE(assembler_1_c::canHandle(*f.problem));
+    REQUIRE(std::string(assemblerKind(a.get())) == "assembler_0");   // ...and 0 is preferred
+
     REQUIRE(a->createMatrix(false, false, false) == assembler_c::ERR_NONE);
   }
 
@@ -247,6 +282,8 @@ TEST_CASE("assembler: findAssembler picks assembler_0 when it can and assembler_
     std::unique_ptr<assembler_c> a = gt.findAssembler(*f.problem);
     REQUIRE(a != nullptr);
     REQUIRE_FALSE(assembler_0_c::canHandle(*f.problem));
+
+    REQUIRE(std::string(assemblerKind(a.get())) == "assembler_1");
 
     /* assembler_1 must accept the very problem assembler_0 refused --
        otherwise findAssembler's fallback is decorative */
@@ -487,8 +524,19 @@ TEST_CASE("assembler: a range lets assembler_1 use a different number of pieces"
   REQUIRE(cb.assemblies == 1);
 }
 
-TEST_CASE("assembler: a hole limit of zero does not disturb a problem that already has no holes",
+TEST_CASE("assembler: assembler_0 ignores the hole limit entirely",
           "[assembler][config]") {
+  /* Worth pinning as its own claim, because it is easy to read a passing
+     "the limit changed nothing" case as evidence that the limit was
+     honoured and happened to exclude nothing.
+
+     It was not honoured. maxHoles appears nowhere in assembler_0.cpp: the
+     setting is read only by assembler_1 (assembler_1.cpp:689-690), and
+     only on the ranged branch at that. assembler_0 requires every part to
+     have min == max == 1, so its result is always filled exactly and the
+     question never arises.
+
+     The case below is where the limit is actually exercised. */
   Fixture f = bars(6, {1, 2, 3});
 
   int withoutLimit = 0;
@@ -505,13 +553,6 @@ TEST_CASE("assembler: a hole limit of zero does not disturb a problem that alrea
   f.problem->setMaxHoles(0);
   REQUIRE(f.problem->getMaxHoles() == 0);
 
-  /* The pieces fill the result exactly, so every assembly has zero holes
-     and a limit of zero excludes none of them. The limit constrains the
-     search; it must not lose a solution that already satisfies it.
-
-     Compared against the unrestricted run rather than a fixed number, so
-     the case says "the limit changed nothing" rather than restating the
-     geometry. */
   assembler_0_c assm(*f.problem);
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
@@ -519,6 +560,80 @@ TEST_CASE("assembler: a hole limit of zero does not disturb a problem that alrea
   assm.assemble(&cb);
 
   REQUIRE(cb.assemblies == withoutLimit);
+}
+
+namespace {
+
+/**
+ * A problem whose configured hole limit assembler_1 will actually read.
+ *
+ * Two conditions have to hold together, and the setting is silently
+ * ignored unless both do (assembler_1.cpp:687-692):
+ *
+ *   - the total minimum and maximum piece volumes must DIFFER, or the
+ *     hole count is pinned to res_filled - min and the configured limit
+ *     is never consulted; hence the piece range rather than a fixed count
+ *   - the result must have variable cells, or there is nowhere for a hole
+ *     to be
+ *
+ * A 1x1 piece with the range [3..5] against a five-cell result of three
+ * filled and two variable cells gives four assemblies: three pieces
+ * covering the filled cells (two holes), four pieces covering the filled
+ * cells and either variable cell (one hole, two ways), and five pieces
+ * covering everything (no holes).
+ */
+Fixture rangedWithVariableResult() {
+  Fixture f;
+  f.puzzle = std::make_unique<puzzle_c>(std::make_unique<gridType_c>(gridType_c::GT_BRICKS));
+  const gridType_c & gt = *f.puzzle->getGridType();
+
+  unsigned int single = f.puzzle->addShape(fromLayers(gt, {{"#"}}));
+  unsigned int result = f.puzzle->addShape(fromLayers(gt, {{"###++"}}));
+
+  f.problem = f.puzzle->getProblem(f.puzzle->addProblem());
+  f.problem->setResultId(result);
+  f.problem->setShapeMinimum(single, 3);
+  f.problem->setShapeMaximum(single, 5);
+
+  return f;
+}
+
+/** how many assemblies assembler_1 finds, optionally under a hole limit */
+int assembliesUnderHoleLimit(int maxHoles) {
+  Fixture f = rangedWithVariableResult();
+  if (maxHoles >= 0) f.problem->setMaxHoles(maxHoles);
+
+  assembler_1_c assm(*f.problem);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  CountingCallback cb;
+  assm.assemble(&cb);
+  return cb.assemblies;
+}
+
+} // namespace
+
+TEST_CASE("assembler: the configured hole limit excludes the assemblies that exceed it",
+          "[assembler][config]") {
+  /* The limit is a search constraint, so the thing to assert is that it
+     removes assemblies -- and which ones. Asserting only that a limit
+     satisfied by every assembly changes nothing would pass just as well
+     against an assembler that never read the setting at all.
+
+     The four assemblies have 2, 1, 1 and 0 holes respectively, so each
+     limit below has a different, predictable effect. */
+  const int unlimited = assembliesUnderHoleLimit(-1);
+  REQUIRE(unlimited == 4);
+
+  /* no holes tolerated: only the assembly that fills every cell */
+  REQUIRE(assembliesUnderHoleLimit(0) == 1);
+
+  /* one hole tolerated: loses the two-hole assembly, keeps the other three */
+  REQUIRE(assembliesUnderHoleLimit(1) == 3);
+
+  /* a limit no assembly exceeds excludes nothing -- the case the old test
+     made, which only means something next to the three above */
+  REQUIRE(assembliesUnderHoleLimit(2) == unlimited);
 }
 
 /* ------------------------------------------------------------------ */
@@ -718,8 +833,17 @@ TEST_CASE("assembler: the bundled counts span both assemblers and more than one 
     problem_c * problem = p->getProblem(c.problem);
     REQUIRE(problem != nullptr);
 
-    if (assembler_0_c::canHandle(*problem)) sawAssembler0 = true;
-    else                                    sawAssembler1 = true;
+    /* Ask the factory and inspect what it returned. Reading eligibility
+       off canHandle() instead would be inferring which implementation ran
+       from which one was allowed to, and the case would keep claiming
+       both were exercised however findAssembler actually chose. */
+    std::unique_ptr<assembler_c> a = p->getGridType()->findAssembler(*problem);
+    REQUIRE(a != nullptr);
+
+    const std::string kind = assemblerKind(a.get());
+    if (kind == "assembler_0")      sawAssembler0 = true;
+    else if (kind == "assembler_1") sawAssembler1 = true;
+    else                            FAIL("unrecognised assembler for " << c.path);
 
     gridType_c::gridType g = p->getGridType()->getType();
     bool seen = false;
@@ -731,3 +855,4 @@ TEST_CASE("assembler: the bundled counts span both assemblers and more than one 
   REQUIRE(sawAssembler1);
   REQUIRE(grids.size() >= 2);
 }
+
