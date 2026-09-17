@@ -36,47 +36,13 @@ using namespace bttest;
    that happened to match on all five grids would be a coincidence; these
    are obligations. */
 
+/* validCoordinates(), legalShape() and the box size live in
+   test_helpers.h: the same "ask the grid which cells it accepts" rule that
+   this file is built on is needed by the connectivity and scaling cases
+   too, and a second copy would be a second thing to get wrong. */
 namespace {
 
-/** the coordinates the grid actually accepts, within a size x size x size box */
-std::vector<std::tuple<int, int, int>> validCoordinates(const voxel_c & v, int size) {
-  std::vector<std::tuple<int, int, int>> out;
-
-  for (int z = 0; z < size; z++)
-    for (int y = 0; y < size; y++)
-      for (int x = 0; x < size; x++)
-        if (v.validCoordinate(x, y, z))
-          out.emplace_back(x, y, z);
-
-  return out;
-}
-
-/**
- * A shape made of the first `cells` coordinates the grid accepts inside a
- * box of the given size, so it is a legal piece on every grid.
- *
- * Returns nullptr when the grid does not offer that many coordinates in a
- * box that size, so a caller can say so rather than silently testing a
- * smaller shape than it asked for.
- */
-std::unique_ptr<voxel_c> legalShape(const gridType_c & gt, int size, unsigned int cells) {
-  std::unique_ptr<voxel_c> v = makeVoxel(gt, size, size, size);
-
-  std::vector<std::tuple<int, int, int>> coords = validCoordinates(*v, size);
-  if (coords.size() < cells) return nullptr;
-
-  for (unsigned int i = 0; i < cells; i++) {
-    auto [x, y, z] = coords[i];
-    v->setState(x, y, z, voxel_c::VX_FILLED);
-  }
-
-  return v;
-}
-
-/* a box big enough that every grid offers a workable number of valid
-   coordinates inside it -- the tetra-octa grid is the sparsest, so it sets
-   the floor */
-constexpr int BOX = 6;
+constexpr int BOX = LEGAL_SHAPE_BOX;
 
 } // namespace
 

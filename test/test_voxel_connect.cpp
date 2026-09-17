@@ -9,15 +9,29 @@
 
 using namespace bttest;
 
-TEST_CASE("voxel: a solid block is face connected", "[voxel][connect]") {
+TEST_CASE("voxel: a solid block is face connected", "[voxel][connect][grid]") {
+  /* "Solid block" has to mean a block of cells the grid accepts, not a
+     block of coordinates.
+
+     connected() and unionFind() both filter through validCoordinate
+     (voxel.cpp:425, voxel.cpp:485), while countState() and the ASCII
+     fixtures address raw storage slots. A 2x2x2 of cube-grid coordinates
+     contains none that GT_RHOMBIC or GT_TETRA_OCTA accept, so written that
+     way this case handed those two grids a shape with no participating
+     cells and collected the vacuous "an empty shape is connected" answer
+     -- the very thing the case below exists to cover separately.
+
+     Hence the box size and the non-vacuity assertion: both are load
+     bearing, not belt-and-braces. */
   for (gridType_c::gridType t : ALL_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
 
-    std::unique_ptr<voxel_c> v = fromLayers(gt, {
-      { "##",
-        "##" },
-    });
+    std::unique_ptr<voxel_c> v = makeVoxel(gt, LEGAL_SHAPE_BOX, LEGAL_SHAPE_BOX, LEGAL_SHAPE_BOX);
+    v->setAll(voxel_c::VX_FILLED);
+
+    /* more than one, or "they hang together" is trivially true */
+    REQUIRE(countValidFilled(*v) > 1);
 
     /* type 0 is face connectivity; check the filled voxels hang together */
     REQUIRE(v->connected(0, true, voxel_c::VX_EMPTY));
@@ -180,8 +194,12 @@ TEST_CASE("voxel: face connectivity implies edge and corner connectivity on ever
     INFO("grid " << gridName(t));
     gridType_c gt(t);
 
-    std::unique_ptr<voxel_c> v = makeVoxel(gt, 3, 3, 3);
+    std::unique_ptr<voxel_c> v = makeVoxel(gt, LEGAL_SHAPE_BOX, LEGAL_SHAPE_BOX, LEGAL_SHAPE_BOX);
     v->setAll(voxel_c::VX_FILLED);
+
+    /* the implication is vacuous over a shape with no participating cells,
+       so pin that there are some before leaning on it */
+    REQUIRE(countValidFilled(*v) > 1);
 
     REQUIRE(v->connected(0, false, voxel_c::VX_FILLED));   // face -- the premise
     REQUIRE(v->connected(1, false, voxel_c::VX_FILLED));   // edge
@@ -202,10 +220,18 @@ TEST_CASE("voxel: a single filled cell is connected under every connectivity typ
     for (char type = 0; type < 3; type++) {
       INFO("connectivity type " << (int)type);
 
-      std::unique_ptr<voxel_c> v = makeVoxel(gt, 3, 3, 3);
-      v->setState(1, 1, 1, voxel_c::VX_FILLED);
+      /* The cell has to be one the grid accepts. (1,1,1) is not: GT_SPHERES
+         wants an even coordinate sum and GT_RHOMBIC's predicate rejects it,
+         and because countState() counts storage slots while connected()
+         filters through validCoordinate, filling it there satisfied the
+         count assertion and then took the empty-shape branch -- passing
+         without once exercising the single-cell path this case is named
+         for. Ask the grid for a cell instead. */
+      std::unique_ptr<voxel_c> v = legalShape(gt, LEGAL_SHAPE_BOX, 1);
+      REQUIRE(v != nullptr);
 
       REQUIRE(v->countState(voxel_c::VX_FILLED) == 1);
+      REQUIRE(countValidFilled(*v) == 1);        // and the grid agrees it is a cell
       REQUIRE(v->connected(type, false, voxel_c::VX_FILLED));
     }
   }

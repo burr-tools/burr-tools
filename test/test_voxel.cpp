@@ -784,13 +784,24 @@ TEST_CASE("voxel: scaleDown reports whether the grid supports it before doing an
           "[voxel][scale][grid]") {
   /* scaleDown(by, false) is the documented "could you?" query -- the
      minimise-all-shapes path asks every shape before scaling any of them.
-     Only the grids overriding it can ever answer yes; the base
-     implementation returns false unconditionally.
 
-     GT_TRIANGULAR_PRISM is the interesting one: it overrides scale() but
-     NOT scaleDown(), so it can be scaled up and never back down. That
-     asymmetry is invisible from the header's grid list and is exactly what
-     a shared assertion would have hidden. */
+     GT_BRICKS is the only grid that can ever answer yes. The other four
+     answer no, but for two different reasons, and the distinction is worth
+     recording because "overrides scaleDown" does NOT imply "can scale
+     down":
+
+       - GT_TRIANGULAR_PRISM and GT_SPHERES inherit voxel_c::scaleDown
+         (voxel.cpp:339), which returns false unconditionally. The prism is
+         the interesting one: it overrides scale() but not scaleDown(), so
+         it can be scaled up and never back down -- an asymmetry that is
+         invisible from the header's grid list.
+       - GT_RHOMBIC and GT_TETRA_OCTA do override scaleDown
+         (voxel_3.cpp:449, voxel_4.cpp:302), but both overrides are stubs
+         that likewise return false unconditionally.
+
+     The expectations below are therefore written against what the code
+     returns, and asserted for every grid rather than only for the ones
+     expected to refuse. */
   struct Expect {
     gridType_c::gridType grid;
     bool canEverScaleDown;
@@ -799,9 +810,9 @@ TEST_CASE("voxel: scaleDown reports whether the grid supports it before doing an
   const Expect expected[] = {
     { gridType_c::GT_BRICKS,           true  },
     { gridType_c::GT_TRIANGULAR_PRISM, false },   // overrides scale() but not scaleDown()
-    { gridType_c::GT_SPHERES,          false },
-    { gridType_c::GT_RHOMBIC,          true  },
-    { gridType_c::GT_TETRA_OCTA,       true  },
+    { gridType_c::GT_SPHERES,          false },   // inherits the base no-op
+    { gridType_c::GT_RHOMBIC,          false },   // overrides scaleDown, but the override is a stub
+    { gridType_c::GT_TETRA_OCTA,       false },   // likewise a stub override
   };
 
   REQUIRE(std::size(expected) == std::size(ALL_GRIDS));
@@ -810,25 +821,42 @@ TEST_CASE("voxel: scaleDown reports whether the grid supports it before doing an
     INFO("grid " << gridName(e.grid));
     gridType_c gt(e.grid);
 
-    /* a 2x2x2 block of cube-grid cells, scaled up so that on the grids that
-       do implement scaleDown there is genuinely something to scale back */
-    std::unique_ptr<voxel_c> v = makeVoxel(gt, 2, 2, 2);
-    v->setAll(voxel_c::VX_FILLED);
+    /* Cells the grid accepts, scaled up, so that a grid implementing
+       scaleDown has genuinely something to scale back.
+
+       Addressing coordinates directly instead would not produce a smaller
+       fixture, it would produce an empty one: a 2x2x2 block of cube-grid
+       cells contains no coordinate GT_RHOMBIC accepts, so scale() drops
+       every cell and the grid is then asked whether it can scale down
+       nothing. */
+    std::unique_ptr<voxel_c> v = legalShape(gt, LEGAL_SHAPE_BOX, 4);
+    REQUIRE(v != nullptr);
     v->scale(2, false);
+
+    const unsigned int cells = v->countState(voxel_c::VX_FILLED);
+    REQUIRE(cells > 0);
 
     const bool answered = v->scaleDown(2, false);
 
+    /* Assert the answer for every grid, not just the refusing ones.
+       Checking only the false rows, and otherwise comparing the call
+       against itself, passes whatever the call returns -- which is how two
+       wrong rows sat in this table unnoticed. */
+    REQUIRE(answered == e.canEverScaleDown);
+
     /* the query must not have changed anything -- action == false */
-    const unsigned int cells = v->countState(voxel_c::VX_FILLED);
     REQUIRE(v->scaleDown(2, false) == answered);
     REQUIRE(v->countState(voxel_c::VX_FILLED) == cells);
 
     if (!e.canEverScaleDown) {
-      REQUIRE_FALSE(answered);
-
       /* and asking it to act is refused too, rather than half-doing it */
       REQUIRE_FALSE(v->scaleDown(2, true));
       REQUIRE(v->countState(voxel_c::VX_FILLED) == cells);
+    } else {
+      /* the grid that says yes must then actually do it, so that "can" and
+         "does" are both pinned rather than just the advertisement */
+      REQUIRE(v->scaleDown(2, true));
+      REQUIRE(v->countState(voxel_c::VX_FILLED) == cells / (2 * 2 * 2));
     }
   }
 }

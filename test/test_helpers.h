@@ -10,6 +10,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace bttest {
@@ -57,6 +58,67 @@ inline std::unique_ptr<voxel_c> copyVoxel(const gridType_c & gt, const voxel_c &
 
 /* same dangling-grid footgun as makeVoxel above. */
 std::unique_ptr<voxel_c> copyVoxel(gridType_c &&, const voxel_c &) = delete;
+
+/**
+ * The coordinates the grid actually accepts, within a size x size x size box.
+ *
+ * GT_SPHERES, GT_RHOMBIC and GT_TETRA_OCTA accept only a sparse subset of
+ * coordinates; a cell written outside it is not a differently-shaped piece,
+ * it is not a piece at all. Anything that wants a fixture which is legal on
+ * every grid has to ask the grid rather than address coordinates directly.
+ */
+inline std::vector<std::tuple<int, int, int>> validCoordinates(const voxel_c & v, int size) {
+  std::vector<std::tuple<int, int, int>> out;
+
+  for (int z = 0; z < size; z++)
+    for (int y = 0; y < size; y++)
+      for (int x = 0; x < size; x++)
+        if (v.validCoordinate(x, y, z))
+          out.emplace_back(x, y, z);
+
+  return out;
+}
+
+/** how many of the shape's filled cells sit on coordinates the grid accepts */
+inline unsigned int countValidFilled(const voxel_c & v) {
+  unsigned int n = 0;
+
+  for (unsigned int x = 0; x < v.getX(); x++)
+    for (unsigned int y = 0; y < v.getY(); y++)
+      for (unsigned int z = 0; z < v.getZ(); z++)
+        if (v.validCoordinate(x, y, z) && v.getState(x, y, z) == voxel_c::VX_FILLED)
+          n++;
+
+  return n;
+}
+
+/**
+ * A shape made of the first `cells` coordinates the grid accepts inside a
+ * box of the given size, so it is a legal piece on every grid.
+ *
+ * Returns nullptr when the grid does not offer that many coordinates in a
+ * box that size, so a caller can say so rather than silently testing a
+ * smaller shape than it asked for.
+ */
+inline std::unique_ptr<voxel_c> legalShape(const gridType_c & gt, int size, unsigned int cells) {
+  std::unique_ptr<voxel_c> v = makeVoxel(gt, size, size, size);
+
+  std::vector<std::tuple<int, int, int>> coords = validCoordinates(*v, size);
+  if (coords.size() < cells) return nullptr;
+
+  for (unsigned int i = 0; i < cells; i++) {
+    auto [x, y, z] = coords[i];
+    v->setState(x, y, z, voxel_c::VX_FILLED);
+  }
+
+  return v;
+}
+
+/* a box big enough that every grid offers a workable number of valid
+   coordinates inside it -- the tetra-octa grid is the sparsest, so it sets
+   the floor */
+constexpr int LEGAL_SHAPE_BOX = 6;
+
 
 /**
  * Build a voxel space from ASCII layer art.
