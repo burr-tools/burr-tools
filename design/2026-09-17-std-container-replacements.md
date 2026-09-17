@@ -102,7 +102,11 @@ Baseline measured on the parent commit via `git stash`, same machine.
 | Prisgon / MirrorParadox / CubeInCage / Bermuda / Stellation | 0.004–0.02s | same ballpark | parity (too fast to discriminate) |
 
 No benchmark regressed; the heavy disassembler workload is within run-to-run
-noise. Correctness is pinned by `test_solver.cpp` exact assembly/solution
+noise. A second interleaved A/B pass (both binaries pinned to one core,
+alternating runs) flipped the per-puzzle signs with heavily overlapping
+ranges — the box carries background load (load avg ~4), so no reproducible
+delta exists in either direction: perf-neutral within measurement noise.
+Correctness is pinned by `test_solver.cpp` exact assembly/solution
 counts plus the `[disasm][hash]`, `[voxeltable]` and `[movementcache]` cases.
 
 ## Benchmark corpus (BTFiles sweep, 2026-09-17)
