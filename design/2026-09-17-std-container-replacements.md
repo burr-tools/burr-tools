@@ -102,12 +102,43 @@ Baseline measured on the parent commit via `git stash`, same machine.
 | Prisgon / MirrorParadox / CubeInCage / Bermuda / Stellation | 0.004–0.02s | same ballpark | parity (too fast to discriminate) |
 
 No benchmark regressed; the heavy disassembler workload is within run-to-run
-noise. A second interleaved A/B pass (both binaries pinned to one core,
-alternating runs) flipped the per-puzzle signs with heavily overlapping
-ranges — the box carries background load (load avg ~4), so no reproducible
-delta exists in either direction: perf-neutral within measurement noise.
-Correctness is pinned by `test_solver.cpp` exact assembly/solution
+noise. Correctness is pinned by `test_solver.cpp` exact assembly/solution
 counts plus the `[disasm][hash]`, `[voxeltable]` and `[movementcache]` cases.
+
+## Before/after timing (master `c2aab53` vs branch HEAD, `-O3` both)
+
+Build flags verified in `compile_commands.json`: `buildtype=release`,
+`-O3`, no `-DNDEBUG` (so `bt_assert` is active in both builds — equal
+footing). Method: both `burrTxt` binaries kept side by side, 8 interleaved
+runs each pinned to one core (`bench/bench_solve.py --ab ... --cpu 7`).
+Result counts (assemblies/solutions/iterations) identical before/after on
+every puzzle.
+
+| Puzzle | Before: median (mean ± stdev, min–max) | After: median (mean ± stdev, min–max) | Median delta |
+|---|---|---|---|
+| SolidSixPieceBurrs (588/179/4302868) | 8.78 (8.65 ± 0.42, 8.03–9.13) | 8.96 (10.12 ± 2.47, 8.11–14.29) | +2.1% |
+| kangaroo (9831/2/1137000) | 1.98 (2.11 ± 0.34, 1.82–2.82) | 2.04 (2.22 ± 0.40, 1.93–3.05) | +3.0% |
+| Simplicity (188/1/5105717) | 3.54 (4.07 ± 0.93, 3.42–5.64) | 3.72 (3.81 ± 0.32, 3.55–4.54) | +5.2% |
+| Excelsior (7/1/112) | 2.23 (2.48 ± 0.61, 1.96–3.61) | 2.25 (2.26 ± 0.09, 2.11–2.37) | +1.1% |
+
+Individual runs (sorted, seconds):
+
+* SolidSixPieceBurrs before: 8.03 8.18 8.35 8.67 8.89 8.99 8.99 9.13
+* SolidSixPieceBurrs after: 8.11 8.34 8.54 8.79 9.13 10.03 13.70 14.29
+* kangaroo before: 1.82 1.86 1.88 1.93 2.03 2.16 2.38 2.82
+* kangaroo after: 1.93 1.93 1.97 2.00 2.08 2.20 2.59 3.05
+* Simplicity before: 3.42 3.44 3.47 3.52 3.56 4.08 5.41 5.64
+* Simplicity after: 3.55 3.58 3.62 3.63 3.82 3.85 3.90 4.54
+* Excelsior before: 1.96 1.98 2.15 2.17 2.29 2.46 3.22 3.61
+* Excelsior after: 2.11 2.18 2.25 2.25 2.26 2.30 2.36 2.37
+
+An earlier sequential pass (5 runs each, no pinning, machine under load
+avg ~4) showed up to ±50% swings that flipped sign per puzzle between
+methodologies — pure machine noise. On the quiet box the deltas shrink to
+low single digits with outliers on both sides (13–14s spikes in two `after`
+SolidSix runs, 5.6s/3.6s spikes in `before` Simplicity/Excelsior runs).
+Verdict: perf-neutral within measurement noise; the change was applied on
+that basis (correctness bit-identical, −217 lines of hand-rolled hashing).
 
 ## Benchmark corpus (BTFiles sweep, 2026-09-17)
 
