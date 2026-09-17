@@ -21,7 +21,7 @@
 #ifndef __VOXEL_TABLE_H__
 #define __VOXEL_TABLE_H__
 
-#include <vector>
+#include <unordered_map>
 
 class puzzle_c;
 class voxel_c;
@@ -50,17 +50,13 @@ class voxelTable_c {
 
   private:
 
-    /** the hash table entry */
-    typedef struct hashNode {
+    /** one stored orientation of a shape; keyed by its hash value */
+    struct tableEntry {
       unsigned int index;           //< the shape index, which is given to the user to get the shape
       unsigned char transformation; //< which transformation of the shape is saved in here
-      unsigned long hash;           //< the hash value of this transformation of the shape
-      struct hashNode * next;       //< next entry
-    } hashNode;
+    };
 
-    std::vector<hashNode*> hashTable; //< the hash table
-    unsigned long tableSize;        //< size of the hash table
-    unsigned long tableEntries;     //< number of entries in hash table
+    std::unordered_multimap<unsigned long, tableEntry> hashTable; //< hash value -> stored orientations
 
   public:
 
@@ -121,8 +117,8 @@ class voxelTable_c {
   private:
 
     // no copying and assigning
-    voxelTable_c(const voxelTable_c&);
-    void operator=(const voxelTable_c&);
+    voxelTable_c(const voxelTable_c&) = delete;
+    voxelTable_c& operator=(const voxelTable_c&) = delete;
 };
 
 /** a convenient class that already provides findSpace for a shape list in puzzle_c */
@@ -143,8 +139,8 @@ class voxelTablePuzzle_c : public voxelTable_c {
   private:
 
     // no copying and assigning
-    voxelTablePuzzle_c(const voxelTable_c&);
-    void operator=(const voxelTablePuzzle_c&);
+    voxelTablePuzzle_c(const voxelTablePuzzle_c&) = delete;
+    voxelTablePuzzle_c& operator=(const voxelTablePuzzle_c&) = delete;
 
 };
 

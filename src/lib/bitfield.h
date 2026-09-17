@@ -21,6 +21,10 @@
 #ifndef __BITFIELD_H__
 #define __BITFIELD_H__
 
+#include <bit>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
 #include <inttypes.h>
 
 #include "bt_assert.h"
@@ -36,6 +40,8 @@ template<int bits>
  * the number it dependent on the template parameter
  */
 class bitfield_c {
+
+  static_assert(bits > 0, "bitfield_c requires a positive bit count");
 
   private:
 
@@ -59,22 +65,25 @@ class bitfield_c {
       memcpy(field, orig.field, 8*((bits+63)/64));
     }
 
+    /// copy assignment (memberwise copy of the backing words)
+    bitfield_c<bits>& operator=(const bitfield_c<bits>& orig) = default;
+
     /// get a bit
     bool get(uint16_t pos) const {
       bt_assert(pos < bits);
-      return field[pos >> 6] & (1ll << (pos & 63));
+      return field[pos >> 6] & (1ULL << (pos & 63));
     }
 
     /// set a bit to one
     void set(uint16_t pos) {
       bt_assert(pos < bits);
-      field[pos >> 6] |= (1ll << (pos & 63));
+      field[pos >> 6] |= (1ULL << (pos & 63));
     }
 
     /// set a bit to zero
     void reset(uint16_t pos) {
       bt_assert(pos < bits);
-      field[pos >> 6] &= ~(1ll << (pos & 63));
+      field[pos >> 6] &= ~(1ULL << (pos & 63));
     }
 
     /// set all bits to zero
@@ -83,7 +92,7 @@ class bitfield_c {
     }
 
     /// check, if at least one bit is set to 1
-    bool notNull(void) {
+    bool notNull(void) const {
       for (int i = 0; i < ((bits+63)/64); i++)
         if (field[i] > 0)
           return true;
@@ -159,28 +168,13 @@ class bitfield_c {
 
     /**
      * find the number of set bits in the bitfield
-     *
-     * The method add up the number of set bits in
-     * each 64 bit entry of the bitvector. This value is
-     * calculated using a method similar to this:
-     * http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
      */
     unsigned int countbits(void) const {
 
       unsigned int res = 0;
 
-      for (int i = 0; i < ((bits+63)/64); i++) {
-        uint64_t s = field[i];
-
-        s -= ((s >> 1) & 0x5555555555555555ll);
-        s = (((s >> 2) & 0x3333333333333333ll) + (s & 0x3333333333333333ll));
-        s = (((s >> 4) + s) & 0x0f0f0f0f0f0f0f0fll);
-        s += (s >> 8);
-        s += (s >> 16);
-        s += (s >> 32);
-
-        res += (s & 0x3f);
-      }
+      for (int i = 0; i < ((bits+63)/64); i++)
+        res += std::popcount(field[i]);
 
       return res;
     }
@@ -193,7 +187,7 @@ class bitfield_c {
       int idx = 0;
 
       for (int i = ((bits+63)/64)-1; i >= 0; i--)
-        idx += snprintf(str+idx, len-idx, "%016llx", field[i]);
+        idx += snprintf(str+idx, len-idx, "%016llx", static_cast<unsigned long long>(field[i]));
     }
 
     /**
@@ -202,7 +196,7 @@ class bitfield_c {
     void print(void) const {
 
       for (int i = ((bits+63)/64)-1; i >= 0; i--)
-        printf("%016llx", field[i]);
+        printf("%016llx", static_cast<unsigned long long>(field[i]));
     }
 
     /**

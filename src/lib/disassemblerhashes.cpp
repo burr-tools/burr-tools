@@ -22,12 +22,15 @@
 
 #include "disassemblernode.h"
 
+size_t disassemblerNodePtrHash::operator()(const disassemblerNode_c * n) const noexcept {
+  return n->hash();
+}
+
+bool disassemblerNodePtrEqual::operator()(const disassemblerNode_c * a, const disassemblerNode_c * b) const noexcept {
+  return *a == *b;
+}
+
 nodeHash::nodeHash(void) {
-
-  tab_size = 11;
-  tab_entries = 0;
-
-  tab.assign(tab_size, nullptr);
 }
 
 nodeHash::~nodeHash(void) {
@@ -36,99 +39,47 @@ nodeHash::~nodeHash(void) {
 
 void nodeHash::clear(void)
 {
-  for (unsigned int i = 0; i < tab_size; i++) {
-    while (tab[i]) {
-      disassemblerNode_c * n = tab[i];
-      tab[i] = n->next;
-
-      if (n->decRefCount())
-        delete n;
-    }
+  for (disassemblerNode_c * n : tab) {
+    if (n->decRefCount())
+      delete n;
   }
 
-  tab_entries = 0;
+  tab.clear();
 }
 
 const disassemblerNode_c * nodeHash::insert(disassemblerNode_c * n) {
 
-  unsigned long h = n->hash() % tab_size;
+  // single lookup: insert() returns the existing element on collision,
+  // so no separate find() probe (which would hash and walk twice on miss)
+  auto [it, inserted] = tab.insert(n);
 
-  disassemblerNode_c * hn = tab[h];
+  if (!inserted) {
+    disassemblerNode_c * hn = *it;
 
-  while (hn) {
-    if (*hn == *n) {
+    // let's see, a node for this state already exists, if the found way to this
+    // node is longer than the current way, we replace it with the data of the current
+    // node
+    if (hn->getWaylength() > n->getWaylength())
+      hn->replaceNode(n);
 
-      // let's see, a node for this state already exists, if the found way to this
-      // node is longer than the current way, we replace it with the data of the current
-      // node
-      if (hn->getWaylength() > n->getWaylength())
-        hn->replaceNode(n);
-
-      return hn;
-    }
-
-    hn = hn->next;
+    return hn;
   }
 
   /* node not in table, insert */
   n->incRefCount();
 
-  n->next = tab[h];
-  tab[h] = n;
-
-  tab_entries++;
-  if (tab_entries > tab_size) {
-    // rehash
-
-    unsigned long new_size = tab_size * 4 + 1;
-
-    std::vector<disassemblerNode_c*> new_tab(new_size, nullptr);
-
-    for (unsigned int i = 0; i < tab_size; i++) {
-      while (tab[i]) {
-        disassemblerNode_c * n = tab[i];
-        tab[i] = n->next;
-        unsigned long h = n->hash() % new_size;
-        n->next = new_tab[h];
-        new_tab[h] = n;
-      }
-    }
-
-    tab = std::move(new_tab);
-    tab_size = new_size;
-  }
-
   return 0;
 }
 
 bool nodeHash::contains(const disassemblerNode_c * n) const {
-  unsigned long h = n->hash() % tab_size;
-
-  disassemblerNode_c * hn = tab[h];
-
-  while (hn) {
-    if (*hn == *n)
-      return true;
-
-    hn = hn->next;
-  }
-
-  return false;
+  // unordered_set::find takes the key type (non-const pointer); the lookup
+  // does not mutate the node, so the const_cast is safe
+  return tab.find(const_cast<disassemblerNode_c*>(n)) != tab.end();
 }
 
 
 
 countingNodeHash::countingNodeHash(void) {
-
-  tab_size = 100;
-  tab_entries = 0;
-
-  tab.assign(tab_size, nullptr);
-
-  scanPtr = 0;
-  scanActive = false;
-
-  linkStart = 0;
 }
 
 countingNodeHash::~countingNodeHash(void)
@@ -139,69 +90,29 @@ countingNodeHash::~countingNodeHash(void)
 /* delete all nodes and empty table for new usage */
 void countingNodeHash::clear(void)
 {
-  hashNode * hn = linkStart;
-
-  while (hn) {
-    hashNode * hn2 = hn->link;
-
-    if (hn->dat->decRefCount())
-      delete hn->dat;
-
-    delete hn;
-
-    hn = hn2;
+  for (disassemblerNode_c * n : order) {
+    if (n->decRefCount())
+      delete n;
   }
 
-  std::fill(tab.begin(), tab.end(), nullptr);
-  tab_entries = 0;
-  linkStart = 0;
+  tab.clear();
+  order.clear();
+  scanPos = 0;
+  scanActive = false;
 }
 
 bool countingNodeHash::insert(disassemblerNode_c * n) {
 
-  unsigned long h = n->hash() % tab_size;
+  // single lookup, see nodeHash::insert
+  auto [it, inserted] = tab.insert(n);
 
-  hashNode * hn = tab[h];
-
-  while (hn) {
-    if (*(hn->dat) == *n)
-      return true;
-
-    hn = hn->next;
-  }
+  if (!inserted)
+    return true;
 
   /* node not in table, insert */
   n->incRefCount();
 
-  hn = new hashNode;
-  hn->dat = n;
-
-  hn->next = tab[h];
-  tab[h] = hn;
-
-  hn->link = linkStart;
-  linkStart = hn;
-
-  tab_entries++;
-  if (tab_entries > tab_size) {
-
-    unsigned long new_size = tab_size * 4 + 1;
-
-    std::vector<hashNode*> new_tab(new_size, nullptr);
-
-    for (unsigned int i = 0; i < tab_size; i++) {
-      while (tab[i]) {
-        hashNode * hn = tab[i];
-        tab[i] = hn->next;
-        unsigned long h = hn->dat->hash() % new_size;
-        hn->next = new_tab[h];
-        new_tab[h] = hn;
-      }
-    }
-
-    tab = std::move(new_tab);
-    tab_size = new_size;
-  }
+  order.push_back(n);
 
   return false;
 }
@@ -210,7 +121,7 @@ void countingNodeHash::initScan(void) {
 
   bt_assert(!scanActive);
 
-  scanPtr = linkStart;
+  scanPos = order.size();
   scanActive = true;
 }
 
@@ -218,17 +129,12 @@ const disassemblerNode_c * countingNodeHash::nextScan(void) {
 
   bt_assert(scanActive);
 
-  if (!scanPtr) {
+  if (scanPos == 0) {
     scanActive = false;
     return 0;
 
   } else {
 
-    disassemblerNode_c * res = scanPtr->dat;
-    scanPtr = scanPtr->link;
-
-    return res;
+    return order[--scanPos];
   }
 }
-
-
