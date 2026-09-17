@@ -116,3 +116,29 @@ TEST_CASE("bitfield: copy construction preserves every bit", "[bitfield]") {
   REQUIRE(copy.get(100));
   REQUIRE_FALSE(src.get(100));
 }
+
+TEST_CASE("bitfield: countbits counts full 64-bit words", "[bitfield]") {
+  /* regression: the old parallel bit-count finished each word with
+   * `& 0x3f`, so a fully-set word (parallel count 64) contributed 0
+   * instead of 64. std::popcount has no such truncation. Entry 240 of
+   * tabs_2/symmetries.inc is such an all-ones word, and its count feeds
+   * symmetries_2_c::countSymmetryIntersection() and from there the
+   * assembler_1 symmetry-breaker choice. */
+  bitfield_c<64> full;
+  for (int i = 0; i < 64; i++)
+    full.set(i);
+  REQUIRE(full.countbits() == 64);
+
+  bitfield_c<128> two;
+  for (int i = 0; i < 65; i++)
+    two.set(i);
+  REQUIRE(two.countbits() == 65);
+
+  bitfield_c<240> three;
+  for (int i = 0; i < 128; i++)
+    three.set(i);
+  REQUIRE(three.countbits() == 128);
+
+  bitfield_c<240> empty;
+  REQUIRE(empty.countbits() == 0);
+}

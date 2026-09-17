@@ -49,9 +49,11 @@ void nodeHash::clear(void)
 
 const disassemblerNode_c * nodeHash::insert(disassemblerNode_c * n) {
 
-  auto it = tab.find(n);
+  // single lookup: insert() returns the existing element on collision,
+  // so no separate find() probe (which would hash and walk twice on miss)
+  auto [it, inserted] = tab.insert(n);
 
-  if (it != tab.end()) {
+  if (!inserted) {
     disassemblerNode_c * hn = *it;
 
     // let's see, a node for this state already exists, if the found way to this
@@ -65,8 +67,6 @@ const disassemblerNode_c * nodeHash::insert(disassemblerNode_c * n) {
 
   /* node not in table, insert */
   n->incRefCount();
-
-  tab.insert(n);
 
   return 0;
 }
@@ -103,13 +103,15 @@ void countingNodeHash::clear(void)
 
 bool countingNodeHash::insert(disassemblerNode_c * n) {
 
-  if (tab.find(n) != tab.end())
+  // single lookup, see nodeHash::insert
+  auto [it, inserted] = tab.insert(n);
+
+  if (!inserted)
     return true;
 
   /* node not in table, insert */
   n->incRefCount();
 
-  tab.insert(n);
   order.push_back(n);
 
   return false;
