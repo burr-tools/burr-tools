@@ -1152,69 +1152,110 @@ TEST_CASE("movement cache: cube grid queries for a set of piece pairs do not dep
   }
 }
 
-TEST_CASE("movement cache: entries survive the table growing past its initial size",
+namespace {
+
+/**
+ * A movement cache whose value computation is counted.
+ *
+ * The cache machinery -- hashing, chaining, rehashing -- is defined in
+ * movementCache_c; the grid subclasses only supply moCalcValues and the
+ * direction table. Deriving straight from the base gives the machinery a
+ * test with a computation this file controls, and the count is the only
+ * way to observe a lookup MISSING: getMoValue answers a miss by calling
+ * moCalcValues and re-inserting, so an entry the table has lost is
+ * silently recomputed and returns exactly the value it would have
+ * returned anyway. Comparing replayed values can therefore never detect a
+ * lost entry. Counting the computations can.
+ *
+ * movementCache_0_c cannot be reused for this: its moCalcValues is
+ * private, so an override in a subclass has no way to delegate to it.
+ */
+class CountingMovementCache : public movementCache_c {
+public:
+  explicit CountingMovementCache(const problem_c & p) : movementCache_c(p) {}
+
+  unsigned int calculations = 0;
+
+  unsigned int numDirections(void) override { return 3; }
+
+  void getDirection(unsigned int dir, int * x, int * y, int * z) override {
+    *x = (dir == 0) ? 1 : 0;
+    *y = (dir == 1) ? 1 : 0;
+    *z = (dir == 2) ? 1 : 0;
+  }
+
+private:
+  std::vector<unsigned int> moCalcValues(const voxel_c *, const voxel_c *,
+                                         int dx, int dy, int dz) override {
+    calculations++;
+    return { static_cast<unsigned int>(dx & 0xff),
+             static_cast<unsigned int>(dy & 0xff),
+             static_cast<unsigned int>(dz & 0xff) };
+  }
+};
+
+} // namespace
+
+TEST_CASE("movement cache: the table still holds every entry after it has grown",
           "[disasm][movementcache]") {
   /* The cache starts with 101 buckets and grows once moEntries exceeds
-     that (movementcache.cpp). Every other case here makes a handful of
-     queries, so moRehash() is never reached at all -- the rehash, its
-     re-bucketing and the chain surgery it does are entirely unexecuted.
+     that. Every other case in this file makes a handful of queries, so
+     moRehash() -- its re-bucketing and its chain surgery -- never runs at
+     all.
 
-     This drives well past the threshold by varying the transformation pair,
-     records what each query answered on the way up, and then asks all of
-     them again after the table has grown. A rehash that dropped a bucket,
-     truncated a chain, or re-bucketed with the wrong modulus changes at
-     least one of the replayed answers.
-
-     What it deliberately does NOT claim to catch: a rehash that simply
-     never grows the table. Lookup chains, so a table that stays at 101
-     buckets keeps answering correctly -- that regression is a slowdown,
-     not a wrong answer, and no value assertion can see it. */
+     The thing to assert is that the grown table still ANSWERS FROM ITSELF.
+     Replaying the queries and comparing values cannot show that: a miss is
+     served by recomputing moCalcValues and re-inserting, and moCalcValues
+     is a pure function of the key, so a dropped bucket produces byte-identical
+     replayed values. Count the computations instead -- a replay that
+     recomputes anything is a replay that found something missing. */
   problem_c & problem = cubeInCageProblem();
-  const gridType_c * gt = problem.getPuzzle().getGridType();
 
-  std::unique_ptr<movementCache_c> cache(gt->getMovementCache(problem));
-  REQUIRE(cache != nullptr);
-
+  CountingMovementCache cache(problem);
   MoQuery q = queryFromSolution(problem, 0, 1);
 
   /* 12 x 12 transformation pairs = 144 distinct keys, comfortably past the
      101-entry growth threshold */
   const unsigned int SIDE = 12;
+  const unsigned int KEYS = SIDE * SIDE;
+  REQUIRE(KEYS > 101);
+
   std::vector<std::array<unsigned int, 3>> recorded;
-  recorded.reserve(SIDE * SIDE);
+  recorded.reserve(KEYS);
 
   for (unsigned int t1 = 0; t1 < SIDE; t1++)
     for (unsigned int t2 = 0; t2 < SIDE; t2++) {
       unsigned int v[3];
-      cache->getMoValue(q.dx, q.dy, q.dz, t1, t2, q.p1, q.p2, v);
+      cache.getMoValue(q.dx, q.dy, q.dz, t1, t2, q.p1, q.p2, v);
       recorded.push_back({v[0], v[1], v[2]});
     }
 
-  REQUIRE(recorded.size() == SIDE * SIDE);
-  REQUIRE(recorded.size() > 101);      // the growth threshold was crossed
+  /* every key was new, so every key cost exactly one computation */
+  REQUIRE(cache.calculations == KEYS);
 
-  /* replay every one of them against the now-grown table */
+  const unsigned int afterFill = cache.calculations;
+
+  /* Replay all of them. Each must now be served from the table, so the
+     counter must not move. Drop a bucket in moRehash and the entries in it
+     are recomputed here, which this sees and a value comparison does not. */
   unsigned int i = 0;
   for (unsigned int t1 = 0; t1 < SIDE; t1++)
     for (unsigned int t2 = 0; t2 < SIDE; t2++, i++) {
       INFO("transformations " << t1 << "," << t2);
       unsigned int v[3];
-      cache->getMoValue(q.dx, q.dy, q.dz, t1, t2, q.p1, q.p2, v);
+      cache.getMoValue(q.dx, q.dy, q.dz, t1, t2, q.p1, q.p2, v);
       REQUIRE(v[0] == recorded[i][0]);
       REQUIRE(v[1] == recorded[i][1]);
       REQUIRE(v[2] == recorded[i][2]);
     }
 
-  /* and a fresh cache, asked only the last key, agrees with what the grown
-     table says -- so the replay above is not comparing a corrupted table
-     against its own corruption */
-  std::unique_ptr<movementCache_c> fresh(gt->getMovementCache(problem));
-  REQUIRE(fresh != nullptr);
-  unsigned int direct[3];
-  fresh->getMoValue(q.dx, q.dy, q.dz, SIDE - 1, SIDE - 1, q.p1, q.p2, direct);
-  REQUIRE(direct[0] == recorded.back()[0]);
-  REQUIRE(direct[1] == recorded.back()[1]);
-  REQUIRE(direct[2] == recorded.back()[2]);
+  REQUIRE(cache.calculations == afterFill);
+
+  /* and the counter really does move when a key genuinely is new, so the
+     assertion above is not satisfied by a counter that never increments */
+  unsigned int fresh[3];
+  cache.getMoValue(q.dx + 1, q.dy, q.dz, 0, 0, q.p1, q.p2, fresh);
+  REQUIRE(cache.calculations == afterFill + 1);
 }
 
 TEST_CASE("movement cache: the triangular-prism grid yields a movementCache_1_c -- and repeating a query returns the identical value", "[disasm][movementcache]") {
