@@ -50,8 +50,11 @@ Most of the codebase is already `std`-based (`vector/map/set/unordered_map/memor
     discipline (`incRefCount` on insert, `decRefCount`+delete on clear)
     and `replaceNode`-on-shorter-way preserved. `countingNodeHash` keeps
     reverse-insertion scan order via a side `vector` (replaces the `link`
-    list); the per-entry `hashNode` wrapper allocations are gone. The now
-    unused intrusive `disassemblerNode_c::next` hook was removed.
+    list, and its per-entry `hashNode` wrapper allocations are gone — but
+    note the trade-off below: `nodeHash` itself was intrusive and allocated
+    nothing per entry). The now unused intrusive
+    `disassemblerNode_c::next` hook was removed. Inserts use the single
+    `insert()` return value, not a `find()` probe followed by `insert()`.
   - `movementCache_c` (`src/lib/movementcache.h/.cpp`): `unordered_map<moKey,
     vector<uint>>` with the original `moHashValue` as the hasher; manual
     `moRehash`/`new/delete` deleted.
@@ -75,7 +78,13 @@ word-boundary seams incl. bit 63, hex ctor, copy).
    `get/set/reset` (bit 63 shifted a signed `long long` into the sign bit).
    Popcount masks `0x...ll` -> `0x...ULL`.
 3. Hand-rolled parallel popcount -> `std::popcount` (`<bit>`, C++20).
-   Removes the bithack, uses the compiler intrinsic.
+   This is a **fix**, not just hygiene: the bithack finished each word with
+   `& 0x3f`, so a fully-set 64-bit word (parallel count 64) contributed 0.
+   Entry 240 of `tabs_2/symmetries.inc` is such an all-ones word, so
+   `symmetries_2_c::countSymmetryIntersection()` now returns 64 more for
+   full-symmetry shapes, which can change the `assembler_1` symmetry-breaker
+   choice (`assembler_1.cpp`, `cnt < bestFound`). Correctness stays gated by
+   `symmetriesLeft()`; pinned by a `countbits`-on-full-words test case.
 4. `notNull()` is now `const` (was non-`const`, blocked use on const refs).
 5. `static_assert(bits > 0)` + explicitly-defaulted copy assignment
    (class already had a user copy ctor; assignment was implicit).
@@ -140,12 +149,33 @@ SolidSix runs, 5.6s/3.6s spikes in `before` Simplicity/Excelsior runs).
 Verdict: perf-neutral within measurement noise; the change was applied on
 that basis (correctness bit-identical, −217 lines of hand-rolled hashing).
 
+Follow-up (review): the first version did a `find()` probe plus `insert()`
+on every miss, hashing twice. Both inserts now use the single `insert()`
+return value. Re-measured after the fix (4 interleaved pinned runs):
+Simplicity 3.71 → 3.76 (+1.3%), SolidSix 8.79 → 8.81 (+0.2%), kangaroo
+1.98 → 2.13 (+7.6% on a ~2s puzzle, inside run-to-run noise).
+
+Memory trade-off (review): `nodeHash` was intrusive (chained through
+`disassemblerNode_c::next`, zero bytes per entry); `unordered_set` allocates
+roughly one ~32-byte node per stored pointer (minus the 8 bytes recovered
+by deleting `next`). `countingNodeHash` went the other way (its per-entry
+`hashNode` wrappers are gone). Measured whole-process peak RSS on Simplicity
+(assembler-matrix-dominated): 452.7 MB before and after — the per-entry
+delta does not move the process peak on this puzzle. Hard puzzles holding
+millions of visited states will carry roughly +24 bytes/state in the
+disassembler tables; accepted for the RAII/exception-safety win.
+
+Harness: `bench/bench_solve.py` (single + interleaved A/B timing) and
+`bench/sweep_btfiles.py` (full-corpus screen) are committed under `bench/`
+— small, not wired into meson/CI. The BTFiles corpus itself stays out of
+the repo (`puzzles/` is gitignored, personal-use license).
+
 ## Benchmark corpus (BTFiles sweep, 2026-09-17)
 
 `puzzles/BTFiles/` (gitignored, personal-use license) holds 399 `.xmpuzzle`
 files from https://brettkuehner.com/btfiles/, mirrored with directory
-structure. Full problem-0 sweep (`burrTxt -d -q -o 0`, 90s timeout, raw data
-in `/tmp/opencode/btfiles_sweep.csv`):
+structure. Full problem-0 sweep (`burrTxt -d -q -o 0`, 90s timeout,
+regenerable via `bench/sweep_btfiles.py` once the corpus is fetched):
 
 * 384 exit 0; **85 with solutions > 0**; 379 with assemblies > 0
 * 13 over the timeout (e.g. Bruce Patterson `cube90`, several Jack Krijnen /
