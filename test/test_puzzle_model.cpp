@@ -345,6 +345,26 @@ TEST_CASE("puzzle: removeColor takes a 1-based colour id and renumbers the ones 
   REQUIRE(second == 1);
   REQUIRE(third == 2);
 
+  /* Shapes and a problem, so that removeColor's two loops actually run.
+
+     Without them the fixture holds no shapes and no problems, both loops
+     iterate zero times, and the whole function reduces to the closing
+     vector::erase -- which satisfies every colour-table assertion below on
+     its own. Delete the recolouring and constraint-renumbering code and a
+     colours-only fixture notices nothing. */
+  unsigned int shape = p->addShape(2, 1, 1);
+  voxel_c * v = p->getShape(shape);
+  v->setState(0, 0, 0, voxel_c::VX_FILLED);
+  v->setColor(0, 0, 0, 1);       // the colour about to be removed
+  v->setState(1, 0, 0, voxel_c::VX_FILLED);
+  v->setColor(1, 0, 0, 3);       // a colour above it, which must renumber down
+
+  problem_c * prob = p->getProblem(p->addProblem());
+  prob->allowPlacement(1, 2);    // a rule mentioning the removed colour
+  prob->allowPlacement(3, 2);    // a rule above it, which must renumber down
+  REQUIRE(prob->placementAllowed(1, 2));
+  REQUIRE(prob->placementAllowed(3, 2));
+
   p->removeColor(first + 1);   // 1-based: removes the colour addColor returned as index 0
 
   REQUIRE(p->colorNumber() == 2);
@@ -360,6 +380,21 @@ TEST_CASE("puzzle: removeColor takes a 1-based colour id and renumbers the ones 
   REQUIRE(r == 0);
   REQUIRE(g == 0);
   REQUIRE(b == 255);
+
+  /* the painted voxels followed: the removed colour became "no colour",
+     and the one above it moved down by one */
+  REQUIRE(v->getColor(0, 0, 0) == 0);
+  REQUIRE(v->getColor(1, 0, 0) == 2);
+
+  /* And so did the problem's colour constraints. Both indices of a rule
+     renumber, not just the first: colour 3 moves down to 2 and colour 2
+     moves down to 1, so the rule stored as (3, 2) is now (2, 1). The rule
+     naming the removed colour is gone entirely.
+
+     Colour 3 is not asked about -- with two colours left, placementAllowed
+     asserts on any id above 2. */
+  REQUIRE(prob->placementAllowed(2, 1));
+  REQUIRE_FALSE(prob->placementAllowed(1, 2));
 }
 
 
@@ -622,6 +657,46 @@ TEST_CASE("problem: exchangeShapes swaps which shape each part and the result na
   // the result named shape 2, neither end of the exchange, so it is untouched
   REQUIRE(pr->getResultId() == 2);
   REQUIRE(f.puzzle->getShape(pr->getResultId())->getX() == 3);
+}
+
+TEST_CASE("problem: exchangeShapes follows the result when the result is one end of the swap",
+          "[model][problem]") {
+  /* The case above deliberately keeps the result clear of the exchange, so
+     it pins that an uninvolved result is left alone. That leaves the other
+     half untested -- and it is the half with the code in it:
+
+         if (result == shapeId1) result = shapeId2;
+         else if (result == shapeId2) result = shapeId1;
+
+     With the result naming neither id, both branches are untaken and the
+     two lines can be deleted outright without any assertion moving. What
+     survives is the "result silently becomes a piece" corruption: exchange
+     a problem's result with another shape in the GUI and the problem is
+     left solving against the wrong one. */
+  ProblemFixture f = makeProblemFixture(4);   // shapes 0..3, sized 1..4
+  problem_c * pr = f.problem;
+
+  pr->setShapeMaximum(1, 1);
+  pr->setResultId(2);                          // the result IS an end of the swap
+  REQUIRE(f.puzzle->getShape(pr->getResultId())->getX() == 3);
+
+  f.puzzle->exchangeShapes(2, 3);
+
+  /* the id followed the shape: what the result named is now at id 3 */
+  REQUIRE(pr->getResultId() == 3);
+
+  /* and it is still the same voxel space, not merely the same number --
+     the shapes themselves were swapped too, so an unfollowed id would now
+     point at a size-4 shape instead of the size-3 one */
+  REQUIRE(f.puzzle->getShape(pr->getResultId())->getX() == 3);
+
+  /* the symmetric case: the result as the SECOND argument takes the other
+     branch, which is a separate line of code */
+  ProblemFixture g = makeProblemFixture(4);
+  g.problem->setResultId(2);
+  g.puzzle->exchangeShapes(3, 2);
+  REQUIRE(g.problem->getResultId() == 3);
+  REQUIRE(g.puzzle->getShape(g.problem->getResultId())->getX() == 3);
 }
 
 TEST_CASE("problem: getNumberOfSavedSolutions/getSavedSolution read the solution straight out of a loaded puzzle",
