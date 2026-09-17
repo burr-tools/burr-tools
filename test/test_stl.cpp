@@ -14,7 +14,10 @@
 #include "halfedge/modifiers.h"
 
 #include <cmath>
+#include <cstdio>
 #include <filesystem>
+#include <stdexcept>
+#include <random>
 #include <memory>
 #include <set>
 #include <string>
@@ -38,10 +41,37 @@ namespace {
 class TempDir {
 public:
   TempDir() {
-    path_ = std::filesystem::temp_directory_path() /
-            ("bttest_stl_" + std::to_string(++counter()));
-    std::filesystem::remove_all(path_);
-    std::filesystem::create_directories(path_);
+  /* Process-unique, and created exclusively rather than cleared.
+
+     A process-local counter alone collides: two test binaries running at
+     the same time both reach "bttest_stl_1", and the constructor used to
+     remove_all() that path first -- so the second process would delete the
+     first one's exports out from under it. Mixing in a per-process random
+     token makes the name unique to this run, and create_directory's
+     "did I create it, or was it already there?" answer drives a retry
+     instead of destroying whatever it finds. */
+    /* Kept short on purpose. The binary STL header is a fixed 80-byte
+       field, and until the basename fix lands the exporter writes the whole
+       path into it, so a temp path plus a long directory name stops fitting.
+       Three-character tag plus eight hex digits is the same length as the
+       "bttest_stl_" it replaces. */
+    const std::string base = "bts" + processToken() + "_";
+
+    for (int attempt = 0; attempt < 1000; attempt++) {
+      std::filesystem::path candidate =
+          std::filesystem::temp_directory_path() / (base + std::to_string(++counter()));
+
+      std::error_code ec;
+      if (std::filesystem::create_directory(candidate, ec)) {
+        path_ = candidate;
+        return;
+      }
+      if (ec)
+        throw std::runtime_error("TempDir: " + ec.message());
+      /* it already existed -- someone else owns it, so take the next name */
+    }
+
+    throw std::runtime_error("TempDir: no unique directory name was available");
   }
   ~TempDir() {
     std::error_code ec;
@@ -52,6 +82,18 @@ public:
 
 private:
   static int & counter() { static int n = 0; return n; }
+
+  /* random rather than the pid, so this stays portable -- the suite is
+     built on Windows too. Drawn once per process. */
+  static const std::string & processToken() {
+    static const std::string t = [] {
+      std::random_device rd;
+      char buf[16];
+      std::snprintf(buf, sizeof buf, "%08x", static_cast<unsigned>(rd()));
+      return std::string(buf);
+    }();
+    return t;
+  }
   std::filesystem::path path_;
 };
 
@@ -360,8 +402,16 @@ TEST_CASE("stl export: the binary header carries the name and the true triangle 
   const std::string raw = slurp(path);
   StlMesh m = readBinaryStl(raw);
 
-  /* the same basename defect as above reaches the binary header too, so
-     only the tail is portable here */
+  /* The same basename defect as above reaches the binary header too, so
+     only the tail is portable here.
+
+     That also makes this sensitive to how long the system temp path is:
+     the binary header is a fixed 80-byte field, and the whole path is
+     written into it, so a sufficiently long TMPDIR truncates the basename
+     away. Say so directly rather than failing as a confusing string
+     mismatch -- and note the sensitivity disappears once the exporter
+     writes a basename rather than a path. */
+  REQUIRE(path.size() <= 80);
   REQUIRE(m.name.size() >= 11);
   REQUIRE(m.name.compare(m.name.size() - 11, 11, "counted.stl") == 0);
 

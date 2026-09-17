@@ -328,6 +328,20 @@ TEST_CASE("mergeCoplanarFaces: merging is idempotent", "[modifiers]") {
   const int faces = solidFaces(*once);
   const double vol = volume(*once);
 
+  /* finalize() before merging again, or the second pass is not a merge.
+
+     mergeCoplanarFaces groups coplanar neighbours by walking half-edge
+     twin() links, and it builds its result with addFace/copyFace without
+     joining the twins afterwards. So `once` comes back with no twin links
+     at all: fed straight back in, every face looks like an isolated group
+     of one, the size > 1 branch is never taken, and the second call simply
+     copies each face across. Equal face counts and volumes then say
+     nothing about idempotence -- they are what a copy produces.
+
+     finalize() is what joins the half-edges, so this is what actually
+     asks the merge to run twice. */
+  once->finalize();
+
   std::unique_ptr<Polyhedron> twice(mergeCoplanarFaces(*once));
   REQUIRE(twice != nullptr);
 

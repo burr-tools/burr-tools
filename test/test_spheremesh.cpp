@@ -14,7 +14,10 @@
 #include "lib/voxel.h"
 
 #include <cmath>
+#include <cstdio>
 #include <filesystem>
+#include <stdexcept>
+#include <random>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -42,10 +45,37 @@ namespace {
 class TempDir {
 public:
   TempDir() {
-    path_ = std::filesystem::temp_directory_path() /
-            ("bttest_sphere_" + std::to_string(++counter()));
-    std::filesystem::remove_all(path_);
-    std::filesystem::create_directories(path_);
+  /* Process-unique, and created exclusively rather than cleared.
+
+     A process-local counter alone collides: two test binaries running at
+     the same time both reach "bttest_sphere_1", and the constructor used to
+     remove_all() that path first -- so the second process would delete the
+     first one's exports out from under it. Mixing in a per-process random
+     token makes the name unique to this run, and create_directory's
+     "did I create it, or was it already there?" answer drives a retry
+     instead of destroying whatever it finds. */
+    /* Kept short on purpose. The binary STL header is a fixed 80-byte
+       field, and until the basename fix lands the exporter writes the whole
+       path into it, so a temp path plus a long directory name stops fitting.
+       Three-character tag plus eight hex digits is the same length as the
+       "bttest_sphere_" it replaces. */
+    const std::string base = "btm" + processToken() + "_";
+
+    for (int attempt = 0; attempt < 1000; attempt++) {
+      std::filesystem::path candidate =
+          std::filesystem::temp_directory_path() / (base + std::to_string(++counter()));
+
+      std::error_code ec;
+      if (std::filesystem::create_directory(candidate, ec)) {
+        path_ = candidate;
+        return;
+      }
+      if (ec)
+        throw std::runtime_error("TempDir: " + ec.message());
+      /* it already existed -- someone else owns it, so take the next name */
+    }
+
+    throw std::runtime_error("TempDir: no unique directory name was available");
   }
   ~TempDir() {
     std::error_code ec;
@@ -54,6 +84,18 @@ public:
   std::string file(const char * name) const { return (path_ / name).string(); }
 private:
   static int & counter() { static int n = 0; return n; }
+
+  /* random rather than the pid, so this stays portable -- the suite is
+     built on Windows too. Drawn once per process. */
+  static const std::string & processToken() {
+    static const std::string t = [] {
+      std::random_device rd;
+      char buf[16];
+      std::snprintf(buf, sizeof buf, "%08x", static_cast<unsigned>(rd()));
+      return std::string(buf);
+    }();
+    return t;
+  }
   std::filesystem::path path_;
 };
 
