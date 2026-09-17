@@ -1,7 +1,7 @@
 # Std Container Replacements — Plan
 
 **Date:** 2026-09-17
-**Status:** Planned (Phase 0 implemented)
+**Status:** Implemented (Phases 0–4)
 **Scope:** `src/lib`, `src/tools`, `src/halfedge` (excludes `src/lua`, `subprojects`, `src/gui` widgets)
 
 ## Problem
@@ -38,16 +38,23 @@ Most of the codebase is already `std`-based (`vector/map/set/unordered_map/memor
   as the current class, plus call-site churn for `notNull()`/`countbits()`/
   `print()`. Not worth it. The obviously-good subset is C++20 hygiene
   inside the existing class (Phase 0, done — see below).
-* **2–4 hash tables: keep custom for now, revisit with benchmarks.**
-  All three are `vector<*>` buckets + intrusive `next` + manual rehash +
-  manual `new/delete`, so they *look* replaceable. But each carries
-  semantics `unordered_map/set` does not give for free: `voxelTable_c`
-  equality is transform + `identicalInBB`, not key equality;
-  `nodeHash` is intrusive (`disassemblerNode_c::next`) with refcount +
-  `replaceNode`-on-shorter-way; `countingNodeHash` adds reverse-insertion
-  scan order; `movementCache_c` keys 7 fields. All sit on solver hot paths.
-  Replacement changes allocation and rehash behaviour and needs perf
-  measurement before/after. Documented as future work, not done here.
+* **2–4 hash tables: replaced with `std::unordered_*`.**
+  All three were `vector<*>` buckets + intrusive `next` + manual rehash +
+  manual `new/delete`. Each is now backed by `std::unordered_map/set` with
+  the original hash functions and equality semantics kept:
+  - `voxelTable_c` (`src/lib/voxeltable.h/.cpp`): `unordered_multimap<hash,
+    {index, transformation}>`. Note: this table is GUI-only
+    (`statuswindow.cpp`, `mainwindow.cpp`), not on the solver hot path.
+  - `nodeHash` / `countingNodeHash` (`src/lib/disassemblerhashes.h/.cpp`):
+    `unordered_set<node*, hash-by-value, equal-by-value>`; refcount
+    discipline (`incRefCount` on insert, `decRefCount`+delete on clear)
+    and `replaceNode`-on-shorter-way preserved. `countingNodeHash` keeps
+    reverse-insertion scan order via a side `vector` (replaces the `link`
+    list); the per-entry `hashNode` wrapper allocations are gone. The now
+    unused intrusive `disassemblerNode_c::next` hook was removed.
+  - `movementCache_c` (`src/lib/movementcache.h/.cpp`): `unordered_map<moKey,
+    vector<uint>>` with the original `moHashValue` as the hasher; manual
+    `moRehash`/`new/delete` deleted.
 * **5 thread: keep.** `thread_c` already wraps `std::thread` + `atomic<bool>`.
   `std::jthread` migration changes shutdown/join semantics observed by the
   GUI polling loop. Needs a concurrency design of its own.
@@ -80,11 +87,23 @@ Explicitly out of scope: renaming `notNull/countbits` to `any/count`,
 
 ## Future work (not started)
 
-* Prototype 2–4 on `unordered_map/set` behind a flag, compare solver
-  timings (`just test-all`) and memory on a standard puzzle corpus before
-  committing.
 * Re-evaluate `thread_c` -> `std::jthread` together with solver
   cancellation semantics (AGENTS.md rule 3: atomics/mutexes stay).
+
+## Benchmarks (example puzzles, `burrTxt -d -q -o 0`)
+
+Baseline measured on the parent commit via `git stash`, same machine.
+
+| Puzzle | Baseline | With Phases 2–4 | Result |
+|---|---|---|---|
+| SolidSixPieceBurrs (heavy: 588 asm / 179 sol / 4302868 iter, counts identical) | 10.09s | 9.85s / 10.01s | parity (noise dominates) |
+| PelikanBurr | 0.24s | 0.19–0.24s | parity |
+| DraculasDentalDesaster | 0.22s | 0.16–0.19s | parity |
+| Prisgon / MirrorParadox / CubeInCage / Bermuda / Stellation | 0.004–0.02s | same ballpark | parity (too fast to discriminate) |
+
+No benchmark regressed; the heavy disassembler workload is within run-to-run
+noise. Correctness is pinned by `test_solver.cpp` exact assembly/solution
+counts plus the `[disasm][hash]`, `[voxeltable]` and `[movementcache]` cases.
 
 ## Verification
 
