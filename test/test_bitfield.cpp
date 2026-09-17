@@ -77,11 +77,22 @@ TEST_CASE("bitfield: the hex string constructor fills from the low bits up", "[b
   for (int i = 0; i < 240; i++)
     REQUIRE(nibble.get(i) == (i < 4));
 
-  /* upper and lower case agree */
+  /* "abc" is the number 0xabc, lowest digit last: 'c' lands in bits 0-3,
+     'b' in 4-7, 'a' in 8-11.
+
+     Pinned against the VALUE, not against "ABC". Comparing the two spellings
+     to each other says only that the two letter branches agree with one
+     another -- shift both by the same amount and every hex string containing
+     a-e parses wrong while the comparison still holds. 'f' was the only
+     letter this case ever tied to a value. */
   bitfield_c<240> lower("abc");
+  for (int i = 0; i < 240; i++)
+    REQUIRE(lower.get(i) == (i < 12 && ((0xabcULL >> i) & 1) != 0));
+
+  /* and the upper-case branch maps to the same values */
   bitfield_c<240> upper("ABC");
   for (int i = 0; i < 240; i++)
-    REQUIRE(lower.get(i) == upper.get(i));
+    REQUIRE(upper.get(i) == lower.get(i));
 
   /* each hex digit is four bits, so "10" is bit 4 only */
   bitfield_c<240> shifted("10");

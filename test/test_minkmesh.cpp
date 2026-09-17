@@ -71,14 +71,41 @@ TEST_CASE("Minkowski mesher: the exporter and the view use it on the rhombic gri
   CHECK(withFills->numFaces() > 0);
   CHECK(noFills->numFaces() > 0);
   CHECK(withFills->numFaces() != noFills->numFaces());
+  /* The view mesh has to be the CHAMFERED one, not the flat fallback.
+
+     getSTLMesh() is defensive: when the Minkowski mesher fails it logs to
+     stderr and returns getFlatMesh() so the draw path cannot crash. That
+     makes "numFaces() > 0" useless as a check that the chamfer mesher ran
+     -- the flat mesh is non-empty too, and its faces are the plain cell
+     faces, so the face-tagging, normal and containment assertions
+     elsewhere in this file are satisfied by it as well. With only those,
+     the mesher could be removed from the 3D view entirely and nothing
+     here would go red; the prism, rhombic and tetra-octa render styles
+     would quietly become unchamfered cubes-of-cells.
+
+     A chamfer adds geometry: cutting every edge and corner off a cell
+     produces strictly more faces than the flat mesh's one polygon per
+     exposed cell face. */
   std::unique_ptr<Polyhedron> view(v->getSTLMesh());
+  std::unique_ptr<Polyhedron> flat(v->getFlatMesh());
   CHECK(view->numFaces() > 0);
+  CHECK(flat->numFaces() > 0);
+  CHECK(view->numFaces() > flat->numFaces());
 }
 
-/* STL files of the test shapes for a look, when MINK_DUMP names a directory */
+/* STL files of the test shapes for a look, when MINK_DUMP names a directory.
+
+   Catch2 counts a case that runs no assertion as passed unless --warn
+   NoAssertions is given, which this suite does not pass, so with MINK_DUMP
+   unset this used to report green having checked nothing at all. The
+   SUCCEED() below makes the skip explicit rather than silent, and the
+   write is checked when the variable IS set. */
 TEST_CASE("Minkowski mesher: dump the test shapes as STL", "[minkmesh][dump]") {
   const char * dir = getenv("MINK_DUMP");
-  if (!dir) return;
+  if (!dir) {
+    SUCCEED("MINK_DUMP is not set, so there is nothing to dump");
+    return;
+  }
   const grid_test_def_s grids[] = {
     { gridType_c::GT_TRIANGULAR_PRISM, 4, 3, 2, "prism" },
     { gridType_c::GT_RHOMBIC, 5, 5, 5, "rhombic" },
@@ -92,7 +119,7 @@ TEST_CASE("Minkowski mesher: dump the test shapes as STL", "[minkmesh][dump]") {
     for (int fills = 1; fills >= 0; fills--) {
       ex->setParameter(5, fills);
       std::string name = std::string(dir) + "/" + gr.name + (fills ? "-fill" : "-nofill") + ".stl";
-      ex->write(name.c_str(), *v);
+      REQUIRE_NOTHROW(ex->write(name.c_str(), *v));
     }
   }
 }

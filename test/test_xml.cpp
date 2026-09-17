@@ -634,7 +634,7 @@ TEST_CASE("xml parser: the exception carries a description", "[xml][parser][malf
    saved puzzle written by another tool can perfectly well carry a comment
    or a declaration, and the loader has to walk past it. */
 
-TEST_CASE("xml parser: an xml declaration is consumed and its version and encoding are reported",
+TEST_CASE("xml parser: an xml declaration is consumed and its encoding is reported",
           "[xml][parser][prologue]") {
   std::istringstream src("<?xml version=\"1.0\" encoding=\"UTF-8\"?><puzzle/>");
   xmlParser_c pars(src);
@@ -647,6 +647,17 @@ TEST_CASE("xml parser: an xml declaration is consumed and its version and encodi
 
   /* the encoding was captured on the way past rather than discarded */
   REQUIRE(pars.getInputEncoding() == "UTF-8");
+
+  /* The version is NOT asserted, and the case is titled accordingly. The
+     parser does store it, but `version` is a private member with no
+     accessor on xmlParser_c, so no test can observe it -- stop storing it
+     altogether and nothing here or anywhere else in the suite changes.
+     Said out loud because the previous title promised the version was
+     "reported", which reads as coverage that does not exist. The same
+     applies to `standalone`, checked below only for acceptance.
+
+     Closing this properly needs a getVersion() accessor on the parser,
+     which is a production change rather than a test one. */
 }
 
 TEST_CASE("xml parser: a standalone declaration is accepted in both forms",
@@ -780,16 +791,25 @@ TEST_CASE("xml parser: a processing instruction is reported as a token and skipp
   }
 }
 
-TEST_CASE("xml parser: a tag opening with a character that can start no construct is rejected",
+TEST_CASE("xml parser: a tag opening with a character that can start no name is rejected",
           "[xml][parser][malformed]") {
   std::istringstream src("<p><=bad/></p>");
   xmlParser_c pars(src);
 
   REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
 
-  /* the "illegal: <" branch -- '<' followed by something that is neither a
-     name start, '/', '?' nor '!' */
-  REQUIRE_THROWS_AS(pars.nextTag(), xmlParserException_c);
+  /* This does NOT reach the "illegal: <" branch, whatever the shape of the
+     input suggests. peekType() returns LEGACY only when the character after
+     '<' is '?' or '!'; everything else falls through to START_TAG. So
+     parseLegacy() is entered only for those two, its `int c = read()` is
+     always one of them, and its trailing `else { exception("illegal: <") }`
+     is unreachable -- dead code, not a branch a test can cover.
+
+     What actually rejects this input is readName(), which finds '=' where a
+     name has to start. Pin the message, so the case cannot pass on some
+     other parse failure appearing earlier and is not mistaken for coverage
+     of a branch that no input can reach. */
+  REQUIRE_THROWS_WITH(pars.nextTag(), Catch::Matchers::ContainsSubstring("name expected"));
 }
 
 /* ------------------------------------------------------------------ */
@@ -814,10 +834,15 @@ TEST_CASE("xml parser: the attribute accessors address attributes by index in do
   REQUIRE(pars.getAttributeValue(pars.getAttributeName(1)) == pars.getAttributeValue(1));
   REQUIRE(pars.getAttributeValue(1) == "4");
 
-  /* no namespace prefixes in this document, so every prefix is empty --
-     asserted rather than skipped, because getAttributePrefix reads from the
-     same packed array as the other two and a stride error would show here */
+  /* No namespace prefixes in this document, so every prefix is empty.
+     Read at indices 1 and 2 as well as 0: the slot is computed as
+     (index << 2) + 1, which is 1 for index 0 whatever the stride, so
+     asking only about the first attribute cannot see a stride error at
+     all. At index 1 and 2 a wrong multiplier reads another attribute's
+     name or value instead, which is not empty. */
   REQUIRE(pars.getAttributePrefix(0).empty());
+  REQUIRE(pars.getAttributePrefix(1).empty());
+  REQUIRE(pars.getAttributePrefix(2).empty());
 }
 
 TEST_CASE("xml parser: addressing an attribute past the end is rejected rather than read out "
