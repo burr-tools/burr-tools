@@ -159,8 +159,6 @@ class xmlParser_c
 
     int getDepth(void);
 
-    std::string getPositionDescription(void);
-
     bool isWhitespace(void);
 
     /** return the text of the current text node.

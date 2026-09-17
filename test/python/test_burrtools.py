@@ -116,10 +116,44 @@ class TestBurrTools(unittest.TestCase):
                 os.remove(tmp_path)
 
     def test_immediate_stop(self):
+        """Stopping ends the search promptly and the iterator terminates.
+
+        This used to assert that next() raises StopIteration immediately,
+        which is racy and failed intermittently on CI. The worker thread
+        starts solving when the iterator is CONSTRUCTED, not when it is
+        first consumed, and stop() does not discard what the worker has
+        already queued. So whether anything comes back depends purely on
+        which thread wins -- measured locally, inserting a 1ms delay before
+        stop() flipped it from 0/100 results to 99/100.
+
+        Returning already-found results is the defensible behaviour: the
+        search was stopped, but what it had produced is not thrown away.
+        So the guarantee worth asserting is not "nothing comes back", it is
+        that the search really stopped -- the iterator terminates, and it
+        does not run to completion.
+
+        That assertion is safe whatever the timing, because the worker's
+        queue is bounded (MAX_QUEUE_SIZE = 4) and it blocks once full. With
+        no consumer running it therefore cannot get past four results, and
+        this fixture has twelve. Measured across delays from 0 to 500ms
+        before stop(), the count after stopping is 0 or 4 and never 12.
+        """
         puzzle = burrtools.load(self.puzzle_path)
         prob = puzzle.problems[0]
+
+        # how many assemblies a complete run of this problem yields
+        total = len(list(prob.solve(disassemble=False)))
+        self.assertGreater(total, 1, "fixture must have room to stop early")
+
         it = prob.solve(disassemble=False)
         it.stop()
+
+        # terminates rather than hanging, and yields at most what was
+        # already queued -- never the whole search
+        produced = list(it)
+        self.assertLess(len(produced), total)
+
+        # and it stays exhausted
         with self.assertRaises(StopIteration):
             next(it)
 

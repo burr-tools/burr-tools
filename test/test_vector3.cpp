@@ -499,35 +499,35 @@ TEST_CASE("vector3: projecting onto a plane through the origin lands in that pla
   REQUIRE(nearlyEqual(p.project(n), p));
 }
 
-TEST_CASE("vector3: distanceToPlane is signed -- and its sign is the opposite of the usual "
-          "convention", "[vector3]") {
+TEST_CASE("vector3: distanceToPlane is positive on the side the normal points to", "[vector3]") {
   Vector3Df origin(0, 0, 0);
   Vector3Df up(0, 0, 1);
 
-  /* The implementation is `return (P - *this) * N;` -- it measures from
-     the point TOWARDS the plane's reference point, not from the plane
-     towards the point. So a point on the positive side of the normal gets
-     a NEGATIVE distance, which is the reverse of what "signed distance to
-     a plane" normally means.
+  /* This case used to pin the opposite sign. The implementation computed
+     (P - *this) * N, so a point on the normal's side reported a NEGATIVE
+     distance -- the reverse of the usual convention and of what the
+     function's own comment about positive and negative sides implies. It
+     now computes (*this - P) * N. Nothing called it, so no caller can have
+     been compensating for the old sign. */
+  REQUIRE(Vector3Df(5, -2, 3).distanceToPlane(origin, up) == approx(3.0));
+  REQUIRE(Vector3Df(5, -2, -3).distanceToPlane(origin, up) == approx(-3.0));
 
-     Pinned as it is, not as it ought to be. Anyone reaching for this
-     function needs to know which way round it goes, and a case asserting
-     the conventional sign would just be red. Whether to flip it is a
-     separate question: doing so silently would invert the behaviour of any
-     caller that has already compensated. */
-  REQUIRE(Vector3Df(5, -2, 3).distanceToPlane(origin, up) == approx(-3.0));
-  REQUIRE(Vector3Df(5, -2, -3).distanceToPlane(origin, up) == approx(3.0));
-
-  /* the magnitude is right, whatever the sign: three units from the plane */
+  /* the magnitude is the distance either way, and was never in question */
   REQUIRE(std::fabs(Vector3Df(5, -2, 3).distanceToPlane(origin, up)) == approx(3.0));
 
   /* a point in the plane is at distance zero however far from the centre,
      and zero has no sign to get wrong */
   REQUIRE(Vector3Df(100, -100, 0).distanceToPlane(origin, up) == approx(0.0));
 
-  /* and the plane's reference point need not be the origin */
+  /* the plane's reference point need not be the origin */
   Vector3Df raised(0, 0, 10);
-  REQUIRE(Vector3Df(0, 0, 12).distanceToPlane(raised, up) == approx(-2.0));
+  REQUIRE(Vector3Df(0, 0, 12).distanceToPlane(raised, up) == approx(2.0));
+  REQUIRE(Vector3Df(0, 0, 8).distanceToPlane(raised, up) == approx(-2.0));
+
+  /* and flipping the normal flips the sign, which is what makes this a
+     signed distance rather than a magnitude with a convention bolted on */
+  Vector3Df down(0, 0, -1);
+  REQUIRE(Vector3Df(5, -2, 3).distanceToPlane(origin, down) == approx(-3.0));
 }
 
 TEST_CASE("vector3: closestPointInLine lands on the line and meets it at a right angle",
@@ -600,80 +600,79 @@ TEST_CASE("vector3: transposing a three-vector matrix twice restores it", "[vect
   REQUIRE(mat[2] == original[2]);
 }
 
-TEST_CASE("vector3: the matrix multiply ignores the vector entirely -- it returns the matrix's "
-          "row sums", "[vector3][defect]") {
-  /* This is a defect, pinned rather than fixed.
+TEST_CASE("vector3: multiplying by a matrix applies it to the vector", "[vector3]") {
+  /* This case used to pin a defect. vector3.cpp's
+     operator*(const Vector3D<T>* mat) read `V[i] += mat[i][j];` -- it never
+     multiplied by anything, so it returned the matrix's row sums and
+     discarded the vector. Every vector times a given matrix came back the
+     same. Nothing in the tree called it, nor its companion transpose(),
+     which is how it survived.
 
-     vector3.cpp's operator*(const Vector3D<T>* mat) reads:
-
-         for (unsigned i=0 ; i<3 ; i++) {
-           V[i] = 0;
-           for (unsigned j=0 ; j<3 ; j++)
-             V[i] += mat[i][j];
-         }
-
-     The inner line never multiplies by anything. A matrix-vector product
-     needs `mat[i][j] * _data[j]`; as written it sums row i of the matrix
-     and discards the vector completely. The result depends only on the
-     matrix, so every vector multiplied by a given matrix comes back the
-     same.
-
-     Nothing in the tree calls it -- nor its companion transpose() -- so
-     the defect is latent rather than live, which is presumably why it has
-     survived. It will bite whoever reaches for the matrix multiply next,
-     and silently: the result is a plausible-looking vector, not a crash.
-
-     Not fixed here, per the convention #59 and #64 set: a coverage change
-     should not carry a production edit. It is also not obvious what the
-     fix should be without a caller to fix it against -- whether the
-     intended convention is row-major or column-major decides between
-     mat[i][j] * _data[j] and mat[j][i] * _data[j], and no usage exists to
-     settle it. Raised separately.
-
-     The assertions below state what the code does, so they will fail the
-     moment someone corrects it -- which is the point: this case is the
-     thing that makes the fix visible rather than silent. */
+     It now computes the row-major product, and the assertions below are the
+     properties that fix must satisfy rather than a recorded output. */
   Vector3Df identity[3] = {
     Vector3Df(1, 0, 0),
     Vector3Df(0, 1, 0),
     Vector3Df(0, 0, 1),
   };
 
-  /* against a correct implementation this would be (1, 2, 3) */
-  REQUIRE(nearlyEqual(Vector3Df(1, 2, 3) * identity, Vector3Df(1, 1, 1)));
+  /* the identity leaves a vector alone -- and does so for DIFFERENT
+     vectors, which is exactly what the old version could not do */
+  REQUIRE(nearlyEqual(Vector3Df(1, 2, 3) * identity, Vector3Df(1, 2, 3)));
+  REQUIRE(nearlyEqual(Vector3Df(9, -4, 0.5f) * identity, Vector3Df(9, -4, 0.5f)));
 
-  /* two quite different vectors, one answer -- the clearest statement of
-     what is wrong */
-  REQUIRE(nearlyEqual(Vector3Df(9, -4, 0.5f) * identity, Vector3Df(1, 1, 1)));
-
-  Vector3Df rows[3] = {
-    Vector3Df(1, 2, 3),
-    Vector3Df(10, 20, 30),
-    Vector3Df(100, 200, 300),
+  Vector3Df doubling[3] = {
+    Vector3Df(2, 0, 0),
+    Vector3Df(0, 2, 0),
+    Vector3Df(0, 0, 2),
   };
 
-  /* the row sums: 6, 60, 600 */
-  REQUIRE(nearlyEqual(Vector3Df(1, 2, 3) * rows, Vector3Df(6, 60, 600)));
+  REQUIRE(nearlyEqual(Vector3Df(1, 2, 3) * doubling, Vector3Df(1, 2, 3) * 2.0f));
+
+  /* A matrix that permutes, so the row/column convention is pinned rather
+     than left to a symmetric example that cannot tell them apart. With
+     mat[i] read as row i, row 0 here is (0,1,0), so the first component of
+     the result is the vector's SECOND component. */
+  Vector3Df swapXY[3] = {
+    Vector3Df(0, 1, 0),
+    Vector3Df(1, 0, 0),
+    Vector3Df(0, 0, 1),
+  };
+
+  REQUIRE(nearlyEqual(Vector3Df(1, 2, 3) * swapXY, Vector3Df(2, 1, 3)));
+
+  /* a fully asymmetric matrix: every entry contributes, so a transposed
+     implementation gives a different answer and is caught. Rows dotted
+     with (1, 0, 2): 1+6=7, 4+12=16, 7+18=25. */
+  Vector3Df m[3] = {
+    Vector3Df(1, 2, 3),
+    Vector3Df(4, 5, 6),
+    Vector3Df(7, 8, 9),
+  };
+
+  REQUIRE(nearlyEqual(Vector3Df(1, 0, 2) * m, Vector3Df(7, 16, 25)));
 }
 
-TEST_CASE("vector3: transposing a matrix changes what the multiply returns -- which is the only "
-          "way the two interact", "[vector3]") {
-  /* transpose() is correct on its own terms and is covered above. This
-     records the one observable consequence it has for the multiply given
-     the defect: transposing swaps row sums for column sums. */
-  Vector3Df mat[3] = {
+TEST_CASE("vector3: multiplying by the transpose gives the transposed product", "[vector3]") {
+  /* transpose() was already correct and is covered above. This ties the two
+     together: multiplying by the transpose must equal the product taken
+     down columns, which only holds if the multiply reads the matrix the
+     same way round that transpose() rearranges it. */
+  Vector3Df m[3] = {
     Vector3Df(1, 2, 3),
-    Vector3Df(10, 20, 30),
-    Vector3Df(100, 200, 300),
+    Vector3Df(4, 5, 6),
+    Vector3Df(7, 8, 9),
   };
 
-  Vector3Df before = Vector3Df(1, 1, 1) * mat;
-  REQUIRE(nearlyEqual(before, Vector3Df(6, 60, 600)));
+  Vector3Df v(1, 0, 2);
 
-  Vector3Df::transpose(mat);
+  /* columns dotted with v, by hand: 1+14=15, 2+16=18, 3+18=21 */
+  Vector3Df::transpose(m);
+  REQUIRE(nearlyEqual(v * m, Vector3Df(15, 18, 21)));
 
-  /* column sums now: 111, 222, 333 */
-  REQUIRE(nearlyEqual(Vector3Df(1, 1, 1) * mat, Vector3Df(111, 222, 333)));
+  /* and transposing back restores the row-wise product */
+  Vector3Df::transpose(m);
+  REQUIRE(nearlyEqual(v * m, Vector3Df(7, 16, 25)));
 }
 
 TEST_CASE("vector3: sign reports which side of a vector another one points to", "[vector3]") {
