@@ -105,6 +105,39 @@ No benchmark regressed; the heavy disassembler workload is within run-to-run
 noise. Correctness is pinned by `test_solver.cpp` exact assembly/solution
 counts plus the `[disasm][hash]`, `[voxeltable]` and `[movementcache]` cases.
 
+## Benchmark corpus (BTFiles sweep, 2026-09-17)
+
+`puzzles/BTFiles/` (gitignored, personal-use license) holds 399 `.xmpuzzle`
+files from https://brettkuehner.com/btfiles/, mirrored with directory
+structure. Full problem-0 sweep (`burrTxt -d -q -o 0`, 90s timeout, raw data
+in `/tmp/opencode/btfiles_sweep.csv`):
+
+* 384 exit 0; **85 with solutions > 0**; 379 with assemblies > 0
+* 13 over the timeout (e.g. Bruce Patterson `cube90`, several Jack Krijnen /
+  James Fortune / Tyler Hudson files) — unknown whether slow or unsolvable
+* 2 abort (`Andrew Crowell/ARCparent_Cubes/CoverUp2_NoSolution`,
+  `CoverUp_PiecesOnly`: `p < problems.size()` / `problem.resultValid()`);
+  as expected, Andrew's files are the least tractable
+
+Recommended perf corpus (problem 0, counts deterministic across runs,
+each run 3x; covers assembler-heavy and disassembly-heavy profiles):
+
+| Puzzle | Assemblies / Solutions / Iterations | Time |
+|---|---|---|
+| Tyler Hudson/Third_Times_the_Charm | 71 / 1 / 439905 | ~8–13s |
+| James Fortune/elephant burr | 4251 / 30 / 159734 | ~5–12s |
+| Jack Krijnen/Burrly Sane for Professionals | 895 / 1 / 205481 | ~5–6.5s |
+| Jack Krijnen/Simplicity | 188 / 1 / 5105717 | ~4.3s, assembler-search heavy |
+| James Fortune/kangaroo | 9831 / 2 / 1137000 | ~4.3s, stable |
+| James Fortune/detonator | 7562 / 1 / 96435 | ~3.8s |
+| James Fortune/hippo burr | 13464 / 1 / 302289 | ~2.4–3.8s |
+| James Fortune/Hog Wild 2 | 5743 / 1 / 2435643 | ~2.3–3.4s |
+| Jack Krijnen/Excelsior | 7 / 1 / 112 | ~2.7s, disassembly-heavy |
+| Tom Messina/CD_Pack | 2 / 2 / 3087443 | ~1.2s |
+
+Heavier options if needed: Tyler Hudson/Alpaca (~37s, 675/1),
+James Fortune/iceburrg (~64s, 425202/6).
+
 ## Verification
 
 * `just build`
