@@ -21,6 +21,7 @@
 #ifndef __MOVEMENTCACHE_H__
 #define __MOVEMENTCACHE_H__
 
+#include <unordered_map>
 #include <vector>
 
 class voxel_c;
@@ -48,38 +49,28 @@ class movementCache_c {
   private:
 
   /**
-   * values are saved within a hash table, this is the entry for the table for the movement data
+   * Cache key: the two involved shapes, their orientations and the
+   * relative offset of the 2nd piece. Replaces the hand-rolled moEntry
+   * hash table (vector of bucket chains + manual rehash).
    */
-  struct moEntry {
-
-    int dx = 0; ///< relative x position of the 2nd piece
-    int dy = 0; ///< relative y position of the 2nd piece
-    int dz = 0; ///< relative z position of the 2nd piece
-
+  struct moKey {
     unsigned int s1 = 0; ///< id of the first involved shape
     unsigned int s2 = 0; ///< id of the second involved shape
-
-    /* the transformations of the 2 involved pieces
-     * normally we would need only one transformation, that for piece 2
-     * but the calculations involved to transform the 2 pieces so that
-     * piece one has a fixed transformation are too expensive
-     */
+    int dx = 0;          ///< relative x position of the 2nd piece
+    int dy = 0;          ///< relative y position of the 2nd piece
+    int dz = 0;          ///< relative z position of the 2nd piece
     unsigned short t1 = 0; ///< orientation of the first shape
     unsigned short t2 = 0; ///< orientation of the second shape
 
-    /** the possible movement in positive directions */
-    std::vector<unsigned int> move;
-
-    /** next in the linked list of the hash table */
-    struct moEntry * next = nullptr;
-
+    bool operator==(const moKey & o) const = default;
   };
 
-  /** the hash table */
-  std::vector<moEntry*> moHash;
+  struct moKeyHash {
+    size_t operator()(const moKey & k) const noexcept;
+  };
 
-  unsigned int moTableSize; ///< size of the hash table
-  unsigned int moEntries;   ///< number of entries in the table
+  /** movement values by key; computed on demand via moCalcValues */
+  std::unordered_map<moKey, std::vector<unsigned int>, moKeyHash> moCache;
 
   /**
    * Saves the shapes in all orientations.
@@ -96,8 +87,6 @@ class movementCache_c {
 
   /** number of possible transformations for each shape */
   unsigned int num_transformations;
-
-  void moRehash(void); ///< this function resizes the hash table to roughly twice the size
 
   /** when the entry is not inside the table, this function calculates the values for the movement info */
   virtual std::vector<unsigned int> moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) = 0;
