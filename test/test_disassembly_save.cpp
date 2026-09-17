@@ -204,10 +204,42 @@ TEST_CASE("separation save: swapping which shapes two pieces name is reflected i
   /* the two names must genuinely differ or the swap is unobservable */
   REQUIRE(first != second);
 
+  /* Find a child node that also names one of the two, and remember where.
+
+     The root's pieces array is the identity [0 1 2 ...], so at the root a
+     piece's NAME equals its INDEX -- and a positional swap of slots 0 and 1
+     produces exactly the same array as the rename that exchangeShape
+     actually performs. Looking only at the root cannot tell the two apart,
+     and cannot see that the rename is supposed to recurse at all. A child
+     node holds a subset in its own order, so both properties become
+     visible there. */
+  const separation_c * child = copy.getRemoved() ? copy.getRemoved() : copy.getLeft();
+  REQUIRE(child != nullptr);
+
+  std::vector<unsigned int> childBefore;
+  for (unsigned int i = 0; i < child->getPieceNumber(); i++)
+    childBefore.push_back(child->getPieceName(i));
+  REQUIRE(childBefore.size() >= 2);
+
   copy.exchangeShape(first, second);
 
   REQUIRE(copy.getPieceName(0) == second);
   REQUIRE(copy.getPieceName(1) == first);
+
+  /* the child followed the rename: every occurrence of the two names is
+     swapped in place, and every other name is untouched */
+  {
+    const separation_c * c = copy.getRemoved() ? copy.getRemoved() : copy.getLeft();
+    REQUIRE(c != nullptr);
+    REQUIRE(c->getPieceNumber() == childBefore.size());
+
+    for (unsigned int i = 0; i < c->getPieceNumber(); i++) {
+      INFO("child slot " << i);
+      const unsigned int was = childBefore[i];
+      const unsigned int want = (was == first) ? second : (was == second) ? first : was;
+      REQUIRE(c->getPieceName(i) == want);
+    }
+  }
 
   /* and the change reaches the serialised form rather than living only in
      memory */

@@ -172,6 +172,28 @@ TEST_CASE("disassembler node: come-from constructor accumulates relative moves",
   REQUIRE(child->getAmount() == 3);
   REQUIRE(child->getDirection() == 0u);
   REQUIRE(child->getWaylength() == root->getWaylength() + 1);
+
+  /* A grandchild, so that the come-from term in
+     `waylength = comefrom->waylength + step` is non-zero.
+
+     Off a fresh root the term is 0 and the sum is indistinguishable from
+     `step` alone -- and from the constant 1, since step is 1 here too.
+     Two more levels with distinct steps separate all three readings.
+     It matters because nodeHash::insert re-parents a duplicate node on
+     exactly this quantity: with every node at waylength 0 or 1 that branch
+     is never taken either. */
+  std::unique_ptr<disassemblerNode_c> grandchild(
+      new disassemblerNode_c(2, child.get(), /* dir */ 1, /* amount */ 2, /* step */ 4));
+  grandchild->set(0, 0, 0, 0);
+  grandchild->set(1, 0, 0, 0);
+
+  REQUIRE(child->getWaylength() == 1u);
+  REQUIRE(grandchild->getWaylength() == 5u);          // 1 + 4, not 4 and not 1
+  REQUIRE(grandchild->getWaylength() == child->getWaylength() + 4);
+
+  /* and the direction is carried through rather than defaulted */
+  REQUIRE(grandchild->getDirection() == 1u);
+  REQUIRE(grandchild->getDirection() != child->getDirection());
 }
 
 /* nodeHash and countingNodeHash do not take ownership of inserted nodes in
@@ -1128,6 +1150,71 @@ TEST_CASE("movement cache: cube grid queries for a set of piece pairs do not dep
       CHECK(backward[k][d] == cases[k].move[d]);
     }
   }
+}
+
+TEST_CASE("movement cache: entries survive the table growing past its initial size",
+          "[disasm][movementcache]") {
+  /* The cache starts with 101 buckets and grows once moEntries exceeds
+     that (movementcache.cpp). Every other case here makes a handful of
+     queries, so moRehash() is never reached at all -- the rehash, its
+     re-bucketing and the chain surgery it does are entirely unexecuted.
+
+     This drives well past the threshold by varying the transformation pair,
+     records what each query answered on the way up, and then asks all of
+     them again after the table has grown. A rehash that dropped a bucket,
+     truncated a chain, or re-bucketed with the wrong modulus changes at
+     least one of the replayed answers.
+
+     What it deliberately does NOT claim to catch: a rehash that simply
+     never grows the table. Lookup chains, so a table that stays at 101
+     buckets keeps answering correctly -- that regression is a slowdown,
+     not a wrong answer, and no value assertion can see it. */
+  problem_c & problem = cubeInCageProblem();
+  const gridType_c * gt = problem.getPuzzle().getGridType();
+
+  std::unique_ptr<movementCache_c> cache(gt->getMovementCache(problem));
+  REQUIRE(cache != nullptr);
+
+  MoQuery q = queryFromSolution(problem, 0, 1);
+
+  /* 12 x 12 transformation pairs = 144 distinct keys, comfortably past the
+     101-entry growth threshold */
+  const unsigned int SIDE = 12;
+  std::vector<std::array<unsigned int, 3>> recorded;
+  recorded.reserve(SIDE * SIDE);
+
+  for (unsigned int t1 = 0; t1 < SIDE; t1++)
+    for (unsigned int t2 = 0; t2 < SIDE; t2++) {
+      unsigned int v[3];
+      cache->getMoValue(q.dx, q.dy, q.dz, t1, t2, q.p1, q.p2, v);
+      recorded.push_back({v[0], v[1], v[2]});
+    }
+
+  REQUIRE(recorded.size() == SIDE * SIDE);
+  REQUIRE(recorded.size() > 101);      // the growth threshold was crossed
+
+  /* replay every one of them against the now-grown table */
+  unsigned int i = 0;
+  for (unsigned int t1 = 0; t1 < SIDE; t1++)
+    for (unsigned int t2 = 0; t2 < SIDE; t2++, i++) {
+      INFO("transformations " << t1 << "," << t2);
+      unsigned int v[3];
+      cache->getMoValue(q.dx, q.dy, q.dz, t1, t2, q.p1, q.p2, v);
+      REQUIRE(v[0] == recorded[i][0]);
+      REQUIRE(v[1] == recorded[i][1]);
+      REQUIRE(v[2] == recorded[i][2]);
+    }
+
+  /* and a fresh cache, asked only the last key, agrees with what the grown
+     table says -- so the replay above is not comparing a corrupted table
+     against its own corruption */
+  std::unique_ptr<movementCache_c> fresh(gt->getMovementCache(problem));
+  REQUIRE(fresh != nullptr);
+  unsigned int direct[3];
+  fresh->getMoValue(q.dx, q.dy, q.dz, SIDE - 1, SIDE - 1, q.p1, q.p2, direct);
+  REQUIRE(direct[0] == recorded.back()[0]);
+  REQUIRE(direct[1] == recorded.back()[1]);
+  REQUIRE(direct[2] == recorded.back()[2]);
 }
 
 TEST_CASE("movement cache: the triangular-prism grid yields a movementCache_1_c -- and repeating a query returns the identical value", "[disasm][movementcache]") {
