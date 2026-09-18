@@ -1824,32 +1824,782 @@ void assembler_1_c::iterative(void) {
   }
 }
 
+class assemblerWorker_1 {
+  assembler_1_c & parent;
+
+  std::vector<unsigned int> left;
+  std::vector<unsigned int> right;
+  std::vector<unsigned int> up;
+  std::vector<unsigned int> down;
+  std::vector<unsigned int> colCount;
+  std::vector<unsigned int> weight;
+
+  std::vector<unsigned int> base_left;
+  std::vector<unsigned int> base_right;
+  std::vector<unsigned int> base_up;
+  std::vector<unsigned int> base_down;
+  std::vector<unsigned int> base_colCount;
+  std::vector<unsigned int> base_weight;
+
+  std::vector<unsigned int> rows;
+  std::vector<unsigned int> hidden_rows;
+  std::vector<unsigned int> task_stack;
+  std::vector<unsigned int> next_row_stack;
+  std::vector<unsigned int> column_stack;
+
+  unsigned long local_iterations = 0;
+  unsigned long flushed_iterations = 0;
+
+  void cover_column_only(int col) {
+    right[left[col]] = right[col];
+    left[right[col]] = left[col];
+  }
+
+  void uncover_column_only(int col) {
+    right[left[col]] = col;
+    left[right[col]] = col;
+  }
+
+  void cover_column_rows(int col) {
+    for (int r = down[col]; r != col; r = down[r]) {
+      colCount[col] -= weight[r];
+      for (int c = right[r]; c != r; c = right[c]) {
+        up[down[c]] = up[c];
+        down[up[c]] = down[c];
+        colCount[colCount[c]] -= weight[c];
+      }
+    }
+  }
+
+  void uncover_column_rows(int col) {
+    for (int r = up[col]; r != col; r = up[r]) {
+      for (int c = left[r]; c != r; c = left[c]) {
+        colCount[colCount[c]] += weight[c];
+        up[down[c]] = c;
+        down[up[c]] = c;
+      }
+      colCount[col] += weight[r];
+    }
+  }
+
+  void hiderow(int r) {
+    for (int rr = right[r]; rr != r; rr = right[rr]) {
+      up[down[rr]] = up[rr];
+      down[up[rr]] = down[rr];
+      colCount[colCount[rr]] -= weight[rr];
+    }
+    up[down[r]] = up[r];
+    down[up[r]] = down[r];
+    colCount[colCount[r]] -= weight[r];
+  }
+
+  void unhiderow(int r) {
+    up[down[r]] = r;
+    down[up[r]] = r;
+    colCount[colCount[r]] += weight[r];
+    for (int rr = left[r]; rr != r; rr = left[rr]) {
+      up[down[rr]] = rr;
+      down[up[rr]] = rr;
+      colCount[colCount[rr]] += weight[rr];
+    }
+  }
+
+  void hiderows(unsigned int row) {
+    hidden_rows.push_back(0);
+    for (unsigned int r = right[row]; r != row; r = right[r]) {
+      int col = colCount[r];
+      for (int rr = down[col]; rr != col; rr = down[rr]) {
+        if (weight[rr] + weight[col] > parent.max[col]) {
+          hiderow(rr);
+          hidden_rows.push_back(rr);
+        }
+      }
+    }
+  }
+
+  void unhiderows(void) {
+    while (hidden_rows.back()) {
+      unhiderow(hidden_rows.back());
+      hidden_rows.pop_back();
+    }
+    hidden_rows.pop_back();
+  }
+
+  bool column_condition_fulfilled(int col) {
+    return (weight[col] >= parent.min[col]) && (weight[col] <= parent.max[col]);
+  }
+
+  bool column_condition_fulfillable(int col) {
+    if (weight[col] > parent.max[col]) return false;
+    if (weight[col] + colCount[col] < parent.min[col]) return false;
+    return true;
+  }
+
+  bool open_column_conditions_fulfillable(void) {
+    for (int col = right[0]; col; col = right[col]) {
+      if (weight[col] > parent.max[col]) return false;
+      if (weight[col] + colCount[col] < parent.min[col]) return false;
+    }
+    return true;
+  }
+
+  int find_best_unclosed_column(void) {
+    int col = right[0];
+    if (col == 0) return -1;
+    int bestcol = col;
+    col = right[col];
+    while (col) {
+      if (betterParams(colCount[col], parent.min[col] - weight[col], parent.max[col] - weight[col],
+                       colCount[bestcol], parent.min[bestcol] - weight[bestcol], parent.max[bestcol] - weight[bestcol]))
+        bestcol = col;
+      if (colCount[col] == 0)
+        return col;
+      col = right[col];
+    }
+    return bestcol;
+  }
+
+  void worker_solution(void) {
+    if (parent.getCallback()) {
+      auto assembly = std::make_unique<assembly_c>(parent.problem.getPuzzle().getGridType());
+
+      std::vector<unsigned int> piece(rows.size());
+      std::vector<unsigned char> tran(rows.size());
+      std::vector<int> x(rows.size());
+      std::vector<int> y(rows.size());
+      std::vector<int> z(rows.size());
+
+      for (unsigned int i = 0; i < rows.size(); i++)
+        parent.getPieceInformation(rows[i], &piece[i], &tran[i], &x[i], &y[i], &z[i]);
+
+      for (unsigned int pc = 0; pc < parent.problem.getNumberOfParts(); pc++) {
+        unsigned int placed = 0;
+        for (unsigned int i = 0; i < rows.size(); i++) {
+          if (piece[i] == pc) {
+            assembly->addPlacement(tran[i], x[i], y[i], z[i]);
+            placed++;
+          }
+        }
+        while (placed < parent.problem.getPartMaximum(pc)) {
+          assembly->addNonPlacement();
+          placed++;
+        }
+      }
+
+      assembly->sort(parent.problem);
+
+      if (parent.avoidTransformedAssemblies &&
+          assembly->smallerRotationExists(parent.problem, parent.avoidTransformedPivot,
+                                          parent.avoidTransformedMirror.get(), parent.complete))
+        return;
+
+      {
+        std::lock_guard<std::mutex> lock(parent.callbackMutex);
+        if (parent.abbort.load(std::memory_order_relaxed))
+          return;
+        if (!parent.getCallback()->assembly(std::move(assembly)))
+          parent.stop();
+      }
+    }
+  }
+
+  void restoreMatrix(const assembler_1_c::SubtreeTask_1 & task) {
+    task_stack = task.task_stack;
+    next_row_stack = task.next_row_stack;
+    column_stack = task.column_stack;
+    rows = task.rows;
+    hidden_rows = task.hidden_rows;
+
+    unsigned int column_stack_pos = 0;
+    unsigned int hiderows_pos = 0;
+    unsigned int row_pos = 0;
+
+    for (size_t i = 0; i + 1 < task_stack.size(); i++) {
+      switch (task_stack[i]) {
+        case 1:
+          cover_column_only(column_stack[column_stack_pos++]);
+          break;
+        case 2:
+          cover_column_rows(column_stack[column_stack_pos - 1]);
+          break;
+        case 5: {
+          hiderows_pos++;
+          while (hiderows_pos < hidden_rows.size() && hidden_rows[hiderows_pos] > 0) {
+            hiderow(hidden_rows[hiderows_pos++]);
+          }
+
+          unsigned int r = rows[row_pos++];
+          weight[colCount[r]] += weight[r];
+          for (unsigned int rc = right[r]; rc != r; rc = right[rc])
+            weight[colCount[rc]] += weight[rc];
+
+          hiderows_pos++;
+          while (hiderows_pos < hidden_rows.size() && hidden_rows[hiderows_pos] > 0) {
+            hiderow(hidden_rows[hiderows_pos++]);
+          }
+          break;
+        }
+        default:
+          bt_assert(false);
+      }
+    }
+  }
+
+  void worker_iterative(unsigned int base_depth) {
+    unsigned int row, col;
+
+    while (task_stack.size() >= base_depth && !parent.abbort.load(std::memory_order_relaxed)) {
+      local_iterations++;
+      if ((local_iterations - flushed_iterations) >= 128) {
+        parent.iterations.fetch_add(local_iterations - flushed_iterations, std::memory_order_relaxed);
+        flushed_iterations = local_iterations;
+      }
+
+      switch (task_stack.back()) {
+        case 0:
+          if (parent.holes < parent.holeColumns.size()) {
+            unsigned int cnt = parent.holes;
+            bool ret = false;
+            for (unsigned int i = 0; i < parent.holeColumns.size(); i++) {
+              if (colCount[parent.holeColumns[i]] == 0 && weight[parent.holeColumns[i]] == 0) {
+                if (cnt == 0) {
+                  next_row_stack.pop_back();
+                  task_stack.pop_back();
+                  ret = true;
+                  break;
+                } else {
+                  cnt--;
+                }
+              }
+            }
+            if (ret) break;
+          }
+
+          if (next_row_stack.back() < parent.headerNodes) {
+            if (right[0] == 0) {
+              worker_solution();
+              next_row_stack.pop_back();
+              task_stack.pop_back();
+              break;
+            }
+
+            int c = find_best_unclosed_column();
+            if (c == -1) {
+              next_row_stack.pop_back();
+              task_stack.pop_back();
+              break;
+            }
+
+            if (colCount[c] == 0) {
+              if (column_condition_fulfilled(c)) {
+                cover_column_only(c);
+                column_stack.push_back(c);
+                task_stack.back() = 1;
+                task_stack.push_back(0);
+                next_row_stack.push_back(0);
+                break;
+              }
+            } else {
+              cover_column_only(c);
+              column_stack.push_back(c);
+              task_stack.back() = 1;
+              task_stack.push_back(0);
+              next_row_stack.push_back(down[c]);
+              break;
+            }
+
+            next_row_stack.pop_back();
+            task_stack.pop_back();
+            break;
+          }
+
+          col = colCount[next_row_stack.back()];
+          bt_assert(column_condition_fulfillable(col));
+
+          if (column_condition_fulfilled(col)) {
+            cover_column_rows(col);
+            if (open_column_conditions_fulfillable()) {
+              task_stack.back() = 2;
+              task_stack.push_back(0);
+              next_row_stack.push_back(0);
+              break;
+            }
+            task_stack.back() = 2;
+            break;
+          }
+
+          task_stack.back() = 3;
+          break;
+
+        case 1:
+          uncover_column_only(column_stack.back());
+          column_stack.pop_back();
+          next_row_stack.pop_back();
+          task_stack.pop_back();
+          break;
+
+        case 2:
+          uncover_column_rows(colCount[next_row_stack.back()]);
+          [[fallthrough]];
+
+        case 3:
+          hidden_rows.push_back(0);
+          row = next_row_stack.back();
+          if (up[row] < row) {
+            rows.push_back(row);
+            [[fallthrough]];
+          } else {
+            task_stack.back() = 7;
+            break;
+          }
+
+        case 4:
+          row = rows.back();
+          col = colCount[next_row_stack.back()];
+          weight[colCount[row]] += weight[row];
+          for (unsigned int r = right[row]; r != row; r = right[r])
+            weight[colCount[r]] += weight[r];
+
+          if (open_column_conditions_fulfillable()) {
+            hiderows(row);
+            if (open_column_conditions_fulfillable()) {
+              if (colCount[col] == 0) {
+                if (column_condition_fulfilled(col)) {
+                  task_stack.back() = 5;
+                  task_stack.push_back(0);
+                  next_row_stack.push_back(0);
+                  break;
+                }
+              } else {
+                if (column_condition_fulfillable(col)) {
+                  unsigned int newrow = row;
+                  while ((down[newrow] >= parent.headerNodes) && up[down[newrow]] != newrow)
+                    newrow = down[newrow];
+                  task_stack.back() = 5;
+                  task_stack.push_back(0);
+                  next_row_stack.push_back(newrow);
+                  break;
+                }
+              }
+            }
+          } else {
+            task_stack.back() = 6;
+            break;
+          }
+          [[fallthrough]];
+
+        case 5:
+          unhiderows();
+          [[fallthrough]];
+
+        case 6:
+          row = rows.back();
+          for (unsigned int r = left[row]; r != row; r = left[r])
+            weight[colCount[r]] -= weight[r];
+          weight[colCount[row]] -= weight[row];
+          rows.pop_back();
+
+          hiderow(row);
+          hidden_rows.push_back(row);
+
+          row = down[row];
+          if (up[row] < row) {
+            rows.push_back(row);
+            task_stack.back() = 4;
+            break;
+          }
+          [[fallthrough]];
+
+        case 7:
+          unhiderows();
+          next_row_stack.pop_back();
+          task_stack.pop_back();
+          break;
+
+        default:
+          bt_assert(0);
+          break;
+      }
+    }
+  }
+
+public:
+  assemblerWorker_1(assembler_1_c & p)
+    : parent(p),
+      left(p.base_left),
+      right(p.base_right),
+      up(p.base_up),
+      down(p.base_down),
+      colCount(p.base_colCount),
+      weight(p.base_weight),
+      base_left(p.base_left),
+      base_right(p.base_right),
+      base_up(p.base_up),
+      base_down(p.base_down),
+      base_colCount(p.base_colCount),
+      base_weight(p.base_weight)
+  {
+    rows.reserve(parent.headerNodes);
+    hidden_rows.reserve(parent.headerNodes * 4);
+    task_stack.reserve(parent.headerNodes);
+    next_row_stack.reserve(parent.headerNodes);
+    column_stack.reserve(parent.headerNodes);
+  }
+
+  void searchSubtree(const assembler_1_c::SubtreeTask_1 & task) {
+    left = base_left;
+    right = base_right;
+    up = base_up;
+    down = base_down;
+    colCount = base_colCount;
+    weight = base_weight;
+
+    restoreMatrix(task);
+    worker_iterative(task.task_stack.size());
+  }
+
+  void flushIterations() {
+    unsigned long unflushed = local_iterations - flushed_iterations;
+    if (unflushed > 0) {
+      parent.iterations.fetch_add(unflushed, std::memory_order_relaxed);
+      flushed_iterations = local_iterations;
+    }
+  }
+};
+
+unsigned int assembler_1_c::getEffectiveThreads(void) const {
+  if (numThreads > 0)
+    return numThreads;
+
+  const char * env = getenv("BURRTOOLS_THREADS");
+  if (env && *env) {
+    int val = atoi(env);
+    if (val > 0)
+      return static_cast<unsigned int>(val);
+  }
+
+  unsigned int hw = std::thread::hardware_concurrency();
+  return (hw > 0) ? hw : 1;
+}
+
+void assembler_1_c::generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks) {
+  tasks.clear();
+
+  left = base_left;
+  right = base_right;
+  up = base_up;
+  down = base_down;
+  colCount = base_colCount;
+  weight = base_weight;
+
+  task_stack = { 0 };
+  next_row_stack = { 0 };
+  column_stack.clear();
+  rows.clear();
+  hidden_rows.clear();
+
+  unsigned int row, col;
+
+  while (task_stack.size() > 0 && !abbort.load(std::memory_order_relaxed)) {
+    iterations.fetch_add(1, std::memory_order_relaxed);
+
+    switch (task_stack.back()) {
+      case 0:
+        if (holes < holeColumns.size()) {
+          unsigned int cnt = holes;
+          bool ret = false;
+          for (unsigned int i = 0; i < holeColumns.size(); i++) {
+            if (colCount[holeColumns[i]] == 0 && weight[holeColumns[i]] == 0) {
+              if (cnt == 0) {
+                next_row_stack.pop_back();
+                task_stack.pop_back();
+                ret = true;
+                break;
+              } else {
+                cnt--;
+              }
+            }
+          }
+          if (ret) break;
+        }
+
+        if (next_row_stack.back() < headerNodes && right[0] == 0) {
+          solution();
+          next_row_stack.pop_back();
+          task_stack.pop_back();
+          break;
+        }
+
+        if (rows.size() >= cutoff_depth) {
+          SubtreeTask_1 t;
+          t.task_stack = task_stack;
+          t.next_row_stack = next_row_stack;
+          t.column_stack = column_stack;
+          t.rows = rows;
+          t.hidden_rows = hidden_rows;
+          tasks.push_back(std::move(t));
+
+          next_row_stack.pop_back();
+          task_stack.pop_back();
+          break;
+        }
+
+        if (next_row_stack.back() < headerNodes) {
+          int c = find_best_unclosed_column();
+          if (c == -1) {
+            next_row_stack.pop_back();
+            task_stack.pop_back();
+            break;
+          }
+
+          if (colCount[c] == 0) {
+            if (column_condition_fulfilled(c)) {
+              cover_column_only(c);
+              column_stack.push_back(c);
+              task_stack.back() = 1;
+              task_stack.push_back(0);
+              next_row_stack.push_back(0);
+              break;
+            }
+          } else {
+            cover_column_only(c);
+            column_stack.push_back(c);
+            task_stack.back() = 1;
+            task_stack.push_back(0);
+            next_row_stack.push_back(down[c]);
+            break;
+          }
+
+          next_row_stack.pop_back();
+          task_stack.pop_back();
+          break;
+        }
+
+        col = colCount[next_row_stack.back()];
+        bt_assert(column_condition_fulfillable(col));
+
+        if (column_condition_fulfilled(col)) {
+          cover_column_rows(col);
+          if (open_column_conditions_fulfillable()) {
+            task_stack.back() = 2;
+            task_stack.push_back(0);
+            next_row_stack.push_back(0);
+            break;
+          }
+          task_stack.back() = 2;
+          break;
+        }
+
+        task_stack.back() = 3;
+        break;
+
+      case 1:
+        uncover_column_only(column_stack.back());
+        column_stack.pop_back();
+        next_row_stack.pop_back();
+        task_stack.pop_back();
+        break;
+
+      case 2:
+        uncover_column_rows(colCount[next_row_stack.back()]);
+        [[fallthrough]];
+
+      case 3:
+        hidden_rows.push_back(0);
+        row = next_row_stack.back();
+        if (up[row] < row) {
+          rows.push_back(row);
+          [[fallthrough]];
+        } else {
+          task_stack.back() = 7;
+          break;
+        }
+
+      case 4:
+        row = rows.back();
+        col = colCount[next_row_stack.back()];
+        weight[colCount[row]] += weight[row];
+        for (unsigned int r = right[row]; r != row; r = right[r])
+          weight[colCount[r]] += weight[r];
+
+        if (open_column_conditions_fulfillable()) {
+          hiderows(row);
+          if (open_column_conditions_fulfillable()) {
+            if (colCount[col] == 0) {
+              if (column_condition_fulfilled(col)) {
+                task_stack.back() = 5;
+                task_stack.push_back(0);
+                next_row_stack.push_back(0);
+                break;
+              }
+            } else {
+              if (column_condition_fulfillable(col)) {
+                unsigned int newrow = row;
+                while ((down[newrow] >= headerNodes) && up[down[newrow]] != newrow)
+                  newrow = down[newrow];
+                task_stack.back() = 5;
+                task_stack.push_back(0);
+                next_row_stack.push_back(newrow);
+                break;
+              }
+            }
+          }
+        } else {
+          task_stack.back() = 6;
+          break;
+        }
+        [[fallthrough]];
+
+      case 5:
+        unhiderows();
+        [[fallthrough]];
+
+      case 6:
+        row = rows.back();
+        for (unsigned int r = left[row]; r != row; r = left[r])
+          weight[colCount[r]] -= weight[r];
+        weight[colCount[row]] -= weight[row];
+        rows.pop_back();
+
+        hiderow(row);
+        hidden_rows.push_back(row);
+
+        row = down[row];
+        if (up[row] < row) {
+          rows.push_back(row);
+          task_stack.back() = 4;
+          break;
+        }
+        [[fallthrough]];
+
+      case 7:
+        unhiderows();
+        next_row_stack.pop_back();
+        task_stack.pop_back();
+        break;
+
+      default:
+        bt_assert(0);
+        break;
+    }
+  }
+
+  left = base_left;
+  right = base_right;
+  up = base_up;
+  down = base_down;
+  colCount = base_colCount;
+  weight = base_weight;
+
+  task_stack = { 0 };
+  next_row_stack = { 0 };
+  column_stack.clear();
+  rows.clear();
+  hidden_rows.clear();
+}
+
+void assembler_1_c::generateSubtreeTasks(
+    std::vector<SubtreeTask_1> & tasks,
+    unsigned int targetTasks,
+    unsigned int maxDepth)
+{
+  tasks.clear();
+  unsigned int cutoff_depth = 1;
+  if (maxDepth == 0) maxDepth = 1;
+
+  while (cutoff_depth <= maxDepth && !abbort.load(std::memory_order_relaxed)) {
+    generateTasksAtDepth(cutoff_depth, tasks);
+    if (tasks.size() >= targetTasks || tasks.empty())
+      break;
+    if (cutoff_depth == maxDepth)
+      break;
+    cutoff_depth++;
+  }
+}
+
+void assembler_1_c::parallelMultiSearch(unsigned int workers) {
+  abbort.store(false, std::memory_order_relaxed);
+  running.store(true, std::memory_order_relaxed);
+
+  unsigned int targetTasks = std::max(16u, workers * 4);
+  unsigned int maxDepth = std::min(piecenumber, 3u);
+
+  std::vector<SubtreeTask_1> tasks;
+  generateSubtreeTasks(tasks, targetTasks, maxDepth);
+
+  totalTasks.store(tasks.size(), std::memory_order_relaxed);
+  completedTasks.store(0, std::memory_order_relaxed);
+
+  if (tasks.empty() || abbort.load(std::memory_order_relaxed)) {
+    running.store(false, std::memory_order_relaxed);
+    return;
+  }
+
+  std::atomic<size_t> nextTaskIndex{0};
+
+  auto workerFunc = [this, &tasks, &nextTaskIndex]() {
+    assemblerWorker_1 worker(*this);
+
+    while (!abbort.load(std::memory_order_relaxed)) {
+      size_t idx = nextTaskIndex.fetch_add(1, std::memory_order_relaxed);
+      if (idx >= tasks.size())
+        break;
+
+      worker.searchSubtree(tasks[idx]);
+      completedTasks.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    worker.flushIterations();
+  };
+
+  std::vector<std::thread> threads;
+  threads.reserve(workers - 1);
+
+  for (unsigned int i = 1; i < workers; i++) {
+    threads.emplace_back(workerFunc);
+  }
+
+  workerFunc();
+
+  for (auto & t : threads) {
+    if (t.joinable())
+      t.join();
+  }
+
+  running.store(false, std::memory_order_relaxed);
+}
+
 void assembler_1_c::assemble(assembler_cb * callback) {
 
-  running = true;
+  running.store(true, std::memory_order_relaxed);
   abbort.store(false, std::memory_order_relaxed);
   debug = false;
 
-  /* getFinished() runs on the GUI thread and indexes finished_a / finished_b
-   * while this thread pushes onto them. The search depth can not exceed the
-   * number of columns, so reserving that many entries up front means these
-   * vectors never reallocate during the search: the concurrent read then
-   * sees a stale value at worst (harmless for a progress indicator) instead
-   * of a freed buffer.
-   */
   finished_a.reserve(headerNodes);
   finished_b.reserve(headerNodes);
+
+  base_left = left;
+  base_right = right;
+  base_up = up;
+  base_down = down;
+  base_colCount = colCount;
+  base_weight = weight;
 
   if (errorsState == ERR_NONE) {
 
     // run, when something to do
     if (next_row_stack.size()) {
       asm_bc = callback;
-      iterative();
+      unsigned int threads = getEffectiveThreads();
+      if (task_stack.size() == 1 && rows.empty() && next_row_stack.size() == 1 && threads > 1) {
+        parallelMultiSearch(threads);
+      } else {
+        iterative();
+      }
     }
   }
 
-  running = false;
+  running.store(false, std::memory_order_relaxed);
 }
 
 void assembler_1_c::pushFinished(unsigned int b) {
@@ -1865,6 +2615,13 @@ void assembler_1_c::popFinished(void) {
 }
 
 float assembler_1_c::getFinished(void) const {
+
+  size_t total = totalTasks.load(std::memory_order_relaxed);
+  if (total > 0) {
+    if (!running.load(std::memory_order_relaxed) && !abbort.load(std::memory_order_relaxed))
+      return 1.0f;
+    return static_cast<float>(completedTasks.load(std::memory_order_relaxed)) / static_cast<float>(total);
+  }
 
   if (next_row_stack.size() == 0) return 1;
 

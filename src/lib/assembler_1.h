@@ -29,10 +29,12 @@
 #include <atomic>
 #include <mutex>
 #include <memory>
+#include <thread>
 
 class problem_c;
 class gridType_c;
 class mirrorInfo_c;
+class assemblerWorker_1;
 
 /**
  * This class is an assembler class.
@@ -91,7 +93,35 @@ private:
   std::atomic<bool> abbort;
 
   /* used to save if the search is running */
-  bool running = false;
+  std::atomic<bool> running{false};
+
+  struct SubtreeTask_1 {
+    std::vector<unsigned int> task_stack;
+    std::vector<unsigned int> next_row_stack;
+    std::vector<unsigned int> column_stack;
+    std::vector<unsigned int> rows;
+    std::vector<unsigned int> hidden_rows;
+  };
+
+  void generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks);
+  void generateSubtreeTasks(std::vector<SubtreeTask_1> & tasks, unsigned int targetTasks, unsigned int maxDepth);
+  void parallelMultiSearch(unsigned int workers);
+  unsigned int getEffectiveThreads(void) const;
+
+  friend class assemblerWorker_1;
+
+  std::mutex callbackMutex;
+  unsigned int numThreads = 0;
+  std::atomic<size_t> totalTasks{0};
+  std::atomic<size_t> completedTasks{0};
+
+  /* Pristine base matrix saved before search starts */
+  std::vector<unsigned int> base_left;
+  std::vector<unsigned int> base_right;
+  std::vector<unsigned int> base_up;
+  std::vector<unsigned int> base_down;
+  std::vector<unsigned int> base_colCount;
+  std::vector<unsigned int> base_weight;
 
   std::vector<unsigned int> rows;
   std::vector<unsigned int> finished_a;
@@ -278,7 +308,9 @@ public:
   int getErrorsParam(void) override { return errorsParam; }
   float getFinished(void) const override;
   void stop(void) override { abbort.store(true, std::memory_order_relaxed); }
-  bool stopped(void) const override { return !running; }
+  bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
+  void setNumThreads(unsigned int threads) override { numThreads = threads; }
+  unsigned int getNumThreads(void) const override { return numThreads; }
   errState setPosition(const char * string, const char * version) override;
   void save(xmlWriter_c & xml) const override;
   void reduce(void) override;
