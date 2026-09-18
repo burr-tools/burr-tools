@@ -61,6 +61,17 @@ class movementAnalysator_c {
     std::vector<char> check;
     unsigned int piecenumber;
 
+    /* Cached input/output of the previous prepare() call for the incremental
+     * fast path. prevSearch is refcounted (see prepare): the compared node
+     * stays alive to prevent ABA pointer aliasing. All state is per-instance,
+     * so multiple analysators can run concurrently without shared mutation. */
+    std::vector<unsigned int> prevFill;
+    disassemblerNode_c * prevSearch = nullptr;
+    const std::vector<unsigned int> * prevPieces = nullptr;
+    int prevN = 0;
+    /* reusable dirty bitsets for the incremental closure: [d * n + idx] */
+    std::vector<char> dirtyRows, dirtyCols;
+
     std::unique_ptr<countingNodeHash> nodes;
 
     /* these variables are used for the routine that looks
@@ -74,6 +85,15 @@ class movementAnalysator_c {
     const std::vector<unsigned int> * pieces = nullptr;
 
     void prepare(void);
+    /* Full matrix fill followed by transitive closure from scratch */
+    void prepareFull(void);
+    /* Query the movement cache for all pairwise piece movements */
+    void prepareFill(void);
+    /* Compute transitive closure of the movement matrix to fixpoint */
+    void closureFull(void);
+    /* Incremental update: reuse previous matrix, recompute pairs touching
+     * the moved pieces, and propagate relaxations via dirty worklist */
+    void prepareIncremental(const std::vector<unsigned int> & moved);
     bool checkmovement(unsigned int maxPieces, unsigned int nextstep);
     disassemblerNode_c * newNode(unsigned int amount);
     disassemblerNode_c * newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1);
