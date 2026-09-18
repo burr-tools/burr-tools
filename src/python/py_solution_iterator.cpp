@@ -21,13 +21,15 @@ SolutionIterator::SolutionIterator(std::shared_ptr<puzzle_c> puz,
                                    bool disassemble,
                                    bool reduce,
                                    bool keep_rotations,
-                                   bool keep_mirror)
+                                   bool keep_mirror,
+                                   unsigned int threads)
   : puzzle(std::move(puz)),
     problem_idx(problem_idx),
     disassemble(disassemble),
     reduce(reduce),
     keep_rotations(keep_rotations),
-    keep_mirror(keep_mirror)
+    keep_mirror(keep_mirror),
+    threads(threads)
 {
   if (!puzzle) {
     throw std::invalid_argument("Puzzle pointer is null");
@@ -176,6 +178,10 @@ void SolutionIterator::worker_run() {
 
     unsigned int asm_count{0};
     unsigned int sol_count{0};
+
+    if (threads > 0) {
+      assm->setNumThreads(threads);
+    }
 
     assm->assemble([&](std::unique_ptr<assembly_c> a) -> bool {
       if (stop_requested.load(std::memory_order_relaxed)) {
