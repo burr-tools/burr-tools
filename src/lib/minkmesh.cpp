@@ -502,7 +502,7 @@ void extractFaces(const Manifold & m, faces_s & out) {
           for (size_t k = i; k <= r; k++) A[j][k] -= f * A[i][k];
         }
       }
-      double lambda[3];
+      double lambda[3] = {0.0, 0.0, 0.0};
       for (size_t i = r; i-- > 0;) {
         double s = A[i][r];
         for (size_t j = i + 1; j < r; j++) s -= A[i][j] * lambda[j];
