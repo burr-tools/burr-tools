@@ -178,6 +178,8 @@ void movementAnalysator_c::prepare(void) {
  */
 bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int nextstep) {
 
+  stats.checkCalls++;
+
   /* we count the number of pieces that need to be moved, if this number
    * gets bigger than halve of the pieces of the current problem we
    * stop and return that this movement is rubbish
@@ -299,6 +301,7 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
     } while (!finished);
   }
 
+  stats.checkSuccess++;
   return true;
 }
 
@@ -635,6 +638,7 @@ disassemblerNode_c * movementAnalysator_c::find(void) {
     }
   }
 
+  stats.nodesReturned++;
   return n;
 }
 

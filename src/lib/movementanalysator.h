@@ -81,6 +81,25 @@ class movementAnalysator_c {
   public:
 
     /**
+     * Instrumentation counters for the move search.
+     *
+     * Cumulative since construction or the last resetStats() call, across
+     * all uses (find/findMatching/completeFind). Behavior-neutral:
+     * nothing in the search reads these.
+     */
+    struct stats_s {
+      unsigned long checkCalls = 0;    ///< checkmovement() invocations
+      unsigned long checkSuccess = 0;  ///< ... that admitted a move
+      unsigned long nodesReturned = 0; ///< nodes handed out via find()
+    };
+
+  private:
+
+    stats_s stats;
+
+  public:
+
+    /**
      * construct the analyser for this concrete problem.
      * This can not be changed, once you done that but you can analyse
      * many positions
@@ -107,6 +126,12 @@ class movementAnalysator_c {
      * just as completeFind this is complete with init_find, so nothing else needs to be called
      */
     disassemblerNode_c * findMatching(disassemblerNode_c * nd, const std::vector<unsigned int> & pcs, unsigned int piece, int dx, int dy, int dz);
+
+    /** current instrumentation counters (see stats_s) */
+    const stats_s & getStats(void) const { return stats; }
+
+    /** zero all instrumentation counters */
+    void resetStats(void) { stats = stats_s(); }
 
   private:
 
