@@ -21,7 +21,8 @@ public:
                    bool disassemble = true,
                    bool reduce = false,
                    bool keep_rotations = false,
-                   bool keep_mirror = false);
+                   bool keep_mirror = false,
+                   unsigned int threads = 0);
   ~SolutionIterator();
 
   SolutionIterator* iter() { return this; }
@@ -44,6 +45,7 @@ private:
   bool reduce;
   bool keep_rotations;
   bool keep_mirror;
+  unsigned int threads;
 
   std::unique_ptr<assembler_c> assm;
   std::unique_ptr<disassembler_c> disasm;

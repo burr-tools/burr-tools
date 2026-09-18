@@ -32,7 +32,8 @@ public:
   std::unique_ptr<SolutionIterator> solve(bool disassemble = true,
                                           bool reduce = false,
                                           bool keep_rotations = false,
-                                          bool keep_mirror = false);
+                                          bool keep_mirror = false,
+                                          unsigned int threads = 0);
 
 private:
   std::shared_ptr<puzzle_c> puzzle;

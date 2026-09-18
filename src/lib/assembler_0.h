@@ -28,6 +28,7 @@
 #include <stack>
 #include <atomic>
 #include <memory>
+#include <mutex>
 
 class gridType_c;
 class mirrorInfo_c;
@@ -71,7 +72,7 @@ private:
   std::atomic<bool> abbort;
 
   /* used to save if the search is running */
-  bool running = false;
+  std::atomic<bool> running{false};
 
   /* cover one column:
    * - remove the column from the column header node list,
@@ -212,6 +213,27 @@ private:
 
   unsigned int clumpify(void);
 
+  /* multi-threading support */
+  friend class assemblerWorker_c;
+
+  struct PrefixStep {
+    unsigned int col;
+    unsigned int row;
+  };
+
+  struct SubtreeTask {
+    std::vector<PrefixStep> prefix;
+  };
+
+  unsigned int numThreads = 0;
+  std::atomic<size_t> totalTasks{0};
+  std::atomic<size_t> completedTasks{0};
+  mutable std::mutex callbackMutex;
+
+  void generateSubtreeTasks(std::vector<SubtreeTask> & tasks, unsigned int targetTasks, unsigned int maxDepth);
+  void parallelMultiSearch(unsigned int workers);
+  unsigned int getEffectiveThreads(void) const;
+
 protected:
 
   /* as this is only a back end doing the processing on the matrix, there needs to
@@ -286,7 +308,9 @@ public:
   int getErrorsParam(void) override { return errorsParam; }
   float getFinished(void) const override;
   void stop(void) override { abbort.store(true, std::memory_order_relaxed); }
-  bool stopped(void) const override { return !running; }
+  bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
+  void setNumThreads(unsigned int threads) override { numThreads = threads; }
+  unsigned int getNumThreads(void) const override { return numThreads; }
   errState setPosition(const char * string, const char * version) override;
   void save(xmlWriter_c & xml) const override;
   void reduce(void) override;

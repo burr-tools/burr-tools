@@ -308,3 +308,38 @@ TEST_CASE("problem_c::setAssembler takes std::unique_ptr and transfers ownership
   CHECK(problem->getAssembler() == raw);
 }
 
+TEST_CASE("Parallel assembler produces identical results to single-threaded", "[assembler][parallel]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  int assemblies_1 = 0;
+  int solutions_1 = 0;
+  {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    disassembler_0_c disasm(*problem);
+    TestAssemblerCallback cb(&disasm);
+    assm.assemble(&cb);
+    assemblies_1 = cb.assemblies;
+    solutions_1 = cb.solutions;
+    CHECK(assemblies_1 == 12);
+    CHECK(solutions_1 == 1);
+  }
+
+  {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    disassembler_0_c disasm(*problem);
+    TestAssemblerCallback cb(&disasm);
+    assm.assemble(&cb);
+    CHECK(cb.assemblies == assemblies_1);
+    CHECK(cb.solutions == solutions_1);
+    CHECK(assm.getIterations() > 0);
+    CHECK(assm.getFinished() >= 1.0f);
+  }
+}
+

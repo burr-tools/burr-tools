@@ -116,7 +116,8 @@ PYBIND11_MODULE(burrtools, m) {
          py::arg("reduce") = false,
          py::arg("keep_rotations") = false,
          py::arg("keep_mirror") = false,
-         "Start solving the problem and return an iterator yielding Solution objects")
+         py::arg("threads") = 0,
+         "Start solving the problem and return an iterator yielding Solution objects (threads: 0 = all cores)")
     .def("__repr__", [](const PyProblem & p) {
       return "<Problem index=" + std::to_string(p.get_index()) +
              " name='" + p.get_name() +
