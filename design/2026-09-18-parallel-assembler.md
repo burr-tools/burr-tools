@@ -301,4 +301,79 @@ not something CI or a contributor can re-run.
 3. **Safety & Backend Isolation:**
    All puzzles using `assembler_1_c` (such as the 48-second George Bell 11x11 square, `SolidSixPieceBurrs`, `Simplicity`) run with 100% parity, confirming zero side-effects on other solver pipelines.
 
+---
+
+## 6. Parallelizing Wei-Hwa Huang's Algorithm (`assembler_1_c`)
+
+### 6.1 Background & Motivation
+
+While `assembler_0_c` uses Knuth's Dancing Links (Algorithm X) for exact cover with unique piece counts (`count == 1`), `assembler_1_c` uses an algorithm based on ideas from Wei-Hwa Huang. It solves the generalized exact cover problem supporting:
+- Pieces with duplicate shape instances (`count > 1`).
+- Piece ranges (`min < max`), enabling puzzles with optional piece subsets.
+- Variable unit counts and hole optimizations.
+
+In earlier benchmarks (Section 5.4), puzzles governed by `assembler_1_c` remained 100% single-threaded:
+- George Bell Lomino 11x11: 48.2s
+- Solid Six Piece Burrs: 6.7s
+- Tyler Hudson Third Times the Charm: 4.2s
+- Jack Krijnen Simplicity: 3.0s
+
+Parallelizing `assembler_1_c` completes the multi-core solver across the entire BurrTools puzzle space.
+
+### 6.2 Architectural Design
+
+#### 6.2.1 State Representation & Restoration
+Unlike naive recursive search, `assembler_1_c` is an explicit state machine (`assembler_1_c::iterative()`) with 8 states (0 through 7). The state at any point is defined by 5 compact vectors of `unsigned int`:
+- `task_stack`: Stack of state machine execution points.
+- `next_row_stack`: Starting row index for candidate exploration (or 0 for new column selection).
+- `column_stack`: Covered columns in selection order.
+- `rows`: Candidate rows currently included in the partial assembly.
+- `hidden_rows`: Conflicting rows hidden from the matrix, delimited by sentinel zeros.
+
+Whenever a recursive subproblem is pushed onto `task_stack`, all ancestors are strictly in states `{1, 2, 5}`:
+- **State 1:** Column covered; exploring candidate rows.
+- **State 2:** Column condition satisfied with zero additional rows; column rows covered.
+- **State 5:** Candidate row selected, weight accumulated, conflicting rows hidden via `hiderows()`.
+
+Using `restoreMatrix(task)`, a worker reconstructs the exact matrix state by replaying column covers and row weight accumulations in microseconds without modifying the original matrix.
+
+#### 6.2.2 Dynamic Subtree Task Generation
+Task generation operates directly on the master instance:
+1. `generateTasksAtDepth(cutoff_depth, tasks)` runs the state machine from the root state.
+2. At `rows.size() >= cutoff_depth`, instead of searching deeper, the master captures a snapshot `SubtreeTask_1` and immediately backtracks (`next_row_stack.pop_back()`, `task_stack.pop_back()`).
+3. Backtracking naturally undoes weights and unhides conflicting rows, keeping the master matrix 100% consistent throughout generation.
+4. If `tasks.size() < targetTasks` (e.g. fewer than `workers * 4` tasks), `generateSubtreeTasks` increments `cutoff_depth` (up to `min(piecenumber, 3)`), ensuring fine-grained work distribution across all available CPU cores.
+
+#### 6.2.3 Worker Threadpool & Execution
+1. Each worker thread maintains its own private matrix vectors (`left`, `right`, `up`, `down`, `colCount`, `weight`).
+2. Before processing each task, the worker resets its matrix to the canonical base matrix (`base_left`, etc.) via fast vector assignment (~5–10 µs).
+3. The worker applies `restoreMatrix(task)` and executes `worker_iterative(task.task_stack.size())`.
+4. The worker terminates when `task_stack.size() < base_depth`, guaranteeing that the subtree is exhaustively explored without touching sibling branches.
+5. Rotation rejection (`smallerRotationExists`) is evaluated concurrently per worker; the global `callbackMutex` is acquired solely when reporting valid assemblies to `getCallback()->assembly()`.
+6. Iterations are batched in thread-local counters and flushed periodically to `std::atomic<unsigned long> iterations`.
+
+### 6.3 Benchmark Results (Huang Assembler Corpus)
+
+We benchmarked the parallel Huang implementation against the single-threaded base binary using `bench/run_suite.sh` across the full set of `assembler_1` puzzles:
+
+| Puzzle | Backend | Base Wall (s) | Parallel Wall (s) | Speedup | Base CPU% | Parallel CPU% | Memory Delta |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **George Bell / Lomino 11x11 Square** | `assembler_1_c` | 47.15s | 18.58s | **2.54×** | 100.0% | **704.7%** | +8.15 MB |
+| **examples / SolidSixPieceBurrs** | `assembler_1_c` | 6.66s | 2.49s | **2.67×** | 99.9% | **601.8%** | +7.11 MB |
+| **Tyler Hudson / Third Times the Charm** | `assembler_1_c` | 4.17s | 2.12s | **1.97×** | 100.0% | **664.8%** | +83.77 MB |
+| **Jack Krijnen / Simplicity** | `assembler_1_c` | 2.75s | 1.76s | **1.56×** | 100.0% | **316.7%** | +0.00 MB |
+| **Jack Krijnen / BottomLine** | `assembler_1_c` | 1.11s | 1.14s | 0.98× | 100.0% | 105.3% | +0.00 MB |
+| **Jack Krijnen / Tippy** | `assembler_1_c` | 0.52s | 0.51s | 1.02× | 99.9% | 130.4% | +5.76 MB |
+
+### 6.4 Key Findings & Takeaways
+1. **2.5× to 2.7× Speedup on Heavy Huang Searches:**
+   On longer-running puzzles like the 47-second George Bell Lomino 11x11 square and Solid Six Piece Burrs, parallel search achieves **2.54× to 2.67× wall-clock speedup** with **600%–705% multi-core CPU utilization** on 8 cores.
+2. **Strict Invariant Verification:**
+   Across all puzzles, the assembly count, solution count, and disassembly move sequences are 100% identical between single-threaded and multi-threaded runs.
+3. **Controlled Memory Footprint:**
+   Peak RSS overhead is small (+7 to +8 MB on most puzzles; up to +83 MB for complex multi-piece 3D puzzles like Third Times the Charm), well within normal application limits.
+4. **Universal Multi-Core Solving:**
+   BurrTools now parallelizes both Knuth DLX (`assembler_0_c`) and Huang's algorithm (`assembler_1_c`) by default across CLI (`burrTxt`), GUI (`burrtools`), and Python bindings (`burrtools.so`).
+
+
 

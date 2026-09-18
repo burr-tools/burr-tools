@@ -618,3 +618,59 @@ TEST_CASE("Parallel assembler matches serial on a symmetry-breaking puzzle",
 
   CHECK(parallel == serial);
 }
+
+TEST_CASE("Parallel assembler 1 produces identical results to single-threaded", "[assembler][parallel]") {
+  auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  int assemblies_1 = 0;
+  int solutions_1 = 0;
+  {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    disassembler_0_c disasm(*problem);
+    TestAssemblerCallback cb(&disasm);
+    assm.assemble(&cb);
+    assemblies_1 = cb.assemblies;
+    solutions_1 = cb.solutions;
+    CHECK(assemblies_1 == 96);
+    CHECK(solutions_1 == 1);
+  }
+
+  {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    disassembler_0_c disasm(*problem);
+    TestAssemblerCallback cb(&disasm);
+    assm.assemble(&cb);
+    CHECK(cb.assemblies == assemblies_1);
+    CHECK(cb.solutions == solutions_1);
+    CHECK(assm.getIterations() > 0);
+    CHECK(assm.getFinished() >= 1.0f);
+  }
+}
+
+TEST_CASE("Parallel assembler 1 stops promptly when aborted", "[assembler][parallel]") {
+  auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_1_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  int count = 0;
+  assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
+    count++;
+    return false; // Request immediate stop
+  });
+
+  CHECK(count == 1);
+  CHECK(assm.stopped());
+}
+
