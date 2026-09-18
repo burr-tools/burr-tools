@@ -87,13 +87,16 @@ unsigned int PyProblem::get_piece_max(unsigned int shape_idx) const {
 std::unique_ptr<SolutionIterator> PyProblem::solve(bool disassemble,
                                                     bool reduce,
                                                     bool keep_rotations,
-                                                    bool keep_mirror) {
+                                                    bool keep_mirror,
+                                                    unsigned int threads) {
   return std::make_unique<SolutionIterator>(
     puzzle,
     problem_idx,
     disassemble,
     reduce,
     keep_rotations,
-    keep_mirror
+    keep_mirror,
+    threads
   );
 }
+
