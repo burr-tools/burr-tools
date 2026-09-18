@@ -25,6 +25,7 @@ class assembly_c;
 class separation_c;
 class problem_c;
 class disassembler_0_c;
+class movementCache_c;
 class ThreadBudget;
 
 #include <vector>
@@ -48,6 +49,10 @@ class ThreadBudget;
  * disassembly jobs across N worker threads, each owning a private disassembler_0_c
  * instance. A dedicated merger thread orders completed results by sequence number
  * before invoking the user callback, preserving strict deterministic solution ordering.
+ *
+ * The worker disassemblers share one movement cache (see sharedCache): movement
+ * values are expensive voxel math, identical across workers, and computed
+ * on demand behind one mutex, so sharing computes each value once.
  */
 class disassemblerPool_c {
 public:
@@ -136,6 +141,14 @@ private:
   bool is_inline = false;
   std::mutex inline_mutex;
   std::unique_ptr<disassembler_0_c> inline_dis;
+
+  /* Movement cache shared by all worker disassemblers (see the constructor):
+   * internally synchronized, so pool workers compute each movement value
+   * once instead of once per worker. Null when the grid has no disassembly
+   * support -- worker disassemblers then fall back to private caches, exactly
+   * like the non-pool path. Set once before workers start; read-only after.
+   */
+  std::shared_ptr<movementCache_c> sharedCache;
 
   std::atomic<uint64_t> next_submit_seq{0};
   std::atomic<uint64_t> next_merge_seq{0};

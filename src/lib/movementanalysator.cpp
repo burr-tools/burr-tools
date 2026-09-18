@@ -534,8 +534,8 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
   return true;
 }
 
-movementAnalysator_c::movementAnalysator_c(const problem_c & problem) :
-  cache(problem.getPuzzle().getGridType()->getMovementCache(problem)),
+movementAnalysator_c::movementAnalysator_c(const problem_c & problem, std::shared_ptr<movementCache_c> sharedCache) :
+  cache(sharedCache ? sharedCache : problem.getPuzzle().getGridType()->getMovementCache(problem)),
   matrix(cache ? cache->numDirections() * problem.getNumberOfPieces() * problem.getNumberOfPieces() : 0, 0),
   movement(problem.getNumberOfPieces()),
   weights(problem.getNumberOfPieces()),
