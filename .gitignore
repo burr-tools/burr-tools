@@ -30,3 +30,8 @@ __pycache__/
 # Local generated test output
 *.stl
 puzzles/
+
+# Benchmark outputs
+bench/*.csv
+bench_run.log
+
