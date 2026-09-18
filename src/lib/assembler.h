@@ -195,6 +195,17 @@ public:
   void assemble(std::function<bool(std::unique_ptr<assembly_c>)> callback_fn);
 
   /**
+   * Set the number of worker threads for multi-threaded solving.
+   * 0 means auto-detect (default).
+   */
+  virtual void setNumThreads(unsigned int /*threads*/) {}
+
+  /**
+   * Get the configured number of threads (0 = auto-detect).
+   */
+  virtual unsigned int getNumThreads(void) const { return 0; }
+
+  /**
    * this function returns a number reflecting the complexity of the
    * puzzle. This could be the number of placements tried, or
    * some other value

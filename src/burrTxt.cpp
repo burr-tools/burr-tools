@@ -101,6 +101,7 @@ void usage(void) {
   cout << "  -n    don't print a newline at the end of the line\n";
   cout << "  -o n  select the problem to solve\n";
   cout << "  -o all solves all problems in file\n";
+  cout << "  -t n  set number of worker threads for assembler (0 = auto)\n";
   cout << "  -x    only redisassemble the given solutions\n";
   cout << "  -a    ask for information about the current puzzle, the next letters must be:\n";
   cout << "     s0 print solutions with the only the used pieces\n";
@@ -129,6 +130,7 @@ int main(int argv, char* args[]) {
   bool reduce = false;
   bool newline = true;
   bool ask = false;
+  unsigned int threads = 0;
   enum {
     W_NUM_SOLUTIONS,
     W_SOLUTION_PIECES,
@@ -154,7 +156,10 @@ int main(int argv, char* args[]) {
         newline = false;
       else if (strcmp(args[i], "-x") == 0)
         assemble = false;
-      else if (strcmp(args[i], "-o") == 0) {
+      else if (strcmp(args[i], "-t") == 0) {
+        threads = atoi(args[i+1]);
+        i++;
+      } else if (strcmp(args[i], "-o") == 0) {
         if (strcmp(args[i+1],"all")==0)
           allProblems = true;
         else
@@ -315,6 +320,9 @@ int main(int argv, char* args[]) {
       d.reset();
       if (disassemble)
         d = std::make_unique<disassembler_0_c>(*problem);
+
+      if (threads > 0)
+        assm->setNumThreads(threads);
 
       assm->assemble(&a);
 
