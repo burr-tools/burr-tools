@@ -21,8 +21,10 @@
 #include "configuration.h"
 #include <string.h>
 #include <stdlib.h>
+#include <algorithm>
 #include <memory>
 #include <ranges>
+#include <thread>
 
 #include "../lib/bt_assert.h"
 
@@ -92,8 +94,20 @@ void configuration_c::parse() {
   }
 }
 
-void configuration_c::register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * dhelp, const char * def) {
-  data.push_back({cnf_name, cnf_typ, cnf_var, maxlen, dialog, dtext, dhelp, nullptr, def});
+void configuration_c::register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * dhelp, const char * def, int minVal, int maxVal) {
+  data.push_back({cnf_name, cnf_typ, cnf_var, maxlen, dialog, dtext, dhelp, nullptr, def, minVal, maxVal});
+}
+
+/* std::thread::hardware_concurrency is the portable query on all three
+ * platforms; it is allowed to return 0 when it can not tell, so fall back to 1
+ */
+unsigned int configuration_c::maxThreads(void) {
+  unsigned int hw = std::thread::hardware_concurrency();
+  return hw ? hw : 1;
+}
+
+unsigned int configuration_c::solverThreads(void) const {
+  return (unsigned int)std::clamp(i_solver_threads, 1, (int)maxThreads());
 }
 
 #define CNF_BOOL(a,b, def) register_entry(a, CT_BOOL, b, 0, false, 0, 0, def)
@@ -102,9 +116,24 @@ void configuration_c::register_entry(const char *cnf_name, cnf_type cnf_typ, voi
 
 #define CNF_BOOL_D(a,b,text,help, def) register_entry(a, CT_BOOL, b, 0, true, text, help, def)
 #define CNF_CHAR_D(a,b,c,text,help, def) register_entry(a, CT_STRING, b, c, true, text, help, def)
-#define CNF_INT_D(a,b,text,help, def) register_entry(a, CT_INT, b, 0, true, text, help, def)
+#define CNF_INT_D(a,b,text,help, def, lo, hi) register_entry(a, CT_INT, b, 0, true, text, help, def, lo, hi)
 
 configuration_c::configuration_c(void) {
+
+  /* default to 60% of the cores, rounded down, but never below one: leaves
+   * the machine responsive while solving
+   */
+  const unsigned int maxThr = maxThreads();
+  i_solver_threads_default = std::to_string(std::max(1u, (unsigned int)(maxThr * 6 / 10)));
+
+  /* registered first so that it ends up last in the dialogue, which walks
+   * `data` in reverse (see parse())
+   */
+  CNF_INT_D("solverthreads",      &i_solver_threads, "Solver Threads",
+            "Number of worker threads the assembler and the disassembler use while solving. "
+            "Fewer threads leave more of the machine free for other work; more threads solve faster. "
+            "1 disables parallel solving.",
+            i_solver_threads_default.c_str(), 1, (int)maxThr);
 
   CNF_BOOL_D("tooltips",          &i_use_tooltips, "Use Tooltips",
              "Show short help text when the mouse rests on buttons and other controls.",
@@ -196,9 +225,13 @@ public:
 void configuration_c::restoreDialogDefaults(void) {
 
   for (auto & t : std::views::reverse(data)) {
-    if (t.dialog && t.cnf_typ == CT_BOOL && t.widget) {
+    if (!t.dialog || !t.widget) continue;
+
+    if (t.cnf_typ == CT_BOOL) {
       bool enable = (strcmp(t.defaultValue, "true") == 0);
       ((Fl_Check_Button*)t.widget)->value(enable ? 1 : 0);
+    } else if (t.cnf_typ == CT_INT) {
+      ((Fl_Value_Slider*)t.widget)->value(atoi(t.defaultValue));
     }
   }
 }
@@ -252,9 +285,49 @@ void configuration_c::dialog(void) {
           y++;
         }
         break;
-      case CT_STRING:
-        break;
       case CT_INT:
+        {
+          layouter_c * row = new layouter_c(0, y, 1, 1);
+          row->weight(1, 0);
+
+          LFl_Box * lbl = new LFl_Box(t.dialogText, 0, 0, 1, 1);
+          lbl->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+
+          (new LFl_Box(1, 0))->setMinimumSize(TEXT_PAD, 0);
+
+          LFl_Value_Slider * w = new LFl_Value_Slider(2, 0, 1, 1);
+          w->type(FL_HOR_NICE_SLIDER);
+          w->box(FL_THIN_DOWN_BOX);
+          w->bounds(t.minVal, t.maxVal);
+          w->step(1);
+          w->value(std::clamp(*((int*)t.cnf_var), t.minVal, t.maxVal));
+          w->weight(1, 0);
+          w->setMinimumSize(120, 22);
+          if (t.minVal >= t.maxVal) w->deactivate();   // single-core machine: nothing to choose
+          t.widget = w;
+
+          row->end();
+          y++;
+
+          if (t.dialogHelp && t.dialogHelp[0]) {
+            (new LFl_Box(0, y, 1, 1))->setMinimumSize(0, TEXT_PAD_TOP);
+            y++;
+
+            layouter_c * helpRow = new layouter_c(0, y, 1, 1);
+            helpRow->weight(1, 0);
+            (new LFl_Box(0, 0))->setMinimumSize(TEXT_PAD, 0);
+            new SettingsWrapBox(t.dialogHelp, 1, 0, wrapW);
+            (new LFl_Box(2, 0))->setMinimumSize(TEXT_PAD, 0);
+            helpRow->end();
+            y++;
+          }
+
+          LFl_Box * spacer = new LFl_Box(0, y, 1, 1);
+          spacer->setMinimumSize(wrapW, 8);
+          y++;
+        }
+        break;
+      case CT_STRING:
         break;
       default: bt_assert(0);
       }
@@ -307,9 +380,10 @@ void configuration_c::dialog(void) {
         else
           *((bool*)t.cnf_var) = false;
         break;
-      case CT_STRING:
-        break;
       case CT_INT:
+        *((int*)t.cnf_var) = std::clamp((int)((Fl_Value_Slider*)t.widget)->value(), t.minVal, t.maxVal);
+        break;
+      case CT_STRING:
         break;
       default: bt_assert(0);
       }
