@@ -386,3 +386,7 @@ template class SimdExactCover<SimdBitset256>;
 template class SimdExactCover<SimdBitset512>;
 template class SimdExactCover<SimdBitset1024>;
 template class SimdExactCover<SimdBitset2048>;
+template class SimdExactCover<SimdBitset4096>;
+template class SimdExactCover<SimdBitset8192>;
+template class SimdExactCover<SimdBitset16384>;
+template class SimdExactCover<SimdBitset32768>;

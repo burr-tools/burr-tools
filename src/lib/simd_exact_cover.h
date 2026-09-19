@@ -116,6 +116,10 @@ using SimdBitset256 = SimdBitset<4>;
 using SimdBitset512 = SimdBitset<8>;
 using SimdBitset1024 = SimdBitset<16>;
 using SimdBitset2048 = SimdBitset<32>;
+using SimdBitset4096 = SimdBitset<64>;
+using SimdBitset8192 = SimdBitset<128>;
+using SimdBitset16384 = SimdBitset<256>;
+using SimdBitset32768 = SimdBitset<512>;
 
 /**
  * Returns true if bitsets a and b have NO overlapping 1-bits ((a & b) == 0).
@@ -298,5 +302,9 @@ using SimdExactCover256 = SimdExactCover<SimdBitset256>;
 using SimdExactCover512 = SimdExactCover<SimdBitset512>;
 using SimdExactCover1024 = SimdExactCover<SimdBitset1024>;
 using SimdExactCover2048 = SimdExactCover<SimdBitset2048>;
+using SimdExactCover4096 = SimdExactCover<SimdBitset4096>;
+using SimdExactCover8192 = SimdExactCover<SimdBitset8192>;
+using SimdExactCover16384 = SimdExactCover<SimdBitset16384>;
+using SimdExactCover32768 = SimdExactCover<SimdBitset32768>;
 
 #endif // __SIMD_EXACT_COVER_H__
