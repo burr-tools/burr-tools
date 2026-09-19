@@ -36,6 +36,7 @@ class problem_c;
 class gridType_c;
 class mirrorInfo_c;
 class assemblerWorker_1;
+class SimdHuangCover256;
 
 /**
  * This class is an assembler class.
@@ -107,6 +108,10 @@ private:
   void generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks);
   void generateSubtreeTasks(std::vector<SubtreeTask_1> & tasks, unsigned int targetTasks, unsigned int maxDepth);
   void parallelMultiSearch(unsigned int workers);
+
+  bool canUseSimd(void) const;
+  void simdSearch(void);
+  std::unique_ptr<SimdHuangCover256> createSimdSolver(void) const;
 
   friend class assemblerWorker_1;
 

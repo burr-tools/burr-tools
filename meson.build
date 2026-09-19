@@ -88,6 +88,7 @@ libburr_src = [
   'src/lib/assembler_0.cpp',
   'src/lib/assembler_1.cpp',
   'src/lib/simd_exact_cover.cpp',
+  'src/lib/simd_huang_cover.cpp',
   'src/lib/assembly.cpp',
   'src/lib/bt_assert.cpp',
   'src/lib/burrgrower.cpp',
