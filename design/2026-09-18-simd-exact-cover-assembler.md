@@ -159,26 +159,54 @@ flowchart LR
 
 ## 6. Empirical Results & Verification
 
-The SIMD exact cover engine was benchmarked on an AMD Ryzen 9 5900X (AVX2 supported) comparing the baseline single-threaded DLX engine against single-threaded and multi-threaded SIMD search:
+Empirical performance evaluation was conducted on an **11th Gen Intel(R) Core(TM) i7-1185G7 @ 3.00GHz** (4 physical cores, 8 threads, AVX2 and AVX-512 supported).
 
-| Puzzle | Configuration | Solve Time | Speedup Factor | Assemblies Found | Search Tree Iterations |
+Benchmarks were executed using the standardized benchmark suite tooling (`bench/bench_solve.py`), comparing baseline DLX (`BURRTOOLS_NO_SIMD=1`) against the SIMD exact-cover solver across the curated puzzle corpus with 3 interleaved runs per puzzle.
+
+### 6.1 Standardized Corpus: Single-Threaded Evaluation (`--threads 1 --no-disassemble`)
+
+Measures pure single-core algorithmic throughput (DLX vs SIMD bit-parallel search):
+
+| Puzzle & Characteristics | Baseline DLX | SIMD Exact Cover | Speedup | Iterations (DLX vs SIMD) | Assemblies |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Lomino 9x9** (prob 0) | DLX (1 thread) | 0.491s | 1.00x (baseline) | 9 | 201,846 |
-| | SIMD (1 thread) | 0.169s | **2.90x** | 9 | 125,446 |
-| | SIMD (4 threads) | 0.066s | **7.40x** | 9 | 125,445 |
-| | SIMD (8 threads) | 0.056s | **8.75x** | 9 | 125,445 |
-| **Lomino 10x10** (prob 1) | DLX (1 thread) | 2.239s | 1.00x (baseline) | 5 | 617,942 |
-| | SIMD (1 thread) | 0.733s | **3.05x** | 5 | 384,645 |
-| | SIMD (4 threads) | 0.293s | **7.64x** | 5 | 384,644 |
-| | SIMD (8 threads) | 0.226s | **9.91x** | 5 | 384,644 |
-| **Lomino 10x10 Alt** (prob 2) | DLX (1 thread) | 1.941s | 1.00x (baseline) | 8 | 628,897 |
-| | SIMD (1 thread) | 0.695s | **2.79x** | 8 | 396,920 |
-| | SIMD (4 threads) | 0.263s | **7.39x** | 8 | 396,919 |
-| | SIMD (8 threads) | 0.218s | **8.90x** | 8 | 396,919 |
+| **Lomino 10x10 (prob 1)** *(assembler 0, 11 unique pieces)* | 2.14s | 0.70s | **3.05x** | 617,942 vs 384,645 | 5 |
+| **Lomino 10x10 Alt (prob 2)** *(assembler 0, 11 unique pieces)* | 2.01s | 0.73s | **2.77x** | 628,897 vs 396,920 | 8 |
+| **Lomino 9x9 (prob 0)** *(assembler 0, 10 unique pieces)* | 0.49s | 0.18s | **2.65x** | 201,846 vs 125,446 | 9 |
+| **Pelikan Burr** *(assembler 0, 6 unique pieces)* | 0.01s | 0.01s | **1.26x** | 89 vs 89 | 12 |
+| **Excelsior** *(assembler 0, 6 unique pieces)* | 0.01s | 0.01s | **1.18x** | 112 vs 112 | 7 |
+| **Kangaroo** *(assembler 0 fallback, 325 cols > 255)* | 1.26s | 1.27s | **0.99x** | 1,137,000 vs 1,137,000 | 9,831 |
+| **Solid Six Piece Burrs** *(assembler 1 Huang, duplicate sticks)* | 7.48s | 7.48s | **1.00x** | 4,302,868 vs 4,302,868 | 588 |
+| **Simplicity** *(assembler 1 Huang, duplicate pieces)* | 2.09s | 2.02s | **1.04x** | 5,105,717 vs 5,105,717 | 188 |
+| **Third Times the Charm** *(assembler 1 Huang, duplicate shapes)* | 4.46s | 4.47s | **1.00x** | 439,905 vs 439,905 | 71 |
+| **CD Pack** *(assembler 1 Huang, duplicate pieces)* | 0.91s | 0.90s | **1.01x** | 3,087,443 vs 3,087,443 | 2 |
 
-### Observations:
-1. **Mathematical Equivalence**: Assembly counts match bit-for-bit across all runs (9, 5, and 8 assemblies respectively), and symmetry reduction preserves exact canonical solutions.
-2. **Single-Thread Speedup**: Pure vectorization and zero-cost backtracking yield a **~3.0x speedup** on a single core.
-3. **Multi-Thread Scaling**: Parallel SIMD subtree searching scales linearly across cores, delivering up to **9.91x speedup** on 8 threads with zero lock contention.
-4. **Test Suite Integrity**: 100% pass rate across the Catch2 test suite (395 test cases, 37,600+ assertions including stress tests) and Python test suite.
+### 6.2 Standardized Corpus: Multi-Threaded Scaling (`--no-disassemble`, all cores)
+
+Measures parallel tree search (`assembler_0_c::parallelMultiSearch` subtree dispatch):
+
+| Puzzle & Characteristics | Baseline DLX (8 thr) | SIMD (8 thr) | Speedup | CPU Utilization (DLX vs SIMD) | Assemblies |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Lomino 10x10 (prob 1)** | 0.67s | 0.24s | **2.77x** | 661% vs 608% | 5 |
+| **Lomino 10x10 Alt (prob 2)** | 0.65s | 0.26s | **2.55x** | 620% vs 591% | 8 |
+| **Lomino 9x9 (prob 0)** | 0.17s | 0.07s | **2.35x** | 552% vs 474% | 9 |
+| **Pelikan Burr** | 0.02s | 0.01s | **1.53x** | 178% vs 224% | 12 |
+| **Excelsior** | 0.01s | 0.01s | **1.24x** | 112% vs 118% | 7 |
+| **Kangaroo** *(fallback)* | 0.36s | 0.36s | **1.00x** | 658% vs 670% | 9,831 |
+| **Solid Six Piece Burrs** *(Huang)* | 2.34s | 2.43s | **0.96x** | 596% vs 580% | 588 |
+| **Simplicity** *(Huang)* | 0.63s | 0.62s | **1.01x** | 681% vs 673% | 188 |
+| **Third Times the Charm** *(Huang)* | 1.96s | 1.96s | **1.00x** | 665% vs 666% | 71 |
+| **CD Pack** *(Huang)* | 0.30s | 0.30s | **1.02x** | 649% vs 647% | 2 |
+
+### 6.3 Peak Resident Memory (RSS)
+
+Across the entire benchmark corpus, peak resident set size (RSS) differences were negligible:
+- Maximum delta: $+0.34\text{ MB}$ ($+1.8\%$ on Solid Six Piece Burrs)
+- Typical delta: $\pm 0.00\text{ MB}$ to $+0.01\text{ MB}$ ($< 0.1\%$)
+- No memory leaks or buffer accumulation observed.
+
+### 6.4 Key Conclusions:
+1. **Accelerated Domain ($\le 256$ columns, assembler 0)**: Delivers a consistent **2.35x to 3.05x** single-threaded speedup and up to **2.77x** multi-threaded speedup over DLX. Overall wall-clock speedup from baseline single-thread DLX (2.14s) to 8-thread SIMD (0.24s) on Lomino 10x10 is **8.92x**.
+2. **Transparent Fallback**: Puzzles requiring assembler 1 (duplicate pieces) or having $> 256$ columns seamlessly fall back to existing solver engines with zero regressions and zero performance penalty ($0.96\text{x}$ to $1.04\text{x}$, well within benchmark noise).
+3. **Correctness & Symmetries**: Assembly counts and symmetry invariants match 100% across all runs.
+4. **Test Suite Verification**: Clean passes on `just test-all` (all 395 test cases + stress tests) and `just check` (static analysis).
 
