@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <set>
+#include <unordered_set>
 #include <stack>
 #include <atomic>
 #include <mutex>
@@ -114,6 +115,9 @@ private:
   unsigned int numThreads = 0;
   std::atomic<size_t> totalTasks{0};
   std::atomic<size_t> completedTasks{0};
+  std::vector<SubtreeTask_1> parallelTasks;
+  std::vector<uint8_t> taskCompleted;
+  std::unordered_set<uint64_t> emittedSignatures;
 
   /* Pristine base matrix saved before search starts */
   std::vector<unsigned int> base_left;
