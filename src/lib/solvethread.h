@@ -108,8 +108,11 @@ class solveThread_c : public assembler_cb, public thread_c {
     static const int PAR_JUST_COUNT =         0x20;  // just count the solutions, don't save them
     static const int PAR_COMPLETE_ROTATIONS = 0x40;  // do a thorough rotation check
 
-    // create all the necessary data structures to start the thread later on
-    solveThread_c(problem_c & puz, int par);
+    /* create all the necessary data structures to start the thread later on.
+     * threads is the number of worker threads the assembler and the
+     * disassembler pool should use, 0 means auto-detect
+     */
+    solveThread_c(problem_c & puz, int par, unsigned int threads = 0);
     const problem_c & getProblem(void) const { return puzzle; }
 
   private:
@@ -173,6 +176,11 @@ class solveThread_c : public assembler_cb, public thread_c {
                            // if this flag is set, the program will return
 
 
+
+  /* number of worker threads requested for assembling and disassembling,
+   * 0 = auto-detect. Only read by the worker before it starts searching.
+   */
+  unsigned int numThreads;
 
   std::unique_ptr<disassemblerPool_c> disasm_pool;
 
