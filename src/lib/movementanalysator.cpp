@@ -117,18 +117,15 @@ void movementAnalysator_c::prepareFill(void) {
 #endif
 
 static bool disasmOptDisabled() {
-  static const bool disabled = std::getenv("BURRTOOLS_NO_DISASM_OPT") != nullptr;
-  return disabled;
+  return std::getenv("BURRTOOLS_NO_DISASM_OPT") != nullptr;
 }
 
 static bool simdDisabled() {
-  static const bool disabled = (std::getenv("BURRTOOLS_NO_SIMD") != nullptr || std::getenv("BURRTOOLS_NO_AVX2") != nullptr);
-  return disabled;
+  return (std::getenv("BURRTOOLS_NO_DISASM_SIMD") != nullptr || std::getenv("BURRTOOLS_NO_AVX2") != nullptr || std::getenv("BURRTOOLS_NO_DISASM_OPT") != nullptr);
 }
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-#pragma GCC push_options
-#pragma GCC target("avx512f")
+__attribute__((target("avx512f")))
 static void rfw_avx512(unsigned int * block, unsigned int n) {
   for (unsigned int k = 0; k < n; k++) {
     const unsigned int * row_k = block + (size_t)k * n;
@@ -161,10 +158,8 @@ static void rfw_avx512(unsigned int * block, unsigned int n) {
     }
   }
 }
-#pragma GCC pop_options
 
-#pragma GCC push_options
-#pragma GCC target("avx2")
+__attribute__((target("avx2")))
 static void rfw_avx2(unsigned int * block, unsigned int n) {
   for (unsigned int k = 0; k < n; k++) {
     const unsigned int * row_k = block + (size_t)k * n;
@@ -190,7 +185,6 @@ static void rfw_avx2(unsigned int * block, unsigned int n) {
     }
   }
 }
-#pragma GCC pop_options
 #endif
 
 #if defined(__aarch64__) || defined(__ARM_NEON)
@@ -296,8 +290,8 @@ void movementAnalysator_c::closureFull(void) {
   }
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-  static const bool has_avx512 = __builtin_cpu_supports("avx512f") && !simdDisabled() && (std::getenv("BURRTOOLS_NO_AVX512") == nullptr);
-  static const bool has_avx2 = __builtin_cpu_supports("avx2") && !simdDisabled();
+  const bool has_avx512 = __builtin_cpu_supports("avx512f") && !simdDisabled() && (std::getenv("BURRTOOLS_NO_AVX512") == nullptr);
+  const bool has_avx2 = __builtin_cpu_supports("avx2") && !simdDisabled();
 #endif
 
   /* Roy-Floyd-Warshall all-pairs shortest paths on movement constraints.

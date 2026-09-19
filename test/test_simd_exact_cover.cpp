@@ -303,21 +303,30 @@ TEST_CASE("SimdBitset16384 and 32768 operations", "[simd][bitset]") {
 }
 
 TEST_CASE("SimdExactCover extended solve up to 32768", "[simd][exact_cover]") {
-  for (unsigned int offset : {600u, 1200u, 3000u, 6000u, 12000u, 24000u}) {
-    std::unique_ptr<ISimdExactCover> solver;
-    if (offset < 1000) {
-      solver = std::make_unique<SimdExactCover1024>(offset + 7, 3);
-    } else if (offset < 2000) {
-      solver = std::make_unique<SimdExactCover2048>(offset + 7, 3);
-    } else if (offset < 4000) {
-      solver = std::make_unique<SimdExactCover4096>(offset + 7, 3);
-    } else if (offset < 8000) {
-      solver = std::make_unique<SimdExactCover8192>(offset + 7, 3);
-    } else if (offset < 16000) {
-      solver = std::make_unique<SimdExactCover16384>(offset + 7, 3);
-    } else {
-      solver = std::make_unique<SimdExactCover32768>(offset + 7, 3);
-    }
+  struct TierSpec {
+    unsigned int capacity;
+    std::function<std::unique_ptr<ISimdExactCover>(unsigned int, unsigned int)> make;
+  };
+
+  const std::vector<TierSpec> tiers = {
+    {256, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover256>(c, p); }},
+    {512, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover512>(c, p); }},
+    {1024, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover1024>(c, p); }},
+    {2048, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover2048>(c, p); }},
+    {4096, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover4096>(c, p); }},
+    {8192, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover8192>(c, p); }},
+    {16384, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover16384>(c, p); }},
+    {32768, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover32768>(c, p); }},
+  };
+
+  for (const auto & tier : tiers) {
+    unsigned int capacity = tier.capacity;
+    unsigned int offset = capacity - 7;
+    auto solver = tier.make(capacity, 3);
+
+    // Boundary check: col == capacity is out of bounds and must throw assert_exception
+    CHECK_THROWS_AS(solver->setRequiredColumn(capacity), assert_exception);
+    CHECK_THROWS_AS(solver->addRow(99, 0, {capacity}), assert_exception);
 
     for (unsigned int i = 0; i < 7; i++) {
       solver->setRequiredColumn(offset + i);

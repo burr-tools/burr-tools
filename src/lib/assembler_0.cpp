@@ -1878,7 +1878,7 @@ bool assembler_0_c::canUseSimd(void) const {
 
   int res_filled = getResultShape(problem)->countState(voxel_c::VX_FILLED);
   unsigned int max_col = piecenumber + res_filled;
-  if (max_col > 32768)
+  if (max_col > 2048)
     return false;
 
   return true;
