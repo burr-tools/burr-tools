@@ -2530,6 +2530,87 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   if (avoidTransformedAssemblies)
     prewarmSharedShapeCaches(problem);
 
+  if (canUseSimd()) {
+    auto solver = createSimdSolver();
+
+    solver->parallelSolve(
+      workers,
+      [this](const std::vector<unsigned int> &solution_nodes) -> bool {
+        if (getCallback()) {
+          auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
+
+          std::vector<unsigned int> piece(solution_nodes.size());
+          std::vector<unsigned char> tran(solution_nodes.size());
+          std::vector<int> x(solution_nodes.size());
+          std::vector<int> y(solution_nodes.size());
+          std::vector<int> z(solution_nodes.size());
+
+          for (unsigned int i = 0; i < solution_nodes.size(); i++)
+            getPieceInformation(solution_nodes[i], &piece[i], &tran[i], &x[i], &y[i], &z[i]);
+
+          for (unsigned int pc = 0; pc < problem.getNumberOfParts(); pc++) {
+            unsigned int placed = 0;
+            for (unsigned int i = 0; i < solution_nodes.size(); i++) {
+              if (piece[i] == pc) {
+                assembly->addPlacement(tran[i], x[i], y[i], z[i]);
+                placed++;
+              }
+            }
+            while (placed < problem.getPartMaximum(pc)) {
+              assembly->addNonPlacement();
+              placed++;
+            }
+          }
+
+          assembly->sort(problem);
+
+          if (avoidTransformedAssemblies &&
+              assembly->smallerRotationExists(problem, avoidTransformedPivot,
+                                              avoidTransformedMirror.get(), complete))
+            return true;
+
+          uint64_t sig = 14695981039346656037ULL;
+          for (unsigned int i = 0; i < piecenumber; i++) {
+            if (assembly->isPlaced(i)) {
+              sig ^= assembly->getTransformation(i); sig *= 1099511628211ULL;
+              sig ^= static_cast<uint32_t>(assembly->getX(i)); sig *= 1099511628211ULL;
+              sig ^= static_cast<uint32_t>(assembly->getY(i)); sig *= 1099511628211ULL;
+              sig ^= static_cast<uint32_t>(assembly->getZ(i)); sig *= 1099511628211ULL;
+            } else {
+              sig ^= 0xFF; sig *= 1099511628211ULL;
+            }
+          }
+
+          {
+            std::lock_guard<std::mutex> lock(callbackMutex);
+            if (abbort.load(std::memory_order_relaxed))
+              return false;
+            if (!emittedSignatures.insert(sig).second)
+              return true;
+            if (!getCallback()->assembly(std::move(assembly))) {
+              stop();
+              return false;
+            }
+          }
+        }
+        return !abbort.load(std::memory_order_relaxed);
+      },
+      abbort,
+      iterations,
+      totalTasks,
+      completedTasks
+    );
+
+    if (!abbort.load(std::memory_order_relaxed)) {
+      parallelTasks.clear();
+      taskCompleted.clear();
+      emittedSignatures.clear();
+    }
+
+    running.store(false, std::memory_order_relaxed);
+    return;
+  }
+
   if (parallelTasks.empty()) {
     unsigned int targetTasks = std::max(16u, workers * 4);
     unsigned int maxDepth = std::min(piecenumber, 3u);

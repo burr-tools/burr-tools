@@ -90,6 +90,39 @@ public:
     std::atomic<uint64_t> &iterations
   ) const;
 
+  void solveSubtree(
+    const std::vector<unsigned int> &prefix_node_ids,
+    const std::vector<unsigned int> &hidden_node_ids,
+    SolutionCallback callback,
+    const std::atomic<bool> &abort_flag,
+    std::atomic<uint64_t> &iterations
+  ) const;
+
+  struct SearchContext {
+    SimdBitset256 placed_voxels;
+    std::vector<uint32_t> col_weights;
+    std::vector<std::vector<uint32_t>> scratch_active_rows;
+    std::vector<unsigned int> current_solution;
+    std::vector<uint32_t> col_counts;
+    uint64_t local_iterations = 0;
+  };
+
+  struct SubtreeTask {
+    unsigned int depth = 0;
+    SearchContext ctx;
+  };
+
+  void generateTasks(unsigned int target_tasks, std::vector<SubtreeTask> &tasks) const;
+
+  void parallelSolve(
+    unsigned int num_workers,
+    SolutionCallback callback,
+    const std::atomic<bool> &abort_flag,
+    std::atomic<uint64_t> &iterations,
+    std::atomic<size_t> &total_tasks,
+    std::atomic<size_t> &completed_tasks
+  ) const;
+
   unsigned int getNumRows() const { return rows.size(); }
   unsigned int getNumColumns() const { return num_columns; }
   unsigned int getNumShapes() const { return num_shapes; }
@@ -108,15 +141,6 @@ private:
   std::vector<unsigned int> hole_columns;
   std::unordered_map<unsigned int, uint32_t> node_to_row_idx;
   bool use_avx2 = false;
-
-  struct SearchContext {
-    SimdBitset256 placed_voxels;
-    std::vector<uint32_t> col_weights;
-    std::vector<std::vector<uint32_t>> scratch_active_rows;
-    std::vector<unsigned int> current_solution;
-    std::vector<uint32_t> col_counts;
-    uint64_t local_iterations = 0;
-  };
 
   void search(
     unsigned int depth,
