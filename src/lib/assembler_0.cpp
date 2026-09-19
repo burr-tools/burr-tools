@@ -1878,6 +1878,16 @@ bool assembler_0_c::canUseSimd(void) const {
 
   int res_filled = getResultShape(problem)->countState(voxel_c::VX_FILLED);
   unsigned int max_col = piecenumber + res_filled;
+  // Cap Assembler 0 at 2048 columns:
+  // 1. Thread stack safety: recursion passes BitsetType by value on the stack.
+  //    At 32768 columns (4 KB/frame), deep recursion risks overflowing 512 KB thread stacks
+  //    (default on macOS std::thread). At 2048 columns, it is only 256 B/frame.
+  // 2. Cache locality: every search node clears col_counts. At 2048 columns (8 KB) it fits
+  //    in L1 cache; at 32768 columns (128 KB) it blows out L1/L2 caches on every node visit.
+  // 3. Memory per row: each row stores BitsetType by value (~320 B at 2048 vs ~4,160 B at 32k).
+  // Above 2048 columns, classical sparse DLX is faster and uses significantly less memory.
+  // (Note: Assembler 1 supports up to 32768 columns because its search loop is indexed by shapes
+  // and unplaced voxels rather than sweeping dense column counts at every node.)
   if (max_col > 2048)
     return false;
 

@@ -208,7 +208,15 @@ public:
 };
 
 /**
- * High-performance hardware-vectorized exact cover solver templated on BitsetType (256 or 512 bits).
+ * High-performance hardware-vectorized exact cover solver templated on BitsetType.
+ * Supported tiers: 256, 512, 1024, 2048, 4096, 8192, 16384, and 32768 bits.
+ *
+ * Column capacity considerations:
+ * - In Assembler 0 (DLX), usage is capped at 2048 columns (SimdBitset2048). Beyond 2048,
+ *   dense bitset rows, recursion stack frames (4 KB per depth level at 32k), and per-node
+ *   col_counts zeroing (128 KB at 32k) cause cache thrashing and thread stack overflow risks,
+ *   making classical sparse DLX superior.
+ * - Higher tiers (4096..32768) exist for tier benchmarking and Assembler 1 (SimdHuangCover).
  */
 template <typename BitsetType>
 class SimdExactCover : public ISimdExactCover {

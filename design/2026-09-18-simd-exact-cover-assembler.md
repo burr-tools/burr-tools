@@ -335,4 +335,34 @@ python3 bench/bench_solve.py --ab build/burrTxt-base build/burrTxt --no-disassem
 rm build/burrTxt-base
 ```
 
+---
+
+## 9. Architectural Limits & Memory Scaling (The 2048-Column Cap in Assembler 0)
+
+While `SimdBitset` and `SimdExactCover` template specializations exist up to 32,768 columns (512 64-bit words), `assembler_0_c::canUseSimd()` caps usage at 2,048 columns (`SimdBitset2048`). Puzzles exceeding 2,048 columns fall back to classical sparse DLX.
+
+### 9.1 Rationale for the 2048 Cap in Assembler 0
+
+1. **Thread Stack Safety:**
+   In `SimdExactCover::search()`, recursive calls pass the bitmask by value (`search(depth + 1, occupied | candidate_row.mask, ...)`). At the 32,768 tier, a `SimdBitset` is 4,096 bytes (4 KB). For a 128-piece puzzle, recursive stack frames hold $128 \times 4\text{ KB} = 512\text{ KB}$ of bitset temporaries. On platforms like macOS where `std::thread` worker stacks default to 512 KB, this causes stack overflow crashes. At 2,048 columns, the bitset is only 256 bytes ($128 \times 256\text{ B} = 32\text{ KB}$), well within stack limits.
+
+2. **L1/L2 Cache Thrashing in Search Loop:**
+   At every search node visit, `col_counts` is zeroed to compute candidate options for MRV column selection:
+   `std::fill(ctx.col_counts.begin(), ctx.col_counts.end(), 0);`
+   - At **2048 columns**: `col_counts` is $2048 \times 4\text{ B} = 8\text{ KB}$, fitting entirely inside L1 data cache (32–48 KB).
+   - At **32,768 columns**: `col_counts` is $32,768 \times 4\text{ B} = 128\text{ KB}$, blowing out L1 and L2 caches on every node visit. Clearing 128 KB at millions of nodes per second consumes tens of gigabytes per second of memory bandwidth, making dense SIMD significantly slower than Knuth's sparse DLX.
+
+3. **Row Table Memory Footprint:**
+   Each candidate placement is stored as a `Row` containing a `BitsetType mask`.
+   - At **2048 columns**: `sizeof(Row)` is ~320 bytes. A 50,000-row puzzle needs ~16 MB.
+   - At **32,768 columns**: `sizeof(Row)` is ~4,160 bytes. A 50,000-row puzzle needs ~208 MB.
+
+### 9.2 Comparison with Assembler 1 (Huang's Algorithm)
+
+In contrast, Assembler 1 (`SimdHuangCover`) supports up to 32,768 columns because:
+- Its candidate selection evaluates shape-level constraints and unplaced voxels (`unplaced_voxels.forEachSetBit(...)`) rather than doing dense full-width sweeps across all column counts at every node.
+- Placement context is maintained without creating deep chains of 4 KB stack temporaries.
+- It is designed for massive polycube puzzles (e.g. 13x13x13 grids like `cylindrical 18` with 1,000+ voxels) where Huang's partitioning prunes entire shape groups.
+
+
 
