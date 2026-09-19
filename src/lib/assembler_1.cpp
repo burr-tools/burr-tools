@@ -2724,9 +2724,6 @@ bool assembler_1_c::canUseSimd(void) const {
   if (headerNodes - 1 > 32768)
     return false;
 
-  // If a hole limit is set that restricts holes, fall back to DLX
-  if (holes < holeColumns.size())
-    return false;
 
   const voxel_c * result = getResultShape(problem);
   unsigned int num_cols = headerNodes - 1;
