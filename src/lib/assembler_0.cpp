@@ -698,6 +698,8 @@ assembler_0_c::errState assembler_0_c::createMatrix(bool keepMirror, bool keepRo
   bt_assert(problem.resultValid());
 
   complete = comp;
+  parallelTasks.clear();
+  taskCompleted.clear();
 
   if (!canHandle(problem))
     return ERR_PUZZLE_UNHANDABLE;
@@ -1507,9 +1509,19 @@ public:
           assembly->smallerRotationExists(parent.problem, parent.avoidTransformedPivot, parent.avoidTransformedMirror.get(), parent.complete))
         return;
 
+      uint64_t sig = 14695981039346656037ULL;
+      for (unsigned int i = 0; i < parent.piecenumber; i++) {
+        sig ^= trans[i]; sig *= 1099511628211ULL;
+        sig ^= static_cast<uint32_t>(xs[i]); sig *= 1099511628211ULL;
+        sig ^= static_cast<uint32_t>(ys[i]); sig *= 1099511628211ULL;
+        sig ^= static_cast<uint32_t>(zs[i]); sig *= 1099511628211ULL;
+      }
+
       {
         std::lock_guard<std::mutex> lock(parent.callbackMutex);
         if (parent.abbort.load(std::memory_order_relaxed))
+          return;
+        if (!parent.emittedSignatures.insert(sig).second)
           return;
         if (!parent.getCallback()->assembly(std::move(assembly)))
           parent.stop();
@@ -1538,8 +1550,11 @@ public:
       if (!right[0])
         solution();
 
-      if (pos == parent.piecenumber)
+      if (pos == parent.piecenumber) {
         pos--;
+        if (pos < prefixDepth)
+          break;
+      }
 
       cont = false;
       local_iterations++;
@@ -1590,6 +1605,8 @@ public:
         if (!cont) {
           rows[pos] = 0;
           pos--;
+          if (pos < prefixDepth)
+            break;
           continue;
         }
 
@@ -1609,6 +1626,8 @@ public:
         uncover(columns[pos]);
         rows[pos] = 0;
         pos--;
+        if (pos < prefixDepth)
+          break;
       }
     }
 
@@ -1664,7 +1683,7 @@ void assembler_0_c::generateSubtreeTasks(
     bool anyExpanded = false;
 
     for (const auto & t : tasks) {
-      if (t.prefix.size() >= piecenumber) {
+      if (t.prefix.size() >= (piecenumber > 1 ? piecenumber - 1 : 1u)) {
         nextTasks.push_back(t);
         continue;
       }
@@ -1740,35 +1759,77 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   abbort.store(false, std::memory_order_relaxed);
   running.store(true, std::memory_order_relaxed);
 
-  unsigned int targetTasks = std::max(16u, workers * 4);
-  unsigned int maxDepth = std::min(piecenumber, 3u);
+  // Pre-warm lazy caches on shared problem and result shapes to prevent data races
+  if (avoidTransformedAssemblies) {
+    const voxel_c * res = getResultShape(problem);
+    if (res) {
+      const symmetries_c * sym = problem.getPuzzle().getGridType()->getSymmetries();
+      unsigned int numTrans = sym ? sym->getNumTransformationsMirror() : 0;
+      for (unsigned int t = 0; t < numTrans; t++) {
+        int x, y, z;
+        int x1, x2, y1, y2, z1, z2;
+        res->getHotspot(t, &x, &y, &z);
+        res->getBoundingBox(t, &x1, &x2, &y1, &y2, &z1, &z2);
+      }
+      res->selfSymmetries();
+    }
+  }
 
-  std::vector<SubtreeTask> tasks;
-  generateSubtreeTasks(tasks, targetTasks, maxDepth);
+  if (parallelTasks.empty()) {
+    unsigned int targetTasks = std::max(16u, workers * 4);
+    unsigned int maxDepth = std::min(piecenumber > 1 ? piecenumber - 1 : 1u, 3u);
+    generateSubtreeTasks(parallelTasks, targetTasks, maxDepth);
+    taskCompleted.assign(parallelTasks.size(), 0);
+    totalTasks.store(parallelTasks.size(), std::memory_order_relaxed);
+    completedTasks.store(0, std::memory_order_relaxed);
+  }
 
-  totalTasks.store(tasks.size(), std::memory_order_relaxed);
-  completedTasks.store(0, std::memory_order_relaxed);
-
-  if (tasks.empty()) {
+  if (parallelTasks.empty()) {
     running.store(false, std::memory_order_relaxed);
     return;
   }
 
-  std::atomic<size_t> nextTaskIndex{0};
+  std::vector<size_t> remainingIndices;
+  remainingIndices.reserve(parallelTasks.size());
+  for (size_t i = 0; i < parallelTasks.size(); i++) {
+    if (!taskCompleted[i])
+      remainingIndices.push_back(i);
+  }
 
-  auto workerFunc = [this, &tasks, &nextTaskIndex]() {
-    assemblerWorker_c worker(*this);
+  if (remainingIndices.empty()) {
+    pos = piecenumber + 1;
+    running.store(false, std::memory_order_relaxed);
+    return;
+  }
 
-    while (!abbort.load(std::memory_order_relaxed)) {
-      size_t idx = nextTaskIndex.fetch_add(1, std::memory_order_relaxed);
-      if (idx >= tasks.size())
-        break;
+  std::atomic<size_t> nextIndexPtr{0};
+  std::exception_ptr workerException = nullptr;
+  std::mutex exceptionMutex;
 
-      worker.searchSubtree(tasks[idx]);
-      completedTasks.fetch_add(1, std::memory_order_relaxed);
+  auto workerFunc = [this, &remainingIndices, &nextIndexPtr, &workerException, &exceptionMutex]() {
+    try {
+      assemblerWorker_c worker(*this);
+
+      while (!abbort.load(std::memory_order_relaxed)) {
+        size_t idx = nextIndexPtr.fetch_add(1, std::memory_order_relaxed);
+        if (idx >= remainingIndices.size())
+          break;
+
+        size_t taskIdx = remainingIndices[idx];
+        worker.searchSubtree(parallelTasks[taskIdx]);
+        if (!abbort.load(std::memory_order_relaxed)) {
+          taskCompleted[taskIdx] = 1;
+          completedTasks.fetch_add(1, std::memory_order_relaxed);
+        }
+      }
+
+      worker.flushIterations();
+    } catch (...) {
+      std::lock_guard<std::mutex> lock(exceptionMutex);
+      if (!workerException)
+        workerException = std::current_exception();
+      abbort.store(true, std::memory_order_relaxed);
     }
-
-    worker.flushIterations();
   };
 
   std::vector<std::thread> threads;
@@ -1783,6 +1844,18 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   for (auto & t : threads) {
     if (t.joinable())
       t.join();
+  }
+
+  if (workerException) {
+    running.store(false, std::memory_order_relaxed);
+    std::rethrow_exception(workerException);
+  }
+
+  if (!abbort.load(std::memory_order_relaxed)) {
+    pos = piecenumber + 1;
+    parallelTasks.clear();
+    taskCompleted.clear();
+    emittedSignatures.clear();
   }
 
   running.store(false, std::memory_order_relaxed);
@@ -1873,6 +1946,8 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
    * otherwise we would have to clean the stack
    */
   bt_assert(pos == 0);
+  parallelTasks.clear();
+  taskCompleted.clear();
 
   /* check for the right version */
   if (strcmp(version, ASSEMBLER_VERSION) != 0)

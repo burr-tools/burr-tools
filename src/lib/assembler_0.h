@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <set>
+#include <unordered_set>
 #include <stack>
 #include <atomic>
 #include <memory>
@@ -228,6 +229,9 @@ private:
   unsigned int numThreads = 0;
   std::atomic<size_t> totalTasks{0};
   std::atomic<size_t> completedTasks{0};
+  std::vector<SubtreeTask> parallelTasks;
+  std::vector<uint8_t> taskCompleted;
+  std::unordered_set<uint64_t> emittedSignatures;
   mutable std::mutex callbackMutex;
 
   void generateSubtreeTasks(std::vector<SubtreeTask> & tasks, unsigned int targetTasks, unsigned int maxDepth);

@@ -343,3 +343,79 @@ TEST_CASE("Parallel assembler produces identical results to single-threaded", "[
   }
 }
 
+TEST_CASE("Parallel assembler pause and continue does not duplicate solutions", "[assembler][parallel][resume]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  // Baseline: solve in one go
+  int total_expected = 0;
+  {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    TestAssemblerCallback cb;
+    assm.assemble(&cb);
+    total_expected = cb.assemblies;
+    REQUIRE(total_expected == 12);
+  }
+
+  // Two-phase solve: stop after 5 assemblies, then continue
+  {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+    int phase1_count = 0;
+    class StoppingCallback : public assembler_cb {
+    public:
+      int count = 0;
+      assembler_0_c & a;
+      StoppingCallback(assembler_0_c & assm) : a(assm) {}
+      bool assembly(std::unique_ptr<assembly_c>) override {
+        count++;
+        if (count == 5) {
+          a.stop();
+          return false;
+        }
+        return true;
+      }
+    } cb1(assm);
+
+    assm.assemble(&cb1);
+    phase1_count = cb1.count;
+    CHECK(phase1_count == 5);
+
+    // Now continue searching
+    TestAssemblerCallback cb2;
+    assm.assemble(&cb2);
+
+    // Total assemblies found across both phases must equal full run
+    CHECK(phase1_count + cb2.assemblies == total_expected);
+  }
+}
+
+TEST_CASE("Parallel assembler on small 2/3 piece problem", "[assembler][parallel][small]") {
+  auto p = puzzle_c::load("examples/DemoMirrorParadox.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  if (assembler_0_c::canHandle(*problem)) {
+    assembler_0_c assm1(*problem);
+    assm1.setNumThreads(1);
+    REQUIRE(assm1.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    TestAssemblerCallback cb1;
+    assm1.assemble(&cb1);
+
+    assembler_0_c assm4(*problem);
+    assm4.setNumThreads(4);
+    REQUIRE(assm4.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    TestAssemblerCallback cb4;
+    assm4.assemble(&cb4);
+
+    CHECK(cb4.assemblies == cb1.assemblies);
+  }
+}
+
