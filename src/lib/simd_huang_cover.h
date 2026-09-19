@@ -30,14 +30,76 @@
 #include <unordered_map>
 
 /**
- * High-performance hardware-vectorized exact cover solver for Huang's algorithm
+ * Interface for hardware-vectorized exact cover solvers for Huang's algorithm
  * (assembler 1), handling duplicate piece shapes, variable voxels (holes),
- * and piece range constraints for matrices with <= 256 columns.
+ * and piece range constraints.
  */
-class SimdHuangCover256 {
+class ISimdHuangCover {
+public:
+  virtual ~ISimdHuangCover() = default;
+
+  using SolutionCallback = std::function<bool(const std::vector<unsigned int> &solution_nodes)>;
+
+  virtual void setColumnBounds(
+    unsigned int col,
+    unsigned int min_w,
+    unsigned int max_w,
+    bool is_voxel,
+    bool is_shape,
+    bool is_range,
+    bool is_hole
+  ) = 0;
+
+  virtual void setHoles(unsigned int h) = 0;
+
+  virtual uint32_t addRow(
+    unsigned int node_id,
+    unsigned int shape_id,
+    unsigned int shape_col,
+    unsigned int shape_row_idx,
+    unsigned int range_weight,
+    const std::vector<unsigned int> &cols,
+    const std::vector<unsigned int> &weights
+  ) = 0;
+
+  virtual void registerNodeAlias(unsigned int node_id, uint32_t row_idx) = 0;
+
+  virtual void solve(
+    SolutionCallback callback,
+    const std::atomic<bool> &abort_flag,
+    std::atomic<uint64_t> &iterations
+  ) const = 0;
+
+  virtual void solveSubtree(
+    const std::vector<unsigned int> &prefix_node_ids,
+    const std::vector<unsigned int> &hidden_node_ids,
+    SolutionCallback callback,
+    const std::atomic<bool> &abort_flag,
+    std::atomic<uint64_t> &iterations
+  ) const = 0;
+
+  virtual void parallelSolve(
+    unsigned int num_workers,
+    SolutionCallback callback,
+    const std::atomic<bool> &abort_flag,
+    std::atomic<unsigned long> &iterations,
+    std::atomic<size_t> &total_tasks,
+    std::atomic<size_t> &completed_tasks
+  ) const = 0;
+
+  virtual unsigned int getNumRows() const = 0;
+  virtual unsigned int getNumColumns() const = 0;
+  virtual unsigned int getNumShapes() const = 0;
+};
+
+/**
+ * Templated hardware-vectorized exact cover solver for Huang's algorithm.
+ */
+template <typename BitsetType>
+class SimdHuangCover : public ISimdHuangCover {
 public:
   struct Row {
-    SimdBitset256 voxel_mask;         // 256-bit bitmask of voxels covered
+    BitsetType voxel_mask;            // bitmask of voxels covered
     unsigned int node_id = 0;         // original DLX node ID
     unsigned int shape_id = 0;        // piece shape index (0 .. num_shapes-1)
     unsigned int shape_col = 0;       // column index for piece shape
@@ -56,7 +118,7 @@ public:
     bool is_hole = false;
   };
 
-  SimdHuangCover256(unsigned int num_columns, unsigned int num_shapes);
+  SimdHuangCover(unsigned int num_columns, unsigned int num_shapes);
 
   void setColumnBounds(
     unsigned int col,
@@ -66,9 +128,9 @@ public:
     bool is_shape,
     bool is_range,
     bool is_hole
-  );
+  ) override;
 
-  void setHoles(unsigned int h) { holes = h; }
+  void setHoles(unsigned int h) override { holes = h; }
 
   uint32_t addRow(
     unsigned int node_id,
@@ -78,17 +140,15 @@ public:
     unsigned int range_weight,
     const std::vector<unsigned int> &cols,
     const std::vector<unsigned int> &weights
-  );
+  ) override;
 
-  void registerNodeAlias(unsigned int node_id, uint32_t row_idx);
-
-  using SolutionCallback = std::function<bool(const std::vector<unsigned int> &solution_nodes)>;
+  void registerNodeAlias(unsigned int node_id, uint32_t row_idx) override;
 
   void solve(
     SolutionCallback callback,
     const std::atomic<bool> &abort_flag,
     std::atomic<uint64_t> &iterations
-  ) const;
+  ) const override;
 
   void solveSubtree(
     const std::vector<unsigned int> &prefix_node_ids,
@@ -96,10 +156,39 @@ public:
     SolutionCallback callback,
     const std::atomic<bool> &abort_flag,
     std::atomic<uint64_t> &iterations
-  ) const;
+  ) const override;
+
+  void parallelSolve(
+    unsigned int num_workers,
+    SolutionCallback callback,
+    const std::atomic<bool> &abort_flag,
+    std::atomic<unsigned long> &iterations,
+    std::atomic<size_t> &total_tasks,
+    std::atomic<size_t> &completed_tasks
+  ) const override;
+
+  unsigned int getNumRows() const override { return rows.size(); }
+  unsigned int getNumColumns() const override { return num_columns; }
+  unsigned int getNumShapes() const override { return num_shapes; }
+
+private:
+  unsigned int num_columns;
+  unsigned int num_shapes;
+  unsigned int holes = 0;
+  unsigned int range_column = 0;
+  bool has_range = false;
+
+  BitsetType required_voxels;
+  std::vector<Column> columns;
+  std::vector<Row> rows;
+  std::vector<unsigned int> active_column_list;
+  std::vector<unsigned int> hole_columns;
+  std::unordered_map<unsigned int, uint32_t> node_to_row_idx;
+  [[maybe_unused]] bool use_avx2 = false;
+  [[maybe_unused]] bool use_avx512 = false;
 
   struct SearchContext {
-    SimdBitset256 placed_voxels;
+    BitsetType placed_voxels;
     std::vector<uint32_t> col_weights;
     std::vector<std::vector<uint32_t>> scratch_active_rows;
     std::vector<unsigned int> current_solution;
@@ -114,34 +203,6 @@ public:
 
   void generateTasks(unsigned int target_tasks, std::vector<SubtreeTask> &tasks) const;
 
-  void parallelSolve(
-    unsigned int num_workers,
-    SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
-    std::atomic<unsigned long> &iterations,
-    std::atomic<size_t> &total_tasks,
-    std::atomic<size_t> &completed_tasks
-  ) const;
-
-  unsigned int getNumRows() const { return rows.size(); }
-  unsigned int getNumColumns() const { return num_columns; }
-  unsigned int getNumShapes() const { return num_shapes; }
-
-private:
-  unsigned int num_columns;
-  unsigned int num_shapes;
-  unsigned int holes = 0;
-  unsigned int range_column = 0;
-  bool has_range = false;
-
-  SimdBitset256 required_voxels;
-  std::vector<Column> columns;
-  std::vector<Row> rows;
-  std::vector<unsigned int> active_column_list;
-  std::vector<unsigned int> hole_columns;
-  std::unordered_map<unsigned int, uint32_t> node_to_row_idx;
-  [[maybe_unused]] bool use_avx2 = false;
-
   void search(
     unsigned int depth,
     SearchContext &ctx,
@@ -153,7 +214,7 @@ private:
   void filterRows(
     const std::vector<uint32_t> &src,
     uint32_t chosen_idx,
-    const SimdBitset256 &chosen_voxel_mask,
+    const BitsetType &chosen_voxel_mask,
     unsigned int chosen_shape,
     bool shape_is_full,
     bool filter_monotonic,
@@ -164,10 +225,23 @@ private:
   ) const;
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  void filterRowsAvx512(
+    const std::vector<uint32_t> &src,
+    uint32_t chosen_idx,
+    const BitsetType &chosen_voxel_mask,
+    unsigned int chosen_shape,
+    bool shape_is_full,
+    bool filter_monotonic,
+    unsigned int chosen_shape_row_idx,
+    bool check_range,
+    unsigned int max_allowed_range_weight,
+    std::vector<uint32_t> &dst
+  ) const;
+
   void filterRowsAvx2(
     const std::vector<uint32_t> &src,
     uint32_t chosen_idx,
-    const SimdBitset256 &chosen_voxel_mask,
+    const BitsetType &chosen_voxel_mask,
     unsigned int chosen_shape,
     bool shape_is_full,
     bool filter_monotonic,
@@ -180,7 +254,7 @@ private:
   void filterRowsNeon(
     const std::vector<uint32_t> &src,
     uint32_t chosen_idx,
-    const SimdBitset256 &chosen_voxel_mask,
+    const BitsetType &chosen_voxel_mask,
     unsigned int chosen_shape,
     bool shape_is_full,
     bool filter_monotonic,
@@ -191,5 +265,14 @@ private:
   ) const;
 #endif
 };
+
+using SimdHuangCover256 = SimdHuangCover<SimdBitset256>;
+using SimdHuangCover512 = SimdHuangCover<SimdBitset512>;
+using SimdHuangCover1024 = SimdHuangCover<SimdBitset1024>;
+using SimdHuangCover2048 = SimdHuangCover<SimdBitset2048>;
+using SimdHuangCover4096 = SimdHuangCover<SimdBitset4096>;
+using SimdHuangCover8192 = SimdHuangCover<SimdBitset8192>;
+using SimdHuangCover16384 = SimdHuangCover<SimdBitset16384>;
+using SimdHuangCover32768 = SimdHuangCover<SimdBitset32768>;
 
 #endif // __SIMD_HUANG_COVER_H__
