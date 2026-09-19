@@ -140,11 +140,11 @@ With hole limit pruning enabled and extended tiers up to 32,768 columns, `SimdHu
 
 | Puzzle | Columns | SIMD Tier | DLX Baseline | SIMD Huang | Speedup | Assemblies | Iteration Count |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **`Simplicity.xmpuzzle`** | 356 | `SimdHuangCover512` | 1.963s | **0.121s** | **16.27x** | 188 (exact match) | 5,105,717 → 19,442 |
-| **`HexSticks.xmpuzzle`** | 2,259 | `SimdHuangCover4096` | 0.815s | **0.102s** | **7.96x** | 33 (exact match) | 1,828,505 → 5,728 |
-| **`Tippy.xmpuzzle`** | 295 | `SimdHuangCover512` | 0.148s | **0.036s** | **4.05x** | 460 (exact match) | 274,317 → 6,466 |
-| **`BottomLine.xmpuzzle`** | 355 | `SimdHuangCover512` | 0.064s | **0.017s** | **3.65x** | 76 (exact match) | 156,777 → 2,577 |
-| **`Third_Times_the_Charm.xmpuzzle`** | 521 | `SimdHuangCover1024` | 4.133s | **2.712s** | **1.52x** | 71 (exact match) | 439,905 → 19,615 |
+| **`Simplicity.xmpuzzle`** | 356 | `SimdHuangCover512` | 1.970s (0.701s par) | **0.084s (0.066s par)** | **23.49x (10.59x par)** | 188 (exact match) | 5,105,717 → 19,430 |
+| **`HexSticks.xmpuzzle`** | 2,259 | `SimdHuangCover4096` | 0.842s (0.316s par) | **0.063s (0.060s par)** | **13.41x (5.25x par)** | 33 (exact match) | 1,828,505 → 5,720 |
+| **`Tippy.xmpuzzle`** | 295 | `SimdHuangCover512` | 0.148s | **0.027s** | **5.26x** | 460 (exact match) | 274,317 → 6,466 |
+| **`BottomLine.xmpuzzle`** | 355 | `SimdHuangCover512` | 0.064s | **0.011s** | **4.05x** | 76 (exact match) | 156,777 → 2,577 |
+| **`Third_Times_the_Charm.xmpuzzle`** | 521 | `SimdHuangCover1024` | 4.157s (2.315s par) | **2.292s (0.976s par)** | **1.81x (2.37x par)** | 71 (exact match) | 439,905 → 19,614 |
 
 ### 5.1 Why SIMD Achieves Up to 16x Speedup on Assembler 1
 1. **Search Tree Node Reduction:** By using hardware vector operations to test voxel disjointness and hole constraints, `SimdHuangCover` prunes invalid branches dramatically earlier than DLX (e.g. 5.1M iterations down to 19k iterations on `Simplicity`).
