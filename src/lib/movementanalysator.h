@@ -69,8 +69,6 @@ class movementAnalysator_c {
     disassemblerNode_c * prevSearch = nullptr;
     const std::vector<unsigned int> * prevPieces = nullptr;
     int prevN = 0;
-    /* reusable dirty bitsets for the incremental closure: [d * n + idx] */
-    std::vector<char> dirtyRows, dirtyCols;
 
     std::unique_ptr<countingNodeHash> nodes;
 

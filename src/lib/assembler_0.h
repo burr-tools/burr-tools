@@ -32,6 +32,7 @@
 
 class gridType_c;
 class mirrorInfo_c;
+class ISimdExactCover;
 
 /**
  * This is an assembler class.
@@ -131,6 +132,11 @@ private:
   std::vector<unsigned int> columns;
 
   void iterativeMultiSearch(void);
+  bool canUseSimd(void) const;
+  void simdSearch(void);
+  std::unique_ptr<ISimdExactCover> createSimdSolver(void) const;
+  std::unique_ptr<assembly_c> buildAssembly(const unsigned int *row_nodes, unsigned int count) const;
+  void handleSolution(const unsigned int *row_nodes, unsigned int count);
 
   /* this function checks, if the given piece can be placed
    * at the given position inside the result
