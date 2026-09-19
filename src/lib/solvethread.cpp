@@ -336,9 +336,6 @@ void solveThread_c::stopInternal(void) {
   if (puzzle.getAssembler())
     puzzle.getAssembler()->stop();
 
-  if (disasm_pool)
-    disasm_pool->abort();
-
   stopPressed = true;
 }
 

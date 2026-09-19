@@ -114,7 +114,7 @@ void usage(void) {
   cout << "  -n    don't print a newline at the end of the line\n";
   cout << "  -o n  select the problem to solve\n";
   cout << "  -o all solves all problems in file\n";
-  cout << "  -t n  set number of worker threads for assembler (0 = auto)\n";
+  cout << "  -t n  set number of worker threads for solver (0 = auto)\n";
   cout << "  -x    only redisassemble the given solutions\n";
   cout << "  -a    ask for information about the current puzzle, the next letters must be:\n";
   cout << "     s0 print solutions with the only the used pieces\n";

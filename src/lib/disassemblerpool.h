@@ -35,6 +35,7 @@ class disassembler_0_c;
 #include <memory>
 #include <functional>
 #include <atomic>
+#include <exception>
 
 /**
  * Thread pool for concurrent disassembly of independent puzzle assemblies
@@ -89,7 +90,7 @@ private:
   std::unique_ptr<disassembler_0_c> inline_dis;
 
   std::atomic<uint64_t> next_submit_seq{0};
-  uint64_t next_merge_seq = 0;
+  std::atomic<uint64_t> next_merge_seq{0};
 
   std::mutex lifecycle_mutex;
 
@@ -98,16 +99,22 @@ private:
   std::condition_variable cv_producer;
   std::queue<Task> work_queue;
   static constexpr size_t MAX_QUEUE_SIZE = 64;
+  static constexpr size_t MAX_REORDER_SIZE = 64;
 
   std::mutex result_mutex;
   std::condition_variable cv_merger;
+  std::condition_variable cv_reorder;
   std::map<uint64_t, Result> reorder_buffer;
+
+  std::mutex exception_mutex;
+  std::exception_ptr worker_exception;
 
   std::vector<std::thread> workers;
   std::thread merger;
 
   void worker_loop();
   void merger_loop();
+  void check_exception();
 };
 
 #endif // __DISASSEMBLER_POOL_H__

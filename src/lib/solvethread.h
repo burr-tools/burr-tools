@@ -215,7 +215,8 @@ public:
   bool stopped(void) const {
     return ((action == ACT_PAUSING) ||
             (action == ACT_FINISHED) ||
-            (action == ACT_ERROR)
+            (action == ACT_ERROR) ||
+            (action == ACT_ASSERT)
            );
   }
 
