@@ -35,7 +35,7 @@ class problem_c;
 class gridType_c;
 class mirrorInfo_c;
 class assemblerWorker_1;
-class SimdHuangCover256;
+class ISimdHuangCover;
 
 /**
  * This class is an assembler class.
@@ -111,7 +111,7 @@ private:
 
   bool canUseSimd(void) const;
   void simdSearch(void);
-  std::unique_ptr<SimdHuangCover256> createSimdSolver(void) const;
+  std::unique_ptr<ISimdHuangCover> createSimdSolver(void) const;
 
   friend class assemblerWorker_1;
 

@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_template_test_macros.hpp>
 #include "src/lib/simd_exact_cover.h"
 
 #include <vector>
@@ -603,3 +604,72 @@ TEST_CASE("SimdHuangCover256 duplicate pieces exact cover", "[simd][huang]") {
   REQUIRE(solutions[1] == std::vector<unsigned int>{1, 3, 5});
   REQUIRE(iterations.load() > 0);
 }
+
+TEMPLATE_TEST_CASE("SimdHuangCover extended sizes duplicate pieces exact cover", "[simd][huang]",
+                   SimdHuangCover512, SimdHuangCover1024, SimdHuangCover4096, SimdHuangCover32768) {
+  unsigned int base_v = 280;
+  TestType solver(base_v + 5, 2);
+
+  solver.setColumnBounds(1, 2, 2, false, true, false, false); // Shape 1
+  solver.setColumnBounds(2, 1, 1, false, true, false, false); // Shape 2
+  for (unsigned int v = base_v; v < base_v + 5; v++) {
+    solver.setColumnBounds(v, 1, 1, true, false, false, false);
+  }
+
+  // Rows for Shape 1:
+  // Row 1: Shape 1, voxels base_v, base_v + 1
+  solver.addRow(1, 0, 1, 0, 0, {1, base_v, base_v + 1}, {1, 1, 1});
+  // Row 2: Shape 1, voxels base_v + 2, base_v + 3
+  solver.addRow(2, 0, 1, 1, 0, {1, base_v + 2, base_v + 3}, {1, 1, 1});
+  // Row 3: Shape 1, voxels base_v + 3, base_v + 4
+  solver.addRow(3, 0, 1, 2, 0, {1, base_v + 3, base_v + 4}, {1, 1, 1});
+
+  // Rows for Shape 2:
+  // Row 4: Shape 2, voxel base_v + 4
+  solver.addRow(4, 1, 2, 0, 0, {2, base_v + 4}, {1, 1});
+  // Row 5: Shape 2, voxel base_v + 2
+  solver.addRow(5, 1, 2, 1, 0, {2, base_v + 2}, {1, 1});
+
+  std::vector<std::vector<unsigned int>> solutions;
+  std::atomic<bool> abort_flag{false};
+  std::atomic<uint64_t> iterations{0};
+
+  solver.solve([&](const std::vector<unsigned int> &sol) {
+    std::vector<unsigned int> sorted = sol;
+    std::sort(sorted.begin(), sorted.end());
+    solutions.push_back(sorted);
+    return true;
+  }, abort_flag, iterations);
+
+  REQUIRE(solutions.size() == 2);
+  REQUIRE(solutions[0] == std::vector<unsigned int>{1, 2, 4});
+  REQUIRE(solutions[1] == std::vector<unsigned int>{1, 3, 5});
+  REQUIRE(iterations.load() > 0);
+
+  // Also test parallelSolve
+  std::atomic<unsigned long> p_iterations{0};
+  std::atomic<size_t> total_tasks{0};
+  std::atomic<size_t> completed_tasks{0};
+  std::vector<std::vector<unsigned int>> p_solutions;
+  std::mutex sol_mutex;
+
+  solver.parallelSolve(
+    4,
+    [&](const std::vector<unsigned int> &sol) {
+      std::lock_guard<std::mutex> lock(sol_mutex);
+      std::vector<unsigned int> sorted = sol;
+      std::sort(sorted.begin(), sorted.end());
+      p_solutions.push_back(sorted);
+      return true;
+    },
+    abort_flag,
+    p_iterations,
+    total_tasks,
+    completed_tasks
+  );
+  std::sort(p_solutions.begin(), p_solutions.end());
+  REQUIRE(p_solutions.size() == 2);
+  REQUIRE(p_solutions[0] == std::vector<unsigned int>{1, 2, 4});
+  REQUIRE(p_solutions[1] == std::vector<unsigned int>{1, 3, 5});
+}
+
