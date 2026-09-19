@@ -26,21 +26,26 @@
 #include <algorithm>
 #include <thread>
 
-SimdHuangCover256::SimdHuangCover256(unsigned int num_cols, unsigned int num_s)
+template <typename BitsetType>
+SimdHuangCover<BitsetType>::SimdHuangCover(unsigned int num_cols, unsigned int num_s)
   : num_columns(num_cols), num_shapes(num_s) {
-  bt_assert(num_cols <= 256);
+  bt_assert(num_cols <= BitsetType::NUM_WORDS * 64);
   columns.resize(num_columns + 1);
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
   if (!std::getenv("BURRTOOLS_NO_SIMD") && !std::getenv("BURRTOOLS_NO_AVX2")) {
     use_avx2 = __builtin_cpu_supports("avx2");
   }
+  if (!std::getenv("BURRTOOLS_NO_AVX512")) {
+    use_avx512 = __builtin_cpu_supports("avx512f");
+  }
 #elif defined(__aarch64__) || defined(__ARM_NEON)
   use_neon = !(std::getenv("BURRTOOLS_NO_SIMD") || std::getenv("BURRTOOLS_NO_NEON"));
 #endif
 }
 
-void SimdHuangCover256::setColumnBounds(
+template <typename BitsetType>
+void SimdHuangCover<BitsetType>::setColumnBounds(
   unsigned int col,
   unsigned int min_w,
   unsigned int max_w,
@@ -50,7 +55,7 @@ void SimdHuangCover256::setColumnBounds(
   bool is_hole
 ) {
   bt_assert(col <= num_columns);
-  bt_assert(col <= 256);
+  bt_assert(col <= BitsetType::NUM_WORDS * 64);
 
   if (col >= columns.size()) {
     columns.resize(col + 1);
@@ -69,13 +74,14 @@ void SimdHuangCover256::setColumnBounds(
   if (is_hole) {
     hole_columns.push_back(col);
   }
-  if (is_voxel && min_w > 0 && col <= 256) {
+  if (is_voxel && min_w > 0 && col > 0 && (col - 1) < BitsetType::NUM_WORDS * 64) {
     required_voxels.set(col - 1);
   }
   active_column_list.push_back(col);
 }
 
-uint32_t SimdHuangCover256::addRow(
+template <typename BitsetType>
+uint32_t SimdHuangCover<BitsetType>::addRow(
   unsigned int node_id,
   unsigned int shape_id,
   unsigned int shape_col,
@@ -97,8 +103,8 @@ uint32_t SimdHuangCover256::addRow(
   for (size_t i = 0; i < cols.size(); i++) {
     unsigned int c = cols[i];
     bt_assert(c <= num_columns);
-    bt_assert(c <= 256);
-    if (c > 0 && c <= num_columns && columns[c].is_voxel) {
+    bt_assert(c <= BitsetType::NUM_WORDS * 64);
+    if (c > 0 && c <= num_columns && (c - 1) < BitsetType::NUM_WORDS * 64 && columns[c].is_voxel) {
       r.voxel_mask.set(c - 1);
     }
   }
@@ -108,21 +114,18 @@ uint32_t SimdHuangCover256::addRow(
   return idx;
 }
 
-void SimdHuangCover256::registerNodeAlias(unsigned int node_id, uint32_t row_idx) {
+template <typename BitsetType>
+void SimdHuangCover<BitsetType>::registerNodeAlias(unsigned int node_id, uint32_t row_idx) {
   node_to_row_idx[node_id] = row_idx;
 }
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-/* Per-function attribute rather than a #pragma GCC target region: Clang does
- * not implement push_options/target and silently ignores them, after which
- * every intrinsic in the region fails to compile (and -Wunknown-pragmas alone
- * fails a --werror build). Both compilers honour the attribute.
- */
-__attribute__((target("avx2")))
-void SimdHuangCover256::filterRowsAvx2(
+template <typename BitsetType>
+__attribute__((target("avx512f")))
+void SimdHuangCover<BitsetType>::filterRowsAvx512(
   const std::vector<uint32_t> &src,
   uint32_t chosen_idx,
-  const SimdBitset256 &chosen_voxel_mask,
+  const BitsetType &chosen_voxel_mask,
   unsigned int chosen_shape,
   bool shape_is_full,
   bool filter_monotonic,
@@ -131,29 +134,48 @@ void SimdHuangCover256::filterRowsAvx2(
   unsigned int max_allowed_range_weight,
   std::vector<uint32_t> &dst
 ) const {
-  __m256i va = _mm256_load_si256(reinterpret_cast<const __m256i*>(chosen_voxel_mask.words));
-  for (uint32_t idx : src) {
-    if (idx == chosen_idx)
-      continue;
-    const auto &cand = rows[idx];
-    if (cand.shape_id == chosen_shape) {
-      if (shape_is_full || (filter_monotonic && cand.shape_row_idx <= chosen_shape_row_idx))
-        continue;
+  if constexpr (BitsetType::NUM_WORDS >= 8) {
+    constexpr size_t N_VEC = BitsetType::NUM_WORDS / 8;
+    __m512i va[N_VEC];
+    for (size_t i = 0; i < N_VEC; ++i) {
+      va[i] = _mm512_load_si512(reinterpret_cast<const void*>(&chosen_voxel_mask.words[i * 8]));
     }
-    if (check_range && cand.range_weight > max_allowed_range_weight)
-      continue;
 
-    __m256i vb = _mm256_load_si256(reinterpret_cast<const __m256i*>(cand.voxel_mask.words));
-    if (_mm256_testz_si256(va, vb)) {
-      dst.push_back(idx);
+    for (uint32_t idx : src) {
+      if (idx == chosen_idx)
+        continue;
+      const auto &cand = rows[idx];
+      if (cand.shape_id == chosen_shape) {
+        if (shape_is_full || (filter_monotonic && cand.shape_row_idx <= chosen_shape_row_idx))
+          continue;
+      }
+      if (check_range && cand.range_weight > max_allowed_range_weight)
+        continue;
+
+      const uint64_t *rw = cand.voxel_mask.words;
+      bool disjoint = true;
+      for (size_t i = 0; i < N_VEC; ++i) {
+        __m512i vb = _mm512_load_si512(reinterpret_cast<const void*>(&rw[i * 8]));
+        if (_mm512_test_epi64_mask(va[i], vb) != 0) {
+          disjoint = false;
+          break;
+        }
+      }
+      if (disjoint) {
+        dst.push_back(idx);
+      }
     }
+  } else {
+    filterRowsAvx2(src, chosen_idx, chosen_voxel_mask, chosen_shape, shape_is_full,
+                   filter_monotonic, chosen_shape_row_idx, check_range, max_allowed_range_weight, dst);
   }
 }
-#elif defined(__aarch64__) || defined(__ARM_NEON)
-void SimdHuangCover256::filterRowsNeon(
+template <typename BitsetType>
+__attribute__((target("avx2")))
+void SimdHuangCover<BitsetType>::filterRowsAvx2(
   const std::vector<uint32_t> &src,
   uint32_t chosen_idx,
-  const SimdBitset256 &chosen_voxel_mask,
+  const BitsetType &chosen_voxel_mask,
   unsigned int chosen_shape,
   bool shape_is_full,
   bool filter_monotonic,
@@ -162,8 +184,12 @@ void SimdHuangCover256::filterRowsNeon(
   unsigned int max_allowed_range_weight,
   std::vector<uint32_t> &dst
 ) const {
-  uint64x2_t ca0 = vld1q_u64(&chosen_voxel_mask.words[0]);
-  uint64x2_t ca1 = vld1q_u64(&chosen_voxel_mask.words[2]);
+  constexpr size_t N_VEC = BitsetType::NUM_WORDS / 4;
+  __m256i va[N_VEC];
+  for (size_t i = 0; i < N_VEC; ++i) {
+    va[i] = _mm256_load_si256(reinterpret_cast<const __m256i*>(&chosen_voxel_mask.words[i * 4]));
+  }
+
   for (uint32_t idx : src) {
     if (idx == chosen_idx)
       continue;
@@ -176,22 +202,72 @@ void SimdHuangCover256::filterRowsNeon(
       continue;
 
     const uint64_t *rw = cand.voxel_mask.words;
-    uint64x2_t rb0 = vld1q_u64(&rw[0]);
-    uint64x2_t rb1 = vld1q_u64(&rw[2]);
-    uint64x2_t c0 = vandq_u64(ca0, rb0);
-    uint64x2_t c1 = vandq_u64(ca1, rb1);
-    uint64x2_t c = vorrq_u64(c0, c1);
-    if ((vgetq_lane_u64(c, 0) | vgetq_lane_u64(c, 1)) == 0) {
+    bool disjoint = true;
+    for (size_t i = 0; i < N_VEC; ++i) {
+      __m256i vb = _mm256_load_si256(reinterpret_cast<const __m256i*>(&rw[i * 4]));
+      if (!_mm256_testz_si256(va[i], vb)) {
+        disjoint = false;
+        break;
+      }
+    }
+    if (disjoint) {
+      dst.push_back(idx);
+    }
+  }
+}
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+template <typename BitsetType>
+void SimdHuangCover<BitsetType>::filterRowsNeon(
+  const std::vector<uint32_t> &src,
+  uint32_t chosen_idx,
+  const BitsetType &chosen_voxel_mask,
+  unsigned int chosen_shape,
+  bool shape_is_full,
+  bool filter_monotonic,
+  unsigned int chosen_shape_row_idx,
+  bool check_range,
+  unsigned int max_allowed_range_weight,
+  std::vector<uint32_t> &dst
+) const {
+  constexpr size_t N_VEC = BitsetType::NUM_WORDS / 2;
+  uint64x2_t va[N_VEC];
+  for (size_t i = 0; i < N_VEC; ++i) {
+    va[i] = vld1q_u64(&chosen_voxel_mask.words[i * 2]);
+  }
+
+  for (uint32_t idx : src) {
+    if (idx == chosen_idx)
+      continue;
+    const auto &cand = rows[idx];
+    if (cand.shape_id == chosen_shape) {
+      if (shape_is_full || (filter_monotonic && cand.shape_row_idx <= chosen_shape_row_idx))
+        continue;
+    }
+    if (check_range && cand.range_weight > max_allowed_range_weight)
+      continue;
+
+    const uint64_t *rw = cand.voxel_mask.words;
+    bool disjoint = true;
+    for (size_t i = 0; i < N_VEC; ++i) {
+      uint64x2_t vb = vld1q_u64(&rw[i * 2]);
+      uint64x2_t c = vandq_u64(va[i], vb);
+      if ((vgetq_lane_u64(c, 0) | vgetq_lane_u64(c, 1)) != 0) {
+        disjoint = false;
+        break;
+      }
+    }
+    if (disjoint) {
       dst.push_back(idx);
     }
   }
 }
 #endif
 
-void SimdHuangCover256::filterRows(
+template <typename BitsetType>
+void SimdHuangCover<BitsetType>::filterRows(
   const std::vector<uint32_t> &src,
   uint32_t chosen_idx,
-  const SimdBitset256 &chosen_voxel_mask,
+  const BitsetType &chosen_voxel_mask,
   unsigned int chosen_shape,
   bool shape_is_full,
   bool filter_monotonic,
@@ -205,6 +281,11 @@ void SimdHuangCover256::filterRows(
   }
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  if (use_avx512 && BitsetType::NUM_WORDS >= 8) {
+    filterRowsAvx512(src, chosen_idx, chosen_voxel_mask, chosen_shape, shape_is_full,
+                     filter_monotonic, chosen_shape_row_idx, check_range, max_allowed_range_weight, dst);
+    return;
+  }
   if (use_avx2) {
     filterRowsAvx2(src, chosen_idx, chosen_voxel_mask, chosen_shape, shape_is_full,
                    filter_monotonic, chosen_shape_row_idx, check_range, max_allowed_range_weight, dst);
@@ -235,7 +316,8 @@ void SimdHuangCover256::filterRows(
   }
 }
 
-void SimdHuangCover256::solve(
+template <typename BitsetType>
+void SimdHuangCover<BitsetType>::solve(
   SolutionCallback callback,
   const std::atomic<bool> &abort_flag,
   std::atomic<uint64_t> &iterations
@@ -262,7 +344,8 @@ void SimdHuangCover256::solve(
   }
 }
 
-void SimdHuangCover256::solveSubtree(
+template <typename BitsetType>
+void SimdHuangCover<BitsetType>::solveSubtree(
   const std::vector<unsigned int> &prefix_node_ids,
   const std::vector<unsigned int> &hidden_node_ids,
   SolutionCallback callback,
@@ -347,7 +430,8 @@ void SimdHuangCover256::solveSubtree(
   }
 }
 
-void SimdHuangCover256::generateTasks(
+template <typename BitsetType>
+void SimdHuangCover<BitsetType>::generateTasks(
   unsigned int target_tasks,
   std::vector<SubtreeTask> &tasks
 ) const {
@@ -513,7 +597,8 @@ void SimdHuangCover256::generateTasks(
   }
 }
 
-void SimdHuangCover256::parallelSolve(
+template <typename BitsetType>
+void SimdHuangCover<BitsetType>::parallelSolve(
   unsigned int num_workers,
   SolutionCallback callback,
   const std::atomic<bool> &abort_flag,
@@ -579,7 +664,8 @@ void SimdHuangCover256::parallelSolve(
   }
 }
 
-void SimdHuangCover256::search(
+template <typename BitsetType>
+void SimdHuangCover<BitsetType>::search(
   unsigned int depth,
   SearchContext &ctx,
   SolutionCallback &callback,
@@ -747,3 +833,12 @@ void SimdHuangCover256::search(
       return;
   }
 }
+
+template class SimdHuangCover<SimdBitset256>;
+template class SimdHuangCover<SimdBitset512>;
+template class SimdHuangCover<SimdBitset1024>;
+template class SimdHuangCover<SimdBitset2048>;
+template class SimdHuangCover<SimdBitset4096>;
+template class SimdHuangCover<SimdBitset8192>;
+template class SimdHuangCover<SimdBitset16384>;
+template class SimdHuangCover<SimdBitset32768>;

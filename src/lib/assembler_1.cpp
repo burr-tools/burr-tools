@@ -2721,7 +2721,7 @@ bool assembler_1_c::canUseSimd(void) const {
   if (debug)
     return false;
 
-  if (headerNodes - 1 > 256)
+  if (headerNodes - 1 > 32768)
     return false;
 
   // If a hole limit is set that restricts holes, fall back to DLX
@@ -2749,7 +2749,7 @@ bool assembler_1_c::canUseSimd(void) const {
   return true;
 }
 
-std::unique_ptr<SimdHuangCover256> assembler_1_c::createSimdSolver(void) const {
+std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(void) const {
   const voxel_c * result = getResultShape(problem);
   unsigned int num_cols = headerNodes - 1;
   unsigned int num_shapes = problem.getNumberOfParts();
@@ -2758,7 +2758,24 @@ std::unique_ptr<SimdHuangCover256> assembler_1_c::createSimdSolver(void) const {
   bool hasRange = (num_cols == (num_shapes + res_filled + res_vari + 1));
   unsigned int rangeColumn = hasRange ? num_cols : 0;
 
-  auto solver = std::make_unique<SimdHuangCover256>(num_cols, num_shapes);
+  std::unique_ptr<ISimdHuangCover> solver;
+  if (num_cols <= 256) {
+    solver = std::make_unique<SimdHuangCover256>(num_cols, num_shapes);
+  } else if (num_cols <= 512) {
+    solver = std::make_unique<SimdHuangCover512>(num_cols, num_shapes);
+  } else if (num_cols <= 1024) {
+    solver = std::make_unique<SimdHuangCover1024>(num_cols, num_shapes);
+  } else if (num_cols <= 2048) {
+    solver = std::make_unique<SimdHuangCover2048>(num_cols, num_shapes);
+  } else if (num_cols <= 4096) {
+    solver = std::make_unique<SimdHuangCover4096>(num_cols, num_shapes);
+  } else if (num_cols <= 8192) {
+    solver = std::make_unique<SimdHuangCover8192>(num_cols, num_shapes);
+  } else if (num_cols <= 16384) {
+    solver = std::make_unique<SimdHuangCover16384>(num_cols, num_shapes);
+  } else {
+    solver = std::make_unique<SimdHuangCover32768>(num_cols, num_shapes);
+  }
   solver->setHoles(holes);
 
   for (unsigned int c = 1; c <= num_cols; c++) {
