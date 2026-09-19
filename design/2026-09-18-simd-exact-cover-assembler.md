@@ -210,3 +210,63 @@ Across the entire benchmark corpus, peak resident set size (RSS) differences wer
 3. **Correctness & Symmetries**: Assembly counts and symmetry invariants match 100% across all runs.
 4. **Test Suite Verification**: Clean passes on `just test-all` (all 395 test cases + stress tests) and `just check` (static analysis).
 
+---
+
+## 7. Next Optimization Roadmap (Prioritized)
+
+Following the proven success of SIMD bit-parallel exact cover in `assembler_0_c` and the findings from the disassembly audit (where cross-assembly thread pooling was proven unprofitable due to micro-task overhead and mutex contention), the highest-payoff optimization areas are prioritized as follows:
+
+### Step 1: SIMD Vectorization for Assembler 1 (Huang's Algorithm) [CURRENT FOCUS]
+- **Target**: Puzzles with duplicate piece shapes or ranges (`SolidSixPieceBurrs`, `Simplicity`, `Third Times the Charm`, `CD Pack`).
+- **Mechanism**:
+  - `assembler_1_c` currently uses a customized DLX variant where duplicate pieces share shapes and columns represent placement occurrences and range constraints.
+  - Implement bit-parallel piece conflict and placement disjointness testing inside Huang's algorithm.
+  - Eliminate pointer manipulation overhead during the recursive search for duplicate piece shapes.
+- **Expected Speedup**: **~2x to 3x** on puzzles with duplicate pieces.
+
+### Step 2: 512-Column SIMD Extension (Chained AVX2 / AVX-512 / NEON)
+- **Target**: Puzzles with $257 \le C \le 512$ columns (e.g. `kangaroo` with 325 columns).
+- **Mechanism**:
+  - Implement `SimdBitset512` using two 256-bit registers on AVX2 / NEON, or single 512-bit registers on AVX-512 (`__m512i` with `_mm512_test_epi64_mask`).
+  - Generalize `SimdExactCover256` to template on `BitsetSize` (256 vs 512).
+  - Bring larger exact-cover instances into the accelerated bit-parallel engine.
+- **Expected Speedup**: **~2.5x to 3x** on puzzles with $256 < C \le 512$ columns.
+
+### Step 3: Voxel Bitboard Collision Vectorization in Disassembly
+- **Target**: Interlocking burrs where deep disassembly dominates total solve time (e.g. `Excelsior` level 14 sequence).
+- **Mechanism**:
+  - Replace 3D coordinate voxel iteration in `movementAnalysator_c::checkmovement` with 64-bit / 256-bit bitboards.
+  - 3D translations become bit-shifts and collisions become bitwise `AND` tests (`VPTEST`).
+- **Expected Speedup**: **~1.5x to 2.5x** in pure disassembly time.
+
+---
+
+## 8. Benchmarking Infrastructure & Environment Variables
+
+To ensure scientific rigor and prevent misleading extrapolations from single-puzzle ad-hoc tests, all performance evaluations must use the standardized benchmark tooling (`bench/bench_solve.py` or `bench/run_suite.sh`).
+
+### Runtime Feature Toggles
+
+The codebase supports runtime toggles via environment variables to allow interleaved before/after A/B comparisons from the exact same build:
+
+| Environment Variable | Function | Usage |
+| :--- | :--- | :--- |
+| `BURRTOOLS_NO_SIMD=1` | Disables SIMD bit-parallel solver, forcing classical DLX. | Measure pure speedup over baseline DLX. |
+| `BURRTOOLS_NO_AVX2=1` | Disables AVX2, forcing 64-bit scalar word bit-parallel path. | Isolate algorithmic speedup from SIMD vector instructions. |
+| `BURRTOOLS_THREADS=N` | Overrides thread count (default: hardware concurrency). | Measure multi-core scaling curves. |
+
+### Standardized Execution Example
+
+```bash
+# Interleaved A/B benchmark (3 runs, assembly only, all cores):
+cat << 'EOF' > build/burrTxt-base
+#!/bin/sh
+exec env BURRTOOLS_NO_SIMD=1 $(dirname "$0")/burrTxt "$@"
+EOF
+chmod +x build/burrTxt-base
+
+python3 bench/bench_solve.py --ab build/burrTxt-base build/burrTxt --no-disassemble --runs 3
+rm build/burrTxt-base
+```
+
+
