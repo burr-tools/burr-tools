@@ -1804,7 +1804,7 @@ bool assembler_0_c::canUseSimd(void) const {
 
   int res_filled = getResultShape(problem)->countState(voxel_c::VX_FILLED);
   unsigned int max_col = piecenumber + res_filled;
-  if (max_col > 512)
+  if (max_col > 2048)
     return false;
 
   return true;
@@ -1817,8 +1817,12 @@ std::unique_ptr<ISimdExactCover> assembler_0_c::createSimdSolver(void) const {
   std::unique_ptr<ISimdExactCover> solver;
   if (max_col <= 256) {
     solver = std::make_unique<SimdExactCover256>(max_col, piecenumber);
-  } else {
+  } else if (max_col <= 512) {
     solver = std::make_unique<SimdExactCover512>(max_col, piecenumber);
+  } else if (max_col <= 1024) {
+    solver = std::make_unique<SimdExactCover1024>(max_col, piecenumber);
+  } else {
+    solver = std::make_unique<SimdExactCover2048>(max_col, piecenumber);
   }
 
   for (unsigned int c = right[0]; c != 0; c = right[c]) {
