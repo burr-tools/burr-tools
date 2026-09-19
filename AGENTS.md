@@ -96,12 +96,16 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
    - Ensure tools and regexes ignore these directories so static analysis and formatting stay focused on BurrTools sources (`burr-tools/src/(?!lua/).*`).
 6. **Quality Verification:**
    - After making code modifications, always verify that `just build`, `just test-all` (regression tests, fast and slow), and `just check` (static analysis) pass cleanly. `just test` is the quick loop to use while iterating; run `just test-all` before calling a task done, since it is what CI runs.
+7. **Benchmarking & Optimization Work:**
+   - When modifying solver algorithms or proposing optimizations, agents MUST use the standardized benchmark infrastructure in [`bench/bench_solve.py`](bench/bench_solve.py) across the curated 10-puzzle corpus.
+   - Never evaluate optimizations on a single puzzle in isolation.
+   - Always implement runtime environment variable toggles (e.g. `BURRTOOLS_NO_SIMD=1`) to allow clean, interleaved A/B benchmarking from the exact same build without recompilation.
 
 ---
 
 ## 4. Benchmarking & Performance Verification
 
-Always use the standardized benchmark infrastructure in [`bench/`](bench/) to validate optimizations across the full puzzle corpus. **Never benchmark on a single puzzle in isolation and extrapolate results.**
+Always use the standardized benchmark infrastructure in [`bench/`](bench/) to validate optimizations across the full puzzle corpus. **Never benchmark on a single puzzle in isolation and extrapolate results.** All AI agents working on performance optimizations in this repository MUST follow this protocol.
 
 ### Standardized Tooling
 
