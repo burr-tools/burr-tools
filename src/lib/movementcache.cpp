@@ -43,12 +43,10 @@ static unsigned int moHashValue(unsigned int s1, unsigned int s2, int dx, int dy
   return val;
 }
 
-size_t movementCache_c::moKeyHash::operator()(const moKey & k) const noexcept {
-  return moHashValue(k.s1, k.s2, k.dx, k.dy, k.dz, k.t1, k.t2);
-}
-
 movementCache_c::movementCache_c(const problem_c & puzzle)
-  : shapes(puzzle.getNumberOfParts(), std::vector<const voxel_c*>(puzzle.getPuzzle().getGridType()->getSymmetries()->getNumTransformations(), nullptr)),
+  : moTable(1024),
+    moMask(1023),
+    shapes(puzzle.getNumberOfParts(), std::vector<const voxel_c*>(puzzle.getPuzzle().getGridType()->getSymmetries()->getNumTransformations(), nullptr)),
     pieces(puzzle.getNumberOfPieces()),
     num_shapes(puzzle.getNumberOfParts()),
     num_transformations(puzzle.getPuzzle().getGridType()->getSymmetries()->getNumTransformations()),
@@ -100,6 +98,23 @@ const voxel_c * movementCache_c::getTransformedShape(unsigned int s, unsigned ch
   return shapes[s][t];
 }
 
+void movementCache_c::rehashMoTable(size_t new_cap) {
+  std::vector<moEntry> new_table(new_cap);
+  size_t new_mask = new_cap - 1;
+  for (const auto &entry : moTable) {
+    if (entry.occupied) {
+      unsigned int h = moHashValue(entry.key.s1, entry.key.s2, entry.key.dx, entry.key.dy, entry.key.dz, entry.key.t1, entry.key.t2);
+      size_t idx = h & new_mask;
+      while (new_table[idx].occupied) {
+        idx = (idx + 1) & new_mask;
+      }
+      new_table[idx] = entry;
+    }
+  }
+  moTable = std::move(new_table);
+  moMask = new_mask;
+}
+
 void movementCache_c::getMoValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2, unsigned int * movements)
 {
   /* find out the shapes that the pieces have */
@@ -107,14 +122,29 @@ void movementCache_c::getMoValue(int dx, int dy, int dz, unsigned char t1, unsig
   unsigned int s2 = pieces[p2];
 
   moKey key{s1, s2, dx, dy, dz, t1, t2};
+  unsigned int h = moHashValue(s1, s2, dx, dy, dz, t1, t2);
 
-  auto it = moCache.find(key);
-  if (it == moCache.end())
-  {
-    /* key not found, calculate and enter a new node into the table */
-    it = moCache.emplace(key, moCalcValues(getTransformedShape(s1, t1), getTransformedShape(s2, t2), dx, dy, dz)).first;
+  size_t idx = h & moMask;
+  while (moTable[idx].occupied) {
+    if (moTable[idx].key == key) {
+      memcpy(movements, moTable[idx].values.data(), numDirections() * sizeof(unsigned int));
+      return;
+    }
+    idx = (idx + 1) & moMask;
   }
 
-  /* return the values */
-  memcpy(movements, it->second.data(), numDirections()*sizeof(unsigned int));
+  /* key not found, calculate and enter a new entry into the table */
+  std::vector<unsigned int> vals = moCalcValues(getTransformedShape(s1, t1), getTransformedShape(s2, t2), dx, dy, dz);
+  moTable[idx].occupied = true;
+  moTable[idx].key = key;
+  for (size_t i = 0; i < vals.size() && i < 8; ++i) {
+    moTable[idx].values[i] = vals[i];
+  }
+
+  memcpy(movements, moTable[idx].values.data(), numDirections() * sizeof(unsigned int));
+  moCount++;
+
+  if (moCount * 10 >= moTable.size() * 7) {
+    rehashMoTable(moTable.size() * 2);
+  }
 }

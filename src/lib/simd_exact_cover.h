@@ -36,237 +36,148 @@
 #endif
 
 /**
- * 256-bit bitset aligned to 32 bytes for AVX2 vector operations.
+ * Bitset templated on N_WORDS (multiples of 4, i.e. 256-bit chunks),
+ * aligned to 64 bytes for AVX2 vector operations.
  */
-struct alignas(32) SimdBitset256 {
-  uint64_t words[4];
+template <size_t N_WORDS>
+struct alignas(64) SimdBitset {
+  static_assert(N_WORDS > 0 && (N_WORDS % 4 == 0), "N_WORDS must be a positive multiple of 4");
+  static constexpr size_t NUM_WORDS = N_WORDS;
+  uint64_t words[N_WORDS];
 
-  constexpr SimdBitset256() : words{0, 0, 0, 0} {}
-  constexpr SimdBitset256(uint64_t w0, uint64_t w1, uint64_t w2, uint64_t w3)
-    : words{w0, w1, w2, w3} {}
+  constexpr SimdBitset() : words{} {}
+
+  template <typename... Args>
+  constexpr SimdBitset(Args... args) : words{static_cast<uint64_t>(args)...} {}
 
   void set(unsigned int bit) {
-    assert(bit < 256);
+    assert(bit < N_WORDS * 64);
     words[bit >> 6] |= (1ULL << (bit & 63));
   }
 
   void reset(unsigned int bit) {
-    assert(bit < 256);
+    assert(bit < N_WORDS * 64);
     words[bit >> 6] &= ~(1ULL << (bit & 63));
   }
 
   bool test(unsigned int bit) const {
-    assert(bit < 256);
+    assert(bit < N_WORDS * 64);
     return (words[bit >> 6] & (1ULL << (bit & 63))) != 0;
   }
 
   void clear() {
-    words[0] = 0; words[1] = 0; words[2] = 0; words[3] = 0;
+    for (size_t i = 0; i < N_WORDS; ++i) words[i] = 0;
   }
 
   bool empty() const {
-    return (words[0] | words[1] | words[2] | words[3]) == 0;
+    uint64_t acc = 0;
+    for (size_t i = 0; i < N_WORDS; ++i) acc |= words[i];
+    return acc == 0;
   }
 
-  bool containsAll(const SimdBitset256 &target) const {
-    return ((target.words[0] & ~words[0]) |
-            (target.words[1] & ~words[1]) |
-            (target.words[2] & ~words[2]) |
-            (target.words[3] & ~words[3])) == 0;
+  bool containsAll(const SimdBitset &target) const {
+    uint64_t diff = 0;
+    for (size_t i = 0; i < N_WORDS; ++i) {
+      diff |= (target.words[i] & ~words[i]);
+    }
+    return diff == 0;
   }
 
-  SimdBitset256 operator|(const SimdBitset256 &other) const {
-    return SimdBitset256(words[0] | other.words[0],
-                         words[1] | other.words[1],
-                         words[2] | other.words[2],
-                         words[3] | other.words[3]);
+  SimdBitset operator|(const SimdBitset &other) const {
+    SimdBitset res;
+    for (size_t i = 0; i < N_WORDS; ++i) res.words[i] = words[i] | other.words[i];
+    return res;
   }
 
-  SimdBitset256 operator&(const SimdBitset256 &other) const {
-    return SimdBitset256(words[0] & other.words[0],
-                         words[1] & other.words[1],
-                         words[2] & other.words[2],
-                         words[3] & other.words[3]);
+  SimdBitset operator&(const SimdBitset &other) const {
+    SimdBitset res;
+    for (size_t i = 0; i < N_WORDS; ++i) res.words[i] = words[i] & other.words[i];
+    return res;
   }
 
-  SimdBitset256 operator^(const SimdBitset256 &other) const {
-    return SimdBitset256(words[0] ^ other.words[0],
-                         words[1] ^ other.words[1],
-                         words[2] ^ other.words[2],
-                         words[3] ^ other.words[3]);
+  SimdBitset operator^(const SimdBitset &other) const {
+    SimdBitset res;
+    for (size_t i = 0; i < N_WORDS; ++i) res.words[i] = words[i] ^ other.words[i];
+    return res;
   }
 
-  bool operator==(const SimdBitset256 &other) const {
-    return words[0] == other.words[0] &&
-           words[1] == other.words[1] &&
-           words[2] == other.words[2] &&
-           words[3] == other.words[3];
-  }
-
-  bool operator!=(const SimdBitset256 &other) const {
-    return !(*this == other);
-  }
-};
-
-/**
- * 512-bit bitset aligned to 64 bytes for vector operations.
- */
-struct alignas(64) SimdBitset512 {
-  uint64_t words[8];
-
-  constexpr SimdBitset512() : words{0, 0, 0, 0, 0, 0, 0, 0} {}
-  constexpr SimdBitset512(uint64_t w0, uint64_t w1, uint64_t w2, uint64_t w3,
-                          uint64_t w4, uint64_t w5, uint64_t w6, uint64_t w7)
-    : words{w0, w1, w2, w3, w4, w5, w6, w7} {}
-
-  void set(unsigned int bit) {
-    assert(bit < 512);
-    words[bit >> 6] |= (1ULL << (bit & 63));
-  }
-
-  void reset(unsigned int bit) {
-    assert(bit < 512);
-    words[bit >> 6] &= ~(1ULL << (bit & 63));
-  }
-
-  bool test(unsigned int bit) const {
-    assert(bit < 512);
-    return (words[bit >> 6] & (1ULL << (bit & 63))) != 0;
-  }
-
-  void clear() {
-    for (int i = 0; i < 8; i++) words[i] = 0;
-  }
-
-  bool empty() const {
-    return (words[0] | words[1] | words[2] | words[3] |
-            words[4] | words[5] | words[6] | words[7]) == 0;
-  }
-
-  bool containsAll(const SimdBitset512 &target) const {
-    return ((target.words[0] & ~words[0]) |
-            (target.words[1] & ~words[1]) |
-            (target.words[2] & ~words[2]) |
-            (target.words[3] & ~words[3]) |
-            (target.words[4] & ~words[4]) |
-            (target.words[5] & ~words[5]) |
-            (target.words[6] & ~words[6]) |
-            (target.words[7] & ~words[7])) == 0;
-  }
-
-  SimdBitset512 operator|(const SimdBitset512 &other) const {
-    return SimdBitset512(words[0] | other.words[0],
-                         words[1] | other.words[1],
-                         words[2] | other.words[2],
-                         words[3] | other.words[3],
-                         words[4] | other.words[4],
-                         words[5] | other.words[5],
-                         words[6] | other.words[6],
-                         words[7] | other.words[7]);
-  }
-
-  SimdBitset512 operator&(const SimdBitset512 &other) const {
-    return SimdBitset512(words[0] & other.words[0],
-                         words[1] & other.words[1],
-                         words[2] & other.words[2],
-                         words[3] & other.words[3],
-                         words[4] & other.words[4],
-                         words[5] & other.words[5],
-                         words[6] & other.words[6],
-                         words[7] & other.words[7]);
-  }
-
-  SimdBitset512 operator^(const SimdBitset512 &other) const {
-    return SimdBitset512(words[0] ^ other.words[0],
-                         words[1] ^ other.words[1],
-                         words[2] ^ other.words[2],
-                         words[3] ^ other.words[3],
-                         words[4] ^ other.words[4],
-                         words[5] ^ other.words[5],
-                         words[6] ^ other.words[6],
-                         words[7] ^ other.words[7]);
-  }
-
-  bool operator==(const SimdBitset512 &other) const {
-    for (int i = 0; i < 8; i++) {
+  bool operator==(const SimdBitset &other) const {
+    for (size_t i = 0; i < N_WORDS; ++i) {
       if (words[i] != other.words[i]) return false;
     }
     return true;
   }
 
-  bool operator!=(const SimdBitset512 &other) const {
+  bool operator!=(const SimdBitset &other) const {
     return !(*this == other);
   }
 };
 
+using SimdBitset256 = SimdBitset<4>;
+using SimdBitset512 = SimdBitset<8>;
+using SimdBitset1024 = SimdBitset<16>;
+using SimdBitset2048 = SimdBitset<32>;
+using SimdBitset4096 = SimdBitset<64>;
+using SimdBitset8192 = SimdBitset<128>;
+using SimdBitset16384 = SimdBitset<256>;
+using SimdBitset32768 = SimdBitset<512>;
+
 /**
  * Returns true if bitsets a and b have NO overlapping 1-bits ((a & b) == 0).
  */
-inline bool is_disjoint_scalar(const SimdBitset256 &a, const SimdBitset256 &b) {
-  return ((a.words[0] & b.words[0]) |
-          (a.words[1] & b.words[1]) |
-          (a.words[2] & b.words[2]) |
-          (a.words[3] & b.words[3])) == 0;
-}
-
-inline bool is_disjoint_scalar(const SimdBitset512 &a, const SimdBitset512 &b) {
-  return ((a.words[0] & b.words[0]) |
-          (a.words[1] & b.words[1]) |
-          (a.words[2] & b.words[2]) |
-          (a.words[3] & b.words[3]) |
-          (a.words[4] & b.words[4]) |
-          (a.words[5] & b.words[5]) |
-          (a.words[6] & b.words[6]) |
-          (a.words[7] & b.words[7])) == 0;
+template <size_t N_WORDS>
+inline bool is_disjoint_scalar(const SimdBitset<N_WORDS> &a, const SimdBitset<N_WORDS> &b) {
+  for (size_t i = 0; i < N_WORDS; ++i) {
+    if ((a.words[i] & b.words[i]) != 0) return false;
+  }
+  return true;
 }
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
 #pragma GCC push_options
 #pragma GCC target("avx2")
-inline bool is_disjoint_avx2(const SimdBitset256 &a, const SimdBitset256 &b) {
-  __m256i va = _mm256_load_si256(reinterpret_cast<const __m256i*>(a.words));
-  __m256i vb = _mm256_load_si256(reinterpret_cast<const __m256i*>(b.words));
-  return _mm256_testz_si256(va, vb) != 0;
+template <size_t N_WORDS>
+inline bool is_disjoint_avx2(const SimdBitset<N_WORDS> &a, const SimdBitset<N_WORDS> &b) {
+  constexpr size_t N_VEC = N_WORDS / 4;
+  for (size_t i = 0; i < N_VEC; ++i) {
+    __m256i va = _mm256_load_si256(reinterpret_cast<const __m256i*>(&a.words[i * 4]));
+    __m256i vb = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b.words[i * 4]));
+    if (!_mm256_testz_si256(va, vb)) return false;
+  }
+  return true;
 }
+#pragma GCC pop_options
 
-inline bool is_disjoint_avx2(const SimdBitset512 &a, const SimdBitset512 &b) {
-  __m256i va0 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&a.words[0]));
-  __m256i vb0 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b.words[0]));
-  if (_mm256_testz_si256(va0, vb0) == 0) return false;
-  __m256i va1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&a.words[4]));
-  __m256i vb1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b.words[4]));
-  return _mm256_testz_si256(va1, vb1) != 0;
+#pragma GCC push_options
+#pragma GCC target("avx512f")
+template <size_t N_WORDS>
+inline bool is_disjoint_avx512(const SimdBitset<N_WORDS> &a, const SimdBitset<N_WORDS> &b) {
+  if constexpr (N_WORDS >= 8) {
+    constexpr size_t N_VEC = N_WORDS / 8;
+    for (size_t i = 0; i < N_VEC; ++i) {
+      __m512i va = _mm512_load_si512(reinterpret_cast<const void*>(&a.words[i * 8]));
+      __m512i vb = _mm512_load_si512(reinterpret_cast<const void*>(&b.words[i * 8]));
+      if (_mm512_test_epi64_mask(va, vb) != 0) return false;
+    }
+    return true;
+  } else {
+    return is_disjoint_avx2(a, b);
+  }
 }
 #pragma GCC pop_options
 #endif
 
 #if defined(__aarch64__) || defined(__ARM_NEON)
-inline bool is_disjoint_neon(const SimdBitset256 &a, const SimdBitset256 &b) {
-  uint64x2_t va0 = vld1q_u64(&a.words[0]);
-  uint64x2_t vb0 = vld1q_u64(&b.words[0]);
-  uint64x2_t va1 = vld1q_u64(&a.words[2]);
-  uint64x2_t vb1 = vld1q_u64(&b.words[2]);
-  uint64x2_t c0 = vandq_u64(va0, vb0);
-  uint64x2_t c1 = vandq_u64(va1, vb1);
-  uint64x2_t c = vorrq_u64(c0, c1);
-  return (vgetq_lane_u64(c, 0) | vgetq_lane_u64(c, 1)) == 0;
-}
-
-inline bool is_disjoint_neon(const SimdBitset512 &a, const SimdBitset512 &b) {
-  uint64x2_t va0 = vld1q_u64(&a.words[0]);
-  uint64x2_t vb0 = vld1q_u64(&b.words[0]);
-  uint64x2_t va1 = vld1q_u64(&a.words[2]);
-  uint64x2_t vb1 = vld1q_u64(&b.words[2]);
-  uint64x2_t va2 = vld1q_u64(&a.words[4]);
-  uint64x2_t vb2 = vld1q_u64(&b.words[4]);
-  uint64x2_t va3 = vld1q_u64(&a.words[6]);
-  uint64x2_t vb3 = vld1q_u64(&b.words[6]);
-  uint64x2_t c0 = vandq_u64(va0, vb0);
-  uint64x2_t c1 = vandq_u64(va1, vb1);
-  uint64x2_t c2 = vandq_u64(va2, vb2);
-  uint64x2_t c3 = vandq_u64(va3, vb3);
-  uint64x2_t c = vorrq_u64(vorrq_u64(c0, c1), vorrq_u64(c2, c3));
-  return (vgetq_lane_u64(c, 0) | vgetq_lane_u64(c, 1)) == 0;
+template <size_t N_WORDS>
+inline bool is_disjoint_neon(const SimdBitset<N_WORDS> &a, const SimdBitset<N_WORDS> &b) {
+  constexpr size_t N_VEC = N_WORDS / 2;
+  for (size_t i = 0; i < N_VEC; ++i) {
+    uint64x2_t va = vld1q_u64(&a.words[i * 2]);
+    uint64x2_t vb = vld1q_u64(&b.words[i * 2]);
+    uint64x2_t c = vandq_u64(va, vb);
+    if ((vgetq_lane_u64(c, 0) | vgetq_lane_u64(c, 1)) != 0) return false;
+  }
+  return true;
 }
 #endif
 
@@ -346,6 +257,7 @@ private:
   std::vector<unsigned int> active_column_list;
   std::unordered_map<unsigned int, uint32_t> node_to_row_idx;
   bool use_avx2 = false;
+  bool use_avx512 = false;
 
   struct SearchContext {
     std::vector<std::vector<uint32_t>> scratch_active_rows;
@@ -370,6 +282,11 @@ private:
   ) const;
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  void filterRowsAvx512(
+    const std::vector<uint32_t> &src,
+    const BitsetType &chosen_mask,
+    std::vector<uint32_t> &dst
+  ) const;
   void filterRowsAvx2(
     const std::vector<uint32_t> &src,
     const BitsetType &chosen_mask,
@@ -386,5 +303,11 @@ private:
 
 using SimdExactCover256 = SimdExactCover<SimdBitset256>;
 using SimdExactCover512 = SimdExactCover<SimdBitset512>;
+using SimdExactCover1024 = SimdExactCover<SimdBitset1024>;
+using SimdExactCover2048 = SimdExactCover<SimdBitset2048>;
+using SimdExactCover4096 = SimdExactCover<SimdBitset4096>;
+using SimdExactCover8192 = SimdExactCover<SimdBitset8192>;
+using SimdExactCover16384 = SimdExactCover<SimdBitset16384>;
+using SimdExactCover32768 = SimdExactCover<SimdBitset32768>;
 
 #endif // __SIMD_EXACT_COVER_H__

@@ -21,7 +21,7 @@
 #ifndef __MOVEMENTCACHE_H__
 #define __MOVEMENTCACHE_H__
 
-#include <unordered_map>
+#include <array>
 #include <vector>
 
 class voxel_c;
@@ -50,8 +50,7 @@ class movementCache_c {
 
   /**
    * Cache key: the two involved shapes, their orientations and the
-   * relative offset of the 2nd piece. Replaces the hand-rolled moEntry
-   * hash table (vector of bucket chains + manual rehash).
+   * relative offset of the 2nd piece.
    */
   struct moKey {
     unsigned int s1 = 0; ///< id of the first involved shape
@@ -65,12 +64,21 @@ class movementCache_c {
     bool operator==(const moKey & o) const = default;
   };
 
-  struct moKeyHash {
-    size_t operator()(const moKey & k) const noexcept;
+  /**
+   * 64-byte cache-line aligned entry: key + values fit in a single L1 cache line,
+   * eliminating pointer chasing and heap node allocations.
+   */
+  struct alignas(64) moEntry {
+    moKey key;
+    std::array<unsigned int, 8> values{};
+    bool occupied = false;
   };
 
-  /** movement values by key; computed on demand via moCalcValues */
-  std::unordered_map<moKey, std::vector<unsigned int>, moKeyHash> moCache;
+  std::vector<moEntry> moTable;
+  size_t moCount = 0;
+  size_t moMask = 0;
+
+  void rehashMoTable(size_t new_cap);
 
   /**
    * Saves the shapes in all orientations.
