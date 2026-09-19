@@ -145,3 +145,25 @@ python3 bench/bench_solve.py --ab build/burrTxt-base build/burrTxt --no-disassem
 rm build/burrTxt-base
 ```
 
+
+---
+
+## 5. Continuous Integration Gates
+
+Beyond the standard Linux/Windows/macOS build jobs, two CI jobs exist specifically to catch defect classes the other jobs are structurally blind to. Do not weaken or skip them.
+
+| Job | Catches | Why the other jobs miss it |
+| :--- | :--- | :--- |
+| `clang-x86-64` | GCC-only constructs that Clang ignores or rejects, most importantly `#pragma GCC target(...)`. | Linux and Windows build with GCC; the macOS runner is arm64, where the x86 intrinsic blocks are excluded by the preprocessor. An x86-64 Clang build is otherwise untested. |
+| `tsan-parallel` | Data races in the parallel assembler and disassembler. | No other job runs a sanitizer. |
+
+### Rules for SIMD and intrinsics
+
+- Use `__attribute__((target("avx2")))` on individual functions. **Never** use `#pragma GCC target(...)`: Clang parses it as an unknown pragma, ignores it, and then fails on every intrinsic in the block.
+- Gate every ISA path behind runtime detection (`__builtin_cpu_supports`), and keep a working scalar fallback.
+
+### Rules for the ThreadSanitizer job
+
+- The job runs the `[parallel]` tag. **At least one test in that tag must use a puzzle whose result shape has a symmetry breaker** (currently `examples/Bermuda.xmpuzzle`).
+- This is not incidental. `avoidTransformedAssemblies` is only enabled by `checkForTransformedAssemblies()`, called from `createMatrix()` and only when a symmetry breaker is found. Puzzles without one never call `assembly_c::smallerRotationExists()` from a worker thread, so a TSan run over only those puzzles reports **zero races while real ones remain** — a false negative that has already let races ship.
+- Compare assembly *multisets* between serial and parallel runs, never just counts. A run that loses one assembly and duplicates another passes a count check.
