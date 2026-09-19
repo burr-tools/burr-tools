@@ -217,13 +217,106 @@ TEST_CASE("SimdBitset2048 operations", "[simd][bitset]") {
 #endif
 }
 
-TEST_CASE("SimdExactCover1024 and 2048 solve", "[simd][exact_cover]") {
-  for (unsigned int offset : {600u, 1200u}) {
+TEST_CASE("SimdBitset4096 and 8192 operations", "[simd][bitset]") {
+  SimdBitset8192 b;
+  REQUIRE(b.empty());
+
+  b.set(0);
+  b.set(4095);
+  b.set(4096);
+  b.set(8191);
+
+  REQUIRE(b.test(0));
+  REQUIRE(b.test(4095));
+  REQUIRE(b.test(4096));
+  REQUIRE(b.test(8191));
+
+  REQUIRE_FALSE(b.test(1));
+  REQUIRE_FALSE(b.test(2000));
+  REQUIRE_FALSE(b.test(5832)); // 18^3 voxel index
+
+  SimdBitset8192 target;
+  target.set(0);
+  target.set(8191);
+  REQUIRE(b.containsAll(target));
+
+  target.set(1);
+  REQUIRE_FALSE(b.containsAll(target));
+
+  SimdBitset8192 disjoint_set;
+  disjoint_set.set(1);
+  disjoint_set.set(5832);
+  REQUIRE(is_disjoint_scalar(b, disjoint_set));
+
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  if (__builtin_cpu_supports("avx2")) {
+    REQUIRE(is_disjoint_avx2(b, disjoint_set));
+    REQUIRE_FALSE(is_disjoint_avx2(b, target));
+  }
+  if (__builtin_cpu_supports("avx512f")) {
+    REQUIRE(is_disjoint_avx512(b, disjoint_set));
+    REQUIRE_FALSE(is_disjoint_avx512(b, target));
+  }
+#endif
+}
+
+TEST_CASE("SimdBitset16384 and 32768 operations", "[simd][bitset]") {
+  SimdBitset32768 b;
+  REQUIRE(b.empty());
+
+  b.set(0);
+  b.set(16383);
+  b.set(16384);
+  b.set(32767);
+
+  REQUIRE(b.test(0));
+  REQUIRE(b.test(16383));
+  REQUIRE(b.test(16384));
+  REQUIRE(b.test(32767));
+
+  REQUIRE_FALSE(b.test(1));
+  REQUIRE_FALSE(b.test(10000));
+
+  SimdBitset32768 target;
+  target.set(0);
+  target.set(32767);
+  REQUIRE(b.containsAll(target));
+
+  target.set(1);
+  REQUIRE_FALSE(b.containsAll(target));
+
+  SimdBitset32768 disjoint_set;
+  disjoint_set.set(1);
+  disjoint_set.set(10000);
+  REQUIRE(is_disjoint_scalar(b, disjoint_set));
+
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  if (__builtin_cpu_supports("avx2")) {
+    REQUIRE(is_disjoint_avx2(b, disjoint_set));
+    REQUIRE_FALSE(is_disjoint_avx2(b, target));
+  }
+  if (__builtin_cpu_supports("avx512f")) {
+    REQUIRE(is_disjoint_avx512(b, disjoint_set));
+    REQUIRE_FALSE(is_disjoint_avx512(b, target));
+  }
+#endif
+}
+
+TEST_CASE("SimdExactCover extended solve up to 32768", "[simd][exact_cover]") {
+  for (unsigned int offset : {600u, 1200u, 3000u, 6000u, 12000u, 24000u}) {
     std::unique_ptr<ISimdExactCover> solver;
     if (offset < 1000) {
       solver = std::make_unique<SimdExactCover1024>(offset + 7, 3);
-    } else {
+    } else if (offset < 2000) {
       solver = std::make_unique<SimdExactCover2048>(offset + 7, 3);
+    } else if (offset < 4000) {
+      solver = std::make_unique<SimdExactCover4096>(offset + 7, 3);
+    } else if (offset < 8000) {
+      solver = std::make_unique<SimdExactCover8192>(offset + 7, 3);
+    } else if (offset < 16000) {
+      solver = std::make_unique<SimdExactCover16384>(offset + 7, 3);
+    } else {
+      solver = std::make_unique<SimdExactCover32768>(offset + 7, 3);
     }
 
     for (unsigned int i = 0; i < 7; i++) {
