@@ -28,6 +28,7 @@
 #include <atomic>
 #include <cstdint>
 #include <unordered_map>
+#include <bit>
 
 /**
  * Interface for hardware-vectorized exact cover solvers for Huang's algorithm
@@ -174,6 +175,7 @@ public:
 private:
   unsigned int num_columns;
   unsigned int num_shapes;
+  unsigned int total_min_pieces = 0;
   unsigned int holes = 0;
   unsigned int range_column = 0;
   bool has_range = false;

@@ -61,6 +61,10 @@ void SimdHuangCover<BitsetType>::setColumnBounds(
   columns[col].is_range = is_range;
   columns[col].is_hole = is_hole;
 
+  if (is_shape) {
+    total_min_pieces += min_w;
+  }
+
   if (is_range) {
     has_range = true;
     range_column = col;
@@ -514,18 +518,12 @@ void SimdHuangCover<BitsetType>::generateTasks(
     for (uint32_t r_idx : curr_active) {
       const auto &cand = rows[r_idx];
 
-      bool covers_best = false;
-      for (unsigned int c : cand.columns) {
-        if (c == best_col) {
-          covers_best = true;
-          break;
-        }
-      }
+      bool covers_best = columns[best_col].is_shape ? (cand.shape_col == best_col)
+                       : columns[best_col].is_voxel ? cand.voxel_mask.test(best_col - 1)
+                       : (cand.range_weight > 0);
       if (!covers_best)
         continue;
 
-      if (!is_disjoint_scalar(ctx.placed_voxels, cand.voxel_mask))
-        continue;
       if (ctx.col_weights[cand.shape_col] + 1 > columns[cand.shape_col].max_weight)
         continue;
       if (has_range && ctx.col_weights[range_column] + cand.range_weight > columns[range_column].max_weight)
@@ -638,23 +636,27 @@ void SimdHuangCover<BitsetType>::search(
   }
 
   // Goal check: are all conditions fulfilled?
-  bool all_fulfilled = true;
-
-  if (!ctx.placed_voxels.containsAll(required_voxels)) {
-    all_fulfilled = false;
-  } else {
-    for (unsigned int c : active_column_list) {
-      if (ctx.col_weights[c] < columns[c].min_weight || ctx.col_weights[c] > columns[c].max_weight) {
-        all_fulfilled = false;
-        break;
+  if (ctx.current_solution.size() >= total_min_pieces) {
+    if (ctx.placed_voxels.containsAll(required_voxels)) {
+      bool all_fulfilled = true;
+      for (unsigned int c = 1; c <= num_shapes; c++) {
+        if (ctx.col_weights[c] < columns[c].min_weight || ctx.col_weights[c] > columns[c].max_weight) {
+          all_fulfilled = false;
+          break;
+        }
+      }
+      if (all_fulfilled && has_range) {
+        if (ctx.col_weights[range_column] < columns[range_column].min_weight ||
+            ctx.col_weights[range_column] > columns[range_column].max_weight) {
+          all_fulfilled = false;
+        }
+      }
+      if (all_fulfilled) {
+        if (!callback(ctx.current_solution))
+          return;
+        return;
       }
     }
-  }
-
-  if (all_fulfilled) {
-    if (!callback(ctx.current_solution))
-      return;
-    return;
   }
 
   const auto &curr_active = ctx.scratch_active_rows[depth];
@@ -665,8 +667,11 @@ void SimdHuangCover<BitsetType>::search(
   std::fill(ctx.col_counts.begin(), ctx.col_counts.end(), 0);
   for (uint32_t r_idx : curr_active) {
     const auto &r = rows[r_idx];
-    for (size_t i = 0; i < r.columns.size(); i++) {
-      ctx.col_counts[r.columns[i]] += r.weights[i];
+    const unsigned int *cols = r.columns.data();
+    const unsigned int *wgts = r.weights.data();
+    size_t sz = r.columns.size();
+    for (size_t i = 0; i < sz; i++) {
+      ctx.col_counts[cols[i]] += wgts[i];
     }
   }
 
@@ -682,45 +687,54 @@ void SimdHuangCover<BitsetType>::search(
     }
   }
 
-  // Dead-end pruning (feasibility checks)
-  for (unsigned int c : active_column_list) {
-    if (columns[c].min_weight > ctx.col_weights[c]) {
-      if (ctx.col_weights[c] + ctx.col_counts[c] < columns[c].min_weight) {
-        return; // Cannot satisfy minimum weight requirement
-      }
-    }
-    if (columns[c].is_voxel && columns[c].min_weight > 0 && !ctx.placed_voxels.test(c - 1)) {
-      if (ctx.col_counts[c] == 0) {
-        return; // Required voxel has no remaining placements
-      }
-    }
-  }
-
-  // Select pivot column via Minimum Remaining Values (MRV) among unfulfilled columns
+  // Combined dead-end pruning and MRV pivot column selection
   unsigned int min_metric = UINT32_MAX;
   unsigned int best_col = UINT32_MAX;
 
-  for (unsigned int c : active_column_list) {
-    if (columns[c].is_hole)
-      continue;
+  // 1. Check shape columns (1..num_shapes)
+  for (unsigned int c = 1; c <= num_shapes; c++) {
     if (ctx.col_weights[c] >= columns[c].min_weight)
-      continue; // Already fulfilled!
-    if (columns[c].is_voxel && ctx.placed_voxels.test(c - 1))
       continue;
-
-    unsigned int remaining_need = columns[c].min_weight - ctx.col_weights[c];
     unsigned int count = ctx.col_counts[c];
-
-    if (count == 0) {
-      return; // Dead end: required column has no remaining rows!
-    }
-
+    if (ctx.col_weights[c] + count < columns[c].min_weight)
+      return; // Dead end: cannot satisfy shape piece requirement
+    unsigned int remaining_need = columns[c].min_weight - ctx.col_weights[c];
     unsigned int metric = count * remaining_need;
     if (metric < min_metric) {
       min_metric = metric;
       best_col = c;
-      if (metric <= 1)
-        break;
+    }
+  }
+
+  // 2. Check range column if present
+  if (has_range && ctx.col_weights[range_column] < columns[range_column].min_weight) {
+    unsigned int count = ctx.col_counts[range_column];
+    if (ctx.col_weights[range_column] + count < columns[range_column].min_weight)
+      return; // Dead end: cannot satisfy range minimum
+    unsigned int remaining_need = columns[range_column].min_weight - ctx.col_weights[range_column];
+    unsigned int metric = count * remaining_need;
+    if (metric < min_metric) {
+      min_metric = metric;
+      best_col = range_column;
+    }
+  }
+
+  // 3. Check unplaced voxels using bitset scanning (skips placed voxels entirely)
+  for (size_t w = 0; w < BitsetType::NUM_WORDS; ++w) {
+    uint64_t unplaced = required_voxels.words[w] & ~ctx.placed_voxels.words[w];
+    while (unplaced != 0) {
+      int bit = std::countr_zero(unplaced);
+      unsigned int c = static_cast<unsigned int>(w * 64 + bit + 1);
+      unplaced &= (unplaced - 1);
+
+      unsigned int count = ctx.col_counts[c];
+      if (count == 0)
+        return; // Dead end: required voxel has 0 remaining placements!
+
+      if (count < min_metric) {
+        min_metric = count;
+        best_col = c;
+      }
     }
   }
 
@@ -735,20 +749,12 @@ void SimdHuangCover<BitsetType>::search(
   for (uint32_t r_idx : curr_active) {
     const auto &cand = rows[r_idx];
 
-    // Check if candidate covers best_col
-    bool covers_best = false;
-    for (unsigned int c : cand.columns) {
-      if (c == best_col) {
-        covers_best = true;
-        break;
-      }
-    }
+    bool covers_best = columns[best_col].is_shape ? (cand.shape_col == best_col)
+                     : columns[best_col].is_voxel ? cand.voxel_mask.test(best_col - 1)
+                     : (cand.range_weight > 0);
     if (!covers_best)
       continue;
 
-    // Check compatibility with current state
-    if (!is_disjoint_scalar(ctx.placed_voxels, cand.voxel_mask))
-      continue;
     if (ctx.col_weights[cand.shape_col] + 1 > columns[cand.shape_col].max_weight)
       continue;
     if (has_range && ctx.col_weights[range_column] + cand.range_weight > columns[range_column].max_weight)
