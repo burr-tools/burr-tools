@@ -1,0 +1,248 @@
+/* BurrTools
+ *
+ * BurrTools is the legal property of its developers, whose
+ * names are listed in the COPYRIGHT file, which is included
+ * within the source distribution.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+#include <catch2/catch_test_macros.hpp>
+#include "src/lib/simd_exact_cover.h"
+
+#include <vector>
+#include <algorithm>
+#include <set>
+#include <thread>
+#include <mutex>
+
+TEST_CASE("SimdBitset256 operations", "[simd][bitset]") {
+  SimdBitset256 b;
+  REQUIRE(b.empty());
+
+  b.set(0);
+  b.set(63);
+  b.set(64);
+  b.set(127);
+  b.set(128);
+  b.set(191);
+  b.set(192);
+  b.set(255);
+
+  REQUIRE(b.test(0));
+  REQUIRE(b.test(63));
+  REQUIRE(b.test(64));
+  REQUIRE(b.test(127));
+  REQUIRE(b.test(128));
+  REQUIRE(b.test(191));
+  REQUIRE(b.test(192));
+  REQUIRE(b.test(255));
+
+  REQUIRE_FALSE(b.test(1));
+  REQUIRE_FALSE(b.test(62));
+  REQUIRE_FALSE(b.test(100));
+  REQUIRE_FALSE(b.test(200));
+
+  SimdBitset256 target;
+  target.set(0);
+  target.set(128);
+  REQUIRE(b.containsAll(target));
+
+  target.set(1);
+  REQUIRE_FALSE(b.containsAll(target));
+
+  SimdBitset256 disjoint_set;
+  disjoint_set.set(1);
+  disjoint_set.set(2);
+  REQUIRE(is_disjoint_scalar(b, disjoint_set));
+
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  if (__builtin_cpu_supports("avx2")) {
+    REQUIRE(is_disjoint_avx2(b, disjoint_set));
+    REQUIRE_FALSE(is_disjoint_avx2(b, target));
+  }
+#endif
+}
+
+TEST_CASE("SimdExactCover256 Knuth textbook example", "[simd][exact_cover]") {
+  // Knuth's exact cover problem from TAOCP:
+  // Items 0..6: {A, B, C, D, E, F, G}
+  // Row 1: {C, E}       -> {2, 4}
+  // Row 2: {A, D, G}    -> {0, 3, 6}
+  // Row 3: {B, C, F}    -> {1, 2, 5}
+  // Row 4: {A, D}       -> {0, 3}
+  // Row 5: {B, G}       -> {1, 6}
+  // Row 6: {D, E, G}    -> {3, 4, 6}
+  //
+  // Unique solution: Row 1, 4, 5 ({C, E}, {A, D}, {B, G})
+
+  SimdExactCover256 solver(7, 3);
+
+  SimdBitset256 req;
+  for (unsigned int i = 0; i < 7; i++) req.set(i);
+  solver.setRequiredColumns(req);
+
+  solver.addRow(1, 0, {2, 4});
+  solver.addRow(2, 1, {0, 3, 6});
+  solver.addRow(3, 2, {1, 2, 5});
+  solver.addRow(4, 1, {0, 3, 5});
+  solver.addRow(5, 2, {1, 6});
+  solver.addRow(6, 1, {3, 4, 6});
+
+  std::vector<std::vector<unsigned int>> solutions;
+  std::atomic<bool> abort_flag{false};
+  std::atomic<uint64_t> iterations{0};
+
+  solver.solve([&](const std::vector<unsigned int> &sol) {
+    std::vector<unsigned int> sorted = sol;
+    std::sort(sorted.begin(), sorted.end());
+    solutions.push_back(sorted);
+    return true;
+  }, abort_flag, iterations);
+
+  REQUIRE(solutions.size() == 1);
+  REQUIRE(solutions[0] == std::vector<unsigned int>{1, 4, 5});
+  REQUIRE(iterations.load() > 0);
+}
+
+TEST_CASE("SimdExactCover256 unsolvable problem", "[simd][exact_cover]") {
+  SimdExactCover256 solver(4, 2);
+
+  SimdBitset256 req;
+  for (unsigned int i = 0; i < 4; i++) req.set(i);
+  solver.setRequiredColumns(req);
+
+  // Column 3 is never covered
+  solver.addRow(1, 0, {0, 1});
+  solver.addRow(2, 1, {1, 2});
+
+  std::vector<std::vector<unsigned int>> solutions;
+  std::atomic<bool> abort_flag{false};
+  std::atomic<uint64_t> iterations{0};
+
+  solver.solve([&](const std::vector<unsigned int> &sol) {
+    solutions.push_back(sol);
+    return true;
+  }, abort_flag, iterations);
+
+  REQUIRE(solutions.empty());
+}
+
+TEST_CASE("SimdExactCover256 abort flag", "[simd][exact_cover]") {
+  SimdExactCover256 solver(3, 3);
+
+  SimdBitset256 req;
+  for (unsigned int i = 0; i < 3; i++) req.set(i);
+  solver.setRequiredColumns(req);
+
+  solver.addRow(1, 0, {0});
+  solver.addRow(2, 1, {1});
+  solver.addRow(3, 2, {2});
+
+  std::atomic<bool> abort_flag{true};
+  std::atomic<uint64_t> iterations{0};
+  std::vector<std::vector<unsigned int>> solutions;
+
+  solver.solve([&](const std::vector<unsigned int> &sol) {
+    solutions.push_back(sol);
+    return true;
+  }, abort_flag, iterations);
+
+  REQUIRE(solutions.empty());
+}
+
+TEST_CASE("SimdExactCover256 solveSubtree", "[simd][exact_cover]") {
+  SimdExactCover256 solver(7, 3);
+
+  SimdBitset256 req;
+  for (unsigned int i = 0; i < 7; i++) req.set(i);
+  solver.setRequiredColumns(req);
+
+  solver.addRow(1, 0, {2, 4});
+  solver.addRow(2, 1, {0, 3, 6});
+  solver.addRow(3, 2, {1, 2, 5});
+  solver.addRow(4, 1, {0, 3, 5});
+  solver.addRow(5, 2, {1, 6});
+  solver.addRow(6, 1, {3, 4, 6});
+
+  std::vector<std::vector<unsigned int>> solutions;
+  std::atomic<bool> abort_flag{false};
+  std::atomic<uint64_t> iterations{0};
+
+  // Subtree with correct prefix {1} should find the unique solution
+  solver.solveSubtree({1}, [&](const std::vector<unsigned int> &sol) {
+    std::vector<unsigned int> sorted = sol;
+    std::sort(sorted.begin(), sorted.end());
+    solutions.push_back(sorted);
+    return true;
+  }, abort_flag, iterations);
+
+  REQUIRE(solutions.size() == 1);
+  REQUIRE(solutions[0] == std::vector<unsigned int>{1, 4, 5});
+
+  // Subtree with wrong prefix {2} should find no solutions
+  solutions.clear();
+  solver.solveSubtree({2}, [&](const std::vector<unsigned int> &sol) {
+    solutions.push_back(sol);
+    return true;
+  }, abort_flag, iterations);
+
+  REQUIRE(solutions.empty());
+}
+
+TEST_CASE("SimdExactCover256 concurrent solveSubtree", "[simd][exact_cover][threads]") {
+  SimdExactCover256 solver(7, 3);
+
+  SimdBitset256 req;
+  for (unsigned int i = 0; i < 7; i++) req.set(i);
+  solver.setRequiredColumns(req);
+
+  solver.addRow(1, 0, {2, 4});
+  solver.addRow(2, 1, {0, 3, 6});
+  solver.addRow(3, 2, {1, 2, 5});
+  solver.addRow(4, 1, {0, 3, 5});
+  solver.addRow(5, 2, {1, 6});
+  solver.addRow(6, 1, {3, 4, 6});
+
+  std::vector<std::vector<unsigned int>> all_solutions;
+  std::mutex sol_mutex;
+  std::atomic<bool> abort_flag{false};
+  std::atomic<uint64_t> iterations{0};
+
+  // Branch on candidate rows covering column 0: row 2 and row 4
+  std::vector<unsigned int> prefixes = {2, 4};
+  std::vector<std::thread> threads;
+
+  for (unsigned int p : prefixes) {
+    threads.emplace_back([&, p]() {
+      std::atomic<uint64_t> thread_iter{0};
+      solver.solveSubtree({p}, [&](const std::vector<unsigned int> &sol) {
+        std::vector<unsigned int> sorted = sol;
+        std::sort(sorted.begin(), sorted.end());
+        std::lock_guard<std::mutex> lock(sol_mutex);
+        all_solutions.push_back(sorted);
+        return true;
+      }, abort_flag, thread_iter);
+      iterations.fetch_add(thread_iter.load());
+    });
+  }
+
+  for (auto &t : threads) {
+    t.join();
+  }
+
+  REQUIRE(all_solutions.size() == 1);
+  REQUIRE(all_solutions[0] == std::vector<unsigned int>{1, 4, 5});
+  REQUIRE(iterations.load() > 0);
+}
