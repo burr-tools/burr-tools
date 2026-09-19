@@ -212,17 +212,47 @@ Across the entire benchmark corpus, peak resident set size (RSS) differences wer
 
 ---
 
-## 7. Next Optimization Roadmap (Prioritized)
+## 7. Next Optimization Roadmap & TODOs (Prioritized)
 
-Following the proven success of SIMD bit-parallel exact cover in `assembler_0_c` and the findings from the disassembly audit (where cross-assembly thread pooling was proven unprofitable due to micro-task overhead and mutex contention), the highest-payoff optimization areas are prioritized as follows:
+Following the proven success of SIMD bit-parallel exact cover in `assembler_0_c` (2.6x to 3.0x speedup) and the findings from the disassembly audit (where cross-assembly thread pooling was proven unprofitable due to micro-task overhead and mutex contention), the highest-payoff optimization areas are prioritized as follows:
 
-### Step 1: SIMD Vectorization for Assembler 1 (Huang's Algorithm) [CURRENT FOCUS]
-- **Target**: Puzzles with duplicate piece shapes or ranges (`SolidSixPieceBurrs`, `Simplicity`, `Third Times the Charm`, `CD Pack`).
-- **Mechanism**:
-  - `assembler_1_c` currently uses a customized DLX variant where duplicate pieces share shapes and columns represent placement occurrences and range constraints.
-  - Implement bit-parallel piece conflict and placement disjointness testing inside Huang's algorithm.
-  - Eliminate pointer manipulation overhead during the recursive search for duplicate piece shapes.
-- **Expected Speedup**: **~2x to 3x** on puzzles with duplicate pieces.
+### Step 1: SIMD Vectorization for Assembler 1 (Huang's Algorithm) [IN PROGRESS]
+
+- **Target Puzzles**: Puzzles with duplicate piece shapes or range constraints:
+  - `SolidSixPieceBurrs.xmpuzzle` (6 pieces, duplicate sticks: 7.48s baseline, 4.3M iterations)
+  - `Simplicity.xmpuzzle` (duplicate pieces: 2.02s baseline, 5.1M iterations)
+  - `Third_Times_the_Charm.xmpuzzle` (duplicate shapes: 4.47s baseline, 440k iterations)
+  - `CD_Pack.xmpuzzle` (duplicate pieces: 0.90s baseline, 3.1M iterations)
+
+- **Algorithmic Analysis of Huang's DLX**:
+  1. `assembler_1_c` handles multiple piece instances by assigning each piece shape a column $1 \dots P$ with `min` and `max` bounds, and each voxel a column with `min=1, max=1` (or `min=0, max=1` for variable/hole voxels).
+  2. Placements are ordered to prevent identical-piece permutations: when row $r$ is chosen for a shape, subsequent instances of that shape must choose rows with index $> r$.
+  3. **Identified Bottlenecks**:
+     - `open_column_conditions_fulfillable()`: Called up to 3 times per node expansion in `iterative()` and `worker_iterative()`. Traverses a circular linked list of open columns checking:
+       `if (weight[col] > max[col] || weight[col] + colCount[col] < min[col]) return false;`
+     - `hiderows(row)`: For each column covered by the placed row, iterates down all conflicting candidate rows and unlinks them via pointer manipulation (`up`, `down`, `colCount`).
+     - Backtracking: Re-links all hidden rows via `unhiderows()`, incurring heavy pointer writes and cache-line invalidations.
+
+- **SIMD Optimization Architecture**:
+  - **Phase 1A: Fast Column Bound Checking & Bit-Parallel Voxel Conflict Filtering**:
+    - For puzzles with $\le 256$ columns (which includes almost all classic burrs, e.g. `SolidSixPieceBurrs` has only 6 piece columns + 32 voxel columns = 38 columns total!):
+      - Voxel columns are strictly 0-1 (`max = 1`). Two candidate piece placements conflict on voxels if and only if their 256-bit voxel bitmasks have `(mask_A & mask_B) != 0` (`_mm256_testz_si256 == 0`).
+      - Voxel conflict detection during search becomes a single 1-cycle `VPTEST` instruction rather than traversing linked-list nodes.
+      - Piece shape columns ($1 \dots P$, typically $P \le 16$) are tracked with small integer counters (`piece_count[p] <= piece_max[p]`).
+      - Identical-piece duplicate elimination: enforce monotonic index ordering $r_1 < r_2 < \dots < r_k$ for piece shape $p$, completely eliminating redundant search branches.
+    - Zero-cost backtracking: Voxel state is a single 256-bit bitmask register; un-placing a piece requires zero memory writes.
+  - **Phase 1B: Vectorized Bound Feasibility**:
+    - For columns with non-binary weights/ranges, vectorize `weight[col] + colCount[col] < min[col]` using SIMD vector comparison (`_mm256_cmpgt_epi32` or `vpcmpeqd` / NEON vector compares).
+
+- **Actionable TODO List**:
+  - [ ] **TODO 1.1**: Profile `CD_Pack` and `SolidSixPieceBurrs` under callgrind to quantify exact cycle share of `open_column_conditions_fulfillable` vs `hiderows`/`unhiderows`.
+  - [ ] **TODO 1.2**: Implement `SimdHuangExactCover256` engine supporting piece multiplicities, monotonic row ordering, and SIMD bitmask voxel conflicts.
+  - [ ] **TODO 1.3**: Wire `assembler_1_c` to delegate eligible problems ($\le 256$ columns) to `SimdHuangExactCover256`, with transparent fallback to existing DLX for larger or complex problems.
+  - [ ] **TODO 1.4**: Add runtime feature toggle `BURRTOOLS_NO_SIMD=1` support in `assembler_1_c` for A/B benchmarking.
+  - [ ] **TODO 1.5**: Run Catch2 test suite (`just test`, `just test-all`) and static analysis (`just check`).
+  - [ ] **TODO 1.6**: Benchmark across `SolidSixPieceBurrs`, `Simplicity`, `Third Times the Charm`, and `CD Pack` using `bench/bench_solve.py` to record speedups.
+
+---
 
 ### Step 2: 512-Column SIMD Extension (Chained AVX2 / AVX-512 / NEON)
 - **Target**: Puzzles with $257 \le C \le 512$ columns (e.g. `kangaroo` with 325 columns).
@@ -230,14 +260,22 @@ Following the proven success of SIMD bit-parallel exact cover in `assembler_0_c`
   - Implement `SimdBitset512` using two 256-bit registers on AVX2 / NEON, or single 512-bit registers on AVX-512 (`__m512i` with `_mm512_test_epi64_mask`).
   - Generalize `SimdExactCover256` to template on `BitsetSize` (256 vs 512).
   - Bring larger exact-cover instances into the accelerated bit-parallel engine.
-- **Expected Speedup**: **~2.5x to 3x** on puzzles with $256 < C \le 512$ columns.
+- **Actionable TODO List**:
+  - [ ] **TODO 2.1**: Implement `SimdBitset512` and test on AVX2/AVX-512/NEON/scalar backends.
+  - [ ] **TODO 2.2**: Template `SimdExactCover<N>` for $N \in \{256, 512\}$.
+  - [ ] **TODO 2.3**: Benchmark `kangaroo.xmpuzzle` (325 columns) before and after.
+
+---
 
 ### Step 3: Voxel Bitboard Collision Vectorization in Disassembly
 - **Target**: Interlocking burrs where deep disassembly dominates total solve time (e.g. `Excelsior` level 14 sequence).
 - **Mechanism**:
   - Replace 3D coordinate voxel iteration in `movementAnalysator_c::checkmovement` with 64-bit / 256-bit bitboards.
   - 3D translations become bit-shifts and collisions become bitwise `AND` tests (`VPTEST`).
-- **Expected Speedup**: **~1.5x to 2.5x** in pure disassembly time.
+- **Actionable TODO List**:
+  - [ ] **TODO 3.1**: Profile `Excelsior` disassembly move validation in `movementAnalysator_c`.
+  - [ ] **TODO 3.2**: Implement bitboard representation for 3D translation collision checks.
+  - [ ] **TODO 3.3**: Benchmark full solve time (`burrTxt -d`) across the 10-puzzle corpus.
 
 ---
 
