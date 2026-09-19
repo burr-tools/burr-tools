@@ -31,7 +31,7 @@ SimdExactCover256::SimdExactCover256(unsigned int cols, unsigned int pieces)
   use_avx2 = false;
 #endif
 
-  if (std::getenv("BURRTOOLS_NO_SIMD")) {
+  if (std::getenv("BURRTOOLS_NO_SIMD") || std::getenv("BURRTOOLS_NO_AVX2")) {
     use_avx2 = false;
   }
 }
@@ -83,6 +83,26 @@ void SimdExactCover256::filterRowsAvx2(
   }
 }
 #pragma GCC pop_options
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+void SimdExactCover256::filterRowsNeon(
+  const std::vector<uint32_t> &src,
+  const SimdBitset256 &chosen_mask,
+  std::vector<uint32_t> &dst
+) const {
+  uint64x2_t ca0 = vld1q_u64(&chosen_mask.words[0]);
+  uint64x2_t ca1 = vld1q_u64(&chosen_mask.words[2]);
+  for (uint32_t idx : src) {
+    const uint64_t *rw = rows[idx].mask.words;
+    uint64x2_t rb0 = vld1q_u64(&rw[0]);
+    uint64x2_t rb1 = vld1q_u64(&rw[2]);
+    uint64x2_t c0 = vandq_u64(ca0, rb0);
+    uint64x2_t c1 = vandq_u64(ca1, rb1);
+    uint64x2_t c = vorrq_u64(c0, c1);
+    if ((vgetq_lane_u64(c, 0) | vgetq_lane_u64(c, 1)) == 0) {
+      dst.push_back(idx);
+    }
+  }
+}
 #endif
 
 void SimdExactCover256::filterRows(
@@ -98,6 +118,9 @@ void SimdExactCover256::filterRows(
     filterRowsAvx2(src, chosen_mask, dst);
     return;
   }
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+  filterRowsNeon(src, chosen_mask, dst);
+  return;
 #endif
   for (uint32_t idx : src) {
     if (is_disjoint_scalar(chosen_mask, rows[idx].mask)) {

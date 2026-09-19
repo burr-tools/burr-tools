@@ -31,6 +31,8 @@
 
 #if defined(__x86_64__) || defined(_M_X64)
 #include <immintrin.h>
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+#include <arm_neon.h>
 #endif
 
 /**
@@ -120,6 +122,19 @@ inline bool is_disjoint_avx2(const SimdBitset256 &a, const SimdBitset256 &b) {
 #pragma GCC pop_options
 #endif
 
+#if defined(__aarch64__) || defined(__ARM_NEON)
+inline bool is_disjoint_neon(const SimdBitset256 &a, const SimdBitset256 &b) {
+  uint64x2_t va0 = vld1q_u64(&a.words[0]);
+  uint64x2_t vb0 = vld1q_u64(&b.words[0]);
+  uint64x2_t va1 = vld1q_u64(&a.words[2]);
+  uint64x2_t vb1 = vld1q_u64(&b.words[2]);
+  uint64x2_t c0 = vandq_u64(va0, vb0);
+  uint64x2_t c1 = vandq_u64(va1, vb1);
+  uint64x2_t c = vorrq_u64(c0, c1);
+  return (vgetq_lane_u64(c, 0) | vgetq_lane_u64(c, 1)) == 0;
+}
+#endif
+
 /**
  * High-performance hardware-vectorized exact cover solver for matrices with <= 256 columns.
  */
@@ -190,6 +205,12 @@ private:
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
   void filterRowsAvx2(
+    const std::vector<uint32_t> &src,
+    const SimdBitset256 &chosen_mask,
+    std::vector<uint32_t> &dst
+  ) const;
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+  void filterRowsNeon(
     const std::vector<uint32_t> &src,
     const SimdBitset256 &chosen_mask,
     std::vector<uint32_t> &dst
