@@ -57,11 +57,19 @@ public:
 
   bool reverseScrollZoom(void) { return i_reverseScrollZoom; }
 
-  /* number of worker threads the parallel assembler and the disassembler pool
-   * should use. Always clamped into [1, maxThreads()], so a configuration file
-   * copied over from a machine with more cores can not over-subscribe this one.
+  /* Worker thread counts for the two solver stages. The assembler and the
+   * disassembler pool run *concurrently* - the pool is fed while the assembler
+   * is still searching - so their sum is what the machine actually sees. Both
+   * accessors enforce the invariant
+   *
+   *   1 <= assemblerThreads(), 1 <= disassemblerThreads()
+   *   assemblerThreads() + disassemblerThreads() <= maxThreads()
+   *
+   * here rather than only in the dialogue, so a hand-edited or copied-over
+   * configuration file can not over-subscribe the machine either.
    */
-  unsigned int solverThreads(void) const;
+  unsigned int assemblerThreads(void) const;
+  unsigned int disassemblerThreads(void) const;
 
   /* number of hardware threads of this machine, at least 1 */
   static unsigned int maxThreads(void);
@@ -115,12 +123,14 @@ private:
   bool i_rotationMethod;
   int i_render_style;
   bool i_reverseScrollZoom;
-  int i_solver_threads;
+  int i_assembler_threads;
+  int i_disassembler_threads;
 
-  /* the default for i_solver_threads depends on the machine, so unlike all
-   * other defaults it can not be a literal; it must outlive `data`
+  /* these two defaults depend on the machine, so unlike all other defaults
+   * they can not be literals; they must outlive `data`
    */
-  std::string i_solver_threads_default;
+  std::string i_assembler_threads_default;
+  std::string i_disassembler_threads_default;
 
   int i_window_pos_x;
   int i_window_pos_y;

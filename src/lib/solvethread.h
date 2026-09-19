@@ -109,10 +109,13 @@ class solveThread_c : public assembler_cb, public thread_c {
     static const int PAR_COMPLETE_ROTATIONS = 0x40;  // do a thorough rotation check
 
     /* create all the necessary data structures to start the thread later on.
-     * threads is the number of worker threads the assembler and the
-     * disassembler pool should use, 0 means auto-detect
+     *
+     * asmThreads and disasmThreads are the worker counts for the two stages,
+     * 0 means auto-detect. They are separate because the two stages overlap -
+     * the pool is fed while the assembler is still searching - so it is their
+     * sum, not either one, that decides how much of the machine is busy.
      */
-    solveThread_c(problem_c & puz, int par, unsigned int threads = 0);
+    solveThread_c(problem_c & puz, int par, unsigned int asmThreads = 0, unsigned int disasmThreads = 0);
     const problem_c & getProblem(void) const { return puzzle; }
 
   private:
@@ -177,10 +180,11 @@ class solveThread_c : public assembler_cb, public thread_c {
 
 
 
-  /* number of worker threads requested for assembling and disassembling,
-   * 0 = auto-detect. Only read by the worker before it starts searching.
+  /* number of worker threads requested for the assembler, 0 = auto-detect.
+   * Only read by the worker before it starts searching. The disassembler's
+   * count is handed to the pool at construction.
    */
-  unsigned int numThreads;
+  unsigned int numAsmThreads;
 
   std::unique_ptr<disassemblerPool_c> disasm_pool;
 
