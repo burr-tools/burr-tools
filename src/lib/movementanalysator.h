@@ -60,6 +60,7 @@ class movementAnalysator_c {
      */
     std::vector<char> check;
     unsigned int piecenumber;
+    std::vector<unsigned int> planar_block;
 
     /* Cached input/output of the previous prepare() call for the incremental
      * fast path. prevSearch is refcounted (see prepare): the compared node

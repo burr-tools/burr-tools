@@ -110,9 +110,97 @@ void movementAnalysator_c::prepareFill(void) {
 
 }
 
+#if defined(__x86_64__) || defined(_M_X64)
+#include <immintrin.h>
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+#include <arm_neon.h>
+#endif
+
 static bool disasmOptDisabled() {
   static const bool disabled = std::getenv("BURRTOOLS_NO_DISASM_OPT") != nullptr;
   return disabled;
+}
+
+static bool simdDisabled() {
+  static const bool disabled = (std::getenv("BURRTOOLS_NO_SIMD") != nullptr || std::getenv("BURRTOOLS_NO_AVX2") != nullptr);
+  return disabled;
+}
+
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+#pragma GCC push_options
+#pragma GCC target("avx2")
+static void rfw_avx2(unsigned int * block, unsigned int n) {
+  for (unsigned int k = 0; k < n; k++) {
+    const unsigned int * row_k = block + (size_t)k * n;
+    for (unsigned int y = 0; y < n; y++) {
+      if (y == k) continue;
+      unsigned int * row_y = block + (size_t)y * n;
+      unsigned int yk = row_y[k];
+      if (yk >= 30000) continue;
+
+      __m256i vyk = _mm256_set1_epi32(yk);
+      unsigned int x = 0;
+      for (; x + 8 <= n; x += 8) {
+        __m256i rk = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(row_k + x));
+        __m256i ry = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(row_y + x));
+        __m256i sum = _mm256_add_epi32(vyk, rk);
+        __m256i min_val = _mm256_min_epu32(ry, sum);
+        _mm256_storeu_si256(reinterpret_cast<__m256i*>(row_y + x), min_val);
+      }
+      for (; x < n; x++) {
+        unsigned int sum = yk + row_k[x];
+        if (sum < row_y[x]) row_y[x] = sum;
+      }
+    }
+  }
+}
+#pragma GCC pop_options
+#endif
+
+#if defined(__aarch64__) || defined(__ARM_NEON)
+static void rfw_neon(unsigned int * block, unsigned int n) {
+  for (unsigned int k = 0; k < n; k++) {
+    const unsigned int * row_k = block + (size_t)k * n;
+    for (unsigned int y = 0; y < n; y++) {
+      if (y == k) continue;
+      unsigned int * row_y = block + (size_t)y * n;
+      unsigned int yk = row_y[k];
+      if (yk >= 30000) continue;
+
+      uint32x4_t vyk = vdupq_n_u32(yk);
+      unsigned int x = 0;
+      for (; x + 4 <= n; x += 4) {
+        uint32x4_t rk = vld1q_u32(row_k + x);
+        uint32x4_t ry = vld1q_u32(row_y + x);
+        uint32x4_t sum = vaddq_u32(vyk, rk);
+        uint32x4_t min_val = vminq_u32(ry, sum);
+        vst1q_u32(row_y + x, min_val);
+      }
+      for (; x < n; x++) {
+        unsigned int sum = yk + row_k[x];
+        if (sum < row_y[x]) row_y[x] = sum;
+      }
+    }
+  }
+}
+#endif
+
+static void rfw_scalar(unsigned int * block, unsigned int n) {
+  for (unsigned int k = 0; k < n; k++) {
+    const unsigned int * row_k = block + (size_t)k * n;
+    for (unsigned int y = 0; y < n; y++) {
+      if (y == k) continue;
+      unsigned int * row_y = block + (size_t)y * n;
+      unsigned int yk = row_y[k];
+      if (yk >= 30000) continue;
+      for (unsigned int x = 0; x < n; x++) {
+        unsigned int sum = yk + row_k[x];
+        if (sum < row_y[x]) {
+          row_y[x] = sum;
+        }
+      }
+    }
+  }
 }
 
 void movementAnalysator_c::closureFull(void) {
@@ -167,23 +255,49 @@ void movementAnalysator_c::closureFull(void) {
     return;
   }
 
+  if (planar_block.size() < (size_t)n * n) {
+    planar_block.resize((size_t)n * n);
+  }
+
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  static const bool has_avx2 = __builtin_cpu_supports("avx2") && !simdDisabled();
+#endif
+
   /* Roy-Floyd-Warshall all-pairs shortest paths on movement constraints.
-   * By placing intermediate node k on the outside, the transitive closure
-   * is computed in a single pass of N steps without any repeat loop. */
+   * Planar memory layout enables contiguous vector loads/stores/mins. */
   for (unsigned int d = 0; d < dirs; d++) {
-    for (unsigned int k = 0; k < n; k++) {
-      const unsigned int * row_k = matrix.data() + (size_t)k * rowStep + d;
-      for (unsigned int y = 0; y < n; y++) {
-        if (y == k) continue;
-        unsigned int * row_y = matrix.data() + (size_t)y * rowStep + d;
-        unsigned int yk = row_y[k * dirs];
-        if (yk >= 30000) continue;
-        for (unsigned int x = 0; x < n; x++) {
-          unsigned int sum = yk + row_k[x * dirs];
-          if (sum < row_y[x * dirs]) {
-            row_y[x * dirs] = sum;
-          }
-        }
+    // 1. Pack direction d into contiguous planar block
+    for (unsigned int y = 0; y < n; y++) {
+      const unsigned int * src = matrix.data() + (size_t)y * rowStep + d;
+      unsigned int * dst = planar_block.data() + (size_t)y * n;
+      for (unsigned int x = 0; x < n; x++) {
+        dst[x] = src[x * dirs];
+      }
+    }
+
+    // 2. Transitive closure on contiguous planar block
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+    if (has_avx2) {
+      rfw_avx2(planar_block.data(), n);
+    } else {
+      rfw_scalar(planar_block.data(), n);
+    }
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+    if (!simdDisabled()) {
+      rfw_neon(planar_block.data(), n);
+    } else {
+      rfw_scalar(planar_block.data(), n);
+    }
+#else
+    rfw_scalar(planar_block.data(), n);
+#endif
+
+    // 3. Unpack planar block back into matrix
+    for (unsigned int y = 0; y < n; y++) {
+      const unsigned int * src = planar_block.data() + (size_t)y * n;
+      unsigned int * dst = matrix.data() + (size_t)y * rowStep + d;
+      for (unsigned int x = 0; x < n; x++) {
+        dst[x * dirs] = src[x];
       }
     }
   }
@@ -428,6 +542,7 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem) :
   weights(problem.getNumberOfPieces()),
   check(problem.getNumberOfPieces(), 0),
   piecenumber(problem.getNumberOfPieces()),
+  planar_block(problem.getNumberOfPieces() * problem.getNumberOfPieces(), 0),
   prevFill(matrix.size(), 0),
   nodes(std::make_unique<countingNodeHash>()),
   nextstate(-1),
