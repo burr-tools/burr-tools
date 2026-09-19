@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "assembler_0.h"
+#include "simd_exact_cover.h"
 
 #include "bt_assert.h"
 #include "problem.h"
@@ -1182,32 +1183,27 @@ void assembler_0_c::reduce(void) {
   fprintf(stderr, "removed %u rows and %u columns\n", removed, remCol);
 }
 
-std::unique_ptr<assembly_c> assembler_0_c::getAssembly(void) {
-
+std::unique_ptr<assembly_c> assembler_0_c::buildAssembly(const unsigned int *row_nodes, unsigned int count) const {
   auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
 
-  // if no pieces are placed, or we finished return an empty assembly
-  if (pos > piecenumber) {
-    for (unsigned int i = 0; i < getPiecenumber(); i++)
+  if (count > piecenumber) {
+    for (unsigned int i = 0; i < piecenumber; i++)
       assembly->addNonPlacement();
     return assembly;
   }
 
-  bt_assert(getPos() <= getPiecenumber());
+  std::vector<unsigned int> pieces(piecenumber, 0xFFFFFFFF);
+  std::vector<unsigned char> trans(piecenumber);
+  std::vector<int> xs(piecenumber);
+  std::vector<int> ys(piecenumber);
+  std::vector<int> zs(piecenumber);
 
-  /* first we need to find the order the piece are in */
-  std::vector<unsigned int> pieces(getPiecenumber(), 0xFFFFFFFF);
-  std::vector<unsigned char> trans(getPiecenumber());
-  std::vector<int> xs(getPiecenumber());
-  std::vector<int> ys(getPiecenumber());
-  std::vector<int> zs(getPiecenumber());
-
-  for (unsigned int i = 0; i < getPos(); i++) {
+  for (unsigned int i = 0; i < count; i++) {
     unsigned char tran;
     int x, y, z;
     unsigned int piece;
 
-    getPieceInformation(getRows(i), &tran, &x, &y, &z, &piece);
+    getPieceInformation(row_nodes[i], &tran, &x, &y, &z, &piece);
 
     pieces[piece] = i;
     trans[piece] = tran;
@@ -1216,16 +1212,18 @@ std::unique_ptr<assembly_c> assembler_0_c::getAssembly(void) {
     zs[piece] = z;
   }
 
-  for (unsigned int i = 0; i < getPiecenumber(); i++)
-    if (pieces[i] >= getPos())
+  for (unsigned int i = 0; i < piecenumber; i++) {
+    if (pieces[i] >= count)
       assembly->addNonPlacement();
     else
       assembly->addPlacement(trans[i], xs[i], ys[i], zs[i]);
-
-  // sort is not necessary because there is only one of each piece
-  // assembly->sort(puzzle, problem);
+  }
 
   return assembly;
+}
+
+std::unique_ptr<assembly_c> assembler_0_c::getAssembly(void) {
+  return buildAssembly(rows.data(), pos);
 }
 
 void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot, std::unique_ptr<mirrorInfo_c> mir) {
@@ -1234,21 +1232,40 @@ void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot, std::uniqu
   avoidTransformedMirror = std::move(mir);
 }
 
-/* this function handles the assemblies found by the assembler engine
- */
-void assembler_0_c::solution(void) {
-
+void assembler_0_c::handleSolution(const unsigned int *row_nodes, unsigned int count) {
   if (getCallback()) {
+    std::unique_ptr<assembly_c> assembly = buildAssembly(row_nodes, count);
 
-    std::unique_ptr<assembly_c> assembly = getAssembly();
-
-    if (avoidTransformedAssemblies && assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror.get(), complete))
+    if (avoidTransformedAssemblies &&
+        assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror.get(), complete))
       return;
-    else {
+
+    uint64_t sig = 14695981039346656037ULL;
+    for (unsigned int i = 0; i < piecenumber; i++) {
+      if (assembly->isPlaced(i)) {
+        sig ^= assembly->getTransformation(i); sig *= 1099511628211ULL;
+        sig ^= static_cast<uint32_t>(assembly->getX(i)); sig *= 1099511628211ULL;
+        sig ^= static_cast<uint32_t>(assembly->getY(i)); sig *= 1099511628211ULL;
+        sig ^= static_cast<uint32_t>(assembly->getZ(i)); sig *= 1099511628211ULL;
+      } else {
+        sig ^= 0xFF; sig *= 1099511628211ULL;
+      }
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(callbackMutex);
+      if (abbort.load(std::memory_order_relaxed))
+        return;
+      if (!emittedSignatures.insert(sig).second)
+        return;
       if (!getCallback()->assembly(std::move(assembly)))
         stop();
     }
   }
+}
+
+void assembler_0_c::solution(void) {
+  handleSolution(rows.data(), pos);
 }
 
 /* to understand this function you need to first completely understand the
@@ -1473,59 +1490,7 @@ public:
 
   void solution() {
     flushIterations();
-
-    if (parent.getCallback()) {
-      auto assembly = std::make_unique<assembly_c>(parent.problem.getPuzzle().getGridType());
-
-      std::vector<unsigned int> pieces(parent.piecenumber, 0xFFFFFFFF);
-      std::vector<unsigned char> trans(parent.piecenumber);
-      std::vector<int> xs(parent.piecenumber);
-      std::vector<int> ys(parent.piecenumber);
-      std::vector<int> zs(parent.piecenumber);
-
-      for (unsigned int i = 0; i < pos; i++) {
-        unsigned char tran;
-        int x, y, z;
-        unsigned int piece;
-
-        parent.getPieceInformation(rows[i], &tran, &x, &y, &z, &piece);
-
-        pieces[piece] = i;
-        trans[piece] = tran;
-        xs[piece] = x;
-        ys[piece] = y;
-        zs[piece] = z;
-      }
-
-      for (unsigned int i = 0; i < parent.piecenumber; i++) {
-        if (pieces[i] >= pos)
-          assembly->addNonPlacement();
-        else
-          assembly->addPlacement(trans[i], xs[i], ys[i], zs[i]);
-      }
-
-      if (parent.avoidTransformedAssemblies &&
-          assembly->smallerRotationExists(parent.problem, parent.avoidTransformedPivot, parent.avoidTransformedMirror.get(), parent.complete))
-        return;
-
-      uint64_t sig = 14695981039346656037ULL;
-      for (unsigned int i = 0; i < parent.piecenumber; i++) {
-        sig ^= trans[i]; sig *= 1099511628211ULL;
-        sig ^= static_cast<uint32_t>(xs[i]); sig *= 1099511628211ULL;
-        sig ^= static_cast<uint32_t>(ys[i]); sig *= 1099511628211ULL;
-        sig ^= static_cast<uint32_t>(zs[i]); sig *= 1099511628211ULL;
-      }
-
-      {
-        std::lock_guard<std::mutex> lock(parent.callbackMutex);
-        if (parent.abbort.load(std::memory_order_relaxed))
-          return;
-        if (!parent.emittedSignatures.insert(sig).second)
-          return;
-        if (!parent.getCallback()->assembly(std::move(assembly)))
-          parent.stop();
-      }
-    }
+    parent.handleSolution(rows.data(), pos);
   }
 
   void searchSubtree(const assembler_0_c::SubtreeTask & task) {
@@ -1781,44 +1746,96 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   std::exception_ptr workerException = nullptr;
   std::mutex exceptionMutex;
 
-  auto workerFunc = [this, &remainingIndices, &nextIndexPtr, &workerException, &exceptionMutex]() {
-    try {
-      assemblerWorker_c worker(*this);
+  if (canUseSimd()) {
+    auto solver = createSimdSolver();
 
-      while (!abbort.load(std::memory_order_relaxed)) {
-        size_t idx = nextIndexPtr.fetch_add(1, std::memory_order_relaxed);
-        if (idx >= remainingIndices.size())
-          break;
+    auto simdWorkerFunc = [this, &remainingIndices, &nextIndexPtr, &solver, &workerException, &exceptionMutex]() {
+      try {
+        while (!abbort.load(std::memory_order_relaxed)) {
+          size_t idx = nextIndexPtr.fetch_add(1, std::memory_order_relaxed);
+          if (idx >= remainingIndices.size())
+            break;
 
-        size_t taskIdx = remainingIndices[idx];
-        worker.searchSubtree(parallelTasks[taskIdx]);
-        if (!abbort.load(std::memory_order_relaxed)) {
-          taskCompleted[taskIdx] = 1;
-          completedTasks.fetch_add(1, std::memory_order_relaxed);
+          size_t taskIdx = remainingIndices[idx];
+          std::vector<unsigned int> prefix_nodes;
+          prefix_nodes.reserve(parallelTasks[taskIdx].prefix.size());
+          for (const auto &step : parallelTasks[taskIdx].prefix) {
+            prefix_nodes.push_back(step.row);
+          }
+
+          std::atomic<uint64_t> task_iter{0};
+          solver->solveSubtree(prefix_nodes, [this](const std::vector<unsigned int> &solution_nodes) -> bool {
+            handleSolution(solution_nodes.data(), solution_nodes.size());
+            return !abbort.load(std::memory_order_relaxed);
+          }, abbort, task_iter);
+
+          iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
+          if (!abbort.load(std::memory_order_relaxed)) {
+            taskCompleted[taskIdx] = 1;
+            completedTasks.fetch_add(1, std::memory_order_relaxed);
+          }
         }
+      } catch (...) {
+        std::lock_guard<std::mutex> lock(exceptionMutex);
+        if (!workerException)
+          workerException = std::current_exception();
+        abbort.store(true, std::memory_order_relaxed);
       }
+    };
 
-      worker.flushIterations();
-    } catch (...) {
-      std::lock_guard<std::mutex> lock(exceptionMutex);
-      if (!workerException)
-        workerException = std::current_exception();
-      abbort.store(true, std::memory_order_relaxed);
+    std::vector<std::thread> threads;
+    threads.reserve(workers - 1);
+
+    for (unsigned int i = 1; i < workers; i++) {
+      threads.emplace_back(simdWorkerFunc);
     }
-  };
 
-  std::vector<std::thread> threads;
-  threads.reserve(workers - 1);
+    simdWorkerFunc();
 
-  for (unsigned int i = 1; i < workers; i++) {
-    threads.emplace_back(workerFunc);
-  }
+    for (auto & t : threads) {
+      if (t.joinable())
+        t.join();
+    }
+  } else {
+    auto dlxWorkerFunc = [this, &remainingIndices, &nextIndexPtr, &workerException, &exceptionMutex]() {
+      try {
+        assemblerWorker_c worker(*this);
 
-  workerFunc();
+        while (!abbort.load(std::memory_order_relaxed)) {
+          size_t idx = nextIndexPtr.fetch_add(1, std::memory_order_relaxed);
+          if (idx >= remainingIndices.size())
+            break;
 
-  for (auto & t : threads) {
-    if (t.joinable())
-      t.join();
+          size_t taskIdx = remainingIndices[idx];
+          worker.searchSubtree(parallelTasks[taskIdx]);
+          if (!abbort.load(std::memory_order_relaxed)) {
+            taskCompleted[taskIdx] = 1;
+            completedTasks.fetch_add(1, std::memory_order_relaxed);
+          }
+        }
+
+        worker.flushIterations();
+      } catch (...) {
+        std::lock_guard<std::mutex> lock(exceptionMutex);
+        if (!workerException)
+          workerException = std::current_exception();
+        abbort.store(true, std::memory_order_relaxed);
+      }
+    };
+
+    std::vector<std::thread> threads;
+    threads.reserve(workers - 1);
+
+    for (unsigned int i = 1; i < workers; i++) {
+      threads.emplace_back(dlxWorkerFunc);
+    }
+
+    dlxWorkerFunc();
+
+    for (auto & t : threads) {
+      if (t.joinable())
+        t.join();
+    }
   }
 
   if (workerException) {
@@ -1845,6 +1862,85 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   running.store(false, std::memory_order_relaxed);
 }
 
+bool assembler_0_c::canUseSimd(void) const {
+  if (pos != 0)
+    return false;
+  if (std::getenv("BURRTOOLS_NO_SIMD"))
+    return false;
+  if (debug)
+    return false;
+  if (holes > 0)
+    return false;
+
+  int res_vari = getResultShape(problem)->countState(voxel_c::VX_VARIABLE);
+  if (res_vari > 0)
+    return false;
+
+  int res_filled = getResultShape(problem)->countState(voxel_c::VX_FILLED);
+  unsigned int max_col = piecenumber + res_filled;
+  if (max_col > 255)
+    return false;
+
+  return true;
+}
+
+std::unique_ptr<SimdExactCover256> assembler_0_c::createSimdSolver(void) const {
+  int res_filled = getResultShape(problem)->countState(voxel_c::VX_FILLED);
+  unsigned int max_col = piecenumber + res_filled;
+
+  auto solver = std::make_unique<SimdExactCover256>(max_col, piecenumber);
+
+  SimdBitset256 req;
+  for (unsigned int c = right[0]; c != 0; c = right[c]) {
+    if (c <= max_col) {
+      req.set(c - 1);
+    }
+  }
+  solver->setRequiredColumns(req);
+
+  for (unsigned int p = 1; p <= piecenumber; p++) {
+    for (unsigned int row = down(p); row != p; row = down(row)) {
+      std::vector<unsigned int> cols;
+      std::vector<unsigned int> nodes_in_row;
+      unsigned int curr = row;
+      do {
+        nodes_in_row.push_back(curr);
+        unsigned int col = colCount[curr];
+        if (col > 0 && col <= max_col) {
+          cols.push_back(col - 1);
+        }
+        curr = right[curr];
+      } while (curr != row);
+
+      uint32_t row_idx = solver->addRow(row, p - 1, cols);
+      for (unsigned int n : nodes_in_row) {
+        solver->registerNodeAlias(n, row_idx);
+      }
+    }
+  }
+
+  return solver;
+}
+
+void assembler_0_c::simdSearch(void) {
+  abbort.store(false, std::memory_order_relaxed);
+  running.store(true, std::memory_order_relaxed);
+
+  auto solver = createSimdSolver();
+  std::atomic<uint64_t> simd_iter{0};
+
+  solver->solve([this](const std::vector<unsigned int> &solution_nodes) -> bool {
+    handleSolution(solution_nodes.data(), solution_nodes.size());
+    return !abbort.load(std::memory_order_relaxed);
+  }, abbort, simd_iter);
+
+  iterations.fetch_add(simd_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
+  if (!abbort.load(std::memory_order_relaxed)) {
+    pos = piecenumber + 1;
+  }
+  running.store(false, std::memory_order_relaxed);
+}
+
 void assembler_0_c::assemble(assembler_cb * callback) {
 
   debug = false;
@@ -1854,6 +1950,8 @@ void assembler_0_c::assemble(assembler_cb * callback) {
     unsigned int threads = getEffectiveThreads();
     if (pos == 0 && threads > 1) {
       parallelMultiSearch(threads);
+    } else if (canUseSimd()) {
+      simdSearch();
     } else {
       iterativeMultiSearch();
     }
