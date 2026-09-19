@@ -118,7 +118,7 @@ public:
     unsigned int num_workers,
     SolutionCallback callback,
     const std::atomic<bool> &abort_flag,
-    std::atomic<uint64_t> &iterations,
+    std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
     std::atomic<size_t> &completed_tasks
   ) const;
@@ -140,7 +140,7 @@ private:
   std::vector<unsigned int> active_column_list;
   std::vector<unsigned int> hole_columns;
   std::unordered_map<unsigned int, uint32_t> node_to_row_idx;
-  bool use_avx2 = false;
+  [[maybe_unused]] bool use_avx2 = false;
 
   void search(
     unsigned int depth,
