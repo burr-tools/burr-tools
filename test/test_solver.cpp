@@ -15,9 +15,34 @@
 #include "tools/gzstream.h"
 
 #include <memory>
+#include <set>
 #include <string>
 
 namespace {
+
+/* Records a canonical fingerprint of every assembly, so two runs can be
+ * compared as multisets instead of by count alone. Comparing counts cannot
+ * detect a parallel run that loses one assembly and duplicates another.
+ */
+class RecordingAssemblerCallback : public assembler_cb {
+public:
+  std::multiset<std::string> fingerprints;
+
+  bool assembly(std::unique_ptr<assembly_c> a) override {
+    std::string s;
+    for (unsigned int i = 0; i < a->placementCount(); i++) {
+      s += std::to_string(i);
+      if (a->isPlaced(i))
+        s += ":" + std::to_string(a->getX(i)) + "," + std::to_string(a->getY(i)) +
+             "," + std::to_string(a->getZ(i)) + "," +
+             std::to_string(static_cast<unsigned int>(a->getTransformation(i))) + ";";
+      else
+        s += ":-;";
+    }
+    fingerprints.insert(std::move(s));
+    return true;
+  }
+};
 
 class TestAssemblerCallback : public assembler_cb {
 public:
@@ -398,5 +423,74 @@ TEST_CASE("Parallel assembler 1 stops promptly when aborted", "[assembler][paral
   CHECK(assm.stopped());
 }
 
+/* Bermuda is one of the few bundled puzzles whose result shape carries a
+ * symmetry breaker, so createMatrix() turns on avoidTransformedAssemblies and
+ * the parallel workers call assembly_c::smallerRotationExists() concurrently.
+ * That call reaches the lazily-filled mutable caches in the shared voxel_c
+ * shapes (getHotspot / getBoundingBox / selfSymmetries).
+ *
+ * The other [assembler][parallel] cases use puzzles with no symmetry breaker,
+ * so they never enter that branch at all and cannot detect races in it. Keep
+ * this case on a symmetry-breaking puzzle; swapping the puzzle silently
+ * removes the coverage.
+ *
+ * Run under ThreadSanitizer (`just build-tsan`) to exercise the race; the
+ * multiset comparison additionally guards against lost or duplicated
+ * assemblies in ordinary builds.
+ */
+TEST_CASE("Parallel assembler matches serial on a symmetry-breaking puzzle",
+          "[assembler][parallel][tsan]") {
+  auto p = puzzle_c::load("examples/Bermuda.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
 
+  std::multiset<std::string> serial;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    serial = std::move(cb.fingerprints);
+  }
+  REQUIRE_FALSE(serial.empty());
 
+  /* Guard the premise of this test rather than trusting the chosen puzzle:
+   * keepRotations = true forces avoidTransformedAssemblies off, so it must
+   * yield strictly more assemblies than the run above. If the two agree, this
+   * puzzle no longer has symmetry breaking enabled and the case has silently
+   * stopped covering the concurrent smallerRotationExists() path.
+   */
+  {
+    RecordingAssemblerCallback cb;
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, true, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    INFO("symmetry breaking must be active for this test to be meaningful");
+    REQUIRE(cb.fingerprints.size() > serial.size());
+  }
+
+  /* Reload the puzzle so the parallel run starts with cold caches.
+   *
+   * The lazily-filled mutable caches in voxel_c (BbHsCache, symmetries) are
+   * first-touch: once any run has populated them the race window is gone. A
+   * parallel run performed after a serial run on the *same* puzzle object is
+   * therefore racing on already-warm caches and reports nothing, which defeats
+   * the purpose of this test. Fresh shapes reproduce what the application
+   * actually does — load a puzzle, then solve it on all cores.
+   */
+  auto pFresh = puzzle_c::load("examples/Bermuda.xmpuzzle");
+  REQUIRE(pFresh != nullptr);
+  auto problemFresh = pFresh->getProblem(0);
+  REQUIRE(problemFresh != nullptr);
+
+  RecordingAssemblerCallback cb;
+  assembler_0_c assm(*problemFresh);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  assm.assemble(&cb);
+
+  CHECK(cb.fingerprints == serial);
+}
