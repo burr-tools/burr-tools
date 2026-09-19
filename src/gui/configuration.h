@@ -22,6 +22,7 @@
 #define __CONFIGURATION_H__
 
 #include <stdio.h>
+#include <string>
 #include <vector>
 
 /* this module contains a class for configuration file
@@ -56,6 +57,15 @@ public:
 
   bool reverseScrollZoom(void) { return i_reverseScrollZoom; }
 
+  /* number of worker threads the parallel assembler and the disassembler pool
+   * should use. Always clamped into [1, maxThreads()], so a configuration file
+   * copied over from a machine with more cores can not over-subscribe this one.
+   */
+  unsigned int solverThreads(void) const;
+
+  /* number of hardware threads of this machine, at least 1 */
+  static unsigned int maxThreads(void);
+
   int windowPosX(void) { return i_window_pos_x; }
   int windowPosY(void) { return i_window_pos_y; }
   int windowPosW(void) { return i_window_pos_w; }
@@ -79,7 +89,7 @@ private:
   } cnf_type;
 
   void parse(void);
-  void register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * dhelp, const char * def);
+  void register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * dhelp, const char * def, int minVal = 0, int maxVal = 0);
 
   struct config_data {
     const char *cnf_name;  // name of entry in configuration file
@@ -91,6 +101,8 @@ private:
     const char * dialogHelp;
     void *    widget;    // used in the dialogue to save pointer to the widget
     const char * defaultValue; // the variable will have this value, when not initialized in script file
+    int       minVal;    // CT_INT only: inclusive slider range in the dialogue
+    int       maxVal;
   };
 
   std::vector<config_data> data;
@@ -103,6 +115,12 @@ private:
   bool i_rotationMethod;
   int i_render_style;
   bool i_reverseScrollZoom;
+  int i_solver_threads;
+
+  /* the default for i_solver_threads depends on the machine, so unlike all
+   * other defaults it can not be a literal; it must outlive `data`
+   */
+  std::string i_solver_threads_default;
 
   int i_window_pos_x;
   int i_window_pos_y;

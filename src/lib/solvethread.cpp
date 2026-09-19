@@ -95,6 +95,7 @@ void solveThread_c::run(void){
     if (!stopPressed) {
 
       action = solveThread_c::ACT_ASSEMBLING;
+      a->setNumThreads(numThreads);
       a->assemble(this);
 
       if (disasm_pool) {
@@ -129,7 +130,7 @@ void solveThread_c::run(void){
   }
 }
 
-solveThread_c::solveThread_c(problem_c & puz, int par) :
+solveThread_c::solveThread_c(problem_c & puz, int par, unsigned int threads) :
 action(ACT_PREPARATION),
 puzzle(puz),
 parameters(par),
@@ -137,6 +138,7 @@ sortMethod(SRT_COMPLETE_MOVES),
 liveSort(-1),
 solutionLimit(10),
 solutionDrop(1),
+numThreads(threads),
 disasm_pool(nullptr),
 assm(0)
 {
@@ -144,7 +146,7 @@ assm(0)
   if (par & PAR_DISASSM) {
     disasm_pool = std::make_unique<disassemblerPool_c>(
       puz,
-      0,
+      threads,
       [this](uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
         onDisassemblyResult(seqNo, std::move(a), std::move(s));
       }
