@@ -511,12 +511,14 @@ void SimdHuangCover256::parallelSolve(
           break;
 
         auto &t = tasks[idx];
-        search(t.depth, t.ctx, callback, abort_flag, iterations);
+        std::atomic<uint64_t> task_iter{0};
+        search(t.depth, t.ctx, callback, abort_flag, task_iter);
 
         uint64_t rem = t.ctx.local_iterations & 255;
         if (rem > 0) {
-          iterations.fetch_add(rem, std::memory_order_relaxed);
+          task_iter.fetch_add(rem, std::memory_order_relaxed);
         }
+        iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
         completed_tasks.fetch_add(1, std::memory_order_relaxed);
       }
     } catch (...) {

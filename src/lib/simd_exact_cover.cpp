@@ -87,8 +87,8 @@ void SimdExactCover<BitsetType>::registerNodeAlias(unsigned int node_id, uint32_
 }
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-__attribute__((target("avx2")))
 template <typename BitsetType>
+__attribute__((target("avx2")))
 void SimdExactCover<BitsetType>::filterRowsAvx2(
   const std::vector<uint32_t> &src,
   const BitsetType &chosen_mask,
