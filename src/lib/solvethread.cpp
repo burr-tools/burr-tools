@@ -96,6 +96,13 @@ void solveThread_c::run(void){
 
       action = solveThread_c::ACT_ASSEMBLING;
       a->assemble(this);
+
+      if (disasm_pool) {
+        if (!stopPressed)
+          action = solveThread_c::ACT_DISASSEMBLING;
+        disasm_pool->finish();
+      }
+
       puzzle.addTime(time(0)-startTime);
 
       if (a->getFinished() >= 1) {
@@ -115,6 +122,8 @@ void solveThread_c::run(void){
 
     ae = a;
     action = solveThread_c::ACT_ASSERT;
+    if (disasm_pool)
+      disasm_pool->abort();
     if (puzzle.getAssembler())
       puzzle.removeAllSolutions();
   }
@@ -128,98 +137,95 @@ sortMethod(SRT_COMPLETE_MOVES),
 liveSort(-1),
 solutionLimit(10),
 solutionDrop(1),
-disassm(nullptr),
+disasm_pool(nullptr),
 assm(0)
 {
 
-  if (par & PAR_DISASSM)
-    disassm = std::make_unique<disassembler_0_c>(puz);
+  if (par & PAR_DISASSM) {
+    disasm_pool = std::make_unique<disassemblerPool_c>(
+      puz,
+      0,
+      [this](uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
+        onDisassemblyResult(seqNo, std::move(a), std::move(s));
+      }
+    );
+  }
 }
 
 solveThread_c::~solveThread_c(void) {
 
   /* signal the worker to stop and wait for it to actually finish before we
-   * free anything it might still be using. The worker's disassembly step uses
-   * *disassm, so deleting it while the thread is still running (as the old
-   * code did - it relied on the base destructor to join, but the base stop()
-   * is a no-op and by then this override is gone) was a use-after-free.
+   * free anything it might still be using.
    */
   stopInternal();
   joinThread();
 
-  disassm.reset();
+  disasm_pool.reset();
 }
 
 bool solveThread_c::assembly(std::unique_ptr<assembly_c> a) {
 
-  enum {
-    SOL_COUNT_ASM,
-    SOL_SAVE_ASM,
-    SOL_COUNT_DISASM,
-    SOL_DISASM,
-  };
+  if (parameters & PAR_DISASSM) {
+    bt_assert(disasm_pool);
+    disasm_pool->submit(std::move(a));
+    return true;
+  }
 
-  int _solutionAction = 0;
-  if (!(parameters & PAR_JUST_COUNT)) _solutionAction += 1;
-  if (parameters & PAR_DISASSM) _solutionAction += 2;
-
-  switch(_solutionAction) {
-  case SOL_COUNT_ASM:
-    break;
-  case SOL_SAVE_ASM:
-
-    if (puzzle.getNumAssemblies() % (solutionDrop*dropMultiplicator) == 0)
+  // Assembly-only mode
+  if (!(parameters & PAR_JUST_COUNT)) {
+    if (puzzle.getNumAssemblies() % (solutionDrop * dropMultiplicator) == 0)
       puzzle.addSolution(a.release());
+  }
 
-    break;
+  puzzle.incNumAssemblies();
 
-  case SOL_DISASM:
-  case SOL_COUNT_DISASM:
+  // this is the case for assembly only
+  // we need to thin out the list
+  if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit)) {
+    unsigned int idx = puzzle.getNumAssemblies() - 1;
+    idx = (idx % (solutionLimit * solutionDrop * dropMultiplicator)) / (solutionDrop * dropMultiplicator);
+
+    if (idx == solutionLimit - 1)
+      dropMultiplicator *= 2;
+
+    puzzle.removeSolution(idx + 1);
+  }
+
+  int ls = liveSort.load(std::memory_order_relaxed);
+  if (ls >= 0 && puzzle.getNumberOfSavedSolutions() >= 2)
+    puzzle.sortSolutions(ls);
+
+  return true;
+}
+
+void solveThread_c::onDisassemblyResult(uint64_t /*seqNo*/, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
+
+  // when the assembly has only 1 piece, we don't need
+  // to disassemble, the disassembler will return 0 anyway
+  if (a->placementCount() <= 1) {
+    // only one piece, that is always a solution, so increment number
+    // of solutions but save only the assembly
+    puzzle.addSolution(a.release());
+    puzzle.incNumSolutions();
+    puzzle.incNumAssemblies();
+    return;
+  }
+
+  // check if we found a disassembly sequence
+  if (!s) {
+    // no disassembly sequence found
+    puzzle.incNumAssemblies();
+    return;
+  }
+
+  // if the user wants to save the solution, do it
+  if (!(parameters & PAR_JUST_COUNT)) {
+    // find the place to insert and insert the new solution so that
+    // they are sorted by the complexity of the disassembly
+
+    bool ins = false;
+
     {
-
-      // when the assembly has only 1 piece, we don't need
-      // to disassemble, the disassembler will return 0 anyway
-      if (a->placementCount() <= 1) {
-
-        // only one piece, that is always a solution, so increment number
-        // of solutions but save only the assembly
-        puzzle.addSolution(a.release());
-        puzzle.incNumSolutions();
-
-        break;
-      }
-
-      // try to disassemble
-      action = ACT_DISASSEMBLING;
-      std::unique_ptr<separation_c> s = disassm->disassemble(a.get());
-      action = ACT_ASSEMBLING;
-
-      // check, if we found a disassembly sequence
-      if (!s) {
-        // no disassembly sequence found
-        break;
-      }
-
-      // if the user wants to save the solution, do it
-      if (_solutionAction != SOL_DISASM) {
-        // yes, the puzzle is disassembable count solutions
-        puzzle.incNumSolutions();
-
-        break;
-      }
-
-      // find the place to insert and insert the new solution so that
-      // they are sorted by the complexity of the disassembly
-
-      bool ins = false;
-
-      /* hold the solution lock across the scan-and-insert below: re-sorting
-       * the solution list from the GUI is now allowed while solving, and that
-       * must not reorder the list while we are scanning it to find where this
-       * new solution belongs. addSolution/removeSolution re-lock the same
-       * (recursive) mutex, which is fine.
-       */
-      {
       std::unique_lock<std::recursive_mutex> solGuard = puzzle.lockSolutions();
 
       switch(sortMethod) {
@@ -240,22 +246,19 @@ bool solveThread_c::assembly(std::unique_ptr<assembly_c> a) {
                 break;
               }
             }
+
+            if (!ins) {
+              if (parameters & PAR_DROP_DISASSEMBLIES) {
+                puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
+              } else
+                puzzle.addSolution(a.release(), s.release());
+            }
+
+            if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit))
+              puzzle.removeSolution(0);
           }
-
-          if (!ins) {
-            if (parameters & PAR_DROP_DISASSEMBLIES) {
-              puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
-            } else
-              puzzle.addSolution(a.release(), s.release());
-          }
-
-          // remove the front most solution, if we only want to save
-          // a limited number of solutions, as the front most
-          // solutions are the more unimportant ones
-          if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit))
-            puzzle.removeSolution(0);
-
           break;
+
         case SRT_LEVEL:
           {
             for (unsigned int i = 0; i < puzzle.getNumberOfSavedSolutions(); i++) {
@@ -272,65 +275,51 @@ bool solveThread_c::assembly(std::unique_ptr<assembly_c> a) {
               }
             }
 
-            if (!ins)  {
+            if (!ins) {
               if (parameters & PAR_DROP_DISASSEMBLIES) {
                 puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
               } else
                 puzzle.addSolution(a.release(), s.release());
             }
+
+            if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit))
+              puzzle.removeSolution(0);
           }
-
-          // remove the front most solution, if we only want to save
-          // a limited number of solutions, as the front most
-          // solutions are the more unimportant ones
-          if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit))
-            puzzle.removeSolution(0);
-
           break;
+
         case SRT_UNSORT:
-          /* only save every solutionDrop-th solution */
           if (puzzle.getNumSolutions() % (solutionDrop * dropMultiplicator) == 0) {
             if (parameters & PAR_DROP_DISASSEMBLIES) {
               puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
             } else
               puzzle.addSolution(a.release(), s.release());
           }
-
           break;
       }
-      }
-
-      // yes, the puzzle is disassembably, count solutions
-      puzzle.incNumSolutions();
     }
-    break;
+
+    // yes, the puzzle is disassemblable, count solutions
+    puzzle.incNumSolutions();
+  } else {
+    puzzle.incNumSolutions();
   }
 
   puzzle.incNumAssemblies();
 
-  // this is the case for assembly only or unsorted disassembly solutions
-  // we need to thin out the list
   if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit)) {
-    unsigned int idx = (_solutionAction == SOL_SAVE_ASM) ? puzzle.getNumAssemblies()-1
-                                                         : puzzle.getNumSolutions()-1;
+    unsigned int idx = puzzle.getNumSolutions() - 1;
 
     idx = (idx % (solutionLimit * solutionDrop * dropMultiplicator)) / (solutionDrop * dropMultiplicator);
 
-    if (idx == solutionLimit-1)
+    if (idx == solutionLimit - 1)
       dropMultiplicator *= 2;
 
-    puzzle.removeSolution(idx+1);
+    puzzle.removeSolution(idx + 1);
   }
 
-  /* keep the list sorted by the method the user picked in the GUI, if any, so
-   * the sort stays applied as new solutions arrive. The list is bounded by the
-   * solution limit, so this is cheap. sortSolutions locks the list itself.
-   */
   int ls = liveSort.load(std::memory_order_relaxed);
   if (ls >= 0 && puzzle.getNumberOfSavedSolutions() >= 2)
     puzzle.sortSolutions(ls);
-
-  return true;
 }
 
 void solveThread_c::stopInternal(void) {
@@ -346,6 +335,9 @@ void solveThread_c::stopInternal(void) {
 
   if (puzzle.getAssembler())
     puzzle.getAssembler()->stop();
+
+  if (disasm_pool)
+    disasm_pool->abort();
 
   stopPressed = true;
 }

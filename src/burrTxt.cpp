@@ -25,6 +25,7 @@
 #include "lib/assembly.h"
 #include "lib/disassembler.h"
 #include "lib/disassembler_0.h"
+#include "lib/disassemblerpool.h"
 #include "lib/disassembly.h"
 #include "lib/print.h"
 #include "lib/voxel.h"
@@ -36,6 +37,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <atomic>
 
 using namespace std;
 
@@ -51,41 +53,52 @@ class asm_cb : public assembler_cb {
 
 public:
 
-  int Assemblies;
-  int Solutions;
+  std::atomic<int> Assemblies{0};
+  std::atomic<int> Solutions{0};
   int pn;
   problem_c * puzzle;
+  std::unique_ptr<disassemblerPool_c> pool;
 
-  asm_cb(problem_c * p) : Assemblies(0), Solutions(0), pn(p->getNumberOfPieces()), puzzle(p) {}
+  asm_cb(problem_c * p, unsigned int threads) : pn(p->getNumberOfPieces()), puzzle(p) {
+    if (disassemble) {
+      pool = std::make_unique<disassemblerPool_c>(
+        *p,
+        threads,
+        [this](uint64_t /*seqNo*/, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> da) {
+          if (da) {
+            Solutions++;
+
+            if (printSolutions)
+              print(a.get(), puzzle);
+
+            if (!quiet || allProblems)
+            {
+              printf("level: %s\n", da->movesText().c_str());
+            }
+
+            if (printDisassemble)
+              print(da.get(), a.get(), puzzle);
+          }
+        }
+      );
+    }
+  }
 
   bool assembly(std::unique_ptr<assembly_c> a) override {
-
 
     Assemblies++;
 
     if (disassemble) {
-
-      auto da = d->disassemble(a.get());
-
-      if (da) {
-        Solutions++;
-
-        if (printSolutions)
-          print(a.get(), puzzle);
-
-        if (!quiet || allProblems)
-        {
-          printf("level: %s\n", da->movesText().c_str());
-        }
-
-        if (printDisassemble)
-          print(da.get(), a.get(), puzzle);
-      }
-
+      pool->submit(std::move(a));
     } else if (printSolutions)
       print(a.get(), puzzle);
 
     return true;
+  }
+
+  void finish() {
+    if (pool)
+      pool->finish();
   }
 };
 
@@ -315,23 +328,18 @@ int main(int argv, char* args[]) {
       if (allProblems)
         cout << "problem: " << problem->getName() << endl;
 
-      asm_cb a(problem);
-
-      d.reset();
-      if (disassemble)
-        d = std::make_unique<disassembler_0_c>(*problem);
+      asm_cb a(problem, threads);
 
       if (threads > 0)
         assm->setNumThreads(threads);
 
       assm->assemble(&a);
+      a.finish();
 
-      cout << a.Assemblies << " assemblies and " << a.Solutions << " solutions found with " << assm->getIterations() << " iterations ";
+      cout << a.Assemblies.load() << " assemblies and " << a.Solutions.load() << " solutions found with " << assm->getIterations() << " iterations ";
 
       if (newline)
         cout << endl;
-
-      d.reset();
     }
   } else {
 
