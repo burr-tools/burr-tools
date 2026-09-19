@@ -2522,6 +2522,67 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   abbort.store(false, std::memory_order_relaxed);
   running.store(true, std::memory_order_relaxed);
 
+  if (canUseSimd()) {
+    auto solver = createSimdSolver();
+
+    solver->parallelSolve(
+      workers,
+      [this](const std::vector<unsigned int> &solution_nodes) -> bool {
+        if (getCallback()) {
+          auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
+
+          std::vector<unsigned int> piece(solution_nodes.size());
+          std::vector<unsigned char> tran(solution_nodes.size());
+          std::vector<int> x(solution_nodes.size());
+          std::vector<int> y(solution_nodes.size());
+          std::vector<int> z(solution_nodes.size());
+
+          for (unsigned int i = 0; i < solution_nodes.size(); i++)
+            getPieceInformation(solution_nodes[i], &piece[i], &tran[i], &x[i], &y[i], &z[i]);
+
+          for (unsigned int pc = 0; pc < problem.getNumberOfParts(); pc++) {
+            unsigned int placed = 0;
+            for (unsigned int i = 0; i < solution_nodes.size(); i++) {
+              if (piece[i] == pc) {
+                assembly->addPlacement(tran[i], x[i], y[i], z[i]);
+                placed++;
+              }
+            }
+            while (placed < problem.getPartMaximum(pc)) {
+              assembly->addNonPlacement();
+              placed++;
+            }
+          }
+
+          assembly->sort(problem);
+
+          if (avoidTransformedAssemblies &&
+              assembly->smallerRotationExists(problem, avoidTransformedPivot,
+                                              avoidTransformedMirror.get(), complete))
+            return true;
+
+          {
+            std::lock_guard<std::mutex> lock(callbackMutex);
+            if (abbort.load(std::memory_order_relaxed))
+              return false;
+            if (!getCallback()->assembly(std::move(assembly))) {
+              stop();
+              return false;
+            }
+          }
+        }
+        return !abbort.load(std::memory_order_relaxed);
+      },
+      abbort,
+      iterations,
+      totalTasks,
+      completedTasks
+    );
+
+    running.store(false, std::memory_order_relaxed);
+    return;
+  }
+
   unsigned int targetTasks = std::max(16u, workers * 4);
   unsigned int maxDepth = std::min(piecenumber, 3u);
 

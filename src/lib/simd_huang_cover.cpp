@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <algorithm>
 #include <cassert>
+#include <thread>
 
 SimdHuangCover256::SimdHuangCover256(unsigned int num_cols, unsigned int num_s)
   : num_columns(num_cols), num_shapes(num_s) {
@@ -245,6 +246,283 @@ void SimdHuangCover256::solve(
   uint64_t rem = ctx.local_iterations & 255;
   if (rem > 0) {
     iterations.fetch_add(rem, std::memory_order_relaxed);
+  }
+}
+
+void SimdHuangCover256::solveSubtree(
+  const std::vector<unsigned int> &prefix_node_ids,
+  const std::vector<unsigned int> &hidden_node_ids,
+  SolutionCallback callback,
+  const std::atomic<bool> &abort_flag,
+  std::atomic<uint64_t> &iterations
+) const {
+  if (rows.empty() || active_column_list.empty())
+    return;
+
+  SearchContext ctx;
+  ctx.scratch_active_rows.resize(num_columns + 16);
+  ctx.current_solution.reserve(num_columns);
+  ctx.col_weights.assign(num_columns + 1, 0);
+  ctx.col_counts.assign(num_columns + 1, 0);
+
+  std::vector<bool> is_hidden(rows.size(), false);
+  for (unsigned int h : hidden_node_ids) {
+    if (h == 0) continue;
+    auto it = node_to_row_idx.find(h);
+    if (it != node_to_row_idx.end()) {
+      is_hidden[it->second] = true;
+    }
+  }
+
+  ctx.scratch_active_rows[0].reserve(rows.size());
+  for (size_t i = 0; i < rows.size(); i++) {
+    if (!is_hidden[i]) {
+      ctx.scratch_active_rows[0].push_back(static_cast<uint32_t>(i));
+    }
+  }
+
+  bool conflict = false;
+
+  for (unsigned int d = 0; d < prefix_node_ids.size(); d++) {
+    auto it = node_to_row_idx.find(prefix_node_ids[d]);
+    if (it == node_to_row_idx.end()) {
+      conflict = true;
+      break;
+    }
+    uint32_t r_idx = it->second;
+    const auto &cand = rows[r_idx];
+
+    // Check voxel conflict
+    if (!is_disjoint_scalar(ctx.placed_voxels, cand.voxel_mask)) {
+      conflict = true;
+      break;
+    }
+    // Check shape bound
+    if (ctx.col_weights[cand.shape_col] + 1 > columns[cand.shape_col].max_weight) {
+      conflict = true;
+      break;
+    }
+    // Check range bound
+    if (has_range && ctx.col_weights[range_column] + cand.range_weight > columns[range_column].max_weight) {
+      conflict = true;
+      break;
+    }
+
+    // Place candidate
+    ctx.placed_voxels = ctx.placed_voxels | cand.voxel_mask;
+    for (size_t i = 0; i < cand.columns.size(); i++) {
+      ctx.col_weights[cand.columns[i]] += cand.weights[i];
+    }
+    ctx.current_solution.push_back(cand.node_id);
+
+    bool shape_full = (ctx.col_weights[cand.shape_col] >= columns[cand.shape_col].max_weight);
+    unsigned int max_allowed_range = has_range ? (columns[range_column].max_weight - ctx.col_weights[range_column]) : 0;
+
+    auto &next_active = ctx.scratch_active_rows[d + 1];
+    next_active.clear();
+    filterRows(ctx.scratch_active_rows[d], r_idx, cand.voxel_mask, cand.shape_id, shape_full,
+               false, cand.shape_row_idx, has_range, max_allowed_range, next_active);
+  }
+
+  if (!conflict) {
+    search(prefix_node_ids.size(), ctx, callback, abort_flag, iterations);
+  }
+
+  uint64_t rem = ctx.local_iterations & 255;
+  if (rem > 0) {
+    iterations.fetch_add(rem, std::memory_order_relaxed);
+  }
+}
+
+void SimdHuangCover256::generateTasks(
+  unsigned int target_tasks,
+  std::vector<SubtreeTask> &tasks
+) const {
+  tasks.clear();
+  if (rows.empty() || active_column_list.empty())
+    return;
+
+  SearchContext root_ctx;
+  root_ctx.scratch_active_rows.resize(num_columns + 16);
+  root_ctx.current_solution.reserve(num_columns);
+  root_ctx.col_weights.assign(num_columns + 1, 0);
+  root_ctx.col_counts.assign(num_columns + 1, 0);
+
+  root_ctx.scratch_active_rows[0].resize(rows.size());
+  for (size_t i = 0; i < rows.size(); i++) {
+    root_ctx.scratch_active_rows[0][i] = static_cast<uint32_t>(i);
+  }
+
+  std::function<void(unsigned int, SearchContext&, unsigned int)> expand;
+  expand = [&](unsigned int depth, SearchContext &ctx, unsigned int max_depth) {
+    if (depth == max_depth) {
+      SubtreeTask t;
+      t.depth = depth;
+      t.ctx = ctx;
+      tasks.push_back(std::move(t));
+      return;
+    }
+
+    const auto &curr_active = ctx.scratch_active_rows[depth];
+    if (curr_active.empty())
+      return;
+
+    std::fill(ctx.col_counts.begin(), ctx.col_counts.end(), 0);
+    for (uint32_t r_idx : curr_active) {
+      const auto &r = rows[r_idx];
+      for (size_t i = 0; i < r.columns.size(); i++) {
+        ctx.col_counts[r.columns[i]] += r.weights[i];
+      }
+    }
+
+    for (unsigned int c : active_column_list) {
+      if (columns[c].min_weight > ctx.col_weights[c]) {
+        if (ctx.col_weights[c] + ctx.col_counts[c] < columns[c].min_weight)
+          return;
+      }
+      if (columns[c].is_voxel && columns[c].min_weight > 0 && !ctx.placed_voxels.test(c - 1)) {
+        if (ctx.col_counts[c] == 0)
+          return;
+      }
+    }
+
+    unsigned int min_metric = UINT32_MAX;
+    unsigned int best_col = UINT32_MAX;
+
+    for (unsigned int c : active_column_list) {
+      if (columns[c].is_hole)
+        continue;
+      if (ctx.col_weights[c] >= columns[c].min_weight)
+        continue;
+      if (columns[c].is_voxel && ctx.placed_voxels.test(c - 1))
+        continue;
+
+      unsigned int remaining_need = columns[c].min_weight - ctx.col_weights[c];
+      unsigned int count = ctx.col_counts[c];
+
+      if (count == 0)
+        return;
+
+      unsigned int metric = count * remaining_need;
+      if (metric < min_metric) {
+        min_metric = metric;
+        best_col = c;
+        if (metric <= 1)
+          break;
+      }
+    }
+
+    if (best_col == UINT32_MAX)
+      return;
+
+    if (depth + 1 >= ctx.scratch_active_rows.size()) {
+      ctx.scratch_active_rows.resize(depth + 16);
+    }
+
+    for (uint32_t r_idx : curr_active) {
+      const auto &cand = rows[r_idx];
+
+      bool covers_best = false;
+      for (unsigned int c : cand.columns) {
+        if (c == best_col) {
+          covers_best = true;
+          break;
+        }
+      }
+      if (!covers_best)
+        continue;
+
+      if (!is_disjoint_scalar(ctx.placed_voxels, cand.voxel_mask))
+        continue;
+      if (ctx.col_weights[cand.shape_col] + 1 > columns[cand.shape_col].max_weight)
+        continue;
+      if (has_range && ctx.col_weights[range_column] + cand.range_weight > columns[range_column].max_weight)
+        continue;
+
+      ctx.placed_voxels = ctx.placed_voxels | cand.voxel_mask;
+      for (size_t i = 0; i < cand.columns.size(); i++) {
+        ctx.col_weights[cand.columns[i]] += cand.weights[i];
+      }
+      ctx.current_solution.push_back(cand.node_id);
+
+      bool shape_full = (ctx.col_weights[cand.shape_col] >= columns[cand.shape_col].max_weight);
+      bool filter_monotonic = (!shape_full && columns[best_col].is_shape);
+      unsigned int max_allowed_range = has_range ? (columns[range_column].max_weight - ctx.col_weights[range_column]) : 0;
+
+      auto &next_active = ctx.scratch_active_rows[depth + 1];
+      next_active.clear();
+
+      filterRows(curr_active, r_idx, cand.voxel_mask, cand.shape_id, shape_full,
+                 filter_monotonic, cand.shape_row_idx, has_range, max_allowed_range, next_active);
+
+      expand(depth + 1, ctx, max_depth);
+
+      ctx.current_solution.pop_back();
+      for (size_t i = 0; i < cand.columns.size(); i++) {
+        ctx.col_weights[cand.columns[i]] -= cand.weights[i];
+      }
+      ctx.placed_voxels = ctx.placed_voxels ^ cand.voxel_mask;
+    }
+  };
+
+  expand(0, root_ctx, 1);
+  if (tasks.size() < target_tasks && !tasks.empty()) {
+    std::vector<SubtreeTask> d1_tasks = std::move(tasks);
+    tasks.clear();
+    for (auto &t : d1_tasks) {
+      expand(t.depth, t.ctx, 2);
+    }
+  }
+}
+
+void SimdHuangCover256::parallelSolve(
+  unsigned int num_workers,
+  SolutionCallback callback,
+  const std::atomic<bool> &abort_flag,
+  std::atomic<uint64_t> &iterations,
+  std::atomic<size_t> &total_tasks,
+  std::atomic<size_t> &completed_tasks
+) const {
+  unsigned int target_tasks = std::max(16u, num_workers * 4);
+  std::vector<SubtreeTask> tasks;
+  generateTasks(target_tasks, tasks);
+
+  total_tasks.store(tasks.size(), std::memory_order_relaxed);
+  completed_tasks.store(0, std::memory_order_relaxed);
+
+  if (tasks.empty() || abort_flag.load(std::memory_order_relaxed))
+    return;
+
+  std::atomic<size_t> next_task_idx{0};
+
+  auto worker_fn = [&]() {
+    while (!abort_flag.load(std::memory_order_relaxed)) {
+      size_t idx = next_task_idx.fetch_add(1, std::memory_order_relaxed);
+      if (idx >= tasks.size())
+        break;
+
+      auto &t = tasks[idx];
+      search(t.depth, t.ctx, callback, abort_flag, iterations);
+
+      uint64_t rem = t.ctx.local_iterations & 255;
+      if (rem > 0) {
+        iterations.fetch_add(rem, std::memory_order_relaxed);
+      }
+      completed_tasks.fetch_add(1, std::memory_order_relaxed);
+    }
+  };
+
+  std::vector<std::thread> threads;
+  threads.reserve(num_workers - 1);
+  for (unsigned int i = 1; i < num_workers; i++) {
+    threads.emplace_back(worker_fn);
+  }
+
+  worker_fn();
+
+  for (auto &th : threads) {
+    if (th.joinable())
+      th.join();
   }
 }
 
