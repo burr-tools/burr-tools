@@ -68,6 +68,7 @@ class movementAnalysator_c {
     std::vector<unsigned int> prevFill;
     disassemblerNode_c * prevSearch = nullptr;
     const std::vector<unsigned int> * prevPieces = nullptr;
+    uint64_t prevPiecesHash = 0;
     int prevN = 0;
     /* reusable dirty bitsets for the incremental closure: [d * n + idx] */
     std::vector<char> dirtyRows, dirtyCols;
@@ -85,8 +86,6 @@ class movementAnalysator_c {
     const std::vector<unsigned int> * pieces = nullptr;
 
     void prepare(void);
-    /* Full matrix fill followed by transitive closure from scratch */
-    void prepareFull(void);
     /* Query the movement cache for all pairwise piece movements */
     void prepareFill(void);
     /* Compute transitive closure of the movement matrix to fixpoint */

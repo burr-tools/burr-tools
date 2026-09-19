@@ -31,28 +31,37 @@
 
 #include <string.h>
 
+static uint64_t hashPieces(const std::vector<unsigned int> & p) {
+  uint64_t h = p.size();
+  for (unsigned int x : p)
+    h = h * 31 + x;
+  return h;
+}
+
 void movementAnalysator_c::prepare(void) {
 
   const unsigned int n = pieces->size();
+  const uint64_t pcsHash = hashPieces(*pieces);
 
   /* Incremental fast path: if the previous prepare() ran for our parent
    * node with the same piece subset, only pairs touching moved pieces
-   * can differ. prevSearch is refcounted, hence alive to prevent ABA. */
+   * can differ. prevSearch is refcounted, hence alive to prevent ABA.
+   * pcsHash and prevN guard against pointer reuse of pieces across different
+   * subproblem stack frames. */
   bool incremental = prevSearch && searchnode && searchnode->getComefrom() == prevSearch
-    && pieces == prevPieces && next_pn == prevN && n > 0;
+    && pieces == prevPieces && next_pn == prevN && pcsHash == prevPiecesHash && n > 0;
 
   std::vector<unsigned int> moved;
   if (incremental) {
     for (unsigned int i = 0; i < n; i++)
       if ((searchnode->getX(i) != prevSearch->getX(i)) ||
           (searchnode->getY(i) != prevSearch->getY(i)) ||
-          (searchnode->getZ(i) != prevSearch->getZ(i)))
+          (searchnode->getZ(i) != prevSearch->getZ(i)) ||
+          (searchnode->getTrans(i) != prevSearch->getTrans(i)))
         moved.push_back(i);
 
-    /* base = parent's post-FILL matrix (never the closed one: closure only
-     * decreases, so a closed base could never be repaired upward when a
-     * triple that relaxed it no longer holds) */
-    matrix = prevFill;
+    /* prepareIncremental updates prevFill in-place for touched pairs,
+     * copies it once to matrix, and applies dirty-worklist closure. */
     prepareIncremental(moved);
   } else {
     prepareFill();
@@ -71,17 +80,8 @@ void movementAnalysator_c::prepare(void) {
       prevSearch->incRefCount();
   }
   prevPieces = pieces;
+  prevPiecesHash = pcsHash;
   prevN = next_pn;
-}
-
-/**
- * this function fills the matrix with the movement values of
- * pairs of pieces
- * this is done using the movement cache
- */
-void movementAnalysator_c::prepareFull(void) {
-  prepareFill();
-  closureFull();
 }
 
 void movementAnalysator_c::prepareFill(void) {
@@ -244,13 +244,11 @@ void movementAnalysator_c::prepareIncremental(const std::vector<unsigned int> & 
                           searchnode->getZ(j) - searchnode->getZ(i),
                           searchnode->getTrans(i), searchnode->getTrans(j),
                           (*pieces)[i], (*pieces)[j],
-                          &matrix[((size_t)i + (size_t)j * piecenumber) * dirs]);
+                          &prevFill[((size_t)i + (size_t)j * piecenumber) * dirs]);
     }
   }
-  /* Snapshot the fill matrix before closure: subsequent incremental calls
-   * must start from fill values, never closed ones (closure only
-   * decreases distances and could never relax a stale-low base upward). */
-  prevFill = matrix;
+  /* Single copy from the updated fill snapshot to working matrix for closure */
+  matrix = prevFill;
 
   /* Dirty-worklist closure: the first sweep evaluates all triples (the base
    * is a fresh fill, not a fixpoint); subsequent sweeps only revisit rows
