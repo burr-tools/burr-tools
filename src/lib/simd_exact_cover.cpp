@@ -22,7 +22,8 @@
 
 #include <cstdlib>
 
-SimdExactCover256::SimdExactCover256(unsigned int cols, unsigned int pieces)
+template <typename BitsetType>
+SimdExactCover<BitsetType>::SimdExactCover(unsigned int cols, unsigned int pieces)
   : num_columns(cols), num_pieces(pieces)
 {
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
@@ -36,7 +37,18 @@ SimdExactCover256::SimdExactCover256(unsigned int cols, unsigned int pieces)
   }
 }
 
-void SimdExactCover256::setRequiredColumns(const SimdBitset256 &required) {
+template <typename BitsetType>
+void SimdExactCover<BitsetType>::setRequiredColumn(unsigned int col) {
+  if (col < sizeof(BitsetType) * 8) {
+    if (!required_columns.test(col)) {
+      required_columns.set(col);
+      active_column_list.push_back(col);
+    }
+  }
+}
+
+template <typename BitsetType>
+void SimdExactCover<BitsetType>::setRequiredColumns(const BitsetType &required) {
   required_columns = required;
   active_column_list.clear();
   for (unsigned int c = 0; c < num_columns; c++) {
@@ -46,13 +58,14 @@ void SimdExactCover256::setRequiredColumns(const SimdBitset256 &required) {
   }
 }
 
-uint32_t SimdExactCover256::addRow(unsigned int node_id, unsigned int piece_id, const std::vector<unsigned int> &cols) {
+template <typename BitsetType>
+uint32_t SimdExactCover<BitsetType>::addRow(unsigned int node_id, unsigned int piece_id, const std::vector<unsigned int> &cols) {
   Row r;
   r.node_id = node_id;
   r.piece_id = piece_id;
   r.columns = cols;
   for (unsigned int c : cols) {
-    if (c < 256) {
+    if (c < sizeof(BitsetType) * 8) {
       r.mask.set(c);
     }
   }
@@ -62,52 +75,96 @@ uint32_t SimdExactCover256::addRow(unsigned int node_id, unsigned int piece_id, 
   return idx;
 }
 
-void SimdExactCover256::registerNodeAlias(unsigned int node_id, uint32_t row_idx) {
+template <typename BitsetType>
+void SimdExactCover<BitsetType>::registerNodeAlias(unsigned int node_id, uint32_t row_idx) {
   node_to_row_idx[node_id] = row_idx;
 }
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
 #pragma GCC push_options
 #pragma GCC target("avx2")
-void SimdExactCover256::filterRowsAvx2(
+template <typename BitsetType>
+void SimdExactCover<BitsetType>::filterRowsAvx2(
   const std::vector<uint32_t> &src,
-  const SimdBitset256 &chosen_mask,
+  const BitsetType &chosen_mask,
   std::vector<uint32_t> &dst
 ) const {
-  __m256i va = _mm256_load_si256(reinterpret_cast<const __m256i*>(chosen_mask.words));
-  for (uint32_t idx : src) {
-    __m256i vb = _mm256_load_si256(reinterpret_cast<const __m256i*>(rows[idx].mask.words));
-    if (_mm256_testz_si256(va, vb)) {
-      dst.push_back(idx);
+  if constexpr (sizeof(BitsetType) == 32) {
+    __m256i va = _mm256_load_si256(reinterpret_cast<const __m256i*>(chosen_mask.words));
+    for (uint32_t idx : src) {
+      __m256i vb = _mm256_load_si256(reinterpret_cast<const __m256i*>(rows[idx].mask.words));
+      if (_mm256_testz_si256(va, vb)) {
+        dst.push_back(idx);
+      }
+    }
+  } else if constexpr (sizeof(BitsetType) == 64) {
+    __m256i va0 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&chosen_mask.words[0]));
+    __m256i va1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&chosen_mask.words[4]));
+    for (uint32_t idx : src) {
+      __m256i vb0 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&rows[idx].mask.words[0]));
+      if (!_mm256_testz_si256(va0, vb0))
+        continue;
+      __m256i vb1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&rows[idx].mask.words[4]));
+      if (_mm256_testz_si256(va1, vb1)) {
+        dst.push_back(idx);
+      }
     }
   }
 }
 #pragma GCC pop_options
 #elif defined(__aarch64__) || defined(__ARM_NEON)
-void SimdExactCover256::filterRowsNeon(
+template <typename BitsetType>
+void SimdExactCover<BitsetType>::filterRowsNeon(
   const std::vector<uint32_t> &src,
-  const SimdBitset256 &chosen_mask,
+  const BitsetType &chosen_mask,
   std::vector<uint32_t> &dst
 ) const {
-  uint64x2_t ca0 = vld1q_u64(&chosen_mask.words[0]);
-  uint64x2_t ca1 = vld1q_u64(&chosen_mask.words[2]);
-  for (uint32_t idx : src) {
-    const uint64_t *rw = rows[idx].mask.words;
-    uint64x2_t rb0 = vld1q_u64(&rw[0]);
-    uint64x2_t rb1 = vld1q_u64(&rw[2]);
-    uint64x2_t c0 = vandq_u64(ca0, rb0);
-    uint64x2_t c1 = vandq_u64(ca1, rb1);
-    uint64x2_t c = vorrq_u64(c0, c1);
-    if ((vgetq_lane_u64(c, 0) | vgetq_lane_u64(c, 1)) == 0) {
-      dst.push_back(idx);
+  if constexpr (sizeof(BitsetType) == 32) {
+    uint64x2_t ca0 = vld1q_u64(&chosen_mask.words[0]);
+    uint64x2_t ca1 = vld1q_u64(&chosen_mask.words[2]);
+    for (uint32_t idx : src) {
+      const uint64_t *rw = rows[idx].mask.words;
+      uint64x2_t rb0 = vld1q_u64(&rw[0]);
+      uint64x2_t rb1 = vld1q_u64(&rw[2]);
+      uint64x2_t c0 = vandq_u64(ca0, rb0);
+      uint64x2_t c1 = vandq_u64(ca1, rb1);
+      uint64x2_t c = vorrq_u64(c0, c1);
+      if ((vgetq_lane_u64(c, 0) | vgetq_lane_u64(c, 1)) == 0) {
+        dst.push_back(idx);
+      }
+    }
+  } else if constexpr (sizeof(BitsetType) == 64) {
+    uint64x2_t ca0 = vld1q_u64(&chosen_mask.words[0]);
+    uint64x2_t ca1 = vld1q_u64(&chosen_mask.words[2]);
+    uint64x2_t ca2 = vld1q_u64(&chosen_mask.words[4]);
+    uint64x2_t ca3 = vld1q_u64(&chosen_mask.words[6]);
+    for (uint32_t idx : src) {
+      const uint64_t *rw = rows[idx].mask.words;
+      uint64x2_t rb0 = vld1q_u64(&rw[0]);
+      uint64x2_t rb1 = vld1q_u64(&rw[2]);
+      uint64x2_t c0 = vandq_u64(ca0, rb0);
+      uint64x2_t c1 = vandq_u64(ca1, rb1);
+      uint64x2_t c_low = vorrq_u64(c0, c1);
+      if ((vgetq_lane_u64(c_low, 0) | vgetq_lane_u64(c_low, 1)) != 0) {
+        continue;
+      }
+      uint64x2_t rb2 = vld1q_u64(&rw[4]);
+      uint64x2_t rb3 = vld1q_u64(&rw[6]);
+      uint64x2_t c2 = vandq_u64(ca2, rb2);
+      uint64x2_t c3 = vandq_u64(ca3, rb3);
+      uint64x2_t c_high = vorrq_u64(c2, c3);
+      if ((vgetq_lane_u64(c_high, 0) | vgetq_lane_u64(c_high, 1)) == 0) {
+        dst.push_back(idx);
+      }
     }
   }
 }
 #endif
 
-void SimdExactCover256::filterRows(
+template <typename BitsetType>
+void SimdExactCover<BitsetType>::filterRows(
   const std::vector<uint32_t> &src,
-  const SimdBitset256 &chosen_mask,
+  const BitsetType &chosen_mask,
   std::vector<uint32_t> &dst
 ) const {
   if (dst.capacity() < src.size()) {
@@ -129,7 +186,8 @@ void SimdExactCover256::filterRows(
   }
 }
 
-void SimdExactCover256::solve(
+template <typename BitsetType>
+void SimdExactCover<BitsetType>::solve(
   SolutionCallback callback,
   const std::atomic<bool> &abort_flag,
   std::atomic<uint64_t> &iterations
@@ -147,7 +205,7 @@ void SimdExactCover256::solve(
     ctx.scratch_active_rows[0][i] = static_cast<uint32_t>(i);
   }
 
-  SimdBitset256 occupied;
+  BitsetType occupied;
   search(0, occupied, ctx, callback, abort_flag, iterations);
 
   uint64_t rem = ctx.local_iterations & 255;
@@ -156,7 +214,8 @@ void SimdExactCover256::solve(
   }
 }
 
-void SimdExactCover256::solveSubtree(
+template <typename BitsetType>
+void SimdExactCover<BitsetType>::solveSubtree(
   const std::vector<unsigned int> &prefix_node_ids,
   SolutionCallback callback,
   const std::atomic<bool> &abort_flag,
@@ -175,7 +234,7 @@ void SimdExactCover256::solveSubtree(
     ctx.scratch_active_rows[0][i] = static_cast<uint32_t>(i);
   }
 
-  SimdBitset256 occupied;
+  BitsetType occupied;
   bool conflict = false;
 
   for (unsigned int d = 0; d < prefix_node_ids.size(); d++) {
@@ -210,9 +269,10 @@ void SimdExactCover256::solveSubtree(
   }
 }
 
-void SimdExactCover256::search(
+template <typename BitsetType>
+void SimdExactCover<BitsetType>::search(
   unsigned int depth,
-  const SimdBitset256 &occupied,
+  const BitsetType &occupied,
   SearchContext &ctx,
   SolutionCallback &callback,
   const std::atomic<bool> &abort_flag,
@@ -290,3 +350,6 @@ void SimdExactCover256::search(
       return;
   }
 }
+
+template class SimdExactCover<SimdBitset256>;
+template class SimdExactCover<SimdBitset512>;

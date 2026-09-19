@@ -32,7 +32,7 @@
 
 class gridType_c;
 class mirrorInfo_c;
-class SimdExactCover256;
+class ISimdExactCover;
 
 /**
  * This is an assembler class.
@@ -134,7 +134,7 @@ private:
   void iterativeMultiSearch(void);
   bool canUseSimd(void) const;
   void simdSearch(void);
-  std::unique_ptr<SimdExactCover256> createSimdSolver(void) const;
+  std::unique_ptr<ISimdExactCover> createSimdSolver(void) const;
   std::unique_ptr<assembly_c> buildAssembly(const unsigned int *row_nodes, unsigned int count) const;
   void handleSolution(const unsigned int *row_nodes, unsigned int count);
 
