@@ -167,6 +167,10 @@ TEST_CASE("SimdBitset1024 operations", "[simd][bitset]") {
     REQUIRE(is_disjoint_avx2(b, disjoint_set));
     REQUIRE_FALSE(is_disjoint_avx2(b, target));
   }
+  if (__builtin_cpu_supports("avx512f")) {
+    REQUIRE(is_disjoint_avx512(b, disjoint_set));
+    REQUIRE_FALSE(is_disjoint_avx512(b, target));
+  }
 #endif
 }
 
@@ -205,6 +209,10 @@ TEST_CASE("SimdBitset2048 operations", "[simd][bitset]") {
   if (__builtin_cpu_supports("avx2")) {
     REQUIRE(is_disjoint_avx2(b, disjoint_set));
     REQUIRE_FALSE(is_disjoint_avx2(b, target));
+  }
+  if (__builtin_cpu_supports("avx512f")) {
+    REQUIRE(is_disjoint_avx512(b, disjoint_set));
+    REQUIRE_FALSE(is_disjoint_avx512(b, target));
   }
 #endif
 }

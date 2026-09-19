@@ -128,6 +128,42 @@ static bool simdDisabled() {
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
 #pragma GCC push_options
+#pragma GCC target("avx512f")
+static void rfw_avx512(unsigned int * block, unsigned int n) {
+  for (unsigned int k = 0; k < n; k++) {
+    const unsigned int * row_k = block + (size_t)k * n;
+    for (unsigned int y = 0; y < n; y++) {
+      if (y == k) continue;
+      unsigned int * row_y = block + (size_t)y * n;
+      unsigned int yk = row_y[k];
+      if (yk >= 30000) continue;
+
+      __m512i vyk = _mm512_set1_epi32(yk);
+      unsigned int x = 0;
+      for (; x + 16 <= n; x += 16) {
+        __m512i rk = _mm512_loadu_si512(reinterpret_cast<const void*>(row_k + x));
+        __m512i ry = _mm512_loadu_si512(reinterpret_cast<const void*>(row_y + x));
+        __m512i sum = _mm512_add_epi32(vyk, rk);
+        __m512i min_val = _mm512_min_epu32(ry, sum);
+        _mm512_storeu_si512(reinterpret_cast<void*>(row_y + x), min_val);
+      }
+      for (; x + 8 <= n; x += 8) {
+        __m256i rk = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(row_k + x));
+        __m256i ry = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(row_y + x));
+        __m256i sum = _mm256_add_epi32(_mm256_set1_epi32(yk), rk);
+        __m256i min_val = _mm256_min_epu32(ry, sum);
+        _mm256_storeu_si256(reinterpret_cast<__m256i*>(row_y + x), min_val);
+      }
+      for (; x < n; x++) {
+        unsigned int sum = yk + row_k[x];
+        if (sum < row_y[x]) row_y[x] = sum;
+      }
+    }
+  }
+}
+#pragma GCC pop_options
+
+#pragma GCC push_options
 #pragma GCC target("avx2")
 static void rfw_avx2(unsigned int * block, unsigned int n) {
   for (unsigned int k = 0; k < n; k++) {
@@ -260,6 +296,7 @@ void movementAnalysator_c::closureFull(void) {
   }
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  static const bool has_avx512 = __builtin_cpu_supports("avx512f") && !simdDisabled() && (std::getenv("BURRTOOLS_NO_AVX512") == nullptr);
   static const bool has_avx2 = __builtin_cpu_supports("avx2") && !simdDisabled();
 #endif
 
@@ -277,7 +314,9 @@ void movementAnalysator_c::closureFull(void) {
 
     // 2. Transitive closure on contiguous planar block
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-    if (has_avx2) {
+    if (has_avx512 && n >= 16) {
+      rfw_avx512(planar_block.data(), n);
+    } else if (has_avx2) {
       rfw_avx2(planar_block.data(), n);
     } else {
       rfw_scalar(planar_block.data(), n);

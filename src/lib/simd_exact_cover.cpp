@@ -28,12 +28,18 @@ SimdExactCover<BitsetType>::SimdExactCover(unsigned int cols, unsigned int piece
 {
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
   use_avx2 = __builtin_cpu_supports("avx2") != 0;
+  use_avx512 = __builtin_cpu_supports("avx512f") != 0;
 #else
   use_avx2 = false;
+  use_avx512 = false;
 #endif
 
   if (std::getenv("BURRTOOLS_NO_SIMD") || std::getenv("BURRTOOLS_NO_AVX2")) {
     use_avx2 = false;
+    use_avx512 = false;
+  }
+  if (std::getenv("BURRTOOLS_NO_AVX512")) {
+    use_avx512 = false;
   }
 }
 
@@ -81,6 +87,41 @@ void SimdExactCover<BitsetType>::registerNodeAlias(unsigned int node_id, uint32_
 }
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+#pragma GCC push_options
+#pragma GCC target("avx512f")
+template <typename BitsetType>
+void SimdExactCover<BitsetType>::filterRowsAvx512(
+  const std::vector<uint32_t> &src,
+  const BitsetType &chosen_mask,
+  std::vector<uint32_t> &dst
+) const {
+  if constexpr (sizeof(BitsetType) >= 64) {
+    constexpr size_t N_VEC = sizeof(BitsetType) / 64;
+    __m512i va[N_VEC];
+    for (size_t i = 0; i < N_VEC; ++i) {
+      va[i] = _mm512_load_si512(reinterpret_cast<const void*>(&chosen_mask.words[i * 8]));
+    }
+
+    for (uint32_t idx : src) {
+      const uint64_t *rw = rows[idx].mask.words;
+      bool disjoint = true;
+      for (size_t i = 0; i < N_VEC; ++i) {
+        __m512i vb = _mm512_load_si512(reinterpret_cast<const void*>(&rw[i * 8]));
+        if (_mm512_test_epi64_mask(va[i], vb) != 0) {
+          disjoint = false;
+          break;
+        }
+      }
+      if (disjoint) {
+        dst.push_back(idx);
+      }
+    }
+  } else {
+    filterRowsAvx2(src, chosen_mask, dst);
+  }
+}
+#pragma GCC pop_options
+
 #pragma GCC push_options
 #pragma GCC target("avx2")
 template <typename BitsetType>
@@ -152,6 +193,10 @@ void SimdExactCover<BitsetType>::filterRows(
     dst.reserve(src.size());
   }
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  if (use_avx512 && sizeof(BitsetType) >= 64) {
+    filterRowsAvx512(src, chosen_mask, dst);
+    return;
+  }
   if (use_avx2) {
     filterRowsAvx2(src, chosen_mask, dst);
     return;
@@ -160,6 +205,7 @@ void SimdExactCover<BitsetType>::filterRows(
   filterRowsNeon(src, chosen_mask, dst);
   return;
 #endif
+
   for (uint32_t idx : src) {
     if (is_disjoint_scalar(chosen_mask, rows[idx].mask)) {
       dst.push_back(idx);
