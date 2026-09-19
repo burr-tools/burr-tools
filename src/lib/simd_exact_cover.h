@@ -89,6 +89,13 @@ struct alignas(32) SimdBitset256 {
                          words[3] & other.words[3]);
   }
 
+  SimdBitset256 operator^(const SimdBitset256 &other) const {
+    return SimdBitset256(words[0] ^ other.words[0],
+                         words[1] ^ other.words[1],
+                         words[2] ^ other.words[2],
+                         words[3] ^ other.words[3]);
+  }
+
   bool operator==(const SimdBitset256 &other) const {
     return words[0] == other.words[0] &&
            words[1] == other.words[1] &&

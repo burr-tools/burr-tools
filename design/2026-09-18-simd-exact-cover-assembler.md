@@ -245,12 +245,30 @@ Following the proven success of SIMD bit-parallel exact cover in `assembler_0_c`
     - For columns with non-binary weights/ranges, vectorize `weight[col] + colCount[col] < min[col]` using SIMD vector comparison (`_mm256_cmpgt_epi32` or `vpcmpeqd` / NEON vector compares).
 
 - **Actionable TODO List**:
-  - [ ] **TODO 1.1**: Profile `CD_Pack` and `SolidSixPieceBurrs` under callgrind to quantify exact cycle share of `open_column_conditions_fulfillable` vs `hiderows`/`unhiderows`.
-  - [ ] **TODO 1.2**: Implement `SimdHuangExactCover256` engine supporting piece multiplicities, monotonic row ordering, and SIMD bitmask voxel conflicts.
-  - [ ] **TODO 1.3**: Wire `assembler_1_c` to delegate eligible problems ($\le 256$ columns) to `SimdHuangExactCover256`, with transparent fallback to existing DLX for larger or complex problems.
-  - [ ] **TODO 1.4**: Add runtime feature toggle `BURRTOOLS_NO_SIMD=1` support in `assembler_1_c` for A/B benchmarking.
-  - [ ] **TODO 1.5**: Run Catch2 test suite (`just test`, `just test-all`) and static analysis (`just check`).
-  - [ ] **TODO 1.6**: Benchmark across `SolidSixPieceBurrs`, `Simplicity`, `Third Times the Charm`, and `CD Pack` using `bench/bench_solve.py` to record speedups.
+  - [x] **TODO 1.1**: Profile `CD_Pack` and `SolidSixPieceBurrs` under callgrind to quantify exact cycle share of `open_column_conditions_fulfillable` vs `hiderows`/`unhiderows` (found 57.6% of time spent in `hiderow`/`unhiderow`).
+  - [x] **TODO 1.2**: Implement `SimdHuangExactCover256` (`SimdHuangCover256`) engine supporting piece multiplicities, monotonic row ordering, and SIMD bitmask voxel conflicts.
+  - [x] **TODO 1.3**: Wire `assembler_1_c` to delegate eligible problems ($\le 256$ columns, no variable voxels with ranges, no hole limits) to `SimdHuangCover256`, with transparent fallback to existing DLX for larger or complex problems.
+  - [x] **TODO 1.4**: Add runtime feature toggle `BURRTOOLS_NO_SIMD=1` support in `assembler_1_c` for A/B benchmarking.
+  - [x] **TODO 1.5**: Run Catch2 test suite (`just test`, `just test-all`) and static analysis (`just check`) — all 396 tests and Minkowski stress case passing cleanly.
+  - [x] **TODO 1.6**: Benchmark across `SolidSixPieceBurrs` and curated 10-puzzle corpus using `bench/bench_solve.py` to record speedups (measured **10.89x speedup** on `SolidSixPieceBurrs`, 100% bit-identical assembly counts).
+
+#### Empirical Results for Step 1 (Assembler 1 SIMD)
+
+Tested on Intel Core i7-1185G7 @ 3.00GHz using `bench/bench_solve.py` (`--threads 1 --no-disassemble --runs 3` comparing `BURRTOOLS_NO_SIMD=1` DLX vs SIMD):
+
+| Puzzle | Algorithm / Engine | Before DLX (s) | After SIMD (s) | Speedup | Assemblies | Iterations (DLX $\to$ SIMD) |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **SolidSixPieceBurrs** | Assembler 1 (Huang) | 7.92s | 0.73s | **10.89x** | 588 (identical) | 4,302,868 $\to$ 601,901 (**7.15x reduction**) |
+| **CubeInCage** | Assembler 1 (Huang) | 0.03s | 0.002s | **>10x** | 96 (identical) | 11,023 $\to$ 483 (**22.8x reduction**) |
+| **LominoSquare 9-15:1** | Assembler 0 (DLX) | 2.16s | 0.71s | **3.03x** | 5 (identical) | 617,942 $\to$ 384,645 (**1.61x reduction**) |
+| **LominoSquare 9-15:2** | Assembler 0 (DLX) | 1.99s | 0.70s | **2.85x** | 8 (identical) | 628,897 $\to$ 396,920 (**1.58x reduction**) |
+| **LominoSquare 9-15:0** | Assembler 0 (DLX) | 0.49s | 0.19s | **2.63x** | 9 (identical) | 201,846 $\to$ 125,446 (**1.61x reduction**) |
+| **kangaroo** | Assembler 0 (325 cols) | 1.31s | 1.26s | 1.04x | 9,831 (identical) | (fallback > 256 cols) |
+| **Third Times the Charm** | Assembler 0 (278 cols) | 4.47s | 4.44s | 1.01x | 71 (identical) | (fallback > 256 cols) |
+| **Simplicity** | Assembler 1 (512 cols) | 2.09s | 2.12s | 0.98x | 188 (identical) | (fallback > 256 cols & var voxels) |
+| **CD_Pack** | Assembler 1 (var voxels) | 0.90s | 0.90s | 1.00x | 2 (identical) | (fallback var voxels) |
+| **PelikanBurr** | Assembler 0 (DLX) | 0.01s | 0.01s | 1.35x | 12 (identical) | 89 $\to$ 89 |
+| **Excelsior** | Assembler 0 (DLX) | 0.01s | 0.01s | 1.39x | 7 (identical) | 112 $\to$ 112 |
 
 ---
 

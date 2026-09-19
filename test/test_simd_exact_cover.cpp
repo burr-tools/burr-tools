@@ -246,3 +246,50 @@ TEST_CASE("SimdExactCover256 concurrent solveSubtree", "[simd][exact_cover][thre
   REQUIRE(all_solutions[0] == std::vector<unsigned int>{1, 4, 5});
   REQUIRE(iterations.load() > 0);
 }
+
+#include "src/lib/simd_huang_cover.h"
+
+TEST_CASE("SimdHuangCover256 duplicate pieces exact cover", "[simd][huang]") {
+  // Shape 1 (col 1): 2 pieces required
+  // Shape 2 (col 2): 1 piece required
+  // Voxels (cols 3..7): 5 voxels, 1 required each
+  SimdHuangCover256 solver(7, 2);
+
+  // Column bounds
+  solver.setColumnBounds(1, 2, 2, false, true, false, false); // Shape 1
+  solver.setColumnBounds(2, 1, 1, false, true, false, false); // Shape 2
+  for (unsigned int v = 3; v <= 7; v++) {
+    solver.setColumnBounds(v, 1, 1, true, false, false, false); // Voxels 3..7
+  }
+
+  // Rows for Shape 1:
+  // Row 1: Shape 1, voxels 3, 4
+  solver.addRow(1, 0, 1, 0, 0, {1, 3, 4}, {1, 1, 1});
+  // Row 2: Shape 1, voxels 5, 6
+  solver.addRow(2, 0, 1, 1, 0, {1, 5, 6}, {1, 1, 1});
+  // Row 3: Shape 1, voxels 6, 7
+  solver.addRow(3, 0, 1, 2, 0, {1, 6, 7}, {1, 1, 1});
+
+  // Rows for Shape 2:
+  // Row 4: Shape 2, voxel 7
+  solver.addRow(4, 1, 2, 0, 0, {2, 7}, {1, 1});
+  // Row 5: Shape 2, voxel 5
+  solver.addRow(5, 1, 2, 1, 0, {2, 5}, {1, 1});
+
+  std::vector<std::vector<unsigned int>> solutions;
+  std::atomic<bool> abort_flag{false};
+  std::atomic<uint64_t> iterations{0};
+
+  solver.solve([&](const std::vector<unsigned int> &sol) {
+    std::vector<unsigned int> sorted = sol;
+    std::sort(sorted.begin(), sorted.end());
+    solutions.push_back(sorted);
+    return true;
+  }, abort_flag, iterations);
+
+  // Two distinct valid solutions: {1, 2, 4} and {1, 3, 5}
+  REQUIRE(solutions.size() == 2);
+  REQUIRE(solutions[0] == std::vector<unsigned int>{1, 2, 4});
+  REQUIRE(solutions[1] == std::vector<unsigned int>{1, 3, 5});
+  REQUIRE(iterations.load() > 0);
+}
