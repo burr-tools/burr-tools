@@ -75,6 +75,62 @@ TEST_CASE("SimdBitset256 operations", "[simd][bitset]") {
 #endif
 }
 
+TEST_CASE("SimdBitset512 operations", "[simd][bitset]") {
+  SimdBitset512 b;
+  REQUIRE(b.empty());
+
+  b.set(0);
+  b.set(63);
+  b.set(64);
+  b.set(127);
+  b.set(128);
+  b.set(191);
+  b.set(192);
+  b.set(255);
+  b.set(256);
+  b.set(383);
+  b.set(384);
+  b.set(511);
+
+  REQUIRE(b.test(0));
+  REQUIRE(b.test(63));
+  REQUIRE(b.test(64));
+  REQUIRE(b.test(127));
+  REQUIRE(b.test(128));
+  REQUIRE(b.test(191));
+  REQUIRE(b.test(192));
+  REQUIRE(b.test(255));
+  REQUIRE(b.test(256));
+  REQUIRE(b.test(383));
+  REQUIRE(b.test(384));
+  REQUIRE(b.test(511));
+
+  REQUIRE_FALSE(b.test(1));
+  REQUIRE_FALSE(b.test(62));
+  REQUIRE_FALSE(b.test(257));
+  REQUIRE_FALSE(b.test(500));
+
+  SimdBitset512 target;
+  target.set(0);
+  target.set(384);
+  REQUIRE(b.containsAll(target));
+
+  target.set(1);
+  REQUIRE_FALSE(b.containsAll(target));
+
+  SimdBitset512 disjoint_set;
+  disjoint_set.set(1);
+  disjoint_set.set(300);
+  REQUIRE(is_disjoint_scalar(b, disjoint_set));
+
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  if (__builtin_cpu_supports("avx2")) {
+    REQUIRE(is_disjoint_avx2(b, disjoint_set));
+    REQUIRE_FALSE(is_disjoint_avx2(b, target));
+  }
+#endif
+}
+
 TEST_CASE("SimdExactCover256 Knuth textbook example", "[simd][exact_cover]") {
   // Knuth's exact cover problem from TAOCP:
   // Items 0..6: {A, B, C, D, E, F, G}
@@ -160,6 +216,44 @@ TEST_CASE("SimdExactCover256 abort flag", "[simd][exact_cover]") {
   }, abort_flag, iterations);
 
   REQUIRE(solutions.empty());
+}
+
+TEST_CASE("SimdExactCover512 large column cover", "[simd][exact_cover]") {
+  // Problem with columns up to 400 (spanning across >256 bit boundary):
+  // 3 pieces, required columns: {50, 150, 270, 350, 400}
+  // Row 1: piece 0 -> {50, 270}
+  // Row 2: piece 1 -> {150}
+  // Row 3: piece 2 -> {350, 400}
+  // Row 4: piece 0 -> {50, 150} (conflict with row 2)
+
+  SimdExactCover512 solver(401, 3);
+  SimdBitset512 req;
+  req.set(50);
+  req.set(150);
+  req.set(270);
+  req.set(350);
+  req.set(400);
+  solver.setRequiredColumns(req);
+
+  solver.addRow(1, 0, {50, 270});
+  solver.addRow(2, 1, {150});
+  solver.addRow(3, 2, {350, 400});
+  solver.addRow(4, 0, {50, 150});
+
+  std::vector<std::vector<unsigned int>> solutions;
+  std::atomic<bool> abort_flag{false};
+  std::atomic<uint64_t> iterations{0};
+
+  solver.solve([&](const std::vector<unsigned int> &sol) {
+    std::vector<unsigned int> sorted = sol;
+    std::sort(sorted.begin(), sorted.end());
+    solutions.push_back(sorted);
+    return true;
+  }, abort_flag, iterations);
+
+  REQUIRE(solutions.size() == 1);
+  REQUIRE(solutions[0] == std::vector<unsigned int>{1, 2, 3});
+  REQUIRE(iterations.load() > 0);
 }
 
 TEST_CASE("SimdExactCover256 solveSubtree", "[simd][exact_cover]") {

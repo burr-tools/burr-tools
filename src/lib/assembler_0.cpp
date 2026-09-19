@@ -1878,25 +1878,28 @@ bool assembler_0_c::canUseSimd(void) const {
 
   int res_filled = getResultShape(problem)->countState(voxel_c::VX_FILLED);
   unsigned int max_col = piecenumber + res_filled;
-  if (max_col > 255)
+  if (max_col > 512)
     return false;
 
   return true;
 }
 
-std::unique_ptr<SimdExactCover256> assembler_0_c::createSimdSolver(void) const {
+std::unique_ptr<ISimdExactCover> assembler_0_c::createSimdSolver(void) const {
   int res_filled = getResultShape(problem)->countState(voxel_c::VX_FILLED);
   unsigned int max_col = piecenumber + res_filled;
 
-  auto solver = std::make_unique<SimdExactCover256>(max_col, piecenumber);
+  std::unique_ptr<ISimdExactCover> solver;
+  if (max_col <= 256) {
+    solver = std::make_unique<SimdExactCover256>(max_col, piecenumber);
+  } else {
+    solver = std::make_unique<SimdExactCover512>(max_col, piecenumber);
+  }
 
-  SimdBitset256 req;
   for (unsigned int c = right[0]; c != 0; c = right[c]) {
     if (c <= max_col) {
-      req.set(c - 1);
+      solver->setRequiredColumn(c - 1);
     }
   }
-  solver->setRequiredColumns(req);
 
   for (unsigned int p = 1; p <= piecenumber; p++) {
     for (unsigned int row = down(p); row != p; row = down(row)) {
