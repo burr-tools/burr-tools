@@ -42,6 +42,7 @@
 template <size_t N_WORDS>
 struct alignas(64) SimdBitset {
   static_assert(N_WORDS > 0 && (N_WORDS % 4 == 0), "N_WORDS must be a positive multiple of 4");
+  static constexpr size_t NUM_WORDS = N_WORDS;
   uint64_t words[N_WORDS];
 
   constexpr SimdBitset() : words{} {}

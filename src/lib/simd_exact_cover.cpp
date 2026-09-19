@@ -26,7 +26,7 @@ template <typename BitsetType>
 SimdExactCover<BitsetType>::SimdExactCover(unsigned int cols, unsigned int pieces)
   : num_columns(cols), num_pieces(pieces)
 {
-  bt_assert(num_columns <= sizeof(BitsetType) * 8);
+  bt_assert(num_columns <= BitsetType::NUM_WORDS * 64);
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
   use_avx2 = __builtin_cpu_supports("avx2") != 0;
@@ -52,7 +52,7 @@ SimdExactCover<BitsetType>::SimdExactCover(unsigned int cols, unsigned int piece
 template <typename BitsetType>
 void SimdExactCover<BitsetType>::setRequiredColumn(unsigned int col) {
   bt_assert(col < num_columns);
-  bt_assert(col < sizeof(BitsetType) * 8);
+  bt_assert(col < BitsetType::NUM_WORDS * 64);
   if (!required_columns.test(col)) {
     required_columns.set(col);
     active_column_list.push_back(col);
@@ -78,7 +78,7 @@ uint32_t SimdExactCover<BitsetType>::addRow(unsigned int node_id, unsigned int p
   r.columns = cols;
   for (unsigned int c : cols) {
     bt_assert(c < num_columns);
-    bt_assert(c < sizeof(BitsetType) * 8);
+    bt_assert(c < BitsetType::NUM_WORDS * 64);
     r.mask.set(c);
   }
   uint32_t idx = static_cast<uint32_t>(rows.size());
@@ -100,8 +100,8 @@ void SimdExactCover<BitsetType>::filterRowsAvx512(
   const BitsetType &chosen_mask,
   std::vector<uint32_t> &dst
 ) const {
-  if constexpr (sizeof(BitsetType) >= 64) {
-    constexpr size_t N_VEC = sizeof(BitsetType) / 64;
+  if constexpr (BitsetType::NUM_WORDS >= 8) {
+    constexpr size_t N_VEC = BitsetType::NUM_WORDS / 8;
     __m512i va[N_VEC];
     for (size_t i = 0; i < N_VEC; ++i) {
       va[i] = _mm512_load_si512(reinterpret_cast<const void*>(&chosen_mask.words[i * 8]));
@@ -133,7 +133,7 @@ void SimdExactCover<BitsetType>::filterRowsAvx2(
   const BitsetType &chosen_mask,
   std::vector<uint32_t> &dst
 ) const {
-  constexpr size_t N_VEC = sizeof(BitsetType) / 32;
+  constexpr size_t N_VEC = BitsetType::NUM_WORDS / 4;
   __m256i va[N_VEC];
   for (size_t i = 0; i < N_VEC; ++i) {
     va[i] = _mm256_load_si256(reinterpret_cast<const __m256i*>(&chosen_mask.words[i * 4]));
@@ -161,7 +161,7 @@ void SimdExactCover<BitsetType>::filterRowsNeon(
   const BitsetType &chosen_mask,
   std::vector<uint32_t> &dst
 ) const {
-  constexpr size_t N_VEC = sizeof(BitsetType) / 16;
+  constexpr size_t N_VEC = BitsetType::NUM_WORDS / 2;
   uint64x2_t va[N_VEC];
   for (size_t i = 0; i < N_VEC; ++i) {
     va[i] = vld1q_u64(&chosen_mask.words[i * 2]);
@@ -195,7 +195,7 @@ void SimdExactCover<BitsetType>::filterRows(
     dst.reserve(src.size());
   }
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-  if (use_avx512 && sizeof(BitsetType) >= 64) {
+  if (use_avx512 && BitsetType::NUM_WORDS >= 8) {
     filterRowsAvx512(src, chosen_mask, dst);
     return;
   }
