@@ -485,7 +485,7 @@ void SimdHuangCover256::parallelSolve(
   unsigned int num_workers,
   SolutionCallback callback,
   const std::atomic<bool> &abort_flag,
-  std::atomic<uint64_t> &iterations,
+  std::atomic<unsigned long> &iterations,
   std::atomic<size_t> &total_tasks,
   std::atomic<size_t> &completed_tasks
 ) const {
