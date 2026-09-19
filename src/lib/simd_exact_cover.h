@@ -140,6 +140,21 @@ inline bool is_disjoint_avx2(const SimdBitset<N_WORDS> &a, const SimdBitset<N_WO
   }
   return true;
 }
+template <size_t N_WORDS>
+__attribute__((target("avx512f")))
+inline bool is_disjoint_avx512(const SimdBitset<N_WORDS> &a, const SimdBitset<N_WORDS> &b) {
+  if constexpr (N_WORDS >= 8) {
+    constexpr size_t N_VEC = N_WORDS / 8;
+    for (size_t i = 0; i < N_VEC; ++i) {
+      __m512i va = _mm512_load_si512(reinterpret_cast<const void*>(&a.words[i * 8]));
+      __m512i vb = _mm512_load_si512(reinterpret_cast<const void*>(&b.words[i * 8]));
+      if (_mm512_test_epi64_mask(va, vb) != 0) return false;
+    }
+    return true;
+  } else {
+    return is_disjoint_avx2(a, b);
+  }
+}
 #endif
 
 #if defined(__aarch64__) || defined(__ARM_NEON)
@@ -232,6 +247,7 @@ private:
   std::vector<unsigned int> active_column_list;
   std::unordered_map<unsigned int, uint32_t> node_to_row_idx;
   bool use_avx2 = false;
+  bool use_avx512 = false;
 #if defined(__aarch64__) || defined(__ARM_NEON)
   bool use_neon = true;
 #endif
@@ -259,6 +275,11 @@ private:
   ) const;
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  void filterRowsAvx512(
+    const std::vector<uint32_t> &src,
+    const BitsetType &chosen_mask,
+    std::vector<uint32_t> &dst
+  ) const;
   void filterRowsAvx2(
     const std::vector<uint32_t> &src,
     const BitsetType &chosen_mask,
