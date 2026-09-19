@@ -97,6 +97,7 @@ libburr_src = [
   'src/lib/disassembler_a.cpp',
   'src/lib/disassemblerhashes.cpp',
   'src/lib/disassemblernode.cpp',
+  'src/lib/disassemblerpool.cpp',
   'src/lib/disassembly.cpp',
   'src/lib/cubemesh.cpp',
   'src/lib/cubepoly.cpp',
