@@ -30,6 +30,7 @@
 #include "gridtype.h"
 
 #include <string.h>
+#include <bit>
 
 void movementAnalysator_c::prepare(void) {
 
@@ -109,109 +110,82 @@ void movementAnalysator_c::prepareFill(void) {
 
 }
 
+static bool disasmOptDisabled() {
+  static const bool disabled = std::getenv("BURRTOOLS_NO_DISASM_OPT") != nullptr;
+  return disabled;
+}
+
 void movementAnalysator_c::closureFull(void) {
 
-  /* having a look at this algorithm in more detail
-   * it comes out that the first pass has lots to do, the 2nd pass
-   * is much cheaper (usually a few more corrections sometimes
-   * event zero) and then it finished
-   *
-   * so I change this: always look, if a change done leads to other necessary
-   * changes, and only if that is the case do another loop
-   */
+  const unsigned int n = pieces->size();
+  const unsigned int dirs = cache->numDirections();
+  const unsigned int rowStep = dirs * piecenumber;
 
-  /* second part of Bills algorithm. */
-
-  unsigned int dirs = cache->numDirections();
-  unsigned int rowStep = dirs*piecenumber;
-  unsigned int size = dirs*pieces->size();
-
-  bool again = false;
-
-  for (unsigned int d = 0; d < dirs; d++) {
-    do {
-      again = false;
-
-#if 0
-      // this is just for commentary reasons it show the same algorithm as below
-      // just a bit more understandable
-
-      for (unsigned int y = 0; y < pieces->size(); y++)
-        for (unsigned int x = 0; x < pieces->size(); x++) {
-          unsigned int min = matrix[x*dirs+d] + matrix[y*piecenumber*dirs+d];
-
-          for (unsigned int i = 1; i < pieces->size(); i++) {
-            unsigned int l = matrix[(x + i*piecenumber)*dirs+d] + matrix[(i + y*piecenumber)*dirs+d];
-            if (l < min) min = l;
-          }
-
-          if (min < matrix[(x + y*piecenumber)*dirs+d]) {
-            matrix[(x + y*piecenumber)*dirs+d] = min;
-            if (!again) {
-              for (unsigned int i = 0; i < y; i++)
-                if (min + matrix[(y + i*piecenumber)*dirs+d] < matrix[(x + i*piecenumber)*dirs+d]) {
-                  again = true;
-                  break;
-                }
-
-              if (!again)
-                for (unsigned int i = 0; i < x; i++)
-                  if (matrix[(i + x*piecenumber)*dirs+d] + min < matrix[(i + y*piecenumber)*dirs+d]) {
-                    again = true;
-                    break;
-                  }
+  if (disasmOptDisabled()) {
+    unsigned int size = dirs * pieces->size();
+    bool again = false;
+    for (unsigned int d = 0; d < dirs; d++) {
+      do {
+        again = false;
+        unsigned int * pos1 = matrix.data() + d;
+        unsigned int idx, i;
+        for (unsigned int y = 0; y < size; y += dirs) {
+          unsigned int * pos2 = matrix.data() + d;
+          for (unsigned int x = 0; x < size; x += dirs) {
+            unsigned int min = *pos2 + *pos1;
+            for (i = dirs, idx = rowStep; i < size; i += dirs, idx += rowStep) {
+              unsigned int l = pos2[idx] + pos1[i];
+              if (l < min) min = l;
             }
-          }
-        }
-#endif
-
-      unsigned int * pos1 = matrix.data() + d;           // y * piecenumber;
-      unsigned int idx, i;
-
-      for (unsigned int y = 0; y < size; y+=dirs) {
-        unsigned int * pos2 = matrix.data() + d;           // x
-
-        for (unsigned int x = 0; x < size; x+=dirs) {
-          unsigned int min = *pos2 + *pos1;
-
-          for (i = dirs, idx = rowStep; i < size; i+=dirs, idx += rowStep) {
-            unsigned int l = pos2[idx] + pos1[i];
-            if (l < min) min = l;
-          }
-
-          if (min < pos1[x]) {
-            pos1[x] = min;
-
-            if (!again) {
-
-              unsigned int * pos3 = matrix.data() + d;
-
-              for (i = 0; i < y; i+=dirs) {
-                if (min + pos3[y] < pos3[x]) {
-                  again = true;
-                  break;
-                }
-                pos3 += rowStep;
-              }
-
+            if (min < pos1[x]) {
+              pos1[x] = min;
               if (!again) {
-
-                pos3 = matrix.data() + d + piecenumber*x;
-
-                for (i = 0; i < x; i+=dirs)
-                  if (pos3[i] + min < pos1[i]) {
+                unsigned int * pos3 = matrix.data() + d;
+                for (i = 0; i < y; i += dirs) {
+                  if (min + pos3[y] < pos3[x]) {
                     again = true;
                     break;
                   }
+                  pos3 += rowStep;
+                }
+                if (!again) {
+                  pos3 = matrix.data() + d + piecenumber * x;
+                  for (i = 0; i < x; i += dirs)
+                    if (pos3[i] + min < pos1[i]) {
+                      again = true;
+                      break;
+                    }
+                }
               }
             }
+            pos2 += dirs;
           }
-          pos2+=dirs;
+          pos1 += rowStep;
         }
+      } while (again > 0);
+    }
+    return;
+  }
 
-        pos1 += rowStep;
+  /* Roy-Floyd-Warshall all-pairs shortest paths on movement constraints.
+   * By placing intermediate node k on the outside, the transitive closure
+   * is computed in a single pass of N steps without any repeat loop. */
+  for (unsigned int d = 0; d < dirs; d++) {
+    for (unsigned int k = 0; k < n; k++) {
+      const unsigned int * row_k = matrix.data() + (size_t)k * rowStep + d;
+      for (unsigned int y = 0; y < n; y++) {
+        if (y == k) continue;
+        unsigned int * row_y = matrix.data() + (size_t)y * rowStep + d;
+        unsigned int yk = row_y[k * dirs];
+        if (yk >= 30000) continue;
+        for (unsigned int x = 0; x < n; x++) {
+          unsigned int sum = yk + row_k[x * dirs];
+          if (sum < row_y[x * dirs]) {
+            row_y[x * dirs] = sum;
+          }
+        }
       }
-    } while (again > 0);
+    }
   }
 }
 
@@ -228,13 +202,7 @@ void movementAnalysator_c::prepareIncremental(const std::vector<unsigned int> & 
   for (unsigned int m : moved)
     isMoved[m] = 1;
 
-  if (dirtyRows.size() < (size_t)dirs * n || dirtyCols.size() < (size_t)dirs * n) {
-    dirtyRows.assign((size_t)dirs * n, 0);
-    dirtyCols.assign((size_t)dirs * n, 0);
-  } else {
-    std::fill(dirtyRows.begin(), dirtyRows.end(), 0);
-    std::fill(dirtyCols.begin(), dirtyCols.end(), 0);
-  }
+
 
   for (unsigned int j = 0; j < pieces->size(); j++) {
     for (unsigned int i = 0; i < pieces->size(); i++) {
@@ -252,43 +220,7 @@ void movementAnalysator_c::prepareIncremental(const std::vector<unsigned int> & 
    * decreases distances and could never relax a stale-low base upward). */
   prevFill = matrix;
 
-  /* Dirty-worklist closure: the first sweep evaluates all triples (the base
-   * is a fresh fill, not a fixpoint); subsequent sweeps only revisit rows
-   * and columns marked by relaxations. This converges to the same least
-   * fixpoint as full iterative relaxation. */
-  for (unsigned int d = 0; d < dirs; d++) {
-    /* at(a,b): movement of a relative to b in direction d, same layout
-     * and unsigned semantics as the full matrix */
-    auto at = [&](unsigned int a, unsigned int b) -> unsigned int & {
-      return matrix[((size_t)a + (size_t)b * piecenumber) * dirs + d];
-    };
-
-    bool changed = true;
-    /* first sweep evaluates everything (base is a fresh fill, not a
-     * fixpoint); later sweeps only revisit marked rows/columns */
-    bool first = true;
-    while (changed) {
-      changed = false;
-      for (unsigned int y = 0; y < n; y++)
-        for (unsigned int x = 0; x < n; x++) {
-          if (!first && !dirtyRows[(size_t)d * n + y] && !dirtyCols[(size_t)d * n + x])
-            continue;
-          unsigned int best = at(x, 0) + at(0, y);
-          for (unsigned int k = 1; k < n; k++) {
-            unsigned int l = at(x, k) + at(k, y);
-            if (l < best)
-              best = l;
-          }
-          if (best < at(x, y)) {
-            at(x, y) = best;
-            dirtyRows[(size_t)d * n + y] = 1;
-            dirtyCols[(size_t)d * n + x] = 1;
-            changed = true;
-          }
-        }
-      first = false;
-    }
-  }
+  closureFull();
 }
 
 /*
@@ -308,6 +240,67 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
 
   stats.checkCalls++;
 
+  unsigned int nd = nextdir >> 1;
+  unsigned int dirs = cache->numDirections();
+  bt_assert(nd < dirs);
+
+  if (!disasmOptDisabled() && next_pn <= 64) {
+    uint64_t moved_mask = 1ULL << nextpiece;
+    uint64_t check_mask = moved_mask;
+    unsigned int moved_count = 1;
+    uint64_t all_pieces_mask = (next_pn == 64) ? ~0ULL : ((1ULL << next_pn) - 1);
+    unsigned int rowIdx2 = piecenumber * dirs;
+
+    if (nextdir & 1) {
+      while (check_mask) {
+        int i = std::countr_zero(check_mask);
+        check_mask &= check_mask - 1;
+
+        const unsigned int * row = matrix.data() + nd + (size_t)piecenumber * i * dirs;
+        uint64_t candidates = all_pieces_mask & ~moved_mask;
+        while (candidates) {
+          int j = std::countr_zero(candidates);
+          candidates &= candidates - 1;
+
+          if (nextstep > row[j * dirs]) {
+            moved_mask |= (1ULL << j);
+            check_mask |= (1ULL << j);
+            moved_count++;
+            if (moved_count > maxPieces)
+              return false;
+          }
+        }
+      }
+    } else {
+      while (check_mask) {
+        int i = std::countr_zero(check_mask);
+        check_mask &= check_mask - 1;
+
+        const unsigned int * col = matrix.data() + nd + i * dirs;
+        uint64_t candidates = all_pieces_mask & ~moved_mask;
+        while (candidates) {
+          int j = std::countr_zero(candidates);
+          candidates &= candidates - 1;
+
+          if (nextstep > col[(size_t)j * rowIdx2]) {
+            moved_mask |= (1ULL << j);
+            check_mask |= (1ULL << j);
+            moved_count++;
+            if (moved_count > maxPieces)
+              return false;
+          }
+        }
+      }
+    }
+
+    for (int i = 0; i < next_pn; i++) {
+      movement[i] = (moved_mask & (1ULL << i)) ? nextstep : 0;
+    }
+
+    stats.checkSuccess++;
+    return true;
+  }
+
   /* we count the number of pieces that need to be moved, if this number
    * gets bigger than halve of the pieces of the current problem we
    * stop and return that this movement is rubbish
@@ -326,9 +319,6 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
   check[nextpiece] = true;
 
   bool finished;
-  unsigned int nd = nextdir >> 1;
-  unsigned int dirs = cache->numDirections();
-  bt_assert(nd < dirs);
   unsigned int rowIdx = (piecenumber-next_pn)*dirs;
   unsigned int rowIdx2 = piecenumber*dirs;
   unsigned int rowIdx3 = (piecenumber*next_pn-1)*dirs;
