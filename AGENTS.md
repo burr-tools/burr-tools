@@ -120,6 +120,8 @@ Solver engines support runtime feature toggles via environment variables to allo
 | :--- | :--- | :--- |
 | `BURRTOOLS_NO_SIMD=1` | Disables SIMD bit-parallel solver in `assembler_0_c`, forcing classical DLX. | Measure pure speedup of SIMD bit-parallel exact cover against Knuth DLX baseline. |
 | `BURRTOOLS_NO_AVX2=1` | Disables AVX2 vector instructions, using the portable 64-bit word scalar fallback. | Isolate the algorithmic gain (0-cost backtracking, cache locality) from CPU vector intrinsics. |
+| `BURRTOOLS_NO_AVX512=1` | Disables AVX-512 vector instructions, falling back to AVX2 / 64-bit scalar. | Measure AVX-512 speedup against AVX2 baseline. |
+| `BURRTOOLS_NO_DISASM_POOL=1` | Disables multi-threaded disassembly pool, running disassemblies synchronously. | Measure speedup and scaling of parallel disassembly pool against synchronous baseline. |
 | `BURRTOOLS_THREADS=N` | Forces solver to use $N$ worker threads (default: `hardware_concurrency`). | Measure thread scaling curves (e.g. 1, 2, 4, 8 cores). |
 
 ### Running an Interleaved A/B Benchmark

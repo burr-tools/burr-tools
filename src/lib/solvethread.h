@@ -23,6 +23,7 @@
 
 #include "assembler.h"
 #include "disassembler.h"
+#include "disassemblerpool.h"
 #include "bt_assert.h"
 #include "thread.h"
 
@@ -173,7 +174,7 @@ class solveThread_c : public assembler_cb, public thread_c {
 
 
 
-  std::unique_ptr<disassembler_c> disassm;
+  std::unique_ptr<disassemblerPool_c> disasm_pool;
 
   /* the worker publishes the assembler here once it is fully constructed so
    * that currentActionParameter(), called from the GUI thread, can query its
@@ -199,6 +200,8 @@ private:
 
   // the call-back
   bool assembly(std::unique_ptr<assembly_c> a) override;
+
+  void onDisassemblyResult(uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s);
 
 public:
 
