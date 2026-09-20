@@ -14,6 +14,7 @@
 #include "tools/xml.h"
 #include "tools/gzstream.h"
 
+#include <cstdlib>
 #include <sstream>
 #include <set>
 #include <memory>
@@ -954,14 +955,24 @@ public:
     const char * old = getenv(name);
     had_ = (old != nullptr);
     if (had_) old_ = old;
-    if (value) setenv(name, value, 1);
-    else unsetenv(name);
+    set(name, value);
   }
   ~ScopedEnv() {
-    if (had_) setenv(name_.c_str(), old_.c_str(), 1);
-    else unsetenv(name_.c_str());
+    set(name_.c_str(), had_ ? old_.c_str() : nullptr);
   }
 private:
+  /* setenv/unsetenv are POSIX; MinGW and MSVC have _putenv_s instead, where
+   * assigning an empty value is what removes the variable
+   */
+  static void set(const char * name, const char * value) {
+#ifdef WIN32
+    _putenv_s(name, value ? value : "");
+#else
+    if (value) setenv(name, value, 1);
+    else unsetenv(name);
+#endif
+  }
+
   std::string name_;
   std::string old_;
   bool had_;
