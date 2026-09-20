@@ -163,6 +163,7 @@ gui_src = [
   'src/gui/multilinewindow.cpp',
   'src/gui/piececolor.cpp',
   'src/gui/placementbrowser.cpp',
+  'src/gui/platform.cpp',
   'src/gui/resultviewer.cpp',
   'src/gui/separator.cpp',
   'src/gui/statusline.cpp',

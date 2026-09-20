@@ -23,6 +23,7 @@
 #include "mainwindow.h"
 #include "assertwindow.h"
 #include "mainmenu.h"
+#include "platform.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -74,12 +75,7 @@ int main(int argc, char ** argv) {
 
   bt_assert_init();
 
-  Fl::set_boxtype(FL_UP_BOX, FL_THIN_UP_BOX);
-  Fl::set_boxtype(FL_DOWN_BOX, FL_THIN_DOWN_BOX);
-  Fl::set_boxtype(FL_UP_FRAME, FL_THIN_UP_FRAME);
-  Fl::set_boxtype(FL_DOWN_FRAME, FL_THIN_DOWN_FRAME);
-
-  Fl::get_system_colors();
+  platform::applyLookAndFeel();
 
   mainWindow_c *ui = new mainWindow_c(new gridType_c());
 
