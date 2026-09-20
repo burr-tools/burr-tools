@@ -30,6 +30,38 @@ mkdir -p "${BUNDLE}/Contents/Resources"
 cp "${BUILD_DIR}/${EXECUTABLE}" "${BUNDLE}/Contents/MacOS/"
 chmod +x "${BUNDLE}/Contents/MacOS/${EXECUTABLE}"
 
+# Icons
+HAVE_APP_ICON=0
+HAVE_DOC_ICON=0
+if [ -f "mac/BurrTools.icns" ]; then
+	cp mac/BurrTools.icns "${BUNDLE}/Contents/Resources/"
+	HAVE_APP_ICON=1
+else
+	echo "warning: mac/BurrTools.icns missing; run scripts/make-macos-icons.sh" >&2
+fi
+if [ -f "mac/BurrToolsDoc.icns" ]; then
+	cp mac/BurrToolsDoc.icns "${BUNDLE}/Contents/Resources/"
+	HAVE_DOC_ICON=1
+else
+	echo "warning: mac/BurrToolsDoc.icns missing; run scripts/make-macos-icons.sh" >&2
+fi
+
+# CFBundleIconFile/CFBundleTypeIconFile are only meaningful when the icon
+# file actually exists in the bundle; a plist naming a missing icon is
+# worse than one naming none, so build these fragments conditionally.
+APP_ICON_KEYS=""
+if [ "$HAVE_APP_ICON" = "1" ]; then
+	APP_ICON_KEYS="	<key>CFBundleIconFile</key>
+	<string>BurrTools</string>
+"
+fi
+DOC_ICON_KEYS=""
+if [ "$HAVE_DOC_ICON" = "1" ]; then
+	DOC_ICON_KEYS="			<key>CFBundleTypeIconFile</key>
+			<string>BurrToolsDoc</string>
+"
+fi
+
 # Create Info.plist
 cat > "${BUNDLE}/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -44,6 +76,8 @@ cat > "${BUNDLE}/Contents/Info.plist" << EOF
 	<string>${APP_NAME}</string>
 	<key>CFBundleDisplayName</key>
 	<string>${APP_NAME}</string>
+${APP_ICON_KEYS}	<key>NSRequiresAquaSystemAppearance</key>
+	<true/>
 	<key>CFBundleVersion</key>
 	<string>${VERSION}</string>
 	<key>CFBundleShortVersionString</key>
@@ -69,7 +103,7 @@ cat > "${BUNDLE}/Contents/Info.plist" << EOF
 			</array>
 			<key>CFBundleTypeName</key>
 			<string>BurrTools Puzzle File</string>
-			<key>CFBundleTypeRole</key>
+${DOC_ICON_KEYS}			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
