@@ -8,10 +8,10 @@ A/B mode (interleaved, shared core, for before/after comparisons):
     bench/bench_solve.py --ab old/burrTxt new/burrTxt [--runs 8] [--cpu 7] [puzzle ...]
 
 If no puzzles are given, a built-in corpus of example + BTFiles puzzles is
-used (BTFiles lives in puzzles/, which is gitignored). All runs use
-`burrTxt -d -q -o 0` (assemble problem 0 and disassemble). Stats lines
-(assemblies/solutions/iterations) are captured so correctness can be checked
-alongside speed. Not wired into meson/CI; scratch tooling.
+used (BTFiles lives in puzzles/, which is gitignored). Runs assemble
+problem 0 and, unless --no-disassemble is given, disassemble (`-d`).
+Stats lines (assemblies/solutions/iterations) are captured so correctness
+can be checked alongside speed. Not wired into meson/CI; scratch tooling.
 """
 import argparse
 import subprocess
@@ -32,7 +32,7 @@ CORPUS = [
 def run_once(cmd, puzzle):
     t0 = time.monotonic()
     p = subprocess.run(
-        cmd + ["-d", "-q", "-o", "0", puzzle],
+        cmd + ["-q", "-o", "0", puzzle],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     )
     el = time.monotonic() - t0
@@ -49,11 +49,16 @@ def main():
                     help="two burrTxt binaries for interleaved A/B mode")
     ap.add_argument("--runs", type=int, default=5)
     ap.add_argument("--cpu", default=None, help="pin runs via taskset -c CPU")
+    ap.add_argument("--no-disassemble", action="store_true",
+                    help="assemble only (omit -d): measures the assembler share")
     ap.add_argument("puzzles", nargs="*", default=CORPUS)
     args = ap.parse_args()
 
     def cmd(binary):
-        return (["taskset", "-c", args.cpu] if args.cpu else []) + [binary]
+        c = (["taskset", "-c", args.cpu] if args.cpu else []) + [binary]
+        if not args.no_disassemble:
+            c = c + ["-d"]
+        return c
 
     print("tag,puzzle,run,elapsed_s,exit,stats", flush=True)
     if args.ab:

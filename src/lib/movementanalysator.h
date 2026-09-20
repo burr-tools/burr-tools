@@ -61,6 +61,18 @@ class movementAnalysator_c {
     std::vector<char> check;
     unsigned int piecenumber;
 
+    /* Cached input/output of the previous prepare() call for the incremental
+     * fast path. prevSearch is refcounted (see prepare): the compared node
+     * stays alive to prevent ABA pointer aliasing. All state is per-instance,
+     * so multiple analysators can run concurrently without shared mutation. */
+    std::vector<unsigned int> prevFill;
+    disassemblerNode_c * prevSearch = nullptr;
+    const std::vector<unsigned int> * prevPieces = nullptr;
+    uint64_t prevPiecesHash = 0;
+    int prevN = 0;
+    /* reusable dirty bitsets for the incremental closure: [d * n + idx] */
+    std::vector<char> dirtyRows, dirtyCols;
+
     std::unique_ptr<countingNodeHash> nodes;
 
     /* these variables are used for the routine that looks
@@ -74,9 +86,35 @@ class movementAnalysator_c {
     const std::vector<unsigned int> * pieces = nullptr;
 
     void prepare(void);
+    /* Query the movement cache for all pairwise piece movements */
+    void prepareFill(void);
+    /* Compute transitive closure of the movement matrix to fixpoint */
+    void closureFull(void);
+    /* Incremental update: reuse previous matrix, recompute pairs touching
+     * the moved pieces, and propagate relaxations via dirty worklist */
+    void prepareIncremental(const std::vector<unsigned int> & moved);
     bool checkmovement(unsigned int maxPieces, unsigned int nextstep);
     disassemblerNode_c * newNode(unsigned int amount);
     disassemblerNode_c * newNodeMerge(const disassemblerNode_c *n0, const disassemblerNode_c *n1);
+
+  public:
+
+    /**
+     * Instrumentation counters for the move search.
+     *
+     * Cumulative since construction or the last resetStats() call, across
+     * all uses (find/findMatching/completeFind). Behavior-neutral:
+     * nothing in the search reads these.
+     */
+    struct stats_s {
+      unsigned long checkCalls = 0;    ///< checkmovement() invocations
+      unsigned long checkSuccess = 0;  ///< ... that admitted a move
+      unsigned long nodesReturned = 0; ///< nodes handed out via find()
+    };
+
+  private:
+
+    stats_s stats;
 
   public:
 
@@ -107,6 +145,12 @@ class movementAnalysator_c {
      * just as completeFind this is complete with init_find, so nothing else needs to be called
      */
     disassemblerNode_c * findMatching(disassemblerNode_c * nd, const std::vector<unsigned int> & pcs, unsigned int piece, int dx, int dy, int dz);
+
+    /** current instrumentation counters (see stats_s) */
+    const stats_s & getStats(void) const { return stats; }
+
+    /** zero all instrumentation counters */
+    void resetStats(void) { stats = stats_s(); }
 
   private:
 

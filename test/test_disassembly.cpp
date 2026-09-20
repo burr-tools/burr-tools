@@ -16,6 +16,7 @@
 #include "lib/movementcache.h"
 #include "lib/movementcache_0.h"
 #include "lib/movementcache_1.h"
+#include "lib/movementanalysator.h"
 #include "lib/solution.h"
 #include "tools/xml.h"
 #include "tools/gzstream.h"
@@ -1343,6 +1344,132 @@ TEST_CASE("movement cache: grid types without an implementation yield no cache a
     std::unique_ptr<movementCache_c> cache(gt.getMovementCache(problem));
     CHECK(cache == nullptr);
   }
+}
+
+TEST_CASE("movement analysator: stats count the move search", "[disasm][movement][stats]") {
+  /* Instrumentation smoke test: the counters must track the search they
+     observe, without asserting any exact search size (search order and size
+     may vary under valid search heuristic adjustments). CubeInCage problem 0
+     ships a saved solution, so the root node comes from repo data with no
+     solve involved. Declaration order matters (see the rule at the top of
+     this file): root outlives analys, whose table holds nodes that
+     reference root. */
+  problem_c & problem = cubeInCageProblem();
+  REQUIRE(problem.getNumberOfSavedSolutions() > 0);
+  const assembly_c * assm = problem.getSavedSolution(0)->getAssembly();
+  REQUIRE(assm != nullptr);
+
+  disassemblerNode_c root(assm);
+
+  std::vector<unsigned int> pieces;
+  for (unsigned int j = 0; j < assm->placementCount(); j++)
+    if (assm->isPlaced(j))
+      pieces.push_back(j);
+  REQUIRE(pieces.size() > 1);
+
+  movementAnalysator_c analys(problem);
+
+  CHECK(analys.getStats().checkCalls == 0);
+  CHECK(analys.getStats().checkSuccess == 0);
+  CHECK(analys.getStats().nodesReturned == 0);
+
+  analys.init_find(&root, pieces);
+
+  unsigned int returned = 0;
+  while (disassemblerNode_c * n = analys.find()) {
+    returned++;
+    /* find() hands out a refcounted reference (the analysator's table
+       holds one too): release ours the same way disassemble_rec does */
+    if (n->decRefCount())
+      delete n;
+  }
+  REQUIRE(returned > 0);
+
+  CHECK(analys.getStats().nodesReturned == returned);
+  CHECK(analys.getStats().checkCalls > 0);
+  CHECK(analys.getStats().checkSuccess > 0);
+  CHECK(analys.getStats().checkSuccess <= analys.getStats().checkCalls);
+
+  analys.resetStats();
+  CHECK(analys.getStats().checkCalls == 0);
+  CHECK(analys.getStats().checkSuccess == 0);
+  CHECK(analys.getStats().nodesReturned == 0);
+}
+
+TEST_CASE("movement analysator: incremental prepare matches full prepare", "[disasm][movement][incremental]") {
+  /* Differential cross-check:
+     1. Build a root node from CubeInCage problem 0.
+     2. Drive analysator A with root to get a real child node (which has comefrom == root).
+     3. Drive analysator A with child -> takes the fast incremental path (searchnode->getComefrom() == prevSearch).
+     4. Drive a fresh analysator B with child -> takes the full path from scratch.
+     5. Assert both analysators produce identical successor node sets. */
+  problem_c & problem = cubeInCageProblem();
+  REQUIRE(problem.getNumberOfSavedSolutions() > 0);
+  const assembly_c * assm = problem.getSavedSolution(0)->getAssembly();
+  REQUIRE(assm != nullptr);
+
+  disassemblerNode_c root(assm);
+
+  std::vector<unsigned int> pieces;
+  for (unsigned int j = 0; j < assm->placementCount(); j++)
+    if (assm->isPlaced(j))
+      pieces.push_back(j);
+  REQUIRE(pieces.size() > 1);
+
+  movementAnalysator_c analysA(problem);
+  analysA.init_find(&root, pieces);
+
+  disassemblerNode_c * child = nullptr;
+  while (disassemblerNode_c * n = analysA.find()) {
+    if (!child) {
+      child = n; // keep refcount incremented
+    } else {
+      if (n->decRefCount())
+        delete n;
+    }
+  }
+  REQUIRE(child != nullptr);
+  REQUIRE(child->getComefrom() == &root);
+
+  // Now run child on analysA (incremental path)
+  analysA.init_find(child, pieces);
+  std::vector<disassemblerNode_c *> successorsA;
+  while (disassemblerNode_c * n = analysA.find()) {
+    successorsA.push_back(n);
+  }
+
+  // Now run child on fresh analysB (full path from scratch)
+  movementAnalysator_c analysB(problem);
+  analysB.init_find(child, pieces);
+  std::vector<disassemblerNode_c *> successorsB;
+  while (disassemblerNode_c * n = analysB.find()) {
+    successorsB.push_back(n);
+  }
+
+  CHECK(successorsA.size() == successorsB.size());
+  REQUIRE(successorsA.size() > 0);
+
+  for (size_t i = 0; i < successorsA.size(); i++) {
+    bool found = false;
+    for (size_t j = 0; j < successorsB.size(); j++) {
+      if (*successorsA[i] == *successorsB[j]) {
+        found = true;
+        break;
+      }
+    }
+    CHECK(found);
+  }
+
+  for (auto * n : successorsA) {
+    if (n->decRefCount())
+      delete n;
+  }
+  for (auto * n : successorsB) {
+    if (n->decRefCount())
+      delete n;
+  }
+  if (child->decRefCount())
+    delete child;
 }
 
 TEST_CASE("Prisgon problem 1 branching separation tree: getPieceNumber()/getPieceName() account for every piece -- including at a branch", "[disasm][separation]") {
