@@ -776,7 +776,7 @@ On non-Apple builds `activeTable()` *is* `menu_Portable`, so this degenerates to
 
 - [ ] **Step 6: Construct the right menu bar class in `mainwindow.cpp`**
 
-`LFl_Menu_Bar` derives from `Fl_Menu_Bar` (`Layouter.h:510`). The macOS build needs an `Fl_Sys_Menu_Bar`, which is *not* in that hierarchy, so add a parallel layoutable class in `Layouter.h` next to `LFl_Menu_Bar`:
+`LFl_Menu_Bar` derives from `Fl_Menu_Bar` (`Layouter.h:510`). `Fl_Sys_Menu_Bar` does derive publicly from `Fl_Menu_Bar` (`FL/Fl_Sys_Menu_Bar.H:96`), but `LFl_Sys_Menu_Bar` cannot derive from `LFl_Menu_Bar`: that would inherit `Fl_Menu_Bar` twice and put a diamond on it. So add a parallel layoutable class in `Layouter.h` next to `LFl_Menu_Bar`:
 
 ```cpp
 #ifdef __APPLE__

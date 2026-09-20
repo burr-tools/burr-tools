@@ -2324,6 +2324,38 @@ const char * timeToString(float time) {
   return tmp;
 }
 
+// Find an item in a LIVE menu array by callback. Indices into the live array
+// are not the same as indices into our static table: FLTK inserts its own
+// Window entry into the live array at first show(), which shifts everything
+// after it.
+static int liveMenuIndex(const Fl_Menu_ * m, Fl_Callback * cb) {
+  const Fl_Menu_Item * items = m->menu();
+  if (!items) return -1;
+  for (int i = 0; i < m->size(); i++)
+    if (items[i].callback() == cb) return i;
+  return -1;
+}
+
+// Set or clear FL_MENU_INACTIVE on one entry of a live menu array, leaving
+// every other flag on that entry untouched.
+//
+// Deliberately takes an Fl_Menu_ *, not an Fl_Menu_Bar * or Fl_Sys_Menu_Bar *:
+// Fl_Sys_Menu_Bar hides mode(int,int) with its own non-virtual overload, and
+// both mode() accessors used here are non-virtual, so which one gets called
+// is decided purely by the static type of the pointer. Going through an
+// Fl_Menu_ * guarantees Fl_Menu_::mode(int,int), which only edits the array
+// -- it does not touch the visible system menu. The caller must still call
+// the (virtual) update() afterwards to push the array to the screen.
+static void setLiveMenuActive(Fl_Menu_ * m, int index, bool active) {
+  if (index < 0) return;
+  int flags = m->mode(index);
+  if (active)
+    flags &= ~FL_MENU_INACTIVE;
+  else
+    flags |= FL_MENU_INACTIVE;
+  m->mode(index, flags);
+}
+
 void mainWindow_c::updateInterface(void) {
 
   // update the menu items activate state
@@ -2335,17 +2367,17 @@ void mainWindow_c::updateInterface(void) {
 
   if (exportActive != menuExportActive || stlActive != menuSTLActive) {
 
-    if (exportActive)
-      mainmenu::mutableTable()[mainmenu::findEntry(cb_ImageExport_stub)].activate();
-    else
-      mainmenu::mutableTable()[mainmenu::findEntry(cb_ImageExport_stub)].deactivate();
+    /* Flip the flags in MainMenu's own LIVE array rather than re-copying our
+     * static table over it. On macOS, FLTK inserts a "Window" item straight
+     * into that live array the first time a window is shown
+     * (Fl_Sys_Menu_Bar::create_window_menu(), called once from
+     * Fl_Cocoa_Window_Driver::makeWindow()), and never re-adds it once
+     * installed. A copy() here would silently discard that entry -- and
+     * with it Cmd-M and the window list -- for the rest of the process.
+     */
+    setLiveMenuActive(MainMenu, liveMenuIndex(MainMenu, cb_ImageExport_stub), exportActive);
+    setLiveMenuActive(MainMenu, liveMenuIndex(MainMenu, cb_STLExport_stub), stlActive);
 
-    if (stlActive)
-      mainmenu::mutableTable()[mainmenu::findEntry(cb_STLExport_stub)].activate();
-    else
-      mainmenu::mutableTable()[mainmenu::findEntry(cb_STLExport_stub)].deactivate();
-
-    MainMenu->copy(mainmenu::table(), this);
     MainMenu->update();
 
     menuExportActive = exportActive;

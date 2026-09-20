@@ -97,7 +97,7 @@ namespace {
     { "&View",             0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
       {"Toggle 3D",        FL_COMMAND + '3', cb_Toggle3D_stub, 0, 0, 0, 0, 14, 56},
       { },
-    { "&Help",             0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
+    { "Help",              0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
       {"BurrTools User Guide", FL_COMMAND + '?', cb_Help_stub, 0, 0, 0, 0, 14, 56},
       { },
     { }
@@ -224,7 +224,7 @@ void mainmenu::installApplicationMenu(mainWindow_c * win) {
 
   Fl_Mac_App_Menu::custom_application_menu_items(appItems);
 
-  /* Gives us Minimize, Zoom and the window list for free. */
+  /* Gives us Minimize and the window list for free. There is no Zoom. */
   Fl_Sys_Menu_Bar::window_menu_style(Fl_Sys_Menu_Bar::tabbing_mode_none);
 
   Fl_Group::current(savedCurrent);

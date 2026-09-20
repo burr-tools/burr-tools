@@ -50,6 +50,7 @@
 #include <FL/Fl_Menu_Bar.H>
 #include <FL/Fl_Scroll.H>
 #include <FL/Fl_Progress.H>
+#include <FL/Fl_Sys_Menu_Bar.H>
 
 #pragma GCC diagnostic pop
 
@@ -520,7 +521,6 @@ class LFl_Menu_Bar : public Fl_Menu_Bar, public layoutable_c {
 };
 
 #ifdef __APPLE__
-#include <FL/Fl_Sys_Menu_Bar.H>
 class LFl_Sys_Menu_Bar : public Fl_Sys_Menu_Bar, public layoutable_c {
   public:
     LFl_Sys_Menu_Bar(int x, int y, int w, int h)
