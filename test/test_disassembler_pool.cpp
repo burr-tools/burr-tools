@@ -258,3 +258,139 @@ TEST_CASE("disassembler pool: exception in callback propagates cleanly to finish
 
   CHECK_THROWS_AS(pool.finish(), std::runtime_error);
 }
+
+TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, progress, and continue", "[disasm][pool][solvethread]") {
+  SECTION("assembler 0 pause during search, poll progress, and continue to completion") {
+    auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+    REQUIRE(p != nullptr);
+    problem_c * problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+    problem->removeAllSolutions();
+
+    int par = solveThread_c::PAR_DISASSM |
+              solveThread_c::PAR_KEEP_ROTATIONS |
+              solveThread_c::PAR_KEEP_MIRROR;
+
+    unsigned long first_phase_assemblies = 0;
+    {
+      solveThread_c st1(*problem, par);
+      REQUIRE(st1.start(false));
+
+      // Poll metrics during execution and pause as soon as work has begun
+      while (st1.isRunning()) {
+        unsigned int act = st1.currentAction();
+        st1.currentActionParameter();
+        st1.getTime();
+
+        if (act == solveThread_c::ACT_ASSEMBLING ||
+            act == solveThread_c::ACT_DISASSEMBLING ||
+            (problem->numAssembliesKnown() && problem->getNumAssemblies() > 0)) {
+          st1.stop();
+          break;
+        }
+        std::this_thread::yield();
+      }
+
+      while (st1.isRunning()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+
+      CHECK(st1.stopped());
+      unsigned int final_act1 = st1.currentAction();
+      CHECK((final_act1 == solveThread_c::ACT_PAUSING || final_act1 == solveThread_c::ACT_FINISHED));
+      if (problem->numAssembliesKnown()) {
+        first_phase_assemblies = problem->getNumAssemblies();
+      }
+    }
+
+    // If it paused before finding all assemblies, continue to completion
+    if (first_phase_assemblies < 12) {
+      CHECK(problem->getSolveState() == SS_SOLVING);
+
+      solveThread_c st2(*problem, par);
+      REQUIRE(st2.start(false));
+
+      while (st2.isRunning()) {
+        st2.currentAction();
+        st2.currentActionParameter();
+        st2.getTime();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+
+      CHECK(st2.stopped());
+      CHECK(st2.currentAction() == solveThread_c::ACT_FINISHED);
+      CHECK(problem->getSolveState() == SS_SOLVED);
+      CHECK(problem->getNumAssemblies() == 12);
+      CHECK(problem->getNumSolutions() == 1);
+    } else {
+      CHECK(problem->getSolveState() == SS_SOLVED);
+      CHECK(first_phase_assemblies == 12);
+      CHECK(problem->getNumSolutions() == 1);
+    }
+  }
+
+  SECTION("assembler 1 pause during search, poll progress, and continue to completion") {
+    auto p = loadPuzzle("examples/CubeInCage.xmpuzzle");
+    REQUIRE(p != nullptr);
+    problem_c * problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+    problem->removeAllSolutions();
+
+    int par = solveThread_c::PAR_KEEP_ROTATIONS |
+              solveThread_c::PAR_KEEP_MIRROR;
+
+    unsigned long first_phase_assemblies = 0;
+    {
+      solveThread_c st1(*problem, par);
+      REQUIRE(st1.start(false));
+
+      while (st1.isRunning()) {
+        unsigned int act = st1.currentAction();
+        st1.currentActionParameter();
+        st1.getTime();
+
+        if (act == solveThread_c::ACT_ASSEMBLING ||
+            (problem->numAssembliesKnown() && problem->getNumAssemblies() > 0)) {
+          st1.stop();
+          break;
+        }
+        std::this_thread::yield();
+      }
+
+      while (st1.isRunning()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+
+      CHECK(st1.stopped());
+      unsigned int final_act1 = st1.currentAction();
+      CHECK((final_act1 == solveThread_c::ACT_PAUSING || final_act1 == solveThread_c::ACT_FINISHED));
+      if (problem->numAssembliesKnown()) {
+        first_phase_assemblies = problem->getNumAssemblies();
+      }
+    }
+
+    // If it paused before finding all assemblies, continue to completion
+    if (first_phase_assemblies < 96) {
+      CHECK(problem->getSolveState() == SS_SOLVING);
+
+      solveThread_c st2(*problem, par);
+      REQUIRE(st2.start(false));
+
+      while (st2.isRunning()) {
+        st2.currentAction();
+        st2.currentActionParameter();
+        st2.getTime();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+
+      CHECK(st2.stopped());
+      CHECK(st2.currentAction() == solveThread_c::ACT_FINISHED);
+      CHECK(problem->getSolveState() == SS_SOLVED);
+      CHECK(problem->getNumAssemblies() == 96);
+    } else {
+      CHECK(problem->getSolveState() == SS_SOLVED);
+      CHECK(first_phase_assemblies == 96);
+    }
+  }
+}
+
