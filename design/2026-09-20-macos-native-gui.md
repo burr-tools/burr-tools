@@ -407,6 +407,33 @@ just build && just test-all && just check && just build-werror
 
 Plus `mainmenu::assertTablesConsistent()` at startup (Section 2.3).
 
+### 8.1.1 What Automated Verification Actually Covered
+
+Recorded after implementation, because the gap matters when reading the checklist below.
+
+Every task passed `just build && just test-all && just check && just build-werror`, plus
+`./build/burrtools --self-check`, and the branch passed them again from a clean `just rebuild`.
+Beyond that, three things were established by evidence rather than assumption:
+
+- **⌘Q still runs the unsaved-changes prompt** — proven from FLTK's source rather than by a
+  keystroke: `applicationShouldTerminate:` (`Fl_cocoa.mm:1608`) → `Fl::handle(FL_CLOSE, win)`
+  → `Fl::default_atclose` (`Fl_Window.cxx:172-174`) → `window->hide()`, virtual per
+  `Fl_Widget.H:902`, reaching `mainWindow_c::hide()`. On cancel, `win->shown()` stays true and
+  FLTK returns `NSTerminateCancel`. This was the spec's one blocking risk (§3.3) and it
+  resolved favourably; the fallback was not needed.
+- **Finder opens actually fire** — a temporary stderr probe confirmed `fl_open_callback` runs
+  on both the cold-launch and already-running paths, delivered by Apple Event rather than
+  argv, so no double-load via `show(argc, argv)`.
+- **The edited-dot call is well-formed** — a runtime probe confirmed `fl_xid()` returns an
+  `NSWindow` descendant (`NSKVONotifying_FLWindow`) that responds to `setDocumentEdited:`.
+
+**What no automated step could cover:** anything requiring a human to look at or drive the
+GUI. The sandbox had neither Accessibility permission (so no synthetic input — an early
+attempt misdelivered a ⌘Q to the developer's terminal, after which synthetic input was
+banned outright for this work) nor Screen Recording permission (so screen captures returned
+black). Every item in §8.2 concerning appearance, menu interaction, or on-screen results
+therefore remains genuinely unverified and needs a person.
+
 ### 8.2 Manual Checklist
 
 The substance of this work is visual and behavioural, so the checklist is the real
@@ -480,6 +507,38 @@ Honest accounting of what will still not be Mac-like once everything above is do
 5. **Unsigned.** First launch requires right-click-Open.
 6. **Modal dialogs, not sheets.** Dialogs appear as separate windows rather than
    attached to the document window.
+
+### 10.1 Added During Implementation
+
+Deviations discovered while building this, which the design did not anticipate:
+
+7. **The app icon is not yet drawn.** All the plumbing landed — `scripts/make-macos-icons.sh`,
+   the bundle wiring, and the plist keys, which are emitted only when the artwork exists so
+   the bundle never names a missing file. The artwork itself did not: rendering a puzzle at
+   1024×1024 requires BurrTools' own Export ▸ Image dialog, and there is no headless export
+   path (`imageExport_c` is a GUI window class; neither `burrTxt` nor `burrTxt2` exports
+   images). Until someone renders `mac/icon-source.png` and runs the script, the app shows
+   the generic macOS application icon.
+
+8. **The save prompt's buttons are not in Mac order.** They read
+   [Don't Save] [Save] [Cancel] rather than the conventional [Don't Save] [Cancel] [Save].
+   FLTK hardcodes the *middle* button of `fl_choice` as the `Fl_Return_Button`
+   (`subprojects/fltk/src/Fl_Message.cxx:180-186`), so Save cannot be both rightmost and the
+   Enter default. The chosen order makes every accidental path non-destructive — Enter
+   saves, Escape cancels, and Don't Save needs a deliberate click. Placement was traded for
+   safety deliberately.
+
+9. **Opening several files at once loads only the first.** `openFromSystem()` drops
+   re-entrant system-open requests, because FLTK drains its dropped-files list from *nested*
+   `Fl::wait()` loops (`subprojects/fltk/src/Fl_cocoa.mm:853-857`) and would otherwise stack
+   confirmation dialogs whose answers applied to the wrong puzzle. Since BurrTools shows one
+   puzzle at a time, opening N files could only ever display one regardless.
+
+10. **A single Finder open delivers two events.** Observed, not theorised: one `open`
+    invocation calls back twice with the same filename, independent of dirty state — so
+    before the re-entrancy guard, one double-click called `tryToLoad()` twice. Harmless
+    (loads are idempotent) and now absorbed by the guard, but the root cause is unexplained
+    and deserves a follow-up.
 
 ---
 
