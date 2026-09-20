@@ -22,6 +22,8 @@
 #include "lib/puzzle.h"
 #include "lib/problem.h"
 #include "lib/solvethread.h"
+#include "lib/bt_assert.h"
+#include "lib/gridtype.h"
 #include "lib/voxel.h"
 #include "tools/xml.h"
 #include "tools/gzstream.h"
@@ -71,7 +73,7 @@ bool checkInput(void)
 }
 
 
-int main(int argv, char* args[]) {
+static int solve(int argv, char* args[]) {
 
   if (argv < 1) {
     usage();
@@ -119,6 +121,30 @@ int main(int argv, char* args[]) {
   }
   xmlParser_c pars(*str);
   puzzle_c p(pars);
+
+  if (firstProblem < 0 || (unsigned int)firstProblem >= p.getNumberOfProblems()) {
+    cout << "the file has " << p.getNumberOfProblems() << " problem(s), there is no problem "
+         << firstProblem << "\n";
+    return 2;
+  }
+
+  /* not every space grid has a solver, and fewer still have a disassembler.
+   * Check before we build one: the disassembler asserts on the movement cache
+   * a grid without CAP_DISASSEMBLE does not provide, and that assert happens
+   * while constructing the solver thread, where nothing catches it.
+   */
+  const unsigned int caps = p.getGridType()->getCapabilities();
+
+  if (!(caps & gridType_c::CAP_ASSEMBLE)) {
+    cout << "Sorry, this space grid doesn't have an assembler (yet)\n";
+    return 2;
+  }
+
+  if ((par & solveThread_c::PAR_DISASSM) && !(caps & gridType_c::CAP_DISASSEMBLE)) {
+    cout << "Sorry, this space grid doesn't have a disassembler (yet)\n";
+    cout << "drop -d to just assemble the puzzle\n";
+    return 2;
+  }
 
   std::string outname = args[filenumber];
   outname += "ttt";
@@ -271,6 +297,28 @@ int main(int argv, char* args[]) {
   p.save(xml);
 
   return exitCode;
+}
+
+/* asserts reach here from everything main does outside the solver thread -
+ * loading the file, building the solver. Letting one escape aborts the process
+ * with nothing but the expression text, so report it the way the solver thread's
+ * asserts are reported and exit cleanly.
+ */
+int main(int argv, char* args[]) {
+
+  try {
+    return solve(argv, args);
+  }
+
+  catch (const assert_exception & e) {
+    cout << "\nInternal error in BurrTools\n";
+    cout << " file      : " << (e.file ? e.file : "?") << "\n";
+    cout << " function  : " << (e.function ? e.function : "?") << "\n";
+    cout << " line      : " << e.line << "\n";
+    cout << " expression: " << (e.expr ? e.expr : "?") << "\n";
+    cout << "You should send the puzzle file to the programmer!\n";
+    return 1;
+  }
 }
 
 
