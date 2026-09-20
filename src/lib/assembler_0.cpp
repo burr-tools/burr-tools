@@ -38,7 +38,7 @@
 #define snprintf _snprintf
 #endif
 
-#define ASSEMBLER_VERSION "1.4"
+#define ASSEMBLER_VERSION "1.5"
 
 /* print out the current matrix */
 void printMatrix(
@@ -1660,11 +1660,11 @@ unsigned int assembler_0_c::getEffectiveThreads(void) const {
   if (env && *env) {
     int val = atoi(env);
     if (val > 0)
-      return static_cast<unsigned int>(val);
+      return std::min(static_cast<unsigned int>(val), MAX_THREADS);
   }
 
   unsigned int hw = std::thread::hardware_concurrency();
-  return (hw > 0) ? hw : 1;
+  return (hw > 0) ? std::min(hw, MAX_THREADS) : 1;
 }
 
 void assembler_0_c::generateSubtreeTasks(
@@ -1759,21 +1759,12 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   abbort.store(false, std::memory_order_relaxed);
   running.store(true, std::memory_order_relaxed);
 
-  // Pre-warm lazy caches on shared problem and result shapes to prevent data races
-  if (avoidTransformedAssemblies) {
-    const voxel_c * res = getResultShape(problem);
-    if (res) {
-      const symmetries_c * sym = problem.getPuzzle().getGridType()->getSymmetries();
-      unsigned int numTrans = sym ? sym->getNumTransformationsMirror() : 0;
-      for (unsigned int t = 0; t < numTrans; t++) {
-        int x, y, z;
-        int x1, x2, y1, y2, z1, z2;
-        res->getHotspot(t, &x, &y, &z);
-        res->getBoundingBox(t, &x1, &x2, &y1, &y2, &z1, &z2);
-      }
-      res->selfSymmetries();
-    }
-  }
+  /* Workers call smallerRotationExists() outside callbackMutex, which reaches
+   * the lazy mutable caches on the result shape AND on every part shape.
+   * Warm them all here, on the master, before any worker exists.
+   */
+  if (avoidTransformedAssemblies)
+    prewarmSharedShapeCaches(problem);
 
   if (parallelTasks.empty()) {
     unsigned int targetTasks = std::max(16u, workers * 4);
@@ -1856,6 +1847,15 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     parallelTasks.clear();
     taskCompleted.clear();
     emittedSignatures.clear();
+    parallelInterrupted = false;
+  } else {
+    /* Stopped part way. In-memory continue is fine -- parallelTasks,
+     * taskCompleted and emittedSignatures are all still here, so the remaining
+     * tasks get picked up and anything a half-searched task repeats is
+     * suppressed. None of that survives a save, though, so the position we
+     * would write is not a resumable one.
+     */
+    parallelInterrupted = true;
   }
 
   running.store(false, std::memory_order_relaxed);
@@ -1956,6 +1956,17 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   unsigned int len = strlen(string);
   unsigned int spos = 0;
 
+  /* leading flag written by save(): a parallel search that was interrupted did
+   * not record how far its workers got, nor which assemblies it had already
+   * reported, so resuming it would report them again
+   */
+  {
+    unsigned int interrupted = 0;
+    spos += getInt(string+spos, &interrupted);
+    if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    if (interrupted) return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+  }
+
   /* get the values from the string.
    */
   spos += getInt(string+spos, &pos);
@@ -2019,6 +2030,11 @@ void assembler_0_c::save(xmlWriter_c & xml) const
   xml.newAttrib("version", ASSEMBLER_VERSION);
 
   std::ostream & str = xml.addContent();
+
+  /* leading flag: 1 marks a parallel search that was interrupted, whose
+   * position can not be resumed (see parallelInterrupted)
+   */
+  str << (parallelInterrupted ? 1 : 0) << " ";
 
   str << pos << " " << iterations << " ";
 

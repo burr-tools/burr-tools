@@ -157,7 +157,22 @@ int main(int argv, char* args[]) {
       else if (strcmp(args[i], "-x") == 0)
         assemble = false;
       else if (strcmp(args[i], "-t") == 0) {
-        threads = atoi(args[i+1]);
+        /* args[argv] is the null terminator, so the bound has to be checked
+         * before dereferencing; strtol rather than atoi so that a negative or
+         * non-numeric argument is rejected instead of wrapping to a huge
+         * unsigned thread count
+         */
+        if (i+1 >= argv) {
+          cout << "-t requires a numeric argument\n";
+          return 1;
+        }
+        char * end = 0;
+        long t = strtol(args[i+1], &end, 10);
+        if ((end == args[i+1]) || (*end != '\0') || (t < 0)) {
+          cout << "-t requires a non-negative number\n";
+          return 1;
+        }
+        threads = (unsigned int)t;
         i++;
       } else if (strcmp(args[i], "-o") == 0) {
         if (strcmp(args[i+1],"all")==0)
@@ -299,6 +314,7 @@ int main(int argv, char* args[]) {
         return 0;
       case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
       case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
+      case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
         /* all other errors should not occur */
         printf("Oops internal error\n");
         return 0;

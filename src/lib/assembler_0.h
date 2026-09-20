@@ -24,6 +24,7 @@
 #include "assembler.h"
 
 #include <vector>
+#include <algorithm>
 #include <set>
 #include <unordered_set>
 #include <stack>
@@ -232,6 +233,21 @@ private:
   std::vector<SubtreeTask> parallelTasks;
   std::vector<uint8_t> taskCompleted;
   std::unordered_set<uint64_t> emittedSignatures;
+
+  /* set when a parallel search stopped before finishing.
+   *
+   * The serial search saves an exact resume point (pos plus the row/column
+   * prefix). A parallel search has no single such point: progress lives in
+   * taskCompleted plus whatever each worker had reached inside the task it was
+   * in the middle of, and the assemblies already handed to the callback are
+   * only remembered in emittedSignatures, which does not survive a save.
+   * Writing pos == 0 in that situation would claim "nothing searched yet"
+   * next to a solution list that is already populated, and continuing would
+   * report every one of those assemblies a second time. So an interrupted
+   * parallel search is marked here, saved as not resumable, and restarted
+   * from scratch on load with the counters reset.
+   */
+  bool parallelInterrupted = false;
   mutable std::mutex callbackMutex;
 
   void generateSubtreeTasks(std::vector<SubtreeTask> & tasks, unsigned int targetTasks, unsigned int maxDepth);
@@ -313,7 +329,11 @@ public:
   float getFinished(void) const override;
   void stop(void) override { abbort.store(true, std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
-  void setNumThreads(unsigned int threads) override { numThreads = threads; }
+  /* clamped: the count reaches std::thread creation directly, and an
+   * unvalidated value from the CLI or the python binding would otherwise
+   * try to spawn until std::system_error or the OOM killer
+   */
+  void setNumThreads(unsigned int threads) override { numThreads = std::min(threads, MAX_THREADS); }
   unsigned int getNumThreads(void) const override { return numThreads; }
   errState setPosition(const char * string, const char * version) override;
   void save(xmlWriter_c & xml) const override;

@@ -217,6 +217,10 @@ int main(int argv, char* args[]) {
               cout << "Impossible to restore the saved state because something with the data is wrong.\n";
               cout << "You have to start from the beginning, sorry";
               break;
+            case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
+              cout << "The saved search was running on several cores when it was stopped.\n";
+              cout << "That can not be continued, so it has been reset -- please start it again";
+              break;
             case assembler_c::ERR_PUZZLE_UNHANDABLE:
               cout << "Something went wrong the program can not solve your puzzle definitions.\n";
               cout << "You should send the puzzle file to the programmer!";

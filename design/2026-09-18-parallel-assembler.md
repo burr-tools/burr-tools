@@ -183,6 +183,14 @@ Because assemblies are generated far less frequently than search nodes (e.g. 588
 - **Static Analysis:** `just check` (cppcheck) passes with zero warnings or errors.
 
 ### 5.2 Benchmark Scaling (kangaroo.xmpuzzle)
+
+> **Unreconciled with section 5.4.** This table reports 1.10s -> 0.39s (2.8x)
+> for kangaroo; section 5.4 reports 1.61s -> 1.09s (1.48x) for the same puzzle.
+> The runs were taken separately and the invocations differ, but what was
+> actually measured in each case was not recorded, so the gap cannot be
+> attributed after the fact. Do not quote either number as *the* kangaroo
+> speedup until one run covers both with the protocol in AGENTS.md section 4.
+
 Tested on AMD Ryzen (8 physical / 16 logical cores) using `burrTxt -o 0 -q`:
 
 | Thread Count | Elapsed Time (s) | Speedup | Assemblies Found | Iterations |
@@ -232,11 +240,64 @@ Using `bench/run_suite.sh` (`bench/bench_solve.py --ab build/burrTxt-base build/
 | **SolidSixPieceBurrs** | 13.93 MB | 13.95 MB | +0.02 MB | +0.1% |
 | **examples / PelikanBurr** | 13.93 MB | 17.73 MB | +3.80 MB | +27.3% |
 
+## Compatibility: what changes for existing users
+
+Parallel search is **on by default**. `getEffectiveThreads()` returns
+`hardware_concurrency()` whenever `numThreads == 0`, and 0 is the default for
+`burrTxt` without `-t`, for the GUI, and for `Problem.solve()`. No existing
+workflow has to opt in, so all of the following apply to everyone.
+
+**Solution order is unspecified.** Workers hand assemblies to the callback from
+whichever thread reaches `callbackMutex` first, so the order in which
+assemblies arrive varies between runs on identical input. Concretely:
+
+* `burrTxt` prints solutions in arrival order, so the printed order varies.
+* The GUI numbers solutions in the order they arrive, so the numbering varies.
+* **`solveThread_c::assembly()` samples with
+  `getNumAssemblies() % (solutionDrop * dropMultiplicator) == 0`. With
+  `solutionDrop > 1` this means *which subset of assemblies is kept* differs
+  between runs.** This is a behaviour change, not a cosmetic reordering: two
+  runs of the same puzzle with the same settings can retain different
+  solutions.
+
+The assembly *set* and the assembly *count* are unaffected -- only the order,
+and anything derived from it. Set `-t 1` (or `BURRTOOLS_THREADS=1`) to get the
+old, fully deterministic behaviour.
+
+**A parallel search that is stopped part way cannot be resumed from a saved
+file.** The serial search saves an exact resume point; a parallel one has no
+single such point, and the record of which assemblies were already reported
+does not survive a save. Rather than silently reporting them all a second time
+on continue, such a state is marked as interrupted, refused on load with
+`ERR_CAN_NOT_RESTORE_INTERRUPTED`, and the partial results are discarded so the
+search restarts cleanly. Stopping and continuing **within one session** is
+unaffected and resumes at task granularity.
+
+**The benchmark corpus in this document is not reproducible from a clean
+checkout.** The `puzzles/BTFiles/` files behind the 2.6x-3.0x results are
+gitignored, so the tables below are one-off measurements on a private corpus,
+not something CI or a contributor can re-run.
+
 #### Key Conclusions
 1. **Up to 3.0× Speedup on Assembly Workloads:**
    Pure exact-cover puzzles with unique pieces (George Bell Lomino squares) scale near-linearly with CPU core count, saturating up to 7.1 cores (709% CPU utilization) and achieving **2.6× to 3.0× speedup**.
-2. **Virtually Zero Memory Overhead (< 0.02 MB delta):**
-   Across nearly all puzzles, peak resident memory remains identical (~13.93 MB vs ~13.95 MB). Worker DLX matrix clones are extraordinarily compact (tens of kilobytes), and thread stacks in C++ pthreads commit pages on demand. Only transient thread allocation in micro-puzzles temporarily touches ~3.8 MB before settling.
+2. **Memory overhead: measurement not trustworthy as recorded.**
+   The table above reports an identical 13.93 MB baseline for puzzles with
+   wildly different matrix sizes (9x9 / 10x10 / 11x11 Lomino, kangaroo,
+   SolidSixPieceBurrs), which is the signature of capturing process baseline
+   rather than peak solve RSS. It also disagrees with this repository's own
+   sample output: `bench/README.md` lines 124-125 show 13.8 MB -> 18.2 MB
+   (+32%) for `LominoSquareProblems9-15.xmpuzzle:1`, a puzzle covered by the
+   table as "+0.01 MB".
+
+   The mechanism argues against "zero overhead" too: each `assemblerWorker_c`
+   deep-copies `left`, `right`, `upDown` (2 entries per node) and `colCount`,
+   so the cost is O(threads x matrix) and grows with core count. Section 3.1's
+   "100 KB - 500 KB total" is an estimate, not a measurement; at 16 threads even
+   500 KB is 8 MB.
+
+   **Treat the RSS numbers here as unverified** until they are re-taken with a
+   peak-RSS measurement over the solve itself.
 3. **Safety & Backend Isolation:**
    All puzzles using `assembler_1_c` (such as the 48-second George Bell 11x11 square, `SolidSixPieceBurrs`, `Simplicity`) run with 100% parity, confirming zero side-effects on other solver pipelines.
 
