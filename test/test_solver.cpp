@@ -14,21 +14,17 @@
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
 #include "lib/progressmodel.h"
-#include "lib/solvethread.h"
-#include "lib/voxel.h"
 #include "tools/xml.h"
 #include "tools/gzstream.h"
 
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <memory>
 #include <sstream>
 #include <set>
-#include <chrono>
-#include <memory>
-#include <thread>
 #include <string>
 #include <thread>
 #include <vector>
