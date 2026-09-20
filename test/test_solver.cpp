@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "lib/puzzle.h"
@@ -16,13 +17,19 @@
 #include "tools/xml.h"
 #include "tools/gzstream.h"
 
+#include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <cstdlib>
+#include <memory>
 #include <sstream>
 #include <set>
 #include <chrono>
 #include <memory>
 #include <thread>
 #include <string>
+#include <thread>
+#include <vector>
 
 namespace {
 
@@ -1469,4 +1476,327 @@ TEST_CASE("a freshly prepared assembler does not report itself finished",
     assm.assemble(&cb);
     CHECK(assm.getFinished() == 1.0f);
   }
+}
+
+/* Samples getFinished() from a second thread while a solve runs. The GUI does
+ * exactly this, so the value must be safe to read concurrently.
+ */
+namespace {
+
+struct ProgressTrace {
+  std::vector<float> samples;
+
+  bool monotone() const {
+    for (size_t i = 1; i < samples.size(); i++)
+      if (samples[i] < samples[i-1]) return false;
+    return true;
+  }
+  bool inRange() const {
+    for (float f : samples)
+      if (f < 0.0f || f > 1.0f) return false;
+    return true;
+  }
+  size_t distinctValues() const {
+    return std::set<float>(samples.begin(), samples.end()).size();
+  }
+  /* longest run of identical consecutive samples, as a fraction of all */
+  double longestPlateauFraction() const {
+    if (samples.empty()) return 1.0;
+    size_t best = 1, run = 1;
+    for (size_t i = 1; i < samples.size(); i++) {
+      run = (samples[i] == samples[i-1]) ? run + 1 : 1;
+      if (run > best) best = run;
+    }
+    return static_cast<double>(best) / static_cast<double>(samples.size());
+  }
+};
+
+ProgressTrace traceSolve(assembler_c & assm, assembler_cb & cb) {
+  ProgressTrace t;
+  std::atomic<bool> done{false};
+  std::thread sampler([&]{
+    while (!done.load(std::memory_order_relaxed)) {
+      t.samples.push_back(assm.getFinished());
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+  });
+  assm.assemble(&cb);
+  done.store(true, std::memory_order_relaxed);
+  sampler.join();
+  return t;
+}
+
+/* As traceSolve, but stops the search after `budget` instead of running it to
+ * completion. The curve properties the progress tests care about -- plateau
+ * length and how many distinct values the bar takes -- are shape properties of
+ * the samples, so a puzzle whose full solve takes minutes can be sampled for a
+ * few seconds and still exercise them. The caller must discard the terminal
+ * sample: an aborted run accounts every in-flight task as complete, so its
+ * last value is an artifact of the abort rather than a point on the curve.
+ */
+ProgressTrace traceSolveStoppingAfter(assembler_c & assm, assembler_cb & cb,
+                                      std::chrono::milliseconds budget,
+                                      std::chrono::milliseconds interval) {
+  ProgressTrace t;
+  std::atomic<bool> done{false};
+  std::thread sampler([&]{
+    while (!done.load(std::memory_order_relaxed)) {
+      t.samples.push_back(assm.getFinished());
+      std::this_thread::sleep_for(interval);
+    }
+  });
+  std::thread stopper([&]{
+    auto deadline = std::chrono::steady_clock::now() + budget;
+    while (!done.load(std::memory_order_relaxed) &&
+           std::chrono::steady_clock::now() < deadline)
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    assm.stop();
+  });
+  assm.assemble(&cb);
+  done.store(true, std::memory_order_relaxed);
+  sampler.join();
+  stopper.join();
+  return t;
+}
+
+}
+
+/* The reported regression was not that progress stopped, but that it moved in
+ * coarse steps with long stalls -- on Burr-Glar the bar held 99.06% for 32 s of
+ * a 315 s solve, and the derived time estimate predicted 2.7 s remaining while
+ * 30.3 s were left. A task contributed nothing at all until it completed, so
+ * the curve was a staircase of at most one step per task.
+ */
+TEST_CASE("parallel assembly progress advances smoothly",
+          "[assembler][parallel][progress]") {
+  auto p = puzzle_c::load("examples/Burr-Glar.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_0_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  TestAssemblerCallback cb;
+  ProgressTrace t = traceSolveStoppingAfter(assm, cb, std::chrono::milliseconds(3000),
+                                            std::chrono::milliseconds(20));
+
+  /* drop the terminal sample of the stopped run before asserting on shape */
+  REQUIRE(t.samples.size() > 1);
+  t.samples.pop_back();
+
+  INFO("samples: " << t.samples.size()
+       << " distinct: " << t.distinctValues()
+       << " longest plateau: " << t.longestPlateauFraction());
+
+  REQUIRE(t.samples.size() > 20);
+  CHECK(t.inRange());
+  CHECK(t.monotone());
+  CHECK(t.longestPlateauFraction() < 0.5);
+  CHECK(*std::max_element(t.samples.begin(), t.samples.end()) < 1.0f);
+  CHECK(t.distinctValues() > t.samples.size() / 10);
+}
+
+/* The brief for these progress tests names examples/HexSticks.xmpuzzle, but
+ * that puzzle has parts with a piece count > 1, which assembler_0_c::
+ * canHandle() rejects outright (ERR_PUZZLE_UNHANDABLE) -- as it does
+ * CubeInCage and the other multi-count examples. Re-verified on this base.
+ * PelikanBurr.xmpuzzle, already used throughout this file, is a single-count
+ * puzzle both assemblers accept, so it is used here instead.
+ */
+TEST_CASE("parallel assembly progress is monotone and ends at 1.0",
+          "[assembler][parallel][progress]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_0_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  TestAssemblerCallback cb;
+  ProgressTrace t = traceSolve(assm, cb);
+
+  CHECK(t.inRange());
+  CHECK(t.monotone());
+  CHECK(assm.getFinished() == 1.0f);
+}
+
+/* assembler_0_c grants this exact type (declared at global scope, matching the
+ * friend declaration in assembler_0.h -- an unnamed-namespace version would be
+ * a distinct type and would NOT be granted friendship) access to
+ * generateSubtreeTasks() and SubtreeTask::share, so the share-conservation
+ * invariant can be asserted directly instead of only inferred from
+ * getFinished() end-to-end behaviour.
+ */
+struct SubtreeTaskShareTestAccess {
+  /* Mirrors the targetTasks/maxDepth formula parallelMultiSearch uses.
+   * Returns prunedShare plus the sum of every live task's share via the
+   * return value, and the raw prunedShare via `outPrunedShare` -- callers must
+   * check both: the sum alone can pass vacuously if pruning stops happening
+   * entirely (a prunedShare of 0 folded into live shares that already summed
+   * to 1 on their own says nothing about whether the leak this exists to
+   * catch is still fixed). Pruned subtrees (colCount reaching 0, or the holes
+   * budget running out) are dropped by generateSubtreeTasks without ever
+   * becoming a task; their share must still be folded into prunedShare, or the
+   * sum falls short of 1.0.
+   */
+  static double prunedPlusLiveShare(assembler_0_c & assm, unsigned int workers,
+                                    float & outPrunedShare) {
+    unsigned int targetTasks = std::max(16u, workers * 4);
+    unsigned int maxDepth = std::min(assm.piecenumber > 1 ? assm.piecenumber - 1 : 1u, 3u);
+
+    std::vector<assembler_0_c::SubtreeTask> tasks;
+    float prunedShare = 0.0f;
+    assm.generateSubtreeTasks(tasks, targetTasks, maxDepth, prunedShare);
+    outPrunedShare = prunedShare;
+
+    double sum = prunedShare;
+    for (const auto & task : tasks) sum += task.share;
+    return sum;
+  }
+};
+
+/* DiagonalCube.xmpuzzle was picked by probing every assembler_0_c-compatible
+ * example puzzle directly: at the shallow depth (<=3) and task budget (16)
+ * generateSubtreeTasks actually uses, most puzzles never prune (a dead column
+ * or a holes-budget miss needs specific structure to show up this early).
+ * DiagonalCube does -- about half its search tree is pruned within the first
+ * three placements -- so this test would have proven nothing on a puzzle that
+ * never exercises the pruning path.
+ */
+TEST_CASE("pruned subtree shares are folded into completedShare, not dropped",
+          "[assembler][progress]") {
+  auto p = puzzle_c::load("examples/DiagonalCube.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_0_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  float prunedShare = 0.0f;
+  double sum = SubtreeTaskShareTestAccess::prunedPlusLiveShare(assm, 4, prunedShare);
+
+  INFO("prunedShare: " << prunedShare << " sum: " << sum);
+
+  /* Guards against this test going vacuous: without it, a future drift that
+   * makes DiagonalCube (or the pruning heuristics) stop pruning entirely would
+   * still pass the sum check below, silently ceasing to guard the leak this
+   * test exists to catch.
+   */
+  CHECK(prunedShare > 0.0);
+  CHECK(sum == Catch::Approx(1.0).margin(1e-6));
+}
+
+/* A solve aborted on the parallel path leaves totalTasks and completedShare
+ * holding that run's numbers, and totalTasks is what selects the task-based
+ * branch of getFinished(). Without assemble() clearing them for a non-parallel
+ * run, a resume with one thread reports the abandoned run's constant share for
+ * the whole of the serial search.
+ *
+ * Two observations that must differ, taken from the main thread with nothing
+ * else alive, so it is deterministic and needs no sampling thread.
+ *
+ * DiagonalCube rather than PelikanBurr, and the difference is this base's, not
+ * a preference. Here a task the run token cut short is NOT counted as
+ * complete (completedTasks and completedShare are only updated by
+ * finishTask() when the task actually finished), so on a puzzle that prunes
+ * nothing an abort landing on the first assembly leaves completedShare at
+ * exactly 0 and there is no stale value to leak. DiagonalCube prunes about
+ * half its tree during task generation, and that pruned share is seeded into
+ * completedShare before any worker starts -- so the stale value is non-zero
+ * and deterministic whenever the abort lands.
+ */
+TEST_CASE("parallel progress state does not leak into a serial resume",
+          "[assembler][parallel][progress]") {
+  auto p = puzzle_c::load("examples/DiagonalCube.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_0_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  /* a parallel run, stopped from the callback so the abort is deterministic */
+  int parallelAssemblies = 0;
+  assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
+    parallelAssemblies++;
+    return false;
+  });
+  REQUIRE(parallelAssemblies == 1);
+
+  const float stale = assm.getFinished();
+  INFO("stale parallel share: " << stale);
+  REQUIRE(stale > 0.0f);
+  REQUIRE(stale < 1.0f);
+
+  /* resume single-threaded and stop it the same way */
+  assm.setNumThreads(1);
+  int serialAssemblies = 0;
+  assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
+    serialAssemblies++;
+    return false;
+  });
+  REQUIRE(serialAssemblies == 1);
+
+  INFO("progress after the serial resume: " << assm.getFinished());
+  CHECK(assm.getFinished() != stale);
+}
+
+/* The share accumulator is only seeded -- to prunedTaskShare -- when a fresh
+ * task list is generated, at the top of parallelMultiSearch, on that thread,
+ * before any worker exists. A resumed run finds parallelTasks already
+ * holding the pool remainder a prior pause drained back into it, skips
+ * generation entirely, and therefore skips the seed too: completedShare is
+ * simply left alone, carrying forward exactly what the paused run had
+ * already accumulated. The workers need no reset discipline of their own.
+ *
+ * This asserts the property that matters to the user: resuming a paused solve
+ * does not throw away the progress already made. If completedShare were
+ * reset on every call, the resumed run would restart the accumulator at 0
+ * (or the pruned share alone) and the bar would jump backwards on every
+ * pause.
+ *
+ * Burr-Glar because the seed has to be interesting: it must contain completed
+ * tasks, not just pruned ones. Every other bundled puzzle assembler_0_c
+ * accepts finishes in milliseconds -- measured on PelikanBurr, a pause after
+ * five assemblies completes no task at all and leaves the accumulator at 0,
+ * so it cannot tell a seeded resume from an unseeded one. The second phase
+ * only needs to get as far as the seeding, so its budget is tiny.
+ */
+TEST_CASE("a resumed parallel run picks the share up where it left off",
+          "[assembler][parallel][progress][resume]") {
+  auto p = puzzle_c::load("examples/Burr-Glar.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_0_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  TestAssemblerCallback cb;
+  traceSolveStoppingAfter(assm, cb, std::chrono::milliseconds(1000),
+                          std::chrono::milliseconds(50));
+
+  const float paused = assm.getFinished();
+  INFO("paused at " << paused);
+
+  /* the seed has to carry completed tasks for this to say anything; a pause
+   * that completed none would pass vacuously
+   */
+  REQUIRE(paused > 0.0f);
+  REQUIRE(paused < 1.0f);
+
+  /* resume, and stop again almost immediately: all this run has to do is seed */
+  traceSolveStoppingAfter(assm, cb, std::chrono::milliseconds(50),
+                          std::chrono::milliseconds(10));
+
+  INFO("resumed at " << assm.getFinished());
+  CHECK(assm.getFinished() >= paused);
 }

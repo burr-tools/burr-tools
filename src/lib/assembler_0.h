@@ -221,6 +221,13 @@ private:
   /* multi-threading support */
   friend class assemblerWorker_c;
 
+  /* grants test/test_solver.cpp direct access to generateSubtreeTasks() and
+   * SubtreeTask::share, to assert the share-conservation invariant
+   * (completedShare + sum of live task shares == 1) directly rather than
+   * only indirectly through end-to-end getFinished() behaviour.
+   */
+  friend struct SubtreeTaskShareTestAccess;
+
   struct PrefixStep {
     unsigned int col;
     unsigned int row;
@@ -228,9 +235,37 @@ private:
 
   struct SubtreeTask {
     std::vector<PrefixStep> prefix;
+    /* this subtree's fraction of the whole search tree; all tasks, plus the
+     * subtrees pruned during generation, sum to 1
+     */
+    float share = 0;
   };
 
+  /* The progress the GUI thread reads: the summed share of every task that is
+   * done. Seeded from prunedTaskShare once, single-threaded, whenever a
+   * fresh task list is generated; left untouched across an in-session
+   * resume, so it carries forward exactly what the paused run had already
+   * accumulated. Otherwise accumulated by the workers as they finish tasks.
+   *
+   * Accumulated in double, not float: it approaches 1 from below as the last
+   * tasks drain, and in float a legitimate tail value within ~6e-8 of 1 rounds
+   * to exactly 1.0f -- which solvethread.cpp reads as a finished search,
+   * ending the solve while workers are still running.
+   */
+  std::atomic<double> completedShare{0.0};
+
   std::vector<SubtreeTask> parallelTasks;
+
+  /* the share of the subtrees generateSubtreeTasks() proved empty and
+   * dropped without ever making a task of them. They are genuinely
+   * finished -- there is no work in them -- so this is part of the
+   * completed share; it seeds completedShare when a fresh task list is
+   * generated and is otherwise untouched, so an in-session resume (which
+   * skips regeneration while parallelTasks is non-empty) leaves it alone
+   * along with the completedShare it already contributed to.
+   */
+  float prunedTaskShare = 0.0f;
+
   std::unordered_set<uint64_t> emittedSignatures;
 
   /* set when a parallel search stopped before finishing.
@@ -249,14 +284,40 @@ private:
    */
   bool parallelInterrupted = false;
 
+  /* Each in-flight worker publishes the share of the task it is working on and
+   * how far into that task it has got, so a long-running task contributes
+   * continuously instead of nothing until it completes. Read by the GUI thread
+   * via getFinished(); never dereferences a worker's private matrix.
+   *
+   * std::atomic is neither copyable nor movable, so the slots are held by
+   * pointer rather than by value.
+   *
+   * The slots themselves are atomic, but the vector holding them is not:
+   * getFinished() runs on the GUI thread and is already being polled while
+   * parallelMultiSearch() is still sizing the vector, which ThreadSanitizer
+   * duly flags. progressMutex guards the vector's structure -- not the slot
+   * values, which the workers keep publishing lock-free. It is only ever held
+   * while the vector is (re)built and while getFinished() walks it, so a
+   * worker never blocks on it and the GUI contends with nothing.
+   */
+  struct WorkerProgress {
+    std::atomic<float> share{0.0f};
+    std::atomic<float> fraction{0.0f};
+  };
+  mutable std::mutex progressMutex;
+  std::vector<std::unique_ptr<WorkerProgress>> workerProgress;
+
   /* true only after a search drained without being aborted. "not running" is
    * not the same as "finished": a prepared-but-unstarted assembler is also
    * not running.
    */
   std::atomic<bool> searchComplete{false};
 
-  void generateSubtreeTasks(std::vector<SubtreeTask> & tasks, unsigned int targetTasks, unsigned int maxDepth);
+  void generateSubtreeTasks(std::vector<SubtreeTask> & tasks, unsigned int targetTasks, unsigned int maxDepth, float & prunedShare);
   void parallelMultiSearch(unsigned int workers);
+
+  /* true when the next assemble() call will take the parallel path */
+  bool willRunParallel(unsigned int threads) const;
 
 protected:
 
