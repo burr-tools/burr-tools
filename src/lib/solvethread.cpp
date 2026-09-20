@@ -25,7 +25,27 @@
 #include "puzzle.h"
 #include "assembly.h"
 #include "disassembler_0.h"
+#include "progressmodel.h"
 #include "solution.h"
+
+#include <chrono>
+#include <cmath>
+
+namespace {
+
+  long long steadyNowNs(void) {
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+  }
+
+  /* What getProgress() reports when the model says "done" but the solve has
+   * not reached ACT_FINISHED. It cannot be 1.0, and it cannot be
+   * progressModel_c's own std::nextafter(1.0f, 0.0f) sentinel either: the GUI
+   * renders the bar with %.4f, which prints that sentinel as 100.0000%.
+   */
+  constexpr float runningCap = 0.999f;
+
+}
 
 void solveThread_c::run(void){
 
@@ -103,9 +123,32 @@ void solveThread_c::run(void){
 
     if (!stopPressed) {
 
+      /* publish the phase's cost basis before announcing the phase, so a GUI
+       * poll that sees ACT_ASSEMBLING can never see a zero thread count.
+       *
+       * getRunThreads(), not getNumThreads(): the latter reports what was
+       * *configured*, where 0 means "decide at run time" -- the default, and
+       * what the GUI leaves it at. A resumed assembler also runs serially
+       * however many threads are configured. Either way the configured number
+       * is not the number of worker-seconds a wall second buys.
+       */
+      const unsigned int threads = a->getRunThreads();
+      assemblyThreads.store(threads ? threads : 1, std::memory_order_relaxed);
+      assemblyEndNs.store(0, std::memory_order_relaxed);
+      /* release: this is the store that opens getProgress()'s door to the
+       * assembler, so everything preparation wrote must be visible first
+       */
+      assemblyStartNs.store(steadyNowNs(), std::memory_order_release);
+
       action = solveThread_c::ACT_ASSEMBLING;
       a->setNumThreads(numThreads);
       a->assemble(this);
+
+      /* freeze the assembly cost: from here on the machine is draining the
+       * disassembly queue, and charging that time to assembly too would make
+       * the blend approach 1 without any of the remaining work being done
+       */
+      assemblyEndNs.store(steadyNowNs(), std::memory_order_relaxed);
 
       if (disasm_pool) {
         if (!stopPressed)
@@ -430,4 +473,108 @@ unsigned int solveThread_c::currentActionParameter(void) {
   default:
     return 0;
   }
+}
+
+float solveThread_c::getProgress(void) const {
+
+  float f;
+
+  if (action.load(std::memory_order_acquire) == ACT_FINISHED) {
+
+    /* Reported rather than computed. The blend does land on exactly 1.0 here
+     * in the ordinary case, but it is built out of a float fraction and two
+     * measured costs, and the GUI's "finished" state must not depend on those
+     * agreeing to the last bit.
+     */
+    f = 1.0f;
+
+  } else {
+
+    /* Nothing to report before the assembly phase begins, and nothing may be
+     * read off the assembler either: it is published to `assm` before
+     * createMatrix() and reduce() run, and those build the very matrix
+     * getFinished() reads. Acquiring here pairs with the release store the
+     * worker makes in run(), so everything preparation built is visible
+     * before the first getFinished() call.
+     */
+    const long long start = assemblyStartNs.load(std::memory_order_acquire);
+    if (!start)
+      return reportedProgress.load(std::memory_order_relaxed);
+
+    assembler_c * a = assm.load(std::memory_order_acquire);
+    if (!a)
+      return reportedProgress.load(std::memory_order_relaxed);
+
+    const long long end = assemblyEndNs.load(std::memory_order_relaxed);
+
+    progressModel_c::Input in;
+    in.assemblyFraction = a->getFinished();
+
+    /* The parallel assemblers sum float terms that approach 1 asymptotically,
+     * so getFinished() can round to exactly 1.0f with workers still live:
+     * `a < 1` does not mean "still running". While assembly has demonstrably
+     * not finished, take the input at its word only up to the largest float
+     * below 1, so downstream arithmetic cannot read it as completion.
+     *
+     * This makes the input honest; on its own it does not dislodge the cap
+     * below. With a drained pool, evaluate() returns 1.0f for a == 1.0f and
+     * 0.99999994f for the clamped value -- both above runningCap, so both are
+     * reported as runningCap and the monotone guard holds them there. See the
+     * accrual-rate note below; undoing that latch needs the same follow-up.
+     */
+    if (!end && in.assemblyFraction >= 1.0f)
+      in.assemblyFraction = std::nextafter(1.0f, 0.0f);
+
+    {
+      const long long upto = end ? end : steadyNowNs();
+      const long long ns = (upto > start) ? (upto - start) : 0;
+
+      /* worker-seconds, the same currency the pool's cost is measured in: it
+       * sums the wall time of completed tasks across all of its workers. A
+       * wall-clock figure here would be the same quantity divided by the
+       * thread count, and weighing one phase against the other with a constant
+       * factor between their units biases the blend by exactly that factor.
+       *
+       * KNOWN LIMITATION, deliberately not modelled here. Matching the units
+       * does not make the two costs accrue at the same rate per wall second.
+       * The assembler and the pool each default to hardware_concurrency(), so
+       * while the phases overlap the pair accrues roughly 2N worker-seconds
+       * per wall second, and in the disassembly tail -- after assemble() has
+       * returned and only the pool is live -- roughly N. The bar therefore
+       * changes speed at that transition, and projectedRemainingSeconds is
+       * biased across it. Correcting it means modelling the phase-dependent
+       * accrual rate, which is a design change rather than part of this fix;
+       * it is recorded here rather than papered over.
+       */
+      in.assemblyCostSeconds = 1e-9 * static_cast<double>(ns)
+          * static_cast<double>(assemblyThreads.load(std::memory_order_relaxed));
+    }
+
+    if (disasm_pool) {
+      in.assembliesFound        = disasm_pool->submittedCount();
+      in.disassembled           = disasm_pool->completedCount();
+      in.disassemblyCostSeconds = disasm_pool->accumulatedCostSeconds();
+    }
+
+    f = progressModel_c::evaluate(in).fraction;
+
+    /* The solve is still running, so it is not complete, whatever the inputs
+     * rounded to. Two ways they get there: progressModel_c signals "everything
+     * counted is accounted for but work remains" with a value a hair under 1
+     * that the GUI's %.4f renders as 100.0000%, and getFinished() can round to
+     * exactly 1.0f on the parallel assemblers while their workers are live.
+     * Capping here is also what keeps run()'s `getFinished() >= 1` terminal
+     * check the thing that decides ACT_FINISHED.
+     */
+    if (f > runningCap) f = runningCap;
+  }
+
+  /* monotone: raise the published value, never lower it */
+  float prev = reportedProgress.load(std::memory_order_relaxed);
+  while (f > prev &&
+         !reportedProgress.compare_exchange_weak(prev, f,
+                                                 std::memory_order_relaxed))
+    ;
+
+  return reportedProgress.load(std::memory_order_relaxed);
 }

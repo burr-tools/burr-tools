@@ -198,6 +198,29 @@ class solveThread_c : public assembler_cb {
   std::jthread worker_thread;
   std::atomic<bool> running{false};
 
+  /* Progress state, all written by the worker and read by the GUI thread.
+   *
+   * The assembly phase has no cost meter of its own, so its cost is derived:
+   * worker-seconds = wall time the phase ran, times the number of threads that
+   * ran it. assemblyEndNs freezes that wall time when assemble() returns --
+   * without it the assembly cost would keep growing throughout the disassembly
+   * tail, when no assembly work is happening at all, and would drag the blend
+   * towards 1 for a reason unrelated to the work left.
+   *
+   * assemblyStartNs doubles as the release/acquire edge that lets the GUI
+   * touch the assembler at all: `assm` is published before createMatrix() and
+   * reduce() build the matrix getFinished() reads, so polling across that is a
+   * genuine data race.
+   *
+   * reportedProgress is the monotone guard. It is never reset: the GUI builds
+   * one solveThread_c per solve and destroys it when the solve ends, so the
+   * object's lifetime is exactly the span the bar must not move backwards over.
+   */
+  std::atomic<long long> assemblyStartNs{0};   // 0 = assembly has not started
+  std::atomic<long long> assemblyEndNs{0};     // 0 = assembly still running
+  std::atomic<unsigned int> assemblyThreads{1};
+  mutable std::atomic<float> reportedProgress{0.0f};
+
 public:
 
   // stop and exit
@@ -229,6 +252,21 @@ public:
   // let the thread start
   // returns true, if everything went well, false otherwise
   bool start(bool stop_after_prep = false);
+
+  /* Whole-solve progress in [0,1] for the GUI's bar and its time estimate.
+   *
+   * This is the only place that can see both phases, so this is where the
+   * assembler's own fraction and the disassembly pool's are blended, weighted
+   * by each phase's measured cost (see progressModel_c). Cost-weighted rather
+   * than count-weighted so that elapsed/progress - elapsed is a usable estimate
+   * of the time remaining.
+   *
+   * Monotone -- projections revise as evidence accumulates, and a bar that
+   * moves backwards reads as a bug -- and strictly below 1.0 until the solve
+   * actually reaches ACT_FINISHED. Safe to call from the GUI thread at any
+   * time, including before the thread is started and after it has ended.
+   */
+  float getProgress(void) const;
 
   // try to stop the thread at the next possible position
   void stop(void);

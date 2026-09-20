@@ -13,6 +13,7 @@
 #include "lib/disassembler_0.h"
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
+#include "lib/solvethread.h"
 #include "lib/voxel.h"
 #include "tools/xml.h"
 #include "tools/gzstream.h"
@@ -2176,4 +2177,71 @@ TEST_CASE("getRunThreads reports the width the next run will really have",
     assm.setNumThreads(4);
     CHECK(assm.getRunThreads() == 1);
   }
+}
+
+/* The GUI reads solveThread_c::getProgress(), so the properties the bar
+ * depends on are asserted here rather than by driving FLTK: the value is
+ * bounded, never moves backwards, stays strictly below 1.0 for as long as the
+ * solve is running, and lands on exactly 1.0 when the solve reports finished.
+ *
+ * "strictly below 1.0 while running" is the one that has to be bought back
+ * here. progressModel_c signals "everything counted is done but work remains"
+ * with std::nextafter(1.0f, 0.0f), which the GUI's %.4f renders as 100.0000%,
+ * and the parallel assemblers can round getFinished() to exactly 1.0f while
+ * their workers are still live. Neither is invisible to the user by accident:
+ * getProgress() caps what it reports while the solve runs.
+ */
+TEST_CASE("solve thread reports monotone whole-solve progress",
+          "[solvethread][progress]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  /* the shipped examples are saved already solved, and solveThread_c asserts
+   * solveState == SS_UNSOLVED on the way in
+   */
+  problem->removeAllSolutions();
+
+  solveThread_c thread(*problem, solveThread_c::PAR_DISASSM);
+
+  /* nothing has started yet, so there is nothing to report and no assembler
+   * to read it from */
+  CHECK(thread.getProgress() == 0.0f);
+
+  std::vector<float> samples;
+  REQUIRE(thread.start());
+
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+  while (!thread.stopped() &&
+         thread.currentAction() != solveThread_c::ACT_ASSERT &&
+         std::chrono::steady_clock::now() < deadline) {
+    samples.push_back(thread.getProgress());
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  REQUIRE(thread.currentAction() == solveThread_c::ACT_FINISHED);
+
+  /* The final sample may have been taken in the window between the loop's
+   * check and the worker setting ACT_FINISHED, so it is allowed to be 1.0;
+   * drop it before asserting that a running solve never reports completion.
+   */
+  REQUIRE(samples.size() > 1);
+  samples.pop_back();
+
+  INFO("samples: " << samples.size()
+       << " first: " << samples.front()
+       << " last: " << samples.back());
+
+  for (size_t i = 0; i < samples.size(); i++) {
+    CHECK(samples[i] >= 0.0f);
+    CHECK(samples[i] < 1.0f);
+    if (i) CHECK(samples[i] >= samples[i-1]);
+  }
+
+  /* a bar that never moves is monotone and bounded too */
+  CHECK(*std::max_element(samples.begin(), samples.end()) > samples.front());
+
+  CHECK(thread.getProgress() == 1.0f);
+  CHECK(thread.getProgress() == 1.0f);  // idempotent, the GUI polls repeatedly
 }
