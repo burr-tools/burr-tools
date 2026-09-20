@@ -2404,6 +2404,11 @@ bool assembler_0_c::willRunParallel(unsigned int threads) const {
   return (errorsState == ERR_NONE) && (pos == 0) && (threads > 1);
 }
 
+unsigned int assembler_0_c::getRunThreads(void) const {
+  const unsigned int threads = getEffectiveThreads();
+  return willRunParallel(threads) ? threads : 1;
+}
+
 void assembler_0_c::assemble(assembler_cb * callback) {
 
   debug = false;
