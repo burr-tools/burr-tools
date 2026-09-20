@@ -296,3 +296,53 @@ TEST_CASE("assembly cost is projected across a resume", "[progress]") {
     CHECK(projected > unprojected);
   }
 }
+
+/* Why the resume test in test_solver.cpp asserts a floor of 1 on the leverage
+ * and not a larger number.
+ *
+ * The leverage a resumed run shows is a/(a-base): how many times over each
+ * measured second is charged to cover the head start it did not measure. That
+ * is a measure of how LITTLE of the search the run got through inside the
+ * sampling window, so any floor above 1 is really an assertion about machine
+ * speed. One was set at 5 on the strength of a development machine reading of
+ * 50.3, and a CI runner failed it at 3.72 with the projection working
+ * perfectly -- the run simply got further.
+ *
+ * The floor that is a property of the arithmetic instead of the runner: for a
+ * live base the leverage is decreasing in a, so over the whole reachable range
+ * a in (base, 1] it is smallest at a = 1 and worth at least 1/(1-base), which
+ * is above 1 for any base above 0. A lost base reports exactly 1 -- with base
+ * at 0 the session cost is returned untouched -- so the strict inequality
+ * separates the two at every machine speed.
+ */
+TEST_CASE("resume leverage is above 1 across the whole reachable range",
+          "[progress]") {
+
+  for (float base : {0.01f, 0.1f, 0.5f, 0.625f, 0.833334f, 0.99f}) {
+
+    const double atOne = progressModel_c::projectAssemblyCost(1.0, 1.0f, base);
+    INFO("base " << base << " floor " << atOne);
+
+    /* the floor really is 1/(1-base), and it really is above 1 */
+    CHECK(atOne == Catch::Approx(1.0 / (1.0 - static_cast<double>(base))).epsilon(1e-9));
+    CHECK(atOne > 1.0);
+
+    double previous = 0;
+    for (int i = 100; i >= 1; i--) {
+      const float a = base + (1.0f - base) * (static_cast<float>(i) / 100.0f);
+      const double lev = progressModel_c::projectAssemblyCost(1.0, a, base);
+      INFO("a " << a << " leverage " << lev);
+
+      /* above 1 everywhere, never below the a == 1 floor, and decreasing in a
+       * -- which is what makes the a == 1 end the worst case
+       */
+      CHECK(lev > 1.0);
+      CHECK(lev >= atOne * (1.0 - 1e-9));
+      if (previous) CHECK(lev >= previous * (1.0 - 1e-9));
+      previous = lev;
+    }
+  }
+
+  /* and the value a lost base reports, which the floor of 1 excludes */
+  CHECK(progressModel_c::projectAssemblyCost(1.0, 0.85446f, 0.0f) == 1.0);
+}

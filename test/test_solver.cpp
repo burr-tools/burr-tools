@@ -2472,6 +2472,7 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
   unsigned int trusted = 0;    // ... of which were past the model's trust threshold
   float reached = 0.0f, baseSeen = -1.0f;
   double worstLeverage = 0.0; // smallest projected/session cost ratio seen
+  float leverageA = 0.0f, leverageBase = 0.0f;  // the pair that produced it
 
   const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(300);
   while (!second.stopped() &&
@@ -2503,14 +2504,24 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
         if (fraction > base) deadAfterGain++;
       } else if (worstLeverage == 0.0 || projected < worstLeverage) {
         worstLeverage = projected;
+        leverageA = fraction;
+        leverageBase = base;
       }
 
       if (fraction >= progressModel_c::trustThreshold) trusted++;
 
-      /* A window measured as a FRACTION of the head start, so the leverage
-       * the check below asserts is scale-invariant. a/(a-base) at the break is
-       * about 1.02/0.02 = 51 whatever the machine and wherever the pause
-       * landed; an absolute window would make it depend on both.
+      /* Stop once there is enough to say something, without running the whole
+       * of Burr-Glar. Both halves are floors, so the window is at LEAST 300
+       * samples and at least 2% of the head start -- whichever of the two the
+       * machine reaches last is what ends it.
+       *
+       * This bounds the window; it does NOT bound how far the search gets
+       * inside it, and no wording here should imply otherwise. On a slow CI
+       * runner the 300-sample floor binds long after the fraction floor, and
+       * the run covered 0.625 -> 0.854. That is why nothing below asserts a
+       * MAGNITUDE of leverage: a/(a-base) is a measure of how little the
+       * resumed run got through, which is a property of the runner, not of
+       * the code under test.
        */
       if (samples > 300 && fraction >= paused * 1.02f) break;
     }
@@ -2538,7 +2549,8 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
        << " (of them after the run gained on its base: " << deadAfterGain << ")"
        << "; paused at " << paused << ", base settled at " << baseSeen
        << ", fraction reached " << reached
-       << ", smallest projected cost per measured second: " << worstLeverage);
+       << ", smallest projected cost per measured second: " << worstLeverage
+       << " at a=" << leverageA << " base=" << leverageBase);
 
   /* Not a vacuous pass: the window has to have covered a real stretch of the
    * assembly phase, with every OTHER condition evaluate() needs to blend
@@ -2563,16 +2575,54 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
   /* Never charged nothing once it had measured something. */
   CHECK(deadAfterGain == 0);
 
-  /* And the head start is actually paid for. The first thread bought ~84% of
-   * the search and its seconds died with it; this one measures only the sliver
-   * past that, so every measured second has to be charged as many times over
-   * as the sliver is small -- a/(a-base), which over this window is tens. At a
-   * leverage of 1 the phase would be charged what this run alone spent, which
-   * is the defect: asmCost/a collapses, assembly stops counting against
-   * disassembly in the blend, and both the bar and the time estimate are wrong
-   * by that factor.
+  /* And the head start is actually paid for.
+   *
+   * What is asserted is the MECHANISM, not a magnitude. The leverage a run
+   * shows -- a/(a-base) -- measures how little of the search it got through
+   * inside the sampling window, so any floor above 1 is really a statement
+   * about how fast the machine is. A bound of 5 passed here at 50.3 and failed
+   * on a CI runner at 3.72, where the projection was working perfectly: 3.72378
+   * observed against 3.72379 predicted, for a = 0.85446 over base = 0.625.
+   *
+   * The floor is therefore 1, which is not machine-calibrated but a property
+   * of the arithmetic. For a live base in (0,1) and a in (base,1], a/(a-base)
+   * is decreasing in a, so it is smallest at a = 1 and worth at least
+   * 1/(1-base) -- strictly above 1 for ANY base, at any machine speed, however
+   * far the resumed run gets. And 1.0 is exactly what a lost base reports:
+   * projectAssemblyCost() returns the session cost untouched when base is 0,
+   * which is the defect -- asmCost/a collapses, assembly stops counting
+   * against disassembly in the blend, and both the bar and the time estimate
+   * are wrong by that factor.
    */
-  CHECK(worstLeverage > 5.0);
+  CHECK(worstLeverage > 1.0);
+
+  /* The projection matches its own formula at the values this run actually
+   * showed: the measured second is inflated by a/(a-base). Catches the
+   * projection being dropped, inverted or mis-scaled at live values, none of
+   * which a fixed-input unit test can see, and none of which depend on how far
+   * the run got.
+   *
+   * The comparison is exact rather than approximate by construction: both
+   * sides convert the same two floats to double, and the difference of two
+   * doubles widened from float is itself exact, so the two computations agree
+   * bit for bit. The epsilon is there for compiler reassociation, not for
+   * measurement noise.
+   */
+  REQUIRE(leverageA > leverageBase);
+  const double predicted = static_cast<double>(leverageA)
+                         / (static_cast<double>(leverageA) - static_cast<double>(leverageBase));
+  INFO("leverage " << worstLeverage << " predicted " << predicted);
+  CHECK(worstLeverage == Catch::Approx(predicted).epsilon(1e-9));
+
+  /* Order matters, and these values are on the right side of it: charging the
+   * fraction against a base ABOVE it leaves nothing gained and no cost at all.
+   * This is the state the capture-ordering hazard would have produced.
+   */
+  CHECK(progressModel_c::projectAssemblyCost(1.0, leverageBase, leverageA) == 0.0);
+
+  /* The session cost is a linear multiplier, so a mis-scaled one would show. */
+  CHECK(progressModel_c::projectAssemblyCost(7.5, leverageA, leverageBase)
+        == Catch::Approx(7.5 * worstLeverage).epsilon(1e-9));
 
   /* And the bar stayed a bar: bounded, and never the running cap, which is
    * what a pinned resume would report.
