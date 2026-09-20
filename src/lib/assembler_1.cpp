@@ -2602,6 +2602,13 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     );
 
     if (!abbort.load(std::memory_order_relaxed)) {
+      /* Same reset as the DLX completion path below. Without clearing the
+       * stacks a completed run still looks like an unstarted search, so
+       * save() would write interrupted = 0 next to the root position and the
+       * reload would replay everything, re-reporting every assembly.
+       */
+      next_row_stack.clear();
+      task_stack.clear();
       parallelTasks.clear();
       taskCompleted.clear();
       emittedSignatures.clear();

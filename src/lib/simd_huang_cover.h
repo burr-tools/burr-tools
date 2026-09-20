@@ -91,6 +91,13 @@ public:
   virtual unsigned int getNumRows() const = 0;
   virtual unsigned int getNumColumns() const = 0;
   virtual unsigned int getNumShapes() const = 0;
+
+  /** Which filterRows() kernel this instance will dispatch to: "avx512",
+   *  "avx2", "neon" or "scalar". Exposed so the BURRTOOLS_NO_* kill switches
+   *  are testable -- every kernel computes the same answer, so a result
+   *  comparison cannot tell which one actually ran.
+   */
+  virtual const char * activeKernel() const = 0;
 };
 
 /**
@@ -171,6 +178,14 @@ public:
   unsigned int getNumRows() const override { return rows.size(); }
   unsigned int getNumColumns() const override { return num_columns; }
   unsigned int getNumShapes() const override { return num_shapes; }
+
+  /* must mirror the dispatch ladder at the top of filterRows() */
+  const char * activeKernel() const override {
+    if (use_avx512 && BitsetType::NUM_WORDS >= 8) return "avx512";
+    if (use_avx2) return "avx2";
+    if (use_neon) return "neon";
+    return "scalar";
+  }
 
 private:
   unsigned int num_columns;

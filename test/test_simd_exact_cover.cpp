@@ -27,6 +27,8 @@
 #include <set>
 #include <thread>
 #include <mutex>
+#include <string>
+#include <cstdlib>
 
 TEST_CASE("SimdBitset256 operations", "[simd][bitset]") {
   SimdBitset256 b;
@@ -696,3 +698,68 @@ TEMPLATE_TEST_CASE("SimdHuangCover extended sizes duplicate pieces exact cover",
   REQUIRE(p_solutions[1] == std::vector<unsigned int>{1, 3, 5});
 }
 
+
+namespace {
+
+#ifdef _WIN32
+void hc_set_env_var(const char * name, const char * value) {
+  if (value) _putenv_s(name, value);
+  else _putenv_s(name, "");
+}
+#else
+void hc_set_env_var(const char * name, const char * value) {
+  if (value) setenv(name, value, 1);
+  else unsetenv(name);
+}
+#endif
+
+struct HcScopedEnv {
+  std::string name;
+  bool hadValue;
+  std::string oldValue;
+
+  HcScopedEnv(const char * var, const char * val) : name(var) {
+    const char * existing = std::getenv(var);
+    hadValue = existing != nullptr;
+    if (hadValue) oldValue = existing;
+    hc_set_env_var(var, val);
+  }
+
+  ~HcScopedEnv() {
+    hc_set_env_var(name.c_str(), hadValue ? oldValue.c_str() : nullptr);
+  }
+};
+
+}  // namespace
+
+/* The SIMD kill switches must actually reach the kernel that runs.
+ *
+ * filterRows() tries AVX-512 before AVX2, so gating only use_avx2 on
+ * BURRTOOLS_NO_AVX2 made that variable select *wider* SIMD on an AVX-512
+ * host instead of falling back, leaving the scalar loop unreachable from
+ * tier 512 up. Every kernel returns the same solutions, so this cannot be
+ * caught by comparing results -- it needs the dispatch decision itself.
+ */
+TEMPLATE_TEST_CASE("SimdHuangCover: the SIMD kill switches disable every kernel",
+                   "[simd][huang][dispatch]",
+                   SimdHuangCover256, SimdHuangCover512, SimdHuangCover1024,
+                   SimdHuangCover4096, SimdHuangCover32768) {
+  SECTION("BURRTOOLS_NO_SIMD falls all the way back to scalar") {
+    HcScopedEnv env("BURRTOOLS_NO_SIMD", "1");
+    TestType solver(7, 2);
+    CHECK(std::string(solver.activeKernel()) == "scalar");
+  }
+
+  SECTION("BURRTOOLS_NO_AVX2 does not leave AVX-512 enabled") {
+    HcScopedEnv env("BURRTOOLS_NO_AVX2", "1");
+    TestType solver(7, 2);
+    CHECK(std::string(solver.activeKernel()) != "avx512");
+    CHECK(std::string(solver.activeKernel()) != "avx2");
+  }
+
+  SECTION("BURRTOOLS_NO_AVX512 leaves the narrower kernels alone") {
+    HcScopedEnv env("BURRTOOLS_NO_AVX512", "1");
+    TestType solver(7, 2);
+    CHECK(std::string(solver.activeKernel()) != "avx512");
+  }
+}

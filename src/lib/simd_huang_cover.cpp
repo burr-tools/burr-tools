@@ -34,11 +34,17 @@ SimdHuangCover<BitsetType>::SimdHuangCover(unsigned int num_cols, unsigned int n
   columns.resize(num_columns + 1);
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  /* BURRTOOLS_NO_SIMD and BURRTOOLS_NO_AVX2 clear *both* flags, as in
+   * SimdExactCover. filterRows() tries the AVX-512 kernel first, so gating
+   * only use_avx2 would make BURRTOOLS_NO_AVX2=1 run wider SIMD instead of
+   * narrower, and leave the scalar fallback unreachable from tier 512 up.
+   */
   if (!std::getenv("BURRTOOLS_NO_SIMD") && !std::getenv("BURRTOOLS_NO_AVX2")) {
     use_avx2 = __builtin_cpu_supports("avx2");
-  }
-  if (!std::getenv("BURRTOOLS_NO_AVX512")) {
     use_avx512 = __builtin_cpu_supports("avx512f");
+  }
+  if (std::getenv("BURRTOOLS_NO_AVX512")) {
+    use_avx512 = false;
   }
 #elif defined(__aarch64__) || defined(__ARM_NEON)
   use_neon = !(std::getenv("BURRTOOLS_NO_SIMD") || std::getenv("BURRTOOLS_NO_NEON"));
@@ -58,9 +64,25 @@ void SimdHuangCover<BitsetType>::setColumnBounds(
   bt_assert(col <= num_columns);
   bt_assert(col <= BitsetType::NUM_WORDS * 64);
 
+  /* search() checks voxel columns with placed_voxels.containsAll(required_voxels),
+   * which is a presence test: it cannot distinguish weight 1 from weight n. A
+   * voxel column demanding more than one unit would be reported satisfied at
+   * one, so the contract for this class is min_weight <= 1 on voxel columns.
+   * assembler_1_c always sets 1 for real voxels and 0 for hole columns.
+   */
+  bt_assert(!is_voxel || min_w <= 1);
+
   if (col >= columns.size()) {
     columns.resize(col + 1);
   }
+
+  /* Contribution this column already made to total_min_pieces, so that calling
+   * setColumnBounds() twice for the same shape column replaces it rather than
+   * double-counting. A double count would push the goal-check gate in search()
+   * out of reach and silently suppress every solution.
+   */
+  const unsigned int prev_min_pieces = columns[col].is_shape ? columns[col].min_weight : 0u;
+
   columns[col].min_weight = min_w;
   columns[col].max_weight = max_w;
   columns[col].is_voxel = is_voxel;
@@ -71,12 +93,17 @@ void SimdHuangCover<BitsetType>::setColumnBounds(
   if (is_shape) {
     total_min_pieces += min_w;
   }
+  total_min_pieces -= prev_min_pieces;
 
   if (is_range) {
     has_range = true;
     range_column = col;
   }
-  if (is_hole) {
+  if (is_hole && std::find(hole_columns.begin(), hole_columns.end(), col) == hole_columns.end()) {
+    /* guarded for the same reason as total_min_pieces above: a repeated call
+     * must not list the same hole column twice and inflate the empty-hole
+     * count that search() prunes on
+     */
     hole_columns.push_back(col);
   }
   if (is_voxel && min_w > 0 && col > 0 && (col - 1) < BitsetType::NUM_WORDS * 64) {

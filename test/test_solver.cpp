@@ -1035,8 +1035,9 @@ TEST_CASE("SIMD and DLX solvers agree across the regression corpus",
       tookDifferentPaths = true;
   }
 
-  /* Guard the premise: not every puzzle qualifies for the SIMD solver (holes,
-   * variable voxels and >512 columns all disqualify it), but if *none* of them
+  /* Guard the premise: not every puzzle qualifies for the SIMD solver (a range
+   * column, >32768 matrix columns, or variable voxels combined with a shape
+   * whose min differs from its max all disqualify it), but if *none* of them
    * does then this case has silently stopped comparing anything and is only
    * running DLX twice. Keep at least one SIMD-eligible puzzle in the list.
    */
