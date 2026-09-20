@@ -14,6 +14,7 @@
 #include "tools/xml.h"
 #include "tools/gzstream.h"
 
+#include <sstream>
 #include <memory>
 #include <string>
 
@@ -308,3 +309,312 @@ TEST_CASE("problem_c::setAssembler takes std::unique_ptr and transfers ownership
   CHECK(problem->getAssembler() == raw);
 }
 
+TEST_CASE("Parallel assembler produces identical results to single-threaded", "[assembler][parallel]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  int assemblies_1 = 0;
+  int solutions_1 = 0;
+  {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    disassembler_0_c disasm(*problem);
+    TestAssemblerCallback cb(&disasm);
+    assm.assemble(&cb);
+    assemblies_1 = cb.assemblies;
+    solutions_1 = cb.solutions;
+    CHECK(assemblies_1 == 12);
+    CHECK(solutions_1 == 1);
+  }
+
+  {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    disassembler_0_c disasm(*problem);
+    TestAssemblerCallback cb(&disasm);
+    assm.assemble(&cb);
+    CHECK(cb.assemblies == assemblies_1);
+    CHECK(cb.solutions == solutions_1);
+    CHECK(assm.getIterations() > 0);
+    CHECK(assm.getFinished() >= 1.0f);
+  }
+}
+
+TEST_CASE("Parallel assembler pause and continue does not duplicate solutions", "[assembler][parallel][resume]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  // Baseline: solve in one go
+  int total_expected = 0;
+  {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    TestAssemblerCallback cb;
+    assm.assemble(&cb);
+    total_expected = cb.assemblies;
+    REQUIRE(total_expected == 12);
+  }
+
+  // Two-phase solve: stop after 5 assemblies, then continue
+  {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+    int phase1_count = 0;
+    class StoppingCallback : public assembler_cb {
+    public:
+      int count = 0;
+      assembler_0_c & a;
+      StoppingCallback(assembler_0_c & assm) : a(assm) {}
+      bool assembly(std::unique_ptr<assembly_c>) override {
+        count++;
+        if (count == 5) {
+          a.stop();
+          return false;
+        }
+        return true;
+      }
+    } cb1(assm);
+
+    assm.assemble(&cb1);
+    phase1_count = cb1.count;
+    CHECK(phase1_count == 5);
+
+    // Now continue searching
+    TestAssemblerCallback cb2;
+    assm.assemble(&cb2);
+
+    // Total assemblies found across both phases must equal full run
+    CHECK(phase1_count + cb2.assemblies == total_expected);
+  }
+}
+
+TEST_CASE("Parallel assembler on small 2/3 piece problem", "[assembler][parallel][small]") {
+  auto p = puzzle_c::load("examples/DemoMirrorParadox.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  if (assembler_0_c::canHandle(*problem)) {
+    assembler_0_c assm1(*problem);
+    assm1.setNumThreads(1);
+    REQUIRE(assm1.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    TestAssemblerCallback cb1;
+    assm1.assemble(&cb1);
+
+    assembler_0_c assm4(*problem);
+    assm4.setNumThreads(4);
+    REQUIRE(assm4.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    TestAssemblerCallback cb4;
+    assm4.assemble(&cb4);
+
+    CHECK(cb4.assemblies == cb1.assemblies);
+  }
+}
+
+
+/* assembler_c::save() emits <assembler version="X">payload</assembler>.
+ * These pull the two pieces back out so a test can feed them to setPosition()
+ * exactly the way problem_c does when a puzzle is loaded.
+ */
+static std::string assemblerVersionOf(const std::string & xml) {
+  /* start at the tag, not at the document: the <?xml ...?> header carries a
+   * version attribute of its own
+   */
+  size_t tag = xml.find("<assembler");
+  REQUIRE(tag != std::string::npos);
+  size_t a = xml.find("version=\"", tag);
+  REQUIRE(a != std::string::npos);
+  a += 9;
+  size_t b = xml.find('"', a);
+  REQUIRE(b != std::string::npos);
+  return xml.substr(a, b - a);
+}
+
+static std::string extractAssemblerContent(const std::string & xml) {
+  size_t a = xml.find("<assembler");
+  REQUIRE(a != std::string::npos);
+  a = xml.find('>', a);
+  REQUIRE(a != std::string::npos);
+  a++;
+  size_t b = xml.find("</assembler>", a);
+  REQUIRE(b != std::string::npos);
+  return xml.substr(a, b - a);
+}
+
+/* An interrupted parallel search must not save itself as a resumable position.
+ *
+ * Before this was handled, stopping a parallel solve left pos == 0, save()
+ * wrote "nothing searched yet" next to an already-populated solution list, and
+ * continuing re-reported every assembly found before the stop. The contract
+ * now is: such a state is refused on restore with a distinct error, so the
+ * caller resets rather than double counting.
+ */
+TEST_CASE("Parallel assembler: an interrupted search is not restored as resumable",
+          "[assembler][parallel][resume]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_0_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  /* stop from the callback on the first assembly, which aborts the workers
+   * part way through the task set
+   */
+  int seen = 0;
+  assm.assemble([&seen](std::unique_ptr<assembly_c>) -> bool {
+    seen++;
+    return false;
+  });
+  REQUIRE(seen == 1);
+  REQUIRE(assm.getFinished() < 1.0f);
+
+  /* what the interrupted search would write into the .xmpuzzle */
+  std::string state;
+  {
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    state = str.str();
+  }
+
+  /* a fresh assembler must refuse it rather than silently starting over */
+  assembler_0_c restored(*problem);
+  REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  std::string payload = extractAssemblerContent(state);
+  CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+        == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED);
+}
+
+/* The leading flag added to the save payload must not break ordinary restore.
+ *
+ * Deliberately a not-yet-started assembler rather than a finished one: a
+ * finished search is SS_SOLVED and never serialised, and feeding a completed
+ * position (pos == piecenumber + 1) to setPosition() trips a pre-existing
+ * out-of-bounds read, since rows/columns are sized piecenumber while the
+ * integrity loop runs to pos. That is a separate bug from this change.
+ */
+TEST_CASE("Parallel assembler: the interrupted flag does not break normal restore",
+          "[assembler][parallel][resume]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_0_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  std::string state;
+  {
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    state = str.str();
+  }
+
+  assembler_0_c restored(*problem);
+  REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  std::string payload = extractAssemblerContent(state);
+  CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+        == assembler_c::ERR_NONE);
+}
+
+/* setNumThreads is reachable from -t and from Problem.solve(threads=...),
+ * neither of which validated the value; an unclamped count went straight into
+ * thread creation.
+ */
+TEST_CASE("Assembler clamps an absurd thread count instead of trying to spawn it",
+          "[assembler][parallel][threads]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_0_c assm(*problem);
+  assm.setNumThreads(1000000);
+  CHECK(assm.getNumThreads() <= 256);
+
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  int seen = 0;
+  assm.assemble([&seen](std::unique_ptr<assembly_c>) -> bool { seen++; return true; });
+  CHECK(seen == 12);
+}
+
+/* Parallel search on a puzzle that actually enables symmetry breaking.
+ *
+ * Workers call assembly_c::smallerRotationExists() outside callbackMutex, and
+ * that reaches the lazily filled mutable caches (BbHsCache, symmetries) on the
+ * shapes shared by every worker -- on the result shape and, via
+ * normalizeTransformation() and the hotspot fixup in assembly_c::transform(),
+ * on every part shape too. Those are unsynchronised check-then-write.
+ *
+ * The other [parallel] cases use PelikanBurr and CubeInCage, neither of which
+ * has a symmetry breaker, so they never enter that branch at all and cannot
+ * detect anything here. Keep this case on a symmetry-breaking puzzle; swapping
+ * the puzzle silently removes the coverage.
+ *
+ * Under a ThreadSanitizer build this is the case that catches a missing
+ * pre-warm: with only the result shape warmed it reports ~36 races on
+ * assembly.cpp's getPartShape(i)->getHotspot() calls.
+ */
+TEST_CASE("Parallel assembler matches serial on a symmetry-breaking puzzle",
+          "[assembler][parallel][tsan]") {
+  auto p = puzzle_c::load("examples/Bermuda.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  int serial = 0;
+  {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble([&serial](std::unique_ptr<assembly_c>) -> bool { serial++; return true; });
+  }
+  REQUIRE(serial > 0);
+
+  /* Guard the premise rather than trusting the chosen puzzle: keepRotations
+   * forces avoidTransformedAssemblies off, so it must yield strictly more
+   * assemblies. If the two agree, symmetry breaking is not active here any
+   * more and this case has stopped covering the concurrent path.
+   */
+  {
+    int keptRotations = 0;
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, true, false) == assembler_c::ERR_NONE);
+    assm.assemble([&keptRotations](std::unique_ptr<assembly_c>) -> bool { keptRotations++; return true; });
+    INFO("symmetry breaking must be active for this test to be meaningful");
+    REQUIRE(keptRotations > serial);
+  }
+
+  /* Reload so the parallel run starts with cold caches: the lazy fills are
+   * first-touch, so a parallel run after a serial run on the same puzzle
+   * object races on already-warm caches and reports nothing.
+   */
+  auto pFresh = puzzle_c::load("examples/Bermuda.xmpuzzle");
+  REQUIRE(pFresh != nullptr);
+  auto problemFresh = pFresh->getProblem(0);
+  REQUIRE(problemFresh != nullptr);
+
+  int parallel = 0;
+  assembler_0_c assm(*problemFresh);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  assm.assemble([&parallel](std::unique_ptr<assembly_c>) -> bool { parallel++; return true; });
+
+  CHECK(parallel == serial);
+}

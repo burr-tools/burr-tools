@@ -169,6 +169,23 @@ class TestBurrTools(unittest.TestCase):
             pass
         self.assertGreaterEqual(it.iterations, live_iters)
 
+    def test_solve_threads(self):
+        puzzle = burrtools.load(self.puzzle_path)
+        prob = puzzle.problems[0]
+
+        # Default (auto / all threads)
+        asms_default = list(prob.solve(disassemble=False))
+        self.assertEqual(len(asms_default), 12)
+
+        # 1 thread
+        asms_single = list(prob.solve(disassemble=False, threads=1))
+        self.assertEqual(len(asms_single), 12)
+
+        # 4 threads
+        asms_multi = list(prob.solve(disassemble=False, threads=4))
+        self.assertEqual(len(asms_multi), 12)
+
 if __name__ == "__main__":
     unittest.main()
+
 

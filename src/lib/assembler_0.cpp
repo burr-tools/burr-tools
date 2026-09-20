@@ -32,12 +32,13 @@
 #include <cstdlib>
 #include <cstring>
 #include <unordered_map>
+#include <thread>
 
 #ifdef _WIN32
 #define snprintf _snprintf
 #endif
 
-#define ASSEMBLER_VERSION "1.4"
+#define ASSEMBLER_VERSION "1.5"
 
 /* print out the current matrix */
 void printMatrix(
@@ -697,6 +698,8 @@ assembler_0_c::errState assembler_0_c::createMatrix(bool keepMirror, bool keepRo
   bt_assert(problem.resultValid());
 
   complete = comp;
+  parallelTasks.clear();
+  taskCompleted.clear();
 
   if (!canHandle(problem))
     return ERR_PUZZLE_UNHANDABLE;
@@ -750,6 +753,8 @@ assembler_0_c::errState assembler_0_c::createMatrix(bool keepMirror, bool keepRo
   }
   pos = 0;
   iterations.store(0, std::memory_order_relaxed);
+  totalTasks.store(0, std::memory_order_relaxed);
+  completedTasks.store(0, std::memory_order_relaxed);
 
   if (keepMirror) {
     /* prepare() may already have allocated the mirror info via
@@ -1253,7 +1258,7 @@ void assembler_0_c::solution(void) {
 void assembler_0_c::iterativeMultiSearch(void) {
 
   abbort.store(false, std::memory_order_relaxed);
-  running = true;
+  running.store(true, std::memory_order_relaxed);
 
   // this variable is used to store if we continue with our loop over
   // the rows or have finished
@@ -1397,7 +1402,463 @@ void assembler_0_c::iterativeMultiSearch(void) {
     }
   }
 
-  running = false;
+  running.store(false, std::memory_order_relaxed);
+}
+
+class assemblerWorker_c {
+public:
+  assembler_0_c & parent;
+  std::vector<unsigned int> left;
+  std::vector<unsigned int> right;
+  std::vector<unsigned int> upDown;
+  std::vector<unsigned int> colCount;
+  std::vector<unsigned int> rows;
+  std::vector<unsigned int> columns;
+  unsigned int pos;
+  unsigned long local_iterations;
+  unsigned long flushed_iterations;
+
+  assemblerWorker_c(assembler_0_c & p) :
+    parent(p),
+    left(p.left),
+    right(p.right),
+    upDown(p.upDown),
+    colCount(p.colCount),
+    rows(p.piecenumber, 0),
+    columns(p.piecenumber, 0),
+    pos(0),
+    local_iterations(0),
+    flushed_iterations(0)
+  {}
+
+  void cover(unsigned int col) {
+    right[left[col]] = right[col];
+    left[right[col]] = left[col];
+
+    for (unsigned int i = down(col); i != col; i = down(i)) {
+      for (unsigned int j = right[i]; j != i; j = right[j]) {
+        unsigned int u = up(j);
+        unsigned int d = down(j);
+
+        up(d) = u;
+        down(u) = d;
+
+        colCount[colCount[j]]--;
+      }
+    }
+  }
+
+  void uncover(unsigned int col) {
+    for (unsigned int i = up(col); i != col; i = up(i)) {
+      for (unsigned int j = left[i]; j != i; j = left[j]) {
+        colCount[colCount[j]]++;
+
+        up(down(j)) = j;
+        down(up(j)) = j;
+      }
+    }
+
+    left[right[col]] = col;
+    right[left[col]] = col;
+  }
+
+  void cover_row(unsigned int r) {
+    for (unsigned int j = right[r]; j != r; j = right[j])
+      cover(colCount[j]);
+  }
+
+  void uncover_row(unsigned int r) {
+    for (unsigned int j = left[r]; j != r; j = left[j])
+      uncover(colCount[j]);
+  }
+
+  void solution() {
+    flushIterations();
+
+    if (parent.getCallback()) {
+      auto assembly = std::make_unique<assembly_c>(parent.problem.getPuzzle().getGridType());
+
+      std::vector<unsigned int> pieces(parent.piecenumber, 0xFFFFFFFF);
+      std::vector<unsigned char> trans(parent.piecenumber);
+      std::vector<int> xs(parent.piecenumber);
+      std::vector<int> ys(parent.piecenumber);
+      std::vector<int> zs(parent.piecenumber);
+
+      for (unsigned int i = 0; i < pos; i++) {
+        unsigned char tran;
+        int x, y, z;
+        unsigned int piece;
+
+        parent.getPieceInformation(rows[i], &tran, &x, &y, &z, &piece);
+
+        pieces[piece] = i;
+        trans[piece] = tran;
+        xs[piece] = x;
+        ys[piece] = y;
+        zs[piece] = z;
+      }
+
+      for (unsigned int i = 0; i < parent.piecenumber; i++) {
+        if (pieces[i] >= pos)
+          assembly->addNonPlacement();
+        else
+          assembly->addPlacement(trans[i], xs[i], ys[i], zs[i]);
+      }
+
+      if (parent.avoidTransformedAssemblies &&
+          assembly->smallerRotationExists(parent.problem, parent.avoidTransformedPivot, parent.avoidTransformedMirror.get(), parent.complete))
+        return;
+
+      uint64_t sig = 14695981039346656037ULL;
+      for (unsigned int i = 0; i < parent.piecenumber; i++) {
+        sig ^= trans[i]; sig *= 1099511628211ULL;
+        sig ^= static_cast<uint32_t>(xs[i]); sig *= 1099511628211ULL;
+        sig ^= static_cast<uint32_t>(ys[i]); sig *= 1099511628211ULL;
+        sig ^= static_cast<uint32_t>(zs[i]); sig *= 1099511628211ULL;
+      }
+
+      {
+        std::lock_guard<std::mutex> lock(parent.callbackMutex);
+        if (parent.abbort.load(std::memory_order_relaxed))
+          return;
+        if (!parent.emittedSignatures.insert(sig).second)
+          return;
+        if (!parent.getCallback()->assembly(std::move(assembly)))
+          parent.stop();
+      }
+    }
+  }
+
+  void searchSubtree(const assembler_0_c::SubtreeTask & task) {
+    unsigned int prefixDepth = task.prefix.size();
+
+    // Apply prefix
+    for (unsigned int d = 0; d < prefixDepth; d++) {
+      cover(task.prefix[d].col);
+      cover_row(task.prefix[d].row);
+      columns[d] = task.prefix[d].col;
+      rows[d] = task.prefix[d].row;
+    }
+    pos = prefixDepth;
+
+    bool cont;
+
+    while (!parent.abbort.load(std::memory_order_relaxed)) {
+      if (pos < prefixDepth || pos > parent.piecenumber)
+        break;
+
+      if (!right[0])
+        solution();
+
+      if (pos == parent.piecenumber) {
+        pos--;
+        if (pos < prefixDepth)
+          break;
+      }
+
+      cont = false;
+      local_iterations++;
+      if ((local_iterations - flushed_iterations) >= 128) {
+        parent.iterations.fetch_add(local_iterations - flushed_iterations, std::memory_order_relaxed);
+        flushed_iterations = local_iterations;
+      }
+
+      if (!rows[pos]) {
+        // Pick best column
+        unsigned int c = right[0];
+        unsigned int s = colCount[c];
+
+        if (s) {
+          unsigned int j = right[c];
+          while (j) {
+            if (colCount[j] < s) {
+              c = j;
+              s = colCount[c];
+              if (!s) break;
+            }
+            j = right[j];
+          }
+        }
+
+        // Check holes in variable voxels
+        if (s) {
+          unsigned int currentHoles = parent.holes;
+          unsigned int j = right[parent.varivoxelEnd];
+          while (j != parent.varivoxelEnd) {
+            if (colCount[j] == 0) {
+              if (currentHoles == 0) {
+                s = 0;
+                break;
+              }
+              currentHoles--;
+            }
+            j = right[j];
+          }
+        }
+
+        if (s) {
+          columns[pos] = c;
+          rows[pos] = down(columns[pos]);
+          cont = true;
+        }
+
+        if (!cont) {
+          rows[pos] = 0;
+          pos--;
+          if (pos < prefixDepth)
+            break;
+          continue;
+        }
+
+        cover(columns[pos]);
+      } else {
+        uncover_row(rows[pos]);
+        cont = true;
+        rows[pos] = down(rows[pos]);
+        if (rows[pos] == columns[pos])
+          cont = false;
+      }
+
+      if (cont) {
+        cover_row(rows[pos]);
+        pos++;
+      } else {
+        uncover(columns[pos]);
+        rows[pos] = 0;
+        pos--;
+        if (pos < prefixDepth)
+          break;
+      }
+    }
+
+    // Unwind prefix if search finished normally
+    if (!parent.abbort.load(std::memory_order_relaxed)) {
+      for (int d = (int)prefixDepth - 1; d >= 0; d--) {
+        uncover_row(task.prefix[d].row);
+        uncover(task.prefix[d].col);
+        rows[d] = 0;
+        columns[d] = 0;
+      }
+      pos = 0;
+    }
+  }
+
+  void flushIterations() {
+    unsigned long unflushed = local_iterations - flushed_iterations;
+    if (unflushed > 0) {
+      parent.iterations.fetch_add(unflushed, std::memory_order_relaxed);
+      flushed_iterations = local_iterations;
+    }
+  }
+};
+
+unsigned int assembler_0_c::getEffectiveThreads(void) const {
+  if (numThreads > 0)
+    return numThreads;
+
+  const char * env = getenv("BURRTOOLS_THREADS");
+  if (env && *env) {
+    int val = atoi(env);
+    if (val > 0)
+      return std::min(static_cast<unsigned int>(val), MAX_THREADS);
+  }
+
+  unsigned int hw = std::thread::hardware_concurrency();
+  return (hw > 0) ? std::min(hw, MAX_THREADS) : 1;
+}
+
+void assembler_0_c::generateSubtreeTasks(
+    std::vector<SubtreeTask> & tasks,
+    unsigned int targetTasks,
+    unsigned int maxDepth)
+{
+  tasks.clear();
+  SubtreeTask rootTask;
+  tasks.push_back(rootTask);
+
+  unsigned int currentDepth = 0;
+
+  while (tasks.size() < targetTasks && currentDepth < maxDepth) {
+    std::vector<SubtreeTask> nextTasks;
+    bool anyExpanded = false;
+
+    for (const auto & t : tasks) {
+      if (t.prefix.size() >= (piecenumber > 1 ? piecenumber - 1 : 1u)) {
+        nextTasks.push_back(t);
+        continue;
+      }
+
+      for (const auto & step : t.prefix) {
+        cover(step.col);
+        cover_row(step.row);
+      }
+
+      if (!right[0]) {
+        nextTasks.push_back(t);
+        for (int d = (int)t.prefix.size() - 1; d >= 0; d--) {
+          uncover_row(t.prefix[d].row);
+          uncover(t.prefix[d].col);
+        }
+        continue;
+      }
+
+      unsigned int c = right[0];
+      unsigned int s = colCount[c];
+
+      if (s) {
+        unsigned int j = right[c];
+        while (j) {
+          if (colCount[j] < s) {
+            c = j;
+            s = colCount[c];
+            if (!s) break;
+          }
+          j = right[j];
+        }
+      }
+
+      if (s) {
+        unsigned int currentHoles = holes;
+        unsigned int j = right[varivoxelEnd];
+        while (j != varivoxelEnd) {
+          if (colCount[j] == 0) {
+            if (currentHoles == 0) {
+              s = 0;
+              break;
+            }
+            currentHoles--;
+          }
+          j = right[j];
+        }
+      }
+
+      if (s > 0) {
+        anyExpanded = true;
+        for (unsigned int r = down(c); r != c; r = down(r)) {
+          SubtreeTask child = t;
+          child.prefix.push_back({ c, r });
+          nextTasks.push_back(child);
+        }
+      }
+
+      for (int d = (int)t.prefix.size() - 1; d >= 0; d--) {
+        uncover_row(t.prefix[d].row);
+        uncover(t.prefix[d].col);
+      }
+    }
+
+    if (!anyExpanded)
+      break;
+
+    tasks = std::move(nextTasks);
+    currentDepth++;
+  }
+}
+
+void assembler_0_c::parallelMultiSearch(unsigned int workers) {
+  abbort.store(false, std::memory_order_relaxed);
+  running.store(true, std::memory_order_relaxed);
+
+  /* Workers call smallerRotationExists() outside callbackMutex, which reaches
+   * the lazy mutable caches on the result shape AND on every part shape.
+   * Warm them all here, on the master, before any worker exists.
+   */
+  if (avoidTransformedAssemblies)
+    prewarmSharedShapeCaches(problem);
+
+  if (parallelTasks.empty()) {
+    unsigned int targetTasks = std::max(16u, workers * 4);
+    unsigned int maxDepth = std::min(piecenumber > 1 ? piecenumber - 1 : 1u, 3u);
+    generateSubtreeTasks(parallelTasks, targetTasks, maxDepth);
+    taskCompleted.assign(parallelTasks.size(), 0);
+    totalTasks.store(parallelTasks.size(), std::memory_order_relaxed);
+    completedTasks.store(0, std::memory_order_relaxed);
+  }
+
+  if (parallelTasks.empty()) {
+    running.store(false, std::memory_order_relaxed);
+    return;
+  }
+
+  std::vector<size_t> remainingIndices;
+  remainingIndices.reserve(parallelTasks.size());
+  for (size_t i = 0; i < parallelTasks.size(); i++) {
+    if (!taskCompleted[i])
+      remainingIndices.push_back(i);
+  }
+
+  if (remainingIndices.empty()) {
+    pos = piecenumber + 1;
+    running.store(false, std::memory_order_relaxed);
+    return;
+  }
+
+  std::atomic<size_t> nextIndexPtr{0};
+  std::exception_ptr workerException = nullptr;
+  std::mutex exceptionMutex;
+
+  auto workerFunc = [this, &remainingIndices, &nextIndexPtr, &workerException, &exceptionMutex]() {
+    try {
+      assemblerWorker_c worker(*this);
+
+      while (!abbort.load(std::memory_order_relaxed)) {
+        size_t idx = nextIndexPtr.fetch_add(1, std::memory_order_relaxed);
+        if (idx >= remainingIndices.size())
+          break;
+
+        size_t taskIdx = remainingIndices[idx];
+        worker.searchSubtree(parallelTasks[taskIdx]);
+        if (!abbort.load(std::memory_order_relaxed)) {
+          taskCompleted[taskIdx] = 1;
+          completedTasks.fetch_add(1, std::memory_order_relaxed);
+        }
+      }
+
+      worker.flushIterations();
+    } catch (...) {
+      std::lock_guard<std::mutex> lock(exceptionMutex);
+      if (!workerException)
+        workerException = std::current_exception();
+      abbort.store(true, std::memory_order_relaxed);
+    }
+  };
+
+  std::vector<std::thread> threads;
+  threads.reserve(workers - 1);
+
+  for (unsigned int i = 1; i < workers; i++) {
+    threads.emplace_back(workerFunc);
+  }
+
+  workerFunc();
+
+  for (auto & t : threads) {
+    if (t.joinable())
+      t.join();
+  }
+
+  if (workerException) {
+    running.store(false, std::memory_order_relaxed);
+    std::rethrow_exception(workerException);
+  }
+
+  if (!abbort.load(std::memory_order_relaxed)) {
+    pos = piecenumber + 1;
+    parallelTasks.clear();
+    taskCompleted.clear();
+    emittedSignatures.clear();
+    parallelInterrupted = false;
+  } else {
+    /* Stopped part way. In-memory continue is fine -- parallelTasks,
+     * taskCompleted and emittedSignatures are all still here, so the remaining
+     * tasks get picked up and anything a half-searched task repeats is
+     * suppressed. None of that survives a save, though, so the position we
+     * would write is not a resumable one.
+     */
+    parallelInterrupted = true;
+  }
+
+  running.store(false, std::memory_order_relaxed);
 }
 
 void assembler_0_c::assemble(assembler_cb * callback) {
@@ -1406,11 +1867,23 @@ void assembler_0_c::assemble(assembler_cb * callback) {
 
   if (errorsState == ERR_NONE) {
     asm_bc = callback;
-    iterativeMultiSearch();
+    unsigned int threads = getEffectiveThreads();
+    if (pos == 0 && threads > 1) {
+      parallelMultiSearch(threads);
+    } else {
+      iterativeMultiSearch();
+    }
   }
 }
 
 float assembler_0_c::getFinished(void) const {
+
+  size_t total = totalTasks.load(std::memory_order_relaxed);
+  if (total > 0) {
+    if (!running.load(std::memory_order_relaxed) && !abbort.load(std::memory_order_relaxed))
+      return 1.0f;
+    return static_cast<float>(completedTasks.load(std::memory_order_relaxed)) / static_cast<float>(total);
+  }
 
   /* we don't need locking, as I hope that I have written the
    * code in a way that updated the data so, that it will never
@@ -1473,6 +1946,8 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
    * otherwise we would have to clean the stack
    */
   bt_assert(pos == 0);
+  parallelTasks.clear();
+  taskCompleted.clear();
 
   /* check for the right version */
   if (strcmp(version, ASSEMBLER_VERSION) != 0)
@@ -1480,6 +1955,17 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
 
   unsigned int len = strlen(string);
   unsigned int spos = 0;
+
+  /* leading flag written by save(): a parallel search that was interrupted did
+   * not record how far its workers got, nor which assemblies it had already
+   * reported, so resuming it would report them again
+   */
+  {
+    unsigned int interrupted = 0;
+    spos += getInt(string+spos, &interrupted);
+    if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    if (interrupted) return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+  }
 
   /* get the values from the string.
    */
@@ -1544,6 +2030,11 @@ void assembler_0_c::save(xmlWriter_c & xml) const
   xml.newAttrib("version", ASSEMBLER_VERSION);
 
   std::ostream & str = xml.addContent();
+
+  /* leading flag: 1 marks a parallel search that was interrupted, whose
+   * position can not be resumed (see parallelInterrupted)
+   */
+  str << (parallelInterrupted ? 1 : 0) << " ";
 
   str << pos << " " << iterations << " ";
 

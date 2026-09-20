@@ -23,6 +23,8 @@
 #include "problem.h"
 #include "puzzle.h"
 #include "voxel.h"
+#include "symmetries.h"
+#include "gridtype.h"
 #include "assembly.h"
 
 #include "../tools/xml.h"
@@ -242,3 +244,29 @@ void assembler_c::assemble(std::function<bool(std::unique_ptr<assembly_c>)> call
   assemble(&adapter);
 }
 
+void assembler_c::prewarmSharedShapeCaches(const problem_c & problem) {
+
+  const symmetries_c * sym = problem.getPuzzle().getGridType()->getSymmetries();
+  const unsigned int numTrans = sym ? sym->getNumTransformationsMirror() : 0;
+
+  auto warm = [numTrans](const voxel_c * v) {
+    if (!v) return;
+
+    /* selfSymmetries() first: normalizeTransformation() goes through it for
+     * every placement, so it is the most frequently raced of the three
+     */
+    v->selfSymmetries();
+
+    for (unsigned int t = 0; t < numTrans; t++) {
+      int x, y, z;
+      int x1, x2, y1, y2, z1, z2;
+      v->getHotspot(t, &x, &y, &z);
+      v->getBoundingBox(t, &x1, &x2, &y1, &y2, &z1, &z2);
+    }
+  };
+
+  warm(getResultShape(problem));
+
+  for (unsigned int i = 0; i < problem.getNumberOfParts(); i++)
+    warm(problem.getPartShape(i));
+}

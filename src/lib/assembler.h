@@ -126,6 +126,7 @@ public:
     ERR_CAN_NOT_PLACE,           ///< one piece has not placement
     ERR_CAN_NOT_RESTORE_VERSION, ///< happens on restore, when the versions of the saved information mismatches
     ERR_CAN_NOT_RESTORE_SYNTAX,  ///< happens on restore, when the information seems wrong
+    ERR_CAN_NOT_RESTORE_INTERRUPTED, ///< happens on restore, when the saved search was a parallel one that got interrupted and is therefore not resumable
     ERR_PUZZLE_UNHANDABLE        ///< the puzzle contains definitions that can not be (like ranges, multipieces, ...)
   } errState;
 
@@ -137,6 +138,7 @@ public:
       case ERR_CAN_NOT_PLACE: return "A piece cannot be placed in the target shape";
       case ERR_CAN_NOT_RESTORE_VERSION: return "Impossible to restore saved state: internal format changed";
       case ERR_CAN_NOT_RESTORE_SYNTAX: return "Impossible to restore saved state: corrupt data";
+      case ERR_CAN_NOT_RESTORE_INTERRUPTED: return "The saved search was running on several cores when it was stopped, which can not be continued; it has been reset and must be started again";
       case ERR_PUZZLE_UNHANDABLE: return "Puzzle contains unhandable definitions";
       default: return "Unknown error";
     }
@@ -193,6 +195,17 @@ public:
   virtual void assemble(assembler_cb * /*callback*/) {}
 
   void assemble(std::function<bool(std::unique_ptr<assembly_c>)> callback_fn);
+
+  /**
+   * Set the number of worker threads for multi-threaded solving.
+   * 0 means auto-detect (default).
+   */
+  virtual void setNumThreads(unsigned int /*threads*/) {}
+
+  /**
+   * Get the configured number of threads (0 = auto-detect).
+   */
+  virtual unsigned int getNumThreads(void) const { return 0; }
 
   /**
    * this function returns a number reflecting the complexity of the
@@ -260,6 +273,28 @@ public:
    * the assembler is currently at a solution
    */
   virtual std::unique_ptr<assembly_c> getAssembly(void) = 0;
+
+  /* Populate the lazily-filled mutable caches on the shapes shared by every
+   * worker, so that a parallel search only ever reads them.
+   *
+   * assembly_c::smallerRotationExists() -> assembly_c::transform() touches
+   * voxel_c::getHotspot()/getBoundingBox() (the mutable BbHsCache) and
+   * voxel_c::selfSymmetries() (the mutable symmetries member) on BOTH the
+   * result shape and every part shape -- the part shapes via
+   * normalizeTransformation(), which is selfSymmetries() underneath, and via
+   * the hotspot/bounding-box fixup when a placement's orientation normalises
+   * to a different transformation. All of those are unsynchronised
+   * check-then-write, so first touch must happen on one thread.
+   *
+   * Call this from the master before spawning workers.
+   */
+  static void prewarmSharedShapeCaches(const problem_c & problem);
+
+  /* upper bound on worker threads. The count arrives from -t, from
+   * BURRTOOLS_THREADS and from Problem.solve(threads=...), none of which is
+   * otherwise validated, and it is used directly to size a thread vector.
+   */
+  static const unsigned int MAX_THREADS = 256;
 
 public:
 

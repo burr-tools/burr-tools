@@ -862,6 +862,20 @@ assembler_c::errState problem_c::setAssembler(std::unique_ptr<assembler_c> a) {
 
     // when we could not load, return with error and reset to unsolved
     if (err != assembler_c::ERR_NONE) {
+
+      /* A parallel search that was interrupted saves no usable resume point.
+       * The partial results that are here came from a search that can only be
+       * redone from the start, and keeping them would mean the next run
+       * reports all of them a second time. So drop them, and clear the saved
+       * state as well so the next solve starts from a clean slate rather than
+       * failing on the same unusable data for ever.
+       */
+      if (err == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED) {
+        removeAllSolutions();
+        assemblerVersion = "";
+        return err;
+      }
+
       solveState = SS_UNSOLVED;
       return err;
     }
