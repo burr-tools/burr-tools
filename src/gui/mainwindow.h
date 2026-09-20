@@ -101,6 +101,11 @@ class mainWindow_c : public LFl_Double_Window {
   bool changed;
   int editSymmetries;
 
+  /* Re-entrancy guard for openFromSystem(): true while a system-open request
+   * is being handled, so a nested one (see openFromSystem()'s comment) is
+   * ignored instead of stacking a second confirmDiscard() dialog. */
+  bool handlingSystemOpen;
+
   /* last published menu activation state, so the system menu bar is only
    * rebuilt when it actually changes */
   bool menuExportActive;

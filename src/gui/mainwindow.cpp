@@ -2096,6 +2096,24 @@ bool mainWindow_c::tryToLoad(const char * f) {
 
 void mainWindow_c::openFromSystem(const char * filename) {
 
+  // A system-open request can arrive while we are already handling one:
+  // confirmDiscard() runs a modal dialog, whose nested Fl::wait() drains
+  // another entry from FLTK's dropped-files list and calls straight back in
+  // here (subprojects/fltk/src/Fl_cocoa.mm:853-857). BurrTools shows one
+  // puzzle at a time, so opening several files at once can only ever display
+  // one: handle the first request and ignore the rest, rather than stacking
+  // dialogs whose answers would apply to the wrong puzzle.
+  struct ReentrancyGuard {
+    bool & flag;
+    explicit ReentrancyGuard(bool & f) : flag(f) { flag = true; }
+    ~ReentrancyGuard() { flag = false; }
+  };
+
+  if (handlingSystemOpen)
+    return;
+
+  ReentrancyGuard guard(handlingSystemOpen);
+
   if (!filename || !filename[0])
     return;
 
@@ -4082,6 +4100,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
     renderedAssembly(-1),
     changed(false),
     editSymmetries(0),
+    handlingSystemOpen(false),
     /* Both start true, matching the menu tables' real initial state: none
      * of their items carry FL_MENU_INACTIVE in the array literal, so every
      * entry is active until updateInterface() first deactivates it. Seeding
