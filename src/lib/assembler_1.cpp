@@ -2657,18 +2657,18 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   std::exception_ptr workerException = nullptr;
   std::mutex exceptionMutex;
 
-  auto workerFunc = [this, &remainingIndices, &nextIndexPtr, &workerException, &exceptionMutex]() {
+  auto workerFunc = [this, &remainingIndices, &nextIndexPtr, &workerException, &exceptionMutex](std::stop_token st = {}) {
     try {
       assemblerWorker_1 worker(*this);
 
-      while (!abbort.load(std::memory_order_relaxed)) {
+      while (!abbort.load(std::memory_order_relaxed) && !st.stop_requested()) {
         size_t idx = nextIndexPtr.fetch_add(1, std::memory_order_relaxed);
         if (idx >= remainingIndices.size())
           break;
 
         size_t taskIdx = remainingIndices[idx];
         worker.searchSubtree(parallelTasks[taskIdx]);
-        if (!abbort.load(std::memory_order_relaxed)) {
+        if (!abbort.load(std::memory_order_relaxed) && !st.stop_requested()) {
           taskCompleted[taskIdx] = 1;
           completedTasks.fetch_add(1, std::memory_order_relaxed);
         }
@@ -2683,7 +2683,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     }
   };
 
-  std::vector<std::thread> threads;
+  std::vector<std::jthread> threads;
   threads.reserve(workers - 1);
 
   for (unsigned int i = 1; i < workers; i++) {

@@ -34,6 +34,7 @@
 #include <cstring>
 #include <unordered_map>
 #include <thread>
+#include <stop_token>
 
 #ifdef _WIN32
 #define snprintf _snprintf
@@ -1749,9 +1750,9 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   if (canUseSimd()) {
     auto solver = createSimdSolver();
 
-    auto simdWorkerFunc = [this, &remainingIndices, &nextIndexPtr, &solver, &workerException, &exceptionMutex]() {
+    auto simdWorkerFunc = [this, &remainingIndices, &nextIndexPtr, &solver, &workerException, &exceptionMutex](std::stop_token st = {}) {
       try {
-        while (!abbort.load(std::memory_order_relaxed)) {
+        while (!abbort.load(std::memory_order_relaxed) && !st.stop_requested()) {
           size_t idx = nextIndexPtr.fetch_add(1, std::memory_order_relaxed);
           if (idx >= remainingIndices.size())
             break;
@@ -1764,13 +1765,13 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
           }
 
           std::atomic<uint64_t> task_iter{0};
-          solver->solveSubtree(prefix_nodes, [this](const std::vector<unsigned int> &solution_nodes) -> bool {
+          solver->solveSubtree(prefix_nodes, [this, &st](const std::vector<unsigned int> &solution_nodes) -> bool {
             handleSolution(solution_nodes.data(), solution_nodes.size());
-            return !abbort.load(std::memory_order_relaxed);
+            return !abbort.load(std::memory_order_relaxed) && !st.stop_requested();
           }, abbort, task_iter);
 
           iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
-          if (!abbort.load(std::memory_order_relaxed)) {
+          if (!abbort.load(std::memory_order_relaxed) && !st.stop_requested()) {
             taskCompleted[taskIdx] = 1;
             completedTasks.fetch_add(1, std::memory_order_relaxed);
           }
@@ -1783,7 +1784,7 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
       }
     };
 
-    std::vector<std::thread> threads;
+    std::vector<std::jthread> threads;
     threads.reserve(workers - 1);
 
     for (unsigned int i = 1; i < workers; i++) {
@@ -1797,18 +1798,18 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
         t.join();
     }
   } else {
-    auto dlxWorkerFunc = [this, &remainingIndices, &nextIndexPtr, &workerException, &exceptionMutex]() {
+    auto dlxWorkerFunc = [this, &remainingIndices, &nextIndexPtr, &workerException, &exceptionMutex](std::stop_token st = {}) {
       try {
         assemblerWorker_c worker(*this);
 
-        while (!abbort.load(std::memory_order_relaxed)) {
+        while (!abbort.load(std::memory_order_relaxed) && !st.stop_requested()) {
           size_t idx = nextIndexPtr.fetch_add(1, std::memory_order_relaxed);
           if (idx >= remainingIndices.size())
             break;
 
           size_t taskIdx = remainingIndices[idx];
           worker.searchSubtree(parallelTasks[taskIdx]);
-          if (!abbort.load(std::memory_order_relaxed)) {
+          if (!abbort.load(std::memory_order_relaxed) && !st.stop_requested()) {
             taskCompleted[taskIdx] = 1;
             completedTasks.fetch_add(1, std::memory_order_relaxed);
           }
@@ -1823,7 +1824,7 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
       }
     };
 
-    std::vector<std::thread> threads;
+    std::vector<std::jthread> threads;
     threads.reserve(workers - 1);
 
     for (unsigned int i = 1; i < workers; i++) {

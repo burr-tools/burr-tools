@@ -28,6 +28,7 @@ class disassembler_0_c;
 
 #include <vector>
 #include <thread>
+#include <stop_token>
 #include <mutex>
 #include <condition_variable>
 #include <queue>
@@ -109,11 +110,11 @@ private:
   std::mutex exception_mutex;
   std::exception_ptr worker_exception;
 
-  std::vector<std::thread> workers;
-  std::thread merger;
+  std::vector<std::jthread> workers;
+  std::jthread merger;
 
-  void worker_loop();
-  void merger_loop();
+  void worker_loop(std::stop_token st);
+  void merger_loop(std::stop_token st);
   void check_exception();
 };
 
