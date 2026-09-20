@@ -23,6 +23,7 @@
 
 #include <vector>
 #include <memory>
+#include <cstdint>
 
 class problem_c;
 class disassemblerNode_c;

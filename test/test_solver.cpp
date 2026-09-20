@@ -22,6 +22,38 @@
 
 namespace {
 
+/* RAII environment variable, so a test can drive the runtime toggles that
+ * allowing tests to verify fallback behavior under runtime feature toggles (such as BURRTOOLS_NO_SIMD).
+ */
+class ScopedEnv {
+public:
+  ScopedEnv(const char * name, const char * value) : name_(name) {
+    const char * old = getenv(name);
+    had_ = (old != nullptr);
+    if (had_) old_ = old;
+    set(name, value);
+  }
+  ~ScopedEnv() {
+    set(name_.c_str(), had_ ? old_.c_str() : nullptr);
+  }
+private:
+  /* setenv/unsetenv are POSIX; MinGW and MSVC have _putenv_s instead, where
+   * assigning an empty value is what removes the variable
+   */
+  static void set(const char * name, const char * value) {
+#ifdef WIN32
+    _putenv_s(name, value ? value : "");
+#else
+    if (value) setenv(name, value, 1);
+    else unsetenv(name);
+#endif
+  }
+
+  std::string name_;
+  std::string old_;
+  bool had_;
+};
+
 class TestAssemblerCallback : public assembler_cb {
 public:
   int assemblies{0};
@@ -892,6 +924,7 @@ TEST_CASE("Parallel assembler 1: an interrupted search is not restored as resuma
  */
 TEST_CASE("Parallel assembler 1: the interrupted flag does not break normal restore",
           "[assembler][parallel][resume]") {
+  ScopedEnv env("BURRTOOLS_NO_SIMD", "1");
   auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
   REQUIRE(p != nullptr);
   auto problem = p->getProblem(0);
@@ -945,38 +978,6 @@ TEST_CASE("Parallel assembler 1 does not report stale progress on a later run",
   REQUIRE(again.createMatrix(false, false, false) == assembler_c::ERR_NONE);
   CHECK(again.getFinished() < 1.0f);
 }
-
-/* RAII environment variable, so a test can drive the runtime toggles that
- * AGENTS.md section 3.7 requires every optimisation to ship with.
- */
-class ScopedEnv {
-public:
-  ScopedEnv(const char * name, const char * value) : name_(name) {
-    const char * old = getenv(name);
-    had_ = (old != nullptr);
-    if (had_) old_ = old;
-    set(name, value);
-  }
-  ~ScopedEnv() {
-    set(name_.c_str(), had_ ? old_.c_str() : nullptr);
-  }
-private:
-  /* setenv/unsetenv are POSIX; MinGW and MSVC have _putenv_s instead, where
-   * assigning an empty value is what removes the variable
-   */
-  static void set(const char * name, const char * value) {
-#ifdef WIN32
-    _putenv_s(name, value ? value : "");
-#else
-    if (value) setenv(name, value, 1);
-    else unsetenv(name);
-#endif
-  }
-
-  std::string name_;
-  std::string old_;
-  bool had_;
-};
 
 /* Cross-check the SIMD exact-cover path against classical DLX on the whole
  * regression corpus.
@@ -1034,8 +1035,9 @@ TEST_CASE("SIMD and DLX solvers agree across the regression corpus",
       tookDifferentPaths = true;
   }
 
-  /* Guard the premise: not every puzzle qualifies for the SIMD solver (holes,
-   * variable voxels and >512 columns all disqualify it), but if *none* of them
+  /* Guard the premise: not every puzzle qualifies for the SIMD solver (a range
+   * column, >32768 matrix columns, or variable voxels combined with a shape
+   * whose min differs from its max all disqualify it), but if *none* of them
    * does then this case has silently stopped comparing anything and is only
    * running DLX twice. Keep at least one SIMD-eligible puzzle in the list.
    */

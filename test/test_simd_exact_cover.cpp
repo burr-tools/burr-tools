@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_template_test_macros.hpp>
 #include "src/lib/simd_exact_cover.h"
 
 #include <vector>
@@ -26,6 +27,8 @@
 #include <set>
 #include <thread>
 #include <mutex>
+#include <string>
+#include <cstdlib>
 
 TEST_CASE("SimdBitset256 operations", "[simd][bitset]") {
   SimdBitset256 b;
@@ -625,4 +628,138 @@ TEST_CASE("SimdHuangCover256 duplicate pieces exact cover", "[simd][huang]") {
   REQUIRE(sol_set.count(std::vector<unsigned int>{1, 2, 4}) == 1);
   REQUIRE(sol_set.count(std::vector<unsigned int>{1, 3, 5}) == 1);
   REQUIRE(iterations.load() > 0);
+}
+
+TEMPLATE_TEST_CASE("SimdHuangCover extended sizes duplicate pieces exact cover", "[simd][huang]",
+                   SimdHuangCover512, SimdHuangCover1024, SimdHuangCover4096, SimdHuangCover32768) {
+  unsigned int base_v = 280;
+  TestType solver(base_v + 5, 2);
+
+  solver.setColumnBounds(1, 2, 2, false, true, false, false); // Shape 1
+  solver.setColumnBounds(2, 1, 1, false, true, false, false); // Shape 2
+  for (unsigned int v = base_v; v < base_v + 5; v++) {
+    solver.setColumnBounds(v, 1, 1, true, false, false, false);
+  }
+
+  // Rows for Shape 1:
+  // Row 1: Shape 1, voxels base_v, base_v + 1
+  solver.addRow(1, 0, 1, 0, 0, {1, base_v, base_v + 1}, {1, 1, 1});
+  // Row 2: Shape 1, voxels base_v + 2, base_v + 3
+  solver.addRow(2, 0, 1, 1, 0, {1, base_v + 2, base_v + 3}, {1, 1, 1});
+  // Row 3: Shape 1, voxels base_v + 3, base_v + 4
+  solver.addRow(3, 0, 1, 2, 0, {1, base_v + 3, base_v + 4}, {1, 1, 1});
+
+  // Rows for Shape 2:
+  // Row 4: Shape 2, voxel base_v + 4
+  solver.addRow(4, 1, 2, 0, 0, {2, base_v + 4}, {1, 1});
+  // Row 5: Shape 2, voxel base_v + 2
+  solver.addRow(5, 1, 2, 1, 0, {2, base_v + 2}, {1, 1});
+
+  std::vector<std::vector<unsigned int>> solutions;
+  std::atomic<bool> abort_flag{false};
+  std::atomic<uint64_t> iterations{0};
+
+  solver.solve([&](const std::vector<unsigned int> &sol) {
+    std::vector<unsigned int> sorted = sol;
+    std::sort(sorted.begin(), sorted.end());
+    solutions.push_back(sorted);
+    return true;
+  }, abort_flag, iterations);
+
+  REQUIRE(solutions.size() == 2);
+  REQUIRE(solutions[0] == std::vector<unsigned int>{1, 2, 4});
+  REQUIRE(solutions[1] == std::vector<unsigned int>{1, 3, 5});
+  REQUIRE(iterations.load() > 0);
+
+  // Also test parallelSolve
+  std::atomic<unsigned long> p_iterations{0};
+  std::atomic<size_t> total_tasks{0};
+  std::atomic<size_t> completed_tasks{0};
+  std::vector<std::vector<unsigned int>> p_solutions;
+  std::mutex sol_mutex;
+
+  solver.parallelSolve(
+    4,
+    [&](const std::vector<unsigned int> &sol) {
+      std::lock_guard<std::mutex> lock(sol_mutex);
+      std::vector<unsigned int> sorted = sol;
+      std::sort(sorted.begin(), sorted.end());
+      p_solutions.push_back(sorted);
+      return true;
+    },
+    abort_flag,
+    p_iterations,
+    total_tasks,
+    completed_tasks
+  );
+  std::sort(p_solutions.begin(), p_solutions.end());
+  REQUIRE(p_solutions.size() == 2);
+  REQUIRE(p_solutions[0] == std::vector<unsigned int>{1, 2, 4});
+  REQUIRE(p_solutions[1] == std::vector<unsigned int>{1, 3, 5});
+}
+
+
+namespace {
+
+#ifdef _WIN32
+void hc_set_env_var(const char * name, const char * value) {
+  if (value) _putenv_s(name, value);
+  else _putenv_s(name, "");
+}
+#else
+void hc_set_env_var(const char * name, const char * value) {
+  if (value) setenv(name, value, 1);
+  else unsetenv(name);
+}
+#endif
+
+struct HcScopedEnv {
+  std::string name;
+  bool hadValue;
+  std::string oldValue;
+
+  HcScopedEnv(const char * var, const char * val) : name(var) {
+    const char * existing = std::getenv(var);
+    hadValue = existing != nullptr;
+    if (hadValue) oldValue = existing;
+    hc_set_env_var(var, val);
+  }
+
+  ~HcScopedEnv() {
+    hc_set_env_var(name.c_str(), hadValue ? oldValue.c_str() : nullptr);
+  }
+};
+
+}  // namespace
+
+/* The SIMD kill switches must actually reach the kernel that runs.
+ *
+ * filterRows() tries AVX-512 before AVX2, so gating only use_avx2 on
+ * BURRTOOLS_NO_AVX2 made that variable select *wider* SIMD on an AVX-512
+ * host instead of falling back, leaving the scalar loop unreachable from
+ * tier 512 up. Every kernel returns the same solutions, so this cannot be
+ * caught by comparing results -- it needs the dispatch decision itself.
+ */
+TEMPLATE_TEST_CASE("SimdHuangCover: the SIMD kill switches disable every kernel",
+                   "[simd][huang][dispatch]",
+                   SimdHuangCover256, SimdHuangCover512, SimdHuangCover1024,
+                   SimdHuangCover4096, SimdHuangCover32768) {
+  SECTION("BURRTOOLS_NO_SIMD falls all the way back to scalar") {
+    HcScopedEnv env("BURRTOOLS_NO_SIMD", "1");
+    TestType solver(7, 2);
+    CHECK(std::string(solver.activeKernel()) == "scalar");
+  }
+
+  SECTION("BURRTOOLS_NO_AVX2 does not leave AVX-512 enabled") {
+    HcScopedEnv env("BURRTOOLS_NO_AVX2", "1");
+    TestType solver(7, 2);
+    CHECK(std::string(solver.activeKernel()) != "avx512");
+    CHECK(std::string(solver.activeKernel()) != "avx2");
+  }
+
+  SECTION("BURRTOOLS_NO_AVX512 leaves the narrower kernels alone") {
+    HcScopedEnv env("BURRTOOLS_NO_AVX512", "1");
+    TestType solver(7, 2);
+    CHECK(std::string(solver.activeKernel()) != "avx512");
+  }
 }
