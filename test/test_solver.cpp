@@ -1153,10 +1153,7 @@ namespace {
  * used to exercise the matrix that assembler 1 actually searches.
  */
 int assembliesAfterReduce(const char * path, bool forceDlx) {
-  if (forceDlx)
-    setenv("BURRTOOLS_NO_SIMD", "1", 1);
-  else
-    unsetenv("BURRTOOLS_NO_SIMD");
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", forceDlx ? "1" : nullptr);
 
   auto p = puzzle_c::load(path);
   REQUIRE(p != nullptr);
@@ -1172,7 +1169,6 @@ int assembliesAfterReduce(const char * path, bool forceDlx) {
   TestAssemblerCallback cb(nullptr);
   assm->assemble(&cb);
 
-  unsetenv("BURRTOOLS_NO_SIMD");
   return cb.assemblies;
 }
 
