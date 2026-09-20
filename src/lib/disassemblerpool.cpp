@@ -72,11 +72,11 @@ disassemblerPool_c::disassemblerPool_c(
   // Start worker threads
   workers.reserve(num_threads);
   for (unsigned int i = 0; i < num_threads; ++i) {
-    workers.emplace_back(&disassemblerPool_c::worker_loop, this);
+    workers.emplace_back([this](std::stop_token st) { worker_loop(st); });
   }
 
   // Start merger thread
-  merger = std::thread(&disassemblerPool_c::merger_loop, this);
+  merger = std::jthread([this](std::stop_token st) { merger_loop(st); });
 }
 
 disassemblerPool_c::~disassemblerPool_c() {
@@ -125,19 +125,19 @@ void disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
   cv_worker.notify_one();
 }
 
-void disassemblerPool_c::worker_loop() {
+void disassemblerPool_c::worker_loop(std::stop_token st) {
   try {
     disassembler_0_c dis(puzzle);
 
-    while (true) {
+    while (!st.stop_requested()) {
       Task task;
       {
         std::unique_lock<std::mutex> lock(queue_mutex);
-        cv_worker.wait(lock, [this]() {
-          return !work_queue.empty() || finished.load(std::memory_order_relaxed) || aborted.load(std::memory_order_relaxed);
+        cv_worker.wait(lock, [this, &st]() {
+          return st.stop_requested() || !work_queue.empty() || finished.load(std::memory_order_relaxed) || aborted.load(std::memory_order_relaxed);
         });
 
-        if (aborted.load(std::memory_order_relaxed))
+        if (st.stop_requested() || aborted.load(std::memory_order_relaxed))
           return;
 
         if (work_queue.empty()) {
@@ -152,17 +152,17 @@ void disassemblerPool_c::worker_loop() {
       }
 
       std::unique_ptr<separation_c> sep;
-      if (task.assembly && task.assembly->placementCount() > 1 && !aborted.load(std::memory_order_relaxed)) {
+      if (task.assembly && task.assembly->placementCount() > 1 && !st.stop_requested() && !aborted.load(std::memory_order_relaxed)) {
         sep = dis.disassemble(task.assembly.get());
       }
 
       {
         std::unique_lock<std::mutex> lock(result_mutex);
-        cv_reorder.wait(lock, [this]() {
-          return reorder_buffer.size() < MAX_REORDER_SIZE || aborted.load(std::memory_order_relaxed);
+        cv_reorder.wait(lock, [this, &st]() {
+          return st.stop_requested() || reorder_buffer.size() < MAX_REORDER_SIZE || aborted.load(std::memory_order_relaxed);
         });
 
-        if (aborted.load(std::memory_order_relaxed))
+        if (st.stop_requested() || aborted.load(std::memory_order_relaxed))
           return;
 
         reorder_buffer.emplace(task.seqNo, Result{std::move(task.assembly), std::move(sep)});
@@ -177,6 +177,10 @@ void disassemblerPool_c::worker_loop() {
       }
     }
     aborted.store(true, std::memory_order_release);
+    for (auto &w : workers) {
+      w.request_stop();
+    }
+    merger.request_stop();
     {
       std::lock_guard<std::mutex> qlock(queue_mutex);
       cv_worker.notify_all();
@@ -191,20 +195,21 @@ void disassemblerPool_c::worker_loop() {
   }
 }
 
-void disassemblerPool_c::merger_loop() {
+void disassemblerPool_c::merger_loop(std::stop_token st) {
   try {
-    while (true) {
+    while (!st.stop_requested()) {
       Result res;
       uint64_t seq = 0;
       {
         std::unique_lock<std::mutex> lock(result_mutex);
-        cv_merger.wait(lock, [this]() {
-          return reorder_buffer.find(next_merge_seq.load(std::memory_order_relaxed)) != reorder_buffer.end() ||
+        cv_merger.wait(lock, [this, &st]() {
+          return st.stop_requested() ||
+                 reorder_buffer.find(next_merge_seq.load(std::memory_order_relaxed)) != reorder_buffer.end() ||
                  aborted.load(std::memory_order_relaxed) ||
                  (finished.load(std::memory_order_relaxed) && next_merge_seq.load(std::memory_order_relaxed) == next_submit_seq.load(std::memory_order_relaxed));
         });
 
-        if (aborted.load(std::memory_order_relaxed))
+        if (st.stop_requested() || aborted.load(std::memory_order_relaxed))
           return;
 
         auto it = reorder_buffer.find(next_merge_seq.load(std::memory_order_relaxed));
@@ -237,6 +242,10 @@ void disassemblerPool_c::merger_loop() {
       }
     }
     aborted.store(true, std::memory_order_release);
+    for (auto &w : workers) {
+      w.request_stop();
+    }
+    merger.request_stop();
     {
       std::lock_guard<std::mutex> qlock(queue_mutex);
       cv_worker.notify_all();
@@ -287,8 +296,12 @@ void disassemblerPool_c::abort() {
   if (is_inline)
     return;
 
-  // Signal aborted and wake all waiting threads before taking lifecycle_mutex
+  // Signal aborted and request stop on all jthreads before taking lifecycle_mutex
   aborted.store(true, std::memory_order_release);
+  for (auto &w : workers) {
+    w.request_stop();
+  }
+  merger.request_stop();
 
   {
     std::lock_guard<std::mutex> qlock(queue_mutex);

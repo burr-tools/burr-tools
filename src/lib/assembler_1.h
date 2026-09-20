@@ -31,6 +31,7 @@
 #include <mutex>
 #include <memory>
 #include <thread>
+#include <stop_token>
 
 class problem_c;
 class gridType_c;

@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <thread>
 #include <mutex>
+#include <stop_token>
 
 template <typename BitsetType>
 SimdHuangCover<BitsetType>::SimdHuangCover(unsigned int num_cols, unsigned int num_s)
@@ -646,9 +647,9 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   std::exception_ptr worker_exception = nullptr;
   std::mutex exception_mutex;
 
-  auto worker_fn = [&]() {
+  auto worker_fn = [&](std::stop_token st = {}) {
     try {
-      while (!abort_flag.load(std::memory_order_relaxed)) {
+      while (!abort_flag.load(std::memory_order_relaxed) && !st.stop_requested()) {
         size_t idx = next_task_idx.fetch_add(1, std::memory_order_relaxed);
         if (idx >= tasks.size())
           break;
@@ -672,7 +673,7 @@ void SimdHuangCover<BitsetType>::parallelSolve(
     }
   };
 
-  std::vector<std::thread> threads;
+  std::vector<std::jthread> threads;
   threads.reserve(num_workers - 1);
   for (unsigned int i = 1; i < num_workers; i++) {
     threads.emplace_back(worker_fn);
