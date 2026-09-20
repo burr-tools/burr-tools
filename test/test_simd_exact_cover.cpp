@@ -765,11 +765,10 @@ TEMPLATE_TEST_CASE("SimdHuangCover: the SIMD kill switches disable every kernel"
 }
 
 /* Hole limits. A hole column is a variable voxel: it may be left empty, but
- * only up to the puzzle's hole budget. Assembler 1 used to hand puzzles with a
- * restrictive budget to the DLX solver; it now hands them here, so this solver
- * has to apply the budget exactly the way assembler_1_c::rec() does - count the
- * hole columns that can no longer be filled, and reject once that exceeds the
- * budget. Nothing exercised setHoles() before.
+ * only up to the puzzle's hole budget. Assembler 1 routes puzzles with a
+ * restrictive budget through this solver, so it has to apply the budget the
+ * way assembler_1_c::rec() does: count the hole columns left unfilled, and
+ * reject a solution once that count exceeds the budget.
  */
 TEMPLATE_TEST_CASE("SimdHuangCover applies the hole budget", "[simd][huang][holes]",
                    SimdHuangCover256, SimdHuangCover512) {

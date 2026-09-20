@@ -1110,11 +1110,10 @@ TEST_CASE("assembler 1: getFinished does not report 100% before starting a resto
 }
 
 
-/* Solving a file whose problem was already solved (solveState == SS_SOLVED and
- * no saved assembler state) used to wedge the solver thread: setAssembler()
- * asserts on that combination, run() caught the assert_exception and parked in
- * ACT_ASSERT, and ACT_ASSERT was not reported as a stopped state - so a caller
- * polling for the thread to finish waited forever. That is the burrTxt2 hang.
+/* A problem loaded in SS_SOLVED with no saved assembler state cannot be
+ * continued: setAssembler() rejects that combination, so run() ends in
+ * ACT_ASSERT. stopped() has to report that as a stopped state, or a caller
+ * polling for the worker to finish waits on a thread that has already exited.
  */
 TEST_CASE("solveThread on an already solved problem stops instead of wedging", "[solver][resume]") {
   std::unique_ptr<std::istream> str(openGzFile("examples/PelikanBurr.xmpuzzle"));
@@ -1149,8 +1148,8 @@ TEST_CASE("solveThread on an already solved problem stops instead of wedging", "
 namespace {
 
 /* Solve with reduce() applied first, the way solveThread_c does. The other
- * helper in this file deliberately skips reduce(), which is why nothing here
- * used to exercise the matrix that assembler 1 actually searches.
+ * helper in this file skips reduce(), so it searches a different matrix than
+ * the real solve path builds.
  */
 int assembliesAfterReduce(const char * path, bool forceDlx) {
   ScopedEnv noSimd("BURRTOOLS_NO_SIMD", forceDlx ? "1" : nullptr);
@@ -1175,10 +1174,9 @@ int assembliesAfterReduce(const char * path, bool forceDlx) {
 } // namespace
 
 /* reduce() ends in clumpify(), which drops columns that duplicate an earlier
- * one and unlinks their nodes from the rows. The SIMD solver was still being
- * handed every column from 1..num_cols, so those dropped columns arrived with
- * no row able to cover them; a required voxel among them made the search treat
- * the puzzle as unsatisfiable and report no assemblies at all.
+ * one and unlinks their nodes from the rows. Both searches have to agree on
+ * the matrix that leaves behind, so for a puzzle whose matrix reduce() shrinks
+ * the SIMD path and the DLX fallback must report the same assemblies.
  */
 TEST_CASE("Assembler 1 SIMD search agrees with DLX on a reduced matrix", "[solver][simd][reduce]") {
   const char * puzzles[] = {

@@ -170,10 +170,9 @@ static int solve(int argv, char* args[]) {
     if (restart)
       problem->removeAllSolutions();
 
-    /* without -R we continue where an earlier run left off. There is nothing to
-     * continue for a problem that is already finished, or whose information was
-     * invalidated by editing - and handing an assembler to one of those breaks
-     * setAssembler's precondition, which used to wedge the solver thread.
+    /* without -R we continue where an earlier run left off. A problem that is
+     * already finished, or whose information was invalidated by editing, has
+     * nothing to continue from, and setAssembler's precondition rejects one.
      */
     if (!problem->canStartSolving()) {
       cout << "problem " << pr << " (" << problem->getName() << ") ";
@@ -235,9 +234,9 @@ static int solve(int argv, char* args[]) {
 
     }
 
-    /* report how the run ended. Every one of these states means the worker has
-     * left run(), so none of them may be silently ignored - doing so is what
-     * turned an assert in the solver into an endless wait.
+    /* report how the run ended. Each of these states means the worker has left
+     * run() for good, so each needs an answer here; a state handled nowhere
+     * leaves the loop above waiting on a thread that has already exited.
      */
     switch (assmThread.currentAction()) {
       case solveThread_c::ACT_FINISHED:

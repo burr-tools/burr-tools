@@ -2,10 +2,9 @@
 """Smoke tests for the burrTxt2 command line tool.
 
 These drive the real binary, because the behaviour they pin down lives in
-main(): which runs it refuses to start, and that it always terminates and
-says why. Both regressions guarded here used to make the tool unusable
-without a word of explanation - one wedged forever, the other aborted
-through an uncaught assert.
+main(): which runs it refuses to start, and that every run terminates and
+says why. A run that cannot do useful work has to say so and exit; none may
+end silently or abort.
 
 Every run gets a timeout, so a wedged binary fails the test instead of
 hanging the suite.
@@ -75,8 +74,9 @@ def main():
 
     binary, source_root = sys.argv[1], sys.argv[2]
 
-    # A grid without a disassembler must be refused up front. It used to build
-    # the disassembler anyway, assert on the missing movement cache and abort.
+    # A grid without a disassembler must be refused up front, before anything
+    # builds one: the disassembler asserts on the movement cache such a grid
+    # does not provide, on the main thread where nothing catches it.
     label = "disassembly on a grid that has no disassembler"
     rc, out = run(binary, ["-R", "-d", "-b", "0"], "examples/BrokenSticks.xmpuzzle",
                   source_root, label)
