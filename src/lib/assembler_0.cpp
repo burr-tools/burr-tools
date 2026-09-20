@@ -2503,7 +2503,7 @@ float assembler_0_c::getFinished(void) const {
      * over-report.
      */
     double done = completedShare.load(std::memory_order_acquire);
-    double inFlight = 0;
+    double best = 0;
 
     for (unsigned int attempt = 0; attempt < 4; attempt++) {
       double sum = 0;
@@ -2515,21 +2515,30 @@ float assembler_0_c::getFinished(void) const {
                  * static_cast<double>(w->fraction.load(std::memory_order_relaxed));
       }
 
+      /* Every attempt's pair is kept as a floor, not just the consistent one;
+       * see the long note in assembler_1_c::getFinished(). `done` was read
+       * before this walk, so a slot still showing a task folded in since is
+       * not a second copy of it and the pair can only under-report. The
+       * exhaustion path needs this: four failed attempts move `done` by at
+       * most four tasks while discarding in-flight terms worth up to one per
+       * worker, and here even four workers can do it -- four tiny shares can
+       * be folded in while one large share is still running.
+       */
+      const double candidate = done + sum;
+      if (candidate > best)
+        best = candidate;
+
       const double after = completedShare.load(std::memory_order_acquire);
-      if (after == done) {
-        inFlight = sum;
+      if (after == done)
         break;
-      }
 
       /* a handoff landed inside the walk: `sum` and `after` disagree about
-       * that task, so drop the in-flight terms and try for a clean pair
+       * that task, so retake the pair
        */
       done = after;
-      inFlight = 0;
     }
 
-    const double erg = done + inFlight;
-    return (erg > 1.0) ? 1.0f : static_cast<float>(erg);
+    return (best > 1.0) ? 1.0f : static_cast<float>(best);
   }
 
   /* we don't need locking, as I hope that I have written the

@@ -1892,9 +1892,18 @@ TEST_CASE("Huang parallel assembly progress is monotone and ends at 1.0",
    * that starts and finishes between those two reads is missed by both and
    * the sample lands a whole task low. It is rare, but at this sample count
    * it happens; it was observed under ThreadSanitizer, where symbolising a
-   * report stalls a worker mid-handoff. getFinished() closes it by re-reading
-   * the counter after the slot walk and returning the larger answer -- see
-   * the note there. This assertion is what keeps that fix honest.
+   * report stalls a worker mid-handoff.
+   *
+   * getFinished() reads the counter and the slots as a snapshot, retaking the
+   * pair when the counter moves under the walk and keeping the largest pair
+   * seen as a floor, which is what this assertion holds it to. Note what it
+   * does NOT do: re-reading the counter and returning the larger of the two
+   * answers was tried and rejected -- it recovers the finished task only by
+   * discarding every other worker's in-flight term, and this very case still
+   * failed with it in place. Nor is the snapshot airtight: a worker stalled
+   * between its slot store and its own fetch_add, for the whole of a read,
+   * is out of any reader's reach. That window is two adjacent instructions
+   * wide, against the microseconds of a whole slot walk it replaces.
    */
   CHECK(t.monotone());
 

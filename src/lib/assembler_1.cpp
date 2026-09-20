@@ -3441,7 +3441,7 @@ float assembler_1_c::getFinished(void) const {
      * worker's hot path would.
      */
     size_t done = completedTasks.load(std::memory_order_acquire);
-    double inFlight = 0;
+    double best = 0;
 
     for (unsigned int attempt = 0; attempt < 4; attempt++) {
       double sum = 0;
@@ -3452,20 +3452,36 @@ float assembler_1_c::getFinished(void) const {
             sum += w->fraction.load(std::memory_order_relaxed);
       }
 
+      /* Every attempt's pair is kept as a floor, not just the consistent one.
+       *
+       * `done` was read BEFORE this walk, so any task counted since is absent
+       * from it, and a slot still showing that task is therefore not a second
+       * copy of it: the pair can only under-report, never over-report. That
+       * makes the largest pair seen a safe answer whether or not the snapshot
+       * ever came out clean.
+       *
+       * It is also what the exhaustion path needs. Four failed attempts move
+       * `done` by at most four tasks, while the in-flight terms they discard
+       * are worth up to one per worker -- so returning the bare counter would
+       * drop the value whenever there are more than four workers, which is
+       * exactly the non-monotonicity this snapshot exists to remove, just in
+       * a rarer window.
+       */
+      const double candidate = static_cast<double>(done) + sum;
+      if (candidate > best)
+        best = candidate;
+
       const size_t after = completedTasks.load(std::memory_order_acquire);
-      if (after == done) {
-        inFlight = sum;
+      if (after == done)
         break;
-      }
 
       /* a handoff landed inside the walk: `sum` and `after` disagree about
-       * that task, so drop the in-flight terms and try for a clean pair
+       * that task, so retake the pair
        */
       done = after;
-      inFlight = 0;
     }
 
-    double erg = (static_cast<double>(done) + inFlight) / static_cast<double>(n);
+    double erg = best / static_cast<double>(n);
     return (erg > 1.0) ? 1.0f : static_cast<float>(erg);
   }
 
