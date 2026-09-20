@@ -1885,36 +1885,18 @@ TEST_CASE("Huang parallel assembly progress is monotone and ends at 1.0",
   REQUIRE(t.samples.size() > 1);
   CHECK(t.inRange());
 
-  /* Strict monotonicity is deliberately NOT asserted here, and the bound below
-   * is what takes its place.
-   *
-   * A worker hands a finished task over in two steps -- clear my slot, then
-   * add one to the completed count -- and getFinished() reads the count first.
-   * That order is chosen so a reader caught between the two sees a momentarily
-   * LOW value rather than a high one: an over-report is what would push the
-   * sum to 1.0 and end a solve with work left, which solvethread.cpp reads off
-   * getFinished() >= 1. Making the transfer atomic instead would need either a
-   * lock on the worker's hot path or a redesign of the published value, and
-   * the low transient is the cheaper trade.
-   *
-   * So a sample can sit one task's worth below its predecessor, and at 2 ms
-   * over a run this long it eventually does -- observed once under
-   * ThreadSanitizer, where symbolising a report stalls a worker mid-handoff
-   * for milliseconds. What must not happen is a drop bigger than that, which
-   * would mean a task counted twice or a slot read from a dead worker.
-   * HexSticks generates 13 tasks on this path, so one task is worth 0.077; the
-   * bound is 1/8, the loosest value that still catches a drop spanning more
-   * than a single task.
-   *
-   * The GUI does not see this: spec section 4 puts the monotone guard in
-   * solveThread_c, which is where a value assembled from two phases has to be
-   * clamped anyway.
+  /* This is the case the handoff window shows up in: ~3600 samples at 2 ms,
+   * every one of them taken while four workers are trading tasks. A worker
+   * hands a task over in two steps -- clear my slot, then add one to the
+   * completed count -- and getFinished() reads the count first, so a handoff
+   * that starts and finishes between those two reads is missed by both and
+   * the sample lands a whole task low. It is rare, but at this sample count
+   * it happens; it was observed under ThreadSanitizer, where symbolising a
+   * report stalls a worker mid-handoff. getFinished() closes it by re-reading
+   * the counter after the slot walk and returning the larger answer -- see
+   * the note there. This assertion is what keeps that fix honest.
    */
-  float worstDrop = 0;
-  for (size_t i = 1; i < t.samples.size(); i++)
-    worstDrop = std::max(worstDrop, t.samples[i-1] - t.samples[i]);
-  INFO("worst drop: " << worstDrop);
-  CHECK(worstDrop <= 1.0f / 8.0f);
+  CHECK(t.monotone());
 
   CHECK(assm.getFinished() == 1.0f);
 }
@@ -1960,14 +1942,8 @@ TEST_CASE("Huang parallel assembly progress advances smoothly",
   REQUIRE(t.samples.size() > 20);
   CHECK(t.inRange());
 
-  /* see the note on the handoff transient in the test above; Burr-Glar
-   * generates 106 tasks here, so one task is worth 0.0094
-   */
-  float worstDrop = 0;
-  for (size_t i = 1; i < t.samples.size(); i++)
-    worstDrop = std::max(worstDrop, t.samples[i-1] - t.samples[i]);
-  INFO("worst drop: " << worstDrop);
-  CHECK(worstDrop <= 1.0f / 8.0f);
+  /* see the note on the handoff window in the test above */
+  CHECK(t.monotone());
 
   /* Every one of these samples was taken while workers were still live, so
    * none of them may report a finished search. getFinished() sums the
@@ -2157,7 +2133,17 @@ TEST_CASE("getRunThreads reports the width the next run will really have",
   }
 
   SECTION("assembler_1") {
-    auto p = puzzle_c::load("examples/HexSticks.xmpuzzle");
+    /* The serial run below has to be the DLX one for the stated mechanism to
+     * be the real one: simdSearch() never touches next_row_stack, so with the
+     * SIMD back end the final check would pass on rows being left non-empty by
+     * the solution callback instead -- right answer, wrong reason, and it
+     * would stop holding on a puzzle with no assemblies. PelikanBurr rather
+     * than HexSticks because the DLX serial path has to run to completion
+     * here: 5272 nodes against 1.8M.
+     */
+    ScopedNoSimd dlxPath;
+
+    auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
     REQUIRE(p != nullptr);
     auto problem = p->getProblem(0);
     REQUIRE(problem != nullptr);
@@ -2177,6 +2163,7 @@ TEST_CASE("getRunThreads reports the width the next run will really have",
      */
     TestAssemblerCallback cb;
     assm.assemble(&cb);
+    REQUIRE(cb.assemblies > 0);
     assm.setNumThreads(4);
     CHECK(assm.getRunThreads() == 1);
   }

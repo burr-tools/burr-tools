@@ -2482,14 +2482,53 @@ float assembler_0_c::getFinished(void) const {
      * The sum is accumulated in double, not float: see completedShare's
      * declaration.
      */
-    double erg = completedShare.load(std::memory_order_acquire);
-    {
-      std::lock_guard<std::mutex> lock(progressMutex);
-      for (const auto & w : workerProgress)
-        if (w)
-          erg += static_cast<double>(w->share.load(std::memory_order_acquire))
-               * static_cast<double>(w->fraction.load(std::memory_order_relaxed));
+    /* The accumulator and the slots are read as a SNAPSHOT, seqlock style:
+     * read completedShare, walk the slots, read it again, and accept the pair
+     * only if it did not move. This is what makes the value monotone, and it
+     * is the same code assembler_1_c::getFinished() runs -- the two engines'
+     * progress blocks have diverged four times over this work, so they are
+     * kept line for line alike. The long-form argument lives there; in short:
+     *
+     * finishTask() hands a task over in two steps -- clear my slot, then fold
+     * my share into completedShare -- and a reader must never see both the
+     * fold AND the slot's outgoing share, because that counts the task twice
+     * and an over-report is what pushes the sum to 1.0 and ends a solve with
+     * work left. Reading the accumulator first makes a torn read LOW rather
+     * than high, which is safe but not monotone. Re-reading the accumulator
+     * and taking the larger answer narrows the window but does not close it:
+     * it recovers the finished task only by discarding every other worker's
+     * in-flight term, and loses whenever those sum to less than one task's
+     * share. Retaking the snapshot recovers both. Giving up after a few tries
+     * falls back to the accumulator alone, which is monotone and cannot
+     * over-report.
+     */
+    double done = completedShare.load(std::memory_order_acquire);
+    double inFlight = 0;
+
+    for (unsigned int attempt = 0; attempt < 4; attempt++) {
+      double sum = 0;
+      {
+        std::lock_guard<std::mutex> lock(progressMutex);
+        for (const auto & w : workerProgress)
+          if (w)
+            sum += static_cast<double>(w->share.load(std::memory_order_acquire))
+                 * static_cast<double>(w->fraction.load(std::memory_order_relaxed));
+      }
+
+      const double after = completedShare.load(std::memory_order_acquire);
+      if (after == done) {
+        inFlight = sum;
+        break;
+      }
+
+      /* a handoff landed inside the walk: `sum` and `after` disagree about
+       * that task, so drop the in-flight terms and try for a clean pair
+       */
+      done = after;
+      inFlight = 0;
     }
+
+    const double erg = done + inFlight;
     return (erg > 1.0) ? 1.0f : static_cast<float>(erg);
   }
 

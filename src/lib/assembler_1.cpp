@@ -3402,14 +3402,70 @@ float assembler_1_c::getFinished(void) const {
     size_t n = totalTasks.load(std::memory_order_relaxed);
     if (n == 0) return 0;
 
-    double erg = static_cast<double>(completedTasks.load(std::memory_order_acquire));
-    {
-      std::lock_guard<std::mutex> lock(progressMutex);
-      for (const auto & w : workerProgress)
-        if (w)
-          erg += w->fraction.load(std::memory_order_relaxed);
+    /* The counter and the slots are read as a SNAPSHOT, seqlock style: read
+     * the counter, walk the slots, read the counter again, and accept the
+     * pair only if the counter did not move. This is what makes the value
+     * monotone, and it is worth spelling out why the obvious cheaper fixes
+     * are not enough.
+     *
+     * A worker hands a task over in two steps -- clear my slot, then add one
+     * to completedTasks -- and a reader must never be caught seeing both the
+     * increment AND the slot's outgoing value, because that counts the task
+     * twice and an over-report is what pushes the sum to 1.0 and ends a solve
+     * with work left (solvethread.cpp treats getFinished() >= 1 as finished).
+     * Reading the counter first and clearing the slot first makes the torn
+     * read LOW instead of high, which is safe but not monotone: a handoff
+     * that starts and finishes between the counter load and the slot walk is
+     * invisible to both, and the sample lands up to a whole task below its
+     * predecessor.
+     *
+     * Re-reading the counter afterwards and taking max(counter + slots,
+     * counter_after) narrows that but does not close it. Measured, with the
+     * reader's window widened to 3 ms: the traces in test_solver.cpp still
+     * fail monotone with the max in place. The reason is that the max recovers
+     * the finished task only by DISCARDING every other worker's in-flight
+     * term, so it loses whenever those terms sum to less than one task --
+     * which is most of the time.
+     *
+     * Retaking the snapshot recovers both. On a retry the counter already
+     * carries the finished task and the slot walk sees the finishing worker's
+     * fresh fraction, so nothing is lost and nothing is counted twice. One
+     * attempt succeeds unless a handoff lands inside the walk; the retry
+     * budget is small because falling back is safe rather than wrong -- a
+     * reader that gives up uses the counter alone, which is monotone and
+     * cannot over-report. That fallback is exactly the max above.
+     *
+     * The window that remains is a worker stalled BETWEEN its slot store and
+     * its own fetch_add, two adjacent instructions, for the whole of a read.
+     * No amount of reader-side work closes that one; only a lock on the
+     * worker's hot path would.
+     */
+    size_t done = completedTasks.load(std::memory_order_acquire);
+    double inFlight = 0;
+
+    for (unsigned int attempt = 0; attempt < 4; attempt++) {
+      double sum = 0;
+      {
+        std::lock_guard<std::mutex> lock(progressMutex);
+        for (const auto & w : workerProgress)
+          if (w)
+            sum += w->fraction.load(std::memory_order_relaxed);
+      }
+
+      const size_t after = completedTasks.load(std::memory_order_acquire);
+      if (after == done) {
+        inFlight = sum;
+        break;
+      }
+
+      /* a handoff landed inside the walk: `sum` and `after` disagree about
+       * that task, so drop the in-flight terms and try for a clean pair
+       */
+      done = after;
+      inFlight = 0;
     }
-    erg /= static_cast<double>(n);
+
+    double erg = (static_cast<double>(done) + inFlight) / static_cast<double>(n);
     return (erg > 1.0) ? 1.0f : static_cast<float>(erg);
   }
 
