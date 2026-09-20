@@ -1063,6 +1063,41 @@ MoQuery queryFromSolution(const problem_c & problem, unsigned int p1, unsigned i
   };
 }
 
+#ifdef _WIN32
+#include <stdlib.h>
+void set_env_var(const char * name, const char * value) {
+  if (value) _putenv_s(name, value);
+  else _putenv_s(name, "");
+}
+#else
+#include <cstdlib>
+void set_env_var(const char * name, const char * value) {
+  if (value) setenv(name, value, 1);
+  else unsetenv(name);
+}
+#endif
+
+struct ScopedEnv {
+  std::string name;
+  bool hadValue;
+  std::string oldValue;
+
+  ScopedEnv(const char * var, const char * val) : name(var) {
+    const char * existing = std::getenv(var);
+    if (existing) {
+      hadValue = true;
+      oldValue = existing;
+    } else {
+      hadValue = false;
+    }
+    set_env_var(var, val);
+  }
+
+  ~ScopedEnv() {
+    set_env_var(name.c_str(), hadValue ? oldValue.c_str() : nullptr);
+  }
+};
+
 } // namespace
 
 TEST_CASE("movement cache: the cube grid yields a movementCache_0_c -- and repeating a query returns the identical value", "[disasm][movementcache]") {
@@ -1471,6 +1506,69 @@ TEST_CASE("movement analysator: incremental prepare matches full prepare", "[dis
   if (child->decRefCount())
     delete child;
 }
+
+TEST_CASE("movement analysator: differential comparison with and without BURRTOOLS_NO_DISASM_SIMD on 9-piece Prisgon", "[disasm][movement][simd]") {
+  /* Prisgon problem 0 has 9 pieces. With n = 9, the Roy-Floyd-Warshall
+     closure in movementanalysator.cpp exercises the AVX2 vector loop (x + 8 <= n).
+     Verify that running with SIMD enabled and with BURRTOOLS_NO_DISASM_SIMD=1
+     produces identical successor node sets. */
+  problem_c & problem = prisgonProblem();
+  REQUIRE(problem.getNumberOfSavedSolutions() > 0);
+  const assembly_c * assm = problem.getSavedSolution(0)->getAssembly();
+  REQUIRE(assm != nullptr);
+
+  disassemblerNode_c root(assm);
+
+  std::vector<unsigned int> pieces;
+  for (unsigned int j = 0; j < assm->placementCount(); j++)
+    if (assm->isPlaced(j))
+      pieces.push_back(j);
+  REQUIRE(pieces.size() >= 8);
+
+  std::vector<disassemblerNode_c *> simdNodes;
+  {
+    ScopedEnv env("BURRTOOLS_NO_DISASM_SIMD", nullptr);
+    movementAnalysator_c analysSimd(problem);
+    analysSimd.init_find(&root, pieces);
+    while (disassemblerNode_c * n = analysSimd.find()) {
+      simdNodes.push_back(n);
+    }
+  }
+
+  std::vector<disassemblerNode_c *> scalarNodes;
+  {
+    ScopedEnv env("BURRTOOLS_NO_DISASM_SIMD", "1");
+    movementAnalysator_c analysScalar(problem);
+    analysScalar.init_find(&root, pieces);
+    while (disassemblerNode_c * n = analysScalar.find()) {
+      scalarNodes.push_back(n);
+    }
+  }
+
+  CHECK(simdNodes.size() == scalarNodes.size());
+  REQUIRE(simdNodes.size() > 0);
+
+  for (size_t i = 0; i < simdNodes.size(); i++) {
+    bool found = false;
+    for (size_t j = 0; j < scalarNodes.size(); j++) {
+      if (*simdNodes[i] == *scalarNodes[j]) {
+        found = true;
+        break;
+      }
+    }
+    CHECK(found);
+  }
+
+  for (auto * n : simdNodes) {
+    if (n->decRefCount())
+      delete n;
+  }
+  for (auto * n : scalarNodes) {
+    if (n->decRefCount())
+      delete n;
+  }
+}
+
 
 TEST_CASE("Prisgon problem 1 branching separation tree: getPieceNumber()/getPieceName() account for every piece -- including at a branch", "[disasm][separation]") {
   // the branching counterpart to the CubeInCage piece-reconciliation case

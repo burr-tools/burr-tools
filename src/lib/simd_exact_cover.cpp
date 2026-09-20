@@ -26,16 +26,22 @@ template <typename BitsetType>
 SimdExactCover<BitsetType>::SimdExactCover(unsigned int cols, unsigned int pieces)
   : num_columns(cols), num_pieces(pieces)
 {
-  bt_assert(num_columns <= sizeof(BitsetType) * 8);
+  bt_assert(num_columns <= BitsetType::NUM_WORDS * 64);
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
   use_avx2 = __builtin_cpu_supports("avx2") != 0;
+  use_avx512 = __builtin_cpu_supports("avx512f") != 0;
 #else
   use_avx2 = false;
+  use_avx512 = false;
 #endif
 
   if (std::getenv("BURRTOOLS_NO_SIMD") || std::getenv("BURRTOOLS_NO_AVX2")) {
     use_avx2 = false;
+    use_avx512 = false;
+  }
+  if (std::getenv("BURRTOOLS_NO_AVX512")) {
+    use_avx512 = false;
   }
 
 #if defined(__aarch64__) || defined(__ARM_NEON)
@@ -46,7 +52,7 @@ SimdExactCover<BitsetType>::SimdExactCover(unsigned int cols, unsigned int piece
 template <typename BitsetType>
 void SimdExactCover<BitsetType>::setRequiredColumn(unsigned int col) {
   bt_assert(col < num_columns);
-  bt_assert(col < sizeof(BitsetType) * 8);
+  bt_assert(col < BitsetType::NUM_WORDS * 64);
   if (!required_columns.test(col)) {
     required_columns.set(col);
     active_column_list.push_back(col);
@@ -72,7 +78,7 @@ uint32_t SimdExactCover<BitsetType>::addRow(unsigned int node_id, unsigned int p
   r.columns = cols;
   for (unsigned int c : cols) {
     bt_assert(c < num_columns);
-    bt_assert(c < sizeof(BitsetType) * 8);
+    bt_assert(c < BitsetType::NUM_WORDS * 64);
     r.mask.set(c);
   }
   uint32_t idx = static_cast<uint32_t>(rows.size());
@@ -88,31 +94,63 @@ void SimdExactCover<BitsetType>::registerNodeAlias(unsigned int node_id, uint32_
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
 template <typename BitsetType>
+__attribute__((target("avx512f")))
+void SimdExactCover<BitsetType>::filterRowsAvx512(
+  const std::vector<uint32_t> &src,
+  const BitsetType &chosen_mask,
+  std::vector<uint32_t> &dst
+) const {
+  if constexpr (BitsetType::NUM_WORDS >= 8) {
+    constexpr size_t N_VEC = BitsetType::NUM_WORDS / 8;
+    __m512i va[N_VEC];
+    for (size_t i = 0; i < N_VEC; ++i) {
+      va[i] = _mm512_load_si512(reinterpret_cast<const void*>(&chosen_mask.words[i * 8]));
+    }
+
+    for (uint32_t idx : src) {
+      const uint64_t *rw = rows[idx].mask.words;
+      bool disjoint = true;
+      for (size_t i = 0; i < N_VEC; ++i) {
+        __m512i vb = _mm512_load_si512(reinterpret_cast<const void*>(&rw[i * 8]));
+        if (_mm512_test_epi64_mask(va[i], vb) != 0) {
+          disjoint = false;
+          break;
+        }
+      }
+      if (disjoint) {
+        dst.push_back(idx);
+      }
+    }
+  } else {
+    filterRowsAvx2(src, chosen_mask, dst);
+  }
+}
+
+template <typename BitsetType>
 __attribute__((target("avx2")))
 void SimdExactCover<BitsetType>::filterRowsAvx2(
   const std::vector<uint32_t> &src,
   const BitsetType &chosen_mask,
   std::vector<uint32_t> &dst
 ) const {
-  if constexpr (sizeof(BitsetType) == 32) {
-    __m256i va = _mm256_load_si256(reinterpret_cast<const __m256i*>(chosen_mask.words));
-    for (uint32_t idx : src) {
-      __m256i vb = _mm256_load_si256(reinterpret_cast<const __m256i*>(rows[idx].mask.words));
-      if (_mm256_testz_si256(va, vb)) {
-        dst.push_back(idx);
+  constexpr size_t N_VEC = BitsetType::NUM_WORDS / 4;
+  __m256i va[N_VEC];
+  for (size_t i = 0; i < N_VEC; ++i) {
+    va[i] = _mm256_load_si256(reinterpret_cast<const __m256i*>(&chosen_mask.words[i * 4]));
+  }
+
+  for (uint32_t idx : src) {
+    const uint64_t *rw = rows[idx].mask.words;
+    bool disjoint = true;
+    for (size_t i = 0; i < N_VEC; ++i) {
+      __m256i vb = _mm256_load_si256(reinterpret_cast<const __m256i*>(&rw[i * 4]));
+      if (!_mm256_testz_si256(va[i], vb)) {
+        disjoint = false;
+        break;
       }
     }
-  } else if constexpr (sizeof(BitsetType) == 64) {
-    __m256i va0 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&chosen_mask.words[0]));
-    __m256i va1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&chosen_mask.words[4]));
-    for (uint32_t idx : src) {
-      __m256i vb0 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&rows[idx].mask.words[0]));
-      if (!_mm256_testz_si256(va0, vb0))
-        continue;
-      __m256i vb1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&rows[idx].mask.words[4]));
-      if (_mm256_testz_si256(va1, vb1)) {
-        dst.push_back(idx);
-      }
+    if (disjoint) {
+      dst.push_back(idx);
     }
   }
 }
@@ -123,43 +161,25 @@ void SimdExactCover<BitsetType>::filterRowsNeon(
   const BitsetType &chosen_mask,
   std::vector<uint32_t> &dst
 ) const {
-  if constexpr (sizeof(BitsetType) == 32) {
-    uint64x2_t ca0 = vld1q_u64(&chosen_mask.words[0]);
-    uint64x2_t ca1 = vld1q_u64(&chosen_mask.words[2]);
-    for (uint32_t idx : src) {
-      const uint64_t *rw = rows[idx].mask.words;
-      uint64x2_t rb0 = vld1q_u64(&rw[0]);
-      uint64x2_t rb1 = vld1q_u64(&rw[2]);
-      uint64x2_t c0 = vandq_u64(ca0, rb0);
-      uint64x2_t c1 = vandq_u64(ca1, rb1);
-      uint64x2_t c = vorrq_u64(c0, c1);
-      if ((vgetq_lane_u64(c, 0) | vgetq_lane_u64(c, 1)) == 0) {
-        dst.push_back(idx);
+  constexpr size_t N_VEC = BitsetType::NUM_WORDS / 2;
+  uint64x2_t va[N_VEC];
+  for (size_t i = 0; i < N_VEC; ++i) {
+    va[i] = vld1q_u64(&chosen_mask.words[i * 2]);
+  }
+
+  for (uint32_t idx : src) {
+    const uint64_t *rw = rows[idx].mask.words;
+    bool disjoint = true;
+    for (size_t i = 0; i < N_VEC; ++i) {
+      uint64x2_t vb = vld1q_u64(&rw[i * 2]);
+      uint64x2_t c = vandq_u64(va[i], vb);
+      if ((vgetq_lane_u64(c, 0) | vgetq_lane_u64(c, 1)) != 0) {
+        disjoint = false;
+        break;
       }
     }
-  } else if constexpr (sizeof(BitsetType) == 64) {
-    uint64x2_t ca0 = vld1q_u64(&chosen_mask.words[0]);
-    uint64x2_t ca1 = vld1q_u64(&chosen_mask.words[2]);
-    uint64x2_t ca2 = vld1q_u64(&chosen_mask.words[4]);
-    uint64x2_t ca3 = vld1q_u64(&chosen_mask.words[6]);
-    for (uint32_t idx : src) {
-      const uint64_t *rw = rows[idx].mask.words;
-      uint64x2_t rb0 = vld1q_u64(&rw[0]);
-      uint64x2_t rb1 = vld1q_u64(&rw[2]);
-      uint64x2_t c0 = vandq_u64(ca0, rb0);
-      uint64x2_t c1 = vandq_u64(ca1, rb1);
-      uint64x2_t c_low = vorrq_u64(c0, c1);
-      if ((vgetq_lane_u64(c_low, 0) | vgetq_lane_u64(c_low, 1)) != 0) {
-        continue;
-      }
-      uint64x2_t rb2 = vld1q_u64(&rw[4]);
-      uint64x2_t rb3 = vld1q_u64(&rw[6]);
-      uint64x2_t c2 = vandq_u64(ca2, rb2);
-      uint64x2_t c3 = vandq_u64(ca3, rb3);
-      uint64x2_t c_high = vorrq_u64(c2, c3);
-      if ((vgetq_lane_u64(c_high, 0) | vgetq_lane_u64(c_high, 1)) == 0) {
-        dst.push_back(idx);
-      }
+    if (disjoint) {
+      dst.push_back(idx);
     }
   }
 }
@@ -175,6 +195,10 @@ void SimdExactCover<BitsetType>::filterRows(
     dst.reserve(src.size());
   }
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  if (use_avx512 && BitsetType::NUM_WORDS >= 8) {
+    filterRowsAvx512(src, chosen_mask, dst);
+    return;
+  }
   if (use_avx2) {
     filterRowsAvx2(src, chosen_mask, dst);
     return;
@@ -185,6 +209,7 @@ void SimdExactCover<BitsetType>::filterRows(
     return;
   }
 #endif
+
   for (uint32_t idx : src) {
     if (is_disjoint_scalar(chosen_mask, rows[idx].mask)) {
       dst.push_back(idx);
@@ -359,3 +384,9 @@ void SimdExactCover<BitsetType>::search(
 
 template class SimdExactCover<SimdBitset256>;
 template class SimdExactCover<SimdBitset512>;
+template class SimdExactCover<SimdBitset1024>;
+template class SimdExactCover<SimdBitset2048>;
+template class SimdExactCover<SimdBitset4096>;
+template class SimdExactCover<SimdBitset8192>;
+template class SimdExactCover<SimdBitset16384>;
+template class SimdExactCover<SimdBitset32768>;
