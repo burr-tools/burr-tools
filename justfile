@@ -141,3 +141,7 @@ build-werror:
     @if [ ! -d "build-werror" ]; then meson setup build-werror --werror; fi
     ninja -C build-werror
 
+# Headless GUI invariant check (menu table consistency)
+check-gui: build
+    ./build/burrtools --self-check
+

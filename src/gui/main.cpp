@@ -22,6 +22,7 @@
 
 #include "mainwindow.h"
 #include "assertwindow.h"
+#include "mainmenu.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -31,6 +32,7 @@
 #pragma GCC diagnostic pop
 
 #include <time.h>
+#include <string.h>
 
 #include "../lib/bt_assert.h"
 #include "../lib/gridtype.h"
@@ -60,6 +62,15 @@ public:
 };
 
 int main(int argc, char ** argv) {
+
+  // A headless invariant check, so CI can catch menu-table drift without
+  // linking FLTK into test_burrtools. Must run before any window exists.
+  if (argc == 2 && strcmp(argv[1], "--self-check") == 0) {
+    bt_assert_init();
+    mainmenu::assertTablesConsistent();
+    printf("self-check OK\n");
+    return 0;
+  }
 
   bt_assert_init();
 

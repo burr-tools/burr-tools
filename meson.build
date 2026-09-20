@@ -157,6 +157,7 @@ gui_src = [
   'src/gui/image.cpp',
   'src/gui/imageexport.cpp',
   'src/gui/main.cpp',
+  'src/gui/mainmenu.cpp',
   'src/gui/mainwindow.cpp',
   'src/gui/movementbrowser.cpp',
   'src/gui/multilinewindow.cpp',
@@ -192,12 +193,6 @@ gui_src = [
 vendored_gui_src = [
   'src/gui/tr.c',
   'src/gui/gl2ps.c',
-]
-
-help_src = [
-  'src/help/Fl_Help_Dialog.cpp',
-  'src/help/Fl_Help_View.cpp',
-  'src/help/helpdata.cpp'
 ]
 
 cc = meson.get_compiler('c')

@@ -152,7 +152,6 @@ class mainWindow_c : public LFl_Double_Window {
   Fl_Group *MinSizeTools;
   Fl_Menu_Bar *MainMenu;
   LStatusLine *StatusLine;
-  static Fl_Menu_Item menu_MainMenu[];
 
   ColorSelector * colorSelector;
 
@@ -227,9 +226,6 @@ public:
    * the solving progress, that works in background
    */
   void update(void);
-
-  /* return an index into the main menu array with the given text */
-  int findMenuEntry(const char * txt);
 
   /* the callback functions, as they are called from normal functions we need
    * to make them public, even though they should not be used from the outside

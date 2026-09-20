@@ -20,6 +20,8 @@
  */
 #include "mainwindow.h"
 
+#include "mainmenu.h"
+
 #include "filechooser.h"
 
 #include "configuration.h"
@@ -1484,7 +1486,7 @@ void mainWindow_c::cb_3dClick(void) {
   }
 }
 
-static void cb_New_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_New(); }
+void cb_New_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_New(); }
 void mainWindow_c::cb_New(void) {
 
   if (threadStopped()) {
@@ -1514,7 +1516,7 @@ void mainWindow_c::cb_New(void) {
   }
 }
 
-static void cb_Load_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Load(); }
+void cb_Load_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Load(); }
 void mainWindow_c::cb_Load(void) {
 
   if (threadStopped()) {
@@ -1529,7 +1531,7 @@ void mainWindow_c::cb_Load(void) {
   }
 }
 
-static void cb_Load_Ps3d_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Load_Ps3d(); }
+void cb_Load_Ps3d_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Load_Ps3d(); }
 void mainWindow_c::cb_Load_Ps3d(void) {
 
   if (threadStopped()) {
@@ -1566,7 +1568,7 @@ void mainWindow_c::cb_Load_Ps3d(void) {
   }
 }
 
-static void cb_Save_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Save(); }
+void cb_Save_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Save(); }
 void mainWindow_c::cb_Save(void) {
 
   if (threadStopped()) {
@@ -1590,7 +1592,7 @@ void mainWindow_c::cb_Save(void) {
   }
 }
 
-static void cb_Convert_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Convert(); }
+void cb_Convert_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Convert(); }
 void mainWindow_c::cb_Convert(void) {
 
   convertWindow_c win(puzzle->getGridType()->getType());
@@ -1629,7 +1631,7 @@ class voxelTableVector_c : public voxelTable_c
     const voxel_c * findSpace(unsigned int index) const { return (*shapes)[index]; }
 };
 
-static void cb_AssembliesToShapes_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AssembliesToShapes(); }
+void cb_AssembliesToShapes_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AssembliesToShapes(); }
 void mainWindow_c::cb_AssembliesToShapes(void) {
 
   assmImportWindow_c win(puzzle.get());
@@ -1716,7 +1718,7 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
   }
 }
 
-static void cb_SaveAs_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SaveAs(); }
+void cb_SaveAs_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SaveAs(); }
 void mainWindow_c::cb_SaveAs(void) {
 
   if (threadStopped()) {
@@ -1765,19 +1767,19 @@ void mainWindow_c::cb_SaveAs(void) {
   }
 }
 
-static void cb_Quit_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->hide(); }
+void cb_Quit_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->hide(); }
 void mainWindow_c::hide(void) {
   if ((!changed) || fl_choice("Puzzle changed do you want to quit and lose the changes?", "Cancel", "Quit", 0))
     Fl_Double_Window::hide();
 }
 
-static void cb_Config_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Config(); }
+void cb_Config_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Config(); }
 void mainWindow_c::cb_Config(void) {
   config.dialog();
   activateConfigOptions();
 }
 
-static void cb_Comment_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Coment(); }
+void cb_Comment_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Coment(); }
 void mainWindow_c::cb_Coment(void) {
 
   multiLineWindow_c win("Edit Comment", "Change the comment for the current puzzle", puzzle->getComment().c_str());
@@ -1793,7 +1795,7 @@ void mainWindow_c::cb_Coment(void) {
   }
 }
 
-static void cb_ImageExportVector_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExportVector(); }
+void cb_ImageExportVector_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExportVector(); }
 void mainWindow_c::cb_ImageExportVector(void) {
 
   vectorExportWindow_c w;
@@ -1806,7 +1808,7 @@ void mainWindow_c::cb_ImageExportVector(void) {
     View3D->getView()->exportToVector(w.getFileName(), w.getVectorType());
 }
 
-static void cb_ImageExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExport(); }
+void cb_ImageExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExport(); }
 void mainWindow_c::cb_ImageExport(void) {
   imageExport_c w(puzzle.get());
   w.show();
@@ -1820,7 +1822,7 @@ void mainWindow_c::cb_ImageExport(void) {
   }
 }
 
-static void cb_STLExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_STLExport(); }
+void cb_STLExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_STLExport(); }
 void mainWindow_c::cb_STLExport(void) {
   stlExport_c w(puzzle.get());
   w.show();
@@ -1830,7 +1832,7 @@ void mainWindow_c::cb_STLExport(void) {
   }
 }
 
-static void cb_StatusWindow_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_StatusWindow(); }
+void cb_StatusWindow_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_StatusWindow(); }
 void mainWindow_c::cb_StatusWindow(void) {
 
   bool again;
@@ -1866,7 +1868,7 @@ void mainWindow_c::cb_StatusWindow(void) {
   updateInterface();
 }
 
-static void cb_Toggle3D_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Toggle3D(); }
+void cb_Toggle3D_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Toggle3D(); }
 void mainWindow_c::cb_Toggle3D(void) {
 
   if (TaskSelectionTab->value() == TabPieces) {
@@ -1878,7 +1880,7 @@ void mainWindow_c::cb_Toggle3D(void) {
   }
 }
 
-static void cb_About_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_About(); }
+void cb_About_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_About(); }
 void mainWindow_c::cb_About(void) {
 
   fl_message("This is the GUI for BurrTools\n"
@@ -2104,30 +2106,6 @@ void mainWindow_c::ReplacePuzzle(std::unique_ptr<puzzle_c> NewPuzzle) {
   ggt = std::move(nggt);
 }
 
-Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
-  { "&File",           0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
-    {"New",            0, cb_New_stub,         0, 0, 0, 0, 14, 56},
-    {"Load",    FL_F + 3, cb_Load_stub,        0, 0, 0, 0, 14, 56},
-    {"Import",         0, cb_Load_Ps3d_stub,   0, 0, 0, 0, 14, 56},
-    {"Save",    FL_F + 2, cb_Save_stub,        0, 0, 0, 0, 14, 56},
-    {"Save As",        0, cb_SaveAs_stub,      0, FL_MENU_DIVIDER, 0, 0, 14, 56},
-    {"Convert",        0, cb_Convert_stub,     0, 0, 0, 0, 14, 56},
-    {"Import Assms",   0, cb_AssembliesToShapes_stub,     0, 0, 0, 0, 14, 56},
-    {"Quit",           0, cb_Quit_stub,        0, 0, 3, 0, 14, 56},
-    { },
-  {"Toggle 3D", FL_F + 4, cb_Toggle3D_stub,    0, 0, 0, 0, 14, 56},
-  { "&Export",         0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
-    {"Images",             0, cb_ImageExport_stub, 0, 0, 0, 0, 14, 56},
-    {"Vector Image",       0, cb_ImageExportVector_stub, 0, 0, 0, 0, 14, 56},
-    {"STL",             0, cb_STLExport_stub, 0, 0, 0, 0, 14, 56},
-    { },
-  {"Status",           0, cb_StatusWindow_stub,  0, 0, 0, 0, 14, 56},
-  {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
-  {"Settings",         0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
-  {"About",            0, cb_About_stub,       0, 0, 3, 0, 14, 56},
-  { }
-};
-
 // cppcheck-suppress duplInheritedMember
 void mainWindow_c::show(int argn, char ** argv) {
   LFl_Double_Window::show();
@@ -2346,37 +2324,24 @@ const char * timeToString(float time) {
   return tmp;
 }
 
-int mainWindow_c::findMenuEntry(const char * txt) {
-
-  int found = -1;
-
-  for (unsigned int i = 0; i < (sizeof(menu_MainMenu) / sizeof(menu_MainMenu[0])); i++)
-    if (menu_MainMenu[i].text && (strcmp(menu_MainMenu[i].label(), txt) == 0)) {
-      bt_assert(found == -1);
-      found = i;
-    }
-
-  bt_assert(found >= 0);
-  return found;
-}
-
 void mainWindow_c::updateInterface(void) {
 
   // update the menu items activate state
 
   // there must be at least one shape before there is something to export...
   if (puzzle->getNumberOfShapes() > 0)
-    menu_MainMenu[findMenuEntry("Images")].activate();
+    mainmenu::mutableTable()[mainmenu::findEntry(cb_ImageExport_stub)].activate();
   else
-    menu_MainMenu[findMenuEntry("Images")].deactivate();
+    mainmenu::mutableTable()[mainmenu::findEntry(cb_ImageExport_stub)].deactivate();
 
   if (ggt->getGridType()->getCapabilities() & gridType_c::CAP_STLEXPORT &&
       puzzle->getNumberOfShapes() > 0)
-    menu_MainMenu[findMenuEntry("STL")].activate();
+    mainmenu::mutableTable()[mainmenu::findEntry(cb_STLExport_stub)].activate();
   else
-    menu_MainMenu[findMenuEntry("STL")].deactivate();
+    mainmenu::mutableTable()[mainmenu::findEntry(cb_STLExport_stub)].deactivate();
 
-  MainMenu->copy(menu_MainMenu, this);
+  MainMenu->copy(mainmenu::table(), this);
+  MainMenu->update();
 
   unsigned int prob = solutionProblem->getSelection();
 
@@ -4010,7 +3975,8 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
   user_data((void*)(this));
 
   MainMenu = new LFl_Menu_Bar(0, 0, 1, 1);
-  MainMenu->copy(menu_MainMenu, this);
+  MainMenu->copy(mainmenu::table(), this);
+  MainMenu->update();
 
   StatusLine = new LStatusLine(0, 2, 1, 1);
   StatusLine->callback(cb_Status_stub, this);
