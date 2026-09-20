@@ -1966,13 +1966,20 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
      * folded into it.
      */
     completedShare.store(prunedTaskShare, std::memory_order_release);
-  }
 
-  /* Published before the pool starts, with release ordering: getFinished()
-   * acquire-loads this to decide whether to read completedShare at all, so
-   * a reader that sees a nonzero total always sees the matching share.
-   */
-  totalTasks.store(parallelTasks.size(), std::memory_order_release);
+    /* Published with release ordering, matched by getFinished()'s acquire
+     * load of totalTasks: a reader that sees a nonzero total always sees the
+     * matching share. Stored only here, inside the fresh-generation branch,
+     * not on every call: although totalTasks is just a >0 gate for this
+     * engine (the actual fraction comes from completedShare and the worker
+     * slots, not from dividing by it), re-storing it on a resumed run would
+     * still publish the pool remainder's smaller count in place of the
+     * original total, which assembler_1_c's copy of this block does divide
+     * by -- the two engines' copies are kept identical here so the pattern
+     * does not silently diverge into a real bug in one of them.
+     */
+    totalTasks.store(parallelTasks.size(), std::memory_order_release);
+  }
 
   if (parallelTasks.empty()) {
     if (!runTok.stop_requested())

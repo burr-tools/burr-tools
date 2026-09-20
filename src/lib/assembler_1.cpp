@@ -2918,22 +2918,32 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     unsigned int targetTasks = std::max(16u, workers * 4);
     unsigned int maxDepth = std::min(piecenumber, 3u);
     generateSubtreeTasks(parallelTasks, targetTasks, maxDepth);
-    completedTasks.store(0, std::memory_order_relaxed);
-  }
+    completedTasks.store(0, std::memory_order_release);
 
-  /* A resumed run skips the block above -- parallelTasks already holds the
-   * pool remainder a prior pause drained back into it -- so completedTasks is
-   * left alone here too, carrying forward exactly what the paused run had
-   * already accumulated (tasks are weighted equally; see the note on
-   * workerProgress in the header for why this engine does not weight them by
-   * structural share).
-   */
-  totalTasks.store(parallelTasks.size(), std::memory_order_relaxed);
+    /* Published with release ordering, matched by getFinished()'s acquire
+     * load of totalTasks: a reader that sees this run's total is guaranteed
+     * to see the completedTasks reset that precedes it, never a stale count
+     * left by a previous run. Stored only here, inside the fresh-generation
+     * branch -- not on every call -- because it is the denominator this
+     * engine's getFinished() actually divides by (unlike assembler_0_c,
+     * where totalTasks is only a >0 gate): on a resumed run parallelTasks
+     * holds just the pool remainder a prior pause drained back into it, and
+     * re-storing that smaller count here would shrink the denominator out
+     * from under the completed count already accumulated against the
+     * original total. A resumed run therefore skips this whole block and
+     * leaves both totalTasks and completedTasks exactly as the paused run
+     * left them (tasks are weighted equally; see the note on workerProgress
+     * in the header for why this engine does not weight them by structural
+     * share).
+     */
+    totalTasks.store(parallelTasks.size(), std::memory_order_release);
+  }
 
   if (parallelTasks.empty() || runTok.stop_requested()) {
     if (!runTok.stop_requested()) {
-      totalTasks.store(1, std::memory_order_relaxed);
-      completedTasks.store(1, std::memory_order_relaxed);
+      /* completed before total, both release, for the reason given above */
+      completedTasks.store(1, std::memory_order_release);
+      totalTasks.store(1, std::memory_order_release);
       searchComplete.store(true, std::memory_order_relaxed);
     }
     running.store(false, std::memory_order_relaxed);
@@ -3399,7 +3409,11 @@ float assembler_1_c::getFinished(void) const {
    * have genuinely drained.
    */
   if (inFlightProgress.load(std::memory_order_relaxed)) {
-    size_t n = totalTasks.load(std::memory_order_relaxed);
+    /* acquire, paired with the release stores that publish the denominator in
+     * parallelMultiSearch(): seeing this run's total guarantees seeing this
+     * run's seeded completed count, never the previous run's.
+     */
+    size_t n = totalTasks.load(std::memory_order_acquire);
     if (n == 0) return 0;
 
     /* The counter and the slots are read as a SNAPSHOT, seqlock style: read
