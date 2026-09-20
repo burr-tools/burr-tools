@@ -282,6 +282,13 @@ public:
    * cannot be progressModel_c's std::nextafter(1.0f, 0.0f) "counted but not
    * done" sentinel either: the GUI renders the bar with %.4f, which prints
    * that sentinel as 100.0000%.
+   *
+   * This is the single definition. solvethread.cpp uses the name unqualified
+   * inside solveThread_c's member functions, where class scope is searched
+   * before namespace scope, so it resolves here; the tests reach it as
+   * solveThread_c::runningCap. A file-local alias in solvethread.cpp would
+   * therefore be dead, and -Wunused-const-variable under the --werror CI
+   * builds rejects it.
    */
   static constexpr float runningCap = 0.999f;
 

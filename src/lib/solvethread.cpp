@@ -38,11 +38,6 @@ namespace {
         std::chrono::steady_clock::now().time_since_epoch()).count();
   }
 
-  /* the cap getProgress() reports up to while the solve is running; see the
-   * declaration on solveThread_c, where the tests reach it by name
-   */
-  constexpr float runningCap = solveThread_c::runningCap;
-
 }
 
 void solveThread_c::run(void){
