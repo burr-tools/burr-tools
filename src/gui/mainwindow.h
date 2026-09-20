@@ -101,6 +101,11 @@ class mainWindow_c : public LFl_Double_Window {
   bool changed;
   int editSymmetries;
 
+  /* last published menu activation state, so the system menu bar is only
+   * rebuilt when it actually changes */
+  bool menuExportActive;
+  bool menuSTLActive;
+
   bool expertMode;
 
   pixmapList_c pm;

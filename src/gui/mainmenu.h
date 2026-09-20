@@ -79,5 +79,6 @@ void cb_StatusWindow_stub(Fl_Widget*, void*);
 void cb_Comment_stub(Fl_Widget*, void*);
 void cb_Config_stub(Fl_Widget*, void*);
 void cb_About_stub(Fl_Widget*, void*);
+void cb_Help_stub(Fl_Widget*, void*);
 
 #endif

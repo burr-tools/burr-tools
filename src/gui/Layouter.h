@@ -519,6 +519,20 @@ class LFl_Menu_Bar : public Fl_Menu_Bar, public layoutable_c {
     }
 };
 
+#ifdef __APPLE__
+#include <FL/Fl_Sys_Menu_Bar.H>
+class LFl_Sys_Menu_Bar : public Fl_Sys_Menu_Bar, public layoutable_c {
+  public:
+    LFl_Sys_Menu_Bar(int x, int y, int w, int h)
+      : Fl_Sys_Menu_Bar(0, 0, 100, 100), layoutable_c(x, y, w, h) { }
+
+    virtual void getMinSize(int *width, int *height) const {
+      *width = 30;
+      *height = 25;
+    }
+};
+#endif
+
 class LFl_Scroll : public Fl_Scroll, public layoutable_c {
 
   private:

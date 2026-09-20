@@ -2329,19 +2329,28 @@ void mainWindow_c::updateInterface(void) {
   // update the menu items activate state
 
   // there must be at least one shape before there is something to export...
-  if (puzzle->getNumberOfShapes() > 0)
-    mainmenu::mutableTable()[mainmenu::findEntry(cb_ImageExport_stub)].activate();
-  else
-    mainmenu::mutableTable()[mainmenu::findEntry(cb_ImageExport_stub)].deactivate();
+  const bool exportActive = puzzle->getNumberOfShapes() > 0;
+  const bool stlActive    = (ggt->getGridType()->getCapabilities() & gridType_c::CAP_STLEXPORT)
+                            && puzzle->getNumberOfShapes() > 0;
 
-  if (ggt->getGridType()->getCapabilities() & gridType_c::CAP_STLEXPORT &&
-      puzzle->getNumberOfShapes() > 0)
-    mainmenu::mutableTable()[mainmenu::findEntry(cb_STLExport_stub)].activate();
-  else
-    mainmenu::mutableTable()[mainmenu::findEntry(cb_STLExport_stub)].deactivate();
+  if (exportActive != menuExportActive || stlActive != menuSTLActive) {
 
-  MainMenu->copy(mainmenu::table(), this);
-  MainMenu->update();
+    if (exportActive)
+      mainmenu::mutableTable()[mainmenu::findEntry(cb_ImageExport_stub)].activate();
+    else
+      mainmenu::mutableTable()[mainmenu::findEntry(cb_ImageExport_stub)].deactivate();
+
+    if (stlActive)
+      mainmenu::mutableTable()[mainmenu::findEntry(cb_STLExport_stub)].activate();
+    else
+      mainmenu::mutableTable()[mainmenu::findEntry(cb_STLExport_stub)].deactivate();
+
+    MainMenu->copy(mainmenu::table(), this);
+    MainMenu->update();
+
+    menuExportActive = exportActive;
+    menuSTLActive    = stlActive;
+  }
 
   unsigned int prob = solutionProblem->getSelection();
 
@@ -3969,14 +3978,28 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
     renderedAssembly(-1),
     changed(false),
     editSymmetries(0),
+    /* Both start true, matching the menu tables' real initial state: none
+     * of their items carry FL_MENU_INACTIVE in the array literal, so every
+     * entry is active until updateInterface() first deactivates it. Seeding
+     * these false would make the very first call -- run against a puzzle
+     * with zero shapes, where exportActive/stlActive are also false --
+     * see no change and skip the deactivate() that a fresh document needs.
+     */
+    menuExportActive(true),
+    menuSTLActive(true),
     expertMode(true) {
 
   copy_label("BurrTools - unknown");
   user_data((void*)(this));
 
+#ifdef __APPLE__
+  MainMenu = new LFl_Sys_Menu_Bar(0, 0, 1, 1);
+#else
   MainMenu = new LFl_Menu_Bar(0, 0, 1, 1);
+#endif
   MainMenu->copy(mainmenu::table(), this);
   MainMenu->update();
+  mainmenu::installApplicationMenu(this);
 
   StatusLine = new LStatusLine(0, 2, 1, 1);
   StatusLine->callback(cb_Status_stub, this);
