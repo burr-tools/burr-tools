@@ -86,13 +86,36 @@ unsigned int resolveDisassembler(unsigned int requested) {
 
 unsigned int disassemblerThreadCost(unsigned int disassemblerThreads) {
   /* 1 is inline: disassemblerPool_c creates neither workers nor a merger and
-   * runs on the calling thread, so it adds nothing to the machine's load
+   * runs on the calling thread, so it adds nothing to the machine's load.
+   *
+   * Above that the pool starts N workers *and* a merger thread, so it costs
+   * N + 1. The merger is near idle - it only reorders finished results by
+   * sequence number - but it is a real thread and leaving it out of the
+   * budget let (7, 7) through on a 14 thread machine, which runs 15.
    */
-  return (disassemblerThreads > 1) ? disassemblerThreads : 0u;
+  return (disassemblerThreads > 1) ? (disassemblerThreads + 1) : 0u;
 }
 
 bool exceedsBudget(unsigned int assemblerThreads, unsigned int disassemblerThreads) {
   return assemblerThreads + disassemblerThreadCost(disassemblerThreads) > maxThreads();
+}
+
+unsigned int maxDisassemblerFor(unsigned int assemblerThreads) {
+  const unsigned int budget = maxThreads();
+  const unsigned int a = clampCount(assemblerThreads);
+
+  /* spare has to cover the merger as well as the workers, so the largest
+   * usable pool is spare - 1; and a pool below 2 workers is just inline with
+   * an extra merger bolted on, so fall back to inline instead
+   */
+  const unsigned int spare = (budget > a) ? (budget - a) : 0u;
+  return (spare >= 3) ? (spare - 1) : 1u;
+}
+
+unsigned int maxAssemblerFor(unsigned int disassemblerThreads) {
+  const unsigned int budget = maxThreads();
+  const unsigned int cost = disassemblerThreadCost(clampCount(disassemblerThreads));
+  return (budget > cost) ? (budget - cost) : 1u;
 }
 
 void fitToBudget(unsigned int * assemblerThreads, unsigned int * disassemblerThreads) {
@@ -104,15 +127,17 @@ void fitToBudget(unsigned int * assemblerThreads, unsigned int * disassemblerThr
   unsigned int a = clampCount(*assemblerThreads);
   unsigned int d = clampCount(*disassemblerThreads);
 
-  /* The disassembly pool gives way first: the assembler is busy for the whole
-   * solve, and dropping the pool back to inline costs no threads at all.
-   * A pool of exactly 1 is meaningless - that is inline - so when fewer than
-   * two threads are left over, go inline rather than keep a useless worker.
+  /* The assembler has preference: it is busy for the whole solve, so the
+   * disassembly pool is what gives way. Dropping the pool back to inline
+   * costs no threads at all.
+   *
+   * `spare` threads have to cover the workers *and* the merger, so the
+   * largest usable pool is spare - 1. A pool needs at least 2 workers to be
+   * worth having (1 worker is what inline already does, only with an extra
+   * merger thread on top), so below that go inline.
    */
-  if (a + disassemblerThreadCost(d) > budget) {
-    const unsigned int spare = (budget > a) ? (budget - a) : 0u;
-    d = (spare >= 2) ? spare : 1u;
-  }
+  if (a + disassemblerThreadCost(d) > budget)
+    d = maxDisassemblerFor(a);
 
   /* only reachable when the assembler alone is bigger than the machine */
   if (a > budget)

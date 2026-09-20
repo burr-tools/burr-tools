@@ -141,6 +141,13 @@ configuration_c::configuration_c(void) {
   i_assembler_threads_default = std::to_string(threadConfig::defaultAssemblerThreads());
   i_disassembler_threads_default = std::to_string(threadConfig::defaultDisassemblerThreads());
 
+  /* The pool can never have the whole machine: it needs room for its merger
+   * thread and for at least one assembler thread, otherwise nothing would be
+   * producing the assemblies it consumes. Capping the slider there means the
+   * user cannot pick a value that would only be clamped back down again.
+   */
+  const unsigned int maxDisasm = threadConfig::maxDisassemblerFor(1);
+
   /* registered first so that they end up last in the dialogue, which walks
    * `data` in reverse (see parse()). Registered assembler-first so the
    * dialogue shows them in pipeline order.
@@ -149,9 +156,10 @@ configuration_c::configuration_c(void) {
             "Worker threads for the disassembly pool. A value of 1 means inline: no pool is "
             "created and each assembly is disassembled as it is found, which is the default and "
             "is the faster choice unless a puzzle has very many assemblies. Above 1, the pool "
-            "runs at the same time as the assembler, so the two counts add up - their sum is "
-            "kept at or below your core count.",
-            i_disassembler_threads_default.c_str(), 1, (int)maxThr);
+            "runs at the same time as the assembler, so the two counts add up - their sum, "
+            "plus the pool's merger thread, is kept at or below your core count. That is why "
+            "this slider stops short of the full core count.",
+            i_disassembler_threads_default.c_str(), 1, (int)maxDisasm);
 
   CNF_INT_D("assemblerthreads",   &i_assembler_threads, "Assembler Threads",
             "Worker threads the assembler uses to search for assemblies. "
@@ -229,27 +237,39 @@ static void cb_RestoreDefaults_stub(Fl_Widget* /*o*/, void* v) {
 static Fl_Value_Slider * s_asmSlider = nullptr;
 static Fl_Value_Slider * s_disasmSlider = nullptr;
 
+/* Keeps the two sliders inside the shared budget while the user drags them,
+ * using exactly the rules threadConfig applies everywhere else: the merger
+ * thread counts, a disassembler value of 1 is inline and costs nothing, and a
+ * pool that cannot afford two workers falls back to inline.
+ *
+ * Whichever slider is being dragged keeps its value and the other gives way,
+ * and each side only ever moves *down* - so dragging one slider back never
+ * silently inflates the other.
+ */
 static void enforceThreadBudget(Fl_Widget * dragged) {
 
   if (!s_asmSlider || !s_disasmSlider) return;
 
-  unsigned int a = (unsigned int)std::max(1, (int)s_asmSlider->value());
-  unsigned int d = (unsigned int)std::max(1, (int)s_disasmSlider->value());
+  const unsigned int a = (unsigned int)std::max(1, (int)s_asmSlider->value());
+  const unsigned int d = (unsigned int)std::max(1, (int)s_disasmSlider->value());
 
-  if (!threadConfig::exceedsBudget(a, d)) return;
+  if (dragged == s_disasmSlider) {
 
-  /* whichever slider the user is dragging keeps its value, the other gives
-   * way. Note that a disassembler value of 1 is inline and costs no threads,
-   * so (max, 1) is a legal pair and never triggers this.
-   */
-  if (dragged == s_asmSlider) {
-    /* fitToBudget lowers the disassembler first, which is what we want here */
-    threadConfig::fitToBudget(&a, &d);
-    s_disasmSlider->value(d);
+    /* The slider's own upper bound is already maxDisassemblerFor(1), so this
+     * normally changes nothing; it is repeated here so the rule holds even if
+     * the widget is ever given a wider range.
+     */
+    const unsigned int dCap = threadConfig::maxDisassemblerFor(1);
+    const unsigned int dNew = std::min(d, dCap);
+    if (dNew != d) s_disasmSlider->value(dNew);
+
+    const unsigned int aMax = threadConfig::maxAssemblerFor(dNew);
+    if (a > aMax) s_asmSlider->value(aMax);
+
   } else {
-    const unsigned int budget = threadConfig::maxThreads();
-    const unsigned int cost = threadConfig::disassemblerThreadCost(d);
-    s_asmSlider->value(std::max(1u, (budget > cost) ? (budget - cost) : 1u));
+
+    const unsigned int dMax = threadConfig::maxDisassemblerFor(a);
+    if (d > dMax) s_disasmSlider->value(dMax);
   }
 }
 

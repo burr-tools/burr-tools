@@ -20,6 +20,7 @@
 #include <memory>
 #include <mutex>
 #include <set>
+#include <utility>
 #include <thread>
 
 /* threadConfig is the single resolver every front end shares - burrTxt,
@@ -111,12 +112,21 @@ TEST_CASE("threadConfig resolves both stages from one contract", "[threads][unit
     REQUIRE(threadConfig::resolveDisassembler(0) == 1u);
   }
 
-  SECTION("inline disassembly costs no budget") {
+  SECTION("the cost model matches the threads the pool really starts") {
+    /* inline starts nothing */
     REQUIRE(threadConfig::disassemblerThreadCost(1) == 0u);
-    REQUIRE(threadConfig::disassemblerThreadCost(4) == 4u);
+
+    /* a pool of N is N workers plus the merger that reorders their results */
+    REQUIRE(threadConfig::disassemblerThreadCost(4) == 5u);
 
     /* the whole machine assembling plus inline disassembly is legal */
     REQUIRE_FALSE(threadConfig::exceedsBudget(mx, 1));
+
+    /* ... but half and half is not, because of the merger. This is the case
+     * that slipped through when the merger was left out of the budget.
+     */
+    if (mx >= 4 && (mx % 2) == 0)
+      REQUIRE(threadConfig::exceedsBudget(mx / 2, mx / 2));
   }
 
   SECTION("fitToBudget keeps the concurrent pair inside the machine") {
@@ -129,14 +139,100 @@ TEST_CASE("threadConfig resolves both stages from one contract", "[threads][unit
     REQUIRE(d == 1u);
     REQUIRE_FALSE(threadConfig::exceedsBudget(a, d));
 
-    if (mx >= 4) {
-      /* a modest assembler leaves real room for a pool */
+    if (mx >= 5) {
+      /* a modest assembler leaves real room for a pool; the assembler keeps
+       * what it asked for and the pool takes the rest, merger included
+       */
       unsigned int a2 = 2, d2 = mx;
       threadConfig::fitToBudget(&a2, &d2);
       REQUIRE(a2 == 2u);
-      REQUIRE(d2 == mx - 2);
-      REQUIRE(a2 + d2 == mx);
+      REQUIRE(d2 == mx - 3);                        // workers; + 1 merger
+      REQUIRE(a2 + threadConfig::disassemblerThreadCost(d2) == mx);
       REQUIRE_FALSE(threadConfig::exceedsBudget(a2, d2));
+    }
+
+    if (mx >= 3) {
+      /* an assembler that leaves too little for a worthwhile pool sends the
+       * disassembler inline rather than keeping a token worker
+       */
+      unsigned int a3 = mx - 1, d3 = mx;
+      threadConfig::fitToBudget(&a3, &d3);
+      REQUIRE(a3 == mx - 1);                        // assembler preference
+      REQUIRE(d3 == 1u);                            // inline
+      REQUIRE_FALSE(threadConfig::exceedsBudget(a3, d3));
+    }
+  }
+
+  SECTION("the two clamp directions agree with the budget") {
+    /* these are what the settings dialogue drags against */
+    REQUIRE(threadConfig::maxAssemblerFor(1) == mx);          // inline frees everything
+    REQUIRE(threadConfig::maxDisassemblerFor(mx) == 1u);      // no room left: inline
+
+    /* maxDisassemblerFor(1) is the disassembler slider's upper bound. The pool
+     * can never have the whole machine: it also needs its merger thread and at
+     * least one assembler thread to feed it.
+     */
+    const unsigned int sliderMax = threadConfig::maxDisassemblerFor(1);
+    if (mx >= 3) {
+      REQUIRE(sliderMax == mx - 2);
+      REQUIRE(sliderMax < mx);
+      /* a pool at the bound still leaves exactly one assembler thread */
+      REQUIRE(threadConfig::maxAssemblerFor(sliderMax) == 1u);
+      REQUIRE_FALSE(threadConfig::exceedsBudget(1, sliderMax));
+    } else {
+      /* too small for a pool to be worth anything: the slider degenerates to
+       * 1..1 and the dialogue deactivates it
+       */
+      REQUIRE(sliderMax == 1u);
+    }
+
+    /* every assembler count must yield a pool that fits, and vice versa */
+    for (unsigned int a = 1; a <= mx; a++) {
+      const unsigned int d = threadConfig::maxDisassemblerFor(a);
+      REQUIRE(d >= 1);
+      REQUIRE_FALSE(threadConfig::exceedsBudget(a, d));
+    }
+
+    for (unsigned int d = 1; d <= mx; d++) {
+      const unsigned int a = threadConfig::maxAssemblerFor(d);
+      REQUIRE(a >= 1);
+      /* a pool so big that even one assembler thread does not fit is the
+       * caller's problem to cap - see the drag simulation below
+       */
+      if (threadConfig::disassemblerThreadCost(d) < mx)
+        REQUIRE_FALSE(threadConfig::exceedsBudget(a, d));
+    }
+  }
+
+  SECTION("dragging either settings slider always lands on a legal pair") {
+    /* mirrors configuration.cpp's enforceThreadBudget: whichever slider moved
+     * keeps its value, the other gives way, and neither is ever raised
+     */
+    auto dragAssembler = [](unsigned int a, unsigned int d) {
+      const unsigned int dMax = threadConfig::maxDisassemblerFor(a);
+      return std::make_pair(a, std::min(d, dMax));
+    };
+
+    auto dragDisassembler = [](unsigned int a, unsigned int d) {
+      /* the slider cannot go above this, so the simulation does not either */
+      const unsigned int dNew = std::min(d, threadConfig::maxDisassemblerFor(1));
+      const unsigned int aMax = threadConfig::maxAssemblerFor(dNew);
+      return std::make_pair(std::min(a, aMax), dNew);
+    };
+
+    for (unsigned int a = 1; a <= mx; a++) {
+      for (unsigned int d = 1; d <= mx; d++) {
+
+        auto byAsm = dragAssembler(a, d);
+        CHECK(byAsm.first == a);                      // dragged slider keeps its value
+        CHECK(byAsm.second <= d);                     // the other only ever drops
+        CHECK_FALSE(threadConfig::exceedsBudget(byAsm.first, byAsm.second));
+
+        auto byDis = dragDisassembler(a, d);
+        CHECK(byDis.second <= d);
+        CHECK(byDis.first <= a);
+        CHECK_FALSE(threadConfig::exceedsBudget(byDis.first, byDis.second));
+      }
     }
   }
 

@@ -73,22 +73,32 @@ Because the stages overlap, `threadConfig` treats them as a shared budget:
 assemblerThreads + disassemblerThreadCost(disassemblerThreads) <= maxThreads()
 ```
 
-`disassemblerThreadCost()` returns **0** when the count is 1, because inline
-spawns nothing. This is what makes `(maxThreads(), 1)` a legal pair — the
-default on a 14-core machine is `(8, 1)`, and even `(14, 1)` fits.
+The count and the cost are **not the same number**, which is the subtle part:
 
-`fitToBudget()` shrinks an over-subscribed pair. The pool gives way first: the
-assembler runs for the entire solve, while dropping the pool back to inline
-costs no threads at all. A pool of exactly 1 is meaningless, so when fewer than
-two threads are spare the disassembler goes inline rather than keep one useless
-worker. Neither value drops below 1, so on a single-core machine the pair stays
-`(1, 1)` — which costs nothing: serial assembly plus inline disassembly.
+| disassembler count | threads actually started | cost |
+|---|---|---|
+| 1 | none — inline, on the calling thread | **0** |
+| *N* > 1 | *N* workers **+ 1 merger** | **N + 1** |
+
+Two consequences. `(maxThreads(), 1)` is legal — the default on a 14-core
+machine is `(8, 1)`, and even `(14, 1)` fits, because inline spawns nothing.
+And `(7, 7)` on that same machine is *not* legal even though 7 + 7 = 14: the
+pool also starts a merger, so it really runs 15 threads.
+
+`fitToBudget()` shrinks an over-subscribed pair. **The assembler has
+preference** — it runs for the entire solve, while dropping the pool back to
+inline costs no threads at all. Spare threads have to cover the merger as well
+as the workers, so the largest usable pool is `spare - 1`; and since a
+one-worker pool is just inline with an extra merger bolted on, a pair that
+cannot afford at least two workers goes inline instead. Neither value drops
+below 1, so on a single-core machine the pair stays `(1, 1)` — which costs
+nothing: serial assembly plus inline disassembly.
 
 ## Where the rule is enforced
 
 | Front end | Behaviour |
 |---|---|
-| **GUI** | Two sliders, coupled. Dragging one lowers the other so the pair always fits. `configuration_c`'s accessors also run `fitToBudget()` on whatever is in `~/.burrtools.rc`, so a hand-edited or copied-over file cannot oversubscribe. |
+| **GUI** | Two sliders, coupled through `threadConfig::maxDisassemblerFor()` / `maxAssemblerFor()`. Whichever slider is dragged keeps its value and the other gives way; **neither is ever raised**, so dragging one back does not silently inflate the other. The disassembler slider's **range** is also capped at `maxDisassemblerFor(1)` rather than the core count — on a 14-thread machine it runs 1..12, because the pool also needs its merger and at least one assembler thread to feed it — so the user cannot pick a value that would only be clamped back down. On a machine too small for a worthwhile pool the range degenerates to 1..1 and the slider is deactivated. `configuration_c`'s accessors additionally run `fitToBudget()` on whatever is in `~/.burrtools.rc`, so a hand-edited or copied-over file cannot oversubscribe either. |
 | **`burrTxt` / `burrTxt2`** | `-t` and `-T` are honoured **as typed** — an explicit flag is explicit intent — but the tool prints a warning when the pair exceeds the machine. |
 | **Python** | `Problem.solve(threads=…)` sets the assembler count. The module disassembles serially with a single `disassembler_0_c` and never builds a pool, so there is no second count to set. |
 
@@ -98,9 +108,11 @@ benchmarker is a deliberate instruction and should be obeyed.
 
 ## Consequences worth knowing
 
-- **The merger thread is one beyond the budget.** When the pool is active it
-  also runs a merger that reorders results by sequence number. It is near-idle,
-  but `(4, 4)` really means 9 OS threads.
+- **The merger counts against the budget.** When the pool is active it also
+  runs a merger that reorders results by sequence number. It is near-idle, but
+  it is a real thread — `(4, 4)` means 9 — so it is included in
+  `disassemblerThreadCost()`. Leaving it out is what let `(7, 7)` through on a
+  14-thread machine.
 - **`BURRTOOLS_THREADS=N` still yields up to `2N`**, by design — it sets both
   stages. It is kept for the existing benchmark scripts. Use the per-stage
   variables when the distinction matters.
@@ -115,8 +127,11 @@ benchmarker is a deliberate instruction and should be obeyed.
 `test/test_threadconfig.cpp` covers the module directly.
 
 *Unit* (`[threads][unit]`) — the defaults, the environment precedence chain,
-rejection of malformed values, the inline cost model, `fitToBudget()` and the
-shared CLI argument parser.
+rejection of malformed values, the inline-and-merger cost model, `fitToBudget()`
+and the shared CLI argument parser. It also simulates the settings dialogue:
+for every `(assembler, disassembler)` pair on this machine, dragging either
+slider must land on a pair that fits the budget, must leave the dragged value
+alone, and must never raise the other one.
 
 *Dispatch* (`[threads][disasm][pool]`) — that a disassembler count of 1 really
 selects inline rather than a one-worker pool. This is observed by which thread

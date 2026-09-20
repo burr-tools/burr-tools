@@ -77,9 +77,14 @@ namespace threadConfig {
   unsigned int resolveAssembler(unsigned int requested);
   unsigned int resolveDisassembler(unsigned int requested);
 
-  /* Threads the disassembly stage actually spawns for a given count: 0 when
-   * the count is 1, because 1 means inline - no worker and no merger thread
-   * is created. This is why an (N, 1) pair fits a machine with N cores.
+  /* Threads the disassembly stage actually spawns for a given count:
+   *
+   *   1  -> 0      inline; no worker and no merger thread is created, which
+   *                is why an (N, 1) pair fits a machine with N cores
+   *   N  -> N + 1  N pool workers plus the merger that reorders their results
+   *
+   * The count and the cost differ, so always budget with this rather than
+   * with the raw count.
    */
   unsigned int disassemblerThreadCost(unsigned int disassemblerThreads);
 
@@ -89,11 +94,25 @@ namespace threadConfig {
    */
   bool exceedsBudget(unsigned int assemblerThreads, unsigned int disassemblerThreads);
 
-  /* Shrink the pair until it fits within maxThreads(). The disassembly pool
-   * gives way first - the assembler runs for the whole solve, and dropping
-   * the pool back to inline costs no threads at all. A pool of exactly 1 is
-   * meaningless, so when fewer than two threads are spare the disassembler
-   * goes inline rather than keep a single useless worker.
+  /* The two directions of the budget rule, for callers that need to clamp one
+   * slider against the other rather than fix up a whole pair.
+   *
+   * maxDisassemblerFor() is the largest pool that still leaves the given
+   * assembler count running, and returns 1 (inline) when there is not room for
+   * a worthwhile pool. maxAssemblerFor() is the mirror image, never below 1.
+   * Both account for the merger thread via disassemblerThreadCost().
+   */
+  unsigned int maxDisassemblerFor(unsigned int assemblerThreads);
+  unsigned int maxAssemblerFor(unsigned int disassemblerThreads);
+
+  /* Shrink the pair until it fits within maxThreads(), i.e. until
+   * assemblerThreads + disassemblerThreadCost(disassemblerThreads) <= maxThreads().
+   *
+   * The assembler has preference - it runs for the whole solve - so the
+   * disassembly pool is what gives way, and dropping it back to inline costs
+   * no threads at all. Spare threads must cover the merger as well as the
+   * workers, and a pool below 2 workers is pointless, so a pair that cannot
+   * afford both goes inline instead.
    *
    * Neither value drops below 1, so on a single core machine the pair stays
    * (1, 1) - which costs nothing: serial assembly plus inline disassembly.
