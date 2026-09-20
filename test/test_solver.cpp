@@ -2267,7 +2267,7 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
     INFO("top plateau " << plateau << "% of " << samples.size()
          << " samples, at " << samples.back());
     CHECK(plateau < 80.0);
-    CHECK(samples.back() < 0.999f);   // getProgress()'s running cap
+    CHECK(samples.back() < solveThread_c::runningCap);
   }
 
   /* a bar that never moves is monotone and bounded too */
@@ -2275,6 +2275,54 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
 
   CHECK(thread.getProgress() == 1.0f);
   CHECK(thread.getProgress() == 1.0f);  // idempotent, the GUI polls repeatedly
+}
+
+/* The rule getProgress() applies while the disassembly pool has completed
+ * nothing, in isolation from any solve.
+ *
+ * The regression this pins: the hold used to trigger on
+ * `assemblyFraction >= 1.0f`, which getProgress() cannot reach on that path --
+ * it clamps a rounded-up fraction to std::nextafter(1.0f, 0.0f) while assembly
+ * is still running. So every fraction in [runningCap, 1.0) fell through to the
+ * clamp instead, published runningCap into the monotone guard, and pinned the
+ * bar there for the rest of the solve. Narrower trigger than the latch it was
+ * written to remove, same freeze: it needs only an assembler that passes 99.9%
+ * before the pool finishes its first task, which is what a puzzle whose
+ * assemblies all live at the end of the search does.
+ */
+TEST_CASE("with no disassembly evidence the bar never publishes the cap",
+          "[solvethread][progress]") {
+
+  const float cap = solveThread_c::runningCap;
+  const float held = 0.4f;   // whatever the guard is already holding
+
+  SECTION("below the cap the assembly fraction is reported as it stands") {
+    CHECK(solveThread_c::noEvidenceProgress(0.0f, 0.0f) == 0.0f);
+    CHECK(solveThread_c::noEvidenceProgress(0.5f, held) == 0.5f);
+    CHECK(solveThread_c::noEvidenceProgress(std::nextafter(cap, 0.0f), held)
+          == std::nextafter(cap, 0.0f));
+  }
+
+  SECTION("at and above the cap the bar is held instead of pinned") {
+    /* the case the old 1.0f threshold could not see: still running, so the
+     * fraction is below 1, but at or past the cap
+     */
+    CHECK(solveThread_c::noEvidenceProgress(cap, held) == held);
+    CHECK(solveThread_c::noEvidenceProgress(0.9995f, held) == held);
+    CHECK(solveThread_c::noEvidenceProgress(std::nextafter(1.0f, 0.0f), held) == held);
+    CHECK(solveThread_c::noEvidenceProgress(1.0f, held) == held);
+
+    /* and none of them is the cap, which is the value that pins the guard */
+    CHECK(solveThread_c::noEvidenceProgress(0.9995f, held) < cap);
+  }
+
+  SECTION("holding cannot move the bar backwards") {
+    /* the held value is returned unchanged, so the monotone guard sees no
+     * decrease -- holding is a pause, not a retreat
+     */
+    for (float a : {cap, 0.9995f, 1.0f})
+      CHECK(solveThread_c::noEvidenceProgress(a, held) == held);
+  }
 }
 
 /* The cost basis the blend is built on, across the GUI's resume path.
@@ -2360,16 +2408,18 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
     solveThread_c first(*problem, solveThread_c::PAR_DISASSM);
     REQUIRE(first.start());
 
-    /* A wall-clock budget rather than a progress trigger, because the only
-     * way to watch the fraction from here is to poll problem_c for the
-     * assembler while the worker is still installing it -- an unsynchronised
-     * read that ThreadSanitizer flags, and one the production GUI does not
-     * make either. Long enough that the parallel run completes whole tasks;
-     * REQUIRE(paused > 0) below keeps a pause that achieved nothing from
-     * passing vacuously. Same pattern and budget as the sibling resume test.
+    /* Pause on observed progress, not on a wall clock. A fixed budget fails in
+     * both directions: too long and a fast machine finishes the assembly
+     * inside it, leaving nothing to resume; too short and a slow one pauses at
+     * a fraction so small that the second run's window swamps it. Waiting for
+     * the thread's own published progress is machine-independent, and reading
+     * it is race-free -- getProgress() is the atomic the GUI polls, so nothing
+     * here touches problem_c while the worker is installing the assembler.
      */
-    const auto pauseAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
-    while (!first.stopped() && std::chrono::steady_clock::now() < pauseAt)
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+    while (!first.stopped() &&
+           first.getProgress() < 0.05f &&
+           std::chrono::steady_clock::now() < deadline)
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
     first.stop();
@@ -2390,6 +2440,17 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
   /* ---- the continue: a new thread over the assembler the first left ---- */
   assembler_c * assm = problem->getAssembler();
   REQUIRE(assm != nullptr);
+
+  /* The loop below polls getFinished() while the worker searches. That is the
+   * call's documented contract ("It must be possible to call this function
+   * while assemble is running") and what the GUI does on every refresh, but it
+   * is only free of data races on the parallel path, where getFinished() reads
+   * published atomics alone; the serial fallback walks the live DLX stack.
+   * Assert the coming run is the parallel one rather than assume it -- if a
+   * future change routes this resume to the serial path, this fails loudly
+   * instead of the polling quietly becoming a race.
+   */
+  REQUIRE(assm->getRunThreads() > 1);
 
   solveThread_c second(*problem, solveThread_c::PAR_DISASSM);
   REQUIRE(second.start());
@@ -2435,7 +2496,12 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
 
       if (fraction >= progressModel_c::trustThreshold) trusted++;
 
-      if (samples > 300 && fraction >= paused + 0.005f) break;
+      /* A window measured as a FRACTION of the head start, so the leverage
+       * the check below asserts is scale-invariant. a/(a-base) at the break is
+       * about 1.02/0.02 = 51 whatever the machine and wherever the pause
+       * landed; an absolute window would make it depend on both.
+       */
+      if (samples > 300 && fraction >= paused * 1.02f) break;
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -2472,10 +2538,16 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
   REQUIRE(trusted > 0);
   REQUIRE(disassembled > 0);
 
-  /* The run picked the paused search up rather than starting over: the basis
-   * IS the fraction the first thread reached.
+  /* The run picked the paused search up rather than starting over.
+   *
+   * Not asserted as exact equality with `paused`: the two are read from the
+   * assembler at different moments, and getProgress()'s ratchet may lower the
+   * base to whatever the resumed run first reports. Both directions of that
+   * are covered -- it must be a real head start, and it must never claim more
+   * of one than the first thread actually achieved.
    */
-  CHECK(baseSeen == paused);
+  CHECK(baseSeen > 0.0f);
+  CHECK(baseSeen <= paused);
 
   /* Never charged nothing once it had measured something. */
   CHECK(deadAfterGain == 0);
@@ -2490,4 +2562,10 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
    * by that factor.
    */
   CHECK(worstLeverage > 5.0);
+
+  /* And the bar stayed a bar: bounded, and never the running cap, which is
+   * what a pinned resume would report.
+   */
+  CHECK(second.getProgress() >= 0.0f);
+  CHECK(second.getProgress() < solveThread_c::runningCap);
 }
