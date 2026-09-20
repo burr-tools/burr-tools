@@ -900,9 +900,10 @@ actually changes; on macOS each rebuild reconstructs the real system menu
 bar rather than copying an array.
 
 The widget's construction carries the one deliberate ifdef outside
-platform.cpp: Fl_Sys_Menu_Bar is not in Fl_Menu_Bar's hierarchy, and the
-choice cannot be hidden behind a function without moving construction out
-of the Fl_Group scope that owns the widget.
+platform.cpp. Fl_Sys_Menu_Bar does derive from Fl_Menu_Bar, which is why
+MainMenu can stay an Fl_Menu_Bar*; what cannot be shared is the layoutable
+wrapper, since LFl_Sys_Menu_Bar deriving from LFl_Menu_Bar would put a
+diamond on Fl_Menu_Bar.
 
 <record the outcome of the Command-Q verification here>
 
@@ -1541,8 +1542,10 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 **Deviations from the spec, for the reviewer:**
 
 1. **`--self-check` (Task 1, Step 6)** is an extension. The spec said "startup assertion"; this makes the same assertion runnable headlessly so CI can gate it. Cheap, no new link dependencies. Veto it and the assertion still works on first launch.
-2. **Two knowing `#ifdef`s in `mainwindow.cpp`** — the menu bar's construction (Task 3 Step 6) and the F-key cases (Task 4 Step 1) — against the spec's "no new platform ifdefs" constraint. Both are explained at the site; the second has a runtime alternative to try first. An `Fl_Sys_Menu_Bar` is not in `Fl_Menu_Bar`'s hierarchy, so the type must be chosen somewhere.
-3. **`LFl_Sys_Menu_Bar` in `Layouter.h`** is a new class the spec did not anticipate, required because `LFl_Menu_Bar` hard-codes its base.
+2. **Two knowing `#ifdef`s in `mainwindow.cpp`** — the menu bar's construction (Task 3 Step 6) and the F-key cases (Task 4 Step 1) — against the spec's "no new platform ifdefs" constraint. Both are explained at the site; the second has a runtime alternative to try first. The concrete widget type must be chosen somewhere, and it is chosen at the single point of construction.
+3. **`LFl_Sys_Menu_Bar` in `Layouter.h`** is a new class the spec did not anticipate. `Fl_Sys_Menu_Bar` *does* derive publicly from `Fl_Menu_Bar` (`FL/Fl_Sys_Menu_Bar.H:96`) — which is precisely why `MainMenu` can remain an `Fl_Menu_Bar*`. What cannot be shared is the layoutable wrapper: `LFl_Sys_Menu_Bar` deriving from `LFl_Menu_Bar` would inherit `Fl_Menu_Bar` twice, so the two wrappers sit side by side instead.
+
+   *(Corrected after implementation. Earlier drafts of this plan and of the spec asserted that `Fl_Sys_Menu_Bar` was outside `Fl_Menu_Bar`'s hierarchy. That was wrong, and the Task 3 review caught it. The parallel class is still needed, for the diamond reason above.)*
 
 **Findings from verifying the FLTK source, which changed the plan:**
 
