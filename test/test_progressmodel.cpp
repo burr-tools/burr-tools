@@ -191,7 +191,12 @@ TEST_CASE("progress model reaches 1.0 only when both phases are complete",
  * clamp makes the input honest, but it does not change what the caller ends up
  * reporting: with the pool drained, the blend is 1.0f before the clamp and
  * 0.99999994f after, and getProgress() caps anything above 0.999f to 0.999f.
- * Both therefore latch the bar at 99.9% for the rest of the solve.
+ * Both therefore report the same value.
+ *
+ * That the bar does not then SIT at 0.999 for the rest of the solve is the
+ * work of getProgress()'s no-evidence branch, which keeps this assembly-only
+ * answer away from its monotone guard until the pool has completed something;
+ * see the note there and the plateau bound in test_solver.cpp.
  *
  * Pinned here so the limitation stays checkable: if a future change to
  * evaluate() makes the clamped case land meaningfully below the cap, this test

@@ -28,6 +28,7 @@
 #include "progressmodel.h"
 #include "solution.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 
@@ -537,7 +538,8 @@ float solveThread_c::getProgress(void) const {
      * This makes the input honest; on its own it does not change what is
      * reported. With a drained pool, evaluate() returns 1.0f for a == 1.0f and
      * 0.99999994f for the clamped value -- both above runningCap, so both are
-     * reported as runningCap.
+     * reported as runningCap. What keeps that from latching the bar for the
+     * whole disassembly tail is the no-evidence branch further down, not this.
      */
     if (!end && in.assemblyFraction >= 1.0f)
       in.assemblyFraction = std::nextafter(1.0f, 0.0f);
@@ -612,6 +614,36 @@ float solveThread_c::getProgress(void) const {
     }
 
     f = progressModel_c::evaluate(in).fraction;
+
+    /* Until the pool completes its first task there is no disassembly evidence
+     * to blend with, so evaluate() reports the assembly fraction alone -- and
+     * once assembly is complete with assemblies still outstanding, that is its
+     * "counted but not done" sentinel, std::nextafter(1.0f, 0.0f).
+     *
+     * That value must not reach the monotone guard. It caps to runningCap and
+     * latches there, and every genuine blended value that follows is lower --
+     * the first completion of a long disassembly queue puts the blend far
+     * below 1 and it climbs from there -- so the guard locks all of them out
+     * and the bar sits at 99.9% for the whole tail. Measured on
+     * PelikanBurr.xmpuzzle, whose assembly finishes in ~4 ms against a ~185 ms
+     * tail: two distinct values over 187 samples, 0 then 0.999.
+     *
+     * The trigger is precisely "the assembler finished before the pool
+     * completed its first task", not "disassembly dominates": once anything
+     * has been disassembled, d = completed/submitted and the blend
+     * (A + D)/(A + D/d) rises strictly as d approaches 1, with no latch.
+     *
+     * So while there is no evidence to blend, report the assembly fraction
+     * alone, and when even that has run out -- assembly complete, nothing
+     * disassembled, nothing yet known about the phase that is left -- hold the
+     * bar where it is. Any number invented here is contradicted a moment
+     * later, and holding is the only answer the guard cannot turn into a
+     * freeze.
+     */
+    if (in.disassembled == 0 && in.assembliesFound > 0)
+      f = (in.assemblyFraction >= 1.0f)
+            ? reportedProgress.load(std::memory_order_relaxed)
+            : std::min(in.assemblyFraction, runningCap);
 
     /* The solve is still running, so it is not complete, whatever the inputs
      * rounded to. Two ways they get there: progressModel_c signals "everything

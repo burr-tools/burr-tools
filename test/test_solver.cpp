@@ -2240,6 +2240,36 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
     if (i) CHECK(samples[i] >= samples[i-1]);
   }
 
+  /* The bar must not spend the solve pinned at getProgress()'s running cap.
+   *
+   * Until the pool completes its first task there is nothing to blend, and
+   * once assembly is complete the model's assembly-only answer is its "counted
+   * but not done" sentinel -- a hair under 1. Published into the monotone
+   * guard, that caps to 0.999 and latches: every genuine blended value
+   * afterwards is lower, so the guard locks them all out. On this puzzle,
+   * whose assembly finishes in ~4 ms against a ~185 ms disassembly tail, that
+   * is almost the whole solve.
+   *
+   * Both checks are scale-invariant, per the test strategy in
+   * design/2026-09-19-solve-progress-reporting.md: a plateau as a fraction of
+   * the samples rather than an absolute duration. Measured over six runs the
+   * top plateau is 18.8-20.4% and the maximum 0.9176; under ThreadSanitizer,
+   * which stretches the tail, it is 52%. With the sentinel reaching the guard
+   * they are 98% and 0.999, so the bound is set where it separates the defect
+   * from the instrumented build rather than as tight as an untimed run allows.
+   */
+  {
+    size_t top = 0;
+    for (size_t i = samples.size(); i-- > 0 && samples[i] == samples.back(); )
+      top++;
+    const double plateau = 100.0 * static_cast<double>(top)
+                                 / static_cast<double>(samples.size());
+    INFO("top plateau " << plateau << "% of " << samples.size()
+         << " samples, at " << samples.back());
+    CHECK(plateau < 80.0);
+    CHECK(samples.back() < 0.999f);   // getProgress()'s running cap
+  }
+
   /* a bar that never moves is monotone and bounded too */
   CHECK(*std::max_element(samples.begin(), samples.end()) > samples.front());
 
