@@ -758,6 +758,19 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
   if (keepRotations)
     avoidTransformedAssemblies = false;
 
+  totalTasks.store(0, std::memory_order_relaxed);
+  completedTasks.store(0, std::memory_order_relaxed);
+  searchComplete.store(false, std::memory_order_relaxed);
+
+  /* back to the state the constructor left, so getFinished() does not read a
+   * previous run's leftovers. A completed search -- serial or parallel --
+   * clears both stacks, and an empty next_row_stack is what the fallback
+   * branch of getFinished() reports as a finished search.
+   */
+  task_stack = { 0 };
+  next_row_stack = { 0 };
+  simdCompleted = false;
+
   errorsState = ERR_NONE;
   return errorsState;
 }
@@ -1842,6 +1855,12 @@ void assembler_1_c::iterative(void) {
         break;
     }
   }
+
+  /* debug-stepping can break out via debug_loops <= 0 with the stop token
+   * still unfired; that is not completion, so gate the flag on !debug too.
+   */
+  if (!runTok.stop_requested() && !debug)
+    searchComplete.store(true, std::memory_order_relaxed);
 }
 
 class assemblerWorker_1 {
@@ -2647,6 +2666,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       parallelTasks.clear();
       emittedSignatures.clear();
       parallelInterrupted = false;
+      searchComplete.store(true, std::memory_order_relaxed);
     } else {
       parallelInterrupted = true;
     }
@@ -2667,6 +2687,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     if (!runTok.stop_requested()) {
       totalTasks.store(1, std::memory_order_relaxed);
       completedTasks.store(1, std::memory_order_relaxed);
+      searchComplete.store(true, std::memory_order_relaxed);
     }
     running.store(false, std::memory_order_relaxed);
     return;
@@ -2762,6 +2783,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     parallelTasks.clear();
     emittedSignatures.clear();
     parallelInterrupted = false;
+    searchComplete.store(true, std::memory_order_relaxed);
   } else {
     /* Stopped part way. Continuing in this session is fine -- the pool
      * remainder plus re-queued in-flight tasks are saved back into
@@ -2918,6 +2940,7 @@ void assembler_1_c::simdSearch(void) {
   if (simdCompleted.load(std::memory_order_relaxed)) {
     next_row_stack.clear();
     task_stack.clear();
+    searchComplete.store(true, std::memory_order_relaxed);
   }
 
   running.store(false, std::memory_order_relaxed);
@@ -2988,10 +3011,11 @@ void assembler_1_c::popFinished(void) {
 
 float assembler_1_c::getFinished(void) const {
 
+  if (searchComplete.load(std::memory_order_relaxed))
+    return 1.0f;
+
   size_t total = totalTasks.load(std::memory_order_relaxed);
   if (total > 0) {
-    if (!running.load(std::memory_order_relaxed) && !currentRunToken().stop_requested())
-      return 1.0f;
     return static_cast<float>(completedTasks.load(std::memory_order_relaxed)) / static_cast<float>(total);
   }
 

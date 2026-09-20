@@ -1391,4 +1391,82 @@ TEST_CASE("Single-threaded assembler 1 SIMD: completed search does not replay on
   CHECK(cb3.assemblies == 0);
 }
 
+/* getFinished() must describe the search that is actually configured, not a
+ * previous one. Both engines used to shortcut "not running" to 100%, and
+ * assembler_1_c never reset its task counters, so a fresh matrix reported a
+ * completed search.
+ *
+ * Preparing again on the same instance is exercised below only to check that
+ * the counters and the searchComplete flag reset; the test reads nothing
+ * else. This is NOT a general endorsement of calling createMatrix twice on
+ * one instance: the sparse-matrix rebuild arrays (up/down/left/right/
+ * colCount/weight, and assembler_0's upDown) are push_back-only and are never
+ * cleared between calls, so a second createMatrix followed by a second
+ * assemble() on the same instance is untested here and likely unsound. Do
+ * not copy this pattern into a test that calls assemble() twice.
+ */
+TEST_CASE("a freshly prepared assembler does not report itself finished",
+          "[assembler][progress]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
 
+  SECTION("assembler_0") {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    CHECK(assm.getFinished() < 1.0f);
+
+    TestAssemblerCallback cb;
+    assm.assemble(&cb);
+    CHECK(assm.getFinished() == 1.0f);
+
+    /* preparing again must restart, not inherit the completed state */
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    CHECK(assm.getFinished() < 1.0f);
+  }
+
+  SECTION("assembler_1") {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    CHECK(assm.getFinished() < 1.0f);
+
+    TestAssemblerCallback cb;
+    assm.assemble(&cb);
+    CHECK(assm.getFinished() == 1.0f);
+
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    CHECK(assm.getFinished() < 1.0f);
+  }
+
+  /* The 4-thread sections above always take the parallel path, which sets
+   * totalTasks and therefore never touches the total == 0 fallback in
+   * getFinished(). A single-threaded run falls to simdSearch()/iterative()
+   * instead (assemble() routes to the parallel path only when threads > 1),
+   * which is exactly the path that under-reported completion before the
+   * searchComplete check was hoisted above the total > 0 branch.
+   */
+  SECTION("assembler_0 single-threaded") {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    CHECK(assm.getFinished() < 1.0f);
+
+    TestAssemblerCallback cb;
+    assm.assemble(&cb);
+    CHECK(assm.getFinished() == 1.0f);
+  }
+
+  SECTION("assembler_1 single-threaded") {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    CHECK(assm.getFinished() < 1.0f);
+
+    TestAssemblerCallback cb;
+    assm.assemble(&cb);
+    CHECK(assm.getFinished() == 1.0f);
+  }
+}

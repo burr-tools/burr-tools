@@ -249,6 +249,12 @@ private:
    */
   bool parallelInterrupted = false;
 
+  /* true only after a search drained without being aborted. "not running" is
+   * not the same as "finished": a prepared-but-unstarted assembler is also
+   * not running.
+   */
+  std::atomic<bool> searchComplete{false};
+
   void generateSubtreeTasks(std::vector<SubtreeTask> & tasks, unsigned int targetTasks, unsigned int maxDepth);
   void parallelMultiSearch(unsigned int workers);
 

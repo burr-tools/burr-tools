@@ -116,6 +116,12 @@ private:
   std::vector<SubtreeTask_1> parallelTasks;
   std::unordered_set<uint64_t> emittedSignatures;
 
+  /* true only after a search drained without being aborted. "not running" is
+   * not the same as "finished": a prepared-but-unstarted assembler is also
+   * not running.
+   */
+  std::atomic<bool> searchComplete{false};
+
   /* Pristine base matrix saved before search starts */
   /* set when a parallel search stopped before finishing; such a position is
    * saved as not resumable -- see assembler_1.cpp

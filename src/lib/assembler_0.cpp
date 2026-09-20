@@ -772,6 +772,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(bool keepMirror, bool keepRo
   pos = 0;
   iterations.store(0, std::memory_order_relaxed);
   resetTaskProgress();
+  searchComplete.store(false, std::memory_order_relaxed);
 
   if (keepMirror) {
     /* prepare() may already have allocated the mirror info via
@@ -1433,6 +1434,12 @@ void assembler_0_c::iterativeMultiSearch(void) {
     }
   }
 
+  /* debug-stepping can break out via debug_loops <= 0 with the stop token
+   * still unfired; that is not completion, so gate the flag on !debug too.
+   */
+  if (!runTok.stop_requested() && !debug)
+    searchComplete.store(true, std::memory_order_relaxed);
+
   running.store(false, std::memory_order_relaxed);
 }
 
@@ -1835,6 +1842,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   }
 
   if (parallelTasks.empty()) {
+    if (!runTok.stop_requested())
+      searchComplete.store(true, std::memory_order_relaxed);
     running.store(false, std::memory_order_relaxed);
     return;
   }
@@ -2033,6 +2042,7 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     parallelTasks.clear();
     emittedSignatures.clear();
     parallelInterrupted = false;
+    searchComplete.store(true, std::memory_order_relaxed);
   } else {
     /* Stopped part way. In-memory continue is fine -- the pool remainder is
      * saved back into parallelTasks and anything a half-searched task repeats
@@ -2148,6 +2158,7 @@ void assembler_0_c::simdSearch(void) {
   if (!runTok.stop_requested()) {
     pos = piecenumber + 1;
     parallelInterrupted = false;
+    searchComplete.store(true, std::memory_order_relaxed);
   } else {
     /* The SIMD search keeps its position in the solver, not in pos/rows[], so
      * an aborted run leaves pos == 0 -- indistinguishable from "not started".
@@ -2193,10 +2204,11 @@ void assembler_0_c::assemble(assembler_cb * callback) {
 
 float assembler_0_c::getFinished(void) const {
 
+  if (searchComplete.load(std::memory_order_relaxed))
+    return 1.0f;
+
   size_t total = totalTasks.load(std::memory_order_relaxed);
   if (total > 0) {
-    if (!running.load(std::memory_order_relaxed) && !currentRunToken().stop_requested())
-      return 1.0f;
     return static_cast<float>(completedTasks.load(std::memory_order_relaxed)) / static_cast<float>(total);
   }
 
