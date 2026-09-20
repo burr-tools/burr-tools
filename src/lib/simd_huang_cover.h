@@ -142,6 +142,13 @@ private:
   std::unordered_map<unsigned int, uint32_t> node_to_row_idx;
   [[maybe_unused]] bool use_avx2 = false;
 
+  /* mirrors SimdExactCover: without this the NEON kernel is unconditional on
+   * ARM, so BURRTOOLS_NO_AVX2/NO_SIMD silently A/B the same code against
+   * itself on the project's primary development platform and the scalar loop
+   * below the dispatch is dead
+   */
+  [[maybe_unused]] bool use_neon = false;
+
   void search(
     unsigned int depth,
     SearchContext &ctx,

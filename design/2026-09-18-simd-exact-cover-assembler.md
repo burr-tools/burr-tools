@@ -256,6 +256,16 @@ Following the proven success of SIMD bit-parallel exact cover in `assembler_0_c`
 
 Tested on Intel Core i7-1185G7 @ 3.00GHz using `bench/bench_solve.py` (`--threads 1 --no-disassemble --runs 3` comparing `BURRTOOLS_NO_SIMD=1` DLX vs SIMD):
 
+> **Provenance and staleness.** The "reason" column below was written against
+> the 256-column gate this step introduced; Step 2 raises `assembler_0_c` to
+> 512 columns, which moves two of these puzzles onto the SIMD path, so those
+> rows describe a configuration that no longer exists. Host, core count,
+> compiler and run count were not recorded, `bench/bench_simd_suite.py` points
+> at the gitignored `puzzles/BTFiles/` corpus, and it uses `min()` of 3
+> non-interleaved runs rather than the interleaved A/B protocol AGENTS.md
+> section 4 mandates. Treat every figure here as a one-off measurement, not a
+> baseline to regress against.
+
 | Puzzle | Algorithm / Engine | Before DLX (s) | After SIMD (s) | Speedup | Assemblies | Iterations (DLX $\to$ SIMD) |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
 | **SolidSixPieceBurrs** | Assembler 1 (Huang) | 7.92s | 0.73s | **10.89x** | 588 (identical) | 4,302,868 $\to$ 601,901 (**7.15x reduction**) |
@@ -263,9 +273,9 @@ Tested on Intel Core i7-1185G7 @ 3.00GHz using `bench/bench_solve.py` (`--thread
 | **LominoSquare 9-15:1** | Assembler 0 (DLX) | 2.16s | 0.71s | **3.03x** | 5 (identical) | 617,942 $\to$ 384,645 (**1.61x reduction**) |
 | **LominoSquare 9-15:2** | Assembler 0 (DLX) | 1.99s | 0.70s | **2.85x** | 8 (identical) | 628,897 $\to$ 396,920 (**1.58x reduction**) |
 | **LominoSquare 9-15:0** | Assembler 0 (DLX) | 0.49s | 0.19s | **2.63x** | 9 (identical) | 201,846 $\to$ 125,446 (**1.61x reduction**) |
-| **kangaroo** | Assembler 0 (325 cols) | 1.31s | 1.26s | 1.04x | 9,831 (identical) | (fallback > 256 cols) |
-| **Third Times the Charm** | Assembler 0 (278 cols) | 4.47s | 4.44s | 1.01x | 71 (identical) | (fallback > 256 cols) |
-| **Simplicity** | Assembler 1 (512 cols) | 2.09s | 2.12s | 0.98x | 188 (identical) | (fallback > 256 cols & var voxels) |
+| **kangaroo** | Assembler 0 (325 cols) | 1.31s | 1.26s | 1.04x | 9,831 (identical) | measured at the 256-col gate; Step 2 raises `assembler_0_c` to 512, so this puzzle now takes the SIMD path -- re-measure |
+| **Third Times the Charm** | Assembler 0 (278 cols) | 4.47s | 4.44s | 1.01x | 71 (identical) | as above: under 512, so no longer a fallback |
+| **Simplicity** | Assembler 1 (512 cols) | 2.09s | 2.12s | 0.98x | 188 (identical) | fallback: variable voxels. (`SimdHuangCover256` is 256-bit only and `assembler_1_c::canUseSimd()` rejects >256 columns, so the "512 cols" label was wrong.) |
 | **CD_Pack** | Assembler 1 (var voxels) | 0.90s | 0.90s | 1.00x | 2 (identical) | (fallback var voxels) |
 | **PelikanBurr** | Assembler 0 (DLX) | 0.01s | 0.01s | 1.35x | 12 (identical) | 89 $\to$ 89 |
 | **Excelsior** | Assembler 0 (DLX) | 0.01s | 0.01s | 1.39x | 7 (identical) | 112 $\to$ 112 |

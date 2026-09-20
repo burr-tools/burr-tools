@@ -1940,6 +1940,15 @@ void assembler_0_c::simdSearch(void) {
   iterations.fetch_add(simd_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
   if (!abbort.load(std::memory_order_relaxed)) {
     pos = piecenumber + 1;
+    parallelInterrupted = false;
+  } else {
+    /* The SIMD search keeps its position in the solver, not in pos/rows[], so
+     * an aborted run leaves pos == 0 -- indistinguishable from "not started".
+     * Saving that next to an already populated solution list and continuing
+     * would replay the whole search and report every assembly again, so mark
+     * it unresumable, exactly as the parallel path does.
+     */
+    parallelInterrupted = true;
   }
   running.store(false, std::memory_order_relaxed);
 }

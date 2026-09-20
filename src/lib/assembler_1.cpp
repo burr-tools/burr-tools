@@ -2820,6 +2820,14 @@ void assembler_1_c::simdSearch(void) {
   }, abbort, simd_iter);
 
   iterations.fetch_add(simd_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
+
+  /* as in assembler_0: the SIMD search keeps its position in the solver, so an
+   * aborted run leaves the master looking untouched. Saving that would claim
+   * nothing had been searched and the continue would replay everything.
+   */
+  parallelInterrupted = abbort.load(std::memory_order_relaxed);
+  simdCompleted = !parallelInterrupted;
+
   running.store(false, std::memory_order_relaxed);
 }
 
@@ -2833,6 +2841,7 @@ void assembler_1_c::assemble(assembler_cb * callback) {
    * make getFinished() report 1.0 for this run before it has done anything
    */
   resetTaskProgress();
+  simdCompleted = false;
 
   finished_a.reserve(headerNodes);
   finished_b.reserve(headerNodes);
@@ -2884,7 +2893,7 @@ float assembler_1_c::getFinished(void) const {
     return static_cast<float>(completedTasks.load(std::memory_order_relaxed)) / static_cast<float>(total);
   }
 
-  if (!running.load(std::memory_order_relaxed) && !abbort.load(std::memory_order_relaxed) && iterations.load(std::memory_order_relaxed) > 0)
+  if (simdCompleted)
     return 1.0f;
 
   if (next_row_stack.size() == 0) return 1;
@@ -2945,6 +2954,8 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   parallelTasks.clear();
   taskCompleted.clear();
   emittedSignatures.clear();
+  resetTaskProgress();
+  simdCompleted = false;
 
   unsigned int pos = 0;
 

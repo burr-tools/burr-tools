@@ -35,6 +35,8 @@ SimdHuangCover256::SimdHuangCover256(unsigned int num_cols, unsigned int num_s)
   if (!std::getenv("BURRTOOLS_NO_SIMD") && !std::getenv("BURRTOOLS_NO_AVX2")) {
     use_avx2 = __builtin_cpu_supports("avx2");
   }
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+  use_neon = !(std::getenv("BURRTOOLS_NO_SIMD") || std::getenv("BURRTOOLS_NO_NEON"));
 #endif
 }
 
@@ -111,8 +113,12 @@ void SimdHuangCover256::registerNodeAlias(unsigned int node_id, uint32_t row_idx
 }
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-#pragma GCC push_options
-#pragma GCC target("avx2")
+/* Per-function attribute rather than a #pragma GCC target region: Clang does
+ * not implement push_options/target and silently ignores them, after which
+ * every intrinsic in the region fails to compile (and -Wunknown-pragmas alone
+ * fails a --werror build). Both compilers honour the attribute.
+ */
+__attribute__((target("avx2")))
 void SimdHuangCover256::filterRowsAvx2(
   const std::vector<uint32_t> &src,
   uint32_t chosen_idx,
@@ -143,7 +149,6 @@ void SimdHuangCover256::filterRowsAvx2(
     }
   }
 }
-#pragma GCC pop_options
 #elif defined(__aarch64__) || defined(__ARM_NEON)
 void SimdHuangCover256::filterRowsNeon(
   const std::vector<uint32_t> &src,
@@ -206,9 +211,11 @@ void SimdHuangCover256::filterRows(
     return;
   }
 #elif defined(__aarch64__) || defined(__ARM_NEON)
-  filterRowsNeon(src, chosen_idx, chosen_voxel_mask, chosen_shape, shape_is_full,
-                 filter_monotonic, chosen_shape_row_idx, check_range, max_allowed_range_weight, dst);
-  return;
+  if (use_neon) {
+    filterRowsNeon(src, chosen_idx, chosen_voxel_mask, chosen_shape, shape_is_full,
+                   filter_monotonic, chosen_shape_row_idx, check_range, max_allowed_range_weight, dst);
+    return;
+  }
 #endif
 
   for (uint32_t idx : src) {
@@ -359,6 +366,18 @@ void SimdHuangCover256::generateTasks(
     root_ctx.scratch_active_rows[0][i] = static_cast<uint32_t>(i);
   }
 
+  /* A node that expand() cannot refine any further still has to be handed to a
+   * worker: it may itself be a complete cover. Dropping it here (as the plain
+   * `return`s used to) loses that solution, because in this round the node is
+   * replaced by its set of children rather than being a task in its own right.
+   */
+  auto emitAsTask = [&](unsigned int depth, SearchContext &ctx) {
+    SubtreeTask t;
+    t.depth = depth;
+    t.ctx = ctx;
+    tasks.push_back(std::move(t));
+  };
+
   std::function<void(unsigned int, SearchContext&, unsigned int)> expand;
   expand = [&](unsigned int depth, SearchContext &ctx, unsigned int max_depth) {
     if (depth == max_depth) {
@@ -370,8 +389,10 @@ void SimdHuangCover256::generateTasks(
     }
 
     const auto &curr_active = ctx.scratch_active_rows[depth];
-    if (curr_active.empty())
+    if (curr_active.empty()) {
+      emitAsTask(depth, ctx);
       return;
+    }
 
     std::fill(ctx.col_counts.begin(), ctx.col_counts.end(), 0);
     for (uint32_t r_idx : curr_active) {
@@ -418,12 +439,23 @@ void SimdHuangCover256::generateTasks(
       }
     }
 
-    if (best_col == UINT32_MAX)
+    if (best_col == UINT32_MAX) {
+      /* no pivot left to branch on: this node is already as deep as it goes,
+       * and may be a complete cover
+       */
+      emitAsTask(depth, ctx);
       return;
-
-    if (depth + 1 >= ctx.scratch_active_rows.size()) {
-      ctx.scratch_active_rows.resize(depth + 16);
     }
+
+    /* DELIBERATELY no resize of ctx.scratch_active_rows here.
+     *
+     * curr_active is a reference into that vector, and a resize would
+     * reallocate the outer buffer and leave it dangling before the loop below
+     * walks it. The guard it replaces was dead anyway: every placed row
+     * consumes at least one voxel column, so depth < num_columns always, and
+     * the vector is created with num_columns + 16 entries.
+     */
+    bt_assert(depth + 1 < ctx.scratch_active_rows.size());
 
     for (uint32_t r_idx : curr_active) {
       const auto &cand = rows[r_idx];
@@ -652,10 +684,16 @@ void SimdHuangCover256::search(
   if (best_col == UINT32_MAX)
     return;
 
-  // Branch on candidate rows covering best_col
-  if (depth + 1 >= ctx.scratch_active_rows.size()) {
-    ctx.scratch_active_rows.resize(depth + 16);
-  }
+  /* Branch on candidate rows covering best_col.
+   *
+   * DELIBERATELY no resize of ctx.scratch_active_rows here: curr_active is a
+   * reference into that vector, and a resize would reallocate the outer buffer
+   * and leave it dangling before the loop below walks it. The guard this
+   * replaces was dead anyway -- every placed row consumes at least one voxel
+   * column, so depth < num_columns always, and the vector is created with
+   * num_columns + 16 entries.
+   */
+  bt_assert(depth + 1 < ctx.scratch_active_rows.size());
 
   for (uint32_t r_idx : curr_active) {
     const auto &cand = rows[r_idx];

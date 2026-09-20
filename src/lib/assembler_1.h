@@ -125,6 +125,16 @@ private:
    */
   bool parallelInterrupted = false;
 
+  /* set when simdSearch() ran to completion.
+   *
+   * The SIMD search keeps its position inside the solver, so next_row_stack /
+   * task_stack -- what the progress estimate below is derived from -- never
+   * move. Reporting completion from "idle and iterations > 0" instead was a
+   * false positive: after setPosition() restores a saved state, and between
+   * two assemble() calls, all of those hold before any search has run.
+   */
+  bool simdCompleted = false;
+
   std::vector<unsigned int> base_left;
   std::vector<unsigned int> base_right;
   std::vector<unsigned int> base_up;
