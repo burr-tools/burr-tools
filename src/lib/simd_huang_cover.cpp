@@ -722,6 +722,26 @@ void SimdHuangCover<BitsetType>::search(
           all_fulfilled = false;
         }
       }
+      /* the hole budget applies to the assembly we are about to report, not
+       * just to the search below us: every hole column still unfilled here is
+       * a hole in this assembly. assembler_1_c::rec() gets this from its check
+       * running before it reaches a solution; our goal test runs first, so it
+       * has to count them itself or it hands back assemblies with more holes
+       * than the puzzle allows.
+       */
+      if (all_fulfilled && holes < hole_columns.size()) {
+        unsigned int empty_holes = 0;
+        for (unsigned int hc : hole_columns) {
+          if (ctx.col_weights[hc] == 0) {
+            empty_holes++;
+            if (empty_holes > holes) {
+              all_fulfilled = false;
+              break;
+            }
+          }
+        }
+      }
+
       if (all_fulfilled) {
         if (!callback(ctx.current_solution))
           return;

@@ -352,7 +352,7 @@ executable('burrTxt', ['src/burrTxt.cpp'],
   link_with: libburr_core,
   dependencies: [thread_dep, zlib_dep, manifold_dep])
 
-executable('burrTxt2', ['src/burrTxt2.cpp'],
+burrtxt2_exe = executable('burrTxt2', ['src/burrTxt2.cpp'],
   include_directories: inc,
   link_with: libburr_core,
   dependencies: [thread_dep, zlib_dep, manifold_dep])
@@ -464,3 +464,21 @@ if not python_opt.disabled()
   endif
 endif
 
+
+# drives the burrTxt2 binary itself, for the behaviour that lives in main():
+# which runs it refuses to start, and that every run terminates and says why.
+#
+# native builds only. meson runs a cross-built test binary through the cross
+# file's exe_wrapper, but this test's program is the host python3 and the
+# burrTxt2 it drives is just an argument, so nothing wraps it and the runner
+# cannot exec a Windows .exe. The behaviour under test is platform independent
+# and the native jobs cover it.
+if not meson.is_cross_build()
+  test('burrtxt2_cli_smoke',
+    find_program('python3'),
+    args: [meson.project_source_root() / 'test/cli_smoke.py', burrtxt2_exe, meson.project_source_root()],
+    suite: 'fast',
+    timeout: 300,
+    workdir: meson.project_source_root(),
+  )
+endif

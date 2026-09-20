@@ -2785,7 +2785,14 @@ std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(void) const {
   }
   solver->setHoles(holes);
 
-  for (unsigned int c = 1; c <= num_cols; c++) {
+  /* only the columns still linked into the header ring, not 1..num_cols.
+   * reduce() ends in clumpify(), which drops every column covered by exactly
+   * the same rows with the same weights as an earlier one, and remove_column()
+   * unlinks those columns' nodes from the rows along with it. The solver has to
+   * see the same matrix the rows describe: a column no row can reach reads as
+   * an unsatisfiable constraint and ends the search at the root.
+   */
+  for (unsigned int c = right[0]; c != 0; c = right[c]) {
     bool is_shape = (c <= num_shapes);
     bool is_range = (hasRange && c == rangeColumn);
     bool is_voxel = (!is_shape && !is_range);

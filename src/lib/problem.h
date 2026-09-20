@@ -455,6 +455,16 @@ public:
   //@{
   /** find out how far we are with solving (no, started, finished) */
   solveState_e getSolveState(void) const { return solveState; }
+  /** find out whether a solver run may be started for this problem as it stands.
+   * That is the case for a fresh problem, and for one that was interrupted and
+   * carries the assembler state to resume from. A finished problem, or one whose
+   * information was invalidated by editing, must be reset with resetToUnsolved
+   * first - handing an assembler to those violates setAssembler's precondition.
+   */
+  bool canStartSolving(void) const {
+    return solveState == SS_UNSOLVED ||
+           (solveState == SS_SOLVING && (assm != nullptr || assemblerState.length() != 0));
+  }
   /** find out if we have an idea about the number of assemblies */
   bool numAssembliesKnown(void) const { return solveState != SS_UNSOLVED; }
   /** get number of assemblies found so far. Throws an exception, when not known */

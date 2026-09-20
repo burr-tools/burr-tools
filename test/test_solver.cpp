@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "lib/puzzle.h"
+#include "lib/solvethread.h"
+#include "lib/voxel.h"
 #include "lib/problem.h"
 #include "lib/assembler.h"
 #include "lib/assembler_0.h"
@@ -17,7 +19,9 @@
 #include <cstdlib>
 #include <sstream>
 #include <set>
+#include <chrono>
 #include <memory>
+#include <thread>
 #include <string>
 
 namespace {
@@ -1105,3 +1109,87 @@ TEST_CASE("assembler 1: getFinished does not report 100% before starting a resto
   CHECK(assm.getFinished() < 1.0f);
 }
 
+
+/* A problem loaded in SS_SOLVED with no saved assembler state cannot be
+ * continued: setAssembler() rejects that combination, so run() ends in
+ * ACT_ASSERT. stopped() has to report that as a stopped state, or a caller
+ * polling for the worker to finish waits on a thread that has already exited.
+ */
+TEST_CASE("solveThread on an already solved problem stops instead of wedging", "[solver][resume]") {
+  std::unique_ptr<std::istream> str(openGzFile("examples/PelikanBurr.xmpuzzle"));
+  REQUIRE(str != nullptr);
+
+  xmlParser_c pars(*str);
+  puzzle_c p(pars);
+
+  REQUIRE(p.getNumberOfProblems() > 0);
+  problem_c * problem = p.getProblem(0);
+
+  // the shipped example is stored in the finished state
+  REQUIRE(problem->getSolveState() == SS_SOLVED);
+  REQUIRE(problem->getAssembler() == nullptr);
+
+  for (unsigned int i = 0; i < p.getNumberOfShapes(); i++)
+    p.getShape(i)->initHotspot();
+
+  solveThread_c thread(*problem, solveThread_c::PAR_REDUCE | solveThread_c::PAR_JUST_COUNT);
+  REQUIRE(thread.start(false));
+
+  // poll the way burrTxt2 does, but with a bound so a wedged thread fails
+  // the test instead of hanging the suite
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+  while (!thread.stopped() && std::chrono::steady_clock::now() < deadline)
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+  CHECK(thread.stopped());
+  CHECK(thread.currentAction() != solveThread_c::ACT_ASSEMBLING);
+}
+
+namespace {
+
+/* Solve with reduce() applied first, the way solveThread_c does. The other
+ * helper in this file skips reduce(), so it searches a different matrix than
+ * the real solve path builds.
+ */
+int assembliesAfterReduce(const char * path, bool forceDlx) {
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", forceDlx ? "1" : nullptr);
+
+  auto p = puzzle_c::load(path);
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::unique_ptr<assembler_c> assm = problem->getPuzzle().getGridType()->findAssembler(*problem);
+  REQUIRE(assm != nullptr);
+  REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  assm->reduce();
+
+  TestAssemblerCallback cb(nullptr);
+  assm->assemble(&cb);
+
+  return cb.assemblies;
+}
+
+} // namespace
+
+/* reduce() ends in clumpify(), which drops columns that duplicate an earlier
+ * one and unlinks their nodes from the rows. Both searches have to agree on
+ * the matrix that leaves behind, so for a puzzle whose matrix reduce() shrinks
+ * the SIMD path and the DLX fallback must report the same assemblies.
+ */
+TEST_CASE("Assembler 1 SIMD search agrees with DLX on a reduced matrix", "[solver][simd][reduce]") {
+  const char * puzzles[] = {
+    "examples/12PieceSeparation.xmpuzzle",
+    "examples/AlPackino.xmpuzzle",
+  };
+
+  for (const char * path : puzzles) {
+    CAPTURE(path);
+    const int dlx = assembliesAfterReduce(path, true);
+    const int simd = assembliesAfterReduce(path, false);
+
+    CHECK(dlx > 0);
+    CHECK(simd == dlx);
+  }
+}
