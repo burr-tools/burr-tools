@@ -1042,3 +1042,64 @@ TEST_CASE("SIMD and DLX solvers agree across the regression corpus",
   INFO("at least one puzzle must actually take the SIMD path");
   CHECK(tookDifferentPaths);
 }
+
+/* An interrupted SIMD search must not save itself as a resumable position.
+ *
+ * Before this was handled, simdSearch() kept its search state inside the solver,
+ * so an aborted run left pos == 0. When saved to an .xmpuzzle, it was
+ * indistinguishable from a fresh unstarted search, so resuming it replayed
+ * the entire search and duplicated all found assemblies.
+ */
+TEST_CASE("SIMD assembler: an interrupted search is not restored as resumable",
+          "[assembler][simd][resume]") {
+  auto p = puzzle_c::load("examples/Bermuda.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_0_c assm(*problem);
+  assm.setNumThreads(1);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  int seen = 0;
+  assm.assemble([&seen](std::unique_ptr<assembly_c>) -> bool {
+    seen++;
+    return false;
+  });
+  REQUIRE(seen == 1);
+  REQUIRE(assm.getFinished() < 1.0f);
+
+  std::string state;
+  {
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    state = str.str();
+  }
+
+  assembler_0_c restored(*problem);
+  REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  std::string payload = extractAssemblerContent(state);
+  CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+        == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED);
+}
+
+TEST_CASE("assembler 1: getFinished does not report 100% before starting a restored search",
+          "[assembler][huang][resume]") {
+  auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_1_c assm(*problem);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  // Take 1 step in the search: search is NOT finished yet
+  assm.debug_step(1);
+  REQUIRE(assm.getIterations() > 0);
+
+  // Under old code, !running && !abbort && iterations > 0 caused getFinished() to falsely return 1.0f!
+  CHECK(assm.getFinished() < 1.0f);
+}
+
