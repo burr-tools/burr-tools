@@ -227,9 +227,6 @@ private:
     std::vector<PrefixStep> prefix;
   };
 
-  unsigned int numThreads = 0;
-  std::atomic<size_t> totalTasks{0};
-  std::atomic<size_t> completedTasks{0};
   std::vector<SubtreeTask> parallelTasks;
   std::vector<uint8_t> taskCompleted;
   std::unordered_set<uint64_t> emittedSignatures;
@@ -248,11 +245,9 @@ private:
    * from scratch on load with the counters reset.
    */
   bool parallelInterrupted = false;
-  mutable std::mutex callbackMutex;
 
   void generateSubtreeTasks(std::vector<SubtreeTask> & tasks, unsigned int targetTasks, unsigned int maxDepth);
   void parallelMultiSearch(unsigned int workers);
-  unsigned int getEffectiveThreads(void) const;
 
 protected:
 
@@ -333,8 +328,6 @@ public:
    * unvalidated value from the CLI or the python binding would otherwise
    * try to spawn until std::system_error or the OOM killer
    */
-  void setNumThreads(unsigned int threads) override { numThreads = std::min(threads, MAX_THREADS); }
-  unsigned int getNumThreads(void) const override { return numThreads; }
   errState setPosition(const char * string, const char * version) override;
   void save(xmlWriter_c & xml) const override;
   void reduce(void) override;

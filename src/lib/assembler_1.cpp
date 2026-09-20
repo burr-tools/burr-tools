@@ -38,7 +38,7 @@
 #define snprintf _snprintf
 #endif
 
-#define ASSEMBLER_VERSION "2.0"
+#define ASSEMBLER_VERSION "2.1"
 
 void printMatrix(
     const std::vector<unsigned int> & up,
@@ -1837,12 +1837,9 @@ class assemblerWorker_1 {
   std::vector<unsigned int> colCount;
   std::vector<unsigned int> weight;
 
-  std::vector<unsigned int> base_left;
-  std::vector<unsigned int> base_right;
-  std::vector<unsigned int> base_up;
-  std::vector<unsigned int> base_down;
-  std::vector<unsigned int> base_colCount;
-  std::vector<unsigned int> base_weight;
+  /* no private base_* copies here: searchSubtree() re-seeds from
+   * parent.base_*, which is fixed for the whole parallel run
+   */
 
   std::vector<unsigned int> rows;
   std::vector<unsigned int> hidden_rows;
@@ -2245,13 +2242,7 @@ public:
       up(p.base_up),
       down(p.base_down),
       colCount(p.base_colCount),
-      weight(p.base_weight),
-      base_left(p.base_left),
-      base_right(p.base_right),
-      base_up(p.base_up),
-      base_down(p.base_down),
-      base_colCount(p.base_colCount),
-      base_weight(p.base_weight)
+      weight(p.base_weight)
   {
     rows.reserve(parent.headerNodes);
     hidden_rows.reserve(parent.headerNodes * 4);
@@ -2261,12 +2252,16 @@ public:
   }
 
   void searchSubtree(const assembler_1_c::SubtreeTask_1 & task) {
-    left = base_left;
-    right = base_right;
-    up = base_up;
-    down = base_down;
-    colCount = base_colCount;
-    weight = base_weight;
+    /* re-seed straight from the parent: base_* is written once in assemble()
+     * and never touched while workers run, so a private copy per worker only
+     * doubled the resident matrix count (2*nthreads+1 instead of nthreads+1)
+     */
+    left = parent.base_left;
+    right = parent.base_right;
+    up = parent.base_up;
+    down = parent.base_down;
+    colCount = parent.base_colCount;
+    weight = parent.base_weight;
 
     restoreMatrix(task);
     worker_iterative(task.task_stack.size());
@@ -2280,21 +2275,6 @@ public:
     }
   }
 };
-
-unsigned int assembler_1_c::getEffectiveThreads(void) const {
-  if (numThreads > 0)
-    return numThreads;
-
-  const char * env = getenv("BURRTOOLS_THREADS");
-  if (env && *env) {
-    int val = atoi(env);
-    if (val > 0)
-      return static_cast<unsigned int>(val);
-  }
-
-  unsigned int hw = std::thread::hardware_concurrency();
-  return (hw > 0) ? hw : 1;
-}
 
 void assembler_1_c::generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks) {
   tasks.clear();
@@ -2542,21 +2522,12 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   abbort.store(false, std::memory_order_relaxed);
   running.store(true, std::memory_order_relaxed);
 
-  // Pre-warm lazy caches on shared problem and result shapes to prevent data races
-  if (avoidTransformedAssemblies) {
-    const voxel_c * res = getResultShape(problem);
-    if (res) {
-      const symmetries_c * sym = problem.getPuzzle().getGridType()->getSymmetries();
-      unsigned int numTrans = sym ? sym->getNumTransformationsMirror() : 0;
-      for (unsigned int t = 0; t < numTrans; t++) {
-        int x, y, z;
-        int x1, x2, y1, y2, z1, z2;
-        res->getHotspot(t, &x, &y, &z);
-        res->getBoundingBox(t, &x1, &x2, &y1, &y2, &z1, &z2);
-      }
-      res->selfSymmetries();
-    }
-  }
+  /* Workers call smallerRotationExists() outside callbackMutex, which reaches
+   * the lazy mutable caches on the result shape AND on every part shape.
+   * Warm them all here, on the master, before any worker exists.
+   */
+  if (avoidTransformedAssemblies)
+    prewarmSharedShapeCaches(problem);
 
   if (parallelTasks.empty()) {
     unsigned int targetTasks = std::max(16u, workers * 4);
@@ -2645,6 +2616,16 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     parallelTasks.clear();
     taskCompleted.clear();
     emittedSignatures.clear();
+    parallelInterrupted = false;
+  } else {
+    /* Stopped part way. Continuing in this session is fine -- parallelTasks,
+     * taskCompleted and emittedSignatures are all still here. But
+     * generateTasksAtDepth() resets the master back to the root on every exit,
+     * so what save() would write is the root state, i.e. "nothing searched
+     * yet" next to an already populated solution list. Mark it so the reload
+     * refuses it instead of silently reporting everything a second time.
+     */
+    parallelInterrupted = true;
   }
 
   running.store(false, std::memory_order_relaxed);
@@ -2655,6 +2636,11 @@ void assembler_1_c::assemble(assembler_cb * callback) {
   running.store(true, std::memory_order_relaxed);
   abbort.store(false, std::memory_order_relaxed);
   debug = false;
+
+  /* a previous parallel run leaves totalTasks == completedTasks, which would
+   * make getFinished() report 1.0 for this run before it has done anything
+   */
+  resetTaskProgress();
 
   finished_a.reserve(headerNodes);
   finished_b.reserve(headerNodes);
@@ -2765,6 +2751,16 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
 
   unsigned int pos = 0;
 
+  /* leading flag written by save(): an interrupted parallel search recorded
+   * neither how far its workers got nor which assemblies it already reported
+   */
+  {
+    unsigned int interrupted = 0;
+    pos += getInt(string+pos, &interrupted);
+    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    if (interrupted) return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+  }
+
   pos += stringToVector(string+pos, rows);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
   pos += stringToVector(string+pos, task_stack);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
   pos += stringToVector(string+pos, next_row_stack); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
@@ -2833,6 +2829,11 @@ void assembler_1_c::save(xmlWriter_c & xml) const
   xml.newAttrib("version", ASSEMBLER_VERSION);
 
   std::ostream & str = xml.addContent();
+
+  /* leading flag: 1 marks a parallel search that was interrupted and whose
+   * position can therefore not be resumed (see parallelInterrupted)
+   */
+  str << (parallelInterrupted ? 1 : 0) << " ";
 
   vectorToStream(rows, str);
   vectorToStream(task_stack, str);

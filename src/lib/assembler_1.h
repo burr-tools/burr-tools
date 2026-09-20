@@ -107,19 +107,19 @@ private:
   void generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks);
   void generateSubtreeTasks(std::vector<SubtreeTask_1> & tasks, unsigned int targetTasks, unsigned int maxDepth);
   void parallelMultiSearch(unsigned int workers);
-  unsigned int getEffectiveThreads(void) const;
 
   friend class assemblerWorker_1;
 
-  std::mutex callbackMutex;
-  unsigned int numThreads = 0;
-  std::atomic<size_t> totalTasks{0};
-  std::atomic<size_t> completedTasks{0};
   std::vector<SubtreeTask_1> parallelTasks;
   std::vector<uint8_t> taskCompleted;
   std::unordered_set<uint64_t> emittedSignatures;
 
   /* Pristine base matrix saved before search starts */
+  /* set when a parallel search stopped before finishing; such a position is
+   * saved as not resumable -- see assembler_1.cpp
+   */
+  bool parallelInterrupted = false;
+
   std::vector<unsigned int> base_left;
   std::vector<unsigned int> base_right;
   std::vector<unsigned int> base_up;
@@ -313,8 +313,6 @@ public:
   float getFinished(void) const override;
   void stop(void) override { abbort.store(true, std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
-  void setNumThreads(unsigned int threads) override { numThreads = threads; }
-  unsigned int getNumThreads(void) const override { return numThreads; }
   errState setPosition(const char * string, const char * version) override;
   void save(xmlWriter_c & xml) const override;
   void reduce(void) override;

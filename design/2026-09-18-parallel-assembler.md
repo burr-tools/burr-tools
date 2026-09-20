@@ -134,7 +134,7 @@ Rather than static domain decomposition, the master generates fine-grained **Sub
   5. Backtrack up to root depth. Dead ends (`colCount == 0`) are pruned during prefix generation and never dispatched to workers.
 
 This dynamic partitioning:
-- Naturally handles irregular search trees (where some branches finish in microseconds and others take seconds).
+- Naturally handles irregular search trees (where some branches finish in microseconds (estimated, not measured) and others take seconds).
 - Balances load across all CPU cores through dynamic task stealing/queueing.
 - Keeps worker tasks independent and coarse enough (typically 10 ms – 500 ms per task) that queue synchronization overhead is < 0.01%.
 
@@ -264,6 +264,10 @@ The assembly *set* and the assembly *count* are unaffected -- only the order,
 and anything derived from it. Set `-t 1` (or `BURRTOOLS_THREADS=1`) to get the
 old, fully deterministic behaviour.
 
+Both engines behave this way: `assembler_0_c` (DLX) and `assembler_1_c`
+(Huang) are parallel by default under the same `-t` / `BURRTOOLS_THREADS`
+setting, and both report in unspecified order.
+
 **A parallel search that is stopped part way cannot be resumed from a saved
 file.** The serial search saves an exact resume point; a parallel one has no
 single such point, and the record of which assemblies were already reported
@@ -271,7 +275,9 @@ does not survive a save. Rather than silently reporting them all a second time
 on continue, such a state is marked as interrupted, refused on load with
 `ERR_CAN_NOT_RESTORE_INTERRUPTED`, and the partial results are discarded so the
 search restarts cleanly. Stopping and continuing **within one session** is
-unaffected and resumes at task granularity.
+unaffected and resumes at task granularity. This applies to both engines;
+for `assembler_1_c` the cause is the root reset in `generateTasksAtDepth()`
+described in section 6.2.2.
 
 **The benchmark corpus in this document is not reproducible from a clean
 checkout.** The `puzzles/BTFiles/` files behind the 2.6x-3.0x results are
@@ -335,18 +341,18 @@ Whenever a recursive subproblem is pushed onto `task_stack`, all ancestors are s
 - **State 2:** Column condition satisfied with zero additional rows; column rows covered.
 - **State 5:** Candidate row selected, weight accumulated, conflicting rows hidden via `hiderows()`.
 
-Using `restoreMatrix(task)`, a worker reconstructs the exact matrix state by replaying column covers and row weight accumulations in microseconds without modifying the original matrix.
+Using `restoreMatrix(task)`, a worker reconstructs the exact matrix state by replaying column covers and row weight accumulations in microseconds (estimated, not measured) without modifying the original matrix.
 
 #### 6.2.2 Dynamic Subtree Task Generation
 Task generation operates directly on the master instance:
 1. `generateTasksAtDepth(cutoff_depth, tasks)` runs the state machine from the root state.
 2. At `rows.size() >= cutoff_depth`, instead of searching deeper, the master captures a snapshot `SubtreeTask_1` and immediately backtracks (`next_row_stack.pop_back()`, `task_stack.pop_back()`).
-3. Backtracking naturally undoes weights and unhides conflicting rows, keeping the master matrix 100% consistent throughout generation.
+3. Backtracking naturally undoes weights and unhides conflicting rows, keeping the master matrix consistent throughout generation. **Note** that `generateTasksAtDepth()` additionally resets `task_stack`, `next_row_stack`, `rows`, `column_stack` and `hidden_rows` to the root state on *every* exit, including the abort exit. That is what makes an interrupted parallel search unresumable from a saved file -- see "Compatibility" above.
 4. If `tasks.size() < targetTasks` (e.g. fewer than `workers * 4` tasks), `generateSubtreeTasks` increments `cutoff_depth` (up to `min(piecenumber, 3)`), ensuring fine-grained work distribution across all available CPU cores.
 
 #### 6.2.3 Worker Threadpool & Execution
 1. Each worker thread maintains its own private matrix vectors (`left`, `right`, `up`, `down`, `colCount`, `weight`).
-2. Before processing each task, the worker resets its matrix to the canonical base matrix (`base_left`, etc.) via fast vector assignment (~5–10 µs).
+2. Before processing each task, the worker re-seeds its matrix straight from the master's canonical base (`parent.base_left`, etc.) via vector assignment. (The workers used to keep a *second*, private copy of the base purely to re-seed from; that doubled the resident matrix count to `2*nthreads+1` and has been removed.) The "~5-10 µs" figure previously quoted here was an estimate, not a measurement, and has been dropped.
 3. The worker applies `restoreMatrix(task)` and executes `worker_iterative(task.task_stack.size())`.
 4. The worker terminates when `task_stack.size() < base_depth`, guaranteeing that the subtree is exhaustively explored without touching sibling branches.
 5. Rotation rejection (`smallerRotationExists`) is evaluated concurrently per worker; the global `callbackMutex` is acquired solely when reporting valid assemblies to `getCallback()->assembly()`.
@@ -354,7 +360,19 @@ Task generation operates directly on the master instance:
 
 ### 6.3 Benchmark Results (Huang Assembler Corpus)
 
-We benchmarked the parallel Huang implementation against the single-threaded base binary using `bench/run_suite.sh` across the full set of `assembler_1` puzzles:
+We benchmarked the parallel Huang implementation against the single-threaded base binary using `bench/run_suite.sh` across the full set of `assembler_1` puzzles.
+
+> **Provenance:** host, core count, compiler and run count were not recorded for
+> this table, and the `puzzles/BTFiles/` inputs behind most rows are gitignored,
+> so these are one-off measurements that cannot be reproduced from a clean
+> checkout. Treat them as indicative, not as a baseline to regress against.
+>
+> **Read the CPU column alongside the speedup.** 704.7% CPU for a 2.54x
+> speedup means roughly 70% of the consumed CPU time buys nothing. With a
+> static decomposition capped at `maxDepth = 3` and no work stealing, that is
+> the expected signature of tail load imbalance -- one long task still running
+> while the other cores sit idle. It is the obvious place to look for the next
+> improvement, and more useful to a reader than the headline multiplier.
 
 | Puzzle | Backend | Base Wall (s) | Parallel Wall (s) | Speedup | Base CPU% | Parallel CPU% | Memory Delta |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -368,8 +386,15 @@ We benchmarked the parallel Huang implementation against the single-threaded bas
 ### 6.4 Key Findings & Takeaways
 1. **2.5× to 2.7× Speedup on Heavy Huang Searches:**
    On longer-running puzzles like the 47-second George Bell Lomino 11x11 square and Solid Six Piece Burrs, parallel search achieves **2.54× to 2.67× wall-clock speedup** with **600%–705% multi-core CPU utilization** on 8 cores.
-2. **Strict Invariant Verification:**
-   Across all puzzles, the assembly count, solution count, and disassembly move sequences are 100% identical between single-threaded and multi-threaded runs.
+2. **Strict Invariant Verification (of the *set*, not the order):**
+   Across all puzzles, the assembly count, solution count, and disassembly move
+   sequences match between single-threaded and multi-threaded runs. The regression
+   tests compare the assemblies as a multiset rather than by count, so a lost
+   assembly paired with a duplicated one cannot pass.
+
+   The **order** in which assemblies are reported is *not* preserved, and is not
+   reproducible between runs -- see "Compatibility" above for what that changes
+   for users. `assembler_1_c` has the same property as `assembler_0_c` here.
 3. **Controlled Memory Footprint:**
    Peak RSS overhead is small (+7 to +8 MB on most puzzles; up to +83 MB for complex multi-piece 3D puzzles like Third Times the Charm), well within normal application limits.
 4. **Universal Multi-Core Solving:**
