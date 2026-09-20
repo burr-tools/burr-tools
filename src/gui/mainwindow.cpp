@@ -1546,7 +1546,7 @@ void mainWindow_c::cb_New(void) {
 
     if (!fname.empty()) {
       fname.clear();
-      copy_label("BurrTools - unknown");
+      copy_label(platform::windowTitle(0, false).c_str());
     }
 
     changed = false;
@@ -1593,7 +1593,7 @@ void mainWindow_c::cb_Load_Ps3d(void) {
 
       fname = f;
 
-      copy_label((std::string("BurrTools - ") + fname).c_str());
+      copy_label(platform::windowTitle(fname.c_str(), changed).c_str());
 
       ReplacePuzzle(std::move(newPuzzle));
       updateInterface();
@@ -1796,7 +1796,7 @@ void mainWindow_c::cb_SaveAs(void) {
 
         fname = f2;
 
-        copy_label((std::string("BurrTools - ") + fname).c_str());
+        copy_label(platform::windowTitle(fname.c_str(), changed).c_str());
 
       } else {
 
@@ -2063,7 +2063,7 @@ bool mainWindow_c::tryToLoad(const char * f) {
 
   fname = f;
 
-  copy_label((std::string("BurrTools - ") + fname).c_str());
+  copy_label(platform::windowTitle(fname.c_str(), changed).c_str());
 
   ReplacePuzzle(std::move(newPuzzle));
   updateInterface();
@@ -3250,6 +3250,12 @@ void mainWindow_c::update(void) {
     if (!assmThread || &(assmThread->getProblem()) == puzzle->getProblem(solutionProblem->getSelection()))
       updateInterface();
   }
+
+  /* 'changed' is assigned in about fifty places, so rather than hooking
+   * every write, publish it on the regular update tick. A dot that appears
+   * up to a second late is imperceptible.
+   */
+  platform::setDocumentEdited(this, changed);
 }
 
 void mainWindow_c::Toggle3DView(void)
@@ -4112,7 +4118,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
     menuSTLActive(true),
     expertMode(true) {
 
-  copy_label("BurrTools - unknown");
+  copy_label(platform::windowTitle(0, false).c_str());
   user_data((void*)(this));
 
 #ifdef __APPLE__

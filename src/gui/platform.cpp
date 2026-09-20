@@ -28,6 +28,12 @@
 
 #include <string.h>
 
+#ifdef __APPLE__
+#include <objc/message.h>
+#include <objc/runtime.h>
+#include <objc/objc.h>
+#endif
+
 namespace {
   const char * const USER_GUIDE_URL =
     "https://burrtools.sourceforge.net/gui-doc/toc.html";
@@ -101,8 +107,30 @@ std::string platform::windowTitle(const char * filename, bool /*edited*/) {
 #endif
 }
 
-void platform::setDocumentEdited(Fl_Window * /*win*/, bool /*edited*/) {
-  /* Task 7 */
+void platform::setDocumentEdited(Fl_Window * win, bool edited) {
+#ifdef __APPLE__
+
+  if (!win || !win->shown())
+    return;
+
+  /* [NSWindow setDocumentEdited:] draws the dot in the close button. This
+   * needs no Objective-C source file: <objc/message.h> is a plain C API,
+   * and fl_xid() hands back the FLWindow (an NSWindow subclass) FLTK
+   * created for us. libobjc arrives with the Cocoa framework we already
+   * link.
+   */
+  id nsWindow = (id)fl_xid(win);
+  if (!nsWindow)
+    return;
+
+  typedef void (*SetEditedFn)(id, SEL, BOOL);
+  ((SetEditedFn)objc_msgSend)(nsWindow,
+                              sel_registerName("setDocumentEdited:"),
+                              edited ? YES : NO);
+#else
+  (void)win;
+  (void)edited;
+#endif
 }
 
 void platform::openHelp(void) {
