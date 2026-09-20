@@ -25,7 +25,10 @@
  * contains the classes used for the assembler
  */
 
+#include <algorithm>
 #include <vector>
+#include <mutex>
+#include <atomic>
 #include <memory>
 #include <functional>
 
@@ -200,12 +203,16 @@ public:
    * Set the number of worker threads for multi-threaded solving.
    * 0 means auto-detect (default).
    */
-  virtual void setNumThreads(unsigned int /*threads*/) {}
+  /* clamped: the count reaches std::thread creation directly, and the value
+   * from -t / BURRTOOLS_THREADS / Problem.solve(threads=...) is otherwise
+   * unvalidated
+   */
+  virtual void setNumThreads(unsigned int threads) { numThreads = std::min(threads, MAX_THREADS); }
 
   /**
    * Get the configured number of threads (0 = auto-detect).
    */
-  virtual unsigned int getNumThreads(void) const { return 0; }
+  virtual unsigned int getNumThreads(void) const { return numThreads; }
 
   /**
    * this function returns a number reflecting the complexity of the
@@ -295,6 +302,39 @@ public:
    * otherwise validated, and it is used directly to size a thread vector.
    */
   static const unsigned int MAX_THREADS = 256;
+
+  /* Thread count and coarse progress, shared by both engines.
+   *
+   * These used to be duplicated verbatim in assembler_0_c and assembler_1_c,
+   * and had already drifted three separate times -- one engine zeroed
+   * totalTasks between runs and the other did not, one got the shape-cache
+   * pre-warm fix first, and the getFinished() override differed. One
+   * cancellation and progress contract is easier to keep correct than two.
+   */
+  unsigned int numThreads = 0;
+
+  /* number of top level tasks the parallel search split itself into, and how
+   * many have finished. totalTasks == 0 means "not running in parallel", which
+   * is what makes getFinished() fall back to the per engine estimate.
+   */
+  std::atomic<size_t> totalTasks{0};
+  std::atomic<size_t> completedTasks{0};
+
+  /* serialises the hand off of a finished assembly to the callback */
+  mutable std::mutex callbackMutex;
+
+  /* worker count actually used: numThreads, else BURRTOOLS_THREADS, else the
+   * hardware concurrency -- every path clamped to MAX_THREADS
+   */
+  unsigned int getEffectiveThreads(void) const;
+
+  /* clears the parallel progress counters, so a later serial run does not
+   * report the previous parallel run's fraction
+   */
+  void resetTaskProgress(void) {
+    totalTasks.store(0, std::memory_order_relaxed);
+    completedTasks.store(0, std::memory_order_relaxed);
+  }
 
 public:
 

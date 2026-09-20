@@ -753,8 +753,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(bool keepMirror, bool keepRo
   }
   pos = 0;
   iterations.store(0, std::memory_order_relaxed);
-  totalTasks.store(0, std::memory_order_relaxed);
-  completedTasks.store(0, std::memory_order_relaxed);
+  resetTaskProgress();
 
   if (keepMirror) {
     /* prepare() may already have allocated the mirror info via
@@ -1651,21 +1650,6 @@ public:
     }
   }
 };
-
-unsigned int assembler_0_c::getEffectiveThreads(void) const {
-  if (numThreads > 0)
-    return numThreads;
-
-  const char * env = getenv("BURRTOOLS_THREADS");
-  if (env && *env) {
-    int val = atoi(env);
-    if (val > 0)
-      return std::min(static_cast<unsigned int>(val), MAX_THREADS);
-  }
-
-  unsigned int hw = std::thread::hardware_concurrency();
-  return (hw > 0) ? std::min(hw, MAX_THREADS) : 1;
-}
 
 void assembler_0_c::generateSubtreeTasks(
     std::vector<SubtreeTask> & tasks,
