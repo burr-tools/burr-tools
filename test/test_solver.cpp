@@ -1692,6 +1692,21 @@ TEST_CASE("pruned subtree shares are folded into completedShare, not dropped",
    */
   CHECK(prunedShare > 0.0);
   CHECK(sum == Catch::Approx(1.0).margin(1e-6));
+
+  /* Pins the number the documentation quotes. This share is credited to
+   * completedShare before any worker starts, so it is literally where
+   * getFinished() begins on a fresh parallel run of this puzzle -- half.
+   * design/2026-09-19-solve-progress-reporting.md section 2a and the
+   * prunedTaskShare comment in assembler_0.h both record 0.5 as the measured
+   * evidence that the structural share does not track actual work. If a
+   * pruning change moves this, those two records are wrong and have to move
+   * with it; that coupling is the point of asserting the value rather than
+   * only its sign.
+   *
+   * Measured invariant to the thread count (1..32) and to every combination
+   * of the createMatrix flags, so 4 workers here is not a special case.
+   */
+  CHECK(prunedShare == Catch::Approx(0.5).margin(1e-6));
 }
 
 /* A solve aborted on the parallel path leaves totalTasks and completedShare

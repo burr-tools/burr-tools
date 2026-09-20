@@ -151,6 +151,11 @@ private:
    * at 0.9694 for a whole 3 s sample -- strictly worse than the unweighted bar
    * it would have replaced.
    *
+   * assembler_0_c's structural share has since been measured too, and shows
+   * the same anti-correlation at a smaller scale: it opens DiagonalCube at
+   * 0.5 before any worker starts. It is kept there rather than rejected; see
+   * the prunedTaskShare note in assembler_0.h for the numbers and the reason.
+   *
    * std::atomic is neither copyable nor movable, so the slots are held by
    * pointer rather than by value.
    *

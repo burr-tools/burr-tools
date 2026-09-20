@@ -263,6 +263,30 @@ private:
    * generated and is otherwise untouched, so an in-session resume (which
    * skips regeneration while parallelTasks is non-empty) leaves it alone
    * along with the completedShare it already contributed to.
+   *
+   * MEASURED FALSE, TOLERATED. The structural share is a fraction of the
+   * search TREE, and the whole design assumes it stands in for a fraction of
+   * the WORK. For the pruned part it demonstrably does not: proving a subtree
+   * empty at depth <= 3 costs microseconds, yet the share it carries is
+   * credited in full before a single worker starts. Measured across the
+   * bundled examples at the depth (<=3) and budget (max(16, 4*threads))
+   * parallelMultiSearch() actually uses, the seeded value is 0 for most
+   * puzzles, 0.125 on BallRoom, and 0.5 on DiagonalCube -- so a fresh
+   * parallel solve of DiagonalCube opens with getFinished() already at half,
+   * and the GUI's `ut/finished - ut` under-reports the time remaining by
+   * about 2x through the early solve.
+   *
+   * This is the same anti-correlation that was measured for assembler_1_c and
+   * that got structural weighting rejected there (see the workerProgress note
+   * in assembler_1.h). It is tolerated here rather than rejected because the
+   * scale is different -- half a tree credited once at t=0, against 96.9%
+   * credited inside 10 ms -- because the scheme is share-conserving either
+   * way, and because what it replaced was 106 discrete steps that froze for
+   * tens of seconds at a time. The good measured curve on Burr-Glar is the
+   * in-flight term doing the work; Burr-Glar prunes nothing at this depth, so
+   * it does not exercise this at all.
+   *
+   * design/2026-09-19-solve-progress-reporting.md carries the same record.
    */
   float prunedTaskShare = 0.0f;
 

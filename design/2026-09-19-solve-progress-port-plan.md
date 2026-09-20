@@ -96,9 +96,19 @@ These were measured or reviewed and carry over as-is:
 - Assembly and disassembly costs accrue at ~2N worker-seconds per wall-second
   while the phases overlap and ~N in the tail, biasing the time estimate across
   the transition. Documented, not modelled.
-- Whether `assembler_0`'s `Π(1/colCount)` share correlates with actual work is
-  unverified. Its measured outcome is good, but that may be the in-flight term
-  carrying it. The equivalent assumption was false for the Huang engine.
+- `assembler_0`'s `Π(1/colCount)` share does **not** correlate with actual work
+  — no longer an open question. Measured: the subtrees task generation proves
+  empty at depth `<= 3` are credited their full structural share before any
+  worker starts, which is **0.5 on `DiagonalCube`**, 0.125 on `BallRoom`, and 0
+  on every other bundled example including `Burr-Glar`. So a fresh parallel
+  solve of `DiagonalCube` opens at `getFinished() == 0.5` and the GUI's
+  `ut/finished - ut` under-reports by ~2× early on. The good `Burr-Glar` curve
+  is the in-flight term, not the weighting — `Burr-Glar` prunes nothing at this
+  depth. This is the same anti-correlation that got structural weighting
+  rejected for the Huang engine; it is tolerated here (far better than the 106
+  discrete steps it replaced, and share-conserving). Recorded in
+  `2026-09-19-solve-progress-reporting.md` §2a and at `assembler_0.h`'s
+  `prunedTaskShare`.
 
 ## Not ours, still open upstream
 
