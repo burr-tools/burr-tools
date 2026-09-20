@@ -763,3 +763,59 @@ TEMPLATE_TEST_CASE("SimdHuangCover: the SIMD kill switches disable every kernel"
     CHECK(std::string(solver.activeKernel()) != "avx512");
   }
 }
+
+/* Hole limits. A hole column is a variable voxel: it may be left empty, but
+ * only up to the puzzle's hole budget. Assembler 1 used to hand puzzles with a
+ * restrictive budget to the DLX solver; it now hands them here, so this solver
+ * has to apply the budget exactly the way assembler_1_c::rec() does - count the
+ * hole columns that can no longer be filled, and reject once that exceeds the
+ * budget. Nothing exercised setHoles() before.
+ */
+TEMPLATE_TEST_CASE("SimdHuangCover applies the hole budget", "[simd][huang][holes]",
+                   SimdHuangCover256, SimdHuangCover512) {
+
+  // col 1: the shape, exactly one piece. cols 2,3: voxels that must be filled.
+  // col 4: a variable voxel - it may stay empty, budget permitting.
+  auto build = [](unsigned int budget) {
+    auto solver = std::make_unique<TestType>(4, 1);
+    solver->setHoles(budget);
+    solver->setColumnBounds(1, 1, 1, false, true, false, false);
+    solver->setColumnBounds(2, 1, 1, true, false, false, false);
+    solver->setColumnBounds(3, 1, 1, true, false, false, false);
+    solver->setColumnBounds(4, 0, 1, true, false, false, true);
+
+    // row 1 leaves the variable voxel empty, row 2 fills it
+    solver->addRow(1, 0, 1, 0, 0, {1, 2, 3}, {1, 1, 1});
+    solver->addRow(2, 0, 1, 1, 0, {1, 2, 3, 4}, {1, 1, 1, 1});
+    return solver;
+  };
+
+  auto run = [](TestType & solver) {
+    std::vector<std::vector<unsigned int>> sols;
+    std::atomic<bool> abort_flag{false};
+    std::atomic<uint64_t> iterations{0};
+    solver.solve([&](const std::vector<unsigned int> & s) {
+      std::vector<unsigned int> sorted = s;
+      std::sort(sorted.begin(), sorted.end());
+      sols.push_back(sorted);
+      return true;
+    }, abort_flag, iterations);
+    std::sort(sols.begin(), sols.end());
+    return sols;
+  };
+
+  SECTION("a budget of one hole admits both placements") {
+    auto solver = build(1);
+    auto sols = run(*solver);
+    REQUIRE(sols.size() == 2);
+    CHECK(sols[0] == std::vector<unsigned int>{1});
+    CHECK(sols[1] == std::vector<unsigned int>{2});
+  }
+
+  SECTION("a budget of no holes admits only the placement that fills the voxel") {
+    auto solver = build(0);
+    auto sols = run(*solver);
+    REQUIRE(sols.size() == 1);
+    CHECK(sols[0] == std::vector<unsigned int>{2});
+  }
+}

@@ -1145,3 +1145,57 @@ TEST_CASE("solveThread on an already solved problem stops instead of wedging", "
   CHECK(thread.stopped());
   CHECK(thread.currentAction() != solveThread_c::ACT_ASSEMBLING);
 }
+
+namespace {
+
+/* Solve with reduce() applied first, the way solveThread_c does. The other
+ * helper in this file deliberately skips reduce(), which is why nothing here
+ * used to exercise the matrix that assembler 1 actually searches.
+ */
+int assembliesAfterReduce(const char * path, bool forceDlx) {
+  if (forceDlx)
+    setenv("BURRTOOLS_NO_SIMD", "1", 1);
+  else
+    unsetenv("BURRTOOLS_NO_SIMD");
+
+  auto p = puzzle_c::load(path);
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::unique_ptr<assembler_c> assm = problem->getPuzzle().getGridType()->findAssembler(*problem);
+  REQUIRE(assm != nullptr);
+  REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  assm->reduce();
+
+  TestAssemblerCallback cb(nullptr);
+  assm->assemble(&cb);
+
+  unsetenv("BURRTOOLS_NO_SIMD");
+  return cb.assemblies;
+}
+
+} // namespace
+
+/* reduce() ends in clumpify(), which drops columns that duplicate an earlier
+ * one and unlinks their nodes from the rows. The SIMD solver was still being
+ * handed every column from 1..num_cols, so those dropped columns arrived with
+ * no row able to cover them; a required voxel among them made the search treat
+ * the puzzle as unsatisfiable and report no assemblies at all.
+ */
+TEST_CASE("Assembler 1 SIMD search agrees with DLX on a reduced matrix", "[solver][simd][reduce]") {
+  const char * puzzles[] = {
+    "examples/12PieceSeparation.xmpuzzle",
+    "examples/AlPackino.xmpuzzle",
+  };
+
+  for (const char * path : puzzles) {
+    CAPTURE(path);
+    const int dlx = assembliesAfterReduce(path, true);
+    const int simd = assembliesAfterReduce(path, false);
+
+    CHECK(dlx > 0);
+    CHECK(simd == dlx);
+  }
+}
