@@ -25,6 +25,7 @@
 #include <cstdio>
 #include <algorithm>
 #include <thread>
+#include <mutex>
 
 template <typename BitsetType>
 SimdHuangCover<BitsetType>::SimdHuangCover(unsigned int num_cols, unsigned int num_s)

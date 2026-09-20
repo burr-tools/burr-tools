@@ -2605,6 +2605,9 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       parallelTasks.clear();
       taskCompleted.clear();
       emittedSignatures.clear();
+      parallelInterrupted = false;
+    } else {
+      parallelInterrupted = true;
     }
 
     running.store(false, std::memory_order_relaxed);
