@@ -50,6 +50,12 @@ class disassemblerPool_c {
 public:
   using ResultCallback = std::function<void(uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s)>;
 
+  /* num_threads is the requested worker count; 0 means "not specified" and
+   * is resolved by threadConfig::resolveDisassembler (environment, then the
+   * disassembler default). A resolved count of 1 means inline: no worker and
+   * no merger thread is created and submit() disassembles on the calling
+   * thread. BURRTOOLS_NO_DISASM_POOL forces inline regardless.
+   */
   disassemblerPool_c(
     const problem_c & puzzle,
     unsigned int num_threads,

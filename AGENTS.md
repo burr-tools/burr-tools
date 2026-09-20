@@ -26,13 +26,13 @@ just build-werror   # Build with warnings treated as errors (excluding vendored 
 ```
 
 **Test suite timings.** The recipes above build first, so what you wait for is
-compilation plus test execution. Test execution alone is about 1.6s for `just
-test` and about 8.9s for `just test-all`; the difference is almost entirely the
-one Minkowski random-shapes stress case. Compilation is extra and can dominate:
-re-running with nothing changed is 1.6s against 8.9s, editing a single file is
-about 3.4s against 10.0s, and editing a widely-included header is about 13.6s
-against 21.0s. Use `just test` while iterating and `just test-all` before
-calling a task done.
+compilation plus test execution. Test execution alone is roughly 3.6s for `just
+test` and roughly 26s for `just test-all`; the difference is the `[stress]`
+cases, chiefly the Minkowski random-shapes case and the thread-usage case that
+solves `examples/SolidSixPieceBurrs.xmpuzzle` twice (serial and 4-thread, about
+9s together). Compilation is extra and can dominate, and editing a
+widely-included header costs the most. Use `just test` while iterating and
+`just test-all` before calling a task done.
 
 Coverage requires `gcovr` (`brew install gcovr` on macOS, `apt-get install gcovr` on Linux).
 On macOS the recipes pass `--gcov-executable "xcrun llvm-cov gcov"` automatically, because
@@ -125,7 +125,11 @@ Solver engines support runtime feature toggles via environment variables to allo
 | `BURRTOOLS_NO_DISASM_SIMD=1` | Disables vector instructions in disassembler Roy-Floyd-Warshall closure. | Measure pure disassembler vector speedup. |
 | `BURRTOOLS_NO_DISASM_OPT=1` | Disables planar Roy-Floyd-Warshall and bitboard movement checks. | Measure disassembler algorithmic gains. |
 | `BURRTOOLS_NO_DISASM_POOL=1` | Disables multi-threaded disassembly pool, running disassemblies synchronously. | Measure speedup and scaling of parallel disassembly pool against synchronous baseline. |
-| `BURRTOOLS_THREADS=N` | Forces solver to use $N$ worker threads (default: `hardware_concurrency`, clamped to `assembler_c::MAX_THREADS`). **Note:** read independently by the assembler and, once the disassembly pool lands, by that pool too, so `N` may yield `2N` workers overall. | Measure thread scaling curves (e.g. 1, 2, 4, 8 cores). |
+| `BURRTOOLS_THREADS=N` | Sets $N$ worker threads for **both** stages. Because the two stages run concurrently this yields up to `2N` threads; prefer the per-stage variables below when that matters. | Measure thread scaling curves (e.g. 1, 2, 4, 8 cores). |
+| `BURRTOOLS_ASSEMBLER_THREADS=N` | Worker threads for the assembly stage only. Overrides `BURRTOOLS_THREADS`. | Scale one stage while holding the other fixed. |
+| `BURRTOOLS_DISASSEMBLER_THREADS=N` | Worker threads for the disassembly pool only. Overrides `BURRTOOLS_THREADS`. `N=1` means inline (no pool). | Scale one stage while holding the other fixed. |
+
+All thread counts resolve through `threadConfig` ([`src/lib/threadconfig.h`](src/lib/threadconfig.h)), which is shared by `burrTxt`, `burrTxt2`, the GUI and the Python module. Resolution order per stage: explicit request, then the stage variable, then `BURRTOOLS_THREADS`, then the default (assembler: 60% of cores; disassembler: 1, i.e. inline). Every path is clamped into `[1, threadConfig::MAX_THREADS]`. See [`design/2026-09-21-thread-configuration.md`](design/2026-09-21-thread-configuration.md).
 
 ### Running an Interleaved A/B Benchmark
 

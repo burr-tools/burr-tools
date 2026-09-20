@@ -57,21 +57,24 @@ public:
 
   bool reverseScrollZoom(void) { return i_reverseScrollZoom; }
 
-  /* Worker thread counts for the two solver stages. The assembler and the
-   * disassembler pool run *concurrently* - the pool is fed while the assembler
-   * is still searching - so their sum is what the machine actually sees. Both
-   * accessors enforce the invariant
+  /* Worker thread counts for the two solver stages, as stored in the
+   * configuration file. The resolution rules, the defaults and the budget
+   * invariant all live in threadConfig (src/lib/threadconfig.h) so that the
+   * GUI and the command line tools behave identically; these accessors only
+   * apply threadConfig::fitToBudget to whatever is on disk, so a hand-edited
+   * or copied-over configuration file can not over-subscribe the machine.
    *
    *   1 <= assemblerThreads(), 1 <= disassemblerThreads()
    *   assemblerThreads() + disassemblerThreads() <= maxThreads()
    *
-   * here rather than only in the dialogue, so a hand-edited or copied-over
-   * configuration file can not over-subscribe the machine either.
+   * A disassemblerThreads() of 1 means inline - no pool is created at all.
    */
   unsigned int assemblerThreads(void) const;
   unsigned int disassemblerThreads(void) const;
 
-  /* number of hardware threads of this machine, at least 1 */
+  /* number of hardware threads of this machine, at least 1;
+   * forwards to threadConfig::maxThreads()
+   */
   static unsigned int maxThreads(void);
 
   int windowPosX(void) { return i_window_pos_x; }
@@ -97,6 +100,9 @@ private:
   } cnf_type;
 
   void parse(void);
+
+  /* both thread accessors go through here so they always agree on the pair */
+  void resolveThreadPair(unsigned int * assemblerThreads, unsigned int * disassemblerThreads) const;
   void register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * dhelp, const char * def, int minVal = 0, int maxVal = 0);
 
   struct config_data {

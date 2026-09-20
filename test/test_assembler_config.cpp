@@ -856,3 +856,4 @@ TEST_CASE("assembler: the bundled counts span both assemblers and more than one 
   REQUIRE(grids.size() >= 2);
 }
 
+

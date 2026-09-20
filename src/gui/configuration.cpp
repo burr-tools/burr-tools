@@ -27,6 +27,7 @@
 #include <thread>
 
 #include "../lib/bt_assert.h"
+#include "../lib/threadconfig.h"
 
 #include "../tools/homedir.h"
 
@@ -98,32 +99,28 @@ void configuration_c::register_entry(const char *cnf_name, cnf_type cnf_typ, voi
   data.push_back({cnf_name, cnf_typ, cnf_var, maxlen, dialog, dtext, dhelp, nullptr, def, minVal, maxVal});
 }
 
-/* std::thread::hardware_concurrency is the portable query on all three
- * platforms; it is allowed to return 0 when it can not tell, so fall back to 1
- */
 unsigned int configuration_c::maxThreads(void) {
-  unsigned int hw = std::thread::hardware_concurrency();
-  return hw ? hw : 1;
+  return threadConfig::maxThreads();
+}
+
+/* the stored pair, fitted to the budget. Both accessors run the same
+ * threadConfig::fitToBudget, so they can never disagree about the pair.
+ */
+void configuration_c::resolveThreadPair(unsigned int * a, unsigned int * d) const {
+  *a = (unsigned int)std::max(1, i_assembler_threads);
+  *d = (unsigned int)std::max(1, i_disassembler_threads);
+  threadConfig::fitToBudget(a, d);
 }
 
 unsigned int configuration_c::assemblerThreads(void) const {
-  return (unsigned int)std::clamp(i_assembler_threads, 1, (int)maxThreads());
+  unsigned int a = 0, d = 0;
+  resolveThreadPair(&a, &d);
+  return a;
 }
 
 unsigned int configuration_c::disassemblerThreads(void) const {
-  const unsigned int mx = maxThreads();
-  const unsigned int a = assemblerThreads();
-  unsigned int d = (unsigned int)std::clamp(i_disassembler_threads, 1, (int)mx);
-
-  /* the assembler keeps its share and the pool gives way, so that the two
-   * stages together never exceed the machine. On a single core box the sum
-   * can not be honoured (both stages need at least one); there it does not
-   * matter, because one thread each means the serial assembler path and the
-   * pool's inline mode, so nothing is actually spawned.
-   */
-  if (a + d > mx)
-    d = (mx > a) ? (mx - a) : 1u;
-
+  unsigned int a = 0, d = 0;
+  resolveThreadPair(&a, &d);
   return d;
 }
 
@@ -137,28 +134,28 @@ unsigned int configuration_c::disassemblerThreads(void) const {
 
 configuration_c::configuration_c(void) {
 
-  /* budget 60% of the cores, rounded down, split evenly between the two
-   * stages: leaves the machine responsive while solving
+  /* the defaults are threadConfig's, not the dialogue's, so a fresh
+   * configuration file matches what the command line tools would pick
    */
-  const unsigned int maxThr = maxThreads();
-  const unsigned int budget = std::max(1u, maxThr * 6 / 10);
-  const unsigned int asmDef = std::max(1u, (budget + 1) / 2);
-  i_assembler_threads_default = std::to_string(asmDef);
-  i_disassembler_threads_default = std::to_string(std::max(1u, budget - std::min(budget, asmDef)));
+  const unsigned int maxThr = threadConfig::maxThreads();
+  i_assembler_threads_default = std::to_string(threadConfig::defaultAssemblerThreads());
+  i_disassembler_threads_default = std::to_string(threadConfig::defaultDisassemblerThreads());
 
   /* registered first so that they end up last in the dialogue, which walks
    * `data` in reverse (see parse()). Registered assembler-first so the
    * dialogue shows them in pipeline order.
    */
   CNF_INT_D("disassemblerthreads", &i_disassembler_threads, "Disassembler Threads",
-            "Worker threads for the disassembly pool. This stage runs at the same time as the "
-            "assembler, so the two counts add up: keep their sum at or below your core count. "
-            "1 disassembles inline, without a pool.",
+            "Worker threads for the disassembly pool. A value of 1 means inline: no pool is "
+            "created and each assembly is disassembled as it is found, which is the default and "
+            "is the faster choice unless a puzzle has very many assemblies. Above 1, the pool "
+            "runs at the same time as the assembler, so the two counts add up - their sum is "
+            "kept at or below your core count.",
             i_disassembler_threads_default.c_str(), 1, (int)maxThr);
 
   CNF_INT_D("assemblerthreads",   &i_assembler_threads, "Assembler Threads",
             "Worker threads the assembler uses to search for assemblies. "
-            "1 disables parallel assembly.",
+            "1 disables parallel assembly and runs the serial search.",
             i_assembler_threads_default.c_str(), 1, (int)maxThr);
 
   CNF_BOOL_D("tooltips",          &i_use_tooltips, "Use Tooltips",
@@ -231,21 +228,29 @@ static void cb_RestoreDefaults_stub(Fl_Widget* /*o*/, void* v) {
  */
 static Fl_Value_Slider * s_asmSlider = nullptr;
 static Fl_Value_Slider * s_disasmSlider = nullptr;
-static int s_threadBudget = 1;
 
 static void enforceThreadBudget(Fl_Widget * dragged) {
 
   if (!s_asmSlider || !s_disasmSlider) return;
 
-  int a = (int)s_asmSlider->value();
-  int d = (int)s_disasmSlider->value();
+  unsigned int a = (unsigned int)std::max(1, (int)s_asmSlider->value());
+  unsigned int d = (unsigned int)std::max(1, (int)s_disasmSlider->value());
 
-  if (a + d <= s_threadBudget) return;
+  if (!threadConfig::exceedsBudget(a, d)) return;
 
-  if (dragged == s_asmSlider)
-    s_disasmSlider->value(std::max(1, s_threadBudget - a));
-  else
-    s_asmSlider->value(std::max(1, s_threadBudget - d));
+  /* whichever slider the user is dragging keeps its value, the other gives
+   * way. Note that a disassembler value of 1 is inline and costs no threads,
+   * so (max, 1) is a legal pair and never triggers this.
+   */
+  if (dragged == s_asmSlider) {
+    /* fitToBudget lowers the disassembler first, which is what we want here */
+    threadConfig::fitToBudget(&a, &d);
+    s_disasmSlider->value(d);
+  } else {
+    const unsigned int budget = threadConfig::maxThreads();
+    const unsigned int cost = threadConfig::disassemblerThreadCost(d);
+    s_asmSlider->value(std::max(1u, (budget > cost) ? (budget - cost) : 1u));
+  }
 }
 
 static void cb_ThreadBudget_stub(Fl_Widget* o, void* /*v*/) { enforceThreadBudget(o); }
@@ -388,7 +393,6 @@ void configuration_c::dialog(void) {
 
   /* couple the two thread sliders once both exist */
   s_asmSlider = s_disasmSlider = nullptr;
-  s_threadBudget = (int)maxThreads();
   for (auto & t : data) {
     if (t.cnf_typ != CT_INT || !t.widget) continue;
     if (strcmp(t.cnf_name, "assemblerthreads") == 0)

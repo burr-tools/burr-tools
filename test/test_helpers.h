@@ -9,12 +9,45 @@
 
 #include <initializer_list>
 #include <memory>
+#include <cstdlib>
 #include <stdexcept>
 #include <string>
 #include <tuple>
 #include <vector>
 
 namespace bttest {
+
+/* setenv/unsetenv are POSIX; the MinGW cross build (which CI runs under wine)
+ * only has _putenv_s. Tests that need an environment variable go through this.
+ */
+#ifdef _WIN32
+inline void setEnvVar(const char * name, const char * value) {
+  _putenv_s(name, value ? value : "");
+}
+#else
+inline void setEnvVar(const char * name, const char * value) {
+  if (value) setenv(name, value, 1);
+  else unsetenv(name);
+}
+#endif
+
+/** sets an environment variable for the current scope and restores it after,
+ *  so a failing assertion can not leak it into the rest of the suite
+ */
+class scopedEnv_c {
+  std::string name;
+  std::string saved;
+  bool hadValue;
+public:
+  scopedEnv_c(const char * n, const char * value) : name(n), hadValue(false) {
+    if (const char * old = getenv(n)) { saved = old; hadValue = true; }
+    setEnvVar(n, value);
+  }
+  ~scopedEnv_c() { setEnvVar(name.c_str(), hadValue ? saved.c_str() : 0); }
+
+  scopedEnv_c(const scopedEnv_c &) = delete;
+  void operator=(const scopedEnv_c &) = delete;
+};
 
 /** every grid type BurrTools supports, for parametrized cases */
 inline const gridType_c::gridType ALL_GRIDS[] = {

@@ -274,17 +274,8 @@ void assembler_c::prewarmSharedShapeCaches(const problem_c & problem) {
 }
 
 unsigned int assembler_c::getEffectiveThreads(void) const {
-
-  if (numThreads > 0)
-    return numThreads;   /* already clamped by setNumThreads */
-
-  const char * env = getenv("BURRTOOLS_THREADS");
-  if (env && *env) {
-    int val = atoi(env);
-    if (val > 0)
-      return std::min(static_cast<unsigned int>(val), MAX_THREADS);
-  }
-
-  unsigned int hw = std::thread::hardware_concurrency();
-  return (hw > 0) ? std::min(hw, MAX_THREADS) : 1;
+  /* numThreads is 0 when nothing was requested; threadConfig then falls back
+   * to the environment and finally to the assembler default
+   */
+  return threadConfig::resolveAssembler(numThreads);
 }

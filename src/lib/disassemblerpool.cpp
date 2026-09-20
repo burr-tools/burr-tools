@@ -23,6 +23,7 @@
 #include "assembly.h"
 #include "disassembly.h"
 #include "problem.h"
+#include "threadconfig.h"
 #include "puzzle.h"
 #include "gridtype.h"
 
@@ -49,20 +50,15 @@ disassemblerPool_c::disassemblerPool_c(
     return;
   }
 
-  if (num_threads == 0) {
-    if (const char * env = std::getenv("BURRTOOLS_THREADS")) {
-      int t = std::atoi(env);
-      if (t > 0) num_threads = static_cast<unsigned int>(t);
-    }
-    if (num_threads == 0) {
-      num_threads = std::thread::hardware_concurrency();
-      if (num_threads == 0) num_threads = 1;
-    }
-  }
+  /* one shared resolver for every front end; 0 means "not specified" and
+   * falls back to the environment and then to the disassembler default.
+   * The result is always in [1, MAX_THREADS]. See threadconfig.h.
+   */
+  num_threads = threadConfig::resolveDisassembler(num_threads);
 
-  // Sanity cap on worker threads to avoid resource exhaustion
-  num_threads = std::min(num_threads, 256u);
-
+  /* 1 means inline: no workers, no merger, disassembly happens on whichever
+   * thread calls submit() - which is an assembler worker
+   */
   if (num_threads == 1) {
     is_inline = true;
     inline_dis = std::make_unique<disassembler_0_c>(puzzle);

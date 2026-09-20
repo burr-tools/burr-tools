@@ -22,6 +22,7 @@
 #include "lib/puzzle.h"
 #include "lib/problem.h"
 #include "lib/solvethread.h"
+#include "lib/threadconfig.h"
 #include "lib/bt_assert.h"
 #include "lib/gridtype.h"
 #include "lib/voxel.h"
@@ -53,6 +54,8 @@ void usage(void) {
   cout << "  -r    keep rotated solutions\n";
   cout << "  -p    drop disassemblies and replace by information about disassembly\n";
   cout << "  -b    selecte problem, else 0\n";
+  cout << "  -t n  worker threads for the assembler (0 = auto)\n";
+  cout << "  -T n  worker threads for the disassembler (0 = auto, 1 = inline)\n";
 }
 
 
@@ -81,6 +84,8 @@ static int solve(int argv, char* args[]) {
   }
 
   int par = solveThread_c::PAR_REDUCE;
+  unsigned int asmThreads = 0;     // assembler, 0 = auto
+  unsigned int disasmThreads = 0;  // disassembler, 0 = auto
   bool restart = false;
   int filenumber = 0;
   int firstProblem = 0;
@@ -103,6 +108,19 @@ static int solve(int argv, char* args[]) {
     else if (strcmp(args[i], "-b") == 0) {
       firstProblem = atoi(args[i+1]);
       lastProblem = firstProblem + 1;
+      i++;
+    }
+    else if ((strcmp(args[i], "-t") == 0) || (strcmp(args[i], "-T") == 0)) {
+      /* same contract and same validation as burrTxt and the GUI */
+      const bool isAsm = (args[i][1] == 't');
+      if (i+1 >= argv) {
+        cout << args[i] << " requires a numeric argument\n";
+        return 1;
+      }
+      if (!threadConfig::parseThreadArg(args[i+1], isAsm ? &asmThreads : &disasmThreads)) {
+        cout << args[i] << " requires a non-negative number\n";
+        return 1;
+      }
       i++;
     }
     else
@@ -185,7 +203,7 @@ static int solve(int argv, char* args[]) {
       continue;
     }
 
-    solveThread_c assmThread(*problem, par);
+    solveThread_c assmThread(*problem, par, asmThreads, disasmThreads);
 
     if (!assmThread.start(false)) {
       cout << "Could not start Solver\n";

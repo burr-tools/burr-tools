@@ -144,12 +144,14 @@ assm(0)
 {
 
   if (par & PAR_DISASSM) {
-    /* Thread budget architecture:
-     * Disassembler pool is instantiated with 0 (defaulting to BURRTOOLS_THREADS or hardware_concurrency).
-     * The Tier 1 assembler and Tier 2 disassembler pool concurrently run up to N workers each.
-     * This overlap is deliberate: disassembly is memory/movement-closure bound while assembly is
-     * CPU/search bound. Dynamic backpressure via bounded queues (MAX_QUEUE_SIZE = 64) prevents
-     * queue bloat and coordinates CPU utilization (see design/2026-09-19-threading-model-assessment.md).
+    /* The pool starts its workers here, in the constructor, and they stay
+     * alive for the whole solve - so they overlap the assembler's own
+     * workers rather than following them. That is deliberate (disassembly is
+     * movement-closure bound, assembly is search bound, and the bounded queue
+     * of MAX_QUEUE_SIZE entries provides backpressure), but it does mean the
+     * two counts add up on the machine, which is why they are configured
+     * separately rather than from one number.
+     * See design/2026-09-21-thread-configuration.md.
      */
     disasm_pool = std::make_unique<disassemblerPool_c>(
       puz,

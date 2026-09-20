@@ -32,6 +32,8 @@
 #include <memory>
 #include <functional>
 
+#include "threadconfig.h"
+
 class voxel_c;
 class assembly_c;
 class problem_c;
@@ -205,7 +207,8 @@ public:
    */
   /* clamped: the count reaches std::thread creation directly, and the value
    * from -t / BURRTOOLS_THREADS / Problem.solve(threads=...) is otherwise
-   * unvalidated
+   * unvalidated. 0 is kept as-is and means "not specified", which
+   * getEffectiveThreads() resolves to the configured default.
    */
   virtual void setNumThreads(unsigned int threads) { numThreads = std::min(threads, MAX_THREADS); }
 
@@ -297,11 +300,10 @@ public:
    */
   static void prewarmSharedShapeCaches(const problem_c & problem);
 
-  /* upper bound on worker threads. The count arrives from -t, from
-   * BURRTOOLS_THREADS and from Problem.solve(threads=...), none of which is
-   * otherwise validated, and it is used directly to size a thread vector.
+  /* upper bound on worker threads; the single definition lives in
+   * threadConfig, which is where every count is resolved and clamped
    */
-  static const unsigned int MAX_THREADS = 256;
+  static const unsigned int MAX_THREADS = threadConfig::MAX_THREADS;
 
   /* Thread count and coarse progress, shared by both engines.
    *
@@ -323,8 +325,9 @@ public:
   /* serialises the hand off of a finished assembly to the callback */
   mutable std::mutex callbackMutex;
 
-  /* worker count actually used: numThreads, else BURRTOOLS_THREADS, else the
-   * hardware concurrency -- every path clamped to MAX_THREADS
+  /* worker count actually used for the assembly stage. Thin wrapper over
+   * threadConfig::resolveAssembler(numThreads); see threadconfig.h for the
+   * full resolution order.
    */
   unsigned int getEffectiveThreads(void) const;
 
