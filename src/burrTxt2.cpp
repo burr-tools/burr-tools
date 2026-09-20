@@ -135,29 +135,45 @@ int main(int argv, char* args[]) {
     p.getShape(i)->initHotspot();
 
 
+  int exitCode = 0;
+
   for (int pr = firstProblem ; pr < lastProblem ; pr++) {
 
+    problem_c * problem = p.getProblem(pr);
+
     if (restart)
-      p.getProblem(pr)->removeAllSolutions();
+      problem->removeAllSolutions();
 
+    /* without -R we continue where an earlier run left off. There is nothing to
+     * continue for a problem that is already finished, or whose information was
+     * invalidated by editing - and handing an assembler to one of those breaks
+     * setAssembler's precondition, which used to wedge the solver thread.
+     */
+    if (!problem->canStartSolving()) {
+      cout << "problem " << pr << " (" << problem->getName() << ") ";
+      if (problem->getSolveState() == SS_SOLVED)
+        cout << "is already solved: " << problem->getNumAssemblies() << " assemblies, "
+             << problem->getNumSolutions() << " solutions\n";
+      else
+        cout << "has no state to continue from\n";
+      cout << "use -R to solve it again\n";
+      continue;
+    }
 
-    solveThread_c assmThread(*p.getProblem(pr), par);
+    solveThread_c assmThread(*problem, par);
 
     if (!assmThread.start(false)) {
       cout << "Could not start Solver\n";
       continue;
     }
 
-    while (assmThread.currentAction() != solveThread_c::ACT_FINISHED &&
-        assmThread.currentAction() != solveThread_c::ACT_ERROR) {
+    while (!assmThread.stopped()) {
 
       if (checkInput()) {
         cout << "abborting \n";
         assmThread.stop();
 
-        while (assmThread.currentAction() != solveThread_c::ACT_FINISHED &&
-            assmThread.currentAction() != solveThread_c::ACT_ERROR &&
-            assmThread.currentAction() != solveThread_c::ACT_PAUSING)
+        while (!assmThread.stopped())
 #ifdef WIN32
           Sleep(1);
 #else
@@ -167,18 +183,8 @@ int main(int argv, char* args[]) {
         break;
       }
 
-      if (assmThread.currentAction() == solveThread_c::ACT_ERROR) {
-        cout << "Exception in Solver\n";
-        cout << " file      : " << assmThread.getAssertException().file;
-        cout << " function  : " << assmThread.getAssertException().function;
-        cout << " line      : " << assmThread.getAssertException().line;
-        cout << " expression: " << assmThread.getAssertException().expr;
-        return 1;
-      }
-
-
-      float finished = (p.getProblem(pr)->getAssembler())
-        ? p.getProblem(pr)->getAssembler()->getFinished()
+      float finished = (problem->getAssembler())
+        ? problem->getAssembler()->getFinished()
         : 0;
 
       switch (assmThread.currentAction()) {
@@ -195,54 +201,76 @@ int main(int argv, char* args[]) {
           cout << "\rdisassembling " << finished*100 << "% done";
           break;
         case solveThread_c::ACT_WAIT_TO_STOP:
-          cout << "\rwaitin";
-          break;
-        case solveThread_c::ACT_ERROR:
-          cout << "\rerror: ";
-          switch (assmThread.getErrorState()) {
-            case assembler_c::ERR_TOO_MANY_UNITS:
-              cout << "Pieces contain " << assmThread.getErrorParam() << " units too many\n";
-              break;
-            case assembler_c::ERR_TOO_FEW_UNITS:
-              cout << "Pieces contain " << assmThread.getErrorParam() << " units less than required\n";
-              break;
-            case assembler_c::ERR_CAN_NOT_PLACE:
-              cout << "Piece " << assmThread.getErrorParam()+1 << " can be placed nowhere within the result";
-              break;
-            case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
-              cout << "Impossible to restore the saved state because the internal format changed.\n";
-              cout << "You either have to start from the beginning or finish with the old version of BurrTools, sorry";
-              break;
-            case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
-              cout << "Impossible to restore the saved state because something with the data is wrong.\n";
-              cout << "You have to start from the beginning, sorry";
-              break;
-            case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
-              cout << "The saved search was running on several cores when it was stopped.\n";
-              cout << "That can not be continued, so it has been reset -- please start it again";
-              break;
-            case assembler_c::ERR_PUZZLE_UNHANDABLE:
-              cout << "Something went wrong the program can not solve your puzzle definitions.\n";
-              cout << "You should send the puzzle file to the programmer!";
-              break;
-            case assembler_c::ERR_NONE:
-              break;
-          }
-          break;
-        case solveThread_c::ACT_FINISHED:
-          cout << "\rdone";
+          cout << "\rwaiting for solver to stop";
           break;
       }
 
       cout.flush();
 
     }
+
+    /* report how the run ended. Every one of these states means the worker has
+     * left run(), so none of them may be silently ignored - doing so is what
+     * turned an assert in the solver into an endless wait.
+     */
+    switch (assmThread.currentAction()) {
+      case solveThread_c::ACT_FINISHED:
+        cout << "\rdone\n";
+        break;
+      case solveThread_c::ACT_PAUSING:
+        cout << "\rstopped, the puzzle is not completely solved\n";
+        break;
+      case solveThread_c::ACT_ASSERT:
+        cout << "\rException in Solver\n";
+        cout << " file      : " << assmThread.getAssertException().file << "\n";
+        cout << " function  : " << assmThread.getAssertException().function << "\n";
+        cout << " line      : " << assmThread.getAssertException().line << "\n";
+        cout << " expression: " << assmThread.getAssertException().expr << "\n";
+        exitCode = 1;
+        break;
+      case solveThread_c::ACT_ERROR:
+        cout << "\rerror: ";
+        switch (assmThread.getErrorState()) {
+          case assembler_c::ERR_TOO_MANY_UNITS:
+            cout << "Pieces contain " << assmThread.getErrorParam() << " units too many\n";
+            break;
+          case assembler_c::ERR_TOO_FEW_UNITS:
+            cout << "Pieces contain " << assmThread.getErrorParam() << " units less than required\n";
+            break;
+          case assembler_c::ERR_CAN_NOT_PLACE:
+            cout << "Piece " << assmThread.getErrorParam()+1 << " can be placed nowhere within the result\n";
+            break;
+          case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
+            cout << "Impossible to restore the saved state because the internal format changed.\n";
+            cout << "You either have to start from the beginning or finish with the old version of BurrTools, sorry\n";
+            break;
+          case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
+            cout << "Impossible to restore the saved state because something with the data is wrong.\n";
+            cout << "You have to start from the beginning, sorry\n";
+            break;
+          case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
+            cout << "The saved search was running on several cores when it was stopped.\n";
+            cout << "That can not be continued, so it has been reset -- please start it again\n";
+            break;
+          case assembler_c::ERR_PUZZLE_UNHANDABLE:
+            cout << "Something went wrong the program can not solve your puzzle definitions.\n";
+            cout << "You should send the puzzle file to the programmer!\n";
+            break;
+          case assembler_c::ERR_NONE:
+            cout << "unknown\n";
+            break;
+        }
+        exitCode = 1;
+        break;
+    }
+
+    cout.flush();
   }
 
   xmlWriter_c xml(ostr);
   p.save(xml);
 
-  return 0;
+  return exitCode;
 }
 
 

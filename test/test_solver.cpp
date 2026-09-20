@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "lib/puzzle.h"
+#include "lib/solvethread.h"
+#include "lib/voxel.h"
 #include "lib/problem.h"
 #include "lib/assembler.h"
 #include "lib/assembler_0.h"
@@ -17,7 +19,9 @@
 #include <cstdlib>
 #include <sstream>
 #include <set>
+#include <chrono>
 #include <memory>
+#include <thread>
 #include <string>
 
 namespace {
@@ -1105,3 +1109,39 @@ TEST_CASE("assembler 1: getFinished does not report 100% before starting a resto
   CHECK(assm.getFinished() < 1.0f);
 }
 
+
+/* Solving a file whose problem was already solved (solveState == SS_SOLVED and
+ * no saved assembler state) used to wedge the solver thread: setAssembler()
+ * asserts on that combination, run() caught the assert_exception and parked in
+ * ACT_ASSERT, and ACT_ASSERT was not reported as a stopped state - so a caller
+ * polling for the thread to finish waited forever. That is the burrTxt2 hang.
+ */
+TEST_CASE("solveThread on an already solved problem stops instead of wedging", "[solver][resume]") {
+  std::unique_ptr<std::istream> str(openGzFile("examples/PelikanBurr.xmpuzzle"));
+  REQUIRE(str != nullptr);
+
+  xmlParser_c pars(*str);
+  puzzle_c p(pars);
+
+  REQUIRE(p.getNumberOfProblems() > 0);
+  problem_c * problem = p.getProblem(0);
+
+  // the shipped example is stored in the finished state
+  REQUIRE(problem->getSolveState() == SS_SOLVED);
+  REQUIRE(problem->getAssembler() == nullptr);
+
+  for (unsigned int i = 0; i < p.getNumberOfShapes(); i++)
+    p.getShape(i)->initHotspot();
+
+  solveThread_c thread(*problem, solveThread_c::PAR_REDUCE | solveThread_c::PAR_JUST_COUNT);
+  REQUIRE(thread.start(false));
+
+  // poll the way burrTxt2 does, but with a bound so a wedged thread fails
+  // the test instead of hanging the suite
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+  while (!thread.stopped() && std::chrono::steady_clock::now() < deadline)
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+  CHECK(thread.stopped());
+  CHECK(thread.currentAction() != solveThread_c::ACT_ASSEMBLING);
+}

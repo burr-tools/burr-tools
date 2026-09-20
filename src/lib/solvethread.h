@@ -212,6 +212,10 @@ public:
   // try to stop the thread at the next possible position
   void stop(void) override;
 
+  /* true once the worker has left run() for good. ACT_ASSERT belongs here:
+   * an assert in the worker ends the thread just as surely as the other three,
+   * and a caller polling for the thread to finish would otherwise wait forever.
+   */
   bool stopped(void) const {
     return ((action == ACT_PAUSING) ||
             (action == ACT_FINISHED) ||
