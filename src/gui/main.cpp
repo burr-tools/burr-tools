@@ -42,6 +42,18 @@
 #include "../tools/xml.h"
 #include "../tools/gzstream.h"
 
+/* fl_open_callback() takes a plain function pointer with no user data, so
+ * the window it should forward to is reached through this file-scope
+ * pointer instead. Cleared before the window is destroyed so a late Apple
+ * Event can never reach a dangling pointer.
+ */
+static mainWindow_c * g_ui = 0;
+
+static void handleSystemOpen(const char * filename) {
+  if (g_ui)
+    g_ui->openFromSystem(filename);
+}
+
 class my_Fl : public Fl {
 
 public:
@@ -78,6 +90,12 @@ int main(int argc, char ** argv) {
   platform::applyLookAndFeel();
 
   mainWindow_c *ui = new mainWindow_c(new gridType_c());
+
+  /* Must come after the window exists and before it is shown: launching by
+   * double-clicking a puzzle delivers the open event almost immediately.
+   */
+  g_ui = ui;
+  platform::installOpenHandler(handleSystemOpen);
 
   int res = 0;
 
@@ -116,6 +134,7 @@ int main(int argc, char ** argv) {
     printf(" exception\n");
   }
 
+  g_ui = 0;
   delete ui;
   return res;
 }

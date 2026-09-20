@@ -2094,6 +2094,21 @@ bool mainWindow_c::tryToLoad(const char * f) {
   return true;
 }
 
+void mainWindow_c::openFromSystem(const char * filename) {
+
+  if (!filename || !filename[0])
+    return;
+
+  if (!threadStopped())
+    return;
+
+  if (!confirmDiscard("open that puzzle"))
+    return;
+
+  if (!tryToLoad(filename))
+    fl_message("Could not open %s", filename);
+}
+
 void mainWindow_c::ReplacePuzzle(std::unique_ptr<puzzle_c> NewPuzzle) {
 
   puzzle_c * raw = NewPuzzle.get();

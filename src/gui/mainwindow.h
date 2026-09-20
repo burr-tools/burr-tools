@@ -227,6 +227,12 @@ public:
   // cppcheck-suppress duplInheritedMember
   void show(int argn, char ** argv);
 
+  /* Open a document the operating system handed us -- a Finder
+   * double-click, a drop on the Dock icon. Guards unsaved changes, which
+   * tryToLoad() does not.
+   */
+  void openFromSystem(const char * filename);
+
   // overwrite hide to check for changes in all possible exit situations
   void hide(void);
 

@@ -24,6 +24,7 @@
 #include <FL/Fl.H>
 #include <FL/filename.H>
 #include <FL/Fl_Window.H>
+#include <FL/platform.H>
 
 #include <string.h>
 
@@ -77,8 +78,12 @@ bool platform::usesSystemMenuBar(void) {
 #endif
 }
 
-void platform::installOpenHandler(void (* /*handler*/)(const char *)) {
-  /* Task 6 */
+void platform::installOpenHandler(void (*handler)(const char *)) {
+#ifdef __APPLE__
+  fl_open_callback(handler);
+#else
+  (void)handler;
+#endif
 }
 
 std::string platform::windowTitle(const char * filename, bool /*edited*/) {
