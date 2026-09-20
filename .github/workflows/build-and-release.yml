@@ -67,6 +67,83 @@ jobs:
         name: burrtools-linux
         path: artifacts/burrtools-${{ steps.version.outputs.version }}-linux-x86_64.tar.gz
 
+  # Builds the project with Clang on x86-64. GCC-only constructs — most notably
+  # `#pragma GCC target(...)`, which Clang parses as an unknown pragma and
+  # ignores — compile cleanly on every other job in this workflow: the Linux and
+  # Windows jobs use GCC, and the macOS runner is arm64, where the x86 intrinsic
+  # blocks are excluded by the preprocessor. Without this job an x86-64 Clang
+  # build can break with no CI signal at all.
+  #
+  # --werror is deliberate: meson applies it to this project only, not to
+  # subprojects, and the ignored-pragma warnings are themselves the early signal.
+  clang-x86-64:
+    name: Clang x86-64 build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Update package list
+      run: sudo apt-get update
+
+    - name: Install dependencies
+      run: sudo apt-get install -y clang libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev
+
+    - name: Setup build directory
+      env:
+        CC: clang
+        CXX: clang++
+      run: meson setup build-clang --buildtype=release --werror
+
+    - name: Build
+      run: ninja -C build-clang
+
+    - name: Run tests
+      run: meson test -C build-clang --suite fast --print-errorlogs
+
+  # Runs the parallel solver under ThreadSanitizer.
+  #
+  # Note the tag: `[parallel]` includes the symmetry-breaking case in
+  # test/test_solver.cpp. Puzzles without a symmetry breaker never call
+  # assembly_c::smallerRotationExists() from a worker thread, so a TSan run over
+  # only those puzzles reports zero races while real ones remain — keep at least
+  # one symmetry-breaking puzzle in this tag.
+  #
+  # exitcode=1 with halt_on_error=0 reports every race and then fails the job.
+  # timeout-minutes guards against a lost wakeup in the solver or disassembler
+  # pool hanging the runner rather than failing it.
+  tsan-parallel:
+    name: ThreadSanitizer (parallel solver)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Update package list
+      run: sudo apt-get update
+
+    - name: Install dependencies
+      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev
+
+    - name: Install just
+      uses: extractions/setup-just@v2
+
+    - name: Build with ThreadSanitizer
+      run: just build-tsan
+
+    - name: Run parallel solver tests under ThreadSanitizer
+      env:
+        TSAN_OPTIONS: "halt_on_error=0 exitcode=1 second_deadlock_stack=1 history_size=7"
+      run: ./build-tsan/test_burrtools "[parallel]" --reporter compact
+
   coverage:
     runs-on: ubuntu-latest
     continue-on-error: true

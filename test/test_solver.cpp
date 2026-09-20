@@ -22,8 +22,9 @@
 
 namespace {
 
-/* RAII environment variable, so a test can drive the runtime toggles that
- * allowing tests to verify fallback behavior under runtime feature toggles (such as BURRTOOLS_NO_SIMD).
+/* RAII helper to temporarily set or unset environment variables during a test,
+ * allowing tests to verify fallback behavior under runtime feature toggles
+ * (such as BURRTOOLS_NO_SIMD).
  */
 class ScopedEnv {
 public:
@@ -52,6 +53,30 @@ private:
   std::string name_;
   std::string old_;
   bool had_;
+};
+
+/* Records a canonical fingerprint of every assembly, so two runs can be
+ * compared as multisets instead of by count alone. Comparing counts cannot
+ * detect a parallel run that loses one assembly and duplicates another.
+ */
+class RecordingAssemblerCallback : public assembler_cb {
+public:
+  std::multiset<std::string> fingerprints;
+
+  bool assembly(std::unique_ptr<assembly_c> a) override {
+    std::string s;
+    for (unsigned int i = 0; i < a->placementCount(); i++) {
+      s += std::to_string(i);
+      if (a->isPlaced(i))
+        s += ":" + std::to_string(a->getX(i)) + "," + std::to_string(a->getY(i)) +
+             "," + std::to_string(a->getZ(i)) + "," +
+             std::to_string(static_cast<unsigned int>(a->getTransformation(i))) + ";";
+      else
+        s += ":-;";
+    }
+    fingerprints.insert(std::move(s));
+    return true;
+  }
 };
 
 class TestAssemblerCallback : public assembler_cb {
@@ -611,14 +636,16 @@ TEST_CASE("Parallel assembler matches serial on a symmetry-breaking puzzle",
   auto problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
 
-  int serial = 0;
+  std::multiset<std::string> serial;
   {
+    RecordingAssemblerCallback cb;
     assembler_0_c assm(*problem);
     assm.setNumThreads(1);
     REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
-    assm.assemble([&serial](std::unique_ptr<assembly_c>) -> bool { serial++; return true; });
+    assm.assemble(&cb);
+    serial = std::move(cb.fingerprints);
   }
-  REQUIRE(serial > 0);
+  REQUIRE_FALSE(serial.empty());
 
   /* Guard the premise rather than trusting the chosen puzzle: keepRotations
    * forces avoidTransformedAssemblies off, so it must yield strictly more
@@ -626,13 +653,13 @@ TEST_CASE("Parallel assembler matches serial on a symmetry-breaking puzzle",
    * more and this case has stopped covering the concurrent path.
    */
   {
-    int keptRotations = 0;
+    RecordingAssemblerCallback cb;
     assembler_0_c assm(*problem);
     assm.setNumThreads(1);
     REQUIRE(assm.createMatrix(false, true, false) == assembler_c::ERR_NONE);
-    assm.assemble([&keptRotations](std::unique_ptr<assembly_c>) -> bool { keptRotations++; return true; });
+    assm.assemble(&cb);
     INFO("symmetry breaking must be active for this test to be meaningful");
-    REQUIRE(keptRotations > serial);
+    REQUIRE(cb.fingerprints.size() > serial.size());
   }
 
   /* Reload so the parallel run starts with cold caches: the lazy fills are
@@ -644,41 +671,14 @@ TEST_CASE("Parallel assembler matches serial on a symmetry-breaking puzzle",
   auto problemFresh = pFresh->getProblem(0);
   REQUIRE(problemFresh != nullptr);
 
-  int parallel = 0;
+  RecordingAssemblerCallback cb;
   assembler_0_c assm(*problemFresh);
   assm.setNumThreads(4);
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
-  assm.assemble([&parallel](std::unique_ptr<assembly_c>) -> bool { parallel++; return true; });
+  assm.assemble(&cb);
 
-  CHECK(parallel == serial);
+  CHECK(cb.fingerprints == serial);
 }
-
-/* Records a canonical fingerprint of every assembly, so two runs can be
- * compared as multisets instead of by count alone. Equal counts are much
- * weaker than an equal set: one lost assembly plus one duplicated assembly
- * leaves the count untouched, and both are failure modes the parallel search
- * can actually produce.
- */
-class RecordingAssemblerCallback : public assembler_cb {
-public:
-  std::multiset<std::string> fingerprints;
-
-  bool assembly(std::unique_ptr<assembly_c> a) override {
-    std::string s;
-    for (unsigned int i = 0; i < a->placementCount(); i++) {
-      if (a->isPlaced(i)) {
-        s += std::to_string(a->getTransformation(i)) + ",";
-        s += std::to_string(a->getX(i)) + ",";
-        s += std::to_string(a->getY(i)) + ",";
-        s += std::to_string(a->getZ(i)) + ";";
-      } else {
-        s += "-;";
-      }
-    }
-    fingerprints.insert(std::move(s));
-    return true;
-  }
-};
 
 TEST_CASE("Parallel assembler 1 produces identical results to single-threaded", "[assembler][parallel]") {
   auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
