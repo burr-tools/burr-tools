@@ -27,7 +27,24 @@ class progressModel_c {
 
     struct Output {
       float fraction = 0;                    // in [0,1]
-      double projectedRemainingSeconds = -1; // negative when unknown
+
+      /* WORKER-seconds, not wall seconds. Both input costs are worker-seconds
+       * -- the pool sums the wall time of its completed tasks across all of
+       * its workers, and solveThread_c multiplies the assembler's elapsed wall
+       * time by its thread count -- so this projection, being their difference
+       * scaled by the same units, is in the same currency.
+       *
+       * The GUI's "estimated time remaining" field is wall seconds. Showing
+       * this value there without dividing by the number of workers actually
+       * accruing cost would over-report by roughly that factor (N while the
+       * phases overlap, and see the note in solveThread_c::getProgress() for
+       * why the factor is not even constant across the disassembly tail).
+       * Nothing reads this field today; it is published for a caller that
+       * knows how to convert.
+       *
+       * Negative when unknown.
+       */
+      double projectedRemainingSeconds = -1;
     };
 
     /* Below this assembly fraction the projected total assembly count is too

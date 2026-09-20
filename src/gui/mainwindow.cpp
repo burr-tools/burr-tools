@@ -3971,7 +3971,7 @@ void mainWindow_c::CreateSolveTab(void) {
     (new LFl_Box(0, 10))->setMinimumSize(0, SZ_GAP);
 
     SolvingProgress = new LFl_Progress(0, 11, 1, 1);
-    SolvingProgress->tooltip(" Percentage of solution space searched ");
+    SolvingProgress->tooltip(" Progress of the whole solve: assembly search, and disassembly when it is enabled ");
     SolvingProgress->box(FL_ENGRAVED_BOX);
     SolvingProgress->selection_color((Fl_Color)4);
     SolvingProgress->align(FL_ALIGN_CENTER | FL_ALIGN_INSIDE);

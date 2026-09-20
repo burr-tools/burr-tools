@@ -64,6 +64,11 @@ progressModel_c::Output progressModel_c::evaluate(const Input & in) {
 
   out.fraction = static_cast<float>(spent / projected);
   if (out.fraction > 1.0f) out.fraction = 1.0f;
+
+  /* worker-seconds, because both costs are -- NOT wall seconds; a caller that
+   * shows this in a time-remaining field has to convert. See the declaration
+   * of Output::projectedRemainingSeconds.
+   */
   out.projectedRemainingSeconds = projected - spent;
 
   return out;
