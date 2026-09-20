@@ -219,3 +219,75 @@ TEST_CASE("clamping a rounded-up assembly fraction does not lower a drained blen
   CHECK(unclamped > 0.999f);
   CHECK(clamped > 0.999f);
 }
+
+/* The cost basis a resumed solve reports. A solveThread_c is built per solve
+ * and destroyed on pause, so the seconds that bought the assembly fraction the
+ * assembler carries across the pause are gone; only the fraction survives.
+ * Feeding the model the current run's seconds against the whole of that
+ * fraction under-projects the assembly phase by exactly the ratio of the two.
+ */
+TEST_CASE("assembly cost is projected across a resume", "[progress]") {
+
+  SECTION("a fresh solve is charged exactly what it spent") {
+    CHECK(progressModel_c::projectAssemblyCost(37.5, 0.4f, 0.0f) == 37.5);
+    CHECK(progressModel_c::projectAssemblyCost(37.5, 1.0f, 0.0f) == 37.5);
+  }
+
+  SECTION("a resume is charged for the head start at the rate it can measure") {
+    /* 10 worker-seconds bought 0.6 -> 0.8, a quarter of the search, so the
+     * whole of 0.8 costs 40 at that rate
+     */
+    CHECK(progressModel_c::projectAssemblyCost(10.0, 0.8f, 0.6f)
+          == Catch::Approx(40.0));
+  }
+
+  SECTION("no basis yet means no cost, not a wrong one") {
+    /* a resume that has not advanced: nothing measured, so the model is told
+     * nothing and reports the assembly fraction alone
+     */
+    CHECK(progressModel_c::projectAssemblyCost(10.0, 0.6f, 0.6f) == 0.0);
+    CHECK(progressModel_c::projectAssemblyCost(10.0, 0.5f, 0.6f) == 0.0);
+    CHECK(progressModel_c::projectAssemblyCost(0.0, 0.8f, 0.6f) == 0.0);
+  }
+
+  SECTION("it degrades to the assembly fraction as the measured span shrinks") {
+    /* The near-degenerate case is not a blow-up. As the span approaches zero
+     * the projected assembly cost dominates both sides of the blend, so the
+     * reported fraction tends to the assembly fraction itself -- the right
+     * answer when there is nothing else to go on.
+     */
+    progressModel_c::Input in;
+    in.assemblyFraction       = 0.8f;
+    in.assembliesFound        = 800;
+    in.disassembled           = 600;
+    in.disassemblyCostSeconds = 50.0;
+
+    in.assemblyCostSeconds =
+        progressModel_c::projectAssemblyCost(10.0, 0.8f, 0.79999f);
+    CHECK(progressModel_c::evaluate(in).fraction == Catch::Approx(0.8f).margin(0.01));
+  }
+
+  SECTION("it restores the assembly phase's weight in the blend") {
+    progressModel_c::Input in;
+    in.assemblyFraction       = 0.8f;
+    in.assembliesFound        = 800;
+    in.disassembled           = 600;
+    in.disassemblyCostSeconds = 50.0;
+
+    /* what the phase cost this run alone: assembly is weighted 10/0.8 = 12.5 s
+     * against disassembly's 50/0.6 = 83.3 s, i.e. almost ignored
+     */
+    in.assemblyCostSeconds = 10.0;
+    const float unprojected = progressModel_c::evaluate(in).fraction;
+
+    /* projected across the resume: 40 s of assembly, weighted 50 s against the
+     * same 83.3 s, which is the share the phase actually earned
+     */
+    in.assemblyCostSeconds =
+        progressModel_c::projectAssemblyCost(10.0, 0.8f, 0.6f);
+    const float projected = progressModel_c::evaluate(in).fraction;
+
+    INFO("unprojected " << unprojected << " projected " << projected);
+    CHECK(projected > unprojected);
+  }
+}

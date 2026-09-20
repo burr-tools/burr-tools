@@ -36,6 +36,37 @@ class progressModel_c {
     static constexpr float trustThreshold = 0.02f;
 
     static Output evaluate(const Input & in);
+
+    /* Input::assemblyCostSeconds has to cover the whole of assemblyFraction:
+     * the model projects the total assembly cost as cost/fraction, so a cost
+     * that covers only part of the fraction under-projects by that ratio.
+     *
+     * A resumed solve cannot measure the whole of it. The assembler carries
+     * its search state across the pause, so the fraction picks up where it
+     * left off, but the seconds that bought the earlier part were spent by a
+     * previous solve thread and are recorded nowhere -- not in a form this
+     * model can use, at least: the wall time the problem records includes
+     * preparation and disassembly, and says nothing about how many threads
+     * were running.
+     *
+     * So the missing part is inferred from the only rate the current run can
+     * actually measure. Getting from baseFraction to fraction cost
+     * sessionCostSeconds; at that rate the whole of fraction costs
+     *
+     *     sessionCostSeconds * fraction / (fraction - baseFraction)
+     *
+     * For a fresh solve baseFraction is 0 and this is exactly
+     * sessionCostSeconds. It is well conditioned as fraction approaches
+     * baseFraction: the assembly term then dominates both the numerator and
+     * the denominator of the blend, so evaluate() tends to report `fraction`
+     * itself -- the right answer when no cost has been measured yet.
+     *
+     * Returns 0 when there is no basis at all (a resume that has not advanced
+     * yet), which evaluate() reads as "cannot blend" and reports the assembly
+     * fraction alone.
+     */
+    static double projectAssemblyCost(double sessionCostSeconds,
+                                      float fraction, float baseFraction);
 };
 
 #endif

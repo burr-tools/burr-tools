@@ -13,6 +13,7 @@
 #include "lib/disassembler_0.h"
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
+#include "lib/progressmodel.h"
 #include "lib/solvethread.h"
 #include "lib/voxel.h"
 #include "tools/xml.h"
@@ -2244,4 +2245,219 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
 
   CHECK(thread.getProgress() == 1.0f);
   CHECK(thread.getProgress() == 1.0f);  // idempotent, the GUI polls repeatedly
+}
+
+/* The cost basis the blend is built on, across the GUI's resume path.
+ *
+ * solveThread_c records how far the assembler already was when it picked it
+ * up, and progressModel_c::projectAssemblyCost() charges the assembly phase
+ * for the whole of its fraction by extrapolating from what THIS run measured
+ * between that base and the live fraction. A base at or above the live
+ * fraction leaves nothing gained, the projected cost collapses to 0, and
+ * evaluate() then cannot blend: the bar falls back to reporting assembly
+ * alone, with the disassembly phase never weighed -- silently, since the
+ * value it reports is still bounded, monotone and plausible.
+ *
+ * Fresh solves are the identity case: no head start, so the base must be
+ * exactly 0 and the projection must return the measured cost untouched.
+ */
+TEST_CASE("a fresh solve keeps a zero assembly cost basis",
+          "[solvethread][progress]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+  problem->removeAllSolutions();
+
+  solveThread_c thread(*problem, solveThread_c::PAR_DISASSM);
+  REQUIRE(thread.start());
+
+  float worstBase = 0.0f;
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+  while (!thread.stopped() &&
+         thread.currentAction() != solveThread_c::ACT_ASSERT &&
+         std::chrono::steady_clock::now() < deadline) {
+    thread.getProgress();   // the GUI's poll, which is what maintains the basis
+    const float base = thread.getAssemblyBaseFraction();
+    if (base > worstBase) worstBase = base;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  REQUIRE(thread.currentAction() == solveThread_c::ACT_FINISHED);
+
+  /* exactly zero, at every moment of the solve and after it: that is what
+   * makes the projection the identity on the measured cost
+   */
+  CHECK(worstBase == 0.0f);
+  CHECK(thread.getAssemblyBaseFraction() == 0.0f);
+  CHECK(progressModel_c::projectAssemblyCost(37.5, 0.4f,
+                                             thread.getAssemblyBaseFraction()) == 37.5);
+}
+
+/* The resume case, and the regression this test exists for.
+ *
+ * A paused-then-continued solve, driven the way the GUI drives it: one
+ * solveThread_c is started and stopped, destroyed, and a second is built on
+ * the same problem, which finds the assembler the first left behind and picks
+ * up its search state.
+ *
+ * The assembly fraction survives that handover; the seconds that bought it do
+ * not, because they belonged to the first thread. Feeding the model this run's
+ * seconds against the whole of the carried fraction under-projects the
+ * assembly phase by exactly the ratio of the two, so the blend collapses
+ * towards the disassembly fraction and the monotone guard pins it there while
+ * assembly does the rest of the work -- the freeze this branch exists to
+ * remove, reintroduced on the resume path.
+ *
+ * The check is on the basis rather than on the reported value, because a
+ * broken basis is not visible in the value alone: it stays bounded, monotone
+ * and plausible while silently reporting assembly only.
+ *
+ * Burr-Glar because it is the one bundled puzzle whose assembly phase runs
+ * long enough to pause in the middle of and still have a stretch left to watch.
+ */
+TEST_CASE("a resumed solve keeps the assembly cost basis alive",
+          "[solvethread][progress][stress]") {
+  auto p = puzzle_c::load("examples/Burr-Glar.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+  problem->removeAllSolutions();
+
+  /* ---- the first solve, paused part-way through assembly ---- */
+  float paused = 0.0f;
+  {
+    solveThread_c first(*problem, solveThread_c::PAR_DISASSM);
+    REQUIRE(first.start());
+
+    /* A wall-clock budget rather than a progress trigger, because the only
+     * way to watch the fraction from here is to poll problem_c for the
+     * assembler while the worker is still installing it -- an unsynchronised
+     * read that ThreadSanitizer flags, and one the production GUI does not
+     * make either. Long enough that the parallel run completes whole tasks;
+     * REQUIRE(paused > 0) below keeps a pause that achieved nothing from
+     * passing vacuously. Same pattern and budget as the sibling resume test.
+     */
+    const auto pauseAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (!first.stopped() && std::chrono::steady_clock::now() < pauseAt)
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+
+    first.stop();
+    const auto joinBy = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+    while (!first.stopped() && std::chrono::steady_clock::now() < joinBy)
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    REQUIRE(first.stopped());
+    REQUIRE(first.currentAction() == solveThread_c::ACT_PAUSING);
+
+    paused = problem->getAssembler()->getFinished();
+  }
+
+  INFO("paused at " << paused);
+  /* a pause that made no progress would make the whole case vacuous */
+  REQUIRE(paused > 0.0f);
+  REQUIRE(paused < 1.0f);
+
+  /* ---- the continue: a new thread over the assembler the first left ---- */
+  assembler_c * assm = problem->getAssembler();
+  REQUIRE(assm != nullptr);
+
+  solveThread_c second(*problem, solveThread_c::PAR_DISASSM);
+  REQUIRE(second.start());
+
+  unsigned int samples = 0;    // samples taken during the assembly phase
+  unsigned int dead = 0;       // ... of which found no cost basis left
+  unsigned int deadAfterGain = 0;  // ... of those, taken after the run advanced
+  unsigned int trusted = 0;    // ... of which were past the model's trust threshold
+  float reached = 0.0f, baseSeen = -1.0f;
+  double worstLeverage = 0.0; // smallest projected/session cost ratio seen
+
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(300);
+  while (!second.stopped() &&
+         second.currentAction() != solveThread_c::ACT_ASSERT &&
+         std::chrono::steady_clock::now() < deadline) {
+
+    if (second.currentAction() == solveThread_c::ACT_ASSEMBLING) {
+
+      /* the GUI's own poll, which is what maintains the basis */
+      second.getProgress();
+
+      const float fraction = assm->getFinished();
+      const float base = second.getAssemblyBaseFraction();
+      samples++;
+      if (fraction > reached) reached = fraction;
+      if (baseSeen < 0.0f) baseSeen = base;
+
+      /* The projection getProgress() makes, from the same two numbers it makes
+       * it from, against one second of measured cost. Zero means the phase is
+       * charged nothing, which is what turns the blend off; anything above 1
+       * is the head start being charged for, which is the point.
+       */
+      const double projected = progressModel_c::projectAssemblyCost(1.0, fraction, base);
+      if (projected <= 0.0) {
+        dead++;
+        /* Allowed only before the run has gained anything on its base: at that
+         * instant nothing has been measured, and reporting no cost is right.
+         */
+        if (fraction > base) deadAfterGain++;
+      } else if (worstLeverage == 0.0 || projected < worstLeverage) {
+        worstLeverage = projected;
+      }
+
+      if (fraction >= progressModel_c::trustThreshold) trusted++;
+
+      if (samples > 300 && fraction >= paused + 0.005f) break;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  second.stop();
+  const auto joinBy = std::chrono::steady_clock::now() + std::chrono::seconds(300);
+  while (!second.stopped() && std::chrono::steady_clock::now() < joinBy)
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  REQUIRE(second.stopped());
+
+  /* Read once the worker has stopped writing it: it is a plain counter, and
+   * polling it from here while the pool's merger thread counts into it is an
+   * unsynchronised read ThreadSanitizer flags. Monotone, so a non-zero value
+   * now means disassembly results were being counted during the window above.
+   */
+  const unsigned long disassembled = problem->getNumAssemblies();
+
+  INFO("assembly-phase samples: " << samples
+       << ", past the trust threshold: " << trusted
+       << ", disassembly results counted: " << disassembled
+       << ", with no cost basis: " << dead
+       << " (of them after the run gained on its base: " << deadAfterGain << ")"
+       << "; paused at " << paused << ", base settled at " << baseSeen
+       << ", fraction reached " << reached
+       << ", smallest projected cost per measured second: " << worstLeverage);
+
+  /* Not a vacuous pass: the window has to have covered a real stretch of the
+   * assembly phase, with every OTHER condition evaluate() needs to blend
+   * satisfied, so the cost basis is the only thing left that can switch the
+   * blend off.
+   */
+  REQUIRE(samples > 100);
+  REQUIRE(trusted > 0);
+  REQUIRE(disassembled > 0);
+
+  /* The run picked the paused search up rather than starting over: the basis
+   * IS the fraction the first thread reached.
+   */
+  CHECK(baseSeen == paused);
+
+  /* Never charged nothing once it had measured something. */
+  CHECK(deadAfterGain == 0);
+
+  /* And the head start is actually paid for. The first thread bought ~84% of
+   * the search and its seconds died with it; this one measures only the sliver
+   * past that, so every measured second has to be charged as many times over
+   * as the sliver is small -- a/(a-base), which over this window is tens. At a
+   * leverage of 1 the phase would be charged what this run alone spent, which
+   * is the defect: asmCost/a collapses, assembly stops counting against
+   * disassembly in the blend, and both the bar and the time estimate are wrong
+   * by that factor.
+   */
+  CHECK(worstLeverage > 5.0);
 }

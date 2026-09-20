@@ -2,6 +2,27 @@
 
 #include <cmath>
 
+double progressModel_c::projectAssemblyCost(double sessionCostSeconds,
+                                            float fraction, float baseFraction) {
+
+  if (sessionCostSeconds <= 0) return 0.0;
+
+  float a = fraction;
+  if (a < 0) a = 0;
+  if (a > 1) a = 1;
+
+  float base = baseFraction;
+  if (base < 0) base = 0;
+  if (base > 1) base = 1;
+
+  if (base <= 0) return sessionCostSeconds;
+
+  const double gained = static_cast<double>(a) - static_cast<double>(base);
+  if (gained <= 0) return 0.0;
+
+  return sessionCostSeconds * static_cast<double>(a) / gained;
+}
+
 progressModel_c::Output progressModel_c::evaluate(const Input & in) {
 
   Output out;

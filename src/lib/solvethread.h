@@ -212,6 +212,12 @@ class solveThread_c : public assembler_cb {
    * reduce() build the matrix getFinished() reads, so polling across that is a
    * genuine data race.
    *
+   * assemblyBaseFraction is how far the assembler had already got when this
+   * object took it over -- non-zero only on a resume. The seconds that bought
+   * that head start belong to a previous solveThread_c and are not recorded,
+   * so the phase's total cost is projected from it and from what this run has
+   * measured; see progressModel_c::projectAssemblyCost().
+   *
    * reportedProgress is the monotone guard. It is never reset: the GUI builds
    * one solveThread_c per solve and destroys it when the solve ends, so the
    * object's lifetime is exactly the span the bar must not move backwards over.
@@ -219,6 +225,7 @@ class solveThread_c : public assembler_cb {
   std::atomic<long long> assemblyStartNs{0};   // 0 = assembly has not started
   std::atomic<long long> assemblyEndNs{0};     // 0 = assembly still running
   std::atomic<unsigned int> assemblyThreads{1};
+  mutable std::atomic<float> assemblyBaseFraction{0.0f};
   mutable std::atomic<float> reportedProgress{0.0f};
 
 public:
@@ -267,6 +274,20 @@ public:
    * time, including before the thread is started and after it has ended.
    */
   float getProgress(void) const;
+
+  /* The assembly fraction this solve started from: 0 for a fresh solve, the
+   * carried-over fraction for a resumed one. It is the basis the assembly
+   * cost -- and with it the whole blend -- is projected from, and a basis at
+   * or above the live fraction silently degrades getProgress() to
+   * assembly-only reporting, which is not distinguishable from the reported
+   * value alone. Exposed so that property can be asserted directly.
+   *
+   * Valid to read once the assembly phase has opened; before that it reads 0,
+   * the value a fresh solve keeps.
+   */
+  float getAssemblyBaseFraction(void) const {
+    return assemblyBaseFraction.load(std::memory_order_relaxed);
+  }
 
   // try to stop the thread at the next possible position
   void stop(void);

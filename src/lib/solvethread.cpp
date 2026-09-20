@@ -134,6 +134,24 @@ void solveThread_c::run(void){
        */
       const unsigned int threads = a->getRunThreads();
       assemblyThreads.store(threads ? threads : 1, std::memory_order_relaxed);
+
+      /* How far the assembler already was when we picked it up -- 0 for a
+       * fresh solve, the carried-over fraction for a resumed one. The seconds
+       * that bought that head start were spent by a previous solveThread_c
+       * and died with it, so the phase's cost has to be projected from this
+       * one; see progressModel_c::projectAssemblyCost().
+       *
+       * Read here, on the worker thread, with nothing else running. It is a
+       * starting estimate rather than the last word: assemble() re-seeds the
+       * progress source for the run it is about to make, so a fraction read
+       * before the call can describe a source the call is about to discard.
+       * getProgress() lowers the base if the run ever reports less than this;
+       * see the note there.
+       */
+      const float base = a->getFinished();
+      assemblyBaseFraction.store((base > 0.0f && base < 1.0f) ? base : 0.0f,
+                                 std::memory_order_relaxed);
+
       assemblyEndNs.store(0, std::memory_order_relaxed);
       /* release: this is the store that opens getProgress()'s door to the
        * assembler, so everything preparation wrote must be visible first
@@ -516,14 +534,40 @@ float solveThread_c::getProgress(void) const {
      * not finished, take the input at its word only up to the largest float
      * below 1, so downstream arithmetic cannot read it as completion.
      *
-     * This makes the input honest; on its own it does not dislodge the cap
-     * below. With a drained pool, evaluate() returns 1.0f for a == 1.0f and
+     * This makes the input honest; on its own it does not change what is
+     * reported. With a drained pool, evaluate() returns 1.0f for a == 1.0f and
      * 0.99999994f for the clamped value -- both above runningCap, so both are
-     * reported as runningCap and the monotone guard holds them there. See the
-     * accrual-rate note below; undoing that latch needs the same follow-up.
+     * reported as runningCap.
      */
     if (!end && in.assemblyFraction >= 1.0f)
       in.assemblyFraction = std::nextafter(1.0f, 0.0f);
+
+    /* Keep the cost basis below the live fraction, lowering it if the run ever
+     * reports less than what was captured before assemble() was called.
+     *
+     * That capture is a guess about a number only assemble() settles: it
+     * re-seeds the progress source for the run it is about to make, and a
+     * paused parallel run leaves behind task counters that describe a run
+     * being abandoned rather than the one about to start. Captured from those,
+     * the base can sit ABOVE everything the new run reports -- and then
+     * `gained` is negative for the whole solve, projectAssemblyCost() returns
+     * 0, evaluate() cannot blend, and the bar silently reverts to reporting
+     * assembly alone with disassembly never weighed. That is the exact case
+     * the projection exists to handle, so it must not be the case that breaks
+     * it.
+     *
+     * Correcting it here rather than by having the assembler expose its reset
+     * keeps the fix inside the one class that has the problem, holds for any
+     * back end whatever its reset ordering, and needs no public mutator on
+     * assembler_c. The run's real starting point is the lowest fraction it has
+     * been seen to report, and getFinished() is monotone within a run, so this
+     * settles on the first poll and never drifts afterwards.
+     */
+    float base = assemblyBaseFraction.load(std::memory_order_relaxed);
+    if (in.assemblyFraction < base) {
+      base = in.assemblyFraction;
+      assemblyBaseFraction.store(base, std::memory_order_relaxed);
+    }
 
     {
       const long long upto = end ? end : steadyNowNs();
@@ -546,8 +590,19 @@ float solveThread_c::getProgress(void) const {
        * accrual rate, which is a design change rather than part of this fix;
        * it is recorded here rather than papered over.
        */
-      in.assemblyCostSeconds = 1e-9 * static_cast<double>(ns)
+      const double sessionCost = 1e-9 * static_cast<double>(ns)
           * static_cast<double>(assemblyThreads.load(std::memory_order_relaxed));
+
+      /* What the model needs is the cost of the whole of assemblyFraction, and
+       * on a resume this run only paid for the tail of it. Project the rest
+       * from the rate this run measured rather than leaving the phase charged
+       * for a fraction it did not buy -- which under-projects the assembly
+       * phase by exactly the ratio of the two, so the blend collapses towards
+       * the disassembly fraction and the monotone guard pins it there while
+       * assembly does the remaining hours of work.
+       */
+      in.assemblyCostSeconds =
+          progressModel_c::projectAssemblyCost(sessionCost, in.assemblyFraction, base);
     }
 
     if (disasm_pool) {
