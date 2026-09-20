@@ -179,6 +179,12 @@ class mainWindow_c : public LFl_Double_Window {
 
   bool tryToLoad(const char *fname);
 
+  /* Ask about unsaved changes before an operation that would discard them.
+   * Returns false if the caller should abort. 'action' is the verb shown to
+   * the user, e.g. "create a new puzzle".
+   */
+  bool confirmDiscard(const char * action);
+
   void CreateShapeTab(void);
   void CreateProblemTab(void);
   void CreateSolveTab(void);

@@ -1487,14 +1487,54 @@ void mainWindow_c::cb_3dClick(void) {
   }
 }
 
+bool mainWindow_c::confirmDiscard(const char * action) {
+
+  if (!changed)
+    return true;
+
+  char msg[256];
+  snprintf(msg, sizeof(msg),
+           "The puzzle has unsaved changes.\nSave before you %s?", action);
+
+  /* fl_choice("%s", b0, b1, b2, msg) lays the buttons out right to left:
+   * b0 right, b1 middle, b2 left. Fl_Message's constructor makes button 1
+   * (the middle one) an Fl_Return_Button, so b1 -- not b0 -- is what the
+   * Return key activates (Fl_Message.cxx ctor comment: "The second
+   * (middle) button is an Fl_Return_Button"). Fl_Message::window_cb_()
+   * always sets retval_ = 0 for both Escape and the window close button,
+   * and plain fl_choice() (unlike fl_choice_n()) never looks at
+   * window_closed(), so both report the same value as clicking b0.
+   * Putting "Cancel" at b0 means Escape/closing the dialog always cancels;
+   * putting "Save" at b1 makes Return trigger the non-destructive action;
+   * "Don't Save" -- the only destructive choice -- is b2, reachable only
+   * by an explicit click.
+   */
+  switch (fl_choice("%s", "Cancel", "Save", "Don't Save", msg)) {
+
+    case 1:             // Save (middle button, Fl_Return_Button / Return key)
+      cb_Save();
+      /* cb_Save() clears 'changed' only on a successful write, so it still
+       * being set means the user cancelled the Save As dialog, the write
+       * failed, or the solver thread is running. Abort rather than
+       * discarding the work.
+       */
+      return !changed;
+
+    case 2:             // Don't Save (left button, explicit click only)
+      return true;
+
+    default:            // Cancel (0), including Escape and window-close
+      return false;
+  }
+}
+
 void cb_New_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_New(); }
 void mainWindow_c::cb_New(void) {
 
   if (threadStopped()) {
 
-    if (changed)
-      if (fl_choice("Puzzle changed are you sure?", "Cancel", "New Puzzle", 0) == 0)
-        return;
+    if (!confirmDiscard("create a new puzzle"))
+      return;
 
     gridTypeSelectorWindow_c w;
     w.show();
@@ -1522,9 +1562,8 @@ void mainWindow_c::cb_Load(void) {
 
   if (threadStopped()) {
 
-    if (changed)
-      if (fl_choice("Puzzle changed; are you sure?", "Cancel", "Load", 0) == 0)
-        return;
+    if (!confirmDiscard("open another puzzle"))
+      return;
 
     const char * f = fileChooser("Load Puzzle", "Puzzle", "*.xmpuzzle", "", false);
 
@@ -1537,9 +1576,8 @@ void mainWindow_c::cb_Load_Ps3d(void) {
 
   if (threadStopped()) {
 
-    if (changed)
-      if (fl_choice("Puzzle changed; are you sure?", "Cancel", "Load", 0) == 0)
-        return;
+    if (!confirmDiscard("import another puzzle"))
+      return;
 
     const char * f = fileChooser("Import PuzzleSolver3D File", "PuzzleSolver3D", "*.puz", "", false);
 
@@ -1770,7 +1808,7 @@ void mainWindow_c::cb_SaveAs(void) {
 
 void cb_Quit_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->hide(); }
 void mainWindow_c::hide(void) {
-  if ((!changed) || fl_choice("Puzzle changed do you want to quit and lose the changes?", "Cancel", "Quit", 0))
+  if (confirmDiscard("quit"))
     Fl_Double_Window::hide();
 }
 
