@@ -2751,10 +2751,24 @@ void mainWindow_c::updateInterface(void) {
 
   } else {
 
-    float finished = ((prob < puzzle->getNumberOfProblems()) &&
-        puzzle->getProblem(prob)->getAssembler())
-          ? puzzle->getProblem(prob)->getAssembler()->getFinished()
-          : 0;
+    /* While a solve is running the thread reports whole-solve progress,
+     * covering the concurrent disassembly pool as well; with no live thread
+     * (a saved or paused puzzle) only the assembler's own fraction exists.
+     *
+     * Guarded to the problem actually being solved, as every sibling block in
+     * this function is. solutionProblem is never deactivated during a solve
+     * and cb_SolProbSel calls updateInterface() directly, so without the guard
+     * switching the Solve tab to another problem paints the running problem's
+     * live percentage onto the unrelated one and freezes it there.
+     */
+    float finished = 0;
+    if (assmThread && assmThread->currentAction() != solveThread_c::ACT_FINISHED &&
+        (prob < puzzle->getNumberOfProblems()) &&
+        (&(assmThread->getProblem()) == puzzle->getProblem(prob)))
+      finished = assmThread->getProgress();
+    else if ((prob < puzzle->getNumberOfProblems()) &&
+             puzzle->getProblem(prob)->getAssembler())
+      finished = puzzle->getProblem(prob)->getAssembler()->getFinished();
 
     if (prob < puzzle->getNumberOfProblems()) {
 
