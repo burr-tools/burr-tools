@@ -28,7 +28,6 @@
 #include "progressmodel.h"
 #include "solution.h"
 
-#include <algorithm>
 #include <chrono>
 #include <cmath>
 
@@ -39,12 +38,10 @@ namespace {
         std::chrono::steady_clock::now().time_since_epoch()).count();
   }
 
-  /* What getProgress() reports when the model says "done" but the solve has
-   * not reached ACT_FINISHED. It cannot be 1.0, and it cannot be
-   * progressModel_c's own std::nextafter(1.0f, 0.0f) sentinel either: the GUI
-   * renders the bar with %.4f, which prints that sentinel as 100.0000%.
+  /* the cap getProgress() reports up to while the solve is running; see the
+   * declaration on solveThread_c, where the tests reach it by name
    */
-  constexpr float runningCap = 0.999f;
+  constexpr float runningCap = solveThread_c::runningCap;
 
 }
 
@@ -634,16 +631,15 @@ float solveThread_c::getProgress(void) const {
      * (A + D)/(A + D/d) rises strictly as d approaches 1, with no latch.
      *
      * So while there is no evidence to blend, report the assembly fraction
-     * alone, and when even that has run out -- assembly complete, nothing
-     * disassembled, nothing yet known about the phase that is left -- hold the
-     * bar where it is. Any number invented here is contradicted a moment
-     * later, and holding is the only answer the guard cannot turn into a
-     * freeze.
+     * alone, and when even that has run out -- the fraction has reached the
+     * cap, nothing is disassembled, nothing is yet known about the phase that
+     * is left -- hold the bar where it is. The threshold is the cap rather
+     * than 1.0f deliberately; see noEvidenceProgress(), which is where the
+     * rule lives so that it can be tested without driving a solve.
      */
     if (in.disassembled == 0 && in.assembliesFound > 0)
-      f = (in.assemblyFraction >= 1.0f)
-            ? reportedProgress.load(std::memory_order_relaxed)
-            : std::min(in.assemblyFraction, runningCap);
+      f = noEvidenceProgress(in.assemblyFraction,
+                             reportedProgress.load(std::memory_order_relaxed));
 
     /* The solve is still running, so it is not complete, whatever the inputs
      * rounded to. Two ways they get there: progressModel_c signals "everything

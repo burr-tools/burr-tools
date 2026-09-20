@@ -275,6 +275,43 @@ public:
    */
   float getProgress(void) const;
 
+  /* The largest value getProgress() will report while the solve is running.
+   *
+   * It cannot be 1.0, which is reserved for ACT_FINISHED and is what
+   * solvethread.cpp's terminal `getFinished() >= 1` check decides on, and it
+   * cannot be progressModel_c's std::nextafter(1.0f, 0.0f) "counted but not
+   * done" sentinel either: the GUI renders the bar with %.4f, which prints
+   * that sentinel as 100.0000%.
+   */
+  static constexpr float runningCap = 0.999f;
+
+  /* What to publish while the disassembly pool has completed nothing at all.
+   *
+   * With no disassembly evidence progressModel_c can only report the assembly
+   * fraction, so that is what is published -- except where doing so would put
+   * runningCap into the monotone guard. Anything at or above the cap clamps TO
+   * the cap, and once the cap is published the guard pins the bar there for
+   * the rest of the solve: every genuine blended value that follows is lower,
+   * because the first completion of a long disassembly queue puts the blend
+   * far below 1. So at that point the honest answer is the one already held --
+   * nothing is known yet about the phase that remains, and any number invented
+   * here is contradicted a moment later.
+   *
+   * The threshold is the cap and not 1.0f. getProgress() clamps a rounded-up
+   * fraction to std::nextafter(1.0f, 0.0f) while assembly is still running, so
+   * a 1.0f threshold is unreachable on that path and every fraction in
+   * [runningCap, 1.0) would pin the bar -- the same freeze with a narrower
+   * trigger, on any puzzle that only starts finding assemblies near the end of
+   * its search.
+   *
+   * Pure, so the rule is checkable without driving a solve.
+   */
+  static float noEvidenceProgress(float assemblyFraction, float held) {
+    return (assemblyFraction >= runningCap)
+             ? held
+             : ((assemblyFraction < 0.0f) ? 0.0f : assemblyFraction);
+  }
+
   /* The assembly fraction this solve started from: 0 for a fresh solve, the
    * carried-over fraction for a resumed one. It is the basis the assembly
    * cost -- and with it the whole blend -- is projected from, and a basis at
