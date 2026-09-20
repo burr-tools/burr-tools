@@ -21,6 +21,7 @@
 #include "mainwindow.h"
 
 #include "mainmenu.h"
+#include "platform.h"
 
 #include "filechooser.h"
 
@@ -3264,6 +3265,24 @@ int mainWindow_c::handle(int event) {
       }
     }
     switch(Fl::event_key()) {
+      /* On macOS the menu carries the Command shortcuts, so the historical
+       * F-keys are kept alive here as secondary bindings. They are
+       * deliberately not shown in the menu, which displays the Command
+       * binding. Elsewhere usesSystemMenuBar() is false and these cases
+       * break, leaving F2/F3/F4 to the portable menu table as before.
+       */
+      case FL_F + 2:
+        if (!platform::usesSystemMenuBar()) break;
+        cb_Save_stub(this, this);
+        return 1;
+      case FL_F + 3:
+        if (!platform::usesSystemMenuBar()) break;
+        cb_Load_stub(this, this);
+        return 1;
+      case FL_F + 4:
+        if (!platform::usesSystemMenuBar()) break;
+        cb_Toggle3D_stub(this, this);
+        return 1;
       case FL_F + 5:
         if (TaskSelectionTab->value() == TabPieces) {
           editChoice->select(0);
