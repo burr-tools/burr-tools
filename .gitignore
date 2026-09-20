@@ -31,7 +31,9 @@ __pycache__/
 *.stl
 puzzles/
 
-# Benchmark outputs
+# Benchmark and profiling outputs
 bench/*.csv
 bench_run.log
+callgrind*.out*
+perf.data*
 

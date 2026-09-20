@@ -14,6 +14,7 @@
 #include "tools/xml.h"
 #include "tools/gzstream.h"
 
+#include <cstdlib>
 #include <sstream>
 #include <set>
 #include <memory>
@@ -944,3 +945,161 @@ TEST_CASE("Parallel assembler 1 does not report stale progress on a later run",
   REQUIRE(again.createMatrix(false, false, false) == assembler_c::ERR_NONE);
   CHECK(again.getFinished() < 1.0f);
 }
+
+/* RAII environment variable, so a test can drive the runtime toggles that
+ * AGENTS.md section 3.7 requires every optimisation to ship with.
+ */
+class ScopedEnv {
+public:
+  ScopedEnv(const char * name, const char * value) : name_(name) {
+    const char * old = getenv(name);
+    had_ = (old != nullptr);
+    if (had_) old_ = old;
+    set(name, value);
+  }
+  ~ScopedEnv() {
+    set(name_.c_str(), had_ ? old_.c_str() : nullptr);
+  }
+private:
+  /* setenv/unsetenv are POSIX; MinGW and MSVC have _putenv_s instead, where
+   * assigning an empty value is what removes the variable
+   */
+  static void set(const char * name, const char * value) {
+#ifdef WIN32
+    _putenv_s(name, value ? value : "");
+#else
+    if (value) setenv(name, value, 1);
+    else unsetenv(name);
+#endif
+  }
+
+  std::string name_;
+  std::string old_;
+  bool had_;
+};
+
+/* Cross-check the SIMD exact-cover path against classical DLX on the whole
+ * regression corpus.
+ *
+ * This matters for two reasons beyond the comparison itself. canUseSimd()
+ * returns true by default, so without this the regression suite exercises
+ * *only* the SIMD path, and the DLX implementations in assembler_0.cpp /
+ * assembler_1.cpp became untested in CI at the same moment they became the
+ * fallback for every case SIMD refuses. And a divergence between the two is
+ * exactly the class of bug that produces wrong solve results rather than a
+ * crash.
+ *
+ * Each puzzle is solved twice on the same inputs -- once with the SIMD solver
+ * enabled, once with BURRTOOLS_NO_SIMD=1 forcing DLX -- and the two must agree
+ * on assembly count, solution count and disassembly move level.
+ */
+TEST_CASE("SIMD and DLX solvers agree across the regression corpus",
+          "[solver][simd][dlx][equivalence]") {
+  struct Case { const char * path; unsigned int prob; bool disassemble; };
+  const Case cases[] = {
+    {"examples/PelikanBurr.xmpuzzle",              0, true},
+    {"examples/DraculasDentalDesaster.xmpuzzle",   0, false},
+    {"examples/Prisgon.xmpuzzle",                  0, false},
+    {"examples/DemoMirrorParadox.xmpuzzle",        0, false},
+    {"examples/CubeInCage.xmpuzzle",               0, false},
+    {"examples/Bermuda.xmpuzzle",                  0, false},
+    {"examples/AugmentedSecondStellation.xmpuzzle",0, false},
+  };
+
+  bool tookDifferentPaths = false;
+
+  for (const auto & c : cases) {
+    INFO("puzzle: " << c.path);
+
+    SolveResult simd;
+    {
+      ScopedEnv env("BURRTOOLS_NO_SIMD", nullptr);
+      simd = solvePuzzle(c.path, c.prob, c.disassemble);
+    }
+
+    SolveResult dlx;
+    {
+      ScopedEnv env("BURRTOOLS_NO_SIMD", "1");
+      dlx = solvePuzzle(c.path, c.prob, c.disassemble);
+    }
+
+    CHECK(simd.assemblies == dlx.assemblies);
+    CHECK(simd.solutions == dlx.solutions);
+    CHECK(simd.moveLevel == dlx.moveLevel);
+
+    /* iteration counts are counted differently by the two engines, so a
+     * difference here is evidence the two runs really took different paths
+     */
+    if (simd.iterations != dlx.iterations)
+      tookDifferentPaths = true;
+  }
+
+  /* Guard the premise: not every puzzle qualifies for the SIMD solver (holes,
+   * variable voxels and >512 columns all disqualify it), but if *none* of them
+   * does then this case has silently stopped comparing anything and is only
+   * running DLX twice. Keep at least one SIMD-eligible puzzle in the list.
+   */
+  INFO("at least one puzzle must actually take the SIMD path");
+  CHECK(tookDifferentPaths);
+}
+
+/* An interrupted SIMD search must not save itself as a resumable position.
+ *
+ * Before this was handled, simdSearch() kept its search state inside the solver,
+ * so an aborted run left pos == 0. When saved to an .xmpuzzle, it was
+ * indistinguishable from a fresh unstarted search, so resuming it replayed
+ * the entire search and duplicated all found assemblies.
+ */
+TEST_CASE("SIMD assembler: an interrupted search is not restored as resumable",
+          "[assembler][simd][resume]") {
+  auto p = puzzle_c::load("examples/Bermuda.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_0_c assm(*problem);
+  assm.setNumThreads(1);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  int seen = 0;
+  assm.assemble([&seen](std::unique_ptr<assembly_c>) -> bool {
+    seen++;
+    return false;
+  });
+  REQUIRE(seen == 1);
+  REQUIRE(assm.getFinished() < 1.0f);
+
+  std::string state;
+  {
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    state = str.str();
+  }
+
+  assembler_0_c restored(*problem);
+  REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  std::string payload = extractAssemblerContent(state);
+  CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+        == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED);
+}
+
+TEST_CASE("assembler 1: getFinished does not report 100% before starting a restored search",
+          "[assembler][huang][resume]") {
+  auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_1_c assm(*problem);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  // Take 1 step in the search: search is NOT finished yet
+  assm.debug_step(1);
+  REQUIRE(assm.getIterations() > 0);
+
+  // Under old code, !running && !abbort && iterations > 0 caused getFinished() to falsely return 1.0f!
+  CHECK(assm.getFinished() < 1.0f);
+}
+

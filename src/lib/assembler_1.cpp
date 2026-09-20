@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "assembler_1.h"
+#include "simd_huang_cover.h"
 
 #include "bt_assert.h"
 #include "problem.h"
@@ -2529,6 +2530,87 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   if (avoidTransformedAssemblies)
     prewarmSharedShapeCaches(problem);
 
+  if (canUseSimd()) {
+    auto solver = createSimdSolver();
+
+    solver->parallelSolve(
+      workers,
+      [this](const std::vector<unsigned int> &solution_nodes) -> bool {
+        if (getCallback()) {
+          auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
+
+          std::vector<unsigned int> piece(solution_nodes.size());
+          std::vector<unsigned char> tran(solution_nodes.size());
+          std::vector<int> x(solution_nodes.size());
+          std::vector<int> y(solution_nodes.size());
+          std::vector<int> z(solution_nodes.size());
+
+          for (unsigned int i = 0; i < solution_nodes.size(); i++)
+            getPieceInformation(solution_nodes[i], &piece[i], &tran[i], &x[i], &y[i], &z[i]);
+
+          for (unsigned int pc = 0; pc < problem.getNumberOfParts(); pc++) {
+            unsigned int placed = 0;
+            for (unsigned int i = 0; i < solution_nodes.size(); i++) {
+              if (piece[i] == pc) {
+                assembly->addPlacement(tran[i], x[i], y[i], z[i]);
+                placed++;
+              }
+            }
+            while (placed < problem.getPartMaximum(pc)) {
+              assembly->addNonPlacement();
+              placed++;
+            }
+          }
+
+          assembly->sort(problem);
+
+          if (avoidTransformedAssemblies &&
+              assembly->smallerRotationExists(problem, avoidTransformedPivot,
+                                              avoidTransformedMirror.get(), complete))
+            return true;
+
+          uint64_t sig = 14695981039346656037ULL;
+          for (unsigned int i = 0; i < piecenumber; i++) {
+            if (assembly->isPlaced(i)) {
+              sig ^= assembly->getTransformation(i); sig *= 1099511628211ULL;
+              sig ^= static_cast<uint32_t>(assembly->getX(i)); sig *= 1099511628211ULL;
+              sig ^= static_cast<uint32_t>(assembly->getY(i)); sig *= 1099511628211ULL;
+              sig ^= static_cast<uint32_t>(assembly->getZ(i)); sig *= 1099511628211ULL;
+            } else {
+              sig ^= 0xFF; sig *= 1099511628211ULL;
+            }
+          }
+
+          {
+            std::lock_guard<std::mutex> lock(callbackMutex);
+            if (abbort.load(std::memory_order_relaxed))
+              return false;
+            if (!emittedSignatures.insert(sig).second)
+              return true;
+            if (!getCallback()->assembly(std::move(assembly))) {
+              stop();
+              return false;
+            }
+          }
+        }
+        return !abbort.load(std::memory_order_relaxed);
+      },
+      abbort,
+      iterations,
+      totalTasks,
+      completedTasks
+    );
+
+    if (!abbort.load(std::memory_order_relaxed)) {
+      parallelTasks.clear();
+      taskCompleted.clear();
+      emittedSignatures.clear();
+    }
+
+    running.store(false, std::memory_order_relaxed);
+    return;
+  }
+
   if (parallelTasks.empty()) {
     unsigned int targetTasks = std::max(16u, workers * 4);
     unsigned int maxDepth = std::min(piecenumber, 3u);
@@ -2631,6 +2713,124 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   running.store(false, std::memory_order_relaxed);
 }
 
+bool assembler_1_c::canUseSimd(void) const {
+  if (task_stack.size() != 1 || !rows.empty() || next_row_stack.size() != 1)
+    return false;
+  if (std::getenv("BURRTOOLS_NO_SIMD"))
+    return false;
+  if (debug)
+    return false;
+
+  if (headerNodes - 1 > 256)
+    return false;
+
+  // If a hole limit is set that restricts holes, fall back to DLX
+  if (holes < holeColumns.size())
+    return false;
+
+  const voxel_c * result = getResultShape(problem);
+  unsigned int num_cols = headerNodes - 1;
+  unsigned int num_shapes = problem.getNumberOfParts();
+  unsigned int res_filled = result ? result->countState(voxel_c::VX_FILLED) : 0;
+  unsigned int res_vari = result ? result->countState(voxel_c::VX_VARIABLE) : 0;
+  bool hasRange = (num_cols == (num_shapes + res_filled + res_vari + 1));
+  if (hasRange)
+    return false;
+
+  if (res_vari > 0) {
+    // If there are variable voxels AND any shape has min < max,
+    // solutions can have variable number of pieces filling variable voxels. Fall back to DLX.
+    for (unsigned int s = 0; s < problem.getNumberOfParts(); s++) {
+      if (problem.getPartMinimum(s) != problem.getPartMaximum(s))
+        return false;
+    }
+  }
+
+  return true;
+}
+
+std::unique_ptr<SimdHuangCover256> assembler_1_c::createSimdSolver(void) const {
+  const voxel_c * result = getResultShape(problem);
+  unsigned int num_cols = headerNodes - 1;
+  unsigned int num_shapes = problem.getNumberOfParts();
+  unsigned int res_filled = result->countState(voxel_c::VX_FILLED);
+  unsigned int res_vari = result->countState(voxel_c::VX_VARIABLE);
+  bool hasRange = (num_cols == (num_shapes + res_filled + res_vari + 1));
+  unsigned int rangeColumn = hasRange ? num_cols : 0;
+
+  auto solver = std::make_unique<SimdHuangCover256>(num_cols, num_shapes);
+  solver->setHoles(holes);
+
+  for (unsigned int c = 1; c <= num_cols; c++) {
+    bool is_shape = (c <= num_shapes);
+    bool is_range = (hasRange && c == rangeColumn);
+    bool is_voxel = (!is_shape && !is_range);
+    bool is_hole = false;
+    for (unsigned int hc : holeColumns) {
+      if (hc == c) {
+        is_hole = true;
+        break;
+      }
+    }
+    solver->setColumnBounds(c, min[c], max[c], is_voxel, is_shape, is_range, is_hole);
+  }
+
+  for (unsigned int pc = 0; pc < num_shapes; pc++) {
+    unsigned int shape_col = pc + 1;
+    unsigned int shape_row_idx = 0;
+    for (int r = down[shape_col]; r != (int)shape_col; r = down[r]) {
+      std::vector<unsigned int> cols;
+      std::vector<unsigned int> weights;
+      std::vector<unsigned int> nodes_in_row;
+      unsigned int curr = r;
+      unsigned int range_w = 0;
+      do {
+        nodes_in_row.push_back(curr);
+        unsigned int col = colCount[curr];
+        unsigned int w = weight[curr];
+        cols.push_back(col);
+        weights.push_back(w);
+        if (hasRange && col == rangeColumn) {
+          range_w = w;
+        }
+        curr = right[curr];
+      } while (curr != (unsigned int)r);
+
+      uint32_t row_idx = solver->addRow(r, pc, shape_col, shape_row_idx++, range_w, cols, weights);
+      for (unsigned int n : nodes_in_row) {
+        solver->registerNodeAlias(n, row_idx);
+      }
+    }
+  }
+
+  return solver;
+}
+
+void assembler_1_c::simdSearch(void) {
+  running.store(true, std::memory_order_relaxed);
+  abbort.store(false, std::memory_order_relaxed);
+
+  auto solver = createSimdSolver();
+  std::atomic<uint64_t> simd_iter{0};
+
+  solver->solve([this](const std::vector<unsigned int> &solution_nodes) -> bool {
+    rows = solution_nodes;
+    solution();
+    return !abbort.load(std::memory_order_relaxed);
+  }, abbort, simd_iter);
+
+  iterations.fetch_add(simd_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
+
+  /* as in assembler_0: the SIMD search keeps its position in the solver, so an
+   * aborted run leaves the master looking untouched. Saving that would claim
+   * nothing had been searched and the continue would replay everything.
+   */
+  parallelInterrupted = abbort.load(std::memory_order_relaxed);
+  simdCompleted = !parallelInterrupted;
+
+  running.store(false, std::memory_order_relaxed);
+}
+
 void assembler_1_c::assemble(assembler_cb * callback) {
 
   running.store(true, std::memory_order_relaxed);
@@ -2641,6 +2841,7 @@ void assembler_1_c::assemble(assembler_cb * callback) {
    * make getFinished() report 1.0 for this run before it has done anything
    */
   resetTaskProgress();
+  simdCompleted = false;
 
   finished_a.reserve(headerNodes);
   finished_b.reserve(headerNodes);
@@ -2660,6 +2861,8 @@ void assembler_1_c::assemble(assembler_cb * callback) {
       unsigned int threads = getEffectiveThreads();
       if (task_stack.size() == 1 && rows.empty() && next_row_stack.size() == 1 && threads > 1) {
         parallelMultiSearch(threads);
+      } else if (canUseSimd()) {
+        simdSearch();
       } else {
         iterative();
       }
@@ -2689,6 +2892,9 @@ float assembler_1_c::getFinished(void) const {
       return 1.0f;
     return static_cast<float>(completedTasks.load(std::memory_order_relaxed)) / static_cast<float>(total);
   }
+
+  if (simdCompleted)
+    return 1.0f;
 
   if (next_row_stack.size() == 0) return 1;
 
@@ -2748,6 +2954,8 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   parallelTasks.clear();
   taskCompleted.clear();
   emittedSignatures.clear();
+  resetTaskProgress();
+  simdCompleted = false;
 
   unsigned int pos = 0;
 

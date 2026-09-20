@@ -96,3 +96,51 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
    - Ensure tools and regexes ignore these directories so static analysis and formatting stay focused on BurrTools sources (`burr-tools/src/(?!lua/).*`).
 6. **Quality Verification:**
    - After making code modifications, always verify that `just build`, `just test-all` (regression tests, fast and slow), and `just check` (static analysis) pass cleanly. `just test` is the quick loop to use while iterating; run `just test-all` before calling a task done, since it is what CI runs.
+7. **Benchmarking & Optimization Work:**
+   - When modifying solver algorithms or proposing optimizations, agents MUST use the standardized benchmark infrastructure in [`bench/bench_solve.py`](bench/bench_solve.py) across the curated 10-puzzle corpus.
+   - Never evaluate optimizations on a single puzzle in isolation.
+   - Always implement runtime environment variable toggles (e.g. `BURRTOOLS_NO_SIMD=1`) to allow clean, interleaved A/B benchmarking from the exact same build without recompilation.
+
+---
+
+## 4. Benchmarking & Performance Verification
+
+Always use the standardized benchmark infrastructure in [`bench/`](bench/) to validate optimizations across the full puzzle corpus. **Never benchmark on a single puzzle in isolation and extrapolate results.** All AI agents working on performance optimizations in this repository MUST follow this protocol.
+
+### Standardized Tooling
+
+- **[`bench/bench_solve.py`](bench/bench_solve.py)**: Interleaved, multi-run A/B testing measuring wall time, user/sys CPU time, multi-core utilization, and peak RSS across the 10-puzzle curated corpus.
+- **[`bench/run_suite.sh`](bench/run_suite.sh)**: Shell wrapper for automated full-suite regression and speedup reporting.
+
+### Benchmarking Alternatives via Environment Variables
+
+Solver engines support runtime feature toggles via environment variables to allow clean, side-by-side A/B benchmarking from the exact same build:
+
+| Environment Variable | Effect | Purpose |
+| :--- | :--- | :--- |
+| `BURRTOOLS_NO_SIMD=1` | Disables the SIMD bit-parallel solver in **both** assemblers (`assembler_0_c` and `assembler_1_c`), forcing classical DLX. Also read by the `SimdExactCover` / `SimdHuangCover256` constructors. | Measure pure speedup of SIMD bit-parallel exact cover against the Knuth DLX baseline. |
+| `BURRTOOLS_NO_AVX2=1` | Disables the AVX2 and AVX-512 kernels **on x86-64**, falling back to the portable 64-bit word scalar loop. No effect on ARM -- use `BURRTOOLS_NO_NEON` there. | Isolate the algorithmic gain (0-cost backtracking, cache locality) from x86 vector intrinsics. |
+| `BURRTOOLS_NO_NEON=1` | Disables the NEON kernels **on ARM**, falling back to the same scalar loop. Honoured by `SimdExactCover` and `SimdHuangCover256`. | The ARM equivalent of `BURRTOOLS_NO_AVX2`; without it an A/B on Apple Silicon silently measures the same code twice. |
+| `BURRTOOLS_THREADS=N` | Forces solver to use $N$ worker threads (default: `hardware_concurrency`, clamped to `assembler_c::MAX_THREADS`). **Note:** read independently by the assembler and, once the disassembly pool lands, by that pool too, so `N` may yield `2N` workers overall. | Measure thread scaling curves (e.g. 1, 2, 4, 8 cores). |
+
+### Running an Interleaved A/B Benchmark
+
+To compare an optimization against the baseline using `bench/bench_solve.py`:
+
+```bash
+# 1. Create a wrapper for the baseline (e.g. DLX fallback)
+cat << 'EOF' > build/burrTxt-base
+#!/bin/sh
+exec env BURRTOOLS_NO_SIMD=1 $(dirname "$0")/burrTxt "$@"
+EOF
+chmod +x build/burrTxt-base
+
+# 2. Run interleaved comparison across the entire curated corpus
+#    --no-disassemble: isolate assembler performance
+#    --threads 1: test single-thread throughput (omit for all-core parallel test)
+python3 bench/bench_solve.py --ab build/burrTxt-base build/burrTxt --no-disassemble --runs 3
+
+# 3. Clean up the wrapper
+rm build/burrTxt-base
+```
+

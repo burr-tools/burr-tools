@@ -70,8 +70,6 @@ class movementAnalysator_c {
     const std::vector<unsigned int> * prevPieces = nullptr;
     uint64_t prevPiecesHash = 0;
     int prevN = 0;
-    /* reusable dirty bitsets for the incremental closure: [d * n + idx] */
-    std::vector<char> dirtyRows, dirtyCols;
 
     std::unique_ptr<countingNodeHash> nodes;
 

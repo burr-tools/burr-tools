@@ -34,6 +34,7 @@
 
 class gridType_c;
 class mirrorInfo_c;
+class ISimdExactCover;
 
 /**
  * This is an assembler class.
@@ -133,6 +134,11 @@ private:
   std::vector<unsigned int> columns;
 
   void iterativeMultiSearch(void);
+  bool canUseSimd(void) const;
+  void simdSearch(void);
+  std::unique_ptr<ISimdExactCover> createSimdSolver(void) const;
+  std::unique_ptr<assembly_c> buildAssembly(const unsigned int *row_nodes, unsigned int count) const;
+  void handleSolution(const unsigned int *row_nodes, unsigned int count);
 
   /* this function checks, if the given piece can be placed
    * at the given position inside the result
@@ -328,6 +334,9 @@ public:
    * unvalidated value from the CLI or the python binding would otherwise
    * try to spawn until std::system_error or the OOM killer
    */
+  void setNumThreads(unsigned int threads) override { numThreads = std::min(threads, 256u); }
+  unsigned int getNumThreads(void) const override { return numThreads; }
+
   errState setPosition(const char * string, const char * version) override;
   void save(xmlWriter_c & xml) const override;
   void reduce(void) override;

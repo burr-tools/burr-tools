@@ -36,6 +36,7 @@ class problem_c;
 class gridType_c;
 class mirrorInfo_c;
 class assemblerWorker_1;
+class SimdHuangCover256;
 
 /**
  * This class is an assembler class.
@@ -108,6 +109,10 @@ private:
   void generateSubtreeTasks(std::vector<SubtreeTask_1> & tasks, unsigned int targetTasks, unsigned int maxDepth);
   void parallelMultiSearch(unsigned int workers);
 
+  bool canUseSimd(void) const;
+  void simdSearch(void);
+  std::unique_ptr<SimdHuangCover256> createSimdSolver(void) const;
+
   friend class assemblerWorker_1;
 
   std::vector<SubtreeTask_1> parallelTasks;
@@ -119,6 +124,16 @@ private:
    * saved as not resumable -- see assembler_1.cpp
    */
   bool parallelInterrupted = false;
+
+  /* set when simdSearch() ran to completion.
+   *
+   * The SIMD search keeps its position inside the solver, so next_row_stack /
+   * task_stack -- what the progress estimate below is derived from -- never
+   * move. Reporting completion from "idle and iterations > 0" instead was a
+   * false positive: after setPosition() restores a saved state, and between
+   * two assemble() calls, all of those hold before any search has run.
+   */
+  bool simdCompleted = false;
 
   std::vector<unsigned int> base_left;
   std::vector<unsigned int> base_right;
@@ -313,6 +328,8 @@ public:
   float getFinished(void) const override;
   void stop(void) override { abbort.store(true, std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
+  void setNumThreads(unsigned int threads) override { numThreads = std::min(threads, 256u); }
+  unsigned int getNumThreads(void) const override { return numThreads; }
   errState setPosition(const char * string, const char * version) override;
   void save(xmlWriter_c & xml) const override;
   void reduce(void) override;
