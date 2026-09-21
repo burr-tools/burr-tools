@@ -27,6 +27,9 @@
 #include "Layouter.h"
 #include "blocklistgroup.h"
 
+#include "../tools/filepath.h"
+#include "../tools/homedir.h"
+
 #include "../lib/puzzle.h"
 #include "../lib/problem.h"
 #include "../lib/disassembly.h"
@@ -37,6 +40,7 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl.H>
+#include <FL/fl_ask.H>
 #pragma GCC diagnostic pop
 
 #include <stdlib.h>
@@ -263,7 +267,16 @@ void imageExport_c::nextImage(bool finish) {
     else
       snprintf(name, 1000, "%s%s%03u.png", Pname->value(), Fname->value(), curPage);
 
-    i->saveToPNG(name);
+    /* saveToPNG reports failure by returning 0 and printing to stderr.
+     * That return used to be discarded, so an export that could not write
+     * anything walked through "save page 1, 2, 3...", said "Done", and left
+     * the user with no files and no indication of why — stderr is not
+     * visible at all when the program is started from a macOS bundle or a
+     * Windows shortcut.
+     */
+    if (!i->saveToPNG(name))
+      failedPath = name;
+
     i.reset();
   }
 
@@ -281,6 +294,28 @@ void imageExport_c::nextImage(bool finish) {
 }
 
 void imageExport_c::PostDraw(void) {
+
+  /* A failed write aborts the whole export rather than carrying on. If the
+   * first page could not be written the rest will fail for the same reason,
+   * and one dialog is help where a dialog per page would be an ordeal.
+   * The check sits here, at the single entry to the state machine, so every
+   * path that calls nextImage() is covered by it.
+   */
+  if (!failedPath.empty()) {
+
+    state = 3;
+    view3D->getView()->setCallback();
+    status->label("Failed");
+    working = false;
+
+    const std::string path = failedPath;
+    failedPath.clear();     // so the alert is shown once, not on every draw
+
+    fl_alert("Could not write the image to\n%s\n\n"
+             "Check that the path exists and is writable.", path.c_str());
+
+    return;
+  }
 
   switch(state) {
     case 0:
@@ -579,7 +614,26 @@ void imageExport_c::cb_SzUpdate(void) {
   }
 }
 
-imageExport_c::imageExport_c(puzzle_c * p) : LFl_Double_Window(false), puzzle(p), working(false), state(0), i(nullptr) {
+imageExport_c::imageExport_c(puzzle_c * p, const std::string & puzzleFile) : LFl_Double_Window(false), puzzle(p), exportDir(directoryOfFile(puzzleFile)), working(false), state(0), i(nullptr) {
+
+  /* Where the images go when the user does not say. The puzzle's own folder
+   * is the answer they almost always want, and for an unsaved puzzle the
+   * home directory at least exists and is writable.
+   *
+   * The field used to start empty, which made the output name relative to
+   * the working directory. That is fine when the program is started from a
+   * shell, and useless when it is started the way macOS users start
+   * applications: a bundle launched from Finder or the Dock has "/" for a
+   * working directory, which is read-only, so every export failed.
+   *
+   * homedir() hands back a path that already ends in a separator, so it
+   * goes through directoryOfFile() too: that strips the separator and
+   * leaves both branches in the same shape, which keeps the field looking
+   * consistent and stops the name assembly below from producing a doubled
+   * separator on Windows.
+   */
+  if (exportDir.empty())
+    exportDir = directoryOfFile(homedir());
 
   label("Export Images");
 
@@ -693,6 +747,7 @@ imageExport_c::imageExport_c(puzzle_c * p) : LFl_Double_Window(false), puzzle(p)
     Fname->value("test");
     Fname->weight(1, 0);
     Pname = new LFl_Input(2, 1, 3, 1);
+    Pname->value(exportDir.c_str());
     NumPages = new LFl_Int_Input(4, 2);
     new LFl_Int_Input(4, 3);
 

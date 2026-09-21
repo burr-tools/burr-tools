@@ -50,6 +50,7 @@
 
 #include <vector>
 #include <memory>
+#include <string>
 
 class LView3dGroup;
 class LBlockListGroup;
@@ -63,6 +64,13 @@ class imageExport_c : public LFl_Double_Window, public VoxelViewCallbacks {
 
     /* the puzzle that is going to be exported */
     puzzle_c * puzzle;
+
+    /* the default output directory, offered in the path field */
+    std::string exportDir;
+
+    /* set when a page could not be written; aborts the export and is
+     * reported once. Empty means no failure. */
+    std::string failedPath;
 
     /* The different window elements */
     LView3dGroup *view3D;
@@ -106,7 +114,13 @@ class imageExport_c : public LFl_Double_Window, public VoxelViewCallbacks {
 
   public:
 
-    imageExport_c(puzzle_c * p);
+    /* puzzleFile is the path the current puzzle was loaded from, or empty
+     * when it has never been saved. It supplies the default output
+     * directory; without one the path field starts empty, which makes the
+     * output name relative — and an application launched from a macOS
+     * bundle has "/" for a working directory, which is read-only.
+     */
+    imageExport_c(puzzle_c * p, const std::string & puzzleFile);
     ~imageExport_c(void);
 
     /* returns true, when there is currently a image export in progress */

@@ -20,6 +20,9 @@
  */
 #include "stlexport.h"
 #include "filechooser.h"
+
+#include "../tools/filepath.h"
+#include "../tools/homedir.h"
 #include <stdlib.h>
 
 #include "BlockList.h"
@@ -180,7 +183,19 @@ void stlExport_c::cb_Update3DViewParams(void)
   }
 }
 
-stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
+stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : LFl_Double_Window(true), puzzle(p), exportDir(directoryOfFile(puzzleFile)) {
+
+  /* The puzzle's own folder is where the user almost always wants the mesh,
+   * and for an unsaved puzzle the home directory at least exists and is
+   * writable. The field used to default to ".", which is the working
+   * directory -- "/" for an application launched from a macOS bundle, and
+   * read-only.
+   *
+   * homedir() already ends in a separator, so it goes through
+   * directoryOfFile() too, leaving both branches in the same shape.
+   */
+  if (exportDir.empty())
+    exportDir = directoryOfFile(homedir());
 
   label("Export STL");
 
@@ -203,7 +218,7 @@ stlExport_c::stlExport_c(puzzle_c * p) : LFl_Double_Window(true), puzzle(p) {
     Fname->weight(1, 0);
     Fname->setMinimumSize(50, 0);
     Pname = new LFl_Input(2, 1, 1, 1);
-    Pname->value(".");
+    Pname->value(exportDir.c_str());
     Pname->weight(1, 0);
     Pname->setMinimumSize(50, 0);
 
