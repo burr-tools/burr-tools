@@ -31,7 +31,7 @@
 
 #include <math.h>
 
-const double LView3dGroup::defaultZoom = 3.2;
+const double LView3dGroup::defaultZoom = 2.0;
 
 // some tool widgets, that may be swapped out later into another file
 
@@ -52,7 +52,7 @@ LView3dGroup::LView3dGroup(int x, int y, int w, int h) : Fl_Group(0, 0, 50, 50),
   box(FL_DOWN_BOX);
 
   View3D = new voxelFrame_c(x, y, w-15, h);
-  View3D->tooltip(" Rotate the puzzle by dragging with the mouse. Use the cube in the corner to snap views. ");
+  View3D->tooltip(" Rotate by dragging with the mouse. Pan with the middle button or Ctrl+drag. Use the cube in the corner to snap views. ");
   View3D->box(FL_NO_BOX);
   View3D->callback(cb_View3dGroupVoxel_stub, this);
   View3D->setHomeCallback(cb_View3dHome_stub, this);

@@ -130,6 +130,10 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     void showNothing(void);
     void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
+    /* Takes ownership of vx and overlays it as a translucent (50% alpha) preview
+     * on top of whatever is already shown; a later call replaces the previous preview. */
+    void showTransformPreview(voxel_c * vx, unsigned int colorIndex);
+    void clearTransformPreview(void);
     void showColors(const puzzle_c * puz, colorMode mode);
     void showAssembly(const problem_c * puz, unsigned int solNum);
     void updatePositions(piecePositions_c *shifting);
@@ -252,6 +256,17 @@ class voxelFrame_c : public Fl_Gl_Window {
     int handle(int event);
 
     bool insideVisible;
+
+    // panning offset, applied before rotation so it moves the view independent of orientation
+    double panX = 0.0, panY = 0.0;
+    bool panning = false;
+    int panStartMouseX = 0, panStartMouseY = 0;
+    double panStartX = 0.0, panStartY = 0.0;
+
+    void resetPan(void) { panX = 0.0; panY = 0.0; }
+
+    // index into shapes of the wireframe transform preview overlay, -1 if none
+    int previewShapeIndex = -1;
 };
 
 #endif

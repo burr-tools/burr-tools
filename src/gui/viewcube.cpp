@@ -22,7 +22,9 @@
 #include <FL/gl.h>
 #pragma GCC diagnostic pop
 
-static const int kSize = 156;
+static const int kSizeFraction = 4;  // widget side length is winMin/kSizeFraction
+static const int kMinSize = 90;
+static const int kMaxSize = 220;
 static const int kMargin = 6;
 static const int kHouse = 29;
 static const float kExtent = 1.55f;
@@ -86,7 +88,10 @@ viewCube_c::viewCube_c(void)
 
 viewCube_c::Overlay viewCube_c::overlayRect(int winW, int winH) const {
   Overlay o;
-  o.s = kSize;
+  int winMin = winW < winH ? winW : winH;
+  o.s = winMin / kSizeFraction;
+  if (o.s < kMinSize) o.s = kMinSize;
+  if (o.s > kMaxSize) o.s = kMaxSize;
   if (o.s > winW - 4) o.s = winW - 4;
   if (o.s > winH - 4) o.s = winH - 4;
   if (o.s < 40) o.s = 40;

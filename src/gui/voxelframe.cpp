@@ -914,6 +914,7 @@ void voxelFrame_c::clearSpaces(void) {
   }
 
   shapes.clear();
+  previewShapeIndex = -1;
 }
 
 void voxelFrame_c::setSpaceColor(unsigned int nr, float r, float g, float b, float a) {
@@ -1060,6 +1061,38 @@ void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) 
 
   trans = TranslateRoateScale;
   _showCoordinateSystem = true;
+
+  redraw();
+}
+
+void voxelFrame_c::showTransformPreview(voxel_c * vx, unsigned int colorIndex) {
+
+  if (!vx)
+    return;
+
+  clearTransformPreview();
+
+  unsigned int num = addSpace(vx);
+  setSpaceColor(num, pieceColorR(colorIndex), pieceColorG(colorIndex), pieceColorB(colorIndex), 0.5f);
+
+  previewShapeIndex = num;
+
+  redraw();
+}
+
+void voxelFrame_c::clearTransformPreview(void) {
+
+  if (previewShapeIndex < 0 || (unsigned int)previewShapeIndex >= shapes.size())
+    return;
+
+  shapeInfo & s = shapes[previewShapeIndex];
+  if (s.list) glDeleteLists(s.list, 1);
+  delete s.shape;
+  delete s.poly;
+  delete s.pickPoly;
+  shapes.erase(shapes.begin() + previewShapeIndex);
+
+  previewShapeIndex = -1;
 
   redraw();
 }
@@ -1704,6 +1737,7 @@ void voxelFrame_c::draw(bool withViewCube) {
 
   glPushMatrix();
   glTranslatef(0, 0, -size*2);
+  glTranslatef(panX, panY, 0);
 
   if (colors == anaglyphColor) {
     glPushMatrix();
@@ -1757,6 +1791,7 @@ void voxelFrame_c::draw(bool withViewCube) {
 void voxelFrame_c::resetViewRotation(void) {
   if (rotater)
     rotater->resetRotation();
+  resetPan();
 }
 
 int voxelFrame_c::handle(int event) {
@@ -1790,6 +1825,16 @@ int voxelFrame_c::handle(int event) {
   switch(event) {
   case FL_PUSH:
 
+    if (Fl::event_button() == FL_MIDDLE_MOUSE ||
+        (Fl::event_button() == FL_LEFT_MOUSE && Fl::event_state(FL_CTRL))) {
+      panning = true;
+      panStartMouseX = Fl::event_x();
+      panStartMouseY = Fl::event_y();
+      panStartX = panX;
+      panStartY = panY;
+      return 1;
+    }
+
     if (!Fl::event_state(FL_SHIFT | FL_ALT | FL_CTRL))
       rotater->click(Fl::event_x(), Fl::event_y());
 
@@ -1799,6 +1844,15 @@ int voxelFrame_c::handle(int event) {
 
   case FL_DRAG:
 
+    if (panning) {
+      // world units visible per pixel at the object's distance from the camera, given the fixed 15 degree fovy
+      double worldPerPixel = 2*(2*size)*tan(7.5*3.1415927/180.0)/h();
+      panX = panStartX + (Fl::event_x() - panStartMouseX)*worldPerPixel;
+      panY = panStartY - (Fl::event_y() - panStartMouseY)*worldPerPixel;
+      redraw();
+      return 1;
+    }
+
     rotater->drag(Fl::event_x(), Fl::event_y());
     redraw();
 
@@ -1807,6 +1861,12 @@ int voxelFrame_c::handle(int event) {
     return 1;
 
   case FL_RELEASE:
+
+    if (panning) {
+      panning = false;
+      redraw();
+      return 1;
+    }
 
     rotater->clack(Fl::event_x(), Fl::event_y());
     redraw();
