@@ -263,6 +263,14 @@ void voxel_2_c::transformPoint(int * x, int * y, int * z, unsigned int trans) co
   *z = (int)floor(zpn+0.5);
 }
 
+void voxel_2_c::getTransformMatrix(unsigned int trans, double m[9]) const {
+
+  bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
+
+  for (int i = 0; i < 9; i++)
+    m[i] = rotationMatrices[trans][i];
+}
+
 bool voxel_2_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const {
 
   // spheres have only one type of neighbour

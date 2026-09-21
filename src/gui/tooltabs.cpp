@@ -28,7 +28,6 @@
 #include "guigridtype.h"
 #include <stdlib.h>
 #include <math.h>
-#include <exception>
 
 #include "FL/fl_ask.H"
 #include "FL/Fl.H"
@@ -1377,53 +1376,62 @@ void ToolTab_4::cb_transform(long task) {
 
 
 
-/* Derives what a grid-symmetry transform represents, purely geometrically:
- * transformPoint() maps a point "around the origin" (no translation), so applying
- * it to the 3 basis vectors gives exactly the linear part of the transform, for
- * the grids where that mapping actually is linear. Returns 0 (kind: none), 1
- * (rotation, axis/angleDeg set) or 2 (mirror, axis set to the mirror plane's
- * normal). For rotations, near-identity and 180 degree cases are reported as
- * "none" - the usual antisymmetric-part axis extraction degenerates there, not
- * worth the extra code for what is only a visual hint. For mirrors, the plane
- * normal is recovered as the null space of (M+I), i.e. any nonzero cross product
- * of two rows of (M+I) - this assumes eigenvalue -1 has multiplicity 1, true for
- * the simple axis mirrors these buttons produce.
- *
- * Two grid families break the "linear, around the origin" assumption:
- *  - the sphere grid's transformPoint() asserts its input has an even coordinate
- *    sum, which (1,0,0) etc. do not satisfy, and throws; caught below and treated
- *    as "no hint" rather than crashing the hover path.
- *  - the triangular-prism grid's transformPoint() is affine (a parity-dependent
- *    offset is folded in), so the basis-vector images are not the columns of a
- *    linear map at all. A genuine linear symmetry transform is orthogonal, so its
- *    determinant must be exactly +-1; anything else is a tell that the probe
- *    isn't valid for this grid, so it's rejected rather than trusted. */
+/* The null space of (M - lambda*I) for a 3x3 matrix, found as the cross product
+ * of two of its rows - valid whenever that null space is 1-dimensional (rank of
+ * (M - lambda*I) is 2), which holds for an eigenvalue of multiplicity 1. Tries
+ * all 3 row-pairs and keeps the longest cross product, since for some matrices
+ * one pair of rows is nearly parallel and gives a numerically weak result even
+ * though another pair would not. Returns false (leaving axis untouched) if no
+ * pair gives a large enough cross product, i.e. the null space is not 1D. */
+static bool nullSpaceOf3x3(const double m[9], double lambda, float axis[3]) {
+  float a[9];
+  for (int i = 0; i < 9; i++)
+    a[i] = (float)m[i] + ((i % 3 == i / 3) ? (float)lambda : 0.0f);
+
+  float cand[3][3] = {
+    { a[1]*a[5]-a[2]*a[4], a[2]*a[3]-a[0]*a[5], a[0]*a[4]-a[1]*a[3] },
+    { a[1]*a[8]-a[2]*a[7], a[2]*a[6]-a[0]*a[8], a[0]*a[7]-a[1]*a[6] },
+    { a[4]*a[8]-a[5]*a[7], a[5]*a[6]-a[3]*a[8], a[3]*a[7]-a[4]*a[6] },
+  };
+
+  int best = -1;
+  float bestLen = 1e-4f;
+  for (int i = 0; i < 3; i++) {
+    float len = sqrtf(cand[i][0]*cand[i][0] + cand[i][1]*cand[i][1] + cand[i][2]*cand[i][2]);
+    if (len > bestLen) { bestLen = len; best = i; }
+  }
+  if (best < 0)
+    return false;
+
+  axis[0] = cand[best][0]/bestLen;
+  axis[1] = cand[best][1]/bestLen;
+  axis[2] = cand[best][2]/bestLen;
+  return true;
+}
+
+/* Derives what a grid-symmetry transform represents geometrically, straight from
+ * the grid's own getTransformMatrix() - the exact linear part of the transform,
+ * decoupled from whatever affine quirks a grid's integer coordinate representation
+ * has (see the note on voxel_c::transformPoint; an earlier version of this
+ * function tried to reconstruct the same thing by probing transformPoint() with
+ * basis vectors, which crashed on the sphere grid and gave a wrong answer on the
+ * triangular-prism grid). Returns 0 (kind: none), 1 (rotation, axis/angleDeg set)
+ * or 2 (mirror, axis set to the mirror plane's normal). Near-identity rotations
+ * are reported as "none" - there is no meaningful axis to show. */
 static int computeTransformGeometry(const voxel_c * origShape, int transformIdx,
                                      float axis[3], float * angleDeg) {
   if (!origShape || transformIdx < 0)
     return 0;
 
-  int m[3][3];
-  int basis[3][3] = { {1,0,0}, {0,1,0}, {0,0,1} };
-  try {
-    for (int c = 0; c < 3; c++) {
-      int x = basis[c][0], y = basis[c][1], z = basis[c][2];
-      origShape->transformPoint(&x, &y, &z, transformIdx);
-      m[0][c] = x; m[1][c] = y; m[2][c] = z;
-    }
-  } catch (const std::exception &) {
-    return 0;
-  }
+  double m[9];
+  origShape->getTransformMatrix((unsigned int)transformIdx, m);
 
-  int det = m[0][0]*(m[1][1]*m[2][2] - m[1][2]*m[2][1])
-          - m[0][1]*(m[1][0]*m[2][2] - m[1][2]*m[2][0])
-          + m[0][2]*(m[1][0]*m[2][1] - m[1][1]*m[2][0]);
-
-  if (det != 1 && det != -1)
-    return 0;
+  double det = m[0]*(m[4]*m[8] - m[5]*m[7])
+             - m[1]*(m[3]*m[8] - m[5]*m[6])
+             + m[2]*(m[3]*m[7] - m[4]*m[6]);
 
   if (det > 0) {
-    float trace = (float)(m[0][0] + m[1][1] + m[2][2]);
+    float trace = (float)(m[0] + m[4] + m[8]);
     float cosA = (trace - 1.0f)*0.5f;
     if (cosA > 1.0f) cosA = 1.0f;
     if (cosA < -1.0f) cosA = -1.0f;
@@ -1431,42 +1439,35 @@ static int computeTransformGeometry(const voxel_c * origShape, int transformIdx,
     if (angle < 0.02f)
       return 0;
 
-    float ax[3] = { (float)(m[2][1]-m[1][2]), (float)(m[0][2]-m[2][0]), (float)(m[1][0]-m[0][1]) };
-    float len = sqrtf(ax[0]*ax[0] + ax[1]*ax[1] + ax[2]*ax[2]);
-    if (len < 1e-4f)
+    // the antisymmetric part of M, (m[7]-m[5], m[2]-m[6], m[3]-m[1]), gives both
+    // the rotation axis AND its correct sign - its magnitude is 2*sin(angle), so
+    // it points the way a positive (right-hand-rule) sweep around it actually
+    // goes, which the null-space fallback below cannot (a null space vector's
+    // sign is arbitrary). That magnitude is exactly zero only at 180 degrees,
+    // where M is symmetric and CW/CCW are visually identical anyway - the
+    // fallback's arbitrary sign is harmless there.
+    float w[3] = { (float)(m[7]-m[5]), (float)(m[2]-m[6]), (float)(m[3]-m[1]) };
+    float wlen = sqrtf(w[0]*w[0] + w[1]*w[1] + w[2]*w[2]);
+    if (wlen > 1e-4f) {
+      axis[0] = w[0]/wlen;
+      axis[1] = w[1]/wlen;
+      axis[2] = w[2]/wlen;
+    } else if (!nullSpaceOf3x3(m, -1.0, axis)) {
       return 0;
+    }
 
-    axis[0] = ax[0]/len;
-    axis[1] = ax[1]/len;
-    axis[2] = ax[2]/len;
     *angleDeg = angle*180.0f/3.1415927f;
     return 1;
   }
 
   if (det < 0) {
-    float a[3][3];
-    for (int r = 0; r < 3; r++)
-      for (int c = 0; c < 3; c++)
-        a[r][c] = (float)m[r][c] + (r == c ? 1.0f : 0.0f);
-
-    float cand[3][3] = {
-      { a[0][1]*a[1][2]-a[0][2]*a[1][1], a[0][2]*a[1][0]-a[0][0]*a[1][2], a[0][0]*a[1][1]-a[0][1]*a[1][0] },
-      { a[0][1]*a[2][2]-a[0][2]*a[2][1], a[0][2]*a[2][0]-a[0][0]*a[2][2], a[0][0]*a[2][1]-a[0][1]*a[2][0] },
-      { a[1][1]*a[2][2]-a[1][2]*a[2][1], a[1][2]*a[2][0]-a[1][0]*a[2][2], a[1][0]*a[2][1]-a[1][1]*a[2][0] },
-    };
-
-    int best = -1;
-    float bestLen = 1e-4f;
-    for (int i = 0; i < 3; i++) {
-      float len = sqrtf(cand[i][0]*cand[i][0] + cand[i][1]*cand[i][1] + cand[i][2]*cand[i][2]);
-      if (len > bestLen) { bestLen = len; best = i; }
-    }
-    if (best < 0)
+    // the mirror plane's normal is the -1-eigenvector of M, i.e. the null space
+    // of (M+I); assumes eigenvalue -1 has multiplicity 1, true for the simple
+    // axis mirrors these buttons produce - a roto-reflection just degrades to
+    // "no hint" here rather than a wrong one
+    if (!nullSpaceOf3x3(m, 1.0, axis))
       return 0;
 
-    axis[0] = cand[best][0]/bestLen;
-    axis[1] = cand[best][1]/bestLen;
-    axis[2] = cand[best][2]/bestLen;
     return 2;
   }
 

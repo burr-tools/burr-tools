@@ -897,7 +897,11 @@ float voxelFrame_c::previewHintRadius(void) const {
   const shapeInfo & s = shapes[previewShapeIndex];
   if (!s.shape)
     return 1.0f;
-  return 0.5f*sqrtf((float)s.shape->getDiagonal()) + 1.0f;
+  // deliberately small and capped rather than scaled to the piece's own bounding
+  // radius: this is a compact indicator sitting near the origin/rotation axis,
+  // not a ring meant to hug the piece's outer surface
+  float r = 0.2f*sqrtf((float)s.shape->getDiagonal()) + 0.5f;
+  return r < 2.0f ? r : 2.0f;
 }
 
 /* Sets up the shared GL state (matrix, color-by-axis, line width) for whichever
