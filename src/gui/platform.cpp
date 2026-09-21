@@ -50,6 +50,30 @@ namespace {
     const char * slash = strrchr(path, '/');
     return slash ? slash + 1 : path;
   }
+
+  /* What AppKit's sheet dim does to the window underneath it, as a
+   * source-over composite:  out = in * (1 - alpha) + grey * alpha.
+   *
+   * Measured rather than assumed, because AppKit exposes no API for it and
+   * the value is not documented. A probe window painted four known grey
+   * levels twice -- once with FLTK widgets, once in an Fl_Gl_Window, which
+   * the dim does not reach -- and was screenshotted with a sheet attached.
+   * Fitting the dimmed side against the undimmed one gives:
+   *
+   *     in    255  216  128   64
+   *     out   111   97   62   38      ->  out = 0.385 * in + 13.2
+   *
+   * which is grey 21.4/255 at alpha 0.615, reproducing all four levels to
+   * better than one part in 255. The same constants predict the 216 -> 97
+   * measured in the screenshot on the reporter's machine, so this is a
+   * property of the compositor rather than of one display profile.
+   *
+   * If a future macOS changes the dim these will be slightly off, which
+   * costs a faint seam at the edge of the 3D view. That is a far smaller
+   * error than the undimmed rectangle they exist to remove.
+   */
+  const float MODAL_DIM_GREY  = 0.084f;
+  const float MODAL_DIM_ALPHA = 0.615f;
 #endif
 }
 
@@ -145,4 +169,43 @@ void platform::setDocumentEdited(Fl_Window * win, bool edited) {
 void platform::openHelp(void) {
   char msg[512];
   fl_open_uri(USER_GUIDE_URL, msg, sizeof(msg));
+}
+
+bool platform::modalDimWash(Fl_Window * win, float * grey, float * alpha) {
+#ifdef __APPLE__
+
+  if (!win)
+    return false;
+
+  /* The sheet is attached to the top level window, not to the subwindow
+   * the caller is drawing into.
+   */
+  Fl_Window * top = win->top_window();
+  if (!top || !top->shown())
+    return false;
+
+  id nsWindow = (id)fl_xid(top);
+  if (!nsWindow)
+    return false;
+
+  /* Same plain-C runtime call as setDocumentEdited() above: no
+   * Objective-C source file is needed for a message with an object
+   * return and no arguments.
+   */
+  typedef id (*AttachedSheetFn)(id, SEL);
+  id sheet = ((AttachedSheetFn)objc_msgSend)(nsWindow,
+                                             sel_registerName("attachedSheet"));
+  if (!sheet)
+    return false;
+
+  if (grey)  *grey  = MODAL_DIM_GREY;
+  if (alpha) *alpha = MODAL_DIM_ALPHA;
+  return true;
+
+#else
+  (void)win;
+  (void)grey;
+  (void)alpha;
+  return false;
+#endif
 }

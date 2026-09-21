@@ -24,6 +24,7 @@
 #include "piececolor.h"
 #include "configuration.h"
 #include "grideditor.h"
+#include "platform.h"
 
 #include "../lib/voxel.h"
 #include "../lib/puzzle.h"
@@ -1626,6 +1627,45 @@ static void gluPickMatrix(double x, double y, double deltax, double deltay, GLin
   glScalef(viewport[2]/deltax, viewport[3]/deltay, 1.0);
 }
 
+/* Paint a flat wash over the whole viewport, in window coordinates and
+ * with the depth test off, so it covers the scene whatever was drawn.
+ * Every piece of state this touches is saved and restored: draw() leaves
+ * the matrices and the blend setup configured for the next frame.
+ */
+static void drawWash(float grey, float alpha) {
+
+  glMatrixMode(GL_PROJECTION);
+  glPushMatrix();
+  glLoadIdentity();
+  glOrtho(0, 1, 0, 1, -1, 1);
+
+  glMatrixMode(GL_MODELVIEW);
+  glPushMatrix();
+  glLoadIdentity();
+
+  glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT);
+
+  glDisable(GL_LIGHTING);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glColor4f(grey, grey, grey, alpha);
+
+  glBegin(GL_QUADS);
+  glVertex2f(0, 0);
+  glVertex2f(1, 0);
+  glVertex2f(1, 1);
+  glVertex2f(0, 1);
+  glEnd();
+
+  glPopAttrib();
+
+  glPopMatrix();                 // modelview
+  glMatrixMode(GL_PROJECTION);
+  glPopMatrix();
+  glMatrixMode(GL_MODELVIEW);
+}
+
 void voxelFrame_c::draw() {
 
   if (!valid()) {
@@ -1737,6 +1777,25 @@ void voxelFrame_c::draw() {
 
   if (cb)
     cb->PostDraw();
+
+  /* The window system dims the main window while a modal sheet is
+   * attached to it, but that dim stops at this widget -- FLTK gives every
+   * subwindow a child window of its own. Reproduce it here, or the 3D view
+   * stays a bright rectangle in an otherwise dimmed window.
+   *
+   * Deliberately after PostDraw(): that is where image export reads the
+   * frame buffer back (imageExport_c::PostDraw -> trEndTile -> glReadPixels),
+   * so exported images are captured before the wash goes on and never
+   * carry it.
+   *
+   * Skipped while picking, where pickShape() runs this same function under
+   * glRenderMode(GL_SELECT) to find what is under the cursor. The wash is
+   * a presentation effect and must never become geometry: a quad covering
+   * the whole view would be the nearest thing to the camera in every pick.
+   */
+  float grey, alpha;
+  if (pickx < 0 && platform::modalDimWash(this, &grey, &alpha))
+    drawWash(grey, alpha);
 }
 
 int voxelFrame_c::handle(int event) {

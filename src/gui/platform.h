@@ -68,6 +68,24 @@ namespace platform {
 
   /* Open the user guide in the user's browser. */
   void openHelp(void);
+
+  /* The wash the window system is currently drawing over win's own
+   * contents, which anything drawing outside those contents has to
+   * reproduce for itself.
+   *
+   * This exists for one case: macOS presents the native file dialog as a
+   * sheet and dims the window it is attached to, but FLTK gives every
+   * subwindow a child window of its own, and the dim does not reach a
+   * child window. An Fl_Gl_Window therefore stays at full brightness --
+   * a bright rectangle in an otherwise dimmed window.
+   *
+   * win may be any widget's window; the window the sheet is attached to
+   * is found from it. Returns false when nothing is being dimmed, which
+   * is always the case off macOS. Otherwise grey and alpha describe a
+   * source-over composite the caller should paint over everything it
+   * drew:  out = in * (1 - alpha) + grey * alpha.
+   */
+  bool modalDimWash(Fl_Window * win, float * grey, float * alpha);
 }
 
 #endif
