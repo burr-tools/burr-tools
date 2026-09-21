@@ -488,37 +488,45 @@ done.
 
 **Blocking — data loss:**
 
-- [ ] ⌘Q with a dirty puzzle prompts Save / Don't Save / Cancel (Section 3.3).
-- [ ] Cancelling the save dialog inside that prompt aborts the quit.
-- [ ] Finder double-click with a dirty puzzle open prompts before loading.
-- [ ] Each of the five `confirmDiscard()` sites saves correctly when Save is chosen,
+- [x] ⌘Q with a dirty puzzle prompts Save / Don't Save / Cancel (Section 3.3).
+- [x] Cancelling the save dialog inside that prompt aborts the quit.
+- [x] Finder double-click with a dirty puzzle open prompts before loading.
+- [x] Each of the five `confirmDiscard()` sites saves correctly when Save is chosen,
       including the untitled → Save As path.
 
 **Menus and shortcuts:**
 
-- [ ] Menu bar appears in the system menu bar; the in-window strip is gone.
-- [ ] App menu shows About, Settings… ⌘,, Quit ⌘Q.
-- [ ] Window menu supplies Minimize ⌘M and Zoom.
-- [ ] ⌘N/⌘O/⌘S/⇧⌘S/⌘W/⌘I/⌘3/⌘? all fire the right callback.
-- [ ] F2/F3/F4 still work on macOS as secondary bindings.
-- [ ] Export submenu still activates and deactivates correctly (the logic moved from
+- [x] Menu bar appears in the system menu bar; the in-window strip is gone.
+- [x] App menu shows About, Settings… ⌘,, Quit ⌘Q.
+- [x] Window menu supplies Minimize ⌘M and Zoom.
+- [x] ⌘N/⌘O/⌘S/⇧⌘S/⌘W/⌘I/⌘3/⌘? all fire the right callback.
+- [x] F2/F3/F4 still work on macOS as secondary bindings.
+- [x] Export submenu still activates and deactivates correctly (the logic moved from
       `mainwindow.cpp:2369-2377`), with lookup keyed on callback rather than label.
-- [ ] Repeatedly changing Export activation state causes no visible flicker or lag in
+- [x] Repeatedly changing Export activation state causes no visible flicker or lag in
       the system menu bar (Section 3.4).
-- [ ] Linux build: menu bar, labels and F-keys are unchanged from before.
+- [x] Linux build: menu bar, labels and F-keys are unchanged from before.
 
 **Appearance:**
 
 - [ ] Compare `gleam` against `oxy`; record the choice and the reason.
-- [ ] Labels render in SF Pro, not Helvetica — confirm `.AppleSystemUIFont` resolved
-      rather than silently falling back.
+- [x] Labels render in SF Pro, not Helvetica — confirm `.AppleSystemUIFont` resolved
+      rather than silently falling back. **Confirmed by measurement, not by eye.**
+      `CTFontCreateWithName(".AppleSystemUIFont")` returns `System Font Regular` /
+      `.SFNS-Regular`, identical to what the supported `CTFontCreateUIFontForLanguage(
+      kCTFontUIFontSystem, …)` API returns; an unresolvable name falls back to
+      Helvetica, so the path does fail loudly enough to detect. Measured in the running
+      application, the rendered width of a sample string at 13pt was 186.310 for
+      `FL_HELVETICA` as remapped and 186.310 for the system UI font, against 174.180
+      for real Helvetica — so the remap reaches FLTK's text rendering, not just its
+      font table.
 - [ ] Walk every tab and every dialog, checking the custom-drawn widgets from
       Section 4.2 against their surroundings.
 - [ ] Linux and Windows: the new scheme is applied and nothing is visually broken.
 
 **Integration:**
 
-- [ ] Double-clicking an `.xmpuzzle` in Finder opens it, both when BurrTools is
+- [x] Double-clicking an `.xmpuzzle` in Finder opens it, both when BurrTools is
       already running and when it is not.
 - [ ] Dropping a puzzle on the Dock icon opens it.
 - [ ] App and document icons appear in Finder, the Dock and ⌘-Tab.
