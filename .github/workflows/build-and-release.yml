@@ -329,21 +329,26 @@ jobs:
         VERSION: ${{ steps.version.outputs.version }}
       run: |
         mkdir -p artifacts/macos
+        # Tag every artifact with the architecture it was built for. The macOS
+        # runner is arm64, so these must not be published under bare or x86_64
+        # names that Intel and Linux users would reasonably download.
+        ARCH="$(uname -m)"
         # Copy DMG if it exists
-        if [ -f "BurrTools-${VERSION}.dmg" ]; then
-          cp "BurrTools-${VERSION}.dmg" artifacts/macos/
+        if [ -f "BurrTools-${VERSION}-macos-${ARCH}.dmg" ]; then
+          cp "BurrTools-${VERSION}-macos-${ARCH}.dmg" artifacts/macos/
         fi
         # Copy command-line tools
-        cp build/burrTxt build/burrTxt2 artifacts/macos/
+        cp build/burrTxt "artifacts/macos/burrTxt-${VERSION}-macos-${ARCH}"
+        cp build/burrTxt2 "artifacts/macos/burrTxt2-${VERSION}-macos-${ARCH}"
         # Copy app bundle if it exists
         if [ -d "BurrTools.app" ]; then
-          zip -r "artifacts/macos/BurrTools-${VERSION}-app.zip" BurrTools.app
+          zip -r "artifacts/macos/BurrTools-${VERSION}-macos-${ARCH}-app.zip" BurrTools.app
         else
           # Fallback: create tar.gz with binaries and examples
           mkdir -p temp-macos
           cp build/burrtools build/burrTxt build/burrTxt2 temp-macos/
           cp -r examples temp-macos/
-          tar czf "artifacts/macos/burrtools-${VERSION}-macos-x86_64.tar.gz" -C temp-macos .
+          tar czf "artifacts/macos/burrtools-${VERSION}-macos-${ARCH}.tar.gz" -C temp-macos .
         fi
     
     - name: Upload macOS artifacts
