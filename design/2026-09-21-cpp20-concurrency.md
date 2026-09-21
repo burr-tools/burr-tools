@@ -74,49 +74,54 @@ $$\text{Active Assembler Threads} + \text{Active Disassembler Threads} \le N$$
 ### 3.1 The Problem with Naive Thread Spawning ($2N + 1$ Hazard)
 Spawning $N$ assembler workers and $N$ disassembler workers creates $2N+1$ threads. When assemblies are found, disassembler threads wake up, competing with the active assembler threads on an $N$-core machine. This results in heavy OS context-switching, cache thrashing, and degraded throughput.
 
-### 3.2 The Cooperative Token Protocol
-We establish a global counting semaphore [`std::counting_semaphore<N>`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.h) initialized to $N$:
+### 3.2 The Asynchronous $N$-Permit Buffer Protocol
+To balance pipeline throughput against CPU oversubscription, the pool maintains `available_disassembly_permits` initialized to `num_threads`:
 
 1. **Initial State (Pure Assembly):**
-   - The $N$ assembler worker threads acquire the $N$ permits at startup.
-   - All $N$ CPU cores run exact cover search at 100% utilization.
-   - The disassembler workers sleep on [`std::condition_variable_any`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.h) with 0% CPU consumption.
+   - The $N$ assembler worker threads execute exact cover search at 100% CPU utilization.
+   - `available_disassembly_permits = num_threads`.
+   - The disassembler workers sleep on [`std::condition_variable_any`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.h) awaiting tasks.
 
-2. **Assembly Found (Cooperative Handoff):**
-   - An assembler worker finds an assembly and enters [`disassemblerPool_c::submit()`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L95).
-   - If the disassembler pool has idle capacity, the submitting assembler thread **temporarily yields its permit** and enters a wait state.
-   - A disassembler worker takes that permit, wakes up, and runs 3D movement analysis.
-   - At this instant:
-     $$\text{Active Assemblers} = N - 1, \quad \text{Active Disassemblers} = 1, \quad \text{Total Active} = N$$
-   - Once disassembly concludes, the permit is returned, waking the paused assembler worker to resume its search.
+2. **Assembly Discovery & Pipeline Buffering:**
+   - An assembler worker finding an assembly calls [`submit()`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L102), pushes to `work_queue`, and wakes a disassembler worker.
+   - It decrements `available_disassembly_permits`. As long as permits remain $> 0$, the submitting assembler resumes searching immediately.
+   - **Why buffering is essential (Subtree Skew Prevention):** In exact cover, assemblies are often heavily concentrated in a single worker's subtree (e.g. `Simplicity`'s 188 assemblies or `PelikanBurr`'s 12 assemblies). If the finding worker were forced to yield synchronously on every submission, only 1 disassembler could ever be active at a time, leaving the other $N-1$ disassembler cores completely starved and collapsing disassembly into single-threaded execution (empirically measured: 110% CPU vs 550% CPU, 3x slowdown).
+   - By buffering up to $N$ in-flight disassemblies, a finding worker rapidly feeds the queue so all $N$ disassembler cores stay 100% saturated in parallel.
 
-3. **Search Completion (Full Disassembly Saturation):**
-   - When all assembly subtrees are completed, assembler workers terminate and release their permits permanently.
-   - The disassembler pool acquires all $N$ permits.
-   - All $N$ cores chew through the remaining disassembly queue in parallel.
+3. **Backpressure Throttling:**
+   - If all $N$ disassemblers are actively working (`available_disassembly_permits == 0`), any subsequent `submit()` blocks on `cv_assembler.wait()` until a disassembler completes a task and returns a permit.
+   - This caps concurrent in-flight disassemblies to $N$, bounding memory and preventing unbounded queue growth.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant A as Assembler Worker (Holds Permit)
-    participant S as Token Semaphore (Capacity N)
+    participant A as Finding Assembler Worker
+    participant P as Disassembly Permits (Capacity N)
     participant Q as Work Queue
-    participant D as Disassembler Worker (Sleeping)
+    participant D as Disassembler Workers (D1..DN)
     participant M as Merger Thread
 
-    Note over A: Searching Subtree (Active Core)
-    A->>A: Assembly Found!
-    A->>Q: push(Task{seqNo, assembly})
-    A->>S: yield_permit() [Assembler sleeps]
-    Note over A: Assembler Paused (Core Freed)
-    S->>D: acquire_permit() [Disassembler wakes]
-    Note over D: Disassembling (Active Core)
-    D->>D: Compute 3D separations
+    Note over A: Searches subtree (Active Core)
+    A->>A: Assembly #1 Found!
+    A->>Q: push(Task #1)
+    A->>P: claim permit (N -> N-1)
+    A->>D: notify D1
+    Note over A: Resumes searching immediately!
+    Note over D: D1 active disassembling
+    A->>A: Assembly #2 Found!
+    A->>Q: push(Task #2)
+    A->>P: claim permit (N-1 -> N-2)
+    A->>D: notify D2
+    Note over D: D1, D2 both active in parallel!
+    Note over P: When all N permits claimed:
+    A->>A: Assembly #N+1 Found!
+    A->>Q: push(Task #N+1)
+    A->>P: wait for permit (Permits == 0) [A pauses]
+    D->>P: D1 finishes, returns permit (Permits -> 1)
+    P->>A: wake assembler
+    Note over A: Resumes search
     D->>M: push_result(seqNo, separation)
-    D->>S: release_permit()
-    S->>A: wake_assembler()
-    Note over A: Resumes Subtree Search (Active Core)
-    M->>M: Drain in seqNo order (0, 1, 2...)
+    M->>M: Drain in monotonic seqNo order
 ```
 
 ---
@@ -231,11 +236,11 @@ struct SearchPrefix {
    ```
    In [`worker_loop`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L147) and [`merger_loop`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L217), workers wait with stop-token awareness via `cv.wait(lock, st, predicate)`.
 
-2. **Cooperative Token Budget (`available_disassembly_permits = num_threads`):**
-   - The token budget is maintained via `available_disassembly_permits` (renamed from `assembler_permits` for clarity), seeded to `num_threads` in the constructor.
-   - In [`submit(a)`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L102): an assembly is pushed to `work_queue`. The submitting thread then waits on `cv_assembler` until a permit is available. If all `num_threads` disassemblers are busy, the assembler yields its CPU core.
-   - In `worker_loop`: upon completing disassembly of a task, the worker increments `available_disassembly_permits` and notifies `cv_assembler`, returning the compute slot permit to the assembler.
-   - This ensures $\text{Active Assemblers} + \text{Active Disassemblers} \le N$ without pipeline stalls.
+2. **Asynchronous $N$-Permit Buffer (`available_disassembly_permits = num_threads`):**
+   - The permit counter `available_disassembly_permits` is initialized to `num_threads` in the constructor.
+   - In [`submit(a)`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L102): an assembly is pushed to `work_queue`. The submitting thread decrements a permit; if all `num_threads` disassemblers are already busy (`permits == 0`), it waits on `cv_assembler`.
+   - In `worker_loop`: upon completing disassembly of a task, the worker increments `available_disassembly_permits` and notifies `cv_assembler`.
+   - This prevents disassembler starvation under asymmetric subtree density while capping in-flight disassemblies to $N$.
 
 3. **Decoupled Merger Lock Hierarchy:**
    In [`merger_loop`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L210), popping from `reorder_buffer` only holds `result_mutex`. Notifying `cv_producer.notify_one()` is performed after unlocking `result_mutex` and without acquiring `queue_mutex`, eliminating any lock coupling between the two subsystems.

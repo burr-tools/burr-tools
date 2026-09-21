@@ -65,9 +65,10 @@ disassemblerPool_c::disassemblerPool_c(
   max_queue_size = std::max<size_t>(64, num_threads);
   max_reorder_size = std::max<size_t>(64, num_threads * 2);
 
-  // Seed one compute permit per worker thread. submit() then throttles the
-  // assembler only once every disassembler is already busy, rather than
-  // round-tripping through a completion for every single assembly.
+  // Seed one permit per disassembler worker thread. This asynchronous N-permit buffer
+  // ensures all N disassemblers can stay saturated even when only a single assembler
+  // worker is finding assemblies (preventing pipeline starvation under subtree skew).
+  // submit() throttles the assembler once all N disassemblers are already busy.
   available_disassembly_permits = num_threads;
 
   if (num_threads == 1) {
