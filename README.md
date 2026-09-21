@@ -33,4 +33,6 @@ Have fun.
 
 * [Build Instructions](BUILD.md)
 * [User Guide](https://burrtools.sourceforge.net/gui-doc/toc.html)
-* [Library documentation](https://burrtools.sourceforge.net/lib-doc/index.html)
+* [Library documentation](https://burr-tools.github.io/burr-tools/) — the
+  Doxygen API reference, regenerated from `master` on every push. Run
+  `just docs` to build it locally into `gendoc/html`.

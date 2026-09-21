@@ -78,6 +78,7 @@ static float Vector3fLength(const float a[3])
 /**
  * Sets the value of this matrix to rotation matrix of the
  * quaternion argument.
+ * @param m the 3x3 matrix to receive the rotation
  * @param q1 the quaternion to be converted
  */
 static void Matrix3fSetRotationFromQuat4f(float m[9], const float q1[4])
@@ -125,10 +126,8 @@ static void Matrix3fMulMatrix3f(float a[9], const float b[9])
 }
 
 /**
- * Performs SVD on this matrix and gets scale and rotation.
- * Rotation is placed into rot3, and rot4.
- * @param rot3 the rotation factor(Matrix3d). if null, ignored
- * @param rot4 the rotation factor(Matrix4) only upper 3x3 elements are changed. If null, ignored
+ * Performs SVD on this matrix and gets the scale.
+ * @param a the 4x4 matrix to decompose; only its upper 3x3 block is read
  * @return scale factor
  */
 static GLfloat Matrix4fSVD(const GLfloat a[16])
@@ -146,7 +145,8 @@ static GLfloat Matrix4fSVD(const GLfloat a[16])
  * object's upper 3x3 matrix components are replaced by the passed rotation
  * components, and then the scale is reapplied to the rotational
  * components.
- * @param m1 T precision 3x3 matrix
+ * @param a the 4x4 matrix whose rotational component is replaced
+ * @param m T precision 3x3 matrix
  */
 static void Matrix4fSetRotationFromMatrix3f(GLfloat a[16], const float m[9])
 {
