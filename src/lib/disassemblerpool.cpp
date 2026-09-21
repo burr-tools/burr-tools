@@ -121,7 +121,8 @@ void disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
   cv_producer.wait(lock, [this]() {
     return ((work_queue.size() < max_queue_size &&
             (next_submit_seq.load(std::memory_order_relaxed) - next_merge_seq.load(std::memory_order_relaxed)) < max_reorder_size) ||
-            aborted.load(std::memory_order_relaxed));
+            aborted.load(std::memory_order_relaxed) ||
+            stop_requested.load(std::memory_order_relaxed));
   });
 
   if (aborted.load(std::memory_order_relaxed))

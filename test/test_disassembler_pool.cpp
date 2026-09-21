@@ -158,7 +158,7 @@ TEST_CASE("disassembler pool: unit test with backpressure and sequence ordering"
       }
     );
 
-    // Submit 100 assemblies (greater than MAX_QUEUE_SIZE = 64) to exercise backpressure
+    // Submit 100 assemblies (greater than max_reorder_size = 64) to exercise permit throttling, reorder-window backpressure, and sequence ordering
     const unsigned int SUBMIT_COUNT = 100;
     for (unsigned int i = 0; i < SUBMIT_COUNT; i++) {
       auto assm = std::make_unique<assembly_c>(gt);
