@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "simd_huang_cover.h"
+#include "simd_config.h"
 #include "bt_assert.h"
 
 #include <cstdlib>
@@ -35,21 +36,11 @@ SimdHuangCover<BitsetType>::SimdHuangCover(unsigned int num_cols, unsigned int n
   columns.resize(num_columns + 1);
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-  /* BURRTOOLS_NO_SIMD and BURRTOOLS_NO_AVX2 clear *both* flags, as in
-   * SimdExactCover. filterRows() tries the AVX-512 kernel first, so gating
-   * only use_avx2 would make BURRTOOLS_NO_AVX2=1 run wider SIMD instead of
-   * narrower, and leave the scalar fallback unreachable from tier 512 up.
-   */
-  if (!std::getenv("BURRTOOLS_NO_SIMD") && !std::getenv("BURRTOOLS_NO_AVX2")) {
-    use_avx2 = __builtin_cpu_supports("avx2");
-    use_avx512 = __builtin_cpu_supports("avx512f");
-  }
-  if (std::getenv("BURRTOOLS_NO_AVX512")) {
-    use_avx512 = false;
-  }
-#elif defined(__aarch64__) || defined(__ARM_NEON)
-  use_neon = !(std::getenv("BURRTOOLS_NO_SIMD") || std::getenv("BURRTOOLS_NO_NEON"));
+  use_avx2 = __builtin_cpu_supports("avx2") && SimdConfig::isVectorAccelerationEnabled();
+  use_avx512 = __builtin_cpu_supports("avx512f") && SimdConfig::isAvx512Allowed();
 #endif
+
+  use_neon = SimdConfig::isNeonAllowed();
 }
 
 template <typename BitsetType>

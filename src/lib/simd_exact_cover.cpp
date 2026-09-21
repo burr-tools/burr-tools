@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "simd_exact_cover.h"
+#include "simd_config.h"
 
 #include <cstdlib>
 
@@ -29,24 +30,14 @@ SimdExactCover<BitsetType>::SimdExactCover(unsigned int cols, unsigned int piece
   bt_assert(num_columns <= BitsetType::NUM_WORDS * 64);
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-  use_avx2 = __builtin_cpu_supports("avx2") != 0;
-  use_avx512 = __builtin_cpu_supports("avx512f") != 0;
+  use_avx2 = __builtin_cpu_supports("avx2") && SimdConfig::isVectorAccelerationEnabled();
+  use_avx512 = __builtin_cpu_supports("avx512f") && SimdConfig::isAvx512Allowed();
 #else
   use_avx2 = false;
   use_avx512 = false;
 #endif
 
-  if (std::getenv("BURRTOOLS_NO_SIMD") || std::getenv("BURRTOOLS_NO_AVX2")) {
-    use_avx2 = false;
-    use_avx512 = false;
-  }
-  if (std::getenv("BURRTOOLS_NO_AVX512")) {
-    use_avx512 = false;
-  }
-
-#if defined(__aarch64__) || defined(__ARM_NEON)
-  use_neon = !(std::getenv("BURRTOOLS_NO_SIMD") || std::getenv("BURRTOOLS_NO_NEON"));
-#endif
+  use_neon = SimdConfig::isNeonAllowed();
 }
 
 template <typename BitsetType>

@@ -20,6 +20,7 @@
  */
 #include "assembler_1.h"
 #include "simd_huang_cover.h"
+#include "simd_config.h"
 
 #include "bt_assert.h"
 #include "problem.h"
@@ -2726,7 +2727,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
 bool assembler_1_c::canUseSimd(void) const {
   if (task_stack.size() != 1 || !rows.empty() || next_row_stack.size() != 1)
     return false;
-  if (std::getenv("BURRTOOLS_NO_SIMD"))
+  if (!SimdConfig::isBitParallelSolverEnabled())
     return false;
   if (debug)
     return false;

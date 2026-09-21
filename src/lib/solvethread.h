@@ -25,11 +25,11 @@
 #include "disassembler.h"
 #include "disassemblerpool.h"
 #include "bt_assert.h"
-#include "thread.h"
 
 #include <time.h>
 #include <atomic>
 #include <memory>
+#include <thread>
 
 class problem_c;
 
@@ -37,7 +37,7 @@ class problem_c;
  * be used to continue an already started solution, so that you can save you results
  * and continue later on
  */
-class solveThread_c : public assembler_cb, public thread_c {
+class solveThread_c : public assembler_cb {
 
   public:
 
@@ -183,15 +183,21 @@ class solveThread_c : public assembler_cb, public thread_c {
    */
   std::atomic<assembler_c *> assm;
 
-
-
-
+  std::jthread worker_thread;
+  std::atomic<bool> running{false};
 
 public:
 
-
   // stop and exit
   virtual ~solveThread_c(void);
+
+  /** return true, if the thread is running */
+  bool isRunning(void) const { return running.load(std::memory_order_relaxed); }
+
+  void joinThread(void) {
+    if (worker_thread.joinable())
+      worker_thread.join();
+  }
 
 private:
 
@@ -210,7 +216,7 @@ public:
   bool start(bool stop_after_prep = false);
 
   // try to stop the thread at the next possible position
-  void stop(void) override;
+  void stop(void);
 
   /* true once the worker has left run() for good. ACT_ASSERT belongs here:
    * an assert in the worker ends the thread just as surely as the other three,
@@ -224,7 +230,7 @@ public:
            );
   }
 
-  void run(void) override;
+  void run(void);
 
 private:
 

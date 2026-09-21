@@ -385,7 +385,13 @@ bool solveThread_c::start(bool stop_after_prep) {
     a = (a+1) / 2;
   }
 
-  return thread_c::start();
+  running.store(true, std::memory_order_release);
+  worker_thread = std::jthread([this]() {
+    run();
+    running.store(false, std::memory_order_release);
+  });
+
+  return worker_thread.joinable();
 }
 
 unsigned int solveThread_c::currentActionParameter(void) {

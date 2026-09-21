@@ -109,7 +109,7 @@ private:
   std::condition_variable_any cv_producer;
   std::condition_variable_any cv_assembler;
   std::queue<Task> work_queue;
-  unsigned int assembler_permits{0};
+  unsigned int available_disassembly_permits{0};
   size_t max_queue_size{64};
   size_t max_reorder_size{64};
 
