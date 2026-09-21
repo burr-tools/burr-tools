@@ -18,6 +18,16 @@ fi
 BUILD_DIR="${2:-build}"
 EXECUTABLE="burrtools"
 
+# Name artifacts after the architecture they were actually built for, so an
+# Apple Silicon build is never mistaken for an Intel one on the release page.
+ARCH="$(uname -m)"
+DMG_NAME="${APP_NAME}-${VERSION}-macos-${ARCH}.dmg"
+if [ "${ARCH}" = "arm64" ]; then
+	ARCH_LINE="This build runs on Apple Silicon Macs (M1 and later). On an Intel Mac,"
+else
+	ARCH_LINE="This build runs on Intel Macs (${ARCH}). On an Apple Silicon Mac,"
+fi
+
 echo "Creating macOS app bundle..."
 
 # Create bundle structure
@@ -103,19 +113,27 @@ BurrTools is a library to solve burr-type puzzles. Bundled with the
 library comes a graphical program that lets you edit the puzzles and
 view the found solutions.
 
+${ARCH_LINE}
+build from source: https://github.com/burr-tools/burr-tools/blob/master/BUILD.md
+
 GETTING STARTED ON macOS:
-1. Drag BurrTools.app to your Applications folder (optional)
-2. Right-click BurrTools.app and select "Open" (first time only)
-3. Click "Open" in the security dialog
+1. Drag BurrTools.app to your Applications folder
+2. Open Terminal and run:  xattr -cr /Applications/BurrTools.app
+3. Launch BurrTools normally
 4. Open example puzzles from the Examples folder using File > Load
 
-ABOUT THE SECURITY WARNING:
-BurrTools is an open-source project distributed without an Apple Developer
-signature. The security warning is normal and appears only once. After using
-"Right-click > Open", macOS will remember your choice.
+ABOUT "BURRTOOLS.APP IS DAMAGED AND CAN'T BE OPENED":
+The app is not damaged. BurrTools is an open-source project distributed
+without an Apple Developer signature, so macOS quarantines it on download and
+then reports the missing signature with that message. Step 2 above clears the
+quarantine flag, and only needs to be done once.
 
-Alternatively, you can run this command in Terminal:
-  xattr -cr /Applications/BurrTools.app
+If you would rather not use Terminal, try to open the app once, then go to
+System Settings > Privacy & Security, scroll to the Security section, and
+click "Open Anyway" next to the message about BurrTools.
+
+Control-clicking the app and choosing "Open" does not get past this message,
+and no longer bypasses Gatekeeper at all as of macOS 15 Sequoia.
 
 EXAMPLE PUZZLES:
 The Examples folder contains sample puzzle files (.xmpuzzle) that you can
@@ -137,17 +155,18 @@ https://github.com/burr-tools/burr-tools/issues
 READMEEOF
 	# Substitute VERSION variable
 	sed -i '' "s/\${VERSION}/${VERSION}/g" "${DMG_DIR}/README.txt"
+	sed -i '' "s|\${ARCH_LINE}|${ARCH_LINE}|g" "${DMG_DIR}/README.txt"
 	
 	# Create DMG
-	hdiutil create -volname "BurrTools ${VERSION}" -srcfolder "${DMG_DIR}" -ov -format UDZO "BurrTools-${VERSION}.dmg"
+	hdiutil create -volname "BurrTools ${VERSION}" -srcfolder "${DMG_DIR}" -ov -format UDZO "${DMG_NAME}"
 	
 	# Clean up
 	rm -rf "${DMG_DIR}"
 	
-	echo "Created: BurrTools-${VERSION}.dmg"
+	echo "Created: ${DMG_NAME}"
 fi
 
 echo ""
-echo "Note: This app is unsigned. Users will need to:"
-echo "  1. Right-click the app and select 'Open'"
-echo "  2. Or run: xattr -cr BurrTools.app"
+echo "Note: This app is unsigned. Users will need to run:"
+echo "  xattr -cr BurrTools.app"
+echo "(or System Settings > Privacy & Security > Open Anyway)"
