@@ -623,24 +623,24 @@ void method2_c::setRotation(const float m[9])
   if (tr > 0.0f) {
     float s = sqrtf(tr + 1.0f) * 2.0f;
     q3 = 0.25f * s;
-    q0 = (m12 - m21) / s;
-    q1 = (m20 - m02) / s;
-    q2 = (m01 - m10) / s;
+    q0 = (m21 - m12) / s;
+    q1 = (m02 - m20) / s;
+    q2 = (m10 - m01) / s;
   } else if ((m00 > m11) && (m00 > m22)) {
     float s = sqrtf(1.0f + m00 - m11 - m22) * 2.0f;
-    q3 = (m12 - m21) / s;
+    q3 = (m21 - m12) / s;
     q0 = 0.25f * s;
     q1 = (m01 + m10) / s;
     q2 = (m02 + m20) / s;
   } else if (m11 > m22) {
     float s = sqrtf(1.0f + m11 - m00 - m22) * 2.0f;
-    q3 = (m20 - m02) / s;
+    q3 = (m02 - m20) / s;
     q0 = (m01 + m10) / s;
     q1 = 0.25f * s;
     q2 = (m12 + m21) / s;
   } else {
     float s = sqrtf(1.0f + m22 - m00 - m11) * 2.0f;
-    q3 = (m01 - m10) / s;
+    q3 = (m10 - m01) / s;
     q0 = (m02 + m20) / s;
     q1 = (m12 + m21) / s;
     q2 = 0.25f * s;
