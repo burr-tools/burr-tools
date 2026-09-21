@@ -509,7 +509,7 @@ done.
 
 **Appearance:**
 
-- [ ] Compare `gleam` against `oxy`; record the choice and the reason.
+- [x] Compare `gleam` against `oxy`; record the choice and the reason.
 - [x] Labels render in SF Pro, not Helvetica — confirm `.AppleSystemUIFont` resolved
       rather than silently falling back. **Confirmed by measurement, not by eye.**
       `CTFontCreateWithName(".AppleSystemUIFont")` returns `System Font Regular` /
@@ -520,13 +520,13 @@ done.
       `FL_HELVETICA` as remapped and 186.310 for the system UI font, against 174.180
       for real Helvetica — so the remap reaches FLTK's text rendering, not just its
       font table.
-- [ ] Walk every tab and every dialog, checking the custom-drawn widgets from
+- [x] Walk every tab and every dialog, checking the custom-drawn widgets from
       Section 4.2 against their surroundings.
-- [ ] Linux and Windows: the new scheme is applied and nothing is visually broken.
+- [x] Linux and Windows: the new scheme is applied and nothing is visually broken.
 
 **Integration:**
 
-- [x] Double-clicking an `.xmpuzzle` in Finder opens it, both when BurrTools is
+- [ ] Double-clicking an `.xmpuzzle` in Finder opens it, both when BurrTools is
       already running and when it is not.
 - [ ] Dropping a puzzle on the Dock icon opens it.
 - [ ] App and document icons appear in Finder, the Dock and ⌘-Tab.
