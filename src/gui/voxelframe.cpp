@@ -20,6 +20,7 @@
  */
 #include "voxelframe.h"
 #include "arcball.h"
+#include "viewcube.h"
 
 #include "piececolor.h"
 #include "configuration.h"
@@ -56,6 +57,9 @@ voxelFrame_c::voxelFrame_c(int x,int y,int w,int h) :
   mX1(0), mY1(0), mZ(0), mX2(0), mY2(0),
   markerType(-1),
   size(10), cb(0),
+  viewCube(new viewCube_c()),
+  homeCb(0),
+  homeUser(0),
   colors(pieceColor),
   curStyle(styleVoxel),
   _showCoordinateSystem(false),
@@ -97,6 +101,7 @@ voxelFrame_c::~voxelFrame_c(void) {
     curAssembly = 0;
   }
   delete rotater;
+  delete viewCube;
 }
 
 // this is used to shift one side of the cubes so that they slightly differ
@@ -1627,6 +1632,10 @@ static void gluPickMatrix(double x, double y, double deltax, double deltay, GLin
 }
 
 void voxelFrame_c::draw() {
+  draw(true);
+}
+
+void voxelFrame_c::draw(bool withViewCube) {
 
   if (!valid()) {
 
@@ -1735,14 +1744,48 @@ void voxelFrame_c::draw() {
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
   }
 
+  if (withViewCube && pickx < 0 && viewCube && w() >= 48 && h() >= 48)
+    viewCube->draw(rotater, w(), h(), pixels_per_unit());
+
+  if (_useLightning)
+    glEnable(GL_LIGHTING);
+
   if (cb)
     cb->PostDraw();
+}
+
+void voxelFrame_c::resetViewRotation(void) {
+  if (rotater)
+    rotater->resetRotation();
 }
 
 int voxelFrame_c::handle(int event) {
 
   if (Fl_Gl_Window::handle(event))
     return 1;
+
+  if (viewCube && pickx < 0) {
+    if (event == FL_ENTER)
+      return 1;
+
+    viewCube_c::Action a = viewCube->handle(event, rotater, w(), h());
+    if (a == viewCube_c::ACT_HOME) {
+      if (homeCb)
+        homeCb(this, homeUser);
+      else
+        resetViewRotation();
+      redraw();
+      return 1;
+    }
+    if (a == viewCube_c::ACT_REDRAW) {
+      redraw();
+      return 1;
+    }
+    if (viewCube->isTracking())
+      return 1;
+    if ((event == FL_MOVE || event == FL_LEAVE) && viewCube->contains(Fl::event_x(), Fl::event_y(), w(), h()))
+      return 1;
+  }
 
   switch(event) {
   case FL_PUSH:
@@ -1850,7 +1893,7 @@ void voxelFrame_c::exportToVector(const char * fname, VectorFiletype vt) {
         GL2PS_USE_CURRENT_VIEWPORT | GL2PS_OCCLUSION_CULL, GL_RGBA, 0, NULL, 0, 0, 0,
         bufsize, of, fname);
 
-    draw();
+    draw(false);
 
     state = gl2psEndPage();
   }
