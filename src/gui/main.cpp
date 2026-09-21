@@ -87,6 +87,15 @@ int main(int argc, char ** argv) {
 
   bt_assert_init();
 
+  /* And again on the normal path, so that simply running the program is
+   * enough to catch menu-table drift -- the --self-check entry point above
+   * exists for CI, not as the only place this runs. The check is a linear
+   * walk of a couple of dozen table entries, which costs nothing next to
+   * building the main window, and it must happen before that window is
+   * constructed so a failure surfaces before any menu is copied.
+   */
+  mainmenu::assertTablesConsistent();
+
   platform::applyLookAndFeel();
 
   mainWindow_c *ui = new mainWindow_c(new gridType_c());

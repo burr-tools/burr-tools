@@ -182,7 +182,15 @@ class mainWindow_c : public LFl_Double_Window {
   double ViewSizes[3];
   int currentTab;
 
-  bool tryToLoad(const char *fname);
+  /* Load a puzzle file. Returns false if it could not be loaded.
+   *
+   * Some failures are reported to the user by this function (a parse error
+   * shows "load error: ...") and some are silent (no name, file gone,
+   * stream could not be opened). A caller that wants to put up its own
+   * message on failure must pass 'reportedError' and only speak up when it
+   * comes back false, or the user sees two dialogs stacked for one failure.
+   */
+  bool tryToLoad(const char *fname, bool * reportedError = 0);
 
   /* Ask about unsaved changes before an operation that would discard them.
    * Returns false if the caller should abort. 'action' is the verb shown to

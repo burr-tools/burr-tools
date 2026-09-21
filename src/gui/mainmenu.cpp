@@ -23,8 +23,6 @@
 
 #include "../lib/bt_assert.h"
 
-#include <FL/Fl.H>
-
 #ifdef __APPLE__
 #include <FL/Fl_Sys_Menu_Bar.H>
 #include <FL/Fl_Group.H>
@@ -126,34 +124,26 @@ const Fl_Menu_Item * mainmenu::table(void) {
   return activeTable();
 }
 
-Fl_Menu_Item * mainmenu::mutableTable(void) {
-  return activeTable();
-}
-
-int mainmenu::findEntry(Fl_Callback * cb) {
-
-  bt_assert(cb);
-
-  int found = -1;
-
-  for (size_t i = 0; i < activeTableSize(); i++)
-    if (activeTable()[i].callback() == cb) {
-      bt_assert(found == -1);
-      found = (int)i;
-    }
-
-  bt_assert(found >= 0);
-  return found;
-}
-
 void cb_Help_stub(Fl_Widget*, void*) {
   platform::openHelp();
 }
 
 void mainmenu::assertTablesConsistent(void) {
 
-  /* Compare the two tables by the set of callbacks they expose. Labels and
-   * shortcuts differ by design; a missing or extra callback does not.
+  /* Walk the portable table and require each of its callbacks to appear in
+   * the table this build actually uses. Labels and shortcuts differ by
+   * design; a missing callback does not.
+   *
+   * This is deliberately ONE-DIRECTIONAL, portable -> platform, rather than
+   * a set equality: cb_Help_stub is macOS-only (the portable menu has never
+   * had a Help item), so requiring the reverse containment would fail every
+   * macOS build. The consequence is that an item added ONLY to menu_Mac is
+   * not caught here -- only the portable-table-forgotten-on-macOS direction
+   * is, which is the direction that actually loses functionality.
+   *
+   * Off macOS activeTable() is menu_Portable, so this compares the portable
+   * table with itself and is a tautology. The check can only ever fire on a
+   * macOS build; that is where the second table exists.
    *
    * The macOS table intentionally omits About, Settings and Quit, which
    * live in the application menu, so those are excluded from the

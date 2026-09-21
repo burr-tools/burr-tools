@@ -521,6 +521,29 @@ class LFl_Menu_Bar : public Fl_Menu_Bar, public layoutable_c {
 };
 
 #ifdef __APPLE__
+/* The macOS menu bar, which is NOT owned by the layouter -- deliberately.
+ *
+ * Fl_Sys_Menu_Bar's constructor calls parent()->remove(this) on itself
+ * (subprojects/fltk/src/Fl_Sys_Menu_Bar.cxx:38-40), because the menu it
+ * represents is drawn by the system at the top of the screen, not inside
+ * our window. So although mainWindow_c constructs this inside the master
+ * layouter's begin()/end() scope like every other widget, it is never a
+ * child of that layouter.
+ *
+ * Two consequences, both intended:
+ *
+ *  - That self-removal is exactly why no empty 25-pixel menu strip appears
+ *    across the top of the window on macOS. Do NOT "fix" the ownership to
+ *    make this a well-behaved layout child: doing so puts the strip back.
+ *    getMinSize() below is consequently unreachable on macOS; it exists
+ *    only to satisfy layoutable_c's interface.
+ *
+ *  - Nothing deletes this object: the layouter cannot, because it does not
+ *    own it, and mainWindow_c does not, because FLTK widgets are normally
+ *    owned by their group. That is one allocation, of process lifetime,
+ *    freed by the OS at exit -- known, and accepted as the cheaper side of
+ *    the trade against reintroducing the empty strip.
+ */
 class LFl_Sys_Menu_Bar : public Fl_Sys_Menu_Bar, public layoutable_c {
   public:
     LFl_Sys_Menu_Bar(int x, int y, int w, int h)

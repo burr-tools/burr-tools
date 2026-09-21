@@ -1546,7 +1546,7 @@ void mainWindow_c::cb_New(void) {
 
     if (!fname.empty()) {
       fname.clear();
-      copy_label(platform::windowTitle(0, false).c_str());
+      copy_label(platform::windowTitle(0).c_str());
     }
 
     changed = false;
@@ -1593,7 +1593,7 @@ void mainWindow_c::cb_Load_Ps3d(void) {
 
       fname = f;
 
-      copy_label(platform::windowTitle(fname.c_str(), changed).c_str());
+      copy_label(platform::windowTitle(fname.c_str()).c_str());
 
       ReplacePuzzle(std::move(newPuzzle));
       updateInterface();
@@ -1796,7 +1796,7 @@ void mainWindow_c::cb_SaveAs(void) {
 
         fname = f2;
 
-        copy_label(platform::windowTitle(fname.c_str(), changed).c_str());
+        copy_label(platform::windowTitle(fname.c_str()).c_str());
 
       } else {
 
@@ -2035,7 +2035,9 @@ bool mainWindow_c::threadStopped(void) {
   return true;
 }
 
-bool mainWindow_c::tryToLoad(const char * f) {
+bool mainWindow_c::tryToLoad(const char * f, bool * reportedError) {
+
+  if (reportedError) *reportedError = false;
 
   // it may well be that the file doesn't exist, if it came from the command line
   if (!f) return false;
@@ -2058,12 +2060,13 @@ bool mainWindow_c::tryToLoad(const char * f) {
   catch (xmlParserException_c &e)
   {
     fl_message("%s",(std::string("load error: ") + e.what()).c_str());
+    if (reportedError) *reportedError = true;
     return false;
   }
 
   fname = f;
 
-  copy_label(platform::windowTitle(fname.c_str(), changed).c_str());
+  copy_label(platform::windowTitle(fname.c_str()).c_str());
 
   ReplacePuzzle(std::move(newPuzzle));
   updateInterface();
@@ -2123,7 +2126,14 @@ void mainWindow_c::openFromSystem(const char * filename) {
   if (!confirmDiscard("open that puzzle"))
     return;
 
-  if (!tryToLoad(filename))
+  /* Only speak up for the failures tryToLoad() keeps to itself. A parse
+   * error has already shown "load error: ..." with the detail this message
+   * does not have, and stacking a second, vaguer dialog on top of it just
+   * makes the user dismiss two boxes for one problem.
+   */
+  bool reportedError = false;
+
+  if (!tryToLoad(filename, &reportedError) && !reportedError)
     fl_message("Could not open %s", filename);
 }
 
@@ -2411,6 +2421,11 @@ static int liveMenuIndex(const Fl_Menu_ * m, Fl_Callback * cb) {
 // Set or clear FL_MENU_INACTIVE on one entry of a live menu array, leaving
 // every other flag on that entry untouched.
 //
+// index must be a real entry: a miss means the callback this was looked up
+// by is no longer in the menu, i.e. the greying-out silently stopped
+// working. The findMenuEntry() this replaced asserted on that, and the
+// assertion is kept here rather than lost -- see the bt_assert below.
+//
 // Deliberately takes an Fl_Menu_ *, not an Fl_Menu_Bar * or Fl_Sys_Menu_Bar *:
 // Fl_Sys_Menu_Bar hides mode(int,int) with its own non-virtual overload, and
 // both mode() accessors used here are non-virtual, so which one gets called
@@ -2419,7 +2434,7 @@ static int liveMenuIndex(const Fl_Menu_ * m, Fl_Callback * cb) {
 // -- it does not touch the visible system menu. The caller must still call
 // the (virtual) update() afterwards to push the array to the screen.
 static void setLiveMenuActive(Fl_Menu_ * m, int index, bool active) {
-  if (index < 0) return;
+  bt_assert(index >= 0);
   int flags = m->mode(index);
   if (active)
     flags &= ~FL_MENU_INACTIVE;
@@ -2447,13 +2462,31 @@ void mainWindow_c::updateInterface(void) {
      * installed. A copy() here would silently discard that entry -- and
      * with it Cmd-M and the window list -- for the rest of the process.
      */
-    setLiveMenuActive(MainMenu, liveMenuIndex(MainMenu, cb_ImageExport_stub), exportActive);
-    setLiveMenuActive(MainMenu, liveMenuIndex(MainMenu, cb_STLExport_stub), stlActive);
+    const int imageIndex = liveMenuIndex(MainMenu, cb_ImageExport_stub);
+    const int stlIndex   = liveMenuIndex(MainMenu, cb_STLExport_stub);
 
-    MainMenu->update();
+    /* Both lookups are resolved, and asserted, before anything is written.
+     * A miss means the export items are no longer reachable by these
+     * callbacks -- e.g. Export was rerouted through a different stub -- and
+     * the consequence is that Export silently stops greying out on an empty
+     * puzzle. A debug build throws here; a release build, where bt_assert
+     * compiles away, must then NOT record the new state, so the next
+     * updateInterface() retries instead of latching the failure for the
+     * rest of the process.
+     */
+    bt_assert(imageIndex >= 0);
+    bt_assert(stlIndex >= 0);
 
-    menuExportActive = exportActive;
-    menuSTLActive    = stlActive;
+    if (imageIndex >= 0 && stlIndex >= 0) {
+
+      setLiveMenuActive(MainMenu, imageIndex, exportActive);
+      setLiveMenuActive(MainMenu, stlIndex, stlActive);
+
+      MainMenu->update();
+
+      menuExportActive = exportActive;
+      menuSTLActive    = stlActive;
+    }
   }
 
   unsigned int prob = solutionProblem->getSelection();
@@ -4118,7 +4151,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
     menuSTLActive(true),
     expertMode(true) {
 
-  copy_label(platform::windowTitle(0, false).c_str());
+  copy_label(platform::windowTitle(0).c_str());
   user_data((void*)(this));
 
 #ifdef __APPLE__

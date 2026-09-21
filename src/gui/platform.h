@@ -54,8 +54,12 @@ namespace platform {
   /* The window title for a document. macOS wants the bare file name;
    * everywhere else keeps the historical "BurrTools - <name>".
    * A null or empty file name yields the untitled form.
+   *
+   * The title deliberately says nothing about unsaved changes: that is
+   * setDocumentEdited()'s job below, which uses the platform's own
+   * affordance rather than decorating the title text.
    */
-  std::string windowTitle(const char * filename, bool edited);
+  std::string windowTitle(const char * filename);
 
   /* Reflect unsaved changes in the window chrome (the dot in the macOS
    * close button). No-op where the platform has no such affordance.

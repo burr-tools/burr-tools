@@ -141,7 +141,7 @@ GETTING STARTED ON macOS:
 1. Drag BurrTools.app to your Applications folder (optional)
 2. Right-click BurrTools.app and select "Open" (first time only)
 3. Click "Open" in the security dialog
-4. Open example puzzles from the Examples folder using File > Load
+4. Open example puzzles from the Examples folder using File > Open...
 
 ABOUT THE SECURITY WARNING:
 BurrTools is an open-source project distributed without an Apple Developer
@@ -154,11 +154,12 @@ Alternatively, you can run this command in Terminal:
 EXAMPLE PUZZLES:
 The Examples folder contains sample puzzle files (.xmpuzzle) that you can
 open with BurrTools to explore various puzzle types and designs. Simply use
-File > Load in BurrTools and navigate to the Examples folder.
+File > Open... in BurrTools and navigate to the Examples folder, or
+double-click an .xmpuzzle file in the Finder.
 
 DOCUMENTATION:
-The real documentation is inside the executable as on-line help, and also
-available as a PDF for off-line reading or printouts.
+The user guide is published online. Help > BurrTools User Guide in the
+application opens it in your browser; the link is also listed below.
 
 For more information, documentation, and source code:
 https://github.com/burr-tools/burr-tools

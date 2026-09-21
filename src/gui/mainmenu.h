@@ -36,23 +36,23 @@ namespace mainmenu {
   /* the table for the platform this build targets */
   const Fl_Menu_Item * table(void);
 
-  /* the same table, writable, for activate()/deactivate() */
-  Fl_Menu_Item * mutableTable(void);
-
-  /* Index of the entry with the given callback.
-   *
-   * Deliberately keyed on the callback rather than the label: the macOS
-   * table uses different wording ("Image..." where the portable table says
-   * "Images"), so a label-keyed lookup would assert on one platform and
-   * not the other.
-   */
-  int findEntry(Fl_Callback * cb);
-
-  /* Assert that both tables expose the same set of callbacks.
+  /* Assert that every callback in the portable table also appears in the
+   * table this build targets.
    *
    * Adding an item to one table and forgetting the other is the failure
    * mode this design creates; this is the check that catches it. Labels and
    * shortcuts are intentionally not compared, as they legitimately differ.
+   *
+   * The check is ONE-DIRECTIONAL -- portable -> platform -- and must stay
+   * that way: cb_Help_stub exists only on macOS, because the portable menu
+   * has never had a Help item, so a symmetric comparison would fail every
+   * macOS build. The cost of that asymmetry is that an item added ONLY to
+   * the macOS table is NOT caught; the case that matters in practice, an
+   * item added to the portable table and forgotten on macOS, is.
+   *
+   * Called from main() on both the normal and the --self-check path, so
+   * running the program at all exercises it. Note it can only fail on
+   * macOS: elsewhere there is one table and it is compared with itself.
    */
   void assertTablesConsistent(void);
 
@@ -61,7 +61,9 @@ namespace mainmenu {
 }
 
 /* The menu callbacks. Defined in mainwindow.cpp next to the methods they
- * forward to; declared here because the tables above reference them.
+ * forward to -- except cb_Help_stub, which has no mainwindow_c method behind
+ * it and is defined in mainmenu.cpp. Declared here because the tables above
+ * reference them.
  */
 void cb_New_stub(Fl_Widget*, void*);
 void cb_Load_stub(Fl_Widget*, void*);

@@ -12,7 +12,13 @@
 # 1024x1024 with a transparent background, saved to mac/icon-source.png.
 set -e
 
+# $1 -- the application artwork.
+# $2 -- the document artwork, used for the icon Finder puts on .xmpuzzle
+#       files. Optional: if it is missing the app artwork is used instead,
+#       with a warning, because two identical icons is a real defect rather
+#       than a cosmetic one (see below).
 SRC="${1:-mac/icon-source.png}"
+DOC_SRC="${2:-mac/icon-source-doc.png}"
 OUT_DIR="mac"
 
 if [ ! -f "$SRC" ]; then
@@ -30,14 +36,26 @@ if [ ! -f "$SRC" ]; then
 	exit 1
 fi
 
+# Scratch space for the .iconset directories, which are an implementation
+# detail of iconutil and of no use once the .icns files exist.
+#
+# One trap at the top level rather than per-call cleanup inside make_icns:
+# `set -e` is in force, so a sips or iconutil failure aborts the script
+# outright, and an EXIT trap is the only cleanup that still runs on that
+# path. (A RETURN trap inside the function would not.)
+TMPROOT="$(mktemp -d)"
+trap 'rm -rf "$TMPROOT"' EXIT
+
+# make_icns <output name> <source png>
 make_icns() {
 	local name="$1"
-	local iconset="$(mktemp -d)/${name}.iconset"
+	local src="$2"
+	local iconset="${TMPROOT}/${name}.iconset"
 	mkdir -p "$iconset"
 
 	for size in 16 32 128 256 512; do
-		sips -z $size $size "$SRC" --out "${iconset}/icon_${size}x${size}.png" >/dev/null
-		sips -z $((size*2)) $((size*2)) "$SRC" --out "${iconset}/icon_${size}x${size}@2x.png" >/dev/null
+		sips -z $size $size "$src" --out "${iconset}/icon_${size}x${size}.png" >/dev/null
+		sips -z $((size*2)) $((size*2)) "$src" --out "${iconset}/icon_${size}x${size}@2x.png" >/dev/null
 	done
 
 	iconutil -c icns "$iconset" -o "${OUT_DIR}/${name}.icns"
@@ -45,5 +63,29 @@ make_icns() {
 }
 
 mkdir -p "$OUT_DIR"
-make_icns BurrTools
-make_icns BurrToolsDoc
+
+make_icns BurrTools "$SRC"
+
+# The document icon should NOT be the application icon. Finder shows the
+# document icon on every .xmpuzzle file, and the whole point of it is to be
+# distinguishable at a glance from the app that opens them -- conventionally
+# the app artwork on a page/document shape, so a folder of puzzles does not
+# look like a folder of copies of BurrTools.
+#
+# Until that second piece of artwork exists, fall back to the app artwork and
+# say clearly what the fallback costs.
+if [ -f "$DOC_SRC" ]; then
+	make_icns BurrToolsDoc "$DOC_SRC"
+else
+	echo "" >&2
+	echo "warning: $DOC_SRC not found -- falling back to $SRC for the document icon." >&2
+	echo "         BurrTools.icns and BurrToolsDoc.icns will be byte-identical, so" >&2
+	echo "         Finder will show the same picture for the application and for" >&2
+	echo "         every .xmpuzzle file. That is precisely what a document icon is" >&2
+	echo "         supposed to avoid." >&2
+	echo "         To fix: render a document-shaped variant of the artwork (the app" >&2
+	echo "         image inset on a page/document outline) at 1024x1024 and save it" >&2
+	echo "         to ${DOC_SRC}, then re-run this script." >&2
+	echo "" >&2
+	make_icns BurrToolsDoc "$SRC"
+fi

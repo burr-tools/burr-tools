@@ -92,7 +92,7 @@ void platform::installOpenHandler(void (*handler)(const char *)) {
 #endif
 }
 
-std::string platform::windowTitle(const char * filename, bool /*edited*/) {
+std::string platform::windowTitle(const char * filename) {
 
   const bool untitled = !filename || !filename[0];
 

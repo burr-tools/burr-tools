@@ -52,8 +52,34 @@ Worth stating so the plan does not re-do it:
 
 ## 2. Architecture: The Platform Seam
 
-Two new units. Neither `mainwindow.cpp` nor `main.cpp` gains a single new
-`#ifdef __APPLE__` — all platform branching is confined to one `.cpp`.
+Two new units. `main.cpp` gains no `#ifdef __APPLE__` at all, and
+`mainwindow.cpp` gains exactly one, at the menu bar's construction
+(`mainwindow.cpp:4110-4114`):
+
+```cpp
+#ifdef __APPLE__
+  MainMenu = new LFl_Sys_Menu_Bar(0, 0, 1, 1);
+#else
+  MainMenu = new LFl_Menu_Bar(0, 0, 1, 1);
+#endif
+```
+
+**That one exception is unavoidable and is not worth a factory.** `LFl_Sys_Menu_Bar`
+wraps `Fl_Sys_Menu_Bar`, which FLTK compiles only under `__APPLE__`, so the type does
+not exist to name off macOS. The choice is between this three-line `#ifdef` and a
+`mainmenu::createMenuBar()` factory whose only job would be to move the same three
+lines behind a function call while forcing the return type up to `Fl_Menu_ *` and
+losing the layouter typing at the call site. The `#ifdef` is the smaller thing.
+
+Note also that `platform::usesSystemMenuBar()` does **not** end up gating menu bar
+construction — the `#ifdef` above does, because it must be a compile-time decision.
+What it actually gates at runtime is the F-key handling in `mainwindow.cpp`
+(`handle()`, around line 3348): the portable table binds F2/F3/F4, the macOS table
+uses ⌘S/⌘O/⌘3 instead, and those `FL_F + n` cases must not fire where the system
+menu bar is in charge.
+
+Beyond that one branch, all platform behaviour is confined to `platform.cpp` and
+`mainmenu.cpp`.
 
 ### 2.1 `src/gui/platform.{h,cpp}`
 
@@ -79,13 +105,21 @@ activate/deactivate logic at `mainwindow.cpp:2353-2379` move here wholesale.
 ```cpp
 namespace mainmenu {
   const Fl_Menu_Item* table();                // the platform-appropriate table
-  int  findEntry(Fl_Callback* cb);            // lookup by callback, not by label
   void installApplicationMenu(mainWindow_c*); // macOS App-menu wiring; no-op elsewhere
   void assertTablesConsistent();              // startup drift check
 }
 ```
 
-**`findEntry()` must key on the callback pointer, not the label.** Today's
+**As implemented, there is no `mainmenu::findEntry()`.** The plan called for one, but
+Task 3 established that an index into the *static* table is the wrong answer on macOS:
+FLTK inserts its own "Window" entry into the *live* menu array at first `show()`, which
+shifts every index after it. The lookup therefore lives in `mainwindow.cpp` as
+`liveMenuIndex(const Fl_Menu_*, Fl_Callback*)`, walking the live array the menu bar
+actually holds. Its `bt_assert` on a miss is preserved in `setLiveMenuActive()`, which
+is where the index is consumed. The requirement below still holds — it keys on the
+callback pointer, not the label.
+
+**The lookup must key on the callback pointer, not the label.** Today's
 `mainWindow_c::findMenuEntry()` (`mainwindow.cpp:2348-2359`) does
 `strcmp(item.label(), txt)` and `bt_assert(found >= 0)` on a miss, and
 `updateInterface()` calls it with the literals `"Images"` and `"STL"`
@@ -104,17 +138,29 @@ declarations in `mainmenu.h`.
 
 The two tables are the maintenance hazard of this design: a menu item added to one
 and forgotten in the other is silent on the platform that missed it.
-`assertTablesConsistent()`, called once from `main()`, walks both tables and
-`bt_assert`s that the *set of callback function pointers* is identical between them.
-Labels and shortcuts are deliberately **not** compared — they legitimately differ
-(Section 3.2).
+`assertTablesConsistent()`, called once from `main()`, walks the portable table and
+`bt_assert`s that every callback function pointer in it also appears in the table this
+build targets. Labels and shortcuts are deliberately **not** compared — they
+legitimately differ (Section 3.2).
+
+**The check is one-directional, portable → platform, and must stay that way.**
+`cb_Help_stub` exists only in the macOS table, because the portable menu has never
+had a Help item, so requiring set *equality* would fail every macOS build. The price
+of the asymmetry is that an item added only to `menu_Mac` is not caught; the direction
+that actually loses functionality — an item added to the portable table and forgotten
+on macOS — is.
+
+**Where it runs.** `main()` calls it on both paths: the normal startup path, before
+the main window is constructed, so running the app at all exercises it; and the
+`--self-check` path, which does nothing else and exits, which is what `just check-gui`
+and the macOS CI job invoke. Note it can only ever *fail* on macOS — elsewhere
+`activeTable()` is `menu_Portable`, so the loop compares the portable table with
+itself. That is why `just check-gui` is wired into the macOS job specifically.
 
 **Known limitation, accepted:** `test_burrtools` links `src/lib` only, with no FLTK
-dependency, and this project does not change that. The assertion therefore fires on
-first launch of a debug build, not in CI. This was a deliberate trade — adding FLTK
-to the test binary to unit-test a menu table was judged the more expensive option.
-A developer who adds a menu item and runs the app once will hit it; one who adds a
-menu item and never runs the app will not.
+dependency, and this project does not change that, so this is not a unit test. Adding
+FLTK to the test binary to unit-test a menu table was judged the more expensive
+option.
 
 ### 2.4 Rejected: A Full Platform Abstraction Layer
 
