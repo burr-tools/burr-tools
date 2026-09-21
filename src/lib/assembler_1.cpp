@@ -2858,6 +2858,10 @@ void assembler_1_c::simdSearch(void) {
    */
   parallelInterrupted = abbort.load(std::memory_order_relaxed);
   simdCompleted = !parallelInterrupted;
+  if (simdCompleted) {
+    next_row_stack.clear();
+    task_stack.clear();
+  }
 
   running.store(false, std::memory_order_relaxed);
 }

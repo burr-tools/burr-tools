@@ -29,7 +29,7 @@ class thread_c {
 
   private:
 
-    std::thread t;  // our thread
+    std::jthread t;  // our thread
 
     /* read from the controlling (GUI) thread via isRunning() while the worker
      * sets it in start_thread(); must be atomic
@@ -48,7 +48,7 @@ class thread_c {
     bool start();
 
     /** inform the thread to stop running, this is dependent on the thread */
-    virtual void stop() {};
+    virtual void stop() { t.request_stop(); }
 
     /** return true, if the thread is running */
     bool isRunning(void) { return running; }

@@ -50,8 +50,8 @@ bool thread_c::start() {
   start_thread();
   result = true;
 #else
-  t = std::thread([this](){ this->start_thread();});
-  result = t.get_id() != std::this_thread::get_id();
+  t = std::jthread([this](){ this->start_thread();});
+  result = t.joinable();
 
   if (!result)
   {

@@ -2113,10 +2113,12 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
     }
 
   /* check for integrity last read data may contain only preparation for next, so don't check that one */
-  for (unsigned int i = 0; i < pos; i++) {
-    // for the last piece we can check for the number of nodes
-    if (rows[i] > left.size())
-      return ERR_CAN_NOT_RESTORE_SYNTAX;
+  if (pos <= piecenumber) {
+    for (unsigned int i = 0; i < pos; i++) {
+      // for the last piece we can check for the number of nodes
+      if (rows[i] > left.size())
+        return ERR_CAN_NOT_RESTORE_SYNTAX;
+    }
   }
 
   /* here we need to get the matrix into this exact position as it has been, when we

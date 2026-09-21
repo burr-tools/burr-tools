@@ -82,7 +82,7 @@ public:
   virtual void parallelSolve(
     unsigned int num_workers,
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::atomic<bool> &abort_flag,
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
     std::atomic<size_t> &completed_tasks
@@ -169,7 +169,7 @@ public:
   void parallelSolve(
     unsigned int num_workers,
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::atomic<bool> &abort_flag,
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
     std::atomic<size_t> &completed_tasks

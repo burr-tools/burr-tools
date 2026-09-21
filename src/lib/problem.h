@@ -32,6 +32,7 @@
 #include <set>
 #include <string>
 #include <mutex>
+#include <atomic>
 
 #include <stdint.h>
 
@@ -128,7 +129,7 @@ private:
   /**
    * this state reflects how far we are with solving this problem
    */
-  solveState_e solveState;
+  std::atomic<solveState_e> solveState{SS_UNSOLVED};
 
   /**
    * Number of found assemblies for the problem.
@@ -136,7 +137,7 @@ private:
    * this is independent of the solutions vector, these are the pure numbers.
    * 0xFFFFFFFF stands for too many to count
    */
-  unsigned long numAssemblies;
+  std::atomic<unsigned long> numAssemblies{0};
 
   /**
    * Number of found solutions for the problem.
@@ -144,7 +145,7 @@ private:
    * this is independent of the solutions vector, these are the pure numbers.
    * 0xFFFFFFFF stands for too many to count
    */
-  unsigned long numSolutions;
+  std::atomic<unsigned long> numSolutions{0};
 
   /**
    * we only save the information that the assembler needs to reset it's state
@@ -162,7 +163,7 @@ private:
   /**
    * the time used up to get to the current state in the solving progress (in seconds)
    */
-  unsigned long usedTime;
+  std::atomic<unsigned long> usedTime{0};
 
   /**
    * number of holes maximally allowed
@@ -454,7 +455,7 @@ public:
    */
   //@{
   /** find out how far we are with solving (no, started, finished) */
-  solveState_e getSolveState(void) const { return solveState; }
+  solveState_e getSolveState(void) const { return solveState.load(); }
   /** find out whether a solver run may be started for this problem as it stands.
    * That is the case for a fresh problem, and for one that was interrupted and
    * carries the assembler state to resume from. A finished problem, or one whose
@@ -462,21 +463,22 @@ public:
    * first - handing an assembler to those violates setAssembler's precondition.
    */
   bool canStartSolving(void) const {
-    return solveState == SS_UNSOLVED ||
-           (solveState == SS_SOLVING && (assm != nullptr || assemblerState.length() != 0));
+    solveState_e st = solveState.load();
+    return st == SS_UNSOLVED ||
+           (st == SS_SOLVING && (assm != nullptr || assemblerState.length() != 0));
   }
   /** find out if we have an idea about the number of assemblies */
-  bool numAssembliesKnown(void) const { return solveState != SS_UNSOLVED; }
+  bool numAssembliesKnown(void) const { return solveState.load() != SS_UNSOLVED; }
   /** get number of assemblies found so far. Throws an exception, when not known */
-  unsigned long getNumAssemblies(void) const { bt_assert(solveState != SS_UNSOLVED); return numAssemblies; }
+  unsigned long getNumAssemblies(void) const { bt_assert(solveState.load() != SS_UNSOLVED); return numAssemblies.load(); }
   /** find out if we have an idea about the number of solutions */
-  bool numSolutionsKnown(void) const { return solveState != SS_UNSOLVED; }
+  bool numSolutionsKnown(void) const { return solveState.load() != SS_UNSOLVED; }
   /** get number of solutions found so far. Throws an exception, when not known */
-  unsigned long getNumSolutions(void) const { bt_assert(solveState != SS_UNSOLVED); return numSolutions; }
+  unsigned long getNumSolutions(void) const { bt_assert(solveState.load() != SS_UNSOLVED); return numSolutions.load(); }
   /** find out, if we know something about the time for solving the puzzle */
-  bool usedTimeKnown(void) const { return solveState != SS_UNSOLVED; }
+  bool usedTimeKnown(void) const { return solveState.load() != SS_UNSOLVED; }
   /** find out the time used to solve the puzzle up to the current state. Throws an exception when unknown */
-  unsigned long getUsedTime(void) const { bt_assert(solveState != SS_UNSOLVED); return usedTime; }
+  unsigned long getUsedTime(void) const { bt_assert(solveState.load() != SS_UNSOLVED); return usedTime.load(); }
   /** get number of solutions that were stored */
   unsigned int getNumberOfSavedSolutions(void) const { return solutions.size(); }
 

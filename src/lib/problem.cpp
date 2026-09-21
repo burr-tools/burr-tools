@@ -103,13 +103,13 @@ void problem_c::save(xmlWriter_c & xml) const
   if (name.length() > 0)
     xml.newAttrib("name", name);
 
-  xml.newAttrib("state", solveState);
+  xml.newAttrib("state", (unsigned int)solveState.load());
 
   if (solveState != SS_UNSOLVED)
   {
-    xml.newAttrib("assemblies", numAssemblies);
-    xml.newAttrib("solutions", numSolutions);
-    xml.newAttrib("time", usedTime);
+    xml.newAttrib("assemblies", numAssemblies.load());
+    xml.newAttrib("solutions", numSolutions.load());
+    xml.newAttrib("time", usedTime.load());
   }
 
   if (maxHoles != 0xFFFFFFFF)
@@ -206,7 +206,9 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
 
   name = pars.getAttributeValue("name");
   solveState = SS_UNSOLVED;
-  numAssemblies = numSolutions = usedTime = 0;
+  numAssemblies = 0;
+  numSolutions = 0;
+  usedTime = 0;
   maxHoles = 0xFFFFFFFF;
 
   std::string str = pars.getAttributeValue("maxHoles");

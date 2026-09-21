@@ -818,3 +818,38 @@ TEMPLATE_TEST_CASE("SimdHuangCover applies the hole budget", "[simd][huang][hole
     CHECK(sols[0] == std::vector<unsigned int>{2});
   }
 }
+
+TEST_CASE("SimdHuangCover: parallelSolve does not count aborted tasks as completed", "[simd][huang][abort]") {
+  SimdHuangCover256 solver(4, 2);
+  solver.setColumnBounds(1, 1, 1, false, true, false, false);
+  solver.setColumnBounds(2, 1, 1, false, true, false, false);
+  solver.setColumnBounds(3, 1, 1, true, false, false, false);
+  solver.setColumnBounds(4, 1, 1, true, false, false, false);
+
+  solver.addRow(1, 0, 1, 0, 0, {1, 3}, {1, 1});
+  solver.addRow(2, 0, 1, 1, 0, {1, 4}, {1, 1});
+  solver.addRow(3, 1, 2, 0, 0, {2, 4}, {1, 1});
+  solver.addRow(4, 1, 2, 1, 0, {2, 3}, {1, 1});
+
+  std::atomic<bool> abort_flag{false};
+  std::atomic<unsigned long> iterations{0};
+  std::atomic<size_t> total_tasks{0};
+  std::atomic<size_t> completed_tasks{0};
+
+  solver.parallelSolve(
+    2,
+    [&](const std::vector<unsigned int> &) {
+      abort_flag.store(true);
+      return false;
+    },
+    abort_flag,
+    iterations,
+    total_tasks,
+    completed_tasks
+  );
+
+  CHECK(abort_flag.load());
+  CHECK(completed_tasks.load() < total_tasks.load());
+  CHECK(completed_tasks.load() == 0);
+}
+

@@ -175,7 +175,7 @@ bool solveThread_c::assembly(std::unique_ptr<assembly_c> a) {
   if (parameters & PAR_DISASSM) {
     bt_assert(disasm_pool);
     disasm_pool->submit(std::move(a));
-    return true;
+    return !disasm_pool->isAborted() && !stopPressed;
   }
 
   // Assembly-only mode

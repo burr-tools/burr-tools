@@ -14,6 +14,7 @@ just build          # Compile BurrTools binaries (build/burrtools, build/burrTxt
 just test           # Fast test suite: Catch2 (minus stress cases) + Python wrapper
 just test-slow      # Stress cases only, chiefly the Minkowski random-shapes case
 just test-all       # Everything, fast and slow. This is what CI runs
+just test-regression # Regression test comparing burrTxt/burrTxt2 against known-good 0.7.1 release output (run before creating a PR)
 just check          # Fast static code analysis with cppcheck (~5s, always run before finishing tasks)
 just check-tidy     # Deep static analysis with clang-tidy on BurrTools sources
 just check-scan     # Clang Static Analyzer (scan-build)
@@ -103,6 +104,7 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
    - Ensure tools and regexes ignore these directories so static analysis and formatting stay focused on BurrTools sources (`burr-tools/src/(?!lua/).*`).
 6. **Quality Verification:**
    - After making code modifications, always verify that `just build`, `just test-all` (regression tests, fast and slow), and `just check` (static analysis) pass cleanly. `just test` is the quick loop to use while iterating; run `just test-all` before calling a task done, since it is what CI runs.
+   - Always run `just test-regression` before creating a PR to verify that solver output matches the known-good 0.7.1 release output across all example puzzles.
 7. **Benchmarking & Optimization Work:**
    - When modifying solver algorithms or proposing optimizations, agents MUST use the standardized benchmark infrastructure in [`bench/bench_solve.py`](bench/bench_solve.py) across the curated 10-puzzle corpus.
    - Never evaluate optimizations on a single puzzle in isolation.
