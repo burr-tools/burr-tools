@@ -62,8 +62,17 @@ void platform::applyLookAndFeel(void) {
    * Note that this must not be combined with the FL_THIN_* boxtype
    * overrides main() used to install -- schemes install their own box
    * drawing functions and the two fight, leaving the scheme half applied.
+   *
+   * "oxy" over "gleam", which this started with: it is the flatter and more
+   * restrained of the two, which suits a macOS-facing build. Both remap the
+   * FL_THIN_* variants as well as the plain boxes, which matters because
+   * separator.cpp draws with FL_THIN_DOWN_BOX and would otherwise be the one
+   * widget left rendering in the old style. Unlike gleam, oxy also narrows
+   * the scrollbars (Fl::scrollbar_size(15) -- see FLTK's
+   * Fl_get_system_colors.cxx), so anything that assumed the default 16 will
+   * shift by a pixel.
    */
-  Fl::scheme("gleam");
+  Fl::scheme("oxy");
 
 #ifdef __APPLE__
   /* Render labels in the system UI font (SF Pro) rather than Helvetica, and
