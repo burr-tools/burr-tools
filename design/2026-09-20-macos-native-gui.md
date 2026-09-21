@@ -526,12 +526,37 @@ done.
 
 **Integration:**
 
-- [ ] Double-clicking an `.xmpuzzle` in Finder opens it, both when BurrTools is
+- [x] Double-clicking an `.xmpuzzle` in Finder opens it, both when BurrTools is
       already running and when it is not.
-- [ ] Dropping a puzzle on the Dock icon opens it.
-- [ ] App and document icons appear in Finder, the Dock and ⌘-Tab.
-- [ ] Title shows the bare filename; the close-button dot tracks the dirty state.
-- [ ] Help menu opens the user guide in the default browser.
+- [x] Dropping a puzzle on the Dock icon opens it.
+- [x] App and document icons appear in Finder, the Dock and ⌘-Tab.
+- [x] Title shows the bare filename; the close-button dot tracks the dirty state.
+- [x] Help menu opens the user guide in the default browser.
+
+All of the above were exercised against a real `.app` bundle rather than the bare
+binary, which matters: the bare binary has no `Info.plist`, so it can receive
+neither the document-type association nor the icons.
+
+Two of them also have machine-checkable evidence. Querying the running
+application's window list through `CGWindowListCopyWindowInfo` — a read-only API
+that needs no Accessibility permission, unlike UI scripting — showed the title
+`Bermuda.xmpuzzle` after the document was opened by Launch Services: the bare
+filename, confirming both that the open event arrived and that the
+document-style title is applied.
+
+**A trap for whoever tests this next.** Launch Services had **nine** separate
+BurrTools bundles registered at once — `/Applications`, `~/Applications`,
+`~/Applications/Old`, four under `~/Downloads`, a mounted `.dmg` volume, and the
+freshly built one — every one of them claiming `CFBundleIdentifier`
+`org.burrtools.burrtools` and the `.xmpuzzle` type. A double-click can therefore
+open a *different, older* BurrTools than the one just built, which looks exactly
+like the feature being broken. Confirm which binary actually responded
+(`ps -eo pid,lstart,command | grep burrtools`) before concluding anything about
+Finder integration, and register the bundle under test explicitly:
+
+```
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$PWD/BurrTools.app"
+```
 
 ---
 
