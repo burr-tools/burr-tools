@@ -261,9 +261,7 @@ private:
   std::unordered_map<unsigned int, uint32_t> node_to_row_idx;
   bool use_avx2 = false;
   bool use_avx512 = false;
-#if defined(__aarch64__) || defined(__ARM_NEON)
-  bool use_neon = true;
-#endif
+  [[maybe_unused]] bool use_neon = false;
 
   struct SearchContext {
     std::vector<std::vector<uint32_t>> scratch_active_rows;

@@ -68,7 +68,7 @@ disassemblerPool_c::disassemblerPool_c(
   // Seed one compute permit per worker thread. submit() then throttles the
   // assembler only once every disassembler is already busy, rather than
   // round-tripping through a completion for every single assembly.
-  assembler_permits = num_threads;
+  available_disassembly_permits = num_threads;
 
   if (num_threads == 1) {
     is_inline = true;
@@ -134,14 +134,14 @@ void disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
   // Yield the current assembler thread's CPU slot until a disassembler completes
   // or the solve finishes / aborts / stops.
   cv_assembler.wait(lock, [this]() {
-    return assembler_permits > 0 ||
+    return available_disassembly_permits > 0 ||
            aborted.load(std::memory_order_relaxed) ||
            finished.load(std::memory_order_relaxed) ||
            stop_requested.load(std::memory_order_relaxed);
   });
 
-  if (assembler_permits > 0) {
-    assembler_permits--;
+  if (available_disassembly_permits > 0) {
+    available_disassembly_permits--;
   }
 }
 
@@ -179,7 +179,7 @@ void disassemblerPool_c::worker_loop(std::stop_token st) {
       // Return compute slot permit to waiting assembler thread
       {
         std::lock_guard<std::mutex> qlock(queue_mutex);
-        assembler_permits++;
+        available_disassembly_permits++;
         cv_assembler.notify_one();
       }
 
@@ -206,7 +206,7 @@ void disassemblerPool_c::worker_loop(std::stop_token st) {
     aborted.store(true, std::memory_order_release);
     {
       std::lock_guard<std::mutex> qlock(queue_mutex);
-      assembler_permits += num_threads;
+      available_disassembly_permits += num_threads;
       cv_assembler.notify_all();
       cv_worker.notify_all();
       cv_producer.notify_all();
@@ -243,16 +243,14 @@ void disassemblerPool_c::merger_loop(std::stop_token st) {
           reorder_buffer.erase(it);
           next_merge_seq.fetch_add(1, std::memory_order_release);
           cv_reorder.notify_one();
-          {
-            std::lock_guard<std::mutex> qlock(queue_mutex);
-            cv_producer.notify_one();
-          }
         } else if (finished.load(std::memory_order_relaxed) && next_merge_seq.load(std::memory_order_relaxed) == next_submit_seq.load(std::memory_order_relaxed)) {
           return;
         } else {
           continue;
         }
       }
+
+      cv_producer.notify_one();
 
       if (on_result) {
         on_result(seq, std::move(res.assembly), std::move(res.separation));
@@ -268,7 +266,7 @@ void disassemblerPool_c::merger_loop(std::stop_token st) {
     aborted.store(true, std::memory_order_release);
     {
       std::lock_guard<std::mutex> qlock(queue_mutex);
-      assembler_permits += num_threads;
+      available_disassembly_permits += num_threads;
       cv_assembler.notify_all();
       cv_worker.notify_all();
       cv_producer.notify_all();
@@ -356,7 +354,7 @@ void disassemblerPool_c::abort() {
   {
     std::lock_guard<std::mutex> qlock(queue_mutex);
     while (!work_queue.empty()) work_queue.pop();
-    assembler_permits += num_threads;
+    available_disassembly_permits += num_threads;
     cv_assembler.notify_all();
     cv_worker.notify_all();
     cv_producer.notify_all();

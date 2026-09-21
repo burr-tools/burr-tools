@@ -231,20 +231,29 @@ struct SearchPrefix {
    ```
    In [`worker_loop`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L147) and [`merger_loop`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L217), workers wait with stop-token awareness via `cv.wait(lock, st, predicate)`.
 
-2. **Cooperative Token Budget (`assembler_permits = num_threads`):**
-   - The token budget is maintained via `assembler_permits`, seeded to `num_threads` in the constructor.
+2. **Cooperative Token Budget (`available_disassembly_permits = num_threads`):**
+   - The token budget is maintained via `available_disassembly_permits` (renamed from `assembler_permits` for clarity), seeded to `num_threads` in the constructor.
    - In [`submit(a)`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L102): an assembly is pushed to `work_queue`. The submitting thread then waits on `cv_assembler` until a permit is available. If all `num_threads` disassemblers are busy, the assembler yields its CPU core.
-   - In `worker_loop`: upon completing disassembly of a task, the worker increments `assembler_permits` and notifies `cv_assembler`, returning the compute slot permit to the assembler.
+   - In `worker_loop`: upon completing disassembly of a task, the worker increments `available_disassembly_permits` and notifies `cv_assembler`, returning the compute slot permit to the assembler.
    - This ensures $\text{Active Assemblers} + \text{Active Disassemblers} \le N$ without pipeline stalls.
 
-3. **Two-Stage Cancellation (`requestStop` vs. `abort`):**
+3. **Decoupled Merger Lock Hierarchy:**
+   In [`merger_loop`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L210), popping from `reorder_buffer` only holds `result_mutex`. Notifying `cv_producer.notify_one()` is performed after unlocking `result_mutex` and without acquiring `queue_mutex`, eliminating any lock coupling between the two subsystems.
+
+4. **Modernized `solveThread_c` (Removal of `thread_c`):**
+   [`solveThread_c`](file:///home/arne/development/burr-tools/src/lib/solvethread.h) directly manages its background worker via `std::jthread worker_thread` and `std::atomic<bool> running{false}`, completely eliminating the legacy `thread_c` wrapper class and its pre-C++11 `#ifdef NO_THREADING` macros.
+
+5. **Unified SIMD Gating via `SimdConfig`:**
+   A centralized [`SimdConfig`](file:///home/arne/development/burr-tools/src/lib/simd_config.h) provides a single source of truth for runtime SIMD checks across all solver engines and disassembler closure. It introduces the architecture-agnostic `BURRTOOLS_NO_VECTOR=1` environment variable while preserving full backward compatibility with legacy benchmarking flags (`BURRTOOLS_NO_SIMD`, `BURRTOOLS_NO_AVX2`, `BURRTOOLS_NO_AVX512`, `BURRTOOLS_NO_NEON`, `BURRTOOLS_NO_DISASM_SIMD`, `BURRTOOLS_NO_DISASM_OPT`).
+
+6. **Two-Stage Cancellation (`requestStop` vs. `abort`):**
    - **`requestStop()` (Soft Pause/Stop):** Called from [`solveThread_c::stopInternal()`](file:///home/arne/development/burr-tools/src/lib/solvethread.cpp#L343). Sets `stop_requested` and wakes `cv_assembler` so any assembler thread blocked in `submit()` returns promptly without hanging for long disassemblies to finish. It does **not** discard queued tasks or the reorder buffer, allowing [`finish()`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L279) to drain in-flight disassemblies cleanly so all found solutions are saved.
    - **`abort()` (Emergency Cancellation):** Requests stop on all `std::jthread` workers and the merger thread, purges `work_queue` and `reorder_buffer`, and joins all threads under `lifecycle_mutex`.
    - **`finish()` (Normal Completion / Drain):** Signals `finished`, drains all queued disassembly tasks, merges solutions in sequence order to `on_result`, and joins all threads.
 
-4. **Sequential Consistency in Inline Fallback:**
+7. **Sequential Consistency in Inline Fallback:**
    When running single-threaded (`num_threads == 1` or `BURRTOOLS_NO_DISASM_POOL=1`), `inline_mutex` protects the entire inline block in `submit()`: sequence allocation (`next_submit_seq++`), disassembly, and `on_result` callback invocation. This guarantees deterministic solution ordering even when multi-threaded assemblers submit to an inline disassembler.
 
-5. **Cross-Thread Progress Synchronization:**
+8. **Cross-Thread Progress Synchronization:**
    `simdCompleted` in [`assembler_1_c`](file:///home/arne/development/burr-tools/src/lib/assembler_1.h#L137) is a `std::atomic<bool>` written with release semantics upon search completion and read with acquire semantics in [`getFinished()`](file:///home/arne/development/burr-tools/src/lib/assembler_1.cpp#L2928), synchronizing access to `next_row_stack` without data races under ThreadSanitizer.
 

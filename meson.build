@@ -122,7 +122,6 @@ libburr_src = [
   'src/lib/symmetries_0.cpp',
   'src/lib/symmetries_1.cpp',
   'src/lib/symmetries_2.cpp',
-  'src/lib/thread.cpp',
   'src/lib/voxel.cpp',
   'src/lib/voxel_0.cpp',
   'src/lib/voxel_1.cpp',
