@@ -2857,8 +2857,8 @@ void assembler_1_c::simdSearch(void) {
    * nothing had been searched and the continue would replay everything.
    */
   parallelInterrupted = abbort.load(std::memory_order_relaxed);
-  simdCompleted = !parallelInterrupted;
-  if (simdCompleted) {
+  simdCompleted.store(!parallelInterrupted, std::memory_order_release);
+  if (simdCompleted.load(std::memory_order_relaxed)) {
     next_row_stack.clear();
     task_stack.clear();
   }
@@ -2876,7 +2876,7 @@ void assembler_1_c::assemble(assembler_cb * callback) {
    * make getFinished() report 1.0 for this run before it has done anything
    */
   resetTaskProgress();
-  simdCompleted = false;
+  simdCompleted.store(false, std::memory_order_relaxed);
 
   finished_a.reserve(headerNodes);
   finished_b.reserve(headerNodes);
@@ -2928,7 +2928,7 @@ float assembler_1_c::getFinished(void) const {
     return static_cast<float>(completedTasks.load(std::memory_order_relaxed)) / static_cast<float>(total);
   }
 
-  if (simdCompleted)
+  if (simdCompleted.load(std::memory_order_acquire))
     return 1.0f;
 
   if (next_row_stack.size() == 0) return 1;
@@ -2990,7 +2990,7 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   taskCompleted.clear();
   emittedSignatures.clear();
   resetTaskProgress();
-  simdCompleted = false;
+  simdCompleted.store(false, std::memory_order_relaxed);
 
   unsigned int pos = 0;
 

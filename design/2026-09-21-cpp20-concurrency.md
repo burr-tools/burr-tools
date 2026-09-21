@@ -218,35 +218,33 @@ struct SearchPrefix {
 
 ## 7. Concrete C++20 Implementation Specification (Phase 1)
 
-### 7.1 Modern Synchronization Primitives in [`disassemblerPool_c`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.h)
+### 7.1 Synchronization & Concurrency Primitives in [`disassemblerPool_c`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.h)
 
-1. **Replace `std::condition_variable` with `std::condition_variable_any`:**
+1. **Condition Variables with Stop-Token Awareness:**
+   All condition variables in `disassemblerPool_c` use `std::condition_variable_any`:
    ```cpp
    std::condition_variable_any cv_worker;
    std::condition_variable_any cv_producer;
+   std::condition_variable_any cv_assembler;
    std::condition_variable_any cv_merger;
    std::condition_variable_any cv_reorder;
    ```
-2. **Stop-Token Aware Waiting:**
-   In [`worker_loop`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L128) and [`merger_loop`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L198), use the C++20 overload:
-   ```cpp
-   bool ok = cv_worker.wait(lock, st, [this]() {
-     return !work_queue.empty() || finished.load(std::memory_order_relaxed);
-   });
-   if (!ok || (work_queue.empty() && finished.load(std::memory_order_relaxed))) {
-     return;
-   }
-   ```
-   Calling `w.request_stop()` automatically wakes the condition variable without requiring manual broadcast chains.
+   In [`worker_loop`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L147) and [`merger_loop`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L217), workers wait with stop-token awareness via `cv.wait(lock, st, predicate)`.
 
-3. **Concurrency Token Budget:**
-   ```cpp
-   std::counting_semaphore<> active_tokens{num_threads};
-   ```
-   - In `submit(a)`: when handoff is required, the submitting thread yields its permit.
-   - In `worker_loop`: worker acquires permit while processing `dis.disassemble()`.
+2. **Cooperative Token Budget (`assembler_permits = num_threads`):**
+   - The token budget is maintained via `assembler_permits`, seeded to `num_threads` in the constructor.
+   - In [`submit(a)`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L102): an assembly is pushed to `work_queue`. The submitting thread then waits on `cv_assembler` until a permit is available. If all `num_threads` disassemblers are busy, the assembler yields its CPU core.
+   - In `worker_loop`: upon completing disassembly of a task, the worker increments `assembler_permits` and notifies `cv_assembler`, returning the compute slot permit to the assembler.
+   - This ensures $\text{Active Assemblers} + \text{Active Disassemblers} \le N$ without pipeline stalls.
 
-4. **Lifecycle & Thread Safety:**
-   - In `abort()`: acquire `lifecycle_mutex` **before** iterating over `workers` to eliminate data races.
-   - In `finish()`: unconditionally join `workers` and `merger` even if `aborted` is true, preventing orphan background threads.
-   - In [`solveThread_c::stopInternal()`](file:///home/arne/development/burr-tools/src/lib/solvethread.cpp#L332): call `disasm_pool->abort()` immediately so clicking "Stop" in the GUI does not freeze waiting for the 64-item queue to drain.
+3. **Two-Stage Cancellation (`requestStop` vs. `abort`):**
+   - **`requestStop()` (Soft Pause/Stop):** Called from [`solveThread_c::stopInternal()`](file:///home/arne/development/burr-tools/src/lib/solvethread.cpp#L343). Sets `stop_requested` and wakes `cv_assembler` so any assembler thread blocked in `submit()` returns promptly without hanging for long disassemblies to finish. It does **not** discard queued tasks or the reorder buffer, allowing [`finish()`](file:///home/arne/development/burr-tools/src/lib/disassemblerpool.cpp#L279) to drain in-flight disassemblies cleanly so all found solutions are saved.
+   - **`abort()` (Emergency Cancellation):** Requests stop on all `std::jthread` workers and the merger thread, purges `work_queue` and `reorder_buffer`, and joins all threads under `lifecycle_mutex`.
+   - **`finish()` (Normal Completion / Drain):** Signals `finished`, drains all queued disassembly tasks, merges solutions in sequence order to `on_result`, and joins all threads.
+
+4. **Sequential Consistency in Inline Fallback:**
+   When running single-threaded (`num_threads == 1` or `BURRTOOLS_NO_DISASM_POOL=1`), `inline_mutex` protects the entire inline block in `submit()`: sequence allocation (`next_submit_seq++`), disassembly, and `on_result` callback invocation. This guarantees deterministic solution ordering even when multi-threaded assemblers submit to an inline disassembler.
+
+5. **Cross-Thread Progress Synchronization:**
+   `simdCompleted` in [`assembler_1_c`](file:///home/arne/development/burr-tools/src/lib/assembler_1.h#L137) is a `std::atomic<bool>` written with release semantics upon search completion and read with acquire semantics in [`getFinished()`](file:///home/arne/development/burr-tools/src/lib/assembler_1.cpp#L2928), synchronizing access to `next_row_stack` without data races under ThreadSanitizer.
+

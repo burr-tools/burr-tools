@@ -1,9 +1,12 @@
 # Concurrency Architecture & Threading Model: "Should-Be" vs. "Is" Assessment
 
+> [!NOTE]
+> **SUPERSEDED (2026-09-21):** This assessment was written prior to the C++20 concurrency refactoring. It identified the race conditions and lifecycle hazards in the initial PR stack (#79–#84). It has been **superseded** by [`2026-09-21-cpp20-concurrency.md`](2026-09-21-cpp20-concurrency.md), which documents the canonical C++20 architecture with cooperative token budgeting, `std::jthread`, and deterministic ordered merging.
+
 **Date:** 2026-09-19  
 **Scope:** BurrTools Concurrency Model across `src/lib/{solvethread,disassemblerpool,assembler_0,assembler_1,movementcache,gridtype}.{h,cpp}` and `src/gui/mainwindow.cpp`  
 **PR Stack:** #78 → #79 → #81 → #82 → #83 → #84 → #87  
-**Status:** Canonical Architecture Specification & Remediation Plan  
+**Status:** Historical Assessment (Superseded)  
 
 ---
 
