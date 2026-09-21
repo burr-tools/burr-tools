@@ -61,7 +61,7 @@ private:
   std::deque<QueueItem> queue;
   static constexpr size_t MAX_QUEUE_SIZE = 4;
 
-  std::thread worker_thread;
+  std::jthread worker_thread;
 
   void worker_run();
   void push_item(QueueItem && item);

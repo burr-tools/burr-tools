@@ -38,7 +38,7 @@ SolutionIterator::SolutionIterator(std::shared_ptr<puzzle_c> puz,
     throw std::out_of_range("Problem index out of range");
   }
 
-  worker_thread = std::thread(&SolutionIterator::worker_run, this);
+  worker_thread = std::jthread(&SolutionIterator::worker_run, this);
 }
 
 SolutionIterator::~SolutionIterator() {

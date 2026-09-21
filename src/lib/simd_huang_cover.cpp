@@ -628,7 +628,7 @@ template <typename BitsetType>
 void SimdHuangCover<BitsetType>::parallelSolve(
   unsigned int num_workers,
   SolutionCallback callback,
-  const std::atomic<bool> &abort_flag,
+  std::atomic<bool> &abort_flag,
   std::atomic<unsigned long> &iterations,
   std::atomic<size_t> &total_tasks,
   std::atomic<size_t> &completed_tasks
@@ -663,13 +663,15 @@ void SimdHuangCover<BitsetType>::parallelSolve(
           task_iter.fetch_add(rem, std::memory_order_relaxed);
         }
         iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
-        completed_tasks.fetch_add(1, std::memory_order_relaxed);
+        if (!abort_flag.load(std::memory_order_relaxed) && !st.stop_requested()) {
+          completed_tasks.fetch_add(1, std::memory_order_relaxed);
+        }
       }
     } catch (...) {
       std::lock_guard<std::mutex> lock(exception_mutex);
       if (!worker_exception)
         worker_exception = std::current_exception();
-      const_cast<std::atomic<bool>&>(abort_flag).store(true, std::memory_order_relaxed);
+      abort_flag.store(true, std::memory_order_relaxed);
     }
   };
 

@@ -88,6 +88,7 @@ private:
   std::atomic<bool> aborted{false};
   std::atomic<bool> finished{false};
   bool is_inline = false;
+  std::mutex inline_mutex;
   std::unique_ptr<disassembler_0_c> inline_dis;
 
   std::atomic<uint64_t> next_submit_seq{0};
@@ -96,15 +97,17 @@ private:
   std::mutex lifecycle_mutex;
 
   std::mutex queue_mutex;
-  std::condition_variable cv_worker;
-  std::condition_variable cv_producer;
+  std::condition_variable_any cv_worker;
+  std::condition_variable_any cv_producer;
+  std::condition_variable_any cv_assembler;
   std::queue<Task> work_queue;
-  static constexpr size_t MAX_QUEUE_SIZE = 64;
-  static constexpr size_t MAX_REORDER_SIZE = 64;
+  unsigned int assembler_permits{0};
+  size_t max_queue_size{64};
+  size_t max_reorder_size{64};
 
   std::mutex result_mutex;
-  std::condition_variable cv_merger;
-  std::condition_variable cv_reorder;
+  std::condition_variable_any cv_merger;
+  std::condition_variable_any cv_reorder;
   std::map<uint64_t, Result> reorder_buffer;
 
   std::mutex exception_mutex;
