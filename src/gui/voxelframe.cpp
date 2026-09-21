@@ -1928,7 +1928,7 @@ void voxelFrame_c::draw(bool withViewCube) {
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
   }
 
-  if (withViewCube && pickx < 0 && viewCube && w() >= 48 && h() >= 48)
+  if (withViewCube && pickx < 0 && !cb && viewCube && w() >= 48 && h() >= 48)
     viewCube->draw(rotater, w(), h(), pixels_per_unit());
 
   if (_useLightning)
