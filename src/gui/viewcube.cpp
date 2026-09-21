@@ -23,7 +23,7 @@
 #pragma GCC diagnostic pop
 
 static const int kSizeFraction = 4;  // widget side length is winMin/kSizeFraction
-static const int kMinSize = 90;
+static const int kMinSize = 60;  // keep well under voxelFrame_c::draw()'s 48px suppression cutoff
 static const int kMaxSize = 220;
 static const int kMargin = 6;
 static const int kHouse = 29;
@@ -472,7 +472,7 @@ bool viewCube_c::contains(int x, int y, int winW, int winH) const {
   return x >= o.x && y >= o.y && x <= o.x + o.s && y <= o.y + o.s;
 }
 
-viewCube_c::Action viewCube_c::handle(int event, rotater_c * rot, int winW, int winH) {
+viewCube_c::Action viewCube_c::handle(int event, rotater_c * rot, int winW, int winH, float pixelScale) {
 
   int mx = Fl::event_x();
   int my = Fl::event_y();
@@ -522,7 +522,7 @@ viewCube_c::Action viewCube_c::handle(int event, rotater_c * rot, int winW, int 
         dragging = true;
     }
     if (pressPart != PART_HOME && !isNavPart(pressPart) && rot && dragging) {
-      rot->drag((float)mx, (float)my);
+      rot->drag((float)mx * pixelScale, (float)my * pixelScale);
       hover = hitTest(mx, my, rot, winW, winH);
       return ACT_REDRAW;
     }
@@ -553,7 +553,7 @@ viewCube_c::Action viewCube_c::handle(int event, rotater_c * rot, int winW, int 
       return ACT_REDRAW;
     }
     if (rot)
-      rot->clack((float)mx, (float)my);
+      rot->clack((float)mx * pixelScale, (float)my * pixelScale);
     if (!dragging && pressPart >= FACE_PX && pressPart <= CORNER_NNN)
       snapToPart(pressPart, rot);
     else if (dragging)
@@ -807,6 +807,12 @@ void viewCube_c::draw(rotater_c * rot, int winW, int winH, float pixelScale) con
   if (vpS < 8)
     return;
 
+  // this overlay is drawn on top of the already-rendered scene and touches a lot of
+  // fixed-function state (line width, blend, cull, lighting, depth test, current
+  // color, polygon offset, viewport/scissor); push/pop it all rather than trying to
+  // hand-restore each piece, so nothing it changes leaks into the next frame's scene
+  glPushAttrib(GL_ALL_ATTRIB_BITS);
+
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -969,6 +975,5 @@ void viewCube_c::draw(rotater_c * rot, int winW, int winH, float pixelScale) con
   glPopMatrix();
   glMatrixMode(GL_MODELVIEW);
 
-  glEnable(GL_DEPTH_TEST);
-  glDisable(GL_SCISSOR_TEST);
+  glPopAttrib();
 }

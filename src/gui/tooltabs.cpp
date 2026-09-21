@@ -28,6 +28,7 @@
 #include "guigridtype.h"
 #include <stdlib.h>
 #include <math.h>
+#include <exception>
 
 #include "FL/fl_ask.H"
 #include "FL/Fl.H"
@@ -1192,7 +1193,6 @@ void ToolTab_3::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
                    space->translate(fx, fy, fz, 0);
                  }
                  break;
-        case 26: fl_message("Sorry minimizing is not (yet) implemented for the rhombic grid!"); return;
         case 40: space->fillHoles(0); break;
         case 41: space->scale(7, true); break;
       }
@@ -1200,6 +1200,11 @@ void ToolTab_3::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
 
 void ToolTab_3::cb_transform(long task) {
   if (puzzle && shape < puzzle->getNumberOfShapes()) {
+
+    if (task == 26) {
+      fl_message("Sorry minimizing is not (yet) implemented for the rhombic grid!");
+      return;
+    }
 
     int ss, se;
 
@@ -1336,13 +1341,17 @@ void ToolTab_4::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
                    space->translate(fx, fy, fz, 0);
                  }
                  break;
-        case 26: fl_message("Sorry minimizing is not (yet) implemented for the rhombic grid!"); return;
         case 40: space->fillHoles(0); break;
       }
 }
 
 void ToolTab_4::cb_transform(long task) {
   if (puzzle && shape < puzzle->getNumberOfShapes()) {
+
+    if (task == 26) {
+      fl_message("Sorry minimizing is not (yet) implemented for the rhombic grid!");
+      return;
+    }
 
     int ss, se;
 
@@ -1370,14 +1379,25 @@ void ToolTab_4::cb_transform(long task) {
 
 /* Derives what a grid-symmetry transform represents, purely geometrically:
  * transformPoint() maps a point "around the origin" (no translation), so applying
- * it to the 3 basis vectors gives exactly the linear part of the transform,
- * regardless of grid type. Returns 0 (kind: none), 1 (rotation, axis/angleDeg set)
- * or 2 (mirror, axis set to the mirror plane's normal). For rotations, near-identity
- * and 180 degree cases are reported as "none" - the usual antisymmetric-part axis
- * extraction degenerates there, not worth the extra code for what is only a visual
- * hint. For mirrors, the plane normal is recovered as the null space of (M+I),
- * i.e. any nonzero cross product of two rows of (M+I) - this assumes eigenvalue -1
- * has multiplicity 1, true for the simple axis mirrors these buttons produce. */
+ * it to the 3 basis vectors gives exactly the linear part of the transform, for
+ * the grids where that mapping actually is linear. Returns 0 (kind: none), 1
+ * (rotation, axis/angleDeg set) or 2 (mirror, axis set to the mirror plane's
+ * normal). For rotations, near-identity and 180 degree cases are reported as
+ * "none" - the usual antisymmetric-part axis extraction degenerates there, not
+ * worth the extra code for what is only a visual hint. For mirrors, the plane
+ * normal is recovered as the null space of (M+I), i.e. any nonzero cross product
+ * of two rows of (M+I) - this assumes eigenvalue -1 has multiplicity 1, true for
+ * the simple axis mirrors these buttons produce.
+ *
+ * Two grid families break the "linear, around the origin" assumption:
+ *  - the sphere grid's transformPoint() asserts its input has an even coordinate
+ *    sum, which (1,0,0) etc. do not satisfy, and throws; caught below and treated
+ *    as "no hint" rather than crashing the hover path.
+ *  - the triangular-prism grid's transformPoint() is affine (a parity-dependent
+ *    offset is folded in), so the basis-vector images are not the columns of a
+ *    linear map at all. A genuine linear symmetry transform is orthogonal, so its
+ *    determinant must be exactly +-1; anything else is a tell that the probe
+ *    isn't valid for this grid, so it's rejected rather than trusted. */
 static int computeTransformGeometry(const voxel_c * origShape, int transformIdx,
                                      float axis[3], float * angleDeg) {
   if (!origShape || transformIdx < 0)
@@ -1385,15 +1405,22 @@ static int computeTransformGeometry(const voxel_c * origShape, int transformIdx,
 
   int m[3][3];
   int basis[3][3] = { {1,0,0}, {0,1,0}, {0,0,1} };
-  for (int c = 0; c < 3; c++) {
-    int x = basis[c][0], y = basis[c][1], z = basis[c][2];
-    origShape->transformPoint(&x, &y, &z, transformIdx);
-    m[0][c] = x; m[1][c] = y; m[2][c] = z;
+  try {
+    for (int c = 0; c < 3; c++) {
+      int x = basis[c][0], y = basis[c][1], z = basis[c][2];
+      origShape->transformPoint(&x, &y, &z, transformIdx);
+      m[0][c] = x; m[1][c] = y; m[2][c] = z;
+    }
+  } catch (const std::exception &) {
+    return 0;
   }
 
   int det = m[0][0]*(m[1][1]*m[2][2] - m[1][2]*m[2][1])
           - m[0][1]*(m[1][0]*m[2][2] - m[1][2]*m[2][0])
           + m[0][2]*(m[1][0]*m[2][1] - m[1][1]*m[2][0]);
+
+  if (det != 1 && det != -1)
+    return 0;
 
   if (det > 0) {
     float trace = (float)(m[0][0] + m[1][1] + m[2][2]);
@@ -1486,6 +1513,10 @@ ToolTabContainer::ToolTabContainer(int x, int y, int w, int h, const guiGridType
   tt = ggt->getToolTab(0, 0, 1, 1);
   tt->callback(cb_ToolTabContainer_stub, this);
   end();
+}
+
+ToolTabContainer::~ToolTabContainer(void) {
+  Fl::remove_timeout(previewClearTimeout, this);
 }
 
 void ToolTabContainer::previewClearTimeout(void *v) {

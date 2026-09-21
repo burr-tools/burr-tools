@@ -166,6 +166,7 @@ class ToolTabContainer : public layouter_c {
   public:
 
   ToolTabContainer(int x, int y, int w, int h, const guiGridType_c * ggt);
+  ~ToolTabContainer(void);
 
   void setVoxelSpace(puzzle_c * puz, unsigned int sh) { if (tt) tt->setVoxelSpace(puz, sh); }
   bool operationToAll(void) { if (tt) return tt->operationToAll(); else return false; }

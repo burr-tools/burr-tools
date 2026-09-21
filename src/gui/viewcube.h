@@ -42,7 +42,7 @@ class viewCube_c {
 
     void draw(rotater_c * rot, int winW, int winH, float pixelScale) const;
 
-    Action handle(int event, rotater_c * rot, int winW, int winH);
+    Action handle(int event, rotater_c * rot, int winW, int winH, float pixelScale);
 
     bool contains(int x, int y, int winW, int winH) const;
     bool isTracking(void) const { return tracking; }

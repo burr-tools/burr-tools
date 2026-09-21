@@ -917,6 +917,13 @@ void voxelFrame_c::drawPreviewHint(void) const {
   else if (ay >= ax && ay >= az) { r = 0.0f; g = 0.75f; b = 0.0f; }
   else                            { r = 0.0f; g = 0.0f;  b = 1.0f; }
 
+  // save/restore every bit of fixed-function state this touches (line width, current
+  // color, lighting/depth-test enables): voxelFrame_c::draw() relies on glLineWidth(3)
+  // being set once and staying put for the coordinate-system axes drawn elsewhere, so
+  // hand-restoring only some of these here previously left it at 1 for the rest of
+  // the session after the first hover
+  glPushAttrib(GL_ENABLE_BIT | GL_LINE_BIT | GL_CURRENT_BIT);
+
   glPushMatrix();
   rotater->addTransform();
 
@@ -932,11 +939,8 @@ void voxelFrame_c::drawPreviewHint(void) const {
     default: break;
   }
 
-  glLineWidth(1);
-  glEnable(GL_DEPTH_TEST);
-  if (_useLightning) glEnable(GL_LIGHTING);
-
   glPopMatrix();
+  glPopAttrib();
 }
 
 void voxelFrame_c::drawPreviewRotationArc(void) const {
@@ -1875,7 +1879,9 @@ void voxelFrame_c::draw(bool withViewCube) {
     }
 
     // this call has to be identical to the one in image_c::prepareOpenGlImagePart
-    gluPerspective(15, 1.0*w()/h(), size+1, 1000*size+1);
+    double nearPlane, farPlane;
+    getNearFar(&nearPlane, &farPlane);
+    gluPerspective(15, 1.0*w()/h(), nearPlane, farPlane);
     glMatrixMode(GL_MODELVIEW);
 
   }
@@ -1959,7 +1965,7 @@ int voxelFrame_c::handle(int event) {
     if (event == FL_ENTER)
       return 1;
 
-    viewCube_c::Action a = viewCube->handle(event, rotater, w(), h());
+    viewCube_c::Action a = viewCube->handle(event, rotater, w(), h(), pixels_per_unit());
     if (a == viewCube_c::ACT_HOME) {
       if (homeCb)
         homeCb(this, homeUser);
@@ -2069,6 +2075,43 @@ double voxelFrame_c::computeFitSize(void) const {
 
   // a bit of breathing room so pieces aren't crammed against the frustum edges
   return needed*1.15 + 1.0;
+}
+
+double voxelFrame_c::computeContentRadius(void) const {
+
+  // straight-line distance from the origin, not the along-view-axis depth: a
+  // conservative (i.e. safe, if slightly generous) stand-in for how far each
+  // shape's geometry can extend toward or away from the camera, without having
+  // to reason about the current view rotation here.
+  double r = 1.0;
+
+  for (const shapeInfo & s : shapes) {
+
+    if (!s.shape)
+      continue;
+
+    double radius = 0.5*sqrt((double)s.shape->getDiagonal())*s.scale;
+    double dist = sqrt((double)s.x*s.x + (double)s.y*s.y + (double)s.z*s.z) + radius;
+
+    if (dist > r) r = dist;
+  }
+
+  return r;
+}
+
+void voxelFrame_c::getNearFar(double * nearPlane, double * farPlane) const {
+
+  double dist = size*2;                    // camera distance, see the -size*2 translate in draw()
+  double r = computeContentRadius()*1.15;  // a bit of margin, matching computeFitSize()
+
+  double n = dist - r;
+  if (n < 0.1) n = 0.1;
+
+  double f = dist + r + 1.0;
+  if (f < n + 1.0) f = n + 1.0;
+
+  *nearPlane = n;
+  *farPlane = f;
 }
 
 bool voxelFrame_c::pickShape(int x, int y, unsigned int *shape, unsigned long *voxel, unsigned int *face) {

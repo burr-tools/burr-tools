@@ -35,7 +35,11 @@ const double LView3dGroup::defaultZoom = 2.0;
 
 // some tool widgets, that may be swapped out later into another file
 
-static void cb_View3dGroupSlider_stub(Fl_Widget* o, void* /*v*/) { static_cast<LView3dGroup*>(o->parent())->cb_slider(); }
+static void cb_View3dGroupSlider_stub(Fl_Widget* o, void* /*v*/) {
+  LView3dGroup * g = static_cast<LView3dGroup*>(o->parent());
+  g->cb_slider();
+  g->notifyZoomChanged();
+}
 
 void LView3dGroup::cb_slider(void) {
   View3D->setSize(exp(6-slider->value()));
@@ -75,7 +79,10 @@ LView3dGroup::LView3dGroup(int x, int y, int w, int h) : Fl_Group(0, 0, 50, 50),
 }
 
 void LView3dGroup::goHome(void) {
-  resetZoomToDefault();
+  // fit fresh to whatever is currently shown, rather than a fixed zoom level -
+  // "home" should mean the framing the current piece/problem/solution actually
+  // needs, the same as if it had just been shown for the first time
+  fitToContent();
   View3D->resetViewRotation();
   redraw();
 }
@@ -97,6 +104,7 @@ void LView3dGroup::applyWheelZoom(int dy) {
   if (v > slider->maximum()) v = slider->maximum();
   slider->value(v);
   View3D->setSize(exp(6 - v));
+  notifyZoomChanged();
 }
 
 int LView3dGroup::handle(int event) {

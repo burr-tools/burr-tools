@@ -152,12 +152,19 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     // this value determines the scaling factor used to draw the cube.
     void setSize(double sz);
-    double getSize(void) const { return size; }
 
     /* Computes the camera distance ("size") needed so that everything currently
      * in `shapes` fits inside the (narrow, fixed 15 degree) field of view, based
      * on each shape's position and bounding radius. */
     double computeFitSize(void) const;
+
+    /* near/far clip planes, derived from where the actual content in `shapes` sits
+     * relative to the camera rather than from a blanket multiple of "size" - keeps
+     * the near plane from clipping the front of the model when zoomed in close, and
+     * keeps the near:far ratio from blowing out (and eating depth-buffer precision)
+     * when zoomed far out. image_c::prepareOpenGlImagePart() must call this too, so
+     * the tiled PNG/vector export uses the identical projection as draw(). */
+    void getNearFar(double * nearPlane, double * farPlane) const;
 
     void setCallback(VoxelViewCallbacks *c = 0) { cb = c; }
     bool pickShape(int x, int y, unsigned int *shape, unsigned long *voxel, unsigned int *face);
@@ -296,6 +303,9 @@ class voxelFrame_c : public Fl_Gl_Window {
     void drawPreviewHint(void) const;
     void drawPreviewRotationArc(void) const;
     void drawPreviewStraightArrow(bool doubleHeaded) const;
+
+    // conservative bounding-sphere radius (from the origin) of everything in `shapes`
+    double computeContentRadius(void) const;
 };
 
 #endif

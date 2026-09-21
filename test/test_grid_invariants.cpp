@@ -313,3 +313,84 @@ TEST_CASE("grid: a shape's self-symmetries are exactly the transformations that 
     }
   }
 }
+
+TEST_CASE("grid: transformPoint on the coordinate basis does not recover a linear map on every grid",
+          "[voxel][grid][transform]") {
+  /* Not a property the grids owe anyone -- a pin on one they deliberately do
+     NOT provide, because a caller that assumes otherwise gets a crash on one
+     grid and silent nonsense on another.
+
+     transformPoint() is documented as transforming "around the origin", which
+     reads like an invitation to recover a transformation's 3x3 linear part by
+     feeding it (1,0,0), (0,1,0), (0,0,1). That works on the three cube-derived
+     grids and fails on the other two:
+
+       - GT_SPHERES asserts its input has an even coordinate sum (voxel_2.cpp),
+         which no single basis vector satisfies, so the probe throws.
+       - GT_TRIANGULAR_PRISM's mapping is affine, not linear: a parity-dependent
+         offset is folded in (voxel_1.cpp), so the images of the basis vectors
+         are not the columns of anything orthogonal. The tell is the
+         determinant, which comes out 2 rather than +-1.
+
+     voxelFrame_c's transform-preview hint (via computeTransformGeometry() in
+     src/gui/tooltabs.cpp) probes exactly this way, so it guards with both a
+     try/catch and a determinant check and draws no hint rather than a wrong
+     one. If a future grid change made the probe safe and orthogonal
+     everywhere, this case would fail and that guard could be simplified. */
+
+  auto linearPartDeterminant = [](const voxel_c & v, unsigned int trans, int * det) -> bool {
+    int m[3][3];
+    const int basis[3][3] = { {1,0,0}, {0,1,0}, {0,0,1} };
+
+    try {
+      for (int c = 0; c < 3; c++) {
+        int x = basis[c][0], y = basis[c][1], z = basis[c][2];
+        v.transformPoint(&x, &y, &z, trans);
+        m[0][c] = x; m[1][c] = y; m[2][c] = z;
+      }
+    } catch (const std::exception &) {
+      return false;   // grid rejected the probe outright
+    }
+
+    *det = m[0][0]*(m[1][1]*m[2][2] - m[1][2]*m[2][1])
+         - m[0][1]*(m[1][0]*m[2][2] - m[1][2]*m[2][0])
+         + m[0][2]*(m[1][0]*m[2][1] - m[1][1]*m[2][0]);
+    return true;
+  };
+
+  SECTION("the sphere grid rejects the basis probe instead of answering") {
+    gridType_c gt(gridType_c::GT_SPHERES);
+    std::unique_ptr<voxel_c> v = makeVoxel(gt, BOX, BOX, BOX);
+
+    int det = 0;
+    REQUIRE_FALSE(linearPartDeterminant(*v, 9, &det));
+  }
+
+  SECTION("the triangular grid answers, but not with an orthogonal matrix") {
+    gridType_c gt(gridType_c::GT_TRIANGULAR_PRISM);
+    std::unique_ptr<voxel_c> v = makeVoxel(gt, BOX, BOX, BOX);
+
+    /* transformation 1 is a clean 60 degree rotation about Z in the grid's own
+       table, so a correctly recovered linear part would have determinant 1. */
+    int det = 0;
+    REQUIRE(linearPartDeterminant(*v, 1, &det));
+    REQUIRE(det != 1);
+    REQUIRE(det != -1);
+  }
+
+  SECTION("the cube-derived grids do give an orthogonal matrix") {
+    const gridType_c::gridType cubeLike[] = {
+      gridType_c::GT_BRICKS, gridType_c::GT_RHOMBIC, gridType_c::GT_TETRA_OCTA,
+    };
+
+    for (gridType_c::gridType t : cubeLike) {
+      INFO("grid " << gridName(t));
+      gridType_c gt(t);
+      std::unique_ptr<voxel_c> v = makeVoxel(gt, BOX, BOX, BOX);
+
+      int det = 0;
+      REQUIRE(linearPartDeterminant(*v, 1, &det));
+      REQUIRE(std::abs(det) == 1);
+    }
+  }
+}
