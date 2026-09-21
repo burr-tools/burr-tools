@@ -47,8 +47,12 @@ class thread_c {
     /** run the thread return true on success */
     bool start();
 
-    /** inform the thread to stop running, this is dependent on the thread */
-    virtual void stop() { t.request_stop(); }
+    /* NOTE: the callable handed to std::jthread in start() takes no
+     * std::stop_token, so the thread never observes a stop request and
+     * request_stop() would do nothing. Subclasses that need to be
+     * stoppable must override this.
+     */
+    virtual void stop() {}
 
     /** return true, if the thread is running */
     bool isRunning(void) { return running; }

@@ -65,6 +65,11 @@ disassemblerPool_c::disassemblerPool_c(
   max_queue_size = std::max<size_t>(64, num_threads);
   max_reorder_size = std::max<size_t>(64, num_threads * 2);
 
+  // Seed one compute permit per worker thread. submit() then throttles the
+  // assembler only once every disassembler is already busy, rather than
+  // round-tripping through a completion for every single assembly.
+  assembler_permits = num_threads;
+
   if (num_threads == 1) {
     is_inline = true;
     inline_dis = std::make_unique<disassembler_0_c>(puzzle);
@@ -99,10 +104,10 @@ void disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
     return;
 
   if (is_inline) {
+    std::lock_guard<std::mutex> lock(inline_mutex);
     uint64_t seq = next_submit_seq++;
     std::unique_ptr<separation_c> s;
     if (a && a->placementCount() > 1) {
-      std::lock_guard<std::mutex> lock(inline_mutex);
       s = inline_dis->disassemble(a.get());
     }
     if (on_result) {
@@ -127,11 +132,12 @@ void disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
 
   // Cooperative token handoff:
   // Yield the current assembler thread's CPU slot until a disassembler completes
-  // or the solve finishes / aborts.
+  // or the solve finishes / aborts / stops.
   cv_assembler.wait(lock, [this]() {
     return assembler_permits > 0 ||
            aborted.load(std::memory_order_relaxed) ||
-           finished.load(std::memory_order_relaxed);
+           finished.load(std::memory_order_relaxed) ||
+           stop_requested.load(std::memory_order_relaxed);
   });
 
   if (assembler_permits > 0) {
@@ -319,6 +325,20 @@ void disassemblerPool_c::finish() {
     merger.join();
 
   check_exception();
+}
+
+void disassemblerPool_c::requestStop() {
+  stop_requested.store(true, std::memory_order_release);
+  if (is_inline)
+    return;
+
+  // Wake any assembler thread blocked in submit(), but do not abort workers or discard
+  // the reorder buffer so already-queued tasks are processed when finish() is called.
+  {
+    std::lock_guard<std::mutex> qlock(queue_mutex);
+    cv_assembler.notify_all();
+    cv_producer.notify_all();
+  }
 }
 
 void disassemblerPool_c::abort() {

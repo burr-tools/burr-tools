@@ -285,14 +285,18 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
         if (act == solveThread_c::ACT_ASSEMBLING ||
             act == solveThread_c::ACT_DISASSEMBLING ||
             (problem->numAssembliesKnown() && problem->getNumAssemblies() > 0)) {
+          auto stop_start = std::chrono::steady_clock::now();
           st1.stop();
+          while (st1.isRunning()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          }
+          auto stop_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - stop_start
+          ).count();
+          CHECK(stop_ms < 2000);
           break;
         }
         std::this_thread::yield();
-      }
-
-      while (st1.isRunning()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
 
       CHECK(st1.stopped());

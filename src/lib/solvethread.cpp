@@ -175,7 +175,7 @@ bool solveThread_c::assembly(std::unique_ptr<assembly_c> a) {
   if (parameters & PAR_DISASSM) {
     bt_assert(disasm_pool);
     disasm_pool->submit(std::move(a));
-    return !disasm_pool->isAborted() && !stopPressed;
+    return !disasm_pool->isAborted() && !disasm_pool->isStopRequested() && !stopPressed;
   }
 
   // Assembly-only mode
@@ -342,6 +342,9 @@ void solveThread_c::stopInternal(void) {
 
   if (puzzle.getAssembler())
     puzzle.getAssembler()->stop();
+
+  if (disasm_pool)
+    disasm_pool->requestStop();
 
   stopPressed = true;
 }

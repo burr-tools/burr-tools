@@ -68,7 +68,14 @@ public:
   /** Immediately cancel and discard any pending work. */
   void abort();
 
+  /** Signal pool to stop accepting work and wake any blocked submitters.
+   *  Unlike abort(), does not discard the reorder buffer, so already-completed
+   *  results are still delivered.
+   */
+  void requestStop();
+
   bool isAborted() const { return aborted.load(std::memory_order_relaxed); }
+  bool isStopRequested() const { return stop_requested.load(std::memory_order_relaxed); }
 
 private:
   struct Task {
@@ -87,6 +94,7 @@ private:
 
   std::atomic<bool> aborted{false};
   std::atomic<bool> finished{false};
+  std::atomic<bool> stop_requested{false};
   bool is_inline = false;
   std::mutex inline_mutex;
   std::unique_ptr<disassembler_0_c> inline_dis;

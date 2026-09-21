@@ -122,8 +122,11 @@ static bool disasmOptDisabled() {
 
 static bool simdDisabled() {
   return (std::getenv("BURRTOOLS_NO_DISASM_SIMD") != nullptr ||
+#if defined(__x86_64__) || defined(_M_X64)
           std::getenv("BURRTOOLS_NO_AVX2") != nullptr ||
+#elif defined(__aarch64__) || defined(__ARM_NEON)
           std::getenv("BURRTOOLS_NO_NEON") != nullptr ||
+#endif
           std::getenv("BURRTOOLS_NO_DISASM_OPT") != nullptr);
 }
 

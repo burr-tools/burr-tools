@@ -134,7 +134,7 @@ private:
    * false positive: after setPosition() restores a saved state, and between
    * two assemble() calls, all of those hold before any search has run.
    */
-  bool simdCompleted = false;
+  std::atomic<bool> simdCompleted{false};
 
   std::vector<unsigned int> base_left;
   std::vector<unsigned int> base_right;
