@@ -275,7 +275,8 @@ public:
   void cb_PiecesClicked(void);
 
   void cb_TransformPiece(void);
-  void cb_TransformPreview(voxel_c * preview, unsigned int shapeNum);
+  void cb_TransformPreview(voxel_c * preview, unsigned int shapeNum, int kind = 0,
+                            float axisX = 0, float axisY = 0, float axisZ = 1, float angleDeg = 0);
   void cb_pieceEdit(VoxelEditGroup_c* o);
   void cb_EditChoice(void);
   void cb_EditSym(int onoff, int value);

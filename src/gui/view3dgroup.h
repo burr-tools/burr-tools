@@ -42,11 +42,15 @@ public:
   LView3dGroup(int x, int y, int w, int h);
 
   void cb_slider(void);
+  void applyWheelZoom(int dy);
 
   double getZoom(void) { return slider->value(); }
   void setZoom(double v) { slider->value(v); cb_slider(); }
   void resetZoomToDefault(void) { setZoom(defaultZoom); }
   void goHome(void);
+
+  // zooms out (or in) just enough that everything currently shown fits in view
+  void fitToContent(void);
 
   // cppcheck-suppress duplInheritedMember
   void redraw(void);

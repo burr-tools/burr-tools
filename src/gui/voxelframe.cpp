@@ -875,6 +875,148 @@ void voxelFrame_c::drawVoxelSpace() {
   glPopName();
   glDisable(GL_CULL_FACE);
   glDepthMask(GL_TRUE);
+
+  if (previewHintKind != 0)
+    drawPreviewHint();
+}
+
+static void drawPreviewArrowHead(const float tip[3], const float dir[3], const float side[3], float size) {
+  float back[3] = { tip[0]-dir[0]*size, tip[1]-dir[1]*size, tip[2]-dir[2]*size };
+  float sw[3]   = { side[0]*size*0.35f, side[1]*size*0.35f, side[2]*size*0.35f };
+
+  glBegin(GL_TRIANGLES);
+  glVertex3f(tip[0], tip[1], tip[2]);
+  glVertex3f(back[0]+sw[0], back[1]+sw[1], back[2]+sw[2]);
+  glVertex3f(back[0]-sw[0], back[1]-sw[1], back[2]-sw[2]);
+  glEnd();
+}
+
+float voxelFrame_c::previewHintRadius(void) const {
+  if (previewShapeIndex < 0 || (unsigned int)previewShapeIndex >= shapes.size())
+    return 1.0f;
+  const shapeInfo & s = shapes[previewShapeIndex];
+  if (!s.shape)
+    return 1.0f;
+  return 0.5f*sqrtf((float)s.shape->getDiagonal()) + 1.0f;
+}
+
+/* Sets up the shared GL state (matrix, color-by-axis, line width) for whichever
+ * hint drawPreviewHint() dispatches to; color follows the same red/green/blue
+ * convention as the coordinate-system overlay, picked by the axis component the
+ * change is dominantly along. */
+void voxelFrame_c::drawPreviewHint(void) const {
+
+  if (previewShapeIndex < 0 || (unsigned int)previewShapeIndex >= shapes.size())
+    return;
+
+  float axis[3] = { previewRotAxis[0], previewRotAxis[1], previewRotAxis[2] };
+  float ax = fabsf(axis[0]), ay = fabsf(axis[1]), az = fabsf(axis[2]);
+
+  float r, g, b;
+  if (ax >= ay && ax >= az)      { r = 1.0f; g = 0.0f;  b = 0.0f; }
+  else if (ay >= ax && ay >= az) { r = 0.0f; g = 0.75f; b = 0.0f; }
+  else                            { r = 0.0f; g = 0.0f;  b = 1.0f; }
+
+  glPushMatrix();
+  rotater->addTransform();
+
+  if (_useLightning) glDisable(GL_LIGHTING);
+  glDisable(GL_DEPTH_TEST);
+  glColor4f(r, g, b, 0.95f);
+  glLineWidth(6);
+
+  switch (previewHintKind) {
+    case 1: drawPreviewRotationArc(); break;
+    case 2: drawPreviewStraightArrow(true); break;
+    case 3: drawPreviewStraightArrow(false); break;
+    default: break;
+  }
+
+  glLineWidth(1);
+  glEnable(GL_DEPTH_TEST);
+  if (_useLightning) glEnable(GL_LIGHTING);
+
+  glPopMatrix();
+}
+
+void voxelFrame_c::drawPreviewRotationArc(void) const {
+
+  float radius = previewHintRadius();
+
+  // build an orthonormal basis (u, v) spanning the plane perpendicular to the axis
+  float axis[3] = { previewRotAxis[0], previewRotAxis[1], previewRotAxis[2] };
+  float ref[3] = { 0, 0, 1 };
+  if (fabsf(axis[2]) > 0.9f) { ref[0] = 1; ref[1] = 0; ref[2] = 0; }
+
+  float u[3] = {
+    ref[1]*axis[2] - ref[2]*axis[1],
+    ref[2]*axis[0] - ref[0]*axis[2],
+    ref[0]*axis[1] - ref[1]*axis[0]
+  };
+  float ulen = sqrtf(u[0]*u[0] + u[1]*u[1] + u[2]*u[2]);
+  if (ulen < 1e-6f) { u[0] = 1; u[1] = 0; u[2] = 0; ulen = 1; }
+  u[0] /= ulen; u[1] /= ulen; u[2] /= ulen;
+
+  float v[3] = {
+    axis[1]*u[2] - axis[2]*u[1],
+    axis[2]*u[0] - axis[0]*u[2],
+    axis[0]*u[1] - axis[1]*u[0]
+  };
+
+  float sweepDeg = previewRotAngleDeg;
+  if (sweepDeg < 60.0f) sweepDeg = 60.0f;
+  if (sweepDeg > 300.0f) sweepDeg = 300.0f;
+
+  const int segs = 32;
+  glBegin(GL_LINE_STRIP);
+  for (int i = 0; i <= segs; i++) {
+    float ang = (sweepDeg*i/segs)*3.1415927f/180.0f;
+    float c = cosf(ang), sn = sinf(ang);
+    glVertex3f(radius*(c*u[0] + sn*v[0]), radius*(c*u[1] + sn*v[1]), radius*(c*u[2] + sn*v[2]));
+  }
+  glEnd();
+
+  // arrowhead at the leading edge of the arc, pointing along the sweep direction
+  float endAng = sweepDeg*3.1415927f/180.0f;
+  float ec = cosf(endAng), es = sinf(endAng);
+  float tipDir[3] = { ec*u[0]+es*v[0], ec*u[1]+es*v[1], ec*u[2]+es*v[2] };
+  float tanDir[3] = { -es*u[0]+ec*v[0], -es*u[1]+ec*v[1], -es*u[2]+ec*v[2] };
+  float tip[3]    = { radius*tipDir[0], radius*tipDir[1], radius*tipDir[2] };
+
+  drawPreviewArrowHead(tip, tanDir, tipDir, radius*0.22f);
+}
+
+/* Draws a straight arrow spanning the piece along previewRotAxis: a single
+ * arrowhead at the +axis end for a translation nudge, or heads at both ends
+ * for a mirror (axis being the mirror plane's normal). */
+void voxelFrame_c::drawPreviewStraightArrow(bool doubleHeaded) const {
+
+  float radius = previewHintRadius();
+  float axis[3] = { previewRotAxis[0], previewRotAxis[1], previewRotAxis[2] };
+
+  float side[3] = { 0, 0, 1 };
+  if (fabsf(axis[2]) > 0.9f) { side[0] = 1; side[1] = 0; side[2] = 0; }
+  float cross[3] = {
+    side[1]*axis[2] - side[2]*axis[1],
+    side[2]*axis[0] - side[0]*axis[2],
+    side[0]*axis[1] - side[1]*axis[0]
+  };
+  float clen = sqrtf(cross[0]*cross[0] + cross[1]*cross[1] + cross[2]*cross[2]);
+  if (clen < 1e-6f) { cross[0] = 1; cross[1] = 0; cross[2] = 0; clen = 1; }
+  cross[0] /= clen; cross[1] /= clen; cross[2] /= clen;
+
+  float posEnd[3] = { axis[0]*radius, axis[1]*radius, axis[2]*radius };
+  float negEnd[3] = { -axis[0]*radius, -axis[1]*radius, -axis[2]*radius };
+  float negAxis[3] = { -axis[0], -axis[1], -axis[2] };
+
+  glBegin(GL_LINES);
+  glVertex3f(negEnd[0], negEnd[1], negEnd[2]);
+  glVertex3f(posEnd[0], posEnd[1], posEnd[2]);
+  glEnd();
+
+  drawPreviewArrowHead(posEnd, axis, cross, radius*0.3f);
+  if (doubleHeaded)
+    drawPreviewArrowHead(negEnd, negAxis, cross, radius*0.3f);
 }
 
 unsigned int voxelFrame_c::addSpace(const voxel_c * vx) {
@@ -1065,7 +1207,8 @@ void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) 
   redraw();
 }
 
-void voxelFrame_c::showTransformPreview(voxel_c * vx, unsigned int colorIndex) {
+void voxelFrame_c::showTransformPreview(voxel_c * vx, unsigned int colorIndex, int kind,
+                                         float axisX, float axisY, float axisZ, float angleDeg) {
 
   if (!vx)
     return;
@@ -1076,11 +1219,18 @@ void voxelFrame_c::showTransformPreview(voxel_c * vx, unsigned int colorIndex) {
   setSpaceColor(num, pieceColorR(colorIndex), pieceColorG(colorIndex), pieceColorB(colorIndex), 0.5f);
 
   previewShapeIndex = num;
+  previewHintKind = kind;
+  previewRotAxis[0] = axisX;
+  previewRotAxis[1] = axisY;
+  previewRotAxis[2] = axisZ;
+  previewRotAngleDeg = angleDeg;
 
   redraw();
 }
 
 void voxelFrame_c::clearTransformPreview(void) {
+
+  previewHintKind = 0;
 
   if (previewShapeIndex < 0 || (unsigned int)previewShapeIndex >= shapes.size())
     return;
@@ -1799,6 +1949,12 @@ int voxelFrame_c::handle(int event) {
   if (Fl_Gl_Window::handle(event))
     return 1;
 
+  if (event == FL_MOUSEWHEEL) {
+    if (wheelCb)
+      wheelCb(wheelUser, Fl::event_dy());
+    return 1;
+  }
+
   if (viewCube && pickx < 0) {
     if (event == FL_ENTER)
       return 1;
@@ -1825,8 +1981,7 @@ int voxelFrame_c::handle(int event) {
   switch(event) {
   case FL_PUSH:
 
-    if (Fl::event_button() == FL_MIDDLE_MOUSE ||
-        (Fl::event_button() == FL_LEFT_MOUSE && Fl::event_state(FL_CTRL))) {
+    if (Fl::event_button() == FL_MIDDLE_MOUSE) {
       panning = true;
       panStartMouseX = Fl::event_x();
       panStartMouseY = Fl::event_y();
@@ -1880,6 +2035,40 @@ int voxelFrame_c::handle(int event) {
 void voxelFrame_c::setSize(double sz) {
   size = sz;
   redraw();
+}
+
+double voxelFrame_c::computeFitSize(void) const {
+
+  // matches the fixed 15 degree vertical fovy used by gluPerspective() in draw()
+  double tanV = tan(7.5*3.1415927/180.0);
+  double aspect = h() > 0 ? (double)w()/h() : 1.0;
+  double tanH = tanV*aspect;
+
+  double needed = 1.0;
+
+  for (const shapeInfo & s : shapes) {
+
+    if (!s.shape)
+      continue;
+
+    double radius = 0.5*sqrt((double)s.shape->getDiagonal())*s.scale;
+    double dx = fabs(s.x) + radius;
+    double dy = fabs(s.y) + radius;
+
+    // shape.z is an extra camera-space depth offset on top of the outer -size*2
+    // translate (see ScaleRotateTranslate/TranslateRoateScale in drawVoxelSpace()),
+    // so it directly reduces (or, if positive, increases) the size needed to frame it
+    double depthOffset = 0.5*s.z;
+
+    double sizeForX = dx/(2*tanH) + depthOffset;
+    double sizeForY = dy/(2*tanV) + depthOffset;
+
+    if (sizeForX > needed) needed = sizeForX;
+    if (sizeForY > needed) needed = sizeForY;
+  }
+
+  // a bit of breathing room so pieces aren't crammed against the frustum edges
+  return needed*1.15 + 1.0;
 }
 
 bool voxelFrame_c::pickShape(int x, int y, unsigned int *shape, unsigned long *voxel, unsigned int *face) {

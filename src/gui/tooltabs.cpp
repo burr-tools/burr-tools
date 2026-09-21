@@ -27,6 +27,7 @@
 #include "WindowWidgets.h"
 #include "guigridtype.h"
 #include <stdlib.h>
+#include <math.h>
 
 #include "FL/fl_ask.H"
 #include "FL/Fl.H"
@@ -630,23 +631,23 @@ void ToolTab_0::cb_size(void) {
   }
 }
 
-void ToolTab_0::applyTask(voxel_c * space, long task) {
+void ToolTab_0::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
   switch(task) {
-        case  0: space->translate( 1, 0, 0, 0); break;
-        case  1: space->translate(-1, 0, 0, 0); break;
-        case  2: space->translate( 0, 1, 0, 0); break;
-        case  3: space->translate( 0,-1, 0, 0); break;
-        case  4: space->translate( 0, 0, 1, 0); break;
-        case  5: space->translate( 0, 0,-1, 0); break;
-        case  7: space->transform(3); break;
-        case  6: space->transform(1); break;
-        case  9: space->transform(12); break;
-        case  8: space->transform(4); break;
-        case 11: space->transform(20); break;
-        case 10: space->transform(16); break;
-        case 12: space->transform(24); break;
-        case 13: space->transform(34); break;
-        case 14: space->transform(32); break;
+        case  0: space->translate( 1, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = 0; info->dz = 0; } break;
+        case  1: space->translate(-1, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = 0; info->dz = 0; } break;
+        case  2: space->translate( 0, 1, 0, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 1; info->dz = 0; } break;
+        case  3: space->translate( 0,-1, 0, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = -1; info->dz = 0; } break;
+        case  4: space->translate( 0, 0, 1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = 1; } break;
+        case  5: space->translate( 0, 0,-1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = -1; } break;
+        case  7: space->transform(3);  if (info) info->transformIdx = 3;  break;
+        case  6: space->transform(1);  if (info) info->transformIdx = 1;  break;
+        case  9: space->transform(12); if (info) info->transformIdx = 12; break;
+        case  8: space->transform(4);  if (info) info->transformIdx = 4;  break;
+        case 11: space->transform(20); if (info) info->transformIdx = 20; break;
+        case 10: space->transform(16); if (info) info->transformIdx = 16; break;
+        case 12: space->transform(24); if (info) info->transformIdx = 24; break;
+        case 13: space->transform(34); if (info) info->transformIdx = 34; break;
+        case 14: space->transform(32); if (info) info->transformIdx = 32; break;
         case 15: space->minimizePiece(); break;
         case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
         case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
@@ -807,23 +808,23 @@ void ToolTab_1::cb_size(void) {
   }
 }
 
-void ToolTab_1::applyTask(voxel_c * space, long task) {
+void ToolTab_1::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
   switch(task) {
-        case  0: space->translate( 1, 1, 0, 0); break;
-        case  1: space->translate(-1, 1, 0, 0); break;
-        case  2: space->translate( 2, 0, 0, 0); break;
-        case  3: space->translate(-2, 0, 0, 0); break;
-        case  4: space->translate( 0, 0, 1, 0); break;
-        case  5: space->translate( 0, 0,-1, 0); break;
-        case 28: space->translate(-1,-1, 0, 0); break;
-        case 27: space->translate( 1,-1, 0, 0); break;
-        case  6: space->transform(9); break;
-        case  9: space->transform(6); break;
-        case 11: space->transform(1); break;
-        case 10: space->transform(5); break;
-        case 12: space->transform(12); break;
-        case 13: space->transform(15); break;
-        case 14: space->transform(18); break;
+        case  0: space->translate( 1, 1, 0, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = 1; info->dz = 0; } break;
+        case  1: space->translate(-1, 1, 0, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = 1; info->dz = 0; } break;
+        case  2: space->translate( 2, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = 2; info->dy = 0; info->dz = 0; } break;
+        case  3: space->translate(-2, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = -2; info->dy = 0; info->dz = 0; } break;
+        case  4: space->translate( 0, 0, 1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = 1; } break;
+        case  5: space->translate( 0, 0,-1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = -1; } break;
+        case 28: space->translate(-1,-1, 0, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = -1; info->dz = 0; } break;
+        case 27: space->translate( 1,-1, 0, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = -1; info->dz = 0; } break;
+        case  6: space->transform(9);  if (info) info->transformIdx = 9;  break;
+        case  9: space->transform(6);  if (info) info->transformIdx = 6;  break;
+        case 11: space->transform(1);  if (info) info->transformIdx = 1;  break;
+        case 10: space->transform(5);  if (info) info->transformIdx = 5;  break;
+        case 12: space->transform(12); if (info) info->transformIdx = 12; break;
+        case 13: space->transform(15); if (info) info->transformIdx = 15; break;
+        case 14: space->transform(18); if (info) info->transformIdx = 18; break;
         case 15: space->minimizePiece(); break;
         case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
         case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
@@ -975,32 +976,32 @@ void ToolTab_2::cb_size(void) {
   }
 }
 
-void ToolTab_2::applyTask(voxel_c * space, long task) {
+void ToolTab_2::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
   switch(task) {
-        case  0: space->translate( 1, 0, 1, 0); break;
-        case  1: space->translate( 0, 1, 1, 0); break;
-        case  2: space->translate(-1, 0, 1, 0); break;
-        case  3: space->translate( 0,-1, 1, 0); break;
+        case  0: space->translate( 1, 0, 1, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = 0; info->dz = 1; } break;
+        case  1: space->translate( 0, 1, 1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 1; info->dz = 1; } break;
+        case  2: space->translate(-1, 0, 1, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = 0; info->dz = 1; } break;
+        case  3: space->translate( 0,-1, 1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = -1; info->dz = 1; } break;
 
-        case  4: space->translate( 1, 1, 0, 0); break;
-        case  5: space->translate(-1, 1, 0, 0); break;
-        case 27: space->translate(-1,-1, 0, 0); break;
-        case 28: space->translate( 1,-1, 0, 0); break;
+        case  4: space->translate( 1, 1, 0, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = 1; info->dz = 0; } break;
+        case  5: space->translate(-1, 1, 0, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = 1; info->dz = 0; } break;
+        case 27: space->translate(-1,-1, 0, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = -1; info->dz = 0; } break;
+        case 28: space->translate( 1,-1, 0, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = -1; info->dz = 0; } break;
 
-        case 29: space->translate( 1, 0,-1, 0); break;
-        case 30: space->translate( 0, 1,-1, 0); break;
-        case 31: space->translate(-1, 0,-1, 0); break;
-        case 32: space->translate( 0,-1,-1, 0); break;
+        case 29: space->translate( 1, 0,-1, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = 0; info->dz = -1; } break;
+        case 30: space->translate( 0, 1,-1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 1; info->dz = -1; } break;
+        case 31: space->translate(-1, 0,-1, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = 0; info->dz = -1; } break;
+        case 32: space->translate( 0,-1,-1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = -1; info->dz = -1; } break;
 
-        case  7: space->transform(9); break;
-        case  6: space->transform(14); break;
-        case  9: space->transform(5); break;
-        case  8: space->transform(16); break;
-        case 11: space->transform(2); break;
-        case 10: space->transform(6); break;
-        case 12: space->transform(120); break;
-        case 13: space->transform(124); break;
-        case 14: space->transform(141); break;
+        case  7: space->transform(9);   if (info) info->transformIdx = 9;   break;
+        case  6: space->transform(14);  if (info) info->transformIdx = 14;  break;
+        case  9: space->transform(5);   if (info) info->transformIdx = 5;   break;
+        case  8: space->transform(16);  if (info) info->transformIdx = 16;  break;
+        case 11: space->transform(2);   if (info) info->transformIdx = 2;   break;
+        case 10: space->transform(6);   if (info) info->transformIdx = 6;   break;
+        case 12: space->transform(120); if (info) info->transformIdx = 120; break;
+        case 13: space->transform(124); if (info) info->transformIdx = 124; break;
+        case 14: space->transform(141); if (info) info->transformIdx = 141; break;
         case 15: space->minimizePiece(); break;
         case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
         case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
@@ -1147,23 +1148,23 @@ void ToolTab_3::cb_size(void) {
   }
 }
 
-void ToolTab_3::applyTask(voxel_c * space, long task) {
+void ToolTab_3::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
   switch(task) {
-        case  0: space->translate( 5, 0, 0, 0); break;
-        case  1: space->translate(-5, 0, 0, 0); break;
-        case  2: space->translate( 0, 5, 0, 0); break;
-        case  3: space->translate( 0,-5, 0, 0); break;
-        case  4: space->translate( 0, 0, 5, 0); break;
-        case  5: space->translate( 0, 0,-5, 0); break;
-        case  7: space->transform(3); break;
-        case  6: space->transform(1); break;
-        case  9: space->transform(12); break;
-        case  8: space->transform(4); break;
-        case 11: space->transform(20); break;
-        case 10: space->transform(16); break;
-        case 12: space->transform(24); break;
-        case 13: space->transform(34); break;
-        case 14: space->transform(32); break;
+        case  0: space->translate( 5, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = 5; info->dy = 0; info->dz = 0; } break;
+        case  1: space->translate(-5, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = -5; info->dy = 0; info->dz = 0; } break;
+        case  2: space->translate( 0, 5, 0, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 5; info->dz = 0; } break;
+        case  3: space->translate( 0,-5, 0, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = -5; info->dz = 0; } break;
+        case  4: space->translate( 0, 0, 5, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = 5; } break;
+        case  5: space->translate( 0, 0,-5, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = -5; } break;
+        case  7: space->transform(3);  if (info) info->transformIdx = 3;  break;
+        case  6: space->transform(1);  if (info) info->transformIdx = 1;  break;
+        case  9: space->transform(12); if (info) info->transformIdx = 12; break;
+        case  8: space->transform(4);  if (info) info->transformIdx = 4;  break;
+        case 11: space->transform(20); if (info) info->transformIdx = 20; break;
+        case 10: space->transform(16); if (info) info->transformIdx = 16; break;
+        case 12: space->transform(24); if (info) info->transformIdx = 24; break;
+        case 13: space->transform(34); if (info) info->transformIdx = 34; break;
+        case 14: space->transform(32); if (info) info->transformIdx = 32; break;
         case 15: space->minimizePiece(); break;
         case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
         case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
@@ -1291,23 +1292,23 @@ void ToolTab_4::cb_size(void) {
   }
 }
 
-void ToolTab_4::applyTask(voxel_c * space, long task) {
+void ToolTab_4::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
   switch(task) {
-        case  0: space->translate( 6, 0, 0, 0); break;
-        case  1: space->translate(-6, 0, 0, 0); break;
-        case  2: space->translate( 0, 6, 0, 0); break;
-        case  3: space->translate( 0,-6, 0, 0); break;
-        case  4: space->translate( 0, 0, 6, 0); break;
-        case  5: space->translate( 0, 0,-6, 0); break;
-        case  7: space->transform(3); break;
-        case  6: space->transform(1); break;
-        case  9: space->transform(12); break;
-        case  8: space->transform(4); break;
-        case 11: space->transform(20); break;
-        case 10: space->transform(16); break;
-        case 12: space->transform(24); break;
-        case 13: space->transform(34); break;
-        case 14: space->transform(32); break;
+        case  0: space->translate( 6, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = 6; info->dy = 0; info->dz = 0; } break;
+        case  1: space->translate(-6, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = -6; info->dy = 0; info->dz = 0; } break;
+        case  2: space->translate( 0, 6, 0, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 6; info->dz = 0; } break;
+        case  3: space->translate( 0,-6, 0, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = -6; info->dz = 0; } break;
+        case  4: space->translate( 0, 0, 6, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = 6; } break;
+        case  5: space->translate( 0, 0,-6, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = -6; } break;
+        case  7: space->transform(3);  if (info) info->transformIdx = 3;  break;
+        case  6: space->transform(1);  if (info) info->transformIdx = 1;  break;
+        case  9: space->transform(12); if (info) info->transformIdx = 12; break;
+        case  8: space->transform(4);  if (info) info->transformIdx = 4;  break;
+        case 11: space->transform(20); if (info) info->transformIdx = 20; break;
+        case 10: space->transform(16); if (info) info->transformIdx = 16; break;
+        case 12: space->transform(24); if (info) info->transformIdx = 24; break;
+        case 13: space->transform(34); if (info) info->transformIdx = 34; break;
+        case 14: space->transform(32); if (info) info->transformIdx = 32; break;
         case 15: space->minimizePiece(); break;
         case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
         case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
@@ -1367,6 +1368,84 @@ void ToolTab_4::cb_transform(long task) {
 
 
 
+/* Derives what a grid-symmetry transform represents, purely geometrically:
+ * transformPoint() maps a point "around the origin" (no translation), so applying
+ * it to the 3 basis vectors gives exactly the linear part of the transform,
+ * regardless of grid type. Returns 0 (kind: none), 1 (rotation, axis/angleDeg set)
+ * or 2 (mirror, axis set to the mirror plane's normal). For rotations, near-identity
+ * and 180 degree cases are reported as "none" - the usual antisymmetric-part axis
+ * extraction degenerates there, not worth the extra code for what is only a visual
+ * hint. For mirrors, the plane normal is recovered as the null space of (M+I),
+ * i.e. any nonzero cross product of two rows of (M+I) - this assumes eigenvalue -1
+ * has multiplicity 1, true for the simple axis mirrors these buttons produce. */
+static int computeTransformGeometry(const voxel_c * origShape, int transformIdx,
+                                     float axis[3], float * angleDeg) {
+  if (!origShape || transformIdx < 0)
+    return 0;
+
+  int m[3][3];
+  int basis[3][3] = { {1,0,0}, {0,1,0}, {0,0,1} };
+  for (int c = 0; c < 3; c++) {
+    int x = basis[c][0], y = basis[c][1], z = basis[c][2];
+    origShape->transformPoint(&x, &y, &z, transformIdx);
+    m[0][c] = x; m[1][c] = y; m[2][c] = z;
+  }
+
+  int det = m[0][0]*(m[1][1]*m[2][2] - m[1][2]*m[2][1])
+          - m[0][1]*(m[1][0]*m[2][2] - m[1][2]*m[2][0])
+          + m[0][2]*(m[1][0]*m[2][1] - m[1][1]*m[2][0]);
+
+  if (det > 0) {
+    float trace = (float)(m[0][0] + m[1][1] + m[2][2]);
+    float cosA = (trace - 1.0f)*0.5f;
+    if (cosA > 1.0f) cosA = 1.0f;
+    if (cosA < -1.0f) cosA = -1.0f;
+    float angle = acosf(cosA);
+    if (angle < 0.02f)
+      return 0;
+
+    float ax[3] = { (float)(m[2][1]-m[1][2]), (float)(m[0][2]-m[2][0]), (float)(m[1][0]-m[0][1]) };
+    float len = sqrtf(ax[0]*ax[0] + ax[1]*ax[1] + ax[2]*ax[2]);
+    if (len < 1e-4f)
+      return 0;
+
+    axis[0] = ax[0]/len;
+    axis[1] = ax[1]/len;
+    axis[2] = ax[2]/len;
+    *angleDeg = angle*180.0f/3.1415927f;
+    return 1;
+  }
+
+  if (det < 0) {
+    float a[3][3];
+    for (int r = 0; r < 3; r++)
+      for (int c = 0; c < 3; c++)
+        a[r][c] = (float)m[r][c] + (r == c ? 1.0f : 0.0f);
+
+    float cand[3][3] = {
+      { a[0][1]*a[1][2]-a[0][2]*a[1][1], a[0][2]*a[1][0]-a[0][0]*a[1][2], a[0][0]*a[1][1]-a[0][1]*a[1][0] },
+      { a[0][1]*a[2][2]-a[0][2]*a[2][1], a[0][2]*a[2][0]-a[0][0]*a[2][2], a[0][0]*a[2][1]-a[0][1]*a[2][0] },
+      { a[1][1]*a[2][2]-a[1][2]*a[2][1], a[1][2]*a[2][0]-a[1][0]*a[2][2], a[1][0]*a[2][1]-a[1][1]*a[2][0] },
+    };
+
+    int best = -1;
+    float bestLen = 1e-4f;
+    for (int i = 0; i < 3; i++) {
+      float len = sqrtf(cand[i][0]*cand[i][0] + cand[i][1]*cand[i][1] + cand[i][2]*cand[i][2]);
+      if (len > bestLen) { bestLen = len; best = i; }
+    }
+    if (best < 0)
+      return 0;
+
+    axis[0] = cand[best][0]/bestLen;
+    axis[1] = cand[best][1]/bestLen;
+    axis[2] = cand[best][2]/bestLen;
+    return 2;
+  }
+
+  return 0;
+}
+
 void ToolTab::previewTransform(long task, bool on) {
   ToolTabContainer *c = dynamic_cast<ToolTabContainer*>(parent());
   if (!c)
@@ -1376,9 +1455,25 @@ void ToolTab::previewTransform(long task, bool on) {
     return;
   }
   voxel_c *v = puzzle->getGridType()->getVoxel(puzzle->getShape(shape));
-  applyTask(v, task);
+  TaskPreviewInfo info;
+  applyTask(v, task, &info);
   v->initHotspot();
-  c->emitPreview(v, shape);
+
+  int kind = 0;
+  float axis[3] = { 0, 0, 1 };
+  float angleDeg = 0;
+
+  if (info.transformIdx >= 0) {
+    kind = computeTransformGeometry(puzzle->getShape(shape), info.transformIdx, axis, &angleDeg);
+  } else if (info.hasTranslate && (info.dx || info.dy || info.dz)) {
+    float len = sqrtf((float)(info.dx*info.dx + info.dy*info.dy + info.dz*info.dz));
+    axis[0] = info.dx/len;
+    axis[1] = info.dy/len;
+    axis[2] = info.dz/len;
+    kind = 3;
+  }
+
+  c->emitPreview(v, shape, kind, axis[0], axis[1], axis[2], angleDeg);
 }
 
 static void cb_ToolTabContainer_stub(Fl_Widget* /*o*/, void*v) {
@@ -1396,10 +1491,11 @@ ToolTabContainer::ToolTabContainer(int x, int y, int w, int h, const guiGridType
 void ToolTabContainer::previewClearTimeout(void *v) {
   ToolTabContainer *c = (ToolTabContainer*)v;
   if (c->previewHandler)
-    c->previewHandler(c->previewUser, 0, c->delayedClearShape);
+    c->previewHandler(c->previewUser, 0, c->delayedClearShape, 0, 0, 0, 1, 0);
 }
 
-void ToolTabContainer::emitPreview(voxel_c *preview, unsigned int shapeNum) {
+void ToolTabContainer::emitPreview(voxel_c *preview, unsigned int shapeNum, int kind,
+                                    float axisX, float axisY, float axisZ, float angleDeg) {
   Fl::remove_timeout(previewClearTimeout, this);
   if (!preview) {
     delayedClearShape = shapeNum;
@@ -1407,7 +1503,7 @@ void ToolTabContainer::emitPreview(voxel_c *preview, unsigned int shapeNum) {
     return;
   }
   if (previewHandler)
-    previewHandler(previewUser, preview, shapeNum);
+    previewHandler(previewUser, preview, shapeNum, kind, axisX, axisY, axisZ, angleDeg);
   else
     delete preview;
 }

@@ -342,18 +342,20 @@ void mainWindow_c::cb_TransformPiece(void) {
   changed = true;
 }
 
-static void cb_TransformPreview_stub(void* v, voxel_c* preview, unsigned int shapeNum) {
-  ((mainWindow_c*)v)->cb_TransformPreview(preview, shapeNum);
+static void cb_TransformPreview_stub(void* v, voxel_c* preview, unsigned int shapeNum,
+                                      int kind, float axisX, float axisY, float axisZ, float angleDeg) {
+  ((mainWindow_c*)v)->cb_TransformPreview(preview, shapeNum, kind, axisX, axisY, axisZ, angleDeg);
 }
 
-void mainWindow_c::cb_TransformPreview(voxel_c *preview, unsigned int shapeNum) {
+void mainWindow_c::cb_TransformPreview(voxel_c *preview, unsigned int shapeNum, int kind,
+                                        float axisX, float axisY, float axisZ, float angleDeg) {
 
   if (preview) {
     if (TaskSelectionTab->value() != TabPieces) {
       delete preview;
       return;
     }
-    View3D->getView()->showTransformPreview(preview, shapeNum);
+    View3D->getView()->showTransformPreview(preview, shapeNum, kind, axisX, axisY, axisZ, angleDeg);
     return;
   }
 
@@ -2192,9 +2194,13 @@ void mainWindow_c::activateShape(unsigned int number) {
 
 void mainWindow_c::activateProblem(unsigned int prob) {
 
-  if (prob < puzzle->getNumberOfProblems())
+  if (prob < puzzle->getNumberOfProblems()) {
     View3D->getView()->showProblem(puzzle.get(), prob, shapeAssignmentSelector->getSelection());
-  else
+    // only auto-fit while the user hasn't manually zoomed the Problems tab;
+    // a manual zoom (ViewSizes[1] >= 0) always wins, matching cb_TaskSelectionTab
+    if (ViewSizes[1] < 0)
+      View3D->fitToContent();
+  } else
     View3D->getView()->showNothing();
 
   SolutionEmpty = true;

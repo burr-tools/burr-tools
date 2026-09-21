@@ -43,6 +43,7 @@ void LView3dGroup::cb_slider(void) {
 
 static void cb_View3dGroupVoxel_stub(Fl_Widget* o, void* /*v*/) { static_cast<LView3dGroup*>(o->parent())->do_callback(); }
 static void cb_View3dHome_stub(Fl_Widget* /*o*/, void* v) { static_cast<LView3dGroup*>(v)->goHome(); }
+static void cb_View3dWheel_stub(void* v, int dy) { static_cast<LView3dGroup*>(v)->applyWheelZoom(dy); }
 
 LView3dGroup::LView3dGroup(int x, int y, int w, int h) : Fl_Group(0, 0, 50, 50), layoutable_c(x, y, w, h) {
 
@@ -52,10 +53,11 @@ LView3dGroup::LView3dGroup(int x, int y, int w, int h) : Fl_Group(0, 0, 50, 50),
   box(FL_DOWN_BOX);
 
   View3D = new voxelFrame_c(x, y, w-15, h);
-  View3D->tooltip(" Rotate by dragging with the mouse. Pan with the middle button or Ctrl+drag. Use the cube in the corner to snap views. ");
+  View3D->tooltip(" Rotate by dragging with the mouse. Pan with the middle mouse button. Use the cube in the corner to snap views. ");
   View3D->box(FL_NO_BOX);
   View3D->callback(cb_View3dGroupVoxel_stub, this);
   View3D->setHomeCallback(cb_View3dHome_stub, this);
+  View3D->setWheelCallback(cb_View3dWheel_stub, this);
 
   slider = new Fl_Slider(x+w-15, y, 15, h);
   slider->tooltip("Zoom view.");
@@ -78,20 +80,32 @@ void LView3dGroup::goHome(void) {
   redraw();
 }
 
+void LView3dGroup::fitToContent(void) {
+  double sz = View3D->computeFitSize();
+  double v = 6.0 - log(sz);
+  if (v < slider->minimum()) v = slider->minimum();
+  if (v > slider->maximum()) v = slider->maximum();
+  slider->value(v);
+  View3D->setSize(exp(6 - v));
+}
+
+void LView3dGroup::applyWheelZoom(int dy) {
+  if (config.reverseScrollZoom())
+    dy = -dy;
+  double v = slider->value() + 0.1 * dy;
+  if (v < slider->minimum()) v = slider->minimum();
+  if (v > slider->maximum()) v = slider->maximum();
+  slider->value(v);
+  View3D->setSize(exp(6 - v));
+}
+
 int LView3dGroup::handle(int event) {
 
   if (event == FL_MOUSEWHEEL) {
     if (!Fl::event_inside(this))
       return 0;
 
-    int dy = Fl::event_dy();
-    if (config.reverseScrollZoom())
-      dy = -dy;
-    double v = slider->value() + 0.1 * dy;
-    if (v < slider->minimum()) v = slider->minimum();
-    if (v > slider->maximum()) v = slider->maximum();
-    slider->value(v);
-    View3D->setSize(exp(6 - v));
+    applyWheelZoom(Fl::event_dy());
     return 1;
   }
 

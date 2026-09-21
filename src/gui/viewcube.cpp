@@ -316,6 +316,26 @@ struct PickPoly {
   float v[4][3];
 };
 
+/* The outward normal of any face on this cube (chamfered or not) is simply the
+ * direction from the origin to the face's own centroid: the shape is convex and
+ * centered at the origin, so that direction is always perpendicular to the face
+ * and points away from the center. This is used instead of cross-producting two
+ * of the face's own edges because that depends on the vertex listing order being
+ * consistently wound, and a couple of the hand-typed polygons above (FACE_PY,
+ * FACE_NY, and the edges/corners touching them) are not - centroid direction
+ * sidesteps that entirely rather than requiring every polygon's winding to be
+ * audited by hand. */
+static void polyOutwardNormal(const PickPoly & p, float nrm[3]) {
+  float c[3] = { 0, 0, 0 };
+  for (int k = 0; k < p.n; k++) {
+    c[0] += p.v[k][0];
+    c[1] += p.v[k][1];
+    c[2] += p.v[k][2];
+  }
+  nrm[0] = c[0]; nrm[1] = c[1]; nrm[2] = c[2];
+  vnorm(nrm);
+}
+
 static void addPoly(PickPoly * polys, int * count, viewCube_c::Part part, int n,
                     float ax, float ay, float az,
                     float bx, float by, float bz,
@@ -422,18 +442,7 @@ viewCube_c::Part viewCube_c::hitTest(int mx, int my, rotater_c * rot, int winW, 
       project(m, polys[i].v[k][0], polys[i].v[k][1], polys[i].v[k][2], o, &sx[k], &sy[k], &sz[k]);
 
     float nrm[3];
-    float ea[3] = {
-      polys[i].v[1][0] - polys[i].v[0][0],
-      polys[i].v[1][1] - polys[i].v[0][1],
-      polys[i].v[1][2] - polys[i].v[0][2]
-    };
-    float eb[3] = {
-      polys[i].v[2][0] - polys[i].v[0][0],
-      polys[i].v[2][1] - polys[i].v[0][1],
-      polys[i].v[2][2] - polys[i].v[0][2]
-    };
-    vcross(ea, eb, nrm);
-    vnorm(nrm);
+    polyOutwardNormal(polys[i], nrm);
     float wn[3];
     mulPoint(m, nrm[0], nrm[1], nrm[2], wn);
     if (wn[2] < 0.02f)
@@ -836,18 +845,7 @@ void viewCube_c::draw(rotater_c * rot, int winW, int winH, float pixelScale) con
 
   for (int i = 0; i < npoly; i++) {
     float nrm[3];
-    float a[3] = {
-      polys[i].v[1][0] - polys[i].v[0][0],
-      polys[i].v[1][1] - polys[i].v[0][1],
-      polys[i].v[1][2] - polys[i].v[0][2]
-    };
-    float b[3] = {
-      polys[i].v[2][0] - polys[i].v[0][0],
-      polys[i].v[2][1] - polys[i].v[0][1],
-      polys[i].v[2][2] - polys[i].v[0][2]
-    };
-    vcross(a, b, nrm);
-    vnorm(nrm);
+    polyOutwardNormal(polys[i], nrm);
     float wn[3];
     mulPoint(m, nrm[0], nrm[1], nrm[2], wn);
     if (wn[2] < -0.02f)
@@ -869,18 +867,7 @@ void viewCube_c::draw(rotater_c * rot, int winW, int winH, float pixelScale) con
   glLineWidth(1.0f);
   for (int i = 0; i < npoly; i++) {
     float nrm[3];
-    float a[3] = {
-      polys[i].v[1][0] - polys[i].v[0][0],
-      polys[i].v[1][1] - polys[i].v[0][1],
-      polys[i].v[1][2] - polys[i].v[0][2]
-    };
-    float b[3] = {
-      polys[i].v[2][0] - polys[i].v[0][0],
-      polys[i].v[2][1] - polys[i].v[0][1],
-      polys[i].v[2][2] - polys[i].v[0][2]
-    };
-    vcross(a, b, nrm);
-    vnorm(nrm);
+    polyOutwardNormal(polys[i], nrm);
     float wn[3];
     mulPoint(m, nrm[0], nrm[1], nrm[2], wn);
     if (wn[2] < -0.02f)
