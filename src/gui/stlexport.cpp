@@ -21,8 +21,8 @@
 #include "stlexport.h"
 #include "filechooser.h"
 
-#include "../tools/filepath.h"
 #include "../tools/homedir.h"
+#include <filesystem>
 #include <stdlib.h>
 
 #include "BlockList.h"
@@ -183,19 +183,19 @@ void stlExport_c::cb_Update3DViewParams(void)
   }
 }
 
-stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : LFl_Double_Window(true), puzzle(p), exportDir(directoryOfFile(puzzleFile)) {
+stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : LFl_Double_Window(true), puzzle(p), exportDir(std::filesystem::path(puzzleFile).parent_path().string()) {
 
-  /* The puzzle's own folder is where the user almost always wants the mesh,
-   * and for an unsaved puzzle the home directory at least exists and is
-   * writable. The field used to default to ".", which is the working
-   * directory -- "/" for an application launched from a macOS bundle, and
-   * read-only.
+  /* The path field starts at the folder the puzzle was loaded from, which is
+   * where the user almost always wants the mesh. An unsaved puzzle has no
+   * folder, so the home directory stands in: it exists and is writable,
+   * neither of which holds for the working directory -- an application
+   * launched from a macOS bundle or a Windows shortcut is given "/".
    *
-   * homedir() already ends in a separator, so it goes through
-   * directoryOfFile() too, leaving both branches in the same shape.
+   * homedir() ends in a separator, so it goes through parent_path() as well,
+   * leaving both branches in the same shape.
    */
   if (exportDir.empty())
-    exportDir = directoryOfFile(homedir());
+    exportDir = std::filesystem::path(homedir()).parent_path().string();
 
   label("Export STL");
 
