@@ -1683,7 +1683,7 @@ void voxelFrame_c::draw() {
     }
 
     // this call has to be identical to the one in image_c::prepareOpenGlImagePart
-    gluPerspective(15, 1.0*w()/h(), size+1, 3*size+1);
+    gluPerspective(15, 1.0*w()/h(), size+1, 1000*size+1);
     glMatrixMode(GL_MODELVIEW);
 
   }
