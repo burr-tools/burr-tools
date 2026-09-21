@@ -23,7 +23,7 @@
 #pragma GCC diagnostic pop
 
 static const int kSizeFraction = 4;  // widget side length is winMin/kSizeFraction
-static const int kMinSize = 60;  // keep well under voxelFrame_c::draw()'s 48px suppression cutoff
+static const int kMinSize = 60;  // floor for the cube itself; see minimumHostSize()
 static const int kMaxSize = 220;
 static const int kMargin = 6;
 static const int kHouse = 29;
@@ -84,6 +84,12 @@ viewCube_c::viewCube_c(void)
   : hover(PART_NONE), pressPart(PART_NONE), pressX(0), pressY(0),
     dragging(false), tracking(false)
 {
+}
+
+int viewCube_c::minimumHostSize(void) {
+  // twice the cube's own floor, so there is at least as much viewport left over
+  // to drag the model in as the cube occupies
+  return kMinSize * 2;
 }
 
 viewCube_c::Overlay viewCube_c::overlayRect(int winW, int winH) const {

@@ -47,6 +47,15 @@ class viewCube_c {
     bool contains(int x, int y, int winW, int winH) const;
     bool isTracking(void) const { return tracking; }
 
+    /* Smallest host viewport the cube should appear in at all. Derived from the
+     * cube's own minimum on-screen size rather than being a second independent
+     * constant: below this the cube would take up so much of the view that
+     * dragging the model becomes impractical, since overlayRect() cannot shrink
+     * it indefinitely and handle() swallows any press landing inside it. Callers
+     * that draw the cube must gate input on this too, or an unrendered cube goes
+     * on eating clicks. */
+    static int minimumHostSize(void);
+
   private:
 
     struct Overlay {

@@ -1938,7 +1938,8 @@ void voxelFrame_c::draw(bool withViewCube) {
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
   }
 
-  if (withViewCube && pickx < 0 && !cb && viewCube && w() >= 48 && h() >= 48)
+  if (withViewCube && pickx < 0 && !cb && viewCube &&
+      w() >= viewCube_c::minimumHostSize() && h() >= viewCube_c::minimumHostSize())
     viewCube->draw(rotater, w(), h(), pixels_per_unit());
 
   if (_useLightning)
@@ -1965,7 +1966,10 @@ int voxelFrame_c::handle(int event) {
     return 1;
   }
 
-  if (viewCube && pickx < 0) {
+  // the size gate has to match draw()'s, or in a viewport too small to render the
+  // cube an invisible one would still swallow every press landing in its corner
+  if (viewCube && pickx < 0 &&
+      w() >= viewCube_c::minimumHostSize() && h() >= viewCube_c::minimumHostSize()) {
     if (event == FL_ENTER)
       return 1;
 
