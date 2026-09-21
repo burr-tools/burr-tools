@@ -1836,7 +1836,7 @@ int voxelFrame_c::handle(int event) {
     }
 
     if (!Fl::event_state(FL_SHIFT | FL_ALT | FL_CTRL))
-      rotater->click(Fl::event_x(), Fl::event_y());
+      rotater->click(Fl::event_x()*pixels_per_unit(), Fl::event_y()*pixels_per_unit());
 
     do_callback();
 
@@ -1853,7 +1853,7 @@ int voxelFrame_c::handle(int event) {
       return 1;
     }
 
-    rotater->drag(Fl::event_x(), Fl::event_y());
+    rotater->drag(Fl::event_x()*pixels_per_unit(), Fl::event_y()*pixels_per_unit());
     redraw();
 
     do_callback();
@@ -1868,7 +1868,7 @@ int voxelFrame_c::handle(int event) {
       return 1;
     }
 
-    rotater->clack(Fl::event_x(), Fl::event_y());
+    rotater->clack(Fl::event_x()*pixels_per_unit(), Fl::event_y()*pixels_per_unit());
     redraw();
 
     return 1;
