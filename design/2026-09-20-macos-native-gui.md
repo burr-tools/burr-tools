@@ -31,7 +31,9 @@ C++ — no Objective-C source files are added — behind a small platform seam, 
 carves two focused units out of the 134 KB `mainwindow.cpp` in the process.
 
 **Explicitly out of scope:** code signing and notarization; multi-document windows;
-dark mode; redrawing the 125 XPM icons for Retina. Sections 9 and 10 record why.
+making dark mode actually work (the app no longer forces the light appearance, but
+FLTK 1.4.4 draws light regardless — Section 10); redrawing the 125 XPM icons for
+Retina. Sections 9 and 10 record why.
 
 ### 1.1 What Already Works
 
@@ -369,7 +371,9 @@ The `.xmpuzzle` document icon gets the same treatment at smaller sizes.
 | :--- | :--- | :--- |
 | `CFBundleIconFile` | `BurrTools.icns` | Application icon |
 | `CFBundleTypeIconFile` | `BurrToolsDoc.icns` | Document icon, inside the existing `CFBundleDocumentTypes` entry |
-| `NSRequiresAquaSystemAppearance` | `true` | Light appearance only (Section 9) |
+
+`NSRequiresAquaSystemAppearance` was specified here and later removed; see
+Section 9.
 
 `CFBundleDocumentTypes` for `.xmpuzzle` and `NSHighResolutionCapable` are already
 present and correct.
@@ -564,7 +568,7 @@ Finder integration, and register the bundle under test explicitly:
 
 | Item | Decision | Reason |
 | :--- | :--- | :--- |
-| Dark mode | Opt out via `NSRequiresAquaSystemAppearance` | FLTK 1.4.4's behaviour under dark appearance is unverified, and the 125 XPM icons assume a light background. A consistently light app looks deliberate; a half-inverted one looks broken. Revisit when the icon set is redone. |
+| Dark mode | **Reversed after implementation** — the opt-out was removed; see below | Originally the app declared `NSRequiresAquaSystemAppearance` so it stayed light under a dark system. That key has since been dropped, so the app follows the system appearance as far as it is able to. |
 | Code signing / notarization | Not addressed | Requires an Apple Developer account and a CI secrets story. The DMG README already documents the right-click-Open workaround. |
 | Retina icon artwork | Not addressed | 125 XPM bitmaps at 1×. Redrawing them is an independent project with no dependency on anything here. Text and vector drawing are already sharp via `NSHighResolutionCapable`. |
 | Multi-document windows | Not addressed | `mainWindow_c` assumes a single puzzle throughout. A genuine Mac deviation, recorded rather than hidden. |
@@ -582,7 +586,20 @@ Honest accounting of what will still not be Mac-like once everything above is do
    a new window.
 2. **No Open Recent.** Not implemented today; adding it is independent work.
 3. **Icons are 1× bitmaps**, soft on Retina displays.
-4. **Light appearance only**, regardless of the system setting.
+4. **Dark mode is only skin deep.** The app no longer forces the light appearance,
+   so under a dark system AppKit draws the title bar and the system menu bar dark —
+   but everything FLTK draws stays light, because **FLTK 1.4.4 has no dark mode on
+   macOS**. Its Cocoa `get_system_colors()` hardcodes the light palette
+   (`subprojects/fltk/src/drivers/Cocoa/Fl_Cocoa_Screen_Driver.cxx:215-217`):
+   white `background2`, black `foreground`, `0xd8` grey `background`. The code that
+   would read the real system colours sits directly below under `#if 0`, with a
+   comment that it does not run on all macOS versions.
+
+   Making this genuinely work means setting `Fl::background`/`background2`/
+   `foreground` ourselves from the detected appearance, and then dealing with the
+   two things that would still be wrong: the 125 XPM toolbar icons are drawn for a
+   light background, and the widgets that draw with hard-coded colours
+   (Section 4.2) would need auditing. None of that is done here.
 5. **Unsigned.** First launch requires right-click-Open.
 6. **Modal dialogs, not sheets.** Dialogs appear as separate windows rather than
    attached to the document window.

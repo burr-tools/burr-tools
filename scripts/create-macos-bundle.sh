@@ -76,9 +76,7 @@ cat > "${BUNDLE}/Contents/Info.plist" << EOF
 	<string>${APP_NAME}</string>
 	<key>CFBundleDisplayName</key>
 	<string>${APP_NAME}</string>
-${APP_ICON_KEYS}	<key>NSRequiresAquaSystemAppearance</key>
-	<true/>
-	<key>CFBundleVersion</key>
+${APP_ICON_KEYS}	<key>CFBundleVersion</key>
 	<string>${VERSION}</string>
 	<key>CFBundleShortVersionString</key>
 	<string>${VERSION}</string>
