@@ -46,12 +46,53 @@ fi
 TMPROOT="$(mktemp -d)"
 trap 'rm -rf "$TMPROOT"' EXIT
 
+# Reduce a source image to a centred square, because `sips -z N N` does not
+# preserve aspect ratio -- handed a 1066x1093 render it silently squashes the
+# artwork rather than complaining.
+#
+# The square is CROPPED to the smaller dimension rather than padded out to the
+# larger one. `sips -c` pads with --padColor, and that flattens the alpha
+# channel outright: padding a transparent render produces a solid background,
+# which is not what anybody wants on an icon. A pure crop (no padding needed)
+# leaves the transparency intact.
+#
+# The crop is reported rather than done silently, so that artwork whose
+# margins are too small to absorb it is visible as clipping in the output
+# instead of being discovered later in Finder.
+#
+# square_source <source png> <destination png>
+square_source() {
+	local src="$1"
+	local dst="$2"
+
+	local w h side
+	w=$(sips -g pixelWidth  "$src" | awk '/pixelWidth/  {print $2}')
+	h=$(sips -g pixelHeight "$src" | awk '/pixelHeight/ {print $2}')
+
+	if [ "$w" = "$h" ]; then
+		cp "$src" "$dst"
+		return
+	fi
+
+	if [ "$w" -lt "$h" ]; then side="$w"; else side="$h"; fi
+
+	echo "note: ${src} is ${w}x${h}; cropping to a centred ${side}x${side} square" >&2
+	echo "      (removing $(( (w - side) / 2 )) px from each side and $(( (h - side) / 2 )) px from top and bottom)." >&2
+	echo "      Supply a square source if you want to control the framing yourself." >&2
+
+	sips -c "$side" "$side" "$src" --out "$dst" >/dev/null
+}
+
 # make_icns <output name> <source png>
 make_icns() {
 	local name="$1"
 	local src="$2"
 	local iconset="${TMPROOT}/${name}.iconset"
 	mkdir -p "$iconset"
+
+	local square="${TMPROOT}/${name}-square.png"
+	square_source "$src" "$square"
+	src="$square"
 
 	for size in 16 32 128 256 512; do
 		sips -z $size $size "$src" --out "${iconset}/icon_${size}x${size}.png" >/dev/null
