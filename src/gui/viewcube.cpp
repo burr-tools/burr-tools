@@ -508,7 +508,7 @@ viewCube_c::Action viewCube_c::handle(int event, rotater_c * rot, int winW, int 
     dragging = false;
     tracking = true;
     if (!isNavPart(h) && rot)
-      rot->click((float)mx, (float)my);
+      rot->click((float)mx * pixelScale, (float)my * pixelScale);
     return ACT_REDRAW;
   }
 
