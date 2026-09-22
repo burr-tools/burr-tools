@@ -1833,17 +1833,33 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   std::exception_ptr workerException = nullptr;
   std::mutex exceptionMutex;
 
-  // Split threshold: only pay for a split when siblings are actually starving
-  // and the queue cannot occupy them. Evaluated at task granularity, so the
-  // two locked reads cost nothing against a millisecond-scale task.
-  auto shouldSplit = [&] {
+  // Split decision, evaluated at task granularity (the two locked reads cost
+  // nothing against a millisecond-scale task; splitPrefix itself is
+  // microseconds on the worker-local scratch copy).
+  //
+  // Two independent triggers, either suffices:
+  // - Shallow prefix (depth < 3): such a task can hold an enormous subtree,
+  //   and splitting it is always worth it -- by the time siblings starve on
+  //   it, it is already running and unsplittable (see the concurrency
+  //   architecture note in thread_budget.h for why preemption is out of
+  //   scope). This
+  //   also refines narrow seeds at runtime that never reached depth 3.
+  // - Starving siblings and a short queue: classic work stealing; the 2N
+  //   bound only needs to cover the race window, because a waiting sibling
+  //   implies the queue ran dry just now -- with a deep queue there would be
+  //   no waiters to begin with. Depth 3+ tasks therefore split only here.
+  // splitPrefix itself returns empty at the depth cap, on dead ends, and
+  // for single children, so neither trigger can over-refine.
+  auto shouldSplit = [&](const SubtreeTask &task) {
+    if (task.prefix.size() < 3)
+      return true;
     return pool.has_waiting_workers() && pool.queued() < 2u * workers;
   };
 
   if (canUseSimd()) {
     auto solver = createSimdSolver();
 
-    auto simdWorkerFunc = [this, &pool, &solver, &workerException, &exceptionMutex, workers, &shouldSplit](std::stop_token st = {}) {
+    auto simdWorkerFunc = [this, &pool, &solver, &workerException, &exceptionMutex, &shouldSplit](std::stop_token st = {}) {
       try {
         // Scratch DLX copy at root state, used only for splitting prefixes.
         // The SIMD solver itself is shared read-only and never mutated here.
@@ -1851,7 +1867,7 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
         SubtreeTask task;
         while (pool.pop_task(task, abbort, st)) {
           try {
-            if (shouldSplit()) {
+            if (shouldSplit(task)) {
               auto children = splitter.splitPrefix(task);
               if (!children.empty()) {
                 task = std::move(children.front());
@@ -1913,14 +1929,14 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
         t.join();
     }
   } else {
-    auto dlxWorkerFunc = [this, &pool, &workerException, &exceptionMutex, workers, &shouldSplit](std::stop_token st = {}) {
+    auto dlxWorkerFunc = [this, &pool, &workerException, &exceptionMutex, &shouldSplit](std::stop_token st = {}) {
       try {
         assemblerWorker_c worker(*this);
 
         SubtreeTask task;
         while (pool.pop_task(task, abbort, st)) {
           try {
-            if (shouldSplit()) {
+            if (shouldSplit(task)) {
               auto children = worker.splitPrefix(task);
               if (!children.empty()) {
                 task = std::move(children.front());
