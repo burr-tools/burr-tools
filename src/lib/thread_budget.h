@@ -68,10 +68,10 @@ inline bool threadBudgetEnabled() {
  * condition then depends only on token holders, which always progress,
  * or on terminal flags. Releasing wakes a waiter; shutdowns wake all.
  *
- * Per-thread holdings ride the thread_local t_holds flag: at most one
- * token per thread (true by construction -- one task at a time per
- * thread in every worker loop here), so take/return pair up without
- * threading flags through signatures.
+ * Per-thread holdings ride a function-local thread_local flag (see
+ * holdsFlag below): at most one token per thread (true by construction
+ * -- one task at a time per thread in every worker loop here), so
+ * take/return pair up without threading flags through signatures.
  *
  * Full rationale, measurements and history:
  * design/2026-09-22-assembly-work-stealing.md.
@@ -91,7 +91,7 @@ public:
     if (shutdown_ || available_ == 0)
       return false;
     available_--;
-    t_holds = true;
+    holdsFlag() = true;
     return true;
   }
 
@@ -110,7 +110,7 @@ public:
     if (available_ == 0)
       return false;
     available_--;
-    t_holds = true;
+    holdsFlag() = true;
     return true;
   }
 
@@ -119,9 +119,9 @@ public:
     bool notify = false;
     {
       std::lock_guard<std::mutex> lock(mtx_);
-      if (!t_holds)
+      if (!holdsFlag())
         return;
-      t_holds = false;
+      holdsFlag() = false;
       // No clamp needed: every increment pairs with a prior take, and takes
       // can't exceed the initial total while the flag protocol holds.
       available_++;
@@ -146,19 +146,26 @@ public:
     cv_.notify_all();
   }
 
-  static bool holdsHere() { return t_holds; }
+  static bool holdsHere() { return holdsFlag(); }
 
 private:
+  // NOTE: per-thread holdings flag as a function-local static, NOT an
+  // `inline thread_local` static data member: Apple's linker rejects the
+  // latter with duplicate 'thread-local wrapper routine' symbols when the
+  // header is included in multiple translation units, while function-local
+  // thread_locals of (implicitly inline) member functions merge correctly
+  // on every toolchain we target. Keep it this way.
+  static bool &holdsFlag() {
+    static thread_local bool holds = false;
+    return holds;
+  }
+
   mutable std::mutex mtx_;
   std::condition_variable_any cv_;
   unsigned int available_;
   const unsigned int total_;
   bool shutdown_{false}; // guarded by mtx_
-
-  static thread_local bool t_holds;
 };
-
-inline thread_local bool ThreadBudget::t_holds = false;
 
 /**
  * RAII token for straight-line scopes (serial search paths). Takes on
