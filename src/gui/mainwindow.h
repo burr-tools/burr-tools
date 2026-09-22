@@ -31,6 +31,7 @@
 class VoxelEditGroup_c;
 class ChangeSize;
 class ToolTab;
+class voxel_c;
 class puzzle_c;
 class problem_c;
 class solveThread_c;
@@ -182,6 +183,16 @@ class mainWindow_c : public LFl_Double_Window {
   double ViewSizes[3];
   int currentTab;
 
+  /* ViewSizes[1] only records the Problems-tab zoom left behind on the *first*
+   * tab switch away from it (see cb_TaskSelectionTab); it says nothing about
+   * whether the user has manually zoomed while still sitting on that tab. This
+   * flag tracks that directly, so a manual zoom always wins over auto-fit and
+   * keeps winning, independent of tab-switch history. Set from View3D's zoom
+   * change callback (cb_View3dZoomChanged, declared below in the public
+   * section since its stub is a free function), cleared wherever ViewSizes[]
+   * itself is reset. */
+  bool problemZoomTouched = false;
+
   /* Load a puzzle file. Returns false if it could not be loaded.
    *
    * Some failures are reported to the user by this function (a parse error
@@ -283,6 +294,7 @@ public:
   void cb_ShapeToResult(void);
 
   void cb_TaskSelectionTab(Fl_Tabs*);
+  void cb_View3dZoomChanged(void);
 
   void cb_SelectProblemShape(void);
   void cb_AddShapeToProblem(void);
@@ -300,6 +312,8 @@ public:
   void cb_PiecesClicked(void);
 
   void cb_TransformPiece(void);
+  void cb_TransformPreview(voxel_c * preview, unsigned int shapeNum, int kind = 0,
+                            float axisX = 0, float axisY = 0, float axisZ = 1, float angleDeg = 0);
   void cb_pieceEdit(VoxelEditGroup_c* o);
   void cb_EditChoice(void);
   void cb_EditSym(int onoff, int value);

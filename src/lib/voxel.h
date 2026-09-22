@@ -381,8 +381,25 @@ public:
   /**
    * this function transforms the given point by the given transformation
    * around the origin
+   *
+   * NOTE: on grids whose integer (x,y,z) coordinates are not a plain scaled
+   * copy of a Cartesian frame (currently GT_TRIANGULAR_PRISM), this is not
+   * actually linear: a parity-dependent offset is folded in as part of
+   * converting to and from the grid's own coordinate representation, so
+   * feeding it, say, unit basis vectors does not recover the transformation's
+   * geometric rotation/mirror. Callers that need that (e.g. to draw a rotation
+   * axis) should use getTransformMatrix() instead.
    */
   virtual void transformPoint(int * x, int * y, int * z, unsigned int trans) const = 0;
+
+  /**
+   * the 3x3 linear part of the given transformation - the actual geometric
+   * rotation or mirror it represents, in the grid's own natural orthonormal
+   * frame, decoupled from whatever affine quirks its integer coordinate
+   * representation has. Row-major: new_x = m[0]*x + m[1]*y + m[2]*z, etc.
+   * Always orthogonal (determinant +-1) for a valid trans.
+   */
+  virtual void getTransformMatrix(unsigned int trans, double m[9]) const = 0;
 
   /**
    * shift the space around. Voxels that go over the

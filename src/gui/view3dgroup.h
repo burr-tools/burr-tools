@@ -35,14 +35,33 @@ class LView3dGroup : public Fl_Group, public layoutable_c {
   voxelFrame_c * View3D;
   Fl_Slider * slider;
 
+  Fl_Callback * zoomChangeCb = nullptr;
+  void * zoomChangeUser = nullptr;
+
 public:
+
+  static const double defaultZoom;
 
   LView3dGroup(int x, int y, int w, int h);
 
   void cb_slider(void);
+  void applyWheelZoom(int dy);
+
+  /* Fired only on an actual user zoom gesture (slider drag, mouse wheel) - not on
+   * setZoom()/goHome() or the initial construction, which reapply a remembered
+   * or fitted zoom rather than represent a fresh user choice. Lets callers
+   * distinguish "the user picked this zoom" from "this zoom was restored",
+   * which auto-fit-on-first-visit needs to not immediately re-mark itself as a
+   * manual override. */
+  void setZoomChangeCallback(Fl_Callback * cb, void * user) { zoomChangeCb = cb; zoomChangeUser = user; }
+  void notifyZoomChanged(void) { if (zoomChangeCb) zoomChangeCb(this, zoomChangeUser); }
 
   double getZoom(void) { return slider->value(); }
   void setZoom(double v) { slider->value(v); cb_slider(); }
+  void goHome(void);
+
+  // zooms out (or in) just enough that everything currently shown fits in view
+  void fitToContent(void);
 
   // cppcheck-suppress duplInheritedMember
   void redraw(void);

@@ -153,6 +153,14 @@ void voxel_0_c::transformPoint(int * x, int * y, int * z, unsigned int trans) co
   *z = rotationMatrices[trans][6]*sx + rotationMatrices[trans][7]*sy + rotationMatrices[trans][8]*sz;
 }
 
+void voxel_0_c::getTransformMatrix(unsigned int trans, double m[9]) const {
+
+  bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
+
+  for (int i = 0; i < 9; i++)
+    m[i] = rotationMatrices[trans][i];
+}
+
 bool voxel_0_c::getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const {
 
   switch (typ) {

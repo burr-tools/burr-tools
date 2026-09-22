@@ -61,7 +61,9 @@ void image_c::prepareOpenGlImagePart(voxelFrame_c * dr) {
     trRowOrder(tr, TR_TOP_TO_BOTTOM);
 
     // this call has to be the identical one as in voxelFrame_c::draw()
-    trPerspective(tr, 15, 1.0*width/height, dr->getSize()+1, 3*dr->getSize()+1);
+    double nearPlane, farPlane;
+    dr->getNearFar(&nearPlane, &farPlane);
+    trPerspective(tr, 15, 1.0*width/height, nearPlane, farPlane);
 
     glPixelStorei(GL_PACK_ALIGNMENT, 4);
   }

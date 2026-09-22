@@ -196,6 +196,10 @@ void mainWindow_c::cb_NewShape(void) {
     PcSel->setSelection(puzzle->addShape(v->getX(), v->getY(), v->getZ()));
   } else
     PcSel->setSelection(puzzle->addShape(ggt->defaultSize(), ggt->defaultSize(), ggt->defaultSize()));
+  // setSelection() above already triggered cb_PcSel -> activateShape(), so the new
+  // (empty) shape is already showing; frame it the same way the ViewCube's home
+  // button would, instead of leaving whatever zoom was left over from before
+  View3D->fitToContent();
   pieceEdit->setZ(0);
   updateInterface();
   StatPieceInfo(PcSel->getSelection());
@@ -303,10 +307,14 @@ void mainWindow_c::cb_TaskSelectionTab(Fl_Tabs* o) {
       activateProblem(problemSelector->getSelection());
     }
     StatProblemInfo(problemSelector->getSelection());
+    // Big3DView() first, so fitToContent() below (if it runs) sees the viewport
+    // it's actually about to be shown in, not whatever was active a moment ago
     Big3DView();
     ViewSizes[currentTab] = View3D->getZoom();
     if (ViewSizes[1] >= 0)
       View3D->setZoom(ViewSizes[1]);
+    else if (!problemZoomTouched)
+      View3D->fitToContent();
     currentTab = 1;
   } else if(o->value() == TabSolve) {
 
@@ -329,6 +337,12 @@ void mainWindow_c::cb_TaskSelectionTab(Fl_Tabs* o) {
   updateInterface();
 }
 
+static void cb_View3dZoomChanged_stub(Fl_Widget* /*o*/, void* v) { static_cast<mainWindow_c*>(v)->cb_View3dZoomChanged(); }
+void mainWindow_c::cb_View3dZoomChanged(void) {
+  if (currentTab == 1)
+    problemZoomTouched = true;
+}
+
 static void cb_TransformPiece_stub(Fl_Widget* /*o*/, void* v) { static_cast<mainWindow_c*>(v)->cb_TransformPiece(); }
 void mainWindow_c::cb_TransformPiece(void) {
 
@@ -343,6 +357,27 @@ void mainWindow_c::cb_TransformPiece(void) {
   activateShape(PcSel->getSelection());
 
   changed = true;
+}
+
+static void cb_TransformPreview_stub(void* v, voxel_c* preview, unsigned int shapeNum,
+                                      int kind, float axisX, float axisY, float axisZ, float angleDeg) {
+  ((mainWindow_c*)v)->cb_TransformPreview(preview, shapeNum, kind, axisX, axisY, axisZ, angleDeg);
+}
+
+void mainWindow_c::cb_TransformPreview(voxel_c *preview, unsigned int shapeNum, int kind,
+                                        float axisX, float axisY, float axisZ, float angleDeg) {
+
+  if (preview) {
+    if (TaskSelectionTab->value() != TabPieces) {
+      delete preview;
+      return;
+    }
+    View3D->getView()->showTransformPreview(preview, shapeNum, kind, axisX, axisY, axisZ, angleDeg);
+    return;
+  }
+
+  if (TaskSelectionTab->value() == TabPieces)
+    View3D->getView()->clearTransformPreview();
 }
 
 static void cb_EditSym_stub(Fl_Widget* o, void* v) {
@@ -3484,6 +3519,7 @@ void mainWindow_c::CreateShapeTab(void) {
 
     pieceTools = new ToolTabContainer(0, 1, 1, 1, ggt.get());
     pieceTools->callback(cb_TransformPiece_stub, this);
+    pieceTools->setPreviewHandler(cb_TransformPreview_stub, this);
 
     (new LFl_Box(0, 2, 1, 1))->setMinimumSize(0, 5);
 
@@ -4176,6 +4212,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
   lay->setMinimumSize(400, 400);
   View3D->weight(0, 1);
   View3D->callback(cb_3dClick_stub, this);
+  View3D->setZoomChangeCallback(cb_View3dZoomChanged_stub, this);
 
   // this box paints the background behind the tab, because the tabs are partly transparent
   (new LFl_Box(0, 0, 1, 1))->color(FL_BACKGROUND_COLOR);
@@ -4194,6 +4231,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
   ViewSizes[0] = -1;
   ViewSizes[1] = -1;
   ViewSizes[2] = -1;
+  problemZoomTouched = false;
 
   resize(config.windowPosX(), config.windowPosY(), config.windowPosW(), config.windowPosH());
 

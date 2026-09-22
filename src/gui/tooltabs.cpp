@@ -23,11 +23,14 @@
 
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
+#include "../lib/gridtype.h"
 #include "WindowWidgets.h"
 #include "guigridtype.h"
 #include <stdlib.h>
+#include <math.h>
 
 #include "FL/fl_ask.H"
+#include "FL/Fl.H"
 
 // the transform group
 class TransformButtons : public layouter_c {
@@ -43,6 +46,7 @@ public:
   TransformButtons(int x, int y, int w, int h, int type);
 
   void cb_Press(long button) { do_callback(this, button); }
+  void cb_Preview(long button, bool on);
 };
 
 class ToolsButtons : public layouter_c {
@@ -105,6 +109,42 @@ public:
 
 static void cb_TransformButtons_stub(Fl_Widget* o, long v) { static_cast<TransformButtons*>(o->parent()->parent())->cb_Press(v); }
 
+void TransformButtons::cb_Preview(long button, bool on) {
+  Fl_Widget *p = parent();
+  while (p) {
+    ToolTab *tab = dynamic_cast<ToolTab*>(p);
+    if (tab) {
+      tab->previewTransform(button, on);
+      return;
+    }
+    p = p->parent();
+  }
+}
+
+class TransformPreviewButton : public LFlatButton_c {
+
+  TransformButtons *owner;
+  long task;
+
+public:
+
+  TransformPreviewButton(int x, int y, int w, int h, Fl_Image *img, Fl_Image *inact, const char *tt, TransformButtons *o, long t)
+    : LFlatButton_c(x, y, w, h, img, inact, tt, cb_TransformButtons_stub, t), owner(o), task(t) {}
+
+  TransformPreviewButton(int x, int y, int w, int h, const char *txt, const char *tt, TransformButtons *o, long t)
+    : LFlatButton_c(x, y, w, h, txt, tt, cb_TransformButtons_stub, t), owner(o), task(t) {}
+
+  int handle(int event) {
+    if (active()) {
+      if (event == FL_ENTER)
+        owner->cb_Preview(task, true);
+      else if (event == FL_LEAVE)
+        owner->cb_Preview(task, false);
+    }
+    return LFlatButton_c::handle(event);
+  }
+};
+
 TransformButtons::TransformButtons(int x, int y, int w, int h, int type) : layouter_c(x, y, w, h) {
 
   label("Transform");
@@ -120,80 +160,80 @@ TransformButtons::TransformButtons(int x, int y, int w, int h, int type) : layou
 
   layouter_c * o = new layouter_c(1, 3, 1, 1);
 
-  new LFlatButton_c(0, 0, 1, 1, pm.get(Transform_Color_Flip_X_xpm)        , pm.get(Transform_Disabled_Flip_X_xpm)        ,
-      " Flip along Y-Z Plane ",              cb_TransformButtons_stub, 12);
-  new LFlatButton_c(0, 1, 1, 1, pm.get(Transform_Color_Flip_Y_xpm)        , pm.get(Transform_Disabled_Flip_Y_xpm)        ,
-      " Flip along X-Z Plane ",              cb_TransformButtons_stub, 13);
-  new LFlatButton_c(0, 2, 1, 1, pm.get(Transform_Color_Flip_Z_xpm)        , pm.get(Transform_Disabled_Flip_Z_xpm)        ,
-      " Flip along X-Y Plane ",              cb_TransformButtons_stub, 14);
+  new TransformPreviewButton(0, 0, 1, 1, pm.get(Transform_Color_Flip_X_xpm)        , pm.get(Transform_Disabled_Flip_X_xpm)        ,
+      " Flip along Y-Z Plane ",              this, 12);
+  new TransformPreviewButton(0, 1, 1, 1, pm.get(Transform_Color_Flip_Y_xpm)        , pm.get(Transform_Disabled_Flip_Y_xpm)        ,
+      " Flip along X-Z Plane ",              this, 13);
+  new TransformPreviewButton(0, 2, 1, 1, pm.get(Transform_Color_Flip_Z_xpm)        , pm.get(Transform_Disabled_Flip_Z_xpm)        ,
+      " Flip along X-Y Plane ",              this, 14);
 
   o->end();
 
   o = new layouter_c(3, 3, 1, 1);
 
   if (type == 0) {
-    new LFlatButton_c(0, 0, 1, 1, pm.get(Transform_Color_Nudge_X_Left_xpm)  , pm.get(Transform_Disabled_Nudge_X_Left_xpm)  ,
-        " Shift down along X ",                cb_TransformButtons_stub,  1);
-    new LFlatButton_c(1, 0, 1, 1, pm.get(Transform_Color_Nudge_X_Right_xpm) , pm.get(Transform_Disabled_Nudge_X_Right_xpm) ,
-        " Shift up along X ",                  cb_TransformButtons_stub,  0);
-    new LFlatButton_c(0, 1, 1, 1, pm.get(Transform_Color_Nudge_Y_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Y_Left_xpm)  ,
-        " Shift down along Y ",                cb_TransformButtons_stub,  3);
-    new LFlatButton_c(1, 1, 1, 1, pm.get(Transform_Color_Nudge_Y_Right_xpm) , pm.get(Transform_Disabled_Nudge_Y_Right_xpm) ,
-        " Shift up along Y ",                  cb_TransformButtons_stub,  2);
-    new LFlatButton_c(0, 2, 1, 1, pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
-        " Shift down along Z ",                cb_TransformButtons_stub,  5);
-    new LFlatButton_c(1, 2, 1, 1, pm.get(Transform_Color_Nudge_Z_Right_xpm) , pm.get(Transform_Disabled_Nudge_Z_Right_xpm) ,
-        " Shift up along Z ",                  cb_TransformButtons_stub,  4);
+    new TransformPreviewButton(0, 0, 1, 1, pm.get(Transform_Color_Nudge_X_Left_xpm)  , pm.get(Transform_Disabled_Nudge_X_Left_xpm)  ,
+        " Shift down along X ",                this,  1);
+    new TransformPreviewButton(1, 0, 1, 1, pm.get(Transform_Color_Nudge_X_Right_xpm) , pm.get(Transform_Disabled_Nudge_X_Right_xpm) ,
+        " Shift up along X ",                  this,  0);
+    new TransformPreviewButton(0, 1, 1, 1, pm.get(Transform_Color_Nudge_Y_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Y_Left_xpm)  ,
+        " Shift down along Y ",                this,  3);
+    new TransformPreviewButton(1, 1, 1, 1, pm.get(Transform_Color_Nudge_Y_Right_xpm) , pm.get(Transform_Disabled_Nudge_Y_Right_xpm) ,
+        " Shift up along Y ",                  this,  2);
+    new TransformPreviewButton(0, 2, 1, 1, pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
+        " Shift down along Z ",                this,  5);
+    new TransformPreviewButton(1, 2, 1, 1, pm.get(Transform_Color_Nudge_Z_Right_xpm) , pm.get(Transform_Disabled_Nudge_Z_Right_xpm) ,
+        " Shift up along Z ",                  this,  4);
 
   } else if (type == 1) {
 
-    new LFlatButton_c(0, 0, 1, 1, "@7->",
-        " Shift up left along XY plane ",  cb_TransformButtons_stub,  1);
-    new LFlatButton_c(1, 0, 1, 1, "@9->",
-        " Shift up right along XY plane ", cb_TransformButtons_stub,  0);
-    new LFlatButton_c(0, 1, 1, 1, "@4->",
-        " Shift left along X ",            cb_TransformButtons_stub,  3);
-    new LFlatButton_c(1, 1, 1, 1, "@6->",
-        " Shift right along X ",           cb_TransformButtons_stub,  2);
-    new LFlatButton_c(0, 2, 1, 1, "@1->",
-        " Shift down left XY plane ",      cb_TransformButtons_stub,  28);
-    new LFlatButton_c(1, 2, 1, 1, "@3->",
-        " Shift down right XY plane ",     cb_TransformButtons_stub,  27);
+    new TransformPreviewButton(0, 0, 1, 1, "@7->",
+        " Shift up left along XY plane ",  this,  1);
+    new TransformPreviewButton(1, 0, 1, 1, "@9->",
+        " Shift up right along XY plane ", this,  0);
+    new TransformPreviewButton(0, 1, 1, 1, "@4->",
+        " Shift left along X ",            this,  3);
+    new TransformPreviewButton(1, 1, 1, 1, "@6->",
+        " Shift right along X ",           this,  2);
+    new TransformPreviewButton(0, 2, 1, 1, "@1->",
+        " Shift down left XY plane ",      this,  28);
+    new TransformPreviewButton(1, 2, 1, 1, "@3->",
+        " Shift down right XY plane ",     this,  27);
 
-    new LFlatButton_c(0, 3, 1, 1, pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
-        " Shift down along Z ",            cb_TransformButtons_stub,  5);
-    new LFlatButton_c(1, 3, 1, 1, pm.get(Transform_Color_Nudge_Z_Right_xpm) , pm.get(Transform_Disabled_Nudge_Z_Right_xpm) ,
-        " Shift up along Z ",              cb_TransformButtons_stub,  4);
+    new TransformPreviewButton(0, 3, 1, 1, pm.get(Transform_Color_Nudge_Z_Left_xpm)  , pm.get(Transform_Disabled_Nudge_Z_Left_xpm)  ,
+        " Shift down along Z ",            this,  5);
+    new TransformPreviewButton(1, 3, 1, 1, pm.get(Transform_Color_Nudge_Z_Right_xpm) , pm.get(Transform_Disabled_Nudge_Z_Right_xpm) ,
+        " Shift up along Z ",              this,  4);
 
   } else if (type == 2) {
 
-    new LFlatButton_c(0, 0, 1, 1, "u @6->",
-        " Shift up along Z and right along X ",cb_TransformButtons_stub,  0);
-    new LFlatButton_c(1, 0, 1, 1, "u @8->",
-        " Shift up along Z and up along Y ",   cb_TransformButtons_stub,  1);
-    new LFlatButton_c(2, 0, 1, 1, "u @4->",
-        " Shift up along Z and left along X ", cb_TransformButtons_stub,  2);
-    new LFlatButton_c(3, 0, 1, 1, "u @2->",
-        " Shift up along Z and down along Y ", cb_TransformButtons_stub,  3);
+    new TransformPreviewButton(0, 0, 1, 1, "u @6->",
+        " Shift up along Z and right along X ",this,  0);
+    new TransformPreviewButton(1, 0, 1, 1, "u @8->",
+        " Shift up along Z and up along Y ",   this,  1);
+    new TransformPreviewButton(2, 0, 1, 1, "u @4->",
+        " Shift up along Z and left along X ", this,  2);
+    new TransformPreviewButton(3, 0, 1, 1, "u @2->",
+        " Shift up along Z and down along Y ", this,  3);
 
-    new LFlatButton_c(0, 1, 1, 1, "@9->",
-        " Shift up right along XY plane ",     cb_TransformButtons_stub,  4);
-    new LFlatButton_c(1, 1, 1, 1, "@7->",
-        " Shift up left along XY plane ",      cb_TransformButtons_stub,  5);
-    new LFlatButton_c(2, 1, 1, 1, "@1->",
-        " Shift down left along XY plane ",    cb_TransformButtons_stub,  27);
-    new LFlatButton_c(3, 1, 1, 1, "@3->",
-        " Shift down right along XY plane ",   cb_TransformButtons_stub,  28);
+    new TransformPreviewButton(0, 1, 1, 1, "@9->",
+        " Shift up right along XY plane ",     this,  4);
+    new TransformPreviewButton(1, 1, 1, 1, "@7->",
+        " Shift up left along XY plane ",      this,  5);
+    new TransformPreviewButton(2, 1, 1, 1, "@1->",
+        " Shift down left along XY plane ",    this,  27);
+    new TransformPreviewButton(3, 1, 1, 1, "@3->",
+        " Shift down right along XY plane ",   this,  28);
 
 
-    new LFlatButton_c(0, 2, 1, 1, "d @6->",
-        " Shift down along Z and right along X ", cb_TransformButtons_stub, 29);
-    new LFlatButton_c(1, 2, 1, 1, "d @8->",
-        " Shift down along Z and up along Y ",    cb_TransformButtons_stub, 30);
-    new LFlatButton_c(2, 2, 1, 1, "d @4->",
-        " Shift down along Z and left along X ",  cb_TransformButtons_stub, 31);
-    new LFlatButton_c(3, 2, 1, 1, "d @2->",
-        " Shift down along Z and down along Y ",  cb_TransformButtons_stub, 32);
+    new TransformPreviewButton(0, 2, 1, 1, "d @6->",
+        " Shift down along Z and right along X ", this, 29);
+    new TransformPreviewButton(1, 2, 1, 1, "d @8->",
+        " Shift down along Z and up along Y ",    this, 30);
+    new TransformPreviewButton(2, 2, 1, 1, "d @4->",
+        " Shift down along Z and left along X ",  this, 31);
+    new TransformPreviewButton(3, 2, 1, 1, "d @2->",
+        " Shift down along Z and down along Y ",  this, 32);
 
   }
 
@@ -203,29 +243,29 @@ TransformButtons::TransformButtons(int x, int y, int w, int h, int type) : layou
 
   if (type == 1) {
 
-    new LFlatButton_c(6, 0, 2, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
-        " Rotate 180° along X-Axis ",     cb_TransformButtons_stub,  6);
-    new LFlatButton_c(6, 1, 2, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
-        " Rotate 180° along Y-Axis ",     cb_TransformButtons_stub,  9);
-    new LFlatButton_c(6, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
-        " Rotate 60° clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
-    new LFlatButton_c(7, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
-        " Rotate 60° anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
+    new TransformPreviewButton(6, 0, 2, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
+        " Rotate 180° along X-Axis ",     this,  6);
+    new TransformPreviewButton(6, 1, 2, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
+        " Rotate 180° along Y-Axis ",     this,  9);
+    new TransformPreviewButton(6, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
+        " Rotate 60° clockwise along Z-Axis ",     this, 10);
+    new TransformPreviewButton(7, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
+        " Rotate 60° anticlockwise along Z-Axis ", this, 11);
 
   } else {
 
-    new LFlatButton_c(6, 0, 1, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
-        " Rotate 90° clockwise along X-Axis ",     cb_TransformButtons_stub,  6);
-    new LFlatButton_c(7, 0, 1, 1, pm.get(Transform_Color_Rotate_X_Right_xpm), pm.get(Transform_Disabled_Rotate_X_Right_xpm),
-        " Rotate 90° anticlockwise along X-Axis ", cb_TransformButtons_stub,  7);
-    new LFlatButton_c(6, 1, 1, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
-        " Rotate 90° clockwise along Y-Axis ",     cb_TransformButtons_stub,  9);
-    new LFlatButton_c(7, 1, 1, 1, pm.get(Transform_Color_Rotate_Y_Right_xpm), pm.get(Transform_Disabled_Rotate_Y_Right_xpm),
-        " Rotate 90° anticlockwise along Y-Axis ", cb_TransformButtons_stub,  8);
-    new LFlatButton_c(6, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
-        " Rotate 90° clockwise along Z-Axis ",     cb_TransformButtons_stub, 10);
-    new LFlatButton_c(7, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
-        " Rotate 90° anticlockwise along Z-Axis ", cb_TransformButtons_stub, 11);
+    new TransformPreviewButton(6, 0, 1, 1, pm.get(Transform_Color_Rotate_X_Left_xpm) , pm.get(Transform_Disabled_Rotate_X_Left_xpm) ,
+        " Rotate 90° clockwise along X-Axis ",     this,  6);
+    new TransformPreviewButton(7, 0, 1, 1, pm.get(Transform_Color_Rotate_X_Right_xpm), pm.get(Transform_Disabled_Rotate_X_Right_xpm),
+        " Rotate 90° anticlockwise along X-Axis ", this,  7);
+    new TransformPreviewButton(6, 1, 1, 1, pm.get(Transform_Color_Rotate_Y_Left_xpm) , pm.get(Transform_Disabled_Rotate_Y_Left_xpm) ,
+        " Rotate 90° clockwise along Y-Axis ",     this,  9);
+    new TransformPreviewButton(7, 1, 1, 1, pm.get(Transform_Color_Rotate_Y_Right_xpm), pm.get(Transform_Disabled_Rotate_Y_Right_xpm),
+        " Rotate 90° anticlockwise along Y-Axis ", this,  8);
+    new TransformPreviewButton(6, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Left_xpm) , pm.get(Transform_Disabled_Rotate_Z_Left_xpm) ,
+        " Rotate 90° clockwise along Z-Axis ",     this, 10);
+    new TransformPreviewButton(7, 2, 1, 1, pm.get(Transform_Color_Rotate_Z_Right_xpm), pm.get(Transform_Disabled_Rotate_Z_Right_xpm),
+        " Rotate 90° anticlockwise along Z-Axis ", this, 11);
   }
 
   o->end();
@@ -591,6 +631,57 @@ void ToolTab_0::cb_size(void) {
   }
 }
 
+void ToolTab_0::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
+  switch(task) {
+        case  0: space->translate( 1, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = 0; info->dz = 0; } break;
+        case  1: space->translate(-1, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = 0; info->dz = 0; } break;
+        case  2: space->translate( 0, 1, 0, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 1; info->dz = 0; } break;
+        case  3: space->translate( 0,-1, 0, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = -1; info->dz = 0; } break;
+        case  4: space->translate( 0, 0, 1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = 1; } break;
+        case  5: space->translate( 0, 0,-1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = -1; } break;
+        case  7: space->transform(3);  if (info) info->transformIdx = 3;  break;
+        case  6: space->transform(1);  if (info) info->transformIdx = 1;  break;
+        case  9: space->transform(12); if (info) info->transformIdx = 12; break;
+        case  8: space->transform(4);  if (info) info->transformIdx = 4;  break;
+        case 11: space->transform(20); if (info) info->transformIdx = 20; break;
+        case 10: space->transform(16); if (info) info->transformIdx = 16; break;
+        case 12: space->transform(24); if (info) info->transformIdx = 24; break;
+        case 13: space->transform(34); if (info) info->transformIdx = 34; break;
+        case 14: space->transform(32); if (info) info->transformIdx = 32; break;
+        case 15: space->minimizePiece(); break;
+        case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
+        case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
+        case 18: space->actionOnSpace(voxel_c::ACT_VARIABLE, true); break;
+        case 19: space->actionOnSpace(voxel_c::ACT_VARIABLE, false); break;
+        case 20: space->actionOnSpace(voxel_c::ACT_DECOLOR, true); break;
+        case 21: space->actionOnSpace(voxel_c::ACT_DECOLOR, false); break;
+        case 22: space->scale(2); break;
+        case 23: space->scale(3); break;
+        case 24: space->translate(- space->boundX1(), - space->boundY1(), - space->boundZ1(), 0); break;
+        case 25:
+                 {
+                   // if the space is empty, don't do anything
+                   if (space->boundX2() < space->boundX1())
+                     break;
+
+                   int fx = space->getX() - (space->boundX2()-space->boundX1()+1);
+                   int fy = space->getY() - (space->boundY2()-space->boundY1()+1);
+                   int fz = space->getZ() - (space->boundZ2()-space->boundZ1()+1);
+
+                   if ((fx & 1) || (fy & 1) || (fz & 1)) {
+                     space->resize(space->getX()+(fx&1), space->getY()+(fy&1), space->getZ()+(fz&1), 0);
+                     fx += fx&1;
+                     fy += fy&1;
+                     fz += fz&1;
+                   }
+                   space->translate(fx/2 - space->boundX1(), fy/2 - space->boundY1(), fz/2 - space->boundZ1(), 0);
+                 }
+                 break;
+        case 40: space->fillHoles(0); break;
+        case 41: space->scale(5, true); break;
+      }
+}
+
 void ToolTab_0::cb_transform(long task) {
   if (puzzle && shape < puzzle->getNumberOfShapes()) {
 
@@ -638,57 +729,8 @@ void ToolTab_0::cb_transform(long task) {
     }
 
     for (int s = ss; s < se; s++) {
-      voxel_c * space = puzzle->getShape(s);
-
-      switch(task) {
-        case  0: space->translate( 1, 0, 0, 0); break;
-        case  1: space->translate(-1, 0, 0, 0); break;
-        case  2: space->translate( 0, 1, 0, 0); break;
-        case  3: space->translate( 0,-1, 0, 0); break;
-        case  4: space->translate( 0, 0, 1, 0); break;
-        case  5: space->translate( 0, 0,-1, 0); break;
-        case  7: space->transform(3); break;
-        case  6: space->transform(1); break;
-        case  9: space->transform(12); break;
-        case  8: space->transform(4); break;
-        case 11: space->transform(20); break;
-        case 10: space->transform(16); break;
-        case 12: space->transform(24); break;
-        case 13: space->transform(34); break;
-        case 14: space->transform(32); break;
-        case 15: space->minimizePiece(); break;
-        case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
-        case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
-        case 18: space->actionOnSpace(voxel_c::ACT_VARIABLE, true); break;
-        case 19: space->actionOnSpace(voxel_c::ACT_VARIABLE, false); break;
-        case 20: space->actionOnSpace(voxel_c::ACT_DECOLOR, true); break;
-        case 21: space->actionOnSpace(voxel_c::ACT_DECOLOR, false); break;
-        case 22: space->scale(2); break;
-        case 23: space->scale(3); break;
-        case 24: space->translate(- space->boundX1(), - space->boundY1(), - space->boundZ1(), 0); break;
-        case 25:
-                 {
-                   // if the space is empty, don't do anything
-                   if (space->boundX2() < space->boundX1())
-                     break;
-
-                   int fx = space->getX() - (space->boundX2()-space->boundX1()+1);
-                   int fy = space->getY() - (space->boundY2()-space->boundY1()+1);
-                   int fz = space->getZ() - (space->boundZ2()-space->boundZ1()+1);
-
-                   if ((fx & 1) || (fy & 1) || (fz & 1)) {
-                     space->resize(space->getX()+(fx&1), space->getY()+(fy&1), space->getZ()+(fz&1), 0);
-                     fx += fx&1;
-                     fy += fy&1;
-                     fz += fz&1;
-                   }
-                   space->translate(fx/2 - space->boundX1(), fy/2 - space->boundY1(), fz/2 - space->boundZ1(), 0);
-                 }
-                 break;
-        case 40: space->fillHoles(0); break;
-        case 41: space->scale(5, true); break;
-      }
-      space->initHotspot();
+      applyTask(puzzle->getShape(s), task);
+      puzzle->getShape(s)->initHotspot();
     }
 
     do_callback(this, user_data());
@@ -766,46 +808,23 @@ void ToolTab_1::cb_size(void) {
   }
 }
 
-void ToolTab_1::cb_transform(long task) {
-
-  if (puzzle && shape < puzzle->getNumberOfShapes()) {
-
-    int ss, se;
-
-    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
-      ss = 0;
-      se = puzzle->getNumberOfShapes();
-    } else {
-      ss = shape;
-      se = shape+1;
-    }
-
-    if (task == 26) {
-
-      fl_message("Sorry this is not yet implemented!");
-      return;
-
-    }
-
-    for (int s = ss; s < se; s++) {
-      voxel_c * space = puzzle->getShape(s);
-
-      switch(task) {
-        case  0: space->translate( 1, 1, 0, 0); break;
-        case  1: space->translate(-1, 1, 0, 0); break;
-        case  2: space->translate( 2, 0, 0, 0); break;
-        case  3: space->translate(-2, 0, 0, 0); break;
-        case  4: space->translate( 0, 0, 1, 0); break;
-        case  5: space->translate( 0, 0,-1, 0); break;
-        case 28: space->translate(-1,-1, 0, 0); break;
-        case 27: space->translate( 1,-1, 0, 0); break;
-        case  6: space->transform(9); break;
-        case  9: space->transform(6); break;
-        case 11: space->transform(1); break;
-        case 10: space->transform(5); break;
-        case 12: space->transform(12); break;
-        case 13: space->transform(15); break;
-        case 14: space->transform(18); break;
+void ToolTab_1::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
+  switch(task) {
+        case  0: space->translate( 1, 1, 0, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = 1; info->dz = 0; } break;
+        case  1: space->translate(-1, 1, 0, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = 1; info->dz = 0; } break;
+        case  2: space->translate( 2, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = 2; info->dy = 0; info->dz = 0; } break;
+        case  3: space->translate(-2, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = -2; info->dy = 0; info->dz = 0; } break;
+        case  4: space->translate( 0, 0, 1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = 1; } break;
+        case  5: space->translate( 0, 0,-1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = -1; } break;
+        case 28: space->translate(-1,-1, 0, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = -1; info->dz = 0; } break;
+        case 27: space->translate( 1,-1, 0, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = -1; info->dz = 0; } break;
+        case  6: space->transform(9);  if (info) info->transformIdx = 9;  break;
+        case  9: space->transform(6);  if (info) info->transformIdx = 6;  break;
+        case 11: space->transform(1);  if (info) info->transformIdx = 1;  break;
+        case 10: space->transform(5);  if (info) info->transformIdx = 5;  break;
+        case 12: space->transform(12); if (info) info->transformIdx = 12; break;
+        case 13: space->transform(15); if (info) info->transformIdx = 15; break;
+        case 14: space->transform(18); if (info) info->transformIdx = 18; break;
         case 15: space->minimizePiece(); break;
         case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
         case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
@@ -857,7 +876,32 @@ void ToolTab_1::cb_transform(long task) {
         case 40: space->fillHoles(0); break;
         case 41: space->scale(5, true); break;
       }
-      space->initHotspot();
+}
+
+void ToolTab_1::cb_transform(long task) {
+
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
+
+    int ss, se;
+
+    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
+      ss = 0;
+      se = puzzle->getNumberOfShapes();
+    } else {
+      ss = shape;
+      se = shape+1;
+    }
+
+    if (task == 26) {
+
+      fl_message("Sorry this is not yet implemented!");
+      return;
+
+    }
+
+    for (int s = ss; s < se; s++) {
+      applyTask(puzzle->getShape(s), task);
+      puzzle->getShape(s)->initHotspot();
     }
 
     do_callback(this, user_data());
@@ -932,47 +976,32 @@ void ToolTab_2::cb_size(void) {
   }
 }
 
-void ToolTab_2::cb_transform(long task) {
-  if (puzzle && shape < puzzle->getNumberOfShapes()) {
+void ToolTab_2::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
+  switch(task) {
+        case  0: space->translate( 1, 0, 1, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = 0; info->dz = 1; } break;
+        case  1: space->translate( 0, 1, 1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 1; info->dz = 1; } break;
+        case  2: space->translate(-1, 0, 1, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = 0; info->dz = 1; } break;
+        case  3: space->translate( 0,-1, 1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = -1; info->dz = 1; } break;
 
-    int ss, se;
+        case  4: space->translate( 1, 1, 0, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = 1; info->dz = 0; } break;
+        case  5: space->translate(-1, 1, 0, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = 1; info->dz = 0; } break;
+        case 27: space->translate(-1,-1, 0, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = -1; info->dz = 0; } break;
+        case 28: space->translate( 1,-1, 0, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = -1; info->dz = 0; } break;
 
-    if (toAll->value() && ((task == 15) || (task == 24) || (task == 25))) {
-      ss = 0;
-      se = puzzle->getNumberOfShapes();
-    } else {
-      ss = shape;
-      se = shape+1;
-    }
+        case 29: space->translate( 1, 0,-1, 0); if (info) { info->hasTranslate = true; info->dx = 1; info->dy = 0; info->dz = -1; } break;
+        case 30: space->translate( 0, 1,-1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 1; info->dz = -1; } break;
+        case 31: space->translate(-1, 0,-1, 0); if (info) { info->hasTranslate = true; info->dx = -1; info->dy = 0; info->dz = -1; } break;
+        case 32: space->translate( 0,-1,-1, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = -1; info->dz = -1; } break;
 
-    for (int s = ss; s < se; s++) {
-      voxel_c * space = puzzle->getShape(s);
-
-      switch(task) {
-        case  0: space->translate( 1, 0, 1, 0); break;
-        case  1: space->translate( 0, 1, 1, 0); break;
-        case  2: space->translate(-1, 0, 1, 0); break;
-        case  3: space->translate( 0,-1, 1, 0); break;
-
-        case  4: space->translate( 1, 1, 0, 0); break;
-        case  5: space->translate(-1, 1, 0, 0); break;
-        case 27: space->translate(-1,-1, 0, 0); break;
-        case 28: space->translate( 1,-1, 0, 0); break;
-
-        case 29: space->translate( 1, 0,-1, 0); break;
-        case 30: space->translate( 0, 1,-1, 0); break;
-        case 31: space->translate(-1, 0,-1, 0); break;
-        case 32: space->translate( 0,-1,-1, 0); break;
-
-        case  7: space->transform(9); break;
-        case  6: space->transform(14); break;
-        case  9: space->transform(5); break;
-        case  8: space->transform(16); break;
-        case 11: space->transform(2); break;
-        case 10: space->transform(6); break;
-        case 12: space->transform(120); break;
-        case 13: space->transform(124); break;
-        case 14: space->transform(141); break;
+        case  7: space->transform(9);   if (info) info->transformIdx = 9;   break;
+        case  6: space->transform(14);  if (info) info->transformIdx = 14;  break;
+        case  9: space->transform(5);   if (info) info->transformIdx = 5;   break;
+        case  8: space->transform(16);  if (info) info->transformIdx = 16;  break;
+        case 11: space->transform(2);   if (info) info->transformIdx = 2;   break;
+        case 10: space->transform(6);   if (info) info->transformIdx = 6;   break;
+        case 12: space->transform(120); if (info) info->transformIdx = 120; break;
+        case 13: space->transform(124); if (info) info->transformIdx = 124; break;
+        case 14: space->transform(141); if (info) info->transformIdx = 141; break;
         case 15: space->minimizePiece(); break;
         case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
         case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
@@ -1024,7 +1053,24 @@ void ToolTab_2::cb_transform(long task) {
                  break;
         case 40: space->fillHoles(0); break;
       }
-      space->initHotspot();
+}
+
+void ToolTab_2::cb_transform(long task) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
+
+    int ss, se;
+
+    if (toAll->value() && ((task == 15) || (task == 24) || (task == 25))) {
+      ss = 0;
+      se = puzzle->getNumberOfShapes();
+    } else {
+      ss = shape;
+      se = shape+1;
+    }
+
+    for (int s = ss; s < se; s++) {
+      applyTask(puzzle->getShape(s), task);
+      puzzle->getShape(s)->initHotspot();
     }
 
     do_callback(this, user_data());
@@ -1102,38 +1148,23 @@ void ToolTab_3::cb_size(void) {
   }
 }
 
-void ToolTab_3::cb_transform(long task) {
-  if (puzzle && shape < puzzle->getNumberOfShapes()) {
-
-    int ss, se;
-
-    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
-      ss = 0;
-      se = puzzle->getNumberOfShapes();
-    } else {
-      ss = shape;
-      se = shape+1;
-    }
-
-    for (int s = ss; s < se; s++) {
-      voxel_c * space = puzzle->getShape(s);
-
-      switch(task) {
-        case  0: space->translate( 5, 0, 0, 0); break;
-        case  1: space->translate(-5, 0, 0, 0); break;
-        case  2: space->translate( 0, 5, 0, 0); break;
-        case  3: space->translate( 0,-5, 0, 0); break;
-        case  4: space->translate( 0, 0, 5, 0); break;
-        case  5: space->translate( 0, 0,-5, 0); break;
-        case  7: space->transform(3); break;
-        case  6: space->transform(1); break;
-        case  9: space->transform(12); break;
-        case  8: space->transform(4); break;
-        case 11: space->transform(20); break;
-        case 10: space->transform(16); break;
-        case 12: space->transform(24); break;
-        case 13: space->transform(34); break;
-        case 14: space->transform(32); break;
+void ToolTab_3::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
+  switch(task) {
+        case  0: space->translate( 5, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = 5; info->dy = 0; info->dz = 0; } break;
+        case  1: space->translate(-5, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = -5; info->dy = 0; info->dz = 0; } break;
+        case  2: space->translate( 0, 5, 0, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 5; info->dz = 0; } break;
+        case  3: space->translate( 0,-5, 0, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = -5; info->dz = 0; } break;
+        case  4: space->translate( 0, 0, 5, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = 5; } break;
+        case  5: space->translate( 0, 0,-5, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = -5; } break;
+        case  7: space->transform(3);  if (info) info->transformIdx = 3;  break;
+        case  6: space->transform(1);  if (info) info->transformIdx = 1;  break;
+        case  9: space->transform(12); if (info) info->transformIdx = 12; break;
+        case  8: space->transform(4);  if (info) info->transformIdx = 4;  break;
+        case 11: space->transform(20); if (info) info->transformIdx = 20; break;
+        case 10: space->transform(16); if (info) info->transformIdx = 16; break;
+        case 12: space->transform(24); if (info) info->transformIdx = 24; break;
+        case 13: space->transform(34); if (info) info->transformIdx = 34; break;
+        case 14: space->transform(32); if (info) info->transformIdx = 32; break;
         case 15: space->minimizePiece(); break;
         case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
         case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
@@ -1161,11 +1192,32 @@ void ToolTab_3::cb_transform(long task) {
                    space->translate(fx, fy, fz, 0);
                  }
                  break;
-        case 26: fl_message("Sorry minimizing is not (yet) implemented for the rhombic grid!"); return;
         case 40: space->fillHoles(0); break;
         case 41: space->scale(7, true); break;
       }
-      space->initHotspot();
+}
+
+void ToolTab_3::cb_transform(long task) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
+
+    if (task == 26) {
+      fl_message("Sorry minimizing is not (yet) implemented for the rhombic grid!");
+      return;
+    }
+
+    int ss, se;
+
+    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
+      ss = 0;
+      se = puzzle->getNumberOfShapes();
+    } else {
+      ss = shape;
+      se = shape+1;
+    }
+
+    for (int s = ss; s < se; s++) {
+      applyTask(puzzle->getShape(s), task);
+      puzzle->getShape(s)->initHotspot();
     }
 
     do_callback(this, user_data());
@@ -1244,38 +1296,23 @@ void ToolTab_4::cb_size(void) {
   }
 }
 
-void ToolTab_4::cb_transform(long task) {
-  if (puzzle && shape < puzzle->getNumberOfShapes()) {
-
-    int ss, se;
-
-    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
-      ss = 0;
-      se = puzzle->getNumberOfShapes();
-    } else {
-      ss = shape;
-      se = shape+1;
-    }
-
-    for (int s = ss; s < se; s++) {
-      voxel_c * space = puzzle->getShape(s);
-
-      switch(task) {
-        case  0: space->translate( 6, 0, 0, 0); break;
-        case  1: space->translate(-6, 0, 0, 0); break;
-        case  2: space->translate( 0, 6, 0, 0); break;
-        case  3: space->translate( 0,-6, 0, 0); break;
-        case  4: space->translate( 0, 0, 6, 0); break;
-        case  5: space->translate( 0, 0,-6, 0); break;
-        case  7: space->transform(3); break;
-        case  6: space->transform(1); break;
-        case  9: space->transform(12); break;
-        case  8: space->transform(4); break;
-        case 11: space->transform(20); break;
-        case 10: space->transform(16); break;
-        case 12: space->transform(24); break;
-        case 13: space->transform(34); break;
-        case 14: space->transform(32); break;
+void ToolTab_4::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
+  switch(task) {
+        case  0: space->translate( 6, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = 6; info->dy = 0; info->dz = 0; } break;
+        case  1: space->translate(-6, 0, 0, 0); if (info) { info->hasTranslate = true; info->dx = -6; info->dy = 0; info->dz = 0; } break;
+        case  2: space->translate( 0, 6, 0, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 6; info->dz = 0; } break;
+        case  3: space->translate( 0,-6, 0, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = -6; info->dz = 0; } break;
+        case  4: space->translate( 0, 0, 6, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = 6; } break;
+        case  5: space->translate( 0, 0,-6, 0); if (info) { info->hasTranslate = true; info->dx = 0; info->dy = 0; info->dz = -6; } break;
+        case  7: space->transform(3);  if (info) info->transformIdx = 3;  break;
+        case  6: space->transform(1);  if (info) info->transformIdx = 1;  break;
+        case  9: space->transform(12); if (info) info->transformIdx = 12; break;
+        case  8: space->transform(4);  if (info) info->transformIdx = 4;  break;
+        case 11: space->transform(20); if (info) info->transformIdx = 20; break;
+        case 10: space->transform(16); if (info) info->transformIdx = 16; break;
+        case 12: space->transform(24); if (info) info->transformIdx = 24; break;
+        case 13: space->transform(34); if (info) info->transformIdx = 34; break;
+        case 14: space->transform(32); if (info) info->transformIdx = 32; break;
         case 15: space->minimizePiece(); break;
         case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
         case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
@@ -1303,10 +1340,31 @@ void ToolTab_4::cb_transform(long task) {
                    space->translate(fx, fy, fz, 0);
                  }
                  break;
-        case 26: fl_message("Sorry minimizing is not (yet) implemented for the rhombic grid!"); return;
         case 40: space->fillHoles(0); break;
       }
-      space->initHotspot();
+}
+
+void ToolTab_4::cb_transform(long task) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
+
+    if (task == 26) {
+      fl_message("Sorry minimizing is not (yet) implemented for the rhombic grid!");
+      return;
+    }
+
+    int ss, se;
+
+    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 26)))) {
+      ss = 0;
+      se = puzzle->getNumberOfShapes();
+    } else {
+      ss = shape;
+      se = shape+1;
+    }
+
+    for (int s = ss; s < se; s++) {
+      applyTask(puzzle->getShape(s), task);
+      puzzle->getShape(s)->initHotspot();
     }
 
     do_callback(this, user_data());
@@ -1317,15 +1375,169 @@ void ToolTab_4::cb_transform(long task) {
 
 
 
+
+/* The null space of (M - lambda*I) for a 3x3 matrix, found as the cross product
+ * of two of its rows - valid whenever that null space is 1-dimensional (rank of
+ * (M - lambda*I) is 2), which holds for an eigenvalue of multiplicity 1. Tries
+ * all 3 row-pairs and keeps the longest cross product, since for some matrices
+ * one pair of rows is nearly parallel and gives a numerically weak result even
+ * though another pair would not. Returns false (leaving axis untouched) if no
+ * pair gives a large enough cross product, i.e. the null space is not 1D. */
+static bool nullSpaceOf3x3(const double m[9], double lambda, float axis[3]) {
+  float a[9];
+  for (int i = 0; i < 9; i++)
+    a[i] = (float)m[i] + ((i % 3 == i / 3) ? (float)lambda : 0.0f);
+
+  float cand[3][3] = {
+    { a[1]*a[5]-a[2]*a[4], a[2]*a[3]-a[0]*a[5], a[0]*a[4]-a[1]*a[3] },
+    { a[1]*a[8]-a[2]*a[7], a[2]*a[6]-a[0]*a[8], a[0]*a[7]-a[1]*a[6] },
+    { a[4]*a[8]-a[5]*a[7], a[5]*a[6]-a[3]*a[8], a[3]*a[7]-a[4]*a[6] },
+  };
+
+  int best = -1;
+  float bestLen = 1e-4f;
+  for (int i = 0; i < 3; i++) {
+    float len = sqrtf(cand[i][0]*cand[i][0] + cand[i][1]*cand[i][1] + cand[i][2]*cand[i][2]);
+    if (len > bestLen) { bestLen = len; best = i; }
+  }
+  if (best < 0)
+    return false;
+
+  axis[0] = cand[best][0]/bestLen;
+  axis[1] = cand[best][1]/bestLen;
+  axis[2] = cand[best][2]/bestLen;
+  return true;
+}
+
+/* Derives what a grid-symmetry transform represents geometrically, straight from
+ * the grid's own getTransformMatrix() - the exact linear part of the transform,
+ * decoupled from whatever affine quirks a grid's integer coordinate representation
+ * has (see the note on voxel_c::transformPoint; an earlier version of this
+ * function tried to reconstruct the same thing by probing transformPoint() with
+ * basis vectors, which crashed on the sphere grid and gave a wrong answer on the
+ * triangular-prism grid). Returns 0 (kind: none), 1 (rotation, axis/angleDeg set)
+ * or 2 (mirror, axis set to the mirror plane's normal). Near-identity rotations
+ * are reported as "none" - there is no meaningful axis to show. */
+static int computeTransformGeometry(const voxel_c * origShape, int transformIdx,
+                                     float axis[3], float * angleDeg) {
+  if (!origShape || transformIdx < 0)
+    return 0;
+
+  double m[9];
+  origShape->getTransformMatrix((unsigned int)transformIdx, m);
+
+  double det = m[0]*(m[4]*m[8] - m[5]*m[7])
+             - m[1]*(m[3]*m[8] - m[5]*m[6])
+             + m[2]*(m[3]*m[7] - m[4]*m[6]);
+
+  if (det > 0) {
+    float trace = (float)(m[0] + m[4] + m[8]);
+    float cosA = (trace - 1.0f)*0.5f;
+    if (cosA > 1.0f) cosA = 1.0f;
+    if (cosA < -1.0f) cosA = -1.0f;
+    float angle = acosf(cosA);
+    if (angle < 0.02f)
+      return 0;
+
+    // the antisymmetric part of M, (m[7]-m[5], m[2]-m[6], m[3]-m[1]), gives both
+    // the rotation axis AND its correct sign - its magnitude is 2*sin(angle), so
+    // it points the way a positive (right-hand-rule) sweep around it actually
+    // goes, which the null-space fallback below cannot (a null space vector's
+    // sign is arbitrary). That magnitude is exactly zero only at 180 degrees,
+    // where M is symmetric and CW/CCW are visually identical anyway - the
+    // fallback's arbitrary sign is harmless there.
+    float w[3] = { (float)(m[7]-m[5]), (float)(m[2]-m[6]), (float)(m[3]-m[1]) };
+    float wlen = sqrtf(w[0]*w[0] + w[1]*w[1] + w[2]*w[2]);
+    if (wlen > 1e-4f) {
+      axis[0] = w[0]/wlen;
+      axis[1] = w[1]/wlen;
+      axis[2] = w[2]/wlen;
+    } else if (!nullSpaceOf3x3(m, -1.0, axis)) {
+      return 0;
+    }
+
+    *angleDeg = angle*180.0f/3.1415927f;
+    return 1;
+  }
+
+  if (det < 0) {
+    // the mirror plane's normal is the -1-eigenvector of M, i.e. the null space
+    // of (M+I); assumes eigenvalue -1 has multiplicity 1, true for the simple
+    // axis mirrors these buttons produce - a roto-reflection just degrades to
+    // "no hint" here rather than a wrong one
+    if (!nullSpaceOf3x3(m, 1.0, axis))
+      return 0;
+
+    return 2;
+  }
+
+  return 0;
+}
+
+void ToolTab::previewTransform(long task, bool on) {
+  ToolTabContainer *c = dynamic_cast<ToolTabContainer*>(parent());
+  if (!c)
+    return;
+  if (!on || !puzzle || shape >= puzzle->getNumberOfShapes()) {
+    c->emitPreview(0, shape);
+    return;
+  }
+  voxel_c *v = puzzle->getGridType()->getVoxel(puzzle->getShape(shape));
+  TaskPreviewInfo info;
+  applyTask(v, task, &info);
+  v->initHotspot();
+
+  int kind = 0;
+  float axis[3] = { 0, 0, 1 };
+  float angleDeg = 0;
+
+  if (info.transformIdx >= 0) {
+    kind = computeTransformGeometry(puzzle->getShape(shape), info.transformIdx, axis, &angleDeg);
+  } else if (info.hasTranslate && (info.dx || info.dy || info.dz)) {
+    float len = sqrtf((float)(info.dx*info.dx + info.dy*info.dy + info.dz*info.dz));
+    axis[0] = info.dx/len;
+    axis[1] = info.dy/len;
+    axis[2] = info.dz/len;
+    kind = 3;
+  }
+
+  c->emitPreview(v, shape, kind, axis[0], axis[1], axis[2], angleDeg);
+}
+
 static void cb_ToolTabContainer_stub(Fl_Widget* /*o*/, void*v) {
   ToolTabContainer *vv = (ToolTabContainer*)v;
   vv->do_callback(vv, vv->user_data());
 }
 
-ToolTabContainer::ToolTabContainer(int x, int y, int w, int h, const guiGridType_c * ggt) : layouter_c(x, y, w, h) {
+ToolTabContainer::ToolTabContainer(int x, int y, int w, int h, const guiGridType_c * ggt)
+  : layouter_c(x, y, w, h), previewHandler(0), previewUser(0), delayedClearShape(0) {
   tt = ggt->getToolTab(0, 0, 1, 1);
   tt->callback(cb_ToolTabContainer_stub, this);
   end();
+}
+
+ToolTabContainer::~ToolTabContainer(void) {
+  Fl::remove_timeout(previewClearTimeout, this);
+}
+
+void ToolTabContainer::previewClearTimeout(void *v) {
+  ToolTabContainer *c = (ToolTabContainer*)v;
+  if (c->previewHandler)
+    c->previewHandler(c->previewUser, 0, c->delayedClearShape, 0, 0, 0, 1, 0);
+}
+
+void ToolTabContainer::emitPreview(voxel_c *preview, unsigned int shapeNum, int kind,
+                                    float axisX, float axisY, float axisZ, float angleDeg) {
+  Fl::remove_timeout(previewClearTimeout, this);
+  if (!preview) {
+    delayedClearShape = shapeNum;
+    Fl::add_timeout(0.06, previewClearTimeout, this);
+    return;
+  }
+  if (previewHandler)
+    previewHandler(previewUser, preview, shapeNum, kind, axisX, axisY, axisZ, angleDeg);
+  else
+    delete preview;
 }
 
 void ToolTabContainer::newGridType(const guiGridType_c * ggt) {
