@@ -22,6 +22,9 @@ subprojects/*
 dmg_contents/
 coverage-html/
 
+# macOS Finder metadata, written into any directory the user opens in Finder
+.DS_Store
+
 # Generated Doxygen API reference (`just docs`)
 gendoc/
 

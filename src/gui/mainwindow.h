@@ -102,6 +102,16 @@ class mainWindow_c : public LFl_Double_Window {
   bool changed;
   int editSymmetries;
 
+  /* Re-entrancy guard for openFromSystem(): true while a system-open request
+   * is being handled, so a nested one (see openFromSystem()'s comment) is
+   * ignored instead of stacking a second confirmDiscard() dialog. */
+  bool handlingSystemOpen;
+
+  /* last published menu activation state, so the system menu bar is only
+   * rebuilt when it actually changes */
+  bool menuExportActive;
+  bool menuSTLActive;
+
   bool expertMode;
 
   pixmapList_c pm;
@@ -153,7 +163,6 @@ class mainWindow_c : public LFl_Double_Window {
   Fl_Group *MinSizeTools;
   Fl_Menu_Bar *MainMenu;
   LStatusLine *StatusLine;
-  static Fl_Menu_Item menu_MainMenu[];
 
   ColorSelector * colorSelector;
 
@@ -184,7 +193,21 @@ class mainWindow_c : public LFl_Double_Window {
    * itself is reset. */
   bool problemZoomTouched = false;
 
-  bool tryToLoad(const char *fname);
+  /* Load a puzzle file. Returns false if it could not be loaded.
+   *
+   * Some failures are reported to the user by this function (a parse error
+   * shows "load error: ...") and some are silent (no name, file gone,
+   * stream could not be opened). A caller that wants to put up its own
+   * message on failure must pass 'reportedError' and only speak up when it
+   * comes back false, or the user sees two dialogs stacked for one failure.
+   */
+  bool tryToLoad(const char *fname, bool * reportedError = 0);
+
+  /* Ask about unsaved changes before an operation that would discard them.
+   * Returns false if the caller should abort. 'action' is the verb shown to
+   * the user, e.g. "create a new puzzle".
+   */
+  bool confirmDiscard(const char * action);
 
   void CreateShapeTab(void);
   void CreateProblemTab(void);
@@ -228,6 +251,12 @@ public:
   // cppcheck-suppress duplInheritedMember
   void show(int argn, char ** argv);
 
+  /* Open a document the operating system handed us -- a Finder
+   * double-click, a drop on the Dock icon. Guards unsaved changes, which
+   * tryToLoad() does not.
+   */
+  void openFromSystem(const char * filename);
+
   // overwrite hide to check for changes in all possible exit situations
   void hide(void);
 
@@ -238,9 +267,6 @@ public:
    * the solving progress, that works in background
    */
   void update(void);
-
-  /* return an index into the main menu array with the given text */
-  int findMenuEntry(const char * txt);
 
   /* the callback functions, as they are called from normal functions we need
    * to make them public, even though they should not be used from the outside

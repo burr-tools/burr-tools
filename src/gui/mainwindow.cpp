@@ -20,6 +20,9 @@
  */
 #include "mainwindow.h"
 
+#include "mainmenu.h"
+#include "platform.h"
+
 #include "filechooser.h"
 
 #include "configuration.h"
@@ -1519,14 +1522,54 @@ void mainWindow_c::cb_3dClick(void) {
   }
 }
 
-static void cb_New_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_New(); }
+bool mainWindow_c::confirmDiscard(const char * action) {
+
+  if (!changed)
+    return true;
+
+  char msg[256];
+  snprintf(msg, sizeof(msg),
+           "The puzzle has unsaved changes.\nSave before you %s?", action);
+
+  /* fl_choice("%s", b0, b1, b2, msg) lays the buttons out right to left:
+   * b0 right, b1 middle, b2 left. Fl_Message's constructor makes button 1
+   * (the middle one) an Fl_Return_Button, so b1 -- not b0 -- is what the
+   * Return key activates (Fl_Message.cxx ctor comment: "The second
+   * (middle) button is an Fl_Return_Button"). Fl_Message::window_cb_()
+   * always sets retval_ = 0 for both Escape and the window close button,
+   * and plain fl_choice() (unlike fl_choice_n()) never looks at
+   * window_closed(), so both report the same value as clicking b0.
+   * Putting "Cancel" at b0 means Escape/closing the dialog always cancels;
+   * putting "Save" at b1 makes Return trigger the non-destructive action;
+   * "Don't Save" -- the only destructive choice -- is b2, reachable only
+   * by an explicit click.
+   */
+  switch (fl_choice("%s", "Cancel", "Save", "Don't Save", msg)) {
+
+    case 1:             // Save (middle button, Fl_Return_Button / Return key)
+      cb_Save();
+      /* cb_Save() clears 'changed' only on a successful write, so it still
+       * being set means the user cancelled the Save As dialog, the write
+       * failed, or the solver thread is running. Abort rather than
+       * discarding the work.
+       */
+      return !changed;
+
+    case 2:             // Don't Save (left button, explicit click only)
+      return true;
+
+    default:            // Cancel (0), including Escape and window-close
+      return false;
+  }
+}
+
+void cb_New_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_New(); }
 void mainWindow_c::cb_New(void) {
 
   if (threadStopped()) {
 
-    if (changed)
-      if (fl_choice("Puzzle changed are you sure?", "Cancel", "New Puzzle", 0) == 0)
-        return;
+    if (!confirmDiscard("create a new puzzle"))
+      return;
 
     gridTypeSelectorWindow_c w;
     w.show();
@@ -1538,7 +1581,7 @@ void mainWindow_c::cb_New(void) {
 
     if (!fname.empty()) {
       fname.clear();
-      copy_label("BurrTools - unknown");
+      copy_label(platform::windowTitle(0).c_str());
     }
 
     changed = false;
@@ -1549,14 +1592,13 @@ void mainWindow_c::cb_New(void) {
   }
 }
 
-static void cb_Load_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Load(); }
+void cb_Load_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Load(); }
 void mainWindow_c::cb_Load(void) {
 
   if (threadStopped()) {
 
-    if (changed)
-      if (fl_choice("Puzzle changed; are you sure?", "Cancel", "Load", 0) == 0)
-        return;
+    if (!confirmDiscard("open another puzzle"))
+      return;
 
     const char * f = fileChooser("Load Puzzle", "Puzzle", "*.xmpuzzle", "", false);
 
@@ -1564,14 +1606,13 @@ void mainWindow_c::cb_Load(void) {
   }
 }
 
-static void cb_Load_Ps3d_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Load_Ps3d(); }
+void cb_Load_Ps3d_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Load_Ps3d(); }
 void mainWindow_c::cb_Load_Ps3d(void) {
 
   if (threadStopped()) {
 
-    if (changed)
-      if (fl_choice("Puzzle changed; are you sure?", "Cancel", "Load", 0) == 0)
-        return;
+    if (!confirmDiscard("import another puzzle"))
+      return;
 
     const char * f = fileChooser("Import PuzzleSolver3D File", "PuzzleSolver3D", "*.puz", "", false);
 
@@ -1587,7 +1628,7 @@ void mainWindow_c::cb_Load_Ps3d(void) {
 
       fname = f;
 
-      copy_label((std::string("BurrTools - ") + fname).c_str());
+      copy_label(platform::windowTitle(fname.c_str()).c_str());
 
       ReplacePuzzle(std::move(newPuzzle));
       updateInterface();
@@ -1601,7 +1642,7 @@ void mainWindow_c::cb_Load_Ps3d(void) {
   }
 }
 
-static void cb_Save_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Save(); }
+void cb_Save_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Save(); }
 void mainWindow_c::cb_Save(void) {
 
   if (threadStopped()) {
@@ -1625,7 +1666,7 @@ void mainWindow_c::cb_Save(void) {
   }
 }
 
-static void cb_Convert_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Convert(); }
+void cb_Convert_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Convert(); }
 void mainWindow_c::cb_Convert(void) {
 
   convertWindow_c win(puzzle->getGridType()->getType());
@@ -1664,7 +1705,7 @@ class voxelTableVector_c : public voxelTable_c
     const voxel_c * findSpace(unsigned int index) const { return (*shapes)[index]; }
 };
 
-static void cb_AssembliesToShapes_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AssembliesToShapes(); }
+void cb_AssembliesToShapes_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AssembliesToShapes(); }
 void mainWindow_c::cb_AssembliesToShapes(void) {
 
   assmImportWindow_c win(puzzle.get());
@@ -1751,7 +1792,7 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
   }
 }
 
-static void cb_SaveAs_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SaveAs(); }
+void cb_SaveAs_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SaveAs(); }
 void mainWindow_c::cb_SaveAs(void) {
 
   if (threadStopped()) {
@@ -1790,7 +1831,7 @@ void mainWindow_c::cb_SaveAs(void) {
 
         fname = f2;
 
-        copy_label((std::string("BurrTools - ") + fname).c_str());
+        copy_label(platform::windowTitle(fname.c_str()).c_str());
 
       } else {
 
@@ -1800,19 +1841,19 @@ void mainWindow_c::cb_SaveAs(void) {
   }
 }
 
-static void cb_Quit_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->hide(); }
+void cb_Quit_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->hide(); }
 void mainWindow_c::hide(void) {
-  if ((!changed) || fl_choice("Puzzle changed do you want to quit and lose the changes?", "Cancel", "Quit", 0))
+  if (confirmDiscard("quit"))
     Fl_Double_Window::hide();
 }
 
-static void cb_Config_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Config(); }
+void cb_Config_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Config(); }
 void mainWindow_c::cb_Config(void) {
   config.dialog();
   activateConfigOptions();
 }
 
-static void cb_Comment_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Coment(); }
+void cb_Comment_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Coment(); }
 void mainWindow_c::cb_Coment(void) {
 
   multiLineWindow_c win("Edit Comment", "Change the comment for the current puzzle", puzzle->getComment().c_str());
@@ -1828,7 +1869,7 @@ void mainWindow_c::cb_Coment(void) {
   }
 }
 
-static void cb_ImageExportVector_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExportVector(); }
+void cb_ImageExportVector_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExportVector(); }
 void mainWindow_c::cb_ImageExportVector(void) {
 
   vectorExportWindow_c w;
@@ -1841,7 +1882,7 @@ void mainWindow_c::cb_ImageExportVector(void) {
     View3D->getView()->exportToVector(w.getFileName(), w.getVectorType());
 }
 
-static void cb_ImageExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExport(); }
+void cb_ImageExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExport(); }
 void mainWindow_c::cb_ImageExport(void) {
   imageExport_c w(puzzle.get(), fname);
   w.show();
@@ -1855,7 +1896,7 @@ void mainWindow_c::cb_ImageExport(void) {
   }
 }
 
-static void cb_STLExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_STLExport(); }
+void cb_STLExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_STLExport(); }
 void mainWindow_c::cb_STLExport(void) {
   stlExport_c w(puzzle.get(), fname);
   w.show();
@@ -1865,7 +1906,7 @@ void mainWindow_c::cb_STLExport(void) {
   }
 }
 
-static void cb_StatusWindow_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_StatusWindow(); }
+void cb_StatusWindow_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_StatusWindow(); }
 void mainWindow_c::cb_StatusWindow(void) {
 
   bool again;
@@ -1901,7 +1942,7 @@ void mainWindow_c::cb_StatusWindow(void) {
   updateInterface();
 }
 
-static void cb_Toggle3D_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Toggle3D(); }
+void cb_Toggle3D_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Toggle3D(); }
 void mainWindow_c::cb_Toggle3D(void) {
 
   if (TaskSelectionTab->value() == TabPieces) {
@@ -1913,7 +1954,7 @@ void mainWindow_c::cb_Toggle3D(void) {
   }
 }
 
-static void cb_About_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_About(); }
+void cb_About_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_About(); }
 void mainWindow_c::cb_About(void) {
 
   fl_message("This is the GUI for BurrTools\n"
@@ -2029,7 +2070,9 @@ bool mainWindow_c::threadStopped(void) {
   return true;
 }
 
-bool mainWindow_c::tryToLoad(const char * f) {
+bool mainWindow_c::tryToLoad(const char * f, bool * reportedError) {
+
+  if (reportedError) *reportedError = false;
 
   // it may well be that the file doesn't exist, if it came from the command line
   if (!f) return false;
@@ -2052,12 +2095,13 @@ bool mainWindow_c::tryToLoad(const char * f) {
   catch (xmlParserException_c &e)
   {
     fl_message("%s",(std::string("load error: ") + e.what()).c_str());
+    if (reportedError) *reportedError = true;
     return false;
   }
 
   fname = f;
 
-  copy_label((std::string("BurrTools - ") + fname).c_str());
+  copy_label(platform::windowTitle(fname.c_str()).c_str());
 
   ReplacePuzzle(std::move(newPuzzle));
   updateInterface();
@@ -2086,6 +2130,46 @@ bool mainWindow_c::tryToLoad(const char * f) {
     fl_message("%s",puzzle->getComment().c_str());
 
   return true;
+}
+
+void mainWindow_c::openFromSystem(const char * filename) {
+
+  // A system-open request can arrive while we are already handling one:
+  // confirmDiscard() runs a modal dialog, whose nested Fl::wait() drains
+  // another entry from FLTK's dropped-files list and calls straight back in
+  // here (subprojects/fltk/src/Fl_cocoa.mm:853-857). BurrTools shows one
+  // puzzle at a time, so opening several files at once can only ever display
+  // one: handle the first request and ignore the rest, rather than stacking
+  // dialogs whose answers would apply to the wrong puzzle.
+  struct ReentrancyGuard {
+    bool & flag;
+    explicit ReentrancyGuard(bool & f) : flag(f) { flag = true; }
+    ~ReentrancyGuard() { flag = false; }
+  };
+
+  if (handlingSystemOpen)
+    return;
+
+  ReentrancyGuard guard(handlingSystemOpen);
+
+  if (!filename || !filename[0])
+    return;
+
+  if (!threadStopped())
+    return;
+
+  if (!confirmDiscard("open that puzzle"))
+    return;
+
+  /* Only speak up for the failures tryToLoad() keeps to itself. A parse
+   * error has already shown "load error: ..." with the detail this message
+   * does not have, and stacking a second, vaguer dialog on top of it just
+   * makes the user dismiss two boxes for one problem.
+   */
+  bool reportedError = false;
+
+  if (!tryToLoad(filename, &reportedError) && !reportedError)
+    fl_message("Could not open %s", filename);
 }
 
 void mainWindow_c::ReplacePuzzle(std::unique_ptr<puzzle_c> NewPuzzle) {
@@ -2138,30 +2222,6 @@ void mainWindow_c::ReplacePuzzle(std::unique_ptr<puzzle_c> NewPuzzle) {
 
   ggt = std::move(nggt);
 }
-
-Fl_Menu_Item mainWindow_c::menu_MainMenu[] = {
-  { "&File",           0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
-    {"New",            0, cb_New_stub,         0, 0, 0, 0, 14, 56},
-    {"Load",    FL_F + 3, cb_Load_stub,        0, 0, 0, 0, 14, 56},
-    {"Import",         0, cb_Load_Ps3d_stub,   0, 0, 0, 0, 14, 56},
-    {"Save",    FL_F + 2, cb_Save_stub,        0, 0, 0, 0, 14, 56},
-    {"Save As",        0, cb_SaveAs_stub,      0, FL_MENU_DIVIDER, 0, 0, 14, 56},
-    {"Convert",        0, cb_Convert_stub,     0, 0, 0, 0, 14, 56},
-    {"Import Assms",   0, cb_AssembliesToShapes_stub,     0, 0, 0, 0, 14, 56},
-    {"Quit",           0, cb_Quit_stub,        0, 0, 3, 0, 14, 56},
-    { },
-  {"Toggle 3D", FL_F + 4, cb_Toggle3D_stub,    0, 0, 0, 0, 14, 56},
-  { "&Export",         0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
-    {"Images",             0, cb_ImageExport_stub, 0, 0, 0, 0, 14, 56},
-    {"Vector Image",       0, cb_ImageExportVector_stub, 0, 0, 0, 0, 14, 56},
-    {"STL",             0, cb_STLExport_stub, 0, 0, 0, 0, 14, 56},
-    { },
-  {"Status",           0, cb_StatusWindow_stub,  0, 0, 0, 0, 14, 56},
-  {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
-  {"Settings",         0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
-  {"About",            0, cb_About_stub,       0, 0, 3, 0, 14, 56},
-  { }
-};
 
 // cppcheck-suppress duplInheritedMember
 void mainWindow_c::show(int argn, char ** argv) {
@@ -2381,18 +2441,41 @@ const char * timeToString(float time) {
   return tmp;
 }
 
-int mainWindow_c::findMenuEntry(const char * txt) {
+// Find an item in a LIVE menu array by callback. Indices into the live array
+// are not the same as indices into our static table: FLTK inserts its own
+// Window entry into the live array at first show(), which shifts everything
+// after it.
+static int liveMenuIndex(const Fl_Menu_ * m, Fl_Callback * cb) {
+  const Fl_Menu_Item * items = m->menu();
+  if (!items) return -1;
+  for (int i = 0; i < m->size(); i++)
+    if (items[i].callback() == cb) return i;
+  return -1;
+}
 
-  int found = -1;
-
-  for (unsigned int i = 0; i < (sizeof(menu_MainMenu) / sizeof(menu_MainMenu[0])); i++)
-    if (menu_MainMenu[i].text && (strcmp(menu_MainMenu[i].label(), txt) == 0)) {
-      bt_assert(found == -1);
-      found = i;
-    }
-
-  bt_assert(found >= 0);
-  return found;
+// Set or clear FL_MENU_INACTIVE on one entry of a live menu array, leaving
+// every other flag on that entry untouched.
+//
+// index must be a real entry: a miss means the callback this was looked up
+// by is no longer in the menu, i.e. the greying-out silently stopped
+// working. The findMenuEntry() this replaced asserted on that, and the
+// assertion is kept here rather than lost -- see the bt_assert below.
+//
+// Deliberately takes an Fl_Menu_ *, not an Fl_Menu_Bar * or Fl_Sys_Menu_Bar *:
+// Fl_Sys_Menu_Bar hides mode(int,int) with its own non-virtual overload, and
+// both mode() accessors used here are non-virtual, so which one gets called
+// is decided purely by the static type of the pointer. Going through an
+// Fl_Menu_ * guarantees Fl_Menu_::mode(int,int), which only edits the array
+// -- it does not touch the visible system menu. The caller must still call
+// the (virtual) update() afterwards to push the array to the screen.
+static void setLiveMenuActive(Fl_Menu_ * m, int index, bool active) {
+  bt_assert(index >= 0);
+  int flags = m->mode(index);
+  if (active)
+    flags &= ~FL_MENU_INACTIVE;
+  else
+    flags |= FL_MENU_INACTIVE;
+  m->mode(index, flags);
 }
 
 void mainWindow_c::updateInterface(void) {
@@ -2400,18 +2483,46 @@ void mainWindow_c::updateInterface(void) {
   // update the menu items activate state
 
   // there must be at least one shape before there is something to export...
-  if (puzzle->getNumberOfShapes() > 0)
-    menu_MainMenu[findMenuEntry("Images")].activate();
-  else
-    menu_MainMenu[findMenuEntry("Images")].deactivate();
+  const bool exportActive = puzzle->getNumberOfShapes() > 0;
+  const bool stlActive    = (ggt->getGridType()->getCapabilities() & gridType_c::CAP_STLEXPORT)
+                            && puzzle->getNumberOfShapes() > 0;
 
-  if (ggt->getGridType()->getCapabilities() & gridType_c::CAP_STLEXPORT &&
-      puzzle->getNumberOfShapes() > 0)
-    menu_MainMenu[findMenuEntry("STL")].activate();
-  else
-    menu_MainMenu[findMenuEntry("STL")].deactivate();
+  if (exportActive != menuExportActive || stlActive != menuSTLActive) {
 
-  MainMenu->copy(menu_MainMenu, this);
+    /* Flip the flags in MainMenu's own LIVE array rather than re-copying our
+     * static table over it. On macOS, FLTK inserts a "Window" item straight
+     * into that live array the first time a window is shown
+     * (Fl_Sys_Menu_Bar::create_window_menu(), called once from
+     * Fl_Cocoa_Window_Driver::makeWindow()), and never re-adds it once
+     * installed. A copy() here would silently discard that entry -- and
+     * with it Cmd-M and the window list -- for the rest of the process.
+     */
+    const int imageIndex = liveMenuIndex(MainMenu, cb_ImageExport_stub);
+    const int stlIndex   = liveMenuIndex(MainMenu, cb_STLExport_stub);
+
+    /* Both lookups are resolved, and asserted, before anything is written.
+     * A miss means the export items are no longer reachable by these
+     * callbacks -- e.g. Export was rerouted through a different stub -- and
+     * the consequence is that Export silently stops greying out on an empty
+     * puzzle. A debug build throws here; a release build, where bt_assert
+     * compiles away, must then NOT record the new state, so the next
+     * updateInterface() retries instead of latching the failure for the
+     * rest of the process.
+     */
+    bt_assert(imageIndex >= 0);
+    bt_assert(stlIndex >= 0);
+
+    if (imageIndex >= 0 && stlIndex >= 0) {
+
+      setLiveMenuActive(MainMenu, imageIndex, exportActive);
+      setLiveMenuActive(MainMenu, stlIndex, stlActive);
+
+      MainMenu->update();
+
+      menuExportActive = exportActive;
+      menuSTLActive    = stlActive;
+    }
+  }
 
   unsigned int prob = solutionProblem->getSelection();
 
@@ -3207,6 +3318,12 @@ void mainWindow_c::update(void) {
     if (!assmThread || &(assmThread->getProblem()) == puzzle->getProblem(solutionProblem->getSelection()))
       updateInterface();
   }
+
+  /* 'changed' is assigned in about fifty places, so rather than hooking
+   * every write, publish it on the regular update tick. A dot that appears
+   * up to a second late is imperceptible.
+   */
+  platform::setDocumentEdited(this, changed);
 }
 
 void mainWindow_c::Toggle3DView(void)
@@ -3293,6 +3410,24 @@ int mainWindow_c::handle(int event) {
       }
     }
     switch(Fl::event_key()) {
+      /* On macOS the menu carries the Command shortcuts, so the historical
+       * F-keys are kept alive here as secondary bindings. They are
+       * deliberately not shown in the menu, which displays the Command
+       * binding. Elsewhere usesSystemMenuBar() is false and these cases
+       * break, leaving F2/F3/F4 to the portable menu table as before.
+       */
+      case FL_F + 2:
+        if (!platform::usesSystemMenuBar()) break;
+        cb_Save_stub(this, this);
+        return 1;
+      case FL_F + 3:
+        if (!platform::usesSystemMenuBar()) break;
+        cb_Load_stub(this, this);
+        return 1;
+      case FL_F + 4:
+        if (!platform::usesSystemMenuBar()) break;
+        cb_Toggle3D_stub(this, this);
+        return 1;
       case FL_F + 5:
         if (TaskSelectionTab->value() == TabPieces) {
           editChoice->select(0);
@@ -4040,13 +4175,29 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
     renderedAssembly(-1),
     changed(false),
     editSymmetries(0),
+    handlingSystemOpen(false),
+    /* Both start true, matching the menu tables' real initial state: none
+     * of their items carry FL_MENU_INACTIVE in the array literal, so every
+     * entry is active until updateInterface() first deactivates it. Seeding
+     * these false would make the very first call -- run against a puzzle
+     * with zero shapes, where exportActive/stlActive are also false --
+     * see no change and skip the deactivate() that a fresh document needs.
+     */
+    menuExportActive(true),
+    menuSTLActive(true),
     expertMode(true) {
 
-  copy_label("BurrTools - unknown");
+  copy_label(platform::windowTitle(0).c_str());
   user_data((void*)(this));
 
+#ifdef __APPLE__
+  MainMenu = new LFl_Sys_Menu_Bar(0, 0, 1, 1);
+#else
   MainMenu = new LFl_Menu_Bar(0, 0, 1, 1);
-  MainMenu->copy(menu_MainMenu, this);
+#endif
+  MainMenu->copy(mainmenu::table(), this);
+  MainMenu->update();
+  mainmenu::installApplicationMenu(this);
 
   StatusLine = new LStatusLine(0, 2, 1, 1);
   StatusLine->callback(cb_Status_stub, this);

@@ -361,10 +361,18 @@ jobs:
     
     - name: Build
       run: just build
-    
+
     - name: Run tests
       run: just test-all
-    
+
+    # The menu-table drift check. This is the only job that runs it, because
+    # it is the only place the two-table hazard exists: the macOS table is
+    # compiled in only under __APPLE__, so off macOS the check compares the
+    # portable table with itself and can never fail. It needs the GUI binary,
+    # which is why it sits after `just build` rather than next to `just check`.
+    - name: Check menu tables (GUI self-check)
+      run: just check-gui
+
     - name: Strip binaries
       run: strip -x build/burrtools build/burrTxt build/burrTxt2
     

@@ -26,6 +26,11 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
+#include <FL/Fl.H>
+#include <FL/Fl_Gl_Window.H>
+#include <FL/Fl_Group.H>
+#include <FL/Fl_Window.H>
+
 #if defined(__APPLE__) || defined(__linux__) || defined(_WIN32)
 #include <FL/Fl_Native_File_Chooser.H>
 #else
@@ -37,6 +42,45 @@
 /* the file name the user most recently selected in a native save dialog,
  * where the system already asked whether an existing file may be replaced */
 static std::string lastNativeSave;
+
+/* While the native dialog is up the window behind it may be dimmed by the
+ * window system. An Fl_Gl_Window does not receive that dim and paints it
+ * itself (see platform::modalDimWash), but only when it is asked to
+ * redraw -- and nothing damages it meanwhile, because FLTK is just pumping
+ * Fl::wait() inside the dialog. So drive the redraw for the duration: once
+ * when the dialog appears and the wash goes on, and once when it closes and
+ * the wash comes off.
+ *
+ * The interval only has to be short enough that neither transition is
+ * visible as a flash; the 3D view already redraws far faster than this
+ * whenever the puzzle is rotated.
+ */
+static const double GL_REDRAW_INTERVAL = 0.1;
+
+static void redrawGlViews(Fl_Widget * w)
+{
+  if (dynamic_cast<Fl_Gl_Window *>(w))
+  {
+    w->redraw();
+    return;
+  }
+
+  if (Fl_Group * g = dynamic_cast<Fl_Group *>(w))
+    for (int i = 0; i < g->children(); i++)
+      redrawGlViews(g->child(i));
+}
+
+static void redrawAllGlViews(void)
+{
+  for (Fl_Window * w = Fl::first_window(); w; w = Fl::next_window(w))
+    redrawGlViews(w);
+}
+
+static void glRedrawPump(void *)
+{
+  redrawAllGlViews();
+  Fl::repeat_timeout(GL_REDRAW_INTERVAL, glRedrawPump);
+}
 
 bool fileChooserConfirmedOverwrite(const char * name)
 {
@@ -87,7 +131,14 @@ const char * fileChooser(const char * title, const char * filterName, const char
     }
   }
 
-  if (ch.show() != 0)
+  Fl::add_timeout(GL_REDRAW_INTERVAL, glRedrawPump);
+  const int shown = ch.show();
+  Fl::remove_timeout(glRedrawPump);
+
+  // the dialog is gone, so is the dim it caused: take the wash back off
+  redrawAllGlViews();
+
+  if (shown != 0)
     return 0;
 
   result = ch.filename();

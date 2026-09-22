@@ -40,6 +40,38 @@ mkdir -p "${BUNDLE}/Contents/Resources"
 cp "${BUILD_DIR}/${EXECUTABLE}" "${BUNDLE}/Contents/MacOS/"
 chmod +x "${BUNDLE}/Contents/MacOS/${EXECUTABLE}"
 
+# Icons
+HAVE_APP_ICON=0
+HAVE_DOC_ICON=0
+if [ -f "mac/BurrTools.icns" ]; then
+	cp mac/BurrTools.icns "${BUNDLE}/Contents/Resources/"
+	HAVE_APP_ICON=1
+else
+	echo "warning: mac/BurrTools.icns missing; run scripts/make-macos-icons.sh" >&2
+fi
+if [ -f "mac/BurrToolsDoc.icns" ]; then
+	cp mac/BurrToolsDoc.icns "${BUNDLE}/Contents/Resources/"
+	HAVE_DOC_ICON=1
+else
+	echo "warning: mac/BurrToolsDoc.icns missing; run scripts/make-macos-icons.sh" >&2
+fi
+
+# CFBundleIconFile/CFBundleTypeIconFile are only meaningful when the icon
+# file actually exists in the bundle; a plist naming a missing icon is
+# worse than one naming none, so build these fragments conditionally.
+APP_ICON_KEYS=""
+if [ "$HAVE_APP_ICON" = "1" ]; then
+	APP_ICON_KEYS="	<key>CFBundleIconFile</key>
+	<string>BurrTools</string>
+"
+fi
+DOC_ICON_KEYS=""
+if [ "$HAVE_DOC_ICON" = "1" ]; then
+	DOC_ICON_KEYS="			<key>CFBundleTypeIconFile</key>
+			<string>BurrToolsDoc</string>
+"
+fi
+
 # Create Info.plist
 cat > "${BUNDLE}/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -54,7 +86,7 @@ cat > "${BUNDLE}/Contents/Info.plist" << EOF
 	<string>${APP_NAME}</string>
 	<key>CFBundleDisplayName</key>
 	<string>${APP_NAME}</string>
-	<key>CFBundleVersion</key>
+${APP_ICON_KEYS}	<key>CFBundleVersion</key>
 	<string>${VERSION}</string>
 	<key>CFBundleShortVersionString</key>
 	<string>${VERSION}</string>
@@ -79,7 +111,7 @@ cat > "${BUNDLE}/Contents/Info.plist" << EOF
 			</array>
 			<key>CFBundleTypeName</key>
 			<string>BurrTools Puzzle File</string>
-			<key>CFBundleTypeRole</key>
+${DOC_ICON_KEYS}			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
@@ -120,7 +152,7 @@ GETTING STARTED ON macOS:
 1. Drag BurrTools.app to your Applications folder
 2. Open Terminal and run:  xattr -cr /Applications/BurrTools.app
 3. Launch BurrTools normally
-4. Open example puzzles from the Examples folder using File > Load
+4. Open example puzzles from the Examples folder using File > Open...
 
 ABOUT "BURRTOOLS.APP IS DAMAGED AND CAN'T BE OPENED":
 The app is not damaged. BurrTools is an open-source project distributed
@@ -138,11 +170,12 @@ and no longer bypasses Gatekeeper at all as of macOS 15 Sequoia.
 EXAMPLE PUZZLES:
 The Examples folder contains sample puzzle files (.xmpuzzle) that you can
 open with BurrTools to explore various puzzle types and designs. Simply use
-File > Load in BurrTools and navigate to the Examples folder.
+File > Open... in BurrTools and navigate to the Examples folder, or
+double-click an .xmpuzzle file in the Finder.
 
 DOCUMENTATION:
-The real documentation is inside the executable as on-line help, and also
-available as a PDF for off-line reading or printouts.
+The user guide is published online. Help > BurrTools User Guide in the
+application opens it in your browser; the link is also listed below.
 
 For more information, documentation, and source code:
 https://github.com/burr-tools/burr-tools
