@@ -145,3 +145,54 @@ build-werror:
     @if [ ! -d "build-werror" ]; then meson setup build-werror --werror; fi
     ninja -C build-werror
 
+# Generate the Doxygen API reference into gendoc/html
+#
+# Two settings are appended to Doxyfile rather than stored in it, because both
+# depend on the machine rather than the project: the version stamp comes from
+# `git describe`, and HAVE_DOT is switched off when graphviz is absent so the
+# docs still build (without diagrams) on a machine that lacks it. Doxygen reads
+# its config from stdin when given "-", and later assignments win, so piping
+# the file plus the overrides needs no temporary file.
+docs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v doxygen >/dev/null 2>&1; then
+        echo "doxygen not found. Install it with 'brew install doxygen graphviz'" >&2
+        echo "on macOS, or 'apt-get install doxygen graphviz' on Debian/Ubuntu." >&2
+        exit 1
+    fi
+    version=$(git describe --tags --always --dirty 2>/dev/null || echo unknown)
+    if command -v dot >/dev/null 2>&1; then
+        have_dot=YES
+    else
+        have_dot=NO
+        echo "graphviz not found; generating without diagrams." >&2
+    fi
+    # Created up front: doxygen opens WARN_LOGFILE before it creates
+    # OUTPUT_DIRECTORY, so the log's directory has to exist already.
+    rm -rf gendoc
+    mkdir -p gendoc
+    # Doxygen reports broken doc comments but still exits 0, so the warning log
+    # is captured and checked explicitly. Without this the CI job would go green
+    # over a reference full of mangled documentation.
+    #
+    # The exit status is collected rather than left to `set -e` so that a
+    # doxygen that fails outright still gets its warning log printed -- that log
+    # usually says why.
+    status=0
+    {
+        cat Doxyfile
+        echo "PROJECT_NUMBER = \"$version\""
+        echo "HAVE_DOT = $have_dot"
+        echo "WARN_LOGFILE = gendoc/doxygen-warnings.log"
+    } | doxygen - || status=$?
+    if [ -s gendoc/doxygen-warnings.log ]; then
+        echo "Doxygen reported warnings:" >&2
+        cat gendoc/doxygen-warnings.log >&2
+        status=1
+    fi
+    if [ "$status" -ne 0 ]; then
+        exit "$status"
+    fi
+    echo "Documentation written to gendoc/html/index.html"
+

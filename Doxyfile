@@ -1,0 +1,132 @@
+# Doxygen configuration for the BurrTools API reference.
+#
+# This file is deliberately sparse: it sets only the tags BurrTools actually
+# needs and lets doxygen supply the documented default for everything else.
+# The predecessor was a full `doxygen -g` dump from Doxyfile 1.5.4 (2007), and
+# most of it had rotted into tags modern doxygen no longer recognises. Keeping
+# the file minimal means it stays valid across doxygen versions -- important
+# because the CI runner's doxygen (Ubuntu ships 1.9.x) is older than the one a
+# developer gets from Homebrew.
+#
+# Generate with `just docs`, which appends PROJECT_NUMBER from `git describe`.
+
+#---------------------------------------------------------------------------
+# Project
+#---------------------------------------------------------------------------
+
+PROJECT_NAME           = BurrTools
+PROJECT_BRIEF          = "A tool to design, solve and analyse interlocking puzzles"
+
+# Left empty on purpose: `just docs` appends the value from `git describe`, so
+# the published docs are stamped with the commit they were generated from.
+PROJECT_NUMBER         =
+
+OUTPUT_DIRECTORY       = gendoc
+
+#---------------------------------------------------------------------------
+# Input
+#---------------------------------------------------------------------------
+
+# The landing page is the \mainpage block in src/lib/voxel.cpp -- the original
+# author's guided tour of the library, which is a far better introduction to the
+# API than the repository README. The two markdown files are listed so they show
+# up under "Related Pages" and so the README's link to BUILD.md resolves;
+# deliberately no USE_MDFILE_AS_MAINPAGE, which would displace voxel.cpp's block.
+INPUT                  = src README.md BUILD.md
+
+INPUT_ENCODING         = UTF-8
+RECURSIVE              = YES
+FILE_PATTERNS          = *.h \
+                         *.hpp \
+                         *.c \
+                         *.cpp \
+                         *.md
+
+# Bundled Lua interpreter: third-party, and off limits per AGENTS.md. Nothing
+# else needs excluding, because INPUT only reaches into src -- subprojects/ and
+# the build directories are never walked in the first place.
+EXCLUDE                = src/lua
+
+# Paths appear relative to the repository root rather than as absolute paths
+# from whatever directory the CI runner happened to check out into.
+STRIP_FROM_PATH        = .
+
+TAB_SIZE               = 8
+
+#---------------------------------------------------------------------------
+# What to extract
+#---------------------------------------------------------------------------
+
+# BurrTools predates any project-wide doc-comment convention, so most entities
+# are undocumented. EXTRACT_ALL lists them anyway: an index of the real API
+# surface is the point, and a declaration with a signature and a source link is
+# worth more than an omission.
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+
+JAVADOC_AUTOBRIEF      = YES
+BUILTIN_STL_SUPPORT    = YES
+CASE_SENSE_NAMES       = YES
+
+#---------------------------------------------------------------------------
+# Output
+#---------------------------------------------------------------------------
+
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+
+GENERATE_TREEVIEW      = YES
+ALPHABETICAL_INDEX     = YES
+SEARCHENGINE           = YES
+
+# Follows the reader's OS setting and offers a manual switch. Unknown to
+# doxygen before 1.9.5, which warns and ignores it rather than failing.
+HTML_COLORSTYLE        = TOGGLE
+
+# Syntax-highlighted source, cross-linked from every entity. This is what makes
+# the site useful for a codebase this sparsely commented: the declaration is the
+# index, the source is the documentation.
+SOURCE_BROWSER         = YES
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+
+# voxel.h documents the voxel-space addressing with \f$ \f$ formulas. Doxygen's
+# default is to render those to images by shelling out to latex, which neither
+# a stock CI runner nor a typical development machine has. MathJax renders them
+# in the browser instead, so no TeX distribution is needed anywhere.
+USE_MATHJAX            = YES
+
+#---------------------------------------------------------------------------
+# Graphs
+#---------------------------------------------------------------------------
+
+# Requires graphviz. `just docs` overrides this to NO when dot is missing, so a
+# developer without graphviz still gets a complete site, minus the diagrams.
+HAVE_DOT               = YES
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
+# Raised from the default 50 to cover the widest include graphs in the GUI
+# layer -- Images.cpp reaches 126 nodes. Below that, doxygen skips the graph and
+# warns, which the warning gate in `just docs` treats as a failure.
+DOT_GRAPH_MAX_NODES    = 150
+
+# Call graphs over the solver and disassembler produce enormous, unreadable
+# diagrams and dominate generation time. The cross-reference lists enabled
+# above cover the same ground in text form.
+CALL_GRAPH             = NO
+CALLER_GRAPH           = NO
+
+#---------------------------------------------------------------------------
+# Warnings
+#---------------------------------------------------------------------------
+
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_DOC_ERROR      = YES
+
+# EXTRACT_ALL already emits every undocumented entity, so this flag adds no
+# information -- it only buries genuine doc-comment syntax errors under
+# thousands of lines of noise. WARN_IF_DOC_ERROR above is the one that matters.
+WARN_IF_UNDOCUMENTED   = NO
+WARN_NO_PARAMDOC       = NO

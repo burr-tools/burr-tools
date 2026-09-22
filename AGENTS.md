@@ -20,6 +20,7 @@ just check-scan     # Clang Static Analyzer (scan-build)
 just check-analyzer # GCC -fanalyzer static analysis
 just coverage       # Report test coverage for BurrTools sources (gcovr)
 just coverage-html  # Write an HTML coverage report to coverage-html/index.html
+just docs           # Generate the Doxygen API reference into gendoc/html
 just clean          # Clean build artifacts
 just rebuild        # Rebuild from scratch (removes build/ and re-runs meson setup)
 just build-werror   # Build with warnings treated as errors (excluding vendored code)
@@ -33,6 +34,12 @@ re-running with nothing changed is 1.6s against 8.9s, editing a single file is
 about 3.4s against 10.0s, and editing a widely-included header is about 13.6s
 against 21.0s. Use `just test` while iterating and `just test-all` before
 calling a task done.
+
+`just docs` requires `doxygen` and `graphviz` (`brew install doxygen graphviz` on macOS,
+`apt-get install doxygen graphviz` on Linux). Without graphviz it still produces a complete
+site, minus the diagrams. It fails on any doxygen warning, so a stale `@param` or a broken
+`\ref` is a build error, not a silently mangled page; CI runs the same recipe and publishes
+the result from `master` to https://burr-tools.github.io/burr-tools/.
 
 Coverage requires `gcovr` (`brew install gcovr` on macOS, `apt-get install gcovr` on Linux).
 On macOS the recipes pass `--gcov-executable "xcrun llvm-cov gcov"` automatically, because
