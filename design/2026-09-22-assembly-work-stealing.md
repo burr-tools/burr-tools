@@ -37,8 +37,8 @@ sequenceDiagram
 Contributing factors:
 
 1. **Skew is inherent.** Exact-cover trees are asymmetric; one prefix can hold orders of magnitude more nodes than its siblings.
-2. **Static, shallow partition.** Current upfront generation is `targetTasks = max(16u, workers*4)`, `maxDepth ≤ 3` (`assembler_0.cpp:1721-1723`, `assembler_1.cpp:2626-2628`, `simd_huang_cover.cpp:627`). For N=8 that is 32 tasks. Once consumed, there is no refill.
-3. **Termination, not throttling, is the bug.** Non-blocked siblings do keep searching while W0 sleeps — the failure is that they *exit* instead of *waiting* when the queue empties. Keeping them alive is the whole fix; the permit mechanism itself stays as-is (§5).
+2. **Static, shallow partition.** The upfront generation was `targetTasks = max(16u, workers*4)`, `maxDepth ≤ 3` (32 tasks at N=8). Once consumed, there is no refill.
+3. **Termination, not throttling, is the bug.** Non-blocked siblings do keep searching while W0 sleeps — the failure is that they *exit* instead of *waiting* when the queue empties. Keeping them alive is the whole fix; the permit mechanism itself stays as-is (§6).
 
 ---
 
@@ -56,13 +56,26 @@ Contributing factors:
 
 ---
 
-## 3. Tier 1: keep the current upfront partition (do NOT blow it up)
+## 3. Tier 1: upfront partition (finer seed)
 
-v1 proposed `max(64, workers*16)` / "256–512 tasks in <1ms". That is rejected:
+The seed stays shallow but is finer than the pre-work-stealing default:
+`targetTasks = max(16u, workers*16)`, `maxDepth ≤ 5` (`assembler_0`;
+`assembler_1`/Huang keep `workers*4`, depth ≤ 3). Rationale, measured on
+`James Fortune/Hog Burr` (assembler_0, ~60 s at 8 threads):
 
-- For N=8, `workers*16` is 128, not 256–512 (arithmetic error in v1).
-- Task count at `maxDepth ≤ 3` is capped by the branching factor; many puzzles cannot produce 128 prefixes at depth 3. Forcing it needs deeper expansion (exponential upfront cost) and copies heavy snapshots (`SubtreeTask_1` = 5 full DLX stacks; `SimdHuangCover::SubtreeTask` embeds a full `SearchContext` with `scratch_active_rows` sized by row count).
-- The existing `max(16u, workers*4)`, `maxDepth ≤ 3` is retained unchanged as the *seed*. Tail balance comes from Tier 2, not from a bigger seed.
+- 32-task seed (old default): single seeded task holds a ~10 s tail;
+  CPU trace collapses 700% → ~109% at the end, identically before and
+  after the pool change, because split-on-pop cannot subdivide a task
+  that is already running.
+- 548-task seed (new default, generation cost unmeasurable against the
+  solve): 55 s wall, sustained ~706% with no tail (min 675%).
+
+Generation stops at `targetTasks`, so cost is O(target × branch factor)
+cover/uncover ops on the master before workers spawn; tiny puzzles stop
+early on dead ends (e.g. PelikanBurr yields 12 seeds). Residual skew
+inside one seeded task is still bounded by the seed -- preempting a
+running task is future work -- and the pool (§4) covers the
+permit-handoff case regardless.
 
 ---
 
@@ -85,41 +98,23 @@ flowchart TD
     SPLIT --> DONE
 ```
 
-### 4.2 Header sketch (`src/lib/assembler_pool.h`, new file)
+### 4.2 Interface (`src/lib/assembler_pool.h`)
 
 ```cpp
 template <typename TaskType>
 class AssemblyTaskPool {
 public:
-  explicit AssemblyTaskPool() = default;
-
-  // Producer side. Called with pool mutex held internally.
-  // total_tasks += n; notify waiters. No-op after stop/finish.
-  void push_task(TaskType t);
-  void push_tasks(std::vector<TaskType> ts);
-
-  // Consumer side. Returns true with out_task set, or false when:
-  //   global quiescence (queue empty && active == 0), or
-  //   stop requested (pool requestStop/abort, jthread stop_token, or assembler abbort).
-  // On true, active_workers has been incremented; caller MUST call task_done()
-  // exactly once after finishing (or aborting) the task, even on exception.
-  // Blocks only here — never inside the search loop.
+  void seed(std::vector<TaskType> initial_tasks);  // before workers start
   bool pop_task(TaskType &out_task,
                 const std::atomic<bool> &abbort,
-                std::stop_token st = {});
-
-  void task_done();          // active--, completed++, maybe broadcast quiescence
-  bool has_waiting_workers() const;  // for split heuristic; internally locked
-  size_t queued() const;             // for split heuristic; internally locked
-
-  // Lifecycle (all broadcast under lock):
-  void requestStop();  // wake pop_task waiters; pop_task returns false afterwards
-  void abort();        // same as requestStop + discard queue
-  void reset(size_t initial_tasks);  // set total/completed for a new run
-
-  // Progress (atomics, read by GUI thread via getFinished):
-  std::atomic<size_t> total_tasks{0};     // seed tasks + every split child
-  std::atomic<size_t> completed_tasks{0}; // task_done() calls
+                std::stop_token st = {});  // true: caller owns one task, MUST call task_done() once
+  void task_done();                          // exactly once per successful pop, even on exception/abort
+  size_t push_tasks(std::vector<TaskType> new_tasks);  // returns accepted count; wakes waiters
+  bool has_waiting_workers() const;          // split heuristic input (locked)
+  size_t queued() const;                     // split heuristic input (locked)
+  void requestStop();  // wake waiters; pops return false once drained
+  void abort();        // requestStop + discard queued work
+  std::vector<TaskType> drain();  // move queued remainder out for in-session resume
 
 private:
   mutable std::mutex mtx;
@@ -127,86 +122,227 @@ private:
   std::deque<TaskType> queue;
   unsigned int active_workers{0};   // GUARDED BY mtx, not atomic
   unsigned int waiting_workers{0};  // GUARDED BY mtx, not atomic
-  bool stop_requested{false};
+  bool stop_requested{false};       // GUARDED BY mtx
 };
 ```
+
+Progress counters (`totalTasks`/`completedTasks` on `assembler_c`, read by
+the GUI via `getFinished()`) intentionally stay with the caller, not the
+pool: the seed size is stored at seeding, each accepted split push adds its
+count, each finished task adds one completion.
 
 Key rules:
 
 - `active_workers`/`waiting_workers` live under `mtx`. The wait predicate is `!queue.empty() || active_workers == 0 || stop_requested || abbort || st.stop_requested()`. No lost wakeups, no atomic/mutex split-brain.
 - `pop_task` takes the assembler's `abbort` flag *and* the jthread `stop_token`; both are re-checked in the predicate and after wake. Spurious wakeups re-loop.
-- Progress: `total_tasks` counts the seed plus every split child pushed; `completed_tasks` counts `task_done()`. `getFinished()` = `completed/total` (total ≥ 1 once running). The old `taskCompleted vector<uint8_t>` is deleted — disjoint-index writes were benign but meaningless once tasks are created dynamically.
 - `emittedSignatures` + `callbackMutex` + `handleSolution` are untouched: dedup still happens under `callbackMutex` at solution-report time, which is also where the (blocking) `disassemblerPool_c::submit()` call happens.
 - Save/resume: a stopped-early dynamic run is *not serializable* (same rationale as today's `parallelInterrupted`). On early stop, set `parallelInterrupted = true` so `save()` writes not-resumable and load refuses with `ERR_CAN_NOT_RESTORE_INTERRUPTED`; in-session continue reuses the live pool state. A run to quiescence clears pool + signatures exactly like today's completion path.
 - Ordering: discovery order across threads is nondeterministic; the disassembly merger still emits in `seqNo` order, but `seqNo` is assigned in submit (discovery) order, so CLI/GUI solution order varies run to run. Tests must compare multisets, never sequences.
 
 ---
 
-## 5. Tier 2: dynamic split — per-engine protocol (the new work)
+## 5. Tier 2: dynamic split — per-engine protocol
 
-When `pop_task` finds the queue empty-but-not-quiescent it waits. Splitting refills the queue. The *popping* thread does the split (no dedicated splitter thread, no master mutation):
+### 5.0 When a split happens (read this first)
 
-```
-on pop_task returning task P (or opportunistically before waiting):
-  if pool.has_waiting_workers() && pool.queued() < 2*workers:
-    children = splitTask(P)          // worker-local scratch state only (§5.1–5.3)
-    if children.size() >= 2:
-      keep children[0] as my task; pool.push_tasks(children[1..]) // total_tasks += k-1, notify
-      execute children[0]
-    else:
-      execute P normally              // dead end (0 children) or single child: splitting buys nothing
-```
+There are exactly two points in time where one task becomes many:
 
-- Split is attempted at most once per popped task to bound overhead; single-child or dead-end results are executed, not re-split.
-- `splitTask` never touches the master's live DLX matrix. Each engine expands the prefix on a *worker-local scratch copy* (the same copy the worker would search with). Cost is one column selection + row enumeration — microseconds, amortized over a task that typically runs milliseconds.
-- New solver API required (v1's "reuse existing expansion logic" does not exist for arbitrary prefixes): each engine gets a `splitPrefix(P) -> vector<Task>` helper implemented next to its `generateSubtreeTasks`. Details below.
+1. **Upfront, on the master, before any worker spawns** (§3): the seed
+   generator expands prefixes level by level until `targetTasks` is
+   reached. This is the only split point that can subdivide work nobody
+   has started yet, and therefore the only one that bounds the
+   single-huge-task tail.
+2. **In the worker loop, after `pop_task` returns and before the task
+   executes** (`assembler_0.cpp:1850-1862,1919-1931`): the popping thread
+   evaluates `has_waiting_workers() && queued() < 2*workers`. Only if
+   siblings are actually starving *and* the queue cannot occupy them does
+   it expand its just-popped task `P` one level deeper via `splitPrefix`
+   on worker-local scratch state (never the master's live matrix):
+   ```
+   children = splitPrefix(P)            // P u {(c,r)} for the MRV column c
+   if children.size() >= 2:
+     execute children[0]; push_tasks(children[1..])  // totalTasks += k-1, notify_all
+   else:
+     execute P                          // dead end / solution / depth cap / single child
+   ```
+   Split is attempted **at most once per popped task** (the kept child is
+   executed, never re-split), so management cost stays at task
+   granularity. Crucially, nothing is ever taken away from a task that is
+   already *running*: once `searchSubtree`/`solveSubtree` starts, that
+   worker owns the whole subtree to completion. Subdividing a running
+   task (preemption) is deliberately out of scope — see §5.6.
 
 ### 5.1 `assembler_0_c` DLX (`SubtreeTask{vector<PrefixStep{col,row}>}`)
 
-`splitPrefix(P)`: on the worker's private `assemblerWorker_c` matrices (seeded from the base exactly as `searchSubtree` does today, `assembler_0.cpp:1498-1508`): apply `P` via `cover(col)+cover_row(row)`, run the *same* best-column selection as `searchSubtree` (`assembler_0.cpp:1532-1564`, including the holes check), enumerate `r = down(c)..c` into children `P ∪ {(c,r)}`, then unwind. Pure read of `parent` constants (`piecenumber`, `holes`, `varivoxelEnd`); scratch matrices are thread-local.
+`splitPrefix(P)` (`assembler_0.cpp:1636`): on the worker's private `assemblerWorker_c` matrices (root state after construction / after any non-aborted `searchSubtree`, which unwinds its prefix): apply `P` via `cover(col)+cover_row(row)`, run the *same* MRV column selection as `searchSubtree` (holes check included), enumerate `r = down(c)..c` into children `P ∪ {(c,r)}`, then unwind via a lambda so every early return stays balanced. Pure read of `parent` constants (`piecenumber`, `holes`, `varivoxelEnd`); scratch matrices are thread-local. Fewer than 2 children → empty vector (execute `P`).
 
 ### 5.2 `assembler_0_c` SIMD (`SimdExactCover`, shared read-only solver)
 
-Solver is shared, `solveSubtree(prefix_node_ids, …)` is the execution entry (`assembler_0.cpp:1769-1772`). Add `SimdExactCover::expandPrefix(prefix) -> vector<vector<uint32_t>>`: same column-choice + child-row enumeration the task generator uses, operating on the solver's immutable row/column tables, returning child prefix lists. The pool task type stays `SubtreeTask` (prefix node ids); the popping thread converts `P → children` via the new const method, keeps one, pushes the rest. Thread-safety argument for review: solver tables are written once during `createSimdSolver()` before workers spawn, read-only afterwards (same reasoning as today's concurrent `solveSubtree` calls).
+No new solver API: the SIMD worker threads reuse the *same DLX prefix
+split* (§5.1) on a per-thread scratch `assemblerWorker_c`, then convert
+the kept/pushed children to node-id lists for the shared read-only
+`solver->solveSubtree()` (`assembler_0.cpp:1844-1856`). Splitting never
+mutates solver tables (written once in `createSimdSolver()` before
+workers spawn). Both `assembler_0` paths therefore share one seed and
+one split implementation.
 
-### 5.3 `assembler_1_c` DLX (`SubtreeTask_1`: 5 snapshot vectors)
+### 5.3 `assembler_1_c` DLX + SIMD: pool only, no splitting (deferred)
 
-`splitPrefix(P)`: on a worker-local `assemblerWorker_1` seeded from `base_*` (as today, `assembler_1.cpp` worker path): `restoreMatrix(P)`, perform one level of the state machine's branch enumeration at the current choice point (the `cutoff_depth`-style capture in `generateTasksAtDepth`, `assembler_1.cpp:2504-2521`, factored into a `captureChildrenAtCurrentDepth()` helper), snapshot each child as a `SubtreeTask_1`. The master is never touched after seed generation.
+Both Huang paths (`assemblerWorker_1::searchSubtree`,
+`SimdHuangCover::parallelSolve`) run pool-dispatched but execute seeded
+tasks whole: splitting a `SubtreeTask_1` snapshot (5 stacks) or a
+`SimdHuangCover::SearchContext` one level deeper needs a factored
+child-capture helper that does not exist yet. Skew there is absorbed at
+seed granularity (`workers*4`, depth ≤ 3) plus the pool's liveness for
+the permit-handoff case. See §5.6 for what a Huang split would take.
 
-### 5.4 `assembler_1_c` SIMD (`SimdHuangCover::parallelSolve`, internal static partition today)
-
-Today's `parallelSolve` owns its own `next_task_idx` over an internal `SubtreeTask{depth, SearchContext}` list (`simd_huang_cover.cpp:637-667`). Refactor: move task ownership out to `AssemblyTaskPool<SimdHuangTask>`, and add `SimdHuangCover::expandContext(ctx, depth) -> vector<SubtreeTask>` by factoring one level out of the `expand()` lambda (`simd_huang_cover.cpp:489-606`; the `filterRows` call at line 595 is the child-enumeration primitive). Copy cost is acknowledged: each child clones a `SearchContext`; splits happen only when workers are starving and at most once per task, so context clones are bounded by `O(waiters)`, not `O(nodes)`.
-
-### 5.5 Worker loop shape (all 4 paths)
+### 5.4 Worker loop shape (`assembler_0`, both paths)
 
 ```cpp
-SubtreeTask t;
-while (pool.pop_task(t, abbort, st)) {
-  // optional split when siblings starve (§5 above); may replace t with children[0]
-  ...
-  try { execute(t); } catch (...) { pool.task_done(); throw; }
-  pool.task_done();
+SubtreeTask task;
+while (pool.pop_task(task, abbort, st)) {
+  try {
+    if (shouldSplit()) {            // §5.0, at most once per pop
+      auto children = splitter.splitPrefix(task);
+      if (!children.empty()) {
+        task = std::move(children.front());
+        children.erase(children.begin());
+        totalTasks.fetch_add(pool.push_tasks(std::move(children)), relaxed);
+      }
+    }
+    execute(task);                  // searchSubtree or solveSubtree
+    if (!abbort && !st.stop_requested())
+      completedTasks.fetch_add(1, relaxed);
+    else
+      totalTasks.fetch_add(pool.push_tasks({task}), relaxed);  // re-queue for continue
+  } catch (...) { pool.task_done(); throw; }
+  pool.task_done();                 // exactly once per pop, all paths
 }
 ```
 
-`execute` is `worker.searchSubtree` (DLX) or `solver->solveSubtree` (SIMD) with the existing solution callback (`handleSolution` / SIMD callback under `callbackMutex`).
+### 5.5 What "preempting a running task" would mean (future work, NOT implemented)
+
+"Preemption" = subdividing a task *after* execution has started: a
+worker deep inside `searchSubtree`/`solveSubtree` notices starving
+siblings, snapshots its *unexplored* frontier (the sibling rows not yet
+tried at each level of its current stack), publishes all but one branch
+as new pool tasks, and continues with the remaining branch. Nothing in
+§5.0–5.4 does this — once a task starts executing, its whole subtree
+belongs to that worker until it finishes or aborts.
+
+Why it matters: the Hog Burr tail (§3) is one seeded task holding ~10 s
+of a 60 s solve; split-on-pop cannot touch it because no pop ever
+happens for it again. The finer seed bounds this case instead.
+
+What it would cost, which is why it is deferred: the running worker
+would have to poll a "siblings starving" flag inside the exact-cover
+node loop (in tension with the zero-fast-path-overhead requirement
+§2.1 — cheap if checked every K iterations, but nonzero), and each
+engine would need a mid-search frontier-export (DLX stacks /
+`SearchContext` clone at depth). Correctness hinges on the export
+covering the remaining subtree *exactly once* while the worker keeps
+searching — substantially harder to get right than the at-pop split,
+which operates on an untouched prefix.
 
 ---
 
 ## 6. Tier 3: disassembly-permit interaction (unchanged mechanism)
 
-No change to `disassemblerPool_c::submit()` permit accounting. The fix is purely liveness: siblings block in `pool.pop_task()` instead of exiting, so when W0's permits return, N−1 searchers are still alive. While W0 sleeps inside `submit()` (holding no pool lock across the wait — the wait releases `queue_mutex`), siblings keep draining/splitting tasks. Total runnable threads remain ≤ N assemblers + active disassemblers; idle disassemblers sleep at 0% CPU and assemblers yield while permit/queue-blocked, per §2.3.
+No change to `disassemblerPool_c::submit()` permit accounting. The fix is purely liveness: siblings block in `pool.pop_task()` instead of exiting, so when W0's permits return, N−1 searchers are still alive. While W0 sleeps inside `submit()` (holding no pool lock across the wait — the wait releases `queue_mutex`), siblings keep draining/splitting tasks.
+
+### 6.1 Worked example: `kangaroo -t 4 -d` (full pipeline, traced)
+
+Command: `burrTxt "puzzles/BTFiles/James Fortune/kangaroo.xmpuzzle" -t 4 -d`
+(assembler_0, 200 seed tasks at depth 3, 9831 assemblies, 2 solutions).
+Captured with a temporary env-gated event log (since removed):
+`ASM-submit/unblock` (submit path + permit wait), `DIS-pickup/done`
+(disassembler start/finish + permit return), `MRG-emit` (merger output),
+`POP/SPLIT` (assembly task dispatch). Thread ids hashed; `x=` is the
+permit count after the event. Cast: assemblers th=311/533/106/499, four
+active disassemblers th=125/988/594/706, merger th=020.
+
+**Phase 1 — startup (T+0 ms).** The master seeds 200 tasks and spawns 4
+assembly workers, which immediately `POP` depth-3 prefixes (queue
+199 → 196). Worker th=311's subtree is solution-dense and submits
+assemblies seq 0–3 within the first millisecond; each submit claims one
+of the 4 permits (`x=4 → 0`). A sleeping disassembler (th=125) wakes on
+the first `cv_worker.notify_one()` and picks up seq 0.
+
+**Phase 2 — pipeline at speed (T+1…13 ms).** The steady state is three
+overlapped loops:
+- Assemblers: `POP` task → search → `ASM-submit` (each submit takes the
+  next `seqNo` and one permit if available).
+- Disassemblers: `DIS-pickup seq=k` → `disassemble()` (~1 ms each here)
+  → `DIS-done` returns the permit (`x` climbs back). Up to 4 run
+  concurrently (th=125/988/594/706 visible in one window).
+- Merger: `MRG-emit` strictly in seq order (0,1,2,3,…), so out-of-order
+  completions wait in the reorder buffer; the CLI/GUI solution order is
+  submit order, which varies run to run.
+
+**Phase 3 — throttle episode (T+14 ms, the mechanism §1.1 is about).**
+Worker th=533 submits seq 20, 21, then seq 22 with permits at 0 — so
+after queueing seq 22 it sleeps on `cv_assembler` at ~0% CPU instead of
+searching:
+```
+[T+14ms] ASM-submit seq=22 x=0        <- th=533 queues seq 22, no permit left
+[T+14ms] DIS-pickup seq=20 / seq=21   <- th=125, th=594 take work
+[T+14ms] DIS-done   seq=18 / seq=19   <- permits return one by one
+[T+14ms] ASM-unblock seq=22           <- th=533 wakes, claims a permit, resumes
+[T+14ms] ASM-submit seq=24 / seq=26   <- th=533 keeps producing
+[T+15ms] ASM-unblock seq=26           <- th=533 blocked again, woken again
+```
+While th=533 sleeps, the other three assemblers keep `POP`ing and
+searching from the pool — 19 `ASM-unblock` events total in this solve,
+and at no point does the assembly side go quiet because one worker is
+permit-blocked. (Under the old static dispatch the siblings in this
+situation would have died at queue exhaustion instead of waiting.)
+
+**Phase 4 — drain and shutdown.** `POP` line shows the queue counting
+down 22 → 0 across all four workers; the last `task_done()` observes
+empty queue + zero active workers and broadcasts quiescence (200/200).
+`parallelMultiSearch` returns, `solveThread_c` calls
+`disasm_pool->finish()`, disassemblers drain the backlog, the merger
+emits the remaining seqNos in order, and the run prints `9831 assemblies
+and 2 solutions`.
+
+Thread-state summary for reading any such trace:
+
+| State | Thread | Where in code | CPU |
+|---|---|---|---|
+| SEARCHING | assembler | `searchSubtree` / `solveSubtree` | 100% |
+| WAITING-FOR-WORK | assembler | `pool.pop_task` wait (queue empty, others active) | ~0% |
+| PERMIT-BLOCKED | assembler | `submit()` wait on `cv_assembler` | ~0% |
+| SPLITTING | assembler | `splitPrefix` after pop, before execute | 100% (µs) |
+| DISASSEMBLING | disassembler | `dis.disassemble()` | 100% |
+| SLEEPING | disassembler | `cv_worker` wait on empty queue | ~0% |
+| MERGING | merger | `on_result` + `cv_merger` waits | ~0% + spikes |
+
+On core utilization, the honest accounting (this corrects looser "at most
+N cores" phrasing used during review): 2N+1 threads are *created* (N
+assemblers + N disassemblers + 1 merger), and while both tiers have work,
+up to ~2N of them can briefly be *runnable* at once — there is no hard
+≤N cap during assembly/disassembly overlap. What keeps sustained usage
+at ≈N is self-throttling, not a cap: disassemblers sleep on `cv_worker`
+at 0% CPU when the queue is empty, and assemblers block in `submit()` on
+zero permits / full queue when disassembly backs up, so the searching
+crew shrinks exactly as the disassembling crew grows. Assembly-only runs
+create no pool at all and stay at ≤N. A strict static split (`N_asm +
+N_dis = N`) was considered and rejected: it would idle cores whenever
+only one tier has work (the common case at both ends of every solve)
+for no tail benefit. Measured: Hog Burr assembly-only sustains 753% of
+800%; the full-pipeline corpus shows no systematic CPU% drop vs master
+(§8).
 
 ---
 
-## 7. Implementation phases
+## 7. Implementation status (was: phases)
 
-1. **Phase 1 — pool + `assembler_0` DLX.** New `src/lib/assembler_pool.h` (§4.2); replace `nextIndexPtr/remainingIndices/taskCompleted` in the DLX branch of `assembler_0_c::parallelMultiSearch` with pool + §5.1 split. Keep seed generation, `callbackMutex`/`emittedSignatures`, iterations batching, `prewarmSharedShapeCaches`, `parallelInterrupted` semantics.
-2. **Phase 2 — `assembler_0` SIMD.** Add `SimdExactCover::expandPrefix`; pool-ify the `simdWorkerFunc` branch.
-3. **Phase 3 — `assembler_1` DLX + SIMD.** Factor child-capture helper; pool-ify `assembler_1_c::parallelMultiSearch` DLX branch; refactor `SimdHuangCover::parallelSolve` to take an external pool (§5.4).
-4. **Phase 4 — verification** (§8). Each phase lands with `just test`, `just check`; full gate before merge.
-
-Risks: split-heuristic tuning (`waiting>0 && queued<2N`, once-per-task) may need corpus data; `SubtreeTask_1`/SIMD context clones could dominate on tiny puzzles — splits only fire when waiters exist, and tasks below a minimum prefix depth are exempt (execute directly).
+- [x] Pool + `assembler_0` DLX with `splitPrefix` (§5.1, §5.4).
+- [x] `assembler_0` SIMD via the shared DLX split on a scratch worker (§5.2).
+- [x] `assembler_1` DLX + `SimdHuangCover::parallelSolve`: pool-dispatched, no splitting (§5.3).
+- [x] Finer `assembler_0` seed (§3) after Hog Burr measurements.
+- [ ] Huang child-capture split (§5.3); preemption of running tasks (§5.5).
+- Verification per §8 ran green at each step (`just test-all`, `just check`, `just test-regression`, A/B vs master).
 
 ---
 
@@ -229,5 +365,5 @@ Risks: split-heuristic tuning (`waiting>0 && queued<2N`, once-per-task) may need
    With `BURRTOOLS_NO_SIMD=1` wrapper for the DLX-vs-SIMD A/B where relevant.
 6. **Acceptance criteria:**
    - Correctness: identical multisets (assembly/solution counts, `movesText()` levels) 1-thread vs N-thread across the 10-puzzle corpus; `just test-regression` clean.
-   - Tail fix: on skew puzzles (`PelikanBurr`, `Bermuda`, `CubeInCage`) with disassembly enabled, measured assembler-thread occupancy shows >1 assembler active during the former single-core tail (e.g. CPU% well above ~100% single-core in the tail window), and wall time improves vs baseline with no puzzle regressing beyond run-to-run noise.
+   - Tail fix, measured on `James Fortune/Hog Burr` (assembler_0, 8 threads, `--no-disassemble --runs 3`, interleaved master-vs-branch): 62.37 s @ 662% → 55.44 s @ 753% (1.12x), CPU trace flat at ~700% with no single-core tail (was 700% → 109% in the last ~10 s on both master and the pool-only branch). Identical 646056 assemblies / 0 solutions; RSS +5%.
    - No fast-path regression: `--no-disassemble` corpus geomean within noise; `just check` clean; TSan clean.

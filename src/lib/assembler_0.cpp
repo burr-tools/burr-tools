@@ -1807,8 +1807,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     prewarmSharedShapeCaches(problem);
 
   if (parallelTasks.empty()) {
-    unsigned int targetTasks = std::max(16u, workers * 4);
-    unsigned int maxDepth = std::min(piecenumber > 1 ? piecenumber - 1 : 1u, 3u);
+    unsigned int targetTasks = std::max(16u, workers * 16);
+    unsigned int maxDepth = std::min(piecenumber > 1 ? piecenumber - 1 : 1u, 5u);
     generateSubtreeTasks(parallelTasks, targetTasks, maxDepth);
     totalTasks.store(parallelTasks.size(), std::memory_order_relaxed);
     completedTasks.store(0, std::memory_order_relaxed);
