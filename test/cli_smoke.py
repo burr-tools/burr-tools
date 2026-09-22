@@ -121,6 +121,14 @@ def main():
         check(label, rc == 0, f"exited {rc}\n{out}")
         check(label, "done" in out, f"did not finish\n{out}")
 
+    # -t must be accepted and actually used, not just silently ignored.
+    label = "explicit thread count via -t"
+    rc, out = run(binary, ["-R", "-t", "2", "-b", "0"], "examples/PelikanBurr.xmpuzzle",
+                  source_root, label)
+    if rc is not None:
+        check(label, rc == 0, f"exited {rc}\n{out}")
+        check(label, "done" in out, f"did not finish\n{out}")
+
     for f in failures:
         print(f"FAILED  {f}")
 

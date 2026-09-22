@@ -53,6 +53,7 @@ void usage(void) {
   cout << "  -r    keep rotated solutions\n";
   cout << "  -p    drop disassemblies and replace by information about disassembly\n";
   cout << "  -b    selecte problem, else 0\n";
+  cout << "  -t n  set number of worker threads for solver (0 = auto)\n";
 }
 
 
@@ -85,6 +86,7 @@ static int solve(int argv, char* args[]) {
   int filenumber = 0;
   int firstProblem = 0;
   int lastProblem = 1;
+  unsigned int threads = 0;
 
   for(int i = 1; i < argv; i++) {
 
@@ -103,6 +105,25 @@ static int solve(int argv, char* args[]) {
     else if (strcmp(args[i], "-b") == 0) {
       firstProblem = atoi(args[i+1]);
       lastProblem = firstProblem + 1;
+      i++;
+    }
+    else if (strcmp(args[i], "-t") == 0) {
+      /* args[argv] is the null terminator, so the bound has to be checked
+       * before dereferencing; strtol rather than atoi so that a negative or
+       * non-numeric argument is rejected instead of wrapping to a huge
+       * unsigned thread count
+       */
+      if (i+1 >= argv) {
+        cout << "-t requires a numeric argument\n";
+        return 1;
+      }
+      char * end = 0;
+      long t = strtol(args[i+1], &end, 10);
+      if ((end == args[i+1]) || (*end != '\0') || (t < 0)) {
+        cout << "-t requires a non-negative number\n";
+        return 1;
+      }
+      threads = (unsigned int)t;
       i++;
     }
     else
@@ -185,7 +206,7 @@ static int solve(int argv, char* args[]) {
       continue;
     }
 
-    solveThread_c assmThread(*problem, par);
+    solveThread_c assmThread(*problem, par, threads);
 
     if (!assmThread.start(false)) {
       cout << "Could not start Solver\n";

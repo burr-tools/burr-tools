@@ -22,6 +22,7 @@
 #define __CONFIGURATION_H__
 
 #include <stdio.h>
+#include <string>
 #include <vector>
 
 /* this module contains a class for configuration file
@@ -56,6 +57,13 @@ public:
 
   bool reverseScrollZoom(void) { return i_reverseScrollZoom; }
 
+  /* Worker thread count shared by the assembler and the disassembler pool
+   * for a solve. 0 is a valid stored value only in the sense that the
+   * dialog never produces it -- the slider's range starts at 1 -- so this
+   * accessor always returns a usable, concrete count.
+   */
+  unsigned int numThreads(void) const { return (unsigned int)i_num_threads; }
+
   int windowPosX(void) { return i_window_pos_x; }
   int windowPosY(void) { return i_window_pos_y; }
   int windowPosW(void) { return i_window_pos_w; }
@@ -79,7 +87,7 @@ private:
   } cnf_type;
 
   void parse(void);
-  void register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * dhelp, const char * def);
+  void register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * dhelp, const char * def, int minVal = 0, int maxVal = 0);
 
   struct config_data {
     const char *cnf_name;  // name of entry in configuration file
@@ -91,6 +99,8 @@ private:
     const char * dialogHelp;
     void *    widget;    // used in the dialogue to save pointer to the widget
     const char * defaultValue; // the variable will have this value, when not initialized in script file
+    int       minVal;    // CT_INT only: inclusive slider range in the dialogue
+    int       maxVal;
   };
 
   std::vector<config_data> data;
@@ -103,6 +113,13 @@ private:
   bool i_rotationMethod;
   int i_render_style;
   bool i_reverseScrollZoom;
+  int i_num_threads;
+
+  /* computed at construction time from hardware_concurrency(), so unlike
+   * every other default value here it can't be a string literal; it must
+   * outlive the register_entry() call that stores its pointer
+   */
+  std::string i_num_threads_default;
 
   int i_window_pos_x;
   int i_window_pos_y;

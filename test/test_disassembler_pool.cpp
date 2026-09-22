@@ -520,3 +520,27 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
   }
 }
 
+TEST_CASE("solveThread_c: explicit thread count reaches the assembler", "[solvethread][threads]") {
+  auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+  problem->removeAllSolutions();
+
+  int par = solveThread_c::PAR_KEEP_ROTATIONS | solveThread_c::PAR_KEEP_MIRROR;
+
+  solveThread_c st(*problem, par, 2);
+  REQUIRE(st.start());
+
+  while (st.isRunning()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+
+  if (st.currentAction() == solveThread_c::ACT_ASSERT) {
+    FAIL(std::string("solveThread threw assert: ") + st.getAssertException().what());
+  }
+
+  REQUIRE(problem->getAssembler() != nullptr);
+  CHECK(problem->getAssembler()->getNumThreads() == 2);
+}
+
