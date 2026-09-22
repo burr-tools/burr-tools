@@ -222,6 +222,70 @@ jobs:
            --body-file coverage-report.md --edit-last --create-if-none
 
 
+  # Builds the Doxygen API reference and, on master, publishes it to GitHub
+  # Pages at https://burr-tools.github.io/burr-tools/.
+  #
+  # Gated to pull requests and master, matching `coverage` above. That is not
+  # just symmetry: the `release` job downloads *every* artifact of the run into
+  # one directory and attaches `artifacts/**/*` to the release, so a pages
+  # artifact present on a tag run would end up as a release asset.
+  docs:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        # `just docs` stamps the docs with `git describe --tags`, which needs
+        # the tags and enough history to find the most recent one.
+        fetch-depth: 0
+
+    - name: Update package list
+      run: sudo apt-get update
+
+    - name: Install dependencies
+      run: sudo apt-get install -y doxygen graphviz
+
+    - name: Install just
+      uses: extractions/setup-just@v2
+
+    - name: Generate API documentation
+      run: just docs
+
+    - name: Upload the Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: gendoc/html
+
+
+  # Split from `docs` because deployment needs write access to Pages and an id
+  # token, and a pull request from a fork must not be handed either. Keeping the
+  # generation step in its own read-only job means forks still get their docs
+  # build checked; only this job, which never runs for a pull request, deploys.
+  deploy-docs:
+    needs: docs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    permissions:
+      pages: write
+      id-token: write
+    # GitHub Pages accepts one deployment at a time. Queue rather than cancel,
+    # so a rapid second push to master cannot leave the site showing the older
+    # of the two commits.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+
   build-windows:
     runs-on: ubuntu-latest
     steps:
