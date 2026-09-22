@@ -20,12 +20,15 @@
  */
 #include "imageexport.h"
 
+#include <filesystem>
 #include <memory>
 
 #include "image.h"
 #include "view3dgroup.h"
 #include "Layouter.h"
 #include "blocklistgroup.h"
+
+#include "../tools/homedir.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/problem.h"
@@ -37,6 +40,7 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl.H>
+#include <FL/fl_ask.H>
 #pragma GCC diagnostic pop
 
 #include <stdlib.h>
@@ -263,7 +267,14 @@ void imageExport_c::nextImage(bool finish) {
     else
       snprintf(name, 1000, "%s%s%03u.png", Pname->value(), Fname->value(), curPage);
 
-    i->saveToPNG(name);
+    /* saveToPNG reports failure by returning 0 and printing to stderr. The
+     * return value is what matters here: a program started from a macOS
+     * bundle or a Windows shortcut has no stderr anyone can read, so the
+     * path is recorded for PostDraw() to report in a dialog instead.
+     */
+    if (!i->saveToPNG(name))
+      failedPath = name;
+
     i.reset();
   }
 
@@ -281,6 +292,28 @@ void imageExport_c::nextImage(bool finish) {
 }
 
 void imageExport_c::PostDraw(void) {
+
+  /* A failed write aborts the whole export rather than carrying on. If the
+   * first page could not be written the rest will fail for the same reason,
+   * and one dialog helps where a dialog per page would be an ordeal.
+   * The check sits here, at the single entry to the state machine, so every
+   * path that calls nextImage() is covered by it.
+   */
+  if (!failedPath.empty()) {
+
+    state = 3;
+    view3D->getView()->setCallback();
+    status->label("Failed");
+    working = false;
+
+    const std::string path = failedPath;
+    failedPath.clear();     // so the alert is shown once, not on every draw
+
+    fl_alert("Could not write the image to\n%s\n\n"
+             "Check that the path exists and is writable.", path.c_str());
+
+    return;
+  }
 
   switch(state) {
     case 0:
@@ -579,7 +612,20 @@ void imageExport_c::cb_SzUpdate(void) {
   }
 }
 
-imageExport_c::imageExport_c(puzzle_c * p) : LFl_Double_Window(false), puzzle(p), working(false), state(0), i(nullptr) {
+imageExport_c::imageExport_c(puzzle_c * p, const std::string & puzzleFile) : LFl_Double_Window(false), puzzle(p), exportDir(std::filesystem::path(puzzleFile).parent_path().string()), working(false), state(0), i(nullptr) {
+
+  /* The path field starts at the folder the puzzle was loaded from, which is
+   * where the user almost always wants the images. An unsaved puzzle has no
+   * folder, so the home directory stands in: it exists and is writable,
+   * neither of which holds for the working directory -- an application
+   * launched from a macOS bundle or a Windows shortcut is given "/".
+   *
+   * homedir() ends in a separator, so it goes through parent_path() as well:
+   * that drops the separator and leaves both branches in the same shape, so
+   * the name assembly in nextImage() cannot produce a doubled one.
+   */
+  if (exportDir.empty())
+    exportDir = std::filesystem::path(homedir()).parent_path().string();
 
   label("Export Images");
 
@@ -693,6 +739,7 @@ imageExport_c::imageExport_c(puzzle_c * p) : LFl_Double_Window(false), puzzle(p)
     Fname->value("test");
     Fname->weight(1, 0);
     Pname = new LFl_Input(2, 1, 3, 1);
+    Pname->value(exportDir.c_str());
     NumPages = new LFl_Int_Input(4, 2);
     new LFl_Int_Input(4, 3);
 

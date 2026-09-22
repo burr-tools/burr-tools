@@ -47,6 +47,10 @@ test-all: build
 test-py: build
     PYTHONPATH=build python3 -m unittest discover -s test/python -v
 
+# Run regression test comparing burrTxt and burrTxt2 against known-good 0.7.1 release output
+test-regression: build
+    python3 test/test_examples_regression.py
+
 # Run fast static analysis (cppcheck) on BurrTools source files
 #
 # Every suppression here is scoped to third-party or system code. Deliberately

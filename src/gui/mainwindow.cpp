@@ -1808,7 +1808,7 @@ void mainWindow_c::cb_ImageExportVector(void) {
 
 static void cb_ImageExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_ImageExport(); }
 void mainWindow_c::cb_ImageExport(void) {
-  imageExport_c w(puzzle.get());
+  imageExport_c w(puzzle.get(), fname);
   w.show();
 
   while (w.visible()) {
@@ -1822,7 +1822,7 @@ void mainWindow_c::cb_ImageExport(void) {
 
 static void cb_STLExport_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_STLExport(); }
 void mainWindow_c::cb_STLExport(void) {
-  stlExport_c w(puzzle.get());
+  stlExport_c w(puzzle.get(), fname);
   w.show();
 
   while (w.visible()) {
