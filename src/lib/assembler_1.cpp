@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "assembler_1.h"
+#include "assembler_pool.h"
 #include "simd_huang_cover.h"
 #include "simd_config.h"
 
@@ -663,7 +664,6 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
 
   complete = comp;
   parallelTasks.clear();
-  taskCompleted.clear();
   emittedSignatures.clear();
 
   if (!canHandle(problem))
@@ -2611,7 +2611,6 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       next_row_stack.clear();
       task_stack.clear();
       parallelTasks.clear();
-      taskCompleted.clear();
       emittedSignatures.clear();
       parallelInterrupted = false;
     } else {
@@ -2626,7 +2625,6 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     unsigned int targetTasks = std::max(16u, workers * 4);
     unsigned int maxDepth = std::min(piecenumber, 3u);
     generateSubtreeTasks(parallelTasks, targetTasks, maxDepth);
-    taskCompleted.assign(parallelTasks.size(), 0);
     totalTasks.store(parallelTasks.size(), std::memory_order_relaxed);
     completedTasks.store(0, std::memory_order_relaxed);
   }
@@ -2640,39 +2638,43 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     return;
   }
 
-  std::vector<size_t> remainingIndices;
-  remainingIndices.reserve(parallelTasks.size());
-  for (size_t i = 0; i < parallelTasks.size(); i++) {
-    if (!taskCompleted[i])
-      remainingIndices.push_back(i);
-  }
+  // Non-terminating pool as in assembler_0 (see assembler_pool.h): idle
+  // workers wait for quiescence, so siblings blocked in
+  // disassemblerPool_c::submit are still alive when disassembly permits
+  // return. Dynamic splitting of Huang subtrees is not implemented --
+  // tasks run as seeded -- so skew between seeded subtrees is only absorbed
+  // at task granularity.
+  AssemblyTaskPool<SubtreeTask_1> pool;
+  pool.seed(std::move(parallelTasks));
+  parallelTasks.clear();
 
-  if (remainingIndices.empty()) {
-    totalTasks.store(1, std::memory_order_relaxed);
-    completedTasks.store(1, std::memory_order_relaxed);
-    running.store(false, std::memory_order_relaxed);
-    return;
-  }
-
-  std::atomic<size_t> nextIndexPtr{0};
   std::exception_ptr workerException = nullptr;
   std::mutex exceptionMutex;
 
-  auto workerFunc = [this, &remainingIndices, &nextIndexPtr, &workerException, &exceptionMutex](std::stop_token st = {}) {
+  auto workerFunc = [this, &pool, &workerException, &exceptionMutex](std::stop_token st = {}) {
     try {
       assemblerWorker_1 worker(*this);
 
-      while (!abbort.load(std::memory_order_relaxed) && !st.stop_requested()) {
-        size_t idx = nextIndexPtr.fetch_add(1, std::memory_order_relaxed);
-        if (idx >= remainingIndices.size())
-          break;
-
-        size_t taskIdx = remainingIndices[idx];
-        worker.searchSubtree(parallelTasks[taskIdx]);
-        if (!abbort.load(std::memory_order_relaxed) && !st.stop_requested()) {
-          taskCompleted[taskIdx] = 1;
-          completedTasks.fetch_add(1, std::memory_order_relaxed);
+      SubtreeTask_1 task;
+      while (pool.pop_task(task, abbort, st)) {
+        try {
+          worker.searchSubtree(task);
+          if (!abbort.load(std::memory_order_relaxed) && !st.stop_requested()) {
+            completedTasks.fetch_add(1, std::memory_order_relaxed);
+          } else {
+            // Interrupted mid-task: re-queue the whole snapshot so an
+            // in-session continue re-searches it from scratch. Assemblies
+            // reported twice are suppressed via emittedSignatures.
+            std::vector<SubtreeTask_1> retry;
+            retry.push_back(std::move(task));
+            totalTasks.fetch_add(pool.push_tasks(std::move(retry)),
+                                 std::memory_order_relaxed);
+          }
+        } catch (...) {
+          pool.task_done();
+          throw;
         }
+        pool.task_done();
       }
 
       worker.flushIterations();
@@ -2707,17 +2709,18 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     next_row_stack.clear();
     task_stack.clear();
     parallelTasks.clear();
-    taskCompleted.clear();
     emittedSignatures.clear();
     parallelInterrupted = false;
   } else {
-    /* Stopped part way. Continuing in this session is fine -- parallelTasks,
-     * taskCompleted and emittedSignatures are all still here. But
+    /* Stopped part way. Continuing in this session is fine -- the pool
+     * remainder plus re-queued in-flight tasks are saved back into
+     * parallelTasks, and emittedSignatures suppresses repeats. But
      * generateTasksAtDepth() resets the master back to the root on every exit,
      * so what save() would write is the root state, i.e. "nothing searched
      * yet" next to an already populated solution list. Mark it so the reload
      * refuses it instead of silently reporting everything a second time.
      */
+    parallelTasks = pool.drain();
     parallelInterrupted = true;
   }
 
@@ -2988,7 +2991,6 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
 
   unsigned int len = strlen(string);
   parallelTasks.clear();
-  taskCompleted.clear();
   emittedSignatures.clear();
   resetTaskProgress();
   simdCompleted.store(false, std::memory_order_relaxed);
