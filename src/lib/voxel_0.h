@@ -47,6 +47,7 @@ class voxel_0_c : public voxel_c {
     voxel_0_c(const voxel_c * orig) : voxel_c(orig) { }
 
     void transformPoint(int * x, int * y, int * z, unsigned int trans) const override;
+    void getTransformMatrix(unsigned int trans, double m[9]) const override;
     bool transform(unsigned int nr) override;
 
     bool getNeighbor(unsigned int idx, unsigned int typ, int x, int y, int z, int * xn, int *yn, int *zn) const override;

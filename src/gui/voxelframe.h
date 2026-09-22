@@ -40,6 +40,7 @@ class assembly_c;
 class piecePositions_c;
 
 class rotater_c;
+class viewCube_c;
 
 class Polyhedron;
 
@@ -129,6 +130,15 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     void showNothing(void);
     void showSingleShape(const puzzle_c * puz, unsigned int shapeNum);
+    /* Takes ownership of vx and overlays it as a translucent (50% alpha) preview
+     * on top of whatever is already shown; a later call replaces the previous preview.
+     * kind/axis/angleDeg (in the piece's own local, pre-transform coordinate frame)
+     * describe an optional hint drawn around the piece: 0 none, 1 rotation (arc),
+     * 2 mirror (double-headed arrow along the mirror normal), 3 translation
+     * (single arrow along the move direction). */
+    void showTransformPreview(voxel_c * vx, unsigned int colorIndex, int kind = 0,
+                               float axisX = 0, float axisY = 0, float axisZ = 1, float angleDeg = 0);
+    void clearTransformPreview(void);
     void showColors(const puzzle_c * puz, colorMode mode);
     void showAssembly(const problem_c * puz, unsigned int solNum);
     void updatePositions(piecePositions_c *shifting);
@@ -142,7 +152,19 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     // this value determines the scaling factor used to draw the cube.
     void setSize(double sz);
-    double getSize(void) const { return size; }
+
+    /* Computes the camera distance ("size") needed so that everything currently
+     * in `shapes` fits inside the (narrow, fixed 15 degree) field of view, based
+     * on each shape's position and bounding radius. */
+    double computeFitSize(void) const;
+
+    /* near/far clip planes, derived from where the actual content in `shapes` sits
+     * relative to the camera rather than from a blanket multiple of "size" - keeps
+     * the near plane from clipping the front of the model when zoomed in close, and
+     * keeps the near:far ratio from blowing out (and eating depth-buffer precision)
+     * when zoomed far out. image_c::prepareOpenGlImagePart() must call this too, so
+     * the tiled PNG/vector export uses the identical projection as draw(). */
+    void getNearFar(double * nearPlane, double * farPlane) const;
 
     void setCallback(VoxelViewCallbacks *c = 0) { cb = c; }
     bool pickShape(int x, int y, unsigned int *shape, unsigned long *voxel, unsigned int *face);
@@ -162,6 +184,14 @@ class voxelFrame_c : public Fl_Gl_Window {
     void setRotaterMethod(int method);
 
     void setInsideVisible(bool on);
+ 
+    void setHomeCallback(Fl_Callback * cb, void * user) { homeCb = cb; homeUser = user; }
+    void resetViewRotation(void);
+
+    /* Fl_Gl_Window is a real, separate native subwindow on most platforms, so
+     * FL_MOUSEWHEEL events over it never reach the enclosing Fl_Group's handle()
+     * at all; the group has to be told about them through this callback instead. */
+    void setWheelCallback(void (*cb)(void * user, int dy), void * user) { wheelCb = cb; wheelUser = user; }
 
   private:
 
@@ -223,6 +253,13 @@ class voxelFrame_c : public Fl_Gl_Window {
     double size;
 
     VoxelViewCallbacks * cb;
+ 
+    viewCube_c * viewCube;
+    Fl_Callback * homeCb;
+    void * homeUser;
+
+    void (*wheelCb)(void * user, int dy) = nullptr;
+    void * wheelUser = nullptr;
 
     std::vector<shapeInfo> shapes;
 
@@ -240,9 +277,35 @@ class voxelFrame_c : public Fl_Gl_Window {
     int pickx = -1, picky = -1;
 
     void draw();
+    void draw(bool withViewCube);
     int handle(int event);
 
     bool insideVisible;
+
+    // panning offset, applied before rotation so it moves the view independent of orientation
+    double panX = 0.0, panY = 0.0;
+    bool panning = false;
+    int panStartMouseX = 0, panStartMouseY = 0;
+    double panStartX = 0.0, panStartY = 0.0;
+
+    void resetPan(void) { panX = 0.0; panY = 0.0; }
+
+    // index into shapes of the translucent transform preview overlay, -1 if none
+    int previewShapeIndex = -1;
+
+    // preview hint drawn around the overlay, in the piece's local coordinate frame:
+    // 0 none, 1 rotation (arc), 2 mirror (double arrow), 3 translation (single arrow)
+    int previewHintKind = 0;
+    float previewRotAxis[3] = { 0.0f, 0.0f, 1.0f };
+    float previewRotAngleDeg = 0.0f;
+
+    float previewHintRadius(void) const;
+    void drawPreviewHint(void) const;
+    void drawPreviewRotationArc(void) const;
+    void drawPreviewStraightArrow(bool doubleHeaded) const;
+
+    // conservative bounding-sphere radius (from the origin) of everything in `shapes`
+    double computeContentRadius(void) const;
 };
 
 #endif
