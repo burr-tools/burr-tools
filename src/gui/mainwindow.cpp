@@ -1060,7 +1060,7 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   if (JustCount->value() != 0) par |= solveThread_c::PAR_JUST_COUNT;
   if (CompleteRotations->value() != 0) par |= solveThread_c::PAR_COMPLETE_ROTATIONS;
 
-  assmThread = std::make_unique<solveThread_c>(*puzzle->getProblem(prob), par);
+  assmThread = std::make_unique<solveThread_c>(*puzzle->getProblem(prob), par, config.numThreads());
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());

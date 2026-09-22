@@ -95,6 +95,7 @@ void solveThread_c::run(void){
     if (!stopPressed) {
 
       action = solveThread_c::ACT_ASSEMBLING;
+      a->setNumThreads(numThreads);
       a->assemble(this);
 
       if (disasm_pool) {
@@ -129,10 +130,11 @@ void solveThread_c::run(void){
   }
 }
 
-solveThread_c::solveThread_c(problem_c & puz, int par) :
+solveThread_c::solveThread_c(problem_c & puz, int par, unsigned int threads) :
 action(ACT_PREPARATION),
 puzzle(puz),
 parameters(par),
+numThreads(threads),
 sortMethod(SRT_COMPLETE_MOVES),
 liveSort(-1),
 solutionLimit(10),
@@ -143,15 +145,18 @@ assm(0)
 
   if (par & PAR_DISASSM) {
     /* Thread budget architecture:
-     * Disassembler pool is instantiated with 0 (defaulting to BURRTOOLS_THREADS or hardware_concurrency).
-     * The Tier 1 assembler and Tier 2 disassembler pool concurrently run up to N workers each.
-     * This overlap is deliberate: disassembly is memory/movement-closure bound while assembly is
-     * CPU/search bound. Dynamic backpressure via bounded queues (MAX_QUEUE_SIZE = 64) prevents
-     * queue bloat and coordinates CPU utilization (see design/2026-09-19-threading-model-assessment.md).
+     * Disassembler pool is instantiated with numThreads (0 = auto, defaulting
+     * to BURRTOOLS_THREADS or hardware_concurrency, same as the assembler --
+     * see the setNumThreads() call in run()). The Tier 1 assembler and Tier 2
+     * disassembler pool concurrently run up to N workers each. This overlap
+     * is deliberate: disassembly is memory/movement-closure bound while
+     * assembly is CPU/search bound. Dynamic backpressure via bounded queues
+     * (MAX_QUEUE_SIZE = 64) prevents queue bloat and coordinates CPU
+     * utilization (see design/2026-09-19-threading-model-assessment.md).
      */
     disasm_pool = std::make_unique<disassemblerPool_c>(
       puz,
-      0,
+      numThreads,
       [this](uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
         onDisassemblyResult(seqNo, std::move(a), std::move(s));
       }

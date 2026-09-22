@@ -97,6 +97,7 @@ class solveThread_c : public assembler_cb {
 
     problem_c & puzzle;
     int parameters;
+    unsigned int numThreads;
 
   public:
 
@@ -108,8 +109,10 @@ class solveThread_c : public assembler_cb {
     static const int PAR_JUST_COUNT =         0x20;  // just count the solutions, don't save them
     static const int PAR_COMPLETE_ROTATIONS = 0x40;  // do a thorough rotation check
 
-    // create all the necessary data structures to start the thread later on
-    solveThread_c(problem_c & puz, int par);
+    // create all the necessary data structures to start the thread later on;
+    // threads is the worker count shared by the assembler and the
+    // disassembler pool, 0 = auto (BURRTOOLS_THREADS, else hardware_concurrency)
+    solveThread_c(problem_c & puz, int par, unsigned int threads = 0);
     const problem_c & getProblem(void) const { return puzzle; }
 
   private:
