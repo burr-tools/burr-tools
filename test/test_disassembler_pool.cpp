@@ -272,6 +272,7 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
               solveThread_c::PAR_KEEP_MIRROR;
 
     unsigned long first_phase_assemblies = 0;
+    unsigned int final_act1 = solveThread_c::ACT_PAUSING;
     {
       solveThread_c st1(*problem, par);
       REQUIRE(st1.start(false));
@@ -296,15 +297,19 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
       }
 
       CHECK(st1.stopped());
-      unsigned int final_act1 = st1.currentAction();
+      final_act1 = st1.currentAction();
       CHECK((final_act1 == solveThread_c::ACT_PAUSING || final_act1 == solveThread_c::ACT_FINISHED));
       if (problem->numAssembliesKnown()) {
         first_phase_assemblies = problem->getNumAssemblies();
       }
     }
 
-    // If it paused before finding all assemblies, continue to completion
-    if (first_phase_assemblies < 12) {
+    // Branch on whether the thread actually finished searching, not on
+    // assembly count: the search can find all 12 assemblies in the window
+    // between the poll loop noticing work has started and stop() taking
+    // effect, which leaves the thread paused (SS_SOLVING) rather than
+    // finished (SS_SOLVED) even though every assembly has been found.
+    if (final_act1 != solveThread_c::ACT_FINISHED) {
       CHECK(problem->getSolveState() == SS_SOLVING);
 
       solveThread_c st2(*problem, par);
@@ -340,6 +345,7 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
               solveThread_c::PAR_KEEP_MIRROR;
 
     unsigned long first_phase_assemblies = 0;
+    unsigned int final_act1 = solveThread_c::ACT_PAUSING;
     {
       solveThread_c st1(*problem, par);
       REQUIRE(st1.start(false));
@@ -362,15 +368,19 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
       }
 
       CHECK(st1.stopped());
-      unsigned int final_act1 = st1.currentAction();
+      final_act1 = st1.currentAction();
       CHECK((final_act1 == solveThread_c::ACT_PAUSING || final_act1 == solveThread_c::ACT_FINISHED));
       if (problem->numAssembliesKnown()) {
         first_phase_assemblies = problem->getNumAssemblies();
       }
     }
 
-    // If it paused before finding all assemblies, continue to completion
-    if (first_phase_assemblies < 96) {
+    // Branch on whether the thread actually finished searching, not on
+    // assembly count: the search can find all 96 assemblies in the window
+    // between the poll loop noticing work has started and stop() taking
+    // effect, which leaves the thread paused (SS_SOLVING) rather than
+    // finished (SS_SOLVED) even though every assembly has been found.
+    if (final_act1 != solveThread_c::ACT_FINISHED) {
       CHECK(problem->getSolveState() == SS_SOLVING);
 
       solveThread_c st2(*problem, par);

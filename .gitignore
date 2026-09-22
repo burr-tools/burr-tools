@@ -1,7 +1,6 @@
 *#
 *~
 admin/
-doxygen.cfg
 src/burrTxt
 src/burrTxt2
 src/gui/burrGui
@@ -22,6 +21,9 @@ subprojects/*
 *.app
 dmg_contents/
 coverage-html/
+
+# Generated Doxygen API reference (`just docs`)
+gendoc/
 
 # Python artifacts
 __pycache__/
