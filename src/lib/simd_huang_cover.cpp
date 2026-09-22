@@ -623,7 +623,8 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   std::atomic<bool> &abort_flag,
   std::atomic<unsigned long> &iterations,
   std::atomic<size_t> &total_tasks,
-  std::atomic<size_t> &completed_tasks
+  std::atomic<size_t> &completed_tasks,
+  ThreadBudget *budget
 ) const {
   unsigned int target_tasks = std::max(16u, num_workers * 4);
   std::vector<SubtreeTask> tasks;
@@ -642,6 +643,7 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   // absorbed at task granularity.
   AssemblyTaskPool<SubtreeTask> pool;
   pool.seed(std::move(tasks));
+  pool.setBudget(budget);
 
   std::exception_ptr worker_exception = nullptr;
   std::mutex exception_mutex;
@@ -663,10 +665,10 @@ void SimdHuangCover<BitsetType>::parallelSolve(
             completed_tasks.fetch_add(1, std::memory_order_relaxed);
           }
         } catch (...) {
-          pool.task_done();
+          pool.finishTask();
           throw;
         }
-        pool.task_done();
+        pool.finishTask();
       }
     } catch (...) {
       std::lock_guard<std::mutex> lock(exception_mutex);

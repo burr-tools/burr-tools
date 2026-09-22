@@ -36,6 +36,7 @@ class voxel_c;
 class assembly_c;
 class problem_c;
 class xmlWriter_c;
+class ThreadBudget;
 
 /**
  * Helper for the assembler preparation step: enumerates all placements of a
@@ -104,6 +105,12 @@ public:
    * as parameter
    */
   virtual bool assembly(std::unique_ptr<assembly_c> a) = 0;
+
+  /* Shared thread budget for the search (ThreadBudget, design section 6.3).
+   * The parallel search paths ask the callback for it to cap searching +
+   * disassembling threads at the budget; null (default) means uncapped.
+   */
+  virtual ThreadBudget *threadBudget() { return nullptr; }
 
   virtual ~assembler_cb(void) {}
 };

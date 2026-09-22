@@ -24,6 +24,7 @@
 #include "assembler.h"
 #include "disassembler.h"
 #include "disassemblerpool.h"
+#include "thread_budget.h"
 #include "bt_assert.h"
 
 #include <time.h>
@@ -174,6 +175,14 @@ class solveThread_c : public assembler_cb {
 
 
 
+  /* Shared cap on working threads, declared BEFORE disasm_pool so it
+   * outlives the pool (members destroy in reverse order; the pool dtor
+   * touches the budget). Created iff a real (non-inline) pool exists and
+   * budgeting is enabled; otherwise null and every budget call site
+   * behaves exactly as without any cap.
+   */
+  std::unique_ptr<ThreadBudget> threadBudget_;
+
   std::unique_ptr<disassemblerPool_c> disasm_pool;
 
   /* the worker publishes the assembler here once it is fully constructed so
@@ -206,6 +215,9 @@ private:
 
   // the call-back
   bool assembly(std::unique_ptr<assembly_c> a) override;
+
+  // Shared thread budget for the search (null when uncapped).
+  ThreadBudget *threadBudget() override { return threadBudget_.get(); }
 
   void onDisassemblyResult(uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s);
 

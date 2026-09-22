@@ -23,6 +23,8 @@
 
 #include "simd_exact_cover.h"
 
+class ThreadBudget;
+
 #include <vector>
 #include <functional>
 #include <atomic>
@@ -85,7 +87,8 @@ public:
     std::atomic<bool> &abort_flag,
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
-    std::atomic<size_t> &completed_tasks
+    std::atomic<size_t> &completed_tasks,
+    ThreadBudget *budget = nullptr
   ) const = 0;
 
   virtual unsigned int getNumRows() const = 0;
@@ -172,7 +175,8 @@ public:
     std::atomic<bool> &abort_flag,
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
-    std::atomic<size_t> &completed_tasks
+    std::atomic<size_t> &completed_tasks,
+    ThreadBudget *budget = nullptr
   ) const override;
 
   unsigned int getNumRows() const override { return rows.size(); }

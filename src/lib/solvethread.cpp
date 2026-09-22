@@ -142,12 +142,12 @@ assm(0)
 {
 
   if (par & PAR_DISASSM) {
-    /* Thread budget architecture:
-     * Disassembler pool is instantiated with 0 (defaulting to BURRTOOLS_THREADS or hardware_concurrency).
-     * The Tier 1 assembler and Tier 2 disassembler pool concurrently run up to N workers each.
-     * This overlap is deliberate: disassembly is memory/movement-closure bound while assembly is
-     * CPU/search bound. Dynamic backpressure via bounded queues (MAX_QUEUE_SIZE = 64) prevents
-     * queue bloat and coordinates CPU utilization (see design/2026-09-19-threading-model-assessment.md).
+    /* Thread budget architecture (design section 6.3):
+     * One ThreadBudget shared by the assembly task pool(s) and this pool
+     * caps concurrently *working* solver threads at the pool size; idle
+     * threads on either side hold nothing. Created only for real
+     * (non-inline) pools with budgeting enabled -- otherwise null and all
+     * budget call sites behave exactly as without any cap.
      */
     disasm_pool = std::make_unique<disassemblerPool_c>(
       puz,
@@ -156,6 +156,10 @@ assm(0)
         onDisassemblyResult(seqNo, std::move(a), std::move(s));
       }
     );
+    if (threadBudgetEnabled() && !disasm_pool->isInline()) {
+      threadBudget_ = std::make_unique<ThreadBudget>(disasm_pool->threadCount());
+      disasm_pool->setBudget(threadBudget_.get());
+    }
   }
 }
 

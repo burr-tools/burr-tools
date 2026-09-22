@@ -1827,6 +1827,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   AssemblyTaskPool<SubtreeTask> pool;
   pool.seed(std::move(parallelTasks));
   parallelTasks.clear();
+  if (assembler_cb *cb = getCallback())
+    pool.setBudget(cb->threadBudget());
 
   std::exception_ptr workerException = nullptr;
   std::mutex exceptionMutex;
@@ -1884,10 +1886,10 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
                                    std::memory_order_relaxed);
             }
           } catch (...) {
-            pool.task_done();
+            pool.finishTask();
             throw;
           }
-          pool.task_done();
+          pool.finishTask();
         }
       } catch (...) {
         std::lock_guard<std::mutex> lock(exceptionMutex);
@@ -1938,10 +1940,10 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
                                    std::memory_order_relaxed);
             }
           } catch (...) {
-            pool.task_done();
+            pool.finishTask();
             throw;
           }
-          pool.task_done();
+          pool.finishTask();
         }
 
         worker.flushIterations();
@@ -2113,10 +2115,19 @@ void assembler_0_c::assemble(assembler_cb * callback) {
     unsigned int threads = getEffectiveThreads();
     if (pos == 0 && threads > 1) {
       parallelMultiSearch(threads);
-    } else if (canUseSimd()) {
-      simdSearch();
     } else {
-      iterativeMultiSearch();
+      // Serial path (single thread or in-session continue): hold a budget
+      // token too, so the cap covers resume runs as well. Skipped only when
+      // stopping (no token with a callback set).
+      BudgetGuard budget(callback != nullptr ? callback->threadBudget() : nullptr,
+                         &abbort);
+      if (callback == nullptr || budget.holds()) {
+        if (canUseSimd()) {
+          simdSearch();
+        } else {
+          iterativeMultiSearch();
+        }
+      }
     }
   }
 }

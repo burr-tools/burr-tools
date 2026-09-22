@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "disassemblerpool.h"
+#include "thread_budget.h"
 #include "disassembler_0.h"
 #include "assembly.h"
 #include "disassembly.h"
@@ -65,11 +66,9 @@ disassemblerPool_c::disassemblerPool_c(
   max_queue_size = std::max<size_t>(64, num_threads);
   max_reorder_size = std::max<size_t>(64, num_threads * 2);
 
-  // Seed one permit per disassembler worker thread. This asynchronous N-permit buffer
-  // ensures all N disassemblers can stay saturated even when only a single assembler
-  // worker is finding assemblies (preventing pipeline starvation under subtree skew).
-  // submit() throttles the assembler once all N disassemblers are already busy.
-  available_disassembly_permits = num_threads;
+  // Throttling lives in the shared ThreadBudget now (design section 6.3):
+  // submitters pace via the bounded queue, workers via budget tokens. No
+  // per-submit permit accounting here anymore.
 
   if (num_threads == 1) {
     is_inline = true;
@@ -118,12 +117,31 @@ void disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
   }
 
   std::unique_lock<std::mutex> lock(queue_mutex);
-  cv_producer.wait(lock, [this]() {
-    return ((work_queue.size() < max_queue_size &&
-            (next_submit_seq.load(std::memory_order_relaxed) - next_merge_seq.load(std::memory_order_relaxed)) < max_reorder_size) ||
-            aborted.load(std::memory_order_relaxed) ||
-            stop_requested.load(std::memory_order_relaxed));
-  });
+  auto terminal = [this]() {
+    return aborted.load(std::memory_order_relaxed) ||
+           finished.load(std::memory_order_relaxed) ||
+           stop_requested.load(std::memory_order_relaxed);
+  };
+  auto hasSpace = [this]() {
+    return (work_queue.size() < max_queue_size &&
+            (next_submit_seq.load(std::memory_order_relaxed) - next_merge_seq.load(std::memory_order_relaxed)) < max_reorder_size);
+  };
+
+  // Wait for queue space WITHOUT holding our search token: the drain we wait
+  // for runs on tokens, so waiting while holding one could deadlock (all
+  // tokens held by queue-blocked submitters, none left to drain with).
+  // The token is returned by whoever waits with us via finishTask(); the
+  // per-thread holdings flag keeps take/return paired across the yield.
+  while (!hasSpace() && !terminal()) {
+    if (budget_ != nullptr)
+      budget_->release();
+    cv_producer.wait(lock, [&]() { return hasSpace() || terminal(); });
+    if (terminal())
+      return;
+    if (budget_ != nullptr &&
+        !budget_->acquire([&]() { return terminal(); }))
+      return;
+  }
 
   if (aborted.load(std::memory_order_relaxed))
     return;
@@ -131,20 +149,6 @@ void disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
   uint64_t seq = next_submit_seq++;
   work_queue.push(Task{seq, std::move(a)});
   cv_worker.notify_one();
-
-  // Cooperative token handoff:
-  // Yield the current assembler thread's CPU slot until a disassembler completes
-  // or the solve finishes / aborts / stops.
-  cv_assembler.wait(lock, [this]() {
-    return available_disassembly_permits > 0 ||
-           aborted.load(std::memory_order_relaxed) ||
-           finished.load(std::memory_order_relaxed) ||
-           stop_requested.load(std::memory_order_relaxed);
-  });
-
-  if (available_disassembly_permits > 0) {
-    available_disassembly_permits--;
-  }
 }
 
 void disassemblerPool_c::worker_loop(std::stop_token st) {
@@ -173,17 +177,36 @@ void disassemblerPool_c::worker_loop(std::stop_token st) {
         cv_producer.notify_one();
       }
 
+      // Budget gate (design section 6.3): hold one shared token across this
+      // job so searching + disassembling threads never exceed the budget.
+      // The checked-out job stays in hand across a park (no requeue churn:
+      // requeueing would ping-pong the job through the queue while firing
+      // spurious producer wakes that let submitters steal the freed token
+      // back before any disassembler gets it). Terminal wakes requeue the
+      // job and exit. Park WITHOUT finished/stop_requested in the
+      // predicate: finish() and requestStop() both require workers to keep
+      // draining (finish joins them first), so a parked pickup must persist
+      // until it can proceed; only abort and jthread teardown exit here.
+      if (budget_ != nullptr && !budget_->tryAcquire()) {
+        bool got = budget_->acquire([this, st]() {
+          return aborted.load(std::memory_order_relaxed) || st.stop_requested();
+        }, st);
+        if (!got) {
+          std::lock_guard<std::mutex> qlock(queue_mutex);
+          work_queue.push(std::move(task));
+          return;
+        }
+      }
+
       std::unique_ptr<separation_c> sep;
       if (task.assembly && task.assembly->placementCount() > 1 && !st.stop_requested() && !aborted.load(std::memory_order_relaxed)) {
         sep = dis.disassemble(task.assembly.get());
       }
 
-      // Return compute slot permit to waiting assembler thread
-      {
-        std::lock_guard<std::mutex> qlock(queue_mutex);
-        available_disassembly_permits++;
-        cv_assembler.notify_one();
-      }
+      // Job done: return the budget token (potentially waking a parked
+      // assembler or disassembler) before filing the result for the merger.
+      if (budget_ != nullptr)
+        budget_->release();
 
       {
         std::unique_lock<std::mutex> lock(result_mutex);
@@ -191,8 +214,13 @@ void disassemblerPool_c::worker_loop(std::stop_token st) {
           return reorder_buffer.size() < max_reorder_size || aborted.load(std::memory_order_relaxed);
         });
 
-        if (!ok || st.stop_requested() || aborted.load(std::memory_order_relaxed))
+        if (!ok || st.stop_requested() || aborted.load(std::memory_order_relaxed)) {
+          // Completed but unfiled job on the way out: return its token first
+          // (the result is discarded, as before, but the token must not leak).
+          if (budget_ != nullptr)
+            budget_->release();
           return;
+        }
 
         reorder_buffer.emplace(task.seqNo, Result{std::move(task.assembly), std::move(sep)});
         cv_merger.notify_one();
@@ -206,10 +234,12 @@ void disassemblerPool_c::worker_loop(std::stop_token st) {
       }
     }
     aborted.store(true, std::memory_order_release);
+    if (budget_ != nullptr) {
+      budget_->release(); // drop any token held across the throwing job
+      budget_->shutdown();
+    }
     {
       std::lock_guard<std::mutex> qlock(queue_mutex);
-      available_disassembly_permits += num_threads;
-      cv_assembler.notify_all();
       cv_worker.notify_all();
       cv_producer.notify_all();
     }
@@ -266,10 +296,12 @@ void disassemblerPool_c::merger_loop(std::stop_token st) {
       }
     }
     aborted.store(true, std::memory_order_release);
+    if (budget_ != nullptr) {
+      budget_->release(); // drop any token held across the throwing job
+      budget_->shutdown();
+    }
     {
       std::lock_guard<std::mutex> qlock(queue_mutex);
-      available_disassembly_permits += num_threads;
-      cv_assembler.notify_all();
       cv_worker.notify_all();
       cv_producer.notify_all();
     }
@@ -307,7 +339,6 @@ void disassemblerPool_c::finish() {
   {
     std::lock_guard<std::mutex> qlock(queue_mutex);
     finished.store(true, std::memory_order_release);
-    cv_assembler.notify_all();
     cv_worker.notify_all();
   }
 
@@ -334,9 +365,9 @@ void disassemblerPool_c::requestStop() {
 
   // Wake any assembler thread blocked in submit(), but do not abort workers or discard
   // the reorder buffer so already-queued tasks are processed when finish() is called.
+  // (Budget-parked threads are left alone: requestStop must not end the drain.)
   {
     std::lock_guard<std::mutex> qlock(queue_mutex);
-    cv_assembler.notify_all();
     cv_producer.notify_all();
   }
 }
@@ -356,11 +387,11 @@ void disassemblerPool_c::abort() {
   {
     std::lock_guard<std::mutex> qlock(queue_mutex);
     while (!work_queue.empty()) work_queue.pop();
-    available_disassembly_permits += num_threads;
-    cv_assembler.notify_all();
     cv_worker.notify_all();
     cv_producer.notify_all();
   }
+  if (budget_ != nullptr)
+    budget_->shutdown();
 
   {
     std::lock_guard<std::mutex> rlock(result_mutex);

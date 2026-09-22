@@ -28,6 +28,8 @@
 #include <stop_token>
 #include <vector>
 
+#include "thread_budget.h"
+
 /**
  * Dynamic, non-terminating task queue for assembly search subtrees.
  *
@@ -45,13 +47,21 @@
  *   evaluated atomically with the wait.
  * - Coordination happens only at task boundaries (pop / task_done / push).
  *   Nothing here runs inside the exact-cover node loop.
- * - Every successful pop_task() MUST be paired with exactly one task_done(),
+ * - Every successful pop_task() MUST be paired with exactly one finishTask(),
  *   even when the task body throws or the search aborts mid-task. The worker
- *   loops use try/catch for this.
+ *   loops use try/catch for this. (task_done() alone is only correct when no
+ *   budget is set; finishTask() releases the budget token first.)
  * - Progress accounting (totalTasks/completedTasks on assembler_c) stays with
  *   the caller: push_tasks() reports how many tasks it accepted via its return
  *   value so the caller can bump totalTasks; completedTasks is bumped next to
- *   task_done(). The pool itself keeps no progress counters.
+ *   finishTask(). The pool itself keeps no progress counters.
+ * - With a budget set (ThreadBudget, shared with the disassembly pool),
+ *   popping also reserves one budget token, held across the task and returned
+ *   by finishTask(). Reservation happens inside the pool lock when a task is
+ *   available; when the budget is exhausted the thread parks token-free on
+ *   the budget CV (never holding pool state across the park), so no lock
+ *   ordering issues arise. Threads that find nothing to do never hold
+ *   tokens: quiescence/terminal exits release before returning false.
  */
 template <typename TaskType>
 class AssemblyTaskPool {
@@ -74,35 +84,74 @@ public:
       queue.push_back(std::move(t));
   }
 
+  /// Attach a shared budget (nullable). Must be called with no workers
+  /// running; the pointer must outlive the search.
+  void setBudget(ThreadBudget *budget) { budget_ = budget; }
+
   /**
    * Pop a task. Returns true with out_task set (caller now owns one unit of
-   * `active_workers` and must call task_done() exactly once), or false when
+   * `active_workers` and must call finishTask() exactly once), or false when
    * the worker should terminate: global quiescence (queue empty and no worker
    * active), pool stop/abort, jthread stop, or assembler abort flag.
+   *
+   * With a budget set, a successful pop also holds one budget token for this
+   * thread (returned by finishTask()). Budget exhaustion parks the thread
+   * token-free; quiescence/terminal exits never leak a token.
    */
   bool pop_task(TaskType &out_task, const std::atomic<bool> &abbort,
                 std::stop_token st = {}) {
-    std::unique_lock<std::mutex> lock(mtx);
-    waiting_workers++;
-    auto pred = [&] {
-      return !queue.empty() || active_workers == 0 || stop_requested ||
-             abbort.load(std::memory_order_relaxed) || st.stop_requested();
-    };
-    cv.wait(lock, st, pred);
-    waiting_workers--;
+    while (true) {
+      std::unique_lock<std::mutex> lock(mtx);
+      waiting_workers++;
+      auto pred = [&] {
+        return !queue.empty() || active_workers == 0 || stop_requested.load() ||
+               abbort.load(std::memory_order_relaxed) || st.stop_requested();
+      };
+      cv.wait(lock, st, pred);
+      waiting_workers--;
 
-    if (!queue.empty() && !stop_requested &&
-        !abbort.load(std::memory_order_relaxed) && !st.stop_requested()) {
+      if (stop_requested.load() || abbort.load(std::memory_order_relaxed) ||
+          st.stop_requested()) {
+        releaseBudget();
+        return false;
+      }
+      if (queue.empty()) {
+        // active_workers == 0 is the only way to reach here with an empty
+        // queue: global quiescence.
+        releaseBudget();
+        return false;
+      }
+      if (budget_ != nullptr && !ThreadBudget::holdsHere() &&
+          !budget_->tryAcquire()) {
+        // Budget exhausted: park token-free (releasing the pool lock first,
+        // so no lock ordering issues) until a token frees or we must stop.
+        lock.unlock();
+        bool got = budget_->acquire([&] {
+          return stop_requested.load() || abbort.load(std::memory_order_relaxed) ||
+                 st.stop_requested();
+        }, st);
+        if (!got)
+          return false;
+        continue;
+      }
       out_task = std::move(queue.front());
       queue.pop_front();
       active_workers++;
       return true;
     }
-    return false;
   }
 
-  /// Mark the task from pop_task() as finished. Broadcasts when the last
-  /// active worker drains an empty queue so quiescent waiters can terminate.
+  /// Mark the task from pop_task() as finished: return its budget token (if
+  /// any) first, then record progress. Broadcasts when the last active
+  /// worker drains an empty queue so quiescent waiters can terminate.
+  void finishTask() {
+    releaseBudget();
+    task_done();
+  }
+
+  /// Mark the task from pop_task() as finished. Only correct without a
+  /// budget (or after the token was returned another way); prefer
+  /// finishTask().
   void task_done() {
     std::lock_guard<std::mutex> lock(mtx);
     if (active_workers > 0)
@@ -181,12 +230,18 @@ public:
   }
 
 private:
+  void releaseBudget() {
+    if (budget_ != nullptr)
+      budget_->release(); // no-op unless this thread holds one
+  }
+
   mutable std::mutex mtx;
   std::condition_variable_any cv;
   std::deque<TaskType> queue;
   unsigned int active_workers{0};  // guarded by mtx (see class comment)
   unsigned int waiting_workers{0}; // guarded by mtx (see class comment)
-  bool stop_requested{false};      // guarded by mtx
+  std::atomic<bool> stop_requested{false};
+  ThreadBudget *budget_{nullptr};  // set pre-start, never null-checked hot
 };
 
 #endif // __ASSEMBLER_POOL_H__

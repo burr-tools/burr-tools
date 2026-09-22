@@ -2599,7 +2599,8 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       abbort,
       iterations,
       totalTasks,
-      completedTasks
+      completedTasks,
+      (getCallback() != nullptr) ? getCallback()->threadBudget() : nullptr
     );
 
     if (!abbort.load(std::memory_order_relaxed)) {
@@ -2647,6 +2648,8 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   AssemblyTaskPool<SubtreeTask_1> pool;
   pool.seed(std::move(parallelTasks));
   parallelTasks.clear();
+  if (assembler_cb *cb = getCallback())
+    pool.setBudget(cb->threadBudget());
 
   std::exception_ptr workerException = nullptr;
   std::mutex exceptionMutex;
@@ -2671,10 +2674,10 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
                                  std::memory_order_relaxed);
           }
         } catch (...) {
-          pool.task_done();
+          pool.finishTask();
           throw;
         }
-        pool.task_done();
+        pool.finishTask();
       }
 
       worker.flushIterations();
@@ -2900,10 +2903,17 @@ void assembler_1_c::assemble(assembler_cb * callback) {
       unsigned int threads = getEffectiveThreads();
       if (task_stack.size() == 1 && rows.empty() && next_row_stack.size() == 1 && threads > 1) {
         parallelMultiSearch(threads);
-      } else if (canUseSimd()) {
-        simdSearch();
       } else {
-        iterative();
+        // Serial path: hold a budget token too (see assembler_0_c::assemble).
+        BudgetGuard budget(callback != nullptr ? callback->threadBudget() : nullptr,
+                           &abbort);
+        if (callback == nullptr || budget.holds()) {
+          if (canUseSimd()) {
+            simdSearch();
+          } else {
+            iterative();
+          }
+        }
       }
     }
   }

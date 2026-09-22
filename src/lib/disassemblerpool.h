@@ -25,6 +25,7 @@ class assembly_c;
 class separation_c;
 class problem_c;
 class disassembler_0_c;
+class ThreadBudget;
 
 #include <vector>
 #include <thread>
@@ -61,6 +62,13 @@ public:
 
   /** Submit an assembly to be disassembled. May block if queue reaches capacity (backpressure). */
   void submit(std::unique_ptr<assembly_c> a);
+
+  /** Attach the shared thread budget (nullable). Set before workers need it;
+   * with none set, pickup runs uncapped exactly as without any budget. */
+  void setBudget(ThreadBudget *budget) { budget_ = budget; }
+
+  bool isInline() const { return is_inline; }
+  unsigned int threadCount() const { return num_threads; }
 
   /** Wait for all pending assemblies to be disassembled and merged. */
   void finish();
@@ -107,11 +115,12 @@ private:
   std::mutex queue_mutex;
   std::condition_variable_any cv_worker;
   std::condition_variable_any cv_producer;
-  std::condition_variable_any cv_assembler;
   std::queue<Task> work_queue;
-  unsigned int available_disassembly_permits{0};
   size_t max_queue_size{64};
   size_t max_reorder_size{64};
+  // Shared cap on working threads (design section 6.3); null = uncapped.
+  // Set once before workers need it; workers only ever read it.
+  ThreadBudget *budget_{nullptr};
 
   std::mutex result_mutex;
   std::condition_variable_any cv_merger;
