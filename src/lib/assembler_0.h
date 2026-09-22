@@ -234,16 +234,16 @@ private:
   };
 
   std::vector<SubtreeTask> parallelTasks;
-  std::vector<uint8_t> taskCompleted;
   std::unordered_set<uint64_t> emittedSignatures;
 
   /* set when a parallel search stopped before finishing.
    *
    * The serial search saves an exact resume point (pos plus the row/column
    * prefix). A parallel search has no single such point: progress lives in
-   * taskCompleted plus whatever each worker had reached inside the task it was
-   * in the middle of, and the assemblies already handed to the callback are
-   * only remembered in emittedSignatures, which does not survive a save.
+   * the pool remainder saved back into parallelTasks (see parallelMultiSearch)
+   * plus whatever each worker had reached inside the task it was in the
+   * middle of, and the assemblies already handed to the callback are only
+   * remembered in emittedSignatures, which does not survive a save.
    * Writing pos == 0 in that situation would claim "nothing searched yet"
    * next to a solution list that is already populated, and continuing would
    * report every one of those assemblies a second time. So an interrupted

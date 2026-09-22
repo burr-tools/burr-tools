@@ -117,7 +117,6 @@ private:
   friend class assemblerWorker_1;
 
   std::vector<SubtreeTask_1> parallelTasks;
-  std::vector<uint8_t> taskCompleted;
   std::unordered_set<uint64_t> emittedSignatures;
 
   /* Pristine base matrix saved before search starts */

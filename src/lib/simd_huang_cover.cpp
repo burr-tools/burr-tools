@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "simd_huang_cover.h"
+#include "assembler_pool.h"
 #include "simd_config.h"
 #include "bt_assert.h"
 
@@ -634,29 +635,38 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   if (tasks.empty() || abort_flag.load(std::memory_order_relaxed))
     return;
 
-  std::atomic<size_t> next_task_idx{0};
+  // Non-terminating pool (see assembler_pool.h): a worker that finds the
+  // queue empty waits for quiescence, so siblings blocked in
+  // disassemblerPool_c::submit() still have a live crew searching when they
+  // wake. No dynamic splitting here -- Huang subtrees run as seeded, skew
+  // absorbed at task granularity.
+  AssemblyTaskPool<SubtreeTask> pool;
+  pool.seed(std::move(tasks));
+
   std::exception_ptr worker_exception = nullptr;
   std::mutex exception_mutex;
 
   auto worker_fn = [&](std::stop_token st = {}) {
     try {
-      while (!abort_flag.load(std::memory_order_relaxed) && !st.stop_requested()) {
-        size_t idx = next_task_idx.fetch_add(1, std::memory_order_relaxed);
-        if (idx >= tasks.size())
-          break;
+      SubtreeTask t;
+      while (pool.pop_task(t, abort_flag, st)) {
+        try {
+          std::atomic<uint64_t> task_iter{0};
+          search(t.depth, t.ctx, callback, abort_flag, task_iter);
 
-        auto &t = tasks[idx];
-        std::atomic<uint64_t> task_iter{0};
-        search(t.depth, t.ctx, callback, abort_flag, task_iter);
-
-        uint64_t rem = t.ctx.local_iterations & 255;
-        if (rem > 0) {
-          task_iter.fetch_add(rem, std::memory_order_relaxed);
+          uint64_t rem = t.ctx.local_iterations & 255;
+          if (rem > 0) {
+            task_iter.fetch_add(rem, std::memory_order_relaxed);
+          }
+          iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
+          if (!abort_flag.load(std::memory_order_relaxed) && !st.stop_requested()) {
+            completed_tasks.fetch_add(1, std::memory_order_relaxed);
+          }
+        } catch (...) {
+          pool.task_done();
+          throw;
         }
-        iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
-        if (!abort_flag.load(std::memory_order_relaxed) && !st.stop_requested()) {
-          completed_tasks.fetch_add(1, std::memory_order_relaxed);
-        }
+        pool.task_done();
       }
     } catch (...) {
       std::lock_guard<std::mutex> lock(exception_mutex);
