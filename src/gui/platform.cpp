@@ -117,7 +117,7 @@ bool platform::usesSystemMenuBar(void) {
 #endif
 }
 
-void platform::installOpenHandler(void (*handler)(const char *)) {
+void platform::installOpenHandler(void (*handler)(const char * filename)) {
 #ifdef __APPLE__
   fl_open_callback(handler);
 #else
