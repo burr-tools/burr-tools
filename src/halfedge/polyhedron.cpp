@@ -366,6 +366,7 @@ void Polyhedron::linkVerticesToEdges()
 
 /**
  * Adds the necessary hole-tagged faces to complete the manifold.
+ * @param poly The polyhedron whose boundaries are to be closed.
  * @param connections Precomputed set of halfedges without a twin.
  */
 void closeSurface ( Polyhedron* poly, map<pair<int,int>, HalfEdge*>& connections )

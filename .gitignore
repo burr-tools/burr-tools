@@ -1,7 +1,6 @@
 *#
 *~
 admin/
-doxygen.cfg
 src/burrTxt
 src/burrTxt2
 src/gui/burrGui
@@ -25,6 +24,9 @@ coverage-html/
 
 # macOS Finder metadata, written into any directory the user opens in Finder
 .DS_Store
+
+# Generated Doxygen API reference (`just docs`)
+gendoc/
 
 # Python artifacts
 __pycache__/
