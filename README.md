@@ -8,7 +8,7 @@ Grab the file for your platform from the
 
 | Platform | Download | Notes |
 | :--- | :--- | :--- |
-| macOS, Apple Silicon (M1/M2/M3/M4) | the `.dmg` disk image | Read [the Gatekeeper note](#macos-burrtoolsapp-is-damaged-and-cant-be-opened) below before first launch |
+| macOS, Apple Silicon (M1/M2/M3/M4) | the `.dmg` disk image | Read the Gatekeeper note below before first launch |
 | macOS, Intel | — | No prebuilt binary; [build from source](BUILD.md) |
 | Windows, 64-bit | the `-windows-x86_64.zip` archive | Unpack and run `burrtools.exe` |
 | Linux, 64-bit | the `-linux-x86_64.tar.gz` archive | Unpack and run `./burrtools` |
