@@ -66,9 +66,10 @@ disassemblerPool_c::disassemblerPool_c(
   max_queue_size = std::max<size_t>(64, num_threads);
   max_reorder_size = std::max<size_t>(64, num_threads * 2);
 
-  // Throttling lives in the shared ThreadBudget now (design section 6.3):
-  // submitters pace via the bounded queue, workers via budget tokens. No
-  // per-submit permit accounting here anymore.
+  // Throttling lives in the shared ThreadBudget now (see the concurrency
+  // architecture note in thread_budget.h): submitters pace via the bounded
+  // queue, workers via budget tokens. No per-submit permit accounting here
+  // anymore.
 
   if (num_threads == 1) {
     is_inline = true;
@@ -177,7 +178,8 @@ void disassemblerPool_c::worker_loop(std::stop_token st) {
         cv_producer.notify_one();
       }
 
-      // Budget gate (design section 6.3): hold one shared token across this
+      // Budget gate (see the concurrency architecture note in
+      // thread_budget.h): hold one shared token across this
       // job so searching + disassembling threads never exceed the budget.
       // The checked-out job stays in hand across a park (no requeue churn:
       // requeueing would ping-pong the job through the queue while firing

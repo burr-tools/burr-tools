@@ -170,11 +170,16 @@ There are exactly two points in time where one task becomes many:
    has started yet, and therefore the only one that bounds the
    single-huge-task tail.
 2. **In the worker loop, after `pop_task` returns and before the task
-   executes** (`assembler_0.cpp:1850-1862,1919-1931`): the popping thread
-   evaluates `has_waiting_workers() && queued() < 2*workers`. Only if
-   siblings are actually starving *and* the queue cannot occupy them does
-   it expand its just-popped task `P` one level deeper via `splitPrefix`
-   on worker-local scratch state (never the master's live matrix):
+   executes**: the popping thread evaluates `shouldSplit(task)` — true if
+   either the prefix is shallow (`depth < 3`, a task that can still hold an
+   enormous subtree and is cheapest to refine before anyone runs it) or
+   siblings are actually starving *and* the queue is short
+   (`has_waiting_workers() && queued() < 2*workers`). The 2N bound only
+   needs to cover the race window: a waiting sibling implies the queue ran
+   dry just now, so with a deep queue there are no waiters and the clause
+   rarely binds either way. Either trigger expands the just-popped task
+   `P` one level deeper via `splitPrefix` on worker-local scratch state
+   (never the master's live matrix):
    ```
    children = splitPrefix(P)            // P u {(c,r)} for the MRV column c
    if children.size() >= 2:
@@ -220,7 +225,7 @@ See §5.6 for what a Huang split would take.
 SubtreeTask task;
 while (pool.pop_task(task, abbort, st)) {
   try {
-    if (shouldSplit()) {            // §5.0, at most once per pop
+    if (shouldSplit(task)) {          // §5.0: shallow prefix, or starving siblings + short queue
       auto children = splitter.splitPrefix(task);
       if (!children.empty()) {
         task = std::move(children.front());

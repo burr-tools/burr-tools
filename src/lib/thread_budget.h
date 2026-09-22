@@ -39,25 +39,42 @@ inline bool threadBudgetEnabled() {
 }
 
 /**
- * Shared cap on concurrently *working* solver threads (design section 6.3).
+ * Concurrency architecture note (the one place that states the whole
+ * picture; other comments point here instead of at external documents).
  *
- * One ThreadBudget object is shared by the assembly task pool(s) and the
- * disassembly pool of a single solve. An assembler holds one token across a
- * whole subtree task (many submits, never per-submit pacing); a
- * disassembler holds one per disassembly job. Searching + disassembling
- * threads therefore never exceed total().
+ * A solve runs a two-tier pipeline with at most total() threads *working*
+ * at once, where total() is the disassembly pool size:
  *
- * Anti-deadlock contract, load-bearing: a token is held only across actual
- * searching/disassembling. Every wait (empty/full queues, reorder buffer,
- * budget exhaustion itself) happens token-free, and every such wait's
- * progress condition depends only on token holders (which always progress)
- * or terminal flags. Releasing always broadcasts.
+ * - Tier 1 (assembly) searches exact-cover subtrees from a
+ *   non-terminating AssemblyTaskPool (assembler_pool.h): workers that run
+ *   out of tasks wait instead of dying, and only all-idle + empty-queue
+ *   (global quiescence) ends the search. A popping worker splits its task
+ *   one level deeper when the prefix is shallow or siblings starve.
+ *   Interrupted runs are resumable in-session (requeued tasks +
+ *   emittedSignatures dedup) but never across save files.
+ * - Tier 2 (disassembly) pulls found assemblies off a bounded queue with
+ *   dedicated workers and a merger thread that re-emits results strictly
+ *   in submit order. finish() drains and joins; abort() discards.
+ * - The shared ThreadBudget below caps working threads: an assembler
+ *   holds one token across a whole subtree task, a disassembler one per
+ *   job. Submit pacing is deliberately absent -- the bounded queue stays
+ *   a real buffer -- so pipeline overlap survives.
  *
- * Per-thread holdings are tracked in t_holds: at most one token per thread
- * (true by construction -- no worker holds across tasks), so take and
- * return pair up even across the submit yield path without threading flags
- * through call signatures. One task at a time per thread is assumed;
- * every worker loop in this codebase satisfies it.
+ * Load-bearing deadlock rule: a token is held only across actual
+ * searching/disassembling. Every wait (empty/full queues, reorder
+ * buffer, budget exhaustion itself) happens token-free -- note in
+ * particular submit's queue-full yield and the checked-out job held in
+ * hand (never requeued) across pickup parks. Every such wait's progress
+ * condition then depends only on token holders, which always progress,
+ * or on terminal flags. Releasing wakes a waiter; shutdowns wake all.
+ *
+ * Per-thread holdings ride the thread_local t_holds flag: at most one
+ * token per thread (true by construction -- one task at a time per
+ * thread in every worker loop here), so take/return pair up without
+ * threading flags through signatures.
+ *
+ * Full rationale, measurements and history:
+ * design/2026-09-22-assembly-work-stealing.md.
  */
 class ThreadBudget {
 public:

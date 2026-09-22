@@ -118,7 +118,8 @@ private:
   std::queue<Task> work_queue;
   size_t max_queue_size{64};
   size_t max_reorder_size{64};
-  // Shared cap on working threads (design section 6.3); null = uncapped.
+  // Shared cap on working threads (see the concurrency architecture note
+  // in thread_budget.h); null = uncapped.
   // Set once before workers need it; workers only ever read it.
   ThreadBudget *budget_{nullptr};
 

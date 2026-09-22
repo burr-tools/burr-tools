@@ -106,9 +106,10 @@ public:
    */
   virtual bool assembly(std::unique_ptr<assembly_c> a) = 0;
 
-  /* Shared thread budget for the search (ThreadBudget, design section 6.3).
-   * The parallel search paths ask the callback for it to cap searching +
-   * disassembling threads at the budget; null (default) means uncapped.
+  /* Shared thread budget for the search (see the concurrency architecture
+   * note in thread_budget.h). The parallel search paths ask the callback
+   * for it to cap searching + disassembling threads; null (default) means
+   * uncapped.
    */
   virtual ThreadBudget *threadBudget() { return nullptr; }
 

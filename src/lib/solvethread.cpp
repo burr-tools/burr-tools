@@ -142,7 +142,8 @@ assm(0)
 {
 
   if (par & PAR_DISASSM) {
-    /* Thread budget architecture (design section 6.3):
+    /* Thread budget architecture (see the concurrency architecture note
+     * in thread_budget.h):
      * One ThreadBudget shared by the assembly task pool(s) and this pool
      * caps concurrently *working* solver threads at the pool size; idle
      * threads on either side hold nothing. Created only for real
