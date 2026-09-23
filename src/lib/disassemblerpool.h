@@ -81,15 +81,16 @@ public:
   /** Immediately cancel and discard any pending work. */
   void abort();
 
-  /** Signal pool to stop accepting work and wake any blocked submitters.
-   * Unlike abort(), in-flight jobs run to completion and already-filed
-   * results are still delivered. But queued (never-started) assemblies are
-   * moved to the salvage store instead of being disassembled, so stop
-   * returns promptly instead of draining the backlog. The caller moves the
-   * salvage to the problem (see takeSalvaged), which re-submits it on the
-   * next run -- required for pause/continue correctness, because the
-   * assembler's emitted-signatures dedup would otherwise suppress the
-   * dropped assemblies forever.
+  /** Signal pool to stop accepting work and wake any blocked submitters
+   * and idle-parked workers. Unlike abort(), in-flight jobs run to
+   * completion and already-filed results are still delivered. But queued
+   * (never-started) assemblies are moved to the salvage store instead of
+   * being disassembled, so stop returns promptly instead of draining the
+   * backlog. The caller moves the salvage to the problem after finish(),
+   * which re-submits it on the next run -- required for pause/continue
+   * correctness, because the assembler's emitted-signatures dedup would
+   * otherwise suppress the dropped assemblies forever. Teardown still
+   * completes via finish()/abort().
    */
   void requestStop();
 

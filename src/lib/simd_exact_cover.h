@@ -271,12 +271,15 @@ private:
     uint64_t local_iterations = 0;
   };
 
+  // Recursive hot path: the token is borrowed, not copied, so billions of
+  // backtracking nodes pay no atomic refcount traffic. Safe: every caller
+  // passes a token owned by a frame that outlives the recursion.
   void search(
     unsigned int depth,
     const BitsetType &occupied,
     SearchContext &ctx,
     SolutionCallback &callback,
-    std::stop_token stop,
+    const std::stop_token &stop,
     std::atomic<uint64_t> &iterations
   ) const;
 

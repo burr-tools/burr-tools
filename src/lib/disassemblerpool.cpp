@@ -161,10 +161,18 @@ bool disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
       salvageAssembly(salvaged_, std::move(a));
       return false;
     }
-    if (hadToken &&
-        !budget_->acquire([&]() { return terminal(); })) {
-      salvageAssembly(salvaged_, std::move(a));
-      return false;
+    // Drop queue_mutex across the budget wait (the pop_task pattern):
+    // holding it would serialize every other submitter and every
+    // disassembler pickup behind this wait. terminal() reads atomics only,
+    // so it is safe unlocked; the loop re-checks everything after re-lock.
+    if (hadToken) {
+      lock.unlock();
+      bool got = budget_->acquire([&]() { return terminal(); });
+      lock.lock();
+      if (!got) {
+        salvageAssembly(salvaged_, std::move(a));
+        return false;
+      }
     }
   }
 
@@ -420,6 +428,10 @@ void disassemblerPool_c::requestStop() {
       salvaged_.push_back(std::move(work_queue.front().assembly));
       work_queue.pop();
     }
+    // Wake idle-parked workers too: their predicate does not observe
+    // stop_requested, so without this they would sleep until finish()/abort().
+    // Harmless: with an empty queue and no terminal flag they re-wait.
+    cv_worker.notify_all();
     cv_producer.notify_all();
   }
   if (!discardedSeqs.empty()) {

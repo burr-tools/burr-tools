@@ -297,7 +297,7 @@ void SimdExactCover<BitsetType>::search(
   const BitsetType &occupied,
   SearchContext &ctx,
   SolutionCallback &callback,
-  std::stop_token stop,
+  const std::stop_token &stop,
   std::atomic<uint64_t> &iterations
 ) const {
   if (stop.stop_requested())

@@ -234,11 +234,13 @@ private:
 
     void generateTasks(unsigned int target_tasks, std::vector<SubtreeTask> &tasks) const;
 
+  // Recursive hot path: the token is borrowed, not copied (see
+  // SimdExactCover::search for why).
   void search(
     unsigned int depth,
     SearchContext &ctx,
     SolutionCallback &callback,
-    std::stop_token stop,
+    const std::stop_token &stop,
     std::atomic<uint64_t> &iterations
   ) const;
 
