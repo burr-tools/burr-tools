@@ -191,6 +191,14 @@ public:
     return queue.size();
   }
 
+  /// Wake all waiters to re-check the predicate; changes no state.
+  /// Paired with ThreadBudget::notify() in a stop_callback so parked workers
+  /// observe stop promptly, while in-flight retry pushes and drain() keep
+  /// working for in-session resume (unlike requestStop() below).
+  void notify() {
+    cv.notify_all();
+  }
+
   /// Wake all waiters; subsequent pop_task() calls return false once the
   /// queue drains. In-flight tasks still run to their next task_done().
   void requestStop() {
@@ -241,7 +249,7 @@ private:
   unsigned int active_workers{0};  // guarded by mtx (see class comment)
   unsigned int waiting_workers{0}; // guarded by mtx (see class comment)
   std::atomic<bool> stop_requested{false};
-  ThreadBudget *budget_{nullptr};  // set pre-start, never null-checked hot
+  ThreadBudget *budget_{nullptr};  // Set via setBudget() before workers start; null = uncapped (checked per pop).
 };
 
 #endif // __ASSEMBLER_POOL_H__

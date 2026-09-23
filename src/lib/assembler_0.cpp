@@ -1292,15 +1292,8 @@ void assembler_0_c::iterativeMultiSearch(void) {
       break;
 
     // check, if all pieces are placed and all voxels are filled
-    // careful here: the stop flag is also modified by another thread
-    // (see the historical note below about read-modify-write races --
-    // with a stop_token the check is a single atomic load, so the lost
-    // update it describes can no longer happen)
-    // i once used the expression
-    //   abort |= !solution()
-    // and search halve a day why it didn't work. The value of abort was read
-    // then the function called then the new value calculated then the new value
-    // written. Meanwhile abort was pressed and abort was changed. This new value got lost.
+    // careful here: the stop flag is also modified by another thread, but
+    // the stop_token check is a single atomic load, so no update can be lost
     if (!right[0])
       solution(runTok);
 
@@ -1839,8 +1832,22 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   AssemblyTaskPool<SubtreeTask> pool;
   pool.seed(std::move(parallelTasks));
   parallelTasks.clear();
-  if (assembler_cb *cb = getCallback())
-    pool.setBudget(cb->threadBudget());
+  ThreadBudget *runBudget = nullptr;
+  if (assembler_cb *cb = getCallback()) {
+    runBudget = cb->threadBudget();
+    pool.setBudget(runBudget);
+  }
+
+  // Deliver stop promptly to parked workers: pop_task() and the budget gate
+  // observe the run token only in their predicates, so firing runStop alone
+  // would leave them asleep until the next release() or task_done(). This
+  // only wakes -- in-flight tasks, retry pushes and drain() are unaffected,
+  // so in-session resume keeps working.
+  std::stop_callback wakeParkedOnStop(runTok, [&] {
+    pool.notify();
+    if (runBudget != nullptr)
+      runBudget->notify();
+  });
 
   std::exception_ptr workerException = nullptr;
   std::mutex exceptionMutex;
@@ -2144,7 +2151,7 @@ void assembler_0_c::assemble(assembler_cb * callback) {
 
   // Canonical per-run refresh: everything below (serial or parallel,
   // SIMD or DLX) observes this run's token; a second assemble() starts
-  // unstopped, exactly like the old abbort=false reset.
+  // unstopped.
   std::stop_token runTok = beginRun();
 
   if (errorsState == ERR_NONE) {

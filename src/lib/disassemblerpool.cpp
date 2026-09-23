@@ -66,10 +66,8 @@ disassemblerPool_c::disassemblerPool_c(
   max_queue_size = std::max<size_t>(64, num_threads);
   max_reorder_size = std::max<size_t>(64, num_threads * 2);
 
-  // Throttling lives in the shared ThreadBudget now (see the concurrency
-  // architecture note in thread_budget.h): submitters pace via the bounded
-  // queue, workers via budget tokens. No per-submit permit accounting here
-  // anymore.
+  // Throttling: submitters pace via the bounded queue, workers via shared
+  // budget tokens (see the concurrency architecture note in thread_budget.h).
 
   if (num_threads == 1) {
     is_inline = true;
@@ -367,13 +365,16 @@ void disassemblerPool_c::requestStop() {
   if (is_inline)
     return;
 
-  // Wake any assembler thread blocked in submit(), but do not abort workers or discard
-  // the reorder buffer so already-queued tasks are processed when finish() is called.
-  // (Budget-parked threads are left alone: requestStop must not end the drain.)
+  // Wake any assembler thread blocked in submit() -- both the queue-full wait
+  // and the budget re-acquire, which otherwise sleeps until the next token
+  // release -- but do not abort workers or discard the reorder buffer, so
+  // already-queued tasks are processed when finish() is called.
   {
     std::lock_guard<std::mutex> qlock(queue_mutex);
     cv_producer.notify_all();
   }
+  if (budget_ != nullptr)
+    budget_->notify();
 }
 
 void disassemblerPool_c::abort() {

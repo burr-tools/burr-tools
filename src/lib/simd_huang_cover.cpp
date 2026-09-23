@@ -476,9 +476,9 @@ void SimdHuangCover<BitsetType>::generateTasks(
   }
 
   /* A node that expand() cannot refine any further still has to be handed to a
-   * worker: it may itself be a complete cover. Dropping it here (as the plain
-   * `return`s used to) loses that solution, because in this round the node is
-   * replaced by its set of children rather than being a task in its own right.
+   * worker: it may itself be a complete cover. Dropping it here loses that
+   * solution, because in this round the node is replaced by its set of
+   * children rather than being a task in its own right.
    */
   auto emitAsTask = [&](unsigned int depth, SearchContext &ctx) {
     SubtreeTask t;
@@ -560,9 +560,9 @@ void SimdHuangCover<BitsetType>::generateTasks(
      *
      * curr_active is a reference into that vector, and a resize would
      * reallocate the outer buffer and leave it dangling before the loop below
-     * walks it. The guard it replaces was dead anyway: every placed row
-     * consumes at least one voxel column, so depth < num_columns always, and
-     * the vector is created with num_columns + 16 entries.
+     * walks it. Depth stays in bounds regardless: every placed row consumes
+     * at least one voxel column, so depth < num_columns always, and the
+     * vector is created with num_columns + 16 entries.
      */
     bt_assert(depth + 1 < ctx.scratch_active_rows.size());
 
@@ -647,6 +647,14 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   AssemblyTaskPool<SubtreeTask> pool;
   pool.seed(std::move(tasks));
   pool.setBudget(budget);
+
+  // Deliver stop promptly to parked workers (see assembler_0_c): waking only,
+  // no state change, so in-flight tasks are unaffected.
+  std::stop_callback wakeParkedOnStop(stop, [&] {
+    pool.notify();
+    if (budget != nullptr)
+      budget->notify();
+  });
 
   std::exception_ptr worker_exception = nullptr;
   std::mutex exception_mutex;
@@ -845,10 +853,8 @@ void SimdHuangCover<BitsetType>::search(
    *
    * DELIBERATELY no resize of ctx.scratch_active_rows here: curr_active is a
    * reference into that vector, and a resize would reallocate the outer buffer
-   * and leave it dangling before the loop below walks it. The guard this
-   * replaces was dead anyway -- every placed row consumes at least one voxel
-   * column, so depth < num_columns always, and the vector is created with
-   * num_columns + 16 entries.
+   * and leave it dangling before the loop below walks it (depth stays in
+   * bounds as argued above).
    */
   bt_assert(depth + 1 < ctx.scratch_active_rows.size());
 

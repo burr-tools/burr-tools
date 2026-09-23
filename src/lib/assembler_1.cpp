@@ -2670,8 +2670,22 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   AssemblyTaskPool<SubtreeTask_1> pool;
   pool.seed(std::move(parallelTasks));
   parallelTasks.clear();
-  if (assembler_cb *cb = getCallback())
-    pool.setBudget(cb->threadBudget());
+  ThreadBudget *runBudget = nullptr;
+  if (assembler_cb *cb = getCallback()) {
+    runBudget = cb->threadBudget();
+    pool.setBudget(runBudget);
+  }
+
+  // Deliver stop promptly to parked workers: pop_task() and the budget gate
+  // observe the run token only in their predicates, so firing runStop alone
+  // would leave them asleep until the next release() or task_done(). This
+  // only wakes -- in-flight tasks, retry pushes and drain() are unaffected,
+  // so in-session resume keeps working.
+  std::stop_callback wakeParkedOnStop(runTok, [&] {
+    pool.notify();
+    if (runBudget != nullptr)
+      runBudget->notify();
+  });
 
   std::exception_ptr workerException = nullptr;
   std::mutex exceptionMutex;
@@ -2902,8 +2916,7 @@ void assembler_1_c::assemble(assembler_cb * callback) {
   running.store(true, std::memory_order_relaxed);
 
   // Canonical per-run refresh: everything below (serial or parallel, SIMD
-  // or DLX) observes this run's token; a second assemble() starts unstopped,
-  // exactly like the old abbort=false reset.
+  // or DLX) observes this run's token; a second assemble() starts unstopped.
   std::stop_token runTok = beginRun();
   debug = false;
 

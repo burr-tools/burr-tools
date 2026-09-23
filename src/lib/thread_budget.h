@@ -73,9 +73,9 @@ inline bool threadBudgetEnabled() {
  * -- one task at a time per thread in every worker loop here), so
  * take/return pair up without threading flags through signatures.
  *
- * Full rationale, measurements and history:
- * design/2026-09-22-assembly-work-stealing.md.
- */
+  * History and measurements live in
+  * design/2026-09-22-assembly-work-stealing.md; the contract lives here.
+  */
 class ThreadBudget {
 public:
   explicit ThreadBudget(unsigned int total) : available_(total), total_(total) {}
@@ -145,6 +145,14 @@ public:
     // strand anyone.
     if (notify)
       cv_.notify_one();
+  }
+
+  /** Wake all parkers to re-check their predicates; consumes nothing and
+   * changes no state. Needed to deliver stop promptly: terminal flags appear
+   * only in acquire() predicates, so firing a stop source without a wake
+   * would leave parkers asleep until the next release(). */
+  void notify() {
+    cv_.notify_all();
   }
 
   /** Terminal broadcast: wake all parkers; further takes fail. */
