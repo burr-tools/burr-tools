@@ -38,7 +38,7 @@ SolutionIterator::SolutionIterator(std::shared_ptr<puzzle_c> puz,
     throw std::out_of_range("Problem index out of range");
   }
 
-  worker_thread = std::jthread(&SolutionIterator::worker_run, this);
+  worker_thread = std::jthread([this](std::stop_token st) { worker_run(st); });
 }
 
 SolutionIterator::~SolutionIterator() {
@@ -54,30 +54,30 @@ unsigned long SolutionIterator::get_iterations() const {
 }
 
 void SolutionIterator::stop() {
-  bool expected = false;
-  if (!stop_requested.compare_exchange_strong(expected, true)) {
-    return;
-  }
+  // Idempotent: wakes any token-aware wait (push_item) via the registered
+  // stop callback, even if the worker is blocked with a full queue.
+  worker_thread.request_stop();
   assembler_c * a = active_assm.load(std::memory_order_acquire);
   if (a) {
     a->stop();
   }
-  {
-    std::lock_guard<std::mutex> lock(queue_mutex);
-    cv_can_push.notify_all();
-    cv_can_pop.notify_all();
-  }
-  if (worker_thread.joinable()) {
-    worker_thread.join();
-  }
+  std::call_once(stop_join_once_, [this]() {
+    if (worker_thread.joinable()) {
+      worker_thread.join();
+    }
+  });
 }
 
-void SolutionIterator::push_item(QueueItem && item) {
+void SolutionIterator::push_item(QueueItem && item, std::stop_token st) {
   std::unique_lock<std::mutex> lock(queue_mutex);
-  cv_can_push.wait(lock, [this]() {
-    return queue.size() < MAX_QUEUE_SIZE || stop_requested.load();
-  });
-  if (stop_requested.load()) {
+  // Token-aware wait: request_stop() unblocks this natively, so dropping
+  // the iterator can never strand the worker on a full queue.
+  if (!cv_can_push.wait(lock, st, [this]() {
+        return queue.size() < MAX_QUEUE_SIZE;
+      })) {
+    return;
+  }
+  if (st.stop_requested()) {
     return;
   }
   queue.push_back(std::move(item));
@@ -107,7 +107,9 @@ PySolution SolutionIterator::next() {
       if (finished.load()) {
         throw py::stop_iteration();
       }
-      if (stop_requested.load()) {
+      // The stop_source outlives the join, so this stays true after stop()
+      // even once the thread is reaped (unlike the jthread's own token).
+      if (worker_thread.get_stop_source().stop_requested()) {
         throw py::stop_iteration();
       }
 
@@ -124,9 +126,9 @@ PySolution SolutionIterator::next() {
   }
 }
 
-void SolutionIterator::worker_run() {
+void SolutionIterator::worker_run(std::stop_token st) {
   try {
-    if (stop_requested.load(std::memory_order_acquire)) {
+    if (st.stop_requested()) {
       return;
     }
 
@@ -139,12 +141,12 @@ void SolutionIterator::worker_run() {
 
     assm = gt->findAssembler(*problem);
     if (!assm) {
-      push_item(QueueItem{QueueItem::ITEM_ERROR, {}, "Failed to create assembler for problem"});
+      push_item(QueueItem{QueueItem::ITEM_ERROR, {}, "Failed to create assembler for problem"}, st);
       return;
     }
 
     active_assm.store(assm.get(), std::memory_order_release);
-    if (stop_requested.load(std::memory_order_acquire)) {
+    if (st.stop_requested()) {
       assm->stop();
       active_assm.store(nullptr, std::memory_order_release);
       return;
@@ -154,11 +156,11 @@ void SolutionIterator::worker_run() {
     if (err != assembler_c::ERR_NONE) {
       active_assm.store(nullptr, std::memory_order_release);
       std::string msg = std::string("Matrix creation error in assembler: ") + assembler_c::getErrorMessage(err);
-      push_item(QueueItem{QueueItem::ITEM_ERROR, {}, msg});
+      push_item(QueueItem{QueueItem::ITEM_ERROR, {}, msg}, st);
       return;
     }
 
-    if (stop_requested.load(std::memory_order_acquire)) {
+    if (st.stop_requested()) {
       active_assm.store(nullptr, std::memory_order_release);
       return;
     }
@@ -167,7 +169,7 @@ void SolutionIterator::worker_run() {
       assm->reduce();
     }
 
-    if (stop_requested.load(std::memory_order_acquire)) {
+    if (st.stop_requested()) {
       active_assm.store(nullptr, std::memory_order_release);
       return;
     }
@@ -184,7 +186,7 @@ void SolutionIterator::worker_run() {
     }
 
     assm->assemble([&](std::unique_ptr<assembly_c> a) -> bool {
-      if (stop_requested.load(std::memory_order_relaxed)) {
+      if (st.stop_requested()) {
         return false;
       }
 
@@ -222,25 +224,25 @@ void SolutionIterator::worker_run() {
           sol.level = da->getMoves();
           sol.moves_text = da->movesText();
         } else {
-          return !stop_requested.load(std::memory_order_relaxed);
+          return !st.stop_requested();
         }
       } else {
         sol.solution_number = asm_count;
       }
 
-      push_item(QueueItem{QueueItem::ITEM_SOLUTION, std::move(sol), ""});
-      return !stop_requested.load(std::memory_order_relaxed);
+      push_item(QueueItem{QueueItem::ITEM_SOLUTION, std::move(sol), ""}, st);
+      return !st.stop_requested();
     });
 
     iterations.store(assm->getIterations(), std::memory_order_relaxed);
     active_assm.store(nullptr, std::memory_order_release);
 
-    push_item(QueueItem{QueueItem::ITEM_FINISHED, {}, ""});
+    push_item(QueueItem{QueueItem::ITEM_FINISHED, {}, ""}, st);
   } catch (const std::exception & e) {
     active_assm.store(nullptr, std::memory_order_release);
-    push_item(QueueItem{QueueItem::ITEM_ERROR, {}, e.what()});
+    push_item(QueueItem{QueueItem::ITEM_ERROR, {}, e.what()}, st);
   } catch (...) {
     active_assm.store(nullptr, std::memory_order_release);
-    push_item(QueueItem{QueueItem::ITEM_ERROR, {}, "Unknown C++ exception occurred during solving"});
+    push_item(QueueItem{QueueItem::ITEM_ERROR, {}, "Unknown C++ exception occurred during solving"}, st);
   }
 }

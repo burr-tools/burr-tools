@@ -7,6 +7,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <thread>
+#include <stop_token>
 #include <atomic>
 #include <string>
 
@@ -51,18 +52,23 @@ private:
   std::unique_ptr<disassembler_c> disasm;
   std::atomic<assembler_c*> active_assm{nullptr};
 
-  std::atomic<bool> stop_requested{false};
   std::atomic<bool> finished{false};
   std::atomic<unsigned long> iterations{0};
 
   std::mutex queue_mutex;
-  std::condition_variable cv_can_pop;
-  std::condition_variable cv_can_push;
+  // condition_variable_any (not plain condition_variable): the wait overloads
+  // taking std::stop_token register a stop callback, so request_stop() wakes
+  // a worker blocked in push_item without manual notify_all() races.
+  std::condition_variable_any cv_can_pop;
+  std::condition_variable_any cv_can_push;
   std::deque<QueueItem> queue;
   static constexpr size_t MAX_QUEUE_SIZE = 4;
 
   std::jthread worker_thread;
+  // Single-joiner guard: stop() may run from explicit user calls and the
+  // destructor; joining the same jthread twice would terminate.
+  std::once_flag stop_join_once_;
 
-  void worker_run();
-  void push_item(QueueItem && item);
+  void worker_run(std::stop_token st);
+  void push_item(QueueItem && item, std::stop_token st);
 };
