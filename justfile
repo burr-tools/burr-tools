@@ -125,6 +125,11 @@ coverage-html: setup-cov
     mkdir -p coverage-html
     gcovr {{ gcovr_flags }} --print-summary --html-details coverage-html/index.html
 
+# Run the single-commit snapshot benchmark over the fixed puzzle corpus
+# (bench/run_snapshot.sh); extra args are forwarded, e.g. `just bench --runs 5`
+bench *args: build
+    ./bench/run_snapshot.sh {{args}}
+
 # Build with AddressSanitizer and UndefinedBehaviorSanitizer
 build-asan:
     @if [ ! -d "build-asan" ]; then meson setup build-asan -Db_sanitize=address,undefined; fi

@@ -15,7 +15,7 @@
 # Options:
 #   --runs N          Number of interleaved runs per binary (default: 3)
 #   --timeout SECS    Max execution time per solve (default: 600s = 10 min)
-#   --output FILE     Output CSV file (default: bench/results_<timestamp>.csv)
+#   --output FILE     Output CSV file (default: bench/results/results_<timestamp>.csv)
 #   --base PATH       Path to base single-threaded binary (default: build/burrTxt-base)
 #   --new PATH        Path to current binary (default: build/burrTxt)
 #   --list            List the curated puzzle suite with descriptions and exit
@@ -31,7 +31,7 @@ NEW_BIN="${REPO_DIR}/build/burrTxt"
 RUNS=3
 TIMEOUT=600
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-OUT_CSV="${SCRIPT_DIR}/results_${TIMESTAMP}.csv"
+OUT_CSV="${SCRIPT_DIR}/results/results_${TIMESTAMP}.csv"
 LIST_ONLY=0
 
 # ------------------------------------------------------------------------------
@@ -184,6 +184,8 @@ fi
 echo "--------------------------------------------------------------------------------"
 echo "Running benchmark on ${#ACTIVE_PUZZLES[@]} puzzles..."
 echo "================================================================================"
+
+mkdir -p "$(dirname "${OUT_CSV}")"
 
 uv run python3 "${SCRIPT_DIR}/bench_solve.py" \
   --ab "${BASE_BIN}" "${NEW_BIN}" \

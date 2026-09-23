@@ -120,6 +120,24 @@ Always use the standardized benchmark infrastructure in [`bench/`](bench/) to va
 
 - **[`bench/bench_solve.py`](bench/bench_solve.py)**: Interleaved, multi-run A/B testing measuring wall time, user/sys CPU time, multi-core utilization, and peak RSS across the 10-puzzle curated corpus.
 - **[`bench/run_suite.sh`](bench/run_suite.sh)**: Shell wrapper for automated full-suite regression and speedup reporting.
+- **[`bench/run_snapshot.sh`](bench/run_snapshot.sh)** (`just bench`): Single-commit snapshot over the fixed corpus (including the Jack Krijnen Supernova problems), always with disassembly. Stores point-in-time measurements as `bench/results/results_<timestamp>_<hash>[-dirty]_<subject-slug>.csv` for later comparison.
+
+### Point-in-Time Snapshots and Regression Checks Without Old Code
+
+`just bench` records the current commit's solver performance (3 runs per puzzle by default) into a self-identifying CSV under [`bench/results/`](bench/results/). Because each file carries its timestamp, git hash, and commit subject in its name, a later commit can be regression-checked by diffing its snapshot against a stored older one — no checkout, rebuild, or re-run of the old code needed. Each CSV additionally starts with `#`-prefixed provenance lines (UTC timestamp, mode/binaries, full git commit + subject, clean/dirty worktree state, hostname + CPU count, runs/timeout/threads/disassemble settings) written by `bench_solve.py`, so a stored file is interpretable on its own:
+
+```bash
+just bench                                   # snapshot current HEAD (builds first)
+just bench --runs 5                          # more runs per puzzle
+just bench --threads 1                       # single-thread throughput snapshot
+just bench --runs 1 <puzzle>...              # one-off subset (replaces corpus)
+
+# Compare two snapshots (CSVs share the same header/column layout):
+diff bench/results/results_20260923_114837_4280734-*.csv \
+     bench/results/results_20260924_090112_*.csv
+```
+
+Caveats: snapshots from different machines are not comparable (absolute times depend on hardware); correctness columns (assemblies/solutions/iterations) in the CSV double as the regression signal and are machine-independent. A `-dirty` suffix marks runs from a worktree with uncommitted changes.
 
 ### Benchmarking Alternatives via Environment Variables
 
