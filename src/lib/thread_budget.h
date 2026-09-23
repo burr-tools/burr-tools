@@ -68,10 +68,12 @@ inline bool threadBudgetEnabled() {
  * condition then depends only on token holders, which always progress,
  * or on terminal flags. Releasing wakes a waiter; shutdowns wake all.
  *
- * Per-thread holdings ride a function-local thread_local flag (see
- * holdsFlag below): at most one token per thread (true by construction
- * -- one task at a time per thread in every worker loop here), so
- * take/return pair up without threading flags through signatures.
+  * Per-thread holdings ride a function-local thread_local pointer (see
+  * heldBudget below): at most one token per thread (true by construction
+  * -- one task at a time per thread in every worker loop here), so
+  * take/return pair up without threading flags through signatures.
+  * A pointer, not a boolean: if several budgets ever coexist, release()
+  * only returns a token to the budget that granted it.
  *
   * History and measurements live in
   * design/2026-09-22-assembly-work-stealing.md; the contract lives here.
@@ -85,13 +87,19 @@ public:
 
   unsigned int total() const { return total_; }
 
-  /** Take a token if one is free. Leaf: budget mutex only. */
+  /** Take a token if one is free. Leaf: budget mutex only. Re-entrant for
+   * this budget (already holding reads as success without consuming
+   * another token, so a double-take can never leak a permit); refuses
+   * while holding a *different* budget's token, since one thread must
+   * never hold two tokens at once. */
   bool tryAcquire() {
     std::lock_guard<std::mutex> lock(mtx_);
-    if (shutdown_ || available_ == 0)
+    if (heldBudget() == this)
+      return true;
+    if (heldBudget() != nullptr || shutdown_ || available_ == 0)
       return false;
     available_--;
-    holdsFlag() = true;
+    heldBudget() = this;
     return true;
   }
 
@@ -101,6 +109,13 @@ public:
    */
   template <typename Pred>
   bool acquire(Pred isTerminal, std::stop_token st = {}) {
+    {
+      std::lock_guard<std::mutex> lock(mtx_);
+      if (heldBudget() == this)
+        return true;
+      if (heldBudget() != nullptr)
+        return false;
+    }
     std::unique_lock<std::mutex> lock(mtx_);
     cv_.wait(lock, st, [&] {
       return shutdown_ || available_ > 0 || isTerminal() || st.stop_requested();
@@ -120,20 +135,21 @@ public:
     if (available_ == 0)
       return false;
     available_--;
-    holdsFlag() = true;
+    heldBudget() = this;
     return true;
   }
 
-  /** Return a held token; no-op unless this thread holds one. Wakes one waiter. */
+  /** Return a held token; no-op unless this thread holds one from *this*
+   * budget (a token from another budget is left alone). Wakes one waiter. */
   void release() {
     bool notify = false;
     {
       std::lock_guard<std::mutex> lock(mtx_);
-      if (!holdsFlag())
+      if (heldBudget() != this)
         return;
-      holdsFlag() = false;
+      heldBudget() = nullptr;
       // No clamp needed: every increment pairs with a prior take, and takes
-      // can't exceed the initial total while the flag protocol holds.
+      // can't exceed the initial total while the holding protocol holds.
       available_++;
       notify = true;
     }
@@ -164,18 +180,18 @@ public:
     cv_.notify_all();
   }
 
-  static bool holdsHere() { return holdsFlag(); }
+  static bool holdsHere(const ThreadBudget *b) { return heldBudget() == b; }
 
 private:
-  // NOTE: per-thread holdings flag as a function-local static, NOT an
+  // NOTE: per-thread holding as a function-local static, NOT an
   // `inline thread_local` static data member: Apple's linker rejects the
   // latter with duplicate 'thread-local wrapper routine' symbols when the
   // header is included in multiple translation units, while function-local
   // thread_locals of (implicitly inline) member functions merge correctly
   // on every toolchain we target. Keep it this way.
-  static bool &holdsFlag() {
-    static thread_local bool holds = false;
-    return holds;
+  static const ThreadBudget *&heldBudget() {
+    static thread_local const ThreadBudget *held = nullptr;
+    return held;
   }
 
   mutable std::mutex mtx_;

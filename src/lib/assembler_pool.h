@@ -121,7 +121,7 @@ public:
         releaseBudget();
         return false;
       }
-      if (budget_ != nullptr && !ThreadBudget::holdsHere() &&
+      if (budget_ != nullptr && !ThreadBudget::holdsHere(budget_) &&
           !budget_->tryAcquire()) {
         // Budget exhausted: park token-free (releasing the pool lock first,
         // so no lock ordering issues) until a token frees or we must stop.
@@ -132,7 +132,24 @@ public:
         }, st);
         if (!got)
           return false;
-        continue;
+        // Re-check under the pool lock before waiting with the token: a
+        // sibling may have consumed the remaining tasks while this thread
+        // was parked on the budget. Waiting on an empty queue while holding
+        // a token would starve token-gated consumers (e.g. disassemblers);
+        // in that case return the token and wait token-free instead.
+        // (Reaching here implies the token is freshly acquired: the check
+        // above guarantees this thread held none on entry.)
+        lock.lock();
+        if (queue.empty() || stop_requested.load() ||
+            runStop.stop_requested() || st.stop_requested()) {
+          releaseBudget();
+          if (stop_requested.load() || runStop.stop_requested() ||
+              st.stop_requested())
+            return false;
+          if (queue.empty() && active_workers == 0)
+            return false;
+          continue;
+        }
       }
       out_task = std::move(queue.front());
       queue.pop_front();

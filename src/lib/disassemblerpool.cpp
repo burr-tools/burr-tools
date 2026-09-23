@@ -152,7 +152,7 @@ bool disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
   // Only threads that actually hold a token yield it here (hadToken): a
   // token-free submitter must not acquire one it never had, or the token
   // would leak (available_ permanently decreases).
-  const bool hadToken = (budget_ != nullptr) && ThreadBudget::holdsHere();
+  const bool hadToken = (budget_ != nullptr) && ThreadBudget::holdsHere(budget_);
   while (!hasSpace() && !terminal()) {
     if (hadToken)
       budget_->release();
