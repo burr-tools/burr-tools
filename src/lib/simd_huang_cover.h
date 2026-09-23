@@ -82,10 +82,13 @@ public:
     std::atomic<uint64_t> &iterations
   ) const = 0;
 
+  // NOTE: runStop is a non-const ref because libc++ (Apple Clang) declares
+  // stop_source::request_stop() non-const, unlike libstdc++. A const ref
+  // fails to compile on macOS when the body fires the source on exceptions.
   virtual void parallelSolve(
     unsigned int num_workers,
     SolutionCallback callback,
-    const std::stop_source &runStop,
+    std::stop_source &runStop,
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
     std::atomic<size_t> &completed_tasks,
@@ -173,7 +176,7 @@ public:
   void parallelSolve(
     unsigned int num_workers,
     SolutionCallback callback,
-    const std::stop_source &runStop,
+    std::stop_source &runStop,
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
     std::atomic<size_t> &completed_tasks,

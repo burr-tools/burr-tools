@@ -620,7 +620,7 @@ template <typename BitsetType>
 void SimdHuangCover<BitsetType>::parallelSolve(
   unsigned int num_workers,
   SolutionCallback callback,
-  const std::stop_source &runStop,
+  std::stop_source &runStop,
   std::atomic<unsigned long> &iterations,
   std::atomic<size_t> &total_tasks,
   std::atomic<size_t> &completed_tasks,
