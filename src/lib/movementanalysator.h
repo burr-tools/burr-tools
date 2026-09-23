@@ -63,6 +63,18 @@ class movementAnalysator_c {
     unsigned int piecenumber;
     std::vector<unsigned int> planar_block;
 
+    /* RFW kernel selection, resolved once per disassembly run via
+     * selectKernels() (called from disassemble()/completeFind entry points)
+     * rather than per closureFull() call: closureFull() runs once per
+     * search node, and the getenv()s behind the SimdConfig predicates are
+     * pure overhead in that loop. Per-run evaluation keeps full runtime
+     * toggleability (env changes take effect on the next run), which the
+     * ScopedEnv-based tests and the A/B benchmarking protocol rely on.
+     */
+    bool use_avx512_kernel = false;
+    bool use_avx2_kernel = false;
+    bool use_neon_kernel = false;
+
     /* Cached input/output of the previous prepare() call for the incremental
      * fast path. prevSearch is refcounted (see prepare): the compared node
      * stays alive to prevent ABA pointer aliasing. All state is per-instance,
@@ -135,6 +147,13 @@ class movementAnalysator_c {
      */
     void init_find(disassemblerNode_c * nd, const std::vector<unsigned int> & pieces);
     disassemblerNode_c * find(void);
+
+    /* Resolve which RFW closure kernel to use for the upcoming run from
+     * CPU detection and the BURRTOOLS_NO_DISASM_SIMD / NO_VECTOR / NO_AVX2 /
+     * NO_AVX512 / NO_NEON toggles. Called once per run by disassemble()
+     * and completeFind(); closureFull() only reads the cached members.
+     */
+    void selectKernels(void);
 
     void completeFind(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces, std::vector<disassemblerNode_c*> * result);
 

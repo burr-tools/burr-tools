@@ -227,6 +227,11 @@ std::unique_ptr<separation_c> disassembler_a_c::disassemble(const assembly_c * a
   bt_assert(puzzle.getNumberOfPieces() == assembly->placementCount());
   groups->reSet();
 
+  /* Resolve the RFW closure kernel once for this run (CPU detection +
+   * env toggles); per-node re-evaluation inside closureFull() would be
+   * pure getenv() overhead in the hot loop. */
+  analyse->selectKernels();
+
   disassemblerNode_c * start = new disassemblerNode_c(assembly);
 
   if (start->getPiecenumber() < 2) {

@@ -230,6 +230,20 @@ static void rfw_scalar(unsigned int * block, unsigned int n) {
   }
 }
 
+void movementAnalysator_c::selectKernels(void) {
+
+  use_avx512_kernel = false;
+  use_avx2_kernel = false;
+  use_neon_kernel = false;
+
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  use_avx512_kernel = __builtin_cpu_supports("avx512f") && !simdDisabled() && SimdConfig::isAvx512Allowed();
+  use_avx2_kernel = __builtin_cpu_supports("avx2") && !simdDisabled();
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+  use_neon_kernel = !simdDisabled();
+#endif
+}
+
 void movementAnalysator_c::closureFull(void) {
 
   const unsigned int n = pieces->size();
@@ -240,13 +254,9 @@ void movementAnalysator_c::closureFull(void) {
     planar_block.resize((size_t)n * n);
   }
 
-#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-  const bool has_avx512 = __builtin_cpu_supports("avx512f") && !simdDisabled() && SimdConfig::isAvx512Allowed();
-  const bool has_avx2 = __builtin_cpu_supports("avx2") && !simdDisabled();
-#endif
-
   /* Roy-Floyd-Warshall all-pairs shortest paths on movement constraints.
-   * Planar memory layout enables contiguous vector loads/stores/mins. */
+   * Planar memory layout enables contiguous vector loads/stores/mins.
+   * Kernel choice was resolved by selectKernels() at run entry. */
   for (unsigned int d = 0; d < dirs; d++) {
     // 1. Pack direction d into contiguous planar block
     for (unsigned int y = 0; y < n; y++) {
@@ -259,15 +269,15 @@ void movementAnalysator_c::closureFull(void) {
 
     // 2. Transitive closure on contiguous planar block
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-    if (has_avx512 && n >= 16) {
+    if (use_avx512_kernel && n >= 16) {
       rfw_avx512(planar_block.data(), n);
-    } else if (has_avx2) {
+    } else if (use_avx2_kernel) {
       rfw_avx2(planar_block.data(), n);
     } else {
       rfw_scalar(planar_block.data(), n);
     }
 #elif defined(__aarch64__) || defined(__ARM_NEON)
-    if (!simdDisabled()) {
+    if (use_neon_kernel) {
       rfw_neon(planar_block.data(), n);
     } else {
       rfw_scalar(planar_block.data(), n);
@@ -937,6 +947,10 @@ disassemblerNode_c * movementAnalysator_c::findMatching(disassemblerNode_c * nd,
 }
 
 void movementAnalysator_c::completeFind(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces, std::vector<disassemblerNode_c*> * result) {
+
+  /* Same per-run kernel resolution as disassemble(): this is the other
+   * run entry point (used e.g. by the GUI movement browser). */
+  selectKernels();
 
   init_find(searchnode, pieces);
 
