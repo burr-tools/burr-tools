@@ -27,6 +27,7 @@
 #include <set>
 #include <thread>
 #include <mutex>
+#include <stop_token>
 #include <string>
 #include <cstdlib>
 
@@ -343,7 +344,7 @@ TEST_CASE("SimdExactCover extended solve up to 32768", "[simd][exact_cover]") {
     solver->addRow(6, 1, {offset + 3, offset + 4, offset + 6});
 
     std::vector<std::vector<unsigned int>> solutions;
-    std::atomic<bool> abort_flag{false};
+    std::stop_source stopSrc;
     std::atomic<uint64_t> iterations{0};
 
     solver->solve([&](const std::vector<unsigned int> &sol) {
@@ -351,7 +352,7 @@ TEST_CASE("SimdExactCover extended solve up to 32768", "[simd][exact_cover]") {
       std::sort(sorted.begin(), sorted.end());
       solutions.push_back(sorted);
       return true;
-    }, abort_flag, iterations);
+    }, stopSrc.get_token(), iterations);
 
     REQUIRE(solutions.size() == 1);
     REQUIRE(solutions[0] == std::vector<unsigned int>{1, 4, 5});
@@ -385,7 +386,7 @@ TEST_CASE("SimdExactCover256 Knuth textbook example", "[simd][exact_cover]") {
   solver.addRow(6, 1, {3, 4, 6});
 
   std::vector<std::vector<unsigned int>> solutions;
-  std::atomic<bool> abort_flag{false};
+  std::stop_source stopSrc;
   std::atomic<uint64_t> iterations{0};
 
   solver.solve([&](const std::vector<unsigned int> &sol) {
@@ -393,7 +394,7 @@ TEST_CASE("SimdExactCover256 Knuth textbook example", "[simd][exact_cover]") {
     std::sort(sorted.begin(), sorted.end());
     solutions.push_back(sorted);
     return true;
-  }, abort_flag, iterations);
+  }, stopSrc.get_token(), iterations);
 
   REQUIRE(solutions.size() == 1);
   REQUIRE(solutions[0] == std::vector<unsigned int>{1, 4, 5});
@@ -412,18 +413,18 @@ TEST_CASE("SimdExactCover256 unsolvable problem", "[simd][exact_cover]") {
   solver.addRow(2, 1, {1, 2});
 
   std::vector<std::vector<unsigned int>> solutions;
-  std::atomic<bool> abort_flag{false};
+  std::stop_source stopSrc;
   std::atomic<uint64_t> iterations{0};
 
   solver.solve([&](const std::vector<unsigned int> &sol) {
     solutions.push_back(sol);
     return true;
-  }, abort_flag, iterations);
+  }, stopSrc.get_token(), iterations);
 
   REQUIRE(solutions.empty());
 }
 
-TEST_CASE("SimdExactCover256 abort flag", "[simd][exact_cover]") {
+TEST_CASE("SimdExactCover256 stop token", "[simd][exact_cover]") {
   SimdExactCover256 solver(3, 3);
 
   SimdBitset256 req;
@@ -434,14 +435,15 @@ TEST_CASE("SimdExactCover256 abort flag", "[simd][exact_cover]") {
   solver.addRow(2, 1, {1});
   solver.addRow(3, 2, {2});
 
-  std::atomic<bool> abort_flag{true};
+  std::stop_source stopSrc;
+  stopSrc.request_stop();
   std::atomic<uint64_t> iterations{0};
   std::vector<std::vector<unsigned int>> solutions;
 
   solver.solve([&](const std::vector<unsigned int> &sol) {
     solutions.push_back(sol);
     return true;
-  }, abort_flag, iterations);
+  }, stopSrc.get_token(), iterations);
 
   REQUIRE(solutions.empty());
 }
@@ -469,7 +471,7 @@ TEST_CASE("SimdExactCover512 large column cover", "[simd][exact_cover]") {
   solver.addRow(4, 0, {50, 150});
 
   std::vector<std::vector<unsigned int>> solutions;
-  std::atomic<bool> abort_flag{false};
+  std::stop_source stopSrc;
   std::atomic<uint64_t> iterations{0};
 
   solver.solve([&](const std::vector<unsigned int> &sol) {
@@ -477,7 +479,7 @@ TEST_CASE("SimdExactCover512 large column cover", "[simd][exact_cover]") {
     std::sort(sorted.begin(), sorted.end());
     solutions.push_back(sorted);
     return true;
-  }, abort_flag, iterations);
+  }, stopSrc.get_token(), iterations);
 
   REQUIRE(solutions.size() == 1);
   REQUIRE(solutions[0] == std::vector<unsigned int>{1, 2, 3});
@@ -499,7 +501,7 @@ TEST_CASE("SimdExactCover256 solveSubtree", "[simd][exact_cover]") {
   solver.addRow(6, 1, {3, 4, 6});
 
   std::vector<std::vector<unsigned int>> solutions;
-  std::atomic<bool> abort_flag{false};
+  std::stop_source stopSrc;
   std::atomic<uint64_t> iterations{0};
 
   // Subtree with correct prefix {1} should find the unique solution
@@ -508,7 +510,7 @@ TEST_CASE("SimdExactCover256 solveSubtree", "[simd][exact_cover]") {
     std::sort(sorted.begin(), sorted.end());
     solutions.push_back(sorted);
     return true;
-  }, abort_flag, iterations);
+  }, stopSrc.get_token(), iterations);
 
   REQUIRE(solutions.size() == 1);
   REQUIRE(solutions[0] == std::vector<unsigned int>{1, 4, 5});
@@ -518,7 +520,7 @@ TEST_CASE("SimdExactCover256 solveSubtree", "[simd][exact_cover]") {
   solver.solveSubtree({2}, [&](const std::vector<unsigned int> &sol) {
     solutions.push_back(sol);
     return true;
-  }, abort_flag, iterations);
+  }, stopSrc.get_token(), iterations);
 
   REQUIRE(solutions.empty());
 }
@@ -539,7 +541,7 @@ TEST_CASE("SimdExactCover256 concurrent solveSubtree", "[simd][exact_cover][thre
 
   std::vector<std::vector<unsigned int>> all_solutions;
   std::mutex sol_mutex;
-  std::atomic<bool> abort_flag{false};
+  std::stop_source stopSrc;
   std::atomic<uint64_t> iterations{0};
 
   // Branch on candidate rows covering column 0: row 2 and row 4
@@ -555,7 +557,7 @@ TEST_CASE("SimdExactCover256 concurrent solveSubtree", "[simd][exact_cover][thre
         std::lock_guard<std::mutex> lock(sol_mutex);
         all_solutions.push_back(sorted);
         return true;
-      }, abort_flag, thread_iter);
+      }, stopSrc.get_token(), thread_iter);
       iterations.fetch_add(thread_iter.load());
     });
   }
@@ -612,7 +614,7 @@ TEST_CASE("SimdHuangCover256 duplicate pieces exact cover", "[simd][huang]") {
   solver.addRow(5, 1, 2, 1, 0, {2, 5}, {1, 1});
 
   std::vector<std::vector<unsigned int>> solutions;
-  std::atomic<bool> abort_flag{false};
+  std::stop_source stopSrc;
   std::atomic<uint64_t> iterations{0};
 
   solver.solve([&](const std::vector<unsigned int> &sol) {
@@ -620,7 +622,7 @@ TEST_CASE("SimdHuangCover256 duplicate pieces exact cover", "[simd][huang]") {
     std::sort(sorted.begin(), sorted.end());
     solutions.push_back(sorted);
     return true;
-  }, abort_flag, iterations);
+  }, stopSrc.get_token(), iterations);
 
   // Two distinct valid solutions: {1, 2, 4} and {1, 3, 5}
   REQUIRE(solutions.size() == 2);
@@ -656,7 +658,7 @@ TEMPLATE_TEST_CASE("SimdHuangCover extended sizes duplicate pieces exact cover",
   solver.addRow(5, 1, 2, 1, 0, {2, base_v + 2}, {1, 1});
 
   std::vector<std::vector<unsigned int>> solutions;
-  std::atomic<bool> abort_flag{false};
+  std::stop_source stopSrc;
   std::atomic<uint64_t> iterations{0};
 
   solver.solve([&](const std::vector<unsigned int> &sol) {
@@ -664,7 +666,7 @@ TEMPLATE_TEST_CASE("SimdHuangCover extended sizes duplicate pieces exact cover",
     std::sort(sorted.begin(), sorted.end());
     solutions.push_back(sorted);
     return true;
-  }, abort_flag, iterations);
+  }, stopSrc.get_token(), iterations);
 
   REQUIRE(solutions.size() == 2);
   REQUIRE(solutions[0] == std::vector<unsigned int>{1, 2, 4});
@@ -687,7 +689,7 @@ TEMPLATE_TEST_CASE("SimdHuangCover extended sizes duplicate pieces exact cover",
       p_solutions.push_back(sorted);
       return true;
     },
-    abort_flag,
+    stopSrc,
     p_iterations,
     total_tasks,
     completed_tasks
@@ -791,14 +793,14 @@ TEMPLATE_TEST_CASE("SimdHuangCover applies the hole budget", "[simd][huang][hole
 
   auto run = [](TestType & solver) {
     std::vector<std::vector<unsigned int>> sols;
-    std::atomic<bool> abort_flag{false};
+    std::stop_source stopSrc;
     std::atomic<uint64_t> iterations{0};
     solver.solve([&](const std::vector<unsigned int> & s) {
       std::vector<unsigned int> sorted = s;
       std::sort(sorted.begin(), sorted.end());
       sols.push_back(sorted);
       return true;
-    }, abort_flag, iterations);
+    }, stopSrc.get_token(), iterations);
     std::sort(sols.begin(), sols.end());
     return sols;
   };
@@ -818,3 +820,38 @@ TEMPLATE_TEST_CASE("SimdHuangCover applies the hole budget", "[simd][huang][hole
     CHECK(sols[0] == std::vector<unsigned int>{2});
   }
 }
+
+TEST_CASE("SimdHuangCover: parallelSolve does not count aborted tasks as completed", "[simd][huang][abort]") {
+  SimdHuangCover256 solver(4, 2);
+  solver.setColumnBounds(1, 1, 1, false, true, false, false);
+  solver.setColumnBounds(2, 1, 1, false, true, false, false);
+  solver.setColumnBounds(3, 1, 1, true, false, false, false);
+  solver.setColumnBounds(4, 1, 1, true, false, false, false);
+
+  solver.addRow(1, 0, 1, 0, 0, {1, 3}, {1, 1});
+  solver.addRow(2, 0, 1, 1, 0, {1, 4}, {1, 1});
+  solver.addRow(3, 1, 2, 0, 0, {2, 4}, {1, 1});
+  solver.addRow(4, 1, 2, 1, 0, {2, 3}, {1, 1});
+
+  std::stop_source stopSrc;
+  std::atomic<unsigned long> iterations{0};
+  std::atomic<size_t> total_tasks{0};
+  std::atomic<size_t> completed_tasks{0};
+
+  solver.parallelSolve(
+    2,
+    [&](const std::vector<unsigned int> &) {
+      stopSrc.request_stop();
+      return false;
+    },
+    stopSrc,
+    iterations,
+    total_tasks,
+    completed_tasks
+  );
+
+  CHECK(stopSrc.stop_requested());
+  CHECK(completed_tasks.load() < total_tasks.load());
+  CHECK(completed_tasks.load() == 0);
+}
+

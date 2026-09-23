@@ -91,7 +91,7 @@ Usage: ./bench/run_suite.sh [options] [puzzle:problem ...]
 Options:
   --runs N          Number of interleaved runs per binary (default: 3)
   --timeout SECS    Max execution time per solve (default: 600s = 10 min)
-  --output FILE     Output CSV file (default: bench/results_<timestamp>.csv)
+  --output FILE     Output CSV file (default: bench/results/results_<timestamp>.csv)
   --base PATH       Path to base binary (default: build/burrTxt-base)
   --new PATH        Path to current binary (default: build/burrTxt)
   --list            List all puzzles in the curated suite and their availability

@@ -31,6 +31,7 @@
 #include <mutex>
 #include <memory>
 #include <thread>
+#include <stop_token>
 
 class problem_c;
 class gridType_c;
@@ -91,9 +92,6 @@ private:
    */
   void solution(void);
 
-  /* used to abort the searching */
-  std::atomic<bool> abbort;
-
   /* used to save if the search is running */
   std::atomic<bool> running{false};
 
@@ -116,7 +114,6 @@ private:
   friend class assemblerWorker_1;
 
   std::vector<SubtreeTask_1> parallelTasks;
-  std::vector<uint8_t> taskCompleted;
   std::unordered_set<uint64_t> emittedSignatures;
 
   /* Pristine base matrix saved before search starts */
@@ -129,11 +126,11 @@ private:
    *
    * The SIMD search keeps its position inside the solver, so next_row_stack /
    * task_stack -- what the progress estimate below is derived from -- never
-   * move. Reporting completion from "idle and iterations > 0" instead was a
-   * false positive: after setPosition() restores a saved state, and between
-   * two assemble() calls, all of those hold before any search has run.
+   * move. Completion therefore needs its own flag: "idle and iterations > 0"
+   * also holds after setPosition() restores a saved state, and between two
+   * assemble() calls, before any search has run.
    */
-  bool simdCompleted = false;
+  std::atomic<bool> simdCompleted{false};
 
   std::vector<unsigned int> base_left;
   std::vector<unsigned int> base_right;
@@ -326,7 +323,6 @@ public:
   void assemble(assembler_cb * callback) override;
   int getErrorsParam(void) override { return errorsParam; }
   float getFinished(void) const override;
-  void stop(void) override { abbort.store(true, std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
   void setNumThreads(unsigned int threads) override { numThreads = std::min(threads, 256u); }
   unsigned int getNumThreads(void) const override { return numThreads; }

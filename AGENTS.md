@@ -14,6 +14,7 @@ just build          # Compile BurrTools binaries (build/burrtools, build/burrTxt
 just test           # Fast test suite: Catch2 (minus stress cases) + Python wrapper
 just test-slow      # Stress cases only, chiefly the Minkowski random-shapes case
 just test-all       # Everything, fast and slow. This is what CI runs
+just test-regression # Regression test comparing burrTxt/burrTxt2 against known-good 0.7.1 release output (run before creating a PR)
 just check          # Fast static code analysis with cppcheck (~5s, always run before finishing tasks)
 just check-tidy     # Deep static analysis with clang-tidy on BurrTools sources
 just check-scan     # Clang Static Analyzer (scan-build)
@@ -103,6 +104,7 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
    - Ensure tools and regexes ignore these directories so static analysis and formatting stay focused on BurrTools sources (`burr-tools/src/(?!lua/).*`).
 6. **Quality Verification:**
    - After making code modifications, always verify that `just build`, `just test-all` (regression tests, fast and slow), and `just check` (static analysis) pass cleanly. `just test` is the quick loop to use while iterating; run `just test-all` before calling a task done, since it is what CI runs.
+   - Always run `just test-regression` before creating a PR to verify that solver output matches the known-good 0.7.1 release output across all example puzzles.
 7. **Benchmarking & Optimization Work:**
    - When modifying solver algorithms or proposing optimizations, agents MUST use the standardized benchmark infrastructure in [`bench/bench_solve.py`](bench/bench_solve.py) across the curated 10-puzzle corpus.
    - Never evaluate optimizations on a single puzzle in isolation.
@@ -118,6 +120,24 @@ Always use the standardized benchmark infrastructure in [`bench/`](bench/) to va
 
 - **[`bench/bench_solve.py`](bench/bench_solve.py)**: Interleaved, multi-run A/B testing measuring wall time, user/sys CPU time, multi-core utilization, and peak RSS across the 10-puzzle curated corpus.
 - **[`bench/run_suite.sh`](bench/run_suite.sh)**: Shell wrapper for automated full-suite regression and speedup reporting.
+- **[`bench/run_snapshot.sh`](bench/run_snapshot.sh)** (`just bench`): Single-commit snapshot over the fixed corpus (including the Jack Krijnen Supernova problems), always with disassembly. Stores point-in-time measurements as `bench/results/results_<timestamp>_<hash>[-dirty]_<subject-slug>.csv` for later comparison.
+
+### Point-in-Time Snapshots and Regression Checks Without Old Code
+
+`just bench` records the current commit's solver performance (3 runs per puzzle by default) into a self-identifying CSV under [`bench/results/`](bench/results/). Because each file carries its timestamp, git hash, and commit subject in its name, a later commit can be regression-checked by diffing its snapshot against a stored older one — no checkout, rebuild, or re-run of the old code needed. Each CSV additionally starts with `#`-prefixed provenance lines (UTC timestamp, mode/binaries, full git commit + subject, clean/dirty worktree state, hostname + CPU count, runs/timeout/threads/disassemble settings) written by `bench_solve.py`, so a stored file is interpretable on its own:
+
+```bash
+just bench                                   # snapshot current HEAD (builds first)
+just bench --runs 5                          # more runs per puzzle
+just bench --threads 1                       # single-thread throughput snapshot
+just bench --runs 1 <puzzle>...              # one-off subset (replaces corpus)
+
+# Compare two snapshots (CSVs share the same header/column layout):
+diff bench/results/results_20260923_114837_4280734-*.csv \
+     bench/results/results_20260924_090112_*.csv
+```
+
+Caveats: snapshots from different machines are not comparable (absolute times depend on hardware); correctness columns (assemblies/solutions/iterations) in the CSV double as the regression signal and are machine-independent. A `-dirty` suffix marks runs from a worktree with uncommitted changes.
 
 ### Benchmarking Alternatives via Environment Variables
 
@@ -126,11 +146,11 @@ Solver engines support runtime feature toggles via environment variables to allo
 | Environment Variable | Effect | Purpose |
 | :--- | :--- | :--- |
 | `BURRTOOLS_NO_SIMD=1` | Disables the SIMD bit-parallel solver in **both** assemblers (`assembler_0_c` and `assembler_1_c`), forcing classical DLX. Also read by the `SimdExactCover` / `SimdHuangCover256` constructors. | Measure pure speedup of SIMD bit-parallel exact cover against the Knuth DLX baseline. |
+| `BURRTOOLS_NO_VECTOR=1` | Disables architecture-specific vector SIMD instructions (AVX2, AVX-512 on x86-64, NEON on ARM) across all exact cover solvers and disassembler closure, falling back to portable 64-bit scalar word loops. Replaces needing platform-specific flags. | Clean, architecture-agnostic benchmark isolation of algorithmic gains (0-cost backtracking, cache locality) from vector intrinsics. |
 | `BURRTOOLS_NO_AVX2=1` | Disables the AVX2 and AVX-512 kernels **on x86-64**, falling back to the portable 64-bit word scalar loop. No effect on ARM -- use `BURRTOOLS_NO_NEON` there. | Isolate the algorithmic gain (0-cost backtracking, cache locality) from x86 vector intrinsics. |
 | `BURRTOOLS_NO_AVX512=1` | Disables AVX-512 vector instructions in SIMD solver and disassembler closure. | Isolate AVX-512 vector performance gains from AVX2. |
 | `BURRTOOLS_NO_NEON=1` | Disables the NEON kernels **on ARM**, falling back to the same scalar loop. Honoured by `SimdExactCover` and `SimdHuangCover256`. | The ARM equivalent of `BURRTOOLS_NO_AVX2`; without it an A/B on Apple Silicon silently measures the same code twice. |
 | `BURRTOOLS_NO_DISASM_SIMD=1` | Disables vector instructions in disassembler Roy-Floyd-Warshall closure. | Measure pure disassembler vector speedup. |
-| `BURRTOOLS_NO_DISASM_OPT=1` | Disables planar Roy-Floyd-Warshall and bitboard movement checks. | Measure disassembler algorithmic gains. |
 | `BURRTOOLS_NO_DISASM_POOL=1` | Disables multi-threaded disassembly pool, running disassemblies synchronously. | Measure speedup and scaling of parallel disassembly pool against synchronous baseline. |
 | `BURRTOOLS_THREADS=N` | Forces solver to use $N$ worker threads (default: `hardware_concurrency`, clamped to `assembler_c::MAX_THREADS`). **Note:** read independently by the assembler and, once the disassembly pool lands, by that pool too, so `N` may yield `2N` workers overall. | Measure thread scaling curves (e.g. 1, 2, 4, 8 cores). |
 

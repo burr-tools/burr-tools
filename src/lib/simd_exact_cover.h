@@ -26,6 +26,7 @@
 #include <vector>
 #include <functional>
 #include <atomic>
+#include <stop_token>
 #include <cstring>
 #include <algorithm>
 
@@ -191,14 +192,14 @@ public:
 
   virtual void solve(
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const = 0;
 
   virtual void solveSubtree(
     const std::vector<unsigned int> &prefix_node_ids,
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const = 0;
 
@@ -237,14 +238,14 @@ public:
 
   void solve(
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const override;
 
   void solveSubtree(
     const std::vector<unsigned int> &prefix_node_ids,
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const override;
 
@@ -261,9 +262,7 @@ private:
   std::unordered_map<unsigned int, uint32_t> node_to_row_idx;
   bool use_avx2 = false;
   bool use_avx512 = false;
-#if defined(__aarch64__) || defined(__ARM_NEON)
-  bool use_neon = true;
-#endif
+  [[maybe_unused]] bool use_neon = false;
 
   struct SearchContext {
     std::vector<std::vector<uint32_t>> scratch_active_rows;
@@ -272,12 +271,15 @@ private:
     uint64_t local_iterations = 0;
   };
 
+  // Recursive hot path: the token is borrowed, not copied, so billions of
+  // backtracking nodes pay no atomic refcount traffic. Safe: every caller
+  // passes a token owned by a frame that outlives the recursion.
   void search(
     unsigned int depth,
     const BitsetType &occupied,
     SearchContext &ctx,
     SolutionCallback &callback,
-    const std::atomic<bool> &abort_flag,
+    const std::stop_token &stop,
     std::atomic<uint64_t> &iterations
   ) const;
 

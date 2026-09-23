@@ -19,6 +19,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "simd_huang_cover.h"
+#include "assembler_pool.h"
+#include "simd_config.h"
 #include "bt_assert.h"
 
 #include <cstdlib>
@@ -26,6 +28,7 @@
 #include <algorithm>
 #include <thread>
 #include <mutex>
+#include <stop_token>
 
 template <typename BitsetType>
 SimdHuangCover<BitsetType>::SimdHuangCover(unsigned int num_cols, unsigned int num_s)
@@ -34,21 +37,11 @@ SimdHuangCover<BitsetType>::SimdHuangCover(unsigned int num_cols, unsigned int n
   columns.resize(num_columns + 1);
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-  /* BURRTOOLS_NO_SIMD and BURRTOOLS_NO_AVX2 clear *both* flags, as in
-   * SimdExactCover. filterRows() tries the AVX-512 kernel first, so gating
-   * only use_avx2 would make BURRTOOLS_NO_AVX2=1 run wider SIMD instead of
-   * narrower, and leave the scalar fallback unreachable from tier 512 up.
-   */
-  if (!std::getenv("BURRTOOLS_NO_SIMD") && !std::getenv("BURRTOOLS_NO_AVX2")) {
-    use_avx2 = __builtin_cpu_supports("avx2");
-    use_avx512 = __builtin_cpu_supports("avx512f");
-  }
-  if (std::getenv("BURRTOOLS_NO_AVX512")) {
-    use_avx512 = false;
-  }
-#elif defined(__aarch64__) || defined(__ARM_NEON)
-  use_neon = !(std::getenv("BURRTOOLS_NO_SIMD") || std::getenv("BURRTOOLS_NO_NEON"));
+  use_avx2 = __builtin_cpu_supports("avx2") && SimdConfig::isVectorAccelerationEnabled();
+  use_avx512 = __builtin_cpu_supports("avx512f") && SimdConfig::isAvx512Allowed();
 #endif
+
+  use_neon = SimdConfig::isNeonAllowed();
 }
 
 template <typename BitsetType>
@@ -351,7 +344,7 @@ void SimdHuangCover<BitsetType>::filterRows(
 template <typename BitsetType>
 void SimdHuangCover<BitsetType>::solve(
   SolutionCallback callback,
-  const std::atomic<bool> &abort_flag,
+  std::stop_token stop,
   std::atomic<uint64_t> &iterations
 ) const {
   if (rows.empty() || active_column_list.empty())
@@ -368,7 +361,7 @@ void SimdHuangCover<BitsetType>::solve(
     ctx.scratch_active_rows[0][i] = static_cast<uint32_t>(i);
   }
 
-  search(0, ctx, callback, abort_flag, iterations);
+  search(0, ctx, callback, stop, iterations);
 
   uint64_t rem = ctx.local_iterations & 255;
   if (rem > 0) {
@@ -381,7 +374,7 @@ void SimdHuangCover<BitsetType>::solveSubtree(
   const std::vector<unsigned int> &prefix_node_ids,
   const std::vector<unsigned int> &hidden_node_ids,
   SolutionCallback callback,
-  const std::atomic<bool> &abort_flag,
+  std::stop_token stop,
   std::atomic<uint64_t> &iterations
 ) const {
   if (rows.empty() || active_column_list.empty())
@@ -453,7 +446,7 @@ void SimdHuangCover<BitsetType>::solveSubtree(
   }
 
   if (!conflict) {
-    search(prefix_node_ids.size(), ctx, callback, abort_flag, iterations);
+    search(prefix_node_ids.size(), ctx, callback, stop, iterations);
   }
 
   uint64_t rem = ctx.local_iterations & 255;
@@ -483,9 +476,9 @@ void SimdHuangCover<BitsetType>::generateTasks(
   }
 
   /* A node that expand() cannot refine any further still has to be handed to a
-   * worker: it may itself be a complete cover. Dropping it here (as the plain
-   * `return`s used to) loses that solution, because in this round the node is
-   * replaced by its set of children rather than being a task in its own right.
+   * worker: it may itself be a complete cover. Dropping it here loses that
+   * solution, because in this round the node is replaced by its set of
+   * children rather than being a task in its own right.
    */
   auto emitAsTask = [&](unsigned int depth, SearchContext &ctx) {
     SubtreeTask t;
@@ -567,9 +560,9 @@ void SimdHuangCover<BitsetType>::generateTasks(
      *
      * curr_active is a reference into that vector, and a resize would
      * reallocate the outer buffer and leave it dangling before the loop below
-     * walks it. The guard it replaces was dead anyway: every placed row
-     * consumes at least one voxel column, so depth < num_columns always, and
-     * the vector is created with num_columns + 16 entries.
+     * walks it. Depth stays in bounds regardless: every placed row consumes
+     * at least one voxel column, so depth < num_columns always, and the
+     * vector is created with num_columns + 16 entries.
      */
     bt_assert(depth + 1 < ctx.scratch_active_rows.size());
 
@@ -627,11 +620,15 @@ template <typename BitsetType>
 void SimdHuangCover<BitsetType>::parallelSolve(
   unsigned int num_workers,
   SolutionCallback callback,
-  const std::atomic<bool> &abort_flag,
+  std::stop_source &runStop,
   std::atomic<unsigned long> &iterations,
   std::atomic<size_t> &total_tasks,
-  std::atomic<size_t> &completed_tasks
+  std::atomic<size_t> &completed_tasks,
+  ThreadBudget *budget
 ) const {
+  // One token for the whole run: workers share it for cancellation checks,
+  // and a worker that throws fires the source so siblings stop promptly.
+  std::stop_token stop = runStop.get_token();
   unsigned int target_tasks = std::max(16u, num_workers * 4);
   std::vector<SubtreeTask> tasks;
   generateTasks(target_tasks, tasks);
@@ -639,40 +636,60 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   total_tasks.store(tasks.size(), std::memory_order_relaxed);
   completed_tasks.store(0, std::memory_order_relaxed);
 
-  if (tasks.empty() || abort_flag.load(std::memory_order_relaxed))
+  if (tasks.empty() || stop.stop_requested())
     return;
 
-  std::atomic<size_t> next_task_idx{0};
+  // Non-terminating pool (see assembler_pool.h): a worker that finds the
+  // queue empty waits for quiescence, so siblings blocked in
+  // disassemblerPool_c::submit() still have a live crew searching when they
+  // wake. No dynamic splitting here -- Huang subtrees run as seeded, skew
+  // absorbed at task granularity.
+  AssemblyTaskPool<SubtreeTask> pool;
+  pool.seed(std::move(tasks));
+  pool.setBudget(budget);
+
+  // Deliver stop promptly to parked workers (see assembler_0_c): waking only,
+  // no state change, so in-flight tasks are unaffected.
+  std::stop_callback wakeParkedOnStop(stop, [&] {
+    pool.notify();
+    if (budget != nullptr)
+      budget->notify();
+  });
+
   std::exception_ptr worker_exception = nullptr;
   std::mutex exception_mutex;
 
-  auto worker_fn = [&]() {
+  auto worker_fn = [&](std::stop_token st = {}) {
     try {
-      while (!abort_flag.load(std::memory_order_relaxed)) {
-        size_t idx = next_task_idx.fetch_add(1, std::memory_order_relaxed);
-        if (idx >= tasks.size())
-          break;
+      SubtreeTask t;
+      while (pool.pop_task(t, stop, st)) {
+        try {
+          std::atomic<uint64_t> task_iter{0};
+          search(t.depth, t.ctx, callback, stop, task_iter);
 
-        auto &t = tasks[idx];
-        std::atomic<uint64_t> task_iter{0};
-        search(t.depth, t.ctx, callback, abort_flag, task_iter);
-
-        uint64_t rem = t.ctx.local_iterations & 255;
-        if (rem > 0) {
-          task_iter.fetch_add(rem, std::memory_order_relaxed);
+          uint64_t rem = t.ctx.local_iterations & 255;
+          if (rem > 0) {
+            task_iter.fetch_add(rem, std::memory_order_relaxed);
+          }
+          iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
+          if (!stop.stop_requested() && !st.stop_requested()) {
+            completed_tasks.fetch_add(1, std::memory_order_relaxed);
+          }
+        } catch (...) {
+          pool.finishTask();
+          throw;
         }
-        iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
-        completed_tasks.fetch_add(1, std::memory_order_relaxed);
+        pool.finishTask();
       }
     } catch (...) {
       std::lock_guard<std::mutex> lock(exception_mutex);
       if (!worker_exception)
         worker_exception = std::current_exception();
-      const_cast<std::atomic<bool>&>(abort_flag).store(true, std::memory_order_relaxed);
+      runStop.request_stop();
     }
   };
 
-  std::vector<std::thread> threads;
+  std::vector<std::jthread> threads;
   threads.reserve(num_workers - 1);
   for (unsigned int i = 1; i < num_workers; i++) {
     threads.emplace_back(worker_fn);
@@ -695,10 +712,10 @@ void SimdHuangCover<BitsetType>::search(
   unsigned int depth,
   SearchContext &ctx,
   SolutionCallback &callback,
-  const std::atomic<bool> &abort_flag,
+  const std::stop_token &stop,
   std::atomic<uint64_t> &iterations
 ) const {
-  if (abort_flag.load(std::memory_order_relaxed))
+  if (stop.stop_requested())
     return;
 
   ctx.local_iterations++;
@@ -836,10 +853,8 @@ void SimdHuangCover<BitsetType>::search(
    *
    * DELIBERATELY no resize of ctx.scratch_active_rows here: curr_active is a
    * reference into that vector, and a resize would reallocate the outer buffer
-   * and leave it dangling before the loop below walks it. The guard this
-   * replaces was dead anyway -- every placed row consumes at least one voxel
-   * column, so depth < num_columns always, and the vector is created with
-   * num_columns + 16 entries.
+   * and leave it dangling before the loop below walks it (depth stays in
+   * bounds as argued above).
    */
   bt_assert(depth + 1 < ctx.scratch_active_rows.size());
 
@@ -874,7 +889,7 @@ void SimdHuangCover<BitsetType>::search(
     filterRows(curr_active, r_idx, cand.voxel_mask, cand.shape_id, shape_full,
                filter_monotonic, cand.shape_row_idx, has_range, max_allowed_range, next_active);
 
-    search(depth + 1, ctx, callback, abort_flag, iterations);
+    search(depth + 1, ctx, callback, stop, iterations);
 
     // Backtrack (zero heap allocation, zero pointer re-linking)
     ctx.current_solution.pop_back();
@@ -883,7 +898,7 @@ void SimdHuangCover<BitsetType>::search(
     }
     ctx.placed_voxels = ctx.placed_voxels ^ cand.voxel_mask;
 
-    if (abort_flag.load(std::memory_order_relaxed))
+    if (stop.stop_requested())
       return;
   }
 }

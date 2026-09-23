@@ -17,6 +17,7 @@ import argparse
 import os
 import selectors
 import signal
+import socket
 import statistics
 import subprocess
 import sys
@@ -131,6 +132,55 @@ def run_once(cmd, puzzle, timeout=600):
     }
 
 
+def git_info():
+    """Identify the measured source tree: full hash, subject, dirty flag.
+
+    Returns 'unknown' fields when git is unavailable or cwd is not a repo,
+    so metadata collection can never break a benchmark run.
+    """
+    def run(*git_args):
+        try:
+            out = subprocess.run(
+                ["git"] + list(git_args),
+                capture_output=True, text=True, timeout=10)
+            return out.stdout.strip() if out.returncode == 0 else "unknown"
+        except Exception:
+            return "unknown"
+
+    status = run("status", "--porcelain")
+    dirty = "unknown" if status == "unknown" else ("dirty" if status else "clean")
+    return {
+        "commit": run("rev-parse", "HEAD"),
+        "subject": run("log", "-1", "--format=%s"),
+        "worktree": dirty,
+    }
+
+
+def run_metadata(args):
+    """'# key: value' comment lines describing exactly how this run was made."""
+    info = git_info()
+    if args.ab:
+        mode = f"ab before={args.ab[0]} after={args.ab[1]}"
+    else:
+        mode = f"single binary={args.binary}"
+    try:
+        host = socket.gethostname()
+    except Exception:
+        host = "unknown"
+    return [
+        "# burrtools solver benchmark",
+        f"# timestamp_utc: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",
+        f"# mode: {mode}",
+        f"# git_commit: {info['commit']}",
+        f"# git_subject: {info['subject']}",
+        f"# git_worktree: {info['worktree']}",
+        f"# host: {host} cpus={os.cpu_count()}",
+        f"# runs: {args.runs} timeout_s: {args.timeout} "
+        f"threads: {args.threads} disassemble: {not args.no_disassemble} "
+        f"cpu_pin: {args.cpu}",
+    ]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--binary", help="burrTxt binary for single mode")
@@ -165,6 +215,10 @@ def main():
             out_file.write(line + "\n")
             out_file.flush()
 
+    # Provenance header: how exactly this run was made (git commit, host,
+    # flags). '#'-prefixed so CSV consumers can skip these lines.
+    for line in run_metadata(args):
+        log(line)
     log("tag,puzzle,run,wall_s,user_s,sys_s,cpu_pct,max_rss_mb,exit,stats")
     runs_data = {}
     if args.ab:

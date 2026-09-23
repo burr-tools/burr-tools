@@ -92,6 +92,15 @@ void solveThread_c::run(void){
       return;
     }
 
+    // Re-submit assemblies salvaged by an earlier stop (see
+    // disassemblerPool_c::requestStop): found but never disassembled, and
+    // suppressed by the assembler's dedup on re-search, so without this
+    // they would be lost on pause/continue. First in, so order stays stable.
+    if (disasm_pool && !stopPressed) {
+      for (auto &stashed : puzzle.takeStashedAssemblies())
+        disasm_pool->submit(std::move(stashed));
+    }
+
     if (!stopPressed) {
 
       action = solveThread_c::ACT_ASSEMBLING;
@@ -101,6 +110,10 @@ void solveThread_c::run(void){
         if (!stopPressed)
           action = solveThread_c::ACT_DISASSEMBLING;
         disasm_pool->finish();
+        // Move anything the pool salvaged (stop with a full queue, or
+        // submits rejected after stop) to the problem for the next run.
+        // Normally empty; finish() already delivered everything filed.
+        puzzle.stashAssemblies(disasm_pool->takeSalvaged());
       }
 
       puzzle.addTime(time(0)-startTime);
@@ -142,12 +155,13 @@ assm(0)
 {
 
   if (par & PAR_DISASSM) {
-    /* Thread budget architecture:
-     * Disassembler pool is instantiated with 0 (defaulting to BURRTOOLS_THREADS or hardware_concurrency).
-     * The Tier 1 assembler and Tier 2 disassembler pool concurrently run up to N workers each.
-     * This overlap is deliberate: disassembly is memory/movement-closure bound while assembly is
-     * CPU/search bound. Dynamic backpressure via bounded queues (MAX_QUEUE_SIZE = 64) prevents
-     * queue bloat and coordinates CPU utilization (see design/2026-09-19-threading-model-assessment.md).
+    /* Thread budget architecture (see the concurrency architecture note
+     * in thread_budget.h):
+     * One ThreadBudget shared by the assembly task pool(s) and this pool
+     * caps concurrently *working* solver threads at the pool size; idle
+     * threads on either side hold nothing. Created only for real
+     * (non-inline) pools with budgeting enabled -- otherwise null and all
+     * budget call sites behave exactly as without any cap.
      */
     disasm_pool = std::make_unique<disassemblerPool_c>(
       puz,
@@ -156,6 +170,10 @@ assm(0)
         onDisassemblyResult(seqNo, std::move(a), std::move(s));
       }
     );
+    if (threadBudgetEnabled() && !disasm_pool->isInline()) {
+      threadBudget_ = std::make_unique<ThreadBudget>(disasm_pool->threadCount());
+      disasm_pool->setBudget(threadBudget_.get());
+    }
   }
 }
 
@@ -175,7 +193,7 @@ bool solveThread_c::assembly(std::unique_ptr<assembly_c> a) {
   if (parameters & PAR_DISASSM) {
     bt_assert(disasm_pool);
     disasm_pool->submit(std::move(a));
-    return true;
+    return !disasm_pool->isAborted() && !disasm_pool->isStopRequested() && !stopPressed;
   }
 
   // Assembly-only mode
@@ -343,6 +361,9 @@ void solveThread_c::stopInternal(void) {
   if (puzzle.getAssembler())
     puzzle.getAssembler()->stop();
 
+  if (disasm_pool)
+    disasm_pool->requestStop();
+
   stopPressed = true;
 }
 
@@ -382,7 +403,13 @@ bool solveThread_c::start(bool stop_after_prep) {
     a = (a+1) / 2;
   }
 
-  return thread_c::start();
+  running.store(true, std::memory_order_release);
+  worker_thread = std::jthread([this]() {
+    run();
+    running.store(false, std::memory_order_release);
+  });
+
+  return worker_thread.joinable();
 }
 
 unsigned int solveThread_c::currentActionParameter(void) {

@@ -23,9 +23,12 @@
 
 #include "simd_exact_cover.h"
 
+class ThreadBudget;
+
 #include <vector>
 #include <functional>
 #include <atomic>
+#include <stop_token>
 #include <cstdint>
 #include <unordered_map>
 #include <bit>
@@ -67,7 +70,7 @@ public:
 
   virtual void solve(
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const = 0;
 
@@ -75,17 +78,21 @@ public:
     const std::vector<unsigned int> &prefix_node_ids,
     const std::vector<unsigned int> &hidden_node_ids,
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const = 0;
 
+  // NOTE: runStop is a non-const ref because libc++ (Apple Clang) declares
+  // stop_source::request_stop() non-const, unlike libstdc++. A const ref
+  // fails to compile on macOS when the body fires the source on exceptions.
   virtual void parallelSolve(
     unsigned int num_workers,
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_source &runStop,
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
-    std::atomic<size_t> &completed_tasks
+    std::atomic<size_t> &completed_tasks,
+    ThreadBudget *budget = nullptr
   ) const = 0;
 
   virtual unsigned int getNumRows() const = 0;
@@ -154,7 +161,7 @@ public:
 
   void solve(
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const override;
 
@@ -162,24 +169,25 @@ public:
     const std::vector<unsigned int> &prefix_node_ids,
     const std::vector<unsigned int> &hidden_node_ids,
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const override;
 
   void parallelSolve(
     unsigned int num_workers,
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_source &runStop,
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
-    std::atomic<size_t> &completed_tasks
+    std::atomic<size_t> &completed_tasks,
+    ThreadBudget *budget = nullptr
   ) const override;
 
   unsigned int getNumRows() const override { return rows.size(); }
   unsigned int getNumColumns() const override { return num_columns; }
   unsigned int getNumShapes() const override { return num_shapes; }
 
-  /* must mirror the dispatch ladder at the top of filterRows() */
+  /* Keep in sync with the filterRows() dispatch ladder. */
   const char * activeKernel() const override {
     if (use_avx512 && BitsetType::NUM_WORDS >= 8) return "avx512";
     if (use_avx2) return "avx2";
@@ -204,10 +212,9 @@ private:
   [[maybe_unused]] bool use_avx2 = false;
   [[maybe_unused]] bool use_avx512 = false;
 
-  /* mirrors SimdExactCover: without this the NEON kernel is unconditional on
-   * ARM, so BURRTOOLS_NO_AVX2/NO_SIMD silently A/B the same code against
-   * itself on the project's primary development platform and the scalar loop
-   * below the dispatch is dead
+  /* Gate use_neon on SimdConfig like the other kernels, so the kill switches
+   * select the scalar loop instead of silently benchmarking one kernel
+   * against itself.
    */
   [[maybe_unused]] bool use_neon = false;
 
@@ -227,11 +234,13 @@ private:
 
     void generateTasks(unsigned int target_tasks, std::vector<SubtreeTask> &tasks) const;
 
+  // Recursive hot path: the token is borrowed, not copied (see
+  // SimdExactCover::search for why).
   void search(
     unsigned int depth,
     SearchContext &ctx,
     SolutionCallback &callback,
-    const std::atomic<bool> &abort_flag,
+    const std::stop_token &stop,
     std::atomic<uint64_t> &iterations
   ) const;
 

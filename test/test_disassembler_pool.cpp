@@ -17,6 +17,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <sstream>
 #include <cstdlib>
 #include <atomic>
 
@@ -158,7 +159,7 @@ TEST_CASE("disassembler pool: unit test with backpressure and sequence ordering"
       }
     );
 
-    // Submit 100 assemblies (greater than MAX_QUEUE_SIZE = 64) to exercise backpressure
+    // Submit 100 assemblies (greater than max_reorder_size = 64) to exercise permit throttling, reorder-window backpressure, and sequence ordering
     const unsigned int SUBMIT_COUNT = 100;
     for (unsigned int i = 0; i < SUBMIT_COUNT; i++) {
       auto assm = std::make_unique<assembly_c>(gt);
@@ -171,6 +172,117 @@ TEST_CASE("disassembler pool: unit test with backpressure and sequence ordering"
   REQUIRE(receivedSeqs.size() == 100);
   for (size_t i = 0; i < receivedSeqs.size(); i++) {
     CHECK(receivedSeqs[i] == i);
+  }
+}
+
+TEST_CASE("disassembler pool: requestStop salvages the backlog without loss", "[disasm][pool][salvage]") {
+  /* Gated merger => deterministic backpressure: with the callback blocked,
+   * the reorder buffer fills, workers park, the queue fills, and the
+   * submitter blocks. requestStop() must then salvage the queued assemblies
+   * (merger skips their sequence numbers via dropped_) so that
+   * delivered + salvaged == submitted exactly: nothing lost, nothing twice.
+   */
+  auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+  const gridType_c * gt = problem->getPuzzle().getGridType();
+  REQUIRE(gt != nullptr);
+
+  std::atomic<bool> gate{false};
+  std::vector<uint64_t> receivedSeqs;
+  std::mutex cbMutex;
+
+  disassemblerPool_c pool(
+    *problem,
+    2,
+    [&](uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
+      (void)a;
+      (void)s;
+      while (!gate.load(std::memory_order_acquire))
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      std::lock_guard<std::mutex> lock(cbMutex);
+      receivedSeqs.push_back(seqNo);
+    }
+  );
+
+  static constexpr unsigned int SUBMIT_COUNT = 200;
+  std::atomic<unsigned int> attempted{0};
+  std::thread submitter([&]() {
+    for (unsigned int i = 0; i < SUBMIT_COUNT; i++) {
+      auto assm = std::make_unique<assembly_c>(gt);
+      attempted.fetch_add(1, std::memory_order_relaxed);
+      if (!pool.submit(std::move(assm)))
+        break; // rejected after stop: the assembly is salvaged in the pool
+    }
+  });
+
+  // The submitter outruns 2 workers by orders of magnitude (at most
+  // 64 filed + 64 queued + 2 in flight fit with the merger gated), so it
+  // is blocked on backpressure long before this sleep ends.
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  pool.requestStop();
+  gate.store(true, std::memory_order_release);
+  submitter.join();
+  pool.finish();
+  std::vector<std::unique_ptr<assembly_c>> salvaged = pool.takeSalvaged();
+
+  // Exact accounting: every submitted assembly was either delivered or
+  // salvaged (submit rejections land in the salvage, never dropped).
+  REQUIRE(receivedSeqs.size() + salvaged.size() == attempted.load());
+  // Delivered sequence numbers are strictly increasing and unique (the
+  // merger still emits in submit order, skipping dropped sequences).
+  for (size_t i = 1; i < receivedSeqs.size(); i++) {
+    CHECK(receivedSeqs[i] > receivedSeqs[i - 1]);
+  }
+  // The submitter provably hit backpressure, so there was backlog to salvage.
+  CHECK(!salvaged.empty());
+  for (const auto &a : salvaged) {
+    CHECK(a != nullptr);
+  }
+}
+
+TEST_CASE("problem: stashed assemblies survive save and reload", "[stash][roundtrip]") {
+  auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+  const gridType_c * gt = problem->getPuzzle().getGridType();
+  REQUIRE(gt != nullptr);
+
+  // Build valid (all non-placed) assemblies: the loader requires exactly
+  // one placement entry per part.
+  unsigned int pieces = 0;
+  for (unsigned int i = 0; i < problem->getNumberOfParts(); i++)
+    pieces += problem->getPartMaximum(i);
+  REQUIRE(pieces > 0);
+
+  std::vector<std::unique_ptr<assembly_c>> v;
+  for (int k = 0; k < 3; k++) {
+    auto a = std::make_unique<assembly_c>(gt);
+    for (unsigned int i = 0; i < pieces; i++)
+      a->addNonPlacement();
+    v.push_back(std::move(a));
+  }
+  problem->stashAssemblies(std::move(v));
+
+  std::ostringstream saved;
+  {
+    xmlWriter_c xml(saved);
+    p->save(xml);
+  }
+  REQUIRE(saved.str().size() > 0);
+
+  std::istringstream reloaded(saved.str());
+  xmlParser_c pars(reloaded);
+  puzzle_c restored(pars);
+
+  problem_c * restoredProblem = restored.getProblem(0);
+  REQUIRE(restoredProblem != nullptr);
+  std::vector<std::unique_ptr<assembly_c>> back = restoredProblem->takeStashedAssemblies();
+  REQUIRE(back.size() == 3);
+  for (const auto &a : back) {
+    CHECK(a != nullptr);
   }
 }
 
@@ -286,14 +398,18 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
         if (act == solveThread_c::ACT_ASSEMBLING ||
             act == solveThread_c::ACT_DISASSEMBLING ||
             (problem->numAssembliesKnown() && problem->getNumAssemblies() > 0)) {
+          auto stop_start = std::chrono::steady_clock::now();
           st1.stop();
+          while (st1.isRunning()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          }
+          auto stop_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - stop_start
+          ).count();
+          CHECK(stop_ms < 2000);
           break;
         }
         std::this_thread::yield();
-      }
-
-      while (st1.isRunning()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
 
       CHECK(st1.stopped());

@@ -31,11 +31,13 @@
 #include <atomic>
 #include <memory>
 #include <functional>
+#include <stop_token>
 
 class voxel_c;
 class assembly_c;
 class problem_c;
 class xmlWriter_c;
+class ThreadBudget;
 
 /**
  * Helper for the assembler preparation step: enumerates all placements of a
@@ -104,6 +106,13 @@ public:
    * as parameter
    */
   virtual bool assembly(std::unique_ptr<assembly_c> a) = 0;
+
+  /* Shared thread budget for the search (see the concurrency architecture
+   * note in thread_budget.h). The parallel search paths ask the callback
+   * for it to cap searching + disassembling threads; null (default) means
+   * uncapped.
+   */
+  virtual ThreadBudget *threadBudget() { return nullptr; }
 
   virtual ~assembler_cb(void) {}
 };
@@ -229,7 +238,7 @@ public:
   virtual float getFinished(void) const { return 0; }
 
   /** stops the assembly process sometimes in the near future. */
-  virtual void stop(void) {}
+  virtual void stop(void);
 
   /** returns true, as soon as the process really has stopped */
   virtual bool stopped(void) const { return false; }
@@ -303,12 +312,7 @@ public:
    */
   static const unsigned int MAX_THREADS = 256;
 
-  /* Thread count and coarse progress, shared by both engines.
-   *
-   * These used to be duplicated verbatim in assembler_0_c and assembler_1_c,
-   * and had already drifted three separate times -- one engine zeroed
-   * totalTasks between runs and the other did not, one got the shape-cache
-   * pre-warm fix first, and the getFinished() override differed. One
+  /* Thread count and coarse progress, shared by both engines: one
    * cancellation and progress contract is easier to keep correct than two.
    */
   unsigned int numThreads = 0;
@@ -319,6 +323,35 @@ public:
    */
   std::atomic<size_t> totalTasks{0};
   std::atomic<size_t> completedTasks{0};
+
+  /* One cancellation contract for all engines.
+   *
+   * A stop_source refreshed at every run entry (assemble()/debug_step()).
+   * Workers and search loops observe its token; stop() fires it.
+   *
+   * Not safe for concurrent runs on one instance: refreshing races with a
+   * running search.
+   */
+  std::stop_source runStop;
+  mutable std::mutex runStopMutex;
+
+  /* Start a new run: refresh the stop source and hand out its token.
+   * Call once at assemble()/debug_step() entry, before any worker exists.
+   */
+  std::stop_token beginRun() {
+    std::lock_guard<std::mutex> lock(runStopMutex);
+    runStop = std::stop_source{};
+    return runStop.get_token();
+  }
+
+  /* Snapshot of the current run's token for rare paths (getFinished(),
+   * task generation, per-solution callbacks). Hot loops must capture the
+   * token once at their own entry instead of calling this per node.
+   */
+  std::stop_token currentRunToken() const {
+    std::lock_guard<std::mutex> lock(runStopMutex);
+    return runStop.get_token();
+  }
 
   /* serialises the hand off of a finished assembly to the callback */
   mutable std::mutex callbackMutex;

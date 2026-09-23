@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "movementanalysator.h"
+#include "simd_config.h"
 
 #include "bt_assert.h"
 #include "movementcache.h"
@@ -116,12 +117,8 @@ void movementAnalysator_c::prepareFill(void) {
 #include <arm_neon.h>
 #endif
 
-static bool disasmOptDisabled() {
-  return std::getenv("BURRTOOLS_NO_DISASM_OPT") != nullptr;
-}
-
 static bool simdDisabled() {
-  return (std::getenv("BURRTOOLS_NO_DISASM_SIMD") != nullptr || std::getenv("BURRTOOLS_NO_AVX2") != nullptr || std::getenv("BURRTOOLS_NO_DISASM_OPT") != nullptr);
+  return !SimdConfig::isDisassemblerSimdEnabled();
 }
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
@@ -233,69 +230,33 @@ static void rfw_scalar(unsigned int * block, unsigned int n) {
   }
 }
 
+void movementAnalysator_c::selectKernels(void) {
+
+  use_avx512_kernel = false;
+  use_avx2_kernel = false;
+  use_neon_kernel = false;
+
+#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
+  use_avx512_kernel = __builtin_cpu_supports("avx512f") && !simdDisabled() && SimdConfig::isAvx512Allowed();
+  use_avx2_kernel = __builtin_cpu_supports("avx2") && !simdDisabled();
+#elif defined(__aarch64__) || defined(__ARM_NEON)
+  use_neon_kernel = !simdDisabled();
+#endif
+}
+
 void movementAnalysator_c::closureFull(void) {
 
   const unsigned int n = pieces->size();
   const unsigned int dirs = cache->numDirections();
   const unsigned int rowStep = dirs * piecenumber;
 
-  if (disasmOptDisabled()) {
-    unsigned int size = dirs * pieces->size();
-    bool again = false;
-    for (unsigned int d = 0; d < dirs; d++) {
-      do {
-        again = false;
-        unsigned int * pos1 = matrix.data() + d;
-        unsigned int idx, i;
-        for (unsigned int y = 0; y < size; y += dirs) {
-          unsigned int * pos2 = matrix.data() + d;
-          for (unsigned int x = 0; x < size; x += dirs) {
-            unsigned int min = *pos2 + *pos1;
-            for (i = dirs, idx = rowStep; i < size; i += dirs, idx += rowStep) {
-              unsigned int l = pos2[idx] + pos1[i];
-              if (l < min) min = l;
-            }
-            if (min < pos1[x]) {
-              pos1[x] = min;
-              if (!again) {
-                unsigned int * pos3 = matrix.data() + d;
-                for (i = 0; i < y; i += dirs) {
-                  if (min + pos3[y] < pos3[x]) {
-                    again = true;
-                    break;
-                  }
-                  pos3 += rowStep;
-                }
-                if (!again) {
-                  pos3 = matrix.data() + d + piecenumber * x;
-                  for (i = 0; i < x; i += dirs)
-                    if (pos3[i] + min < pos1[i]) {
-                      again = true;
-                      break;
-                    }
-                }
-              }
-            }
-            pos2 += dirs;
-          }
-          pos1 += rowStep;
-        }
-      } while (again > 0);
-    }
-    return;
-  }
-
   if (planar_block.size() < (size_t)n * n) {
     planar_block.resize((size_t)n * n);
   }
 
-#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-  const bool has_avx512 = __builtin_cpu_supports("avx512f") && !simdDisabled() && (std::getenv("BURRTOOLS_NO_AVX512") == nullptr);
-  const bool has_avx2 = __builtin_cpu_supports("avx2") && !simdDisabled();
-#endif
-
   /* Roy-Floyd-Warshall all-pairs shortest paths on movement constraints.
-   * Planar memory layout enables contiguous vector loads/stores/mins. */
+   * Planar memory layout enables contiguous vector loads/stores/mins.
+   * Kernel choice was resolved by selectKernels() at run entry. */
   for (unsigned int d = 0; d < dirs; d++) {
     // 1. Pack direction d into contiguous planar block
     for (unsigned int y = 0; y < n; y++) {
@@ -308,15 +269,15 @@ void movementAnalysator_c::closureFull(void) {
 
     // 2. Transitive closure on contiguous planar block
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-    if (has_avx512 && n >= 16) {
+    if (use_avx512_kernel && n >= 16) {
       rfw_avx512(planar_block.data(), n);
-    } else if (has_avx2) {
+    } else if (use_avx2_kernel) {
       rfw_avx2(planar_block.data(), n);
     } else {
       rfw_scalar(planar_block.data(), n);
     }
 #elif defined(__aarch64__) || defined(__ARM_NEON)
-    if (!simdDisabled()) {
+    if (use_neon_kernel) {
       rfw_neon(planar_block.data(), n);
     } else {
       rfw_scalar(planar_block.data(), n);
@@ -389,7 +350,10 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
   unsigned int dirs = cache->numDirections();
   bt_assert(nd < dirs);
 
-  if (!disasmOptDisabled() && next_pn <= 64) {
+  /* Bitboard flood fill over the closure matrix. The 64-bit masks cover at
+   * most 64 pieces; larger problems fall through to the classic loop below.
+   */
+  if (next_pn <= 64) {
     uint64_t moved_mask = 1ULL << nextpiece;
     uint64_t check_mask = moved_mask;
     unsigned int moved_count = 1;
@@ -446,9 +410,11 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
     return true;
   }
 
-  /* we count the number of pieces that need to be moved, if this number
-   * gets bigger than halve of the pieces of the current problem we
-   * stop and return that this movement is rubbish
+  /* Fallback for problems with more than 64 pieces, which the 64-bit
+   * bitboard path above cannot represent. We count the number of pieces
+   * that need to be moved, if this number gets bigger than halve of the
+   * pieces of the current problem we stop and return that this movement
+   * is rubbish
    */
   unsigned int moved_pieces = 1;
 
@@ -981,6 +947,10 @@ disassemblerNode_c * movementAnalysator_c::findMatching(disassemblerNode_c * nd,
 }
 
 void movementAnalysator_c::completeFind(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces, std::vector<disassemblerNode_c*> * result) {
+
+  /* Same per-run kernel resolution as disassemble(): this is the other
+   * run entry point (used e.g. by the GUI movement browser). */
+  selectKernels();
 
   init_find(searchnode, pieces);
 

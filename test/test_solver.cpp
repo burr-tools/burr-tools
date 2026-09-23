@@ -1105,7 +1105,10 @@ TEST_CASE("assembler 1: getFinished does not report 100% before starting a resto
   assm.debug_step(1);
   REQUIRE(assm.getIterations() > 0);
 
-  // Under old code, !running && !abbort && iterations > 0 caused getFinished() to falsely return 1.0f!
+  // A partially searched assembler must not report finished: after one
+  // debug step the run token is unstopped and stacks are non-empty, so the
+  // progress estimate has to stay below 1.0f (a stale completion flag or an
+  // "idle means done" shortcut would falsely return 1.0f here).
   CHECK(assm.getFinished() < 1.0f);
 }
 
@@ -1193,3 +1196,183 @@ TEST_CASE("Assembler 1 SIMD search agrees with DLX on a reduced matrix", "[solve
     CHECK(simd == dlx);
   }
 }
+
+TEST_CASE("Parallel assembler 0 SIMD: completed search does not replay on second assemble or on restore", "[solver][replay][simd]") {
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", nullptr);
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::unique_ptr<assembler_c> assm = std::make_unique<assembler_0_c>(*problem);
+  REQUIRE(assm != nullptr);
+  REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  TestAssemblerCallback cb1(nullptr);
+  assm->assemble(&cb1);
+  CHECK(cb1.assemblies == 12);
+  CHECK(assm->getFinished() == 1.0f);
+
+  TestAssemblerCallback cb2(nullptr);
+  assm->assemble(&cb2);
+  CHECK(cb2.assemblies == 0);
+  CHECK(assm->getFinished() == 1.0f);
+
+  std::stringstream ss;
+  {
+    xmlWriter_c writer(ss);
+    assm->save(writer);
+  }
+  xmlParser_c parser(ss);
+  parser.nextTag();
+  parser.require(xmlParser_c::START_TAG, "assembler");
+  std::string version = parser.getAttributeValue("version");
+  std::string state = parser.nextText();
+
+  std::unique_ptr<assembler_c> assm2 = std::make_unique<assembler_0_c>(*problem);
+  REQUIRE(assm2 != nullptr);
+  REQUIRE(assm2->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  assembler_c::errState err = assm2->setPosition(state.c_str(), version.c_str());
+  CHECK(err == assembler_c::ERR_NONE);
+  CHECK(assm2->getFinished() == 1.0f);
+
+  TestAssemblerCallback cb3(nullptr);
+  assm2->assemble(&cb3);
+  CHECK(cb3.assemblies == 0);
+}
+
+TEST_CASE("Single-threaded assembler 0 SIMD: completed search does not replay on second assemble or on restore", "[solver][replay][simd]") {
+  ScopedEnv threads("BURRTOOLS_THREADS", "1");
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", nullptr);
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::unique_ptr<assembler_c> assm = std::make_unique<assembler_0_c>(*problem);
+  REQUIRE(assm != nullptr);
+  REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  TestAssemblerCallback cb1(nullptr);
+  assm->assemble(&cb1);
+  CHECK(cb1.assemblies == 12);
+  CHECK(assm->getFinished() == 1.0f);
+
+  TestAssemblerCallback cb2(nullptr);
+  assm->assemble(&cb2);
+  CHECK(cb2.assemblies == 0);
+  CHECK(assm->getFinished() == 1.0f);
+
+  std::stringstream ss;
+  {
+    xmlWriter_c writer(ss);
+    assm->save(writer);
+  }
+  xmlParser_c parser(ss);
+  parser.nextTag();
+  parser.require(xmlParser_c::START_TAG, "assembler");
+  std::string version = parser.getAttributeValue("version");
+  std::string state = parser.nextText();
+
+  std::unique_ptr<assembler_c> assm2 = std::make_unique<assembler_0_c>(*problem);
+  REQUIRE(assm2 != nullptr);
+  REQUIRE(assm2->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  assembler_c::errState err = assm2->setPosition(state.c_str(), version.c_str());
+  CHECK(err == assembler_c::ERR_NONE);
+  CHECK(assm2->getFinished() == 1.0f);
+
+  TestAssemblerCallback cb3(nullptr);
+  assm2->assemble(&cb3);
+  CHECK(cb3.assemblies == 0);
+}
+
+TEST_CASE("Parallel assembler 1 SIMD: completed search does not replay on second assemble or on restore", "[solver][replay][simd]") {
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", nullptr);
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::unique_ptr<assembler_c> assm = std::make_unique<assembler_1_c>(*problem);
+  REQUIRE(assm != nullptr);
+  REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  TestAssemblerCallback cb1(nullptr);
+  assm->assemble(&cb1);
+  CHECK(cb1.assemblies == 12);
+  CHECK(assm->getFinished() == 1.0f);
+
+  TestAssemblerCallback cb2(nullptr);
+  assm->assemble(&cb2);
+  CHECK(cb2.assemblies == 0);
+  CHECK(assm->getFinished() == 1.0f);
+
+  std::stringstream ss;
+  {
+    xmlWriter_c writer(ss);
+    assm->save(writer);
+  }
+  xmlParser_c parser(ss);
+  parser.nextTag();
+  parser.require(xmlParser_c::START_TAG, "assembler");
+  std::string version = parser.getAttributeValue("version");
+  std::string state = parser.nextText();
+
+  std::unique_ptr<assembler_c> assm2 = std::make_unique<assembler_1_c>(*problem);
+  REQUIRE(assm2 != nullptr);
+  REQUIRE(assm2->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  assembler_c::errState err = assm2->setPosition(state.c_str(), version.c_str());
+  CHECK(err == assembler_c::ERR_NONE);
+  CHECK(assm2->getFinished() == 1.0f);
+
+  TestAssemblerCallback cb3(nullptr);
+  assm2->assemble(&cb3);
+  CHECK(cb3.assemblies == 0);
+}
+
+TEST_CASE("Single-threaded assembler 1 SIMD: completed search does not replay on second assemble or on restore", "[solver][replay][simd]") {
+  ScopedEnv threads("BURRTOOLS_THREADS", "1");
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", nullptr);
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::unique_ptr<assembler_c> assm = std::make_unique<assembler_1_c>(*problem);
+  REQUIRE(assm != nullptr);
+  REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  TestAssemblerCallback cb1(nullptr);
+  assm->assemble(&cb1);
+  CHECK(cb1.assemblies == 12);
+  CHECK(assm->getFinished() == 1.0f);
+
+  TestAssemblerCallback cb2(nullptr);
+  assm->assemble(&cb2);
+  CHECK(cb2.assemblies == 0);
+  CHECK(assm->getFinished() == 1.0f);
+
+  std::stringstream ss;
+  {
+    xmlWriter_c writer(ss);
+    assm->save(writer);
+  }
+  xmlParser_c parser(ss);
+  parser.nextTag();
+  parser.require(xmlParser_c::START_TAG, "assembler");
+  std::string version = parser.getAttributeValue("version");
+  std::string state = parser.nextText();
+
+  std::unique_ptr<assembler_c> assm2 = std::make_unique<assembler_1_c>(*problem);
+  REQUIRE(assm2 != nullptr);
+  REQUIRE(assm2->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  assembler_c::errState err = assm2->setPosition(state.c_str(), version.c_str());
+  CHECK(err == assembler_c::ERR_NONE);
+  CHECK(assm2->getFinished() == 1.0f);
+
+  TestAssemblerCallback cb3(nullptr);
+  assm2->assemble(&cb3);
+  CHECK(cb3.assemblies == 0);
+}
+
+
