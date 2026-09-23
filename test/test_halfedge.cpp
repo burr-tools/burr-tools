@@ -7,6 +7,8 @@
 #include "halfedge/polyhedron.h"
 #include "halfedge/vertex.h"
 #include "halfedge/volume.h"
+#include "lib/gridtype.h"
+#include "lib/voxel.h"
 
 #include <memory>
 #include <set>
@@ -454,4 +456,45 @@ TEST_CASE("volume: the library's volume agrees with an independent calculation",
     INFO(names[i]);
     REQUIRE(volume(*shapes[i]) == meshApprox(independentVolume(*shapes[i])));
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* finalize on a real voxel mesh                                        */
+/* ------------------------------------------------------------------ */
+
+TEST_CASE("polyhedron: finalize twins every half-edge of a voxel mesh, including the four at an edge two cubes share",
+          "[halfedge]") {
+  /* Regression for a crash in the 3D view. Two voxels that touch only along
+     an edge put four half-edges on that edge, which is the even-count branch
+     of finalize(); every other edge is an ordinary pair. finalize() used to
+     look the pairs up with multimap::find() and count forward from whatever
+     it returned. libstdc++ returns the first element of the equal range, but
+     find() is allowed to return any of them and libc++ 22 does, so an
+     ordinary two-sided edge could be counted as one-sided, left untwinned,
+     and then trip closeSurface()'s assertion for every mesh that calls
+     finalize() -- a single cube included. */
+  gridType_c gt(gridType_c::GT_BRICKS);
+  std::unique_ptr<voxel_c> v(gt.getVoxel(6, 6, 6, voxel_c::VX_EMPTY));
+  v->setState(2, 2, 0, voxel_c::VX_FILLED);
+  v->setState(3, 3, 0, voxel_c::VX_FILLED);
+
+  std::unique_ptr<Polyhedron> meshes[] = {
+    std::unique_ptr<Polyhedron>(v->getFlatMesh()),
+    std::unique_ptr<Polyhedron>(v->getWireframeMesh()),
+    std::unique_ptr<Polyhedron>(v->getSTLMesh()),
+  };
+  const char * names[] = { "flat", "wireframe", "STL" };
+
+  for (int i = 0; i < 3; i++) {
+    INFO(names[i]);
+    REQUIRE(meshes[i]);
+    for (Polyhedron::const_edge_iterator it = meshes[i]->eBegin(); it != meshes[i]->eEnd(); ++it)
+      REQUIRE((*it)->twin() != nullptr);
+    REQUIRE(twinsAreMutual(*meshes[i]));
+    REQUIRE(endpointsAgree(*meshes[i]));
+  }
+
+  /* the flat mesh is a closed surface: nothing for closeSurface() to add */
+  for (Polyhedron::const_face_iterator it = meshes[0]->fBegin(); it != meshes[0]->fEnd(); ++it)
+    REQUIRE_FALSE((*it)->hole());
 }
