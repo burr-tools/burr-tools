@@ -196,14 +196,15 @@ There are exactly two points in time where one task becomes many:
 
 ### 5.1 `assembler_0_c` DLX (`SubtreeTask{vector<PrefixStep{col,row}>}`)
 
-`splitPrefix(P)` (`assembler_0.cpp:1636`): on the worker's private `assemblerWorker_c` matrices (root state after construction / after any non-aborted `searchSubtree`, which unwinds its prefix): apply `P` via `cover(col)+cover_row(row)`, run the *same* MRV column selection as `searchSubtree` (holes check included), enumerate `r = down(c)..c` into children `P ∪ {(c,r)}`, then unwind via a lambda so every early return stays balanced. Pure read of `parent` constants (`piecenumber`, `holes`, `varivoxelEnd`); scratch matrices are thread-local. Fewer than 2 children → empty vector (execute `P`).
+`splitPrefix(P)` (`assembler_0.cpp`, `assembler_0_c::splitPrefix`): on the worker's private `assemblerWorker_c` matrices (root state after construction / after any non-aborted `searchSubtree`, which unwinds its prefix): apply `P` via `cover(col)+cover_row(row)`, run the *same* MRV column selection as `searchSubtree` (holes check included), enumerate `r = down(c)..c` into children `P ∪ {(c,r)}`, then unwind via a lambda so every early return stays balanced. Pure read of `parent` constants (`piecenumber`, `holes`, `varivoxelEnd`); scratch matrices are thread-local. Fewer than 2 children → empty vector (execute `P`).
 
 ### 5.2 `assembler_0_c` SIMD (`SimdExactCover`, shared read-only solver)
 
 No new solver API: the SIMD worker threads reuse the *same DLX prefix
 split* (§5.1) on a per-thread scratch `assemblerWorker_c`, then convert
 the kept/pushed children to node-id lists for the shared read-only
-`solver->solveSubtree()` (`assembler_0.cpp:1844-1856`). Splitting never
+`solver->solveSubtree()` (the SIMD branch of `parallelMultiSearch` in
+`assembler_0.cpp`). Splitting never
 mutates solver tables (written once in `createSimdSolver()` before
 workers spawn). Both `assembler_0` paths therefore share one seed and
 one split implementation.

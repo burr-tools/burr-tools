@@ -61,9 +61,9 @@ test-regression: build
 # file ever genuinely need one, use an inline `// cppcheck-suppress <id>` comment
 # (--inline-suppr is on) instead of re-adding a global suppression.
 #
-# Also absent is `--suppress="*:*test*"`, which was a substring glob matching any
-# path merely containing "test", not the test directory; `-i test` above already
-# excludes that directory.
+# Also absent is `--suppress="*:*test*"`: as a substring glob it matches any path
+# merely containing "test", not the test directory; `-i test` above already
+# excludes that directory, so don't add it back.
 check-cppcheck: setup
     cppcheck --project=build/compile_commands.json \
              -i subprojects \

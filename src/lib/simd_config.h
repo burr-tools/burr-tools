@@ -41,12 +41,11 @@
  * 3. Granular Hardware Sub-ISA Overrides:
  *    - BURRTOOLS_NO_AVX512=1: Disables AVX-512 only, keeping AVX2 / NEON.
  *
- * 4. Disassembler Movement Analysis:
- *    - BURRTOOLS_NO_DISASM_SIMD=1: Disables vector Roy-Floyd-Warshall closure in disassembler.
- *      The planar closure and bitboard movement checks are always enabled
- *      (they measured faster on every puzzle in the corpus); only the
- *      vector kernels stay toggleable for A/B benchmarking.
- */
+  * 4. Disassembler Movement Analysis:
+  *    - BURRTOOLS_NO_DISASM_SIMD=1: Disables vector Roy-Floyd-Warshall closure in disassembler.
+  *      The planar closure and bitboard movement checks are always enabled;
+  *      only the vector kernels stay toggleable for A/B benchmarking.
+  */
 namespace SimdConfig {
 
 inline bool isBitParallelSolverEnabled() {

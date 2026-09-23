@@ -243,16 +243,16 @@ struct SearchPrefix {
    - This prevents disassembler starvation under asymmetric subtree density while capping in-flight disassemblies to $N$.
 
 3. **Decoupled Merger Lock Hierarchy:**
-   In [`merger_loop`](../src/lib/disassemblerpool.cpp#L210), popping from `reorder_buffer` only holds `result_mutex`. Notifying `cv_producer.notify_one()` is performed after unlocking `result_mutex` and without acquiring `queue_mutex`, eliminating any lock coupling between the two subsystems.
+   In [`merger_loop`](../src/lib/disassemblerpool.cpp), popping from `reorder_buffer` only holds `result_mutex`. Notifying `cv_producer.notify_one()` is performed after unlocking `result_mutex` and without acquiring `queue_mutex`, eliminating any lock coupling between the two subsystems.
 
 4. **Modernized `solveThread_c` (Removal of `thread_c`):**
    [`solveThread_c`](../src/lib/solvethread.h) directly manages its background worker via `std::jthread worker_thread` and `std::atomic<bool> running{false}`, completely eliminating the legacy `thread_c` wrapper class and its pre-C++11 `#ifdef NO_THREADING` macros.
 
 5. **Unified SIMD Gating via `SimdConfig`:**
-   A centralized [`SimdConfig`](../src/lib/simd_config.h) provides a single source of truth for runtime SIMD checks across all solver engines and disassembler closure. It introduces the architecture-agnostic `BURRTOOLS_NO_VECTOR=1` environment variable while preserving full backward compatibility with legacy benchmarking flags (`BURRTOOLS_NO_SIMD`, `BURRTOOLS_NO_AVX2`, `BURRTOOLS_NO_AVX512`, `BURRTOOLS_NO_NEON`, `BURRTOOLS_NO_DISASM_SIMD`, `BURRTOOLS_NO_DISASM_OPT`).
+   A centralized [`SimdConfig`](../src/lib/simd_config.h) provides a single source of truth for runtime SIMD checks across all solver engines and disassembler closure. It introduces the architecture-agnostic `BURRTOOLS_NO_VECTOR=1` environment variable while preserving full backward compatibility with legacy benchmarking flags (`BURRTOOLS_NO_SIMD`, `BURRTOOLS_NO_AVX2`, `BURRTOOLS_NO_AVX512`, `BURRTOOLS_NO_NEON`, `BURRTOOLS_NO_DISASM_SIMD`; `BURRTOOLS_NO_DISASM_OPT` was dropped — planar closure and bitboard checks are always on).
 
 6. **Two-Stage Cancellation (`requestStop` vs. `abort`):**
-   - **`requestStop()` (Soft Pause/Stop):** Called from [`solveThread_c::stopInternal()`](../src/lib/solvethread.cpp#L343). Sets `stop_requested` and wakes `cv_assembler` so any assembler thread blocked in `submit()` returns promptly without hanging for long disassemblies to finish. It does **not** discard queued tasks or the reorder buffer, allowing [`finish()`](../src/lib/disassemblerpool.cpp#L279) to drain in-flight disassemblies cleanly so all found solutions are saved.
+   - **`requestStop()` (Soft Pause/Stop):** Called from [`solveThread_c::stopInternal()`](../src/lib/solvethread.cpp). Sets `stop_requested` and wakes `cv_producer` plus the shared `ThreadBudget`, so any assembler thread blocked in `submit()` (queue-full wait or budget re-acquire) returns promptly without hanging for long disassemblies to finish. It does **not** discard queued tasks or the reorder buffer, allowing [`finish()`](../src/lib/disassemblerpool.cpp) to drain in-flight disassemblies cleanly so all found solutions are saved.
    - **`abort()` (Emergency Cancellation):** Requests stop on all `std::jthread` workers and the merger thread, purges `work_queue` and `reorder_buffer`, and joins all threads under `lifecycle_mutex`.
    - **`finish()` (Normal Completion / Drain):** Signals `finished`, drains all queued disassembly tasks, merges solutions in sequence order to `on_result`, and joins all threads.
 
@@ -260,5 +260,5 @@ struct SearchPrefix {
    When running single-threaded (`num_threads == 1` or `BURRTOOLS_NO_DISASM_POOL=1`), `inline_mutex` protects the entire inline block in `submit()`: sequence allocation (`next_submit_seq++`), disassembly, and `on_result` callback invocation. This guarantees deterministic solution ordering even when multi-threaded assemblers submit to an inline disassembler.
 
 8. **Cross-Thread Progress Flag Synchronization:**
-   `simdCompleted` in [`assembler_1_c`](../src/lib/assembler_1.h#L137) is a `std::atomic<bool>` written with release semantics upon search completion and read with acquire semantics in [`getFinished()`](../src/lib/assembler_1.cpp#L2928), closing the data race on the completion state itself between the worker thread and `getFinished()` under ThreadSanitizer.
+   `simdCompleted` in [`assembler_1_c`](../src/lib/assembler_1.h) is a `std::atomic<bool>` written with release semantics upon search completion and read with acquire semantics in [`getFinished()`](../src/lib/assembler_1.cpp), closing the data race on the completion state itself between the worker thread and `getFinished()` under ThreadSanitizer.
 

@@ -312,12 +312,7 @@ public:
    */
   static const unsigned int MAX_THREADS = 256;
 
-  /* Thread count and coarse progress, shared by both engines.
-   *
-   * These used to be duplicated verbatim in assembler_0_c and assembler_1_c,
-   * and had already drifted three separate times -- one engine zeroed
-   * totalTasks between runs and the other did not, one got the shape-cache
-   * pre-warm fix first, and the getFinished() override differed. One
+  /* Thread count and coarse progress, shared by both engines: one
    * cancellation and progress contract is easier to keep correct than two.
    */
   unsigned int numThreads = 0;
@@ -332,12 +327,10 @@ public:
   /* One cancellation contract for all engines.
    *
    * A stop_source refreshed at every run entry (assemble()/debug_step()).
-   * Workers and search loops observe its token; stop() fires it. This
-   * replaces the legacy per-assembler `abbort` atomics: one mechanism, no
-   * dual `!abbort && !stop_requested()` checks, no const_cast smuggling.
+   * Workers and search loops observe its token; stop() fires it.
    *
-   * Not safe for concurrent runs on one instance (same constraint the
-   * abbort flag always had): refreshing races with a running search.
+   * Not safe for concurrent runs on one instance: refreshing races with a
+   * running search.
    */
   std::stop_source runStop;
   mutable std::mutex runStopMutex;

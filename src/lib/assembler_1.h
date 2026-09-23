@@ -126,9 +126,9 @@ private:
    *
    * The SIMD search keeps its position inside the solver, so next_row_stack /
    * task_stack -- what the progress estimate below is derived from -- never
-   * move. Reporting completion from "idle and iterations > 0" instead was a
-   * false positive: after setPosition() restores a saved state, and between
-   * two assemble() calls, all of those hold before any search has run.
+   * move. Completion therefore needs its own flag: "idle and iterations > 0"
+   * also holds after setPosition() restores a saved state, and between two
+   * assemble() calls, before any search has run.
    */
   std::atomic<bool> simdCompleted{false};
 

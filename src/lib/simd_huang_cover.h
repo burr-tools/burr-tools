@@ -187,7 +187,7 @@ public:
   unsigned int getNumColumns() const override { return num_columns; }
   unsigned int getNumShapes() const override { return num_shapes; }
 
-  /* must mirror the dispatch ladder at the top of filterRows() */
+  /* Keep in sync with the filterRows() dispatch ladder. */
   const char * activeKernel() const override {
     if (use_avx512 && BitsetType::NUM_WORDS >= 8) return "avx512";
     if (use_avx2) return "avx2";
@@ -212,10 +212,9 @@ private:
   [[maybe_unused]] bool use_avx2 = false;
   [[maybe_unused]] bool use_avx512 = false;
 
-  /* mirrors SimdExactCover: without this the NEON kernel is unconditional on
-   * ARM, so BURRTOOLS_NO_AVX2/NO_SIMD silently A/B the same code against
-   * itself on the project's primary development platform and the scalar loop
-   * below the dispatch is dead
+  /* Gate use_neon on SimdConfig like the other kernels, so the kill switches
+   * select the scalar loop instead of silently benchmarking one kernel
+   * against itself.
    */
   [[maybe_unused]] bool use_neon = false;
 

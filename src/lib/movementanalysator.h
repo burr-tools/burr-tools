@@ -148,10 +148,10 @@ class movementAnalysator_c {
     void init_find(disassemblerNode_c * nd, const std::vector<unsigned int> & pieces);
     disassemblerNode_c * find(void);
 
-    /* Resolve which RFW closure kernel to use for the upcoming run from
-     * CPU detection and the BURRTOOLS_NO_DISASM_SIMD / NO_VECTOR / NO_AVX2 /
-     * NO_AVX512 / NO_NEON toggles. Called once per run by disassemble()
-     * and completeFind(); closureFull() only reads the cached members.
+    /* Resolve which RFW closure kernel to use for the upcoming run from CPU
+     * detection and the SimdConfig toggles (see simd_config.h). Called once
+     * per run by disassemble() and completeFind(); closureFull() only reads
+     * the cached members.
      */
     void selectKernels(void);
 
