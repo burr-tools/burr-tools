@@ -211,7 +211,7 @@ void SimdExactCover<BitsetType>::filterRows(
 template <typename BitsetType>
 void SimdExactCover<BitsetType>::solve(
   SolutionCallback callback,
-  const std::atomic<bool> &abort_flag,
+  std::stop_token stop,
   std::atomic<uint64_t> &iterations
 ) const {
   if (rows.empty() || active_column_list.empty())
@@ -228,7 +228,7 @@ void SimdExactCover<BitsetType>::solve(
   }
 
   BitsetType occupied;
-  search(0, occupied, ctx, callback, abort_flag, iterations);
+  search(0, occupied, ctx, callback, stop, iterations);
 
   uint64_t rem = ctx.local_iterations & 255;
   if (rem > 0) {
@@ -240,7 +240,7 @@ template <typename BitsetType>
 void SimdExactCover<BitsetType>::solveSubtree(
   const std::vector<unsigned int> &prefix_node_ids,
   SolutionCallback callback,
-  const std::atomic<bool> &abort_flag,
+  std::stop_token stop,
   std::atomic<uint64_t> &iterations
 ) const {
   if (rows.empty() || active_column_list.empty())
@@ -282,7 +282,7 @@ void SimdExactCover<BitsetType>::solveSubtree(
   }
 
   if (!conflict) {
-    search(prefix_node_ids.size(), occupied, ctx, callback, abort_flag, iterations);
+    search(prefix_node_ids.size(), occupied, ctx, callback, stop, iterations);
   }
 
   uint64_t rem = ctx.local_iterations & 255;
@@ -297,10 +297,10 @@ void SimdExactCover<BitsetType>::search(
   const BitsetType &occupied,
   SearchContext &ctx,
   SolutionCallback &callback,
-  const std::atomic<bool> &abort_flag,
+  std::stop_token stop,
   std::atomic<uint64_t> &iterations
 ) const {
-  if (abort_flag.load(std::memory_order_relaxed))
+  if (stop.stop_requested())
     return;
 
   ctx.local_iterations++;
@@ -366,9 +366,9 @@ void SimdExactCover<BitsetType>::search(
 
     filterRows(curr_active, candidate_row.mask, next_active);
 
-    search(depth + 1, occupied | candidate_row.mask, ctx, callback, abort_flag, iterations);
+    search(depth + 1, occupied | candidate_row.mask, ctx, callback, stop, iterations);
 
-    if (abort_flag.load(std::memory_order_relaxed))
+    if (stop.stop_requested())
       return;
   }
 }

@@ -71,9 +71,6 @@ private:
 #define up(x) upDown[2*(x)]
 #define down(x) upDown[2*(x)+1]
 
-  /* used to abort the searching */
-  std::atomic<bool> abbort;
-
   /* used to save if the search is running */
   std::atomic<bool> running{false};
 
@@ -122,7 +119,7 @@ private:
    * is normalised in inserted into a set of assemblies for
    * later reference
    */
-  void solution(void);
+  void solution(std::stop_token stop);
 
   /* used to collect the data necessary to construct and for the iterative algorithm
    * the assembly, it contains the indexes to the selected rows
@@ -138,7 +135,7 @@ private:
   void simdSearch(void);
   std::unique_ptr<ISimdExactCover> createSimdSolver(void) const;
   std::unique_ptr<assembly_c> buildAssembly(const unsigned int *row_nodes, unsigned int count) const;
-  void handleSolution(const unsigned int *row_nodes, unsigned int count);
+  void handleSolution(const unsigned int *row_nodes, unsigned int count, std::stop_token stop);
 
   /* this function checks, if the given piece can be placed
    * at the given position inside the result
@@ -328,7 +325,6 @@ public:
   void assemble(assembler_cb * callback) override;
   int getErrorsParam(void) override { return errorsParam; }
   float getFinished(void) const override;
-  void stop(void) override { abbort.store(true, std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
   /* clamped: the count reaches std::thread creation directly, and an
    * unvalidated value from the CLI or the python binding would otherwise

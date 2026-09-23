@@ -28,6 +28,7 @@ class ThreadBudget;
 #include <vector>
 #include <functional>
 #include <atomic>
+#include <stop_token>
 #include <cstdint>
 #include <unordered_map>
 #include <bit>
@@ -69,7 +70,7 @@ public:
 
   virtual void solve(
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const = 0;
 
@@ -77,14 +78,14 @@ public:
     const std::vector<unsigned int> &prefix_node_ids,
     const std::vector<unsigned int> &hidden_node_ids,
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const = 0;
 
   virtual void parallelSolve(
     unsigned int num_workers,
     SolutionCallback callback,
-    std::atomic<bool> &abort_flag,
+    const std::stop_source &runStop,
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
     std::atomic<size_t> &completed_tasks,
@@ -157,7 +158,7 @@ public:
 
   void solve(
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const override;
 
@@ -165,14 +166,14 @@ public:
     const std::vector<unsigned int> &prefix_node_ids,
     const std::vector<unsigned int> &hidden_node_ids,
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const override;
 
   void parallelSolve(
     unsigned int num_workers,
     SolutionCallback callback,
-    std::atomic<bool> &abort_flag,
+    const std::stop_source &runStop,
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
     std::atomic<size_t> &completed_tasks,
@@ -235,7 +236,7 @@ private:
     unsigned int depth,
     SearchContext &ctx,
     SolutionCallback &callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const;
 

@@ -1105,7 +1105,10 @@ TEST_CASE("assembler 1: getFinished does not report 100% before starting a resto
   assm.debug_step(1);
   REQUIRE(assm.getIterations() > 0);
 
-  // Under old code, !running && !abbort && iterations > 0 caused getFinished() to falsely return 1.0f!
+  // A partially searched assembler must not report finished: after one
+  // debug step the run token is unstopped and stacks are non-empty, so the
+  // progress estimate has to stay below 1.0f (a stale completion flag or an
+  // "idle means done" shortcut would falsely return 1.0f here).
   CHECK(assm.getFinished() < 1.0f);
 }
 

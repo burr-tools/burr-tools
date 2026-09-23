@@ -226,6 +226,11 @@ assembler_c::errState assembler_c::setPosition(const char * /*string*/, const ch
   return ERR_CAN_NOT_RESTORE_VERSION;
 }
 
+void assembler_c::stop(void) {
+  std::lock_guard<std::mutex> lock(runStopMutex);
+  runStop.request_stop();
+}
+
 void assembler_c::save(xmlWriter_c & xml) const
 {
   xml.newTag("assembler");

@@ -92,25 +92,25 @@ public:
    * Pop a task. Returns true with out_task set (caller now owns one unit of
    * `active_workers` and must call finishTask() exactly once), or false when
    * the worker should terminate: global quiescence (queue empty and no worker
-   * active), pool stop/abort, jthread stop, or assembler abort flag.
+   * active), pool stop, jthread stop, or the run's stop token.
    *
    * With a budget set, a successful pop also holds one budget token for this
    * thread (returned by finishTask()). Budget exhaustion parks the thread
    * token-free; quiescence/terminal exits never leak a token.
    */
-  bool pop_task(TaskType &out_task, const std::atomic<bool> &abbort,
+  bool pop_task(TaskType &out_task, std::stop_token runStop,
                 std::stop_token st = {}) {
     while (true) {
       std::unique_lock<std::mutex> lock(mtx);
       waiting_workers++;
       auto pred = [&] {
         return !queue.empty() || active_workers == 0 || stop_requested.load() ||
-               abbort.load(std::memory_order_relaxed) || st.stop_requested();
+               runStop.stop_requested() || st.stop_requested();
       };
       cv.wait(lock, st, pred);
       waiting_workers--;
 
-      if (stop_requested.load() || abbort.load(std::memory_order_relaxed) ||
+      if (stop_requested.load() || runStop.stop_requested() ||
           st.stop_requested()) {
         releaseBudget();
         return false;
@@ -127,7 +127,7 @@ public:
         // so no lock ordering issues) until a token frees or we must stop.
         lock.unlock();
         bool got = budget_->acquire([&] {
-          return stop_requested.load() || abbort.load(std::memory_order_relaxed) ||
+          return stop_requested.load() || runStop.stop_requested() ||
                  st.stop_requested();
         }, st);
         if (!got)

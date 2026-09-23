@@ -31,6 +31,7 @@
 #include <atomic>
 #include <memory>
 #include <functional>
+#include <stop_token>
 
 class voxel_c;
 class assembly_c;
@@ -237,7 +238,7 @@ public:
   virtual float getFinished(void) const { return 0; }
 
   /** stops the assembly process sometimes in the near future. */
-  virtual void stop(void) {}
+  virtual void stop(void);
 
   /** returns true, as soon as the process really has stopped */
   virtual bool stopped(void) const { return false; }
@@ -327,6 +328,37 @@ public:
    */
   std::atomic<size_t> totalTasks{0};
   std::atomic<size_t> completedTasks{0};
+
+  /* One cancellation contract for all engines.
+   *
+   * A stop_source refreshed at every run entry (assemble()/debug_step()).
+   * Workers and search loops observe its token; stop() fires it. This
+   * replaces the legacy per-assembler `abbort` atomics: one mechanism, no
+   * dual `!abbort && !stop_requested()` checks, no const_cast smuggling.
+   *
+   * Not safe for concurrent runs on one instance (same constraint the
+   * abbort flag always had): refreshing races with a running search.
+   */
+  std::stop_source runStop;
+  mutable std::mutex runStopMutex;
+
+  /* Start a new run: refresh the stop source and hand out its token.
+   * Call once at assemble()/debug_step() entry, before any worker exists.
+   */
+  std::stop_token beginRun() {
+    std::lock_guard<std::mutex> lock(runStopMutex);
+    runStop = std::stop_source{};
+    return runStop.get_token();
+  }
+
+  /* Snapshot of the current run's token for rare paths (getFinished(),
+   * task generation, per-solution callbacks). Hot loops must capture the
+   * token once at their own entry instead of calling this per node.
+   */
+  std::stop_token currentRunToken() const {
+    std::lock_guard<std::mutex> lock(runStopMutex);
+    return runStop.get_token();
+  }
 
   /* serialises the hand off of a finished assembly to the callback */
   mutable std::mutex callbackMutex;

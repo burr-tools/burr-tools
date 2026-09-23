@@ -344,7 +344,7 @@ void SimdHuangCover<BitsetType>::filterRows(
 template <typename BitsetType>
 void SimdHuangCover<BitsetType>::solve(
   SolutionCallback callback,
-  const std::atomic<bool> &abort_flag,
+  std::stop_token stop,
   std::atomic<uint64_t> &iterations
 ) const {
   if (rows.empty() || active_column_list.empty())
@@ -361,7 +361,7 @@ void SimdHuangCover<BitsetType>::solve(
     ctx.scratch_active_rows[0][i] = static_cast<uint32_t>(i);
   }
 
-  search(0, ctx, callback, abort_flag, iterations);
+  search(0, ctx, callback, stop, iterations);
 
   uint64_t rem = ctx.local_iterations & 255;
   if (rem > 0) {
@@ -374,7 +374,7 @@ void SimdHuangCover<BitsetType>::solveSubtree(
   const std::vector<unsigned int> &prefix_node_ids,
   const std::vector<unsigned int> &hidden_node_ids,
   SolutionCallback callback,
-  const std::atomic<bool> &abort_flag,
+  std::stop_token stop,
   std::atomic<uint64_t> &iterations
 ) const {
   if (rows.empty() || active_column_list.empty())
@@ -446,7 +446,7 @@ void SimdHuangCover<BitsetType>::solveSubtree(
   }
 
   if (!conflict) {
-    search(prefix_node_ids.size(), ctx, callback, abort_flag, iterations);
+    search(prefix_node_ids.size(), ctx, callback, stop, iterations);
   }
 
   uint64_t rem = ctx.local_iterations & 255;
@@ -620,12 +620,15 @@ template <typename BitsetType>
 void SimdHuangCover<BitsetType>::parallelSolve(
   unsigned int num_workers,
   SolutionCallback callback,
-  std::atomic<bool> &abort_flag,
+  const std::stop_source &runStop,
   std::atomic<unsigned long> &iterations,
   std::atomic<size_t> &total_tasks,
   std::atomic<size_t> &completed_tasks,
   ThreadBudget *budget
 ) const {
+  // One token for the whole run: workers share it for cancellation checks,
+  // and a worker that throws fires the source so siblings stop promptly.
+  std::stop_token stop = runStop.get_token();
   unsigned int target_tasks = std::max(16u, num_workers * 4);
   std::vector<SubtreeTask> tasks;
   generateTasks(target_tasks, tasks);
@@ -633,7 +636,7 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   total_tasks.store(tasks.size(), std::memory_order_relaxed);
   completed_tasks.store(0, std::memory_order_relaxed);
 
-  if (tasks.empty() || abort_flag.load(std::memory_order_relaxed))
+  if (tasks.empty() || stop.stop_requested())
     return;
 
   // Non-terminating pool (see assembler_pool.h): a worker that finds the
@@ -651,17 +654,17 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   auto worker_fn = [&](std::stop_token st = {}) {
     try {
       SubtreeTask t;
-      while (pool.pop_task(t, abort_flag, st)) {
+      while (pool.pop_task(t, stop, st)) {
         try {
           std::atomic<uint64_t> task_iter{0};
-          search(t.depth, t.ctx, callback, abort_flag, task_iter);
+          search(t.depth, t.ctx, callback, stop, task_iter);
 
           uint64_t rem = t.ctx.local_iterations & 255;
           if (rem > 0) {
             task_iter.fetch_add(rem, std::memory_order_relaxed);
           }
           iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
-          if (!abort_flag.load(std::memory_order_relaxed) && !st.stop_requested()) {
+          if (!stop.stop_requested() && !st.stop_requested()) {
             completed_tasks.fetch_add(1, std::memory_order_relaxed);
           }
         } catch (...) {
@@ -674,7 +677,7 @@ void SimdHuangCover<BitsetType>::parallelSolve(
       std::lock_guard<std::mutex> lock(exception_mutex);
       if (!worker_exception)
         worker_exception = std::current_exception();
-      abort_flag.store(true, std::memory_order_relaxed);
+      runStop.request_stop();
     }
   };
 
@@ -701,10 +704,10 @@ void SimdHuangCover<BitsetType>::search(
   unsigned int depth,
   SearchContext &ctx,
   SolutionCallback &callback,
-  const std::atomic<bool> &abort_flag,
+  std::stop_token stop,
   std::atomic<uint64_t> &iterations
 ) const {
-  if (abort_flag.load(std::memory_order_relaxed))
+  if (stop.stop_requested())
     return;
 
   ctx.local_iterations++;
@@ -880,7 +883,7 @@ void SimdHuangCover<BitsetType>::search(
     filterRows(curr_active, r_idx, cand.voxel_mask, cand.shape_id, shape_full,
                filter_monotonic, cand.shape_row_idx, has_range, max_allowed_range, next_active);
 
-    search(depth + 1, ctx, callback, abort_flag, iterations);
+    search(depth + 1, ctx, callback, stop, iterations);
 
     // Backtrack (zero heap allocation, zero pointer re-linking)
     ctx.current_solution.pop_back();
@@ -889,7 +892,7 @@ void SimdHuangCover<BitsetType>::search(
     }
     ctx.placed_voxels = ctx.placed_voxels ^ cand.voxel_mask;
 
-    if (abort_flag.load(std::memory_order_relaxed))
+    if (stop.stop_requested())
       return;
   }
 }

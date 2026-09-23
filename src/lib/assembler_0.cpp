@@ -1234,7 +1234,7 @@ void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot, std::uniqu
   avoidTransformedMirror = std::move(mir);
 }
 
-void assembler_0_c::handleSolution(const unsigned int *row_nodes, unsigned int count) {
+void assembler_0_c::handleSolution(const unsigned int *row_nodes, unsigned int count, std::stop_token stopTok) {
   if (getCallback()) {
     std::unique_ptr<assembly_c> assembly = buildAssembly(row_nodes, count);
 
@@ -1256,7 +1256,7 @@ void assembler_0_c::handleSolution(const unsigned int *row_nodes, unsigned int c
 
     {
       std::lock_guard<std::mutex> lock(callbackMutex);
-      if (abbort.load(std::memory_order_relaxed))
+      if (stopTok.stop_requested())
         return;
       if (!emittedSignatures.insert(sig).second)
         return;
@@ -1266,8 +1266,8 @@ void assembler_0_c::handleSolution(const unsigned int *row_nodes, unsigned int c
   }
 }
 
-void assembler_0_c::solution(void) {
-  handleSolution(rows.data(), pos);
+void assembler_0_c::solution(std::stop_token stop) {
+  handleSolution(rows.data(), pos, stop);
 }
 
 /* to understand this function you need to first completely understand the
@@ -1275,14 +1275,16 @@ void assembler_0_c::solution(void) {
  */
 void assembler_0_c::iterativeMultiSearch(void) {
 
-  abbort.store(false, std::memory_order_relaxed);
+  // Snapshot of the run token: assemble()/debug_step() refreshed the source
+  // before calling here, so this stays valid for the whole serial search.
+  std::stop_token runTok = currentRunToken();
   running.store(true, std::memory_order_relaxed);
 
   // this variable is used to store if we continue with our loop over
   // the rows or have finished
   bool cont;
 
-  while (!abbort.load(std::memory_order_relaxed)) {
+  while (!runTok.stop_requested()) {
 
     // we have finished if pos negative (or greater than piecenumber because of the
     // overflow
@@ -1290,14 +1292,17 @@ void assembler_0_c::iterativeMultiSearch(void) {
       break;
 
     // check, if all pieces are placed and all voxels are filled
-    // careful here abort is also modified by another thread
+    // careful here: the stop flag is also modified by another thread
+    // (see the historical note below about read-modify-write races --
+    // with a stop_token the check is a single atomic load, so the lost
+    // update it describes can no longer happen)
     // i once used the expression
     //   abort |= !solution()
     // and search halve a day why it didn't work. The value of abort was read
     // then the function called then the new value calculated then the new value
     // written. Meanwhile abort was pressed and abort was changed. This new value got lost.
     if (!right[0])
-      solution();
+      solution(runTok);
 
     // the debugger
     if (debug) {
@@ -1426,6 +1431,9 @@ void assembler_0_c::iterativeMultiSearch(void) {
 class assemblerWorker_c {
 public:
   assembler_0_c & parent;
+  // The run's stop token, fixed for the worker's lifetime (captured once at
+  // construction, so the hot search loop never touches shared run state).
+  std::stop_token stop;
   std::vector<unsigned int> left;
   std::vector<unsigned int> right;
   std::vector<unsigned int> upDown;
@@ -1436,8 +1444,9 @@ public:
   unsigned long local_iterations;
   unsigned long flushed_iterations;
 
-  assemblerWorker_c(assembler_0_c & p) :
+  assemblerWorker_c(assembler_0_c & p, std::stop_token stop_ = {}) :
     parent(p),
+    stop(stop_),
     left(p.left),
     right(p.right),
     upDown(p.upDown),
@@ -1492,7 +1501,7 @@ public:
 
   void solution() {
     flushIterations();
-    parent.handleSolution(rows.data(), pos);
+    parent.handleSolution(rows.data(), pos, stop);
   }
 
   void searchSubtree(const assembler_0_c::SubtreeTask & task) {
@@ -1509,7 +1518,7 @@ public:
 
     bool cont;
 
-    while (!parent.abbort.load(std::memory_order_relaxed)) {
+    while (!stop.stop_requested()) {
       if (pos < prefixDepth || pos > parent.piecenumber)
         break;
 
@@ -1598,7 +1607,7 @@ public:
     }
 
     // Unwind prefix if search finished normally
-    if (!parent.abbort.load(std::memory_order_relaxed)) {
+    if (!stop.stop_requested()) {
       for (int d = (int)prefixDepth - 1; d >= 0; d--) {
         uncover_row(task.prefix[d].row);
         uncover(task.prefix[d].col);
@@ -1796,7 +1805,10 @@ void assembler_0_c::generateSubtreeTasks(
 }
 
 void assembler_0_c::parallelMultiSearch(unsigned int workers) {
-  abbort.store(false, std::memory_order_relaxed);
+  // Snapshot of the run token: assemble() refreshed the source. Captured
+  // once here and handed to workers/covers by value; nothing below touches
+  // shared run state in a hot path.
+  std::stop_token runTok = currentRunToken();
   running.store(true, std::memory_order_relaxed);
 
   /* Workers call smallerRotationExists() outside callbackMutex, which reaches
@@ -1859,13 +1871,13 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   if (canUseSimd()) {
     auto solver = createSimdSolver();
 
-    auto simdWorkerFunc = [this, &pool, &solver, &workerException, &exceptionMutex, &shouldSplit](std::stop_token st = {}) {
+    auto simdWorkerFunc = [this, &pool, &solver, &workerException, &exceptionMutex, &shouldSplit, runTok](std::stop_token st = {}) {
       try {
         // Scratch DLX copy at root state, used only for splitting prefixes.
         // The SIMD solver itself is shared read-only and never mutated here.
-        assemblerWorker_c splitter(*this);
+        assemblerWorker_c splitter(*this, runTok);
         SubtreeTask task;
-        while (pool.pop_task(task, abbort, st)) {
+        while (pool.pop_task(task, runTok, st)) {
           try {
             if (shouldSplit(task)) {
               auto children = splitter.splitPrefix(task);
@@ -1884,13 +1896,13 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
             }
 
             std::atomic<uint64_t> task_iter{0};
-            solver->solveSubtree(prefix_nodes, [this, &st](const std::vector<unsigned int> &solution_nodes) -> bool {
-              handleSolution(solution_nodes.data(), solution_nodes.size());
-              return !abbort.load(std::memory_order_relaxed) && !st.stop_requested();
-            }, abbort, task_iter);
+            solver->solveSubtree(prefix_nodes, [this, &st, runTok](const std::vector<unsigned int> &solution_nodes) -> bool {
+              handleSolution(solution_nodes.data(), solution_nodes.size(), runTok);
+              return !runTok.stop_requested() && !st.stop_requested();
+            }, runTok, task_iter);
 
             iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
-            if (!abbort.load(std::memory_order_relaxed) && !st.stop_requested()) {
+            if (!runTok.stop_requested() && !st.stop_requested()) {
               completedTasks.fetch_add(1, std::memory_order_relaxed);
             } else {
               // Interrupted mid-task: re-queue the whole prefix so an
@@ -1911,7 +1923,9 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
         std::lock_guard<std::mutex> lock(exceptionMutex);
         if (!workerException)
           workerException = std::current_exception();
-        abbort.store(true, std::memory_order_relaxed);
+        // Fire the run source so siblings stop promptly; stop() is safe
+        // from any thread (mutex-guarded source swap).
+        stop();
       }
     };
 
@@ -1929,12 +1943,12 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
         t.join();
     }
   } else {
-    auto dlxWorkerFunc = [this, &pool, &workerException, &exceptionMutex, &shouldSplit](std::stop_token st = {}) {
+    auto dlxWorkerFunc = [this, &pool, &workerException, &exceptionMutex, &shouldSplit, runTok](std::stop_token st = {}) {
       try {
-        assemblerWorker_c worker(*this);
+        assemblerWorker_c worker(*this, runTok);
 
         SubtreeTask task;
-        while (pool.pop_task(task, abbort, st)) {
+        while (pool.pop_task(task, runTok, st)) {
           try {
             if (shouldSplit(task)) {
               auto children = worker.splitPrefix(task);
@@ -1946,7 +1960,7 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
               }
             }
             worker.searchSubtree(task);
-            if (!abbort.load(std::memory_order_relaxed) && !st.stop_requested()) {
+            if (!runTok.stop_requested() && !st.stop_requested()) {
               completedTasks.fetch_add(1, std::memory_order_relaxed);
             } else {
               // See SIMD branch: re-queue interrupted tasks for continue.
@@ -1967,7 +1981,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
         std::lock_guard<std::mutex> lock(exceptionMutex);
         if (!workerException)
           workerException = std::current_exception();
-        abbort.store(true, std::memory_order_relaxed);
+        // See SIMD branch: fire the run source so siblings stop promptly.
+        stop();
       }
     };
 
@@ -1991,7 +2006,7 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     std::rethrow_exception(workerException);
   }
 
-  if (!abbort.load(std::memory_order_relaxed)) {
+  if (!runTok.stop_requested()) {
     pos = piecenumber + 1;
     parallelTasks.clear();
     emittedSignatures.clear();
@@ -2095,19 +2110,20 @@ std::unique_ptr<ISimdExactCover> assembler_0_c::createSimdSolver(void) const {
 }
 
 void assembler_0_c::simdSearch(void) {
-  abbort.store(false, std::memory_order_relaxed);
+  // Snapshot of the run token: assemble() refreshed the source.
+  std::stop_token runTok = currentRunToken();
   running.store(true, std::memory_order_relaxed);
 
   auto solver = createSimdSolver();
   std::atomic<uint64_t> simd_iter{0};
 
-  solver->solve([this](const std::vector<unsigned int> &solution_nodes) -> bool {
-    handleSolution(solution_nodes.data(), solution_nodes.size());
-    return !abbort.load(std::memory_order_relaxed);
-  }, abbort, simd_iter);
+  solver->solve([this, runTok](const std::vector<unsigned int> &solution_nodes) -> bool {
+    handleSolution(solution_nodes.data(), solution_nodes.size(), runTok);
+    return !runTok.stop_requested();
+  }, runTok, simd_iter);
 
   iterations.fetch_add(simd_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
-  if (!abbort.load(std::memory_order_relaxed)) {
+  if (!runTok.stop_requested()) {
     pos = piecenumber + 1;
     parallelInterrupted = false;
   } else {
@@ -2126,6 +2142,11 @@ void assembler_0_c::assemble(assembler_cb * callback) {
 
   debug = false;
 
+  // Canonical per-run refresh: everything below (serial or parallel,
+  // SIMD or DLX) observes this run's token; a second assemble() starts
+  // unstopped, exactly like the old abbort=false reset.
+  std::stop_token runTok = beginRun();
+
   if (errorsState == ERR_NONE) {
     asm_bc = callback;
     unsigned int threads = getEffectiveThreads();
@@ -2136,7 +2157,7 @@ void assembler_0_c::assemble(assembler_cb * callback) {
       // token too, so the cap covers resume runs as well. Skipped only when
       // stopping (no token with a callback set).
       BudgetGuard budget(callback != nullptr ? callback->threadBudget() : nullptr,
-                         &abbort);
+                         runTok);
       if (callback == nullptr || budget.holds()) {
         if (canUseSimd()) {
           simdSearch();
@@ -2152,7 +2173,7 @@ float assembler_0_c::getFinished(void) const {
 
   size_t total = totalTasks.load(std::memory_order_relaxed);
   if (total > 0) {
-    if (!running.load(std::memory_order_relaxed) && !abbort.load(std::memory_order_relaxed))
+    if (!running.load(std::memory_order_relaxed) && !currentRunToken().stop_requested())
       return 1.0f;
     return static_cast<float>(completedTasks.load(std::memory_order_relaxed)) / static_cast<float>(total);
   }
@@ -2356,6 +2377,8 @@ void assembler_0_c::debug_step(unsigned long num) {
   debug = true;
   debug_loops = num;
   asm_bc = 0;
+  // Own run entry (does not go through assemble()): refresh first.
+  beginRun();
   iterativeMultiSearch();
 }
 

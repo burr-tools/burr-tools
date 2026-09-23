@@ -26,6 +26,7 @@
 #include <vector>
 #include <functional>
 #include <atomic>
+#include <stop_token>
 #include <cstring>
 #include <algorithm>
 
@@ -191,14 +192,14 @@ public:
 
   virtual void solve(
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const = 0;
 
   virtual void solveSubtree(
     const std::vector<unsigned int> &prefix_node_ids,
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const = 0;
 
@@ -237,14 +238,14 @@ public:
 
   void solve(
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const override;
 
   void solveSubtree(
     const std::vector<unsigned int> &prefix_node_ids,
     SolutionCallback callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const override;
 
@@ -275,7 +276,7 @@ private:
     const BitsetType &occupied,
     SearchContext &ctx,
     SolutionCallback &callback,
-    const std::atomic<bool> &abort_flag,
+    std::stop_token stop,
     std::atomic<uint64_t> &iterations
   ) const;
 

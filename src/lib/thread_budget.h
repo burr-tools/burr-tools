@@ -170,16 +170,16 @@ private:
 /**
  * RAII token for straight-line scopes (serial search paths). Takes on
  * construction (blocking), returns on destruction. With a null budget this
- * is a no-op and holds() is true (search freely).
+ * is a no-op and holds() is true (search freely). The token selects which
+ * run's cancellation the wait honors -- pass the current run token.
  */
 class BudgetGuard {
 public:
   explicit BudgetGuard(ThreadBudget *budget,
-                       const std::atomic<bool> *abort = nullptr)
+                       std::stop_token stop = {})
       : budget_(budget) {
     if (budget_ != nullptr) {
-      holds_ = budget_->acquire(
-          [&] { return abort != nullptr && abort->load(std::memory_order_relaxed); });
+      holds_ = budget_->acquire([stop] { return stop.stop_requested(); }, stop);
     } else {
       holds_ = true;
     }
