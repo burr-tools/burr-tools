@@ -92,6 +92,15 @@ void solveThread_c::run(void){
       return;
     }
 
+    // Re-submit assemblies salvaged by an earlier stop (see
+    // disassemblerPool_c::requestStop): found but never disassembled, and
+    // suppressed by the assembler's dedup on re-search, so without this
+    // they would be lost on pause/continue. First in, so order stays stable.
+    if (disasm_pool && !stopPressed) {
+      for (auto &stashed : puzzle.takeStashedAssemblies())
+        disasm_pool->submit(std::move(stashed));
+    }
+
     if (!stopPressed) {
 
       action = solveThread_c::ACT_ASSEMBLING;
@@ -101,6 +110,10 @@ void solveThread_c::run(void){
         if (!stopPressed)
           action = solveThread_c::ACT_DISASSEMBLING;
         disasm_pool->finish();
+        // Move anything the pool salvaged (stop with a full queue, or
+        // submits rejected after stop) to the problem for the next run.
+        // Normally empty; finish() already delivered everything filed.
+        puzzle.stashAssemblies(disasm_pool->takeSalvaged());
       }
 
       puzzle.addTime(time(0)-startTime);

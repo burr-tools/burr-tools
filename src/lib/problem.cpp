@@ -197,6 +197,16 @@ void problem_c::save(xmlWriter_c & xml) const
     xml.endTag("solutions");
   }
 
+  // Assemblies salvaged by a stop (see stashedAssemblies): found but never
+  // disassembled, so not reflected in the counters above. Without this they
+  // would be lost by stop-save-load-continue. Optional: old files lack it.
+  if (stashedAssemblies.size()) {
+    xml.newTag("stashedAssemblies");
+    for (unsigned int i = 0; i < stashedAssemblies.size(); i++)
+      stashedAssemblies[i]->save(xml);
+    xml.endTag("stashedAssemblies");
+  }
+
   xml.endTag("problem");
 }
 
@@ -361,6 +371,26 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
       } while (true);
 
       pars.require(xmlParser_c::END_TAG, "solutions");
+    }
+    else if (pars.getName() == "stashedAssemblies")
+    {
+      do
+      {
+        int state = pars.nextTag();
+
+        if (state == xmlParser_c::END_TAG) break;
+        pars.require(xmlParser_c::START_TAG, "");
+
+        if (pars.getName() == "assembly")
+          stashedAssemblies.push_back(std::make_unique<assembly_c>(pars, pieces, puzzle.getGridType()));
+        else
+          pars.skipSubTree();
+
+        pars.require(xmlParser_c::END_TAG, "assembly");
+
+      } while (true);
+
+      pars.require(xmlParser_c::END_TAG, "stashedAssemblies");
     }
     else if (pars.getName() == "bitmap")
     {
@@ -855,6 +885,21 @@ void problem_c::removeSolution(unsigned int sol) {
   solutions.erase(solutions.begin()+sol);
 }
 
+void problem_c::stashAssemblies(std::vector<std::unique_ptr<assembly_c>> v) {
+  if (v.empty())
+    return;
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  for (auto &a : v)
+    stashedAssemblies.push_back(std::move(a));
+}
+
+std::vector<std::unique_ptr<assembly_c>> problem_c::takeStashedAssemblies(void) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  std::vector<std::unique_ptr<assembly_c>> out;
+  out.swap(stashedAssemblies);
+  return out;
+}
+
 assembler_c::errState problem_c::setAssembler(std::unique_ptr<assembler_c> a) {
   if (assemblerState.length()) {
     bt_assert(solveState == SS_SOLVING);
@@ -874,6 +919,9 @@ assembler_c::errState problem_c::setAssembler(std::unique_ptr<assembler_c> a) {
        */
       if (err == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED) {
         removeAllSolutions();
+        // Same reasoning for the stash: the scratch restart re-finds these
+        // assemblies, so keeping them would report each a second time.
+        stashedAssemblies.clear();
         assemblerVersion = "";
         return err;
       }

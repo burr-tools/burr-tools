@@ -106,6 +106,14 @@ private:
   mutable std::recursive_mutex solutionMutex;
 
   /**
+   * Assemblies salvaged by disassemblerPool_c::requestStop(): found, never
+   * disassembled, awaiting re-submission on the next run. Guarded by
+   * solutionMutex. Also serialized in save()/load (see stashedAssemblies
+   * tag), so stop-save-load-continue loses nothing.
+   */
+  std::vector<std::unique_ptr<assembly_c>> stashedAssemblies;
+
+  /**
    * this set contains the pairs of colours that are allowed when a piece
    * is placed. The piece colour is in the high 16 bits, the result colour
    * in the lower 16. As right now only 64 colours are possible this will
@@ -505,6 +513,20 @@ public:
 
   /** sort solutions by 0=assembly, 1=level, 2=sumMoves, 3=pieces */
   void sortSolutions(int by);
+  //@}
+
+  /** \name stashed assemblies (stop/continue support) */
+  //@{
+  /**
+   * Assemblies found but never disassembled because a run stopped with a
+   * full disassembly queue (see disassemblerPool_c::requestStop). They must
+   * be re-submitted on the next run: the assembler's emitted-signatures
+   * dedup persists across runs, so without this they would be suppressed
+   * forever on pause/continue. Guarded by solutionMutex, like solutions.
+   */
+  void stashAssemblies(std::vector<std::unique_ptr<assembly_c>> v);
+  /** Move all stashed assemblies out (submit order preserved). */
+  std::vector<std::unique_ptr<assembly_c>> takeStashedAssemblies(void);
   //@}
 
 public:
