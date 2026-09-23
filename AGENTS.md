@@ -133,7 +133,6 @@ Solver engines support runtime feature toggles via environment variables to allo
 | `BURRTOOLS_NO_AVX512=1` | Disables AVX-512 vector instructions in SIMD solver and disassembler closure. | Isolate AVX-512 vector performance gains from AVX2. |
 | `BURRTOOLS_NO_NEON=1` | Disables the NEON kernels **on ARM**, falling back to the same scalar loop. Honoured by `SimdExactCover` and `SimdHuangCover256`. | The ARM equivalent of `BURRTOOLS_NO_AVX2`; without it an A/B on Apple Silicon silently measures the same code twice. |
 | `BURRTOOLS_NO_DISASM_SIMD=1` | Disables vector instructions in disassembler Roy-Floyd-Warshall closure. | Measure pure disassembler vector speedup. |
-| `BURRTOOLS_NO_DISASM_OPT=1` | Disables planar Roy-Floyd-Warshall and bitboard movement checks. | Measure disassembler algorithmic gains. |
 | `BURRTOOLS_NO_DISASM_POOL=1` | Disables multi-threaded disassembly pool, running disassemblies synchronously. | Measure speedup and scaling of parallel disassembly pool against synchronous baseline. |
 | `BURRTOOLS_THREADS=N` | Forces solver to use $N$ worker threads (default: `hardware_concurrency`, clamped to `assembler_c::MAX_THREADS`). **Note:** read independently by the assembler and, once the disassembly pool lands, by that pool too, so `N` may yield `2N` workers overall. | Measure thread scaling curves (e.g. 1, 2, 4, 8 cores). |
 

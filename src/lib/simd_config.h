@@ -43,7 +43,9 @@
  *
  * 4. Disassembler Movement Analysis:
  *    - BURRTOOLS_NO_DISASM_SIMD=1: Disables vector Roy-Floyd-Warshall closure in disassembler.
- *    - BURRTOOLS_NO_DISASM_OPT=1: Disables planar and bitboard optimizations in disassembler.
+ *      The planar closure and bitboard movement checks are always enabled
+ *      (they measured faster on every puzzle in the corpus); only the
+ *      vector kernels stay toggleable for A/B benchmarking.
  */
 namespace SimdConfig {
 
@@ -80,13 +82,7 @@ inline bool isNeonAllowed() {
 #endif
 }
 
-inline bool isDisassemblerOptEnabled() {
-  return std::getenv("BURRTOOLS_NO_DISASM_OPT") == nullptr;
-}
-
 inline bool isDisassemblerSimdEnabled() {
-  if (!isDisassemblerOptEnabled())
-    return false;
   if (std::getenv("BURRTOOLS_NO_DISASM_SIMD") != nullptr)
     return false;
   return isVectorAccelerationEnabled();
