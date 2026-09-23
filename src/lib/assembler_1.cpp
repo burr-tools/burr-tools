@@ -3033,11 +3033,16 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
           } else {
             // Interrupted mid-task: re-queue the whole snapshot so an
             // in-session continue re-searches it from scratch. Assemblies
-            // reported twice are suppressed via emittedSignatures.
+            // reported twice are suppressed via emittedSignatures. This is
+            // the same task re-added to the pool, not new work, so it must
+            // not inflate totalTasks -- getFinished() divides completedTasks
+            // by it, and every pause/resume that catches a worker mid-task
+            // would otherwise nudge the denominator up without a matching
+            // increase in what is actually done, biasing the reported
+            // fraction down a little further on every interruption.
             std::vector<SubtreeTask_1> retry;
             retry.push_back(std::move(task));
-            totalTasks.fetch_add(pool.push_tasks(std::move(retry)),
-                                 std::memory_order_relaxed);
+            pool.push_tasks(std::move(retry));
           }
         } catch (...) {
           pool.finishTask();
@@ -3262,11 +3267,6 @@ void assembler_1_c::assemble(assembler_cb * callback) {
   // or DLX) observes this run's token; a second assemble() starts unstopped.
   std::stop_token runTok = beginRun();
   debug = false;
-
-  /* a previous parallel run leaves totalTasks == completedTasks, which would
-   * make getFinished() report 1.0 for this run before it has done anything
-   */
-  resetTaskProgress();
 
   const unsigned int threads = getEffectiveThreads();
   /* the same condition the branch below used to test inline, hoisted so the

@@ -2154,11 +2154,13 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
             if (!completed) {
               // Interrupted mid-task: re-queue the whole prefix so an
               // in-session continue re-searches it from scratch. Assemblies
-              // reported twice are suppressed via emittedSignatures.
+              // reported twice are suppressed via emittedSignatures. This is
+              // the same task re-added to the pool, not new work, so it must
+              // not inflate totalTasks -- see the matching note in
+              // assembler_1_c's worker loop.
               std::vector<SubtreeTask> retry;
               retry.push_back(task);
-              totalTasks.fetch_add(pool.push_tasks(std::move(retry)),
-                                   std::memory_order_relaxed);
+              pool.push_tasks(std::move(retry));
             }
             finishTask(slot, task, completed);
           } catch (...) {
@@ -2213,11 +2215,12 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
             worker.searchSubtree(task, slot);
             const bool completed = !runTok.stop_requested() && !st.stop_requested();
             if (!completed) {
-              // See SIMD branch: re-queue interrupted tasks for continue.
+              // See SIMD branch: re-queue interrupted tasks for continue,
+              // without inflating totalTasks -- it is the same task, not
+              // new work.
               std::vector<SubtreeTask> retry;
               retry.push_back(task);
-              totalTasks.fetch_add(pool.push_tasks(std::move(retry)),
-                                   std::memory_order_relaxed);
+              pool.push_tasks(std::move(retry));
             }
             finishTask(slot, task, completed);
           } catch (...) {
