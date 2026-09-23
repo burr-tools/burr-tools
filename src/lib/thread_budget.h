@@ -105,8 +105,18 @@ public:
     cv_.wait(lock, st, [&] {
       return shutdown_ || available_ > 0 || isTerminal() || st.stop_requested();
     });
-    if (shutdown_ || isTerminal() || st.stop_requested())
+    if (shutdown_ || isTerminal() || st.stop_requested()) {
+      // Hand off: a token may be free while this waiter exits on terminal
+      // grounds without consuming it. Without a wake, a sibling parked on
+      // the same CV would sleep despite progress being possible (or despite
+      // its own terminal predicate already being true). shutdown() already
+      // broadcasts, but run-stop terminal has no broadcaster.
+      bool handOff = (available_ > 0);
+      lock.unlock();
+      if (handOff)
+        cv_.notify_one();
       return false;
+    }
     if (available_ == 0)
       return false;
     available_--;

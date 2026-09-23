@@ -101,7 +101,8 @@ void disassemblerPool_c::check_exception() {
 }
 
 void disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
-  if (aborted.load(std::memory_order_relaxed) || finished.load(std::memory_order_relaxed))
+  if (aborted.load(std::memory_order_relaxed) || finished.load(std::memory_order_relaxed) ||
+      stop_requested.load(std::memory_order_relaxed))
     return;
 
   if (is_inline) {
@@ -131,20 +132,22 @@ void disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
   // Wait for queue space WITHOUT holding our search token: the drain we wait
   // for runs on tokens, so waiting while holding one could deadlock (all
   // tokens held by queue-blocked submitters, none left to drain with).
-  // The token is returned by whoever waits with us via finishTask(); the
-  // per-thread holdings flag keeps take/return paired across the yield.
+  // Only threads that actually hold a token yield it here (hadToken): a
+  // token-free submitter must not acquire one it never had, or the token
+  // would leak (available_ permanently decreases).
+  const bool hadToken = (budget_ != nullptr) && ThreadBudget::holdsHere();
   while (!hasSpace() && !terminal()) {
-    if (budget_ != nullptr)
+    if (hadToken)
       budget_->release();
     cv_producer.wait(lock, [&]() { return hasSpace() || terminal(); });
     if (terminal())
       return;
-    if (budget_ != nullptr &&
+    if (hadToken &&
         !budget_->acquire([&]() { return terminal(); }))
       return;
   }
 
-  if (aborted.load(std::memory_order_relaxed))
+  if (terminal())
     return;
 
   uint64_t seq = next_submit_seq++;
@@ -217,10 +220,9 @@ void disassemblerPool_c::worker_loop(std::stop_token st) {
         });
 
         if (!ok || st.stop_requested() || aborted.load(std::memory_order_relaxed)) {
-          // Completed but unfiled job on the way out: return its token first
-          // (the result is discarded, as before, but the token must not leak).
-          if (budget_ != nullptr)
-            budget_->release();
+          // Token was already returned above; release() here would be a
+          // no-op via the per-thread holdings flag. Do not re-release (a
+          // counting release would inflate available_ beyond total_).
           return;
         }
 
