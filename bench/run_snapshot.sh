@@ -122,10 +122,11 @@ if [[ ${LIST_ONLY} -eq 1 ]]; then
   exit 0
 fi
 
-# Check binary (build it if missing, like run_suite.sh does)
+# Check binary (build it if missing, deriving the build dir from its path so
+# --binary build-rel/burrTxt and friends work on a fresh clone too)
 if [[ ! -x "${BIN}" ]]; then
   echo "Binary '${BIN}' not found. Compiling with ninja..."
-  ninja -C build burrTxt
+  ninja -C "$(dirname "${BIN}")" "$(basename "${BIN}" .exe)"
 fi
 
 # Select puzzles to run

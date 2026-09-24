@@ -32,7 +32,12 @@ jobs:
       uses: extractions/setup-just@v2
     
     - name: Setup build directory
-      run: meson setup build --buildtype=release --werror
+      # -Db_ndebug=true is load-bearing, not cosmetic: without it Meson
+      # injects _GLIBCXX_ASSERTIONS and leaves bt_assert live, which costs
+      # ~15-30% solver time in the exact-cover hot loops (every
+      # vector::operator[] gains a bounds check). Shipped binaries must not
+      # carry that. See design/2026-09-24-benchmark-speedup-analysis.md §7.
+      run: meson setup build --buildtype=release --werror -Db_ndebug=true
     
     - name: Build
       run: just build
@@ -302,7 +307,10 @@ jobs:
       run: sudo apt-get install -y meson ninja-build mingw-w64 wine
     
     - name: Setup build directory
-      run: meson setup build-win --cross-file cross-mingw64.txt --buildtype=release --werror -Dpython=disabled
+      # -Db_ndebug=true: shipped binaries must not carry _GLIBCXX_ASSERTIONS
+      # / live bt_assert checks (~15-30% solver overhead, see the Linux job
+      # comment and design/2026-09-24-benchmark-speedup-analysis.md §7).
+      run: meson setup build-win --cross-file cross-mingw64.txt --buildtype=release --werror -Db_ndebug=true -Dpython=disabled
     
     - name: Build
       run: ninja -C build-win
@@ -357,7 +365,10 @@ jobs:
       uses: extractions/setup-just@v2
     
     - name: Setup build directory
-      run: meson setup build --buildtype=release --werror
+      # -Db_ndebug=true: shipped binaries must not carry _GLIBCXX_ASSERTIONS
+      # / live bt_assert checks (~15-30% solver overhead, see the Linux job
+      # comment and design/2026-09-24-benchmark-speedup-analysis.md §7).
+      run: meson setup build --buildtype=release --werror -Db_ndebug=true
     
     - name: Build
       run: just build
