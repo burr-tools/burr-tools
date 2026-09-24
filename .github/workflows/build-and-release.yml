@@ -394,6 +394,21 @@ jobs:
         name: burrtools-testlog-macos
         path: build/meson-logs/testlog.txt
 
+    # TEMPORARY DIAGNOSTIC (to be reverted): a safety net in case the just-
+    # widened plateau threshold (see test/test_solver.cpp) still isn't
+    # generous enough for this runner. meson's --print-errorlogs truncates
+    # a failing test's captured stdout to its last 100 lines; the 'fast'
+    # test's second Catch2 XML reporter writes the untruncated result to
+    # fast-results.xml as a byproduct of the same run, so this just
+    # uploads whatever that run already produced.
+    - name: Upload full test results (diagnostic)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-macos
+        path: fast-results.xml
+        if-no-files-found: warn
+
     # The menu-table drift check. This is the only job that runs it, because
     # it is the only place the two-table hazard exists: the macOS table is
     # compiled in only under __APPLE__, so off macOS the check compares the
