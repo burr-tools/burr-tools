@@ -270,3 +270,40 @@ The old rec. 1 (re-baseline) is done — §7.5 above. Left open:
    the atomic `iterations` RMW (batch it: thread-local count, periodic
    publish), and the `stop_token` load per node (already minimal). None is
    justified today — instruction counts equal 0.7.1.
+
+## 8. Low-hanging-fruit triage (2026-09-24, same branch)
+
+Question: after the build-flags fix, is there cheap serial performance left?
+Method: release-binary `perf record` on kangaroo (asm_0) and SolidSix
+(asm_1), both `-t 1`. Result: zero SIMD symbols — the heaviest puzzles run
+fully classical paths. Findings, ranked:
+
+1. **Done — `getPieceInformation` linear scan → binary search** (both
+   assemblers, committed): `piecePositions[].row` is strictly ascending
+   (`piecenode == left.size()`, append-only), so the reverse linear scan per
+   call became `upper_bound` logic, same result (last entry with
+   `row <= node`). Called once per piece of every found assembly; kangaroo
+   (9831 assemblies) spent ~8% of instructions there. Measured, release
+   binary, kangaroo `-t 1` asm-only: 6.73B → 6.21B instructions (−7.8%),
+   4.11B → 3.91B cycles (−4.7%). Verified by `test-all` (4/4) and
+   `test-regression` (20/20 vs 0.7.1).
+2. **SIMD is gated off on exactly the heavy puzzles — structural, not
+   low-hanging.** Temporary `canUseSimd` diagnostics (since reverted) show:
+   kangaroo blocked by `holes=65` *and* `res_vari=160` (asm_0 requires
+   neither); SolidSix/Lomino:3 pass asm_1's early gates (`headerNodes` 131 /
+   136 ≤ 32768) and fall into the `hasRange`/variable-count exclusion (both
+   print "range optimisation used"). Extending the bit-parallel solvers to
+   holes / variable voxels / range puzzles is an algorithmic project (cf.
+   #87, #82), not a tweak. `BURRTOOLS_NO_SIMD=1` A/B confirms: 0.97–1.13x,
+   i.e. no measurable SIMD contribution on these puzzles today.
+3. **Thread count already optimal.** Release binary, with `-d`:
+   SolidSix `t1/t2/t4/t8` = 7.98/4.95/3.79/2.46s; kangaroo =
+   1.70/0.98/0.70/0.67s. Eight workers on 4 cores beats four (HT helps
+   +54% on SolidSix — latency-hiding in pointer-chasing DLX); keep the
+   `hardware_concurrency` default.
+4. **Ruled out:** `iterativeMultiSearch` 11.6% self-share is the loop itself
+   (MRV scan is algorithmic); per-node `stop_token` load + atomic
+   `iterations` RMW are a few instructions against thousands in
+   cover/uncover; disassembly `movementCache` is mutex-free (per-worker
+   instances) and its 13% share only matters for the Amdahl-capped §4
+   puzzles anyway.
