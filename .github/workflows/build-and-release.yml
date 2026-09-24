@@ -41,7 +41,7 @@ jobs:
     
     - name: Build
       run: just build
-
+    
     - name: Run tests
       run: just test-all
     
@@ -54,28 +54,7 @@ jobs:
       with:
         name: burrtools-testlog-linux
         path: build/meson-logs/testlog.txt
-
-    # TEMPORARY DIAGNOSTIC (to be reverted): meson's --print-errorlogs
-    # truncates a failing test's captured stdout to its last 100 lines, and
-    # this suite's own CubeInCage debug-step trace floods well past that,
-    # burying the actual FAILED: assertion. Re-run the binary directly with
-    # the XML reporter so the untruncated result lands in an uploaded
-    # artifact instead of GitHub's truncated log.
-    - name: Capture full test results (diagnostic)
-      if: always()
-      run: |
-        ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 \
-        UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 \
-        ./build/test_burrtools '~[stress]' --reporter xml --out test-results-linux.xml || true
-
-    - name: Upload full test results (diagnostic)
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results-linux
-        path: test-results-linux.xml
-        if-no-files-found: warn
-
+    
     - name: Run static analysis
       run: just check
     
@@ -140,23 +119,6 @@ jobs:
 
     - name: Run tests
       run: meson test -C build-clang --suite fast --print-errorlogs
-
-    # TEMPORARY DIAGNOSTIC (to be reverted): see the matching step on
-    # build-linux for why this bypasses meson's truncated error log.
-    - name: Capture full test results (diagnostic)
-      if: always()
-      run: |
-        ASAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1 \
-        UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1:print_summary=1:print_stacktrace=1 \
-        ./build-clang/test_burrtools '~[stress]' --reporter xml --out test-results-clang.xml || true
-
-    - name: Upload full test results (diagnostic)
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results-clang
-        path: test-results-clang.xml
-        if-no-files-found: warn
 
   # Runs the parallel solver under ThreadSanitizer.
   #
