@@ -208,18 +208,29 @@ int assembler_1_c::AddPieceNode(unsigned int piece, unsigned int rot, unsigned i
 
 void assembler_1_c::getPieceInformation(unsigned int node, unsigned int * piece, unsigned char *tran, int *x, int *y, int *z) const {
 
-  for (int i = piecePositions.size()-1; i >= 0; i--)
-    if (piecePositions[i].row <= node) {
-      *tran = piecePositions[i].transformation;
-      *x = piecePositions[i].x;
-      *y = piecePositions[i].y;
-      *z = piecePositions[i].z;
-      *piece = piecePositions[i].piece;
+  // piecePositions is sorted by row: AddPieceNode appends rows in strictly
+  // increasing node order (piecenode == left.size() at creation), so binary
+  // search finds the last entry with row <= node (same result as the old
+  // reverse linear scan, in O(log n) instead of O(n) per call).
+  unsigned int lo = 0, hi = static_cast<unsigned int>(piecePositions.size());
+  while (lo < hi) {
+    unsigned int mid = lo + (hi - lo) / 2;
+    if (piecePositions[mid].row <= node)
+      lo = mid + 1;
+    else
+      hi = mid;
+  }
 
-      return;
-    }
+  bt_assert(lo > 0);
+  if (lo == 0)
+    return;
 
-  bt_assert(0);
+  const piecePosition &pp = piecePositions[lo - 1];
+  *tran = pp.transformation;
+  *x = pp.x;
+  *y = pp.y;
+  *z = pp.z;
+  *piece = pp.piece;
 }
 
 void assembler_1_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
