@@ -212,6 +212,8 @@ void assembler_1_c::getPieceInformation(unsigned int node, unsigned int * piece,
   // increasing node order (piecenode == left.size() at creation), so binary
   // search finds the last entry with row <= node (same result as the old
   // reverse linear scan, in O(log n) instead of O(n) per call).
+  // The not-found path throws unconditionally (see assembler_0_c for why
+  // this is bt_te rather than bt_assert or an early return).
   unsigned int lo = 0, hi = static_cast<unsigned int>(piecePositions.size());
   while (lo < hi) {
     unsigned int mid = lo + (hi - lo) / 2;
@@ -221,9 +223,8 @@ void assembler_1_c::getPieceInformation(unsigned int node, unsigned int * piece,
       hi = mid;
   }
 
-  bt_assert(lo > 0);
   if (lo == 0)
-    return;
+    bt_te("getPieceInformation: no piece position for node");
 
   const piecePosition &pp = piecePositions[lo - 1];
   *tran = pp.transformation;

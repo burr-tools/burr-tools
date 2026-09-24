@@ -229,6 +229,10 @@ void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, 
   // search finds the last entry with row <= node. Called once per piece of
   // every found assembly; the old reverse linear scan showed up at ~4% in
   // profiles of solution-rich puzzles (e.g. kangaroo, 9831 assemblies).
+  // The not-found path throws unconditionally (not via bt_assert): besides
+  // reporting matrix corruption loudly in release builds, [[noreturn]]
+  // proves to all compilers that the outputs below are always set, which
+  // an early return would not (-Wmaybe-uninitialized, MinGW).
   unsigned int lo = 0, hi = static_cast<unsigned int>(piecePositions.size());
   while (lo < hi) {
     unsigned int mid = lo + (hi - lo) / 2;
@@ -238,9 +242,8 @@ void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, 
       hi = mid;
   }
 
-  bt_assert(lo > 0);
   if (lo == 0)
-    return;
+    bt_te("getPieceInformation: no piece position for node");
 
   const piecePosition &pp = piecePositions[lo - 1];
   *tran = pp.transformation;
