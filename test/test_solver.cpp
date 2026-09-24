@@ -2301,6 +2301,20 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
   double plateau = 0.0;
   std::vector<float> samples;
   bool finishedAtOne = false;
+  /* Every value a genuine assertion below needs, computed here but not
+   * asserted here: a CHECK failure does not throw, so asserting inside a
+   * retried attempt would permanently record that attempt's failure even
+   * when a later attempt succeeds. produce() only ever REQUIREs the
+   * hard preconditions that make an attempt meaningless if violated
+   * (the thread actually started and finished, there is more than one
+   * sample); every property the retry exists to tolerate is captured into
+   * a plain bool here and asserted exactly once, after the loop, against
+   * only the attempt that was finally kept.
+   */
+  bool samplesInRange = false;
+  bool samplesMonotone = false;
+  bool underRunningCap = false;
+  bool barMoved = false;
 
   auto produce = [&]() {
     /* the shipped examples are saved already solved, and solveThread_c
@@ -2334,10 +2348,13 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
     REQUIRE(samples.size() > 1);
     samples.pop_back();
 
+    samplesInRange = true;
+    samplesMonotone = true;
     for (size_t i = 0; i < samples.size(); i++) {
-      CHECK(samples[i] >= 0.0f);
-      CHECK(samples[i] < 1.0f);
-      if (i) CHECK(samples[i] >= samples[i-1]);
+      if (samples[i] < 0.0f || samples[i] >= 1.0f)
+        samplesInRange = false;
+      if (i && samples[i] < samples[i-1])
+        samplesMonotone = false;
     }
 
     size_t top = 0;
@@ -2345,8 +2362,8 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
       top++;
     plateau = 100.0 * static_cast<double>(top) / static_cast<double>(samples.size());
 
-    CHECK(samples.back() < solveThread_c::runningCap);
-    CHECK(*std::max_element(samples.begin(), samples.end()) > samples.front());
+    underRunningCap = samples.back() < solveThread_c::runningCap;
+    barMoved = *std::max_element(samples.begin(), samples.end()) > samples.front();
 
     finishedAtOne = (thread.getProgress() == 1.0f) && (thread.getProgress() == 1.0f);
   };
@@ -2365,6 +2382,11 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
        << " last: " << samples.back());
   INFO("top plateau " << plateau << "% of " << samples.size()
        << " samples, at " << samples.back());
+
+  CHECK(samplesInRange);
+  CHECK(samplesMonotone);
+  CHECK(underRunningCap);
+  CHECK(barMoved);
 
   CHECK(plateau < plateauThreshold);
   CHECK(finishedAtOne);  // getProgress() == 1.0f, checked twice: idempotent, the GUI polls repeatedly
