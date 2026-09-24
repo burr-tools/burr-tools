@@ -225,16 +225,47 @@ binary was verified by identical stats output
 (SolidSix: 588 assemblies / 4302868 iterations in both binaries) and
 `just test` passes (3/3).
 
-### 7.4 Recommendations
+### 7.5 Release-binary baseline, same day/machine (2026-09-24 evening)
 
-1. **Re-baseline published numbers**: every snapshot taken with
-   `build/burrTxt` (including the two CSVs in §0) understates serial-heavy
-   puzzles by ~15–30%. Re-run `just bench` once on this branch to mint a
-   release-binary baseline before further perf work.
-2. **CI (optional)**: a job that asserts `build-rel` exists/builds would stop
+With the box quiet, two same-day snapshots were taken: `bt071/burrTxt`
+(`results_20260924_185232_…`) and `build-rel/burrTxt`
+(`results_20260924_185054_…`). Totals (0.7.1 → new release, speedup):
+
+| Puzzle | 0.7.1 (s) | New rel (s) | Total |
+|---|---|---|---|
+| Simplicity | 3.96 | 0.20 | 19.8x |
+| BottomLine | 1.63 | 0.21 | 7.8x |
+| TTTCharm | 7.12 | 0.95 | 7.5x |
+| Lomino:1 | 2.38 | 0.37 | 6.4x |
+| Lomino:2 | 2.17 | 0.36 | 6.0x |
+| Tippy | 0.79 | 0.14 | 5.6x |
+| Lomino:0 | 0.50 | 0.10 | 5.0x |
+| SolidSix | 8.80 | 2.42 | 3.6x |
+| Lomino:3 | 61.69 | 18.13 | 3.4x |
+| Supernova:0 | 1.85 | 0.59 | 3.1x |
+| Dracula | 0.21 | 0.07 | 3.0x |
+| kangaroo | 2.04 | 0.71 | 2.9x |
+| Excelsior | 2.46 | 1.05 | 2.3x |
+| Pelikan | 0.21 | 0.11 | 1.9x |
+
+Every row moved up versus the debug-binary snapshots in §0 (e.g. SolidSix
+2.62x→3.64x, Lomino:3 2.73x→3.40x), confirming the ~15–30% assertion tax.
+Same-work search puzzles now sit at the 4-core ceiling minus ordinary
+parallel efficiency; the remainder is the §4 long-tail (Excelsior 2.3x),
+the disassembly-phase fraction (kangaroo 2.9x), and fixed costs on tiny
+puzzles. Cross-day comparison proved unreliable in the process: the
+*identical* 0.7.1 kangaroo binary measured 1.33s (Sep 23) vs 2.04s (Sep 24,
++53%) — same-machine, same-day baselines are mandatory, which is exactly
+what the snapshot filenames + provenance lines are for.
+
+### 7.6 Remaining recommendations
+
+The old rec. 1 (re-baseline) is done — §7.5 above. Left open:
+
+1. **CI (optional)**: a job that asserts `build-rel` exists/builds would stop
    the bench recipe from rotting; a stronger variant fails if any bench CSV
    is committed whose provenance `mode` line points at `build/burrTxt`.
-3. **If serial search ever needs more**: the remaining per-node costs are, in
+2. **If serial search ever needs more**: the remaining per-node costs are, in
    order, `vector::operator[]` double-indirection (`colCount[colCount[rr]]`),
    the atomic `iterations` RMW (batch it: thread-local count, periodic
    publish), and the `stop_token` load per node (already minimal). None is
