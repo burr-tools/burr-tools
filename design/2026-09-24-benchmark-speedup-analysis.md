@@ -70,7 +70,7 @@ noise; ratios are stable):
 Takeaway: wherever there is parallelizable search work, threading delivers
 3.3–4.0x. Totals below 4x come from the *other* two columns.
 
-## 3. Class A — search-bound, same work: assembler_1 per-node regression
+## 3. Class A — search-bound, same work: apparent assembler_1 deficit (resolved in §7 as a build-flags artifact)
 
 kangaroo (assembler_0), Lomino:3 and SolidSix (assembler_1) perform
 essentially identical searches old vs new (iteration counts match to 4+
