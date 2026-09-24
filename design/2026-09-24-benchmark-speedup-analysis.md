@@ -384,3 +384,13 @@ Speedup: kangaroo assembly 1.13M → 0.58M iterations; with disassembly
 t1 1.72s → 1.04s (**1.65x**), t8 0.66s → 0.47s (**1.4x**), corpus total
 2.9x → **3.2x** (`results_20260924_203315_…`). Modest — disassembly owns
 the rest — but it closes the last structural SIMD gap for assembler_0.
+
+Follow-up fixed on the same branch: SIMD iteration batching (publish every
+256 nodes, remainder at end) left sub-256 searches reporting live 0 after
+their first solution, flaking `test_iterator_iterations_live_and_finished`
+under load (reproduced 2/15). Both solvers now flush remainders at each
+reported solution (exact: batches re-based on `flushed_iterations`, DLX
+worker idiom) and both parallel paths drain per-task counters to shared at
+each solution. Totals bit-identical (kangaroo 580114, SolidSix 601901);
+20/20 python runs green under full parallel-build load. This also fixes the
+open TODO.md item on frozen parallel-SIMD counters.

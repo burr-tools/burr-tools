@@ -1918,10 +1918,16 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
             }
 
             std::atomic<uint64_t> task_iter{0};
-            solver->solveSubtree(prefix_nodes, [this, &st, runTok](const std::vector<unsigned int> &solution_nodes) -> bool {
+            // Drain per-solution remainders to the shared counter as they
+            // arise, so live readers (GUI progress, iterator API) observe
+            // advancing iterations; exact totals preserved (exchange drains).
+            auto flushingCb = [this, &st, runTok, &task_iter](const std::vector<unsigned int> &solution_nodes) -> bool {
+              this->iterations.fetch_add(task_iter.exchange(0, std::memory_order_relaxed),
+                                         std::memory_order_relaxed);
               handleSolution(solution_nodes.data(), solution_nodes.size(), runTok);
               return !runTok.stop_requested() && !st.stop_requested();
-            }, runTok, task_iter);
+            };
+            solver->solveSubtree(prefix_nodes, flushingCb, runTok, task_iter);
 
             iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
             if (!runTok.stop_requested() && !st.stop_requested()) {

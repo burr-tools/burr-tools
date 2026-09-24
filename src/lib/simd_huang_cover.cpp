@@ -363,10 +363,7 @@ void SimdHuangCover<BitsetType>::solve(
 
   search(0, ctx, callback, stop, iterations);
 
-  uint64_t rem = ctx.local_iterations & 255;
-  if (rem > 0) {
-    iterations.fetch_add(rem, std::memory_order_relaxed);
-  }
+  flushIterations(ctx, iterations);
 }
 
 template <typename BitsetType>
@@ -449,10 +446,7 @@ void SimdHuangCover<BitsetType>::solveSubtree(
     search(prefix_node_ids.size(), ctx, callback, stop, iterations);
   }
 
-  uint64_t rem = ctx.local_iterations & 255;
-  if (rem > 0) {
-    iterations.fetch_add(rem, std::memory_order_relaxed);
-  }
+  flushIterations(ctx, iterations);
 }
 
 template <typename BitsetType>
@@ -671,12 +665,17 @@ void SimdHuangCover<BitsetType>::parallelSolve(
       while (pool.pop_task(t, stop, st)) {
         try {
           std::atomic<uint64_t> task_iter{0};
-          search(t.depth, t.ctx, callback, stop, task_iter);
+          // Drain per-solution remainders to the shared counter as they
+          // arise, so live readers observe advancing iterations (see the
+          // serial flush above); exact totals preserved (exchange drains).
+          ISimdHuangCover::SolutionCallback flushingCb = [&](const std::vector<unsigned int> &s) -> bool {
+            iterations.fetch_add(task_iter.exchange(0, std::memory_order_relaxed),
+                                 std::memory_order_relaxed);
+            return callback(s);
+          };
+          search(t.depth, t.ctx, flushingCb, stop, task_iter);
 
-          uint64_t rem = t.ctx.local_iterations & 255;
-          if (rem > 0) {
-            task_iter.fetch_add(rem, std::memory_order_relaxed);
-          }
+          flushIterations(t.ctx, task_iter);
           iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
           if (!stop.stop_requested() && !st.stop_requested()) {
             completed_tasks.fetch_add(1, std::memory_order_relaxed);
@@ -725,8 +724,11 @@ void SimdHuangCover<BitsetType>::search(
     return;
 
   ctx.local_iterations++;
-  if ((ctx.local_iterations & 255) == 0) {
+  // Batched publish (DLX-worker idiom): at most one relaxed add per 256
+  // nodes; remainder flushes at solutions keep live readers advancing.
+  if (ctx.local_iterations - ctx.flushed_iterations >= 256) {
     iterations.fetch_add(256, std::memory_order_relaxed);
+    ctx.flushed_iterations += 256;
   }
 
   // Goal check: are all conditions fulfilled?
@@ -766,6 +768,7 @@ void SimdHuangCover<BitsetType>::search(
       }
 
       if (all_fulfilled) {
+        flushIterations(ctx, iterations);
         if (!callback(ctx.current_solution))
           return;
         return;
