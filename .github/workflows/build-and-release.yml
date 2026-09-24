@@ -45,6 +45,16 @@ jobs:
     - name: Run tests
       run: just test-all
     
+    # The full meson test log (meson truncates failing output to 100 lines
+    # in the job log, which routinely hides the actual assertion). Only
+    # uploaded on failure to keep green runs artifact-free.
+    - name: Upload test log on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-testlog-linux
+        path: build/meson-logs/testlog.txt
+    
     - name: Run static analysis
       run: just check
     
@@ -375,6 +385,14 @@ jobs:
 
     - name: Run tests
       run: just test-all
+
+    # Full meson test log on failure (see Linux job comment).
+    - name: Upload test log on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-testlog-macos
+        path: build/meson-logs/testlog.txt
 
     # The menu-table drift check. This is the only job that runs it, because
     # it is the only place the two-table hazard exists: the macOS table is
