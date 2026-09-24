@@ -165,7 +165,8 @@ void mainmenu::assertTablesConsistent(void) {
       if (cb == appMenuOnly[k]) skip = true;
     if (skip) continue;
 
-    bool found = false;
+    // Only read by the bt_assert below; kept for NDEBUG -Werror.
+    [[maybe_unused]] bool found = false;
     for (size_t j = 0; j < activeTableSize(); j++)
       if (activeTable()[j].callback() == cb) found = true;
 

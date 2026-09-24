@@ -264,6 +264,10 @@ TEST_CASE("Puzzle metadata inspection and modern accessors", "[metadata]") {
 }
 
 TEST_CASE("bt_assert throws assert_exception with C++20 source_location", "[assert]") {
+  // bt_assert compiles to ((void)0) under NDEBUG, so only the passing half
+  // applies there; the throwing half is debug-only (same guard idiom as
+  // test_halfedge.cpp).
+#ifndef NDEBUG
   try {
     bt_assert(1 == 2);
     FAIL("bt_assert should have thrown assert_exception");
@@ -273,12 +277,16 @@ TEST_CASE("bt_assert throws assert_exception with C++20 source_location", "[asse
     CHECK(e.line > 0);
     CHECK(std::string(e.what()) == "1 == 2");
   }
+#endif
 
   // Passing assertion does not throw
   CHECK_NOTHROW([&] { bt_assert(2 + 2 == 4); }());
 }
 
 TEST_CASE("assert_log correctly records lines", "[assert]") {
+  // bt_assert_line compiles to nothing under NDEBUG, so there is nothing
+  // to record there -- same guard idiom as test_halfedge.cpp.
+#ifndef NDEBUG
   REQUIRE(assert_log != nullptr);
   unsigned int initialLines = assert_log->lines();
   bt_assert_line("first assert log entry");
@@ -286,6 +294,7 @@ TEST_CASE("assert_log correctly records lines", "[assert]") {
   CHECK(assert_log->lines() == initialLines + 2);
   CHECK(std::string(assert_log->line(initialLines)) == "first assert log entry");
   CHECK(std::string(assert_log->line(initialLines + 1)) == "second assert log entry");
+#endif
 }
 
 TEST_CASE("Symmetry calculation for non-cube grids with unaligned bounding boxes", "[symmetry]") {

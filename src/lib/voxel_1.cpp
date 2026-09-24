@@ -219,7 +219,9 @@ bool voxel_1_c::identicalInBB(const voxel_c * op, bool includeColors) const {
 
 void voxel_1_c::transformPoint(int * x, int * y, int * z, unsigned int trans) const {
 
-  bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
+  // Input validation, not a debug check: see voxel_0_c::transformPoint.
+  if (trans >= NUM_TRANSFORMATIONS_MIRROR)
+    bt_te("trans < NUM_TRANSFORMATIONS_MIRROR");
 
   double xs = 0.5 + 0.5* *x;
   double ys = *y * sqrt(0.75);

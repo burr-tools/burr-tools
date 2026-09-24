@@ -328,9 +328,12 @@ TEST_CASE("SimdExactCover extended solve up to 32768", "[simd][exact_cover]") {
     unsigned int offset = capacity - 7;
     auto solver = tier.make(capacity, 3);
 
-    // Boundary check: col == capacity is out of bounds and must throw assert_exception
+    // Boundary check: col == capacity is out of bounds and must throw assert_exception.
+    // Guarded: under NDEBUG bt_assert compiles to ((void)0) and nothing is thrown.
+#ifndef NDEBUG
     CHECK_THROWS_AS(solver->setRequiredColumn(capacity), assert_exception);
     CHECK_THROWS_AS(solver->addRow(99, 0, {capacity}), assert_exception);
+#endif
 
     for (unsigned int i = 0; i < 7; i++) {
       solver->setRequiredColumn(offset + i);
@@ -572,6 +575,9 @@ TEST_CASE("SimdExactCover256 concurrent solveSubtree", "[simd][exact_cover][thre
 }
 
 TEST_CASE("SimdExactCover256 bounds check assertions", "[simd][exact_cover]") {
+  // Guarded: these assert via bt_assert, which compiles to ((void)0) under
+  // NDEBUG so nothing is thrown there.
+#ifndef NDEBUG
   CHECK_THROWS_AS(SimdExactCover256(257, 1), assert_exception);
 
   SimdExactCover256 solver(10, 2);
@@ -582,6 +588,7 @@ TEST_CASE("SimdExactCover256 bounds check assertions", "[simd][exact_cover]") {
   CHECK_THROWS_AS(bitset.set(256), assert_exception);
   CHECK_THROWS_AS(bitset.reset(256), assert_exception);
   CHECK_THROWS_AS(bitset.test(256), assert_exception);
+#endif
 }
 
 #include "src/lib/simd_huang_cover.h"

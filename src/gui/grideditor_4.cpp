@@ -108,7 +108,7 @@ static int getPolygon(int x, int y, int z, int tx, int ty, int sx, int sy,
 }
 
 void gridEditor_4_c::drawNormalTile(int x, int y, int z, int tx, int ty, int sx, int sy) {
-  int x1, y1, x2, y2, x3, y3, x4, y4;
+  int x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0, x4 = 0, y4 = 0;
 
   if (getPolygon(x, y, z, tx, ty, sx, sy, &x1, &y1, &x2, &y2, &x3, &y3, &x4, &y4, 1) == 3)
     fl_polygon(x1, y1, x2, y2, x3, y3);
@@ -117,7 +117,7 @@ void gridEditor_4_c::drawNormalTile(int x, int y, int z, int tx, int ty, int sx,
 }
 
 void gridEditor_4_c::drawVariableTile(int x, int y, int z, int tx, int ty, int sx, int sy) {
-  int x1, y1, x2, y2, x3, y3, x4, y4;
+  int x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0, x4 = 0, y4 = 0;
 
   if (getPolygon(x, y, z, tx, ty, sx, sy, &x1, &y1, &x2, &y2, &x3, &y3, &x4, &y4, 3) == 3)
     fl_polygon(x1, y1, x2, y2, x3, y3);
@@ -126,7 +126,7 @@ void gridEditor_4_c::drawVariableTile(int x, int y, int z, int tx, int ty, int s
 }
 
 void gridEditor_4_c::drawTileFrame(int x, int y, int z, int tx, int ty, int sx, int sy) {
-  int x1, y1, x2, y2, x3, y3, x4, y4;
+  int x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0, x4 = 0, y4 = 0;
 
   if (getPolygon(x, y, z, tx, ty, sx, sy, &x1, &y1, &x2, &y2, &x3, &y3, &x4, &y4, 0) == 3)
     fl_loop(x1, y1, x2, y2, x3, y3);
@@ -135,7 +135,7 @@ void gridEditor_4_c::drawTileFrame(int x, int y, int z, int tx, int ty, int sx, 
 }
 
 void gridEditor_4_c::drawTileColor(int x, int y, int z, int tx, int ty, int sx, int sy) {
-  int x1, y1, x2, y2, x3, y3, x4, y4;
+  int x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0, x4 = 0, y4 = 0;
 
   if (getPolygon(x, y, z, tx, ty, sx, sy, &x1, &y1, &x2, &y2, &x3, &y3, &x4, &y4, 1) == 3)
   {
