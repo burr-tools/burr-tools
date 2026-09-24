@@ -1018,6 +1018,11 @@ TEST_CASE("SIMD and DLX solvers agree across the regression corpus",
     {"examples/CubeInCage.xmpuzzle",               0, false},
     {"examples/Bermuda.xmpuzzle",                  0, false},
     {"examples/AugmentedSecondStellation.xmpuzzle",0, false},
+    /* range puzzles: the SIMD Huang solver models the piece-count range
+     * column explicitly, so these must agree too (DemoMirrorParadox above
+     * is also a range puzzle and counts here as well) */
+    {"examples/PiecesOfEight.xmpuzzle",            0, true},
+    {"examples/DemoPieceGenerator.xmpuzzle",       0, false},
   };
 
   bool tookDifferentPaths = false;

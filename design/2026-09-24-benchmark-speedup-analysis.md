@@ -307,3 +307,39 @@ fully classical paths. Findings, ranked:
    cover/uncover; disassembly `movementCache` is mutex-free (per-worker
    instances) and its 13% share only matters for the Amdahl-capped §4
    puzzles anyway.
+
+## 9. Range puzzles go SIMD (2026-09-24, branch `perf/simd-huang-range`)
+
+§8.2 left SIMD coverage for gated puzzles as the next big lever. The
+`hasRange` gate in `assembler_1_c::canUseSimd` turned out to be stale
+review conservatism (#82: "duplicate-assembly concern for is_range pivots",
+gate as the safe resolution), not a missing feature: `SimdHuangCover`
+already models the range column end to end (`is_range` bounds,
+per-row `range_weight`, max pruning in scalar/AVX2/AVX512/NEON
+`filterRows` kernels, min/max goal check, MRV/dead-end pruning in
+`search()`, bound checks in `solveSubtree()`), and `createSimdSolver()`
+already feeds it. The change is deletion of the gate plus tests.
+
+Correctness evidence (all differential DLX-vs-SIMD, `BURRTOOLS_NO_SIMD=1`
+as the DLX side):
+- SolidSix: 588/588 assemblies, sorted `-s` placement output identical
+  (only the stats line differs: 4.30M → 0.60M iterations).
+- Lomino:3: 5/5 assemblies, placement output identical (37.7M → 4.3M).
+- Disassembly parity (`-d`): SolidSix 588/179, Lomino:3 5/5, both engines,
+  serial and `-t 8`.
+- Small range puzzles agree too (DemoMirrorParadox 1/1, DemoPieceGenerator
+  928/928, PiecesOfEight 6/6) — PiecesOfEight and DemoPieceGenerator added
+  to the `[solver][simd][dlx][equivalence]` test (DemoMirrorParadox was
+  already listed and now actually exercises the SIMD path).
+- `test-all` 4/4, `test-regression` 20/20 vs 0.7.1, `just check` clean.
+
+Speedup (release binary, same-day): SolidSix assembly 7.9s → 0.54s
+(**14.6x** serial, 2.4s → 0.23s parallel); Lomino:3 ≈63s → 13.6s serial,
+≈18s → 4.4s parallel. Corpus totals vs 0.7.1: **SolidSix 38.3x, Lomino:3
+14.0x** (`results_20260924_201717_…`); all other puzzles unchanged within
+noise. Only 2 of 16 corpus puzzles use range columns (both min==max);
+`examples/` adds DemoMirrorParadox, DemoPieceGenerator, PiecesOfEight.
+
+Still gated (unchanged, structural): variable voxels with min<max shapes,
+>32768 columns, and all of assembler_0's holes/variables exclusions
+(kangaroo: `holes=65, res_vari=160`).

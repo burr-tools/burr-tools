@@ -2790,14 +2790,15 @@ bool assembler_1_c::canUseSimd(void) const {
     return false;
 
 
+  // NOTE: range puzzles (matrix has one more column than shapes + filled +
+  // variable voxels: the piece-count range column) are deliberately NOT
+  // excluded here. SimdHuangCover models the range column explicitly
+  // (is_range bounds, per-row range_weight, max pruning in every filterRows
+  // kernel, min/max goal check in search()) and the SIMD-vs-DLX equivalence
+  // test covers range puzzles, so falling back to DLX would only cost the
+  // ~10x speedup (SolidSix: 7.9s -> 0.64s).
   const voxel_c * result = getResultShape(problem);
-  unsigned int num_cols = headerNodes - 1;
-  unsigned int num_shapes = problem.getNumberOfParts();
-  unsigned int res_filled = result ? result->countState(voxel_c::VX_FILLED) : 0;
   unsigned int res_vari = result ? result->countState(voxel_c::VX_VARIABLE) : 0;
-  bool hasRange = (num_cols == (num_shapes + res_filled + res_vari + 1));
-  if (hasRange)
-    return false;
 
   if (res_vari > 0) {
     // If there are variable voxels AND any shape has min < max,
