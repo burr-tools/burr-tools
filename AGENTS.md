@@ -139,6 +139,8 @@ diff bench/results/results_20260923_114837_4280734-*.csv \
 
 Caveats: snapshots from different machines are not comparable (absolute times depend on hardware); correctness columns (assemblies/solutions/iterations) in the CSV double as the regression signal and are machine-independent. A `-dirty` suffix marks runs from a worktree with uncommitted changes.
 
+**Benchmarks must use the release binary.** `just bench` builds and measures `build-rel/burrTxt` (`--buildtype=release -Db_ndebug=true` via `just build-release`). Never publish timings from the default `build/` dir: it carries `_GLIBCXX_ASSERTIONS` and live `bt_assert` checks, which cost ~15–30% solver time in the exact-cover hot loops (every `vector::operator[]` gains a bounds check). See `design/2026-09-24-benchmark-speedup-analysis.md` §7. The same applies to hand-rolled A/B comparisons: build both binaries with `-Db_ndebug=true`, or the numbers measure assertion overhead instead of your change.
+
 ### Benchmarking Alternatives via Environment Variables
 
 Solver engines support runtime feature toggles via environment variables to allow clean, side-by-side A/B benchmarking from the exact same build:

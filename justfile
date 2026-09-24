@@ -127,8 +127,10 @@ coverage-html: setup-cov
 
 # Run the single-commit snapshot benchmark over the fixed puzzle corpus
 # (bench/run_snapshot.sh); extra args are forwarded, e.g. `just bench --runs 5`
-bench *args: build
-    ./bench/run_snapshot.sh {{args}}
+# Always measures the release+ndebug binary: the dev build carries assertion
+# overhead that would pollute every snapshot.
+bench *args: build-release
+    ./bench/run_snapshot.sh --binary build-rel/burrTxt {{args}}
 
 # Build with AddressSanitizer and UndefinedBehaviorSanitizer
 build-asan:
@@ -149,6 +151,15 @@ build-win:
 build-werror:
     @if [ ! -d "build-werror" ]; then meson setup build-werror --werror; fi
     ninja -C build-werror
+
+# Build an optimized release binary (assertions off) for benchmarking.
+# The default `build` dir carries _GLIBCXX_ASSERTIONS and live bt_assert
+# checks, which cost ~15-30% solver time in the exact-cover hot loops
+# (see design/2026-09-24-benchmark-speedup-analysis.md). Benchmarks must
+# use this binary, never the dev build.
+build-release:
+    @if [ ! -d "build-rel" ]; then meson setup build-rel --buildtype=release -Db_ndebug=true; fi
+    ninja -C build-rel
 
 # Headless GUI invariant check (menu table consistency)
 check-gui: build
