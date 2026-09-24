@@ -54,7 +54,23 @@ jobs:
       with:
         name: burrtools-testlog-linux
         path: build/meson-logs/testlog.txt
-    
+
+    # TEMPORARY DIAGNOSTIC (to be reverted): meson's --print-errorlogs
+    # truncates a failing test's captured stdout to its last 100 lines, and
+    # this suite's own CubeInCage debug-step trace floods well past that,
+    # burying the actual FAILED: assertion. The 'fast' test in meson.build
+    # now also writes a Catch2 XML reporter to fast-results.xml as a
+    # byproduct of the SAME meson-invoked run (same MALLOC_PERTURB_, same
+    # env, same everything) rather than a separate re-run, so this just
+    # uploads whatever that run already produced.
+    - name: Upload full test results (diagnostic)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-linux
+        path: fast-results.xml
+        if-no-files-found: warn
+
     - name: Run static analysis
       run: just check
     
@@ -119,6 +135,17 @@ jobs:
 
     - name: Run tests
       run: meson test -C build-clang --suite fast --print-errorlogs
+
+    # TEMPORARY DIAGNOSTIC (to be reverted): see the matching step on
+    # build-linux for why this reads a byproduct of the same meson-invoked
+    # run rather than a separate re-run.
+    - name: Upload full test results (diagnostic)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-clang
+        path: fast-results.xml
+        if-no-files-found: warn
 
   # Runs the parallel solver under ThreadSanitizer.
   #

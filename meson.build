@@ -414,7 +414,7 @@ test_burrtools = executable('test_burrtools',
 # that a genuine hang would sit there for the full ten minutes the slow suite
 # is allowed.
 test('fast', test_burrtools,
-  args: ['~[stress]'],
+  args: ['~[stress]', '-r', 'console', '-r', 'xml::out=fast-results.xml'],
   suite: 'fast',
   timeout: 300,
   workdir: meson.project_source_root())

@@ -8,6 +8,7 @@ src/help/helpviewer
 src/unitTest
 build/
 build-*/
+fast-results.xml
 GPATH
 GRTAGS
 GTAGS
