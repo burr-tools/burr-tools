@@ -241,10 +241,7 @@ void SimdExactCover<BitsetType>::solve(
   BitsetType occupied;
   search(0, occupied, ctx, callback, stop, iterations);
 
-  uint64_t rem = ctx.local_iterations & 255;
-  if (rem > 0) {
-    iterations.fetch_add(rem, std::memory_order_relaxed);
-  }
+  flushIterations(ctx, iterations);
 }
 
 template <typename BitsetType>
@@ -296,10 +293,7 @@ void SimdExactCover<BitsetType>::solveSubtree(
     search(prefix_node_ids.size(), occupied, ctx, callback, stop, iterations);
   }
 
-  uint64_t rem = ctx.local_iterations & 255;
-  if (rem > 0) {
-    iterations.fetch_add(rem, std::memory_order_relaxed);
-  }
+  flushIterations(ctx, iterations);
 }
 
 template <typename BitsetType>
@@ -315,13 +309,17 @@ void SimdExactCover<BitsetType>::search(
     return;
 
   ctx.local_iterations++;
-  if ((ctx.local_iterations & 255) == 0) {
+  // Batched publish (DLX-worker idiom): at most one relaxed add per 256
+  // nodes; remainder flushes at solutions keep live readers advancing.
+  if (ctx.local_iterations - ctx.flushed_iterations >= 256) {
     iterations.fetch_add(256, std::memory_order_relaxed);
+    ctx.flushed_iterations += 256;
   }
 
   // Check goal: are all required columns covered?
   if (occupied.containsAll(required_columns)) {
     ctx.current_solution.resize(depth);
+    flushIterations(ctx, iterations);
     if (!callback(ctx.current_solution))
       return;
     return;

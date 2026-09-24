@@ -290,7 +290,24 @@ private:
     std::vector<unsigned int> current_solution;
     std::vector<uint32_t> col_counts;
     uint64_t local_iterations = 0;
+    // Nodes already published to the shared counter (see flushIterations):
+    // batching keeps per-node overhead at one increment plus a predictable
+    // branch, while readers still observe advancing -- never frozen -- counts.
+    uint64_t flushed_iterations = 0;
   };
+
+  // Publish visited-but-unpublished nodes to the shared counter. Exact:
+  // every node is published exactly once (batches of 256 plus remainders).
+  // Called at each reported solution so live readers (GUI progress, the
+  // Python iterator API) observe iterations > 0 as soon as the first
+  // assembly exists, even for searches shorter than one batch.
+  static void flushIterations(SearchContext &ctx, std::atomic<uint64_t> &iterations) {
+    uint64_t unflushed = ctx.local_iterations - ctx.flushed_iterations;
+    if (unflushed > 0) {
+      iterations.fetch_add(unflushed, std::memory_order_relaxed);
+      ctx.flushed_iterations = ctx.local_iterations;
+    }
+  }
 
   // Recursive hot path: the token is borrowed, not copied, so billions of
   // backtracking nodes pay no atomic refcount traffic. Safe: every caller
