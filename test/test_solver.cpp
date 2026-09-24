@@ -1023,6 +1023,12 @@ TEST_CASE("SIMD and DLX solvers agree across the regression corpus",
      * is also a range puzzle and counts here as well) */
     {"examples/PiecesOfEight.xmpuzzle",            0, true},
     {"examples/DemoPieceGenerator.xmpuzzle",       0, false},
+    /* holes puzzles below also exercise the SIMD exact-cover optional
+     * columns + hole budget: PelikanBurr and DraculasDentalDesaster above
+     * both have variable voxels (holes=164/320), and the synthetic
+     * SimdExactCover holes test in test_simd_exact_cover.cpp pins the
+     * machinery directly. BTFiles holes puzzles (e.g. kangaroo) can't be
+     * listed here -- puzzles/ is gitignored and absent in CI. */
   };
 
   bool tookDifferentPaths = false;
