@@ -351,10 +351,7 @@ void SimdHuangCover<BitsetType>::solve(
     return;
 
   SearchContext ctx;
-  ctx.scratch_active_rows.resize(num_columns + 16);
-  ctx.current_solution.reserve(num_columns);
-  ctx.col_weights.assign(num_columns + 1, 0);
-  ctx.col_counts.assign(num_columns + 1, 0);
+  initContext(ctx);
 
   ctx.scratch_active_rows[0].resize(rows.size());
   for (size_t i = 0; i < rows.size(); i++) {
@@ -375,11 +372,7 @@ bool SimdHuangCover<BitsetType>::taskFromPrefix(
     return false;
 
   SearchContext ctx;
-  ctx.scratch_active_rows.resize(num_columns + 16);
-  ctx.current_solution.reserve(num_columns);
-  ctx.col_weights.assign(num_columns + 1, 0);
-  ctx.col_counts.assign(num_columns + 1, 0);
-  ctx.flushed_iterations = 0;
+  initContext(ctx);
 
   ctx.scratch_active_rows[0].reserve(rows.size());
   for (size_t i = 0; i < rows.size(); i++) {
@@ -457,10 +450,7 @@ void SimdHuangCover<BitsetType>::solveSubtree(
     return;
 
   SearchContext ctx;
-  ctx.scratch_active_rows.resize(num_columns + 16);
-  ctx.current_solution.reserve(num_columns);
-  ctx.col_weights.assign(num_columns + 1, 0);
-  ctx.col_counts.assign(num_columns + 1, 0);
+  initContext(ctx);
 
   std::vector<bool> is_hidden(rows.size(), false);
   for (unsigned int h : hidden_node_ids) {
@@ -497,10 +487,7 @@ void SimdHuangCover<BitsetType>::generateTasks(
     return;
 
   SearchContext root_ctx;
-  root_ctx.scratch_active_rows.resize(num_columns + 16);
-  root_ctx.current_solution.reserve(num_columns);
-  root_ctx.col_weights.assign(num_columns + 1, 0);
-  root_ctx.col_counts.assign(num_columns + 1, 0);
+  initContext(root_ctx);
 
   root_ctx.scratch_active_rows[0].resize(rows.size());
   for (size_t i = 0; i < rows.size(); i++) {

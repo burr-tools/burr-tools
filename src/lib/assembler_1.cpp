@@ -2803,6 +2803,20 @@ bool assembler_1_c::canUseSimd(void) const {
   if (headerNodes - 1 > 32768)
     return false;
 
+  // Memory footprint guard (issue #92): voxel_mask is tier-sized, so a
+  // high-tier puzzle with many placement rows would allocate hundreds of MB
+  // where DLX copes in tens. Refuse the SIMD path past the budget; the
+  // fallback stays correct, just slower.
+  {
+    uint64_t estRows = 0;
+    const unsigned int nShapes = problem.getNumberOfParts();
+    for (unsigned int s = 1; s <= nShapes; s++)
+      for (unsigned int r = down[s]; r != s; r = down[r])
+        estRows++;
+    if (!SimdHuangCover256::fitsMemoryBudget(headerNodes - 1, estRows))
+      return false;
+  }
+
 
   // NOTE: range puzzles (matrix has one more column than shapes + filled +
   // variable voxels: the piece-count range column) are deliberately NOT

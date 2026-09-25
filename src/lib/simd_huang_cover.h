@@ -146,6 +146,34 @@ public:
 
   SimdHuangCover(unsigned int num_columns, unsigned int num_shapes);
 
+  /**
+   * Memory budget for the SIMD path (issue #92): Row::voxel_mask is sized
+   * by the TIER, not the problem, so desirability is row count x tier
+   * width, not column count alone. A 32768-tier row carries 4 KB of mask;
+   * ~1e5 such rows allocate hundreds of MB where DLX would have coped, so
+   * canUseSimd() refuses past this budget and the search falls back.
+   * 256 MB: desktop-class floor, deliberately conservative -- SIMD buys
+   * speed, never capability, so erring toward DLX is always safe.
+   */
+  static constexpr uint64_t kSimdMemoryBudgetBytes = 256ULL << 20;
+
+  /** voxel_mask bytes per row at the tier covering num_cols. Thresholds
+   * mirror the createSimdSolver() ladder exactly. */
+  static size_t tierMaskBytes(unsigned int num_cols) {
+    if (num_cols <= 256) return 32;
+    if (num_cols <= 512) return 64;
+    if (num_cols <= 1024) return 128;
+    if (num_cols <= 2048) return 256;
+    if (num_cols <= 4096) return 512;
+    if (num_cols <= 8192) return 1024;
+    if (num_cols <= 16384) return 2048;
+    return 4096;
+  }
+
+  static bool fitsMemoryBudget(unsigned int num_cols, uint64_t num_rows) {
+    return num_rows * tierMaskBytes(num_cols) <= kSimdMemoryBudgetBytes;
+  }
+
   void setColumnBounds(
     unsigned int col,
     unsigned int min_w,
@@ -253,6 +281,31 @@ private:
       iterations.fetch_add(unflushed, std::memory_order_relaxed);
       ctx.flushed_iterations = ctx.local_iterations;
     }
+  }
+
+  /**
+   * True search-depth bound (issue #92): every placed row consumes at least
+   * one shape-column unit (rows always carry their shape column at weight
+   * 1), so depth never exceeds the sum of shape max_weights. scratch
+   * vectors are indexed by depth, not by column -- sizing them from
+   * num_columns wastes ~790 KB per context at the top tier. The +16 keeps
+   * the historical slack (and covers depth+1 indexing); resizing mid-search
+   * stays forbidden (curr_active references would dangle).
+   */
+  unsigned int searchDepthBound() const {
+    unsigned int bound = 0;
+    for (unsigned int c = 1; c <= num_shapes; c++)
+      bound += columns[c].max_weight;
+    return bound;
+  }
+
+  /** Fresh search context with scratch sized from the depth bound. */
+  void initContext(SearchContext &ctx) const {
+    ctx.scratch_active_rows.resize(searchDepthBound() + 16);
+    ctx.current_solution.reserve(num_columns);
+    ctx.col_weights.assign(num_columns + 1, 0);
+    ctx.col_counts.assign(num_columns + 1, 0);
+    ctx.flushed_iterations = 0;
   }
 
   struct SubtreeTask {

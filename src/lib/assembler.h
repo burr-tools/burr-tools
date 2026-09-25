@@ -309,8 +309,11 @@ public:
   /* upper bound on worker threads. The count arrives from -t, from
    * BURRTOOLS_THREADS and from Problem.solve(threads=...), none of which is
    * otherwise validated, and it is used directly to size a thread vector.
+   * constexpr (not const) so odr-use through std::min needs no out-of-line
+   * definition -- without it, low-optimization builds (e.g. sanitizers)
+   * fail to link.
    */
-  static const unsigned int MAX_THREADS = 256;
+  static constexpr unsigned int MAX_THREADS = 256;
 
   /* Thread count and coarse progress, shared by both engines: one
    * cancellation and progress contract is easier to keep correct than two.
