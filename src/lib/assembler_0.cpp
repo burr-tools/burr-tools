@@ -224,18 +224,33 @@ int assembler_0_c::AddPieceNode(unsigned int piece, unsigned int rot, unsigned i
 
 void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, int *x, int *y, int *z, unsigned int *piece) const {
 
-  for (int i = piecePositions.size()-1; i >= 0; i--)
-    if (piecePositions[i].row <= node) {
-      *tran = piecePositions[i].transformation;
-      *x = piecePositions[i].x;
-      *y = piecePositions[i].y;
-      *z = piecePositions[i].z;
-      *piece = piecePositions[i].piece;
+  // piecePositions is sorted by row: AddPieceNode appends rows in strictly
+  // increasing node order (piecenode == left.size() at creation), so binary
+  // search finds the last entry with row <= node. Called once per piece of
+  // every found assembly (e.g. kangaroo, 9831 assemblies); the logarithmic
+  // scan keeps that affordable.
+  // The not-found path throws unconditionally (not via bt_assert): besides
+  // reporting matrix corruption loudly in release builds, [[noreturn]]
+  // proves to all compilers that the outputs below are always set, which
+  // an early return would not (-Wmaybe-uninitialized, MinGW).
+  unsigned int lo = 0, hi = static_cast<unsigned int>(piecePositions.size());
+  while (lo < hi) {
+    unsigned int mid = lo + (hi - lo) / 2;
+    if (piecePositions[mid].row <= node)
+      lo = mid + 1;
+    else
+      hi = mid;
+  }
 
-      return;
-    }
+  if (lo == 0)
+    bt_te("getPieceInformation: no piece position for node");
 
-  bt_assert(0);
+  const piecePosition &pp = piecePositions[lo - 1];
+  *tran = pp.transformation;
+  *x = pp.x;
+  *y = pp.y;
+  *z = pp.z;
+  *piece = pp.piece;
 }
 
 /* find identical columns within the matrix and remove all but one

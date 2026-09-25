@@ -165,6 +165,9 @@ void mainmenu::assertTablesConsistent(void) {
       if (cb == appMenuOnly[k]) skip = true;
     if (skip) continue;
 
+    // Checked unconditionally (not via bt_assert): this is CI's menu-table
+    // drift gate (just check-gui) and must also fire in release builds,
+    // where bt_assert compiles away.
     bool found = false;
     for (size_t j = 0; j < activeTableSize(); j++)
       if (activeTable()[j].callback() == cb) found = true;
@@ -173,7 +176,8 @@ void mainmenu::assertTablesConsistent(void) {
      * table that is missing it, or add it to appMenuOnly if it genuinely
      * belongs only in the macOS application menu.
      */
-    bt_assert(found);
+    if (!found)
+      bt_te("menu callback missing from active table");
   }
 }
 

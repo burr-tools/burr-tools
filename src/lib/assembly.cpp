@@ -805,7 +805,10 @@ std::unique_ptr<voxel_c> assembly_c::createSpace(const problem_c & puz) const {
 
       std::unique_ptr<voxel_c> pc(puz.getPuzzle().getGridType()->getVoxel(puz.getPartShape(j)));
 
-      bt_assert(pc->transform(placements[i].transformation));
+      // transform() mutates pc: never hide the call inside bt_assert, or
+      // NDEBUG builds silently assemble untransformed pieces (wrong space).
+      [[maybe_unused]] bool transformOk = pc->transform(placements[i].transformation);
+      bt_assert(transformOk);
 
       int dx = (int)placements[i].xpos - (int)pc->getHx();
       int dy = (int)placements[i].ypos - (int)pc->getHy();
