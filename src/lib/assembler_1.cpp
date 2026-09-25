@@ -2901,7 +2901,12 @@ void assembler_1_c::simdSearch(void) {
   auto solver = createSimdSolver();
   std::atomic<uint64_t> simd_iter{0};
 
-  solver->solve([this, runTok](const std::vector<unsigned int> &solution_nodes) -> bool {
+  // Drain per-solution remainders to the shared counter as they arise, so
+  // live readers observe advancing iterations even on single-threaded runs;
+  // exact totals preserved (exchange drains). Mirrors the parallel worker.
+  solver->solve([this, runTok, &simd_iter](const std::vector<unsigned int> &solution_nodes) -> bool {
+    this->iterations.fetch_add(simd_iter.exchange(0, std::memory_order_relaxed),
+                               std::memory_order_relaxed);
     rows = solution_nodes;
     solution();
     return !runTok.stop_requested();
