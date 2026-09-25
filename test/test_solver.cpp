@@ -17,6 +17,7 @@
 #include "tools/gzstream.h"
 
 #include <cstdlib>
+#include <fstream>
 #include <sstream>
 #include <set>
 #include <chrono>
@@ -530,12 +531,24 @@ static std::string extractAssemblerContent(const std::string & xml) {
  * now is: such a state is refused on restore with a distinct error, so the
  * caller resets rather than double counting.
  */
-TEST_CASE("Parallel assembler: an interrupted search is not restored as resumable",
+TEST_CASE("Parallel assembler: an interrupted search restores as resumable",
           "[assembler][parallel][resume]") {
   auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
   REQUIRE(p != nullptr);
   auto problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
+
+  // Baseline multiset for the union check below.
+  std::multiset<std::string> serial;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    serial = std::move(cb.fingerprints);
+  }
+  REQUIRE(serial.size() == 12);
 
   assembler_0_c assm(*problem);
   assm.setNumThreads(4);
@@ -544,8 +557,10 @@ TEST_CASE("Parallel assembler: an interrupted search is not restored as resumabl
   /* stop from the callback on the first assembly, which aborts the workers
    * part way through the task set
    */
+  RecordingAssemblerCallback cb1;
   int seen = 0;
-  assm.assemble([&seen](std::unique_ptr<assembly_c>) -> bool {
+  assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+    cb1.assembly(std::move(a));
     seen++;
     return false;
   });
@@ -561,13 +576,21 @@ TEST_CASE("Parallel assembler: an interrupted search is not restored as resumabl
     state = str.str();
   }
 
-  /* a fresh assembler must refuse it rather than silently starting over */
+  /* a fresh assembler resumes from the saved pool tasks (issue #90) rather
+   * than refusing or silently starting over */
   assembler_0_c restored(*problem);
   REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
   std::string payload = extractAssemblerContent(state);
   CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
-        == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED);
+        == assembler_c::ERR_NONE);
+
+  RecordingAssemblerCallback cb2;
+  restored.assemble(&cb2);
+
+  std::multiset<std::string> resumed = cb1.fingerprints;
+  resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+  CHECK(resumed == serial);
 }
 
 /* The leading flag added to the save payload must not break ordinary restore.
@@ -858,6 +881,207 @@ TEST_CASE("Huang-SIMD pause and continue resumes salvaged prefixes",
   CHECK(cb.fingerprints == serial);
 }
 
+/* Save/stop/continue roundtrip across a process-equivalent boundary led
+ * by parallel runs (issue #90): stop mid-search, save to XML, restore into
+ * a fresh assembler, continue, and require the union to equal the
+ * uninterrupted multiset. Covers the Huang-SIMD remainder (placed-node
+ * prefixes) here; the DLX snapshot variant follows below. */
+TEST_CASE("Huang-SIMD save, load and continue reproduces the full multiset",
+          "[assembler][parallel][resume][simd][save]") {
+  auto p = puzzle_c::load("examples/PiecesOfEight.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::multiset<std::string> serial;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    serial = std::move(cb.fingerprints);
+  }
+  REQUIRE(serial.size() > 1);
+
+  // Phase 1: stop after the first assembly.
+  RecordingAssemblerCallback cb1;
+  std::string state;
+  {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    int seen = 0;
+    assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+      cb1.assembly(std::move(a));
+      return ++seen < 1;
+    });
+    REQUIRE(seen == 1);
+
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    state = str.str();
+  }
+
+  // The payload must carry the new format version with task data.
+  CHECK(assemblerVersionOf(state) == "2.2");
+
+  // Phase 2: restore into a fresh assembler and continue.
+  {
+    assembler_1_c restored(*problem);
+    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    std::string payload = extractAssemblerContent(state);
+    CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+          == assembler_c::ERR_NONE);
+
+    RecordingAssemblerCallback cb2;
+    restored.assemble(&cb2);
+
+    std::multiset<std::string> resumed = cb1.fingerprints;
+    resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+    CHECK(resumed == serial);
+  }
+}
+
+/* DLX snapshot variant of the above (issue #90): same stop/save/restore/
+// continue shape, but forcing the classical engine so SubtreeTask_1
+// snapshots (not Huang prefixes) go through the payload. */
+TEST_CASE("DLX save, load and continue reproduces the full multiset",
+          "[assembler][parallel][resume][save]") {
+  auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
+
+  std::multiset<std::string> serial;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    serial = std::move(cb.fingerprints);
+  }
+  REQUIRE(serial.size() > 1);
+
+  RecordingAssemblerCallback cb1;
+  std::string state;
+  {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    int seen = 0;
+    assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+      cb1.assembly(std::move(a));
+      return ++seen < 5;
+    });
+    REQUIRE(seen == 5);
+
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    state = str.str();
+  }
+
+  CHECK(assemblerVersionOf(state) == "2.2");
+
+  {
+    assembler_1_c restored(*problem);
+    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    std::string payload = extractAssemblerContent(state);
+    CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+          == assembler_c::ERR_NONE);
+
+    RecordingAssemblerCallback cb2;
+    restored.assemble(&cb2);
+
+    std::multiset<std::string> resumed = cb1.fingerprints;
+    resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+    CHECK(resumed == serial);
+  }
+}
+
+/* Assembler_0 variants (issue #90): the pool tasks are plain prefix steps
+ * shared by the DLX and SIMD paths, so one mechanism covers both engines.
+ * Kangaroo forces DLX (it has holes); Pelikan takes SIMD by default. */
+TEST_CASE("Assembler-0 save, load and continue reproduces the full multiset",
+          "[assembler][parallel][resume][save]") {
+  struct Case { const char * path; int stopAfter; bool forceDlx; const char * version; };
+  const Case cases[] = {
+    {"puzzles/BTFiles/James Fortune/kangaroo.xmpuzzle", 100, true, "1.6"},
+    {"examples/PelikanBurr.xmpuzzle", 5, false, "1.6"},
+  };
+
+  for (const auto & c : cases) {
+    INFO("puzzle: " << c.path);
+    // BTFiles is gitignored and absent in CI; skip those cases there.
+    {
+      std::ifstream probe(c.path);
+      if (!probe.good()) {
+        WARN("skipping: puzzle file not present");
+        continue;
+      }
+    }
+
+    auto p = puzzle_c::load(c.path);
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", c.forceDlx ? "1" : nullptr);
+
+    std::multiset<std::string> serial;
+    {
+      RecordingAssemblerCallback cb;
+      assembler_0_c assm(*problem);
+      assm.setNumThreads(4);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      assm.assemble(&cb);
+      serial = std::move(cb.fingerprints);
+    }
+    REQUIRE(serial.size() > (size_t)c.stopAfter);
+
+    RecordingAssemblerCallback cb1;
+    std::string state;
+    {
+      assembler_0_c assm(*problem);
+      assm.setNumThreads(4);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      int seen = 0;
+      assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+        cb1.assembly(std::move(a));
+        return ++seen < c.stopAfter;
+      });
+      REQUIRE(seen == c.stopAfter);
+
+      std::ostringstream str;
+      xmlWriter_c xml(str);
+      assm.save(xml);
+      state = str.str();
+    }
+
+    CHECK(assemblerVersionOf(state) == c.version);
+
+    {
+      assembler_0_c restored(*problem);
+      REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      std::string payload = extractAssemblerContent(state);
+      CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+            == assembler_c::ERR_NONE);
+
+      RecordingAssemblerCallback cb2;
+      restored.assemble(&cb2);
+
+      std::multiset<std::string> resumed = cb1.fingerprints;
+      resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+      CHECK(resumed == serial);
+    }
+  }
+}
+
 TEST_CASE("Parallel assembler 1 stops promptly when aborted", "[assembler][parallel]") {
   auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
   REQUIRE(p != nullptr);
@@ -955,19 +1179,35 @@ TEST_CASE("Parallel assembler 1 matches serial on a symmetry-breaking puzzle",
  * generateTasksAtDepth() has reset the master back to the root, so it must be
  * refused on restore rather than silently starting over and re-reporting.
  */
-TEST_CASE("Parallel assembler 1: an interrupted search is not restored as resumable",
+TEST_CASE("Parallel assembler 1: an interrupted search restores as resumable",
           "[assembler][parallel][resume]") {
   auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
   REQUIRE(p != nullptr);
   auto problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
 
+  std::multiset<std::string> serial;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    serial = std::move(cb.fingerprints);
+  }
+  REQUIRE(serial.size() > 1);
+
   assembler_1_c assm(*problem);
   assm.setNumThreads(4);
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
+  RecordingAssemblerCallback cb1;
   int seen = 0;
-  assm.assemble([&seen](std::unique_ptr<assembly_c>) -> bool { seen++; return false; });
+  assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+    cb1.assembly(std::move(a));
+    seen++;
+    return false;
+  });
   REQUIRE(seen == 1);
   REQUIRE(assm.getFinished() < 1.0f);
 
@@ -979,12 +1219,23 @@ TEST_CASE("Parallel assembler 1: an interrupted search is not restored as resuma
     state = str.str();
   }
 
+  /* resumes from saved tasks (issue #90) rather than refusing or silently
+   * starting over */
   assembler_1_c restored(*problem);
   REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
   std::string payload = extractAssemblerContent(state);
   CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
-        == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED);
+        == assembler_c::ERR_NONE);
+
+  RecordingAssemblerCallback cb2;
+  restored.assemble(&cb2);
+
+  std::multiset<std::string> resumed = cb1.fingerprints;
+  resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+  CHECK(resumed == serial);
 }
+
+/* The added flag must not break ordinary restore.
 
 /* The added flag must not break ordinary restore.
  *

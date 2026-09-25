@@ -55,6 +55,7 @@ bool huang_memory::fitsMemoryBudget(unsigned int num_cols, uint64_t num_rows, ui
 
 #include <cstdlib>
 #include <cstring>
+#include <algorithm>
 #include <unordered_map>
 #include <vector>
 
@@ -62,7 +63,7 @@ bool huang_memory::fitsMemoryBudget(unsigned int num_cols, uint64_t num_rows, ui
 #define snprintf _snprintf
 #endif
 
-#define ASSEMBLER_VERSION "2.1"
+#define ASSEMBLER_VERSION "2.2"
 
 void printMatrix(
     const std::vector<unsigned int> & up,
@@ -1530,6 +1531,13 @@ void assembler_1_c::iterative(void) {
 
   unsigned int row, col;
 
+  // A serial run supersedes any saved parallel remainder: it resumes from
+  // the stacks, so stale tasks/prefixes must not linger into a later save()
+  // (their subtrees are re-covered here; overlap stays correct via the kept
+  // signatures). Same clearing in simdSearch().
+  parallelTasks.clear();
+  pendingHuangPrefixes.clear();
+
   // Snapshot of the run token: assemble()/debug_step() refreshed the source
   // before calling here, so this stays valid for the whole serial search.
   std::stop_token runTok = currentRunToken();
@@ -2583,6 +2591,9 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     prewarmSharedShapeCaches(problem);
 
   if (canUseSimd()) {
+    // A SIMD run supersedes saved DLX remainder (fresh seeds cover the
+    // whole space; overlap dedups via kept signatures).
+    parallelTasks.clear();
     auto solver = createSimdSolver();
 
     // Incremental in-session resume (issue #111): consume previously
@@ -2689,6 +2700,10 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     running.store(false, std::memory_order_relaxed);
     return;
   }
+
+  // A DLX run supersedes saved Huang remainder (symmetric to the SIMD
+  // branch clearing DLX tasks above).
+  pendingHuangPrefixes.clear();
 
   if (parallelTasks.empty()) {
     unsigned int targetTasks = std::max(16u, workers * 4);
@@ -2953,6 +2968,10 @@ void assembler_1_c::simdSearch(void) {
   std::stop_token runTok = currentRunToken();
   running.store(true, std::memory_order_relaxed);
 
+  // See iterative(): a serial run supersedes saved parallel remainder.
+  parallelTasks.clear();
+  pendingHuangPrefixes.clear();
+
   auto solver = createSimdSolver();
   std::atomic<uint64_t> simd_iter{0};
 
@@ -3088,6 +3107,18 @@ static unsigned int getInt(const char * s, unsigned int * i) {
     return 500000;
 }
 
+static unsigned int getUInt64(const char * s, uint64_t * i) {
+
+  char * s2;
+
+  *i = std::strtoull (s, &s2, 10);
+
+  if (s2)
+    return s2-s;
+  else
+    return 500000;
+}
+
 static int stringToVector(const char * string, std::vector<unsigned int> & v) {
 
   unsigned int pos = 0;
@@ -3110,10 +3141,40 @@ static int stringToVector(const char * string, std::vector<unsigned int> & v) {
   return pos;
 }
 
-assembler_c::errState assembler_1_c::setPosition(const char * string, const char * /* version*/) {
+/* 64-bit variant for emittedSignatures (uint64_t FNV hashes). Sorted by the
+ * caller for deterministic output. */
+static void vectorToStream64(const std::vector<uint64_t> & v, std::ostream & str) {
+
+  str << v.size() << " ";
+
+  for (unsigned int i = 0; i < v.size(); i++)
+    str << v[i] << " ";
+}
+
+static int stringToVector64(const char * string, std::vector<uint64_t> & v) {
+
+  unsigned int pos = 0;
+
+  unsigned int count;
+
+  pos += getInt(string+pos, &count);
+
+  v.clear();
+
+  for (unsigned int i = 0; i < count; i++) {
+    uint64_t val;
+    pos += getUInt64(string+pos, &val);
+    v.push_back(val);
+  }
+
+  return pos;
+}
+
+assembler_c::errState assembler_1_c::setPosition(const char * string, const char * version) {
 
   unsigned int len = strlen(string);
   parallelTasks.clear();
+  pendingHuangPrefixes.clear();
   emittedSignatures.clear();
   resetTaskProgress();
   simdCompleted.store(false, std::memory_order_relaxed);
@@ -3121,14 +3182,12 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   unsigned int pos = 0;
 
   /* leading flag written by save(): an interrupted parallel search recorded
-   * neither how far its workers got nor which assemblies it already reported
+   * neither how far its workers got nor which assemblies it already reported.
+   * Refusal is decided below: version 2.2 may carry resumable task data.
    */
-  {
-    unsigned int interrupted = 0;
-    pos += getInt(string+pos, &interrupted);
-    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-    if (interrupted) return ERR_CAN_NOT_RESTORE_INTERRUPTED;
-  }
+  unsigned int interrupted = 0;
+  pos += getInt(string+pos, &interrupted);
+  if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
   pos += stringToVector(string+pos, rows);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
   pos += stringToVector(string+pos, task_stack);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
@@ -3137,6 +3196,70 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   pos += stringToVector(string+pos, hidden_rows);    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
   pos += stringToVector(string+pos, finished_a);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
   pos += stringToVector(string+pos, finished_b);
+
+  // Version 2.2 appends parallel remainder (issue #90): task type, tasks,
+  // reported signatures. Older payloads end here.
+  unsigned int restoredPtype = 0;
+  if (version != nullptr && strcmp(version, "2.2") == 0) {
+    unsigned int ptype = 0;
+    pos += getInt(string+pos, &ptype);
+    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    if (ptype > 2) return ERR_CAN_NOT_RESTORE_SYNTAX;
+
+    // Parse into locals first: a syntax failure must not leave partial
+    // tasks behind (the caller may retry or report).
+    std::vector<SubtreeTask_1> newTasks;
+    std::vector<std::vector<unsigned int>> newPrefixes;
+    if (ptype == 1) {
+      unsigned int count = 0;
+      pos += getInt(string+pos, &count);
+      if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      for (unsigned int i = 0; i < count; i++) {
+        SubtreeTask_1 t;
+        pos += stringToVector(string+pos, t.task_stack);  if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        pos += stringToVector(string+pos, t.next_row_stack); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        pos += stringToVector(string+pos, t.column_stack); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        pos += stringToVector(string+pos, t.rows);        if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        pos += stringToVector(string+pos, t.hidden_rows); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        newTasks.push_back(std::move(t));
+      }
+    } else if (ptype == 2) {
+      unsigned int count = 0;
+      pos += getInt(string+pos, &count);
+      if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      for (unsigned int i = 0; i < count; i++) {
+        std::vector<unsigned int> prefix;
+        pos += stringToVector(string+pos, prefix);
+        if (pos >= len && i + 1 < count) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        if (!prefix.empty())
+          newPrefixes.push_back(std::move(prefix));
+      }
+    }
+
+    std::vector<uint64_t> sigs;
+    pos += stringToVector64(string+pos, sigs);
+
+    if (interrupted && ptype == 0)
+      return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+
+    // Commit the remainder: a parallel continue resumes from these while
+    // the base stacks above (root-normalized on save) restore as no-op.
+    // Progress restarts from the remainder (matching in-session continue,
+    // which likewise counts only outstanding work from here).
+    parallelTasks = std::move(newTasks);
+    pendingHuangPrefixes = std::move(newPrefixes);
+    restoredPtype = ptype;
+    for (uint64_t s : sigs)
+      emittedSignatures.insert(s);
+    if (ptype != 0) {
+      totalTasks.store(parallelTasks.size() + pendingHuangPrefixes.size(),
+                       std::memory_order_relaxed);
+      completedTasks.store(0, std::memory_order_relaxed);
+      parallelInterrupted = false;
+    }
+  } else {
+    if (interrupted) return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+  }
 
   // not we need to restore the matrix to the right state
 
@@ -3181,6 +3304,19 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
     }
   }
 
+  if (restoredPtype != 0) {
+    /* Remainder restored: prime fresh-root stacks so assemble() runs at
+     * all (it gates on non-empty next_row_stack) and the parallel dispatch
+     * sees its canonical entry shape. The matrix is already at base after
+     * createMatrix, so {0} is exactly consistent -- and a serial continue
+     * from here re-searches from scratch (documented limitation).
+     */
+    task_stack.clear();
+    next_row_stack.clear();
+    task_stack.push_back(0);
+    next_row_stack.push_back(0);
+  }
+
   return ERR_NONE;
 }
 
@@ -3204,13 +3340,62 @@ void assembler_1_c::save(xmlWriter_c & xml) const
    */
   str << (parallelInterrupted ? 1 : 0) << " ";
 
-  vectorToStream(rows, str);
-  vectorToStream(task_stack, str);
-  vectorToStream(next_row_stack, str);
-  vectorToStream(column_stack, str);
-  vectorToStream(hidden_rows, str);
-  vectorToStream(finished_a, str);
-  vectorToStream(finished_b, str);
+  /* Parallel remainder for cross-session resume (issue #90): which engine's
+   * tasks, if any. 0 = none (serial stops resume from the stacks above);
+   * 1 = DLX SubtreeTask_1 snapshots; 2 = Huang placed-node prefixes. At
+   * most one kind is present: entering any run clears the other engine's
+   * remainder (a new run supersedes it; overlap stays correct via the
+   * signatures below). Signatures are always written when non-empty so a
+   * parallel continue after ANY saved run can dedup re-searched overlap.
+   */
+  unsigned int ptype = !parallelTasks.empty() ? 1
+                     : !pendingHuangPrefixes.empty() ? 2 : 0;
+
+  if (ptype == 0) {
+    vectorToStream(rows, str);
+    vectorToStream(task_stack, str);
+    vectorToStream(next_row_stack, str);
+    vectorToStream(column_stack, str);
+    vectorToStream(hidden_rows, str);
+    vectorToStream(finished_a, str);
+    vectorToStream(finished_b, str);
+  } else {
+    /* With tasks present the base stacks are meaningless (parallel runs
+     * never touch the master stacks; task generation leaves its own
+     * mid-generation state behind). Normalize to EMPTY, not root-{0}: the
+     * restore loop has no case 0 (only 1/2/5 occur below a stopped top, so
+     * {0} fails syntax while empty restores as untouched base). A serial
+     * continue from here re-searches nothing (documented limitation, same
+     * class as today's cross-mode gaps); parallel continue uses the tasks.
+     */
+    static const std::vector<unsigned int> kEmpty;
+    vectorToStream(kEmpty, str);    // rows
+    vectorToStream(kEmpty, str);    // task_stack
+    vectorToStream(kEmpty, str);    // next_row_stack
+    vectorToStream(kEmpty, str);    // column_stack
+    vectorToStream(kEmpty, str);    // hidden_rows
+    vectorToStream(kEmpty, str);    // finished_a
+    vectorToStream(kEmpty, str);    // finished_b
+  }
+  str << ptype << " ";
+  if (ptype == 1) {
+    str << parallelTasks.size() << " ";
+    for (const auto &t : parallelTasks) {
+      vectorToStream(t.task_stack, str);
+      vectorToStream(t.next_row_stack, str);
+      vectorToStream(t.column_stack, str);
+      vectorToStream(t.rows, str);
+      vectorToStream(t.hidden_rows, str);
+    }
+  } else if (ptype == 2) {
+    str << pendingHuangPrefixes.size() << " ";
+    for (const auto &p : pendingHuangPrefixes)
+      vectorToStream(p, str);
+  }
+
+  std::vector<uint64_t> sigs(emittedSignatures.begin(), emittedSignatures.end());
+  std::sort(sigs.begin(), sigs.end());
+  vectorToStream64(sigs, str);
 
   xml.endTag("assembler");
 }
