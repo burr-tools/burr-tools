@@ -2591,8 +2591,9 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     prewarmSharedShapeCaches(problem);
 
   if (canUseSimd()) {
-    // A SIMD run supersedes saved DLX remainder (fresh seeds cover the
-    // whole space; overlap dedups via kept signatures).
+    // A SIMD run supersedes saved DLX remainder: it searches from its own
+    // seeds (restored prefixes on resume, freshly generated otherwise) and
+    // overlap dedups via kept signatures, so the DLX snapshots are dropped.
     parallelTasks.clear();
     auto solver = createSimdSolver();
 
@@ -2815,11 +2816,10 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   } else {
     /* Stopped part way. Continuing in this session is fine -- the pool
      * remainder plus re-queued in-flight tasks are saved back into
-     * parallelTasks, and emittedSignatures suppresses repeats. But
-     * generateTasksAtDepth() resets the master back to the root on every exit,
-     * so what save() would write is the root state, i.e. "nothing searched
-     * yet" next to an already populated solution list. Mark it so the reload
-     * refuses it instead of silently reporting everything a second time.
+     * parallelTasks, and emittedSignatures suppresses repeats.
+     * generateTasksAtDepth() resets the master back to the root on every
+     * exit, so the base stacks carry no resume point; save() persists the
+     * remainder instead (format 2.2) and setPosition() resumes from it.
      */
     parallelTasks = pool.drain();
     parallelInterrupted = true;
@@ -3244,8 +3244,7 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
 
     // Commit the remainder: a parallel continue resumes from these while
     // the base stacks above (root-normalized on save) restore as no-op.
-    // Progress restarts from the remainder (matching in-session continue,
-    // which likewise counts only outstanding work from here).
+    // Progress restarts from the remainder.
     parallelTasks = std::move(newTasks);
     pendingHuangPrefixes = std::move(newPrefixes);
     restoredPtype = ptype;
@@ -3335,8 +3334,10 @@ void assembler_1_c::save(xmlWriter_c & xml) const
 
   std::ostream & str = xml.addContent();
 
-  /* leading flag: 1 marks a parallel search that was interrupted and whose
-   * position can therefore not be resumed (see parallelInterrupted)
+  /* leading flag: 1 marks a search that stopped before finishing.
+   * Reloading such a position resumes it only when task data follows
+   * (format 2.2, see below); older payloads and task-less stops are
+   * refused with ERR_CAN_NOT_RESTORE_INTERRUPTED.
    */
   str << (parallelInterrupted ? 1 : 0) << " ";
 

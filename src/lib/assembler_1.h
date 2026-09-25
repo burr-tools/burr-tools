@@ -119,14 +119,16 @@ private:
   /* Salvaged Huang-SIMD placed-node prefixes for incremental in-session
    * resume (issue #111): interrupted in-flight tasks plus the pool
    * remainder, filled by parallelSolve on stop. The next assemble() feeds
-   * them back as seeds instead of regenerating everything. In-session only
-   * (like parallelTasks); save() still marks the position unresumable.
+   * them back as seeds instead of regenerating everything. Persisted by
+   * save() (format 2.2) for cross-session resume, like parallelTasks.
    */
   std::vector<std::vector<unsigned int>> pendingHuangPrefixes;
 
   /* Pristine base matrix saved before search starts */
-  /* set when a parallel search stopped before finishing; such a position is
-   * saved as not resumable -- see assembler_1.cpp
+  /* set when a parallel search stopped before finishing. save() records
+   * the flag; setPosition() refuses reloads that carry it WITHOUT task
+   * data (format 2.1 and serial-SIMD stops), but resumes reloads whose
+   * pool remainder was persisted alongside it (format 2.2).
    */
   bool parallelInterrupted = false;
 

@@ -2047,8 +2047,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   } else {
     /* Stopped part way. In-memory continue is fine -- the pool remainder is
      * saved back into parallelTasks and anything a half-searched task repeats
-     * is suppressed via emittedSignatures. None of that survives a save, so
-     * the position we would write is not a resumable one.
+     * is suppressed via emittedSignatures. save() persists both (format 1.6),
+     * so cross-session continue resumes from the same remainder.
      */
     parallelTasks = pool.drain();
     parallelInterrupted = true;
@@ -2454,8 +2454,10 @@ void assembler_0_c::save(xmlWriter_c & xml) const
 
   std::ostream & str = xml.addContent();
 
-  /* leading flag: 1 marks a parallel search that was interrupted, whose
-   * position can not be resumed (see parallelInterrupted)
+  /* leading flag: 1 marks a search that stopped before finishing.
+   * Reloading such a position resumes it only when task data follows
+   * (format 1.6, see below); older payloads and task-less stops are
+   * refused with ERR_CAN_NOT_RESTORE_INTERRUPTED.
    */
   str << (parallelInterrupted ? 1 : 0) << " ";
 

@@ -523,13 +523,14 @@ static std::string extractAssemblerContent(const std::string & xml) {
   return xml.substr(a, b - a);
 }
 
-/* An interrupted parallel search must not save itself as a resumable position.
+/* An interrupted parallel search saves itself as a resumable position.
  *
- * Before this was handled, stopping a parallel solve left pos == 0, save()
- * wrote "nothing searched yet" next to an already-populated solution list, and
- * continuing re-reported every assembly found before the stop. The contract
- * now is: such a state is refused on restore with a distinct error, so the
- * caller resets rather than double counting.
+ * Stopping a parallel solve leaves pos == 0, which on its own would write
+ * "nothing searched yet" next to an already-populated solution list, and
+ * continuing would re-report every assembly found before the stop. The
+ * contract now is: the pool remainder plus reported signatures are
+ * persisted (format 1.6), so the reload resumes from the remainder and the
+ * union across both phases equals the uninterrupted multiset.
  */
 TEST_CASE("Parallel assembler: an interrupted search restores as resumable",
           "[assembler][parallel][resume]") {
@@ -1175,9 +1176,9 @@ TEST_CASE("Parallel assembler 1 matches serial on a symmetry-breaking puzzle",
 }
 
 /* Same contract as the assembler_0 case: a parallel Huang search that was
- * stopped part way saves no usable resume point, because
- * generateTasksAtDepth() has reset the master back to the root, so it must be
- * refused on restore rather than silently starting over and re-reporting.
+ * stopped part way persists its remainder (placed-node prefixes plus
+ * reported signatures, format 2.2), so the reload resumes from it instead
+ * of refusing or silently starting over and re-reporting.
  */
 TEST_CASE("Parallel assembler 1: an interrupted search restores as resumable",
           "[assembler][parallel][resume]") {

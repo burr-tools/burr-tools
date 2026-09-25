@@ -240,12 +240,9 @@ private:
    * the pool remainder saved back into parallelTasks (see parallelMultiSearch)
    * plus whatever each worker had reached inside the task it was in the
    * middle of, and the assemblies already handed to the callback are only
-   * remembered in emittedSignatures, which does not survive a save.
-   * Writing pos == 0 in that situation would claim "nothing searched yet"
-   * next to a solution list that is already populated, and continuing would
-   * report every one of those assemblies a second time. So an interrupted
-   * parallel search is marked here, saved as not resumable, and restarted
-   * from scratch on load with the counters reset.
+   * remembered in emittedSignatures. Since format 1.6 all of that is
+   * persisted (tasks plus sorted signatures), so a stopped parallel search
+   * reloads as resumable; older payloads and task-less stops are refused.
    */
   bool parallelInterrupted = false;
 
