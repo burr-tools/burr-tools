@@ -945,6 +945,64 @@ TEST_CASE("Huang-SIMD save, load and continue reproduces the full multiset",
   }
 }
 
+/* Serial continue after a parallel save (issue #118 review): the restored
+ * remainder carries no serial stacks, so a single-threaded continue
+ * re-searches from the root -- without the resumeDedup gate it would report
+ * every phase-1 assembly a second time. Uses threads=1 on restore. */
+TEST_CASE("Serial continue after parallel save does not duplicate",
+          "[assembler][parallel][resume][simd][save]") {
+  auto p = puzzle_c::load("examples/PiecesOfEight.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::multiset<std::string> serial;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    serial = std::move(cb.fingerprints);
+  }
+  REQUIRE(serial.size() > 1);
+
+  RecordingAssemblerCallback cb1;
+  std::string state;
+  {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    int seen = 0;
+    assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+      cb1.assembly(std::move(a));
+      return ++seen < 1;
+    });
+    REQUIRE(seen == 1);
+
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    state = str.str();
+  }
+
+  {
+    assembler_1_c restored(*problem);
+    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    std::string payload = extractAssemblerContent(state);
+    CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+          == assembler_c::ERR_NONE);
+
+    restored.setNumThreads(1);
+    RecordingAssemblerCallback cb2;
+    restored.assemble(&cb2);
+
+    std::multiset<std::string> resumed = cb1.fingerprints;
+    resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+    CHECK(resumed == serial);
+  }
+}
+
 /* DLX snapshot variant of the above (issue #90): same stop/save/restore/
 // continue shape, but forcing the classical engine so SubtreeTask_1
 // snapshots (not Huang prefixes) go through the payload. */

@@ -698,6 +698,7 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
   complete = comp;
   parallelTasks.clear();
   emittedSignatures.clear();
+  resumeDedup = false;
 
   if (!canHandle(problem))
     return ERR_PUZZLE_UNHANDABLE;
@@ -1112,6 +1113,26 @@ std::unique_ptr<assembly_c> assembler_1_c::getAssembly(void) {
   return assembly;
 }
 
+/* Canonical assembly signature over sorted placements (FNV-1a): identical
+ * assemblies hash identically regardless of discovery order, so reports
+ * from different runs, engines and thread counts dedup against each other.
+ * Shared by the parallel callback below and serial solution(): keep the two
+ * in sync -- a divergence silently breaks cross-run dedup. */
+static uint64_t assemblySignature(const assembly_c * assembly, unsigned int piecenumber) {
+  uint64_t sig = 14695981039346656037ULL;
+  for (unsigned int i = 0; i < piecenumber; i++) {
+    if (assembly->isPlaced(i)) {
+      sig ^= assembly->getTransformation(i); sig *= 1099511628211ULL;
+      sig ^= static_cast<uint32_t>(assembly->getX(i)); sig *= 1099511628211ULL;
+      sig ^= static_cast<uint32_t>(assembly->getY(i)); sig *= 1099511628211ULL;
+      sig ^= static_cast<uint32_t>(assembly->getZ(i)); sig *= 1099511628211ULL;
+    } else {
+      sig ^= 0xFF; sig *= 1099511628211ULL;
+    }
+  }
+  return sig;
+}
+
 /* this function handles the assemblies found by the assembler engine
  */
 void assembler_1_c::solution(void) {
@@ -1122,10 +1143,18 @@ void assembler_1_c::solution(void) {
 
     if (avoidTransformedAssemblies && assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror.get(), complete))
       return;
-    else {
-      if (!getCallback()->assembly(std::move(assembly)))
-        stop();
+
+    assembly->sort(problem);
+
+    if (resumeDedup) {
+      uint64_t sig = assemblySignature(assembly.get(), piecenumber);
+      std::lock_guard<std::mutex> lock(callbackMutex);
+      if (!emittedSignatures.insert(sig).second)
+        return;
     }
+
+    if (!getCallback()->assembly(std::move(assembly)))
+      stop();
 
 #if 0
     // as the below debug code has been way too useful an way too many
@@ -2043,14 +2072,12 @@ class assemblerWorker_1 {
                                           parent.avoidTransformedMirror.get(), parent.complete))
         return;
 
-      uint64_t sig = 14695981039346656037ULL;
-      for (unsigned int i = 0; i < rows.size(); i++) {
-        sig ^= piece[i]; sig *= 1099511628211ULL;
-        sig ^= tran[i]; sig *= 1099511628211ULL;
-        sig ^= static_cast<uint32_t>(x[i]); sig *= 1099511628211ULL;
-        sig ^= static_cast<uint32_t>(y[i]); sig *= 1099511628211ULL;
-        sig ^= static_cast<uint32_t>(z[i]); sig *= 1099511628211ULL;
-      }
+      // Canonical signature shared with the SIMD-parallel callback and
+      // serial solution(): sorted placements hash identically regardless of
+      // discovery order, so re-reports across runs, resumes and engine
+      // switches dedup. Keep all three call sites on this helper -- a
+      // divergence silently breaks cross-run dedup.
+      uint64_t sig = assemblySignature(assembly.get(), parent.piecenumber);
 
       {
         std::lock_guard<std::mutex> lock(parent.callbackMutex);
@@ -2640,17 +2667,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
                                               avoidTransformedMirror.get(), complete))
             return true;
 
-          uint64_t sig = 14695981039346656037ULL;
-          for (unsigned int i = 0; i < piecenumber; i++) {
-            if (assembly->isPlaced(i)) {
-              sig ^= assembly->getTransformation(i); sig *= 1099511628211ULL;
-              sig ^= static_cast<uint32_t>(assembly->getX(i)); sig *= 1099511628211ULL;
-              sig ^= static_cast<uint32_t>(assembly->getY(i)); sig *= 1099511628211ULL;
-              sig ^= static_cast<uint32_t>(assembly->getZ(i)); sig *= 1099511628211ULL;
-            } else {
-              sig ^= 0xFF; sig *= 1099511628211ULL;
-            }
-          }
+          uint64_t sig = assemblySignature(assembly.get(), piecenumber);
 
           {
             std::lock_guard<std::mutex> lock(callbackMutex);
@@ -2689,6 +2706,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       parallelTasks.clear();
       pendingHuangPrefixes.clear();
       emittedSignatures.clear();
+      resumeDedup = false;
       parallelInterrupted = false;
     } else {
       // Keep the salvaged in-flight prefixes plus pool remainder; the next
@@ -2714,11 +2732,20 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     completedTasks.store(0, std::memory_order_relaxed);
   }
 
-  if (parallelTasks.empty() || runTok.stop_requested()) {
-    if (!runTok.stop_requested()) {
-      totalTasks.store(1, std::memory_order_relaxed);
-      completedTasks.store(1, std::memory_order_relaxed);
-    }
+  if (runTok.stop_requested()) {
+    // Stopped before searching (possibly mid-generation with only a partial
+    // task list): discard it and mark interrupted. A partial list would
+    // silently drop subtrees on continue/save; regenerating fully with
+    // dedup stays correct. save() refuses the position (no tasks).
+    parallelTasks.clear();
+    parallelInterrupted = true;
+    running.store(false, std::memory_order_relaxed);
+    return;
+  }
+
+  if (parallelTasks.empty()) {
+    totalTasks.store(1, std::memory_order_relaxed);
+    completedTasks.store(1, std::memory_order_relaxed);
     running.store(false, std::memory_order_relaxed);
     return;
   }
@@ -2812,6 +2839,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     task_stack.clear();
     parallelTasks.clear();
     emittedSignatures.clear();
+    resumeDedup = false;
     parallelInterrupted = false;
   } else {
     /* Stopped part way. Continuing in this session is fine -- the pool
@@ -2997,6 +3025,8 @@ void assembler_1_c::simdSearch(void) {
   if (simdCompleted.load(std::memory_order_relaxed)) {
     next_row_stack.clear();
     task_stack.clear();
+    emittedSignatures.clear();
+    resumeDedup = false;
   }
 
   running.store(false, std::memory_order_relaxed);
@@ -3044,6 +3074,14 @@ void assembler_1_c::assemble(assembler_cb * callback) {
             simdSearch();
           } else {
             iterative();
+            // A completed serial run retires restored dedup state (mirrors
+            // the completion paths above); a stopped run keeps it for save().
+            // Completion is exactly empty stacks: iterative() only breaks
+            // with restorable states 1/2/5 on top otherwise.
+            if (task_stack.empty() && !runTok.stop_requested()) {
+              emittedSignatures.clear();
+              resumeDedup = false;
+            }
           }
         }
       }
@@ -3244,7 +3282,8 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
 
     // Commit the remainder: a parallel continue resumes from these while
     // the base stacks above (root-normalized on save) restore as no-op.
-    // Progress restarts from the remainder.
+    // Progress restarts from the remainder. A serial continue consults the
+    // signatures below (see resumeDedup), so it dedups instead of doubling.
     parallelTasks = std::move(newTasks);
     pendingHuangPrefixes = std::move(newPrefixes);
     restoredPtype = ptype;
@@ -3255,6 +3294,7 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
                        std::memory_order_relaxed);
       completedTasks.store(0, std::memory_order_relaxed);
       parallelInterrupted = false;
+      resumeDedup = true;
     }
   } else {
     if (interrupted) return ERR_CAN_NOT_RESTORE_INTERRUPTED;

@@ -1839,6 +1839,17 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     completedTasks.store(0, std::memory_order_relaxed);
   }
 
+  if (runTok.stop_requested()) {
+    // Stopped before searching (possibly mid-generation with only a partial
+    // task list): discard it and mark interrupted, mirroring the
+    // assembler_1 path. A partial list would silently drop subtrees on
+    // continue/save; regenerating fully with dedup stays correct.
+    parallelTasks.clear();
+    parallelInterrupted = true;
+    running.store(false, std::memory_order_relaxed);
+    return;
+  }
+
   if (parallelTasks.empty()) {
     running.store(false, std::memory_order_relaxed);
     return;
