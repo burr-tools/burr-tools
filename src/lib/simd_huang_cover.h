@@ -146,34 +146,6 @@ public:
 
   SimdHuangCover(unsigned int num_columns, unsigned int num_shapes);
 
-  /**
-   * Memory budget for the SIMD path (issue #92): Row::voxel_mask is sized
-   * by the TIER, not the problem, so desirability is row count x tier
-   * width, not column count alone. A 32768-tier row carries 4 KB of mask;
-   * ~1e5 such rows allocate hundreds of MB where DLX would have coped, so
-   * canUseSimd() refuses past this budget and the search falls back.
-   * 256 MB: desktop-class floor, deliberately conservative -- SIMD buys
-   * speed, never capability, so erring toward DLX is always safe.
-   */
-  static constexpr uint64_t kSimdMemoryBudgetBytes = 256ULL << 20;
-
-  /** voxel_mask bytes per row at the tier covering num_cols. Thresholds
-   * mirror the createSimdSolver() ladder exactly. */
-  static size_t tierMaskBytes(unsigned int num_cols) {
-    if (num_cols <= 256) return 32;
-    if (num_cols <= 512) return 64;
-    if (num_cols <= 1024) return 128;
-    if (num_cols <= 2048) return 256;
-    if (num_cols <= 4096) return 512;
-    if (num_cols <= 8192) return 1024;
-    if (num_cols <= 16384) return 2048;
-    return 4096;
-  }
-
-  static bool fitsMemoryBudget(unsigned int num_cols, uint64_t num_rows) {
-    return num_rows * tierMaskBytes(num_cols) <= kSimdMemoryBudgetBytes;
-  }
-
   void setColumnBounds(
     unsigned int col,
     unsigned int min_w,
@@ -416,5 +388,42 @@ using SimdHuangCover4096 = SimdHuangCover<SimdBitset4096>;
 using SimdHuangCover8192 = SimdHuangCover<SimdBitset8192>;
 using SimdHuangCover16384 = SimdHuangCover<SimdBitset16384>;
 using SimdHuangCover32768 = SimdHuangCover<SimdBitset32768>;
+
+/**
+ * Memory-budget helpers for the SIMD path (issue #92). Only
+ * tier-independent constants live here. tierRowBytes()/fitsMemoryBudget()
+ * are merely DECLARED here and defined in assembler_1.cpp: their bodies
+ * name every tier's Row type, and referencing other tiers from this header
+ * breaks GCC's target-attribute handling for the AVX kernels below
+ * (always_inline inlining failures) -- keep such references out of this TU.
+ */
+namespace huang_memory {
+
+/** Refuse-the-SIMD-path budget: SIMD buys speed, never capability, so
+ * erring toward DLX past this is always safe. Desktop-class floor,
+ * deliberately conservative. */
+inline constexpr uint64_t kSimdMemoryBudgetBytes = 256ULL << 20;
+
+/** voxel_mask bytes per row at the tier covering num_cols. Thresholds
+ * mirror the createSimdSolver() ladder exactly. */
+inline size_t tierMaskBytes(unsigned int num_cols) {
+  if (num_cols <= 256) return 32;
+  if (num_cols <= 512) return 64;
+  if (num_cols <= 1024) return 128;
+  if (num_cols <= 2048) return 256;
+  if (num_cols <= 4096) return 512;
+  if (num_cols <= 8192) return 1024;
+  if (num_cols <= 16384) return 2048;
+  return 4096;
+}
+
+/** Bytes per matrix node beyond the row itself: the column/weight payload
+ * in the row's heap vectors plus one unordered_map alias-table node. */
+inline constexpr size_t kPerNodeOverheadBytes = 2 * sizeof(unsigned int) + 40;
+
+size_t tierRowBytes(unsigned int num_cols);
+bool fitsMemoryBudget(unsigned int num_cols, uint64_t num_rows, uint64_t num_nodes);
+
+} // namespace huang_memory
 
 #endif // __SIMD_HUANG_COVER_H__
