@@ -12,6 +12,7 @@
 #include "viewcube.h"
 #include "arcball.h"
 
+#include <algorithm>
 #include <math.h>
 #include <string.h>
 
@@ -347,6 +348,22 @@ static const CubeEdgeHit kEdgeHits[12] = {
 };
 
 
+
+/* Stroke font geometry for 3D face labels (+X/-X/+Y/-Y/+Z/-Z).
+ * Coords are in [-1,1] glyph-local space; scaled by charScale at render time. */
+struct StrokeSeg { float x0, y0, x1, y1; };
+static const StrokeSeg kSgPlus[]  = {{-0.78f, 0,     0.78f, 0    }, {0, -0.72f, 0,    0.72f}};
+static const StrokeSeg kSgMinus[] = {{-0.78f, 0,     0.78f, 0    }};
+static const StrokeSeg kSgX[]     = {{-0.65f,-0.88f, 0.65f, 0.88f}, {0.65f,-0.88f,-0.65f, 0.88f}};
+static const StrokeSeg kSgY[]     = {{-0.65f, 0.88f, 0,     0    }, {0.65f, 0.88f, 0, 0}, {0, 0, 0,-0.88f}};
+static const StrokeSeg kSgZ[]     = {{-0.65f, 0.88f, 0.65f, 0.88f}, {0.65f, 0.88f,-0.65f,-0.88f}, {-0.65f,-0.88f, 0.65f,-0.88f}};
+struct CharDef { const StrokeSeg * s; int n; };
+static const CharDef kCharDefs[] = {{kSgPlus,2},{kSgMinus,1},{kSgX,2},{kSgY,3},{kSgZ,3}};
+/* [sign_idx, letter_idx] per face: PX NX PY NY PZ NZ */
+static const int kFaceChars[6][2] = {{0,2},{1,2},{0,3},{1,3},{0,4},{1,4}};
+/* Local coordinate frame for each face: right and up in world space. */
+static const float kFaceRight[6][3] = {{0,0,-1},{0,0,1},{1,0,0},{1,0,0},{1,0,0},{-1,0,0}};
+static const float kFaceUp[6][3]    = {{0,1,0},{0,1,0},{0,0,-1},{0,0,1},{0,1,0},{0,1,0}};
 
 static void addPoly(PickPoly * polys, int * count, viewCube_c::Part part, int n,
                     float ax, float ay, float az,
@@ -976,13 +993,23 @@ void viewCube_c::draw(rotater_c * rot, int winW, int winH, float pixelScale) con
     {{ 1,-1,-1},{-1,-1,-1},{-1, 1,-1},{ 1, 1,-1}},  /* NZ */
   };
 
+  /* World-space directional light from top-right-front: L = normalize(1, 1.5, 0.8).
+   * Shade = ambient + diffuse * max(0, dot(face_normal, L)).
+   * Face normals are axis-aligned so the dot products are constant per face. */
+  static const float kFaceShade[6] = {
+    0.72f + 0.22f * 0.507f,  /* PX  right  0.832 */
+    0.72f,                    /* NX  left   0.720 */
+    0.72f + 0.22f * 0.761f,  /* PY  top    0.887 */
+    0.72f,                    /* NY  bottom 0.720 */
+    0.72f + 0.22f * 0.406f,  /* PZ  front  0.809 */
+    0.72f,                    /* NZ  back   0.720 */
+  };
+
   glEnable(GL_POLYGON_OFFSET_FILL);
   glPolygonOffset(1.0f, 1.0f);
   for (int f = 0; f < 6; f++) {
     if (fWnz[f] < -0.02f) continue;
-    bool lit = (hover == (Part)(FACE_PX + f));
-    float shade = 0.78f + 0.16f * fWnz[f];
-    glColorGrey(shade, lit);
+    glColorGrey(kFaceShade[f], false);
     glBegin(GL_QUADS);
     for (int k = 0; k < 4; k++) glVertex3fv(kFaceV[f][k]);
     glEnd();
@@ -1007,48 +1034,151 @@ void viewCube_c::draw(rotater_c * rot, int winW, int winH, float pixelScale) con
     {EDGE_NX_NY, {{-1,-1,-1},{-1,-1, 1}}, 1, 3},
   };
 
-  for (int i = 0; i < 12; i++) {
-    const CubeEdge & e = kEdges[i];
-    if (fWnz[e.f0] < -0.02f && fWnz[e.f1] < -0.02f) continue;
-    bool lit = (hover == e.part);
-    if (lit) {
-      glColor3f(0.20f, 0.55f, 1.0f);
-      glLineWidth(5.5f);
+  /* 12 cube edges: draw thin structural lines, then fill strips on both adjacent
+   * faces when hovered — matching the face-center zone boundary width. */
+  {
+    glColor3f(0.28f, 0.28f, 0.30f);
+    glLineWidth(1.5f);
+    for (int i = 0; i < 12; i++) {
+      const CubeEdge & e = kEdges[i];
+      if (fWnz[e.f0] < -0.02f && fWnz[e.f1] < -0.02f) continue;
       glBegin(GL_LINES); glVertex3fv(e.v[0]); glVertex3fv(e.v[1]); glEnd();
-    } else {
-      glColor3f(0.28f, 0.28f, 0.30f);
-      glLineWidth(1.5f);
-      glBegin(GL_LINES); glVertex3fv(e.v[0]); glVertex3fv(e.v[1]); glEnd();
+    }
+    if (hover >= EDGE_PY_PZ && hover <= EDGE_NX_NY) {
+      float ki = 1.0f - kChamfer;
+      for (int ei = 0; ei < 12; ei++) {
+        const CubeEdgeHit & eh = kEdgeHits[ei];
+        if (hover != eh.part) continue;
+        /* Find which world axis the edge spans */
+        int edgeDir = 0;
+        for (int j = 0; j < 3; j++)
+          if (fabsf(eh.v[0][j] - eh.v[1][j]) > 0.5f) { edgeDir = j; break; }
+        int faces2[2] = {eh.f0, eh.f1};
+        glColor4f(0.15f, 0.35f, 0.90f, 0.72f);
+        for (int fi = 0; fi < 2; fi++) {
+          int f = faces2[fi];
+          if (fWnz[f] < -0.02f) continue;
+          int na = f / 2;                   /* normal axis */
+          int da = 3 - na - edgeDir;        /* depth axis (toward the shared edge) */
+          float nv = eh.v[0][na];           /* ±1 face-normal position */
+          float ds = (eh.v[0][da] > 0) ? 1.0f : -1.0f;  /* sign toward edge */
+          float sv[4][3];
+          sv[0][na]=nv*1.004f; sv[0][edgeDir]=-ki; sv[0][da]=ds*ki;
+          sv[1][na]=nv*1.004f; sv[1][edgeDir]= ki; sv[1][da]=ds*ki;
+          sv[2][na]=nv*1.004f; sv[2][edgeDir]= ki; sv[2][da]=ds*1.0f;
+          sv[3][na]=nv*1.004f; sv[3][edgeDir]=-ki; sv[3][da]=ds*1.0f;
+          glBegin(GL_QUADS);
+          for (int k = 0; k < 4; k++) glVertex3fv(sv[k]);
+          glEnd();
+        }
+        break;
+      }
     }
   }
 
-  /* Corner hover: 3 short rays from the corner into each adjacent edge. */
+  /* Corner hover: draw filled corner squares on each of the three adjacent faces. */
   if (hover >= CORNER_PPP && hover <= CORNER_NNN) {
-    struct CubeCorner { float v[3]; int f[3]; };
-    static const CubeCorner kCorners[8] = {
-      {{ 1, 1, 1},{0,2,4}}, {{-1, 1, 1},{1,2,4}},
-      {{ 1,-1, 1},{0,3,4}}, {{-1,-1, 1},{1,3,4}},
-      {{ 1, 1,-1},{0,2,5}}, {{-1, 1,-1},{1,2,5}},
-      {{ 1,-1,-1},{0,3,5}}, {{-1,-1,-1},{1,3,5}},
+    static const float kCPPos[8][3] = {
+      { 1, 1, 1},{-1, 1, 1},{ 1,-1, 1},{-1,-1, 1},
+      { 1, 1,-1},{-1, 1,-1},{ 1,-1,-1},{-1,-1,-1},
     };
-    int ci = (int)hover - (int)CORNER_PPP;
-    const CubeCorner & c = kCorners[ci];
-    if (fWnz[c.f[0]] > -0.02f || fWnz[c.f[1]] > -0.02f || fWnz[c.f[2]] > -0.02f) {
-      glColor3f(0.20f, 0.55f, 1.0f);
-      glLineWidth(5.5f);
-      glBegin(GL_LINES);
-      for (int i = 0; i < 12; i++) {
-        const CubeEdge & e = kEdges[i];
-        bool has0 = (e.v[0][0]==c.v[0] && e.v[0][1]==c.v[1] && e.v[0][2]==c.v[2]);
-        bool has1 = (e.v[1][0]==c.v[0] && e.v[1][1]==c.v[1] && e.v[1][2]==c.v[2]);
-        if (!has0 && !has1) continue;
-        const float * ot = has0 ? e.v[1] : e.v[0];
-        float tip[3] = {c.v[0]+(ot[0]-c.v[0])*0.30f,
-                        c.v[1]+(ot[1]-c.v[1])*0.30f,
-                        c.v[2]+(ot[2]-c.v[2])*0.30f};
-        glVertex3fv(c.v); glVertex3fv(tip);
+    static const int kCPAdj[8][3] = {
+      {0,2,4},{1,2,4},{0,3,4},{1,3,4},
+      {0,2,5},{1,2,5},{0,3,5},{1,3,5},
+    };
+    int ci = (int)hover - CORNER_PPP;
+    float ki = 1.0f - kChamfer;
+    bool anyVis = fWnz[kCPAdj[ci][0]] > -0.02f ||
+                  fWnz[kCPAdj[ci][1]] > -0.02f ||
+                  fWnz[kCPAdj[ci][2]] > -0.02f;
+    if (anyVis) {
+      glColor4f(0.15f, 0.35f, 0.90f, 0.72f);
+      for (int fi = 0; fi < 3; fi++) {
+        int f = kCPAdj[ci][fi];
+        if (fWnz[f] < -0.02f) continue;
+        int na = f / 2;
+        int ax0 = (na == 0) ? 1 : 0;
+        int ax1 = (na < 2) ? 2 : 1;
+        float nv  = kCPPos[ci][na];   /* ±1 face-normal position */
+        float s0  = kCPPos[ci][ax0];  /* ±1 direction on first non-normal axis */
+        float s1  = kCPPos[ci][ax1];  /* ±1 direction on second non-normal axis */
+        float cv[4][3];
+        cv[0][na]=nv*1.004f; cv[0][ax0]=s0*ki;   cv[0][ax1]=s1*ki;
+        cv[1][na]=nv*1.004f; cv[1][ax0]=s0*1.0f; cv[1][ax1]=s1*ki;
+        cv[2][na]=nv*1.004f; cv[2][ax0]=s0*1.0f; cv[2][ax1]=s1*1.0f;
+        cv[3][na]=nv*1.004f; cv[3][ax0]=s0*ki;   cv[3][ax1]=s1*1.0f;
+        glBegin(GL_QUADS);
+        for (int k = 0; k < 4; k++) glVertex3fv(cv[k]);
+        glEnd();
+      }
+    }
+  }
+
+  /* Face hover: draw an inset blue square over the face-center hit zone.
+   * Placed slightly in front of the face plane (1.004 * normal) to avoid z-fighting. */
+  if (hover >= FACE_PX && hover <= FACE_NZ) {
+    int hf = (int)hover - FACE_PX;
+    if (fWnz[hf] > 0.02f) {
+      float ki = 1.0f - kChamfer;
+      int na = hf / 2;
+      glColor4f(0.15f, 0.35f, 0.90f, 0.62f);
+      glBegin(GL_QUADS);
+      for (int k = 0; k < 4; k++) {
+        float v[3];
+        for (int j = 0; j < 3; j++)
+          v[j] = (j == na) ? kFaceV[hf][k][j] * 1.004f : kFaceV[hf][k][j] * ki;
+        glVertex3fv(v);
       }
       glEnd();
+    }
+  }
+
+  /* 3D stroke labels on each visible face.
+   * Geometry is placed at 1.01 * face_normal so it renders in front of the face plane.
+   * Line thickness scales with the face-to-camera angle to stay proportional under
+   * perspective foreshortening. */
+  {
+    static const float kAxisCol[3][3] = {
+      {0.90f, 0.20f, 0.16f},  /* X: red   */
+      {0.16f, 0.70f, 0.20f},  /* Y: green */
+      {0.20f, 0.40f, 0.92f},  /* Z: blue  */
+    };
+    const float charScale = 0.18f;  /* half-extent of each glyph in world units */
+    const float signOff = -0.23f;   /* sign char center along face-right from face center */
+    const float letOff  = +0.23f;   /* letter char center along face-right from face center */
+    for (int f = 0; f < 6; f++) {
+      if (fWnz[f] < 0.10f) continue;
+      const float * fn = kFaceNrm[f];
+      const float * fr = kFaceRight[f];
+      const float * fu = kFaceUp[f];
+      bool lit = (hover == (Part)(FACE_PX + f));
+      int axis = f / 2;
+      if (lit)
+        glColor3f(1.0f, 1.0f, 1.0f);
+      else
+        glColor3f(kAxisCol[axis][0], kAxisCol[axis][1], kAxisCol[axis][2]);
+      float lw = 5.5f * fWnz[f];
+      if (lw < 2.2f) lw = 2.2f;
+      glLineWidth(lw);
+      float fc[3] = { fn[0]*1.01f, fn[1]*1.01f, fn[2]*1.01f };
+      float centers[2][3] = {
+        {fc[0]+fr[0]*signOff, fc[1]+fr[1]*signOff, fc[2]+fr[2]*signOff},
+        {fc[0]+fr[0]*letOff,  fc[1]+fr[1]*letOff,  fc[2]+fr[2]*letOff},
+      };
+      for (int ci = 0; ci < 2; ci++) {
+        const CharDef & cd = kCharDefs[kFaceChars[f][ci]];
+        glBegin(GL_LINES);
+        for (int si = 0; si < cd.n; si++) {
+          const StrokeSeg & sg = cd.s[si];
+          glVertex3f(centers[ci][0] + fr[0]*sg.x0*charScale + fu[0]*sg.y0*charScale,
+                     centers[ci][1] + fr[1]*sg.x0*charScale + fu[1]*sg.y0*charScale,
+                     centers[ci][2] + fr[2]*sg.x0*charScale + fu[2]*sg.y0*charScale);
+          glVertex3f(centers[ci][0] + fr[0]*sg.x1*charScale + fu[0]*sg.y1*charScale,
+                     centers[ci][1] + fr[1]*sg.x1*charScale + fu[1]*sg.y1*charScale,
+                     centers[ci][2] + fr[2]*sg.x1*charScale + fu[2]*sg.y1*charScale);
+        }
+        glEnd();
+      }
     }
   }
 
@@ -1088,32 +1218,6 @@ void viewCube_c::draw(rotater_c * rot, int winW, int winH, float pixelScale) con
                  nav.rollA0[0], nav.rollA1[0], true, hover == ROLL_CCW);
     drawArcArrow(nav.rollCx[1], nav.rollCy[1], nav.rollR[1],
                  nav.rollA0[1], nav.rollA1[1], false, hover == ROLL_CW);
-  }
-
-  static const char * faceName[] = {
-    "RIGHT", "LEFT", "TOP", "BOTTOM", "FRONT", "BACK"
-  };
-
-  glDisable(GL_TEXTURE_2D);
-  gl_font(FL_HELVETICA_BOLD, 10);
-
-  for (int f = FACE_PX; f <= FACE_NZ; f++) {
-    float n[3];
-    partLook((Part)f, n);
-    float wn[3];
-    mulPoint(m, n[0], n[1], n[2], wn);
-    if (wn[2] < 0.28f)
-      continue;
-    float sx, sy, sz;
-    project(m, n[0] * 0.72f, n[1] * 0.72f, n[2] * 0.72f, o, &sx, &sy, &sz);
-    const char * lab = faceName[f];
-    int tw = gl_width(lab);
-    int th = gl_height();
-    if (hover == f)
-      glColor3f(1, 1, 1);
-    else
-      glColor3f(0.12f, 0.12f, 0.14f);
-    gl_draw(lab, (int)(sx - tw * 0.5f), (int)(sy + th * 0.35f));
   }
 
   /* axis letters at the triad tips */
