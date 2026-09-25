@@ -1237,8 +1237,6 @@ TEST_CASE("Parallel assembler 1: an interrupted search restores as resumable",
 }
 
 /* The added flag must not break ordinary restore.
-
-/* The added flag must not break ordinary restore.
  *
  * Uses a *serial* run stopped part way, which is the state the application
  * actually saves: iterative() breaks at a restorable point, parallelInterrupted
