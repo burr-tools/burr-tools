@@ -227,8 +227,8 @@ void assembler_0_c::getPieceInformation(unsigned int node, unsigned char *tran, 
   // piecePositions is sorted by row: AddPieceNode appends rows in strictly
   // increasing node order (piecenode == left.size() at creation), so binary
   // search finds the last entry with row <= node. Called once per piece of
-  // every found assembly; the old reverse linear scan showed up at ~4% in
-  // profiles of solution-rich puzzles (e.g. kangaroo, 9831 assemblies).
+  // every found assembly (e.g. kangaroo, 9831 assemblies); the logarithmic
+  // scan keeps that affordable.
   // The not-found path throws unconditionally (not via bt_assert): besides
   // reporting matrix corruption loudly in release builds, [[noreturn]]
   // proves to all compilers that the outputs below are always set, which

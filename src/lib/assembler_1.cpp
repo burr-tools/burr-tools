@@ -210,8 +210,7 @@ void assembler_1_c::getPieceInformation(unsigned int node, unsigned int * piece,
 
   // piecePositions is sorted by row: AddPieceNode appends rows in strictly
   // increasing node order (piecenode == left.size() at creation), so binary
-  // search finds the last entry with row <= node (same result as the old
-  // reverse linear scan, in O(log n) instead of O(n) per call).
+  // search finds the last entry with row <= node in O(log n) per call.
   // The not-found path throws unconditionally (see assembler_0_c for why
   // this is bt_te rather than bt_assert or an early return).
   unsigned int lo = 0, hi = static_cast<unsigned int>(piecePositions.size());
