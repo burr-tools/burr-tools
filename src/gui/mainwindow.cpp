@@ -4155,10 +4155,12 @@ void mainWindow_c::CreateSolveTab(void) {
 
 void mainWindow_c::activateConfigOptions(void) {
 
-  if (config.useTooltips())
+  if (config.useTooltips()) {
     Fl_Tooltip::enable();
-  else
+    Fl_Tooltip::delay(2.5f);  // default 1s feels too eager on a large interactive viewport
+  } else {
     Fl_Tooltip::disable();
+  }
 
   View3D->getView()->useLightning(config.useLightning());
   View3D->getView()->setRotaterMethod(config.rotationMethod());

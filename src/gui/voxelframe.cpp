@@ -1978,7 +1978,7 @@ void voxelFrame_c::draw(bool withViewCube) {
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
   }
 
-  if (withViewCube && pickx < 0 && !cb && viewCube &&
+  if (withViewCube && pickx < 0 && !cb && viewCube && config.showViewCube() &&
       w() >= viewCube_c::minimumHostSize() && h() >= viewCube_c::minimumHostSize())
     viewCube->draw(rotater, w(), h(), pixels_per_unit());
 
@@ -2016,18 +2016,9 @@ void voxelFrame_c::resetViewRotation(void) {
 
 int voxelFrame_c::handle(int event) {
 
-  if (Fl_Gl_Window::handle(event))
-    return 1;
-
-  if (event == FL_MOUSEWHEEL) {
-    if (wheelCb)
-      wheelCb(wheelUser, Fl::event_dy());
-    return 1;
-  }
-
-  // the size gate has to match draw()'s, or in a viewport too small to render the
-  // cube an invisible one would still swallow every press landing in its corner
-  if (viewCube && pickx < 0 &&
+  // View cube gets first crack at every mouse event before FLTK's default
+  // group-dispatch (which can silently absorb FL_MOVE over GL windows).
+  if (viewCube && pickx < 0 && config.showViewCube() &&
       w() >= viewCube_c::minimumHostSize() && h() >= viewCube_c::minimumHostSize()) {
     if (event == FL_ENTER)
       return 1;
@@ -2049,6 +2040,15 @@ int voxelFrame_c::handle(int event) {
       return 1;
     if ((event == FL_MOVE || event == FL_LEAVE) && viewCube->contains(Fl::event_x(), Fl::event_y(), w(), h()))
       return 1;
+  }
+
+  if (Fl_Gl_Window::handle(event))
+    return 1;
+
+  if (event == FL_MOUSEWHEEL) {
+    if (wheelCb)
+      wheelCb(wheelUser, Fl::event_dy());
+    return 1;
   }
 
   switch(event) {
