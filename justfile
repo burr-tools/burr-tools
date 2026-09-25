@@ -127,8 +127,9 @@ coverage-html: setup-cov
 
 # Run the single-commit snapshot benchmark over the fixed puzzle corpus
 # (bench/run_snapshot.sh); extra args are forwarded, e.g. `just bench --runs 5`
-# Always measures the release+ndebug binary: the dev build carries assertion
-# overhead that would pollute every snapshot.
+# Always measures the release+ndebug binary (dev-build assertion overhead
+# would pollute every snapshot), then prints a comparison against the
+# previous snapshot so one command shows the change's impact.
 bench *args: build-release
     ./bench/run_snapshot.sh --binary build-rel/burrTxt {{args}}
 

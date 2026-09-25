@@ -135,10 +135,11 @@ Always use the standardized benchmark infrastructure in [`bench/`](bench/) to va
 `just bench` records the current commit's solver performance (3 runs per puzzle by default) into a self-identifying CSV under [`bench/results/`](bench/results/). Because each file carries its timestamp, git hash, and commit subject in its name, a later commit can be regression-checked by diffing its snapshot against a stored older one — no checkout, rebuild, or re-run of the old code needed. Each CSV additionally starts with `#`-prefixed provenance lines (UTC timestamp, mode/binaries, full git commit + subject, clean/dirty worktree state, hostname + CPU count, runs/timeout/threads/disassemble settings) written by `bench_solve.py`, so a stored file is interpretable on its own:
 
 ```bash
-just bench                                   # snapshot current HEAD (builds first)
+just bench                                   # snapshot current HEAD (builds first), then compare against previous snapshot
 just bench --runs 5                          # more runs per puzzle
 just bench --threads 1                       # single-thread throughput snapshot
 just bench --runs 1 <puzzle>...              # one-off subset (replaces corpus)
+just bench --no-compare                      # snapshot only, skip the comparison
 
 # Compare two snapshots (CSVs share the same header/column layout):
 diff bench/results/results_20260923_114837_4280734-*.csv \

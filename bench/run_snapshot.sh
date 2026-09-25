@@ -12,7 +12,9 @@
 # Re-run after each commit of interest; the filenames make results comparable
 # across commits without a separate ledger. A "-dirty" suffix marks runs from
 # a worktree with uncommitted changes so they can't be mistaken for the
-# commit itself.
+# commit itself. After measuring, the snapshot is automatically compared
+# against the previous one (newest results_*.csv by file time), so a single
+# invocation shows the change's impact; pass --no-compare to skip that.
 #
 # Usage:
 #   ./bench/run_snapshot.sh [options] [puzzle:problem ...]
@@ -23,6 +25,7 @@
 #   --threads N       Pass -t N to burrTxt (default: binary default, 0 = auto)
 #   --output FILE     Output CSV file (default: auto-generated name, see above)
 #   --binary PATH     burrTxt binary to measure (default: build/burrTxt)
+#   --no-compare      Skip the automatic comparison against the previous snapshot
 #   --list            List the snapshot puzzle set with availability and exit
 #   -h, --help        Show this help message
 #
@@ -42,6 +45,7 @@ TIMEOUT=600
 THREADS=""
 OUT_CSV=""
 LIST_ONLY=0
+COMPARE=1
 
 # ------------------------------------------------------------------------------
 # Snapshot Puzzle Corpus: run_suite.sh set plus the reported Supernova case.
@@ -89,6 +93,10 @@ while [[ $# -gt 0 ]]; do
     --binary)
       BIN="$2"
       shift 2
+      ;;
+    --no-compare)
+      COMPARE=0
+      shift
       ;;
     --list)
       LIST_ONLY=1
@@ -190,6 +198,17 @@ if [[ -n "${THREADS}" ]]; then
   THREAD_ARGS=(--threads "${THREADS}")
 fi
 
+# Previous snapshot for the automatic comparison at the end: newest
+# results_*.csv by file time, captured before this run writes its own.
+# (File time, not filename: --output allows arbitrary names.)
+PREV_CSV=""
+if [[ ${COMPARE} -eq 1 && -d "${SCRIPT_DIR}/results" ]]; then
+  PREV_CSV="$(ls -t "${SCRIPT_DIR}"/results/results_*.csv 2>/dev/null | head -n 1 || true)"
+  if [[ "${PREV_CSV}" == "${OUT_CSV}" ]]; then
+    PREV_CSV="$(ls -t "${SCRIPT_DIR}"/results/results_*.csv 2>/dev/null | sed -n 2p || true)"
+  fi
+fi
+
 python3 "${SCRIPT_DIR}/bench_solve.py" \
   --binary "${BIN}" \
   --runs "${RUNS}" \
@@ -203,3 +222,12 @@ echo "==========================================================================
 echo "Snapshot completed successfully!"
 echo "Results saved to: ${OUT_CSV}"
 echo "================================================================================"
+
+if [[ ${COMPARE} -eq 1 ]]; then
+  echo ""
+  if [[ -n "${PREV_CSV}" && -f "${PREV_CSV}" ]]; then
+    python3 "${SCRIPT_DIR}/compare_snapshots.py" "${PREV_CSV}" "${OUT_CSV}"
+  else
+    echo "(no previous snapshot found -- comparison skipped)"
+  fi
+fi
