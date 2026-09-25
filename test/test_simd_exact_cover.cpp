@@ -945,6 +945,30 @@ TEMPLATE_TEST_CASE("SimdExactCover applies the hole budget", "[simd][exact_cover
   }
 }
 
+TEST_CASE("SimdHuangCover: memory budget predicate follows the tier ladder", "[simd][huang][memory]") {
+  using Cover = SimdHuangCover256;
+  // Ladder mapping: mask bytes per row at each tier.
+  CHECK(Cover::tierMaskBytes(1) == 32);
+  CHECK(Cover::tierMaskBytes(256) == 32);
+  CHECK(Cover::tierMaskBytes(257) == 64);
+  CHECK(Cover::tierMaskBytes(2048) == 256);
+  CHECK(Cover::tierMaskBytes(2049) == 512);
+  CHECK(Cover::tierMaskBytes(32768) == 4096);
+  CHECK(Cover::tierMaskBytes(100000) == 4096);
+
+  const uint64_t perByte = Cover::kSimdMemoryBudgetBytes;
+  // Boundary: exactly at budget fits, one row over does not.
+  CHECK(Cover::fitsMemoryBudget(256, perByte / 32));
+  CHECK_FALSE(Cover::fitsMemoryBudget(256, perByte / 32 + 1));
+  CHECK(Cover::fitsMemoryBudget(32768, perByte / 4096));
+  CHECK_FALSE(Cover::fitsMemoryBudget(32768, perByte / 4096 + 1));
+  // The motivating case from issue #92: ~1e5 rows at the top tier must refuse.
+  CHECK_FALSE(Cover::fitsMemoryBudget(32768, 100000));
+  // Small problems always fit.
+  CHECK(Cover::fitsMemoryBudget(131, 10000));
+  CHECK(Cover::fitsMemoryBudget(2048, 1000000));
+}
+
 TEST_CASE("SimdHuangCover: parallelSolve does not count aborted tasks as completed", "[simd][huang][abort]") {
   SimdHuangCover256 solver(4, 2);
   solver.setColumnBounds(1, 1, 1, false, true, false, false);
