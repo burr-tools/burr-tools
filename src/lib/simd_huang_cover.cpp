@@ -367,6 +367,85 @@ void SimdHuangCover<BitsetType>::solve(
 }
 
 template <typename BitsetType>
+bool SimdHuangCover<BitsetType>::taskFromPrefix(
+  const std::vector<unsigned int> &prefix_node_ids,
+  SubtreeTask &task
+) const {
+  if (rows.empty() || active_column_list.empty())
+    return false;
+
+  SearchContext ctx;
+  ctx.scratch_active_rows.resize(num_columns + 16);
+  ctx.current_solution.reserve(num_columns);
+  ctx.col_weights.assign(num_columns + 1, 0);
+  ctx.col_counts.assign(num_columns + 1, 0);
+  ctx.flushed_iterations = 0;
+
+  ctx.scratch_active_rows[0].reserve(rows.size());
+  for (size_t i = 0; i < rows.size(); i++) {
+    ctx.scratch_active_rows[0].push_back(static_cast<uint32_t>(i));
+  }
+
+  if (!replayPrefix(prefix_node_ids, ctx))
+    return false;
+
+  task.depth = static_cast<unsigned int>(prefix_node_ids.size());
+  task.ctx = std::move(ctx);
+  return true;
+}
+
+/**
+ * Shared prefix-application used by solveSubtree() (with caller-provided
+ * hidden filtering already applied to scratch_active_rows[0]) and by
+ * resume-seed construction (full initial set): maps each placed node id to
+ * its row, checks voxel/shape/range conflicts, places it and filters the
+ * next level. Returns false when the prefix no longer resolves.
+ */
+template <typename BitsetType>
+bool SimdHuangCover<BitsetType>::replayPrefix(
+  const std::vector<unsigned int> &prefix_node_ids,
+  SearchContext &ctx
+) const {
+  for (unsigned int d = 0; d < prefix_node_ids.size(); d++) {
+    auto it = node_to_row_idx.find(prefix_node_ids[d]);
+    if (it == node_to_row_idx.end()) {
+      return false;
+    }
+    uint32_t r_idx = it->second;
+    const auto &cand = rows[r_idx];
+
+    // Check voxel conflict
+    if (!is_disjoint_scalar(ctx.placed_voxels, cand.voxel_mask)) {
+      return false;
+    }
+    // Check shape bound
+    if (ctx.col_weights[cand.shape_col] + 1 > columns[cand.shape_col].max_weight) {
+      return false;
+    }
+    // Check range bound
+    if (has_range && ctx.col_weights[range_column] + cand.range_weight > columns[range_column].max_weight) {
+      return false;
+    }
+
+    // Place candidate
+    ctx.placed_voxels = ctx.placed_voxels | cand.voxel_mask;
+    for (size_t i = 0; i < cand.columns.size(); i++) {
+      ctx.col_weights[cand.columns[i]] += cand.weights[i];
+    }
+    ctx.current_solution.push_back(cand.node_id);
+
+    bool shape_full = (ctx.col_weights[cand.shape_col] >= columns[cand.shape_col].max_weight);
+    unsigned int max_allowed_range = has_range ? (columns[range_column].max_weight - ctx.col_weights[range_column]) : 0;
+
+    auto &next_active = ctx.scratch_active_rows[d + 1];
+    next_active.clear();
+    filterRows(ctx.scratch_active_rows[d], r_idx, cand.voxel_mask, cand.shape_id, shape_full,
+               false, cand.shape_row_idx, has_range, max_allowed_range, next_active);
+  }
+  return true;
+}
+
+template <typename BitsetType>
 void SimdHuangCover<BitsetType>::solveSubtree(
   const std::vector<unsigned int> &prefix_node_ids,
   const std::vector<unsigned int> &hidden_node_ids,
@@ -399,48 +478,7 @@ void SimdHuangCover<BitsetType>::solveSubtree(
     }
   }
 
-  bool conflict = false;
-
-  for (unsigned int d = 0; d < prefix_node_ids.size(); d++) {
-    auto it = node_to_row_idx.find(prefix_node_ids[d]);
-    if (it == node_to_row_idx.end()) {
-      conflict = true;
-      break;
-    }
-    uint32_t r_idx = it->second;
-    const auto &cand = rows[r_idx];
-
-    // Check voxel conflict
-    if (!is_disjoint_scalar(ctx.placed_voxels, cand.voxel_mask)) {
-      conflict = true;
-      break;
-    }
-    // Check shape bound
-    if (ctx.col_weights[cand.shape_col] + 1 > columns[cand.shape_col].max_weight) {
-      conflict = true;
-      break;
-    }
-    // Check range bound
-    if (has_range && ctx.col_weights[range_column] + cand.range_weight > columns[range_column].max_weight) {
-      conflict = true;
-      break;
-    }
-
-    // Place candidate
-    ctx.placed_voxels = ctx.placed_voxels | cand.voxel_mask;
-    for (size_t i = 0; i < cand.columns.size(); i++) {
-      ctx.col_weights[cand.columns[i]] += cand.weights[i];
-    }
-    ctx.current_solution.push_back(cand.node_id);
-
-    bool shape_full = (ctx.col_weights[cand.shape_col] >= columns[cand.shape_col].max_weight);
-    unsigned int max_allowed_range = has_range ? (columns[range_column].max_weight - ctx.col_weights[range_column]) : 0;
-
-    auto &next_active = ctx.scratch_active_rows[d + 1];
-    next_active.clear();
-    filterRows(ctx.scratch_active_rows[d], r_idx, cand.voxel_mask, cand.shape_id, shape_full,
-               false, cand.shape_row_idx, has_range, max_allowed_range, next_active);
-  }
+  bool conflict = !replayPrefix(prefix_node_ids, ctx);
 
   if (!conflict) {
     search(prefix_node_ids.size(), ctx, callback, stop, iterations);
@@ -624,14 +662,29 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   std::atomic<unsigned long> &iterations,
   std::atomic<size_t> &total_tasks,
   std::atomic<size_t> &completed_tasks,
-  ThreadBudget *budget
+  ThreadBudget *budget,
+  const std::vector<std::vector<unsigned int>> *resume_prefixes,
+  std::vector<std::vector<unsigned int>> *salvaged_prefixes
 ) const {
   // One token for the whole run: workers share it for cancellation checks,
   // and a worker that throws fires the source so siblings stop promptly.
   std::stop_token stop = runStop.get_token();
-  unsigned int target_tasks = std::max(16u, num_workers * 4);
   std::vector<SubtreeTask> tasks;
-  generateTasks(target_tasks, tasks);
+  if (resume_prefixes != nullptr && !resume_prefixes->empty()) {
+    // Incremental in-session continue: rebuild pool tasks by replaying the
+    // salvaged placed-node prefixes instead of regenerating (and
+    // re-searching) everything. Prefixes that no longer resolve are
+    // skipped defensively; that cannot happen for salvage from an
+    // identical matrix.
+    for (const auto &prefix : *resume_prefixes) {
+      SubtreeTask t;
+      if (taskFromPrefix(prefix, t))
+        tasks.push_back(std::move(t));
+    }
+  } else {
+    unsigned int target_tasks = std::max(16u, num_workers * 4);
+    generateTasks(target_tasks, tasks);
+  }
 
   total_tasks.store(tasks.size(), std::memory_order_relaxed);
   completed_tasks.store(0, std::memory_order_relaxed);
@@ -658,12 +711,23 @@ void SimdHuangCover<BitsetType>::parallelSolve(
 
   std::exception_ptr worker_exception = nullptr;
   std::mutex exception_mutex;
+  // Salvaged prefixes from interrupted in-flight tasks (issue #111). Shared
+  // across workers; content is small placed-node vectors, so a plain mutex
+  // is ample. Only filled when salvaged_prefixes was provided.
+  std::mutex salvage_mutex;
 
   auto worker_fn = [&](std::stop_token st = {}) {
     try {
       SubtreeTask t;
       while (pool.pop_task(t, stop, st)) {
         try {
+          // Pristine snapshot for salvage: search() mutates t.ctx in place
+          // (mid-path state on interruption), but resume must restart the
+          // whole subtree -- siblings along the interrupted path would
+          // otherwise be lost. Mirrors the DLX requeue of untouched snapshots.
+          std::vector<unsigned int> task_prefix;
+          if (salvaged_prefixes != nullptr)
+            task_prefix = t.ctx.current_solution;
           std::atomic<uint64_t> task_iter{0};
           // Drain per-solution remainders to the shared counter as they
           // arise, so live readers observe advancing iterations (see the
@@ -679,6 +743,17 @@ void SimdHuangCover<BitsetType>::parallelSolve(
           iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
           if (!stop.stop_requested() && !st.stop_requested()) {
             completed_tasks.fetch_add(1, std::memory_order_relaxed);
+          } else if (salvaged_prefixes != nullptr && !task_prefix.empty()) {
+            // Interrupted mid-task: salvage the pristine prefix so an
+            // in-session continue re-searches it from scratch. Assemblies
+            // reported twice are suppressed via emittedSignatures.
+            // total_tasks grows like the DLX requeue path, so getFinished()
+            // does not dip on stop.
+            {
+              std::lock_guard<std::mutex> lock(salvage_mutex);
+              salvaged_prefixes->push_back(std::move(task_prefix));
+            }
+            total_tasks.fetch_add(1, std::memory_order_relaxed);
           }
         } catch (...) {
           pool.finishTask();
@@ -709,6 +784,18 @@ void SimdHuangCover<BitsetType>::parallelSolve(
 
   if (worker_exception) {
     std::rethrow_exception(worker_exception);
+  }
+
+  // Salvage the pool remainder for incremental in-session resume (issue
+  // #111): queued tasks never ran, so their placed prefixes are pristine by
+  // construction. Skips empty prefixes -- only the degenerate no-rows task
+  // has none, and it can report nothing anyway. Mirrors the DLX
+  // pool.drain() remainder in assembler_1_c::parallelMultiSearch.
+  if (salvaged_prefixes != nullptr) {
+    for (auto &t : pool.drain()) {
+      if (!t.ctx.current_solution.empty())
+        salvaged_prefixes->push_back(t.ctx.current_solution);
+    }
   }
 }
 

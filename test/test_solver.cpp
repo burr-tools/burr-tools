@@ -794,6 +794,66 @@ TEST_CASE("Parallel assembler 1 pause and continue does not duplicate assemblies
 
   assm.assemble(&cb);              // continue on the same assembler
 
+
+  /* every assembly exactly once across the two runs */
+  CHECK(cb.fingerprints == serial);
+}
+
+/* Huang-SIMD pause and continue resumes from salvaged prefixes (issue #111).
+ *
+ * Same shape as the DLX test above, but on a range puzzle so the SIMD Huang
+ * path (not DLX) runs in both phases: stop after the first assembly, then
+ * continue must reproduce the uninterrupted multiset exactly -- no lost
+ * subtrees, no duplicates. The iterations guard proves both phases really
+ * took the SIMD path (DLX counts differ).
+ */
+TEST_CASE("Huang-SIMD pause and continue resumes salvaged prefixes",
+          "[assembler][parallel][resume][simd]") {
+  auto p = puzzle_c::load("examples/PiecesOfEight.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::multiset<std::string> serial;
+  unsigned long long simdIterations = 0;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    serial = std::move(cb.fingerprints);
+    simdIterations = assm.getIterations();
+  }
+  REQUIRE(serial.size() > 1);
+
+  {
+    ScopedEnv env("BURRTOOLS_NO_SIMD", "1");
+    RecordingAssemblerCallback cb;
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    REQUIRE(cb.fingerprints == serial);
+    INFO("SIMD path must differ in iteration count from DLX");
+    CHECK(simdIterations != assm.getIterations());
+  }
+
+  assembler_1_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  RecordingAssemblerCallback cb;
+  int seen = 0;
+  assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+    cb.assembly(std::move(a));
+    return ++seen < 1;             // stop after the first
+  });
+  REQUIRE(seen == 1);
+
+  assm.assemble(&cb);              // continue on the same assembler
+
+
   /* every assembly exactly once across the two runs */
   CHECK(cb.fingerprints == serial);
 }

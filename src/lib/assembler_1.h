@@ -116,6 +116,14 @@ private:
   std::vector<SubtreeTask_1> parallelTasks;
   std::unordered_set<uint64_t> emittedSignatures;
 
+  /* Salvaged Huang-SIMD placed-node prefixes for incremental in-session
+   * resume (issue #111): interrupted in-flight tasks plus the pool
+   * remainder, filled by parallelSolve on stop. The next assemble() feeds
+   * them back as seeds instead of regenerating everything. In-session only
+   * (like parallelTasks); save() still marks the position unresumable.
+   */
+  std::vector<std::vector<unsigned int>> pendingHuangPrefixes;
+
   /* Pristine base matrix saved before search starts */
   /* set when a parallel search stopped before finishing; such a position is
    * saved as not resumable -- see assembler_1.cpp
