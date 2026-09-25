@@ -28,6 +28,27 @@
 #include "puzzle.h"
 #include "voxel.h"
 #include "assembly.h"
+
+/* Definitions for huang_memory::tierRowBytes/fitsMemoryBudget (declared in
+ * simd_huang_cover.h). They live here rather than in the header because
+ * naming every tier's Row type from that header breaks GCC's
+ * target-attribute handling for the AVX kernels. Thresholds mirror
+ * createSimdSolver() and tierMaskBytes(): keep all three in sync. */
+size_t huang_memory::tierRowBytes(unsigned int num_cols) {
+  if (num_cols <= 256) return sizeof(SimdHuangCover256::Row);
+  if (num_cols <= 512) return sizeof(SimdHuangCover512::Row);
+  if (num_cols <= 1024) return sizeof(SimdHuangCover1024::Row);
+  if (num_cols <= 2048) return sizeof(SimdHuangCover2048::Row);
+  if (num_cols <= 4096) return sizeof(SimdHuangCover4096::Row);
+  if (num_cols <= 8192) return sizeof(SimdHuangCover8192::Row);
+  if (num_cols <= 16384) return sizeof(SimdHuangCover16384::Row);
+  return sizeof(SimdHuangCover32768::Row);
+}
+
+bool huang_memory::fitsMemoryBudget(unsigned int num_cols, uint64_t num_rows, uint64_t num_nodes) {
+  return num_rows * tierRowBytes(num_cols) + num_nodes * kPerNodeOverheadBytes
+    <= kSimdMemoryBudgetBytes;
+}
 #include "gridtype.h"
 
 #include "../tools/xml.h"
@@ -2806,14 +2827,20 @@ bool assembler_1_c::canUseSimd(void) const {
   // Memory footprint guard (issue #92): voxel_mask is tier-sized, so a
   // high-tier puzzle with many placement rows would allocate hundreds of MB
   // where DLX copes in tens. Refuse the SIMD path past the budget; the
-  // fallback stays correct, just slower.
+  // fallback stays correct, just slower. Counts rows and matrix nodes in
+  // one pass over the shape columns (node count feeds the alias-table and
+  // vector-payload part of the estimate).
   {
     uint64_t estRows = 0;
+    uint64_t estNodes = 0;
     const unsigned int nShapes = problem.getNumberOfParts();
     for (unsigned int s = 1; s <= nShapes; s++)
-      for (unsigned int r = down[s]; r != s; r = down[r])
+      for (unsigned int r = down[s]; r != s; r = down[r]) {
         estRows++;
-    if (!SimdHuangCover256::fitsMemoryBudget(headerNodes - 1, estRows))
+        for (unsigned int c = right[r]; c != r; c = right[c])
+          estNodes++;
+      }
+    if (!huang_memory::fitsMemoryBudget(headerNodes - 1, estRows, estNodes))
       return false;
   }
 
