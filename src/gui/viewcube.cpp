@@ -23,6 +23,58 @@
 #include <FL/gl.h>
 #pragma GCC diagnostic pop
 
+/* Quaternion helpers for snap animation (matrix convention matches arcball.cpp). */
+static void matToQuat(const float m[9], float q[4]) {
+  const float m00=m[0],m10=m[1],m20=m[2],m01=m[3],m11=m[4],m21=m[5],m02=m[6],m12=m[7],m22=m[8];
+  const float tr = m00+m11+m22;
+  float q0,q1,q2,q3;
+  if (tr > 0) {
+    float s=sqrtf(tr+1.0f)*2.0f;
+    q3=0.25f*s; q0=(m21-m12)/s; q1=(m02-m20)/s; q2=(m10-m01)/s;
+  } else if (m00>m11 && m00>m22) {
+    float s=sqrtf(1.0f+m00-m11-m22)*2.0f;
+    q3=(m21-m12)/s; q0=0.25f*s; q1=(m01+m10)/s; q2=(m02+m20)/s;
+  } else if (m11>m22) {
+    float s=sqrtf(1.0f+m11-m00-m22)*2.0f;
+    q3=(m02-m20)/s; q0=(m01+m10)/s; q1=0.25f*s; q2=(m12+m21)/s;
+  } else {
+    float s=sqrtf(1.0f+m22-m00-m11)*2.0f;
+    q3=(m10-m01)/s; q0=(m02+m20)/s; q1=(m12+m21)/s; q2=0.25f*s;
+  }
+  float len=sqrtf(q0*q0+q1*q1+q2*q2+q3*q3);
+  if (len>0) { float f=1.0f/len; q[0]=q0*f; q[1]=q1*f; q[2]=q2*f; q[3]=q3*f; }
+  else       { q[0]=0; q[1]=0; q[2]=0; q[3]=1; }
+}
+
+static void quatToMat(const float q[4], float m[9]) {
+  float n=q[0]*q[0]+q[1]*q[1]+q[2]*q[2]+q[3]*q[3];
+  float s=(n>0.0f)?(2.0f/n):0.0f;
+  float xs=q[0]*s,ys=q[1]*s,zs=q[2]*s;
+  float wx=q[3]*xs,wy=q[3]*ys,wz=q[3]*zs;
+  float xx=q[0]*xs,xy=q[0]*ys,xz=q[0]*zs;
+  float yy=q[1]*ys,yz=q[1]*zs,zz=q[2]*zs;
+  m[0]=1-yy-zz; m[1]=xy+wz;   m[2]=xz-wy;
+  m[3]=xy-wz;   m[4]=1-xx-zz; m[5]=yz+wx;
+  m[6]=xz+wy;   m[7]=yz-wx;   m[8]=1-xx-yy;
+}
+
+static void slerpQuat(const float a[4], const float b[4], float t, float out[4]) {
+  float dot=a[0]*b[0]+a[1]*b[1]+a[2]*b[2]+a[3]*b[3];
+  float bx=b[0],by=b[1],bz=b[2],bw=b[3];
+  if (dot<0) { dot=-dot; bx=-bx; by=-by; bz=-bz; bw=-bw; }
+  float s0,s1;
+  if (dot>0.9995f) {
+    s0=1.0f-t; s1=t;  /* nearly identical: linear interpolation */
+  } else {
+    float th=acosf(dot), st=sinf(th);
+    s0=sinf((1.0f-t)*th)/st; s1=sinf(t*th)/st;
+  }
+  out[0]=s0*a[0]+s1*bx; out[1]=s0*a[1]+s1*by;
+  out[2]=s0*a[2]+s1*bz; out[3]=s0*a[3]+s1*bw;
+  float len=sqrtf(out[0]*out[0]+out[1]*out[1]+out[2]*out[2]+out[3]*out[3]);
+  if (len>0) { out[0]/=len; out[1]/=len; out[2]/=len; out[3]/=len; }
+}
+
 static const int kSizeFraction = 7;  // widget side length is winMin/kSizeFraction (~40% smaller than /4)
 static const int kMinSize = 36;  // floor for the cube itself; see minimumHostSize()
 static const int kMaxSize = 132;
@@ -85,8 +137,36 @@ static bool pointInTri(float px, float py,
 
 viewCube_c::viewCube_c(void)
   : hover(PART_NONE), pressPart(PART_NONE), pressX(0), pressY(0),
-    dragging(false), tracking(false)
+    dragging(false), tracking(false),
+    animStartTime(Fl::now()), animating(false)
 {
+  animStart[0]=0; animStart[1]=0; animStart[2]=0; animStart[3]=1;
+  animEnd[0]=0;   animEnd[1]=0;   animEnd[2]=0;   animEnd[3]=1;
+}
+
+void viewCube_c::startAnim(const float target[9], rotater_c * rot) {
+  float cur[9];
+  rot->getRotation(cur);
+  matToQuat(cur, animStart);
+  matToQuat(target, animEnd);
+  animStartTime = Fl::now();
+  animating = true;
+}
+
+bool viewCube_c::tick(rotater_c * rot) {
+  if (!animating) return false;
+  float t = (float)(Fl::seconds_since(animStartTime) / kAnimDuration);
+  if (t >= 1.0f) {
+    float m[9]; quatToMat(animEnd, m);
+    rot->setRotation(m);
+    animating = false;
+    return false;
+  }
+  float te = t*t*(3.0f-2.0f*t);  /* smoothstep */
+  float q[4]; slerpQuat(animStart, animEnd, te, q);
+  float m[9]; quatToMat(q, m);
+  rot->setRotation(m);
+  return true;
 }
 
 int viewCube_c::minimumHostSize(void) {
@@ -167,16 +247,16 @@ void viewCube_c::partLook(Part p, float n[3]) const {
   vnorm(n);
 }
 
-void viewCube_c::snapToPart(Part p, rotater_c * rot) const {
+void viewCube_c::snapToPart(Part p, rotater_c * rot) {
   if (!rot || p < FACE_PX || p > CORNER_NNN)
     return;
   float n[3], m[9];
   partLook(p, n);
   lookMatrix(n[0], n[1], n[2], m);
-  rot->setRotation(m);
+  startAnim(m, rot);
 }
 
-void viewCube_c::snapNearest(rotater_c * rot) const {
+void viewCube_c::snapNearest(rotater_c * rot) {
   if (!rot)
     return;
   float cur[9];
@@ -223,7 +303,7 @@ bool viewCube_c::isNavPart(Part p) const {
   return p == PART_HOME || (p >= ARROW_UP && p <= ROLL_CW);
 }
 
-void viewCube_c::applyNav(Part p, rotater_c * rot) const {
+void viewCube_c::applyNav(Part p, rotater_c * rot) {
   if (!rot)
     return;
   float m[9];
@@ -268,10 +348,11 @@ void viewCube_c::applyNav(Part p, rotater_c * rot) const {
     return;
   }
 
-  m[0] = nr[0]; m[3] = nr[1]; m[6] = nr[2];
-  m[1] = nu[0]; m[4] = nu[1]; m[7] = nu[2];
-  m[2] = nn[0]; m[5] = nn[1]; m[8] = nn[2];
-  rot->setRotation(m);
+  float tm[9];
+  tm[0] = nr[0]; tm[3] = nr[1]; tm[6] = nr[2];
+  tm[1] = nu[0]; tm[4] = nu[1]; tm[7] = nu[2];
+  tm[2] = nn[0]; tm[5] = nn[1]; tm[8] = nn[2];
+  startAnim(tm, rot);
 }
 
 viewCube_c::NavLayout viewCube_c::navLayout(const Overlay & o) const {
@@ -624,6 +705,7 @@ viewCube_c::Action viewCube_c::handle(int event, rotater_c * rot, int winW, int 
   }
 
   case FL_PUSH: {
+    animating = false;  /* cancel any in-flight snap animation */
     Part h = hitTest(mx, my, rot, winW, winH);
     hover = h;
     if (h == PART_NONE)
@@ -648,6 +730,7 @@ viewCube_c::Action viewCube_c::handle(int event, rotater_c * rot, int winW, int 
         dragging = true;
     }
     if (pressPart != PART_HOME && !isNavPart(pressPart) && rot && dragging) {
+      animating = false;  /* cancel animation when the user drags */
       rot->drag((float)mx * pixelScale, (float)my * pixelScale);
       hover = hitTest(mx, my, rot, winW, winH);
       return ACT_REDRAW;
@@ -672,11 +755,16 @@ viewCube_c::Action viewCube_c::handle(int event, rotater_c * rot, int winW, int 
       dragging = false;
       hover = h;
       if (h == applied) {
-        if (applied == PART_HOME)
+        if (applied == PART_HOME && rot) {
+          static const float kIdentity[9] = {1,0,0, 0,1,0, 0,0,1};
+          startAnim(kIdentity, rot);
+          return ACT_ANIMATING;
+        } else if (applied == PART_HOME) {
           return ACT_HOME;
+        }
         applyNav(applied, rot);
       }
-      return ACT_REDRAW;
+      return animating ? ACT_ANIMATING : ACT_REDRAW;
     }
     if (rot)
       rot->clack((float)mx * pixelScale, (float)my * pixelScale);
@@ -687,7 +775,7 @@ viewCube_c::Action viewCube_c::handle(int event, rotater_c * rot, int winW, int 
     pressPart = PART_NONE;
     dragging = false;
     hover = hitTest(mx, my, rot, winW, winH);
-    return ACT_REDRAW;
+    return animating ? ACT_ANIMATING : ACT_REDRAW;
   }
 
   return ACT_NONE;

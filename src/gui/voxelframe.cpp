@@ -101,8 +101,22 @@ voxelFrame_c::~voxelFrame_c(void) {
     delete curAssembly;
     curAssembly = 0;
   }
+  Fl::remove_timeout(cubeAnimCb, this);
   delete rotater;
   delete viewCube;
+}
+
+void voxelFrame_c::cubeAnimCb(void * v) {
+  static_cast<voxelFrame_c*>(v)->advanceCubeAnim();
+}
+
+void voxelFrame_c::advanceCubeAnim() {
+  if (viewCube && rotater) {
+    bool more = viewCube->tick(rotater);
+    redraw();
+    if (more)
+      Fl::add_timeout(1.0/60.0, cubeAnimCb, this);
+  }
 }
 
 // this is used to shift one side of the cubes so that they slightly differ
@@ -2029,6 +2043,12 @@ int voxelFrame_c::handle(int event) {
         homeCb(this, homeUser);
       else
         resetViewRotation();
+      redraw();
+      return 1;
+    }
+    if (a == viewCube_c::ACT_ANIMATING) {
+      Fl::remove_timeout(cubeAnimCb, this);
+      Fl::add_timeout(1.0/60.0, cubeAnimCb, this);
       redraw();
       return 1;
     }

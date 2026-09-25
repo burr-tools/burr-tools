@@ -12,6 +12,11 @@
 #ifndef __VIEW_CUBE_H__
 #define __VIEW_CUBE_H__
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <FL/Fl.H>
+#pragma GCC diagnostic pop
+
 class rotater_c;
 
 class viewCube_c {
@@ -21,7 +26,8 @@ class viewCube_c {
     enum Action {
       ACT_NONE,
       ACT_REDRAW,
-      ACT_HOME
+      ACT_HOME,
+      ACT_ANIMATING
     };
 
     enum Part {
@@ -44,8 +50,14 @@ class viewCube_c {
 
     Action handle(int event, rotater_c * rot, int winW, int winH, float pixelScale);
 
+    /* Advance in-flight snap animation by one step; returns true while still
+     * running.  The caller must call this on a ~60 Hz timer and redraw each
+     * time until it returns false. */
+    bool tick(rotater_c * rot);
+
     bool contains(int x, int y, int winW, int winH) const;
     bool isTracking(void) const { return tracking; }
+    bool isAnimating(void) const { return animating; }
 
     /* Smallest host viewport the cube should appear in at all. Derived from the
      * cube's own minimum on-screen size rather than being a second independent
@@ -66,8 +78,8 @@ class viewCube_c {
     void houseRect(const Overlay & o, int *x, int *y, int *s) const;
 
     Part hitTest(int mx, int my, rotater_c * rot, int winW, int winH) const;
-    void snapToPart(Part p, rotater_c * rot) const;
-    void snapNearest(rotater_c * rot) const;
+    void snapToPart(Part p, rotater_c * rot);
+    void snapNearest(rotater_c * rot);
     void lookMatrix(float nx, float ny, float nz, float m[9]) const;
     void partLook(Part p, float n[3]) const;
 
@@ -75,8 +87,10 @@ class viewCube_c {
                  const Overlay & o, float *sx, float *sy, float *sz) const;
 
     bool isFaceAligned(rotater_c * rot) const;
-    void applyNav(Part p, rotater_c * rot) const;
+    void applyNav(Part p, rotater_c * rot);
     bool isNavPart(Part p) const;
+
+    void startAnim(const float target[9], rotater_c * rot);
 
     struct NavLayout {
       bool visible;
@@ -92,6 +106,13 @@ class viewCube_c {
     int pressX, pressY;
     bool dragging;
     bool tracking;
+
+    /* Snap animation state */
+    float animStart[4];   /* start quaternion [x,y,z,w] */
+    float animEnd[4];     /* target quaternion */
+    Fl_Timestamp animStartTime; /* Fl::now() when animation began */
+    bool animating;
+    static constexpr double kAnimDuration = 0.30; /* seconds */
 };
 
 #endif

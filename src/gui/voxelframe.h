@@ -306,6 +306,10 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     // conservative bounding-sphere radius (from the origin) of everything in `shapes`
     double computeContentRadius(void) const;
+
+    /* View-cube snap animation driver: called by the FLTK timer. */
+    static void cubeAnimCb(void * v);
+    void advanceCubeAnim();
 };
 
 #endif
