@@ -6,36 +6,9 @@ This repository contains **BurrTools**, an application for designing, solving, a
 
 ## 1. Build System & Common Commands
 
-Always use [`just`](justfile) to execute build, test, and quality control tasks. Do not invoke ad-hoc build steps when a target exists in the `justfile`.
+Always use [`just`](justfile) to execute build, test, and quality control tasks. Do not invoke ad-hoc build steps when a target exists in the `justfile`. Run bare `just` for the authoritative, up-to-date recipe list (a copy here would rot -- it already has once); only workflows with non-obvious semantics are spelled out below.
 
-```bash
-just                # Show available recipes (default)
-just build          # Compile BurrTools binaries (build/burrtools, build/burrTxt, build/burrTxt2, build/test_burrtools)
-just build-release  # Release+ndebug+werror build mirroring CI (build-rel/); required pre-push check and benchmark binary
-just test           # Fast test suite: Catch2 (minus stress cases) + Python wrapper
-just test-slow      # Stress cases only, chiefly the Minkowski random-shapes case
-just test-all       # Everything, fast and slow. This is what CI runs
-just test-release   # Fast+slow suites against the release binary (what CI ships and gates on)
-just test-regression # Regression test comparing burrTxt/burrTxt2 against known-good 0.7.1 release output (run before creating a PR)
-just test-py        # Python wrapper test suite
-just bench          # Snapshot benchmark over the fixed corpus (builds the release binary first)
-just check          # Fast static code analysis with cppcheck (~5s, always run before finishing tasks)
-just check-tidy     # Deep static analysis with clang-tidy on BurrTools sources
-just check-scan     # Clang Static Analyzer (scan-build)
-just check-analyzer # GCC -fanalyzer static analysis
-just check-gui      # Headless GUI invariant check (menu table consistency)
-just coverage       # Report test coverage for BurrTools sources (gcovr)
-just coverage-html  # Write an HTML coverage report to coverage-html/index.html
-just docs           # Generate the Doxygen API reference into gendoc/html
-just clean          # Clean build artifacts
-just rebuild        # Rebuild from scratch (removes build/ and re-runs meson setup)
-just build-werror   # Build with warnings treated as errors (excluding vendored code)
-just build-asan     # AddressSanitizer & UndefinedBehaviorSanitizer build
-just build-tsan     # ThreadSanitizer build (critical for solver data races)
-just build-win      # Cross-compile for Windows using MinGW
-```
-
-**Test suite timings.** The recipes above build first, so what you wait for is
+**Test suite timings.** The test recipes build first, so what you wait for is
 compilation plus test execution. Test execution alone is about 1.6s for `just
 test` and about 8.9s for `just test-all`; the difference is almost entirely the
 one Minkowski random-shapes stress case. Compilation is extra and can dominate:
