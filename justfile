@@ -157,9 +157,19 @@ build-werror:
 # checks, which cost ~15-30% solver time in the exact-cover hot loops
 # (see design/2026-09-24-benchmark-speedup-analysis.md). Benchmarks must
 # use this binary, never the dev build.
+# --werror is deliberate: this mirrors the CI ship jobs, so warnings that
+# would fail a PR (including NDEBUG-gated ones invisible to `just build`)
+# fail here first.
 build-release:
-    @if [ ! -d "build-rel" ]; then meson setup build-rel --buildtype=release -Db_ndebug=true; fi
+    @if [ ! -d "build-rel" ]; then meson setup build-rel --buildtype=release -Db_ndebug=true --werror; else meson configure build-rel --buildtype=release -Db_ndebug=true -Dwerror=true; fi
     ninja -C build-rel
+
+# Run the test suites against the release binary (the configuration CI
+# ships and gates on). Required before pushing: the dev build neither
+# treats warnings as errors nor disables assertions, so `just test-all`
+# alone cannot catch what CI will fail on.
+test-release:
+    meson test -C build-rel --suite fast --suite slow --print-errorlogs
 
 # Headless GUI invariant check (menu table consistency)
 check-gui: build

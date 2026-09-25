@@ -11,20 +11,28 @@ Always use [`just`](justfile) to execute build, test, and quality control tasks.
 ```bash
 just                # Show available recipes (default)
 just build          # Compile BurrTools binaries (build/burrtools, build/burrTxt, build/burrTxt2, build/test_burrtools)
+just build-release  # Release+ndebug+werror build mirroring CI (build-rel/); required pre-push check and benchmark binary
 just test           # Fast test suite: Catch2 (minus stress cases) + Python wrapper
 just test-slow      # Stress cases only, chiefly the Minkowski random-shapes case
 just test-all       # Everything, fast and slow. This is what CI runs
+just test-release   # Fast+slow suites against the release binary (what CI ships and gates on)
 just test-regression # Regression test comparing burrTxt/burrTxt2 against known-good 0.7.1 release output (run before creating a PR)
+just test-py        # Python wrapper test suite
+just bench          # Snapshot benchmark over the fixed corpus (builds the release binary first)
 just check          # Fast static code analysis with cppcheck (~5s, always run before finishing tasks)
 just check-tidy     # Deep static analysis with clang-tidy on BurrTools sources
 just check-scan     # Clang Static Analyzer (scan-build)
 just check-analyzer # GCC -fanalyzer static analysis
+just check-gui      # Headless GUI invariant check (menu table consistency)
 just coverage       # Report test coverage for BurrTools sources (gcovr)
 just coverage-html  # Write an HTML coverage report to coverage-html/index.html
 just docs           # Generate the Doxygen API reference into gendoc/html
 just clean          # Clean build artifacts
 just rebuild        # Rebuild from scratch (removes build/ and re-runs meson setup)
 just build-werror   # Build with warnings treated as errors (excluding vendored code)
+just build-asan     # AddressSanitizer & UndefinedBehaviorSanitizer build
+just build-tsan     # ThreadSanitizer build (critical for solver data races)
+just build-win      # Cross-compile for Windows using MinGW
 ```
 
 **Test suite timings.** The recipes above build first, so what you wait for is
@@ -89,6 +97,8 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
 1. **Assertions & Control Flow:**
    - BurrTools uses custom assertions defined in [`src/lib/bt_assert.h`](src/lib/bt_assert.h).
    - Use `bt_assert(condition)` for runtime checks. In debug builds, it throws `assert_exception` through the `[[noreturn]]` function `bt_te()`.
+   - `bt_assert` compiles to `((void)0)` under `NDEBUG`: its expression must be side-effect-free. For checks that mutate (e.g. `vx->transform(t)` inside a validity check), use `bt_assert2(...)`, which always evaluates its argument and only skips the throw in release. Hiding a mutating call in `bt_assert` silently drops the mutation in release builds -- this has shipped real bugs (untransformed assemblies).
+   - Never use assert-like macros (including `bt_assert`) for control flow. Input validation that callers rely on (e.g. rejecting out-of-range table indices) must throw unconditionally via `bt_te()`, never via an assert that vanishes in release.
 2. **FLTK Widget Ownership:**
    - FLTK widgets constructed between an `Fl_Group`'s `begin()` and `end()` are automatically adopted by the enclosing group.
    - Do not manually `delete` FLTK child widgets owned by groups; the parent destructor handles them.
@@ -99,16 +109,14 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
    - All regression tests live in `test/` using Catch2 v3.
    - Test solver correctness using rotation- and permutation-invariant properties: assembly count, disassemblable solution count, disassembly move levels (`da->movesText()`), and piece placement counts.
    - **Do not assert exact iteration counts in regression tests**; iterations measure internal search-tree node visits and will break on valid search heuristic optimizations.
+   - Tests that assert debug-only behavior (a `bt_assert` throwing, `assert_log` recording, bounds checks) must be guarded with `#ifndef NDEBUG`: CI builds and tests the release binary too, where those checks compile away. Precedent: `test_halfedge.cpp`.
 5. **Third-Party Boundaries:**
    - Never edit files inside `subprojects/` or `src/lua/`.
    - Ensure tools and regexes ignore these directories so static analysis and formatting stay focused on BurrTools sources (`burr-tools/src/(?!lua/).*`).
 6. **Quality Verification:**
    - After making code modifications, always verify that `just build`, `just test-all` (regression tests, fast and slow), and `just check` (static analysis) pass cleanly. `just test` is the quick loop to use while iterating; run `just test-all` before calling a task done, since it is what CI runs.
    - Always run `just test-regression` before creating a PR to verify that solver output matches the known-good 0.7.1 release output across all example puzzles.
-7. **Benchmarking & Optimization Work:**
-   - When modifying solver algorithms or proposing optimizations, agents MUST use the standardized benchmark infrastructure in [`bench/bench_solve.py`](bench/bench_solve.py) across the curated 10-puzzle corpus.
-   - Never evaluate optimizations on a single puzzle in isolation.
-   - Always implement runtime environment variable toggles (e.g. `BURRTOOLS_NO_SIMD=1`) to allow clean, interleaved A/B benchmarking from the exact same build without recompilation.
+   - Before pushing, also run `just build-release` and `just test-release`: the dev `build/` dir has neither `--werror` nor `NDEBUG`, so it cannot catch the warnings and assert-behavior tests that fail CI's release jobs. A green `just test-all` alone is not sufficient.
 
 ---
 
@@ -154,9 +162,11 @@ Solver engines support runtime feature toggles via environment variables to allo
 | `BURRTOOLS_NO_NEON=1` | Disables the NEON kernels **on ARM**, falling back to the same scalar loop. Honoured by `SimdExactCover` and `SimdHuangCover256`. | The ARM equivalent of `BURRTOOLS_NO_AVX2`; without it an A/B on Apple Silicon silently measures the same code twice. |
 | `BURRTOOLS_NO_DISASM_SIMD=1` | Disables vector instructions in disassembler Roy-Floyd-Warshall closure. | Measure pure disassembler vector speedup. |
 | `BURRTOOLS_NO_DISASM_POOL=1` | Disables multi-threaded disassembly pool, running disassemblies synchronously. | Measure speedup and scaling of parallel disassembly pool against synchronous baseline. |
-| `BURRTOOLS_THREADS=N` | Forces solver to use $N$ worker threads (default: `hardware_concurrency`, clamped to `assembler_c::MAX_THREADS`). **Note:** read independently by the assembler and, once the disassembly pool lands, by that pool too, so `N` may yield `2N` workers overall. | Measure thread scaling curves (e.g. 1, 2, 4, 8 cores). |
+| `BURRTOOLS_THREADS=N` | Forces solver to use $N$ worker threads (default: `hardware_concurrency`, clamped to `assembler_c::MAX_THREADS`). **Note:** read independently by the assembler and by the disassembly pool, so `N` may yield `2N` workers overall. | Measure thread scaling curves (e.g. 1, 2, 4, 8 cores). |
 
 ### Running an Interleaved A/B Benchmark
+
+New solver optimizations MUST ship a runtime environment variable toggle (e.g. `BURRTOOLS_NO_SIMD=1`) enabling clean, interleaved A/B benchmarking from the exact same build without recompilation.
 
 To compare an optimization against the baseline using `bench/bench_solve.py`:
 
