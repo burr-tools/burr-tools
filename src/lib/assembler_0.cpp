@@ -34,6 +34,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <algorithm>
 #include <unordered_map>
 #include <thread>
 #include <stop_token>
@@ -42,7 +43,7 @@
 #define snprintf _snprintf
 #endif
 
-#define ASSEMBLER_VERSION "1.5"
+#define ASSEMBLER_VERSION "1.6"
 
 /* print out the current matrix */
 void printMatrix(
@@ -1290,6 +1291,10 @@ void assembler_0_c::solution(std::stop_token stop) {
  */
 void assembler_0_c::iterativeMultiSearch(void) {
 
+  // A serial run supersedes any saved parallel remainder: it resumes from
+  // pos/rows, so stale pool tasks must not linger into a later save().
+  parallelTasks.clear();
+
   // Snapshot of the run token: assemble()/debug_step() refreshed the source
   // before calling here, so this stays valid for the whole serial search.
   std::stop_token runTok = currentRunToken();
@@ -1834,6 +1839,17 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     completedTasks.store(0, std::memory_order_relaxed);
   }
 
+  if (runTok.stop_requested()) {
+    // Stopped before searching (possibly mid-generation with only a partial
+    // task list): discard it and mark interrupted, mirroring the
+    // assembler_1 path. A partial list would silently drop subtrees on
+    // continue/save; regenerating fully with dedup stays correct.
+    parallelTasks.clear();
+    parallelInterrupted = true;
+    running.store(false, std::memory_order_relaxed);
+    return;
+  }
+
   if (parallelTasks.empty()) {
     running.store(false, std::memory_order_relaxed);
     return;
@@ -2042,8 +2058,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   } else {
     /* Stopped part way. In-memory continue is fine -- the pool remainder is
      * saved back into parallelTasks and anything a half-searched task repeats
-     * is suppressed via emittedSignatures. None of that survives a save, so
-     * the position we would write is not a resumable one.
+     * is suppressed via emittedSignatures. save() persists both (format 1.6),
+     * so cross-session continue resumes from the same remainder.
      */
     parallelTasks = pool.drain();
     parallelInterrupted = true;
@@ -2157,6 +2173,9 @@ void assembler_0_c::simdSearch(void) {
   // Snapshot of the run token: assemble() refreshed the source.
   std::stop_token runTok = currentRunToken();
   running.store(true, std::memory_order_relaxed);
+
+  // See iterativeMultiSearch(): a serial run supersedes saved remainder.
+  parallelTasks.clear();
 
   auto solver = createSimdSolver();
   std::atomic<uint64_t> simd_iter{0};
@@ -2282,6 +2301,18 @@ static unsigned int getLong(const char * s, unsigned long * i) {
     return 500000;
 }
 
+static unsigned int getUInt64(const char * s, uint64_t * i) {
+
+  char * s2;
+
+  *i = std::strtoull (s, &s2, 10);
+
+  if (s2)
+    return s2-s;
+  else
+    return 500000;
+}
+
 assembler_c::errState assembler_0_c::setPosition(const char * string, const char * version) {
 
   /* we assert that the matrix is in the initial position
@@ -2289,9 +2320,13 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
    */
   bt_assert(pos == 0);
   parallelTasks.clear();
+  emittedSignatures.clear();
 
-  /* check for the right version */
-  if (strcmp(version, ASSEMBLER_VERSION) != 0)
+  /* check for the right version: 1.6 appends the parallel remainder */
+  bool extended = false;
+  if (strcmp(version, ASSEMBLER_VERSION) == 0)
+    extended = true;
+  else if (strcmp(version, "1.5") != 0)
     return ERR_CAN_NOT_RESTORE_VERSION;
 
   unsigned int len = strlen(string);
@@ -2299,14 +2334,12 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
 
   /* leading flag written by save(): a parallel search that was interrupted did
    * not record how far its workers got, nor which assemblies it had already
-   * reported, so resuming it would report them again
+   * reported, so resuming it would report them again. Refusal is decided
+   * below: version 1.6 may carry resumable task data.
    */
-  {
-    unsigned int interrupted = 0;
-    spos += getInt(string+spos, &interrupted);
-    if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-    if (interrupted) return ERR_CAN_NOT_RESTORE_INTERRUPTED;
-  }
+  unsigned int interrupted = 0;
+  spos += getInt(string+spos, &interrupted);
+  if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
   /* get the values from the string.
    */
@@ -2345,6 +2378,64 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
     }
   }
 
+  /* Version 1.6 appends the parallel remainder (issue #90): pool tasks as
+   * flat prefix steps, then reported signatures. Parsed into locals first
+   * so a syntax failure leaves no partial tasks behind. */
+  std::vector<SubtreeTask> newTasks;
+  std::vector<uint64_t> newSigs;
+  if (extended) {
+    unsigned int taskCount = 0;
+    spos += getInt(string+spos, &taskCount);
+    if (spos >= len && taskCount > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    for (unsigned int i = 0; i < taskCount; i++) {
+      SubtreeTask t;
+      unsigned int steps = 0;
+      spos += getInt(string+spos, &steps);
+      if (spos >= len && steps > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      for (unsigned int k = 0; k < steps; k++) {
+        PrefixStep step;
+        unsigned int col = 0, row = 0;
+        spos += getInt(string+spos, &col);
+        if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        spos += getInt(string+spos, &row);
+        if (spos >= len && k + 1 < steps) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        step.col = col;
+        step.row = row;
+        t.prefix.push_back(step);
+      }
+      // An empty prefix re-searches the whole space (dedup keeps it
+      // correct); kept as-is rather than rejected.
+      newTasks.push_back(std::move(t));
+    }
+
+    unsigned int sigCount = 0;
+    spos += getInt(string+spos, &sigCount);
+    for (unsigned int i = 0; i < sigCount; i++) {
+      uint64_t sig = 0;
+      spos += getUInt64(string+spos, &sig);
+      if (spos >= len && i + 1 < sigCount) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      newSigs.push_back(sig);
+    }
+
+    if (interrupted && newTasks.empty())
+      return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+
+    // Commit the remainder. A parallel continue resumes from these tasks
+    // (parallelMultiSearch skips generation when non-empty); the serial
+    // position above is root after parallel runs and restores as no-op.
+    // Progress restarts from the remainder.
+    parallelTasks = std::move(newTasks);
+    for (uint64_t s : newSigs)
+      emittedSignatures.insert(s);
+    if (!parallelTasks.empty()) {
+      totalTasks.store(parallelTasks.size(), std::memory_order_relaxed);
+      completedTasks.store(0, std::memory_order_relaxed);
+      parallelInterrupted = false;
+    }
+  } else {
+    if (interrupted) return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+  }
+
   /* here we need to get the matrix into this exact position as it has been, when we
    * saved the position that means we need to cover all rows and columns in the same
    * order as it happened in the original process
@@ -2374,8 +2465,10 @@ void assembler_0_c::save(xmlWriter_c & xml) const
 
   std::ostream & str = xml.addContent();
 
-  /* leading flag: 1 marks a parallel search that was interrupted, whose
-   * position can not be resumed (see parallelInterrupted)
+  /* leading flag: 1 marks a search that stopped before finishing.
+   * Reloading such a position resumes it only when task data follows
+   * (format 1.6, see below); older payloads and task-less stops are
+   * refused with ERR_CAN_NOT_RESTORE_INTERRUPTED.
    */
   str << (parallelInterrupted ? 1 : 0) << " ";
 
@@ -2388,6 +2481,25 @@ void assembler_0_c::save(xmlWriter_c & xml) const
 
       if (j < pos) str << " ";
     }
+
+  /* Parallel remainder for cross-session resume (issue #90): pool tasks as
+   * flat column/row prefix steps, then reported signatures (sorted for
+   * determinism). Shared by the DLX and SIMD paths -- both consume the same
+   * SubtreeTask prefix pool. A serial stop writes zero tasks and resumes
+   * from the position above; signatures are always written when non-empty.
+   */
+  str << " " << parallelTasks.size() << " ";
+  for (const auto &t : parallelTasks) {
+    str << t.prefix.size() << " ";
+    for (const auto &step : t.prefix)
+      str << step.col << " " << step.row << " ";
+  }
+
+  std::vector<uint64_t> sigs(emittedSignatures.begin(), emittedSignatures.end());
+  std::sort(sigs.begin(), sigs.end());
+  str << sigs.size() << " ";
+  for (uint64_t s : sigs)
+    str << s << " ";
 
   xml.endTag("assembler");
 }
