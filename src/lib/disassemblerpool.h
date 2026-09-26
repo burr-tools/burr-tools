@@ -48,6 +48,7 @@ class ThreadBudget;
  * disassembly jobs across N worker threads, each owning a private disassembler_0_c
  * instance. A dedicated merger thread orders completed results by sequence number
  * before invoking the user callback, preserving strict deterministic solution ordering.
+ * [SPEC-DIS-1, model-checked in spec/DisasmPool.tla]
  */
 class disassemblerPool_c {
 public:
@@ -65,6 +66,7 @@ public:
    * Returns false (and salvages the assembly, see below) instead of
    * enqueueing when the pool no longer accepts work (stop/abort/finish).
    * Every assembly is therefore either enqueued or salvaged, never lost.
+   * [SPEC-DIS-5, model-checked in spec/DisasmPool.tla]
    */
   bool submit(std::unique_ptr<assembly_c> a);
 
@@ -95,7 +97,8 @@ public:
   void requestStop();
 
   /** Move salvaged (never-disassembled) assemblies out of the pool, in
-   * submit order. Called after finish(); normally empty. */
+   * submit order. Called after finish(); normally empty.
+   * [SPEC-DIS-6, model-checked in spec/DisasmPool.tla] */
   std::vector<std::unique_ptr<assembly_c>> takeSalvaged();
 
   bool isAborted() const { return aborted.load(std::memory_order_relaxed); }
@@ -153,6 +156,9 @@ private:
   // in submit order. Guarded by queue_mutex. Moved to the problem after
   // finish() and re-submitted on the next run (see requestStop()).
   std::vector<std::unique_ptr<assembly_c>> salvaged_;
+  // Bounded buffers (SPEC-DIS-2/3/4, model-checked in spec/DisasmPool.tla):
+  // the submit window (queue + reorder) is what guarantees a filing
+  // worker always finds a reorder slot.
   size_t max_queue_size{64};
   size_t max_reorder_size{64};
   // Shared cap on working threads (see the concurrency architecture note
