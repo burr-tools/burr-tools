@@ -51,6 +51,7 @@
  *   even when the task body throws or the search aborts mid-task. The worker
  *   loops use try/catch for this. (task_done() alone is only correct when no
  *   budget is set; finishTask() releases the budget token first.)
+ *   [SPEC-POOL-1, model-checked in spec/AssemblyPool.tla]
  * - Progress accounting (totalTasks/completedTasks on assembler_c) stays with
  *   the caller: push_tasks() reports how many tasks it accepted via its return
  *   value so the caller can bump totalTasks; completedTasks is bumped next to

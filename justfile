@@ -98,6 +98,25 @@ check: check-cppcheck
 # Run full static check suite (cppcheck + clang-tidy)
 check-all: check-cppcheck check-tidy
 
+# Pinned TLA+ tools (SANY, TLC, PlusCal translator) for the protocol models
+# in spec/. Pinned so model-checking results reproduce across machines.
+# Jar lives in build-tla/ (matched by the build-*/ gitignore), never in git.
+tla_jar := "build-tla/tla2tools.jar"
+tla_version := "1.7.4"
+
+# Fetch the pinned TLA+ tools jar
+spec-tools:
+    @mkdir -p build-tla
+    @if [ ! -f "{{tla_jar}}" ]; then curl -sSL -o "{{tla_jar}}" "https://github.com/tlaplus/tlaplus/releases/download/v{{tla_version}}/tla2tools.jar"; fi
+
+# Translate the PlusCal protocol models and model-check them with TLC.
+# Covers ThreadBudget + AssemblyTaskPool (spec/AssemblyPool.tla) in both the
+# uncapped and the forced-parking (low-budget) configurations.
+spec-check: spec-tools
+    java -cp "{{tla_jar}}" pcal.trans spec/AssemblyPool.tla && rm -f spec/AssemblyPool.old
+    java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/AssemblyPool.cfg spec/AssemblyPool
+    java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/AssemblyPoolLowBudget.cfg spec/AssemblyPool
+
 # Configure the coverage build directory if not already set up
 setup-cov:
     @if [ ! -d "build-cov" ]; then meson setup build-cov -Db_coverage=true; fi
