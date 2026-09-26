@@ -72,6 +72,7 @@ inline bool threadBudgetEnabled() {
   * heldBudget below): at most one token per thread (true by construction
   * -- one task at a time per thread in every worker loop here), so
   * take/return pair up without threading flags through signatures.
+ * [SPEC-BUDGET-1, model-checked in spec/AssemblyPool.tla]
   * A pointer, not a boolean: if several budgets ever coexist, release()
   * only returns a token to the budget that granted it.
  *
