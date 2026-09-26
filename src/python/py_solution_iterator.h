@@ -15,6 +15,23 @@ class puzzle_c;
 class assembler_c;
 class disassembler_c;
 
+/* Streaming, unordered, one-shot solver for the Python bindings.
+ *
+ * This deliberately does NOT reuse solveThread_c: that orchestrator is
+ * built around ordered delivery (the disassembler pool holds fast results
+ * behind slow earlier sequence numbers), problem-side solution storage,
+ * and the pause/resume state machine -- all of which this iterator
+ * rejects in favor of first-result-as-fast-as-possible streaming.
+ * Forcing one through the other would mean unordered/streaming modes on
+ * solveThread_c and the pool, i.e. complicating both for no gain.
+ *
+ * Consequences of the split, stated so nobody has to rediscover them:
+ * - Delivery order is unspecified (arrival order, varies between runs).
+ * - No pause/resume: each solve() builds a fresh assembler and runs to
+ *   exhaustion or stop(); continuing means solving again. The GUI/CLI
+ *   pause/resume contract (see solveThread_c) does not apply here.
+ * - Disassembly runs inline in the assemble callback, never pooled.
+ */
 class SolutionIterator {
 public:
   SolutionIterator(std::shared_ptr<puzzle_c> puz,
