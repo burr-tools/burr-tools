@@ -1003,9 +1003,131 @@ TEST_CASE("Serial continue after parallel save does not duplicate",
   }
 }
 
-/* DLX snapshot variant of the above (issue #90): same stop/save/restore/
-// continue shape, but forcing the classical engine so SubtreeTask_1
-// snapshots (not Huang prefixes) go through the payload. */
+/* Second save in the chain (issue #118 review): parallel stop, save,
+ * reload, serial continue, stop, save again. The second save carries no
+ * new tasks (serial entry cleared them) but the signatures of everything
+ * reported so far; reloading it must still dedup instead of doubling.
+ * Uses the reviewer's repro shape (CubeInCage, DLX-forced). */
+TEST_CASE("Second serial save in the chain still dedups on continue",
+          "[assembler][parallel][resume][save]") {
+  auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
+
+  std::multiset<std::string> serial;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    serial = std::move(cb.fingerprints);
+  }
+  REQUIRE(serial.size() > 5);
+
+  auto saveState = [&](assembler_1_c & assm) {
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    return str.str();
+  };
+  auto restoreInto = [&](const std::string & state, assembler_1_c & restored) {
+    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    std::string payload = extractAssemblerContent(state);
+    CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+          == assembler_c::ERR_NONE);
+  };
+
+  // Phase 1: parallel stop after 5 assemblies, save.
+  RecordingAssemblerCallback cb1;
+  std::string state1;
+  {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    int seen = 0;
+    assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+      cb1.assembly(std::move(a));
+      return ++seen < 5;
+    });
+    REQUIRE(seen == 5);
+    state1 = saveState(assm);
+  }
+
+  // Phase 2: reload, serial continue, stop after 3 more, save again.
+  RecordingAssemblerCallback cb2;
+  std::string state2;
+  {
+    assembler_1_c restored(*problem);
+    restoreInto(state1, restored);
+    restored.setNumThreads(1);
+    int seen = 0;
+    restored.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+      cb2.assembly(std::move(a));
+      return ++seen < 3;
+    });
+    REQUIRE(seen == 3);
+    state2 = saveState(restored);
+  }
+
+  // Phase 3: reload the second save, continue to the end.
+  RecordingAssemblerCallback cb3;
+  {
+    assembler_1_c restored(*problem);
+    restoreInto(state2, restored);
+    restored.assemble(&cb3);
+  }
+
+  std::multiset<std::string> resumed = cb1.fingerprints;
+  resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+  resumed.insert(cb3.fingerprints.begin(), cb3.fingerprints.end());
+  CHECK(resumed == serial);
+}
+
+/* In-session cross-mode continue (issue #118 review): parallel stop, then
+ * continue single-threaded on the same assembler. Without the gate the
+ * serial re-search reports the phase-1 assemblies again (5 + 96 against
+ * 96 in the reviewer's repro). */
+TEST_CASE("In-session parallel-then-serial continue does not duplicate",
+          "[assembler][parallel][resume]") {
+  auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
+
+  std::multiset<std::string> serial;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    serial = std::move(cb.fingerprints);
+  }
+  REQUIRE(serial.size() > 5);
+
+  assembler_1_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  RecordingAssemblerCallback cb;
+  int seen = 0;
+  assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+    cb.assembly(std::move(a));
+    return ++seen < 5;
+  });
+  REQUIRE(seen == 5);
+
+  assm.setNumThreads(1);
+  assm.assemble(&cb);
+
+  CHECK(cb.fingerprints == serial);
+}
 TEST_CASE("DLX save, load and continue reproduces the full multiset",
           "[assembler][parallel][resume][save]") {
   auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");

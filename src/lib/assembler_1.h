@@ -116,13 +116,15 @@ private:
   std::vector<SubtreeTask_1> parallelTasks;
   std::unordered_set<uint64_t> emittedSignatures;
 
-  /* Serial dedup gate (issue #118): set by setPosition() when task
-   * data was restored, so a serial continue after a parallel save
-   * suppresses re-reported assemblies instead of duplicating every one
-   * (serial solution() otherwise never consults emittedSignatures).
-   * Deliberately NOT set on fresh runs: duplicate suppression there would
-   * mask search bugs that the SIMD-vs-DLX equivalence tests must catch.
-   * Cleared together with emittedSignatures whenever a run completes.
+  /* Serial dedup gate (issue #118): set whenever a run may already have
+   * reported assemblies that a serial re-search would repeat -- at the end
+   * of setPosition() when signatures were restored, and on every parallel
+   * stop. Serial solution() then suppresses re-reports instead of
+   * duplicating every one. Deliberately NOT set on fresh runs (signatures
+   * empty there): duplicate suppression on a fresh search would mask search
+   * bugs that the SIMD-vs-DLX equivalence tests must catch. Cleared together
+   * with emittedSignatures whenever a run completes or a fresh matrix is
+   * built.
    */
   bool resumeDedup = false;
 

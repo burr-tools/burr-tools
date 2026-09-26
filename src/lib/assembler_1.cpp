@@ -2711,8 +2711,10 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     } else {
       // Keep the salvaged in-flight prefixes plus pool remainder; the next
       // assemble() resumes from them instead of regenerating everything
-      // (overlap re-searched, dedup via the kept emittedSignatures).
+      // (overlap re-searched, dedup via the kept emittedSignatures). Flag
+      // serial dedup too: a serial continue re-searches everything.
       pendingHuangPrefixes = std::move(huangSalvaged);
+      resumeDedup = true;
       parallelInterrupted = true;
     }
 
@@ -2848,8 +2850,10 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
      * generateTasksAtDepth() resets the master back to the root on every
      * exit, so the base stacks carry no resume point; save() persists the
      * remainder instead (format 2.2) and setPosition() resumes from it.
+     * Flag serial dedup as well: a serial continue re-searches everything.
      */
     parallelTasks = pool.drain();
+    resumeDedup = true;
     parallelInterrupted = true;
   }
 
@@ -3214,6 +3218,7 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   parallelTasks.clear();
   pendingHuangPrefixes.clear();
   emittedSignatures.clear();
+  resumeDedup = false;
   resetTaskProgress();
   simdCompleted.store(false, std::memory_order_relaxed);
 
@@ -3294,7 +3299,6 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
                        std::memory_order_relaxed);
       completedTasks.store(0, std::memory_order_relaxed);
       parallelInterrupted = false;
-      resumeDedup = true;
     }
   } else {
     if (interrupted) return ERR_CAN_NOT_RESTORE_INTERRUPTED;
@@ -3347,14 +3351,21 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
     /* Remainder restored: prime fresh-root stacks so assemble() runs at
      * all (it gates on non-empty next_row_stack) and the parallel dispatch
      * sees its canonical entry shape. The matrix is already at base after
-     * createMatrix, so {0} is exactly consistent -- and a serial continue
-     * from here re-searches from scratch (documented limitation).
+     * createMatrix, so {0} is exactly consistent; a serial continue from
+     * here re-searches from scratch, deduped below when signatures exist.
      */
     task_stack.clear();
     next_row_stack.clear();
     task_stack.push_back(0);
     next_row_stack.push_back(0);
   }
+
+  // Dedup gate for serial continues (issue #118 review): set from the
+  // signature set, not the task type. Any restored run that already reported
+  // assemblies -- including second-save chains whose serial stop wrote no
+  // new tasks -- suppresses re-reports; fresh runs stay ungated (empty set),
+  // so duplicate suppression can never mask search bugs there.
+  resumeDedup = !emittedSignatures.empty();
 
   return ERR_NONE;
 }
@@ -3406,8 +3417,8 @@ void assembler_1_c::save(xmlWriter_c & xml) const
      * mid-generation state behind). Normalize to EMPTY, not root-{0}: the
      * restore loop has no case 0 (only 1/2/5 occur below a stopped top, so
      * {0} fails syntax while empty restores as untouched base). A serial
-     * continue from here re-searches nothing (documented limitation, same
-     * class as today's cross-mode gaps); parallel continue uses the tasks.
+     * continue from the primed {0} stacks re-searches from scratch;
+     * re-reports dedup via resumeDedup. Parallel continue uses the tasks.
      */
     static const std::vector<unsigned int> kEmpty;
     vectorToStream(kEmpty, str);    // rows
