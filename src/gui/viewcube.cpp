@@ -1245,9 +1245,9 @@ void viewCube_c::draw(rotater_c * rot, int winW, int winH, float pixelScale) con
         glColor3f(1.0f, 1.0f, 1.0f);
       else
         glColor3f(kAxisCol[axis][0], kAxisCol[axis][1], kAxisCol[axis][2]);
-      float lw = 5.5f * fWnz[f];
-      if (lw < 2.2f) lw = 2.2f;
-      glLineWidth(lw);
+      /* Render stroke segments as filled quads — glLineWidth > 1 is not
+       * guaranteed on Windows/Mesa, so thick lines would be clamped to 1px. */
+      static constexpr float kStrokeHW = 0.24f; /* half-width in char units */
       float fc[3] = { fn[0]*1.01f, fn[1]*1.01f, fn[2]*1.01f };
       float centers[2][3] = {
         {fc[0]+fr[0]*signOff, fc[1]+fr[1]*signOff, fc[2]+fr[2]*signOff},
@@ -1255,15 +1255,30 @@ void viewCube_c::draw(rotater_c * rot, int winW, int winH, float pixelScale) con
       };
       for (int ci = 0; ci < 2; ci++) {
         const CharDef & cd = kCharDefs[kFaceChars[f][ci]];
-        glBegin(GL_LINES);
+        glBegin(GL_TRIANGLES);
         for (int si = 0; si < cd.n; si++) {
           const StrokeSeg & sg = cd.s[si];
-          glVertex3f(centers[ci][0] + fr[0]*sg.x0*charScale + fu[0]*sg.y0*charScale,
-                     centers[ci][1] + fr[1]*sg.x0*charScale + fu[1]*sg.y0*charScale,
-                     centers[ci][2] + fr[2]*sg.x0*charScale + fu[2]*sg.y0*charScale);
-          glVertex3f(centers[ci][0] + fr[0]*sg.x1*charScale + fu[0]*sg.y1*charScale,
-                     centers[ci][1] + fr[1]*sg.x1*charScale + fu[1]*sg.y1*charScale,
-                     centers[ci][2] + fr[2]*sg.x1*charScale + fu[2]*sg.y1*charScale);
+          float dx = sg.x1 - sg.x0, dy = sg.y1 - sg.y0;
+          float len = sqrtf(dx*dx + dy*dy);
+          if (len < 1e-6f) continue;
+          dx /= len; dy /= len;
+          /* perpendicular and square caps: extend half-width along seg dir */
+          float px = -dy * kStrokeHW, py =  dx * kStrokeHW; /* perp offset */
+          float ex =  dx * kStrokeHW, ey =  dy * kStrokeHW; /* cap offset  */
+          float cx[4], cy[4]; /* quad corners in char space */
+          cx[0]=sg.x0-ex+px; cy[0]=sg.y0-ey+py;
+          cx[1]=sg.x0-ex-px; cy[1]=sg.y0-ey-py;
+          cx[2]=sg.x1+ex+px; cy[2]=sg.y1+ey+py;
+          cx[3]=sg.x1+ex-px; cy[3]=sg.y1+ey-py;
+          /* emit two triangles (0,1,2) and (1,3,2) as world-space vertices */
+          const int idx[6] = {0,1,2, 1,3,2};
+          for (int vi = 0; vi < 6; vi++) {
+            int i = idx[vi];
+            float lx = cx[i]*charScale, ly = cy[i]*charScale;
+            glVertex3f(centers[ci][0]+fr[0]*lx+fu[0]*ly,
+                       centers[ci][1]+fr[1]*lx+fu[1]*ly,
+                       centers[ci][2]+fr[2]*lx+fu[2]*ly);
+          }
         }
         glEnd();
       }
