@@ -57,7 +57,6 @@ LView3dGroup::LView3dGroup(int x, int y, int w, int h) : Fl_Group(0, 0, 50, 50),
   box(FL_DOWN_BOX);
 
   View3D = new voxelFrame_c(x, y, w-15, h);
-  View3D->tooltip(" Rotate by dragging with the mouse. Pan with the middle mouse button. Use the cube in the corner to snap views. ");
   View3D->box(FL_NO_BOX);
   View3D->callback(cb_View3dGroupVoxel_stub, this);
   View3D->setHomeCallback(cb_View3dHome_stub, this);
@@ -79,10 +78,8 @@ LView3dGroup::LView3dGroup(int x, int y, int w, int h) : Fl_Group(0, 0, 50, 50),
 }
 
 void LView3dGroup::goHome(void) {
-  // fit fresh to whatever is currently shown, rather than a fixed zoom level -
-  // "home" should mean the framing the current piece/problem/solution actually
-  // needs, the same as if it had just been shown for the first time
-  fitToContent();
+  slider->value(defaultZoom);
+  cb_slider();
   View3D->resetViewRotation();
   redraw();
 }

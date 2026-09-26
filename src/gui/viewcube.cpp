@@ -194,8 +194,8 @@ viewCube_c::Overlay viewCube_c::overlayRect(int winW, int winH) const {
 void viewCube_c::houseRect(const Overlay & o, int *x, int *y, int *s) const {
   *s = kHouse;
   if (*s > o.s / 3) *s = o.s / 3;
-  *x = o.x + 2;
-  *y = o.y - 3;
+  *x = o.x - *s / 2 - 2;
+  *y = o.y;
 }
 
 void viewCube_c::project(const float m[9], float x, float y, float z,
@@ -819,10 +819,7 @@ static bool pointOnArc(float px, float py, float cx, float cy, float r,
 }
 
 static void arrowFill(bool lit) {
-  if (lit)
-    glColor3f(0.82f, 0.82f, 0.84f);
-  else
-    glColor3f(1.0f, 1.0f, 1.0f);
+  glColorGrey(0.78f, lit);
 }
 
 static void arrowOutline(void) {
@@ -950,10 +947,7 @@ static void drawHouseIcon(int x, int y, int s, bool lit) {
   float x1 = x + s - s * 0.20f;
   float y1 = y + s - pad;
 
-  if (lit)
-    glColor3f(0.82f, 0.82f, 0.84f);
-  else
-    glColor3f(1.0f, 1.0f, 1.0f);
+  glColorGrey(0.78f, lit);
 
   glBegin(GL_TRIANGLES);
   glVertex2f(eaveX0, eaveY);
@@ -1033,7 +1027,7 @@ void viewCube_c::draw(rotater_c * rot, int winW, int winH, float pixelScale) con
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
   glPushMatrix();
-  glTranslatef(-1.05f, -1.05f, 0);
+  glTranslatef(-1.30f, -1.30f, 0);
   rot->addTransform();
   glLineWidth(2.2f);
   glBegin(GL_LINES);
@@ -1327,7 +1321,7 @@ void viewCube_c::draw(rotater_c * rot, int winW, int winH, float pixelScale) con
   {
     float sx, sy, sz;
     gl_font(FL_HELVETICA_BOLD, 11);
-    const float ox = -1.05f, oy = -1.05f;
+    const float ox = -1.30f, oy = -1.30f;
     float p[3];
     mulPoint(m, 0.62f, 0, 0, p);
     sx = o.x + ((ox + p[0]) / kExtent + 1.0f) * 0.5f * o.s;
