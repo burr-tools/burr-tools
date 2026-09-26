@@ -124,7 +124,12 @@ void solveThread_c::run(void){
        * what the GUI leaves it at. A resumed assembler also runs serially
        * however many threads are configured. Either way the configured number
        * is not the number of worker-seconds a wall second buys.
+       *
+       * The count is applied first because getRunThreads() answers from the
+       * configured count; a resume can carry a different setting than the
+       * run the assembler was prepared or paused under.
        */
+      a->setNumThreads(numThreads);
       const unsigned int threads = a->getRunThreads();
       assemblyThreads.store(threads ? threads : 1, std::memory_order_relaxed);
 
@@ -152,7 +157,6 @@ void solveThread_c::run(void){
       assemblyStartNs.store(steadyNowNs(), std::memory_order_release);
 
       action = solveThread_c::ACT_ASSEMBLING;
-      a->setNumThreads(numThreads);
       a->assemble(this);
 
       /* freeze the assembly cost: from here on the machine is draining the
