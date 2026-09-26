@@ -28,6 +28,7 @@
 #include <stop_token>
 #include <vector>
 
+#include "bt_assert.h"
 #include "thread_budget.h"
 
 /**
@@ -155,6 +156,9 @@ public:
       out_task = std::move(queue.front());
       queue.pop_front();
       active_workers++;
+#ifndef NDEBUG
+      dbg_pops_.fetch_add(1, std::memory_order_relaxed);
+#endif
       return true;
     }
   }
@@ -163,6 +167,14 @@ public:
   /// any) first, then record progress. Broadcasts when the last active
   /// worker drains an empty queue so quiescent waiters can terminate.
   void finishTask() {
+#ifndef NDEBUG
+    // Pairing tripwire (SPEC-POOL-1, live): finishing more often than
+    // popping is always a bug. End-of-run equality is pinned in
+    // test_thread_protocol.cpp; this catches double-finish live.
+    bt_assert(dbg_finishes_.load(std::memory_order_relaxed) <
+              dbg_pops_.load(std::memory_order_relaxed));
+    dbg_finishes_.fetch_add(1, std::memory_order_relaxed);
+#endif
     releaseBudget();
     task_done();
   }
@@ -208,6 +220,16 @@ public:
     std::lock_guard<std::mutex> lock(mtx);
     return queue.size();
   }
+
+#ifndef NDEBUG
+  /* Debug-only pop/finish accounting (SPEC-POOL-1, pinned end-of-run in
+   * test_thread_protocol.cpp). Compiled out under NDEBUG: per the PR #113
+   * lesson these tripwires gate nothing in release builds. Read after
+   * joining workers (or accept relaxed staleness). */
+  unsigned long debugPops() const { return dbg_pops_.load(std::memory_order_relaxed); }
+  unsigned long debugFinishes() const { return dbg_finishes_.load(std::memory_order_relaxed); }
+  unsigned long debugUnpaired() const { return debugPops() - debugFinishes(); }
+#endif
 
   /// Wake all waiters to re-check the predicate; changes no state.
   /// Paired with ThreadBudget::notify() in a stop_callback so parked workers
@@ -268,6 +290,10 @@ private:
   unsigned int waiting_workers{0}; // guarded by mtx (see class comment)
   std::atomic<bool> stop_requested{false};
   ThreadBudget *budget_{nullptr};  // Set via setBudget() before workers start; null = uncapped (checked per pop).
+#ifndef NDEBUG
+  std::atomic<unsigned long> dbg_pops_{0};
+  std::atomic<unsigned long> dbg_finishes_{0};
+#endif
 };
 
 #endif // __ASSEMBLER_POOL_H__
