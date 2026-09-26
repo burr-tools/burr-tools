@@ -1547,6 +1547,11 @@ public:
         l--;
       }
 
+      /* a zero count would put inf/NaN into the fraction, which clamps to 1.0
+       * and reads as a finished search while workers are still live
+       */
+      if (colCount[columns[i]] == 0)
+        continue;
       erg /= colCount[columns[i]];
     }
     return erg;
@@ -2576,6 +2581,9 @@ float assembler_0_c::getFinished(void) const {
       l--;
     }
 
+    /* see localFraction(): a zero count must not reach the divide */
+    if (colCount[columns[i]] == 0)
+      continue;
     erg /= colCount[columns[i]];
   }
 

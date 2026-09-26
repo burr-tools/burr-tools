@@ -3501,10 +3501,9 @@ float assembler_1_c::getFinished(void) const {
 
   /* Reaching here means inFlightProgress is off, i.e. a non-parallel run --
    * and assemble() zeroes totalTasks for exactly those, so there is no
-   * task-count source left to consult. The branch that used to sit here,
-   * reporting completedTasks/totalTasks for "the SIMD back end", is
-   * unreachable: the SIMD back end runs under inFlightProgress too and is
-   * served by the branch above.
+   * task-count source to consult. The SIMD back end needs no case of its own
+   * here: it runs under inFlightProgress too and is served by the branch
+   * above.
    */
 
   if (simdCompleted.load(std::memory_order_acquire))
@@ -3517,6 +3516,11 @@ float assembler_1_c::getFinished(void) const {
   for (int r = finished_a.size()-1; r >= 0; r--) {
 
     erg += finished_a[r];
+    /* pushFinished() can be handed a zero column count, and inf/NaN here
+     * would clamp to 1.0 and read as a finished search
+     */
+    if (finished_b[r] == 0)
+      continue;
     erg /= finished_b[r];
   }
 
