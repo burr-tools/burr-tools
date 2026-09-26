@@ -166,7 +166,7 @@ NoJob == -1
             hasTaskA[self] := FALSE;
           } else {
         ASpace:
-            await (Len(dq) < MaxQ /\ nextSubmit - nextMerge < MaxR) \/ stopReq;
+          await (Len(dq) < MaxQ /\ nextSubmit - nextMerge < MaxR) \/ stopReq;
             if (stopReq) {
               aq := Append(aq, atask);
               activeA := activeA - 1;
