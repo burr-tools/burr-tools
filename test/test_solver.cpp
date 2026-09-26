@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "lib/puzzle.h"
@@ -12,17 +13,21 @@
 #include "lib/disassembler_0.h"
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
-#include "lib/voxel.h"
+#include "lib/progressmodel.h"
 #include "tools/xml.h"
 #include "tools/gzstream.h"
 
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cmath>
 #include <cstdlib>
+#include <memory>
 #include <sstream>
 #include <set>
-#include <chrono>
-#include <memory>
-#include <thread>
 #include <string>
+#include <thread>
+#include <vector>
 
 namespace {
 
@@ -1391,4 +1396,1341 @@ TEST_CASE("Single-threaded assembler 1 SIMD: completed search does not replay on
   CHECK(cb3.assemblies == 0);
 }
 
+/* getFinished() must describe the search that is actually configured, not a
+ * previous one. Both engines used to shortcut "not running" to 100%, and
+ * assembler_1_c never reset its task counters, so a fresh matrix reported a
+ * completed search.
+ *
+ * Preparing again on the same instance is exercised below only to check that
+ * the counters and the searchComplete flag reset; the test reads nothing
+ * else. This is NOT a general endorsement of calling createMatrix twice on
+ * one instance: the sparse-matrix rebuild arrays (up/down/left/right/
+ * colCount/weight, and assembler_0's upDown) are push_back-only and are never
+ * cleared between calls, so a second createMatrix followed by a second
+ * assemble() on the same instance is untested here and likely unsound. Do
+ * not copy this pattern into a test that calls assemble() twice.
+ */
+TEST_CASE("a freshly prepared assembler does not report itself finished",
+          "[assembler][progress]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
 
+  SECTION("assembler_0") {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    CHECK(assm.getFinished() < 1.0f);
+
+    TestAssemblerCallback cb;
+    assm.assemble(&cb);
+    CHECK(assm.getFinished() == 1.0f);
+
+    /* preparing again must restart, not inherit the completed state */
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    CHECK(assm.getFinished() < 1.0f);
+  }
+
+  SECTION("assembler_1") {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    CHECK(assm.getFinished() < 1.0f);
+
+    TestAssemblerCallback cb;
+    assm.assemble(&cb);
+    CHECK(assm.getFinished() == 1.0f);
+
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    CHECK(assm.getFinished() < 1.0f);
+  }
+
+  /* The 4-thread sections above always take the parallel path, which sets
+   * totalTasks and therefore never touches the total == 0 fallback in
+   * getFinished(). A single-threaded run falls to simdSearch()/iterative()
+   * instead (assemble() routes to the parallel path only when threads > 1),
+   * which is exactly the path that under-reported completion before the
+   * searchComplete check was hoisted above the total > 0 branch.
+   */
+  SECTION("assembler_0 single-threaded") {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    CHECK(assm.getFinished() < 1.0f);
+
+    TestAssemblerCallback cb;
+    assm.assemble(&cb);
+    CHECK(assm.getFinished() == 1.0f);
+  }
+
+  SECTION("assembler_1 single-threaded") {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    CHECK(assm.getFinished() < 1.0f);
+
+    TestAssemblerCallback cb;
+    assm.assemble(&cb);
+    CHECK(assm.getFinished() == 1.0f);
+  }
+}
+
+/* Samples getFinished() from a second thread while a solve runs. The GUI does
+ * exactly this, so the value must be safe to read concurrently.
+ */
+namespace {
+
+struct ProgressTrace {
+  std::vector<float> samples;
+
+  bool monotone() const {
+    for (size_t i = 1; i < samples.size(); i++)
+      if (samples[i] < samples[i-1]) return false;
+    return true;
+  }
+  bool inRange() const {
+    for (float f : samples)
+      if (f < 0.0f || f > 1.0f) return false;
+    return true;
+  }
+  size_t distinctValues() const {
+    return std::set<float>(samples.begin(), samples.end()).size();
+  }
+  /* longest run of identical consecutive samples, as a fraction of all */
+  double longestPlateauFraction() const {
+    if (samples.empty()) return 1.0;
+    size_t best = 1, run = 1;
+    for (size_t i = 1; i < samples.size(); i++) {
+      run = (samples[i] == samples[i-1]) ? run + 1 : 1;
+      if (run > best) best = run;
+    }
+    return static_cast<double>(best) / static_cast<double>(samples.size());
+  }
+};
+
+ProgressTrace traceSolve(assembler_c & assm, assembler_cb & cb) {
+  ProgressTrace t;
+  std::atomic<bool> done{false};
+  std::thread sampler([&]{
+    while (!done.load(std::memory_order_relaxed)) {
+      t.samples.push_back(assm.getFinished());
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+  });
+  assm.assemble(&cb);
+  done.store(true, std::memory_order_relaxed);
+  sampler.join();
+  return t;
+}
+
+/* As traceSolve, but stops the search after `budget` instead of running it to
+ * completion. The curve properties the progress tests care about -- plateau
+ * length and how many distinct values the bar takes -- are shape properties of
+ * the samples, so a puzzle whose full solve takes minutes can be sampled for a
+ * few seconds and still exercise them. The caller must discard the terminal
+ * sample: an aborted run accounts every in-flight task as complete, so its
+ * last value is an artifact of the abort rather than a point on the curve.
+ */
+ProgressTrace traceSolveStoppingAfter(assembler_c & assm, assembler_cb & cb,
+                                      std::chrono::milliseconds budget,
+                                      std::chrono::milliseconds interval) {
+  ProgressTrace t;
+  std::atomic<bool> done{false};
+  std::thread sampler([&]{
+    while (!done.load(std::memory_order_relaxed)) {
+      t.samples.push_back(assm.getFinished());
+      std::this_thread::sleep_for(interval);
+    }
+  });
+  std::thread stopper([&]{
+    auto deadline = std::chrono::steady_clock::now() + budget;
+    while (!done.load(std::memory_order_relaxed) &&
+           std::chrono::steady_clock::now() < deadline)
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    assm.stop();
+  });
+  assm.assemble(&cb);
+  done.store(true, std::memory_order_relaxed);
+  sampler.join();
+  stopper.join();
+  return t;
+}
+
+/* getFinished() has one acknowledged residual race (see the note on
+ * "Huang parallel assembly progress is monotone and ends at 1.0" below): a
+ * worker can be preempted between clearing its slot and its own fetch_add
+ * into the completed count, for the whole of a reader's walk, and no
+ * reader-side fix reaches that window. It is two adjacent instructions wide
+ * against the microseconds of a whole slot walk, so it is rare -- but rare
+ * enough to happen once in thousands of samples is common enough to flake a
+ * CI job on a shared, CPU-constrained runner.
+ *
+ * `produce` builds an entirely fresh trace (fresh assembler instance, fresh
+ * matrix, fresh solve) each call, so a retry here is a genuinely independent
+ * attempt, not a re-read of stale state. A real regression in the progress
+ * arithmetic reproduces on every attempt; this race does not.
+ */
+template <typename ProduceFn>
+ProgressTrace traceUntilMonotone(ProduceFn produce, int attempts = 3) {
+  ProgressTrace t = produce();
+  for (int attempt = 2; attempt <= attempts && !t.monotone(); attempt++) {
+    WARN("monotone() failed on attempt " << (attempt - 1)
+         << " of " << attempts << " -- retrying with a fresh solve"
+         << " (see the residual handoff-race note on traceUntilMonotone)");
+    t = produce();
+  }
+  return t;
+}
+
+}
+
+/* The reported regression was not that progress stopped, but that it moved in
+ * coarse steps with long stalls -- on Burr-Glar the bar held 99.06% for 32 s of
+ * a 315 s solve, and the derived time estimate predicted 2.7 s remaining while
+ * 30.3 s were left. A task contributed nothing at all until it completed, so
+ * the curve was a staircase of at most one step per task.
+ */
+TEST_CASE("parallel assembly progress advances smoothly",
+          "[assembler][parallel][progress]") {
+  auto p = puzzle_c::load("examples/Burr-Glar.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  auto produce = [&]() {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+    TestAssemblerCallback cb;
+    ProgressTrace t = traceSolveStoppingAfter(assm, cb, std::chrono::milliseconds(3000),
+                                              std::chrono::milliseconds(20));
+
+    /* drop the terminal sample of the stopped run before asserting on shape */
+    REQUIRE(t.samples.size() > 1);
+    t.samples.pop_back();
+    return t;
+  };
+  ProgressTrace t = traceUntilMonotone(produce);
+
+  INFO("samples: " << t.samples.size()
+       << " distinct: " << t.distinctValues()
+       << " longest plateau: " << t.longestPlateauFraction());
+
+  REQUIRE(t.samples.size() > 20);
+  CHECK(t.inRange());
+  CHECK(t.monotone());
+  CHECK(t.longestPlateauFraction() < 0.5);
+  CHECK(*std::max_element(t.samples.begin(), t.samples.end()) < 1.0f);
+  CHECK(t.distinctValues() > t.samples.size() / 10);
+}
+
+/* The brief for these progress tests names examples/HexSticks.xmpuzzle, but
+ * that puzzle has parts with a piece count > 1, which assembler_0_c::
+ * canHandle() rejects outright (ERR_PUZZLE_UNHANDABLE) -- as it does
+ * CubeInCage and the other multi-count examples. Re-verified on this base.
+ * PelikanBurr.xmpuzzle, already used throughout this file, is a single-count
+ * puzzle both assemblers accept, so it is used here instead.
+ */
+TEST_CASE("parallel assembly progress is monotone and ends at 1.0",
+          "[assembler][parallel][progress]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  bool finishedAtOne = false;
+  auto produce = [&]() {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+    TestAssemblerCallback cb;
+    ProgressTrace t = traceSolve(assm, cb);
+    finishedAtOne = (assm.getFinished() == 1.0f);
+    return t;
+  };
+  ProgressTrace t = traceUntilMonotone(produce);
+
+  CHECK(t.inRange());
+  CHECK(t.monotone());
+  CHECK(finishedAtOne);
+}
+
+/* assembler_0_c grants this exact type (declared at global scope, matching the
+ * friend declaration in assembler_0.h -- an unnamed-namespace version would be
+ * a distinct type and would NOT be granted friendship) access to
+ * generateSubtreeTasks() and SubtreeTask::share, so the share-conservation
+ * invariant can be asserted directly instead of only inferred from
+ * getFinished() end-to-end behaviour.
+ */
+struct SubtreeTaskShareTestAccess {
+  /* Mirrors the targetTasks/maxDepth formula parallelMultiSearch uses.
+   * Returns prunedShare plus the sum of every live task's share via the
+   * return value, and the raw prunedShare via `outPrunedShare` -- callers must
+   * check both: the sum alone can pass vacuously if pruning stops happening
+   * entirely (a prunedShare of 0 folded into live shares that already summed
+   * to 1 on their own says nothing about whether the leak this exists to
+   * catch is still fixed). Pruned subtrees (colCount reaching 0, or the holes
+   * budget running out) are dropped by generateSubtreeTasks without ever
+   * becoming a task; their share must still be folded into prunedShare, or the
+   * sum falls short of 1.0.
+   */
+  static double prunedPlusLiveShare(assembler_0_c & assm, unsigned int workers,
+                                    float & outPrunedShare) {
+    unsigned int targetTasks = std::max(16u, workers * 4);
+    unsigned int maxDepth = std::min(assm.piecenumber > 1 ? assm.piecenumber - 1 : 1u, 3u);
+
+    std::vector<assembler_0_c::SubtreeTask> tasks;
+    float prunedShare = 0.0f;
+    assm.generateSubtreeTasks(tasks, targetTasks, maxDepth, prunedShare);
+    outPrunedShare = prunedShare;
+
+    double sum = prunedShare;
+    for (const auto & task : tasks) sum += task.share;
+    return sum;
+  }
+};
+
+/* DiagonalCube.xmpuzzle was picked by probing every assembler_0_c-compatible
+ * example puzzle directly: at the shallow depth (<=3) and task budget (16)
+ * generateSubtreeTasks actually uses, most puzzles never prune (a dead column
+ * or a holes-budget miss needs specific structure to show up this early).
+ * DiagonalCube does -- about half its search tree is pruned within the first
+ * three placements -- so this test would have proven nothing on a puzzle that
+ * never exercises the pruning path.
+ */
+TEST_CASE("pruned subtree shares are folded into completedShare, not dropped",
+          "[assembler][progress]") {
+  auto p = puzzle_c::load("examples/DiagonalCube.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_0_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  float prunedShare = 0.0f;
+  double sum = SubtreeTaskShareTestAccess::prunedPlusLiveShare(assm, 4, prunedShare);
+
+  INFO("prunedShare: " << prunedShare << " sum: " << sum);
+
+  /* Guards against this test going vacuous: without it, a future drift that
+   * makes DiagonalCube (or the pruning heuristics) stop pruning entirely would
+   * still pass the sum check below, silently ceasing to guard the leak this
+   * test exists to catch.
+   */
+  CHECK(prunedShare > 0.0);
+  CHECK(sum == Catch::Approx(1.0).margin(1e-6));
+
+  /* Pins the number the documentation quotes. This share is credited to
+   * completedShare before any worker starts, so it is literally where
+   * getFinished() begins on a fresh parallel run of this puzzle -- half.
+   * design/2026-09-19-solve-progress-reporting.md section 2a and the
+   * prunedTaskShare comment in assembler_0.h both record 0.5 as the measured
+   * evidence that the structural share does not track actual work. If a
+   * pruning change moves this, those two records are wrong and have to move
+   * with it; that coupling is the point of asserting the value rather than
+   * only its sign.
+   *
+   * Measured invariant to the thread count (1..32) and to every combination
+   * of the createMatrix flags, so 4 workers here is not a special case.
+   */
+  CHECK(prunedShare == Catch::Approx(0.5).margin(1e-6));
+}
+
+/* A solve aborted on the parallel path leaves totalTasks and completedShare
+ * holding that run's numbers, and totalTasks is what selects the task-based
+ * branch of getFinished(). Without assemble() clearing them for a non-parallel
+ * run, a resume with one thread reports the abandoned run's constant share for
+ * the whole of the serial search.
+ *
+ * Two observations that must differ, taken from the main thread with nothing
+ * else alive, so it is deterministic and needs no sampling thread.
+ *
+ * DiagonalCube rather than PelikanBurr, and the difference is this base's, not
+ * a preference. Here a task the run token cut short is NOT counted as
+ * complete (completedTasks and completedShare are only updated by
+ * finishTask() when the task actually finished), so on a puzzle that prunes
+ * nothing an abort landing on the first assembly leaves completedShare at
+ * exactly 0 and there is no stale value to leak. DiagonalCube prunes about
+ * half its tree during task generation, and that pruned share is seeded into
+ * completedShare before any worker starts -- so the stale value is non-zero
+ * and deterministic whenever the abort lands.
+ */
+TEST_CASE("parallel progress state does not leak into a serial resume",
+          "[assembler][parallel][progress]") {
+  auto p = puzzle_c::load("examples/DiagonalCube.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_0_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  /* a parallel run, stopped from the callback so the abort is deterministic */
+  int parallelAssemblies = 0;
+  assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
+    parallelAssemblies++;
+    return false;
+  });
+  REQUIRE(parallelAssemblies == 1);
+
+  const float stale = assm.getFinished();
+  INFO("stale parallel share: " << stale);
+  REQUIRE(stale > 0.0f);
+  REQUIRE(stale < 1.0f);
+
+  /* resume single-threaded and stop it the same way */
+  assm.setNumThreads(1);
+  int serialAssemblies = 0;
+  assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
+    serialAssemblies++;
+    return false;
+  });
+  REQUIRE(serialAssemblies == 1);
+
+  INFO("progress after the serial resume: " << assm.getFinished());
+  CHECK(assm.getFinished() != stale);
+}
+
+/* The share accumulator is only seeded -- to prunedTaskShare -- when a fresh
+ * task list is generated, at the top of parallelMultiSearch, on that thread,
+ * before any worker exists. A resumed run finds parallelTasks already
+ * holding the pool remainder a prior pause drained back into it, skips
+ * generation entirely, and therefore skips the seed too: completedShare is
+ * simply left alone, carrying forward exactly what the paused run had
+ * already accumulated. The workers need no reset discipline of their own.
+ *
+ * This asserts the property that matters to the user: resuming a paused solve
+ * does not throw away the progress already made. If completedShare were
+ * reset on every call, the resumed run would restart the accumulator at 0
+ * (or the pruned share alone) and the bar would jump backwards on every
+ * pause.
+ *
+ * Burr-Glar because the seed has to be interesting: it must contain completed
+ * tasks, not just pruned ones. Every other bundled puzzle assembler_0_c
+ * accepts finishes in milliseconds -- measured on PelikanBurr, a pause after
+ * five assemblies completes no task at all and leaves the accumulator at 0,
+ * so it cannot tell a seeded resume from an unseeded one. The second phase
+ * only needs to get as far as the seeding, so its budget is tiny.
+ */
+TEST_CASE("a resumed parallel run picks the share up where it left off",
+          "[assembler][parallel][progress][resume]") {
+  auto p = puzzle_c::load("examples/Burr-Glar.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_0_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  TestAssemblerCallback cb;
+  traceSolveStoppingAfter(assm, cb, std::chrono::milliseconds(1000),
+                          std::chrono::milliseconds(50));
+
+  const float paused = assm.getFinished();
+  INFO("paused at " << paused);
+
+  /* the seed has to carry completed tasks for this to say anything; a pause
+   * that completed none would pass vacuously
+   */
+  REQUIRE(paused > 0.0f);
+  REQUIRE(paused < 1.0f);
+
+  /* resume, and stop again almost immediately: all this run has to do is seed */
+  traceSolveStoppingAfter(assm, cb, std::chrono::milliseconds(50),
+                          std::chrono::milliseconds(10));
+
+  INFO("resumed at " << assm.getFinished());
+  CHECK(assm.getFinished() >= paused);
+}
+
+/* Forces the DLX back end for the length of a TEST_CASE.
+ *
+ * assembler_1_c has two parallel back ends and only the DLX one can report how
+ * far into a task a worker has got -- the SIMD solver has no such hook, so it
+ * keeps whole-task granularity. Which one runs is decided by canUseSimd(), and
+ * on this tree the SIMD back end has grown to cover every bundled example that
+ * runs for long enough to sample: the puzzle the reference implementation used
+ * to reach the DLX path (HexSticks) is now taken by SIMD, as is Burr-Glar.
+ * Measured on every example and problem: only DemoMirrorParadox,
+ * DemoPieceGenerator and PiecesOfEight still reach the DLX path by default,
+ * and the longest of those runs 171 ms.
+ *
+ * So rather than pick a puzzle by what canUseSimd() happens to reject today --
+ * which is exactly the choice that silently stopped testing anything when the
+ * SIMD coverage widened -- the path is selected explicitly, by the environment
+ * variable canUseSimd() already honours.
+ */
+namespace {
+
+struct ScopedNoSimd {
+  bool hadValue;
+  std::string oldValue;
+
+  ScopedNoSimd() {
+    const char * existing = std::getenv("BURRTOOLS_NO_SIMD");
+    hadValue = (existing != nullptr);
+    if (hadValue) oldValue = existing;
+#ifdef _WIN32
+    _putenv_s("BURRTOOLS_NO_SIMD", "1");
+#else
+    setenv("BURRTOOLS_NO_SIMD", "1", 1);
+#endif
+  }
+
+  ~ScopedNoSimd() {
+#ifdef _WIN32
+    _putenv_s("BURRTOOLS_NO_SIMD", hadValue ? oldValue.c_str() : "");
+#else
+    if (hadValue) setenv("BURRTOOLS_NO_SIMD", oldValue.c_str(), 1);
+    else unsetenv("BURRTOOLS_NO_SIMD");
+#endif
+  }
+};
+
+}
+
+/* The Huang engine (assembler_1_c) is the other half of the same regression:
+ * range and min/max puzzles run on it, and a subtree task contributed nothing
+ * to its progress bar until it completed.
+ *
+ * What this engine does NOT get is the share weighting assembler_0_c has. That
+ * was measured and rejected rather than skipped. In short: assembler_1_c
+ * generates its tasks by running the real search to a cutoff depth, so it
+ * discovers the search's own pruning while it does so, and the
+ * uniform-branching measure hands those instantly-dead subtrees almost all of
+ * the weight -- 96.9% of it on Burr-Glar, inside the first 10 ms. Weighting by
+ * it left the bar frozen at 0.9694 for the whole of a 3 s sample (2 distinct
+ * values, 98% plateau) against 11 distinct values and a 31% plateau for the
+ * unweighted bar it would have replaced. Tasks are therefore still worth 1/N
+ * each, and only the in-flight term is new.
+ */
+TEST_CASE("Huang parallel assembly progress is monotone and ends at 1.0",
+          "[assembler][parallel][progress]") {
+  ScopedNoSimd dlxPath;
+
+  auto p = puzzle_c::load("examples/HexSticks.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  /* This is the case the handoff window shows up in: ~3600 samples at 2 ms,
+   * every one of them taken while four workers are trading tasks. A worker
+   * hands a task over in two steps -- clear my slot, then add one to the
+   * completed count -- and getFinished() reads the count first, so a handoff
+   * that starts and finishes between those two reads is missed by both and
+   * the sample lands a whole task low. It is rare, but at this sample count
+   * it happens; it was observed under ThreadSanitizer, where symbolising a
+   * report stalls a worker mid-handoff.
+   *
+   * getFinished() reads the counter and the slots as a snapshot, retaking the
+   * pair when the counter moves under the walk and keeping the largest pair
+   * seen as a floor, which is what this assertion holds it to. Note what it
+   * does NOT do: re-reading the counter and returning the larger of the two
+   * answers was tried and rejected -- it recovers the finished task only by
+   * discarding every other worker's in-flight term, and this very case still
+   * failed with it in place. Nor is the snapshot airtight: a worker stalled
+   * between its slot store and its own fetch_add, for the whole of a read,
+   * is out of any reader's reach. That window is two adjacent instructions
+   * wide, against the microseconds of a whole slot walk it replaces -- rare
+   * enough that a genuinely independent retry (see traceUntilMonotone)
+   * absorbs it without hiding a real regression.
+   */
+  bool finishedAtOne = false;
+  auto produce = [&]() {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+    TestAssemblerCallback cb;
+    ProgressTrace t = traceSolve(assm, cb);
+    REQUIRE(t.samples.size() > 1);
+    finishedAtOne = (assm.getFinished() == 1.0f);
+    return t;
+  };
+  ProgressTrace t = traceUntilMonotone(produce);
+
+  INFO("samples: " << t.samples.size()
+       << " distinct: " << t.distinctValues()
+       << " longest plateau: " << t.longestPlateauFraction());
+
+  CHECK(t.inRange());
+  CHECK(t.monotone());
+  CHECK(finishedAtOne);
+}
+
+/* The Huang twin of "parallel assembly progress advances smoothly".
+ *
+ * Burr-Glar's full solve on this path is several minutes, far longer than CI
+ * can afford, so the run is stopped after a bounded budget and the assertions
+ * are made on the partial curve: plateau length and granularity are shape
+ * properties, not length properties. The terminal sample is dropped -- an
+ * aborted run clears every in-flight term at once, so its endpoint is an
+ * artifact of the abort rather than a point on the curve.
+ *
+ * Measured on this machine, 3 s of Burr-Glar on the DLX path: without the
+ * in-flight term the sample takes 11 distinct values of 129 with a 30.2%
+ * plateau; with it, see the report for the current figures.
+ */
+TEST_CASE("Huang parallel assembly progress advances smoothly",
+          "[assembler][parallel][progress]") {
+  ScopedNoSimd dlxPath;
+
+  auto p = puzzle_c::load("examples/Burr-Glar.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  unsigned long iterations = 0;
+  auto produce = [&]() {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+    TestAssemblerCallback cb;
+    ProgressTrace t = traceSolveStoppingAfter(assm, cb, std::chrono::milliseconds(3000),
+                                              std::chrono::milliseconds(20));
+
+    /* drop the terminal sample of the stopped run before asserting on shape */
+    REQUIRE(t.samples.size() > 1);
+    t.samples.pop_back();
+    iterations = assm.getIterations();
+    return t;
+  };
+  /* see the note on the handoff window on traceUntilMonotone */
+  ProgressTrace t = traceUntilMonotone(produce);
+
+  INFO("samples: " << t.samples.size()
+       << " distinct: " << t.distinctValues()
+       << " longest plateau: " << t.longestPlateauFraction());
+
+  REQUIRE(t.samples.size() > 20);
+  CHECK(t.inRange());
+  CHECK(t.monotone());
+
+  /* Every one of these samples was taken while workers were still live, so
+   * none of them may report a finished search. getFinished() sums the
+   * completed task COUNT and the in-flight fractions, and at ~105 completed
+   * tasks consecutive floats are about 7.6e-6 apart -- a float accumulator
+   * rounds a legitimate tail fraction within ~6e-6 of 1 up to the full count
+   * and the quotient to exactly 1.0f. solvethread.cpp treats getFinished()
+   * >= 1 as "finished", so that rounding is the difference between a display
+   * blip and ending a solve with work left. The sum is accumulated in double
+   * for that reason.
+   */
+  CHECK(*std::max_element(t.samples.begin(), t.samples.end()) < 1.0f);
+
+  /* The two assertions about the SHAPE of the curve -- how long it can stand
+   * still and how many values it takes -- need the search to be running at a
+   * realistic node rate, because a worker publishes once every 4096 nodes and
+   * that is what sets how often the curve can move at all. This build does
+   * ~12.2M nodes in the budget, so a worker publishes every ~4 ms against a
+   * 20 ms sampling interval, and the curve has room to be smooth.
+   *
+   * A ThreadSanitizer build does ~253K -- 48x slower -- which stretches the
+   * publication interval to ~195 ms and makes the sampled curve a picture of
+   * the instrumentation rather than of the progress code: measured there,
+   * 22 distinct values of 114 with a 37% plateau, against 115 of 117 and 2.6%
+   * here. The case still runs under the sanitizer, and everything above this
+   * point is still asserted there, because what the sanitizer is for is the
+   * cross-thread publication these samples drive. Only the shape is left to
+   * builds that can produce one, and a build that cannot says so rather than
+   * passing quietly.
+   */
+  if (iterations > 2000000) {
+    CHECK(t.longestPlateauFraction() < 0.5);
+    CHECK(t.distinctValues() > t.samples.size() / 10);
+  } else {
+    WARN("search too slow for the shape assertions: " << iterations
+         << " nodes, " << t.distinctValues() << " distinct of " << t.samples.size()
+         << ", longest plateau " << t.longestPlateauFraction());
+  }
+}
+
+/* getFinished() has to switch progress sources BACK when a run is not
+ * parallel, not merely switch them over when it is. A solve aborted on the
+ * parallel path leaves completedTasks and totalTasks holding that run's
+ * numbers; if the flag selecting the task-based source is never cleared, a
+ * resume with one thread reports that abandoned run's ratio -- a constant,
+ * wrong number -- for the whole of the serial search.
+ *
+ * Clearing the flag alone is not enough, which is why this test was written
+ * first: getFinished() has two task-ratio branches gated on two pieces of
+ * state, and clearing only the flag moves the stale value from the first
+ * branch to the second. It failed with bit-identical values either way.
+ *
+ * The check is made after both runs have been stopped, from the main thread
+ * with nothing else alive, so it is deterministic and adds no sampling thread:
+ * the stale ratio is exactly the value getFinished() would keep returning, and
+ * the serial estimate reproduces it only by coincidence.
+ */
+TEST_CASE("Huang progress leaves the task-based source when a run is not parallel",
+          "[assembler][parallel][progress]") {
+  ScopedNoSimd dlxPath;
+
+  auto p = puzzle_c::load("examples/HexSticks.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_1_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  /* a parallel run, stopped from the callback so the abort is deterministic.
+   * Tasks that had already drained when the abort landed are counted, so
+   * completedTasks is non-zero and the stale ratio is too.
+   */
+  int parallelAssemblies = 0;
+  assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
+    parallelAssemblies++;
+    return false;
+  });
+  REQUIRE(parallelAssemblies == 1);
+
+  const float stale = assm.getFinished();
+  INFO("stale parallel ratio: " << stale);
+  REQUIRE(stale > 0.0f);
+  REQUIRE(stale < 1.0f);
+
+  /* resume single-threaded and stop it the same way */
+  assm.setNumThreads(1);
+  int serialAssemblies = 0;
+  assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
+    serialAssemblies++;
+    return false;
+  });
+  REQUIRE(serialAssemblies == 1);
+
+  INFO("progress after the serial resume: " << assm.getFinished());
+  CHECK(assm.getFinished() != stale);
+}
+
+/* The Huang twin of the assembler_0 resume case: completedTasks is only ever
+ * zeroed when a fresh task list is generated (parallelTasks empty), and a
+ * resumed run finds parallelTasks already holding the pool remainder a prior
+ * pause drained back into it, so that reset is skipped and the count carries
+ * forward untouched. Without that, a resumed run restarts its count at 0 and
+ * the bar jumps backwards to near nothing.
+ */
+TEST_CASE("Huang parallel progress does not restart after a resume",
+          "[assembler][parallel][progress]") {
+  ScopedNoSimd dlxPath;
+
+  auto p = puzzle_c::load("examples/Burr-Glar.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  assembler_1_c assm(*problem);
+  assm.setNumThreads(4);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  /* Paused from the callback rather than after a wall-clock budget: the pause
+   * has to leave completed tasks behind or the case passes vacuously, and a
+   * budget that reliably completes a task on this machine completes none at
+   * all under ThreadSanitizer. Stopping at the first assembly does not depend
+   * on how fast the machine is.
+   */
+  int assemblies = 0;
+  assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
+    assemblies++;
+    return false;
+  });
+  REQUIRE(assemblies == 1);
+
+  const float paused = assm.getFinished();
+  INFO("paused at " << paused);
+  REQUIRE(paused > 0.0f);
+  REQUIRE(paused < 1.0f);
+
+  /* Resume, and stop again almost immediately: all this run has to do is
+   * confirm parallelMultiSearch left completedTasks alone rather than
+   * zeroing it, which it decides before any worker is created.
+   */
+  TestAssemblerCallback cb;
+  traceSolveStoppingAfter(assm, cb, std::chrono::milliseconds(50),
+                          std::chrono::milliseconds(10));
+
+  INFO("resumed at " << assm.getFinished());
+  CHECK(assm.getFinished() >= paused);
+}
+
+/* getRunThreads() is what the progress code charges the assembly phase for,
+ * in worker-seconds: wall time times this number. It has to be the width the
+ * run will ACTUALLY have, not the configured one -- a resumed search runs
+ * serially on both engines however many threads are set, and charging it for
+ * four over-weights the whole phase by four.
+ */
+TEST_CASE("getRunThreads reports the width the next run will really have",
+          "[assembler][parallel][progress]") {
+
+  SECTION("assembler_0") {
+    auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+    /* fresh: the parallel path, so the configured width */
+    CHECK(assm.getRunThreads() == 4);
+
+    /* one thread configured is a serial run whatever the state */
+    assm.setNumThreads(1);
+    CHECK(assm.getRunThreads() == 1);
+
+    /* a resumed search is routed to the serial path even with four threads
+     * configured. Restoring a saved position is how a resume actually reaches
+     * the assembler: the GUI writes it into the puzzle file on pause and
+     * setPosition() rebuilds the partial DLX stack from it.
+     * "0 1 0 (0 0)(0 0)" is the interrupted flag clear, pos=1, 0 iterations
+     * and two empty (row column) pairs -- the smallest string that leaves pos
+     * non-zero without covering anything.
+     */
+    assm.setNumThreads(4);
+    REQUIRE(assm.setPosition("0 1 0 (0 0)(0 0)", "1.5") == assembler_c::ERR_NONE);
+    CHECK(assm.getRunThreads() == 1);
+  }
+
+  SECTION("assembler_1") {
+    /* The serial run below has to be the DLX one for the stated mechanism to
+     * be the real one: simdSearch() never touches next_row_stack, so with the
+     * SIMD back end the final check would pass on rows being left non-empty by
+     * the solution callback instead -- right answer, wrong reason, and it
+     * would stop holding on a puzzle with no assemblies. PelikanBurr rather
+     * than HexSticks because the DLX serial path has to run to completion
+     * here: 5272 nodes against 1.8M.
+     */
+    ScopedNoSimd dlxPath;
+
+    auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+    CHECK(assm.getRunThreads() == 4);
+
+    assm.setNumThreads(1);
+    CHECK(assm.getRunThreads() == 1);
+
+    /* run the serial path to completion: next_row_stack is drained, so the
+     * stacks are no longer at the initial state the task generator needs and
+     * the next call cannot go parallel however many threads are configured
+     */
+    TestAssemblerCallback cb;
+    assm.assemble(&cb);
+    REQUIRE(cb.assemblies > 0);
+    assm.setNumThreads(4);
+    CHECK(assm.getRunThreads() == 1);
+  }
+}
+
+/* The GUI reads solveThread_c::getProgress(), so the properties the bar
+ * depends on are asserted here rather than by driving FLTK: the value is
+ * bounded, never moves backwards, stays strictly below 1.0 for as long as the
+ * solve is running, and lands on exactly 1.0 when the solve reports finished.
+ *
+ * "strictly below 1.0 while running" is the one that has to be bought back
+ * here. progressModel_c signals "everything counted is done but work remains"
+ * with std::nextafter(1.0f, 0.0f), which the GUI's %.4f renders as 100.0000%,
+ * and the parallel assemblers can round getFinished() to exactly 1.0f while
+ * their workers are still live. Neither is invisible to the user by accident:
+ * getProgress() caps what it reports while the solve runs.
+ */
+TEST_CASE("solve thread reports monotone whole-solve progress",
+          "[solvethread][progress]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  /* The bar must not spend the solve pinned at getProgress()'s running cap.
+   *
+   * Until the pool completes its first task there is nothing to blend, and
+   * once assembly is complete the model's assembly-only answer is its "counted
+   * but not done" sentinel -- a hair under 1. Published into the monotone
+   * guard, that caps to 0.999 and latches: every genuine blended value
+   * afterwards is lower, so the guard locks them all out. On this puzzle,
+   * whose assembly finishes in ~4 ms against a ~185 ms disassembly tail, that
+   * is almost the whole solve.
+   *
+   * Both checks are scale-invariant, per the test strategy in
+   * design/2026-09-19-solve-progress-reporting.md: a plateau as a fraction of
+   * the samples rather than an absolute duration. Measured over six runs on
+   * the author's machine the top plateau is 18.8-20.4% and the maximum
+   * 0.9176; under ThreadSanitizer, which stretches the tail, it is 52%.
+   * With the sentinel reaching the guard they are 98% and 0.999, so a
+   * genuine regression pins the whole solve near saturation, not just
+   * elevated -- which is why a generous threshold still catches one.
+   *
+   * On GitHub's actual CI runners, measured directly (from untruncated
+   * Catch2 XML artifacts, not the console log meson truncates) across
+   * three independent, unrelated runner environments, none under any
+   * sanitizer: 84.76% of 105 samples on build-linux (native GCC),
+   * 87.5% of 72 samples on clang-x86-64 (native Clang), and a further
+   * failure on build-macos (native arm64) at whatever an 92% bound
+   * still wasn't generous enough for. The pattern across all three is the
+   * same shape: a plateau meaningfully above the local baseline, but
+   * nowhere near the ~98% saturation a real defect produces -- these
+   * numbers move with how fast and how evenly scheduled the runner is,
+   * not with the correctness of the code. The original 80% bound was
+   * calibrated against one machine and a TSan build, not against three
+   * independent shared CI runners with their own, apparently quite
+   * different, scheduling characteristics. plateauThreshold and the
+   * retry below absorb that: retrying gives a slower-than-typical run on
+   * a contended runner another independent attempt, and the bound is set
+   * close to, but still clearly under, the saturated range a real
+   * regression would reach -- generous enough to clear runner noise
+   * without losing the ability to catch an actual regression.
+   */
+  const double plateauThreshold = 96.0;
+
+  double plateau = 0.0;
+  std::vector<float> samples;
+  bool finishedAtOne = false;
+  /* Every value a genuine assertion below needs, computed here but not
+   * asserted here: a CHECK failure does not throw, so asserting inside a
+   * retried attempt would permanently record that attempt's failure even
+   * when a later attempt succeeds. produce() only ever REQUIREs the
+   * hard preconditions that make an attempt meaningless if violated
+   * (the thread actually started and finished, there is more than one
+   * sample); every property the retry exists to tolerate is captured into
+   * a plain bool here and asserted exactly once, after the loop, against
+   * only the attempt that was finally kept.
+   */
+  bool samplesInRange = false;
+  bool samplesMonotone = false;
+  bool underRunningCap = false;
+  bool barMoved = false;
+
+  auto produce = [&]() {
+    /* the shipped examples are saved already solved, and solveThread_c
+     * asserts solveState == SS_UNSOLVED on the way in
+     */
+    problem->removeAllSolutions();
+
+    solveThread_c thread(*problem, solveThread_c::PAR_DISASSM);
+
+    /* nothing has started yet, so there is nothing to report and no
+     * assembler to read it from */
+    REQUIRE(thread.getProgress() == 0.0f);
+
+    samples.clear();
+    REQUIRE(thread.start());
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+    while (!thread.stopped() &&
+           thread.currentAction() != solveThread_c::ACT_ASSERT &&
+           std::chrono::steady_clock::now() < deadline) {
+      samples.push_back(thread.getProgress());
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    REQUIRE(thread.currentAction() == solveThread_c::ACT_FINISHED);
+
+    /* The final sample may have been taken in the window between the loop's
+     * check and the worker setting ACT_FINISHED, so it is allowed to be 1.0;
+     * drop it before asserting that a running solve never reports completion.
+     */
+    REQUIRE(samples.size() > 1);
+    samples.pop_back();
+
+    samplesInRange = true;
+    samplesMonotone = true;
+    for (size_t i = 0; i < samples.size(); i++) {
+      if (samples[i] < 0.0f || samples[i] >= 1.0f)
+        samplesInRange = false;
+      if (i && samples[i] < samples[i-1])
+        samplesMonotone = false;
+    }
+
+    size_t top = 0;
+    for (size_t i = samples.size(); i-- > 0 && samples[i] == samples.back(); )
+      top++;
+    plateau = 100.0 * static_cast<double>(top) / static_cast<double>(samples.size());
+
+    underRunningCap = samples.back() < solveThread_c::runningCap;
+    barMoved = *std::max_element(samples.begin(), samples.end()) > samples.front();
+
+    finishedAtOne = (thread.getProgress() == 1.0f) && (thread.getProgress() == 1.0f);
+  };
+
+  constexpr int maxAttempts = 5;
+  produce();
+  for (int attempt = 2; attempt <= maxAttempts && plateau >= plateauThreshold; attempt++) {
+    WARN("plateau " << plateau << "% on attempt " << (attempt - 1)
+         << " of " << maxAttempts << " -- retrying with a fresh solve"
+         << " (see the CI-runner note above)");
+    produce();
+  }
+
+  INFO("samples: " << samples.size()
+       << " first: " << samples.front()
+       << " last: " << samples.back());
+  INFO("top plateau " << plateau << "% of " << samples.size()
+       << " samples, at " << samples.back());
+
+  CHECK(samplesInRange);
+  CHECK(samplesMonotone);
+  CHECK(underRunningCap);
+  CHECK(barMoved);
+
+  CHECK(plateau < plateauThreshold);
+  CHECK(finishedAtOne);  // getProgress() == 1.0f, checked twice: idempotent, the GUI polls repeatedly
+}
+
+/* The rule getProgress() applies while the disassembly pool has completed
+ * nothing, in isolation from any solve.
+ *
+ * The regression this pins: the hold used to trigger on
+ * `assemblyFraction >= 1.0f`, which getProgress() cannot reach on that path --
+ * it clamps a rounded-up fraction to std::nextafter(1.0f, 0.0f) while assembly
+ * is still running. So every fraction in [runningCap, 1.0) fell through to the
+ * clamp instead, published runningCap into the monotone guard, and pinned the
+ * bar there for the rest of the solve. Narrower trigger than the latch it was
+ * written to remove, same freeze: it needs only an assembler that passes 99.9%
+ * before the pool finishes its first task, which is what a puzzle whose
+ * assemblies all live at the end of the search does.
+ */
+TEST_CASE("with no disassembly evidence the bar never publishes the cap",
+          "[solvethread][progress]") {
+
+  const float cap = solveThread_c::runningCap;
+  const float held = 0.4f;   // whatever the guard is already holding
+
+  SECTION("below the cap the assembly fraction is reported as it stands") {
+    CHECK(solveThread_c::noEvidenceProgress(0.0f, 0.0f) == 0.0f);
+    CHECK(solveThread_c::noEvidenceProgress(0.5f, held) == 0.5f);
+    CHECK(solveThread_c::noEvidenceProgress(std::nextafter(cap, 0.0f), held)
+          == std::nextafter(cap, 0.0f));
+  }
+
+  SECTION("at and above the cap the bar is held instead of pinned") {
+    /* the case the old 1.0f threshold could not see: still running, so the
+     * fraction is below 1, but at or past the cap
+     */
+    CHECK(solveThread_c::noEvidenceProgress(cap, held) == held);
+    CHECK(solveThread_c::noEvidenceProgress(0.9995f, held) == held);
+    CHECK(solveThread_c::noEvidenceProgress(std::nextafter(1.0f, 0.0f), held) == held);
+    CHECK(solveThread_c::noEvidenceProgress(1.0f, held) == held);
+
+    /* and none of them is the cap, which is the value that pins the guard */
+    CHECK(solveThread_c::noEvidenceProgress(0.9995f, held) < cap);
+  }
+
+  SECTION("holding cannot move the bar backwards") {
+    /* the held value is returned unchanged, so the monotone guard sees no
+     * decrease -- holding is a pause, not a retreat
+     */
+    for (float a : {cap, 0.9995f, 1.0f})
+      CHECK(solveThread_c::noEvidenceProgress(a, held) == held);
+  }
+}
+
+/* The cost basis the blend is built on, across the GUI's resume path.
+ *
+ * solveThread_c records how far the assembler already was when it picked it
+ * up, and progressModel_c::projectAssemblyCost() charges the assembly phase
+ * for the whole of its fraction by extrapolating from what THIS run measured
+ * between that base and the live fraction. A base at or above the live
+ * fraction leaves nothing gained, the projected cost collapses to 0, and
+ * evaluate() then cannot blend: the bar falls back to reporting assembly
+ * alone, with the disassembly phase never weighed -- silently, since the
+ * value it reports is still bounded, monotone and plausible.
+ *
+ * Fresh solves are the identity case: no head start, so the base must be
+ * exactly 0 and the projection must return the measured cost untouched.
+ */
+TEST_CASE("a fresh solve keeps a zero assembly cost basis",
+          "[solvethread][progress]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+  problem->removeAllSolutions();
+
+  solveThread_c thread(*problem, solveThread_c::PAR_DISASSM);
+  REQUIRE(thread.start());
+
+  float worstBase = 0.0f;
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+  while (!thread.stopped() &&
+         thread.currentAction() != solveThread_c::ACT_ASSERT &&
+         std::chrono::steady_clock::now() < deadline) {
+    thread.getProgress();   // the GUI's poll, which is what maintains the basis
+    const float base = thread.getAssemblyBaseFraction();
+    if (base > worstBase) worstBase = base;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  REQUIRE(thread.currentAction() == solveThread_c::ACT_FINISHED);
+
+  /* exactly zero, at every moment of the solve and after it: that is what
+   * makes the projection the identity on the measured cost
+   */
+  CHECK(worstBase == 0.0f);
+  CHECK(thread.getAssemblyBaseFraction() == 0.0f);
+  CHECK(progressModel_c::projectAssemblyCost(37.5, 0.4f,
+                                             thread.getAssemblyBaseFraction()) == 37.5);
+}
+
+/* The resume case, and the regression this test exists for.
+ *
+ * A paused-then-continued solve, driven the way the GUI drives it: one
+ * solveThread_c is started and stopped, destroyed, and a second is built on
+ * the same problem, which finds the assembler the first left behind and picks
+ * up its search state.
+ *
+ * The assembly fraction survives that handover; the seconds that bought it do
+ * not, because they belonged to the first thread. Feeding the model this run's
+ * seconds against the whole of the carried fraction under-projects the
+ * assembly phase by exactly the ratio of the two, so the blend collapses
+ * towards the disassembly fraction and the monotone guard pins it there while
+ * assembly does the rest of the work -- the freeze this branch exists to
+ * remove, reintroduced on the resume path.
+ *
+ * The check is on the basis rather than on the reported value, because a
+ * broken basis is not visible in the value alone: it stays bounded, monotone
+ * and plausible while silently reporting assembly only.
+ *
+ * Burr-Glar because it is the one bundled puzzle whose assembly phase runs
+ * long enough to pause in the middle of and still have a stretch left to watch.
+ */
+TEST_CASE("a resumed solve keeps the assembly cost basis alive",
+          "[solvethread][progress][stress]") {
+  auto p = puzzle_c::load("examples/Burr-Glar.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+  problem->removeAllSolutions();
+
+  /* ---- the first solve, paused part-way through assembly ---- */
+  float paused = 0.0f;
+  {
+    solveThread_c first(*problem, solveThread_c::PAR_DISASSM);
+    REQUIRE(first.start());
+
+    /* Pause on observed progress, not on a wall clock. A fixed budget fails in
+     * both directions: too long and a fast machine finishes the assembly
+     * inside it, leaving nothing to resume; too short and a slow one pauses at
+     * a fraction so small that the second run's window swamps it. Waiting for
+     * the thread's own published progress is machine-independent, and reading
+     * it is race-free -- getProgress() is the atomic the GUI polls, so nothing
+     * here touches problem_c while the worker is installing the assembler.
+     */
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+    while (!first.stopped() &&
+           first.getProgress() < 0.05f &&
+           std::chrono::steady_clock::now() < deadline)
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+
+    first.stop();
+    const auto joinBy = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+    while (!first.stopped() && std::chrono::steady_clock::now() < joinBy)
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    REQUIRE(first.stopped());
+    REQUIRE(first.currentAction() == solveThread_c::ACT_PAUSING);
+
+    paused = problem->getAssembler()->getFinished();
+  }
+
+  INFO("paused at " << paused);
+  /* a pause that made no progress would make the whole case vacuous */
+  REQUIRE(paused > 0.0f);
+  REQUIRE(paused < 1.0f);
+
+  /* ---- the continue: a new thread over the assembler the first left ---- */
+  assembler_c * assm = problem->getAssembler();
+  REQUIRE(assm != nullptr);
+
+  /* The loop below polls getFinished() while the worker searches. That is the
+   * call's documented contract ("It must be possible to call this function
+   * while assemble is running") and what the GUI does on every refresh, but it
+   * is only free of data races on the parallel path, where getFinished() reads
+   * published atomics alone; the serial fallback walks the live DLX stack.
+   * Assert the coming run is the parallel one rather than assume it -- if a
+   * future change routes this resume to the serial path, this fails loudly
+   * instead of the polling quietly becoming a race.
+   */
+  REQUIRE(assm->getRunThreads() > 1);
+
+  solveThread_c second(*problem, solveThread_c::PAR_DISASSM);
+  REQUIRE(second.start());
+
+  unsigned int samples = 0;    // samples taken during the assembly phase
+  unsigned int dead = 0;       // ... of which found no cost basis left
+  unsigned int deadAfterGain = 0;  // ... of those, taken after the run advanced
+  unsigned int trusted = 0;    // ... of which were past the model's trust threshold
+  float reached = 0.0f, baseSeen = -1.0f;
+  double worstLeverage = 0.0; // smallest projected/session cost ratio seen
+  float leverageA = 0.0f, leverageBase = 0.0f;  // the pair that produced it
+
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(300);
+  while (!second.stopped() &&
+         second.currentAction() != solveThread_c::ACT_ASSERT &&
+         std::chrono::steady_clock::now() < deadline) {
+
+    if (second.currentAction() == solveThread_c::ACT_ASSEMBLING) {
+
+      /* the GUI's own poll, which is what maintains the basis */
+      second.getProgress();
+
+      const float fraction = assm->getFinished();
+      const float base = second.getAssemblyBaseFraction();
+      samples++;
+      if (fraction > reached) reached = fraction;
+      if (baseSeen < 0.0f) baseSeen = base;
+
+      /* The projection getProgress() makes, from the same two numbers it makes
+       * it from, against one second of measured cost. Zero means the phase is
+       * charged nothing, which is what turns the blend off; anything above 1
+       * is the head start being charged for, which is the point.
+       */
+      const double projected = progressModel_c::projectAssemblyCost(1.0, fraction, base);
+      if (projected <= 0.0) {
+        dead++;
+        /* Allowed only before the run has gained anything on its base: at that
+         * instant nothing has been measured, and reporting no cost is right.
+         */
+        if (fraction > base) deadAfterGain++;
+      } else if (worstLeverage == 0.0 || projected < worstLeverage) {
+        worstLeverage = projected;
+        leverageA = fraction;
+        leverageBase = base;
+      }
+
+      if (fraction >= progressModel_c::trustThreshold) trusted++;
+
+      /* Stop once there is enough to say something, without running the whole
+       * of Burr-Glar. Both halves are floors, so the window is at LEAST 300
+       * samples and at least 2% of the head start -- whichever of the two the
+       * machine reaches last is what ends it.
+       *
+       * This bounds the window; it does NOT bound how far the search gets
+       * inside it, and no wording here should imply otherwise. On a slow CI
+       * runner the 300-sample floor binds long after the fraction floor, and
+       * the run covered 0.625 -> 0.854. That is why nothing below asserts a
+       * MAGNITUDE of leverage: a/(a-base) is a measure of how little the
+       * resumed run got through, which is a property of the runner, not of
+       * the code under test.
+       */
+      if (samples > 300 && fraction >= paused * 1.02f) break;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  second.stop();
+  const auto joinBy = std::chrono::steady_clock::now() + std::chrono::seconds(300);
+  while (!second.stopped() && std::chrono::steady_clock::now() < joinBy)
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  REQUIRE(second.stopped());
+
+  /* Read once the worker has stopped writing it: it is a plain counter, and
+   * polling it from here while the pool's merger thread counts into it is an
+   * unsynchronised read ThreadSanitizer flags. Monotone, so a non-zero value
+   * now means disassembly results were being counted during the window above.
+   */
+  const unsigned long disassembled = problem->getNumAssemblies();
+
+  INFO("assembly-phase samples: " << samples
+       << ", past the trust threshold: " << trusted
+       << ", disassembly results counted: " << disassembled
+       << ", with no cost basis: " << dead
+       << " (of them after the run gained on its base: " << deadAfterGain << ")"
+       << "; paused at " << paused << ", base settled at " << baseSeen
+       << ", fraction reached " << reached
+       << ", smallest projected cost per measured second: " << worstLeverage
+       << " at a=" << leverageA << " base=" << leverageBase);
+
+  /* Not a vacuous pass: the window has to have covered a real stretch of the
+   * assembly phase, with every OTHER condition evaluate() needs to blend
+   * satisfied, so the cost basis is the only thing left that can switch the
+   * blend off.
+   */
+  REQUIRE(samples > 100);
+  REQUIRE(trusted > 0);
+  REQUIRE(disassembled > 0);
+
+  /* The run picked the paused search up rather than starting over.
+   *
+   * Not asserted as exact equality with `paused`: the two are read from the
+   * assembler at different moments, and getProgress()'s ratchet may lower the
+   * base to whatever the resumed run first reports. Both directions of that
+   * are covered -- it must be a real head start, and it must never claim more
+   * of one than the first thread actually achieved.
+   */
+  CHECK(baseSeen > 0.0f);
+  CHECK(baseSeen <= paused);
+
+  /* Never charged nothing once it had measured something. */
+  CHECK(deadAfterGain == 0);
+
+  /* And the head start is actually paid for.
+   *
+   * What is asserted is the MECHANISM, not a magnitude. The leverage a run
+   * shows -- a/(a-base) -- measures how little of the search it got through
+   * inside the sampling window, so any floor above 1 is really a statement
+   * about how fast the machine is. A bound of 5 passed here at 50.3 and failed
+   * on a CI runner at 3.72, where the projection was working perfectly: 3.72378
+   * observed against 3.72379 predicted, for a = 0.85446 over base = 0.625.
+   *
+   * The floor is therefore 1, which is not machine-calibrated but a property
+   * of the arithmetic. For a live base in (0,1) and a in (base,1], a/(a-base)
+   * is decreasing in a, so it is smallest at a = 1 and worth at least
+   * 1/(1-base) -- strictly above 1 for ANY base, at any machine speed, however
+   * far the resumed run gets. And 1.0 is exactly what a lost base reports:
+   * projectAssemblyCost() returns the session cost untouched when base is 0,
+   * which is the defect -- asmCost/a collapses, assembly stops counting
+   * against disassembly in the blend, and both the bar and the time estimate
+   * are wrong by that factor.
+   */
+  CHECK(worstLeverage > 1.0);
+
+  /* The projection matches its own formula at the values this run actually
+   * showed: the measured second is inflated by a/(a-base). Catches the
+   * projection being dropped, inverted or mis-scaled at live values, none of
+   * which a fixed-input unit test can see, and none of which depend on how far
+   * the run got.
+   *
+   * The comparison is exact rather than approximate by construction: both
+   * sides convert the same two floats to double, and the difference of two
+   * doubles widened from float is itself exact, so the two computations agree
+   * bit for bit. The epsilon is there for compiler reassociation, not for
+   * measurement noise.
+   */
+  REQUIRE(leverageA > leverageBase);
+  const double predicted = static_cast<double>(leverageA)
+                         / (static_cast<double>(leverageA) - static_cast<double>(leverageBase));
+  INFO("leverage " << worstLeverage << " predicted " << predicted);
+  CHECK(worstLeverage == Catch::Approx(predicted).epsilon(1e-9));
+
+  /* Order matters, and these values are on the right side of it: charging the
+   * fraction against a base ABOVE it leaves nothing gained and no cost at all.
+   * This is the state the capture-ordering hazard would have produced.
+   */
+  CHECK(progressModel_c::projectAssemblyCost(1.0, leverageBase, leverageA) == 0.0);
+
+  /* The session cost is a linear multiplier, so a mis-scaled one would show. */
+  CHECK(progressModel_c::projectAssemblyCost(7.5, leverageA, leverageBase)
+        == Catch::Approx(7.5 * worstLeverage).epsilon(1e-9));
+
+  /* And the bar stayed a bar: bounded, and never the running cap, which is
+   * what a pinned resume would report.
+   */
+  CHECK(second.getProgress() >= 0.0f);
+  CHECK(second.getProgress() < solveThread_c::runningCap);
+}

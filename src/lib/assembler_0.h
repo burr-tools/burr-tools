@@ -221,6 +221,13 @@ private:
   /* multi-threading support */
   friend class assemblerWorker_c;
 
+  /* grants test/test_solver.cpp direct access to generateSubtreeTasks() and
+   * SubtreeTask::share, to assert the share-conservation invariant
+   * (completedShare + sum of live task shares == 1) directly rather than
+   * only indirectly through end-to-end getFinished() behaviour.
+   */
+  friend struct SubtreeTaskShareTestAccess;
+
   struct PrefixStep {
     unsigned int col;
     unsigned int row;
@@ -228,9 +235,61 @@ private:
 
   struct SubtreeTask {
     std::vector<PrefixStep> prefix;
+    /* this subtree's fraction of the whole search tree; all tasks, plus the
+     * subtrees pruned during generation, sum to 1
+     */
+    float share = 0;
   };
 
+  /* The progress the GUI thread reads: the summed share of every task that is
+   * done. Seeded from prunedTaskShare once, single-threaded, whenever a
+   * fresh task list is generated; left untouched across an in-session
+   * resume, so it carries forward exactly what the paused run had already
+   * accumulated. Otherwise accumulated by the workers as they finish tasks.
+   *
+   * Accumulated in double, not float: it approaches 1 from below as the last
+   * tasks drain, and in float a legitimate tail value within ~6e-8 of 1 rounds
+   * to exactly 1.0f -- which solvethread.cpp reads as a finished search,
+   * ending the solve while workers are still running.
+   */
+  std::atomic<double> completedShare{0.0};
+
   std::vector<SubtreeTask> parallelTasks;
+
+  /* the share of the subtrees generateSubtreeTasks() proved empty and
+   * dropped without ever making a task of them. They are genuinely
+   * finished -- there is no work in them -- so this is part of the
+   * completed share; it seeds completedShare when a fresh task list is
+   * generated and is otherwise untouched, so an in-session resume (which
+   * skips regeneration while parallelTasks is non-empty) leaves it alone
+   * along with the completedShare it already contributed to.
+   *
+   * MEASURED FALSE, TOLERATED. The structural share is a fraction of the
+   * search TREE, and the whole design assumes it stands in for a fraction of
+   * the WORK. For the pruned part it demonstrably does not: proving a subtree
+   * empty at depth <= 3 costs microseconds, yet the share it carries is
+   * credited in full before a single worker starts. Measured across the
+   * bundled examples at the depth (<=3) and budget (max(16, 4*threads))
+   * parallelMultiSearch() actually uses, the seeded value is 0 for most
+   * puzzles, 0.125 on BallRoom, and 0.5 on DiagonalCube -- so a fresh
+   * parallel solve of DiagonalCube opens with getFinished() already at half,
+   * and the GUI's `ut/finished - ut` under-reports the time remaining by
+   * about 2x through the early solve.
+   *
+   * This is the same anti-correlation that was measured for assembler_1_c and
+   * that got structural weighting rejected there (see the workerProgress note
+   * in assembler_1.h). It is tolerated here rather than rejected because the
+   * scale is different -- half a tree credited once at t=0, against 96.9%
+   * credited inside 10 ms -- because the scheme is share-conserving either
+   * way, and because what it replaced was 106 discrete steps that froze for
+   * tens of seconds at a time. The good measured curve on Burr-Glar is the
+   * in-flight term doing the work; Burr-Glar prunes nothing at this depth, so
+   * it does not exercise this at all.
+   *
+   * design/2026-09-19-solve-progress-reporting.md carries the same record.
+   */
+  float prunedTaskShare = 0.0f;
+
   std::unordered_set<uint64_t> emittedSignatures;
 
   /* set when a parallel search stopped before finishing.
@@ -249,8 +308,40 @@ private:
    */
   bool parallelInterrupted = false;
 
-  void generateSubtreeTasks(std::vector<SubtreeTask> & tasks, unsigned int targetTasks, unsigned int maxDepth);
+  /* Each in-flight worker publishes the share of the task it is working on and
+   * how far into that task it has got, so a long-running task contributes
+   * continuously instead of nothing until it completes. Read by the GUI thread
+   * via getFinished(); never dereferences a worker's private matrix.
+   *
+   * std::atomic is neither copyable nor movable, so the slots are held by
+   * pointer rather than by value.
+   *
+   * The slots themselves are atomic, but the vector holding them is not:
+   * getFinished() runs on the GUI thread and is already being polled while
+   * parallelMultiSearch() is still sizing the vector, which ThreadSanitizer
+   * duly flags. progressMutex guards the vector's structure -- not the slot
+   * values, which the workers keep publishing lock-free. It is only ever held
+   * while the vector is (re)built and while getFinished() walks it, so a
+   * worker never blocks on it and the GUI contends with nothing.
+   */
+  struct WorkerProgress {
+    std::atomic<float> share{0.0f};
+    std::atomic<float> fraction{0.0f};
+  };
+  mutable std::mutex progressMutex;
+  std::vector<std::unique_ptr<WorkerProgress>> workerProgress;
+
+  /* true only after a search drained without being aborted. "not running" is
+   * not the same as "finished": a prepared-but-unstarted assembler is also
+   * not running.
+   */
+  std::atomic<bool> searchComplete{false};
+
+  void generateSubtreeTasks(std::vector<SubtreeTask> & tasks, unsigned int targetTasks, unsigned int maxDepth, float & prunedShare);
   void parallelMultiSearch(unsigned int workers);
+
+  /* true when the next assemble() call will take the parallel path */
+  bool willRunParallel(unsigned int threads) const;
 
 protected:
 
@@ -332,7 +423,7 @@ public:
    */
   void setNumThreads(unsigned int threads) override { numThreads = std::min(threads, 256u); }
   unsigned int getNumThreads(void) const override { return numThreads; }
-
+  unsigned int getRunThreads(void) const override;
   errState setPosition(const char * string, const char * version) override;
   void save(xmlWriter_c & xml) const override;
   void reduce(void) override;

@@ -198,6 +198,36 @@ class solveThread_c : public assembler_cb {
   std::jthread worker_thread;
   std::atomic<bool> running{false};
 
+  /* Progress state, all written by the worker and read by the GUI thread.
+   *
+   * The assembly phase has no cost meter of its own, so its cost is derived:
+   * worker-seconds = wall time the phase ran, times the number of threads that
+   * ran it. assemblyEndNs freezes that wall time when assemble() returns --
+   * without it the assembly cost would keep growing throughout the disassembly
+   * tail, when no assembly work is happening at all, and would drag the blend
+   * towards 1 for a reason unrelated to the work left.
+   *
+   * assemblyStartNs doubles as the release/acquire edge that lets the GUI
+   * touch the assembler at all: `assm` is published before createMatrix() and
+   * reduce() build the matrix getFinished() reads, so polling across that is a
+   * genuine data race.
+   *
+   * assemblyBaseFraction is how far the assembler had already got when this
+   * object took it over -- non-zero only on a resume. The seconds that bought
+   * that head start belong to a previous solveThread_c and are not recorded,
+   * so the phase's total cost is projected from it and from what this run has
+   * measured; see progressModel_c::projectAssemblyCost().
+   *
+   * reportedProgress is the monotone guard. It is never reset: the GUI builds
+   * one solveThread_c per solve and destroys it when the solve ends, so the
+   * object's lifetime is exactly the span the bar must not move backwards over.
+   */
+  std::atomic<long long> assemblyStartNs{0};   // 0 = assembly has not started
+  std::atomic<long long> assemblyEndNs{0};     // 0 = assembly still running
+  std::atomic<unsigned int> assemblyThreads{1};
+  mutable std::atomic<float> assemblyBaseFraction{0.0f};
+  mutable std::atomic<float> reportedProgress{0.0f};
+
 public:
 
   // stop and exit
@@ -229,6 +259,79 @@ public:
   // let the thread start
   // returns true, if everything went well, false otherwise
   bool start(bool stop_after_prep = false);
+
+  /* Whole-solve progress in [0,1] for the GUI's bar and its time estimate.
+   *
+   * This is the only place that can see both phases, so this is where the
+   * assembler's own fraction and the disassembly pool's are blended, weighted
+   * by each phase's measured cost (see progressModel_c). Cost-weighted rather
+   * than count-weighted so that elapsed/progress - elapsed is a usable estimate
+   * of the time remaining.
+   *
+   * Monotone -- projections revise as evidence accumulates, and a bar that
+   * moves backwards reads as a bug -- and strictly below 1.0 until the solve
+   * actually reaches ACT_FINISHED. Safe to call from the GUI thread at any
+   * time, including before the thread is started and after it has ended.
+   */
+  float getProgress(void) const;
+
+  /* The largest value getProgress() will report while the solve is running.
+   *
+   * It cannot be 1.0, which is reserved for ACT_FINISHED and is what
+   * solvethread.cpp's terminal `getFinished() >= 1` check decides on, and it
+   * cannot be progressModel_c's std::nextafter(1.0f, 0.0f) "counted but not
+   * done" sentinel either: the GUI renders the bar with %.4f, which prints
+   * that sentinel as 100.0000%.
+   *
+   * This is the single definition. solvethread.cpp uses the name unqualified
+   * inside solveThread_c's member functions, where class scope is searched
+   * before namespace scope, so it resolves here; the tests reach it as
+   * solveThread_c::runningCap. A file-local alias in solvethread.cpp would
+   * therefore be dead, and -Wunused-const-variable under the --werror CI
+   * builds rejects it.
+   */
+  static constexpr float runningCap = 0.999f;
+
+  /* What to publish while the disassembly pool has completed nothing at all.
+   *
+   * With no disassembly evidence progressModel_c can only report the assembly
+   * fraction, so that is what is published -- except where doing so would put
+   * runningCap into the monotone guard. Anything at or above the cap clamps TO
+   * the cap, and once the cap is published the guard pins the bar there for
+   * the rest of the solve: every genuine blended value that follows is lower,
+   * because the first completion of a long disassembly queue puts the blend
+   * far below 1. So at that point the honest answer is the one already held --
+   * nothing is known yet about the phase that remains, and any number invented
+   * here is contradicted a moment later.
+   *
+   * The threshold is the cap and not 1.0f. getProgress() clamps a rounded-up
+   * fraction to std::nextafter(1.0f, 0.0f) while assembly is still running, so
+   * a 1.0f threshold is unreachable on that path and every fraction in
+   * [runningCap, 1.0) would pin the bar -- the same freeze with a narrower
+   * trigger, on any puzzle that only starts finding assemblies near the end of
+   * its search.
+   *
+   * Pure, so the rule is checkable without driving a solve.
+   */
+  static float noEvidenceProgress(float assemblyFraction, float held) {
+    return (assemblyFraction >= runningCap)
+             ? held
+             : ((assemblyFraction < 0.0f) ? 0.0f : assemblyFraction);
+  }
+
+  /* The assembly fraction this solve started from: 0 for a fresh solve, the
+   * carried-over fraction for a resumed one. It is the basis the assembly
+   * cost -- and with it the whole blend -- is projected from, and a basis at
+   * or above the live fraction silently degrades getProgress() to
+   * assembly-only reporting, which is not distinguishable from the reported
+   * value alone. Exposed so that property can be asserted directly.
+   *
+   * Valid to read once the assembly phase has opened; before that it reads 0,
+   * the value a fresh solve keeps.
+   */
+  float getAssemblyBaseFraction(void) const {
+    return assemblyBaseFraction.load(std::memory_order_relaxed);
+  }
 
   // try to stop the thread at the next possible position
   void stop(void);

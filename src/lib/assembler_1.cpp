@@ -758,6 +758,24 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
   if (keepRotations)
     avoidTransformedAssemblies = false;
 
+  totalTasks.store(0, std::memory_order_relaxed);
+  completedTasks.store(0, std::memory_order_relaxed);
+  inFlightProgress.store(false, std::memory_order_relaxed);
+  {
+    std::lock_guard<std::mutex> lock(progressMutex);
+    workerProgress.clear();
+  }
+  searchComplete.store(false, std::memory_order_relaxed);
+
+  /* back to the state the constructor left, so getFinished() does not read a
+   * previous run's leftovers. A completed search -- serial or parallel --
+   * clears both stacks, and an empty next_row_stack is what the fallback
+   * branch of getFinished() reports as a finished search.
+   */
+  task_stack = { 0 };
+  next_row_stack = { 0 };
+  simdCompleted = false;
+
   errorsState = ERR_NONE;
   return errorsState;
 }
@@ -1842,7 +1860,143 @@ void assembler_1_c::iterative(void) {
         break;
     }
   }
+
+  /* debug-stepping can break out via debug_loops <= 0 with the stop token
+   * still unfired; that is not completion, so gate the flag on !debug too.
+   */
+  if (!runTok.stop_requested() && !debug)
+    searchComplete.store(true, std::memory_order_relaxed);
 }
+
+namespace {
+
+/* Number of row children a node of the Huang search has, counted exactly.
+ *
+ * The row loop of the search (states 3/4/5/6) starts at `start` and walks
+ * down[] until the validity test up[r] < r fails, which happens when the walk
+ * wraps round to the column header. Every step of that walk is one child of
+ * the node, whether or not the child ends up being recursed into.
+ *
+ * The chain is stable across the loop: state 6 hides the row it has just
+ * finished, but hiderow() does not touch that row's OWN down pointer, so the
+ * walk still reaches the same successors; the rows hiderows() hides in state 4
+ * are put back by unhiderows() before state 6 advances; and a child subtree
+ * restores the matrix exactly as it found it. So the count taken once, before
+ * the loop starts, is the count the loop will actually make.
+ *
+ * colCount[col] is NOT this number. It is the sum of the row WEIGHTS in the
+ * column, and assembler_1_c's range column carries weights greater than one
+ * (AddRangeNode stores the piece's voxel count). The serial getFinished()
+ * divides by colCount and so under-reports on range puzzles -- exactly the
+ * puzzles this engine exists for -- which is why the count is walked here.
+ */
+unsigned int countRowChildren(const std::vector<unsigned int> & up,
+                              const std::vector<unsigned int> & down,
+                              unsigned int start) {
+  unsigned int n = 0;
+  unsigned int r = start;
+  while (up[r] < r) {
+    n++;
+    r = down[r];
+  }
+  return n;
+}
+
+}
+
+/* How much of one subtree a depth-first walk has got through, measured the
+ * way the serial getFinished() measures the whole search: a node with n
+ * children gives each child 1/n of its own weight.
+ *
+ * The mechanism is a stack mirroring the search's task_stack. Each level holds
+ * the weight of its node not yet attributed anywhere (`remaining`), the weight
+ * one child slot of that node gets (`childShare`), and the weight held by the
+ * slot being handled now (`curSlot`). Weight leaves the stack only into
+ * `done`.
+ *
+ * Two properties follow, and the publication machinery relies on both:
+ *
+ *  - Conservation. done + (remaining + curSlot summed over the live stack) is
+ *    invariantly 1: push() moves curSlot from a parent into the new level
+ *    rather than creating it, beginSlot() never takes more than remaining, and
+ *    pop() hands everything a level still holds to done. So a walk that drains
+ *    leaves done at exactly 1, and done never exceeds 1 on the way there. That
+ *    does not depend on the child count being right: an n too small is clamped
+ *    by beginSlot(), an n too large leaves a residue pop() credits. A wrong n
+ *    makes the value lumpy; it cannot make it exceed 1 or fall short at the
+ *    end, which is what getFinished() needs from it.
+ *
+ *  - Monotonicity. done only ever grows, because nothing subtracts from it.
+ *    The nested-path estimate the serial path publishes has no such property
+ *    (it divides by denominators that covering moves, and a backtrack drops a
+ *    level before the level above advances), which is why the DLX engine needs
+ *    a high-water ratchet on top of it. This formulation needs none.
+ */
+class huangSubtreeProgress_c {
+
+  struct level_c {
+    double remaining;   // share of this node not yet attributed anywhere
+    double childShare;  // share each child slot of this node receives
+    double curSlot;     // share held by the child slot being handled now
+  };
+
+  std::vector<level_c> levels;
+  double done = 0;
+
+public:
+
+  /* start a walk whose root node is the whole of the subtree being measured */
+  void reset(void) {
+    levels.clear();
+    levels.push_back({ 1.0, 1.0, 0.0 });
+    done = 0;
+  }
+
+  /* credit everything the (possibly aborted) walk still holds, so the
+   * conservation invariant holds even when the walk did not drain
+   */
+  void flush(void) {
+    while (!levels.empty()) pop();
+  }
+
+  double doneShare(void) const { return done; }
+
+  void setChildren(unsigned int n) {
+    if (levels.empty()) return;
+    levels.back().childShare = (n > 0) ? levels.back().remaining / n : 0.0;
+  }
+
+  void beginSlot(void) {
+    if (levels.empty()) return;
+    level_c & l = levels.back();
+    double s = (l.childShare < l.remaining) ? l.childShare : l.remaining;
+    l.remaining -= s;
+    l.curSlot = s;
+  }
+
+  /* the current slot is finished without being descended into */
+  void endSlot(void) {
+    if (levels.empty()) return;
+    done += levels.back().curSlot;
+    levels.back().curSlot = 0.0;
+  }
+
+  /* descend into the current slot; it becomes the new top level */
+  void push(void) {
+    double s = 0.0;
+    if (!levels.empty()) {
+      s = levels.back().curSlot;
+      levels.back().curSlot = 0.0;
+    }
+    levels.push_back({ s, s, 0.0 });
+  }
+
+  void pop(void) {
+    if (levels.empty()) return;
+    done += levels.back().remaining + levels.back().curSlot;
+    levels.pop_back();
+  }
+};
 
 class assemblerWorker_1 {
   assembler_1_c & parent;
@@ -1870,6 +2024,11 @@ class assemblerWorker_1 {
 
   unsigned long local_iterations = 0;
   unsigned long flushed_iterations = 0;
+
+  /* how much of the current task this worker has got through; worker-private,
+   * only its value is published, through the atomic slot
+   */
+  huangSubtreeProgress_c tracker;
 
   void cover_column_only(int col) {
     right[left[col]] = right[col];
@@ -2077,8 +2236,16 @@ class assemblerWorker_1 {
     }
   }
 
-  void worker_iterative(unsigned int base_depth) {
+  void worker_iterative(unsigned int base_depth, assembler_1_c::WorkerProgress * slot) {
     unsigned int row, col;
+
+    /* The task this worker was handed is the whole of what this walk
+     * measures, so the tracker starts at 0 and drains to 1 as the task runs
+     * out; getFinished() adds it as one task's worth of progress.
+     */
+    tracker.reset();
+    if (slot)
+      slot->fraction.store(0.0f, std::memory_order_relaxed);
 
     while (task_stack.size() >= base_depth && !stop.stop_requested()) {
       local_iterations++;
@@ -2086,6 +2253,16 @@ class assemblerWorker_1 {
         parent.iterations.fetch_add(local_iterations - flushed_iterations, std::memory_order_relaxed);
         flushed_iterations = local_iterations;
       }
+
+      /* Publishing is a single relaxed float store -- the tracker keeps the
+       * value up to date incrementally, so there is no walk to amortise --
+       * but the store still dirties a cache line other threads read, so it
+       * is not done per node. 4K nodes was the interval measured for the DLX
+       * engine (unmeasurable cost, ~23 ms per worker); 64K would publish
+       * more slowly than the 250 ms GUI refresh and defeat the purpose.
+       */
+      if ((local_iterations & 0xFFF) == 0 && slot)
+        slot->fraction.store(static_cast<float>(tracker.doneShare()), std::memory_order_relaxed);
 
       switch (task_stack.back()) {
         case 0:
@@ -2097,6 +2274,7 @@ class assemblerWorker_1 {
                 if (cnt == 0) {
                   next_row_stack.pop_back();
                   task_stack.pop_back();
+                  tracker.pop();
                   ret = true;
                   break;
                 } else {
@@ -2112,6 +2290,7 @@ class assemblerWorker_1 {
               worker_solution();
               next_row_stack.pop_back();
               task_stack.pop_back();
+              tracker.pop();
               break;
             }
 
@@ -2119,9 +2298,13 @@ class assemblerWorker_1 {
             if (c == -1) {
               next_row_stack.pop_back();
               task_stack.pop_back();
+              tracker.pop();
               break;
             }
 
+            /* selecting a column is a chain step, not a branch: whichever of
+             * the two arms below is taken, this node has exactly one child
+             */
             if (colCount[c] == 0) {
               if (column_condition_fulfilled(c)) {
                 cover_column_only(c);
@@ -2129,6 +2312,9 @@ class assemblerWorker_1 {
                 task_stack.back() = 1;
                 task_stack.push_back(0);
                 next_row_stack.push_back(0);
+                tracker.setChildren(1);
+                tracker.beginSlot();
+                tracker.push();
                 break;
               }
             } else {
@@ -2137,25 +2323,44 @@ class assemblerWorker_1 {
               task_stack.back() = 1;
               task_stack.push_back(0);
               next_row_stack.push_back(down[c]);
+              tracker.setChildren(1);
+              tracker.beginSlot();
+              tracker.push();
               break;
             }
 
             next_row_stack.pop_back();
             task_stack.pop_back();
+            tracker.pop();
             break;
           }
 
           col = colCount[next_row_stack.back()];
           bt_assert(column_condition_fulfillable(col));
 
+          /* This node's children are the rows still in the column, plus -- if
+           * the column's condition is already met with no row added at all --
+           * one more for the empty row set. The count is taken here, before
+           * cover_column_rows() disturbs the chain, and covers both arms
+           * because states 2 and 3 both go on to walk the rows from
+           * next_row_stack.back().
+           */
+          tracker.setChildren(countRowChildren(up, down, next_row_stack.back()) +
+                              (column_condition_fulfilled(col) ? 1u : 0u));
+
           if (column_condition_fulfilled(col)) {
+            tracker.beginSlot();
             cover_column_rows(col);
             if (open_column_conditions_fulfillable()) {
               task_stack.back() = 2;
               task_stack.push_back(0);
               next_row_stack.push_back(0);
+              tracker.push();
               break;
             }
+            /* the empty-row-set child is not viable; state 2 below credits
+             * its slot, which tracker.beginSlot() is still holding
+             */
             task_stack.back() = 2;
             break;
           }
@@ -2168,10 +2373,15 @@ class assemblerWorker_1 {
           column_stack.pop_back();
           next_row_stack.pop_back();
           task_stack.pop_back();
+          tracker.pop();
           break;
 
         case 2:
           uncover_column_rows(colCount[next_row_stack.back()]);
+          /* end of the empty-row-set slot: a no-op when it was descended
+           * into, because push() already moved its share to the child
+           */
+          tracker.endSlot();
           [[fallthrough]];
 
         case 3:
@@ -2179,6 +2389,7 @@ class assemblerWorker_1 {
           row = next_row_stack.back();
           if (up[row] < row) {
             rows.push_back(row);
+            tracker.beginSlot();
             [[fallthrough]];
           } else {
             task_stack.back() = 7;
@@ -2200,6 +2411,7 @@ class assemblerWorker_1 {
                   task_stack.back() = 5;
                   task_stack.push_back(0);
                   next_row_stack.push_back(0);
+                  tracker.push();
                   break;
                 }
               } else {
@@ -2210,6 +2422,7 @@ class assemblerWorker_1 {
                   task_stack.back() = 5;
                   task_stack.push_back(0);
                   next_row_stack.push_back(newrow);
+                  tracker.push();
                   break;
                 }
               }
@@ -2225,6 +2438,12 @@ class assemblerWorker_1 {
           [[fallthrough]];
 
         case 6:
+          /* end of this row's slot, reached both when the row was descended
+           * into (share already handed to the child) and when it was rejected
+           * outright (share credited here)
+           */
+          tracker.endSlot();
+
           row = rows.back();
           for (unsigned int r = left[row]; r != row; r = left[r])
             weight[colCount[r]] -= weight[r];
@@ -2238,6 +2457,7 @@ class assemblerWorker_1 {
           if (up[row] < row) {
             rows.push_back(row);
             task_stack.back() = 4;
+            tracker.beginSlot();
             break;
           }
           [[fallthrough]];
@@ -2246,6 +2466,7 @@ class assemblerWorker_1 {
           unhiderows();
           next_row_stack.pop_back();
           task_stack.pop_back();
+          tracker.pop();
           break;
 
         default:
@@ -2253,6 +2474,16 @@ class assemblerWorker_1 {
           break;
       }
     }
+
+    /* An aborted walk leaves levels on the stack; crediting them makes the
+     * published value 1 either way, which keeps the tracker's conservation
+     * invariant a property of the class rather than of how it is driven. The
+     * task loop clears the slot on the way out regardless, so this value is
+     * only ever visible for the instant between the two.
+     */
+    tracker.flush();
+    if (slot)
+      slot->fraction.store(static_cast<float>(tracker.doneShare()), std::memory_order_relaxed);
   }
 
 public:
@@ -2273,7 +2504,8 @@ public:
     column_stack.reserve(parent.headerNodes);
   }
 
-  void searchSubtree(const assembler_1_c::SubtreeTask_1 & task) {
+  void searchSubtree(const assembler_1_c::SubtreeTask_1 & task,
+                     assembler_1_c::WorkerProgress * slot) {
     /* re-seed straight from the parent: base_* is written once in assemble()
      * and never touched while workers run, so a private copy per worker only
      * doubled the resident matrix count (2*nthreads+1 instead of nthreads+1)
@@ -2286,7 +2518,7 @@ public:
     weight = parent.base_weight;
 
     restoreMatrix(task);
-    worker_iterative(task.task_stack.size());
+    worker_iterative(task.task_stack.size(), slot);
   }
 
   void flushIterations() {
@@ -2297,6 +2529,21 @@ public:
     }
   }
 };
+
+bool assembler_1_c::willRunParallel(unsigned int threads) const {
+  /* a task_stack/next_row_stack that is not at its initial state is a resumed
+   * search: the task generator cannot start from it, so a resume runs serially
+   * however many threads are configured
+   */
+  return (errorsState == ERR_NONE) && threads > 1 &&
+         task_stack.size() == 1 && rows.empty() &&
+         next_row_stack.size() == 1;
+}
+
+unsigned int assembler_1_c::getRunThreads(void) const {
+  const unsigned int threads = getEffectiveThreads();
+  return willRunParallel(threads) ? threads : 1;
+}
 
 void assembler_1_c::generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks) {
   tasks.clear();
@@ -2564,6 +2811,17 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   if (canUseSimd()) {
     auto solver = createSimdSolver();
 
+    /* This back end has no in-flight hook, so it publishes no slots -- and
+     * getFinished()'s task-based branch, which sums the slots, therefore
+     * reduces to completed over total tasks for it. Cleared rather than
+     * assumed empty, so that reduction is a property of this function and not
+     * of whatever ran before it.
+     */
+    {
+      std::lock_guard<std::mutex> lock(progressMutex);
+      workerProgress.clear();
+    }
+
     solver->parallelSolve(
       workers,
       [this, runTok](const std::vector<unsigned int> &solution_nodes) -> bool {
@@ -2647,6 +2905,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       parallelTasks.clear();
       emittedSignatures.clear();
       parallelInterrupted = false;
+      searchComplete.store(true, std::memory_order_relaxed);
     } else {
       parallelInterrupted = true;
     }
@@ -2659,14 +2918,33 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     unsigned int targetTasks = std::max(16u, workers * 4);
     unsigned int maxDepth = std::min(piecenumber, 3u);
     generateSubtreeTasks(parallelTasks, targetTasks, maxDepth);
-    totalTasks.store(parallelTasks.size(), std::memory_order_relaxed);
-    completedTasks.store(0, std::memory_order_relaxed);
+    completedTasks.store(0, std::memory_order_release);
+
+    /* Published with release ordering, matched by getFinished()'s acquire
+     * load of totalTasks: a reader that sees this run's total is guaranteed
+     * to see the completedTasks reset that precedes it, never a stale count
+     * left by a previous run. Stored only here, inside the fresh-generation
+     * branch -- not on every call -- because it is the denominator this
+     * engine's getFinished() actually divides by (unlike assembler_0_c,
+     * where totalTasks is only a >0 gate): on a resumed run parallelTasks
+     * holds just the pool remainder a prior pause drained back into it, and
+     * re-storing that smaller count here would shrink the denominator out
+     * from under the completed count already accumulated against the
+     * original total. A resumed run therefore skips this whole block and
+     * leaves both totalTasks and completedTasks exactly as the paused run
+     * left them (tasks are weighted equally; see the note on workerProgress
+     * in the header for why this engine does not weight them by structural
+     * share).
+     */
+    totalTasks.store(parallelTasks.size(), std::memory_order_release);
   }
 
   if (parallelTasks.empty() || runTok.stop_requested()) {
     if (!runTok.stop_requested()) {
-      totalTasks.store(1, std::memory_order_relaxed);
-      completedTasks.store(1, std::memory_order_relaxed);
+      /* completed before total, both release, for the reason given above */
+      completedTasks.store(1, std::memory_order_release);
+      totalTasks.store(1, std::memory_order_release);
+      searchComplete.store(true, std::memory_order_relaxed);
     }
     running.store(false, std::memory_order_relaxed);
     return;
@@ -2701,24 +2979,70 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   std::exception_ptr workerException = nullptr;
   std::mutex exceptionMutex;
 
-  auto workerFunc = [this, &pool, &workerException, &exceptionMutex, runTok](std::stop_token st = {}) {
+  /* One published slot per worker, sized here -- before any worker starts --
+   * and left alone until they have all joined. The GUI thread is already
+   * polling getFinished() at this point, so the vector is built under
+   * progressMutex; without it a reader can walk the vector while push_back
+   * is reallocating it.
+   */
+  {
+    std::lock_guard<std::mutex> lock(progressMutex);
+    workerProgress.clear();
+    workerProgress.reserve(workers);
+    for (unsigned int i = 0; i < workers; i++)
+      workerProgress.push_back(std::make_unique<WorkerProgress>());
+  }
+
+  auto workerFunc = [this, &pool, &workerException, &exceptionMutex, runTok](std::stop_token st, unsigned int workerIdx) {
     try {
       assemblerWorker_1 worker(*this, runTok);
+      WorkerProgress * slot = workerProgress[workerIdx].get();
 
       SubtreeTask_1 task;
       while (pool.pop_task(task, runTok, st)) {
         try {
-          worker.searchSubtree(task);
+          worker.searchSubtree(task, slot);
+
+          /* The order of the handoff matters. The slot is cleared before the
+           * task is counted, and getFinished() reads completedTasks before
+           * the slots, so the only value a reader can catch part-way through
+           * is a momentarily low one -- never a task counted twice, once in
+           * completedTasks and once in a slot still reading 1. The reverse
+           * order would momentarily over-report, and solvethread.cpp treats
+           * getFinished() >= 1 as "finished": a transient over-report there
+           * would end the solve while workers were still running.
+           *
+           * Program order is not enough to get that on its own. Both
+           * accesses relaxed leaves them unordered, and on arm64 -- the
+           * development and CI platform -- a reader really can observe the
+           * incremented counter while still seeing the old slot's 1.0, which
+           * is the double count. The fetch_add is therefore a release and
+           * getFinished()'s load of completedTasks an acquire: a reader that
+           * sees this increment is guaranteed to see the slot clear that
+           * precedes it.
+           *
+           * The slot is cleared whether or not the task completed. A task
+           * the run token cut short is not counted -- it has to be redone on
+           * a resume -- so leaving its in-flight term standing would report
+           * work that is about to be thrown away.
+           */
+          if (slot)
+            slot->fraction.store(0.0f, std::memory_order_relaxed);
           if (!runTok.stop_requested() && !st.stop_requested()) {
-            completedTasks.fetch_add(1, std::memory_order_relaxed);
+            completedTasks.fetch_add(1, std::memory_order_release);
           } else {
             // Interrupted mid-task: re-queue the whole snapshot so an
             // in-session continue re-searches it from scratch. Assemblies
-            // reported twice are suppressed via emittedSignatures.
+            // reported twice are suppressed via emittedSignatures. This is
+            // the same task re-added to the pool, not new work, so it must
+            // not inflate totalTasks -- getFinished() divides completedTasks
+            // by it, and every pause/resume that catches a worker mid-task
+            // would otherwise nudge the denominator up without a matching
+            // increase in what is actually done, biasing the reported
+            // fraction down a little further on every interruption.
             std::vector<SubtreeTask_1> retry;
             retry.push_back(std::move(task));
-            totalTasks.fetch_add(pool.push_tasks(std::move(retry)),
-                                 std::memory_order_relaxed);
+            pool.push_tasks(std::move(retry));
           }
         } catch (...) {
           pool.finishTask();
@@ -2741,14 +3065,24 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   threads.reserve(workers - 1);
 
   for (unsigned int i = 1; i < workers; i++) {
-    threads.emplace_back(workerFunc);
+    threads.emplace_back(workerFunc, i);
   }
 
-  workerFunc();
+  workerFunc(std::stop_token{}, 0);
 
   for (auto & t : threads) {
     if (t.joinable())
       t.join();
+  }
+
+  /* Every worker has joined, so the slots are dead: drop them rather than
+   * leave the last published in-flight terms standing for a later poll to add
+   * to the completed count. Under progressMutex for the same reason they were
+   * built under it -- the GUI thread may still be walking the vector.
+   */
+  {
+    std::lock_guard<std::mutex> lock(progressMutex);
+    workerProgress.clear();
   }
 
   if (workerException) {
@@ -2762,6 +3096,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     parallelTasks.clear();
     emittedSignatures.clear();
     parallelInterrupted = false;
+    searchComplete.store(true, std::memory_order_relaxed);
   } else {
     /* Stopped part way. Continuing in this session is fine -- the pool
      * remainder plus re-queued in-flight tasks are saved back into
@@ -2918,6 +3253,7 @@ void assembler_1_c::simdSearch(void) {
   if (simdCompleted.load(std::memory_order_relaxed)) {
     next_row_stack.clear();
     task_stack.clear();
+    searchComplete.store(true, std::memory_order_relaxed);
   }
 
   running.store(false, std::memory_order_relaxed);
@@ -2932,11 +3268,59 @@ void assembler_1_c::assemble(assembler_cb * callback) {
   std::stop_token runTok = beginRun();
   debug = false;
 
-  /* a previous parallel run leaves totalTasks == completedTasks, which would
-   * make getFinished() report 1.0 for this run before it has done anything
+  const unsigned int threads = getEffectiveThreads();
+  /* the same condition the branch below used to test inline, hoisted so the
+   * progress source can be chosen before anything is written, and factored
+   * out so getRunThreads() cannot drift from it
    */
-  resetTaskProgress();
-  simdCompleted.store(false, std::memory_order_relaxed);
+  const bool runParallel = willRunParallel(threads);
+
+  /* getFinished() is polled from the GUI thread throughout the solve, and its
+   * fallback branch reads finished_a/finished_b and next_row_stack -- the
+   * single-threaded progress state. The parallel path writes all three from
+   * this thread without holding finishedMutex: the reserve() just below
+   * reallocates finished_a, and task generation pushes and pops
+   * next_row_stack several thousand times. ThreadSanitizer flags both.
+   *
+   * Switching getFinished() over to the task-based source here, before any of
+   * that happens, keeps it off that state for the whole of the parallel run.
+   * While the task list is still being generated totalTasks is 0, which the
+   * task-based branch reports as 0 -- correct, and reading only atomics.
+   *
+   * The switch is made under finishedMutex, which getFinished() holds across
+   * its whole body. That is what orders a poll that arrived BEFORE the switch
+   * -- and so did read finished_a and next_row_stack, legitimately, while
+   * nothing was running -- against the writes below: read, then lock, then
+   * write, with the lock carrying the happens-before edge. simdCompleted and
+   * inFlightProgress are atomics in their own right, so the lock is not what
+   * makes storing them safe; it is what makes this switch indivisible from
+   * getFinished()'s point of view, so no poll can land between "flag says
+   * parallel" and "finished_a/next_row_stack are mid-write".
+   *
+   * It is switched back OFF for a non-parallel run, not merely left alone, and
+   * the task counters are zeroed with it. A solve aborted on the parallel path
+   * leaves both the flag and the counters holding that run's numbers, and the
+   * flag is what selects the task-ratio branch of getFinished() -- so a resume
+   * with one thread would otherwise report the abandoned run's constant ratio
+   * for the whole of the serial search.
+   *
+   * The counters are cleared with it even though the flag alone would satisfy
+   * the regression test on this tree: getFinished() has only one task-ratio
+   * branch left, so nothing reads them once the flag is off. It had two when
+   * this fix was first written, and clearing only the flag moved the stale
+   * value from one branch to the other -- the test reproduced it bit for bit
+   * either way. Leaving an abandoned run's numbers in the counters is what
+   * made that possible, so they go too.
+   */
+  {
+    std::lock_guard<std::mutex> lock(finishedMutex);
+    simdCompleted.store(false, std::memory_order_relaxed);
+    inFlightProgress.store(runParallel, std::memory_order_relaxed);
+    if (!runParallel) {
+      totalTasks.store(0, std::memory_order_relaxed);
+      completedTasks.store(0, std::memory_order_relaxed);
+    }
+  }
 
   finished_a.reserve(headerNodes);
   finished_b.reserve(headerNodes);
@@ -2953,8 +3337,7 @@ void assembler_1_c::assemble(assembler_cb * callback) {
     // run, when something to do
     if (next_row_stack.size()) {
       asm_bc = callback;
-      unsigned int threads = getEffectiveThreads();
-      if (task_stack.size() == 1 && rows.empty() && next_row_stack.size() == 1 && threads > 1) {
+      if (runParallel) {
         parallelMultiSearch(threads);
       } else {
         // Serial path: hold a budget token too (see assembler_0_c::assemble).
@@ -2988,12 +3371,140 @@ void assembler_1_c::popFinished(void) {
 
 float assembler_1_c::getFinished(void) const {
 
-  size_t total = totalTasks.load(std::memory_order_relaxed);
-  if (total > 0) {
-    if (!running.load(std::memory_order_relaxed) && !currentRunToken().stop_requested())
-      return 1.0f;
-    return static_cast<float>(completedTasks.load(std::memory_order_relaxed)) / static_cast<float>(total);
+  if (searchComplete.load(std::memory_order_relaxed))
+    return 1.0f;
+
+  /* Held across the whole body, not just the finished_a/finished_b walk at the
+   * bottom. Besides keeping those vectors from changing size under the read
+   * (it is locked against pushFinished/popFinished, so a slot is never exposed
+   * mid construction or destruction), it is the edge that orders this call
+   * against assemble() switching the progress source over -- see the note
+   * there. Nothing a worker does takes this mutex, so no worker ever blocks
+   * on it.
+   */
+  std::lock_guard<std::mutex> guard(finishedMutex);
+
+  /* Completed subtree tasks plus how far each running worker has got into the
+   * task it holds. Without the second term a task contributes nothing until it
+   * finishes, which is what made the bar sit still on the tail task. Every
+   * task is worth the same 1/n here; see the note on workerProgress in the
+   * header for why this engine does not weight them by structural share.
+   *
+   * Only published atomics are read here; a worker's matrix and its progress
+   * tracker are private to its thread and are never touched from this (GUI)
+   * thread. completedTasks is read before the slots on purpose, and with
+   * acquire ordering -- see the ordering note in the worker loop of
+   * parallelMultiSearch().
+   *
+   * This is also the SIMD back end's progress. It publishes no worker slots,
+   * so the loop below adds nothing and the expression reduces to completed
+   * tasks over total tasks, the only granularity it has.
+   *
+   * The sum is accumulated in double, not float. It starts at the completed
+   * task COUNT, which is ~105 on Burr-Glar, where consecutive floats are about
+   * 7.6e-6 apart -- so a legitimate tail fraction within ~6e-6 of 1 would
+   * round the sum up to the full task count and the quotient to exactly 1.0f,
+   * reporting a finished search while a worker was still running. In double
+   * the same rounding needs the fraction to be within ~1e-14 of 1, i.e. to
+   * have genuinely drained.
+   */
+  if (inFlightProgress.load(std::memory_order_relaxed)) {
+    /* acquire, paired with the release stores that publish the denominator in
+     * parallelMultiSearch(): seeing this run's total guarantees seeing this
+     * run's seeded completed count, never the previous run's.
+     */
+    size_t n = totalTasks.load(std::memory_order_acquire);
+    if (n == 0) return 0;
+
+    /* The counter and the slots are read as a SNAPSHOT, seqlock style: read
+     * the counter, walk the slots, read the counter again, and accept the
+     * pair only if the counter did not move. This is what makes the value
+     * monotone, and it is worth spelling out why the obvious cheaper fixes
+     * are not enough.
+     *
+     * A worker hands a task over in two steps -- clear my slot, then add one
+     * to completedTasks -- and a reader must never be caught seeing both the
+     * increment AND the slot's outgoing value, because that counts the task
+     * twice and an over-report is what pushes the sum to 1.0 and ends a solve
+     * with work left (solvethread.cpp treats getFinished() >= 1 as finished).
+     * Reading the counter first and clearing the slot first makes the torn
+     * read LOW instead of high, which is safe but not monotone: a handoff
+     * that starts and finishes between the counter load and the slot walk is
+     * invisible to both, and the sample lands up to a whole task below its
+     * predecessor.
+     *
+     * Re-reading the counter afterwards and taking max(counter + slots,
+     * counter_after) narrows that but does not close it. Measured, with the
+     * reader's window widened to 3 ms: the traces in test_solver.cpp still
+     * fail monotone with the max in place. The reason is that the max recovers
+     * the finished task only by DISCARDING every other worker's in-flight
+     * term, so it loses whenever those terms sum to less than one task --
+     * which is most of the time.
+     *
+     * Retaking the snapshot recovers both. On a retry the counter already
+     * carries the finished task and the slot walk sees the finishing worker's
+     * fresh fraction, so nothing is lost and nothing is counted twice. One
+     * attempt succeeds unless a handoff lands inside the walk; the retry
+     * budget is small because falling back is safe rather than wrong -- a
+     * reader that gives up uses the counter alone, which is monotone and
+     * cannot over-report. That fallback is exactly the max above.
+     *
+     * The window that remains is a worker stalled BETWEEN its slot store and
+     * its own fetch_add, two adjacent instructions, for the whole of a read.
+     * No amount of reader-side work closes that one; only a lock on the
+     * worker's hot path would.
+     */
+    size_t done = completedTasks.load(std::memory_order_acquire);
+    double best = 0;
+
+    for (unsigned int attempt = 0; attempt < 4; attempt++) {
+      double sum = 0;
+      {
+        std::lock_guard<std::mutex> lock(progressMutex);
+        for (const auto & w : workerProgress)
+          if (w)
+            sum += w->fraction.load(std::memory_order_relaxed);
+      }
+
+      /* Every attempt's pair is kept as a floor, not just the consistent one.
+       *
+       * `done` was read BEFORE this walk, so any task counted since is absent
+       * from it, and a slot still showing that task is therefore not a second
+       * copy of it: the pair can only under-report, never over-report. That
+       * makes the largest pair seen a safe answer whether or not the snapshot
+       * ever came out clean.
+       *
+       * It is also what the exhaustion path needs. Four failed attempts move
+       * `done` by at most four tasks, while the in-flight terms they discard
+       * are worth up to one per worker -- so returning the bare counter would
+       * drop the value whenever there are more than four workers, which is
+       * exactly the non-monotonicity this snapshot exists to remove, just in
+       * a rarer window.
+       */
+      const double candidate = static_cast<double>(done) + sum;
+      if (candidate > best)
+        best = candidate;
+
+      const size_t after = completedTasks.load(std::memory_order_acquire);
+      if (after == done)
+        break;
+
+      /* a handoff landed inside the walk: `sum` and `after` disagree about
+       * that task, so retake the pair
+       */
+      done = after;
+    }
+
+    double erg = best / static_cast<double>(n);
+    return (erg > 1.0) ? 1.0f : static_cast<float>(erg);
   }
+
+  /* Reaching here means inFlightProgress is off, i.e. a non-parallel run --
+   * and assemble() zeroes totalTasks for exactly those, so there is no
+   * task-count source to consult. The SIMD back end needs no case of its own
+   * here: it runs under inFlightProgress too and is served by the branch
+   * above.
+   */
 
   if (simdCompleted.load(std::memory_order_acquire))
     return 1.0f;
@@ -3002,14 +3513,14 @@ float assembler_1_c::getFinished(void) const {
 
   float erg = 0;
 
-  /* locked against pushFinished/popFinished so the vectors can not change
-   * size (and expose a slot mid construction/destruction) during the read
-   */
-  std::lock_guard<std::mutex> guard(finishedMutex);
-
   for (int r = finished_a.size()-1; r >= 0; r--) {
 
     erg += finished_a[r];
+    /* pushFinished() can be handed a zero column count, and inf/NaN here
+     * would clamp to 1.0 and read as a finished search
+     */
+    if (finished_b[r] == 0)
+      continue;
     erg /= finished_b[r];
   }
 

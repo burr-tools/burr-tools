@@ -4,6 +4,8 @@
 #include "lib/solvethread.h"
 #include "lib/puzzle.h"
 #include "lib/problem.h"
+#include "lib/assembler.h"
+#include "lib/assembler_0.h"
 #include "lib/assembly.h"
 #include "lib/disassembly.h"
 #include "lib/solution.h"
@@ -63,6 +65,36 @@ std::unique_ptr<puzzle_c> loadPuzzle(const char * path) {
   if (!str) return nullptr;
   xmlParser_c pars(*str);
   return std::make_unique<puzzle_c>(pars);
+}
+
+/* Collects a handful of real assemblies from a solved problem to feed a
+ * disassembler pool with. Every assembly here has placementCount() > 1 (the
+ * puzzle has multiple pieces), so each one triggers a real disassemble()
+ * call and real wall-clock cost -- unlike the default-constructed
+ * assembly_c(gt) used elsewhere in this file, which has 0 placements and
+ * never reaches disassemble() at all.
+ */
+std::vector<std::unique_ptr<assembly_c>> collectSomeAssemblies(const problem_c & problem, size_t limit) {
+  std::vector<std::unique_ptr<assembly_c>> found;
+
+  class Collect : public assembler_cb {
+  public:
+    std::vector<std::unique_ptr<assembly_c>> * out;
+    size_t limit;
+    bool assembly(std::unique_ptr<assembly_c> a) override {
+      if (out->size() < limit) out->push_back(std::move(a));
+      return true;
+    }
+  } cb;
+  cb.out = &found;
+  cb.limit = limit;
+
+  assembler_0_c assm(problem);
+  assm.setNumThreads(1);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  assm.assemble(&cb);
+
+  return found;
 }
 
 } // namespace
@@ -544,3 +576,51 @@ TEST_CASE("solveThread_c: explicit thread count reaches the assembler", "[solvet
   CHECK(problem->getAssembler()->getNumThreads() == 2);
 }
 
+/* The progress model weights disassembly against assembly by measured seconds,
+ * so the pool has to report how much it has done and what it cost -- on both
+ * of its internal code paths: the multi-threaded worker/merger pipeline, and
+ * the single-threaded "inline" path submit() takes when the pool collapses to
+ * one thread (num_threads <= 1, or BURRTOOLS_NO_DISASM_POOL is set). Both
+ * paths run real disassemble() work, so both must advance the counters and
+ * the cost identically as far as a consumer of completedCount()/
+ * submittedCount() is concerned.
+ */
+TEST_CASE("disassembler pool reports counts and accumulated cost",
+          "[disasm][pool][progress]") {
+  auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  SECTION("threaded pool (num_threads > 1)") {
+    auto found = collectSomeAssemblies(*problem, 5);
+    REQUIRE_FALSE(found.empty());
+
+    disassemblerPool_c pool(*problem, 2, nullptr);
+    const unsigned long n = found.size();
+    for (auto & a : found) pool.submit(std::move(a));
+    pool.finish();
+
+    CHECK(pool.submittedCount() == n);
+    CHECK(pool.completedCount() == n);
+    // Real disassemble() work ran on every submitted assembly (all have
+    // placementCount() > 1, from a 12-piece puzzle), so measured wall time
+    // must be strictly positive -- an untouched or deleted timing block
+    // would leave this at exactly 0.0.
+    CHECK(pool.accumulatedCostSeconds() > 0.0);
+  }
+
+  SECTION("inline pool (num_threads == 1, submit() runs disassemble() synchronously)") {
+    auto found = collectSomeAssemblies(*problem, 5);
+    REQUIRE_FALSE(found.empty());
+
+    disassemblerPool_c pool(*problem, 1, nullptr);
+    const unsigned long n = found.size();
+    for (auto & a : found) pool.submit(std::move(a));
+    pool.finish();
+
+    CHECK(pool.submittedCount() == n);
+    CHECK(pool.completedCount() == n);
+    CHECK(pool.accumulatedCostSeconds() > 0.0);
+  }
+}
