@@ -81,7 +81,7 @@ properties. Read in this order:
 | `Pop` / `Fin` | `pop_task` success + `finishTask` (`releaseBudget` then `task_done`) |
 | `ShedTok` | Model-only shed of a reservation left dangling by a label-split interleave that C++ excludes (reserve is atomic with the nonempty check). Keeps the token-free-wait rule. |
 | `splitter` process | `push_tasks` dynamic splits, as environment nondeterminism (splits are optional: the owner searches the whole subtree) |
-| `stopper` process | Stop path (`runStop` semantics: pushes are still accepted after a stop, which the retry path depends on); unfair, so TLC covers stop and never-stop |
+| `stopper` process | Terminal stop at an arbitrary point (C++: run/jthread stop tokens; the assembly pool has no stop flag of its own, so pushes stay accepted). Unfair single step, so TLC covers stop and never-stop |
 | `BudgetConservation` | **SPEC-BUDGET-1**: takes/returns pair up |
 | `ActiveBounded` | N-active-thread bound: every in-flight task holds a token |
 | `Pairing` | **SPEC-POOL-1**: each `pop_task` pairs with exactly one `finishTask` |
@@ -139,10 +139,13 @@ Review findings that shape what the specs must cover:
 
 C++ locks (atomic steps here; token-free/lock-free waits by construction),
 the C++ memory model (atomics are sequentially consistent),
-`AssemblyTaskPool::abort()` and `requestStop()` (unused; assembly stop
-arrives via `runStop` + `notify`, whose `drain()` is wired), the null-budget path (budget = N ≈
-uncapped), task bodies (exact cover search, mid-task requeue), voxel
-caches, disassembly payloads, the merger callback body, GUI.
+`AssemblyTaskPool` stop plumbing beyond the run/jthread tokens (it
+deliberately has no `requestStop()`/`abort()`: a pool-level stop flag
+would refuse the requeue pushes the `drain()`-based resume depends on;
+`drain()` itself is live and covered implicitly by task conservation),
+the null-budget path (budget = N ≈ uncapped), task bodies (exact cover
+search, mid-task requeue), voxel caches, disassembly payloads, the
+merger callback body, GUI.
 
 ## Editing rules (anti-divergence)
 

@@ -148,13 +148,6 @@ TEST_CASE("AssemblyTaskPool stop preserves pairing and loses no task", "[thread]
       std::stop_token noStop;
       while (pool.pop_task(task, noStop, st)) {
         (void)task;
-        try {
-          if (pool.debugPops() >= 5)
-            pool.requestStop();
-        } catch (...) {
-          pool.finishTask();
-          throw;
-        }
         pool.finishTask();
         finishedCount.fetch_add(1);
       }
@@ -163,6 +156,14 @@ TEST_CASE("AssemblyTaskPool stop preserves pairing and loses no task", "[thread]
       // worker has terminated (quiescence), asserted below after joining.
     });
   }
+
+  // Prod stop path: stopping arrives via the threads' own stop tokens
+  // (the run token in production). The pool deliberately has no stop
+  // flag of its own; queued tasks stay queued for drain()/resume.
+  while (pool.debugPops() < 5)
+    std::this_thread::yield();
+  for (auto &w : workers)
+    w.request_stop();
   for (auto &w : workers)
     w.join();
 

@@ -7,7 +7,7 @@
 (*                                                                         *)
 (* SCOPE. Only the coordination protocol is modeled: task generation   *)
 (* (stoppable, with discard of partial lists), token accounting,        *)
-(* pop/finish pairing, quiescence, dynamic splits, requestStop. Task    *)
+(* pop/finish pairing, quiescence, dynamic splits, terminal stop. Task  *)
 (* bodies (exact-cover search), voxel caches, the disassembler pool and *)
 (* the GUI thread are abstracted away. Tasks are opaque IDs.            *)
 (*                                                                         *)
@@ -18,9 +18,11 @@
 (*     enforced BY CONSTRUCTION: both awaits sit outside any               *)
 (*     token-holding / task-owning region.                                 *)
 (*   - C++ memory model: atomics are sequentially consistent here.         *)
-(*   - abort()/drain(): only requestStop() (stop flag, queue kept) is     *)
-(*     modeled. abort() discards queued work by design; drain() moves it  *)
-(*     out for in-session resume. Both are future extensions.              *)
+(*   - No pool-level stop flag: the terminal flag below stands for the    *)
+(*     run/jthread stop tokens (assembler_pool.h deliberately has no      *)
+(*     requestStop()/abort(); stop arrives via tokens, queued tasks stay  *)
+(*     queued for drain()). abort()/requestStop() exist only on the       *)
+(*     disassembler pool, covered in DisasmPool.tla.                      *)
 (*   - The null-budget path: BudgetTotal = N behaves like uncapped        *)
 (*     (tryAcquire always succeeds), so no second code path is needed.    *)
 (*                                                                         *)
@@ -199,9 +201,10 @@ Workers == 1..N
     };
   }
 
-  \* Environment: the GUI/orchestrator may request a stop at any point,
-  \* or never. TLC explores both branches: the skip branch exercises the
-  \* normal drain-to-quiescence path, the stop branch requestStop().
+  \* Environment: the run may stop at any point, or never (C++: run and
+  \* jthread stop tokens; the pool itself has no stop flag). TLC explores
+  \* both branches: the skip branch exercises the normal
+  \* drain-to-quiescence path, the stop branch the terminal flag.
   process (stopper = 0)
   {
     StopChoice:
@@ -302,7 +305,7 @@ PoolWait(self) == /\ pc[self] = "PoolWait"
                              /\ UNCHANGED << available, holdsToken >>
                         ELSE /\ IF Len(queue) = 0
                                    THEN /\ Assert(active = 0, 
-                                                  "Failure of assertion at line 85, column 11.")
+                                                  "Failure of assertion at line 87, column 11.")
                                         /\ terminated' = [terminated EXCEPT ![self] = TRUE]
                                         /\ pc' = [pc EXCEPT ![self] = "WLoop"]
                                         /\ UNCHANGED << available, holdsToken >>
