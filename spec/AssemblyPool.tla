@@ -73,6 +73,10 @@ Workers == 1..N
       \* Pool wait, token-free (assembler_pool.h pop_task, cv.wait + pred).
       \* Progress depends only on token holders finishing or on stop.
       PoolWait:
+        \* New work once seeded, quiescence, discarded generation, or stop.
+        \* Workers must not proceed on an empty queue before genDone (they
+        \* would quiescence-terminate mid-generation); the genDone conjunct
+        \* is load-bearing, not cosmetic.
         await (genDone /\ (Len(queue) > 0 \/ active = 0)) \/ genStopped \/ stopRequested;
         if (genStopped \/ stopRequested) {
           terminated[self] := TRUE;
@@ -243,7 +247,7 @@ Workers == 1..N
   };
 
 } *)
-\* BEGIN TRANSLATION (chksum(pcal) = "156bac06" /\ chksum(tla) = "95f9463c")
+\* BEGIN TRANSLATION (chksum(pcal) = "156bac06" /\ chksum(tla) = "74615cd4")
 VARIABLES queue, genList, genDone, genStopped, active, stopRequested, 
           available, holdsToken, hasTask, terminated, completed, nextId, 
           pushesLeft, splitOpen, pc, task
@@ -293,7 +297,7 @@ PoolWait(self) == /\ pc[self] = "PoolWait"
                              /\ UNCHANGED << available, holdsToken >>
                         ELSE /\ IF Len(queue) = 0
                                    THEN /\ Assert(active = 0, 
-                                                  "Failure of assertion at line 81, column 11.")
+                                                  "Failure of assertion at line 85, column 11.")
                                         /\ terminated' = [terminated EXCEPT ![self] = TRUE]
                                         /\ pc' = [pc EXCEPT ![self] = "WLoop"]
                                         /\ UNCHANGED << available, holdsToken >>

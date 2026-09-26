@@ -27,7 +27,7 @@ fetched by `just spec-tools` into `build-tla/` (gitignored).
 ## Run
 
 ```bash
-just spec-check   # translate + check both configs (fast: <2s, a few hundred states)
+just spec-check   # translate + lint + check all configs (about a minute)
 ```
 
 Manually:
@@ -43,6 +43,32 @@ Larger instance (ad-hoc confidence, not committed):
 ```bash
 # N=3, BudgetTotal=2, NumTasks=4, MaxPush=3 in a scratch .cfg → ~8k states, ~1s
 ```
+
+## How to read these specs (for TLA+ non-experts)
+
+Each `.tla` file is one self-contained protocol model plus its checked
+properties. Read in this order:
+
+1. The header comment: scope, deliberate gaps, SPEC-ID list.
+2. `CONSTANTS` plus the `.cfg` file: the checked instance sizes. The
+   code uses 64/256; TLC checks 1–4. Small instances find protocol
+   bugs; bigger ones mostly add states.
+3. The `--algorithm` block (PlusCal, reads like pseudocode):
+   - `process` ≈ thread. `fair` = must eventually run (workers);
+     unfair = may never run (environment stop/abort choices — TLC
+     covers both).
+   - `label:` = atomicity boundary. Everything between two labels is ONE
+     indivisible step. New labels = new interleavings; each must be
+     checked against the C++ locking.
+   - `await cond;` = condition-variable wait (re-evaluated automatically;
+     no notify needed in the model). Each non-trivial await carries a
+     comment naming the protocol decision it encodes.
+   - `either {A} or {B};` = scheduler/environment nondeterminism — TLC
+     explores both.
+   - `assert P;` = checked at that point in every behavior.
+4. After `END TRANSLATION` (generated, never edited): the invariants
+   (`SPEC-*` IDs, also quoted in `src/lib` comments) and the liveness
+   property. `just spec-check` verifies all of them plus deadlock-freedom.
 
 ## C++ ↔ spec mapping (`AssemblyPool.tla`)
 
@@ -140,6 +166,14 @@ caches, disassembly payloads, the merger callback body, GUI.
    algorithm at a brace imbalance: a stray `};` once dropped master,
    stopper and splitter while TLC stayed green on the worker-only
    remainder. Never trust a green run without the lint passing.
+7. Refactoring awaits is high-risk editing: renaming a predicate is
+   safe, but changing what it says can make the model vacuous while
+   staying green (e.g. dropping the `genDone` gate lets workers
+   quiescence-terminate before generation, after which the search phase
+   is never exercised yet every invariant holds). After touching an
+   await, check that the distinct-state count did not collapse AND that
+   a targeted mutant still fails. Current rough counts: AssemblyPool
+   ~14k/19k, DisasmPool ~179k/69k, Pipeline ~3k/300k states.
 
 ## Tooling quirks found the hard way
 
@@ -153,3 +187,8 @@ caches, disassembly payloads, the merger callback body, GUI.
 - Brace balance is load-bearing and unchecked: one extra `}` ends the
   algorithm early with "Translation completed" and no error. Count
   braces per region when processes go missing from `ProcSet`.
+- TLA+ has no forward references: a helper operator over PlusCal
+  variables cannot be defined before the `--algorithm` block (the
+  variables only materialize in the generated translation below it).
+  Keep shared predicate logic in comments at the awaits, not in
+  operators above the algorithm.

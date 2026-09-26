@@ -89,6 +89,8 @@ NoJob == -1  (* busy[w] = -1 means worker w holds no job; seqNos start at 0 *)
         offered := offered + 1;
       } else {
       SSpace:
+        \* Queue room AND reorder-window room (hasSpace); the window
+        \* conjunct is load-bearing (SPEC-DIS-4).
         await (Len(queue) < MaxQ /\ nextSubmit - nextMerge < MaxR)
            \/ finished \/ aborted \/ stopReq;
         if (finished \/ aborted \/ stopReq) {
@@ -152,6 +154,7 @@ NoJob == -1  (* busy[w] = -1 means worker w holds no job; seqNos start at 0 *)
   MLoop:
     while (~mdone) {
     MWait:
+      \* Next result filed, salvaged (skip), abort, or drained.
       await (nextMerge \in filed) \/ (nextMerge \in dropped) \/ aborted
          \/ (finished /\ nextMerge = nextSubmit);
       if (aborted) {
@@ -233,7 +236,7 @@ NoJob == -1  (* busy[w] = -1 means worker w holds no job; seqNos start at 0 *)
   }
 
 } *)
-\* BEGIN TRANSLATION (chksum(pcal) = "53b839fb" /\ chksum(tla) = "b6f58725")
+\* BEGIN TRANSLATION (chksum(pcal) = "53b839fb" /\ chksum(tla) = "7d674ba5")
 VARIABLES queue, nextSubmit, nextMerge, filed, dropped, delivered, 
           salvagedSeq, refused, skipped, discarded, offered, lastDelivered, 
           lastSalvaged, busy, finished, aborted, stopReq, sdone, wdone, mdone, 
@@ -392,14 +395,14 @@ MWait == /\ pc[0] = "MWait"
                                                mdone >>
                           ELSE /\ IF nextMerge \in filed
                                      THEN /\ Assert(nextMerge > lastDelivered, 
-                                                    "Failure of assertion at line 166, column 9.")
+                                                    "Failure of assertion at line 169, column 9.")
                                           /\ filed' = filed \ {nextMerge}
                                           /\ delivered' = Append(delivered, nextMerge)
                                           /\ lastDelivered' = nextMerge
                                           /\ nextMerge' = nextMerge + 1
                                           /\ mdone' = mdone
                                      ELSE /\ Assert(finished /\ nextMerge = nextSubmit, 
-                                                    "Failure of assertion at line 173, column 9.")
+                                                    "Failure of assertion at line 176, column 9.")
                                           /\ mdone' = TRUE
                                           /\ UNCHANGED << nextMerge, filed, 
                                                           delivered, 
@@ -426,7 +429,7 @@ StopDo == /\ pc[-1] = "StopDo"
 SalvLoop == /\ pc[-1] = "SalvLoop"
             /\ IF Len(queue) > 0
                   THEN /\ Assert(Head(queue) > lastSalvaged, 
-                                 "Failure of assertion at line 192, column 9.")
+                                 "Failure of assertion at line 195, column 9.")
                        /\ salvagedSeq' = Append(salvagedSeq, Head(queue))
                        /\ lastSalvaged' = Head(queue)
                        /\ dropped' = (dropped \cup {Head(queue)})
