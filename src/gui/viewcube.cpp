@@ -574,7 +574,7 @@ viewCube_c::Part viewCube_c::hitTest(int mx, int my, rotater_c * rot, int winW, 
       if (!anyVisible) continue;
     }
 
-    float sx[4], sy[4], sz[4];
+    float sx[4] = {}, sy[4] = {}, sz[4] = {};
     for (int k = 0; k < poly.n; k++)
       project(m, poly.v[k][0], poly.v[k][1], poly.v[k][2], o, &sx[k], &sy[k], &sz[k]);
 
