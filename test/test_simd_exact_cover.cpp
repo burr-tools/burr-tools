@@ -979,3 +979,125 @@ TEST_CASE("SimdHuangCover: parallelSolve does not count aborted tasks as complet
   CHECK(completed_tasks.load() == 0);
 }
 
+/* Stopped Huang parallel runs salvage resumable prefixes (issue #111).
+ *
+ * Single worker on purpose: with one thread the schedule is fully
+ * deterministic -- the reporting task is in flight and unstarted tasks
+ * are still queued when stop fires, so salvage cannot come back empty
+ * (unlike a wall-clock-dependent multithreaded stop). The two load-bearing
+ * assertions: salvage is non-empty (fails if the mechanism is dropped and
+ * the run silently degrades to full regenerate), and resume covers every
+ * solution (fails if salvaged prefixes lose subtrees).
+ */
+TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[simd][huang][resume]") {
+  auto makeSolver = [] {
+    // Shapes 1,2 (exactly 1 each), voxels 3,4 (required). Solutions:
+    // {1, 3} and {2, 4}; {1, 4} and {2, 3} conflict on voxels.
+    auto solver = std::make_unique<SimdHuangCover256>(4, 2);
+    solver->setColumnBounds(1, 1, 1, false, true, false, false);
+    solver->setColumnBounds(2, 1, 1, false, true, false, false);
+    solver->setColumnBounds(3, 1, 1, true, false, false, false);
+    solver->setColumnBounds(4, 1, 1, true, false, false, false);
+    solver->addRow(1, 0, 1, 0, 0, {1, 3}, {1, 1});
+    solver->addRow(2, 0, 1, 1, 0, {1, 4}, {1, 1});
+    solver->addRow(3, 1, 2, 0, 0, {2, 4}, {1, 1});
+    solver->addRow(4, 1, 2, 1, 0, {2, 3}, {1, 1});
+    return solver;
+  };
+
+  auto runCollect = [](SimdHuangCover256 & solver, std::stop_source & stopSrc,
+                       const std::vector<std::vector<unsigned int>> * seeds,
+                       std::vector<std::vector<unsigned int>> * salvaged) {
+    std::vector<std::vector<unsigned int>> sols;
+    std::atomic<unsigned long> iterations{0};
+    std::atomic<size_t> total_tasks{0};
+    std::atomic<size_t> completed_tasks{0};
+    solver.parallelSolve(
+      1,
+      [&](const std::vector<unsigned int> & s) {
+        std::vector<unsigned int> sorted = s;
+        std::sort(sorted.begin(), sorted.end());
+        sols.push_back(sorted);
+        return true;
+      },
+      stopSrc, iterations, total_tasks, completed_tasks,
+      nullptr, seeds, salvaged);
+    std::sort(sols.begin(), sols.end());
+    return sols;
+  };
+
+  // Baseline: uninterrupted run finds both solutions.
+  std::vector<std::vector<unsigned int>> full;
+  {
+    auto solver = makeSolver();
+    std::stop_source stopSrc;
+    full = runCollect(*solver, stopSrc, nullptr, nullptr);
+  }
+  REQUIRE(full.size() == 2);
+
+  // Stop after the first solution: salvage must be non-empty...
+  auto solver = makeSolver();
+  std::vector<std::vector<unsigned int>> first;
+  std::vector<std::vector<unsigned int>> salvaged;
+  {
+    std::stop_source stopSrc;
+    std::atomic<unsigned long> iterations{0};
+    std::atomic<size_t> total_tasks{0};
+    std::atomic<size_t> completed_tasks{0};
+    solver->parallelSolve(
+      1,
+      [&](const std::vector<unsigned int> & s) {
+        std::vector<unsigned int> sorted = s;
+        std::sort(sorted.begin(), sorted.end());
+        first.push_back(sorted);
+        stopSrc.request_stop();
+        return false;
+      },
+      stopSrc, iterations, total_tasks, completed_tasks,
+      nullptr, nullptr, &salvaged);
+  }
+  REQUIRE(first.size() == 1);
+  CHECK(!salvaged.empty());
+
+  // Resume from only the salvaged prefixes whose subtree does NOT contain
+  // the reported solution (drop any prefix fully contained in first[0]):
+  // the rest must then equal the full set minus first. Without seeding the
+  // resume regenerates everything and re-reports first, failing the check;
+  // with it, remaining subtrees are searched exactly once.
+  const std::vector<unsigned int> &firstSol = first[0];
+  std::vector<std::vector<unsigned int>> seeds;
+  for (const auto &prefix : salvaged) {
+    bool containsFirst = true;
+    for (unsigned int node : prefix) {
+      if (std::find(firstSol.begin(), firstSol.end(), node) == firstSol.end()) {
+        containsFirst = false;
+        break;
+      }
+    }
+    if (!containsFirst)
+      seeds.push_back(prefix);
+  }
+  INFO("at least one salvaged subtree must lie outside the first solution");
+  CHECK(!seeds.empty());
+
+  // ...and resuming from the seeds reproduces the full multiset.
+  std::vector<std::vector<unsigned int>> rest;
+  {
+    std::stop_source stopSrc2;
+    rest = runCollect(*solver, stopSrc2, &seeds, nullptr);
+  }
+  // Union as a SET: the salvaged in-flight task re-searches its whole
+  // subtree, so the already-reported first solution may appear again --
+  // that overlap is inherent to prefix granularity and dedups upstairs
+  // (emittedSignatures). What must hold is completeness: every solution
+  // appears at least once, i.e. nothing was lost to the salvage.
+  std::vector<std::vector<unsigned int>> resumed = first;
+  resumed.insert(resumed.end(), rest.begin(), rest.end());
+  std::sort(resumed.begin(), resumed.end());
+  resumed.erase(std::unique(resumed.begin(), resumed.end()), resumed.end());
+  CHECK(resumed == full);
+  // Seeding pinned: the remaining subtrees exclude the first solution, so
+  // a resume that regenerates instead of seeding would re-report it.
+  CHECK(std::find(rest.begin(), rest.end(), firstSol) == rest.end());
+}
+
