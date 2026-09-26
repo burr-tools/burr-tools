@@ -872,6 +872,79 @@ TEMPLATE_TEST_CASE("SimdHuangCover applies the hole budget", "[simd][huang][hole
   }
 }
 
+TEMPLATE_TEST_CASE("SimdExactCover applies the hole budget", "[simd][exact_cover][holes]",
+                   SimdExactCover256, SimdExactCover512) {
+
+  // Solver columns are 0-based here (assembler_0 maps DLX column c to c-1).
+  // col 0: the piece, exactly once. cols 1,2: voxels that must be filled.
+  // col 3: a variable voxel - it may stay empty, budget permitting.
+  auto build = [](unsigned int budget) {
+    auto solver = std::make_unique<TestType>(4, 1);
+    solver->setHoleBudget(budget);
+    solver->setRequiredColumn(0);
+    solver->setRequiredColumn(1);
+    solver->setRequiredColumn(2);
+    solver->setOptionalColumn(3);
+
+    // row 1 leaves the variable voxel empty, row 2 fills it
+    solver->addRow(1, 0, {0, 1, 2});
+    solver->addRow(2, 0, {0, 1, 2, 3});
+    return solver;
+  };
+
+  auto run = [](TestType & solver) {
+    std::vector<std::vector<unsigned int>> sols;
+    std::stop_source stopSrc;
+    std::atomic<uint64_t> iterations{0};
+    solver.solve([&](const std::vector<unsigned int> & s) {
+      std::vector<unsigned int> sorted = s;
+      std::sort(sorted.begin(), sorted.end());
+      sols.push_back(sorted);
+      return true;
+    }, stopSrc.get_token(), iterations);
+    std::sort(sols.begin(), sols.end());
+    return sols;
+  };
+
+  SECTION("a budget of one hole admits both placements") {
+    auto solver = build(1);
+    auto sols = run(*solver);
+    REQUIRE(sols.size() == 2);
+    CHECK(sols[0] == std::vector<unsigned int>{1});
+    CHECK(sols[1] == std::vector<unsigned int>{2});
+  }
+
+  SECTION("no hole check at the goal, matching DLX") {
+    // With a budget of 0, row 1 still reports: its goal leaves voxel 3
+    // uncovered, but like iterativeMultiSearch (which reports as soon as
+    // ring 0 is empty and only checks holes at column-selection time) the
+    // solver enforces the budget by pruning, never at the goal itself.
+    auto solver = build(0);
+    auto sols = run(*solver);
+    REQUIRE(sols.size() == 2);
+  }
+
+  SECTION("an uncoverable optional column consumes the budget") {
+    // Col 3 can never be filled (no row covers it): it is a hole from the
+    // root, so a budget of 0 prunes immediately and a budget of 1 admits
+    // the placement with its hole.
+    auto buildUncoverable = [](unsigned int budget) {
+      auto solver = std::make_unique<TestType>(4, 1);
+      solver->setHoleBudget(budget);
+      solver->setRequiredColumn(0);
+      solver->setRequiredColumn(1);
+      solver->setRequiredColumn(2);
+      solver->setOptionalColumn(3);
+      solver->addRow(1, 0, {0, 1, 2});
+      return solver;
+    };
+    CHECK(run(*buildUncoverable(0)).empty());
+    auto sols = run(*buildUncoverable(1));
+    REQUIRE(sols.size() == 1);
+    CHECK(sols[0] == std::vector<unsigned int>{1});
+  }
+}
+
 TEST_CASE("SimdHuangCover: parallelSolve does not count aborted tasks as completed", "[simd][huang][abort]") {
   SimdHuangCover256 solver(4, 2);
   solver.setColumnBounds(1, 1, 1, false, true, false, false);

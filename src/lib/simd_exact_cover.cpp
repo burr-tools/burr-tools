@@ -62,6 +62,17 @@ void SimdExactCover<BitsetType>::setRequiredColumns(const BitsetType &required) 
 }
 
 template <typename BitsetType>
+void SimdExactCover<BitsetType>::setOptionalColumn(unsigned int col) {
+  bt_assert(col < num_columns);
+  bt_assert(col < BitsetType::NUM_WORDS * 64);
+  bt_assert(!required_columns.test(col));
+  if (!optional_columns.test(col)) {
+    optional_columns.set(col);
+    optional_column_list.push_back(col);
+  }
+}
+
+template <typename BitsetType>
 uint32_t SimdExactCover<BitsetType>::addRow(unsigned int node_id, unsigned int piece_id, const std::vector<unsigned int> &cols) {
   Row r;
   r.node_id = node_id;
@@ -230,10 +241,7 @@ void SimdExactCover<BitsetType>::solve(
   BitsetType occupied;
   search(0, occupied, ctx, callback, stop, iterations);
 
-  uint64_t rem = ctx.local_iterations & 255;
-  if (rem > 0) {
-    iterations.fetch_add(rem, std::memory_order_relaxed);
-  }
+  flushIterations(ctx, iterations);
 }
 
 template <typename BitsetType>
@@ -285,10 +293,7 @@ void SimdExactCover<BitsetType>::solveSubtree(
     search(prefix_node_ids.size(), occupied, ctx, callback, stop, iterations);
   }
 
-  uint64_t rem = ctx.local_iterations & 255;
-  if (rem > 0) {
-    iterations.fetch_add(rem, std::memory_order_relaxed);
-  }
+  flushIterations(ctx, iterations);
 }
 
 template <typename BitsetType>
@@ -304,13 +309,17 @@ void SimdExactCover<BitsetType>::search(
     return;
 
   ctx.local_iterations++;
-  if ((ctx.local_iterations & 255) == 0) {
+  // Batched publish (DLX-worker idiom): at most one relaxed add per 256
+  // nodes; remainder flushes at solutions keep live readers advancing.
+  if (ctx.local_iterations - ctx.flushed_iterations >= 256) {
     iterations.fetch_add(256, std::memory_order_relaxed);
+    ctx.flushed_iterations += 256;
   }
 
   // Check goal: are all required columns covered?
   if (occupied.containsAll(required_columns)) {
     ctx.current_solution.resize(depth);
+    flushIterations(ctx, iterations);
     if (!callback(ctx.current_solution))
       return;
     return;
@@ -320,11 +329,28 @@ void SimdExactCover<BitsetType>::search(
   if (curr_active.empty())
     return;
 
-  // Count options per uncovered column
+  // Count options per column over the still-compatible rows
   std::fill(ctx.col_counts.begin(), ctx.col_counts.end(), 0);
   for (uint32_t r_idx : curr_active) {
     for (unsigned int c : rows[r_idx].columns) {
       ctx.col_counts[c]++;
+    }
+  }
+
+  // Hole pruning for optional (variable-voxel) columns: uncovered with no
+  // covering row left among the active rows, so unfillable in the whole
+  // subtree below. The hole count is monotonic along any path (unfillable
+  // never becomes fillable; a hole can never be covered), so exceeding the
+  // budget prunes safely. Mirrors the DLX hole check at column-selection
+  // time in iterativeMultiSearch()/assemblerWorker_c, which likewise has
+  // no counterpart at the goal -- hence none here either.
+  if (!optional_column_list.empty()) {
+    unsigned int hole_count = 0;
+    for (unsigned int c : optional_column_list) {
+      if (!occupied.test(c) && ctx.col_counts[c] == 0) {
+        if (++hole_count > holes)
+          return;
+      }
     }
   }
 
