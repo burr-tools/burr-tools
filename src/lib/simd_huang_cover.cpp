@@ -532,6 +532,12 @@ void SimdHuangCover<BitsetType>::generateTasks(
         continue;
       if (columns[c].is_voxel && ctx.placed_voxels.test(c - 1))
         continue;
+      // Never pivot on the range column without variable voxels (same
+      // argument as in search(): exact voxel cover forces its weight, so it
+      // only validates; pivoting would emit duplicate task partitions).
+      // Its dead-end contribution above is unaffected.
+      if (columns[c].is_range && hole_columns.empty())
+        continue;
 
       unsigned int remaining_need = columns[c].min_weight - ctx.col_weights[c];
       unsigned int count = ctx.col_counts[c];
@@ -814,16 +820,26 @@ void SimdHuangCover<BitsetType>::search(
     }
   }
 
-  // 2. Check range column if present
+  // 2. Check range column if present, for pruning only -- never as a pivot
+  // when there are no variable voxels. With exact voxel cover the range
+  // weight of every complete solution is forced (each placed voxel is
+  // covered exactly once), so the range column only validates: over-max
+  // rows are filtered, under-min prunes here, min/max is checked at the
+  // goal. Pivoting on it would report compatible range-row pairs once per
+  // order ({r1,r2} and {r2,r1}): unlike shape pivots no monotonic filter
+  // applies to it. With variable voxels the pivot stays, since filling
+  // holes may be the only way to reach the minimum.
   if (has_range && ctx.col_weights[range_column] < columns[range_column].min_weight) {
     unsigned int count = ctx.col_counts[range_column];
     if (ctx.col_weights[range_column] + count < columns[range_column].min_weight)
       return; // Dead end: cannot satisfy range minimum
-    unsigned int remaining_need = columns[range_column].min_weight - ctx.col_weights[range_column];
-    unsigned int metric = count * remaining_need;
-    if (metric < min_metric) {
-      min_metric = metric;
-      best_col = range_column;
+    if (!hole_columns.empty()) {
+      unsigned int remaining_need = columns[range_column].min_weight - ctx.col_weights[range_column];
+      unsigned int metric = count * remaining_need;
+      if (metric < min_metric) {
+        min_metric = metric;
+        best_col = range_column;
+      }
     }
   }
 

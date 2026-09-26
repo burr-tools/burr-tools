@@ -1018,6 +1018,11 @@ TEST_CASE("SIMD and DLX solvers agree across the regression corpus",
     {"examples/CubeInCage.xmpuzzle",               0, false},
     {"examples/Bermuda.xmpuzzle",                  0, false},
     {"examples/AugmentedSecondStellation.xmpuzzle",0, false},
+    /* range puzzles: the SIMD Huang solver models the piece-count range
+     * column explicitly, so these must agree too (DemoMirrorParadox above
+     * is also a range puzzle and counts here as well) */
+    {"examples/PiecesOfEight.xmpuzzle",            0, true},
+    {"examples/DemoPieceGenerator.xmpuzzle",       0, false},
   };
 
   bool tookDifferentPaths = false;
@@ -1048,11 +1053,13 @@ TEST_CASE("SIMD and DLX solvers agree across the regression corpus",
       tookDifferentPaths = true;
   }
 
-  /* Guard the premise: not every puzzle qualifies for the SIMD solver (a range
-   * column, >32768 matrix columns, or variable voxels combined with a shape
-   * whose min differs from its max all disqualify it), but if *none* of them
-   * does then this case has silently stopped comparing anything and is only
+  /* Guard the premise: not every puzzle qualifies for the SIMD solver
+   * (>32768 matrix columns, or variable voxels combined with a shape whose
+   * min differs from its max, disqualify it), but if *none* of them does
+   * then this case has silently stopped comparing anything and is only
    * running DLX twice. Keep at least one SIMD-eligible puzzle in the list.
+   * (Range columns used to disqualify as well; since the range-column
+   * support they take the SIMD path like the rest.)
    */
   INFO("at least one puzzle must actually take the SIMD path");
   CHECK(tookDifferentPaths);
