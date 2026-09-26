@@ -1,6 +1,8 @@
 #ifndef __PROGRESS_MODEL_H__
 #define __PROGRESS_MODEL_H__
 
+#include <cstdint>
+
 /* Blends assembly and disassembly progress into a single fraction.
  *
  * Both phases are weighted by their measured cost in seconds, so the result
@@ -19,8 +21,8 @@ class progressModel_c {
 
     struct Input {
       float assemblyFraction = 0;            // a, in [0,1]
-      unsigned long assembliesFound = 0;
-      unsigned long disassembled = 0;
+      uint64_t assembliesFound = 0;
+      uint64_t disassembled = 0;
       double assemblyCostSeconds = 0;
       double disassemblyCostSeconds = 0;
     };

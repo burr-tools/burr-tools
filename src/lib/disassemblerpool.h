@@ -105,10 +105,10 @@ public:
    * wall time of completed disassembly tasks across all pool workers, used
    * to weight disassembly against assembly in progressModel_c.
    */
-  unsigned long submittedCount(void) const {
+  uint64_t submittedCount(void) const {
     return next_submit_seq.load(std::memory_order_relaxed);
   }
-  unsigned long completedCount(void) const {
+  uint64_t completedCount(void) const {
     return completed_count.load(std::memory_order_relaxed);
   }
   double accumulatedCostSeconds(void) const {
@@ -140,7 +140,7 @@ private:
   std::atomic<uint64_t> next_submit_seq{0};
   std::atomic<uint64_t> next_merge_seq{0};
 
-  std::atomic<unsigned long> completed_count{0};
+  std::atomic<uint64_t> completed_count{0};
   std::atomic<double> cost_seconds{0.0};
 
   std::mutex lifecycle_mutex;

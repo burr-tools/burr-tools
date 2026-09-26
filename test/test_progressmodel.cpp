@@ -13,8 +13,8 @@ namespace {
 progressModel_c::Input sample(float a, double disFractionOfFound) {
   progressModel_c::Input in;
   in.assemblyFraction        = a;
-  in.assembliesFound         = static_cast<unsigned long>(1000.0 * a);
-  in.disassembled            = static_cast<unsigned long>(1000.0 * a * disFractionOfFound);
+  in.assembliesFound         = static_cast<uint64_t>(1000.0 * a);
+  in.disassembled            = static_cast<uint64_t>(1000.0 * a * disFractionOfFound);
   in.assemblyCostSeconds     = 100.0 * a;
   in.disassemblyCostSeconds  = 100.0 * a * disFractionOfFound;
   return in;
@@ -34,8 +34,8 @@ progressModel_c::Input sample(float a, double disFractionOfFound) {
 progressModel_c::Input revisingSample(float a) {
   progressModel_c::Input in;
   in.assemblyFraction        = a;
-  in.assembliesFound         = static_cast<unsigned long>(1000.0 * a);
-  in.disassembled            = static_cast<unsigned long>(1000.0 * a * 0.8);
+  in.assembliesFound         = static_cast<uint64_t>(1000.0 * a);
+  in.disassembled            = static_cast<uint64_t>(1000.0 * a * 0.8);
   in.assemblyCostSeconds     = 100.0 * a * a;
   in.disassemblyCostSeconds  = 100.0 * a * 0.8;
   return in;
