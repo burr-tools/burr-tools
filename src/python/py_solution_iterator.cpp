@@ -8,7 +8,6 @@
 #include "lib/disassembler_0.h"
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
-#include "lib/voxel.h"
 
 #include <pybind11/pybind11.h>
 #include <chrono>
@@ -135,9 +134,11 @@ void SolutionIterator::worker_run(std::stop_token st) {
     problem_c * problem = puzzle->getProblem(problem_idx);
     const gridType_c * gt = problem->getPuzzle().getGridType();
 
-    for (unsigned int i = 0; i < puzzle->getNumberOfShapes(); i++) {
-      puzzle->getShape(i)->initHotspot();
-    }
+    // Shared-shape precondition for the parallel workers (hotspots,
+    // bounding boxes, symmetries -- everything the search only reads).
+    // One canonical helper rather than a local copy, so future cache
+    // additions cannot silently leave this path under-warmed.
+    assembler_c::prewarmSharedShapeCaches(*problem);
 
     assm = gt->findAssembler(*problem);
     if (!assm) {
