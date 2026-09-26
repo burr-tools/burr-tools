@@ -188,6 +188,12 @@ class voxelFrame_c : public Fl_Gl_Window {
     void setHomeCallback(Fl_Callback * cb, void * user) { homeCb = cb; homeUser = user; }
     void resetViewRotation(void);
 
+    /* Smoothly animate pan→(0,0) and size→targetSize over kHomeAnimDuration. */
+    void startHomeAnim(double targetSize);
+    /* Called each frame during home animation with the current interpolated size,
+     * so the caller can keep its zoom slider in sync. */
+    void setZoomAnimCallback(void (*cb)(void *, double), void * user) { zoomAnimCb = cb; zoomAnimUser = user; }
+
     /* Fl_Gl_Window is a real, separate native subwindow on most platforms, so
      * FL_MOUSEWHEEL events over it never reach the enclosing Fl_Group's handle()
      * at all; the group has to be told about them through this callback instead. */
@@ -306,6 +312,19 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     // conservative bounding-sphere radius (from the origin) of everything in `shapes`
     double computeContentRadius(void) const;
+
+    /* View-cube snap animation driver: called by the FLTK timer. */
+    static void cubeAnimCb(void * v);
+    void advanceCubeAnim();
+
+    /* Home pan+zoom smooth animation (driven by the same cubeAnimCb timer). */
+    double homeAnimPanX0 = 0, homeAnimPanY0 = 0;
+    double homeAnimSize0 = 1, homeAnimSize1 = 1;
+    Fl_Timestamp homeAnimStart;
+    bool homeAnimating = false;
+    void (*zoomAnimCb)(void *, double) = nullptr;
+    void * zoomAnimUser = nullptr;
+    static constexpr double kHomeAnimDuration = 0.30;
 };
 
 #endif

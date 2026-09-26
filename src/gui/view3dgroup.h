@@ -63,6 +63,8 @@ public:
   // zooms out (or in) just enough that everything currently shown fits in view
   void fitToContent(void);
 
+  static void zoomAnimCbStub(void * u, double sz);
+
   // cppcheck-suppress duplInheritedMember
   void redraw(void);
 

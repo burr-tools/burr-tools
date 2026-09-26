@@ -101,8 +101,49 @@ voxelFrame_c::~voxelFrame_c(void) {
     delete curAssembly;
     curAssembly = 0;
   }
+  Fl::remove_timeout(cubeAnimCb, this);
   delete rotater;
   delete viewCube;
+}
+
+void voxelFrame_c::cubeAnimCb(void * v) {
+  static_cast<voxelFrame_c*>(v)->advanceCubeAnim();
+}
+
+void voxelFrame_c::advanceCubeAnim() {
+  bool moreRot = viewCube && rotater && viewCube->tick(rotater);
+
+  bool morePan = false;
+  if (homeAnimating) {
+    float t = (float)(Fl::seconds_since(homeAnimStart) / kHomeAnimDuration);
+    if (t >= 1.0f) {
+      panX = 0; panY = 0; size = homeAnimSize1;
+      if (zoomAnimCb) zoomAnimCb(zoomAnimUser, homeAnimSize1);
+      homeAnimating = false;
+    } else {
+      float te = t * t * (3.0f - 2.0f * t);  /* smoothstep */
+      panX = homeAnimPanX0 * (1.0 - te);
+      panY = homeAnimPanY0 * (1.0 - te);
+      size = homeAnimSize0 + (homeAnimSize1 - homeAnimSize0) * te;
+      if (zoomAnimCb) zoomAnimCb(zoomAnimUser, size);
+      morePan = true;
+    }
+  }
+
+  redraw();
+  if (moreRot || morePan)
+    Fl::add_timeout(1.0/60.0, cubeAnimCb, this);
+}
+
+void voxelFrame_c::startHomeAnim(double targetSize) {
+  homeAnimPanX0 = panX;
+  homeAnimPanY0 = panY;
+  homeAnimSize0 = size;
+  homeAnimSize1 = targetSize;
+  homeAnimStart = Fl::now();
+  homeAnimating = true;
+  Fl::remove_timeout(cubeAnimCb, this);
+  Fl::add_timeout(1.0/60.0, cubeAnimCb, this);
 }
 
 // this is used to shift one side of the cubes so that they slightly differ
@@ -1978,7 +2019,7 @@ void voxelFrame_c::draw(bool withViewCube) {
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
   }
 
-  if (withViewCube && pickx < 0 && !cb && viewCube &&
+  if (withViewCube && pickx < 0 && !cb && viewCube && config.showViewCube() &&
       w() >= viewCube_c::minimumHostSize() && h() >= viewCube_c::minimumHostSize())
     viewCube->draw(rotater, w(), h(), pixels_per_unit());
 
@@ -2016,18 +2057,9 @@ void voxelFrame_c::resetViewRotation(void) {
 
 int voxelFrame_c::handle(int event) {
 
-  if (Fl_Gl_Window::handle(event))
-    return 1;
-
-  if (event == FL_MOUSEWHEEL) {
-    if (wheelCb)
-      wheelCb(wheelUser, Fl::event_dy());
-    return 1;
-  }
-
-  // the size gate has to match draw()'s, or in a viewport too small to render the
-  // cube an invisible one would still swallow every press landing in its corner
-  if (viewCube && pickx < 0 &&
+  // View cube gets first crack at every mouse event before FLTK's default
+  // group-dispatch (which can silently absorb FL_MOVE over GL windows).
+  if (viewCube && pickx < 0 && config.showViewCube() &&
       w() >= viewCube_c::minimumHostSize() && h() >= viewCube_c::minimumHostSize()) {
     if (event == FL_ENTER)
       return 1;
@@ -2041,6 +2073,22 @@ int voxelFrame_c::handle(int event) {
       redraw();
       return 1;
     }
+    if (a == viewCube_c::ACT_HOME_ANIMATING) {
+      /* homeCb (→ goHome() → startHomeAnim) handles pan+zoom; startHomeAnim
+       * also kicks the timer.  No-homeCb path falls back to fit size. */
+      if (homeCb)
+        homeCb(this, homeUser);
+      else
+        startHomeAnim(computeFitSize());
+      redraw();
+      return 1;
+    }
+    if (a == viewCube_c::ACT_ANIMATING) {
+      Fl::remove_timeout(cubeAnimCb, this);
+      Fl::add_timeout(1.0/60.0, cubeAnimCb, this);
+      redraw();
+      return 1;
+    }
     if (a == viewCube_c::ACT_REDRAW) {
       redraw();
       return 1;
@@ -2049,6 +2097,15 @@ int voxelFrame_c::handle(int event) {
       return 1;
     if ((event == FL_MOVE || event == FL_LEAVE) && viewCube->contains(Fl::event_x(), Fl::event_y(), w(), h()))
       return 1;
+  }
+
+  if (Fl_Gl_Window::handle(event))
+    return 1;
+
+  if (event == FL_MOUSEWHEEL) {
+    if (wheelCb)
+      wheelCb(wheelUser, Fl::event_dy());
+    return 1;
   }
 
   switch(event) {

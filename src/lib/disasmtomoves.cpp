@@ -23,6 +23,8 @@
 #include "disassembly.h"
 #include "disassemblernode.h"
 
+#include <algorithm>
+
 disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz, unsigned int max)
   : tree(tr ? std::make_unique<separation_c>(tr) : nullptr),
     size(sz),
