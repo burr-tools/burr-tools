@@ -159,6 +159,41 @@ jobs:
         TSAN_OPTIONS: "halt_on_error=0 exitcode=1 second_deadlock_stack=1 history_size=7"
       run: ./build-tsan/test_burrtools "[parallel]" --reporter compact
 
+  # Model-checks the PlusCal protocol specs in spec/ with TLC. Fast by
+  # design (tiny state spaces, a few seconds): it guards the defect class
+  # TSan cannot see — lost wakeups, hangs, token leaks — at the protocol
+  # level, before those shapes reach the C++ implementation.
+  spec:
+    name: TLA+ protocol specs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 21
+
+    - name: Install just
+      uses: extractions/setup-just@v2
+
+    # The jar is pinned in the justfile (tla_version); caching saves the
+    # ~2MB download on warm runners, and just spec-tools refetches if the
+    # pin ever changes and the key misses.
+    - name: Cache TLA+ tools
+      uses: actions/cache@v4
+      with:
+        path: build-tla/tla2tools.jar
+        key: tla2tools-1.7.4
+
+    - name: Translate and model-check protocol specs
+      run: just spec-check
+
   coverage:
     runs-on: ubuntu-latest
     continue-on-error: true
