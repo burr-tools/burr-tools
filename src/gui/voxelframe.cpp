@@ -111,12 +111,39 @@ void voxelFrame_c::cubeAnimCb(void * v) {
 }
 
 void voxelFrame_c::advanceCubeAnim() {
-  if (viewCube && rotater) {
-    bool more = viewCube->tick(rotater);
-    redraw();
-    if (more)
-      Fl::add_timeout(1.0/60.0, cubeAnimCb, this);
+  bool moreRot = viewCube && rotater && viewCube->tick(rotater);
+
+  bool morePan = false;
+  if (homeAnimating) {
+    float t = (float)(Fl::seconds_since(homeAnimStart) / kHomeAnimDuration);
+    if (t >= 1.0f) {
+      panX = 0; panY = 0; size = homeAnimSize1;
+      if (zoomAnimCb) zoomAnimCb(zoomAnimUser, homeAnimSize1);
+      homeAnimating = false;
+    } else {
+      float te = t * t * (3.0f - 2.0f * t);  /* smoothstep */
+      panX = homeAnimPanX0 * (1.0 - te);
+      panY = homeAnimPanY0 * (1.0 - te);
+      size = homeAnimSize0 + (homeAnimSize1 - homeAnimSize0) * te;
+      if (zoomAnimCb) zoomAnimCb(zoomAnimUser, size);
+      morePan = true;
+    }
   }
+
+  redraw();
+  if (moreRot || morePan)
+    Fl::add_timeout(1.0/60.0, cubeAnimCb, this);
+}
+
+void voxelFrame_c::startHomeAnim(double targetSize) {
+  homeAnimPanX0 = panX;
+  homeAnimPanY0 = panY;
+  homeAnimSize0 = size;
+  homeAnimSize1 = targetSize;
+  homeAnimStart = Fl::now();
+  homeAnimating = true;
+  Fl::remove_timeout(cubeAnimCb, this);
+  Fl::add_timeout(1.0/60.0, cubeAnimCb, this);
 }
 
 // this is used to shift one side of the cubes so that they slightly differ
@@ -2043,6 +2070,16 @@ int voxelFrame_c::handle(int event) {
         homeCb(this, homeUser);
       else
         resetViewRotation();
+      redraw();
+      return 1;
+    }
+    if (a == viewCube_c::ACT_HOME_ANIMATING) {
+      /* homeCb (→ goHome() → startHomeAnim) handles pan+zoom; startHomeAnim
+       * also kicks the timer.  No-homeCb path falls back to fit size. */
+      if (homeCb)
+        homeCb(this, homeUser);
+      else
+        startHomeAnim(computeFitSize());
       redraw();
       return 1;
     }

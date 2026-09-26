@@ -27,7 +27,8 @@ class viewCube_c {
       ACT_NONE,
       ACT_REDRAW,
       ACT_HOME,
-      ACT_ANIMATING
+      ACT_ANIMATING,
+      ACT_HOME_ANIMATING  /* home clicked: reset pan/zoom, then animate rotation */
     };
 
     enum Part {

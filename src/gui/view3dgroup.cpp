@@ -61,6 +61,7 @@ LView3dGroup::LView3dGroup(int x, int y, int w, int h) : Fl_Group(0, 0, 50, 50),
   View3D->callback(cb_View3dGroupVoxel_stub, this);
   View3D->setHomeCallback(cb_View3dHome_stub, this);
   View3D->setWheelCallback(cb_View3dWheel_stub, this);
+  View3D->setZoomAnimCallback(zoomAnimCbStub, this);
 
   slider = new Fl_Slider(x+w-15, y, 15, h);
   slider->tooltip("Zoom view.");
@@ -78,10 +79,16 @@ LView3dGroup::LView3dGroup(int x, int y, int w, int h) : Fl_Group(0, 0, 50, 50),
 }
 
 void LView3dGroup::goHome(void) {
-  slider->value(defaultZoom);
-  cb_slider();
-  View3D->resetViewRotation();
-  redraw();
+  double targetSize = View3D->computeFitSize();
+  View3D->startHomeAnim(targetSize);  /* animates rotation, pan, and zoom */
+}
+
+void LView3dGroup::zoomAnimCbStub(void * u, double sz) {
+  LView3dGroup * self = static_cast<LView3dGroup *>(u);
+  double v = 6.0 - log(sz);
+  if (v < self->slider->minimum()) v = self->slider->minimum();
+  if (v > self->slider->maximum()) v = self->slider->maximum();
+  self->slider->value(v);
 }
 
 void LView3dGroup::fitToContent(void) {

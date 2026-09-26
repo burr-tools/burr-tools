@@ -758,7 +758,7 @@ viewCube_c::Action viewCube_c::handle(int event, rotater_c * rot, int winW, int 
         if (applied == PART_HOME && rot) {
           static const float kIdentity[9] = {1,0,0, 0,1,0, 0,0,1};
           startAnim(kIdentity, rot);
-          return ACT_ANIMATING;
+          return ACT_HOME_ANIMATING;
         } else if (applied == PART_HOME) {
           return ACT_HOME;
         }
