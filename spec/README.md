@@ -20,6 +20,9 @@ fetched by `just spec-tools` into `build-tla/` (gitignored).
 | `DisasmPool.tla` | Disassembler-pool protocol: bounded queue, worker pickup, bounded reorder buffer, ordered merger, finish/abort/requestStop lifecycle with salvage + dropped-skip. |
 | `DisasmPool.cfg` | TLC config: 2 workers, 4 assemblies, queue 2, reorder window 2. |
 | `DisasmPoolTight.cfg` | Same with queue 1 / window 1: forces every backpressure path nearly every step. |
+| `Pipeline.tla` | Both tiers over one shared `ThreadBudget`: assembly pop/search/submit with token yield, disassembly jobs, ordered merger. The only spec that can state the global N-active-thread bound. |
+| `Pipeline.cfg` | 1 assembler + 1 disassembler over 1 token, 2 tasks. |
+| `PipelineWide.cfg` | 2 assemblers + 1 disassembler over 2 tokens, 3 tasks: genuine contention both ways (~25s). |
 
 ## Run
 
@@ -81,6 +84,21 @@ Larger instance (ad-hoc confidence, not committed):
 | `SalvageOrdered` | **SPEC-DIS-6**: salvage keeps submit order for re-submission |
 | `CleanShutdown` | **SPEC-DIS-7**: no stranded jobs/results |
 | `AllTerminate` | Liveness over all four stop/abort combinations |
+
+## C++ ↔ spec mapping (`Pipeline.tla`)
+
+| Spec element | C++ counterpart |
+| :--- | :--- |
+| `aworker` pop/work/submit | `AssemblyTaskPool::pop_task` + task body + `disassemblerPool_c::submit()` (token yield across the space wait, reacquire before enqueue) |
+| `SubmitLoop` + `ARetryRel` | `submit()`'s `while (!hasSpace())`: the slot is re-verified after every lock-free budget wait (removing the recheck overflows the queue — mutation-checked) |
+| `ARequeue` | Terminal submit salvages the task back (assembler retry / disassembler salvage paths) |
+| `dworker` + `DPark` | `worker_loop()` pickup plus the per-job budget gate |
+| `BudgetConservation` | **SPEC-PIPE-1**: takes/returns pair up globally |
+| `WorkingBounded` | **SPEC-PIPE-1** (bound half): holders ≤ total. Deliberately NOT open-tasks-plus-jobs: TLC refuted that reading — an assembler yielded in submit-wait while a disassembler works is designed overlap |
+| `AssemblyConservation` / `DisasmConservation` / `SubmittedEqualsCompleted` | **SPEC-PIPE-2**: end-to-end no-loss, task → assembly → delivery |
+| `OrderedDelivery` | **SPEC-PIPE-3** |
+| `QueueBounded` / `ReorderBounded` / `WindowBounded` | **SPEC-PIPE-4** |
+| `CleanShutdown` | **SPEC-PIPE-5** |
 
 ## Verification input from code review (PRs 113–118)
 

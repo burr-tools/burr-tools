@@ -55,10 +55,14 @@ inline bool threadBudgetEnabled() {
  * - Tier 2 (disassembly) pulls found assemblies off a bounded queue with
  *   dedicated workers and a merger thread that re-emits results strictly
  *   in submit order. finish() drains and joins; abort() discards.
- * - The shared ThreadBudget below caps working threads: an assembler
- *   holds one token across a whole subtree task, a disassembler one per
- *   job. Submit pacing is deliberately absent -- the bounded queue stays
- *   a real buffer -- so pipeline overlap survives.
+  * - The shared ThreadBudget below caps working threads: an assembler
+  *   holds one token across a whole subtree task, a disassembler one per
+  *   job. Submit pacing is deliberately absent -- the bounded queue stays
+  *   a real buffer -- so pipeline overlap survives.
+  *   [SPEC-PIPE-1, model-checked in spec/Pipeline.tla: the bound is on
+  *   token holders (threads executing work), not on open tasks -- an
+  *   assembler yielded in its submit wait while a disassembler works is
+  *   designed overlap, and TLC refutes the stronger reading.]
  *
  * Load-bearing deadlock rule: a token is held only across actual
  * searching/disassembling. Every wait (empty/full queues, reorder
