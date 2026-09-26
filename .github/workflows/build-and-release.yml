@@ -182,14 +182,14 @@ jobs:
     - name: Install just
       uses: extractions/setup-just@v2
 
-    # The jar is pinned in the justfile (tla_version); caching saves the
-    # ~2MB download on warm runners, and just spec-tools refetches if the
-    # pin ever changes and the key misses.
+    # The jar is pinned in the justfile (tla_version). The cache key
+    # hashes the justfile, so any pin change misses and refetches (~2MB);
+    # a static version key would silently keep serving the old jar.
     - name: Cache TLA+ tools
       uses: actions/cache@v4
       with:
         path: build-tla/tla2tools.jar
-        key: tla2tools-1.7.4
+        key: tla2tools-${{ hashFiles('justfile') }}
 
     - name: Translate and model-check protocol specs
       run: just spec-check
