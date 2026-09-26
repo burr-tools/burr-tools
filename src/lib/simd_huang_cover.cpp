@@ -689,8 +689,19 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   total_tasks.store(tasks.size(), std::memory_order_relaxed);
   completed_tasks.store(0, std::memory_order_relaxed);
 
-  if (tasks.empty() || stop.stop_requested())
+  if (tasks.empty() || stop.stop_requested()) {
+    // Stopped before (or without) any work: salvage the built tasks'
+    // prefixes so a continue resumes them instead of regenerating (the
+    // caller already consumed resume seeds, so dropping these would lose
+    // them silently; dedup keeps any overlap correct).
+    if (stop.stop_requested() && salvaged_prefixes != nullptr) {
+      for (auto &t : tasks) {
+        if (!t.ctx.current_solution.empty())
+          salvaged_prefixes->push_back(t.ctx.current_solution);
+      }
+    }
     return;
+  }
 
   // Non-terminating pool (see assembler_pool.h): a worker that finds the
   // queue empty waits for quiescence, so siblings blocked in

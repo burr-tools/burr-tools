@@ -266,9 +266,13 @@ private:
    * Rebuild a pool task by replaying placed node ids from a fresh context:
    * the same conflict checks and row filtering solveSubtree applies to its
    * prefix, but without hidden-row support (resume prefixes are always
-   * replayed against the full matrix). Returns false when the prefix no
-   * longer resolves (defensive; cannot happen for prefixes salvaged from
-   * an identical matrix, which are skipped then).
+   * replayed against the full matrix) and without the shape-pivot
+   * monotonic row filter (which depends on the pivot chosen at the time,
+   * not recorded here). The replayed set is therefore a superset of the
+   * original subtree; re-searched overlap dedups via emittedSignatures, so
+   * this costs search time, never correctness. Returns false when the
+   * prefix no longer resolves (defensive; cannot happen for prefixes
+   * salvaged from an identical matrix, which are skipped then).
    */
   bool taskFromPrefix(
     const std::vector<unsigned int> &prefix_node_ids,
