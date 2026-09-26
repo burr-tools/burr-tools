@@ -1059,11 +1059,32 @@ TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[s
   REQUIRE(first.size() == 1);
   CHECK(!salvaged.empty());
 
+  // Resume from only the salvaged prefixes whose subtree does NOT contain
+  // the reported solution (drop any prefix fully contained in first[0]):
+  // the rest must then equal the full set minus first. Without seeding the
+  // resume regenerates everything and re-reports first, failing the check;
+  // with it, remaining subtrees are searched exactly once.
+  const std::vector<unsigned int> &firstSol = first[0];
+  std::vector<std::vector<unsigned int>> seeds;
+  for (const auto &prefix : salvaged) {
+    bool containsFirst = true;
+    for (unsigned int node : prefix) {
+      if (std::find(firstSol.begin(), firstSol.end(), node) == firstSol.end()) {
+        containsFirst = false;
+        break;
+      }
+    }
+    if (!containsFirst)
+      seeds.push_back(prefix);
+  }
+  INFO("at least one salvaged subtree must lie outside the first solution");
+  CHECK(!seeds.empty());
+
   // ...and resuming from the seeds reproduces the full multiset.
   std::vector<std::vector<unsigned int>> rest;
   {
     std::stop_source stopSrc2;
-    rest = runCollect(*solver, stopSrc2, &salvaged, nullptr);
+    rest = runCollect(*solver, stopSrc2, &seeds, nullptr);
   }
   // Union as a SET: the salvaged in-flight task re-searches its whole
   // subtree, so the already-reported first solution may appear again --
@@ -1075,5 +1096,8 @@ TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[s
   std::sort(resumed.begin(), resumed.end());
   resumed.erase(std::unique(resumed.begin(), resumed.end()), resumed.end());
   CHECK(resumed == full);
+  // Seeding pinned: the remaining subtrees exclude the first solution, so
+  // a resume that regenerates instead of seeding would re-report it.
+  CHECK(std::find(rest.begin(), rest.end(), firstSol) == rest.end());
 }
 
