@@ -109,12 +109,31 @@ spec-tools:
     @mkdir -p build-tla
     @if [ ! -f "{{tla_jar}}" ]; then curl -sSL -o "{{tla_jar}}" "https://github.com/tlaplus/tlaplus/releases/download/v{{tla_version}}/tla2tools.jar"; fi
 
+# Guard against pcal.trans silently truncating the algorithm on brace
+# imbalance: every declared PlusCal process must appear in the generated
+# translation. A stray `};` once dropped 3 of 4 processes while TLC stayed
+# green on the worker-only remainder, so this runs inside spec-check.
+spec-lint:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p tmp-tla
+    for m in spec/AssemblyPool spec/DisasmPool; do
+      awk '/BEGIN TRANSLATION/{f=1} f{print} /END TRANSLATION/{f=0}' "$m.tla" > tmp-tla/trans.chk
+      grep -oE 'process \([A-Za-z_][A-Za-z0-9_]*' "$m.tla" | sed -E 's/.*\(//' | sort -u |
+        while read -r p; do
+          grep -qw "$p" tmp-tla/trans.chk || { echo "spec-lint: process '$p' missing from translation in $m"; exit 1; }
+        done
+    done
+    rm -f tmp-tla/trans.chk
+
 # Translate the PlusCal protocol models and model-check them with TLC.
 # Covers ThreadBudget + AssemblyTaskPool (spec/AssemblyPool.tla, uncapped
 # and forced-parking configs) and the disassembler pool (spec/DisasmPool.tla,
 # normal and tight-bounds configs).
 spec-check: spec-tools
     java -cp "{{tla_jar}}" pcal.trans spec/AssemblyPool.tla && rm -f spec/AssemblyPool.old
+    java -cp "{{tla_jar}}" pcal.trans spec/DisasmPool.tla && rm -f spec/DisasmPool.old
+    just spec-lint
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/AssemblyPool.cfg spec/AssemblyPool
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/AssemblyPoolLowBudget.cfg spec/AssemblyPool
     java -cp "{{tla_jar}}" pcal.trans spec/DisasmPool.tla && rm -f spec/DisasmPool.old

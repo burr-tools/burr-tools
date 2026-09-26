@@ -56,9 +56,12 @@ Larger instance (ad-hoc confidence, not committed):
 | `BudgetConservation` | **SPEC-BUDGET-1**: takes/returns pair up |
 | `ActiveBounded` | N-active-thread bound: every in-flight task holds a token |
 | `Pairing` | **SPEC-POOL-1**: each `pop_task` pairs with exactly one `finishTask` |
-| `TaskConservation` | **SPEC-POOL-2**: no task lost/duplicated across splits |
+| `TaskConservation` | **SPEC-POOL-2**: no task lost/duplicated across splits (pool inventory only; unseeded tasks sit in `genList`) |
+| `GenShape` | Generation emits the 1..k prefix in order |
+| `NoPartialResume` | **SPEC-POOL-4** (PR #118): stopped generation ⇒ no list, no seeding, nothing searched |
+| `master` + `GenDrop`/`GenSeed` | `generateTasksAtDepth`: one subtask per step; stop discards the partial list and marks `parallelInterrupted` |
 | `CleanExit` | **SPEC-POOL-3**: exits leak no tasks/tokens |
-| `AllTerminate` | Liveness: drain-to-quiescence or stop always ends the search |
+| `AllTerminate` | Liveness: generate, drain-to-quiescence, or stop always ends the search |
 
 ## C++ ↔ spec mapping (`DisasmPool.tla`)
 
@@ -114,12 +117,21 @@ caches, disassembly payloads, the merger callback body, GUI.
    after a skipped pop). New labels/interleavings deserve the same
    suspicion: re-check each split against the C++ locking before assuming
    a red run is a false positive.
+6. `just spec-lint` (inside `spec-check`) verifies every declared PlusCal
+   process survived translation. `pcal.trans` silently truncates the
+   algorithm at a brace imbalance: a stray `};` once dropped master,
+   stopper and splitter while TLC stayed green on the worker-only
+   remainder. Never trust a green run without the lint passing.
 
 ## Tooling quirks found the hard way
 
 - TLC `.cfg` files reject `<<…>>` sequence literals — pass a count
   (`NumTasks`) and build `[i \in 1..NumTasks |-> i]` in-spec.
 - Process ids compared against `1..N` must be integers (`0`, `N+1`):
-  a string id makes TLC throw on `"stop" \in 1..2`.
+  a string id makes TLC throw on `"stop" \in 1..2`. Negative ids are
+  fine but need `EXTENDS Integers` (unary minus is not in `Naturals`).
 - The PlusCal translator demands labels at control-flow joins; each new
   label is a new interleaving point — verify it against the C++ locks.
+- Brace balance is load-bearing and unchecked: one extra `}` ends the
+  algorithm early with "Translation completed" and no error. Count
+  braces per region when processes go missing from `ProcSet`.

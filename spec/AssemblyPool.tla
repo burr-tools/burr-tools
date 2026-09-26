@@ -5,10 +5,11 @@
 (*   - ThreadBudget ......... src/lib/thread_budget.h                     *)
 (*   - AssemblyTaskPool ..... src/lib/assembler_pool.h                    *)
 (*                                                                         *)
-(* SCOPE. Only the coordination protocol is modeled: token accounting,    *)
-(* pop/finish pairing, quiescence, dynamic splits, requestStop. Task      *)
-(* bodies (exact-cover search), voxel caches, the disassembler pool and   *)
-(* the GUI thread are abstracted away. Tasks are opaque IDs.              *)
+(* SCOPE. Only the coordination protocol is modeled: task generation   *)
+(* (stoppable, with discard of partial lists), token accounting,        *)
+(* pop/finish pairing, quiescence, dynamic splits, requestStop. Task    *)
+(* bodies (exact-cover search), voxel caches, the disassembler pool and *)
+(* the GUI thread are abstracted away. Tasks are opaque IDs.            *)
 (*                                                                         *)
 (* NOT MODELED (deliberate gaps, see README.md):                          *)
 (*   - C++ locks/mutexes: every region the C++ holds under the pool mutex *)
@@ -28,13 +29,15 @@
 (*   SPEC-POOL-1 ..... pop/finish pairing: active = task holders          *)
 (*   SPEC-POOL-2 ..... task conservation: no task lost or duplicated      *)
 (*   SPEC-POOL-3 ..... clean exit: terminated workers hold nothing        *)
+(*   SPEC-POOL-4 ..... stopped generation leaves no partial resumable    *)
+(*                     state (PR #118: discard list, mark interrupted)    *)
 (***************************************************************************)
-EXTENDS Naturals, Sequences, FiniteSets, TLC
+EXTENDS Naturals, Integers, Sequences, FiniteSets, TLC
 
 CONSTANTS
   N,            (* worker count (C++: effective thread count, <= MAX_THREADS) *)
   BudgetTotal,  (* ThreadBudget total (C++: pool size; = N means uncapped)    *)
-  NumTasks,     (* seed size; initial queue is 1..NumTasks (C++: seed())       *)
+  NumTasks,     (* generation target; pool is seeded 1..NumTasks on success *)
   MaxPush       (* bound on dynamic splits (C++: unbounded; TLC needs a bound)*)
 
 ASSUME N \in Nat /\ N > 0
@@ -47,7 +50,10 @@ Workers == 1..N
 (* --algorithm AssemblyPool {
 
   variables
-    queue = [i \in 1..NumTasks |-> i],        (* guarded by mtx in C++          *)
+    queue = <<>>,                             (* seeded by master on success  *)
+    genList = <<>>,                           (* tasks generated so far       *)
+    genDone = FALSE,                          (* generation complete          *)
+    genStopped = FALSE,                       (* C++: parallelInterrupted     *)
     active = 0,                              (* active_workers, guarded by mtx *)
     stopRequested = FALSE,                   (* C++: atomic stop_requested    *)
     available = BudgetTotal,                 (* ThreadBudget::available_       *)
@@ -56,7 +62,8 @@ Workers == 1..N
     terminated = [w \in Workers |-> FALSE],
     completed = 0,
     nextId = NumTasks + 1,                   (* fresh ids for pushed splits   *)
-    pushesLeft = MaxPush;
+    pushesLeft = MaxPush,
+    splitOpen = TRUE;                       (* splitter still willing        *)
 
   fair process (worker \in 1..N)
   variables task = 0;
@@ -66,8 +73,8 @@ Workers == 1..N
       \* Pool wait, token-free (assembler_pool.h pop_task, cv.wait + pred).
       \* Progress depends only on token holders finishing or on stop.
       PoolWait:
-        await Len(queue) > 0 \/ active = 0 \/ stopRequested;
-        if (stopRequested) {
+        await (genDone /\ (Len(queue) > 0 \/ active = 0)) \/ genStopped \/ stopRequested;
+        if (genStopped \/ stopRequested) {
           terminated[self] := TRUE;
         } else if (Len(queue) = 0) {
           \* Quiescence: an empty queue with no stop implies nobody active.
@@ -143,9 +150,15 @@ Workers == 1..N
               \* Last-active-worker drain broadcast (task_done notify_all)
               \* is implicit: TLC re-evaluates every await predicate.
             };
-          };
       ShedTok:
-          if (~terminated[self] /\ Len(queue) = 0 /\ holdsToken[self]) {
+          \* A reservation without a task is impossible in C++ (reserved
+          \* atomically with the nonempty check, or shed in the parked
+          \* re-check); a label split can strand one here when a sibling
+          \* drains the queue between reserve and pop. Shed it so no token
+          \* is ever held across the next pool wait or at termination.
+          \* Keyed on task ownership, not queue state: a refill between
+          \* the skipped pop and this step must not retain the token.
+          if (~terminated[self] /\ ~hasTask[self] /\ holdsToken[self]) {
             available := available + 1;
             holdsToken[self] := FALSE;
           };
@@ -154,7 +167,33 @@ Workers == 1..N
         };
     };
 
-  };  \* end worker
+  }  \* end worker
+
+  \* Task generation (assembler_0/1 generateTasksAtDepth /
+  \* generateSubtreeTasks): the master emits subtasks one per step; workers
+  \* start only once the list is complete. A stop mid-generation discards
+  \* the partial list and marks interrupted (the PR #118 fix: a save after
+  \* this refuses instead of persisting a partial, silently lossy resume
+  \* state; in-session continue regenerates, i.e. a fresh spec run). Fair,
+  \* so an unstopped generation always completes.
+  fair process (master = -1)
+  {
+  GenLoop:
+    while (~genDone /\ ~genStopped) {
+      if (stopRequested) {
+      GenDrop:
+        genList := <<>>;
+        genStopped := TRUE;
+      } else if (Len(genList) < NumTasks) {
+      GenOne:
+        genList := Append(genList, Len(genList) + 1);
+      } else {
+      GenSeed:
+        queue := genList;
+        genDone := TRUE;
+      };
+    };
+  }
 
   \* Environment: the GUI/orchestrator may request a stop at any point,
   \* or never. TLC explores both branches: the skip branch exercises the
@@ -179,33 +218,47 @@ Workers == 1..N
   \* covers runs where it never acts. (An earlier revision put the bounded
   \* split counter inside the worker's pop step; TLC caught a TOCTOU on the
   \* bound check. Keeping the counter in one process keeps guard and update
-  \* in one atomic step.)
+  \* in one atomic step.) Splits only exist once searching has started, so
+  \* the splitter waits for seeding (on stopped generation it never acts).
   process (splitter = N + 1)
   {
+  SplitStart:
+    await genDone \/ genStopped;
+    \* Splits only exist once searching has started; on stopped
+    \* generation there is nothing to split, so exit.
+    if (genDone) {
   SplitLoop:
-    while (pushesLeft > 0) {
-      either {
-        queue := Append(queue, nextId);
-        nextId := nextId + 1;
-        pushesLeft := pushesLeft - 1;
-      } or {
-        pushesLeft := 0;
+      while (pushesLeft > 0 /\ splitOpen) {
+        either {
+          queue := Append(queue, nextId);
+          nextId := nextId + 1;
+          pushesLeft := pushesLeft - 1;
+        } or {
+          \* Decline further splits (must not spend the push budget: every
+          \* decrement of pushesLeft is exactly one pushed task).
+          splitOpen := FALSE;
+        };
       };
     };
   };
 
 } *)
-\* BEGIN TRANSLATION (chksum(pcal) = "26d6d93e" /\ chksum(tla) = "8c071790")
-VARIABLES queue, active, stopRequested, available, holdsToken, hasTask, 
-          terminated, completed, nextId, pushesLeft, pc, task
+\* BEGIN TRANSLATION (chksum(pcal) = "156bac06" /\ chksum(tla) = "95f9463c")
+VARIABLES queue, genList, genDone, genStopped, active, stopRequested, 
+          available, holdsToken, hasTask, terminated, completed, nextId, 
+          pushesLeft, splitOpen, pc, task
 
-vars == << queue, active, stopRequested, available, holdsToken, hasTask, 
-           terminated, completed, nextId, pushesLeft, pc, task >>
+vars == << queue, genList, genDone, genStopped, active, stopRequested, 
+           available, holdsToken, hasTask, terminated, completed, nextId, 
+           pushesLeft, splitOpen, pc, task >>
 
-ProcSet == (1..N)
+ProcSet == (1..N) \cup {-1} \cup {0} \cup {N + 1}
 
 Init == (* Global variables *)
-        /\ queue = [i \in 1..NumTasks |-> i]
+        /\ queue = <<>>
+        /\ genList = <<>>
+        /\ genDone = FALSE
+        /\ genStopped = FALSE
         /\ active = 0
         /\ stopRequested = FALSE
         /\ available = BudgetTotal
@@ -215,29 +268,34 @@ Init == (* Global variables *)
         /\ completed = 0
         /\ nextId = NumTasks + 1
         /\ pushesLeft = MaxPush
+        /\ splitOpen = TRUE
         (* Process worker *)
         /\ task = [self \in 1..N |-> 0]
-        /\ pc = [self \in ProcSet |-> "WLoop"]
+        /\ pc = [self \in ProcSet |-> CASE self \in 1..N -> "WLoop"
+                                        [] self = -1 -> "GenLoop"
+                                        [] self = 0 -> "StopChoice"
+                                        [] self = N + 1 -> "SplitStart"]
 
 WLoop(self) == /\ pc[self] = "WLoop"
                /\ IF ~terminated[self]
                      THEN /\ pc' = [pc EXCEPT ![self] = "PoolWait"]
                      ELSE /\ pc' = [pc EXCEPT ![self] = "Done"]
-               /\ UNCHANGED << queue, active, stopRequested, available, 
-                               holdsToken, hasTask, terminated, completed, 
-                               nextId, pushesLeft, task >>
+               /\ UNCHANGED << queue, genList, genDone, genStopped, active, 
+                               stopRequested, available, holdsToken, hasTask, 
+                               terminated, completed, nextId, pushesLeft, 
+                               splitOpen, task >>
 
 PoolWait(self) == /\ pc[self] = "PoolWait"
-                  /\ Len(queue) > 0 \/ active = 0 \/ stopRequested
-                  /\ IF stopRequested
+                  /\ (genDone /\ (Len(queue) > 0 \/ active = 0)) \/ genStopped \/ stopRequested
+                  /\ IF genStopped \/ stopRequested
                         THEN /\ terminated' = [terminated EXCEPT ![self] = TRUE]
-                             /\ pc' = [pc EXCEPT ![self] = "ShedTok"]
+                             /\ pc' = [pc EXCEPT ![self] = "WLoop"]
                              /\ UNCHANGED << available, holdsToken >>
                         ELSE /\ IF Len(queue) = 0
                                    THEN /\ Assert(active = 0, 
-                                                  "Failure of assertion at line 74, column 11.")
+                                                  "Failure of assertion at line 81, column 11.")
                                         /\ terminated' = [terminated EXCEPT ![self] = TRUE]
-                                        /\ pc' = [pc EXCEPT ![self] = "ShedTok"]
+                                        /\ pc' = [pc EXCEPT ![self] = "WLoop"]
                                         /\ UNCHANGED << available, holdsToken >>
                                    ELSE /\ IF ~holdsToken[self]
                                               THEN /\ IF available > 0
@@ -251,8 +309,9 @@ PoolWait(self) == /\ pc[self] = "PoolWait"
                                                    /\ UNCHANGED << available, 
                                                                    holdsToken >>
                                         /\ UNCHANGED terminated
-                  /\ UNCHANGED << queue, active, stopRequested, hasTask, 
-                                  completed, nextId, pushesLeft, task >>
+                  /\ UNCHANGED << queue, genList, genDone, genStopped, active, 
+                                  stopRequested, hasTask, completed, nextId, 
+                                  pushesLeft, splitOpen, task >>
 
 Pop(self) == /\ pc[self] = "Pop"
              /\ IF ~terminated[self] /\ holdsToken[self] /\ Len(queue) > 0
@@ -263,8 +322,9 @@ Pop(self) == /\ pc[self] = "Pop"
                    ELSE /\ TRUE
                         /\ UNCHANGED << queue, active, hasTask, task >>
              /\ pc' = [pc EXCEPT ![self] = "Fin"]
-             /\ UNCHANGED << stopRequested, available, holdsToken, terminated, 
-                             completed, nextId, pushesLeft >>
+             /\ UNCHANGED << genList, genDone, genStopped, stopRequested, 
+                             available, holdsToken, terminated, completed, 
+                             nextId, pushesLeft, splitOpen >>
 
 Fin(self) == /\ pc[self] = "Fin"
              /\ IF hasTask[self]
@@ -281,8 +341,20 @@ Fin(self) == /\ pc[self] = "Fin"
                         /\ UNCHANGED << active, available, holdsToken, hasTask, 
                                         completed, task >>
              /\ pc' = [pc EXCEPT ![self] = "ShedTok"]
-             /\ UNCHANGED << queue, stopRequested, terminated, nextId, 
-                             pushesLeft >>
+             /\ UNCHANGED << queue, genList, genDone, genStopped, 
+                             stopRequested, terminated, nextId, pushesLeft, 
+                             splitOpen >>
+
+ShedTok(self) == /\ pc[self] = "ShedTok"
+                 /\ IF ~terminated[self] /\ ~hasTask[self] /\ holdsToken[self]
+                       THEN /\ available' = available + 1
+                            /\ holdsToken' = [holdsToken EXCEPT ![self] = FALSE]
+                       ELSE /\ TRUE
+                            /\ UNCHANGED << available, holdsToken >>
+                 /\ pc' = [pc EXCEPT ![self] = "WLoop"]
+                 /\ UNCHANGED << queue, genList, genDone, genStopped, active, 
+                                 stopRequested, hasTask, terminated, completed, 
+                                 nextId, pushesLeft, splitOpen, task >>
 
 Park(self) == /\ pc[self] = "Park"
               /\ available > 0 \/ stopRequested
@@ -296,8 +368,9 @@ Park(self) == /\ pc[self] = "Park"
                                THEN /\ pc' = [pc EXCEPT ![self] = "RecheckRel"]
                                ELSE /\ pc' = [pc EXCEPT ![self] = "Pop"]
                          /\ UNCHANGED terminated
-              /\ UNCHANGED << queue, active, stopRequested, hasTask, completed, 
-                              nextId, pushesLeft, task >>
+              /\ UNCHANGED << queue, genList, genDone, genStopped, active, 
+                              stopRequested, hasTask, completed, nextId, 
+                              pushesLeft, splitOpen, task >>
 
 RecheckRel(self) == /\ pc[self] = "RecheckRel"
                     /\ available' = available + 1
@@ -309,32 +382,100 @@ RecheckRel(self) == /\ pc[self] = "RecheckRel"
                                      ELSE /\ TRUE
                                           /\ UNCHANGED terminated
                     /\ pc' = [pc EXCEPT ![self] = "Pop"]
-                    /\ UNCHANGED << queue, active, stopRequested, hasTask, 
-                                    completed, nextId, pushesLeft, task >>
-
-ShedTok(self) == /\ pc[self] = "ShedTok"
-                 /\ IF ~terminated[self] /\ Len(queue) = 0 /\ holdsToken[self]
-                       THEN /\ available' = available + 1
-                            /\ holdsToken' = [holdsToken EXCEPT ![self] = FALSE]
-                       ELSE /\ TRUE
-                            /\ UNCHANGED << available, holdsToken >>
-                 /\ pc' = [pc EXCEPT ![self] = "WLoop"]
-                 /\ UNCHANGED << queue, active, stopRequested, hasTask, 
-                                 terminated, completed, nextId, pushesLeft, 
-                                 task >>
+                    /\ UNCHANGED << queue, genList, genDone, genStopped, 
+                                    active, stopRequested, hasTask, completed, 
+                                    nextId, pushesLeft, splitOpen, task >>
 
 worker(self) == WLoop(self) \/ PoolWait(self) \/ Pop(self) \/ Fin(self)
-                   \/ Park(self) \/ RecheckRel(self) \/ ShedTok(self)
+                   \/ ShedTok(self) \/ Park(self) \/ RecheckRel(self)
+
+GenLoop == /\ pc[-1] = "GenLoop"
+           /\ IF ~genDone /\ ~genStopped
+                 THEN /\ IF stopRequested
+                            THEN /\ pc' = [pc EXCEPT ![-1] = "GenDrop"]
+                            ELSE /\ IF Len(genList) < NumTasks
+                                       THEN /\ pc' = [pc EXCEPT ![-1] = "GenOne"]
+                                       ELSE /\ pc' = [pc EXCEPT ![-1] = "GenSeed"]
+                 ELSE /\ pc' = [pc EXCEPT ![-1] = "Done"]
+           /\ UNCHANGED << queue, genList, genDone, genStopped, active, 
+                           stopRequested, available, holdsToken, hasTask, 
+                           terminated, completed, nextId, pushesLeft, 
+                           splitOpen, task >>
+
+GenDrop == /\ pc[-1] = "GenDrop"
+           /\ genList' = <<>>
+           /\ genStopped' = TRUE
+           /\ pc' = [pc EXCEPT ![-1] = "GenLoop"]
+           /\ UNCHANGED << queue, genDone, active, stopRequested, available, 
+                           holdsToken, hasTask, terminated, completed, nextId, 
+                           pushesLeft, splitOpen, task >>
+
+GenOne == /\ pc[-1] = "GenOne"
+          /\ genList' = Append(genList, Len(genList) + 1)
+          /\ pc' = [pc EXCEPT ![-1] = "GenLoop"]
+          /\ UNCHANGED << queue, genDone, genStopped, active, stopRequested, 
+                          available, holdsToken, hasTask, terminated, 
+                          completed, nextId, pushesLeft, splitOpen, task >>
+
+GenSeed == /\ pc[-1] = "GenSeed"
+           /\ queue' = genList
+           /\ genDone' = TRUE
+           /\ pc' = [pc EXCEPT ![-1] = "GenLoop"]
+           /\ UNCHANGED << genList, genStopped, active, stopRequested, 
+                           available, holdsToken, hasTask, terminated, 
+                           completed, nextId, pushesLeft, splitOpen, task >>
+
+master == GenLoop \/ GenDrop \/ GenOne \/ GenSeed
+
+StopChoice == /\ pc[0] = "StopChoice"
+              /\ \/ /\ stopRequested' = TRUE
+                 \/ /\ TRUE
+                    /\ UNCHANGED stopRequested
+              /\ pc' = [pc EXCEPT ![0] = "Done"]
+              /\ UNCHANGED << queue, genList, genDone, genStopped, active, 
+                              available, holdsToken, hasTask, terminated, 
+                              completed, nextId, pushesLeft, splitOpen, task >>
+
+stopper == StopChoice
+
+SplitStart == /\ pc[N + 1] = "SplitStart"
+              /\ genDone \/ genStopped
+              /\ IF genDone
+                    THEN /\ pc' = [pc EXCEPT ![N + 1] = "SplitLoop"]
+                    ELSE /\ pc' = [pc EXCEPT ![N + 1] = "Done"]
+              /\ UNCHANGED << queue, genList, genDone, genStopped, active, 
+                              stopRequested, available, holdsToken, hasTask, 
+                              terminated, completed, nextId, pushesLeft, 
+                              splitOpen, task >>
+
+SplitLoop == /\ pc[N + 1] = "SplitLoop"
+             /\ IF pushesLeft > 0 /\ splitOpen
+                   THEN /\ \/ /\ queue' = Append(queue, nextId)
+                              /\ nextId' = nextId + 1
+                              /\ pushesLeft' = pushesLeft - 1
+                              /\ UNCHANGED splitOpen
+                           \/ /\ splitOpen' = FALSE
+                              /\ UNCHANGED <<queue, nextId, pushesLeft>>
+                        /\ pc' = [pc EXCEPT ![N + 1] = "SplitLoop"]
+                   ELSE /\ pc' = [pc EXCEPT ![N + 1] = "Done"]
+                        /\ UNCHANGED << queue, nextId, pushesLeft, splitOpen >>
+             /\ UNCHANGED << genList, genDone, genStopped, active, 
+                             stopRequested, available, holdsToken, hasTask, 
+                             terminated, completed, task >>
+
+splitter == SplitStart \/ SplitLoop
 
 (* Allow infinite stuttering to prevent deadlock on termination. *)
 Terminating == /\ \A self \in ProcSet: pc[self] = "Done"
                /\ UNCHANGED vars
 
-Next == (\E self \in 1..N: worker(self))
+Next == master \/ stopper \/ splitter
+           \/ (\E self \in 1..N: worker(self))
            \/ Terminating
 
 Spec == /\ Init /\ [][Next]_vars
         /\ \A self \in 1..N : WF_vars(worker(self))
+        /\ WF_vars(master)
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
@@ -345,15 +486,20 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 (***************************************************************************)
 TokenHolders == {w \in Workers : holdsToken[w]}
 TaskHolders == {w \in Workers : hasTask[w]}
-TotalSpawned == NumTasks + (MaxPush - pushesLeft)
+(* Pool inventory: seeded tasks (all NumTasks at once, or none) plus splits.
+   Generation keeps unseeded tasks in genList, outside this equation. *)
+PoolSpawned == (IF genDone THEN NumTasks ELSE 0) + (MaxPush - pushesLeft)
 
 TypeOK ==
   /\ queue \in Seq(Nat)
+  /\ genList \in Seq(Nat)
+  /\ genDone \in BOOLEAN /\ genStopped \in BOOLEAN
   /\ active \in 0..N
   /\ available \in 0..BudgetTotal
   /\ completed \in Nat
   /\ nextId \in Nat
   /\ pushesLeft \in 0..MaxPush
+  /\ splitOpen \in BOOLEAN
 
 (* SPEC-BUDGET-1: token conservation (thread_budget.h take/return pair up) *)
 BudgetConservation == available + Cardinality(TokenHolders) = BudgetTotal
@@ -367,7 +513,20 @@ ActiveBounded == active <= Cardinality(TokenHolders)
 Pairing == active = Cardinality(TaskHolders)
 
 (* SPEC-POOL-2: no task lost or duplicated, incl. across dynamic splits *)
-TaskConservation == completed + active + Len(queue) = TotalSpawned
+TaskConservation == completed + active + Len(queue) = PoolSpawned
+
+(* Generation shape: tasks are 1..k in order; a complete list is 1..NumTasks *)
+GenShape == genList = [i \in 1..Len(genList) |-> i]
+
+(* SPEC-POOL-4 (PR #118): a stop mid-generation discards the partial list
+   and marks interrupted -- no partial state may look resumable. Since
+   workers only start from a complete list, nothing was ever searched. *)
+NoPartialResume ==
+  genStopped => /\ ~genDone
+                /\ Len(genList) = 0
+                /\ Len(queue) = 0
+                /\ active = 0
+                /\ completed = 0
 
 (* SPEC-POOL-3: quiescence and stop exits leak neither tasks nor tokens *)
 CleanExit == \A w \in Workers : terminated[w] => (~hasTask[w] /\ ~holdsToken[w])
