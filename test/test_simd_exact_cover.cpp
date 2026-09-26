@@ -945,6 +945,35 @@ TEMPLATE_TEST_CASE("SimdExactCover applies the hole budget", "[simd][exact_cover
   }
 }
 
+TEST_CASE("SimdHuangCover: memory budget predicate follows the tier ladder", "[simd][huang][memory]") {
+  // Ladder mapping: mask bytes per row at each tier.
+  CHECK(huang_memory::tierMaskBytes(1) == 32);
+  CHECK(huang_memory::tierMaskBytes(256) == 32);
+  CHECK(huang_memory::tierMaskBytes(257) == 64);
+  CHECK(huang_memory::tierMaskBytes(2048) == 256);
+  CHECK(huang_memory::tierMaskBytes(2049) == 512);
+  CHECK(huang_memory::tierMaskBytes(32768) == 4096);
+  CHECK(huang_memory::tierMaskBytes(100000) == 4096);
+
+  // Row sizes grow with the tier (measured: 192 / 384 / 4224 bytes at the
+  // 256 / 2048 / 32768 tiers).
+  CHECK(huang_memory::tierRowBytes(256) == sizeof(SimdHuangCover256::Row));
+  CHECK(huang_memory::tierRowBytes(300) == sizeof(SimdHuangCover512::Row));
+  CHECK(huang_memory::tierRowBytes(32768) == sizeof(SimdHuangCover32768::Row));
+
+  // The motivating case from issue #92: 1e6 rows x 8 nodes at the 2048
+  // tier costs ~1e6 x 384 + 8e6 x 48 = ~768 MB of rows plus alias payload,
+  // where the mask-only estimate (256 MB exactly) would still fit.
+  CHECK_FALSE(huang_memory::fitsMemoryBudget(2048, 1000000, 8000000));
+  // ~1e5 rows at the top tier must refuse.
+  CHECK_FALSE(huang_memory::fitsMemoryBudget(32768, 100000, 800000));
+  // Small problems always fit, with margin for struct layout differences
+  // across compilers (no exact-boundary asserts here).
+  CHECK(huang_memory::fitsMemoryBudget(131, 10000, 80000));
+  CHECK(huang_memory::fitsMemoryBudget(256, 100000, 500000));
+  CHECK(huang_memory::fitsMemoryBudget(2048, 100000, 500000));
+}
+
 TEST_CASE("SimdHuangCover: parallelSolve does not count aborted tasks as completed", "[simd][huang][abort]") {
   SimdHuangCover256 solver(4, 2);
   solver.setColumnBounds(1, 1, 1, false, true, false, false);
