@@ -103,6 +103,8 @@
 #include <FL/fl_ask.H>
 #pragma GCC diagnostic pop
 
+#include <algorithm>
+#include <climits>
 #include <fstream>
 #include <string>
 
@@ -2514,6 +2516,8 @@ void mainWindow_c::pruneSolveProgress(void) {
 
 void mainWindow_c::updateInterface(void) {
 
+  pruneSolveProgress();
+
   // update the menu items activate state
 
   // there must be at least one shape before there is something to export...
@@ -2795,7 +2799,6 @@ void mainWindow_c::updateInterface(void) {
      * switching the Solve tab to another problem paints the running problem's
      * live percentage onto the unrelated one and freezes it there.
      */
-    pruneSolveProgress();
 
     /* Three sources, in descending order of how much they know:
      *
@@ -2821,9 +2824,16 @@ void mainWindow_c::updateInterface(void) {
     float finished = 0;
     if (assmThread && assmThread->currentAction() != solveThread_c::ACT_FINISHED &&
         (prob < puzzle->getNumberOfProblems()) &&
-        (&(assmThread->getProblem()) == puzzle->getProblem(prob)))
+        (&(assmThread->getProblem()) == puzzle->getProblem(prob))) {
+      /* Each worker keeps its own monotone guard, and a resumed solve starts a
+       * new one at the assembler's carried-over fraction: until disassembly
+       * evidence accumulates again its blend can sit below what the previous
+       * worker last painted. The snapshot is the floor across that handover.
+       */
       finished = assmThread->getProgress();
-    else if (lastShown)
+      if (lastShown)
+        finished = std::max(finished, lastShown->progress);
+    } else if (lastShown)
       finished = lastShown->progress;
     else if ((prob < puzzle->getNumberOfProblems()) &&
              puzzle->getProblem(prob)->getAssembler())
@@ -3145,7 +3155,13 @@ void mainWindow_c::updateInterface(void) {
       TimeUsed->value(timeToString(ut));
 
       const bool estKnown = (finished != 0);
-      const unsigned int est = estKnown ? (unsigned int)(ut/finished-ut) : 0;
+      /* double, and clamped before the cast: at a tiny fraction ut/finished
+       * exceeds UINT_MAX, and an out-of-range float-to-unsigned conversion is
+       * undefined behaviour
+       */
+      const double estSeconds = estKnown ? ut / (double)finished - ut : 0.0;
+      const unsigned int est =
+          (unsigned int)std::clamp(estSeconds, 0.0, (double)UINT_MAX);
 
       if (estKnown)
         TimeEst->value(timeToString(est));
