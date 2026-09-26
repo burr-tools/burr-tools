@@ -42,3 +42,6 @@ bench_run.log
 callgrind*.out*
 perf.data*
 
+
+# Local TLA+ scratch (jars, mutants, ad-hoc cfgs). Never commit.
+tmp-tla/

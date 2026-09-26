@@ -110,12 +110,16 @@ spec-tools:
     @if [ ! -f "{{tla_jar}}" ]; then curl -sSL -o "{{tla_jar}}" "https://github.com/tlaplus/tlaplus/releases/download/v{{tla_version}}/tla2tools.jar"; fi
 
 # Translate the PlusCal protocol models and model-check them with TLC.
-# Covers ThreadBudget + AssemblyTaskPool (spec/AssemblyPool.tla) in both the
-# uncapped and the forced-parking (low-budget) configurations.
+# Covers ThreadBudget + AssemblyTaskPool (spec/AssemblyPool.tla, uncapped
+# and forced-parking configs) and the disassembler pool (spec/DisasmPool.tla,
+# normal and tight-bounds configs).
 spec-check: spec-tools
     java -cp "{{tla_jar}}" pcal.trans spec/AssemblyPool.tla && rm -f spec/AssemblyPool.old
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/AssemblyPool.cfg spec/AssemblyPool
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/AssemblyPoolLowBudget.cfg spec/AssemblyPool
+    java -cp "{{tla_jar}}" pcal.trans spec/DisasmPool.tla && rm -f spec/DisasmPool.old
+    java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/DisasmPool.cfg spec/DisasmPool
+    java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/DisasmPoolTight.cfg spec/DisasmPool
 
 # Configure the coverage build directory if not already set up
 setup-cov:
