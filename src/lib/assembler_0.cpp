@@ -2116,9 +2116,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     /* The SIMD backend has no hook to report how far into a subtree it has
      * got, so beginTask() publishes its task's share and leaves the fraction
      * at 0 -- i.e. it keeps the old whole-task granularity. In-flight
-     * reporting is a property of the DLX path below. (Burr-Glar, the puzzle
-     * the stalling regression was reported against, takes the DLX path:
-     * canUseSimd() is false for it.)
+     * reporting is a property of the DLX path below, which is what runs for
+     * puzzles above the 2048-column cap in canUseSimd().
      */
     auto simdWorkerFunc = [this, &pool, &solver, &workerException, &exceptionMutex, &shouldSplit,
                            &beginTask, &finishTask, runTok](std::stop_token st, unsigned int workerIdx) {
