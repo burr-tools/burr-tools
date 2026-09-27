@@ -2116,9 +2116,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     /* The SIMD backend has no hook to report how far into a subtree it has
      * got, so beginTask() publishes its task's share and leaves the fraction
      * at 0 -- i.e. it keeps the old whole-task granularity. In-flight
-     * reporting is a property of the DLX path below. (Burr-Glar, the puzzle
-     * the stalling regression was reported against, takes the DLX path:
-     * canUseSimd() is false for it.)
+     * reporting is a property of the DLX path below, which is what runs for
+     * puzzles above the 2048-column cap in canUseSimd().
      */
     auto simdWorkerFunc = [this, &pool, &solver, &workerException, &exceptionMutex, &shouldSplit,
                            &beginTask, &finishTask, runTok](std::stop_token st, unsigned int workerIdx) {
@@ -2149,10 +2148,16 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
             }
 
             std::atomic<uint64_t> task_iter{0};
-            solver->solveSubtree(prefix_nodes, [this, &st, runTok](const std::vector<unsigned int> &solution_nodes) -> bool {
+            // Drain per-solution remainders to the shared counter as they
+            // arise, so live readers (GUI progress, iterator API) observe
+            // advancing iterations; exact totals preserved (exchange drains).
+            auto flushingCb = [this, &st, runTok, &task_iter](const std::vector<unsigned int> &solution_nodes) -> bool {
+              this->iterations.fetch_add(task_iter.exchange(0, std::memory_order_relaxed),
+                                         std::memory_order_relaxed);
               handleSolution(solution_nodes.data(), solution_nodes.size(), runTok);
               return !runTok.stop_requested() && !st.stop_requested();
-            }, runTok, task_iter);
+            };
+            solver->solveSubtree(prefix_nodes, flushingCb, runTok, task_iter);
 
             iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
             const bool completed = !runTok.stop_requested() && !st.stop_requested();
@@ -2302,15 +2307,16 @@ bool assembler_0_c::canUseSimd(void) const {
     return false;
   if (debug)
     return false;
-  if (holes > 0)
-    return false;
 
-  int res_vari = getResultShape(problem)->countState(voxel_c::VX_VARIABLE);
-  if (res_vari > 0)
-    return false;
-
+  // Holes and variable voxels are supported via optional columns plus the
+  // hole budget (see SimdExactCover::setOptionalColumn/setHoleBudget), so
+  // they don't disqualify the SIMD path. Only the width cap remains, now
+  // measured over all columns including the variable ring.
   int res_filled = getResultShape(problem)->countState(voxel_c::VX_FILLED);
-  unsigned int max_col = piecenumber + res_filled;
+  int res_vari = getResultShape(problem)->countState(voxel_c::VX_VARIABLE);
+  unsigned int total_cols = (res_vari > 0 && varivoxelEnd > 0)
+    ? varivoxelEnd
+    : piecenumber + static_cast<unsigned int>(res_filled);
   // Cap Assembler 0 at 2048 columns:
   // 1. Thread stack safety: recursion passes BitsetType by value on the stack.
   //    At 32768 columns (4 KB/frame), deep recursion risks overflowing 512 KB thread stacks
@@ -2321,7 +2327,9 @@ bool assembler_0_c::canUseSimd(void) const {
   // Above 2048 columns, classical sparse DLX is faster and uses significantly less memory.
   // (Note: Assembler 1 supports up to 32768 columns because its search loop is indexed by shapes
   // and unplaced voxels rather than sweeping dense column counts at every node.)
-  if (max_col > 2048)
+  // The cap applies to the total width including variable columns, for the
+  // same stack/cache reasons.
+  if (total_cols > 2048)
     return false;
 
   return true;
@@ -2329,25 +2337,30 @@ bool assembler_0_c::canUseSimd(void) const {
 
 std::unique_ptr<ISimdExactCover> assembler_0_c::createSimdSolver(void) const {
   int res_filled = getResultShape(problem)->countState(voxel_c::VX_FILLED);
+  int res_vari = getResultShape(problem)->countState(voxel_c::VX_VARIABLE);
   unsigned int max_col = piecenumber + res_filled;
+  // Solver width must cover the variable ring too (DLX column c maps to
+  // solver column c-1, highest index varivoxelEnd-1). Without variable
+  // voxels this is exactly max_col, preserving existing tier choices.
+  unsigned int num_columns = (res_vari > 0) ? varivoxelEnd : max_col;
 
   std::unique_ptr<ISimdExactCover> solver;
-  if (max_col <= 256) {
-    solver = std::make_unique<SimdExactCover256>(max_col, piecenumber);
-  } else if (max_col <= 512) {
-    solver = std::make_unique<SimdExactCover512>(max_col, piecenumber);
-  } else if (max_col <= 1024) {
-    solver = std::make_unique<SimdExactCover1024>(max_col, piecenumber);
-  } else if (max_col <= 2048) {
-    solver = std::make_unique<SimdExactCover2048>(max_col, piecenumber);
-  } else if (max_col <= 4096) {
-    solver = std::make_unique<SimdExactCover4096>(max_col, piecenumber);
-  } else if (max_col <= 8192) {
-    solver = std::make_unique<SimdExactCover8192>(max_col, piecenumber);
-  } else if (max_col <= 16384) {
-    solver = std::make_unique<SimdExactCover16384>(max_col, piecenumber);
+  if (num_columns <= 256) {
+    solver = std::make_unique<SimdExactCover256>(num_columns, piecenumber);
+  } else if (num_columns <= 512) {
+    solver = std::make_unique<SimdExactCover512>(num_columns, piecenumber);
+  } else if (num_columns <= 1024) {
+    solver = std::make_unique<SimdExactCover1024>(num_columns, piecenumber);
+  } else if (num_columns <= 2048) {
+    solver = std::make_unique<SimdExactCover2048>(num_columns, piecenumber);
+  } else if (num_columns <= 4096) {
+    solver = std::make_unique<SimdExactCover4096>(num_columns, piecenumber);
+  } else if (num_columns <= 8192) {
+    solver = std::make_unique<SimdExactCover8192>(num_columns, piecenumber);
+  } else if (num_columns <= 16384) {
+    solver = std::make_unique<SimdExactCover16384>(num_columns, piecenumber);
   } else {
-    solver = std::make_unique<SimdExactCover32768>(max_col, piecenumber);
+    solver = std::make_unique<SimdExactCover32768>(num_columns, piecenumber);
   }
 
   for (unsigned int c = right[0]; c != 0; c = right[c]) {
@@ -2355,6 +2368,14 @@ std::unique_ptr<ISimdExactCover> assembler_0_c::createSimdSolver(void) const {
       solver->setRequiredColumn(c - 1);
     }
   }
+
+  // Variable voxel columns live on their own ring (never pivoted by DLX
+  // either) and are optional: at most once each, leftovers governed by the
+  // hole budget. Empty loop when the puzzle has no variable voxels.
+  for (unsigned int c = right[varivoxelEnd]; c != varivoxelEnd; c = right[c]) {
+    solver->setOptionalColumn(c - 1);
+  }
+  solver->setHoleBudget(static_cast<unsigned int>(holes));
 
   for (unsigned int p = 1; p <= piecenumber; p++) {
     for (unsigned int row = down(p); row != p; row = down(row)) {
@@ -2364,7 +2385,7 @@ std::unique_ptr<ISimdExactCover> assembler_0_c::createSimdSolver(void) const {
       do {
         nodes_in_row.push_back(curr);
         unsigned int col = colCount[curr];
-        if (col > 0 && col <= max_col) {
+        if (col > 0 && col < varivoxelEnd) {
           cols.push_back(col - 1);
         }
         curr = right[curr];
@@ -2388,7 +2409,12 @@ void assembler_0_c::simdSearch(void) {
   auto solver = createSimdSolver();
   std::atomic<uint64_t> simd_iter{0};
 
-  solver->solve([this, runTok](const std::vector<unsigned int> &solution_nodes) -> bool {
+  // Drain per-solution remainders to the shared counter as they arise, so
+  // live readers (GUI progress, iterator API) observe advancing iterations
+  // even on single-threaded runs; exact totals preserved (exchange drains).
+  solver->solve([this, runTok, &simd_iter](const std::vector<unsigned int> &solution_nodes) -> bool {
+    this->iterations.fetch_add(simd_iter.exchange(0, std::memory_order_relaxed),
+                               std::memory_order_relaxed);
     handleSolution(solution_nodes.data(), solution_nodes.size(), runTok);
     return !runTok.stop_requested();
   }, runTok, simd_iter);

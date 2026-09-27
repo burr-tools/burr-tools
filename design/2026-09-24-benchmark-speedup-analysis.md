@@ -343,3 +343,54 @@ noise. Only 2 of 16 corpus puzzles use range columns (both min==max);
 Still gated (unchanged, structural): variable voxels with min<max shapes,
 >32768 columns, and all of assembler_0's holes/variables exclusions
 (kangaroo: `holes=65, res_vari=160`).
+
+## 10. Holes/variables go SIMD in assembler_0 (2026-09-24, branch `perf/simd-exact-holes`)
+
+The remaining structural gap from §8.2: `SimdExactCover` knew only required
+columns, so `canUseSimd()` refused every puzzle with holes or variable
+voxels — i.e. all of assembler_0 except the Lomino:0/1/2-type pure cases
+(which already ran SIMD). A corpus probe showed only kangaroo (holes=65,
+vari=160, 1.13M iterations) has enough search for this to matter; the rest
+is trivial or disassembly-bound.
+
+DLX semantics ported: variable columns live on their own ring (never
+pivoted); covering is at-most-once; uncovered-unfillable columns beyond the
+`holes` budget prune at column-selection time, with no check at the goal
+(`solution()` fires as soon as ring 0 is empty). The SIMD port mirrors this
+exactly: new `setOptionalColumn`/`setHoleBudget` interface, optional bits in
+the disjointness masks (conflict-free), never in `active_column_list` (never
+pivoted, never dead-end on empty), hole prune at `search()` entry over
+uncovered optionals with zero covering rows among the active set. Deliberate
+parity decision: **no budget check at the goal**, matching DLX — including
+its quirk that an over-budget excess appearing after the last selection
+check still reports (hole count is monotonic along a path, so pruning is
+safe, but the goal itself is unchecked in both engines; "fixing" it would
+break 0.7.1 parity, so it stays as-is). `solveSubtree` needs no change
+(prefix flows into the checking `search()`); none of the four `filterRows`
+kernels change (full-mask disjointness already covers optional bits).
+`createSimdSolver` walks both rings, sizes tiers over the total width
+(kangaroo: 366 → 512 tier), and the 2048 cap now applies to the total.
+
+Correctness: kangaroo 9831/9831 assemblies with sorted `-s` placement
+output identical; solutions 2/2 serial and `-t 8`; all other holes puzzles
+agree (Excelsior 7/7 incl. `-d`, Pelikan 12/12, Supernova 10/10, Dracula
+84/84); no-vari path bit-identical (Lomino:1 `-t 8` SIMD iterations exactly
+383910 as before). New `[simd][exact_cover][holes]` unit test pins the
+machinery (incl. the no-goal-check parity); Pelikan/Dracula in the
+equivalence test now exercise the SIMD path. `test-all` 4/4,
+`test-regression` 20/20, `check` clean.
+
+Speedup: kangaroo assembly 1.13M → 0.58M iterations; with disassembly
+t1 1.72s → 1.04s (**1.65x**), t8 0.66s → 0.47s (**1.4x**), corpus total
+2.9x → **3.2x** (`results_20260924_203315_…`). Modest — disassembly owns
+the rest — but it closes the last structural SIMD gap for assembler_0.
+
+Follow-up fixed on the same branch: SIMD iteration batching (publish every
+256 nodes, remainder at end) left sub-256 searches reporting live 0 after
+their first solution, flaking `test_iterator_iterations_live_and_finished`
+under load (reproduced 2/15). Both solvers now flush remainders at each
+reported solution (exact: batches re-based on `flushed_iterations`, DLX
+worker idiom) and both parallel paths drain per-task counters to shared at
+each solution. Totals bit-identical (kangaroo 580114, SolidSix 601901);
+20/20 python runs green under full parallel-build load. This also fixes the
+open TODO.md item on frozen parallel-SIMD counters.
